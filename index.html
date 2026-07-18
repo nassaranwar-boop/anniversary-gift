@@ -1,4 +1,3 @@
-cat > /home/claude/soulmate-final/index.html << 'ENDOFFILE'
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -1696,17 +1695,13 @@ cat > /home/claude/soulmate-final/index.html << 'ENDOFFILE'
               <div class="w-dot" style="background: #ffb86c"></div>
               <div class="w-dot" style="background: #50fa7b"></div>
             </div>
-            <div class="letter-window-title">
-              &#128140; SYSTEM MESSAGE &#128140;
-            </div>
+            <div class="letter-window-title">&#128140; SYSTEM MESSAGE &#128140;</div>
           </div>
 
           <div class="letter-salutation">Dear Ouissy,</div>
           <div class="letter-scroll" id="letter-text"></div>
 
-          <div class="next-prompt-heart" id="letter-heart-prompt">
-            &#128151;
-          </div>
+          <div class="next-prompt-heart" id="letter-heart-prompt">&#128151;</div>
         </div>
 
         <button
@@ -1887,9 +1882,7 @@ cat > /home/claude/soulmate-final/index.html << 'ENDOFFILE'
                 alt="Us vibing together"
               />
 
-              <div class="mascot-side-label">
-                VIBING TO<br />OUR BEAT! &#127925;
-              </div>
+              <div class="mascot-side-label">VIBING TO<br />OUR BEAT! &#127925;</div>
             </div>
           </div>
         </div>
@@ -2251,13 +2244,9 @@ cat > /home/claude/soulmate-final/index.html << 'ENDOFFILE'
         for (let i = 0; i < count; i++) {
           const heart = document.createElement("div");
           heart.className = "floating-heart";
-          heart.textContent = [
-            "\u{1F497}",
-            "\u{1F495}",
-            "\u{1FA77}",
-            "\u{2728}",
-            "\u{1F338}",
-          ][Math.floor(Math.random() * 5)];
+          heart.textContent = ["\u{1F497}", "\u{1F495}", "\u{1FA77}", "\u{2728}", "\u{1F338}"][
+            Math.floor(Math.random() * 5)
+          ];
           heart.style.left = Math.random() * 100 + "%";
           heart.style.setProperty("--drift", Math.random() * 5 - 2.5 + "cqw");
           heart.style.animationDelay = Math.random() * 3.5 + "s";
@@ -2272,13 +2261,7 @@ cat > /home/claude/soulmate-final/index.html << 'ENDOFFILE'
         const existingNotes = container.querySelectorAll(".floating-note");
         existingNotes.forEach((n) => n.remove());
 
-        const symbols = [
-          "\u{1F3B5}",
-          "\u{1F3B6}",
-          "\u{2728}",
-          "\u{2764}\u{FE0F}",
-          "\u{1F338}",
-        ];
+        const symbols = ["\u{1F3B5}", "\u{1F3B6}", "\u{2728}", "\u{2764}\u{FE0F}", "\u{1F338}"];
         for (let i = 0; i < 8; i++) {
           const note = document.createElement("div");
           note.className = "floating-note";
