@@ -1,3 +1,4 @@
+cat > /home/claude/soulmate-final/index.html << 'ENDOFFILE'
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -92,7 +93,6 @@
         }
       }
 
-      /* --- RETRO PARALLAX ENVIRONMENT LAYER --- */
       .sky-bg {
         position: absolute;
         inset: 0;
@@ -221,7 +221,6 @@
         }
       }
 
-      /* --- RETRO GAMING HUD ELEMENT --- */
       .game-hud {
         position: absolute;
         top: 4%;
@@ -244,7 +243,6 @@
         transition: all 0.2s ease;
       }
 
-      /* --- TITLE ACCENTS --- */
       .ouissy-gate-title {
         position: absolute;
         top: 12%;
@@ -304,7 +302,6 @@
         }
       }
 
-      /* --- BUTTONS --- */
       @keyframes btnPulse {
         0%,
         100% {
@@ -366,7 +363,6 @@
         background: #c2ffd2;
       }
 
-      /* --- GATE / LOCK MODULE --- */
       #scene-gate {
         padding: 0;
       }
@@ -573,7 +569,6 @@
         background: #ff9dd0;
       }
 
-      /* --- QUEST TERMINAL --- */
       .quiz-container {
         width: 76%;
         max-width: 820px;
@@ -664,7 +659,6 @@
         }
       }
 
-      /* --- USER STATS COMPONENT --- */
       .stats-panel {
         display: flex;
         width: 100%;
@@ -739,7 +733,6 @@
         font-weight: bold;
       }
 
-      /* --- MAIN HUD HUB --- */
       .game-metrics {
         display: flex;
         align-items: center;
@@ -863,7 +856,6 @@
         animation: gentleGlowFloat 4s ease-in-out infinite !important;
       }
 
-      /* --- SPEECH CONTAINER --- */
       .speech-wrap {
         position: relative;
         flex: 1;
@@ -911,7 +903,6 @@
         }
       }
 
-      /* --- GALLERIES & INTERACTIVE WINDOWS --- */
       .content-box {
         position: relative;
         width: 62%;
@@ -1024,7 +1015,6 @@
         background: #ebdfff;
       }
 
-      /* --- GALLERIES --- */
       .photo-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -1165,7 +1155,6 @@
         animation-play-state: paused;
       }
 
-      /* --- MEDIA PLAYER ACCENTS --- */
       .split-music-layout {
         display: flex;
         width: 100%;
@@ -1193,15 +1182,61 @@
         padding: 0.5cqw;
         position: relative;
         overflow: hidden;
+        animation: mascotBorderPulse 3.4s ease-in-out infinite;
+      }
+      @keyframes mascotBorderPulse {
+        0%,
+        100% {
+          border-color: #ff9dd0;
+          box-shadow: 0 0 0.6cqw rgba(255, 157, 208, 0.15);
+        }
+        50% {
+          border-color: #cdbdf5;
+          box-shadow: 0 0 1.2cqw rgba(205, 189, 245, 0.35);
+        }
       }
 
-      .embedded-loop-video {
+      .embedded-loop-photo {
         width: 100%;
         height: 82%;
         object-fit: cover;
         border-radius: 0.3cqw;
         border: 0.18cqw solid #ff9dd0;
         background: #1a1025;
+        animation: couplePhotoFloat 4.6s ease-in-out infinite;
+      }
+      @keyframes couplePhotoFloat {
+        0%,
+        100% {
+          transform: translateY(0) rotate(-0.7deg) scale(1);
+        }
+        50% {
+          transform: translateY(-0.7cqh) rotate(0.7deg) scale(1.015);
+        }
+      }
+
+      .mascot-sticker {
+        position: absolute;
+        font-size: 1.5cqw;
+        z-index: 9;
+        pointer-events: none;
+      }
+      .mascot-sticker.top-left {
+        top: 3%;
+        left: 4%;
+        animation: retroFloat 2.5s ease-in-out infinite;
+      }
+      .mascot-sticker.bottom-right {
+        bottom: 12%;
+        right: 5%;
+        font-size: 1.7cqw;
+        animation: cuteHeartbeat 1.6s ease-in-out infinite;
+      }
+      .mascot-sticker.top-right {
+        top: 3%;
+        right: 4%;
+        font-size: 1.3cqw;
+        animation: twinkle 2.2s ease-in-out infinite;
       }
 
       .mascot-side-label {
@@ -1211,6 +1246,16 @@
         text-align: center;
         line-height: 1.4;
         font-family: "Press Start 2P", monospace;
+        animation: floatText 3s ease-in-out infinite;
+      }
+      @keyframes floatText {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-0.4cqh);
+        }
       }
 
       .music-player {
@@ -1332,7 +1377,6 @@
         animation: answerFlash 0.35s ease-out forwards;
       }
 
-      /* --- DECOR Sticker Objects --- */
       .corner-deco {
         position: absolute;
         font-size: 1.6cqw;
@@ -1358,13 +1402,11 @@
     <div id="game-window">
       <div class="flash-overlay" id="screen-flash"></div>
 
-      <!-- RETRO GAMING HUD OVERLAY -->
       <div class="game-hud">
         <span id="hud-level-val">LVL 1</span>
         <span id="hud-hearts-val" class="hud-hearts">♥ ♥ ♥</span>
       </div>
 
-      <!-- SCENE 1: Password Lock Screen Terminal -->
       <div class="scene active fade-in" id="scene-gate">
         <div class="gate-split">
           <div class="gate-left">
@@ -1399,7 +1441,7 @@
           <div class="gate-right">
             <h2>Guess the password</h2>
             <div class="feedback-banner" id="gate-feedback">
-              Enter the secret 4-digit code to unlock my heart... (u_u)💗
+              Enter the secret 4-digit code to unlock my heart... (u_u)&#128147;
             </div>
             <div class="dots" id="dots">
               <div class="dot" id="dot-1"></div>
@@ -1425,7 +1467,6 @@
         </div>
       </div>
 
-      <!-- SCENE 2: Welcome Banner Screen -->
       <div class="scene" id="scene-start">
         <div class="sky-bg">
           <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
@@ -1460,7 +1501,6 @@
         </button>
       </div>
 
-      <!-- SCENE 3: Memory Verification Quest Card -->
       <div class="scene" id="scene-quiz">
         <div class="sky-bg">
           <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
@@ -1508,7 +1548,6 @@
         </div>
       </div>
 
-      <!-- SCENE 4: Narrative Intro Prologue Component -->
       <div class="scene" id="scene-intro">
         <div class="sky-bg">
           <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
@@ -1537,7 +1576,6 @@
         </button>
       </div>
 
-      <!-- SCENE 5: Core Operations Matrix Hub -->
       <div class="scene" id="scene-hub">
         <div class="sky-bg">
           <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
@@ -1582,7 +1620,7 @@
             </div>
             <div class="gift-item" id="gift-3" onclick="openGift('music', 3)">
               <img src="./assets/gift_box.png" alt="" />
-              <div class="gift-label">Tuned For You 🎵</div>
+              <div class="gift-label">Tuned For You &#127925;</div>
             </div>
           </div>
 
@@ -1605,7 +1643,7 @@
                   style="height: 11cqh"
                 />
                 <span class="cute-ouissy-name" style="font-size: 0.75cqw"
-                  >💖 Ouissy 💖</span
+                  >&#128150; Ouissy &#128150;</span
                 >
               </div>
               <div class="stats-right" style="font-size: 0.75cqw; gap: 0.4cqh">
@@ -1640,7 +1678,6 @@
         </button>
       </div>
 
-      <!-- SCENE 6: Cute Goofy RPG-Style Letter Interface -->
       <div class="scene" id="scene-letter">
         <div class="sky-bg">
           <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
@@ -1659,13 +1696,17 @@
               <div class="w-dot" style="background: #ffb86c"></div>
               <div class="w-dot" style="background: #50fa7b"></div>
             </div>
-            <div class="letter-window-title">💌 SYSTEM MESSAGE 💌</div>
+            <div class="letter-window-title">
+              &#128140; SYSTEM MESSAGE &#128140;
+            </div>
           </div>
 
           <div class="letter-salutation">Dear Ouissy,</div>
           <div class="letter-scroll" id="letter-text"></div>
 
-          <div class="next-prompt-heart" id="letter-heart-prompt">💗</div>
+          <div class="next-prompt-heart" id="letter-heart-prompt">
+            &#128151;
+          </div>
         </div>
 
         <button
@@ -1678,7 +1719,6 @@
         </button>
       </div>
 
-      <!-- SCENE 7: Bounded Micro-Interactive Gallery -->
       <div class="scene" id="scene-photos">
         <div class="sky-bg">
           <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
@@ -1690,19 +1730,17 @@
         <div class="stars"></div>
         <div class="hearts-layer" id="hearts-photos"></div>
 
-        <!-- Goofy Video Accents -->
-        <div class="corner-deco photo-deco-bear">🧸</div>
-        <div class="corner-deco photo-deco-balloon">🎈</div>
+        <div class="corner-deco photo-deco-bear">&#129688;</div>
+        <div class="corner-deco photo-deco-balloon">&#127880;</div>
 
         <div class="content-box gallery-box">
           <h2>Memory Gallery</h2>
           <div class="gallery-subtitle">
             Just a small collection of us matching each other's energy
-            perfectly. 🥰✨
+            perfectly. &#129396;&#10024;
           </div>
 
           <div class="photo-grid">
-            <!-- Window 1 -->
             <div class="photo-frame">
               <div class="window-topbar">
                 <div class="window-dots">
@@ -1723,7 +1761,6 @@
               </div>
             </div>
 
-            <!-- Window 2 -->
             <div class="photo-frame">
               <div class="window-topbar">
                 <div class="window-dots">
@@ -1744,7 +1781,6 @@
               </div>
             </div>
 
-            <!-- Window 3 -->
             <div class="photo-frame">
               <div class="window-topbar">
                 <div class="window-dots">
@@ -1765,7 +1801,6 @@
               </div>
             </div>
 
-            <!-- Window 4 -->
             <div class="photo-frame">
               <div class="window-topbar">
                 <div class="window-dots">
@@ -1796,7 +1831,6 @@
         </button>
       </div>
 
-      <!-- SCENE 8: Dynamic Media Hub with Dedicated HTML5 Loop Player -->
       <div class="scene" id="scene-music">
         <div class="sky-bg">
           <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
@@ -1816,7 +1850,6 @@
           <h2 style="color: #fff; margin-bottom: 0.8cqw">Song For You</h2>
 
           <div class="split-music-layout">
-            <!-- Left Side: YouTube Player Frame -->
             <div class="music-player-side">
               <div class="music-player">
                 <iframe
@@ -1843,22 +1876,20 @@
               </div>
             </div>
 
-            <!-- Right Side: Dedicated HTML5 Autoplay Loop Video Window -->
             <div class="mascot-side">
-              <div class="corner-deco" style="top: 2%; left: 4%">✨</div>
+              <div class="mascot-sticker top-left">&#10024;</div>
+              <div class="mascot-sticker top-right">&#128171;</div>
+              <div class="mascot-sticker bottom-right">&#128149;</div>
 
-              <video
-                class="embedded-loop-video"
-                autoplay
-                loop
-                muted
-                playsinline
-              >
-                <source src="./assets/us.mp4" type="video/mp4" />
-                Your browser does not support the video element.
-              </video>
+              <img
+                class="embedded-loop-photo"
+                src="./assets/vibing_couple.png"
+                alt="Us vibing together"
+              />
 
-              <div class="mascot-side-label">VIBING TO<br />OUR BEAT! 🎵</div>
+              <div class="mascot-side-label">
+                VIBING TO<br />OUR BEAT! &#127925;
+              </div>
             </div>
           </div>
         </div>
@@ -1871,7 +1902,6 @@
         </button>
       </div>
 
-      <!-- SCENE 9: Closing Narrative Screen with Loop Mechanism -->
       <div class="scene" id="scene-outro">
         <div class="sky-bg">
           <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
@@ -1915,14 +1945,13 @@
       let failedAttempts = 0;
       const STATE = { gift1: false, gift2: false, gift3: false };
 
-      // Global Retro Game Score Metrics
       let playerHearts = 3;
       let playerLevel = 1;
       const MAX_HEARTS = 5;
 
       const QUIZ_QUESTIONS = [
         {
-          q: "Where did I first tell you those three words, 'I love you'? 💬",
+          q: "Where did I first tell you those three words, 'I love you'? \u{1F4AC}",
           options: [
             "Over a late night call",
             "In person, looking right at you",
@@ -1932,7 +1961,7 @@
           correct: 1,
         },
         {
-          q: "If someone asked me what my absolute favorite thing about us is, what would I say? 🥰",
+          q: "If someone asked me what my absolute favorite thing about us is, what would I say? \u{1F970}",
           options: [
             "Our completely goofy inside jokes",
             "When we make up 10 minutes after a fight",
@@ -1942,7 +1971,7 @@
           correct: 3,
         },
         {
-          q: "Be honest... how long do you think I am going to keep choosing you as my favorite person? 🧸",
+          q: "Be honest... how long do you think I am going to keep choosing you as my favorite person? \u{1F9F8}",
           options: [
             "Maybe for another 5 whole years",
             "Forever and absolute always",
@@ -1975,7 +2004,6 @@
         "scene-outro": 12,
       };
 
-      // Game state handling logic loops
       function modifyHearts(delta) {
         playerHearts += delta;
 
@@ -1988,7 +2016,7 @@
             playerLevel--;
             playerHearts = 3;
           } else {
-            playerHearts = 1; // Safeguard to prevent crashing below minimum bounds
+            playerHearts = 1;
           }
         }
         updateGlobalHUD();
@@ -2071,12 +2099,6 @@
         }
         if (sceneId === "scene-music") {
           spawnTrackNotes();
-          // Reset the video track point seamlessly when she loads the page
-          const vid = document.querySelector(".embedded-loop-video");
-          if (vid) {
-            vid.currentTime = 0;
-            vid.play().catch(() => {});
-          }
         }
         if (sceneId === "scene-outro") {
           setExpression("outro-sprite", "blushing");
@@ -2098,7 +2120,7 @@
         const sprite = document.getElementById(id);
         if (!sprite) return;
         sprite.classList.add("spin-click");
-        modifyHearts(1); // Playful interaction reward!
+        modifyHearts(1);
         setTimeout(() => {
           sprite.classList.remove("spin-click");
         }, 500);
@@ -2156,7 +2178,7 @@
             flash.classList.add("run-flash");
           }
 
-          modifyHearts(1); // Dynamic core adjustment engine activation point
+          modifyHearts(1);
           currentQuizIndex++;
           setTimeout(() => {
             loadQuizQuestion();
@@ -2167,7 +2189,7 @@
           btnElement.style.borderColor = "#bc4646";
           container.classList.add("error-shake");
 
-          modifyHearts(-1); // Live deduction core penalty
+          modifyHearts(-1);
 
           setTimeout(() => {
             container.classList.remove("error-shake");
@@ -2193,7 +2215,7 @@
       function openGift(type, num) {
         STATE[`gift${num}`] = true;
         document.getElementById(`gift-${num}`).classList.add("opened");
-        modifyHearts(1); // Reward her with game score for discovering milestones!
+        modifyHearts(1);
         setTimeout(() => goTo(`scene-${type}`), 250);
       }
 
@@ -2229,9 +2251,13 @@
         for (let i = 0; i < count; i++) {
           const heart = document.createElement("div");
           heart.className = "floating-heart";
-          heart.textContent = ["💗", "💕", "🩷", "✨", "🌸"][
-            Math.floor(Math.random() * 5)
-          ];
+          heart.textContent = [
+            "\u{1F497}",
+            "\u{1F495}",
+            "\u{1FA77}",
+            "\u{2728}",
+            "\u{1F338}",
+          ][Math.floor(Math.random() * 5)];
           heart.style.left = Math.random() * 100 + "%";
           heart.style.setProperty("--drift", Math.random() * 5 - 2.5 + "cqw");
           heart.style.animationDelay = Math.random() * 3.5 + "s";
@@ -2246,7 +2272,13 @@
         const existingNotes = container.querySelectorAll(".floating-note");
         existingNotes.forEach((n) => n.remove());
 
-        const symbols = ["🎵", "🎶", "✨", "❤️", "🌸"];
+        const symbols = [
+          "\u{1F3B5}",
+          "\u{1F3B6}",
+          "\u{2728}",
+          "\u{2764}\u{FE0F}",
+          "\u{1F338}",
+        ];
         for (let i = 0; i < 8; i++) {
           const note = document.createElement("div");
           note.className = "floating-note";
@@ -2290,7 +2322,6 @@
         failedAttempts = 0;
         currentQuizIndex = 0;
 
-        // Reset core game state metrics
         playerHearts = 3;
         playerLevel = 1;
         updateGlobalHUD();
@@ -2309,7 +2340,7 @@
         const feedback = document.getElementById("gate-feedback");
         feedback.className = "feedback-banner";
         feedback.innerText =
-          "Enter the secret 4-digit code to unlock my heart... (u_u)💗";
+          "Enter the secret 4-digit code to unlock my heart... (u_u)\u{1F497}";
 
         document
           .querySelectorAll(".dot")
@@ -2340,7 +2371,7 @@
             if (entered === PASSWORD) {
               feedback.className = "feedback-banner success-mode";
               feedback.innerText =
-                "ACCESS GRANTED! Welcome back, my love! Unlocking... 🔓💖";
+                "ACCESS GRANTED! Welcome back, my love! Unlocking... \u{1F513}\u{1F496}";
               document
                 .querySelectorAll(".dot")
                 .forEach((d) => d.classList.add("success"));
@@ -2359,18 +2390,18 @@
 
               if (failedAttempts === 1) {
                 feedback.innerText =
-                  "❌ ACCESS DENIED! That is definitely not the passcode, try again! (._.)";
+                  "\u{274C} ACCESS DENIED! That is definitely not the passcode, try again! (._.)";
               } else if (failedAttempts === 2) {
                 feedback.innerText =
-                  "❌ WRONG AGAIN! Think very closely... it's a 4-digit sequence that belongs completely to us.";
+                  "\u{274C} WRONG AGAIN! Think very closely... it's a 4-digit sequence that belongs completely to us.";
               } else if (failedAttempts === 3) {
                 feedback.className = "feedback-banner hint-mode error-shake";
                 feedback.innerText =
-                  "💡 HINT LEVEL 1: When did our story officially begin? Think of the special date... Day first, then Month!";
+                  "\u{1F4A1} HINT LEVEL 1: When did our story officially begin? Think of the special date... Day first, then Month!";
               } else {
                 feedback.className = "feedback-banner hint-mode error-shake";
                 feedback.innerText =
-                  "💡 HINT LEVEL 2: The sweetest day of summer... July 22nd. Put them together as DDMM! 📅✨";
+                  "\u{1F4A1} HINT LEVEL 2: The sweetest day of summer... July 22nd. Put them together as DDMM! \u{1F4C5}\u{2728}";
               }
 
               setTimeout(() => {
@@ -2396,7 +2427,6 @@
         }
       });
 
-      // Launch initialization
       updateGlobalHUD();
       spawnHearts("hearts-gate", AMBIENT_HEARTS["scene-gate"]);
     </script>
