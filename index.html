@@ -226,20 +226,49 @@
         left: 4%;
         z-index: 15;
         display: flex;
-        gap: 1.5cqw;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.4cqw;
         font-size: 0.85cqw;
         color: #fff;
         text-shadow: 0.15cqw 0.15cqw 0 #000;
-        background: rgba(0, 0, 0, 0.4);
-        padding: 0.6cqw 1.2cqw;
+        background: rgba(0, 0, 0, 0.45);
+        padding: 0.7cqw 1.1cqw;
         border: 0.2cqw solid #ff9dd0;
-        border-radius: 0.4cqw;
+        border-radius: 0.5cqw;
         pointer-events: none;
         animation: titleWobble 4s ease-in-out infinite;
+        box-shadow: 0 0 0.8cqw rgba(255, 157, 208, 0.25);
+      }
+      .hud-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5cqw;
+      }
+      .hud-star {
+        color: #ffd76b;
+        animation: twinkle 1.6s ease-in-out infinite;
+        font-size: 0.9cqw;
       }
       .hud-hearts {
         color: #ff4da6;
+        letter-spacing: 0.12cqw;
+        font-size: 0.8cqw;
         transition: all 0.2s ease;
+      }
+      .hud-progress-track {
+        width: 9cqw;
+        height: 0.6cqh;
+        background: #2b1c3d;
+        border: 0.12cqw solid #ff9dd0;
+        border-radius: 0.3cqw;
+        overflow: hidden;
+      }
+      .hud-progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #ff9dd0, #ffd76b);
+        transition: width 0.4s ease;
       }
 
       .ouissy-gate-title {
@@ -1402,8 +1431,14 @@
       <div class="flash-overlay" id="screen-flash"></div>
 
       <div class="game-hud">
-        <span id="hud-level-val">LVL 1</span>
-        <span id="hud-hearts-val" class="hud-hearts">♥ ♥ ♥</span>
+        <div class="hud-row">
+          <span class="hud-star">★</span>
+          <span id="hud-level-val">LVL 1</span>
+        </div>
+        <div id="hud-hearts-val" class="hud-hearts">♥ ♥ ♥ ♡ ♡</div>
+        <div class="hud-progress-track">
+          <div class="hud-progress-fill" id="hud-progress-fill"></div>
+        </div>
       </div>
 
       <div class="scene active fade-in" id="scene-gate">
@@ -1839,7 +1874,7 @@
 
         <div
           class="content-box"
-          style="background: #1a1025; width: 76vw; max-width: 860px"
+          style="background: #1a1025; width: 88%; max-width: 860px"
           id="music-box-container"
         >
           <h2 style="color: #fff; margin-bottom: 0.8cqw">Song For You</h2>
@@ -2019,9 +2054,20 @@
         const heartsElement = document.getElementById("hud-hearts-val");
         const levelElement = document.getElementById("hud-level-val");
         const statsRank = document.getElementById("stats-rank-val");
+        const progressFill = document.getElementById("hud-progress-fill");
 
         if (levelElement) levelElement.innerText = `LVL ${playerLevel}`;
-        if (heartsElement) heartsElement.innerText = "♥ ".repeat(playerHearts);
+
+        if (heartsElement) {
+          const filled = "♥ ".repeat(Math.max(0, playerHearts));
+          const hollow = "♡ ".repeat(Math.max(0, MAX_HEARTS - playerHearts));
+          heartsElement.innerText = (filled + hollow).trim();
+        }
+
+        if (progressFill) {
+          const pct = Math.min(100, Math.max(0, (playerHearts / MAX_HEARTS) * 100));
+          progressFill.style.width = pct + "%";
+        }
 
         if (statsRank) {
           if (playerLevel >= 3) statsRank.innerText = "ULTIMATE WIFEY";
@@ -2304,30 +2350,62 @@
         entered = "";
         failedAttempts = 0;
         currentQuizIndex = 0;
-
         playerHearts = 3;
         playerLevel = 1;
-        updateGlobalHUD();
-
         STATE.gift1 = false;
         STATE.gift2 = false;
         STATE.gift3 = false;
+
+        updateDots();
+        const feedback = document.getElementById("gate-feedback");
+        feedback.className = "feedback-banner";
+        feedback.innerText =
+          "Enter the secret 4-digit code to unlock my heart... (u_u)\u{1F497}";
+        document
+          .querySelectorAll(".dot")
+          .forEach((d) => d.classList.remove("success"));
 
         document.getElementById("gift-1").classList.remove("opened");
         document.getElementById("gift-2").classList.remove("opened");
         document.getElementById("gift-3").classList.remove("opened");
         document.getElementById("final-btn").style.display = "none";
+        document.getElementById("hub-progress").style.width = "0%";
+        document.getElementById("progress-count").innerText = "0/3";
 
-        updateDots();
+        const quizAvatar = document.getElementById("quiz-avatar");
+        if (quizAvatar) quizAvatar.classList.remove("jump");
+        const quizText = document.getElementById("quiz-question-text");
+        if (quizText) quizText.innerText = "Loading verification prompt...";
+        const quizGrid = document.getElementById("quiz-options-grid");
+        if (quizGrid) quizGrid.innerHTML = "";
 
-        const feedback = document.getElementById("gate-feedback");
-        feedback.className = "feedback-banner";
-        feedback.innerText =
-          "Enter the secret 4-digit code to unlock my heart... (u_u)\u{1F497}";
+        const introSprite = document.getElementById("intro-sprite");
+        if (introSprite) introSprite.className = "sprite";
+        const outroSprite = document.getElementById("outro-sprite");
+        if (outroSprite) outroSprite.className = "sprite";
+        document.getElementById("intro-text").innerHTML = "";
+        document.getElementById("outro-text").innerHTML = "";
+        document.getElementById("letter-text").innerHTML = "";
 
-        document
-          .querySelectorAll(".dot")
-          .forEach((d) => d.classList.remove("success"));
+        const letterBackBtn = document.getElementById("letter-back-btn");
+        if (letterBackBtn) letterBackBtn.classList.remove("show");
+        const letterHeartPrompt = document.getElementById("letter-heart-prompt");
+        if (letterHeartPrompt) letterHeartPrompt.style.display = "none";
+
+        const girlSprite = document.getElementById("sprite-girl");
+        if (girlSprite) girlSprite.classList.remove("spin-click");
+        const boySprite = document.getElementById("sprite-boy");
+        if (boySprite) boySprite.classList.remove("spin-click");
+
+        document.querySelectorAll(".hearts-layer").forEach((layer) => {
+          layer.innerHTML = "";
+        });
+        document.querySelectorAll(".floating-note").forEach((note) => {
+          note.remove();
+        });
+
+        generateStars();
+        updateGlobalHUD();
 
         const gate = document.getElementById("scene-gate");
         gate.classList.add("active", "fade-in");
@@ -2398,18 +2476,21 @@
         }
       }
 
-      document.querySelectorAll(".stars").forEach((layer) => {
-        layer.innerHTML = "";
-        for (let i = 0; i < 15; i++) {
-          const star = document.createElement("div");
-          star.className = "star";
-          star.style.left = Math.random() * 100 + "%";
-          star.style.top = Math.random() * 55 + "%";
-          star.style.animationDelay = Math.random() * 3 + "s";
-          layer.appendChild(star);
-        }
-      });
+      function generateStars() {
+        document.querySelectorAll(".stars").forEach((layer) => {
+          layer.innerHTML = "";
+          for (let i = 0; i < 15; i++) {
+            const star = document.createElement("div");
+            star.className = "star";
+            star.style.left = Math.random() * 100 + "%";
+            star.style.top = Math.random() * 55 + "%";
+            star.style.animationDelay = Math.random() * 3 + "s";
+            layer.appendChild(star);
+          }
+        });
+      }
 
+      generateStars();
       updateGlobalHUD();
       spawnHearts("hearts-gate", AMBIENT_HEARTS["scene-gate"]);
     </script>
