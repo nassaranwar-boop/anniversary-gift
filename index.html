@@ -1,0 +1,2434 @@
+cat > /home/claude/soulmate-final/index.html << 'ENDOFFILE'
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Happy 1 Year Anniversary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0d0614;
+        font-family: "Press Start 2P", monospace;
+        overflow: hidden;
+      }
+
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #game-window {
+        position: relative;
+        width: min(100vw, 177.78vh);
+        height: calc(min(100vw, 177.78vh) * 9 / 16);
+        aspect-ratio: 16 / 9;
+        max-width: 1200px;
+        overflow: hidden;
+        background: #1a1025;
+        border: 4px solid #000;
+        box-shadow: 0 0 0 3px #ff8fc7, 0 0 30px rgba(255, 143, 199, 0.5);
+        image-rendering: pixelated;
+        container-type: size;
+        container-name: game;
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2cqw;
+        opacity: 0;
+      }
+
+      .scene.active {
+        display: flex;
+        z-index: 5;
+      }
+      .scene.fade-in {
+        animation: sceneFadeIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+      .scene.fade-out {
+        animation: sceneFadeOut 0.25s ease forwards;
+      }
+
+      @keyframes sceneFadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.96) translateY(1.5cqh);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+      }
+      @keyframes sceneFadeOut {
+        from {
+          opacity: 1;
+          transform: scale(1);
+        }
+        to {
+          opacity: 0;
+          transform: scale(1.04);
+        }
+      }
+
+      .sky-bg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+      }
+      .sky-bg img {
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        width: 130%;
+        max-width: none;
+        transform: translateX(-50%);
+      }
+      .sky-bg .layer-sky {
+        z-index: 1;
+        width: 140%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .sky-bg .layer-far {
+        z-index: 2;
+        opacity: 0.85;
+        animation: driftFar 75s linear infinite;
+      }
+      .sky-bg .layer-mid {
+        z-index: 3;
+        animation: driftMid 48s linear infinite;
+      }
+      .sky-bg .layer-near {
+        z-index: 4;
+        animation: driftNear 32s linear infinite;
+      }
+
+      @keyframes driftFar {
+        from {
+          margin-left: 0;
+        }
+        to {
+          margin-left: -8%;
+        }
+      }
+      @keyframes driftMid {
+        from {
+          margin-left: 0;
+        }
+        to {
+          margin-left: -14%;
+        }
+      }
+      @keyframes driftNear {
+        from {
+          margin-left: 0;
+        }
+        to {
+          margin-left: -20%;
+        }
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        z-index: 4;
+        pointer-events: none;
+        background: radial-gradient(
+          ellipse at center,
+          rgba(0, 0, 0, 0) 40%,
+          rgba(15, 5, 25, 0.3) 100%
+        );
+      }
+
+      .stars {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+      .star {
+        position: absolute;
+        width: 0.5cqw;
+        height: 0.5cqw;
+        background: #fff;
+        border-radius: 50%;
+        animation: twinkle 2.8s ease-in-out infinite;
+        box-shadow: 0 0 0.5cqw 0.1cqw rgba(255, 255, 255, 0.6);
+      }
+      @keyframes twinkle {
+        0%,
+        100% {
+          opacity: 0.2;
+          transform: scale(0.8);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.2);
+        }
+      }
+
+      .hearts-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 6;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .floating-heart {
+        position: absolute;
+        bottom: -6%;
+        font-size: 1.8cqw;
+        opacity: 0;
+        animation: floatUp 5.5s ease-in-out forwards;
+      }
+      @keyframes floatUp {
+        0% {
+          opacity: 0;
+          transform: translateY(0) translateX(0) scale(0.6) rotate(0deg);
+        }
+        15% {
+          opacity: 0.9;
+          transform: translateY(-10%) scale(1.15) rotate(-8deg);
+        }
+        100% {
+          opacity: 0;
+          transform: translateY(-120%) translateX(var(--drift, 2cqw))
+            scale(0.85) rotate(25deg);
+        }
+      }
+
+      .game-hud {
+        position: absolute;
+        top: 4%;
+        left: 4%;
+        z-index: 15;
+        display: flex;
+        gap: 1.5cqw;
+        font-size: 0.85cqw;
+        color: #fff;
+        text-shadow: 0.15cqw 0.15cqw 0 #000;
+        background: rgba(0, 0, 0, 0.4);
+        padding: 0.6cqw 1.2cqw;
+        border: 0.2cqw solid #ff9dd0;
+        border-radius: 0.4cqw;
+        pointer-events: none;
+        animation: titleWobble 4s ease-in-out infinite;
+      }
+      .hud-hearts {
+        color: #ff4da6;
+        transition: all 0.2s ease;
+      }
+
+      .ouissy-gate-title {
+        position: absolute;
+        top: 12%;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 2.5cqw;
+        z-index: 10;
+        width: 95%;
+        text-align: center;
+        line-height: 1.4;
+        color: #fff;
+        text-transform: uppercase;
+        letter-spacing: 0.2cqw;
+        text-shadow: 0.3cqw 0.3cqw 0px #ff79c6, 0.6cqw 0.6cqw 0px #8b5cf6,
+          0.8cqw 0.8cqw 0px #000;
+        animation: retroFloat 3s ease-in-out infinite,
+          discoColor 6s linear infinite;
+        pointer-events: none;
+      }
+      @keyframes retroFloat {
+        0%,
+        100% {
+          transform: translateX(-50%) translateY(0);
+        }
+        50% {
+          transform: translateX(-50%) translateY(-1.2cqh);
+        }
+      }
+      @keyframes discoColor {
+        0%,
+        100% {
+          color: #ffffff;
+        }
+        33% {
+          color: #ffbade;
+        }
+        66% {
+          color: #ffe4a0;
+        }
+      }
+
+      h1 {
+        font-size: 2.5cqw;
+        color: #fff;
+        text-shadow: 0.25cqw 0.25cqw 0 #2b1c3d, -0.1cqw -0.1cqw 0 #ff9dd0;
+        margin-bottom: 2cqw;
+        line-height: 1.4;
+        animation: titleWobble 3.5s ease-in-out infinite;
+      }
+      @keyframes titleWobble {
+        0%,
+        100% {
+          transform: rotate(-1.2deg) scale(1);
+        }
+        50% {
+          transform: rotate(1.2deg) scale(1.03);
+        }
+      }
+
+      @keyframes btnPulse {
+        0%,
+        100% {
+          transform: scale(1);
+          box-shadow: 0.35cqw 0.35cqw 0 #2b1c3d;
+        }
+        50% {
+          transform: scale(1.04) rotate(0.5deg);
+          box-shadow: 0.45cqw 0.45cqw 0 #ff529a;
+        }
+      }
+
+      .pixel-btn {
+        font-family: "Press Start 2P", monospace;
+        font-size: 1.1cqw;
+        padding: 1.1cqw 2cqw;
+        margin: 0.5cqw;
+        background: #ff9dd0;
+        border: 0.3cqw solid #2b1c3d;
+        border-radius: 0.5cqw;
+        color: #2b1c3d;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s, opacity 0.4s ease,
+          scale 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+
+      .scene.active .pixel-btn {
+        animation: btnPulse 2.4s infinite ease-in-out;
+      }
+
+      .pixel-btn:hover {
+        background: #ffbade;
+        transform: scale(1.06) rotate(-0.5deg);
+      }
+      .pixel-btn:active {
+        transform: translate(0.25cqw, 0.25cqw) scale(0.94) !important;
+        box-shadow: none !important;
+        animation: none;
+      }
+
+      .delayed-back-btn {
+        opacity: 0;
+        scale: 0.5;
+        pointer-events: none;
+      }
+      .delayed-back-btn.show {
+        opacity: 1;
+        scale: 1;
+        pointer-events: auto;
+      }
+
+      .replay-btn {
+        background: #a1ffb8;
+      }
+      .scene.active .replay-btn {
+        animation: btnPulse 1.8s infinite ease-in-out;
+      }
+      .replay-btn:hover {
+        background: #c2ffd2;
+      }
+
+      #scene-gate {
+        padding: 0;
+      }
+      .gate-split {
+        display: flex;
+        width: 100%;
+        height: 100%;
+      }
+      .gate-left {
+        position: relative;
+        flex: 1.1;
+        overflow: hidden;
+      }
+
+      .duo {
+        position: absolute;
+        bottom: 3%;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        z-index: 5;
+      }
+      @keyframes idleBob {
+        0%,
+        100% {
+          transform: translateY(0) scaleY(1);
+        }
+        50% {
+          transform: translateY(-0.8cqh) scaleY(0.97) scaleX(1.02);
+        }
+      }
+      @keyframes jumpJoy {
+        0%,
+        100% {
+          transform: translateY(0) scale(1);
+        }
+        50% {
+          transform: translateY(-4.5cqh) scale(0.93, 1.07);
+        }
+      }
+      @keyframes funnySpin {
+        0% {
+          transform: scale(1) rotate(0deg);
+        }
+        50% {
+          transform: scale(1.2) rotate(180deg);
+        }
+        100% {
+          transform: scale(1) rotate(360deg);
+        }
+      }
+
+      @keyframes gentleGlowFloat {
+        0%,
+        100% {
+          transform: translateY(0) rotate(0deg);
+          filter: drop-shadow(0 0 0.5cqw #ff4da6);
+        }
+        50% {
+          transform: translateY(-1.8cqh) rotate(1.5deg);
+          filter: drop-shadow(0 0 1.5cqw #ff79c6);
+        }
+      }
+
+      img.duo-sprite {
+        height: 72%;
+        width: auto;
+        animation: idleBob 3.6s ease-in-out infinite;
+        transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        cursor: pointer;
+      }
+      img.duo-sprite:hover {
+        transform: scale(1.08) translateY(-0.5cqh);
+      }
+      img.duo-sprite.boy {
+        margin-left: -1.5cqw;
+        animation-delay: 0.3s;
+      }
+      img.duo-sprite.mascot {
+        height: 34%;
+        margin-left: 1cqw;
+        animation-delay: 0.6s;
+      }
+      img.duo-sprite.jump {
+        animation: jumpJoy 0.35s ease infinite !important;
+      }
+      img.duo-sprite.spin-click {
+        animation: funnySpin 0.5s ease-out 1 !important;
+      }
+
+      .gate-right {
+        flex: 0.9;
+        background: #ffe8f2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1cqw;
+        border-left: 0.3cqw solid #2b1c3d;
+        padding: 1.5cqw;
+      }
+
+      h2 {
+        font-size: 1.5cqw;
+        color: #2b1c3d;
+        margin: 0;
+        line-height: 1.3;
+        text-align: center;
+      }
+
+      .gallery-subtitle {
+        font-size: 0.8cqw;
+        color: #2b1c3d;
+        text-shadow: 0.1cqw 0.1cqw 0px #ff9dd0;
+        margin-top: -0.5cqw;
+        margin-bottom: 1.5cqw;
+        line-height: 1.6;
+        text-align: center;
+        max-width: 85%;
+      }
+
+      .feedback-banner {
+        width: 92%;
+        background: #fff;
+        border: 0.25cqw solid #2b1c3d;
+        border-radius: 0.5cqw;
+        padding: 0.8cqw;
+        font-size: 0.8cqw;
+        color: #a63a6b;
+        line-height: 1.5;
+        min-height: 7cqh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        transition: all 0.3s ease;
+        box-shadow: 0.25cqw 0.25cqw 0 rgba(43, 28, 61, 0.08);
+      }
+      .feedback-banner.error-mode {
+        background: #ffdadb;
+        border-color: #ff6b6b;
+        color: #b71c1c;
+      }
+      .feedback-banner.hint-mode {
+        background: #e3f2fd;
+        border-color: #42a5f5;
+        color: #0d47a1;
+      }
+      .feedback-banner.success-mode {
+        background: #e8f5e9;
+        border-color: #6dbf78;
+        color: #1b5e20;
+      }
+
+      .dots {
+        display: flex;
+        gap: 1cqw;
+        justify-content: center;
+        margin: 0.3cqw 0;
+      }
+      .dot {
+        width: 1.7cqw;
+        height: 1.7cqw;
+        border: 0.2cqw solid #2b1c3d;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1cqw;
+        color: #fff;
+        transition: background 0.12s,
+          transform 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.4);
+      }
+      .dot.filled {
+        transform: scale(1.15);
+      }
+      .dot.success {
+        background: #6dbf78;
+        border-color: #4c9455;
+      }
+
+      .keypad {
+        display: grid;
+        grid-template-columns: repeat(3, 5.6cqw);
+        gap: 0.6cqw;
+      }
+      .keypad button {
+        font-family: "Press Start 2P", monospace;
+        font-size: 1.3cqw;
+        padding: 0.9cqw 0;
+        background: #ffd9ec;
+        border: 0.25cqw solid #2b1c3d;
+        border-radius: 0.6cqw;
+        color: #2b1c3d;
+        cursor: pointer;
+        transition: transform 0.05s, background 0.05s;
+        box-shadow: 0.2cqw 0.2cqw 0 #2b1c3d;
+      }
+      .keypad button:active {
+        transform: translate(0.15cqw, 0.15cqw) scale(0.92);
+        box-shadow: none;
+        background: #ff9dd0;
+      }
+
+      .quiz-container {
+        width: 76%;
+        max-width: 820px;
+        background: #ffffff !important;
+        border: 0.35cqw solid #2b1c3d !important;
+        border-radius: 0.8cqw;
+        padding: 2cqw 2.5cqw;
+        display: flex;
+        flex-direction: column;
+        gap: 1.1cqw;
+        box-shadow: 0.5cqw 0.5cqw 0 rgba(43, 28, 61, 0.18);
+        position: relative;
+        z-index: 10;
+      }
+      .quiz-question {
+        font-size: 1.2cqw;
+        color: #2b1c3d;
+        line-height: 1.6;
+        min-height: 6cqh;
+        text-align: center;
+        display: block !important;
+      }
+      .quiz-options {
+        display: flex;
+        flex-direction: column;
+        gap: 0.7cqw;
+        width: 100%;
+      }
+
+      @keyframes optionPulseAmbient {
+        0%,
+        100% {
+          border-color: #2b1c3d;
+        }
+        50% {
+          border-color: #ff9dd0;
+        }
+      }
+      .quiz-btn {
+        font-family: "Press Start 2P", monospace;
+        font-size: 1cqw;
+        padding: 1.2cqw;
+        background: #fff;
+        border: 0.22cqw solid #2b1c3d;
+        border-radius: 0.4cqw;
+        color: #2b1c3d;
+        cursor: pointer;
+        text-align: left;
+        width: 100%;
+        opacity: 0;
+        transform: translateX(-1.5cqw);
+        animation: optionSlideIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.2)
+            forwards,
+          optionPulseAmbient 3s infinite ease-in-out;
+        transition: transform 0.1s, background 0.1s;
+      }
+      @keyframes optionSlideIn {
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      .quiz-btn:hover {
+        transform: translateX(0.4cqw) scale(1.01);
+        background: #fffcf2;
+        border-color: #ff529a;
+      }
+      .quiz-btn:active {
+        transform: scale(0.98) !important;
+        background: #ffe6f2;
+      }
+
+      .error-shake {
+        animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+      }
+      @keyframes shake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        20%,
+        60% {
+          transform: translateX(-0.7cqw) rotate(-0.8deg);
+        }
+        40%,
+        80% {
+          transform: translateX(0.7cqw) rotate(0.8deg);
+        }
+      }
+
+      .stats-panel {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        gap: 1.8cqw;
+        box-sizing: border-box;
+      }
+      .stats-left {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #ffeaf3;
+        border: 0.25cqw dashed #ff9dd0;
+        border-radius: 0.6cqw;
+        height: 100%;
+        box-sizing: border-box;
+        padding: 0.6cqw;
+        position: relative;
+        flex-shrink: 0;
+      }
+      .stats-avatar {
+        height: 17cqh;
+        width: auto;
+        object-fit: contain;
+        margin-bottom: 0.4cqw;
+        flex-shrink: 0;
+      }
+      .cute-ouissy-name {
+        font-size: 0.85cqw;
+        color: #ff4da6;
+        font-weight: bold;
+        text-shadow: 0.1cqw 0.1cqw 0 #fff;
+        animation: cuteHeartbeat 1.4s infinite ease-in-out;
+        display: inline-block;
+        margin-top: 0.2cqw;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      @keyframes cuteHeartbeat {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.06) rotate(1.5deg);
+          color: #ff1a8c;
+        }
+      }
+
+      .stats-right {
+        flex: 1.2;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        text-align: left;
+        gap: 1cqh;
+        font-size: 0.85cqw;
+        color: #2b1c3d;
+        line-height: 1.5;
+        min-width: 0;
+      }
+      .stat-row {
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 0.15cqw solid rgba(43, 28, 61, 0.12);
+        padding-bottom: 0.4cqh;
+      }
+      .stat-val {
+        color: #ff529a;
+        font-weight: bold;
+      }
+
+      .game-metrics {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 62cqw;
+        background: rgba(43, 28, 61, 0.85);
+        border: 0.2cqw solid #ff9dd0;
+        padding: 0.8cqw 1.5cqw;
+        border-radius: 0.5cqw;
+        margin-bottom: 1.2cqw;
+        font-size: 0.9cqw;
+        color: #fff;
+        z-index: 10;
+      }
+      .progress-bar-container {
+        flex: 1;
+        margin: 0 1.5cqw;
+        background: #2b1c3d;
+        border: 0.15cqw solid #fff;
+        height: 1.4cqh;
+        border-radius: 0.2cqw;
+        overflow: hidden;
+      }
+      .progress-fill {
+        width: 0%;
+        height: 100%;
+        background: #ff9dd0;
+        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .hub-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 2cqw;
+        align-items: center;
+        justify-content: center;
+        width: 95%;
+        z-index: 10;
+      }
+      .gift-row {
+        display: flex;
+        gap: 1.8cqw;
+        justify-content: center;
+        width: 100%;
+      }
+
+      @keyframes itemPulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05) rotate(1deg);
+          border-color: #ff9dd0;
+        }
+      }
+      .gift-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.8cqw;
+        background: rgba(43, 28, 61, 0.85);
+        border: 0.2cqw solid #ff8fc7;
+        padding: 1.2cqw;
+        border-radius: 0.6cqw;
+        cursor: pointer;
+        width: 18cqw;
+        animation: itemPulse 2.6s infinite ease-in-out;
+        transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+          background 0.2s;
+        box-shadow: 0.3cqw 0.3cqw 0 #000;
+      }
+      .gift-item:hover {
+        transform: scale(1.08) translateY(-0.4cqh);
+        background: rgba(68, 43, 97, 0.9);
+      }
+      .gift-item:active {
+        transform: scale(0.96) !important;
+        box-shadow: none;
+      }
+      .gift-item.opened {
+        opacity: 0.4;
+        pointer-events: none;
+        filter: grayscale(55%);
+        animation: none;
+      }
+      .gift-item img {
+        height: 7cqh;
+        width: auto;
+        animation: boxWiggle 3s infinite alternate ease-in-out;
+      }
+      @keyframes boxWiggle {
+        0%,
+        100% {
+          transform: rotate(-4deg);
+        }
+        50% {
+          transform: rotate(4deg) scale(1.05);
+        }
+      }
+      .gift-item .gift-label {
+        font-size: 0.85cqw;
+        color: #fff;
+        text-shadow: 0.15cqw 0.15cqw 0 #000;
+        text-align: center;
+      }
+
+      .character-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 1.5cqw;
+        justify-content: center;
+        width: 85%;
+      }
+      .character-row img.sprite {
+        height: 42cqh;
+        width: auto;
+        animation: idleBob 3.3s ease-in-out infinite;
+      }
+      .character-row img.sprite.blushing {
+        animation: gentleGlowFloat 4s ease-in-out infinite !important;
+      }
+
+      .speech-wrap {
+        position: relative;
+        flex: 1;
+        max-width: 50cqw;
+        margin-bottom: 4cqh;
+        animation: bubbleIntro 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275)
+          both;
+      }
+      @keyframes bubbleIntro {
+        from {
+          transform: scale(0.85) translateY(1cqh);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1) translateY(0);
+          opacity: 1;
+        }
+      }
+      .speech-wrap img.bubble-bg {
+        width: 100%;
+        display: block;
+        filter: drop-shadow(0.3cqw 0.3cqw 0 rgba(0, 0, 0, 0.12));
+      }
+      .speech-text {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 4cqw 3cqw 3cqw;
+        font-size: 1.1cqw;
+        line-height: 1.6;
+        color: #d6538c;
+        text-align: center;
+      }
+      .speech-text .cursor {
+        display: inline-block;
+        width: 0.5cqw;
+        background: #d6538c;
+        animation: blink 0.9s steps(1) infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+
+      .content-box {
+        position: relative;
+        width: 62%;
+        max-width: 620px;
+        height: 72%;
+        background: rgba(255, 250, 245, 0.98);
+        border: 0.35cqw solid #2b1c3d;
+        border-radius: 1cqw;
+        padding: 2cqw;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-shadow: 0.5cqw 0.5cqw 0 rgba(43, 28, 61, 0.22);
+      }
+      .content-box h2 {
+        color: #ff8fc7;
+        font-size: 1.5cqw;
+        margin-top: 0;
+        margin-bottom: 1.2cqw;
+        text-shadow: 0.15cqw 0.15cqw 0 #2b1c3d;
+      }
+
+      .content-box.letter-box {
+        background: #fff0f5;
+        border: 0.4cqw solid #000;
+        box-shadow: 0.6cqw 0.6cqw 0px #ff79c6;
+        overflow: hidden;
+        width: 68%;
+        height: 76%;
+      }
+      .letter-window-topbar {
+        width: 100%;
+        background: #ffb6c1;
+        border-bottom: 0.3cqw solid #000;
+        padding: 0.8cqw;
+        display: flex;
+        align-items: center;
+        margin-top: -2cqw;
+        margin-bottom: 1.5cqw;
+      }
+      .letter-window-title {
+        font-size: 0.8cqw;
+        color: #000;
+        margin-left: auto;
+        margin-right: auto;
+        transform: translateX(-2.5cqw);
+      }
+      .letter-salutation {
+        font-size: 1.1cqw;
+        margin-bottom: 1.2cqw;
+        color: #ff45a4;
+        align-self: flex-start;
+        width: 100%;
+        text-align: left;
+      }
+      .letter-scroll {
+        overflow-y: auto;
+        text-align: left;
+        font-size: 0.85cqw;
+        line-height: 2;
+        color: #282a36;
+        width: 100%;
+        padding-right: 1cqw;
+        flex: 1;
+        z-index: 5;
+        font-family: "Press Start 2P", monospace;
+      }
+      .letter-scroll::-webkit-scrollbar {
+        width: 0.8cqw;
+      }
+      .letter-scroll::-webkit-scrollbar-track {
+        background: #ffd0dc;
+        border-radius: 0.2cqw;
+      }
+      .letter-scroll::-webkit-scrollbar-thumb {
+        background: #ff45a4;
+        border-radius: 0.2cqw;
+        border: 0.15cqw solid #000;
+      }
+
+      .next-prompt-heart {
+        position: absolute;
+        bottom: 1.5cqw;
+        right: 2cqw;
+        font-size: 1.3cqw;
+        animation: pulseHeartPrompt 0.8s infinite alternate;
+        display: none;
+        z-index: 10;
+      }
+      @keyframes pulseHeartPrompt {
+        from {
+          transform: translateY(0) scale(1);
+          opacity: 0.6;
+        }
+        to {
+          transform: translateY(0.4cqh) scale(1.15);
+          opacity: 1;
+        }
+      }
+
+      .content-box.gallery-box {
+        width: 76%;
+        max-width: 885px;
+        height: 86%;
+        padding: 1.2cqw;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background: #ebdfff;
+      }
+
+      .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 1.4cqw;
+        width: 100%;
+        height: 57cqh;
+        margin-bottom: 0.5cqw;
+      }
+
+      @keyframes windowFloatA {
+        0%,
+        100% {
+          transform: translateY(0) rotate(0.6deg);
+        }
+        50% {
+          transform: translateY(-0.8cqh) rotate(-0.4deg);
+        }
+      }
+      @keyframes windowFloatB {
+        0%,
+        100% {
+          transform: translateY(-0.6cqh) rotate(-0.8deg);
+        }
+        50% {
+          transform: translateY(0.2cqh) rotate(0.5deg);
+        }
+      }
+      @keyframes windowFloatC {
+        0%,
+        100% {
+          transform: translateY(0.4cqh) rotate(0.4deg);
+        }
+        50% {
+          transform: translateY(-0.6cqh) rotate(-0.6deg);
+        }
+      }
+      @keyframes windowFloatD {
+        0%,
+        100% {
+          transform: translateY(-0.2cqh) rotate(-0.3deg);
+        }
+        50% {
+          transform: translateY(0.6cqh) rotate(0.8deg);
+        }
+      }
+
+      .photo-frame {
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        border: 0.22cqw solid #2b1c3d;
+        border-radius: 0.4cqw;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        box-shadow: 0.35cqw 0.35cqw 0 rgba(43, 28, 61, 0.15);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+          box-shadow 0.3s;
+      }
+
+      .photo-frame:nth-child(1) {
+        animation: windowFloatA 5.4s infinite ease-in-out;
+      }
+      .photo-frame:nth-child(2) {
+        animation: windowFloatB 6s infinite ease-in-out;
+      }
+      .photo-frame:nth-child(3) {
+        animation: windowFloatC 5s infinite ease-in-out;
+      }
+      .photo-frame:nth-child(4) {
+        animation: windowFloatD 6.4s infinite ease-in-out;
+      }
+
+      .window-topbar {
+        background: #ffc2e0;
+        border-bottom: 0.2cqw solid #2b1c3d;
+        height: 2.2cqh;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 0.5cqw;
+        flex-shrink: 0;
+      }
+      .window-dots {
+        display: flex;
+        gap: 0.3cqw;
+      }
+      .w-dot {
+        width: 0.6cqw;
+        height: 0.6cqw;
+        border-radius: 50%;
+        border: 0.12cqw solid #2b1c3d;
+        background: #fff;
+      }
+      .photo-frame:nth-child(even) .window-topbar {
+        background: #bfe3ff;
+      }
+      .window-title {
+        font-size: 0.5cqw;
+        color: #2b1c3d;
+        font-family: monospace;
+        font-weight: bold;
+      }
+      .window-controls-right {
+        font-size: 0.7cqw;
+        font-weight: bold;
+        color: #2b1c3d;
+        transform: translateY(-0.1cqh);
+      }
+
+      .photo-body {
+        flex: 1;
+        position: relative;
+        background: #fdfaf6;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .photo-body img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .photo-body span {
+        color: #b9a48f;
+        font-size: 1cqw;
+        font-family: monospace;
+      }
+
+      .photo-frame:hover {
+        transform: scale(1.06) rotate(0deg) !important;
+        box-shadow: 0.5cqw 0.5cqw 0 #ff529a;
+        z-index: 20;
+        animation-play-state: paused;
+      }
+
+      .split-music-layout {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        gap: 1.5cqw;
+        align-items: center;
+      }
+      .music-player-side {
+        flex: 1.2;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .mascot-side {
+        flex: 0.8;
+        height: 100%;
+        background: #000;
+        border: 0.25cqw dashed #ff9dd0;
+        border-radius: 0.6cqw;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5cqw;
+        position: relative;
+        overflow: hidden;
+        animation: mascotBorderPulse 3.4s ease-in-out infinite;
+      }
+      @keyframes mascotBorderPulse {
+        0%,
+        100% {
+          border-color: #ff9dd0;
+          box-shadow: 0 0 0.6cqw rgba(255, 157, 208, 0.15);
+        }
+        50% {
+          border-color: #cdbdf5;
+          box-shadow: 0 0 1.2cqw rgba(205, 189, 245, 0.35);
+        }
+      }
+
+      .embedded-loop-photo {
+        width: 100%;
+        height: 82%;
+        object-fit: cover;
+        border-radius: 0.3cqw;
+        border: 0.18cqw solid #ff9dd0;
+        background: #1a1025;
+        animation: couplePhotoFloat 4.6s ease-in-out infinite;
+      }
+      @keyframes couplePhotoFloat {
+        0%,
+        100% {
+          transform: translateY(0) rotate(-0.7deg) scale(1);
+        }
+        50% {
+          transform: translateY(-0.7cqh) rotate(0.7deg) scale(1.015);
+        }
+      }
+
+      .mascot-sticker {
+        position: absolute;
+        font-size: 1.5cqw;
+        z-index: 9;
+        pointer-events: none;
+      }
+      .mascot-sticker.top-left {
+        top: 3%;
+        left: 4%;
+        animation: retroFloat 2.5s ease-in-out infinite;
+      }
+      .mascot-sticker.bottom-right {
+        bottom: 12%;
+        right: 5%;
+        font-size: 1.7cqw;
+        animation: cuteHeartbeat 1.6s ease-in-out infinite;
+      }
+      .mascot-sticker.top-right {
+        top: 3%;
+        right: 4%;
+        font-size: 1.3cqw;
+        animation: twinkle 2.2s ease-in-out infinite;
+      }
+
+      .mascot-side-label {
+        font-size: 0.75cqw;
+        color: #ffd6ed;
+        margin-top: 0.6cqw;
+        text-align: center;
+        line-height: 1.4;
+        font-family: "Press Start 2P", monospace;
+        animation: floatText 3s ease-in-out infinite;
+      }
+      @keyframes floatText {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-0.4cqh);
+        }
+      }
+
+      .music-player {
+        width: 100%;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #cdbdf5;
+        border-radius: 0.4cqw;
+        border: 0.22cqw solid #2b1c3d;
+        padding: 1cqw;
+        position: relative;
+        overflow: hidden;
+      }
+      .music-visualizer {
+        display: flex;
+        gap: 0.5cqw;
+        align-items: flex-end;
+        justify-content: center;
+        height: 4.5cqh;
+        margin-top: 1cqw;
+        width: 100%;
+        padding: 0 1cqw;
+      }
+      .v-bar {
+        width: 0.7cqw;
+        height: 20%;
+        background: #ff9dd0;
+        border: 0.12cqw solid #2b1c3d;
+        border-radius: 0.1cqw;
+        animation: danceBar 0.5s infinite alternate ease-in-out;
+      }
+      .v-bar:nth-child(2) {
+        animation-delay: 0.1s;
+        animation-duration: 0.35s;
+      }
+      .v-bar:nth-child(3) {
+        animation-delay: 0.2s;
+        animation-duration: 0.6s;
+      }
+      .v-bar:nth-child(4) {
+        animation-delay: 0.15s;
+        animation-duration: 0.45s;
+      }
+      .v-bar:nth-child(5) {
+        animation-delay: 0.3s;
+        animation-duration: 0.55s;
+      }
+      .v-bar:nth-child(6) {
+        animation-delay: 0.05s;
+        animation-duration: 0.4s;
+      }
+      .v-bar:nth-child(7) {
+        animation-delay: 0.25s;
+        animation-duration: 0.5s;
+      }
+
+      @keyframes danceBar {
+        0% {
+          height: 15%;
+          background: #ff9dd0;
+          transform: scaleY(1);
+        }
+        100% {
+          height: 100%;
+          background: #ff529a;
+          transform: scaleY(1.03);
+        }
+      }
+
+      @keyframes floatNotes {
+        0% {
+          transform: translateY(1cqh) scale(0.7) rotate(0deg);
+          opacity: 0;
+        }
+        50% {
+          opacity: 0.8;
+        }
+        100% {
+          transform: translateY(-7cqh) scale(1.1) rotate(15deg);
+          opacity: 0;
+        }
+      }
+      .floating-note {
+        position: absolute;
+        font-size: 1.5cqw;
+        color: #ff4da6;
+        pointer-events: none;
+        animation: floatNotes 2.2s infinite linear;
+        opacity: 0;
+      }
+
+      .anniversary-badge {
+        font-size: 1.25cqw;
+        color: #ffe1f0;
+        text-shadow: 0.18cqw 0.18cqw 0 #2b1c3d;
+        margin-bottom: 1.4cqh;
+        letter-spacing: 0.05cqw;
+      }
+      .flash-overlay {
+        position: absolute;
+        inset: 0;
+        background: #fff;
+        opacity: 0;
+        z-index: 99;
+        pointer-events: none;
+      }
+      @keyframes answerFlash {
+        0% {
+          opacity: 0.85;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      .run-flash {
+        animation: answerFlash 0.35s ease-out forwards;
+      }
+
+      .corner-deco {
+        position: absolute;
+        font-size: 1.6cqw;
+        z-index: 8;
+        pointer-events: none;
+        animation: retroFloat 2.5s ease-in-out infinite;
+      }
+      .photo-deco-bear {
+        top: 3%;
+        right: 4%;
+        font-size: 2cqw;
+        animation-delay: 0.4s;
+      }
+      .photo-deco-balloon {
+        bottom: 4%;
+        left: 3%;
+        font-size: 2.2cqw;
+        animation-delay: 0.8s;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-window">
+      <div class="flash-overlay" id="screen-flash"></div>
+
+      <div class="game-hud">
+        <span id="hud-level-val">LVL 1</span>
+        <span id="hud-hearts-val" class="hud-hearts">♥ ♥ ♥</span>
+      </div>
+
+      <div class="scene active fade-in" id="scene-gate">
+        <div class="gate-split">
+          <div class="gate-left">
+            <div class="ouissy-gate-title">★ FOR MY OUISSY ★</div>
+
+            <div class="sky-bg">
+              <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
+              <img class="layer-far" src="./assets/cloud_far.png" alt="" />
+              <img class="layer-mid" src="./assets/cloud_mid.png" alt="" />
+              <img class="layer-near" src="./assets/cloud_near.png" alt="" />
+            </div>
+            <div class="vignette"></div>
+            <div class="stars" id="stars-gate"></div>
+            <div class="hearts-layer" id="hearts-gate"></div>
+            <div class="duo">
+              <img
+                class="duo-sprite"
+                id="sprite-girl"
+                src="./assets/char_girl.png"
+                alt="Girl Avatar"
+                onclick="triggerGoofySpriteAnimation('sprite-girl')"
+              />
+              <img
+                class="duo-sprite boy"
+                id="sprite-boy"
+                src="./assets/char_boy.png"
+                alt="Boy Avatar"
+                onclick="triggerGoofySpriteAnimation('sprite-boy')"
+              />
+            </div>
+          </div>
+          <div class="gate-right">
+            <h2>Guess the password</h2>
+            <div class="feedback-banner" id="gate-feedback">
+              Enter the secret 4-digit code to unlock my heart... (u_u)&#128147;
+            </div>
+            <div class="dots" id="dots">
+              <div class="dot" id="dot-1"></div>
+              <div class="dot" id="dot-2"></div>
+              <div class="dot" id="dot-3"></div>
+              <div class="dot" id="dot-4"></div>
+            </div>
+            <div class="keypad" id="keypad">
+              <button onclick="pressKey('1')">1</button>
+              <button onclick="pressKey('2')">2</button>
+              <button onclick="pressKey('3')">3</button>
+              <button onclick="pressKey('4')">4</button>
+              <button onclick="pressKey('5')">5</button>
+              <button onclick="pressKey('6')">6</button>
+              <button onclick="pressKey('7')">7</button>
+              <button onclick="pressKey('8')">8</button>
+              <button onclick="pressKey('9')">9</button>
+              <button onclick="pressKey('*')">★</button>
+              <button onclick="pressKey('0')">0</button>
+              <button onclick="pressKey('#')">#</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="scene" id="scene-start">
+        <div class="sky-bg">
+          <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
+          <img class="layer-far" src="./assets/cloud_far.png" alt="" />
+          <img class="layer-mid" src="./assets/cloud_mid.png" alt="" />
+          <img class="layer-near" src="./assets/cloud_near.png" alt="" />
+        </div>
+        <div class="vignette"></div>
+        <div class="stars"></div>
+        <div class="hearts-layer" id="hearts-start"></div>
+        <h1 id="main-anniversary-title">
+          HAPPY 1 YEAR<br />ANNIVERSARY,<br />MY LOVE
+        </h1>
+        <div
+          class="duo"
+          style="position: relative; bottom: 0; transform: none; left: 0"
+        >
+          <img
+            class="duo-sprite boy"
+            style="animation-delay: 0.2s"
+            src="./assets/char_boy.png"
+            alt=""
+          />
+          <img class="duo-sprite" src="./assets/char_girl.png" alt="" />
+        </div>
+        <button
+          class="pixel-btn"
+          style="margin-top: 2.6qw"
+          onclick="goTo('scene-quiz')"
+        >
+          START QUEST
+        </button>
+      </div>
+
+      <div class="scene" id="scene-quiz">
+        <div class="sky-bg">
+          <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
+          <img class="layer-far" src="./assets/cloud_far.png" alt="" />
+          <img class="layer-mid" src="./assets/cloud_mid.png" alt="" />
+          <img class="layer-near" src="./assets/cloud_near.png" alt="" />
+        </div>
+        <div class="vignette"></div>
+        <div class="stars"></div>
+        <div class="hearts-layer" id="hearts-quiz"></div>
+
+        <h1 style="font-size: 1.8cqw; margin-bottom: 1cqw">
+          Memory Verification Quest
+        </h1>
+        <div class="quiz-container">
+          <div class="quiz-question" id="quiz-question-text">
+            Loading verification prompt...
+          </div>
+          <div class="quiz-options" id="quiz-options-grid"></div>
+        </div>
+
+        <div
+          class="duo"
+          style="
+            position: relative;
+            bottom: -2%;
+            transform: none;
+            left: 0;
+            margin-top: 1cqw;
+            height: 22cqh;
+          "
+        >
+          <img
+            class="duo-sprite mascot"
+            src="./assets/helper_pet.png"
+            alt=""
+            onerror="this.style.display='none';"
+          />
+          <img
+            class="duo-sprite boy"
+            id="quiz-avatar"
+            src="./assets/char_boy.png"
+            alt=""
+          />
+        </div>
+      </div>
+
+      <div class="scene" id="scene-intro">
+        <div class="sky-bg">
+          <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
+          <img class="layer-far" src="./assets/cloud_far.png" alt="" />
+          <img class="layer-mid" src="./assets/cloud_mid.png" alt="" />
+          <img class="layer-near" src="./assets/cloud_near.png" alt="" />
+        </div>
+        <div class="vignette"></div>
+        <div class="stars"></div>
+        <div class="hearts-layer" id="hearts-intro"></div>
+
+        <div class="character-row">
+          <img
+            class="sprite"
+            id="intro-sprite"
+            src="./assets/char_boy.png"
+            alt=""
+          />
+          <div class="speech-wrap">
+            <img class="bubble-bg" src="./assets/speech_bubble.png" alt="" />
+            <div class="speech-text" id="intro-text"></div>
+          </div>
+        </div>
+        <button class="pixel-btn" onclick="goTo('scene-hub')">
+          Enter Hub →
+        </button>
+      </div>
+
+      <div class="scene" id="scene-hub">
+        <div class="sky-bg">
+          <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
+          <img class="layer-far" src="./assets/cloud_far.png" alt="" />
+          <img class="layer-mid" src="./assets/cloud_mid.png" alt="" />
+          <img class="layer-near" src="./assets/cloud_near.png" alt="" />
+        </div>
+        <div class="vignette"></div>
+        <div class="stars"></div>
+        <div class="hearts-layer" id="hearts-hub"></div>
+
+        <h1
+          style="
+            font-size: 2cqw;
+            color: #ff9dd0;
+            text-shadow: 0.2cqw 0.2cqw 0 #000;
+            margin-bottom: 0.8cqw;
+            margin-top: -1cqw;
+            animation: retroFloat 2.8s ease-in-out infinite;
+          "
+        >
+          Choose Your Gifts
+        </h1>
+
+        <div class="game-metrics">
+          <span>PROGRESS LOG:</span>
+          <div class="progress-bar-container">
+            <div class="progress-fill" id="hub-progress"></div>
+          </div>
+          <span id="progress-count">0/3</span>
+        </div>
+
+        <div class="hub-layout">
+          <div class="gift-row">
+            <div class="gift-item" id="gift-1" onclick="openGift('letter', 1)">
+              <img src="./assets/gift_box.png" alt="" />
+              <div class="gift-label">Unseal Letter</div>
+            </div>
+            <div class="gift-item" id="gift-2" onclick="openGift('photos', 2)">
+              <img src="./assets/gift_box.png" alt="" />
+              <div class="gift-label">Memory Core</div>
+            </div>
+            <div class="gift-item" id="gift-3" onclick="openGift('music', 3)">
+              <img src="./assets/gift_box.png" alt="" />
+              <div class="gift-label">Tuned For You &#127925;</div>
+            </div>
+          </div>
+
+          <div
+            class="content-box"
+            style="
+              width: 58cqw !important;
+              height: 18cqh !important;
+              margin: 0;
+              padding: 0.8cqw;
+              flex-shrink: 0;
+            "
+          >
+            <div class="stats-panel">
+              <div class="stats-left">
+                <img
+                  class="stats-avatar"
+                  src="./assets/char_girl.png"
+                  alt=""
+                  style="height: 11cqh"
+                />
+                <span class="cute-ouissy-name" style="font-size: 0.75cqw"
+                  >&#128150; Ouissy &#128150;</span
+                >
+              </div>
+              <div class="stats-right" style="font-size: 0.75cqw; gap: 0.4cqh">
+                <div class="stat-row">
+                  <span>CLASS:</span><span class="stat-val">CLASSIC</span>
+                </div>
+                <div class="stat-row">
+                  <span>PLAYER RANK:</span
+                  ><span class="stat-val" id="stats-rank-val"
+                    >ELITE SOULMATE</span
+                  >
+                </div>
+                <div class="stat-row">
+                  <span>HP STAT:</span><span class="stat-val">MAX ACTIVE</span>
+                </div>
+                <div class="stat-row">
+                  <span>STATUS:</span
+                  ><span class="stat-val">FAVORITE UNIVERSE</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          id="final-btn"
+          class="pixel-btn"
+          style="display: none; margin-top: 1cqw"
+          onclick="goTo('scene-outro')"
+        >
+          Complete Quest →
+        </button>
+      </div>
+
+      <div class="scene" id="scene-letter">
+        <div class="sky-bg">
+          <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
+          <img class="layer-far" src="./assets/cloud_far.png" alt="" />
+          <img class="layer-mid" src="./assets/cloud_mid.png" alt="" />
+          <img class="layer-near" src="./assets/cloud_near.png" alt="" />
+        </div>
+        <div class="vignette"></div>
+        <div class="stars"></div>
+        <div class="hearts-layer" id="hearts-letter"></div>
+
+        <div class="content-box letter-box">
+          <div class="letter-window-topbar">
+            <div class="window-dots">
+              <div class="w-dot" style="background: #ff5555"></div>
+              <div class="w-dot" style="background: #ffb86c"></div>
+              <div class="w-dot" style="background: #50fa7b"></div>
+            </div>
+            <div class="letter-window-title">
+              &#128140; SYSTEM MESSAGE &#128140;
+            </div>
+          </div>
+
+          <div class="letter-salutation">Dear Ouissy,</div>
+          <div class="letter-scroll" id="letter-text"></div>
+
+          <div class="next-prompt-heart" id="letter-heart-prompt">
+            &#128151;
+          </div>
+        </div>
+
+        <button
+          id="letter-back-btn"
+          class="pixel-btn delayed-back-btn"
+          style="margin-top: 1cqw; z-index: 5"
+          onclick="goTo('scene-hub')"
+        >
+          Go Back
+        </button>
+      </div>
+
+      <div class="scene" id="scene-photos">
+        <div class="sky-bg">
+          <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
+          <img class="layer-far" src="./assets/cloud_far.png" alt="" />
+          <img class="layer-mid" src="./assets/cloud_mid.png" alt="" />
+          <img class="layer-near" src="./assets/cloud_near.png" alt="" />
+        </div>
+        <div class="vignette"></div>
+        <div class="stars"></div>
+        <div class="hearts-layer" id="hearts-photos"></div>
+
+        <div class="corner-deco photo-deco-bear">&#129688;</div>
+        <div class="corner-deco photo-deco-balloon">&#127880;</div>
+
+        <div class="content-box gallery-box">
+          <h2>Memory Gallery</h2>
+          <div class="gallery-subtitle">
+            Just a small collection of us matching each other's energy
+            perfectly. &#129396;&#10024;
+          </div>
+
+          <div class="photo-grid">
+            <div class="photo-frame">
+              <div class="window-topbar">
+                <div class="window-dots">
+                  <div class="w-dot"></div>
+                  <div class="w-dot"></div>
+                  <div class="w-dot"></div>
+                </div>
+                <div class="window-title">ouissy_1.png</div>
+                <div class="window-controls-right">-❑×</div>
+              </div>
+              <div class="photo-body">
+                <img
+                  src="./assets/photo1.jpg"
+                  alt=""
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                />
+                <span style="display: none">photo1.jpg</span>
+              </div>
+            </div>
+
+            <div class="photo-frame">
+              <div class="window-topbar">
+                <div class="window-dots">
+                  <div class="w-dot"></div>
+                  <div class="w-dot"></div>
+                  <div class="w-dot"></div>
+                </div>
+                <div class="window-title">us_sweet.png</div>
+                <div class="window-controls-right">-❑×</div>
+              </div>
+              <div class="photo-body">
+                <img
+                  src="./assets/photo2.jpg"
+                  alt=""
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                />
+                <span style="display: none">photo2.jpg</span>
+              </div>
+            </div>
+
+            <div class="photo-frame">
+              <div class="window-topbar">
+                <div class="window-dots">
+                  <div class="w-dot"></div>
+                  <div class="w-dot"></div>
+                  <div class="w-dot"></div>
+                </div>
+                <div class="window-title">goofy_mode.png</div>
+                <div class="window-controls-right">-❑×</div>
+              </div>
+              <div class="photo-body">
+                <img
+                  src="./assets/photo3.jpg"
+                  alt=""
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                />
+                <span style="display: none">photo3.jpg</span>
+              </div>
+            </div>
+
+            <div class="photo-frame">
+              <div class="window-topbar">
+                <div class="window-dots">
+                  <div class="w-dot"></div>
+                  <div class="w-dot"></div>
+                  <div class="w-dot"></div>
+                </div>
+                <div class="window-title">forever.png</div>
+                <div class="window-controls-right">-❑×</div>
+              </div>
+              <div class="photo-body">
+                <img
+                  src="./assets/photo4.jpg"
+                  alt=""
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                />
+                <span style="display: none">photo4.jpg</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button
+          class="pixel-btn"
+          style="margin-top: 0.5cqw"
+          onclick="goTo('scene-hub')"
+        >
+          Go Back
+        </button>
+      </div>
+
+      <div class="scene" id="scene-music">
+        <div class="sky-bg">
+          <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
+          <img class="layer-far" src="./assets/cloud_far.png" alt="" />
+          <img class="layer-mid" src="./assets/cloud_mid.png" alt="" />
+          <img class="layer-near" src="./assets/cloud_near.png" alt="" />
+        </div>
+        <div class="vignette"></div>
+        <div class="stars"></div>
+        <div class="hearts-layer" id="hearts-music"></div>
+
+        <div
+          class="content-box"
+          style="background: #1a1025; width: 76vw; max-width: 860px"
+          id="music-box-container"
+        >
+          <h2 style="color: #fff; margin-bottom: 0.8cqw">Song For You</h2>
+
+          <div class="split-music-layout">
+            <div class="music-player-side">
+              <div class="music-player">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src="https://www.youtube.com/embed/hnd84Ru1dgA"
+                  title="Song for you"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                ></iframe>
+
+                <div class="music-visualizer">
+                  <div class="v-bar"></div>
+                  <div class="v-bar"></div>
+                  <div class="v-bar"></div>
+                  <div class="v-bar"></div>
+                  <div class="v-bar"></div>
+                  <div class="v-bar"></div>
+                  <div class="v-bar"></div>
+                  <div class="v-bar"></div>
+                  <div class="v-bar"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mascot-side">
+              <div class="mascot-sticker top-left">&#10024;</div>
+              <div class="mascot-sticker top-right">&#128171;</div>
+              <div class="mascot-sticker bottom-right">&#128149;</div>
+
+              <img
+                class="embedded-loop-photo"
+                src="./assets/vibing_couple.png"
+                alt="Us vibing together"
+              />
+
+              <div class="mascot-side-label">
+                VIBING TO<br />OUR BEAT! &#127925;
+              </div>
+            </div>
+          </div>
+        </div>
+        <button
+          class="pixel-btn"
+          style="margin-top: 1.5cqw"
+          onclick="goTo('scene-hub')"
+        >
+          Go Back
+        </button>
+      </div>
+
+      <div class="scene" id="scene-outro">
+        <div class="sky-bg">
+          <img class="layer-sky" src="./assets/sky_gradient.png" alt="" />
+          <img class="layer-far" src="./assets/cloud_far.png" alt="" />
+          <img class="layer-mid" src="./assets/cloud_mid.png" alt="" />
+          <img class="layer-near" src="./assets/cloud_near.png" alt="" />
+        </div>
+        <div class="vignette"></div>
+        <div class="stars"></div>
+        <div class="hearts-layer" id="hearts-outro"></div>
+
+        <div class="anniversary-badge">
+          Campaign Complete: 365 Days Surpassed
+        </div>
+        <div class="character-row">
+          <div class="speech-wrap" style="margin-bottom: 2cqh">
+            <img class="bubble-bg" src="./assets/speech_bubble.png" alt="" />
+            <div class="speech-text" id="outro-text"></div>
+          </div>
+          <img
+            class="sprite"
+            id="outro-sprite"
+            src="./assets/char_boy.png"
+            alt=""
+          />
+        </div>
+
+        <button
+          class="pixel-btn replay-btn"
+          style="margin-top: 1cqw"
+          onclick="resetWholeAdventure()"
+        >
+          ↩ REPLAY ROMANCE
+        </button>
+      </div>
+    </div>
+
+    <script>
+      const PASSWORD = "2207";
+      let entered = "";
+      let failedAttempts = 0;
+      const STATE = { gift1: false, gift2: false, gift3: false };
+
+      let playerHearts = 3;
+      let playerLevel = 1;
+      const MAX_HEARTS = 5;
+
+      const QUIZ_QUESTIONS = [
+        {
+          q: "Where did I first tell you those three words, 'I love you'? \u{1F4AC}",
+          options: [
+            "Over a late night call",
+            "In person, looking right at you",
+            "Secretly tucked in a text message",
+            "During a sweet little argument",
+          ],
+          correct: 1,
+        },
+        {
+          q: "If someone asked me what my absolute favorite thing about us is, what would I say? \u{1F970}",
+          options: [
+            "Our completely goofy inside jokes",
+            "When we make up 10 minutes after a fight",
+            "Our deep late-night talks",
+            "Every single little thing about you",
+          ],
+          correct: 3,
+        },
+        {
+          q: "Be honest... how long do you think I am going to keep choosing you as my favorite person? \u{1F9F8}",
+          options: [
+            "Maybe for another 5 whole years",
+            "Forever and absolute always",
+            "Until tomorrow morning!",
+            "For another year or two",
+          ],
+          correct: 1,
+        },
+      ];
+      let currentQuizIndex = 0;
+
+      const MESSAGES = {
+        intro:
+          "hey love... happy one year with you. i wanted to build something real with my own hands to track our journey, so here it is...",
+        letter:
+          "A year ago I had no idea one day with you would turn into a whole year of them. Every late night call, every dumb joke, every small fight we made up from in ten minutes — it all somehow built the best year I've had.\n\nYou make ordinary days feel worth remembering. I don't have some big speech ready, I just wanted you to know that a year in, I'd still choose you, every single time.\n\nHere's to us, and to everything we haven't lived yet.\n\nI love you.\n\n\nYours completely,\nAnwar",
+        outro:
+          "Campaign complete, love... happy anniversary. thank you for one whole year of running through life by my side.",
+      };
+
+      const AMBIENT_HEARTS = {
+        "scene-gate": 5,
+        "scene-start": 6,
+        "scene-quiz": 4,
+        "scene-intro": 5,
+        "scene-hub": 4,
+        "scene-letter": 14,
+        "scene-photos": 5,
+        "scene-music": 4,
+        "scene-outro": 12,
+      };
+
+      function modifyHearts(delta) {
+        playerHearts += delta;
+
+        if (playerHearts > MAX_HEARTS) {
+          playerHearts = 1;
+          playerLevel++;
+          triggerLevelUpEffect();
+        } else if (playerHearts <= 0) {
+          if (playerLevel > 1) {
+            playerLevel--;
+            playerHearts = 3;
+          } else {
+            playerHearts = 1;
+          }
+        }
+        updateGlobalHUD();
+      }
+
+      function updateGlobalHUD() {
+        const heartsElement = document.getElementById("hud-hearts-val");
+        const levelElement = document.getElementById("hud-level-val");
+        const statsRank = document.getElementById("stats-rank-val");
+
+        if (levelElement) levelElement.innerText = `LVL ${playerLevel}`;
+        if (heartsElement) heartsElement.innerText = "♥ ".repeat(playerHearts);
+
+        if (statsRank) {
+          if (playerLevel >= 3) statsRank.innerText = "ULTIMATE WIFEY";
+          else if (playerLevel === 2) statsRank.innerText = "SOULMATE PRO";
+          else statsRank.innerText = "ELITE SOULMATE";
+        }
+      }
+
+      function triggerLevelUpEffect() {
+        const flash = document.getElementById("screen-flash");
+        if (flash) {
+          flash.classList.remove("run-flash");
+          void flash.offsetWidth;
+          flash.classList.add("run-flash");
+        }
+        for (let i = 0; i < 3; i++) {
+          setTimeout(() => {
+            spawnHearts("hearts-hub", 12);
+          }, i * 300);
+        }
+      }
+
+      function goTo(sceneId) {
+        const current = document.querySelector(".scene.active");
+        const next = document.getElementById(sceneId);
+        if (current === next) return;
+
+        if (current) {
+          current.classList.remove("fade-in");
+          current.classList.add("fade-out");
+          setTimeout(() => {
+            current.classList.remove("active", "fade-out");
+            next.classList.add("active", "fade-in");
+            runSceneSpecifics(sceneId);
+          }, 250);
+        } else {
+          next.classList.add("active", "fade-in");
+          runSceneSpecifics(sceneId);
+        }
+      }
+
+      function runSceneSpecifics(sceneId) {
+        updateGlobalHUD();
+        if (sceneId === "scene-quiz") {
+          loadQuizQuestion();
+        }
+        if (sceneId === "scene-intro") {
+          setExpression("intro-sprite", "happy");
+          typeText(document.getElementById("intro-text"), MESSAGES.intro);
+        }
+        if (sceneId === "scene-letter") {
+          const backBtn = document.getElementById("letter-back-btn");
+          const promptHeart = document.getElementById("letter-heart-prompt");
+          backBtn.classList.remove("show");
+          promptHeart.style.display = "none";
+
+          typeText(
+            document.getElementById("letter-text"),
+            MESSAGES.letter,
+            15,
+            () => {
+              setTimeout(() => {
+                backBtn.classList.add("show");
+                promptHeart.style.display = "block";
+              }, 500);
+            }
+          );
+        }
+        if (sceneId === "scene-music") {
+          spawnTrackNotes();
+        }
+        if (sceneId === "scene-outro") {
+          setExpression("outro-sprite", "blushing");
+          typeText(document.getElementById("outro-text"), MESSAGES.outro);
+        }
+        if (sceneId === "scene-hub") {
+          updateProgressUI();
+          if (STATE.gift1 && STATE.gift2 && STATE.gift3) {
+            document.getElementById("final-btn").style.display = "block";
+          }
+        }
+
+        const heartsId = "hearts-" + sceneId.replace("scene-", "");
+        if (AMBIENT_HEARTS[sceneId])
+          spawnHearts(heartsId, AMBIENT_HEARTS[sceneId]);
+      }
+
+      function triggerGoofySpriteAnimation(id) {
+        const sprite = document.getElementById(id);
+        if (!sprite) return;
+        sprite.classList.add("spin-click");
+        modifyHearts(1);
+        setTimeout(() => {
+          sprite.classList.remove("spin-click");
+        }, 500);
+      }
+
+      function setExpression(elementId, mood) {
+        const img = document.getElementById(elementId);
+        if (!img) return;
+        img.className = "sprite";
+        if (mood === "happy") img.classList.add("happy");
+        if (mood === "blushing") img.classList.add("blushing");
+      }
+
+      function loadQuizQuestion() {
+        if (currentQuizIndex >= QUIZ_QUESTIONS.length) {
+          goTo("scene-intro");
+          return;
+        }
+
+        const avatar = document.getElementById("quiz-avatar");
+        if (avatar) avatar.classList.remove("jump");
+
+        const currentQ = QUIZ_QUESTIONS[currentQuizIndex];
+        document.getElementById("quiz-question-text").innerText = currentQ.q;
+
+        const grid = document.getElementById("quiz-options-grid");
+        grid.innerHTML = "";
+
+        currentQ.options.forEach((opt, idx) => {
+          const btn = document.createElement("button");
+          btn.className = "quiz-btn";
+          btn.innerText = opt;
+          btn.style.animationDelay = `${idx * 0.08}s`;
+          btn.onclick = () => handleQuizAnswer(idx, btn);
+          grid.appendChild(btn);
+        });
+      }
+
+      function handleQuizAnswer(selectedIdx, btnElement) {
+        const currentQ = QUIZ_QUESTIONS[currentQuizIndex];
+        const container = document.querySelector(".quiz-container");
+        const flash = document.getElementById("screen-flash");
+
+        if (selectedIdx === currentQ.correct) {
+          btnElement.style.background = "#6dbf78";
+          btnElement.style.color = "#fff";
+          btnElement.style.borderColor = "#4c9455";
+
+          const avatar = document.getElementById("quiz-avatar");
+          if (avatar) avatar.classList.add("jump");
+
+          if (flash) {
+            flash.classList.remove("run-flash");
+            void flash.offsetWidth;
+            flash.classList.add("run-flash");
+          }
+
+          modifyHearts(1);
+          currentQuizIndex++;
+          setTimeout(() => {
+            loadQuizQuestion();
+          }, 500);
+        } else {
+          btnElement.style.background = "#ff6b6b";
+          btnElement.style.color = "#fff";
+          btnElement.style.borderColor = "#bc4646";
+          container.classList.add("error-shake");
+
+          modifyHearts(-1);
+
+          setTimeout(() => {
+            container.classList.remove("error-shake");
+            btnElement.style.background = "#fff";
+            btnElement.style.color = "#2b1c3d";
+            btnElement.style.borderColor = "#2b1c3d";
+          }, 400);
+        }
+      }
+
+      function updateProgressUI() {
+        let openedCount = 0;
+        if (STATE.gift1) openedCount++;
+        if (STATE.gift2) openedCount++;
+        if (STATE.gift3) openedCount++;
+
+        const pct = (openedCount / 3) * 100;
+        document.getElementById("hub-progress").style.width = pct + "%";
+        document.getElementById("progress-count").innerText =
+          openedCount + "/3";
+      }
+
+      function openGift(type, num) {
+        STATE[`gift${num}`] = true;
+        document.getElementById(`gift-${num}`).classList.add("opened");
+        modifyHearts(1);
+        setTimeout(() => goTo(`scene-${type}`), 250);
+      }
+
+      function typeText(el, text, speed = 25, callback = null) {
+        el.innerHTML = "";
+        let i = 0;
+        const cursor = document.createElement("span");
+        cursor.className = "cursor";
+        cursor.innerText = "■";
+        el.appendChild(document.createTextNode(""));
+        el.appendChild(cursor);
+
+        const timer = setInterval(() => {
+          if (i < text.length) {
+            const ch =
+              text[i] === "\n"
+                ? document.createElement("br")
+                : document.createTextNode(text[i]);
+            cursor.parentNode.insertBefore(ch, cursor);
+            i++;
+          } else {
+            clearInterval(timer);
+            cursor.remove();
+            if (callback) callback();
+          }
+        }, speed);
+      }
+
+      function spawnHearts(containerId, count = 6) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = "";
+        for (let i = 0; i < count; i++) {
+          const heart = document.createElement("div");
+          heart.className = "floating-heart";
+          heart.textContent = [
+            "\u{1F497}",
+            "\u{1F495}",
+            "\u{1FA77}",
+            "\u{2728}",
+            "\u{1F338}",
+          ][Math.floor(Math.random() * 5)];
+          heart.style.left = Math.random() * 100 + "%";
+          heart.style.setProperty("--drift", Math.random() * 5 - 2.5 + "cqw");
+          heart.style.animationDelay = Math.random() * 3.5 + "s";
+          heart.style.animationDuration = 4.5 + Math.random() * 3 + "s";
+          container.appendChild(heart);
+        }
+      }
+
+      function spawnTrackNotes() {
+        const container = document.getElementById("music-box-container");
+        if (!container) return;
+        const existingNotes = container.querySelectorAll(".floating-note");
+        existingNotes.forEach((n) => n.remove());
+
+        const symbols = [
+          "\u{1F3B5}",
+          "\u{1F3B6}",
+          "\u{2728}",
+          "\u{2764}\u{FE0F}",
+          "\u{1F338}",
+        ];
+        for (let i = 0; i < 8; i++) {
+          const note = document.createElement("div");
+          note.className = "floating-note";
+          note.innerText = symbols[Math.floor(Math.random() * symbols.length)];
+          note.style.left = 12 + Math.random() * 45 + "%";
+          note.style.bottom = "8cqh";
+          note.style.animationDelay = Math.random() * 2.2 + "s";
+          note.style.animationDuration = 1.7 + Math.random() * 1.3 + "s";
+          container.appendChild(note);
+        }
+      }
+
+      function updateDots() {
+        for (let i = 1; i <= 4; i++) {
+          const dot = document.getElementById(`dot-${i}`);
+          if (i <= entered.length) {
+            dot.innerText = "•";
+            dot.classList.add("filled");
+            dot.style.background = "#2b1c3d";
+          } else {
+            dot.innerText = "";
+            dot.classList.remove("filled");
+            dot.style.background = "transparent";
+          }
+        }
+      }
+
+      function resetWholeAdventure() {
+        const flash = document.getElementById("screen-flash");
+        if (flash) {
+          flash.classList.remove("run-flash");
+          void flash.offsetWidth;
+          flash.classList.add("run-flash");
+        }
+
+        document.querySelectorAll(".scene").forEach((scene) => {
+          scene.classList.remove("active", "fade-in", "fade-out");
+        });
+
+        entered = "";
+        failedAttempts = 0;
+        currentQuizIndex = 0;
+
+        playerHearts = 3;
+        playerLevel = 1;
+        updateGlobalHUD();
+
+        STATE.gift1 = false;
+        STATE.gift2 = false;
+        STATE.gift3 = false;
+
+        document.getElementById("gift-1").classList.remove("opened");
+        document.getElementById("gift-2").classList.remove("opened");
+        document.getElementById("gift-3").classList.remove("opened");
+        document.getElementById("final-btn").style.display = "none";
+
+        updateDots();
+
+        const feedback = document.getElementById("gate-feedback");
+        feedback.className = "feedback-banner";
+        feedback.innerText =
+          "Enter the secret 4-digit code to unlock my heart... (u_u)\u{1F497}";
+
+        document
+          .querySelectorAll(".dot")
+          .forEach((d) => d.classList.remove("success"));
+
+        const gate = document.getElementById("scene-gate");
+        gate.classList.add("active", "fade-in");
+        runSceneSpecifics("scene-gate");
+      }
+
+      function pressKey(k) {
+        if (k === "*") {
+          entered = "";
+          updateDots();
+          return;
+        }
+        if (k === "#") return;
+        if (entered.length >= 4) return;
+
+        entered += k;
+        updateDots();
+
+        if (entered.length === 4) {
+          const feedback = document.getElementById("gate-feedback");
+          const dotsBox = document.getElementById("dots");
+
+          setTimeout(() => {
+            if (entered === PASSWORD) {
+              feedback.className = "feedback-banner success-mode";
+              feedback.innerText =
+                "ACCESS GRANTED! Welcome back, my love! Unlocking... \u{1F513}\u{1F496}";
+              document
+                .querySelectorAll(".dot")
+                .forEach((d) => d.classList.add("success"));
+
+              const flash = document.getElementById("screen-flash");
+              if (flash) {
+                flash.className = "flash-overlay run-flash";
+              }
+
+              setTimeout(() => goTo("scene-start"), 1000);
+            } else {
+              failedAttempts++;
+              feedback.className = "feedback-banner error-mode";
+              dotsBox.classList.add("error-shake");
+              feedback.classList.add("error-shake");
+
+              if (failedAttempts === 1) {
+                feedback.innerText =
+                  "\u{274C} ACCESS DENIED! That is definitely not the passcode, try again! (._.)";
+              } else if (failedAttempts === 2) {
+                feedback.innerText =
+                  "\u{274C} WRONG AGAIN! Think very closely... it's a 4-digit sequence that belongs completely to us.";
+              } else if (failedAttempts === 3) {
+                feedback.className = "feedback-banner hint-mode error-shake";
+                feedback.innerText =
+                  "\u{1F4A1} HINT LEVEL 1: When did our story officially begin? Think of the special date... Day first, then Month!";
+              } else {
+                feedback.className = "feedback-banner hint-mode error-shake";
+                feedback.innerText =
+                  "\u{1F4A1} HINT LEVEL 2: The sweetest day of summer... July 22nd. Put them together as DDMM! \u{1F4C5}\u{2728}";
+              }
+
+              setTimeout(() => {
+                dotsBox.classList.remove("error-shake");
+                feedback.classList.remove("error-shake");
+                entered = "";
+                updateDots();
+              }, 600);
+            }
+          }, 150);
+        }
+      }
+
+      document.querySelectorAll(".stars").forEach((layer) => {
+        layer.innerHTML = "";
+        for (let i = 0; i < 15; i++) {
+          const star = document.createElement("div");
+          star.className = "star";
+          star.style.left = Math.random() * 100 + "%";
+          star.style.top = Math.random() * 55 + "%";
+          star.style.animationDelay = Math.random() * 3 + "s";
+          layer.appendChild(star);
+        }
+      });
+
+      updateGlobalHUD();
+      spawnHearts("hearts-gate", AMBIENT_HEARTS["scene-gate"]);
+    </script>
+  </body>
+</html>
