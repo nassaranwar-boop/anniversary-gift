@@ -944,6 +944,7 @@
         flex-direction: column;
         align-items: center;
         box-shadow: 0.5cqw 0.5cqw 0 rgba(43, 28, 61, 0.22);
+        overflow: hidden;
       }
       .content-box h2 {
         color: #ff8fc7;
@@ -1192,6 +1193,7 @@
       }
       .music-player-side {
         flex: 1.2;
+        min-width: 0;
         height: 100%;
         display: flex;
         flex-direction: column;
@@ -1199,6 +1201,7 @@
 
       .mascot-side {
         flex: 0.8;
+        min-width: 0;
         height: 100%;
         background: #000;
         border: 0.25cqw dashed #ff9dd0;
@@ -1424,6 +1427,87 @@
         font-size: 2.2cqw;
         animation-delay: 0.8s;
       }
+
+      .celebration-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 60;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(13, 6, 20, 0.82);
+      }
+      .celebration-overlay.show {
+        display: flex;
+        animation: celebFadeIn 0.4s ease both;
+      }
+      @keyframes celebFadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .celebration-card {
+        position: relative;
+        background: #fff0f5;
+        border: 0.4cqw solid #2b1c3d;
+        border-radius: 1.2cqw;
+        padding: 3cqw 3.5cqw;
+        text-align: center;
+        max-width: 70%;
+        box-shadow: 0.6cqw 0.6cqw 0px #ff79c6;
+        animation: celebPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.4) both;
+      }
+      @keyframes celebPop {
+        from {
+          transform: scale(0.6);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      .celebration-trophy {
+        font-size: 4cqw;
+        animation: cuteHeartbeat 1.2s ease-in-out infinite;
+        margin-bottom: 1cqw;
+      }
+      .celebration-title {
+        font-size: 1.7cqw;
+        color: #ff45a4;
+        text-shadow: 0.15cqw 0.15cqw 0 #2b1c3d;
+        margin: 0 0 1.2cqw;
+        line-height: 1.4;
+      }
+      .celebration-sub {
+        font-size: 0.9cqw;
+        color: #2b1c3d;
+        line-height: 1.9;
+        margin-bottom: 1.8cqw;
+      }
+      .celebration-sparkle {
+        position: absolute;
+        font-size: 1.4cqw;
+        pointer-events: none;
+        animation: retroFloat 2.2s ease-in-out infinite;
+      }
+      .celebration-sparkle.s1 {
+        top: -3%;
+        left: 6%;
+      }
+      .celebration-sparkle.s2 {
+        top: -4%;
+        right: 8%;
+        animation-delay: 0.5s;
+      }
+      .celebration-sparkle.s3 {
+        bottom: -3%;
+        left: 12%;
+        animation-delay: 1s;
+      }
     </style>
   </head>
   <body>
@@ -1435,9 +1519,27 @@
           <span class="hud-star">★</span>
           <span id="hud-level-val">LVL 1</span>
         </div>
-        <div id="hud-hearts-val" class="hud-hearts">♥ ♥ ♥ ♡ ♡</div>
+        <div id="hud-hearts-val" class="hud-hearts">♥ ♡ ♡</div>
         <div class="hud-progress-track">
           <div class="hud-progress-fill" id="hud-progress-fill"></div>
+        </div>
+      </div>
+
+      <div class="celebration-overlay" id="celebration-overlay">
+        <div class="celebration-card">
+          <div class="celebration-sparkle s1">&#10024;</div>
+          <div class="celebration-sparkle s2">&#128171;</div>
+          <div class="celebration-sparkle s3">&#127775;</div>
+          <div class="celebration-trophy">&#127942;</div>
+          <div class="celebration-title">MAX LEVEL REACHED!</div>
+          <div class="celebration-sub">
+            You just unlocked everything here... kind of like how you<br />
+            unlocked my whole heart a year ago.<br />
+            I love you, Ouissy. &#128150;
+          </div>
+          <button class="pixel-btn" onclick="closeCelebration()">
+            Continue &#9829;
+          </button>
         </div>
       </div>
 
@@ -1874,7 +1976,7 @@
 
         <div
           class="content-box"
-          style="background: #1a1025; width: 88%; max-width: 860px"
+          style="background: #1a1025; width: 84%; max-width: 820px"
           id="music-box-container"
         >
           <h2 style="color: #fff; margin-bottom: 0.8cqw">Song For You</h2>
@@ -1973,9 +2075,11 @@
       let failedAttempts = 0;
       const STATE = { gift1: false, gift2: false, gift3: false };
 
-      let playerHearts = 3;
+      let playerHearts = 1;
       let playerLevel = 1;
-      const MAX_HEARTS = 5;
+      const MAX_HEARTS = 3;
+      const CELEBRATION_LEVEL = 3;
+      let celebrationShown = false;
 
       const QUIZ_QUESTIONS = [
         {
@@ -2088,6 +2192,30 @@
             spawnHearts("hearts-hub", 12);
           }, i * 300);
         }
+        checkForCelebration();
+      }
+
+      function checkForCelebration() {
+        if (playerLevel >= CELEBRATION_LEVEL && !celebrationShown) {
+          celebrationShown = true;
+          setTimeout(showCelebration, 600);
+        }
+      }
+
+      function showCelebration() {
+        const overlay = document.getElementById("celebration-overlay");
+        if (!overlay) return;
+        overlay.classList.add("show");
+        const activeScene = document.querySelector(".scene.active");
+        if (activeScene) {
+          const heartsId = "hearts-" + activeScene.id.replace("scene-", "");
+          spawnHearts(heartsId, 18);
+        }
+      }
+
+      function closeCelebration() {
+        const overlay = document.getElementById("celebration-overlay");
+        if (overlay) overlay.classList.remove("show");
       }
 
       function goTo(sceneId) {
@@ -2350,8 +2478,10 @@
         entered = "";
         failedAttempts = 0;
         currentQuizIndex = 0;
-        playerHearts = 3;
+        playerHearts = 1;
         playerLevel = 1;
+        celebrationShown = false;
+        closeCelebration();
         STATE.gift1 = false;
         STATE.gift2 = false;
         STATE.gift3 = false;
