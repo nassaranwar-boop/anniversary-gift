@@ -1508,6 +1508,130 @@
         left: 12%;
         animation-delay: 1s;
       }
+
+      /* ========================================================
+         RESPONSIVE HANDLING FOR EVERY SCREEN SHAPE
+         Landscape (laptop, TV, landscape tablet/phone): unchanged,
+         same 16:9 windowed look as always, driven by cqw/cqh units.
+         Portrait (phone or iPad, any size): window fills the full
+         screen instead of shrinking to a tiny letterboxed strip,
+         gate stacks vertically, and oversized elements are capped
+         by WIDTH instead of height so they scale with the narrow
+         dimension of the screen instead of the tall one.
+         ======================================================== */
+      @media (orientation: portrait) {
+        #game-window {
+          width: 100vw;
+          height: 100vh;
+          height: 100dvh;
+          aspect-ratio: unset;
+          max-width: none;
+          max-height: none;
+        }
+
+        .gate-split {
+          flex-direction: column;
+        }
+
+        .gate-left {
+          flex: 1.15;
+          width: 100%;
+        }
+
+        .gate-right {
+          flex: 1;
+          width: 100%;
+          border-left: none;
+          border-top: 0.3cqw solid #2b1c3d;
+        }
+
+        img.duo-sprite {
+          height: auto;
+          width: 34%;
+          max-height: 32cqh;
+        }
+        img.duo-sprite.boy {
+          margin-left: -3%;
+        }
+
+        .character-row {
+          flex-direction: column;
+          width: 92%;
+          gap: 2cqh;
+        }
+
+        .character-row img.sprite {
+          height: auto;
+          width: 44%;
+          max-width: 240px;
+        }
+
+        .speech-wrap {
+          max-width: 88%;
+        }
+
+        .gift-row {
+          gap: 4cqh;
+        }
+
+        .gift-item {
+          width: auto;
+        }
+
+        .gift-item img {
+          height: auto;
+          width: 22vw;
+          max-width: 100px;
+        }
+
+        .content-box {
+          width: 88% !important;
+          max-width: none !important;
+        }
+
+        .content-box.letter-box,
+        .content-box.gallery-box {
+          width: 90% !important;
+        }
+
+        .split-music-layout {
+          flex-direction: column;
+          gap: 1.6cqh;
+        }
+
+        .music-player-side,
+        .mascot-side {
+          width: 100%;
+          height: auto;
+          flex: none;
+        }
+
+        .music-player {
+          height: 26cqh;
+        }
+
+        .mascot-side {
+          height: 24cqh;
+        }
+
+        .stats-panel {
+          flex-direction: column;
+          gap: 1.4cqh;
+        }
+
+        .stats-left {
+          height: auto;
+          padding: 1.4cqh 0.8cqw;
+        }
+
+        #scene-hub .content-box {
+          height: auto !important;
+        }
+
+        .quiz-container {
+          width: 90%;
+        }
+      }
     </style>
   </head>
   <body>
@@ -1832,13 +1956,17 @@
               <div class="w-dot" style="background: #ffb86c"></div>
               <div class="w-dot" style="background: #50fa7b"></div>
             </div>
-            <div class="letter-window-title">&#128140; SYSTEM MESSAGE &#128140;</div>
+            <div class="letter-window-title">
+              &#128140; SYSTEM MESSAGE &#128140;
+            </div>
           </div>
 
           <div class="letter-salutation">Dear Ouissy,</div>
           <div class="letter-scroll" id="letter-text"></div>
 
-          <div class="next-prompt-heart" id="letter-heart-prompt">&#128151;</div>
+          <div class="next-prompt-heart" id="letter-heart-prompt">
+            &#128151;
+          </div>
         </div>
 
         <button
@@ -2019,7 +2147,9 @@
                 alt="Us vibing together"
               />
 
-              <div class="mascot-side-label">VIBING TO<br />OUR BEAT! &#127925;</div>
+              <div class="mascot-side-label">
+                VIBING TO<br />OUR BEAT! &#127925;
+              </div>
             </div>
           </div>
         </div>
@@ -2169,7 +2299,10 @@
         }
 
         if (progressFill) {
-          const pct = Math.min(100, Math.max(0, (playerHearts / MAX_HEARTS) * 100));
+          const pct = Math.min(
+            100,
+            Math.max(0, (playerHearts / MAX_HEARTS) * 100)
+          );
           progressFill.style.width = pct + "%";
         }
 
@@ -2418,9 +2551,13 @@
         for (let i = 0; i < count; i++) {
           const heart = document.createElement("div");
           heart.className = "floating-heart";
-          heart.textContent = ["\u{1F497}", "\u{1F495}", "\u{1FA77}", "\u{2728}", "\u{1F338}"][
-            Math.floor(Math.random() * 5)
-          ];
+          heart.textContent = [
+            "\u{1F497}",
+            "\u{1F495}",
+            "\u{1FA77}",
+            "\u{2728}",
+            "\u{1F338}",
+          ][Math.floor(Math.random() * 5)];
           heart.style.left = Math.random() * 100 + "%";
           heart.style.setProperty("--drift", Math.random() * 5 - 2.5 + "cqw");
           heart.style.animationDelay = Math.random() * 3.5 + "s";
@@ -2435,7 +2572,13 @@
         const existingNotes = container.querySelectorAll(".floating-note");
         existingNotes.forEach((n) => n.remove());
 
-        const symbols = ["\u{1F3B5}", "\u{1F3B6}", "\u{2728}", "\u{2764}\u{FE0F}", "\u{1F338}"];
+        const symbols = [
+          "\u{1F3B5}",
+          "\u{1F3B6}",
+          "\u{2728}",
+          "\u{2764}\u{FE0F}",
+          "\u{1F338}",
+        ];
         for (let i = 0; i < 8; i++) {
           const note = document.createElement("div");
           note.className = "floating-note";
@@ -2519,7 +2662,9 @@
 
         const letterBackBtn = document.getElementById("letter-back-btn");
         if (letterBackBtn) letterBackBtn.classList.remove("show");
-        const letterHeartPrompt = document.getElementById("letter-heart-prompt");
+        const letterHeartPrompt = document.getElementById(
+          "letter-heart-prompt"
+        );
         if (letterHeartPrompt) letterHeartPrompt.style.display = "none";
 
         const girlSprite = document.getElementById("sprite-girl");
