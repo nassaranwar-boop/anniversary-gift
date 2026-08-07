@@ -868,6 +868,11 @@
         text-align: center;
       }
 
+      .hub-stats-box {
+        width: 58cqw;
+        height: 18cqh;
+      }
+
       .character-row {
         display: flex;
         align-items: flex-end;
@@ -1514,10 +1519,7 @@
          Landscape (laptop, TV, landscape tablet/phone): unchanged,
          same 16:9 windowed look as always, driven by cqw/cqh units.
          Portrait (phone or iPad, any size): window fills the full
-         screen instead of shrinking to a tiny letterboxed strip,
-         gate stacks vertically, and oversized elements are capped
-         by WIDTH instead of height so they scale with the narrow
-         dimension of the screen instead of the tall one.
+         screen instead of shrinking to a tiny letterboxed strip.
          ======================================================== */
       @media (orientation: portrait) {
         #game-window {
@@ -1529,17 +1531,28 @@
           max-height: none;
         }
 
+        /* Safety net: if any scene's content ends up taller than
+           the screen, it scrolls instead of silently clipping. */
+        .scene {
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* --- Gate: fixed percentage split instead of flex-grow
+           ratios, so gate-right's box is a deterministic height
+           and its content centers with even gaps instead of all
+           the slack collecting at the bottom. --- */
         .gate-split {
           flex-direction: column;
         }
 
         .gate-left {
-          flex: 1.15;
+          flex: 0 0 52%;
           width: 100%;
         }
 
         .gate-right {
-          flex: 1;
+          flex: 0 0 48%;
           width: 100%;
           border-left: none;
           border-top: 0.3cqw solid #2b1c3d;
@@ -1554,6 +1567,12 @@
           margin-left: -3%;
         }
 
+        /* --- Intro/outro: character above bubble. Both children
+           get flex:0 0 auto explicitly, because the base
+           .speech-wrap { flex:1 } was written for the ROW layout
+           (grow sideways next to the character) — left alone, that
+           same rule stretches it VERTICALLY once the row becomes a
+           column, which is what caused the big uneven gaps. --- */
         .character-row {
           flex-direction: column;
           width: 92%;
@@ -1561,13 +1580,16 @@
         }
 
         .character-row img.sprite {
+          flex: 0 0 auto;
           height: auto;
-          width: 44%;
-          max-width: 240px;
+          width: 38%;
+          max-width: 200px;
         }
 
         .speech-wrap {
-          max-width: 88%;
+          flex: 0 0 auto;
+          max-width: 74%;
+          margin-bottom: 2cqh;
         }
 
         .gift-row {
@@ -1580,8 +1602,8 @@
 
         .gift-item img {
           height: auto;
-          width: 22vw;
-          max-width: 100px;
+          width: 20vw;
+          max-width: 90px;
         }
 
         .content-box {
@@ -1592,6 +1614,15 @@
         .content-box.letter-box,
         .content-box.gallery-box {
           width: 90% !important;
+        }
+
+        /* This box used to be pinned to 18cqh via an inline
+           !important in the HTML, which no stylesheet rule can
+           ever beat — that's what was clipping her stat rows.
+           The inline !important is gone now, so this applies. */
+        .hub-stats-box {
+          width: 88% !important;
+          height: auto !important;
         }
 
         .split-music-layout {
@@ -1607,25 +1638,28 @@
         }
 
         .music-player {
-          height: 26cqh;
+          height: 24cqh;
         }
 
         .mascot-side {
-          height: 24cqh;
+          height: 22cqh;
         }
 
         .stats-panel {
           flex-direction: column;
-          gap: 1.4cqh;
+          gap: 1cqh;
         }
 
         .stats-left {
           height: auto;
-          padding: 1.4cqh 0.8cqw;
+          padding: 1cqh 0.8cqw;
         }
 
-        #scene-hub .content-box {
-          height: auto !important;
+        /* Override the inline font-size (0.75cqw), which shrinks
+           to near-invisible once cqw is based on a narrow phone
+           width instead of a wide landscape window. */
+        .stats-right {
+          font-size: 1.6vw !important;
         }
 
         .quiz-container {
@@ -1885,14 +1919,8 @@
           </div>
 
           <div
-            class="content-box"
-            style="
-              width: 58cqw !important;
-              height: 18cqh !important;
-              margin: 0;
-              padding: 0.8cqw;
-              flex-shrink: 0;
-            "
+            class="content-box hub-stats-box"
+            style="margin: 0; padding: 0.8cqw; flex-shrink: 0;"
           >
             <div class="stats-panel">
               <div class="stats-left">
