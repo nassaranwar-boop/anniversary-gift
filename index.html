@@ -1518,9 +1518,15 @@
          RESPONSIVE HANDLING FOR EVERY SCREEN SHAPE
          Landscape (laptop, TV, landscape tablet/phone): unchanged,
          same 16:9 windowed look as always, driven by cqw/cqh units.
-         Portrait (phone or iPad, any size): window fills the full
-         screen instead of shrinking to a tiny letterboxed strip.
-         ======================================================== */
+
+         Portrait (phone or iPad, any size): the window fills the
+         full screen, but every card inside sizes itself to its
+         OWN content (height: auto) and lets the screen center it —
+         instead of being force-stretched to a % of the tall
+         portrait viewport, which is what caused the dead gaps and
+         oversized boxes before. This is meant to read as a
+         compact, intentionally-scaled-down version of the iPad
+         layout, not a stretched-to-fill one. --- */
       @media (orientation: portrait) {
         #game-window {
           width: 100vw;
@@ -1531,69 +1537,91 @@
           max-height: none;
         }
 
-        /* Safety net: if any scene's content ends up taller than
-           the screen, it scrolls instead of silently clipping. */
+        /* Safety net: if any card is ever taller than the screen
+           on a very small phone, it scrolls instead of clipping. */
         .scene {
           overflow-y: auto;
           -webkit-overflow-scrolling: touch;
         }
 
-        /* --- Gate: fixed percentage split instead of flex-grow
-           ratios, so gate-right's box is a deterministic height
-           and its content centers with even gaps instead of all
-           the slack collecting at the bottom. --- */
+        /* --- Gate: both halves size to their own content instead
+           of splitting the full screen height, then the whole
+           block gets centered by the scene as one compact unit. --- */
         .gate-split {
           flex-direction: column;
+          height: auto;
         }
 
         .gate-left {
-          flex: 0 0 52%;
+          flex: none;
+          height: 34cqh;
           width: 100%;
         }
 
         .gate-right {
-          flex: 0 0 48%;
+          flex: none;
+          height: auto;
           width: 100%;
+          padding: 2.6cqh 5vw 3.2cqh;
           border-left: none;
           border-top: 0.3cqw solid #2b1c3d;
         }
 
         img.duo-sprite {
           height: auto;
-          width: 34%;
+          width: 30%;
           max-height: 32cqh;
         }
         img.duo-sprite.boy {
           margin-left: -3%;
         }
 
-        /* --- Intro/outro: character above bubble. Both children
-           get flex:0 0 auto explicitly, because the base
-           .speech-wrap { flex:1 } was written for the ROW layout
-           (grow sideways next to the character) — left alone, that
-           same rule stretches it VERTICALLY once the row becomes a
-           column, which is what caused the big uneven gaps. --- */
+        /* --- Intro/outro: character above bubble, both sized down
+           and both explicitly flex:0 0 auto — the base
+           .speech-wrap{flex:1} was written to grow SIDEWAYS next to
+           the character in a row; left alone it grows VERTICALLY
+           once the row flips to a column, which caused the big
+           uneven gaps and oversized bubble. --- */
         .character-row {
           flex-direction: column;
-          width: 92%;
-          gap: 2cqh;
+          align-items: center;
+          width: 88%;
+          gap: 1.6cqh;
+        }
+
+        #scene-outro .character-row {
+          flex-direction: column-reverse;
         }
 
         .character-row img.sprite {
           flex: 0 0 auto;
           height: auto;
-          width: 38%;
-          max-width: 200px;
+          width: 26%;
+          max-width: 150px;
         }
 
         .speech-wrap {
           flex: 0 0 auto;
-          max-width: 74%;
-          margin-bottom: 2cqh;
+          max-width: 58%;
+          margin-bottom: 1.4cqh;
+        }
+
+        .speech-text {
+          font-size: 2.6vw;
+        }
+
+        /* --- Hub: extra vertical gap so the gift boxes never
+           collide with the progress bar above them. --- */
+        .hub-layout {
+          gap: 2.6cqh;
+        }
+
+        .game-metrics {
+          margin-bottom: 0.4cqh;
         }
 
         .gift-row {
-          gap: 4cqh;
+          gap: 4vw;
         }
 
         .gift-item {
@@ -1602,47 +1630,39 @@
 
         .gift-item img {
           height: auto;
-          width: 20vw;
-          max-width: 90px;
+          width: 18vw;
+          max-width: 85px;
         }
 
+        /* --- Every card sizes to its own content by default now. --- */
         .content-box {
           width: 88% !important;
           max-width: none !important;
+          height: auto !important;
         }
 
-        .content-box.letter-box,
+        /* Letter: a modest, readable card instead of one that
+           fills almost the entire screen. */
+        .content-box.letter-box {
+          width: 86% !important;
+          height: 62cqh !important;
+        }
+
+        .letter-salutation {
+          font-size: 3vw;
+        }
+
+        .letter-scroll {
+          font-size: 2.5vw;
+          line-height: 1.85;
+        }
+
         .content-box.gallery-box {
           width: 90% !important;
         }
 
-        /* This box used to be pinned to 18cqh via an inline
-           !important in the HTML, which no stylesheet rule can
-           ever beat — that's what was clipping her stat rows.
-           The inline !important is gone now, so this applies. */
         .hub-stats-box {
           width: 88% !important;
-          height: auto !important;
-        }
-
-        .split-music-layout {
-          flex-direction: column;
-          gap: 1.6cqh;
-        }
-
-        .music-player-side,
-        .mascot-side {
-          width: 100%;
-          height: auto;
-          flex: none;
-        }
-
-        .music-player {
-          height: 24cqh;
-        }
-
-        .mascot-side {
-          height: 22cqh;
         }
 
         .stats-panel {
@@ -1660,6 +1680,34 @@
            width instead of a wide landscape window. */
         .stats-right {
           font-size: 1.6vw !important;
+        }
+
+        /* --- Music: now that the card auto-sizes, give the video
+           and photo panels a bit more room each so nothing feels
+           cramped or dead-space-padded. Photo switches to `contain`
+           so the whole picture shows instead of being cropped. --- */
+        .split-music-layout {
+          flex-direction: column;
+          gap: 1.6cqh;
+        }
+
+        .music-player-side,
+        .mascot-side {
+          width: 100%;
+          height: auto;
+          flex: none;
+        }
+
+        .music-player {
+          height: 28cqh;
+        }
+
+        .mascot-side {
+          height: 30cqh;
+        }
+
+        .embedded-loop-photo {
+          object-fit: contain;
         }
 
         .quiz-container {
