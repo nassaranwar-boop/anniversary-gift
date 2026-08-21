@@ -770,7 +770,7 @@
         border: 0.2cqw solid #ff9dd0;
         padding: 0.8cqw 1.5cqw;
         border-radius: 0.5cqw;
-        margin-bottom: 1.2cqw;
+        margin-bottom: 2.4cqw;
         font-size: 0.9cqw;
         color: #fff;
         z-index: 10;
@@ -794,7 +794,7 @@
       .hub-layout {
         display: flex;
         flex-direction: column;
-        gap: 2cqw;
+        gap: 3.2cqw;
         align-items: center;
         justify-content: center;
         width: 95%;
@@ -873,6 +873,10 @@
         height: 18cqh;
       }
 
+      #final-btn {
+        margin-top: 3.2cqw !important;
+      }
+
       .character-row {
         display: flex;
         align-items: flex-end;
@@ -923,6 +927,9 @@
         line-height: 1.6;
         color: #d6538c;
         text-align: center;
+      }
+      .speech-text .type-inner {
+        display: inline;
       }
       .speech-text .cursor {
         display: inline-block;
@@ -2007,7 +2014,7 @@
         <button
           id="final-btn"
           class="pixel-btn"
-          style="display: none; margin-top: 1cqw"
+          style="display: none"
           onclick="goTo('scene-outro')"
         >
           Complete Quest →
@@ -2597,12 +2604,15 @@
 
       function typeText(el, text, speed = 25, callback = null) {
         el.innerHTML = "";
+        const inner = document.createElement("span");
+        inner.className = "type-inner";
+        el.appendChild(inner);
+
         let i = 0;
         const cursor = document.createElement("span");
         cursor.className = "cursor";
         cursor.innerText = "■";
-        el.appendChild(document.createTextNode(""));
-        el.appendChild(cursor);
+        inner.appendChild(cursor);
 
         const timer = setInterval(() => {
           if (i < text.length) {
