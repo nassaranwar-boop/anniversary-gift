@@ -770,6 +770,7 @@
         border: 0.2cqw solid #ff9dd0;
         padding: 0.8cqw 1.5cqw;
         border-radius: 0.5cqw;
+        margin-top: -0.4cqw;
         margin-bottom: 2.4cqw;
         font-size: 0.9cqw;
         color: #fff;
@@ -1607,14 +1608,19 @@
           max-width: 150px;
         }
 
+        /* Bubble sized up and padding/font tuned together so the
+           typed message actually fits inside the printed art
+           instead of spilling above/below it. */
         .speech-wrap {
           flex: 0 0 auto;
-          max-width: 58%;
+          max-width: 72%;
           margin-bottom: 1.4cqh;
         }
 
         .speech-text {
-          font-size: 2.6vw;
+          padding: 3vw 6vw 6vw 6vw;
+          font-size: 2.1vw;
+          line-height: 1.45;
         }
 
         /* --- Hub: extra vertical gap so the gift boxes never
@@ -1624,6 +1630,7 @@
         }
 
         .game-metrics {
+          margin-top: 0;
           margin-bottom: 0.4cqh;
         }
 
@@ -1941,9 +1948,8 @@
             font-size: 2cqw;
             color: #ff9dd0;
             text-shadow: 0.2cqw 0.2cqw 0 #000;
-            margin-bottom: 0.8cqw;
-            margin-top: -1cqw;
-            animation: retroFloat 2.8s ease-in-out infinite;
+            margin-bottom: 0.2cqw;
+            margin-top: 0;
           "
         >
           Choose Your Gifts
