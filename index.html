@@ -761,6 +761,15 @@
         font-weight: bold;
       }
 
+      @keyframes metricsFloat {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-0.8cqh);
+        }
+      }
       .game-metrics {
         display: flex;
         align-items: center;
@@ -775,6 +784,7 @@
         font-size: 0.9cqw;
         color: #fff;
         z-index: 10;
+        animation: metricsFloat 2.6s ease-in-out infinite;
       }
       .progress-bar-container {
         flex: 1;
