@@ -1734,6 +1734,15 @@
           object-fit: contain;
         }
 
+        /* The title's margin-bottom is set inline as 1.2cqw, tuned
+           for landscape's wide window. In portrait, cqw is relative
+           to the narrow phone width instead, shrinking that same
+           gap down to almost nothing — this restores it using cqh
+           (relative to the tall dimension) so it stays visible. */
+        #scene-hub h1 {
+          margin-bottom: 1.6cqh !important;
+        }
+
         .quiz-container {
           width: 90%;
         }
