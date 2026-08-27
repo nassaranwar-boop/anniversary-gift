@@ -50,22 +50,40 @@
     </div>
   </section>
 
-  <!-- SCREEN 0d — MEMORY MENU -->
-  <section id="screen-memories" class="screen ancient-bg">
-    <h2 class="memories-title">Our Memories</h2>
-    <p class="memories-sub">— tap one to relive it —</p>
-    <div class="memories-grid" id="memories-grid"></div>
-    <button id="memories-continue" class="btn-ancient memories-continue">Turn the Page 💕</button>
-  </section>
+  <!-- SCREEN 0d — POP-UP STORYBOOK DIORAMAS -->
+  <section id="screen-diorama" class="screen ancient-bg">
+    <div class="dio-wrap">
+      <div class="dio-header">
+        <h2 class="dio-title" id="dio-title"></h2>
+        <p class="dio-date" id="dio-date"></p>
+      </div>
 
-  <!-- SCREEN 0e — MEMORY DETAIL -->
-  <section id="screen-memory-detail" class="screen ancient-bg">
-    <div class="memory-detail-page">
-      <div class="memory-detail-title" id="memory-detail-title"></div>
-      <div class="memory-detail-date" id="memory-detail-date"></div>
-      <div class="memory-photo-frame" id="memory-photo-frame"></div>
-      <div class="memory-detail-text" id="memory-detail-text"></div>
-      <button id="memory-back-btn" class="btn-ancient memory-back-btn">Close the Page</button>
+      <!-- the pop-up stage: layers stand up out of the open book -->
+      <div class="dio-stage" id="dio-stage">
+        <div class="dio-scene" id="dio-scene">
+          <div class="dio-layer dio-sky"   id="dio-sky"></div>
+          <div class="dio-layer dio-far"   id="dio-far"></div>
+          <div class="dio-layer dio-mid"   id="dio-mid"></div>
+          <div class="dio-layer dio-chars" id="dio-chars"></div>
+          <div class="dio-layer dio-near"  id="dio-near"></div>
+          <div class="dio-sparkles" id="dio-sparkles"></div>
+        </div>
+        <div class="dio-book">
+          <div class="dio-page dio-page-l"></div>
+          <div class="dio-page dio-page-r"></div>
+          <div class="dio-gutter"></div>
+        </div>
+        <div class="dio-photo-slot" id="dio-photo"></div>
+      </div>
+
+      <p class="dio-text" id="dio-text"></p>
+
+      <div class="dio-nav">
+        <button class="dio-arrow" id="dio-prev" aria-label="Previous memory">‹</button>
+        <div class="dio-dots" id="dio-dots"></div>
+        <button class="dio-arrow" id="dio-next" aria-label="Next memory">›</button>
+      </div>
+      <button id="dio-continue" class="btn-ancient dio-continue">Turn the Page 💕</button>
     </div>
   </section>
 

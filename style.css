@@ -399,42 +399,51 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ============================================================
    ANCIENT BOOK — gate / intro / letter / memories
    ============================================================ */
-.ancient-bg{background:radial-gradient(ellipse at 50% 25%, rgba(120,70,20,.22), transparent 62%), linear-gradient(160deg,#241206 0%,#160b04 60%,#0a0502 100%);}
+.ancient-bg{
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255,226,164,.45), transparent 60%),
+    radial-gradient(ellipse at 82% 88%, rgba(255,188,150,.28), transparent 55%),
+    linear-gradient(165deg,#f6dcae 0%,#e9bf88 42%,#cf9a63 78%,#a97545 100%);
+}
 
 /* ---- Three.js cinematic book intro ---- */
-#screen-videointro{background:#050803; padding:0;}
+#screen-videointro{background:#c8b076; padding:0;}
 #book-canvas{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:pointer;}
 #screen-videointro::after{
   content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
-  background:radial-gradient(ellipse at 50% 48%, transparent 45%, rgba(0,0,0,.5) 100%);
+  background:radial-gradient(ellipse at 50% 48%, transparent 55%, rgba(74,44,12,.30) 100%);
 }
 .book-click-prompt{
   position:absolute; bottom:14%; left:0; right:0; text-align:center; z-index:5; pointer-events:none;
-  font-family:'Playfair Display',serif; font-style:italic; color:#f3d9a8; font-size:14px;
-  text-shadow:0 2px 8px rgba(0,0,0,.7); opacity:0; animation:promptFade 2s ease 1.6s forwards, promptPulse 2s ease-in-out 3.6s infinite;
+  font-family:'Playfair Display',serif; font-style:italic; color:#4a2c10; font-size:14px;
+  text-shadow:0 1px 6px rgba(255,240,200,.85); opacity:0; animation:promptFade 2s ease 1.6s forwards, promptPulse 2s ease-in-out 3.6s infinite;
 }
 .book-click-prompt.hidden{animation:none !important; opacity:0 !important;}
 @keyframes promptFade{to{opacity:.9;}}
 @keyframes promptPulse{0%,100%{opacity:.55;} 50%{opacity:.95;}}
 .book-loading{
   position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:6;
-  font-family:'Playfair Display',serif; font-style:italic; color:#c9ac82; font-size:14px; background:#050803;
+  font-family:'Playfair Display',serif; font-style:italic; color:#6b451c; font-size:14px; background:#e8cb96;
   transition:opacity .6s ease;
 }
 .book-loading.hidden{opacity:0; pointer-events:none;}
 
-.white-cut{position:fixed; inset:0; z-index:50; pointer-events:none; background:#fff9ee; opacity:0; transition:opacity .5s ease;}
+.white-cut{position:fixed; inset:0; z-index:50; pointer-events:none; background:#fff6e2; opacity:0; transition:opacity .5s ease;}
 .white-cut.active{opacity:1;}
 
 .video-skip-btn{
   position:absolute; bottom:36px; right:20px; z-index:20;
-  background:rgba(0,0,0,.45); color:#fff; border:1px solid rgba(255,255,255,.4); border-radius:20px;
+  background:rgba(74,44,12,.42); color:#fff6e2; border:1px solid rgba(255,240,205,.55); border-radius:20px;
   padding:8px 16px; font-family:'Poppins',sans-serif; font-size:12.5px; cursor:pointer; backdrop-filter:blur(6px);
   transition:opacity .3s ease;
 }
 
 /* ---- Gate (on real parchment art) ---- */
-#screen-gate{background:radial-gradient(ellipse at 50% 30%, rgba(80,50,10,.25), transparent 60%), #0a0502;}
+#screen-gate{
+  background:
+    radial-gradient(ellipse at 50% 22%, rgba(255,236,186,.55), transparent 58%),
+    linear-gradient(170deg,#f7e2b8 0%,#eec38c 45%,#d09a62 100%);
+}
 .gate-parchment{
   position:relative; height:min(74vh,520px); aspect-ratio:408/612; margin:0 auto;
   background-image:url("assets/parchment-ornate.jpg"); background-size:100% 100%; background-repeat:no-repeat;
@@ -445,7 +454,38 @@ img{-webkit-user-drag:none; user-select:none;}
 .gate-seal-wrap{margin-bottom:12px;}
 .gate-seal{width:60px; height:auto; filter:drop-shadow(0 6px 12px rgba(0,0,0,.4)); animation:sealHang 3.4s ease-in-out infinite; transition:transform .4s ease, opacity .4s ease;}
 @keyframes sealHang{0%,100%{transform:rotate(-3deg);} 50%{transform:rotate(3deg);}}
-.gate-seal.crack{transform:scale(1.35) rotate(0deg); opacity:0;}
+/* The seal no longer cracks open — it blooms. Petals unfurl outward from
+   behind it and a warm glow swells through as the seal dissolves. */
+.gate-seal-wrap{position:relative; display:inline-block;}
+.gate-seal.crack{transform:scale(.55) rotate(18deg); opacity:0; transition:transform .75s cubic-bezier(.34,1.4,.5,1), opacity .55s ease .12s;}
+.bloom-burst{position:absolute; left:50%; top:50%; width:0; height:0; pointer-events:none; z-index:2;}
+.bloom-petal{
+  position:absolute; left:0; top:0; width:26px; height:34px; margin:-17px 0 0 -13px;
+  border-radius:60% 60% 55% 55% / 75% 75% 35% 35%;
+  background:radial-gradient(ellipse at 50% 75%, #fffdfa 0%, #ffd9e4 42%, #f7a8c4 100%);
+  box-shadow:0 2px 8px rgba(190,90,130,.28);
+  opacity:0; transform:rotate(var(--a)) translateY(0) scale(.2);
+}
+.bloom-burst.go .bloom-petal{ animation:petalUnfurl .95s cubic-bezier(.22,.9,.3,1) forwards; animation-delay:var(--d); }
+@keyframes petalUnfurl{
+  0%   {opacity:0; transform:rotate(var(--a)) translateY(0) scale(.2);}
+  35%  {opacity:1;}
+  100% {opacity:0; transform:rotate(var(--a)) translateY(-64px) scale(1.05);}
+}
+.bloom-core{
+  position:absolute; left:0; top:0; width:20px; height:20px; margin:-10px 0 0 -10px; border-radius:50%;
+  background:radial-gradient(circle, #fff8e2 0%, rgba(255,214,140,.85) 45%, rgba(255,190,110,0) 72%);
+  opacity:0; transform:scale(.3);
+}
+.bloom-burst.go .bloom-core{ animation:bloomGlow 1.05s ease-out forwards; }
+@keyframes bloomGlow{
+  0%   {opacity:0; transform:scale(.3);}
+  30%  {opacity:1; transform:scale(3.2);}
+  100% {opacity:0; transform:scale(9);}
+}
+@media (prefers-reduced-motion: reduce){
+  .bloom-burst.go .bloom-petal,.bloom-burst.go .bloom-core{animation-duration:.01ms;}
+}
 .gate-title{font-family:'Cinzel',serif; font-weight:700; font-size:19px; color:#5a3612; letter-spacing:1px; margin-bottom:4px;}
 .gate-sub{font-family:'Playfair Display',serif; font-style:italic; color:#7a5a30; font-size:12.5px; opacity:.9; margin-bottom:16px;}
 .gate-input-row{margin-bottom:10px;}
@@ -478,36 +518,150 @@ img{-webkit-user-drag:none; user-select:none;}
 .letter-sign{font-family:'Great Vibes',cursive; font-size:18px; color:#7a3a18; margin-top:8px; opacity:0; animation:fadeInSoft 1s ease forwards;}
 .letter-continue{margin-top:10px; opacity:0; animation:fadeInSoft 1s ease forwards; transform:scale(.82);}
 
-/* ---- Memory menu ---- */
-.memories-title{font-family:'Cinzel',serif; color:#f3d9a8; font-size:22px; text-align:center; margin-bottom:6px; letter-spacing:1px;}
-.memories-sub{font-family:'Playfair Display',serif; font-style:italic; color:#d9bf95; font-size:13px; text-align:center; opacity:.8; margin-bottom:22px;}
-.memories-grid{display:flex; flex-direction:column; gap:13px; width:min(88vw,370px); max-height:48vh; overflow-y:auto; padding:4px;}
-.memory-card{
-  position:relative; display:flex; align-items:center; gap:14px; padding:12px; border-radius:10px; cursor:pointer; text-align:left; border:none;
-  background:linear-gradient(160deg,rgba(233,215,174,.14),rgba(233,215,174,.05)); border:1px solid rgba(243,217,168,.25);
-  transition:transform .15s ease;
+/* =========================================================
+   POP-UP STORYBOOK DIORAMAS
+   Each memory is a page of a pop-up book: flat paper layers
+   hinge upright out of the gutter, sit at different depths,
+   and sway very slightly so the scene feels alive.
+   ========================================================= */
+#screen-diorama{padding:0; overflow:hidden;}
+.dio-wrap{
+  width:min(96vw,760px); height:100%; margin:0 auto;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+  padding:10px 12px 14px;
 }
-.memory-card:active{transform:scale(.97);}
-.memory-thumb{width:54px; height:54px; border-radius:8px; background:rgba(120,80,30,.25); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; border:1px solid rgba(243,217,168,.3); overflow:hidden;}
-.memory-thumb img{width:100%; height:100%; object-fit:cover;}
-.memory-info .mt{font-family:'Cinzel',serif; color:#f3d9a8; font-size:14px;}
-.memory-info .md{font-family:'Poppins'; color:#c9ac82; font-size:11.5px; opacity:.8; margin-top:2px;}
-.memories-continue{margin-top:22px;}
+.dio-header{text-align:center; min-height:50px;}
+.dio-title{
+  font-family:'Cinzel',serif; font-weight:700; font-size:clamp(16px,4.4vw,23px);
+  color:#5a3411; letter-spacing:.6px; margin:0 0 2px;
+  text-shadow:0 1px 0 rgba(255,246,222,.75);
+}
+.dio-date{font-family:'Playfair Display',serif; font-style:italic; color:#8a6330; font-size:12.5px; margin:0; opacity:.95;}
 
-/* ---- Memory detail ---- */
-.memory-detail-page{width:min(90vw,380px); max-height:82vh; overflow-y:auto; padding:26px 22px; border-radius:6px; background:#e9d7ae; background-image:url("assets/paper.jpg"); background-size:cover; box-shadow:0 20px 50px rgba(0,0,0,.5);}
-.memory-detail-title{font-family:'Cinzel',serif; color:#7a3a18; font-size:19px; text-align:center;}
-.memory-detail-date{font-family:'Playfair Display',serif; font-style:italic; color:#8a6a3a; font-size:12.5px; text-align:center; margin-bottom:16px;}
-.memory-photo-frame{width:100%; aspect-ratio:4/3; border-radius:6px; border:4px solid #fff; box-shadow:0 8px 20px rgba(0,0,0,.3); background:rgba(120,80,30,.12); display:flex; align-items:center; justify-content:center; font-size:38px; margin-bottom:16px; overflow:hidden;}
-.memory-photo-frame img{width:100%; height:100%; object-fit:cover;}
-.memory-detail-text{font-family:'Playfair Display',serif; font-style:italic; color:#4a3018; font-size:14.5px; line-height:1.75;}
-.memory-back-btn{display:block; margin:20px auto 0;}
+/* ---- the stage ---- */
+.dio-stage{
+  position:relative; width:100%; max-width:620px;
+  aspect-ratio:16/10; min-height:170px;
+  perspective:900px; perspective-origin:50% 78%;
+}
+.dio-scene{
+  position:absolute; left:0; right:0; top:0; bottom:27%;
+  transform-style:preserve-3d;
+}
+.dio-layer{
+  position:absolute; left:50%; bottom:0; width:100%; max-width:560px;
+  transform-origin:50% 100%;
+  will-change:transform;
+  transform:translateX(-50%) rotateX(88deg) translateY(14px); opacity:0;
+}
+.dio-layer svg{display:block; width:100%; height:auto; filter:drop-shadow(0 6px 10px rgba(120,72,26,.30));}
 
-/* ---- zoom-travel transition (entering a memory) ---- */
-.screen.zoom-out{animation:zoomOutFade .4s ease forwards;}
-@keyframes zoomOutFade{to{transform:scale(1.5); opacity:0; filter:blur(5px);}}
-.screen.zoom-in-enter{animation:zoomInFade .5s cubic-bezier(.2,.8,.3,1);}
-@keyframes zoomInFade{from{transform:scale(.5); opacity:0;} to{transform:scale(1); opacity:1;}}
+/* depth: each plane sits further back and hinges up at its own rate */
+.dio-sky  {bottom:4%;  z-index:1; max-width:640px;}
+.dio-far  {bottom:2%;  z-index:2;}
+.dio-mid  {bottom:0;   z-index:3;}
+.dio-chars{bottom:0;   z-index:4; max-width:430px;}
+.dio-near {bottom:-2%; z-index:5; max-width:660px;}
+
+/* ---- pop-up entrance: layers hinge up out of the gutter ----
+   Transitions rather than keyframes: a transition settles on a real
+   computed style, so the standing state survives however the browser
+   schedules frames. Keyframes with fill:forwards were leaving layers
+   stuck at opacity 0 whenever the animation never got to run. */
+#screen-diorama .dio-layer{
+  transition:
+    transform .78s cubic-bezier(.22,1.05,.36,1),
+    opacity   .46s ease;
+}
+#screen-diorama.dio-open .dio-layer{
+  transform:translateX(-50%) rotateX(0deg) translateY(0); opacity:1;
+}
+#screen-diorama.dio-open .dio-sky  {transition-delay:.02s;}
+#screen-diorama.dio-open .dio-far  {transition-delay:.10s;}
+#screen-diorama.dio-open .dio-mid  {transition-delay:.19s;}
+#screen-diorama.dio-open .dio-near {transition-delay:.24s;}
+#screen-diorama.dio-open .dio-chars{transition-delay:.30s;}
+
+#screen-diorama.dio-closing .dio-layer{
+  transform:translateX(-50%) rotateX(80deg) translateY(10px); opacity:0;
+  transition-duration:.30s; transition-delay:0s; transition-timing-function:ease-in;
+}
+
+/* ---- idle life: a very small sway, different per plane ---- */
+#screen-diorama.dio-open .dio-far   svg{animation:dioSway 7.5s ease-in-out 1s infinite;}
+#screen-diorama.dio-open .dio-mid   svg{animation:dioSway 6.2s ease-in-out 1.2s infinite reverse;}
+#screen-diorama.dio-open .dio-chars svg{animation:dioBob  4.4s ease-in-out 1.4s infinite;}
+#screen-diorama.dio-open .dio-near  svg{animation:dioSway 8.6s ease-in-out .8s infinite;}
+@keyframes dioSway{0%,100%{transform:rotate(-.5deg) translateY(0);} 50%{transform:rotate(.5deg) translateY(-2px);}}
+@keyframes dioBob {0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);}}
+
+/* ---- the open book the scene stands in ---- */
+.dio-book{position:absolute; left:50%; bottom:0; transform:translateX(-50%); width:100%; max-width:660px; height:32%; z-index:6;}
+.dio-page{
+  position:absolute; bottom:0; width:50%; height:100%;
+  background:linear-gradient(172deg,#fdf1d2 0%,#f0dcb0 42%,#d8bf8e 100%);
+  box-shadow:0 -3px 10px rgba(120,72,26,.22) inset, 0 10px 22px rgba(120,72,26,.42);
+  border-top:1px solid rgba(255,250,232,.75);
+}
+.dio-page-l{left:0;  transform:skewX(6deg)  scaleY(.94); transform-origin:100% 100%; border-radius:8px 2px 4px 10px;}
+.dio-page-r{right:0; transform:skewX(-6deg) scaleY(.94); transform-origin:0 100%;   border-radius:2px 8px 10px 4px;}
+.dio-gutter{
+  position:absolute; left:50%; bottom:0; width:12px; height:100%; transform:translateX(-50%);
+  background:linear-gradient(90deg,rgba(120,74,28,0) 0%,rgba(120,74,28,.42) 45%,rgba(120,74,28,.42) 55%,rgba(120,74,28,0) 100%);
+}
+
+/* ---- the photo, tucked onto the page like a keepsake ---- */
+.dio-photo-slot{
+  position:absolute; right:4%; bottom:5%; z-index:7;
+  width:clamp(60px,16%,98px); aspect-ratio:1/1.16;
+  background:#fffaf0; padding:5px 5px 15px; border-radius:2px;
+  box-shadow:0 6px 16px rgba(90,52,17,.42); transform:rotate(5deg);
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; color:#b98a4e;
+  opacity:0; transition:opacity .5s ease .55s, transform .6s cubic-bezier(.2,1.3,.4,1) .55s;
+}
+#screen-diorama.dio-open .dio-photo-slot{opacity:1; transform:rotate(-3deg) translateY(-4px);}
+.dio-photo-slot img{width:100%; height:100%; object-fit:cover; border-radius:1px;}
+
+/* ---- sparkle accents ---- */
+.dio-sparkles{position:absolute; inset:0; z-index:5; pointer-events:none;}
+.dio-spark{
+  position:absolute; width:5px; height:5px; border-radius:50%;
+  background:radial-gradient(circle,#fff8dc 0%,rgba(255,222,150,.9) 40%,rgba(255,200,110,0) 70%);
+  opacity:0; animation:dioTwinkle 3.4s ease-in-out infinite;
+}
+@keyframes dioTwinkle{0%,100%{opacity:0; transform:scale(.4);} 45%{opacity:.95; transform:scale(1.25);}}
+
+/* ---- caption ---- */
+.dio-text{
+  font-family:'Playfair Display',serif; font-style:italic; color:#5c3d1a;
+  font-size:clamp(12px,3.3vw,14px); line-height:1.5; text-align:center;
+  max-width:560px; margin:2px auto 0; min-height:3.2em;
+  opacity:0; transform:translateY(6px); transition:opacity .5s ease .7s, transform .5s ease .7s;
+}
+#screen-diorama.dio-open .dio-text{opacity:1; transform:translateY(0);}
+
+/* ---- navigation ---- */
+.dio-nav{display:flex; align-items:center; justify-content:center; gap:16px; margin-top:2px;}
+.dio-arrow{
+  width:38px; height:38px; border-radius:50%; cursor:pointer;
+  background:rgba(255,246,222,.82); border:1.5px solid rgba(140,90,36,.45); color:#7a4a18;
+  font-size:20px; line-height:1; display:flex; align-items:center; justify-content:center;
+  box-shadow:0 3px 8px rgba(120,72,26,.28); transition:transform .18s ease, opacity .18s ease;
+}
+.dio-arrow:active{transform:scale(.9);}
+.dio-arrow[disabled]{opacity:.32; cursor:default;}
+.dio-dots{display:flex; gap:7px;}
+.dio-dot{width:8px; height:8px; border-radius:50%; background:rgba(140,90,36,.32); transition:all .25s ease; cursor:pointer; border:none; padding:0;}
+.dio-dot.on{background:#c98a34; transform:scale(1.35); box-shadow:0 0 8px rgba(201,138,52,.7);}
+.dio-continue{margin-top:6px;}
+
+@media (prefers-reduced-motion: reduce){
+  #screen-diorama.dio-open .dio-layer{animation-duration:.01ms;}
+  #screen-diorama.dio-open .dio-far svg,#screen-diorama.dio-open .dio-mid svg,
+  #screen-diorama.dio-open .dio-chars svg,#screen-diorama.dio-open .dio-near svg{animation:none;}
+  .dio-spark{animation:none; opacity:.7;}
+}
 
 /* ---- burn transition (leaving a memory) ---- */
 .burn-overlay{position:fixed; inset:0; z-index:300; pointer-events:none; opacity:0;}

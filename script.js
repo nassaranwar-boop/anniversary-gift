@@ -885,14 +885,42 @@ function checkGateCode() {
   const input = document.getElementById("gate-input");
   const val = input.value.trim();
   if (val === GATE_CODE) {
-    document.getElementById("gate-seal").classList.add("crack");
-    setTimeout(() => { pageTurn("letter", startLetter); }, 650);
+    bloomSeal();
+    setTimeout(() => { pageTurn("letter", startLetter); }, 900);
   } else {
     document.getElementById("gate-error").textContent = "That's not quite right... try again 💭";
     input.classList.remove("shake"); void input.offsetWidth; input.classList.add("shake");
     input.value = "";
   }
 }
+/* Unlock flourish: the wax seal used to crack. Now it blooms — petals
+   unfurl outward and a warm glow swells through as the seal dissolves. */
+function bloomSeal() {
+  const seal = document.getElementById("gate-seal");
+  const wrap = seal ? seal.parentElement : null;
+  if (seal) seal.classList.add("crack");
+  if (!wrap || wrap.querySelector(".bloom-burst")) return;
+
+  const burst = document.createElement("div");
+  burst.className = "bloom-burst";
+  const core = document.createElement("div");
+  core.className = "bloom-core";
+  burst.appendChild(core);
+
+  const PETALS = 10;
+  for (let i = 0; i < PETALS; i++) {
+    const p = document.createElement("div");
+    p.className = "bloom-petal";
+    p.style.setProperty("--a", (i * (360 / PETALS)) + "deg");
+    p.style.setProperty("--d", (i * 28) + "ms");
+    burst.appendChild(p);
+  }
+  wrap.appendChild(burst);
+  void burst.offsetWidth;
+  burst.classList.add("go");
+  setTimeout(() => burst.remove(), 1400);
+}
+
 document.getElementById("gate-submit").addEventListener("click", checkGateCode);
 document.getElementById("gate-input").addEventListener("keydown", (e) => { if (e.key === "Enter") checkGateCode(); });
 
@@ -911,83 +939,339 @@ function startLetter() {
   cont.style.animation = "";
   cont.style.animationDelay = (totalMs/1000 + 0.6).toFixed(2) + "s";
 }
-document.getElementById("letter-continue").addEventListener("click", () => pageTurn("memories", renderMemories));
+/* =========================================================
+   POP-UP STORYBOOK DIORAMAS
 
-/* ---------- memory menu ---------- */
-function renderMemories() {
-  const grid = document.getElementById("memories-grid");
-  grid.innerHTML = "";
-  MEMORIES.forEach((m) => {
-    const card = document.createElement("button");
-    card.className = "memory-card";
-    card.innerHTML = `
-      <div class="memory-thumb">${m.photo ? `<img src="${m.photo}" alt="">` : m.icon}</div>
-      <div class="memory-info"><div class="mt">${m.title}</div><div class="md">${m.date}</div></div>
-    `;
-    card.addEventListener("click", () => enterMemory(m.id));
-    grid.appendChild(card);
-  });
+   Replaces the old flat memory menu + detail page. Each entry in
+   MEMORIES becomes a page of a pop-up book: layered paper cut-outs
+   hinge upright out of the gutter, sit at different depths, and drift
+   apart as the page is tilted.
+
+   The scene art is generated as inline SVG so it stays procedural and
+   scales to any number of memories — themes cycle, and each memory gets
+   a stable variation seeded from its own id, so the same memory always
+   looks the same.
+   ========================================================= */
+
+/* ---- a small warm palette shared by every scene ---- */
+const DIO_PAL = {
+  skyTop: "#ffd9a0", skyMid: "#ffc98f", skyLow: "#ffe9c4",
+  sun: "#fff3cf",
+  far1: "#c39a68", far2: "#ab8354",
+  mid1: "#8a6b3e", mid2: "#6f5430",
+  near1: "#5c4526", near2: "#463318",
+  pop: "#f7a8c4", pop2: "#ffd166", leaf: "#7c9a45",
+};
+
+function dioRand(seed) {
+  /* deterministic per-memory jitter so a scene never reshuffles */
+  let x = Math.sin(seed * 9301 + 49297) * 233280;
+  return () => { x = Math.sin(x * 9301 + 49297) * 233280; return x - Math.floor(x); };
 }
-document.getElementById("memories-continue").addEventListener("click", () => pageTurn("hello"));
 
-/* ---------- zoom-travel into a memory ---------- */
-function enterMemory(id) {
-  const m = MEMORIES.find((x) => x.id === id);
+function svgWrap(inner, h) {
+  return `<svg viewBox="0 0 600 ${h}" preserveAspectRatio="xMidYMax meet" aria-hidden="true">${inner}</svg>`;
+}
+
+/* ---------- shared cut-out pieces ---------- */
+function dioSky(rnd) {
+  const cloud = (cx, cy, s, o) =>
+    `<g opacity="${o}" transform="translate(${cx} ${cy}) scale(${s})">
+       <ellipse cx="0" cy="0" rx="46" ry="17" fill="#fffaf0"/>
+       <ellipse cx="-28" cy="6" rx="28" ry="13" fill="#fffaf0"/>
+       <ellipse cx="30" cy="5" rx="32" ry="14" fill="#fffaf0"/>
+     </g>`;
+  return svgWrap(`
+    <defs>
+      <linearGradient id="dsky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${DIO_PAL.skyTop}"/>
+        <stop offset="58%" stop-color="${DIO_PAL.skyMid}"/>
+        <stop offset="100%" stop-color="${DIO_PAL.skyLow}"/>
+      </linearGradient>
+      <radialGradient id="dsun" cx="50%" cy="50%">
+        <stop offset="0%" stop-color="#fffdf4"/><stop offset="60%" stop-color="${DIO_PAL.sun}"/>
+        <stop offset="100%" stop-color="rgba(255,220,150,0)"/>
+      </radialGradient>
+    </defs>
+    <path d="M14 200 L14 74 Q14 30 60 24 Q300 -6 540 24 Q586 30 586 74 L586 200 Z" fill="url(#dsky)"/>
+    <circle cx="${140 + rnd() * 320}" cy="${52 + rnd() * 26}" r="70" fill="url(#dsun)"/>
+    ${cloud(90 + rnd() * 60, 46, 0.85, 0.8)}
+    ${cloud(430 + rnd() * 70, 66, 0.7, 0.65)}
+  `, 200);
+}
+
+function dioHills(rnd) {
+  const y = 120;
+  return svgWrap(`
+    <path d="M0 ${y + 40} Q90 ${y - 26} 190 ${y + 8} T400 ${y - 4} T600 ${y + 26} L600 200 L0 200 Z" fill="${DIO_PAL.far1}"/>
+    <path d="M0 ${y + 62} Q140 ${y + 14} 280 ${y + 46} T600 ${y + 52} L600 200 L0 200 Z" fill="${DIO_PAL.far2}"/>
+    ${Array.from({ length: 7 }, (_, i) => {
+      const x = 40 + i * 82 + rnd() * 22, s = 0.6 + rnd() * 0.45;
+      return `<g transform="translate(${x} ${y + 44}) scale(${s})" fill="${DIO_PAL.far2}">
+        <rect x="-3" y="-6" width="6" height="22" rx="2"/>
+        <ellipse cx="0" cy="-16" rx="19" ry="17"/></g>`;
+    }).join("")}
+  `, 200);
+}
+
+/* ---------- theme-specific midgrounds ---------- */
+const DIO_THEMES = [
+  {
+    /* a little cottage under a big tree */
+    name: "cottage",
+    mid(rnd) {
+      return svgWrap(`
+        <g fill="${DIO_PAL.mid1}">
+          <rect x="228" y="96" width="150" height="78" rx="4"/>
+          <path d="M214 100 L303 44 L392 100 Z"/>
+        </g>
+        <rect x="286" y="130" width="34" height="44" rx="3" fill="${DIO_PAL.pop2}"/>
+        <rect x="242" y="112" width="26" height="24" rx="3" fill="${DIO_PAL.pop2}" opacity=".85"/>
+        <rect x="340" y="112" width="26" height="24" rx="3" fill="${DIO_PAL.pop2}" opacity=".85"/>
+        <g transform="translate(${112 + rnd() * 26} 174)">
+          <rect x="-8" y="-58" width="16" height="58" rx="4" fill="${DIO_PAL.mid2}"/>
+          <circle cx="0" cy="-74" r="46" fill="${DIO_PAL.leaf}"/>
+          <circle cx="-30" cy="-58" r="30" fill="${DIO_PAL.leaf}"/>
+          <circle cx="30" cy="-58" r="30" fill="${DIO_PAL.leaf}"/>
+        </g>
+        <g transform="translate(${476 + rnd() * 20} 174)">
+          <rect x="-6" y="-42" width="12" height="42" rx="3" fill="${DIO_PAL.mid2}"/>
+          <circle cx="0" cy="-54" r="32" fill="${DIO_PAL.leaf}"/>
+        </g>
+      `, 200);
+    },
+  },
+  {
+    /* city rooftops at golden hour */
+    name: "city",
+    mid(rnd) {
+      const bars = Array.from({ length: 9 }, (_, i) => {
+        const x = 30 + i * 64, h = 52 + rnd() * 86, w = 46 + rnd() * 14;
+        const win = Array.from({ length: Math.floor(h / 22) }, (_, r2) =>
+          `<rect x="${x + 9}" y="${174 - h + 12 + r2 * 20}" width="${w - 22}" height="9" rx="2"
+                 fill="${DIO_PAL.pop2}" opacity="${0.45 + rnd() * 0.5}"/>`).join("");
+        return `<rect x="${x}" y="${174 - h}" width="${w}" height="${h}" rx="3"
+                  fill="${i % 2 ? DIO_PAL.mid1 : DIO_PAL.mid2}"/>${win}`;
+      }).join("");
+      return svgWrap(bars, 200);
+    },
+  },
+  {
+    /* seaside: boat on a calm bay */
+    name: "sea",
+    mid(rnd) {
+      return svgWrap(`
+        <path d="M0 128 Q150 116 300 128 T600 126 L600 200 L0 200 Z" fill="#9ec5c9" opacity=".92"/>
+        <path d="M0 150 Q160 140 320 152 T600 148 L600 200 L0 200 Z" fill="#7fadb4"/>
+        <g transform="translate(${250 + rnd() * 90} 138)">
+          <path d="M-46 0 L46 0 L32 22 L-32 22 Z" fill="${DIO_PAL.mid2}"/>
+          <rect x="-2" y="-54" width="5" height="54" fill="${DIO_PAL.mid1}"/>
+          <path d="M4 -50 L40 -8 L4 -8 Z" fill="#fffaf0"/>
+          <path d="M-6 -42 L-34 -8 L-6 -8 Z" fill="#ffe6c9"/>
+        </g>
+        ${Array.from({ length: 5 }, () =>
+          `<ellipse cx="${rnd() * 600}" cy="${158 + rnd() * 30}" rx="${12 + rnd() * 20}" ry="2.4"
+                    fill="#fffaf0" opacity=".55"/>`).join("")}
+      `, 200);
+    },
+  },
+  {
+    /* a night of small lanterns */
+    name: "lanterns",
+    mid(rnd) {
+      const lamps = Array.from({ length: 11 }, () => {
+        const x = 30 + rnd() * 540, y = 24 + rnd() * 96, s = 0.55 + rnd() * 0.6;
+        return `<g transform="translate(${x} ${y}) scale(${s})">
+          <ellipse cx="0" cy="0" rx="13" ry="17" fill="${DIO_PAL.pop2}"/>
+          <ellipse cx="0" cy="0" rx="22" ry="27" fill="${DIO_PAL.pop2}" opacity=".22"/>
+          <rect x="-2" y="17" width="4" height="9" fill="${DIO_PAL.mid2}"/></g>`;
+      }).join("");
+      return svgWrap(`
+        <path d="M0 150 Q120 132 250 148 T600 140 L600 200 L0 200 Z" fill="${DIO_PAL.mid2}"/>
+        ${lamps}
+      `, 200);
+    },
+  },
+];
+
+function dioChars(rnd) {
+  /* two paper silhouettes, side by side, holding the middle of the page */
+  const sway = rnd() * 6 - 3;
+  return svgWrap(`
+    <g transform="translate(300 176)">
+      <g transform="translate(-34 0) rotate(${-sway})">
+        <ellipse cx="0" cy="-72" r="1" rx="15" ry="16" fill="${DIO_PAL.near2}"/>
+        <path d="M-16 -56 Q0 -64 16 -56 L20 0 L-20 0 Z" fill="${DIO_PAL.near1}"/>
+        <path d="M-16 -56 Q-30 -30 -24 -6" stroke="${DIO_PAL.near1}" stroke-width="7" fill="none" stroke-linecap="round"/>
+      </g>
+      <g transform="translate(34 0) rotate(${sway})">
+        <ellipse cx="0" cy="-70" rx="14" ry="15" fill="${DIO_PAL.near2}"/>
+        <path d="M-24 -34 Q-14 -58 0 -54 Q14 -58 24 -34 L18 0 L-18 0 Z" fill="${DIO_PAL.near1}"/>
+        <path d="M16 -54 Q30 -28 24 -6" stroke="${DIO_PAL.near1}" stroke-width="7" fill="none" stroke-linecap="round"/>
+      </g>
+      <g opacity=".95">
+        <path d="M0 -84 C-7 -95 -20 -88 -14 -77 C-10 -70 0 -64 0 -64 C0 -64 10 -70 14 -77 C20 -88 7 -95 0 -84 Z"
+              fill="${DIO_PAL.pop}"/>
+      </g>
+    </g>
+  `, 200);
+}
+
+function dioForeground(rnd) {
+  const blades = Array.from({ length: 46 }, () => {
+    const x = rnd() * 600, h = 12 + rnd() * 26, lean = rnd() * 10 - 5;
+    return `<path d="M${x} 200 Q${x + lean} ${200 - h * 0.6} ${x + lean * 2} ${200 - h}"
+              stroke="${rnd() > 0.5 ? DIO_PAL.leaf : DIO_PAL.near1}" stroke-width="${2 + rnd() * 2}"
+              fill="none" stroke-linecap="round"/>`;
+  }).join("");
+  const flowers = Array.from({ length: 12 }, () => {
+    const x = rnd() * 600, y = 176 + rnd() * 16, c = rnd() > 0.5 ? DIO_PAL.pop : DIO_PAL.pop2;
+    return `<g transform="translate(${x} ${y})">
+      ${Array.from({ length: 5 }, (_, i) =>
+        `<ellipse cx="${Math.cos(i * 1.257) * 4.4}" cy="${Math.sin(i * 1.257) * 4.4}" rx="3.4" ry="2.6" fill="${c}"/>`).join("")}
+      <circle r="2.1" fill="#fff3c4"/></g>`;
+  }).join("");
+  return svgWrap(`
+    <path d="M0 186 Q150 174 300 184 T600 180 L600 200 L0 200 Z" fill="${DIO_PAL.near1}" opacity=".92"/>
+    ${blades}${flowers}
+  `, 200);
+}
+
+/* ---------- state ---------- */
+let dioIndex = 0;
+let dioTimer = null;
+let dioBusy = false;
+const DIO_HOLD_MS = 7200;   // how long a page sits before it turns itself
+
+function dioScreen() { return document.getElementById("screen-diorama"); }
+
+function buildDiorama(i) {
+  const m = MEMORIES[i];
   if (!m) return;
-  const menu = document.getElementById("screen-memories");
-  menu.classList.add("zoom-out");
+  const theme = DIO_THEMES[i % DIO_THEMES.length];
+  const rnd = dioRand((m.id || i + 1) * 7 + 3);
+
+  document.getElementById("dio-title").textContent = m.title || "";
+  document.getElementById("dio-date").textContent = m.date || "";
+  document.getElementById("dio-text").textContent = m.text || "";
+
+  document.getElementById("dio-sky").innerHTML = dioSky(rnd);
+  document.getElementById("dio-far").innerHTML = dioHills(rnd);
+  document.getElementById("dio-mid").innerHTML = theme.mid(rnd);
+  document.getElementById("dio-chars").innerHTML = dioChars(rnd);
+  document.getElementById("dio-near").innerHTML = dioForeground(rnd);
+
+  const photo = document.getElementById("dio-photo");
+  photo.innerHTML = m.photo ? `<img src="${m.photo}" alt="${m.title || "memory"}">` : (m.icon || "📷");
+
+  /* sparkle accents, scattered but stable for this page */
+  const sp = document.getElementById("dio-sparkles");
+  sp.innerHTML = "";
+  for (let k = 0; k < 9; k++) {
+    const d = document.createElement("div");
+    d.className = "dio-spark";
+    d.style.left = (8 + rnd() * 84) + "%";
+    d.style.top = (10 + rnd() * 62) + "%";
+    d.style.animationDelay = (rnd() * 3.2).toFixed(2) + "s";
+    sp.appendChild(d);
+  }
+
+  /* dots + arrows */
+  const dots = document.getElementById("dio-dots");
+  dots.innerHTML = "";
+  MEMORIES.forEach((_, k) => {
+    const b = document.createElement("button");
+    b.className = "dio-dot" + (k === i ? " on" : "");
+    b.setAttribute("aria-label", "Memory " + (k + 1));
+    b.addEventListener("click", (e) => { e.stopPropagation(); dioGo(k); });
+    dots.appendChild(b);
+  });
+  document.getElementById("dio-prev").disabled = i === 0;
+  document.getElementById("dio-next").disabled = i >= MEMORIES.length - 1;
+}
+
+function dioPopOpen() {
+  const scr = dioScreen();
+  scr.classList.remove("dio-open", "dio-closing");
+  void scr.offsetWidth;
+  scr.classList.add("dio-open");
+  clearTimeout(dioTimer);
+  if (MEMORIES.length > 1) {
+    dioTimer = setTimeout(() => { if (dioIndex < MEMORIES.length - 1) dioGo(dioIndex + 1); }, DIO_HOLD_MS);
+  }
+}
+
+function dioGo(i) {
+  if (dioBusy || i === dioIndex || i < 0 || i >= MEMORIES.length) return;
+  dioBusy = true;
+  clearTimeout(dioTimer);
+  const scr = dioScreen();
+  scr.classList.remove("dio-open");
+  scr.classList.add("dio-closing");
   setTimeout(() => {
-    menu.classList.remove("zoom-out");
-    document.getElementById("memory-detail-title").textContent = m.title;
-    document.getElementById("memory-detail-date").textContent = m.date;
-    document.getElementById("memory-detail-text").textContent = m.text;
-    const frame = document.getElementById("memory-photo-frame");
-    frame.innerHTML = m.photo ? `<img src="${m.photo}" alt="">` : m.icon;
-    showScreen("memory-detail");
-    const detail = document.getElementById("screen-memory-detail");
-    detail.classList.add("zoom-in-enter");
-    setTimeout(() => detail.classList.remove("zoom-in-enter"), 520);
-  }, 400);
+    dioIndex = i;
+    buildDiorama(dioIndex);
+    scr.classList.remove("dio-closing");
+    dioPopOpen();
+    dioBusy = false;
+  }, 330);
 }
 
-/* ---------- burn transition back to the menu ---------- */
-function burnBackToMenu() {
-  const overlay = document.getElementById("burn-overlay");
-  const charLayer = document.getElementById("burn-char");
-  overlay.classList.add("active");
-  const bx = 40 + Math.random()*20, by = 40 + Math.random()*20;
-  const start = performance.now();
-  const duration = 850;
-  let midFired = false;
-  let emberTimer = setInterval(spawnEmber, 45);
-
-  function spawnEmber() {
-    const ang = Math.random()*Math.PI*2;
-    const rr = 10 + Math.random()*8;
-    const ex = bx + Math.cos(ang)*rr, ey = by + Math.sin(ang)*rr;
-    const e = document.createElement("div");
-    e.className = "ember";
-    e.style.left = ex + "%"; e.style.top = ey + "%";
-    overlay.appendChild(e);
-    e.addEventListener("animationend", () => e.remove());
-  }
-
-  function frame(now) {
-    const t = Math.min(1, (now - start) / duration);
-    const r = t * 135;
-    charLayer.style.background = `radial-gradient(circle at ${bx}% ${by}%,
-      #0c0400 0%, #0c0400 ${r*0.68}%, rgba(255,110,20,.95) ${r*0.8}%, rgba(255,180,70,.6) ${r*0.9}%, transparent ${r}%)`;
-    if (t >= 0.5 && !midFired) {
-      midFired = true;
-      showScreen("memories");
-      renderMemories();
-    }
-    if (t < 1) requestAnimationFrame(frame);
-    else {
-      clearInterval(emberTimer);
-      setTimeout(() => { overlay.classList.remove("active"); charLayer.style.background = "none"; }, 160);
-    }
-  }
-  requestAnimationFrame(frame);
+function startDioramas() {
+  dioIndex = 0;
+  buildDiorama(0);
+  dioPopOpen();
 }
-document.getElementById("memory-back-btn").addEventListener("click", burnBackToMenu);
+
+/* ---------- parallax: layers drift apart as the page is tilted ---------- */
+(function dioParallax() {
+  const DEPTH = { "dio-sky": 3, "dio-far": 7, "dio-mid": 13, "dio-chars": 19, "dio-near": 27 };
+  let px = 0, py = 0, tx = 0, ty = 0, raf = null;
+
+  function apply() {
+    px += (tx - px) * 0.08;
+    py += (ty - py) * 0.08;
+    for (const id in DEPTH) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      const d = DEPTH[id];
+      el.style.setProperty("--px", (px * d).toFixed(2) + "px");
+      el.style.setProperty("--py", (py * d * 0.4).toFixed(2) + "px");
+      /* keep the pop-up transform intact — parallax rides on the child svg */
+      const svg = el.firstElementChild;
+      if (svg) svg.style.translate = (px * d).toFixed(2) + "px " + (py * d * 0.4).toFixed(2) + "px";
+    }
+    if (Math.abs(tx - px) > 0.001 || Math.abs(ty - py) > 0.001) raf = requestAnimationFrame(apply);
+    else raf = null;
+  }
+  function kick() { if (!raf) raf = requestAnimationFrame(apply); }
+
+  window.addEventListener("pointermove", (e) => {
+    const scr = document.getElementById("screen-diorama");
+    if (!scr || !scr.classList.contains("active")) return;
+    tx = (e.clientX / window.innerWidth - 0.5) * 2;
+    ty = (e.clientY / window.innerHeight - 0.5) * 2;
+    kick();
+  }, { passive: true });
+
+  window.addEventListener("deviceorientation", (e) => {
+    const scr = document.getElementById("screen-diorama");
+    if (!scr || !scr.classList.contains("active")) return;
+    tx = Math.max(-1, Math.min(1, (e.gamma || 0) / 28));
+    ty = Math.max(-1, Math.min(1, ((e.beta || 0) - 45) / 34));
+    kick();
+  }, { passive: true });
+})();
+
+/* ---------- wiring ---------- */
+document.getElementById("letter-continue")
+  .addEventListener("click", () => pageTurn("diorama", startDioramas));
+document.getElementById("dio-next").addEventListener("click", (e) => { e.stopPropagation(); dioGo(dioIndex + 1); });
+document.getElementById("dio-prev").addEventListener("click", (e) => { e.stopPropagation(); dioGo(dioIndex - 1); });
+document.getElementById("dio-stage").addEventListener("click", () => {
+  if (dioIndex < MEMORIES.length - 1) dioGo(dioIndex + 1);
+});
+document.getElementById("dio-continue").addEventListener("click", () => {
+  clearTimeout(dioTimer);
+  pageTurn("hello");   // becomes the hub screen in the next pass
+});

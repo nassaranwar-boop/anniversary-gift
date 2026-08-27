@@ -1,9 +1,10 @@
 /* =========================================================================
    BOOK-SCENE.JS — the 3D cinematic intro.
 
-   An ancient leather tome on a dark forest floor. Idle with drifting
-   embers, then: clasp releases, cover swings open, pages fan over in an
-   arc, and golden light erupts from the spine and fills the frame.
+   A honey-leather tome resting in a sunlit meadow at golden hour. Idle
+   with drifting petals, then: clasp releases, cover swings open, pages
+   fan over in an arc, and warm light spills from the spine and fills
+   the frame.
 
    Everything here is procedural. No external image files are used by the
    3D scene — every map is a CanvasTexture drawn at runtime.
@@ -66,12 +67,12 @@
 
     var Q = ({
       high: { dpr: 2.0, tex: 1024, shadow: 2048, msaa: 4, bloom: true, dof: true,
-              dofCapable: true, shafts: 7, embers: 220, heroPages: 7, groundDetail: 220 },
+              dofCapable: true, shafts: 7, petals: 110, motes: 90, heroPages: 7, groundDetail: 220 },
       // tablets start without depth of field and earn it back at runtime
       mid:  { dpr: 1.75, tex: 768, shadow: 1024, msaa: 0, bloom: true, dof: false,
-              dofCapable: true, shafts: 5, embers: 140, heroPages: 6, groundDetail: 140 },
+              dofCapable: true, shafts: 5, petals: 70, motes: 60, heroPages: 6, groundDetail: 140 },
       low:  { dpr: 1.4, tex: 512, shadow: 512, msaa: 0, bloom: true, dof: false,
-              dofCapable: false, shafts: 4, embers: 90, heroPages: 5, groundDetail: 80 },
+              dofCapable: false, shafts: 4, petals: 44, motes: 36, heroPages: 5, groundDetail: 80 },
     })[TIER];
 
     var HERO_PAGES = Q.heroPages;
@@ -104,7 +105,7 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 0.92;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setClearColor(0x000000, 1);
@@ -115,7 +116,7 @@
     function mark(name) { bootMarks[name] = +(performance.now() - bootT0).toFixed(1); }
 
     var scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x0a0f0d, 0.155);
+    scene.fog = new THREE.FogExp2(0xb9a878, 0.085);
 
     var camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.05, 40);
 
@@ -284,18 +285,18 @@
     var leatherNormalTex = texFrom(heightToNormal(leatherHeightCanvas, 2.6));
 
     var leatherColorTex = texFrom(makeCanvas(T, Math.round(T * 1.35), function (ctx, w, h) {
-      ctx.fillStyle = "#291609"; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#7d4d22"; ctx.fillRect(0, 0, w, h);
       speckle(ctx, w, h, Math.round(w * 6), function () {
-        var s = (Math.random() - 0.5) * 26;
-        return "rgba(" + ((46 + s) | 0) + "," + ((26 + s * 0.6) | 0) + "," + ((15 + s * 0.4) | 0) + ",0.5)";
+        var s = (Math.random() - 0.5) * 34;
+        return "rgba(" + ((128 + s) | 0) + "," + ((82 + s * 0.7) | 0) + "," + ((38 + s * 0.5) | 0) + ",0.55)";
       });
       // sun-bleached wear toward the edges
       var g = ctx.createRadialGradient(w * 0.5, h * 0.5, w * 0.2, w * 0.5, h * 0.5, w * 0.85);
       g.addColorStop(0, "rgba(0,0,0,0)");
-      g.addColorStop(1, "rgba(120,80,40,0.10)");
+      g.addColorStop(1, "rgba(214,164,92,0.16)");
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
       // gilt tooling, tarnished
-      ctx.strokeStyle = "rgba(168,126,58,0.75)";
+      ctx.strokeStyle = "rgba(238,196,110,0.85)";
       ctx.lineWidth = w * 0.012; ctx.strokeRect(w * 0.06, h * 0.05, w * 0.88, h * 0.90);
       ctx.lineWidth = w * 0.005; ctx.strokeRect(w * 0.09, h * 0.075, w * 0.82, h * 0.85);
     }, undefined), THREE.SRGBColorSpace);
@@ -381,8 +382,8 @@
         if (inked) scribbleBlock(ctx, w, h, "rgba(48,32,18,0.72)", w * 0.13, h * 0.036);
       }), THREE.SRGBColorSpace);
     }
-    var pageTexA = makePageColorTex("#ab9670", true);
-    var pageTexB = makePageColorTex("#a58f6a", true);
+    var pageTexA = makePageColorTex("#c2a97c", true);
+    var pageTexB = makePageColorTex("#bca273", true);
 
     /* the same handwriting, as an emissive mask, so script glows on the
        turning pages at the climax */
@@ -393,7 +394,7 @@
 
     /* ---------- page-block edge (the fore-edge of the paper stack) ---------- */
     var pageEdgeTex = texFrom(makeCanvas(64, 512, function (ctx, w, h) {
-      ctx.fillStyle = "#7d6944"; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#9c8555"; ctx.fillRect(0, 0, w, h);
       for (var y = 0; y < h; y += 1) {
         var v = Math.random();
         ctx.strokeStyle = "rgba(" + ((42 + v * 74) | 0) + "," + ((33 + v * 58) | 0) + "," + ((16 + v * 32) | 0) + "," + (0.45 + v * 0.5) + ")";
@@ -431,26 +432,44 @@
     groundNormalTex.repeat.set(3, 3);
 
     var groundColorTex = texFrom(makeCanvas(512, 512, function (ctx, w, h) {
-      ctx.fillStyle = "#0a1109"; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#33501a"; ctx.fillRect(0, 0, w, h);
       for (var i = 0; i < GD; i++) {
         var x = Math.random() * w, y = Math.random() * h, r = 6 + Math.random() * 18;
         var sh = Math.random() * 34;
         var g = ctx.createRadialGradient(x, y, 0, x, y, r);
-        g.addColorStop(0, "rgba(" + ((28 + sh * 0.6) | 0) + "," + ((42 + sh * 0.8) | 0) + "," + ((22 + sh * 0.35) | 0) + ",0.38)");
+        g.addColorStop(0, "rgba(" + ((84 + sh * 1.2) | 0) + "," + ((112 + sh) | 0) + "," + ((40 + sh * 0.6) | 0) + ",0.45)");
         g.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
       }
-      // dead leaf litter
-      for (var k = 0; k < GD * 2.5; k++) {
+      // grass blades, leaning with the light
+      for (var k = 0; k < GD * 4; k++) {
         var lx = Math.random() * w, ly = Math.random() * h;
-        ctx.save(); ctx.translate(lx, ly); ctx.rotate(Math.random() * Math.PI * 2);
-        ctx.fillStyle = "rgba(" + ((48 + Math.random() * 30) | 0) + "," + ((32 + Math.random() * 18) | 0) + ",16," + (0.18 + Math.random() * 0.22) + ")";
-        ctx.beginPath(); ctx.ellipse(0, 0, 1.6 + Math.random() * 3.4, 0.9 + Math.random() * 1.6, 0, 0, Math.PI * 2);
-        ctx.fill(); ctx.restore();
+        var lean = (Math.random() - 0.5) * 3;
+        ctx.strokeStyle = "rgba(" + ((124 + Math.random() * 60) | 0) + "," + ((156 + Math.random() * 56) | 0) + "," + ((56 + Math.random() * 34) | 0) + "," + (0.25 + Math.random() * 0.4) + ")";
+        ctx.lineWidth = 0.8 + Math.random() * 0.9;
+        ctx.beginPath(); ctx.moveTo(lx, ly);
+        ctx.quadraticCurveTo(lx + lean, ly - 4, lx + lean * 2.2, ly - 7 - Math.random() * 5);
+        ctx.stroke();
+      }
+      // wildflowers scattered through the grass
+      var FLOWER = ["255,236,150", "255,206,222", "252,250,244", "232,180,255"];
+      for (var fI = 0; fI < GD * 0.55; fI++) {
+        var fx = Math.random() * w, fy = Math.random() * h;
+        var col = FLOWER[(Math.random() * FLOWER.length) | 0];
+        var fr = 1.3 + Math.random() * 2.0;
+        for (var pE = 0; pE < 5; pE++) {
+          var pa = (pE / 5) * Math.PI * 2;
+          ctx.fillStyle = "rgba(" + col + "," + (0.55 + Math.random() * 0.35) + ")";
+          ctx.beginPath();
+          ctx.ellipse(fx + Math.cos(pa) * fr, fy + Math.sin(pa) * fr, fr * 0.72, fr * 0.52, pa, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillStyle = "rgba(255,214,96,0.9)";
+        ctx.beginPath(); ctx.arc(fx, fy, fr * 0.5, 0, Math.PI * 2); ctx.fill();
       }
       speckle(ctx, w, h, GD * 12, function () {
         var s = Math.random() * 24;
-        return "rgba(" + ((34 + s * 0.6) | 0) + "," + ((46 + s * 0.8) | 0) + "," + ((24 + s * 0.3) | 0) + "," + (0.05 + Math.random() * 0.12) + ")";
+        return "rgba(" + ((120 + s * 1.4) | 0) + "," + ((150 + s) | 0) + "," + ((56 + s * 0.5) | 0) + "," + (0.05 + Math.random() * 0.12) + ")";
       });
     }), THREE.SRGBColorSpace);
     groundColorTex.repeat.set(3, 3);
@@ -480,15 +499,16 @@
       // sky dome: dark canopy above, warm break in the trees on one side
       var domeTex = texFrom(makeCanvas(256, 128, function (ctx, w, h) {
         var g = ctx.createLinearGradient(0, 0, 0, h);
-        g.addColorStop(0.00, "#05080a");   // canopy, almost black
-        g.addColorStop(0.40, "#0d1512");
-        g.addColorStop(0.56, "#1b2620");
-        g.addColorStop(1.00, "#060807");   // forest floor bounce
+        g.addColorStop(0.00, "#8fc4e8");   // open sky
+        g.addColorStop(0.34, "#cfd9e0");
+        g.addColorStop(0.52, "#ffd9a0");   // the low sun
+        g.addColorStop(0.70, "#c9a860");
+        g.addColorStop(1.00, "#5d7a30");   // meadow bounce
         ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
         // the warm gap the key light comes through
         var wg = ctx.createRadialGradient(w * 0.30, h * 0.24, 0, w * 0.30, h * 0.24, w * 0.20);
-        wg.addColorStop(0, "rgba(255,206,146,0.85)");
-        wg.addColorStop(0.30, "rgba(198,138,74,0.26)");
+        wg.addColorStop(0, "rgba(255,238,200,0.95)");
+        wg.addColorStop(0.30, "rgba(255,200,120,0.35)");
         wg.addColorStop(1, "rgba(110,80,44,0)");
         ctx.fillStyle = wg; ctx.fillRect(0, 0, w, h);
         // scattered canopy breaks for reflection interest
@@ -496,8 +516,8 @@
           var x = Math.random() * w, y = Math.random() * h * 0.5;
           var r = 2 + Math.random() * 9;
           var sg = ctx.createRadialGradient(x, y, 0, x, y, r);
-          sg.addColorStop(0, "rgba(170,186,150,0.32)");
-          sg.addColorStop(1, "rgba(170,186,150,0)");
+          sg.addColorStop(0, "rgba(255,232,180,0.30)");
+          sg.addColorStop(1, "rgba(255,232,180,0)");
           ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
         }
       }), THREE.SRGBColorSpace);
@@ -516,11 +536,12 @@
        stays pure black, and the horizon reads as a hard cut. */
     var skyTex = texFrom(makeCanvas(64, 256, function (ctx, w, h) {
       var g = ctx.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0.00, "#010203");
-      g.addColorStop(0.44, "#050809");
-      g.addColorStop(0.56, "#0c1210");
-      g.addColorStop(0.66, "#101614");
-      g.addColorStop(1.00, "#050706");
+      g.addColorStop(0.00, "#7fb6de");
+      g.addColorStop(0.34, "#bcd3e2");
+      g.addColorStop(0.48, "#f6dcae");
+      g.addColorStop(0.58, "#e8bf83");
+      g.addColorStop(0.72, "#a8994f");
+      g.addColorStop(1.00, "#5f7a33");
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
     }), THREE.SRGBColorSpace);
     skyTex.mapping = THREE.EquirectangularReflectionMapping;
@@ -528,7 +549,7 @@
 
     var envRT = pmrem.fromScene(envScene, 0.04);
     scene.environment = envRT.texture;
-    scene.environmentIntensity = 0.55;
+    scene.environmentIntensity = 0.50;
     pmrem.dispose();
     mark("pmrem");
 
@@ -570,10 +591,10 @@
        break), a cool fill from the opposite side for silhouette separation,
        and a warm practical at the spine that only wakes up at the climax.
        ==================================================================== */
-    scene.add(track(new THREE.HemisphereLight(0x33465a, 0x0a0a08, 0.30)));
+    scene.add(track(new THREE.HemisphereLight(0xa8cdf0, 0x5a7030, 0.38)));
 
-    var key = new THREE.DirectionalLight(0xffc98a, 3.3);
-    key.position.set(-1.5, 2.6, 1.4);
+    var key = new THREE.DirectionalLight(0xffd0a0, 2.9);
+    key.position.set(-1.5, 2.35, 1.4);
     key.target.position.set(0.05, 0.1, 0.05);
     key.castShadow = true;
     key.shadow.mapSize.set(Q.shadow, Q.shadow);
@@ -587,12 +608,12 @@
     scene.add(key); scene.add(key.target);
 
     // cool rim from camera-right/behind — separates the book from the dark
-    var rim = new THREE.DirectionalLight(0x9ab8d8, 1.0);
+    var rim = new THREE.DirectionalLight(0x9cc4e8, 0.85);
     rim.position.set(3.0, 1.15, -2.2);
     scene.add(track(rim));
 
     // low warm bounce off the forest floor, keeps shadows from going dead
-    var bounce = new THREE.PointLight(0xffb070, 0.95, 3.0, 2.0);
+    var bounce = new THREE.PointLight(0xffc078, 0.55, 3.0, 2.0);
     bounce.position.set(0.18, 0.34, 0.85);
     scene.add(track(bounce));
 
@@ -803,7 +824,7 @@
 
     // marbled endpaper pasted inside the front cover
     var endpaperTex = texFrom(makeCanvas(Math.round(T * 0.6), Math.round(T * 0.6), function (ctx, w, h) {
-      ctx.fillStyle = "#7d5c39"; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#c99a5c"; ctx.fillRect(0, 0, w, h);
       fbmNoise(ctx, w, h, 4, 40, 0.30);
       ctx.globalCompositeOperation = "overlay";
       for (var i = 0; i < 90; i++) {
@@ -811,13 +832,13 @@
         var r = w * (0.02 + Math.random() * 0.10);
         var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
         var warm = Math.random() < 0.5;
-        g.addColorStop(0, warm ? "rgba(168,104,48,0.55)" : "rgba(58,34,18,0.5)");
+        g.addColorStop(0, warm ? "rgba(255,214,150,0.55)" : "rgba(214,132,110,0.45)");
         g.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
       }
       ctx.globalCompositeOperation = "source-over";
       // a plain border where the pastedown meets the turned-in leather
-      ctx.strokeStyle = "rgba(38,22,10,0.85)";
+      ctx.strokeStyle = "rgba(140,84,36,0.8)";
       ctx.lineWidth = w * 0.045;
       ctx.strokeRect(w * 0.022, h * 0.022, w * 0.956, h * 0.956);
     }), THREE.SRGBColorSpace);
@@ -930,7 +951,7 @@
     var shaftUniforms = {
       uTime:      { value: 0 },
       uIntensity: { value: 0.085 },
-      uColor:     { value: new THREE.Color(0xffd7a0) },
+      uColor:     { value: new THREE.Color(0xffeac2) },
       uNoise:     { value: null },
       uPower:     { value: 4.5 },
     };
@@ -1014,46 +1035,118 @@
     })();
 
     /* ====================================================================
-       EMBERS
-       Motion is analytic (a pure function of time) rather than integrated,
-       so any frame can be reproduced exactly for screenshot review.
+       PETALS + MOTES
+
+       Petals are an InstancedMesh so each one can tumble on its own axis —
+       a Points cloud can only spin every sprite together, which reads as
+       confetti rather than falling blossom. Motion stays analytic (a pure
+       function of time) so any frame can still be reproduced exactly.
        ==================================================================== */
-    var EMBERS = Q.embers;
-    var emberGeo = track(new THREE.BufferGeometry());
-    var emberPos = new Float32Array(EMBERS * 3);
-    var emberSeed = [];
-    for (var i = 0; i < EMBERS; i++) {
-      var ang = Math.random() * Math.PI * 2;
-      var rad = 0.25 + Math.random() * Math.random() * 2.0;
-      emberSeed.push({
-        x: Math.cos(ang) * rad, z: Math.sin(ang) * rad,
-        y0: Math.random(), speed: 0.035 + Math.random() * 0.055,
-        sway: 0.02 + Math.random() * 0.05, phase: Math.random() * Math.PI * 2,
-        top: 1.1 + Math.random() * 0.9,
+    var petalTex = texFrom(makeCanvas(64, 64, function (ctx, w, h) {
+      ctx.clearRect(0, 0, w, h);
+      var g = ctx.createRadialGradient(w * 0.5, h * 0.62, 0, w * 0.5, h * 0.55, w * 0.5);
+      g.addColorStop(0, "rgba(255,252,250,1)");
+      g.addColorStop(0.45, "rgba(255,214,226,1)");
+      g.addColorStop(1, "rgba(248,176,198,1)");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5, h * 0.96);
+      ctx.bezierCurveTo(w * 0.06, h * 0.66, w * 0.14, h * 0.08, w * 0.5, h * 0.05);
+      ctx.bezierCurveTo(w * 0.86, h * 0.08, w * 0.94, h * 0.66, w * 0.5, h * 0.96);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(228,140,170,0.5)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(w * 0.5, h * 0.92); ctx.lineTo(w * 0.5, h * 0.16); ctx.stroke();
+    }), THREE.SRGBColorSpace);
+
+    var PETALS = Q.petals;
+    var petalGeo = track(new THREE.PlaneGeometry(0.036, 0.05));
+    var petalMat = track(new THREE.MeshStandardMaterial({
+      map: petalTex, alphaMap: petalTex, transparent: true, alphaTest: 0.18,
+      side: THREE.DoubleSide, roughness: 0.85, metalness: 0.0,
+      envMapIntensity: 0.6, depthWrite: true,
+    }));
+    var petals = new THREE.InstancedMesh(petalGeo, petalMat, PETALS);
+    petals.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    petals.castShadow = false; petals.receiveShadow = false;
+    scene.add(petals);
+
+    var petalSeed = [];
+    for (var pIdx = 0; pIdx < PETALS; pIdx++) {
+      var pang = Math.random() * Math.PI * 2;
+      var prad = 0.3 + Math.random() * Math.random() * 2.4;
+      petalSeed.push({
+        x: Math.cos(pang) * prad, z: Math.sin(pang) * prad,
+        y0: Math.random(), fall: 0.055 + Math.random() * 0.075,
+        top: 1.5 + Math.random() * 1.1,
+        sway: 0.06 + Math.random() * 0.14, swayF: 0.35 + Math.random() * 0.55,
+        phase: Math.random() * Math.PI * 2,
+        spinA: 0.5 + Math.random() * 1.4, spinB: 0.4 + Math.random() * 1.2,
+        scale: 0.7 + Math.random() * 0.75,
       });
     }
-    emberGeo.setAttribute("position", new THREE.BufferAttribute(emberPos, 3));
-    var emberMat = track(new THREE.PointsMaterial({
-      size: 0.021, map: glowTex, transparent: true, opacity: 0.85,
-      blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
-      color: 0xffc98a,
-    }));
-    var embers = new THREE.Points(emberGeo, emberMat);
-    scene.add(embers);
 
-    function updateEmbers(t) {
-      var p = emberGeo.attributes.position;
-      for (var i = 0; i < EMBERS; i++) {
-        var s = emberSeed[i];
-        var y = ((s.y0 + t * s.speed * (1 + emberBoost * 3.0)) % 1) * s.top;
-        var rise = y / s.top;
+    var _pm = new THREE.Matrix4(), _pq = new THREE.Quaternion();
+    var _pe = new THREE.Euler(), _pv = new THREE.Vector3(), _ps = new THREE.Vector3();
+
+    function updatePetals(t) {
+      for (var i = 0; i < PETALS; i++) {
+        var sd = petalSeed[i];
+        // fall, loop, and drift sideways as they go
+        var f = (sd.y0 + t * sd.fall * (1 + emberBoost * 2.2)) % 1;
+        var y = sd.top * (1 - f);
+        var drift = Math.sin(t * sd.swayF + sd.phase) * sd.sway;
+        var drift2 = Math.cos(t * sd.swayF * 0.7 + sd.phase * 1.7) * sd.sway * 0.8;
+        _pv.set(sd.x + drift, 0.015 + y, sd.z + drift2);
+        _pe.set(t * sd.spinA + sd.phase, t * sd.spinB + sd.phase * 0.5, Math.sin(t * 0.7 + sd.phase) * 0.6);
+        _pq.setFromEuler(_pe);
+        _ps.setScalar(sd.scale);
+        _pm.compose(_pv, _pq, _ps);
+        petals.setMatrixAt(i, _pm);
+      }
+      petals.instanceMatrix.needsUpdate = true;
+    }
+
+    /* a few glowing motes so the bloom still has something small and bright
+       to catch in the air */
+    var MOTES = Q.motes;
+    var moteGeo = track(new THREE.BufferGeometry());
+    var motePos = new Float32Array(MOTES * 3);
+    var moteSeed = [];
+    for (var mI = 0; mI < MOTES; mI++) {
+      var mang = Math.random() * Math.PI * 2;
+      var mrad = 0.25 + Math.random() * Math.random() * 1.9;
+      moteSeed.push({
+        x: Math.cos(mang) * mrad, z: Math.sin(mang) * mrad,
+        y0: Math.random(), speed: 0.03 + Math.random() * 0.05,
+        sway: 0.03 + Math.random() * 0.06, phase: Math.random() * Math.PI * 2,
+        top: 1.2 + Math.random() * 0.9,
+      });
+    }
+    moteGeo.setAttribute("position", new THREE.BufferAttribute(motePos, 3));
+    var emberMat = track(new THREE.PointsMaterial({
+      size: 0.02, map: glowTex, transparent: true, opacity: 0.8,
+      blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+      color: 0xfff0c4,
+    }));
+    var motes = new THREE.Points(moteGeo, emberMat);
+    scene.add(motes);
+
+    function updateMotes(t) {
+      var p = moteGeo.attributes.position;
+      for (var i = 0; i < MOTES; i++) {
+        var sd = moteSeed[i];
+        var y = ((sd.y0 + t * sd.speed * (1 + emberBoost * 3.0)) % 1) * sd.top;
+        var rise = y / sd.top;
         p.setXYZ(i,
-          s.x + Math.sin(t * 0.6 + s.phase) * s.sway * (0.3 + rise),
+          sd.x + Math.sin(t * 0.6 + sd.phase) * sd.sway * (0.3 + rise),
           0.02 + y,
-          s.z + Math.cos(t * 0.47 + s.phase * 1.3) * s.sway * (0.3 + rise));
+          sd.z + Math.cos(t * 0.47 + sd.phase * 1.3) * sd.sway * (0.3 + rise));
       }
       p.needsUpdate = true;
     }
+
+    function updateEmbers(t) { updatePetals(t); updateMotes(t); }
 
     /* ====================================================================
        POST-PROCESSING
@@ -1177,7 +1270,7 @@
       return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
     }
 
-    var state = { triggered: false, triggerTime: 0, handedOff: false };
+    var state = { triggered: false, triggerTime: 0, handedOff: false, tornDown: false };
     var SHAFT_IDLE = 0.085;
     var emberBoost = 0;
 
@@ -1292,6 +1385,14 @@
         if (climaxT >= TL.handoffAt && !state.handedOff) {
           state.handedOff = true;
           if (window.finishBookIntro) window.finishBookIntro();
+        }
+        /* Once the flash has covered the screen the scene is never seen
+           again — the replay button returns to the game, not to the intro.
+           Tear it down rather than leaving a WebGL context and a render
+           loop running behind every later screen for the rest of the visit. */
+        if (climaxT >= 1 && !state.tornDown) {
+          state.tornDown = true;
+          setTimeout(dispose, 0);
         }
       }
 
