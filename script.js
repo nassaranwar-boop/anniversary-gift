@@ -1508,445 +1508,943 @@ function setMusic(on) {
 })();
 
 /* =========================================================
-   ✏️  CHOICE ADVENTURE — CUSTOMIZE ME
+   PIXEL-ART ENGINE
 
-   The closing question is a placeholder, same as LETTER_TEXT.
-   Replace QUEST_FINAL below with whatever you actually want to ask,
-   and the two answers with hers.
+   Everything the adventure draws goes through here. Scenes are
+   painted onto a 320x180 canvas and scaled up with
+   image-rendering:pixelated, so the pixel grid stays honest.
+
+   The thing that separates flat pixel art from the good kind is
+   tone count and dithering: skies get ordered-dither transitions
+   instead of smooth gradients, and every solid form (canopy, hill,
+   cloud) is built from at least three tones with a lit edge.
    ========================================================= */
-const QUEST_FINAL = {
-  text: "[Replace this with your closing question — the one you actually want to ask her at the end of the story.]",
-  a: "[Her answer — yes]",
-  b: "[Her other answer]",
-  reply: "[And what you say back when she answers. Replace this too.]",
+
+const PXW = 320, PXH = 180;
+
+/* 4x4 Bayer matrix — ordered dithering, the classic pixel-art gradient */
+const BAYER4 = [
+  [0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5],
+];
+
+function px(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, Math.max(1, w | 0), Math.max(1, h | 0)); }
+
+/* Vertical dithered gradient through an arbitrary list of colour stops. */
+function ditherSky(ctx, x0, y0, w, h, stops) {
+  for (let y = 0; y < h; y++) {
+    const t = y / (h - 1 || 1);
+    // find the pair of stops we sit between
+    let i = 0;
+    while (i < stops.length - 2 && t > stops[i + 1].p) i++;
+    const a = stops[i], b = stops[i + 1];
+    const lt = (t - a.p) / ((b.p - a.p) || 1);
+    for (let x = 0; x < w; x++) {
+      const threshold = (BAYER4[y & 3][x & 3] + 0.5) / 16;
+      ctx.fillStyle = lt > threshold ? b.c : a.c;
+      ctx.fillRect(x0 + x, y0 + y, 1, 1);
+    }
+  }
+}
+
+/* A soft shaded blob — the building block of canopies and clouds. */
+function blob(ctx, cx, cy, rx, ry, tones, lightFrom) {
+  const lx = lightFrom ? lightFrom[0] : -0.5, ly = lightFrom ? lightFrom[1] : -0.6;
+  for (let y = -ry; y <= ry; y++) {
+    for (let x = -rx; x <= rx; x++) {
+      const d = (x * x) / (rx * rx) + (y * y) / (ry * ry);
+      if (d > 1) continue;
+      // shade by how far the pixel is from the lit side
+      const lit = (x / rx) * lx + (y / ry) * ly;
+      let idx = lit > 0.34 ? 0 : lit > -0.05 ? 1 : lit > -0.5 ? 2 : 3;
+      idx = Math.min(idx, tones.length - 1);
+      ctx.fillStyle = tones[idx];
+      ctx.fillRect((cx + x) | 0, (cy + y) | 0, 1, 1);
+    }
+  }
+}
+
+/* Layered leafy canopy: several overlapping blobs, then lit speckles. */
+function canopy(ctx, cx, cy, r, tones, rnd, speckle) {
+  const puffs = 5 + Math.floor(rnd() * 3);
+  for (let i = 0; i < puffs; i++) {
+    const a = (i / puffs) * Math.PI * 2 + rnd() * 0.6;
+    const dx = Math.cos(a) * r * 0.46, dy = Math.sin(a) * r * 0.32;
+    blob(ctx, cx + dx, cy + dy, r * (0.52 + rnd() * 0.2), r * (0.42 + rnd() * 0.16), tones);
+  }
+  blob(ctx, cx, cy, r * 0.78, r * 0.6, tones);
+  if (speckle) {
+    for (let i = 0; i < r * 2.2; i++) {
+      const a = rnd() * Math.PI * 2, rr = rnd() * r * 0.85;
+      px(ctx, cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.72, 1, 1, speckle);
+    }
+  }
+}
+
+function trunk(ctx, x, groundY, h, w, tones) {
+  for (let y = 0; y < h; y++) {
+    const yy = groundY - y;
+    const taper = Math.max(1, Math.round(w * (1 - y / h * 0.32)));
+    px(ctx, x - (taper >> 1), yy, taper, 1, tones[1]);
+    px(ctx, x - (taper >> 1), yy, Math.max(1, taper >> 2), 1, tones[0]); // lit edge
+    px(ctx, x + (taper >> 1) - 1, yy, 1, 1, tones[2]);                    // shadow edge
+  }
+}
+
+/* rolling hill band with a lit crest */
+function hillBand(ctx, W, baseY, amp, freq, tones, rnd, phase) {
+  const ph = phase || rnd() * 10;
+  for (let x = 0; x < W; x++) {
+    const y = Math.round(baseY
+      + Math.sin(x * freq + ph) * amp
+      + Math.sin(x * freq * 2.3 + ph * 1.7) * amp * 0.35);
+    px(ctx, x, y, 1, PXH - y, tones[1]);
+    px(ctx, x, y, 1, 2, tones[0]);                 // sunlit crest
+    px(ctx, x, y + 8, 1, PXH - y - 8, tones[2] || tones[1]);
+  }
+}
+
+/* pixel clouds: three tones, flat bottom, puffy top */
+function cloudRow(ctx, W, y, count, tones, rnd, scale) {
+  for (let i = 0; i < count; i++) {
+    const cx = rnd() * W, s = (0.7 + rnd() * 0.8) * (scale || 1);
+    const w = Math.round(22 * s), h = Math.round(7 * s);
+    const yy = y + Math.round((rnd() - 0.5) * 14);
+    blob(ctx, cx, yy, w, h, tones);
+    blob(ctx, cx - w * 0.5, yy + h * 0.3, w * 0.55, h * 0.7, tones);
+    blob(ctx, cx + w * 0.55, yy + h * 0.25, w * 0.6, h * 0.75, tones);
+    // flat lit underside
+    px(ctx, cx - w, yy + h - 1, w * 2, 1, tones[0]);
+  }
+}
+
+function pineRow(ctx, W, groundY, count, tones, rnd, scale) {
+  for (let i = 0; i < count; i++) {
+    const x = Math.round(rnd() * W), s = (0.7 + rnd() * 0.7) * (scale || 1);
+    const h = Math.round(20 * s), w = Math.round(9 * s);
+    for (let y = 0; y < h; y++) {
+      const t = y / h;
+      const ww = Math.round(w * t);
+      px(ctx, x - ww, groundY - h + y, ww * 2 + 1, 1, t > 0.55 ? tones[1] : tones[0]);
+    }
+    px(ctx, x - 1, groundY - 2, 2, 3, tones[2] || tones[1]);
+  }
+}
+
+function sunRays(ctx, cx, cy, W, H, colour, rnd, count) {
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  for (let i = 0; i < (count || 5); i++) {
+    const a = -1.35 + rnd() * 0.85;
+    const len = H * (0.8 + rnd() * 0.5);
+    const wdt = 3 + rnd() * 7;
+    ctx.fillStyle = colour;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * len - wdt, cy + Math.sin(a + 1.57) * len);
+    ctx.lineTo(cx + Math.cos(a) * len + wdt, cy + Math.sin(a + 1.57) * len);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function grassTufts(ctx, W, groundY, count, tones, rnd) {
+  for (let i = 0; i < count; i++) {
+    const x = Math.round(rnd() * W), h = 2 + Math.round(rnd() * 4);
+    const c = tones[Math.floor(rnd() * tones.length)];
+    for (let y = 0; y < h; y++) px(ctx, x + (y > h / 2 ? 1 : 0), groundY - y, 1, 1, c);
+  }
+}
+
+function flowerDots(ctx, W, groundY, spread, count, colours, rnd) {
+  for (let i = 0; i < count; i++) {
+    const x = Math.round(rnd() * W), y = groundY + Math.round(rnd() * spread);
+    const c = colours[Math.floor(rnd() * colours.length)];
+    px(ctx, x, y, 1, 1, c);
+    px(ctx, x - 1, y, 1, 1, c); px(ctx, x + 1, y, 1, 1, c);
+    px(ctx, x, y - 1, 1, 1, c); px(ctx, x, y + 1, 1, 1, c);
+    px(ctx, x, y, 1, 1, "#fff3c4");
+  }
+}
+
+function sunDisc(ctx, cx, cy, r, core, halo) {
+  for (let y = -r * 2; y <= r * 2; y++) {
+    for (let x = -r * 2; x <= r * 2; x++) {
+      const d = Math.sqrt(x * x + y * y);
+      if (d <= r) px(ctx, cx + x, cy + y, 1, 1, core);
+      else if (d <= r * 1.9 && ((BAYER4[(cy + y) & 3][(cx + x) & 3] + 0.5) / 16) < (1 - (d - r) / (r * 0.9)))
+        px(ctx, cx + x, cy + y, 1, 1, halo);
+    }
+  }
+}
+
+/* sparkles / fireflies scattered through a scene */
+function motes(ctx, W, H, count, colour, rnd, yMin, yMax) {
+  for (let i = 0; i < count; i++) {
+    const x = Math.round(rnd() * W);
+    const y = Math.round((yMin || 0) + rnd() * ((yMax || H) - (yMin || 0)));
+    px(ctx, x, y, 1, 1, colour);
+    if (rnd() > 0.7) { px(ctx, x - 1, y, 1, 1, colour); px(ctx, x + 1, y, 1, 1, colour); px(ctx, x, y - 1, 1, 1, colour); px(ctx, x, y + 1, 1, 1, colour); }
+  }
+}
+
+/* =========================================================
+   SPRITES — every character drawn pixel by pixel
+   Each returns its own canvas so it can be composited into a
+   scene or shown on its own, always on the same pixel grid.
+   ========================================================= */
+
+function spriteCanvas(w, h) {
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  return { c, ctx };
+}
+
+/* ---------- the cat: our narrator ---------- */
+const CAT = { fur: "#fdfaf2", fur2: "#ece5d6", fur3: "#d6cdba", ink: "#3b3128", blush: "#ffb3c4" };
+
+function drawCat(mood) {
+  const { c, ctx } = spriteCanvas(40, 36);
+  const F = CAT.fur, F2 = CAT.fur2, F3 = CAT.fur3, I = CAT.ink, B = CAT.blush;
+
+  // tail curls round the right side
+  px(ctx, 30, 26, 6, 3, F2); px(ctx, 34, 22, 3, 5, F2); px(ctx, 33, 20, 4, 2, F);
+
+  // body
+  px(ctx, 10, 18, 20, 15, F);
+  px(ctx, 10, 29, 20, 4, F2);
+  px(ctx, 11, 31, 18, 2, F3);
+
+  // ears
+  px(ctx, 10, 6, 5, 6, F); px(ctx, 25, 6, 5, 6, F);
+  px(ctx, 11, 8, 3, 3, "#f2c9d4"); px(ctx, 26, 8, 3, 3, "#f2c9d4");
+
+  // head
+  px(ctx, 8, 9, 24, 14, F);
+  px(ctx, 8, 20, 24, 3, F2);
+
+  // paws
+  px(ctx, 12, 30, 5, 3, F); px(ctx, 23, 30, 5, 3, F);
+
+  if (mood === "cry") {
+    // big teary eyes
+    px(ctx, 12, 12, 7, 8, I); px(ctx, 21, 12, 7, 8, I);
+    px(ctx, 13, 13, 3, 3, "#fff"); px(ctx, 22, 13, 3, 3, "#fff");
+    px(ctx, 14, 17, 2, 2, "#fff"); px(ctx, 23, 17, 2, 2, "#fff");
+    px(ctx, 13, 20, 3, 5, "#8fd0ee"); px(ctx, 23, 20, 3, 6, "#8fd0ee");
+    px(ctx, 13, 24, 3, 3, "#b3e2f7"); px(ctx, 23, 25, 3, 3, "#b3e2f7");
+    px(ctx, 18, 21, 4, 2, I);
+  } else if (mood === "happy") {
+    px(ctx, 13, 14, 4, 2, I); px(ctx, 23, 14, 4, 2, I);     // ^ ^ eyes
+    px(ctx, 12, 15, 2, 2, I); px(ctx, 16, 15, 2, 2, I);
+    px(ctx, 22, 15, 2, 2, I); px(ctx, 26, 15, 2, 2, I);
+    px(ctx, 18, 18, 4, 2, "#e79aa8");
+    px(ctx, 17, 20, 6, 2, I);
+    px(ctx, 9, 16, 3, 3, B); px(ctx, 28, 16, 3, 3, B);
+  } else if (mood === "shock") {
+    px(ctx, 12, 12, 6, 7, "#fff"); px(ctx, 22, 12, 6, 7, "#fff");
+    px(ctx, 14, 14, 3, 4, I); px(ctx, 24, 14, 3, 4, I);
+    px(ctx, 17, 20, 6, 4, I);
+  } else if (mood === "love") {
+    px(ctx, 12, 13, 2, 2, "#ff5f8d"); px(ctx, 15, 13, 2, 2, "#ff5f8d");
+    px(ctx, 12, 15, 5, 2, "#ff5f8d"); px(ctx, 13, 17, 3, 1, "#ff5f8d");
+    px(ctx, 23, 13, 2, 2, "#ff5f8d"); px(ctx, 26, 13, 2, 2, "#ff5f8d");
+    px(ctx, 23, 15, 5, 2, "#ff5f8d"); px(ctx, 24, 17, 3, 1, "#ff5f8d");
+    px(ctx, 18, 19, 4, 2, "#e79aa8");
+    px(ctx, 17, 21, 6, 1, I);
+    px(ctx, 9, 16, 3, 3, B); px(ctx, 28, 16, 3, 3, B);
+  } else { /* idle */
+    px(ctx, 13, 13, 4, 5, I); px(ctx, 23, 13, 4, 5, I);
+    px(ctx, 14, 14, 2, 2, "#fff"); px(ctx, 24, 14, 2, 2, "#fff");
+    px(ctx, 18, 19, 4, 2, "#e79aa8");
+    px(ctx, 17, 21, 6, 1, I);
+    px(ctx, 9, 16, 3, 3, B); px(ctx, 28, 16, 3, 3, B);
+  }
+  // whiskers
+  px(ctx, 4, 17, 4, 1, F3); px(ctx, 32, 17, 4, 1, F3);
+  return c;
+}
+
+/* ---------- the bear: the jumpscare ---------- */
+function drawBear() {
+  const { c, ctx } = spriteCanvas(64, 56);
+  const B1 = "#b5793f", B2 = "#96602f", B3 = "#754825", M = "#e8b98c";
+  // arms flung wide
+  px(ctx, 2, 12, 10, 8, B2); px(ctx, 0, 8, 8, 8, B1);
+  px(ctx, 52, 12, 10, 8, B2); px(ctx, 56, 8, 8, 8, B1);
+  px(ctx, 1, 6, 6, 4, B3); px(ctx, 57, 6, 6, 4, B3);   // claws
+  // body
+  px(ctx, 16, 20, 32, 30, B1);
+  px(ctx, 20, 30, 24, 20, M);
+  px(ctx, 16, 44, 32, 6, B2);
+  // legs
+  px(ctx, 18, 48, 11, 8, B2); px(ctx, 35, 48, 11, 8, B2);
+  // ears
+  px(ctx, 15, 2, 10, 9, B1); px(ctx, 39, 2, 10, 9, B1);
+  px(ctx, 17, 4, 6, 5, B3); px(ctx, 41, 4, 6, 5, B3);
+  // head
+  px(ctx, 14, 6, 36, 22, B1);
+  px(ctx, 22, 18, 20, 12, M);
+  // eyes, furious
+  px(ctx, 21, 12, 6, 5, "#fff"); px(ctx, 37, 12, 6, 5, "#fff");
+  px(ctx, 23, 13, 3, 4, "#2a1a10"); px(ctx, 39, 13, 3, 4, "#2a1a10");
+  px(ctx, 20, 9, 8, 2, B3); px(ctx, 36, 9, 8, 2, B3);
+  // snout + roaring mouth
+  px(ctx, 28, 19, 8, 4, B3);
+  px(ctx, 25, 23, 14, 9, "#7a2a2a");
+  px(ctx, 27, 23, 10, 3, "#fff");
+  px(ctx, 28, 29, 8, 3, "#e0576b");
+  return c;
+}
+
+/* ---------- fox, butterflies, letter ---------- */
+function drawFox() {
+  const { c, ctx } = spriteCanvas(38, 26);
+  const O = "#f08b3c", O2 = "#d46f26", W = "#fff3e2", I = "#3b2a1a";
+  px(ctx, 2, 12, 16, 6, O2); px(ctx, 0, 8, 8, 7, O); px(ctx, 0, 8, 5, 4, W);  // tail
+  px(ctx, 14, 10, 16, 11, O);
+  px(ctx, 16, 18, 12, 4, O2);
+  px(ctx, 24, 4, 12, 11, O);            // head
+  px(ctx, 24, 2, 5, 6, O2); px(ctx, 32, 2, 5, 6, O2);
+  px(ctx, 25, 3, 3, 4, "#f7c4a0"); px(ctx, 33, 3, 3, 4, "#f7c4a0");
+  px(ctx, 27, 10, 9, 5, W);
+  px(ctx, 27, 7, 2, 3, I); px(ctx, 33, 7, 2, 3, I);
+  px(ctx, 34, 11, 3, 2, I);
+  px(ctx, 16, 21, 5, 4, O2); px(ctx, 24, 21, 5, 4, O2);
+  return c;
+}
+
+function drawButterfly(colour) {
+  const { c, ctx } = spriteCanvas(20, 16);
+  const A = colour === "blue" ? "#6fb4ee" : "#f4685a";
+  const B = colour === "blue" ? "#3f82c6" : "#c8402f";
+  const D = colour === "blue" ? "#2b5f96" : "#982c20";
+  const E = colour === "blue" ? "#cfe8ff" : "#ffdcb0";
+  // upper wings: teardrops sweeping up and out from the body
+  blob(ctx, 6, 5, 5, 4, [E, A, B, D]);
+  blob(ctx, 14, 5, 5, 4, [E, A, B, D]);
+  // lower wings, smaller and rounder
+  blob(ctx, 7, 10, 3.6, 3.2, [A, B, D, D]);
+  blob(ctx, 13, 10, 3.6, 3.2, [A, B, D, D]);
+  // wing markings
+  px(ctx, 4, 4, 2, 1, E); px(ctx, 14, 4, 2, 1, E);
+  px(ctx, 6, 11, 1, 1, "#fff3d0"); px(ctx, 13, 11, 1, 1, "#fff3d0");
+  // body + antennae
+  px(ctx, 9, 3, 2, 10, "#3b2a1a");
+  px(ctx, 9, 12, 2, 2, "#5a4230");
+  px(ctx, 7, 0, 1, 3, "#3b2a1a"); px(ctx, 12, 0, 1, 3, "#3b2a1a");
+  px(ctx, 6, 0, 1, 1, "#3b2a1a"); px(ctx, 13, 0, 1, 1, "#3b2a1a");
+  return c;
+}
+
+function drawEnvelope(open) {
+  const { c, ctx } = spriteCanvas(44, 32);
+  const P = "#fffaf0", P2 = "#efe3cd", L = "#d8c9ad";
+  px(ctx, 2, 6, 40, 24, P);
+  px(ctx, 2, 6, 40, 1, L); px(ctx, 2, 29, 40, 1, L);
+  px(ctx, 2, 6, 1, 24, L); px(ctx, 41, 6, 1, 24, L);
+  if (open) {
+    px(ctx, 4, 0, 36, 8, P2);
+    for (let i = 0; i < 18; i++) { px(ctx, 4 + i, 8 - Math.floor(i / 2.4), 1, 1, L); px(ctx, 39 - i, 8 - Math.floor(i / 2.4), 1, 1, L); }
+    px(ctx, 8, 12, 28, 2, "#e6d8bf"); px(ctx, 8, 17, 22, 2, "#e6d8bf"); px(ctx, 8, 22, 25, 2, "#e6d8bf");
+  } else {
+    for (let i = 0; i < 20; i++) { px(ctx, 2 + i, 6 + Math.floor(i * 0.62), 1, 1, L); px(ctx, 41 - i, 6 + Math.floor(i * 0.62), 1, 1, L); }
+    drawHeartInto(ctx, 22, 17, 1, "#e8617f");
+  }
+  return c;
+}
+
+function drawHeartInto(ctx, cx, cy, s, colour) {
+  const rows = [
+    "0110110", "1111111", "1111111", "0111110", "0011100", "0001000",
+  ];
+  rows.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] === "1") px(ctx, cx - 3 * s + x * s, cy - 3 * s + y * s, s, s, colour);
+    }
+  });
+}
+
+function drawHeartCard() {
+  const { c, ctx } = spriteCanvas(28, 28);
+  drawHeartInto(ctx, 14, 13, 3, "#ef5f83");
+  drawHeartInto(ctx, 13, 12, 1, "#ff9fb6");
+  return c;
+}
+
+function drawFlowerCard() {
+  const { c, ctx } = spriteCanvas(28, 28);
+  const P1 = "#f582b0", P2 = "#e0699a", P3 = "#ffc2da";
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    blob(ctx, 14 + Math.cos(a) * 7, 12 + Math.sin(a) * 5, 4.5, 3.4, [P3, P1, P2, P2]);
+  }
+  blob(ctx, 14, 12, 4, 3, ["#ffe9a0", "#ffd166", "#e0a92f", "#c08c22"]);
+  px(ctx, 13, 16, 2, 9, "#4f8a3a");
+  px(ctx, 8, 20, 6, 3, "#5ea347"); px(ctx, 15, 22, 6, 3, "#5ea347");
+  return c;
+}
+
+function drawNyan() {
+  const { c, ctx } = spriteCanvas(46, 16);
+  const bands = ["#ff4d4d", "#ff9d3c", "#ffe14d", "#5fd35f", "#4da6ff", "#a45fff"];
+  bands.forEach((b, i) => px(ctx, 0, 2 + i * 2, 26, 2, b));
+  px(ctx, 24, 3, 14, 10, "#f7d0dd");     // pop-tart body
+  px(ctx, 26, 5, 10, 6, "#ffb3c9");
+  for (let i = 0; i < 6; i++) px(ctx, 27 + (i % 3) * 3, 6 + Math.floor(i / 3) * 3, 1, 1, "#e8617f");
+  px(ctx, 36, 2, 9, 9, "#b8b8b8");       // head
+  px(ctx, 36, 1, 3, 3, "#b8b8b8"); px(ctx, 42, 1, 3, 3, "#b8b8b8");
+  px(ctx, 38, 5, 2, 2, "#2a2a2a"); px(ctx, 42, 5, 2, 2, "#2a2a2a");
+  px(ctx, 39, 8, 3, 1, "#2a2a2a");
+  return c;
+}
+
+/* ---------- the title logo, drawn as pixel letters ---------- */
+const HV_FONT = {
+  H: ["101", "101", "111", "101", "101"], E: ["111", "100", "111", "100", "111"],
+  A: ["111", "101", "111", "101", "101"], R: ["111", "101", "111", "110", "101"],
+  T: ["111", "010", "010", "010", "010"], V: ["101", "101", "101", "101", "010"],
+  N: ["101", "111", "111", "111", "101"], U: ["101", "101", "101", "101", "111"],
+};
+function drawLogo(text) {
+  const cw = 3, ch = 5, gap = 1, s = 3;
+  const { c, ctx } = spriteCanvas(text.length * (cw + gap) * s, ch * s + 2 * s);
+  text.split("").forEach((ch2, i) => {
+    const g = HV_FONT[ch2];
+    if (!g) return;
+    for (let y = 0; y < ch; y++) {
+      for (let x = 0; x < cw; x++) {
+        if (g[y][x] !== "1") continue;
+        const dx = i * (cw + gap) * s + x * s, dy = y * s + s;
+        px(ctx, dx, dy + s, s, s, "#b8365f");        // drop shadow
+        px(ctx, dx, dy, s, s, "#ff5f8d");            // face
+        px(ctx, dx, dy, s, Math.max(1, s / 3), "#ffa8c0");  // top light
+      }
+    }
+  });
+  return c;
+}
+
+/* =========================================================
+   SCENES — the backgrounds the adventure walks through
+   ========================================================= */
+
+const HV_SCENES = {
+
+  /* 1. cherry-blossom park — the title screen and the first choice */
+  sakura(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#bfe4f2" }, { p: 0.30, c: "#dbeef7" },
+      { p: 0.52, c: "#f6e6ee" }, { p: 0.70, c: "#fbe8ef" }, { p: 1.00, c: "#ffeef4" },
+    ]);
+    cloudRow(ctx, PXW, 26, 4, ["#ffffff", "#f4f6fb", "#e2e8f2", "#cfd8e8"], rnd, 1.1);
+
+    // distant blossom haze
+    for (let i = 0; i < 14; i++) {
+      blob(ctx, rnd() * PXW, 74 + rnd() * 12, 20 + rnd() * 14, 10 + rnd() * 7,
+        ["#ffd7e6", "#f8c3d8", "#eeb0ca", "#e2a0bd"]);
+    }
+    // grass
+    ditherSky(ctx, 0, 104, PXW, PXH - 104, [
+      { p: 0.00, c: "#a9cf7a" }, { p: 0.35, c: "#93c065" }, { p: 1.00, c: "#79a851" },
+    ]);
+    // path
+    for (let y = 116; y < PXH; y++) {
+      const t = (y - 116) / (PXH - 116);
+      const cx = Math.round(PXW * 0.5 + Math.sin(t * 1.6) * 26);
+      const w = Math.round(12 + t * 58);
+      px(ctx, cx - (w >> 1), y, w, 1, t > 0.4 ? "#e8d3ab" : "#dcc59b");
+      px(ctx, cx - (w >> 1), y, 2, 1, "#f2e2c2");
+    }
+
+    // sakura trees
+    const sak = ["#ffd9e8", "#f9bed6", "#eda6c3", "#d98cae"];
+    [[34, 118, 26], [PXW - 40, 116, 30], [110, 108, 18], [PXW - 116, 110, 20]].forEach(([x, gy, r]) => {
+      trunk(ctx, x, gy, Math.round(r * 1.5), Math.max(3, Math.round(r * 0.28)), ["#a8794f", "#8a6039", "#6b4526"]);
+      canopy(ctx, x, gy - r * 1.6, r, sak, rnd, "#fff0f6");
+    });
+    grassTufts(ctx, PXW, 128, 90, ["#8fc063", "#7ba84f", "#a4d178"], rnd);
+    flowerDots(ctx, PXW, 122, 44, 26, ["#ffffff", "#ffe6f0", "#ffd166"], rnd);
+    // petals in the air
+    for (let i = 0; i < 40; i++) {
+      const x = rnd() * PXW, y = rnd() * 130;
+      px(ctx, x, y, 2, 1, rnd() > 0.5 ? "#ffc9dd" : "#ffdce9");
+    }
+  },
+
+  /* 2. deep forest — the secret path */
+  forest(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#9fd6e8" }, { p: 0.26, c: "#bfe2ea" },
+      { p: 0.48, c: "#d9ecdb" }, { p: 1.00, c: "#c6e0b6" },
+    ]);
+    sunRays(ctx, PXW * 0.34, -12, PXW, PXH, "#fff8d8", rnd, 6);
+
+    // far canopy wall
+    for (let i = 0; i < 22; i++) {
+      blob(ctx, rnd() * PXW, 16 + rnd() * 34, 26 + rnd() * 18, 14 + rnd() * 10,
+        ["#a8cc72", "#87b055", "#67903f", "#4d722e"]);
+    }
+    // ground
+    ditherSky(ctx, 0, 108, PXW, PXH - 108, [
+      { p: 0.00, c: "#84b356" }, { p: 0.4, c: "#6d9a45" }, { p: 1.00, c: "#557a34" },
+    ]);
+    // dirt trail
+    for (let y = 118; y < PXH; y++) {
+      const t = (y - 118) / (PXH - 118);
+      const cx = Math.round(PXW * 0.5 + Math.sin(t * 2.1 + 1) * 30);
+      const w = Math.round(10 + t * 62);
+      px(ctx, cx - (w >> 1), y, w, 1, "#b99a68");
+      px(ctx, cx - (w >> 1) + 1, y, Math.max(1, w - 2), 1, t > 0.35 ? "#c9aa79" : "#b99a68");
+    }
+    // big foreground trunks framing the shot
+    const bark = ["#9c7448", "#7d5a34", "#5e4223"];
+    [[16, 0.9], [PXW - 22, 1.0], [64, 0.55], [PXW - 74, 0.6]].forEach(([x, s]) => {
+      trunk(ctx, x, PXH, Math.round(PXH * s), Math.round(14 * s), bark);
+      canopy(ctx, x, PXH - PXH * s + 6, 26 * s, ["#9ec86a", "#7fab4e", "#5f8639", "#476628"], rnd, "#c8e79a");
+    });
+    grassTufts(ctx, PXW, 126, 110, ["#7fab4e", "#93bd5e", "#6a9440"], rnd);
+    motes(ctx, PXW, PXH, 26, "#fff6c8", rnd, 30, 120);
+  },
+
+  /* 3. mushroom hollow — where the fox is */
+  hollow(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#8fc9de" }, { p: 0.30, c: "#b4dbdf" },
+      { p: 0.55, c: "#cfe4c8" }, { p: 1.00, c: "#b9d3a4" },
+    ]);
+    sunRays(ctx, PXW * 0.6, -10, PXW, PXH, "#fffbe0", rnd, 5);
+    for (let i = 0; i < 18; i++) {
+      blob(ctx, rnd() * PXW, 14 + rnd() * 30, 24 + rnd() * 16, 13 + rnd() * 9,
+        ["#9ec06c", "#7ea24f", "#5f813a", "#48642b"]);
+    }
+    // pale birch trunks
+    [[40, 0.95], [96, 0.8], [PXW - 54, 0.9], [PXW - 110, 0.75]].forEach(([x, s]) => {
+      trunk(ctx, x, PXH - 40, Math.round(130 * s), Math.round(11 * s), ["#e8e0cf", "#cfc4ac", "#a89b82"]);
+      for (let k = 0; k < 5; k++) px(ctx, x - 4, PXH - 60 - k * 22 - rnd() * 8, 6, 1, "#8d8570");
+    });
+    ditherSky(ctx, 0, 118, PXW, PXH - 118, [
+      { p: 0.00, c: "#7fa84e" }, { p: 0.45, c: "#688f3e" }, { p: 1.00, c: "#517031" },
+    ]);
+    // red-capped mushrooms
+    [[86, 142, 1.5], [118, 150, 1.1], [PXW - 96, 146, 1.7], [PXW - 66, 154, 1.0]].forEach(([x, y, s]) => {
+      px(ctx, x - Math.round(3 * s), y, Math.round(6 * s), Math.round(11 * s), "#f2e8d2");
+      px(ctx, x - Math.round(3 * s), y, Math.round(2 * s), Math.round(11 * s), "#fffaf0");
+      blob(ctx, x, y - Math.round(2 * s), Math.round(11 * s), Math.round(6 * s),
+        ["#f0674f", "#d94a37", "#b53827", "#8f2a1d"]);
+      for (let k = 0; k < 4; k++) px(ctx, x - 7 * s + rnd() * 14 * s, y - 4 * s + rnd() * 4 * s, 2, 1, "#fff3e0");
+    });
+    grassTufts(ctx, PXW, 134, 120, ["#7fab4e", "#93bd5e", "#5f8639"], rnd);
+    flowerDots(ctx, PXW, 132, 40, 18, ["#ff8fa8", "#ffd166", "#ffffff"], rnd);
+    motes(ctx, PXW, PXH, 30, "#fff2b8", rnd, 40, 130);
+  },
+
+  /* 4. golden meadow — "it's getting dark" */
+  meadow(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#8ec2e0" }, { p: 0.22, c: "#bcd9e6" },
+      { p: 0.44, c: "#f0dfae" }, { p: 0.62, c: "#f7cf8e" }, { p: 1.00, c: "#e9b878" },
+    ]);
+    sunDisc(ctx, Math.round(PXW * 0.66), 62, 13, "#fffdf0", "#ffeeb8");
+    sunRays(ctx, PXW * 0.66, 62, PXW, PXH, "#fff3c8", rnd, 7);
+    hillBand(ctx, PXW, 96, 5, 0.021, ["#c9c47a", "#a8a25e", "#8a8449"], rnd);
+    hillBand(ctx, PXW, 112, 4, 0.03, ["#b8b264", "#98924f", "#7b763c"], rnd);
+    ditherSky(ctx, 0, 126, PXW, PXH - 126, [
+      { p: 0.00, c: "#c2b45e" }, { p: 0.5, c: "#a89a4a" }, { p: 1.00, c: "#8b7f39" },
+    ]);
+    // backlit trees, dark against the sun
+    [[46, 1.0], [PXW - 60, 0.85], [140, 0.6]].forEach(([x, s]) => {
+      trunk(ctx, x, 132, Math.round(46 * s), Math.round(6 * s), ["#7a6a3c", "#5e5230", "#463c22"]);
+      canopy(ctx, x, 132 - 46 * s, 20 * s, ["#c9c47a", "#93924e", "#6d6c39", "#54542b"], rnd, "#ffeeb0");
+    });
+    grassTufts(ctx, PXW, 140, 150, ["#c9bb62", "#b0a352", "#d6c974"], rnd);
+    motes(ctx, PXW, PXH, 40, "#fff6cc", rnd, 60, 150);
+  },
+
+  /* 5. sunset lake — the ask */
+  sunset(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#3d3a72" }, { p: 0.18, c: "#5b4d8e" },
+      { p: 0.36, c: "#8a5f9e" }, { p: 0.50, c: "#c97a8a" },
+      { p: 0.62, c: "#f0a072" }, { p: 0.72, c: "#7fa8d8" }, { p: 1.00, c: "#4a6ea8" },
+    ]);
+    // the signature banded clouds
+    const cl = ["#ffd08a", "#f6996f", "#e0765f", "#b95a58"];
+    for (let i = 0; i < 5; i++) {
+      const y = 28 + i * 12 + rnd() * 5;
+      for (let k = 0; k < 3; k++) {
+        blob(ctx, rnd() * PXW, y, 30 + rnd() * 26, 4 + rnd() * 3, cl);
+      }
+    }
+    for (let i = 0; i < 60; i++) px(ctx, rnd() * PXW, rnd() * 26, 1, 1, "#fff3d0");
+
+    // mountain silhouettes, two ranges
+    hillBand(ctx, PXW, 88, 12, 0.017, ["#5a6ea0", "#4a5c89", "#3d4d74"], rnd, 2);
+    hillBand(ctx, PXW, 100, 8, 0.026, ["#3f5580", "#34486d", "#2b3c5b"], rnd, 5);
+    // pine treeline
+    pineRow(ctx, PXW, 122, 44, ["#2b4a52", "#1f3840", "#16292f"], rnd, 1.0);
+    // the lake
+    ditherSky(ctx, 0, 122, PXW, 20, [
+      { p: 0.00, c: "#6d94c4" }, { p: 0.5, c: "#54789f" }, { p: 1.00, c: "#3f5d80" },
+    ]);
+    for (let i = 0; i < 40; i++) px(ctx, rnd() * PXW, 123 + rnd() * 18, 2 + rnd() * 4, 1, "#9dbde0");
+    // sun glitter on the water
+    for (let i = 0; i < 16; i++) px(ctx, PXW * 0.42 + rnd() * 40, 124 + rnd() * 15, 1 + rnd() * 3, 1, "#ffd9a0");
+    // far bank + flowered foreground
+    px(ctx, 0, 142, PXW, 8, "#3a4a3a");
+    ditherSky(ctx, 0, 148, PXW, PXH - 148, [
+      { p: 0.00, c: "#4a5c46" }, { p: 0.5, c: "#3c4d3a" }, { p: 1.00, c: "#2e3c2d" },
+    ]);
+    grassTufts(ctx, PXW, 156, 130, ["#5c7050", "#4a5c42", "#6b8159"], rnd);
+    flowerDots(ctx, PXW, 152, 26, 44, ["#ff9ec4", "#ffd166", "#c9a0ff", "#ffffff"], rnd);
+    motes(ctx, PXW, PXH, 34, "#ffe9a8", rnd, 100, 176);
+  },
 };
 
 /* =========================================================
-   CHOICE ADVENTURE — pixel-art branching story
+   ✏️  THE ADVENTURE — CUSTOMIZE ME
 
-   Backgrounds are painted procedurally onto a 240x135 canvas and
-   scaled up with image-rendering:pixelated, so everything stays on
-   the same pixel grid as the maze sprites but in a warmer palette.
+   The closing question and its answers are placeholders, same as
+   LETTER_TEXT. Replace them with what you actually want to ask.
    ========================================================= */
-
-const QP = {
-  sky1: "#ffd9a0", sky2: "#ffb87a", sky3: "#f8e3bd",
-  sun: "#fff6d8",
-  hill1: "#a9c46a", hill2: "#7fa04a", hill3: "#5d7a35",
-  trunk: "#7a5230", leaf1: "#8fbb4f", leaf2: "#6d9a3a",
-  path: "#e0c089", path2: "#c9a468",
-  water: "#7fc4d0", water2: "#5aa3b4",
-  rock: "#9c8b78", petal: "#ffb3cd", gold: "#ffd86b",
-  night1: "#4a4a86", night2: "#6b5a9a", star: "#fff6d8",
-  dark: "#3a2412",
+const QUEST_FINAL = {
+  question: "[Replace this with your closing question — the one you actually want to ask her.]",
+  yes: "[Her answer — yes]",
+  no: "[Her other answer]",
+  nudge: "You sure about that?",
+  nudgeYes: "I changed my mind",
+  nudgeNo: "Yup",
+  reply: "[And what you say back when she says yes. Replace this too.]",
 };
 
-function qpx(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w | 0, h | 0); }
+/* =========================================================
+   THE ADVENTURE — a branching pixel-art story
 
-function qRand(seed) {
-  let x = Math.sin(seed * 4321 + 8761) * 65536;
+   Scenes are painted to a 320x180 canvas (see pixart.js / scenes.js)
+   and scaled up with image-rendering:pixelated. Characters are
+   composited into that same canvas so everything shares one pixel
+   grid; only text stays as DOM so it renders crisply.
+   ========================================================= */
+
+let hvNode = "title";
+let hvHistory = [];
+let hvFailReturn = null;
+let hvRnd = null;
+let hvAnimTimer = null;
+
+function hvSeed(name) {
+  let x = Math.sin(name.length * 977 + name.charCodeAt(0) * 31) * 65536;
   return () => { x = Math.sin(x * 4321 + 8761) * 65536; return x - Math.floor(x); };
 }
 
-/* ---------- shared background pieces ---------- */
-function qSky(ctx, W, H, top, mid, low) {
-  for (let y = 0; y < H; y++) {
-    const t = y / H;
-    ctx.fillStyle = t < 0.55
-      ? qMix(top, mid, t / 0.55)
-      : qMix(mid, low, (t - 0.55) / 0.45);
-    ctx.fillRect(0, y, W, 1);
-  }
-}
-function qMix(a, b, t) {
-  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
-  const r = Math.round((pa >> 16) + ((pb >> 16) - (pa >> 16)) * t);
-  const g = Math.round(((pa >> 8) & 255) + (((pb >> 8) & 255) - ((pa >> 8) & 255)) * t);
-  const bl = Math.round((pa & 255) + ((pb & 255) - (pa & 255)) * t);
-  return `rgb(${r},${g},${bl})`;
-}
-function qSun(ctx, cx, cy, r) {
-  ctx.fillStyle = QP.sun;
-  for (let y = -r; y <= r; y++) {
-    const w = Math.floor(Math.sqrt(r * r - y * y));
-    ctx.fillRect(cx - w, cy + y, w * 2, 1);
-  }
-}
-function qHill(ctx, W, baseY, amp, colour, rnd, step = 6) {
-  ctx.fillStyle = colour;
-  let prev = baseY;
-  for (let x = 0; x < W; x += step) {
-    const y = Math.round(baseY + Math.sin(x * 0.05 + rnd() * 0.4) * amp - rnd() * 2);
-    ctx.fillRect(x, y, step, 200);
-    prev = y;
-  }
-}
-function qTree(ctx, x, groundY, s, rnd) {
-  const th = Math.round(10 * s), tw = Math.max(2, Math.round(3 * s));
-  qpx(ctx, x - (tw >> 1), groundY - th, tw, th, QP.trunk);
-  const r = Math.round(7 * s);
-  ctx.fillStyle = rnd() > 0.5 ? QP.leaf1 : QP.leaf2;
-  for (let y = -r; y <= r; y++) {
-    const w = Math.floor(Math.sqrt(r * r - y * y));
-    ctx.fillRect(x - w, groundY - th - r + y, w * 2, 1);
-  }
-}
-function qFlowers(ctx, W, groundY, n, rnd) {
-  for (let i = 0; i < n; i++) {
-    const x = Math.floor(rnd() * W), y = groundY + Math.floor(rnd() * 12);
-    qpx(ctx, x, y, 1, 1, rnd() > 0.5 ? QP.petal : QP.gold);
-    qpx(ctx, x, y + 1, 1, 2, QP.hill3);
-  }
-}
+/* ---------- the story ----------
+   Every node paints a scene, sets what the cat says, and offers
+   choices. `pos` places a choice button; `fail` sends her to the
+   bear, which returns to this same node. */
+const HV = {
+  title: {
+    scene: "sakura", cat: "happy", title: true,
+    say: "Ready for a little adventure?",
+    choices: [{ label: "START", to: "pick", style: "start" }],
+  },
 
-/* ---------- scene painters ---------- */
-const Q_SCENES = {
-  meadow(ctx, W, H, rnd) {
-    qSky(ctx, W, H, QP.sky1, QP.sky2, QP.sky3);
-    qSun(ctx, Math.round(W * 0.72), Math.round(H * 0.26), 13);
-    qHill(ctx, W, Math.round(H * 0.58), 5, QP.hill1, rnd);
-    qHill(ctx, W, Math.round(H * 0.68), 4, QP.hill2, rnd);
-    qpx(ctx, 0, Math.round(H * 0.76), W, H, QP.hill3);
-    for (let i = 0; i < 5; i++) qTree(ctx, 16 + i * 52 + Math.floor(rnd() * 14), Math.round(H * 0.78), 0.8 + rnd() * 0.5, rnd);
-    qFlowers(ctx, W, Math.round(H * 0.79), 46, rnd);
+  pick: {
+    scene: "sakura", cat: "idle",
+    say: "Pick a heart or a flower?",
+    cards: [
+      { art: "heart", to: "forest" },
+      { art: "flower", to: "forest" },
+    ],
   },
-  forest(ctx, W, H, rnd) {
-    qSky(ctx, W, H, "#cfe3a8", "#a9c97e", "#dfe9bb");
-    for (let i = 0; i < 10; i++) {
-      const x = Math.floor(rnd() * W), s = 0.7 + rnd() * 0.9;
-      qTree(ctx, x, Math.round(H * (0.62 + rnd() * 0.1)), s, rnd);
-    }
-    qpx(ctx, 0, Math.round(H * 0.72), W, H, QP.hill3);
-    // a winding path
-    for (let y = Math.round(H * 0.72); y < H; y++) {
-      const t = (y - H * 0.72) / (H * 0.28);
-      const cx = Math.round(W * 0.5 + Math.sin(t * 2.2) * 22);
-      const w = Math.round(8 + t * 44);
-      qpx(ctx, cx - (w >> 1), y, w, 1, t > 0.5 ? QP.path : QP.path2);
-    }
-    qFlowers(ctx, W, Math.round(H * 0.74), 30, rnd);
+
+  forest: {
+    scene: "forest", cat: "idle",
+    say: "You found a secret path! Pick left or right?",
+    choices: [
+      { label: "Go Left", to: "butterfly", pos: "left" },
+      { label: "Go Right", to: "bear", pos: "right", fail: true },
+    ],
   },
-  ridge(ctx, W, H, rnd) {
-    qSky(ctx, W, H, "#ffb26b", "#ff8f6b", "#ffd9a8");
-    qSun(ctx, Math.round(W * 0.5), Math.round(H * 0.46), 16);
-    qHill(ctx, W, Math.round(H * 0.56), 7, "#c08a5a", rnd);
-    qHill(ctx, W, Math.round(H * 0.66), 5, "#8f6440", rnd);
-    qpx(ctx, 0, Math.round(H * 0.74), W, H, "#5e4028");
-    for (let i = 0; i < 3; i++) qTree(ctx, 24 + i * 84, Math.round(H * 0.76), 0.9, rnd);
+
+  bear: {
+    isFail: true,
+    say: "Oops! A bear appeared and ate all your snacks. Try again!",
+    back: "forest",
   },
-  brook(ctx, W, H, rnd) {
-    qSky(ctx, W, H, QP.sky1, "#ffd0a0", QP.sky3);
-    qHill(ctx, W, Math.round(H * 0.5), 4, QP.hill1, rnd);
-    qpx(ctx, 0, Math.round(H * 0.6), W, H, QP.hill2);
-    // the brook
-    const by = Math.round(H * 0.68);
-    for (let y = by; y < by + 26; y++) {
-      const t = (y - by) / 26;
-      qpx(ctx, 0, y, W, 1, t < 0.5 ? QP.water : QP.water2);
-    }
-    for (let i = 0; i < 22; i++) {
-      qpx(ctx, Math.floor(rnd() * W), by + 2 + Math.floor(rnd() * 22), 2 + Math.floor(rnd() * 3), 1, "#bfe6ee");
-    }
-    for (let i = 0; i < 7; i++) qpx(ctx, Math.floor(rnd() * W), by + Math.floor(rnd() * 24), 3, 2, QP.rock);
-    qpx(ctx, 0, by + 26, W, H, QP.hill3);
-    qFlowers(ctx, W, by + 28, 22, rnd);
+
+  butterfly: {
+    scene: "sakura", cat: "idle", butterflies: true,
+    say: "A butterfly appears! Pick red or blue?",
+    choices: [
+      { label: "BLUE", to: "hollow", pos: "left" },
+      { label: "RED", to: "bear2", pos: "right", fail: true },
+    ],
   },
-  night(ctx, W, H, rnd) {
-    qSky(ctx, W, H, "#2e2f5e", QP.night1, QP.night2);
-    for (let i = 0; i < 60; i++) {
-      qpx(ctx, Math.floor(rnd() * W), Math.floor(rnd() * H * 0.62), 1, 1, QP.star);
-    }
-    qpx(ctx, Math.round(W * 0.78), Math.round(H * 0.16), 9, 9, "#fff3cf");
-    qpx(ctx, Math.round(W * 0.78) + 3, Math.round(H * 0.16) - 2, 6, 13, "#fff3cf");
-    qHill(ctx, W, Math.round(H * 0.66), 5, "#3b4a5e", rnd);
-    qpx(ctx, 0, Math.round(H * 0.76), W, H, "#2c3a48");
-    for (let i = 0; i < 14; i++) {
-      qpx(ctx, Math.floor(rnd() * W), Math.round(H * 0.7) + Math.floor(rnd() * 30), 1, 1, QP.gold);
-    }
+
+  bear2: {
+    isFail: true,
+    say: "The red one was a decoy. The bear is back and it remembers you.",
+    back: "butterfly",
   },
-  orchard(ctx, W, H, rnd) {
-    qSky(ctx, W, H, "#ffe0ae", "#ffc39a", "#fff0d2");
-    qHill(ctx, W, Math.round(H * 0.6), 3, "#b9cf72", rnd);
-    qpx(ctx, 0, Math.round(H * 0.7), W, H, "#8aa64c");
-    for (let i = 0; i < 6; i++) {
-      const x = 20 + i * 42;
-      qTree(ctx, x, Math.round(H * 0.74), 1.15, rnd);
-      for (let k = 0; k < 3; k++) qpx(ctx, x - 5 + Math.floor(rnd() * 11), Math.round(H * 0.6) + Math.floor(rnd() * 8), 2, 2, QP.petal);
-    }
-    // petals in the air
-    for (let i = 0; i < 26; i++) qpx(ctx, Math.floor(rnd() * W), Math.floor(rnd() * H * 0.7), 2, 1, QP.petal);
-    qFlowers(ctx, W, Math.round(H * 0.76), 26, rnd);
+
+  hollow: {
+    scene: "hollow", cat: "happy", fox: true,
+    say: "The blue butterfly led you to a shortcut!",
+    choices: [
+      { label: "keep going", to: "meadow", pos: "left" },
+      { label: "Pet me", to: "pet", pos: "right" },
+    ],
+  },
+
+  pet: {
+    scene: "hollow", cat: "love", fox: true,
+    say: "The fox accepts exactly one (1) head pat and then pretends it did not happen.",
+    choices: [{ label: "keep going", to: "meadow", pos: "left" }],
+  },
+
+  meadow: {
+    scene: "meadow", cat: "idle",
+    say: "It's getting dark!",
+    choices: [{ label: "keep going", to: "sunset", pos: "left" }],
+  },
+
+  sunset: {
+    scene: "sunset", cat: "love",
+    say: "What a beautiful sunset! Isn't it?",
+    choices: [
+      { label: "Where am I?", to: "youllsee", pos: "left" },
+      { label: "Mhm!", to: "letter", pos: "right" },
+    ],
+  },
+
+  youllsee: {
+    scene: "sunset", cat: "happy",
+    say: "You'll see…",
+    choices: [{ label: "okay…", to: "letter", pos: "left" }],
+  },
+
+  letter: {
+    scene: "sunset", cat: "shock", envelope: "closed",
+    say: "Oh look! A letter pops out of nowhere!",
+    choices: [{ label: "open it", to: "closer", pos: "left" }],
+  },
+
+  closer: {
+    scene: "sunset", cat: "idle", envelope: "open",
+    say: "Hmmm… the text is too small. Let's take a closer look.",
+    choices: [{ label: "lean in", to: "ask", pos: "left" }],
+  },
+
+  ask: {
+    scene: "sunset", cat: "hide", isAsk: true,
+    say: "",
+    choices: [
+      { label: "YES!", to: "yay", pos: "left", style: "yes" },
+      { label: "No…", to: "nudge", pos: "right" },
+    ],
+  },
+
+  nudge: {
+    scene: "sunset", cat: "cry", bigCat: true,
+    say: QUEST_FINAL.nudge,
+    choices: [
+      { label: QUEST_FINAL.nudgeYes, to: "yay", pos: "left", style: "yes" },
+      { label: QUEST_FINAL.nudgeNo, to: "reallysure", pos: "right" },
+    ],
+  },
+
+  reallysure: {
+    scene: "sunset", cat: "cry", bigCat: true,
+    say: "…the cat is going to sit here until you change your mind.",
+    choices: [
+      { label: QUEST_FINAL.nudgeYes, to: "yay", pos: "left", style: "yes" },
+      { label: "Yup", to: "reallysure", pos: "right" },
+    ],
+  },
+
+  yay: {
+    scene: "sunset", cat: "love", bigCat: true, hearts: true, isEnd: true,
+    say: "YAYYY, I love you!",
+    choices: [{ label: "close the book 💛", to: "__exit", pos: "left", style: "yes" }],
   },
 };
 
-/* ---------- the mascot: a small round fox-cat, drawn per mood ---------- */
-function qDrawMascot(mood) {
-  const c = document.getElementById("q-mascot");
-  if (!c) return;
-  const ctx = c.getContext("2d");
-  ctx.clearRect(0, 0, 48, 48);
-  const body = "#e8a05a", dark = "#c47a38", cream = "#ffe9c9", eye = "#3a2412";
-
-  // tail
-  qpx(ctx, 6, 30, 6, 4, body); qpx(ctx, 4, 28, 4, 4, cream);
-  // body
-  qpx(ctx, 14, 24, 20, 16, body);
-  qpx(ctx, 16, 34, 16, 6, cream);
-  // ears
-  qpx(ctx, 14, 10, 5, 7, body); qpx(ctx, 29, 10, 5, 7, body);
-  qpx(ctx, 15, 12, 3, 4, dark);  qpx(ctx, 30, 12, 3, 4, dark);
-  // head
-  qpx(ctx, 13, 14, 22, 16, body);
-  qpx(ctx, 17, 22, 14, 7, cream);
-  // paws
-  qpx(ctx, 15, 39, 5, 3, cream); qpx(ctx, 28, 39, 5, 3, cream);
-
-  if (mood === "happy") {
-    qpx(ctx, 18, 20, 3, 2, eye); qpx(ctx, 27, 20, 3, 2, eye);
-    qpx(ctx, 22, 25, 4, 2, dark);
-    qpx(ctx, 20, 27, 8, 1, eye);
-    qpx(ctx, 12, 22, 2, 2, "#ff9db8"); qpx(ctx, 34, 22, 2, 2, "#ff9db8");
-  } else if (mood === "worry") {
-    qpx(ctx, 18, 19, 3, 3, eye); qpx(ctx, 27, 19, 3, 3, eye);
-    qpx(ctx, 17, 17, 4, 1, dark); qpx(ctx, 27, 17, 4, 1, dark);
-    qpx(ctx, 22, 25, 4, 2, dark);
-    qpx(ctx, 21, 28, 6, 1, eye);
-  } else if (mood === "love") {
-    qpx(ctx, 17, 19, 2, 2, "#ff5f8d"); qpx(ctx, 20, 19, 2, 2, "#ff5f8d");
-    qpx(ctx, 18, 21, 3, 2, "#ff5f8d");
-    qpx(ctx, 27, 19, 2, 2, "#ff5f8d"); qpx(ctx, 30, 19, 2, 2, "#ff5f8d");
-    qpx(ctx, 28, 21, 3, 2, "#ff5f8d");
-    qpx(ctx, 22, 25, 4, 2, dark); qpx(ctx, 20, 27, 8, 1, eye);
-  } else if (mood === "shock") {
-    qpx(ctx, 17, 18, 4, 5, "#fff"); qpx(ctx, 18, 20, 2, 2, eye);
-    qpx(ctx, 27, 18, 4, 5, "#fff"); qpx(ctx, 28, 20, 2, 2, eye);
-    qpx(ctx, 22, 26, 5, 4, eye);
-  } else { /* calm */
-    qpx(ctx, 18, 20, 3, 3, eye); qpx(ctx, 27, 20, 3, 3, eye);
-    qpx(ctx, 22, 25, 4, 2, dark);
-    qpx(ctx, 21, 28, 6, 1, eye);
-  }
-}
-
-/* ---------- the fail gag: a very determined goose ---------- */
-function qDrawGoose() {
-  const c = document.getElementById("q-fail-art");
-  if (!c) return;
-  const ctx = c.getContext("2d");
-  ctx.clearRect(0, 0, 96, 72);
-  const w = "#fdfdf6", g = "#d8d8cc", beak = "#ff9d3c", eye = "#2a2018";
-  // body
-  qpx(ctx, 24, 30, 44, 28, w); qpx(ctx, 24, 48, 44, 10, g);
-  // wing
-  qpx(ctx, 34, 36, 22, 12, g); qpx(ctx, 36, 38, 18, 8, w);
-  // neck + head
-  qpx(ctx, 56, 10, 10, 26, w);
-  qpx(ctx, 54, 4, 18, 14, w);
-  qpx(ctx, 70, 9, 12, 5, beak);
-  qpx(ctx, 62, 8, 3, 3, eye);
-  // furious eyebrow
-  qpx(ctx, 60, 5, 7, 2, eye);
-  // legs
-  qpx(ctx, 34, 58, 4, 8, beak); qpx(ctx, 52, 58, 4, 8, beak);
-  qpx(ctx, 30, 66, 10, 3, beak); qpx(ctx, 48, 66, 10, 3, beak);
-  // motion lines
-  qpx(ctx, 6, 20, 12, 2, "#ffe08a"); qpx(ctx, 10, 26, 10, 2, "#ffe08a");
-  qpx(ctx, 4, 33, 14, 2, "#ffe08a");
-}
-
-/* ---------- the story graph ----------
-   Each node: scene, mood, text, and two choices.
-   A choice with `fail` shows the gag and returns to this same node. */
-const QUEST = {
-  start: {
-    scene: "meadow", mood: "happy", chapter: "Chapter One",
-    text: "A small fox is waiting at the edge of the meadow. It has clearly been waiting a while, and it has clearly been waiting for you.",
-    choices: [
-      { label: "Follow the fox", to: "path" },
-      { label: "Offer it a snack first", to: "snack" },
-    ],
-  },
-  snack: {
-    scene: "meadow", mood: "love", chapter: "Chapter One",
-    text: "You hand over half a biscuit. The fox accepts it with the seriousness of a signed contract, and decides you are now friends for life.",
-    choices: [
-      { label: "Now follow the fox", to: "path" },
-      { label: "Offer the other half too", to: "path", note: "It eats that one even faster." },
-    ],
-  },
-  path: {
-    scene: "forest", mood: "calm", chapter: "Chapter Two",
-    text: "The path forks under the trees. One way is bright and obvious. The other is mossy, narrow, and much more interesting.",
-    choices: [
-      { label: "Take the bright path", to: "brook" },
-      { label: "Take the mossy path", to: "goose", fail: true },
-    ],
-  },
-  goose: {
-    fail: "You round the corner and meet a goose. It has opinions about this path. It has opinions about you. You retreat with dignity, mostly.",
-    back: "path",
-  },
-  brook: {
-    scene: "brook", mood: "happy", chapter: "Chapter Two",
-    text: "A brook cuts across the way, shallow and clear, with flat stones laid across it like someone was expecting company.",
-    choices: [
-      { label: "Hop across the stones", to: "orchard" },
-      { label: "Take your shoes off and wade", to: "wade" },
-    ],
-  },
-  wade: {
-    scene: "brook", mood: "love", chapter: "Chapter Two",
-    text: "The water is freezing and you both say so, loudly, at the same time. The fox refuses to get in and supervises from a rock instead.",
-    choices: [
-      { label: "Carry the fox across", to: "orchard" },
-      { label: "Splash the fox (affectionately)", to: "orchard", note: "It never forgets this." },
-    ],
-  },
-  orchard: {
-    scene: "orchard", mood: "happy", chapter: "Chapter Three",
-    text: "The trees here drop petals like they are being paid for it. The fox stops and looks up the hill, where the light is going gold.",
-    choices: [
-      { label: "Climb toward the light", to: "ridge" },
-      { label: "Stay a while under the trees", to: "linger" },
-    ],
-  },
-  linger: {
-    scene: "orchard", mood: "love", chapter: "Chapter Three",
-    text: "You stay. Nothing in particular happens, which turns out to be the good part. Petals land in your hair and neither of you mentions it.",
-    choices: [
-      { label: "Now climb the hill", to: "ridge" },
-      { label: "One more minute", to: "ridge", note: "It is never one minute." },
-    ],
-  },
-  ridge: {
-    scene: "ridge", mood: "calm", chapter: "Chapter Four",
-    text: "From the ridge you can see the whole way you came — every fork, every wrong turn, the brook, the goose. It looks small from up here. It looks worth it.",
-    choices: [
-      { label: "Wait for the sun to set", to: "stars" },
-      { label: "Run down the far side", to: "goose2", fail: true },
-    ],
-  },
-  goose2: {
-    fail: "The goose is here too. You have no idea how. It looks at you the way a landlord looks at a late payment. You climb back up.",
-    back: "ridge",
-  },
-  stars: {
-    scene: "night", mood: "love", chapter: "The Last Page",
-    text: "The stars come out all at once, the way they only do when someone is watching. The fox curls up between you and pretends to sleep.",
-    choices: [
-      { label: "Ask the question", to: "final" },
-      { label: "Sit a little longer first", to: "final", note: "The fox waits too." },
-    ],
-  },
-  final: {
-    scene: "night", mood: "love", chapter: "The Last Page", isFinal: true,
-    text: QUEST_FINAL.text,
-    choices: [
-      { label: QUEST_FINAL.a, to: "done", final: true },
-      { label: QUEST_FINAL.b, to: "done", final: true },
-    ],
-  },
-  done: {
-    scene: "night", mood: "love", chapter: "The Last Page", isEnd: true,
-    text: QUEST_FINAL.reply,
-    choices: [{ label: "Close the book 💫", to: "__exit" }],
-  },
-};
-
-/* ---------- runtime ---------- */
-let qNode = "start";
-let qHistory = [];
-let qPendingFail = null;
-let qCompleted = false;
-
-function qPaint(sceneName, seed) {
-  const c = document.getElementById("q-canvas");
-  if (!c) return;
-  const ctx = c.getContext("2d");
+/* ---------- painting ---------- */
+function hvPaint() {
+  const n = HV[hvNode];
+  const canvas = document.getElementById("hv-canvas");
+  if (!canvas || !n) return;
+  const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
-  const painter = Q_SCENES[sceneName] || Q_SCENES.meadow;
-  painter(ctx, c.width, c.height, qRand(seed));
+  ctx.clearRect(0, 0, PXW, PXH);
+
+  const rnd = hvSeed(n.scene + hvNode);
+  (HV_SCENES[n.scene] || HV_SCENES.sakura)(ctx, rnd);
+
+  const put = (sp, x, y, s) => {
+    s = s || 1;
+    ctx.drawImage(sp, 0, 0, sp.width, sp.height, x | 0, y | 0, (sp.width * s) | 0, (sp.height * s) | 0);
+  };
+
+  if (n.title) {
+    put(drawNyan(), PXW - 62, 12, 1);
+    const logo = drawLogo("HEARTVENTURE");
+    put(logo, Math.round((PXW - logo.width * 0.62) / 2), 44, 0.62);
+  }
+
+  if (n.butterflies) {
+    put(drawFlowerCard(), PXW / 2 - 27, 76, 1.95);
+    put(drawButterfly("blue"), 62, 52, 1.7);
+    put(drawButterfly("red"), PXW - 96, 44, 1.7);
+  }
+
+  if (n.fox) put(drawFox(), PXW - 116, 116, 1.5);
+
+  if (n.envelope) {
+    const e = drawEnvelope(n.envelope === "open");
+    put(e, PXW / 2 - 33, n.envelope === "open" ? 34 : 40, 1.5);
+    for (let i = 0; i < 12; i++) px(ctx, PXW / 2 - 40 + rnd() * 80, 30 + rnd() * 50, 1, 1, "#ffe9a8");
+  }
+
+  if (n.isAsk) {
+    // the letter, held open and filling the frame
+    const cardW = 132, cardH = 104, cx = (PXW - cardW) / 2, cy = 26;
+    px(ctx, cx + 3, cy + 4, cardW, cardH, "rgba(60,30,50,.35)");
+    px(ctx, cx, cy, cardW, cardH, "#fffaf0");
+    px(ctx, cx, cy, cardW, 2, "#ffffff");
+    px(ctx, cx, cy + cardH - 2, cardW, 2, "#e6d8bf");
+    for (let i = 0; i < 9; i++) drawHeartInto(ctx, cx + 8 + rnd() * (cardW - 16), cy + 8 + rnd() * (cardH - 16), 1, "#ffc2d8");
+    const kitty = drawCat("idle");
+    put(kitty, cx + cardW / 2 - 30, cy + cardH - 62, 1.5);
+    drawHeartInto(ctx, cx + cardW - 16, cy + 16, 2, "#ef5f83");
+    drawHeartInto(ctx, cx + 14, cy + cardH - 18, 2, "#ff9fb6");
+  }
+
+  if (n.hearts) {
+    for (let i = 0; i < 14; i++) {
+      drawHeartInto(ctx, 20 + rnd() * (PXW - 40), 20 + rnd() * 90, 1 + Math.round(rnd()), "#ff8fb0");
+    }
+  }
+
+  // the cat, bottom-left, unless the letter is doing the talking
+  if (n.cat && n.cat !== "hide") {
+    const scale = n.bigCat ? 2.8 : 2.0;
+    const sp = drawCat(n.cat);
+    put(sp, n.bigCat ? PXW / 2 - sp.width * scale / 2 : 6,
+        n.bigCat ? 34 : PXH - sp.height * scale - 4, scale);
+  }
 }
 
-function qRender() {
-  const n = QUEST[qNode];
+function hvPaintFail() {
+  const canvas = document.getElementById("hv-fail-canvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const rnd = hvSeed("bear");
+  HV_SCENES.forest(ctx, rnd);
+  ctx.save(); ctx.globalAlpha = 0.45; px(ctx, 0, 0, PXW, PXH, "#2a1408"); ctx.restore();
+  const bear = drawBear();
+  ctx.drawImage(bear, 0, 0, bear.width, bear.height,
+    PXW / 2 - bear.width * 1.7 / 2, 26, bear.width * 1.7, bear.height * 1.7);
+}
+
+/* ---------- rendering the DOM layer ---------- */
+function hvRender() {
+  const n = HV[hvNode];
   if (!n) return;
 
-  qPaint(n.scene, qNode.length * 13 + 7);
-  qDrawMascot(n.mood);
-  document.getElementById("q-chapter").textContent = n.chapter || "";
-  document.getElementById("q-text").textContent = n.text || "";
-  document.getElementById("q-back").disabled = qHistory.length === 0;
-
-  const mascot = document.getElementById("q-mascot");
-  mascot.classList.remove("q-react"); void mascot.offsetWidth; mascot.classList.add("q-react");
-
-  const box = document.getElementById("q-choices");
-  box.innerHTML = "";
-  (n.choices || []).forEach((ch) => {
-    const b = document.createElement("button");
-    b.className = "q-choice" + (ch.final ? " q-final" : "");
-    b.textContent = ch.label;
-    b.addEventListener("click", () => qChoose(ch));
-    box.appendChild(b);
-  });
-
-  if (n.isEnd) qCompleted = true;
-}
-
-function qChoose(ch) {
-  const target = QUEST[ch.to];
-  if (ch.to === "__exit") { qFinish(); return; }
-
-  if (target && target.fail) {
-    qPendingFail = target;
-    qDrawGoose();
-    document.getElementById("q-fail-text").textContent = target.fail;
-    document.getElementById("q-fail").classList.add("on");
-    qDrawMascot("shock");
+  if (n.isFail) {
+    hvFailReturn = n.back;
+    hvPaintFail();
+    document.getElementById("hv-fail-text").textContent = n.say;
+    document.getElementById("hv-fail").classList.add("on");
     return;
   }
 
-  qHistory.push(qNode);
-  qNode = ch.to;
-  if (ch.note) {
-    /* a small aside before the next page, so alternate routes feel different */
-    const t = document.getElementById("q-text");
-    t.textContent = ch.note;
-    setTimeout(qRender, 1250);
-    document.getElementById("q-choices").innerHTML = "";
-  } else {
-    qRender();
+  /* Any non-fail node clears the bear. Without this, going back while
+     the overlay is up leaves it stuck over every later screen. */
+  document.getElementById("hv-fail").classList.remove("on");
+  hvPaint();
+
+  const note = document.getElementById("hv-note");
+  const say = n.isAsk ? QUEST_FINAL.question : n.say;
+  note.textContent = say;
+  note.classList.toggle("hidden", !say);
+  note.classList.toggle("hv-note-ask", !!n.isAsk);
+
+  document.getElementById("hv-back").disabled = hvHistory.length === 0;
+
+  const left = document.getElementById("hv-left");
+  const right = document.getElementById("hv-right");
+  const centre = document.getElementById("hv-centre");
+  const cards = document.getElementById("hv-cards");
+  [left, right, centre, cards].forEach((el) => { el.innerHTML = ""; });
+
+  if (n.cards) {
+    n.cards.forEach((cd) => {
+      const b = document.createElement("button");
+      b.className = "hv-card";
+      const art = cd.art === "heart" ? drawHeartCard() : drawFlowerCard();
+      art.className = "hv-card-art";
+      b.appendChild(art);
+      b.addEventListener("click", () => hvChoose(cd));
+      cards.appendChild(b);
+    });
   }
+
+  (n.choices || []).forEach((ch) => {
+    const b = document.createElement("button");
+    b.className = "hv-btn" + (ch.style ? " hv-btn-" + ch.style : "");
+    b.textContent = ch.label;
+    b.addEventListener("click", () => hvChoose(ch));
+    (ch.pos === "left" ? left : ch.pos === "right" ? right : centre).appendChild(b);
+  });
+
+  if (n.isEnd) hvCompleted = true;
 }
 
-function qRetry() {
-  document.getElementById("q-fail").classList.remove("on");
-  /* return to the choice point, not the start of the story */
-  if (qPendingFail && qPendingFail.back) qNode = qPendingFail.back;
-  qPendingFail = null;
-  qRender();
+let hvCompleted = false;
+
+function hvChoose(ch) {
+  if (ch.to === "__exit") {
+    markChapterDone("quest");
+    pageTurn("hub", startHub);
+    return;
+  }
+  const target = HV[ch.to];
+  if (target && target.isFail) {
+    hvNode = ch.to;
+    hvRender();
+    return;
+  }
+  hvHistory.push(hvNode);
+  hvNode = ch.to;
+  hvRender();
 }
 
-function qBack() {
-  if (!qHistory.length) return;
-  qNode = qHistory.pop();
-  qRender();
+function hvRetry() {
+  document.getElementById("hv-fail").classList.remove("on");
+  if (hvFailReturn) hvNode = hvFailReturn;   // back to the choice, not the start
+  hvFailReturn = null;
+  hvRender();
+}
+
+function hvBack() {
+  if (!hvHistory.length) return;
+  hvNode = hvHistory.pop();
+  hvRender();
 }
 
 function startQuest() {
-  qNode = "start";
-  qHistory = [];
-  qPendingFail = null;
-  document.getElementById("q-fail").classList.remove("on");
-  qRender();
+  hvNode = "title";
+  hvHistory = [];
+  hvFailReturn = null;
+  document.getElementById("hv-fail").classList.remove("on");
+  hvRender();
 }
 
-function qFinish() {
-  markChapterDone("quest");
-  pageTurn("hub", startHub);
-}
-
-document.getElementById("q-retry").addEventListener("click", qRetry);
-document.getElementById("q-back").addEventListener("click", qBack);
-document.getElementById("q-quit").addEventListener("click", () => pageTurn("hub", startHub));
+document.getElementById("hv-retry").addEventListener("click", hvRetry);
+document.getElementById("hv-back").addEventListener("click", hvBack);
+document.getElementById("hv-quit").addEventListener("click", () => pageTurn("hub", startHub));

@@ -129,29 +129,28 @@
     </div>
   </section>
 
-  <!-- SCREEN — CHOICE ADVENTURE -->
+  <!-- SCREEN — THE ADVENTURE -->
   <section id="screen-quest" class="screen">
-    <div class="q-frame">
-      <canvas id="q-canvas" class="q-canvas" width="192" height="108"></canvas>
-      <div class="q-vignette"></div>
+    <div class="hv-frame">
+      <div class="hv-stage">
+        <canvas id="hv-canvas" width="320" height="180"></canvas>
 
-      <div class="q-topbar">
-        <button id="q-back" class="q-chip" aria-label="Back a step">‹ back</button>
-        <span class="q-chapter" id="q-chapter">Chapter One</span>
-        <button id="q-quit" class="q-chip" aria-label="Leave the story">✕</button>
-      </div>
+        <div class="hv-top">
+          <button id="hv-back" class="hv-chip">‹ back</button>
+          <button id="hv-quit" class="hv-chip">✕</button>
+        </div>
 
-      <div class="q-mascot-slot"><canvas id="q-mascot" width="48" height="48"></canvas></div>
+        <div id="hv-cards"></div>
+        <div id="hv-left" class="hv-side"></div>
+        <div id="hv-right" class="hv-side"></div>
+        <div id="hv-centre"></div>
+        <p id="hv-note" class="hv-note"></p>
 
-      <div class="q-panel">
-        <p class="q-text" id="q-text"></p>
-        <div class="q-choices" id="q-choices"></div>
-      </div>
-
-      <div class="q-fail" id="q-fail">
-        <canvas id="q-fail-art" width="96" height="72"></canvas>
-        <p class="q-fail-text" id="q-fail-text"></p>
-        <button id="q-retry" class="btn-wax q-retry">Try Again 💫</button>
+        <div class="hv-fail" id="hv-fail">
+          <canvas id="hv-fail-canvas" width="320" height="180"></canvas>
+          <button id="hv-retry" class="hv-restart">Restart</button>
+          <p class="hv-fail-note" id="hv-fail-text"></p>
+        </div>
       </div>
     </div>
   </section>

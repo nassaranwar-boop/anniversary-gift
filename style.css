@@ -1,3 +1,69 @@
+/* =========================================================
+   ✏️  THEME — the one place colour and feel are defined
+   =========================================================
+   Warm, sunlit, alive. Every screen pulls from these tokens, so
+   changing the mood of the whole site means editing this block and
+   nothing else. Named by ROLE, not by colour, so a repaint does not
+   leave you with a variable called "brown" holding pink.
+   ========================================================= */
+:root{
+  /* --- surfaces: paper, parchment, card --- */
+  --paper:        #fffaf0;
+  --paper-warm:   #fff4d9;
+  --parchment:    #f0d5a4;
+  --parchment-2:  #e3caa0;
+  --card:         #fff8e8;
+
+  /* --- the golden-hour ground the site sits on --- */
+  --bg-sky-1:     #f6dcae;
+  --bg-sky-2:     #e9bf88;
+  --bg-sky-3:     #cf9a63;
+  --bg-sky-4:     #a97545;
+  --bg-glow:      rgba(255,226,164,.45);
+  --bg-glow-2:    rgba(255,188,150,.28);
+
+  /* --- ink --- */
+  --ink:          #4e2d0d;
+  --ink-soft:     #5c3d1a;
+  --ink-muted:    #7a5327;
+  --ink-invert:   #fff6e2;
+
+  /* --- accents --- */
+  --gold:         #c98a34;
+  --gold-lite:    #ffd166;
+  --gold-deep:    #9a6c22;
+  --rose:         #f7a8c4;
+  --rose-deep:    #c4587f;
+  --leaf:         #7c9a45;
+  --leaf-deep:    #5d7a35;
+  --sky-blue:     #8fc4e8;
+
+  /* --- edges + depth --- */
+  --edge:         rgba(150,98,38,.5);
+  --edge-soft:    rgba(150,98,38,.28);
+  --shadow-sm:    0 3px 8px rgba(120,72,26,.28);
+  --shadow-md:    0 8px 18px rgba(110,66,20,.30);
+  --shadow-lg:    0 16px 34px rgba(96,56,16,.38);
+  --lift:         0 5px 0 rgba(150,98,38,.38);
+
+  /* --- type --- */
+  --font-display: 'Cinzel', serif;
+  --font-script:  'Great Vibes', cursive;
+  --font-hand:    'Caveat', cursive;
+  --font-body:    'Poppins', sans-serif;
+  --font-serif:   'Playfair Display', serif;
+
+  /* --- motion --- */
+  --ease-out:     cubic-bezier(.22,.9,.3,1);
+  --ease-pop:     cubic-bezier(.22,1.15,.36,1);
+  --dur-fast:     .18s;
+  --dur-mid:      .42s;
+  --dur-slow:     .78s;
+
+  --radius:       12px;
+  --radius-lg:    16px;
+}
+
 
 :root{
   --magenta:#a1237e; --hotpink:#d9375b; --pink-light:#ff8fc4; --pink-soft:#ffd6ec;
@@ -671,98 +737,137 @@ img{-webkit-user-drag:none; user-select:none;}
 @keyframes emberRise{0%{opacity:1; transform:translateY(0) scale(1);} 100%{opacity:0; transform:translateY(-46px) scale(.3);}}
 
 /* =========================================================
-   CHOICE ADVENTURE
-   Pixel art drawn to a small canvas and scaled up with
-   image-rendering:pixelated, so the pixels stay crisp and the
-   art shares a world with the maze sprites.
+   THE ADVENTURE — layout over the pixel canvas
    ========================================================= */
-#screen-quest{padding:0; background:#2a1a10; overflow:hidden;}
-.q-frame{
-  position:relative; width:min(100vw,760px); height:100%; margin:0 auto;
-  display:flex; flex-direction:column; overflow:hidden;
+#screen-quest{padding:0; background:#1c1208; overflow:hidden;}
+.hv-frame{
+  position:relative; width:100%; height:100%;
+  display:flex; align-items:center; justify-content:center;
 }
-.q-canvas{
-  position:absolute; inset:0; width:100%; height:100%;
+/* the art keeps its 16:9 and is letterboxed, so nothing is ever cropped */
+.hv-stage{
+  position:relative; width:min(100%, calc(100vh * 16 / 9)); aspect-ratio:16/9;
+  max-height:100%; box-shadow:0 12px 40px rgba(0,0,0,.5);
+}
+#hv-canvas{
+  position:absolute; inset:0; width:100%; height:100%; display:block;
   image-rendering:pixelated; image-rendering:crisp-edges;
-  object-fit:cover; z-index:0;
-}
-.q-vignette{
-  position:absolute; inset:0; z-index:1; pointer-events:none;
-  background:radial-gradient(ellipse at 50% 42%, transparent 52%, rgba(58,30,8,.55) 100%);
 }
 
 /* ---- top bar ---- */
-.q-topbar{
-  position:relative; z-index:3; display:flex; align-items:center; justify-content:space-between;
-  gap:8px; padding:10px 12px;
+.hv-top{
+  position:absolute; left:0; right:0; top:0; z-index:5;
+  display:flex; align-items:center; justify-content:space-between; padding:2.5%;
+  pointer-events:none;
 }
-.q-chip{
-  font-family:'Poppins',sans-serif; font-size:12px; font-weight:600; cursor:pointer;
-  background:rgba(56,30,10,.6); color:#ffe9c0; border:1.5px solid rgba(255,222,160,.45);
-  border-radius:14px; padding:5px 12px; backdrop-filter:blur(4px);
-  transition:transform .15s ease, opacity .15s ease;
+.hv-top > *{pointer-events:auto;}
+.hv-chip{
+  font-family:var(--font-body); font-size:clamp(9px,1.6vw,12px); font-weight:600; cursor:pointer;
+  background:rgba(255,250,240,.92); color:var(--ink); border:2px solid rgba(90,52,17,.35);
+  border-radius:6px; padding:4px 10px; box-shadow:0 2px 0 rgba(90,52,17,.3);
 }
-.q-chip:active{transform:scale(.92);}
-.q-chip[disabled]{opacity:.3; cursor:default;}
-.q-chapter{
-  font-family:'Cinzel',serif; font-weight:600; font-size:13px; letter-spacing:1px;
-  color:#ffeec9; text-shadow:0 2px 6px rgba(40,20,0,.85);
+.hv-chip:active{transform:translateY(2px); box-shadow:none;}
+.hv-chip[disabled]{opacity:.35; cursor:default;}
+
+/* ---- the taped paper note the cat speaks through ---- */
+.hv-note{
+  position:absolute; left:12%; bottom:8%; z-index:6; max-width:64%;
+  background:#fffdf5; color:#3f2d18;
+  font-family:var(--font-hand); font-size:clamp(13px,2.7vw,21px); line-height:1.25;
+  padding:2.2% 3.4%; transform:rotate(-1.2deg);
+  box-shadow:0 4px 10px rgba(40,20,0,.35);
+}
+.hv-note::before,.hv-note::after{
+  content:""; position:absolute; width:26%; height:34%; top:-12%;
+  background:rgba(255,190,214,.72); box-shadow:0 1px 3px rgba(120,60,90,.25);
+}
+.hv-note::before{left:-6%; transform:rotate(-14deg);}
+.hv-note::after{right:-6%; transform:rotate(11deg);}
+.hv-note.hidden{display:none;}
+.hv-note-ask{
+  left:50%; bottom:auto; top:2.5%; transform:translateX(-50%) rotate(-1deg);
+  text-align:center; max-width:74%; font-size:clamp(14px,3.1vw,24px); color:#c4487a;
 }
 
-/* ---- mascot ---- */
-.q-mascot-slot{
-  position:relative; z-index:3; margin-top:auto; padding:0 0 2px;
-  display:flex; justify-content:center; align-items:flex-end;
+/* ---- choice buttons pinned to the edges, like the original ---- */
+.hv-side{
+  position:absolute; z-index:6; top:38%; display:flex; flex-direction:column; gap:8px;
 }
-#q-mascot{
-  width:112px; height:112px; image-rendering:pixelated;
-  filter:drop-shadow(0 5px 8px rgba(40,18,0,.55));
-  animation:qBob 2.6s ease-in-out infinite;
+#hv-left{left:3%; align-items:flex-start;}
+#hv-right{right:3%; align-items:flex-end;}
+#hv-centre{
+  position:absolute; z-index:6; left:50%; bottom:26%; transform:translateX(-50%);
+  display:flex; gap:10px;
 }
-@keyframes qBob{0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);}}
-#q-mascot.q-react{animation:qReact .55s ease;}
-@keyframes qReact{0%{transform:translateY(0) scale(1);} 35%{transform:translateY(-12px) scale(1.12);} 100%{transform:translateY(0) scale(1);}}
+.hv-btn{
+  font-family:var(--font-body); font-weight:600; cursor:pointer;
+  font-size:clamp(10px,1.9vw,15px);
+  background:rgba(255,252,245,.95); color:#3f2d18;
+  border:2px solid rgba(90,52,17,.4); border-radius:7px;
+  padding:5px 12px; box-shadow:0 3px 0 rgba(90,52,17,.32);
+  transition:transform var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.hv-btn:active{transform:translateY(3px); box-shadow:0 0 0 rgba(90,52,17,.32);}
+.hv-btn-start{
+  font-family:var(--font-display); letter-spacing:2px; font-size:clamp(13px,2.6vw,20px);
+  padding:7px 26px;
+}
+.hv-btn-yes{
+  background:linear-gradient(180deg,#ffd0e0,#f79ec0); border-color:#c4587f; color:#5c1f38;
+  box-shadow:0 3px 0 #a94569;
+}
 
-/* ---- text + choices ---- */
-.q-panel{
-  position:relative; z-index:3; margin-top:auto;
-  padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px));
-  background:linear-gradient(to top, rgba(46,24,8,.94) 62%, rgba(46,24,8,0));
-}
-.q-text{
-  font-family:'Poppins',sans-serif; font-size:clamp(13px,3.6vw,15px); line-height:1.5;
-  color:#fff3d8; text-align:center; margin:0 auto 12px; max-width:520px;
-  text-shadow:0 2px 5px rgba(30,14,0,.7); min-height:3em;
-}
-.q-choices{display:flex; flex-direction:column; gap:9px; max-width:460px; margin:0 auto;}
-.q-choice{
-  font-family:'Poppins',sans-serif; font-size:clamp(12.5px,3.4vw,14px); font-weight:600;
-  cursor:pointer; text-align:left; padding:11px 14px; border-radius:12px;
-  color:#3a2008; background:linear-gradient(180deg,#ffdf9e,#f0bd6a);
-  border:2px solid #b9852f; box-shadow:0 4px 0 #9a6c22, 0 8px 16px rgba(30,14,0,.4);
-  transition:transform .12s ease, box-shadow .12s ease;
-}
-.q-choice:active{transform:translateY(4px); box-shadow:0 1px 0 #9a6c22, 0 4px 9px rgba(30,14,0,.35);}
-.q-choice.q-final{background:linear-gradient(180deg,#ffc2d8,#f591b4); border-color:#c4587f; box-shadow:0 4px 0 #a94569, 0 8px 16px rgba(30,14,0,.4);}
+/* START sits centred under the logo */
+#hv-centre .hv-btn-start{position:relative;}
 
-/* ---- fail branch ---- */
-.q-fail{
-  position:absolute; inset:0; z-index:6; display:none;
-  flex-direction:column; align-items:center; justify-content:center; gap:14px;
-  background:rgba(38,18,6,.93); padding:24px; text-align:center;
+/* ---- the two picture cards ---- */
+#hv-cards{
+  position:absolute; z-index:6; left:50%; top:34%; transform:translate(-50%,-50%);
+  display:flex; gap:6%;
 }
-.q-fail.on{display:flex; animation:qFailIn .32s ease;}
-@keyframes qFailIn{from{opacity:0; transform:scale(1.08);} to{opacity:1; transform:scale(1);}}
-#q-fail-art{width:216px; height:162px; image-rendering:pixelated; filter:drop-shadow(0 6px 12px rgba(0,0,0,.5));}
-.q-fail-text{
-  font-family:'Poppins',sans-serif; font-size:clamp(13px,3.8vw,16px); color:#ffe6c2;
-  max-width:420px; line-height:1.5; margin:0;
+.hv-card{
+  cursor:pointer; background:#fffaf0; border:3px solid #f2a8c4; border-radius:10px;
+  padding:6px; box-shadow:0 5px 0 rgba(150,80,110,.35), 0 10px 20px rgba(40,20,0,.35);
+  transition:transform var(--dur-fast) ease;
+  width:clamp(58px,13vw,104px); aspect-ratio:1;
+  display:flex; align-items:center; justify-content:center;
 }
-.q-retry{margin-top:2px;}
+.hv-card:active{transform:translateY(4px);}
+.hv-card-art{width:100%; height:100%; image-rendering:pixelated;}
+
+/* ---- the bear ---- */
+.hv-fail{
+  position:absolute; inset:0; z-index:9; display:none;
+  align-items:center; justify-content:center;
+}
+.hv-fail.on{display:flex; animation:hvJump .38s var(--ease-pop);}
+@keyframes hvJump{
+  0%{opacity:0; transform:scale(1.5);}
+  55%{opacity:1; transform:scale(.97);}
+  100%{opacity:1; transform:scale(1);}
+}
+#hv-fail-canvas{
+  position:absolute; inset:0; width:100%; height:100%;
+  image-rendering:pixelated;
+}
+.hv-fail-note{
+  position:absolute; left:50%; bottom:12%; transform:translateX(-50%) rotate(-1deg);
+  z-index:2; max-width:76%; text-align:center;
+  background:#fffdf5; color:#3f2d18; font-family:var(--font-hand);
+  font-size:clamp(13px,2.8vw,21px); padding:2.4% 3.6%;
+  box-shadow:0 4px 10px rgba(40,20,0,.4);
+}
+.hv-restart{
+  position:absolute; left:4%; top:5%; z-index:2;
+  font-family:var(--font-body); font-weight:600; font-size:clamp(10px,1.9vw,14px);
+  cursor:pointer; background:rgba(255,252,245,.95); color:#3f2d18;
+  border:2px solid rgba(90,52,17,.4); border-radius:7px; padding:5px 14px;
+  box-shadow:0 3px 0 rgba(90,52,17,.32);
+}
+.hv-restart:active{transform:translateY(3px); box-shadow:none;}
 
 @media (prefers-reduced-motion: reduce){
-  #q-mascot,#q-mascot.q-react{animation:none;}
-  .q-fail.on{animation:none;}
+  .hv-fail.on{animation:none;}
 }
 
 /* =========================================================
