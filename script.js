@@ -171,6 +171,168 @@ document.getElementById("btn-replay").addEventListener("click", () => {
 });
 
 /* =========================================================
+   MAZE ART + JUICE
+
+   The maze was flat purple CSS gradients, which clashed with the warm
+   theme everywhere else and read as a spreadsheet with rounded corners.
+   Tiles are now drawn procedurally onto small canvases and handed to the
+   cells as background images, so they share the pixel language of the
+   adventure. On top of that: a trail of where she has been, dust when
+   she moves, sparkles when she picks something up, a torch-lit fog that
+   breathes, and sound.
+   ========================================================= */
+
+const MZ = {
+  wall1: "#6b4a2a", wall2: "#523618", wall3: "#3d2a17",
+  floor1: "#e6cfa0", floor2: "#d8bd88", floor3: "#c9aa74",
+  moss: "#7c9a45", mossDark: "#5d7a35",
+  glow: "#ffd98a",
+};
+
+const TILE = 32;
+
+function mzTile(draw) {
+  const c = document.createElement("canvas");
+  c.width = TILE; c.height = TILE;
+  const ctx = c.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  draw(ctx, TILE);
+  return c.toDataURL();
+}
+
+function mzRnd(seed) {
+  let x = Math.sin(seed * 3571 + 1013) * 65536;
+  return () => { x = Math.sin(x * 3571 + 1013) * 65536; return x - Math.floor(x); };
+}
+
+/* stone wall: a lit top face, a darker body, mortar lines, and moss */
+function mzWallTile(seed) {
+  return mzTile((ctx, S) => {
+    const rnd = mzRnd(seed);
+    ctx.fillStyle = MZ.wall3; ctx.fillRect(0, 0, S, S);
+    // body blocks
+    for (let row = 0; row < 4; row++) {
+      const off = (row % 2) * 8;
+      for (let col = -1; col < 4; col++) {
+        const x = col * 16 + off, y = row * 8;
+        const v = rnd();
+        ctx.fillStyle = v > 0.66 ? MZ.wall1 : v > 0.33 ? MZ.wall2 : "#5e4224";
+        ctx.fillRect(x + 1, y + 1, 14, 6);
+        ctx.fillStyle = "rgba(255,220,170,0.16)";
+        ctx.fillRect(x + 1, y + 1, 14, 1);
+        ctx.fillStyle = "rgba(0,0,0,0.22)";
+        ctx.fillRect(x + 1, y + 6, 14, 1);
+      }
+    }
+    // lit top edge — reads as height
+    ctx.fillStyle = "rgba(255,226,170,0.30)"; ctx.fillRect(0, 0, S, 2);
+    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(0, S - 3, S, 3);
+    // moss creeping over
+    for (let i = 0; i < 14; i++) {
+      const mx = rnd() * S, my = rnd() * S;
+      ctx.fillStyle = rnd() > 0.5 ? MZ.moss : MZ.mossDark;
+      ctx.fillRect(mx, my, 2, 2);
+    }
+  });
+}
+
+/* warm flagstones with grit and the odd tuft */
+function mzFloorTile(seed) {
+  return mzTile((ctx, S) => {
+    const rnd = mzRnd(seed);
+    ctx.fillStyle = MZ.floor2; ctx.fillRect(0, 0, S, S);
+    for (let i = 0; i < 3; i++) {
+      const x = rnd() * S, y = rnd() * S, w = 8 + rnd() * 12, h = 6 + rnd() * 8;
+      ctx.fillStyle = rnd() > 0.5 ? MZ.floor1 : MZ.floor3;
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = "rgba(255,245,215,0.25)";
+      ctx.fillRect(x, y, w, 1);
+    }
+    for (let i = 0; i < 26; i++) {
+      ctx.fillStyle = rnd() > 0.5 ? "rgba(140,105,60,0.28)" : "rgba(255,240,205,0.22)";
+      ctx.fillRect(rnd() * S, rnd() * S, 1, 1);
+    }
+    if (rnd() > 0.55) {
+      const gx = rnd() * S, gy = rnd() * S;
+      ctx.fillStyle = MZ.moss;
+      for (let k = 0; k < 4; k++) ctx.fillRect(gx + k, gy - (k % 2), 1, 3);
+    }
+  });
+}
+
+let MZ_WALLS = [], MZ_FLOORS = [];
+function mzBuildTiles() {
+  if (MZ_WALLS.length) return;
+  for (let i = 0; i < 4; i++) MZ_WALLS.push(mzWallTile(i * 17 + 3));
+  for (let i = 0; i < 4; i++) MZ_FLOORS.push(mzFloorTile(i * 23 + 7));
+}
+
+/* ---------- particles over the maze ---------- */
+let mzFx = [];
+let mzFxCanvas = null, mzFxCtx = null, mzFxRaf = null, mzFxLast = 0;
+
+function mzEnsureFx() {
+  if (mzFxCanvas) return;
+  const stage = document.getElementById("maze-stage");
+  if (!stage) return;
+  mzFxCanvas = document.createElement("canvas");
+  mzFxCanvas.className = "maze-fx";
+  stage.appendChild(mzFxCanvas);
+  mzFxCtx = mzFxCanvas.getContext("2d");
+}
+
+function mzResizeFx() {
+  if (!mzFxCanvas) return;
+  const stage = document.getElementById("maze-stage");
+  mzFxCanvas.width = stage.clientWidth;
+  mzFxCanvas.height = stage.clientHeight;
+}
+
+function mzSpawn(x, y, n, colour, spread, up) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    mzFx.push({
+      x: x, y: y,
+      vx: Math.cos(a) * (spread || 40) * (0.4 + Math.random()),
+      vy: Math.sin(a) * (spread || 40) * (0.4 + Math.random()) - (up || 0),
+      life: 0, max: 0.45 + Math.random() * 0.4,
+      c: colour, s: 2 + Math.random() * 2,
+    });
+  }
+  mzStartFx();
+}
+
+function mzFxFrame(now) {
+  mzFxRaf = requestAnimationFrame(mzFxFrame);
+  const dt = Math.min(0.05, (now - (mzFxLast || now)) / 1000);
+  mzFxLast = now;
+  if (!mzFxCtx) return;
+  mzFxCtx.clearRect(0, 0, mzFxCanvas.width, mzFxCanvas.height);
+  for (let i = mzFx.length - 1; i >= 0; i--) {
+    const p = mzFx[i];
+    p.life += dt;
+    if (p.life >= p.max) { mzFx.splice(i, 1); continue; }
+    const t = p.life / p.max;
+    const x = p.x + p.vx * p.life;
+    const y = p.y + p.vy * p.life + 90 * p.life * p.life;
+    mzFxCtx.globalAlpha = 1 - t;
+    mzFxCtx.fillStyle = p.c;
+    const s = p.s * (1 - t * 0.5);
+    mzFxCtx.fillRect(x, y, s, s);
+  }
+  mzFxCtx.globalAlpha = 1;
+  if (!mzFx.length) { cancelAnimationFrame(mzFxRaf); mzFxRaf = null; }
+}
+function mzStartFx() { if (!mzFxRaf) { mzFxLast = 0; mzFxRaf = requestAnimationFrame(mzFxFrame); } }
+
+/* ---------- sound ---------- */
+function mzSfx(kind) {
+  if (typeof hvSfx === "function") {
+    hvSfx({ step: "tick", heart: "collect", hurt: "bad", win: "yay", key: "collect" }[kind] || "pick");
+  }
+}
+
+/* =========================================================
    MAZE CORE (shared grid/fog/movement for both levels)
    ========================================================= */
 let level = 1;
@@ -247,20 +409,43 @@ function initMaze(lvl) {
 
   layoutMaze();
 
+  markVisited(playerPos.r, playerPos.c);
+  startFogFlicker();
+
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(() => { if (!gameWon) { elapsedSec++; updateHud(); } }, 1000);
 }
 
+let mazeCells = [];
 function buildStaticGrid() {
+  mzBuildTiles();
   const grid = document.getElementById("maze-grid");
   grid.innerHTML = "";
   grid.style.gridTemplateColumns = `repeat(${dim}, 1fr)`;
   grid.style.gridTemplateRows = `repeat(${dim}, 1fr)`;
-  for (let r=0;r<dim;r++) for (let c=0;c<dim;c++) {
-    const cell = document.createElement("div");
-    cell.className = "cell " + (mazeData[r][c] ? "path" : "wall");
-    grid.appendChild(cell);
+  mazeCells = [];
+  for (let r=0;r<dim;r++) {
+    mazeCells[r] = [];
+    for (let c=0;c<dim;c++) {
+      const isPath = !!mazeData[r][c];
+      const cell = document.createElement("div");
+      cell.className = "cell " + (isPath ? "path" : "wall");
+      /* a stable variant per cell so the stonework never reshuffles */
+      const v = (r * 7 + c * 13) % 4;
+      cell.style.backgroundImage = "url(" + (isPath ? MZ_FLOORS[v] : MZ_WALLS[v]) + ")";
+      grid.appendChild(cell);
+      mazeCells[r][c] = cell;
+    }
   }
+  mzEnsureFx();
+  mzResizeFx();
+}
+
+/* mark where she has already walked — in a fog maze, seeing your own
+   trail is the difference between exploring and going in circles */
+function markVisited(r, c) {
+  const cell = mazeCells[r] && mazeCells[r][c];
+  if (cell && !cell.classList.contains("visited")) cell.classList.add("visited");
 }
 
 function buildHearts() {
@@ -314,16 +499,37 @@ function positionBeacon() {
 
 /* Soft, warm, multi-stop torch light instead of a hard circle. Constant
    radius - fair and consistent, not an escalating timer squeeze. */
-function updateFog() {
+let fogFlickerRaf = null;
+function updateFog(flick) {
   const fog = document.getElementById("fog-layer");
+  if (!fog) return;
   const cx = playerPos.c*CS + CS/2, cy = playerPos.r*CS + CS/2;
-  const r1 = CS*1.05, r2 = CS*1.95, r3 = CS*2.95, r4 = CS*4.2;
+  const f = flick === undefined ? 1 : flick;
+  const r1 = CS*1.35*f, r2 = CS*2.6*f, r3 = CS*4.0*f, r4 = CS*5.6*f;
+  /* warm lantern light instead of the old purple murk, so the maze
+     belongs to the same world as everything else */
   fog.style.background = `radial-gradient(circle at ${cx}px ${cy}px,
-    rgba(255,241,209,.22) 0px,
-    rgba(255,225,180,.1) ${r1}px,
-    rgba(70,30,90,.42) ${r2}px,
-    rgba(35,14,55,.78) ${r3}px,
-    rgba(16,7,28,.96) ${r4}px)`;
+    rgba(255,238,196,.20) 0px,
+    rgba(255,206,140,.10) ${r1}px,
+    rgba(74,44,18,.46) ${r2}px,
+    rgba(40,22,10,.74) ${r3}px,
+    rgba(20,10,5,.94) ${r4}px)`;
+}
+
+/* the lantern breathes a little, which makes the dark feel alive */
+function startFogFlicker() {
+  if (fogFlickerRaf) return;
+  const tick = (now) => {
+    fogFlickerRaf = requestAnimationFrame(tick);
+    if (!document.getElementById("screen-maze").classList.contains("active")) return;
+    const t = now / 1000;
+    updateFog(1 + Math.sin(t * 2.3) * 0.02 + Math.sin(t * 5.7) * 0.012);
+  };
+  fogFlickerRaf = requestAnimationFrame(tick);
+}
+function stopFogFlicker() {
+  if (fogFlickerRaf) cancelAnimationFrame(fogFlickerRaf);
+  fogFlickerRaf = null;
 }
 
 function updateHud() {
@@ -345,11 +551,21 @@ function move(dir) {
   if (dir==="left") lastFacing="left";
   if (dir==="right") lastFacing="right";
   if (mazeData[midR] && mazeData[midR][midC] === 1) {
+    const fromR = playerPos.r, fromC = playerPos.c;
     playerPos = { r: playerPos.r+dr, c: playerPos.c+dc };
     stepCount++;
     const tok = document.getElementById("player-token");
     tok.classList.toggle("face-left", lastFacing==="left");
     placeToken(tok, playerPos, false);
+
+    /* a puff of dust off the trailing foot, and the trail behind her */
+    mzSpawn(fromC*CS + CS/2, fromR*CS + CS*0.85, 4, "rgba(226,200,150,0.9)", 26, 6);
+    markVisited(fromR, fromC);
+    markVisited(midR, midC);
+    markVisited(playerPos.r, playerPos.c);
+    tok.classList.remove("stepping"); void tok.offsetWidth; tok.classList.add("stepping");
+    mzSfx("step");
+
     updateFog();
     updateHud();
     if (level === 1) { checkHeart(); }
@@ -363,6 +579,11 @@ function checkHeart() {
   if (el) {
     heartsCollected++;
     popText(el.style.left, el.style.top, "+1 💗", "#ff5b98");
+    mzSpawn(playerPos.c*CS + CS/2, playerPos.r*CS + CS/2, 16, "#ff8fb8", 70, 30);
+    mzSpawn(playerPos.c*CS + CS/2, playerPos.r*CS + CS/2, 10, "#ffe08a", 50, 20);
+    mzSfx("heart");
+    const hud = document.querySelector(".hud-hearts-l1");
+    if (hud) { hud.classList.remove("pop"); void hud.offsetWidth; hud.classList.add("pop"); }
     el.remove();
     updateHud();
   }
@@ -387,6 +608,11 @@ function checkWin() {
     }
     gameWon = true;
     stopLevel2Systems();
+    mzSfx("win");
+    for (let b = 0; b < 4; b++) {
+      setTimeout(() => mzSpawn(targetPos.c*CS + CS/2, targetPos.r*CS + CS/2, 18,
+        b % 2 ? "#ff8fb8" : "#ffe08a", 110, 60), b * 110);
+    }
     if (level === 1) saveBestTime();
     startDialogue();
   }
@@ -622,6 +848,8 @@ function applyDamage(msg) {
   flash.classList.remove("hit"); void flash.offsetWidth; flash.classList.add("hit");
   const stage = document.getElementById("maze-stage");
   stage.classList.remove("shake"); void stage.offsetWidth; stage.classList.add("shake");
+  mzSpawn(playerPos.c*CS + CS/2, playerPos.r*CS + CS/2, 14, "#ff6b6b", 80, 24);
+  mzSfx("hurt");
   if (hp <= 0) respawnLevel2();
 }
 
