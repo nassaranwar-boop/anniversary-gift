@@ -1172,109 +1172,37 @@ function startLetter() {
   cont.style.animationDelay = (totalMs/1000 + 0.6).toFixed(2) + "s";
 }
 /* =========================================================
-   MEMORY DIORAMAS
-
-   Each memory is a miniature world that rises out of an open book,
-   wrapped in golden light. The 3D scene itself lives in
-   diorama-scene.js; this half owns the page: which memory is showing,
-   the caption, navigation, and what to do when 3D is unavailable.
+   THE SCRAPBOOK
+   The page logic lives in scrapbook.js; this half only owns the
+   navigation between screens.
    ========================================================= */
-
-let dioIndex = 0;
-let dioTimer = null;
-let dioBusy = false;
-const DIO_HOLD_MS = 9000;   // how long a page sits before it turns itself
-
-function dioScreen() { return document.getElementById("screen-diorama"); }
-
-function buildDiorama(i) {
-  const m = MEMORIES[i];
-  if (!m) return;
-
-  document.getElementById("dio-title").textContent = m.title || "";
-  document.getElementById("dio-date").textContent = m.date || "";
-  document.getElementById("dio-text").textContent = m.text || "";
-
-  const photo = document.getElementById("dio-photo");
-  photo.innerHTML = m.photo ? `<img src="${m.photo}" alt="${m.title || "memory"}">` : (m.icon || "📷");
-
-  /* Each memory gets a world. They cycle, so adding memories never
-     leaves one without a scene. */
-  if (window.Diorama && Diorama.mount()) {
-    document.getElementById("dio-fallback").hidden = true;
-    /* The photo, when there is one, stands up on the pages as the
-       centrepiece and the miniature world arranges itself around it. */
-    Diorama.show(i, m.photo || null);
-  } else {
-    const fb = document.getElementById("dio-fallback");
-    fb.hidden = false;
-    fb.textContent = m.title || "A memory";
-  }
-
-  const dots = document.getElementById("dio-dots");
-  dots.innerHTML = "";
-  MEMORIES.forEach((_, k) => {
-    const b = document.createElement("button");
-    b.className = "dio-dot" + (k === i ? " on" : "");
-    b.setAttribute("aria-label", "Memory " + (k + 1));
-    b.addEventListener("click", (e) => { e.stopPropagation(); dioGo(k); });
-    dots.appendChild(b);
-  });
-  document.getElementById("dio-prev").disabled = i === 0;
-  document.getElementById("dio-next").disabled = i >= MEMORIES.length - 1;
+function startDioramas() {           // kept as the name script.js calls
+  if (window.Scrapbook) Scrapbook.start();
 }
-
-function dioPopOpen() {
-  const scr = dioScreen();
-  scr.classList.remove("dio-open", "dio-closing");
-  void scr.offsetWidth;
-  scr.classList.add("dio-open");
-  clearTimeout(dioTimer);
-  if (MEMORIES.length > 1) {
-    dioTimer = setTimeout(() => { if (dioIndex < MEMORIES.length - 1) dioGo(dioIndex + 1); }, DIO_HOLD_MS);
-  }
-}
-
-function dioGo(i) {
-  if (dioBusy || i === dioIndex || i < 0 || i >= MEMORIES.length) return;
-  dioBusy = true;
-  clearTimeout(dioTimer);
-  const scr = dioScreen();
-  scr.classList.remove("dio-open");
-  scr.classList.add("dio-closing");
-  if (window.Diorama && Diorama.ok) Diorama.hide();   // sink the old world first
-  setTimeout(() => {
-    dioIndex = i;
-    buildDiorama(dioIndex);
-    scr.classList.remove("dio-closing");
-    dioPopOpen();
-    dioBusy = false;
-  }, 480);
-}
-
-function startDioramas() {
-  dioIndex = 0;
-  buildDiorama(0);
-  dioPopOpen();
-  if (window.Diorama && Diorama.ok) { Diorama.resize(); Diorama.start(); }
-}
-
 function stopDioramas() {
-  clearTimeout(dioTimer);
-  if (window.Diorama && Diorama.ok) { Diorama.hide(); Diorama.stop(); }
+  if (window.Scrapbook) Scrapbook.stop();
 }
 
 /* ---------- wiring ---------- */
 document.getElementById("letter-continue")
-  .addEventListener("click", () => pageTurn("diorama", startDioramas));
-document.getElementById("dio-next").addEventListener("click", (e) => { e.stopPropagation(); dioGo(dioIndex + 1); });
-document.getElementById("dio-prev").addEventListener("click", (e) => { e.stopPropagation(); dioGo(dioIndex - 1); });
-document.getElementById("dio-stage").addEventListener("click", () => {
-  if (dioIndex < MEMORIES.length - 1) dioGo(dioIndex + 1);
+  .addEventListener("click", () => pageTurn("scrapbook", startDioramas));
+
+document.getElementById("sb-open").addEventListener("click", () => Scrapbook.openBook());
+document.getElementById("sb-next").addEventListener("click", () => Scrapbook.next());
+document.getElementById("sb-prev").addEventListener("click", () => Scrapbook.prev());
+document.getElementById("sb-lb-close").addEventListener("click", () => Scrapbook.closeLightbox());
+document.getElementById("sb-lightbox").addEventListener("click", (e) => {
+  if (e.target.id === "sb-lightbox") Scrapbook.closeLightbox();
 });
-document.getElementById("dio-continue").addEventListener("click", () => {
+document.getElementById("sb-continue").addEventListener("click", () => {
   stopDioramas();
   pageTurn("hub", startHub);
+});
+document.addEventListener("keydown", (e) => {
+  if (!document.getElementById("screen-scrapbook").classList.contains("active")) return;
+  if (e.key === "ArrowRight") Scrapbook.next();
+  if (e.key === "ArrowLeft") Scrapbook.prev();
+  if (e.key === "Escape") Scrapbook.closeLightbox();
 });
 
 /* =========================================================
@@ -1373,7 +1301,7 @@ function startKeepsake() {
 }
 
 document.getElementById("ks-memories").addEventListener("click", () => {
-  pageTurn("diorama", startDioramas);
+  pageTurn("scrapbook", startDioramas);
 });
 document.getElementById("ks-replay").addEventListener("click", () => {
   pageTurn("hub", startHub);

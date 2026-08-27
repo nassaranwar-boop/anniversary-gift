@@ -50,36 +50,45 @@
     </div>
   </section>
 
-  <!-- SCREEN 0d — POP-UP STORYBOOK DIORAMAS -->
-  <section id="screen-diorama" class="screen ancient-bg">
-    <div class="dio-wrap">
-      <div class="dio-header">
-        <h2 class="dio-title" id="dio-title"></h2>
-        <p class="dio-date" id="dio-date"></p>
+  <!-- SCREEN 0d — THE SCRAPBOOK -->
+  <section id="screen-scrapbook" class="screen">
+    <!-- the cover, with butterflies over it -->
+    <div class="sb-cover" id="sb-cover-paper">
+      <canvas id="sb-flies" class="sb-flies"></canvas>
+      <div class="sb-candle" aria-hidden="true">
+        <div class="sb-flame"></div>
+        <div class="sb-wax"></div>
       </div>
-
-      <!-- the memory rises out of the book, in 3D -->
-      <div class="dio-stage" id="dio-stage">
-        <canvas id="dio3d"></canvas>
-        <div class="dio-fallback" id="dio-fallback" hidden></div>
-        <div class="dio-photo-slot" id="dio-photo"></div>
+      <div class="sb-cover-card" id="sb-cover-card">
+        <p class="sb-cover-kicker">— a love letter —</p>
+        <h1 class="sb-cover-title">for you,</h1>
+        <p class="sb-cover-sub">with love</p>
       </div>
+      <button id="sb-open" class="sb-open-btn">open it 💌</button>
+    </div>
 
-      <p class="dio-text" id="dio-text"></p>
-
-      <div class="dio-nav">
-        <button class="dio-arrow" id="dio-prev" aria-label="Previous memory">‹</button>
-        <div class="dio-dots" id="dio-dots"></div>
-        <button class="dio-arrow" id="dio-next" aria-label="Next memory">›</button>
+    <!-- the book itself -->
+    <div class="sb-book">
+      <div class="sb-stack" id="sb-stack"></div>
+      <div class="sb-nav">
+        <button class="sb-arrow" id="sb-prev" aria-label="Previous page">‹</button>
+        <div class="sb-dots" id="sb-dots"></div>
+        <button class="sb-arrow" id="sb-next" aria-label="Next page">›</button>
       </div>
-      <button id="dio-continue" class="btn-ancient dio-continue">Turn the Page 💕</button>
+      <button id="sb-continue" class="btn-ancient sb-continue">Close the book 💛</button>
+    </div>
+
+    <!-- a photo lifted out of the page -->
+    <div class="sb-lightbox" id="sb-lightbox">
+      <div class="sb-lb-card">
+        <div class="sb-lb-frame"></div>
+        <h3 class="sb-lb-title"></h3>
+        <p class="sb-lb-date"></p>
+        <p class="sb-lb-text"></p>
+        <button class="sb-lb-close" id="sb-lb-close">close</button>
+      </div>
     </div>
   </section>
-
-  <!-- burn transition overlay -->
-  <div class="burn-overlay" id="burn-overlay">
-    <div class="burn-char" id="burn-char"></div>
-  </div>
 
   <!-- SCREEN — CHOOSE YOUR ADVENTURE (hub) -->
   <section id="screen-hub" class="screen ancient-bg">
@@ -302,7 +311,7 @@
   </div>
 
 <script src="book-scene.js"></script>
-<script src="diorama-scene.js"></script>
+<script src="scrapbook.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
