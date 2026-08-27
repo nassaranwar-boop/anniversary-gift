@@ -1781,6 +1781,50 @@ function treeFull(ctx, x, groundY, h, barkTones, leafTones, rnd, opts) {
   return { x: topX, y: cy, r: r };
 }
 
+/* Overhead canopy: boughs reaching in from the top of the frame, each
+   with a visible limb and clusters of leaves hanging off it, shaded
+   darker underneath. Free-floating ellipses in the sky read as green
+   clouds — a canopy has to be attached to something. */
+function overheadCanopy(ctx, W, rnd, tones, barkTones, count, reach) {
+  var boughs = count || 5;
+  for (var i = 0; i < boughs; i++) {
+    var rootX = Math.round((i + 0.5) / boughs * W + (rnd() - 0.5) * 24);
+    var dir = rootX < W / 2 ? 1 : -1;
+    var len = (reach || 44) * (0.7 + rnd() * 0.6);
+    var ang = (dir > 0 ? 0.55 : Math.PI - 0.55) + (rnd() - 0.5) * 0.4;
+
+    // the limb itself, thinning as it reaches in
+    var lx = rootX, ly = -3;
+    for (var k = 0; k < len; k++) {
+      var t = k / len;
+      var w = Math.max(1, Math.round(4 * (1 - t * 0.65)));
+      lx += Math.cos(ang) * 1;
+      ly += Math.sin(ang) * 1;
+      px(ctx, lx, ly, w, w, barkTones[1]);
+      if (k % 9 === 0) px(ctx, lx, ly, 1, 1, barkTones[0]);
+      // side twigs
+      if (k > len * 0.3 && k % 11 === 0) {
+        var ta = ang + (rnd() > 0.5 ? 0.9 : -0.9);
+        for (var m = 0; m < 7; m++) px(ctx, lx + Math.cos(ta) * m, ly + Math.sin(ta) * m, 1, 1, barkTones[2]);
+      }
+    }
+
+    // leaf clusters hanging along the limb
+    var clusters = 3 + Math.floor(rnd() * 3);
+    for (var c = 0; c < clusters; c++) {
+      var ct = 0.18 + (c / clusters) * 0.85;
+      var cx = rootX + Math.cos(ang) * len * ct;
+      var cy = -3 + Math.sin(ang) * len * ct;
+      var r = 10 + rnd() * 8;
+      canopy(ctx, cx, cy, r, tones, rnd, "#cbe89c");
+      // shaded underside so the mass has weight
+      for (var u = -r; u < r; u += 1) {
+        if (rnd() > 0.55) px(ctx, cx + u, cy + r * 0.52 + rnd() * 3, 1, 1, tones[3] || tones[2]);
+      }
+    }
+  }
+}
+
 /* A birch: pale, slender, gently curved, with irregular bark scars and a
    canopy of its own so it is never a pole disappearing into a green band. */
 function birch(ctx, x, groundY, h, rnd, opts) {
@@ -1802,7 +1846,7 @@ function birch(ctx, x, groundY, h, rnd, opts) {
   }
 
   var leaves = opts.leaves || ["#a8cc72", "#87b055", "#67903f", "#4d722e"];
-  var r = opts.r || h * 0.42;
+  var r = opts.r || h * 0.34;
   for (var i = 0; i < 2; i++) {
     var a = -Math.PI / 2 + (i ? 0.7 : -0.7);
     branchArm(ctx, topX, topY + h * 0.12, h * 0.12, a, 2, bark);
@@ -1914,15 +1958,9 @@ const HV_SCENES = {
     ]);
     sunRays(ctx, PXW * 0.32, -14, PXW, PXH, "#fff8d8", rnd, 7);
 
-    /* a distant treeline along the top, hazed and small — it sits behind
-       the real trees rather than swallowing them */
-    for (var d = 0; d < 2; d++) {
-      var tone = [["#c6dd9a", "#aec883", "#96af6c", "#7f9857"],
-                  ["#b2cf80", "#99b769", "#809e54", "#688541"]][d];
-      for (var i = 0; i < 9; i++) {
-        blob(ctx, rnd() * PXW, 8 + d * 12 + rnd() * 12, 20 + rnd() * 14, 8 + rnd() * 6, tone);
-      }
-    }
+    /* open sky overhead — the trees stand in the scene, nothing hangs */
+    cloudRow(ctx, PXW, 20, 4, ["#ffffff", "#f4f8fc", "#e2e9f2", "#cfd8e6"], rnd, 1.15);
+    cloudRow(ctx, PXW, 40, 3, ["#fdfeff", "#eef4fa", "#dce5f0", "#c9d4e4"], rnd, 0.8);
 
     ditherSky(ctx, 0, 104, PXW, PXH - 104, [
       { p: 0.00, c: "#7fae54" }, { p: 0.35, c: "#6b9945" }, { p: 1.00, c: "#527a34" },
@@ -1980,10 +2018,8 @@ const HV_SCENES = {
       { p: 0.54, c: "#c9e2c6" }, { p: 1.00, c: "#b2cf9c" },
     ]);
     sunRays(ctx, PXW * 0.62, -10, PXW, PXH, "#fffbe0", rnd, 6);
-    for (var i = 0; i < 11; i++) {
-      blob(ctx, rnd() * PXW, 8 + rnd() * 16, 20 + rnd() * 14, 8 + rnd() * 6,
-        ["#bcd48e", "#a2bd74", "#8aa55e", "#738d4a"]);
-    }
+    cloudRow(ctx, PXW, 22, 4, ["#ffffff", "#f3f8fb", "#e0e9f0", "#ccd7e2"], rnd, 1.05);
+    cloudRow(ctx, PXW, 44, 2, ["#fdfeff", "#edf4f8", "#d9e4ec", "#c5d2de"], rnd, 0.75);
 
     ditherSky(ctx, 0, 116, PXW, PXH - 116, [
       { p: 0.00, c: "#7aa54c" }, { p: 0.42, c: "#658c3c" }, { p: 1.00, c: "#4e6d2f" },
@@ -2162,8 +2198,8 @@ const HV = {
     scene: "sakura", cat: "idle",
     say: "Pick a heart or a flower?",
     cards: [
-      { art: "heart", to: "forest" },
-      { art: "flower", to: "forest" },
+      { art: "heart", to: "forest", keepsake: "heart" },
+      { art: "flower", to: "forest", keepsake: "flower" },
     ],
   },
 
@@ -2214,7 +2250,7 @@ const HV = {
 
   meadow: {
     scene: "meadow", cat: "idle",
-    say: "It's getting dark!",
+    say: "It's getting dark!", callback: true,
     choices: [{ label: "keep going", to: "sunset", pos: "left" }],
   },
 
@@ -2274,10 +2310,175 @@ const HV = {
 
   yay: {
     scene: "sunset", cat: "love", bigCat: true, hearts: true, isEnd: true,
-    say: "YAYYY, I love you!",
+    say: "YAYYY, I love you!", tally: true,
     choices: [{ label: "close the book 💛", to: "__exit", pos: "left", style: "yes" }],
   },
 };
+
+/* =========================================================
+   THINGS TO FIND, THINGS REMEMBERED, AND SOUND
+
+   Three additions that give the walk more to do than pick a button:
+
+   1. Small things hidden in some scenes. Tap one and it is yours; the
+      ending counts them, so there is a reason to look around and a
+      reason to come back and find the ones you missed.
+   2. The very first choice - heart or flower - is remembered, and comes
+      back later in what the cat says and in what you are carrying at
+      the end.
+   3. Little sounds on every choice, collect and stumble, sharing the
+      audio context the music toggle already owns.
+   ========================================================= */
+
+/* ---------- sound ---------- */
+function hvSfx(kind) {
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    var t = audioCtx.currentTime;
+    var o = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    var spec = ({
+      pick:    { type: "square",   f: 620,  to: 880,  d: 0.10, v: 0.05 },
+      collect: { type: "triangle", f: 880,  to: 1560, d: 0.20, v: 0.07 },
+      bad:     { type: "sawtooth", f: 220,  to: 90,   d: 0.28, v: 0.05 },
+      yay:     { type: "triangle", f: 520,  to: 1040, d: 0.42, v: 0.08 },
+    })[kind] || { type: "square", f: 500, to: 700, d: 0.08, v: 0.04 };
+    o.type = spec.type;
+    o.frequency.setValueAtTime(spec.f, t);
+    o.frequency.exponentialRampToValueAtTime(spec.to, t + spec.d);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(spec.v, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + spec.d);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t); o.stop(t + spec.d + 0.02);
+  } catch (e) { /* sound is a bonus, never a blocker */ }
+}
+
+/* ---------- the things you can find ---------- */
+const HV_TOKENS = {
+  shell:   { name: "a striped shell",   icon: "🐚" },
+  feather: { name: "a soft feather",    icon: "🪶" },
+  acorn:   { name: "a small acorn",     icon: "🌰" },
+  ribbon:  { name: "a lost ribbon",     icon: "🎀" },
+};
+let hvFound = {};
+let hvKeepsake = null;      // heart or flower, from the very first choice
+let hvBursts = [];          // little sparkle pops when something is collected
+
+function hvDrawToken(kind) {
+  const { c, ctx } = spriteCanvas(14, 14);
+  if (kind === "shell") {
+    blob(ctx, 7, 8, 6, 5, ["#ffe8d0", "#f5c9a8", "#e0a883", "#c08664"]);
+    for (var i = 0; i < 5; i++) px(ctx, 3 + i * 2, 5 + (i % 2), 1, 6, "#c08664");
+  } else if (kind === "feather") {
+    px(ctx, 7, 2, 1, 10, "#c9b48e");
+    for (var k = 0; k < 8; k++) {
+      var w = 4 - Math.abs(k - 3) * 0.6;
+      px(ctx, 7 - w, 3 + k, w, 1, "#f2e6cf");
+      px(ctx, 8, 3 + k, w, 1, "#e2d2b4");
+    }
+  } else if (kind === "acorn") {
+    blob(ctx, 7, 9, 4, 4, ["#e0b070", "#c8904e", "#a87238", "#875828"]);
+    px(ctx, 3, 3, 8, 4, "#7a5230");
+    px(ctx, 6, 1, 2, 3, "#5e3f22");
+  } else { /* ribbon */
+    px(ctx, 6, 5, 3, 3, "#e0567f");
+    blob(ctx, 3, 6, 3.4, 2.6, ["#ffc2d8", "#f7a0bd", "#e0789c", "#c45d80"]);
+    blob(ctx, 11, 6, 3.4, 2.6, ["#ffc2d8", "#f7a0bd", "#e0789c", "#c45d80"]);
+    px(ctx, 5, 8, 2, 5, "#e0789c"); px(ctx, 8, 8, 2, 5, "#e0789c");
+  }
+  return c;
+}
+
+function hvBurst(x, y, colour) {
+  for (var i = 0; i < 12; i++) {
+    var a = (i / 12) * Math.PI * 2;
+    hvBursts.push({ x: x, y: y, vx: Math.cos(a) * (14 + Math.random() * 16),
+      vy: Math.sin(a) * (14 + Math.random() * 16) - 8, life: 0, max: 0.6,
+      c: colour || "#ffe9a8" });
+  }
+}
+
+function hvDrawBursts(ctx, dt) {
+  for (var i = hvBursts.length - 1; i >= 0; i--) {
+    var b = hvBursts[i];
+    b.life += dt;
+    if (b.life >= b.max) { hvBursts.splice(i, 1); continue; }
+    var t = b.life / b.max;
+    var x = b.x + b.vx * b.life;
+    var y = b.y + b.vy * b.life + 40 * b.life * b.life;
+    if (t < 0.75 || Math.sin(b.life * 40) > 0) px(ctx, x, y, t < 0.5 ? 2 : 1, t < 0.5 ? 2 : 1, b.c);
+  }
+}
+
+/* Where each findable thing hides, in scene pixels. Deliberately tucked
+   against scenery so they take a moment to spot. */
+/* Kept clear of the furniture: the top bar, the side buttons around
+   38-48% height, and the speech note which covers the bottom band from
+   roughly 12% to 76% across. Anything hidden under those can never be
+   tapped. */
+const HV_HIDDEN = {
+  forest:    { id: "acorn",   x: 248, y: 112, r: 14 },
+  hollow:    { id: "feather", x: 118, y: 104, r: 14 },
+  sunset:    { id: "shell",   x: 250, y: 108, r: 14 },
+  butterfly: { id: "ribbon",  x: 86,  y: 116, r: 14 },
+};
+
+function hvHiddenHere() {
+  var n = HV[hvNode];
+  if (!n) return null;
+  var spot = HV_HIDDEN[hvNode];
+  if (!spot || hvFound[spot.id]) return null;
+  return spot;
+}
+
+/* canvas taps: collecting, and poking the cat */
+function hvCanvasTap(ev) {
+  var canvas = document.getElementById("hv-canvas");
+  if (!canvas) return;
+  var r = canvas.getBoundingClientRect();
+  var sx = ((ev.clientX - r.left) / r.width) * PXW;
+  var sy = ((ev.clientY - r.top) / r.height) * PXH;
+
+  var spot = hvHiddenHere();
+  if (spot && Math.abs(sx - spot.x) < spot.r && Math.abs(sy - spot.y) < spot.r) {
+    hvFound[spot.id] = true;
+    hvBurst(spot.x, spot.y, "#fff0b0");
+    hvSfx("collect");
+    hvUpdateFoundStrip();
+    return;
+  }
+
+  // poking the cat gets a reaction
+  var n = HV[hvNode];
+  if (n && n.cat && n.cat !== "hide" && !n.bigCat && sx < 90 && sy > PXH - 88) {
+    hvPoke = 1.2;
+    hvBurst(40, PXH - 60, "#ffb3cd");
+    hvSfx("pick");
+  }
+}
+let hvPoke = 0;
+
+function hvUpdateFoundStrip() {
+  var strip = document.getElementById("hv-found");
+  if (!strip) return;
+  var ids = Object.keys(HV_TOKENS).filter(function (k) { return hvFound[k]; });
+  strip.innerHTML = ids.map(function (k) {
+    return '<span class="hv-token" title="' + HV_TOKENS[k].name + '">' + HV_TOKENS[k].icon + "</span>";
+  }).join("");
+  strip.classList.toggle("on", ids.length > 0);
+}
+
+function hvFoundList() {
+  var ids = Object.keys(HV_TOKENS).filter(function (k) { return hvFound[k]; });
+  if (!ids.length) return "";
+  if (ids.length === 1) return "You found " + HV_TOKENS[ids[0]].name + " along the way.";
+  var names = ids.map(function (k) { return HV_TOKENS[k].name; });
+  return "You found " + names.slice(0, -1).join(", ") + " and " + names[names.length - 1] + " along the way.";
+}
 
 /* ---------- painting ----------
    The background is expensive, so it is painted once into an offscreen
@@ -2464,10 +2665,22 @@ function hvPaintFrame(t) {
     }
   }
 
+  /* something small hidden in the scenery, if this page has one */
+  var spot = hvHiddenHere();
+  if (spot) {
+    var tok = hvDrawToken(spot.id);
+    var glint = 0.5 + 0.5 * Math.sin(t * 2.1);
+    ctx.drawImage(tok, 0, 0, tok.width, tok.height,
+      spot.x - tok.width / 2, spot.y - tok.height / 2 + Math.sin(t * 1.1) * 1,
+      tok.width, tok.height);
+    if (glint > 0.82) px(ctx, spot.x + 6, spot.y - 6, 1, 1, "#fff6d0");
+  }
+
   if (n.cat && n.cat !== "hide") {
     /* a blink every few seconds, and a slow breath */
     var blink = (t % 4.4) > 4.2;
     var mood = blink && (n.cat === "idle" || n.cat === "happy") ? "happy" : n.cat;
+    if (hvPoke > 0) { mood = "love"; hvPoke -= 0.016; }
     var scale = n.bigCat ? 2.8 : 2.0;
     var sp = drawCat(mood);
     var bob = Math.sin(t * 1.2) * 1.2;
@@ -2538,6 +2751,7 @@ function hvLoop(now) {
 
   hvPaintFrame(t);
   var canvas = document.getElementById("hv-canvas");
+  if (canvas) hvDrawBursts(canvas.getContext("2d"), dt);
   if (canvas && hvTrans) hvDrawTransition(canvas.getContext("2d"), dt);
 }
 
@@ -2587,7 +2801,16 @@ function hvRender(withTransition) {
   hvStartLoop();
 
   const note = document.getElementById("hv-note");
-  const say = n.isAsk ? QUEST_FINAL.question : n.say;
+  let say = n.isAsk ? QUEST_FINAL.question : n.say;
+  if (n.callback && hvKeepsake) {
+    say += hvKeepsake === "flower"
+      ? " …you are still carrying that flower, by the way."
+      : " …you are still holding that little heart, by the way.";
+  }
+  if (n.tally) {
+    const found = hvFoundList();
+    if (found) say += " " + found;
+  }
   note.textContent = say;
   note.classList.toggle("hidden", !say);
   note.classList.toggle("hv-note-ask", !!n.isAsk);
@@ -2630,6 +2853,8 @@ function hvRender(withTransition) {
 let hvCompleted = false;
 
 function hvChoose(ch) {
+  if (ch.keepsake) hvKeepsake = ch.keepsake;      // heart or flower, remembered
+  hvSfx(HV[ch.to] && HV[ch.to].isFail ? "bad" : (ch.to === "yay" ? "yay" : "pick"));
   if (ch.to === "__exit") {
     hvStopLoop();
     markChapterDone("quest");
@@ -2664,10 +2889,17 @@ function startQuest() {
   hvNode = "title";
   hvHistory = [];
   hvFailReturn = null;
+  hvBursts = [];
+  hvPoke = 0;
+  hvUpdateFoundStrip();
   document.getElementById("hv-fail").classList.remove("on");
   hvRender(false);
 }
 
+(function () {
+  var c = document.getElementById("hv-canvas");
+  if (c) c.addEventListener("click", hvCanvasTap);
+})();
 document.getElementById("hv-retry").addEventListener("click", hvRetry);
 document.getElementById("hv-back").addEventListener("click", hvBack);
 document.getElementById("hv-quit").addEventListener("click", () => { hvStopLoop(); pageTurn("hub", startHub); });

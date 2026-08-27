@@ -704,6 +704,19 @@ img{-webkit-user-drag:none; user-select:none;}
 .hv-chip:active{transform:translateY(2px); box-shadow:none;}
 .hv-chip[disabled]{opacity:.35; cursor:default;}
 
+/* ---- the things you have picked up along the way ---- */
+.hv-found{
+  display:none; gap:4px; align-items:center;
+  background:rgba(56,30,10,.5); border:1.5px solid rgba(255,222,160,.4);
+  border-radius:14px; padding:3px 9px; backdrop-filter:blur(4px);
+}
+.hv-found.on{display:flex;}
+.hv-token{
+  font-size:clamp(11px,2.2vw,15px); line-height:1;
+  animation:hvTokenIn .45s var(--ease-pop) backwards;
+}
+@keyframes hvTokenIn{from{opacity:0; transform:scale(.3) rotate(-25deg);} to{opacity:1; transform:none;}}
+
 /* ---- the taped paper note the cat speaks through ---- */
 .hv-note{
   position:absolute; left:12%; bottom:8%; z-index:6; max-width:64%;
