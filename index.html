@@ -92,6 +92,70 @@
     <div class="burn-char" id="burn-char"></div>
   </div>
 
+  <!-- SCREEN — CHOOSE YOUR ADVENTURE (hub) -->
+  <section id="screen-hub" class="screen ancient-bg">
+    <div class="hub-wrap">
+      <h2 class="hub-title">Choose your adventure</h2>
+      <p class="hub-sub" id="hub-sub">— two chapters, either order —</p>
+      <div class="hub-cards">
+        <button class="hub-card" id="hub-card-maze" data-chapter="maze">
+          <span class="hub-badge" id="hub-badge-maze">✓</span>
+          <span class="hub-art hub-art-maze" aria-hidden="true"></span>
+          <span class="hub-name">The Maze</span>
+          <span class="hub-desc">Find your way through the dark to reach me</span>
+        </button>
+        <button class="hub-card" id="hub-card-quest" data-chapter="quest">
+          <span class="hub-badge" id="hub-badge-quest">✓</span>
+          <span class="hub-art hub-art-quest" aria-hidden="true"></span>
+          <span class="hub-name">The Long Way Round</span>
+          <span class="hub-desc">A story that goes where you choose</span>
+        </button>
+      </div>
+      <button id="hub-keepsake" class="btn-ancient hub-keepsake">Open the keepsake 💛</button>
+    </div>
+  </section>
+
+  <!-- SCREEN — KEEPSAKE (scrapbook recap) -->
+  <section id="screen-keepsake" class="screen ancient-bg">
+    <div class="ks-wrap">
+      <h2 class="ks-title">Our little book</h2>
+      <p class="ks-sub" id="ks-sub"></p>
+      <div class="ks-board" id="ks-board"></div>
+      <p class="ks-closing" id="ks-closing"></p>
+      <div class="ks-actions">
+        <button id="ks-memories" class="btn-ancient">Relive a memory</button>
+        <button id="ks-replay" class="btn-ancient">Play again 💕</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN — CHOICE ADVENTURE -->
+  <section id="screen-quest" class="screen">
+    <div class="q-frame">
+      <canvas id="q-canvas" class="q-canvas" width="192" height="108"></canvas>
+      <div class="q-vignette"></div>
+
+      <div class="q-topbar">
+        <button id="q-back" class="q-chip" aria-label="Back a step">‹ back</button>
+        <span class="q-chapter" id="q-chapter">Chapter One</span>
+        <button id="q-quit" class="q-chip" aria-label="Leave the story">✕</button>
+      </div>
+
+      <div class="q-mascot-slot"><canvas id="q-mascot" width="48" height="48"></canvas></div>
+
+      <div class="q-panel">
+        <p class="q-text" id="q-text"></p>
+        <div class="q-choices" id="q-choices"></div>
+      </div>
+
+      <div class="q-fail" id="q-fail">
+        <canvas id="q-fail-art" width="96" height="72"></canvas>
+        <p class="q-fail-text" id="q-fail-text"></p>
+        <button id="q-retry" class="btn-wax q-retry">Try Again 💫</button>
+      </div>
+    </div>
+  </section>
+
   <!-- SCREEN 1 — "DO YOU WANT TO PLAY A GAME?" COVER -->
   <section id="screen-hello" class="screen">
     <div class="particle-field" id="pf-hello"></div>
@@ -228,6 +292,9 @@
       <button id="btn-replay" class="btn-replay">Play Again 💕</button>
     </div>
   </section>
+
+  <!-- ambient music toggle (persists across every screen) -->
+  <button id="music-toggle" class="music-toggle off" aria-label="Turn music on">🔇</button>
 
   <!-- DIALOGUE — cute love note -->
   <div id="dialogue-overlay" class="dialogue-overlay hidden">

@@ -165,7 +165,9 @@ document.getElementById("btn-start").addEventListener("click", () => { pageTurn(
 document.getElementById("btn-start2").addEventListener("click", () => { pageTurn("maze", () => initMaze(2)); });
 
 document.getElementById("btn-replay").addEventListener("click", () => {
-  level = 1; pageTurn("hello");
+  level = 1;
+  if (bothChaptersDone()) pageTurn("keepsake", startKeepsake);
+  else pageTurn("hub", startHub);
 });
 
 /* =========================================================
@@ -770,7 +772,9 @@ let endTimer1 = null, endTimer2 = null;
 function goToEnding() {
   const heading = document.querySelector("#end-heading span");
   heading.textContent = "🏆 You made it through everything for me 🏆";
-  document.getElementById("btn-replay").textContent = "Play Again 💕";
+  markChapterDone("maze");
+  document.getElementById("btn-replay").textContent =
+    bothChaptersDone() ? "Open the keepsake 💛" : "Choose another chapter 💕";
   pageTurn("end", () => activateEndingScene());
 }
 
@@ -1273,5 +1277,676 @@ document.getElementById("dio-stage").addEventListener("click", () => {
 });
 document.getElementById("dio-continue").addEventListener("click", () => {
   clearTimeout(dioTimer);
-  pageTurn("hello");   // becomes the hub screen in the next pass
+  pageTurn("hub", startHub);
 });
+
+/* =========================================================
+   HUB — choose your adventure
+   Two chapters, either order. Completion is remembered so she can
+   put the phone down and come back to it.
+   ========================================================= */
+const CHAPTER_KEY = "fal_chapters_done";
+
+function chaptersDone() {
+  try { return JSON.parse(localStorage.getItem(CHAPTER_KEY) || "{}") || {}; }
+  catch (e) { return {}; }
+}
+function markChapterDone(name) {
+  try {
+    const d = chaptersDone();
+    d[name] = true;
+    localStorage.setItem(CHAPTER_KEY, JSON.stringify(d));
+  } catch (e) { /* private mode — the session still works, it just won't persist */ }
+}
+function bothChaptersDone() {
+  const d = chaptersDone();
+  return !!(d.maze && d.quest);
+}
+
+function startHub() {
+  const d = chaptersDone();
+  const both = bothChaptersDone();
+
+  [["maze", d.maze], ["quest", d.quest]].forEach(([name, done]) => {
+    const card = document.getElementById("hub-card-" + name);
+    if (card) card.classList.toggle("done", !!done);
+  });
+
+  const sub = document.getElementById("hub-sub");
+  if (both) sub.textContent = "— you finished both. the keepsake is yours —";
+  else if (d.maze || d.quest) sub.textContent = "— one down. the other is still waiting —";
+  else sub.textContent = "— two chapters, either order —";
+
+  document.getElementById("hub-keepsake").classList.toggle("on", both);
+}
+
+document.getElementById("hub-card-maze").addEventListener("click", () => {
+  level = 1;
+  pageTurn("details");
+});
+document.getElementById("hub-card-quest").addEventListener("click", () => {
+  pageTurn("quest", startQuest);
+});
+document.getElementById("hub-keepsake").addEventListener("click", () => {
+  pageTurn("keepsake", startKeepsake);
+});
+
+/* =========================================================
+   KEEPSAKE — scrapbook recap
+   ========================================================= */
+const KEEPSAKE_CLOSING =
+  "[Replace this with your closing line — the last thing she reads.]";
+
+function startKeepsake() {
+  const board = document.getElementById("ks-board");
+  board.innerHTML = "";
+
+  MEMORIES.forEach((m, i) => {
+    const card = document.createElement("div");
+    card.className = "ks-card";
+    card.style.setProperty("--r", ((i % 2 ? 1 : -1) * (1.5 + (i % 3))) + "deg");
+    card.innerHTML = `
+      <span class="ks-tape"></span>
+      <div class="ks-img">${m.photo ? `<img src="${m.photo}" alt="${m.title || ""}" style="width:100%;height:100%;object-fit:cover">` : (m.icon || "📷")}</div>
+      <div class="ks-cap">${m.title || ""}</div>`;
+    board.appendChild(card);
+  });
+
+  /* the two chapters get a card each, so the board reflects the whole visit */
+  const badges = [
+    { icon: "🗝️", cap: "The Maze" },
+    { icon: "🦊", cap: "The Long Way Round" },
+  ];
+  badges.forEach((b, i) => {
+    const card = document.createElement("div");
+    card.className = "ks-card";
+    card.style.setProperty("--r", ((i ? -1 : 1) * 2.5) + "deg");
+    card.innerHTML = `
+      <span class="ks-tape"></span>
+      <div class="ks-img">${b.icon}</div>
+      <div class="ks-cap">${b.cap}</div>`;
+    board.appendChild(card);
+  });
+
+  let best = "";
+  try { best = localStorage.getItem("fal_best_time") || ""; } catch (e) {}
+  document.getElementById("ks-sub").textContent =
+    best ? "every page, start to finish · best maze time " + best : "every page, start to finish";
+  document.getElementById("ks-closing").textContent = KEEPSAKE_CLOSING;
+}
+
+document.getElementById("ks-memories").addEventListener("click", () => {
+  pageTurn("diorama", startDioramas);
+});
+document.getElementById("ks-replay").addEventListener("click", () => {
+  pageTurn("hub", startHub);
+});
+
+/* =========================================================
+   AMBIENT MUSIC
+   No audio file was supplied, so the pad is synthesised with Web
+   Audio: a few detuned sine voices drifting through a slow filter,
+   plus an occasional soft bell. Preference is remembered.
+   ========================================================= */
+const MUSIC_KEY = "fal_music_on";
+let audioCtx = null, musicNodes = null, musicOn = false, bellTimer = null;
+
+function musicPreferred() {
+  try { return localStorage.getItem(MUSIC_KEY) === "1"; } catch (e) { return false; }
+}
+
+function buildMusic() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  const ctx = audioCtx || (audioCtx = new AC());
+
+  const master = ctx.createGain();
+  master.gain.value = 0.0001;
+  master.connect(ctx.destination);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 900;
+  filter.Q.value = 0.6;
+  filter.connect(master);
+
+  /* a warm open chord, each voice slightly detuned so it breathes */
+  const freqs = [146.83, 220.0, 293.66, 369.99];  // D3 A3 D4 F#4
+  const voices = freqs.map((f, i) => {
+    const o = ctx.createOscillator();
+    o.type = i % 2 ? "sine" : "triangle";
+    o.frequency.value = f;
+    o.detune.value = (i - 1.5) * 5;
+    const g = ctx.createGain();
+    g.gain.value = 0.16 / (i + 1);
+    o.connect(g); g.connect(filter);
+    o.start();
+
+    /* slow drift so the pad never sits perfectly still */
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.03 + i * 0.017;
+    const lg = ctx.createGain();
+    lg.gain.value = 2.4;
+    lfo.connect(lg); lg.connect(o.detune);
+    lfo.start();
+    return { o, g, lfo };
+  });
+
+  /* filter sweep */
+  const sweep = ctx.createOscillator();
+  sweep.frequency.value = 0.021;
+  const sg = ctx.createGain();
+  sg.gain.value = 320;
+  sweep.connect(sg); sg.connect(filter.frequency);
+  sweep.start();
+
+  function bell() {
+    if (!musicOn) return;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = "sine";
+    o.frequency.value = [587.33, 659.25, 880.0, 987.77][Math.floor(Math.random() * 4)];
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.055, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 3.4);
+    o.connect(g); g.connect(filter);
+    o.start(t); o.stop(t + 3.6);
+    bellTimer = setTimeout(bell, 6000 + Math.random() * 9000);
+  }
+  bellTimer = setTimeout(bell, 3500);
+
+  return { ctx, master, voices, sweep, filter };
+}
+
+function setMusic(on) {
+  musicOn = on;
+  const btn = document.getElementById("music-toggle");
+  if (btn) {
+    btn.classList.toggle("off", !on);
+    btn.textContent = on ? "🎵" : "🔇";
+    btn.setAttribute("aria-label", on ? "Turn music off" : "Turn music on");
+  }
+  try { localStorage.setItem(MUSIC_KEY, on ? "1" : "0"); } catch (e) {}
+
+  if (on) {
+    if (!musicNodes) musicNodes = buildMusic();
+    if (!musicNodes) return;
+    if (musicNodes.ctx.state === "suspended") musicNodes.ctx.resume();
+    const t = musicNodes.ctx.currentTime;
+    musicNodes.master.gain.cancelScheduledValues(t);
+    musicNodes.master.gain.setValueAtTime(Math.max(0.0001, musicNodes.master.gain.value), t);
+    musicNodes.master.gain.exponentialRampToValueAtTime(0.24, t + 1.6);
+  } else if (musicNodes) {
+    const t = musicNodes.ctx.currentTime;
+    musicNodes.master.gain.cancelScheduledValues(t);
+    musicNodes.master.gain.setValueAtTime(Math.max(0.0001, musicNodes.master.gain.value), t);
+    musicNodes.master.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+    clearTimeout(bellTimer);
+  }
+}
+
+(function initMusic() {
+  const btn = document.getElementById("music-toggle");
+  if (!btn) return;
+  const want = musicPreferred();
+  musicOn = false;
+  btn.classList.toggle("off", !want);
+  btn.textContent = want ? "🎵" : "🔇";
+
+  btn.addEventListener("click", () => setMusic(!musicOn));
+
+  /* Browsers will not start audio without a gesture, so if she had it on
+     last time, wait for her first tap anywhere and start it then. */
+  if (want) {
+    const kick = () => {
+      document.removeEventListener("pointerdown", kick);
+      setMusic(true);
+    };
+    document.addEventListener("pointerdown", kick, { once: true });
+  }
+})();
+
+/* =========================================================
+   ✏️  CHOICE ADVENTURE — CUSTOMIZE ME
+
+   The closing question is a placeholder, same as LETTER_TEXT.
+   Replace QUEST_FINAL below with whatever you actually want to ask,
+   and the two answers with hers.
+   ========================================================= */
+const QUEST_FINAL = {
+  text: "[Replace this with your closing question — the one you actually want to ask her at the end of the story.]",
+  a: "[Her answer — yes]",
+  b: "[Her other answer]",
+  reply: "[And what you say back when she answers. Replace this too.]",
+};
+
+/* =========================================================
+   CHOICE ADVENTURE — pixel-art branching story
+
+   Backgrounds are painted procedurally onto a 240x135 canvas and
+   scaled up with image-rendering:pixelated, so everything stays on
+   the same pixel grid as the maze sprites but in a warmer palette.
+   ========================================================= */
+
+const QP = {
+  sky1: "#ffd9a0", sky2: "#ffb87a", sky3: "#f8e3bd",
+  sun: "#fff6d8",
+  hill1: "#a9c46a", hill2: "#7fa04a", hill3: "#5d7a35",
+  trunk: "#7a5230", leaf1: "#8fbb4f", leaf2: "#6d9a3a",
+  path: "#e0c089", path2: "#c9a468",
+  water: "#7fc4d0", water2: "#5aa3b4",
+  rock: "#9c8b78", petal: "#ffb3cd", gold: "#ffd86b",
+  night1: "#4a4a86", night2: "#6b5a9a", star: "#fff6d8",
+  dark: "#3a2412",
+};
+
+function qpx(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x | 0, y | 0, w | 0, h | 0); }
+
+function qRand(seed) {
+  let x = Math.sin(seed * 4321 + 8761) * 65536;
+  return () => { x = Math.sin(x * 4321 + 8761) * 65536; return x - Math.floor(x); };
+}
+
+/* ---------- shared background pieces ---------- */
+function qSky(ctx, W, H, top, mid, low) {
+  for (let y = 0; y < H; y++) {
+    const t = y / H;
+    ctx.fillStyle = t < 0.55
+      ? qMix(top, mid, t / 0.55)
+      : qMix(mid, low, (t - 0.55) / 0.45);
+    ctx.fillRect(0, y, W, 1);
+  }
+}
+function qMix(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const r = Math.round((pa >> 16) + ((pb >> 16) - (pa >> 16)) * t);
+  const g = Math.round(((pa >> 8) & 255) + (((pb >> 8) & 255) - ((pa >> 8) & 255)) * t);
+  const bl = Math.round((pa & 255) + ((pb & 255) - (pa & 255)) * t);
+  return `rgb(${r},${g},${bl})`;
+}
+function qSun(ctx, cx, cy, r) {
+  ctx.fillStyle = QP.sun;
+  for (let y = -r; y <= r; y++) {
+    const w = Math.floor(Math.sqrt(r * r - y * y));
+    ctx.fillRect(cx - w, cy + y, w * 2, 1);
+  }
+}
+function qHill(ctx, W, baseY, amp, colour, rnd, step = 6) {
+  ctx.fillStyle = colour;
+  let prev = baseY;
+  for (let x = 0; x < W; x += step) {
+    const y = Math.round(baseY + Math.sin(x * 0.05 + rnd() * 0.4) * amp - rnd() * 2);
+    ctx.fillRect(x, y, step, 200);
+    prev = y;
+  }
+}
+function qTree(ctx, x, groundY, s, rnd) {
+  const th = Math.round(10 * s), tw = Math.max(2, Math.round(3 * s));
+  qpx(ctx, x - (tw >> 1), groundY - th, tw, th, QP.trunk);
+  const r = Math.round(7 * s);
+  ctx.fillStyle = rnd() > 0.5 ? QP.leaf1 : QP.leaf2;
+  for (let y = -r; y <= r; y++) {
+    const w = Math.floor(Math.sqrt(r * r - y * y));
+    ctx.fillRect(x - w, groundY - th - r + y, w * 2, 1);
+  }
+}
+function qFlowers(ctx, W, groundY, n, rnd) {
+  for (let i = 0; i < n; i++) {
+    const x = Math.floor(rnd() * W), y = groundY + Math.floor(rnd() * 12);
+    qpx(ctx, x, y, 1, 1, rnd() > 0.5 ? QP.petal : QP.gold);
+    qpx(ctx, x, y + 1, 1, 2, QP.hill3);
+  }
+}
+
+/* ---------- scene painters ---------- */
+const Q_SCENES = {
+  meadow(ctx, W, H, rnd) {
+    qSky(ctx, W, H, QP.sky1, QP.sky2, QP.sky3);
+    qSun(ctx, Math.round(W * 0.72), Math.round(H * 0.26), 13);
+    qHill(ctx, W, Math.round(H * 0.58), 5, QP.hill1, rnd);
+    qHill(ctx, W, Math.round(H * 0.68), 4, QP.hill2, rnd);
+    qpx(ctx, 0, Math.round(H * 0.76), W, H, QP.hill3);
+    for (let i = 0; i < 5; i++) qTree(ctx, 16 + i * 52 + Math.floor(rnd() * 14), Math.round(H * 0.78), 0.8 + rnd() * 0.5, rnd);
+    qFlowers(ctx, W, Math.round(H * 0.79), 46, rnd);
+  },
+  forest(ctx, W, H, rnd) {
+    qSky(ctx, W, H, "#cfe3a8", "#a9c97e", "#dfe9bb");
+    for (let i = 0; i < 10; i++) {
+      const x = Math.floor(rnd() * W), s = 0.7 + rnd() * 0.9;
+      qTree(ctx, x, Math.round(H * (0.62 + rnd() * 0.1)), s, rnd);
+    }
+    qpx(ctx, 0, Math.round(H * 0.72), W, H, QP.hill3);
+    // a winding path
+    for (let y = Math.round(H * 0.72); y < H; y++) {
+      const t = (y - H * 0.72) / (H * 0.28);
+      const cx = Math.round(W * 0.5 + Math.sin(t * 2.2) * 22);
+      const w = Math.round(8 + t * 44);
+      qpx(ctx, cx - (w >> 1), y, w, 1, t > 0.5 ? QP.path : QP.path2);
+    }
+    qFlowers(ctx, W, Math.round(H * 0.74), 30, rnd);
+  },
+  ridge(ctx, W, H, rnd) {
+    qSky(ctx, W, H, "#ffb26b", "#ff8f6b", "#ffd9a8");
+    qSun(ctx, Math.round(W * 0.5), Math.round(H * 0.46), 16);
+    qHill(ctx, W, Math.round(H * 0.56), 7, "#c08a5a", rnd);
+    qHill(ctx, W, Math.round(H * 0.66), 5, "#8f6440", rnd);
+    qpx(ctx, 0, Math.round(H * 0.74), W, H, "#5e4028");
+    for (let i = 0; i < 3; i++) qTree(ctx, 24 + i * 84, Math.round(H * 0.76), 0.9, rnd);
+  },
+  brook(ctx, W, H, rnd) {
+    qSky(ctx, W, H, QP.sky1, "#ffd0a0", QP.sky3);
+    qHill(ctx, W, Math.round(H * 0.5), 4, QP.hill1, rnd);
+    qpx(ctx, 0, Math.round(H * 0.6), W, H, QP.hill2);
+    // the brook
+    const by = Math.round(H * 0.68);
+    for (let y = by; y < by + 26; y++) {
+      const t = (y - by) / 26;
+      qpx(ctx, 0, y, W, 1, t < 0.5 ? QP.water : QP.water2);
+    }
+    for (let i = 0; i < 22; i++) {
+      qpx(ctx, Math.floor(rnd() * W), by + 2 + Math.floor(rnd() * 22), 2 + Math.floor(rnd() * 3), 1, "#bfe6ee");
+    }
+    for (let i = 0; i < 7; i++) qpx(ctx, Math.floor(rnd() * W), by + Math.floor(rnd() * 24), 3, 2, QP.rock);
+    qpx(ctx, 0, by + 26, W, H, QP.hill3);
+    qFlowers(ctx, W, by + 28, 22, rnd);
+  },
+  night(ctx, W, H, rnd) {
+    qSky(ctx, W, H, "#2e2f5e", QP.night1, QP.night2);
+    for (let i = 0; i < 60; i++) {
+      qpx(ctx, Math.floor(rnd() * W), Math.floor(rnd() * H * 0.62), 1, 1, QP.star);
+    }
+    qpx(ctx, Math.round(W * 0.78), Math.round(H * 0.16), 9, 9, "#fff3cf");
+    qpx(ctx, Math.round(W * 0.78) + 3, Math.round(H * 0.16) - 2, 6, 13, "#fff3cf");
+    qHill(ctx, W, Math.round(H * 0.66), 5, "#3b4a5e", rnd);
+    qpx(ctx, 0, Math.round(H * 0.76), W, H, "#2c3a48");
+    for (let i = 0; i < 14; i++) {
+      qpx(ctx, Math.floor(rnd() * W), Math.round(H * 0.7) + Math.floor(rnd() * 30), 1, 1, QP.gold);
+    }
+  },
+  orchard(ctx, W, H, rnd) {
+    qSky(ctx, W, H, "#ffe0ae", "#ffc39a", "#fff0d2");
+    qHill(ctx, W, Math.round(H * 0.6), 3, "#b9cf72", rnd);
+    qpx(ctx, 0, Math.round(H * 0.7), W, H, "#8aa64c");
+    for (let i = 0; i < 6; i++) {
+      const x = 20 + i * 42;
+      qTree(ctx, x, Math.round(H * 0.74), 1.15, rnd);
+      for (let k = 0; k < 3; k++) qpx(ctx, x - 5 + Math.floor(rnd() * 11), Math.round(H * 0.6) + Math.floor(rnd() * 8), 2, 2, QP.petal);
+    }
+    // petals in the air
+    for (let i = 0; i < 26; i++) qpx(ctx, Math.floor(rnd() * W), Math.floor(rnd() * H * 0.7), 2, 1, QP.petal);
+    qFlowers(ctx, W, Math.round(H * 0.76), 26, rnd);
+  },
+};
+
+/* ---------- the mascot: a small round fox-cat, drawn per mood ---------- */
+function qDrawMascot(mood) {
+  const c = document.getElementById("q-mascot");
+  if (!c) return;
+  const ctx = c.getContext("2d");
+  ctx.clearRect(0, 0, 48, 48);
+  const body = "#e8a05a", dark = "#c47a38", cream = "#ffe9c9", eye = "#3a2412";
+
+  // tail
+  qpx(ctx, 6, 30, 6, 4, body); qpx(ctx, 4, 28, 4, 4, cream);
+  // body
+  qpx(ctx, 14, 24, 20, 16, body);
+  qpx(ctx, 16, 34, 16, 6, cream);
+  // ears
+  qpx(ctx, 14, 10, 5, 7, body); qpx(ctx, 29, 10, 5, 7, body);
+  qpx(ctx, 15, 12, 3, 4, dark);  qpx(ctx, 30, 12, 3, 4, dark);
+  // head
+  qpx(ctx, 13, 14, 22, 16, body);
+  qpx(ctx, 17, 22, 14, 7, cream);
+  // paws
+  qpx(ctx, 15, 39, 5, 3, cream); qpx(ctx, 28, 39, 5, 3, cream);
+
+  if (mood === "happy") {
+    qpx(ctx, 18, 20, 3, 2, eye); qpx(ctx, 27, 20, 3, 2, eye);
+    qpx(ctx, 22, 25, 4, 2, dark);
+    qpx(ctx, 20, 27, 8, 1, eye);
+    qpx(ctx, 12, 22, 2, 2, "#ff9db8"); qpx(ctx, 34, 22, 2, 2, "#ff9db8");
+  } else if (mood === "worry") {
+    qpx(ctx, 18, 19, 3, 3, eye); qpx(ctx, 27, 19, 3, 3, eye);
+    qpx(ctx, 17, 17, 4, 1, dark); qpx(ctx, 27, 17, 4, 1, dark);
+    qpx(ctx, 22, 25, 4, 2, dark);
+    qpx(ctx, 21, 28, 6, 1, eye);
+  } else if (mood === "love") {
+    qpx(ctx, 17, 19, 2, 2, "#ff5f8d"); qpx(ctx, 20, 19, 2, 2, "#ff5f8d");
+    qpx(ctx, 18, 21, 3, 2, "#ff5f8d");
+    qpx(ctx, 27, 19, 2, 2, "#ff5f8d"); qpx(ctx, 30, 19, 2, 2, "#ff5f8d");
+    qpx(ctx, 28, 21, 3, 2, "#ff5f8d");
+    qpx(ctx, 22, 25, 4, 2, dark); qpx(ctx, 20, 27, 8, 1, eye);
+  } else if (mood === "shock") {
+    qpx(ctx, 17, 18, 4, 5, "#fff"); qpx(ctx, 18, 20, 2, 2, eye);
+    qpx(ctx, 27, 18, 4, 5, "#fff"); qpx(ctx, 28, 20, 2, 2, eye);
+    qpx(ctx, 22, 26, 5, 4, eye);
+  } else { /* calm */
+    qpx(ctx, 18, 20, 3, 3, eye); qpx(ctx, 27, 20, 3, 3, eye);
+    qpx(ctx, 22, 25, 4, 2, dark);
+    qpx(ctx, 21, 28, 6, 1, eye);
+  }
+}
+
+/* ---------- the fail gag: a very determined goose ---------- */
+function qDrawGoose() {
+  const c = document.getElementById("q-fail-art");
+  if (!c) return;
+  const ctx = c.getContext("2d");
+  ctx.clearRect(0, 0, 96, 72);
+  const w = "#fdfdf6", g = "#d8d8cc", beak = "#ff9d3c", eye = "#2a2018";
+  // body
+  qpx(ctx, 24, 30, 44, 28, w); qpx(ctx, 24, 48, 44, 10, g);
+  // wing
+  qpx(ctx, 34, 36, 22, 12, g); qpx(ctx, 36, 38, 18, 8, w);
+  // neck + head
+  qpx(ctx, 56, 10, 10, 26, w);
+  qpx(ctx, 54, 4, 18, 14, w);
+  qpx(ctx, 70, 9, 12, 5, beak);
+  qpx(ctx, 62, 8, 3, 3, eye);
+  // furious eyebrow
+  qpx(ctx, 60, 5, 7, 2, eye);
+  // legs
+  qpx(ctx, 34, 58, 4, 8, beak); qpx(ctx, 52, 58, 4, 8, beak);
+  qpx(ctx, 30, 66, 10, 3, beak); qpx(ctx, 48, 66, 10, 3, beak);
+  // motion lines
+  qpx(ctx, 6, 20, 12, 2, "#ffe08a"); qpx(ctx, 10, 26, 10, 2, "#ffe08a");
+  qpx(ctx, 4, 33, 14, 2, "#ffe08a");
+}
+
+/* ---------- the story graph ----------
+   Each node: scene, mood, text, and two choices.
+   A choice with `fail` shows the gag and returns to this same node. */
+const QUEST = {
+  start: {
+    scene: "meadow", mood: "happy", chapter: "Chapter One",
+    text: "A small fox is waiting at the edge of the meadow. It has clearly been waiting a while, and it has clearly been waiting for you.",
+    choices: [
+      { label: "Follow the fox", to: "path" },
+      { label: "Offer it a snack first", to: "snack" },
+    ],
+  },
+  snack: {
+    scene: "meadow", mood: "love", chapter: "Chapter One",
+    text: "You hand over half a biscuit. The fox accepts it with the seriousness of a signed contract, and decides you are now friends for life.",
+    choices: [
+      { label: "Now follow the fox", to: "path" },
+      { label: "Offer the other half too", to: "path", note: "It eats that one even faster." },
+    ],
+  },
+  path: {
+    scene: "forest", mood: "calm", chapter: "Chapter Two",
+    text: "The path forks under the trees. One way is bright and obvious. The other is mossy, narrow, and much more interesting.",
+    choices: [
+      { label: "Take the bright path", to: "brook" },
+      { label: "Take the mossy path", to: "goose", fail: true },
+    ],
+  },
+  goose: {
+    fail: "You round the corner and meet a goose. It has opinions about this path. It has opinions about you. You retreat with dignity, mostly.",
+    back: "path",
+  },
+  brook: {
+    scene: "brook", mood: "happy", chapter: "Chapter Two",
+    text: "A brook cuts across the way, shallow and clear, with flat stones laid across it like someone was expecting company.",
+    choices: [
+      { label: "Hop across the stones", to: "orchard" },
+      { label: "Take your shoes off and wade", to: "wade" },
+    ],
+  },
+  wade: {
+    scene: "brook", mood: "love", chapter: "Chapter Two",
+    text: "The water is freezing and you both say so, loudly, at the same time. The fox refuses to get in and supervises from a rock instead.",
+    choices: [
+      { label: "Carry the fox across", to: "orchard" },
+      { label: "Splash the fox (affectionately)", to: "orchard", note: "It never forgets this." },
+    ],
+  },
+  orchard: {
+    scene: "orchard", mood: "happy", chapter: "Chapter Three",
+    text: "The trees here drop petals like they are being paid for it. The fox stops and looks up the hill, where the light is going gold.",
+    choices: [
+      { label: "Climb toward the light", to: "ridge" },
+      { label: "Stay a while under the trees", to: "linger" },
+    ],
+  },
+  linger: {
+    scene: "orchard", mood: "love", chapter: "Chapter Three",
+    text: "You stay. Nothing in particular happens, which turns out to be the good part. Petals land in your hair and neither of you mentions it.",
+    choices: [
+      { label: "Now climb the hill", to: "ridge" },
+      { label: "One more minute", to: "ridge", note: "It is never one minute." },
+    ],
+  },
+  ridge: {
+    scene: "ridge", mood: "calm", chapter: "Chapter Four",
+    text: "From the ridge you can see the whole way you came — every fork, every wrong turn, the brook, the goose. It looks small from up here. It looks worth it.",
+    choices: [
+      { label: "Wait for the sun to set", to: "stars" },
+      { label: "Run down the far side", to: "goose2", fail: true },
+    ],
+  },
+  goose2: {
+    fail: "The goose is here too. You have no idea how. It looks at you the way a landlord looks at a late payment. You climb back up.",
+    back: "ridge",
+  },
+  stars: {
+    scene: "night", mood: "love", chapter: "The Last Page",
+    text: "The stars come out all at once, the way they only do when someone is watching. The fox curls up between you and pretends to sleep.",
+    choices: [
+      { label: "Ask the question", to: "final" },
+      { label: "Sit a little longer first", to: "final", note: "The fox waits too." },
+    ],
+  },
+  final: {
+    scene: "night", mood: "love", chapter: "The Last Page", isFinal: true,
+    text: QUEST_FINAL.text,
+    choices: [
+      { label: QUEST_FINAL.a, to: "done", final: true },
+      { label: QUEST_FINAL.b, to: "done", final: true },
+    ],
+  },
+  done: {
+    scene: "night", mood: "love", chapter: "The Last Page", isEnd: true,
+    text: QUEST_FINAL.reply,
+    choices: [{ label: "Close the book 💫", to: "__exit" }],
+  },
+};
+
+/* ---------- runtime ---------- */
+let qNode = "start";
+let qHistory = [];
+let qPendingFail = null;
+let qCompleted = false;
+
+function qPaint(sceneName, seed) {
+  const c = document.getElementById("q-canvas");
+  if (!c) return;
+  const ctx = c.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  const painter = Q_SCENES[sceneName] || Q_SCENES.meadow;
+  painter(ctx, c.width, c.height, qRand(seed));
+}
+
+function qRender() {
+  const n = QUEST[qNode];
+  if (!n) return;
+
+  qPaint(n.scene, qNode.length * 13 + 7);
+  qDrawMascot(n.mood);
+  document.getElementById("q-chapter").textContent = n.chapter || "";
+  document.getElementById("q-text").textContent = n.text || "";
+  document.getElementById("q-back").disabled = qHistory.length === 0;
+
+  const mascot = document.getElementById("q-mascot");
+  mascot.classList.remove("q-react"); void mascot.offsetWidth; mascot.classList.add("q-react");
+
+  const box = document.getElementById("q-choices");
+  box.innerHTML = "";
+  (n.choices || []).forEach((ch) => {
+    const b = document.createElement("button");
+    b.className = "q-choice" + (ch.final ? " q-final" : "");
+    b.textContent = ch.label;
+    b.addEventListener("click", () => qChoose(ch));
+    box.appendChild(b);
+  });
+
+  if (n.isEnd) qCompleted = true;
+}
+
+function qChoose(ch) {
+  const target = QUEST[ch.to];
+  if (ch.to === "__exit") { qFinish(); return; }
+
+  if (target && target.fail) {
+    qPendingFail = target;
+    qDrawGoose();
+    document.getElementById("q-fail-text").textContent = target.fail;
+    document.getElementById("q-fail").classList.add("on");
+    qDrawMascot("shock");
+    return;
+  }
+
+  qHistory.push(qNode);
+  qNode = ch.to;
+  if (ch.note) {
+    /* a small aside before the next page, so alternate routes feel different */
+    const t = document.getElementById("q-text");
+    t.textContent = ch.note;
+    setTimeout(qRender, 1250);
+    document.getElementById("q-choices").innerHTML = "";
+  } else {
+    qRender();
+  }
+}
+
+function qRetry() {
+  document.getElementById("q-fail").classList.remove("on");
+  /* return to the choice point, not the start of the story */
+  if (qPendingFail && qPendingFail.back) qNode = qPendingFail.back;
+  qPendingFail = null;
+  qRender();
+}
+
+function qBack() {
+  if (!qHistory.length) return;
+  qNode = qHistory.pop();
+  qRender();
+}
+
+function startQuest() {
+  qNode = "start";
+  qHistory = [];
+  qPendingFail = null;
+  document.getElementById("q-fail").classList.remove("on");
+  qRender();
+}
+
+function qFinish() {
+  markChapterDone("quest");
+  pageTurn("hub", startHub);
+}
+
+document.getElementById("q-retry").addEventListener("click", qRetry);
+document.getElementById("q-back").addEventListener("click", qBack);
+document.getElementById("q-quit").addEventListener("click", () => pageTurn("hub", startHub));
