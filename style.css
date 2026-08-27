@@ -419,7 +419,13 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* ================= SCREEN 4 — NIGHT SKY ENDING (unchanged pixel style, new scene system) ================= */
 #screen-end{background:#100821;}
-.night-sky{position:relative; width:100%; height:100%; background:linear-gradient(180deg,#232a56 0%,#1b1240 45%,#100821 80%); overflow:hidden;}
+.night-sky{position:relative; width:100%; height:100%; background:#0e1030; overflow:hidden;}
+#night-canvas{
+  position:absolute; inset:0; width:100%; height:100%; display:block;
+  image-rendering:pixelated; z-index:0;
+}
+/* the old flat skyline and rooftop are painted into the canvas now */
+.skyline,.rooftop,.px-moon,.px-cloud{display:none !important;}
 .night-sky-inner{position:absolute; inset:0; transform-origin:60% 76%; transform:scale(1) translate(0,0);}
 .night-sky.scene-2 .night-sky-inner{transform:scale(1.24) translate(-4%,-3%);}
 .night-sky.scene-3 .night-sky-inner{transform:scale(1.6) translate(-7%,-6%);}
@@ -452,7 +458,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .rooftop .ledge{position:absolute; top:0; left:0; right:0; height:34%; background:linear-gradient(180deg,#5b4a86,#4a3c74);}
 .rooftop .facade{position:absolute; top:34%; left:0; right:0; bottom:0; background:#14102a;}
 
-.cats-wrap{position:absolute; bottom:16%; left:50%; transform:translateX(-50%); display:flex; align-items:flex-end; z-index:3;}
+.cats-wrap{position:absolute; bottom:15%; left:50%; transform:translateX(-50%); display:flex; align-items:flex-end; z-index:3;}
 .cat-slot{position:relative; transition:transform 1.6s ease;}
 .cat-black-slot{width:120px; aspect-ratio:64/68; transform:translateY(2px); margin-right:-14px;}
 .cat-black-slot.lean{transform:translateY(2px) rotate(4deg) translateX(3px);}

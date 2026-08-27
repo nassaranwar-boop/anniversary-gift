@@ -1021,8 +1021,235 @@ function cutToScene(n) {
   }, 380);
 }
 
+/* =========================================================
+   THE ENDING — a painted rooftop night
+
+   The old ending was a flat CSS gradient, a row of plain divs for the
+   skyline and two blocks for the roof. It is now painted with the same
+   pixel engine as the adventure, so the last thing she sees belongs to
+   the same world as everything before it: a dithered night sky, a moon
+   with real craters and a halo, three depths of city with windows that
+   blink, a rooftop with aerials and a water tower and string lights,
+   and the two cats sitting on the ledge under all of it.
+   ========================================================= */
+
+const NIGHT_W = 320, NIGHT_H = 180;
+let nightCanvas = null, nightCtx = null, nightBase = null, nightBaseCtx = null;
+let nightRaf = null, nightT0 = 0, nightWindows = [], nightShoot = null;
+
+function nightEnsure() {
+  if (nightCanvas) return true;
+  const inner = document.getElementById("night-sky-inner");
+  if (!inner) return false;
+  nightCanvas = document.createElement("canvas");
+  nightCanvas.id = "night-canvas";
+  nightCanvas.width = NIGHT_W; nightCanvas.height = NIGHT_H;
+  inner.insertBefore(nightCanvas, inner.firstChild);
+  nightCtx = nightCanvas.getContext("2d");
+  nightCtx.imageSmoothingEnabled = false;
+
+  nightBase = document.createElement("canvas");
+  nightBase.width = NIGHT_W; nightBase.height = NIGHT_H;
+  nightBaseCtx = nightBase.getContext("2d");
+  nightBaseCtx.imageSmoothingEnabled = false;
+  return true;
+}
+
+/* one building, with a lit window grid we can blink later */
+function nightBuilding(ctx, x, w, topY, tones, rnd, depth, collect) {
+  const baseY = NIGHT_H;
+  px(ctx, x, topY, w, baseY - topY, tones[1]);
+  px(ctx, x, topY, w, 1, tones[0]);                    // moonlit parapet
+  px(ctx, x + w - 1, topY, 1, baseY - topY, tones[2]); // shaded side
+
+  // roof furniture on the nearer blocks
+  if (depth > 1 && rnd() > 0.55) {
+    const tw = 3 + Math.floor(rnd() * 4);
+    px(ctx, x + Math.floor(w / 2), topY - 5, tw, 5, tones[2]);
+  }
+
+  const cols = Math.max(1, Math.floor(w / 6));
+  const rows = Math.max(1, Math.floor((baseY - topY) / 8));
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (rnd() > (depth === 1 ? 0.72 : 0.55)) continue;
+      const wx = x + 2 + c * 6, wy = topY + 4 + r * 8;
+      if (wy > baseY - 4) continue;
+      const lit = rnd() > 0.35;
+      px(ctx, wx, wy, 3, 4, lit ? "#ffd98a" : "#2b3550");
+      if (lit && collect && rnd() > 0.6) collect.push({ x: wx, y: wy, ph: rnd() * 6.28 });
+    }
+  }
+}
+
+function nightPaintBase() {
+  const ctx = nightBaseCtx;
+  const rnd = mzRnd(9137);
+  ctx.clearRect(0, 0, NIGHT_W, NIGHT_H);
+  nightWindows = [];
+
+  /* sky: deep blue at the top warming toward the horizon glow */
+  ditherSky(ctx, 0, 0, NIGHT_W, NIGHT_H, [
+    { p: 0.00, c: "#0e1030" }, { p: 0.22, c: "#1a1b47" },
+    { p: 0.46, c: "#2c2358" }, { p: 0.66, c: "#4a2f63" },
+    { p: 0.80, c: "#7a4560" }, { p: 1.00, c: "#a35c56" },
+  ]);
+
+  // stars, denser high up
+  for (let i = 0; i < 150; i++) {
+    const y = Math.pow(rnd(), 1.6) * NIGHT_H * 0.72;
+    const x = rnd() * NIGHT_W;
+    const b = rnd();
+    px(ctx, x, y, 1, 1, b > 0.85 ? "#ffffff" : b > 0.5 ? "#dfe4ff" : "#a8b0d8");
+  }
+
+  /* the moon: halo, disc, craters, and a terminator */
+  const mx = 244, my = 38, mr = 15;
+  for (let ry = -mr * 3; ry <= mr * 3; ry++) {
+    for (let rx = -mr * 3; rx <= mr * 3; rx++) {
+      const d = Math.sqrt(rx * rx + ry * ry);
+      if (d > mr && d < mr * 3) {
+        const a = 1 - (d - mr) / (mr * 2);
+        if (((BAYER4[(my + ry) & 3][(mx + rx) & 3] + 0.5) / 16) < a * 0.5) {
+          px(ctx, mx + rx, my + ry, 1, 1, "#4a4a86");
+        }
+      }
+    }
+  }
+  for (let ry = -mr; ry <= mr; ry++) {
+    for (let rx = -mr; rx <= mr; rx++) {
+      if (rx * rx + ry * ry > mr * mr) continue;
+      const lit = (rx * -0.4 + ry * -0.5) / mr;
+      px(ctx, mx + rx, my + ry, 1, 1, lit > 0.15 ? "#fffdf2" : lit > -0.25 ? "#f0ecd8" : "#d8d2bc");
+    }
+  }
+  [[-5, -3, 3], [4, 2, 4], [-2, 6, 2], [7, -6, 2]].forEach(function (c) {
+    blob(ctx, mx + c[0], my + c[1], c[2], c[2] * 0.85, ["#e8e2cc", "#d6cfb6", "#c2baa0", "#b0a890"]);
+  });
+
+  /* three depths of city */
+  let x = -6;
+  while (x < NIGHT_W + 6) {
+    const w = 10 + Math.floor(rnd() * 14);
+    nightBuilding(ctx, x, w, 96 + Math.floor(rnd() * 18), ["#3a3560", "#2b2749", "#211d3a"], rnd, 1, null);
+    x += w + 1;
+  }
+  x = -8;
+  while (x < NIGHT_W + 8) {
+    const w = 14 + Math.floor(rnd() * 18);
+    nightBuilding(ctx, x, w, 112 + Math.floor(rnd() * 16), ["#2e2a4e", "#221f3d", "#19172d"], rnd, 2, nightWindows);
+    x += w + 2;
+  }
+  x = -10;
+  while (x < NIGHT_W + 10) {
+    const w = 20 + Math.floor(rnd() * 22);
+    nightBuilding(ctx, x, w, 128 + Math.floor(rnd() * 14), ["#221f3a", "#18162c", "#100f20"], rnd, 3, nightWindows);
+    x += w + 3;
+  }
+
+  /* the rooftop she is standing on */
+  const roofY = 150;
+  px(ctx, 0, roofY, NIGHT_W, NIGHT_H - roofY, "#191527");
+  px(ctx, 0, roofY, NIGHT_W, 4, "#3b3354");
+  px(ctx, 0, roofY, NIGHT_W, 1, "#6b5c8a");         // moonlit lip
+  for (let i = 0; i < 90; i++) {
+    px(ctx, rnd() * NIGHT_W, roofY + 5 + rnd() * (NIGHT_H - roofY - 5), 1, 1,
+      rnd() > 0.5 ? "#221d33" : "#12101f");
+  }
+  // aerials and a water tower on the parapet
+  [[28, 12], [206, 9], [268, 14]].forEach(function (a) {
+    px(ctx, a[0], roofY - a[1], 1, a[1], "#3b3354");
+    px(ctx, a[0] - 3, roofY - a[1], 7, 1, "#3b3354");
+    px(ctx, a[0] - 2, roofY - a[1] + 3, 5, 1, "#3b3354");
+  });
+  px(ctx, 60, roofY - 16, 16, 12, "#2b2542");
+  px(ctx, 60, roofY - 16, 16, 1, "#5b4f7e");
+  px(ctx, 63, roofY - 4, 2, 4, "#2b2542"); px(ctx, 71, roofY - 4, 2, 4, "#2b2542");
+
+  /* string lights across the roofline */
+  for (let i = 0; i < 26; i++) {
+    const lx = 6 + i * 12;
+    const sag = Math.sin((i / 26) * Math.PI) * 5;
+    px(ctx, lx, roofY - 20 + sag, 1, 1, "#3b3354");
+    if (i % 2 === 0) nightWindows.push({ x: lx, y: roofY - 19 + sag, ph: rnd() * 6.28, bulb: true });
+  }
+}
+
+function nightFrame(now) {
+  nightRaf = requestAnimationFrame(nightFrame);
+  const screen = document.getElementById("screen-end");
+  if (!screen || !screen.classList.contains("active")) return;
+  if (!nightT0) nightT0 = now;
+  const t = (now - nightT0) / 1000;
+
+  nightCtx.clearRect(0, 0, NIGHT_W, NIGHT_H);
+  nightCtx.drawImage(nightBase, 0, 0);
+
+  // windows and bulbs breathing
+  for (let i = 0; i < nightWindows.length; i++) {
+    const w = nightWindows[i];
+    const v = Math.sin(t * (w.bulb ? 1.6 : 0.5) + w.ph);
+    if (w.bulb) {
+      const g = 0.5 + 0.5 * v;
+      px(nightCtx, w.x, w.y, 1, 1, g > 0.5 ? "#ffe9a8" : "#c9a86a");
+      if (g > 0.8) { px(nightCtx, w.x - 1, w.y, 1, 1, "#7a6a3a"); px(nightCtx, w.x + 1, w.y, 1, 1, "#7a6a3a"); }
+    } else if (v > 0.93) {
+      px(nightCtx, w.x, w.y, 3, 4, "#2b3550");     // someone turns in for the night
+    }
+  }
+
+  // drifting clouds, lit underneath by the city
+  for (let c = 0; c < 4; c++) {
+    const cw = 34 + c * 9;
+    const cx = ((t * (5 + c * 2) + c * 90) % (NIGHT_W + 120)) - 60;
+    const cy = 34 + c * 13;
+    blob(nightCtx, cx, cy, cw, 5 + c, ["#3a3566", "#302b57", "#272248", "#1e1a39"]);
+    px(nightCtx, cx - cw, cy + 5 + c, cw * 2, 1, "#4a3f6b");
+  }
+
+  // a shooting star now and then
+  if (!nightShoot && Math.random() < 0.004) {
+    nightShoot = { x: -20 + Math.random() * 120, y: 10 + Math.random() * 40, t: 0 };
+  }
+  if (nightShoot) {
+    nightShoot.t += 0.016;
+    const sx = nightShoot.x + nightShoot.t * 260;
+    const sy = nightShoot.y + nightShoot.t * 90;
+    for (let k = 0; k < 12; k++) {
+      px(nightCtx, sx - k * 3, sy - k * 1, 1, 1, k < 3 ? "#ffffff" : "#b9c2f0");
+    }
+    if (nightShoot.t > 0.9) nightShoot = null;
+  }
+
+  // twinkle pass over the star field
+  for (let i = 0; i < 26; i++) {
+    const sx = (i * 97) % NIGHT_W, sy = (i * 53) % 90;
+    if (Math.sin(t * 2 + i) > 0.86) px(nightCtx, sx, sy, 1, 1, "#ffffff");
+  }
+
+  // fireflies rising off the roof once the camera has pushed in
+  if (document.getElementById("night-sky").classList.contains("scene-3")) {
+    for (let i = 0; i < 14; i++) {
+      const fy = 176 - ((t * 9 + i * 13) % 60);
+      const fx = 20 + ((i * 37) % (NIGHT_W - 40)) + Math.sin(t + i) * 4;
+      if (Math.sin(t * 3 + i) > 0.1) px(nightCtx, fx, fy, 1, 1, "#ffe9a8");
+    }
+  }
+}
+
+function startNightScene() {
+  if (!nightEnsure()) return;
+  nightPaintBase();
+  if (!nightRaf) { nightT0 = 0; nightRaf = requestAnimationFrame(nightFrame); }
+}
+function stopNightScene() {
+  if (nightRaf) cancelAnimationFrame(nightRaf);
+  nightRaf = null;
+}
+
 function activateEndingScene() {
-  spawnNightStars(); buildSkyline(); buildEndHearts();
+  startNightScene();
+  spawnNightStars(); buildEndHearts();
   setScene(1);
   document.querySelectorAll(".cat-slot").forEach(s => s.classList.remove("lean"));
   clearTimeout(endTimer1); clearTimeout(endTimer2);
