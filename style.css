@@ -719,6 +719,8 @@ img{-webkit-user-drag:none; user-select:none;}
 .hv-note::before{left:-6%; transform:rotate(-14deg);}
 .hv-note::after{right:-6%; transform:rotate(11deg);}
 .hv-note.hidden{display:none;}
+.hv-note{animation:hvNoteIn .48s var(--ease-pop) backwards;}
+@keyframes hvNoteIn{from{opacity:0; transform:rotate(-4deg) translateY(14px) scale(.94);} to{opacity:1;}}
 .hv-note-ask{
   left:50%; bottom:auto; top:2.5%; transform:translateX(-50%) rotate(-1deg);
   text-align:center; max-width:74%; font-size:clamp(14px,3.1vw,24px); color:#c4487a;
@@ -728,8 +730,10 @@ img{-webkit-user-drag:none; user-select:none;}
 .hv-side{
   position:absolute; z-index:6; top:38%; display:flex; flex-direction:column; gap:8px;
 }
-#hv-left{left:3%; align-items:flex-start;}
-#hv-right{right:3%; align-items:flex-end;}
+#hv-left{left:5%; align-items:flex-start;}
+#hv-right{right:5%; align-items:flex-end;}
+#screen-quest.hv-pair #hv-left {left:14%;  top:47%;}
+#screen-quest.hv-pair #hv-right{right:14%; top:44%;}
 #hv-centre{
   position:absolute; z-index:6; left:50%; bottom:26%; transform:translateX(-50%);
   display:flex; gap:10px;
@@ -742,7 +746,10 @@ img{-webkit-user-drag:none; user-select:none;}
   padding:5px 12px; box-shadow:0 3px 0 rgba(90,52,17,.32);
   transition:transform var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
+.hv-btn:hover{transform:translateY(-2px);}
 .hv-btn:active{transform:translateY(3px); box-shadow:0 0 0 rgba(90,52,17,.32);}
+.hv-btn{animation:hvBtnIn .42s var(--ease-out) backwards;}
+@keyframes hvBtnIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
 .hv-btn-start{
   font-family:var(--font-display); letter-spacing:2px; font-size:clamp(13px,2.6vw,20px);
   padding:7px 26px;
@@ -757,17 +764,22 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* ---- the two picture cards ---- */
 #hv-cards{
-  position:absolute; z-index:6; left:50%; top:34%; transform:translate(-50%,-50%);
-  display:flex; gap:6%;
+  position:absolute; z-index:6; left:50%; top:40%; transform:translate(-50%,-50%);
+  display:flex; gap:min(16vw,140px);
+  width:100%; justify-content:center;
 }
 .hv-card{
-  cursor:pointer; background:#fffaf0; border:3px solid #f2a8c4; border-radius:10px;
-  padding:6px; box-shadow:0 5px 0 rgba(150,80,110,.35), 0 10px 20px rgba(40,20,0,.35);
-  transition:transform var(--dur-fast) ease;
-  width:clamp(58px,13vw,104px); aspect-ratio:1;
+  cursor:pointer; background:#fffdf5; border:4px solid #f2a8c4; border-radius:14px;
+  padding:10px; box-shadow:0 7px 0 rgba(150,80,110,.38), 0 14px 28px rgba(40,20,0,.4);
+  transition:transform var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+  width:clamp(88px,19vw,150px); aspect-ratio:1;
   display:flex; align-items:center; justify-content:center;
+  animation:hvCardIn .5s var(--ease-pop) backwards;
 }
-.hv-card:active{transform:translateY(4px);}
+.hv-card:nth-child(2){animation-delay:.09s;}
+@keyframes hvCardIn{from{opacity:0; transform:translateY(16px) scale(.85);} to{opacity:1; transform:none;}}
+.hv-card:hover{transform:translateY(-3px); box-shadow:0 10px 0 rgba(150,80,110,.38), 0 18px 32px rgba(40,20,0,.42);}
+.hv-card:active{transform:translateY(5px); box-shadow:0 2px 0 rgba(150,80,110,.38), 0 6px 14px rgba(40,20,0,.35);}
 .hv-card-art{width:100%; height:100%; image-rendering:pixelated;}
 
 /* ---- the bear ---- */

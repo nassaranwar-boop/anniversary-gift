@@ -1695,177 +1695,290 @@ function drawLogo(text) {
 
 /* =========================================================
    SCENES — the backgrounds the adventure walks through
+
+   Built in depth order: sky, far range, mid band, near band,
+   foreground. Each band is a different tone family and a different
+   density of detail, which is what gives a flat pixel scene the
+   feeling of distance.
    ========================================================= */
+
+/* a winding path that narrows toward the horizon, with kerb stones */
+function pathTo(ctx, W, yTop, yBot, curve, wTop, wBot, cTop, cMid, cEdge) {
+  for (var y = yTop; y < yBot; y++) {
+    var t = (y - yTop) / (yBot - yTop);
+    var cx = Math.round(W * 0.5 + Math.sin(t * curve) * (26 + t * 14));
+    var w = Math.round(wTop + t * (wBot - wTop));
+    px(ctx, cx - (w >> 1), y, w, 1, t > 0.45 ? cMid : cTop);
+    px(ctx, cx - (w >> 1), y, 2, 1, cEdge);
+    px(ctx, cx + (w >> 1) - 2, y, 2, 1, cEdge);
+    // worn ruts
+    if ((y & 3) === 0) px(ctx, cx - (w >> 3), y, Math.max(1, w >> 3), 1, cTop);
+  }
+}
+
+function bush(ctx, x, y, r, tones, rnd) {
+  blob(ctx, x, y, r, r * 0.68, tones);
+  blob(ctx, x - r * 0.6, y + r * 0.2, r * 0.6, r * 0.46, tones);
+  blob(ctx, x + r * 0.62, y + r * 0.18, r * 0.62, r * 0.48, tones);
+  for (var i = 0; i < r; i++) px(ctx, x - r + rnd() * r * 2, y - r * 0.5 + rnd() * r, 1, 1, tones[0]);
+}
+
+function stones(ctx, W, y, count, tones, rnd) {
+  for (var i = 0; i < count; i++) {
+    var x = rnd() * W, s = 1 + rnd() * 2.5;
+    blob(ctx, x, y + rnd() * 10, s * 1.6, s, tones);
+  }
+}
 
 const HV_SCENES = {
 
   /* 1. cherry-blossom park — the title screen and the first choice */
   sakura(ctx, rnd) {
     ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#bfe4f2" }, { p: 0.30, c: "#dbeef7" },
-      { p: 0.52, c: "#f6e6ee" }, { p: 0.70, c: "#fbe8ef" }, { p: 1.00, c: "#ffeef4" },
+      { p: 0.00, c: "#a9dcf2" }, { p: 0.24, c: "#c6e6f5" },
+      { p: 0.46, c: "#e6eff5" }, { p: 0.64, c: "#f8e6ee" }, { p: 1.00, c: "#ffeef4" },
     ]);
-    cloudRow(ctx, PXW, 26, 4, ["#ffffff", "#f4f6fb", "#e2e8f2", "#cfd8e8"], rnd, 1.1);
+    cloudRow(ctx, PXW, 22, 5, ["#ffffff", "#f6f8fc", "#e4eaf4", "#d0d9e9"], rnd, 1.15);
+    cloudRow(ctx, PXW, 44, 3, ["#fdfeff", "#eff4fa", "#dde5f0", "#cbd5e6"], rnd, 0.75);
 
-    // distant blossom haze
-    for (let i = 0; i < 14; i++) {
-      blob(ctx, rnd() * PXW, 74 + rnd() * 12, 20 + rnd() * 14, 10 + rnd() * 7,
-        ["#ffd7e6", "#f8c3d8", "#eeb0ca", "#e2a0bd"]);
-    }
-    // grass
-    ditherSky(ctx, 0, 104, PXW, PXH - 104, [
-      { p: 0.00, c: "#a9cf7a" }, { p: 0.35, c: "#93c065" }, { p: 1.00, c: "#79a851" },
-    ]);
-    // path
-    for (let y = 116; y < PXH; y++) {
-      const t = (y - 116) / (PXH - 116);
-      const cx = Math.round(PXW * 0.5 + Math.sin(t * 1.6) * 26);
-      const w = Math.round(12 + t * 58);
-      px(ctx, cx - (w >> 1), y, w, 1, t > 0.4 ? "#e8d3ab" : "#dcc59b");
-      px(ctx, cx - (w >> 1), y, 2, 1, "#f2e2c2");
+    /* far hills, hazed toward the sky so they sit back */
+    hillBand(ctx, PXW, 84, 5, 0.016, ["#cfe0c6", "#bcd3b4", "#a9c4a2"], rnd, 1.2);
+    hillBand(ctx, PXW, 92, 4, 0.024, ["#bcd6b0", "#a7c69c", "#94b489"], rnd, 3.4);
+
+    /* a distant blossom line — small, pale, low contrast */
+    for (var i = 0; i < 16; i++) {
+      var bx = rnd() * PXW;
+      blob(ctx, bx, 88 + rnd() * 6, 11 + rnd() * 8, 6 + rnd() * 4,
+        ["#ffe3ee", "#f9cfe0", "#efbdd2", "#e3adc4"]);
+      px(ctx, bx, 94, 2, 6, "#b99a8a");
     }
 
-    // sakura trees
-    const sak = ["#ffd9e8", "#f9bed6", "#eda6c3", "#d98cae"];
-    [[34, 118, 26], [PXW - 40, 116, 30], [110, 108, 18], [PXW - 116, 110, 20]].forEach(([x, gy, r]) => {
-      trunk(ctx, x, gy, Math.round(r * 1.5), Math.max(3, Math.round(r * 0.28)), ["#a8794f", "#8a6039", "#6b4526"]);
-      canopy(ctx, x, gy - r * 1.6, r, sak, rnd, "#fff0f6");
+    /* grass, blending out of the hill line rather than cutting */
+    ditherSky(ctx, 0, 98, PXW, PXH - 98, [
+      { p: 0.00, c: "#9ecb72" }, { p: 0.22, c: "#8fc064" },
+      { p: 0.6, c: "#7fb056" }, { p: 1.00, c: "#6b9a46" },
+    ]);
+
+    pathTo(ctx, PXW, 112, PXH, 1.5, 11, 74, "#eddcb8", "#e0cba1", "#cdb689");
+    stones(ctx, PXW, 150, 14, ["#d6c9ab", "#bfb094", "#a2937a"], rnd);
+
+    /* mid blossom trees — varied heights so the canopy is not a band */
+    var sak = ["#ffdcea", "#f9c2d8", "#eda9c5", "#d98fb0"];
+    var midTrees = [[26, 116, 21], [82, 110, 15], [148, 118, 24], [210, 112, 17], [268, 116, 20], [304, 108, 14]];
+    midTrees.forEach(function (t) {
+      trunk(ctx, t[0], t[1], Math.round(t[2] * 1.5), Math.max(3, Math.round(t[2] * 0.26)),
+        ["#a8794f", "#8a6039", "#6b4526"]);
+      canopy(ctx, t[0], t[1] - t[2] * 1.62, t[2], sak, rnd, "#fff2f7");
     });
-    grassTufts(ctx, PXW, 128, 90, ["#8fc063", "#7ba84f", "#a4d178"], rnd);
-    flowerDots(ctx, PXW, 122, 44, 26, ["#ffffff", "#ffe6f0", "#ffd166"], rnd);
-    // petals in the air
-    for (let i = 0; i < 40; i++) {
-      const x = rnd() * PXW, y = rnd() * 130;
-      px(ctx, x, y, 2, 1, rnd() > 0.5 ? "#ffc9dd" : "#ffdce9");
-    }
+
+    /* near trees, bigger and darker, framing the edges */
+    [[8, 140, 30], [PXW - 12, 136, 33]].forEach(function (t) {
+      trunk(ctx, t[0], t[1], Math.round(t[2] * 1.7), Math.round(t[2] * 0.3),
+        ["#9c6f46", "#7d5432", "#5e3d22"]);
+      canopy(ctx, t[0], t[1] - t[2] * 1.75, t[2], ["#ffd2e4", "#f2b3ce", "#e09bba", "#c8809f"], rnd, "#fff6fa");
+    });
+
+    bush(ctx, 44, 148, 8, ["#8fc064", "#7aa94f", "#63903c", "#4e7530"], rnd);
+    bush(ctx, PXW - 52, 152, 9, ["#8fc064", "#7aa94f", "#63903c", "#4e7530"], rnd);
+    bush(ctx, 118, 168, 7, ["#96c86b", "#7fae52", "#67953e", "#517a31"], rnd);
+
+    grassTufts(ctx, PXW, 126, 150, ["#8fc063", "#7ba84f", "#a4d178"], rnd);
+    flowerDots(ctx, PXW, 122, 52, 40, ["#ffffff", "#ffe6f0", "#ffd166", "#ffc2da"], rnd);
+    // fallen petals collecting on the grass
+    for (var k = 0; k < 60; k++) px(ctx, rnd() * PXW, 118 + rnd() * 60, 2, 1, "#ffcfe0");
   },
 
   /* 2. deep forest — the secret path */
   forest(ctx, rnd) {
     ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#9fd6e8" }, { p: 0.26, c: "#bfe2ea" },
-      { p: 0.48, c: "#d9ecdb" }, { p: 1.00, c: "#c6e0b6" },
+      { p: 0.00, c: "#8fcfe4" }, { p: 0.22, c: "#b2dfe8" },
+      { p: 0.44, c: "#d2ead9" }, { p: 1.00, c: "#bcd9a8" },
     ]);
-    sunRays(ctx, PXW * 0.34, -12, PXW, PXH, "#fff8d8", rnd, 6);
+    sunRays(ctx, PXW * 0.32, -14, PXW, PXH, "#fff8d8", rnd, 7);
 
-    // far canopy wall
-    for (let i = 0; i < 22; i++) {
-      blob(ctx, rnd() * PXW, 16 + rnd() * 34, 26 + rnd() * 18, 14 + rnd() * 10,
-        ["#a8cc72", "#87b055", "#67903f", "#4d722e"]);
+    /* three canopy depths, darkening toward the viewer */
+    for (var d = 0; d < 3; d++) {
+      var tone = [["#bcd98a", "#a3c46e", "#89aa56", "#6f8f42"],
+                  ["#a8cc72", "#8bb057", "#6f9440", "#57782e"],
+                  ["#8fb85e", "#749b45", "#5a7d33", "#436024"]][d];
+      var n = [10, 9, 8][d];
+      for (var i = 0; i < n; i++) {
+        blob(ctx, rnd() * PXW, 10 + d * 16 + rnd() * 20, 24 + rnd() * 18, 12 + rnd() * 9, tone);
+      }
     }
-    // ground
-    ditherSky(ctx, 0, 108, PXW, PXH - 108, [
-      { p: 0.00, c: "#84b356" }, { p: 0.4, c: "#6d9a45" }, { p: 1.00, c: "#557a34" },
+
+    ditherSky(ctx, 0, 104, PXW, PXH - 104, [
+      { p: 0.00, c: "#7fae54" }, { p: 0.35, c: "#6b9945" }, { p: 1.00, c: "#527a34" },
     ]);
-    // dirt trail
-    for (let y = 118; y < PXH; y++) {
-      const t = (y - 118) / (PXH - 118);
-      const cx = Math.round(PXW * 0.5 + Math.sin(t * 2.1 + 1) * 30);
-      const w = Math.round(10 + t * 62);
-      px(ctx, cx - (w >> 1), y, w, 1, "#b99a68");
-      px(ctx, cx - (w >> 1) + 1, y, Math.max(1, w - 2), 1, t > 0.35 ? "#c9aa79" : "#b99a68");
+    pathTo(ctx, PXW, 112, PXH, 2.1, 10, 78, "#c9aa79", "#b99a68", "#a4855a");
+
+    /* the fork the story talks about — a second track peeling left */
+    for (var y = 126; y < 168; y++) {
+      var t = (y - 126) / 42;
+      var fx = Math.round(PXW * 0.5 - 30 - t * 62);
+      px(ctx, fx, y, Math.round(6 + t * 16), 1, "#bda06f");
     }
-    // big foreground trunks framing the shot
-    const bark = ["#9c7448", "#7d5a34", "#5e4223"];
-    [[16, 0.9], [PXW - 22, 1.0], [64, 0.55], [PXW - 74, 0.6]].forEach(([x, s]) => {
-      trunk(ctx, x, PXH, Math.round(PXH * s), Math.round(14 * s), bark);
-      canopy(ctx, x, PXH - PXH * s + 6, 26 * s, ["#9ec86a", "#7fab4e", "#5f8639", "#476628"], rnd, "#c8e79a");
+
+    stones(ctx, PXW, 140, 18, ["#a89b82", "#8d8170", "#6f6558"], rnd);
+
+    var bark = ["#a37a4c", "#836039", "#644727"];
+    [[14, 1.0], [PXW - 18, 1.0], [58, 0.62], [PXW - 68, 0.66], [104, 0.42]].forEach(function (t) {
+      trunk(ctx, t[0], PXH, Math.round(PXH * t[1]), Math.round(15 * t[1]), bark);
+      canopy(ctx, t[0], PXH - PXH * t[1] + 8, 27 * t[1],
+        ["#a3c96e", "#84ac52", "#65873b", "#4b6729"], rnd, "#cbe89c");
+      // moss on the lit side
+      for (var m = 0; m < 12 * t[1]; m++) px(ctx, t[0] - 7 * t[1] + rnd() * 4, PXH - rnd() * 60 * t[1], 2, 1, "#6f9440");
     });
-    grassTufts(ctx, PXW, 126, 110, ["#7fab4e", "#93bd5e", "#6a9440"], rnd);
-    motes(ctx, PXW, PXH, 26, "#fff6c8", rnd, 30, 120);
+
+    bush(ctx, 74, 156, 10, ["#8bb057", "#739642", "#5c7c33", "#476226"], rnd);
+    bush(ctx, PXW - 84, 162, 11, ["#8bb057", "#739642", "#5c7c33", "#476226"], rnd);
+    // ferns
+    for (var f = 0; f < 16; f++) {
+      var fx2 = rnd() * PXW, fy = 140 + rnd() * 36;
+      for (var b2 = 0; b2 < 5; b2++) {
+        var a2 = -1.2 + b2 * 0.6;
+        px(ctx, fx2 + Math.cos(a2) * 5, fy + Math.sin(a2) * 4 - 3, 2, 1, "#6f9440");
+      }
+    }
+    grassTufts(ctx, PXW, 124, 140, ["#7fab4e", "#93bd5e", "#6a9440"], rnd);
+    flowerDots(ctx, PXW, 138, 34, 16, ["#ffffff", "#ffd166", "#c9a0ff"], rnd);
   },
 
   /* 3. mushroom hollow — where the fox is */
   hollow(ctx, rnd) {
     ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#8fc9de" }, { p: 0.30, c: "#b4dbdf" },
-      { p: 0.55, c: "#cfe4c8" }, { p: 1.00, c: "#b9d3a4" },
+      { p: 0.00, c: "#7fc2dc" }, { p: 0.28, c: "#a8d5dd" },
+      { p: 0.54, c: "#c9e2c6" }, { p: 1.00, c: "#b2cf9c" },
     ]);
-    sunRays(ctx, PXW * 0.6, -10, PXW, PXH, "#fffbe0", rnd, 5);
-    for (let i = 0; i < 18; i++) {
-      blob(ctx, rnd() * PXW, 14 + rnd() * 30, 24 + rnd() * 16, 13 + rnd() * 9,
-        ["#9ec06c", "#7ea24f", "#5f813a", "#48642b"]);
+    sunRays(ctx, PXW * 0.62, -10, PXW, PXH, "#fffbe0", rnd, 6);
+    for (var i = 0; i < 20; i++) {
+      blob(ctx, rnd() * PXW, 12 + rnd() * 34, 24 + rnd() * 18, 13 + rnd() * 10,
+        ["#a3c470", "#83a653", "#63853c", "#4a662c"]);
     }
-    // pale birch trunks
-    [[40, 0.95], [96, 0.8], [PXW - 54, 0.9], [PXW - 110, 0.75]].forEach(([x, s]) => {
-      trunk(ctx, x, PXH - 40, Math.round(130 * s), Math.round(11 * s), ["#e8e0cf", "#cfc4ac", "#a89b82"]);
-      for (let k = 0; k < 5; k++) px(ctx, x - 4, PXH - 60 - k * 22 - rnd() * 8, 6, 1, "#8d8570");
+
+    /* pale birch trunks with real bark marks */
+    [[36, 0.98], [92, 0.82], [PXW - 50, 0.92], [PXW - 108, 0.76], [160, 0.6]].forEach(function (t) {
+      var h = Math.round(140 * t[1]);
+      trunk(ctx, t[0], PXH - 34, h, Math.round(11 * t[1]), ["#f2ece0", "#d8ccb6", "#b0a48c"]);
+      for (var k = 0; k < 6; k++) {
+        px(ctx, t[0] - 4 * t[1], PXH - 50 - k * 20 - rnd() * 10, Math.round(6 * t[1]), 1, "#7d7460");
+      }
     });
-    ditherSky(ctx, 0, 118, PXW, PXH - 118, [
-      { p: 0.00, c: "#7fa84e" }, { p: 0.45, c: "#688f3e" }, { p: 1.00, c: "#517031" },
+
+    ditherSky(ctx, 0, 116, PXW, PXH - 116, [
+      { p: 0.00, c: "#7aa54c" }, { p: 0.42, c: "#658c3c" }, { p: 1.00, c: "#4e6d2f" },
     ]);
-    // red-capped mushrooms
-    [[86, 142, 1.5], [118, 150, 1.1], [PXW - 96, 146, 1.7], [PXW - 66, 154, 1.0]].forEach(([x, y, s]) => {
-      px(ctx, x - Math.round(3 * s), y, Math.round(6 * s), Math.round(11 * s), "#f2e8d2");
-      px(ctx, x - Math.round(3 * s), y, Math.round(2 * s), Math.round(11 * s), "#fffaf0");
-      blob(ctx, x, y - Math.round(2 * s), Math.round(11 * s), Math.round(6 * s),
-        ["#f0674f", "#d94a37", "#b53827", "#8f2a1d"]);
-      for (let k = 0; k < 4; k++) px(ctx, x - 7 * s + rnd() * 14 * s, y - 4 * s + rnd() * 4 * s, 2, 1, "#fff3e0");
+    pathTo(ctx, PXW, 122, PXH, 1.2, 12, 66, "#c2a473", "#ae9163", "#997d52");
+
+    /* red-capped mushrooms, in a cluster like the reference */
+    [[70, 144, 1.7], [96, 152, 1.15], [110, 143, 0.85], [PXW - 92, 148, 1.8],
+     [PXW - 62, 156, 1.05], [PXW - 118, 158, 0.9]].forEach(function (m) {
+      var x = m[0], y = m[1], s = m[2];
+      px(ctx, x - Math.round(3 * s), y, Math.round(6 * s), Math.round(12 * s), "#f2e8d2");
+      px(ctx, x - Math.round(3 * s), y, Math.round(2 * s), Math.round(12 * s), "#fffaf0");
+      blob(ctx, x, y - Math.round(2 * s), Math.round(11 * s), Math.round(6.5 * s),
+        ["#f7715a", "#dd4f3a", "#b83a28", "#8f2a1d"]);
+      for (var k2 = 0; k2 < 5; k2++) {
+        px(ctx, x - 7 * s + rnd() * 14 * s, y - 5 * s + rnd() * 5 * s, 2, 1, "#fff3e0");
+      }
+      // a little glow under the cap
+      px(ctx, x - Math.round(4 * s), y - 1, Math.round(8 * s), 1, "#ffb99a");
     });
-    grassTufts(ctx, PXW, 134, 120, ["#7fab4e", "#93bd5e", "#5f8639"], rnd);
-    flowerDots(ctx, PXW, 132, 40, 18, ["#ff8fa8", "#ffd166", "#ffffff"], rnd);
-    motes(ctx, PXW, PXH, 30, "#fff2b8", rnd, 40, 130);
+
+    bush(ctx, 138, 168, 9, ["#83a653", "#6b8b41", "#557032", "#425826"], rnd);
+    bush(ctx, PXW - 146, 172, 8, ["#83a653", "#6b8b41", "#557032", "#425826"], rnd);
+    stones(ctx, PXW, 150, 16, ["#a89b82", "#8d8170", "#6f6558"], rnd);
+    grassTufts(ctx, PXW, 132, 150, ["#7fab4e", "#93bd5e", "#5f8639"], rnd);
+    flowerDots(ctx, PXW, 130, 46, 26, ["#ff8fa8", "#ffd166", "#ffffff", "#c9a0ff"], rnd);
   },
 
   /* 4. golden meadow — "it's getting dark" */
   meadow(ctx, rnd) {
     ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#8ec2e0" }, { p: 0.22, c: "#bcd9e6" },
-      { p: 0.44, c: "#f0dfae" }, { p: 0.62, c: "#f7cf8e" }, { p: 1.00, c: "#e9b878" },
+      { p: 0.00, c: "#7fb8dc" }, { p: 0.20, c: "#b0d4e4" },
+      { p: 0.40, c: "#ecdcae" }, { p: 0.58, c: "#f8cf8c" },
+      { p: 0.76, c: "#f0b878" }, { p: 1.00, c: "#dda668" },
     ]);
-    sunDisc(ctx, Math.round(PXW * 0.66), 62, 13, "#fffdf0", "#ffeeb8");
-    sunRays(ctx, PXW * 0.66, 62, PXW, PXH, "#fff3c8", rnd, 7);
-    hillBand(ctx, PXW, 96, 5, 0.021, ["#c9c47a", "#a8a25e", "#8a8449"], rnd);
-    hillBand(ctx, PXW, 112, 4, 0.03, ["#b8b264", "#98924f", "#7b763c"], rnd);
-    ditherSky(ctx, 0, 126, PXW, PXH - 126, [
-      { p: 0.00, c: "#c2b45e" }, { p: 0.5, c: "#a89a4a" }, { p: 1.00, c: "#8b7f39" },
+    cloudRow(ctx, PXW, 30, 4, ["#fff3d6", "#f7dcae", "#e8c088", "#d0a068"], rnd, 1.2);
+    sunDisc(ctx, Math.round(PXW * 0.66), 60, 14, "#fffdf0", "#ffeeb8");
+    sunRays(ctx, PXW * 0.66, 60, PXW, PXH, "#fff3c8", rnd, 8);
+
+    hillBand(ctx, PXW, 92, 6, 0.018, ["#d6cf86", "#b6ae66", "#968f4f"], rnd, 0.5);
+    hillBand(ctx, PXW, 104, 5, 0.026, ["#c6bd72", "#a49b56", "#867e43"], rnd, 2.6);
+    hillBand(ctx, PXW, 118, 4, 0.034, ["#b8ae64", "#98904c", "#7a733a"], rnd, 4.8);
+
+    ditherSky(ctx, 0, 130, PXW, PXH - 130, [
+      { p: 0.00, c: "#c6b85e" }, { p: 0.5, c: "#aa9c4a" }, { p: 1.00, c: "#8b7f39" },
     ]);
-    // backlit trees, dark against the sun
-    [[46, 1.0], [PXW - 60, 0.85], [140, 0.6]].forEach(([x, s]) => {
-      trunk(ctx, x, 132, Math.round(46 * s), Math.round(6 * s), ["#7a6a3c", "#5e5230", "#463c22"]);
-      canopy(ctx, x, 132 - 46 * s, 20 * s, ["#c9c47a", "#93924e", "#6d6c39", "#54542b"], rnd, "#ffeeb0");
+    pathTo(ctx, PXW, 134, PXH, 1.0, 10, 60, "#e0cd8e", "#cbb87b", "#b4a268");
+
+    /* backlit trees — dark shapes with a hot rim on the sun side */
+    [[42, 1.05], [PXW - 56, 0.9], [136, 0.62], [212, 0.5]].forEach(function (t) {
+      trunk(ctx, t[0], 136, Math.round(48 * t[1]), Math.round(6 * t[1]), ["#7a6a3c", "#5e5230", "#463c22"]);
+      canopy(ctx, t[0], 136 - 48 * t[1], 21 * t[1],
+        ["#d6cf86", "#9c9a52", "#73723a", "#56562c"], rnd, "#fff0b8");
     });
-    grassTufts(ctx, PXW, 140, 150, ["#c9bb62", "#b0a352", "#d6c974"], rnd);
-    motes(ctx, PXW, PXH, 40, "#fff6cc", rnd, 60, 150);
+    // fence posts leading off toward the light
+    for (var f = 0; f < 8; f++) {
+      var fx = 30 + f * 36, fy = 142 + f * 2;
+      px(ctx, fx, fy - 12, 2, 12, "#8a7a48");
+      if (f) px(ctx, fx - 34, fy - 9, 34, 1, "#8a7a48");
+    }
+    grassTufts(ctx, PXW, 142, 190, ["#d2c46a", "#b8ab58", "#e0d27c"], rnd);
+    flowerDots(ctx, PXW, 146, 30, 22, ["#fff3c4", "#ffd166", "#ffffff"], rnd);
   },
 
   /* 5. sunset lake — the ask */
   sunset(ctx, rnd) {
     ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#3d3a72" }, { p: 0.18, c: "#5b4d8e" },
-      { p: 0.36, c: "#8a5f9e" }, { p: 0.50, c: "#c97a8a" },
-      { p: 0.62, c: "#f0a072" }, { p: 0.72, c: "#7fa8d8" }, { p: 1.00, c: "#4a6ea8" },
+      { p: 0.00, c: "#33306a" }, { p: 0.16, c: "#514585" },
+      { p: 0.32, c: "#7d5798" }, { p: 0.46, c: "#bf7290" },
+      { p: 0.58, c: "#ee9a72" }, { p: 0.66, c: "#f5b982" },
+      { p: 0.74, c: "#7fa8d8" }, { p: 1.00, c: "#42639c" },
     ]);
-    // the signature banded clouds
-    const cl = ["#ffd08a", "#f6996f", "#e0765f", "#b95a58"];
-    for (let i = 0; i < 5; i++) {
-      const y = 28 + i * 12 + rnd() * 5;
-      for (let k = 0; k < 3; k++) {
-        blob(ctx, rnd() * PXW, y, 30 + rnd() * 26, 4 + rnd() * 3, cl);
+    for (var i = 0; i < 90; i++) {
+      var sy = rnd() * 34;
+      px(ctx, rnd() * PXW, sy, 1, 1, sy < 16 ? "#fff8e0" : "#ffe9c0");
+    }
+
+    /* the banded clouds, lit underneath */
+    var cl = ["#ffd8a0", "#f7a278", "#e07a62", "#b45a5c"];
+    for (var b = 0; b < 6; b++) {
+      var y = 24 + b * 11 + rnd() * 4;
+      var n = 2 + Math.floor(rnd() * 3);
+      for (var k = 0; k < n; k++) {
+        var cx = rnd() * PXW, w = 26 + rnd() * 34, h = 3 + rnd() * 3;
+        blob(ctx, cx, y, w, h, cl);
+        px(ctx, cx - w, y + h - 1, w * 2, 1, "#ffe3b0");
       }
     }
-    for (let i = 0; i < 60; i++) px(ctx, rnd() * PXW, rnd() * 26, 1, 1, "#fff3d0");
 
-    // mountain silhouettes, two ranges
-    hillBand(ctx, PXW, 88, 12, 0.017, ["#5a6ea0", "#4a5c89", "#3d4d74"], rnd, 2);
-    hillBand(ctx, PXW, 100, 8, 0.026, ["#3f5580", "#34486d", "#2b3c5b"], rnd, 5);
-    // pine treeline
-    pineRow(ctx, PXW, 122, 44, ["#2b4a52", "#1f3840", "#16292f"], rnd, 1.0);
-    // the lake
-    ditherSky(ctx, 0, 122, PXW, 20, [
-      { p: 0.00, c: "#6d94c4" }, { p: 0.5, c: "#54789f" }, { p: 1.00, c: "#3f5d80" },
+    hillBand(ctx, PXW, 84, 13, 0.015, ["#5f74a8", "#4c5f8e", "#3e5078"], rnd, 2);
+    hillBand(ctx, PXW, 96, 9, 0.024, ["#42588a", "#364a70", "#2c3d5e"], rnd, 5);
+    hillBand(ctx, PXW, 108, 6, 0.033, ["#33475e", "#293a4e", "#20303f"], rnd, 8);
+
+    pineRow(ctx, PXW, 124, 52, ["#2d4c54", "#203a42", "#172a30"], rnd, 1.05);
+
+    /* the lake, with a sun road down the middle */
+    ditherSky(ctx, 0, 124, PXW, 22, [
+      { p: 0.00, c: "#7fa2ce" }, { p: 0.45, c: "#5b81a8" }, { p: 1.00, c: "#43608a" },
     ]);
-    for (let i = 0; i < 40; i++) px(ctx, rnd() * PXW, 123 + rnd() * 18, 2 + rnd() * 4, 1, "#9dbde0");
-    // sun glitter on the water
-    for (let i = 0; i < 16; i++) px(ctx, PXW * 0.42 + rnd() * 40, 124 + rnd() * 15, 1 + rnd() * 3, 1, "#ffd9a0");
-    // far bank + flowered foreground
-    px(ctx, 0, 142, PXW, 8, "#3a4a3a");
-    ditherSky(ctx, 0, 148, PXW, PXH - 148, [
-      { p: 0.00, c: "#4a5c46" }, { p: 0.5, c: "#3c4d3a" }, { p: 1.00, c: "#2e3c2d" },
+    for (var w2 = 0; w2 < 54; w2++) px(ctx, rnd() * PXW, 125 + rnd() * 20, 2 + rnd() * 5, 1, "#a4c2e4");
+    for (var g = 0; g < 26; g++) {
+      px(ctx, PXW * 0.44 + rnd() * 44, 125 + rnd() * 19, 1 + rnd() * 4, 1, rnd() > 0.5 ? "#ffdca8" : "#ffc482");
+    }
+
+    px(ctx, 0, 144, PXW, 6, "#31402f");
+    ditherSky(ctx, 0, 149, PXW, PXH - 149, [
+      { p: 0.00, c: "#4c5f46" }, { p: 0.45, c: "#3d4f3a" }, { p: 1.00, c: "#2c3a2b" },
     ]);
-    grassTufts(ctx, PXW, 156, 130, ["#5c7050", "#4a5c42", "#6b8159"], rnd);
-    flowerDots(ctx, PXW, 152, 26, 44, ["#ff9ec4", "#ffd166", "#c9a0ff", "#ffffff"], rnd);
-    motes(ctx, PXW, PXH, 34, "#ffe9a8", rnd, 100, 176);
+    // reeds along the bank
+    for (var r3 = 0; r3 < 30; r3++) {
+      var rx = rnd() * PXW, rh = 5 + rnd() * 9;
+      for (var y2 = 0; y2 < rh; y2++) px(ctx, rx + (y2 > rh / 2 ? 1 : 0), 149 - y2, 1, 1, "#54684a");
+    }
+    grassTufts(ctx, PXW, 158, 150, ["#5c7050", "#4a5c42", "#6b8159"], rnd);
+    flowerDots(ctx, PXW, 154, 30, 54, ["#ff9ec4", "#ffd166", "#c9a0ff", "#ffffff"], rnd);
   },
 };
 
@@ -2037,88 +2150,294 @@ const HV = {
   },
 };
 
-/* ---------- painting ---------- */
-function hvPaint() {
-  const n = HV[hvNode];
-  const canvas = document.getElementById("hv-canvas");
-  if (!canvas || !n) return;
-  const ctx = canvas.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
+/* ---------- painting ----------
+   The background is expensive, so it is painted once into an offscreen
+   buffer per node. Every frame then blits that buffer and draws only the
+   things that move — petals, butterflies, fireflies, water shimmer, the
+   cat's blink. Cheap, and it is what makes the scene feel alive rather
+   than like a still image with buttons on top. */
+
+var hvBase = null, hvBaseCtx = null;
+var hvActors = [];
+var hvLoopId = null, hvT0 = 0;
+var hvTrans = null;          // pixel-dissolve state
+
+function hvEnsureBuffers() {
+  if (!hvBase) {
+    hvBase = document.createElement("canvas");
+    hvBase.width = PXW; hvBase.height = PXH;
+    hvBaseCtx = hvBase.getContext("2d");
+    hvBaseCtx.imageSmoothingEnabled = false;
+  }
+}
+
+/* Build the moving cast for a scene. Positions are seeded so a scene
+   always starts the same way, but they drift with time. */
+function hvBuildActors(n, rnd) {
+  var a = [];
+  var scene = n.scene;
+
+  if (scene === "sakura") {
+    for (var i = 0; i < 34; i++) {
+      a.push({ k: "petal", x: rnd() * PXW, y: rnd() * PXH, sp: 5 + rnd() * 9,
+        sw: 8 + rnd() * 16, ph: rnd() * 6.28, c: rnd() > 0.5 ? "#ffc9dd" : "#ffe3ee", w: 2 });
+    }
+    a.push({ k: "bird", x: -20, y: 26 + rnd() * 16, sp: 11 + rnd() * 5, ph: rnd() * 6.28 });
+  }
+  if (scene === "forest") {
+    for (var j = 0; j < 22; j++) {
+      a.push({ k: "mote", x: rnd() * PXW, y: 30 + rnd() * 90, r: 0.6 + rnd() * 1.4,
+        sp: 2 + rnd() * 4, ph: rnd() * 6.28, c: "#fff6c8" });
+    }
+    for (var l = 0; l < 8; l++) {
+      a.push({ k: "petal", x: rnd() * PXW, y: rnd() * PXH, sp: 6 + rnd() * 7,
+        sw: 10 + rnd() * 14, ph: rnd() * 6.28, c: "#a8cc72", w: 2 });
+    }
+  }
+  if (scene === "hollow") {
+    for (var m = 0; m < 20; m++) {
+      a.push({ k: "fly", x: rnd() * PXW, y: 60 + rnd() * 80, r: 6 + rnd() * 14,
+        sp: 0.5 + rnd() * 0.9, ph: rnd() * 6.28, c: "#fff2a8" });
+    }
+  }
+  if (scene === "meadow") {
+    for (var p = 0; p < 30; p++) {
+      a.push({ k: "mote", x: rnd() * PXW, y: 60 + rnd() * 100, r: 0.8 + rnd() * 1.8,
+        sp: 2 + rnd() * 5, ph: rnd() * 6.28, c: "#fff6cc" });
+    }
+  }
+  if (scene === "sunset") {
+    for (var q = 0; q < 26; q++) {
+      a.push({ k: "star", x: rnd() * PXW, y: rnd() * 26, ph: rnd() * 6.28 });
+    }
+    for (var r2 = 0; r2 < 18; r2++) {
+      a.push({ k: "shimmer", x: rnd() * PXW, y: 123 + rnd() * 17, w: 2 + rnd() * 4, ph: rnd() * 6.28 });
+    }
+    for (var s2 = 0; s2 < 14; s2++) {
+      a.push({ k: "fly", x: rnd() * PXW, y: 140 + rnd() * 34, r: 5 + rnd() * 10,
+        sp: 0.4 + rnd() * 0.7, ph: rnd() * 6.28, c: "#ffe9a8" });
+    }
+  }
+  return a;
+}
+
+function hvDrawActors(ctx, t) {
+  for (var i = 0; i < hvActors.length; i++) {
+    var a = hvActors[i];
+    if (a.k === "petal") {
+      var y = (a.y + t * a.sp) % (PXH + 12) - 6;
+      var x = a.x + Math.sin(t * 0.9 + a.ph) * a.sw * 0.35;
+      px(ctx, x, y, a.w, 1, a.c);
+      if (Math.sin(t * 3 + a.ph) > 0) px(ctx, x + 1, y - 1, 1, 1, a.c);
+    } else if (a.k === "mote") {
+      var my = a.y - ((t * a.sp) % 120);
+      if (my < 10) my += 120;
+      var mx = a.x + Math.sin(t * 0.6 + a.ph) * 5;
+      var tw = 0.55 + 0.45 * Math.sin(t * 2.2 + a.ph);
+      if (tw > 0.5) px(ctx, mx, my, Math.max(1, a.r | 0), Math.max(1, a.r | 0), a.c);
+    } else if (a.k === "fly") {
+      var fa = t * a.sp + a.ph;
+      var fx = a.x + Math.cos(fa) * a.r;
+      var fy = a.y + Math.sin(fa * 1.3) * a.r * 0.5;
+      var pulse = 0.5 + 0.5 * Math.sin(t * 3.1 + a.ph);
+      if (pulse > 0.35) {
+        px(ctx, fx, fy, 1, 1, a.c);
+        if (pulse > 0.75) { px(ctx, fx - 1, fy, 1, 1, a.c); px(ctx, fx + 1, fy, 1, 1, a.c); px(ctx, fx, fy - 1, 1, 1, a.c); px(ctx, fx, fy + 1, 1, 1, a.c); }
+      }
+    } else if (a.k === "star") {
+      var st = 0.5 + 0.5 * Math.sin(t * 1.7 + a.ph);
+      if (st > 0.45) px(ctx, a.x, a.y, 1, 1, st > 0.8 ? "#ffffff" : "#fff3d0");
+    } else if (a.k === "shimmer") {
+      var sh = Math.sin(t * 1.4 + a.ph);
+      if (sh > 0) px(ctx, a.x + sh * 3, a.y, a.w, 1, sh > 0.7 ? "#ffe9c0" : "#9dbde0");
+    } else if (a.k === "bird") {
+      var bx = (a.x + t * a.sp) % (PXW + 40) - 20;
+      var by = a.y + Math.sin(t * 0.8 + a.ph) * 4;
+      var flap = Math.sin(t * 7 + a.ph) > 0 ? 1 : -1;
+      px(ctx, bx, by, 2, 1, "#5a4a3a");
+      px(ctx, bx - 2, by - flap, 2, 1, "#5a4a3a");
+      px(ctx, bx + 2, by - flap, 2, 1, "#5a4a3a");
+    }
+  }
+}
+
+function hvPaintBase(n) {
+  hvEnsureBuffers();
+  var ctx = hvBaseCtx;
   ctx.clearRect(0, 0, PXW, PXH);
-
-  const rnd = hvSeed(n.scene + hvNode);
+  var rnd = hvSeed(n.scene + hvNode);
   (HV_SCENES[n.scene] || HV_SCENES.sakura)(ctx, rnd);
+  hvActors = hvBuildActors(n, hvSeed(n.scene + "actors"));
+}
 
-  const put = (sp, x, y, s) => {
+/* the per-frame pass: background, moving cast, then characters */
+function hvPaintFrame(t) {
+  var n = HV[hvNode];
+  var canvas = document.getElementById("hv-canvas");
+  if (!canvas || !n || n.isFail) return;
+  var ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+
+  ctx.clearRect(0, 0, PXW, PXH);
+  ctx.drawImage(hvBase, 0, 0);
+  hvDrawActors(ctx, t);
+
+  var rnd = hvSeed(n.scene + hvNode + "fg");
+  var put = function (sp, x, y, s) {
     s = s || 1;
     ctx.drawImage(sp, 0, 0, sp.width, sp.height, x | 0, y | 0, (sp.width * s) | 0, (sp.height * s) | 0);
   };
 
   if (n.title) {
-    put(drawNyan(), PXW - 62, 12, 1);
-    const logo = drawLogo("HEARTVENTURE");
-    put(logo, Math.round((PXW - logo.width * 0.62) / 2), 44, 0.62);
+    put(drawNyan(), PXW - 66, 12 + Math.sin(t * 1.4) * 2, 1);
+    var logo = drawLogo("HEARTVENTURE");
+    put(logo, Math.round((PXW - logo.width * 0.62) / 2), 42 + Math.sin(t * 0.9) * 1.5, 0.62);
   }
 
   if (n.butterflies) {
-    put(drawFlowerCard(), PXW / 2 - 27, 76, 1.95);
-    put(drawButterfly("blue"), 62, 52, 1.7);
-    put(drawButterfly("red"), PXW - 96, 44, 1.7);
+    put(drawFlowerCard(), PXW / 2 - 30, 78 + Math.sin(t * 0.8) * 1.5, 2.2);
+    /* the butterflies sit close to their buttons so the pairing is obvious */
+    put(drawButterfly("blue"), 48 + Math.sin(t * 0.9) * 4, 54 + Math.sin(t * 1.5) * 5, 1.8);
+    put(drawButterfly("red"), PXW - 84 + Math.sin(t * 0.8 + 2) * 4, 50 + Math.sin(t * 1.3 + 1) * 5, 1.8);
   }
 
-  if (n.fox) put(drawFox(), PXW - 116, 116, 1.5);
+  if (n.fox) put(drawFox(), PXW - 118, 114 + Math.sin(t * 0.7) * 1, 1.6);
 
   if (n.envelope) {
-    const e = drawEnvelope(n.envelope === "open");
-    put(e, PXW / 2 - 33, n.envelope === "open" ? 34 : 40, 1.5);
-    for (let i = 0; i < 12; i++) px(ctx, PXW / 2 - 40 + rnd() * 80, 30 + rnd() * 50, 1, 1, "#ffe9a8");
+    var e = drawEnvelope(n.envelope === "open");
+    put(e, PXW / 2 - 33, (n.envelope === "open" ? 32 : 38) + Math.sin(t * 0.9) * 3, 1.5);
+    for (var i = 0; i < 14; i++) {
+      var sa = t * 1.6 + i;
+      if (Math.sin(sa) > 0.2) px(ctx, PXW / 2 - 44 + ((i * 37) % 88), 26 + ((i * 23) % 54) + Math.sin(sa) * 3, 1, 1, "#ffe9a8");
+    }
   }
 
   if (n.isAsk) {
-    // the letter, held open and filling the frame
-    const cardW = 132, cardH = 104, cx = (PXW - cardW) / 2, cy = 26;
+    var cardW = 132, cardH = 104, cx = (PXW - cardW) / 2, cy = 24 + Math.sin(t * 0.7) * 2;
     px(ctx, cx + 3, cy + 4, cardW, cardH, "rgba(60,30,50,.35)");
     px(ctx, cx, cy, cardW, cardH, "#fffaf0");
     px(ctx, cx, cy, cardW, 2, "#ffffff");
     px(ctx, cx, cy + cardH - 2, cardW, 2, "#e6d8bf");
-    for (let i = 0; i < 9; i++) drawHeartInto(ctx, cx + 8 + rnd() * (cardW - 16), cy + 8 + rnd() * (cardH - 16), 1, "#ffc2d8");
-    const kitty = drawCat("idle");
+    for (var h = 0; h < 9; h++) {
+      drawHeartInto(ctx, cx + 10 + ((h * 41) % (cardW - 20)), cy + 10 + ((h * 29) % (cardH - 20)), 1, "#ffc2d8");
+    }
+    var kitty = drawCat("idle");
     put(kitty, cx + cardW / 2 - 30, cy + cardH - 62, 1.5);
     drawHeartInto(ctx, cx + cardW - 16, cy + 16, 2, "#ef5f83");
     drawHeartInto(ctx, cx + 14, cy + cardH - 18, 2, "#ff9fb6");
   }
 
   if (n.hearts) {
-    for (let i = 0; i < 14; i++) {
-      drawHeartInto(ctx, 20 + rnd() * (PXW - 40), 20 + rnd() * 90, 1 + Math.round(rnd()), "#ff8fb0");
+    for (var k = 0; k < 14; k++) {
+      var hy = 108 - ((t * 12 + k * 19) % 110);
+      var hx = 24 + ((k * 47) % (PXW - 48)) + Math.sin(t * 1.1 + k) * 5;
+      drawHeartInto(ctx, hx, hy, 1 + (k % 2), "#ff8fb0");
     }
   }
 
-  // the cat, bottom-left, unless the letter is doing the talking
   if (n.cat && n.cat !== "hide") {
-    const scale = n.bigCat ? 2.8 : 2.0;
-    const sp = drawCat(n.cat);
+    /* a blink every few seconds, and a slow breath */
+    var blink = (t % 4.4) > 4.2;
+    var mood = blink && (n.cat === "idle" || n.cat === "happy") ? "happy" : n.cat;
+    var scale = n.bigCat ? 2.8 : 2.0;
+    var sp = drawCat(mood);
+    var bob = Math.sin(t * 1.2) * 1.2;
     put(sp, n.bigCat ? PXW / 2 - sp.width * scale / 2 : 6,
-        n.bigCat ? 34 : PXH - sp.height * scale - 4, scale);
+        (n.bigCat ? 34 : PXH - sp.height * scale - 4) + bob, scale);
   }
 }
 
-function hvPaintFail() {
-  const canvas = document.getElementById("hv-fail-canvas");
+/* ---------- pixel dissolve between scenes ----------
+   Blocks of the incoming frame appear in a shuffled order. It is the
+   transition this kind of game has always used, and it hides the fact
+   that the whole background is being repainted. */
+function hvStartTransition() {
+  var canvas = document.getElementById("hv-canvas");
   if (!canvas) return;
-  const ctx = canvas.getContext("2d");
+  var prev = document.createElement("canvas");
+  prev.width = PXW; prev.height = PXH;
+  prev.getContext("2d").drawImage(canvas, 0, 0);
+
+  var B = 8;                                  // block size, in scene pixels
+  var cols = Math.ceil(PXW / B), rows = Math.ceil(PXH / B);
+  var order = [];
+  for (var i = 0; i < cols * rows; i++) order.push(i);
+  for (var j = order.length - 1; j > 0; j--) {
+    var k = (Math.random() * (j + 1)) | 0;
+    var tmp = order[j]; order[j] = order[k]; order[k] = tmp;
+  }
+  hvTrans = { prev: prev, order: order, cols: cols, rows: rows, B: B, t: 0, dur: 0.42 };
+}
+
+function hvDrawTransition(ctx, dt) {
+  if (!hvTrans) return false;
+  hvTrans.t += dt;
+  var p = Math.min(1, hvTrans.t / hvTrans.dur);
+  var shown = Math.floor(p * hvTrans.order.length);
+
+  /* everything not yet revealed still shows the outgoing frame */
+  var buf = document.createElement("canvas");
+  buf.width = PXW; buf.height = PXH;
+  var bctx = buf.getContext("2d");
+  bctx.imageSmoothingEnabled = false;
+  bctx.drawImage(hvTrans.prev, 0, 0);
+  bctx.save();
+  bctx.beginPath();
+  for (var i = 0; i < shown; i++) {
+    var idx = hvTrans.order[i];
+    var bx = (idx % hvTrans.cols) * hvTrans.B, by = ((idx / hvTrans.cols) | 0) * hvTrans.B;
+    bctx.rect(bx, by, hvTrans.B, hvTrans.B);
+  }
+  bctx.clip();
+  bctx.clearRect(0, 0, PXW, PXH);
+  bctx.restore();
+
+  ctx.drawImage(buf, 0, 0);
+  if (p >= 1) { hvTrans = null; return false; }
+  return true;
+}
+
+function hvLoop(now) {
+  hvLoopId = requestAnimationFrame(hvLoop);
+  if (!hvT0) hvT0 = now;
+  var t = (now - hvT0) / 1000;
+  var dt = Math.min(0.05, t - (hvLoop._last || t));
+  hvLoop._last = t;
+
+  var scr = document.getElementById("screen-quest");
+  if (!scr || !scr.classList.contains("active")) return;
+
+  hvPaintFrame(t);
+  var canvas = document.getElementById("hv-canvas");
+  if (canvas && hvTrans) hvDrawTransition(canvas.getContext("2d"), dt);
+}
+
+function hvStartLoop() {
+  if (hvLoopId) return;
+  hvT0 = 0; hvLoop._last = 0;
+  hvLoopId = requestAnimationFrame(hvLoop);
+}
+function hvStopLoop() {
+  if (hvLoopId) cancelAnimationFrame(hvLoopId);
+  hvLoopId = null;
+}
+
+function hvPaintFail() {
+  var canvas = document.getElementById("hv-fail-canvas");
+  if (!canvas) return;
+  var ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const rnd = hvSeed("bear");
+  var rnd = hvSeed("bear");
   HV_SCENES.forest(ctx, rnd);
   ctx.save(); ctx.globalAlpha = 0.45; px(ctx, 0, 0, PXW, PXH, "#2a1408"); ctx.restore();
-  const bear = drawBear();
+  var bear = drawBear();
   ctx.drawImage(bear, 0, 0, bear.width, bear.height,
     PXW / 2 - bear.width * 1.7 / 2, 26, bear.width * 1.7, bear.height * 1.7);
 }
 
 /* ---------- rendering the DOM layer ---------- */
-function hvRender() {
+function hvRender(withTransition) {
   const n = HV[hvNode];
   if (!n) return;
 
@@ -2133,7 +2452,10 @@ function hvRender() {
   /* Any non-fail node clears the bear. Without this, going back while
      the overlay is up leaves it stuck over every later screen. */
   document.getElementById("hv-fail").classList.remove("on");
-  hvPaint();
+
+  if (withTransition) hvStartTransition();
+  hvPaintBase(n);
+  hvStartLoop();
 
   const note = document.getElementById("hv-note");
   const say = n.isAsk ? QUEST_FINAL.question : n.say;
@@ -2169,6 +2491,10 @@ function hvRender() {
     (ch.pos === "left" ? left : ch.pos === "right" ? right : centre).appendChild(b);
   });
 
+  /* the butterfly page pairs each button with its butterfly, so put the
+     buttons where the butterflies actually are */
+  document.getElementById("screen-quest").classList.toggle("hv-pair", !!n.butterflies);
+
   if (n.isEnd) hvCompleted = true;
 }
 
@@ -2176,6 +2502,7 @@ let hvCompleted = false;
 
 function hvChoose(ch) {
   if (ch.to === "__exit") {
+    hvStopLoop();
     markChapterDone("quest");
     pageTurn("hub", startHub);
     return;
@@ -2188,20 +2515,20 @@ function hvChoose(ch) {
   }
   hvHistory.push(hvNode);
   hvNode = ch.to;
-  hvRender();
+  hvRender(true);
 }
 
 function hvRetry() {
   document.getElementById("hv-fail").classList.remove("on");
   if (hvFailReturn) hvNode = hvFailReturn;   // back to the choice, not the start
   hvFailReturn = null;
-  hvRender();
+  hvRender(true);
 }
 
 function hvBack() {
   if (!hvHistory.length) return;
   hvNode = hvHistory.pop();
-  hvRender();
+  hvRender(true);
 }
 
 function startQuest() {
@@ -2209,9 +2536,9 @@ function startQuest() {
   hvHistory = [];
   hvFailReturn = null;
   document.getElementById("hv-fail").classList.remove("on");
-  hvRender();
+  hvRender(false);
 }
 
 document.getElementById("hv-retry").addEventListener("click", hvRetry);
 document.getElementById("hv-back").addEventListener("click", hvBack);
-document.getElementById("hv-quit").addEventListener("click", () => pageTurn("hub", startHub));
+document.getElementById("hv-quit").addEventListener("click", () => { hvStopLoop(); pageTurn("hub", startHub); });
