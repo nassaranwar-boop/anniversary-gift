@@ -1695,6 +1695,122 @@ function drawLogo(text) {
   return c;
 }
 
+/* ---------- trees ----------
+   A tree is a trunk that flares at the root, leans a little, splits into
+   branches, and carries a canopy that OVERLAPS the top of the trunk so
+   the join is hidden. Drawing a straight pole with a ball floating above
+   it is what made the first version look wrong. */
+
+function trunkCurve(ctx, x, groundY, h, w, tones, lean, rnd) {
+  /* returns the top-centre point so branches and canopy can attach */
+  var topX = x + (lean || 0) * h * 0.16;
+  for (var i = 0; i < h; i++) {
+    var t = i / h;                                  // 0 at root, 1 at top
+    var y = groundY - i;
+    var cx = x + (lean || 0) * h * 0.16 * (t * t);  // lean grows with height
+    // taper, with a flare in the bottom eighth
+    var flare = t < 0.12 ? (1 + (0.12 - t) * 5.2) : 1;
+    var ww = Math.max(2, Math.round(w * (1 - t * 0.42) * flare));
+    var half = ww >> 1;
+    px(ctx, cx - half, y, ww, 1, tones[1]);
+    // lit edge, fading out toward the top
+    px(ctx, cx - half, y, Math.max(1, Math.round(ww * 0.28)), 1, tones[0]);
+    // shadow edge
+    px(ctx, cx + half - 1, y, 1, 1, tones[2]);
+    // bark grain: short broken vertical marks, not a continuous stripe
+    if (rnd && ww > 3 && rnd() > 0.72) {
+      px(ctx, cx - half + 1 + Math.floor(rnd() * (ww - 2)), y, 1, 1, tones[2]);
+    }
+  }
+  // roots spreading into the ground
+  if (rnd) {
+    for (var r = 0; r < 3; r++) {
+      var dir = r === 1 ? 0 : (r === 0 ? -1 : 1);
+      var rl = 2 + Math.floor(rnd() * 3);
+      for (var k = 0; k < rl; k++) {
+        px(ctx, x + dir * (w * 0.5 + k), groundY + Math.floor(k * 0.5), 2, 1, tones[2]);
+      }
+    }
+  }
+  return topX;
+}
+
+function branchArm(ctx, x, y, len, ang, w, tones) {
+  for (var i = 0; i < len; i++) {
+    var bx = x + Math.cos(ang) * i;
+    var by = y + Math.sin(ang) * i;
+    var ww = Math.max(1, Math.round(w * (1 - i / len * 0.7)));
+    px(ctx, bx, by, ww, ww, tones[1]);
+    if (i < len * 0.4) px(ctx, bx, by, 1, 1, tones[0]);
+  }
+  return [x + Math.cos(ang) * len, y + Math.sin(ang) * len];
+}
+
+/* A full tree: trunk, branches, and a canopy that sits over the join. */
+function treeFull(ctx, x, groundY, h, barkTones, leafTones, rnd, opts) {
+  opts = opts || {};
+  var w = opts.w || Math.max(3, Math.round(h * 0.10));
+  var lean = opts.lean !== undefined ? opts.lean : (rnd() - 0.5) * 0.7;
+  var topX = trunkCurve(ctx, x, groundY, h, w, barkTones, lean, rnd);
+  var topY = groundY - h;
+
+  // branches fanning out just below the crown
+  var arms = opts.arms === undefined ? 3 : opts.arms;
+  var tips = [];
+  for (var i = 0; i < arms; i++) {
+    var a = -Math.PI / 2 + (i - (arms - 1) / 2) * (0.55 + rnd() * 0.2);
+    var bl = h * (0.16 + rnd() * 0.12);
+    tips.push(branchArm(ctx, topX, topY + h * 0.14, bl, a, Math.max(1, w * 0.4), barkTones));
+  }
+
+  // canopy: a mass of overlapping puffs centred over the trunk top, sized
+  // so it always covers where trunk and branches end
+  var r = opts.r || h * 0.52;
+  var cy = topY + r * 0.16;
+  canopy(ctx, topX, cy, r, leafTones, rnd, opts.speckle);
+  tips.forEach(function (tp) {
+    blob(ctx, tp[0], tp[1] - r * 0.18, r * 0.46, r * 0.36, leafTones);
+  });
+  // a few leaves catching light on top
+  if (opts.speckle) {
+    for (var k = 0; k < r * 0.9; k++) {
+      var aa = rnd() * Math.PI * 2, rr = rnd() * r * 0.8;
+      px(ctx, topX + Math.cos(aa) * rr, cy + Math.sin(aa) * rr * 0.7 - r * 0.15, 1, 1, opts.speckle);
+    }
+  }
+  return { x: topX, y: cy, r: r };
+}
+
+/* A birch: pale, slender, gently curved, with irregular bark scars and a
+   canopy of its own so it is never a pole disappearing into a green band. */
+function birch(ctx, x, groundY, h, rnd, opts) {
+  opts = opts || {};
+  var w = opts.w || Math.max(3, Math.round(h * 0.075));
+  var bark = ["#f6f1e6", "#ddd3bf", "#b6ab93"];
+  var lean = opts.lean !== undefined ? opts.lean : (rnd() - 0.5) * 0.5;
+  var topX = trunkCurve(ctx, x, groundY, h, w, bark, lean, rnd);
+  var topY = groundY - h;
+
+  // scars: irregular length, irregular spacing, some doubled
+  var y = groundY - 6;
+  while (y > topY + h * 0.18) {
+    var sw = 2 + Math.floor(rnd() * (w + 1));
+    var sx = x + (rnd() - 0.5) * (w * 0.5);
+    px(ctx, sx - (sw >> 1), y, sw, 1, "#6f6858");
+    if (rnd() > 0.7) px(ctx, sx - (sw >> 1) + 1, y - 1, Math.max(1, sw - 2), 1, "#8d8570");
+    y -= 8 + Math.floor(rnd() * 14);
+  }
+
+  var leaves = opts.leaves || ["#a8cc72", "#87b055", "#67903f", "#4d722e"];
+  var r = opts.r || h * 0.42;
+  for (var i = 0; i < 2; i++) {
+    var a = -Math.PI / 2 + (i ? 0.7 : -0.7);
+    branchArm(ctx, topX, topY + h * 0.12, h * 0.12, a, 2, bark);
+  }
+  canopy(ctx, topX, topY + r * 0.2, r, leaves, rnd, "#c8e79a");
+  return { x: topX, y: topY, r: r };
+}
+
 /* =========================================================
    SCENES — the backgrounds the adventure walks through
 
@@ -1798,14 +1914,13 @@ const HV_SCENES = {
     ]);
     sunRays(ctx, PXW * 0.32, -14, PXW, PXH, "#fff8d8", rnd, 7);
 
-    /* three canopy depths, darkening toward the viewer */
-    for (var d = 0; d < 3; d++) {
-      var tone = [["#bcd98a", "#a3c46e", "#89aa56", "#6f8f42"],
-                  ["#a8cc72", "#8bb057", "#6f9440", "#57782e"],
-                  ["#8fb85e", "#749b45", "#5a7d33", "#436024"]][d];
-      var n = [10, 9, 8][d];
-      for (var i = 0; i < n; i++) {
-        blob(ctx, rnd() * PXW, 10 + d * 16 + rnd() * 20, 24 + rnd() * 18, 12 + rnd() * 9, tone);
+    /* a distant treeline along the top, hazed and small — it sits behind
+       the real trees rather than swallowing them */
+    for (var d = 0; d < 2; d++) {
+      var tone = [["#c6dd9a", "#aec883", "#96af6c", "#7f9857"],
+                  ["#b2cf80", "#99b769", "#809e54", "#688541"]][d];
+      for (var i = 0; i < 9; i++) {
+        blob(ctx, rnd() * PXW, 8 + d * 12 + rnd() * 12, 20 + rnd() * 14, 8 + rnd() * 6, tone);
       }
     }
 
@@ -1824,12 +1939,24 @@ const HV_SCENES = {
     stones(ctx, PXW, 140, 18, ["#a89b82", "#8d8170", "#6f6558"], rnd);
 
     var bark = ["#a37a4c", "#836039", "#644727"];
-    [[14, 1.0], [PXW - 18, 1.0], [58, 0.62], [PXW - 68, 0.66], [104, 0.42]].forEach(function (t) {
-      trunk(ctx, t[0], PXH, Math.round(PXH * t[1]), Math.round(15 * t[1]), bark);
-      canopy(ctx, t[0], PXH - PXH * t[1] + 8, 27 * t[1],
-        ["#a3c96e", "#84ac52", "#65873b", "#4b6729"], rnd, "#cbe89c");
-      // moss on the lit side
-      for (var m = 0; m < 12 * t[1]; m++) px(ctx, t[0] - 7 * t[1] + rnd() * 4, PXH - rnd() * 60 * t[1], 2, 1, "#6f9440");
+    var leaf = ["#a3c96e", "#84ac52", "#65873b", "#4b6729"];
+
+    /* Mid-distance trees: full crowns, grounded on the bank behind the path.
+       Sized so the canopy is always wider than the trunk is tall-looking. */
+    [[54, 116, 46], [252, 114, 42], [104, 110, 34]].forEach(function (t) {
+      treeFull(ctx, t[0], t[1], t[2], bark, leaf, rnd, { speckle: "#cbe89c" });
+    });
+
+    /* Framing trees at the very edges. Their trunks stop well below the top
+       of the frame and the crown spills off the corner, so the trunk never
+       runs the whole height with a clipped ball stuck on the end. */
+    [[10, 118, -0.5], [PXW - 14, 122, 0.5]].forEach(function (t) {
+      var h = t[1];
+      var topX = trunkCurve(ctx, t[0], PXH, h, 15, bark, t[2], rnd);
+      var topY = PXH - h;
+      branchArm(ctx, topX, topY + 16, 22, -Math.PI / 2 + (t[2] > 0 ? -0.75 : 0.75), 5, bark);
+      canopy(ctx, topX + (t[2] > 0 ? -10 : 10), topY - 4, 40, leaf, rnd, "#cbe89c");
+      canopy(ctx, topX + (t[2] > 0 ? -34 : 34), topY + 10, 26, leaf, rnd, "#cbe89c");
     });
 
     bush(ctx, 74, 156, 10, ["#8bb057", "#739642", "#5c7c33", "#476226"], rnd);
@@ -1853,24 +1980,24 @@ const HV_SCENES = {
       { p: 0.54, c: "#c9e2c6" }, { p: 1.00, c: "#b2cf9c" },
     ]);
     sunRays(ctx, PXW * 0.62, -10, PXW, PXH, "#fffbe0", rnd, 6);
-    for (var i = 0; i < 20; i++) {
-      blob(ctx, rnd() * PXW, 12 + rnd() * 34, 24 + rnd() * 18, 13 + rnd() * 10,
-        ["#a3c470", "#83a653", "#63853c", "#4a662c"]);
+    for (var i = 0; i < 11; i++) {
+      blob(ctx, rnd() * PXW, 8 + rnd() * 16, 20 + rnd() * 14, 8 + rnd() * 6,
+        ["#bcd48e", "#a2bd74", "#8aa55e", "#738d4a"]);
     }
-
-    /* pale birch trunks with real bark marks */
-    [[36, 0.98], [92, 0.82], [PXW - 50, 0.92], [PXW - 108, 0.76], [160, 0.6]].forEach(function (t) {
-      var h = Math.round(140 * t[1]);
-      trunk(ctx, t[0], PXH - 34, h, Math.round(11 * t[1]), ["#f2ece0", "#d8ccb6", "#b0a48c"]);
-      for (var k = 0; k < 6; k++) {
-        px(ctx, t[0] - 4 * t[1], PXH - 50 - k * 20 - rnd() * 10, Math.round(6 * t[1]), 1, "#7d7460");
-      }
-    });
 
     ditherSky(ctx, 0, 116, PXW, PXH - 116, [
       { p: 0.00, c: "#7aa54c" }, { p: 0.42, c: "#658c3c" }, { p: 1.00, c: "#4e6d2f" },
     ]);
     pathTo(ctx, PXW, 122, PXH, 1.2, 12, 66, "#c2a473", "#ae9163", "#997d52");
+
+    /* Birches, each carrying its own crown. Previously these were
+       untapered poles that ran up into a canopy band they were not
+       attached to, which read as fence posts. */
+    [[34, 152, 118, -0.4], [88, 148, 96, 0.25], [PXW - 46, 154, 112, 0.35],
+     [PXW - 104, 146, 88, -0.2], [162, 142, 72, 0.15]].forEach(function (t) {
+      birch(ctx, t[0], t[1], t[2], rnd, { lean: t[3],
+        leaves: ["#a8cc72", "#87b055", "#67903f", "#4d722e"] });
+    });
 
     /* red-capped mushrooms, in a cluster like the reference */
     [[70, 144, 1.7], [96, 152, 1.15], [110, 143, 0.85], [PXW - 92, 148, 1.8],
