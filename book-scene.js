@@ -347,15 +347,16 @@
         }
         // darkened edges where hands have touched
         var eg = ctx.createLinearGradient(0, 0, w, 0);
-        eg.addColorStop(0, "rgba(90,64,32,0.0)");
-        eg.addColorStop(0.85, "rgba(90,64,32,0.05)");
-        eg.addColorStop(1, "rgba(90,64,32,0.28)");
+        eg.addColorStop(0, "rgba(74,52,26,0.22)");
+        eg.addColorStop(0.30, "rgba(74,52,26,0.04)");
+        eg.addColorStop(0.85, "rgba(74,52,26,0.10)");
+        eg.addColorStop(1, "rgba(74,52,26,0.38)");
         ctx.fillStyle = eg; ctx.fillRect(0, 0, w, h);
         if (inked) scribbleBlock(ctx, w, h, "rgba(48,32,18,0.72)", w * 0.13, h * 0.036);
       }), THREE.SRGBColorSpace);
     }
-    var pageTexA = makePageColorTex("#c8b287", true);
-    var pageTexB = makePageColorTex("#c2ab80", true);
+    var pageTexA = makePageColorTex("#ab9670", true);
+    var pageTexB = makePageColorTex("#a58f6a", true);
 
     /* the same handwriting, as an emissive mask, so script glows on the
        turning pages at the climax */
@@ -530,9 +531,9 @@
     var pageMatA = track(new THREE.MeshStandardMaterial({
       map: pageTexA, normalMap: parchNormalTex,
       normalScale: new THREE.Vector2(0.5, 0.5),
-      roughness: 0.88, metalness: 0.0, side: THREE.DoubleSide,
+      roughness: 0.94, metalness: 0.0, side: THREE.DoubleSide,
       emissive: 0xffc978, emissiveMap: glowScriptTex, emissiveIntensity: 0.0,
-      envMapIntensity: 0.7,
+      envMapIntensity: 0.38,
     }));
     var pageMatB = track(pageMatA.clone());
     pageMatB.map = pageTexB;
@@ -765,6 +766,63 @@
     }
 
     /* ====================================================================
+       POST-PROCESSING
+
+       Ordering matters. RenderPass draws into a half-float target, and
+       three only applies tone mapping when writing to the default
+       framebuffer — so the chain stays linear HDR all the way through
+       bloom, and OutputPass does ACES + sRGB last. Bloom on a tone-mapped
+       image would have nothing above 1.0 left to bleed.
+       ==================================================================== */
+    var composer = null, bloomPass = null, bokehPass = null;
+    var _dbSize = new THREE.Vector2();
+
+    function buildComposer() {
+      renderer.getDrawingBufferSize(_dbSize);
+      var rt = new THREE.WebGLRenderTarget(_dbSize.x, _dbSize.y, {
+        type: THREE.HalfFloatType,
+        samples: Q.msaa,            // real MSAA where we can afford it
+      });
+      composer = new THREE.EffectComposer(renderer, rt);
+      composer.setSize(window.innerWidth, window.innerHeight);
+      composer.setPixelRatio(renderer.getPixelRatio());
+
+      composer.addPass(new THREE.RenderPass(scene, camera));
+
+      if (Q.dof) {
+        bokehPass = new THREE.BokehPass(scene, camera, {
+          focus: 2.35, aperture: 0.009, maxblur: 0.016,
+        });
+        composer.addPass(bokehPass);
+      }
+
+      if (Q.bloom) {
+        bloomPass = new THREE.UnrealBloomPass(
+          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          BLOOM_IDLE, 0.62, 0.72);   // strength, radius, threshold
+        composer.addPass(bloomPass);
+      }
+
+      if (Q.msaa === 0 && TIER === "mid") {
+        composer.addPass(new THREE.SMAAPass(window.innerWidth, window.innerHeight));
+      }
+
+      composer.addPass(new THREE.OutputPass());
+    }
+
+    var BLOOM_IDLE = 0.48;
+    var BLOOM_CLIMAX = 1.85;
+    buildComposer();
+
+    /* Keep focus pinned to the book as the camera pushes in, so the
+       background falls out of focus but the tome never does. */
+    var _focusTarget = new THREE.Vector3(0, 0.12, 0);
+    function updateDof() {
+      if (!bokehPass) return;
+      bokehPass.uniforms["focus"].value = camera.position.distanceTo(_focusTarget);
+    }
+
+    /* ====================================================================
        CAMERA RIG
        ==================================================================== */
     var camRig = {
@@ -859,6 +917,7 @@
         var build = easeInCubic(climaxT);
         spineLight.position.set(SPINE_X + 0.02, blockBottom + PAGE_BLOCK * 0.6, 0);
         spineLight.intensity = build * 26;
+        if (bloomPass) bloomPass.strength = BLOOM_IDLE + (BLOOM_CLIMAX - BLOOM_IDLE) * build;
         pageMatA.emissiveIntensity = build * 2.4;
         pageMatB.emissiveIntensity = build * 2.4;
         if (climaxT >= TL.handoffAt && !state.handedOff) {
@@ -878,17 +937,22 @@
     var startTime = performance.now() / 1000;
     var frameTimes = [];
 
+    renderer.info.autoReset = false;
     function renderFrame(now) {
+      renderer.info.reset();
       updateScene(now);
-      renderer.render(scene, camera);
+      updateDof();
+      if (composer) composer.render(); else renderer.render(scene, camera);
     }
 
+    var lastFrameAt = 0;
     function loop() {
       if (!running) return;
       rafId = requestAnimationFrame(loop);
       var t0 = performance.now();
+      if (lastFrameAt && frameTimes.length < 600) frameTimes.push(t0 - lastFrameAt);
+      lastFrameAt = t0;
       renderFrame(t0 / 1000 - startTime);
-      if (frameTimes.length < 400) frameTimes.push(performance.now() - t0);
     }
 
     function begin() {
@@ -904,6 +968,11 @@
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
+      if (composer) {
+        composer.setSize(window.innerWidth, window.innerHeight);
+        composer.setPixelRatio(renderer.getPixelRatio());
+      }
+      if (bloomPass) bloomPass.resolution.set(window.innerWidth, window.innerHeight);
     }
     window.addEventListener("resize", onResize);
 
@@ -913,6 +982,11 @@
       window.removeEventListener("resize", onResize);
       disposables.forEach(function (d) { if (d && d.dispose) d.dispose(); });
       if (envRT) envRT.dispose();
+      if (composer) {
+        composer.passes.forEach(function (ps) { if (ps.dispose) ps.dispose(); });
+        composer.renderTarget1.dispose();
+        composer.renderTarget2.dispose();
+      }
       renderer.dispose();
     }
     window.skipBookIntro = dispose;
@@ -948,7 +1022,44 @@
         if (o.exposure !== undefined) renderer.toneMappingExposure = o.exposure;
         if (o.clearcoat !== undefined) leatherMat.clearcoat = o.clearcoat;
         if (o.rough !== undefined) leatherMat.roughness = o.rough;
+        if (o.bloomStrength !== undefined && bloomPass) bloomPass.strength = o.bloomStrength;
+        if (o.bloomRadius !== undefined && bloomPass) bloomPass.radius = o.bloomRadius;
+        if (o.bloomThreshold !== undefined && bloomPass) bloomPass.threshold = o.bloomThreshold;
+        if (o.aperture !== undefined && bokehPass) bokehPass.uniforms["aperture"].value = o.aperture;
+        if (o.maxblur !== undefined && bokehPass) bokehPass.uniforms["maxblur"].value = o.maxblur;
         leatherMat.needsUpdate = true;
+      },
+      /* Resume the live loop for a while and report real frame pacing.
+         frame() pauses the loop, so the plain profile() below only ever
+         sees warm-up frames. */
+      profileLive: function (ms, atTime) {
+        frameTimes.length = 0;
+        if (atTime !== undefined) { state.triggered = true; state.triggerTime = -atTime; }
+        state.handedOff = true;
+        running = true;
+        startTime = performance.now() / 1000;
+        lastFrameAt = 0;
+        loop();
+        return new Promise(function (res) {
+          setTimeout(function () {
+            running = false;
+            if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+            var a = frameTimes.slice(3).sort(function (x, y) { return x - y; });
+            res({
+              tier: TIER, frames: a.length,
+              medianMs: a.length ? +a[a.length >> 1].toFixed(2) : null,
+              p95Ms: a.length ? +a[Math.floor(a.length * 0.95)].toFixed(2) : null,
+              fps: a.length ? +(1000 / a[a.length >> 1]).toFixed(1) : null,
+              passes: composer ? composer.passes.length : 0,
+              drawCalls: renderer.info.render.calls,
+              triangles: renderer.info.render.triangles,
+              programs: renderer.info.programs ? renderer.info.programs.length : null,
+              textures: renderer.info.memory.textures,
+              geometries: renderer.info.memory.geometries,
+              dpr: renderer.getPixelRatio(),
+            });
+          }, ms);
+        });
       },
       profile: function () {
         if (!frameTimes.length) return null;
