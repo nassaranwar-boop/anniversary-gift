@@ -974,7 +974,9 @@ function buildDiorama(i) {
      leaves one without a scene. */
   if (window.Diorama && Diorama.mount()) {
     document.getElementById("dio-fallback").hidden = true;
-    Diorama.show(i);
+    /* The photo, when there is one, stands up on the pages as the
+       centrepiece and the miniature world arranges itself around it. */
+    Diorama.show(i, m.photo || null);
   } else {
     const fb = document.getElementById("dio-fallback");
     fb.hidden = false;

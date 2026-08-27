@@ -357,7 +357,7 @@ window.Diorama = (function () {
 
   var WORLDS = [
     /* 0 — the castle, closest to the reference */
-    function castle(g) {
+    function castle(g, hasPhoto) {
       var M = mats();
       baseIsland(g, 0.34);
       function tower(x, z, r, h, roofColour) {
@@ -378,13 +378,14 @@ window.Diorama = (function () {
           g.add(w);
         }
       }
+      if (hasPhoto) { /* the photo takes the centre; keep only the skyline */ }
       // keep
       var keep = new THREE.Mesh(track(new THREE.BoxGeometry(0.20, 0.24, 0.18)), M.stone);
-      keep.position.set(0, 0.15, 0);
+      keep.position.set(hasPhoto ? -0.20 : 0, 0.15, hasPhoto ? -0.16 : 0);
       keep.castShadow = !!Q.shadow; keep.receiveShadow = !!Q.shadow;
       g.add(keep);
       var keepRoof = new THREE.Mesh(track(new THREE.ConeGeometry(0.17, 0.14, 4)), M.roof);
-      keepRoof.position.set(0, 0.34, 0); keepRoof.rotation.y = Math.PI / 4;
+      keepRoof.position.set(hasPhoto ? -0.20 : 0, 0.34, hasPhoto ? -0.16 : 0); keepRoof.rotation.y = Math.PI / 4;
       keepRoof.castShadow = !!Q.shadow;
       g.add(keepRoof);
       tower(-0.15, 0.13, 0.05, 0.26, M.roof);
@@ -405,15 +406,15 @@ window.Diorama = (function () {
     },
 
     /* 1 — a cottage under a big tree */
-    function cottage(g) {
+    function cottage(g, hasPhoto) {
       var M = mats();
       baseIsland(g, 0.32);
       var body = new THREE.Mesh(track(new THREE.BoxGeometry(0.22, 0.14, 0.18)), M.stone);
-      body.position.set(-0.02, 0.10, 0);
+      body.position.set(hasPhoto ? -0.20 : -0.02, 0.10, hasPhoto ? -0.14 : 0);
       body.castShadow = !!Q.shadow; body.receiveShadow = !!Q.shadow;
       g.add(body);
       var roof = new THREE.Mesh(track(new THREE.ConeGeometry(0.19, 0.13, 4)), M.roofWarm);
-      roof.position.set(-0.02, 0.235, 0); roof.rotation.y = Math.PI / 4;
+      roof.position.set(hasPhoto ? -0.20 : -0.02, 0.235, hasPhoto ? -0.14 : 0); roof.rotation.y = Math.PI / 4;
       roof.castShadow = !!Q.shadow;
       g.add(roof);
       var chim = new THREE.Mesh(track(new THREE.BoxGeometry(0.03, 0.08, 0.03)), M.stone2);
@@ -442,7 +443,7 @@ window.Diorama = (function () {
     },
 
     /* 2 — a boat on a small bay */
-    function bay(g) {
+    function bay(g, hasPhoto) {
       var M = mats();
       baseIsland(g, 0.34);
       var water = new THREE.Mesh(track(new THREE.CylinderGeometry(0.26, 0.26, 0.03, 20)), M.water);
@@ -460,7 +461,7 @@ window.Diorama = (function () {
       sail.castShadow = !!Q.shadow; boat.add(sail);
       var lamp = new THREE.Mesh(track(new THREE.SphereGeometry(0.014, 8, 8)), M.glow);
       lamp.position.set(-0.07, 0.05, 0); boat.add(lamp);
-      boat.position.set(0.02, 0.052, 0.01);
+      boat.position.set(hasPhoto ? -0.19 : 0.02, 0.052, hasPhoto ? -0.13 : 0.01);
       boat.rotation.y = 0.4;
       g.add(boat);
       api._boat = boat;
@@ -474,7 +475,7 @@ window.Diorama = (function () {
     },
 
     /* 3 — a lantern grove */
-    function lanterns(g) {
+    function lanterns(g, hasPhoto) {
       var M = mats();
       baseIsland(g, 0.33);
       for (var i = 0; i < 6; i++) {
@@ -499,17 +500,92 @@ window.Diorama = (function () {
     },
   ];
 
+  /* ====================================================================
+     THE PHOTO STANDEE
+
+     A memory photo stands upright on the pages, its edges feathered so it
+     reads as a cut-out lifted out of the book rather than a picture
+     pasted onto a wall. A contact shadow underneath keeps it standing on
+     something. This is the piece your photos drop into.
+     ==================================================================== */
+  var photoMesh = null, photoShadow = null, photoTex = null;
+
+  /* soft-edged mask: opaque in the middle, feathered at the sides and
+     bottom so the cut-out melts into the scene instead of ending in a
+     hard rectangle */
+  function standeeAlpha() {
+    return makeCanvasTex(256, 256, function (ctx, w, h) {
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, w, h);
+      var g = ctx.createRadialGradient(w / 2, h * 0.46, 0, w / 2, h * 0.46, w * 0.62);
+      g.addColorStop(0.00, "#ffffff");
+      g.addColorStop(0.62, "#ffffff");
+      g.addColorStop(0.86, "#8a8a8a");
+      g.addColorStop(1.00, "#000000");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      // fade the very bottom so it sits into the ground
+      var b = ctx.createLinearGradient(0, h * 0.80, 0, h);
+      b.addColorStop(0, "rgba(0,0,0,0)"); b.addColorStop(1, "rgba(0,0,0,1)");
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = b; ctx.fillRect(0, h * 0.80, w, h * 0.2);
+    });
+  }
+
+  function clearPhoto() {
+    if (photoMesh) { worldGroup.remove(photoMesh); photoMesh = null; }
+    if (photoShadow) { worldGroup.remove(photoShadow); photoShadow = null; }
+    if (photoTex) { photoTex.dispose(); photoTex = null; }
+  }
+
+  function setPhoto(url) {
+    clearPhoto();
+    if (!url) return;
+    var loader = new THREE.TextureLoader();
+    loader.load(url, function (tex) {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
+      photoTex = tex;
+
+      var img = tex.image;
+      var aspect = (img && img.width && img.height) ? img.width / img.height : 1.4;
+      var hgt = 0.30, wid = hgt * aspect;
+
+      var mat = track(new THREE.MeshStandardMaterial({
+        map: tex, alphaMap: standeeAlpha(), transparent: true,
+        roughness: 0.85, metalness: 0.0, side: THREE.DoubleSide,
+        alphaTest: 0.02, depthWrite: true,
+      }));
+      photoMesh = new THREE.Mesh(track(new THREE.PlaneGeometry(wid, hgt, 1, 1)), mat);
+      photoMesh.position.set(0, hgt / 2 + 0.03, 0.02);
+      photoMesh.castShadow = false;
+      worldGroup.add(photoMesh);
+
+      // a soft pool of shadow so the cut-out is standing, not floating
+      var shTex = makeCanvasTex(128, 128, function (ctx, w, h) {
+        var g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+        g.addColorStop(0, "rgba(20,10,4,0.7)"); g.addColorStop(1, "rgba(20,10,4,0)");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      });
+      photoShadow = new THREE.Mesh(
+        track(new THREE.PlaneGeometry(wid * 1.15, wid * 0.42)),
+        track(new THREE.MeshBasicMaterial({ map: shTex, transparent: true, depthWrite: false, opacity: 0.85 }))
+      );
+      photoShadow.rotation.x = -Math.PI / 2;
+      photoShadow.position.set(0, 0.035, 0.04);
+      worldGroup.add(photoShadow);
+    }, undefined, function () { /* a missing photo just leaves the world as-is */ });
+  }
+
   /* ---------------- show / hide ---------------- */
-  function show(index) {
+  function show(index, photoUrl) {
     if (!api.ready && !mount()) return;
     var i = ((index % WORLDS.length) + WORLDS.length) % WORLDS.length;
-    if (i !== currentIndex) {
-      currentIndex = i;
-      while (worldGroup.children.length) worldGroup.remove(worldGroup.children[0]);
-      var g = new THREE.Group();
-      WORLDS[i](g);
-      worldGroup.add(g);
-    }
+    currentIndex = i;
+    while (worldGroup.children.length) worldGroup.remove(worldGroup.children[0]);
+    photoMesh = photoShadow = null;
+    var g = new THREE.Group();
+    WORLDS[i](g, !!photoUrl);      // worlds make room when a photo is present
+    worldGroup.add(g);
+    setPhoto(photoUrl);
     riseTarget = 1;
     start();
   }
@@ -564,6 +640,14 @@ window.Diorama = (function () {
     fp.needsUpdate = true;
     fireflyPoints.material.opacity = 0.3 + e * 0.68;
 
+    if (photoMesh) {
+      /* turn with the world but stay readable: track the camera on Y,
+         damped, so it never ends up edge-on */
+      var want = Math.atan2(camera.position.x - worldGroup.position.x, camera.position.z);
+      photoMesh.rotation.y = -worldGroup.rotation.y + want * 0.55;
+      photoMesh.position.y = photoMesh.geometry.parameters.height / 2 + 0.03 + Math.sin(t * 0.9) * 0.004;
+      if (photoShadow) photoShadow.rotation.z = -worldGroup.rotation.y;
+    }
     if (api._boat) { api._boat.position.y = 0.052 + Math.sin(t * 1.1) * 0.006; api._boat.rotation.z = Math.sin(t * 0.9) * 0.05; }
     if (api._lanterns) api._lanterns.forEach(function (l) { l.position.y = l.userData.y0 + Math.sin(t * 0.8 + l.userData.ph) * 0.03; });
 
@@ -613,6 +697,7 @@ window.Diorama = (function () {
 
   api.mount = mount;
   api.show = show;
+  api.setPhoto = setPhoto;
   api.hide = hide;
   api.stop = stop;
   api.start = start;
