@@ -55,19 +55,23 @@
        -------------------------------------------------------------------- */
     var isCoarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
     var smallScreen = Math.min(window.innerWidth, window.innerHeight) < 520;
-    var lowCores = (navigator.hardwareConcurrency || 8) <= 4;
     var reducedMotion = window.matchMedia &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    var TIER = (isCoarse && (smallScreen || lowCores)) ? "low" : (isCoarse ? "mid" : "high");
+    /* Only a coarse starting guess — screen size, nothing else. Deliberately
+       not navigator.hardwareConcurrency: browsers clamp and spoof it, and it
+       says nothing about the GPU, which is what actually costs us here. How
+       fast the device really is gets measured at runtime; see adaptQuality. */
+    var TIER = !isCoarse ? "high" : (smallScreen ? "low" : "mid");
 
     var Q = ({
       high: { dpr: 2.0, tex: 1024, shadow: 2048, msaa: 4, bloom: true, dof: true,
-              shafts: 7, embers: 220, heroPages: 7, envSize: 256, groundDetail: 220 },
+              dofCapable: true, shafts: 7, embers: 220, heroPages: 7, groundDetail: 220 },
+      // tablets start without depth of field and earn it back at runtime
       mid:  { dpr: 1.75, tex: 768, shadow: 1024, msaa: 0, bloom: true, dof: false,
-              shafts: 5, embers: 140, heroPages: 6, envSize: 128, groundDetail: 140 },
+              dofCapable: true, shafts: 5, embers: 140, heroPages: 6, groundDetail: 140 },
       low:  { dpr: 1.4, tex: 512, shadow: 512, msaa: 0, bloom: true, dof: false,
-              shafts: 4, embers: 90, heroPages: 5, envSize: 128, groundDetail: 80 },
+              dofCapable: false, shafts: 4, embers: 90, heroPages: 5, groundDetail: 80 },
     })[TIER];
 
     var HERO_PAGES = Q.heroPages;
@@ -114,6 +118,26 @@
     scene.fog = new THREE.FogExp2(0x0a0f0d, 0.155);
 
     var camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.05, 40);
+
+    /* The shot is composed for a wide frame. On a phone held upright the
+       horizontal field of view collapses and the book runs off both edges,
+       so match the *horizontal* coverage instead of the vertical: widen the
+       lens up to a limit, then dolly back for whatever is still missing. */
+    var FIT_TAN_H = Math.tan((30 * Math.PI / 180) / 2) * (16 / 9);
+    var MAX_TAN_V = Math.tan((46 * Math.PI / 180) / 2);
+    var fitFov = 30, fitDist = 1;
+
+    function updateFraming() {
+      var aspect = window.innerWidth / Math.max(1, window.innerHeight);
+      var needTanV = FIT_TAN_H / Math.max(0.01, aspect);
+      var tanV = Math.min(needTanV, MAX_TAN_V);
+      fitFov = (2 * Math.atan(tanV)) * 180 / Math.PI;
+      fitDist = needTanV / tanV;          // > 1 means "pull the camera back"
+      camera.aspect = aspect;
+      camera.fov = fitFov;
+      camera.updateProjectionMatrix();
+    }
+    updateFraming();
 
     var disposables = [];
     function track(x) { disposables.push(x); return x; }
@@ -870,6 +894,125 @@
     clasp.castShadow = true;
     claspPivot.add(clasp);
 
+    /* --- the light that erupts from the spine at the climax ----------- */
+    var spineGlow = new THREE.Sprite(track(new THREE.SpriteMaterial({
+      map: glowTex, blending: THREE.AdditiveBlending, transparent: true,
+      depthWrite: false, depthTest: false, color: 0xffd9a4, opacity: 0,
+    })));
+    spineGlow.position.set(SPINE_X + 0.02, spineR * 1.1, 0);
+    spineGlow.scale.set(0.1, 0.1, 1);
+    spineGlow.renderOrder = 6;
+    scene.add(spineGlow);
+
+    // a slim emissive bar sitting in the gutter, so the light has a source
+    // with actual shape rather than just a billboard
+    var gutterBar = new THREE.Mesh(
+      track(new THREE.PlaneGeometry(0.05, BOOK_H * 0.88)),
+      track(new THREE.MeshBasicMaterial({
+        color: 0xffe6bd, transparent: true, opacity: 0,
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+      }))
+    );
+    gutterBar.rotation.x = -Math.PI / 2;
+    gutterBar.position.set(SPINE_X + 0.02, spineR * 1.02, 0);
+    gutterBar.renderOrder = 5;
+    scene.add(gutterBar);
+
+    /* ====================================================================
+       VOLUMETRIC LIGHT SHAFTS
+
+       Real geometry, not an overlay: tapered cones aligned with the key
+       light, drawn additively with no depth write. Brightness comes from
+       how side-on the surface is to the viewer, so each cone reads as a
+       solid column of lit air rather than a visible cone. A scrolling
+       noise term makes the dust inside it drift.
+       ==================================================================== */
+    var shaftUniforms = {
+      uTime:      { value: 0 },
+      uIntensity: { value: 0.085 },
+      uColor:     { value: new THREE.Color(0xffd7a0) },
+      uNoise:     { value: null },
+      uPower:     { value: 4.5 },
+    };
+
+    var shaftNoiseTex = texFrom(makeCanvas(128, 128, function (ctx, w, h) {
+      ctx.fillStyle = "#808080"; ctx.fillRect(0, 0, w, h);
+      fbmNoise(ctx, w, h, 4, 48, 0.55);
+    }));
+    shaftNoiseTex.wrapS = shaftNoiseTex.wrapT = THREE.RepeatWrapping;
+    shaftUniforms.uNoise.value = shaftNoiseTex;
+
+    var shaftMat = track(new THREE.ShaderMaterial({
+      uniforms: shaftUniforms,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      vertexShader: [
+        "varying vec2 vUv;",
+        "varying vec3 vNormalW;",
+        "varying vec3 vViewW;",
+        "void main() {",
+        "  vUv = uv;",
+        "  vec4 wp = modelMatrix * vec4(position, 1.0);",
+        "  vNormalW = normalize(mat3(modelMatrix) * normal);",
+        "  vViewW = normalize(cameraPosition - wp.xyz);",
+        "  gl_Position = projectionMatrix * viewMatrix * wp;",
+        "}",
+      ].join("\n"),
+      fragmentShader: [
+        "uniform float uTime;",
+        "uniform float uIntensity;",
+        "uniform vec3  uColor;",
+        "uniform sampler2D uNoise;",
+        "uniform float uPower;",
+        "varying vec2 vUv;",
+        "varying vec3 vNormalW;",
+        "varying vec3 vViewW;",
+        "void main() {",
+        // face-on to the viewer = looking down the depth of the column
+        "  float facing = abs(dot(normalize(vNormalW), normalize(vViewW)));",
+        "  float body = pow(facing, uPower);",
+        // fade in under the canopy and out before it reaches the floor
+        "  float top = smoothstep(0.0, 0.30, vUv.y);",
+        "  float bot = 1.0 - smoothstep(0.55, 1.0, vUv.y);",
+        // drifting motes
+        "  vec2 n1 = vec2(vUv.x * 1.7, vUv.y * 0.5 - uTime * 0.012);",
+        "  vec2 n2 = vec2(vUv.x * 2.9 + 0.37, vUv.y * 0.8 - uTime * 0.021);",
+        "  float dust = texture2D(uNoise, n1).r * 0.65 + texture2D(uNoise, n2).r * 0.55;",
+        "  float a = body * top * bot * uIntensity * (0.22 + dust * 0.95);",
+        "  if (a <= 0.001) discard;",
+        "  gl_FragColor = vec4(uColor * a, a);",
+        "}",
+      ].join("\n"),
+    }));
+
+    var shaftGroup = new THREE.Group();
+    scene.add(shaftGroup);
+    (function buildShafts() {
+      // aim the columns along the key light's direction
+      var dir = key.position.clone().normalize();
+      for (var i = 0; i < Q.shafts; i++) {
+        var len = 2.6 + Math.random() * 1.4;
+        var rTop = 0.05 + Math.random() * 0.10;
+        var geo = track(new THREE.CylinderGeometry(rTop, rTop * (2.2 + Math.random()), len, 14, 1, true));
+        var m = new THREE.Mesh(geo, shaftMat);
+        // spread them around the book, biased to the key-light side
+        var ang = (i / Q.shafts) * Math.PI * 2 + Math.random() * 0.7;
+        var rad = 0.35 + Math.random() * 1.5;
+        m.position.set(
+          Math.cos(ang) * rad - dir.x * 0.5,
+          len * 0.5 - 0.35,
+          Math.sin(ang) * rad - dir.z * 0.5
+        );
+        // lean each column along the light, with a little scatter
+        m.rotation.z = Math.atan2(dir.x, dir.y) + (Math.random() - 0.5) * 0.12;
+        m.rotation.x = -Math.atan2(dir.z, dir.y) + (Math.random() - 0.5) * 0.12;
+        m.renderOrder = 3;
+        shaftGroup.add(m);
+      }
+    })();
+
     /* ====================================================================
        EMBERS
        Motion is analytic (a pure function of time) rather than integrated,
@@ -902,7 +1045,7 @@
       var p = emberGeo.attributes.position;
       for (var i = 0; i < EMBERS; i++) {
         var s = emberSeed[i];
-        var y = ((s.y0 + t * s.speed) % 1) * s.top;
+        var y = ((s.y0 + t * s.speed * (1 + emberBoost * 3.0)) % 1) * s.top;
         var rise = y / s.top;
         p.setXYZ(i,
           s.x + Math.sin(t * 0.6 + s.phase) * s.sway * (0.3 + rise),
@@ -936,10 +1079,11 @@
 
       composer.addPass(new THREE.RenderPass(scene, camera));
 
-      if (Q.dof) {
+      if (Q.dofCapable) {
         bokehPass = new THREE.BokehPass(scene, camera, {
           focus: 2.35, aperture: 0.009, maxblur: 0.016,
         });
+        bokehPass.enabled = Q.dof;   // may be switched on later, see adaptQuality
         composer.addPass(bokehPass);
       }
 
@@ -958,7 +1102,7 @@
     }
 
     var BLOOM_IDLE = 0.48;
-    var BLOOM_CLIMAX = 1.85;
+    var BLOOM_CLIMAX = 1.35;
     buildComposer();
 
     /* Keep focus pinned to the book as the camera pushes in, so the
@@ -988,7 +1132,7 @@
         camera.lookAt(camOverride.look);
         return;
       }
-      var k = climaxT, w = wideT || 0;
+      var k = easeInOutCubic(climaxT), w = wideT || 0;
       _camPos.copy(camRig.idle.pos).lerp(camRig.flip.pos, w).lerp(camRig.climax.pos, k);
       _camLook.copy(camRig.idle.look).lerp(camRig.flip.look, w).lerp(camRig.climax.look, k);
       // handheld drift — three detuned sines so it never obviously repeats
@@ -996,6 +1140,8 @@
       _camPos.x += (Math.sin(t * 0.31) * 0.6 + Math.sin(t * 0.73 + 1.1) * 0.4) * amp;
       _camPos.y += (Math.sin(t * 0.24 + 2.0) * 0.5 + Math.sin(t * 0.61) * 0.5) * amp * 0.7;
       _camPos.z += Math.sin(t * 0.19 + 0.6) * amp * 0.5;
+      // dolly out by whatever the lens cap could not cover
+      if (fitDist !== 1) _camPos.sub(_camLook).multiplyScalar(fitDist).add(_camLook);
       camera.position.copy(_camPos);
       camera.lookAt(_camLook);
       camera.rotation.z += Math.sin(t * 0.27 + 1.4) * 0.006 * (1 - k * 0.5);
@@ -1012,7 +1158,7 @@
       pageStagger: 0.20,
       pageDur: 1.15,
       climaxDur: 2.4,
-      handoffAt: 0.55,   // fraction of the climax at which we cut to the site
+      handoffAt: 0.70,   // hand off once the gold actually fills frame   // fraction of the climax at which we cut to the site
     };
     TL.flipDur = TL.pageStagger * (HERO_PAGES - 1) + TL.pageDur;
     TL.openStart = TL.claspDur * 0.6;
@@ -1024,6 +1170,7 @@
     function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
     function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
     function easeInCubic(t) { return t * t * t; }
+    function easeInQuart(t) { return t * t * t * t; }
     /* a settle with a little weight to it — overshoots slightly, then lands */
     function easeOutBackSoft(t) {
       var c1 = 1.10, c3 = c1 + 1;
@@ -1031,12 +1178,15 @@
     }
 
     var state = { triggered: false, triggerTime: 0, handedOff: false };
+    var SHAFT_IDLE = 0.085;
+    var emberBoost = 0;
 
     /* ====================================================================
        FRAME — pure function of time
        ==================================================================== */
     function updateScene(now) {
       updateEmbers(now);
+      shaftUniforms.uTime.value = now;
       bookGroup.position.y = Math.sin(now * 0.5) * 0.002;
 
       var climaxT = 0;
@@ -1047,6 +1197,8 @@
         claspPivot.rotation.z = Math.sin(now * 0.8) * 0.012;
         coverPivot.rotation.z = 0;
         leftStack.visible = false;
+        shaftUniforms.uIntensity.value = SHAFT_IDLE;
+        emberBoost = 0;
         updateCamera(now, 0, 0);
         return;
       }
@@ -1105,12 +1257,38 @@
       // --- climax ---
       if (s >= TL.climaxStart) {
         climaxT = clamp01((s - TL.climaxStart) / TL.climaxDur);
-        var build = easeInCubic(climaxT);
-        spineLight.position.set(SPINE_X + 0.02, blockBottom + PAGE_BLOCK * 0.6, 0);
-        spineLight.intensity = build * 26;
+        /* Two curves, not one. The glow builds slowly then runs away
+           (a crescendo), while the camera move is eased at both ends so
+           the push-in feels authored rather than mechanical. */
+        var build = easeInQuart(climaxT);
+        var flare = easeInCubic(climaxT);
+
+        spineLight.position.set(SPINE_X + 0.02, spineR * 1.05, 0);
+        spineLight.intensity = build * 24;
+
+        spineGlow.material.opacity = Math.min(1, flare * 1.35);
+        spineGlow.scale.setScalar(0.12 + build * 6.5);
+
+        gutterBar.material.opacity = Math.min(1, flare * 1.4);
+
         if (bloomPass) bloomPass.strength = BLOOM_IDLE + (BLOOM_CLIMAX - BLOOM_IDLE) * build;
-        pageMatA.emissiveIntensity = build * 2.4;
-        pageMatB.emissiveIntensity = build * 2.4;
+        pageMatA.emissiveIntensity = flare * 2.8;
+        pageMatB.emissiveIntensity = flare * 2.8;
+
+        // the shafts catch the new light too
+        shaftUniforms.uIntensity.value = SHAFT_IDLE + build * 0.55;
+
+        // embers get swept upward and brighten
+        emberBoost = build;
+        emberMat.opacity = 0.85 + flare * 0.15;
+
+        // a touch of lens compression as we push in
+        var fov = fitFov - easeInOutCubic(climaxT) * 4.0;
+        if (Math.abs(camera.fov - fov) > 0.01) {
+          camera.fov = fov;
+          camera.updateProjectionMatrix();
+        }
+
         if (climaxT >= TL.handoffAt && !state.handedOff) {
           state.handedOff = true;
           if (window.finishBookIntro) window.finishBookIntro();
@@ -1118,6 +1296,70 @@
       }
 
       updateCamera(now, climaxT, wideT);
+    }
+
+    /* ====================================================================
+       ADAPTIVE QUALITY
+
+       The tier above is a guess made from the user agent, which is a poor
+       proxy for how fast a device actually is — an iPad and a budget
+       Android phone both look like "coarse pointer". So treat it as a
+       starting point and then measure. Frame pacing is sampled over short
+       windows; if the device is comfortably ahead we give back depth of
+       field, and if it falls behind we shed work in a fixed order.
+
+       Levels, richest first:
+         0  depth of field on, full pixel ratio
+         1  depth of field off
+         2  + pixel ratio capped at 1.25
+         3  + bloom off, pixel ratio 1.0    (last resort)
+       ==================================================================== */
+    var qLevel = (TIER === "high") ? 0 : (TIER === "mid" ? 1 : 2);
+    var qFloor = qLevel;              // never upgrade past the tier's start...
+    var qCeiling = Q.dofCapable ? 0 : 1;   // ...except to earn back DOF
+    var qDowngrades = 0;
+    var qSamples = [];
+    var qLastCheck = 0;
+
+    function applyQualityLevel() {
+      if (bokehPass) bokehPass.enabled = (qLevel <= 0);
+      if (bloomPass) bloomPass.enabled = (qLevel <= 2);
+      var cap = qLevel >= 3 ? 1.0 : (qLevel >= 2 ? 1.25 : Q.dpr);
+      var want = Math.min(window.devicePixelRatio || 1, cap);
+      if (Math.abs(renderer.getPixelRatio() - want) > 0.01) {
+        renderer.setPixelRatio(want);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        if (composer) {
+          composer.setPixelRatio(want);
+          composer.setSize(window.innerWidth, window.innerHeight);
+        }
+      }
+    }
+    applyQualityLevel();
+
+    function adaptQuality(nowMs, dtMs) {
+      // ignore the very first frames and anything that looks like a stall
+      if (dtMs <= 0 || dtMs > 500) return;
+      qSamples.push(dtMs);
+      if (nowMs - qLastCheck < 1500) return;
+      qLastCheck = nowMs;
+      if (qSamples.length < 20) { qSamples.length = 0; return; }
+
+      var a = qSamples.slice().sort(function (x, y) { return x - y; });
+      var median = a[a.length >> 1];
+      qSamples.length = 0;
+
+      if (median > 24 && qLevel < 3) {              // below ~42fps: shed work
+        qLevel++; qDowngrades++;
+        applyQualityLevel();
+      } else if (median < 15.0 && qLevel > qCeiling && qDowngrades === 0 && !state.triggered) {
+        /* Only upgrade while still idle, and only with real headroom
+           (~67fps+). Idle is the cheapest part of the scene — the page fan
+           and the climax cost noticeably more — so a device that is merely
+           scraping 60 here would drop frames exactly where it matters. */
+        qLevel--;
+        applyQualityLevel();
+      }
     }
 
     /* ====================================================================
@@ -1141,7 +1383,11 @@
       if (!running) return;
       rafId = requestAnimationFrame(loop);
       var t0 = performance.now();
-      if (lastFrameAt && frameTimes.length < 600) frameTimes.push(t0 - lastFrameAt);
+      if (lastFrameAt) {
+        var dt = t0 - lastFrameAt;
+        if (frameTimes.length < 600) frameTimes.push(dt);
+        adaptQuality(t0, dt);
+      }
       lastFrameAt = t0;
       renderFrame(t0 / 1000 - startTime);
     }
@@ -1156,14 +1402,14 @@
     canvas.addEventListener("touchstart", function (e) { e.preventDefault(); begin(); }, { passive: false });
 
     function onResize() {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
+      updateFraming();
       renderer.setSize(window.innerWidth, window.innerHeight);
       if (composer) {
         composer.setSize(window.innerWidth, window.innerHeight);
         composer.setPixelRatio(renderer.getPixelRatio());
       }
       if (bloomPass) bloomPass.resolution.set(window.innerWidth, window.innerHeight);
+      applyQualityLevel();
     }
     window.addEventListener("resize", onResize);
 
@@ -1218,6 +1464,8 @@
         if (o.bloomThreshold !== undefined && bloomPass) bloomPass.threshold = o.bloomThreshold;
         if (o.aperture !== undefined && bokehPass) bokehPass.uniforms["aperture"].value = o.aperture;
         if (o.maxblur !== undefined && bokehPass) bokehPass.uniforms["maxblur"].value = o.maxblur;
+        if (o.shaft !== undefined) { SHAFT_IDLE = o.shaft; shaftUniforms.uIntensity.value = o.shaft; }
+        if (o.shaftPower !== undefined) shaftUniforms.uPower.value = o.shaftPower;
         if (o.curlMax !== undefined) CURL_MAX = o.curlMax;
         if (o.curlSign !== undefined) CURL_SIGN = o.curlSign;
         if (o.droop !== undefined) DROOP = o.droop;
@@ -1226,6 +1474,28 @@
       /* Resume the live loop for a while and report real frame pacing.
          frame() pauses the loop, so the plain profile() below only ever
          sees warm-up frames. */
+      quality: function () {
+        return {
+          tier: TIER, level: qLevel, floor: qFloor, ceiling: qCeiling,
+          downgrades: qDowngrades,
+          dof: !!(bokehPass && bokehPass.enabled),
+          bloom: !!(bloomPass && bloomPass.enabled),
+          dpr: +renderer.getPixelRatio().toFixed(2),
+          passes: composer ? composer.passes.length : 0,
+        };
+      },
+      setLevel: function (n) { qLevel = n; applyQualityLevel(); },
+      /* Feed synthetic frame pacing so the ladder can be exercised without
+         hardware that actually hits those rates. */
+      simulateFrames: function (dtMs, n) {
+        running = false;
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        qSamples.length = 0;
+        var t = qLastCheck + 1;
+        for (var i = 0; i < n; i++) adaptQuality(t++, dtMs);  // accumulate
+        adaptQuality(qLastCheck + 2000, dtMs);                // force the check
+        return qLevel;
+      },
       profileLive: function (ms, atTime) {
         frameTimes.length = 0;
         if (atTime !== undefined) { state.triggered = true; state.triggerTime = -atTime; }

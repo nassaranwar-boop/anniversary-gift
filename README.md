@@ -10,6 +10,7 @@ branch → main → /root).
 
 ```
 index.html      page structure (all screens are <section class="screen">)
+vendor/         three.js r180 + post-processing, bundled for offline use
 style.css       all styling
 script.js       all site logic + content config (EDIT CONTENT HERE)
 book-scene.js   the Three.js 3D intro scene — self-contained
@@ -44,9 +45,11 @@ Top of `script.js`, in clearly marked CONFIG blocks:
 - **Placeholder, needs real content:** `LETTER_TEXT`, and the single entry in
   `MEMORIES` (its `photo` is `null`, so it shows an icon until a real image is
   added)
-- **Needs rebuilding:** `book-scene.js` — the 3D intro is under-built. It lacks
-  tone mapping, bloom, environment reflections, depth of field, volumetrics,
-  and proper page geometry. This is the main work item.
+- **Rebuilt:** `book-scene.js` — ACES tone mapping, PMREM environment
+  reflections, procedural normal/roughness maps, UnrealBloom + Bokeh depth of
+  field, volumetric light shafts, segmented page geometry with real vertex
+  deformation, and an adaptive quality ladder that measures frame pacing at
+  runtime rather than trusting the user agent.
 - **Working, leave alone:** everything from the passcode gate onward.
 
 ## Integration hooks (do not rename)
