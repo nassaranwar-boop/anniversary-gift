@@ -58,21 +58,10 @@
         <p class="dio-date" id="dio-date"></p>
       </div>
 
-      <!-- the pop-up stage: layers stand up out of the open book -->
+      <!-- the memory rises out of the book, in 3D -->
       <div class="dio-stage" id="dio-stage">
-        <div class="dio-scene" id="dio-scene">
-          <div class="dio-layer dio-sky"   id="dio-sky"></div>
-          <div class="dio-layer dio-far"   id="dio-far"></div>
-          <div class="dio-layer dio-mid"   id="dio-mid"></div>
-          <div class="dio-layer dio-chars" id="dio-chars"></div>
-          <div class="dio-layer dio-near"  id="dio-near"></div>
-          <div class="dio-sparkles" id="dio-sparkles"></div>
-        </div>
-        <div class="dio-book">
-          <div class="dio-page dio-page-l"></div>
-          <div class="dio-page dio-page-r"></div>
-          <div class="dio-gutter"></div>
-        </div>
+        <canvas id="dio3d"></canvas>
+        <div class="dio-fallback" id="dio-fallback" hidden></div>
         <div class="dio-photo-slot" id="dio-photo"></div>
       </div>
 
@@ -312,6 +301,7 @@
   </div>
 
 <script src="book-scene.js"></script>
+<script src="diorama-scene.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

@@ -604,99 +604,36 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .dio-date{font-family:'Playfair Display',serif; font-style:italic; color:#8a6330; font-size:12.5px; margin:0; opacity:.95;}
 
-/* ---- the stage ---- */
+/* ---- the stage: a 3D canvas the memory rises out of ---- */
 .dio-stage{
-  position:relative; width:100%; max-width:620px;
-  aspect-ratio:16/10; min-height:170px;
-  perspective:900px; perspective-origin:50% 78%;
+  position:relative; width:100%; max-width:660px;
+  aspect-ratio:16/10; min-height:190px;
+  border-radius:var(--radius-lg); overflow:hidden;
+  background:radial-gradient(ellipse at 50% 66%, #3a2113 0%, #1d0f08 62%, #120806 100%);
+  box-shadow:inset 0 0 60px rgba(0,0,0,.6), var(--shadow-lg);
 }
-.dio-scene{
-  position:absolute; left:0; right:0; top:0; bottom:27%;
-  transform-style:preserve-3d;
+#dio3d{position:absolute; inset:0; width:100%; height:100%; display:block;}
+.dio-stage::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 58%, transparent 46%, rgba(20,8,4,.55) 100%);
 }
-.dio-layer{
-  position:absolute; left:50%; bottom:0; width:100%; max-width:560px;
-  transform-origin:50% 100%;
-  will-change:transform;
-  transform:translateX(-50%) rotateX(88deg) translateY(14px); opacity:0;
-}
-.dio-layer svg{display:block; width:100%; height:auto; filter:drop-shadow(0 6px 10px rgba(120,72,26,.30));}
-
-/* depth: each plane sits further back and hinges up at its own rate */
-.dio-sky  {bottom:4%;  z-index:1; max-width:640px;}
-.dio-far  {bottom:2%;  z-index:2;}
-.dio-mid  {bottom:0;   z-index:3;}
-.dio-chars{bottom:0;   z-index:4; max-width:430px;}
-.dio-near {bottom:-2%; z-index:5; max-width:660px;}
-
-/* ---- pop-up entrance: layers hinge up out of the gutter ----
-   Transitions rather than keyframes: a transition settles on a real
-   computed style, so the standing state survives however the browser
-   schedules frames. Keyframes with fill:forwards were leaving layers
-   stuck at opacity 0 whenever the animation never got to run. */
-#screen-diorama .dio-layer{
-  transition:
-    transform .78s cubic-bezier(.22,1.05,.36,1),
-    opacity   .46s ease;
-}
-#screen-diorama.dio-open .dio-layer{
-  transform:translateX(-50%) rotateX(0deg) translateY(0); opacity:1;
-}
-#screen-diorama.dio-open .dio-sky  {transition-delay:.02s;}
-#screen-diorama.dio-open .dio-far  {transition-delay:.10s;}
-#screen-diorama.dio-open .dio-mid  {transition-delay:.19s;}
-#screen-diorama.dio-open .dio-near {transition-delay:.24s;}
-#screen-diorama.dio-open .dio-chars{transition-delay:.30s;}
-
-#screen-diorama.dio-closing .dio-layer{
-  transform:translateX(-50%) rotateX(80deg) translateY(10px); opacity:0;
-  transition-duration:.30s; transition-delay:0s; transition-timing-function:ease-in;
+.dio-fallback{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  color:#e8c88a; font-family:var(--font-serif); font-style:italic; font-size:14px; text-align:center; padding:20px;
 }
 
-/* ---- idle life: a very small sway, different per plane ---- */
-#screen-diorama.dio-open .dio-far   svg{animation:dioSway 7.5s ease-in-out 1s infinite;}
-#screen-diorama.dio-open .dio-mid   svg{animation:dioSway 6.2s ease-in-out 1.2s infinite reverse;}
-#screen-diorama.dio-open .dio-chars svg{animation:dioBob  4.4s ease-in-out 1.4s infinite;}
-#screen-diorama.dio-open .dio-near  svg{animation:dioSway 8.6s ease-in-out .8s infinite;}
-@keyframes dioSway{0%,100%{transform:rotate(-.5deg) translateY(0);} 50%{transform:rotate(.5deg) translateY(-2px);}}
-@keyframes dioBob {0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);}}
-
-/* ---- the open book the scene stands in ---- */
-.dio-book{position:absolute; left:50%; bottom:0; transform:translateX(-50%); width:100%; max-width:660px; height:32%; z-index:6;}
-.dio-page{
-  position:absolute; bottom:0; width:50%; height:100%;
-  background:linear-gradient(172deg,#fdf1d2 0%,#f0dcb0 42%,#d8bf8e 100%);
-  box-shadow:0 -3px 10px rgba(120,72,26,.22) inset, 0 10px 22px rgba(120,72,26,.42);
-  border-top:1px solid rgba(255,250,232,.75);
-}
-.dio-page-l{left:0;  transform:skewX(6deg)  scaleY(.94); transform-origin:100% 100%; border-radius:8px 2px 4px 10px;}
-.dio-page-r{right:0; transform:skewX(-6deg) scaleY(.94); transform-origin:0 100%;   border-radius:2px 8px 10px 4px;}
-.dio-gutter{
-  position:absolute; left:50%; bottom:0; width:12px; height:100%; transform:translateX(-50%);
-  background:linear-gradient(90deg,rgba(120,74,28,0) 0%,rgba(120,74,28,.42) 45%,rgba(120,74,28,.42) 55%,rgba(120,74,28,0) 100%);
-}
-
-/* ---- the photo, tucked onto the page like a keepsake ---- */
+/* ---- the photo, pinned to the stage like a keepsake ---- */
 .dio-photo-slot{
-  position:absolute; right:4%; bottom:5%; z-index:7;
-  width:clamp(60px,16%,98px); aspect-ratio:1/1.16;
-  background:#fffaf0; padding:5px 5px 15px; border-radius:2px;
-  box-shadow:0 6px 16px rgba(90,52,17,.42); transform:rotate(5deg);
+  position:absolute; right:3%; bottom:5%; z-index:4;
+  width:clamp(54px,14%,92px); aspect-ratio:1/1.16;
+  background:var(--paper); padding:5px 5px 15px; border-radius:2px;
+  box-shadow:0 8px 20px rgba(0,0,0,.55); transform:rotate(5deg) translateY(10px);
   display:flex; align-items:center; justify-content:center;
   font-size:24px; color:#b98a4e;
-  opacity:0; transition:opacity .5s ease .55s, transform .6s cubic-bezier(.2,1.3,.4,1) .55s;
+  opacity:0; transition:opacity .5s ease .75s, transform .7s var(--ease-pop) .75s;
 }
-#screen-diorama.dio-open .dio-photo-slot{opacity:1; transform:rotate(-3deg) translateY(-4px);}
+#screen-diorama.dio-open .dio-photo-slot{opacity:1; transform:rotate(-3deg) translateY(0);}
 .dio-photo-slot img{width:100%; height:100%; object-fit:cover; border-radius:1px;}
-
-/* ---- sparkle accents ---- */
-.dio-sparkles{position:absolute; inset:0; z-index:5; pointer-events:none;}
-.dio-spark{
-  position:absolute; width:5px; height:5px; border-radius:50%;
-  background:radial-gradient(circle,#fff8dc 0%,rgba(255,222,150,.9) 40%,rgba(255,200,110,0) 70%);
-  opacity:0; animation:dioTwinkle 3.4s ease-in-out infinite;
-}
-@keyframes dioTwinkle{0%,100%{opacity:0; transform:scale(.4);} 45%{opacity:.95; transform:scale(1.25);}}
 
 /* ---- caption ---- */
 .dio-text{
@@ -723,10 +660,8 @@ img{-webkit-user-drag:none; user-select:none;}
 .dio-continue{margin-top:6px;}
 
 @media (prefers-reduced-motion: reduce){
-  #screen-diorama.dio-open .dio-layer{animation-duration:.01ms;}
-  #screen-diorama.dio-open .dio-far svg,#screen-diorama.dio-open .dio-mid svg,
-  #screen-diorama.dio-open .dio-chars svg,#screen-diorama.dio-open .dio-near svg{animation:none;}
-  .dio-spark{animation:none; opacity:.7;}
+  .dio-photo-slot{transition-duration:.01ms;}
+  .dio-text{transition-duration:.01ms;}
 }
 
 /* ---- burn transition (leaving a memory) ---- */
