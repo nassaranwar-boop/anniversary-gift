@@ -70,6 +70,8 @@
               shafts: 4, embers: 90, heroPages: 5, envSize: 128, groundDetail: 80 },
     })[TIER];
 
+    var HERO_PAGES = Q.heroPages;
+
     /* --------------------------------------------------------------------
        BOOK DIMENSIONS
        The spine is a line running along Z at x = SPINE_X. Covers and pages
@@ -546,8 +548,8 @@
        ==================================================================== */
     scene.add(track(new THREE.HemisphereLight(0x33465a, 0x0a0a08, 0.30)));
 
-    var key = new THREE.DirectionalLight(0xffc98a, 3.0);
-    key.position.set(-1.8, 2.9, 1.9);
+    var key = new THREE.DirectionalLight(0xffc98a, 3.3);
+    key.position.set(-1.5, 2.6, 1.4);
     key.target.position.set(0.05, 0.1, 0.05);
     key.castShadow = true;
     key.shadow.mapSize.set(Q.shadow, Q.shadow);
@@ -561,13 +563,13 @@
     scene.add(key); scene.add(key.target);
 
     // cool rim from camera-right/behind — separates the book from the dark
-    var rim = new THREE.DirectionalLight(0x8ab4e0, 1.5);
+    var rim = new THREE.DirectionalLight(0x9ab8d8, 1.0);
     rim.position.set(3.0, 1.15, -2.2);
     scene.add(track(rim));
 
     // low warm bounce off the forest floor, keeps shadows from going dead
-    var bounce = new THREE.PointLight(0xff8a3a, 0.40, 3.6, 2.0);
-    bounce.position.set(0.9, 0.18, 1.1);
+    var bounce = new THREE.PointLight(0xffb070, 0.95, 3.0, 2.0);
+    bounce.position.set(0.18, 0.34, 0.85);
     scene.add(track(bounce));
 
     // the spine practical — 0 until the climax
@@ -610,37 +612,129 @@
     backCover.castShadow = true; backCover.receiveShadow = true;
     bookGroup.add(backCover);
 
-    // --- the paper block, as a single solid whose top face is the page ---
+    /* --- the paper block ---------------------------------------------
+       Two settled stacks either side of the spine, plus a handful of
+       "hero" pages that actually fly between them. The stacks carry the
+       bulk so we only ever deform a few pages; the hero pages carry the
+       motion. A single rigid slab (as before) can't fan, and 40 real
+       pages would be pure waste — nobody can see past the top few.
+       ------------------------------------------------------------------ */
     var blockBottom = groundY + COVER_THICK;
-    var pageBlock = new THREE.Mesh(
-      track(new THREE.BoxGeometry(BOOK_W * 0.985, PAGE_BLOCK, BOOK_H * 0.97)),
-      (function () {
-        var edge = function () {
-          return track(new THREE.MeshStandardMaterial({
-            map: pageEdgeTex, roughness: 0.95, metalness: 0.0, envMapIntensity: 0.22,
-          }));
-        };
-        var dark = function (c) {
-          return track(new THREE.MeshStandardMaterial({ color: c, roughness: 0.98, envMapIntensity: 0.1 }));
-        };
-        // +X fore-edge, -X spine, +Y top, -Y underside, +Z head, -Z tail
-        return [edge(), dark(0x3a2f1c), pageMatA, dark(0x1a1409), edge(), edge()];
-      })()
-    );
-    pageBlock.position.set(SPINE_X + BOOK_W * 0.985 / 2 + 0.004, blockBottom + PAGE_BLOCK / 2, 0);
-    pageBlock.castShadow = true; pageBlock.receiveShadow = true;
-    bookGroup.add(pageBlock);
+    var LEFT_MIN = 0.005;                 // the left side is never quite flat
+    var FLIP_FRACTION = 0.46;             // how much of the block turns over
 
-    // --- front cover, hinged at the spine ---
-    var coverPivot = new THREE.Group();
-    coverPivot.position.set(SPINE_X, blockBottom + PAGE_BLOCK + COVER_THICK / 2, 0);
-    bookGroup.add(coverPivot);
+    function edgeMat() {
+      return track(new THREE.MeshStandardMaterial({
+        map: pageEdgeTex.clone(), roughness: 0.95, metalness: 0.0, envMapIntensity: 0.22,
+      }));
+    }
+    function darkMat(c) {
+      return track(new THREE.MeshStandardMaterial({ color: c, roughness: 0.98, envMapIntensity: 0.1 }));
+    }
 
-    var frontCover = new THREE.Mesh(coverGeo(), leatherMat);
-    frontCover.castShadow = true; frontCover.receiveShadow = true;
-    coverPivot.add(frontCover);
+    /* Unit-height box so thickness is just a scale; +Y face is parchment. */
+    function makeStack(topMat) {
+      var geo = track(new THREE.BoxGeometry(BOOK_W * 0.985, 1, BOOK_H * 0.97));
+      geo.translate(0, 0.5, 0);           // grow upward from its base
+      var m = new THREE.Mesh(geo, [
+        edgeMat(), darkMat(0x3a2f1c), topMat, darkMat(0x140f08), edgeMat(), edgeMat(),
+      ]);
+      m.castShadow = true; m.receiveShadow = true;
+      bookGroup.add(m);
+      return m;
+    }
 
-    // spine wrap — the rounded leather hinge
+    var halfW = BOOK_W * 0.985 / 2;
+    var rightStack = makeStack(pageMatA);
+    rightStack.position.set(SPINE_X + halfW + 0.004, blockBottom, 0);
+    var leftStack = makeStack(pageMatB);
+    leftStack.position.set(SPINE_X - halfW - 0.004, blockBottom, 0);
+
+    function stackThickness(progress) {
+      var moved = PAGE_BLOCK * FLIP_FRACTION * progress;
+      return { right: PAGE_BLOCK - moved, left: LEFT_MIN + moved };
+    }
+    function applyStacks(progress) {
+      var th = stackThickness(progress);
+      rightStack.scale.y = Math.max(0.001, th.right);
+      leftStack.scale.y = Math.max(0.001, th.left);
+      // keep the fore-edge striations at a constant density as stacks grow
+      rightStack.material[0].map.repeat.set(1, Math.max(0.05, th.right / PAGE_BLOCK));
+      leftStack.material[0].map.repeat.set(1, Math.max(0.05, th.left / PAGE_BLOCK));
+      return th;
+    }
+    applyStacks(0);
+    leftStack.visible = false;   // nothing on the left until the cover opens
+
+    /* --- hero pages: segmented, deformed per-vertex every frame -------- */
+    var PAGE_SEG_X = TIER === "low" ? 12 : 20;
+    var PAGE_SEG_Z = TIER === "low" ? 3 : 6;
+    var CURL_MAX = 1.10;        // total bend angle across the page, mid-turn
+    var DROOP = 0.05;           // how much the free corners sag
+
+    var heroPages = [];
+    for (var pi = 0; pi < HERO_PAGES; pi++) {
+      var pivot = new THREE.Group();
+      pivot.position.set(SPINE_X, blockBottom + PAGE_BLOCK, 0);
+      bookGroup.add(pivot);
+
+      var pgeo = new THREE.PlaneGeometry(BOOK_W * 0.98, BOOK_H * 0.96, PAGE_SEG_X, PAGE_SEG_Z);
+      pgeo.rotateX(-Math.PI / 2);                 // lie flat in XZ
+      pgeo.translate(BOOK_W * 0.98 / 2, 0, 0);    // hinge at local x = 0
+      track(pgeo);
+
+      var mesh = new THREE.Mesh(pgeo, pi % 2 ? pageMatB : pageMatA);
+      mesh.castShadow = true; mesh.receiveShadow = true;
+      mesh.visible = false;
+      pivot.add(mesh);
+
+      heroPages.push({
+        pivot: pivot, mesh: mesh, geo: pgeo,
+        baseline: pgeo.attributes.position.array.slice(),
+        seed: Math.random() * Math.PI * 2,
+      });
+    }
+
+    var PAGE_W = BOOK_W * 0.98;
+    var PAGE_HALF_H = BOOK_H * 0.96 * 0.5;
+
+    /* Bend the page into an arc about the spine-parallel axis. The old
+       scene lifted a flat plane by 0.09 units and called that a bend; you
+       could not see it. This walks the page along a real circular arc, so
+       mid-turn it reads as a curved sheet rather than a rotating card. */
+    function shapePage(page, t, curlSign) {
+      var pos = page.geo.attributes.position;
+      var base = page.baseline;
+      var curl = Math.sin(Math.PI * Math.min(1, Math.max(0, t)));
+      var phi = CURL_MAX * curl * curlSign;
+      var flat = 1 - curl;                  // 1 when settled, 0 mid-turn
+      var R = Math.abs(phi) > 1e-3 ? PAGE_W / phi : 0;
+
+      for (var i = 0; i < pos.count; i++) {
+        var x0 = base[i * 3], z0 = base[i * 3 + 2];
+        var u = x0 / PAGE_W;
+        var x, y;
+        if (R) {
+          var th = u * phi;
+          x = R * Math.sin(th);
+          y = R * (1 - Math.cos(th));
+        } else {
+          x = x0; y = 0;
+        }
+        // free corners sag under their own weight, most when nearly settled
+        var v = z0 / PAGE_HALF_H;
+        y -= DROOP * u * u * v * v * (0.3 + 0.7 * flat);
+        // a little life across the sheet so it is never perfectly ruled
+        y += Math.sin(u * 3.1 + page.seed) * 0.004 * curl;
+        pos.setXYZ(i, x, y, z0);
+      }
+      pos.needsUpdate = true;
+      page.geo.computeVertexNormals();
+    }
+    var CURL_SIGN = -1;   // pages curl trailing-edge-back, so their lit
+                          // undersides face the camera as they fan over
+
+    // --- spine: the rounded leather hinge the covers pivot around ---
     var spineR = (PAGE_BLOCK + COVER_THICK * 2) / 2;
     var spineY = spineR;   // sits exactly between the ground and the front cover
     var spineWrap = new THREE.Mesh(
@@ -663,6 +757,59 @@
       bookGroup.add(band);
     });
 
+    /* --- front cover ---------------------------------------------------
+       It hinges about the centre of the spine, not the top of the block.
+       That is what lets it end up flat on the ground when open, with the
+       pages turning over onto it. Pivoting at the top instead leaves the
+       open cover hovering above the left-hand stack, hiding every page
+       that lands there.
+       ------------------------------------------------------------------ */
+    var coverPivot = new THREE.Group();
+    coverPivot.position.set(SPINE_X, spineY, 0);
+    bookGroup.add(coverPivot);
+
+    var coverLocalY = PAGE_BLOCK / 2 + COVER_THICK / 2;
+    var coverBody = new THREE.Group();
+    coverBody.position.y = coverLocalY;
+    coverPivot.add(coverBody);
+
+    var frontCover = new THREE.Mesh(coverGeo(), leatherMat);
+    frontCover.castShadow = true; frontCover.receiveShadow = true;
+    coverBody.add(frontCover);
+
+    // marbled endpaper pasted inside the front cover
+    var endpaperTex = texFrom(makeCanvas(Math.round(T * 0.6), Math.round(T * 0.6), function (ctx, w, h) {
+      ctx.fillStyle = "#7d5c39"; ctx.fillRect(0, 0, w, h);
+      fbmNoise(ctx, w, h, 4, 40, 0.30);
+      ctx.globalCompositeOperation = "overlay";
+      for (var i = 0; i < 90; i++) {
+        var cx = Math.random() * w, cy = Math.random() * h;
+        var r = w * (0.02 + Math.random() * 0.10);
+        var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        var warm = Math.random() < 0.5;
+        g.addColorStop(0, warm ? "rgba(168,104,48,0.55)" : "rgba(58,34,18,0.5)");
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalCompositeOperation = "source-over";
+      // a plain border where the pastedown meets the turned-in leather
+      ctx.strokeStyle = "rgba(38,22,10,0.85)";
+      ctx.lineWidth = w * 0.045;
+      ctx.strokeRect(w * 0.022, h * 0.022, w * 0.956, h * 0.956);
+    }), THREE.SRGBColorSpace);
+
+    var endpaperGeo = track(new THREE.PlaneGeometry(BOOK_W * 0.94, BOOK_H * 0.95));
+    endpaperGeo.rotateX(Math.PI / 2);              // face -Y (the cover's inside)
+    endpaperGeo.translate(BOOK_W / 2, 0, 0);
+    var endpaper = new THREE.Mesh(endpaperGeo, track(new THREE.MeshStandardMaterial({
+      map: endpaperTex, normalMap: parchNormalTex,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+      roughness: 0.92, metalness: 0.0, envMapIntensity: 0.35,
+    })));
+    endpaper.position.set(0, -COVER_THICK / 2 - 0.0012, 0);
+    endpaper.receiveShadow = true;
+    coverBody.add(endpaper);
+
     // --- cover furniture: corner bosses, centre emblem, clasp ---
     var coverTopY = COVER_THICK / 2;
 
@@ -673,29 +820,29 @@
       var m = new THREE.Mesh(cornerGeo, goldMat);
       m.position.set(c[0], coverTopY + 0.002, c[1]);
       m.castShadow = true;
-      coverPivot.add(m);
+      coverBody.add(m);
       var stud = new THREE.Mesh(studGeo, goldMat);
       stud.position.set(c[0], coverTopY + 0.006, c[1]);
       stud.castShadow = true;
-      coverPivot.add(stud);
+      coverBody.add(stud);
     });
 
     var emblem = new THREE.Mesh(track(new THREE.TorusGeometry(0.085, 0.0085, 10, 40)), goldMat);
     emblem.rotation.x = Math.PI / 2;
     emblem.position.set(BOOK_W / 2, coverTopY + 0.003, 0);
     emblem.castShadow = true;
-    coverPivot.add(emblem);
+    coverBody.add(emblem);
 
     var emblemInner = new THREE.Mesh(track(new THREE.TorusGeometry(0.042, 0.006, 10, 30)), goldMat);
     emblemInner.rotation.x = Math.PI / 2;
     emblemInner.position.set(BOOK_W / 2, coverTopY + 0.003, 0);
     emblemInner.castShadow = true;
-    coverPivot.add(emblemInner);
+    coverBody.add(emblemInner);
 
     var emblemStud = new THREE.Mesh(track(new THREE.SphereGeometry(0.017, 14, 12)), goldMat);
     emblemStud.position.set(BOOK_W / 2, coverTopY + 0.008, 0);
     emblemStud.castShadow = true;
-    coverPivot.add(emblemStud);
+    coverBody.add(emblemStud);
 
     // clasp strap on the fore-edge
     var strap = new THREE.Mesh(
@@ -704,7 +851,7 @@
     );
     strap.position.set(BOOK_W - 0.07, coverTopY + 0.004, 0);
     strap.castShadow = true;
-    coverPivot.add(strap);
+    coverBody.add(strap);
 
     // the strap turns down over the fore-edge and the clasp hooks under it
     var strapLip = new THREE.Mesh(
@@ -713,11 +860,11 @@
     );
     strapLip.position.set(BOOK_W + 0.003, coverTopY - PAGE_BLOCK * 0.46, 0);
     strapLip.castShadow = true;
-    coverPivot.add(strapLip);
+    coverBody.add(strapLip);
 
     var claspPivot = new THREE.Group();
     claspPivot.position.set(BOOK_W + 0.004, coverTopY - COVER_THICK * 0.5, 0);
-    coverPivot.add(claspPivot);
+    coverBody.add(claspPivot);
     var clasp = new THREE.Mesh(track(new THREE.BoxGeometry(0.05, 0.014, 0.10)), goldMat);
     clasp.position.set(-0.012, -PAGE_BLOCK * 0.45, 0);
     clasp.castShadow = true;
@@ -827,21 +974,23 @@
        ==================================================================== */
     var camRig = {
       idle:   { pos: new THREE.Vector3(1.58, 0.78, 1.70), look: new THREE.Vector3(0.00, 0.13, -0.02) },
+      // wider and higher while the pages fan, or the arc leaves the frame
+      flip:   { pos: new THREE.Vector3(2.02, 1.18, 2.22), look: new THREE.Vector3(-0.02, 0.20, -0.02) },
       climax: { pos: new THREE.Vector3(0.94, 0.36, 0.99), look: new THREE.Vector3(-0.12, 0.20, 0.0) },
     };
     var _camPos = new THREE.Vector3(), _camLook = new THREE.Vector3();
 
     var camOverride = null;   // set by the screenshot harness for inspection
 
-    function updateCamera(t, climaxT) {
+    function updateCamera(t, climaxT, wideT) {
       if (camOverride) {
         camera.position.copy(camOverride.pos);
         camera.lookAt(camOverride.look);
         return;
       }
-      var k = climaxT;
-      _camPos.copy(camRig.idle.pos).lerp(camRig.climax.pos, k);
-      _camLook.copy(camRig.idle.look).lerp(camRig.climax.look, k);
+      var k = climaxT, w = wideT || 0;
+      _camPos.copy(camRig.idle.pos).lerp(camRig.flip.pos, w).lerp(camRig.climax.pos, k);
+      _camLook.copy(camRig.idle.look).lerp(camRig.flip.look, w).lerp(camRig.climax.look, k);
       // handheld drift — three detuned sines so it never obviously repeats
       var amp = 0.030 * (1 - k * 0.55);
       _camPos.x += (Math.sin(t * 0.31) * 0.6 + Math.sin(t * 0.73 + 1.1) * 0.4) * amp;
@@ -865,7 +1014,6 @@
       climaxDur: 2.4,
       handoffAt: 0.55,   // fraction of the climax at which we cut to the site
     };
-    var HERO_PAGES = Q.heroPages;
     TL.flipDur = TL.pageStagger * (HERO_PAGES - 1) + TL.pageDur;
     TL.openStart = TL.claspDur * 0.6;
     TL.flipStart = TL.openStart + TL.coverDur * 0.62;
@@ -892,12 +1040,14 @@
       bookGroup.position.y = Math.sin(now * 0.5) * 0.002;
 
       var climaxT = 0;
+      var wideT = 0;
 
       if (!state.triggered) {
         // idle: the clasp breathes very slightly, nothing else moves
         claspPivot.rotation.z = Math.sin(now * 0.8) * 0.012;
         coverPivot.rotation.z = 0;
-        updateCamera(now, 0);
+        leftStack.visible = false;
+        updateCamera(now, 0, 0);
         return;
       }
 
@@ -909,7 +1059,48 @@
 
       // --- cover swings open about the spine ---
       var ot = clamp01((s - TL.openStart) / TL.coverDur);
-      coverPivot.rotation.z = easeInOutCubic(ot) * Math.PI * 0.985;
+      var oe = easeInOutCubic(ot);
+      // slightly past flat, so the open cover leans down onto the floor
+      // instead of hanging in the air at hinge height
+      coverPivot.rotation.z = oe * Math.PI;
+      leftStack.visible = oe > 0.32;
+
+      // --- pages fan across ---
+      var ft = s - TL.flipStart;
+      var landed = 0;
+      for (var pi = 0; pi < heroPages.length; pi++) {
+        var page = heroPages[pi];
+        var lt = (ft - pi * TL.pageStagger) / TL.pageDur;
+        if (lt <= 0) {
+          // still waiting its turn: parked in the right-hand stack
+          page.mesh.visible = false;
+          continue;
+        }
+        var tc = clamp01(lt);
+        landed += tc;
+        page.mesh.visible = true;
+        // ease out of the lift, ease into the landing, with a touch of
+        // overshoot so it flutters down rather than snapping flat
+        var e = tc < 1 ? easeInOutCubic(tc) : 1;
+        page.pivot.rotation.z = e * Math.PI;
+        shapePage(page, tc, CURL_SIGN);
+      }
+
+      // hold the wide framing from the moment the cover starts lifting
+      wideT = easeInOutCubic(clamp01((s - TL.openStart) / (TL.coverDur * 0.85)));
+
+      var flipProgress = heroPages.length ? landed / heroPages.length : 0;
+      var th = applyStacks(flipProgress);
+
+      // hinge rides from the top of the shrinking stack to the growing one
+      for (var pj = 0; pj < heroPages.length; pj++) {
+        var pg = heroPages[pj];
+        var ltj = clamp01((ft - pj * TL.pageStagger) / TL.pageDur);
+        var ej = easeInOutCubic(ltj);
+        pg.pivot.position.y = blockBottom
+          + (th.right * (1 - ej) + th.left * ej)
+          + pj * 0.0016 + 0.001;
+      }
 
       // --- climax ---
       if (s >= TL.climaxStart) {
@@ -926,7 +1117,7 @@
         }
       }
 
-      updateCamera(now, climaxT);
+      updateCamera(now, climaxT, wideT);
     }
 
     /* ====================================================================
@@ -1027,6 +1218,9 @@
         if (o.bloomThreshold !== undefined && bloomPass) bloomPass.threshold = o.bloomThreshold;
         if (o.aperture !== undefined && bokehPass) bokehPass.uniforms["aperture"].value = o.aperture;
         if (o.maxblur !== undefined && bokehPass) bokehPass.uniforms["maxblur"].value = o.maxblur;
+        if (o.curlMax !== undefined) CURL_MAX = o.curlMax;
+        if (o.curlSign !== undefined) CURL_SIGN = o.curlSign;
+        if (o.droop !== undefined) DROOP = o.droop;
         leatherMat.needsUpdate = true;
       },
       /* Resume the live loop for a while and report real frame pacing.
