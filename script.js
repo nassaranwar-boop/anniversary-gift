@@ -1967,26 +1967,63 @@ function drawFox() {
   return c;
 }
 
-function drawButterfly(colour) {
-  const { c, ctx } = spriteCanvas(20, 16);
+/* A butterfly with its wings at a given openness. 0 is edge-on (wings
+   together above the back), 1 is fully spread. Sliding a fixed sprite
+   sideways reads as a sticker; the wings have to actually beat. */
+function drawButterfly(colour, open) {
+  const spread = open === undefined ? 1 : Math.max(0.12, open);
+  const { c, ctx } = spriteCanvas(22, 16);
   const A = colour === "blue" ? "#6fb4ee" : "#f4685a";
   const B = colour === "blue" ? "#3f82c6" : "#c8402f";
   const D = colour === "blue" ? "#2b5f96" : "#982c20";
   const E = colour === "blue" ? "#cfe8ff" : "#ffdcb0";
-  // upper wings: teardrops sweeping up and out from the body
-  blob(ctx, 6, 5, 5, 4, [E, A, B, D]);
-  blob(ctx, 14, 5, 5, 4, [E, A, B, D]);
-  // lower wings, smaller and rounder
-  blob(ctx, 7, 10, 3.6, 3.2, [A, B, D, D]);
-  blob(ctx, 13, 10, 3.6, 3.2, [A, B, D, D]);
-  // wing markings
-  px(ctx, 4, 4, 2, 1, E); px(ctx, 14, 4, 2, 1, E);
-  px(ctx, 6, 11, 1, 1, "#fff3d0"); px(ctx, 13, 11, 1, 1, "#fff3d0");
-  // body + antennae
-  px(ctx, 9, 3, 2, 10, "#3b2a1a");
-  px(ctx, 9, 12, 2, 2, "#5a4230");
-  px(ctx, 7, 0, 1, 3, "#3b2a1a"); px(ctx, 12, 0, 1, 3, "#3b2a1a");
-  px(ctx, 6, 0, 1, 1, "#3b2a1a"); px(ctx, 13, 0, 1, 1, "#3b2a1a");
+  const cx = 11;
+
+  /* wing width collapses toward the body as they close, and the far
+     wing sits a touch higher so there is a sense of turn */
+  const w1 = 5.4 * spread, w2 = 3.8 * spread;
+  blob(ctx, cx - w1 * 0.95, 5, w1, 4.2, [E, A, B, D]);
+  blob(ctx, cx + w1 * 0.95, 5 - (1 - spread) * 1.2, w1, 4.2, [E, A, B, D]);
+  blob(ctx, cx - w2 * 0.9, 10, w2, 3.2, [A, B, D, D]);
+  blob(ctx, cx + w2 * 0.9, 10 - (1 - spread) * 1, w2, 3.2, [A, B, D, D]);
+
+  if (spread > 0.55) {
+    px(ctx, cx - w1 * 1.4, 4, 2, 1, E);
+    px(ctx, cx + w1 * 0.9, 4, 2, 1, E);
+  }
+  px(ctx, cx - 1, 3, 2, 10, "#3b2a1a");
+  px(ctx, cx - 1, 12, 2, 2, "#5a4230");
+  px(ctx, cx - 3, 0, 1, 3, "#3b2a1a"); px(ctx, cx + 2, 0, 1, 3, "#3b2a1a");
+  px(ctx, cx - 4, 0, 1, 1, "#3b2a1a"); px(ctx, cx + 3, 0, 1, 1, "#3b2a1a");
+  return c;
+}
+
+/* The fox, alive: ears twitch, the tail sweeps, and it blinks. */
+function drawFoxAlive(t) {
+  const { c, ctx } = spriteCanvas(40, 28);
+  const O = "#f08b3c", O2 = "#d46f26", W = "#fff3e2", I = "#3b2a1a";
+  const sweep = Math.sin(t * 1.5) * 3;
+  const earTwitch = (t % 3.4) > 3.2 ? -1 : 0;
+  const blink = (t % 4.8) > 4.62;
+  const breathe = Math.sin(t * 1.9) > 0 ? 0 : 1;
+
+  // tail, sweeping behind
+  px(ctx, 2, 13 + sweep * 0.4, 15, 6, O2);
+  px(ctx, 0, 9 + sweep, 8, 7, O);
+  px(ctx, 0, 9 + sweep, 5, 4, W);
+
+  px(ctx, 15, 11 + breathe, 16, 11, O);
+  px(ctx, 17, 19, 12, 4, O2);
+  px(ctx, 25, 5, 12, 11, O);                       // head
+  px(ctx, 25, 3 + earTwitch, 5, 6, O2);
+  px(ctx, 33, 3, 5, 6, O2);
+  px(ctx, 26, 4 + earTwitch, 3, 4, "#f7c4a0");
+  px(ctx, 34, 4, 3, 4, "#f7c4a0");
+  px(ctx, 28, 11, 9, 5, W);
+  if (blink) { px(ctx, 28, 9, 2, 1, I); px(ctx, 34, 9, 2, 1, I); }
+  else { px(ctx, 28, 8, 2, 3, I); px(ctx, 34, 8, 2, 3, I); }
+  px(ctx, 35, 12, 3, 2, I);
+  px(ctx, 17, 22, 5, 4, O2); px(ctx, 25, 22, 5, 4, O2);
   return c;
 }
 
@@ -3009,12 +3046,20 @@ function hvPaintFrame(t) {
 
   if (n.butterflies) {
     put(drawFlowerCard(), PXW / 2 - 30, 78 + Math.sin(t * 0.8) * 1.5, 2.2);
-    /* the butterflies sit close to their buttons so the pairing is obvious */
-    put(drawButterfly("blue"), 48 + Math.sin(t * 0.9) * 4, 54 + Math.sin(t * 1.5) * 5, 1.8);
-    put(drawButterfly("red"), PXW - 84 + Math.sin(t * 0.8 + 2) * 4, 50 + Math.sin(t * 1.3 + 1) * 5, 1.8);
+    /* Real flight: a looping figure-of-eight around a home point, wings
+       beating fast, and the beat easing off at the top of each rise the
+       way a butterfly glides. */
+    [["blue", 52, 56, 0], ["red", PXW - 78, 50, 2.1]].forEach(function (b) {
+      var ph = t * 1.15 + b[3];
+      var fx = b[1] + Math.sin(ph) * 13;
+      var fy = b[2] + Math.sin(ph * 2) * 7 + Math.sin(t * 0.7 + b[3]) * 3;
+      var glide = Math.max(0, Math.sin(ph * 2 + 1));
+      var beat = Math.abs(Math.sin(t * (9 - glide * 4) + b[3]));
+      put(drawButterfly(b[0], 0.25 + beat * 0.75), fx, fy, 1.8);
+    });
   }
 
-  if (n.fox) put(drawFox(), PXW - 118, 114 + Math.sin(t * 0.7) * 1, 1.6);
+  if (n.fox) put(drawFoxAlive(t), PXW - 122, 112 + Math.sin(t * 0.7) * 1, 1.6);
 
   if (n.envelope) {
     var e = drawEnvelope(n.envelope === "open");
