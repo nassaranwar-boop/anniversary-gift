@@ -1,50 +1,54 @@
 /* =========================================================
    ✏️  THEME — the one place colour and feel are defined
    =========================================================
-   Warm, sunlit, alive. Every screen pulls from these tokens, so
-   changing the mood of the whole site means editing this block and
-   nothing else. Named by ROLE, not by colour, so a repaint does not
-   leave you with a variable called "brown" holding pink.
+   Warm, soft, loving. Not mysterious: the palette is blush, cream
+   and honey, contrast is gentle, shadows are warm rather than black,
+   and nothing is allowed to go cold. Every screen pulls from these
+   tokens, so changing the mood of the whole site means editing this
+   block and nothing else.
+
+   The one exception is the adventure game, which keeps its own pixel
+   palette on purpose.
    ========================================================= */
 :root{
-  /* --- surfaces: paper, parchment, card --- */
-  --paper:        #fffaf0;
-  --paper-warm:   #fff4d9;
-  --parchment:    #f0d5a4;
-  --parchment-2:  #e3caa0;
-  --card:         #fff8e8;
+  /* --- surfaces: paper, card, keepsake --- */
+  --paper:        #fffaf4;
+  --paper-warm:   #fff2e6;
+  --parchment:    #f7dfd0;
+  --parchment-2:  #efd0c0;
+  --card:         #fff6ef;
 
-  /* --- the golden-hour ground the site sits on --- */
-  --bg-sky-1:     #f6dcae;
-  --bg-sky-2:     #e9bf88;
-  --bg-sky-3:     #cf9a63;
-  --bg-sky-4:     #a97545;
-  --bg-glow:      rgba(255,226,164,.45);
-  --bg-glow-2:    rgba(255,188,150,.28);
+  /* --- the ground the site sits on: soft blush into warm cream --- */
+  --bg-sky-1:     #fdeee4;
+  --bg-sky-2:     #f9dcd2;
+  --bg-sky-3:     #f2c6bd;
+  --bg-sky-4:     #e0aaa4;
+  --bg-glow:      rgba(255,236,220,.55);
+  --bg-glow-2:    rgba(255,206,200,.34);
 
-  /* --- ink --- */
-  --ink:          #4e2d0d;
-  --ink-soft:     #5c3d1a;
-  --ink-muted:    #7a5327;
-  --ink-invert:   #fff6e2;
+  /* --- ink: warm browns, never grey --- */
+  --ink:          #5c3a30;
+  --ink-soft:     #6b4438;
+  --ink-muted:    #937064;
+  --ink-invert:   #fff6ef;
 
   /* --- accents --- */
-  --gold:         #c98a34;
-  --gold-lite:    #ffd166;
-  --gold-deep:    #9a6c22;
-  --rose:         #f7a8c4;
-  --rose-deep:    #c4587f;
-  --leaf:         #7c9a45;
-  --leaf-deep:    #5d7a35;
-  --sky-blue:     #8fc4e8;
+  --gold:         #e0a86a;
+  --gold-lite:    #ffd9a0;
+  --gold-deep:    #b4784a;
+  --rose:         #f2a0b4;
+  --rose-deep:    #d4708a;
+  --leaf:         #9ab87a;
+  --leaf-deep:    #7a9a5c;
+  --sky-blue:     #b8d8e8;
 
-  /* --- edges + depth --- */
-  --edge:         rgba(150,98,38,.5);
-  --edge-soft:    rgba(150,98,38,.28);
-  --shadow-sm:    0 3px 8px rgba(120,72,26,.28);
-  --shadow-md:    0 8px 18px rgba(110,66,20,.30);
-  --shadow-lg:    0 16px 34px rgba(96,56,16,.38);
-  --lift:         0 5px 0 rgba(150,98,38,.38);
+  /* --- edges + depth: warm shadows, never black --- */
+  --edge:         rgba(196,140,120,.42);
+  --edge-soft:    rgba(196,140,120,.24);
+  --shadow-sm:    0 3px 10px rgba(180,120,100,.22);
+  --shadow-md:    0 8px 22px rgba(170,110,90,.24);
+  --shadow-lg:    0 18px 40px rgba(150,95,80,.28);
+  --lift:         0 5px 0 rgba(200,150,130,.36);
 
   /* --- type --- */
   --font-display: 'Cinzel', serif;
@@ -53,15 +57,15 @@
   --font-body:    'Poppins', sans-serif;
   --font-serif:   'Playfair Display', serif;
 
-  /* --- motion --- */
+  /* --- motion: everything a little softer and slower --- */
   --ease-out:     cubic-bezier(.22,.9,.3,1);
   --ease-pop:     cubic-bezier(.22,1.15,.36,1);
-  --dur-fast:     .18s;
-  --dur-mid:      .42s;
-  --dur-slow:     .78s;
+  --dur-fast:     .2s;
+  --dur-mid:      .46s;
+  --dur-slow:     .84s;
 
-  --radius:       12px;
-  --radius-lg:    16px;
+  --radius:       16px;
+  --radius-lg:    22px;
 }
 
 
@@ -248,10 +252,10 @@ img{-webkit-user-drag:none; user-select:none;}
 #screen-maze{
   position:fixed;
   background:
-    radial-gradient(circle at 16% 14%, rgba(255,196,120,.20), transparent 46%),
-    radial-gradient(circle at 84% 24%, rgba(255,150,90,.16), transparent 46%),
-    radial-gradient(circle at 50% 92%, rgba(120,150,70,.14), transparent 52%),
-    linear-gradient(165deg,#2a1a0d 0%,#3a2412 45%,#1d1108 100%);
+    radial-gradient(circle at 16% 14%, rgba(255,214,180,.24), transparent 48%),
+    radial-gradient(circle at 84% 24%, rgba(255,178,164,.20), transparent 48%),
+    radial-gradient(circle at 50% 92%, rgba(196,150,130,.18), transparent 54%),
+    linear-gradient(168deg,#3c2a24 0%,#4c352c 45%,#2a1c18 100%);
   background-size:180% 180%, 180% 180%, 180% 180%, 100% 100%;
   animation:mazeBgDrift 18s ease-in-out infinite;
 }
@@ -497,17 +501,17 @@ img{-webkit-user-drag:none; user-select:none;}
    ============================================================ */
 .ancient-bg{
   background:
-    radial-gradient(ellipse at 50% 18%, rgba(255,226,164,.45), transparent 60%),
-    radial-gradient(ellipse at 82% 88%, rgba(255,188,150,.28), transparent 55%),
-    linear-gradient(165deg,#f6dcae 0%,#e9bf88 42%,#cf9a63 78%,#a97545 100%);
+    radial-gradient(ellipse at 50% 14%, var(--bg-glow), transparent 62%),
+    radial-gradient(ellipse at 84% 86%, var(--bg-glow-2), transparent 58%),
+    linear-gradient(168deg,var(--bg-sky-1) 0%,var(--bg-sky-2) 46%,var(--bg-sky-3) 80%,var(--bg-sky-4) 100%);
 }
 
 /* ---- Three.js cinematic book intro ---- */
-#screen-videointro{background:#c8b076; padding:0;}
+#screen-videointro{background:var(--bg-sky-2); padding:0;}
 #book-canvas{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:pointer;}
 #screen-videointro::after{
   content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
-  background:radial-gradient(ellipse at 50% 48%, transparent 55%, rgba(74,44,12,.30) 100%);
+  background:radial-gradient(ellipse at 50% 48%, transparent 62%, rgba(150,92,76,.22) 100%);
 }
 .book-click-prompt{
   position:absolute; bottom:14%; left:0; right:0; text-align:center; z-index:5; pointer-events:none;
@@ -537,8 +541,8 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---- Gate (on real parchment art) ---- */
 #screen-gate{
   background:
-    radial-gradient(ellipse at 50% 22%, rgba(255,236,186,.55), transparent 58%),
-    linear-gradient(170deg,#f7e2b8 0%,#eec38c 45%,#d09a62 100%);
+    radial-gradient(ellipse at 50% 20%, var(--bg-glow), transparent 60%),
+    linear-gradient(172deg,var(--bg-sky-1) 0%,var(--bg-sky-2) 48%,var(--bg-sky-3) 100%);
 }
 .gate-parchment{
   position:relative; height:min(74vh,520px); aspect-ratio:408/612; margin:0 auto;
@@ -620,7 +624,12 @@ img{-webkit-user-drag:none; user-select:none;}
    Everything is positioned in percentages so the collage holds
    together from a phone to a laptop.
    ========================================================= */
-#screen-scrapbook{padding:0; overflow:hidden; background:var(--bg-sky-1);}
+#screen-scrapbook{
+  padding:0; overflow:hidden;
+  background:
+    radial-gradient(ellipse at 50% 16%, var(--bg-glow), transparent 62%),
+    linear-gradient(168deg,var(--bg-sky-1) 0%,var(--bg-sky-2) 55%,var(--bg-sky-3) 100%);
+}
 
 /* ---- the cover ---- */
 .sb-cover{

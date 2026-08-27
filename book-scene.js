@@ -105,7 +105,7 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.92;
+    renderer.toneMappingExposure = 0.96;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setClearColor(0x000000, 1);
@@ -116,7 +116,7 @@
     function mark(name) { bootMarks[name] = +(performance.now() - bootT0).toFixed(1); }
 
     var scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0xb9a878, 0.085);
+    scene.fog = new THREE.FogExp2(0xf2d5c6, 0.045);
 
     var camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.05, 40);
 
@@ -285,7 +285,7 @@
     var leatherNormalTex = texFrom(heightToNormal(leatherHeightCanvas, 2.6));
 
     var leatherColorTex = texFrom(makeCanvas(T, Math.round(T * 1.35), function (ctx, w, h) {
-      ctx.fillStyle = "#7d4d22"; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#9c6438"; ctx.fillRect(0, 0, w, h);
       speckle(ctx, w, h, Math.round(w * 6), function () {
         var s = (Math.random() - 0.5) * 34;
         return "rgba(" + ((128 + s) | 0) + "," + ((82 + s * 0.7) | 0) + "," + ((38 + s * 0.5) | 0) + ",0.55)";
@@ -432,7 +432,7 @@
     groundNormalTex.repeat.set(3, 3);
 
     var groundColorTex = texFrom(makeCanvas(512, 512, function (ctx, w, h) {
-      ctx.fillStyle = "#33501a"; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#4a6b2c"; ctx.fillRect(0, 0, w, h);
       for (var i = 0; i < GD; i++) {
         var x = Math.random() * w, y = Math.random() * h, r = 6 + Math.random() * 18;
         var sh = Math.random() * 34;
@@ -499,11 +499,11 @@
       // sky dome: dark canopy above, warm break in the trees on one side
       var domeTex = texFrom(makeCanvas(256, 128, function (ctx, w, h) {
         var g = ctx.createLinearGradient(0, 0, 0, h);
-        g.addColorStop(0.00, "#8fc4e8");   // open sky
-        g.addColorStop(0.34, "#cfd9e0");
-        g.addColorStop(0.52, "#ffd9a0");   // the low sun
-        g.addColorStop(0.70, "#c9a860");
-        g.addColorStop(1.00, "#5d7a30");   // meadow bounce
+        g.addColorStop(0.00, "#a8d2ec");   // open sky
+        g.addColorStop(0.34, "#dce8f0");
+        g.addColorStop(0.52, "#fde2d4");   // blossom light
+        g.addColorStop(0.70, "#e8c4a8");
+        g.addColorStop(1.00, "#8a9c68");   // meadow bounce
         ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
         // the warm gap the key light comes through
         var wg = ctx.createRadialGradient(w * 0.30, h * 0.24, 0, w * 0.30, h * 0.24, w * 0.20);
@@ -536,12 +536,12 @@
        stays pure black, and the horizon reads as a hard cut. */
     var skyTex = texFrom(makeCanvas(64, 256, function (ctx, w, h) {
       var g = ctx.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0.00, "#7fb6de");
-      g.addColorStop(0.34, "#bcd3e2");
-      g.addColorStop(0.48, "#f6dcae");
-      g.addColorStop(0.58, "#e8bf83");
-      g.addColorStop(0.72, "#a8994f");
-      g.addColorStop(1.00, "#5f7a33");
+      g.addColorStop(0.00, "#bcdcf0");
+      g.addColorStop(0.30, "#dbe8f2");
+      g.addColorStop(0.46, "#fde4d6");
+      g.addColorStop(0.58, "#f8cfc2");
+      g.addColorStop(0.74, "#dcc49a");
+      g.addColorStop(1.00, "#93a86a");
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
     }), THREE.SRGBColorSpace);
     skyTex.mapping = THREE.EquirectangularReflectionMapping;
@@ -549,7 +549,7 @@
 
     var envRT = pmrem.fromScene(envScene, 0.04);
     scene.environment = envRT.texture;
-    scene.environmentIntensity = 0.50;
+    scene.environmentIntensity = 0.85;
     pmrem.dispose();
     mark("pmrem");
 
@@ -591,9 +591,9 @@
        break), a cool fill from the opposite side for silhouette separation,
        and a warm practical at the spine that only wakes up at the climax.
        ==================================================================== */
-    scene.add(track(new THREE.HemisphereLight(0xa8cdf0, 0x5a7030, 0.38)));
+    scene.add(track(new THREE.HemisphereLight(0xd6e8f8, 0x8a9a68, 0.62)));
 
-    var key = new THREE.DirectionalLight(0xffd0a0, 2.9);
+    var key = new THREE.DirectionalLight(0xfff0e0, 2.5);
     key.position.set(-1.5, 2.35, 1.4);
     key.target.position.set(0.05, 0.1, 0.05);
     key.castShadow = true;
@@ -608,12 +608,12 @@
     scene.add(key); scene.add(key.target);
 
     // cool rim from camera-right/behind — separates the book from the dark
-    var rim = new THREE.DirectionalLight(0x9cc4e8, 0.85);
+    var rim = new THREE.DirectionalLight(0xffc2cc, 0.75);
     rim.position.set(3.0, 1.15, -2.2);
     scene.add(track(rim));
 
     // low warm bounce off the forest floor, keeps shadows from going dead
-    var bounce = new THREE.PointLight(0xffc078, 0.55, 3.0, 2.0);
+    var bounce = new THREE.PointLight(0xffd8c4, 0.5, 3.0, 2.0);
     bounce.position.set(0.18, 0.34, 0.85);
     scene.add(track(bounce));
 
@@ -951,7 +951,7 @@
     var shaftUniforms = {
       uTime:      { value: 0 },
       uIntensity: { value: 0.085 },
-      uColor:     { value: new THREE.Color(0xffeac2) },
+      uColor:     { value: new THREE.Color(0xfff0e2) },
       uNoise:     { value: null },
       uPower:     { value: 4.5 },
     };
@@ -1046,7 +1046,7 @@
       ctx.clearRect(0, 0, w, h);
       var g = ctx.createRadialGradient(w * 0.5, h * 0.62, 0, w * 0.5, h * 0.55, w * 0.5);
       g.addColorStop(0, "rgba(255,252,250,1)");
-      g.addColorStop(0.45, "rgba(255,214,226,1)");
+      g.addColorStop(0.45, "rgba(255,222,232,1)");
       g.addColorStop(1, "rgba(248,176,198,1)");
       ctx.fillStyle = g;
       ctx.beginPath();
