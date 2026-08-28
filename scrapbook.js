@@ -35,7 +35,7 @@ window.Scrapbook = (function () {
       title:  "Mirage",
       artist: "Bouss",
       src:    "assets/song.mp3",
-      startAt: 74,          // ← seconds. adjust until it starts on your line
+      startAt: 0,           // ← seconds into the track to begin at
     },
 
     /* ---- the music video in the drawer, and on the last right page ---- */
@@ -58,10 +58,15 @@ window.Scrapbook = (function () {
     map: {
       city: "Marrakech",
       pins: [
-        { x: 50, y: 54, date: "the first evening",  title: "Jemaa el-Fna",     place: "the big square, at dusk" },
-        { x: 31, y: 20, date: "the blue morning",   title: "Jardin Majorelle", place: "north of Guéliz" },
-        { x: 69, y: 31, date: "the long afternoon", title: "The souks",        place: "inside the medina walls" },
-        { x: 17, y: 79, date: "the quiet one",      title: "Menara gardens",   place: "under the olive trees" },
+        /* `note` marks a place that carries words instead of a photo */
+        { x: 21, y: 31, title: "AVS", place: "Daoudiate",
+          date: "where it all started",
+          note: "This is where everything started. Where we first met, " +
+                "and where every single thing after it began." },
+        { x: 52, y: 55, date: "the first evening",  title: "Jemaa el-Fna", place: "the big square, at dusk" },
+        { x: 66, y: 35, date: "the long afternoon", title: "The souks",    place: "inside the medina walls" },
+        { x: 35, y: 67, date: "a whole afternoon",  title: "Megarama",     place: "the cinema, back row" },
+        { x: 29, y: 23, date: "our side of town",   title: "Daoudiate",    place: "the streets we know" },
       ],
     },
 
@@ -1230,8 +1235,9 @@ window.Scrapbook = (function () {
       label("MARRAKECH", 0.5, 0.115, 0.042, "rgba(88,68,44,0.9)", "3px");
       label("مراكش", 0.5, 0.165, 0.034, "rgba(122,98,70,0.8)");
       label("MEDINA", 0.60, 0.62, 0.030, "rgba(140,96,52,0.85)", "2px");
-      label("GUÉLIZ", 0.22, 0.42, 0.026, "rgba(130,110,80,0.8)", "2px");
-      label("HIVERNAGE", 0.27, 0.60, 0.022, "rgba(130,110,80,0.75)", "1px");
+      label("DAOUDIATE", 0.19, 0.175, 0.024, "rgba(130,110,80,0.8)", "1px");
+      label("GUÉLIZ", 0.24, 0.44, 0.026, "rgba(130,110,80,0.8)", "2px");
+      label("HIVERNAGE", 0.17, 0.58, 0.021, "rgba(130,110,80,0.75)", "1px");
       label("PALMERAIE", 0.83, 0.15, 0.024, "rgba(110,132,86,0.85)", "1px");
       label("Menara", 0.19, 0.885, 0.024, "rgba(104,126,82,0.85)");
       label("Agdal", 0.68, 0.945, 0.024, "rgba(104,126,82,0.85)");
@@ -1259,7 +1265,7 @@ window.Scrapbook = (function () {
     { paper: "rose", pieces: [
       { k: "sticker", art: "disco",   left: -9, top:  2, w: 34, rot: 0 },
       { k: "sticker", art: "rose",    left: -4, top: 30, w: 26, rot: -8 },
-      { k: "sticker", art: "flowers", left: -7, top: 56, w: 32, rot: -6 },
+      { k: "flowers", left: -7, top: 56, w: 32, rot: -6 },
       { k: "sticker", art: "disco",   left: -5, top: 78, w: 26, rot: 0 },
       { k: "bigtype", text: "love you", left: 68, top: 6, size: 16, vertical: true, colour: "rgba(255,255,255,.22)" },
       { k: "photo", n: 1, style: "polaroid", left: 26, top:  5, w: 36.1, rot: -6, tape: "top" },
@@ -1279,7 +1285,7 @@ window.Scrapbook = (function () {
       { k: "photo", n: 5, style: "polaroid", left: 48, top: 30, w: 32, rot:  3 },
       { k: "photo", n: 6, style: "matted",   left:  6, top: 62, w: 29, rot:  2 },
       { k: "photo", n: 7, style: "snapshot", left: 50, top: 74, w: 34, rot: -4 },
-      { k: "sticker", art: "flowers", left: 34, top: 60, w: 22, rot: 8 },
+      { k: "flowers", left: 34, top: 60, w: 22, rot: 8 },
     ]},
 
     /* ---- 3 · the camera ------------------------------------------ */
@@ -1314,7 +1320,7 @@ window.Scrapbook = (function () {
       { k: "photo", n: 11, style: "washed",   left: 30, top:  8, w: 50.8, rot: -5, tape: "top" },
       { k: "photo", n: 12, style: "matted",   left: 10, top: 46, w: 36.1, rot:  3 },
       { k: "photo", n: 13, style: "polaroid", left: 54, top: 52, w: 34.4, rot: -3 },
-      { k: "sticker", art: "flowers", left: -6, top: 78, w: 28, rot: -8 },
+      { k: "flowers", left: -6, top: 78, w: 28, rot: -8 },
       { k: "sticker", art: "lipInk", left: 34, top: 88, w: 18, rot: 12 },
     ]},
 
@@ -1329,7 +1335,7 @@ window.Scrapbook = (function () {
       { k: "photobooth", cells: [17, 18, 19], left: 6, top: 54, w: 22, rot: 5 },
       { k: "sticker", art: "starD", left: 84, top: 56, w: 16, rot: -14 },
       { k: "label", text: "COLD HANDS,\nWARM HEARTS", left: 44, top: 80, w: 40, rot: -4 },
-      { k: "sticker", art: "flowers", left: 30, top: 82, w: 24, rot: 6 },
+      { k: "flowers", left: 30, top: 82, w: 24, rot: 6 },
     ]},
 
     /* ---- 7 · the film strip -------------------------------------- */
@@ -1363,7 +1369,7 @@ window.Scrapbook = (function () {
       { k: "photobooth", cells: [26, 27, 28], left: 4, top: 34, w: 22, rot: -4 },
       { k: "photo", n: 29, style: "corners", left: 34, top: 46, w: 36.1, rot: -3 },
       { k: "patch", paper: "blush", left: 50, top: 74, w: 50, h: 32, rot: 3 },
-      { k: "sticker", art: "flowers", left: 62, top: 72, w: 34, rot: 4 },
+      { k: "flowers", left: 62, top: 72, w: 34, rot: 4 },
       { k: "sticker", art: "starG", left: 52, top: 80, w: 10, rot: 20 },
     ]},
 
@@ -1496,6 +1502,129 @@ window.Scrapbook = (function () {
       ev.stopPropagation();
       openLightbox(mem);
     });
+    return wrap;
+  }
+
+  /* ---------------------------------------------------------------
+     THE FLOWERS
+
+     Drawn as SVG rather than a flat sticker so the sprig can live: the
+     whole stem sways from its base, each bloom breathes on its own
+     count, the leaves flutter against the sway, and a little pollen
+     drifts off. Every sprig is seeded from its position, so no two on a
+     spread move together.
+     --------------------------------------------------------------- */
+  var FLOWER_PALETTES = [
+    ["#f7b3c6", "#e8899f", "#cf6d86", "#ffe9a8"],
+    ["#c9a5e6", "#a87fce", "#8b62b2", "#ffe9a8"],
+    ["#fdf2ef", "#ecd7d2", "#d3b6b0", "#f3d79a"],
+    ["#f6cf9f", "#e5ab6e", "#c98d50", "#fff0c4"],
+  ];
+
+  function svgEl(name, attrs) {
+    var e = document.createElementNS("http://www.w3.org/2000/svg", name);
+    for (var k in attrs) if (attrs.hasOwnProperty(k)) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function makeFlowers(p) {
+    var wrap = place(el("sb-flowers"), p);
+    var r = rnd((p.left * 31 + p.top * 17 + 7) | 0);
+    var svg = svgEl("svg", { viewBox: "0 0 100 100", "aria-hidden": "true" });
+
+    var sway = svgEl("g", { class: "sb-fl-sway" });
+    sway.style.setProperty("--dur", (7 + r() * 5).toFixed(2) + "s");
+    sway.style.setProperty("--delay", (-r() * 6).toFixed(2) + "s");
+    sway.style.setProperty("--tilt", (1.8 + r() * 2.4).toFixed(2) + "deg");
+
+    /* A CSS animation on an SVG element replaces its transform attribute
+       outright, so anything that is both placed and animated needs an
+       outer group to hold the placing and an inner one to be animated. */
+    function placed(transform, cls) {
+      var outer = svgEl("g", { transform: transform });
+      var inner = svgEl("g", { class: cls });
+      outer.appendChild(inner);
+      sway.appendChild(outer);
+      return inner;
+    }
+
+    var stems = 3 + ((r() * 2) | 0);
+    var heads = [];
+
+    for (var i = 0; i < stems; i++) {
+      var t = stems === 1 ? 0.5 : i / (stems - 1);
+      var tipX = 22 + t * 56 + (r() - 0.5) * 8;
+      var tipY = 20 + r() * 26;
+      var ctrlX = 50 + (tipX - 50) * 0.3;
+      var ctrlY = 64 - r() * 12;
+      heads.push([tipX, tipY, 8.5 + r() * 4.5]);
+      /* a smaller bud partway up some stems */
+      if (r() > 0.45) {
+        var bt = 0.55 + r() * 0.2;
+        heads.push([50 + (tipX - 50) * bt, 99 + (tipY - 99) * bt, 4.5 + r() * 2.5]);
+      }
+
+      var stem = svgEl("path", {
+        d: "M50,99 Q" + ctrlX.toFixed(1) + "," + ctrlY.toFixed(1) +
+           " " + tipX.toFixed(1) + "," + tipY.toFixed(1),
+        fill: "none", stroke: ["#6f8f4a", "#5d7a35", "#7fa04a"][(r() * 3) | 0],
+        "stroke-width": (1.5 + r() * 0.9).toFixed(2),
+        "stroke-linecap": "round", class: "sb-fl-stem",
+      });
+      stem.style.setProperty("--d", (-r() * 5).toFixed(2) + "s");
+      sway.appendChild(stem);
+
+      for (var l = 0; l < 2; l++) {
+        var lt = 0.30 + l * 0.26;
+        var lx = 50 + (tipX - 50) * lt, ly = 99 + (tipY - 99) * lt;
+        var rot = (l ? 1 : -1) * (20 + r() * 34);
+        var leafG = placed("translate(" + lx.toFixed(1) + "," + ly.toFixed(1) +
+                           ") rotate(" + rot.toFixed(1) + ")", "sb-fl-leaf");
+        leafG.style.setProperty("--d", (-r() * 6).toFixed(2) + "s");
+        leafG.style.setProperty("--dur", (4.5 + r() * 3).toFixed(2) + "s");
+        leafG.appendChild(svgEl("path", {
+          d: "M0,0 Q5,-3.4 11,0 Q5,3.4 0,0",
+          fill: ["#7fa04a", "#5d7a35", "#93b862"][(r() * 3) | 0],
+        }));
+      }
+    }
+
+    heads.forEach(function (h) {
+      var pal = FLOWER_PALETTES[(r() * FLOWER_PALETTES.length) | 0];
+      var size = h[2];
+      var petals = 5 + ((r() * 3) | 0);
+      var bloom = placed("translate(" + h[0].toFixed(1) + "," + h[1].toFixed(1) + ")", "sb-fl-bloom");
+      bloom.style.setProperty("--d", (-r() * 7).toFixed(2) + "s");
+      bloom.style.setProperty("--dur", (5 + r() * 3.5).toFixed(2) + "s");
+
+      var spin = r() * 360;
+      for (var k = 0; k < petals; k++) {
+        var pg = svgEl("g", { transform: "rotate(" + (spin + (k / petals) * 360).toFixed(1) + ")" });
+        var pe = svgEl("ellipse", {
+          cx: 0, cy: -size * 0.56, rx: size * 0.42, ry: size * 0.58,
+          fill: k % 2 ? pal[0] : pal[1], class: "sb-fl-petal",
+        });
+        pe.style.setProperty("--d", (-r() * 4).toFixed(2) + "s");
+        pg.appendChild(pe);
+        bloom.appendChild(pg);
+      }
+      bloom.appendChild(svgEl("circle", { cx: 0, cy: 0, r: size * 0.32, fill: pal[2], opacity: ".5" }));
+      bloom.appendChild(svgEl("circle", { cx: 0, cy: 0, r: size * 0.22, fill: pal[3] }));
+    });
+
+    for (var m = 0; m < 4; m++) {
+      var mote = svgEl("circle", {
+        cx: (30 + r() * 42).toFixed(1), cy: (30 + r() * 24).toFixed(1),
+        r: (0.9 + r() * 0.8).toFixed(2), fill: "#fff3cf", class: "sb-fl-mote",
+      });
+      mote.style.setProperty("--d", (-r() * 9).toFixed(2) + "s");
+      mote.style.setProperty("--dur", (7 + r() * 5).toFixed(2) + "s");
+      mote.style.setProperty("--dx", ((r() - 0.5) * 22).toFixed(1) + "px");
+      sway.appendChild(mote);
+    }
+
+    svg.appendChild(sway);
+    wrap.appendChild(svg);
     return wrap;
   }
 
@@ -1728,7 +1857,7 @@ window.Scrapbook = (function () {
   }
 
   var MAKERS = {
-    photo: makePhoto, sticker: makeSticker, img: makeImg, patch: makePatch,
+    photo: makePhoto, sticker: makeSticker, flowers: makeFlowers, img: makeImg, patch: makePatch,
     note: makeNote, bigtype: makeBigType, script: makeScript, letters: makeLetters,
     typecol: makeTypeCol, curvetext: makeCurveText, burst: makeBurst,
     label: makeLabel, label2: makeLabel2, instantcam: makeInstantCam,
@@ -1941,11 +2070,16 @@ window.Scrapbook = (function () {
       b.setAttribute("aria-label", pin.title);
       var mem = photoAt(MAP_SLOT + i);
       b.innerHTML = "";
-      (function (host, m) {
-        loadPhotoInto(host, m, function () {
-          host.innerHTML = '<span class="sb-map-pin-empty">' + m.n + "</span>";
-        });
-      })(b, mem);
+      if (pin.note) {
+        b.classList.add("is-note");
+        b.innerHTML = '<span class="sb-map-pin-note">✦</span>';
+      } else {
+        (function (host, m) {
+          loadPhotoInto(host, m, function () {
+            host.innerHTML = '<span class="sb-map-pin-empty">' + m.n + "</span>";
+          });
+        })(b, mem);
+      }
       b.addEventListener("click", function (e) {
         e.stopPropagation();
         openPin(pin, mem);
@@ -2092,14 +2226,22 @@ window.Scrapbook = (function () {
   }
 
   function openPin(pin, mem) {
+    var card = document.querySelector("#sb-pin-modal .sb-pin-card");
+    if (card) card.classList.toggle("note-only", !!pin.note);
     var photo = document.getElementById("sb-pin-photo");
     if (photo) {
       photo.innerHTML = "";
-      loadPhotoInto(photo, mem, function () {
-        photo.innerHTML = '<span class="sb-photo-empty">' +
-          '<span class="sb-slot-no">' + mem.n + '</span>' +
-          '<span class="sb-slot-word">photo</span></span>';
-      });
+      if (pin.note) {
+        var n = el("sb-pin-note");
+        n.innerHTML = '<span class="sb-pin-note-mark">✦</span><p>' + pin.note + "</p>";
+        photo.appendChild(n);
+      } else {
+        loadPhotoInto(photo, mem, function () {
+          photo.innerHTML = '<span class="sb-photo-empty">' +
+            '<span class="sb-slot-no">' + mem.n + '</span>' +
+            '<span class="sb-slot-word">photo</span></span>';
+        });
+      }
     }
     var d = document.getElementById("sb-pin-date");
     var t = document.getElementById("sb-pin-title");
@@ -2724,6 +2866,13 @@ window.Scrapbook = (function () {
     pageW = pageH * 0.75;
   }
 
+  /* where the spine sits, relative to the middle of the book */
+  function spineOffset(idx) {
+    if (perView === 1 || !views[idx]) return 0;
+    if (views[idx].length === 2) return 0;
+    return idx === 0 ? -pageW / 2 : pageW / 2;
+  }
+
   function applySize() {
     var outer = document.getElementById("sb-book-outer");
     if (!outer) return;
@@ -2733,6 +2882,7 @@ window.Scrapbook = (function () {
     outer.style.height = pageH + "px";
     outer.style.width = (wide ? pageW * 2 : pageW) + "px";
     outer.style.setProperty("--page-w", pageW + "px");
+    outer.style.setProperty("--book-shift", "0px");
     outer.classList.toggle("single", perView === 1 || !wide);
   }
 
@@ -2761,6 +2911,7 @@ window.Scrapbook = (function () {
     var curl = document.getElementById("sb-curl");
     if (curl) curl.classList.toggle("off", !canGo(1) || viewIndex === 0);
     applySize();
+    schedulePreTurn();
   }
 
   /* =======================================================================
@@ -2809,15 +2960,33 @@ window.Scrapbook = (function () {
      ======================================================================= */
   var STRIPS = 0;
 
+  /* How finely the sheet is cut. More strips is a smoother curve and more
+     for the browser to draw, and what a given phone or laptop can afford
+     is not knowable up front — so the turn measures its own frame pacing
+     and settles on a number, the same way the 3D opening does. */
+  var stripPref = null;
+
   function stripCount() {
-    return (window.matchMedia && window.matchMedia("(max-width: 760px)").matches) ? 11 : 18;
+    if (stripPref === null) {
+      var small = window.matchMedia && window.matchMedia("(max-width: 760px)").matches;
+      stripPref = small ? 7 : 10;
+    }
+    return stripPref;
   }
 
-  /* cut a leaf into strips, each one a window onto the same page */
-  function buildLeafStrips(leaf, pageNode, hingeRight) {
-    leaf.innerHTML = "";
-    if (!pageNode) { leaf.dataset.empty = "1"; return; }
-    delete leaf.dataset.empty;
+  function tuneStrips(avgFrameMs) {
+    if (avgFrameMs > 28 && stripPref > 5) stripPref -= 2;
+    else if (avgFrameMs < 15 && stripPref < 13) stripPref += 1;
+  }
+
+  /* Cut a page into strips, each one a window onto the same page.
+
+     This is the expensive part of a turn — a page cloned once per strip —
+     so it is done ahead of time, while she is looking at the spread, and
+     the turn itself only has to adopt the result. */
+  function buildStripFragment(pageNode, hingeRight) {
+    if (!pageNode) return null;
+    var frag = document.createDocumentFragment();
     STRIPS = stripCount();
     var d = 100 / STRIPS;
     for (var i = 0; i < STRIPS; i++) {
@@ -2835,19 +3004,54 @@ window.Scrapbook = (function () {
       inner.appendChild(clone);
       strip.appendChild(inner);
       strip.appendChild(el("sb-strip-shade"));
-      leaf.appendChild(strip);
+      frag.appendChild(strip);
     }
+    return frag;
   }
 
-  /* how dark, and how much sheen, a bit of sheet at this angle carries */
-  function shadeStop(a) {
-    var dark  = Math.max(0, 0.60 * (1 - Math.cos(a)));
-    var sheen = Math.max(0, 0.26 * Math.pow(Math.sin(a), 3));
-    /* one colour that already carries both, so the stops interpolate */
-    var r = Math.round(30 + (255 - 30) * (sheen / (sheen + dark + 0.0001)));
-    var g = Math.round(14 + (248 - 14) * (sheen / (sheen + dark + 0.0001)));
-    var b = Math.round(22 + (242 - 22) * (sheen / (sheen + dark + 0.0001)));
-    return "rgba(" + r + "," + g + "," + b + "," + (dark + sheen).toFixed(3) + ")";
+  function fillLeaf(leaf, frag) {
+    leaf.innerHTML = "";
+    if (!frag) { leaf.dataset.empty = "1"; return; }
+    delete leaf.dataset.empty;
+    leaf.appendChild(frag);
+  }
+
+  /* what the next turn will need, built during the quiet in between */
+  var preTurn = null, preTimer = null;
+
+  function pagesForTurn(dir) {
+    if (!views.length || !canGo(dir)) return null;
+    var from = views[viewIndex], to = views[viewIndex + dir];
+    if (perView === 1) return { lift: pageEls[from[0]], back: null, aR: false, bR: dir > 0 };
+    if (dir > 0) return {
+      lift: pageEls[from[from.length - 1]], back: pageEls[to[0]], aR: false, bR: true };
+    return { lift: pageEls[from[0]], back: pageEls[to[to.length - 1]], aR: true, bR: false };
+  }
+
+  function schedulePreTurn() {
+    clearTimeout(preTimer);
+    preTurn = null;
+    preTimer = setTimeout(function () {
+      if (flip.on || turning) return;
+      var w = pagesForTurn(1);
+      if (!w) return;
+      preTurn = {
+        at: viewIndex,
+        a: buildStripFragment(w.lift, w.aR),
+        b: buildStripFragment(w.back, w.bR),
+      };
+    }, 260);
+  }
+
+  /* How dark a bit of sheet at this angle is. Rebuilding a gradient
+     string every frame means the browser reparses it every frame, so the
+     gradient is written once in CSS and only these two numbers change. */
+  function shadeAt(a) {
+    return Math.max(0, Math.min(0.82, 0.62 * (1 - Math.cos(a))));
+  }
+  function sheenAt(a) {
+    var sn = Math.sin(a);
+    return Math.max(0, 0.30 * sn * sn * sn);
   }
 
   /* place every strip on the cylinder, and light it by how it faces us */
@@ -2872,14 +3076,15 @@ window.Scrapbook = (function () {
         " rotateY(" + (sign * -aTan * 180 / Math.PI).toFixed(2) + "deg)";
 
       /* A surface turned away from us loses light. Shading each strip
-         flat would band the sheet, so every strip is a gradient running
-         from its own angle to the next one's — the joins then match and
-         the light reads as one continuous curve. */
+         flat would band the sheet, so every strip runs from its own angle
+         to the next one's — the joins then match and the light reads as
+         one continuous curve. */
       var aEnd = A - kappa * (s + d);
-      var shade = st.lastChild;
-      var g0 = shadeStop(aTan), g1 = shadeStop(aEnd);
-      shade.style.background =
-        "linear-gradient(" + (hingeRight ? 270 : 90) + "deg," + g0 + "," + g1 + ")";
+      var st2 = st.style;
+      st2.setProperty("--d0", shadeAt(aTan).toFixed(3));
+      st2.setProperty("--d1", shadeAt(aEnd).toFixed(3));
+      st2.setProperty("--s0", sheenAt(aTan).toFixed(3));
+      st2.setProperty("--s1", sheenAt(aEnd).toFixed(3));
     }
   }
 
@@ -2894,8 +3099,8 @@ window.Scrapbook = (function () {
     var kappa = (0.95 / W) * Math.sin(Math.PI * p);
 
     var hasB = !!(e.b && !e.b.dataset.empty);
-    e.a.style.visibility = half ? "visible" : "hidden";
-    e.b.style.visibility = (!half && hasB) ? "visible" : "hidden";
+    e.a.classList.toggle("on", half);
+    e.b.classList.toggle("on", !half && hasB);
 
     if (half) {
       layoutLeaf(e.a, Math.PI * p, kappa, W, flip.aHingeRight);
@@ -2905,6 +3110,10 @@ window.Scrapbook = (function () {
 
     e.outer.style.setProperty("--flip-p", p.toFixed(4));
     e.outer.style.setProperty("--flip-lift", Math.sin(Math.PI * p).toFixed(4));
+    if (flip.shift) {
+      e.outer.style.setProperty("--book-shift",
+        (flip.shift * (1 - p)).toFixed(2) + "px");
+    }
   }
 
   function beginTurn(dir) {
@@ -2940,8 +3149,14 @@ window.Scrapbook = (function () {
     flip.aHingeRight = (dir < 0 && perView === 2);
     flip.bHingeRight = (dir > 0);
 
-    buildLeafStrips(e.a, lifting, flip.aHingeRight);
-    buildLeafStrips(e.b, backside, flip.bHingeRight);
+    if (dir > 0 && preTurn && preTurn.at === viewIndex) {
+      fillLeaf(e.a, preTurn.a);
+      fillLeaf(e.b, preTurn.b);
+    } else {
+      fillLeaf(e.a, buildStripFragment(lifting, flip.aHingeRight));
+      fillLeaf(e.b, buildStripFragment(backside, flip.bHingeRight));
+    }
+    preTurn = null;
 
     pageEls.forEach(function (p) {
       if (p === staying)  { p.classList.add("on"); setSlot(p, perView === 1 ? "solo" : stayingSlot); }
@@ -2950,9 +3165,15 @@ window.Scrapbook = (function () {
     });
 
     flip.on = true; flip.dir = dir; flip.from = viewIndex; flip.to = viewIndex + dir;
+    var scr = document.getElementById("screen-scrapbook");
+    if (scr) scr.classList.add("sb-turning");
     e.outer.classList.add("flipping");
     e.outer.classList.toggle("flip-back", dir < 0);
+    /* The book takes its new width at once, and slides so the spine
+       stays exactly where it was — otherwise opening the cover drags the
+       whole book sideways under the turning sheet. */
     var toWide = perView === 2 && views[flip.to].length === 2;
+    flip.shift = spineOffset(flip.from) - spineOffset(flip.to);
     e.outer.style.setProperty("--page-w", pageW + "px");
     e.outer.style.width = (toWide ? pageW * 2 : pageW) + "px";
     e.outer.classList.toggle("single", perView === 1 || !toWide);
@@ -2963,25 +3184,28 @@ window.Scrapbook = (function () {
   function endTurn(complete) {
     var e = els();
     if (!flip.on) return;
-    if (e.a) { e.a.innerHTML = ""; e.a.style.visibility = ""; delete e.a.dataset.empty; }
-    if (e.b) { e.b.innerHTML = ""; e.b.style.visibility = ""; delete e.b.dataset.empty; }
+    if (e.a) { e.a.innerHTML = ""; e.a.classList.remove("on"); delete e.a.dataset.empty; }
+    if (e.b) { e.b.innerHTML = ""; e.b.classList.remove("on"); delete e.b.dataset.empty; }
     if (e.outer) {
       e.outer.classList.remove("flipping", "flip-back");
       ["--flip-p", "--flip-lift"].forEach(function (v) { e.outer.style.removeProperty(v); });
     }
+    var scr = document.getElementById("screen-scrapbook");
+    if (scr) scr.classList.remove("sb-turning");
     if (complete) viewIndex = flip.to;
-    flip.on = false;
+    flip.on = false; flip.shift = 0;
     renderView();
   }
 
   function settle(to, done) {
     var from = flip.p;
     var dist = Math.abs(to - from);
-    var dur = Math.max(320, Math.min(1000, dist * 950));
-    var t0 = null;
+    var dur = Math.max(280, Math.min(640, dist * 620));
+    var t0 = null, frames = 0;
     turning = true;
     (function step(now) {
       if (t0 === null) t0 = now;
+      frames++;
       var k = Math.min(1, (now - t0) / dur);
       /* paper does not snap — it decelerates long and settles */
       var eased = k < 0.5
@@ -2989,7 +3213,12 @@ window.Scrapbook = (function () {
         : 1 - Math.pow(-2 * k + 2, 3) / 2;
       setFlipProgress(from + (to - from) * eased);
       if (k < 1) requestAnimationFrame(step);
-      else { turning = false; done(); }
+      else {
+        turning = false;
+        /* a long settle is a fair sample of what this device can do */
+        if (dist > 0.5 && frames > 3) tuneStrips((now - t0) / frames);
+        done();
+      }
     })(performance.now());
   }
 

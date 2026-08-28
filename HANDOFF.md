@@ -37,7 +37,10 @@ Concretely, things he has rejected:
   surface." The turn is now a real cylinder: each leaf is cut into vertical
   strips and every strip is placed on a bending sheet, so the free edge
   trails the spine the way paper does. Do not flatten it back to one
-  rotating element.
+  rotating element. It is also self-tuning: it watches its own frame pacing
+  and picks a strip count the device can afford. If it ever feels heavy,
+  profile it rather than simplifying the mechanic — filters and drop
+  shadows inside a moving sheet were the expensive part, not the maths.
 - A grid of identical frames. He wants variety, and he wants the composition
   to breathe: *"the goal is not to have the maximum of photos possible, the
   goal is everything have to look perfect and aesthetically attracting."*

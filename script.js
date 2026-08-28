@@ -1396,11 +1396,8 @@ document.getElementById("sb-lb-close").addEventListener("click", () => Scrapbook
 document.getElementById("sb-lightbox").addEventListener("click", (e) => {
   if (e.target.id === "sb-lightbox") Scrapbook.closeLightbox();
 });
-/* the ribbon marker closes the book — there is no bar of controls */
-document.getElementById("sb-ribbon").addEventListener("click", () => {
-  stopDioramas();
-  pageTurn("hub", startHub);
-});
+/* the book has no controls on it at all — the way out is the button on
+   its back cover, which calls this */
 window.leaveScrapbook = () => {
   stopDioramas();
   pageTurn("hub", startHub);

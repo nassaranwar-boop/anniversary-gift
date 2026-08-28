@@ -671,8 +671,7 @@ img{-webkit-user-drag:none; user-select:none;}
     0 12px 26px rgba(72,30,44,.20),
     0 1px 0 rgba(255,236,242,.28) inset,
     0 -2px 6px rgba(52,16,28,.35) inset;
-  /* the book changes shape as the cover opens */
-  transition:width .62s cubic-bezier(.32,.72,.24,1);
+  transform:translateX(var(--book-shift,0px));
   animation:sbBookIn .8s var(--ease-out);
 }
 @keyframes sbBookIn{from{opacity:0; transform:translateY(18px) scale(.95);} to{opacity:1;}}
@@ -796,12 +795,23 @@ img{-webkit-user-drag:none; user-select:none;}
   left:0 !important; width:100% !important; display:block !important;
   animation:none !important;
 }
+/* A turning sheet is drawn once per strip, so anything expensive to
+   paint is paid for many times over. Drop-shadows are the worst of it
+   and nobody can see them on a page that is moving — the box-shadows
+   that give the collage its depth stay. */
+.sb-page.in-leaf *,
+.sb-page.in-leaf{filter:none !important; box-shadow:none !important;}
+.sb-page.in-leaf .sb-fl-mote{display:none;}
 
 .sb-leaf{
   position:absolute; top:0; height:100%; width:var(--page-w,50%);
   transform-style:preserve-3d;
-  z-index:12; pointer-events:none; visibility:hidden;
+  z-index:12; pointer-events:none;
+  /* out of the render tree entirely when it is not the one on screen —
+     a hidden leaf full of promoted layers still costs to composite */
+  display:none;
 }
+.sb-leaf.on{display:block;}
 .sb-leaf-a{right:0;}
 .sb-leaf-b{left:0;}
 .sb-book-outer.flip-back .sb-leaf-a{right:auto; left:0;}
@@ -810,11 +820,24 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .sb-strip{
   position:absolute; top:0; height:100%;
-  overflow:hidden; will-change:transform;
+  overflow:hidden;
+  transform-style:flat;
   backface-visibility:hidden; -webkit-backface-visibility:hidden;
 }
 .sb-strip-inner{position:absolute; top:0; height:100%;}
-.sb-strip-shade{position:absolute; inset:0; z-index:40; pointer-events:none;}
+/* the gradient is written once; only the four numbers in it change */
+.sb-strip-shade{
+  position:absolute; inset:0; z-index:40; pointer-events:none;
+  transform:translateZ(0);
+  background:
+    linear-gradient(90deg, rgba(255,250,244,var(--s0,0)), rgba(255,250,244,var(--s1,0))),
+    linear-gradient(90deg, rgba(32,14,22,var(--d0,0)), rgba(32,14,22,var(--d1,0)));
+}
+.sb-book-outer.flip-back .sb-strip-shade{
+  background:
+    linear-gradient(270deg, rgba(255,250,244,var(--s0,0)), rgba(255,250,244,var(--s1,0))),
+    linear-gradient(270deg, rgba(32,14,22,var(--d0,0)), rgba(32,14,22,var(--d1,0)));
+}
 
 /* the paper's own thickness, caught along the leading edge */
 .sb-strip:first-child::after{
@@ -858,21 +881,6 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-curl.off{display:none;}
 .sb-book-outer.flipping .sb-curl{display:none;}
 
-/* the ribbon marker — pull it and the book closes */
-.sb-ribbon{
-  position:absolute; top:-10px; right:11%; z-index:14;
-  width:26px; height:74px; padding:0; border:none; cursor:pointer;
-  background:linear-gradient(180deg,#b8324f 0%,#8e2440 62%,#6f1b32 100%);
-  box-shadow:0 6px 14px rgba(60,10,24,.42), 0 1px 0 rgba(255,255,255,.28) inset;
-  clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%);
-  transition:height .3s var(--ease-out), filter .3s ease;
-}
-.sb-ribbon:hover{height:88px; filter:brightness(1.08);}
-.sb-ribbon:active{height:80px;}
-.sb-ribbon::after{
-  content:""; position:absolute; left:35%; top:8%; width:14%; height:70%;
-  background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,0));
-}
 /* =========================================================
    THE PIECES ON A PAGE
    ========================================================= */
@@ -1118,6 +1126,72 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-label2-line.l1{font-size:4.2cqw; letter-spacing:.5px;}
 .sb-label2-line.l2{font-size:2cqw; letter-spacing:1.4px; opacity:.8;}
 
+/* everything else holds still while a page is turning, so the sheet gets
+   the whole frame budget */
+#screen-scrapbook.sb-turning .sb-fl-sway,
+#screen-scrapbook.sb-turning .sb-fl-stem,
+#screen-scrapbook.sb-turning .sb-fl-leaf,
+#screen-scrapbook.sb-turning .sb-fl-bloom,
+#screen-scrapbook.sb-turning .sb-fl-petal,
+#screen-scrapbook.sb-turning .sb-fl-mote,
+#screen-scrapbook.sb-turning .sb-curl,
+#screen-scrapbook.sb-turning .sb-map-pin{animation-play-state:paused !important;}
+
+/* ---- the flowers, alive ---- */
+.sb-flowers{
+  transform:rotate(var(--rot,0deg)); pointer-events:none; z-index:2;
+  filter:drop-shadow(0 6px 10px rgba(40,16,26,.34));
+}
+.sb-flowers svg{width:100%; height:auto; display:block; overflow:visible;}
+
+.sb-fl-sway{
+  transform-box:fill-box; transform-origin:50% 100%;
+  animation:sbSway var(--dur,9s) ease-in-out var(--delay,0s) infinite alternate;
+}
+@keyframes sbSway{
+  from{transform:rotate(calc(var(--tilt,2deg) * -1)) translateY(.4px);}
+  to  {transform:rotate(var(--tilt,2deg)) translateY(-.4px);}
+}
+
+/* the stems breathe a little against the sway */
+.sb-fl-stem{
+  transform-box:fill-box; transform-origin:50% 100%;
+  animation:sbStem 6.5s ease-in-out var(--d,0s) infinite alternate;
+}
+@keyframes sbStem{from{transform:rotate(-.9deg);} to{transform:rotate(.9deg);}}
+
+.sb-fl-leaf{
+  transform-box:fill-box; transform-origin:0% 50%;
+  animation:sbLeaf var(--dur,5s) ease-in-out var(--d,0s) infinite alternate;
+}
+@keyframes sbLeaf{from{transform:rotate(-7deg) scaleY(.94);} to{transform:rotate(7deg) scaleY(1.06);}}
+
+/* each head opens and closes on its own slow count */
+.sb-fl-bloom{
+  transform-box:fill-box; transform-origin:50% 50%;
+  animation:sbBloomBreathe var(--dur,6s) ease-in-out var(--d,0s) infinite alternate;
+}
+@keyframes sbBloomBreathe{
+  from{transform:scale(.93) rotate(-3deg);}
+  to  {transform:scale(1.07) rotate(3deg);}
+}
+.sb-fl-petal{
+  transform-box:fill-box; transform-origin:50% 100%;
+  animation:sbPetal 5.2s ease-in-out var(--d,0s) infinite alternate;
+}
+@keyframes sbPetal{from{transform:scale(.96);} to{transform:scale(1.05);}}
+
+.sb-fl-mote{
+  animation:sbMote var(--dur,8s) linear var(--d,0s) infinite;
+  opacity:0;
+}
+@keyframes sbMote{
+  0%  {opacity:0; transform:translate(0,0) scale(.6);}
+  14% {opacity:.9;}
+  70% {opacity:.5;}
+  100%{opacity:0; transform:translate(var(--dx,8px),-26px) scale(1.15);}
+}
+
 /* ---- stickers ---- */
 .sb-sticker{transform:rotate(var(--rot,0deg)); pointer-events:none; z-index:2;}
 .sb-sticker img{width:100%; height:auto; display:block; filter:drop-shadow(0 6px 12px rgba(20,14,6,.4));}
@@ -1333,6 +1407,17 @@ img{-webkit-user-drag:none; user-select:none;}
   font-family:'Playfair Display',serif; font-size:9px; color:rgba(110,96,72,.6);
   background:repeating-linear-gradient(135deg,#efece0 0 4px,#ddd8c8 4px 8px);
 }
+.sb-map-pin.is-note{
+  background:linear-gradient(165deg,#a8506a,#7a2f48);
+  display:flex; align-items:center; justify-content:center;
+  animation:sbPinPop .5s var(--ease-pop) both, sbPinGlow 3.4s ease-in-out 1s infinite;
+}
+@keyframes sbPinGlow{
+  0%,100%{box-shadow:0 4px 9px rgba(20,24,20,.45), 0 0 0 0 rgba(200,110,140,.5);}
+  50%    {box-shadow:0 4px 12px rgba(20,24,20,.5), 0 0 0 7px rgba(200,110,140,0);}
+}
+.sb-map-pin-note{font-size:9px; color:#ffe6ef; line-height:1;}
+.sb-map-pin.is-note::after{border-top-color:#7a2f48;}
 .sb-map-pin::after{
   content:""; position:absolute; left:50%; bottom:-4px; transform:translateX(-50%);
   border:4px solid transparent; border-top-color:#fdfdfa;
@@ -1500,6 +1585,20 @@ img{-webkit-user-drag:none; user-select:none;}
   border:none; cursor:pointer; font-size:12px; color:#3c3a30; background:rgba(255,255,255,.8);
 }
 .sb-pin-photo{aspect-ratio:1/1; border-radius:10px; overflow:hidden; background:#ded7c6;}
+.sb-pin-card.note-only .sb-pin-photo{
+  aspect-ratio:auto; background:linear-gradient(165deg,#fdf6f2,#f4e6e2);
+  box-shadow:inset 0 0 0 1px rgba(170,120,130,.3);
+}
+.sb-pin-note{
+  display:block; padding:20px 18px 18px; text-align:center;
+}
+.sb-pin-note-mark{
+  display:block; font-size:16px; color:#a8506a; margin-bottom:8px;
+}
+.sb-pin-note p{
+  margin:0; font-family:'Playfair Display',serif; font-style:italic;
+  font-size:13.5px; line-height:1.65; color:#5c3340;
+}
 .sb-pin-photo img{width:100%; height:100%; object-fit:cover; display:block;}
 .sb-pin-photo .sb-photo-empty{width:100%; height:100%;}
 .sb-pin-date{margin:11px 4px 2px; font-family:var(--font-body); font-size:8px; letter-spacing:1.6px; text-transform:uppercase; color:#8a8574;}
@@ -1572,6 +1671,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 @media (prefers-reduced-motion: reduce){
   .sb-bq,.sb-map-pin,.sb-intro-hint,.sb-song-disc,.sb-curl,.sb-cover-hint-corner,
+  .sb-fl-sway,.sb-fl-stem,.sb-fl-leaf,.sb-fl-bloom,.sb-fl-petal,.sb-fl-mote,
   #screen-scrapbook.sb-drawer-on .sb-drawer > *{animation:none !important;}
   .sb-intro{transition:opacity .2s linear;}
 }

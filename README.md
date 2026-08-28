@@ -72,8 +72,9 @@ There is no toolbar and no "open" button. The book arrives closed on its
 cover; take the corner and **pull it across** — a click alone will not turn
 it, the same as a real book. The sheet lifts, bends as it passes the
 upright, turns about the spine and settles, and the book widens as the
-cover comes over. The arrow keys work too. The ribbon marker closes the
-book, and the back cover carries a button through to the games.
+cover comes over. The arrow keys work too. There is nothing sitting on top of the
+book at all; the way out is the button on its back cover, through to the
+games.
 
 Under the hood the sheet is a cylinder, not a board on a hinge. Each leaf
 is cut into vertical strips, and every strip is placed along a bending
@@ -82,6 +83,15 @@ sheet whose tangent angle falls off with distance from the spine
 paper. Curvature is nil at either end of the turn and greatest halfway
 through. Shading runs as a gradient across each strip so the joins match
 and the light reads as one curve.
+
+Drawing the page once per strip is the expensive part, so: the strips for
+the next turn are built ahead of time while she is reading the spread, the
+shading changes four numbers rather than rebuilding a gradient, drop
+shadows and filters are dropped inside a sheet that is moving, and the
+turn measures its own frame pacing and settles on however many strips the
+device can actually afford (5 to 13). The book also slides as it changes
+width so the spine stays put, instead of dragging sideways under the
+turning sheet.
 
 Two leaves, not one with two faces: the first swings away, the second
 comes down on the other side. Nothing depends on `backface-visibility`,
