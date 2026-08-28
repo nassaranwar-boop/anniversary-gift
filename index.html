@@ -38,38 +38,34 @@
     </div>
   </section>
 
-  <!-- SCREEN 0c — THE LETTER -->
-  <section id="screen-letter" class="screen ancient-bg">
-    <div class="letter-scroll">
-      <div class="letter-scroll-text">
-        <p class="letter-heading">My Dearest,</p>
-        <p class="letter-body" id="letter-body"></p>
-        <p class="letter-sign" id="letter-sign">— Anwar 💗</p>
-        <button id="letter-continue" class="btn-ancient letter-continue">Continue 📖</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- SCREEN 0d — THE SCRAPBOOK -->
+  <!-- SCREEN 0c — THE MEMORY BOOK -->
   <section id="screen-scrapbook" class="screen">
-    <!-- the cover, with butterflies over it -->
-    <div class="sb-cover" id="sb-cover-paper">
-      <canvas id="sb-flies" class="sb-flies"></canvas>
-      <div class="sb-candle" aria-hidden="true">
-        <div class="sb-flame"></div>
-        <div class="sb-wax"></div>
-      </div>
+
+    <!-- 1. the painted opening: a candle, and butterflies around the flame -->
+    <div class="sb-intro" id="sb-intro">
+      <canvas id="sb-intro-canvas" class="sb-intro-canvas"></canvas>
+      <p class="sb-intro-hint" id="sb-intro-hint">tap to begin</p>
+    </div>
+
+    <!-- 2. the cover -->
+    <div class="sb-cover" id="sb-cover">
       <div class="sb-cover-card" id="sb-cover-card">
-        <p class="sb-cover-kicker">— a love letter —</p>
-        <h1 class="sb-cover-title">for you,</h1>
-        <p class="sb-cover-sub">with love</p>
+        <div class="sb-cover-label">
+          <p class="sb-cover-kicker">— a love letter —</p>
+          <h1 class="sb-cover-title">for you,</h1>
+          <p class="sb-cover-sub">with love</p>
+        </div>
       </div>
       <button id="sb-open" class="sb-open-btn">open it 💌</button>
     </div>
 
-    <!-- the book itself -->
-    <div class="sb-book">
-      <div class="sb-stack" id="sb-stack"></div>
+    <!-- 3. the book itself -->
+    <div class="sb-book" id="sb-book">
+      <div class="sb-book-outer" id="sb-book-outer">
+        <div class="sb-spread" id="sb-spread"></div>
+        <div class="sb-spine" aria-hidden="true"></div>
+        <div class="sb-turnleaf" id="sb-turnleaf" aria-hidden="true"></div>
+      </div>
       <div class="sb-nav">
         <button class="sb-arrow" id="sb-prev" aria-label="Previous page">‹</button>
         <div class="sb-dots" id="sb-dots"></div>
@@ -78,7 +74,31 @@
       <button id="sb-continue" class="btn-ancient sb-continue">Close the book 💛</button>
     </div>
 
-    <!-- a photo lifted out of the page -->
+    <!-- 4. the little button bottom-right, and the drawer it opens -->
+    <button id="sb-extras-btn" class="sb-extras-btn" aria-label="Open your bouquet">
+      <span class="sb-extras-ico">✿</span>
+    </button>
+    <div class="sb-drawer" id="sb-drawer" aria-hidden="true"></div>
+
+    <!-- 5. overlays -->
+    <div class="sb-modal" id="sb-note-modal" aria-hidden="true">
+      <div class="sb-modal-card">
+        <h3 class="sb-modal-title">A little note</h3>
+        <div class="sb-modal-body" id="sb-note-body"></div>
+        <button class="sb-modal-done" id="sb-note-done">Done</button>
+      </div>
+    </div>
+
+    <div class="sb-modal sb-modal-pin" id="sb-pin-modal" aria-hidden="true">
+      <div class="sb-pin-card">
+        <button class="sb-pin-close" id="sb-pin-close" aria-label="Close">✕</button>
+        <div class="sb-pin-photo" id="sb-pin-photo"></div>
+        <p class="sb-pin-date" id="sb-pin-date"></p>
+        <h3 class="sb-pin-title" id="sb-pin-title"></h3>
+        <p class="sb-pin-place" id="sb-pin-place"></p>
+      </div>
+    </div>
+
     <div class="sb-lightbox" id="sb-lightbox">
       <div class="sb-lb-card">
         <div class="sb-lb-frame"></div>

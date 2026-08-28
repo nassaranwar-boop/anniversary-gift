@@ -25,10 +25,6 @@ const CONFIG = {
    ========================================================= */
 const GATE_CODE = "2207";
 
-// Your letter. Replace this placeholder with your own words —
-// it will reveal itself gently, word by word.
-const LETTER_TEXT = "[This is where your letter to her will appear. Write whatever you want her to read first — it will reveal itself gently, word by word, just like this placeholder is doing right now. Replace this whole paragraph with your own words when you're ready, then sign it below.]";
-
 // Add one object per memory. photo/video are optional — leave null
 // to show the icon instead until you add real files to /assets.
 const MEMORIES = [
@@ -1312,7 +1308,7 @@ function buildEndHearts() {
 }
 
 /* =========================================================
-   ANCIENT BOOK — gate, intro, letter, memories
+   THE GATE — passcode, and the handoff into the memory book
    ========================================================= */
 
 /* ---------- book intro integration ----------
@@ -1345,7 +1341,7 @@ function checkGateCode() {
   const val = input.value.trim();
   if (val === GATE_CODE) {
     bloomSeal();
-    setTimeout(() => { pageTurn("letter", startLetter); }, 900);
+    setTimeout(() => { pageTurn("scrapbook", startDioramas); }, 900);
   } else {
     document.getElementById("gate-error").textContent = "That's not quite right... try again 💭";
     input.classList.remove("shake"); void input.offsetWidth; input.classList.add("shake");
@@ -1383,21 +1379,6 @@ function bloomSeal() {
 document.getElementById("gate-submit").addEventListener("click", checkGateCode);
 document.getElementById("gate-input").addEventListener("keydown", (e) => { if (e.key === "Enter") checkGateCode(); });
 
-/* ---------- letter reveal ---------- */
-function startLetter() {
-  const body = document.getElementById("letter-body");
-  const words = LETTER_TEXT.split(" ");
-  body.innerHTML = words.map((w, i) => `<span class="word" style="animation-delay:${(i*0.055).toFixed(2)}s">${w}&nbsp;</span>`).join("");
-  const totalMs = words.length * 55 + 500;
-  const sign = document.getElementById("letter-sign");
-  const cont = document.getElementById("letter-continue");
-  sign.style.animation = "none"; void sign.offsetWidth;
-  sign.style.animation = "";
-  sign.style.animationDelay = (totalMs/1000).toFixed(2) + "s";
-  cont.style.animation = "none"; void cont.offsetWidth;
-  cont.style.animation = "";
-  cont.style.animationDelay = (totalMs/1000 + 0.6).toFixed(2) + "s";
-}
 /* =========================================================
    THE SCRAPBOOK
    The page logic lives in scrapbook.js; this half only owns the
@@ -1411,9 +1392,6 @@ function stopDioramas() {
 }
 
 /* ---------- wiring ---------- */
-document.getElementById("letter-continue")
-  .addEventListener("click", () => pageTurn("scrapbook", startDioramas));
-
 document.getElementById("sb-open").addEventListener("click", () => Scrapbook.openBook());
 document.getElementById("sb-next").addEventListener("click", () => Scrapbook.next());
 document.getElementById("sb-prev").addEventListener("click", () => Scrapbook.prev());
@@ -2571,7 +2549,7 @@ const HV_SCENES = {
    ✏️  THE ADVENTURE — CUSTOMIZE ME
 
    The closing question and its answers are placeholders, same as
-   LETTER_TEXT. Replace them with what you actually want to ask.
+   the rest of the site. Replace them with what you actually want to ask.
    ========================================================= */
 const QUEST_FINAL = {
   question: "[Replace this with your closing question — the one you actually want to ask her.]",
