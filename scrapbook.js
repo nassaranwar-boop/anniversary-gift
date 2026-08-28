@@ -56,10 +56,10 @@ window.Scrapbook = (function () {
     map: {
       city: "Marrakech",
       pins: [
-        { x: 50, y: 50, date: "the first evening",  title: "Jemaa el-Fna",     place: "the big square, at dusk" },
-        { x: 30, y: 66, date: "the blue morning",   title: "Jardin Majorelle", place: "Marrakech" },
-        { x: 70, y: 40, date: "the long afternoon", title: "The souks",        place: "the old medina" },
-        { x: 58, y: 78, date: "the quiet one",      title: "Menara gardens",   place: "under the olive trees" },
+        { x: 50, y: 54, date: "the first evening",  title: "Jemaa el-Fna",     place: "the big square, at dusk" },
+        { x: 31, y: 20, date: "the blue morning",   title: "Jardin Majorelle", place: "north of Guéliz" },
+        { x: 69, y: 31, date: "the long afternoon", title: "The souks",        place: "inside the medina walls" },
+        { x: 17, y: 79, date: "the quiet one",      title: "Menara gardens",   place: "under the olive trees" },
       ],
     },
 
@@ -103,20 +103,39 @@ window.Scrapbook = (function () {
     return function () { x = Math.sin(x * 7919 + 4013) * 65536; return x - Math.floor(x); };
   }
 
-  /* Crumpled paper: broad triangular facets of light and shade, hard
-     crease lines where they meet, and a vignette so the sheet has body. */
-  function crumpled(base, hi, lo, seed, w, h) {
-    return tex(w || 480, h || 340, function (ctx, W, H) {
+  /* Crumpled paper.
+
+     Facets alone read as low-poly plastic, so the sheet is built in
+     layers: broad soft pools of light and shade for the body of the
+     crumple, faceting at low contrast over the top, then fine creases,
+     fibre grain, a stain or two, and darkening into the edges. */
+  function crumpled(base, hi, lo, seed, w, h, opts) {
+    opts = opts || {};
+    return tex(w || 520, h || 380, function (ctx, W, H) {
       var r = rnd(seed);
       ctx.fillStyle = base; ctx.fillRect(0, 0, W, H);
 
-      var COLS = 11, ROWS = 8, grid = [];
+      /* 1 — the soft body: big overlapping pools, no hard edges */
+      for (var p = 0; p < 26; p++) {
+        var px = r() * W, py = r() * H, pr = Math.max(W, H) * (0.10 + r() * 0.26);
+        var g = ctx.createRadialGradient(px, py, 0, px, py, pr);
+        var light = r() > 0.5;
+        g.addColorStop(0, light ? hi : lo);
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.globalAlpha = 0.20 + r() * 0.26;
+        ctx.fillStyle = g;
+        ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+      }
+      ctx.globalAlpha = 1;
+
+      /* 2 — faceting, kept quiet so it reads as structure not polygons */
+      var COLS = 13, ROWS = 9, grid = [];
       for (var gy = 0; gy <= ROWS; gy++) {
         grid[gy] = [];
         for (var gx = 0; gx <= COLS; gx++) {
           grid[gy][gx] = [
-            (gx / COLS) * W + (r() - 0.5) * (W / COLS) * 0.75,
-            (gy / ROWS) * H + (r() - 0.5) * (H / ROWS) * 0.75,
+            (gx / COLS) * W + (r() - 0.5) * (W / COLS) * 0.8,
+            (gy / ROWS) * H + (r() - 0.5) * (H / ROWS) * 0.8,
           ];
         }
       }
@@ -126,33 +145,117 @@ window.Scrapbook = (function () {
           var p01 = grid[cy + 1][cx], p11 = grid[cy + 1][cx + 1];
           [[p00, p10, p11], [p00, p11, p01]].forEach(function (tri) {
             ctx.fillStyle = r() > 0.5 ? hi : lo;
-            ctx.globalAlpha = 0.07 + r() * 0.13;
+            ctx.globalAlpha = 0.05 + r() * 0.10;
             ctx.beginPath();
             ctx.moveTo(tri[0][0], tri[0][1]);
             ctx.lineTo(tri[1][0], tri[1][1]);
             ctx.lineTo(tri[2][0], tri[2][1]);
             ctx.closePath(); ctx.fill();
           });
-          ctx.globalAlpha = 0.22; ctx.lineWidth = 0.9;
-          ctx.strokeStyle = hi;
-          ctx.beginPath(); ctx.moveTo(p00[0], p00[1]); ctx.lineTo(p11[0], p11[1]); ctx.stroke();
-          ctx.globalAlpha = 0.16;
-          ctx.strokeStyle = lo;
-          ctx.beginPath(); ctx.moveTo(p00[0] + 1, p00[1] + 1); ctx.lineTo(p11[0] + 1, p11[1] + 1); ctx.stroke();
         }
       }
       ctx.globalAlpha = 1;
 
-      for (var g = 0; g < W * 3; g++) {
-        ctx.fillStyle = r() > 0.5 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
-        ctx.fillRect(r() * W, r() * H, 1 + r() * 2, 1);
+      /* 3 — creases: long, slightly kinked lines, lit on one side */
+      for (var c2 = 0; c2 < 26; c2++) {
+        var x0 = r() * W, y0 = r() * H;
+        var ang = r() * 6.28, len = Math.max(W, H) * (0.16 + r() * 0.4);
+        var kink = (r() - 0.5) * 40;
+        ctx.lineWidth = 0.8 + r() * 0.8;
+        ctx.globalAlpha = 0.16 + r() * 0.16;
+        ctx.strokeStyle = hi;
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.quadraticCurveTo(x0 + Math.cos(ang) * len * 0.5 + kink,
+                             y0 + Math.sin(ang) * len * 0.5 - kink,
+                             x0 + Math.cos(ang) * len, y0 + Math.sin(ang) * len);
+        ctx.stroke();
+        ctx.globalAlpha = 0.13 + r() * 0.12;
+        ctx.strokeStyle = lo;
+        ctx.beginPath();
+        ctx.moveTo(x0 + 1.4, y0 + 1.4);
+        ctx.quadraticCurveTo(x0 + Math.cos(ang) * len * 0.5 + kink + 1.4,
+                             y0 + Math.sin(ang) * len * 0.5 - kink + 1.4,
+                             x0 + Math.cos(ang) * len + 1.4, y0 + Math.sin(ang) * len + 1.4);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+
+      /* 4 — an optional printed motif, under the wear */
+      if (opts.print) opts.print(ctx, W, H, r);
+
+      /* 5 — fibre */
+      for (var g2 = 0; g2 < W * 4; g2++) {
+        ctx.fillStyle = r() > 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
+        ctx.fillRect(r() * W, r() * H, 1 + r() * 2.4, 1);
       }
 
-      var v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.2, W / 2, H / 2, Math.max(W, H) * 0.72);
-      v.addColorStop(0, "rgba(0,0,0,0)");
-      v.addColorStop(1, "rgba(0,0,0,0.22)");
+      /* 6 — a couple of soft stains, so no two sheets look printed */
+      for (var st = 0; st < 3; st++) {
+        var sx = r() * W, sy = r() * H, sr = Math.min(W, H) * (0.06 + r() * 0.14);
+        var sg = ctx.createRadialGradient(sx, sy, sr * 0.2, sx, sy, sr);
+        sg.addColorStop(0, "rgba(96,66,34,0.07)");
+        sg.addColorStop(0.7, "rgba(96,66,34,0.035)");
+        sg.addColorStop(1, "rgba(96,66,34,0)");
+        ctx.fillStyle = sg;
+        ctx.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
+      }
+
+      /* 7 — the sheet darkens into its edges and lifts in the middle */
+      var v = ctx.createRadialGradient(W * 0.46, H * 0.42, Math.min(W, H) * 0.16,
+                                       W / 2, H / 2, Math.max(W, H) * 0.76);
+      v.addColorStop(0, "rgba(255,255,255,0.07)");
+      v.addColorStop(0.55, "rgba(0,0,0,0)");
+      v.addColorStop(1, "rgba(0,0,0,0.26)");
       ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+
+      var edge = 26;
+      [["top", 0, 0, W, edge, 0, 0, 0, edge],
+       ["bot", 0, H - edge, W, edge, 0, H, 0, H - edge],
+       ["lft", 0, 0, edge, H, 0, 0, edge, 0],
+       ["rgt", W - edge, 0, edge, H, W, 0, W - edge, 0]].forEach(function (e) {
+        var eg = ctx.createLinearGradient(e[5], e[6], e[7], e[8]);
+        eg.addColorStop(0, "rgba(0,0,0,0.18)");
+        eg.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = eg;
+        ctx.fillRect(e[1], e[2], e[3], e[4]);
+      });
     });
+  }
+
+  /* ---- printed motifs, passed into crumpled() ---- */
+
+  /* a tiny scattered floral, the kind on old wrapping paper */
+  function ditsyFloral(colour) {
+    return function (ctx, W, H, r) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      for (var i = 0; i < 90; i++) {
+        var x = r() * W, y = r() * H, s = 3 + r() * 4;
+        ctx.fillStyle = colour;
+        for (var k = 0; k < 5; k++) {
+          var a = (k / 5) * 6.28;
+          ctx.beginPath();
+          ctx.ellipse(x + Math.cos(a) * s * 0.7, y + Math.sin(a) * s * 0.7, s * 0.5, s * 0.34, a, 0, 6.29);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    };
+  }
+
+  /* mattress ticking — narrow stripes in pairs */
+  function ticking(colour) {
+    return function (ctx, W, H, r) {
+      ctx.save();
+      ctx.globalAlpha = 0.13;
+      ctx.fillStyle = colour;
+      for (var x = 0; x < W; x += 26) {
+        ctx.fillRect(x, 0, 3, H);
+        ctx.fillRect(x + 6, 0, 1.4, H);
+      }
+      ctx.restore();
+    };
   }
 
   /* Torn newsprint: grey column rules and illegible type, so it reads as
@@ -290,58 +393,86 @@ window.Scrapbook = (function () {
     });
   }
 
+  /* Chrome lips. Upper and lower are drawn as separate shapes so the
+     cupid's bow and the parting are real geometry rather than a line
+     scratched across a blob. */
   function chromeLips(w) {
-    return tex(w, w * 0.66, function (ctx, W, Hh) {
-      function lipPath() {
+    var h = w * 0.68;
+    return tex(w, h, function (ctx, W, Hh) {
+      var mid = Hh * 0.45;
+
+      function upper() {
         ctx.beginPath();
-        /* upper lip: two arcs meeting at the cupid's bow */
-        ctx.moveTo(W * 0.5, Hh * 0.30);
-        ctx.bezierCurveTo(W * 0.42, Hh * 0.02, W * 0.20, Hh * 0.00, W * 0.10, Hh * 0.20);
-        ctx.bezierCurveTo(W * 0.03, Hh * 0.32, W * 0.00, Hh * 0.40, W * 0.02, Hh * 0.46);
-        /* lower lip, fuller */
-        ctx.bezierCurveTo(W * 0.10, Hh * 0.82, W * 0.32, Hh * 1.00, W * 0.5, Hh * 1.00);
-        ctx.bezierCurveTo(W * 0.68, Hh * 1.00, W * 0.90, Hh * 0.82, W * 0.98, Hh * 0.46);
-        ctx.bezierCurveTo(W * 1.00, Hh * 0.40, W * 0.97, Hh * 0.32, W * 0.90, Hh * 0.20);
-        ctx.bezierCurveTo(W * 0.80, Hh * 0.00, W * 0.58, Hh * 0.02, W * 0.5, Hh * 0.30);
+        ctx.moveTo(W * 0.02, mid);
+        ctx.bezierCurveTo(W * 0.06, Hh * 0.14, W * 0.20, Hh * 0.02, W * 0.30, Hh * 0.10);
+        ctx.bezierCurveTo(W * 0.39, Hh * 0.17, W * 0.44, Hh * 0.30, W * 0.50, Hh * 0.30);
+        ctx.bezierCurveTo(W * 0.56, Hh * 0.30, W * 0.61, Hh * 0.17, W * 0.70, Hh * 0.10);
+        ctx.bezierCurveTo(W * 0.80, Hh * 0.02, W * 0.94, Hh * 0.14, W * 0.98, mid);
+        ctx.bezierCurveTo(W * 0.74, Hh * 0.40, W * 0.26, Hh * 0.40, W * 0.02, mid);
         ctx.closePath();
       }
-      var g = ctx.createLinearGradient(0, 0, W * 0.35, Hh);
-      g.addColorStop(0, "#f2f7fb"); g.addColorStop(0.30, "#a8bccb");
-      g.addColorStop(0.52, "#5a7183"); g.addColorStop(0.72, "#8ea4b6");
-      g.addColorStop(1, "#dbe7f0");
-      ctx.fillStyle = g;
-      lipPath(); ctx.fill();
+      function lower() {
+        ctx.beginPath();
+        ctx.moveTo(W * 0.02, mid);
+        ctx.bezierCurveTo(W * 0.26, Hh * 0.52, W * 0.74, Hh * 0.52, W * 0.98, mid);
+        ctx.bezierCurveTo(W * 0.94, Hh * 0.82, W * 0.72, Hh * 1.00, W * 0.50, Hh * 1.00);
+        ctx.bezierCurveTo(W * 0.28, Hh * 1.00, W * 0.06, Hh * 0.82, W * 0.02, mid);
+        ctx.closePath();
+      }
 
-      /* the parting: a dark seam with a lit edge under it */
+      /* upper lip sits in shadow, lower lip catches the light */
+      var gu = ctx.createLinearGradient(0, 0, W * 0.4, Hh * 0.5);
+      gu.addColorStop(0, "#c8d8e4"); gu.addColorStop(0.32, "#7c93a6");
+      gu.addColorStop(0.62, "#465a6c"); gu.addColorStop(1, "#8aa0b2");
+      ctx.fillStyle = gu; upper(); ctx.fill();
+
+      var gl = ctx.createLinearGradient(W * 0.2, Hh * 0.45, W * 0.75, Hh);
+      gl.addColorStop(0, "#f4f9fd"); gl.addColorStop(0.26, "#c2d3e0");
+      gl.addColorStop(0.58, "#6f8698"); gl.addColorStop(0.82, "#93a9ba");
+      gl.addColorStop(1, "#e3edf5");
+      ctx.fillStyle = gl; lower(); ctx.fill();
+
+      /* the specular streaks that make it read as metal */
       ctx.save();
-      lipPath(); ctx.clip();
-      ctx.strokeStyle = "rgba(18,28,38,0.72)";
-      ctx.lineWidth = Hh * 0.055;
+      lower(); ctx.clip();
+      ctx.fillStyle = "rgba(255,255,255,0.72)";
       ctx.beginPath();
-      ctx.moveTo(W * 0.01, Hh * 0.46);
-      ctx.bezierCurveTo(W * 0.26, Hh * 0.40, W * 0.36, Hh * 0.50, W * 0.5, Hh * 0.50);
-      ctx.bezierCurveTo(W * 0.64, Hh * 0.50, W * 0.74, Hh * 0.40, W * 0.99, Hh * 0.46);
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(255,255,255,0.4)";
-      ctx.lineWidth = Hh * 0.022;
-      ctx.beginPath();
-      ctx.moveTo(W * 0.06, Hh * 0.53);
-      ctx.bezierCurveTo(W * 0.28, Hh * 0.48, W * 0.38, Hh * 0.57, W * 0.5, Hh * 0.57);
-      ctx.bezierCurveTo(W * 0.62, Hh * 0.57, W * 0.72, Hh * 0.48, W * 0.94, Hh * 0.53);
-      ctx.stroke();
-      /* highlights on the lower lip */
-      ctx.fillStyle = "rgba(255,255,255,0.5)";
-      ctx.beginPath();
-      ctx.ellipse(W * 0.34, Hh * 0.76, W * 0.13, Hh * 0.10, -0.25, 0, 6.29);
+      ctx.ellipse(W * 0.33, Hh * 0.70, W * 0.15, Hh * 0.09, -0.22, 0, 6.29);
       ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.32)";
+      ctx.fillStyle = "rgba(255,255,255,0.34)";
       ctx.beginPath();
-      ctx.ellipse(W * 0.68, Hh * 0.22, W * 0.10, Hh * 0.06, 0.3, 0, 6.29);
+      ctx.ellipse(W * 0.66, Hh * 0.66, W * 0.08, Hh * 0.05, 0.2, 0, 6.29);
+      ctx.fill();
+      ctx.fillStyle = "rgba(20,32,44,0.30)";
+      ctx.beginPath();
+      ctx.ellipse(W * 0.50, Hh * 0.98, W * 0.34, Hh * 0.10, 0, 0, 6.29);
       ctx.fill();
       ctx.restore();
-      ctx.strokeStyle = "rgba(30,44,58,0.42)";
-      ctx.lineWidth = Math.max(1, W * 0.012);
-      lipPath(); ctx.stroke();
+
+      ctx.save();
+      upper(); ctx.clip();
+      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.beginPath();
+      ctx.ellipse(W * 0.28, Hh * 0.17, W * 0.11, Hh * 0.05, -0.3, 0, 6.29);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.28)";
+      ctx.beginPath();
+      ctx.ellipse(W * 0.72, Hh * 0.17, W * 0.09, Hh * 0.04, 0.3, 0, 6.29);
+      ctx.fill();
+      ctx.restore();
+
+      /* the parting, dark and thin */
+      ctx.strokeStyle = "rgba(14,24,34,0.85)";
+      ctx.lineWidth = Math.max(1.2, Hh * 0.032);
+      ctx.beginPath();
+      ctx.moveTo(W * 0.03, mid);
+      ctx.bezierCurveTo(W * 0.26, Hh * 0.41, W * 0.74, Hh * 0.41, W * 0.97, mid);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(24,38,50,0.4)";
+      ctx.lineWidth = Math.max(0.8, W * 0.008);
+      upper(); ctx.stroke();
+      lower(); ctx.stroke();
     });
   }
 
@@ -384,8 +515,8 @@ window.Scrapbook = (function () {
           var py = cy + Math.sin(a2) * rr * 0.42;
           var g = ctx.createLinearGradient(
             px - rr * 0.5, py - rr * 0.5, px + rr * 0.5, py + rr * 0.5);
-          function ch(v) { return Math.max(24, Math.min(246, Math.round(v))); }
-          var base = 96 + ring * 14;
+          function ch(v) { return Math.max(20, Math.min(238, Math.round(v))); }
+          var base = 74 + ring * 13;
           g.addColorStop(0,    "rgb(" + ch(base + 96) + "," + ch(base + 104) + "," + ch(base + 112) + ")");
           g.addColorStop(0.42, "rgb(" + ch(base + 8)  + "," + ch(base + 18)  + "," + ch(base + 30)  + ")");
           g.addColorStop(1,    "rgb(" + ch(base - 56) + "," + ch(base - 44) + "," + ch(base - 28) + ")");
@@ -398,8 +529,8 @@ window.Scrapbook = (function () {
           ctx.bezierCurveTo(rr * 0.62, -rr * 0.44, rr * 0.86, rr * 0.26, 0, rr * 0.62);
           ctx.bezierCurveTo(-rr * 0.50, rr * 0.30, -rr * 0.40, -rr * 0.26, 0, 0);
           ctx.fill();
-          ctx.strokeStyle = "rgba(28,40,54,0.34)";
-          ctx.lineWidth = W * 0.008;
+          ctx.strokeStyle = "rgba(18,28,40,0.5)";
+          ctx.lineWidth = W * 0.010;
           ctx.stroke();
           ctx.restore();
         }
@@ -523,34 +654,56 @@ window.Scrapbook = (function () {
         ctx.restore();
       }
 
-      /* a bloom with a darker underside and a lit face */
+      /* A bloom, built in three rings. Each petal is shaded along its
+         own length, which is what stops the head reading as a flat
+         rosette of ellipses. */
+      function petal(x, y, rr, ang, pal, depth) {
+        var ex = x + Math.cos(ang) * rr * depth;
+        var ey = y + Math.sin(ang) * rr * depth;
+        var g = ctx.createLinearGradient(x, y, ex + Math.cos(ang) * rr * 0.5,
+                                                ey + Math.sin(ang) * rr * 0.5);
+        g.addColorStop(0, pal[1]);
+        g.addColorStop(0.55, pal[0]);
+        g.addColorStop(1, pal[2]);
+        ctx.fillStyle = g;
+        ctx.save();
+        ctx.translate(ex, ey);
+        ctx.rotate(ang);
+        ctx.beginPath();
+        ctx.moveTo(-rr * 0.42, 0);
+        ctx.bezierCurveTo(-rr * 0.20, -rr * 0.40, rr * 0.34, -rr * 0.34, rr * 0.52, 0);
+        ctx.bezierCurveTo(rr * 0.34, rr * 0.34, -rr * 0.20, rr * 0.40, -rr * 0.42, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "rgba(150,80,104,0.14)";
+        ctx.lineWidth = rr * 0.03;
+        ctx.stroke();
+        ctx.restore();
+      }
       function bloom(x, y, rr, pal, petals) {
         var spin = r() * 6.28;
-        for (var k = 0; k < petals; k++) {
-          var a2 = spin + (k / petals) * 6.28;
-          ctx.fillStyle = pal[2];
+        var dark = [pal[2], pal[2], pal[2]];
+        for (var k = 0; k < petals; k++)
+          petal(x, y, rr * 1.02, spin + (k / petals) * 6.28, dark, 0.80);
+        for (var k2 = 0; k2 < petals; k2++)
+          petal(x, y, rr * 0.92, spin + 0.34 + (k2 / petals) * 6.28, pal, 0.60);
+        for (var k3 = 0; k3 < Math.max(4, petals - 2); k3++)
+          petal(x, y, rr * 0.62, spin + 0.7 + (k3 / (petals - 2)) * 6.28, pal, 0.34);
+        var cg2 = ctx.createRadialGradient(x - rr * 0.06, y - rr * 0.06, 1, x, y, rr * 0.3);
+        cg2.addColorStop(0, "rgba(255,244,214,0.95)");
+        cg2.addColorStop(1, pal[1]);
+        ctx.fillStyle = cg2;
+        ctx.beginPath(); ctx.arc(x, y, rr * 0.22, 0, 6.29); ctx.fill();
+      }
+      /* gypsophila — the tiny white filler between the big heads */
+      function gyp(x, y, rr) {
+        for (var k = 0; k < 26; k++) {
+          var a = r() * 6.28, d = r() * rr;
+          ctx.fillStyle = "rgba(255,252,246," + (0.5 + r() * 0.45).toFixed(2) + ")";
           ctx.beginPath();
-          ctx.ellipse(x + Math.cos(a2) * rr * 0.80, y + Math.sin(a2) * rr * 0.80,
-                      rr * 0.62, rr * 0.46, a2, 0, 6.29);
+          ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.8, rr * 0.10, 0, 6.29);
           ctx.fill();
         }
-        for (var k2 = 0; k2 < petals; k2++) {
-          var a3 = spin + 0.3 + (k2 / petals) * 6.28;
-          ctx.fillStyle = pal[0];
-          ctx.beginPath();
-          ctx.ellipse(x + Math.cos(a3) * rr * 0.62, y + Math.sin(a3) * rr * 0.62,
-                      rr * 0.56, rr * 0.40, a3, 0, 6.29);
-          ctx.fill();
-          ctx.fillStyle = pal[1];
-          ctx.beginPath();
-          ctx.ellipse(x + Math.cos(a3) * rr * 0.40, y + Math.sin(a3) * rr * 0.40,
-                      rr * 0.30, rr * 0.20, a3, 0, 6.29);
-          ctx.fill();
-        }
-        ctx.fillStyle = pal[1];
-        ctx.beginPath(); ctx.arc(x, y, rr * 0.24, 0, 6.29); ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255,0.4)";
-        ctx.beginPath(); ctx.arc(x - rr * 0.09, y - rr * 0.09, rr * 0.10, 0, 6.29); ctx.fill();
       }
       function cluster(x, y, rr, c1, c2) {
         for (var k = 0; k < 30; k++) {
@@ -589,6 +742,10 @@ window.Scrapbook = (function () {
       bloom(cx + W * 0.01, coneTop - Hh * 0.31, W * 0.125, PINK, 7);
       bloom(cx - W * 0.22, coneTop - Hh * 0.28, W * 0.095, CREAM, 6);
       bloom(cx + W * 0.24, coneTop - Hh * 0.31, W * 0.085, ROSE, 6);
+      gyp(cx - W * 0.30, coneTop - Hh * 0.11, W * 0.10);
+      gyp(cx + W * 0.31, coneTop - Hh * 0.16, W * 0.09);
+      gyp(cx - W * 0.12, coneTop - Hh * 0.36, W * 0.08);
+      gyp(cx + W * 0.12, coneTop - Hh * 0.38, W * 0.075);
 
       /* the kraft wrap, over the stems */
       var kg = ctx.createLinearGradient(cx - halfTop, 0, cx + halfTop, 0);
@@ -602,6 +759,12 @@ window.Scrapbook = (function () {
       ctx.lineTo(cx + halfBot, coneBot);
       ctx.quadraticCurveTo(cx, coneBot + Hh * 0.012, cx - halfBot, coneBot);
       ctx.closePath(); ctx.fill();
+
+      /* the mouth of the cone, in shadow */
+      ctx.fillStyle = "rgba(92,66,36,0.34)";
+      ctx.beginPath();
+      ctx.ellipse(cx, coneTop, halfTop, Hh * 0.026, 0, 0, 6.29);
+      ctx.fill();
 
       /* the folded flap across the top of the wrap */
       ctx.fillStyle = "rgba(255,250,238,0.28)";
@@ -818,77 +981,166 @@ window.Scrapbook = (function () {
   }
 
   /* ---------------------------------------------------------------
-     THE MAP — Morocco, with Marrakech at the heart of it.
-     Drawn as a flat vector map so it sits happily next to the rest of
-     the paper, rather than pulling in a tile service.
+     THE MAP — Marrakech itself, not the country it sits in.
+
+     Drawn as a city map: the walled medina with its tangle of lanes,
+     the grid of Guéliz beside it, the gardens in green, the palm grove
+     to the north-east, and the main avenues running between them. All
+     vector, so it belongs to the book rather than to a tile server.
      --------------------------------------------------------------- */
-  function moroccoMap(w, h) {
+  function marrakechMap(w, h) {
     return tex(w, h, function (ctx, W, H) {
-      /* sea */
-      ctx.fillStyle = "#dfe6e4"; ctx.fillRect(0, 0, W, H);
+      var r = rnd(404);
+      function P(x, y) { return [x * W, y * H]; }
+      function poly(pts, fill, stroke, lw) {
+        ctx.beginPath();
+        pts.forEach(function (p, i) {
+          var q = P(p[0], p[1]);
+          i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+        });
+        ctx.closePath();
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1; ctx.stroke(); }
+      }
 
-      /* land: a soft, recognisable Morocco */
-      var pts = [
-        [0.02, 0.30], [0.14, 0.20], [0.30, 0.12], [0.46, 0.07], [0.62, 0.06],
-        [0.78, 0.10], [0.92, 0.18], [0.98, 0.30], [0.96, 0.46], [0.88, 0.60],
-        [0.80, 0.74], [0.70, 0.86], [0.56, 0.94], [0.40, 0.97], [0.26, 0.92],
-        [0.16, 0.80], [0.09, 0.64], [0.04, 0.47],
-      ];
-      ctx.beginPath();
-      pts.forEach(function (p, i) {
-        var x = p[0] * W, y = p[1] * H;
-        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-      });
-      ctx.closePath();
-      ctx.fillStyle = "#eceae3"; ctx.fill();
-      ctx.strokeStyle = "rgba(120,125,120,0.5)"; ctx.lineWidth = 1.2; ctx.stroke();
+      /* the ground */
+      ctx.fillStyle = "#f0e7d6"; ctx.fillRect(0, 0, W, H);
+      for (var n = 0; n < 2600; n++) {
+        ctx.fillStyle = "rgba(196,176,144,0.10)";
+        ctx.fillRect(r() * W, r() * H, 1, 1);
+      }
 
-      /* the Atlas range, as a band of hatching */
+      /* the palm grove, north-east */
+      poly([[0.62,0.02],[0.99,0.03],[1.0,0.30],[0.74,0.30],[0.62,0.16]], "#dfe6cd");
+      for (var pg = 0; pg < 150; pg++) {
+        var px = 0.63 + r() * 0.36, py = 0.03 + r() * 0.25;
+        if (px < 0.72 && py > 0.20) continue;
+        ctx.fillStyle = "rgba(122,150,92,0.5)";
+        ctx.beginPath();
+        ctx.arc(px * W, py * H, W * 0.005, 0, 6.29);
+        ctx.fill();
+      }
+
+      /* the gardens */
+      poly([[0.06,0.66],[0.30,0.62],[0.34,0.86],[0.10,0.92]], "#cfdcbb");   /* Menara */
+      poly([[0.52,0.86],[0.80,0.82],[0.84,0.99],[0.56,1.0]], "#cfdcbb");    /* Agdal */
+      poly([[0.30,0.10],[0.42,0.08],[0.44,0.20],[0.32,0.22]], "#cfdcbb");   /* Majorelle */
+
+      /* the Menara basin */
+      poly([[0.13,0.72],[0.24,0.70],[0.25,0.79],[0.14,0.81]], "#b9cfd6");
+
+      /* the medina — a walled, denser quarter */
+      var medina = [[0.44,0.24],[0.62,0.21],[0.76,0.32],[0.80,0.52],[0.70,0.70],
+                    [0.52,0.74],[0.40,0.64],[0.37,0.42]];
+      poly(medina, "#e8d7bb");
+
+      /* its lanes: short, tangled segments, clipped to the walls */
       ctx.save();
-      ctx.strokeStyle = "rgba(150,140,120,0.55)"; ctx.lineWidth = 1.4;
-      for (var i2 = 0; i2 < 26; i2++) {
-        var t = i2 / 26;
-        var x0 = W * (0.20 + t * 0.62), y0 = H * (0.66 - t * 0.20);
+      ctx.beginPath();
+      medina.forEach(function (p, i) {
+        var q = P(p[0], p[1]);
+        i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+      });
+      ctx.closePath(); ctx.clip();
+      ctx.strokeStyle = "rgba(250,244,232,0.9)";
+      for (var ln = 0; ln < 320; ln++) {
+        var x0 = (0.36 + r() * 0.46) * W, y0 = (0.20 + r() * 0.56) * H;
+        var ang = r() * 6.28, len = W * (0.012 + r() * 0.045);
+        ctx.lineWidth = 0.8 + r() * 1.4;
         ctx.beginPath();
         ctx.moveTo(x0, y0);
-        ctx.lineTo(x0 + W * 0.022, y0 - H * 0.035);
-        ctx.lineTo(x0 + W * 0.044, y0);
+        ctx.lineTo(x0 + Math.cos(ang) * len, y0 + Math.sin(ang) * len);
+        ctx.stroke();
+      }
+      /* a few blocks of shadow so it reads as built-up */
+      for (var bl = 0; bl < 90; bl++) {
+        ctx.fillStyle = "rgba(176,146,104,0.16)";
+        ctx.fillRect((0.36 + r() * 0.44) * W, (0.20 + r() * 0.54) * H,
+                     W * (0.008 + r() * 0.022), H * (0.008 + r() * 0.022));
+      }
+      ctx.restore();
+      poly(medina, null, "rgba(158,110,66,0.75)", Math.max(1.6, W * 0.004));
+
+      /* Guéliz — the new town, on a grid */
+      ctx.save();
+      poly([[0.10,0.26],[0.36,0.22],[0.38,0.50],[0.12,0.54]], "#eee3ce");
+      ctx.beginPath();
+      [[0.10,0.26],[0.36,0.22],[0.38,0.50],[0.12,0.54]].forEach(function (p, i) {
+        var q = P(p[0], p[1]);
+        i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+      });
+      ctx.closePath(); ctx.clip();
+      ctx.strokeStyle = "rgba(252,247,238,0.95)";
+      ctx.lineWidth = Math.max(1.2, W * 0.0032);
+      for (var gx = 0.10; gx < 0.40; gx += 0.045) {
+        ctx.beginPath();
+        ctx.moveTo(gx * W, 0.20 * H);
+        ctx.lineTo((gx + 0.02) * W, 0.56 * H);
+        ctx.stroke();
+      }
+      for (var gy = 0.23; gy < 0.55; gy += 0.05) {
+        ctx.beginPath();
+        ctx.moveTo(0.09 * W, gy * H);
+        ctx.lineTo(0.39 * W, (gy - 0.03) * H);
         ctx.stroke();
       }
       ctx.restore();
 
-      /* roads out of the city */
-      ctx.strokeStyle = "rgba(190,175,150,0.85)"; ctx.lineWidth = 2;
-      [[0.20, 0.18], [0.86, 0.30], [0.62, 0.88], [0.12, 0.62]].forEach(function (e) {
-        ctx.beginPath();
-        ctx.moveTo(W * 0.46, H * 0.46);
-        ctx.quadraticCurveTo(W * (0.46 + e[0]) / 2, H * (0.46 + e[1]) / 2 + H * 0.04, W * e[0], H * e[1]);
-        ctx.stroke();
-      });
+      /* the main avenues, with a casing under them */
+      var roads = [
+        [[0.00,0.44],[0.20,0.40],[0.40,0.44],[0.56,0.48],[0.74,0.44],[1.00,0.38]],
+        [[0.24,0.00],[0.28,0.20],[0.34,0.44],[0.40,0.72],[0.44,1.00]],
+        [[0.62,0.02],[0.60,0.24],[0.64,0.52],[0.70,0.78],[0.72,1.00]],
+        [[0.02,0.72],[0.26,0.66],[0.50,0.70],[0.78,0.62],[1.00,0.58]],
+      ];
+      [["rgba(196,168,124,0.85)", W * 0.011], ["rgba(253,248,238,0.96)", W * 0.0065]]
+        .forEach(function (pass) {
+          ctx.strokeStyle = pass[0];
+          ctx.lineWidth = pass[1];
+          ctx.lineJoin = "round"; ctx.lineCap = "round";
+          roads.forEach(function (rd) {
+            ctx.beginPath();
+            rd.forEach(function (p, i) {
+              var q = P(p[0], p[1]);
+              i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+            });
+            ctx.stroke();
+          });
+        });
 
-      /* place names */
-      ctx.fillStyle = "rgba(70,72,68,0.9)";
+      /* the Koutoubia, marked the way a landmark is */
+      var k = P(0.47, 0.52);
+      ctx.fillStyle = "rgba(150,104,58,0.9)";
+      ctx.fillRect(k[0] - W * 0.006, k[1] - H * 0.030, W * 0.012, H * 0.030);
+      ctx.beginPath();
+      ctx.moveTo(k[0] - W * 0.008, k[1] - H * 0.030);
+      ctx.lineTo(k[0], k[1] - H * 0.048);
+      ctx.lineTo(k[0] + W * 0.008, k[1] - H * 0.030);
+      ctx.closePath(); ctx.fill();
+
+      /* names */
       ctx.textAlign = "center";
-      ctx.font = "600 " + Math.round(W * 0.045) + "px 'Poppins', system-ui, sans-serif";
-      ctx.fillText("Marrakech", W * 0.44, H * 0.36);
-      ctx.font = "500 " + Math.round(W * 0.032) + "px 'Poppins', system-ui, sans-serif";
-      ctx.fillStyle = "rgba(110,112,106,0.85)";
-      ctx.fillText("مراكش", W * 0.44, H * 0.305);
-      ctx.font = "500 " + Math.round(W * 0.033) + "px 'Poppins', system-ui, sans-serif";
-      ctx.fillStyle = "rgba(120,122,116,0.8)";
-      ctx.fillText("Casablanca", W * 0.24, H * 0.19);
-      ctx.fillText("Essaouira", W * 0.11, H * 0.60);
-      ctx.fillText("Agadir", W * 0.20, H * 0.86);
-      ctx.fillText("Ouarzazate", W * 0.80, H * 0.66);
-      ctx.fillStyle = "rgba(150,152,146,0.75)";
-      ctx.font = "500 " + Math.round(W * 0.030) + "px 'Poppins', system-ui, sans-serif";
-      ctx.fillText("Morocco", W * 0.80, H * 0.16);
+      function label(t, x, y, size, colour, spacing) {
+        ctx.fillStyle = colour;
+        ctx.font = "600 " + Math.round(W * size) + "px 'Poppins', system-ui, sans-serif";
+        if (spacing && ctx.letterSpacing !== undefined) ctx.letterSpacing = spacing;
+        ctx.fillText(t, x * W, y * H);
+        if (ctx.letterSpacing !== undefined) ctx.letterSpacing = "0px";
+      }
+      label("MARRAKECH", 0.5, 0.115, 0.042, "rgba(88,68,44,0.9)", "3px");
+      label("مراكش", 0.5, 0.165, 0.034, "rgba(122,98,70,0.8)");
+      label("MEDINA", 0.60, 0.62, 0.030, "rgba(140,96,52,0.85)", "2px");
+      label("GUÉLIZ", 0.22, 0.42, 0.026, "rgba(130,110,80,0.8)", "2px");
+      label("HIVERNAGE", 0.27, 0.60, 0.022, "rgba(130,110,80,0.75)", "1px");
+      label("PALMERAIE", 0.83, 0.15, 0.024, "rgba(110,132,86,0.85)", "1px");
+      label("Menara", 0.19, 0.885, 0.024, "rgba(104,126,82,0.85)");
+      label("Agdal", 0.68, 0.945, 0.024, "rgba(104,126,82,0.85)");
 
-      /* city dots */
-      ctx.fillStyle = "rgba(90,92,88,0.7)";
-      [[0.24, 0.215], [0.11, 0.625], [0.20, 0.885], [0.80, 0.685]].forEach(function (d) {
-        ctx.beginPath(); ctx.arc(W * d[0], H * d[1], W * 0.008, 0, 6.29); ctx.fill();
-      });
+      /* the paper the map is printed on */
+      var v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.72);
+      v.addColorStop(0, "rgba(0,0,0,0)");
+      v.addColorStop(1, "rgba(90,66,34,0.14)");
+      ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
     });
   }
 
@@ -905,134 +1157,137 @@ window.Scrapbook = (function () {
   var PAGES = [
     /* ---- 0 · disco ---------------------------------------------- */
     { paper: "teal", pieces: [
-      { k: "sticker", art: "disco",   left: -6, top:  2, w: 30, rot: 0 },
-      { k: "sticker", art: "rose",    left: -2, top: 22, w: 24, rot: -8 },
-      { k: "sticker", art: "lips",    left:  6, top: 36, w: 20, rot: -12 },
-      { k: "sticker", art: "flowers", left: -4, top: 46, w: 30, rot: -6 },
-      { k: "sticker", art: "disco",   left: -2, top: 72, w: 26, rot: 0 },
-      { k: "sticker", art: "disco",   left: 30, top: 80, w: 24, rot: 0 },
-      { k: "bigtype", text: "love you", left: 64, top: 6, size: 15, vertical: true, colour: "rgba(255,255,255,.24)" },
-      { k: "photo", n: 0, style: "polaroid", left: 34, top:  4, w: 34, rot: -6, tape: "top" },
-      { k: "photo", n: 1, style: "polaroid", left: 22, top: 26, w: 38, rot:  3, tape: "corner" },
-      { k: "photo", n: 2, style: "polaroid", left: 32, top: 50, w: 34, rot: -3, tape: "none" },
-      { k: "photo", n: 3, style: "polaroid", left: 12, top: 68, w: 34, rot:  2, tape: "top" },
-      { k: "sticker", art: "lips",    left: 62, top: 78, w: 18, rot: 14 },
-      { k: "sticker", art: "vinyl8",  left: 70, top: 76, w: 26, rot: 0 },
-      { k: "burst", left: 66, top: 52, w: 9 },
+      { k: "sticker", art: "disco",   left: -8, top:  1, w: 32, rot: 0 },
+      { k: "sticker", art: "rose",    left: -3, top: 25, w: 25, rot: -8 },
+      { k: "sticker", art: "lips",    left:  8, top: 40, w: 19, rot: -14 },
+      { k: "sticker", art: "flowers", left: -6, top: 50, w: 31, rot: -6 },
+      { k: "sticker", art: "disco",   left: -4, top: 74, w: 27, rot: 0 },
+      { k: "sticker", art: "disco",   left: 28, top: 83, w: 22, rot: 0 },
+      { k: "bigtype", text: "love you", left: 66, top: 5, size: 15, vertical: true, colour: "rgba(255,255,255,.24)" },
+      { k: "photo", n: 1, style: "polaroid", left: 30, top:  2, w: 32.8, rot: -7, tape: "top" },
+      { k: "photo", n: 2, style: "snapshot", left: 17, top: 24, w: 29.6, rot:  4, tape: "corner" },
+      { k: "photo", n: 3, style: "polaroid", left: 36, top: 47, w: 22.2, rot: -4 },
+      { k: "photo", n: 4, style: "corners",  left: 10, top: 66, w: 29.5, rot:  3 },
+      { k: "sticker", art: "lips",    left: 64, top: 80, w: 17, rot: 14 },
+      { k: "sticker", art: "vinyl8",  left: 72, top: 74, w: 27, rot: 0 },
+      { k: "burst", left: 68, top: 50, w: 9 },
     ]},
 
     /* ---- 1 · memories -------------------------------------------- */
     { paper: "teal", pieces: [
-      { k: "note", left: 6, top: 6, w: 56, rot: -1.5, text: H.s1note },
-      { k: "letters", text: "MEMORIES", left: 62, top: 4 },
-      { k: "photo", n: 4, style: "plain", left: 74, top: 16, w: 24, rot: 2 },
-      { k: "photo", n: 5, style: "plain", left:  4, top: 40, w: 32, rot: -2, caption: H.s1small },
-      { k: "sticker", art: "vinyl8", left: 32, top: 36, w: 22, rot: 0 },
-      { k: "sticker", art: "flowers", left: 28, top: 50, w: 20, rot: 8 },
-      { k: "photo", n: 6,  style: "polaroid", left: 40, top: 42, w: 27, rot: 0 },
-      { k: "photo", n: 7,  style: "polaroid", left: 70, top: 42, w: 27, rot: 0 },
-      { k: "photo", n: 8,  style: "polaroid", left:  8, top: 70, w: 27, rot: 0 },
-      { k: "photo", n: 9,  style: "polaroid", left: 39, top: 70, w: 27, rot: 0 },
-      { k: "photo", n: 10, style: "polaroid", left: 70, top: 70, w: 27, rot: 0 },
+      { k: "note", left: 4, top: 4, w: 58, rot: -1.5, text: H.s1note },
+      { k: "letters", text: "MEMORIES", left: 66, top: 2 },
+      { k: "photo", n: 5, style: "snapshot", left: 74, top: 15, w: 16.8, rot: 3 },
+      { k: "photo", n: 6, style: "deckle",   left:  2, top: 34, w: 27.9, rot: -3, caption: H.s1small },
+      { k: "sticker", art: "vinyl8", left: 30, top: 32, w: 21, rot: 0 },
+      { k: "sticker", art: "flowers", left: 26, top: 48, w: 19, rot: 8 },
+      { k: "photo", n: 7,  style: "polaroid", left: 38, top: 40, w: 20.2, rot: -3 },
+      { k: "photo", n: 8,  style: "polaroid", left: 68, top: 43, w: 19.5, rot:  2 },
+      { k: "photo", n: 9,  style: "matted",   left:  4, top: 66, w: 24.6, rot: -2 },
+      { k: "photo", n: 10, style: "polaroid", left: 34, top: 68, w: 20.2, rot:  3 },
+      { k: "photo", n: 11, style: "snapshot", left: 66, top: 72, w: 20.8, rot: -4 },
     ]},
 
     /* ---- 2 · the camera ------------------------------------------ */
     { paper: "teal2", pieces: [
       { k: "typecol", text: "The", left: -1, top: 2, w: 20 },
-      { k: "bigtype", text: "C", left: 16, top: 2, size: 34, rot: 0, colour: "rgba(226,240,244,.30)" },
-      { k: "patch", paper: "grid", left: 12, top: 1, w: 46, h: 26, rot: -3 },
-      { k: "instantcam", n: 11, left: 22, top: 8, w: 62, rot: 1 },
-      { k: "img", src: "assets/key.png", left: 30, top: 55, w: 9, rot: 12 },
-      { k: "script", text: "from the midwest princess", left: 56, top: 55, w: 36, rot: -7, size: 3.6 },
-      { k: "idcard", n: 12, left: 8, top: 62, w: 66, rot: -2 },
+      { k: "bigtype", text: "C", left: 15, top: 1, size: 34, colour: "rgba(226,240,244,.28)" },
+      { k: "patch", paper: "grid", left: 10, top: 0, w: 48, h: 27, rot: -3 },
+      { k: "instantcam", n: 12, left: 22, top: 7, w: 64, rot: 1 },
+      { k: "img", src: "assets/key.png", left: 28, top: 54, w: 9, rot: 12 },
+      { k: "script", text: "from the midwest princess", left: 54, top: 54, w: 38, rot: -7, size: 3.6 },
+      { k: "idcard", n: 13, left: 6, top: 62, w: 68, rot: -2 },
     ]},
 
     /* ---- 3 · the letter ------------------------------------------ */
     { paper: "ivory", pieces: [
       { k: "patch", paper: "news", left: -6, top: 2, w: 34, h: 96, rot: 1.5 },
-      { k: "patch", paper: "teal", left: 62, top: -2, w: 44, h: 30, rot: -4 },
-      { k: "sticker", art: "starD", left: 4, top: 20, w: 20, rot: -10 },
-      { k: "voicepill", left: 16, top: 13, w: 78 },
-      { k: "letterpage", left: 12, top: 26, w: 82, rot: 0.6 },
-      { k: "sticker", art: "vinylTeal", left: 0, top: 74, w: 40, rot: 0 },
-      { k: "script", text: "the place where the confetti falls", left: 60, top: 84, w: 34, rot: -6, size: 3.2, dark: true },
+      { k: "patch", paper: "teal", left: 60, top: -3, w: 48, h: 26, rot: -4 },
+      { k: "sticker", art: "starD", left: 2, top: 18, w: 20, rot: -10 },
+      { k: "voicepill", left: 14, top: 11, w: 80 },
+      { k: "letterpage", left: 12, top: 24, w: 82, rot: 0.6 },
+      { k: "photo", n: 14, style: "corners", left: 4, top: 70, w: 20.2, rot: -5 },
+      { k: "sticker", art: "vinylTeal", left: 46, top: 76, w: 34, rot: 0 },
+      { k: "script", text: "the place where the confetti falls", left: 58, top: 90, w: 36, rot: -6, size: 3.2, dark: true },
     ]},
 
-    /* ---- 4 · the map --------------------------------------------- */
+    /* ---- 4 · the record ------------------------------------------ */
     { paper: "teal", pieces: [
-      { k: "typecol", text: "Th", left: -1, top: 4, w: 14 },
-      { k: "sticker", art: "vinylTeal", left: 0, top: 30, w: 54, rot: 0 },
-      { k: "sticker", art: "clock", left: 4, top: 36, w: 26, rot: 0 },
-      { k: "curvetext", text: H.vinyl, left: 2, top: 32, w: 50 },
-      { k: "mapcard", left: 26, top: 3, w: 68 },
-      { k: "sticker", art: "lipInk", left: 4, top: 3, w: 20, rot: -8 },
-      { k: "sticker", art: "lipInk", left: 78, top: 40, w: 20, rot: 12 },
-      { k: "photo", n: 13, style: "framed", left: 44, top: 44, w: 50, rot: -4 },
-      { k: "photo", n: 14, style: "framed", left: 30, top: 70, w: 46, rot: 3 },
-      { k: "sticker", art: "flowers", left: -4, top: 70, w: 28, rot: -8 },
+      { k: "typecol", text: "Th", left: -1, top: 3, w: 14 },
+      { k: "sticker", art: "vinylTeal", left: -6, top: 8, w: 56, rot: 0 },
+      { k: "sticker", art: "clock", left: 2, top: 14, w: 26, rot: 0 },
+      { k: "curvetext", text: H.vinyl, left: -4, top: 10, w: 52 },
+      { k: "sticker", art: "lipInk", left: 62, top: 2, w: 22, rot: -8 },
+      { k: "sticker", art: "lipInk", left: 80, top: 16, w: 19, rot: 12 },
+      { k: "photo", n: 15, style: "washed",   left: 34, top: 12, w: 42.6, rot: -5, tape: "top" },
+      { k: "photo", n: 16, style: "matted",   left: 12, top: 42, w: 37.7, rot:  3 },
+      { k: "photo", n: 17, style: "polaroid", left: 56, top: 52, w: 26.9, rot: -3 },
+      { k: "photo", n: 18, style: "corners",  left: 20, top: 74, w: 26.2, rot:  2 },
+      { k: "sticker", art: "flowers", left: -6, top: 74, w: 28, rot: -8 },
     ]},
 
     /* ---- 5 · cold hands ------------------------------------------ */
     { paper: "ivory", pieces: [
-      { k: "patch", paper: "news", left: 50, top: -2, w: 56, h: 30, rot: 4 },
-      { k: "patch", paper: "teal", left: -6, top: 52, w: 32, h: 54, rot: -3 },
-      { k: "photo", n: 15, style: "polaroid", left:  6, top:  6, w: 32, rot: -3 },
-      { k: "photo", n: 16, style: "polaroid", left: 58, top:  8, w: 30, rot:  4 },
-      { k: "script", text: H.s3note, left: 2, top: 34, w: 30, rot: -3, size: 3.4, dark: true },
-      { k: "photo", n: 17, style: "polaroid", left: 34, top: 30, w: 28, rot: -2 },
-      { k: "photo", n: 18, style: "plain",    left: 66, top: 34, w: 24, rot:  2 },
-      { k: "photobooth", n: 19, cells: 3, left: 4, top: 54, w: 20, rot: 5 },
-      { k: "photo", n: 20, style: "polaroid", left: 36, top: 58, w: 30, rot: -3 },
-      { k: "sticker", art: "starD", left: 66, top: 56, w: 18, rot: -14 },
-      { k: "label", text: "COLD HANDS,\nWARM HEARTS", left: 60, top: 74, w: 36, rot: -4 },
-      { k: "sticker", art: "flowers", left: 30, top: 84, w: 26, rot: 6 },
+      { k: "patch", paper: "news", left: 48, top: -3, w: 58, h: 30, rot: 4 },
+      { k: "patch", paper: "teal", left: -8, top: 50, w: 34, h: 56, rot: -3 },
+      { k: "photo", n: 19, style: "polaroid", left:  2, top:  4, w: 29.5, rot: -4, tape: "corner" },
+      { k: "photo", n: 20, style: "snapshot", left: 56, top:  6, w: 27.9, rot:  4 },
+      { k: "script", text: H.s3note, left: 0, top: 32, w: 30, rot: -3, size: 3.4, dark: true },
+      { k: "photo", n: 21, style: "deckle",   left: 30, top: 26, w: 26.2, rot: -2 },
+      { k: "photo", n: 22, style: "matted",   left: 64, top: 32, w: 24.6, rot:  3 },
+      { k: "photobooth", n: 23, cells: 3, left: 2, top: 54, w: 22, rot: 5 },
+      { k: "photo", n: 24, style: "polaroid", left: 30, top: 56, w: 21.5, rot: -3 },
+      { k: "sticker", art: "starD", left: 64, top: 58, w: 18, rot: -14 },
+      { k: "label", text: "COLD HANDS,\nWARM HEARTS", left: 58, top: 76, w: 38, rot: -4 },
+      { k: "sticker", art: "flowers", left: 26, top: 84, w: 26, rot: 6 },
     ]},
 
     /* ---- 6 · the film strip -------------------------------------- */
     { paper: "ivory", pieces: [
-      { k: "script", text: "the time we spent, and every hour after", left: 14, top: 3, w: 44, rot: 0, size: 3.4, faint: true },
-      { k: "sticker", art: "starS", left: 2, top: 8, w: 20, rot: 16 },
-      { k: "filmcam", left: 4, top: 16, w: 50, rot: -8 },
-      { k: "sticker", art: "vinylTeal", left: -8, top: 52, w: 44, rot: 0 },
-      { k: "sticker", art: "clock", left: 34, top: 76, w: 24, rot: 0 },
-      { k: "bouquet", left: 6, top: 40, w: 36, rot: -4 },
-      { k: "filmstrip", cells: [21, 22, 23, 24], left: 56, top: -2, w: 42 },
+      { k: "script", text: "the time we spent, and every hour after", left: 12, top: 2, w: 44, rot: 0, size: 3.4, faint: true },
+      { k: "sticker", art: "starS", left: 1, top: 7, w: 20, rot: 16 },
+      { k: "filmcam", left: 3, top: 14, w: 50, rot: -8 },
+      { k: "sticker", art: "vinylTeal", left: -10, top: 50, w: 44, rot: 0 },
+      { k: "sticker", art: "clock", left: 32, top: 78, w: 22, rot: 0 },
+      { k: "bouquet", left: 4, top: 38, w: 36, rot: -4 },
+      { k: "filmstrip", cells: [25, 26, 27, 28], left: 56, top: -3, w: 42 },
     ]},
 
     /* ---- 7 · the prints ------------------------------------------ */
     { paper: "denim", pieces: [
-      { k: "patch", paper: "denimCloth", left: 56, top: -2, w: 50, h: 42, rot: 6 },
-      { k: "patch", paper: "denimCloth", left: -6, top: 58, w: 48, h: 48, rot: -5 },
-      { k: "sticker", art: "vinylLtd", left: 64, top: 22, w: 42, rot: 0 },
-      { k: "photo", n: 25, style: "washed", left: -2, top:  4, w: 62, rot: -7 },
-      { k: "photo", n: 26, style: "washed", left: 26, top: 34, w: 64, rot:  4 },
-      { k: "photo", n: 27, style: "washed", left:  2, top: 66, w: 56, rot: -3 },
+      { k: "patch", paper: "denimCloth", left: 54, top: -3, w: 52, h: 44, rot: 6 },
+      { k: "patch", paper: "denimCloth", left: -8, top: 60, w: 50, h: 48, rot: -5 },
+      { k: "sticker", art: "vinylLtd", left: 66, top: 20, w: 40, rot: 0 },
+      { k: "photo", n: 29, style: "washed", left: -4, top:  3, w: 52.5, rot: -7 },
+      { k: "photo", n: 30, style: "washed", left: 24, top: 32, w: 44.4, rot:  4 },
+      { k: "photo", n: 31, style: "washed", left:  0, top: 64, w: 47.6, rot: -3 },
       { k: "sticker", art: "starD", left: 66, top: 62, w: 20, rot: -20 },
-      { k: "sticker", art: "lips", left: 74, top: 82, w: 20, rot: 12 },
+      { k: "sticker", art: "lips", left: 76, top: 84, w: 19, rot: 12 },
     ]},
 
     /* ---- 8 · these memories -------------------------------------- */
     { paper: "grid", pieces: [
-      { k: "patch", paper: "teal", left: 44, top: 10, w: 34, h: 52, rot: 2 },
-      { k: "photo", n: 40, style: "washed", left: 12, top: -2, w: 42, rot: 1 },
-      { k: "label2", text: "THESE\nMEMORIES\nMAKE ME SMILE", left: 56, top: 4, w: 34, rot: -3 },
-      { k: "sticker", art: "starG", left: 84, top: 2, w: 14, rot: 12 },
-      { k: "sticker", art: "starG", left: 66, top: 44, w: 11, rot: -8 },
-      { k: "photobooth", n: 28, cells: 3, left: 6, top: 30, w: 24, rot: -4 },
-      { k: "photo", n: 29, style: "washed", left: 8, top: 52, w: 40, rot: 2 },
-      { k: "photo", n: 30, style: "washed", left: 6, top: 76, w: 40, rot: -1 },
-      { k: "patch", paper: "blush", left: 48, top: 66, w: 46, h: 36, rot: 3 },
-      { k: "sticker", art: "flowers", left: 60, top: 68, w: 36, rot: 4 },
-      { k: "sticker", art: "starG", left: 52, top: 72, w: 12, rot: 20 },
+      { k: "patch", paper: "teal", left: 42, top: 8, w: 36, h: 54, rot: 2 },
+      { k: "photo", n: 32, style: "washed", left: 8, top: -3, w: 30.9, rot: 1, tape: "top" },
+      { k: "label2", text: "THESE\nMEMORIES\nMAKE ME SMILE", left: 56, top: 3, w: 36, rot: -3 },
+      { k: "sticker", art: "starG", left: 86, top: 1, w: 13, rot: 12 },
+      { k: "sticker", art: "starG", left: 64, top: 42, w: 10, rot: -8 },
+      { k: "photobooth", n: 33, cells: 3, left: 4, top: 26, w: 24, rot: -4 },
+      { k: "photo", n: 34, style: "deckle",   left: 30, top: 34, w: 27.9, rot: 3 },
+      { k: "photo", n: 35, style: "snapshot", left: 4, top: 56, w: 25.6, rot: 2 },
+      { k: "photo", n: 36, style: "corners",  left: 40, top: 62, w: 26.2, rot: -3 },
+      { k: "patch", paper: "blush", left: 56, top: 72, w: 44, h: 34, rot: 3 },
+      { k: "sticker", art: "flowers", left: 66, top: 72, w: 34, rot: 4 },
+      { k: "sticker", art: "starG", left: 56, top: 78, w: 11, rot: 20 },
     ]},
 
     /* ---- 9 · the video ------------------------------------------- */
     { paper: "ivory", pieces: [
-      { k: "patch", paper: "denimCloth", left: 76, top: 26, w: 30, h: 46, rot: -4 },
-      { k: "photo", n: 31, style: "washed", left: 10, top: 2, w: 76, rot: 0.5 },
-      { k: "script", text: "and every one of them, again", left: 8, top: 34, w: 30, rot: -2, size: 3.2, dark: true },
-      { k: "videocard", left: 14, top: 44, w: 72 },
-      { k: "filmstrip", cells: [32, 33, 34], left: 8, top: 80, w: 84, horizontal: true },
+      { k: "patch", paper: "denimCloth", left: 74, top: 24, w: 34, h: 48, rot: -4 },
+      { k: "photo", n: 37, style: "washed", left: 8, top: 1, w: 52.5, rot: 0.5 },
+      { k: "script", text: "and every one of them, again", left: 6, top: 32, w: 30, rot: -2, size: 3.2, dark: true },
+      { k: "videocard", left: 14, top: 42, w: 72 },
+      { k: "filmstrip", cells: [38, 39, 40], left: 8, top: 79, w: 84, horizontal: true },
     ]},
   ];
 
@@ -1047,15 +1302,47 @@ window.Scrapbook = (function () {
     return (t.charAt(0) === "[" && t.charAt(t.length - 1) === "]") ? "" : t;
   }
 
-  function photoAt(i) {
-    var m = (typeof MEMORIES !== "undefined" && MEMORIES[i]) ? MEMORIES[i] : null;
+  /* Every frame in the book is numbered, and the empty ones say their
+     number out loud. Drop `assets/photo-7.jpg` in and it lands in the
+     frame marked "photo 7" — no config to edit. An entry in MEMORIES
+     still wins if you would rather name the file something else, or add
+     a caption to go with it. */
+  var PHOTO_EXT = ["jpg", "png"];   /* keep the probing cheap */
+
+  function photoAt(n) {
+    var m = (typeof MEMORIES !== "undefined" && MEMORIES[n - 1]) ? MEMORIES[n - 1] : null;
     return {
+      n: n,
       src:   m && m.photo ? m.photo : null,
       title: real(m && m.title),
       date:  real(m && m.date),
       text:  real(m && m.text),
-      idx: i,
     };
+  }
+
+  /* Try assets/photo-n.jpg, then the other extensions, then give up and
+     leave the numbered frame showing. */
+  function loadPhotoInto(host, mem, onEmpty) {
+    var img = document.createElement("img");
+    img.alt = mem.title || ("photo " + mem.n);
+    img.loading = "lazy";
+    img.decoding = "async";
+
+    if (mem.src) {
+      img.onerror = function () { img.remove(); onEmpty(); };
+      img.src = mem.src;
+      host.appendChild(img);
+      return;
+    }
+
+    var i = 0;
+    img.onerror = function () {
+      i++;
+      if (i < PHOTO_EXT.length) { img.src = "assets/photo-" + mem.n + "." + PHOTO_EXT[i]; }
+      else { img.remove(); onEmpty(); }
+    };
+    img.src = "assets/photo-" + mem.n + "." + PHOTO_EXT[0];
+    host.appendChild(img);
   }
 
   /* =======================================================================
@@ -1076,23 +1363,28 @@ window.Scrapbook = (function () {
     return e;
   }
 
-  /* a photo slot. Empty until a real photo is set in MEMORIES. */
+  /* A photo slot. Numbered, and empty until the matching file exists. */
   function makePhoto(p) {
     var mem = photoAt(p.n);
     var wrap = place(el("sb-photo sb-photo-" + (p.style || "polaroid")), p);
     var inner = el("sb-photo-inner");
-    if (mem.src) {
-      var img = el("", "img");
-      img.src = mem.src;
-      img.alt = mem.title || "a memory";
-      img.loading = "lazy";
-      inner.appendChild(img);
-    } else {
+
+    function showEmpty() {
       var ph = el("sb-photo-empty");
-      ph.innerHTML = "<span>photo</span>";
+      ph.innerHTML = '<span class="sb-slot-no">' + mem.n + '</span>' +
+                     '<span class="sb-slot-word">photo</span>';
       inner.appendChild(ph);
     }
+    loadPhotoInto(inner, mem, showEmpty);
+
     wrap.appendChild(inner);
+
+    /* photo corners are little paper mounts, not part of the print */
+    if (p.style === "corners") {
+      ["tl", "tr", "bl", "br"].forEach(function (c) {
+        wrap.appendChild(el("sb-corner sb-corner-" + c));
+      });
+    }
     if (p.caption) {
       var cap = el("sb-photo-hand");
       cap.textContent = p.caption;
@@ -1102,7 +1394,10 @@ window.Scrapbook = (function () {
       cap2.textContent = mem.title;
       wrap.appendChild(cap2);
     }
-    if (p.tape && p.tape !== "none") wrap.appendChild(el("sb-tape sb-tape-" + p.tape));
+    if (p.tape) String(p.tape).split(" ").forEach(function (t) {
+      if (t && t !== "none") wrap.appendChild(el("sb-tape sb-tape-" + t));
+    });
+
     wrap.addEventListener("click", function (ev) {
       ev.stopPropagation();
       openLightbox(mem);
@@ -1522,9 +1817,10 @@ window.Scrapbook = (function () {
   }
 
   /* ---- the memory map ---- */
+  var MAP_SLOT = 41;          /* the map pins use slots 41..44 */
   var MAP_TEX = null;
   function buildMapCard(big) {
-    if (!MAP_TEX) MAP_TEX = moroccoMap(560, 420);
+    if (!MAP_TEX) MAP_TEX = marrakechMap(800, 600);
     var c = el("sb-w sb-w-map" + (big ? " big" : ""));
     c.innerHTML =
       '<div class="sb-map-head">' +
@@ -1552,10 +1848,13 @@ window.Scrapbook = (function () {
       b.style.top = pin.y + "%";
       b.style.animationDelay = (i * 0.45) + "s";
       b.setAttribute("aria-label", pin.title);
-      var mem = photoAt(35 + i);
-      b.innerHTML = mem.src
-        ? '<img src="' + mem.src + '" alt="">'
-        : '<span class="sb-map-pin-empty"></span>';
+      var mem = photoAt(MAP_SLOT + i);
+      b.innerHTML = "";
+      (function (host, m) {
+        loadPhotoInto(host, m, function () {
+          host.innerHTML = '<span class="sb-map-pin-empty">' + m.n + "</span>";
+        });
+      })(b, mem);
       b.addEventListener("click", function (e) {
         e.stopPropagation();
         openPin(pin, mem);
@@ -1646,9 +1945,12 @@ window.Scrapbook = (function () {
   function openPin(pin, mem) {
     var photo = document.getElementById("sb-pin-photo");
     if (photo) {
-      photo.innerHTML = mem && mem.src
-        ? '<img src="' + mem.src + '" alt="">'
-        : '<span class="sb-photo-empty"><span>photo</span></span>';
+      photo.innerHTML = "";
+      loadPhotoInto(photo, mem, function () {
+        photo.innerHTML = '<span class="sb-photo-empty">' +
+          '<span class="sb-slot-no">' + mem.n + '</span>' +
+          '<span class="sb-slot-word">photo</span></span>';
+      });
     }
     var d = document.getElementById("sb-pin-date");
     var t = document.getElementById("sb-pin-title");
@@ -1668,13 +1970,15 @@ window.Scrapbook = (function () {
     var box = document.getElementById("sb-lightbox");
     if (!box) return;
     var frame = box.querySelector(".sb-lb-frame");
-    frame.innerHTML = mem.src
-      ? '<img src="' + mem.src + '" alt="' + (mem.title || "") + '">'
-      : '<div class="sb-lb-empty"><span>photo</span></div>';
-    box.querySelector(".sb-lb-title").textContent = mem.title || "a photo of us";
+    frame.innerHTML = "";
+    loadPhotoInto(frame, mem, function () {
+      frame.innerHTML = '<div class="sb-lb-empty"><span class="sb-slot-no">' +
+        mem.n + '</span><span class="sb-slot-word">photo</span></div>';
+    });
+    box.querySelector(".sb-lb-title").textContent = mem.title || ("Photo " + mem.n);
     box.querySelector(".sb-lb-date").textContent = mem.date || "";
     box.querySelector(".sb-lb-text").textContent =
-      mem.text || "This frame is waiting for a photo of the two of you.";
+      mem.text || ("Save this one as assets/photo-" + mem.n + ".jpg and it will appear here.");
     box.classList.add("on");
   }
   function closeLightbox() {
@@ -1752,59 +2056,117 @@ window.Scrapbook = (function () {
     return true;
   }
 
-  /* one butterfly, painted in loose strokes */
+  /* One butterfly. The wings are scalloped rather than smooth, carry
+     spots and veining, and sit over a soft shadow so they read as
+     painted rather than cut out. */
   function paintFly(ctx, x, y, s, flap, tilt, alpha) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(tilt);
     ctx.globalAlpha = alpha;
-    var open = 0.36 + Math.abs(Math.sin(flap)) * 0.64;
+    var open = 0.34 + Math.abs(Math.sin(flap)) * 0.66;
+
+    function wingPath(side) {
+      /* upper wing, with a scalloped outer edge */
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(s * 0.26, -s * 0.98, s * 0.92, -s * 0.92, s * 1.10, -s * 0.36);
+      ctx.quadraticCurveTo(s * 1.14, -s * 0.22, s * 1.02, -s * 0.18);
+      ctx.quadraticCurveTo(s * 1.10, -s * 0.06, s * 0.94, -s * 0.02);
+      ctx.quadraticCurveTo(s * 1.00, s * 0.10, s * 0.82, s * 0.12);
+      ctx.bezierCurveTo(s * 0.44, s * 0.18, s * 0.14, s * 0.08, 0, 0);
+      ctx.closePath();
+    }
+    function lowerPath() {
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.bezierCurveTo(s * 0.34, s * 0.28, s * 0.84, s * 0.40, s * 0.78, s * 0.64);
+      ctx.quadraticCurveTo(s * 0.72, s * 0.78, s * 0.58, s * 0.70);
+      ctx.quadraticCurveTo(s * 0.56, s * 0.84, s * 0.42, s * 0.72);
+      ctx.bezierCurveTo(s * 0.24, s * 0.56, s * 0.10, s * 0.28, 0, 0);
+      ctx.closePath();
+    }
 
     [-1, 1].forEach(function (side) {
       ctx.save();
       ctx.scale(side * open, 1);
-      /* upper wing */
-      var g = ctx.createLinearGradient(0, -s * 0.7, s * 1.15, s * 0.2);
-      g.addColorStop(0, "rgba(233,150,186,0.95)");
-      g.addColorStop(0.55, "rgba(214,120,164,0.9)");
-      g.addColorStop(1, "rgba(186,96,142,0.85)");
+
+      var g = ctx.createLinearGradient(0, -s * 0.8, s * 1.1, s * 0.2);
+      g.addColorStop(0, "rgba(246,182,208,0.97)");
+      g.addColorStop(0.38, "rgba(228,140,180,0.95)");
+      g.addColorStop(0.72, "rgba(198,104,152,0.92)");
+      g.addColorStop(1, "rgba(162,78,124,0.88)");
       ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.bezierCurveTo(s * 0.30, -s * 0.95, s * 1.15, -s * 0.80, s * 1.12, -s * 0.20);
-      ctx.bezierCurveTo(s * 1.08, s * 0.12, s * 0.42, s * 0.16, 0, 0);
-      ctx.fill();
-      /* lower wing */
-      ctx.fillStyle = "rgba(224,136,176,0.82)";
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.bezierCurveTo(s * 0.32, s * 0.30, s * 0.80, s * 0.46, s * 0.72, s * 0.66);
-      ctx.bezierCurveTo(s * 0.60, s * 0.84, s * 0.14, s * 0.36, 0, 0);
-      ctx.fill();
-      /* the veins, brushed on */
-      ctx.strokeStyle = "rgba(150,70,112,0.42)";
-      ctx.lineWidth = Math.max(0.6, s * 0.028);
-      for (var v = 0; v < 4; v++) {
+      wingPath(side); ctx.fill();
+
+      var g2 = ctx.createLinearGradient(0, 0, s * 0.8, s * 0.7);
+      g2.addColorStop(0, "rgba(232,150,186,0.92)");
+      g2.addColorStop(1, "rgba(184,92,140,0.86)");
+      ctx.fillStyle = g2;
+      lowerPath(); ctx.fill();
+
+      /* veins */
+      ctx.strokeStyle = "rgba(140,62,104,0.38)";
+      ctx.lineWidth = Math.max(0.5, s * 0.022);
+      for (var v = 0; v < 5; v++) {
         ctx.beginPath();
-        ctx.moveTo(s * 0.06, -s * 0.02);
-        ctx.quadraticCurveTo(s * 0.55, -s * (0.62 - v * 0.20), s * (1.02 - v * 0.10), -s * (0.34 - v * 0.16));
+        ctx.moveTo(s * 0.05, -s * 0.01);
+        ctx.quadraticCurveTo(s * 0.52, -s * (0.66 - v * 0.17),
+                             s * (1.00 - v * 0.09), -s * (0.36 - v * 0.13));
         ctx.stroke();
       }
+      ctx.beginPath();
+      ctx.moveTo(s * 0.05, s * 0.02);
+      ctx.quadraticCurveTo(s * 0.42, s * 0.34, s * 0.70, s * 0.60);
+      ctx.stroke();
+
+      /* the pale band and the eye spots */
+      ctx.fillStyle = "rgba(255,232,242,0.55)";
+      ctx.beginPath();
+      ctx.ellipse(s * 0.74, -s * 0.42, s * 0.20, s * 0.09, -0.5, 0, 6.29);
+      ctx.fill();
+      ctx.fillStyle = "rgba(96,44,78,0.42)";
+      [[0.86, -0.30, 0.055], [0.62, -0.58, 0.045], [0.60, 0.44, 0.04]].forEach(function (d) {
+        ctx.beginPath();
+        ctx.arc(s * d[0], s * d[1], s * d[2], 0, 6.29);
+        ctx.fill();
+      });
+
+      ctx.strokeStyle = "rgba(120,52,92,0.3)";
+      ctx.lineWidth = Math.max(0.5, s * 0.018);
+      wingPath(side); ctx.stroke();
+      lowerPath(); ctx.stroke();
       ctx.restore();
     });
 
-    /* body and antennae */
-    ctx.fillStyle = "rgba(96,54,74,0.9)";
+    /* body: segmented, with a soft sheen */
+    var bg = ctx.createLinearGradient(-s * 0.08, 0, s * 0.08, 0);
+    bg.addColorStop(0, "rgba(72,38,56,0.95)");
+    bg.addColorStop(0.45, "rgba(118,66,92,0.95)");
+    bg.addColorStop(1, "rgba(66,34,52,0.95)");
+    ctx.fillStyle = bg;
     ctx.beginPath();
-    ctx.ellipse(0, s * 0.06, s * 0.075, s * 0.36, 0, 0, 6.29);
+    ctx.ellipse(0, s * 0.06, s * 0.072, s * 0.38, 0, 0, 6.29);
     ctx.fill();
-    ctx.strokeStyle = "rgba(96,54,74,0.75)";
-    ctx.lineWidth = Math.max(0.6, s * 0.030);
+    ctx.fillStyle = "rgba(52,26,42,0.6)";
+    for (var seg = 1; seg < 5; seg++) {
+      ctx.beginPath();
+      ctx.ellipse(0, s * (-0.16 + seg * 0.13), s * 0.062, s * 0.022, 0, 0, 6.29);
+      ctx.fill();
+    }
+    ctx.fillStyle = "rgba(84,44,66,0.95)";
+    ctx.beginPath(); ctx.arc(0, -s * 0.30, s * 0.075, 0, 6.29); ctx.fill();
+
+    /* antennae, with clubbed tips */
+    ctx.strokeStyle = "rgba(88,46,70,0.8)";
+    ctx.lineWidth = Math.max(0.5, s * 0.026);
     [-1, 1].forEach(function (side) {
       ctx.beginPath();
-      ctx.moveTo(0, -s * 0.28);
-      ctx.quadraticCurveTo(side * s * 0.22, -s * 0.60, side * s * 0.34, -s * 0.54);
+      ctx.moveTo(0, -s * 0.32);
+      ctx.quadraticCurveTo(side * s * 0.24, -s * 0.64, side * s * 0.36, -s * 0.58);
       ctx.stroke();
+      ctx.fillStyle = "rgba(88,46,70,0.85)";
+      ctx.beginPath(); ctx.arc(side * s * 0.36, -s * 0.58, s * 0.035, 0, 6.29); ctx.fill();
     });
     ctx.restore();
   }
@@ -1843,7 +2205,7 @@ window.Scrapbook = (function () {
     ctx.clip();
     /* loose strokes inside, at a slight angle and never evenly spaced,
        so the fill reads as paint rather than as banding */
-    for (var b = 0; b < 90; b++) {
+    for (var b = 0; b < 40; b++) {
       var bt = br();
       var y0 = cy - oh + br() * oh * 2;
       var lean = (br() - 0.5) * oh * 0.10;
@@ -1858,7 +2220,7 @@ window.Scrapbook = (function () {
       ctx.stroke();
     }
     /* a second pass, near-vertical, to break up the horizontal grain */
-    for (var b2 = 0; b2 < 34; b2++) {
+    for (var b2 = 0; b2 < 78; b2++) {
       var vt = br();
       var x0 = cx - ow + br() * ow * 2;
       ctx.strokeStyle = "rgba(" + Math.round(88 + vt * 46) + "," +
@@ -1887,77 +2249,151 @@ window.Scrapbook = (function () {
     ctx.beginPath(); ctx.ellipse(cx, cy, ow, oh, 0, 0, 6.29); ctx.stroke();
     ctx.restore();
 
-    /* the candle — slim, and rising out of the bottom of the frame */
+    /* the candle — slim, with a melted rim and wax running down it */
     var candleW = ow * 0.42, candleTop = cy + oh * 0.24;
     var cg = ctx.createLinearGradient(cx - candleW / 2, 0, cx + candleW / 2, 0);
-    cg.addColorStop(0, "#cdb99b"); cg.addColorStop(0.28, "#f2e6cd");
-    cg.addColorStop(0.55, "#faf1de"); cg.addColorStop(0.8, "#e6d5b8");
-    cg.addColorStop(1, "#bda98c");
+    cg.addColorStop(0, "#b9a382"); cg.addColorStop(0.20, "#e6d6b8");
+    cg.addColorStop(0.46, "#fbf3e0"); cg.addColorStop(0.72, "#eadcbe");
+    cg.addColorStop(1, "#ad9673");
     ctx.fillStyle = cg;
     ctx.beginPath();
     ctx.moveTo(cx - candleW / 2, candleTop);
-    ctx.quadraticCurveTo(cx, candleTop - candleW * 0.20, cx + candleW / 2, candleTop);
+    ctx.lineTo(cx + candleW / 2, candleTop);
     ctx.lineTo(cx + candleW / 2, Hh + 20);
     ctx.lineTo(cx - candleW / 2, Hh + 20);
     ctx.closePath(); ctx.fill();
-    /* brushed streaks down the wax */
+
+    /* light thrown onto the wax by the flame above it */
+    var lit = ctx.createRadialGradient(cx, candleTop, 1, cx, candleTop, candleW * 2.2);
+    lit.addColorStop(0, "rgba(255,196,110,0.42)");
+    lit.addColorStop(1, "rgba(255,180,90,0)");
     ctx.save();
     ctx.beginPath();
     ctx.rect(cx - candleW / 2, candleTop, candleW, Hh);
     ctx.clip();
-    for (var k = 0; k < 16; k++) {
+    ctx.fillStyle = lit; ctx.fillRect(cx - candleW * 2, candleTop, candleW * 4, Hh);
+
+    /* brushed streaks down the wax */
+    for (var k = 0; k < 18; k++) {
       var kt = br();
-      ctx.strokeStyle = "rgba(" + (kt > 0.5 ? "255,250,236," : "168,146,116,") + (0.06 + kt * 0.13) + ")";
+      ctx.strokeStyle = "rgba(" + (kt > 0.5 ? "255,250,236," : "160,136,104,") + (0.05 + kt * 0.12) + ")";
       ctx.lineWidth = 1 + kt * 3;
       var kx = cx - candleW / 2 + kt * candleW;
       ctx.beginPath();
       ctx.moveTo(kx, candleTop + candleW * 0.1);
-      ctx.lineTo(kx + (br() - 0.5) * 4, Hh);
+      ctx.lineTo(kx + (br() - 0.5) * 5, Hh);
       ctx.stroke();
     }
     ctx.restore();
 
-    /* wick */
-    ctx.strokeStyle = "#2b1a20";
-    ctx.lineWidth = Math.max(1.6, candleW * 0.055);
+    /* the melted rim, and drips over the edge */
+    ctx.fillStyle = "#fdf7e6";
+    ctx.beginPath();
+    ctx.ellipse(cx, candleTop, candleW / 2, candleW * 0.15, 0, 0, 6.29);
+    ctx.fill();
+    ctx.fillStyle = "rgba(196,168,120,0.5)";
+    ctx.beginPath();
+    ctx.ellipse(cx, candleTop + candleW * 0.02, candleW * 0.30, candleW * 0.075, 0, 0, 6.29);
+    ctx.fill();
+    ctx.fillStyle = "#f8efd9";
+    [[-0.30, 0.34], [0.24, 0.52], [0.38, 0.26]].forEach(function (d) {
+      var dx = cx + candleW * d[0], dy = candleTop + candleW * 0.06;
+      ctx.beginPath();
+      ctx.moveTo(dx - candleW * 0.07, dy);
+      ctx.quadraticCurveTo(dx - candleW * 0.09, dy + candleW * d[1] * 0.8,
+                           dx, dy + candleW * d[1]);
+      ctx.quadraticCurveTo(dx + candleW * 0.09, dy + candleW * d[1] * 0.8,
+                           dx + candleW * 0.07, dy);
+      ctx.closePath(); ctx.fill();
+    });
+
+    /* wick, leaning with the flame */
+    var drift = Math.sin(t * 2.1) * candleW * 0.07 + Math.sin(t * 5.3) * candleW * 0.02;
+    ctx.strokeStyle = "#3a2118";
+    ctx.lineWidth = Math.max(1.6, candleW * 0.05);
+    ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(cx, candleTop - candleW * 0.02);
-    ctx.lineTo(cx + Math.sin(t * 2.1) * candleW * 0.04, candleTop - candleW * 0.30);
+    ctx.quadraticCurveTo(cx + drift * 0.4, candleTop - candleW * 0.20,
+                         cx + drift, candleTop - candleW * 0.32);
     ctx.stroke();
+    ctx.lineCap = "butt";
 
-    /* the flame — tall, and drifting */
-    var drift = Math.sin(t * 2.1) * candleW * 0.07;
-    var fh = candleW * (1.55 + Math.sin(t * 3.3) * 0.09);
-    var fw = candleW * 0.52;
-    var fx = cx + drift, fy = candleTop - candleW * 0.26;
-    var glow = ctx.createRadialGradient(fx, fy - fh * 0.45, 1, fx, fy - fh * 0.45, fh * 2.2);
-    glow.addColorStop(0, "rgba(255,196,110,0.34)");
-    glow.addColorStop(1, "rgba(255,170,90,0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath(); ctx.arc(fx, fy - fh * 0.45, fh * 2.2, 0, 6.29); ctx.fill();
+    /* the flame, in layers: halo, body, cool base, hot core */
+    var fh = candleW * (2.15 + Math.sin(t * 3.3) * 0.10 + Math.sin(t * 7.9) * 0.04);
+    var fw = candleW * 0.46;
+    var fx = cx + drift, fy = candleTop - candleW * 0.28;
 
-    var fg = ctx.createLinearGradient(0, fy - fh, 0, fy);
-    fg.addColorStop(0, "#fff6da"); fg.addColorStop(0.30, "#f8c96e");
-    fg.addColorStop(0.68, "#e29a3c"); fg.addColorStop(1, "#b4641d");
-    ctx.fillStyle = fg;
-    ctx.beginPath();
-    ctx.moveTo(fx, fy - fh);
-    ctx.bezierCurveTo(fx + fw * 0.86, fy - fh * 0.50, fx + fw * 0.62, fy - fh * 0.04, fx, fy);
-    ctx.bezierCurveTo(fx - fw * 0.62, fy - fh * 0.04, fx - fw * 0.86, fy - fh * 0.50, fx, fy - fh);
-    ctx.fill();
-    /* the darker heart of the flame */
-    ctx.fillStyle = "rgba(122,52,18,0.42)";
-    ctx.beginPath();
-    ctx.moveTo(fx, fy - fh * 0.46);
-    ctx.bezierCurveTo(fx + fw * 0.30, fy - fh * 0.24, fx + fw * 0.20, fy - fh * 0.02, fx, fy - fh * 0.01);
-    ctx.bezierCurveTo(fx - fw * 0.20, fy - fh * 0.02, fx - fw * 0.30, fy - fh * 0.24, fx, fy - fh * 0.46);
-    ctx.fill();
+    var halo = ctx.createRadialGradient(fx, fy - fh * 0.44, 1, fx, fy - fh * 0.44, fh * 2.9);
+    halo.addColorStop(0, "rgba(255,206,124,0.40)");
+    halo.addColorStop(0.42, "rgba(255,168,84,0.14)");
+    halo.addColorStop(1, "rgba(255,150,70,0)");
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(fx, fy - fh * 0.44, fh * 2.9, 0, 6.29); ctx.fill();
+
+    function flameShape(sw, sh, oy) {
+      ctx.beginPath();
+      ctx.moveTo(fx, fy - sh + oy);
+      ctx.bezierCurveTo(fx + sw * 0.88, fy - sh * 0.52 + oy,
+                        fx + sw * 0.60, fy - sh * 0.04 + oy, fx, fy + oy);
+      ctx.bezierCurveTo(fx - sw * 0.60, fy - sh * 0.04 + oy,
+                        fx - sw * 0.88, fy - sh * 0.52 + oy, fx, fy - sh + oy);
+      ctx.closePath();
+    }
+
+    var outer = ctx.createLinearGradient(0, fy - fh, 0, fy);
+    outer.addColorStop(0, "rgba(255,244,206,0.95)");
+    outer.addColorStop(0.26, "rgba(250,202,110,0.95)");
+    outer.addColorStop(0.62, "rgba(230,150,58,0.9)");
+    outer.addColorStop(1, "rgba(176,92,30,0.7)");
+    ctx.fillStyle = outer;
+    flameShape(fw, fh, 0); ctx.fill();
+
+    /* the cool blue foot at the wick */
+    var base = ctx.createRadialGradient(fx, fy - fh * 0.06, 1, fx, fy - fh * 0.06, fw * 0.7);
+    base.addColorStop(0, "rgba(126,168,222,0.55)");
+    base.addColorStop(1, "rgba(126,168,222,0)");
+    ctx.fillStyle = base;
+    ctx.beginPath(); ctx.arc(fx, fy - fh * 0.06, fw * 0.7, 0, 6.29); ctx.fill();
+
+    /* the dark heart, then the bright core inside it */
+    ctx.fillStyle = "rgba(178,96,32,0.20)";
+    flameShape(fw * 0.60, fh * 0.50, -fh * 0.04); ctx.fill();
+    var core = ctx.createLinearGradient(0, fy - fh * 0.86, 0, fy - fh * 0.04);
+    core.addColorStop(0, "rgba(255,253,240,0.98)");
+    core.addColorStop(0.45, "rgba(255,238,190,0.85)");
+    core.addColorStop(1, "rgba(255,214,132,0.30)");
+    ctx.fillStyle = core;
+    flameShape(fw * 0.52, fh * 0.80, -fh * 0.05); ctx.fill();
+
+    /* a thread of smoke lifting off the tip */
+    for (var sm = 0; sm < 4; sm++) {
+      var so = (sm - 1.5) * candleW * 0.06;
+      ctx.strokeStyle = "rgba(214,196,190," + (0.055 - sm * 0.010).toFixed(3) + ")";
+      ctx.lineWidth = candleW * (0.16 + sm * 0.10);
+      ctx.beginPath();
+      ctx.moveTo(fx + so * 0.2, fy - fh);
+      ctx.bezierCurveTo(fx + so + Math.sin(t * 1.1 + sm) * candleW * 0.34, fy - fh * 1.5,
+                        fx + so - Math.sin(t * 0.8 + sm) * candleW * 0.44, fy - fh * 2.0,
+                        fx + so + Math.sin(t * 0.6 + sm) * candleW * 0.26, fy - fh * 2.6);
+      ctx.stroke();
+    }
+
+    /* embers, drifting up out of the flame */
+    for (var em = 0; em < 7; em++) {
+      var ph = (t * (0.28 + em * 0.045) + em * 0.37) % 1;
+      var ey = fy - fh * 0.8 - ph * oh * 0.62;
+      var ex = fx + Math.sin(ph * 7 + em) * candleW * (0.28 + ph * 0.7);
+      var er = candleW * 0.035 * (1 - ph * 0.7);
+      ctx.fillStyle = "rgba(255," + Math.round(190 - ph * 60) + ",110," + (0.75 * (1 - ph)).toFixed(3) + ")";
+      ctx.beginPath(); ctx.arc(ex, ey, Math.max(0.4, er), 0, 6.29); ctx.fill();
+    }
 
     /* the butterflies, circling the flame */
     flies.forEach(function (f) {
       var a = f.a0 + t * f.spd;
       var x = fx + Math.cos(a) * ow * f.rx;
-      var y = fy - fh * 1.15 + Math.sin(a * f.wob) * oh * f.ry;
+      var y = fy - fh * 1.34 + Math.sin(a * f.wob) * oh * f.ry;
       var s = ow * f.s * (0.86 + Math.sin(a) * 0.14);
       paintFly(ctx, x, y, s, t * f.flap + f.ph, Math.sin(a * 0.8) * 0.5, 0.92);
     });
@@ -1979,7 +2415,7 @@ window.Scrapbook = (function () {
     flies = [];
     for (var i = 0; i < 3; i++) {
       flies.push({
-        a0: i * 2.2, spd: 0.42 + i * 0.13, rx: 0.62 + i * 0.30, ry: 0.16 + i * 0.07,
+        a0: i * 2.2, spd: 0.42 + i * 0.13, rx: 0.78 + i * 0.34, ry: 0.13 + i * 0.06,
         wob: 1.5 + i * 0.45, s: 0.40 - i * 0.075, flap: 5.2 + i * 1.2, ph: i * 1.9,
       });
     }
@@ -2041,87 +2477,243 @@ window.Scrapbook = (function () {
 
   function totalPages() { return pageEls.length; }
 
-  /* the first page of the view that `i` belongs to */
   function viewStart(i) {
     return perView === 2 ? Math.floor(i / 2) * 2 : i;
+  }
+
+  function canGo(dir) {
+    var t = viewStart(pageIndex) + dir * perView;
+    return t >= 0 && t < totalPages();
+  }
+
+  /* put a page back where it belongs and give it its slot class */
+  function setSlot(p, slot) {
+    p.classList.remove("leftpage", "rightpage", "solo", "in-leaf");
+    if (slot) p.classList.add(slot);
   }
 
   function renderView() {
     var start = viewStart(pageIndex);
     var outer = document.getElementById("sb-book-outer");
     if (outer) outer.classList.toggle("single", perView === 1);
+
     /* the last view can hold a single page — the back cover. Rather than
        leave a blank leaf beside it, let it take the whole spread. */
     var lonely = perView === 2 && start + 1 >= totalPages();
     pageEls.forEach(function (p, i) {
       var on = i >= start && i < start + perView;
       p.classList.toggle("on", on);
-      p.classList.toggle("leftpage", on && perView === 2 && !lonely && (i - start) === 0);
-      p.classList.toggle("rightpage", on && perView === 2 && (i - start) === 1);
-      p.classList.toggle("solo", on && (perView === 1 || lonely));
+      if (!on) { setSlot(p, null); return; }
+      if (perView === 1 || lonely) setSlot(p, "solo");
+      else setSlot(p, (i - start) === 0 ? "leftpage" : "rightpage");
     });
+
     var spine = document.querySelector("#screen-scrapbook .sb-spine");
     if (spine) spine.style.opacity = lonely ? "0" : "";
-    buildDots();
-    var prev = document.getElementById("sb-prev");
-    var next = document.getElementById("sb-next");
-    if (prev) prev.disabled = start <= 0;
-    if (next) next.disabled = start + perView >= totalPages();
+
+    var curl = document.getElementById("sb-curl");
+    if (curl) curl.classList.toggle("off", !canGo(1));
   }
 
-  function buildDots() {
-    var wrap = document.getElementById("sb-dots");
-    if (!wrap) return;
-    var views = Math.ceil(totalPages() / perView);
-    var here = Math.floor(viewStart(pageIndex) / perView);
-    if (wrap.childElementCount !== views) {
-      wrap.innerHTML = "";
-      for (var i = 0; i < views; i++) {
-        var b = el("sb-dot-btn", "button");
-        b.setAttribute("aria-label", "Page " + (i + 1));
-        (function (idx) {
-          b.addEventListener("click", function () { goTo(idx * perView); });
-        })(i);
-        wrap.appendChild(b);
+  /* =======================================================================
+     TURNING A PAGE
+
+     The leaf is a real element with two faces, and the actual page nodes
+     are moved into it for the duration of the turn — so what lifts off
+     the book is the page itself, not a picture of it. The angle follows
+     the drag, and lets go into an eased settle when she does.
+     ======================================================================= */
+  var flip = { on: false, dir: 0, start: 0, target: 0, p: 0, nodes: null };
+  var dragState = null;
+  var dragMoved = false;
+
+  function els() {
+    return {
+      outer: document.getElementById("sb-book-outer"),
+      leaf:  document.getElementById("sb-flip"),
+      front: document.getElementById("sb-flip-front"),
+      back:  document.getElementById("sb-flip-back"),
+      spread: document.getElementById("sb-spread"),
+    };
+  }
+
+  function setFlipProgress(p) {
+    var e = els();
+    if (!e.leaf || !e.outer) return;
+    flip.p = p;
+    var ang = flip.dir > 0 ? -180 * p : 180 * p;
+    e.leaf.style.transform = "rotateY(" + ang + "deg)";
+    e.outer.style.setProperty("--flip-p", p.toFixed(4));
+    /* the sheet catches light as it stands up, and loses it going down */
+    e.outer.style.setProperty("--flip-lift", Math.sin(Math.PI * p).toFixed(4));
+  }
+
+  /* Move the pages involved into the leaf and lay the revealed page
+     underneath. Returns false if there is nowhere to turn to. */
+  function beginTurn(dir) {
+    if (flip.on || turning) return false;
+    if (!canGo(dir)) return false;
+    var e = els();
+    if (!e.leaf) return false;
+
+    var start = viewStart(pageIndex);
+    var target = start + dir * perView;
+
+    var moved = [];
+    function into(host, page, slot) {
+      if (!page) return;
+      setSlot(page, slot);
+      page.classList.add("on", "in-leaf");
+      host.appendChild(page);
+      moved.push(page);
+    }
+
+    e.front.innerHTML = "";
+    e.back.innerHTML = "";
+
+    if (perView === 2) {
+      if (dir > 0) {
+        /* the right page lifts; behind it, the next spread's right page */
+        into(e.front, pageEls[start + 1], null);
+        into(e.back,  pageEls[target], null);
+        pageEls.forEach(function (p, i) {
+          if (i === start) { p.classList.add("on"); setSlot(p, "leftpage"); }
+          else if (i === target + 1) { p.classList.add("on"); setSlot(p, "rightpage"); }
+          else if (i !== start + 1 && i !== target) { p.classList.remove("on"); setSlot(p, null); }
+        });
+      } else {
+        /* the left page lifts back over; the previous spread appears */
+        into(e.front, pageEls[start], null);
+        into(e.back,  pageEls[target + 1], null);
+        pageEls.forEach(function (p, i) {
+          if (i === start + 1) { p.classList.add("on"); setSlot(p, "rightpage"); }
+          else if (i === target) { p.classList.add("on"); setSlot(p, "leftpage"); }
+          else if (i !== start && i !== target + 1) { p.classList.remove("on"); setSlot(p, null); }
+        });
       }
+    } else {
+      /* one page at a time: the sheet lifts, the next one is underneath */
+      into(e.front, pageEls[start], null);
+      e.back.classList.add("blank");
+      pageEls.forEach(function (p, i) {
+        if (i === target) { p.classList.add("on"); setSlot(p, "solo"); }
+        else if (i !== start) { p.classList.remove("on"); setSlot(p, null); }
+      });
     }
-    Array.prototype.forEach.call(wrap.children, function (b, i) {
-      b.classList.toggle("on", i === here);
-    });
+
+    flip.on = true; flip.dir = dir; flip.start = start; flip.target = target;
+    flip.nodes = moved;
+    e.outer.classList.add("flipping");
+    e.outer.classList.toggle("flip-back", dir < 0);
+    setFlipProgress(0);
+    return true;
   }
 
-  /* the leaf that sweeps over as the page turns */
-  function sweep(dir, then) {
-    if (turning) return;
-    turning = true;
-    var leaf = document.getElementById("sb-turnleaf");
-    if (leaf) {
-      leaf.classList.remove("go-fwd", "go-back");
-      void leaf.offsetWidth;
-      leaf.classList.add(dir > 0 ? "go-fwd" : "go-back");
+  function endTurn(complete) {
+    var e = els();
+    if (!flip.on) return;
+    /* pages go home before the view is redrawn */
+    (flip.nodes || []).forEach(function (p) {
+      p.classList.remove("in-leaf");
+      e.spread.appendChild(p);
+    });
+    if (e.back) e.back.classList.remove("blank");
+    if (e.outer) {
+      e.outer.classList.remove("flipping", "flip-back");
+      e.outer.style.removeProperty("--flip-p");
+      e.outer.style.removeProperty("--flip-lift");
     }
-    setTimeout(function () {
-      then();
-      setTimeout(function () {
-        turning = false;
-        if (leaf) leaf.classList.remove("go-fwd", "go-back");
-      }, 320);
-    }, 210);
+    if (e.leaf) e.leaf.style.transform = "";
+    if (complete) pageIndex = flip.target;
+    flip.on = false; flip.nodes = null;
+    renderView();
   }
+
+  function settle(to, done) {
+    var from = flip.p;
+    var dist = Math.abs(to - from);
+    var dur = Math.max(220, Math.min(720, dist * 700));
+    var t0 = null;
+    turning = true;
+    (function step(now) {
+      if (t0 === null) t0 = now;
+      var k = Math.min(1, (now - t0) / dur);
+      /* ease-out-back-free: a clean deceleration, like paper falling */
+      var eased = 1 - Math.pow(1 - k, 2.6);
+      setFlipProgress(from + (to - from) * eased);
+      if (k < 1) requestAnimationFrame(step);
+      else { turning = false; done(); }
+    })(performance.now());
+  }
+
+  function animateTurn(dir) {
+    if (!beginTurn(dir)) return;
+    settle(1, function () { endTurn(true); });
+  }
+
+  function next() { animateTurn(1); }
+  function prev() { animateTurn(-1); }
 
   function goTo(i) {
     i = Math.max(0, Math.min(totalPages() - 1, i));
     var target = viewStart(i);
     if (target === viewStart(pageIndex)) return;
-    var dir = target > viewStart(pageIndex) ? 1 : -1;
-    sweep(dir, function () {
-      pageIndex = target;
-      renderView();
-    });
+    animateTurn(target > viewStart(pageIndex) ? 1 : -1);
   }
 
-  function next() { goTo(viewStart(pageIndex) + perView); }
-  function prev() { goTo(viewStart(pageIndex) - perView); }
+  /* ---- dragging ---- */
+  function bookRect() {
+    var o = document.getElementById("sb-book-outer");
+    return o ? o.getBoundingClientRect() : null;
+  }
+
+  function onDown(ev) {
+    if (flip.on || turning) return;
+    var r = bookRect();
+    if (!r) return;
+    var x = ev.clientX, y = ev.clientY;
+    if (x < r.left || x > r.right || y < r.top || y > r.bottom) return;
+    dragMoved = false;
+    dragState = { x0: x, y0: y, t0: performance.now(), r: r, dir: 0, active: false };
+  }
+
+  function onMove(ev) {
+    if (!dragState) return;
+    var dx = ev.clientX - dragState.x0;
+    var dy = ev.clientY - dragState.y0;
+    if (!dragState.active) {
+      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy)) return;
+      /* the direction comes from the way she pulls */
+      var dir = dx < 0 ? 1 : -1;
+      if (!beginTurn(dir)) { dragState = null; return; }
+      dragState.active = true;
+      dragState.dir = dir;
+      dragMoved = true;
+    }
+    var span = perView === 2 ? dragState.r.width * 0.5 : dragState.r.width;
+    var travel = dragState.dir > 0 ? -dx : dx;
+    setFlipProgress(Math.max(0, Math.min(1, travel / span)));
+    if (ev.cancelable) ev.preventDefault();
+  }
+
+  function onUp(ev) {
+    if (!dragState) return;
+    var st = dragState;
+    dragState = null;
+    if (!st.active) {
+      /* a tap near the outer edge turns the page as well */
+      var r = st.r;
+      var rel = (st.x0 - r.left) / r.width;
+      var quiet = Math.abs(ev.clientX - st.x0) < 8 && Math.abs(ev.clientY - st.y0) < 8;
+      if (quiet && rel > 0.86) { next(); }
+      else if (quiet && rel < 0.14) { prev(); }
+      return;
+    }
+    var speed = Math.abs(ev.clientX - st.x0) / Math.max(1, performance.now() - st.t0);
+    var go = flip.p > 0.34 || speed > 0.55;
+    settle(go ? 1 : 0, function () { endTurn(go); });
+    setTimeout(function () { dragMoved = false; }, 60);
+  }
 
   /* =======================================================================
      THE COVER, AND GETTING IN
@@ -2192,10 +2784,10 @@ window.Scrapbook = (function () {
     job(function () { PAPER.teal2  = crumpled("#2a616e", "rgba(180,228,236,0.26)", "rgba(0,22,30,0.36)", 31); });
     job(function () { dressCover(); });          /* the cover only needs teal + lips */
     job(function () { PAPER.denim  = crumpled("#40607c", "rgba(198,224,244,0.28)", "rgba(0,16,34,0.36)", 11); });
-    job(function () { PAPER.cream  = crumpled("#efe1c6", "rgba(255,252,242,0.62)", "rgba(150,118,74,0.24)", 7); });
+    job(function () { PAPER.cream  = crumpled("#efe1c6", "rgba(255,252,242,0.62)", "rgba(150,118,74,0.24)", 7, 0, 0, { print: ticking("#8a6a44") }); });
     job(function () { PAPER.ivory  = crumpled("#f4ecdc", "rgba(255,255,250,0.7)",  "rgba(150,125,85,0.18)", 41); });
-    job(function () { PAPER.blush  = crumpled("#eed3cc", "rgba(255,250,246,0.55)", "rgba(150,96,88,0.26)", 19); });
-    job(function () { PAPER.note   = crumpled("#fbf3e0", "rgba(255,255,255,0.7)",  "rgba(150,125,85,0.18)", 23, 320, 220); });
+    job(function () { PAPER.blush  = crumpled("#eed3cc", "rgba(255,250,246,0.55)", "rgba(150,96,88,0.26)", 19, 0, 0, { print: ditsyFloral("#b4707e") }); });
+    job(function () { PAPER.note   = crumpled("#fbf3e0", "rgba(255,255,255,0.7)",  "rgba(150,125,85,0.18)", 23, 340, 240); });
     job(function () { PAPER.news   = newsprint(13); });
     job(function () { PAPER.grid   = gridPaper(29); });
     job(function () { PAPER.denimCloth = denimCloth(37); });
@@ -2277,22 +2869,21 @@ window.Scrapbook = (function () {
 
     window.addEventListener("resize", onResize);
 
-    /* swipe through the pages on a phone */
-    var spread = document.getElementById("sb-spread");
-    if (spread) {
-      var x0 = null, y0 = null;
-      spread.addEventListener("touchstart", function (e) {
-        x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
-      }, { passive: true });
-      spread.addEventListener("touchend", function (e) {
-        if (x0 == null) return;
-        var dx = e.changedTouches[0].clientX - x0;
-        var dy = e.changedTouches[0].clientY - y0;
-        if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-          dx < 0 ? next() : prev();
-        }
-        x0 = y0 = null;
-      }, { passive: true });
+    /* dragging a page. Pointer events cover mouse, pen and touch alike,
+       so there is only one path to get right. */
+    var outer = document.getElementById("sb-book-outer");
+    if (outer) {
+      outer.addEventListener("pointerdown", onDown);
+      window.addEventListener("pointermove", onMove, { passive: false });
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", function () {
+        if (dragState && dragState.active) settle(0, function () { endTurn(false); });
+        dragState = null;
+      });
+      /* a drag must never register as a tap on a photo */
+      outer.addEventListener("click", function (e) {
+        if (dragMoved) { e.stopPropagation(); e.preventDefault(); }
+      }, true);
     }
   }
 

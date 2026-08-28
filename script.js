@@ -1393,16 +1393,19 @@ function stopDioramas() {
 
 /* ---------- wiring ---------- */
 document.getElementById("sb-open").addEventListener("click", () => Scrapbook.openBook());
-document.getElementById("sb-next").addEventListener("click", () => Scrapbook.next());
-document.getElementById("sb-prev").addEventListener("click", () => Scrapbook.prev());
 document.getElementById("sb-lb-close").addEventListener("click", () => Scrapbook.closeLightbox());
 document.getElementById("sb-lightbox").addEventListener("click", (e) => {
   if (e.target.id === "sb-lightbox") Scrapbook.closeLightbox();
 });
-document.getElementById("sb-continue").addEventListener("click", () => {
+/* the ribbon marker closes the book — there is no bar of controls */
+document.getElementById("sb-ribbon").addEventListener("click", () => {
   stopDioramas();
   pageTurn("hub", startHub);
 });
+window.leaveScrapbook = () => {
+  stopDioramas();
+  pageTurn("hub", startHub);
+};
 document.addEventListener("keydown", (e) => {
   if (!document.getElementById("screen-scrapbook").classList.contains("active")) return;
   if (e.key === "ArrowRight") Scrapbook.next();

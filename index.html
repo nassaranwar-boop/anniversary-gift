@@ -57,21 +57,31 @@
         </div>
       </div>
       <button id="sb-open" class="sb-open-btn">open it 💌</button>
+      <p class="sb-cover-hint" id="sb-cover-hint">
+        <span class="sb-cover-hint-corner" aria-hidden="true"></span>
+        take the corner of a page and pull it across — just like a real book
+      </p>
     </div>
 
-    <!-- 3. the book itself -->
+    <!-- 3. the book itself. Pages are turned by dragging them. -->
     <div class="sb-book" id="sb-book">
       <div class="sb-book-outer" id="sb-book-outer">
         <div class="sb-spread" id="sb-spread"></div>
         <div class="sb-spine" aria-hidden="true"></div>
-        <div class="sb-turnleaf" id="sb-turnleaf" aria-hidden="true"></div>
+
+        <!-- the leaf that actually turns; its two faces hold real pages -->
+        <div class="sb-flip" id="sb-flip" aria-hidden="true">
+          <div class="sb-flip-face sb-flip-front" id="sb-flip-front"></div>
+          <div class="sb-flip-face sb-flip-back" id="sb-flip-back"></div>
+        </div>
+        <div class="sb-flip-shade" id="sb-flip-shade" aria-hidden="true"></div>
+
+        <!-- the corner that lifts, inviting the drag -->
+        <div class="sb-curl" id="sb-curl" aria-hidden="true"></div>
+
+        <!-- the ribbon marker: pull it to close the book -->
+        <button class="sb-ribbon" id="sb-ribbon" aria-label="Close the book"></button>
       </div>
-      <div class="sb-nav">
-        <button class="sb-arrow" id="sb-prev" aria-label="Previous page">‹</button>
-        <div class="sb-dots" id="sb-dots"></div>
-        <button class="sb-arrow" id="sb-next" aria-label="Next page">›</button>
-      </div>
-      <button id="sb-continue" class="btn-ancient sb-continue">Close the book 💛</button>
     </div>
 
     <!-- 4. the little button bottom-right, and the drawer it opens -->
