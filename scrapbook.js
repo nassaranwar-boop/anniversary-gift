@@ -214,19 +214,6 @@ window.Scrapbook = (function () {
   }
 
   var PAPER = {};
-  function buildPapers() {
-    if (PAPER.teal) return;
-    PAPER.teal   = crumpled("#2f6b76", "rgba(190,235,240,0.30)", "rgba(0,26,34,0.34)", 3);
-    PAPER.teal2  = crumpled("#2a616e", "rgba(180,228,236,0.26)", "rgba(0,22,30,0.36)", 31);
-    PAPER.denim  = crumpled("#40607c", "rgba(198,224,244,0.28)", "rgba(0,16,34,0.36)", 11);
-    PAPER.cream  = crumpled("#efe1c6", "rgba(255,252,242,0.62)", "rgba(150,118,74,0.24)", 7);
-    PAPER.ivory  = crumpled("#f4ecdc", "rgba(255,255,250,0.7)",  "rgba(150,125,85,0.18)", 41);
-    PAPER.blush  = crumpled("#eed3cc", "rgba(255,250,246,0.55)", "rgba(150,96,88,0.26)", 19);
-    PAPER.note   = crumpled("#fbf3e0", "rgba(255,255,255,0.7)",  "rgba(150,125,85,0.18)", 23, 320, 220);
-    PAPER.news   = newsprint(13);
-    PAPER.grid   = gridPaper(29);
-    PAPER.denimCloth = denimCloth(37);
-  }
 
   /* =======================================================================
      STICKER ART — drawn once, reused everywhere
@@ -710,23 +697,6 @@ window.Scrapbook = (function () {
       ctx.lineWidth = W * 0.013;
       ctx.beginPath(); ctx.moveTo(c, c); ctx.lineTo(c - R * 0.16, c - R * 0.58); ctx.stroke();
     });
-  }
-
-  function buildStickers() {
-    if (STICK.disco) return;
-    STICK.disco    = discoBall(140);
-    STICK.vinyl8   = vinyl(190, { text: "8" });
-    STICK.vinylTeal= vinyl(230, { body: "#1d4650", label: "#e8dcc0", text: "" });
-    STICK.vinylLtd = vinyl(200, { body: "#20343a", label: "#f0e6cc", text: "" });
-    STICK.lips     = chromeLips(110);
-    STICK.lipInk   = lipStamp(120, "#2c5866");
-    STICK.rose     = chromeRose(150);
-    STICK.flowers  = pressedFlowers(200);
-    STICK.bouquet  = bouquet(260, 380);
-    STICK.starS    = starArt(90, "silver");
-    STICK.starG    = starArt(70, "gold");
-    STICK.starD    = starArt(100, "denim");
-    STICK.clock    = clockFace(200);
   }
 
   /* ---------------------------------------------------------------
@@ -1631,6 +1601,7 @@ window.Scrapbook = (function () {
   function buildDrawer() {
     var d = document.getElementById("sb-drawer");
     if (!d || drawerBuilt) return;
+    if (!STICK.bouquet) buildNow();
     drawerBuilt = true;
     d.appendChild(buildBouquetCard());
     d.appendChild(buildSongCard());
@@ -1757,14 +1728,28 @@ window.Scrapbook = (function () {
     linenImg.src = linenTex();
   }
 
+  /* The screen animates in as this starts, so a single measurement lands
+     mid-transform — or, if the box has not been laid out yet, at zero,
+     which paints nothing at all. Re-measure whenever the size actually
+     changes instead. */
+  var introW = 0, introH = 0;
+
   function introResize() {
-    if (!introCv) return;
+    if (!introCv) return false;
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
-    var r = introCv.getBoundingClientRect();
-    introCv.width = Math.max(1, Math.round(r.width * dpr));
-    introCv.height = Math.max(1, Math.round(r.height * dpr));
+    var w = introCv.clientWidth || introCv.offsetWidth;
+    var h = introCv.clientHeight || introCv.offsetHeight;
+    if (!w || !h) {
+      /* not laid out yet — fall back to the viewport so we always paint */
+      w = window.innerWidth; h = window.innerHeight;
+    }
+    if (w === introW && h === introH) return false;
+    introW = w; introH = h;
+    introCv.width = Math.max(1, Math.round(w * dpr));
+    introCv.height = Math.max(1, Math.round(h * dpr));
     introCtx = introCv.getContext("2d");
     introCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return true;
   }
 
   /* one butterfly, painted in loose strokes */
@@ -1825,10 +1810,12 @@ window.Scrapbook = (function () {
   }
 
   function introFrame(now) {
-    if (!introCtx || introDone) return;
+    if (introDone) return;
+    introResize();
+    if (!introCtx) { introRaf = requestAnimationFrame(introFrame); return; }
     if (!introT0) introT0 = now;
     var t = (now - introT0) / 1000;
-    var W = introCv.clientWidth, Hh = introCv.clientHeight;
+    var W = introW, Hh = introH;
     var ctx = introCtx;
 
     /* linen ground */
@@ -1843,7 +1830,10 @@ window.Scrapbook = (function () {
     /* the plum oval, brushed. It is a tall, narrow ellipse with linen
        showing either side of it, the way the reference painting sits. */
     var cx = W / 2, cy = Hh * 0.5;
-    var ow = Math.min(W * 0.19, Hh * 0.30), oh = Hh * 0.47;
+    /* the oval keeps its own proportion rather than stretching with the
+       viewport, so it reads the same on a phone as on a laptop */
+    var oh = Math.min(Hh * 0.46, W * 0.62);
+    var ow = oh / 1.72;
     var br = rnd(17);
     ctx.save();
     ctx.beginPath();
@@ -2167,6 +2157,7 @@ window.Scrapbook = (function () {
   function openBook() {
     var screen = document.getElementById("screen-scrapbook");
     if (!screen) return;
+    if (!built) buildNow();
     screen.classList.add("sb-open");
     pageIndex = 0;
     perView = pagesPerView();
@@ -2185,16 +2176,78 @@ window.Scrapbook = (function () {
   /* =======================================================================
      PUBLIC API + WIRING
      ======================================================================= */
-  function build() {
-    if (built) return;
-    built = true;
-    buildPapers();
-    buildStickers();
-    STICK.instantCam = instantCam(320);
-    STICK.filmCam = filmCam(300);
-    dressCover();
-    buildBook();
+  /* Building every paper and sticker means a few dozen canvas draws and
+     as many toDataURL calls. Done in one go on the transition into the
+     book that locks the main thread for seconds on a phone — the screen
+     just sits there, blank, until it finishes. So the work is cut into
+     jobs and spread across frames, with the opening painting first and
+     the rest arriving while she watches the candle. */
+  var buildQueue = null;
+
+  function buildJobs() {
+    var jobs = [];
+    function job(fn) { jobs.push(fn); }
+
+    job(function () { PAPER.teal   = crumpled("#2f6b76", "rgba(190,235,240,0.30)", "rgba(0,26,34,0.34)", 3); });
+    job(function () { PAPER.teal2  = crumpled("#2a616e", "rgba(180,228,236,0.26)", "rgba(0,22,30,0.36)", 31); });
+    job(function () { dressCover(); });          /* the cover only needs teal + lips */
+    job(function () { PAPER.denim  = crumpled("#40607c", "rgba(198,224,244,0.28)", "rgba(0,16,34,0.36)", 11); });
+    job(function () { PAPER.cream  = crumpled("#efe1c6", "rgba(255,252,242,0.62)", "rgba(150,118,74,0.24)", 7); });
+    job(function () { PAPER.ivory  = crumpled("#f4ecdc", "rgba(255,255,250,0.7)",  "rgba(150,125,85,0.18)", 41); });
+    job(function () { PAPER.blush  = crumpled("#eed3cc", "rgba(255,250,246,0.55)", "rgba(150,96,88,0.26)", 19); });
+    job(function () { PAPER.note   = crumpled("#fbf3e0", "rgba(255,255,255,0.7)",  "rgba(150,125,85,0.18)", 23, 320, 220); });
+    job(function () { PAPER.news   = newsprint(13); });
+    job(function () { PAPER.grid   = gridPaper(29); });
+    job(function () { PAPER.denimCloth = denimCloth(37); });
+
+    job(function () { STICK.disco    = discoBall(140); });
+    job(function () { STICK.vinyl8   = vinyl(190, { text: "8" }); });
+    job(function () { STICK.vinylTeal= vinyl(230, { body: "#1d4650", label: "#e8dcc0", text: "" }); });
+    job(function () { STICK.vinylLtd = vinyl(200, { body: "#20343a", label: "#f0e6cc", text: "" }); });
+    job(function () { STICK.lipInk   = lipStamp(120, "#2c5866"); });
+    job(function () { STICK.rose     = chromeRose(150); });
+    job(function () { STICK.flowers  = pressedFlowers(200); });
+    job(function () { STICK.bouquet  = bouquet(260, 380); });
+    job(function () { STICK.starS    = starArt(90, "silver"); });
+    job(function () { STICK.starG    = starArt(70, "gold"); });
+    job(function () { STICK.starD    = starArt(100, "denim"); });
+    job(function () { STICK.clock    = clockFace(200); });
+    job(function () { STICK.instantCam = instantCam(320); });
+    job(function () { STICK.filmCam  = filmCam(300); });
+
+    job(function () { buildBook(); built = true; renderView(); });
+    return jobs;
+  }
+
+  /* the two the cover cannot wait for */
+  function buildCoverEssentials() {
+    if (!STICK.lips) STICK.lips = chromeLips(110);
+  }
+
+  function scheduleBuild() {
+    if (built || buildQueue) return;
+    buildCoverEssentials();
     wire();
+    buildQueue = buildJobs();
+    stepBuild();
+  }
+
+  function stepBuild() {
+    if (!buildQueue) return;
+    var jobsThisFrame = 1;
+    while (jobsThisFrame-- && buildQueue.length) buildQueue.shift()();
+    if (!buildQueue.length) { buildQueue = null; return; }
+    /* a frame to paint, then a task, so the opening keeps animating */
+    requestAnimationFrame(function () { setTimeout(stepBuild, 0); });
+  }
+
+  /* if she gets to the book before the queue drains, finish it now */
+  function buildNow() {
+    buildCoverEssentials();
+    wire();
+    if (!buildQueue) buildQueue = buildJobs();
+    while (buildQueue.length) buildQueue.shift()();
+    buildQueue = null;
   }
 
   var wired = false;
@@ -2244,7 +2297,6 @@ window.Scrapbook = (function () {
   }
 
   function start() {
-    build();
     var screen = document.getElementById("screen-scrapbook");
     if (screen) {
       screen.classList.remove("sb-open", "sb-intro-out", "sb-cover-on", "sb-drawer-on");
@@ -2253,8 +2305,8 @@ window.Scrapbook = (function () {
     toggleDrawer(false);
     pageIndex = 0;
     perView = pagesPerView();
-    renderView();
-    startIntro();
+    startIntro();          /* on screen immediately */
+    scheduleBuild();       /* everything else, spread across frames */
   }
 
   function stop() {
