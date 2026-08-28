@@ -1392,7 +1392,6 @@ function stopDioramas() {
 }
 
 /* ---------- wiring ---------- */
-document.getElementById("sb-open").addEventListener("click", () => Scrapbook.openBook());
 document.getElementById("sb-lb-close").addEventListener("click", () => Scrapbook.closeLightbox());
 document.getElementById("sb-lightbox").addEventListener("click", (e) => {
   if (e.target.id === "sb-lightbox") Scrapbook.closeLightbox();

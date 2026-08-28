@@ -7,12 +7,12 @@
    a lovers-club card, a letter under a paperclip — and a back cover.
 
    A round button sits bottom-right. It opens a drawer down the left with
-   the bouquet, the song, the memory map of Marrakech, the voice note,
-   and the music video.
+   the bouquet, the song, the memory map of Marrakech and the music
+   video.
 
    Every texture here is drawn procedurally onto a canvas at runtime, so
    the book carries no image files of its own. The only things that come
-   from outside are her photos, the song, and the voice note — all of
+   from outside are her photos, the song and your own video — all of
    them optional, all of them marked below.
 
    Public API used by script.js:
@@ -45,11 +45,13 @@ window.Scrapbook = (function () {
       youtubeId: "hnd84Ru1dgA",
     },
 
-    /* ---- the voice note. Record it, save it as assets/voice.m4a ---- */
-    voice: {
-      src:   "assets/voice.m4a",
-      label: "A note just for you",
-      hint:  "tap to listen",
+    /* ---- the video on the last page: one of the two of you.
+       Save it as assets/our-video.mp4 (a poster frame at
+       assets/our-video.jpg is used if it is there) ---- */
+    ourVideo: {
+      src:    "assets/our-video.mp4",
+      poster: "assets/our-video.jpg",
+      caption: "us",
     },
 
     /* ---- the map. Pins are placed in % of the map card ---- */
@@ -68,7 +70,7 @@ window.Scrapbook = (function () {
       from: "You",
       to:   "My Love",
       lead: "My love,",
-      body: "I built this little world for you — photos of us, a song, a voice, and flowers. Open every piece slowly. I am in the intro, in the pages, in the music.",
+      body: "I built this little world for you — photos of us, a song, and flowers. Open every piece slowly. I am in the intro, in the pages, in the music.",
       signOff: "Always,",
       signature: "Anwar",
     },
@@ -83,7 +85,6 @@ window.Scrapbook = (function () {
   };
 
   var api = {};
-  var pageIndex = 0;        // index into PAGES
   var built = false;
   var turning = false;
   var perView = 2;          // 2 pages on a wide screen, 1 on a phone
@@ -397,26 +398,27 @@ window.Scrapbook = (function () {
      cupid's bow and the parting are real geometry rather than a line
      scratched across a blob. */
   function chromeLips(w) {
-    var h = w * 0.68;
+    var h = w * 0.54;
     return tex(w, h, function (ctx, W, Hh) {
-      var mid = Hh * 0.45;
+      var mid = Hh * 0.42;
 
       function upper() {
+        /* two lobes meeting in a sharp cupid's bow */
         ctx.beginPath();
         ctx.moveTo(W * 0.02, mid);
-        ctx.bezierCurveTo(W * 0.06, Hh * 0.14, W * 0.20, Hh * 0.02, W * 0.30, Hh * 0.10);
-        ctx.bezierCurveTo(W * 0.39, Hh * 0.17, W * 0.44, Hh * 0.30, W * 0.50, Hh * 0.30);
-        ctx.bezierCurveTo(W * 0.56, Hh * 0.30, W * 0.61, Hh * 0.17, W * 0.70, Hh * 0.10);
-        ctx.bezierCurveTo(W * 0.80, Hh * 0.02, W * 0.94, Hh * 0.14, W * 0.98, mid);
-        ctx.bezierCurveTo(W * 0.74, Hh * 0.40, W * 0.26, Hh * 0.40, W * 0.02, mid);
+        ctx.bezierCurveTo(W * 0.08, Hh * 0.18, W * 0.19, Hh * 0.00, W * 0.29, Hh * 0.03);
+        ctx.bezierCurveTo(W * 0.38, Hh * 0.06, W * 0.44, Hh * 0.26, W * 0.50, Hh * 0.26);
+        ctx.bezierCurveTo(W * 0.56, Hh * 0.26, W * 0.62, Hh * 0.06, W * 0.71, Hh * 0.03);
+        ctx.bezierCurveTo(W * 0.81, Hh * 0.00, W * 0.92, Hh * 0.18, W * 0.98, mid);
+        ctx.bezierCurveTo(W * 0.74, Hh * 0.36, W * 0.26, Hh * 0.36, W * 0.02, mid);
         ctx.closePath();
       }
       function lower() {
         ctx.beginPath();
         ctx.moveTo(W * 0.02, mid);
-        ctx.bezierCurveTo(W * 0.26, Hh * 0.52, W * 0.74, Hh * 0.52, W * 0.98, mid);
-        ctx.bezierCurveTo(W * 0.94, Hh * 0.82, W * 0.72, Hh * 1.00, W * 0.50, Hh * 1.00);
-        ctx.bezierCurveTo(W * 0.28, Hh * 1.00, W * 0.06, Hh * 0.82, W * 0.02, mid);
+        ctx.bezierCurveTo(W * 0.26, Hh * 0.56, W * 0.74, Hh * 0.56, W * 0.98, mid);
+        ctx.bezierCurveTo(W * 0.93, Hh * 0.84, W * 0.71, Hh * 1.00, W * 0.50, Hh * 1.00);
+        ctx.bezierCurveTo(W * 0.29, Hh * 1.00, W * 0.07, Hh * 0.84, W * 0.02, mid);
         ctx.closePath();
       }
 
@@ -435,13 +437,13 @@ window.Scrapbook = (function () {
       /* the specular streaks that make it read as metal */
       ctx.save();
       lower(); ctx.clip();
-      ctx.fillStyle = "rgba(255,255,255,0.72)";
+      ctx.fillStyle = "rgba(255,255,255,0.80)";
       ctx.beginPath();
-      ctx.ellipse(W * 0.33, Hh * 0.70, W * 0.15, Hh * 0.09, -0.22, 0, 6.29);
+      ctx.ellipse(W * 0.32, Hh * 0.68, W * 0.19, Hh * 0.055, -0.14, 0, 6.29);
       ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.34)";
+      ctx.fillStyle = "rgba(255,255,255,0.40)";
       ctx.beginPath();
-      ctx.ellipse(W * 0.66, Hh * 0.66, W * 0.08, Hh * 0.05, 0.2, 0, 6.29);
+      ctx.ellipse(W * 0.68, Hh * 0.64, W * 0.11, Hh * 0.035, 0.14, 0, 6.29);
       ctx.fill();
       ctx.fillStyle = "rgba(20,32,44,0.30)";
       ctx.beginPath();
@@ -451,13 +453,13 @@ window.Scrapbook = (function () {
 
       ctx.save();
       upper(); ctx.clip();
-      ctx.fillStyle = "rgba(255,255,255,0.45)";
+      ctx.fillStyle = "rgba(255,255,255,0.52)";
       ctx.beginPath();
-      ctx.ellipse(W * 0.28, Hh * 0.17, W * 0.11, Hh * 0.05, -0.3, 0, 6.29);
+      ctx.ellipse(W * 0.27, Hh * 0.13, W * 0.13, Hh * 0.035, -0.16, 0, 6.29);
       ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.28)";
+      ctx.fillStyle = "rgba(255,255,255,0.32)";
       ctx.beginPath();
-      ctx.ellipse(W * 0.72, Hh * 0.17, W * 0.09, Hh * 0.04, 0.3, 0, 6.29);
+      ctx.ellipse(W * 0.73, Hh * 0.13, W * 0.10, Hh * 0.028, 0.16, 0, 6.29);
       ctx.fill();
       ctx.restore();
 
@@ -1155,139 +1157,124 @@ window.Scrapbook = (function () {
   var H = SB.hand;
 
   var PAGES = [
-    /* ---- 0 · disco ---------------------------------------------- */
+    /* ---- 1 · disco ---------------------------------------------- */
     { paper: "teal", pieces: [
-      { k: "sticker", art: "disco",   left: -8, top:  1, w: 32, rot: 0 },
-      { k: "sticker", art: "rose",    left: -3, top: 25, w: 25, rot: -8 },
-      { k: "sticker", art: "lips",    left:  8, top: 40, w: 19, rot: -14 },
-      { k: "sticker", art: "flowers", left: -6, top: 50, w: 31, rot: -6 },
-      { k: "sticker", art: "disco",   left: -4, top: 74, w: 27, rot: 0 },
-      { k: "sticker", art: "disco",   left: 28, top: 83, w: 22, rot: 0 },
-      { k: "bigtype", text: "love you", left: 66, top: 5, size: 15, vertical: true, colour: "rgba(255,255,255,.24)" },
-      { k: "photo", n: 1, style: "polaroid", left: 30, top:  2, w: 32.8, rot: -7, tape: "top" },
-      { k: "photo", n: 2, style: "snapshot", left: 17, top: 24, w: 29.6, rot:  4, tape: "corner" },
-      { k: "photo", n: 3, style: "polaroid", left: 36, top: 47, w: 22.2, rot: -4 },
-      { k: "photo", n: 4, style: "corners",  left: 10, top: 66, w: 29.5, rot:  3 },
-      { k: "sticker", art: "lips",    left: 64, top: 80, w: 17, rot: 14 },
-      { k: "sticker", art: "vinyl8",  left: 72, top: 74, w: 27, rot: 0 },
-      { k: "burst", left: 68, top: 50, w: 9 },
+      { k: "sticker", art: "disco",   left: -9, top:  2, w: 34, rot: 0 },
+      { k: "sticker", art: "rose",    left: -4, top: 30, w: 26, rot: -8 },
+      { k: "sticker", art: "flowers", left: -7, top: 56, w: 32, rot: -6 },
+      { k: "sticker", art: "disco",   left: -5, top: 78, w: 26, rot: 0 },
+      { k: "bigtype", text: "love you", left: 68, top: 6, size: 16, vertical: true, colour: "rgba(255,255,255,.22)" },
+      { k: "photo", n: 1, style: "polaroid", left: 26, top:  5, w: 36.1, rot: -6, tape: "top" },
+      { k: "photo", n: 2, style: "snapshot", left: 14, top: 44, w: 37.7, rot:  4, tape: "corner" },
+      { k: "photo", n: 3, style: "corners",  left: 40, top: 68, w: 34.4, rot: -3 },
+      { k: "sticker", art: "lips",    left: 62, top: 48, w: 19, rot: 14 },
+      { k: "sticker", art: "vinyl8",  left: 70, top: 82, w: 26, rot: 0 },
+      { k: "burst", left: 72, top: 38, w: 9 },
     ]},
 
-    /* ---- 1 · memories -------------------------------------------- */
+    /* ---- 2 · memories -------------------------------------------- */
     { paper: "teal", pieces: [
-      { k: "note", left: 4, top: 4, w: 58, rot: -1.5, text: H.s1note },
-      { k: "letters", text: "MEMORIES", left: 66, top: 2 },
-      { k: "photo", n: 5, style: "snapshot", left: 74, top: 15, w: 16.8, rot: 3 },
-      { k: "photo", n: 6, style: "deckle",   left:  2, top: 34, w: 27.9, rot: -3, caption: H.s1small },
-      { k: "sticker", art: "vinyl8", left: 30, top: 32, w: 21, rot: 0 },
-      { k: "sticker", art: "flowers", left: 26, top: 48, w: 19, rot: 8 },
-      { k: "photo", n: 7,  style: "polaroid", left: 38, top: 40, w: 20.2, rot: -3 },
-      { k: "photo", n: 8,  style: "polaroid", left: 68, top: 43, w: 19.5, rot:  2 },
-      { k: "photo", n: 9,  style: "matted",   left:  4, top: 66, w: 24.6, rot: -2 },
-      { k: "photo", n: 10, style: "polaroid", left: 34, top: 68, w: 20.2, rot:  3 },
-      { k: "photo", n: 11, style: "snapshot", left: 66, top: 72, w: 20.8, rot: -4 },
+      { k: "note", left: 4, top: 5, w: 56, rot: -1.5, text: H.s1note },
+      { k: "letters", text: "MEMORIES", left: 84, top: 6 },
+      { k: "photo", n: 4, style: "deckle",   left:  6, top: 30, w: 31, rot: -4, caption: H.s1small },
+      { k: "sticker", art: "vinyl8", left: 44, top: 28, w: 22, rot: 0 },
+      { k: "photo", n: 5, style: "polaroid", left: 48, top: 30, w: 32, rot:  3 },
+      { k: "photo", n: 6, style: "matted",   left:  6, top: 62, w: 29, rot:  2 },
+      { k: "photo", n: 7, style: "snapshot", left: 50, top: 74, w: 34, rot: -4 },
+      { k: "sticker", art: "flowers", left: 34, top: 60, w: 22, rot: 8 },
     ]},
 
-    /* ---- 2 · the camera ------------------------------------------ */
+    /* ---- 3 · the camera ------------------------------------------ */
     { paper: "teal2", pieces: [
       { k: "typecol", text: "The", left: -1, top: 2, w: 20 },
-      { k: "bigtype", text: "C", left: 15, top: 1, size: 34, colour: "rgba(226,240,244,.28)" },
+      { k: "bigtype", text: "C", left: 15, top: 1, size: 34, colour: "rgba(226,240,244,.26)" },
       { k: "patch", paper: "grid", left: 10, top: 0, w: 48, h: 27, rot: -3 },
-      { k: "instantcam", n: 12, left: 22, top: 7, w: 64, rot: 1 },
-      { k: "img", src: "assets/key.png", left: 28, top: 54, w: 9, rot: 12 },
-      { k: "script", text: "from the midwest princess", left: 54, top: 54, w: 38, rot: -7, size: 3.6 },
-      { k: "idcard", n: 13, left: 6, top: 62, w: 68, rot: -2 },
+      { k: "instantcam", n: 8, left: 20, top: 6, w: 68, rot: 1 },
+      { k: "img", src: "assets/key.png", left: 26, top: 55, w: 9, rot: 12 },
+      { k: "script", text: "from the midwest princess", left: 52, top: 55, w: 40, rot: -7, size: 3.6 },
+      { k: "idcard", n: 9, left: 5, top: 64, w: 72, rot: -2 },
     ]},
 
-    /* ---- 3 · the letter ------------------------------------------ */
+    /* ---- 4 · the letter ------------------------------------------ */
     { paper: "ivory", pieces: [
       { k: "patch", paper: "news", left: -6, top: 2, w: 34, h: 96, rot: 1.5 },
-      { k: "patch", paper: "teal", left: 60, top: -3, w: 48, h: 26, rot: -4 },
-      { k: "sticker", art: "starD", left: 2, top: 18, w: 20, rot: -10 },
-      { k: "voicepill", left: 14, top: 11, w: 80 },
-      { k: "letterpage", left: 12, top: 24, w: 82, rot: 0.6 },
-      { k: "photo", n: 14, style: "corners", left: 4, top: 70, w: 20.2, rot: -5 },
-      { k: "sticker", art: "vinylTeal", left: 46, top: 76, w: 34, rot: 0 },
-      { k: "script", text: "the place where the confetti falls", left: 58, top: 90, w: 36, rot: -6, size: 3.2, dark: true },
+      { k: "patch", paper: "teal", left: 58, top: -3, w: 50, h: 24, rot: -4 },
+      { k: "sticker", art: "starD", left: 2, top: 14, w: 20, rot: -10 },
+      { k: "letterpage", left: 12, top: 12, w: 82, rot: 0.6 },
+      { k: "photo", n: 10, style: "corners", left: 6, top: 66, w: 27.9, rot: -5 },
+      { k: "sticker", art: "vinylTeal", left: 48, top: 72, w: 36, rot: 0 },
+      { k: "script", text: "the place where the confetti falls", left: 12, top: 90, w: 40, rot: -4, size: 3.0, dark: true },
     ]},
 
-    /* ---- 4 · the record ------------------------------------------ */
+    /* ---- 5 · the record ------------------------------------------ */
     { paper: "teal", pieces: [
       { k: "typecol", text: "Th", left: -1, top: 3, w: 14 },
-      { k: "sticker", art: "vinylTeal", left: -6, top: 8, w: 56, rot: 0 },
-      { k: "sticker", art: "clock", left: 2, top: 14, w: 26, rot: 0 },
-      { k: "curvetext", text: H.vinyl, left: -4, top: 10, w: 52 },
-      { k: "sticker", art: "lipInk", left: 62, top: 2, w: 22, rot: -8 },
-      { k: "sticker", art: "lipInk", left: 80, top: 16, w: 19, rot: 12 },
-      { k: "photo", n: 15, style: "washed",   left: 34, top: 12, w: 42.6, rot: -5, tape: "top" },
-      { k: "photo", n: 16, style: "matted",   left: 12, top: 42, w: 37.7, rot:  3 },
-      { k: "photo", n: 17, style: "polaroid", left: 56, top: 52, w: 26.9, rot: -3 },
-      { k: "photo", n: 18, style: "corners",  left: 20, top: 74, w: 26.2, rot:  2 },
-      { k: "sticker", art: "flowers", left: -6, top: 74, w: 28, rot: -8 },
+      { k: "sticker", art: "vinylTeal", left: -8, top: 10, w: 56, rot: 0 },
+      { k: "sticker", art: "clock", left: 0, top: 16, w: 26, rot: 0 },
+      { k: "curvetext", text: H.vinyl, left: -6, top: 12, w: 52 },
+      { k: "sticker", art: "lipInk", left: 66, top: 2, w: 22, rot: -8 },
+      { k: "photo", n: 11, style: "washed",   left: 30, top:  8, w: 50.8, rot: -5, tape: "top" },
+      { k: "photo", n: 12, style: "matted",   left: 10, top: 46, w: 36.1, rot:  3 },
+      { k: "photo", n: 13, style: "polaroid", left: 54, top: 52, w: 34.4, rot: -3 },
+      { k: "sticker", art: "flowers", left: -6, top: 78, w: 28, rot: -8 },
+      { k: "sticker", art: "lipInk", left: 34, top: 88, w: 18, rot: 12 },
     ]},
 
-    /* ---- 5 · cold hands ------------------------------------------ */
+    /* ---- 6 · cold hands ------------------------------------------ */
     { paper: "ivory", pieces: [
-      { k: "patch", paper: "news", left: 48, top: -3, w: 58, h: 30, rot: 4 },
-      { k: "patch", paper: "teal", left: -8, top: 50, w: 34, h: 56, rot: -3 },
-      { k: "photo", n: 19, style: "polaroid", left:  2, top:  4, w: 29.5, rot: -4, tape: "corner" },
-      { k: "photo", n: 20, style: "snapshot", left: 56, top:  6, w: 27.9, rot:  4 },
-      { k: "script", text: H.s3note, left: 0, top: 32, w: 30, rot: -3, size: 3.4, dark: true },
-      { k: "photo", n: 21, style: "deckle",   left: 30, top: 26, w: 26.2, rot: -2 },
-      { k: "photo", n: 22, style: "matted",   left: 64, top: 32, w: 24.6, rot:  3 },
-      { k: "photobooth", n: 23, cells: 3, left: 2, top: 54, w: 22, rot: 5 },
-      { k: "photo", n: 24, style: "polaroid", left: 30, top: 56, w: 21.5, rot: -3 },
-      { k: "sticker", art: "starD", left: 64, top: 58, w: 18, rot: -14 },
-      { k: "label", text: "COLD HANDS,\nWARM HEARTS", left: 58, top: 76, w: 38, rot: -4 },
-      { k: "sticker", art: "flowers", left: 26, top: 84, w: 26, rot: 6 },
+      { k: "patch", paper: "news", left: 48, top: -3, w: 58, h: 28, rot: 4 },
+      { k: "patch", paper: "teal", left: -8, top: 54, w: 34, h: 54, rot: -3 },
+      { k: "photo", n: 14, style: "polaroid", left:  4, top:  4, w: 32.8, rot: -4, tape: "corner" },
+      { k: "photo", n: 15, style: "snapshot", left: 52, top:  8, w: 36.1, rot:  4 },
+      { k: "script", text: H.s3note, left: 2, top: 40, w: 32, rot: -3, size: 3.4, dark: true },
+      { k: "photo", n: 16, style: "deckle",   left: 44, top: 40, w: 31.2, rot: -2 },
+      { k: "photobooth", cells: [17, 18, 19], left: 6, top: 54, w: 22, rot: 5 },
+      { k: "sticker", art: "starD", left: 84, top: 56, w: 16, rot: -14 },
+      { k: "label", text: "COLD HANDS,\nWARM HEARTS", left: 44, top: 80, w: 40, rot: -4 },
+      { k: "sticker", art: "flowers", left: 30, top: 82, w: 24, rot: 6 },
     ]},
 
-    /* ---- 6 · the film strip -------------------------------------- */
+    /* ---- 7 · the film strip -------------------------------------- */
     { paper: "ivory", pieces: [
-      { k: "script", text: "the time we spent, and every hour after", left: 12, top: 2, w: 44, rot: 0, size: 3.4, faint: true },
-      { k: "sticker", art: "starS", left: 1, top: 7, w: 20, rot: 16 },
-      { k: "filmcam", left: 3, top: 14, w: 50, rot: -8 },
-      { k: "sticker", art: "vinylTeal", left: -10, top: 50, w: 44, rot: 0 },
-      { k: "sticker", art: "clock", left: 32, top: 78, w: 22, rot: 0 },
-      { k: "bouquet", left: 4, top: 38, w: 36, rot: -4 },
-      { k: "filmstrip", cells: [25, 26, 27, 28], left: 56, top: -3, w: 42 },
+      { k: "script", text: "the time we spent, and every hour after", left: 10, top: 2, w: 46, rot: 0, size: 3.4, faint: true },
+      { k: "sticker", art: "starS", left: 0, top: 8, w: 20, rot: 16 },
+      { k: "filmcam", left: 2, top: 15, w: 52, rot: -8 },
+      { k: "sticker", art: "vinylTeal", left: -12, top: 50, w: 46, rot: 0 },
+      { k: "sticker", art: "clock", left: 30, top: 80, w: 22, rot: 0 },
+      { k: "bouquet", left: 2, top: 38, w: 38, rot: -4 },
+      { k: "filmstrip", cells: [20, 21, 22], left: 56, top: 4, w: 42 },
     ]},
 
-    /* ---- 7 · the prints ------------------------------------------ */
+    /* ---- 8 · the prints ------------------------------------------ */
     { paper: "denim", pieces: [
-      { k: "patch", paper: "denimCloth", left: 54, top: -3, w: 52, h: 44, rot: 6 },
-      { k: "patch", paper: "denimCloth", left: -8, top: 60, w: 50, h: 48, rot: -5 },
-      { k: "sticker", art: "vinylLtd", left: 66, top: 20, w: 40, rot: 0 },
-      { k: "photo", n: 29, style: "washed", left: -4, top:  3, w: 52.5, rot: -7 },
-      { k: "photo", n: 30, style: "washed", left: 24, top: 32, w: 44.4, rot:  4 },
-      { k: "photo", n: 31, style: "washed", left:  0, top: 64, w: 47.6, rot: -3 },
-      { k: "sticker", art: "starD", left: 66, top: 62, w: 20, rot: -20 },
-      { k: "sticker", art: "lips", left: 76, top: 84, w: 19, rot: 12 },
+      { k: "patch", paper: "denimCloth", left: 52, top: -3, w: 56, h: 46, rot: 6 },
+      { k: "patch", paper: "denimCloth", left: -8, top: 58, w: 52, h: 50, rot: -5 },
+      { k: "sticker", art: "vinylLtd", left: 62, top: 14, w: 44, rot: 0 },
+      { k: "photo", n: 23, style: "washed", left: -2, top:  6, w: 57.4, rot: -7 },
+      { k: "photo", n: 24, style: "washed", left: 20, top: 46, w: 59, rot:  4 },
+      { k: "sticker", art: "starD", left: 4, top: 78, w: 22, rot: -20 },
+      { k: "sticker", art: "lips", left: 72, top: 86, w: 20, rot: 12 },
     ]},
 
-    /* ---- 8 · these memories -------------------------------------- */
+    /* ---- 9 · these memories -------------------------------------- */
     { paper: "grid", pieces: [
-      { k: "patch", paper: "teal", left: 42, top: 8, w: 36, h: 54, rot: 2 },
-      { k: "photo", n: 32, style: "washed", left: 8, top: -3, w: 30.9, rot: 1, tape: "top" },
-      { k: "label2", text: "THESE\nMEMORIES\nMAKE ME SMILE", left: 56, top: 3, w: 36, rot: -3 },
-      { k: "sticker", art: "starG", left: 86, top: 1, w: 13, rot: 12 },
-      { k: "sticker", art: "starG", left: 64, top: 42, w: 10, rot: -8 },
-      { k: "photobooth", n: 33, cells: 3, left: 4, top: 26, w: 24, rot: -4 },
-      { k: "photo", n: 34, style: "deckle",   left: 30, top: 34, w: 27.9, rot: 3 },
-      { k: "photo", n: 35, style: "snapshot", left: 4, top: 56, w: 25.6, rot: 2 },
-      { k: "photo", n: 36, style: "corners",  left: 40, top: 62, w: 26.2, rot: -3 },
-      { k: "patch", paper: "blush", left: 56, top: 72, w: 44, h: 34, rot: 3 },
-      { k: "sticker", art: "flowers", left: 66, top: 72, w: 34, rot: 4 },
-      { k: "sticker", art: "starG", left: 56, top: 78, w: 11, rot: 20 },
+      { k: "patch", paper: "teal", left: 40, top: 6, w: 38, h: 52, rot: 2 },
+      { k: "photo", n: 25, style: "washed", left: 6, top: -2, w: 42.6, rot: 1, tape: "top" },
+      { k: "label2", text: "THESE\nMEMORIES\nMAKE ME SMILE", left: 58, top: 4, w: 36, rot: -3 },
+      { k: "sticker", art: "starG", left: 88, top: 1, w: 12, rot: 12 },
+      { k: "photobooth", cells: [26, 27, 28], left: 4, top: 34, w: 22, rot: -4 },
+      { k: "photo", n: 29, style: "corners", left: 34, top: 46, w: 36.1, rot: -3 },
+      { k: "patch", paper: "blush", left: 50, top: 74, w: 50, h: 32, rot: 3 },
+      { k: "sticker", art: "flowers", left: 62, top: 72, w: 34, rot: 4 },
+      { k: "sticker", art: "starG", left: 52, top: 80, w: 10, rot: 20 },
     ]},
 
-    /* ---- 9 · the video ------------------------------------------- */
+    /* ---- 10 · a video of us -------------------------------------- */
     { paper: "ivory", pieces: [
-      { k: "patch", paper: "denimCloth", left: 74, top: 24, w: 34, h: 48, rot: -4 },
-      { k: "photo", n: 37, style: "washed", left: 8, top: 1, w: 52.5, rot: 0.5 },
-      { k: "script", text: "and every one of them, again", left: 6, top: 32, w: 30, rot: -2, size: 3.2, dark: true },
-      { k: "videocard", left: 14, top: 42, w: 72 },
-      { k: "filmstrip", cells: [38, 39, 40], left: 8, top: 79, w: 84, horizontal: true },
+      { k: "patch", paper: "denimCloth", left: 72, top: 20, w: 36, h: 52, rot: -4 },
+      { k: "photo", n: 30, style: "washed", left: 8, top: 2, w: 50.8, rot: 0.5, tape: "top" },
+      { k: "script", text: "and every one of them, again", left: 6, top: 34, w: 32, rot: -2, size: 3.2, dark: true },
+      { k: "videocard", left: 10, top: 44, w: 80 },
     ]},
   ];
 
@@ -1363,10 +1350,16 @@ window.Scrapbook = (function () {
     return e;
   }
 
-  /* A photo slot. Numbered, and empty until the matching file exists. */
+  /* A photo slot. Numbered, and empty until the matching file exists.
+
+     The mount is a separate, statically-positioned child: percentage
+     padding on an absolutely-positioned box resolves against the page,
+     not against the box, which is what made every frame a wide border
+     around a stamp-sized picture. */
   function makePhoto(p) {
     var mem = photoAt(p.n);
     var wrap = place(el("sb-photo sb-photo-" + (p.style || "polaroid")), p);
+    var mount = el("sb-photo-mount");
     var inner = el("sb-photo-inner");
 
     function showEmpty() {
@@ -1377,22 +1370,25 @@ window.Scrapbook = (function () {
     }
     loadPhotoInto(inner, mem, showEmpty);
 
-    wrap.appendChild(inner);
+    mount.appendChild(inner);
+    wrap.appendChild(mount);
 
-    /* photo corners are little paper mounts, not part of the print */
+    /* the caption band of a polaroid is part of the mount */
+    if (p.style === "polaroid" && (p.caption || mem.title)) {
+      var band = el("sb-photo-band");
+      band.textContent = p.caption || mem.title;
+      mount.appendChild(band);
+    }
+
     if (p.style === "corners") {
       ["tl", "tr", "bl", "br"].forEach(function (c) {
         wrap.appendChild(el("sb-corner sb-corner-" + c));
       });
     }
-    if (p.caption) {
+    if (p.caption && p.style !== "polaroid") {
       var cap = el("sb-photo-hand");
       cap.textContent = p.caption;
       wrap.appendChild(cap);
-    } else if (mem.title) {
-      var cap2 = el("sb-photo-cap");
-      cap2.textContent = mem.title;
-      wrap.appendChild(cap2);
     }
     if (p.tape) String(p.tape).split(" ").forEach(function (t) {
       if (t && t !== "none") wrap.appendChild(el("sb-tape sb-tape-" + t));
@@ -1572,12 +1568,11 @@ window.Scrapbook = (function () {
   /* a photobooth strip: four small frames on card */
   function makePhotobooth(p) {
     var e = place(el("sb-booth"), p);
-    var count = p.cells || 4;
-    for (var i = 0; i < count; i++) {
+    (p.cells || []).forEach(function (n) {
       var c = el("sb-booth-cell");
-      c.appendChild(makePhoto({ n: p.n, style: "cell", left: 0, top: 0, w: 100 }));
+      c.appendChild(makePhoto({ n: n, style: "cell", left: 0, top: 0, w: 100 }));
       e.appendChild(c);
-    }
+    });
     return e;
   }
 
@@ -1620,13 +1615,6 @@ window.Scrapbook = (function () {
     return e;
   }
 
-  /* the voice note pill */
-  function makeVoicePill(p) {
-    var e = place(el("sb-voice"), p);
-    e.appendChild(buildVoicePill());
-    return e;
-  }
-
   /* the memory-map card sitting on the page */
   function makeMapCard(p) {
     var e = place(el("sb-mapcard"), p);
@@ -1637,7 +1625,7 @@ window.Scrapbook = (function () {
   /* the music-video card */
   function makeVideoCard(p) {
     var e = place(el("sb-videoslot"), p);
-    e.appendChild(buildVideoCard());
+    e.appendChild(buildOurVideoCard());
     return e;
   }
 
@@ -1648,7 +1636,7 @@ window.Scrapbook = (function () {
     label: makeLabel, label2: makeLabel2, instantcam: makeInstantCam,
     filmcam: makeFilmCam, bouquet: makeBouquetPiece, filmstrip: makeFilmStrip,
     photobooth: makePhotobooth, idcard: makeIdCard, letterpage: makeLetterPage,
-    voicepill: makeVoicePill, mapcard: makeMapCard, videocard: makeVideoCard,
+    mapcard: makeMapCard, videocard: makeVideoCard,
   };
 
   function buildPage(def, i) {
@@ -1679,7 +1667,7 @@ window.Scrapbook = (function () {
   }
 
   /* =======================================================================
-     THE DRAWER — bouquet, song, map, voice note, video
+     THE DRAWER — bouquet, song, map, music video
 
      These five are built as standalone widgets because two of them also
      appear on the pages themselves (the map on page 4, the video on
@@ -1692,11 +1680,12 @@ window.Scrapbook = (function () {
     catch (e) { /* the pad is optional; never let it break playback */ }
   }
 
-  var songAudio = null, voiceAudio = null;
+  var songAudio = null;
 
   function stopAllAudio(except) {
-    if (songAudio && except !== "song") { songAudio.pause(); }
-    if (voiceAudio && except !== "voice") { voiceAudio.pause(); }
+    if (songAudio && except !== "song") songAudio.pause();
+    var vids = document.querySelectorAll("#screen-scrapbook video");
+    Array.prototype.forEach.call(vids, function (v) { if (except !== "video") v.pause(); });
   }
 
   /* ---- the bouquet card ---- */
@@ -1710,114 +1699,108 @@ window.Scrapbook = (function () {
     return c;
   }
 
-  /* ---- the song ---- */
+  /* ---- the song ------------------------------------------------
+     A record that turns while it plays, a scrubber you can drag, and
+     the time either side of it. ---- */
   function buildSongCard() {
     var S = SB.song;
     var c = el("sb-w sb-w-song");
     c.innerHTML =
-      '<div class="sb-song-art"><span>♪</span></div>' +
-      '<div class="sb-song-meta">' +
-        '<strong>' + S.title + '</strong>' +
-        '<span>' + S.artist + '</span>' +
-        '<div class="sb-song-bar"><i></i></div>' +
-      '</div>' +
-      '<button class="sb-song-play" aria-label="Play the song">▶</button>';
+      '<div class="sb-song-deck">' +
+        '<img class="sb-song-disc" alt="" />' +
+        '<span class="sb-song-spindle"></span>' +
+      "</div>" +
+      '<div class="sb-song-body">' +
+        '<p class="sb-song-title">' + S.title + "</p>" +
+        '<p class="sb-song-artist">' + S.artist + "</p>" +
+        '<div class="sb-song-scrub" role="slider" tabindex="0" aria-label="Seek">' +
+          '<div class="sb-song-track"><i class="sb-song-fill"></i><b class="sb-song-knob"></b></div>' +
+        "</div>" +
+        '<div class="sb-song-times"><span class="sb-song-at">0:00</span>' +
+        '<span class="sb-song-of">—:—</span></div>' +
+      "</div>" +
+      '<button class="sb-song-play" aria-label="Play the song">' +
+        '<span class="sb-ico-play"></span></button>';
 
-    var btn = c.querySelector(".sb-song-play");
-    var bar = c.querySelector(".sb-song-bar i");
+    c.querySelector(".sb-song-disc").src = STICK.vinylTeal;
+
+    var btn   = c.querySelector(".sb-song-play");
+    var fill  = c.querySelector(".sb-song-fill");
+    var knob  = c.querySelector(".sb-song-knob");
+    var scrub = c.querySelector(".sb-song-scrub");
+    var atEl  = c.querySelector(".sb-song-at");
+    var ofEl  = c.querySelector(".sb-song-of");
+
+    function fmt(t) {
+      if (!isFinite(t) || t < 0) return "0:00";
+      t = Math.floor(t);
+      return Math.floor(t / 60) + ":" + ("0" + (t % 60)).slice(-2);
+    }
+    function paint() {
+      if (!songAudio || !songAudio.duration) return;
+      var pct = (songAudio.currentTime / songAudio.duration) * 100;
+      fill.style.width = pct + "%";
+      knob.style.left = pct + "%";
+      atEl.textContent = fmt(songAudio.currentTime);
+      ofEl.textContent = fmt(songAudio.duration);
+    }
+
+    function ensure() {
+      if (songAudio) return;
+      songAudio = new Audio(S.src);
+      songAudio.preload = "metadata";
+      songAudio.addEventListener("timeupdate", paint);
+      songAudio.addEventListener("durationchange", paint);
+      songAudio.addEventListener("loadedmetadata", function () {
+        /* open on the moment set in SB.song.startAt */
+        if (S.startAt && !songAudio.dataset_seeded) {
+          songAudio.dataset_seeded = 1;
+          try { songAudio.currentTime = Math.min(S.startAt, Math.max(0, songAudio.duration - 1)); }
+          catch (e) {}
+        }
+        paint();
+      });
+      songAudio.addEventListener("play",  function () { c.classList.add("playing"); });
+      songAudio.addEventListener("pause", function () { c.classList.remove("playing"); });
+      songAudio.addEventListener("ended", function () { c.classList.remove("playing"); });
+      songAudio.addEventListener("error", function () { c.classList.add("missing"); });
+    }
 
     btn.addEventListener("click", function () {
-      if (!songAudio) {
-        songAudio = new Audio(S.src);
-        songAudio.preload = "none";
-        songAudio.addEventListener("timeupdate", function () {
-          if (!songAudio.duration) return;
-          bar.style.width = ((songAudio.currentTime / songAudio.duration) * 100) + "%";
-        });
-        songAudio.addEventListener("play", function () { btn.textContent = "❘❘"; });
-        songAudio.addEventListener("pause", function () { btn.textContent = "▶"; });
-        songAudio.addEventListener("ended", function () { btn.textContent = "▶"; });
-        songAudio.addEventListener("error", function () {
-          c.classList.add("missing");
-          btn.textContent = "▶";
-        });
-        /* start at the moment set in SB.song.startAt */
-        songAudio.addEventListener("loadedmetadata", function () {
-          if (S.startAt && songAudio.currentTime < 0.2) {
-            try { songAudio.currentTime = Math.min(S.startAt, Math.max(0, songAudio.duration - 1)); }
-            catch (e) {}
-          }
-        });
-      }
+      ensure();
       if (songAudio.paused) {
         duckAmbient();
         stopAllAudio("song");
-        if (songAudio.readyState === 0 && S.startAt) {
-          songAudio.load();
-        }
-        var p = songAudio.play();
-        if (p && p.catch) p.catch(function () { c.classList.add("missing"); });
+        var pr = songAudio.play();
+        if (pr && pr.catch) pr.catch(function () { c.classList.add("missing"); });
       } else {
         songAudio.pause();
       }
     });
-    return c;
-  }
 
-  /* ---- the voice note ---- */
-  function buildVoicePill() {
-    var V = SB.voice;
-    var c = el("sb-w sb-w-voice");
-    var bars = "";
-    for (var i = 0; i < 34; i++) {
-      bars += '<span style="height:' + (18 + Math.round(Math.abs(Math.sin(i * 1.7)) * 62)) + '%"></span>';
+    /* dragging the scrubber */
+    var scrubbing = false;
+    function seekTo(clientX) {
+      ensure();
+      var r = scrub.getBoundingClientRect();
+      var k = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+      if (songAudio.duration) { songAudio.currentTime = k * songAudio.duration; paint(); }
     }
-    c.innerHTML =
-      '<button class="sb-play" aria-label="Play the voice note">▶</button>' +
-      '<div class="sb-voice-meta">' +
-        '<strong>' + V.label + '</strong>' +
-        '<em>' + V.hint + '</em>' +
-      '</div>' +
-      '<div class="sb-wave">' + bars + "</div>" +
-      '<span class="sb-time">0:00</span>';
-
-    var btn = c.querySelector(".sb-play");
-    var time = c.querySelector(".sb-time");
-    var wave = c.querySelector(".sb-wave");
-
-    function fmt(t) {
-      t = Math.max(0, Math.floor(t || 0));
-      return Math.floor(t / 60) + ":" + ("0" + (t % 60)).slice(-2);
-    }
-
-    btn.addEventListener("click", function () {
-      if (!voiceAudio) {
-        voiceAudio = new Audio(V.src);
-        voiceAudio.preload = "none";
-        voiceAudio.addEventListener("timeupdate", function () {
-          time.textContent = fmt(voiceAudio.currentTime);
-          var pct = voiceAudio.duration ? voiceAudio.currentTime / voiceAudio.duration : 0;
-          wave.style.setProperty("--played", (pct * 100) + "%");
-        });
-        voiceAudio.addEventListener("play", function () { btn.textContent = "❘❘"; c.classList.add("playing"); });
-        voiceAudio.addEventListener("pause", function () { btn.textContent = "▶"; c.classList.remove("playing"); });
-        voiceAudio.addEventListener("ended", function () { btn.textContent = "▶"; c.classList.remove("playing"); });
-        voiceAudio.addEventListener("error", function () { c.classList.add("missing"); });
-      }
-      if (voiceAudio.paused) {
-        duckAmbient();
-        stopAllAudio("voice");
-        var p = voiceAudio.play();
-        if (p && p.catch) p.catch(function () { c.classList.add("missing"); });
-      } else {
-        voiceAudio.pause();
-      }
+    scrub.addEventListener("pointerdown", function (e) {
+      scrubbing = true; scrub.setPointerCapture(e.pointerId); seekTo(e.clientX);
+      e.stopPropagation();
+    });
+    scrub.addEventListener("pointermove", function (e) {
+      if (scrubbing) { seekTo(e.clientX); e.stopPropagation(); }
+    });
+    scrub.addEventListener("pointerup", function (e) {
+      scrubbing = false; e.stopPropagation();
     });
     return c;
   }
 
   /* ---- the memory map ---- */
-  var MAP_SLOT = 41;          /* the map pins use slots 41..44 */
+  var MAP_SLOT = 31;          /* the map pins use slots 31..34 */
   var MAP_TEX = null;
   function buildMapCard(big) {
     if (!MAP_TEX) MAP_TEX = marrakechMap(800, 600);
@@ -1864,20 +1847,80 @@ window.Scrapbook = (function () {
     return c;
   }
 
-  /* ---- the music video ---- */
-  function buildVideoCard() {
+  /* ---- the video on the last page: one of the two of you --------
+     A real <video>, with a poster if there is one. Until the file
+     exists it shows a film slate rather than a blank green rectangle. */
+  function buildOurVideoCard() {
+    var V = SB.ourVideo;
+    var c = el("sb-w sb-w-ourvideo");
+    c.innerHTML =
+      '<div class="sb-vid-frame">' +
+        '<div class="sb-vid-empty">' +
+          '<div class="sb-slate">' +
+            '<div class="sb-slate-bar"></div>' +
+            '<p class="sb-slate-title">a video of us</p>' +
+            '<p class="sb-slate-file">assets/our-video.mp4</p>' +
+          "</div>" +
+        "</div>" +
+      "</div>" +
+      '<p class="sb-vid-cap">' + V.caption + "</p>";
+
+    var frame = c.querySelector(".sb-vid-frame");
+    var v = document.createElement("video");
+    v.src = V.src;
+    v.preload = "metadata";
+    v.playsInline = true;
+    v.setAttribute("playsinline", "");
+    v.controls = false;
+    if (V.poster) v.poster = V.poster;
+
+    v.addEventListener("loadeddata", function () {
+      c.classList.add("ready");
+      var btn = el("sb-vid-play", "button");
+      btn.setAttribute("aria-label", "Play our video");
+      btn.innerHTML = '<span class="sb-ico-play"></span>';
+      frame.appendChild(btn);
+      function toggle(e) {
+        e.stopPropagation();
+        if (v.paused) { duckAmbient(); stopAllAudio("video"); v.play(); }
+        else v.pause();
+      }
+      btn.addEventListener("click", toggle);
+      v.addEventListener("click", toggle);
+      v.addEventListener("play",  function () { c.classList.add("playing"); });
+      v.addEventListener("pause", function () { c.classList.remove("playing"); });
+      v.addEventListener("ended", function () { c.classList.remove("playing"); });
+    });
+    v.addEventListener("error", function () { c.classList.remove("ready"); });
+    frame.insertBefore(v, frame.firstChild);
+    return c;
+  }
+
+  /* ---- the music video in the drawer ---------------------------
+     The real thumbnail stands in for the video, so the card looks
+     like the song rather than like something still loading. The
+     player only loads once she asks for it. */
+  function buildMusicVideoCard() {
     var V = SB.video;
     var c = el("sb-w sb-w-video");
     c.innerHTML =
-      '<div class="sb-video-frame">' +
-        '<div class="sb-video-poster">' +
-          '<span class="sb-video-ring"></span>' +
-          '<span class="sb-video-label">LOADING VIDEO</span>' +
+      '<div class="sb-vid-frame">' +
+        '<img class="sb-vid-thumb" alt="" />' +
+        '<div class="sb-vid-veil"></div>' +
+        '<div class="sb-vid-meta">' +
+          '<p class="sb-vid-kicker">MUSIC VIDEO</p>' +
+          '<p class="sb-vid-title">' + V.title + "</p>" +
+          '<p class="sb-vid-artist">' + V.artist + "</p>" +
         "</div>" +
-      "</div>" +
-      '<p class="sb-video-cap">' + V.title + " · " + V.artist + "</p>";
+        '<button class="sb-vid-play" aria-label="Play the music video">' +
+          '<span class="sb-ico-play"></span></button>' +
+      "</div>";
 
-    var frame = c.querySelector(".sb-video-frame");
+    var thumb = c.querySelector(".sb-vid-thumb");
+    thumb.onerror = function () { c.classList.add("nothumb"); };
+    thumb.src = "https://img.youtube.com/vi/" + V.youtubeId + "/hqdefault.jpg";
+
+    var frame = c.querySelector(".sb-vid-frame");
     frame.addEventListener("click", function () {
       if (frame.querySelector("iframe")) return;
       duckAmbient();
@@ -1888,7 +1931,6 @@ window.Scrapbook = (function () {
       f.title = V.title + " — " + V.artist;
       f.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
       f.setAttribute("allowfullscreen", "");
-      f.loading = "lazy";
       frame.innerHTML = "";
       frame.appendChild(f);
     });
@@ -1905,8 +1947,7 @@ window.Scrapbook = (function () {
     d.appendChild(buildBouquetCard());
     d.appendChild(buildSongCard());
     d.appendChild(buildMapCard(true));
-    d.appendChild(buildVoicePill());
-    d.appendChild(buildVideoCard());
+    d.appendChild(buildMusicVideoCard());
   }
 
   function toggleDrawer(force) {
@@ -2426,29 +2467,25 @@ window.Scrapbook = (function () {
     });
     window.addEventListener("resize", introResize);
 
-    /* it plays itself out, but a tap moves it along */
-    clearTimeout(introTimer);
-    introTimer = setTimeout(function () { endIntro(false); }, 5200);
+    /* it stays lit until she touches it */
   }
-
-  var introTimer = null;
 
   function endIntro(immediate) {
     if (introDone) return;
     introDone = true;
-    clearTimeout(introTimer);
     var screen = document.getElementById("screen-scrapbook");
     if (screen) screen.classList.add("sb-intro-out");
+    if (!built) buildNow();
+    if (screen) screen.classList.add("sb-open");
+    renderView();
     setTimeout(function () {
       if (introRaf) { cancelAnimationFrame(introRaf); introRaf = null; }
       window.removeEventListener("resize", introResize);
-      if (screen) screen.classList.add("sb-cover-on");
     }, immediate ? 0 : 900);
   }
 
   function stopIntro() {
     introDone = true;
-    clearTimeout(introTimer);
     if (introRaf) { cancelAnimationFrame(introRaf); introRaf = null; }
     window.removeEventListener("resize", introResize);
   }
@@ -2461,69 +2498,169 @@ window.Scrapbook = (function () {
      nothing is ever shrunk down to the point of being unreadable.
      ======================================================================= */
   var pageEls = [];
+  var views = [];             /* each view is the page indexes it shows */
+  var viewIndex = 0;
 
   function pagesPerView() {
     return (window.matchMedia && window.matchMedia("(min-width: 760px) and (orientation: landscape)").matches) ? 2 : 1;
+  }
+
+  /* ---------------------------------------------------------------
+     THE FRONT COVER — the first page of the book, not a screen you
+     click past. Turning it is how you get in.
+     --------------------------------------------------------------- */
+  function buildFrontCover() {
+    var page = el("sb-page sb-page-cover");
+    page.style.backgroundImage = "url(" + PAPER.teal + ")";
+
+    var label = el("sb-cover-label");
+    label.innerHTML =
+      '<p class="sb-cover-kicker">— a love letter —</p>' +
+      '<h1 class="sb-cover-title">for you,</h1>' +
+      '<p class="sb-cover-sub">with love</p>';
+    page.appendChild(label);
+
+    [{ art: "lips", left: 68, top: 9,  w: 22, rot: 14 },
+     { art: "lips", left: 10, top: 74, w: 24, rot: -8 }].forEach(function (p) {
+      var e = el("sb-cover-sticker");
+      e.style.left = p.left + "%"; e.style.top = p.top + "%";
+      e.style.width = p.w + "%";
+      e.style.setProperty("--rot", p.rot + "deg");
+      var img = el("", "img"); img.src = STICK[p.art]; img.alt = "";
+      e.appendChild(img);
+      page.appendChild(e);
+    });
+
+    [{ left: 84, top: 5, s: 2.4 }, { left: 12, top: 90, s: 1.9 },
+     { left: 22, top: 18, s: 1.5 }].forEach(function (p) {
+      var st = el("sb-cover-star");
+      st.style.left = p.left + "%"; st.style.top = p.top + "%";
+      st.style.fontSize = p.s + "cqw";
+      st.textContent = "✦";
+      page.appendChild(st);
+    });
+
+    var hint = el("sb-cover-hint");
+    hint.innerHTML = '<span class="sb-cover-hint-corner" aria-hidden="true"></span>' +
+      '<span>take the corner and pull it across</span>';
+    page.appendChild(hint);
+    return page;
   }
 
   function buildBook() {
     var spread = document.getElementById("sb-spread");
     if (!spread) return;
     spread.innerHTML = "";
-    pageEls = PAGES.map(function (def, i) { return buildPage(def, i); });
+    pageEls = [buildFrontCover()]
+      .concat(PAGES.map(function (def, i) { return buildPage(def, i); }));
     pageEls.push(buildBackCover());
     pageEls.forEach(function (p) { spread.appendChild(p); });
+    buildViews();
   }
 
   function totalPages() { return pageEls.length; }
 
-  function viewStart(i) {
-    return perView === 2 ? Math.floor(i / 2) * 2 : i;
+  /* A real book: the cover on its own, then spreads, then the back
+     cover on its own. On a phone every page stands alone. */
+  function buildViews() {
+    var n = totalPages();
+    views = [];
+    if (!n) return;
+    if (perView === 1) {
+      for (var i = 0; i < n; i++) views.push([i]);
+      return;
+    }
+    views.push([0]);
+    for (var j = 1; j < n - 1; j += 2) {
+      views.push(j + 1 < n - 1 ? [j, j + 1] : [j]);
+    }
+    views.push([n - 1]);
   }
 
-  function canGo(dir) {
-    var t = viewStart(pageIndex) + dir * perView;
-    return t >= 0 && t < totalPages();
+  function viewOf(pageIdx) {
+    for (var i = 0; i < views.length; i++) {
+      if (views[i].indexOf(pageIdx) !== -1) return i;
+    }
+    return 0;
   }
 
-  /* put a page back where it belongs and give it its slot class */
+  function isClosed() { return views[viewIndex] && views[viewIndex].length === 1 && viewIndex === 0; }
+  function canGo(dir) { return viewIndex + dir >= 0 && viewIndex + dir < views.length; }
+
   function setSlot(p, slot) {
     p.classList.remove("leftpage", "rightpage", "solo", "in-leaf");
     if (slot) p.classList.add(slot);
   }
 
-  function renderView() {
-    var start = viewStart(pageIndex);
-    var outer = document.getElementById("sb-book-outer");
-    if (outer) outer.classList.toggle("single", perView === 1);
+  /* ---------------------------------------------------------------
+     SIZE
 
-    /* the last view can hold a single page — the back cover. Rather than
-       leave a blank leaf beside it, let it take the whole spread. */
-    var lonely = perView === 2 && start + 1 >= totalPages();
+     The book is measured here rather than in CSS, because it changes
+     shape: closed it is one page wide, open it is two. Both states
+     transition, so opening the cover widens the book as the cover
+     swings over.
+     --------------------------------------------------------------- */
+  var pageH = 0, pageW = 0;
+
+  function measure() {
+    var host = document.getElementById("sb-book");
+    var vw = host ? host.clientWidth : window.innerWidth;
+    var vh = host ? host.clientHeight : window.innerHeight;
+    if (perView === 2) {
+      /* it should sit on the page, not fill it */
+      pageH = Math.min(vh * 0.84, (vw * 0.74) / 1.5, 560);
+    } else {
+      pageH = Math.min(vh * 0.78, (vw * 0.86) / 0.75, 660);
+    }
+    pageW = pageH * 0.75;
+  }
+
+  function applySize() {
+    var outer = document.getElementById("sb-book-outer");
+    if (!outer) return;
+    measure();
+    var open = !(views[viewIndex] && views[viewIndex].length === 1) || perView === 1;
+    var wide = perView === 2 && views[viewIndex] && views[viewIndex].length === 2;
+    outer.style.height = pageH + "px";
+    outer.style.width = (wide ? pageW * 2 : pageW) + "px";
+    outer.style.setProperty("--page-w", pageW + "px");
+    outer.classList.toggle("single", perView === 1 || !wide);
+  }
+
+  function renderView() {
+    if (!views.length) buildViews();
+    viewIndex = Math.max(0, Math.min(views.length - 1, viewIndex));
+    var shown = views[viewIndex] || [0];
+    var outer = document.getElementById("sb-book-outer");
+
     pageEls.forEach(function (p, i) {
-      var on = i >= start && i < start + perView;
-      p.classList.toggle("on", on);
-      if (!on) { setSlot(p, null); return; }
-      if (perView === 1 || lonely) setSlot(p, "solo");
-      else setSlot(p, (i - start) === 0 ? "leftpage" : "rightpage");
+      var at = shown.indexOf(i);
+      p.classList.toggle("on", at !== -1);
+      if (at === -1) { setSlot(p, null); return; }
+      if (shown.length === 1) setSlot(p, "solo");
+      else setSlot(p, at === 0 ? "leftpage" : "rightpage");
     });
 
+    if (outer) outer.classList.toggle("closed", viewIndex === 0);
     var spine = document.querySelector("#screen-scrapbook .sb-spine");
-    if (spine) spine.style.opacity = lonely ? "0" : "";
-
+    if (spine) spine.style.opacity = shown.length === 2 ? "" : "0";
+    /* the cover carries its own note, so the corner hint waits until
+       she is inside the book */
     var curl = document.getElementById("sb-curl");
-    if (curl) curl.classList.toggle("off", !canGo(1));
+    if (curl) curl.classList.toggle("off", !canGo(1) || viewIndex === 0);
+    applySize();
   }
 
   /* =======================================================================
      TURNING A PAGE
 
-     The leaf is a real element with two faces, and the actual page nodes
-     are moved into it for the duration of the turn — so what lifts off
-     the book is the page itself, not a picture of it. The angle follows
-     the drag, and lets go into an eased settle when she does.
+     The leaf carries the real page nodes on its two faces. Rotation
+     alone reads as a rigid board, so the sheet also bends: it skews and
+     leans as it passes the upright, its trailing edge curls, and a
+     cylindrical highlight travels across it. --flip-p is the progress,
+     --flip-lift peaks halfway, --flip-bend is signed for the lean.
      ======================================================================= */
-  var flip = { on: false, dir: 0, start: 0, target: 0, p: 0, nodes: null };
+  var flip = { on: false, dir: 0, from: 0, to: 0, p: 0, nodes: null };
   var dragState = null;
   var dragMoved = false;
 
@@ -2542,27 +2679,30 @@ window.Scrapbook = (function () {
     if (!e.leaf || !e.outer) return;
     flip.p = p;
     var ang = flip.dir > 0 ? -180 * p : 180 * p;
-    e.leaf.style.transform = "rotateY(" + ang + "deg)";
+    var lift = Math.sin(Math.PI * p);              /* 0 → 1 → 0 */
+    /* the sheet flexes: leading edge runs ahead of the spine, then
+       settles. A little rotateZ makes the far corner lift first. */
+    var bend = Math.sin(Math.PI * p) * (flip.dir > 0 ? 1 : -1);
+    e.leaf.style.transform =
+      "rotateY(" + ang.toFixed(2) + "deg)" +
+      " rotateZ(" + (bend * 1.6).toFixed(2) + "deg)" +
+      " translateZ(" + (lift * 26).toFixed(1) + "px)";
     e.outer.style.setProperty("--flip-p", p.toFixed(4));
-    /* the sheet catches light as it stands up, and loses it going down */
-    e.outer.style.setProperty("--flip-lift", Math.sin(Math.PI * p).toFixed(4));
+    e.outer.style.setProperty("--flip-lift", lift.toFixed(4));
+    e.outer.style.setProperty("--flip-curl", (lift * 100).toFixed(1) + "%");
   }
 
-  /* Move the pages involved into the leaf and lay the revealed page
-     underneath. Returns false if there is nowhere to turn to. */
   function beginTurn(dir) {
     if (flip.on || turning) return false;
     if (!canGo(dir)) return false;
     var e = els();
     if (!e.leaf) return false;
 
-    var start = viewStart(pageIndex);
-    var target = start + dir * perView;
-
+    var from = views[viewIndex], to = views[viewIndex + dir];
     var moved = [];
-    function into(host, page, slot) {
+    function into(host, page) {
       if (!page) return;
-      setSlot(page, slot);
+      setSlot(page, null);
       page.classList.add("on", "in-leaf");
       host.appendChild(page);
       moved.push(page);
@@ -2570,41 +2710,52 @@ window.Scrapbook = (function () {
 
     e.front.innerHTML = "";
     e.back.innerHTML = "";
+    e.back.classList.remove("blank");
 
-    if (perView === 2) {
-      if (dir > 0) {
-        /* the right page lifts; behind it, the next spread's right page */
-        into(e.front, pageEls[start + 1], null);
-        into(e.back,  pageEls[target], null);
-        pageEls.forEach(function (p, i) {
-          if (i === start) { p.classList.add("on"); setSlot(p, "leftpage"); }
-          else if (i === target + 1) { p.classList.add("on"); setSlot(p, "rightpage"); }
-          else if (i !== start + 1 && i !== target) { p.classList.remove("on"); setSlot(p, null); }
-        });
-      } else {
-        /* the left page lifts back over; the previous spread appears */
-        into(e.front, pageEls[start], null);
-        into(e.back,  pageEls[target + 1], null);
-        pageEls.forEach(function (p, i) {
-          if (i === start + 1) { p.classList.add("on"); setSlot(p, "rightpage"); }
-          else if (i === target) { p.classList.add("on"); setSlot(p, "leftpage"); }
-          else if (i !== start && i !== target + 1) { p.classList.remove("on"); setSlot(p, null); }
-        });
-      }
+    /* which sheet actually lifts, and what is on its other side */
+    var lifting, backside, staying, stayingSlot, revealed, revealedSlot;
+    if (dir > 0) {
+      lifting  = pageEls[from[from.length - 1]];
+      backside = pageEls[to[0]];
+      staying  = from.length === 2 ? pageEls[from[0]] : null;
+      stayingSlot = "leftpage";
+      revealed = to.length === 2 ? pageEls[to[1]] : null;
+      revealedSlot = "rightpage";
     } else {
-      /* one page at a time: the sheet lifts, the next one is underneath */
-      into(e.front, pageEls[start], null);
-      e.back.classList.add("blank");
-      pageEls.forEach(function (p, i) {
-        if (i === target) { p.classList.add("on"); setSlot(p, "solo"); }
-        else if (i !== start) { p.classList.remove("on"); setSlot(p, null); }
-      });
+      lifting  = pageEls[from[0]];
+      backside = pageEls[to[to.length - 1]];
+      staying  = from.length === 2 ? pageEls[from[1]] : null;
+      stayingSlot = "rightpage";
+      revealed = to.length === 2 ? pageEls[to[0]] : null;
+      revealedSlot = "leftpage";
     }
 
-    flip.on = true; flip.dir = dir; flip.start = start; flip.target = target;
+    into(e.front, lifting);
+    into(e.back, backside);
+
+    pageEls.forEach(function (p) {
+      if (p === lifting || p === backside) return;
+      if (p === staying) { p.classList.add("on"); setSlot(p, perView === 1 ? "solo" : stayingSlot); }
+      else if (p === revealed) { p.classList.add("on"); setSlot(p, perView === 1 ? "solo" : revealedSlot); }
+      else { p.classList.remove("on"); setSlot(p, null); }
+    });
+    /* on a phone only one page is ever beneath, so put it there */
+    if (perView === 1 && !revealed && !staying) {
+      var under = pageEls[to[0]];
+      if (under && under !== lifting && under !== backside) {
+        under.classList.add("on"); setSlot(under, "solo");
+      }
+    }
+
+    flip.on = true; flip.dir = dir; flip.from = viewIndex; flip.to = viewIndex + dir;
     flip.nodes = moved;
     e.outer.classList.add("flipping");
     e.outer.classList.toggle("flip-back", dir < 0);
+    /* the book widens as the cover comes over, and narrows going back */
+    var toWide = perView === 2 && views[flip.to].length === 2;
+    e.outer.style.setProperty("--page-w", pageW + "px");
+    e.outer.style.width = (toWide ? pageW * 2 : pageW) + "px";
+    e.outer.classList.toggle("single", perView === 1 || !toWide);
     setFlipProgress(0);
     return true;
   }
@@ -2612,7 +2763,6 @@ window.Scrapbook = (function () {
   function endTurn(complete) {
     var e = els();
     if (!flip.on) return;
-    /* pages go home before the view is redrawn */
     (flip.nodes || []).forEach(function (p) {
       p.classList.remove("in-leaf");
       e.spread.appendChild(p);
@@ -2620,11 +2770,12 @@ window.Scrapbook = (function () {
     if (e.back) e.back.classList.remove("blank");
     if (e.outer) {
       e.outer.classList.remove("flipping", "flip-back");
-      e.outer.style.removeProperty("--flip-p");
-      e.outer.style.removeProperty("--flip-lift");
+      ["--flip-p", "--flip-lift", "--flip-curl"].forEach(function (v) {
+        e.outer.style.removeProperty(v);
+      });
     }
     if (e.leaf) e.leaf.style.transform = "";
-    if (complete) pageIndex = flip.target;
+    if (complete) viewIndex = flip.to;
     flip.on = false; flip.nodes = null;
     renderView();
   }
@@ -2632,14 +2783,16 @@ window.Scrapbook = (function () {
   function settle(to, done) {
     var from = flip.p;
     var dist = Math.abs(to - from);
-    var dur = Math.max(220, Math.min(720, dist * 700));
+    var dur = Math.max(320, Math.min(1000, dist * 950));
     var t0 = null;
     turning = true;
     (function step(now) {
       if (t0 === null) t0 = now;
       var k = Math.min(1, (now - t0) / dur);
-      /* ease-out-back-free: a clean deceleration, like paper falling */
-      var eased = 1 - Math.pow(1 - k, 2.6);
+      /* paper does not snap — it decelerates long and settles */
+      var eased = k < 0.5
+        ? 4 * k * k * k
+        : 1 - Math.pow(-2 * k + 2, 3) / 2;
       setFlipProgress(from + (to - from) * eased);
       if (k < 1) requestAnimationFrame(step);
       else { turning = false; done(); }
@@ -2655,10 +2808,9 @@ window.Scrapbook = (function () {
   function prev() { animateTurn(-1); }
 
   function goTo(i) {
-    i = Math.max(0, Math.min(totalPages() - 1, i));
-    var target = viewStart(i);
-    if (target === viewStart(pageIndex)) return;
-    animateTurn(target > viewStart(pageIndex) ? 1 : -1);
+    var target = Math.max(0, Math.min(views.length - 1, i));
+    if (target === viewIndex) return;
+    animateTurn(target > viewIndex ? 1 : -1);
   }
 
   /* ---- dragging ---- */
@@ -2683,14 +2835,13 @@ window.Scrapbook = (function () {
     var dy = ev.clientY - dragState.y0;
     if (!dragState.active) {
       if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy)) return;
-      /* the direction comes from the way she pulls */
       var dir = dx < 0 ? 1 : -1;
       if (!beginTurn(dir)) { dragState = null; return; }
       dragState.active = true;
       dragState.dir = dir;
       dragMoved = true;
     }
-    var span = perView === 2 ? dragState.r.width * 0.5 : dragState.r.width;
+    var span = dragState.r.width * (dragState.r.width > pageW * 1.4 ? 0.5 : 1);
     var travel = dragState.dir > 0 ? -dx : dx;
     setFlipProgress(Math.max(0, Math.min(1, travel / span)));
     if (ev.cancelable) ev.preventDefault();
@@ -2701,68 +2852,28 @@ window.Scrapbook = (function () {
     var st = dragState;
     dragState = null;
     if (!st.active) {
-      /* a tap near the outer edge turns the page as well */
       var r = st.r;
       var rel = (st.x0 - r.left) / r.width;
       var quiet = Math.abs(ev.clientX - st.x0) < 8 && Math.abs(ev.clientY - st.y0) < 8;
-      if (quiet && rel > 0.86) { next(); }
-      else if (quiet && rel < 0.14) { prev(); }
+      if (quiet && rel > 0.82) { next(); }
+      else if (quiet && rel < 0.18 && viewIndex > 0) { prev(); }
       return;
     }
     var speed = Math.abs(ev.clientX - st.x0) / Math.max(1, performance.now() - st.t0);
-    var go = flip.p > 0.34 || speed > 0.55;
+    var go = flip.p > 0.32 || speed > 0.5;
     settle(go ? 1 : 0, function () { endTurn(go); });
     setTimeout(function () { dragMoved = false; }, 60);
-  }
-
-  /* =======================================================================
-     THE COVER, AND GETTING IN
-     ======================================================================= */
-
-  /* the cover is crumpled teal, with lips and a couple of stars on it */
-  function dressCover() {
-    var card = document.getElementById("sb-cover-card");
-    if (!card || card.dataset.dressed) return;
-    card.dataset.dressed = "1";
-    card.style.backgroundImage = "url(" + PAPER.teal + ")";
-
-    [{ art: "lips", left: 72, top: 8,  w: 24, rot: 14 },
-     { art: "lips", left: 66, top: 76, w: 26, rot: -8 }].forEach(function (p) {
-      var e = el("sb-cover-sticker");
-      e.style.left = p.left + "%"; e.style.top = p.top + "%";
-      e.style.width = p.w + "%";
-      e.style.setProperty("--rot", p.rot + "deg");
-      var img = el("", "img"); img.src = STICK[p.art]; img.alt = "";
-      e.appendChild(img);
-      card.appendChild(e);
-    });
-
-    [{ left: 84, top: 4, s: 9 }, { left: 8, top: 84, s: 7 }].forEach(function (p) {
-      var st = el("sb-cover-star");
-      st.style.left = p.left + "%"; st.style.top = p.top + "%";
-      st.style.fontSize = p.s + "px";
-      st.textContent = "✦";
-      card.appendChild(st);
-    });
-  }
-
-  function openBook() {
-    var screen = document.getElementById("screen-scrapbook");
-    if (!screen) return;
-    if (!built) buildNow();
-    screen.classList.add("sb-open");
-    pageIndex = 0;
-    perView = pagesPerView();
-    renderView();
   }
 
   function onResize() {
     var want = pagesPerView();
     if (want !== perView) {
       perView = want;
-      pageIndex = viewStart(pageIndex);
-      renderView();
+      var page = (views[viewIndex] || [0])[0];
+      buildViews();
+      viewIndex = viewOf(page);
     }
+    renderView();
   }
 
   /* =======================================================================
@@ -2782,7 +2893,6 @@ window.Scrapbook = (function () {
 
     job(function () { PAPER.teal   = crumpled("#2f6b76", "rgba(190,235,240,0.30)", "rgba(0,26,34,0.34)", 3); });
     job(function () { PAPER.teal2  = crumpled("#2a616e", "rgba(180,228,236,0.26)", "rgba(0,22,30,0.36)", 31); });
-    job(function () { dressCover(); });          /* the cover only needs teal + lips */
     job(function () { PAPER.denim  = crumpled("#40607c", "rgba(198,224,244,0.28)", "rgba(0,16,34,0.36)", 11); });
     job(function () { PAPER.cream  = crumpled("#efe1c6", "rgba(255,252,242,0.62)", "rgba(150,118,74,0.24)", 7, 0, 0, { print: ticking("#8a6a44") }); });
     job(function () { PAPER.ivory  = crumpled("#f4ecdc", "rgba(255,255,250,0.7)",  "rgba(150,125,85,0.18)", 41); });
@@ -2890,12 +3000,13 @@ window.Scrapbook = (function () {
   function start() {
     var screen = document.getElementById("screen-scrapbook");
     if (screen) {
-      screen.classList.remove("sb-open", "sb-intro-out", "sb-cover-on", "sb-drawer-on");
+      screen.classList.remove("sb-open", "sb-intro-out", "sb-drawer-on");
     }
     closeNote(); closePin(); closeLightbox();
     toggleDrawer(false);
-    pageIndex = 0;
+    viewIndex = 0;
     perView = pagesPerView();
+    buildViews();
     startIntro();          /* on screen immediately */
     scheduleBuild();       /* everything else, spread across frames */
   }
@@ -2903,17 +3014,12 @@ window.Scrapbook = (function () {
   function stop() {
     stopIntro();
     stopAllAudio(null);
-    /* pull the video out so it stops playing when she leaves the book */
-    var frames = document.querySelectorAll("#screen-scrapbook .sb-video-frame iframe");
-    Array.prototype.forEach.call(frames, function (f) {
-      var host = f.parentElement;
-      f.remove();
-      if (host) {
-        host.innerHTML =
-          '<div class="sb-video-poster"><span class="sb-video-ring"></span>' +
-          '<span class="sb-video-label">LOADING VIDEO</span></div>';
-      }
-    });
+    /* the embedded player keeps going unless it is taken out */
+    var frames = document.querySelectorAll("#screen-scrapbook .sb-vid-frame iframe");
+    Array.prototype.forEach.call(frames, function (f) { f.remove(); });
+    drawerBuilt = false;
+    var d = document.getElementById("sb-drawer");
+    if (d) d.innerHTML = "";
     toggleDrawer(false);
   }
 
@@ -2921,7 +3027,6 @@ window.Scrapbook = (function () {
   api.stop = stop;
   api.next = next;
   api.prev = prev;
-  api.openBook = openBook;
   api.closeLightbox = closeLightbox;
   api.skipIntro = function () { endIntro(false); };
   return api;
