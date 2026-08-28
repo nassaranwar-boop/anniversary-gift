@@ -300,14 +300,112 @@ window.Scrapbook = (function () {
     });
   }
 
+  /* Marbled endpaper — the sheet pasted inside the boards. Combed
+     bands of colour pulled through a bath, which is what makes a bound
+     book look bound rather than printed. */
+  function marbled(seed) {
+    return tex(420, 520, function (ctx, W, H) {
+      var r = rnd(seed);
+      ctx.fillStyle = "#f7ece5"; ctx.fillRect(0, 0, W, H);
+
+      var tones = ["#c98a95", "#a86c78", "#e0b3b4", "#f8f0e8", "#b87f8e", "#eed4cc"];
+      /* bands laid down wet, each one pushed about by the one before */
+      for (var band = 0; band < 70; band++) {
+        var y0 = -30 + (band / 70) * (H + 60);
+        var amp = 6 + r() * 16;
+        var freq = 0.006 + r() * 0.012;
+        var ph = r() * 6.28;
+        var th = 3 + r() * 9;
+        ctx.beginPath();
+        ctx.moveTo(-10, y0);
+        for (var x = -10; x <= W + 10; x += 5) {
+          ctx.lineTo(x, y0 + Math.sin(x * freq + ph) * amp
+                        + Math.sin(x * freq * 2.7 + ph * 1.7) * amp * 0.35);
+        }
+        for (var x2 = W + 10; x2 >= -10; x2 -= 5) {
+          ctx.lineTo(x2, y0 + th + Math.sin(x2 * freq + ph) * amp
+                             + Math.sin(x2 * freq * 2.7 + ph * 1.7) * amp * 0.35);
+        }
+        ctx.closePath();
+        ctx.fillStyle = tones[(r() * tones.length) | 0];
+        ctx.globalAlpha = 0.10 + r() * 0.15;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      /* the comb drawn through, pulling the bands into peaks */
+      for (var c = 0; c < 60; c++) {
+        var cx = (c / 60) * W + (r() - 0.5) * 6;
+        ctx.strokeStyle = c % 2 ? "rgba(255,248,242,0.09)" : "rgba(96,48,60,0.07)";
+        ctx.lineWidth = 1.4 + r() * 2.6;
+        ctx.beginPath();
+        ctx.moveTo(cx, -10);
+        for (var y = -10; y <= H + 10; y += 12) {
+          ctx.lineTo(cx + Math.sin(y * 0.05 + c) * 9, y);
+        }
+        ctx.stroke();
+      }
+
+      /* veining, and the grain of the paper under it */
+      for (var v = 0; v < 900; v++) {
+        ctx.fillStyle = r() > 0.5 ? "rgba(255,250,246,0.05)" : "rgba(60,20,34,0.05)";
+        ctx.fillRect(r() * W, r() * H, 1 + r() * 2, 1);
+      }
+      var g = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.3,
+                                       W / 2, H / 2, Math.max(W, H) * 0.7);
+      g.addColorStop(0, "rgba(0,0,0,0)");
+      g.addColorStop(1, "rgba(92,44,58,0.20)");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    });
+  }
+
+  /* Bookcloth. A fine linen weave with the slub and mottling of a real
+     bound cover, so the book reads as an object rather than a colour. */
+  function bookCloth(seed, base, warp, weft) {
+    return tex(360, 460, function (ctx, W, H) {
+      var r = rnd(seed);
+      ctx.fillStyle = base; ctx.fillRect(0, 0, W, H);
+      /* the weave */
+      for (var x = 0; x < W; x += 3) {
+        ctx.fillStyle = warp;
+        ctx.fillRect(x, 0, 1.5, H);
+      }
+      for (var y = 0; y < H; y += 3) {
+        ctx.fillStyle = weft;
+        ctx.fillRect(0, y, W, 1.5);
+      }
+      /* slub — the odd thicker thread */
+      for (var i = 0; i < 260; i++) {
+        ctx.fillStyle = r() > 0.5 ? "rgba(255,232,238,0.10)" : "rgba(52,16,28,0.12)";
+        if (r() > 0.5) ctx.fillRect(r() * W, r() * H, 1.6, 6 + r() * 26);
+        else ctx.fillRect(r() * W, r() * H, 6 + r() * 26, 1.6);
+      }
+      /* mottling, so the dye is not perfectly even */
+      for (var m = 0; m < 22; m++) {
+        var mx = r() * W, my = r() * H, mr = 40 + r() * 130;
+        var g = ctx.createRadialGradient(mx, my, 0, mx, my, mr);
+        g.addColorStop(0, r() > 0.5 ? "rgba(255,224,232,0.07)" : "rgba(58,18,32,0.09)");
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g; ctx.fillRect(mx - mr, my - mr, mr * 2, mr * 2);
+      }
+      /* worn a little at the edges, the way a used cover is */
+      var v = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.22,
+                                       W / 2, H / 2, Math.max(W, H) * 0.72);
+      v.addColorStop(0, "rgba(255,238,244,0.05)");
+      v.addColorStop(0.6, "rgba(0,0,0,0)");
+      v.addColorStop(1, "rgba(40,10,22,0.30)");
+      ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+    });
+  }
+
   /* Denim: woven twill with a faint diagonal. */
   function denimCloth(seed) {
     return tex(260, 320, function (ctx, W, H) {
       var r = rnd(seed);
-      ctx.fillStyle = "#4a6b8a"; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#8a6079"; ctx.fillRect(0, 0, W, H);
       for (var i = 0; i < 5200; i++) {
         var v = r();
-        ctx.fillStyle = v > 0.55 ? "rgba(230,242,252,0.16)" : "rgba(10,26,44,0.18)";
+        ctx.fillStyle = v > 0.55 ? "rgba(252,232,244,0.16)" : "rgba(40,12,30,0.18)";
         ctx.fillRect(r() * W, r() * H, 2, 1);
       }
       ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
@@ -424,14 +522,14 @@ window.Scrapbook = (function () {
 
       /* upper lip sits in shadow, lower lip catches the light */
       var gu = ctx.createLinearGradient(0, 0, W * 0.4, Hh * 0.5);
-      gu.addColorStop(0, "#c8d8e4"); gu.addColorStop(0.32, "#7c93a6");
-      gu.addColorStop(0.62, "#465a6c"); gu.addColorStop(1, "#8aa0b2");
+      gu.addColorStop(0, "#fbe0d4"); gu.addColorStop(0.30, "#e0ab98");
+      gu.addColorStop(0.60, "#a86a5c"); gu.addColorStop(1, "#eebfa9");
       ctx.fillStyle = gu; upper(); ctx.fill();
 
       var gl = ctx.createLinearGradient(W * 0.2, Hh * 0.45, W * 0.75, Hh);
-      gl.addColorStop(0, "#f4f9fd"); gl.addColorStop(0.26, "#c2d3e0");
-      gl.addColorStop(0.58, "#6f8698"); gl.addColorStop(0.82, "#93a9ba");
-      gl.addColorStop(1, "#e3edf5");
+      gl.addColorStop(0, "#fffaf6"); gl.addColorStop(0.24, "#f6d6c4");
+      gl.addColorStop(0.56, "#c98d78"); gl.addColorStop(0.80, "#eec1ab");
+      gl.addColorStop(1, "#fff2e9");
       ctx.fillStyle = gl; lower(); ctx.fill();
 
       /* the specular streaks that make it read as metal */
@@ -464,14 +562,14 @@ window.Scrapbook = (function () {
       ctx.restore();
 
       /* the parting, dark and thin */
-      ctx.strokeStyle = "rgba(14,24,34,0.85)";
+      ctx.strokeStyle = "rgba(58,24,22,0.85)";
       ctx.lineWidth = Math.max(1.2, Hh * 0.032);
       ctx.beginPath();
       ctx.moveTo(W * 0.03, mid);
       ctx.bezierCurveTo(W * 0.26, Hh * 0.41, W * 0.74, Hh * 0.41, W * 0.97, mid);
       ctx.stroke();
 
-      ctx.strokeStyle = "rgba(24,38,50,0.4)";
+      ctx.strokeStyle = "rgba(70,32,28,0.42)";
       ctx.lineWidth = Math.max(0.8, W * 0.008);
       upper(); ctx.stroke();
       lower(); ctx.stroke();
@@ -819,17 +917,17 @@ window.Scrapbook = (function () {
       if (kind === "gold") {
         g.addColorStop(0, "#fff3c4"); g.addColorStop(0.4, "#d9a83c");
         g.addColorStop(0.7, "#a97c1e"); g.addColorStop(1, "#f2d689");
-      } else if (kind === "denim") {
-        g.addColorStop(0, "#7d9cba"); g.addColorStop(0.5, "#3d5f82"); g.addColorStop(1, "#6c8dab");
+      } else if (kind === "rose") {
+        g.addColorStop(0, "#c98fa0"); g.addColorStop(0.5, "#8d4a5e"); g.addColorStop(1, "#b87e90");
       } else {
         g.addColorStop(0, "#ffffff"); g.addColorStop(0.4, "#c2d0da");
         g.addColorStop(0.7, "#7b8b98"); g.addColorStop(1, "#e6eef4");
       }
       ctx.fillStyle = g; ctx.fill();
-      if (kind === "denim") {
+      if (kind === "rose") {
         ctx.save(); ctx.clip();
         for (var d = 0; d < 900; d++) {
-          ctx.fillStyle = Math.random() > 0.5 ? "rgba(230,242,252,0.2)" : "rgba(10,26,44,0.2)";
+          ctx.fillStyle = Math.random() > 0.5 ? "rgba(252,232,240,0.2)" : "rgba(44,12,26,0.2)";
           ctx.fillRect(Math.random() * W, Math.random() * W, 2, 1);
         }
         ctx.restore();
@@ -882,26 +980,26 @@ window.Scrapbook = (function () {
         ctx.closePath();
       }
       var g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, "#e2eef0"); g.addColorStop(0.45, "#c3dade");
-      g.addColorStop(1, "#9dbcc2");
+      g.addColorStop(0, "#f6e3e4"); g.addColorStop(0.45, "#e8c8ca");
+      g.addColorStop(1, "#c79ba1");
       ctx.fillStyle = g;
       round(W * 0.03, H * 0.05, W * 0.94, H * 0.9, W * 0.09); ctx.fill();
-      ctx.strokeStyle = "rgba(60,90,98,0.4)"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = "rgba(110,62,72,0.4)"; ctx.lineWidth = 2; ctx.stroke();
 
       /* the photo window — left empty, a slot sits over it */
       ctx.fillStyle = "#2a3436";
       round(W * 0.10, H * 0.18, W * 0.44, H * 0.55, W * 0.03); ctx.fill();
 
       /* lens */
-      ctx.fillStyle = "#6d8f97";
+      ctx.fillStyle = "#a9767f";
       ctx.beginPath(); ctx.arc(W * 0.33, H * 0.115, W * 0.045, 0, 6.29); ctx.fill();
       ctx.fillStyle = "#1d282b";
       ctx.beginPath(); ctx.arc(W * 0.33, H * 0.115, W * 0.026, 0, 6.29); ctx.fill();
 
       /* the ribbed strip along the top right */
-      ctx.fillStyle = "#eef6f7";
+      ctx.fillStyle = "#fbeeee";
       round(W * 0.60, H * 0.09, W * 0.32, H * 0.07, W * 0.014); ctx.fill();
-      ctx.strokeStyle = "rgba(70,100,108,0.45)"; ctx.lineWidth = 1.4;
+      ctx.strokeStyle = "rgba(120,70,80,0.45)"; ctx.lineWidth = 1.4;
       for (var i = 1; i < 4; i++) {
         ctx.beginPath();
         ctx.moveTo(W * (0.60 + i * 0.08), H * 0.09);
@@ -910,12 +1008,12 @@ window.Scrapbook = (function () {
       }
 
       /* the round pad on the right */
-      ctx.fillStyle = "#b3cfd4";
+      ctx.fillStyle = "#dfb4ba";
       ctx.beginPath(); ctx.arc(W * 0.755, H * 0.50, W * 0.135, 0, 6.29); ctx.fill();
-      ctx.strokeStyle = "rgba(50,80,88,0.35)"; ctx.stroke();
-      ctx.fillStyle = "#e6f1f3";
+      ctx.strokeStyle = "rgba(100,56,66,0.35)"; ctx.stroke();
+      ctx.fillStyle = "#fbf0f0";
       ctx.beginPath(); ctx.arc(W * 0.755, H * 0.50, W * 0.058, 0, 6.29); ctx.fill();
-      ctx.fillStyle = "#7fa3ab";
+      ctx.fillStyle = "#bd8b94";
       [[0, -0.095], [0, 0.095], [-0.095, 0], [0.095, 0]].forEach(function (d) {
         ctx.beginPath();
         ctx.arc(W * (0.755 + d[0]), H * (0.50 + d[1] * (W / H)), W * 0.017, 0, 6.29);
@@ -923,14 +1021,14 @@ window.Scrapbook = (function () {
       });
 
       /* small buttons */
-      ctx.fillStyle = "#dceaec";
+      ctx.fillStyle = "#f4e2e3";
       round(W * 0.63, H * 0.235, W * 0.10, H * 0.075, W * 0.02); ctx.fill();
       round(W * 0.79, H * 0.235, W * 0.10, H * 0.075, W * 0.02); ctx.fill();
       round(W * 0.63, H * 0.755, W * 0.11, H * 0.08, W * 0.02); ctx.fill();
       round(W * 0.79, H * 0.755, W * 0.11, H * 0.08, W * 0.02); ctx.fill();
 
       /* speaker dots */
-      ctx.fillStyle = "rgba(70,100,108,0.5)";
+      ctx.fillStyle = "rgba(120,70,80,0.5)";
       for (var dy = 0; dy < 3; dy++) {
         for (var dx = 0; dx < 3; dx++) {
           ctx.beginPath();
@@ -1158,7 +1256,7 @@ window.Scrapbook = (function () {
 
   var PAGES = [
     /* ---- 1 · disco ---------------------------------------------- */
-    { paper: "teal", pieces: [
+    { paper: "rose", pieces: [
       { k: "sticker", art: "disco",   left: -9, top:  2, w: 34, rot: 0 },
       { k: "sticker", art: "rose",    left: -4, top: 30, w: 26, rot: -8 },
       { k: "sticker", art: "flowers", left: -7, top: 56, w: 32, rot: -6 },
@@ -1173,7 +1271,7 @@ window.Scrapbook = (function () {
     ]},
 
     /* ---- 2 · memories -------------------------------------------- */
-    { paper: "teal", pieces: [
+    { paper: "rose", pieces: [
       { k: "note", left: 4, top: 5, w: 56, rot: -1.5, text: H.s1note },
       { k: "letters", text: "MEMORIES", left: 84, top: 6 },
       { k: "photo", n: 4, style: "deckle",   left:  6, top: 30, w: 31, rot: -4, caption: H.s1small },
@@ -1185,7 +1283,7 @@ window.Scrapbook = (function () {
     ]},
 
     /* ---- 3 · the camera ------------------------------------------ */
-    { paper: "teal2", pieces: [
+    { paper: "rose2", pieces: [
       { k: "typecol", text: "The", left: -1, top: 2, w: 20 },
       { k: "bigtype", text: "C", left: 15, top: 1, size: 34, colour: "rgba(226,240,244,.26)" },
       { k: "patch", paper: "grid", left: 10, top: 0, w: 48, h: 27, rot: -3 },
@@ -1198,18 +1296,18 @@ window.Scrapbook = (function () {
     /* ---- 4 · the letter ------------------------------------------ */
     { paper: "ivory", pieces: [
       { k: "patch", paper: "news", left: -6, top: 2, w: 34, h: 96, rot: 1.5 },
-      { k: "patch", paper: "teal", left: 58, top: -3, w: 50, h: 24, rot: -4 },
+      { k: "patch", paper: "rose", left: 58, top: -3, w: 50, h: 24, rot: -4 },
       { k: "sticker", art: "starD", left: 2, top: 14, w: 20, rot: -10 },
       { k: "letterpage", left: 12, top: 12, w: 82, rot: 0.6 },
       { k: "photo", n: 10, style: "corners", left: 6, top: 66, w: 27.9, rot: -5 },
-      { k: "sticker", art: "vinylTeal", left: 48, top: 72, w: 36, rot: 0 },
+      { k: "sticker", art: "vinylRose", left: 48, top: 72, w: 36, rot: 0 },
       { k: "script", text: "the place where the confetti falls", left: 12, top: 90, w: 40, rot: -4, size: 3.0, dark: true },
     ]},
 
     /* ---- 5 · the record ------------------------------------------ */
-    { paper: "teal", pieces: [
+    { paper: "rose", pieces: [
       { k: "typecol", text: "Th", left: -1, top: 3, w: 14 },
-      { k: "sticker", art: "vinylTeal", left: -8, top: 10, w: 56, rot: 0 },
+      { k: "sticker", art: "vinylRose", left: -8, top: 10, w: 56, rot: 0 },
       { k: "sticker", art: "clock", left: 0, top: 16, w: 26, rot: 0 },
       { k: "curvetext", text: H.vinyl, left: -6, top: 12, w: 52 },
       { k: "sticker", art: "lipInk", left: 66, top: 2, w: 22, rot: -8 },
@@ -1223,7 +1321,7 @@ window.Scrapbook = (function () {
     /* ---- 6 · cold hands ------------------------------------------ */
     { paper: "ivory", pieces: [
       { k: "patch", paper: "news", left: 48, top: -3, w: 58, h: 28, rot: 4 },
-      { k: "patch", paper: "teal", left: -8, top: 54, w: 34, h: 54, rot: -3 },
+      { k: "patch", paper: "rose", left: -8, top: 54, w: 34, h: 54, rot: -3 },
       { k: "photo", n: 14, style: "polaroid", left:  4, top:  4, w: 32.8, rot: -4, tape: "corner" },
       { k: "photo", n: 15, style: "snapshot", left: 52, top:  8, w: 36.1, rot:  4 },
       { k: "script", text: H.s3note, left: 2, top: 40, w: 32, rot: -3, size: 3.4, dark: true },
@@ -1239,16 +1337,16 @@ window.Scrapbook = (function () {
       { k: "script", text: "the time we spent, and every hour after", left: 10, top: 2, w: 46, rot: 0, size: 3.4, faint: true },
       { k: "sticker", art: "starS", left: 0, top: 8, w: 20, rot: 16 },
       { k: "filmcam", left: 2, top: 15, w: 52, rot: -8 },
-      { k: "sticker", art: "vinylTeal", left: -12, top: 50, w: 46, rot: 0 },
+      { k: "sticker", art: "vinylRose", left: -12, top: 50, w: 46, rot: 0 },
       { k: "sticker", art: "clock", left: 30, top: 80, w: 22, rot: 0 },
       { k: "bouquet", left: 2, top: 38, w: 38, rot: -4 },
       { k: "filmstrip", cells: [20, 21, 22], left: 56, top: 4, w: 42 },
     ]},
 
     /* ---- 8 · the prints ------------------------------------------ */
-    { paper: "denim", pieces: [
-      { k: "patch", paper: "denimCloth", left: 52, top: -3, w: 56, h: 46, rot: 6 },
-      { k: "patch", paper: "denimCloth", left: -8, top: 58, w: 52, h: 50, rot: -5 },
+    { paper: "mauve", pieces: [
+      { k: "patch", paper: "mauveCloth", left: 52, top: -3, w: 56, h: 46, rot: 6 },
+      { k: "patch", paper: "mauveCloth", left: -8, top: 58, w: 52, h: 50, rot: -5 },
       { k: "sticker", art: "vinylLtd", left: 62, top: 14, w: 44, rot: 0 },
       { k: "photo", n: 23, style: "washed", left: -2, top:  6, w: 57.4, rot: -7 },
       { k: "photo", n: 24, style: "washed", left: 20, top: 46, w: 59, rot:  4 },
@@ -1258,7 +1356,7 @@ window.Scrapbook = (function () {
 
     /* ---- 9 · these memories -------------------------------------- */
     { paper: "grid", pieces: [
-      { k: "patch", paper: "teal", left: 40, top: 6, w: 38, h: 52, rot: 2 },
+      { k: "patch", paper: "rose", left: 40, top: 6, w: 38, h: 52, rot: 2 },
       { k: "photo", n: 25, style: "washed", left: 6, top: -2, w: 42.6, rot: 1, tape: "top" },
       { k: "label2", text: "THESE\nMEMORIES\nMAKE ME SMILE", left: 58, top: 4, w: 36, rot: -3 },
       { k: "sticker", art: "starG", left: 88, top: 1, w: 12, rot: 12 },
@@ -1271,7 +1369,7 @@ window.Scrapbook = (function () {
 
     /* ---- 10 · a video of us -------------------------------------- */
     { paper: "ivory", pieces: [
-      { k: "patch", paper: "denimCloth", left: 72, top: 20, w: 36, h: 52, rot: -4 },
+      { k: "patch", paper: "mauveCloth", left: 72, top: 20, w: 36, h: 52, rot: -4 },
       { k: "photo", n: 30, style: "washed", left: 8, top: 2, w: 50.8, rot: 0.5, tape: "top" },
       { k: "script", text: "and every one of them, again", left: 6, top: 34, w: 32, rot: -2, size: 3.2, dark: true },
       { k: "videocard", left: 10, top: 44, w: 80 },
@@ -1652,17 +1750,27 @@ window.Scrapbook = (function () {
 
   function buildBackCover() {
     var page = el("sb-page sb-page-back");
-    page.style.backgroundImage = "url(" + PAPER.teal + ")";
+    page.style.backgroundImage = "url(" + PAPER.cover + ")";
     var card = el("sb-back-card");
     card.innerHTML =
       '<h2>' + BACK.title + '</h2>' +
       '<p class="l1">' + BACK.line1 + '</p>' +
       '<p class="l2">' + BACK.line2 + '</p>' +
       '<p class="l3">' + BACK.line3 + '</p>';
+    /* the way on, once the book is finished */
+    var go = el("sb-back-go", "button");
+    go.innerHTML = '<span>now come and play</span>' +
+                   '<span class="sb-back-go-arrow" aria-hidden="true">›</span>';
+    go.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      if (typeof window.leaveScrapbook === "function") window.leaveScrapbook();
+    });
+    card.appendChild(go);
+
     page.appendChild(card);
-    var s = el("sb-sticker sb-back-star");
-    var si = el("", "img"); si.src = STICK.starS; s.appendChild(si);
-    page.appendChild(s);
+    var st = el("sb-sticker sb-back-star");
+    var si = el("", "img"); si.src = STICK.starS; st.appendChild(si);
+    page.appendChild(st);
     return page;
   }
 
@@ -1722,7 +1830,7 @@ window.Scrapbook = (function () {
       '<button class="sb-song-play" aria-label="Play the song">' +
         '<span class="sb-ico-play"></span></button>';
 
-    c.querySelector(".sb-song-disc").src = STICK.vinylTeal;
+    c.querySelector(".sb-song-disc").src = STICK.vinylRose;
 
     var btn   = c.querySelector(".sb-song-play");
     var fill  = c.querySelector(".sb-song-fill");
@@ -2511,7 +2619,8 @@ window.Scrapbook = (function () {
      --------------------------------------------------------------- */
   function buildFrontCover() {
     var page = el("sb-page sb-page-cover");
-    page.style.backgroundImage = "url(" + PAPER.teal + ")";
+    page.style.backgroundImage = "url(" + PAPER.cover + ")";
+    page.appendChild(el("sb-cover-rule"));
 
     var label = el("sb-cover-label");
     label.innerHTML =
@@ -2641,7 +2750,10 @@ window.Scrapbook = (function () {
       else setSlot(p, at === 0 ? "leftpage" : "rightpage");
     });
 
-    if (outer) outer.classList.toggle("closed", viewIndex === 0);
+    if (outer) {
+      outer.classList.toggle("closed", shown.length === 1);
+      outer.classList.toggle("at-back", viewIndex === views.length - 1 && views.length > 1);
+    }
     var spine = document.querySelector("#screen-scrapbook .sb-spine");
     if (spine) spine.style.opacity = shown.length === 2 ? "" : "0";
     /* the cover carries its own note, so the corner hint waits until
@@ -2667,36 +2779,54 @@ window.Scrapbook = (function () {
   function els() {
     return {
       outer: document.getElementById("sb-book-outer"),
-      leaf:  document.getElementById("sb-flip"),
-      front: document.getElementById("sb-flip-front"),
-      back:  document.getElementById("sb-flip-back"),
+      a:     document.getElementById("sb-leaf-a"),
+      b:     document.getElementById("sb-leaf-b"),
+      aHold: document.getElementById("sb-leaf-a-hold"),
+      bHold: document.getElementById("sb-leaf-b-hold"),
       spread: document.getElementById("sb-spread"),
     };
   }
 
+  /* Panel A is the sheet lifting away; panel B is the one coming down
+     on the other side. A is on screen for the first half of the turn, B
+     for the second, so at no point is anything seen from behind. */
   function setFlipProgress(p) {
     var e = els();
-    if (!e.leaf || !e.outer) return;
+    if (!e.a || !e.outer) return;
     flip.p = p;
-    var ang = flip.dir > 0 ? -180 * p : 180 * p;
-    var lift = Math.sin(Math.PI * p);              /* 0 → 1 → 0 */
-    /* the sheet flexes: leading edge runs ahead of the spine, then
-       settles. A little rotateZ makes the far corner lift first. */
-    var bend = Math.sin(Math.PI * p) * (flip.dir > 0 ? 1 : -1);
-    e.leaf.style.transform =
-      "rotateY(" + ang.toFixed(2) + "deg)" +
-      " rotateZ(" + (bend * 1.6).toFixed(2) + "deg)" +
-      " translateZ(" + (lift * 26).toFixed(1) + "px)";
+
+    var sign = flip.dir > 0 ? -1 : 1;
+    var lift = Math.sin(Math.PI * p);
+    var half = p < 0.5;
+
+    /* the sheet flexes rather than staying rigid: it leans a little,
+       and rides slightly off the board at the top of the arc */
+    var lean = lift * 1.8 * (flip.dir > 0 ? 1 : -1);
+    var rise = lift * 24;
+
+    var hasB = !!(e.bHold && e.bHold.firstChild);
+    e.a.style.visibility = half ? "visible" : "hidden";
+    e.b.style.visibility = (!half && hasB) ? "visible" : "hidden";
+
+    e.a.style.transform =
+      "rotateY(" + (sign * 180 * p).toFixed(2) + "deg)" +
+      " rotateZ(" + lean.toFixed(2) + "deg) translateZ(" + rise.toFixed(1) + "px)";
+    e.b.style.transform =
+      "rotateY(" + (-sign * (180 - 180 * p)).toFixed(2) + "deg)" +
+      " rotateZ(" + (-lean).toFixed(2) + "deg) translateZ(" + rise.toFixed(1) + "px)";
+
     e.outer.style.setProperty("--flip-p", p.toFixed(4));
     e.outer.style.setProperty("--flip-lift", lift.toFixed(4));
-    e.outer.style.setProperty("--flip-curl", (lift * 100).toFixed(1) + "%");
+    /* each panel is lit by how far it has turned, not by the arc */
+    e.a.style.setProperty("--face", (p * 2).toFixed(3));
+    e.b.style.setProperty("--face", ((1 - p) * 2).toFixed(3));
   }
 
   function beginTurn(dir) {
     if (flip.on || turning) return false;
     if (!canGo(dir)) return false;
     var e = els();
-    if (!e.leaf) return false;
+    if (!e.a || !e.b) return false;
 
     var from = views[viewIndex], to = views[viewIndex + dir];
     var moved = [];
@@ -2708,13 +2838,17 @@ window.Scrapbook = (function () {
       moved.push(page);
     }
 
-    e.front.innerHTML = "";
-    e.back.innerHTML = "";
-    e.back.classList.remove("blank");
+    e.aHold.innerHTML = "";
+    e.bHold.innerHTML = "";
 
-    /* which sheet actually lifts, and what is on its other side */
     var lifting, backside, staying, stayingSlot, revealed, revealedSlot;
-    if (dir > 0) {
+    if (perView === 1) {
+      /* one page at a time: the sheet lifts away and the next one is
+         already lying underneath it. There is no second panel. */
+      lifting = pageEls[from[0]];
+      backside = null;
+      staying = null; revealed = pageEls[to[0]]; revealedSlot = "solo";
+    } else if (dir > 0) {
       lifting  = pageEls[from[from.length - 1]];
       backside = pageEls[to[0]];
       staying  = from.length === 2 ? pageEls[from[0]] : null;
@@ -2730,28 +2864,20 @@ window.Scrapbook = (function () {
       revealedSlot = "leftpage";
     }
 
-    into(e.front, lifting);
-    into(e.back, backside);
+    into(e.aHold, lifting);
+    if (backside) into(e.bHold, backside);
 
     pageEls.forEach(function (p) {
       if (p === lifting || p === backside) return;
-      if (p === staying) { p.classList.add("on"); setSlot(p, perView === 1 ? "solo" : stayingSlot); }
+      if (p === staying)  { p.classList.add("on"); setSlot(p, perView === 1 ? "solo" : stayingSlot); }
       else if (p === revealed) { p.classList.add("on"); setSlot(p, perView === 1 ? "solo" : revealedSlot); }
       else { p.classList.remove("on"); setSlot(p, null); }
     });
-    /* on a phone only one page is ever beneath, so put it there */
-    if (perView === 1 && !revealed && !staying) {
-      var under = pageEls[to[0]];
-      if (under && under !== lifting && under !== backside) {
-        under.classList.add("on"); setSlot(under, "solo");
-      }
-    }
 
     flip.on = true; flip.dir = dir; flip.from = viewIndex; flip.to = viewIndex + dir;
     flip.nodes = moved;
     e.outer.classList.add("flipping");
     e.outer.classList.toggle("flip-back", dir < 0);
-    /* the book widens as the cover comes over, and narrows going back */
     var toWide = perView === 2 && views[flip.to].length === 2;
     e.outer.style.setProperty("--page-w", pageW + "px");
     e.outer.style.width = (toWide ? pageW * 2 : pageW) + "px";
@@ -2767,14 +2893,16 @@ window.Scrapbook = (function () {
       p.classList.remove("in-leaf");
       e.spread.appendChild(p);
     });
-    if (e.back) e.back.classList.remove("blank");
     if (e.outer) {
       e.outer.classList.remove("flipping", "flip-back");
-      ["--flip-p", "--flip-lift", "--flip-curl"].forEach(function (v) {
-        e.outer.style.removeProperty(v);
-      });
+      ["--flip-p", "--flip-lift"].forEach(function (v) { e.outer.style.removeProperty(v); });
     }
-    if (e.leaf) e.leaf.style.transform = "";
+    [e.a, e.b].forEach(function (leaf) {
+      if (!leaf) return;
+      leaf.style.transform = "";
+      leaf.style.visibility = "";
+      leaf.style.removeProperty("--face");
+    });
     if (complete) viewIndex = flip.to;
     flip.on = false; flip.nodes = null;
     renderView();
@@ -2851,14 +2979,8 @@ window.Scrapbook = (function () {
     if (!dragState) return;
     var st = dragState;
     dragState = null;
-    if (!st.active) {
-      var r = st.r;
-      var rel = (st.x0 - r.left) / r.width;
-      var quiet = Math.abs(ev.clientX - st.x0) < 8 && Math.abs(ev.clientY - st.y0) < 8;
-      if (quiet && rel > 0.82) { next(); }
-      else if (quiet && rel < 0.18 && viewIndex > 0) { prev(); }
-      return;
-    }
+    /* the page only turns if it was actually pulled */
+    if (!st.active) return;
     var speed = Math.abs(ev.clientX - st.x0) / Math.max(1, performance.now() - st.t0);
     var go = flip.p > 0.32 || speed > 0.5;
     settle(go ? 1 : 0, function () { endTurn(go); });
@@ -2891,28 +3013,34 @@ window.Scrapbook = (function () {
     var jobs = [];
     function job(fn) { jobs.push(fn); }
 
-    job(function () { PAPER.teal   = crumpled("#2f6b76", "rgba(190,235,240,0.30)", "rgba(0,26,34,0.34)", 3); });
-    job(function () { PAPER.teal2  = crumpled("#2a616e", "rgba(180,228,236,0.26)", "rgba(0,22,30,0.36)", 31); });
-    job(function () { PAPER.denim  = crumpled("#40607c", "rgba(198,224,244,0.28)", "rgba(0,16,34,0.36)", 11); });
+    job(function () { PAPER.rose   = crumpled("#b9707f", "rgba(255,226,232,0.32)", "rgba(76,20,36,0.34)", 3); });
+    job(function () { PAPER.rose2  = crumpled("#a96274", "rgba(252,220,228,0.28)", "rgba(66,16,32,0.36)", 31); });
+    job(function () { PAPER.mauve  = crumpled("#8d6480", "rgba(240,220,238,0.26)", "rgba(46,14,38,0.36)", 11); });
     job(function () { PAPER.cream  = crumpled("#efe1c6", "rgba(255,252,242,0.62)", "rgba(150,118,74,0.24)", 7, 0, 0, { print: ticking("#8a6a44") }); });
     job(function () { PAPER.ivory  = crumpled("#f4ecdc", "rgba(255,255,250,0.7)",  "rgba(150,125,85,0.18)", 41); });
-    job(function () { PAPER.blush  = crumpled("#eed3cc", "rgba(255,250,246,0.55)", "rgba(150,96,88,0.26)", 19, 0, 0, { print: ditsyFloral("#b4707e") }); });
+    job(function () { PAPER.blush  = crumpled("#f0d6d4", "rgba(255,252,250,0.55)", "rgba(158,100,96,0.24)", 19, 0, 0, { print: ditsyFloral("#b4707e") }); });
     job(function () { PAPER.note   = crumpled("#fbf3e0", "rgba(255,255,255,0.7)",  "rgba(150,125,85,0.18)", 23, 340, 240); });
     job(function () { PAPER.news   = newsprint(13); });
     job(function () { PAPER.grid   = gridPaper(29); });
-    job(function () { PAPER.denimCloth = denimCloth(37); });
+    job(function () { PAPER.mauveCloth = denimCloth(37); });
+    job(function () { PAPER.cover = bookCloth(53, "#b06a7c", "rgba(255,226,234,0.10)", "rgba(70,22,38,0.12)"); });
+    job(function () {
+      PAPER.endpaper = marbled(71);
+      var ep = document.getElementById("sb-endpaper");
+      if (ep) ep.style.backgroundImage = "url(" + PAPER.endpaper + ")";
+    });
 
     job(function () { STICK.disco    = discoBall(140); });
     job(function () { STICK.vinyl8   = vinyl(190, { text: "8" }); });
-    job(function () { STICK.vinylTeal= vinyl(230, { body: "#1d4650", label: "#e8dcc0", text: "" }); });
-    job(function () { STICK.vinylLtd = vinyl(200, { body: "#20343a", label: "#f0e6cc", text: "" }); });
-    job(function () { STICK.lipInk   = lipStamp(120, "#2c5866"); });
+    job(function () { STICK.vinylRose= vinyl(230, { body: "#5b2434", label: "#f2ddd2", text: "" }); });
+    job(function () { STICK.vinylLtd = vinyl(200, { body: "#3a1d28", label: "#f2e4d6", text: "" }); });
+    job(function () { STICK.lipInk   = lipStamp(120, "#8e3b50"); });
     job(function () { STICK.rose     = chromeRose(150); });
     job(function () { STICK.flowers  = pressedFlowers(200); });
     job(function () { STICK.bouquet  = bouquet(260, 380); });
     job(function () { STICK.starS    = starArt(90, "silver"); });
     job(function () { STICK.starG    = starArt(70, "gold"); });
-    job(function () { STICK.starD    = starArt(100, "denim"); });
+    job(function () { STICK.starD    = starArt(100, "rose"); });
     job(function () { STICK.clock    = clockFace(200); });
     job(function () { STICK.instantCam = instantCam(320); });
     job(function () { STICK.filmCam  = filmCam(300); });

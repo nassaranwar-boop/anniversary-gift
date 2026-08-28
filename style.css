@@ -629,8 +629,8 @@ img{-webkit-user-drag:none; user-select:none;}
 #screen-scrapbook{
   padding:0; overflow:hidden;
   background:
-    radial-gradient(ellipse at 50% 40%, rgba(255,250,240,.7), transparent 62%),
-    linear-gradient(170deg,#efe7d6 0%,#e7ddc9 55%,#ded3bd 100%);
+    radial-gradient(ellipse at 50% 38%, rgba(255,248,244,.75), transparent 64%),
+    linear-gradient(170deg,#f6e9e4 0%,#efdcd7 52%,#e4cbc7 100%);
 }
 
 /* ---- 1 · the painted opening ---- */
@@ -659,17 +659,18 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .sb-book-outer{
   position:relative;
-  border-radius:3px;
-  background:#d9cdb4;
+  border-radius:3px 5px 5px 3px;
+  background:#8e4f60;
   perspective:2600px;
   perspective-origin:50% 44%;
   touch-action:pan-y;
   user-select:none; -webkit-user-select:none;
   -webkit-tap-highlight-color:transparent;
   box-shadow:
-    0 34px 70px rgba(52,34,18,.32),
-    0 10px 22px rgba(52,34,18,.2),
-    0 2px 0 rgba(255,255,255,.4) inset;
+    0 40px 80px rgba(72,30,44,.30),
+    0 12px 26px rgba(72,30,44,.20),
+    0 1px 0 rgba(255,236,242,.28) inset,
+    0 -2px 6px rgba(52,16,28,.35) inset;
   /* the book changes shape as the cover opens */
   transition:width .62s cubic-bezier(.32,.72,.24,1);
   animation:sbBookIn .8s var(--ease-out);
@@ -680,16 +681,33 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-book-outer::before,
 .sb-book-outer::after{
   content:""; position:absolute; top:1.4%; bottom:1.4%; width:8px; border-radius:2px;
-  background:repeating-linear-gradient(180deg,#f6efdf 0 2px,#dcd0b5 2px 3px);
-  box-shadow:0 6px 16px rgba(50,32,16,.3);
+  background:
+    linear-gradient(90deg,rgba(140,96,40,.35),rgba(255,244,214,.5)),
+    repeating-linear-gradient(180deg,#f7edd4 0 2px,#dcc79a 2px 3px);
+  box-shadow:0 6px 16px rgba(60,26,32,.34);
   transition:opacity .4s ease;
 }
-.sb-book-outer::before{left:-7px;}
-.sb-book-outer::after{right:-7px;}
+.sb-book-outer::before{left:-5px;}
+.sb-book-outer::after{right:-5px;}
 /* closed on the cover, the block only shows on the open side */
 .sb-book-outer.closed::before{opacity:0;}
+.sb-book-outer.closed.at-back::after{opacity:0;}
+.sb-book-outer.closed.at-back::before{opacity:1;}
 
-.sb-spread{position:absolute; inset:0; overflow:hidden; border-radius:2px;}
+/* the boards overhang the text block, the way a bound book does */
+.sb-endpaper,
+.sb-spread{
+  position:absolute; inset:5px 6px; overflow:hidden; border-radius:1px;
+  transition:inset .5s var(--ease-out);
+}
+.sb-book-outer.closed .sb-endpaper,
+.sb-book-outer.closed .sb-spread{inset:0; border-radius:3px 5px 5px 3px;}
+.sb-book-outer.single .sb-endpaper{opacity:0;}
+.sb-endpaper{
+  z-index:0; transition:opacity .3s ease; background-size:cover; background-position:center;
+  box-shadow:inset 0 0 30px rgba(56,18,32,.35);
+}
+.sb-spread{z-index:1; background:transparent;}
 .sb-page{
   position:absolute; top:0; height:100%; display:none;
   background-size:cover; background-position:center;
@@ -704,33 +722,50 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-page-cover{
   display:none;
   align-items:center; justify-content:center;
-  box-shadow:0 0 60px rgba(20,40,46,.34) inset;
+  box-shadow:0 0 70px rgba(58,18,34,.36) inset;
+}
+/* a double rule, blocked in foil the way a bound cover is */
+.sb-cover-rule{
+  position:absolute; inset:5.5%; z-index:1; pointer-events:none;
+  border:1px solid rgba(240,206,172,.42);
+  box-shadow:
+    0 0 0 1px rgba(92,40,52,.30),
+    inset 0 0 0 3px rgba(58,20,34,.16),
+    inset 0 0 0 4px rgba(240,206,172,.30);
+}
+.sb-cover-rule::after{
+  content:""; position:absolute; inset:9px;
+  border:1px solid rgba(240,206,172,.22);
 }
 .sb-page-cover.on{display:flex;}
 .sb-cover-label{
-  position:relative; z-index:3; width:70%; padding:7% 5% 8%; text-align:center;
-  background:linear-gradient(168deg,#fbf8f0,#f2ece0);
-  border-radius:2px;
-  box-shadow:0 10px 26px rgba(12,26,32,.4), 0 1px 0 rgba(255,255,255,.8) inset;
+  position:relative; z-index:3; width:66%; padding:7% 5% 8%; text-align:center;
+  background:linear-gradient(168deg,#fdfaf3,#f4ede0);
+  border-radius:1px;
+  box-shadow:
+    0 14px 30px rgba(48,14,28,.42),
+    0 2px 6px rgba(48,14,28,.28),
+    0 0 0 1px rgba(190,150,110,.4),
+    0 1px 0 rgba(255,255,255,.9) inset;
   transform:rotate(-1.2deg);
 }
-.sb-cover-kicker{font-family:var(--font-serif); font-style:italic; font-size:2.6cqw; color:#5a6a72; letter-spacing:.06em; margin:0 0 .4em;}
-.sb-cover-title{font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:11.5cqw; color:#1d2b33; margin:0; line-height:.98;}
-.sb-cover-sub{font-family:var(--font-serif); font-style:italic; font-size:2.6cqw; color:#7d8a90; margin:.5em 0 0;}
+.sb-cover-kicker{font-family:var(--font-serif); font-style:italic; font-size:2.6cqw; color:#8a6270; letter-spacing:.06em; margin:0 0 .4em;}
+.sb-cover-title{font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:11.5cqw; color:#4a1c2c; margin:0; line-height:.98;}
+.sb-cover-sub{font-family:var(--font-serif); font-style:italic; font-size:2.6cqw; color:#9a7482; margin:.5em 0 0;}
 .sb-cover-sticker{position:absolute; z-index:2; transform:rotate(var(--rot,0deg)); pointer-events:none;}
 .sb-cover-sticker img{width:100%; height:auto; display:block; filter:drop-shadow(0 5px 10px rgba(8,18,24,.5));}
 .sb-cover-star{position:absolute; z-index:2; color:#f4f8f6; text-shadow:0 2px 6px rgba(0,0,0,.45); pointer-events:none;}
 .sb-cover-hint{
-  position:absolute; left:0; right:0; bottom:5%; z-index:4; margin:0;
+  position:absolute; left:0; right:0; bottom:2.2%; z-index:4; margin:0;
   display:flex; align-items:center; justify-content:center; gap:.6em;
   font-family:var(--font-serif); font-style:italic; font-size:2.7cqw;
-  color:rgba(240,246,244,.72); pointer-events:none;
+  color:rgba(252,232,238,.78); pointer-events:none; z-index:4;
   opacity:0; animation:sbHintIn 1.2s var(--ease-out) 1.4s forwards;
 }
 @keyframes sbHintIn{to{opacity:1;}}
 .sb-cover-hint-corner{
   width:2.6cqw; height:2.6cqw; border-radius:1px;
-  background:linear-gradient(315deg,rgba(250,246,236,.9) 0 48%,rgba(0,0,0,0) 49%),rgba(210,222,220,.5);
+  background:linear-gradient(315deg,rgba(252,244,238,.92) 0 48%,rgba(0,0,0,0) 49%),rgba(226,198,206,.5);
   animation:sbHintCurl 2.8s var(--ease-out) infinite;
 }
 @keyframes sbHintCurl{
@@ -743,111 +778,99 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; top:0; bottom:0; left:50%; width:9%; transform:translateX(-50%);
   pointer-events:none; z-index:8;
   background:linear-gradient(90deg,
-    rgba(0,0,0,0) 0%, rgba(28,16,6,.26) 36%, rgba(28,16,6,.44) 50%,
-    rgba(28,16,6,.26) 64%, rgba(0,0,0,0) 100%);
+    rgba(0,0,0,0) 0%, rgba(48,16,28,.26) 36%, rgba(48,16,28,.46) 50%,
+    rgba(48,16,28,.26) 64%, rgba(0,0,0,0) 100%);
 }
 .sb-book-outer.single .sb-spine{opacity:0;}
 /* =========================================================
 /* =========================================================
    TURNING A PAGE
 
-   The leaf carries the real page nodes on its two faces and
-   swings about the spine. It is anchored to the outer edge in
-   page-widths, so it stays put while the book itself widens as
-   the cover comes over.
+   Two panels, not one sheet with two faces. Panel A is the leaf
+   swinging up and away; panel B is the one coming down on the
+   other side. A shows for the first half of the turn, B for the
+   second, so nothing is ever seen from behind and nothing can
+   render mirrored.
 
-   --flip-p    progress, 0 to 1
-   --flip-lift peaks halfway — how far off the board the sheet is
-   --flip-curl the same, as a percentage, for the edge curl
+   --face  0 at rest, 1 when that panel is edge-on
    ========================================================= */
 .sb-page.in-leaf{left:0 !important; width:100% !important; display:block;}
 
-.sb-flip{
-  position:absolute; top:0; height:100%;
-  width:var(--page-w,50%); right:0;
-  transform-origin:left center; transform-style:preserve-3d;
-  z-index:12; pointer-events:none; visibility:hidden;
-  will-change:transform;
+.sb-leaf{
+  position:absolute; top:0; height:100%; width:var(--page-w,50%);
+  overflow:hidden; z-index:12; pointer-events:none; visibility:hidden;
+  will-change:transform; backface-visibility:hidden;
+  background:#efe6d8;
 }
-.sb-book-outer.flipping .sb-flip{visibility:visible;}
-.sb-book-outer.flip-back .sb-flip{right:auto; left:0; transform-origin:right center;}
+.sb-leaf-hold{position:absolute; inset:0;}
 
-.sb-flip-face{
-  position:absolute; inset:0; overflow:hidden;
-  backface-visibility:hidden; -webkit-backface-visibility:hidden;
-  background:#e9dfc6;
-  /* the free edge rounds as the sheet bends away from the spine */
-  border-top-right-radius:calc(var(--flip-lift,0) * 14px);
-  border-bottom-right-radius:calc(var(--flip-lift,0) * 22px);
-}
-.sb-flip-back{
-  transform:rotateY(180deg);
-  border-radius:0;
-  border-top-left-radius:calc(var(--flip-lift,0) * 14px);
-  border-bottom-left-radius:calc(var(--flip-lift,0) * 22px);
-}
-.sb-flip-back.blank{
-  background-image:
-    linear-gradient(160deg,rgba(255,255,255,.5),rgba(0,0,0,.06)),
-    repeating-linear-gradient(92deg,rgba(180,160,124,.10) 0 3px,rgba(255,252,242,.10) 3px 7px);
-  background-color:#efe6d2;
-}
+/* forward: A lifts off the right, B lands on the left */
+.sb-leaf-a{right:0; transform-origin:left center;}
+.sb-leaf-b{left:0;  transform-origin:right center;}
+/* backwards, the two swap sides */
+.sb-book-outer.flip-back .sb-leaf-a{right:auto; left:0; transform-origin:right center;}
+.sb-book-outer.flip-back .sb-leaf-b{left:auto; right:0; transform-origin:left center;}
 
-/* The cylinder. A sheet coming off a spine is not evenly lit: it is
-   dark in the trough by the binding, brightest along the crest, and
-   falls away again at the free edge. The band travels as it turns. */
-.sb-flip-face::after{
-  content:""; position:absolute; inset:-1px; pointer-events:none; z-index:40;
-  opacity:calc(var(--flip-lift,0) * 0.95);
-}
-.sb-flip-front::after{
+/* the light on the sheet: it falls into shadow as it stands up, and
+   a highlight runs along the edge that is turning */
+.sb-leaf-shade{
+  position:absolute; inset:0; z-index:40; pointer-events:none;
+  opacity:calc(var(--face,0) * .92);
   background:linear-gradient(90deg,
-    rgba(26,15,5,.52) 0%,
-    rgba(26,15,5,.30) 8%,
-    rgba(26,15,5,.06) 22%,
-    rgba(255,250,235,.30) 46%,
-    rgba(255,252,242,.46) 62%,
-    rgba(255,248,230,.20) 82%,
-    rgba(40,26,12,.22) 100%);
+    rgba(28,14,20,.50) 0%,
+    rgba(28,14,20,.24) 14%,
+    rgba(28,14,20,.04) 34%,
+    rgba(255,246,240,.24) 62%,
+    rgba(255,250,246,.40) 84%,
+    rgba(255,246,240,.16) 100%);
 }
-.sb-flip-back::after{
+.sb-leaf-b .sb-leaf-shade,
+.sb-book-outer.flip-back .sb-leaf-a .sb-leaf-shade{
+  background:linear-gradient(270deg,
+    rgba(28,14,20,.50) 0%,
+    rgba(28,14,20,.24) 14%,
+    rgba(28,14,20,.04) 34%,
+    rgba(255,246,240,.24) 62%,
+    rgba(255,250,246,.40) 84%,
+    rgba(255,246,240,.16) 100%);
+}
+.sb-book-outer.flip-back .sb-leaf-b .sb-leaf-shade{
   background:linear-gradient(90deg,
-    rgba(40,26,12,.24) 0%,
-    rgba(255,248,230,.22) 20%,
-    rgba(255,252,242,.44) 40%,
-    rgba(255,250,235,.26) 56%,
-    rgba(26,15,5,.08) 78%,
-    rgba(26,15,5,.34) 92%,
-    rgba(26,15,5,.54) 100%);
+    rgba(28,14,20,.50) 0%,
+    rgba(28,14,20,.24) 14%,
+    rgba(28,14,20,.04) 34%,
+    rgba(255,246,240,.24) 62%,
+    rgba(255,250,246,.40) 84%,
+    rgba(255,246,240,.16) 100%);
 }
 
-/* the thickness of the sheet, caught along the turning edge */
-.sb-flip-front::before,
-.sb-flip-back::before{
+/* the thickness of the sheet, along the edge at the spine */
+.sb-leaf::after{
   content:""; position:absolute; top:0; bottom:0; width:4px; z-index:41;
-  background:linear-gradient(90deg,rgba(126,100,60,.55),rgba(255,252,240,.85));
-  opacity:calc(var(--flip-lift,0) * 0.9);
+  background:linear-gradient(90deg,rgba(132,86,96,.6),rgba(255,250,246,.9));
+  opacity:calc(var(--face,0) * .85);
 }
-.sb-flip-front::before{left:0;}
-.sb-flip-back::before{right:0; transform:scaleX(-1);}
+.sb-leaf-a::after{left:0;}
+.sb-leaf-b::after{right:0; transform:scaleX(-1);}
+.sb-book-outer.flip-back .sb-leaf-a::after{left:auto; right:0; transform:scaleX(-1);}
+.sb-book-outer.flip-back .sb-leaf-b::after{right:auto; left:0; transform:none;}
 
-/* the shadow the lifted leaf throws across the page underneath.
-   It is widest when the sheet stands up and sweeps as it comes down. */
+/* the shadow the raised sheet throws over the page underneath */
 .sb-flip-shade{
   position:absolute; top:0; bottom:0; right:0; width:var(--page-w,50%);
   z-index:11; pointer-events:none; opacity:0;
   background:linear-gradient(90deg,
-    rgba(24,14,4,.58) 0%, rgba(24,14,4,.34) 26%,
-    rgba(24,14,4,.10) 58%, rgba(24,14,4,0) 86%);
-  transform:scaleX(calc(.35 + var(--flip-lift,0) * .65));
+    rgba(38,16,24,.56) 0%, rgba(38,16,24,.30) 28%,
+    rgba(38,16,24,.09) 60%, rgba(38,16,24,0) 88%);
+  transform:scaleX(calc(.3 + var(--flip-lift,0) * .7));
   transform-origin:left center;
 }
-.sb-book-outer.flipping .sb-flip-shade{opacity:calc(var(--flip-lift,0) * 0.9);}
+.sb-book-outer.flipping .sb-flip-shade{opacity:calc(var(--flip-lift,0) * .88);}
 .sb-book-outer.flip-back .sb-flip-shade{
   right:auto; left:0; transform-origin:right center;
   background:linear-gradient(270deg,
-    rgba(24,14,4,.58) 0%, rgba(24,14,4,.34) 26%,
-    rgba(24,14,4,.10) 58%, rgba(24,14,4,0) 86%);
+    rgba(38,16,24,.56) 0%, rgba(38,16,24,.30) 28%,
+    rgba(38,16,24,.09) 60%, rgba(38,16,24,0) 88%);
 }
 
 /* the corner that lifts on its own, so the gesture is obvious */
@@ -1017,14 +1040,14 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-photo-deckle .sb-photo-inner{aspect-ratio:1/1;}
 
 /* — washed: a painted, colour-bled mount — */
-.sb-photo-washed{--mount:#cfe1e7; --lip:3px;}
+.sb-photo-washed{--mount:#eccdd2; --lip:3px;}
 .sb-photo-washed .sb-photo-mount{
   padding:3.2%;
   background:
     linear-gradient(140deg,rgba(255,255,255,.5),rgba(255,255,255,0) 60%),
-    linear-gradient(160deg,#cfe1e7,#93b7c1);
+    linear-gradient(160deg,#eccdd2,#c48f9c);
   border-radius:2px;
-  box-shadow:0 12px 24px rgba(16,26,32,.42), 0 0 0 1px rgba(90,120,130,.28);
+  box-shadow:0 12px 24px rgba(48,18,28,.4), 0 0 0 1px rgba(150,100,112,.3);
 }
 .sb-photo-washed .sb-photo-inner{aspect-ratio:4/3;}
 
@@ -1116,12 +1139,12 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-label{
   transform:rotate(var(--rot,0deg)); padding:7px 9px; white-space:pre-line; text-align:center;
   font-family:var(--font-display); font-weight:700; font-size:3cqw; line-height:1.15;
-  letter-spacing:.4px; color:#22406e; background:#d9c9a6;
+  letter-spacing:.4px; color:#7a2f44; background:#e3cfae;
   border:1px dashed rgba(90,68,40,.45); box-shadow:0 6px 14px rgba(20,14,6,.3);
 }
 .sb-label2{
   transform:rotate(var(--rot,0deg)); padding:6px 8px; text-align:center;
-  background:#2f5d6a; color:#f2ead6; box-shadow:0 6px 14px rgba(20,14,6,.34);
+  background:#7d3a4c; color:#f7e6dc; box-shadow:0 6px 14px rgba(20,14,6,.34);
 }
 .sb-label2-line{display:block; font-family:var(--font-display); font-weight:700; line-height:1.1;}
 .sb-label2-line.l0{font-size:2cqw; letter-spacing:2px; opacity:.75;}
@@ -1165,21 +1188,21 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---- the lovers club card ---- */
 .sb-id{transform:rotate(var(--rot,0deg)); z-index:4;}
 .sb-id-frame{
-  display:flex; gap:6px; padding:7px; background:#bcd6da;
-  border:2px dashed rgba(30,58,66,.55); border-radius:3px;
+  display:flex; gap:6px; padding:7px; background:#e6c3ca;
+  border:2px dashed rgba(96,40,54,.5); border-radius:3px;
   box-shadow:0 8px 18px rgba(20,14,6,.34);
 }
 .sb-id-photo{width:34%; aspect-ratio:1/1.15; overflow:hidden; border:2px solid #f4fbfc; position:relative;}
 .sb-id-body{flex:1; min-width:0;}
-.sb-id-title{margin:0; font-family:var(--font-display); font-weight:700; font-size:3.4cqw; letter-spacing:.6px; color:#14313a;}
-.sb-id-sub{margin:0 0 .5em; font-family:var(--font-serif); font-style:italic; font-size:1.9cqw; color:#3d6570;}
-.sb-id-row{margin:0 0 3px; display:flex; align-items:center; gap:4px; font-family:var(--font-body); font-size:1.8cqw; color:#1d3f49;}
-.sb-id-row i{flex:1; border-bottom:1px dotted rgba(20,50,58,.6); height:1px;}
-.sb-id-fine{margin:.5em 0 0; font-family:var(--font-body); font-size:1.6cqw; line-height:1.3; color:rgba(20,50,58,.7);}
+.sb-id-title{margin:0; font-family:var(--font-display); font-weight:700; font-size:3.4cqw; letter-spacing:.6px; color:#4d1c2a;}
+.sb-id-sub{margin:0 0 .5em; font-family:var(--font-serif); font-style:italic; font-size:1.9cqw; color:#7d4655;}
+.sb-id-row{margin:0 0 3px; display:flex; align-items:center; gap:4px; font-family:var(--font-body); font-size:1.8cqw; color:#4a2230;}
+.sb-id-row i{flex:1; border-bottom:1px dotted rgba(74,34,48,.55); height:1px;}
+.sb-id-fine{margin:.5em 0 0; font-family:var(--font-body); font-size:1.6cqw; line-height:1.3; color:rgba(74,34,48,.65);}
 .sb-id-stamp{
   position:absolute; right:8%; bottom:8%; transform:rotate(-14deg);
   font-family:var(--font-display); font-weight:700; font-size:2.6cqw; letter-spacing:1.5px;
-  color:rgba(30,90,102,.55); border:2px solid rgba(30,90,102,.45); border-radius:3px; padding:1px 6px;
+  color:rgba(122,50,68,.55); border:2px solid rgba(122,50,68,.45); border-radius:3px; padding:1px 6px;
 }
 .sb-id{position:absolute;}
 .sb-id-frame{position:relative;}
@@ -1321,7 +1344,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-map-zoom{display:flex; gap:5px;}
 .sb-map-zoom button{
   width:23px; height:23px; border-radius:50%; border:none; cursor:pointer;
-  font-size:14px; line-height:1; color:#eef4ee; background:#3f6b4d; box-shadow:0 2px 5px rgba(0,0,0,.24);
+  font-size:14px; line-height:1; color:#fbeef1; background:#8e4257; box-shadow:0 2px 5px rgba(0,0,0,.24);
 }
 .sb-map-body{position:relative; aspect-ratio:4/3; border-radius:10px; overflow:hidden; background:#efe7d6;}
 .sb-map-inner{position:absolute; inset:0; transition:transform .35s var(--ease-out); transform-origin:center;}
@@ -1442,12 +1465,12 @@ img{-webkit-user-drag:none; user-select:none;}
   opacity:0; pointer-events:none; transition:opacity .5s ease, transform .3s var(--ease-pop), background .3s ease;
   width:52px; height:52px; border-radius:50%; cursor:pointer; border:none;
   display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(160deg,#2f5c40,#1e3f2c);
-  box-shadow:0 8px 20px rgba(14,32,20,.44);
+  background:linear-gradient(160deg,#a24f66,#71263f);
+  box-shadow:0 10px 22px rgba(60,16,32,.46), 0 1px 0 rgba(255,214,226,.3) inset;
 }
 #screen-scrapbook.sb-open .sb-extras-btn{opacity:1; pointer-events:auto;}
 .sb-extras-btn:active{transform:scale(.93);}
-.sb-extras-btn.on{background:linear-gradient(160deg,#6d1f39,#4a1327); transform:rotate(135deg);}
+.sb-extras-btn.on{background:linear-gradient(160deg,#5d1a30,#3d0f20); transform:rotate(135deg);}
 .sb-extras-ico{font-size:22px; color:#eef6ef; line-height:1;}
 .sb-extras-btn.on .sb-extras-ico{font-size:20px;}
 
@@ -1547,14 +1570,33 @@ img{-webkit-user-drag:none; user-select:none;}
 /* the back cover */
 .sb-page-back.on{display:flex; align-items:center; justify-content:center;}
 .sb-back-card{
-  width:66%; padding:26px 14px 30px; text-align:center; background:#f7f4ec;
-  transform:rotate(-1.5deg); box-shadow:0 12px 30px rgba(16,26,32,.4);
+  width:62%; padding:9% 6% 8%; text-align:center;
+  background:linear-gradient(168deg,#fdfaf3,#f4ede0);
+  transform:rotate(-1.5deg);
+  box-shadow:
+    0 14px 32px rgba(48,14,28,.42),
+    0 0 0 1px rgba(190,150,110,.35),
+    0 1px 0 rgba(255,255,255,.9) inset;
 }
-.sb-back-card h2{margin:0; font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:clamp(20px,5.6cqw,34px); color:#1d2b33;}
-.sb-back-card .l1{margin:12px 0 0; font-family:var(--font-script); font-size:12px; color:#4a5a62;}
-.sb-back-card .l2{margin:3px 0 0; font-family:var(--font-serif); font-style:italic; font-size:9px; color:#7d8a90;}
-.sb-back-card .l3{margin:14px 0 0; font-family:var(--font-script); font-size:11px; color:#5c6a70;}
+.sb-back-card h2{margin:0; font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:clamp(20px,5.6cqw,34px); color:#4a1c2c;}
+.sb-back-card .l1{margin:12px 0 0; font-family:var(--font-script); font-size:3.6cqw; color:#7d4655;}
+.sb-back-card .l2{margin:3px 0 0; font-family:var(--font-serif); font-style:italic; font-size:2.5cqw; color:#9a7482;}
+.sb-back-card .l3{margin:14px 0 0; font-family:var(--font-script); font-size:3.2cqw; color:#8a5c68;}
 .sb-back-star{position:absolute; left:8%; top:8%; width:14%;}
+.sb-back-go{
+  display:inline-flex; align-items:center; gap:.55em; margin-top:9%;
+  padding:.75em 1.4em; cursor:pointer; border:none; border-radius:999px;
+  font-family:var(--font-body); font-size:3.1cqw; font-weight:600; letter-spacing:.01em;
+  color:#fdeef2;
+  background:linear-gradient(180deg,#8e3a52,#6b2038);
+  box-shadow:
+    0 6px 16px rgba(58,14,30,.45),
+    0 1px 0 rgba(255,214,226,.35) inset;
+  transition:transform .2s var(--ease-out), box-shadow .2s ease;
+}
+.sb-back-go:hover{transform:translateY(-2px); box-shadow:0 10px 22px rgba(58,14,30,.5), 0 1px 0 rgba(255,214,226,.4) inset;}
+.sb-back-go:active{transform:translateY(1px);}
+.sb-back-go-arrow{font-size:1.25em; line-height:0; transform:translateY(-.04em);}
 
 /* ---- phones: the drawer takes the screen, type stays legible ---- */
 @media (max-width:600px){

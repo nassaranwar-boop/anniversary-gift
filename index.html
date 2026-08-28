@@ -50,13 +50,22 @@
     <!-- 2. the book. It starts closed on its cover; pages are turned by hand. -->
     <div class="sb-book" id="sb-book">
       <div class="sb-book-outer" id="sb-book-outer">
+        <!-- the paste-down inside the boards, seen while a leaf is up -->
+        <div class="sb-endpaper" id="sb-endpaper" aria-hidden="true"></div>
         <div class="sb-spread" id="sb-spread"></div>
         <div class="sb-spine" aria-hidden="true"></div>
 
-        <!-- the leaf that actually turns; its two faces hold real pages -->
-        <div class="sb-flip" id="sb-flip" aria-hidden="true">
-          <div class="sb-flip-face sb-flip-front" id="sb-flip-front"></div>
-          <div class="sb-flip-face sb-flip-back" id="sb-flip-back"></div>
+        <!-- The turning sheet, as two panels rather than one with two
+             faces: the first swings up out of the way, the second comes
+             down into place. Nothing relies on backface-visibility, so
+             nothing can ever render mirrored. -->
+        <div class="sb-leaf sb-leaf-a" id="sb-leaf-a" aria-hidden="true">
+          <div class="sb-leaf-hold" id="sb-leaf-a-hold"></div>
+          <div class="sb-leaf-shade"></div>
+        </div>
+        <div class="sb-leaf sb-leaf-b" id="sb-leaf-b" aria-hidden="true">
+          <div class="sb-leaf-hold" id="sb-leaf-b-hold"></div>
+          <div class="sb-leaf-shade"></div>
         </div>
         <div class="sb-flip-shade" id="sb-flip-shade" aria-hidden="true"></div>
 

@@ -69,11 +69,16 @@ photo 13 — and set `photo:` there only if the file is named something else.
 ## Turning the pages
 
 There is no toolbar and no "open" button. The book arrives closed on its
-cover; take the corner and pull it across, the way you would with a real
-book — the sheet lifts, bends as it passes the upright, turns about the
-spine and settles. The book widens as the cover comes over. A tap near the
-outer edge of a page turns it too, and the arrow keys still work. The ribbon
-marker at the top of the book closes it.
+cover; take the corner and **pull it across** — a click alone will not turn
+it, the same as a real book. The sheet lifts, bends as it passes the
+upright, turns about the spine and settles, and the book widens as the
+cover comes over. The arrow keys work too. The ribbon marker closes the
+book, and the back cover carries a button through to the games.
+
+Under the hood the turn is two panels rather than one sheet with two
+faces: the first swings up and away, the second comes down on the other
+side. Nothing depends on `backface-visibility`, which some browsers ignore
+— that was what made pages render mirrored.
 
 ## The memory book — where to edit
 
