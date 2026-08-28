@@ -786,91 +786,58 @@ img{-webkit-user-drag:none; user-select:none;}
 /* =========================================================
    TURNING A PAGE
 
-   Two panels, not one sheet with two faces. Panel A is the leaf
-   swinging up and away; panel B is the one coming down on the
-   other side. A shows for the first half of the turn, B for the
-   second, so nothing is ever seen from behind and nothing can
-   render mirrored.
-
-   --face  0 at rest, 1 when that panel is edge-on
+   Each leaf is cut into vertical strips and every strip is
+   placed on a cylinder by the script, so the sheet bends as it
+   goes rather than pivoting like a board. The first leaf swings
+   away, the second comes down on the other side — nothing is
+   ever seen from behind, so nothing can render mirrored.
    ========================================================= */
-.sb-page.in-leaf{left:0 !important; width:100% !important; display:block;}
+.sb-page.in-leaf{
+  left:0 !important; width:100% !important; display:block !important;
+  animation:none !important;
+}
 
 .sb-leaf{
   position:absolute; top:0; height:100%; width:var(--page-w,50%);
-  overflow:hidden; z-index:12; pointer-events:none; visibility:hidden;
-  will-change:transform; backface-visibility:hidden;
-  background:#efe6d8;
+  transform-style:preserve-3d;
+  z-index:12; pointer-events:none; visibility:hidden;
 }
-.sb-leaf-hold{position:absolute; inset:0;}
+.sb-leaf-a{right:0;}
+.sb-leaf-b{left:0;}
+.sb-book-outer.flip-back .sb-leaf-a{right:auto; left:0;}
+.sb-book-outer.flip-back .sb-leaf-b{left:auto; right:0;}
+.sb-book-outer.single .sb-leaf-a{right:0; left:auto;}
 
-/* forward: A lifts off the right, B lands on the left */
-.sb-leaf-a{right:0; transform-origin:left center;}
-.sb-leaf-b{left:0;  transform-origin:right center;}
-/* backwards, the two swap sides */
-.sb-book-outer.flip-back .sb-leaf-a{right:auto; left:0; transform-origin:right center;}
-.sb-book-outer.flip-back .sb-leaf-b{left:auto; right:0; transform-origin:left center;}
+.sb-strip{
+  position:absolute; top:0; height:100%;
+  overflow:hidden; will-change:transform;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
+}
+.sb-strip-inner{position:absolute; top:0; height:100%;}
+.sb-strip-shade{position:absolute; inset:0; z-index:40; pointer-events:none;}
 
-/* the light on the sheet: it falls into shadow as it stands up, and
-   a highlight runs along the edge that is turning */
-.sb-leaf-shade{
-  position:absolute; inset:0; z-index:40; pointer-events:none;
-  opacity:calc(var(--face,0) * .92);
-  background:linear-gradient(90deg,
-    rgba(28,14,20,.50) 0%,
-    rgba(28,14,20,.24) 14%,
-    rgba(28,14,20,.04) 34%,
-    rgba(255,246,240,.24) 62%,
-    rgba(255,250,246,.40) 84%,
-    rgba(255,246,240,.16) 100%);
+/* the paper's own thickness, caught along the leading edge */
+.sb-strip:first-child::after{
+  content:""; position:absolute; top:0; bottom:0; left:0; width:2px; z-index:41;
+  background:linear-gradient(90deg,rgba(120,80,92,.55),rgba(255,250,246,.35));
 }
-.sb-leaf-b .sb-leaf-shade,
-.sb-book-outer.flip-back .sb-leaf-a .sb-leaf-shade{
-  background:linear-gradient(270deg,
-    rgba(28,14,20,.50) 0%,
-    rgba(28,14,20,.24) 14%,
-    rgba(28,14,20,.04) 34%,
-    rgba(255,246,240,.24) 62%,
-    rgba(255,250,246,.40) 84%,
-    rgba(255,246,240,.16) 100%);
-}
-.sb-book-outer.flip-back .sb-leaf-b .sb-leaf-shade{
-  background:linear-gradient(90deg,
-    rgba(28,14,20,.50) 0%,
-    rgba(28,14,20,.24) 14%,
-    rgba(28,14,20,.04) 34%,
-    rgba(255,246,240,.24) 62%,
-    rgba(255,250,246,.40) 84%,
-    rgba(255,246,240,.16) 100%);
-}
-
-/* the thickness of the sheet, along the edge at the spine */
-.sb-leaf::after{
-  content:""; position:absolute; top:0; bottom:0; width:4px; z-index:41;
-  background:linear-gradient(90deg,rgba(132,86,96,.6),rgba(255,250,246,.9));
-  opacity:calc(var(--face,0) * .85);
-}
-.sb-leaf-a::after{left:0;}
-.sb-leaf-b::after{right:0; transform:scaleX(-1);}
-.sb-book-outer.flip-back .sb-leaf-a::after{left:auto; right:0; transform:scaleX(-1);}
-.sb-book-outer.flip-back .sb-leaf-b::after{right:auto; left:0; transform:none;}
 
 /* the shadow the raised sheet throws over the page underneath */
 .sb-flip-shade{
   position:absolute; top:0; bottom:0; right:0; width:var(--page-w,50%);
   z-index:11; pointer-events:none; opacity:0;
   background:linear-gradient(90deg,
-    rgba(38,16,24,.56) 0%, rgba(38,16,24,.30) 28%,
-    rgba(38,16,24,.09) 60%, rgba(38,16,24,0) 88%);
-  transform:scaleX(calc(.3 + var(--flip-lift,0) * .7));
+    rgba(38,16,24,.55) 0%, rgba(38,16,24,.30) 26%,
+    rgba(38,16,24,.09) 58%, rgba(38,16,24,0) 88%);
+  transform:scaleX(calc(.28 + var(--flip-lift,0) * .72));
   transform-origin:left center;
 }
-.sb-book-outer.flipping .sb-flip-shade{opacity:calc(var(--flip-lift,0) * .88);}
+.sb-book-outer.flipping .sb-flip-shade{opacity:calc(var(--flip-lift,0) * .85);}
 .sb-book-outer.flip-back .sb-flip-shade{
   right:auto; left:0; transform-origin:right center;
   background:linear-gradient(270deg,
-    rgba(38,16,24,.56) 0%, rgba(38,16,24,.30) 28%,
-    rgba(38,16,24,.09) 60%, rgba(38,16,24,0) 88%);
+    rgba(38,16,24,.55) 0%, rgba(38,16,24,.30) 26%,
+    rgba(38,16,24,.09) 58%, rgba(38,16,24,0) 88%);
 }
 
 /* the corner that lifts on its own, so the gesture is obvious */

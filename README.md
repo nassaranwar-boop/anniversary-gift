@@ -75,10 +75,21 @@ upright, turns about the spine and settles, and the book widens as the
 cover comes over. The arrow keys work too. The ribbon marker closes the
 book, and the back cover carries a button through to the games.
 
-Under the hood the turn is two panels rather than one sheet with two
-faces: the first swings up and away, the second comes down on the other
-side. Nothing depends on `backface-visibility`, which some browsers ignore
-— that was what made pages render mirrored.
+Under the hood the sheet is a cylinder, not a board on a hinge. Each leaf
+is cut into vertical strips, and every strip is placed along a bending
+sheet whose tangent angle falls off with distance from the spine
+(`α(s) = A − κ·s`), so the free edge trails behind and the page reads as
+paper. Curvature is nil at either end of the turn and greatest halfway
+through. Shading runs as a gradient across each strip so the joins match
+and the light reads as one curve.
+
+Two leaves, not one with two faces: the first swings away, the second
+comes down on the other side. Nothing depends on `backface-visibility`,
+which some browsers ignore — that was what made pages render mirrored.
+
+If a change touches `style.css` or any `.js`, bump the `?v=` number on the
+asset links in `index.html`, or GitHub Pages will keep serving the old
+files.
 
 ## The memory book — where to edit
 

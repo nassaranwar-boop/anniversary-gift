@@ -34,7 +34,10 @@ Concretely, things he has rejected:
 - Emoji or clip-art standing in for artwork.
 - A page turn that is a flat rotation. He said it "looks sloppy and unwell
   made… turning the pages would feel like an actual page not just a flat
-  surface."
+  surface." The turn is now a real cylinder: each leaf is cut into vertical
+  strips and every strip is placed on a bending sheet, so the free edge
+  trails the spine the way paper does. Do not flatten it back to one
+  rotating element.
 - A grid of identical frames. He wants variety, and he wants the composition
   to breathe: *"the goal is not to have the maximum of photos possible, the
   goal is everything have to look perfect and aesthetically attracting."*
@@ -128,7 +131,15 @@ lands in the frame marked **7**. Slots 1–30 are pages, 31–34 are map pins.
 - `SB.song.startAt` (seconds) — nudge until the track opens on his line.
 - `QUEST_FINAL` and `KEEPSAKE_CLOSING` in `script.js` are still placeholders.
 
-## 7. Testing
+## 7. If he says the site looks old or is stuck
+
+He is on GitHub Pages, and it serves cached CSS/JS hard. A half-updated
+cache (new script, old stylesheet) is what stranded him once — the new
+script is pull-only, so with the old stylesheet nothing responded to a tap
+and there was no way forward. The asset links in `index.html` now carry a
+`?v=N` query. **Bump that N in every commit that touches css or js.**
+
+## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python
 playwright is installed. Serve with `python3 -m http.server 8899`. Google

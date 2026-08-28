@@ -2781,45 +2781,130 @@ window.Scrapbook = (function () {
       outer: document.getElementById("sb-book-outer"),
       a:     document.getElementById("sb-leaf-a"),
       b:     document.getElementById("sb-leaf-b"),
-      aHold: document.getElementById("sb-leaf-a-hold"),
-      bHold: document.getElementById("sb-leaf-b-hold"),
       spread: document.getElementById("sb-spread"),
     };
   }
 
-  /* Panel A is the sheet lifting away; panel B is the one coming down
-     on the other side. A is on screen for the first half of the turn, B
-     for the second, so at no point is anything seen from behind. */
+  /* =======================================================================
+     THE SHEET
+
+     A page does not turn like a board on a hinge. It bends: the part by
+     the spine has already swung over while the free edge is still
+     trailing, so the sheet reads as a cylinder sweeping across the book.
+
+     So each leaf is cut into vertical strips and every strip is placed on
+     that cylinder. Walking out from the spine by arc length s, the sheet's
+     tangent angle is
+
+         α(s) = A − κ·s
+
+     with A the angle at the spine and κ the curvature. Integrating gives
+     the position of each strip:
+
+         x(s) = ( sin A − sin(A − κs) ) / κ
+         z(s) = ( cos(A − κs) − cos A ) / κ
+
+     κ is zero at rest and peaks halfway through, which is exactly when the
+     sheet is standing up and bent the most.
+     ======================================================================= */
+  var STRIPS = 0;
+
+  function stripCount() {
+    return (window.matchMedia && window.matchMedia("(max-width: 760px)").matches) ? 11 : 18;
+  }
+
+  /* cut a leaf into strips, each one a window onto the same page */
+  function buildLeafStrips(leaf, pageNode, hingeRight) {
+    leaf.innerHTML = "";
+    if (!pageNode) { leaf.dataset.empty = "1"; return; }
+    delete leaf.dataset.empty;
+    STRIPS = stripCount();
+    var d = 100 / STRIPS;
+    for (var i = 0; i < STRIPS; i++) {
+      var strip = el("sb-strip");
+      strip.style.width = (d + 0.16) + "%";     /* a hair of overlap, so no seams */
+      if (hingeRight) { strip.style.right = "0"; strip.style.transformOrigin = "right center"; }
+      else            { strip.style.left  = "0"; strip.style.transformOrigin = "left center"; }
+
+      var inner = el("sb-strip-inner");
+      inner.style.width = (100 * STRIPS) + "%";
+      inner.style[hingeRight ? "right" : "left"] = "-" + (i * 100) + "%";
+
+      var clone = pageNode.cloneNode(true);
+      clone.classList.add("in-leaf", "on");
+      inner.appendChild(clone);
+      strip.appendChild(inner);
+      strip.appendChild(el("sb-strip-shade"));
+      leaf.appendChild(strip);
+    }
+  }
+
+  /* how dark, and how much sheen, a bit of sheet at this angle carries */
+  function shadeStop(a) {
+    var dark  = Math.max(0, 0.60 * (1 - Math.cos(a)));
+    var sheen = Math.max(0, 0.26 * Math.pow(Math.sin(a), 3));
+    /* one colour that already carries both, so the stops interpolate */
+    var r = Math.round(30 + (255 - 30) * (sheen / (sheen + dark + 0.0001)));
+    var g = Math.round(14 + (248 - 14) * (sheen / (sheen + dark + 0.0001)));
+    var b = Math.round(22 + (242 - 22) * (sheen / (sheen + dark + 0.0001)));
+    return "rgba(" + r + "," + g + "," + b + "," + (dark + sheen).toFixed(3) + ")";
+  }
+
+  /* place every strip on the cylinder, and light it by how it faces us */
+  function layoutLeaf(leaf, A, kappa, W, hingeRight) {
+    if (!leaf || leaf.dataset.empty) return;
+    var strips = leaf.children, n = strips.length;
+    if (!n) return;
+    var d = W / n;
+    var sign = hingeRight ? -1 : 1;
+    for (var i = 0; i < n; i++) {
+      var s = i * d;
+      var aTan = A - kappa * s;
+      var x, z;
+      if (Math.abs(kappa) < 1e-6) { x = s * Math.cos(A); z = s * Math.sin(A); }
+      else {
+        x = (Math.sin(A) - Math.sin(A - kappa * s)) / kappa;
+        z = (Math.cos(A - kappa * s) - Math.cos(A)) / kappa;
+      }
+      var st = strips[i];
+      st.style.transform =
+        "translate3d(" + (sign * x).toFixed(2) + "px,0," + z.toFixed(2) + "px)" +
+        " rotateY(" + (sign * -aTan * 180 / Math.PI).toFixed(2) + "deg)";
+
+      /* A surface turned away from us loses light. Shading each strip
+         flat would band the sheet, so every strip is a gradient running
+         from its own angle to the next one's — the joins then match and
+         the light reads as one continuous curve. */
+      var aEnd = A - kappa * (s + d);
+      var shade = st.lastChild;
+      var g0 = shadeStop(aTan), g1 = shadeStop(aEnd);
+      shade.style.background =
+        "linear-gradient(" + (hingeRight ? 270 : 90) + "deg," + g0 + "," + g1 + ")";
+    }
+  }
+
   function setFlipProgress(p) {
     var e = els();
     if (!e.a || !e.outer) return;
     flip.p = p;
 
-    var sign = flip.dir > 0 ? -1 : 1;
-    var lift = Math.sin(Math.PI * p);
     var half = p < 0.5;
+    var W = pageW || 1;
+    /* the sheet is straight at either end and most bent in the middle */
+    var kappa = (0.95 / W) * Math.sin(Math.PI * p);
 
-    /* the sheet flexes rather than staying rigid: it leans a little,
-       and rides slightly off the board at the top of the arc */
-    var lean = lift * 1.8 * (flip.dir > 0 ? 1 : -1);
-    var rise = lift * 24;
-
-    var hasB = !!(e.bHold && e.bHold.firstChild);
+    var hasB = !!(e.b && !e.b.dataset.empty);
     e.a.style.visibility = half ? "visible" : "hidden";
     e.b.style.visibility = (!half && hasB) ? "visible" : "hidden";
 
-    e.a.style.transform =
-      "rotateY(" + (sign * 180 * p).toFixed(2) + "deg)" +
-      " rotateZ(" + lean.toFixed(2) + "deg) translateZ(" + rise.toFixed(1) + "px)";
-    e.b.style.transform =
-      "rotateY(" + (-sign * (180 - 180 * p)).toFixed(2) + "deg)" +
-      " rotateZ(" + (-lean).toFixed(2) + "deg) translateZ(" + rise.toFixed(1) + "px)";
+    if (half) {
+      layoutLeaf(e.a, Math.PI * p, kappa, W, flip.aHingeRight);
+    } else if (hasB) {
+      layoutLeaf(e.b, Math.PI * (1 - p), kappa, W, flip.bHingeRight);
+    }
 
     e.outer.style.setProperty("--flip-p", p.toFixed(4));
-    e.outer.style.setProperty("--flip-lift", lift.toFixed(4));
-    /* each panel is lit by how far it has turned, not by the arc */
-    e.a.style.setProperty("--face", (p * 2).toFixed(3));
-    e.b.style.setProperty("--face", ((1 - p) * 2).toFixed(3));
+    e.outer.style.setProperty("--flip-lift", Math.sin(Math.PI * p).toFixed(4));
   }
 
   function beginTurn(dir) {
@@ -2829,22 +2914,9 @@ window.Scrapbook = (function () {
     if (!e.a || !e.b) return false;
 
     var from = views[viewIndex], to = views[viewIndex + dir];
-    var moved = [];
-    function into(host, page) {
-      if (!page) return;
-      setSlot(page, null);
-      page.classList.add("on", "in-leaf");
-      host.appendChild(page);
-      moved.push(page);
-    }
-
-    e.aHold.innerHTML = "";
-    e.bHold.innerHTML = "";
 
     var lifting, backside, staying, stayingSlot, revealed, revealedSlot;
     if (perView === 1) {
-      /* one page at a time: the sheet lifts away and the next one is
-         already lying underneath it. There is no second panel. */
       lifting = pageEls[from[0]];
       backside = null;
       staying = null; revealed = pageEls[to[0]]; revealedSlot = "solo";
@@ -2864,18 +2936,20 @@ window.Scrapbook = (function () {
       revealedSlot = "leftpage";
     }
 
-    into(e.aHold, lifting);
-    if (backside) into(e.bHold, backside);
+    /* which edge each sheet is hinged on — always the spine */
+    flip.aHingeRight = (dir < 0 && perView === 2);
+    flip.bHingeRight = (dir > 0);
+
+    buildLeafStrips(e.a, lifting, flip.aHingeRight);
+    buildLeafStrips(e.b, backside, flip.bHingeRight);
 
     pageEls.forEach(function (p) {
-      if (p === lifting || p === backside) return;
       if (p === staying)  { p.classList.add("on"); setSlot(p, perView === 1 ? "solo" : stayingSlot); }
       else if (p === revealed) { p.classList.add("on"); setSlot(p, perView === 1 ? "solo" : revealedSlot); }
       else { p.classList.remove("on"); setSlot(p, null); }
     });
 
     flip.on = true; flip.dir = dir; flip.from = viewIndex; flip.to = viewIndex + dir;
-    flip.nodes = moved;
     e.outer.classList.add("flipping");
     e.outer.classList.toggle("flip-back", dir < 0);
     var toWide = perView === 2 && views[flip.to].length === 2;
@@ -2889,22 +2963,14 @@ window.Scrapbook = (function () {
   function endTurn(complete) {
     var e = els();
     if (!flip.on) return;
-    (flip.nodes || []).forEach(function (p) {
-      p.classList.remove("in-leaf");
-      e.spread.appendChild(p);
-    });
+    if (e.a) { e.a.innerHTML = ""; e.a.style.visibility = ""; delete e.a.dataset.empty; }
+    if (e.b) { e.b.innerHTML = ""; e.b.style.visibility = ""; delete e.b.dataset.empty; }
     if (e.outer) {
       e.outer.classList.remove("flipping", "flip-back");
       ["--flip-p", "--flip-lift"].forEach(function (v) { e.outer.style.removeProperty(v); });
     }
-    [e.a, e.b].forEach(function (leaf) {
-      if (!leaf) return;
-      leaf.style.transform = "";
-      leaf.style.visibility = "";
-      leaf.style.removeProperty("--face");
-    });
     if (complete) viewIndex = flip.to;
-    flip.on = false; flip.nodes = null;
+    flip.on = false;
     renderView();
   }
 
