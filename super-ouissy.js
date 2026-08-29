@@ -2936,6 +2936,16 @@ window.SuperOuissy = (function () {
     G.keys = freshKeys();
   };
   window.__soMakeBig = function () { setBig(G.player, true); };
+  /* read or poke the player directly — G is module-scoped, so a test in the
+     page has no other way to set up a state like "already has the feather" */
+  window.__soPlayer = function (patch) {
+    if (patch) for (var k in patch) G.player[k] = patch[k];
+    var p = G.player;
+    return { x: p.x, y: p.y, vy: p.vy, big: p.big, star: p.star, wing: p.wing,
+             jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead };
+  };
+  window.__soSetTime = function (t) { G.timeLeft = t; };
+  window.__soDiffFlag = function (k) { return DIFF[G.diff][k]; };
   window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
   window.__soKillBoss = function () {
     if (G.level.boss) { G.level.boss.hp = 0; G.level.boss.dead = 0.001; G.level.goal.open = true; }

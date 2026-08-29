@@ -134,6 +134,7 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   ok('the boss can be defeated', a.bossHp <= 0, 'hp ' + hp0 + ' -> ' + a.bossHp);
   ok('beating the boss opens the pole', a.goalOpen);
 
+
   console.log(R.join('\n'));
   console.log(errors.length ? 'ERRORS: ' + errors.join(' | ') : 'no page errors');
   await browser.close();
