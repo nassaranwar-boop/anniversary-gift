@@ -2050,7 +2050,11 @@ img{-webkit-user-drag:none; user-select:none;}
 .so-overlay{display:none;}
 .so-overlay.on{
   display:flex; position:absolute; inset:0; z-index:10;
-  align-items:center; justify-content:center; padding:3cqw;
+  /* flex-start plus auto block margins, not align-items:center. Centred
+     flex children that overflow get their top clipped and cannot be
+     scrolled back to; this centres when there is room and starts at the
+     top when there is not, which is what the ending needs. */
+  align-items:flex-start; justify-content:center; padding:3cqw;
   background:radial-gradient(circle at 50% 40%, rgba(58,26,62,.82), rgba(16,8,26,.94));
   backdrop-filter:blur(2px);
   animation:soFade .28s var(--ease-out);
@@ -2058,6 +2062,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 @keyframes soFade{from{opacity:0;} to{opacity:1;}}
 
+.so-overlay.on > *{margin-block:auto;}
 .so-menu, .so-card, .so-end{
   display:flex; flex-direction:column; align-items:center; gap:1.6cqw;
   text-align:center; width:100%; max-width:86cqw;
@@ -2159,25 +2164,29 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .so-mini.sel{color:#3d2340; background:#ffd166; border-color:#a9741f;}
 
-/* ---- the ending ---- */
-.so-ov-end{align-items:flex-start;}
-.so-end{max-width:72cqw; gap:1.4cqw; padding:2cqw 0 4cqw;}
+/* ---- the ending ----
+   This is the longest thing in the game and it will not fit on a 16:9
+   stage whatever size the type is, so it is built to be read top to
+   bottom: it starts at its own top, and everything in it is a size down
+   from the rest so there is as little scrolling as possible. */
+.so-end{max-width:70cqw; gap:1cqw; padding:1cqw 0 3cqw;}
 .so-end-art canvas{
-  width:58cqw; height:auto; image-rendering:pixelated; display:block;
+  width:44cqw; height:auto; image-rendering:pixelated; display:block;
   border:.5cqw solid rgba(255,209,102,.4); border-radius:.8cqw;
   box-shadow:0 1cqw 3cqw rgba(0,0,0,.55);
 }
-.so-end-kicker{font-size:1.9cqw; color:#ffb0cd; margin:.8cqw 0 0; letter-spacing:.16em;}
+.so-end-kicker{font-size:1.7cqw; color:#ffb0cd; margin:.6cqw 0 0; letter-spacing:.16em;}
 .so-end-lines{display:flex; flex-direction:column; gap:1cqw;}
 .so-end-lines p{
-  font-family:var(--font-script); font-size:4cqw; line-height:1.35;
+  font-family:var(--font-script); font-size:3.2cqw; line-height:1.3;
   color:#fffaf5; margin:0;
 }
 .so-end-joke{
   font-family:var(--font-serif); font-style:italic; font-size:2cqw; color:#ffc8de; margin:.6cqw 0 0;
 }
-.so-end-sign{font-family:var(--font-hand); font-size:3.4cqw; color:#ffd166; margin:0;}
-.so-end-res{max-width:48cqw;}
+.so-end-sign{font-family:var(--font-hand); font-size:3cqw; color:#ffd166; margin:0;}
+.so-end-res{max-width:44cqw;}
+.so-end-res .so-res-row{font-size:1.6cqw;}
 
 /* =========================================================
    The touch pad — sized in viewport units, because it lives

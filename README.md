@@ -9,13 +9,15 @@ branch → main → /root).
 ## Files
 
 ```
-index.html      page structure (all screens are <section class="screen">)
-vendor/         three.js r180 + post-processing, bundled for offline use
-style.css       all styling
-script.js       site logic + maze/adventure content config (EDIT CONTENT HERE)
-book-scene.js   the Three.js 3D intro scene — self-contained
-scrapbook.js    the memory book — its own config block at the top
-assets/         images used by the 2D parts of the site
+index.html       page structure (all screens are <section class="screen">)
+vendor/          three.js r180 + post-processing, bundled for offline use
+style.css        all styling
+script.js        site logic + maze/adventure content config (EDIT CONTENT HERE)
+book-scene.js    the Three.js 3D intro scene — self-contained
+scrapbook.js     the memory book — its own config block at the top
+super-ouissy.js  the platformer — its own config block at the top
+assets/          images used by the 2D parts of the site
+tools/           offline checks (see tools/README.md); nothing here ships
 ```
 
 ## Screen flow
@@ -28,10 +30,14 @@ assets/         images used by the 2D parts of the site
    every page, the cover included, is turned by hand. Ten collaged pages and
    a back cover. The round button bottom-right opens a drawer with the
    bouquet, the song, the Marrakech memory map and the music video.
-4. **Hub** — "choose your adventure", two chapters in either order
+4. **Hub** — "choose your adventure", now three chapters, any order
 5a. **The Maze** — level 1 -> level 2 -> divider -> cats night-sky ending
 5b. **The Long Way Round** — branching pixel-art choice adventure
-6. **Keepsake** — scrapbook recap, unlocked once both chapters are done
+5c. **Super Ouissy** — a three-world platformer (`super-ouissy.js`)
+6. **Keepsake** — scrapbook recap, unlocked once the maze and the adventure
+   are done. Super Ouissy is a bonus: finishing it adds a card to the
+   keepsake but is deliberately **not** required to unlock it, so nothing
+   she has already finished can re-lock itself.
 
 ## Where to edit content
 
@@ -46,6 +52,13 @@ Top of `script.js`, in clearly marked CONFIG blocks:
 - `KEEPSAKE_CLOSING` — the last line she reads. Also a placeholder.
 - `CONFIG` (further down) — maze game text, her name, the reward line, the
   in-maze love notes
+
+Top of `super-ouissy.js`, in the block marked **CUSTOMISE ME**:
+
+- `SO.ending` — the castle scene at the very end. `lines` is still a
+  placeholder; that is the thing to write.
+- `SO.worlds` — the three world names and the line under each
+- `SO.tagline`, `SO.howTo` — the title screen and the controls card
 
 ## Photos — just name the files
 
@@ -146,3 +159,41 @@ globals:
   when the climax flash begins, to hand off to the passcode gate
 - `window.skipBookIntro()` — defined in `book-scene.js`; `script.js` calls it
   when the user presses Skip, to halt the render loop
+
+
+## Super Ouissy
+
+A side-scrolling platformer, reached from the hub. Three worlds — Sunny
+Meadows, the Twilight Forest, the Castle of Sweethearts — a mini-boss, and a
+castle ending. Arrow keys or WASD, space to jump (hold it longer to jump
+higher), Esc to pause. On a phone there are thumb buttons along the bottom.
+
+**It carries no files of its own.** Every sprite, tile and backdrop is drawn
+pixel by pixel onto a canvas when the page loads, and every sound is
+synthesised with Web Audio, so the whole game adds nothing to the size of the
+repo beyond the one script.
+
+### Changing it
+
+Everything you are likely to want is in the first two hundred lines of
+`super-ouissy.js`, in this order:
+
+- `SO` — the words: world names, the how-to card, the ending
+- `TUNE` — how she feels to control. Gravity, jump height, run speed,
+  coyote time. Almost every complaint about a platformer is one of these six
+  numbers.
+- `DIFF` — Easy / Medium / Hard, written as multipliers over `TUNE`, so
+  changing a mode is one line. Easy has five lives and no fatal pits (a cloud
+  catches her); Hard has two lives and a clock.
+- `LEVELS` — the three worlds, as grids of characters, one per 16px tile,
+  with the full legend written above them. Edit the strings and the level
+  changes. Two characters are difficulty-gated (`;` an enemy that only
+  appears above Easy, `,` spikes that only appear on Hard), so one grid
+  covers all three modes.
+
+Her sprite is a pixel map — `OUI_HEAD`, `OUI_BODY`, `OUI_LEGS`, one character
+per pixel with the palette written above it. Change a string, change her.
+Every row must stay sixteen characters long.
+
+Best score and time are kept per difficulty in `localStorage`, and the
+difficulty can be changed mid-game from the pause menu.

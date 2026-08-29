@@ -2168,6 +2168,9 @@ window.SuperOuissy = (function () {
     if (!ov) return;
     ov.className = "so-overlay on " + (cls || "");
     ov.innerHTML = html;
+    /* a tall card (the ending) must start at its own top, not wherever the
+       last overlay happened to be scrolled to */
+    ov.scrollTop = 0;
     ov.setAttribute("aria-hidden", "false");
   }
   function closeOverlay() {
@@ -2873,10 +2876,26 @@ window.SuperOuissy = (function () {
      be driven and inspected without a person at the keyboard. They read
      and move state that is already public to the loop; nothing in the game
      itself calls them. */
-  window.__soGoLevel = function (i) { startLevel(i); };
-  /* Step the world a fixed number of frames and repaint, so the offline
-     harness does not depend on requestAnimationFrame (which runs at 3fps in
-     a headless container and would make every test a slow-motion one). */
+  /* =======================================================================
+     OFFLINE TEST HOOKS
+
+     None of this runs while she plays; nothing in the game calls any of it.
+     It exists so the game can be driven and inspected from a headless
+     browser, which is how every bug in this file was actually found —
+     reading the code was not enough for a single one of them.
+
+     The one that matters is __soPump: requestAnimationFrame runs at about
+     three frames a second in a headless container, so a test that waited on
+     real time ran in slow motion and proved nothing. Setting
+     __soTestDrive makes the frame loop paint only, and __soPump advances
+     the world by an exact number of fixed steps instead.
+
+     There is a harness in the scratchpad of the session that wrote this;
+     if it is gone, the shape of it is: serve the folder, open the page,
+     window.__soTestDrive = true, then pump and assert.
+     ======================================================================= */
+
+  /* --- driving --- */
   window.__soPump = function (seconds, keys) {
     if (keys) for (var k in keys) {
       if (k === "jump" && keys[k] && !G.keys.jump) G.keys.jumpPressed = true;
@@ -2887,29 +2906,27 @@ window.SuperOuissy = (function () {
     paint(performance.now() / 1000);
     return window.__soState();
   };
-
-  window.__soGoalInfo = function () {
-    var g = G.level.goal, p = G.player;
-    return { gx: g && g.x, gy: g && g.y, open: g && g.open, hasBoss: !!G.level.boss,
-             px: Math.round(p.x), py: Math.round(p.y), winT: p.winT, state: G.state };
-  };
-  /* everything a test needs to assert on, in one place */
-  window.__soTile = function (x, y) { return tileAt(x, y); };
-  /* put her back on her feet between assertions, so one test failing does
-     not cascade into every test after it */
-  window.G_x = function () { return G.player.x; };
-  window.__soItems = function () {
-    return G.level.items.filter(function (it) { return it.type !== "heart"; })
-      .map(function (it) {
-        return { t: it.type, x: Math.round(it.x), y: Math.round(it.y),
-                 vx: Math.round(it.vx), vy: Math.round(it.vy), born: +it.born.toFixed(2), fl: it.floating };
-      });
-  };
-  /* stop the frame loop so the offline harness can screenshot the page:
-     playwright waits for the element box to be stable and never gets it
-     while requestAnimationFrame keeps repainting */
   window.__soHalt = function () { if (raf) cancelAnimationFrame(raf); raf = null; };
-  window.__soMakeBig = function () { setBig(G.player, true); };
+  window.__soHaltUndo = function () { if (!raf) { lastT = 0; raf = requestAnimationFrame(frame); } };
+
+  /* --- putting her somewhere --- */
+  window.__soGoLevel = function (i) { startLevel(i); };
+  window.__soShowEnding = function () { showEnding(); };
+  window.__soTele = function (tx, ty) {
+    if (!G || !G.level) return;
+    G.player.x = tx * T;
+    if (ty === undefined) {
+      /* the real floor: first solid tile scanning UP from the bottom, then
+         the top of that run. Scanning down from the sky lands her on the
+         roof of whatever block happens to be in the column. */
+      var r = G.level.h - 1;
+      while (r >= 0 && !solidAt(tx, r)) r--;
+      while (r > 0 && solidAt(tx, r - 1)) r--;
+      G.player.y = r < 0 ? -16 : r * T - G.player.h - 1;
+    } else G.player.y = ty * T;
+    G.player.vx = 0; G.player.vy = 0;
+    G.camSnap = true; moveCamera(1);
+  };
   window.__soReset = function () {
     var keep = { score: G.score, hearts: G.hearts, deaths: G.deaths };
     G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
@@ -2918,30 +2935,12 @@ window.SuperOuissy = (function () {
     G.state = "play";
     G.keys = freshKeys();
   };
-  window.__soPos = function () {
-    var p = G.player;
-    return { y: Math.round(p.y), vy: Math.round(p.vy), onG: p.onGround,
-             coy: +p.coyote.toFixed(2), buf: +p.buffer.toFixed(2), hold: p.holdJump };
+  window.__soMakeBig = function () { setBig(G.player, true); };
+  window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
+  window.__soKillBoss = function () {
+    if (G.level.boss) { G.level.boss.hp = 0; G.level.boss.dead = 0.001; G.level.goal.open = true; }
   };
-  window.__soInfo = function () {
-    var L = G.level, used = 0, bricks = 0, spikes = 0;
-    for (var y = 0; y < L.h; y++) for (var x = 0; x < L.w; x++) {
-      var ch = L.grid[y][x];
-      if (ch === "u") used++; else if (ch === "B") bricks++; else if (ch === "^") spikes++;
-    }
-    return {
-      state: G.state, world: G.levelIndex + 1, lives: G.lives, score: G.score,
-      hearts: G.hearts, deaths: G.deaths, timeLeft: G.timeLeft,
-      big: G.player.big, star: G.player.star > 0, wing: G.player.wing,
-      x: Math.round(G.player.x / T), usedBlocks: used, bricks: bricks, spikes: spikes,
-      enemiesAlive: L.ents.filter(function (e) { return e.kind === "enemy" && e.alive; }).length,
-      items: L.items.length, hasBoss: !!L.boss, bossHp: L.boss ? L.boss.hp : null,
-      goalOpen: !!(L.goal && L.goal.open),
-    };
-  };
-  /* drop her onto the boss's head, so the fight can be tested without
-     having to simulate a person's timing */
-  /* stand her directly above the nearest live enemy, so a stomp can be
+  /* stand her on the nearest live enemy, or on the boss, so a stomp can be
      tested without simulating a person's timing */
   window.__soAboveEnemy = function () {
     var e = G.level.ents.filter(function (x) { return x.kind === "enemy" && x.alive; })
@@ -2960,90 +2959,8 @@ window.SuperOuissy = (function () {
     G.player.y = b.y - G.player.h + 1;
     G.player.vy = 120;
   };
-  window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
-  window.__soKillBoss = function () {
-    if (G.level.boss) { G.level.boss.hp = 0; G.level.boss.dead = 0.001; G.level.goal.open = true; }
-  };
-  window.__soTele = function (tx, ty) {
-    if (!G || !G.level) return;
-    G.player.x = tx * T;
-    if (ty === undefined) {
-      /* Find the real floor: the first solid tile scanning UP from the
-         bottom, then the top of that run. Scanning down from the sky lands
-         her on the roof of any block that happens to be in the column. */
-      var r = G.level.h - 1;
-      while (r >= 0 && !solidAt(tx, r)) r--;
-      while (r > 0 && solidAt(tx, r - 1)) r--;
-      G.player.y = r < 0 ? -16 : r * T - G.player.h - 1;
-    } else G.player.y = ty * T;
-    G.player.vx = 0; G.player.vy = 0;
-    G.camSnap = true; moveCamera(1);
-  };
-  /* A contact sheet of every sprite, for the offline art review. */
-  /* one sprite, very large, for looking at a face pixel by pixel */
-  window.__soZoom = function (what, scale) {
-    scale = scale || 18;
-    var imgs = ({
-      idle: OUISSY.idle.small, idleBig: OUISSY.idle.big, run: OUISSY.run.small,
-      boss: ART.boss, guard: ART.guard, walker: ART.walker, flyer: ART.flyer,
-      power: ART.power.grow.concat(ART.power.star, ART.power.life, ART.power.boost, ART.power.wing),
-    })[what] || OUISSY.idle.small;
-    var w = 0, h = 0;
-    imgs.forEach(function (i) { w += i.width + 2; h = Math.max(h, i.height); });
-    var o = document.createElement("canvas");
-    o.width = w * scale; o.height = h * scale;
-    var c = o.getContext("2d"); c.imageSmoothingEnabled = false;
-    c.fillStyle = "#4a6a8a"; c.fillRect(0, 0, o.width, o.height);
-    var x = 0;
-    imgs.forEach(function (i) {
-      c.drawImage(i, x * scale, 0, i.width * scale, i.height * scale);
-      x += i.width + 2;
-    });
-    return o.toDataURL("image/png");
-  };
 
-  window.__soSheet = function () {
-    var rows = [];
-    ["idle", "run", "jump", "fall", "duck", "hurt", "win"].forEach(function (pose) {
-      rows.push(OUISSY[pose].small.concat(OUISSY[pose].big));
-    });
-    rows.push(ART.walker.concat([ART.walkerSquash]).concat(ART.flyer).concat(ART.guard));
-    rows.push(ART.heart.concat(ART.power.grow, ART.power.star, ART.power.life, ART.power.boost, ART.power.wing));
-    rows.push(ART.boss.concat(ART.bossHurt));
-    var SC = 5, pad = 4, cw = 44, ch = 40;
-    var maxCols = Math.max.apply(null, rows.map(function (r) { return r.length; }));
-    var o = document.createElement("canvas");
-    o.width = maxCols * (cw * SC / 4 + pad) + 20;
-    o.height = rows.length * (ch * SC / 2 + pad) + 20;
-    var c = o.getContext("2d");
-    c.imageSmoothingEnabled = false;
-    c.fillStyle = "#5a7a9a"; c.fillRect(0, 0, o.width, o.height);
-    var y = 10;
-    rows.forEach(function (r) {
-      var x = 10, tall = 0;
-      r.forEach(function (img) {
-        c.drawImage(img, x, y, img.width * SC, img.height * SC);
-        x += img.width * SC + pad;
-        tall = Math.max(tall, img.height * SC);
-      });
-      y += tall + pad * 2;
-    });
-    var out = document.createElement("canvas");
-    out.width = o.width; out.height = y + 10;
-    var oc = out.getContext("2d"); oc.imageSmoothingEnabled = false;
-    oc.fillStyle = "#5a7a9a"; oc.fillRect(0, 0, out.width, out.height);
-    oc.drawImage(o, 0, 0);
-    return out.toDataURL("image/png");
-  };
-
-  window.__soDiag = function () {
-    var p = G.player;
-    return { px: Math.round(p.x), py: Math.round(p.y), ph: p.h, onG: p.onGround,
-             camx: Math.round(G.cam.x), camy: Math.round(G.cam.y),
-             pxH: G.level.pxH, feetTile: Math.floor((p.y + p.h) / T),
-             tileUnderFeet: tileAt(Math.floor((p.x + p.w / 2) / T), Math.floor((p.y + p.h + 1) / T)),
-             screenY: Math.round(p.y - G.cam.y), pose: p.pose };
-  };
+  /* --- looking at it --- */
   window.__soState = function () {
     if (!G) return null;
     return {
@@ -3052,6 +2969,56 @@ window.SuperOuissy = (function () {
       x: Math.round(G.player.x / T), y: Math.round(G.player.y / T),
       onGround: G.player.onGround, big: G.player.big,
     };
+  };
+  /* everything a test might want to assert on, counted off the live level */
+  window.__soInfo = function () {
+    var L = G.level, used = 0, bricks = 0, spikes = 0;
+    for (var y = 0; y < L.h; y++) for (var x = 0; x < L.w; x++) {
+      var ch = L.grid[y][x];
+      if (ch === "u") used++; else if (ch === "B") bricks++; else if (ch === "^") spikes++;
+    }
+    return {
+      state: G.state, world: G.levelIndex + 1, lives: G.lives, score: G.score,
+      hearts: G.hearts, deaths: G.deaths, timeLeft: G.timeLeft,
+      big: G.player.big, star: G.player.star > 0, wing: G.player.wing,
+      x: Math.round(G.player.x / T), usedBlocks: used, bricks: bricks, spikes: spikes,
+      enemiesAlive: L.ents.filter(function (e) { return e.kind === "enemy" && e.alive; }).length,
+      items: L.items.length, hasBoss: !!L.boss, bossHp: L.boss ? L.boss.hp : null,
+      goalOpen: !!(L.goal && L.goal.open),
+    };
+  };
+  /* a contact sheet of every sprite in the game, for reviewing the art */
+  window.__soSheet = function (scale) {
+    var SC = scale || 5, pad = 6;
+    var rows = [];
+    ["idle", "run", "jump", "fall", "duck", "hurt", "win"].forEach(function (pose) {
+      rows.push(OUISSY[pose].small.concat(OUISSY[pose].big));
+    });
+    rows.push(ART.walker.concat([ART.walkerSquash], ART.flyer, ART.guard));
+    rows.push(ART.heart.concat(ART.power.grow, ART.power.star, ART.power.life,
+                               ART.power.boost, ART.power.wing));
+    rows.push(ART.boss.concat(ART.bossHurt));
+    var w = 0, h = 0;
+    rows.forEach(function (r) {
+      var rw = 0, rh = 0;
+      r.forEach(function (i) { rw += i.width * SC + pad; rh = Math.max(rh, i.height * SC); });
+      w = Math.max(w, rw); h += rh + pad * 2;
+    });
+    var o = document.createElement("canvas");
+    o.width = w + 20; o.height = h + 20;
+    var c = o.getContext("2d");
+    c.imageSmoothingEnabled = false;
+    c.fillStyle = "#4a6a8a"; c.fillRect(0, 0, o.width, o.height);
+    var y = 10;
+    rows.forEach(function (r) {
+      var x = 10, tall = 0;
+      r.forEach(function (img) {
+        c.drawImage(img, x, y, img.width * SC, img.height * SC);
+        x += img.width * SC + pad; tall = Math.max(tall, img.height * SC);
+      });
+      y += tall + pad * 2;
+    });
+    return o.toDataURL("image/png");
   };
 
   return { start: start, stop: stop, pause: function () { if (G && G.state === "play") togglePause(); } };

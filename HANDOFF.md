@@ -91,17 +91,19 @@ An anniversary gift for his girlfriend. Passcode **2207**. The tone is warm,
 loving, handmade — never cold, never corporate.
 
 ```
-index.html      every screen is a <section class="screen">
-style.css       one :root theme block drives the whole palette
-script.js       screen flow, the maze, the choice adventure, ambient pad
-book-scene.js   the Three.js opening — self-contained, leave it alone
-scrapbook.js    the memory book: config at the top, then art, pages, turning
-vendor/         three.js r180, bundled
-assets/         photos, song.mp3, and the 2D art the maze/adventure use
+index.html       every screen is a <section class="screen">
+style.css        one :root theme block drives the whole palette
+script.js        screen flow, the maze, the choice adventure, ambient pad
+book-scene.js    the Three.js opening — self-contained, leave it alone
+scrapbook.js     the memory book: config at the top, then art, pages, turning
+super-ouissy.js  the platformer: config, tuning, difficulty, levels, engine
+vendor/          three.js r180, bundled
+assets/          photos, song.mp3, and the 2D art the maze/adventure use
+tools/           offline checks — see tools/README.md. Nothing here ships.
 ```
 
-Flow: 3D book intro → passcode → **the memory book** → hub → two chapters
-(the maze, the choice adventure) → keepsake.
+Flow: 3D book intro → passcode → **the memory book** → hub → three chapters
+(the maze, the choice adventure, Super Ouissy) → keepsake.
 
 **Three.js is intentional.** It runs the opening only. Don't replace it,
 don't spread it to other parts.
@@ -145,6 +147,26 @@ script is pull-only, so with the old stylesheet nothing responded to a tap
 and there was no way forward. The asset links in `index.html` now carry a
 `?v=N` query. **Bump that N in every commit that touches css or js.**
 
+## 7a. Super Ouissy
+
+A platformer, added as a third hub card. It follows the same rules as
+everything else here: no image files, no audio files — the sprites, the
+tiles, the three parallax backdrops and the sound are all made at runtime.
+The config, the physics tuning, the three difficulty tables and the three
+level grids are the first two hundred lines of the file, in that order, and
+the level grids are plain strings with the legend written above them.
+
+Two things worth knowing before you change it:
+
+- **It is a bonus chapter on purpose.** The keepsake still unlocks on the
+  maze and the adventure alone. If you make it required, anyone who has
+  already finished the first two will find the keepsake locked again.
+- **Ouissy is a pixel map, not a shaded drawing.** The first version of her
+  was built out of the same `blob()` shading the rest of the site uses and
+  she came out with no face at all — at sixteen pixels wide that approach
+  turns to mush. `OUI_HEAD` / `OUI_BODY` / `OUI_LEGS` are one character per
+  pixel. Do not go back to blobs for anything this small.
+
 ## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python
@@ -156,3 +178,12 @@ never fires load.
 Always check: no page errors, no horizontal scroll, and **an iPhone
 viewport** — he has said repeatedly that iPhone and iPad matter. The book
 shows one page at a time in portrait and a spread in landscape.
+
+There are scripts for all of this in `tools/` now, with a README. Run
+`tools/regress.js` before any push: it walks every screen on desktop and on
+an iPhone and fails loudly. Two traps are written up there and both cost an
+hour to find: **requestAnimationFrame runs at about 3fps in this container**,
+so anything that waits on wall-clock time runs in slow motion and proves
+nothing (drive the game with `window.__soPump` instead); and
+**`page.screenshot()` hangs** while a canvas loop is painting, so halt the
+loop and go through CDP, or pull the canvas out with `toDataURL`.
