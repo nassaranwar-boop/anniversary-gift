@@ -2423,7 +2423,7 @@ window.SuperOuissy = (function () {
 
     /* ---- what she is standing in --------------------------------------- */
     var hz = boxHitsHazard(p.x, p.y + 2, p.w, p.h - 2);
-    if (hz && p.star <= 0) hurtPlayer(true);
+    if (hz && p.star <= 0) { G.lastHurtBy = "hazard"; hurtPlayer(true); }
 
     /* ---- out of the world ---------------------------------------------- */
     if (p.y > G.level.pxH + 24) {
@@ -2433,7 +2433,7 @@ window.SuperOuissy = (function () {
         burst(p.x + p.w / 2, p.y + p.h, 16, ["#ffffff", "#cfe9fb"], 60, { g: 120, max: .6 });
         popText(p.x, p.y - 10, "caught you!", "#ffffff");
         sfx("save"); shake(3);
-      } else hurtPlayer(true);
+      } else { G.lastHurtBy = "pit"; hurtPlayer(true); }
     }
 
     /* ---- the animation state machine ----------------------------------- */
@@ -2532,7 +2532,21 @@ window.SuperOuissy = (function () {
 
   function afterDeath() {
     G.lives--;
-    if (G.lives < 0) { endRun(false); return; }
+
+    if (G.lives < 0) {
+      /* THE one death that leads somewhere else: the last life, taken by
+         the last boss, on Hard. Anything else is an ordinary game over. */
+      if (rescuesOn() && G.lastHurtBy === "boss" && G.level.boss &&
+          G.levelIndex === worldSet().length - 1) {
+        var pp = G.player;
+        playCutscene("death", {
+          herX: clamp(pp.x - G.cam.x, 26, VIEW.w - 90),
+          herY: clamp(pp.y - G.cam.y, 62, 96),
+        }, afterDeathScene);
+        return;
+      }
+      endRun(false); return;
+    }
 
     /* Hard, and she still has a life: he comes and gets her first */
     if (rescuesOn()) {
@@ -2542,6 +2556,15 @@ window.SuperOuissy = (function () {
       return;
     }
     respawn();
+  }
+
+  /* What the story chose, once it hands the canvas back. The fight and the
+     letting go are 6.3 and 6.4; for now both land somewhere sane. */
+  function afterDeathScene() {
+    var chose = window.Rescue ? Rescue.outcome() : null;
+    G.state = "menu";
+    if (chose === "fight") endRun(false);
+    else endRun(false);
   }
 
   function respawn() {
@@ -2637,6 +2660,7 @@ window.SuperOuissy = (function () {
       p.squash = 1.2;
       return;
     }
+    G.lastHurtBy = "enemy";
     hurtPlayer(false);
   }
 
@@ -2939,6 +2963,7 @@ window.SuperOuissy = (function () {
       if (!p.dead && !p.winT && p.star <= 0 &&
           p.x + p.w > s.x && p.x < s.x + 6 && p.y + p.h > s.y && p.y < s.y + 6) {
         b.shots.splice(i, 1);
+        G.lastHurtBy = "boss";
         hurtPlayer(false);
       }
     }
@@ -2985,7 +3010,7 @@ window.SuperOuissy = (function () {
       }
       return;
     }
-    if (p.star <= 0) hurtPlayer(false);
+    if (p.star <= 0) { G.lastHurtBy = "boss"; hurtPlayer(false); }
   }
 
   /* =======================================================================
@@ -4264,7 +4289,7 @@ window.SuperOuissy = (function () {
     G = {
       diff: "medium", state: "menu", level: null, levelIndex: 0,
       lives: 3, score: 0, hearts: 0, deaths: 0, elapsed: 0,
-      meter: 0, meterFlash: 0,
+      meter: 0, meterFlash: 0, lastHurtBy: null,
       levelStartT: 0, levelStartHearts: 0, levelStartDeaths: 0,
       timeLeft: 0, warned: false, poleBonus: 0, levelStats: [],
       player: mkPlayer(0, 0), parts: [], floats: [], bumps: [],
@@ -4456,6 +4481,15 @@ window.SuperOuissy = (function () {
      level loads, so a grid scan will never find one. Ask the entity list. */
   window.G_keys = function () { return G.keys; };
   window.OUISSY_FRAMES = function (pose, size) { return OUISSY[pose][size]; };
+  window.G_setLives = function (n) { G.lives = n; };
+  /* end her the way the boss would, without having to lose the fight */
+  window.__soDieToBoss = function () {
+    G.lives = 0;
+    G.player.invuln = 0; G.player.star = 0; G.player.big = false;
+    G.lastHurtBy = "boss";
+    G.player.dead = 0.001; G.player.vy = -230; G.player.pose = "hurt";
+  };
+  window.G_setHurtBy = function (w) { G.lastHurtBy = w; };
   window.__soSetMeter = function (n) { G.meter = n; updateHud(); };
   window.__soLoveFull = function () { return TUNE.loveFull; };
   window.__soWorldNames = function () { return worldSet().map(function (w) { return w.biome; }); };

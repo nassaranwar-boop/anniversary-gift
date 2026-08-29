@@ -169,7 +169,7 @@ window.Rescue = (function () {
   /* =======================================================================
      THE CAST
 
-     Anwar is twenty by twenty-six and Death is thirty-four by forty-six,
+     Anwar is twenty by twenty-six and Death is forty by fifty-eight,
      against her sixteen by eighteen. That size difference is the point: he
      stands over her, and the thing on the other side of him stands over
      them both.
@@ -209,53 +209,66 @@ window.Rescue = (function () {
     "..........................KsSSsssK......",
     ".........................KssKKKSssK.....",
     ".......KKKKKKKK.........KsSK...KSssK....",
-    ".....KKccccccccKK......KsSK.....KsssK...",
-    "...KKccccccccccccKK...KhsK.......KssK...",
-    "..KccccccccccccccccK..KhhK......KssK....",
-    ".KcccccVVVVVVVVVVcccK.KhhK......KsK.....",
-    ".KccccVVVVVVVVVVVVccK.KhhK.......K......",
-    ".KccccVVgVVVVVgVVVccK.KhhK..............",
-    ".KccccVVVVVVVVVVVVccK.KhhK..............",
-    "..KcccVVVVVVVVVVVVcK..KhhK..............",
-    "..KccccVVVVVVVVVVccK..KhhK..............",
-    "...KccccccccccccccK...KhhK..............",
-    "..KKcccccccccccccccKKKKhhK..............",
-    "KKccccccccccccccccccccchhK..............",
-    "ccccccccccccccccccccccGhhGK.............",
-    "ccccccccccccccccccccccGhhGK.............",
-    "ccccccccccccccccccccccGhhGK.............",
-    "ccccccccccccccccccccccchhK..............",
-    "ccccccccccccccccccccccKhhK..............",
-    "ccccccccccccccccccccccKhhK..............",
-    "ccccccccccccccccccccccKhhK..............",
-    "KcccccccccccccccccccccchhK..............",
-    "KcccccccccccccccccccccGhhGK.............",
-    "KcccccccccccccccccccccGhhGK.............",
-    "ccccccccccccccccccccccGhhGK.............",
-    "ccccccccccccccccccccccchhK..............",
-    "ccccccccccccccccccccccKhhK..............",
-    "KcccccccccccccccccccccKhhK..............",
-    "KcccccccccccccccccccccKhhK..............",
-    "ccccccccccccccccccccccKhhK..............",
-    "ccccccccccccccccccccccKhhK..............",
-    "KcccccccccccccccccccccKhhK..............",
-    "KcccccccccccccccccccccKhhK..............",
-    ".KcccccccccccccccccccKKhhK..............",
-    ".KcccccccccccccccccccKKhhK..............",
-    "..KcccccccccccccccccK.KhhK..............",
-    "..KcccccccccccccccccK.KhhK..............",
-    "...KcccccccccccccccK..KhhK..............",
-    "....KcccccccccccccK...KhhK..............",
-    ".....KcccccccccccK....KhhK..............",
-    "......KccccccccKK.....KhhK..............",
-    ".......KKcccccK.......KhhK..............",
-    ".........KKKKK.........KK...............",
+    ".....KKrrccccccKK......KsSK.....KsssK...",
+    "...KKrrccccccccccKK...KhsK.......KssK...",
+    "..KrrccccccccccccccK..KhhK......KssK....",
+    ".KrrcccVVVVVVVVVVcccK.KhhK......KsK.....",
+    ".KrrccVVVVVVVVVVVVccK.KhhK.......K......",
+    ".KrrccVVgVVVVVgVVVccK.KhhK..............",
+    ".KrrccVVVVVVVVVVVVccK.KhhK..............",
+    "..KrrcVVVVVVVVVVVVcK..KhhK..............",
+    "..KrrccVVVVVVVVVVccK..KhhK..............",
+    "...KrrccccccccccccK...KhhK..............",
+    "..KrrccccccccccccccK..KhhK..............",
+    ".KrrcccccccccccccccK..KhhK..............",
+    "KrrcccccccccccccccccK.KhhK..............",
+    "KrrccccccccccccccccccKKhhK..............",
+    "rrccccccccccccccccccccKhhK..............",
+    "rrccccccccccccccccccccchhK..............",
+    "KrrcccccccccccccccccccGhhGK.............",
+    "KrrcccccccccccccccccccGhhGK.............",
+    "KrrcccccccccccccccccccGhhGK.............",
+    ".KrrccccccccccccccccccchhK..............",
+    ".KrrccccccccccccccccccchhK..............",
+    ".KrrccccccccccccccccccchhK..............",
+    "..KrrcccccccccccccccccchhK..............",
+    "..KrrcccccccccccccccccchhK..............",
+    "..KrrcccccccccccccccccchhK..............",
+    "..KrrcccccccccccccccccchhK..............",
+    ".KrrccccccccccccccccccchhK..............",
+    ".KrrccccccccccccccccccGhhGK.............",
+    ".KrrccccccccccccccccccGhhGK.............",
+    "KrrcccccccccccccccccccGhhGK.............",
+    "KrrcccccccccccccccccccchhK..............",
+    "KrrcccccccccccccccccccKhhK..............",
+    "KrrcccccccccccccccccccKhhK..............",
+    "rrcccccccccccccccccccKKhhK..............",
+    "rrcccccccccccccccccccKKhhK..............",
+    "rrcccccccccccccccccccKKhhK..............",
+    "KrrccccccccccccccccccKKhhK..............",
+    "KrrccccccccccccccccccKKhhK..............",
+    "KrrccccccccccccccccccKKhhK..............",
+    ".KrrccccccccccccccccccKhhK..............",
+    ".KrrccccccccccccccccccKhhK..............",
+    "..KrrcccccccccccccccccKhhK..............",
+    "...KrrccccccccccccccccKhhK..............",
+    "....KrrcccccccccccccccKhhK..............",
+    ".....KrrcccccccccccccKKhhK..............",
+    ".....KrrccccccccccccK.KhhK..............",
+    "......KrrcccccccccccK.KhhK..............",
+    "......KrrccccccccccK..KhhK..............",
+    ".......KrrccccccccK...KhhK..............",
+    ".......KrrcccccccK....KhhK..............",
+    ".......KrrccccccK.....KhhK..............",
+    "........KrrcccccK.....KhhK..............",
+    ".........KKKKKKK.......KK...............",
   ];
 
   /* one character per pixel, as in the game
        K ink   h hair   i hair shine   S skin   b stubble
        G glass  C coat   w shirt       T trousers  O shoe
-       c cloak  V the void under the hood   g a glint in it
+       c cloak  r the cold rim down his lit side
+       V the void under the hood   g a glint in it
        s scythe blade   S (in Death) blade shine   h (in Death) the shaft */
   var ANWAR_PAL = {
     K: "#241a26", h: "#2f2320", i: "#5a4238",
@@ -296,7 +309,7 @@ window.Rescue = (function () {
     var map = DEATH_MAP.slice();
     if (k === 1) {
       /* the hem stirs, one row, one pixel */
-      map[41] = map[41].replace("ccccc", "cccc.");
+      map[map.length - 8] = map[map.length - 8].replace("ccccc", "cccc.");
     }
     return paintMap(map, DEATH_PAL, 40);
   }
@@ -378,7 +391,9 @@ window.Rescue = (function () {
 
   /* a full-width choice menu, two options, keyboard or tap */
   function drawChoice(c, opts, sel, prompt) {
-    var w = VW - 40, x = 20, y = 62;
+    /* down at the foot of the screen: at head height it covered the two
+       people the decision is about */
+    var w = VW - 40, x = 20, y = 124;
     px(c, x - 2, y - 14, w + 4, 12, "rgba(12,8,18,.8)");
     c.font = "5px monospace"; c.textAlign = "center";
     c.fillStyle = "#d8d2e8";
@@ -404,6 +419,36 @@ window.Rescue = (function () {
      long we have been in it. Scenes advance by their own rules; the only
      thing Super Ouissy knows is step / paint / done.
      ======================================================================= */
+  /* Sound, through the same Web Audio context the game already owns, so
+     nothing here adds a file either. */
+  function sfx(kind) {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      var ac = window.__soAudio || (window.__soAudio = new AC());
+      if (ac.state === "suspended") ac.resume();
+      var spec = ({
+        chill:  { type: "sine",     f: 240,  to: 60,   d: 1.6, v: .05 },
+        swing:  { type: "sawtooth", f: 900,  to: 180,  d: .22, v: .07 },
+        catch:  { type: "square",   f: 1400, to: 260,  d: .30, v: .08 },
+        pick:   { type: "square",   f: 520,  to: 700,  d: .07, v: .04 },
+        choose: { type: "triangle", f: 620,  to: 1240, d: .26, v: .07 },
+        hit:    { type: "square",   f: 320,  to: 90,   d: .18, v: .07 },
+        block:  { type: "square",   f: 700,  to: 300,  d: .14, v: .06 },
+      })[kind];
+      if (!spec) return;
+      var t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+      o.type = spec.type;
+      o.frequency.setValueAtTime(spec.f, t);
+      o.frequency.exponentialRampToValueAtTime(Math.max(20, spec.to), t + spec.d);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(spec.v, t + .012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + spec.d);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t); o.stop(t + spec.d + .02);
+    } catch (e) {}
+  }
+
   var S = null;
   var TYPE_RATE = 42;             // characters a second
 
@@ -420,6 +465,7 @@ window.Rescue = (function () {
       anwar: { x: VW + 30, y: 0, k: 0 },
       death: { x: VW + 60, y: 0, k: 0, arrive: 0 },
       round: 0, cue: null, cueT: 0, hits: 0, closeCalled: false,
+      swing: undefined, flash: 0, chillSfx: false, swungSfx: false, caughtSfx: false,
       sel: 0, particles: [],
     };
     if (kind === "rescue") {
@@ -519,6 +565,199 @@ window.Rescue = (function () {
   }
 
   /* =======================================================================
+     SCENE 2 — THE LAST BOSS TAKES HER LAST LIFE
+
+     The long one. It goes:
+
+       arrive   he comes, as he always does
+       chill    and then the temperature drops. The colour goes out of the
+                world, frost takes the edges of the screen, and she backs
+                away — this beat exists purely so the next one lands
+       enter    Death crosses in, slowly, taking up a third of the screen
+       meet     the conversation
+       swing    the scythe comes down and does not land
+       caught   what he says with it stopped in his hand
+       choice   and then it is hers to decide
+     ======================================================================= */
+
+  var FROST = null;
+  function frostMask() {
+    if (FROST) return FROST;
+    var s = spriteCanvas(VW, VH), c = s.ctx;
+    /* Crystals crowding in from the edges and leaving the middle alone —
+       it is a frame round the scene, not a curtain over it. The falloff is
+       steep on purpose: at a gentler one it covered the people talking. */
+    for (var i = 0; i < 1500; i++) {
+      var x = Math.random() * VW, y = Math.random() * VH;
+      var ex = Math.min(x, VW - x) / (VW / 2);
+      var ey = Math.min(y, VH - y) / (VH / 2);
+      var edge = 1 - Math.min(ex, ey);
+      if (edge < 0.42) continue;
+      if (Math.random() > Math.pow(edge, 3) * 1.5) continue;
+      var tone = Math.random();
+      px(c, x, y, 1, 1, tone > .82 ? "#ffffff" : tone > .5 ? "#d8ecff" : "#a8cbe8");
+      if (Math.random() > .74) {                    // a little spur off it
+        px(c, x + 1, y, 1, 1, "#c8e2f8");
+        px(c, x, y + 1, 1, 1, "#c8e2f8");
+      }
+    }
+    FROST = s.c;
+    return FROST;
+  }
+
+  function stepDeathScene(dt) {
+    S.pt += dt;
+    var D = SCRIPT.death;
+
+    if (S.phase === 0) {                          /* he arrives */
+      S.dim = Math.min(1, S.pt / 0.4);
+      var k = ease(clamp(S.pt / 0.9, 0, 1));
+      S.anwar.x = VW + 30 + (S.her.x + 20 - (VW + 30)) * k;
+      S.anwar.k = (S.pt * 7 | 0) % 2;
+      if (S.pt > 1.0 && !S.lines) say(D.arrive);
+      if (S.lines) { stepText(dt); if (textFinished()) phase(1); }
+
+    } else if (S.phase === 1) {                   /* the temperature drops */
+      S.chill = Math.min(1, S.pt / 1.6);
+      S.dim = Math.min(1, 1 + S.pt * 0.2);
+      S.her.flinch = Math.min(10, S.pt * 7);      // she backs away from it
+      if (S.pt > 0.5 && !S.chillSfx) { S.chillSfx = true; sfx("chill"); }
+      if (S.pt > 1.9) { S.lines = null; phase(2); }
+
+    } else if (S.phase === 2) {                   /* and it walks in */
+      var k2 = ease(clamp(S.pt / 2.4, 0, 1));
+      S.death.x = VW + 18 + (VW - 92 - (VW + 18)) * k2;
+      S.death.k = (S.pt * 2 | 0) % 2;
+      S.death.arrive = k2;
+      if (S.pt > 2.4) { say(D.meet); phase(3); }
+
+    } else if (S.phase === 3) {                   /* the conversation */
+      stepText(dt);
+      S.death.k = (S.t * 1.4 | 0) % 2;
+      if (textFinished()) { S.lines = null; phase(4); }
+
+    } else if (S.phase === 4) {                   /* the scythe comes down */
+      if (S.pt < 0.45) {
+        S.swing = ease(S.pt / 0.45);              // he raises it
+      } else if (S.pt < 0.62) {
+        S.swing = 1 - (S.pt - 0.45) / 0.17 * 1.8; // and brings it through
+        if (!S.swungSfx) { S.swungSfx = true; sfx("swing"); }
+      } else {
+        if (!S.caughtSfx) {
+          S.caughtSfx = true; S.shake = 9; S.flash = 1;
+          sfx("catch");
+        }
+        S.swing = -0.8;                            // stopped, mid-air
+        S.flash = Math.max(0, S.flash - dt * 3);
+        if (S.pt > 1.1) { say(D.caught); phase(5); }
+      }
+
+    } else if (S.phase === 5) {                   /* what he says about it */
+      stepText(dt);
+      if (textFinished()) { S.lines = null; S.sel = 0; phase(6); }
+
+    } else if (S.phase === 6) {                   /* her decision */
+      /* nothing moves; it waits for her */
+    }
+  }
+
+  function paintDeathScene(c, t) {
+    var D = SCRIPT.death;
+
+    /* the world goes out */
+    if (S.dim > 0) {
+      c.save(); c.globalAlpha = Math.min(0.92, 0.62 * S.dim);
+      px(c, 0, 0, VW, VH, "#07050c"); c.restore();
+    }
+    /* and the colour goes with it */
+    if (S.chill > 0) {
+      c.save();
+      c.globalAlpha = 0.26 * S.chill;
+      px(c, 0, 0, VW, VH, "#243f66");
+      c.globalAlpha = 0.72 * S.chill;
+      c.drawImage(frostMask(), 0, 0);
+      c.restore();
+      /* breath, and a slow drift of cold motes */
+      for (var i = 0; i < 22; i++) {
+        var mx = (i * 37 + Math.sin(t * 0.5 + i) * 20 + VW) % VW;
+        var my = (i * 23 + t * 9) % VH;
+        c.save(); c.globalAlpha = 0.5 * S.chill;
+        px(c, mx, my, 1, 1, "#dff0ff"); c.restore();
+      }
+    }
+
+    var groundY = S.her.y + 18;
+
+    /* Death, drawn before them so they read as standing against him */
+    if (S.phase >= 2) {
+      var d = CAST.death[S.death.k];
+      var dy = groundY - d.height + 4;
+      c.save();
+      if (S.swing !== undefined && S.phase >= 4) {
+        /* He LEANS into the strike; he does not topple. Pivot at the
+           shoulder and keep the angle small — swung from the feet he read
+           as a falling tree rather than a man bringing something down. */
+        var pvx = S.death.x + 14, pvy = dy + 22;
+        c.translate(pvx, pvy);
+        c.rotate(-0.18 * (S.swing || 0));
+        c.translate(-pvx, -pvy);
+      }
+      c.drawImage(d, Math.round(S.death.x), Math.round(dy));
+      c.restore();
+      /* a shadow, so something that big is standing on the floor rather
+         than hanging in front of it */
+      c.save();
+      c.globalAlpha = 0.5 * S.death.arrive;
+      c.fillStyle = "#05040a";
+      c.beginPath();
+      c.ellipse(S.death.x + 12, groundY + 2, 22, 4, 0, 0, 6.283);
+      c.fill();
+      c.restore();
+      /* the cold he brings with him */
+      c.save();
+      c.globalAlpha = 0.16 + 0.06 * Math.sin(t * 2);
+      c.fillStyle = "#7fd8ff";
+      c.beginPath(); c.arc(S.death.x + 18, dy + 26, 30, 0, 6.283); c.fill();
+      c.restore();
+    }
+
+    /* her, backing away */
+    var her = ouissy(S.phase >= 1 ? "hurt" : "hurt", 0);
+    if (her) c.drawImage(her, Math.round(S.her.x - S.her.flinch), Math.round(S.her.y));
+
+    /* him, between the two of them */
+    var a = CAST.anwar[S.anwar.k];
+    c.drawImage(a, Math.round(S.anwar.x), Math.round(groundY - a.height));
+
+    /* THE CATCH. The blade stops in his hand, and everything about the
+       frame says so: a white flash, sparks off the contact, and a hard
+       line where the edge came to rest. */
+    if (S.phase >= 4 && S.caughtSfx && S.phase < 6) {
+      var cx = S.anwar.x + 22, cy = groundY - 30;
+      for (var i = 0; i < 9; i++) {
+        var ang = -0.9 + i * 0.22, len = 5 + (i % 3) * 5;
+        px(c, cx + Math.cos(ang) * len, cy + Math.sin(ang) * len, 2, 2,
+           i % 2 ? "#ffffff" : "#8fd8ff");
+      }
+      px(c, cx - 1, cy - 8, 3, 16, "rgba(255,255,255,.55)");
+      /* his arm, up and holding it there */
+      px(c, S.anwar.x + 14, cy + 2, 9, 3, ANWAR_PAL.S);
+      px(c, S.anwar.x + 14, cy + 2, 9, 1, "#f4d0aa");
+    }
+    if (S.flash > 0) {
+      c.save(); c.globalAlpha = S.flash * 0.85;
+      px(c, 0, 0, VW, VH, "#ffffff"); c.restore();
+    }
+
+    if (S.phase === 6) {
+      drawChoice(c, [D.choice.fight, D.choice.letgo], S.sel, D.choice.prompt);
+    } else {
+      var ln = line();
+      if (ln) drawBox(c, ln.who, ln.text, Math.floor(S.shown), S.waiting);
+    }
+  }
+
+  /* =======================================================================
      WHAT SUPER OUISSY CALLS
      ======================================================================= */
   function step(dt) {
@@ -526,6 +765,7 @@ window.Rescue = (function () {
     S.t += dt;
     if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 20);
     if (S.kind === "rescue") stepRescue(dt);
+    else if (S.kind === "death") stepDeathScene(dt);
   }
 
   function paint(c, t) {
@@ -533,12 +773,33 @@ window.Rescue = (function () {
     c.save();
     if (S.shake > 0) c.translate((Math.random() - .5) * S.shake, (Math.random() - .5) * S.shake);
     if (S.kind === "rescue") paintRescue(c, t);
+    else if (S.kind === "death") paintDeathScene(c, t);
     c.restore();
   }
 
+  /* Super Ouissy passes its own key names through; a story scene only cares
+     about "get on with it" and "which one". */
   function press(name) {
     if (!S || S.done) return;
+    var confirm = name === "jump" || name === "confirm" || name === "down";
+
     if (S.kind === "rescue") { if (S.phase === 2) phase(3); return; }
+
+    if (S.kind === "death") {
+      if (S.phase === 6) {                       // the choice
+        if (name === "left" || name === "right") {
+          S.sel = S.sel ? 0 : 1;
+          sfx("pick");
+        } else if (confirm) {
+          S.outcome = S.sel === 0 ? "fight" : "letgo";
+          sfx("choose");
+          S.done = true;                          // 6.3 and 6.4 take it from here
+        }
+        return;
+      }
+      if (S.lines && confirm) { pressText(); }
+      return;
+    }
   }
 
   function done() { return !S || S.done; }
