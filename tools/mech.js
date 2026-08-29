@@ -120,20 +120,61 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   a = await info();
   ok('the moat is fatal', a.deaths > before, 'deaths=' + a.deaths);
 
-  // the boss: wake him and stomp him until he is done
+  // the boss: wake him and stomp him until he is done. She is made
+  // unhurtable for this — the assertion is that he CAN be beaten, not that
+  // she survives six stomps with no dodging.
   await page.evaluate(() => window.__soGoLevel(2));
-  await page.waitForTimeout(2200);
+  for (let i = 0; i < 30; i++) { await page.waitForTimeout(200);
+    if (await page.evaluate(() => window.__soInfo().state === 'play')) break; }
   await tele(182); await pump(0.3);
   a = await info();
   const hp0 = a.bossHp;
+  const phasesSeen = {};
   for (let i = 0; i < 40 && (await info()).bossHp > 0; i++) {
+    await page.evaluate(() => window.__soPlayer({ invuln: 9999 }));
     await page.evaluate(() => window.__soBossStomp());
     await pump(1.4, {});
+    const b = await page.evaluate(() => window.__soBoss());
+    if (b) phasesSeen[b.phase] = true;
   }
   a = await info();
-  ok('the boss can be defeated', a.bossHp <= 0, 'hp ' + hp0 + ' -> ' + a.bossHp);
+  ok('the boss takes six stomps, two per phase', a.bossHp <= 0 && hp0 === 6, 'hp ' + hp0 + ' -> ' + a.bossHp);
+  ok('all three boss phases are reached', Object.keys(phasesSeen).length === 3,
+     'phases ' + Object.keys(phasesSeen).join(','));
   ok('beating the boss opens the pole', a.goalOpen);
 
+  // the guarantees that make him readable, measured rather than assumed
+  await boot('medium');
+  await page.evaluate(() => window.__soGoLevel(2));
+  for (let i = 0; i < 30; i++) { await page.waitForTimeout(200);
+    if (await page.evaluate(() => window.__soInfo().state === 'play')) break; }
+  const watch = await page.evaluate(() => {
+    window.__soTele(178);
+    window.__soPlayer({ invuln: 99999, star: 0 });
+    window.__soBossSet({ hp: 6, hurt: 0, dead: 0, awake: true, mode: 'wait', modeT: 0.2, shots: [] });
+    var maxShots = 0, minTell = 99, minOpen = 99, last = null, run = 0, attackedFrom = {};
+    for (var i = 0; i < 60 * 30; i++) {
+      window.__soPump(1 / 60, {});
+      var b = window.__soBoss();
+      maxShots = Math.max(maxShots, b.shots);
+      if (b.mode !== last) {
+        if (last === 'tell') minTell = Math.min(minTell, run / 60);
+        if (last === 'open') minOpen = Math.min(minOpen, run / 60);
+        if (b.mode === 'attack') attackedFrom[last] = true;
+        last = b.mode; run = 0;
+      }
+      run++;
+    }
+    return { maxShots: maxShots, minTell: +minTell.toFixed(2), minOpen: +minOpen.toFixed(2),
+             attackedFrom: Object.keys(attackedFrom) };
+  });
+  ok('projectiles are hard-capped', watch.maxShots <= 4, 'most on screen at once: ' + watch.maxShots);
+  ok('every attack is telegraphed for at least half a second', watch.minTell >= 0.5,
+     'shortest tell ' + watch.minTell + 's');
+  ok('every attack is followed by an opening', watch.minOpen >= 1.0,
+     'shortest opening ' + watch.minOpen + 's');
+  ok('he can only attack out of a telegraph', watch.attackedFrom.length === 1 && watch.attackedFrom[0] === 'tell',
+     'attacks entered from: ' + watch.attackedFrom.join(','));
 
   console.log(R.join('\n'));
   console.log(errors.length ? 'ERRORS: ' + errors.join(' | ') : 'no page errors');

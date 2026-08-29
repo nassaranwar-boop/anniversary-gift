@@ -2034,6 +2034,16 @@ img{-webkit-user-drag:none; user-select:none;}
   background:linear-gradient(180deg,#ff9ec4,#e0426e);
   transition:width .3s var(--ease-out);
 }
+/* two dividers marking the thirds, so a phase change is visible on the bar
+   as well as on him */
+.so-bossbar::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:
+    linear-gradient(90deg, transparent calc(33.33% - .3cqw), rgba(30,12,34,.85) calc(33.33% - .3cqw),
+                    rgba(30,12,34,.85) calc(33.33% + .3cqw), transparent calc(33.33% + .3cqw)),
+    linear-gradient(90deg, transparent calc(66.66% - .3cqw), rgba(30,12,34,.85) calc(66.66% - .3cqw),
+                    rgba(30,12,34,.85) calc(66.66% + .3cqw), transparent calc(66.66% + .3cqw));
+}
 
 /* ---- pause button ---- */
 .so-pause-btn{

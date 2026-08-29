@@ -101,6 +101,27 @@ window.SuperOuissy = (function () {
     boostTime:   9,
     starTime:    9,
     scores:      { heart: 100, stomp: 200, block: 50, secret: 500, boss: 3000, timeBonus: 15, lifeBonus: 500 },
+
+    /* ---- the Heartbreaker ------------------------------------------------
+       He runs on one loop — WAIT, then TELL, then ATTACK, then OPEN — and
+       he can only ever be in one of them. That is the whole design: she
+       reads the tell, gets out of the way, and punishes him in the opening.
+       Everything below is per phase, and difficulty scales the timings
+       only. It never touches `maxShots` or the length of a tell, because
+       those are what make him readable, and Hard should be faster, not
+       unfair. */
+    boss: {
+      hitsPerPhase: 2,        // 3 phases, so six stomps in all
+      maxShots:     4,        // hard cap. At the cap, nothing new spawns.
+      wake:         150,      // how close she gets before he notices her
+      phases: [
+        { name: "hop",   wait: 1.1, tell: 0.70, attack: 0.9, open: 1.6, shots: 2, speed: 34 },
+        { name: "rain",  wait: 0.9, tell: 0.80, attack: 1.0, open: 1.5, shots: 3, speed: 40 },
+        { name: "sweep", wait: 0.7, tell: 0.60, attack: 1.1, open: 2.0, shots: 2, speed: 78 },
+      ],
+      shotSpeed:    82,
+      shotLife:     3.2,
+    },
   };
 
   /* =======================================================================
@@ -114,21 +135,21 @@ window.SuperOuissy = (function () {
       lives: 5, enemyMul: 0.72, gravityMul: 0.92, jumpMul: 1.06,
       coyoteMul: 1.7, bufferMul: 1.6, invulnMul: 1.5,
       pitSafety: true, checkpoints: true, hardOnly: false, mediumUp: false,
-      timeLimit: 0, timedPlatform: 1.6, bossHits: 3, bossSpeedMul: 0.75,
+      timeLimit: 0, timedPlatform: 1.6, bossSpeedMul: 0.78, bossCooldownMul: 1.35, bossExtraShot: 0,
     },
     medium: {
       label: "Medium", blurb: "3 lives, real pits, the way it is meant to play",
       lives: 3, enemyMul: 1, gravityMul: 1, jumpMul: 1,
       coyoteMul: 1, bufferMul: 1, invulnMul: 1,
       pitSafety: false, checkpoints: true, hardOnly: false, mediumUp: true,
-      timeLimit: 0, timedPlatform: 1.1, bossHits: 3, bossSpeedMul: 1,
+      timeLimit: 0, timedPlatform: 1.1, bossSpeedMul: 1, bossCooldownMul: 1, bossExtraShot: 0,
     },
     hard: {
       label: "Hard", blurb: "2 lives, a clock, more of everything sharp",
       lives: 2, enemyMul: 1.35, gravityMul: 1.08, jumpMul: 0.98,
       coyoteMul: 0.5, bufferMul: 0.5, invulnMul: 0.7,
       pitSafety: false, checkpoints: false, hardOnly: true, mediumUp: true,
-      timeLimit: [150, 170, 190], timedPlatform: 0.75, bossHits: 4, bossSpeedMul: 1.3,
+      timeLimit: [150, 170, 190], timedPlatform: 0.75, bossSpeedMul: 1.3, bossCooldownMul: 0.72, bossExtraShot: 1,
     },
   };
 
@@ -1301,13 +1322,25 @@ window.SuperOuissy = (function () {
   }
 
   function mkBoss(x, y) {
-    var d = DIFF[G.diff];
+    var B = TUNE.boss;
+    var total = B.hitsPerPhase * B.phases.length;
     return {
       kind: "boss", x: x - 12, y: y - 18, w: 34, h: 30, vx: 0, vy: 0,
-      hp: d.bossHits, hurt: 0, anim: 0, awake: false, onGround: false,
-      hopTimer: 1.2, speed: 26 * d.bossSpeedMul, dead: 0, shots: [],
+      hp: total, hpMax: total,
+      phase: 0, mode: "wait", modeT: B.phases[0].wait,
+      hurt: 0, anim: 0, awake: false, onGround: true, dead: 0,
+      shots: [], face: -1, hopsLeft: 0, flash: 0,
     };
   }
+
+  /* Which phase his health puts him in: 0 while the top third is intact,
+     then 1, then 2. Written off hp so changing hitsPerPhase just works. */
+  function bossPhase(b) {
+    var per = TUNE.boss.hitsPerPhase;
+    return clamp(TUNE.boss.phases.length - 1 - Math.floor((b.hp - 1) / per),
+                 0, TUNE.boss.phases.length - 1);
+  }
+  function bossSpec(b) { return TUNE.boss.phases[b.phase]; }
 
   function mkPlayer(x, y) {
     return {
@@ -1766,79 +1799,222 @@ window.SuperOuissy = (function () {
   /* =======================================================================
      THE HEARTBREAKER — the last thing between her and the door
      ======================================================================= */
+  /* =======================================================================
+     THE HEARTBREAKER
+
+     One state machine, four states, and he is only ever in one of them:
+
+       wait   —  standing, closed, doing nothing. Short.
+       tell   —  the wind-up. He crouches, or rears, or plants his feet, and
+                 the crown flares. This is the only warning she gets and it
+                 is deliberately long enough to react to.
+       attack —  the thing he told her he was going to do.
+       open   —  panting, stationary, unable to start anything. The window.
+
+     He cannot attack out of `open`, or out of `wait` without going through
+     `tell` first, which is what stops the old behaviour where he simply
+     emitted hearts on every landing until the floor was covered. Projectiles
+     are hard-capped: at the cap, nothing new spawns, ever.
+     ======================================================================= */
   function stepBoss(dt) {
     var b = G.level.boss, p = G.player;
     if (!b) return;
+    var B = TUNE.boss, d = DIFF[G.diff];
     b.anim += dt;
 
     if (b.dead) {                        // he comes apart slowly, on purpose
       b.dead += dt;
+      b.shots.length = 0;
       if (b.dead < 1.6 && Math.random() < .4)
         burst(b.x + b.w / 2 + (Math.random() - .5) * 30, b.y + b.h / 2 + (Math.random() - .5) * 24,
               4, ["#ff9ec4", "#ffffff", "#ffd166"], 70, { max: .7 });
       return;
     }
     if (!b.awake) {
-      if (Math.abs(p.x - b.x) < 150) { b.awake = true; sfx("bossWake"); shake(6); G.bossBar = 1; }
+      if (Math.abs(p.x - b.x) < B.wake) {
+        b.awake = true; sfx("bossWake"); shake(6);
+        b.mode = "wait"; b.modeT = bossSpec(b).wait;
+      }
+      stepBossShots(dt);
       return;
     }
     if (b.hurt > 0) b.hurt -= dt;
+    if (b.flash > 0) b.flash -= dt;
+    b.face = p.x < b.x ? -1 : 1;
 
-    /* he hops towards her, and thumps the floor when he lands */
+    /* gravity always; he is a heavy thing */
     b.vy += 900 * dt;
-    b.hopTimer -= dt;
-    var wasGround = b.onGround;
-    b.onGround = false;
-    if (b.hopTimer <= 0 && wasGround) {
-      b.vy = -330; b.vx = (p.x > b.x ? 1 : -1) * b.speed;
-      b.hopTimer = 1.5 - (DIFF[G.diff].bossHits - b.hp) * 0.22;
-      sfx("bossHop");
-    }
     moveX(b, b.vx * dt);
-    if (moveY(b, b.vy * dt, false) === "ground") {
-      b.onGround = true;
-      if (!wasGround) {
-        shake(7); sfx("bossLand");
-        burst(b.x + b.w / 2, b.y + b.h, 18, ["#ffffff", "#ff9ec4"], 120, { max: .5 });
-        /* two cracks skid off along the floor */
-        [-1, 1].forEach(function (s) {
-          b.shots.push({ x: b.x + b.w / 2, y: b.y + b.h - 6, vx: s * 90 * DIFF[G.diff].bossSpeedMul, life: 0 });
-        });
-        b.vx = 0;
-      }
-    }
+    var wasGround = b.onGround;
+    b.onGround = moveY(b, b.vy * dt, false) === "ground";
+    if (b.onGround && !wasGround) bossLanded(b);
 
-    /* his shots */
-    for (var i = b.shots.length - 1; i >= 0; i--) {
-      var s2 = b.shots[i];
-      s2.life += dt; s2.x += s2.vx * dt;
-      if (s2.life > 2.4 || boxHitsSolid(s2.x, s2.y, 6, 6)) { b.shots.splice(i, 1); continue; }
-      if (p.x + p.w > s2.x && p.x < s2.x + 6 && p.y + p.h > s2.y && p.y < s2.y + 6) {
-        b.shots.splice(i, 1); if (p.star <= 0) hurtPlayer(false);
-      }
-    }
+    /* ---- the loop ------------------------------------------------------ */
+    b.modeT -= dt;
+    if (b.modeT <= 0) bossNextMode(b);
 
-    /* stomping him */
-    if (!p.dead && !p.winT &&
-        p.x + p.w > b.x + 3 && p.x < b.x + b.w - 3 &&
-        p.y + p.h > b.y + 2 && p.y < b.y + b.h - 2) {
-      var fromAbove = (p.y + p.h) - b.y < b.h * 0.5 && p.vy > 30;
-      if (fromAbove && b.hurt <= 0) {
-        b.hp--; b.hurt = 1.1;
-        p.vy = -TUNE.stompBoost;
-        shake(8); sfx("bossHit");
-        burst(b.x + b.w / 2, b.y + 8, 22, ["#ffffff", "#ff5f95", "#ffd166"], 130, { max: .8 });
-        G.bossBar = b.hp / DIFF[G.diff].bossHits;
-        if (b.hp <= 0) {
-          b.dead = 0.001; addScore(TUNE.scores.boss);
-          popText(b.x, b.y - 10, "+" + TUNE.scores.boss, "#fff6a8");
-          sfx("bossDie"); shake(12);
-          G.level.goal.open = true;
-        }
-      } else if (b.hurt <= 0 && p.star <= 0) hurtPlayer(false);
-      else if (p.star > 0 && b.hurt <= 0) { b.hp--; b.hurt = 1.1; if (b.hp <= 0) { b.dead = .001; G.level.goal.open = true; sfx("bossDie"); } }
+    if (b.mode === "attack") bossAttackStep(b, dt);
+    else if (b.mode !== "tell" && b.onGround) b.vx *= 0.82;   // he settles
+
+    stepBossShots(dt);
+    bossTouch(b);
+  }
+
+  /* wait -> tell -> attack -> open -> wait ... */
+  function bossNextMode(b) {
+    var B = TUNE.boss, sp = bossSpec(b), cd = DIFF[G.diff].bossCooldownMul;
+    if (b.mode === "wait") {
+      b.mode = "tell"; b.modeT = sp.tell;      // the tell is NEVER scaled
+      sfx("bossHop");
+      /* dust at his feet, so the wind-up is visible as well as audible */
+      burst(b.x + b.w / 2, b.y + b.h, 10, ["#ffffff", "#ffd6e6"], 40, { g: 120, max: .5, lift: 6 });
+    } else if (b.mode === "tell") {
+      /* A hop ends when he lands, not when a clock says so. Scaling its
+         window down on Hard made it expire mid-air, so he came down without
+         the cracks that are the whole point of the attack. The ceiling here
+         only exists so a hop that somehow never lands cannot hang him. */
+      b.mode = "attack";
+      b.modeT = sp.name === "hop" ? 2.4 : sp.attack * cd;
+      bossAttackStart(b);
+    } else if (b.mode === "attack") {
+      /* The sweep never leaves the ground, so the landing hook that drops
+         cracks after a hop never fires for it. It leaves them where it
+         stops instead, which is also the fairer place for them. */
+      if (sp.name === "sweep") {
+        var n = sp.shots + DIFF[G.diff].bossExtraShot;
+        for (var i = 0; i < n; i++)
+          bossShoot(b, b.x + b.w / 2, b.y + b.h - 7,
+                    (i % 2 ? 1 : -1) * TUNE.boss.shotSpeed * DIFF[G.diff].bossSpeedMul, 0, false);
+        sfx("bossLand"); shake(5);
+        burst(b.x + b.w / 2, b.y + b.h, 14, ["#ffd166", "#ffffff"], 100, { max: .5 });
+      }
+      b.mode = "open"; b.modeT = sp.open;      // the opening is never scaled
+      b.vx = 0;
+    } else {
+      b.mode = "wait"; b.modeT = sp.wait * cd;
     }
   }
+
+  function bossAttackStart(b) {
+    var sp = bossSpec(b), mul = DIFF[G.diff].bossSpeedMul;
+    if (sp.name === "hop") {
+      b.vy = -330; b.vx = b.face * sp.speed * mul; b.hopsLeft = 1;
+      b.onGround = false;
+    } else if (sp.name === "rain") {
+      /* he rears and throws a fixed spread — the same three arcs every time,
+         so the way through them is something she can learn */
+      var n = sp.shots + DIFF[G.diff].bossExtraShot;
+      for (var i = 0; i < n; i++) {
+        bossShoot(b, b.x + b.w / 2, b.y + 4,
+                  (-1 + (2 * i) / Math.max(1, n - 1)) * 70 * mul, -190, true);
+      }
+      sfx("bossLand");
+    } else {
+      b.vx = b.face * sp.speed * mul;         // the sweep
+      shake(3);
+    }
+  }
+
+  function bossAttackStep(b, dt) {
+    var sp = bossSpec(b);
+    if (sp.name === "sweep" && b.onGround) {
+      /* he grinds along the floor, throwing sparks, and drops a crack at
+         each end of the run */
+      if (Math.random() < 0.5)
+        burst(b.x + b.w / 2 - b.face * 14, b.y + b.h - 2, 1,
+              ["#ffd166", "#ffffff"], 40, { g: 200, max: .35, size: 1 });
+      if (boxHitsSolid(b.x + b.face * 3, b.y, b.w, b.h)) { b.vx = 0; b.modeT = Math.min(b.modeT, 0.05); }
+    }
+  }
+
+  function bossLanded(b) {
+    var sp = bossSpec(b);
+    shake(7); sfx("bossLand");
+    burst(b.x + b.w / 2, b.y + b.h, 18, ["#ffffff", "#ff9ec4"], 120, { max: .5 });
+    if (b.mode === "attack" && (sp.name === "hop" || sp.name === "sweep") && b.hopsLeft >= 0) {
+      var n = sp.shots + DIFF[G.diff].bossExtraShot;
+      for (var i = 0; i < n; i++) {
+        var dir = i % 2 ? 1 : -1;
+        bossShoot(b, b.x + b.w / 2, b.y + b.h - 7, dir * TUNE.boss.shotSpeed * DIFF[G.diff].bossSpeedMul, 0, false);
+      }
+      b.hopsLeft = -1;
+      if (sp.name === "hop") b.modeT = 0.05;   // landed; hand over to the opening
+    }
+    b.vx = 0;
+  }
+
+  /* One place where a projectile can come into existence, so the cap can
+     never be worked around by adding another attack later. */
+  function bossShoot(b, x, y, vx, vy, arc) {
+    if (b.shots.length >= TUNE.boss.maxShots + DIFF[G.diff].bossExtraShot) return;
+    b.shots.push({ x: x, y: y, vx: vx, vy: vy, arc: !!arc, life: 0 });
+  }
+
+  function stepBossShots(dt) {
+    var b = G.level.boss, p = G.player;
+    for (var i = b.shots.length - 1; i >= 0; i--) {
+      var s = b.shots[i];
+      s.life += dt;
+      s.x += s.vx * dt;
+      if (s.arc) { s.vy += 520 * dt; s.y += s.vy * dt; }
+      var gone = s.life > TUNE.boss.shotLife || boxHitsSolid(s.x, s.y, 6, 6) ||
+                 s.y > G.level.pxH || s.x < -20 || s.x > G.level.pxW + 20;
+      if (gone) {
+        burst(s.x + 3, s.y + 3, 5, ["#ff9ec4", "#ffffff"], 40, { max: .3, size: 1 });
+        b.shots.splice(i, 1); continue;
+      }
+      if (!p.dead && !p.winT && p.star <= 0 &&
+          p.x + p.w > s.x && p.x < s.x + 6 && p.y + p.h > s.y && p.y < s.y + 6) {
+        b.shots.splice(i, 1);
+        hurtPlayer(false);
+      }
+    }
+  }
+
+  /* Landing on him. He can be hurt in any state — she does not have to wait
+     for the opening — but the opening is when it is actually survivable. */
+  function bossTouch(b) {
+    var p = G.player;
+    if (p.dead || p.winT) return;
+    if (!(p.x + p.w > b.x + 3 && p.x < b.x + b.w - 3 &&
+          p.y + p.h > b.y + 2 && p.y < b.y + b.h - 2)) return;
+
+    var fromAbove = (p.y + p.h) - b.y < b.h * 0.5 && p.vy > 30;
+    if (b.hurt > 0) return;
+
+    if (fromAbove || p.star > 0) {
+      var wasPhase = b.phase;
+      b.hp--; b.hurt = 1.1;
+      if (fromAbove) p.vy = -TUNE.stompBoost;
+      shake(8); sfx("bossHit");
+      burst(b.x + b.w / 2, b.y + 8, 22, ["#ffffff", "#ff5f95", "#ffd166"], 130, { max: .8 });
+
+      if (b.hp <= 0) {
+        b.dead = 0.001; b.shots.length = 0;
+        addScore(TUNE.scores.boss);
+        popText(b.x, b.y - 10, "+" + TUNE.scores.boss, "#fff6a8");
+        sfx("bossDie"); shake(12);
+        G.level.goal.open = true;
+        return;
+      }
+      b.phase = bossPhase(b);
+      if (b.phase !== wasPhase) {
+        /* a phase change is a beat of its own: everything clears, he flares
+           white, and neither of them does anything for a second */
+        b.shots.length = 0;
+        b.flash = 1;
+        b.mode = "open"; b.modeT = 1;
+        b.vx = 0;
+        shake(10); sfx("bossWake");
+        popText(b.x, b.y - 18, "!", "#fff6a8");
+      } else {
+        b.mode = "open"; b.modeT = Math.max(b.modeT, 0.7);
+      }
+      return;
+    }
+    if (p.star <= 0) hurtPlayer(false);
+  }
+
   /* =======================================================================
      THE GOAL, THE CHECKPOINTS, AND THE WALK OFF THE END OF THE LEVEL
      ======================================================================= */
@@ -2205,10 +2381,15 @@ window.SuperOuissy = (function () {
     if (!b) return;
     var dx = Math.round(b.x - ox - 3), dy = Math.round(b.y - oy - 4);
 
+    /* his projectiles: cracked hearts, and the arcing ones trail */
     b.shots.forEach(function (s) {
       var sx = Math.round(s.x - ox), sy = Math.round(s.y - oy);
-      heart(c, sx, sy, 3.4, "#3d2340");
-      heart(c, sx, sy, 2.6, Math.sin(t * 30) > 0 ? "#ff5f95" : "#ffd166");
+      if (s.arc) {
+        px(c, sx + 1, sy - 3, 2, 2, "rgba(255,158,196,.5)");
+        px(c, sx + 1, sy - 6, 1, 1, "rgba(255,158,196,.3)");
+      }
+      heart(c, sx, sy, 3.6, "#3d2340");
+      heart(c, sx, sy, 2.8, Math.sin(t * 30 + s.life * 10) > 0 ? "#ff5f95" : "#ffd166");
     });
 
     if (b.dead) {
@@ -2218,15 +2399,50 @@ window.SuperOuissy = (function () {
       c.drawImage(ART.boss[0], -20, -17);
       c.restore(); return;
     }
-    if (!b.awake) {
-      /* asleep: he only breathes */
-      c.drawImage(ART.boss[Math.sin(t) > 0 ? 0 : 1], dx, dy);
-      return;
+    if (!b.awake) { c.drawImage(ART.boss[Math.sin(t) > 0 ? 0 : 1], dx, dy); return; }
+
+    /* THE TELL. This is the whole point of the redesign, so it is loud:
+       he squashes down, a ring opens out from him, and the closer the
+       attack gets the faster everything pulses. */
+    if (b.mode === "tell") {
+      var sp = bossSpec(b);
+      var k = 1 - clamp(b.modeT / sp.tell, 0, 1);        // 0 -> 1 across the tell
+      var ringR = 6 + k * 26;
+      c.save();
+      c.globalAlpha = 0.5 * (1 - k);
+      c.strokeStyle = sp.name === "rain" ? "#ffd166" : "#ff5f95";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(dx + 20, dy + 17, ringR, 0, 6.283);
+      c.stroke();
+      c.restore();
+      /* an exclamation over his crown, blinking faster as it lands */
+      if (Math.sin(t * (14 + k * 34)) > 0) {
+        px(c, dx + 19, dy - 9, 2, 5, "#fff6a8");
+        px(c, dx + 19, dy - 3, 2, 2, "#fff6a8");
+      }
     }
-    var k = b.onGround ? (b.hopTimer < 0.3 ? 1 : 0) : 2;
-    var flash = b.hurt > 0 && Math.sin(b.hurt * 40) > 0;
-    c.drawImage((flash ? ART.bossHurt : ART.boss)[k], dx, dy);
+
+    /* the sprite: frame 1 is his crouch, 2 his open mouth */
+    var k2 = b.mode === "tell" ? 1 : b.mode === "attack" ? 2 : b.onGround ? 0 : 2;
+    var white = b.flash > 0 ? Math.sin(b.flash * 26) > 0
+              : b.hurt > 0 && Math.sin(b.hurt * 40) > 0;
+    var img = (white ? ART.bossHurt : ART.boss)[k2];
+
+    /* he heaves while he is open — the tell that he can be hit */
+    var pant = b.mode === "open" ? Math.sin(t * 7) * 1.2 : 0;
+    c.drawImage(img, dx, Math.round(dy + Math.abs(pant)));
+
+    /* and a soft glow round him in the opening, so it reads as an invitation */
+    if (b.mode === "open" && b.hurt <= 0) {
+      c.save();
+      c.globalAlpha = 0.16 + 0.1 * Math.sin(t * 5);
+      c.fillStyle = "#fff6a8";
+      c.fillRect(dx + 2, dy + 2, 36, 30);
+      c.restore();
+    }
   }
+
   /* =======================================================================
      12. SCREENS — the difficulty select, how to play, the pause menu, the
          results card and the ending. All of them are HTML injected into one
@@ -2615,7 +2831,7 @@ window.SuperOuissy = (function () {
       bar.classList.toggle("on", !!(b && b.awake && !b.dead));
       if (b) {
         var fill = $("so-bossfill");
-        if (fill) fill.style.width = Math.max(0, (b.hp / DIFF[G.diff].bossHits) * 100) + "%";
+        if (fill) fill.style.width = Math.max(0, (b.hp / b.hpMax) * 100) + "%";
       }
     }
     var st = $("so-stage");
@@ -3016,6 +3232,12 @@ window.SuperOuissy = (function () {
              jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead };
   };
   window.__soSetTime = function (t) { G.timeLeft = t; };
+  window.__soBossSet = function (patch) { var b = G.level.boss; if (b) { for (var k in patch) b[k] = patch[k]; b.phase = bossPhase(b); } };
+  window.__soBoss = function () {
+    var b = G.level.boss; if (!b) return null;
+    return { hp: b.hp, hpMax: b.hpMax, phase: b.phase, mode: b.mode,
+             modeT: +b.modeT.toFixed(2), shots: b.shots.length, awake: b.awake, dead: b.dead };
+  };
   window.__soEnemies = function () {
     return G.level.ents.filter(function (e) { return e.kind === "enemy"; })
       .map(function (e) { return { type: e.type, x: Math.round(e.x), y: Math.round(e.y),
