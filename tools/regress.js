@@ -74,7 +74,9 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
                               && !!document.querySelector('.so-diff-card')));
     // and back out again, leaving the hub intact
     await page.click('#so-quit-menu');
-    await page.waitForTimeout(900);
+    // pageTurn's dissolve is 420ms and the click handler tears the game
+    // down first; under load on a wide viewport this lands around 800ms
+    await page.waitForTimeout(2000);
     ok(label + ': quitting returns to the hub',
        await page.evaluate(() => document.getElementById('screen-hub').classList.contains('active')));
     ok(label + ': still no page errors after all of that', errors.length === 0, errors.slice(0,2).join(' | '));

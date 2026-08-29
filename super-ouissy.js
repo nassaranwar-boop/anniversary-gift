@@ -92,9 +92,9 @@ window.SuperOuissy = (function () {
     coyote:      0.10,  // grace after walking off a ledge
     buffer:      0.12,  // grace for pressing jump just before landing
     invuln:      1.5,   // flashing seconds after taking a hit
-    enemySpeed:  34,
-    flyerSpeed:  46,
-    guardSpeed:  52,
+    enemySpeed:  46,   // below about 40 they advance under a pixel a
+    flyerSpeed:  54,   // frame and the movement reads as stepping
+    guardSpeed:  62,
     moverSpeed:  36,
     itemWalk:    52,   // how fast a power-up slides off its block
     boostMul:    1.32,  // what the love boost multiplies run speed by
@@ -1267,10 +1267,10 @@ window.SuperOuissy = (function () {
     var d = DIFF[G.diff], mul = d.enemyMul;
     if (type === "walker")
       return { kind: "enemy", type: type, x: x + 1, y: y + 2, w: 14, h: 14,
-               vx: -TUNE.enemySpeed * mul, vy: 0, anim: 0, dead: 0, alive: true, ledge: false };
+               vx: -TUNE.enemySpeed * mul, vy: 0, anim: 0, dead: 0, alive: true };
     if (type === "guard")
       return { kind: "enemy", type: type, x: x, y: y, w: 14, h: 16,
-               vx: -TUNE.guardSpeed * mul, vy: 0, anim: 0, dead: 0, alive: true, ledge: true };
+               vx: -TUNE.guardSpeed * mul, vy: 0, anim: 0, dead: 0, alive: true };
     /* the flyer never touches the ground: it patrols a span and bobs */
     return { kind: "enemy", type: "flyer", x: x, y: y, w: 14, h: 12,
              vx: TUNE.flyerSpeed * mul, vy: 0, anim: 0, dead: 0, alive: true,
@@ -1582,7 +1582,10 @@ window.SuperOuissy = (function () {
       if (e.spawnX === undefined) { e.spawnX = e.x; e.spawnY = e.y; }
       /* off-screen enemies are frozen — it keeps the level cheap and it is
          what the games this is modelled on all did */
-      if (e.x < G.cam.x - 80 || e.x > G.cam.x + VIEW.w + 80) { e.anim += dt; return; }
+      /* Frozen off screen, but with a wide enough margin that she never
+         watches one start moving. The phone view is only 240 wide, so the
+         old 80px margin had them waking up almost in shot. */
+      if (e.x < G.cam.x - 160 || e.x > G.cam.x + VIEW.w + 160) { e.anim += dt; return; }
 
       e.anim += dt;
       if (e.type === "flyer") {
@@ -1591,20 +1594,39 @@ window.SuperOuissy = (function () {
         if (e.x > e.homeX + e.span) { e.x = e.homeX + e.span; e.vx = -e.vx; }
         e.y = e.homeY + Math.sin(e.anim * 2.1 + e.ph) * 11;
       } else {
-        e.vy += TUNE.gravityDown * dt;
+        /* Gravity only while she is actually falling. Applying it every
+           frame regardless moves a standing enemy a third of a pixel, the
+           collision puts it back, and it bobs by one pixel forever — which
+           is what read as the enemies lagging. Exactly the bug that made
+           her own run animation flicker into a fall. */
+        var onFloor = groundedProbe(e);
+        if (onFloor && e.vy >= 0) e.vy = 0; else e.vy += TUNE.gravityDown * dt;
+
         moveX(e, e.vx * dt) && (e.vx = -e.vx);
-        var r = moveY(e, e.vy * dt, true);
-        var grounded = r === "ground";
-        /* guards look before they step; walkers do not */
-        if (grounded && e.ledge) {
-          var ahead = e.x + (e.vx > 0 ? e.w + 2 : -2);
-          var below = Math.floor((e.y + e.h + 4) / T);
-          if (!solidAt(Math.floor(ahead / T), below) && !oneWayAt(Math.floor(ahead / T), below)) e.vx = -e.vx;
-        }
-        if (grounded && boxHitsHazard(e.x, e.y, e.w, e.h)) e.vx = -e.vx;
+        var landed = moveY(e, e.vy * dt, true) === "ground" || onFloor;
+
+        /* Every ground enemy looks before it steps. It will walk down a
+           step, because it is trying to reach her, but it turns at a real
+           drop rather than marching into the pit the level put there. */
+        if (landed && !enemyFloorAhead(e)) e.vx = -e.vx;
+        if (landed && boxHitsHazard(e.x, e.y, e.w, e.h)) e.vx = -e.vx;
       }
       hitPlayerOrGetStomped(e);
     });
+  }
+
+  /* Is there floor ahead of this enemy within a step it could survive?
+     `ENEMY_DROP` is how many tiles it will walk down; anything deeper it
+     treats as a pit and turns. The same shape of check the power-ups use. */
+  var ENEMY_DROP = 4;
+
+  function enemyFloorAhead(e) {
+    var ahead = e.x + (e.vx > 0 ? e.w + 2 : -2);
+    var col = Math.floor(ahead / T);
+    var under = Math.floor((e.y + e.h + 4) / T);
+    for (var look = 0; look <= ENEMY_DROP; look++)
+      if (solidAt(col, under + look) || oneWayAt(col, under + look)) return true;
+    return false;
   }
 
   /* The one rule the whole game turns on: coming down on top of something
@@ -2994,6 +3016,11 @@ window.SuperOuissy = (function () {
              jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead };
   };
   window.__soSetTime = function (t) { G.timeLeft = t; };
+  window.__soEnemies = function () {
+    return G.level.ents.filter(function (e) { return e.kind === "enemy"; })
+      .map(function (e) { return { type: e.type, x: Math.round(e.x), y: Math.round(e.y),
+                                   vx: Math.round(e.vx), alive: e.alive }; });
+  };
   window.__soCam = function () { return { x: Math.round(G.cam.x), y: Math.round(G.cam.y) }; };
   window.__soDiffFlag = function (k) { return DIFF[G.diff][k]; };
   window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
