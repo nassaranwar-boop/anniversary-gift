@@ -2407,7 +2407,9 @@ img{-webkit-user-drag:none; user-select:none;}
 .so-whatnow-h{
   margin:0; font-size:1.6cqw; color:#ffb0cd; letter-spacing:.2em;
 }
-.so-whatnow .so-menu-actions{gap:1cqw;}
+/* Capped so four buttons wrap two-and-two rather than three-and-one, which
+   is what an uncapped flex row does with these widths and reads as a mistake. */
+.so-whatnow .so-menu-actions{gap:1cqw; max-width:50cqw; flex-wrap:wrap; justify-content:center;}
 .so-end-res .so-res-row{font-size:1.6cqw;}
 
 /* =========================================================

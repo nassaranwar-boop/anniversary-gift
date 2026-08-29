@@ -97,13 +97,18 @@ window.SuperOuissy = (function () {
         ] },
     ],
 
-    /* The castle scene at the very end. Replace every line of this. */
+    /* The castle scene at the very end.
+
+       These are written to be said out loud and to stay on the right side
+       of soppy — plain sentences, no speeches. The third one is the natural
+       place for something private, an in-joke or a date or a name only the
+       two of you use; swap it for that if you have one. */
     ending: {
       kicker: "and there he was —",
       lines: [
-        "[Your first line goes here — the one you want her to read first.]",
-        "[And the second. Take the whole screen if you want it.]",
-        "[Something only the two of you would understand.]",
+        "You crossed three worlds to get here. I would have waited at the end of thirty.",
+        "It was never really about the castle. It was that you kept going — and that I got to be what you were going towards.",
+        "Happy anniversary, Ouissy. Come and find me in the real one too.",
       ],
       signOff: "— Anwar 💗",
       /* The joke the last castle in Mario always makes, turned around. */

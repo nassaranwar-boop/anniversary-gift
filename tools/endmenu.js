@@ -36,6 +36,12 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
       const cdp = await page.context().newCDPSession(page);
       await page.evaluate(() => { const st=document.createElement('style');
         st.textContent='*{backdrop-filter:none !important}'; document.head.appendChild(st); });
+      await page.evaluate(() => {
+        var ov = document.querySelector('.so-ov-end') || document.querySelector('.so-overlay');
+        var sc = ov; while (sc && sc.scrollHeight <= sc.clientHeight) sc = sc.firstElementChild;
+        (sc || ov).scrollTop = 99999;
+      });
+      await page.waitForTimeout(200);
       await page.evaluate(() => window.__soHalt());
       await page.waitForTimeout(150);
       const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
