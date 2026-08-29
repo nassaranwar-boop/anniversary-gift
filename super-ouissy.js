@@ -96,6 +96,7 @@ window.SuperOuissy = (function () {
     flyerSpeed:  46,
     guardSpeed:  52,
     moverSpeed:  36,
+    itemWalk:    52,   // how fast a power-up slides off its block
     boostMul:    1.32,  // what the love boost multiplies run speed by
     boostTime:   9,
     starTime:    9,
@@ -175,7 +176,7 @@ window.SuperOuissy = (function () {
       ".................o.o.?.........o.o.......BMB....o.o.........................................---...............o.o...o.o...?........................;.......o.o..o.o.................",
       "..................o.............o...---..........o..........#####.....................---.........---..........o.....o..........--................######....o....o..................",
       "...........................................................#######...............................................................................########...........................",
-      "...S........................w.........................;...#########.....................................w...................................w...##########...........C......G.......",
+      "...S........................w....,....................;...#########.....................................w..,................................w...##########..,........C......G.......",
       "################################################...#######################.######.############################...###...#########################################...#################",
       "################################################...#######################........############################...###...#########################################...#################",
       "################################################...#######################.ooo1oo.############################...###...#########################################...#################",
@@ -202,7 +203,7 @@ window.SuperOuissy = (function () {
       "................o.o.?...........................................................................................?.....#.......---.......#...........................----..o..o..........",
       ".................o......---.......---...................--..................--................TT......................#.................#..................................oo...........",
       ".........................................H..............................................TT............................#.---.............#...............................................",
-      "...S........w.......................................;...............................w.............................;.....................#...............................C.........G.....",
+      "...S....,...w.......................................;..,.........................,..w.............................;.....................#...............................C.........G.....",
       "########################################.........#######################################....##....##.#####.###############################################################....##########",
       "########################################.........#######################################....##....##.......B....##########################################################....##########",
       "########################################.........#######################################....##....##.ooooo.B.F.o##########################################################....##########",
@@ -1233,7 +1234,10 @@ window.SuperOuissy = (function () {
     return {
       kind: "item", type: kind, x: x, y: y,
       w: kind === "heart" ? 8 : 12, h: kind === "heart" ? 8 : 12,
-      vx: 0, vy: 0, anim: Math.random() * 4, gone: false,
+      /* a free-standing item waits where it was placed; one that has just
+         come out of a block walks off it (see stepItems) */
+      vx: floating ? 0 : TUNE.itemWalk, vy: 0,
+      anim: Math.random() * 4, gone: false,
       floating: !!floating, born: 0, popping: 0,
     };
   }
@@ -1622,11 +1626,33 @@ window.SuperOuissy = (function () {
         continue;
       }
       if (!it.floating && it.type !== "heart") {
-        /* loose power-ups fall until they find something to sit on */
+        /* A power-up out of a block walks, the way a mushroom does: it
+           slides off the block it came from, turns at walls, and ends up
+           somewhere she can actually run into. Left sitting on its own
+           block it would only ever be reachable by landing on top of it. */
         it.vy = Math.min(it.vy + 620 * dt, 260);
-        var b = { x: it.x, y: it.y, w: it.w, h: it.h, vy: it.vy, vx: 0 };
-        if (moveY(b, it.vy * dt, true) === "ground") it.vy = 0;
-        it.y = b.y;
+        var b = { x: it.x, y: it.y, w: it.w, h: it.h, vy: it.vy, vx: it.vx };
+        if (moveX(b, it.vx * dt)) it.vx = -it.vx;
+        var landed = moveY(b, it.vy * dt, true) === "ground";
+        if (landed) it.vy = 0;
+        it.x = b.x; it.y = b.y;
+        /* Unlike the mushroom this is modelled on, a power-up looks before
+           it steps. Left to walk off the first ledge it meets, the one from
+           the block in world 1 marches straight into the pit six tiles
+           later and she never gets to have it. */
+        if (landed) {
+          /* It will happily walk off a step — it is trying to get down to
+             her — but it turns at a real drop. Left to behave like the
+             mushroom this is modelled on, the one from the block in world 1
+             marches into the pit six tiles later and she never gets it. */
+          var ahead = it.x + (it.vx > 0 ? it.w + 2 : -2);
+          var col = Math.floor(ahead / T), under = Math.floor((it.y + it.h + 4) / T);
+          var floorBelow = false;
+          for (var look = 0; look < 9 && !floorBelow; look++)
+            floorBelow = solidAt(col, under + look) || oneWayAt(col, under + look);
+          if (!floorBelow) it.vx = -it.vx;
+        }
+        if (it.y > G.level.pxH + 40) { L.items.splice(i, 1); continue; }
       }
       if (it.x < G.cam.x - 40 || it.x > G.cam.x + 380) continue;
 
@@ -2759,6 +2785,9 @@ window.SuperOuissy = (function () {
 
     if (!onScreen()) return;
 
+    /* the offline harness drives step() itself, so the loop only paints */
+    if (window.__soTestDrive) { paint(now / 1000); return; }
+
     if (G.state === "play") {
       acc += dt;
       var guard = 0;
@@ -2838,6 +2867,69 @@ window.SuperOuissy = (function () {
     return { gx: g && g.x, gy: g && g.y, open: g && g.open, hasBoss: !!G.level.boss,
              px: Math.round(p.x), py: Math.round(p.y), winT: p.winT, state: G.state };
   };
+  /* everything a test needs to assert on, in one place */
+  window.__soTile = function (x, y) { return tileAt(x, y); };
+  /* put her back on her feet between assertions, so one test failing does
+     not cascade into every test after it */
+  window.G_x = function () { return G.player.x; };
+  window.__soItems = function () {
+    return G.level.items.filter(function (it) { return it.type !== "heart"; })
+      .map(function (it) {
+        return { t: it.type, x: Math.round(it.x), y: Math.round(it.y),
+                 vx: Math.round(it.vx), vy: Math.round(it.vy), born: +it.born.toFixed(2), fl: it.floating };
+      });
+  };
+  window.__soMakeBig = function () { setBig(G.player, true); };
+  window.__soReset = function () {
+    var keep = { score: G.score, hearts: G.hearts, deaths: G.deaths };
+    G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
+    G.lives = DIFF[G.diff].lives;
+    G.score = keep.score; G.hearts = keep.hearts; G.deaths = keep.deaths;
+    G.state = "play";
+    G.keys = freshKeys();
+  };
+  window.__soPos = function () {
+    var p = G.player;
+    return { y: Math.round(p.y), vy: Math.round(p.vy), onG: p.onGround,
+             coy: +p.coyote.toFixed(2), buf: +p.buffer.toFixed(2), hold: p.holdJump };
+  };
+  window.__soInfo = function () {
+    var L = G.level, used = 0, bricks = 0, spikes = 0;
+    for (var y = 0; y < L.h; y++) for (var x = 0; x < L.w; x++) {
+      var ch = L.grid[y][x];
+      if (ch === "u") used++; else if (ch === "B") bricks++; else if (ch === "^") spikes++;
+    }
+    return {
+      state: G.state, world: G.levelIndex + 1, lives: G.lives, score: G.score,
+      hearts: G.hearts, deaths: G.deaths, timeLeft: G.timeLeft,
+      big: G.player.big, star: G.player.star > 0, wing: G.player.wing,
+      x: Math.round(G.player.x / T), usedBlocks: used, bricks: bricks, spikes: spikes,
+      enemiesAlive: L.ents.filter(function (e) { return e.kind === "enemy" && e.alive; }).length,
+      items: L.items.length, hasBoss: !!L.boss, bossHp: L.boss ? L.boss.hp : null,
+      goalOpen: !!(L.goal && L.goal.open),
+    };
+  };
+  /* drop her onto the boss's head, so the fight can be tested without
+     having to simulate a person's timing */
+  /* stand her directly above the nearest live enemy, so a stomp can be
+     tested without simulating a person's timing */
+  window.__soAboveEnemy = function () {
+    var e = G.level.ents.filter(function (x) { return x.kind === "enemy" && x.alive; })
+      .sort(function (a, b) { return Math.abs(a.x - G.player.x) - Math.abs(b.x - G.player.x); })[0];
+    if (!e) return null;
+    G.player.x = e.x + e.w / 2 - G.player.w / 2;
+    G.player.y = e.y - G.player.h - 10;
+    G.player.vx = 0; G.player.vy = 60;
+    G.camSnap = true; moveCamera(1);
+    return Math.round(e.x / T);
+  };
+  window.__soBossStomp = function () {
+    var b = G.level.boss; if (!b) return;
+    b.awake = true; b.hurt = 0;
+    G.player.x = b.x + b.w / 2 - G.player.w / 2;
+    G.player.y = b.y - G.player.h + 1;
+    G.player.vy = 120;
+  };
   window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
   window.__soKillBoss = function () {
     if (G.level.boss) { G.level.boss.hp = 0; G.level.boss.dead = 0.001; G.level.goal.open = true; }
@@ -2846,10 +2938,13 @@ window.SuperOuissy = (function () {
     if (!G || !G.level) return;
     G.player.x = tx * T;
     if (ty === undefined) {
-      /* find the first floor under that column and stand her on it */
-      ty = 0;
-      for (var r = 0; r < G.level.h; r++) if (solidAt(tx, r)) { ty = r; break; }
-      G.player.y = ty * T - G.player.h - 1;
+      /* Find the real floor: the first solid tile scanning UP from the
+         bottom, then the top of that run. Scanning down from the sky lands
+         her on the roof of any block that happens to be in the column. */
+      var r = G.level.h - 1;
+      while (r >= 0 && !solidAt(tx, r)) r--;
+      while (r > 0 && solidAt(tx, r - 1)) r--;
+      G.player.y = r < 0 ? -16 : r * T - G.player.h - 1;
     } else G.player.y = ty * T;
     G.player.vx = 0; G.player.vy = 0;
     G.camSnap = true; moveCamera(1);
