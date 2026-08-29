@@ -961,11 +961,11 @@ window.SuperOuissy = (function () {
         }
       }
     } else if (biome === "forest") {
-      for (var t2 = 0; t2 < 26; t2++) {
-        var tx = rnd() * farW, th = 44 + rnd() * 46;
+      for (var t2 = 0; t2 < 46; t2++) {
+        var tx = rnd() * farW, th = 40 + rnd() * 52;
         for (var ty = 0; ty < th; ty++) {
           var tw = Math.round((ty / th) * 13) + 1;
-          px(fc, tx - tw, 138 - th + ty, tw * 2, 1, P.far[ty > th * .5 ? 1 : 0]);
+          px(fc, tx - tw - 1, 138 - th + ty, tw * 2 + 2, 1, P.far[ty > th * .5 ? 1 : 0]);
         }
         px(fc, tx - 1, 130, 2, 12, P.far[2]);
       }
@@ -1031,7 +1031,26 @@ window.SuperOuissy = (function () {
         px(mc, px2 + 8, 160 - ph + 14 + (p2 % 4) * 9, 5, 1, "#ffe0a0");
       }
     }
-    return { sky: sky.c, far: far.c, mid: mid.c, farW: farW, midW: midW };
+    /* Where the ground line sits inside each layer's own canvas. paint()
+       lines these up with the level's real ground row, which is the whole
+       reason scenery stays planted — see the note there. */
+    var horizons = {
+      meadow: { far: 180, mid: 152 },   // hills fill to the foot of the canvas
+      forest: { far: 142, mid: 154 },
+      castle: { far: 140, mid: 160 },
+    }[biome];
+
+    /* Below its horizon each layer gets a solid mass in its own darkest
+       tone. Two things need it: the far trees would otherwise stand on
+       nothing with sky between their trunks, and looking down a bottomless
+       pit would show a bare slab of sky where there should be the ground
+       receding into shadow. */
+    px(fc, 0, horizons.far, farW, VH - horizons.far, P.far[2]);
+    px(fc, 0, horizons.far, farW, 1, P.far[1]);
+    px(mc, 0, horizons.mid, midW, VH - horizons.mid, P.mid[2]);
+    px(mc, 0, horizons.mid, midW, 1, P.mid[1]);
+    return { sky: sky.c, far: far.c, mid: mid.c, farW: farW, midW: midW,
+             farHorizon: horizons.far, midHorizon: horizons.mid };
   }
   /* =======================================================================
      9. THE LEVEL — turning a grid of characters into tiles and entities.
@@ -1097,6 +1116,7 @@ window.SuperOuissy = (function () {
 
     return {
       w: w, h: h, grid: grid, pxW: w * T, pxH: h * T,
+      groundY: findGroundY(grid, w, h),
       ents: ents, items: items, start: start, goal: goal,
       checks: checks, boss: boss, biome: def.biome,
       atlas: buildAtlas(def.biome), bg: buildBackdrop(def.biome),
@@ -1105,6 +1125,21 @@ window.SuperOuissy = (function () {
   }
 
   function isSolidChar(ch) { return !!ch && SOLID.indexOf(ch) >= 0; }
+
+  /* The row the main ground surface sits on: the one with the most tiles
+     that are solid with air directly above. Worked out rather than written
+     down, so editing a level's layout cannot leave it stale. */
+  function findGroundY(grid, w, h) {
+    var counts = [], y, x;
+    for (y = 0; y < h; y++) {
+      counts[y] = 0;
+      for (x = 0; x < w; x++)
+        if (isSolidChar(grid[y][x]) && !isSolidChar(grid[y - 1] && grid[y - 1][x])) counts[y]++;
+    }
+    var best = 0;
+    for (y = 1; y < h; y++) if (counts[y] > counts[best]) best = y;
+    return best * T;
+  }
 
   /* ---- tile queries ---------------------------------------------------
      Outside the level horizontally counts as wall, so she can never walk
@@ -1900,11 +1935,25 @@ window.SuperOuissy = (function () {
        look down a bottomless pit and you would see straight through to
        nothing, so the whole frame is flooded with the sky's lowest colour
        first and the pit reads as distance instead of a hole in the page. */
-    var bg = L.bg;
-    px(c, 0, 0, VIEW.w, VIEW.h, BIOME[L.biome].sky[BIOME[L.biome].sky.length - 1].c);
+    var bg = L.bg, BP = BIOME[L.biome];
+    px(c, 0, 0, VIEW.w, VIEW.h, BP.sky[BP.sky.length - 1].c);
+    /* Anything below the ground line that no layer reaches is darkness, not
+       sky: without this, looking down a bottomless pit shows a bare slab of
+       whatever colour the sky happens to end on. */
+    var horizonY = Math.round(L.groundY - oy);
+    if (horizonY < VIEW.h) px(c, 0, horizonY, VIEW.w, VIEW.h - horizonY, BP.mid[2]);
     c.drawImage(bg.sky, 0, Math.round(-oy * 0.12) - 6);
-    drawTiled(c, bg.far, ox * 0.22, Math.round(-oy * 0.3), bg.farW);
-    drawTiled(c, bg.mid, ox * 0.52, Math.round(-oy * 0.55), bg.midW);
+
+    /* Parallax is HORIZONTAL only for the two scenery layers. A tree stands
+       on the same ground she does, so its base is at the same world Y as the
+       ground and has to move exactly with it; scrolling it at 0.55 while the
+       tiles scroll at 1.0 makes it drift twenty pixels as the camera rises
+       and lands, which reads as the trees floating. Each layer is instead
+       pinned by its own horizon to the level's real ground row, so it is
+       planted at every camera height and in every world. Only the sky, which
+       touches nothing, keeps a vertical drift. */
+    drawTiled(c, bg.far, ox * 0.22, Math.round(L.groundY - bg.farHorizon - oy), bg.farW);
+    drawTiled(c, bg.mid, ox * 0.52, Math.round(L.groundY - bg.midHorizon - oy), bg.midW);
 
     /* ---- 2. the tiles ---------------------------------------------------- */
     drawTiles(c, ox, oy, t);
@@ -2945,6 +2994,7 @@ window.SuperOuissy = (function () {
              jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead };
   };
   window.__soSetTime = function (t) { G.timeLeft = t; };
+  window.__soCam = function () { return { x: Math.round(G.cam.x), y: Math.round(G.cam.y) }; };
   window.__soDiffFlag = function (k) { return DIFF[G.diff][k]; };
   window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
   window.__soKillBoss = function () {
