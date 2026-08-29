@@ -41,6 +41,9 @@ Concretely, things he has rejected:
   and picks a strip count the device can afford. If it ever feels heavy,
   profile it rather than simplifying the mechanic — filters and drop
   shadows inside a moving sheet were the expensive part, not the maths.
+  Anything that animates continuously on a *page* also gets copied into
+  every strip of a turn, so it multiplies — that is why the pages are
+  still and only the bouquet in the drawer moves.
 - A grid of identical frames. He wants variety, and he wants the composition
   to breathe: *"the goal is not to have the maximum of photos possible, the
   goal is everything have to look perfect and aesthetically attracting."*

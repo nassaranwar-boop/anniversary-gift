@@ -801,7 +801,7 @@ img{-webkit-user-drag:none; user-select:none;}
    that give the collage its depth stay. */
 .sb-page.in-leaf *,
 .sb-page.in-leaf{filter:none !important; box-shadow:none !important;}
-.sb-page.in-leaf .sb-fl-mote{display:none;}
+
 
 .sb-leaf{
   position:absolute; top:0; height:100%; width:var(--page-w,50%);
@@ -1128,69 +1128,8 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* everything else holds still while a page is turning, so the sheet gets
    the whole frame budget */
-#screen-scrapbook.sb-turning .sb-fl-sway,
-#screen-scrapbook.sb-turning .sb-fl-stem,
-#screen-scrapbook.sb-turning .sb-fl-leaf,
-#screen-scrapbook.sb-turning .sb-fl-bloom,
-#screen-scrapbook.sb-turning .sb-fl-petal,
-#screen-scrapbook.sb-turning .sb-fl-mote,
 #screen-scrapbook.sb-turning .sb-curl,
 #screen-scrapbook.sb-turning .sb-map-pin{animation-play-state:paused !important;}
-
-/* ---- the flowers, alive ---- */
-.sb-flowers{
-  transform:rotate(var(--rot,0deg)); pointer-events:none; z-index:2;
-  filter:drop-shadow(0 6px 10px rgba(40,16,26,.34));
-}
-.sb-flowers svg{width:100%; height:auto; display:block; overflow:visible;}
-
-.sb-fl-sway{
-  transform-box:fill-box; transform-origin:50% 100%;
-  animation:sbSway var(--dur,9s) ease-in-out var(--delay,0s) infinite alternate;
-}
-@keyframes sbSway{
-  from{transform:rotate(calc(var(--tilt,2deg) * -1)) translateY(.4px);}
-  to  {transform:rotate(var(--tilt,2deg)) translateY(-.4px);}
-}
-
-/* the stems breathe a little against the sway */
-.sb-fl-stem{
-  transform-box:fill-box; transform-origin:50% 100%;
-  animation:sbStem 6.5s ease-in-out var(--d,0s) infinite alternate;
-}
-@keyframes sbStem{from{transform:rotate(-.9deg);} to{transform:rotate(.9deg);}}
-
-.sb-fl-leaf{
-  transform-box:fill-box; transform-origin:0% 50%;
-  animation:sbLeaf var(--dur,5s) ease-in-out var(--d,0s) infinite alternate;
-}
-@keyframes sbLeaf{from{transform:rotate(-7deg) scaleY(.94);} to{transform:rotate(7deg) scaleY(1.06);}}
-
-/* each head opens and closes on its own slow count */
-.sb-fl-bloom{
-  transform-box:fill-box; transform-origin:50% 50%;
-  animation:sbBloomBreathe var(--dur,6s) ease-in-out var(--d,0s) infinite alternate;
-}
-@keyframes sbBloomBreathe{
-  from{transform:scale(.93) rotate(-3deg);}
-  to  {transform:scale(1.07) rotate(3deg);}
-}
-.sb-fl-petal{
-  transform-box:fill-box; transform-origin:50% 100%;
-  animation:sbPetal 5.2s ease-in-out var(--d,0s) infinite alternate;
-}
-@keyframes sbPetal{from{transform:scale(.96);} to{transform:scale(1.05);}}
-
-.sb-fl-mote{
-  animation:sbMote var(--dur,8s) linear var(--d,0s) infinite;
-  opacity:0;
-}
-@keyframes sbMote{
-  0%  {opacity:0; transform:translate(0,0) scale(.6);}
-  14% {opacity:.9;}
-  70% {opacity:.5;}
-  100%{opacity:0; transform:translate(var(--dx,8px),-26px) scale(1.15);}
-}
 
 /* ---- stickers ---- */
 .sb-sticker{transform:rotate(var(--rot,0deg)); pointer-events:none; z-index:2;}
@@ -1293,16 +1232,81 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .sb-w-title{margin:0; font-family:'Playfair Display',serif; font-weight:700; font-size:13px; color:#fdeef6;}
 .sb-w-kicker{margin:2px 0 0; font-family:var(--font-body); font-size:7px; letter-spacing:2.4px; color:rgba(250,210,232,.5);}
-.sb-bq-stage{display:flex; align-items:flex-end; justify-content:center; height:230px; margin-top:6px;}
-.sb-bq{
-  height:100%; width:auto; max-width:80%; display:block; transform-origin:bottom center;
-  filter:drop-shadow(0 12px 22px rgba(0,0,0,.5));
-  animation:sbBloom 1.5s var(--ease-out) both;
+.sb-bq-stage{
+  display:flex; align-items:flex-end; justify-content:center;
+  height:250px; margin-top:8px;
 }
-@keyframes sbBloom{
-  0%{opacity:0; transform:translateY(28%) scale(.5) rotate(-6deg);}
-  60%{opacity:1;}
+.sb-bq{
+  height:100%; width:auto; max-width:92%; display:block; overflow:visible;
+  transform-origin:bottom center;
+  filter:drop-shadow(0 14px 24px rgba(20,4,14,.55));
+  animation:sbBqIn 1.5s var(--ease-out) both;
+}
+@keyframes sbBqIn{
+  0%  {opacity:0; transform:translateY(26%) scale(.62) rotate(-6deg);}
+  62% {opacity:1;}
   100%{opacity:1; transform:translateY(0) scale(1) rotate(0deg);}
+}
+
+/* the whole bunch leans, slowly */
+.bq-sway{
+  transform-box:fill-box; transform-origin:50% 100%;
+  animation:bqSway 9s ease-in-out infinite alternate;
+}
+@keyframes bqSway{
+  from{transform:rotate(-1.5deg) translateY(.6px);}
+  to  {transform:rotate(1.5deg) translateY(-.6px);}
+}
+
+/* every head opens and closes on its own count */
+.bq-bloom{
+  transform-box:fill-box; transform-origin:50% 50%;
+  animation:bqBreathe var(--dur,7s) ease-in-out var(--d,0s) infinite alternate;
+}
+@keyframes bqBreathe{
+  from{transform:scale(.955) rotate(calc(var(--tw,3deg) * -1));}
+  to  {transform:scale(1.055) rotate(var(--tw,3deg));}
+}
+
+.bq-leaf{
+  transform-box:fill-box; transform-origin:0% 50%;
+  animation:bqLeaf var(--dur,6s) ease-in-out var(--d,0s) infinite alternate;
+}
+@keyframes bqLeaf{
+  from{transform:rotate(-5deg) scaleY(.95);}
+  to  {transform:rotate(5deg) scaleY(1.05);}
+}
+
+/* the ribbon tails swing a beat behind the bunch */
+.bq-tail{
+  transform-box:fill-box; transform-origin:50% 0%;
+  animation:bqTail 4.6s ease-in-out infinite alternate;
+}
+.bq-tail-r{animation-delay:-1.1s;}
+@keyframes bqTail{
+  from{transform:rotate(-6deg);}
+  to  {transform:rotate(6deg);}
+}
+
+/* now and then a petal comes loose */
+.bq-fall{
+  animation:bqFall var(--dur,11s) ease-in var(--d,0s) infinite;
+  opacity:0;
+}
+@keyframes bqFall{
+  0%  {opacity:0; transform:translate(0,0) rotate(0deg) scale(.9);}
+  6%  {opacity:.95;}
+  70% {opacity:.7;}
+  100%{opacity:0; transform:translate(var(--dx,10px),150px) rotate(320deg) scale(.7);}
+}
+
+.bq-spark{
+  animation:bqSpark var(--dur,5s) ease-in-out var(--d,0s) infinite;
+  opacity:0;
+}
+@keyframes bqSpark{
+  0%,100%{opacity:0; transform:scale(.4);}
+  50%    {opacity:.85; transform:scale(1.25);}
 }
 
 /* ---- a play triangle, shared ---- */
@@ -1671,7 +1675,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 @media (prefers-reduced-motion: reduce){
   .sb-bq,.sb-map-pin,.sb-intro-hint,.sb-song-disc,.sb-curl,.sb-cover-hint-corner,
-  .sb-fl-sway,.sb-fl-stem,.sb-fl-leaf,.sb-fl-bloom,.sb-fl-petal,.sb-fl-mote,
+  .bq-sway,.bq-bloom,.bq-leaf,.bq-tail,.bq-fall,.bq-spark,
   #screen-scrapbook.sb-drawer-on .sb-drawer > *{animation:none !important;}
   .sb-intro{transition:opacity .2s linear;}
 }

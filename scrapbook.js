@@ -66,7 +66,6 @@ window.Scrapbook = (function () {
         { x: 52, y: 55, date: "the first evening",  title: "Jemaa el-Fna", place: "the big square, at dusk" },
         { x: 66, y: 35, date: "the long afternoon", title: "The souks",    place: "inside the medina walls" },
         { x: 35, y: 67, date: "a whole afternoon",  title: "Megarama",     place: "the cinema, back row" },
-        { x: 29, y: 23, date: "our side of town",   title: "Daoudiate",    place: "the streets we know" },
       ],
     },
 
@@ -1265,7 +1264,7 @@ window.Scrapbook = (function () {
     { paper: "rose", pieces: [
       { k: "sticker", art: "disco",   left: -9, top:  2, w: 34, rot: 0 },
       { k: "sticker", art: "rose",    left: -4, top: 30, w: 26, rot: -8 },
-      { k: "flowers", left: -7, top: 56, w: 32, rot: -6 },
+      { k: "sticker", art: "flowers", left: -7, top: 56, w: 32, rot: -6 },
       { k: "sticker", art: "disco",   left: -5, top: 78, w: 26, rot: 0 },
       { k: "bigtype", text: "love you", left: 68, top: 6, size: 16, vertical: true, colour: "rgba(255,255,255,.22)" },
       { k: "photo", n: 1, style: "polaroid", left: 26, top:  5, w: 36.1, rot: -6, tape: "top" },
@@ -1285,7 +1284,7 @@ window.Scrapbook = (function () {
       { k: "photo", n: 5, style: "polaroid", left: 48, top: 30, w: 32, rot:  3 },
       { k: "photo", n: 6, style: "matted",   left:  6, top: 62, w: 29, rot:  2 },
       { k: "photo", n: 7, style: "snapshot", left: 50, top: 74, w: 34, rot: -4 },
-      { k: "flowers", left: 34, top: 60, w: 22, rot: 8 },
+      { k: "sticker", art: "flowers", left: 34, top: 60, w: 22, rot: 8 },
     ]},
 
     /* ---- 3 · the camera ------------------------------------------ */
@@ -1320,7 +1319,7 @@ window.Scrapbook = (function () {
       { k: "photo", n: 11, style: "washed",   left: 30, top:  8, w: 50.8, rot: -5, tape: "top" },
       { k: "photo", n: 12, style: "matted",   left: 10, top: 46, w: 36.1, rot:  3 },
       { k: "photo", n: 13, style: "polaroid", left: 54, top: 52, w: 34.4, rot: -3 },
-      { k: "flowers", left: -6, top: 78, w: 28, rot: -8 },
+      { k: "sticker", art: "flowers", left: -6, top: 78, w: 28, rot: -8 },
       { k: "sticker", art: "lipInk", left: 34, top: 88, w: 18, rot: 12 },
     ]},
 
@@ -1335,7 +1334,7 @@ window.Scrapbook = (function () {
       { k: "photobooth", cells: [17, 18, 19], left: 6, top: 54, w: 22, rot: 5 },
       { k: "sticker", art: "starD", left: 84, top: 56, w: 16, rot: -14 },
       { k: "label", text: "COLD HANDS,\nWARM HEARTS", left: 44, top: 80, w: 40, rot: -4 },
-      { k: "flowers", left: 30, top: 82, w: 24, rot: 6 },
+      { k: "sticker", art: "flowers", left: 30, top: 82, w: 24, rot: 6 },
     ]},
 
     /* ---- 7 · the film strip -------------------------------------- */
@@ -1369,7 +1368,7 @@ window.Scrapbook = (function () {
       { k: "photobooth", cells: [26, 27, 28], left: 4, top: 34, w: 22, rot: -4 },
       { k: "photo", n: 29, style: "corners", left: 34, top: 46, w: 36.1, rot: -3 },
       { k: "patch", paper: "blush", left: 50, top: 74, w: 50, h: 32, rot: 3 },
-      { k: "flowers", left: 62, top: 72, w: 34, rot: 4 },
+      { k: "sticker", art: "flowers", left: 62, top: 72, w: 34, rot: 4 },
       { k: "sticker", art: "starG", left: 52, top: 80, w: 10, rot: 20 },
     ]},
 
@@ -1505,127 +1504,10 @@ window.Scrapbook = (function () {
     return wrap;
   }
 
-  /* ---------------------------------------------------------------
-     THE FLOWERS
-
-     Drawn as SVG rather than a flat sticker so the sprig can live: the
-     whole stem sways from its base, each bloom breathes on its own
-     count, the leaves flutter against the sway, and a little pollen
-     drifts off. Every sprig is seeded from its position, so no two on a
-     spread move together.
-     --------------------------------------------------------------- */
-  var FLOWER_PALETTES = [
-    ["#f7b3c6", "#e8899f", "#cf6d86", "#ffe9a8"],
-    ["#c9a5e6", "#a87fce", "#8b62b2", "#ffe9a8"],
-    ["#fdf2ef", "#ecd7d2", "#d3b6b0", "#f3d79a"],
-    ["#f6cf9f", "#e5ab6e", "#c98d50", "#fff0c4"],
-  ];
-
   function svgEl(name, attrs) {
     var e = document.createElementNS("http://www.w3.org/2000/svg", name);
     for (var k in attrs) if (attrs.hasOwnProperty(k)) e.setAttribute(k, attrs[k]);
     return e;
-  }
-
-  function makeFlowers(p) {
-    var wrap = place(el("sb-flowers"), p);
-    var r = rnd((p.left * 31 + p.top * 17 + 7) | 0);
-    var svg = svgEl("svg", { viewBox: "0 0 100 100", "aria-hidden": "true" });
-
-    var sway = svgEl("g", { class: "sb-fl-sway" });
-    sway.style.setProperty("--dur", (7 + r() * 5).toFixed(2) + "s");
-    sway.style.setProperty("--delay", (-r() * 6).toFixed(2) + "s");
-    sway.style.setProperty("--tilt", (1.8 + r() * 2.4).toFixed(2) + "deg");
-
-    /* A CSS animation on an SVG element replaces its transform attribute
-       outright, so anything that is both placed and animated needs an
-       outer group to hold the placing and an inner one to be animated. */
-    function placed(transform, cls) {
-      var outer = svgEl("g", { transform: transform });
-      var inner = svgEl("g", { class: cls });
-      outer.appendChild(inner);
-      sway.appendChild(outer);
-      return inner;
-    }
-
-    var stems = 3 + ((r() * 2) | 0);
-    var heads = [];
-
-    for (var i = 0; i < stems; i++) {
-      var t = stems === 1 ? 0.5 : i / (stems - 1);
-      var tipX = 22 + t * 56 + (r() - 0.5) * 8;
-      var tipY = 20 + r() * 26;
-      var ctrlX = 50 + (tipX - 50) * 0.3;
-      var ctrlY = 64 - r() * 12;
-      heads.push([tipX, tipY, 8.5 + r() * 4.5]);
-      /* a smaller bud partway up some stems */
-      if (r() > 0.45) {
-        var bt = 0.55 + r() * 0.2;
-        heads.push([50 + (tipX - 50) * bt, 99 + (tipY - 99) * bt, 4.5 + r() * 2.5]);
-      }
-
-      var stem = svgEl("path", {
-        d: "M50,99 Q" + ctrlX.toFixed(1) + "," + ctrlY.toFixed(1) +
-           " " + tipX.toFixed(1) + "," + tipY.toFixed(1),
-        fill: "none", stroke: ["#6f8f4a", "#5d7a35", "#7fa04a"][(r() * 3) | 0],
-        "stroke-width": (1.5 + r() * 0.9).toFixed(2),
-        "stroke-linecap": "round", class: "sb-fl-stem",
-      });
-      stem.style.setProperty("--d", (-r() * 5).toFixed(2) + "s");
-      sway.appendChild(stem);
-
-      for (var l = 0; l < 2; l++) {
-        var lt = 0.30 + l * 0.26;
-        var lx = 50 + (tipX - 50) * lt, ly = 99 + (tipY - 99) * lt;
-        var rot = (l ? 1 : -1) * (20 + r() * 34);
-        var leafG = placed("translate(" + lx.toFixed(1) + "," + ly.toFixed(1) +
-                           ") rotate(" + rot.toFixed(1) + ")", "sb-fl-leaf");
-        leafG.style.setProperty("--d", (-r() * 6).toFixed(2) + "s");
-        leafG.style.setProperty("--dur", (4.5 + r() * 3).toFixed(2) + "s");
-        leafG.appendChild(svgEl("path", {
-          d: "M0,0 Q5,-3.4 11,0 Q5,3.4 0,0",
-          fill: ["#7fa04a", "#5d7a35", "#93b862"][(r() * 3) | 0],
-        }));
-      }
-    }
-
-    heads.forEach(function (h) {
-      var pal = FLOWER_PALETTES[(r() * FLOWER_PALETTES.length) | 0];
-      var size = h[2];
-      var petals = 5 + ((r() * 3) | 0);
-      var bloom = placed("translate(" + h[0].toFixed(1) + "," + h[1].toFixed(1) + ")", "sb-fl-bloom");
-      bloom.style.setProperty("--d", (-r() * 7).toFixed(2) + "s");
-      bloom.style.setProperty("--dur", (5 + r() * 3.5).toFixed(2) + "s");
-
-      var spin = r() * 360;
-      for (var k = 0; k < petals; k++) {
-        var pg = svgEl("g", { transform: "rotate(" + (spin + (k / petals) * 360).toFixed(1) + ")" });
-        var pe = svgEl("ellipse", {
-          cx: 0, cy: -size * 0.56, rx: size * 0.42, ry: size * 0.58,
-          fill: k % 2 ? pal[0] : pal[1], class: "sb-fl-petal",
-        });
-        pe.style.setProperty("--d", (-r() * 4).toFixed(2) + "s");
-        pg.appendChild(pe);
-        bloom.appendChild(pg);
-      }
-      bloom.appendChild(svgEl("circle", { cx: 0, cy: 0, r: size * 0.32, fill: pal[2], opacity: ".5" }));
-      bloom.appendChild(svgEl("circle", { cx: 0, cy: 0, r: size * 0.22, fill: pal[3] }));
-    });
-
-    for (var m = 0; m < 4; m++) {
-      var mote = svgEl("circle", {
-        cx: (30 + r() * 42).toFixed(1), cy: (30 + r() * 24).toFixed(1),
-        r: (0.9 + r() * 0.8).toFixed(2), fill: "#fff3cf", class: "sb-fl-mote",
-      });
-      mote.style.setProperty("--d", (-r() * 9).toFixed(2) + "s");
-      mote.style.setProperty("--dur", (7 + r() * 5).toFixed(2) + "s");
-      mote.style.setProperty("--dx", ((r() - 0.5) * 22).toFixed(1) + "px");
-      sway.appendChild(mote);
-    }
-
-    svg.appendChild(sway);
-    wrap.appendChild(svg);
-    return wrap;
   }
 
   function makeSticker(p) {
@@ -1857,7 +1739,7 @@ window.Scrapbook = (function () {
   }
 
   var MAKERS = {
-    photo: makePhoto, sticker: makeSticker, flowers: makeFlowers, img: makeImg, patch: makePatch,
+    photo: makePhoto, sticker: makeSticker, img: makeImg, patch: makePatch,
     note: makeNote, bigtype: makeBigType, script: makeScript, letters: makeLetters,
     typecol: makeTypeCol, curvetext: makeCurveText, burst: makeBurst,
     label: makeLabel, label2: makeLabel2, instantcam: makeInstantCam,
@@ -1925,14 +1807,290 @@ window.Scrapbook = (function () {
     Array.prototype.forEach.call(vids, function (v) { if (except !== "video") v.pause(); });
   }
 
-  /* ---- the bouquet card ---- */
+  /* ---- the bouquet ---------------------------------------------
+     The one thing in here that is meant to be looked at rather than
+     used, so it is built as SVG and it moves: the whole bunch breathes,
+     every bloom opens and closes on its own count, the foliage drifts
+     against it, the ribbon tails swing, and now and then a petal comes
+     loose and falls. Seeded, so nothing beats in time with anything
+     else. ---- */
+  var BQ = {
+    peony:  ["#fbc4d4", "#f2a0bb", "#dd7c9c", "#c2607f"],
+    rose:   ["#f7aec2", "#e88aa6", "#cf6a89", "#b4506e"],
+    cream:  ["#fffaf4", "#f6e5da", "#e5cdc0", "#cdb0a2"],
+    apricot:["#f9d3ac", "#efb885", "#d99a64", "#bd7e4c"],
+    lilac:  ["#d8c2ee", "#bda1e0", "#a184cb", "#8467b0"],
+  };
+
+  function bqBloom(host, cx, cy, r0, pal, petals, rnd_) {
+    var g = svgEl("g", { transform: "translate(" + cx + "," + cy + ")" });
+    var inner = svgEl("g", { class: "bq-bloom" });
+    inner.style.setProperty("--d", (-rnd_() * 8).toFixed(2) + "s");
+    inner.style.setProperty("--dur", (5.5 + rnd_() * 4).toFixed(2) + "s");
+    inner.style.setProperty("--tw", (2 + rnd_() * 3).toFixed(1) + "deg");
+
+    /* three rings of petals, the outer ones darker and turned away */
+    [[1.00, pal[3], 0.86], [0.78, pal[2], 0.62], [0.56, pal[1], 0.38]]
+      .forEach(function (ring, ri) {
+        var n = Math.max(4, petals - ri);
+        var spin = rnd_() * 360;
+        for (var k = 0; k < n; k++) {
+          var pg = svgEl("g", { transform: "rotate(" + (spin + (k / n) * 360).toFixed(1) + ")" });
+          pg.appendChild(svgEl("path", {
+            d: "M0,0 C " + (-r0 * ring[0] * 0.5) + "," + (-r0 * ring[0] * 0.72) +
+               " " + (-r0 * ring[0] * 0.30) + "," + (-r0 * ring[0] * 1.18) +
+               " 0," + (-r0 * ring[0] * 1.22) +
+               " C " + (r0 * ring[0] * 0.30) + "," + (-r0 * ring[0] * 1.18) +
+               " " + (r0 * ring[0] * 0.5) + "," + (-r0 * ring[0] * 0.72) + " 0,0 Z",
+            fill: ring[1], opacity: "0.97",
+          }));
+          inner.appendChild(pg);
+        }
+      });
+    /* the heart of the flower */
+    inner.appendChild(svgEl("circle", { cx: 0, cy: 0, r: r0 * 0.30, fill: pal[2], opacity: ".8" }));
+    inner.appendChild(svgEl("circle", { cx: 0, cy: 0, r: r0 * 0.20, fill: pal[0] }));
+    for (var t = 0; t < 7; t++) {
+      var ta = (t / 7) * 6.283;
+      inner.appendChild(svgEl("circle", {
+        cx: (Math.cos(ta) * r0 * 0.12).toFixed(2),
+        cy: (Math.sin(ta) * r0 * 0.12).toFixed(2),
+        r: (r0 * 0.045).toFixed(2), fill: "#f6d68a",
+      }));
+    }
+    g.appendChild(inner);
+    host.appendChild(g);
+  }
+
+  function bqCluster(host, cx, cy, r0, c1, c2, rnd_) {
+    var g = svgEl("g", { transform: "translate(" + cx + "," + cy + ")" });
+    var inner = svgEl("g", { class: "bq-bloom" });
+    inner.style.setProperty("--d", (-rnd_() * 8).toFixed(2) + "s");
+    inner.style.setProperty("--dur", (6 + rnd_() * 4).toFixed(2) + "s");
+    inner.style.setProperty("--tw", "2deg");
+    for (var i = 0; i < 26; i++) {
+      var a = rnd_() * 6.283, d = rnd_() * r0;
+      var fx = Math.cos(a) * d, fy = Math.sin(a) * d * 0.82;
+      var fr = r0 * (0.15 + rnd_() * 0.09);
+      var fg = svgEl("g", { transform: "translate(" + fx.toFixed(1) + "," + fy.toFixed(1) + ")" });
+      for (var k = 0; k < 4; k++) {
+        fg.appendChild(svgEl("ellipse", {
+          cx: (Math.cos(k * 1.571) * fr * 0.62).toFixed(2),
+          cy: (Math.sin(k * 1.571) * fr * 0.62).toFixed(2),
+          rx: (fr * 0.55).toFixed(2), ry: (fr * 0.48).toFixed(2),
+          fill: rnd_() > 0.5 ? c1 : c2,
+        }));
+      }
+      fg.appendChild(svgEl("circle", { cx: 0, cy: 0, r: (fr * 0.22).toFixed(2), fill: "#fdf0c8" }));
+      inner.appendChild(fg);
+    }
+    g.appendChild(inner);
+    host.appendChild(g);
+  }
+
+  function bqLeaf(host, x, y, len, rot, tone, rnd_) {
+    var g = svgEl("g", { transform: "translate(" + x + "," + y + ") rotate(" + rot + ")" });
+    var inner = svgEl("g", { class: "bq-leaf" });
+    inner.style.setProperty("--d", (-rnd_() * 7).toFixed(2) + "s");
+    inner.style.setProperty("--dur", (5 + rnd_() * 4).toFixed(2) + "s");
+    inner.appendChild(svgEl("path", {
+      d: "M0,0 Q" + (len * 0.5) + "," + (-len * 0.26) + " " + len + ",0 " +
+         "Q" + (len * 0.5) + "," + (len * 0.26) + " 0,0 Z",
+      fill: tone,
+    }));
+    inner.appendChild(svgEl("path", {
+      d: "M0,0 L" + len + ",0", stroke: "rgba(255,255,255,.28)", "stroke-width": "1", fill: "none",
+    }));
+    g.appendChild(inner);
+    host.appendChild(g);
+  }
+
+  /* a stem of small bells, for the lavender */
+  function bqLavender(host, x, y, len, rot, rnd_) {
+    var g = svgEl("g", { transform: "translate(" + x + "," + y + ") rotate(" + rot + ")" });
+    var inner = svgEl("g", { class: "bq-leaf" });
+    inner.style.setProperty("--d", (-rnd_() * 6).toFixed(2) + "s");
+    inner.style.setProperty("--dur", (4.5 + rnd_() * 3).toFixed(2) + "s");
+    inner.appendChild(svgEl("path", {
+      d: "M0,0 L0," + (-len), stroke: "#7f9a52", "stroke-width": "2", "stroke-linecap": "round",
+    }));
+    for (var i = 0; i < 10; i++) {
+      inner.appendChild(svgEl("ellipse", {
+        cx: ((i % 2 ? 1 : -1) * 2.4).toFixed(1), cy: (-len * 0.24 - (i / 10) * len * 0.74).toFixed(1),
+        rx: "2.9", ry: "3.6",
+        fill: i % 2 ? "#b394e0" : "#9a76c9",
+      }));
+    }
+    g.appendChild(inner);
+    host.appendChild(g);
+  }
+
+  function buildBouquetSVG() {
+    var r = rnd(97);
+    var svg = svgEl("svg", { viewBox: "0 0 200 300", class: "sb-bq", "aria-label": "a bouquet of flowers" });
+
+    var defs = svgEl("defs", {});
+    var kraft = svgEl("linearGradient", { id: "bqKraft", x1: "0", y1: "0", x2: "1", y2: "0" });
+    [["0", "#8e6a37"], [".18", "#c3a069"], [".44", "#e8ceA0".replace("A","a")], [".72", "#c9a468"], ["1", "#87642f"]]
+      .forEach(function (st) {
+        kraft.appendChild(svgEl("stop", { offset: st[0], "stop-color": st[1] }));
+      });
+    defs.appendChild(kraft);
+    var ribbon = svgEl("linearGradient", { id: "bqRibbon", x1: "0", y1: "0", x2: "0", y2: "1" });
+    [["0", "#f0b9c8"], [".5", "#d98da3"], ["1", "#b96b83"]].forEach(function (st) {
+      ribbon.appendChild(svgEl("stop", { offset: st[0], "stop-color": st[1] }));
+    });
+    defs.appendChild(ribbon);
+    svg.appendChild(defs);
+
+    /* everything above the wrap breathes together */
+    var head = svgEl("g", { class: "bq-sway" });
+
+    /* stems, fanning up out of the cone */
+    for (var i = 0; i < 11; i++) {
+      var t = i / 10;
+      var tx = 34 + t * 132 + (r() - 0.5) * 10;
+      var ty = 92 + r() * 74;
+      head.appendChild(svgEl("path", {
+        d: "M100,206 Q" + (100 + (tx - 100) * 0.42).toFixed(1) + "," + (166 - r() * 18).toFixed(1) +
+           " " + tx.toFixed(1) + "," + ty.toFixed(1),
+        stroke: ["#6f8f4a", "#5d7a35", "#87a75c"][(r() * 3) | 0],
+        "stroke-width": (2 + r() * 1.2).toFixed(1), fill: "none", "stroke-linecap": "round",
+      }));
+    }
+
+    /* foliage behind the blooms */
+    bqLeaf(head, 36, 172, 38, -150, "#5d7a35", r);
+    bqLeaf(head, 164, 166, 40, -30, "#5d7a35", r);
+    bqLeaf(head, 48, 140, 32, -166, "#7fa04a", r);
+    bqLeaf(head, 152, 134, 34, -14, "#7fa04a", r);
+    bqLeaf(head, 66, 108, 27, -196, "#93b862", r);
+    bqLeaf(head, 136, 102, 28, 16, "#93b862", r);
+    bqLavender(head, 28, 168, 56, -17, r);
+    bqLavender(head, 172, 162, 52, 16, r);
+    bqLavender(head, 44, 142, 46, -10, r);
+    bqLavender(head, 158, 136, 44, 10, r);
+
+    /* the clusters sit between the big heads and fill the gaps */
+    bqCluster(head, 50, 152, 24, "#c3a4e6", "#a884d2", r);
+    bqCluster(head, 152, 146, 22, "#cbb0ea", "#af8ed8", r);
+    bqCluster(head, 100, 84, 19, "#fdf3ee", "#eeddd4", r);
+    bqCluster(head, 72, 190, 17, "#f6dce6", "#e6c2d2", r);
+
+    /* the big heads, front to back */
+    bqBloom(head, 66, 176, 25, BQ.peony,  8, r);
+    bqBloom(head, 134, 170, 24, BQ.rose,   8, r);
+    bqBloom(head, 100, 144, 29, BQ.peony,  9, r);
+    bqBloom(head, 40,  122, 19, BQ.cream,  7, r);
+    bqBloom(head, 162, 116, 18, BQ.apricot,7, r);
+    bqBloom(head, 72,  104, 18, BQ.rose,   7, r);
+    bqBloom(head, 130, 96,  17, BQ.lilac,  7, r);
+    bqBloom(head, 100, 186, 15, BQ.cream,  6, r);
+    bqBloom(head, 100, 68,  16, BQ.rose,   7, r);
+
+    svg.appendChild(head);
+
+    /* the wrap, over the stems */
+    var cone = svgEl("g", {});
+    cone.appendChild(svgEl("path", {
+      d: "M36,202 L164,202 L118,290 Q100,298 82,290 Z", fill: "url(#bqKraft)",
+    }));
+    /* the folded edge along the top */
+    cone.appendChild(svgEl("path", {
+      d: "M36,202 L164,202 L156,215 L44,215 Z", fill: "rgba(255,248,232,.28)",
+    }));
+    /* the mouth of it, in shadow */
+    cone.appendChild(svgEl("ellipse", {
+      cx: "100", cy: "202", rx: "64", ry: "6.5", fill: "rgba(72,48,22,.45)",
+    }));
+    /* creases */
+    [-0.80, -0.46, -0.14, 0.18, 0.5, 0.82].forEach(function (o) {
+      cone.appendChild(svgEl("path", {
+        d: "M" + (100 + 64 * o).toFixed(1) + ",204 L" + (100 + 17 * o).toFixed(1) + ",290",
+        stroke: "rgba(112,80,38,.24)", "stroke-width": "1", fill: "none",
+      }));
+    });
+    /* the wrap darkens where the head shades it */
+    cone.appendChild(svgEl("path", {
+      d: "M36,202 L164,202 L156,226 L44,226 Z", fill: "rgba(70,42,18,.20)",
+    }));
+    svg.appendChild(cone);
+
+    /* the ribbon, with tails that swing */
+    var bow = svgEl("g", {});
+    bow.appendChild(svgEl("path", {
+      d: "M60,238 Q100,248 140,238", stroke: "url(#bqRibbon)", "stroke-width": "7",
+      fill: "none", "stroke-linecap": "round",
+    }));
+    [[-1, "bq-tail-l"], [1, "bq-tail-r"]].forEach(function (sd) {
+      var g = svgEl("g", { transform: "translate(100,242)" });
+      var inner = svgEl("g", { class: "bq-tail " + sd[1] });
+      inner.appendChild(svgEl("path", {
+        d: "M0,0 Q" + (sd[0] * 16) + ",18 " + (sd[0] * 10) + ",40 L" +
+           (sd[0] * 22) + ",34 Q" + (sd[0] * 24) + ",14 0,2 Z",
+        fill: "url(#bqRibbon)",
+      }));
+      g.appendChild(inner);
+      bow.appendChild(g);
+    });
+    /* the two loops, folded rather than drawn as rings */
+    [-1, 1].forEach(function (sd) {
+      bow.appendChild(svgEl("path", {
+        d: "M100,236 C " + (100 + sd * 12) + ",220 " + (100 + sd * 34) + ",224 " +
+           (100 + sd * 30) + ",238 C " + (100 + sd * 27) + ",250 " +
+           (100 + sd * 10) + ",246 100,240 Z",
+        fill: "url(#bqRibbon)",
+      }));
+      /* the shaded inside of the fold */
+      bow.appendChild(svgEl("path", {
+        d: "M100,237 C " + (100 + sd * 11) + ",228 " + (100 + sd * 24) + ",230 " +
+           (100 + sd * 22) + ",239 C " + (100 + sd * 20) + ",245 " +
+           (100 + sd * 9) + ",243 100,239 Z",
+        fill: "rgba(122,50,72,.30)",
+      }));
+    });
+    /* the knot */
+    bow.appendChild(svgEl("ellipse", {
+      cx: "100", cy: "238", rx: "6.5", ry: "5.5", fill: "url(#bqRibbon)",
+    }));
+    bow.appendChild(svgEl("ellipse", {
+      cx: "98.4", cy: "236.4", rx: "3", ry: "2.2", fill: "rgba(255,225,234,.5)",
+    }));
+    svg.appendChild(bow);
+
+    /* a petal comes loose now and then */
+    for (var f = 0; f < 3; f++) {
+      var fall = svgEl("ellipse", {
+        cx: (60 + r() * 80).toFixed(0), cy: (140 + r() * 40).toFixed(0),
+        rx: "5", ry: "3.4", fill: [BQ.peony[1], BQ.rose[1], BQ.cream[1]][f],
+        class: "bq-fall",
+      });
+      fall.style.setProperty("--d", (-r() * 12).toFixed(1) + "s");
+      fall.style.setProperty("--dur", (9 + r() * 5).toFixed(1) + "s");
+      fall.style.setProperty("--dx", ((r() - 0.5) * 46).toFixed(0) + "px");
+      svg.appendChild(fall);
+    }
+
+    /* and a little light on it */
+    for (var sp = 0; sp < 5; sp++) {
+      var star = svgEl("circle", {
+        cx: (36 + r() * 128).toFixed(0), cy: (70 + r() * 116).toFixed(0),
+        r: (1 + r()).toFixed(1), fill: "#fff6e2", class: "bq-spark",
+      });
+      star.style.setProperty("--d", (-r() * 7).toFixed(1) + "s");
+      star.style.setProperty("--dur", (3.5 + r() * 3).toFixed(1) + "s");
+      svg.appendChild(star);
+    }
+    return svg;
+  }
+
   function buildBouquetCard() {
     var c = el("sb-w sb-w-bouquet");
     c.innerHTML =
       '<p class="sb-w-title">My Love’s bouquet</p>' +
       '<p class="sb-w-kicker">FROM YOU</p>' +
-      '<div class="sb-bq-stage"><img class="sb-bq" alt="a bouquet of flowers" /></div>';
-    c.querySelector(".sb-bq").src = STICK.bouquet;
+      '<div class="sb-bq-stage"></div>';
+    c.querySelector(".sb-bq-stage").appendChild(buildBouquetSVG());
     return c;
   }
 
