@@ -1410,6 +1410,26 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* =========================================================
+   SUPER OUISSY
+   The platformer lives entirely in super-ouissy.js. This half only
+   owns getting in and out of it, exactly as the scrapbook does.
+   Finishing it is remembered, but it is a bonus chapter: the keepsake
+   still unlocks on the maze and the adventure alone, so nothing she has
+   already finished can re-lock itself.
+   ========================================================= */
+function startSuperOuissy() {
+  if (window.SuperOuissy) SuperOuissy.start();
+}
+function stopSuperOuissy() {
+  if (window.SuperOuissy) SuperOuissy.stop();
+}
+window.leaveSuperOuissy = () => {
+  stopSuperOuissy();
+  pageTurn("hub", startHub);
+};
+window.markSuperOuissyDone = () => markChapterDone("ouissy");
+
+/* =========================================================
    HUB — choose your adventure
    Two chapters, either order. Completion is remembered so she can
    put the phone down and come back to it.
@@ -1436,7 +1456,7 @@ function startHub() {
   const d = chaptersDone();
   const both = bothChaptersDone();
 
-  [["maze", d.maze], ["quest", d.quest]].forEach(([name, done]) => {
+  [["maze", d.maze], ["quest", d.quest], ["ouissy", d.ouissy]].forEach(([name, done]) => {
     const card = document.getElementById("hub-card-" + name);
     if (card) card.classList.toggle("done", !!done);
   });
@@ -1455,6 +1475,9 @@ document.getElementById("hub-card-maze").addEventListener("click", () => {
 });
 document.getElementById("hub-card-quest").addEventListener("click", () => {
   pageTurn("quest", startQuest);
+});
+document.getElementById("hub-card-ouissy").addEventListener("click", () => {
+  pageTurn("ouissy", startSuperOuissy);
 });
 document.getElementById("hub-keepsake").addEventListener("click", () => {
   pageTurn("keepsake", startKeepsake);
@@ -1486,6 +1509,7 @@ function startKeepsake() {
     { icon: "🗝️", cap: "The Maze" },
     { icon: "🦊", cap: "The Long Way Round" },
   ];
+  if (chaptersDone().ouissy) badges.push({ icon: "👑", cap: "Super Ouissy" });
   badges.forEach((b, i) => {
     const card = document.createElement("div");
     card.className = "ks-card";
@@ -1614,6 +1638,17 @@ function setMusic(on) {
     clearTimeout(bellTimer);
   }
 }
+
+/* A scene with music of its own (the platformer) turns the pad down while
+   it plays and puts it back afterwards. It deliberately does NOT touch the
+   saved preference, so her toggle still means what she set it to. */
+window.duckAmbient = function (on) {
+  if (!musicNodes || !musicOn) return;
+  const t = musicNodes.ctx.currentTime;
+  musicNodes.master.gain.cancelScheduledValues(t);
+  musicNodes.master.gain.setValueAtTime(Math.max(0.0001, musicNodes.master.gain.value), t);
+  musicNodes.master.gain.exponentialRampToValueAtTime(on ? 0.02 : 0.24, t + 0.6);
+};
 
 (function initMusic() {
   const btn = document.getElementById("music-toggle");

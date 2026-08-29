@@ -1,0 +1,2651 @@
+/* =========================================================================
+   SUPER-OUISSY.JS — a platformer, three worlds, one prince at the end
+
+   Ouissy runs, jumps, stomps and collects her way through Sunny Meadows,
+   the Twilight Forest and the Castle of Sweethearts. Everything here is
+   drawn pixel by pixel onto a 320x180 canvas at runtime — there is not one
+   image file in this game — and blown up with image-rendering:pixelated so
+   the grid stays honest, exactly like the adventure in script.js.
+
+   The file is laid out in the order you would want to read it:
+
+     1. CUSTOMISE ME     the words, the names, the ending
+     2. TUNING           speeds, gravity, jump — every number in one block
+     3. DIFFICULTY       Easy / Medium / Hard, as multipliers over TUNING
+     4. LEVELS           three character grids + the legend that reads them
+     5. PALETTES         one per world
+     6. PIXEL HELPERS    px, blob, dither — the same primitives as the site
+     7. SPRITES          Ouissy, the enemies, the pickups, the Heartbreaker
+     8. WORLD ART        tile atlas + parallax backdrops, baked once per level
+     9. THE LEVEL        turning a grid into tiles and entities
+    10. PHYSICS          collision, then the player, then everything else
+    11. THE GAME LOOP    fixed order: input -> step -> camera -> paint
+    12. SCREENS          difficulty select, how-to-play, pause, results
+    13. SOUND            Web Audio only; no files, no download
+    14. PUBLIC API       SuperOuissy.start() / .stop()
+
+   Public API used by script.js:
+     SuperOuissy.start()   difficulty select, then play from World 1
+     SuperOuissy.stop()    tear the loop down and silence it
+   ========================================================================= */
+window.SuperOuissy = (function () {
+  "use strict";
+
+  /* =======================================================================
+     1. ✏️  CUSTOMISE ME — the only block you need to touch for the words
+     ======================================================================= */
+  var SO = {
+    /* The three worlds, as they appear on the level card and the HUD. */
+    worlds: [
+      { title: "Sunny Meadows",        card: "where every good morning starts" },
+      { title: "Twilight Forest",      card: "the light goes, the path does not" },
+      { title: "Castle of Sweethearts", card: "he is at the top of it, waiting" },
+    ],
+
+    /* The line under the title on the difficulty screen. */
+    tagline: "a quest, three worlds, and a prince at the end",
+
+    /* Shown once, the first time she ever presses play. */
+    howTo: [
+      ["←  →", "run"],
+      ["SPACE / ↑", "jump — hold it longer to jump higher"],
+      ["↓", "duck"],
+      ["ESC / ❚❚", "pause, and change the difficulty"],
+      ["", "land on a critter to bop it. Collect hearts. Find the secrets."],
+    ],
+
+    /* The castle scene at the very end. Replace every line of this. */
+    ending: {
+      kicker: "and there he was —",
+      lines: [
+        "[Your first line goes here — the one you want her to read first.]",
+        "[And the second. Take the whole screen if you want it.]",
+        "[Something only the two of you would understand.]",
+      ],
+      signOff: "— Anwar 💗",
+      /* The joke the last castle in Mario always makes, turned around. */
+      notAnotherCastle: "and this time, the prince really was in this castle.",
+    },
+  };
+
+  /* =======================================================================
+     2. TUNING — every number that decides how she feels to control.
+        Units are pixels and seconds, at the game's own 320x180 scale, so
+        one tile is 16 and a comfortable jump clears about three and a half
+        of them. Change these first; almost every complaint about a
+        platformer is one of these six numbers.
+     ======================================================================= */
+  var TUNE = {
+    tile:        16,
+    gravityUp:   800,   // while rising — lower than falling, so the arc floats
+    gravityDown: 1150,  // while falling — higher, so she drops with weight
+    jumpVel:     300,   // straight up out of a standing jump  (~56px of air)
+    jumpCut:     0.42,  // let go early and the rise is cut to this fraction
+    runAccel:    900,
+    airAccel:    620,
+    maxRun:      130,
+    friction:    1300,
+    airDrag:     260,
+    maxFall:     420,
+    stompVel:    250,   // the bounce off a defeated enemy
+    stompBoost:  330,   // ...if she is still holding jump when she lands
+    coyote:      0.10,  // grace after walking off a ledge
+    buffer:      0.12,  // grace for pressing jump just before landing
+    invuln:      1.5,   // flashing seconds after taking a hit
+    enemySpeed:  34,
+    flyerSpeed:  46,
+    guardSpeed:  52,
+    moverSpeed:  36,
+    boostMul:    1.32,  // what the love boost multiplies run speed by
+    boostTime:   9,
+    starTime:    9,
+    scores:      { heart: 100, stomp: 200, block: 50, secret: 500, boss: 3000, timeBonus: 15, lifeBonus: 500 },
+  };
+
+  /* =======================================================================
+     3. DIFFICULTY — read by every system, so tuning a mode is one line.
+        `pitSafety` is the promise made on Easy: falling never kills, a
+        cloud catches her and puts her back on the last ground she stood on.
+     ======================================================================= */
+  var DIFF = {
+    easy: {
+      label: "Easy", blurb: "5 lives, a soft landing, a ribbon in every world",
+      lives: 5, enemyMul: 0.72, gravityMul: 0.92, jumpMul: 1.06,
+      coyoteMul: 1.7, bufferMul: 1.6, invulnMul: 1.5,
+      pitSafety: true, checkpoints: true, hardOnly: false, mediumUp: false,
+      timeLimit: 0, timedPlatform: 1.6, bossHits: 3, bossSpeedMul: 0.75,
+    },
+    medium: {
+      label: "Medium", blurb: "3 lives, real pits, the way it is meant to play",
+      lives: 3, enemyMul: 1, gravityMul: 1, jumpMul: 1,
+      coyoteMul: 1, bufferMul: 1, invulnMul: 1,
+      pitSafety: false, checkpoints: true, hardOnly: false, mediumUp: true,
+      timeLimit: 0, timedPlatform: 1.1, bossHits: 3, bossSpeedMul: 1,
+    },
+    hard: {
+      label: "Hard", blurb: "2 lives, a clock, more of everything sharp",
+      lives: 2, enemyMul: 1.35, gravityMul: 1.08, jumpMul: 0.98,
+      coyoteMul: 0.5, bufferMul: 0.5, invulnMul: 0.7,
+      pitSafety: false, checkpoints: false, hardOnly: true, mediumUp: true,
+      timeLimit: [150, 170, 190], timedPlatform: 0.75, bossHits: 4, bossSpeedMul: 1.3,
+    },
+  };
+
+  /* =======================================================================
+     4. LEVELS — each world is a grid of characters, one per 16px tile.
+
+        THE LEGEND (edit the grids freely; anything not listed is empty air)
+
+          .   air                       S   where she starts
+          #   solid ground / wall       G   the goal — a heart-topped pole
+          -   one-way platform          C   checkpoint ribbon
+          B   breakable brick           X   the Heartbreaker (mini-boss)
+          ^   spikes                    ~   moat / lava — deadly to touch
+          o   a heart to collect
+
+          ?   gift block -> a heart     M   gift block -> grow
+          I   gift block -> star        1   gift block -> an extra life
+          P   gift block -> love boost  F   gift block -> wing feather
+              (M I 1 P F standing free in the air are the item itself)
+
+          w   walker                    f   flyer
+          g   castle guard              H   platform that slides sideways
+          V   platform that rides up    T   platform that blinks out
+
+        Two characters are difficulty-gated, so one grid covers all three
+        modes without a second copy of the map:
+
+          ;   a walker that only appears on Medium and Hard
+          ,   spikes that only appear on Hard
+     ======================================================================= */
+  var LEVELS = [
+    {
+      biome: "meadow",
+      rows: [
+      "....................................................................................................................................................................................",
+      ".....................................................................................................................................ooIo...........................................",
+      "............................................................o...o....................................................................----...........................................",
+      ".............................................................o.o............................o.of.................................--.................................................",
+      "....................................o.o.......................o..............................o......................................................................................",
+      "................o...o................o..............................................................................................--....................o...o.....................",
+      ".................o.o.?.........o.o.......BMB....o.o.........................................---...............o.o...o.o...?........................;.......o.o..o.o.................",
+      "..................o.............o...---..........o..........#####.....................---.........---..........o.....o..........--................######....o....o..................",
+      "...........................................................#######...............................................................................########...........................",
+      "...S........................w.........................;...#########.....................................w...................................w...##########...........C......G.......",
+      "################################################...#######################.######.############################...###...#########################################...#################",
+      "################################################...#######################....1...############################...###...#########################################...#################",
+      "################################################...#######################.oooooo.############################...###...#########################################...#################",
+      "################################################...###########################################################...###...#########################################...#################",
+      ],
+    },
+    {
+      biome: "forest",
+      rows: [
+      "............................................................................................................................................o..o........................................",
+      ".............................................................................................................................................oo.........................................",
+      "......................................................................................................................#.......----------------..........................................",
+      "......................................................................................................................#.oooo................----........................................",
+      "......................................................................................................................#.----........................;...................................",
+      "......................................................................................................................#.................#.........----..................................",
+      "......................................................................................................................#.......---.......#...............................................",
+      "......................................................................P...............................................#..............f..#...............................................",
+      "....................................................................ooooo.............................................#............V....#...............----..o..o......................",
+      "....................................................................-----.............................................#.................#......................oo.......................",
+      ".............................o.f..............................................f.......................................#.......---.......#.......................M.......................",
+      "..............................o.................................V.............................o.o.....................#.................#.....................----......................",
+      "...........................................o..o.................................--......o.o....o......................#.---.............#...............................................",
+      "...............o...o.........---............oo..............--...........................o............................#.....f...........#...............................................",
+      "................o.o.?...........................................................................................?.....#.......---.......#...........................----..o..o..........",
+      ".................o......---.......---...................--..................--................TT......................#.................#..................................oo...........",
+      ".........................................H..............................................TT............................#.---.............#...............................................",
+      "...S........w.......................................;...............................w.............................;.....................#...............................C.........G.....",
+      "########################################.........#######################################....##....##.#####.###############################################################....##########",
+      "########################################.........#######################################....##....##.......B....##########################################################....##########",
+      "########################################.........#######################################....##....##.ooooo.B.F.o##########################################################....##########",
+      "########################################.........#######################################....##....########################################################################....##########",
+      ],
+    },
+    {
+      biome: "castle",
+      rows: [
+      "............................................................................................................................................................................................................",
+      "............................................................................................................................................................................................................",
+      ".........................................................................................................................o...o..............................................................................",
+      "..........................................................................................................................o.o...................................................#.....................#.....",
+      "...........................................................................................................................o....................o.o.............................#.....................#.....",
+      "...................................................o..o.....................o..o............o.o..................................................o.f............................#.....................#.....",
+      "........................o..o........................oo.......................oo.......o.o....o...........o.o....o.o..........V..................................................#.....................#.....",
+      ".........................oo...................................................f........o..................o......o...............................--..................oo.........#.....................#.....",
+      "..............o..o.?......................................BIB...............----.................................................M..................................---.........#...--............--..#.....",
+      "...............oo........--.............---.......H.........................................TT............--....---.....H....................--......--...H.....................#.....................#.....",
+      "......................................................................................TT..............................................................................................................#.....",
+      "...S......g.....................^^...,.......g............................g.......,...............C....^^....^^..g..,.................g.^.g.....................;.........C...............X.......G...#.....",
+      "########################~~~~######################~~~~~~########.#####.###############~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
+      "########################~~~~######################~~~~~~########.......B...###########~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
+      "########################~~~~######################~~~~~~########.ooooo.B.1.###########~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
+      "########################~~~~######################~~~~~~##############################~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
+      ],
+    },
+  ];
+
+  /* =======================================================================
+     5. PALETTES — one per world. Brighter and more saturated than the rest
+        of the site on purpose: the adventure already keeps its own pixel
+        palette, and an arcade game wants candy, not parchment.
+     ======================================================================= */
+
+  /* Ouissy herself never changes colour, whichever world she is in. */
+  var OUI = {
+    ink:    "#3d2340",
+    skin:   "#ffd9c4", skinSh: "#f0b096",
+    hair:   "#5c3352", hairMid: "#7d4770", hairHi: "#a3679a",
+    dress:  "#ff9ec4", dressSh: "#df6f9f", dressHi: "#ffc8de",
+    blouse: "#fffaf5", blouseSh: "#ffe1ec",
+    bow:    "#ff5f95", bowHi: "#ffb0cd",
+    boot:   "#8c4569", bootHi: "#ad5c84",
+    blush:  "#ff8fae",
+    star:   "#fff0a0",
+    crown:  "#ffd166",
+  };
+
+  var BIOME = {
+    meadow: {
+      sky:  [{ p: 0, c: "#8fe3ff" }, { p: .45, c: "#bdf0ff" }, { p: 1, c: "#eafcff" }],
+      far:  ["#bff0d8", "#9de0c2", "#7fcaa9"],          // distant hills
+      mid:  ["#8ee5a8", "#66cf8a", "#48ab6c"],          // nearer hills + trees
+      grass:["#8ff0a8", "#5fd684", "#3fae61", "#2c8347"],
+      dirt: ["#f0c48a", "#d69a5c", "#b0783f", "#8a5a2c"],
+      brick:["#ffd9a8", "#e8ac6f", "#c1854c"],
+      stone:["#e6f2ff", "#c2d8ee", "#9db8d4"],
+      cloud:["#ffffff", "#eaf7ff", "#cfe9fb"],
+      accent:"#ffe27a",
+      hazard:["#7fd8ff", "#4fb6ee"],
+    },
+    forest: {
+      sky:  [{ p: 0, c: "#3b2a63" }, { p: .38, c: "#7a4a86" }, { p: .68, c: "#d1738f" }, { p: 1, c: "#ffb28a" }],
+      far:  ["#4a3a72", "#3a2c5c", "#2d2148"],
+      mid:  ["#38566a", "#2b4354", "#1f3240"],
+      grass:["#7fd4a0", "#46a473", "#2e7a55", "#1e5a3e"],
+      dirt: ["#a97fbe", "#7d5590", "#5c3d6c", "#412a4e"],
+      brick:["#c9a6dd", "#9a76b0", "#6f5183"],
+      stone:["#d8cff0", "#ab9fcc", "#8074a6"],
+      cloud:["#ffd3c0", "#f0aebb", "#c98ba6"],
+      accent:"#ffe8a0",
+      hazard:["#8fe0ff", "#57b2e0"],
+    },
+    castle: {
+      sky:  [{ p: 0, c: "#1e1233" }, { p: .42, c: "#3d1c46" }, { p: .78, c: "#7a2450" }, { p: 1, c: "#c03a63" }],
+      far:  ["#3a2350", "#2c1a3e", "#1f1230"],
+      mid:  ["#5a3a68", "#452c52", "#32203c"],
+      grass:["#c9a0d8", "#9a72ac", "#755488", "#553a66"],
+      dirt: ["#8f6fa8", "#6b4f80", "#4d375e", "#332444"],
+      brick:["#b58fce", "#8a68a4", "#63487a"],
+      stone:["#e0cff0", "#b09ad0", "#8574a8"],
+      cloud:["#ff9ec0", "#e0729c", "#b04f78"],
+      accent:"#ffcf6a",
+      hazard:["#ff8fb8", "#ff4d7d", "#d42a5c"],
+    },
+  };
+
+  /* =======================================================================
+     6. PIXEL HELPERS — the same primitives the rest of the site draws with,
+        kept local so this file has no load-order dependency on script.js.
+     ======================================================================= */
+  var BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+
+  function px(c, x, y, w, h, col) {
+    c.fillStyle = col;
+    c.fillRect(x | 0, y | 0, Math.max(1, w | 0), Math.max(1, h | 0));
+  }
+
+  /* Vertical ordered-dither gradient — pixel art's honest sky. */
+  function ditherSky(c, x0, y0, w, h, stops) {
+    for (var y = 0; y < h; y++) {
+      var t = y / (h - 1 || 1), i = 0;
+      while (i < stops.length - 2 && t > stops[i + 1].p) i++;
+      var a = stops[i], b = stops[i + 1];
+      var lt = (t - a.p) / ((b.p - a.p) || 1);
+      for (var x = 0; x < w; x++) {
+        c.fillStyle = lt > (BAYER[y & 3][x & 3] + 0.5) / 16 ? b.c : a.c;
+        c.fillRect(x0 + x, y0 + y, 1, 1);
+      }
+    }
+  }
+
+  /* A shaded ellipse: the building block of every soft form here. */
+  function blob(c, cx, cy, rx, ry, tones, lx, ly) {
+    lx = lx === undefined ? -0.5 : lx; ly = ly === undefined ? -0.6 : ly;
+    for (var y = -ry; y <= ry; y++) {
+      for (var x = -rx; x <= rx; x++) {
+        var d = (x * x) / (rx * rx) + (y * y) / (ry * ry);
+        if (d > 1) continue;
+        var lit = (x / rx) * lx + (y / ry) * ly;
+        var idx = lit > 0.34 ? 0 : lit > -0.05 ? 1 : lit > -0.5 ? 2 : 3;
+        c.fillStyle = tones[Math.min(idx, tones.length - 1)];
+        c.fillRect((cx + x) | 0, (cy + y) | 0, 1, 1);
+      }
+    }
+  }
+
+  /* A filled ellipse in one flat colour — used for outlines under blobs. */
+  function oval(c, cx, cy, rx, ry, col) {
+    for (var y = -ry; y <= ry; y++)
+      for (var x = -rx; x <= rx; x++)
+        if ((x * x) / (rx * rx) + (y * y) / (ry * ry) <= 1) px(c, cx + x, cy + y, 1, 1, col);
+  }
+
+  /* A heart, the shape this whole game is made of. */
+  function heart(c, cx, cy, r, col, hi) {
+    for (var y = -r; y <= r; y++) {
+      for (var x = -r - 1; x <= r + 1; x++) {
+        var fx = x / (r + 0.6), fy = y / (r + 0.2) + 0.32;
+        // the classic implicit heart curve, sampled on the pixel grid
+        var v = Math.pow(fx * fx + fy * fy - 0.36, 3) - fx * fx * fy * fy * fy * 0.34;
+        if (v <= 0) px(c, cx + x, cy + y, 1, 1, col);
+      }
+    }
+    if (hi) { px(c, cx - r * 0.45, cy - r * 0.35, 1, 1, hi); px(c, cx - r * 0.45 + 1, cy - r * 0.35, 1, 1, hi); }
+  }
+
+  function spriteCanvas(w, h) {
+    var c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    var ctx = c.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    return { c: c, ctx: ctx };
+  }
+
+  /* deterministic little RNG so a level looks the same every time */
+  function seeded(str) {
+    var h = 1779033703 ^ str.length;
+    for (var i = 0; i < str.length; i++) {
+      h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+      h = (h << 13) | (h >>> 19);
+    }
+    return function () {
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      return ((h ^= h >>> 16) >>> 0) / 4294967296;
+    };
+  }
+
+  var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+
+  /* =======================================================================
+     7. SPRITES — Ouissy first, then everything that gets in her way.
+
+        Ouissy is built out of parts rather than a fixed pixel map, so a
+        frame is only a set of offsets: the head bobs, the skirt swings,
+        the arms swing against the legs. That is what makes the run read
+        as a run instead of two pictures swapping.
+     ======================================================================= */
+
+  /* --- the bow, drawn wherever it is asked for ------------------------- */
+  function bow(c, x, y, s) {
+    var B = OUI.bow, Bh = OUI.bowHi, K = OUI.ink;
+    px(c, x - 1, y - 1, 3 + s, 1, K);
+    px(c, x - 1, y + 2, 3 + s, 1, K);
+    px(c, x, y, 2, 2, B); px(c, x + 1 + s, y, 2, 2, B);       // the two loops
+    px(c, x, y, 1, 1, Bh); px(c, x + 1 + s, y, 1, 1, Bh);
+    px(c, x + 1, y, 1 + s, 2, OUI.bowHi);                      // the knot
+    px(c, x + 1, y + 1, 1 + s, 1, B);
+  }
+
+  /* --- one Ouissy frame ------------------------------------------------
+     pose: idle | run | jump | fall | duck | hurt | win
+     k:    the frame index inside that pose
+     big:  the glow-up state, taller and with a little crown
+     ---------------------------------------------------------------- */
+  function paintOuissy(pose, k, big) {
+    var W = big ? 16 : 14, H = big ? 24 : 18;
+    var s = spriteCanvas(W, H), c = s.ctx;
+    var K = OUI.ink, S = OUI.skin, Ss = OUI.skinSh, Hd = OUI.hair, Hm = OUI.hairMid, Hh = OUI.hairHi;
+    var D = OUI.dress, Dd = OUI.dressSh, Dh = OUI.dressHi, Wb = OUI.blouse;
+
+    var cx = W >> 1;
+    var headTop = big ? 1 : 1;
+    var headH   = big ? 11 : 9;             // hair cap + face
+    var bodyTop = headTop + headH - 1;
+    var bootRow = H - 1;
+    var legTop  = bootRow - (big ? 3 : 2);
+
+    /* the whole body bobs a pixel on the run, and squashes when ducking */
+    var bob = pose === "run" ? (k === 1 ? 1 : k === 3 ? 1 : 0) : pose === "idle" ? (k ? 1 : 0) : 0;
+    var squash = pose === "duck" ? 4 : 0;
+    var oy = bob + squash;
+
+    /* ---- twin tails, behind everything --------------------------------- */
+    var swing = pose === "run" ? [0, -1, 0, 1][k % 4] : pose === "jump" ? -1 : pose === "fall" ? 1 : 0;
+    var tailY = headTop + 3 + oy;
+    var tailH = (big ? 8 : 6);
+    for (var side = 0; side < 2; side++) {
+      var sx = side ? W - 2 : 0;
+      for (var ty = 0; ty < tailH; ty++) {
+        var wob = Math.round(Math.sin(ty * 0.7) * 0.6) + (ty > tailH - 3 ? swing : 0);
+        px(c, sx + wob, tailY + ty, 2, 1, ty < 2 ? Hm : ty < tailH - 2 ? Hd : Hm);
+        px(c, sx + wob + (side ? 1 : 0), tailY + ty, 1, 1, side ? Hd : Hh);
+      }
+      bow(c, sx + (side ? -1 : 0), tailY - 1, 0);
+    }
+
+    /* ---- the head: hair cap, face, fringe ------------------------------ */
+    var hcy = headTop + (big ? 5 : 4) + oy;
+    var hrx = big ? 5 : 4.4, hry = big ? 5 : 4.4;
+    oval(c, cx, hcy, hrx + 1, hry + 1, K);                       // outline
+    blob(c, cx, hcy, hrx, hry, [Hh, Hm, Hd, Hd]);                // hair mass
+    /* the face sits inside the hair, low, so the fringe reads */
+    blob(c, cx, hcy + 1.4, hrx - 1.2, hry - 1.6, [S, S, Ss, Ss]);
+    /* fringe: a lit sweep across the top of the face */
+    for (var fx = -hrx + 1; fx <= hrx - 1; fx++) {
+      var fy = hcy - hry + 2 + Math.round(Math.abs(fx) * 0.35);
+      px(c, cx + fx, fy, 1, 1, fx < 0 ? Hh : Hm);
+      px(c, cx + fx, fy + 1, 1, 1, Hd);
+    }
+
+    /* eyes — closed on the idle blink and when hurt */
+    var eyeY = hcy + (big ? 2 : 1);
+    var blink = (pose === "idle" && k === 2) || pose === "hurt";
+    var ex = big ? 2 : 2;
+    if (blink) {
+      px(c, cx - ex - 1, eyeY, 3, 1, K); px(c, cx + ex - 1, eyeY, 3, 1, K);
+    } else {
+      px(c, cx - ex - 1, eyeY - 1, 2, 3, K); px(c, cx + ex, eyeY - 1, 2, 3, K);
+      px(c, cx - ex - 1, eyeY - 1, 1, 1, "#ffffff"); px(c, cx + ex, eyeY - 1, 1, 1, "#ffffff");
+    }
+    /* blush + mouth */
+    px(c, cx - ex - 2, eyeY + 2, 2, 1, OUI.blush);
+    px(c, cx + ex + 1, eyeY + 2, 2, 1, OUI.blush);
+    if (pose === "hurt") { px(c, cx - 1, eyeY + 3, 3, 1, K); px(c, cx, eyeY + 4, 1, 1, K); }
+    else if (pose === "win" || pose === "jump") { px(c, cx - 1, eyeY + 3, 3, 1, K); px(c, cx, eyeY + 2, 1, 1, K); }
+    else px(c, cx, eyeY + 3, 1, 1, K);
+
+    /* the crown only the glow-up wears */
+    if (big) {
+      var cy0 = hcy - hry - 1;
+      px(c, cx - 3, cy0, 7, 1, K);
+      px(c, cx - 3, cy0 - 1, 1, 1, OUI.crown); px(c, cx, cy0 - 2, 1, 1, OUI.crown);
+      px(c, cx + 3, cy0 - 1, 1, 1, OUI.crown);
+      px(c, cx - 2, cy0, 5, 1, OUI.crown);
+    }
+
+    /* ---- the dress ------------------------------------------------------ */
+    var bt = bodyTop + oy, bh = legTop - bt;
+    var flare = big ? 6 : 5;
+    for (var y = 0; y < bh; y++) {
+      var t = y / (bh - 1 || 1);
+      var half = Math.round(2.2 + t * (flare - 2.2)) + (pose === "duck" ? 1 : 0);
+      var wob = pose === "run" ? [0, 1, 0, -1][k % 4] * (t > .5 ? 1 : 0) : 0;
+      px(c, cx - half - 1 + wob, bt + y, half * 2 + 3, 1, K);   // outline
+      px(c, cx - half + wob, bt + y, half * 2 + 1, 1, y < 2 ? Wb : D);
+      if (y >= 2) {
+        px(c, cx - half + wob, bt + y, 1, 1, Dh);
+        px(c, cx + half + wob, bt + y, 1, 1, Dd);
+        if (y % 3 === 2) px(c, cx - half + 2 + wob, bt + y, 1, 1, Dh);
+      }
+    }
+    /* the pinafore straps over the blouse */
+    px(c, cx - 2, bt, 1, 3, D); px(c, cx + 2, bt, 1, 3, D);
+    /* a heart on the front of the skirt */
+    heart(c, cx, bt + bh - 3, big ? 2 : 1.6, Dh, "#ffffff");
+
+    /* ---- arms ----------------------------------------------------------- */
+    var armSwing = pose === "run" ? [0, -2, 0, 2][k % 4]
+                 : pose === "jump" ? -3 : pose === "fall" ? 2 : pose === "win" ? -4 : 0;
+    var armY = bt + 1;
+    var reach = big ? 6 : 5;
+    for (var a = 0; a < 2; a++) {
+      var dir = a ? 1 : -1;
+      var ay = armY + (a ? armSwing : -armSwing) * 0.4;
+      px(c, cx + dir * reach - (a ? 0 : 1), ay | 0, 2, 4, K);
+      px(c, cx + dir * reach - (a ? 0 : 1), (ay | 0) + (a ? armSwing > 0 ? 0 : 0 : 0), 2, 3, S);
+      px(c, cx + dir * reach - (a ? 0 : 1), (ay | 0) + 3, 2, 1, Ss);
+    }
+
+    /* ---- legs and boots -------------------------------------------------- */
+    if (pose !== "duck") {
+      var spread = pose === "run" ? [1, 3, 1, 3][k % 4]
+                 : pose === "jump" ? 1 : pose === "fall" ? 3 : 2;
+      var lift   = pose === "run" ? [0, 1, 0, 1][k % 4] : pose === "jump" ? 2 : 0;
+      for (var g = 0; g < 2; g++) {
+        var d2 = g ? 1 : -1;
+        var lx = cx + d2 * spread - (g ? 0 : 1);
+        var ly = legTop + oy - (g === (k % 4 === 1 ? 0 : 1) ? lift : 0);
+        px(c, lx, ly, 2, bootRow - ly, S);
+        px(c, lx + (g ? 1 : 0), ly, 1, bootRow - ly, Ss);
+        px(c, lx - 1, bootRow - 1, 4, 2, K);
+        px(c, lx - 1, bootRow - 1, 4, 1, OUI.bootHi);
+        px(c, lx - 1, bootRow, 4, 1, OUI.boot);
+      }
+    } else {
+      px(c, cx - 4, bootRow - 1, 9, 2, K);
+      px(c, cx - 3, bootRow - 1, 7, 1, OUI.bootHi);
+    }
+    return s.c;
+  }
+
+  /* Every frame Ouissy will ever need, baked once at load. */
+  var OUISSY = {};
+  (function bakeOuissy() {
+    ["idle", "run", "jump", "fall", "duck", "hurt", "win"].forEach(function (pose) {
+      var n = pose === "run" ? 4 : pose === "idle" ? 4 : 1;
+      OUISSY[pose] = { small: [], big: [] };
+      for (var k = 0; k < n; k++) {
+        OUISSY[pose].small.push(paintOuissy(pose, k, false));
+        OUISSY[pose].big.push(paintOuissy(pose, k, true));
+      }
+    });
+  })();
+  /* --- the walker: a grumpy little cloud that will not move out of the way */
+  function paintWalker(k, squashed) {
+    var s = spriteCanvas(16, 14), c = s.ctx;
+    var K = "#3d2340";
+    if (squashed) {                      // the pancake, for one beat after a stomp
+      px(c, 2, 10, 12, 1, K);
+      blob(c, 8, 12, 6, 2, ["#ffffff", "#e6e8f5", "#c4c8de", "#a6abc6"]);
+      px(c, 4, 11, 2, 1, K); px(c, 10, 11, 2, 1, K);
+      return s.c;
+    }
+    var bob = k ? 1 : 0;
+    blob(c, 8, 6 + bob, 6, 4, ["#ffffff", "#eef1fb", "#ccd2e8", "#adb4d0"]);
+    blob(c, 4, 8 + bob, 3.4, 2.6, ["#ffffff", "#eef1fb", "#ccd2e8", "#adb4d0"]);
+    blob(c, 12, 8 + bob, 3.4, 2.6, ["#ffffff", "#eef1fb", "#ccd2e8", "#adb4d0"]);
+    px(c, 2, 10 + bob, 12, 1, "#c4cae0");                    // the flat underside
+    /* a face that is cross rather than frightening */
+    px(c, 5, 6 + bob, 2, 2, K); px(c, 9, 6 + bob, 2, 2, K);
+    px(c, 5, 5 + bob, 3, 1, K); px(c, 9, 5 + bob, 3, 1, K);   // the frown of the brows
+    px(c, 6, 9 + bob, 4, 1, K);
+    px(c, 3, 8 + bob, 2, 1, "#ffb0c8"); px(c, 11, 8 + bob, 2, 1, "#ffb0c8");
+    /* two little feet, out of step with each other */
+    px(c, 4 + (k ? 1 : 0), 12, 3, 2, "#8ea0c8");
+    px(c, 9 - (k ? 1 : 0), 12, 3, 2, "#8ea0c8");
+    return s.c;
+  }
+
+  /* --- the flyer: a heart with wings, which is only cute until it is level
+         with your head */
+  function paintFlyer(k) {
+    var s = spriteCanvas(18, 14), c = s.ctx;
+    var K = "#3d2340", up = k < 2;
+    var wy = up ? 3 : 7;
+    for (var w = 0; w < 2; w++) {
+      var d = w ? 1 : -1;
+      for (var i = 0; i < 5; i++) {
+        px(c, 9 + d * (4 + i), wy + (up ? i : -i) * 0.6, 2, 3 - (i > 2 ? 1 : 0), i < 2 ? "#ffffff" : "#ffe6f2");
+        px(c, 9 + d * (4 + i), wy + (up ? i : -i) * 0.6, 1, 1, "#ffd0e6");
+      }
+    }
+    heart(c, 9, 8, 4.6, K);
+    heart(c, 9, 8, 3.8, "#ff6f9e", "#ffc0d8");
+    px(c, 7, 7, 1, 2, K); px(c, 10, 7, 1, 2, K);
+    px(c, 8, 10, 3, 1, K);
+    return s.c;
+  }
+
+  /* --- the castle guard: a thistle in armour, faster and grumpier */
+  function paintGuard(k) {
+    var s = spriteCanvas(16, 16), c = s.ctx;
+    var K = "#3d2340", step = k ? 1 : 0;
+    px(c, 4, 14 - step, 3, 2, "#5c4470"); px(c, 9, 14 + step - 1, 3, 2, "#5c4470");
+    oval(c, 8, 8, 5, 5, K);
+    blob(c, 8, 8, 4, 4, ["#e2c9f2", "#b79ad4", "#8f74ae", "#6c5488"]);
+    /* the helmet, with a heart-shaped visor slot */
+    px(c, 3, 4, 10, 3, "#8f74ae"); px(c, 3, 4, 10, 1, "#d6bff0");
+    px(c, 5, 7, 6, 2, K);
+    px(c, 6, 7, 1, 1, "#ff6f9e"); px(c, 9, 7, 1, 1, "#ff6f9e");
+    /* the plume */
+    px(c, 7, 1, 2, 3, "#ff6f9e"); px(c, 6, 2, 1, 2, "#ff9ec4"); px(c, 9, 2, 1, 2, "#ff9ec4");
+    /* thorns down the back */
+    for (var i = 0; i < 3; i++) px(c, 13, 8 + i * 2, 2, 1, "#6c5488");
+    return s.c;
+  }
+
+  /* --- the Heartbreaker: a cracked heart in a crown, three stomps deep --- */
+  function paintBoss(k, hurtFlash) {
+    var s = spriteCanvas(40, 34), c = s.ctx;
+    var K = "#3d2340";
+    var body = hurtFlash ? "#ffffff" : "#e0426e";
+    var hi   = hurtFlash ? "#ffffff" : "#ff7ba0";
+    var sh   = hurtFlash ? "#e8e8f0" : "#a52a4e";
+    var squat = k === 1 ? 2 : 0;                   // he crouches before he hops
+    heart(c, 20, 20 + squat, 15, K);
+    heart(c, 20, 20 + squat, 13.4, body, null);
+    /* three tones so he is not a flat shape */
+    for (var y = -12; y < 12; y++)
+      for (var x = -13; x < 0; x++) {
+        var f = (x + 13) / 13;
+        if (f < 0.35 && ((BAYER[(y + 20) & 3][(x + 20) & 3] + .5) / 16) > f * 2.2)
+          px(c, 20 + x, 20 + y + squat, 1, 1, hi);
+      }
+    for (var y2 = 2; y2 < 14; y2++)
+      for (var x2 = 2; x2 < 13; x2++)
+        if (((x2 * x2 + y2 * y2) < 190) && ((BAYER[y2 & 3][x2 & 3] + .5) / 16) < .5)
+          px(c, 20 + x2, 20 + y2 + squat, 1, 1, sh);
+    /* the crack down the middle — it opens a little with every hit */
+    var crack = 1 + (k === 2 ? 1 : 0);
+    for (var cy = -8; cy < 12; cy++)
+      px(c, 20 + Math.round(Math.sin(cy * 0.8) * 2), 20 + cy + squat, crack, 1, "#5c1730");
+    /* the crown */
+    px(c, 12, 4 + squat, 17, 3, K);
+    px(c, 13, 5 + squat, 15, 2, OUI.crown);
+    px(c, 13, 2 + squat, 2, 3, OUI.crown); px(c, 20, 0 + squat, 2, 4, OUI.crown);
+    px(c, 26, 2 + squat, 2, 3, OUI.crown);
+    px(c, 20, 5 + squat, 1, 1, "#ff6f9e");
+    /* the face */
+    px(c, 13, 15 + squat, 3, 4, K); px(c, 24, 15 + squat, 3, 4, K);
+    px(c, 13, 14 + squat, 4, 1, K); px(c, 23, 14 + squat, 4, 1, K);
+    px(c, 14, 15 + squat, 1, 1, "#ffffff"); px(c, 25, 15 + squat, 1, 1, "#ffffff");
+    px(c, 16, 24 + squat, 8, 2, K);
+    px(c, 17, 23 + squat, 2, 1, K); px(c, 21, 23 + squat, 2, 1, K);
+    return s.c;
+  }
+
+  /* --- the pickups ----------------------------------------------------- */
+  function paintHeartPickup(k) {
+    var s = spriteCanvas(12, 12), c = s.ctx;
+    var r = 4.2 + (k === 1 ? 0.5 : k === 3 ? -0.4 : 0);
+    heart(c, 6, 6, r + 0.9, "#3d2340");
+    heart(c, 6, 6, r, "#ff5f95", "#ffd6e6");
+    if (k === 1) { px(c, 2, 2, 1, 1, "#fff6c0"); px(c, 9, 3, 1, 1, "#fff6c0"); }
+    return s.c;
+  }
+
+  /* Every power-up shares a frame so they read as a set. */
+  function paintPower(kind, k) {
+    var s = spriteCanvas(14, 14), c = s.ctx;
+    var K = "#3d2340", pop = k === 1 ? 1 : 0;
+    if (kind === "grow") {                       // a heart-shaped sweet
+      heart(c, 7, 8 - pop, 5.6, K);
+      heart(c, 7, 8 - pop, 4.8, "#ff9ec4", "#ffe6f2");
+      px(c, 4, 6 - pop, 6, 1, "#fffaf5"); px(c, 5, 9 - pop, 4, 1, "#ffd6e6");
+      px(c, 6, 1 - pop, 2, 3, "#8c4569");        // the little wrapper twist
+    } else if (kind === "star") {                // the sparkle that makes her safe
+      var pts = [[7, 0], [8, 5], [13, 6], [9, 9], [11, 14], [7, 11], [3, 14], [5, 9], [1, 6], [6, 5]];
+      c.fillStyle = K; c.beginPath();
+      pts.forEach(function (p, i) { i ? c.lineTo(p[0], p[1] - pop) : c.moveTo(p[0], p[1] - pop); });
+      c.closePath(); c.fill();
+      c.fillStyle = k % 2 ? "#fff6a8" : "#ffe27a"; c.beginPath();
+      pts.forEach(function (p, i) {
+        var x = 7 + (p[0] - 7) * 0.74, y = 7 + (p[1] - 7) * 0.74 - pop;
+        i ? c.lineTo(x, y) : c.moveTo(x, y);
+      });
+      c.closePath(); c.fill();
+      px(c, 6, 5 - pop, 2, 2, "#ffffff");
+    } else if (kind === "life") {                // a second chance
+      heart(c, 7, 7 - pop, 6, K);
+      heart(c, 7, 7 - pop, 5.2, "#6fd08a", "#c8f4d8");
+      px(c, 5, 5 - pop, 1, 4, "#ffffff"); px(c, 8, 5 - pop, 1, 4, "#ffffff");
+      px(c, 6, 8 - pop, 2, 1, "#ffffff");
+    } else if (kind === "boost") {               // the love boost
+      heart(c, 8, 8 - pop, 4.4, K);
+      heart(c, 8, 8 - pop, 3.6, "#ff6f4d", "#ffc9a8");
+      for (var i = 0; i < 3; i++) px(c, 0, 4 + i * 3 - pop, 4 - i, 1, "#ffd166");
+    } else {                                     // the wing feather
+      px(c, 7, 2 - pop, 1, 10, "#c9b48e");
+      for (var w = 0; w < 9; w++) {
+        var ww = 4 - Math.abs(w - 4) * 0.5;
+        px(c, 7 - ww, 3 + w - pop, ww, 1, "#ffffff");
+        px(c, 8, 3 + w - pop, ww, 1, "#e6ecff");
+      }
+      px(c, 6, 1 - pop, 3, 1, "#ffd6e6");
+    }
+    return s.c;
+  }
+
+  /* Every sprite the game will ever draw, baked once. */
+  var ART = {
+    walker: [paintWalker(0), paintWalker(1)],
+    walkerSquash: paintWalker(0, true),
+    flyer: [paintFlyer(0), paintFlyer(1), paintFlyer(2), paintFlyer(3)],
+    guard: [paintGuard(0), paintGuard(1)],
+    boss: [paintBoss(0), paintBoss(1), paintBoss(2)],
+    bossHurt: [paintBoss(0, true), paintBoss(1, true), paintBoss(2, true)],
+    heart: [paintHeartPickup(0), paintHeartPickup(1), paintHeartPickup(2), paintHeartPickup(3)],
+    power: {
+      grow: [paintPower("grow", 0), paintPower("grow", 1)],
+      star: [paintPower("star", 0), paintPower("star", 1)],
+      life: [paintPower("life", 0), paintPower("life", 1)],
+      boost: [paintPower("boost", 0), paintPower("boost", 1)],
+      wing: [paintPower("wing", 0), paintPower("wing", 1)],
+    },
+  };
+
+  /* =======================================================================
+     8. WORLD ART — the tile atlas and the parallax backdrops.
+
+        Both are painted once when a level loads and then only blitted, so
+        a frame costs almost nothing however busy the screen looks. The
+        atlas is a strip of 16x16 cells; `TILE_INDEX` says which cell each
+        legend character uses.
+     ======================================================================= */
+  var T = TUNE.tile;
+  var TILE_INDEX = { "#": 0, "-": 1, "B": 2, "?": 3, "^": 4, "~": 5, "#top": 6, "?used": 7 };
+
+  function buildAtlas(biome) {
+    var P = BIOME[biome];
+    var s = spriteCanvas(T * 8, T), c = s.ctx;
+    var rnd = seeded("atlas" + biome);
+
+    /* 0 — solid ground, the body of it (no lit top; that is cell 6) */
+    px(c, 0, 0, T, T, P.dirt[1]);
+    for (var i = 0; i < 26; i++) {
+      var x = (rnd() * T) | 0, y = (rnd() * T) | 0;
+      px(c, x, y, 1, 1, rnd() > .5 ? P.dirt[2] : P.dirt[3]);
+    }
+    px(c, 0, 0, T, 1, P.dirt[0]);
+    px(c, 0, T - 1, T, 1, P.dirt[3]);
+
+    /* 6 — the same block, but with the grass/moss crown for a surface tile */
+    c.drawImage(s.c, 0, 0, T, T, T * 6, 0, T, T);
+    px(c, T * 6, 0, T, 3, P.grass[1]);
+    px(c, T * 6, 0, T, 1, P.grass[0]);
+    for (var g = 0; g < T; g += 2) px(c, T * 6 + g, 3, 1, 1 + ((g * 7) % 3), P.grass[2]);
+    for (var g2 = 1; g2 < T; g2 += 4) px(c, T * 6 + g2, 0, 1, 1, P.grass[0]);
+
+    /* 1 — the one-way platform: a slim ledge you can jump up through */
+    px(c, T, 2, T, 4, P.brick[1]);
+    px(c, T, 2, T, 1, P.brick[0]);
+    px(c, T, 5, T, 1, P.brick[2]);
+    for (var v = 0; v < T; v += 4) px(c, T + v, 3, 1, 2, P.brick[2]);
+    px(c, T + 1, 6, 2, 1, P.brick[2]); px(c, T + T - 3, 6, 2, 1, P.brick[2]);
+
+    /* 2 — breakable brick */
+    px(c, T * 2, 0, T, T, P.brick[1]);
+    px(c, T * 2, 0, T, 1, P.brick[0]);
+    px(c, T * 2, T - 1, T, 1, P.brick[2]);
+    px(c, T * 2, T / 2 - 1, T, 1, P.brick[2]);
+    px(c, T * 2 + T / 2, 0, 1, T / 2, P.brick[2]);
+    px(c, T * 2 + T / 4, T / 2, 1, T / 2, P.brick[2]);
+    px(c, T * 2 + T * 3 / 4, T / 2, 1, T / 2, P.brick[2]);
+
+    /* 3 — the gift block, with a heart stamped on it */
+    px(c, T * 3, 0, T, T, "#ffcf6a");
+    px(c, T * 3, 0, T, 1, "#ffeaa8"); px(c, T * 3, T - 1, T, 1, "#c98f36");
+    px(c, T * 3, 0, 1, T, "#ffeaa8"); px(c, T * 3 + T - 1, 0, 1, T, "#c98f36");
+    px(c, T * 3 + 1, 1, 2, 2, "#fff6d0"); px(c, T * 3 + T - 3, T - 3, 2, 2, "#a9741f");
+    heart(c, T * 3 + T / 2, T / 2, 4, "#e0426e", "#ff9ec4");
+
+    /* 7 — a gift block already opened */
+    px(c, T * 7, 0, T, T, "#b98d4e");
+    px(c, T * 7, 0, T, 1, "#d3a86a"); px(c, T * 7, T - 1, T, 1, "#8a6432");
+    px(c, T * 7 + 3, 3, T - 6, T - 6, "#9d7440");
+
+    /* 4 — spikes */
+    px(c, T * 4, T - 3, T, 3, P.stone[2]);
+    for (var sp = 0; sp < 4; sp++) {
+      for (var h = 0; h < 11; h++) {
+        var ww = Math.max(1, 4 - Math.round(h * 0.34));
+        px(c, T * 4 + sp * 4 + 2 - (ww >> 1), T - 3 - h, ww, 1, h > 6 ? "#ffffff" : P.stone[h > 3 ? 0 : 1]);
+      }
+    }
+
+    /* 5 — the moat: this is the top of it, and it ripples in code */
+    px(c, T * 5, 0, T, T, P.hazard[1]);
+    px(c, T * 5, 0, T, 2, P.hazard[0]);
+    if (P.hazard[2]) px(c, T * 5, T - 4, T, 4, P.hazard[2]);
+    return s.c;
+  }
+
+  /* --- the backdrop: three layers that scroll at three speeds ---------- */
+  function buildBackdrop(biome) {
+    var P = BIOME[biome], VW = 320, VH = 180;
+    var rnd = seeded("bg" + biome);
+
+    /* layer 0 — the sky, and whatever hangs in it. Never scrolls. */
+    var sky = spriteCanvas(VW, VH), sc = sky.ctx;
+    ditherSky(sc, 0, 0, VW, VH, P.sky);
+    if (biome === "meadow") {
+      /* a sun, and clouds that will drift on their own layer */
+      for (var y = -14; y <= 14; y++)
+        for (var x = -14; x <= 14; x++) {
+          var d = Math.sqrt(x * x + y * y);
+          if (d <= 9) px(sc, 262 + x, 30 + y, 1, 1, "#fff6c0");
+          else if (d <= 14 && ((BAYER[(30 + y) & 3][(262 + x) & 3] + .5) / 16) < (1 - (d - 9) / 5))
+            px(sc, 262 + x, 30 + y, 1, 1, "#ffe27a");
+        }
+    } else if (biome === "forest") {
+      for (var i = 0; i < 60; i++) {
+        var sx = rnd() * VW, sy = rnd() * 70;
+        px(sc, sx, sy, 1, 1, rnd() > .6 ? "#ffffff" : "#ffe9c8");
+      }
+      /* a low moon, half behind the hills */
+      blob(sc, 54, 44, 11, 11, ["#fff4e0", "#f3dcc4", "#dcc0a8", "#c4a68e"]);
+      blob(sc, 50, 41, 2.4, 2, ["#e8d0b8", "#d8bfa6", "#c8ae96", "#c8ae96"]);
+      blob(sc, 58, 48, 1.8, 1.6, ["#e8d0b8", "#d8bfa6", "#c8ae96", "#c8ae96"]);
+    } else {
+      for (var j = 0; j < 40; j++) px(sc, rnd() * VW, rnd() * 60, 1, 1, rnd() > .5 ? "#ffd6e6" : "#c8a0d8");
+      /* a big low blood-orange moon behind the castle */
+      blob(sc, 250, 40, 16, 16, ["#ffd0a8", "#f0a88a", "#d0806e", "#a85c54"]);
+    }
+
+    /* layer 1 — the far silhouettes. Scrolls slowly. Tiles horizontally. */
+    var farW = 480;
+    var far = spriteCanvas(farW, VH), fc = far.ctx;
+    if (biome === "meadow") {
+      for (var h = 0; h < 5; h++) {
+        var cxh = 40 + h * 100 + rnd() * 40, rw = 60 + rnd() * 50, rh = 30 + rnd() * 24;
+        for (var x2 = -rw; x2 <= rw; x2++) {
+          var yy = 130 - Math.round(Math.sqrt(Math.max(0, 1 - (x2 * x2) / (rw * rw))) * rh);
+          px(fc, cxh + x2, yy, 1, VH - yy, P.far[1]);
+          px(fc, cxh + x2, yy, 1, 2, P.far[0]);
+        }
+      }
+    } else if (biome === "forest") {
+      for (var t2 = 0; t2 < 26; t2++) {
+        var tx = rnd() * farW, th = 44 + rnd() * 46;
+        for (var ty = 0; ty < th; ty++) {
+          var tw = Math.round((ty / th) * 13) + 1;
+          px(fc, tx - tw, 138 - th + ty, tw * 2, 1, P.far[ty > th * .5 ? 1 : 0]);
+        }
+        px(fc, tx - 1, 130, 2, 12, P.far[2]);
+      }
+    } else {
+      /* the castle itself, seen from a long way off */
+      for (var b = 0; b < 7; b++) {
+        var bx = 20 + b * 68 + rnd() * 20, bw = 26 + rnd() * 22, bh = 50 + rnd() * 40;
+        px(fc, bx, 140 - bh, bw, bh, P.far[1]);
+        px(fc, bx, 140 - bh, 1, bh, P.far[0]);
+        for (var w2 = 4; w2 < bw - 4; w2 += 9)
+          for (var wy = 8; wy < bh - 10; wy += 13) px(fc, bx + w2, 140 - bh + wy, 3, 4, "#ffb45c");
+        /* a pointed roof */
+        for (var r3 = 0; r3 < 14; r3++)
+          px(fc, bx + r3 * (bw / 28), 140 - bh - 14 + r3, bw - r3 * (bw / 14), 1, P.far[0]);
+      }
+    }
+
+    /* layer 2 — the near band, just behind the tiles. Scrolls faster. */
+    var midW = 480;
+    var mid = spriteCanvas(midW, VH), mc = mid.ctx;
+    if (biome === "meadow") {
+      for (var m = 0; m < 9; m++) {
+        var mx = rnd() * midW, mh = 26 + rnd() * 18;
+        blob(mc, mx, 150 - mh, 16, mh * .6, [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
+        px(mc, mx - 2, 150 - mh * .4, 4, mh, "#8a5f3a");
+      }
+    } else if (biome === "forest") {
+      for (var m2 = 0; m2 < 14; m2++) {
+        var mx2 = rnd() * midW, mh2 = 40 + rnd() * 30;
+        px(mc, mx2 - 3, 152 - mh2, 6, mh2, P.mid[2]);
+        blob(mc, mx2, 152 - mh2, 22, 13, [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
+        blob(mc, mx2 - 13, 150 - mh2 + 7, 12, 8, [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
+        blob(mc, mx2 + 13, 150 - mh2 + 6, 12, 8, [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
+      }
+    } else {
+      for (var p2 = 0; p2 < 12; p2++) {
+        var px2 = p2 * 42 + 10, ph = 60 + (p2 % 3) * 16;
+        px(mc, px2, 160 - ph, 22, ph, P.mid[1]);
+        px(mc, px2, 160 - ph, 2, ph, P.mid[0]);
+        px(mc, px2 - 2, 160 - ph - 6, 26, 6, P.mid[0]);
+        for (var cr = 0; cr < 26; cr += 6) px(mc, px2 - 2 + cr, 160 - ph - 10, 3, 4, P.mid[0]);
+      }
+    }
+    return { sky: sky.c, far: far.c, mid: mid.c, farW: farW, midW: midW };
+  }
+  /* =======================================================================
+     9. THE LEVEL — turning a grid of characters into tiles and entities.
+
+        Anything that moves, is collected or can be stood on by something
+        other than gravity is lifted OUT of the tile grid and becomes an
+        entity; what is left in the grid is only the static world, which is
+        what makes collision cheap.
+     ======================================================================= */
+
+  var SOLID   = "#B?MI1PF";          // tiles that stop her dead
+  var GIFT    = "?MI1PF";            // tiles that pop something when bumped
+  var GIFT_OF = { "?": "heart", "M": "grow", "I": "star", "1": "life", "P": "boost", "F": "wing" };
+  var LOOSE   = "MI1PF";             // ...the same letters, free-standing, are the item
+
+  var G = null;                      // the whole game state lives here
+
+  function buildLevel(index) {
+    var def = LEVELS[index], rows = def.rows;
+    var h = rows.length, w = rows[0].length;
+    var d = DIFF[G.diff];
+
+    var grid = [];
+    var ents = [], items = [], start = { x: 32, y: 32 }, goal = null, checks = [], boss = null;
+
+    for (var y = 0; y < h; y++) {
+      grid.push(rows[y].split(""));
+      for (var x = 0; x < w; x++) {
+        var ch = grid[y][x];
+        var wx = x * T, wy = y * T;
+
+        /* --- the two difficulty-gated characters ------------------------ */
+        if (ch === ";") { grid[y][x] = "."; if (d.mediumUp) ents.push(mkEnemy("walker", wx, wy)); continue; }
+        if (ch === ",") { grid[y][x] = d.hardOnly ? "^" : "."; continue; }
+
+        switch (ch) {
+          case "S": grid[y][x] = "."; start = { x: wx, y: wy }; break;
+          case "G": grid[y][x] = "."; goal = { x: wx + 4, y: wy, raised: 0 }; break;
+          case "C": grid[y][x] = "."; checks.push({ x: wx, y: wy, taken: false }); break;
+          case "o": grid[y][x] = "."; items.push(mkItem("heart", wx + 2, wy + 2, true)); break;
+          case "w": grid[y][x] = "."; ents.push(mkEnemy("walker", wx, wy)); break;
+          case "f": grid[y][x] = "."; ents.push(mkEnemy("flyer", wx, wy)); break;
+          case "g": grid[y][x] = "."; ents.push(mkEnemy("guard", wx, wy)); break;
+          case "H": grid[y][x] = "."; ents.push(mkMover("H", wx, wy)); break;
+          case "V": grid[y][x] = "."; ents.push(mkMover("V", wx, wy)); break;
+          case "T": grid[y][x] = "."; ents.push(mkMover("T", wx, wy)); break;
+          case "X": grid[y][x] = "."; boss = mkBoss(wx, wy); break;
+          case "M": case "I": case "1": case "P": case "F":
+            /* a power-up letter sitting on solid ground is a gift block;
+               floating on its own it is the item itself */
+            if (!isSolidChar(grid[y + 1] && grid[y + 1][x])) {
+              grid[y][x] = ".";
+              items.push(mkItem(GIFT_OF[ch], wx + 1, wy + 2, true));
+            }
+            break;
+        }
+      }
+    }
+
+    return {
+      w: w, h: h, grid: grid, pxW: w * T, pxH: h * T,
+      ents: ents, items: items, start: start, goal: goal,
+      checks: checks, boss: boss, biome: def.biome,
+      atlas: buildAtlas(def.biome), bg: buildBackdrop(def.biome),
+      secretsFound: 0,
+    };
+  }
+
+  function isSolidChar(ch) { return !!ch && SOLID.indexOf(ch) >= 0; }
+
+  /* ---- tile queries ---------------------------------------------------
+     Outside the level horizontally counts as wall, so she can never walk
+     off the start; outside vertically counts as air, so a pit is a pit. */
+  function tileAt(tx, ty) {
+    var L = G.level;
+    if (tx < 0 || tx >= L.w) return "#";
+    if (ty < 0 || ty >= L.h) return ".";
+    return L.grid[ty][tx];
+  }
+  function solidAt(tx, ty) { return isSolidChar(tileAt(tx, ty)); }
+  function oneWayAt(tx, ty) { return tileAt(tx, ty) === "-"; }
+
+  /* Does this box overlap any solid tile? */
+  function boxHitsSolid(x, y, w, h) {
+    var x0 = Math.floor(x / T), x1 = Math.floor((x + w - 1) / T);
+    var y0 = Math.floor(y / T), y1 = Math.floor((y + h - 1) / T);
+    for (var ty = y0; ty <= y1; ty++)
+      for (var tx = x0; tx <= x1; tx++)
+        if (solidAt(tx, ty)) return true;
+    return false;
+  }
+
+  /* Every deadly tile the box is touching right now. */
+  function boxHitsHazard(x, y, w, h) {
+    var x0 = Math.floor(x / T), x1 = Math.floor((x + w - 1) / T);
+    var y0 = Math.floor(y / T), y1 = Math.floor((y + h - 1) / T);
+    for (var ty = y0; ty <= y1; ty++)
+      for (var tx = x0; tx <= x1; tx++) {
+        var ch = tileAt(tx, ty);
+        if (ch === "~") return "moat";
+        /* spikes only bite the lower two thirds of their tile, so brushing
+           the very top of one while jumping past is forgiving */
+        if (ch === "^" && y + h > ty * T + 5) return "spike";
+      }
+    return null;
+  }
+
+  /* =======================================================================
+     10. PHYSICS
+
+        Move on one axis, resolve on that axis, then the other. Doing both
+        at once is where platformers get their corner bugs, so we never do.
+        `one-way` tiles are only solid when she is falling and her feet
+        were above the top of the tile a moment ago.
+     ======================================================================= */
+  function moveX(b, dx) {
+    b.x += dx;
+    if (!boxHitsSolid(b.x, b.y, b.w, b.h)) return false;
+    var step = dx > 0 ? -1 : 1;
+    while (boxHitsSolid(b.x, b.y, b.w, b.h)) b.x += step;
+    b.vx = 0;
+    return true;
+  }
+
+  function moveY(b, dy, useOneWay) {
+    var prevBottom = b.y + b.h;
+    b.y += dy;
+    var hit = boxHitsSolid(b.x, b.y, b.w, b.h);
+
+    /* one-way ledges: only ever caught from above, and only while falling */
+    if (!hit && useOneWay && dy > 0) {
+      var x0 = Math.floor(b.x / T), x1 = Math.floor((b.x + b.w - 1) / T);
+      var ty = Math.floor((b.y + b.h - 1) / T);
+      for (var tx = x0; tx <= x1; tx++) {
+        if (oneWayAt(tx, ty) && prevBottom <= ty * T + 6) {
+          b.y = ty * T - b.h; b.vy = 0; return "ground";
+        }
+      }
+    }
+    if (!hit) return false;
+
+    var step = dy > 0 ? -1 : 1;
+    while (boxHitsSolid(b.x, b.y, b.w, b.h)) b.y += step;
+    var res = dy > 0 ? "ground" : "ceiling";
+    b.vy = 0;
+    return res;
+  }
+
+  /* ---- the moving platforms are solid too, but they are entities, so
+          they get their own pass after the tiles ------------------------ */
+  function ridePlatforms(b, wasBottom) {
+    var landed = null;
+    G.level.ents.forEach(function (e) {
+      if (e.kind !== "mover" || !e.on) return;
+      if (b.x + b.w <= e.x || b.x >= e.x + e.w) return;
+      if (b.vy < 0) return;
+      var top = e.y;
+      if (wasBottom <= top + 4 && b.y + b.h >= top && b.y + b.h <= top + e.h) {
+        b.y = top - b.h; b.vy = 0; landed = e;
+      }
+    });
+    return landed;
+  }
+
+  /* =======================================================================
+     ENTITY CONSTRUCTORS
+     ======================================================================= */
+  function mkEnemy(type, x, y) {
+    var d = DIFF[G.diff], mul = d.enemyMul;
+    if (type === "walker")
+      return { kind: "enemy", type: type, x: x + 1, y: y + 2, w: 14, h: 14,
+               vx: -TUNE.enemySpeed * mul, vy: 0, anim: 0, dead: 0, alive: true, ledge: false };
+    if (type === "guard")
+      return { kind: "enemy", type: type, x: x, y: y, w: 14, h: 16,
+               vx: -TUNE.guardSpeed * mul, vy: 0, anim: 0, dead: 0, alive: true, ledge: true };
+    /* the flyer never touches the ground: it patrols a span and bobs */
+    return { kind: "enemy", type: "flyer", x: x, y: y, w: 14, h: 12,
+             vx: TUNE.flyerSpeed * mul, vy: 0, anim: 0, dead: 0, alive: true,
+             homeX: x, homeY: y, span: 46, ph: (x % 40) / 40 * 6.28 };
+  }
+
+  function mkMover(type, x, y) {
+    var d = DIFF[G.diff];
+    return {
+      kind: "mover", type: type, x: x, y: y, w: T * 2, h: 6,
+      homeX: x, homeY: y, dx: 0, dy: 0,
+      span: type === "H" ? T * 4 : T * 3,
+      ph: 0, on: true, fade: 1,
+      timer: 0, hold: d.timedPlatform,     // only used by the blinking ones
+    };
+  }
+
+  function mkItem(kind, x, y, floating) {
+    return {
+      kind: "item", type: kind, x: x, y: y,
+      w: kind === "heart" ? 8 : 12, h: kind === "heart" ? 8 : 12,
+      vx: 0, vy: 0, anim: Math.random() * 4, gone: false,
+      floating: !!floating, born: 0, popping: 0,
+    };
+  }
+
+  function mkBoss(x, y) {
+    var d = DIFF[G.diff];
+    return {
+      kind: "boss", x: x - 12, y: y - 18, w: 34, h: 30, vx: 0, vy: 0,
+      hp: d.bossHits, hurt: 0, anim: 0, awake: false, onGround: false,
+      hopTimer: 1.2, speed: 26 * d.bossSpeedMul, dead: 0, shots: [],
+    };
+  }
+
+  function mkPlayer(x, y) {
+    return {
+      x: x, y: y, w: 10, h: 15, vx: 0, vy: 0,
+      face: 1, onGround: false, pose: "idle", frame: 0, animT: 0,
+      big: false, star: 0, boost: 0, wing: false, jumpsLeft: 0,
+      coyote: 0, buffer: 0, invuln: 0, ducking: false, holdJump: false,
+      squash: 0, riding: null, lastSafe: { x: x, y: y }, dead: 0, winT: 0,
+    };
+  }
+
+  /* Ouissy's box changes when she grows, and it grows UPWARD so she never
+     ends up standing inside the ceiling. */
+  function setBig(p, big) {
+    if (p.big === big) return;
+    var bottom = p.y + p.h;
+    p.big = big;
+    p.h = big ? 22 : 15;
+    p.w = big ? 11 : 10;
+    p.y = bottom - p.h;
+    /* if growing pushed her into something, nudge her down until she fits */
+    var guard = 0;
+    while (boxHitsSolid(p.x, p.y, p.w, p.h) && guard++ < 24) p.y++;
+  }
+  /* =======================================================================
+     PARTICLES — the whole reason a stomp feels like a stomp
+     ======================================================================= */
+  function burst(x, y, n, colours, spd, opts) {
+    opts = opts || {};
+    for (var i = 0; i < n; i++) {
+      var a = (i / n) * 6.283 + Math.random() * 0.5;
+      G.parts.push({
+        x: x, y: y,
+        vx: Math.cos(a) * (spd * (0.5 + Math.random())),
+        vy: Math.sin(a) * (spd * (0.5 + Math.random())) - (opts.lift || 20),
+        g: opts.g === undefined ? 320 : opts.g,
+        life: 0, max: opts.max || (0.45 + Math.random() * 0.35),
+        c: colours[(Math.random() * colours.length) | 0],
+        s: opts.size || 2,
+      });
+    }
+  }
+
+  function stepParts(dt) {
+    for (var i = G.parts.length - 1; i >= 0; i--) {
+      var p = G.parts[i];
+      p.life += dt;
+      if (p.life >= p.max) { G.parts.splice(i, 1); continue; }
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt;
+    }
+    for (var j = G.floats.length - 1; j >= 0; j--) {
+      var f = G.floats[j];
+      f.life += dt; f.y -= 22 * dt;
+      if (f.life > 0.9) G.floats.splice(j, 1);
+    }
+  }
+
+  function popText(x, y, text, colour) {
+    G.floats.push({ x: x, y: y, t: text, c: colour || "#fff6c0", life: 0 });
+  }
+
+  function shake(amount) { G.shake = Math.max(G.shake, amount); }
+
+  /* =======================================================================
+     THE PLAYER
+     ======================================================================= */
+  function stepPlayer(dt) {
+    var p = G.player, d = DIFF[G.diff], K = G.keys;
+
+    if (p.dead) {                       // the death arc: she pops up, then falls
+      p.dead += dt;
+      p.vy += TUNE.gravityDown * dt;
+      p.y += p.vy * dt;
+      if (p.dead > 1.5) afterDeath();
+      return;
+    }
+    if (p.winT) { stepWinWalk(dt); return; }
+
+    var gravUp = TUNE.gravityUp * d.gravityMul, gravDn = TUNE.gravityDown * d.gravityMul;
+    var maxRun = TUNE.maxRun * (p.boost > 0 ? TUNE.boostMul : 1);
+
+    /* ---- horizontal: accelerate towards the held direction ------------- */
+    var want = (K.right ? 1 : 0) - (K.left ? 1 : 0);
+    p.ducking = !!K.down && p.onGround && !want;
+    if (want && !p.ducking) {
+      var acc = (p.onGround ? TUNE.runAccel : TUNE.airAccel) * dt;
+      p.vx += want * acc;
+      p.vx = clamp(p.vx, -maxRun, maxRun);
+      p.face = want;
+    } else {
+      var fr = (p.onGround ? TUNE.friction : TUNE.airDrag) * dt;
+      if (p.vx > 0) p.vx = Math.max(0, p.vx - fr); else p.vx = Math.min(0, p.vx + fr);
+    }
+
+    /* ---- jumping: coyote time forgives a late press, the buffer forgives
+            an early one, and holding the button keeps the rise going ----- */
+    p.coyote = p.onGround ? TUNE.coyote * d.coyoteMul : Math.max(0, p.coyote - dt);
+    p.buffer = K.jumpPressed ? TUNE.buffer * d.bufferMul : Math.max(0, p.buffer - dt);
+    K.jumpPressed = false;
+
+    if (p.buffer > 0) {
+      if (p.coyote > 0) {
+        p.vy = -TUNE.jumpVel * d.jumpMul; p.onGround = false;
+        p.coyote = 0; p.buffer = 0; p.holdJump = true;
+        p.squash = -1; sfx("jump");
+        burst(p.x + p.w / 2, p.y + p.h, 5, ["#ffffff", "#ffd6e6"], 40, { lift: -10, g: 220, max: .3, size: 1 });
+      } else if (p.wing && p.jumpsLeft > 0) {           // the feather's second jump
+        p.vy = -TUNE.jumpVel * d.jumpMul * 0.92;
+        p.jumpsLeft--; p.buffer = 0; p.holdJump = true; p.squash = -1;
+        sfx("wing");
+        burst(p.x + p.w / 2, p.y + p.h, 10, ["#ffffff", "#e6ecff", "#ffd6e6"], 55, { g: 120, max: .5, size: 1 });
+      }
+    }
+    if (!K.jump && p.vy < 0 && p.holdJump) { p.vy *= TUNE.jumpCut; p.holdJump = false; }
+    if (p.vy >= 0) p.holdJump = false;
+
+    p.vy += (p.vy < 0 ? gravUp : gravDn) * dt;
+    p.vy = Math.min(p.vy, TUNE.maxFall);
+
+    /* ---- move, then resolve, one axis at a time ------------------------ */
+    var wasBottom = p.y + p.h;
+    moveX(p, p.vx * dt);
+
+    /* the platform she is standing on carries her sideways */
+    if (p.riding && p.riding.on) p.x += p.riding.dx;
+
+    var was = p.onGround;
+    p.onGround = false; p.riding = null;
+    var res = moveY(p, p.vy * dt, true);
+    if (res === "ground") p.onGround = true;
+    if (res === "ceiling") bumpBlocks(p);
+
+    var rode = ridePlatforms(p, wasBottom);
+    if (rode) { p.onGround = true; p.riding = rode; p.y += rode.dy; }
+
+    if (p.onGround && !was) {           // the landing
+      p.squash = 1; p.jumpsLeft = p.wing ? 1 : 0;
+      if (p.vy > 200 || true) burst(p.x + p.w / 2, p.y + p.h, 4, ["#ffffff"], 30, { lift: -6, g: 260, max: .22, size: 1 });
+    }
+    if (p.onGround) p.lastSafe = { x: p.x, y: p.y };
+
+    /* ---- timers -------------------------------------------------------- */
+    if (p.invuln > 0) p.invuln -= dt;
+    if (p.star > 0) {
+      p.star -= dt;
+      if (p.star <= 0) popText(p.x, p.y - 8, "sparkle out", "#ffd6e6");
+      else if (Math.random() < 0.55)
+        burst(p.x + p.w / 2 + (Math.random() - .5) * 8, p.y + p.h / 2, 1,
+              ["#fff6a8", "#ffd166", "#ffffff"], 12, { g: -20, max: .5, size: 1 });
+    }
+    if (p.boost > 0) {
+      p.boost -= dt;
+      if (Math.abs(p.vx) > 60 && Math.random() < .5)
+        burst(p.x + p.w / 2 - p.face * 6, p.y + p.h - 3, 1, ["#ffd166", "#ff9ec4"], 10, { g: 60, max: .3, size: 1 });
+    }
+    p.squash += (0 - p.squash) * Math.min(1, dt * 12);
+
+    /* ---- what she is standing in --------------------------------------- */
+    var hz = boxHitsHazard(p.x, p.y + 2, p.w, p.h - 2);
+    if (hz && p.star <= 0) hurtPlayer(true);
+
+    /* ---- out of the world ---------------------------------------------- */
+    if (p.y > G.level.pxH + 24) {
+      if (d.pitSafety) {                // Easy: a cloud catches her
+        p.x = p.lastSafe.x; p.y = p.lastSafe.y - 4;
+        p.vx = 0; p.vy = -120; p.invuln = 1;
+        burst(p.x + p.w / 2, p.y + p.h, 16, ["#ffffff", "#cfe9fb"], 60, { g: 120, max: .6 });
+        popText(p.x, p.y - 10, "caught you!", "#ffffff");
+        sfx("save"); shake(3);
+      } else hurtPlayer(true);
+    }
+
+    /* ---- the animation state machine ----------------------------------- */
+    p.animT += dt;
+    if (!p.onGround) { p.pose = p.vy < 0 ? "jump" : "fall"; p.frame = 0; }
+    else if (p.ducking) { p.pose = "duck"; p.frame = 0; }
+    else if (Math.abs(p.vx) > 12) {
+      p.pose = "run";
+      p.frame = Math.floor(p.animT * (7 + Math.abs(p.vx) / 26)) % 4;
+    } else {
+      p.pose = "idle";
+      p.frame = Math.floor(p.animT * 1.6) % 4;
+    }
+  }
+
+  /* Hitting a block with your head: gift blocks pop, bricks break if she
+     is big, and everything else just stops her. */
+  function bumpBlocks(p) {
+    var ty = Math.floor((p.y - 1) / T);
+    var x0 = Math.floor((p.x + 2) / T), x1 = Math.floor((p.x + p.w - 3) / T);
+    for (var tx = x0; tx <= x1; tx++) {
+      var ch = tileAt(tx, ty);
+      if (GIFT.indexOf(ch) >= 0) {
+        G.level.grid[ty][tx] = "u";                       // 'u' draws as a used block
+        G.bumps.push({ tx: tx, ty: ty, t: 0 });
+        var kind = GIFT_OF[ch];
+        if (kind === "heart") { collectHeart(tx * T + 8, ty * T); }
+        else {
+          var it = mkItem(kind, tx * T + 2, ty * T - 13, false);
+          it.born = 0.35; it.vy = -90;
+          G.level.items.push(it);
+        }
+        addScore(TUNE.scores.block);
+        sfx("bump"); shake(1.5);
+      } else if (ch === "B") {
+        if (p.big) {
+          G.level.grid[ty][tx] = ".";
+          burst(tx * T + 8, ty * T + 8, 14, [BIOME[G.level.biome].brick[0], BIOME[G.level.biome].brick[1], BIOME[G.level.biome].brick[2]], 90, { max: .6, size: 2 });
+          addScore(TUNE.scores.block); sfx("break"); shake(3);
+        } else { G.bumps.push({ tx: tx, ty: ty, t: 0 }); sfx("bump"); }
+      }
+    }
+  }
+
+  /* =======================================================================
+     WHAT HAPPENS WHEN SHE IS HIT
+     ======================================================================= */
+  function hurtPlayer(fatal) {
+    var p = G.player, d = DIFF[G.diff];
+    if (p.dead || p.winT) return;
+    if (p.invuln > 0 && !fatal) return;
+    if (p.star > 0) return;
+
+    if (p.big && !fatal) {              // the glow-up takes the hit for her
+      setBig(p, false);
+      p.invuln = TUNE.invuln * d.invulnMul;
+      burst(p.x + p.w / 2, p.y + p.h / 2, 18, ["#ff9ec4", "#ffffff", "#ffd6e6"], 90, { max: .6 });
+      sfx("shrink"); shake(4);
+      return;
+    }
+    if (!fatal && p.invuln > 0) return;
+
+    p.dead = 0.001; p.vy = -230; p.vx = 0; p.pose = "hurt";
+    G.deaths++;
+    burst(p.x + p.w / 2, p.y + p.h / 2, 20, ["#ff5f95", "#ffffff"], 100, { max: .8 });
+    sfx("die"); shake(6);
+  }
+
+  function afterDeath() {
+    G.lives--;
+    if (G.lives < 0) { endRun(false); return; }
+    respawn();
+  }
+
+  function respawn() {
+    var L = G.level, d = DIFF[G.diff];
+    var at = L.start, cp = null;
+    if (d.checkpoints) L.checks.forEach(function (c) { if (c.taken) cp = c; });
+    if (cp) at = cp;
+    G.player = mkPlayer(at.x + 2, at.y - 2);
+    G.player.invuln = 1.4;
+    G.camSnap = true;
+    if (d.timeLimit) G.timeLeft = d.timeLimit[G.levelIndex];
+    /* enemies come back so a checkpoint is a real restart of the stretch */
+    L.ents.forEach(function (e) {
+      if (e.kind === "enemy" && e.alive === false && e.respawnable !== false) { e.alive = true; e.dead = 0; e.x = e.spawnX; e.y = e.spawnY; }
+    });
+  }
+
+  /* =======================================================================
+     ENEMIES
+     ======================================================================= */
+  function stepEnemies(dt) {
+    var p = G.player, L = G.level;
+    L.ents.forEach(function (e) {
+      if (e.kind === "mover") return stepMover(e, dt);
+      if (!e.alive) {
+        if (e.dead > 0) { e.dead -= dt; e.y += 90 * dt; }
+        return;
+      }
+      if (e.spawnX === undefined) { e.spawnX = e.x; e.spawnY = e.y; }
+      /* off-screen enemies are frozen — it keeps the level cheap and it is
+         what the games this is modelled on all did */
+      if (e.x < G.cam.x - 80 || e.x > G.cam.x + 400) { e.anim += dt; return; }
+
+      e.anim += dt;
+      if (e.type === "flyer") {
+        e.x += e.vx * dt;
+        if (e.x < e.homeX - e.span) { e.x = e.homeX - e.span; e.vx = -e.vx; }
+        if (e.x > e.homeX + e.span) { e.x = e.homeX + e.span; e.vx = -e.vx; }
+        e.y = e.homeY + Math.sin(e.anim * 2.1 + e.ph) * 11;
+      } else {
+        e.vy += TUNE.gravityDown * dt;
+        moveX(e, e.vx * dt) && (e.vx = -e.vx);
+        var r = moveY(e, e.vy * dt, true);
+        var grounded = r === "ground";
+        /* guards look before they step; walkers do not */
+        if (grounded && e.ledge) {
+          var ahead = e.x + (e.vx > 0 ? e.w + 2 : -2);
+          var below = Math.floor((e.y + e.h + 4) / T);
+          if (!solidAt(Math.floor(ahead / T), below) && !oneWayAt(Math.floor(ahead / T), below)) e.vx = -e.vx;
+        }
+        if (grounded && boxHitsHazard(e.x, e.y, e.w, e.h)) e.vx = -e.vx;
+      }
+      hitPlayerOrGetStomped(e);
+    });
+  }
+
+  /* The one rule the whole game turns on: coming down on top of something
+     defeats it, touching it any other way hurts. */
+  function hitPlayerOrGetStomped(e) {
+    var p = G.player;
+    if (p.dead || p.winT) return;
+    if (p.x + p.w <= e.x + 2 || p.x >= e.x + e.w - 2) return;
+    if (p.y + p.h <= e.y + 2 || p.y >= e.y + e.h - 2) return;
+
+    var falling = p.vy > 30;
+    var fromAbove = (p.y + p.h) - e.y < e.h * 0.62;
+
+    if (p.star > 0) { defeat(e, true); return; }
+    if (falling && fromAbove) {
+      defeat(e, false);
+      p.vy = -(G.keys.jump ? TUNE.stompBoost : TUNE.stompVel);
+      p.squash = 1.2;
+      return;
+    }
+    hurtPlayer(false);
+  }
+
+  function defeat(e, spun) {
+    e.alive = false;
+    e.dead = spun ? 0.9 : 0.45;
+    e.spun = spun;
+    addScore(TUNE.scores.stomp);
+    popText(e.x, e.y - 4, "+" + TUNE.scores.stomp, "#fff6c0");
+    burst(e.x + e.w / 2, e.y + e.h / 2, 12, ["#ffffff", "#ffd6e6", "#ff9ec4"], 80, { max: .5 });
+    sfx(spun ? "star" : "stomp");
+    shake(3);
+  }
+
+  /* ---- moving platforms ------------------------------------------------ */
+  function stepMover(m, dt) {
+    var px0 = m.x, py0 = m.y;
+    if (m.type === "H") {
+      m.ph += dt * (TUNE.moverSpeed / m.span);
+      m.x = m.homeX + (0.5 - 0.5 * Math.cos(m.ph)) * m.span;
+    } else if (m.type === "V") {
+      m.ph += dt * (TUNE.moverSpeed / m.span);
+      m.y = m.homeY - (0.5 - 0.5 * Math.cos(m.ph)) * m.span;
+    } else {
+      /* the blinking one: it holds while she stands on it, then goes */
+      var standing = G.player.riding === m;
+      if (m.on) {
+        if (standing) m.timer += dt;
+        if (m.timer > m.hold) { m.on = false; m.timer = 0; sfx("blink"); }
+        m.fade = m.timer > m.hold * 0.55 ? (Math.sin(m.timer * 26) > 0 ? 1 : 0.25) : 1;
+      } else {
+        m.timer += dt; m.fade = 0;
+        if (m.timer > 2.0) { m.on = true; m.timer = 0; m.fade = 1; }
+      }
+    }
+    m.dx = m.x - px0; m.dy = m.y - py0;
+  }
+
+  /* =======================================================================
+     PICKUPS
+     ======================================================================= */
+  function collectHeart(x, y) {
+    G.hearts++;
+    addScore(TUNE.scores.heart);
+    burst(x, y, 8, ["#ff5f95", "#ffd6e6", "#ffffff"], 70, { max: .45, size: 1 });
+    sfx("heart");
+    if (G.hearts % 50 === 0) { G.lives++; popText(x, y - 10, "1 UP", "#8ff0a8"); sfx("life"); }
+  }
+
+  function stepItems(dt) {
+    var p = G.player, L = G.level;
+    for (var i = L.items.length - 1; i >= 0; i--) {
+      var it = L.items[i];
+      it.anim += dt * 6;
+      if (it.born > 0) {                 // rising out of a block it was in
+        it.born -= dt; it.y += it.vy * dt; it.vy += 240 * dt;
+        continue;
+      }
+      if (!it.floating && it.type !== "heart") {
+        /* loose power-ups fall until they find something to sit on */
+        it.vy = Math.min(it.vy + 620 * dt, 260);
+        var b = { x: it.x, y: it.y, w: it.w, h: it.h, vy: it.vy, vx: 0 };
+        if (moveY(b, it.vy * dt, true) === "ground") it.vy = 0;
+        it.y = b.y;
+      }
+      if (it.x < G.cam.x - 40 || it.x > G.cam.x + 380) continue;
+
+      if (p.x + p.w > it.x && p.x < it.x + it.w && p.y + p.h > it.y && p.y < it.y + it.h && !p.dead) {
+        L.items.splice(i, 1);
+        takeItem(it);
+      }
+    }
+  }
+
+  function takeItem(it) {
+    var p = G.player;
+    if (it.type === "heart") { collectHeart(it.x + 4, it.y + 4); return; }
+
+    burst(it.x + 6, it.y + 6, 16, ["#fff6a8", "#ffffff", "#ffd6e6"], 90, { max: .6 });
+    shake(2);
+    if (it.type === "grow") {
+      setBig(p, true); popText(it.x, it.y - 8, "GLOW UP!", "#ff9ec4"); sfx("power");
+    } else if (it.type === "star") {
+      p.star = TUNE.starTime; popText(it.x, it.y - 8, "SPARKLE!", "#fff6a8"); sfx("power");
+    } else if (it.type === "life") {
+      G.lives++; popText(it.x, it.y - 8, "1 UP", "#8ff0a8"); sfx("life");
+    } else if (it.type === "boost") {
+      p.boost = TUNE.boostTime; popText(it.x, it.y - 8, "LOVE BOOST", "#ffd166"); sfx("power");
+    } else if (it.type === "wing") {
+      p.wing = true; p.jumpsLeft = 1; popText(it.x, it.y - 8, "DOUBLE JUMP", "#e6ecff"); sfx("power");
+    }
+    addScore(400);
+  }
+
+  /* =======================================================================
+     THE HEARTBREAKER — the last thing between her and the door
+     ======================================================================= */
+  function stepBoss(dt) {
+    var b = G.level.boss, p = G.player;
+    if (!b) return;
+    b.anim += dt;
+
+    if (b.dead) {                        // he comes apart slowly, on purpose
+      b.dead += dt;
+      if (b.dead < 1.6 && Math.random() < .4)
+        burst(b.x + b.w / 2 + (Math.random() - .5) * 30, b.y + b.h / 2 + (Math.random() - .5) * 24,
+              4, ["#ff9ec4", "#ffffff", "#ffd166"], 70, { max: .7 });
+      return;
+    }
+    if (!b.awake) {
+      if (Math.abs(p.x - b.x) < 150) { b.awake = true; sfx("bossWake"); shake(6); G.bossBar = 1; }
+      return;
+    }
+    if (b.hurt > 0) b.hurt -= dt;
+
+    /* he hops towards her, and thumps the floor when he lands */
+    b.vy += 900 * dt;
+    b.hopTimer -= dt;
+    var wasGround = b.onGround;
+    b.onGround = false;
+    if (b.hopTimer <= 0 && wasGround) {
+      b.vy = -330; b.vx = (p.x > b.x ? 1 : -1) * b.speed;
+      b.hopTimer = 1.5 - (DIFF[G.diff].bossHits - b.hp) * 0.22;
+      sfx("bossHop");
+    }
+    moveX(b, b.vx * dt);
+    if (moveY(b, b.vy * dt, false) === "ground") {
+      b.onGround = true;
+      if (!wasGround) {
+        shake(7); sfx("bossLand");
+        burst(b.x + b.w / 2, b.y + b.h, 18, ["#ffffff", "#ff9ec4"], 120, { max: .5 });
+        /* two cracks skid off along the floor */
+        [-1, 1].forEach(function (s) {
+          b.shots.push({ x: b.x + b.w / 2, y: b.y + b.h - 6, vx: s * 90 * DIFF[G.diff].bossSpeedMul, life: 0 });
+        });
+        b.vx = 0;
+      }
+    }
+
+    /* his shots */
+    for (var i = b.shots.length - 1; i >= 0; i--) {
+      var s2 = b.shots[i];
+      s2.life += dt; s2.x += s2.vx * dt;
+      if (s2.life > 2.4 || boxHitsSolid(s2.x, s2.y, 6, 6)) { b.shots.splice(i, 1); continue; }
+      if (p.x + p.w > s2.x && p.x < s2.x + 6 && p.y + p.h > s2.y && p.y < s2.y + 6) {
+        b.shots.splice(i, 1); if (p.star <= 0) hurtPlayer(false);
+      }
+    }
+
+    /* stomping him */
+    if (!p.dead && !p.winT &&
+        p.x + p.w > b.x + 3 && p.x < b.x + b.w - 3 &&
+        p.y + p.h > b.y + 2 && p.y < b.y + b.h - 2) {
+      var fromAbove = (p.y + p.h) - b.y < b.h * 0.5 && p.vy > 30;
+      if (fromAbove && b.hurt <= 0) {
+        b.hp--; b.hurt = 1.1;
+        p.vy = -TUNE.stompBoost;
+        shake(8); sfx("bossHit");
+        burst(b.x + b.w / 2, b.y + 8, 22, ["#ffffff", "#ff5f95", "#ffd166"], 130, { max: .8 });
+        G.bossBar = b.hp / DIFF[G.diff].bossHits;
+        if (b.hp <= 0) {
+          b.dead = 0.001; addScore(TUNE.scores.boss);
+          popText(b.x, b.y - 10, "+" + TUNE.scores.boss, "#fff6a8");
+          sfx("bossDie"); shake(12);
+          G.level.goal.open = true;
+        }
+      } else if (b.hurt <= 0 && p.star <= 0) hurtPlayer(false);
+      else if (p.star > 0 && b.hurt <= 0) { b.hp--; b.hurt = 1.1; if (b.hp <= 0) { b.dead = .001; G.level.goal.open = true; sfx("bossDie"); } }
+    }
+  }
+  /* =======================================================================
+     THE GOAL, THE CHECKPOINTS, AND THE WALK OFF THE END OF THE LEVEL
+     ======================================================================= */
+  function stepGoal(dt) {
+    var L = G.level, p = G.player;
+    if (p.dead || p.winT) return;
+
+    L.checks.forEach(function (c) {
+      if (c.taken) return;
+      if (p.x + p.w > c.x && p.x < c.x + T && p.y + p.h > c.y - 8 && p.y < c.y + T) {
+        c.taken = true;
+        popText(c.x, c.y - 16, "checkpoint", "#8ff0a8");
+        burst(c.x + 8, c.y, 14, ["#ffffff", "#8ff0a8", "#ffd6e6"], 70, { max: .7 });
+        sfx("check");
+      }
+    });
+
+    var g = L.goal;
+    if (!g) return;
+    /* on the last level the pole is chained shut until the boss is done */
+    if (L.boss && !g.open) return;
+    if (p.x + p.w > g.x && p.x < g.x + 10 && p.y + p.h > g.y - T * 5 && p.y < g.y + T) {
+      p.winT = 0.001; p.vx = 0; p.vy = 0;
+      /* how high up the pole she caught it is worth something */
+      var high = clamp(1 - ((p.y + p.h) - (g.y - T * 5)) / (T * 5), 0, 1);
+      G.poleBonus = Math.round(200 + high * 800);
+      addScore(G.poleBonus);
+      sfx("goal");
+      burst(g.x + 4, p.y, 26, ["#ff5f95", "#fff6a8", "#ffffff"], 110, { max: 1 });
+    }
+  }
+
+  /* She slides down the pole, then walks off to the right. */
+  function stepWinWalk(dt) {
+    var p = G.player, g = G.level.goal;
+    p.winT += dt;
+    if (p.winT < 0.9) {
+      p.pose = "idle"; p.frame = 0;
+      p.x = g.x - 6;
+      p.y = Math.min(g.y - p.h, p.y + 90 * dt);
+      if (Math.random() < .4) burst(p.x + 5, p.y + 6, 1, ["#fff6a8", "#ff9ec4"], 20, { g: 40, max: .6, size: 1 });
+    } else {
+      p.pose = "run"; p.face = 1;
+      p.frame = Math.floor(p.winT * 9) % 4;
+      p.x += 78 * dt;
+      p.vy += TUNE.gravityDown * dt;
+      moveY(p, p.vy * dt, true) === "ground" && (p.vy = 0);
+      if (p.winT > 2.6) finishLevel();
+    }
+  }
+
+  /* =======================================================================
+     11. THE GAME LOOP — input has already been collected by the listeners,
+         so a frame is only: step the world, move the camera, paint it.
+     ======================================================================= */
+  function step(dt) {
+    if (G.state !== "play") return;
+    G.elapsed += dt;
+
+    var d = DIFF[G.diff];
+    if (d.timeLimit && G.timeLeft > 0) {
+      G.timeLeft -= dt;
+      if (G.timeLeft <= 30 && !G.warned) { G.warned = true; sfx("hurry"); }
+      if (G.timeLeft <= 0) { G.timeLeft = 0; hurtPlayer(true); }
+    }
+
+    stepPlayer(dt);
+    stepEnemies(dt);
+    stepItems(dt);
+    stepBoss(dt);
+    stepGoal(dt);
+    stepParts(dt);
+
+    for (var i = G.bumps.length - 1; i >= 0; i--) {
+      G.bumps[i].t += dt;
+      if (G.bumps[i].t > 0.22) G.bumps.splice(i, 1);
+    }
+    G.shake = Math.max(0, G.shake - dt * 26);
+    moveCamera(dt);
+    updateHud();
+  }
+
+  function moveCamera(dt) {
+    var p = G.player, L = G.level, c = G.cam;
+    /* look a little the way she is going, so she can see what is coming */
+    var tx = p.x + p.w / 2 - 160 + p.face * 34;
+    var ty = p.y + p.h / 2 - 96;
+    if (G.camSnap) { c.x = tx; c.y = ty; G.camSnap = false; }
+    else {
+      c.x += (tx - c.x) * Math.min(1, dt * 7);
+      c.y += (ty - c.y) * Math.min(1, dt * (p.onGround ? 4.5 : 2.6));
+    }
+    c.x = clamp(c.x, 0, Math.max(0, L.pxW - 320));
+    c.y = clamp(c.y, 0, Math.max(0, L.pxH - 180));
+  }
+
+  /* =======================================================================
+     PAINTING
+     ======================================================================= */
+  function paint(t) {
+    var cv = G.canvas;
+    if (!cv) return;
+    var c = cv.getContext("2d");
+    c.imageSmoothingEnabled = false;
+    var L = G.level;
+    if (!L) { c.clearRect(0, 0, 320, 180); return; }
+
+    /* the shake is applied to the camera only for drawing, never to physics */
+    var sh = G.shake;
+    var ox = Math.round(G.cam.x + (sh ? (Math.random() - .5) * sh : 0));
+    var oy = Math.round(G.cam.y + (sh ? (Math.random() - .5) * sh : 0));
+
+    /* ---- 1. the backdrop, three layers at three speeds ------------------ */
+    var bg = L.bg;
+    c.drawImage(bg.sky, 0, Math.round(-oy * 0.12) - 6);
+    drawTiled(c, bg.far, ox * 0.22, Math.round(-oy * 0.3), bg.farW);
+    drawTiled(c, bg.mid, ox * 0.52, Math.round(-oy * 0.55), bg.midW);
+
+    /* ---- 2. the tiles ---------------------------------------------------- */
+    drawTiles(c, ox, oy, t);
+
+    /* ---- 3. everything in the world ------------------------------------- */
+    drawGoal(c, ox, oy, t);
+    L.checks.forEach(function (ck) { drawCheck(c, ck, ox, oy, t); });
+    L.items.forEach(function (it) { drawItem(c, it, ox, oy); });
+    L.ents.forEach(function (e) { e.kind === "mover" ? drawMover(c, e, ox, oy) : drawEnemy(c, e, ox, oy); });
+    drawBoss(c, ox, oy, t);
+    drawPlayer(c, ox, oy, t);
+
+    /* ---- 4. the sparkle and the fizz ------------------------------------ */
+    G.parts.forEach(function (p) {
+      var a = 1 - p.life / p.max;
+      if (a < 0.35 && Math.sin(p.life * 50) < 0) return;
+      px(c, p.x - ox, p.y - oy, a > .5 ? p.s : 1, a > .5 ? p.s : 1, p.c);
+    });
+    G.floats.forEach(function (f) {
+      c.save();
+      c.globalAlpha = clamp(1 - f.life / 0.9, 0, 1);
+      c.font = "6px monospace"; c.textAlign = "center";
+      c.fillStyle = "rgba(40,20,40,.6)"; c.fillText(f.t, f.x - ox + 1, f.y - oy + 1);
+      c.fillStyle = f.c; c.fillText(f.t, f.x - ox, f.y - oy);
+      c.restore();
+    });
+
+    /* a rainbow wash while the sparkle is on */
+    if (G.player.star > 0) {
+      c.save();
+      c.globalAlpha = 0.1 + 0.06 * Math.sin(t * 14);
+      c.fillStyle = ["#fff6a8", "#ffd6e6", "#d6f0ff", "#e6ffd6"][(t * 12 | 0) % 4];
+      c.fillRect(0, 0, 320, 180);
+      c.restore();
+    }
+    if (G.player.invuln > 0 && G.player.star <= 0) { /* handled by the flicker in drawPlayer */ }
+  }
+
+  /* A layer wide enough to repeat: drawn twice so the seam never shows. */
+  function drawTiled(c, img, offset, y, width) {
+    var x = -(offset % width);
+    c.drawImage(img, Math.round(x), y);
+    c.drawImage(img, Math.round(x + width), y);
+    if (x + width < 320) c.drawImage(img, Math.round(x + width * 2), y);
+  }
+
+  function drawTiles(c, ox, oy, t) {
+    var L = G.level, A = L.atlas;
+    var x0 = Math.max(0, Math.floor(ox / T)), x1 = Math.min(L.w - 1, Math.floor((ox + 320) / T));
+    var y0 = Math.max(0, Math.floor(oy / T)), y1 = Math.min(L.h - 1, Math.floor((oy + 180) / T));
+    var P = BIOME[L.biome];
+
+    for (var ty = y0; ty <= y1; ty++) {
+      for (var tx = x0; tx <= x1; tx++) {
+        var ch = L.grid[ty][tx];
+        if (ch === "." || ch === "S" || ch === "G" || ch === "C") continue;
+        var cell = -1;
+        if (ch === "#") cell = solidAt(tx, ty - 1) ? 0 : 6;
+        else if (ch === "-") cell = 1;
+        else if (ch === "B") cell = 2;
+        else if (GIFT.indexOf(ch) >= 0) cell = 3;
+        else if (ch === "u") cell = 7;
+        else if (ch === "^") cell = 4;
+        else if (ch === "~") cell = 5;
+        if (cell < 0) continue;
+
+        var dx = tx * T - ox, dy = ty * T - oy;
+
+        /* the little upward knock when a block is hit from below */
+        for (var b = 0; b < G.bumps.length; b++) {
+          var bm = G.bumps[b];
+          if (bm.tx === tx && bm.ty === ty) dy -= Math.round(Math.sin(bm.t / 0.22 * Math.PI) * 5);
+        }
+
+        if (ch === "~") {
+          /* the moat ripples, and only its surface tile gets the bright top */
+          var surface = tileAt(tx, ty - 1) !== "~";
+          if (surface) {
+            var wob = Math.round(Math.sin(t * 2.6 + tx * 0.8) * 1.4);
+            c.drawImage(A, T * 5, 0, T, T, dx, dy + wob, T, T);
+            px(c, dx, dy + wob, T, 1, P.hazard[0]);
+            if ((tx + (t * 3 | 0)) % 7 === 0) px(c, dx + 4, dy + wob - 2, 2, 2, P.hazard[0]);
+          } else {
+            px(c, dx, dy, T, T, P.hazard[P.hazard.length - 1]);
+            if ((tx * 3 + ty * 5) % 11 === 0) px(c, dx + 5, dy + 6, 3, 2, P.hazard[1]);
+          }
+          continue;
+        }
+        c.drawImage(A, cell * T, 0, T, T, dx, dy, T, T);
+      }
+    }
+  }
+
+  function drawPlayer(c, ox, oy, t) {
+    var p = G.player;
+    if (p.invuln > 0 && p.star <= 0 && Math.sin(t * 40) < 0) return;
+
+    var set = OUISSY[p.pose] || OUISSY.idle;
+    var arr = p.big ? set.big : set.small;
+    var img = arr[Math.min(p.frame, arr.length - 1)];
+
+    /* squash and stretch: a scale, not a new sprite. Positive squashes on
+       landing, negative stretches on the way up. */
+    var sq = clamp(p.squash, -1, 1.3);
+    var sx = 1 + sq * 0.22, sy = 1 - sq * 0.26;
+    var w = img.width * sx, h = img.height * sy;
+    var dx = Math.round(p.x + p.w / 2 - w / 2);
+    var dy = Math.round(p.y + p.h - h + (p.big ? 2 : 1));
+
+    c.save();
+    if (p.star > 0) {
+      /* the sparkle state tints her without redrawing every frame */
+      c.globalAlpha = 0.92;
+      c.filter = "hue-rotate(" + ((t * 320) % 360) + "deg) saturate(1.5)";
+    }
+    if (p.face < 0) {
+      c.translate(dx + w, dy); c.scale(-1, 1);
+      c.drawImage(img, 0, 0, w, h);
+    } else {
+      c.drawImage(img, dx, dy, w, h);
+    }
+    c.restore();
+  }
+
+  function drawEnemy(c, e, ox, oy) {
+    if (!e.alive && e.dead <= 0) return;
+    var img, dx = Math.round(e.x - ox), dy = Math.round(e.y - oy);
+    if (dx < -40 || dx > 360) return;
+
+    if (!e.alive) {
+      if (e.spun) {                       // knocked away by the sparkle state
+        c.save(); c.translate(dx + e.w / 2, dy + e.h / 2);
+        c.rotate((0.9 - e.dead) * 9); c.globalAlpha = clamp(e.dead / .9, 0, 1);
+        img = e.type === "flyer" ? ART.flyer[0] : e.type === "guard" ? ART.guard[0] : ART.walker[0];
+        c.drawImage(img, -img.width / 2, -img.height / 2);
+        c.restore(); return;
+      }
+      c.save(); c.globalAlpha = clamp(e.dead / .45, 0, 1);
+      c.drawImage(ART.walkerSquash, dx - 1, dy);
+      c.restore(); return;
+    }
+
+    if (e.type === "flyer") img = ART.flyer[Math.floor(e.anim * 9) % 4];
+    else if (e.type === "guard") img = ART.guard[Math.floor(e.anim * 6) % 2];
+    else img = ART.walker[Math.floor(e.anim * 5) % 2];
+
+    if (e.vx > 0) {
+      c.save(); c.translate(dx + e.w, dy); c.scale(-1, 1);
+      c.drawImage(img, 0, -1); c.restore();
+    } else c.drawImage(img, dx - 1, dy - 1);
+  }
+
+  function drawMover(c, m, ox, oy) {
+    var dx = Math.round(m.x - ox), dy = Math.round(m.y - oy);
+    if (dx < -50 || dx > 370) return;
+    var P = BIOME[G.level.biome];
+    c.save();
+    if (m.type === "T") c.globalAlpha = m.fade;
+    px(c, dx, dy, m.w, m.h, P.brick[1]);
+    px(c, dx, dy, m.w, 1, P.brick[0]);
+    px(c, dx, dy + m.h - 1, m.w, 1, P.brick[2]);
+    for (var i = 2; i < m.w; i += 6) px(c, dx + i, dy + 2, 2, 2, P.brick[2]);
+    /* a chain or a ribbon, so it reads as a thing that moves */
+    if (m.type === "V") { px(c, dx + m.w / 2 - 1, dy - 40, 2, 40, "rgba(255,255,255,.22)"); }
+    if (m.type === "H") { heart(c, dx + m.w / 2, dy + 3, 2, "#ff5f95"); }
+    if (m.type === "T" && m.on) heart(c, dx + m.w / 2, dy + 3, 2, "#fff6a8");
+    c.restore();
+  }
+
+  function drawItem(c, it, ox, oy) {
+    var dx = Math.round(it.x - ox), dy = Math.round(it.y - oy);
+    if (dx < -30 || dx > 350) return;
+    var k = Math.floor(it.anim) % 4;
+    var bobY = it.floating ? Math.round(Math.sin(it.anim * 0.5) * 1.2) : 0;
+    if (it.type === "heart") c.drawImage(ART.heart[k], dx - 2, dy - 2 + bobY);
+    else c.drawImage(ART.power[it.type][k % 2], dx - 1, dy - 1 + bobY);
+  }
+
+  function drawCheck(c, ck, ox, oy, t) {
+    var dx = Math.round(ck.x - ox), dy = Math.round(ck.y - oy);
+    if (dx < -30 || dx > 350) return;
+    px(c, dx + 7, dy - 22, 2, 38, "#a3679a");                 // the post
+    px(c, dx + 7, dy - 22, 1, 38, "#c48cbc");
+    var sway = Math.sin(t * 2 + ck.x) * 1.5;
+    var col = ck.taken ? "#8ff0a8" : "#ff9ec4";
+    for (var i = 0; i < 8; i++) {                              // the ribbon
+      var w = 9 - Math.abs(i - 3) * 0.7;
+      px(c, dx + 9, dy - 21 + i, w + (ck.taken ? sway : 0), 1, i % 2 ? col : "#ffffff");
+    }
+    if (ck.taken) heart(c, dx + 8, dy - 25, 3, "#8ff0a8", "#ffffff");
+  }
+
+  function drawGoal(c, ox, oy, t) {
+    var g = G.level.goal;
+    if (!g) return;
+    var dx = Math.round(g.x - ox), dy = Math.round(g.y - oy);
+    if (dx < -60 || dx > 400) return;
+    var locked = G.level.boss && !g.open;
+
+    /* the pole */
+    for (var y = 0; y < T * 5 + 12; y++)
+      px(c, dx + 2, dy + T - y, 3, 1, y % 6 < 3 ? "#ffd6e6" : "#ff9ec4");
+    px(c, dx + 2, dy + T - (T * 5 + 12), 3, 2, OUI.crown);
+
+    /* the heart on top, beating */
+    var beat = 1 + Math.sin(t * 4) * 0.08;
+    heart(c, dx + 3, dy - T * 4 - 6, 7 * beat, locked ? "#7a5a70" : "#3d2340");
+    heart(c, dx + 3, dy - T * 4 - 6, 6 * beat, locked ? "#9a7a90" : "#ff5f95", locked ? null : "#ffd6e6");
+
+    /* the ribbon banner hanging off it */
+    for (var i = 0; i < 10; i++) {
+      var w2 = 12 - Math.abs(i - 4) * 0.8 + Math.sin(t * 3 + i * 0.6) * 1.4;
+      px(c, dx + 5, dy - T * 4 + 2 + i, w2, 1, locked ? "#8a6a80" : (i % 2 ? "#ff9ec4" : "#ffffff"));
+    }
+    if (locked) {
+      /* a chain and a padlock, so it is obvious the boss is the way through */
+      for (var ch = 0; ch < 5; ch++) px(c, dx, dy - ch * 8, 7, 3, "#c9c0d8");
+      px(c, dx + 1, dy - T, 6, 6, OUI.crown);
+      px(c, dx + 3, dy - T + 2, 2, 2, "#8a6432");
+    }
+  }
+
+  function drawBoss(c, ox, oy, t) {
+    var b = G.level.boss;
+    if (!b) return;
+    var dx = Math.round(b.x - ox - 3), dy = Math.round(b.y - oy - 4);
+
+    b.shots.forEach(function (s) {
+      var sx = Math.round(s.x - ox), sy = Math.round(s.y - oy);
+      heart(c, sx, sy, 3.4, "#3d2340");
+      heart(c, sx, sy, 2.6, Math.sin(t * 30) > 0 ? "#ff5f95" : "#ffd166");
+    });
+
+    if (b.dead) {
+      if (b.dead > 1.6) return;
+      c.save(); c.globalAlpha = clamp(1 - b.dead / 1.6, 0, 1);
+      c.translate(dx + 20, dy + 17); c.rotate(b.dead * 1.6); c.scale(1 - b.dead * .4, 1 - b.dead * .4);
+      c.drawImage(ART.boss[0], -20, -17);
+      c.restore(); return;
+    }
+    if (!b.awake) {
+      /* asleep: he only breathes */
+      c.drawImage(ART.boss[Math.sin(t) > 0 ? 0 : 1], dx, dy);
+      return;
+    }
+    var k = b.onGround ? (b.hopTimer < 0.3 ? 1 : 0) : 2;
+    var flash = b.hurt > 0 && Math.sin(b.hurt * 40) > 0;
+    c.drawImage((flash ? ART.bossHurt : ART.boss)[k], dx, dy);
+  }
+  /* =======================================================================
+     12. SCREENS — the difficulty select, how to play, the pause menu, the
+         results card and the ending. All of them are HTML injected into one
+         overlay so they inherit the site's fonts and buttons.
+     ======================================================================= */
+  function $(id) { return document.getElementById(id); }
+
+  function overlay(html, cls) {
+    var ov = $("so-overlay");
+    if (!ov) return;
+    ov.className = "so-overlay on " + (cls || "");
+    ov.innerHTML = html;
+    ov.setAttribute("aria-hidden", "false");
+  }
+  function closeOverlay() {
+    var ov = $("so-overlay");
+    if (!ov) return;
+    ov.className = "so-overlay";
+    ov.innerHTML = "";
+    ov.setAttribute("aria-hidden", "true");
+  }
+
+  /* ---- what she has done before, kept per difficulty ------------------- */
+  var BEST_KEY = "so_best", DIFF_KEY = "so_diff", HOWTO_KEY = "so_howto";
+  function loadBest() {
+    try { return JSON.parse(localStorage.getItem(BEST_KEY) || "{}") || {}; } catch (e) { return {}; }
+  }
+  function saveBest(b) { try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (e) {} }
+  function bestFor(diff) {
+    var b = loadBest()[diff];
+    return b || { score: 0, time: 0, hearts: 0, cleared: false };
+  }
+
+  /* ---- 1. the difficulty select ---------------------------------------- */
+  function showDifficulty() {
+    G.state = "menu";
+    var saved = "medium";
+    try { saved = localStorage.getItem(DIFF_KEY) || "medium"; } catch (e) {}
+    var cards = ["easy", "medium", "hard"].map(function (k) {
+      var d = DIFF[k], b = bestFor(k);
+      return '<button class="so-diff-card' + (k === saved ? " sel" : "") + '" data-so-diff="' + k + '">' +
+        '<span class="so-diff-hearts">' + Array(d.lives + 1).join("♥") + "</span>" +
+        '<span class="so-diff-name">' + d.label + "</span>" +
+        '<span class="so-diff-blurb">' + d.blurb + "</span>" +
+        (b.cleared ? '<span class="so-diff-best">best ' + b.score + " · " + fmtTime(b.time) + "</span>"
+                   : '<span class="so-diff-best">not yet finished</span>') +
+        "</button>";
+    }).join("");
+
+    overlay(
+      '<div class="so-menu">' +
+        '<div class="so-logo" id="so-logo"></div>' +
+        '<p class="so-tag">' + SO.tagline + "</p>" +
+        '<div class="so-diff-row">' + cards + "</div>" +
+        '<div class="so-menu-actions">' +
+          '<button class="so-btn so-btn-go" id="so-play">PLAY</button>' +
+          '<button class="so-btn" id="so-howto">HOW TO PLAY</button>' +
+          '<button class="so-btn so-btn-quiet" id="so-quit-menu">← BACK</button>' +
+        "</div>" +
+      "</div>", "so-ov-menu");
+
+    paintLogo($("so-logo"));
+    var picked = saved;
+    Array.prototype.forEach.call(document.querySelectorAll("[data-so-diff]"), function (b) {
+      b.addEventListener("click", function () {
+        picked = b.getAttribute("data-so-diff");
+        Array.prototype.forEach.call(document.querySelectorAll("[data-so-diff]"), function (o) {
+          o.classList.toggle("sel", o === b);
+        });
+        sfx("pick");
+      });
+    });
+    $("so-play").addEventListener("click", function () {
+      G.diff = picked;
+      try { localStorage.setItem(DIFF_KEY, picked); } catch (e) {}
+      var seen = false;
+      try { seen = localStorage.getItem(HOWTO_KEY) === "1"; } catch (e) {}
+      if (seen) beginRun(); else showHowTo(beginRun);
+    });
+    $("so-howto").addEventListener("click", function () { showHowTo(showDifficulty); });
+    $("so-quit-menu").addEventListener("click", quitToHub);
+  }
+
+  /* the title, drawn as pixels rather than set in a font */
+  function paintLogo(host) {
+    if (!host) return;
+    var s = spriteCanvas(200, 54), c = s.ctx;
+    c.font = "bold 20px 'Press Start 2P', monospace";
+    c.textAlign = "center";
+    /* a heart behind the words */
+    heart(c, 100, 30, 26, "rgba(255,95,149,.22)");
+    var lines = [["SUPER", 20], ["OUISSY", 44]];
+    lines.forEach(function (ln, i) {
+      var txt = ln[0], y = ln[1];
+      c.font = "bold " + (i ? 20 : 14) + "px 'Press Start 2P', monospace";
+      c.fillStyle = "#3d2340";
+      for (var dx = -2; dx <= 2; dx++) for (var dy = -2; dy <= 2; dy++) c.fillText(txt, 100 + dx, y + dy);
+      c.fillStyle = i ? "#ff5f95" : "#ffd166";
+      c.fillText(txt, 100, y);
+      c.fillStyle = i ? "#ffb0cd" : "#ffeaa8";
+      c.fillText(txt, 100, y - 2);
+    });
+    for (var i = 0; i < 26; i++) {
+      var a = Math.random() * 6.28, r = 34 + Math.random() * 60;
+      px(c, 100 + Math.cos(a) * r, 28 + Math.sin(a) * r * .45, 2, 2, Math.random() > .5 ? "#fff6a8" : "#ffffff");
+    }
+    host.innerHTML = "";
+    host.appendChild(s.c);
+  }
+
+  /* ---- 2. how to play --------------------------------------------------- */
+  function showHowTo(then) {
+    var rows = SO.howTo.map(function (r) {
+      return '<div class="so-how-row"><b>' + r[0] + "</b><span>" + r[1] + "</span></div>";
+    }).join("");
+    overlay(
+      '<div class="so-card">' +
+        '<h3 class="so-card-title">HOW TO PLAY</h3>' +
+        '<div class="so-how">' + rows + "</div>" +
+        '<p class="so-card-note">on a phone, use the buttons at the bottom of the screen</p>' +
+        '<button class="so-btn so-btn-go" id="so-how-ok">GOT IT</button>' +
+      "</div>", "so-ov-card");
+    try { localStorage.setItem(HOWTO_KEY, "1"); } catch (e) {}
+    $("so-how-ok").addEventListener("click", function () { closeOverlay(); then(); });
+  }
+
+  /* ---- 3. the card before each world ------------------------------------ */
+  function showLevelCard(then) {
+    var w = SO.worlds[G.levelIndex];
+    G.state = "card";
+    overlay(
+      '<div class="so-card so-card-world">' +
+        '<p class="so-world-kicker">WORLD ' + (G.levelIndex + 1) + "</p>" +
+        '<h3 class="so-world-name">' + w.title + "</h3>" +
+        '<p class="so-world-sub">' + w.card + "</p>" +
+        '<p class="so-world-lives">OUISSY  ×  ' + G.lives + "</p>" +
+      "</div>", "so-ov-card so-ov-world");
+    setTimeout(function () {
+      if (G.state !== "card") return;
+      closeOverlay(); G.state = "play"; G.camSnap = true; then && then();
+    }, 1700);
+  }
+
+  /* ---- 4. pause --------------------------------------------------------- */
+  function togglePause(force) {
+    if (G.state === "play" && force !== false) {
+      G.state = "paused";
+      bgmDuck(true);
+      overlay(
+        '<div class="so-card">' +
+          '<h3 class="so-card-title">PAUSED</h3>' +
+          '<div class="so-pause-diff">' +
+            ["easy", "medium", "hard"].map(function (k) {
+              return '<button class="so-mini' + (k === G.diff ? " sel" : "") + '" data-so-setdiff="' + k + '">' +
+                DIFF[k].label + "</button>";
+            }).join("") +
+          "</div>" +
+          '<p class="so-card-note">changing it restarts this world</p>' +
+          '<button class="so-btn so-btn-go" id="so-resume">RESUME</button>' +
+          '<button class="so-btn" id="so-restart">RESTART WORLD</button>' +
+          '<button class="so-btn" id="so-bgm">MUSIC: ' + (G.bgmOn ? "ON" : "OFF") + "</button>" +
+          '<button class="so-btn so-btn-quiet" id="so-quit">QUIT TO HUB</button>' +
+        "</div>", "so-ov-card");
+      $("so-resume").addEventListener("click", function () { togglePause(false); });
+      $("so-restart").addEventListener("click", function () { closeOverlay(); startLevel(G.levelIndex); });
+      $("so-bgm").addEventListener("click", function () {
+        setBgm(!G.bgmOn); $("so-bgm").textContent = "MUSIC: " + (G.bgmOn ? "ON" : "OFF");
+      });
+      $("so-quit").addEventListener("click", quitToHub);
+      Array.prototype.forEach.call(document.querySelectorAll("[data-so-setdiff]"), function (b) {
+        b.addEventListener("click", function () {
+          var k = b.getAttribute("data-so-setdiff");
+          if (k === G.diff) return;
+          G.diff = k;
+          try { localStorage.setItem(DIFF_KEY, k); } catch (e) {}
+          G.lives = DIFF[k].lives;
+          closeOverlay(); startLevel(G.levelIndex);
+        });
+      });
+    } else if (G.state === "paused") {
+      closeOverlay(); G.state = "play"; bgmDuck(false);
+      G.keys.left = G.keys.right = G.keys.down = G.keys.jump = false;
+    }
+  }
+
+  /* ---- 5. the results card after a world -------------------------------- */
+  function finishLevel() {
+    G.state = "results";
+    var d = DIFF[G.diff];
+    var timeBonus = d.timeLimit ? Math.round(G.timeLeft) * TUNE.scores.timeBonus : 0;
+    G.score += timeBonus;
+    G.levelStats.push({ time: G.elapsed - G.levelStartT, hearts: G.hearts - G.levelStartHearts, deaths: G.deaths - G.levelStartDeaths });
+    var st = G.levelStats[G.levelStats.length - 1];
+    sfx("fanfare");
+
+    var last = G.levelIndex >= LEVELS.length - 1;
+    overlay(
+      '<div class="so-card so-card-res">' +
+        '<h3 class="so-card-title">WORLD ' + (G.levelIndex + 1) + " CLEARED</h3>" +
+        '<div class="so-res">' +
+          row("TIME", fmtTime(st.time)) +
+          row("HEARTS", st.hearts) +
+          row("FALLS", st.deaths) +
+          row("POLE", "+" + (G.poleBonus || 0)) +
+          (timeBonus ? row("TIME BONUS", "+" + timeBonus) : "") +
+          row("SCORE", pad(G.score, 6)) +
+        "</div>" +
+        '<button class="so-btn so-btn-go" id="so-next">' + (last ? "TO THE CASTLE ♥" : "NEXT WORLD →") + "</button>" +
+      "</div>", "so-ov-card");
+    function row(a, b) { return '<div class="so-res-row"><span>' + a + "</span><b>" + b + "</b></div>"; }
+    $("so-next").addEventListener("click", function () {
+      closeOverlay();
+      if (last) showEnding();
+      else { G.levelIndex++; startLevel(G.levelIndex); }
+    });
+  }
+
+  /* ---- 6. game over ------------------------------------------------------ */
+  function endRun(won) {
+    G.state = "over";
+    bgmDuck(true);
+    sfx("gameover");
+    overlay(
+      '<div class="so-card">' +
+        '<h3 class="so-card-title">OUT OF LIVES</h3>' +
+        '<p class="so-card-note">she is not giving up. she just needs a run-up.</p>' +
+        '<div class="so-res">' +
+          '<div class="so-res-row"><span>SCORE</span><b>' + pad(G.score, 6) + "</b></div>" +
+          '<div class="so-res-row"><span>HEARTS</span><b>' + G.hearts + "</b></div>" +
+        "</div>" +
+        '<button class="so-btn so-btn-go" id="so-again">TRY THIS WORLD AGAIN</button>' +
+        '<button class="so-btn" id="so-easier">CHANGE DIFFICULTY</button>' +
+        '<button class="so-btn so-btn-quiet" id="so-over-quit">QUIT TO HUB</button>' +
+      "</div>", "so-ov-card");
+    $("so-again").addEventListener("click", function () {
+      closeOverlay(); G.lives = DIFF[G.diff].lives; bgmDuck(false); startLevel(G.levelIndex);
+    });
+    $("so-easier").addEventListener("click", function () { bgmDuck(false); showDifficulty(); });
+    $("so-over-quit").addEventListener("click", quitToHub);
+  }
+
+  /* ---- 7. the ending: the castle, and him in it -------------------------- */
+  function showEnding() {
+    G.state = "ending";
+    setBgm(false);
+    /* remember the run */
+    var all = loadBest(), b = all[G.diff] || { score: 0, time: 0, hearts: 0, cleared: false };
+    var total = G.elapsed;
+    if (G.score > b.score) b.score = G.score;
+    if (!b.time || total < b.time) b.time = total;
+    if (G.hearts > b.hearts) b.hearts = G.hearts;
+    b.cleared = true;
+    all[G.diff] = b; saveBest(all);
+    if (window.markSuperOuissyDone) window.markSuperOuissyDone();
+
+    overlay(
+      '<div class="so-end">' +
+        '<div class="so-end-art" id="so-end-art"></div>' +
+        '<p class="so-end-kicker">' + SO.ending.kicker + "</p>" +
+        '<div class="so-end-lines">' + SO.ending.lines.map(function (l) { return "<p>" + l + "</p>"; }).join("") + "</div>" +
+        '<p class="so-end-joke">' + SO.ending.notAnotherCastle + "</p>" +
+        '<p class="so-end-sign">' + SO.ending.signOff + "</p>" +
+        '<div class="so-res so-end-res">' +
+          '<div class="so-res-row"><span>FINAL SCORE</span><b>' + pad(G.score, 6) + "</b></div>" +
+          '<div class="so-res-row"><span>HEARTS</span><b>' + G.hearts + "</b></div>" +
+          '<div class="so-res-row"><span>TOTAL TIME</span><b>' + fmtTime(total) + "</b></div>" +
+          '<div class="so-res-row"><span>DIFFICULTY</span><b>' + DIFF[G.diff].label + "</b></div>" +
+        "</div>" +
+        '<div class="so-menu-actions">' +
+          '<button class="so-btn so-btn-go" id="so-end-again">PLAY AGAIN</button>' +
+          '<button class="so-btn so-btn-quiet" id="so-end-quit">BACK TO THE HUB</button>' +
+        "</div>" +
+      "</div>", "so-ov-end");
+    startEndingArt($("so-end-art"));
+    sfx("victory");
+    $("so-end-again").addEventListener("click", function () { closeOverlay(); showDifficulty(); });
+    $("so-end-quit").addEventListener("click", quitToHub);
+  }
+
+  /* The last picture: a lit castle doorway, Ouissy, and him waiting. */
+  var endRaf = null;
+  function startEndingArt(host) {
+    if (!host) return;
+    var s = spriteCanvas(240, 120), c = s.ctx;
+    host.innerHTML = ""; host.appendChild(s.c);
+    var t0 = 0;
+    function frame(now) {
+      endRaf = requestAnimationFrame(frame);
+      if (!t0) t0 = now;
+      var t = (now - t0) / 1000;
+      var P = BIOME.castle;
+      ditherSky(c, 0, 0, 240, 120, P.sky);
+      var rnd = seeded("endsky");
+      for (var i = 0; i < 50; i++) {
+        var sx = rnd() * 240, sy = rnd() * 60;
+        if (Math.sin(t * 2 + sx) > -0.4) px(c, sx, sy, 1, 1, "#ffe9c8");
+      }
+      /* the castle */
+      px(c, 40, 34, 160, 76, "#6b4f80");
+      px(c, 40, 34, 160, 2, "#8a68a4");
+      for (var tw = 0; tw < 3; tw++) {
+        var tx = 44 + tw * 74;
+        px(c, tx, 18, 26, 92, "#7d5590");
+        px(c, tx, 18, 2, 92, "#a97fbe");
+        px(c, tx - 3, 12, 32, 6, "#a97fbe");
+        for (var cr = 0; cr < 32; cr += 7) px(c, tx - 3 + cr, 6, 4, 6, "#a97fbe");
+      }
+      /* windows, warm */
+      for (var wx = 56; wx < 190; wx += 22)
+        for (var wy = 46; wy < 86; wy += 24) {
+          var lit = Math.sin(t * 1.4 + wx * 0.3 + wy) > -0.5;
+          px(c, wx, wy, 6, 9, lit ? "#ffcf6a" : "#4d375e");
+          if (lit) px(c, wx, wy, 6, 2, "#fff0b0");
+        }
+      /* the doorway, wide open */
+      px(c, 108, 74, 26, 36, "#3d2340");
+      px(c, 110, 76, 22, 34, "#ffd8a0");
+      for (var a2 = 0; a2 < 12; a2++) px(c, 110 + a2, 74 - Math.round(Math.sqrt(144 - (a2 - 11) * (a2 - 11))), 24 - a2 * 2, 3, "#ffd8a0");
+
+      /* him, waiting in the light */
+      var pb = Math.sin(t * 2) > 0 ? 0 : 1;
+      px(c, 116, 88 + pb, 8, 14, "#3d5a8a");           // his coat
+      px(c, 116, 88 + pb, 8, 2, "#5a7ab0");
+      blob(c, 120, 84 + pb, 5, 5, ["#ffd9c4", "#f0b096", "#d8967c", "#c07f66"]);
+      px(c, 116, 79 + pb, 9, 3, "#3a2a22");             // his hair
+      px(c, 118, 84 + pb, 1, 1, "#3d2340"); px(c, 122, 84 + pb, 1, 1, "#3d2340");
+      px(c, 119, 87 + pb, 3, 1, "#3d2340");
+
+      /* her, arriving */
+      var walk = Math.min(1, t / 3.2);
+      var ox2 = 20 + walk * 76;
+      var img = walk < 1 ? OUISSY.run.small[Math.floor(t * 8) % 4] : OUISSY.win.small[0];
+      c.drawImage(img, Math.round(ox2), 88 - (walk < 1 ? 0 : Math.abs(Math.sin(t * 3)) * 3));
+
+      /* hearts rising between them once she is there */
+      if (walk >= 1) {
+        for (var h2 = 0; h2 < 7; h2++) {
+          var hp = (t * 0.5 + h2 / 7) % 1;
+          heart(c, 104 + Math.sin(hp * 7 + h2) * 8, 100 - hp * 60, 3 - hp * 1.6,
+                ["#ff5f95", "#ffd166", "#ffffff"][h2 % 3]);
+        }
+      }
+      /* falling sparkles over the whole scene */
+      for (var k2 = 0; k2 < 30; k2++) {
+        var kx = (k2 * 53) % 240, ky = ((t * (14 + k2 % 7) + k2 * 31) % 130);
+        px(c, kx, ky, 1, 1, Math.sin(t * 6 + k2) > 0 ? "#fff6a8" : "#ffd6e6");
+      }
+    }
+    endRaf = requestAnimationFrame(frame);
+  }
+  function stopEndingArt() { if (endRaf) cancelAnimationFrame(endRaf); endRaf = null; }
+
+  /* =======================================================================
+     THE HUD
+     ======================================================================= */
+  function pad(n, w) { n = Math.max(0, Math.round(n)) + ""; while (n.length < w) n = "0" + n; return n; }
+  function fmtTime(s) {
+    s = Math.max(0, s);
+    var m = Math.floor(s / 60), r = Math.floor(s % 60);
+    return m + ":" + (r < 10 ? "0" : "") + r;
+  }
+  function addScore(n) { G.score += n; }
+
+  function updateHud() {
+    var d = DIFF[G.diff];
+    setText("so-score", pad(G.score, 6));
+    setText("so-hearts", pad(G.hearts, 2));
+    setText("so-world", (G.levelIndex + 1) + "-1");
+    setText("so-lives", "×" + Math.max(0, G.lives));
+    var timeEl = $("so-time");
+    if (timeEl) {
+      if (d.timeLimit) {
+        timeEl.textContent = pad(G.timeLeft, 3);
+        timeEl.parentNode.classList.toggle("low", G.timeLeft < 30);
+      } else {
+        timeEl.textContent = fmtTime(G.elapsed - G.levelStartT);
+        timeEl.parentNode.classList.remove("low");
+      }
+    }
+    var bar = $("so-bossbar");
+    if (bar) {
+      var b = G.level && G.level.boss;
+      bar.classList.toggle("on", !!(b && b.awake && !b.dead));
+      if (b) {
+        var fill = $("so-bossfill");
+        if (fill) fill.style.width = Math.max(0, (b.hp / DIFF[G.diff].bossHits) * 100) + "%";
+      }
+    }
+    var st = $("so-stage");
+    if (st) {
+      st.classList.toggle("so-big", G.player.big);
+      st.classList.toggle("so-star", G.player.star > 0);
+    }
+  }
+  function setText(id, v) { var e = $(id); if (e && e.textContent !== v) e.textContent = v; }
+
+  /* =======================================================================
+     13. SOUND — Web Audio only. There is not a single audio file in this
+         game, so it adds nothing to the size of the repo.
+     ======================================================================= */
+  var ac = null;
+  function actx() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      if (!ac) ac = window.__soAudio || (window.__soAudio = new AC());
+      if (ac.state === "suspended") ac.resume();
+      return ac;
+    } catch (e) { return null; }
+  }
+
+  var SFX = {
+    jump:     { type: "square",   f: 340,  to: 720,  d: .13, v: .05 },
+    wing:     { type: "triangle", f: 520,  to: 1040, d: .18, v: .05 },
+    heart:    { type: "triangle", f: 880,  to: 1500, d: .12, v: .06 },
+    stomp:    { type: "square",   f: 300,  to: 90,   d: .14, v: .06 },
+    bump:     { type: "square",   f: 200,  to: 320,  d: .07, v: .05 },
+    break:    { type: "sawtooth", f: 420,  to: 110,  d: .2,  v: .05 },
+    power:    { type: "triangle", f: 520,  to: 1560, d: .38, v: .07 },
+    life:     { type: "triangle", f: 660,  to: 1320, d: .34, v: .07 },
+    shrink:   { type: "sawtooth", f: 620,  to: 180,  d: .3,  v: .05 },
+    die:      { type: "sawtooth", f: 420,  to: 70,   d: .6,  v: .06 },
+    save:     { type: "sine",     f: 300,  to: 900,  d: .3,  v: .05 },
+    check:    { type: "triangle", f: 700,  to: 1180, d: .26, v: .06 },
+    goal:     { type: "triangle", f: 600,  to: 1600, d: .5,  v: .07 },
+    star:     { type: "square",   f: 900,  to: 1700, d: .12, v: .05 },
+    pick:     { type: "square",   f: 520,  to: 780,  d: .08, v: .04 },
+    blink:    { type: "square",   f: 900,  to: 400,  d: .1,  v: .04 },
+    hurry:    { type: "square",   f: 880,  to: 880,  d: .5,  v: .05 },
+    bossWake: { type: "sawtooth", f: 120,  to: 60,   d: .8,  v: .07 },
+    bossHop:  { type: "square",   f: 180,  to: 260,  d: .1,  v: .04 },
+    bossLand: { type: "sawtooth", f: 140,  to: 50,   d: .25, v: .07 },
+    bossHit:  { type: "square",   f: 700,  to: 200,  d: .28, v: .07 },
+    bossDie:  { type: "sawtooth", f: 300,  to: 40,   d: 1.1, v: .08 },
+    gameover: { type: "triangle", f: 400,  to: 120,  d: .9,  v: .06 },
+  };
+
+  function sfx(kind) {
+    var c = actx();
+    if (!c || !G || G.muted) return;
+    if (kind === "fanfare") return arpeggio([523, 659, 784, 1047], .1, "triangle");
+    if (kind === "victory") return arpeggio([523, 659, 784, 1047, 1319, 1568], .12, "triangle");
+    var spec = SFX[kind];
+    if (!spec) return;
+    try {
+      var t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+      o.type = spec.type;
+      o.frequency.setValueAtTime(spec.f, t);
+      o.frequency.exponentialRampToValueAtTime(Math.max(20, spec.to), t + spec.d);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(spec.v, t + .012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + spec.d);
+      o.connect(g); g.connect(c.destination);
+      o.start(t); o.stop(t + spec.d + .02);
+    } catch (e) {}
+  }
+
+  function arpeggio(notes, gap, type) {
+    var c = actx(); if (!c) return;
+    notes.forEach(function (f, i) {
+      try {
+        var t = c.currentTime + i * gap, o = c.createOscillator(), g = c.createGain();
+        o.type = type || "square"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(.07, t + .01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + gap * 2.2);
+        o.connect(g); g.connect(c.destination);
+        o.start(t); o.stop(t + gap * 2.4);
+      } catch (e) {}
+    });
+  }
+
+  /* ---- the background music: a short chiptune loop, written as note
+          numbers so you can retune it without touching the player ------- */
+  var BGM = {
+    /* one bar is 8 steps; 0 is a rest. Numbers are semitones from C4. */
+    lead: [
+      12, 0, 16, 0, 19, 0, 16, 0,  14, 0, 17, 0, 21, 0, 17, 0,
+      12, 0, 16, 0, 19, 12, 24, 0, 21, 19, 16, 0, 14, 0, 12, 0,
+    ],
+    bass: [
+      0, 0, 7, 0, 0, 0, 7, 0,   2, 0, 9, 0, 2, 0, 9, 0,
+      0, 0, 7, 0, 0, 0, 7, 0,   5, 0, 0, 0, 7, 0, 7, 0,
+    ],
+    tempo: 0.14,
+  };
+  var bgmTimer = null, bgmStep = 0, bgmGain = null;
+
+  function setBgm(on) {
+    G.bgmOn = on;
+    try { localStorage.setItem("so_bgm", on ? "1" : "0"); } catch (e) {}
+    if (!on) { stopBgm(); return; }
+    var c = actx(); if (!c) return;
+    if (!bgmGain) { bgmGain = c.createGain(); bgmGain.gain.value = 0.055; bgmGain.connect(c.destination); }
+    if (bgmTimer) return;
+    bgmStep = 0;
+    bgmTimer = setInterval(tickBgm, BGM.tempo * 1000);
+  }
+  function stopBgm() { if (bgmTimer) clearInterval(bgmTimer); bgmTimer = null; }
+  function bgmDuck(on) { if (bgmGain) bgmGain.gain.value = on ? 0.014 : 0.055; }
+
+  function tickBgm() {
+    var c = actx(); if (!c || !bgmGain) return;
+    var i = bgmStep % BGM.lead.length;
+    voice(c, BGM.lead[i], "square", 0, BGM.tempo * 0.9, .5);
+    voice(c, BGM.bass[i], "triangle", -24, BGM.tempo * 1.6, .8);
+    bgmStep++;
+  }
+  function voice(c, note, type, shift, dur, vol) {
+    if (!note) return;
+    try {
+      var t = c.currentTime;
+      var o = c.createOscillator(), g = c.createGain();
+      o.type = type;
+      o.frequency.value = 261.63 * Math.pow(2, (note + shift) / 12);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + .01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(bgmGain);
+      o.start(t); o.stop(t + dur + .02);
+    } catch (e) {}
+  }
+  /* =======================================================================
+     INPUT — keyboard and the on-screen pad write into the same little
+     object, so nothing downstream ever needs to know which was used.
+     ======================================================================= */
+  function freshKeys() {
+    return { left: false, right: false, down: false, jump: false, jumpPressed: false };
+  }
+
+  function onScreen() {
+    var s = $("screen-ouissy");
+    return !!s && s.classList.contains("active");
+  }
+
+  var KEYMAP = {
+    ArrowLeft: "left", a: "left", A: "left", q: "left", Q: "left",
+    ArrowRight: "right", d: "right", D: "right",
+    ArrowDown: "down", s: "down", S: "down",
+    ArrowUp: "jump", w: "jump", W: "jump", z: "jump", Z: "jump", " ": "jump",
+  };
+
+  function bindInput() {
+    document.addEventListener("keydown", function (e) {
+      if (!onScreen()) return;
+      if (e.key === "Escape" || e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        if (G.state === "play" || G.state === "paused") togglePause();
+        return;
+      }
+      var k = KEYMAP[e.key];
+      if (!k) return;
+      e.preventDefault();
+      if (k === "jump" && !G.keys.jump) G.keys.jumpPressed = true;
+      G.keys[k] = true;
+    }, { passive: false });
+
+    document.addEventListener("keyup", function (e) {
+      if (!onScreen()) return;
+      var k = KEYMAP[e.key];
+      if (!k) return;
+      e.preventDefault();
+      G.keys[k] = false;
+    }, { passive: false });
+
+    /* the pad. pointer events cover mouse, pen and finger in one go, and
+       setPointerCapture means a finger that slides off the button still
+       counts as held — which is how she will actually hold it. */
+    Array.prototype.forEach.call(document.querySelectorAll("[data-so-key]"), function (btn) {
+      var k = btn.getAttribute("data-so-key");
+      function down(e) {
+        e.preventDefault();
+        btn.classList.add("held");
+        if (k === "jump" && !G.keys.jump) G.keys.jumpPressed = true;
+        G.keys[k] = true;
+        try { btn.setPointerCapture(e.pointerId); } catch (er) {}
+      }
+      function up(e) {
+        if (e) e.preventDefault();
+        btn.classList.remove("held");
+        G.keys[k] = false;
+      }
+      btn.addEventListener("pointerdown", down);
+      btn.addEventListener("pointerup", up);
+      btn.addEventListener("pointercancel", up);
+      btn.addEventListener("lostpointercapture", up);
+      btn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    });
+
+    var pb = $("so-pause-btn");
+    if (pb) pb.addEventListener("click", function () { if (G.state === "play" || G.state === "paused") togglePause(); });
+
+    /* losing the tab should not mean losing a life */
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden && onScreen() && G.state === "play") togglePause();
+    });
+  }
+
+  /* =======================================================================
+     RUN AND LEVEL LIFECYCLE
+     ======================================================================= */
+  function beginRun() {
+    closeOverlay();
+    G.lives = DIFF[G.diff].lives;
+    G.score = 0; G.hearts = 0; G.deaths = 0; G.elapsed = 0;
+    G.levelIndex = 0; G.levelStats = [];
+    var want = true;
+    try { want = localStorage.getItem("so_bgm") !== "0"; } catch (e) {}
+    setBgm(want);
+    startLevel(0);
+  }
+
+  function startLevel(i) {
+    G.levelIndex = i;
+    G.level = buildLevel(i);
+    G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
+    G.parts = []; G.floats = []; G.bumps = [];
+    G.cam = { x: 0, y: 0 }; G.camSnap = true;
+    G.shake = 0; G.poleBonus = 0; G.warned = false;
+    G.levelStartT = G.elapsed;
+    G.levelStartHearts = G.hearts;
+    G.levelStartDeaths = G.deaths;
+    var d = DIFF[G.diff];
+    G.timeLeft = d.timeLimit ? d.timeLimit[i] : 0;
+    G.keys = freshKeys();
+    moveCamera(1);
+    updateHud();
+    showLevelCard();
+  }
+
+  function quitToHub() {
+    stop();
+    if (window.leaveSuperOuissy) window.leaveSuperOuissy();
+  }
+
+  /* =======================================================================
+     THE FRAME DRIVER
+
+     A fixed step keeps the physics identical on a 60Hz phone and a 144Hz
+     monitor; whatever time is left over is carried into the next frame.
+     ======================================================================= */
+  var raf = null, lastT = 0, acc = 0;
+  var STEP = 1 / 60, MAX_FRAME = 0.1;
+
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    if (!lastT) lastT = now;
+    var dt = Math.min(MAX_FRAME, (now - lastT) / 1000);
+    lastT = now;
+
+    if (!onScreen()) return;
+
+    if (G.state === "play") {
+      acc += dt;
+      var guard = 0;
+      while (acc >= STEP && guard++ < 6) { step(STEP); acc -= STEP; }
+    } else {
+      acc = 0;
+      /* even paused, the world keeps breathing — sprites still animate */
+      if (G.level) { stepParts(Math.min(dt, .05)); G.shake = Math.max(0, G.shake - dt * 26); }
+    }
+    paint(now / 1000);
+  }
+
+  function fitStage() {
+    /* The canvas is letterboxed by CSS; this only keeps the pad out of the
+       way when there is no room for it under the stage in landscape. */
+    var st = $("so-stage"), fr = $("screen-ouissy");
+    if (!st || !fr) return;
+    fr.classList.toggle("so-landscape", window.innerWidth > window.innerHeight * 1.25);
+  }
+
+  /* =======================================================================
+     14. PUBLIC API
+     ======================================================================= */
+  var booted = false;
+
+  function start() {
+    G = {
+      diff: "medium", state: "menu", level: null, levelIndex: 0,
+      lives: 3, score: 0, hearts: 0, deaths: 0, elapsed: 0,
+      levelStartT: 0, levelStartHearts: 0, levelStartDeaths: 0,
+      timeLeft: 0, warned: false, poleBonus: 0, levelStats: [],
+      player: mkPlayer(0, 0), parts: [], floats: [], bumps: [],
+      cam: { x: 0, y: 0 }, camSnap: true, shake: 0,
+      keys: freshKeys(), canvas: $("so-canvas"),
+      bgmOn: false, muted: false, bossBar: 1,
+    };
+    if (!booted) { bindInput(); booted = true; }
+    window.addEventListener("resize", fitStage);
+    fitStage();
+    if (window.duckAmbient) window.duckAmbient(true);
+    lastT = 0; acc = 0;
+    if (!raf) raf = requestAnimationFrame(frame);
+    showDifficulty();
+  }
+
+  function stop() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+    stopBgm();
+    stopEndingArt();
+    closeOverlay();
+    if (window.duckAmbient) window.duckAmbient(false);
+    if (G) G.state = "menu";
+  }
+
+  return { start: start, stop: stop, pause: function () { if (G && G.state === "play") togglePause(); } };
+})();

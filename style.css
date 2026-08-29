@@ -1969,3 +1969,269 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .music-toggle:active{transform:scale(.9);}
 .music-toggle.off{opacity:.55;}
+
+/* =========================================================
+   SUPER OUISSY — the platformer
+
+   The game itself is one 320x180 canvas; everything here is the
+   furniture around it. The stage is a container, so the HUD and the
+   menus are sized in cqw/cqh and stay in proportion with the art at
+   any screen size instead of drifting away from it on a phone.
+
+   Nothing in this block is used by any other screen.
+   ========================================================= */
+#screen-ouissy{padding:0; background:#150c22; overflow:hidden;}
+.so-frame{
+  position:relative; width:100%; height:100%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0;
+}
+/* the art keeps its 16:9 and is letterboxed, exactly like the adventure */
+.so-stage{
+  position:relative; width:min(100%, calc((100vh - 132px) * 16 / 9));
+  aspect-ratio:16/9; max-height:100%;
+  container-type:inline-size;
+  box-shadow:0 12px 44px rgba(0,0,0,.62), 0 0 0 2px rgba(255,158,196,.22);
+  background:#150c22; overflow:hidden;
+}
+#screen-ouissy.so-landscape .so-stage{width:min(100%, calc(100vh * 16 / 9));}
+#so-canvas{
+  position:absolute; inset:0; width:100%; height:100%; display:block;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+}
+
+/* ---- HUD ---- */
+.so-hud{
+  position:absolute; left:0; right:0; top:0; z-index:5;
+  display:flex; align-items:flex-start; justify-content:space-between;
+  gap:1cqw; padding:2cqw 2.4cqw; pointer-events:none;
+  font-family:'Press Start 2P', ui-monospace, 'Courier New', monospace;
+  text-shadow:0 2px 0 rgba(30,12,34,.9), 0 0 6px rgba(255,95,149,.35);
+}
+.so-hud-item{display:flex; flex-direction:column; gap:.5cqw; line-height:1;}
+.so-hud-item b{font-size:1.75cqw; font-weight:400; color:#ffb0cd; letter-spacing:.08em;}
+.so-hud-item i{font-size:2.4cqw; font-style:normal; color:#fffaf5;}
+.so-hud-hearts b{color:#ff5f95; font-size:2.4cqw;}
+.so-hud-hearts i{color:#ffd6e6;}
+.so-hud-time.low i{color:#ff9a6a; animation:soBlink .5s steps(2,end) infinite;}
+@keyframes soBlink{50%{opacity:.25;}}
+
+/* the state pips: a ring round the stage says what she is carrying */
+.so-stage.so-big{box-shadow:0 12px 44px rgba(0,0,0,.62), 0 0 0 2px rgba(255,158,196,.75);}
+.so-stage.so-star{box-shadow:0 12px 44px rgba(0,0,0,.62), 0 0 0 2px rgba(255,240,160,.9), 0 0 26px rgba(255,225,120,.4);}
+
+/* ---- the boss's heart bar ---- */
+.so-bossbar{
+  position:absolute; left:50%; transform:translateX(-50%); bottom:3cqw; z-index:5;
+  width:44cqw; height:2.4cqw; border:.5cqw solid #3d2340; background:rgba(30,12,34,.72);
+  opacity:0; transition:opacity .3s ease; pointer-events:none;
+}
+.so-bossbar.on{opacity:1;}
+.so-bossbar span{
+  display:block; height:100%; width:100%;
+  background:linear-gradient(180deg,#ff9ec4,#e0426e);
+  transition:width .3s var(--ease-out);
+}
+
+/* ---- pause button ---- */
+.so-pause-btn{
+  position:absolute; right:2cqw; bottom:2cqw; z-index:6; cursor:pointer;
+  font-family:'Press Start 2P', monospace; font-size:2cqw; line-height:1;
+  color:#fffaf5; background:rgba(61,35,64,.7); border:.4cqw solid rgba(255,158,196,.5);
+  border-radius:.6cqw; padding:1cqw 1.4cqw;
+}
+.so-pause-btn:active{transform:translateY(1px);}
+
+/* =========================================================
+   Menus, cards and the ending — one overlay, many faces
+   ========================================================= */
+.so-overlay{display:none;}
+.so-overlay.on{
+  display:flex; position:absolute; inset:0; z-index:10;
+  align-items:center; justify-content:center; padding:3cqw;
+  background:radial-gradient(circle at 50% 40%, rgba(58,26,62,.82), rgba(16,8,26,.94));
+  backdrop-filter:blur(2px);
+  animation:soFade .28s var(--ease-out);
+  overflow-y:auto;
+}
+@keyframes soFade{from{opacity:0;} to{opacity:1;}}
+
+.so-menu, .so-card, .so-end{
+  display:flex; flex-direction:column; align-items:center; gap:1.6cqw;
+  text-align:center; width:100%; max-width:86cqw;
+  font-family:'Press Start 2P', ui-monospace, monospace; color:#fffaf5;
+}
+.so-logo canvas{width:52cqw; height:auto; image-rendering:pixelated; display:block;}
+.so-tag{
+  font-family:var(--font-serif); font-style:italic; font-size:2.4cqw;
+  color:#ffc8de; margin:0; letter-spacing:.02em;
+}
+
+/* ---- the three difficulty cards ---- */
+.so-diff-row{display:flex; gap:1.6cqw; width:100%; justify-content:center; flex-wrap:wrap;}
+.so-diff-card{
+  flex:1 1 24cqw; max-width:26cqw; min-width:20cqw; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:.9cqw;
+  padding:2cqw 1.4cqw; border-radius:1.2cqw;
+  background:linear-gradient(170deg, rgba(94,48,92,.9), rgba(52,26,58,.92));
+  border:.5cqw solid rgba(255,158,196,.35);
+  box-shadow:0 .8cqw 0 rgba(0,0,0,.34);
+  transition:transform .16s var(--ease-pop), border-color .16s ease, box-shadow .16s ease;
+  font-family:inherit; color:inherit;
+}
+.so-diff-card:hover{transform:translateY(-.4cqw);}
+.so-diff-card:active{transform:translateY(.5cqw); box-shadow:0 .2cqw 0 rgba(0,0,0,.34);}
+.so-diff-card.sel{
+  border-color:#ffd166;
+  background:linear-gradient(170deg, rgba(140,62,106,.95), rgba(70,32,70,.95));
+  box-shadow:0 .8cqw 0 rgba(0,0,0,.34), 0 0 20px rgba(255,209,102,.28);
+}
+.so-diff-hearts{color:#ff5f95; font-size:1.9cqw; letter-spacing:.12em;}
+.so-diff-name{font-size:2.4cqw; color:#ffd166;}
+.so-diff-blurb{
+  font-family:var(--font-body); font-size:1.85cqw; line-height:1.5;
+  color:#ffd6e6; font-weight:500;
+}
+.so-diff-best{font-size:1.5cqw; color:#b79ad4;}
+
+/* ---- buttons, in the arcade face ---- */
+.so-menu-actions{display:flex; gap:1.4cqw; flex-wrap:wrap; justify-content:center; margin-top:.6cqw;}
+.so-btn{
+  cursor:pointer; font-family:'Press Start 2P', monospace; font-size:2cqw; line-height:1.4;
+  color:#3d2340; background:linear-gradient(180deg,#ffe6f0,#ffb0cd);
+  border:.5cqw solid #8c4569; border-radius:.8cqw; padding:1.5cqw 2.6cqw;
+  box-shadow:0 .8cqw 0 #8c4569;
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.so-btn:active{transform:translateY(.7cqw); box-shadow:0 .1cqw 0 #8c4569;}
+.so-btn-go{background:linear-gradient(180deg,#fff0b0,#ffd166); border-color:#a9741f; box-shadow:0 .8cqw 0 #a9741f;}
+.so-btn-go:active{box-shadow:0 .1cqw 0 #a9741f;}
+.so-btn-quiet{
+  background:transparent; color:#ffc8de; border-color:rgba(255,158,196,.45);
+  box-shadow:none;
+}
+.so-btn-quiet:active{transform:translateY(.4cqw); box-shadow:none;}
+
+/* ---- the plain card: how-to, world title, results, pause ---- */
+.so-card{
+  background:linear-gradient(170deg, rgba(78,38,80,.94), rgba(40,20,48,.96));
+  border:.5cqw solid rgba(255,158,196,.4); border-radius:1.4cqw;
+  padding:3cqw 3.4cqw; max-width:64cqw; gap:1.4cqw;
+  box-shadow:0 1cqw 0 rgba(0,0,0,.35), 0 2cqw 5cqw rgba(0,0,0,.5);
+}
+.so-card-title{font-size:2.8cqw; color:#ffd166; margin:0; letter-spacing:.04em; line-height:1.5;}
+.so-card-note{
+  font-family:var(--font-serif); font-style:italic; font-size:2cqw;
+  color:#ffc8de; margin:0; line-height:1.5;
+}
+.so-how{display:flex; flex-direction:column; gap:1.1cqw; width:100%;}
+.so-how-row{
+  display:flex; align-items:baseline; gap:1.6cqw; text-align:left;
+  border-bottom:1px dashed rgba(255,158,196,.22); padding-bottom:.9cqw;
+}
+.so-how-row b{flex:0 0 22%; font-size:1.8cqw; color:#ffd166; font-weight:400;}
+.so-how-row span{font-family:var(--font-body); font-size:1.9cqw; color:#ffe6f0; line-height:1.5;}
+
+/* ---- the card that announces a world ---- */
+.so-ov-world .so-card{background:rgba(16,8,26,.94); border-color:rgba(255,209,102,.35);}
+.so-world-kicker{font-size:1.9cqw; color:#ffb0cd; margin:0; letter-spacing:.22em;}
+.so-world-name{font-size:3.4cqw; color:#ffd166; margin:0; line-height:1.45;}
+.so-world-sub{
+  font-family:var(--font-serif); font-style:italic; font-size:2.2cqw; color:#ffd6e6; margin:0;
+}
+.so-world-lives{font-size:2cqw; color:#fffaf5; margin:.6cqw 0 0; letter-spacing:.1em;}
+
+/* ---- results ---- */
+.so-res{display:flex; flex-direction:column; gap:.9cqw; width:100%; margin:.6cqw 0;}
+.so-res-row{
+  display:flex; justify-content:space-between; align-items:baseline; gap:2cqw;
+  font-size:1.8cqw; border-bottom:1px dashed rgba(255,158,196,.2); padding-bottom:.7cqw;
+}
+.so-res-row span{color:#ffb0cd;}
+.so-res-row b{color:#fffaf5; font-weight:400;}
+.so-pause-diff{display:flex; gap:1cqw; justify-content:center; flex-wrap:wrap;}
+.so-mini{
+  cursor:pointer; font-family:'Press Start 2P', monospace; font-size:1.6cqw;
+  padding:1cqw 1.4cqw; border-radius:.6cqw; color:#ffd6e6;
+  background:rgba(61,35,64,.8); border:.35cqw solid rgba(255,158,196,.35);
+}
+.so-mini.sel{color:#3d2340; background:#ffd166; border-color:#a9741f;}
+
+/* ---- the ending ---- */
+.so-ov-end{align-items:flex-start;}
+.so-end{max-width:72cqw; gap:1.4cqw; padding:2cqw 0 4cqw;}
+.so-end-art canvas{
+  width:58cqw; height:auto; image-rendering:pixelated; display:block;
+  border:.5cqw solid rgba(255,209,102,.4); border-radius:.8cqw;
+  box-shadow:0 1cqw 3cqw rgba(0,0,0,.55);
+}
+.so-end-kicker{font-size:1.9cqw; color:#ffb0cd; margin:.8cqw 0 0; letter-spacing:.16em;}
+.so-end-lines{display:flex; flex-direction:column; gap:1cqw;}
+.so-end-lines p{
+  font-family:var(--font-script); font-size:4cqw; line-height:1.35;
+  color:#fffaf5; margin:0;
+}
+.so-end-joke{
+  font-family:var(--font-serif); font-style:italic; font-size:2cqw; color:#ffc8de; margin:.6cqw 0 0;
+}
+.so-end-sign{font-family:var(--font-hand); font-size:3.4cqw; color:#ffd166; margin:0;}
+.so-end-res{max-width:48cqw;}
+
+/* =========================================================
+   The touch pad — sized in viewport units, because it lives
+   outside the stage and has to stay thumb-sized on a phone
+   ========================================================= */
+.so-pad{
+  display:flex; align-items:center; justify-content:space-between;
+  width:100%; max-width:640px; padding:10px 14px 14px; gap:12px;
+  flex:0 0 auto;
+}
+.so-pad-side{display:flex; gap:10px; align-items:center;}
+.so-pad-right{gap:12px;}
+.so-key{
+  cursor:pointer; user-select:none; touch-action:none;
+  width:clamp(46px,13vw,62px); height:clamp(46px,13vw,62px); border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:clamp(16px,4.4vw,22px); line-height:1;
+  color:#3d2340; background:linear-gradient(180deg,#ffe6f0,#ffb0cd);
+  border:2px solid #8c4569; box-shadow:0 5px 0 #8c4569;
+  transition:transform .08s ease, box-shadow .08s ease;
+}
+.so-key.held, .so-key:active{transform:translateY(4px); box-shadow:0 1px 0 #8c4569;}
+.so-key-jump{
+  width:clamp(58px,17vw,80px); height:clamp(58px,17vw,80px); border-radius:50%;
+  background:linear-gradient(180deg,#fff0b0,#ffd166); border-color:#a9741f;
+  box-shadow:0 6px 0 #a9741f; color:#a9371f;
+}
+.so-key-jump.held, .so-key-jump:active{box-shadow:0 1px 0 #a9741f;}
+.so-key-duck{width:clamp(40px,11vw,52px); height:clamp(40px,11vw,52px);}
+
+/* A pointer that is a real mouse does not need the pad taking up room. */
+@media (hover:hover) and (pointer:fine){
+  .so-pad{display:none;}
+  .so-stage{width:min(100%, calc(100vh * 16 / 9));}
+}
+/* Portrait phones: the stage sits high, the pad gets the bottom third. */
+@media (max-aspect-ratio: 3/4){
+  .so-frame{justify-content:flex-start; padding-top:8vh;}
+  .so-pad{margin-top:auto;}
+}
+
+/* ---- the hub card art for it ---- */
+.hub-art-ouissy{
+  background:
+    radial-gradient(circle at 78% 24%, #fff6c0 0 7px, transparent 8px),
+    linear-gradient(180deg,#8fe3ff 0%,#bdf0ff 40%,#8ff0a8 40%,#5fd684 62%,#d69a5c 62%,#b0783f 100%);
+  position:relative;
+}
+.hub-art-ouissy::after{
+  content:""; position:absolute; left:14%; right:14%; bottom:26%; height:22%;
+  background:
+    radial-gradient(circle at 18% 50%, #ff5f95 0 22%, transparent 24%),
+    radial-gradient(circle at 50% 50%, #ff5f95 0 22%, transparent 24%),
+    radial-gradient(circle at 82% 50%, #ff5f95 0 22%, transparent 24%);
+}
+
+@media (prefers-reduced-motion: reduce){
+  .so-overlay.on{animation:none;}
+  .so-hud-time.low i{animation:none;}
+}

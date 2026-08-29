@@ -6,9 +6,9 @@
 <title>For My Love 💕</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=8">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=8"></script>
+<link rel="stylesheet" href="style.css?v=9">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
+<script src="vendor/three.bundle.js?v=9"></script>
 
 </head>
 <body>
@@ -121,6 +121,12 @@
           <span class="hub-name">The Long Way Round</span>
           <span class="hub-desc">A story that goes where you choose</span>
         </button>
+        <button class="hub-card" id="hub-card-ouissy" data-chapter="ouissy">
+          <span class="hub-badge" id="hub-badge-ouissy">✓</span>
+          <span class="hub-art hub-art-ouissy" aria-hidden="true"></span>
+          <span class="hub-name">Super Ouissy</span>
+          <span class="hub-desc">Run, jump and stomp your way to the castle</span>
+        </button>
       </div>
       <button id="hub-keepsake" class="btn-ancient hub-keepsake">Open the keepsake 💛</button>
     </div>
@@ -162,6 +168,42 @@
           <canvas id="hv-fail-canvas" width="320" height="180"></canvas>
           <button id="hv-retry" class="hv-restart">Restart</button>
           <p class="hv-fail-note" id="hv-fail-text"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN — SUPER OUISSY (the platformer; all of it lives in super-ouissy.js) -->
+  <section id="screen-ouissy" class="screen">
+    <div class="so-frame">
+      <div class="so-stage" id="so-stage">
+        <canvas id="so-canvas" width="320" height="180"></canvas>
+
+        <!-- the HUD sits over the art, in the arcade face -->
+        <div class="so-hud" id="so-hud">
+          <span class="so-hud-item"><b>SCORE</b><i id="so-score">000000</i></span>
+          <span class="so-hud-item so-hud-hearts"><b>&#9829;</b><i id="so-hearts">00</i></span>
+          <span class="so-hud-item"><b>WORLD</b><i id="so-world">1-1</i></span>
+          <span class="so-hud-item so-hud-time"><b>TIME</b><i id="so-time">0:00</i></span>
+          <span class="so-hud-item"><b>OUISSY</b><i id="so-lives">&times;3</i></span>
+        </div>
+
+        <div class="so-bossbar" id="so-bossbar"><span id="so-bossfill"></span></div>
+        <button class="so-pause-btn" id="so-pause-btn" aria-label="Pause">&#10074;&#10074;</button>
+
+        <!-- every menu, card and ending is drawn into this one overlay -->
+        <div class="so-overlay" id="so-overlay" aria-hidden="true"></div>
+      </div>
+
+      <!-- the touch pad, for playing this on a phone -->
+      <div class="so-pad" id="so-pad" aria-hidden="true">
+        <div class="so-pad-side">
+          <button class="so-key" data-so-key="left" aria-label="Left">&#9664;</button>
+          <button class="so-key" data-so-key="right" aria-label="Right">&#9654;</button>
+        </div>
+        <div class="so-pad-side so-pad-right">
+          <button class="so-key so-key-duck" data-so-key="down" aria-label="Duck">&#9660;</button>
+          <button class="so-key so-key-jump" data-so-key="jump" aria-label="Jump">&#10084;</button>
         </div>
       </div>
     </div>
@@ -323,8 +365,9 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=8"></script>
-<script src="scrapbook.js?v=8"></script>
-<script src="script.js?v=8"></script>
+<script src="book-scene.js?v=9"></script>
+<script src="scrapbook.js?v=9"></script>
+<script src="script.js?v=9"></script>
+<script src="super-ouissy.js?v=9"></script>
 </body>
 </html>
