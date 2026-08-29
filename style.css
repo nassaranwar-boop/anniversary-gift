@@ -2019,8 +2019,11 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---- the love meter ----
    Twenty hearts fills it; filling it hands her the sparkle and a life. It
    sits under the heart count so the two read as one thing. */
+/* the count and the bar on one line, the count acting as its label */
+.so-love{display:flex; align-items:center; gap:1cqw;}
+.so-love i{line-height:1;}
 .so-meter{
-  display:block; width:15cqw; height:1.6cqw; margin-top:.5cqw;
+  display:block; width:13cqw; height:1.8cqw; margin-top:0;
   border:.35cqw solid rgba(61,35,64,.9);
   background:rgba(30,12,34,.55);
   box-shadow:0 0 0 .2cqw rgba(255,158,196,.25);

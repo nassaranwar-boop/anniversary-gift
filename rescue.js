@@ -169,38 +169,46 @@ window.Rescue = (function () {
   /* =======================================================================
      THE CAST
 
-     Anwar is twenty by twenty-six and Death is forty by fifty-eight,
+     Anwar is twenty-six by thirty-four and Death is forty by fifty-eight,
      against her sixteen by eighteen. That size difference is the point: he
      stands over her, and the thing on the other side of him stands over
      them both.
      ======================================================================= */
   var ANWAR_MAP = [
-    ".......KKKKKKKK.......",
-    ".....KKhihhhihhiKK....",
-    "....KhihhhihhihhhihK..",
-    "....KhhihhhihhhihhhK..",
-    "...KhihhhhihhhihhhihK.",
-    "...KhhSSSSSSSSSSSShhK.",
-    "...KhSSKKSSSSKKSSSShK.",
-    "...KhSKKKKSSKKKKSSShK.",
-    "...KhSKGKKSSKKGKSSShK.",
-    "...KhSKKKKSSKKKKSSShK.",
-    "...KhSSSSSSSSSSSSSShK.",
-    "....KSSbbbbbbbbbbSSK..",
-    "....KSbbbbKKKKbbbbSK..",
-    ".....KSbbbbbbbbbbSK...",
-    "......KKSSSSSSSSKK....",
-    "..KKJJJJkkkkkkJJJJKK..",
-    ".KJJJJJJkkkkkkJJJJJJK.",
-    "KJJJJJJJkkkkkkJJJJJJJK",
-    "KJJJJJJJkkkkkkJJJJJJJK",
-    "KSJJJJJJkkkkkkJJJJJJSK",
-    "KSJJJJJJkkkkkkJJJJJJSK",
-    ".KJJJJJJJkkkkJJJJJJJK.",
-    "..KJJJJJJJJJJJJJJJJK..",
-    "...KTTTTTK..KTTTTTK...",
-    "...KTTTTTK..KTTTTTK...",
-    "..KOOOOOOK..KOOOOOOK..",
+    ".......KKhhhihihhKK.......",
+    "......KhihihhhhihihK......",
+    ".....KihhhhihihhhhihK.....",
+    ".....KhihihhhhihihhhhK....",
+    ".....KhhhhhhhhhhhhhhhK....",
+    "....KhhSSSSSSSSSSSSShhK...",
+    "....KhhSKKKSSSSSKKKShhK...",
+    "....KhhKGKGKSSSKGKGKhhK...",
+    "....KhhKGGGKKKKKGGGKhhK...",
+    ".....KSSKKKSSSSSKKKSKK....",
+    ".....KSSbbKbbbbKbbbK......",
+    "......KKSbbKWWKbbSK.......",
+    "........KKKSSSSKKK........",
+    ".KKKKKKKKKssssssKKKKKKKKK.",
+    "KjjJJJJJJjkkkkkkjJJJJJJJJK",
+    "KjjJJJJJJjkkkkkkjJJJJJJJJK",
+    "KjjJKJJJJjkkkkkkjJJJJKJJJK",
+    "KjjJKJJJJjkkkkkkjJJJJKJJJK",
+    "KjjJKJJJjJkkkkkkJjJJJKJJJK",
+    "KjjJKJJJjJkkkkkkJjJJJKJJJK",
+    "KjjJKJJJjJkkkkkkJjJJJKJJJK",
+    "KjjJKJJJJJkkkkkkJJJJJKJJJK",
+    "KjjJKJJJJJkkkkkkJJJJJKJJJK",
+    "KjjJKJJJJJkkkkkkJJJJJKJJJK",
+    "KSSSKjjJJJJJJJJJJJJJJKSSSK",
+    "KsssKKKTTTTTKKTTTTTKKKsssK",
+    ".KKK..KTTTTTKKTTTTTK..KKK.",
+    "......KTTTTTKKTTTTTK......",
+    "......KTTTTTKKTTTTTK......",
+    "......KTTTTTKKTTTTTK......",
+    "......KTTTTTKKTTTTTK......",
+    "......KOOOOOKKOOOOOK......",
+    ".....KOOOOOOKKOOOOOOK.....",
+    "....KOOOOOOOKKOOOOOOOK....",
   ];
 
   var DEATH_MAP = [
@@ -266,20 +274,30 @@ window.Rescue = (function () {
 
   /* one character per pixel, as in the game
        K ink   h hair   i hair shine   S skin   b stubble
-       G glass  J jacket  j jacket lit  k shirt   T jeans  O boot
+       G lens  W teeth  J jacket  j jacket lit  k tee
+       s skin shade  T jeans  O boot
        c cloak  r the cold rim down his lit side
        V the void under the hood   g a glint in it
        s scythe blade   S (in Death) blade shine   h (in Death) the shaft */
   /* Brown leather over a black shirt, dark jeans, dark boots. */
+  /* Black leather over a black tee, dark jeans, dark boots — the version
+     approved from the sprite sheet. Black on black needs help to read: the
+     jacket is a shade lighter and cooler than the tee, the lapels and the
+     leading edge catch the warm light, and the ink outline separates both
+     from whatever dark he is standing in. */
   var ANWAR_PAL = {
-    K: "#241a26", h: "#2f2320", i: "#5a4238",
-    S: "#e0b189", b: "#4a3a30", G: "#cfe0ee",
-    J: "#7a4e2e",          // the jacket
-    j: "#a06a42",          // where the light catches it
-    k: "#191620",          // the shirt under it
-    T: "#262a38",          // jeans
-    O: "#15131b",          // boots
+    K: "#100c16",                 // ink
+    h: "#241a17", i: "#4a362e",   // dark curls, and their shine
+    S: "#e8bb92", s: "#c08e64",   // light-medium skin
+    b: "#4a3a30",                 // the beard, short along the jaw
+    G: "#cfe0ee", W: "#fff6ea",   // lenses, and a glint of teeth
+    J: "#26232e",                 // the leather
+    j: "#4e4859",                 // its lapels, and the edge the light finds
+    k: "#0f0d13",                 // the tee under it
+    T: "#232636",                 // jeans
+    O: "#141119",                 // boots
   };
+
   var DEATH_PAL = {
     K: "#000000", c: "#141018", V: "#000000", g: "#8fd8ff",
     s: "#e8eef6", S: "#ffffff", h: "#3a2f28", G: "#c9c2b8", C: "#241d18",
@@ -300,24 +318,9 @@ window.Rescue = (function () {
   /* Anwar breathes, and his coat moves when he does */
   function paintAnwar(k) {
     var map = ANWAR_MAP.slice();
-    if (k) {
-      /* a weight shift, not a walk: the jacket hem swings a pixel */
-      map[22] = ".KJJJJJJJJJJJJJJJJK...";
-    }
-    var s = spriteCanvas(22, map.length), c = s.ctx;
-    for (var y = 0; y < map.length; y++)
-      for (var x = 0; x < 22; x++) {
-        var ch = map[y].charAt(x);
-        if (ch === "." || ch === " ") continue;
-        /* The light in these scenes comes from his left, so the leading
-           edge of the leather catches it — a clean lit edge, not a hatch:
-           a diagonal pattern across it read as corduroy. */
-        var lit = ch === "J" && y >= 15 && y <= 22 &&
-                  map[y].charAt(x - 1) !== "J" && map[y].charAt(x + 1) === "J";
-        if (lit) px(c, x, y, 1, 1, ANWAR_PAL.j);
-        else if (ANWAR_PAL[ch]) px(c, x, y, 1, 1, ANWAR_PAL[ch]);
-      }
-    return s.c;
+    /* he breathes: his fists close on the off frame */
+    if (k) map[24] = map[24].replace("KSSS", "K SS").replace("SSSK", "SS K");
+    return paintMap(map, ANWAR_PAL, 26);
   }
 
   /* Death does not breathe. The cloak stirs anyway. */

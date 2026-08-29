@@ -22,6 +22,7 @@ these runs; that is the harness, not the site.
 
 | script | what it tells you |
 |---|---|
+| `realplay.js` | **run this one.** Plays the game the way a person does — clicks through, waits, and looks at what is actually on the canvas — on all three difficulties. Every other suite drives the game itself and is therefore blind to anything wrong with the requestAnimationFrame path, which is how a bug that left the entire game rendering nothing got past 66 green assertions. |
 | `regress.js` | walks every screen that existed before Super Ouissy — intro, gate, book, hub, maze, adventure, keepsake — on desktop and on an iPhone, and checks each still builds with no page errors and no horizontal scroll. Run this before any push. |
 | `mech.js` | eighteen assertions on the game itself: hearts, gift blocks, stomping, growing, breaking bricks, pits, the cloud that catches her on Easy, Hard's clock and extra spikes, the moat, the whole boss fight. |
 | `flow.js` | plays all three worlds through to the ending and checks the results cards, the saved best time and the chapter being marked done. |
@@ -42,6 +43,14 @@ that waits on wall-clock time runs in slow motion and proves nothing. Set
 `window.__soTestDrive = true` and advance the world with `window.__soPump(seconds, keys)`
 instead — it steps the fixed timestep directly. The `__so*` hooks are
 documented at the bottom of `super-ouissy.js`.
+
+**A green suite is not a working game.** The other suites set
+`window.__soTestDrive` and call `__soPump` to advance the world by hand.
+That is fast and deterministic and it never once touches
+`requestAnimationFrame` — so a second function declaration named `frame`,
+shadowing the game loop at the same scope, made the whole game render
+nothing while all 66 assertions stayed green. `realplay.js` exists because
+of that: it clicks, it waits, and it reads pixels off the canvas.
 
 **`page.screenshot()` hangs** while the game loop is painting: playwright waits
 for the element box to be stable and never gets it. Either call

@@ -4361,6 +4361,12 @@ window.SuperOuissy = (function () {
     return window.__soState();
   };
   window.__soHalt = function () { if (raf) cancelAnimationFrame(raf); raf = null; };
+  /* is the frame loop alive, and is it reaching the canvas? */
+  window.__soLoop = function () {
+    return { raf: raf !== null, onScreen: onScreen(), state: G && G.state,
+             view: VIEW.w + "x" + VIEW.h, level: !!(G && G.level),
+             canvas: !!$("so-canvas") };
+  };
   window.__soHaltUndo = function () { if (!raf) { lastT = 0; raf = requestAnimationFrame(frame); } };
 
   /* --- putting her somewhere --- */
@@ -4595,13 +4601,20 @@ window.SuperOuissy = (function () {
     return o.toDataURL("image/png");
   };
 
-  /* rescue.js borrows her sprite rather than keeping a second copy of
-     her, so a change to her hair shows up in the story scenes too */
-  function frame(pose, k) {
+  /* rescue.js borrows her sprite rather than keeping a second copy of her,
+     so a change to her hair shows up in the story scenes too.
+
+     NOT called `frame`. It was, and it is a function declaration at the same
+     scope as the game loop's own frame(now) — so the later declaration won,
+     requestAnimationFrame(frame) scheduled THIS instead, and the whole game
+     rendered nothing: it fired once, returned a sprite, never rescheduled
+     and never painted. No error, because asking for a sprite with a
+     timestamp is perfectly legal. */
+  function ouissyFrame(pose, k) {
     var set = OUISSY[pose] || OUISSY.idle;
     var arr = G && G.player && G.player.big ? set.big : set.small;
     return arr[Math.min(k || 0, arr.length - 1)];
   }
 
-  return { start: start, stop: stop, frame: frame, pause: function () { if (G && G.state === "play") togglePause(); } };
+  return { start: start, stop: stop, frame: ouissyFrame, pause: function () { if (G && G.state === "play") togglePause(); } };
 })();
