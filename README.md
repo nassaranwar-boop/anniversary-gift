@@ -185,11 +185,21 @@ Everything you are likely to want is in the first two hundred lines of
 - `DIFF` — Easy / Medium / Hard, written as multipliers over `TUNE`, so
   changing a mode is one line. Easy has five lives and no fatal pits (a cloud
   catches her); Hard has two lives and a clock.
-- `LEVELS` — the three worlds, as grids of characters, one per 16px tile,
-  with the full legend written above them. Edit the strings and the level
-  changes. Two characters are difficulty-gated (`;` an enemy that only
-  appears above Easy, `,` spikes that only appear on Hard), so one grid
-  covers all three modes.
+- `WORLDS` — nine worlds, three per difficulty, as grids of characters, one
+  per 16px tile, with the full legend written above them. Edit the strings
+  and the level changes. Each difficulty walks its own three:
+
+  | | World 1 | World 2 | World 3 |
+  |---|---|---|---|
+  | **Easy** | Sunny Meadows | Blossom Orchard | Secret Garden |
+  | **Medium** | Riverside Path | Windmill Fields | Hilltop Town |
+  | **Hard** | Twilight Forest | Sunken Ruins | Castle of Sweethearts |
+
+  Enemies are skinned per set from `SKINS` — `walker`, `flyer` and `guard`
+  are behaviours, and each difficulty names its own creature for each, so
+  the movement code is shared while what she meets differs. Each set has its
+  own boss too (a raincloud, a clockwork heart, the Heartbreaker), all
+  running the same telegraphed state machine at different lengths.
 
 Her sprite is a pixel map — `OUI_HEAD`, `OUI_BODY`, `OUI_LEGS`, one character
 per pixel with the palette written above it. Change a string, change her.

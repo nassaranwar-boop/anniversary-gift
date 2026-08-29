@@ -110,13 +110,20 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   a = await info();
   ok('Hard starts with 2 lives and a clock', a.lives === 2 && a.timeLeft > 0,
       'lives=' + a.lives + ' time=' + Math.round(a.timeLeft));
-  ok('Hard adds extra spikes to world 1', a.spikes > 0, 'spikes=' + a.spikes);
+  ok('Hard world 1 has hazards of its own', a.spikes + (await page.evaluate(
+     () => window.__soFindTile('~').length)) > 0, 'spikes=' + a.spikes);
 
-  await boot('medium');
-  const medSpikes = (await info()).spikes;
-  await boot('hard');
-  ok('Hard has strictly more spikes than Medium', (await info()).spikes > medSpikes,
-     'medium=' + medSpikes + ' hard=' + (await info()).spikes);
+  // each difficulty now walks its own three worlds, so check that — not
+  // that one shared map grew extra spikes
+  const setsOf = async (d) => { await boot(d);
+    return page.evaluate(() => window.__soWorldNames()); };
+  const eSet = await setsOf('easy'), mSet = await setsOf('medium'), hSet = await setsOf('hard');
+  const overlap = eSet.filter(w => mSet.includes(w) || hSet.includes(w))
+                      .concat(mSet.filter(w => hSet.includes(w)));
+  ok('every difficulty walks three worlds', eSet.length === 3 && mSet.length === 3 && hSet.length === 3,
+     eSet.length + '/' + mSet.length + '/' + hSet.length);
+  ok('no world appears in more than one set', overlap.length === 0,
+     overlap.length ? 'shared: ' + overlap.join(',') : 'nine distinct worlds');
 
   // ---------- WORLD 3: hazards and the boss ----------
   await boot('medium');
