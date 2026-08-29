@@ -38,11 +38,47 @@ window.Scrapbook = (function () {
       startAt: 0,           // ← seconds into the track to begin at
     },
 
+    /* ---- what an empty photo frame says when she opens it ------------
+       Each frame used to explain the file-naming scheme — "save this one
+       as assets/photo-4.jpg" — which is a note to me, not to her. Every
+       slot has its own line instead, so tapping an empty frame still
+       gives her something worth having found. A MEMORIES entry with real
+       text always wins over these; they are only the stand-in.
+
+       The keys are the frame numbers actually used in the book. Anything
+       not listed falls back to the list underneath. ---- */
+    slotNotes: {
+      1:  "Some days I still can't quite believe you said yes.",
+      2:  "You laugh with your whole face. I have never got tired of it.",
+      3:  "Anywhere at all, as long as it is the two of us and a bit of time.",
+      4:  "I would pick you again. Every version of this, every time.",
+      5:  "You make ordinary afternoons feel like something worth keeping.",
+      6:  "The best thing I ever did was pay attention that day.",
+      7:  "Half the story is what happened. The other half is that you were there.",
+      10: "There is nobody I would rather be quiet with.",
+      11: "I love the way you say my name when you are half asleep.",
+      12: "You are the part of the day I look forward to.",
+      13: "Whatever we were doing here, I remember being happy.",
+      14: "Loving you has never once felt like work.",
+      15: "I keep finding new reasons. I stopped counting a long time ago.",
+      16: "You walked in and everything got warmer.",
+      23: "If I could keep one thing, I think it would be this one.",
+      24: "Even the waiting is good, when it is for you.",
+      25: "Nothing about you has ever needed fixing.",
+      29: "Home turned out to be a person.",
+      30: "I would live this one again exactly as it was.",
+    },
+    slotNoteFallback: [
+      "This one is still waiting for its photograph. The day happened anyway.",
+      "Somewhere in here is a day I did not want to end.",
+      "Not every good thing got photographed. I remember it regardless.",
+    ],
+
     /* ---- the music video in the drawer, and on the last right page ---- */
     video: {
-      title:     "Printemps",
-      artist:    "Bouss",
-      youtubeId: "hnd84Ru1dgA",
+      title:     "Raindance",
+      artist:    "Dave ft. Tems",
+      youtubeId: "SOJpE1KMUbo",
     },
 
     /* ---- the video on the last page: one of the two of you.
@@ -2415,6 +2451,13 @@ window.Scrapbook = (function () {
     if (m) { m.classList.remove("on"); m.setAttribute("aria-hidden", "true"); }
   }
 
+  /* Her line for an empty frame — see SB.slotNotes. Never the file name. */
+  function noteFor(n) {
+    if (SB.slotNotes && SB.slotNotes[n]) return SB.slotNotes[n];
+    var f = SB.slotNoteFallback || [];
+    return f.length ? f[(n - 1) % f.length] : "";
+  }
+
   function openLightbox(mem) {
     var box = document.getElementById("sb-lightbox");
     if (!box) return;
@@ -2426,8 +2469,7 @@ window.Scrapbook = (function () {
     });
     box.querySelector(".sb-lb-title").textContent = mem.title || ("Photo " + mem.n);
     box.querySelector(".sb-lb-date").textContent = mem.date || "";
-    box.querySelector(".sb-lb-text").textContent =
-      mem.text || ("Save this one as assets/photo-" + mem.n + ".jpg and it will appear here.");
+    box.querySelector(".sb-lb-text").textContent = mem.text || noteFor(mem.n);
     box.classList.add("on");
   }
   function closeLightbox() {
