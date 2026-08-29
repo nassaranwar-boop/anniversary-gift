@@ -2340,6 +2340,7 @@ window.SuperOuissy = (function () {
       return;
     }
     if (p.winT) { stepWinWalk(dt); return; }
+    K.jumpPressed = K.jumpPressed && canAct();
 
     var gravUp = TUNE.gravityUp * d.gravityMul, gravDn = TUNE.gravityDown * d.gravityMul;
     var maxRun = TUNE.maxRun * (p.boost > 0 ? TUNE.boostMul : 1);
@@ -2574,6 +2575,7 @@ window.SuperOuissy = (function () {
     if (cp) at = cp;
     G.player = mkPlayer(at.x + 2, at.y - 2);
     G.player.invuln = 1.4;
+    G.keys.jumpPressed = false;
     G.camSnap = true;
     if (d.timeLimit) G.timeLeft = d.timeLimit[G.levelIndex];
     /* enemies come back so a checkpoint is a real restart of the stretch */
@@ -3796,15 +3798,69 @@ window.SuperOuissy = (function () {
           '<div class="so-res-row"><span>TOTAL TIME</span><b>' + fmtTime(total) + "</b></div>" +
           '<div class="so-res-row"><span>DIFFICULTY</span><b>' + DIFF[G.diff].label + "</b></div>" +
         "</div>" +
-        '<div class="so-menu-actions">' +
-          '<button class="so-btn so-btn-go" id="so-end-again">PLAY AGAIN</button>' +
-          '<button class="so-btn so-btn-quiet" id="so-end-quit">BACK TO THE HUB</button>' +
+        '<div class="so-whatnow">' +
+          '<p class="so-whatnow-h">WHAT NOW?</p>' +
+          '<div class="so-menu-actions">' + endActions() + "</div>" +
         "</div>" +
       "</div>", "so-ov-end");
     startEndingArt($("so-end-art"));
     sfx("victory");
-    $("so-end-again").addEventListener("click", function () { closeOverlay(); showDifficulty(); });
-    $("so-end-quit").addEventListener("click", quitToHub);
+    wireEndActions();
+  }
+
+  /* =======================================================================
+     WHAT NOW?
+
+     She has just finished a whole difficulty — three worlds and a boss —
+     so this is the moment to ask what she wants next rather than dumping
+     her back at a title screen. Four ways out: the next difficulty up,
+     this one again, the title screen, or out of the game altogether.
+     ======================================================================= */
+  var DIFF_ORDER = ["easy", "medium", "hard"];
+
+  function nextDifficulty() {
+    var i = DIFF_ORDER.indexOf(G.diff);
+    return i >= 0 && i < DIFF_ORDER.length - 1 ? DIFF_ORDER[i + 1] : null;
+  }
+
+  function endActions() {
+    var nxt = nextDifficulty();
+    var html = "";
+    if (nxt) {
+      html += '<button class="so-btn so-btn-go" id="so-end-next">TRY ' +
+              DIFF[nxt].label.toUpperCase() + " \u2192</button>";
+    }
+    html += '<button class="so-btn' + (nxt ? "" : " so-btn-go") + '" id="so-end-again">' +
+            "PLAY " + DIFF[G.diff].label.toUpperCase() + " AGAIN</button>";
+    html += '<button class="so-btn so-btn-quiet" id="so-end-title">TITLE SCREEN</button>';
+    html += '<button class="so-btn so-btn-quiet" id="so-end-quit">BACK TO THE GAMES</button>';
+    return html;
+  }
+
+  function wireEndActions() {
+    var nxt = nextDifficulty();
+    if (nxt && $("so-end-next")) {
+      $("so-end-next").addEventListener("click", function () {
+        closeOverlay();
+        playDifficulty(nxt);
+      });
+    }
+    var again = $("so-end-again");
+    if (again) again.addEventListener("click", function () {
+      closeOverlay();
+      playDifficulty(G.diff);
+    });
+    var title = $("so-end-title");
+    if (title) title.addEventListener("click", function () { showDifficulty(); });
+    var quit = $("so-end-quit");
+    if (quit) quit.addEventListener("click", quitToHub);
+  }
+
+  /* start a whole run on a named difficulty, remembering the choice */
+  function playDifficulty(d) {
+    G.diff = d;
+    try { localStorage.setItem(DIFF_KEY, d); } catch (e) {}
+    beginRun();
   }
 
   /* The last picture: a lit castle doorway, Ouissy, and him waiting. */
@@ -4075,6 +4131,17 @@ window.SuperOuissy = (function () {
     return !!s && s.classList.contains("active");
   }
 
+  /* Can she act on a press right now? A jump pressed while she is dying, or
+     during the world card, or on the results screen, used to be REMEMBERED:
+     stepPlayer clears the flag at the end of its run and both of its early
+     returns skip that line, so the press sat there and fired the instant she
+     landed on respawn. That is the phantom jump — worst on Hard, because
+     Hard is where she dies most. A press that cannot be used is not
+     recorded. */
+  function canAct() {
+    return G && G.state === "play" && G.player && !G.player.dead && !G.player.winT;
+  }
+
   var KEYMAP = {
     ArrowLeft: "left", a: "left", A: "left", q: "left", Q: "left",
     ArrowRight: "right", d: "right", D: "right",
@@ -4094,7 +4161,7 @@ window.SuperOuissy = (function () {
       if (!k) return;
       e.preventDefault();
       if (G.state === "cutscene") { if (window.Rescue) Rescue.press(k); return; }
-      if (k === "jump" && !G.keys.jump) G.keys.jumpPressed = true;
+      if (k === "jump" && !G.keys.jump && canAct()) G.keys.jumpPressed = true;
       G.keys[k] = true;
     }, { passive: false });
 
@@ -4149,7 +4216,7 @@ window.SuperOuissy = (function () {
         e.preventDefault();
         if (G.state === "cutscene") { if (window.Rescue) Rescue.press(k); return; }
         btn.classList.add("held");
-        if (k === "jump" && !G.keys.jump) G.keys.jumpPressed = true;
+        if (k === "jump" && !G.keys.jump && canAct()) G.keys.jumpPressed = true;
         G.keys[k] = true;
         /* capture so a finger that slides off the button still counts as
            held, which is how a real d-pad behaves */

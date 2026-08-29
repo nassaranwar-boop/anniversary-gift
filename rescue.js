@@ -369,105 +369,82 @@ window.Rescue = (function () {
               edge: "#ffd166", ink: "#ffeeb8", tab: "#ffd166", tabInk: "#2a1f0c" },
   };
 
-  /* A pixel-art panel: an ink drop shadow, a bevelled body, a bright edge
-     with the corners cut, and studs in them. Drawn with px() at the
-     canvas's own resolution, so it sits on the same pixel grid as the art
-     instead of floating over it. */
-  function panel(c, x, y, w, h, sp, grow) {
-    var gh = Math.max(4, Math.round(h * grow));
-    var gy = y + (h - gh);
+  /* The dialogue and the choice are DOM, not canvas. Six-pixel text drawn
+     on a 320-wide canvas and then blown up five times is unreadable however
+     good the panel round it is — which is exactly what the first version
+     was. These sit over the stage, scale in cqw with everything else, and
+     carry a real button she can tap. */
+  function $d(id) { return document.getElementById(id); }
 
-    px(c, x + 2, gy + 3, w, gh, "rgba(6,4,10,.55)");
-    px(c, x, gy, w, gh, "#0a0810");
-    px(c, x + 1, gy + 1, w - 2, gh - 2, sp.fill2);
-    px(c, x + 1, gy + 1, w - 2, Math.max(1, (gh - 2) >> 1), sp.fill);
-    px(c, x + 1, gy + 1, w - 2, 1, "rgba(255,255,255,.10)");
-
-    px(c, x + 3, gy + 1, w - 6, 1, sp.edge);
-    px(c, x + 3, gy + gh - 2, w - 6, 1, sp.edge);
-    px(c, x + 1, gy + 3, 1, gh - 6, sp.edge);
-    px(c, x + w - 2, gy + 3, 1, gh - 6, sp.edge);
-    px(c, x + 2, gy + 2, 1, 1, sp.edge);
-    px(c, x + w - 3, gy + 2, 1, 1, sp.edge);
-    px(c, x + 2, gy + gh - 3, 1, 1, sp.edge);
-    px(c, x + w - 3, gy + gh - 3, 1, 1, sp.edge);
-    return gy;
+  /* Only ever WRITE a class when it changes. Reassigning className every
+     frame rewrites the attribute, which restarts the CSS entry animation,
+     which pins the panel at the first frame of its fade — opacity zero,
+     laid out correctly, and invisible. */
+  function setClass(el, cls) {
+    if (el && el.className !== cls) el.className = cls;
   }
 
-  function drawBox(c, who, text, shown, hint, grow) {
+  function showLine(who, text, shown, waiting) {
     var sp = SPEAKER[who] || SPEAKER.anwar;
-    var x = 12, w = VW - 24, h = 40, y = VH - h - 6;
-    grow = grow === undefined ? 1 : clamp(grow, 0, 1);
-    var gy = panel(c, x, y, w, h, sp, grow);
-    if (grow < 0.55) return;
+    var box = $d("so-dlg"), nm = $d("so-dlg-name"), tx = $d("so-dlg-text"), nx = $d("so-dlg-next");
+    if (!box) return;
+    setClass(box, "so-dlg on so-dlg-" + (SPEAKER[who] ? who : "anwar"));
+    box.setAttribute("aria-hidden", "false");
+    if (nm.textContent !== sp.name) nm.textContent = sp.name;
+    var cut = String(text).slice(0, shown);
+    if (tx.textContent !== cut) tx.textContent = cut;
+    nx.classList.toggle("on", !!waiting);
+  }
 
-    var ty = gy + 9;
-    if (sp.name) {
-      c.font = "5px monospace";
-      var nw = Math.ceil(c.measureText(sp.name).width) + 8;
-      px(c, x + 6, gy - 4, nw, 8, "#0a0810");
-      px(c, x + 7, gy - 3, nw - 2, 6, sp.tab);
-      c.textAlign = "left";
-      c.fillStyle = sp.tabInk;
-      c.fillText(sp.name, x + 11, gy + 2);
-      ty = gy + 13;
-    }
+  function hideLine() {
+    var box = $d("so-dlg");
+    if (!box) return;
+    setClass(box, "so-dlg");
+    box.setAttribute("aria-hidden", "true");
+    $d("so-dlg-next").classList.remove("on");
+  }
 
-    c.font = "6px monospace";
-    c.textAlign = "left";
-    var words = String(text).slice(0, shown).split(" ");
-    var lineTxt = "", lines = [];
-    for (var i = 0; i < words.length; i++) {
-      var test = lineTxt ? lineTxt + " " + words[i] : words[i];
-      if (c.measureText(test).width > w - 16 && lineTxt) { lines.push(lineTxt); lineTxt = words[i]; }
-      else lineTxt = test;
-    }
-    if (lineTxt) lines.push(lineTxt);
-    for (var j = 0; j < lines.length && j < 3; j++) {
-      c.fillStyle = "rgba(4,3,8,.75)";
-      c.fillText(lines[j], x + 9, ty + j * 8 + 1);
-      c.fillStyle = sp.ink;
-      c.fillText(lines[j], x + 8, ty + j * 8);
-    }
-
-    /* the caret, while it is still typing */
-    if (shown < String(text).length && lines.length) {
-      var last = lines[lines.length - 1];
-      var cx2 = x + 8 + c.measureText(last).width + 1;
-      var cy2 = ty + (Math.min(lines.length, 3) - 1) * 8;
-      if (Math.floor(Date.now() / 90) % 2) px(c, cx2, cy2 - 5, 1, 6, sp.edge);
-    }
-
-    /* and the arrow that says "press", once it has finished */
-    if (hint) {
-      var b = Math.sin(Date.now() / 200) > 0 ? 0 : 1;
-      var ax2 = x + w - 11, ay2 = gy + h - 9 + b;
-      px(c, ax2, ay2, 5, 1, sp.edge);
-      px(c, ax2 + 1, ay2 + 1, 3, 1, sp.edge);
-      px(c, ax2 + 2, ay2 + 2, 1, 1, sp.edge);
+  function showChoice(opts, sel, prompt) {
+    var box = $d("so-choice");
+    if (!box) return;
+    setClass(box, "so-choice on");
+    box.setAttribute("aria-hidden", "false");
+    $d("so-choice-prompt").textContent = prompt;
+    for (var i = 0; i < 2; i++) {
+      var b = $d("so-choice-" + i);
+      if (b.textContent !== opts[i]) b.textContent = opts[i];
+      b.classList.toggle("sel", i === sel);
     }
   }
 
-  /* a full-width choice menu, two options, keyboard or tap */
-  function drawChoice(c, opts, sel, prompt) {
-    /* down at the foot of the screen: at head height it covered the two
-       people the decision is about */
-    var w = VW - 40, x = 20, y = 124;
-    px(c, x - 2, y - 14, w + 4, 12, "rgba(12,8,18,.8)");
-    c.font = "5px monospace"; c.textAlign = "center";
-    c.fillStyle = "#d8d2e8";
-    c.fillText(prompt, VW / 2, y - 5);
-    for (var i = 0; i < opts.length; i++) {
-      var oy = y + i * 22, on = i === sel;
-      px(c, x, oy, w, 18, on ? "#3a2448" : "#181420");
-      px(c, x, oy, w, 1, on ? "#ffd166" : "#3a3448");
-      px(c, x, oy + 17, w, 1, on ? "#a9741f" : "#0c0a12");
-      px(c, x, oy, 1, 18, on ? "#ffd166" : "#3a3448");
-      px(c, x + w - 1, oy, 1, 18, on ? "#a9741f" : "#0c0a12");
-      c.font = "6px monospace"; c.textAlign = "center";
-      c.fillStyle = on ? "#fff0b0" : "#9a92aa";
-      c.fillText(opts[i], VW / 2, oy + 12);
-      if (on) { px(c, x + 6, oy + 8, 3, 3, "#ffd166"); px(c, x + w - 9, oy + 8, 3, 3, "#ffd166"); }
+  function hideChoice() {
+    var box = $d("so-choice");
+    if (!box) return;
+    setClass(box, "so-choice");
+    box.setAttribute("aria-hidden", "true");
+  }
+
+  /* the arrow, and the two options, are really tappable */
+  var wired = false;
+  function wireDom() {
+    if (wired) return;
+    wired = true;
+    var nx = $d("so-dlg-next");
+    if (nx) nx.addEventListener("click", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      press("confirm");
+      nx.blur();
+    });
+    for (var i = 0; i < 2; i++) {
+      (function (idx) {
+        var b = $d("so-choice-" + idx);
+        if (!b) return;
+        b.addEventListener("click", function (e) {
+          e.preventDefault(); e.stopPropagation();
+          if (S) { S.sel = idx; press("confirm"); }
+          b.blur();
+        });
+      })(i);
     }
   }
 
@@ -515,6 +492,8 @@ window.Rescue = (function () {
 
   function begin(kind, opts) {
     bakeCast();
+    wireDom();
+    hideLine(); hideChoice();
     opts = opts || {};
     S = {
       kind: kind, t: 0, phase: 0, pt: 0,
@@ -588,7 +567,10 @@ window.Rescue = (function () {
     } else if (S.phase === 2) {                 // he says his one line
       stepText(dt);
       S.her.y -= dt * 8;                        // he has her up off the ground
-      if (S.pt > 1.5) phase(3);
+      /* It holds. She gets four seconds to read one short line, or she taps
+         the arrow and moves on — a line that vanished a second and a half
+         after appearing was gone before it had been read. */
+      if (S.pt > 4.2) phase(3);
     } else if (S.phase === 3) {                 // and out
       S.dim = Math.max(0, 1 - S.pt / 0.4);
       if (S.pt > 0.4) S.done = true;
@@ -625,8 +607,8 @@ window.Rescue = (function () {
 
     if (S.phase === 2) {
       var ln = line();
-      if (ln) drawBox(c, ln.who, ln.text, Math.floor(S.shown), false, S.boxIn);
-    }
+      if (ln) showLine(ln.who, ln.text, Math.floor(S.shown), S.waiting);
+    } else hideLine();
   }
 
   /* A dramatic spotlight, in three parts: the shaft coming down, the pool
@@ -1002,10 +984,12 @@ window.Rescue = (function () {
     }
 
     if (S.phase === 6) {
-      drawChoice(c, [D.choice.fight, D.choice.letgo], S.sel, D.choice.prompt);
+      hideLine();
+      showChoice([D.choice.fight, D.choice.letgo], S.sel, D.choice.prompt);
     } else {
+      hideChoice();
       var ln = line();
-      if (ln) drawBox(c, ln.who, ln.text, Math.floor(S.shown), S.waiting, S.boxIn);
+      if (ln) showLine(ln.who, ln.text, Math.floor(S.shown), S.waiting);
     }
   }
 
@@ -1035,7 +1019,14 @@ window.Rescue = (function () {
     if (!S || S.done) return;
     var confirm = name === "jump" || name === "confirm" || name === "down";
 
-    if (S.kind === "rescue") { if (S.phase === 2) phase(3); return; }
+    if (S.kind === "rescue") {
+      if (S.phase !== 2) return;
+      /* first press finishes the line, second one moves on */
+      var ln = line();
+      if (ln && S.shown < ln.text.length) { S.shown = ln.text.length; S.waiting = true; }
+      else phase(3);
+      return;
+    }
 
     if (S.kind === "death") {
       if (S.phase === 6) {                       // the choice
@@ -1054,7 +1045,11 @@ window.Rescue = (function () {
     }
   }
 
-  function done() { return !S || S.done; }
+  function done() {
+    var d = !S || S.done;
+    if (d) { hideLine(); hideChoice(); }
+    return d;
+  }
   function outcome() { return S ? S.outcome : null; }
   function active() { return !!S && !S.done; }
 

@@ -2090,6 +2090,102 @@ img{-webkit-user-drag:none; user-select:none;}
 .so-pause-btn:active{transform:translateY(1px);}
 
 /* =========================================================
+   THE STORY PANEL
+
+   The dialogue and the choice the story scenes put in front of her. Both
+   are DOM rather than canvas: text drawn at six pixels on a 320-wide
+   canvas and then scaled up five times cannot be read, whatever the panel
+   around it looks like. Sized in cqw so it stays in proportion with the
+   art, and coloured per speaker.
+   ========================================================= */
+.so-dlg{display:none;}
+.so-dlg.on{
+  display:block; position:absolute; z-index:8;
+  left:4cqw; right:4cqw; bottom:3.5cqw; padding:2.2cqw 2.6cqw 2.4cqw;
+  border:.5cqw solid var(--dlg-edge,#c8a06a);
+  border-radius:1cqw;
+  background:linear-gradient(180deg, var(--dlg-fill,#2c1f3c), var(--dlg-fill2,#1b1328));
+  box-shadow:0 .7cqw 0 rgba(6,4,10,.7), 0 1.6cqw 3.4cqw rgba(0,0,0,.55),
+             inset 0 .2cqw 0 rgba(255,255,255,.10);
+  animation:soDlgIn .22s var(--ease-pop);
+}
+/* Transform only, never opacity. A panel that animates in FROM opacity
+   zero is invisible for the whole animation, and on a slow device — or one
+   frame after it is shown — that is what you catch. It slides; it is never
+   not there. */
+@keyframes soDlgIn{
+  from{transform:translateY(1.6cqw) scaleY(.88); transform-origin:bottom;}
+  to{transform:none;}
+}
+/* the name sits on a tab notched into the top edge */
+.so-dlg-name{
+  position:absolute; top:-1.5cqw; left:2cqw;
+  font-family:'Press Start 2P', ui-monospace, monospace; font-size:1.5cqw;
+  color:var(--dlg-tab-ink,#231428); background:var(--dlg-edge,#c8a06a);
+  padding:.5cqw 1cqw; border-radius:.4cqw; letter-spacing:.06em;
+  box-shadow:0 .2cqw 0 rgba(6,4,10,.6);
+}
+.so-dlg-name:empty{display:none;}
+.so-dlg-text{
+  margin:0; padding-right:5cqw; min-height:5.6cqw;
+  font-family:var(--font-body); font-weight:500;
+  font-size:2.3cqw; line-height:1.5; color:var(--dlg-ink,#ffeccd);
+  text-shadow:0 .2cqw 0 rgba(4,3,8,.6);
+}
+/* the arrow she taps to move on. It only appears once the line has
+   finished typing, so it never invites a press that would cut it short. */
+.so-dlg-next{
+  position:absolute; right:1.6cqw; bottom:1.4cqw;
+  width:5cqw; height:5cqw; border-radius:50%; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:2cqw; line-height:1; padding:0;
+  color:var(--dlg-tab-ink,#231428); background:var(--dlg-edge,#c8a06a);
+  border:.35cqw solid rgba(6,4,10,.55);
+  box-shadow:0 .4cqw 0 rgba(6,4,10,.6);
+  opacity:0; pointer-events:none; transition:opacity .18s ease;
+}
+.so-dlg-next.on{opacity:1; pointer-events:auto; animation:soNextNudge 1.5s ease-in-out infinite;}
+.so-dlg-next:active{transform:translateY(.3cqw); box-shadow:0 .1cqw 0 rgba(6,4,10,.6);}
+@keyframes soNextNudge{0%,100%{transform:translateX(0);} 50%{transform:translateX(.5cqw);}}
+
+/* per speaker */
+.so-dlg-anwar {--dlg-edge:#c8a06a; --dlg-fill:#2c1f3c; --dlg-fill2:#1b1328; --dlg-ink:#ffeccd; --dlg-tab-ink:#231428;}
+.so-dlg-ouissy{--dlg-edge:#ff9ec4; --dlg-fill:#3a1c34; --dlg-fill2:#241222; --dlg-ink:#ffe6f0; --dlg-tab-ink:#3a1030;}
+.so-dlg-death {--dlg-edge:#5f7fa0; --dlg-fill:#0e0d16; --dlg-fill2:#05050b; --dlg-ink:#cfe0f0; --dlg-tab-ink:#08080f;}
+.so-dlg-sys   {--dlg-edge:#ffd166; --dlg-fill:#2e2416; --dlg-fill2:#1a1410; --dlg-ink:#ffeeb8; --dlg-tab-ink:#2a1f0c;}
+
+/* ---- the two-way choice ---- */
+.so-choice{display:none;}
+.so-choice.on{
+  display:flex; flex-direction:column; gap:1.2cqw; position:absolute; z-index:9;
+  left:8cqw; right:8cqw; bottom:4cqw;
+  animation:soDlgIn .24s var(--ease-pop);
+}
+.so-choice-prompt{
+  margin:0 0 .4cqw; text-align:center;
+  font-family:var(--font-serif); font-style:italic; font-size:2cqw; color:#d8d2e8;
+  text-shadow:0 .2cqw .5cqw rgba(4,3,8,.9);
+}
+.so-choice-opt{
+  cursor:pointer; font-family:'Press Start 2P', ui-monospace, monospace;
+  font-size:1.9cqw; line-height:1.5; padding:1.8cqw 2cqw;
+  color:#cfc8dc; background:linear-gradient(180deg,#241c30,#161020);
+  border:.4cqw solid #3a3448; border-radius:.9cqw;
+  box-shadow:0 .5cqw 0 rgba(6,4,10,.6);
+  transition:transform .12s ease, box-shadow .12s ease, color .12s ease, border-color .12s ease;
+}
+.so-choice-opt.sel{
+  color:#fff0b0; border-color:#ffd166;
+  background:linear-gradient(180deg,#3f2a4e,#241830);
+  box-shadow:0 .5cqw 0 rgba(6,4,10,.6), 0 0 2cqw rgba(255,209,102,.45);
+}
+.so-choice-opt:active{transform:translateY(.4cqw); box-shadow:0 .1cqw 0 rgba(6,4,10,.6);}
+
+@media (prefers-reduced-motion: reduce){
+  .so-dlg.on, .so-choice.on, .so-dlg-next.on{animation:none;}
+}
+
+/* =========================================================
    Menus, cards and the ending — one overlay, many faces
    ========================================================= */
 .so-overlay{display:none;}
@@ -2302,6 +2398,16 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .so-end-sign{font-family:var(--font-hand); font-size:3cqw; color:#ffd166; margin:0;}
 .so-end-res{max-width:44cqw;}
+/* ---- what she does after finishing a whole difficulty ---- */
+.so-whatnow{
+  display:flex; flex-direction:column; align-items:center; gap:1cqw;
+  margin-top:1.6cqw; padding-top:1.6cqw; width:100%;
+  border-top:.25cqw dashed rgba(255,158,196,.28);
+}
+.so-whatnow-h{
+  margin:0; font-size:1.6cqw; color:#ffb0cd; letter-spacing:.2em;
+}
+.so-whatnow .so-menu-actions{gap:1cqw;}
 .so-end-res .so-res-row{font-size:1.6cqw;}
 
 /* =========================================================

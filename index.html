@@ -6,9 +6,9 @@
 <title>For My Love 💕</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=22">
+<link rel="stylesheet" href="style.css?v=23">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=22"></script>
+<script src="vendor/three.bundle.js?v=23"></script>
 
 </head>
 <body>
@@ -205,6 +205,23 @@
         <div class="so-bossbar" id="so-bossbar"><span id="so-bossfill"></span></div>
         <button class="so-pause-btn" id="so-pause-btn" aria-label="Pause">&#10074;&#10074;</button>
 
+        <!-- The story scenes speak through this. It is DOM, not canvas:
+             six-pixel text drawn on a 320-wide canvas and then blown up
+             five times is unreadable, however good the panel round it
+             looks. -->
+        <div class="so-dlg" id="so-dlg" aria-hidden="true">
+          <span class="so-dlg-name" id="so-dlg-name"></span>
+          <p class="so-dlg-text" id="so-dlg-text"></p>
+          <button class="so-dlg-next" id="so-dlg-next" aria-label="Continue">&#9654;</button>
+        </div>
+
+        <!-- and the two-way choice, when the story hands her one -->
+        <div class="so-choice" id="so-choice" aria-hidden="true">
+          <p class="so-choice-prompt" id="so-choice-prompt"></p>
+          <button class="so-choice-opt" id="so-choice-0" data-so-choice="0"></button>
+          <button class="so-choice-opt" id="so-choice-1" data-so-choice="1"></button>
+        </div>
+
         <!-- every menu, card and ending is drawn into this one overlay -->
         <div class="so-overlay" id="so-overlay" aria-hidden="true"></div>
       </div>
@@ -379,10 +396,10 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=22"></script>
-<script src="scrapbook.js?v=22"></script>
-<script src="script.js?v=22"></script>
-<script src="super-ouissy.js?v=22"></script>
-<script src="rescue.js?v=22"></script>
+<script src="book-scene.js?v=23"></script>
+<script src="scrapbook.js?v=23"></script>
+<script src="script.js?v=23"></script>
+<script src="super-ouissy.js?v=23"></script>
+<script src="rescue.js?v=23"></script>
 </body>
 </html>

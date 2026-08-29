@@ -98,9 +98,34 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
      'state=' + a.state);
   const sc = await page.evaluate(() => { var s = Rescue._state(); return s && { kind: s.kind, done: s.done }; });
   ok('and it is the rescue, not something else', sc && sc.kind === 'rescue');
-  await pump(4.0, {});
+  // the line now HOLDS (the user asked for it not to flash past), so a plain
+  // pump has to outlast the hold; 7s covers the whole scene with room over.
+  await pump(7.0, {});
   a = await info();
   ok('the rescue hands the game back', a.state === 'play', 'state=' + a.state);
+
+  // and the arrow button gets her past a line early, rather than waiting it out
+  await boot('hard');
+  await tele(10); await pump(0.3, {});
+  await page.evaluate(() => window.__soPlayer({ y: 99999 }));
+  // the line only appears once he has walked in, so wait for the panel itself
+  let shownAt = 0;
+  for (let i = 0; i < 40 && !shownAt; i++) {
+    await pump(0.2, {});
+    shownAt = await page.evaluate(() => {
+      var d = document.getElementById('so-dlg');
+      return d && !d.hidden ? document.getElementById('so-dlg-text').textContent.length : 0;
+    });
+  }
+  ok('the rescue line shows in the DOM panel', shownAt > 0, 'chars=' + shownAt);
+  // two presses: the first completes the line, the second dismisses it. That
+  // only skips the WAIT — the walk-off after it still plays out on its clock.
+  for (let i = 0; i < 2; i++) { await page.evaluate(() => Rescue.press('confirm')); await pump(0.15, {}); }
+  const past = await page.evaluate(() => { var s = Rescue._state(); return s && s.phase; });
+  ok('pressing the arrow dismisses the line early', past >= 3, 'phase=' + past);
+  await pump(3.0, {});
+  a = await info();
+  ok('and she is handed back to the game after it', a.state === 'play', 'state=' + a.state);
   ok('and it still cost her a life', a.lives === before - 1, before + ' -> ' + a.lives);
 
   await boot('medium');
