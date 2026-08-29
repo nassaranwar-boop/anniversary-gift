@@ -12,7 +12,7 @@
      1. CUSTOMISE ME     the words, the names, the ending
      2. TUNING           speeds, gravity, jump — every number in one block
      3. DIFFICULTY       Easy / Medium / Hard, as multipliers over TUNING
-     4. LEVELS           three character grids + the legend that reads them
+     4. WORLDS           three sets of three, one set per difficulty
      5. PALETTES         one per world
      6. PIXEL HELPERS    px, blob, dither — the same primitives as the site
      7. SPRITES          Ouissy, the enemies, the pickups, the Heartbreaker
@@ -35,12 +35,25 @@ window.SuperOuissy = (function () {
      1. ✏️  CUSTOMISE ME — the only block you need to touch for the words
      ======================================================================= */
   var SO = {
-    /* The three worlds, as they appear on the level card and the HUD. */
-    worlds: [
-      { title: "Sunny Meadows",        card: "where every good morning starts" },
-      { title: "Twilight Forest",      card: "the light goes, the path does not" },
-      { title: "Castle of Sweethearts", card: "he is at the top of it, waiting" },
-    ],
+    /* The worlds, as they appear on the level card and the HUD. Each
+       difficulty walks a different three, so there are three lists. */
+    worlds: {
+      easy: [
+        { title: "Sunny Meadows",  card: "where every good morning starts" },
+        { title: "Blossom Orchard", card: "the trees drop more than fruit" },
+        { title: "Secret Garden",  card: "someone has been keeping it for you" },
+      ],
+      medium: [
+        { title: "Riverside Path", card: "follow the water and it takes you to him" },
+        { title: "Windmill Fields", card: "the sails turn whether you are ready or not" },
+        { title: "Hilltop Town",   card: "lamps on, and the last climb ahead" },
+      ],
+      hard: [
+        { title: "Twilight Forest", card: "the light goes, the path does not" },
+        { title: "Sunken Ruins",   card: "something loved this place once" },
+        { title: "Castle of Sweethearts", card: "he is at the top of it, waiting" },
+      ],
+    },
 
     /* The line under the title on the difficulty screen. */
     tagline: "a quest, three worlds, and a prince at the end",
@@ -154,7 +167,7 @@ window.SuperOuissy = (function () {
   };
 
   /* =======================================================================
-     4. LEVELS — each world is a grid of characters, one per 16px tile.
+     4. WORLDS — each world is a grid of characters, one per 16px tile.
 
         THE LEGEND (edit the grids freely; anything not listed is empty air)
 
@@ -184,10 +197,12 @@ window.SuperOuissy = (function () {
           ;   a walker that only appears on Medium and Hard
           ,   spikes that only appear on Hard
      ======================================================================= */
-  var LEVELS = [
-    {
-      biome: "meadow",
-      rows: [
+  /* Each world is one of these. The set she plays is chosen by difficulty
+     (see WORLDS below), so Easy and Hard are genuinely different places
+     rather than the same map with the numbers turned up. */
+  var W_MEADOW = {
+    biome: "meadow",
+    rows: [
       "....................................................................................................................................................................................",
       ".....................................................................................................................................ooIo...........................................",
       "............................................................o...o....................................................................----...........................................",
@@ -202,11 +217,12 @@ window.SuperOuissy = (function () {
       "################################################...#######################........############################...###...#########################################...#################",
       "################################################...#######################.ooo1oo.############################...###...#########################################...#################",
       "################################################...###########################################################...###...#########################################...#################",
-      ],
-    },
-    {
-      biome: "forest",
-      rows: [
+    ],
+  };
+
+  var W_FOREST = {
+    biome: "forest",
+    rows: [
       "............................................................................................................................................o..o........................................",
       ".................................................................................................................................1...........oo.........................................",
       "......................................................................................................................#.......----------------..........................................",
@@ -229,11 +245,12 @@ window.SuperOuissy = (function () {
       "########################################.........#######################################....##....##.......B....##########################################################....##########",
       "########################################.........#######################################....##....##.ooooo.B.F.o##########################################################....##########",
       "########################################.........#######################################....##....########################################################################....##########",
-      ],
-    },
-    {
-      biome: "castle",
-      rows: [
+    ],
+  };
+
+  var W_CASTLE = {
+    biome: "castle",
+    rows: [
       "............................................................................................................................................................................................................",
       "............................................................................................................................................................................................................",
       ".........................................................................................................................o...o..............................................................................",
@@ -250,9 +267,21 @@ window.SuperOuissy = (function () {
       "########################~~~~######################~~~~~~########.......B...###########~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
       "########################~~~~######################~~~~~~########.ooooo.B.1.###########~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
       "########################~~~~######################~~~~~~##############################~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
-      ],
-    },
-  ];
+    ],
+  };
+
+  /* THE THREE SETS. Difficulty picks one; DIFF still layers lives, pit
+     safety, checkpoints and the clock on top of whichever it picks.
+     Worlds are filled in set by set — where two sets currently name the
+     same world, that one has not been written yet. */
+  var WORLDS = {
+    easy:   [W_MEADOW, W_FOREST, W_CASTLE],
+    medium: [W_MEADOW, W_FOREST, W_CASTLE],
+    hard:   [W_MEADOW, W_FOREST, W_CASTLE],
+  };
+
+  /* the set for the difficulty she is on */
+  function worldSet() { return WORLDS[G && G.diff] || WORLDS.medium; }
 
   /* =======================================================================
      5. PALETTES — one per world. Brighter and more saturated than the rest
@@ -784,6 +813,13 @@ window.SuperOuissy = (function () {
     walkerSquash: paintWalker(0, true),
     flyer: [paintFlyer(0), paintFlyer(1), paintFlyer(2), paintFlyer(3)],
     guard: [paintGuard(0), paintGuard(1)],
+    /* every creature any set can name, looked up by skin name. Adding a
+       new one is adding a painter above and one line here. */
+    skin: {
+      walker: [paintWalker(0), paintWalker(1)],
+      flyer:  [paintFlyer(0), paintFlyer(1), paintFlyer(2), paintFlyer(3)],
+      guard:  [paintGuard(0), paintGuard(1)],
+    },
     boss: [paintBoss(0), paintBoss(1), paintBoss(2)],
     bossHurt: [paintBoss(0, true), paintBoss(1, true), paintBoss(2, true)],
     heart: [paintHeartPickup(0), paintHeartPickup(1), paintHeartPickup(2), paintHeartPickup(3)],
@@ -919,160 +955,177 @@ window.SuperOuissy = (function () {
     return s.c;
   }
 
-  /* --- the backdrop: three layers that scroll at three speeds ---------- */
+  /* --- the backdrop -------------------------------------------------------
+
+     Three layers, each painted once when a level loads and then only
+     blitted. A biome is ONE entry below: its sky, its far silhouettes, its
+     near band, and where the ground line sits inside each canvas so paint()
+     can pin them to the level's real ground row. Adding a world means adding
+     one entry here and one palette in BIOME — nothing else in the file.
+
+     sc / fc / mc are the sky, far and near contexts; P is the palette.
+     -------------------------------------------------------------------- */
+  var BACKDROPS = {
+    meadow: {
+      horizon: { far: 180, mid: 152 },
+      sky: function (sc, P, rnd, VW, VH) {
+        /* the sun: a bright core, then two dithered falloffs, so the halo
+           fades instead of ending on a hard ring */
+        for (var y = -20; y <= 20; y++)
+          for (var x = -20; x <= 20; x++) {
+            var d = Math.sqrt(x * x + y * y), th = (BAYER[(30 + y) & 3][(262 + x) & 3] + .5) / 16;
+            if (d <= 8) px(sc, 262 + x, 30 + y, 1, 1, "#fffbe0");
+            else if (d <= 11) px(sc, 262 + x, 30 + y, 1, 1, "#fff0a8");
+            else if (d <= 15 && th < 1 - (d - 11) / 4) px(sc, 262 + x, 30 + y, 1, 1, "#ffe27a");
+            else if (d <= 20 && th < .55 - (d - 15) / 9) px(sc, 262 + x, 30 + y, 1, 1, "#ffeec0");
+          }
+        /* a couple of soft clouds up in the static sky */
+        for (var cl = 0; cl < 4; cl++) {
+          var clx = 30 + cl * 84 + rnd() * 30, cly = 22 + rnd() * 30;
+          blob(sc, clx, cly, 15, 5, P.cloud.concat([P.cloud[2]]));
+          blob(sc, clx - 11, cly + 2, 9, 4, P.cloud.concat([P.cloud[2]]));
+          blob(sc, clx + 12, cly + 2, 10, 4, P.cloud.concat([P.cloud[2]]));
+          px(sc, clx - 20, cly + 4, 40, 1, P.cloud[0]);
+        }
+      },
+      far: function (fc, P, rnd, farW, VH) {
+        for (var h = 0; h < 5; h++) {
+          var cxh = 40 + h * 100 + rnd() * 40, rw = 60 + rnd() * 50, rh = 30 + rnd() * 24;
+          for (var x2 = -rw; x2 <= rw; x2++) {
+            var yy = 130 - Math.round(Math.sqrt(Math.max(0, 1 - (x2 * x2) / (rw * rw))) * rh);
+            px(fc, cxh + x2, yy, 1, VH - yy, P.far[1]);
+            px(fc, cxh + x2, yy, 1, 2, P.far[0]);
+            px(fc, cxh + x2, yy + 2, 1, 1, P.far[2]);
+          }
+          /* a handful of far trees along each crest, so the hills have scale */
+          for (var ft = 0; ft < 4; ft++) {
+            var ftx = cxh - rw + rnd() * rw * 2;
+            var fty = 130 - Math.round(Math.sqrt(Math.max(0, 1 - Math.pow(ftx - cxh, 2) / (rw * rw))) * rh);
+            px(fc, ftx, fty - 7, 1, 7, P.far[2]);
+            blob(fc, ftx, fty - 10, 4, 3.4, [P.far[0], P.far[1], P.far[2], P.far[2]]);
+          }
+        }
+      },
+      mid: function (mc, P, rnd, midW, VH) {
+        for (var m = 0; m < 8; m++) {
+          var mx = 18 + m * 58 + rnd() * 22, mh = 30 + rnd() * 20;
+          /* trunk first, then a canopy of overlapping puffs with lit speckles */
+          for (var tr = 0; tr < mh; tr++) {
+            var tw2 = tr < mh * .7 ? 4 : 6;
+            px(mc, mx - (tw2 >> 1), 152 - tr, tw2, 1, "#8a5f3a");
+            px(mc, mx - (tw2 >> 1), 152 - tr, 1, 1, "#a87a4e");
+            px(mc, mx + (tw2 >> 1) - 1, 152 - tr, 1, 1, "#6b4527");
+          }
+          canopy(mc, mx, 152 - mh - 8, 17 + rnd() * 5,
+                 [P.mid[0], P.mid[1], P.mid[2], P.mid[2]], rnd, "#c6f5cf");
+        }
+        /* low bushes between the trunks. They stop above the tile line: any
+           lower and they show through a pit as a floating green slab. */
+        for (var hb = 0; hb < midW; hb += 26)
+          blob(mc, hb + rnd() * 18, 148 + rnd() * 3, 7 + rnd() * 4, 4,
+               [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
+      },
+    },
+
+    forest: {
+      horizon: { far: 142, mid: 154 },
+      sky: function (sc, P, rnd, VW, VH) {
+        for (var i = 0; i < 60; i++) {
+          var sx = rnd() * VW, sy = rnd() * 70;
+          px(sc, sx, sy, 1, 1, rnd() > .6 ? "#ffffff" : "#ffe9c8");
+        }
+        /* a low moon, with a couple of seas on it */
+        moon(sc, 54, 44, 12, ["#fffaf0", "#f3ddc6", "#dcc0a8", "#c2a48c", "#a98d78"],
+             [[-4, -3, 3], [4, 4, 2], [1, -6, 2]]);
+      },
+      far: function (fc, P, rnd, farW, VH) {
+        for (var t2 = 0; t2 < 46; t2++) {
+          var tx = rnd() * farW, th = 40 + rnd() * 52;
+          for (var ty = 0; ty < th; ty++) {
+            var tw = Math.round((ty / th) * 13) + 1;
+            px(fc, tx - tw - 1, 138 - th + ty, tw * 2 + 2, 1, P.far[ty > th * .5 ? 1 : 0]);
+          }
+          px(fc, tx - 1, 130, 2, 12, P.far[2]);
+        }
+      },
+      mid: function (mc, P, rnd, midW, VH) {
+        for (var m2 = 0; m2 < 12; m2++) {
+          var mx2 = 14 + m2 * 40 + rnd() * 18, mh2 = 44 + rnd() * 26;
+          for (var tr2 = 0; tr2 < mh2; tr2++) {
+            px(mc, mx2 - 3, 154 - tr2, 6, 1, P.mid[2]);
+            px(mc, mx2 - 3, 154 - tr2, 1, 1, "#5c7a8c");
+          }
+          canopy(mc, mx2, 154 - mh2 - 6, 21 + rnd() * 6,
+                 [P.mid[0], P.mid[1], P.mid[2], P.mid[2]], rnd, "#8fd8c0");
+          /* lanterns hanging in the branches — the forest is dusk, not danger */
+          if (m2 % 3 === 0) {
+            px(mc, mx2 + 12, 154 - mh2 + 6, 1, 5, "#3a2c5c");
+            blob(mc, mx2 + 12, 154 - mh2 + 12, 3, 4, ["#fff0b0", "#ffd166", "#e0a84e", "#b07c30"]);
+          }
+        }
+      },
+    },
+
+    castle: {
+      horizon: { far: 140, mid: 160 },
+      sky: function (sc, P, rnd, VW, VH) {
+        for (var j = 0; j < 40; j++) px(sc, rnd() * VW, rnd() * 60, 1, 1, rnd() > .5 ? "#ffd6e6" : "#c8a0d8");
+        /* a big low blood-orange moon behind the castle */
+        moon(sc, 250, 40, 17, ["#ffe2c0", "#ffc49a", "#e89a7c", "#c07464", "#96534e"],
+             [[-5, 3, 4], [6, -4, 3], [2, 8, 2]]);
+      },
+      far: function (fc, P, rnd, farW, VH) {
+        for (var b = 0; b < 7; b++) {
+          var bx = 20 + b * 68 + rnd() * 20, bw = 26 + rnd() * 22, bh = 50 + rnd() * 40;
+          px(fc, bx, 140 - bh, bw, bh, P.far[1]);
+          px(fc, bx, 140 - bh, 1, bh, P.far[0]);
+          for (var w2 = 4; w2 < bw - 4; w2 += 9)
+            for (var wy = 8; wy < bh - 10; wy += 13) px(fc, bx + w2, 140 - bh + wy, 3, 4, "#ffb45c");
+          /* the roof, widest at the eaves and narrowing to the point */
+          for (var r3 = 0; r3 < 14; r3++)
+            px(fc, bx + r3 * (bw / 28), 140 - bh - 1 - r3, Math.max(1, bw - r3 * (bw / 14)), 1, P.far[0]);
+        }
+      },
+      mid: function (mc, P, rnd, midW, VH) {
+          for (var p2 = 0; p2 < 12; p2++) {
+            var px2 = p2 * 42 + 10, ph = 60 + (p2 % 3) * 16;
+            px(mc, px2, 160 - ph, 22, ph, P.mid[1]);
+            px(mc, px2, 160 - ph, 2, ph, P.mid[0]);
+            px(mc, px2 + 20, 160 - ph, 2, ph, "#2a1836");
+            px(mc, px2 - 2, 160 - ph - 6, 26, 6, P.mid[0]);
+            for (var cr = 0; cr < 26; cr += 6) px(mc, px2 - 2 + cr, 160 - ph - 10, 3, 4, P.mid[0]);
+            /* one lit window per tower, at a different height each time */
+            px(mc, px2 + 8, 160 - ph + 14 + (p2 % 4) * 9, 5, 7, "#ffb45c");
+            px(mc, px2 + 8, 160 - ph + 14 + (p2 % 4) * 9, 5, 1, "#ffe0a0");
+          }
+      },
+    },
+  };
+
   function buildBackdrop(biome) {
-    var P = BIOME[biome], VW = 320, VH = 180;
+    var P = BIOME[biome], def = BACKDROPS[biome] || BACKDROPS.meadow;
+    var VW = 320, VH = 180, farW = 480, midW = 480;
     var rnd = seeded("bg" + biome);
 
-    /* layer 0 — the sky, and whatever hangs in it. Never scrolls. */
-    var sky = spriteCanvas(VW, VH), sc = sky.ctx;
-    ditherSky(sc, 0, 0, VW, VH, P.sky);
-    if (biome === "meadow") {
-      /* the sun: a bright core, then two dithered falloffs, so the halo
-         fades instead of ending on a hard ring */
-      for (var y = -20; y <= 20; y++)
-        for (var x = -20; x <= 20; x++) {
-          var d = Math.sqrt(x * x + y * y), th = (BAYER[(30 + y) & 3][(262 + x) & 3] + .5) / 16;
-          if (d <= 8) px(sc, 262 + x, 30 + y, 1, 1, "#fffbe0");
-          else if (d <= 11) px(sc, 262 + x, 30 + y, 1, 1, "#fff0a8");
-          else if (d <= 15 && th < 1 - (d - 11) / 4) px(sc, 262 + x, 30 + y, 1, 1, "#ffe27a");
-          else if (d <= 20 && th < .55 - (d - 15) / 9) px(sc, 262 + x, 30 + y, 1, 1, "#ffeec0");
-        }
-      /* a couple of soft clouds up in the static sky */
-      for (var cl = 0; cl < 4; cl++) {
-        var clx = 30 + cl * 84 + rnd() * 30, cly = 22 + rnd() * 30;
-        blob(sc, clx, cly, 15, 5, P.cloud.concat([P.cloud[2]]));
-        blob(sc, clx - 11, cly + 2, 9, 4, P.cloud.concat([P.cloud[2]]));
-        blob(sc, clx + 12, cly + 2, 10, 4, P.cloud.concat([P.cloud[2]]));
-        px(sc, clx - 20, cly + 4, 40, 1, P.cloud[0]);
-      }
-    } else if (biome === "forest") {
-      for (var i = 0; i < 60; i++) {
-        var sx = rnd() * VW, sy = rnd() * 70;
-        px(sc, sx, sy, 1, 1, rnd() > .6 ? "#ffffff" : "#ffe9c8");
-      }
-      /* a low moon, with a couple of seas on it */
-      moon(sc, 54, 44, 12, ["#fffaf0", "#f3ddc6", "#dcc0a8", "#c2a48c", "#a98d78"],
-           [[-4, -3, 3], [4, 4, 2], [1, -6, 2]]);
-    } else {
-      for (var j = 0; j < 40; j++) px(sc, rnd() * VW, rnd() * 60, 1, 1, rnd() > .5 ? "#ffd6e6" : "#c8a0d8");
-      /* a big low blood-orange moon behind the castle */
-      moon(sc, 250, 40, 17, ["#ffe2c0", "#ffc49a", "#e89a7c", "#c07464", "#96534e"],
-           [[-5, 3, 4], [6, -4, 3], [2, 8, 2]]);
-    }
-
-    /* layer 1 — the far silhouettes. Scrolls slowly. Tiles horizontally. */
-    var farW = 480;
-    var far = spriteCanvas(farW, VH), fc = far.ctx;
-    if (biome === "meadow") {
-      for (var h = 0; h < 5; h++) {
-        var cxh = 40 + h * 100 + rnd() * 40, rw = 60 + rnd() * 50, rh = 30 + rnd() * 24;
-        for (var x2 = -rw; x2 <= rw; x2++) {
-          var yy = 130 - Math.round(Math.sqrt(Math.max(0, 1 - (x2 * x2) / (rw * rw))) * rh);
-          px(fc, cxh + x2, yy, 1, VH - yy, P.far[1]);
-          px(fc, cxh + x2, yy, 1, 2, P.far[0]);
-          px(fc, cxh + x2, yy + 2, 1, 1, P.far[2]);
-        }
-        /* a handful of far trees along each crest, so the hills have scale */
-        for (var ft = 0; ft < 4; ft++) {
-          var ftx = cxh - rw + rnd() * rw * 2;
-          var fty = 130 - Math.round(Math.sqrt(Math.max(0, 1 - Math.pow(ftx - cxh, 2) / (rw * rw))) * rh);
-          px(fc, ftx, fty - 7, 1, 7, P.far[2]);
-          blob(fc, ftx, fty - 10, 4, 3.4, [P.far[0], P.far[1], P.far[2], P.far[2]]);
-        }
-      }
-    } else if (biome === "forest") {
-      for (var t2 = 0; t2 < 46; t2++) {
-        var tx = rnd() * farW, th = 40 + rnd() * 52;
-        for (var ty = 0; ty < th; ty++) {
-          var tw = Math.round((ty / th) * 13) + 1;
-          px(fc, tx - tw - 1, 138 - th + ty, tw * 2 + 2, 1, P.far[ty > th * .5 ? 1 : 0]);
-        }
-        px(fc, tx - 1, 130, 2, 12, P.far[2]);
-      }
-    } else {
-      for (var b = 0; b < 7; b++) {
-        var bx = 20 + b * 68 + rnd() * 20, bw = 26 + rnd() * 22, bh = 50 + rnd() * 40;
-        px(fc, bx, 140 - bh, bw, bh, P.far[1]);
-        px(fc, bx, 140 - bh, 1, bh, P.far[0]);
-        for (var w2 = 4; w2 < bw - 4; w2 += 9)
-          for (var wy = 8; wy < bh - 10; wy += 13) px(fc, bx + w2, 140 - bh + wy, 3, 4, "#ffb45c");
-        /* the roof, widest at the eaves and narrowing to the point */
-        for (var r3 = 0; r3 < 14; r3++)
-          px(fc, bx + r3 * (bw / 28), 140 - bh - 1 - r3, Math.max(1, bw - r3 * (bw / 14)), 1, P.far[0]);
-      }
-    }
-
-    /* layer 2 — the near band, just behind the tiles. Scrolls faster. */
-    var midW = 480;
-    var mid = spriteCanvas(midW, VH), mc = mid.ctx;
-    if (biome === "meadow") {
-      for (var m = 0; m < 8; m++) {
-        var mx = 18 + m * 58 + rnd() * 22, mh = 30 + rnd() * 20;
-        /* trunk first, then a canopy of overlapping puffs with lit speckles */
-        for (var tr = 0; tr < mh; tr++) {
-          var tw2 = tr < mh * .7 ? 4 : 6;
-          px(mc, mx - (tw2 >> 1), 152 - tr, tw2, 1, "#8a5f3a");
-          px(mc, mx - (tw2 >> 1), 152 - tr, 1, 1, "#a87a4e");
-          px(mc, mx + (tw2 >> 1) - 1, 152 - tr, 1, 1, "#6b4527");
-        }
-        canopy(mc, mx, 152 - mh - 8, 17 + rnd() * 5,
-               [P.mid[0], P.mid[1], P.mid[2], P.mid[2]], rnd, "#c6f5cf");
-      }
-      /* low bushes between the trunks. They stop above the tile line: any
-         lower and they show through a pit as a floating green slab. */
-      for (var hb = 0; hb < midW; hb += 26)
-        blob(mc, hb + rnd() * 18, 148 + rnd() * 3, 7 + rnd() * 4, 4,
-             [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
-    } else if (biome === "forest") {
-      for (var m2 = 0; m2 < 12; m2++) {
-        var mx2 = 14 + m2 * 40 + rnd() * 18, mh2 = 44 + rnd() * 26;
-        for (var tr2 = 0; tr2 < mh2; tr2++) {
-          px(mc, mx2 - 3, 154 - tr2, 6, 1, P.mid[2]);
-          px(mc, mx2 - 3, 154 - tr2, 1, 1, "#5c7a8c");
-        }
-        canopy(mc, mx2, 154 - mh2 - 6, 21 + rnd() * 6,
-               [P.mid[0], P.mid[1], P.mid[2], P.mid[2]], rnd, "#8fd8c0");
-        /* lanterns hanging in the branches — the forest is dusk, not danger */
-        if (m2 % 3 === 0) {
-          px(mc, mx2 + 12, 154 - mh2 + 6, 1, 5, "#3a2c5c");
-          blob(mc, mx2 + 12, 154 - mh2 + 12, 3, 4, ["#fff0b0", "#ffd166", "#e0a84e", "#b07c30"]);
-        }
-      }
-    } else {
-      for (var p2 = 0; p2 < 12; p2++) {
-        var px2 = p2 * 42 + 10, ph = 60 + (p2 % 3) * 16;
-        px(mc, px2, 160 - ph, 22, ph, P.mid[1]);
-        px(mc, px2, 160 - ph, 2, ph, P.mid[0]);
-        px(mc, px2 + 20, 160 - ph, 2, ph, "#2a1836");
-        px(mc, px2 - 2, 160 - ph - 6, 26, 6, P.mid[0]);
-        for (var cr = 0; cr < 26; cr += 6) px(mc, px2 - 2 + cr, 160 - ph - 10, 3, 4, P.mid[0]);
-        /* one lit window per tower, at a different height each time */
-        px(mc, px2 + 8, 160 - ph + 14 + (p2 % 4) * 9, 5, 7, "#ffb45c");
-        px(mc, px2 + 8, 160 - ph + 14 + (p2 % 4) * 9, 5, 1, "#ffe0a0");
-      }
-    }
-    /* Where the ground line sits inside each layer's own canvas. paint()
-       lines these up with the level's real ground row, which is the whole
-       reason scenery stays planted — see the note there. */
-    var horizons = {
-      meadow: { far: 180, mid: 152 },   // hills fill to the foot of the canvas
-      forest: { far: 142, mid: 154 },
-      castle: { far: 140, mid: 160 },
-    }[biome];
+    var sky = spriteCanvas(VW, VH), far = spriteCanvas(farW, VH), mid = spriteCanvas(midW, VH);
+    ditherSky(sky.ctx, 0, 0, VW, VH, P.sky);
+    def.sky(sky.ctx, P, rnd, VW, VH);
+    def.far(far.ctx, P, rnd, farW, VH);
+    def.mid(mid.ctx, P, rnd, midW, VH);
 
     /* Below its horizon each layer gets a solid mass in its own darkest
-       tone. Two things need it: the far trees would otherwise stand on
-       nothing with sky between their trunks, and looking down a bottomless
-       pit would show a bare slab of sky where there should be the ground
-       receding into shadow. */
-    px(fc, 0, horizons.far, farW, VH - horizons.far, P.far[2]);
-    px(fc, 0, horizons.far, farW, 1, P.far[1]);
-    px(mc, 0, horizons.mid, midW, VH - horizons.mid, P.mid[2]);
-    px(mc, 0, horizons.mid, midW, 1, P.mid[1]);
+       tone. Two things need it: the far scenery would otherwise stand on
+       nothing with sky between it, and looking down a bottomless pit would
+       show a bare slab of sky where the ground should recede into shadow. */
+    px(far.ctx, 0, def.horizon.far, farW, VH - def.horizon.far, P.far[2]);
+    px(far.ctx, 0, def.horizon.far, farW, 1, P.far[1]);
+    px(mid.ctx, 0, def.horizon.mid, midW, VH - def.horizon.mid, P.mid[2]);
+    px(mid.ctx, 0, def.horizon.mid, midW, 1, P.mid[1]);
+
     return { sky: sky.c, far: far.c, mid: mid.c, farW: farW, midW: midW,
-             farHorizon: horizons.far, midHorizon: horizons.mid };
+             farHorizon: def.horizon.far, midHorizon: def.horizon.mid };
   }
+
   /* =======================================================================
      9. THE LEVEL — turning a grid of characters into tiles and entities.
 
@@ -1090,7 +1143,7 @@ window.SuperOuissy = (function () {
   var G = null;                      // the whole game state lives here
 
   function buildLevel(index) {
-    var def = LEVELS[index], rows = def.rows;
+    var def = worldSet()[index], rows = def.rows;
     var h = rows.length, w = rows[0].length;
     var d = DIFF[G.diff];
 
@@ -1284,16 +1337,32 @@ window.SuperOuissy = (function () {
   /* =======================================================================
      ENTITY CONSTRUCTORS
      ======================================================================= */
+  /* WHAT EACH DIFFICULTY'S CREATURES ARE.
+
+     `walker`, `flyer` and `guard` are BEHAVIOURS, not animals. Each set
+     names its own creature for each behaviour and can nudge its speed, so
+     the code that moves them is shared while what she actually meets is
+     different in every world set. Art for a skin lives in ART.skin. */
+  var SKINS = {
+    easy:   { walker: "walker", flyer: "flyer", guard: "guard", speed: 0.85 },
+    medium: { walker: "walker", flyer: "flyer", guard: "guard", speed: 1 },
+    hard:   { walker: "walker", flyer: "flyer", guard: "guard", speed: 1.12 },
+  };
+  function skinFor(type) {
+    var set = SKINS[G && G.diff] || SKINS.medium;
+    return { name: set[type], speedMul: set.speed };
+  }
+
   function mkEnemy(type, x, y) {
-    var d = DIFF[G.diff], mul = d.enemyMul;
+    var d = DIFF[G.diff], sk = skinFor(type), mul = d.enemyMul * sk.speedMul;
     if (type === "walker")
-      return { kind: "enemy", type: type, x: x + 1, y: y + 2, w: 14, h: 14,
+      return { kind: "enemy", type: type, skin: sk.name, x: x + 1, y: y + 2, w: 14, h: 14,
                vx: -TUNE.enemySpeed * mul, vy: 0, anim: 0, dead: 0, alive: true };
     if (type === "guard")
-      return { kind: "enemy", type: type, x: x, y: y, w: 14, h: 16,
+      return { kind: "enemy", type: type, skin: sk.name, x: x, y: y, w: 14, h: 16,
                vx: -TUNE.guardSpeed * mul, vy: 0, anim: 0, dead: 0, alive: true };
     /* the flyer never touches the ground: it patrols a span and bobs */
-    return { kind: "enemy", type: "flyer", x: x, y: y, w: 14, h: 12,
+    return { kind: "enemy", type: "flyer", skin: sk.name, x: x, y: y, w: 14, h: 12,
              vx: TUNE.flyerSpeed * mul, vy: 0, anim: 0, dead: 0, alive: true,
              homeX: x, homeY: y, span: 46, ph: (x % 40) / 40 * 6.28 };
   }
@@ -2287,7 +2356,7 @@ window.SuperOuissy = (function () {
       if (e.spun) {                       // knocked away by the sparkle state
         c.save(); c.translate(dx + e.w / 2, dy + e.h / 2);
         c.rotate((0.9 - e.dead) * 9); c.globalAlpha = clamp(e.dead / .9, 0, 1);
-        img = e.type === "flyer" ? ART.flyer[0] : e.type === "guard" ? ART.guard[0] : ART.walker[0];
+        img = (ART.skin[e.skin] || ART.skin.walker)[0];
         c.drawImage(img, -img.width / 2, -img.height / 2);
         c.restore(); return;
       }
@@ -2296,9 +2365,10 @@ window.SuperOuissy = (function () {
       c.restore(); return;
     }
 
-    if (e.type === "flyer") img = ART.flyer[Math.floor(e.anim * 9) % 4];
-    else if (e.type === "guard") img = ART.guard[Math.floor(e.anim * 6) % 2];
-    else img = ART.walker[Math.floor(e.anim * 5) % 2];
+    /* the skin decides the picture; the behaviour decided the movement */
+    var frames = ART.skin[e.skin] || ART.skin.walker;
+    var rate = e.type === "flyer" ? 9 : e.type === "guard" ? 6 : 5;
+    img = frames[Math.floor(e.anim * rate) % frames.length];
 
     if (e.vx > 0) {
       c.save(); c.translate(dx + e.w, dy); c.scale(-1, 1);
@@ -2574,7 +2644,7 @@ window.SuperOuissy = (function () {
 
   /* ---- 3. the card before each world ------------------------------------ */
   function showLevelCard(then) {
-    var w = SO.worlds[G.levelIndex];
+    var w = (SO.worlds[G.diff] || SO.worlds.medium)[G.levelIndex];
     G.state = "card";
     overlay(
       '<div class="so-card so-card-world">' +
@@ -2603,7 +2673,7 @@ window.SuperOuissy = (function () {
                 DIFF[k].label + "</button>";
             }).join("") +
           "</div>" +
-          '<p class="so-card-note">changing it restarts this world</p>' +
+          '<p class="so-card-note">each one has its own three worlds</p>' +
           '<button class="so-btn so-btn-go" id="so-resume">RESUME</button>' +
           '<button class="so-btn" id="so-restart">RESTART WORLD</button>' +
           '<button class="so-btn" id="so-bgm">MUSIC: ' + (G.bgmOn ? "ON" : "OFF") + "</button>" +
@@ -2641,7 +2711,7 @@ window.SuperOuissy = (function () {
     var st = G.levelStats[G.levelStats.length - 1];
     sfx("fanfare");
 
-    var last = G.levelIndex >= LEVELS.length - 1;
+    var last = G.levelIndex >= worldSet().length - 1;
     overlay(
       '<div class="so-card so-card-res">' +
         '<h3 class="so-card-title">WORLD ' + (G.levelIndex + 1) + " CLEARED</h3>" +
