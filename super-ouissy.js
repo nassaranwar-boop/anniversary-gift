@@ -113,6 +113,12 @@ window.SuperOuissy = (function () {
     boostMul:    1.32,  // what the love boost multiplies run speed by
     boostTime:   9,
     starTime:    9,
+    /* ---- the love meter ---------------------------------------------
+       Hearts are not just a number: this many of them fills the meter in
+       the HUD, and filling it hands her the sparkle AND an extra life. It
+       is the reason to go and get the ones tucked in the awkward places. */
+    loveFull:    20,
+    loveStar:    8,     // seconds of sparkle the payout gives
     scores:      { heart: 100, stomp: 200, block: 50, secret: 500, boss: 3000, timeBonus: 15, lifeBonus: 500 },
 
     /* ---- the Heartbreaker ------------------------------------------------
@@ -1996,6 +2002,10 @@ window.SuperOuissy = (function () {
       groundY: findGroundY(grid, w, h),
       ents: ents, items: items, start: start, goal: goal,
       checks: checks, boss: boss, biome: def.biome,
+      /* pristine copies, so the offline harness can put a level back the
+         way it found it between assertions (see __soReset) */
+      grid0: grid.map(function (r) { return r.slice(); }),
+      items0: items.map(function (o) { return Object.assign({}, o); }),
       atlas: buildAtlas(def.biome), bg: buildBackdrop(def.biome),
       secretsFound: 0,
     };
@@ -2599,10 +2609,24 @@ window.SuperOuissy = (function () {
      ======================================================================= */
   function collectHeart(x, y) {
     G.hearts++;
+    G.meter++;
     addScore(TUNE.scores.heart);
     burst(x, y, 8, ["#ff5f95", "#ffd6e6", "#ffffff"], 70, { max: .45, size: 1 });
     sfx("heart");
-    if (G.hearts % 50 === 0) { G.lives++; popText(x, y - 10, "1 UP", "#8ff0a8"); sfx("life"); }
+
+    if (G.meter >= TUNE.loveFull) {
+      /* the payout: the sparkle, and a life banked. Both at once, because
+         one of them is felt immediately and the other is felt later. */
+      G.meter = 0;
+      G.lives++;
+      G.player.star = Math.max(G.player.star, TUNE.loveStar);
+      G.meterFlash = 1.2;
+      popText(x, y - 12, "LOVE FULL!", "#ff5f95");
+      popText(x, y - 22, "+1 LIFE", "#8ff0a8");
+      burst(x, y, 30, ["#ff5f95", "#fff6a8", "#ffffff", "#ffd6e6"], 130, { max: 1 });
+      shake(5);
+      sfx("fanfare");
+    }
   }
 
   function stepItems(dt) {
@@ -2971,6 +2995,7 @@ window.SuperOuissy = (function () {
       if (G.bumps[i].t > 0.22) G.bumps.splice(i, 1);
     }
     G.shake = Math.max(0, G.shake - dt * 26);
+    if (G.meterFlash > 0) G.meterFlash -= dt;
     moveCamera(dt);
     updateHud();
   }
@@ -3535,6 +3560,7 @@ window.SuperOuissy = (function () {
         '<div class="so-res">' +
           row("TIME", fmtTime(st.time)) +
           row("HEARTS", st.hearts) +
+          row("LOVE", G.meter + " / " + TUNE.loveFull) +
           row("FALLS", st.deaths) +
           row("POLE", "+" + (G.poleBonus || 0)) +
           (timeBonus ? row("TIME BONUS", "+" + timeBonus) : "") +
@@ -3700,8 +3726,18 @@ window.SuperOuissy = (function () {
     var d = DIFF[G.diff];
     setText("so-score", pad(G.score, 6));
     setText("so-hearts", pad(G.hearts, 2));
+
+    /* the love meter, as a fraction of a full one */
+    var mf = $("so-meter-fill"), mw = $("so-meter");
+    if (mf) {
+      var pct = Math.round((G.meter / TUNE.loveFull) * 100);
+      if (mf._pct !== pct) { mf.style.width = pct + "%"; mf._pct = pct; }
+    }
+    if (mw) mw.classList.toggle("full", G.meterFlash > 0);
     setText("so-world", (G.levelIndex + 1) + "-1");
-    setText("so-lives", "×" + Math.max(0, G.lives));
+    /* a heart glyph beside the number, so "LIVES ♥x3" reads at a glance */
+    var lv = $("so-lives"), n = "×" + Math.max(0, G.lives);
+    if (lv && lv._n !== n) { lv.innerHTML = "<em>&#9829;</em>" + n; lv._n = n; }
     var timeEl = $("so-time");
     if (timeEl) {
       if (d.timeLimit) {
@@ -3938,6 +3974,7 @@ window.SuperOuissy = (function () {
     closeOverlay();
     G.lives = DIFF[G.diff].lives;
     G.score = 0; G.hearts = 0; G.deaths = 0; G.elapsed = 0;
+    G.meter = 0; G.meterFlash = 0;
     G.levelIndex = 0; G.levelStats = [];
     var want = true;
     try { want = localStorage.getItem("so_bgm") !== "0"; } catch (e) {}
@@ -4019,6 +4056,7 @@ window.SuperOuissy = (function () {
     G = {
       diff: "medium", state: "menu", level: null, levelIndex: 0,
       lives: 3, score: 0, hearts: 0, deaths: 0, elapsed: 0,
+      meter: 0, meterFlash: 0,
       levelStartT: 0, levelStartHearts: 0, levelStartDeaths: 0,
       timeLeft: 0, warned: false, poleBonus: 0, levelStats: [],
       player: mkPlayer(0, 0), parts: [], floats: [], bumps: [],
@@ -4112,6 +4150,14 @@ window.SuperOuissy = (function () {
     G.score = keep.score; G.hearts = keep.hearts; G.deaths = keep.deaths;
     G.state = "play";
     G.keys = freshKeys();
+    /* pickups she took and blocks she opened stay taken and opened
+       otherwise, which leaves later assertions nothing to collect */
+    var L = G.level;
+    L.grid = L.grid0.map(function (r) { return r.slice(); });
+    L.items = L.items0.map(function (o) { return Object.assign({}, o); });
+    L.checks.forEach(function (c) { c.taken = false; });
+    if (L.goal) L.goal.open = false;
+    G.bumps.length = 0;
     G.level.ents.forEach(function (e) {
       if (e.kind === "enemy") {
         e.x = e.spawnX; e.y = e.spawnY; e.alive = true; e.dead = 0; e.vy = 0;
@@ -4194,6 +4240,8 @@ window.SuperOuissy = (function () {
   /* Hearts and power-ups are lifted OUT of the grid into entities when the
      level loads, so a grid scan will never find one. Ask the entity list. */
   window.G_keys = function () { return G.keys; };
+  window.__soSetMeter = function (n) { G.meter = n; updateHud(); };
+  window.__soLoveFull = function () { return TUNE.loveFull; };
   window.__soWorldNames = function () { return worldSet().map(function (w) { return w.biome; }); };
   window.__soFindItem = function (type) {
     return G.level.items
@@ -4251,6 +4299,7 @@ window.SuperOuissy = (function () {
       state: G.state, world: G.levelIndex + 1, lives: G.lives, score: G.score,
       hearts: G.hearts, deaths: G.deaths, timeLeft: G.timeLeft,
       big: G.player.big, star: G.player.star > 0, wing: G.player.wing,
+      meter: G.meter,
       x: Math.round(G.player.x / T), usedBlocks: used, bricks: bricks, spikes: spikes,
       enemiesAlive: L.ents.filter(function (e) { return e.kind === "enemy" && e.alive; }).length,
       items: L.items.length, hasBoss: !!L.boss, bossHp: L.boss ? L.boss.hp : null,

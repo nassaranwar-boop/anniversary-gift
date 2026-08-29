@@ -39,6 +39,18 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   let a = await info();
   ok('collects hearts', a.hearts > before, 'hearts=' + a.hearts);
 
+  // the love meter: one heart short of full, then take one
+  await tele(Math.max(2, firstHeart - 3));
+  await page.evaluate(() => window.__soSetMeter(window.__soLoveFull() - 1));
+  before = (await info()).lives;
+  await pump(1.4, { right: true, jump: true });
+  await pump(0.4, { right: false, jump: false });
+  a = await info();
+  ok('filling the love meter banks a life', a.lives === before + 1,
+     'lives ' + before + ' -> ' + a.lives);
+  ok('filling the love meter grants the sparkle', a.star, 'star=' + a.star);
+  ok('the love meter resets after it pays out', a.meter < 3, 'meter=' + a.meter);
+
   // a gift block with room under it, wherever this world put one
   const gift = await page.evaluate(() => window.__soFindGift('?'));
   await tele(gift.x); await pump(0.2);

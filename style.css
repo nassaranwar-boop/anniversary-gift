@@ -2015,7 +2015,39 @@ img{-webkit-user-drag:none; user-select:none;}
 .so-hud-item i{font-size:2.4cqw; font-style:normal; color:#fffaf5;}
 .so-hud-hearts b{color:#ff5f95; font-size:2.4cqw;}
 .so-hud-hearts i{color:#ffd6e6;}
+
+/* ---- the love meter ----
+   Twenty hearts fills it; filling it hands her the sparkle and a life. It
+   sits under the heart count so the two read as one thing. */
+.so-meter{
+  display:block; width:15cqw; height:1.6cqw; margin-top:.5cqw;
+  border:.35cqw solid rgba(61,35,64,.9);
+  background:rgba(30,12,34,.55);
+  box-shadow:0 0 0 .2cqw rgba(255,158,196,.25);
+  overflow:hidden; position:relative;
+}
+/* the segment dividers, so it reads as counted rather than continuous */
+.so-meter::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(90deg,
+    transparent 0 calc(10% - .18cqw),
+    rgba(30,12,34,.85) calc(10% - .18cqw) 10%);
+}
+.so-meter > span{
+  display:block; height:100%; width:0%;
+  background:linear-gradient(180deg,#ffd6e6,#ff5f95 55%,#e0426e);
+  transition:width .18s var(--ease-out);
+}
+.so-meter.full{animation:soMeterFull .3s steps(2,end) 4;}
+@keyframes soMeterFull{
+  0%,100%{box-shadow:0 0 0 .2cqw rgba(255,158,196,.25);}
+  50%{box-shadow:0 0 0 .5cqw rgba(255,240,168,.95), 0 0 3cqw rgba(255,95,149,.7);}
+}
+@media (prefers-reduced-motion: reduce){ .so-meter.full{animation:none;} }
 .so-hud-time.low i{color:#ff9a6a; animation:soBlink .5s steps(2,end) infinite;}
+/* LIVES carries a heart so the number is obviously lives and not a score */
+.so-hud-lives i{display:flex; align-items:center; gap:.5cqw;}
+.so-hud-lives em{font-style:normal; color:#ff5f95; font-size:2.2cqw; line-height:1;}
 @keyframes soBlink{50%{opacity:.25;}}
 
 /* the state pips: a ring round the stage says what she is carrying */

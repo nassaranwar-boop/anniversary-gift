@@ -6,9 +6,9 @@
 <title>For My Love 💕</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=17">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=16"></script>
+<script src="vendor/three.bundle.js?v=17"></script>
 
 </head>
 <body>
@@ -187,10 +187,15 @@
         <!-- the HUD sits over the art, in the arcade face -->
         <div class="so-hud" id="so-hud">
           <span class="so-hud-item"><b>SCORE</b><i id="so-score">000000</i></span>
-          <span class="so-hud-item so-hud-hearts"><b>&#9829;</b><i id="so-hearts">00</i></span>
+          <span class="so-hud-item so-hud-hearts">
+            <b>&#9829;</b><i id="so-hearts">00</i>
+            <!-- the love meter: fills as she collects, and pays out -->
+            <span class="so-meter" id="so-meter" aria-hidden="true"><span id="so-meter-fill"></span></span>
+          </span>
           <span class="so-hud-item"><b>WORLD</b><i id="so-world">1-1</i></span>
           <span class="so-hud-item so-hud-time"><b>TIME</b><i id="so-time">0:00</i></span>
-          <span class="so-hud-item"><b>OUISSY</b><i id="so-lives">&times;3</i></span>
+          <!-- "OUISSY x5" told a new player nothing; this is her lives -->
+          <span class="so-hud-item so-hud-lives"><b>LIVES</b><i id="so-lives"><em>&#9829;</em>&times;3</i></span>
         </div>
 
         <div class="so-bossbar" id="so-bossbar"><span id="so-bossfill"></span></div>
@@ -370,9 +375,9 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=16"></script>
-<script src="scrapbook.js?v=16"></script>
-<script src="script.js?v=16"></script>
-<script src="super-ouissy.js?v=16"></script>
+<script src="book-scene.js?v=17"></script>
+<script src="scrapbook.js?v=17"></script>
+<script src="script.js?v=17"></script>
+<script src="super-ouissy.js?v=17"></script>
 </body>
 </html>
