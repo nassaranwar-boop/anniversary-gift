@@ -269,7 +269,7 @@ window.SuperOuissy = (function () {
       sky:  [{ p: 0, c: "#3b2a63" }, { p: .38, c: "#7a4a86" }, { p: .68, c: "#d1738f" }, { p: 1, c: "#ffb28a" }],
       far:  ["#4a3a72", "#3a2c5c", "#2d2148"],
       mid:  ["#38566a", "#2b4354", "#1f3240"],
-      grass:["#7fd4a0", "#46a473", "#2e7a55", "#1e5a3e"],
+      grass:["#a8f0c0", "#5cc08c", "#31805c", "#1e5a3e"],
       dirt: ["#a97fbe", "#7d5590", "#5c3d6c", "#412a4e"],
       brick:["#c9a6dd", "#9a76b0", "#6f5183"],
       stone:["#d8cff0", "#ab9fcc", "#8074a6"],
@@ -281,7 +281,7 @@ window.SuperOuissy = (function () {
       sky:  [{ p: 0, c: "#1e1233" }, { p: .42, c: "#3d1c46" }, { p: .78, c: "#7a2450" }, { p: 1, c: "#c03a63" }],
       far:  ["#3a2350", "#2c1a3e", "#1f1230"],
       mid:  ["#5a3a68", "#452c52", "#32203c"],
-      grass:["#c9a0d8", "#9a72ac", "#755488", "#553a66"],
+      grass:["#ffe0b0", "#e0b489", "#a87f68", "#7a5a52"],   // lit flagstone edge
       dirt: ["#8f6fa8", "#6b4f80", "#4d375e", "#332444"],
       brick:["#b58fce", "#8a68a4", "#63487a"],
       stone:["#e0cff0", "#b09ad0", "#8574a8"],
@@ -388,6 +388,31 @@ window.SuperOuissy = (function () {
     var ctx = c.getContext("2d");
     ctx.imageSmoothingEnabled = false;
     return { c: c, ctx: ctx };
+  }
+
+  /* A moon: shaded by distance from the light rather than by a flat linear
+     ramp, and dithered between tones, so it reads round instead of striped. */
+  function moon(c, cx, cy, r, tones, craters) {
+    for (var y = -r; y <= r; y++) {
+      for (var x = -r; x <= r; x++) {
+        if (x * x + y * y > r * r) continue;
+        /* how far this pixel is from the lit point, over the disc */
+        var d = Math.sqrt(Math.pow(x + r * 0.5, 2) + Math.pow(y + r * 0.5, 2)) / (r * 2.1);
+        var f = Math.pow(clamp(d, 0, 1), 1.4) * (tones.length - 1);
+        var i = Math.floor(f), frac = f - i;
+        /* only dither near a boundary; the middle of a band stays flat */
+        if (frac > 0.72 || (frac > 0.4 && frac > (BAYER[(cy + y) & 3][(cx + x) & 3] + 0.5) / 16)) i++;
+        px(c, cx + x, cy + y, 1, 1, tones[clamp(i, 0, tones.length - 1)]);
+      }
+    }
+    (craters || []).forEach(function (k) {
+      for (var y2 = -k[2]; y2 <= k[2]; y2++)
+        for (var x2 = -k[2]; x2 <= k[2]; x2++) {
+          if (x2 * x2 + y2 * y2 > k[2] * k[2]) continue;
+          px(c, cx + k[0] + x2, cy + k[1] + y2, 1, 1, tones[Math.min(tones.length - 1, 2)]);
+        }
+      px(c, cx + k[0] - k[2], cy + k[1] - k[2], k[2], 1, tones[1]);
+    });
   }
 
   /* deterministic little RNG so a level looks the same every time */
@@ -710,8 +735,11 @@ window.SuperOuissy = (function () {
     } else if (kind === "life") {                // a second chance
       heart(c, 7, 7 - pop, 6, K);
       heart(c, 7, 7 - pop, 5.2, "#6fd08a", "#c8f4d8");
-      px(c, 5, 5 - pop, 1, 4, "#ffffff"); px(c, 8, 5 - pop, 1, 4, "#ffffff");
-      px(c, 6, 8 - pop, 2, 1, "#ffffff");
+      /* a small "1" stamped on it — a letter U is what you get if you try
+         to fit "1UP" into nine pixels */
+      px(c, 7, 4 - pop, 1, 6, "#ffffff");
+      px(c, 6, 5 - pop, 1, 1, "#ffffff");
+      px(c, 5, 10 - pop, 5, 1, "#ffffff");
     } else if (kind === "boost") {               // the love boost
       heart(c, 8, 8 - pop, 4.4, K);
       heart(c, 8, 8 - pop, 3.6, "#ff6f4d", "#ffc9a8");
@@ -878,14 +906,14 @@ window.SuperOuissy = (function () {
         var sx = rnd() * VW, sy = rnd() * 70;
         px(sc, sx, sy, 1, 1, rnd() > .6 ? "#ffffff" : "#ffe9c8");
       }
-      /* a low moon, half behind the hills */
-      blob(sc, 54, 44, 11, 11, ["#fff4e0", "#f3dcc4", "#dcc0a8", "#c4a68e"]);
-      blob(sc, 50, 41, 2.4, 2, ["#e8d0b8", "#d8bfa6", "#c8ae96", "#c8ae96"]);
-      blob(sc, 58, 48, 1.8, 1.6, ["#e8d0b8", "#d8bfa6", "#c8ae96", "#c8ae96"]);
+      /* a low moon, with a couple of seas on it */
+      moon(sc, 54, 44, 12, ["#fffaf0", "#f3ddc6", "#dcc0a8", "#c2a48c", "#a98d78"],
+           [[-4, -3, 3], [4, 4, 2], [1, -6, 2]]);
     } else {
       for (var j = 0; j < 40; j++) px(sc, rnd() * VW, rnd() * 60, 1, 1, rnd() > .5 ? "#ffd6e6" : "#c8a0d8");
       /* a big low blood-orange moon behind the castle */
-      blob(sc, 250, 40, 16, 16, ["#ffd0a8", "#f0a88a", "#d0806e", "#a85c54"]);
+      moon(sc, 250, 40, 17, ["#ffe2c0", "#ffc49a", "#e89a7c", "#c07464", "#96534e"],
+           [[-5, 3, 4], [6, -4, 3], [2, 8, 2]]);
     }
 
     /* layer 1 — the far silhouettes. Scrolls slowly. Tiles horizontally. */
@@ -924,8 +952,9 @@ window.SuperOuissy = (function () {
         px(fc, bx, 140 - bh, 1, bh, P.far[0]);
         for (var w2 = 4; w2 < bw - 4; w2 += 9)
           for (var wy = 8; wy < bh - 10; wy += 13) px(fc, bx + w2, 140 - bh + wy, 3, 4, "#ffb45c");
+        /* the roof, widest at the eaves and narrowing to the point */
         for (var r3 = 0; r3 < 14; r3++)
-          px(fc, bx + r3 * (bw / 28), 140 - bh - 14 + r3, bw - r3 * (bw / 14), 1, P.far[0]);
+          px(fc, bx + r3 * (bw / 28), 140 - bh - 1 - r3, Math.max(1, bw - r3 * (bw / 14)), 1, P.far[0]);
       }
     }
 
@@ -1098,11 +1127,20 @@ window.SuperOuissy = (function () {
         `one-way` tiles are only solid when she is falling and her feet
         were above the top of the tile a moment ago.
      ======================================================================= */
+  /* Both resolvers back the body out a pixel at a time. The step count is
+     bounded: outside the level counts as wall, so a body that somehow ends
+     up embedded would otherwise walk out of the world forever and hang the
+     tab. If the budget runs out we put it back where it started, which is
+     always somewhere it fitted. */
+  var PUSH_LIMIT = 64;
+
   function moveX(b, dx) {
+    var was = b.x;
     b.x += dx;
     if (!boxHitsSolid(b.x, b.y, b.w, b.h)) return false;
-    var step = dx > 0 ? -1 : 1;
-    while (boxHitsSolid(b.x, b.y, b.w, b.h)) b.x += step;
+    var step = dx > 0 ? -1 : 1, guard = 0;
+    while (boxHitsSolid(b.x, b.y, b.w, b.h) && guard++ < PUSH_LIMIT) b.x += step;
+    if (guard >= PUSH_LIMIT) b.x = was;
     b.vx = 0;
     return true;
   }
@@ -1124,8 +1162,9 @@ window.SuperOuissy = (function () {
     }
     if (!hit) return false;
 
-    var step = dy > 0 ? -1 : 1;
-    while (boxHitsSolid(b.x, b.y, b.w, b.h)) b.y += step;
+    var step = dy > 0 ? -1 : 1, guard = 0;
+    while (boxHitsSolid(b.x, b.y, b.w, b.h) && guard++ < PUSH_LIMIT) b.y += step;
+    if (guard >= PUSH_LIMIT) b.y = prevBottom - b.h;
     var res = dy > 0 ? "ground" : "ceiling";
     b.vy = 0;
     return res;
@@ -1806,8 +1845,14 @@ window.SuperOuissy = (function () {
     var ox = Math.round(G.cam.x + (sh ? (Math.random() - .5) * sh : 0));
     var oy = Math.round(G.cam.y + (sh ? (Math.random() - .5) * sh : 0));
 
-    /* ---- 1. the backdrop, three layers at three speeds ------------------ */
+    /* ---- 1. the backdrop, three layers at three speeds ------------------
+       The parallax layers are offset vertically, which leaves a strip of
+       bare canvas at the foot of the screen. Tiles normally cover it — but
+       look down a bottomless pit and you would see straight through to
+       nothing, so the whole frame is flooded with the sky's lowest colour
+       first and the pit reads as distance instead of a hole in the page. */
     var bg = L.bg;
+    px(c, 0, 0, 320, 180, BIOME[L.biome].sky[BIOME[L.biome].sky.length - 1].c);
     c.drawImage(bg.sky, 0, Math.round(-oy * 0.12) - 6);
     drawTiled(c, bg.far, ox * 0.22, Math.round(-oy * 0.3), bg.farW);
     drawTiled(c, bg.mid, ox * 0.52, Math.round(-oy * 0.55), bg.midW);
@@ -2773,9 +2818,40 @@ window.SuperOuissy = (function () {
      be driven and inspected without a person at the keyboard. They read
      and move state that is already public to the loop; nothing in the game
      itself calls them. */
-  window.__soTele = function (tx) {
+  window.__soGoLevel = function (i) { startLevel(i); };
+  /* Step the world a fixed number of frames and repaint, so the offline
+     harness does not depend on requestAnimationFrame (which runs at 3fps in
+     a headless container and would make every test a slow-motion one). */
+  window.__soPump = function (seconds, keys) {
+    if (keys) for (var k in keys) {
+      if (k === "jump" && keys[k] && !G.keys.jump) G.keys.jumpPressed = true;
+      G.keys[k] = keys[k];
+    }
+    var n = Math.round((seconds || 1) * 60);
+    for (var i = 0; i < n; i++) step(1 / 60);
+    paint(performance.now() / 1000);
+    return window.__soState();
+  };
+
+  window.__soGoalInfo = function () {
+    var g = G.level.goal, p = G.player;
+    return { gx: g && g.x, gy: g && g.y, open: g && g.open, hasBoss: !!G.level.boss,
+             px: Math.round(p.x), py: Math.round(p.y), winT: p.winT, state: G.state };
+  };
+  window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
+  window.__soKillBoss = function () {
+    if (G.level.boss) { G.level.boss.hp = 0; G.level.boss.dead = 0.001; G.level.goal.open = true; }
+  };
+  window.__soTele = function (tx, ty) {
     if (!G || !G.level) return;
-    G.player.x = tx * T; G.player.y = 0; G.player.vx = 0; G.player.vy = 0;
+    G.player.x = tx * T;
+    if (ty === undefined) {
+      /* find the first floor under that column and stand her on it */
+      ty = 0;
+      for (var r = 0; r < G.level.h; r++) if (solidAt(tx, r)) { ty = r; break; }
+      G.player.y = ty * T - G.player.h - 1;
+    } else G.player.y = ty * T;
+    G.player.vx = 0; G.player.vy = 0;
     G.camSnap = true; moveCamera(1);
   };
   /* A contact sheet of every sprite, for the offline art review. */
