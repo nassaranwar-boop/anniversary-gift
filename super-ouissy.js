@@ -149,6 +149,7 @@ window.SuperOuissy = (function () {
       coyoteMul: 1.7, bufferMul: 1.6, invulnMul: 1.5,
       pitSafety: true, checkpoints: true, hardOnly: false, mediumUp: false,
       timeLimit: 0, timedPlatform: 1.6, bossSpeedMul: 0.78, bossCooldownMul: 1.35, bossExtraShot: 0,
+      bossSkin: "cloud", bossHitsPerPhase: 1, bossOpenMul: 1.4,
     },
     medium: {
       label: "Medium", blurb: "3 lives, real pits, the way it is meant to play",
@@ -156,6 +157,7 @@ window.SuperOuissy = (function () {
       coyoteMul: 1, bufferMul: 1, invulnMul: 1,
       pitSafety: false, checkpoints: true, hardOnly: false, mediumUp: true,
       timeLimit: 0, timedPlatform: 1.1, bossSpeedMul: 1, bossCooldownMul: 1, bossExtraShot: 0,
+      bossSkin: "heart", bossHitsPerPhase: 2, bossOpenMul: 1.15,
     },
     hard: {
       label: "Hard", blurb: "2 lives, a clock, more of everything sharp",
@@ -163,6 +165,7 @@ window.SuperOuissy = (function () {
       coyoteMul: 0.5, bufferMul: 0.5, invulnMul: 0.7,
       pitSafety: false, checkpoints: false, hardOnly: true, mediumUp: true,
       timeLimit: [150, 170, 190], timedPlatform: 0.75, bossSpeedMul: 1.3, bossCooldownMul: 0.72, bossExtraShot: 1,
+      bossSkin: "heart", bossHitsPerPhase: 2, bossOpenMul: 1,
     },
   };
 
@@ -270,12 +273,54 @@ window.SuperOuissy = (function () {
     ],
   };
 
+  var W_ORCHARD = {
+    biome: "orchard",
+    rows: [
+      "....................................................................................................................................",
+      "....................................................................................................................................",
+      "...............................................................................................o.Io.................................",
+      "....................................o..o.....................................o...o..............oo..................................",
+      ".............................o..o....oo.................f.....................o.o...................................................",
+      ".............o...o............oo...............................................o...............----.................................",
+      "..............o.o.?.................----.........o..o.....BMB...................................................?..o..o.............",
+      "...............o.............----..........----...oo..........................w.........----..........----..........oo..............",
+      "............................................................................#######.................................................",
+      "...S....................w..................................................#########........................w.........C.......G.....",
+      "##################################################..############.#####.#############################################################",
+      "##################################################..############.......#############################################################",
+      "##################################################..############.oo1oo.#############################################################",
+      "##################################################..################################################################################",
+    ],
+  };
+
+  var W_GARDEN = {
+    biome: "garden",
+    rows: [
+      "..................................................................................................................................................",
+      "....................................P.............................................................................................................",
+      "..................................ooooo...........................................................................................................",
+      "..................................-----...................................................................................#....................#..",
+      ".............................................f............................................................................#....................#..",
+      "............................----........................................................f.................................#....................#..",
+      "...............................f..........----............o..o......................o..o..................................#....................#..",
+      "............o...o.................----.....................oo........................oo....----...........................#....................#..",
+      ".............o.o.?..............................----............................................BMB.....o..o.....o..o.....#...---........---...#..",
+      "..............o.............----....................................................----..........----...oo.......oo......#....................#..",
+      "..........................................................H....................................................................................#..",
+      "...S..................g...............................w.........................g.............................w......C..............X......G...#..",
+      "##########################################################...#####.######.###############################..#######################################",
+      "##########################################################...#####........B...###########################..#######################################",
+      "##########################################################...#####.ooo.oo.B.F.###########################..#######################################",
+      "##########################################################...############################################..#######################################",
+    ],
+  };
+
   /* THE THREE SETS. Difficulty picks one; DIFF still layers lives, pit
      safety, checkpoints and the clock on top of whichever it picks.
-     Worlds are filled in set by set — where two sets currently name the
-     same world, that one has not been written yet. */
+     Worlds are filled in set by set — where two sets still name the same
+     world, that one has not been written yet. */
   var WORLDS = {
-    easy:   [W_MEADOW, W_FOREST, W_CASTLE],
+    easy:   [W_MEADOW, W_ORCHARD, W_GARDEN],
     medium: [W_MEADOW, W_FOREST, W_CASTLE],
     hard:   [W_MEADOW, W_FOREST, W_CASTLE],
   };
@@ -316,6 +361,34 @@ window.SuperOuissy = (function () {
       accent:"#ffe27a",
       hazard:["#7fd8ff", "#4fb6ee"],
     },
+    /* Easy's second world: a warm afternoon under fruit trees. */
+    orchard: {
+      sky:  [{ p: 0, c: "#7fd0ee" }, { p: .42, c: "#bfe8f2" }, { p: .78, c: "#ffe7c8" }, { p: 1, c: "#ffd0a8" }],
+      far:  ["#cfe8b8", "#a9d194", "#84ac72" ],
+      mid:  ["#ffd0e2", "#e8a2be", "#b8748f"],          // blossom, not leaf
+      grass:["#a8e878", "#78c452", "#4f9638", "#3a7228"],
+      dirt: ["#f0cc9a", "#d8a468", "#b07f48", "#8a5f34"],
+      brick:["#f0d6a8", "#cfa870", "#a37f4e"],
+      stone:["#fff0e0", "#e0cdb8", "#bda791"],
+      cloud:["#ffffff", "#fff2e2", "#f0dcc8"],
+      accent:"#ffe27a",
+      hazard:["#8fe0ff", "#57b2e0"],
+    },
+
+    /* Easy's last world: a walled garden, cooler and greener. */
+    garden: {
+      sky:  [{ p: 0, c: "#8fe0d0" }, { p: .45, c: "#cdefe6" }, { p: 1, c: "#efdff6" }],
+      far:  ["#88c4a0", "#5e9c78", "#3f7256"],
+      mid:  ["#5aa87e", "#3f8460", "#2b6046"],
+      grass:["#9ceb8c", "#5fc45f", "#3e9440", "#2c6e30"],
+      dirt: ["#c9a882", "#a3805c", "#7c5f42", "#5c452f"],
+      brick:["#f2c8b0", "#cf9c80", "#a3735a"],           // terracotta
+      stone:["#f0f6ee", "#cfe0d2", "#a8bdaa"],
+      cloud:["#ffffff", "#e8f6ef", "#cfe6dc"],
+      accent:"#ffd6f0",
+      hazard:["#a8e8ff", "#63b8e0"],
+    },
+
     forest: {
       sky:  [{ p: 0, c: "#3b2a63" }, { p: .38, c: "#7a4a86" }, { p: .68, c: "#d1738f" }, { p: 1, c: "#ffb28a" }],
       far:  ["#4a3a72", "#3a2c5c", "#2d2148"],
@@ -712,6 +785,105 @@ window.SuperOuissy = (function () {
     return s.c;
   }
 
+  /* --- Easy's roster: a bunny, a butterfly and a snail ------------------
+     Same three behaviours as everywhere else — these just look like things
+     that would apologise for being in your way. */
+
+  function paintBunny(k) {
+    var s = spriteCanvas(16, 15), c = s.ctx;
+    var K = "#3d2340", hop = k ? 2 : 0;      // it hops rather than walks
+    /* ears, laid back when it is in the air */
+    for (var e = 0; e < 2; e++) {
+      var ex = e ? 9 : 5, lean = k ? (e ? 1 : -1) : 0;
+      px(c, ex + lean, 1 - hop, 2, 6, K);
+      px(c, ex + lean, 2 - hop, 2, 4, "#ffd6e6");
+      px(c, ex + lean, 2 - hop, 1, 4, "#ffb0cd");
+    }
+    oval(c, 8, 9 - hop, 6, 5, K);
+    blob(c, 8, 9 - hop, 5, 4, ["#fffaf5", "#ffe8f0", "#ffc8de", "#e6a8c4"]);
+    px(c, 5, 8 - hop, 2, 2, K); px(c, 9, 8 - hop, 2, 2, K);
+    px(c, 5, 8 - hop, 1, 1, "#ffffff"); px(c, 9, 8 - hop, 1, 1, "#ffffff");
+    px(c, 7, 11 - hop, 2, 1, "#ff8fae");                    // nose
+    px(c, 3, 10 - hop, 2, 1, "#ffb0cd"); px(c, 11, 10 - hop, 2, 1, "#ffb0cd");
+    heart(c, 13, 8 - hop, 2.2, "#ffb0cd");                  // a tail, of course
+    px(c, 4, 13 + (k ? -1 : 0), 3, 2, "#e6a8c4");
+    px(c, 9, 13 + (k ? -1 : 0), 3, 2, "#e6a8c4");
+    return s.c;
+  }
+
+  function paintButterfly(k) {
+    var s = spriteCanvas(18, 14), c = s.ctx;
+    var K = "#3d2340", open = k < 2 ? 1 : 0.62;             // wings beat
+    for (var w = 0; w < 2; w++) {
+      var d = w ? 1 : -1;
+      for (var i = 0; i < 7; i++) {
+        var ww = Math.max(2, Math.round((4 - Math.abs(i - 3) * 0.5) * open) + 1);
+        px(c, 9 + d * (2 + i * open), 3 + i * 0.7, ww, 3, i < 3 ? "#ffc8de" : "#c8b0f0");
+        px(c, 9 + d * (2 + i * open), 3 + i * 0.7, 1, 1, "#fffaf5");
+      }
+      px(c, 9 + d * 6, 5, 1, 1, "#fff0a8");
+    }
+    px(c, 8, 4, 2, 8, K);                                   // body
+    px(c, 8, 4, 1, 8, "#7a4a70");
+    px(c, 7, 2, 1, 2, K); px(c, 10, 2, 1, 2, K);            // antennae
+    px(c, 7, 1, 1, 1, "#ffd166"); px(c, 10, 1, 1, 1, "#ffd166");
+    return s.c;
+  }
+
+  function paintSnail(k) {
+    var s = spriteCanvas(18, 14), c = s.ctx;
+    var K = "#3d2340", sway = k ? 1 : 0;
+    px(c, 1, 10, 14, 4, K);                                 // foot
+    px(c, 2, 10, 13, 3, "#c8e8b0");
+    px(c, 2, 10, 13, 1, "#e2f5cf");
+    /* the shell: a spiral of three tones */
+    oval(c, 10, 7, 6, 6, K);
+    blob(c, 10, 7, 5, 5, ["#ffd6a8", "#e8a878", "#c07f58", "#9a5f42"]);
+    for (var a = 0; a < 14; a++) {
+      var r = 1 + a * 0.32, th = a * 0.85;
+      px(c, 10 + Math.cos(th) * r, 7 + Math.sin(th) * r, 1, 1, "#9a5f42");
+    }
+    /* head and stalks */
+    px(c, 2, 6 - sway, 2, 4, K);
+    px(c, 2, 7 - sway, 2, 3, "#c8e8b0");
+    px(c, 1, 3 - sway, 1, 4, K); px(c, 4, 3 - sway, 1, 4, K);
+    px(c, 1, 2 - sway, 1, 1, "#3d2340"); px(c, 4, 2 - sway, 1, 1, "#3d2340");
+    px(c, 2, 9 - sway, 1, 1, K);
+    return s.c;
+  }
+
+  /* --- Easy's boss: a raincloud in a very bad mood ---------------------- */
+  function paintRaincloud(k, hurtFlash) {
+    var s = spriteCanvas(44, 34), c = s.ctx;
+    var K = "#3d2340";
+    var body = hurtFlash ? ["#ffffff", "#ffffff", "#f0f0f8", "#e0e0ee"]
+                         : ["#ffffff", "#e8ecfa", "#c2cbe6", "#9aa6c8"];
+    var squat = k === 1 ? 2 : 0;
+    blob(c, 22, 15 + squat, 17, 9, body);
+    blob(c, 9,  19 + squat, 9, 6, body);
+    blob(c, 35, 19 + squat, 10, 6, body);
+    blob(c, 16, 10 + squat, 9, 6, body);
+    blob(c, 29, 11 + squat, 8, 5, body);
+    px(c, 5, 24 + squat, 34, 1, hurtFlash ? "#e0e0ee" : "#8f9cc0");
+    /* the face: cross, not frightening */
+    px(c, 13, 15 + squat, 4, 5, K); px(c, 26, 15 + squat, 4, 5, K);
+    px(c, 12, 13 + squat, 6, 2, K); px(c, 25, 13 + squat, 6, 2, K);
+    px(c, 14, 15 + squat, 1, 1, "#ffffff"); px(c, 27, 15 + squat, 1, 1, "#ffffff");
+    px(c, 17, 22 + squat, 9, 2, K);
+    px(c, 18, 21 + squat, 2, 1, K); px(c, 23, 21 + squat, 2, 1, K);
+    px(c, 8, 19 + squat, 3, 2, "#ffb0cd"); px(c, 32, 19 + squat, 3, 2, "#ffb0cd");
+    /* a crown of raindrops, so he reads as the boss and not as weather */
+    for (var d = 0; d < 3; d++) {
+      var dx = 14 + d * 8;
+      px(c, dx, 2 + squat + (d % 2), 2, 4, "#a8d8ff");
+      px(c, dx, 1 + squat + (d % 2), 2, 1, "#e0f4ff");
+    }
+    /* and the rain under him */
+    for (var r = 0; r < 6; r++)
+      px(c, 6 + r * 6, 26 + squat + ((r + k) % 3) * 2, 1, 3, "#a8d8ff");
+    return s.c;
+  }
+
   /* --- the Heartbreaker: a cracked heart in a crown, three stomps deep --- */
   function paintBoss(k, hurtFlash) {
     var s = spriteCanvas(40, 34), c = s.ctx;
@@ -816,9 +988,19 @@ window.SuperOuissy = (function () {
     /* every creature any set can name, looked up by skin name. Adding a
        new one is adding a painter above and one line here. */
     skin: {
-      walker: [paintWalker(0), paintWalker(1)],
-      flyer:  [paintFlyer(0), paintFlyer(1), paintFlyer(2), paintFlyer(3)],
-      guard:  [paintGuard(0), paintGuard(1)],
+      walker:    [paintWalker(0), paintWalker(1)],
+      flyer:     [paintFlyer(0), paintFlyer(1), paintFlyer(2), paintFlyer(3)],
+      guard:     [paintGuard(0), paintGuard(1)],
+      bunny:     [paintBunny(0), paintBunny(1)],
+      butterfly: [paintButterfly(0), paintButterfly(1), paintButterfly(2), paintButterfly(3)],
+      snail:     [paintSnail(0), paintSnail(1)],
+    },
+    /* one entry per boss; DIFF picks which by name */
+    bosses: {
+      heart: { calm: [paintBoss(0), paintBoss(1), paintBoss(2)],
+               hurt: [paintBoss(0, true), paintBoss(1, true), paintBoss(2, true)] },
+      cloud: { calm: [paintRaincloud(0), paintRaincloud(1), paintRaincloud(2)],
+               hurt: [paintRaincloud(0, true), paintRaincloud(1, true), paintRaincloud(2, true)] },
     },
     boss: [paintBoss(0), paintBoss(1), paintBoss(2)],
     bossHurt: [paintBoss(0, true), paintBoss(1, true), paintBoss(2, true)],
@@ -1024,6 +1206,134 @@ window.SuperOuissy = (function () {
         for (var hb = 0; hb < midW; hb += 26)
           blob(mc, hb + rnd() * 18, 148 + rnd() * 3, 7 + rnd() * 4, 4,
                [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
+      },
+    },
+
+    /* An orchard: rows of blossom receding, and petals in the air. */
+    orchard: {
+      horizon: { far: 176, mid: 150 },
+      sky: function (sc, P, rnd, VW, VH) {
+        /* a high sun, and a lot of loose blossom on the wind */
+        for (var y = -16; y <= 16; y++)
+          for (var x = -16; x <= 16; x++) {
+            var d = Math.sqrt(x * x + y * y), th = (BAYER[(26 + y) & 3][(64 + x) & 3] + .5) / 16;
+            if (d <= 7) px(sc, 64 + x, 26 + y, 1, 1, "#fffbe8");
+            else if (d <= 10) px(sc, 64 + x, 26 + y, 1, 1, "#fff3b8");
+            else if (d <= 16 && th < .6 - (d - 10) / 12) px(sc, 64 + x, 26 + y, 1, 1, "#ffe9c8");
+          }
+        for (var i = 0; i < 26; i++) {
+          var bx = rnd() * VW, by = rnd() * 110;
+          px(sc, bx, by, 2, 1, rnd() > .5 ? "#ffd0e2" : "#fff0f6");
+          px(sc, bx + (rnd() > .5 ? 1 : -1), by + 1, 1, 1, "#ffc0d8");
+        }
+        for (var cl = 0; cl < 3; cl++) {
+          var cx = 40 + cl * 96 + rnd() * 24, cy = 18 + rnd() * 26;
+          blob(sc, cx, cy, 14, 5, P.cloud.concat([P.cloud[2]]));
+          blob(sc, cx + 12, cy + 2, 9, 4, P.cloud.concat([P.cloud[2]]));
+          px(sc, cx - 16, cy + 4, 32, 1, P.cloud[0]);
+        }
+      },
+      far: function (fc, P, rnd, farW, VH) {
+        /* the far rows: whole hillsides of orchard, kept flat and soft */
+        for (var h = 0; h < 4; h++) {
+          var cxh = 60 + h * 130 + rnd() * 30, rw = 80 + rnd() * 40, rh = 22 + rnd() * 16;
+          for (var x2 = -rw; x2 <= rw; x2++) {
+            var yy = 132 - Math.round(Math.sqrt(Math.max(0, 1 - (x2 * x2) / (rw * rw))) * rh);
+            px(fc, cxh + x2, yy, 1, VH - yy, P.far[1]);
+            px(fc, cxh + x2, yy, 1, 2, P.far[0]);
+          }
+        }
+        for (var t = 0; t < 30; t++) {
+          var tx = rnd() * farW, ty = 116 + rnd() * 26;
+          px(fc, tx, ty - 6, 1, 6, P.far[2]);
+          blob(fc, tx, ty - 9, 4, 3, ["#ffe0ec", P.far[0], P.far[1], P.far[2]]);
+        }
+      },
+      mid: function (mc, P, rnd, midW, VH) {
+        /* the trees she runs past: dark trunks, blossom canopies, and a
+           ladder leaning in one of them because someone works here */
+        for (var m = 0; m < 8; m++) {
+          var mx = 22 + m * 58 + rnd() * 18, mh = 30 + rnd() * 16;
+          for (var tr = 0; tr < mh; tr++) {
+            var tw = tr < mh * .65 ? 4 : 6;
+            px(mc, mx - (tw >> 1), 150 - tr, tw, 1, "#7a5238");
+            px(mc, mx - (tw >> 1), 150 - tr, 1, 1, "#9c6f4c");
+          }
+          canopy(mc, mx, 150 - mh - 9, 18 + rnd() * 5,
+                 [P.mid[0], P.mid[1], P.mid[2], P.mid[2]], rnd, "#fff0f6");
+          /* fruit */
+          for (var f = 0; f < 5; f++) {
+            var a = rnd() * 6.28, r = rnd() * 14;
+            px(mc, mx + Math.cos(a) * r, 150 - mh - 9 + Math.sin(a) * r * .6, 2, 2, "#ff7a6a");
+          }
+          if (m === 3) { px(mc, mx + 12, 150 - mh, 1, mh, "#a3835c");
+                         for (var s2 = 0; s2 < mh; s2 += 4) px(mc, mx + 10, 150 - s2, 5, 1, "#a3835c"); }
+        }
+        for (var hb = 0; hb < midW; hb += 24)
+          blob(mc, hb + rnd() * 16, 146 + rnd() * 2, 7 + rnd() * 4, 4,
+               [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
+      },
+    },
+
+    /* A walled garden: a hedge, a glasshouse, and flowers taller than her. */
+    garden: {
+      horizon: { far: 168, mid: 156 },
+      sky: function (sc, P, rnd, VW, VH) {
+        for (var i = 0; i < 34; i++) {
+          var bx = rnd() * VW, by = rnd() * 90;
+          px(sc, bx, by, 1, 1, rnd() > .5 ? "#ffffff" : "#ffd6f0");
+        }
+        for (var cl = 0; cl < 4; cl++) {
+          var cx = 26 + cl * 82 + rnd() * 20, cy = 16 + rnd() * 24;
+          blob(sc, cx, cy, 13, 4, P.cloud.concat([P.cloud[2]]));
+          blob(sc, cx - 9, cy + 2, 8, 3, P.cloud.concat([P.cloud[2]]));
+          px(sc, cx - 14, cy + 3, 28, 1, P.cloud[0]);
+        }
+        /* a few butterflies drifting, painted into the sky and still */
+        for (var b = 0; b < 5; b++) {
+          var bx2 = 30 + rnd() * (VW - 60), by2 = 40 + rnd() * 50;
+          px(sc, bx2 - 2, by2, 2, 2, "#e2c8f8"); px(sc, bx2 + 1, by2, 2, 2, "#e2c8f8");
+          px(sc, bx2, by2, 1, 3, "#7a4a70");
+        }
+      },
+      far: function (fc, P, rnd, farW, VH) {
+        /* the wall, and the tops of what is behind it */
+        px(fc, 0, 126, farW, VH - 126, P.far[1]);
+        px(fc, 0, 126, farW, 2, P.far[0]);
+        for (var c2 = 0; c2 < farW; c2 += 12) {
+          px(fc, c2, 120, 8, 6, P.far[1]);
+          px(fc, c2, 120, 8, 2, P.far[0]);
+        }
+        for (var t = 0; t < 16; t++) {
+          var tx = rnd() * farW;
+          blob(fc, tx, 112 + rnd() * 8, 12 + rnd() * 6, 8, [P.far[0], P.far[1], P.far[2], P.far[2]]);
+        }
+        /* the glasshouse, once, off to one side */
+        var gx = 300;
+        px(fc, gx, 92, 54, 36, "#cfe8e0");
+        px(fc, gx, 92, 54, 2, "#eef8f4");
+        for (var g = 0; g < 54; g += 9) px(fc, gx + g, 92, 1, 36, "#a8c8be");
+        for (var g2 = 0; g2 < 36; g2 += 10) px(fc, gx, 92 + g2, 54, 1, "#a8c8be");
+        for (var r2 = 0; r2 < 12; r2++)
+          px(fc, gx + r2 * 2.2, 92 - 12 + r2, Math.max(1, 54 - r2 * 4.4), 1, "#dff0ea");
+      },
+      mid: function (mc, P, rnd, midW, VH) {
+        /* a clipped hedge, with hollyhocks standing out of it */
+        px(mc, 0, 128, midW, 28, P.mid[1]);
+        for (var k = 0; k < midW; k += 6)
+          blob(mc, k + rnd() * 5, 128 + rnd() * 3, 5, 4, [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
+        for (var a = 0; a < midW; a += 4) px(mc, a, 126 + (a % 8 < 4 ? 0 : 1), 3, 3, P.mid[0]);
+        for (var f = 0; f < 22; f++) {
+          var fx = rnd() * midW, fh = 26 + rnd() * 24;
+          px(mc, fx, 130 - fh, 1, fh, "#3f8460");
+          var col = ["#ff9ec4", "#ffd166", "#e2c8f8", "#fffaf5"][(rnd() * 4) | 0];
+          for (var fl = 0; fl < fh / 7; fl++) {
+            var fy = 130 - fh + fl * 7 + 2;
+            px(mc, fx - 2, fy, 5, 3, col);
+            px(mc, fx - 1, fy - 1, 3, 1, col);
+            px(mc, fx, fy + 1, 1, 1, "#fff0a8");
+          }
+        }
       },
     },
 
@@ -1344,7 +1654,7 @@ window.SuperOuissy = (function () {
      the code that moves them is shared while what she actually meets is
      different in every world set. Art for a skin lives in ART.skin. */
   var SKINS = {
-    easy:   { walker: "walker", flyer: "flyer", guard: "guard", speed: 0.85 },
+    easy:   { walker: "bunny",  flyer: "butterfly", guard: "snail", speed: 0.85 },
     medium: { walker: "walker", flyer: "flyer", guard: "guard", speed: 1 },
     hard:   { walker: "walker", flyer: "flyer", guard: "guard", speed: 1.12 },
   };
@@ -1391,8 +1701,10 @@ window.SuperOuissy = (function () {
   }
 
   function mkBoss(x, y) {
-    var B = TUNE.boss;
-    var total = B.hitsPerPhase * B.phases.length;
+    var B = TUNE.boss, dd = DIFF[G.diff];
+    /* how many stomps he takes is a per-set thing: the raincloud on Easy
+       goes down in three, the Heartbreaker takes six */
+    var total = (dd.bossHitsPerPhase || B.hitsPerPhase) * B.phases.length;
     return {
       kind: "boss", x: x - 12, y: y - 18, w: 34, h: 30, vx: 0, vy: 0,
       hp: total, hpMax: total,
@@ -1405,7 +1717,7 @@ window.SuperOuissy = (function () {
   /* Which phase his health puts him in: 0 while the top third is intact,
      then 1, then 2. Written off hp so changing hitsPerPhase just works. */
   function bossPhase(b) {
-    var per = TUNE.boss.hitsPerPhase;
+    var per = DIFF[G.diff].bossHitsPerPhase || TUNE.boss.hitsPerPhase;
     return clamp(TUNE.boss.phases.length - 1 - Math.floor((b.hp - 1) / per),
                  0, TUNE.boss.phases.length - 1);
   }
@@ -1957,7 +2269,9 @@ window.SuperOuissy = (function () {
         sfx("bossLand"); shake(5);
         burst(b.x + b.w / 2, b.y + b.h, 14, ["#ffd166", "#ffffff"], 100, { max: .5 });
       }
-      b.mode = "open"; b.modeT = sp.open;      // the opening is never scaled
+      /* the opening never shrinks with difficulty; a gentler set may
+         lengthen it, which is how Easy's boss is made kinder */
+      b.mode = "open"; b.modeT = sp.open * (DIFF[G.diff].bossOpenMul || 1);
       b.vx = 0;
     } else {
       b.mode = "wait"; b.modeT = sp.wait * cd;
@@ -2449,7 +2763,13 @@ window.SuperOuissy = (function () {
   function drawBoss(c, ox, oy, t) {
     var b = G.level.boss;
     if (!b) return;
-    var dx = Math.round(b.x - ox - 3), dy = Math.round(b.y - oy - 4);
+    /* Boss sprites are not all the same size — the raincloud is wider than
+       the Heartbreaker — so centre whichever one this set uses over his box
+       rather than assuming a fixed offset. */
+    var art = ART.bosses[DIFF[G.diff].bossSkin] || ART.bosses.heart;
+    var ref = art.calm[0];
+    var dx = Math.round(b.x + b.w / 2 - ref.width / 2 - ox);
+    var dy = Math.round(b.y + b.h - ref.height - oy + 4);
 
     /* his projectiles: cracked hearts, and the arcing ones trail */
     b.shots.forEach(function (s) {
@@ -2465,11 +2785,12 @@ window.SuperOuissy = (function () {
     if (b.dead) {
       if (b.dead > 1.6) return;
       c.save(); c.globalAlpha = clamp(1 - b.dead / 1.6, 0, 1);
-      c.translate(dx + 20, dy + 17); c.rotate(b.dead * 1.6); c.scale(1 - b.dead * .4, 1 - b.dead * .4);
-      c.drawImage(ART.boss[0], -20, -17);
+      c.translate(dx + ref.width / 2, dy + ref.height / 2);
+      c.rotate(b.dead * 1.6); c.scale(1 - b.dead * .4, 1 - b.dead * .4);
+      c.drawImage(ref, -ref.width / 2, -ref.height / 2);
       c.restore(); return;
     }
-    if (!b.awake) { c.drawImage(ART.boss[Math.sin(t) > 0 ? 0 : 1], dx, dy); return; }
+    if (!b.awake) { c.drawImage(art.calm[Math.sin(t) > 0 ? 0 : 1], dx, dy); return; }
 
     /* THE TELL. This is the whole point of the redesign, so it is loud:
        he squashes down, a ring opens out from him, and the closer the
@@ -2483,13 +2804,13 @@ window.SuperOuissy = (function () {
       c.strokeStyle = sp.name === "rain" ? "#ffd166" : "#ff5f95";
       c.lineWidth = 2;
       c.beginPath();
-      c.arc(dx + 20, dy + 17, ringR, 0, 6.283);
+      c.arc(dx + ref.width / 2, dy + ref.height / 2, ringR, 0, 6.283);
       c.stroke();
       c.restore();
       /* an exclamation over his crown, blinking faster as it lands */
       if (Math.sin(t * (14 + k * 34)) > 0) {
-        px(c, dx + 19, dy - 9, 2, 5, "#fff6a8");
-        px(c, dx + 19, dy - 3, 2, 2, "#fff6a8");
+        px(c, dx + ref.width / 2 - 1, dy - 9, 2, 5, "#fff6a8");
+        px(c, dx + ref.width / 2 - 1, dy - 3, 2, 2, "#fff6a8");
       }
     }
 
@@ -2497,7 +2818,7 @@ window.SuperOuissy = (function () {
     var k2 = b.mode === "tell" ? 1 : b.mode === "attack" ? 2 : b.onGround ? 0 : 2;
     var white = b.flash > 0 ? Math.sin(b.flash * 26) > 0
               : b.hurt > 0 && Math.sin(b.hurt * 40) > 0;
-    var img = (white ? ART.bossHurt : ART.boss)[k2];
+    var img = (white ? art.hurt : art.calm)[k2];
 
     /* he heaves while he is open — the tell that he can be hit */
     var pant = b.mode === "open" ? Math.sin(t * 7) * 1.2 : 0;
@@ -2508,7 +2829,7 @@ window.SuperOuissy = (function () {
       c.save();
       c.globalAlpha = 0.16 + 0.1 * Math.sin(t * 5);
       c.fillStyle = "#fff6a8";
-      c.fillRect(dx + 2, dy + 2, 36, 30);
+      c.fillRect(dx + 2, dy + 2, ref.width - 4, ref.height - 4);
       c.restore();
     }
   }
@@ -3373,10 +3694,13 @@ window.SuperOuissy = (function () {
     ["idle", "run", "jump", "fall", "duck", "hurt", "win"].forEach(function (pose) {
       rows.push(OUISSY[pose].small.concat(OUISSY[pose].big));
     });
-    rows.push(ART.walker.concat([ART.walkerSquash], ART.flyer, ART.guard));
+    Object.keys(ART.skin).forEach(function (k) { rows.push(ART.skin[k]); });
+    rows.push([ART.walkerSquash]);
     rows.push(ART.heart.concat(ART.power.grow, ART.power.star, ART.power.life,
                                ART.power.boost, ART.power.wing));
-    rows.push(ART.boss.concat(ART.bossHurt));
+    Object.keys(ART.bosses).forEach(function (k) {
+      rows.push(ART.bosses[k].calm.concat(ART.bosses[k].hurt));
+    });
     var w = 0, h = 0;
     rows.forEach(function (r) {
       var rw = 0, rh = 0;
