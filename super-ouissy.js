@@ -4001,13 +4001,30 @@ window.SuperOuissy = (function () {
      13. SOUND — Web Audio only. There is not a single audio file in this
          game, so it adds nothing to the size of the repo.
      ======================================================================= */
-  var ac = null;
+  var ac = null, acRegistered = false;
   function actx() {
     try {
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
+      /* A closed context can never be resumed, so the only cure is a new
+         one. Everything hanging off the old one goes with it (see the
+         bgmGain check in setBgm). */
+      if (ac && ac.state === "closed") { ac = window.__soAudio = null; }
       if (!ac) ac = window.__soAudio || (window.__soAudio = new AC());
-      if (ac.state === "suspended") ac.resume();
+      if (!acRegistered && window.registerAudio) {
+        acRegistered = true;
+        window.registerAudio(function () { return ac; });
+      }
+      /* Not just "suspended". iOS uses "interrupted" when the system
+         takes the audio session away, and that is the state this game
+         spent its silent minutes in — the old check ignored it, so the
+         sound never came back and the MUSIC toggle could not revive it
+         either. wakeAudio in script.js handles both, plus the retry
+         Safari needs. */
+      if (ac.state !== "running") {
+        if (window.wakeAudio) window.wakeAudio(ac);
+        else { try { ac.resume(); } catch (e) {} }
+      }
       return ac;
     } catch (e) { return null; }
   }
@@ -4094,7 +4111,12 @@ window.SuperOuissy = (function () {
     try { localStorage.setItem("so_bgm", on ? "1" : "0"); } catch (e) {}
     if (!on) { stopBgm(); return; }
     var c = actx(); if (!c) return;
-    if (!bgmGain) { bgmGain = c.createGain(); bgmGain.gain.value = 0.055; bgmGain.connect(c.destination); }
+    /* Rebuild the gain when the context has been replaced under us — a
+       node from a dead context connects to nothing and plays silence
+       while every timer keeps happily ticking. */
+    if (!bgmGain || bgmGain.context !== c) {
+      bgmGain = c.createGain(); bgmGain.gain.value = 0.055; bgmGain.connect(c.destination);
+    }
     if (bgmTimer) return;
     bgmStep = 0;
     bgmTimer = setInterval(tickBgm, BGM.tempo * 1000);

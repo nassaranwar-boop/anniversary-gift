@@ -1461,10 +1461,16 @@ function startHub() {
     if (card) card.classList.toggle("done", !!done);
   });
 
+  /* Three cards, so the line has to count three — it still said "two
+     chapters" for as long as Super Ouissy has been on this board. The
+     keepsake itself is still gated on the two story chapters; that is
+     deliberate and unchanged. */
   const sub = document.getElementById("hub-sub");
-  if (both) sub.textContent = "— you finished both. the keepsake is yours —";
-  else if (d.maze || d.quest) sub.textContent = "— one down. the other is still waiting —";
-  else sub.textContent = "— two chapters, either order —";
+  const count = (d.maze ? 1 : 0) + (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0);
+  if (both && count === 3) sub.textContent = "— all three done. the keepsake is yours —";
+  else if (both) sub.textContent = "— both chapters done. the keepsake is yours —";
+  else if (count) sub.textContent = "— " + count + " of three done, any order —";
+  else sub.textContent = "— three ways in, any order —";
 
   document.getElementById("hub-keepsake").classList.toggle("on", both);
 }
@@ -1544,8 +1550,74 @@ document.getElementById("ks-replay").addEventListener("click", () => {
 const MUSIC_KEY = "fal_music_on";
 let audioCtx = null, musicNodes = null, musicOn = false, bellTimer = null;
 
+/* ---------------------------------------------------------
+   KEEPING AUDIO ALIVE
+
+   Every "the music just stopped and the toggle won't bring it back"
+   report came down to the same two mistakes, so the recovery lives in
+   one place and both the pad and the platformer go through it.
+
+   1. Only "suspended" was treated as recoverable. iOS Safari does not
+      use "suspended" when the system takes the audio session away — a
+      call, the lock screen, another app, switching tabs — it uses
+      "interrupted", which is not in the spec and which the old check
+      silently ignored. So the sound died and stayed dead, and toggling
+      it off and on could not help, because the toggle ran that same
+      faulty check.
+
+   2. resume() is asynchronous. The old code fired it and then scheduled
+      a gain ramp against ctx.currentTime in the same breath — but a
+      suspended context has a FROZEN clock, so by the time it really
+      resumed, the whole ramp was already in the past. Silence, with
+      every node reporting itself perfectly healthy.
+
+   So: anything that is not "running" is treated as recoverable, work
+   that depends on the clock waits for the resume to actually land, and
+   a watchdog retries on the events that follow an interruption. A
+   context in state "closed" can never be resumed at all — the only
+   cure there is to build a new one, which the callers do.
+   --------------------------------------------------------- */
+const audioClients = [];
+
+/* a getter, not a context: the caller may rebuild theirs at any point */
+window.registerAudio = function (get) { audioClients.push(get); };
+
+window.wakeAudio = function (ctx, then) {
+  if (!ctx || ctx.state === "closed") return;
+  if (ctx.state === "running") { if (then) then(); return; }
+
+  let fired = false;
+  const fire = () => { if (!fired) { fired = true; if (then) then(); } };
+  const tryResume = () => {
+    try {
+      const p = ctx.resume();
+      if (p && p.then) p.then(fire, () => {});
+      else fire();
+    } catch (e) {}
+  };
+  tryResume();
+
+  /* Safari can resolve resume() while still sitting in "interrupted".
+     One delayed retry costs nothing and covers exactly that case. */
+  setTimeout(() => {
+    if (ctx.state === "running") fire();
+    else if (ctx.state !== "closed") tryResume();
+  }, 350);
+};
+
+function pokeAllAudio() {
+  audioClients.forEach((get) => { try { window.wakeAudio(get()); } catch (e) {} });
+}
+/* The four moments an interrupted context can legally come back. */
+document.addEventListener("visibilitychange", () => { if (!document.hidden) pokeAllAudio(); });
+window.addEventListener("focus", pokeAllAudio);
+window.addEventListener("pageshow", pokeAllAudio);
+document.addEventListener("pointerdown", pokeAllAudio, true);
+
+/* On by default now that the floating toggle is gone: only an explicit
+   "0" from an older visit turns it off. */
 function musicPreferred() {
-  try { return localStorage.getItem(MUSIC_KEY) === "1"; } catch (e) { return false; }
+  try { return localStorage.getItem(MUSIC_KEY) !== "0"; } catch (e) { return true; }
 }
 
 function buildMusic() {
@@ -1593,7 +1665,12 @@ function buildMusic() {
   sweep.connect(sg); sg.connect(filter.frequency);
   sweep.start();
 
+  /* This used to return without rescheduling when the music was off,
+     which quietly ended the chain for good: one bell landing during a
+     silent stretch and there were never any bells again, even after she
+     turned the music back on. startBells() owns restarting it now. */
   function bell() {
+    bellTimer = null;
     if (!musicOn) return;
     const t = ctx.currentTime;
     const o = ctx.createOscillator();
@@ -1607,35 +1684,46 @@ function buildMusic() {
     o.start(t); o.stop(t + 3.6);
     bellTimer = setTimeout(bell, 6000 + Math.random() * 9000);
   }
-  bellTimer = setTimeout(bell, 3500);
 
-  return { ctx, master, voices, sweep, filter };
+  return { ctx, master, voices, sweep, filter, bell };
 }
 
 function setMusic(on) {
   musicOn = on;
-  const btn = document.getElementById("music-toggle");
-  if (btn) {
-    btn.classList.toggle("off", !on);
-    btn.textContent = on ? "🎵" : "🔇";
-    btn.setAttribute("aria-label", on ? "Turn music off" : "Turn music on");
-  }
   try { localStorage.setItem(MUSIC_KEY, on ? "1" : "0"); } catch (e) {}
 
   if (on) {
+    /* A closed context is unrecoverable, so throw the stale graph away
+       and let buildMusic start clean rather than ramping nodes that
+       belong to a context that no longer exists. */
+    if (audioCtx && audioCtx.state === "closed") { audioCtx = null; musicNodes = null; }
     if (!musicNodes) musicNodes = buildMusic();
     if (!musicNodes) return;
-    if (musicNodes.ctx.state === "suspended") musicNodes.ctx.resume();
-    const t = musicNodes.ctx.currentTime;
-    musicNodes.master.gain.cancelScheduledValues(t);
-    musicNodes.master.gain.setValueAtTime(Math.max(0.0001, musicNodes.master.gain.value), t);
-    musicNodes.master.gain.exponentialRampToValueAtTime(0.24, t + 1.6);
+
+    window.wakeAudio(musicNodes.ctx, () => {
+      if (!musicOn || !musicNodes) return;       // she changed her mind while it woke
+      rampMaster(0.24, 1.6);
+      startBells();
+    });
   } else if (musicNodes) {
-    const t = musicNodes.ctx.currentTime;
-    musicNodes.master.gain.cancelScheduledValues(t);
-    musicNodes.master.gain.setValueAtTime(Math.max(0.0001, musicNodes.master.gain.value), t);
-    musicNodes.master.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
-    clearTimeout(bellTimer);
+    rampMaster(0.0001, 0.7);
+    clearTimeout(bellTimer); bellTimer = null;
+  }
+}
+
+/* Ramps are only ever scheduled on a running clock — see wakeAudio. */
+function rampMaster(to, secs) {
+  if (!musicNodes || musicNodes.ctx.state !== "running") return;
+  const g = musicNodes.master.gain, t = musicNodes.ctx.currentTime;
+  g.cancelScheduledValues(t);
+  g.setValueAtTime(Math.max(0.0001, g.value), t);
+  g.exponentialRampToValueAtTime(Math.max(0.0001, to), t + secs);
+}
+
+function startBells() {
+  clearTimeout(bellTimer);
+  if (musicNodes && musicNodes.bell) {
+    bellTimer = setTimeout(musicNodes.bell, 3500 + Math.random() * 4000);
   }
 }
 
@@ -1644,31 +1732,28 @@ function setMusic(on) {
    saved preference, so her toggle still means what she set it to. */
 window.duckAmbient = function (on) {
   if (!musicNodes || !musicOn) return;
-  const t = musicNodes.ctx.currentTime;
-  musicNodes.master.gain.cancelScheduledValues(t);
-  musicNodes.master.gain.setValueAtTime(Math.max(0.0001, musicNodes.master.gain.value), t);
-  musicNodes.master.gain.exponentialRampToValueAtTime(on ? 0.02 : 0.24, t + 0.6);
+  rampMaster(on ? 0.02 : 0.24, 0.6);
 };
 
+/* Read-only hooks for tools/audio.js. They report; they never drive. */
+window.__audioProbe = () => ({
+  on: musicOn,
+  ctx: musicNodes ? musicNodes.ctx.state : "none",
+  gain: musicNodes ? musicNodes.master.gain.value : 0,
+  bell: bellTimer !== null,
+});
+window.__audioSuspend = () => { if (musicNodes) musicNodes.ctx.suspend(); };
+
 (function initMusic() {
-  const btn = document.getElementById("music-toggle");
-  if (!btn) return;
-  const want = musicPreferred();
-  musicOn = false;
-  btn.classList.toggle("off", !want);
-  btn.textContent = want ? "🎵" : "🔇";
+  window.registerAudio(() => (musicNodes ? musicNodes.ctx : null));
 
-  btn.addEventListener("click", () => setMusic(!musicOn));
-
-  /* Browsers will not start audio without a gesture, so if she had it on
-     last time, wait for her first tap anywhere and start it then. */
-  if (want) {
-    const kick = () => {
-      document.removeEventListener("pointerdown", kick);
-      setMusic(true);
-    };
-    document.addEventListener("pointerdown", kick, { once: true });
-  }
+  /* The floating toggle is gone, so nothing here reads or writes a
+     button any more. Browsers still refuse to start audio without a
+     gesture, so the pad waits for her first tap and begins then. */
+  if (!musicPreferred()) return;
+  const kick = () => setMusic(true);
+  document.addEventListener("pointerdown", kick, { once: true });
+  document.addEventListener("keydown", kick, { once: true });
 })();
 
 /* =========================================================
