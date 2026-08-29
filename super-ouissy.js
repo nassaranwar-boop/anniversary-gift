@@ -143,10 +143,14 @@ window.SuperOuissy = (function () {
           ^   spikes                    ~   moat / lava — deadly to touch
           o   a heart to collect
 
-          ?   gift block -> a heart     M   gift block -> grow
-          I   gift block -> star        1   gift block -> an extra life
-          P   gift block -> love boost  F   gift block -> wing feather
-              (M I 1 P F standing free in the air are the item itself)
+          ?   gift block -> a heart     M   grow (the glow-up)
+          I   invincibility sparkle     1   an extra life
+          P   love boost (speed)        F   wing feather (double jump)
+
+        M I 1 P F follow one rule: put one in mid-air and it is a gift
+        block to be hit from underneath; put one directly on top of ground
+        or a platform and it is the item itself, sitting there to be walked
+        into. `?` is always a block.
 
           w   walker                    f   flyer
           g   castle guard              H   platform that slides sideways
@@ -173,8 +177,8 @@ window.SuperOuissy = (function () {
       "...........................................................#######...............................................................................########...........................",
       "...S........................w.........................;...#########.....................................w...................................w...##########...........C......G.......",
       "################################################...#######################.######.############################...###...#########################################...#################",
-      "################################################...#######################....1...############################...###...#########################################...#################",
-      "################################################...#######################.oooooo.############################...###...#########################################...#################",
+      "################################################...#######################........############################...###...#########################################...#################",
+      "################################################...#######################.ooo1oo.############################...###...#########################################...#################",
       "################################################...###########################################################...###...#########################################...#################",
       ],
     },
@@ -182,16 +186,16 @@ window.SuperOuissy = (function () {
       biome: "forest",
       rows: [
       "............................................................................................................................................o..o........................................",
-      ".............................................................................................................................................oo.........................................",
+      ".................................................................................................................................1...........oo.........................................",
       "......................................................................................................................#.......----------------..........................................",
       "......................................................................................................................#.oooo................----........................................",
       "......................................................................................................................#.----........................;...................................",
       "......................................................................................................................#.................#.........----..................................",
       "......................................................................................................................#.......---.......#...............................................",
       "......................................................................P...............................................#..............f..#...............................................",
-      "....................................................................ooooo.............................................#............V....#...............----..o..o......................",
+      "....................................................................ooooo.............................................#............V....#...............----..o.Mo......................",
       "....................................................................-----.............................................#.................#......................oo.......................",
-      ".............................o.f..............................................f.......................................#.......---.......#.......................M.......................",
+      ".............................o.f..............................................f.......................................#.......---.......#...............................................",
       "..............................o.................................V.............................o.o.....................#.................#.....................----......................",
       "...........................................o..o.................................--......o.o....o......................#.---.............#...............................................",
       "...............o...o.........---............oo..............--...........................o............................#.....f...........#...............................................",
@@ -242,7 +246,7 @@ window.SuperOuissy = (function () {
     dress:  "#ff9ec4", dressSh: "#df6f9f", dressHi: "#ffc8de",
     blouse: "#fffaf5", blouseSh: "#ffe1ec",
     bow:    "#ff5f95", bowHi: "#ffb0cd",
-    boot:   "#8c4569", bootHi: "#ad5c84",
+    boot:   "#6b2f52", bootHi: "#9a4a74",
     blush:  "#ff8fae",
     star:   "#fff0a0",
     crown:  "#ffd166",
@@ -334,17 +338,48 @@ window.SuperOuissy = (function () {
         if ((x * x) / (rx * rx) + (y * y) / (ry * ry) <= 1) px(c, cx + x, cy + y, 1, 1, col);
   }
 
-  /* A heart, the shape this whole game is made of. */
+  /* A heart, the shape this whole game is made of.
+
+     The classic implicit curve (u^2+v^2-1)^3 - u^2 v^3 <= 0, sampled on the
+     pixel grid. `r` is the half-width; the shape is 1.13r either side, runs
+     from v=-1 (the point, at the bottom) to v=1.25 at the lobes, and dips to
+     v=1 in the middle, which is the cleft. Anything less faithful than this
+     reads as a blob at 8px. */
   function heart(c, cx, cy, r, col, hi) {
-    for (var y = -r; y <= r; y++) {
-      for (var x = -r - 1; x <= r + 1; x++) {
-        var fx = x / (r + 0.6), fy = y / (r + 0.2) + 0.32;
-        // the classic implicit heart curve, sampled on the pixel grid
-        var v = Math.pow(fx * fx + fy * fy - 0.36, 3) - fx * fx * fy * fy * fy * 0.34;
-        if (v <= 0) px(c, cx + x, cy + y, 1, 1, col);
+    var s = r / 1.13;
+    var yTop = Math.ceil(s * 1.3), yBot = Math.ceil(s), xw = Math.ceil(r) + 1;
+    for (var y = -yTop; y <= yBot; y++) {
+      for (var x = -xw; x <= xw; x++) {
+        var u = x / s, v = -y / s;
+        var t = u * u + v * v - 1;
+        if (t * t * t - u * u * v * v * v <= 0) px(c, cx + x, cy + y, 1, 1, col);
       }
     }
-    if (hi) { px(c, cx - r * 0.45, cy - r * 0.35, 1, 1, hi); px(c, cx - r * 0.45 + 1, cy - r * 0.35, 1, 1, hi); }
+    if (hi && r >= 2.5) {
+      /* the little shine on the upper left lobe */
+      px(c, Math.round(cx - r * 0.5), Math.round(cy - s * 0.5), 1, 1, hi);
+      px(c, Math.round(cx - r * 0.5) + 1, Math.round(cy - s * 0.5), 1, 1, hi);
+      px(c, Math.round(cx - r * 0.5), Math.round(cy - s * 0.5) + 1, 1, 1, hi);
+    }
+  }
+
+  /* A leafy mass: several overlapping blobs rather than one, then speckles
+     on the lit side. One blob on its own gives that hard diagonal band that
+     makes pixel foliage look like a plastic bead. */
+  function canopy(c, cx, cy, r, tones, rnd, speckle) {
+    var puffs = 5 + Math.floor(rnd() * 3);
+    for (var i = 0; i < puffs; i++) {
+      var a = (i / puffs) * Math.PI * 2 + rnd() * 0.6;
+      blob(c, cx + Math.cos(a) * r * 0.46, cy + Math.sin(a) * r * 0.32,
+           r * (0.52 + rnd() * 0.2), r * (0.42 + rnd() * 0.16), tones);
+    }
+    blob(c, cx, cy, r * 0.78, r * 0.6, tones);
+    if (speckle) {
+      for (var k = 0; k < r * 1.8; k++) {
+        var an = rnd() * Math.PI * 2, rr = rnd() * r * 0.8;
+        px(c, cx + Math.cos(an) * rr, cy + Math.sin(an) * rr * 0.7 - r * 0.15, 1, 1, speckle);
+      }
+    }
   }
 
   function spriteCanvas(w, h) {
@@ -380,146 +415,148 @@ window.SuperOuissy = (function () {
         as a run instead of two pictures swapping.
      ======================================================================= */
 
-  /* --- the bow, drawn wherever it is asked for ------------------------- */
-  function bow(c, x, y, s) {
-    var B = OUI.bow, Bh = OUI.bowHi, K = OUI.ink;
-    px(c, x - 1, y - 1, 3 + s, 1, K);
-    px(c, x - 1, y + 2, 3 + s, 1, K);
-    px(c, x, y, 2, 2, B); px(c, x + 1 + s, y, 2, 2, B);       // the two loops
-    px(c, x, y, 1, 1, Bh); px(c, x + 1 + s, y, 1, 1, Bh);
-    px(c, x + 1, y, 1 + s, 2, OUI.bowHi);                      // the knot
-    px(c, x + 1, y + 1, 1 + s, 1, B);
+  /* Ouissy, authored pixel by pixel — one character per pixel. Sixteen
+     wide, eighteen tall, deliberately chibi: at this size the head has
+     to carry the whole character or there is no face at all.
+
+     Edit these strings and she changes. Keep every row sixteen long.
+
+       .  nothing      K  ink          H  hair dark   h  hair mid
+       i  hair shine   S  skin         B  blush       E  eye
+       W  eye white    w  blouse       D  dress       d  dress shade
+       L  dress shine  R  ribbon       r  ribbon lit  O  boot
+       o  boot shine   Y  crown gold                                */
+  var OUI_HEAD = [
+      ".....KKKKKK.....",
+      "...KKhhhhhhKK...",
+      "..KhhiihhhhiihK.",
+      ".KhhSSSSSSSShhK.",
+      "RRKhSSSSSSSShKRR",
+      "rRKhWESSSSWEhKRr",
+      ".HKhEESSSSEEhKH.",
+      ".HKhBSSSSSSBhKH.",
+      ".HKhSSSKKSSShKH.",
+      ".HHKhSSSSSShKHH."
+  ];
+  var OUI_BODY = [
+      ".HH.KwwwwwwK.HH.",
+      ".HH.KwDDDDwK.HH.",
+      "..KSKDDDDDDKSK..",
+      "..KSKDDDDDDKSK..",
+      ".KLDDDDDDDDDDdK.",
+      ".KdDDDDDDDDDDDK."
+  ];
+  var OUI_LEGS = {
+    stand: ["....SS....SS....", "...OooO..OooO..."],
+    runA: ["...SS......SS...", "..OooO....OooO.."],
+    runB: ["....SSS..SS.....", "...OooO..OooO..."],
+    runC: ["...SS......SS...", "..OooO....OooO.."],
+    jump: ["....SS..SS......", "...OooO.OooO...."],
+    fall: ["...SS......SS...", "..OooO....OooO.."],
+  };
+  /* rows swapped in for a particular pose */
+  var OUI_ALT = {
+    blinkEyes: "rRKhSSSSSSSShKRr",
+    smile: ".HKhSSKKKKSShKH.",
+    ouch: ".HKhSSKSSKSShKH.",
+    crownA: "....Y..Y..Y.....",
+    crownB: "...KYYYYYYYYK...",
+    hemL: "KdDDDDDDDDDDDK..",
+    hemR: "..KdDDDDDDDDDDDK",
+    duckHem: ".KLDDDDDDDDDDdK.",
+    duckBoots: "..OooO....OooO..",
+  };
+
+  /* which colour each character stands for */
+  var OUI_MAP = {
+    K: OUI.ink, H: OUI.hair, h: OUI.hairMid, i: OUI.hairHi,
+    S: OUI.skin, s: OUI.skinSh, B: OUI.blush, E: OUI.ink, W: "#ffffff",
+    w: OUI.blouse, D: OUI.dress, d: OUI.dressSh, L: OUI.dressHi,
+    R: OUI.bow, r: OUI.bowHi, O: OUI.boot, o: OUI.bootHi, Y: OUI.crown,
+  };
+
+  /* paint one row of a map at (x, y), skipping the transparent character */
+  function mapRow(c, row, x, y, swap) {
+    for (var i = 0; i < row.length; i++) {
+      var ch = row.charAt(i);
+      if (ch === ".") continue;
+      var col = (swap && swap[ch]) || OUI_MAP[ch];
+      if (col) px(c, x + i, y, 1, 1, col);
+    }
   }
 
   /* --- one Ouissy frame ------------------------------------------------
      pose: idle | run | jump | fall | duck | hurt | win
      k:    the frame index inside that pose
-     big:  the glow-up state, taller and with a little crown
+     big:  the glow-up — a crown, and a longer skirt
+
+     Big Ouissy is the same maps with the skirt stretched by repeating one
+     of its rows, so there is only ever one drawing of her to keep in step.
      ---------------------------------------------------------------- */
   function paintOuissy(pose, k, big) {
-    var W = big ? 16 : 14, H = big ? 24 : 18;
+    var stretch = big ? 5 : 0;
+    var crownH = big ? 2 : 0;
+    var W = 16, H = 18 + stretch + crownH;
     var s = spriteCanvas(W, H), c = s.ctx;
-    var K = OUI.ink, S = OUI.skin, Ss = OUI.skinSh, Hd = OUI.hair, Hm = OUI.hairMid, Hh = OUI.hairHi;
-    var D = OUI.dress, Dd = OUI.dressSh, Dh = OUI.dressHi, Wb = OUI.blouse;
 
-    var cx = W >> 1;
-    var headTop = big ? 1 : 1;
-    var headH   = big ? 11 : 9;             // hair cap + face
-    var bodyTop = headTop + headH - 1;
-    var bootRow = H - 1;
-    var legTop  = bootRow - (big ? 3 : 2);
+    /* the breath on idle, the bounce on the run */
+    var bob = pose === "run" ? [0, 1, 0, 1][k % 4] : pose === "idle" && k === 1 ? 1 : 0;
+    var y = crownH + bob;
+    var shut = pose === "hurt" || (pose === "idle" && k === 3);
+    var happy = pose === "win" || pose === "jump";
 
-    /* the whole body bobs a pixel on the run, and squashes when ducking */
-    var bob = pose === "run" ? (k === 1 ? 1 : k === 3 ? 1 : 0) : pose === "idle" ? (k ? 1 : 0) : 0;
-    var squash = pose === "duck" ? 4 : 0;
-    var oy = bob + squash;
-
-    /* ---- twin tails, behind everything --------------------------------- */
-    var swing = pose === "run" ? [0, -1, 0, 1][k % 4] : pose === "jump" ? -1 : pose === "fall" ? 1 : 0;
-    var tailY = headTop + 3 + oy;
-    var tailH = (big ? 8 : 6);
-    for (var side = 0; side < 2; side++) {
-      var sx = side ? W - 2 : 0;
-      for (var ty = 0; ty < tailH; ty++) {
-        var wob = Math.round(Math.sin(ty * 0.7) * 0.6) + (ty > tailH - 3 ? swing : 0);
-        px(c, sx + wob, tailY + ty, 2, 1, ty < 2 ? Hm : ty < tailH - 2 ? Hd : Hm);
-        px(c, sx + wob + (side ? 1 : 0), tailY + ty, 1, 1, side ? Hd : Hh);
-      }
-      bow(c, sx + (side ? -1 : 0), tailY - 1, 0);
-    }
-
-    /* ---- the head: hair cap, face, fringe ------------------------------ */
-    var hcy = headTop + (big ? 5 : 4) + oy;
-    var hrx = big ? 5 : 4.4, hry = big ? 5 : 4.4;
-    oval(c, cx, hcy, hrx + 1, hry + 1, K);                       // outline
-    blob(c, cx, hcy, hrx, hry, [Hh, Hm, Hd, Hd]);                // hair mass
-    /* the face sits inside the hair, low, so the fringe reads */
-    blob(c, cx, hcy + 1.4, hrx - 1.2, hry - 1.6, [S, S, Ss, Ss]);
-    /* fringe: a lit sweep across the top of the face */
-    for (var fx = -hrx + 1; fx <= hrx - 1; fx++) {
-      var fy = hcy - hry + 2 + Math.round(Math.abs(fx) * 0.35);
-      px(c, cx + fx, fy, 1, 1, fx < 0 ? Hh : Hm);
-      px(c, cx + fx, fy + 1, 1, 1, Hd);
-    }
-
-    /* eyes — closed on the idle blink and when hurt */
-    var eyeY = hcy + (big ? 2 : 1);
-    var blink = (pose === "idle" && k === 2) || pose === "hurt";
-    var ex = big ? 2 : 2;
-    if (blink) {
-      px(c, cx - ex - 1, eyeY, 3, 1, K); px(c, cx + ex - 1, eyeY, 3, 1, K);
-    } else {
-      px(c, cx - ex - 1, eyeY - 1, 2, 3, K); px(c, cx + ex, eyeY - 1, 2, 3, K);
-      px(c, cx - ex - 1, eyeY - 1, 1, 1, "#ffffff"); px(c, cx + ex, eyeY - 1, 1, 1, "#ffffff");
-    }
-    /* blush + mouth */
-    px(c, cx - ex - 2, eyeY + 2, 2, 1, OUI.blush);
-    px(c, cx + ex + 1, eyeY + 2, 2, 1, OUI.blush);
-    if (pose === "hurt") { px(c, cx - 1, eyeY + 3, 3, 1, K); px(c, cx, eyeY + 4, 1, 1, K); }
-    else if (pose === "win" || pose === "jump") { px(c, cx - 1, eyeY + 3, 3, 1, K); px(c, cx, eyeY + 2, 1, 1, K); }
-    else px(c, cx, eyeY + 3, 1, 1, K);
-
-    /* the crown only the glow-up wears */
+    /* ---- the crown, only on the glow-up -------------------------------- */
     if (big) {
-      var cy0 = hcy - hry - 1;
-      px(c, cx - 3, cy0, 7, 1, K);
-      px(c, cx - 3, cy0 - 1, 1, 1, OUI.crown); px(c, cx, cy0 - 2, 1, 1, OUI.crown);
-      px(c, cx + 3, cy0 - 1, 1, 1, OUI.crown);
-      px(c, cx - 2, cy0, 5, 1, OUI.crown);
+      mapRow(c, OUI_ALT.crownA, 0, bob);
+      mapRow(c, OUI_ALT.crownB, 0, bob + 1);
     }
 
-    /* ---- the dress ------------------------------------------------------ */
-    var bt = bodyTop + oy, bh = legTop - bt;
-    var flare = big ? 6 : 5;
-    for (var y = 0; y < bh; y++) {
-      var t = y / (bh - 1 || 1);
-      var half = Math.round(2.2 + t * (flare - 2.2)) + (pose === "duck" ? 1 : 0);
-      var wob = pose === "run" ? [0, 1, 0, -1][k % 4] * (t > .5 ? 1 : 0) : 0;
-      px(c, cx - half - 1 + wob, bt + y, half * 2 + 3, 1, K);   // outline
-      px(c, cx - half + wob, bt + y, half * 2 + 1, 1, y < 2 ? Wb : D);
-      if (y >= 2) {
-        px(c, cx - half + wob, bt + y, 1, 1, Dh);
-        px(c, cx + half + wob, bt + y, 1, 1, Dd);
-        if (y % 3 === 2) px(c, cx - half + 2 + wob, bt + y, 1, 1, Dh);
+    /* ---- the head ------------------------------------------------------- */
+    for (var r = 0; r < OUI_HEAD.length; r++) {
+      var row = OUI_HEAD[r];
+      if (r === 6 && shut) row = OUI_ALT.blinkEyes;
+      if (r === 9) row = happy ? OUI_ALT.smile : pose === "hurt" ? OUI_ALT.ouch : row;
+      mapRow(c, row, 0, y + r);
+      /* the tails swing behind her — only the outer three columns move, so
+         her face never slides out from under her own hair */
+      if (r >= 6) {
+        var sw = pose === "run" ? [0, -1, 0, 1][k % 4] : pose === "jump" ? -1 : pose === "fall" ? 1 : 0;
+        if (sw) {
+          c.clearRect(0, y + r, 3, 1);
+          c.clearRect(13, y + r, 3, 1);
+          mapRow(c, row.slice(0, 3), sw, y + r);
+          mapRow(c, row.slice(13), 13 + sw, y + r);
+        }
       }
     }
-    /* the pinafore straps over the blouse */
-    px(c, cx - 2, bt, 1, 3, D); px(c, cx + 2, bt, 1, 3, D);
-    /* a heart on the front of the skirt */
-    heart(c, cx, bt + bh - 3, big ? 2 : 1.6, Dh, "#ffffff");
+    y += OUI_HEAD.length;
 
-    /* ---- arms ----------------------------------------------------------- */
-    var armSwing = pose === "run" ? [0, -2, 0, 2][k % 4]
-                 : pose === "jump" ? -3 : pose === "fall" ? 2 : pose === "win" ? -4 : 0;
-    var armY = bt + 1;
-    var reach = big ? 6 : 5;
-    for (var a = 0; a < 2; a++) {
-      var dir = a ? 1 : -1;
-      var ay = armY + (a ? armSwing : -armSwing) * 0.4;
-      px(c, cx + dir * reach - (a ? 0 : 1), ay | 0, 2, 4, K);
-      px(c, cx + dir * reach - (a ? 0 : 1), (ay | 0) + (a ? armSwing > 0 ? 0 : 0 : 0), 2, 3, S);
-      px(c, cx + dir * reach - (a ? 0 : 1), (ay | 0) + 3, 2, 1, Ss);
+    /* ---- crouched: collar, a squashed hem, boots, and that is all ------- */
+    if (pose === "duck") {
+      mapRow(c, OUI_BODY[0], 0, y);
+      mapRow(c, OUI_ALT.duckHem, 0, y + 1);
+      mapRow(c, OUI_ALT.duckBoots, 0, y + 2);
+      return s.c;
     }
 
-    /* ---- legs and boots -------------------------------------------------- */
-    if (pose !== "duck") {
-      var spread = pose === "run" ? [1, 3, 1, 3][k % 4]
-                 : pose === "jump" ? 1 : pose === "fall" ? 3 : 2;
-      var lift   = pose === "run" ? [0, 1, 0, 1][k % 4] : pose === "jump" ? 2 : 0;
-      for (var g = 0; g < 2; g++) {
-        var d2 = g ? 1 : -1;
-        var lx = cx + d2 * spread - (g ? 0 : 1);
-        var ly = legTop + oy - (g === (k % 4 === 1 ? 0 : 1) ? lift : 0);
-        px(c, lx, ly, 2, bootRow - ly, S);
-        px(c, lx + (g ? 1 : 0), ly, 1, bootRow - ly, Ss);
-        px(c, lx - 1, bootRow - 1, 4, 2, K);
-        px(c, lx - 1, bootRow - 1, 4, 1, OUI.bootHi);
-        px(c, lx - 1, bootRow, 4, 1, OUI.boot);
-      }
-    } else {
-      px(c, cx - 4, bootRow - 1, 9, 2, K);
-      px(c, cx - 3, bootRow - 1, 7, 1, OUI.bootHi);
+    /* ---- the dress; row 3 repeats to make the glow-up taller ------------ */
+    for (var b = 0; b < OUI_BODY.length; b++) {
+      mapRow(c, OUI_BODY[b], 0, y); y++;
+      if (big && b === 4) for (var e = 0; e < stretch; e++) { mapRow(c, OUI_BODY[3], 0, y); y++; }
     }
+    /* the hem swings a pixel with the stride */
+    if (pose === "run") {
+      var sway = [0, 1, 0, -1][k % 4];
+      if (sway > 0) mapRow(c, OUI_ALT.hemR, 0, y - 1);
+      else if (sway < 0) mapRow(c, OUI_ALT.hemL, 0, y - 1);
+    }
+
+    /* ---- legs ------------------------------------------------------------ */
+    var set = pose === "run" ? ["stand", "runA", "runB", "runC"][k % 4]
+            : pose === "jump" ? "jump"
+            : (pose === "fall" || pose === "win") ? "fall" : "stand";
+    mapRow(c, OUI_LEGS[set][0], 0, y);
+    mapRow(c, OUI_LEGS[set][1], 0, y + 1);
     return s.c;
   }
 
@@ -718,37 +755,58 @@ window.SuperOuissy = (function () {
         legend character uses.
      ======================================================================= */
   var T = TUNE.tile;
-  var TILE_INDEX = { "#": 0, "-": 1, "B": 2, "?": 3, "^": 4, "~": 5, "#top": 6, "?used": 7 };
+  /* The atlas is a strip of 16x16 cells. Ground is three cells deep on
+     purpose — surface, subsoil, bedrock — because a wall of one repeated
+     tile is the fastest way to make a platformer look cheap. */
+  var CELL = { body: 0, oneWay: 1, brick: 2, gift: 3, spike: 4, moat: 5, top: 6, used: 7, deep: 8 };
 
   function buildAtlas(biome) {
     var P = BIOME[biome];
-    var s = spriteCanvas(T * 8, T), c = s.ctx;
+    var s = spriteCanvas(T * 9, T), c = s.ctx;
     var rnd = seeded("atlas" + biome);
 
-    /* 0 — solid ground, the body of it (no lit top; that is cell 6) */
+    /* --- 0. subsoil. No lit top or dark bottom edge, so a column of these
+             reads as one mass instead of a stack of bricks. --- */
     px(c, 0, 0, T, T, P.dirt[1]);
-    for (var i = 0; i < 26; i++) {
-      var x = (rnd() * T) | 0, y = (rnd() * T) | 0;
-      px(c, x, y, 1, 1, rnd() > .5 ? P.dirt[2] : P.dirt[3]);
+    for (var i = 0; i < 40; i++) {
+      var gx = (rnd() * T) | 0, gy = (rnd() * T) | 0;
+      px(c, gx, gy, 1, 1, rnd() > .45 ? P.dirt[2] : P.dirt[0]);
     }
-    px(c, 0, 0, T, 1, P.dirt[0]);
-    px(c, 0, T - 1, T, 1, P.dirt[3]);
+    /* two little stones, lit from above like everything else here */
+    for (var st = 0; st < 2; st++) {
+      var sx = 2 + (rnd() * (T - 6)) | 0, sy = 3 + (rnd() * (T - 7)) | 0;
+      px(c, sx, sy, 3, 2, P.dirt[3]);
+      px(c, sx, sy, 3, 1, P.dirt[2]);
+    }
 
-    /* 6 — the same block, but with the grass/moss crown for a surface tile */
+    /* --- 8. bedrock: the same, darker and coarser, for anything more than
+             a tile below the surface --- */
+    c.drawImage(s.c, 0, 0, T, T, T * 8, 0, T, T);
+    c.save(); c.globalAlpha = .42; px(c, T * 8, 0, T, T, "#2a1630"); c.restore();
+    for (var b2 = 0; b2 < 8; b2++)
+      px(c, T * 8 + ((rnd() * T) | 0), (rnd() * T) | 0, 2, 1, P.dirt[3]);
+
+    /* --- 6. the surface: subsoil with a grass crown, blades and all --- */
     c.drawImage(s.c, 0, 0, T, T, T * 6, 0, T, T);
-    px(c, T * 6, 0, T, 3, P.grass[1]);
+    px(c, T * 6, 0, T, 4, P.grass[1]);
     px(c, T * 6, 0, T, 1, P.grass[0]);
-    for (var g = 0; g < T; g += 2) px(c, T * 6 + g, 3, 1, 1 + ((g * 7) % 3), P.grass[2]);
-    for (var g2 = 1; g2 < T; g2 += 4) px(c, T * 6 + g2, 0, 1, 1, P.grass[0]);
+    px(c, T * 6, 4, T, 1, P.grass[2]);
+    for (var g = 0; g < T; g++) {
+      var blade = ((g * 7 + 3) % 5);
+      if (blade < 2) px(c, T * 6 + g, 5, 1, 1 + blade, P.grass[2]);
+      if (blade === 3) px(c, T * 6 + g, 0, 1, 1, P.grass[0]);
+      if (blade === 4) px(c, T * 6 + g, 1, 1, 2, P.grass[3] || P.grass[2]);
+    }
 
-    /* 1 — the one-way platform: a slim ledge you can jump up through */
-    px(c, T, 2, T, 4, P.brick[1]);
+    /* --- 1. the one-way ledge: thin, with a lip, so it reads as something
+             you can pass through from below --- */
+    px(c, T, 2, T, 5, P.brick[1]);
     px(c, T, 2, T, 1, P.brick[0]);
-    px(c, T, 5, T, 1, P.brick[2]);
-    for (var v = 0; v < T; v += 4) px(c, T + v, 3, 1, 2, P.brick[2]);
-    px(c, T + 1, 6, 2, 1, P.brick[2]); px(c, T + T - 3, 6, 2, 1, P.brick[2]);
+    px(c, T, 6, T, 1, P.brick[2]);
+    for (var v = 1; v < T; v += 4) px(c, T + v, 3, 1, 3, P.brick[2]);
+    px(c, T, 7, 3, 1, P.brick[2]); px(c, T + T - 3, 7, 3, 1, P.brick[2]);
 
-    /* 2 — breakable brick */
+    /* --- 2. breakable brick --- */
     px(c, T * 2, 0, T, T, P.brick[1]);
     px(c, T * 2, 0, T, 1, P.brick[0]);
     px(c, T * 2, T - 1, T, 1, P.brick[2]);
@@ -756,32 +814,35 @@ window.SuperOuissy = (function () {
     px(c, T * 2 + T / 2, 0, 1, T / 2, P.brick[2]);
     px(c, T * 2 + T / 4, T / 2, 1, T / 2, P.brick[2]);
     px(c, T * 2 + T * 3 / 4, T / 2, 1, T / 2, P.brick[2]);
+    px(c, T * 2 + 1, 1, T - 2, 1, P.brick[0]);
 
-    /* 3 — the gift block, with a heart stamped on it */
+    /* --- 3. the gift block, a heart stamped on gold --- */
     px(c, T * 3, 0, T, T, "#ffcf6a");
     px(c, T * 3, 0, T, 1, "#ffeaa8"); px(c, T * 3, T - 1, T, 1, "#c98f36");
     px(c, T * 3, 0, 1, T, "#ffeaa8"); px(c, T * 3 + T - 1, 0, 1, T, "#c98f36");
     px(c, T * 3 + 1, 1, 2, 2, "#fff6d0"); px(c, T * 3 + T - 3, T - 3, 2, 2, "#a9741f");
-    heart(c, T * 3 + T / 2, T / 2, 4, "#e0426e", "#ff9ec4");
+    heart(c, T * 3 + T / 2, T / 2 + 1, 4.4, "#e0426e", "#ffc0d8");
 
-    /* 7 — a gift block already opened */
+    /* --- 7. a gift block already opened --- */
     px(c, T * 7, 0, T, T, "#b98d4e");
     px(c, T * 7, 0, T, 1, "#d3a86a"); px(c, T * 7, T - 1, T, 1, "#8a6432");
     px(c, T * 7 + 3, 3, T - 6, T - 6, "#9d7440");
+    px(c, T * 7 + 3, 3, T - 6, 1, "#8a6432");
 
-    /* 4 — spikes */
+    /* --- 4. spikes --- */
     px(c, T * 4, T - 3, T, 3, P.stone[2]);
+    px(c, T * 4, T - 3, T, 1, P.stone[1]);
     for (var sp = 0; sp < 4; sp++) {
       for (var h = 0; h < 11; h++) {
         var ww = Math.max(1, 4 - Math.round(h * 0.34));
-        px(c, T * 4 + sp * 4 + 2 - (ww >> 1), T - 3 - h, ww, 1, h > 6 ? "#ffffff" : P.stone[h > 3 ? 0 : 1]);
+        px(c, T * 4 + sp * 4 + 2 - (ww >> 1), T - 3 - h, ww, 1, h > 7 ? "#ffffff" : P.stone[h > 3 ? 0 : 1]);
       }
     }
 
-    /* 5 — the moat: this is the top of it, and it ripples in code */
+    /* --- 5. the moat surface; it ripples in drawTiles --- */
     px(c, T * 5, 0, T, T, P.hazard[1]);
     px(c, T * 5, 0, T, 2, P.hazard[0]);
-    if (P.hazard[2]) px(c, T * 5, T - 4, T, 4, P.hazard[2]);
+    if (P.hazard[2]) px(c, T * 5, T - 5, T, 5, P.hazard[2]);
     return s.c;
   }
 
@@ -794,14 +855,24 @@ window.SuperOuissy = (function () {
     var sky = spriteCanvas(VW, VH), sc = sky.ctx;
     ditherSky(sc, 0, 0, VW, VH, P.sky);
     if (biome === "meadow") {
-      /* a sun, and clouds that will drift on their own layer */
-      for (var y = -14; y <= 14; y++)
-        for (var x = -14; x <= 14; x++) {
-          var d = Math.sqrt(x * x + y * y);
-          if (d <= 9) px(sc, 262 + x, 30 + y, 1, 1, "#fff6c0");
-          else if (d <= 14 && ((BAYER[(30 + y) & 3][(262 + x) & 3] + .5) / 16) < (1 - (d - 9) / 5))
-            px(sc, 262 + x, 30 + y, 1, 1, "#ffe27a");
+      /* the sun: a bright core, then two dithered falloffs, so the halo
+         fades instead of ending on a hard ring */
+      for (var y = -20; y <= 20; y++)
+        for (var x = -20; x <= 20; x++) {
+          var d = Math.sqrt(x * x + y * y), th = (BAYER[(30 + y) & 3][(262 + x) & 3] + .5) / 16;
+          if (d <= 8) px(sc, 262 + x, 30 + y, 1, 1, "#fffbe0");
+          else if (d <= 11) px(sc, 262 + x, 30 + y, 1, 1, "#fff0a8");
+          else if (d <= 15 && th < 1 - (d - 11) / 4) px(sc, 262 + x, 30 + y, 1, 1, "#ffe27a");
+          else if (d <= 20 && th < .55 - (d - 15) / 9) px(sc, 262 + x, 30 + y, 1, 1, "#ffeec0");
         }
+      /* a couple of soft clouds up in the static sky */
+      for (var cl = 0; cl < 4; cl++) {
+        var clx = 30 + cl * 84 + rnd() * 30, cly = 22 + rnd() * 30;
+        blob(sc, clx, cly, 15, 5, P.cloud.concat([P.cloud[2]]));
+        blob(sc, clx - 11, cly + 2, 9, 4, P.cloud.concat([P.cloud[2]]));
+        blob(sc, clx + 12, cly + 2, 10, 4, P.cloud.concat([P.cloud[2]]));
+        px(sc, clx - 20, cly + 4, 40, 1, P.cloud[0]);
+      }
     } else if (biome === "forest") {
       for (var i = 0; i < 60; i++) {
         var sx = rnd() * VW, sy = rnd() * 70;
@@ -827,6 +898,14 @@ window.SuperOuissy = (function () {
           var yy = 130 - Math.round(Math.sqrt(Math.max(0, 1 - (x2 * x2) / (rw * rw))) * rh);
           px(fc, cxh + x2, yy, 1, VH - yy, P.far[1]);
           px(fc, cxh + x2, yy, 1, 2, P.far[0]);
+          px(fc, cxh + x2, yy + 2, 1, 1, P.far[2]);
+        }
+        /* a handful of far trees along each crest, so the hills have scale */
+        for (var ft = 0; ft < 4; ft++) {
+          var ftx = cxh - rw + rnd() * rw * 2;
+          var fty = 130 - Math.round(Math.sqrt(Math.max(0, 1 - Math.pow(ftx - cxh, 2) / (rw * rw))) * rh);
+          px(fc, ftx, fty - 7, 1, 7, P.far[2]);
+          blob(fc, ftx, fty - 10, 4, 3.4, [P.far[0], P.far[1], P.far[2], P.far[2]]);
         }
       }
     } else if (biome === "forest") {
@@ -839,14 +918,12 @@ window.SuperOuissy = (function () {
         px(fc, tx - 1, 130, 2, 12, P.far[2]);
       }
     } else {
-      /* the castle itself, seen from a long way off */
       for (var b = 0; b < 7; b++) {
         var bx = 20 + b * 68 + rnd() * 20, bw = 26 + rnd() * 22, bh = 50 + rnd() * 40;
         px(fc, bx, 140 - bh, bw, bh, P.far[1]);
         px(fc, bx, 140 - bh, 1, bh, P.far[0]);
         for (var w2 = 4; w2 < bw - 4; w2 += 9)
           for (var wy = 8; wy < bh - 10; wy += 13) px(fc, bx + w2, 140 - bh + wy, 3, 4, "#ffb45c");
-        /* a pointed roof */
         for (var r3 = 0; r3 < 14; r3++)
           px(fc, bx + r3 * (bw / 28), 140 - bh - 14 + r3, bw - r3 * (bw / 14), 1, P.far[0]);
       }
@@ -856,26 +933,49 @@ window.SuperOuissy = (function () {
     var midW = 480;
     var mid = spriteCanvas(midW, VH), mc = mid.ctx;
     if (biome === "meadow") {
-      for (var m = 0; m < 9; m++) {
-        var mx = rnd() * midW, mh = 26 + rnd() * 18;
-        blob(mc, mx, 150 - mh, 16, mh * .6, [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
-        px(mc, mx - 2, 150 - mh * .4, 4, mh, "#8a5f3a");
+      for (var m = 0; m < 8; m++) {
+        var mx = 18 + m * 58 + rnd() * 22, mh = 30 + rnd() * 20;
+        /* trunk first, then a canopy of overlapping puffs with lit speckles */
+        for (var tr = 0; tr < mh; tr++) {
+          var tw2 = tr < mh * .7 ? 4 : 6;
+          px(mc, mx - (tw2 >> 1), 152 - tr, tw2, 1, "#8a5f3a");
+          px(mc, mx - (tw2 >> 1), 152 - tr, 1, 1, "#a87a4e");
+          px(mc, mx + (tw2 >> 1) - 1, 152 - tr, 1, 1, "#6b4527");
+        }
+        canopy(mc, mx, 152 - mh - 8, 17 + rnd() * 5,
+               [P.mid[0], P.mid[1], P.mid[2], P.mid[2]], rnd, "#c6f5cf");
       }
+      /* low bushes between the trunks. They stop above the tile line: any
+         lower and they show through a pit as a floating green slab. */
+      for (var hb = 0; hb < midW; hb += 26)
+        blob(mc, hb + rnd() * 18, 148 + rnd() * 3, 7 + rnd() * 4, 4,
+             [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
     } else if (biome === "forest") {
-      for (var m2 = 0; m2 < 14; m2++) {
-        var mx2 = rnd() * midW, mh2 = 40 + rnd() * 30;
-        px(mc, mx2 - 3, 152 - mh2, 6, mh2, P.mid[2]);
-        blob(mc, mx2, 152 - mh2, 22, 13, [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
-        blob(mc, mx2 - 13, 150 - mh2 + 7, 12, 8, [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
-        blob(mc, mx2 + 13, 150 - mh2 + 6, 12, 8, [P.mid[0], P.mid[1], P.mid[2], P.mid[2]]);
+      for (var m2 = 0; m2 < 12; m2++) {
+        var mx2 = 14 + m2 * 40 + rnd() * 18, mh2 = 44 + rnd() * 26;
+        for (var tr2 = 0; tr2 < mh2; tr2++) {
+          px(mc, mx2 - 3, 154 - tr2, 6, 1, P.mid[2]);
+          px(mc, mx2 - 3, 154 - tr2, 1, 1, "#5c7a8c");
+        }
+        canopy(mc, mx2, 154 - mh2 - 6, 21 + rnd() * 6,
+               [P.mid[0], P.mid[1], P.mid[2], P.mid[2]], rnd, "#8fd8c0");
+        /* lanterns hanging in the branches — the forest is dusk, not danger */
+        if (m2 % 3 === 0) {
+          px(mc, mx2 + 12, 154 - mh2 + 6, 1, 5, "#3a2c5c");
+          blob(mc, mx2 + 12, 154 - mh2 + 12, 3, 4, ["#fff0b0", "#ffd166", "#e0a84e", "#b07c30"]);
+        }
       }
     } else {
       for (var p2 = 0; p2 < 12; p2++) {
         var px2 = p2 * 42 + 10, ph = 60 + (p2 % 3) * 16;
         px(mc, px2, 160 - ph, 22, ph, P.mid[1]);
         px(mc, px2, 160 - ph, 2, ph, P.mid[0]);
+        px(mc, px2 + 20, 160 - ph, 2, ph, "#2a1836");
         px(mc, px2 - 2, 160 - ph - 6, 26, 6, P.mid[0]);
         for (var cr = 0; cr < 26; cr += 6) px(mc, px2 - 2 + cr, 160 - ph - 10, 3, 4, P.mid[0]);
+        /* one lit window per tower, at a different height each time */
+        px(mc, px2 + 8, 160 - ph + 14 + (p2 % 4) * 9, 5, 7, "#ffb45c");
+        px(mc, px2 + 8, 160 - ph + 14 + (p2 % 4) * 9, 5, 1, "#ffe0a0");
       }
     }
     return { sky: sky.c, far: far.c, mid: mid.c, farW: farW, midW: midW };
@@ -927,11 +1027,15 @@ window.SuperOuissy = (function () {
           case "T": grid[y][x] = "."; ents.push(mkMover("T", wx, wy)); break;
           case "X": grid[y][x] = "."; boss = mkBoss(wx, wy); break;
           case "M": case "I": case "1": case "P": case "F":
-            /* a power-up letter sitting on solid ground is a gift block;
-               floating on its own it is the item itself */
-            if (!isSolidChar(grid[y + 1] && grid[y + 1][x])) {
+            /* A power-up letter RESTING on something is the item itself,
+               sitting there waiting to be walked into. One hanging in the
+               air is a gift block, to be hit from underneath. Keeping the
+               rule this way round means a block can never end up at head
+               height above a ledge, where it would wall her in. */
+            var below = rows[y + 1] && rows[y + 1][x];
+            if (isSolidChar(below) || below === "-") {
               grid[y][x] = ".";
-              items.push(mkItem(GIFT_OF[ch], wx + 1, wy + 2, true));
+              items.push(mkItem(GIFT_OF[ch], wx + 2, wy + 3, true));
             }
             break;
         }
@@ -1025,6 +1129,21 @@ window.SuperOuissy = (function () {
     var res = dy > 0 ? "ground" : "ceiling";
     b.vy = 0;
     return res;
+  }
+
+  /* Is there floor directly under her feet? At 60fps gravity moves her a
+     third of a pixel, which is not always enough to re-enter the tile she is
+     standing on, so asking the question outright is more honest than reading
+     it off the last collision. */
+  function groundedProbe(b) {
+    var feet = b.y + b.h;
+    var ty = Math.floor((feet + 1) / T);
+    var x0 = Math.floor(b.x / T), x1 = Math.floor((b.x + b.w - 1) / T);
+    for (var tx = x0; tx <= x1; tx++) {
+      if (solidAt(tx, ty)) return true;
+      if (oneWayAt(tx, ty) && Math.abs(feet - ty * T) <= 2) return true;
+    }
+    return false;
   }
 
   /* ---- the moving platforms are solid too, but they are entities, so
@@ -1222,6 +1341,7 @@ window.SuperOuissy = (function () {
 
     var rode = ridePlatforms(p, wasBottom);
     if (rode) { p.onGround = true; p.riding = rode; p.y += rode.dy; }
+    if (!p.onGround && p.vy >= 0) p.onGround = groundedProbe(p);
 
     if (p.onGround && !was) {           // the landing
       p.squash = 1; p.jumpsLeft = p.wing ? 1 : 0;
@@ -1748,13 +1868,14 @@ window.SuperOuissy = (function () {
         var ch = L.grid[ty][tx];
         if (ch === "." || ch === "S" || ch === "G" || ch === "C") continue;
         var cell = -1;
-        if (ch === "#") cell = solidAt(tx, ty - 1) ? 0 : 6;
-        else if (ch === "-") cell = 1;
-        else if (ch === "B") cell = 2;
-        else if (GIFT.indexOf(ch) >= 0) cell = 3;
-        else if (ch === "u") cell = 7;
-        else if (ch === "^") cell = 4;
-        else if (ch === "~") cell = 5;
+        if (ch === "#") cell = !solidAt(tx, ty - 1) ? CELL.top
+                             : solidAt(tx, ty - 2) ? CELL.deep : CELL.body;
+        else if (ch === "-") cell = CELL.oneWay;
+        else if (ch === "B") cell = CELL.brick;
+        else if (GIFT.indexOf(ch) >= 0) cell = CELL.gift;
+        else if (ch === "u") cell = CELL.used;
+        else if (ch === "^") cell = CELL.spike;
+        else if (ch === "~") cell = CELL.moat;
         if (cell < 0) continue;
 
         var dx = tx * T - ox, dy = ty * T - oy;
@@ -1770,7 +1891,7 @@ window.SuperOuissy = (function () {
           var surface = tileAt(tx, ty - 1) !== "~";
           if (surface) {
             var wob = Math.round(Math.sin(t * 2.6 + tx * 0.8) * 1.4);
-            c.drawImage(A, T * 5, 0, T, T, dx, dy + wob, T, T);
+            c.drawImage(A, CELL.moat * T, 0, T, T, dx, dy + wob, T, T);
             px(c, dx, dy + wob, T, 1, P.hazard[0]);
             if ((tx + (t * 3 | 0)) % 7 === 0) px(c, dx + 4, dy + wob - 2, 2, 2, P.hazard[0]);
           } else {
@@ -1797,8 +1918,9 @@ window.SuperOuissy = (function () {
     var sq = clamp(p.squash, -1, 1.3);
     var sx = 1 + sq * 0.22, sy = 1 - sq * 0.26;
     var w = img.width * sx, h = img.height * sy;
-    var dx = Math.round(p.x + p.w / 2 - w / 2);
-    var dy = Math.round(p.y + p.h - h + (p.big ? 2 : 1));
+    /* her feet stay put whatever the squash does to her height */
+    var dx = Math.round(p.x + p.w / 2 - w / 2 - ox);
+    var dy = Math.round(p.y + p.h - h + (p.big ? 2 : 1) - oy);
 
     c.save();
     if (p.star > 0) {
@@ -2646,6 +2768,90 @@ window.SuperOuissy = (function () {
     if (window.duckAmbient) window.duckAmbient(false);
     if (G) G.state = "menu";
   }
+
+  /* Two hooks used only by the offline screenshot harness, so the game can
+     be driven and inspected without a person at the keyboard. They read
+     and move state that is already public to the loop; nothing in the game
+     itself calls them. */
+  window.__soTele = function (tx) {
+    if (!G || !G.level) return;
+    G.player.x = tx * T; G.player.y = 0; G.player.vx = 0; G.player.vy = 0;
+    G.camSnap = true; moveCamera(1);
+  };
+  /* A contact sheet of every sprite, for the offline art review. */
+  /* one sprite, very large, for looking at a face pixel by pixel */
+  window.__soZoom = function (what, scale) {
+    scale = scale || 18;
+    var imgs = ({
+      idle: OUISSY.idle.small, idleBig: OUISSY.idle.big, run: OUISSY.run.small,
+      boss: ART.boss, guard: ART.guard, walker: ART.walker, flyer: ART.flyer,
+      power: ART.power.grow.concat(ART.power.star, ART.power.life, ART.power.boost, ART.power.wing),
+    })[what] || OUISSY.idle.small;
+    var w = 0, h = 0;
+    imgs.forEach(function (i) { w += i.width + 2; h = Math.max(h, i.height); });
+    var o = document.createElement("canvas");
+    o.width = w * scale; o.height = h * scale;
+    var c = o.getContext("2d"); c.imageSmoothingEnabled = false;
+    c.fillStyle = "#4a6a8a"; c.fillRect(0, 0, o.width, o.height);
+    var x = 0;
+    imgs.forEach(function (i) {
+      c.drawImage(i, x * scale, 0, i.width * scale, i.height * scale);
+      x += i.width + 2;
+    });
+    return o.toDataURL("image/png");
+  };
+
+  window.__soSheet = function () {
+    var rows = [];
+    ["idle", "run", "jump", "fall", "duck", "hurt", "win"].forEach(function (pose) {
+      rows.push(OUISSY[pose].small.concat(OUISSY[pose].big));
+    });
+    rows.push(ART.walker.concat([ART.walkerSquash]).concat(ART.flyer).concat(ART.guard));
+    rows.push(ART.heart.concat(ART.power.grow, ART.power.star, ART.power.life, ART.power.boost, ART.power.wing));
+    rows.push(ART.boss.concat(ART.bossHurt));
+    var SC = 5, pad = 4, cw = 44, ch = 40;
+    var maxCols = Math.max.apply(null, rows.map(function (r) { return r.length; }));
+    var o = document.createElement("canvas");
+    o.width = maxCols * (cw * SC / 4 + pad) + 20;
+    o.height = rows.length * (ch * SC / 2 + pad) + 20;
+    var c = o.getContext("2d");
+    c.imageSmoothingEnabled = false;
+    c.fillStyle = "#5a7a9a"; c.fillRect(0, 0, o.width, o.height);
+    var y = 10;
+    rows.forEach(function (r) {
+      var x = 10, tall = 0;
+      r.forEach(function (img) {
+        c.drawImage(img, x, y, img.width * SC, img.height * SC);
+        x += img.width * SC + pad;
+        tall = Math.max(tall, img.height * SC);
+      });
+      y += tall + pad * 2;
+    });
+    var out = document.createElement("canvas");
+    out.width = o.width; out.height = y + 10;
+    var oc = out.getContext("2d"); oc.imageSmoothingEnabled = false;
+    oc.fillStyle = "#5a7a9a"; oc.fillRect(0, 0, out.width, out.height);
+    oc.drawImage(o, 0, 0);
+    return out.toDataURL("image/png");
+  };
+
+  window.__soDiag = function () {
+    var p = G.player;
+    return { px: Math.round(p.x), py: Math.round(p.y), ph: p.h, onG: p.onGround,
+             camx: Math.round(G.cam.x), camy: Math.round(G.cam.y),
+             pxH: G.level.pxH, feetTile: Math.floor((p.y + p.h) / T),
+             tileUnderFeet: tileAt(Math.floor((p.x + p.w / 2) / T), Math.floor((p.y + p.h + 1) / T)),
+             screenY: Math.round(p.y - G.cam.y), pose: p.pose };
+  };
+  window.__soState = function () {
+    if (!G) return null;
+    return {
+      state: G.state, world: G.levelIndex + 1, diff: G.diff, lives: G.lives,
+      score: G.score, hearts: G.hearts, deaths: G.deaths,
+      x: Math.round(G.player.x / T), y: Math.round(G.player.y / T),
+      onGround: G.player.onGround, big: G.player.big,
+    };
+  };
 
   return { start: start, stop: stop, pause: function () { if (G && G.state === "play") togglePause(); } };
 })();
