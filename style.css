@@ -74,7 +74,39 @@
   --gold:#ffd166; --deep:#1a0b2e; --violet:#3a1257; --purple1:#2a0a3d; --purple2:#5a1470;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
-html,body{height:100%; font-family:'Poppins',sans-serif; overflow:hidden; -webkit-tap-highlight-color:transparent;}
+
+/* ---------------------------------------------------------
+   THE HEIGHT OF THE PAGE
+
+   The blank space you could swipe down into was a mobile viewport
+   problem. Both 100vh and height:100% resolve against the LARGE
+   viewport — the size the page would be with the browser's own UI
+   hidden — so while the URL bar was showing, every full-screen element
+   was taller than the part you could actually see. The overflow had to
+   go somewhere, and it went below the fold as void.
+
+   Three layers, weakest first, so something correct always applies:
+   100vh for very old browsers, 100dvh where it exists (it tracks the
+   browser UI as it hides and shows), and a measured pixel value set
+   from JS, which is the one that wins. overscroll-behavior stops the
+   rubber-band from revealing anything past the edge either.
+   --------------------------------------------------------- */
+:root{--app-h:100vh;}
+@supports (height:100dvh){:root{--app-h:100dvh;}}
+
+/* The root deliberately keeps height:100% rather than --app-h. Pinning it
+   to the value we are measuring makes the box stop changing, and then the
+   ResizeObserver watching it has nothing to observe — it would never fire
+   again after the first measurement. overflow:hidden means the extra is
+   invisible and unreachable anyway. */
+html,body{
+  height:100%; font-family:'Poppins',sans-serif; overflow:hidden;
+  overscroll-behavior:none; -webkit-tap-highlight-color:transparent;
+}
+/* Fixed elements take their box from the large viewport too, so the real
+   height has to be said out loud rather than implied by inset:0. This is
+   the line that closes the gap. */
+.screen{height:var(--app-h); max-height:var(--app-h);}
 h1,h2{font-family:'Fredoka',sans-serif;}
 button{font-family:inherit;}
 img{-webkit-user-drag:none; user-select:none;}
@@ -1517,7 +1549,8 @@ img{-webkit-user-drag:none; user-select:none;}
    THE BUTTON, AND THE DRAWER IT OPENS
    ========================================================= */
 .sb-extras-btn{
-  position:absolute; right:16px; bottom:16px; z-index:22;
+  position:absolute; right:calc(16px + env(safe-area-inset-right));
+  bottom:calc(16px + env(safe-area-inset-bottom)); z-index:22;
   opacity:0; pointer-events:none; transition:opacity .5s ease, transform .3s var(--ease-pop), background .3s ease;
   width:52px; height:52px; border-radius:50%; cursor:pointer; border:none;
   display:flex; align-items:center; justify-content:center;
@@ -1697,7 +1730,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 /* the art keeps its 16:9 and is letterboxed, so nothing is ever cropped */
 .hv-stage{
-  position:relative; width:min(100%, calc(100vh * 16 / 9)); aspect-ratio:16/9;
+  position:relative; width:min(100%, calc(var(--app-h) * 16 / 9)); aspect-ratio:16/9;
   max-height:100%; box-shadow:0 12px 40px rgba(0,0,0,.5);
 }
 #hv-canvas{
@@ -1977,13 +2010,13 @@ img{-webkit-user-drag:none; user-select:none;}
   position:relative;
   /* --so-arn is the view's aspect ratio, set by the game itself: 16:9
      normally, 4:3 on a portrait phone where it shows less world, larger. */
-  width:min(100%, calc((100vh - 132px) * var(--so-arn, 1.7778)));
+  width:min(100%, calc((var(--app-h) - 132px) * var(--so-arn, 1.7778)));
   aspect-ratio:var(--so-arn, 1.7778); max-height:100%;
   container-type:inline-size;
   box-shadow:0 12px 44px rgba(0,0,0,.62), 0 0 0 2px rgba(255,158,196,.22);
   background:#150c22; overflow:hidden;
 }
-#screen-ouissy.so-landscape .so-stage{width:min(100%, calc(100vh * var(--so-arn, 1.7778)));}
+#screen-ouissy.so-landscape .so-stage{width:min(100%, calc(var(--app-h) * var(--so-arn, 1.7778)));}
 #so-canvas{
   position:absolute; inset:0; width:100%; height:100%; display:block;
   image-rendering:pixelated; image-rendering:crisp-edges;
@@ -2403,10 +2436,14 @@ img{-webkit-user-drag:none; user-select:none;}
    The touch pad — sized in viewport units, because it lives
    outside the stage and has to stay thumb-sized on a phone
    ========================================================= */
+/* viewport-fit:cover lets the page use the whole screen now, including the
+   strip behind the home indicator. The controls take that inset back as
+   padding so the jump button is never half under it. */
 .so-pad{
   display:flex; align-items:center; justify-content:space-between;
-  width:100%; max-width:640px; padding:10px 14px 14px; gap:12px;
-  flex:0 0 auto;
+  width:100%; max-width:640px; gap:12px; flex:0 0 auto;
+  padding:10px calc(14px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom))
+          calc(14px + env(safe-area-inset-left));
 }
 .so-pad-side{display:flex; gap:12px; align-items:center;}
 /* on the title screen the pad controls nothing, so it steps back rather
@@ -2479,7 +2516,7 @@ img{-webkit-user-drag:none; user-select:none;}
 /* A pointer that is a real mouse does not need the pad taking up room. */
 @media (hover:hover) and (pointer:fine){
   .so-pad{display:none;}
-  .so-stage{width:min(100%, calc(100vh * var(--so-arn, 1.7778)));}
+  .so-stage{width:min(100%, calc(var(--app-h) * var(--so-arn, 1.7778)));}
 }
 /* Portrait phones: a 16:9 game on a tall screen is letterboxed whatever you
    do, so the stage is centred in the space above the pad rather than left

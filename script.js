@@ -86,6 +86,43 @@ function pageTurn(name, callback) {
 }
 function openCover(name) { pageTurn(name); }
 
+/* ---------------------------------------------------------
+   THE REAL HEIGHT OF THE VIEWPORT
+
+   dvh handles this on its own in a modern browser, but it is not
+   everywhere yet and it rounds; this measures the visible area and
+   writes it into --app-h, which the stylesheet uses for every
+   full-height box. That is what closes the blank strip you could swipe
+   down into.
+
+   innerHeight, not visualViewport.height: the visual viewport shrinks
+   when the on-screen keyboard opens, and re-laying the whole site out
+   around the keyboard is worse than the gap ever was. The focus guard
+   below is the belt to that braces.
+   --------------------------------------------------------- */
+function fitViewport() {
+  const ae = document.activeElement;
+  if (ae && /^(input|textarea|select)$/i.test(ae.tagName)) return;
+  const h = window.innerHeight;
+  if (h > 0) document.documentElement.style.setProperty("--app-h", h + "px");
+}
+fitViewport();
+/* A ResizeObserver on the root element, not just the resize event: some
+   mobile browsers change the viewport as the URL bar slides away without
+   ever firing resize, and at least one scene here stops the event
+   reaching us at all. The observer watches the box itself, so it cannot
+   be missed the way an event can. */
+if (window.ResizeObserver) {
+  try { new ResizeObserver(fitViewport).observe(document.documentElement); } catch (e) {}
+}
+addEventListener("resize", fitViewport);
+addEventListener("orientationchange", () => setTimeout(fitViewport, 120));
+addEventListener("pageshow", fitViewport);
+if (window.visualViewport) window.visualViewport.addEventListener("resize", fitViewport);
+/* The URL bar finishes hiding a beat after the scroll that hid it. */
+addEventListener("scroll", () => requestAnimationFrame(fitViewport), { passive: true });
+document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
+
 /* ---------- ambient particles ---------- */
 function startParticles(containerId, opts) {
   const el = document.getElementById(containerId);
