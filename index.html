@@ -176,6 +176,11 @@
   <!-- SCREEN — SUPER OUISSY (the platformer; all of it lives in super-ouissy.js) -->
   <section id="screen-ouissy" class="screen">
     <div class="so-frame">
+      <!-- Only ever shown on a portrait phone, where a 16:9 stage cannot
+           fill a screen this tall and the space above it would otherwise
+           be a blank. -->
+      <p class="so-titlebar" aria-hidden="true"><span>SUPER</span><b>OUISSY</b></p>
+
       <div class="so-stage" id="so-stage">
         <canvas id="so-canvas" width="320" height="180"></canvas>
 

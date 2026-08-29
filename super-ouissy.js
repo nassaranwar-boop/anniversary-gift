@@ -784,6 +784,29 @@ window.SuperOuissy = (function () {
         legend character uses.
      ======================================================================= */
   var T = TUNE.tile;
+
+  /* How much of the world fits on screen. The height never changes, so the
+     backdrops and everything that reasons about camera Y stay as they are;
+     only the width narrows. On a portrait phone a 16:9 letterbox leaves her
+     with a stamp of a game in the middle of a tall screen, so there we show
+     less world and show it bigger — which is the right trade on a small
+     screen anyway. */
+  var VIEW = { w: 320, h: 180 };
+
+  function pickView() {
+    var portrait = window.innerHeight > window.innerWidth * 1.2;
+    var narrow = window.innerWidth < 620;
+    VIEW.w = (portrait && narrow) ? 240 : 320;
+    var cv = $("so-canvas");
+    if (cv && cv.width !== VIEW.w) { cv.width = VIEW.w; cv.height = VIEW.h; }
+    var st = $("so-stage");
+    if (st) {
+      st.style.aspectRatio = VIEW.w + " / " + VIEW.h;
+      st.style.setProperty("--so-arn", (VIEW.w / VIEW.h).toFixed(4));
+    }
+    if (G) G.camSnap = true;
+  }
+
   /* The atlas is a strip of 16x16 cells. Ground is three cells deep on
      purpose — surface, subsoil, bedrock — because a wall of one repeated
      tile is the fastest way to make a platformer look cheap. */
@@ -1524,7 +1547,7 @@ window.SuperOuissy = (function () {
       if (e.spawnX === undefined) { e.spawnX = e.x; e.spawnY = e.y; }
       /* off-screen enemies are frozen — it keeps the level cheap and it is
          what the games this is modelled on all did */
-      if (e.x < G.cam.x - 80 || e.x > G.cam.x + 400) { e.anim += dt; return; }
+      if (e.x < G.cam.x - 80 || e.x > G.cam.x + VIEW.w + 80) { e.anim += dt; return; }
 
       e.anim += dt;
       if (e.type === "flyer") {
@@ -1654,7 +1677,7 @@ window.SuperOuissy = (function () {
         }
         if (it.y > G.level.pxH + 40) { L.items.splice(i, 1); continue; }
       }
-      if (it.x < G.cam.x - 40 || it.x > G.cam.x + 380) continue;
+      if (it.x < G.cam.x - 40 || it.x > G.cam.x + VIEW.w + 60) continue;
 
       if (p.x + p.w > it.x && p.x < it.x + it.w && p.y + p.h > it.y && p.y < it.y + it.h && !p.dead) {
         L.items.splice(i, 1);
@@ -1844,15 +1867,15 @@ window.SuperOuissy = (function () {
   function moveCamera(dt) {
     var p = G.player, L = G.level, c = G.cam;
     /* look a little the way she is going, so she can see what is coming */
-    var tx = p.x + p.w / 2 - 160 + p.face * 34;
-    var ty = p.y + p.h / 2 - 96;
+    var tx = p.x + p.w / 2 - VIEW.w / 2 + p.face * (VIEW.w * 0.106);
+    var ty = p.y + p.h / 2 - VIEW.h * 0.533;
     if (G.camSnap) { c.x = tx; c.y = ty; G.camSnap = false; }
     else {
       c.x += (tx - c.x) * Math.min(1, dt * 7);
       c.y += (ty - c.y) * Math.min(1, dt * (p.onGround ? 4.5 : 2.6));
     }
-    c.x = clamp(c.x, 0, Math.max(0, L.pxW - 320));
-    c.y = clamp(c.y, 0, Math.max(0, L.pxH - 180));
+    c.x = clamp(c.x, 0, Math.max(0, L.pxW - VIEW.w));
+    c.y = clamp(c.y, 0, Math.max(0, L.pxH - VIEW.h));
   }
 
   /* =======================================================================
@@ -1864,7 +1887,7 @@ window.SuperOuissy = (function () {
     var c = cv.getContext("2d");
     c.imageSmoothingEnabled = false;
     var L = G.level;
-    if (!L) { c.clearRect(0, 0, 320, 180); return; }
+    if (!L) { c.clearRect(0, 0, VIEW.w, VIEW.h); return; }
 
     /* the shake is applied to the camera only for drawing, never to physics */
     var sh = G.shake;
@@ -1878,7 +1901,7 @@ window.SuperOuissy = (function () {
        nothing, so the whole frame is flooded with the sky's lowest colour
        first and the pit reads as distance instead of a hole in the page. */
     var bg = L.bg;
-    px(c, 0, 0, 320, 180, BIOME[L.biome].sky[BIOME[L.biome].sky.length - 1].c);
+    px(c, 0, 0, VIEW.w, VIEW.h, BIOME[L.biome].sky[BIOME[L.biome].sky.length - 1].c);
     c.drawImage(bg.sky, 0, Math.round(-oy * 0.12) - 6);
     drawTiled(c, bg.far, ox * 0.22, Math.round(-oy * 0.3), bg.farW);
     drawTiled(c, bg.mid, ox * 0.52, Math.round(-oy * 0.55), bg.midW);
@@ -1914,7 +1937,7 @@ window.SuperOuissy = (function () {
       c.save();
       c.globalAlpha = 0.1 + 0.06 * Math.sin(t * 14);
       c.fillStyle = ["#fff6a8", "#ffd6e6", "#d6f0ff", "#e6ffd6"][(t * 12 | 0) % 4];
-      c.fillRect(0, 0, 320, 180);
+      c.fillRect(0, 0, VIEW.w, VIEW.h);
       c.restore();
     }
     if (G.player.invuln > 0 && G.player.star <= 0) { /* handled by the flicker in drawPlayer */ }
@@ -1925,13 +1948,13 @@ window.SuperOuissy = (function () {
     var x = -(offset % width);
     c.drawImage(img, Math.round(x), y);
     c.drawImage(img, Math.round(x + width), y);
-    if (x + width < 320) c.drawImage(img, Math.round(x + width * 2), y);
+    if (x + width < VIEW.w) c.drawImage(img, Math.round(x + width * 2), y);
   }
 
   function drawTiles(c, ox, oy, t) {
     var L = G.level, A = L.atlas;
-    var x0 = Math.max(0, Math.floor(ox / T)), x1 = Math.min(L.w - 1, Math.floor((ox + 320) / T));
-    var y0 = Math.max(0, Math.floor(oy / T)), y1 = Math.min(L.h - 1, Math.floor((oy + 180) / T));
+    var x0 = Math.max(0, Math.floor(ox / T)), x1 = Math.min(L.w - 1, Math.floor((ox + VIEW.w) / T));
+    var y0 = Math.max(0, Math.floor(oy / T)), y1 = Math.min(L.h - 1, Math.floor((oy + VIEW.h) / T));
     var P = BIOME[L.biome];
 
     for (var ty = y0; ty <= y1; ty++) {
@@ -2011,7 +2034,7 @@ window.SuperOuissy = (function () {
   function drawEnemy(c, e, ox, oy) {
     if (!e.alive && e.dead <= 0) return;
     var img, dx = Math.round(e.x - ox), dy = Math.round(e.y - oy);
-    if (dx < -40 || dx > 360) return;
+    if (dx < -40 || dx > VIEW.w + 40) return;
 
     if (!e.alive) {
       if (e.spun) {                       // knocked away by the sparkle state
@@ -2038,7 +2061,7 @@ window.SuperOuissy = (function () {
 
   function drawMover(c, m, ox, oy) {
     var dx = Math.round(m.x - ox), dy = Math.round(m.y - oy);
-    if (dx < -50 || dx > 370) return;
+    if (dx < -50 || dx > VIEW.w + 50) return;
     var P = BIOME[G.level.biome];
     c.save();
     if (m.type === "T") c.globalAlpha = m.fade;
@@ -2055,7 +2078,7 @@ window.SuperOuissy = (function () {
 
   function drawItem(c, it, ox, oy) {
     var dx = Math.round(it.x - ox), dy = Math.round(it.y - oy);
-    if (dx < -30 || dx > 350) return;
+    if (dx < -30 || dx > VIEW.w + 30) return;
     var k = Math.floor(it.anim) % 4;
     var bobY = it.floating ? Math.round(Math.sin(it.anim * 0.5) * 1.2) : 0;
     if (it.type === "heart") c.drawImage(ART.heart[k], dx - 2, dy - 2 + bobY);
@@ -2064,7 +2087,7 @@ window.SuperOuissy = (function () {
 
   function drawCheck(c, ck, ox, oy, t) {
     var dx = Math.round(ck.x - ox), dy = Math.round(ck.y - oy);
-    if (dx < -30 || dx > 350) return;
+    if (dx < -30 || dx > VIEW.w + 30) return;
     px(c, dx + 7, dy - 22, 2, 38, "#a3679a");                 // the post
     px(c, dx + 7, dy - 22, 1, 38, "#c48cbc");
     var sway = Math.sin(t * 2 + ck.x) * 1.5;
@@ -2080,7 +2103,7 @@ window.SuperOuissy = (function () {
     var g = G.level.goal;
     if (!g) return;
     var dx = Math.round(g.x - ox), dy = Math.round(g.y - oy);
-    if (dx < -60 || dx > 400) return;
+    if (dx < -60 || dx > VIEW.w + 80) return;
     var locked = G.level.boss && !g.open;
 
     /* the pole */
@@ -2800,6 +2823,8 @@ window.SuperOuissy = (function () {
     paint(now / 1000);
   }
 
+  function onResize() { pickView(); fitStage(); }
+
   function fitStage() {
     /* The canvas is letterboxed by CSS; this only keeps the pad out of the
        way when there is no room for it under the stage in landscape. */
@@ -2825,7 +2850,8 @@ window.SuperOuissy = (function () {
       bgmOn: false, muted: false, bossBar: 1,
     };
     if (!booted) { bindInput(); booted = true; }
-    window.addEventListener("resize", fitStage);
+    window.addEventListener("resize", onResize);
+    pickView();
     fitStage();
     if (window.duckAmbient) window.duckAmbient(true);
     lastT = 0; acc = 0;
@@ -2879,6 +2905,10 @@ window.SuperOuissy = (function () {
                  vx: Math.round(it.vx), vy: Math.round(it.vy), born: +it.born.toFixed(2), fl: it.floating };
       });
   };
+  /* stop the frame loop so the offline harness can screenshot the page:
+     playwright waits for the element box to be stable and never gets it
+     while requestAnimationFrame keeps repainting */
+  window.__soHalt = function () { if (raf) cancelAnimationFrame(raf); raf = null; };
   window.__soMakeBig = function () { setBig(G.player, true); };
   window.__soReset = function () {
     var keep = { score: G.score, hearts: G.hearts, deaths: G.deaths };

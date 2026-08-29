@@ -1987,13 +1987,16 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 /* the art keeps its 16:9 and is letterboxed, exactly like the adventure */
 .so-stage{
-  position:relative; width:min(100%, calc((100vh - 132px) * 16 / 9));
-  aspect-ratio:16/9; max-height:100%;
+  position:relative;
+  /* --so-arn is the view's aspect ratio, set by the game itself: 16:9
+     normally, 4:3 on a portrait phone where it shows less world, larger. */
+  width:min(100%, calc((100vh - 132px) * var(--so-arn, 1.7778)));
+  aspect-ratio:var(--so-arn, 1.7778); max-height:100%;
   container-type:inline-size;
   box-shadow:0 12px 44px rgba(0,0,0,.62), 0 0 0 2px rgba(255,158,196,.22);
   background:#150c22; overflow:hidden;
 }
-#screen-ouissy.so-landscape .so-stage{width:min(100%, calc(100vh * 16 / 9));}
+#screen-ouissy.so-landscape .so-stage{width:min(100%, calc(100vh * var(--so-arn, 1.7778)));}
 #so-canvas{
   position:absolute; inset:0; width:100%; height:100%; display:block;
   image-rendering:pixelated; image-rendering:crisp-edges;
@@ -2208,12 +2211,47 @@ img{-webkit-user-drag:none; user-select:none;}
 /* A pointer that is a real mouse does not need the pad taking up room. */
 @media (hover:hover) and (pointer:fine){
   .so-pad{display:none;}
-  .so-stage{width:min(100%, calc(100vh * 16 / 9));}
+  .so-stage{width:min(100%, calc(100vh * var(--so-arn, 1.7778)));}
 }
-/* Portrait phones: the stage sits high, the pad gets the bottom third. */
+/* Portrait phones: a 16:9 game on a tall screen is letterboxed whatever you
+   do, so the stage is centred in the space above the pad rather than left
+   stranded at the top of it, and the pad is pinned to the bottom where her
+   thumbs already are. */
 @media (max-aspect-ratio: 3/4){
-  .so-frame{justify-content:flex-start; padding-top:8vh;}
-  .so-pad{margin-top:auto;}
+  /* A 16:9 stage cannot fill a screen this tall, so rather than centre it
+     and leave a gap above and below, the space is used: the title takes the
+     top, the game sits just above the controls where her thumbs already
+     are, and nothing is left looking like a blank. */
+  .so-frame{justify-content:space-between; padding:5vh 0 calc(clamp(58px,17vw,80px) + 50px);}
+  #screen-ouissy .so-titlebar{display:block;}
+  .so-pad{position:absolute; left:0; right:0; bottom:0; margin:0;}
+}
+
+/* Short viewports — a phone held sideways — have no room for the menu at
+   its full size, so the logo and the padding come down rather than the
+   whole card turning into something she has to scroll. */
+@media (max-height: 470px){
+  .so-logo canvas{width:34cqw;}
+  .so-menu{gap:1cqw;}
+  .so-tag{font-size:2cqw;}
+  .so-diff-card{padding:1.2cqw 1cqw; gap:.5cqw;}
+  .so-diff-blurb{font-size:1.6cqw;}
+  .so-btn{padding:1.1cqw 2cqw;}
+  .so-card{padding:2cqw 2.4cqw; gap:1cqw;}
+}
+
+/* ---- the title above the stage, portrait phones only ---- */
+.so-titlebar{
+  display:none; text-align:center; line-height:1.5; margin:0;
+  font-family:'Press Start 2P', ui-monospace, monospace;
+  text-shadow:0 3px 0 rgba(20,8,26,.9), 0 0 18px rgba(255,95,149,.4);
+}
+.so-titlebar span{
+  display:block; font-size:clamp(11px,3.4vw,15px); color:#ffd166; letter-spacing:.14em;
+}
+.so-titlebar b{
+  display:block; font-weight:400; font-size:clamp(20px,7.6vw,32px); color:#ff5f95;
+  letter-spacing:.02em; margin-top:.35em;
 }
 
 /* ---- the hub card art for it ---- */
