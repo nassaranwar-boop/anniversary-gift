@@ -157,7 +157,7 @@ window.SuperOuissy = (function () {
       coyoteMul: 1, bufferMul: 1, invulnMul: 1,
       pitSafety: false, checkpoints: true, hardOnly: false, mediumUp: true,
       timeLimit: 0, timedPlatform: 1.1, bossSpeedMul: 1, bossCooldownMul: 1, bossExtraShot: 0,
-      bossSkin: "heart", bossHitsPerPhase: 2, bossOpenMul: 1.15,
+      bossSkin: "clock", bossHitsPerPhase: 2, bossOpenMul: 1.15,
     },
     hard: {
       label: "Hard", blurb: "2 lives, a clock, more of everything sharp",
@@ -315,13 +315,79 @@ window.SuperOuissy = (function () {
     ],
   };
 
+  var W_RIVERSIDE = {
+    biome: "riverside",
+    rows: [
+      "................................................................................................................................................................................",
+      ".............................................................................................................................I..................................................",
+      "......................................................................................o....o...............................oooo.................................................",
+      ".......................................................................................o..o..............o.o............f..----.....................o..o........................",
+      "............................o..o........o..o..........o..o..............................oo........o.o.....o..........................................oo.........................",
+      "............o...o............oo..........oo............oo..........................................o..................---..........---..........................................",
+      ".............o.o.?...............BMB....................................................w....................................................................?..o..o............",
+      "..............o.....................---..---..---.....................................#######............TT......---.....................---.......H.............oo.............",
+      ".............................--......................H...............................#########....TT............................................................................",
+      "...S...................w........................................................w...###########...............................................w....................C......G.....",
+      "############################~~~######################~~~~~~#########.######.######################~~~~###~~~~######################################~~~~~########################",
+      "############################~~~######################~~~~~~#########........######################~~~~###~~~~######################################~~~~~########################",
+      "############################~~~######################~~~~~~#########.ooo1oo.######################~~~~###~~~~######################################~~~~~########################",
+      "############################~~~######################~~~~~~#######################################~~~~###~~~~######################################~~~~~########################",
+    ],
+  };
+
+  var W_WINDMILL = {
+    biome: "windmill",
+    rows: [
+      "...................................P..............................................................................................................................................",
+      ".................................ooooo....o..o..........................................................................1.........................................................",
+      ".................................-----.....oo.........................................................................ooooo.......................................................",
+      "..............................f.......................................................................................-----........f..............................................",
+      "..........................................----....................................................................................................................................",
+      "............................---.....................;...........................................................TT.............----...o..o........................................",
+      ".................................................----..................................................................................oo.........................................",
+      "...............................f.........................................................................................................................o..o.....................",
+      ".................................---....................----...o..o......................................TT...........................----................oo......................",
+      "............o...o...............................................oo................................................................................................................",
+      ".............o.o.?..........................................................BMB..................................................................................?................",
+      "..............o.............---...................................................................TT.........................................----.................................",
+      "...............................................................H.........................................................................................V........................",
+      "...S..................w.................................................w...........................................................................;...............C.......G.....",
+      "###############################################################.....###############.######.######..........................##############################....#####################",
+      "###############################################################.....###############........B...##..........................##############################....#####################",
+      "###############################################################.....###############.ooo.oo.B.F.##..........................##############################....#####################",
+      "###############################################################.....#############################..........................##############################....#####################",
+    ],
+  };
+
+  var W_HILLTOWN = {
+    biome: "hilltown",
+    rows: [
+      ".................................................................................................................oooo......................o...o..............................................",
+      ".................................................................................................................----.......................o.o...............................................",
+      "......................................................................................................................f...........-----......o................................................",
+      "..............................o....o..............f..o...o..................................................................V.................;................................#............#.",
+      "...............................o..o...................o.o.f....BIB.........................................................................-----...............................#............#.",
+      "................................oo.....................o.....-----...............................................---...........................................................#............#.",
+      ".............................................-----..................................................o..o.......................................................................#............#.",
+      "...........o...o................w....................-----............----...........................oo................---..........................-----......................#............#.",
+      "............o.o.?............#######..----...............................................................................f............................................o..o.....#..--....--..#.",
+      ".............o..............########.........................................----................................---........................................----.......oo......#............#.",
+      "...........................#########................................................................H.......................................................................................#.",
+      "...S.................g....##########................................................g.......................;......................................................g.......C.........X....G.#.",
+      "########################################################################################.######.####....##############################################################...#####################",
+      "########################################################################################........####....##############################################################...#####################",
+      "########################################################################################.ooo1oo.####....##############################################################...#####################",
+      "####################################################################################################....##############################################################...#####################",
+    ],
+  };
+
   /* THE THREE SETS. Difficulty picks one; DIFF still layers lives, pit
      safety, checkpoints and the clock on top of whichever it picks.
      Worlds are filled in set by set — where two sets still name the same
      world, that one has not been written yet. */
   var WORLDS = {
     easy:   [W_MEADOW, W_ORCHARD, W_GARDEN],
-    medium: [W_MEADOW, W_FOREST, W_CASTLE],
+    medium: [W_RIVERSIDE, W_WINDMILL, W_HILLTOWN],
     hard:   [W_MEADOW, W_FOREST, W_CASTLE],
   };
 
@@ -387,6 +453,48 @@ window.SuperOuissy = (function () {
       cloud:["#ffffff", "#e8f6ef", "#cfe6dc"],
       accent:"#ffd6f0",
       hazard:["#a8e8ff", "#63b8e0"],
+    },
+
+    /* Medium 1: morning on the water. */
+    riverside: {
+      sky:  [{ p: 0, c: "#6ec8ee" }, { p: .4, c: "#a8ddf2" }, { p: .8, c: "#dff0e8" }, { p: 1, c: "#f6f0d8" }],
+      far:  ["#b8dcc8", "#8fbfa8", "#6b9884"],
+      mid:  ["#8fd0a0", "#5fa478", "#3f7a58"],
+      grass:["#9ce890", "#62c46a", "#3f9448", "#2e6e36"],
+      dirt: ["#e8cfa0", "#c4a172", "#9a7c52", "#745c3c"],
+      brick:["#e0c090", "#b8946a", "#8c6f4e"],           // jetty planking
+      stone:["#eef4f8", "#c8d8e2", "#a0b4c2"],
+      cloud:["#ffffff", "#f0f8ff", "#d8e8f2"],
+      accent:"#ffe27a",
+      hazard:["#8fd8f0", "#4fa8d8", "#2f7fae"],          // the river
+    },
+
+    /* Medium 2: high open fields, late afternoon. */
+    windmill: {
+      sky:  [{ p: 0, c: "#78bfe8" }, { p: .45, c: "#bce0ee" }, { p: 1, c: "#ffe8bc" }],
+      far:  ["#e8d8a0", "#c4b278", "#9a8a58"],
+      mid:  ["#d8c078", "#ae9752", "#84713a"],
+      grass:["#d8e878", "#a8c452", "#7e9438", "#5e6e28"],
+      dirt: ["#e0c088", "#b89460", "#8e7046", "#6a5232"],
+      brick:["#f0dcb0", "#c8ac7c", "#9a8058"],
+      stone:["#f4f0e2", "#d4ccb4", "#aaa088"],
+      cloud:["#ffffff", "#fff4e0", "#eaddc4"],
+      accent:"#ffcf6a",
+      hazard:["#8fe0ff", "#57b2e0"],
+    },
+
+    /* Medium 3: the town at dusk, lamps coming on. */
+    hilltown: {
+      sky:  [{ p: 0, c: "#3f4a86" }, { p: .35, c: "#7a6aa0" }, { p: .7, c: "#d08fa0" }, { p: 1, c: "#ffc898" }],
+      far:  ["#6a5f96", "#4f4676", "#3a3358"],
+      mid:  ["#8a6a86", "#684f68", "#4a394c"],
+      grass:["#e8c8a0", "#c49a78", "#96745a", "#6e5442"],  // cobbles, lit
+      dirt: ["#9a7f86", "#786169", "#5a474f", "#3f3138"],
+      brick:["#e0b090", "#b88a6c", "#8c6850"],
+      stone:["#f0e2d8", "#c8b2a8", "#9a8880"],
+      cloud:["#ffd0b0", "#e0a496", "#b07c78"],
+      accent:"#ffcf6a",
+      hazard:["#8fd8f0", "#4fa8d8", "#2f7fae"],
     },
 
     forest: {
@@ -884,6 +992,64 @@ window.SuperOuissy = (function () {
     return s.c;
   }
 
+  /* --- Medium's boss: a clockwork heart, wound too tight ---------------- */
+  function paintClockheart(k, hurtFlash) {
+    var s = spriteCanvas(38, 34), c = s.ctx;
+    var K = "#3d2340";
+    var brass = hurtFlash ? "#ffffff" : "#e8b05c";
+    var brassHi = hurtFlash ? "#ffffff" : "#ffd88c";
+    var brassSh = hurtFlash ? "#e8e8f0" : "#a87434";
+    var squat = k === 1 ? 2 : 0;
+
+    heart(c, 19, 19 + squat, 14, K);
+    heart(c, 19, 19 + squat, 12.6, brass, null);
+    /* plating: a lit upper-left, a shaded lower-right, rivets between */
+    for (var y = -11; y < 11; y++)
+      for (var x = -12; x < 0; x++) {
+        var f = (x + 12) / 12;
+        if (f < 0.3 && ((BAYER[(y + 19) & 3][(x + 19) & 3] + .5) / 16) > f * 2.4)
+          px(c, 19 + x, 19 + y + squat, 1, 1, brassHi);
+      }
+    for (var y2 = 4; y2 < 12; y2++)
+      for (var x2 = 4; x2 < 12; x2++)
+        if ((x2 * x2 + y2 * y2) < 150 && ((BAYER[y2 & 3][x2 & 3] + .5) / 16) < .34)
+          px(c, 19 + x2, 19 + y2 + squat, 1, 1, brassSh);
+    for (var r = 0; r < 8; r++) {
+      var a = r / 8 * 6.283;
+      px(c, 19 + Math.cos(a) * 10, 18 + Math.sin(a) * 9 + squat, 1, 1, brassSh);
+    }
+
+    /* The movement, behind glass low in his chest. It used to sit dead
+       centre, which put it straight over his eyes and left him a dark blob
+       with a gold hat — it lives below the face now. */
+    var gy = 22 + squat;
+    oval(c, 19, gy, 6, 5, K);
+    oval(c, 19, gy, 5, 4, hurtFlash ? "#f0f0f8" : "#3a2c48");
+    for (var g = 0; g < 10; g++) {
+      var ga = g / 10 * 6.283 + k * 0.5;
+      px(c, 19 + Math.cos(ga) * 4, gy + Math.sin(ga) * 3, 1, 1, brassHi);
+    }
+    var ha = k * 2.1;
+    for (var hh = 0; hh < 3; hh++)
+      px(c, 19 + Math.cos(ha) * hh, gy + Math.sin(ha) * hh, 1, 1, "#ff6f9e");
+    px(c, 19, gy, 1, 1, "#ffffff");
+
+    /* the key in his back, and a crown of cogs */
+    px(c, 31, 14 + squat, 6, 2, K); px(c, 33, 10 + squat, 2, 8, K);
+    px(c, 32, 11 + squat, 4, 2, brassHi); px(c, 33, 11 + squat, 1, 6, brass);
+    px(c, 11, 3 + squat, 17, 3, K);
+    px(c, 12, 4 + squat, 15, 2, brassHi);
+    px(c, 12, 1 + squat, 2, 3, brass); px(c, 18, 0 + squat, 2, 4, brass);
+    px(c, 25, 1 + squat, 2, 3, brass);
+
+    /* the face */
+    px(c, 12, 14 + squat, 3, 4, K); px(c, 23, 14 + squat, 3, 4, K);
+    px(c, 12, 13 + squat, 4, 1, K); px(c, 22, 13 + squat, 4, 1, K);
+    px(c, 13, 14 + squat, 1, 1, "#ffffff"); px(c, 24, 14 + squat, 1, 1, "#ffffff");
+    px(c, 14, 18 + squat, 3, 1, K); px(c, 22, 18 + squat, 3, 1, K);   // a set jaw
+    return s.c;
+  }
+
   /* --- the Heartbreaker: a cracked heart in a crown, three stomps deep --- */
   function paintBoss(k, hurtFlash) {
     var s = spriteCanvas(40, 34), c = s.ctx;
@@ -1001,6 +1167,8 @@ window.SuperOuissy = (function () {
                hurt: [paintBoss(0, true), paintBoss(1, true), paintBoss(2, true)] },
       cloud: { calm: [paintRaincloud(0), paintRaincloud(1), paintRaincloud(2)],
                hurt: [paintRaincloud(0, true), paintRaincloud(1, true), paintRaincloud(2, true)] },
+      clock: { calm: [paintClockheart(0), paintClockheart(1), paintClockheart(2)],
+               hurt: [paintClockheart(0, true), paintClockheart(1, true), paintClockheart(2, true)] },
     },
     boss: [paintBoss(0), paintBoss(1), paintBoss(2)],
     bossHurt: [paintBoss(0, true), paintBoss(1, true), paintBoss(2, true)],
@@ -1337,6 +1505,178 @@ window.SuperOuissy = (function () {
       },
     },
 
+    /* The river valley: water in the middle distance, reeds in front. */
+    riverside: {
+      horizon: { far: 172, mid: 152 },
+      sky: function (sc, P, rnd, VW, VH) {
+        for (var cl = 0; cl < 5; cl++) {
+          var cx = 20 + cl * 68 + rnd() * 22, cy = 14 + rnd() * 30;
+          blob(sc, cx, cy, 15, 5, P.cloud.concat([P.cloud[2]]));
+          blob(sc, cx - 11, cy + 2, 9, 4, P.cloud.concat([P.cloud[2]]));
+          blob(sc, cx + 12, cy + 2, 10, 4, P.cloud.concat([P.cloud[2]]));
+          px(sc, cx - 19, cy + 4, 38, 1, P.cloud[0]);
+        }
+        /* birds, high and in a loose line */
+        for (var b = 0; b < 7; b++) {
+          var bx = 60 + b * 22 + rnd() * 10, by = 26 + Math.abs(b - 3) * 4;
+          px(sc, bx, by, 2, 1, "#6b8898"); px(sc, bx - 2, by - 1, 2, 1, "#6b8898");
+          px(sc, bx + 2, by - 1, 2, 1, "#6b8898");
+        }
+      },
+      far: function (fc, P, rnd, farW, VH) {
+        /* the far bank, and the river itself lying flat behind everything */
+        for (var h = 0; h < 5; h++) {
+          var cxh = 40 + h * 106 + rnd() * 30, rw = 70 + rnd() * 36, rh = 26 + rnd() * 18;
+          for (var x2 = -rw; x2 <= rw; x2++) {
+            var yy = 128 - Math.round(Math.sqrt(Math.max(0, 1 - (x2 * x2) / (rw * rw))) * rh);
+            px(fc, cxh + x2, yy, 1, 148 - yy, P.far[1]);
+            px(fc, cxh + x2, yy, 1, 2, P.far[0]);
+          }
+        }
+        px(fc, 0, 148, farW, 24, "#7fb8d8");                  // the water
+        px(fc, 0, 148, farW, 2, "#a8d8ee");
+        for (var g = 0; g < 90; g++)
+          px(fc, rnd() * farW, 150 + rnd() * 18, 2 + rnd() * 3, 1, "#c8e8f4");
+      },
+      mid: function (mc, P, rnd, midW, VH) {
+        /* willows leaning over, and a bank of reeds along the front */
+        for (var m = 0; m < 7; m++) {
+          var mx = 26 + m * 66 + rnd() * 20, mh = 26 + rnd() * 14;
+          for (var tr = 0; tr < mh; tr++)
+            px(mc, mx - 2, 152 - tr, 5, 1, tr > mh * .6 ? "#6b5238" : "#8a6b48");
+          canopy(mc, mx, 152 - mh - 8, 17 + rnd() * 4,
+                 [P.mid[0], P.mid[1], P.mid[2], P.mid[2]], rnd, "#d8f4dc");
+          /* trailing willow strands */
+          for (var w = 0; w < 6; w++) {
+            var wx = mx - 14 + w * 5, wl = 8 + rnd() * 12;
+            for (var y2 = 0; y2 < wl; y2++)
+              px(mc, wx + Math.round(Math.sin(y2 * .5) * 1.2), 152 - mh - 2 + y2, 1, 1, P.mid[1]);
+          }
+        }
+        for (var r = 0; r < midW; r += 3) {
+          var rh2 = 6 + rnd() * 10;
+          px(mc, r + rnd() * 2, 152 - rh2, 1, rh2, rnd() > .5 ? "#5fa478" : "#8fd0a0");
+          if (rnd() > .7) px(mc, r, 152 - rh2 - 3, 1, 3, "#c9a86a");   // a bulrush
+        }
+      },
+    },
+
+    /* Open fields with mills turning in them. */
+    windmill: {
+      horizon: { far: 170, mid: 156 },
+      sky: function (sc, P, rnd, VW, VH) {
+        for (var y = -18; y <= 18; y++)
+          for (var x = -18; x <= 18; x++) {
+            var d = Math.sqrt(x * x + y * y), th = (BAYER[(34 + y) & 3][(258 + x) & 3] + .5) / 16;
+            if (d <= 8) px(sc, 258 + x, 34 + y, 1, 1, "#fffbe0");
+            else if (d <= 12) px(sc, 258 + x, 34 + y, 1, 1, "#fff0a8");
+            else if (d <= 18 && th < .55 - (d - 12) / 13) px(sc, 258 + x, 34 + y, 1, 1, "#ffe9c8");
+          }
+        for (var cl = 0; cl < 6; cl++) {
+          var cx = 14 + cl * 56 + rnd() * 18, cy = 12 + rnd() * 34;
+          blob(sc, cx, cy, 12 + rnd() * 6, 4, P.cloud.concat([P.cloud[2]]));
+          blob(sc, cx + 10, cy + 2, 8, 3, P.cloud.concat([P.cloud[2]]));
+          px(sc, cx - 14, cy + 3, 28, 1, P.cloud[0]);
+        }
+      },
+      far: function (fc, P, rnd, farW, VH) {
+        /* long low fields, and mills on the ridge with their sails set */
+        for (var h = 0; h < 4; h++) {
+          var cxh = 50 + h * 128 + rnd() * 30, rw = 90 + rnd() * 40, rh = 18 + rnd() * 12;
+          for (var x2 = -rw; x2 <= rw; x2++) {
+            var yy = 136 - Math.round(Math.sqrt(Math.max(0, 1 - (x2 * x2) / (rw * rw))) * rh);
+            px(fc, cxh + x2, yy, 1, VH - yy, P.far[1]);
+            px(fc, cxh + x2, yy, 1, 2, P.far[0]);
+          }
+        }
+        for (var m = 0; m < 4; m++) {
+          var mx = 60 + m * 118, my = 116 - rnd() * 8;
+          /* darker than the fields behind them, or they vanish into their
+             own hillside — which is exactly what they did */
+          for (var b = 0; b < 26; b++) {
+            px(fc, mx - (7 - b * 0.14), my + b, 14 - b * 0.28, 1, P.far[2]);
+            px(fc, mx - (7 - b * 0.14), my + b, 2, 1, P.far[1]);
+          }
+          px(fc, mx - 8, my - 5, 17, 6, "#6b5f3a");           // the cap
+          px(fc, mx - 8, my - 5, 17, 1, P.far[1]);
+          var a0 = rnd() * 1.5;
+          for (var sail = 0; sail < 4; sail++) {             // four sails
+            var a = a0 + sail * 1.5708;
+            for (var l = 3; l < 20; l++)
+              px(fc, mx + Math.cos(a) * l, my - 2 + Math.sin(a) * l, 2, 2, "#6b5f3a");
+          }
+        }
+      },
+      mid: function (mc, P, rnd, midW, VH) {
+        /* standing corn, and a fence running through it */
+        for (var f = 0; f < midW; f += 26) {
+          px(mc, f, 138, 2, 18, "#8a6b48");
+          px(mc, f, 142, 26, 2, "#a3835c");
+          px(mc, f, 148, 26, 2, "#a3835c");
+        }
+        for (var c = 0; c < midW * 2; c++) {
+          var cx = rnd() * midW, ch = 10 + rnd() * 14;
+          px(mc, cx, 156 - ch, 1, ch, rnd() > .5 ? P.mid[0] : P.mid[1]);
+          px(mc, cx - 1, 156 - ch - 3, 3, 4, P.mid[0]);      // the ear
+          px(mc, cx, 156 - ch - 4, 1, 2, "#f0e0a0");
+        }
+      },
+    },
+
+    /* The town, stacked up a hill with its lamps coming on. */
+    hilltown: {
+      horizon: { far: 158, mid: 162 },
+      sky: function (sc, P, rnd, VW, VH) {
+        for (var i = 0; i < 46; i++) px(sc, rnd() * VW, rnd() * 60, 1, 1, rnd() > .6 ? "#ffffff" : "#ffe9c8");
+        moon(sc, 60, 34, 11, ["#fff4e0", "#f0d8c0", "#d8bca8", "#b89c8c", "#96806e"],
+             [[-3, -2, 3], [4, 3, 2]]);
+        for (var cl = 0; cl < 4; cl++) {
+          var cx = 40 + cl * 78 + rnd() * 20, cy = 22 + rnd() * 26;
+          blob(sc, cx, cy, 14, 4, P.cloud.concat([P.cloud[2]]));
+          px(sc, cx - 16, cy + 3, 32, 1, P.cloud[0]);
+        }
+      },
+      far: function (fc, P, rnd, farW, VH) {
+        /* the rest of the town, climbing away behind her */
+        for (var b = 0; b < 26; b++) {
+          var bx = rnd() * farW, bw = 18 + rnd() * 22, bh = 30 + rnd() * 46;
+          px(fc, bx, 158 - bh, bw, bh, P.far[1]);
+          px(fc, bx, 158 - bh, 1, bh, P.far[0]);
+          for (var r = 0; r < 10; r++)                        // a pitched roof
+            px(fc, bx + r * (bw / 20), 158 - bh - 10 + r, Math.max(1, bw - r * (bw / 10)), 1, P.far[0]);
+          for (var wx = 3; wx < bw - 4; wx += 8)
+            for (var wy = 7; wy < bh - 8; wy += 12)
+              if (rnd() > .45) px(fc, bx + wx, 158 - bh + wy, 3, 4, "#ffb45c");
+        }
+      },
+      mid: function (mc, P, rnd, midW, VH) {
+        /* the near terrace: shutters, chimneys, washing lines, street lamps */
+        for (var b = 0; b < 10; b++) {
+          var bx = b * 48 + rnd() * 10, bw = 34 + rnd() * 10, bh = 46 + rnd() * 26;
+          px(mc, bx, 162 - bh, bw, bh, P.mid[1]);
+          px(mc, bx, 162 - bh, 2, bh, P.mid[0]);
+          px(mc, bx + bw - 2, 162 - bh, 2, bh, "#3a2c3e");
+          for (var r = 0; r < 11; r++)
+            px(mc, bx + r * (bw / 22), 162 - bh - 11 + r, Math.max(1, bw - r * (bw / 11)), 1, P.mid[0]);
+          px(mc, bx + bw - 10, 162 - bh - 18, 5, 8, P.mid[0]);        // chimney
+          for (var wx = 5; wx < bw - 8; wx += 12)
+            for (var wy = 9; wy < bh - 12; wy += 16) {
+              var lit = rnd() > .35;
+              px(mc, bx + wx, 162 - bh + wy, 6, 8, lit ? "#ffc06a" : "#2f2436");
+              px(mc, bx + wx, 162 - bh + wy, 6, 1, lit ? "#ffe6b0" : "#3a2c3e");
+              px(mc, bx + wx + 2, 162 - bh + wy, 1, 8, P.mid[0]);
+            }
+          /* a lamp on a bracket, and the light it throws */
+          if (b % 2 === 0) {
+            px(mc, bx + 4, 150, 8, 1, "#3a2c3e");
+            px(mc, bx + 11, 150, 1, 4, "#3a2c3e");
+            blob(mc, bx + 11, 156, 3, 4, ["#fff0b0", "#ffd166", "#e0a84e", "#b07c30"]);
+            for (var g = 0; g < 8; g++) px(mc, bx + 8 + g % 3, 158 + g, 6 - (g >> 1), 1, "rgba(255,209,102,.10)");
+          }
+        }
+      },
+    },
+
     forest: {
       horizon: { far: 142, mid: 154 },
       sky: function (sc, P, rnd, VW, VH) {
@@ -1667,12 +2007,15 @@ window.SuperOuissy = (function () {
     var d = DIFF[G.diff], sk = skinFor(type), mul = d.enemyMul * sk.speedMul;
     if (type === "walker")
       return { kind: "enemy", type: type, skin: sk.name, x: x + 1, y: y + 2, w: 14, h: 14,
+               spawnX: x + 1, spawnY: y + 2,
                vx: -TUNE.enemySpeed * mul, vy: 0, anim: 0, dead: 0, alive: true };
     if (type === "guard")
       return { kind: "enemy", type: type, skin: sk.name, x: x, y: y, w: 14, h: 16,
+               spawnX: x, spawnY: y,
                vx: -TUNE.guardSpeed * mul, vy: 0, anim: 0, dead: 0, alive: true };
     /* the flyer never touches the ground: it patrols a span and bobs */
     return { kind: "enemy", type: "flyer", skin: sk.name, x: x, y: y, w: 14, h: 12,
+             spawnX: x, spawnY: y,
              vx: TUNE.flyerSpeed * mul, vy: 0, anim: 0, dead: 0, alive: true,
              homeX: x, homeY: y, span: 46, ph: (x % 40) / 40 * 6.28 };
   }
@@ -1993,7 +2336,6 @@ window.SuperOuissy = (function () {
         if (e.dead > 0) { e.dead -= dt; e.y += 90 * dt; }
         return;
       }
-      if (e.spawnX === undefined) { e.spawnX = e.x; e.spawnY = e.y; }
       /* off-screen enemies are frozen — it keeps the level cheap and it is
          what the games this is modelled on all did */
       /* Frozen off screen, but with a wide enough margin that she never
@@ -3605,6 +3947,10 @@ window.SuperOuissy = (function () {
     G.player.vx = 0; G.player.vy = 0;
     G.camSnap = true; moveCamera(1);
   };
+  /* Put the level back the way it started: her, and everything that moves.
+     Resetting only the player was not enough — creatures carry on walking
+     between assertions, so one that had wandered across the map would be
+     standing on the spot the next test teleported her to. */
   window.__soReset = function () {
     var keep = { score: G.score, hearts: G.hearts, deaths: G.deaths };
     G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
@@ -3612,6 +3958,15 @@ window.SuperOuissy = (function () {
     G.score = keep.score; G.hearts = keep.hearts; G.deaths = keep.deaths;
     G.state = "play";
     G.keys = freshKeys();
+    G.level.ents.forEach(function (e) {
+      if (e.kind === "enemy") {
+        e.x = e.spawnX; e.y = e.spawnY; e.alive = true; e.dead = 0; e.vy = 0;
+        e.vx = -Math.abs(e.vx) * (e.type === "flyer" ? -1 : 1);
+      } else if (e.kind === "mover") {
+        e.x = e.homeX; e.y = e.homeY; e.ph = 0; e.on = true; e.timer = 0; e.fade = 1;
+      }
+    });
+    if (G.level.boss) { G.level.boss.shots.length = 0; }
   };
   window.__soMakeBig = function () { setBig(G.player, true); };
   /* read or poke the player directly — G is module-scoped, so a test in the
@@ -3658,6 +4013,66 @@ window.SuperOuissy = (function () {
     G.player.x = b.x + b.w / 2 - G.player.w / 2;
     G.player.y = b.y - G.player.h + 1;
     G.player.vy = 120;
+  };
+
+  /* Find things in the CURRENT level by what they are, not by where they
+     were when a test was written. Nine world maps exist now and they will
+     keep being edited; a suite that hard-codes tile 21 is a suite that
+     breaks every time a level moves. */
+  window.__soFindTile = function (ch) {
+    var L = G.level, hits = [];
+    for (var y = 0; y < L.h; y++)
+      for (var x = 0; x < L.w; x++)
+        if (L.grid[y][x] === ch) hits.push({ x: x, y: y });
+    return hits;
+  };
+  /* the first column with no floor anywhere in it, and the solid tile
+     before it — where she would fall out of the world */
+  window.__soFindPit = function () {
+    var L = G.level;
+    for (var x = 6; x < L.w; x++) {
+      var solid = false;
+      for (var y = 0; y < L.h; y++) if (solidAt(x, y)) { solid = true; break; }
+      if (!solid) return { pit: x, before: x - 1 };
+    }
+    return null;
+  };
+  /* Hearts and power-ups are lifted OUT of the grid into entities when the
+     level loads, so a grid scan will never find one. Ask the entity list. */
+  window.G_keys = function () { return G.keys; };
+  window.__soFindItem = function (type) {
+    return G.level.items
+      .filter(function (it) { return it.type === type; })
+      .map(function (it) { return { x: Math.round(it.x / T), y: Math.round(it.y / T) }; })
+      .sort(function (a, b) { return a.x - b.x; });
+  };
+  /* the leftmost heart she could actually jump to from the floor under it */
+  window.__soFindReachableHeart = function () {
+    var list = window.__soFindItem("heart");
+    for (var i = 0; i < list.length; i++) {
+      var h = list[i], y = h.y;
+      while (y < G.level.h && !solidAt(h.x, y)) y++;
+      if (y < G.level.h && y - h.y <= 4) return h;
+    }
+    return list[0] || null;
+  };
+
+  window.G_bossTile = function () { return G.level.boss ? (G.level.boss.x + G.level.boss.w / 2) / T : 0; };
+  window.__soFindCheckpoint = function () {
+    var c = G.level.checks[0];
+    return c ? Math.round(c.x / T) : null;
+  };
+  /* a gift block that has something in it, and the ground under it */
+  window.__soFindGift = function (ch) {
+    var hits = window.__soFindTile(ch);
+    for (var i = 0; i < hits.length; i++) {
+      /* start BELOW the block: the block itself is solid, so scanning from
+         its own row finds itself and reports no clearance at all */
+      var h = hits[i], y = h.y + 1;
+      while (y < G.level.h && !solidAt(h.x, y)) y++;
+      if (y < G.level.h && y - h.y >= 3) return { x: h.x, y: h.y, floor: y };
+    }
+    return null;
   };
 
   /* --- looking at it --- */

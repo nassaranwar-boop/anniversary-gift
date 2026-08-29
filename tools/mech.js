@@ -31,15 +31,17 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   await boot('medium');
   ok('starts on world 1 with 3 lives', (await info()).lives === 3);
 
-  // hearts: run along the arc at tiles 16-20
-  await tele(14); await pump(0.1);
+  // hearts: start just before the first one in the level, wherever it is
+  const firstHeart = await page.evaluate(() => (window.__soFindReachableHeart() || {}).x);
+  await tele(Math.max(2, firstHeart - 3)); await pump(0.1);
   let before = (await info()).hearts;
   await pump(1.2, { right: true, jump: true }); await pump(0.6, { right: false, jump: false });
   let a = await info();
   ok('collects hearts', a.hearts > before, 'hearts=' + a.hearts);
 
-  // gift block at tile 21: jump under it
-  await tele(21); await pump(0.2);
+  // a gift block with room under it, wherever this world put one
+  const gift = await page.evaluate(() => window.__soFindGift('?'));
+  await tele(gift.x); await pump(0.2);
   before = (await info()).score;
   await pump(0.9, { jump: true }); await pump(0.6, { jump: false });
   a = await info();
@@ -47,7 +49,8 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
       'score+' + (a.score - before) + ' used=' + a.usedBlocks);
 
   // stomp: drop her straight onto the nearest walker
-  await tele(26); await pump(0.15);
+  await tele(await page.evaluate(() => (window.__soFindTile('w')[0] || { x: 20 }).x - 2));
+  await pump(0.15);
   before = (await info()).enemiesAlive;
   await page.evaluate(() => window.__soAboveEnemy());
   await pump(1.2, {});
@@ -56,16 +59,23 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
       before + ' -> ' + a.enemiesAlive + ' lives=' + a.lives);
   ok('stomping did not cost a life', a.lives === 3, 'lives=' + a.lives);
 
-  // grow power-up: the M block at tile 42
-  await tele(42); await pump(0.2);
+  // grow power-up: the M block, wherever it is
+  const grow = await page.evaluate(() => window.__soFindGift('M'));
+  await tele(grow.x); await pump(0.2);
   await pump(1.0, { jump: true }); await pump(0.4, { jump: false });
   await pump(2.5, { jump: false });          // it pops out and walks off the block
-  await pump(0.6, { right: true });          // she walks into it
+  /* it paces between whatever it turned at, so sweep both ways rather than
+     assuming which side of her it ended up on */
+  await pump(1.6, { right: true });
+  await pump(2.4, { left: true });
+  await pump(2.0, { right: true });
+  await pump(0.3, { right: false });
   a = await info();
   ok('the grow power-up makes her big', a.big, 'big=' + a.big);
 
   // big Ouissy breaks a brick; small Ouissy only knocks it
-  await tele(41); await pump(0.2);
+  const brick = await page.evaluate(() => window.__soFindGift('B'));
+  await tele(brick.x); await pump(0.2);
   let bricksBefore = (await info()).bricks;
   await pump(0.9, { jump: true }); await pump(0.5, { jump: false });
   a = await info();
@@ -77,7 +87,8 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   ok('big Ouissy breaks bricks', a.bricks < bricksBefore, bricksBefore + ' -> ' + a.bricks);
 
   // pit on medium is fatal
-  await tele(49); await pump(0.2);
+  const pit = await page.evaluate(() => window.__soFindPit());
+  await tele(pit.pit); await pump(0.2);
   before = (await info()).deaths;
   await pump(3.0, {});
   a = await info();
@@ -86,7 +97,8 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   // ---------- EASY: the cloud catches her ----------
   await boot('easy');
   ok('Easy starts with 5 lives', (await info()).lives === 5, 'lives=' + (await info()).lives);
-  await tele(49); await pump(0.2);
+  const pitE = await page.evaluate(() => window.__soFindPit());
+  await tele(pitE.pit); await pump(0.2);
   before = (await info()).deaths;
   await pump(3.0, {});
   a = await info();
@@ -114,7 +126,8 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   ok('world 3 has a boss and a locked pole', a.hasBoss && !a.goalOpen);
 
   // walking into the moat kills
-  await tele(20); await pump(0.2);
+  const moat = await page.evaluate(() => (window.__soFindTile('~')[0] || {}).x);
+  await tele(moat - 3); await pump(0.2);
   before = (await info()).deaths;
   await pump(2.4, { right: true });
   a = await info();
@@ -126,7 +139,8 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   await page.evaluate(() => window.__soGoLevel(2));
   for (let i = 0; i < 30; i++) { await page.waitForTimeout(200);
     if (await page.evaluate(() => window.__soInfo().state === 'play')) break; }
-  await tele(182); await pump(0.3);
+  await tele(await page.evaluate(() => window.__soFindTile('X').length ? 0 : 0) || (await page.evaluate(() => Math.round(G_bossTile()))));
+  await pump(0.3);
   a = await info();
   const hp0 = a.bossHp;
   const phasesSeen = {};
@@ -149,7 +163,7 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   for (let i = 0; i < 30; i++) { await page.waitForTimeout(200);
     if (await page.evaluate(() => window.__soInfo().state === 'play')) break; }
   const watch = await page.evaluate(() => {
-    window.__soTele(178);
+    window.__soTele(Math.round(G_bossTile()) - 4);
     window.__soPlayer({ invuln: 99999, star: 0 });
     window.__soBossSet({ hp: 6, hurt: 0, dead: 0, awake: true, mode: 'wait', modeT: 0.2, shots: [] });
     var maxShots = 0, minTell = 99, minOpen = 99, last = null, run = 0, attackedFrom = {};

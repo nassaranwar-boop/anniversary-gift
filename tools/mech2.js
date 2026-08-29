@@ -29,14 +29,17 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
 
   // ---------- checkpoints, the sparkle, the feather, the clock ----------
   await boot('medium');
-  // stand on the ribbon at tile 165, then die, and check where she comes back
-  await tele(165); await pump(0.6, {});
+  // stand on the ribbon wherever this world put it, die, and check she
+  // comes back to it rather than to the start
+  const cpTile = await page.evaluate(() => window.__soFindCheckpoint());
+  await tele(cpTile); await pump(0.6, {});
   let cp = await info();
   ok('the checkpoint is taken by walking over it', cp.score >= 0);
   await page.evaluate(() => window.__soPlayer({ y: 99999 }));
   await pump(3.0, {});
   a = await info();
-  ok('she respawns at the checkpoint, not the start', a.x > 150, 'respawned at tile ' + a.x);
+  ok('she respawns at the checkpoint, not the start', Math.abs(a.x - cpTile) < 4,
+     'ribbon at ' + cpTile + ', respawned at ' + a.x);
 
   // Easy has a ribbon in every world; Hard has none
   await boot('hard');
@@ -44,7 +47,8 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
 
   // the sparkle state: walk through an enemy unharmed
   await boot('medium');
-  await tele(26); await pump(0.2);
+  await tele(await page.evaluate(() => (window.__soFindTile('w')[0] || { x: 20 }).x - 2));
+  await pump(0.2);
   await page.evaluate(() => window.__soPlayer({ star: 9 }));
   before = (await info()).lives;
   await page.evaluate(() => window.__soAboveEnemy());
@@ -57,7 +61,7 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   // the feather: a second jump in mid-air. Measure the highest point she
   // reaches across the whole jump, with and without it.
   const peak = async (wing) => {
-    await tele(20); await pump(0.3, {});
+    await tele(6); await pump(0.3, {});
     return page.evaluate(w => {
       if (w) window.__soPlayer({ wing: true, jumpsLeft: 1 });
       var ground = window.__soPlayer().y, best = ground;

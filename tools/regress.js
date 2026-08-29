@@ -68,15 +68,17 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     await page.evaluate(() => { showScreen('hub'); startHub(); });
     await page.waitForTimeout(300);
     await page.click('#hub-card-ouissy');
-    await page.waitForTimeout(900);
+    // wait for the thing itself rather than guessing at a duration: the
+    // dissolve is 420ms and the menu is built after it
+    await page.waitForSelector('.so-diff-card', { timeout: 6000 }).catch(() => {});
     ok(label + ': the hub card opens Super Ouissy',
        await page.evaluate(() => document.getElementById('screen-ouissy').classList.contains('active')
                               && !!document.querySelector('.so-diff-card')));
     // and back out again, leaving the hub intact
     await page.click('#so-quit-menu');
-    // pageTurn's dissolve is 420ms and the click handler tears the game
-    // down first; under load on a wide viewport this lands around 800ms
-    await page.waitForTimeout(2000);
+    await page.waitForFunction(
+      () => document.getElementById('screen-hub').classList.contains('active'),
+      { timeout: 6000 }).catch(() => {});
     ok(label + ': quitting returns to the hub',
        await page.evaluate(() => document.getElementById('screen-hub').classList.contains('active')));
     ok(label + ': still no page errors after all of that', errors.length === 0, errors.slice(0,2).join(' | '));
