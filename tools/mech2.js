@@ -87,6 +87,29 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   a = await info();
   ok('running out of time costs a life on Hard', a.deaths > before, 'deaths=' + a.deaths);
 
+  // ---------- the rescue: Hard only, and only with a life left ----------
+  await boot('hard');
+  await tele(10); await pump(0.3, {});
+  before = (await info()).lives;
+  await page.evaluate(() => window.__soPlayer({ y: 99999 }));
+  await pump(2.2, {});
+  a = await info();
+  ok('dying on Hard hands over to the rescue scene', a.state === 'cutscene',
+     'state=' + a.state);
+  const sc = await page.evaluate(() => { var s = Rescue._state(); return s && { kind: s.kind, done: s.done }; });
+  ok('and it is the rescue, not something else', sc && sc.kind === 'rescue');
+  await pump(4.0, {});
+  a = await info();
+  ok('the rescue hands the game back', a.state === 'play', 'state=' + a.state);
+  ok('and it still cost her a life', a.lives === before - 1, before + ' -> ' + a.lives);
+
+  await boot('medium');
+  await tele(10); await pump(0.3, {});
+  await page.evaluate(() => window.__soPlayer({ y: 99999 }));
+  await pump(2.4, {});
+  a = await info();
+  ok('Medium gets no rescue', a.state === 'play', 'state=' + a.state);
+
   console.log(R.join('\n'));
   console.log(errors.length ? 'ERRORS: ' + errors.join(' | ') : 'no page errors');
   await browser.close();

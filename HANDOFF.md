@@ -97,6 +97,7 @@ script.js        screen flow, the maze, the choice adventure, ambient pad
 book-scene.js    the Three.js opening — self-contained, leave it alone
 scrapbook.js     the memory book: config at the top, then art, pages, turning
 super-ouissy.js  the platformer: config, tuning, difficulty, levels, engine
+rescue.js        its story scenes: Anwar, Death, the dialogue. Hard only.
 vendor/          three.js r180, bundled
 assets/          photos, song.mp3, and the 2D art the maze/adventure use
 tools/           offline checks — see tools/README.md. Nothing here ships.

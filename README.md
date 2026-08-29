@@ -16,6 +16,7 @@ script.js        site logic + maze/adventure content config (EDIT CONTENT HERE)
 book-scene.js    the Three.js 3D intro scene — self-contained
 scrapbook.js     the memory book — its own config block at the top
 super-ouissy.js  the platformer — its own config block at the top
+rescue.js        the platformer's story scenes (Hard only) — self-contained
 assets/          images used by the 2D parts of the site
 tools/           offline checks (see tools/README.md); nothing here ships
 ```

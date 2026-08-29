@@ -457,8 +457,10 @@ window.SuperOuissy = (function () {
   /* Ouissy herself never changes colour, whichever world she is in. */
   var OUI = {
     ink:    "#3d2340",
-    skin:   "#ffd9c4", skinSh: "#f0b096",
-    hair:   "#5c3352", hairMid: "#7d4770", hairHi: "#a3679a",
+    skin:   "#ffe6d4", skinSh: "#f2c8b0",
+    /* long blonde, three tones plus a shine; the ink outline keeps it
+       readable against the pale skies she runs under */
+    hair:   "#b8862f", hairMid: "#e0b34e", hairHi: "#ffe9a8",
     dress:  "#ff9ec4", dressSh: "#df6f9f", dressHi: "#ffc8de",
     blouse: "#fffaf5", blouseSh: "#ffe1ec",
     bow:    "#ff5f95", bowHi: "#ffb0cd",
@@ -752,8 +754,8 @@ window.SuperOuissy = (function () {
        L  dress shine  R  ribbon       r  ribbon lit  O  boot
        o  boot shine   Y  crown gold                                */
   var OUI_HEAD = [
-      ".....KKKKKK.....",
-      "...KKhhhhhhKK...",
+      "....KKhhhhKK....",
+      "..KKhhiiiihhKK..",
       "..KhhiihhhhiihK.",
       ".KhhSSSSSSSShhK.",
       "RRKhSSSSSSSShKRR",
@@ -763,12 +765,15 @@ window.SuperOuissy = (function () {
       ".HKhSSSKKSSShKH.",
       ".HHKhSSSSSShKHH."
   ];
+  /* Her hair carries on down the sides through the body rows — that is
+     what makes it long rather than a bob — and steps a pixel in and out
+     as it falls, which is what makes it wavy rather than a curtain. */
   var OUI_BODY = [
       ".HH.KwwwwwwK.HH.",
-      ".HH.KwDDDDwK.HH.",
-      "..KSKDDDDDDKSK..",
-      "..KSKDDDDDDKSK..",
-      ".KLDDDDDDDDDDdK.",
+      ".HHiKwDDDDwKiHH.",
+      ".HKSKDDDDDDKSKH.",
+      "HHKSKDDDDDDKSKHH",
+      ".HKLDDDDDDDDDdKH",
       ".KdDDDDDDDDDDDK."
   ];
   var OUI_LEGS = {
@@ -2497,9 +2502,45 @@ window.SuperOuissy = (function () {
     sfx("die"); shake(6);
   }
 
+  /* =======================================================================
+     THE RESCUE
+
+     On Hard, and only on Hard, she is not left to fall. If there is a life
+     left, Anwar comes and gets her; the story of that lives in rescue.js
+     and this is only the door into it.
+     ======================================================================= */
+  var cutsceneThen = null;
+
+  function playCutscene(kind, opts, then) {
+    if (!window.Rescue) { if (then) then(); return; }
+    cutsceneThen = then || null;
+    G.state = "cutscene";
+    if (window.__soReleaseAll) window.__soReleaseAll();
+    Rescue.begin(kind, opts);
+  }
+
+  function endCutscene() {
+    var then = cutsceneThen;
+    cutsceneThen = null;
+    G.state = "play";
+    if (then) then();
+  }
+
+  function rescuesOn() {
+    return G.diff === "hard" && !!window.Rescue;
+  }
+
   function afterDeath() {
     G.lives--;
     if (G.lives < 0) { endRun(false); return; }
+
+    /* Hard, and she still has a life: he comes and gets her first */
+    if (rescuesOn()) {
+      var p = G.player;
+      playCutscene("rescue", { herX: clamp(p.x - G.cam.x, 30, VIEW.w - 60),
+                               herY: clamp(p.y - G.cam.y, 62, 96) }, respawn);
+      return;
+    }
     respawn();
   }
 
@@ -3112,6 +3153,9 @@ window.SuperOuissy = (function () {
       c.fillStyle = f.c; c.fillText(f.t, f.x - ox, f.y - oy);
       c.restore();
     });
+
+    /* the story module paints over the frozen world it interrupted */
+    if (G.state === "cutscene" && window.Rescue && Rescue.active()) Rescue.paint(c, t);
 
     /* a rainbow wash while the sparkle is on */
     if (G.player.star > 0) {
@@ -4022,6 +4066,7 @@ window.SuperOuissy = (function () {
       var k = KEYMAP[e.key];
       if (!k) return;
       e.preventDefault();
+      if (G.state === "cutscene") { if (window.Rescue) Rescue.press(k); return; }
       if (k === "jump" && !G.keys.jump) G.keys.jumpPressed = true;
       G.keys[k] = true;
     }, { passive: false });
@@ -4075,6 +4120,7 @@ window.SuperOuissy = (function () {
 
       btn.addEventListener("pointerdown", function (e) {
         e.preventDefault();
+        if (G.state === "cutscene") { if (window.Rescue) Rescue.press(k); return; }
         btn.classList.add("held");
         if (k === "jump" && !G.keys.jump) G.keys.jumpPressed = true;
         G.keys[k] = true;
@@ -4179,7 +4225,14 @@ window.SuperOuissy = (function () {
     /* the offline harness drives step() itself, so the loop only paints */
     if (window.__soTestDrive) { paint(now / 1000); return; }
 
-    if (G.state === "play") {
+    if (G.state === "cutscene") {
+      /* the story module has the canvas. It is driven from this loop
+         rather than one of its own, so there is still only ever one. */
+      if (window.Rescue) {
+        Rescue.step(Math.min(dt, 0.05));
+        if (Rescue.done()) endCutscene();
+      } else endCutscene();
+    } else if (G.state === "play") {
       acc += dt;
       var guard = 0;
       while (acc >= STEP && guard++ < 6) { step(STEP); acc -= STEP; }
@@ -4269,7 +4322,14 @@ window.SuperOuissy = (function () {
       G.keys[k] = keys[k];
     }
     var n = Math.round((seconds || 1) * 60);
-    for (var i = 0; i < n; i++) step(1 / 60);
+    for (var i = 0; i < n; i++) {
+      /* drive whichever thing currently owns the frame: the platformer, or
+         the story module when it has taken the canvas */
+      if (G.state === "cutscene") {
+        if (window.Rescue) { Rescue.step(1 / 60); if (Rescue.done()) endCutscene(); }
+        else endCutscene();
+      } else step(1 / 60);
+    }
     paint(performance.now() / 1000);
     return window.__soState();
   };
@@ -4395,6 +4455,7 @@ window.SuperOuissy = (function () {
   /* Hearts and power-ups are lifted OUT of the grid into entities when the
      level loads, so a grid scan will never find one. Ask the entity list. */
   window.G_keys = function () { return G.keys; };
+  window.OUISSY_FRAMES = function (pose, size) { return OUISSY[pose][size]; };
   window.__soSetMeter = function (n) { G.meter = n; updateHud(); };
   window.__soLoveFull = function () { return TUNE.loveFull; };
   window.__soWorldNames = function () { return worldSet().map(function (w) { return w.biome; }); };
@@ -4498,5 +4559,13 @@ window.SuperOuissy = (function () {
     return o.toDataURL("image/png");
   };
 
-  return { start: start, stop: stop, pause: function () { if (G && G.state === "play") togglePause(); } };
+  /* rescue.js borrows her sprite rather than keeping a second copy of
+     her, so a change to her hair shows up in the story scenes too */
+  function frame(pose, k) {
+    var set = OUISSY[pose] || OUISSY.idle;
+    var arr = G && G.player && G.player.big ? set.big : set.small;
+    return arr[Math.min(k || 0, arr.length - 1)];
+  }
+
+  return { start: start, stop: stop, frame: frame, pause: function () { if (G && G.state === "play") togglePause(); } };
 })();
