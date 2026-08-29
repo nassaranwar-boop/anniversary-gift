@@ -175,32 +175,32 @@ window.Rescue = (function () {
      them both.
      ======================================================================= */
   var ANWAR_MAP = [
-    "......KKKKKKKK......",
-    "....KKhihhhihhiKK...",
-    "...KhihhhihhihhhihK.",
-    "...KhhihhhihhhihhhK.",
-    "..KhihhhhihhhihhhihK",
-    "..KhhSSSSSSSSSSSShhK",
-    "..KhSSKKSSSSKKSSSShK",
-    "..KhSKKKKSSKKKKSSShK",
-    "..KhSKGKKSSKKGKSSShK",
-    "..KhSKKKKSSKKKKSSShK",
-    "..KhSSSSSSSSSSSSSShK",
-    "...KSSbbbbbbbbbbSSK.",
-    "...KSbbbbKKKKbbbbSK.",
-    "....KSbbbbbbbbbbSK..",
-    ".....KKSSSSSSSSKK...",
-    "....KCCCwwwwCCCCK...",
-    "...KCCCCCwwCCCCCCK..",
-    "..KhCCCCCwwCCCCCCCK.",
-    "..KSCCCCCwwCCCCCCSK.",
-    "..KSCCCCCwwCCCCCCSK.",
-    "...KCCCCCCCCCCCCCK..",
-    "...KCCCCCCCCCCCCCK..",
-    "...KCCCCK..KCCCCK...",
-    "...KTTTTK..KTTTTK...",
-    "...KTTTTK..KTTTTK...",
-    "..KOOOOOK..KOOOOOK..",
+    ".......KKKKKKKK.......",
+    ".....KKhihhhihhiKK....",
+    "....KhihhhihhihhhihK..",
+    "....KhhihhhihhhihhhK..",
+    "...KhihhhhihhhihhhihK.",
+    "...KhhSSSSSSSSSSSShhK.",
+    "...KhSSKKSSSSKKSSSShK.",
+    "...KhSKKKKSSKKKKSSShK.",
+    "...KhSKGKKSSKKGKSSShK.",
+    "...KhSKKKKSSKKKKSSShK.",
+    "...KhSSSSSSSSSSSSSShK.",
+    "....KSSbbbbbbbbbbSSK..",
+    "....KSbbbbKKKKbbbbSK..",
+    ".....KSbbbbbbbbbbSK...",
+    "......KKSSSSSSSSKK....",
+    "..KKJJJJkkkkkkJJJJKK..",
+    ".KJJJJJJkkkkkkJJJJJJK.",
+    "KJJJJJJJkkkkkkJJJJJJJK",
+    "KJJJJJJJkkkkkkJJJJJJJK",
+    "KSJJJJJJkkkkkkJJJJJJSK",
+    "KSJJJJJJkkkkkkJJJJJJSK",
+    ".KJJJJJJJkkkkJJJJJJJK.",
+    "..KJJJJJJJJJJJJJJJJK..",
+    "...KTTTTTK..KTTTTTK...",
+    "...KTTTTTK..KTTTTTK...",
+    "..KOOOOOOK..KOOOOOOK..",
   ];
 
   var DEATH_MAP = [
@@ -217,64 +217,68 @@ window.Rescue = (function () {
     ".KrrccVVgVVVVVgVVVccK.KhhK..............",
     ".KrrccVVVVVVVVVVVVccK.KhhK..............",
     "..KrrcVVVVVVVVVVVVcK..KhhK..............",
-    "..KrrccVVVVVVVVVVccK..KhhK..............",
-    "...KrrccccccccccccK...KhhK..............",
-    "..KrrccccccccccccccK..KhhK..............",
-    ".KrrcccccccccccccccK..KhhK..............",
-    "KrrcccccccccccccccccK.KhhK..............",
-    "KrrccccccccccccccccccKKhhK..............",
-    "rrccccccccccccccccccccKhhK..............",
+    ".KrrcccVVVVVVVVcccccK.KhhK..............",
+    "KrrccccccccccccccccccKKhhKK.............",
+    "rrrrrrrrcccccccccccrrrrhhrrKKK..........",
+    "rrccccccccccccccccccccchhcccccK.........",
+    "rrccccccccccccccccccccchhcccccK.........",
+    "rrccccccccccccccccccccchhcccccK.........",
+    "rrccccccccccccccccccccchhcccKK..........",
+    "rrccccccccccccccccccccchhcKK............",
+    "rrccccccccccccccccccccGhhGK.............",
+    "rrccccccccccccccccccccGhhGK.............",
+    "rrccccccccccccccccccccGhhGK.............",
     "rrccccccccccccccccccccchhK..............",
-    "KrrcccccccccccccccccccGhhGK.............",
-    "KrrcccccccccccccccccccGhhGK.............",
-    "KrrcccccccccccccccccccGhhGK.............",
-    ".KrrccccccccccccccccccchhK..............",
-    ".KrrccccccccccccccccccchhK..............",
-    ".KrrccccccccccccccccccchhK..............",
-    "..KrrcccccccccccccccccchhK..............",
-    "..KrrcccccccccccccccccchhK..............",
-    "..KrrcccccccccccccccccchhK..............",
-    "..KrrcccccccccccccccccchhK..............",
-    ".KrrccccccccccccccccccchhK..............",
-    ".KrrccccccccccccccccccGhhGK.............",
-    ".KrrccccccccccccccccccGhhGK.............",
-    "KrrcccccccccccccccccccGhhGK.............",
+    "rrccccccccccccccccccccchhK..............",
+    "rrccccccccccccccccccccchhK..............",
     "KrrcccccccccccccccccccchhK..............",
-    "KrrcccccccccccccccccccKhhK..............",
-    "KrrcccccccccccccccccccKhhK..............",
-    "rrcccccccccccccccccccKKhhK..............",
-    "rrcccccccccccccccccccKKhhK..............",
-    "rrcccccccccccccccccccKKhhK..............",
-    "KrrccccccccccccccccccKKhhK..............",
-    "KrrccccccccccccccccccKKhhK..............",
-    "KrrccccccccccccccccccKKhhK..............",
+    "KrrcccccccccccccccccccchhK..............",
+    "KrrcccccccccccccccccccchhK..............",
+    "KrrcccccccccccccccccccchhK..............",
+    "KrrcccccccccccccccccccchhK..............",
+    ".KrrccccccccccccccccccGhhGK.............",
+    ".KrrccccccccccccccccccGhhGK.............",
+    ".KrrccccccccccccccccccGhhGK.............",
+    ".KrrccccccccccccccccccchhK..............",
     ".KrrccccccccccccccccccKhhK..............",
     ".KrrccccccccccccccccccKhhK..............",
-    "..KrrcccccccccccccccccKhhK..............",
-    "...KrrccccccccccccccccKhhK..............",
-    "....KrrcccccccccccccccKhhK..............",
-    ".....KrrcccccccccccccKKhhK..............",
-    ".....KrrccccccccccccK.KhhK..............",
-    "......KrrcccccccccccK.KhhK..............",
-    "......KrrccccccccccK..KhhK..............",
-    ".......KrrccccccccK...KhhK..............",
-    ".......KrrcccccccK....KhhK..............",
-    ".......KrrccccccK.....KhhK..............",
-    "........KrrcccccK.....KhhK..............",
-    ".........KKKKKKK.......KK...............",
+    ".KrrccccccccccccccccccKhhK..............",
+    ".KrrccccccccccccccccccchhK..............",
+    ".KrrccccccccccccccccccchhK..............",
+    "KrrcccccccccccccccccccKhhK..............",
+    "KrrcccccccccccccccccccchhK..............",
+    "KrrcccccccccccccccccccchhK..............",
+    "KrrcccccccccccccccccccchhK..............",
+    "KrrcccccccccccccccccccchhK..............",
+    "rrccccccccccccccccccccchhK..............",
+    "rrccccccccccccccccccccchhK..............",
+    "rrccccccccccccccccccccchhK..............",
+    "rrccccccccccccccccccccchhK..............",
+    "rrccccccccccccccccccccchhK..............",
+    "rrccccccccccccccccccccchhcK.............",
+    "rrccccccccccccccccccccchhcK.............",
+    "rrccccccccccccccccccccchhccK............",
+    "rrccccccccccccccccccccchhcccK...........",
+    "rrccccccccccccccccccccchhcccK...........",
+    "KrrcKcccccKcccKccccKKKKhhKKK............",
+    "KccK.KKKKKKccK.KKKK....KK...............",
   ];
 
   /* one character per pixel, as in the game
        K ink   h hair   i hair shine   S skin   b stubble
-       G glass  C coat   w shirt       T trousers  O shoe
+       G glass  J jacket  j jacket lit  k shirt   T jeans  O boot
        c cloak  r the cold rim down his lit side
        V the void under the hood   g a glint in it
        s scythe blade   S (in Death) blade shine   h (in Death) the shaft */
+  /* Brown leather over a black shirt, dark jeans, dark boots. */
   var ANWAR_PAL = {
     K: "#241a26", h: "#2f2320", i: "#5a4238",
-    S: "#e0b189", b: "#4a3a30",
-    G: "#cfe0ee", C: "#3d5a8a", w: "#eef2f8",
-    T: "#2b3550", O: "#1f1a22",
+    S: "#e0b189", b: "#4a3a30", G: "#cfe0ee",
+    J: "#7a4e2e",          // the jacket
+    j: "#a06a42",          // where the light catches it
+    k: "#191620",          // the shirt under it
+    T: "#262a38",          // jeans
+    O: "#15131b",          // boots
   };
   var DEATH_PAL = {
     K: "#000000", c: "#141018", V: "#000000", g: "#8fd8ff",
@@ -297,11 +301,23 @@ window.Rescue = (function () {
   function paintAnwar(k) {
     var map = ANWAR_MAP.slice();
     if (k) {
-      /* one frame of weight shift: the coat hem swings a pixel */
-      map[22] = "..KCCCCK....KCCCCK..";
-      map[23] = "..KTTTTK....KTTTTK..";
+      /* a weight shift, not a walk: the jacket hem swings a pixel */
+      map[22] = ".KJJJJJJJJJJJJJJJJK...";
     }
-    return paintMap(map, ANWAR_PAL, 20);
+    var s = spriteCanvas(22, map.length), c = s.ctx;
+    for (var y = 0; y < map.length; y++)
+      for (var x = 0; x < 22; x++) {
+        var ch = map[y].charAt(x);
+        if (ch === "." || ch === " ") continue;
+        /* The light in these scenes comes from his left, so the leading
+           edge of the leather catches it — a clean lit edge, not a hatch:
+           a diagonal pattern across it read as corduroy. */
+        var lit = ch === "J" && y >= 15 && y <= 22 &&
+                  map[y].charAt(x - 1) !== "J" && map[y].charAt(x + 1) === "J";
+        if (lit) px(c, x, y, 1, 1, ANWAR_PAL.j);
+        else if (ANWAR_PAL[ch]) px(c, x, y, 1, 1, ANWAR_PAL[ch]);
+      }
+    return s.c;
   }
 
   /* Death does not breathe. The cloak stirs anyway. */
@@ -336,56 +352,96 @@ window.Rescue = (function () {
      so the two story scenes on this site feel like they belong together.
      Text types itself on; a press finishes the line, the next press moves on.
      ======================================================================= */
+  /* Each speaker gets a panel in their own colours. Anwar is warm, Death is
+     colder and darker than the frame around him, she is rose, and the
+     game's own instructions are gold. */
   var SPEAKER = {
-    anwar:  { name: "Anwar",  ink: "#2b3550", tape: "#a8c0e8" },
-    ouissy: { name: "Ouissy", ink: "#8c3a60", tape: "#ffb0cd" },
-    death:  { name: "",       ink: "#d8d2e8", tape: "#4a4458", dark: true },
-    sys:    { name: "",       ink: "#7a5a2a", tape: "#ffd166", flat: true },
+    anwar:  { name: "ANWAR",  fill: "#2c1f3c", fill2: "#1b1328",
+              edge: "#c8a06a", ink: "#ffeccd", tab: "#c8a06a", tabInk: "#231428" },
+    ouissy: { name: "OUISSY", fill: "#3a1c34", fill2: "#241222",
+              edge: "#ff9ec4", ink: "#ffe6f0", tab: "#ff9ec4", tabInk: "#3a1030" },
+    death:  { name: "",       fill: "#0e0d16", fill2: "#05050b",
+              edge: "#5f7fa0", ink: "#cfe0f0", tab: "#5f7fa0", tabInk: "#08080f" },
+    sys:    { name: "",       fill: "#2e2416", fill2: "#1a1410",
+              edge: "#ffd166", ink: "#ffeeb8", tab: "#ffd166", tabInk: "#2a1f0c" },
   };
 
-  function drawBox(c, who, text, shown, hint) {
+  /* A pixel-art panel: an ink drop shadow, a bevelled body, a bright edge
+     with the corners cut, and studs in them. Drawn with px() at the
+     canvas's own resolution, so it sits on the same pixel grid as the art
+     instead of floating over it. */
+  function panel(c, x, y, w, h, sp, grow) {
+    var gh = Math.max(4, Math.round(h * grow));
+    var gy = y + (h - gh);
+
+    px(c, x + 2, gy + 3, w, gh, "rgba(6,4,10,.55)");
+    px(c, x, gy, w, gh, "#0a0810");
+    px(c, x + 1, gy + 1, w - 2, gh - 2, sp.fill2);
+    px(c, x + 1, gy + 1, w - 2, Math.max(1, (gh - 2) >> 1), sp.fill);
+    px(c, x + 1, gy + 1, w - 2, 1, "rgba(255,255,255,.10)");
+
+    px(c, x + 3, gy + 1, w - 6, 1, sp.edge);
+    px(c, x + 3, gy + gh - 2, w - 6, 1, sp.edge);
+    px(c, x + 1, gy + 3, 1, gh - 6, sp.edge);
+    px(c, x + w - 2, gy + 3, 1, gh - 6, sp.edge);
+    px(c, x + 2, gy + 2, 1, 1, sp.edge);
+    px(c, x + w - 3, gy + 2, 1, 1, sp.edge);
+    px(c, x + 2, gy + gh - 3, 1, 1, sp.edge);
+    px(c, x + w - 3, gy + gh - 3, 1, 1, sp.edge);
+    return gy;
+  }
+
+  function drawBox(c, who, text, shown, hint, grow) {
     var sp = SPEAKER[who] || SPEAKER.anwar;
-    var x = 14, w = VW - 28, y = VH - 40, h = 34;
+    var x = 12, w = VW - 24, h = 40, y = VH - h - 6;
+    grow = grow === undefined ? 1 : clamp(grow, 0, 1);
+    var gy = panel(c, x, y, w, h, sp, grow);
+    if (grow < 0.55) return;
 
-    /* the paper */
-    px(c, x + 1, y + 1, w - 2, h - 2, sp.dark ? "#181420" : "#fffdf5");
-    px(c, x, y, w, 1, sp.dark ? "#2c2636" : "#e8dfc8");
-    px(c, x, y + h - 1, w, 1, sp.dark ? "#0c0a12" : "#d8cfb4");
-    px(c, x, y, 1, h, sp.dark ? "#2c2636" : "#e8dfc8");
-    px(c, x + w - 1, y, 1, h, sp.dark ? "#0c0a12" : "#d8cfb4");
-    /* two bits of tape holding it up */
-    px(c, x - 3, y - 3, 16, 6, sp.tape);
-    px(c, x + w - 13, y - 3, 16, 6, sp.tape);
-
-    /* who is speaking */
-    var ty = y + 7;
+    var ty = gy + 9;
     if (sp.name) {
-      c.font = "6px monospace";
+      c.font = "5px monospace";
+      var nw = Math.ceil(c.measureText(sp.name).width) + 8;
+      px(c, x + 6, gy - 4, nw, 8, "#0a0810");
+      px(c, x + 7, gy - 3, nw - 2, 6, sp.tab);
       c.textAlign = "left";
-      c.fillStyle = sp.ink;
-      c.fillText(sp.name, x + 6, ty);
-      ty += 9;
-    } else ty += 3;
-
-    /* the line, wrapped and typed on */
-    c.font = (sp.flat ? "5px" : "6px") + " monospace";
-    c.textAlign = "left";
-    c.fillStyle = sp.ink;
-    var words = String(text).slice(0, shown).split(" ");
-    var line = "", lines = [];
-    for (var i = 0; i < words.length; i++) {
-      var test = line ? line + " " + words[i] : words[i];
-      if (c.measureText(test).width > w - 14 && line) { lines.push(line); line = words[i]; }
-      else line = test;
+      c.fillStyle = sp.tabInk;
+      c.fillText(sp.name, x + 11, gy + 2);
+      ty = gy + 13;
     }
-    if (line) lines.push(line);
-    for (var j = 0; j < lines.length && j < 3; j++) c.fillText(lines[j], x + 6, ty + j * 8);
 
-    /* the little arrow that says "press" */
+    c.font = "6px monospace";
+    c.textAlign = "left";
+    var words = String(text).slice(0, shown).split(" ");
+    var lineTxt = "", lines = [];
+    for (var i = 0; i < words.length; i++) {
+      var test = lineTxt ? lineTxt + " " + words[i] : words[i];
+      if (c.measureText(test).width > w - 16 && lineTxt) { lines.push(lineTxt); lineTxt = words[i]; }
+      else lineTxt = test;
+    }
+    if (lineTxt) lines.push(lineTxt);
+    for (var j = 0; j < lines.length && j < 3; j++) {
+      c.fillStyle = "rgba(4,3,8,.75)";
+      c.fillText(lines[j], x + 9, ty + j * 8 + 1);
+      c.fillStyle = sp.ink;
+      c.fillText(lines[j], x + 8, ty + j * 8);
+    }
+
+    /* the caret, while it is still typing */
+    if (shown < String(text).length && lines.length) {
+      var last = lines[lines.length - 1];
+      var cx2 = x + 8 + c.measureText(last).width + 1;
+      var cy2 = ty + (Math.min(lines.length, 3) - 1) * 8;
+      if (Math.floor(Date.now() / 90) % 2) px(c, cx2, cy2 - 5, 1, 6, sp.edge);
+    }
+
+    /* and the arrow that says "press", once it has finished */
     if (hint) {
       var b = Math.sin(Date.now() / 200) > 0 ? 0 : 1;
-      px(c, x + w - 10, y + h - 9 + b, 4, 1, sp.ink);
-      px(c, x + w - 9, y + h - 8 + b, 2, 1, sp.ink);
+      var ax2 = x + w - 11, ay2 = gy + h - 9 + b;
+      px(c, ax2, ay2, 5, 1, sp.edge);
+      px(c, ax2 + 1, ay2 + 1, 3, 1, sp.edge);
+      px(c, ax2 + 2, ay2 + 2, 1, 1, sp.edge);
     }
   }
 
@@ -428,7 +484,9 @@ window.Rescue = (function () {
       var ac = window.__soAudio || (window.__soAudio = new AC());
       if (ac.state === "suspended") ac.resume();
       var spec = ({
-        chill:  { type: "sine",     f: 240,  to: 60,   d: 1.6, v: .05 },
+        chill:  { type: "sine",     f: 240,  to: 55,   d: 2.2, v: .06 },
+        thump:  { type: "sine",     f: 90,   to: 34,   d: .40, v: .09 },
+        thumpBig:{type: "sine",    f: 70,   to: 26,   d: .75, v: .12 },
         swing:  { type: "sawtooth", f: 900,  to: 180,  d: .22, v: .07 },
         catch:  { type: "square",   f: 1400, to: 260,  d: .30, v: .08 },
         pick:   { type: "square",   f: 520,  to: 700,  d: .07, v: .04 },
@@ -465,7 +523,8 @@ window.Rescue = (function () {
       anwar: { x: VW + 30, y: 0, k: 0 },
       death: { x: VW + 60, y: 0, k: 0, arrive: 0 },
       round: 0, cue: null, cueT: 0, hits: 0, closeCalled: false,
-      swing: undefined, flash: 0, chillSfx: false, swungSfx: false, caughtSfx: false,
+      swing: undefined, flash: 0, boxIn: 0, chillSfx: false, swungSfx: false, caughtSfx: false,
+      thump: 0, landed: false,
       sel: 0, particles: [],
     };
     if (kind === "rescue") {
@@ -475,12 +534,15 @@ window.Rescue = (function () {
     return S;
   }
 
-  function say(lines) { S.lines = lines; S.li = 0; S.shown = 0; S.waiting = false; }
+  function say(lines) { S.lines = lines; S.li = 0; S.shown = 0; S.waiting = false; S.boxIn = 0; }
   function line() { return S.lines && S.lines[S.li]; }
 
   function stepText(dt) {
     var ln = line();
     if (!ln) return "done";
+    /* the panel slides open before the words start */
+    S.boxIn = Math.min(1, (S.boxIn || 0) + dt * 6);
+    if (S.boxIn < 0.85) return null;
     var full = ln.text.length;
     if (S.shown < full) {
       S.shown = Math.min(full, S.shown + TYPE_RATE * dt);
@@ -493,6 +555,7 @@ window.Rescue = (function () {
   function pressText() {
     var ln = line();
     if (!ln) return false;
+    if (S.boxIn < 0.85) { S.boxIn = 1; return true; }
     if (S.shown < ln.text.length) { S.shown = ln.text.length; S.waiting = true; return true; }
     S.li++; S.shown = 0; S.waiting = false;
     return S.li < S.lines.length;
@@ -532,7 +595,9 @@ window.Rescue = (function () {
   function paintRescue(c, t) {
     /* the game is still behind this; we only add to it */
     if (S.dim > 0) {
-      c.save(); c.globalAlpha = 0.62 * S.dim;
+      /* light, not paint: the spotlight below does most of the darkening,
+         so this only takes the edge off the world behind it */
+      c.save(); c.globalAlpha = 0.34 * S.dim;
       px(c, 0, 0, VW, VH, "#100a18"); c.restore();
     }
     var a = CAST.anwar[S.anwar.k];
@@ -549,18 +614,79 @@ window.Rescue = (function () {
     }
     c.drawImage(a, Math.round(S.anwar.x), Math.round(S.her.y + 18 - a.height));
 
-    /* a soft light around the two of them, so the eye goes there */
-    c.save();
-    c.globalAlpha = 0.10 + 0.04 * Math.sin(t * 4);
-    c.fillStyle = "#ffe6c0";
-    c.beginPath();
-    c.arc(S.anwar.x + 4, S.her.y + 4, 34, 0, 6.283);
-    c.fill();
-    c.restore();
+    /* THE SPOTLIGHT.
+       Not a pale disc laid over the scene — that read as a smudge. It is a
+       light: a shaft coming down from above, a bright pool where it lands,
+       and the rest of the frame pushed down into the dark around it. */
+    spotlight(c, S.anwar.x + 2, S.her.y + 16, 1, t);
 
     if (S.phase === 2) {
       var ln = line();
-      if (ln) drawBox(c, ln.who, ln.text, Math.floor(S.shown), false);
+      if (ln) drawBox(c, ln.who, ln.text, Math.floor(S.shown), false, S.boxIn);
+    }
+  }
+
+  /* A dramatic spotlight, in three parts: the shaft coming down, the pool
+     it makes on the floor, and a vignette darkening everything it is not
+     falling on. The falloff is deliberately steep — a gentle one is what
+     makes a spotlight look like a flat grey circle. */
+  function spotlight(c, cx, cy, power, t) {
+    var flicker = 0.94 + 0.06 * Math.sin(t * 7.3) * Math.sin(t * 2.1);
+    var p = power * flicker;
+
+    c.save();
+    c.globalCompositeOperation = "multiply";
+    var vig = c.createRadialGradient(cx, cy - 10, 8, cx, cy - 6, 74);
+    vig.addColorStop(0, "rgba(255,255,255,1)");
+    vig.addColorStop(0.42, "rgba(210,205,225,1)");
+    vig.addColorStop(1, "rgba(108,102,136,1)");
+    c.globalAlpha = 0.78 * p;
+    c.fillStyle = vig;
+    c.fillRect(0, 0, VW, VH);
+    c.restore();
+
+    c.save();
+    c.globalCompositeOperation = "lighter";
+    var beam = c.createLinearGradient(0, cy - 90, 0, cy + 6);
+    beam.addColorStop(0, "rgba(255,236,196,0)");
+    beam.addColorStop(0.45, "rgba(255,230,186,0.10)");
+    beam.addColorStop(1, "rgba(255,224,170,0.22)");
+    c.globalAlpha = p;
+    c.fillStyle = beam;
+    c.beginPath();
+    c.moveTo(cx - 9, cy - 90);
+    c.lineTo(cx + 9, cy - 90);
+    c.lineTo(cx + 34, cy + 6);
+    c.lineTo(cx - 34, cy + 6);
+    c.closePath();
+    c.fill();
+
+    var pool = c.createRadialGradient(cx, cy - 6, 2, cx, cy - 4, 40);
+    pool.addColorStop(0, "rgba(255,240,206,0.34)");
+    pool.addColorStop(0.34, "rgba(255,224,170,0.24)");
+    pool.addColorStop(0.72, "rgba(255,210,150,0.07)");
+    pool.addColorStop(1, "rgba(255,210,150,0)");
+    c.globalAlpha = p;
+    c.fillStyle = pool;
+    c.fillRect(cx - 46, cy - 50, 92, 60);
+
+    var floor = c.createRadialGradient(cx, cy + 2, 1, cx, cy + 2, 30);
+    floor.addColorStop(0, "rgba(255,244,214,0.26)");
+    floor.addColorStop(1, "rgba(255,226,170,0)");
+    c.fillStyle = floor;
+    c.beginPath();
+    c.ellipse(cx, cy + 2, 30, 7, 0, 0, 6.283);
+    c.fill();
+    c.restore();
+
+    /* dust turning over in the beam */
+    for (var i = 0; i < 12; i++) {
+      var dx = cx + Math.sin(t * 0.5 + i * 2.1) * (7 + (i % 4) * 6);
+      var dy = cy - 4 - ((t * (6 + i % 5) + i * 9) % 74);
+      c.save();
+      c.globalAlpha = 0.36 * p * (1 - (cy - dy) / 80);
+      px(c, dx, dy, 1, 1, "#fff0c8");
+      c.restore();
     }
   }
 
@@ -618,18 +744,32 @@ window.Rescue = (function () {
       if (S.lines) { stepText(dt); if (textFinished()) phase(1); }
 
     } else if (S.phase === 1) {                   /* the temperature drops */
-      S.chill = Math.min(1, S.pt / 1.6);
-      S.dim = Math.min(1, 1 + S.pt * 0.2);
-      S.her.flinch = Math.min(10, S.pt * 7);      // she backs away from it
-      if (S.pt > 0.5 && !S.chillSfx) { S.chillSfx = true; sfx("chill"); }
-      if (S.pt > 1.9) { S.lines = null; phase(2); }
+      S.chill = Math.min(1, S.pt / 2.0);
+      S.dim = Math.min(1, 1 + S.pt * 0.35);
+      S.her.flinch = Math.min(12, S.pt * 8);      // she backs away from it
+      /* three thumps as something very large gets closer, each one shaking
+         the frame harder than the last */
+      var thumps = [0.45, 1.35, 2.25];
+      for (var i = 0; i < thumps.length; i++)
+        if (S.pt >= thumps[i] && S.thump <= i) {
+          S.thump = i + 1;
+          S.shake = 3 + i * 3;
+          sfx(i === 2 ? "thumpBig" : "thump");
+        }
+      if (S.pt > 0.3 && !S.chillSfx) { S.chillSfx = true; sfx("chill"); }
+      if (S.pt > 3.0) { S.lines = null; phase(2); }
 
     } else if (S.phase === 2) {                   /* and it walks in */
-      var k2 = ease(clamp(S.pt / 2.4, 0, 1));
-      S.death.x = VW + 18 + (VW - 92 - (VW + 18)) * k2;
+      /* he does not slide on: he comes out of the dark. The fade runs
+         ahead of the walk so he is half there before he is anywhere. */
+      var k2 = ease(clamp(S.pt / 3.0, 0, 1));
+      S.death.x = VW + 26 + (VW - 96 - (VW + 26)) * k2;
       S.death.k = (S.pt * 2 | 0) % 2;
-      S.death.arrive = k2;
-      if (S.pt > 2.4) { say(D.meet); phase(3); }
+      S.death.arrive = clamp(S.pt / 1.6, 0, 1);
+      if (S.pt > 3.0 && !S.landed) {
+        S.landed = true; S.shake = 10; sfx("thumpBig");
+      }
+      if (S.pt > 3.4) { say(D.meet); phase(3); }
 
     } else if (S.phase === 3) {                   /* the conversation */
       stepText(dt);
@@ -669,21 +809,61 @@ window.Rescue = (function () {
       c.save(); c.globalAlpha = Math.min(0.92, 0.62 * S.dim);
       px(c, 0, 0, VW, VH, "#07050c"); c.restore();
     }
-    /* and the colour goes with it */
+    /* THE COLD.
+       Five things arriving together, which is what makes it read as a
+       change in the weather rather than as a filter: the colour drains to
+       blue, fog rolls across the floor, ice falls, frost takes the edges,
+       and a cold vignette closes in from the corners. */
     if (S.chill > 0) {
+      var ch = S.chill;
       c.save();
-      c.globalAlpha = 0.26 * S.chill;
-      px(c, 0, 0, VW, VH, "#243f66");
-      c.globalAlpha = 0.72 * S.chill;
-      c.drawImage(frostMask(), 0, 0);
-      c.restore();
-      /* breath, and a slow drift of cold motes */
-      for (var i = 0; i < 22; i++) {
-        var mx = (i * 37 + Math.sin(t * 0.5 + i) * 20 + VW) % VW;
-        var my = (i * 23 + t * 9) % VH;
-        c.save(); c.globalAlpha = 0.5 * S.chill;
-        px(c, mx, my, 1, 1, "#dff0ff"); c.restore();
+
+      /* 1. the colour goes */
+      c.globalAlpha = 0.34 * ch;
+      px(c, 0, 0, VW, VH, "#1b3358");
+
+      /* 2. fog, rolling across the floor. Drawn as soft puffs rather than
+         as bands — a rectangle of flat grey reads as a UI panel lying on
+         the floor, which is exactly what the first attempt looked like. */
+      for (var f = 0; f < 7; f++) {
+        var fy = 100 + (f % 4) * 15;
+        var fw = 70 + (f % 3) * 34;
+        var fx = ((t * (6 + f * 3) + f * 74) % (VW + fw * 2)) - fw;
+        var g2 = c.createRadialGradient(fx, fy, 0, fx, fy, fw);
+        var al = (0.20 - (f % 4) * 0.03) * ch;
+        g2.addColorStop(0, "rgba(196,220,244," + al.toFixed(3) + ")");
+        g2.addColorStop(0.55, "rgba(168,200,232," + (al * 0.55).toFixed(3) + ")");
+        g2.addColorStop(1, "rgba(168,200,232,0)");
+        c.globalAlpha = 1;
+        c.fillStyle = g2;
+        c.beginPath();
+        c.ellipse(fx, fy, fw, 9 + (f % 3) * 3, 0, 0, 6.283);
+        c.fill();
       }
+
+      /* 3. ice, falling and drifting */
+      for (var i = 0; i < 46; i++) {
+        var ix = (i * 29 + Math.sin(t * 0.6 + i * 1.7) * 14 + VW) % VW;
+        var iy = (i * 17 + t * (11 + (i % 5) * 4)) % VH;
+        c.globalAlpha = (0.35 + 0.4 * ((i % 3) / 2)) * ch;
+        var sz = i % 7 === 0 ? 2 : 1;
+        px(c, ix, iy, sz, sz, i % 4 ? "#dff0ff" : "#ffffff");
+      }
+
+      /* 4. frost creeping in from the edges */
+      c.globalAlpha = 0.72 * ch;
+      c.drawImage(frostMask(), 0, 0);
+
+      /* 5. and the corners closing in */
+      c.globalAlpha = 0.85 * ch;
+      var vig = c.createRadialGradient(VW / 2, VH / 2, VH * 0.18,
+                                       VW / 2, VH / 2, VH * 0.78);
+      vig.addColorStop(0, "rgba(10,20,40,0)");
+      vig.addColorStop(0.62, "rgba(8,16,34,0.42)");
+      vig.addColorStop(1, "rgba(4,8,20,0.92)");
+      c.fillStyle = vig;
+      c.fillRect(0, 0, VW, VH);
+      c.restore();
     }
 
     var groundY = S.her.y + 18;
@@ -704,20 +884,75 @@ window.Rescue = (function () {
       }
       c.drawImage(d, Math.round(S.death.x), Math.round(dy));
       c.restore();
+
+      var dcx = S.death.x + 12, dcy = dy + 30, ar = S.death.arrive;
+
+      /* THE AURA. Not a light: a hole. A dark pulse that takes the colour
+         out of everything behind him, so he reads as something the scene
+         is being drained into rather than something standing in it. */
+      var pulse = 0.5 + 0.5 * Math.sin(t * 1.9);
+      c.save();
+      c.globalCompositeOperation = "multiply";
+      var dark = c.createRadialGradient(dcx, dcy, 4, dcx, dcy, 44 + pulse * 8);
+      dark.addColorStop(0, "rgba(30,20,50,1)");
+      dark.addColorStop(0.5, "rgba(70,60,100,1)");
+      dark.addColorStop(1, "rgba(255,255,255,1)");
+      c.globalAlpha = 0.55 * ar;
+      c.fillStyle = dark;
+      c.fillRect(dcx - 60, dcy - 60, 120, 120);
+      c.restore();
+
+      /* and a cold ring just off him, so the hole has an edge */
+      c.save();
+      c.globalAlpha = (0.13 + 0.07 * pulse) * ar;
+      var ring = c.createRadialGradient(dcx, dcy, 12, dcx, dcy, 40);
+      ring.addColorStop(0, "rgba(80,190,230,0)");
+      ring.addColorStop(0.78, "rgba(80,190,230,0.55)");
+      ring.addColorStop(1, "rgba(80,190,230,0)");
+      c.fillStyle = ring;
+      c.fillRect(dcx - 44, dcy - 44, 88, 88);
+      c.restore();
+
+      /* wisps coming off him and going up */
+      for (var w = 0; w < 14; w++) {
+        var wph = w * 1.7;
+        var wt = (t * 0.42 + w / 14) % 1;
+        var wx = dcx + Math.sin(wph + t * 0.8) * (5 + (w % 5) * 3) + ((w % 3) - 1) * 7;
+        var wy = dy + 46 - wt * 52;
+        c.save();
+        c.globalAlpha = (1 - wt) * 0.55 * ar;
+        px(c, wx, wy, wt > 0.6 ? 1 : 2, wt > 0.6 ? 1 : 2,
+           w % 3 === 0 ? "#8fd8ff" : "#3a3352");
+        c.restore();
+      }
+
+      /* HIS EYES. They are the only warm thing about him and they are not
+         warm: two cold points that flare and gutter like something with a
+         draught behind it. */
+      var ex = S.death.x + 8, ey = dy + 10;
+      var flick = 0.55 + 0.45 * Math.sin(t * 11 + Math.sin(t * 3.7) * 2.4);
+      for (var e = 0; e < 2; e++) {
+        var epx = ex + e * 6;
+        c.save();
+        c.globalAlpha = (0.30 + 0.5 * flick) * ar;
+        var eg = c.createRadialGradient(epx + 1, ey + 1, 0, epx + 1, ey + 1, 7);
+        eg.addColorStop(0, "rgba(190,240,255,0.95)");
+        eg.addColorStop(0.4, "rgba(110,210,255,0.55)");
+        eg.addColorStop(1, "rgba(110,210,255,0)");
+        c.fillStyle = eg;
+        c.fillRect(epx - 6, ey - 6, 15, 15);
+        c.restore();
+        px(c, epx, ey, 2, 2, flick > 0.5 ? "#eaf9ff" : "#8fd8ff");
+      }
+
       /* a shadow, so something that big is standing on the floor rather
          than hanging in front of it */
       c.save();
-      c.globalAlpha = 0.5 * S.death.arrive;
+      c.globalAlpha = 0.55 * ar;
       c.fillStyle = "#05040a";
       c.beginPath();
-      c.ellipse(S.death.x + 12, groundY + 2, 22, 4, 0, 0, 6.283);
+      c.ellipse(dcx, groundY + 2, 24, 4.5, 0, 0, 6.283);
       c.fill();
-      c.restore();
-      /* the cold he brings with him */
-      c.save();
-      c.globalAlpha = 0.16 + 0.06 * Math.sin(t * 2);
-      c.fillStyle = "#7fd8ff";
-      c.beginPath(); c.arc(S.death.x + 18, dy + 26, 30, 0, 6.283); c.fill();
       c.restore();
     }
 
@@ -725,9 +960,23 @@ window.Rescue = (function () {
     var her = ouissy(S.phase >= 1 ? "hurt" : "hurt", 0);
     if (her) c.drawImage(her, Math.round(S.her.x - S.her.flinch), Math.round(S.her.y));
 
-    /* him, between the two of them */
+    /* him, between the two of them, with a warm light of his own — the
+       whole point of it is that it is the opposite colour to Death's */
     var a = CAST.anwar[S.anwar.k];
-    c.drawImage(a, Math.round(S.anwar.x), Math.round(groundY - a.height));
+    var ax = Math.round(S.anwar.x), ay = Math.round(groundY - a.height);
+    if (S.phase >= 1) {
+      var warm = 0.5 + 0.5 * Math.sin(t * 1.5);
+      c.save();
+      c.globalAlpha = 0.20 + 0.09 * warm;
+      var wg = c.createRadialGradient(ax + 11, ay + 16, 3, ax + 11, ay + 16, 30);
+      wg.addColorStop(0, "rgba(255,214,150,0.85)");
+      wg.addColorStop(0.55, "rgba(255,176,110,0.30)");
+      wg.addColorStop(1, "rgba(255,176,110,0)");
+      c.fillStyle = wg;
+      c.fillRect(ax - 20, ay - 14, 62, 62);
+      c.restore();
+    }
+    c.drawImage(a, ax, ay);
 
     /* THE CATCH. The blade stops in his hand, and everything about the
        frame says so: a white flash, sparks off the contact, and a hard
@@ -753,7 +1002,7 @@ window.Rescue = (function () {
       drawChoice(c, [D.choice.fight, D.choice.letgo], S.sel, D.choice.prompt);
     } else {
       var ln = line();
-      if (ln) drawBox(c, ln.who, ln.text, Math.floor(S.shown), S.waiting);
+      if (ln) drawBox(c, ln.who, ln.text, Math.floor(S.shown), S.waiting, S.boxIn);
     }
   }
 

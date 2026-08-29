@@ -43,10 +43,14 @@ const { chromium } = require('playwright-core'); const fs = require('fs');
   await page.evaluate(() => window.__soPump(1.3, {}));
   await shot('d1_arrive'); console.log('arrive ', JSON.stringify(await st()));
   await advance(3);                                  // through his two lines
-  await page.evaluate(() => window.__soPump(1.1, {}));
-  await shot('d2_chill');  console.log('chill  ', JSON.stringify(await st()));
-  await page.evaluate(() => window.__soPump(2.6, {}));
-  await shot('d3_enter');  console.log('enter  ', JSON.stringify(await st()));
+  for (const [w, n] of [[0.8,'d2a_chill'],[1.2,'d2b_chill'],[1.4,'d2c_chill']]) {
+    await page.evaluate(x => window.__soPump(x, {}), w);
+    await shot(n); console.log(n, JSON.stringify(await st()));
+  }
+  for (const [w, n] of [[1.2,'d3a_enter'],[1.2,'d3b_enter'],[1.4,'d3c_enter']]) {
+    await page.evaluate(x => window.__soPump(x, {}), w);
+    await shot(n); console.log(n, JSON.stringify(await st()));
+  }
   // press only while it is still talking; stop the moment the choice is up
   const untilPhase = async (want, cap) => {
     for (let i = 0; i < (cap || 60); i++) {

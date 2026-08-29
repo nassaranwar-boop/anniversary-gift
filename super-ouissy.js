@@ -3930,6 +3930,8 @@ window.SuperOuissy = (function () {
     if (st) {
       st.classList.toggle("so-big", G.player.big);
       st.classList.toggle("so-star", G.player.star > 0);
+      /* a score and a clock over a story scene reads as a bug */
+      st.classList.toggle("so-nolevel", G.state === "cutscene");
     }
   }
   function setText(id, v) { var e = $(id); if (e && e.textContent !== v) e.textContent = v; }
