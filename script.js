@@ -1372,25 +1372,121 @@ videoSkipBtn.addEventListener("click", () => {
   window.finishBookIntro();
 });
 
-/* ---------- passcode gate ---------- */
+/* ---------- passcode gate ----------
+   No text field. She taps her own keypad, so the phone keyboard never
+   appears and never covers the thing she is typing into. A hardware
+   keyboard still works on a laptop, because refusing it would be rude.
+   gateCode is the single source of truth; paintGate is the only thing
+   that writes to the cells. */
+let gateCode = "";
+
+function paintGate() {
+  const row = document.getElementById("gate-code");
+  if (!row) return;
+  row.querySelectorAll(".gate-dot").forEach((d, i) => {
+    /* Only toggle on a real change. Re-adding the class every keypress
+       restarts the pop on all four dots and the row flickers. */
+    const want = i < gateCode.length;
+    if (d.classList.contains("filled") !== want) d.classList.toggle("filled", want);
+  });
+}
+
+function gateType(d) {
+  if (gateCode.length >= 4) return;
+  gateCode += d;
+  document.getElementById("gate-error").textContent = "";
+  document.getElementById("gate-code").classList.remove("bad");
+  paintGate();
+  gateClick(1);
+  /* four digits is the whole code, so there is nothing left to wait for.
+     The pause lets the last dot land before it is judged. */
+  if (gateCode.length === 4) setTimeout(checkGateCode, 300);
+}
+function gateBack()  { if (!gateCode) return; gateCode = gateCode.slice(0, -1); paintGate(); gateClick(0); }
+function gateClear() { if (!gateCode) return; gateCode = ""; paintGate(); gateClick(0); }
+
+/* A short wooden click with a breath of paper rustle over it, so the
+   keypad answers back. Synthesised, like every other sound on the site —
+   there is not an audio file in the repo and there should not be one. */
+function gateClick(up) {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const c = window.__gateAudio || (window.__gateAudio = new AC());
+    if (c.state !== "running") { if (window.wakeAudio) window.wakeAudio(c); else c.resume(); }
+    const t = c.currentTime;
+
+    // the click: a quick body-resonance blip
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(up ? 760 : 420, t);
+    o.frequency.exponentialRampToValueAtTime(up ? 320 : 200, t + 0.06);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.055, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + 0.11);
+
+    // the rustle: a very short band-passed noise burst
+    const len = Math.floor(c.sampleRate * 0.05);
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2600; bp.Q.value = 0.9;
+    const ng = c.createGain(); ng.gain.value = 0.045;
+    src.connect(bp); bp.connect(ng); ng.connect(c.destination);
+    src.start(t);
+  } catch (e) {}
+}
+
 function checkGateCode() {
-  const input = document.getElementById("gate-input");
-  const val = input.value.trim();
-  if (val === GATE_CODE) {
-    bloomSeal();
-    setTimeout(() => { pageTurn("scrapbook", startDioramas); }, 900);
+  const row = document.getElementById("gate-code");
+  const card = document.getElementById("gate-card");
+  if (gateCode === GATE_CODE) {
+    if (card) card.classList.add("ok");        // the sheet takes the light
+    bloomSeal();                                // and the wax gives way
+    setTimeout(() => { pageTurn("scrapbook", startDioramas); }, 1100);
   } else {
-    document.getElementById("gate-error").textContent = "That's not quite right... try again 💭";
-    input.classList.remove("shake"); void input.offsetWidth; input.classList.add("shake");
-    input.value = "";
+    document.getElementById("gate-error").textContent = "That isn't it — try again.";
+    /* Show her the wrong code flashing before it clears, rather than
+       wiping it out from under her the instant the fourth dot lands. */
+    if (row) row.classList.add("bad");
+    if (card) { card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake"); }
+    gateThud();
+    setTimeout(() => {
+      gateCode = "";
+      if (row) row.classList.remove("bad");
+      paintGate();
+    }, 620);
   }
 }
+
+/* the sound of a lock not turning */
+function gateThud() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const c = window.__gateAudio || (window.__gateAudio = new AC());
+    if (c.state !== "running") { if (window.wakeAudio) window.wakeAudio(c); else c.resume(); }
+    const t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(190, t);
+    o.frequency.exponentialRampToValueAtTime(70, t + 0.22);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.07, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + 0.32);
+  } catch (e) {}
+}
+
 /* Unlock flourish: the wax seal used to crack. Now it blooms — petals
    unfurl outward and a warm glow swells through as the seal dissolves. */
 function bloomSeal() {
   const seal = document.getElementById("gate-seal");
   const wrap = seal ? seal.parentElement : null;
-  if (seal) seal.classList.add("crack");
+  if (seal) seal.classList.add("crack");     // the wax swells, turns and goes
   if (!wrap || wrap.querySelector(".bloom-burst")) return;
 
   const burst = document.createElement("div");
@@ -1413,8 +1509,53 @@ function bloomSeal() {
   setTimeout(() => burst.remove(), 1400);
 }
 
-document.getElementById("gate-submit").addEventListener("click", checkGateCode);
-document.getElementById("gate-input").addEventListener("keydown", (e) => { if (e.key === "Enter") checkGateCode(); });
+(function wireGate() {
+  const pad = document.getElementById("gate-pad");
+  if (!pad) return;
+
+  /* pointerdown, not click: the key should answer the moment she touches
+     it. The .down class is cleared on release anywhere, so dragging off
+     a key never leaves it stuck looking pressed. */
+  pad.addEventListener("pointerdown", (e) => {
+    const btn = e.target.closest("[data-gate-key]");
+    if (!btn) return;
+    e.preventDefault();
+    btn.classList.add("down");
+    const k = btn.getAttribute("data-gate-key");
+    if (k === "back") gateBack();
+    else if (k === "clear") gateClear();
+    else gateType(k);
+    if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+  });
+  const unlock = document.getElementById("gate-submit");
+  if (unlock) {
+    unlock.addEventListener("pointerdown", (e) => { e.preventDefault(); unlock.classList.add("down"); });
+    unlock.addEventListener("click", () => {
+      /* Only judge a complete code. Pressing Unlock on two digits and
+         being told it is wrong is just rude. */
+      if (gateCode.length === 4) checkGateCode();
+      else document.getElementById("gate-error").textContent = "four numbers first.";
+    });
+  }
+  const release = () => {
+    document.querySelectorAll(".gate-key.down,.gate-unlock.down")
+      .forEach((b) => b.classList.remove("down"));
+  };
+  addEventListener("pointerup", release);
+  addEventListener("pointercancel", release);
+
+  /* a real keyboard, for whoever is on a laptop */
+  addEventListener("keydown", (e) => {
+    const g = document.getElementById("screen-gate");
+    if (!g || !g.classList.contains("active")) return;
+    if (e.key >= "0" && e.key <= "9") { gateType(e.key); e.preventDefault(); }
+    else if (e.key === "Backspace") { gateBack(); e.preventDefault(); }
+    else if (e.key === "Escape") { gateClear(); }
+    else if (e.key === "Enter" && gateCode.length === 4) checkGateCode();
+  });
+
+  paintGate();
+})();
 
 /* =========================================================
    THE SCRAPBOOK

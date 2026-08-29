@@ -15,9 +15,16 @@ const [out, W = 1180, H = 900, mode = 'drawer'] = process.argv.slice(2);
   });
   await page.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'networkidle', timeout: 60000 });
   await page.waitForTimeout(800);
-  if (mode === 'gate') {
+  if (mode === 'gate' || mode === 'gate-typing') {
     await page.evaluate(() => { try{localStorage.clear();}catch(e){} showScreen('gate'); });
     await page.waitForTimeout(900);
+    if (mode === 'gate-typing') {
+      for (const k of ['2','2','0']) {
+        await page.click(`[data-gate-key="${k}"]`);
+        await page.waitForTimeout(160);
+      }
+      await page.waitForTimeout(400);
+    }
   } else {
     await page.evaluate(() => { try{localStorage.clear();}catch(e){} showScreen('scrapbook');
       if (window.Scrapbook) Scrapbook.start(); });

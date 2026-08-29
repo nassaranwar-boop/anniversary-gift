@@ -576,58 +576,258 @@ img{-webkit-user-drag:none; user-select:none;}
     radial-gradient(ellipse at 50% 20%, var(--bg-glow), transparent 60%),
     linear-gradient(172deg,var(--bg-sky-1) 0%,var(--bg-sky-2) 48%,var(--bg-sky-3) 100%);
 }
-.gate-parchment{
-  position:relative; height:min(74vh,520px); aspect-ratio:408/612; margin:0 auto;
-  filter:saturate(.72) brightness(1.1) hue-rotate(-8deg);
-  background-image:url("assets/parchment-ornate.jpg"); background-size:100% 100%; background-repeat:no-repeat;
-  filter:drop-shadow(0 25px 45px rgba(0,0,0,.6));
-  display:flex; align-items:flex-start; justify-content:center;
+/* The two filters used to be separate declarations, so the second simply
+   replaced the first and the warm colour correction never applied at all —
+   the card sat there cold and over-dark against a warm site. One
+   declaration; both effects. */
+/* ---------------------------------------------------------
+   THE GATE
+
+   Everything here is drawn — the mottled wash behind, the torn sheet,
+   the filigree, the wax seal and the key pressed into it. No scanned
+   textures, so it stays sharp at any size and stays in the book's
+   palette rather than dragging in a stock parchment's colours.
+
+   The card is a size container, so every measurement inside it is in
+   cqw and the whole thing scales as one piece from a phone to a desktop
+   without a single breakpoint.
+   --------------------------------------------------------- */
+#screen-gate{position:relative; overflow:hidden;}
+.gate-wash{position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none;}
+.gate-wash-grain{opacity:.055; mix-blend-mode:multiply;}
+
+.gate{
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; align-items:center;
+  padding:2.5vh 4vw; text-align:center;
 }
-.gate-content{position:relative; z-index:1; text-align:center; width:78%; padding-top:30%;}
-.gate-seal-wrap{margin-bottom:12px;}
-.gate-seal{width:60px; height:auto; filter:drop-shadow(0 6px 12px rgba(0,0,0,.4)); animation:sealHang 3.4s ease-in-out infinite; transition:transform .4s ease, opacity .4s ease;}
-@keyframes sealHang{0%,100%{transform:rotate(-3deg);} 50%{transform:rotate(3deg);}}
-/* The seal no longer cracks open — it blooms. Petals unfurl outward from
-   behind it and a warm glow swells through as the seal dissolves. */
-.gate-seal-wrap{position:relative; display:inline-block;}
-.gate-seal.crack{transform:scale(.55) rotate(18deg); opacity:0; transition:transform .75s cubic-bezier(.34,1.4,.5,1), opacity .55s ease .12s;}
-.bloom-burst{position:absolute; left:50%; top:50%; width:0; height:0; pointer-events:none; z-index:2;}
-.bloom-petal{
-  position:absolute; left:0; top:0; width:26px; height:34px; margin:-17px 0 0 -13px;
-  border-radius:60% 60% 55% 55% / 75% 75% 35% 35%;
-  background:radial-gradient(ellipse at 50% 75%, #fffdfa 0%, #ffd9e4 42%, #f7a8c4 100%);
-  box-shadow:0 2px 8px rgba(190,90,130,.28);
-  opacity:0; transform:rotate(var(--a)) translateY(0) scale(.2);
+
+/* ---- the title: a struck metal plaque ---- */
+.gate-title{
+  margin:0 0 clamp(10px,2vh,18px);
+  /* Rye: a spurred western slab. None of the faces already loaded has the
+     heavy bracketed serifs the plaque needs — Cinzel is far too fine at
+     this weight and reads as a wedding invitation, not a struck sign. */
+  font-family:'Rye', var(--font-display), serif; font-weight:400;
+  font-size:min(9.4vw,58px); line-height:1.15;
+  letter-spacing:.02em; white-space:nowrap;
+  animation:gateTitleIn .8s var(--ease-out) both;
 }
-.bloom-burst.go .bloom-petal{ animation:petalUnfurl .95s cubic-bezier(.22,.9,.3,1) forwards; animation-delay:var(--d); }
-@keyframes petalUnfurl{
-  0%   {opacity:0; transform:rotate(var(--a)) translateY(0) scale(.2);}
-  35%  {opacity:1;}
-  100% {opacity:0; transform:rotate(var(--a)) translateY(-64px) scale(1.05);}
+.gate-title span{
+  display:inline-block;
+  color:#8e2f28;
+  /* paint-order puts the stroke behind the fill, so the outline thickens
+     the letter outward instead of eating into its stems */
+  paint-order:stroke fill;
+  -webkit-text-stroke:min(.62vw,3.4px) #3a100c;
+  /* a short hard extrude straight down, then one soft shadow well
+     underneath — the letter sits on the page rather than floating */
+  text-shadow:
+    0 1px 0 #7a3420, 0 2px 0 #63251a, 0 3px 0 #4c1a12, 0 4px 0 #3a100c,
+    0 14px 26px rgba(150,86,64,.42);
+  animation:gateTitleFloat 6s ease-in-out infinite;
 }
-.bloom-core{
-  position:absolute; left:0; top:0; width:20px; height:20px; margin:-10px 0 0 -10px; border-radius:50%;
-  background:radial-gradient(circle, #fff8e2 0%, rgba(255,214,140,.85) 45%, rgba(255,190,110,0) 72%);
-  opacity:0; transform:scale(.3);
+/* gold at the crown falling to burgundy — the plaque's own gradient, the
+   same one the Unlock plate uses */
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .gate-title span{
+    background:linear-gradient(178deg,#ffeec2 0%,#f0cd8a 18%,#d99f5c 38%,#b25c3a 60%,#8e2b26 82%,#6f1c1a 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
 }
-.bloom-burst.go .bloom-core{ animation:bloomGlow 1.05s ease-out forwards; }
-@keyframes bloomGlow{
-  0%   {opacity:0; transform:scale(.3);}
-  30%  {opacity:1; transform:scale(3.2);}
-  100% {opacity:0; transform:scale(9);}
+@keyframes gateTitleIn{from{opacity:0; transform:translateY(-14px) scale(.96);} to{opacity:1; transform:none;}}
+@keyframes gateTitleFloat{0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);}}
+
+/* ---- the card ---- */
+.gate-card{
+  position:relative;
+  width:min(360px,86vw); aspect-ratio:400/560;
+  container-type:size; container-name:gate;
+  filter:drop-shadow(0 16px 30px rgba(140,84,64,.4)) drop-shadow(0 3px 6px rgba(140,84,64,.28));
+  animation:gateCardIn .95s var(--ease-out) .1s both;
 }
+@keyframes gateCardIn{
+  from{opacity:0; transform:translateY(20px) scale(.97) rotate(-.5deg);}
+  to{opacity:1; transform:none;}
+}
+.gate-card.shake{animation:gateShake .5s cubic-bezier(.36,.07,.19,.97);}
+@keyframes gateShake{
+  10%,90%{transform:translateX(-2px) rotate(-.25deg);}
+  20%,80%{transform:translateX(4px) rotate(.3deg);}
+  30%,50%,70%{transform:translateX(-7px) rotate(-.4deg);}
+  40%,60%{transform:translateX(7px) rotate(.4deg);}
+}
+/* the whole sheet takes the light when the code is right */
+.gate-card.ok{animation:gateGlow 1.1s ease-out forwards;}
+@keyframes gateGlow{
+  0%  {filter:drop-shadow(0 16px 30px rgba(140,84,64,.4)) drop-shadow(0 0 0 rgba(240,196,110,0));}
+  45% {filter:drop-shadow(0 16px 34px rgba(150,100,60,.4)) drop-shadow(0 0 34px rgba(244,204,124,.95));}
+  100%{filter:drop-shadow(0 16px 30px rgba(140,84,64,.4)) drop-shadow(0 0 16px rgba(244,204,124,.5));}
+}
+
+.gate-sheet,.gate-frame{position:absolute; inset:0; width:100%; height:100%;}
+.gate-sheet-grain{opacity:.13; mix-blend-mode:multiply;}
+.gate-sheet-marks{mix-blend-mode:multiply;}
+
+.gate-frame{fill:none;}
+.gate-rule-o{stroke:url(#gGold); stroke-width:2.8; opacity:.95;}
+.gate-rule-i{stroke:url(#gGold); stroke-width:1.2; opacity:.7;}
+/* NB: a descendant selector cannot reach inside a <use> clone, so every
+   leaf carries fill and stroke as attributes in the markup. These rules
+   only reach the <use> elements themselves, which is enough for stroke
+   and opacity because both inherit. */
+.gate-flour{stroke:url(#gGold); stroke-width:2.3; stroke-linecap:round; opacity:.88;}
+.gate-flour-band{stroke-width:1.9; opacity:.72;}
+
+/* ---- the contents ---- */
+.gate-body{
+  position:absolute; inset:0; z-index:2;
+  display:flex; flex-direction:column; align-items:center;
+  padding:7cqw 12cqw 9cqw;
+}
+
+/* ---- the seal ---- */
+.gate-seal-wrap{position:relative; display:block; width:60cqw; margin:0 auto .2cqw;}
+.gate-seal{width:100%; height:auto; display:block; overflow:visible;}
+.gate-ribbon{filter:drop-shadow(0 .5cqw .7cqw rgba(80,44,16,.34));}
+.gate-wax{filter:drop-shadow(0 .9cqw 1.2cqw rgba(64,14,26,.5));}
+.mk{fill:none; stroke-linejoin:round;}
+.mk-dark{stroke:#4a0c1c; opacity:.85;}
+.mk-lite{stroke:#d98496; opacity:.5;}
+/* the idle shimmer: the wax catching a little light, nothing more */
+.gate-seal-glow{
+  stroke:rgba(255,214,168,.55); stroke-width:2.5;
+  opacity:0; transform-origin:100px 70px;
+  animation:gateSealPulse 4.6s ease-in-out infinite;
+}
+@keyframes gateSealPulse{
+  0%,100%{opacity:0; transform:scale(.9);}
+  45%    {opacity:.5; transform:scale(1.02);}
+  70%    {opacity:0; transform:scale(1.12);}
+}
+.gate-wax-blob{animation:gateWaxBreathe 5.2s ease-in-out infinite;}
+@keyframes gateWaxBreathe{0%,100%{filter:brightness(1);} 50%{filter:brightness(1.09);}}
+/* the seal gives way when the code is right */
+.gate-seal.crack .gate-wax{animation:gateWaxBreak .9s cubic-bezier(.34,1.3,.5,1) forwards;}
+@keyframes gateWaxBreak{
+  0%  {transform:scale(1) rotate(0); opacity:1;}
+  35% {transform:scale(1.14) rotate(-3deg); opacity:1;}
+  100%{transform:scale(.5) rotate(16deg); opacity:0;}
+}
+.gate-seal.crack .gate-seal-glow{animation:none; opacity:0;}
+
+.gate-heading{
+  margin:0; font-family:var(--font-display); font-weight:700;
+  font-size:6.2cqw; letter-spacing:.06em; color:#4a2313;
+  text-shadow:0 1px 0 rgba(255,246,224,.8);
+}
+.gate-sub{
+  margin:1.4cqw 0 0; font-family:var(--font-serif); font-style:italic;
+  font-size:3.6cqw; color:#7c5230;
+}
+
+/* ---- the code field and its dots ---- */
+.gate-field{
+  margin-top:3.4cqw; padding:3.2cqw 9cqw; border-radius:3cqw;
+  background:linear-gradient(178deg,rgba(120,84,44,.17),rgba(120,84,44,.05));
+  box-shadow:
+    inset 0 .7cqw 1.4cqw rgba(94,62,28,.34),
+    inset 0 0 0 .32cqw rgba(122,86,44,.42),
+    0 .3cqw 0 rgba(255,247,226,.7);
+}
+.gate-dots{display:flex; gap:4.4cqw; justify-content:center;}
+.gate-dot{
+  width:3.4cqw; height:3.4cqw; border-radius:50%;
+  background:rgba(122,86,44,.2);
+  box-shadow:inset 0 .3cqw .5cqw rgba(94,62,28,.4);
+  transition:background .2s ease, box-shadow .2s ease;
+}
+/* a dot does not simply appear — it lands */
+.gate-dot.filled{
+  background:radial-gradient(circle at 36% 30%, #a83a4c 0%, #7d1a2d 60%, #5c0f22 100%);
+  box-shadow:0 .3cqw .6cqw rgba(92,15,34,.5), inset 0 .2cqw .3cqw rgba(255,190,200,.35);
+  animation:gateDotPop .34s var(--ease-pop);
+}
+@keyframes gateDotPop{
+  0%  {transform:scale(.2); opacity:.4;}
+  55% {transform:scale(1.35); opacity:1;}
+  100%{transform:scale(1);}
+}
+/* a wrong code flashes the dots rather than only printing a line */
+.gate-dots.bad .gate-dot{
+  background:radial-gradient(circle at 36% 30%, #e0564a 0%, #b62b22 70%);
+  box-shadow:0 0 1.6cqw rgba(198,48,36,.7);
+  animation:gateDotBad .5s ease;
+}
+@keyframes gateDotBad{0%,100%{transform:scale(1);} 30%{transform:scale(1.3);} 60%{transform:scale(.95);}}
+
+.gate-error{
+  margin:1.8cqw 0 0; min-height:4cqw;
+  font-family:var(--font-serif); font-style:italic;
+  font-size:3.2cqw; color:#9d3324;
+}
+
+/* ---- the keys: struck brass ---- */
+.gate-pad{
+  display:grid; grid-template-columns:repeat(3,1fr);
+  gap:2.2cqw; width:41cqw; margin-top:1.6cqw;
+}
+.gate-key{
+  aspect-ratio:1; border:none; padding:0; cursor:pointer; border-radius:50%;
+  background:linear-gradient(168deg,#e6c88f 0%,#bc9050 42%,#8d6528 100%);
+  box-shadow:
+    inset 0 .28cqw .3cqw rgba(255,240,203,.95),
+    inset 0 -.42cqw .5cqw rgba(74,44,10,.55),
+    0 .7cqw 0 rgba(90,58,20,.55),
+    0 1.3cqw 1.8cqw rgba(90,54,26,.4);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .09s var(--ease-pop), box-shadow .09s ease, filter .2s ease;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation; user-select:none;
+}
+/* the recessed face the numeral is struck into */
+.gate-key b{
+  display:flex; align-items:center; justify-content:center;
+  width:74%; height:74%; border-radius:50%; font-weight:400;
+  background:linear-gradient(168deg,#cba463 0%,#a87e3c 60%,#8f6528 100%);
+  box-shadow:inset 0 .3cqw .5cqw rgba(72,42,10,.5), inset 0 -.24cqw .3cqw rgba(255,238,198,.5);
+  font-family:var(--font-display); font-weight:700; font-size:4.6cqw; color:#3d2109;
+  text-shadow:0 .26cqw 0 rgba(255,238,198,.55);
+}
+.gate-key:hover{filter:brightness(1.06);}
+/* .down as well as :active, so a touch that slides off still lets go */
+.gate-key:active,.gate-key.down{
+  transform:translateY(.7cqw) scale(.94);
+  box-shadow:
+    inset 0 .28cqw .3cqw rgba(255,240,203,.8),
+    inset 0 -.3cqw .4cqw rgba(74,44,10,.6),
+    0 0 0 rgba(90,58,20,.55),
+    0 .5cqw .8cqw rgba(90,54,26,.35);
+}
+.gate-ico{width:4.4cqw; height:4.4cqw; fill:none; stroke:#3d2109; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;}
+
+/* ---- unlock: the same gold as the title ---- */
+.gate-unlock{
+  margin-top:auto; cursor:pointer; border:none;
+  display:flex; align-items:center; justify-content:center; gap:1.6cqw;
+  padding:2.6cqw 8cqw;
+  /* a banner: notched at both ends rather than a plain pill */
+  clip-path:polygon(0 0, 100% 0, calc(100% - 3.2cqw) 50%, 100% 100%, 0 100%, 3.2cqw 50%);
+  font-family:var(--font-display); font-weight:700; font-size:4.2cqw;
+  letter-spacing:.13em; text-transform:uppercase; color:#43230d;
+  background:linear-gradient(178deg,#f6dda6 0%,#e0b46e 26%,#bd914e 58%,#8f672a 100%);
+  box-shadow:0 1.2cqw 1.8cqw rgba(90,54,26,.4);
+  text-shadow:0 .26cqw 0 rgba(255,243,212,.7);
+  transition:transform .09s var(--ease-pop), filter .2s ease;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+}
+.gate-unlock:hover{filter:brightness(1.06);}
+.gate-unlock:active,.gate-unlock.down{transform:translateY(.6cqw) scale(.97);}
+.gate-lock{width:4.2cqw; height:4.2cqw; fill:none; stroke:#43230d; stroke-width:1.9; stroke-linecap:round;}
+
 @media (prefers-reduced-motion: reduce){
-  .bloom-burst.go .bloom-petal,.bloom-burst.go .bloom-core{animation-duration:.01ms;}
+  .gate-title span,.gate-seal-glow,.gate-wax-blob{animation:none;}
 }
-.gate-title{font-family:'Cinzel',serif; font-weight:700; font-size:19px; color:#5a3612; letter-spacing:1px; margin-bottom:4px;}
-.gate-sub{font-family:'Playfair Display',serif; font-style:italic; color:#7a5a30; font-size:12.5px; opacity:.9; margin-bottom:16px;}
-.gate-input-row{margin-bottom:10px;}
-.gate-input{
-  width:120px; text-align:center; font-family:'Cinzel',serif; font-size:20px; letter-spacing:10px; padding:9px 6px 9px 16px;
-  background:rgba(90,54,18,.08); border:2px solid rgba(90,54,18,.35); border-radius:8px; color:#5a3612; outline:none;
-}
-.gate-input.shake{animation:shakeIt .4s ease;}
-.gate-error{color:#a3341a; font-size:11.5px; margin-top:2px; margin-bottom:10px; min-height:14px; font-family:'Poppins',sans-serif;}
+
 .btn-ancient{
   background:linear-gradient(160deg,#d9b062,#8a611f); color:#2b1608; border:none; padding:11px 26px; border-radius:24px;
   font-family:'Cinzel',serif; font-weight:600; font-size:13px; letter-spacing:.5px; cursor:pointer;
