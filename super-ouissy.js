@@ -58,13 +58,43 @@ window.SuperOuissy = (function () {
     /* The line under the title on the difficulty screen. */
     tagline: "a quest, three worlds, and a prince at the end",
 
-    /* Shown once, the first time she ever presses play. */
+    /* The how-to screen. Written for someone who has never played a
+       platformer, because she has not. Each section is a heading and a
+       list of [thing, what it means] rows. */
     howTo: [
-      ["←  →", "run"],
-      ["SPACE / ↑", "jump — hold it longer to jump higher"],
-      ["↓", "duck"],
-      ["ESC / ❚❚", "pause, and change the difficulty"],
-      ["", "land on a critter to bop it. Collect hearts. Find the secrets."],
+      { title: "MOVING",
+        rows: [
+          ["\u2190  \u2192", "run left and right (or A and D)"],
+          ["SPACE", "jump. Hold it down longer to jump higher"],
+          ["\u2193", "duck"],
+          ["ESC", "pause \u2014 you can change the difficulty from there"],
+          ["on a phone", "the buttons along the bottom do all of that"],
+        ] },
+      { title: "WHAT YOU ARE DOING",
+        rows: [
+          ["the pole", "each world ends at a pole with a heart on top. Touch it and the world is done"],
+          ["jumping on things", "land on top of a creature and it is dealt with. Walk into one and you are not"],
+          ["falling", "a bottomless pit costs a life. On Easy a cloud catches you instead"],
+          ["the ribbon", "walk past it and you come back to it if something goes wrong"],
+        ] },
+      { title: "HEARTS AND THE LOVE METER",
+        rows: [
+          ["hearts", "collect them. They fill the meter under the heart in the corner"],
+          ["a full meter", "twenty fills it: you get an extra life AND go sparkling and untouchable for eight seconds"],
+          ["so", "the ones tucked round corners and under the ground are worth going and getting"],
+        ] },
+      { title: "THINGS YOU CAN FIND",
+        rows: [
+          ["a heart sweet", "makes you bigger. Big Ouissy smashes bricks, and a hit knocks you back down instead of out"],
+          ["a star", "sparkling and untouchable for a few seconds"],
+          ["a green heart", "an extra life"],
+          ["a feather", "a second jump in mid-air \u2014 press jump again while you are up there"],
+          ["a boost", "you run faster for a while"],
+        ] },
+      { title: "THE THREE DIFFICULTIES",
+        rows: [
+          ["", "each one is its own three worlds \u2014 different places, different creatures, a different boss. Easy is five lives and no fatal pits; Hard is two lives and a clock."],
+        ] },
     ],
 
     /* The castle scene at the very end. Replace every line of this. */
@@ -3023,7 +3053,7 @@ window.SuperOuissy = (function () {
     var c = cv.getContext("2d");
     c.imageSmoothingEnabled = false;
     var L = G.level;
-    if (!L) { c.clearRect(0, 0, VIEW.w, VIEW.h); return; }
+    if (!L) { paintMenuScene(c, t); return; }
 
     /* the shake is applied to the camera only for drawing, never to physics */
     var sh = G.shake;
@@ -3092,6 +3122,54 @@ window.SuperOuissy = (function () {
       c.restore();
     }
     if (G.player.invuln > 0 && G.player.star <= 0) { /* handled by the flicker in drawPlayer */ }
+  }
+
+  /* =======================================================================
+     THE MENU SCENE
+
+     What is behind the title and the difficulty cards. It is the game's own
+     canvas, not a picture in front of it: the same orchard backdrop the
+     game draws, scrolling slowly on its own, with blossom coming down over
+     it. Nothing here costs a second loop — the frame is already running.
+     ======================================================================= */
+  var menuBg = null, menuPetals = null;
+
+  function paintMenuScene(c, t) {
+    if (!menuBg) {
+      menuBg = buildBackdrop("orchard");
+      menuPetals = [];
+      for (var i = 0; i < 42; i++)
+        menuPetals.push({ x: Math.random() * VIEW.w, y: Math.random() * VIEW.h,
+                          sp: 7 + Math.random() * 12, sw: 6 + Math.random() * 16,
+                          ph: Math.random() * 6.28,
+                          c: ["#ffd0e2", "#fff0f6", "#ffb0cd", "#ffffff"][(Math.random() * 4) | 0],
+                          w: Math.random() > .6 ? 2 : 1 });
+    }
+    var P = BIOME.orchard;
+    px(c, 0, 0, VIEW.w, VIEW.h, P.sky[P.sky.length - 1].c);
+    c.drawImage(menuBg.sky, 0, 0);
+
+    /* the two scenery layers drift by on their own, slowly, at their own
+       depths — the same horizontal parallax the game uses */
+    var drift = t * 5;
+    drawTiled(c, menuBg.far, drift * 0.35, 180 - menuBg.farHorizon, menuBg.farW);
+    drawTiled(c, menuBg.mid, drift, 180 - menuBg.midHorizon, menuBg.midW);
+
+    /* blossom, falling and swinging */
+    for (var i = 0; i < menuPetals.length; i++) {
+      var pt = menuPetals[i];
+      var y = (pt.y + t * pt.sp) % (VIEW.h + 14) - 7;
+      var x = (pt.x + Math.sin(t * 0.8 + pt.ph) * pt.sw * 0.4 + VIEW.w) % VIEW.w;
+      px(c, x, y, pt.w, 1, pt.c);
+      if (Math.sin(t * 3 + pt.ph) > 0) px(c, x + 1, y - 1, 1, 1, pt.c);
+    }
+
+    /* and a scatter of slow sparkles, so it is never completely still */
+    for (var k = 0; k < 16; k++) {
+      var sx = (k * 53 + Math.sin(t * 0.3 + k) * 30 + VIEW.w) % VIEW.w;
+      var sy = 20 + ((k * 37) % 90) + Math.sin(t * 0.6 + k * 1.7) * 6;
+      if (Math.sin(t * 2.2 + k) > 0.3) px(c, sx, sy, 1, 1, "#fff6a8");
+    }
   }
 
   /* A layer wide enough to repeat: drawn twice so the seam never shows. */
@@ -3365,6 +3443,13 @@ window.SuperOuissy = (function () {
   function overlay(html, cls) {
     var ov = $("so-overlay");
     if (!ov) return;
+    /* with no level behind it the HUD is meaningless, and a ghost of
+       SCORE / WORLD / TIME behind the title screen just looks like a bug */
+    var st = $("so-stage"), scr = $("screen-ouissy");
+    if (st) st.classList.toggle("so-nolevel", !G.level);
+    /* the pad does nothing on the title screen, so it dims out of the way
+       rather than sitting there looking live */
+    if (scr) scr.classList.toggle("so-menu-open", !G.level);
     ov.className = "so-overlay on " + (cls || "");
     ov.innerHTML = html;
     /* a tall card (the ending) must start at its own top, not wherever the
@@ -3375,6 +3460,9 @@ window.SuperOuissy = (function () {
   function closeOverlay() {
     var ov = $("so-overlay");
     if (!ov) return;
+    var st = $("so-stage"), scr = $("screen-ouissy");
+    if (st) st.classList.remove("so-nolevel");
+    if (scr) scr.classList.remove("so-menu-open");
     ov.className = "so-overlay";
     ov.innerHTML = "";
     ov.setAttribute("aria-hidden", "true");
@@ -3468,18 +3556,27 @@ window.SuperOuissy = (function () {
     host.appendChild(s.c);
   }
 
-  /* ---- 2. how to play --------------------------------------------------- */
+  /* ---- 2. how to play ----------------------------------------------------
+     Reachable from the title screen, and shown once on a first ever play.
+     Long enough to scroll on a small stage, which is fine: it is a thing to
+     read, not a thing to react to. ------------------------------------ */
   function showHowTo(then) {
-    var rows = SO.howTo.map(function (r) {
-      return '<div class="so-how-row"><b>' + r[0] + "</b><span>" + r[1] + "</span></div>";
+    var body = SO.howTo.map(function (sec) {
+      return '<div class="so-how-sec">' +
+        '<h4 class="so-how-h">' + sec.title + "</h4>" +
+        sec.rows.map(function (r) {
+          return '<div class="so-how-row' + (r[0] ? "" : " so-how-row-wide") + '">' +
+            (r[0] ? "<b>" + r[0] + "</b>" : "") + "<span>" + r[1] + "</span></div>";
+        }).join("") +
+        "</div>";
     }).join("");
+
     overlay(
-      '<div class="so-card">' +
+      '<div class="so-card so-card-how">' +
         '<h3 class="so-card-title">HOW TO PLAY</h3>' +
-        '<div class="so-how">' + rows + "</div>" +
-        '<p class="so-card-note">on a phone, use the buttons at the bottom of the screen</p>' +
+        '<div class="so-how">' + body + "</div>" +
         '<button class="so-btn so-btn-go" id="so-how-ok">GOT IT</button>' +
-      "</div>", "so-ov-card");
+      "</div>", "so-ov-card so-ov-how");
     try { localStorage.setItem(HOWTO_KEY, "1"); } catch (e) {}
     $("so-how-ok").addEventListener("click", function () { closeOverlay(); then(); });
   }
@@ -3506,6 +3603,9 @@ window.SuperOuissy = (function () {
     if (G.state === "play" && force !== false) {
       G.state = "paused";
       bgmDuck(true);
+      /* a finger still down on a direction when she pauses would otherwise
+         still be down when she resumes */
+      if (window.__soReleaseAll) window.__soReleaseAll();
       overlay(
         '<div class="so-card">' +
           '<h3 class="so-card-title">PAUSED</h3>' +
@@ -3539,7 +3639,7 @@ window.SuperOuissy = (function () {
       });
     } else if (G.state === "paused") {
       closeOverlay(); G.state = "play"; bgmDuck(false);
-      G.keys.left = G.keys.right = G.keys.down = G.keys.jump = false;
+      if (window.__soReleaseAll) window.__soReleaseAll();
     }
   }
 
@@ -3934,36 +4034,88 @@ window.SuperOuissy = (function () {
       G.keys[k] = false;
     }, { passive: false });
 
-    /* the pad. pointer events cover mouse, pen and finger in one go, and
-       setPointerCapture means a finger that slides off the button still
-       counts as held — which is how she will actually hold it. */
+    /* THE PAD.
+
+       A button that gets stuck down is the worst bug a touch control can
+       have, and there are four separate ways it happens:
+
+       1. The pointerup lands somewhere else. A finger that slides off the
+          button, or a re-render that replaces the element mid-press, means
+          the button never hears the release. setPointerCapture covers most
+          of it, but not all — so a listener on the WINDOW clears every held
+          key on any pointerup or pointercancel, whatever it landed on.
+       2. The button keeps focus. After a tap it is still the focused
+          element, so a stray Enter or Space — or the browser's own
+          click-repeat — fires it again. It is blurred on release.
+       3. The screen changes underneath a held finger. Quitting to the hub
+          mid-press leaves the key set forever, because nothing ever fires
+          the release. Every screen change and every pause releases the lot.
+       4. The tab goes away mid-press. Same fix, on visibilitychange and
+          blur.
+
+       Anything that ends a press goes through releaseAll(), so there is one
+       place that can be wrong instead of four. */
+
+    function releaseKey(k) {
+      G.keys[k] = false;
+      var el = document.querySelector('[data-so-key="' + k + '"]');
+      if (el) el.classList.remove("held");
+    }
+
+    function releaseAll() {
+      ["left", "right", "down", "jump"].forEach(releaseKey);
+      G.keys.jumpPressed = false;
+      Array.prototype.forEach.call(document.querySelectorAll("[data-so-key]"),
+        function (b) { b.classList.remove("held"); });
+    }
+    window.__soReleaseAll = releaseAll;
+
     Array.prototype.forEach.call(document.querySelectorAll("[data-so-key]"), function (btn) {
       var k = btn.getAttribute("data-so-key");
-      function down(e) {
+
+      btn.addEventListener("pointerdown", function (e) {
         e.preventDefault();
         btn.classList.add("held");
         if (k === "jump" && !G.keys.jump) G.keys.jumpPressed = true;
         G.keys[k] = true;
+        /* capture so a finger that slides off the button still counts as
+           held, which is how a real d-pad behaves */
         try { btn.setPointerCapture(e.pointerId); } catch (er) {}
-      }
-      function up(e) {
+      });
+
+      var release = function (e) {
         if (e) e.preventDefault();
-        btn.classList.remove("held");
-        G.keys[k] = false;
-      }
-      btn.addEventListener("pointerdown", down);
-      btn.addEventListener("pointerup", up);
-      btn.addEventListener("pointercancel", up);
-      btn.addEventListener("lostpointercapture", up);
+        releaseKey(k);
+        /* drop focus, or the button stays "pressed" to the browser and can
+           be re-fired by a keypress or a synthetic click */
+        if (btn.blur) btn.blur();
+      };
+      btn.addEventListener("pointerup", release);
+      btn.addEventListener("pointercancel", release);
+      btn.addEventListener("lostpointercapture", release);
+      /* touch events too: a browser that never promoted the touch to a
+         pointer event would otherwise never release */
+      btn.addEventListener("touchend", release, { passive: false });
+      btn.addEventListener("touchcancel", release, { passive: false });
       btn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+      /* it must never take focus in the first place */
+      btn.addEventListener("mousedown", function (e) { e.preventDefault(); });
+      btn.setAttribute("tabindex", "-1");
     });
+
+    /* the safety net: whatever the press landed on, the release clears it */
+    window.addEventListener("pointerup", releaseAll);
+    window.addEventListener("pointercancel", releaseAll);
+    window.addEventListener("blur", releaseAll);
 
     var pb = $("so-pause-btn");
     if (pb) pb.addEventListener("click", function () { if (G.state === "play" || G.state === "paused") togglePause(); });
 
-    /* losing the tab should not mean losing a life */
+    /* losing the tab should not mean losing a life, or a stuck direction */
     document.addEventListener("visibilitychange", function () {
-      if (document.hidden && onScreen() && G.state === "play") togglePause();
+      if (!document.hidden) return;
+      releaseAll();
+      if (onScreen() && G.state === "play") togglePause();
     });
   }
 
@@ -3983,6 +4135,7 @@ window.SuperOuissy = (function () {
   }
 
   function startLevel(i) {
+    if (window.__soReleaseAll) window.__soReleaseAll();
     G.levelIndex = i;
     G.level = buildLevel(i);
     G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
@@ -4001,6 +4154,7 @@ window.SuperOuissy = (function () {
   }
 
   function quitToHub() {
+    if (window.__soReleaseAll) window.__soReleaseAll();
     stop();
     if (window.leaveSuperOuissy) window.leaveSuperOuissy();
   }
@@ -4031,7 +4185,8 @@ window.SuperOuissy = (function () {
       while (acc >= STEP && guard++ < 6) { step(STEP); acc -= STEP; }
     } else {
       acc = 0;
-      /* even paused, the world keeps breathing — sprites still animate */
+      /* even paused, the world keeps breathing — sprites still animate, and
+         with no level at all the menu scene is what is being painted */
       if (G.level) { stepParts(Math.min(dt, .05)); G.shake = Math.max(0, G.shake - dt * 26); }
     }
     paint(now / 1000);

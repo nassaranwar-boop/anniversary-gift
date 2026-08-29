@@ -2090,6 +2090,13 @@ img{-webkit-user-drag:none; user-select:none;}
    Menus, cards and the ending — one overlay, many faces
    ========================================================= */
 .so-overlay{display:none;}
+.so-overlay.on::before{
+  /* a soft fade at the foot, so a card taller than the stage looks like it
+     continues rather than like it was cut off */
+  content:""; position:absolute; left:0; right:0; bottom:0; height:6cqh;
+  background:linear-gradient(180deg, transparent, rgba(20,10,28,.55));
+  pointer-events:none; z-index:2;
+}
 .so-overlay.on{
   display:flex; position:absolute; inset:0; z-index:10;
   /* flex-start plus auto block margins, not align-items:center. Centred
@@ -2104,13 +2111,40 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 @keyframes soFade{from{opacity:0;} to{opacity:1;}}
 
+/* On the title screen there is no level behind the overlay, so the HUD is
+   meaningless — a ghost of SCORE / WORLD / TIME behind the logo reads as a
+   bug rather than as atmosphere. */
+.so-stage.so-nolevel .so-hud,
+.so-stage.so-nolevel .so-pause-btn,
+.so-stage.so-nolevel .so-bossbar{display:none;}
+
+/* The title screen has the game's own orchard drifting behind it with
+   blossom coming down, so its scrim is much lighter than a card's — enough
+   to hold the type, not enough to hide the scene. */
+.so-overlay.on.so-ov-menu{
+  background:
+    radial-gradient(ellipse at 50% 32%, rgba(74,30,64,.18), rgba(46,18,48,.58) 72%),
+    linear-gradient(180deg, rgba(52,20,50,.34), rgba(52,20,50,.06) 42%, rgba(40,14,40,.52));
+}
+/* the type carries its own contrast so the scrim does not have to */
+.so-ov-menu .so-tag{text-shadow:0 .3cqw .6cqw rgba(28,10,32,.9), 0 0 1.6cqw rgba(28,10,32,.7);}
+
 .so-overlay.on > *{margin-block:auto;}
 .so-menu, .so-card, .so-end{
   display:flex; flex-direction:column; align-items:center; gap:1.6cqw;
   text-align:center; width:100%; max-width:86cqw;
   font-family:'Press Start 2P', ui-monospace, monospace; color:#fffaf5;
 }
-.so-logo canvas{width:52cqw; height:auto; image-rendering:pixelated; display:block;}
+.so-logo canvas{
+  width:52cqw; height:auto; image-rendering:pixelated; display:block;
+  filter:drop-shadow(0 .6cqw 0 rgba(20,8,26,.55));
+  animation:soLogoIn .7s var(--ease-pop) backwards, soLogoBob 4.5s ease-in-out .7s infinite;
+}
+@keyframes soLogoIn{
+  from{opacity:0; transform:scale(.72) translateY(-1.6cqw);}
+  to{opacity:1; transform:none;}
+}
+@keyframes soLogoBob{0%,100%{transform:translateY(0);} 50%{transform:translateY(-.7cqw);}}
 .so-tag{
   font-family:var(--font-serif); font-style:italic; font-size:2.4cqw;
   color:#ffc8de; margin:0; letter-spacing:.02em;
@@ -2119,6 +2153,9 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---- the three difficulty cards ---- */
 .so-diff-row{display:flex; gap:1.6cqw; width:100%; justify-content:center; flex-wrap:wrap;}
 .so-diff-card{
+  /* positioned, or the "chosen" marker below anchors to the overlay
+     instead of to its own card and lands in the corner of the screen */
+  position:relative;
   flex:1 1 24cqw; max-width:26cqw; min-width:20cqw; cursor:pointer;
   display:flex; flex-direction:column; align-items:center; gap:.9cqw;
   padding:2cqw 1.4cqw; border-radius:1.2cqw;
@@ -2128,12 +2165,26 @@ img{-webkit-user-drag:none; user-select:none;}
   transition:transform .16s var(--ease-pop), border-color .16s ease, box-shadow .16s ease;
   font-family:inherit; color:inherit;
 }
-.so-diff-card:hover{transform:translateY(-.4cqw);}
+.so-diff-card{animation:soCardIn .5s var(--ease-pop) backwards;}
+.so-diff-card:nth-child(1){animation-delay:.06s;}
+.so-diff-card:nth-child(2){animation-delay:.14s;}
+.so-diff-card:nth-child(3){animation-delay:.22s;}
+@keyframes soCardIn{from{opacity:0; transform:translateY(2.4cqw) scale(.94);} to{opacity:1; transform:none;}}
+.so-diff-card:hover{transform:translateY(-.7cqw); border-color:rgba(255,209,102,.6);}
 .so-diff-card:active{transform:translateY(.5cqw); box-shadow:0 .2cqw 0 rgba(0,0,0,.34);}
 .so-diff-card.sel{
   border-color:#ffd166;
-  background:linear-gradient(170deg, rgba(140,62,106,.95), rgba(70,32,70,.95));
-  box-shadow:0 .8cqw 0 rgba(0,0,0,.34), 0 0 20px rgba(255,209,102,.28);
+  background:linear-gradient(170deg, rgba(150,68,114,.96), rgba(76,34,76,.96));
+  animation:soCardSel 2.6s ease-in-out infinite;
+}
+@keyframes soCardSel{
+  0%,100%{box-shadow:0 .8cqw 0 rgba(0,0,0,.34), 0 0 1.6cqw rgba(255,209,102,.30);}
+  50%{box-shadow:0 .8cqw 0 rgba(0,0,0,.34), 0 0 3.2cqw rgba(255,209,102,.60);}
+}
+/* the chosen one gets a little marker, so it reads without relying on glow */
+.so-diff-card.sel::after{
+  content:"\25C6"; position:absolute; top:.6cqw; right:1cqw;
+  font-size:1.5cqw; color:#ffd166;
 }
 .so-diff-hearts{color:#ff5f95; font-size:1.9cqw; letter-spacing:.12em;}
 .so-diff-name{font-size:2.4cqw; color:#ffd166;}
@@ -2153,6 +2204,13 @@ img{-webkit-user-drag:none; user-select:none;}
   transition:transform .12s ease, box-shadow .12s ease;
 }
 .so-btn:active{transform:translateY(.7cqw); box-shadow:0 .1cqw 0 #8c4569;}
+.so-btn{animation:soBtnIn .45s var(--ease-out) backwards .3s;}
+@keyframes soBtnIn{from{opacity:0; transform:translateY(1.4cqw);} to{opacity:1; transform:none;}}
+.so-btn-go{animation:soBtnIn .45s var(--ease-out) backwards .3s, soGoPulse 2.4s ease-in-out .9s infinite;}
+@keyframes soGoPulse{
+  0%,100%{filter:brightness(1);}
+  50%{filter:brightness(1.14) drop-shadow(0 0 1.2cqw rgba(255,209,102,.55));}
+}
 .so-btn-go{background:linear-gradient(180deg,#fff0b0,#ffd166); border-color:#a9741f; box-shadow:0 .8cqw 0 #a9741f;}
 .so-btn-go:active{box-shadow:0 .1cqw 0 #a9741f;}
 .so-btn-quiet{
@@ -2173,13 +2231,26 @@ img{-webkit-user-drag:none; user-select:none;}
   font-family:var(--font-serif); font-style:italic; font-size:2cqw;
   color:#ffc8de; margin:0; line-height:1.5;
 }
-.so-how{display:flex; flex-direction:column; gap:1.1cqw; width:100%;}
-.so-how-row{
-  display:flex; align-items:baseline; gap:1.6cqw; text-align:left;
-  border-bottom:1px dashed rgba(255,158,196,.22); padding-bottom:.9cqw;
+/* ---- how to play ---- */
+.so-card-how{max-width:76cqw; padding:2.4cqw 3cqw; gap:1.2cqw;}
+.so-how{display:flex; flex-direction:column; gap:1.5cqw; width:100%; text-align:left;}
+.so-how-sec{display:flex; flex-direction:column; gap:.5cqw;}
+.so-how-h{
+  margin:.4cqw 0 .2cqw; font-size:1.5cqw; color:#ffd166; letter-spacing:.14em;
+  font-weight:400; border-bottom:.2cqw solid rgba(255,209,102,.35); padding-bottom:.5cqw;
 }
-.so-how-row b{flex:0 0 22%; font-size:1.8cqw; color:#ffd166; font-weight:400;}
-.so-how-row span{font-family:var(--font-body); font-size:1.9cqw; color:#ffe6f0; line-height:1.5;}
+.so-how-row{
+  display:flex; align-items:baseline; gap:1.4cqw; text-align:left;
+  border-bottom:1px dashed rgba(255,158,196,.16); padding-bottom:.5cqw;
+}
+.so-how-row:last-child{border-bottom:none; padding-bottom:0;}
+.so-how-row b{
+  flex:0 0 25%; font-size:1.3cqw; color:#ffb0cd; font-weight:400; line-height:1.6;
+}
+.so-how-row span{
+  flex:1; font-family:var(--font-body); font-size:1.5cqw; color:#ffe6f0; line-height:1.5;
+}
+.so-how-row-wide span{flex:1 1 100%;}
 
 /* ---- the card that announces a world ---- */
 .so-ov-world .so-card{background:rgba(16,8,26,.94); border-color:rgba(255,209,102,.35);}
@@ -2239,25 +2310,73 @@ img{-webkit-user-drag:none; user-select:none;}
   width:100%; max-width:640px; padding:10px 14px 14px; gap:12px;
   flex:0 0 auto;
 }
-.so-pad-side{display:flex; gap:10px; align-items:center;}
+.so-pad-side{display:flex; gap:12px; align-items:center;}
+/* on the title screen the pad controls nothing, so it steps back rather
+   than sitting there looking live */
+#screen-ouissy.so-menu-open .so-pad{opacity:.3; pointer-events:none; filter:saturate(.5);}
+.so-pad{transition:opacity .3s ease, filter .3s ease;}
 .so-pad-right{gap:12px;}
 .so-key{
   cursor:pointer; user-select:none; touch-action:none;
-  width:clamp(46px,13vw,62px); height:clamp(46px,13vw,62px); border-radius:14px;
+  -webkit-tap-highlight-color:transparent;
+  width:clamp(48px,13.5vw,64px); height:clamp(48px,13.5vw,64px); border-radius:18px;
   display:flex; align-items:center; justify-content:center;
   font-size:clamp(16px,4.4vw,22px); line-height:1;
-  color:#3d2340; background:linear-gradient(180deg,#ffe6f0,#ffb0cd);
-  border:2px solid #8c4569; box-shadow:0 5px 0 #8c4569;
-  transition:transform .08s ease, box-shadow .08s ease;
+  color:#7a2f52;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0) 42%),
+    linear-gradient(180deg,#ffe6f0,#ffa8c8);
+  border:2px solid #8c4569;
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.7),
+    inset 0 -3px 0 rgba(140,69,105,.28),
+    0 5px 0 #8c4569,
+    0 9px 14px rgba(40,12,34,.35);
+  transition:transform .07s ease, box-shadow .07s ease, filter .12s ease;
 }
-.so-key.held, .so-key:active{transform:translateY(4px); box-shadow:0 1px 0 #8c4569;}
+.so-key:focus{outline:none;}
+.so-key.held, .so-key:active{
+  transform:translateY(4px);
+  filter:brightness(1.06);
+  box-shadow:
+    inset 0 3px 6px rgba(140,69,105,.45),
+    0 1px 0 #8c4569,
+    0 2px 6px rgba(40,12,34,.3);
+}
+/* the jump key: bigger, round, gold, and clearly the important one */
 .so-key-jump{
-  width:clamp(58px,17vw,80px); height:clamp(58px,17vw,80px); border-radius:50%;
-  background:linear-gradient(180deg,#fff0b0,#ffd166); border-color:#a9741f;
-  box-shadow:0 6px 0 #a9741f; color:#a9371f;
+  width:clamp(62px,18vw,84px); height:clamp(62px,18vw,84px); border-radius:50%;
+  font-size:clamp(19px,5.4vw,26px); color:#a9371f;
+  background:
+    radial-gradient(circle at 38% 30%, rgba(255,255,255,.75), rgba(255,255,255,0) 55%),
+    linear-gradient(180deg,#fff3c0,#ffcf5a);
+  border-color:#a9741f;
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.8),
+    inset 0 -4px 0 rgba(169,116,31,.35),
+    0 6px 0 #a9741f,
+    0 11px 18px rgba(40,12,34,.4),
+    0 0 0 4px rgba(255,209,102,.16);
 }
-.so-key-jump.held, .so-key-jump:active{box-shadow:0 1px 0 #a9741f;}
-.so-key-duck{width:clamp(40px,11vw,52px); height:clamp(40px,11vw,52px);}
+.so-key-jump.held, .so-key-jump:active{
+  box-shadow:
+    inset 0 4px 8px rgba(169,116,31,.5),
+    0 1px 0 #a9741f,
+    0 2px 8px rgba(40,12,34,.35),
+    0 0 0 6px rgba(255,209,102,.26);
+}
+.so-key-duck{
+  width:clamp(42px,11.5vw,54px); height:clamp(42px,11.5vw,54px);
+  border-radius:16px; font-size:clamp(13px,3.6vw,17px);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,0) 42%),
+    linear-gradient(180deg,#f4d8e8,#d8a6c0);
+  border-color:#7a4569; color:#5c2440;
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.55),
+    0 4px 0 #7a4569,
+    0 8px 12px rgba(40,12,34,.3);
+}
 
 /* A pointer that is a real mouse does not need the pad taking up room. */
 @media (hover:hover) and (pointer:fine){
@@ -2321,6 +2440,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 @media (prefers-reduced-motion: reduce){
-  .so-overlay.on{animation:none;}
+  .so-overlay.on, .so-logo canvas, .so-diff-card, .so-btn, .so-btn-go,
+  .so-diff-card.sel{animation:none;}
   .so-hud-time.low i{animation:none;}
 }

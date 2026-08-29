@@ -29,6 +29,11 @@ these runs; that is the harness, not the site.
 | `screens.js` | screenshots the how-to, world card, pause menu, results and ending. |
 | `level.js`, `play.js` | screenshot the game canvas itself at a given world and position. |
 | `sheet.js` | dumps a contact sheet of every sprite, for looking at the art. |
+| `sticky.js` | the touch-control suite: press, release off the button, pause mid-press, focus after a tap, rapid tapping, and whether she drifts on her own afterwards. |
+| `menushot.js` | screenshots the title screen and the how-to. |
+| `boss_probe.js`, `phase_probe.js` | measure the boss's state machine — tell length, opening length, projectile count, per phase and per difficulty. |
+| `enemy_probe.js` | runs a level for forty seconds of game time and reports whether enemies fell in pits or juddered. |
+| `parallax_probe.js` | the same view at two camera heights, for checking scenery stays planted. |
 
 ## Two things that will waste your afternoon otherwise
 
