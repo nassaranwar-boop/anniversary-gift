@@ -33,18 +33,46 @@ const { chromium } = require('playwright-core');
 
   console.log('state before pressing anything:', JSON.stringify(await at()));
 
-  for (const [key, label] of [['ArrowRight','ArrowRight'], ['ArrowDown','ArrowDown'], ['d','d (WASD)'], ['s','s (WASD)']]) {
+  /* Two separate questions, and the old test confused them.
+
+     One: does a keypress actually reach the game? That is answered by
+     reading the key state while the key is down, and it is exact.
+
+     Two: does she move? That depends on the frame rate, and this container
+     gives about two frames a second even on a blank page — so a fixed
+     wall-clock hold proves very little. She is put somewhere with room
+     around her first, and held for long enough that even two frames a
+     second has to show something. */
+  for (const [key, label, dx, dy] of [
+    ['ArrowRight', 'ArrowRight', 1, 0], ['ArrowLeft', 'ArrowLeft', -1, 0],
+    ['ArrowDown', 'ArrowDown', 0, 1], ['ArrowUp', 'ArrowUp', 0, -1],
+    ['d', 'd (WASD)', 1, 0], ['a', 'a (WASD)', -1, 0],
+    ['s', 's (WASD)', 0, 1], ['w', 'w (WASD)', 0, -1],
+  ]) {
+    // the middle of the landing, which is open in every direction
+    await p.evaluate(() => window.__apTeleport(16, 8));
     const before = await at();
     await p.keyboard.down(key);
-    await p.waitForTimeout(1500);            // real time, real rAF
-    await p.keyboard.up(key);
     await p.waitForTimeout(120);
+    const held = await p.evaluate(() => JSON.stringify(window.__apKeys()));
+    await p.waitForTimeout(2600);
+    await p.keyboard.up(key);
+    await p.waitForTimeout(150);
     const after = await at();
-    const moved = Math.hypot(after.x - before.x, after.y - before.y);
-    console.log(`hold ${label} for 1.5s -> moved ${Math.round(moved)}px`, moved > 6 ? 'OK' : '*** SHE DID NOT MOVE ***');
+    const moved = (after.x - before.x) * dx + (after.y - before.y) * dy;
+    const registered = JSON.parse(held);
+    const keyOn = registered.left || registered.right || registered.up || registered.down;
+    console.log(`${label.padEnd(11)} key reaches the game: ${keyOn ? 'yes' : 'NO'}   she travelled ${Math.round(moved)}px ${moved > 5 ? 'OK' : '*** NOT MOVING ***'}`);
   }
 
-  // how many frames the loop is actually managing
+  // and the modifier
+  await p.evaluate(() => window.__apTeleport(16, 8));
+  await p.keyboard.down('Shift');
+  await p.waitForTimeout(150);
+  const sneak = await p.evaluate(() => window.__apKeys().sneak);
+  await p.keyboard.up('Shift');
+  console.log(`SHIFT       key reaches the game: ${sneak ? 'yes' : 'NO'}   (creep)`);
+
   const fps = await p.evaluate(() => new Promise(res => {
     let n = 0; const t0 = performance.now();
     (function tick() { n++; if (performance.now() - t0 < 1000) requestAnimationFrame(tick); else res(n); })();

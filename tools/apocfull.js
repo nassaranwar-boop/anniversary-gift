@@ -32,11 +32,23 @@ const clicks = async (p, cap) => {
   }
   say('!! dialogue would not close');
 };
-/* And wait for the card before pressing it, for the same reason. */
-const goCard = async (p, expect) => {
-  if (!await waitFor(p, '.ap-card-go', expect || 'a card')) return false;
+/* Wait for the card we actually mean, by the words on it, and then wait for
+   it to go away again after pressing. Waiting on ".ap-card-go" alone matched
+   whichever card happened to be up — and with two cards back to back (the
+   how-to, then Level 1) that raced, pressed one twice and reported the other
+   as missing. */
+const goCard = async (p, match, label) => {
+  const ok = await p.waitForFunction((m) => {
+    const c = document.querySelector('.ap-card');
+    return !!c && c.textContent.includes(m);
+  }, match, { timeout: 12000 }).then(() => true).catch(() => false);
+  if (!ok) { say('!! never appeared:', label || match); return false; }
   await p.evaluate(() => document.querySelector('.ap-card-go').click());
-  await p.waitForTimeout(300);
+  await p.waitForFunction((m) => {
+    const c = document.querySelector('.ap-card');
+    return !c || !c.textContent.includes(m);
+  }, match, { timeout: 8000 }).catch(() => {});
+  await p.waitForTimeout(200);
   return true;
 };
 const solvePanel = async (p) => {
@@ -62,8 +74,8 @@ const solvePanel = async (p) => {
   await p.click('#hub-card-apoc');
   await p.waitForTimeout(1400);
   say('on the apocalypse screen:', await p.evaluate(() => document.getElementById('screen-apoc').classList.contains('active')));
-  await goCard(p, 'the how-to card');
-  await goCard(p, 'the Level 1 card');
+  await goCard(p, 'the world ends', 'the how-to card');
+  await goCard(p, 'Level 1', 'the Level 1 card');
   await clicks(p);
   say('L1 place:', await p.evaluate(() => document.getElementById('ap-place').textContent));
 
@@ -77,7 +89,7 @@ const solvePanel = async (p) => {
   await solvePanel(p); await clicks(p);
   await p.evaluate(() => { window.__apTeleport(29, 20); window.__apPump(0.4, {}); });
   await p.waitForTimeout(250); await clicks(p);
-  await goCard(p, 'the Level 2 card');
+  await goCard(p, 'Level 2', 'the Level 2 card');
   await clicks(p);
   say('L2 place:', await p.evaluate(() => document.getElementById('ap-place').textContent));
 
@@ -93,7 +105,7 @@ const solvePanel = async (p) => {
   say('L2 gate open:', await p.evaluate(() => window.__apState().doors.filter(d => d.includes('locked')).join()));
   await p.evaluate(() => { window.__apTeleport(44, 28); window.__apPump(0.4, {}); });
   await p.waitForTimeout(250); await clicks(p);
-  await goCard(p, 'the Level 3 card');
+  await goCard(p, 'Level 3', 'the Level 3 card');
   await clicks(p);
   say('L3 place:', await p.evaluate(() => document.getElementById('ap-place').textContent));
 
@@ -106,7 +118,7 @@ const solvePanel = async (p) => {
   say('he is awake:', await p.evaluate(() => window.__apState().anwar.awake));
   await p.evaluate(() => { window.__apTeleport(3, 16); window.__apPump(0.4, {}); });
   await p.waitForTimeout(250); await clicks(p);
-  await goCard(p, 'the Level 4 card');
+  await goCard(p, 'Level 4', 'the Level 4 card');
   await clicks(p);
   await waitFor(p, '.ap-radio', 'the radio');
   await p.evaluate(() => { const b = document.querySelector('.ap-radio .ap-note-ok'); if (b) b.click(); });
@@ -124,7 +136,7 @@ const solvePanel = async (p) => {
   await p.waitForTimeout(250); await clicks(p);
   await p.evaluate(() => window.__apPump(10, {}));       // the ride
   await p.waitForTimeout(250); await clicks(p);
-  await goCard(p, 'the Level 5 card');
+  await goCard(p, 'Level 5', 'the Level 5 card');
   await clicks(p);
   say('L5 place:', await p.evaluate(() => document.getElementById('ap-place').textContent));
 

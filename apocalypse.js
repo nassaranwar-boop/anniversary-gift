@@ -4277,6 +4277,7 @@ window.Apocalypse = (function () {
   };
 
   window.__apPump = function (secs, keys) {
+    if (!G || !G.level) return { error: "no level is loaded" };
     var was = G.keys;
     G.keys = Object.assign(freshKeys(), keys || {});
     for (var i = 0; i < Math.round(secs * 60); i++) step(G, STEP);
@@ -4289,6 +4290,7 @@ window.Apocalypse = (function () {
   window.__apPaint = function () { if (G && G.level) { stepCam(G); paint(G); } };
 
   window.__apTeleport = function (tx, ty) {
+    if (!G || !G.level) return { error: "no level is loaded" };
     G.player.x = tx * T + T / 2; G.player.y = ty * T + T / 2;
     G.player.vx = 0; G.player.vy = 0;
     snapCam(G);
@@ -4317,7 +4319,7 @@ window.Apocalypse = (function () {
     }
   };
 
-  window.__apUse = function () { doUse(G); };
+  window.__apUse = function () { if (G && G.level) doUse(G); };
   window.__apPanelState = function () {
     if (!G.__panel) return null;
     var P = G.__panel.P;
@@ -4359,6 +4361,7 @@ window.Apocalypse = (function () {
   };
   window.__apSolvePanel = function () { if (G.__panel) G.__panel.solve(); };
   window.__apState = function () {
+    if (!G || !G.level) return { error: "no level is loaded", state: G && G.state };
     return { state: G.state, level: G.levelIndex, step: G.step && G.step.clears,
              closeCalls: G.closeCalls, code: G.code, pressure: G.pressure,
              anwar: G.level.anwar ? { awake: G.level.anwar.awake, x: Math.round(G.level.anwar.x), y: Math.round(G.level.anwar.y) } : null,
