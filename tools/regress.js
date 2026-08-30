@@ -23,8 +23,14 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     await page.evaluate(() => { if (window.finishBookIntro) finishBookIntro(); });
     await page.waitForTimeout(2200);
     ok(label + ': gate reached', await page.evaluate(() => document.getElementById('screen-gate').classList.contains('active')));
-    await page.fill('#gate-input', '2207');
-    await page.click('#gate-submit');
+    // the gate is a keypad now, not a text field: tap 2-2-0-7, then the seal
+    for (const d of '2207'.split('')) {
+      // force: the keys carry an idle animation, so playwright's
+      // wait-for-stable-box never settles on them
+      await page.click('.gate-key[data-gate-key="' + d + '"]', { force: true });
+      await page.waitForTimeout(160);
+    }
+    await page.click('#gate-submit', { force: true });
     await page.waitForTimeout(3000);
     ok(label + ': passcode 2207 still opens the book',
        await page.evaluate(() => document.getElementById('screen-scrapbook').classList.contains('active')));

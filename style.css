@@ -652,20 +652,11 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; inset:0; width:100%; height:100%; display:block;
   image-rendering:pixelated; z-index:0;
 }
-/* the old flat skyline and rooftop are painted into the canvas now */
-.skyline,.rooftop,.px-moon,.px-cloud{display:none !important;}
 .night-sky-inner{position:absolute; inset:0; transform-origin:60% 76%; transform:scale(1) translate(0,0);}
 .night-sky.scene-2 .night-sky-inner{transform:scale(1.24) translate(-4%,-3%);}
 .night-sky.scene-3 .night-sky-inner{transform:scale(1.6) translate(-7%,-6%);}
 .scene-cut-flash{position:absolute; inset:0; z-index:15; background:#000; opacity:0; pointer-events:none; transition:opacity .38s ease;}
 .scene-cut-flash.active{opacity:1;}
-
-.px-moon{position:absolute; top:9%; right:12%; width:68px; height:68px; image-rendering:pixelated; filter:drop-shadow(0 0 24px rgba(220,210,245,.6));}
-.px-cloud{position:absolute; image-rendering:pixelated; opacity:.9;}
-.cl-a{width:150px; top:16%; left:-4%; animation:driftRight 46s linear infinite;}
-.cl-b{width:110px; top:29%; left:30%; opacity:.7; animation:driftRight 60s linear infinite reverse;}
-.cl-c{width:120px; top:36%; left:60%; animation:driftRight 52s linear infinite;}
-@keyframes driftRight{from{transform:translateX(0);} to{transform:translateX(40px);}}
 
 .night-stars{position:absolute; inset:0; transition:opacity .3s ease;}
 .night-stars .star{position:absolute; background:#fff; border-radius:1px; animation:twinkle 2.5s ease-in-out infinite;}
@@ -676,15 +667,6 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .shooting-star{position:absolute; top:16%; left:-10%; width:80px; height:2px; background:linear-gradient(90deg,#fff,transparent); transform:rotate(18deg); opacity:0; animation:shoot 6s ease-in infinite; animation-delay:2s;}
 @keyframes shoot{0%{opacity:0; transform:translateX(0) rotate(18deg);} 4%{opacity:1;} 22%{opacity:0; transform:translateX(260px) rotate(18deg);} 100%{opacity:0;}}
-
-.skyline{position:absolute; bottom:16%; left:0; right:0; height:9%; opacity:.9; transition:opacity .3s ease;}
-.skyline .bld{position:absolute; bottom:0; background:#160f30;}
-.skyline .win{position:absolute; width:3px; height:4px; background:#e8c979; opacity:.85;}
-.night-sky.scene-3 .skyline{opacity:0;}
-
-.rooftop{position:absolute; bottom:0; left:0; right:0; height:16%;}
-.rooftop .ledge{position:absolute; top:0; left:0; right:0; height:34%; background:linear-gradient(180deg,#5b4a86,#4a3c74);}
-.rooftop .facade{position:absolute; top:34%; left:0; right:0; bottom:0; background:#14102a;}
 
 .cats-wrap{position:absolute; bottom:15%; left:50%; transform:translateX(-50%); display:flex; align-items:flex-end; z-index:3;}
 .cat-slot{position:relative; transition:transform 1.6s ease;}

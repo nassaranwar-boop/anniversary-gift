@@ -17,9 +17,9 @@
 <title>For My Love 💕</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=78">
+<link rel="stylesheet" href="style.css?v=79">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=78"></script>
+<script src="vendor/three.bundle.js?v=79"></script>
 
 </head>
 <body>
@@ -679,7 +679,7 @@
       <div class="hud-pill"><span class="lab"><svg class="hud-ico" aria-hidden="true"><use href="#ic-steps"/></svg></span><span class="val" id="hud-steps">0</span></div>
       <div class="hud-pill"><span class="lab"><svg class="hud-ico" aria-hidden="true"><use href="#ic-clock"/></svg></span><span class="val" id="hud-time">00:00</span></div>
       <div class="hud-pill hud-hidden-badge" id="hidden-badge"><span class="lab"><svg class="hud-ico" aria-hidden="true"><use href="#ic-tree"/></svg></span><span class="val">Hidden</span></div>
-      <div class="hud-pill hud-key-badge" id="key-badge"><img id="key-badge-img" alt="key"/><span class="val">Key!</span></div>
+      <div class="hud-pill hud-key-badge" id="key-badge"><img id="key-badge-img" src="assets/key.png" alt="key"/><span class="val">Key!</span></div>
     </div>
     <div class="book-spread">
       <div class="maze-outer">
@@ -694,8 +694,8 @@
           <div id="bolts-layer"></div>
           <div class="fog-layer" id="fog-layer"></div>
           <div class="beacon-glow" id="beacon-glow"></div>
-          <img id="target-token" class="token target-token" alt="Anwar waiting" />
-          <img id="player-token" class="token player-token" alt="you" />
+          <img id="target-token" class="token target-token" src="assets/guy.png" alt="Anwar waiting" />
+          <img id="player-token" class="token player-token" src="assets/girl.png" alt="you" />
           <div class="damage-flash" id="damage-flash"></div>
         </div>
       </div>
@@ -720,21 +720,15 @@
       <div class="night-sky-inner" id="night-sky-inner">
         <div class="end-heading" id="end-heading"><span>💌 You found each other 💌</span></div>
         <div class="night-stars" id="night-stars"></div>
-        <img class="px-moon" id="px-moon" alt="moon" />
-        <img class="px-cloud cl-a" id="cl-a" alt="cloud" />
-        <img class="px-cloud cl-b" id="cl-b" alt="cloud" />
-        <img class="px-cloud cl-c" id="cl-c" alt="cloud" />
         <div class="shooting-star"></div>
-        <div class="skyline" id="skyline"></div>
-        <div class="rooftop"><div class="ledge"></div><div class="facade"></div></div>
         <div class="cats-wrap">
           <div class="cat-slot cat-black-slot" id="cat-black-slot">
-            <img class="cat-img cat-tail-img black-tail" id="cat-black-tail" alt="" />
-            <img class="cat-img cat-body-img" id="cat-black-body" alt="black cat" />
+            <img class="cat-img cat-tail-img black-tail" id="cat-black-tail" src="assets/black_tail.png" alt="" />
+            <img class="cat-img cat-body-img" id="cat-black-body" src="assets/black_body.png" alt="black cat" />
           </div>
           <div class="cat-slot cat-white-slot" id="cat-white-slot">
-            <img class="cat-img cat-tail-img white-tail" id="cat-white-tail" alt="" />
-            <img class="cat-img cat-body-img" id="cat-white-body" alt="white cat" />
+            <img class="cat-img cat-tail-img white-tail" id="cat-white-tail" src="assets/white_tail.png" alt="" />
+            <img class="cat-img cat-body-img" id="cat-white-body" src="assets/white_body.png" alt="white cat" />
           </div>
         </div>
         <div class="end-hearts" id="end-hearts"></div>
@@ -752,7 +746,7 @@
     <div class="note-card">
       <div class="washi-tape"></div>
       <span class="note-sticker n-s1"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#ffd98a" d="M12 2.4l2.1 6.3 6.3 2.1-6.3 2.1-2.1 6.3-2.1-6.3L3.6 10.8l6.3-2.1z"/></svg></span><span class="note-sticker n-s2"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#ff9ac0" d="M12 20.2C2.6 13.4 3.4 6.4 8.2 6.4c2 0 3.3 1.2 3.8 2.3.5-1.1 1.8-2.3 3.8-2.3 4.8 0 5.6 7-3.8 13.8z"/></svg></span>
-      <div class="note-avatar"><img id="dialogue-avatar-img" alt="Anwar" /></div>
+      <div class="note-avatar"><img id="dialogue-avatar-img" src="assets/guy.png" alt="Anwar" /></div>
       <p class="note-name" id="dialogue-name">Anwar 💗</p>
       <p class="note-text" id="dialogue-text"></p>
       <div class="note-footer">
@@ -762,10 +756,10 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=78"></script>
-<script src="scrapbook.js?v=78"></script>
-<script src="script.js?v=78"></script>
-<script src="super-ouissy.js?v=78"></script>
-<script src="rescue.js?v=78"></script>
+<script src="book-scene.js?v=79"></script>
+<script src="scrapbook.js?v=79"></script>
+<script src="script.js?v=79"></script>
+<script src="super-ouissy.js?v=79"></script>
+<script src="rescue.js?v=79"></script>
 </body>
 </html>

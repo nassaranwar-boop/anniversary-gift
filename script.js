@@ -41,7 +41,6 @@ const MEMORIES = [
 
 const ASSETS = {
   catGif:"assets/cat-hello.gif", bearGif:"assets/bear-hug.gif", girl:"assets/girl.png", guy:"assets/guy.png",
-  moon:"assets/moon2.png", cloud:"assets/cloud1.png",
   blackBody:"assets/black_body.png", blackTail:"assets/black_tail.png",
   whiteBody:"assets/white_body.png", whiteTail:"assets/white_tail.png",
   monster:"assets/monster.png", shooter:"assets/shooter.png", tree:"assets/tree.png", med:"assets/med.png",
@@ -52,16 +51,24 @@ const PLAYER_ASPECT = 395/220;
 
 document.getElementById("baby-name").textContent = CONFIG.babyName;
 document.getElementById("reward-text").textContent = CONFIG.reward;
-document.getElementById("target-token").src = ASSETS.guy;
-document.getElementById("player-token").src = ASSETS.girl;
-document.getElementById("dialogue-avatar-img").src = ASSETS.guy;
-document.getElementById("px-moon").src = ASSETS.moon;
-["cl-a","cl-b","cl-c"].forEach(id => document.getElementById(id).src = ASSETS.cloud);
-document.getElementById("cat-black-body").src = ASSETS.blackBody;
-document.getElementById("cat-black-tail").src = ASSETS.blackTail;
-document.getElementById("cat-white-body").src = ASSETS.whiteBody;
-document.getElementById("cat-white-tail").src = ASSETS.whiteTail;
-document.getElementById("key-badge-img").src = ASSETS.key;
+/* Every one of these now ships its src in the markup, so the sprite is on
+   screen from the first paint and stays there even if this script never
+   runs. This pass only keeps ASSETS as the one place a path is written: it
+   re-points each <img> at the same file, and a missing element is skipped
+   rather than throwing and taking the rest of the wiring down with it —
+   which is how the key, the two maze tokens and the note avatar all ended
+   up sourceless at once. */
+[["target-token", ASSETS.guy],
+ ["player-token", ASSETS.girl],
+ ["dialogue-avatar-img", ASSETS.guy],
+ ["cat-black-body", ASSETS.blackBody],
+ ["cat-black-tail", ASSETS.blackTail],
+ ["cat-white-body", ASSETS.whiteBody],
+ ["cat-white-tail", ASSETS.whiteTail],
+ ["key-badge-img", ASSETS.key]].forEach(function (pair) {
+  const el = document.getElementById(pair[0]);
+  if (el && pair[1]) el.src = pair[1];
+});
 
 /* ---------- best time (localStorage) ---------- */
 try {
@@ -1540,26 +1547,6 @@ function spawnNightStars() {
     s.style.left = Math.random()*100+"%"; s.style.top = Math.random()*55+"%";
     s.style.animationDelay = (Math.random()*3)+"s";
     field.appendChild(s);
-  }
-}
-function buildSkyline() {
-  const sky = document.getElementById("skyline");
-  if (sky.childElementCount) return;
-  let x = 0;
-  while (x < 100) {
-    const w = 4 + Math.random()*5;
-    const h = 40 + Math.random()*60;
-    const b = document.createElement("div");
-    b.className = "bld";
-    b.style.left = x+"%"; b.style.width = w+"%"; b.style.height = h+"%";
-    sky.appendChild(b);
-    if (Math.random() < 0.5) {
-      const win = document.createElement("div");
-      win.className = "win";
-      win.style.left = (x+w*0.35)+"%"; win.style.bottom = (h*0.4)+"%";
-      sky.appendChild(win);
-    }
-    x += w;
   }
 }
 function buildEndHearts() {
