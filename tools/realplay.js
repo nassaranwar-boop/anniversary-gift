@@ -66,9 +66,17 @@ const ok = (n, c, x) => R.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x : 
     // threshold — which is a flaky test, not a slow game.
     const x0 = await page.evaluate(() => window.__soPlayer().x);
     await page.keyboard.down('ArrowRight');
-    await page.waitForTimeout(1400);
+    /* Poll rather than sample once. rAF is throttled unpredictably in this
+       container — the same run has produced 23px, 5px and 23px across the
+       three difficulties — so a fixed window measures how many frames the
+       container felt like giving us, not whether the key works. Hold the
+       key until she has clearly moved, or give up after six seconds. */
+    let x1 = x0;
+    for (let i = 0; i < 60 && x1 - x0 <= 8; i++) {
+      await page.waitForTimeout(100);
+      x1 = await page.evaluate(() => window.__soPlayer().x);
+    }
     await page.keyboard.up('ArrowRight');
-    const x1 = await page.evaluate(() => window.__soPlayer().x);
     ok(diff + ': it responds to input', x1 - x0 > 8,
        'moved ' + Math.round(x1 - x0) + 'px right');
     await page.close();
