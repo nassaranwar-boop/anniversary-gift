@@ -26,6 +26,12 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
         document.querySelectorAll('body *').forEach(el => {
           const st = getComputedStyle(el);
           if (st.position === 'fixed' || st.display === 'none' || st.visibility === 'hidden') return;
+          /* Anything inside an <svg> is clipped by that element's own
+             viewport, so a <g> whose user-space contents run past the box
+             cannot put a pixel on the page — measuring it only produces
+             false overflow. The document-height check below is the one
+             that actually decides whether a void exists. */
+          if (el.ownerSVGElement) return;
           const r = el.getBoundingClientRect();
           if (r.height > 0 && r.bottom - innerHeight > worst) { worst = r.bottom - innerHeight; who = el.tagName + (el.id?'#'+el.id:''); }
         });

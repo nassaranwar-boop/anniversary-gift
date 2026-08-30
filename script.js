@@ -509,7 +509,8 @@ function buildHearts() {
   heartCells.forEach((hc) => {
     const el = document.createElement("div");
     el.className = "heart-collect";
-    el.textContent = "💗";
+    el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' +
+      PARTICLE_SHAPES.heart + '"/></svg>';
     el.dataset.r = hc.r; el.dataset.c = hc.c;
     layer.appendChild(el);
   });
@@ -523,7 +524,7 @@ function layoutMaze() {
   document.querySelectorAll(".heart-collect").forEach((el) => {
     const r = +el.dataset.r, c = +el.dataset.c;
     const size = CS*0.62;
-    el.style.width = size+"px"; el.style.height = size+"px"; el.style.fontSize = (size*0.8)+"px";
+    el.style.width = size+"px"; el.style.height = size+"px";   // it holds an SVG, not a glyph
     el.style.left = (c*CS + CS/2 - size/2) + "px";
     el.style.top = (r*CS + CS/2 - size/2) + "px";
   });
@@ -605,7 +606,10 @@ function move(dir) {
   const midR = playerPos.r+mdr, midC = playerPos.c+mdc;
   if (dir==="left") lastFacing="left";
   if (dir==="right") lastFacing="right";
-  if (mazeData[midR] && mazeData[midR][midC] === 1) {
+  /* canStep, not just the wall between: the old test checked the gap and
+     took the destination on trust. The border happens to be solid so it
+     never bit, but it is one carve away from walking her off the grid. */
+  if (canStep(playerPos.r, playerPos.c, mdr, mdc)) {
     const fromR = playerPos.r, fromC = playerPos.c;
     playerPos = { r: playerPos.r+dr, c: playerPos.c+dc };
     stepCount++;
@@ -633,7 +637,7 @@ function checkHeart() {
   const el = document.querySelector(`.heart-collect[data-r="${playerPos.r}"][data-c="${playerPos.c}"]`);
   if (el) {
     heartsCollected++;
-    popText(el.style.left, el.style.top, "+1 💗", "#ff5b98");
+    popText(el.style.left, el.style.top, "+1", "#ff5b98");
     mzSpawn(playerPos.c*CS + CS/2, playerPos.r*CS + CS/2, 16, "#ff8fb8", 70, 30);
     mzSpawn(playerPos.c*CS + CS/2, playerPos.r*CS + CS/2, 10, "#ffe08a", 50, 20);
     mzSfx("heart");
@@ -656,7 +660,7 @@ function popText(left, top, text, color) {
 function checkWin() {
   if (playerPos.r === targetPos.r && playerPos.c === targetPos.c) {
     if (level === 2 && !hasKey) {
-      showToast("Find the key first! 🔑");
+      showToast("The way through is locked — find the key");
       const stage = document.getElementById("maze-stage");
       stage.classList.remove("locked-shake"); void stage.offsetWidth; stage.classList.add("locked-shake");
       return;
@@ -879,7 +883,7 @@ function onPlayerMovedLevel2() {
     hp = Math.min(HP_MAX, hp+1);
     renderHeartsHud();
     layoutLevel2Entities();
-    showToast("Found a med! +½ 💗");
+    showToast("A phial — half a heart back");
   }
 
   if (keyPos && !hasKey && playerPos.r===keyPos.r && playerPos.c===keyPos.c) {
@@ -888,7 +892,7 @@ function onPlayerMovedLevel2() {
     document.getElementById("key-badge").classList.add("show");
     document.getElementById("target-token").classList.remove("locked");
     document.getElementById("beacon-glow").classList.remove("locked");
-    showToast("Got the key! 🔑💗");
+    showToast("The key is yours");
   }
 
   checkMonsterContact();
@@ -898,10 +902,16 @@ function checkMonsterContact() {
   if (isHidden) return;
   if (Date.now() < invulnUntil) return;
   const hit = monsters.some(m => m.r===playerPos.r && m.c===playerPos.c);
-  if (hit) applyDamage("A monster got you! 😱");
+  if (hit) applyDamage("A wisp caught you");
 }
 
 function applyDamage(msg) {
+  /* The invulnerability window used to be checked by the caller, and only
+     one of the two callers did it: a monster could not touch you twice in
+     a row but a watcher could, so bolts chewed through the i-frames a
+     monster respected. Whether a hit lands is decided here now, once, for
+     every source. */
+  if (Date.now() < invulnUntil) return;
   hp = Math.max(0, hp-2);
   invulnUntil = Date.now() + 1800;
   renderHeartsHud();
@@ -924,6 +934,7 @@ function respawnLevel2() {
   document.querySelectorAll(".shooter-alert.show").forEach(el => el.classList.remove("show"));
   playerPos = { r:1, c:1 };
   hp = HP_START;
+  invulnUntil = Date.now() + 900;   // a breath to get your bearings
   renderHeartsHud();
   monsters.forEach(m => { m.r = m.homeR; m.c = m.homeC; });
   layoutLevel2Entities();
@@ -1536,10 +1547,12 @@ function buildSkyline() {
 function buildEndHearts() {
   const field = document.getElementById("end-hearts");
   if (field.childElementCount) return;
-  const icons = ["💗","💕","✨"];
+  const shapes = ["heart", "petal", "spark", "bud"];
+  const tints = ["#ff9ac0", "#ffc9a8", "#ffe3b0", "#f08bb0"];
   for (let i=0;i<7;i++){
     const s = document.createElement("span");
-    s.textContent = icons[i % icons.length];
+    s.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="' +
+      tints[i % tints.length] + '" d="' + PARTICLE_SHAPES[shapes[i % shapes.length]] + '"/></svg>';
     s.style.left = (35 + Math.random()*30) + "%";
     s.style.top = (55 + Math.random()*20) + "%";
     s.style.animationDelay = (Math.random()*3)+"s";
