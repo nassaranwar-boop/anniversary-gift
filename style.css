@@ -1,5 +1,5 @@
 /* =========================================================
-   ✏️  THEME — the one place colour and feel are defined
+   THEME — the one place colour and feel are defined
    =========================================================
    Warm, soft, loving. Not mysterious: the palette is blush, cream
    and honey, contrast is gentle, shadows are warm rather than black,
@@ -3588,9 +3588,10 @@ img{-webkit-user-drag:none; user-select:none;}
   flex:none; width:2.6cqw; height:2.6cqw; min-width:12px; min-height:12px; margin-top:.3cqw;
   border:2px solid #7b6844; background:#fffdf6; position:relative;
 }
+/* the tick is drawn, not typed: two rules of a box, rotated */
 .ap-check-row.on .ap-check-box::after{
-  content:"✓"; position:absolute; inset:-.6cqw 0 0 0; text-align:center;
-  color:#3f6a34; font-size:2.6cqw; line-height:1;
+  content:""; position:absolute; left:16%; top:6%; width:44%; height:74%;
+  border:solid #3f6a34; border-width:0 .5cqw .5cqw 0; transform:rotate(42deg);
 }
 .ap-check-tx{display:flex; flex-direction:column; gap:.3cqw;}
 .ap-check-tx b{font-family:var(--ap-term); font-size:2.6cqw; color:#40331e; font-weight:400;}
@@ -3616,3 +3617,42 @@ img{-webkit-user-drag:none; user-select:none;}
 .night-sky-inner{transform:none !important;}
 .night-sky .end-hearts{opacity:0; transition:opacity 1.2s ease;}
 .night-sky.settled .end-hearts{opacity:1;}
+
+/* ---------------------------------------------------------
+   PIXEL GLYPHS
+
+   Every emoji that used to stand in for an icon is one of these now:
+   a symbol in the sheet at the top of index.html, drawn as a grid of
+   rects so it is the same language as everything else on this site,
+   and — unlike an emoji — the same picture on every device rather than
+   whatever Apple or Google felt like that year.
+   --------------------------------------------------------- */
+.gl{
+  display:inline-block; vertical-align:-0.12em;
+  width:1em; height:1em; overflow:visible;
+  image-rendering:pixelated; shape-rendering:crispEdges;
+}
+.gl-in{width:1.05em; height:1.05em; margin-left:.28em;}
+.gl-orn{width:.8em; height:.8em; margin:0 .34em; opacity:.85;}
+.gl-tick{width:.72em; height:.72em;}
+.gl-hp{width:1.15em; height:1.15em;}
+.gl-badge{width:2.1em; height:2.1em;}
+.gl-token{width:1.2em; height:1.2em;}
+.gl-life{width:.85em; height:.85em; margin-right:.12em;}
+.gl-pin{width:.9em; height:.9em;}
+.gl-bloom{width:1.35em; height:1.35em;}
+
+/* the pause bars and the continue arrow, drawn rather than typed as
+   dingbats — a dingbat is whatever the device's font decides it is */
+.gl-pause{
+  display:inline-block; width:.62em; height:.9em; position:relative;
+}
+.gl-pause::before,.gl-pause::after{
+  content:""; position:absolute; top:0; bottom:0; width:36%; background:currentColor;
+}
+.gl-pause::before{left:0;} .gl-pause::after{right:0;}
+.gl-play{
+  display:inline-block; width:0; height:0;
+  border-left:.62em solid currentColor;
+  border-top:.42em solid transparent; border-bottom:.42em solid transparent;
+}

@@ -1,27 +1,27 @@
 
 /* =========================================================
-   ✏️  CUSTOMIZE ME
+   CUSTOMIZE ME
    ========================================================= */
 const CONFIG = {
   babyName: "My Baby!",
   reward: "A sweet kiss",
   mazeSize: 8,
   heartCount: 6,
-  sender: { name: "Anwar 💗" },
+  sender: { name: "Anwar" },
   messages: [
-    "Muaaahhh! I love youuuu soooooooo muchhhhhhh!!!!! 💕",
-    "Thank you for finding your way to me. 🥹",
-    "You're my favorite person in this whole world. 🌙✨",
+    "Muaaahhh! I love youuuu soooooooo muchhhhhhh!!!!!",
+    "Thank you for finding your way to me.",
+    "You're my favorite person in this whole world.",
   ],
   messagesFinal: [
-    "You made it through everything... for me. 🥹",
-    "Every monster, every close call — you still found me. 💗",
-    "That's exactly how I feel loving you: worth every obstacle. 🌙💕",
+    "You made it through everything... for me.",
+    "Every monster, every close call — you still found me.",
+    "That's exactly how I feel loving you: worth every obstacle.",
   ],
 };
 
 /* =========================================================
-   ✏️  ANCIENT BOOK — CUSTOMIZE ME
+   ANCIENT BOOK — CUSTOMIZE ME
    ========================================================= */
 const GATE_CODE = "2207";
 
@@ -32,7 +32,7 @@ const MEMORIES = [
     id: 1,
     title: "[Memory title here]",
     date: "[date]",
-    icon: "📷",
+    icon: "px-camera",
     photo: null, // e.g. "assets/memory-1.jpg"
     text: "[This is where your words about this memory will appear — replace this placeholder with what you want to say about it.]",
   },
@@ -1233,7 +1233,11 @@ function showMessage() {
     textEl.textContent = full.slice(0, i);
     if (i >= full.length) { clearInterval(typeTimer); typing = false; }
   }, 26);
-  document.getElementById("btn-next").textContent = msgIndex === currentMessages().length-1 ? "Finish 💞" : "Next 💌";
+  /* the glyph is markup, so this sets innerHTML and not textContent */
+  document.getElementById("btn-next").innerHTML =
+    msgIndex === currentMessages().length - 1
+      ? "Finish"
+      : 'Next <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-note"/></svg>';
 }
 function advanceDialogue() {
   if (typing) {
@@ -1264,10 +1268,10 @@ let endTimer1 = null, endTimer2 = null;
 
 function goToEnding() {
   const heading = document.querySelector("#end-heading span");
-  heading.textContent = "🏆 You made it through everything for me 🏆";
+  heading.textContent = "You made it through everything for me";
   markChapterDone("maze");
   document.getElementById("btn-replay").textContent =
-    bothChaptersDone() ? "Open the keepsake 💛" : "Choose another chapter 💕";
+    bothChaptersDone() ? "Open the keepsake" : "Choose another chapter";
   pageTurn("end", () => activateEndingScene());
 }
 
@@ -2228,6 +2232,13 @@ document.getElementById("hub-keepsake").addEventListener("click", () => {
 const KEEPSAKE_CLOSING =
   "[Replace this with your closing line — the last thing she reads.]";
 
+/* Icons are names of pixel glyphs in the sprite sheet at the top of
+   index.html now, not emoji. This turns a name into the thing. */
+function glyph(name, cls) {
+  return '<svg class="gl ' + (cls || "gl-badge") + '" aria-hidden="true"><use href="#ic-' +
+         name + '"/></svg>';
+}
+
 function startKeepsake() {
   const board = document.getElementById("ks-board");
   board.innerHTML = "";
@@ -2238,25 +2249,25 @@ function startKeepsake() {
     card.style.setProperty("--r", ((i % 2 ? 1 : -1) * (1.5 + (i % 3))) + "deg");
     card.innerHTML = `
       <span class="ks-tape"></span>
-      <div class="ks-img">${m.photo ? `<img src="${m.photo}" alt="${m.title || ""}" style="width:100%;height:100%;object-fit:cover">` : (m.icon || "📷")}</div>
+      <div class="ks-img">${m.photo ? `<img src="${m.photo}" alt="${m.title || ""}" style="width:100%;height:100%;object-fit:cover">` : glyph(m.icon || "px-camera")}</div>
       <div class="ks-cap">${m.title || ""}</div>`;
     board.appendChild(card);
   });
 
   /* the two chapters get a card each, so the board reflects the whole visit */
   const badges = [
-    { icon: "🗝️", cap: "The Maze" },
-    { icon: "🦊", cap: "The Long Way Round" },
+    { icon: "px-key", cap: "The Maze" },
+    { icon: "px-fox", cap: "The Long Way Round" },
   ];
-  if (chaptersDone().ouissy) badges.push({ icon: "👑", cap: "Super Ouissy" });
-  if (chaptersDone().apoc) badges.push({ icon: "🌒", cap: "Ouissy at the Apocalypse" });
+  if (chaptersDone().ouissy) badges.push({ icon: "px-crown", cap: "Super Ouissy" });
+  if (chaptersDone().apoc) badges.push({ icon: "px-moon", cap: "Ouissy at the Apocalypse" });
   badges.forEach((b, i) => {
     const card = document.createElement("div");
     card.className = "ks-card";
     card.style.setProperty("--r", ((i ? -1 : 1) * 2.5) + "deg");
     card.innerHTML = `
       <span class="ks-tape"></span>
-      <div class="ks-img">${b.icon}</div>
+      <div class="ks-img">${glyph(b.icon)}</div>
       <div class="ks-cap">${b.cap}</div>`;
     board.appendChild(card);
   });
@@ -3574,7 +3585,7 @@ const HV_SCENES = {
 };
 
 /* =========================================================
-   ✏️  THE ADVENTURE — CUSTOMIZE ME
+   THE ADVENTURE — CUSTOMIZE ME
 
    The closing question and its answers are placeholders, same as
    the rest of the site. Replace them with what you actually want to ask.
@@ -3806,7 +3817,7 @@ const HV = {
   yay: {
     scene: "sunset", cat: "love", bigCat: true, hearts: true, isEnd: true,
     say: "YAYYY, I love you!", tally: true,
-    choices: [{ label: "close the book 💛", to: "__exit", pos: "left", style: "yes" }],
+    choices: [{ label: "close the book", to: "__exit", pos: "left", style: "yes" }],
   },
 };
 
@@ -3927,10 +3938,10 @@ function hvSfx(kind) {
 
 /* ---------- the things you can find ---------- */
 const HV_TOKENS = {
-  shell:   { name: "a striped shell",   icon: "🐚" },
-  feather: { name: "a soft feather",    icon: "🪶" },
-  acorn:   { name: "a small acorn",     icon: "🌰" },
-  ribbon:  { name: "a lost ribbon",     icon: "🎀" },
+  shell:   { name: "a striped shell",   icon: "px-shell" },
+  feather: { name: "a soft feather",    icon: "px-feather" },
+  acorn:   { name: "a small acorn",     icon: "px-acorn" },
+  ribbon:  { name: "a lost ribbon",     icon: "px-ribbon" },
 };
 let hvFound = {};
 let hvKeepsake = null;      // heart or flower, from the very first choice
@@ -4035,7 +4046,8 @@ function hvUpdateFoundStrip() {
   if (!strip) return;
   var ids = Object.keys(HV_TOKENS).filter(function (k) { return hvFound[k]; });
   strip.innerHTML = ids.map(function (k) {
-    return '<span class="hv-token" title="' + HV_TOKENS[k].name + '">' + HV_TOKENS[k].icon + "</span>";
+    return '<span class="hv-token" title="' + HV_TOKENS[k].name + '">' +
+           glyph(HV_TOKENS[k].icon, "gl-token") + "</span>";
   }).join("");
   strip.classList.toggle("on", ids.length > 0);
 }

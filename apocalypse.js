@@ -39,7 +39,7 @@ window.Apocalypse = (function () {
   "use strict";
 
   /* =======================================================================
-     1. ✏️  CUSTOMISE ME — the words. Nothing outside this block is text.
+     1. CUSTOMISE ME — the words. Nothing outside this block is text.
      ======================================================================= */
   var AP = {
     title: "OUISSY AT THE APOCALYPSE",
@@ -54,7 +54,7 @@ window.Apocalypse = (function () {
       { name: "THE GATES",     card: "Level 5", sub: "They only take you if you're clean." },
     ],
 
-    /* ✏️  THE REUNION — Level 3.
+    /* THE REUNION — Level 3.
 
        Written to be underplayed. Neither of them makes a speech; they are
        both still working out that the other one is really there. A line
@@ -97,7 +97,7 @@ window.Apocalypse = (function () {
       ],
     },
 
-    /* ✏️  The code on the scrap of paper in the corner shop in Level 2,
+    /* The code on the scrap of paper in the corner shop in Level 2,
        and therefore the code on the staff gate. Four digits. Change it to
        something that means something and it changes in both places. */
     gateCode: "4180",
