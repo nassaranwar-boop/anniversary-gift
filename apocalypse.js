@@ -54,6 +54,49 @@ window.Apocalypse = (function () {
       { name: "THE GATES",     card: "Level 5", sub: "They only take you if you're clean." },
     ],
 
+    /* ✏️  THE REUNION — Level 3.
+
+       Written to be underplayed. Neither of them makes a speech; they are
+       both still working out that the other one is really there. A line
+       with no words at all is a beat of silence, and it is held on screen
+       like any other line — those are doing as much work here as the
+       spoken ones, so please keep them if you rewrite around them.
+
+       ["ANWAR", "..."]  he says it   ["OUISSY", "..."]  she says it
+       ["", "..."]       narration    ["", ""]           a silence  */
+    reunion: {
+      waking: [
+        ["", "He is on his side with one arm out of the blanket. She says his name twice before anything happens."],
+        ["ANWAR", "...Ouissy?"],
+        ["ANWAR", "What time is it."],
+        ["OUISSY", "We have to go."],
+        ["ANWAR", "Okay."],
+        ["", "He doesn't ask why. That tells her he has already heard something."],
+      ],
+      hiding: [
+        ["", "The door goes shut behind them. There is a bolt on it, and the bolt works."],
+        ["", ""],
+        ["ANWAR", "You walked here."],
+        ["OUISSY", "Yeah."],
+        ["ANWAR", "From the house."],
+        ["OUISSY", "Yeah."],
+        ["", ""],
+        ["ANWAR", "You're insane."],
+        ["OUISSY", "I know."],
+        ["", "He laughs, once, and it comes out wrong, and then he stops."],
+        ["ANWAR", "...Come here."],
+        ["", "They stay like that for a while. Neither of them says anything for a while."],
+        ["ANWAR", "I kept thinking, if this is real, she's on her own in that house."],
+        ["OUISSY", "I'm not on my own."],
+        ["ANWAR", "No."],
+        ["", ""],
+        ["OUISSY", "So what do we do."],
+        ["ANWAR", "I don't know yet."],
+        ["ANWAR", "Give me a minute and we'll work it out."],
+        ["OUISSY", "Okay."],
+      ],
+    },
+
     /* The how-to card, shown once before Level 1. */
     howTo: [
       ["← ↑ ↓ →", "move (or WASD)"],
@@ -223,6 +266,58 @@ window.Apocalypse = (function () {
     ],
     steps: [
       { task: "Cross town to the hospital — south, then east.", clears: "exit" },
+    ],
+  };
+
+
+  /* ---- LEVEL 3 — THE HOSPITAL -----------------------------------------
+     Entrance hall, one corridor east to west and one crossing it, the west
+     wing with the plant room in it, and Ward C behind a set of doors with
+     no power. He is in the far bay of Ward C.
+
+     There is no clock on the screen. What there is instead: the room tone
+     climbs the whole time she is in here, and every twenty seconds or so
+     one more of them finds its way in through the front. Nothing about
+     that is announced. She is just meant to notice that it is getting
+     worse and stop dawdling.
+     --------------------------------------------------------------------- */
+  LEVELS[2] = {
+    theme: "hospital",
+    name: "THE HOSPITAL",
+    dark: 0.71,
+    pressure: true,
+    grid: [
+      "########################################",
+      "##################..####################",
+      "##oo............##..##..Bh.Bh.Bh.Bh.B.##",
+      "##......=====...##.l##..B..B.lB..B..B.##",
+      "##...W.o........##..##................##",
+      "##.....o.............P........A.......##",
+      "##....z..............P................##",
+      "##.l............##..##................##",
+      "##......=====...##.z##..B..B..B..B..B.##",
+      "##..h.........h.##.l##..BhlBh.Bh.Bh.B.##",
+      "##..............##..##................##",
+      "##################..####################",
+      "#....l.....z..l.........l.....z...l....#",
+      "#.......z..............................#",
+      "#########.########..####################",
+      "##.......d##.....#....................##",
+      "##.X......##.ooo.#...KKKKKK.....=====.##",
+      "##........##.ooo.#.l...z....hh.....z..##",
+      "##........##h....#...............h....##",
+      "#########.####.###..####.###############",
+      "########......z................#########",
+      "########..KKKKKK...l..======...#########",
+      "########....l...............l..#########",
+      "########...h....BB........h....#########",
+      "########...........S......z....#########",
+      "########################################",
+    ],
+    steps: [
+      { task: "Ward C has no power on the doors. Find the plant room.", clears: "panel" },
+      { task: "Ward C is open. He's in there somewhere.", clears: "anwar" },
+      { task: "Get off the corridor. Anywhere with a door that shuts.", clears: "exit" },
     ],
   };
 
@@ -410,6 +505,27 @@ window.Apocalypse = (function () {
 
   var ANW_LEGS = ["..pppppppp..", "..ppp..ppp..", "..bbb..bbb.."];
 
+  /* Anwar asleep, seen from above: head on the pillow, one arm out of the
+     blanket, the blanket to his chin. Twelve wide like everyone else so it
+     lands on the grid the same way. */
+  var ANW_SLEEP = [
+    "....hhhh....",
+    "...hhhhhh...",
+    "..hhssssh...",
+    "..hssssssh..",
+    "..hs.ss.sh..",
+    "..hssmmssh..",
+    "...ssssss...",
+    "..wwwwwwww..",
+    ".wwwwwwwwww.",
+    ".wwwwwwwwws.",
+    ".wwwwwwwwwS.",
+    ".WwwwwwwwwW.",
+    ".wwwwwwwwww.",
+    ".WWwwwwwwWW.",
+    "..wwwwwwww..",
+  ];
+
   var OUI_PAL = {
     h: "#3a2418", H: "#553520", s: "#e8b78f", S: "#c9946c",
     e: "#20140d", m: "#a75b5c", c: "#e2647f", C: "#b84c64",
@@ -421,7 +537,7 @@ window.Apocalypse = (function () {
   };
   var ANW_PAL = {
     h: "#231a14", s: "#d8a273", S: "#b8845a", e: "#1b120c", m: "#96524f",
-    w: "#c9d6dd", p: "#4a5566", b: "#2a2028",
+    w: "#c9d6dd", W: "#a6b5be", p: "#4a5566", b: "#2a2028",
   };
 
   /* built once, on first use, and kept */
@@ -444,13 +560,13 @@ window.Apocalypse = (function () {
       return out;
     }
 
+    ANW_TORSO.up = ANW_TORSO.up || ANW_TORSO.down;
+    ANW_TORSO.side = ANW_TORSO.side || ANW_TORSO.down;
     ART = {
       ouissy: person(OUI_TORSO, OUI_LEGS, OUI_PAL, OUI_PAL, OUI_LEGS_SIDE),
       zombie: person(ZOM_TORSO, ZOM_LEGS, ZOM_PAL, ZOM_PAL, ZOM_LEGS_SIDE),
-      anwar: (function () {
-        var s = sprite(ANW_TORSO.down.concat(ANW_LEGS), ANW_PAL);
-        return { down: [s, s, s], up: [s, s, s], left: [s, s, s], right: [s, s, s], side: [s, s, s] };
-      })(),
+      anwar: person(ANW_TORSO, OUI_LEGS, ANW_PAL, ANW_PAL, OUI_LEGS_SIDE),
+      anwarAsleep: sprite(ANW_SLEEP, ANW_PAL),
     };
     return ART;
   }
@@ -610,18 +726,27 @@ window.Apocalypse = (function () {
      hand for every combination. */
   function paintBed(c, P, theme, r, E) {
     paintFloor(c, P, theme, r);
+    var ward = theme === "hospital";
+    var frame = ward ? "#8a949c" : "#4a3a30";
+    var cover = ward ? "#9fb4c4" : "#8a5a68";
+    var coverLit = ward ? "#b8c9d6" : "#a06e7c";
+    var coverDark = ward ? "#7e909e" : "#7a4c5c";
     var x0 = E.w ? 1 : 0, x1 = E.e ? T - 1 : T;
-    px(c, x0, 0, x1 - x0, T, "#4a3a30");                      // the frame
-    if (E.n) {
-      px(c, x0 + 1, 1, x1 - x0 - 2, 5, "#e6e0d2");            // the pillow
-      px(c, x0 + 1, 2, x1 - x0 - 2, 1, "#f4f0e6");
-      px(c, x0 + 1, 6, x1 - x0 - 2, T - 7, "#8a5a68");        // the duvet turned down
-      px(c, x0 + 1, 6, x1 - x0 - 2, 2, "#a06e7c");
-    } else {
-      px(c, x0 + 1, 0, x1 - x0 - 2, T - 1, "#8a5a68");
-      for (var i = 0; i < 3; i++) px(c, x0 + 2 + i * 4, 2, 1, T - 5, "#7a4c5c");
+    px(c, x0, 0, x1 - x0, T, frame);                          // the frame
+    if (ward) {                                                // and its rails
+      px(c, x0, 0, 1, T, "#b0bcc4"); px(c, x1 - 1, 0, 1, T, "#6e7880");
     }
-    if (E.s) px(c, x0 + 1, T - 2, x1 - x0 - 2, 1, "#6a4450"); // the foot of it
+    if (E.n) {
+      px(c, x0 + 1, 1, x1 - x0 - 2, 5, "#eef2f4");            // the pillow
+      px(c, x0 + 1, 2, x1 - x0 - 2, 1, "#fbfdfe");
+      if (ward) px(c, x0 + 1, 6, x1 - x0 - 2, 2, "#e8eef2");  // the sheet folded over it
+      px(c, x0 + 1, ward ? 8 : 6, x1 - x0 - 2, T - (ward ? 9 : 7), cover);
+      px(c, x0 + 1, ward ? 8 : 6, x1 - x0 - 2, 2, coverLit);
+    } else {
+      px(c, x0 + 1, 0, x1 - x0 - 2, T - 1, cover);
+      for (var i = 0; i < 3; i++) px(c, x0 + 2 + i * 4, 2, 1, T - 5, coverDark);
+    }
+    if (E.s) px(c, x0 + 1, T - 2, x1 - x0 - 2, 1, coverDark);
   }
 
   /* A sofa from above: the back along whichever side faces the wall, an arm
@@ -668,7 +793,18 @@ window.Apocalypse = (function () {
         blob(c, (r() * T) | 0, (r() * T) | 0, 2 + ((r() * 2) | 0), 2, [P.hide[0], P.hide[0], P.hide[1], P.hide[2]]);
       }
       px(c, 6, 9, 4, 5, shade(P.hide[2], -14));     // the gap she gets into
-    } else {                                        // a wardrobe / curtain, door ajar
+    } else if (theme === "hospital") {              // a curtain, half pulled round
+      px(c, 0, 1, T, 2, "#9aa6ac");                  // the rail
+      px(c, 0, 1, T, 1, "#c2ccd2");
+      for (var k = 1; k < T; k += 3) px(c, k, 2, 1, 1, "#6e787e");   // the hooks
+      px(c, 0, 3, T, T - 3, "#6f8f88");              // the curtain itself
+      for (var fd = 0; fd < T; fd += 3) {
+        px(c, fd, 3, 1, T - 3, "#83a49c");
+        px(c, fd + 2, 3, 1, T - 3, "#5b7872");
+      }
+      px(c, 0, T - 2, T, 1, "#4e6862");              // its hem
+      px(c, 5, 5, 5, T - 8, "#33443f");              // and the gap she gets behind
+    } else {                                        // a wardrobe, door ajar
       px(c, 1, 1, T - 2, T - 2, P.hide[1]);
       px(c, 1, 1, T - 2, 2, P.hide[0]);
       px(c, 4, 3, 8, T - 6, shade(P.hide[2], -18));  // the dark of the inside
@@ -719,6 +855,11 @@ window.Apocalypse = (function () {
       px(c, 7, 2, 2, T - 3, "#3a3f4a");
       px(c, 4, 1, 8, 3, "#4a505c");
       px(c, 5, 2, 6, 2, "#ffe0a0");
+    } else if (theme === "hospital") {               // a strip light, overhead
+      paintFloor(c, P, theme, r);
+      px(c, 1, 6, T - 2, 4, "#8c979e");
+      px(c, 2, 7, T - 4, 2, r() > 0.42 ? "#f2f8ff" : "#5c666c");  // a good few are out
+      px(c, 1, 10, T - 2, 1, "#5c666c");
     } else {                                         // a lamp standing in a room
       paintFloor(c, P, theme, r);
       px(c, 7, 6, 2, 8, "#3a3f4a");
@@ -866,7 +1007,7 @@ window.Apocalypse = (function () {
         if (ch === "S") L.start = { x: x * T + T / 2, y: y * T + T / 2 };
         if (ch === "X") L.exit = { x: x, y: y };
         if (ch === "z") L.zombies.push(mkZombie(x * T + T / 2, y * T + T / 2));
-        if (ch === "A") L.anwar = { x: x * T + T / 2, y: y * T + T / 2 };
+        if (ch === "A") { L.anwar = { x: x * T + T / 2, y: y * T + T / 2, awake: false }; draw = "B"; }
         if (ch === "H") L.horse = { x: x * T + T / 2, y: y * T + T / 2 };
         if (ch === "N") L.things.push({ kind: "note", x: x, y: y, done: false });
         if (ch === "T") L.things.push({ kind: "tv", x: x, y: y, done: false });
@@ -876,7 +1017,9 @@ window.Apocalypse = (function () {
         if (ch === "D") L.doors[x + "," + y] = { open: false, kind: "locked" };
         if (ch === "P") L.doors[x + "," + y] = { open: false, kind: "power" };
         if (ch === "v") L.lights.push({ x: x * T + T / 2, y: y * T + T + 6, r: 58, warm: -0.9 });
-        if (ch === "l") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2, r: 62, warm: 1 });
+        if (ch === "l") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2, r: def.theme === "hospital" ? 60 : 62,
+                                        warm: def.theme === "hospital" ? -0.5 : 1,
+                                        flicker: def.theme === "hospital" && ((x + y) % 3 === 0) });
         if (ch === "L") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2, r: 74, warm: 1 });
         if (ch === "T") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2, r: 44, warm: 0.35, tv: true });
         row.push({ ch: ch, draw: draw });
@@ -1196,6 +1339,44 @@ window.Apocalypse = (function () {
     if (!G.player.hidden && Math.hypot(z.x - G.player.x, z.y - G.player.y) < 9) caught(G);
   }
 
+  /* =======================================================================
+     THE PRESSURE
+
+        Level 3 has no clock on it, because a clock would turn finding him
+        into an exam. What it has instead is weather: the room tone climbs,
+        the light gets a little worse, and every so often one more of them
+        finds the way in through the front doors and starts walking. None
+        of that is announced. She is only meant to notice, somewhere around
+        the third or fourth one, that this is going the wrong way and she
+        should stop reading every sign.
+     ======================================================================= */
+  var PRESSURE_FULL = 165;          // seconds to the worst it gets
+  var PRESSURE_EVERY = 21;          // and one more of them, this often
+
+  function stepPressure(G, dt) {
+    if (!G.level.def.pressure) return;
+    G.pressure = Math.min(1, (G.pressure || 0) + dt / PRESSURE_FULL);
+    G.pressureT = (G.pressureT || 0) - dt;
+    if (G.pressureT > 0) return;
+    G.pressureT = PRESSURE_EVERY;
+    if (G.level.zombies.length > 22) return;
+
+    /* it comes in at the front and it comes in a long way from her, so the
+       level gets heavier without anything ever appearing on top of her */
+    var L = G.level, best = null, bd = -1;
+    for (var i = 0; i < 60; i++) {
+      var tx = 1 + ((Math.random() * (L.w - 2)) | 0);
+      var ty = 1 + ((Math.random() * (L.h - 2)) | 0);
+      if (isSolid(L, tx, ty) || isHide(L, tx, ty)) continue;
+      var d = Math.hypot(tx * T - G.player.x, ty * T - G.player.y);
+      if (d > bd) { bd = d; best = { x: tx, y: ty }; }
+    }
+    if (best && bd > 110) {
+      L.zombies.push(mkZombie(best.x * T + T / 2, best.y * T + T / 2));
+      sfx("arrive");
+    }
+  }
+
   function makeNoise(G, x, y, radius) {
     if (radius <= 0) return;
     G.noises.push({ x: x, y: y, r: radius, t: 0 });
@@ -1242,8 +1423,15 @@ window.Apocalypse = (function () {
     L.zombies.forEach(function (z) {
       actors.push({ y: z.y, draw: function () { drawActor(G, c, ART.zombie, z, cx, cy, z.alert); } });
     });
-    if (L.anwarUp) {
-      actors.push({ y: L.anwarUp.y, draw: function () { drawActor(G, c, ART.anwar, L.anwarUp, cx, cy); } });
+    if (L.anwar) {
+      var a = L.anwar;
+      actors.push({ y: a.y + (a.awake ? 0 : 4), draw: function () {
+        if (a.awake) drawActor(G, c, ART.anwar, a, cx, cy);
+        else {
+          var x = Math.round(a.x - cx), y = Math.round(a.y - cy);
+          c.drawImage(ART.anwarAsleep, x - 6, y - 9);
+        }
+      } });
     }
     actors.sort(function (a, b) { return a.y - b.y; });
     actors.forEach(function (a) { a.draw(); });
@@ -1296,6 +1484,15 @@ window.Apocalypse = (function () {
       c.strokeStyle = "rgba(220,200,160," + (a * 0.6) + ")";
       c.strokeRect(d.x - cx - 8, d.y - cy - 8, 16, 16);
     });
+
+    /* the pressure, as weather rather than as a number */
+    if (G.pressure > 0.02) {
+      var pg = c.createRadialGradient(VW / 2, VH / 2, VH * 0.34, VW / 2, VH / 2, VH * 0.95);
+      pg.addColorStop(0, "rgba(90,10,18,0)");
+      pg.addColorStop(1, "rgba(90,10,18," + (0.34 * G.pressure) + ")");
+      c.fillStyle = pg;
+      c.fillRect(0, 0, VW, VH);
+    }
 
     if (G.state === "caught") paintCaught(G, c);
     if (G.flash > 0) {
@@ -1534,10 +1731,13 @@ window.Apocalypse = (function () {
       return;
     }
     var line = d.lines[d.i++];
+    var quiet = !line[1];
     $("ap-dlg-name").textContent = line[0] || "";
-    $("ap-dlg-text").textContent = line[1];
+    $("ap-dlg-text").textContent = quiet ? "\u2026" : line[1];
+    $("ap-dlg").classList.toggle("quiet", quiet);
+    $("ap-dlg").classList.toggle("narration", !line[0] && !quiet);
     $("ap-dlg").setAttribute("aria-hidden", "false");
-    sfx("blip");
+    if (!quiet) sfx("blip");
   }
 
   /* =======================================================================
@@ -1597,6 +1797,7 @@ window.Apocalypse = (function () {
       case "caught":  tone(200, 0.5, "sawtooth", 0.09, 60); noiseBurst(0.4, 0.09, 600); break;
       case "found":   tone(660, 0.1, "sine", 0.05); tone(880, 0.18, "sine", 0.045); break;
       case "spot":    tone(320, 0.35, "sawtooth", 0.07, 130); noiseBurst(0.35, 0.06, 900); break;
+      case "arrive":  tone(78, 0.9, "sine", 0.045, 52); noiseBurst(0.5, 0.03, 340); break;
       case "deny":    tone(150, 0.18, "square", 0.05, 110); break;
     }
   }
@@ -1635,6 +1836,7 @@ window.Apocalypse = (function () {
   }
 
   function step(G, dt) {
+    LAST_DT = dt;
     G.t += dt;
     G.flash = Math.max(0, G.flash - dt * 2);
 
@@ -1661,11 +1863,20 @@ window.Apocalypse = (function () {
     if (G.state !== "play") return;
 
     stepPlayer(G, dt);
+    stepPressure(G, dt);
     for (i = 0; i < G.level.zombies.length; i++) stepZombie(G, G.level.zombies[i], dt);
     updateSafe(G, dt);
     checkTriggers(G);
     G.hudT -= dt;
-    if (G.hudT <= 0) { G.hudT = 0.15; setHud(G); }
+    if (G.hudT <= 0) {
+      G.hudT = 0.15;
+      setHud(G);
+      if (room && room.g) {
+        var lean = G.level.def.pressure ? (G.pressure || 0) : 0;
+        room.g.gain.value = 0.05 + lean * 0.07;
+        room.o2.frequency.value = 81.5 + lean * 9;
+      }
+    }
   }
 
   function frame(now) {
@@ -1801,7 +2012,7 @@ window.Apocalypse = (function () {
       player: mkPlayer(0, 0), keys: freshKeys(), cam: { x: 0, y: 0 },
       noises: [], doorFx: [], safe: { x: 0, y: 0 }, safeT: 0,
       caughtT: 0, caughtShown: false, caughtLine: "", closeCalls: 0,
-      flash: 0, hudT: 0, code: null, dlg: null,
+      flash: 0, hudT: 0, code: null, dlg: null, pressure: 0, pressureT: 0,
       canvas: $("ap-canvas"), ctx: $("ap-canvas").getContext("2d"),
     };
     G.ctx.imageSmoothingEnabled = false;
@@ -1848,6 +2059,8 @@ window.Apocalypse = (function () {
       G.step = G.level.def.steps[0];
       G.state = "play";
       G.keys = freshKeys();
+      G.pressure = 0;
+      G.pressureT = PRESSURE_EVERY;
       snapCam(G);
       setHud(G);
       if (LEVEL_INTRO[i]) LEVEL_INTRO[i](G);
@@ -2360,12 +2573,51 @@ window.Apocalypse = (function () {
 
   function checkTriggers(G) {
     var L = G.level, p = G.player;
+
+    /* him: asleep until she is standing over him, then following her */
+    if (L.anwar) {
+      if (!L.anwar.awake) {
+        if (Math.hypot(L.anwar.x - p.x, L.anwar.y - p.y) < 22 && G.state === "play") {
+          L.anwar.awake = true;
+          L.anwar.trail = [];
+          sfx("found");
+          advanceStep(G, "anwar");
+          say(G, AP.reunion.waking);
+        }
+      } else {
+        followHer(G, L.anwar, dtOf(G));
+      }
+    }
     if (L.exit) {
       var ex = L.exit.x * T + T / 2, ey = L.exit.y * T + T / 2;
       if (Math.hypot(ex - p.x, ey - p.y) < 12) finishLevel(G);
     }
     if (L.onStep) L.onStep(G);
   }
+
+  /* He walks where she walked, a little way back, rather than steering at
+     her — a follower that pathfinds is a follower that gets stuck on a
+     door frame, and there is nothing romantic about that. */
+  function followHer(G, a, dt) {
+    var p = G.player;
+    a.trail = a.trail || [];
+    var last = a.trail[a.trail.length - 1];
+    if (!last || Math.hypot(last.x - p.x, last.y - p.y) > 3) a.trail.push({ x: p.x, y: p.y });
+    if (a.trail.length > 26) a.trail.shift();
+    var want = a.trail[0];
+    if (!want) return;
+    var dx = want.x - a.x, dy = want.y - a.y, d = Math.hypot(dx, dy);
+    if (d < 3) { a.frame = 0; return; }
+    var sp = Math.min(TUNE.walk * 1.15, d * 4);
+    a.x += (dx / d) * sp * dt;
+    a.y += (dy / d) * sp * dt;
+    a.face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+    a.anim = (a.anim || 0) + dt * 7;
+    a.frame = 1 + ((a.anim | 0) % 2);
+  }
+
+  var LAST_DT = 1 / 60;
+  function dtOf() { return LAST_DT; }
 
   function finishLevel(G) {
     if (G.state !== "play") return;
@@ -2443,18 +2695,34 @@ window.Apocalypse = (function () {
   }
 
   /* ---- what each level's panel is wired to ---------------------------- */
+  /* Opening whatever the panel was wired to. Every level's panel does the
+     same physical thing — the doors that had no power now have power — so
+     the difference between them is only what she is standing in front of
+     and what gets said about it. */
+  function powerUp(G, line) {
+    var L = G.level;
+    Object.keys(L.doors).forEach(function (k) {
+      if (L.doors[k].kind === "power") L.doors[k].open = true;
+    });
+    advanceStep(G, "panel");
+    if (line) say(G, [["", line]]);
+  }
+
   var PANELS = {
     0: {
       title: "GARAGE — DOOR MOTOR",
       hint: "follow each wire back to its plug, then put it in the socket that matches",
       onDone: function (G) {
-        var L = G.level;
-        Object.keys(L.doors).forEach(function (k) {
-          if (L.doors[k].kind === "power") L.doors[k].open = true;
-        });
-        L.lights.push({ x: L.exit.x * T + T / 2, y: L.exit.y * T + T / 2 - 20, r: 70, warm: 0.4, flicker: true });
-        advanceStep(G, "panel");
-        say(G, [["", "Something under the floor kicks in, and the garage door starts to lift."]]);
+        G.level.lights.push({ x: G.level.exit.x * T + T / 2, y: G.level.exit.y * T + T / 2 - 20,
+                              r: 70, warm: 0.4, flicker: true });
+        powerUp(G, "Something under the floor kicks in, and the garage door starts to lift.");
+      },
+    },
+    2: {
+      title: "WARD C — DOOR GEAR",
+      hint: "same as the garage. Follow the run, not the nearest end",
+      onDone: function (G) {
+        powerUp(G, "Down the corridor, two heavy doors give up and roll apart.");
       },
     },
   };
@@ -2468,6 +2736,7 @@ window.Apocalypse = (function () {
     },
   };
   var OUTRO = {
+    2: null,        // filled in below from AP.reunion, so the words stay in one place
     1: [
       ["", "The hospital sign is still lit. Of everything on this street, that is the thing still lit."],
       ["OUISSY", "Please be asleep. Please still be asleep."],
@@ -2478,7 +2747,15 @@ window.Apocalypse = (function () {
     ],
   };
 
+  OUTRO[2] = AP.reunion.hiding;
+
   var LEVEL_INTRO = {
+    2: function (G) {
+      say(G, [
+        ["", "The doors are open and nobody is on the desk. The lights are on the emergency circuit — half of them, and not steadily."],
+        ["", "It is not quiet in here. It is getting less quiet."],
+      ]);
+    },
     1: function (G) {
       say(G, [
         ["", "Outside is worse. Not louder — quieter. No cars. No music. Nobody's television but hers."],
@@ -2520,6 +2797,8 @@ window.Apocalypse = (function () {
     G.step = G.level.def.steps[0];
     G.state = "play";
     G.keys = freshKeys();
+    G.pressure = 0;
+    G.pressureT = PRESSURE_EVERY;
     snapCam(G);
     setHud(G);
     return { w: G.level.w, h: G.level.h, zombies: G.level.zombies.length,
@@ -2586,7 +2865,9 @@ window.Apocalypse = (function () {
   window.__apSolvePanel = function () { if (G.__panel) G.__panel.solve(); };
   window.__apState = function () {
     return { state: G.state, level: G.levelIndex, step: G.step && G.step.clears,
-             closeCalls: G.closeCalls, code: G.code,
+             closeCalls: G.closeCalls, code: G.code, pressure: G.pressure,
+             anwar: G.level.anwar ? { awake: G.level.anwar.awake, x: Math.round(G.level.anwar.x), y: Math.round(G.level.anwar.y) } : null,
+             zombies: G.level.zombies.length,
              doors: Object.keys(G.level.doors).map(function (k) {
                return k + ":" + G.level.doors[k].kind + (G.level.doors[k].open ? "(open)" : ""); }) };
   };

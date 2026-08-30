@@ -3490,3 +3490,6 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .ap-tv-cap{margin:2.2cqw 0 2.4cqw; font-size:1.6cqw; color:#7f8bb0; font-style:italic;}
 .ap-note-after{margin:-1.2cqw 0 2.2cqw; font-size:1.6cqw; line-height:1.5; color:#6d5b3e; font-style:italic;}
+.ap-dlg.narration .ap-dlg-text{color:#c2ccdf; font-style:italic;}
+.ap-dlg.quiet .ap-dlg-text{color:#6d7793; letter-spacing:.5em; text-align:center;}
+.ap-dlg.quiet .ap-dlg-name{display:none;}
