@@ -94,6 +94,9 @@ window.Apocalypse = (function () {
         ["ANWAR", "I don't know yet."],
         ["ANWAR", "Give me a minute and we'll work it out."],
         ["OUISSY", "Okay."],
+        ["", ""],
+        ["", "There has been a radio talking on the shelf behind them for the whole of that, too quiet to be words."],
+        ["OUISSY", "...How long has that been on?"],
       ],
     },
 
@@ -933,6 +936,25 @@ window.Apocalypse = (function () {
           px(c, x2, y, 7, 7, r() > 0.5 ? P.wall[0] : P.wall[1]);
         }
       }
+    } else if (theme === "road") {
+      /* Out here a wall is a fence somebody put up in a hurry: corrugated
+         sheet bolted to posts, with the rust coming through the laps and
+         the odd panel a different colour because it came off something
+         else. Brick was reading as a Victorian mill. */
+      var tint = r() > 0.72 ? "#6a5a44" : r() > 0.4 ? "#4e5a52" : "#5a5348";
+      px(c, 0, 0, T, T, tint);
+      for (var cg = 0; cg < T; cg += 3) {
+        px(c, cg, 0, 1, T, shade(tint, 16));
+        px(c, cg + 1, 0, 1, T, shade(tint, -14));
+      }
+      px(c, 0, 0, T, 2, shade(tint, 26));            // the top rail
+      px(c, 0, 2, T, 1, shade(tint, -22));
+      px(c, 0, T - 2, T, 2, shade(tint, -26));
+      for (var rz = 0; rz < 5; rz++) {               // rust at the laps
+        if (r() > 0.55) blob(c, (r() * T) | 0, (r() * T) | 0, 2, 2,
+                             ["#7a5334", "#63432a", "#4c3421", "#3a2819"]);
+      }
+      if (r() > 0.78) { px(c, 3, 5, 3, 3, "#3a3a3a"); px(c, 4, 6, 1, 1, "#6a6a6a"); }  // a bolt
     } else {                                        // brick and render
       for (var yy = 0; yy < T; yy += 5) {
         for (var xx = (yy % 10 ? 4 : 0) - 4; xx < T; xx += 8) {
@@ -3842,14 +3864,25 @@ window.Apocalypse = (function () {
       onDone: function (G) {
         G.level.lights.push({ x: G.level.exit.x * T + T / 2, y: G.level.exit.y * T + T / 2 - 20,
                               r: 70, warm: 0.4, flicker: true });
-        powerUp(G, "Something under the floor kicks in, and the garage door starts to lift.");
+        powerUp(G, null);
+        say(G, [
+          ["", "Something under the floor kicks in, and the garage door starts to lift."],
+          ["", "It gets about waist high, finds whatever is wrong with it, and stops there."],
+          ["", "A strip of street light comes in underneath and lies across the floor."],
+          ["OUISSY", "...That'll do."],
+        ]);
       },
     },
     2: {
       title: "WARD C — DOOR GEAR",
       hint: "same as the garage. Follow the run, not the nearest end",
       onDone: function (G) {
-        powerUp(G, "Down the corridor, two heavy doors give up and roll apart.");
+        powerUp(G, null);
+        say(G, [
+          ["", "Down the corridor, two heavy doors give up and roll apart."],
+          ["", "The lights come up inside a beat later, one row at a time, all the way to the far end."],
+          ["", "It is the only quiet corridor left in this building."],
+        ]);
       },
     },
   };
@@ -3865,7 +3898,9 @@ window.Apocalypse = (function () {
   var OUTRO = {
     4: [
       ["", "There is a bed each and there is tea, and there is a whole day of being asked their names by kind people with clipboards."],
-      ["", "Somebody tells them there is a way up onto the roof, and that it is worth it in the evening."],
+      ["", ""],
+      ["", "It takes until the evening to stop expecting the noise."],
+      ["", "Somebody tells them there is a way up onto the roof, and that it is worth it about now."],
     ],
     3: [
       ["", "The gates are steel and somebody has welded a sheet of road sign across them. There is a light on above."],
@@ -3896,13 +3931,15 @@ window.Apocalypse = (function () {
     },
     3: function (G) {
       say(G, [
-        ["", "There is a radio on the shelf in here, and it has been saying the same thing since before either of them woke up."],
+        ["", "He reaches up and turns it over, and it has been saying the same forty seconds since before either of them woke up."],
       ], function () {
         showRadio(G, function () {
           say(G, [
             ["ANWAR", "Ashcombe. That's — what, forty miles?"],
             ["OUISSY", "Are we walking forty miles?"],
-            ["ANWAR", "There's a staff car park under the east block."],
+            ["", "He gets up too fast and has to put a hand on the shelf until the room settles."],
+            ["ANWAR", "Give me a second. I've been horizontal for a week."],
+            ["ANWAR", "...There's a staff car park under the east block."],
             ["OUISSY", "Then we're not walking forty miles."],
           ]);
         });
@@ -3910,13 +3947,16 @@ window.Apocalypse = (function () {
     },
     2: function (G) {
       say(G, [
-        ["", "The doors are open and nobody is on the desk. The lights are on the emergency circuit — half of them, and not steadily."],
+        ["", "The doors open for her. Somebody left the power on for the doors."],
+        ["", "Nobody is on the desk. The lights are on the emergency circuit — half of them, and not steadily."],
         ["", "It is not quiet in here. It is getting less quiet."],
       ]);
     },
     1: function (G) {
       say(G, [
+        ["", "She comes out under the door on her hands and knees, and then stands up on her own street."],
         ["", "Outside is worse. Not louder — quieter. No cars. No music. Nobody's television but hers."],
+        ["OUISSY", "...Right."],
         ["OUISSY", "Okay. Think. Where do I even—"],
         ["OUISSY", "...Anwar."],
         ["OUISSY", "He's on a ward with his phone in a drawer. He doesn't know any of this. He's asleep."],
@@ -4097,6 +4137,15 @@ window.Apocalypse = (function () {
       say(G, [["", "Nothing. It is not the battery this time — the needle has been on the pin since the ring road."]]);
       return;
     }
+    if (!t.tried) {
+      t.tried = true;
+      say(G, [
+        ["", "The first two are locked and the third has somebody's keys still in the door, which tells its own story."],
+        ["ANWAR", "Don't say anything about it."],
+        ["OUISSY", "I wasn't going to."],
+      ], function () { CAR_USE(G, t); });
+      return;
+    }
     openWirePanel(G, {
       title: "UNDER THE BONNET",
       hint: "same puzzle, worse light. Follow the run, not the nearest end",
@@ -4113,7 +4162,8 @@ window.Apocalypse = (function () {
             enterSubmap(G, SUBMAPS.roadside, [5, 4]);
             advanceStep(G, "car");
             say(G, [
-              ["", "It coughs twice on the hill and then it is only the two of them and the noise the wind makes."],
+              ["", "It coughs twice on the hill, the lights go brown, and then there is nothing to listen to but the wind on the glass."],
+              ["", "They sit in it for a while anyway, because it is warm and because neither of them wants to be the one to open the door."],
               ["ANWAR", "How much was in it?"],
               ["OUISSY", "It was somebody else's car, Anwar."],
               ["ANWAR", "Fair."],
@@ -4130,6 +4180,8 @@ window.Apocalypse = (function () {
     t.done = true;
     sfx("found");
     say(G, [
+      ["", "There is a field gate at the end of the lane with a name painted on it by hand, a long time ago, by somebody who was not in a hurry."],
+      ["", "They hear her before they see her: a shift of weight, and then hooves on a concrete floor."],
       ["", "There is one animal left in the barn and she has heard them coming from the yard."],
       ["", "She puts her whole head over the door before Ouissy has got near it."],
       ["OUISSY", "Oh — hello. Hello."],
