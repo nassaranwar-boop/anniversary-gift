@@ -4,7 +4,7 @@
    ========================================================= */
 const CONFIG = {
   babyName: "My Baby!",
-  reward: "A sweet kiss 😘",
+  reward: "A sweet kiss",
   mazeSize: 8,
   heartCount: 6,
   sender: { name: "Anwar 💗" },
@@ -66,7 +66,7 @@ document.getElementById("key-badge-img").src = ASSETS.key;
 /* ---------- best time (localStorage) ---------- */
 try {
   const best = localStorage.getItem("fal_best_time");
-  if (best) document.getElementById("best-time-line").textContent = "🏆 Best time: " + best;
+  if (best) document.getElementById("best-time-line").textContent = "Best time — " + best;
 } catch (e) {}
 
 /* ---------- screen manager ---------- */
@@ -124,29 +124,50 @@ addEventListener("scroll", () => requestAnimationFrame(fitViewport), { passive: 
 document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
 
 /* ---------- ambient particles ---------- */
+/* The drifting decorations used to be emoji, which meant they were a
+   different picture on every device, at a different weight, in colours
+   that had nothing to do with the palette. These are drawn, and they take
+   a tint, so a field of them reads as one thing. */
+const PARTICLE_SHAPES = {
+  heart: "M12 20.2C2.6 13.4 3.4 6.4 8.2 6.4c2 0 3.3 1.2 3.8 2.3.5-1.1 1.8-2.3 3.8-2.3 4.8 0 5.6 7-3.8 13.8z",
+  spark: "M12 2.4l2.1 6.3 6.3 2.1-6.3 2.1-2.1 6.3-2.1-6.3L3.6 10.8l6.3-2.1z",
+  petal: "M12 3.2c3.4 2.4 5.2 5.4 5.2 8.5a5.2 5.2 0 1 1-10.4 0c0-3.1 1.8-6.1 5.2-8.5z",
+  bud:   "M12 4c2.7 0 4.7 2.1 4.7 4.6 0 3.1-2.3 5.8-4.7 7.7-2.4-1.9-4.7-4.6-4.7-7.7C7.3 6.1 9.3 4 12 4z",
+  leaf:  "M4.5 19.5C4.5 11 10 5.5 19.5 4.5c1 9.5-4.5 15-15 15z",
+};
+
 function startParticles(containerId, opts) {
   const el = document.getElementById(containerId);
   if (!el || el.dataset.running) return;
   el.dataset.running = "1";
-  const { emojis, max = 10, interval = 700 } = opts;
+  const { shapes, tints, max = 10, interval = 700 } = opts;
   let alive = 0;
   setInterval(() => {
-    if (el.offsetParent === null) return;
+    if (el.offsetParent === null) return;          // the screen is not showing
     if (alive >= max) return;
-    const span = document.createElement("span");
-    span.className = "particle";
-    span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-    span.style.left = Math.random() * 100 + "%";
-    span.style.fontSize = (12 + Math.random() * 12) + "px";
-    span.style.animationDuration = (6 + Math.random() * 5) + "s";
+    const kind = shapes[Math.floor(Math.random() * shapes.length)];
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "particle");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", PARTICLE_SHAPES[kind]);
+    path.setAttribute("fill", tints[Math.floor(Math.random() * tints.length)]);
+    svg.appendChild(path);
+    const size = 11 + Math.random() * 13;
+    svg.style.left = Math.random() * 100 + "%";
+    svg.style.width = size + "px";
+    svg.style.height = size + "px";
+    svg.style.animationDuration = (6 + Math.random() * 5) + "s";
     alive++;
-    span.addEventListener("animationend", () => { span.remove(); alive--; });
-    el.appendChild(span);
+    svg.addEventListener("animationend", () => { svg.remove(); alive--; });
+    el.appendChild(svg);
   }, interval);
 }
-startParticles("pf-hello", { emojis:["💗","💕","✨"], max:9, interval:750 });
-startParticles("pf-details", { emojis:["💗","💫"], max:6, interval:900 });
-startParticles("pf-l2intro", { emojis:["💗","✨","😤"], max:5, interval:1000 });
+const TINT_WARM = ["rgba(255,150,190,.75)","rgba(255,190,150,.6)","rgba(255,220,180,.6)","rgba(240,130,170,.6)"];
+const TINT_NIGHT = ["rgba(255,169,216,.6)","rgba(255,214,168,.45)","rgba(214,150,220,.5)"];
+startParticles("pf-hello",   { shapes:["heart","spark","petal"], tints:TINT_WARM,  max:9, interval:750 });
+startParticles("pf-details", { shapes:["heart","bud","leaf"],    tints:TINT_WARM,  max:6, interval:900 });
+startParticles("pf-l2intro", { shapes:["heart","spark","bud"],   tints:TINT_NIGHT, max:5, interval:1000 });
 
 /* ---------- maze ambient stars ---------- */
 (function scatterMazeStars(){
@@ -976,7 +997,7 @@ function startDialogue() {
   showMessage();
   const overlay = document.getElementById("dialogue-overlay");
   overlay.classList.remove("hidden");
-  startParticles("pf-dialogue", { emojis:["💕","💗","✨"], max:7, interval:600 });
+  startParticles("pf-dialogue", { shapes:["heart","spark","petal"], tints:TINT_WARM, max:7, interval:600 });
 }
 function currentMessages() { return level === 2 ? CONFIG.messagesFinal : CONFIG.messages; }
 function buildDots() {
