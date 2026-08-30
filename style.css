@@ -3538,3 +3538,48 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:0 6px 20px rgba(0,0,0,.5);
 }
 .ap-hud.gone, .ap-hud.gone + .ap-pause-btn{opacity:0; transition:opacity .3s ease;}
+
+/* ---- the arrivals check, and the serum ---- */
+.ap-check{
+  width:min(64cqw, 400px); max-height:90%; overflow:auto;
+  padding:2.6cqw 3cqw 2.2cqw; border-radius:4px; text-align:left;
+  background:linear-gradient(178deg,#efe8d4,#ded4ba);
+  box-shadow:0 16px 42px rgba(0,0,0,.65), inset 0 0 0 1px rgba(120,100,70,.3);
+}
+.ap-check-title{
+  margin:0 0 1cqw; font-family:'Press Start 2P', ui-monospace, monospace;
+  font-size:1.4cqw; letter-spacing:.14em; color:#5b4a2c;
+}
+.ap-check-sub{margin:0 0 1.8cqw; font-size:1.6cqw; line-height:1.5; color:#6b5a3c; font-style:italic;}
+.ap-check-list{display:flex; flex-direction:column; gap:.8cqw; margin-bottom:1.6cqw;}
+.ap-check-row{
+  display:flex; align-items:flex-start; gap:1.4cqw; width:100%; cursor:pointer; text-align:left;
+  padding:.9cqw 1.2cqw; border-radius:3px; border:1px solid rgba(120,100,70,.28);
+  background:rgba(255,252,244,.5);
+}
+.ap-check-row.on{background:rgba(190,215,180,.42); border-color:rgba(90,130,80,.45);}
+.ap-check-box{
+  flex:none; width:2.6cqw; height:2.6cqw; min-width:12px; min-height:12px; margin-top:.3cqw;
+  border:2px solid #7b6844; background:#fffdf6; position:relative;
+}
+.ap-check-row.on .ap-check-box::after{
+  content:"✓"; position:absolute; inset:-.6cqw 0 0 0; text-align:center;
+  color:#3f6a34; font-size:2.6cqw; line-height:1;
+}
+.ap-check-tx{display:flex; flex-direction:column; gap:.3cqw;}
+.ap-check-tx b{font-size:1.8cqw; color:#40331e; font-weight:600;}
+.ap-check-tx i{font-size:1.45cqw; color:#7a6845; font-style:italic;}
+.ap-check-stamp{
+  margin:0 0 1.6cqw; text-align:center; transform:rotate(-6deg);
+  font-family:'Press Start 2P', ui-monospace, monospace; font-size:2.6cqw; letter-spacing:.12em;
+  color:#8a2f2a; opacity:.72; border:3px solid #8a2f2a; padding:1cqw; border-radius:3px;
+}
+.ap-check .ap-note-ok:disabled{opacity:.35; cursor:not-allowed;}
+
+.ap-serum{width:min(64cqw, 400px); text-align:center;}
+.ap-serum .ap-check-title{text-align:center; color:#9fb0d8;}
+.ap-serum-canvas{
+  width:100%; height:auto; display:block; image-rendering:pixelated; margin-bottom:2cqw;
+  border-radius:4px; box-shadow:0 12px 32px rgba(0,0,0,.7), 0 0 0 2px rgba(120,140,180,.35);
+}
+.ap-serum-line{margin:0 0 2.4cqw; font-size:1.9cqw; line-height:1.6; color:#cfd8ee;}

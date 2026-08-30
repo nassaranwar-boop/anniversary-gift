@@ -408,6 +408,51 @@ window.Apocalypse = (function () {
     },
   };
 
+
+  /* ---- LEVEL 5 — THE GATES --------------------------------------------
+     Almost no game in this one, on purpose. The road up to the fence, a
+     holding pen with a bench and a table in it, and the compound on the
+     other side. What happens here is the protocol: they are looked at,
+     they are given the serum, and then somebody opens a gate for them.
+
+     It is the quiet after four levels of not being able to stop, and it
+     should feel like being allowed to sit down.
+     --------------------------------------------------------------------- */
+  LEVELS[4] = {
+    theme: "road",
+    key: "gates",
+    name: "THE GATES",
+    base: ",",
+    dark: 0.30,                   // full morning. Nothing is hiding out here
+    grid: [
+      "####################################",
+      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+      "#,,,,,,,,,,,,,#..........#....L....#",
+      "#,,,,,,,,,,,,,#.L......L.#.L####.L.#",
+      "#,,,,,,,,,,,,,#....===...#..####...#",
+      "#,,,h,,,,,,,,,#.....Q....#.........#",
+      "#.............#..........#.........#",
+      "#S............GL........LG......X..#",
+      "#.............#..........#.........#",
+      "#,,,,,h,,h,,,,#..........#.........#",
+      "#,,,,,,,,,,,,,#..======..#..####...#",
+      "#,,,,,,,,,,,,,#.L......L.#.L####.L.#",
+      "#,,,,,,,,,,,,,#..........#.........#",
+      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+      "####################################",
+    ],
+    steps: [
+      { task: "Go up to the gate. Do what they tell you.", clears: "hail" },
+      { task: "Wait at the table. They have to look at both of you.", clears: "check" },
+      { task: "They're opening the inner gate. Go in.", clears: "exit" },
+    ],
+  };
+
   /* =======================================================================
      4. PALETTES — one per place. Everything drawn for a level pulls its
         colours from here, so a whole location can be re-lit in one block.
@@ -1014,19 +1059,27 @@ window.Apocalypse = (function () {
     px(c, 5, T - 3, 6, 2, "#2a2d34");               // the stand
   }
 
-  function paintLamp(c, P, theme, r, solid) {
+  /* A lamp stands on whatever the ground round it is, which sounds obvious
+     and was not: painted on its own it always drew the level's outdoor
+     ground, so a lamp post inside a concrete yard came with its own square
+     of grass round it. `under` is the character of the ground it is
+     actually standing on, worked out from its neighbours when the map is
+     baked. */
+  function paintLamp(c, P, theme, r, solid, under) {
+    if (under === ".") paintFloor(c, P, theme, r);
+    else if (under === ",") paintGround(c, P, theme, r, {});
     if (solid) {                                     // a lamp on a post, in the street
-      paintGround(c, P, theme, r);
+      if (!under) paintGround(c, P, theme, r, {});
       px(c, 7, 2, 2, T - 3, "#3a3f4a");
       px(c, 4, 1, 8, 3, "#4a505c");
       px(c, 5, 2, 6, 2, "#ffe0a0");
     } else if (theme === "hospital") {               // a strip light, overhead
-      paintFloor(c, P, theme, r);
+      if (!under) paintFloor(c, P, theme, r);
       px(c, 1, 6, T - 2, 4, "#8c979e");
       px(c, 2, 7, T - 4, 2, r() > 0.42 ? "#f2f8ff" : "#5c666c");  // a good few are out
       px(c, 1, 10, T - 2, 1, "#5c666c");
     } else {                                         // a lamp standing in a room
-      paintFloor(c, P, theme, r);
+      if (!under) paintFloor(c, P, theme, r);
       px(c, 7, 6, 2, 8, "#3a3f4a");
       px(c, 4, 3, 8, 4, "#e8c98a");
       px(c, 5, 4, 6, 2, "#fff0c0");
@@ -1095,6 +1148,24 @@ window.Apocalypse = (function () {
     if (E.e) { px(c, T - 2, 0, 2, T, "#3e2823"); }
   }
 
+  /* A gate in a chain-link fence, with a sheet of road sign welded across
+     the middle of it because whoever built this had a road sign and no
+     steel plate. */
+  function paintGate(c, P, theme, r) {
+    paintGround(c, P, theme, r, {});
+    px(c, 1, 0, T - 2, T, "#4e545c");
+    px(c, 2, 1, T - 4, T - 2, "#2b2f36");
+    for (var y = 1; y < T - 1; y += 3) {                    // the mesh
+      for (var x = 2; x < T - 2; x += 3) px(c, x, y, 1, 1, "#6a7079");
+    }
+    px(c, 2, 5, T - 4, 7, "#7a8a6a");                       // the sign, bolted on
+    px(c, 2, 5, T - 4, 1, "#96a684");
+    px(c, 4, 7, T - 8, 3, "#e8ecd8");
+    px(c, 1, 0, 2, T, "#5c636c");                           // the frame
+    px(c, T - 3, 0, 2, T, "#3d434a");
+    px(c, 6, T - 5, 4, 3, "#c9a05a");                       // the bolt
+  }
+
   function paintExit(c, P, theme, r) {
     paintGround(c, P, theme, r);
     for (var y = 2; y < T - 1; y += 4) px(c, 3, y, T - 6, 2, "#e8d48a");
@@ -1110,8 +1181,8 @@ window.Apocalypse = (function () {
   var VARIANTS = 4;
   var EDGED = "BFK=rc,#";             // the pieces that care about their neighbours
 
-  function tileFor(cache, theme, ch, mask, v) {
-    var key = ch + "|" + mask + "|" + v;
+  function tileFor(cache, theme, ch, mask, v, under) {
+    var key = ch + "|" + mask + "|" + v + "|" + (under || "");
     if (cache[key]) return cache[key];
     var P = PAL[theme];
     var cv = mkCanvas(T, T), c = cv.getContext("2d");
@@ -1134,9 +1205,10 @@ window.Apocalypse = (function () {
     else if (ch === "P") paintDoor(c, P, theme, r, "power");
     else if (ch === "W") paintPanel(c, P, theme, r);
     else if (ch === "T") paintTv(c, P, theme, r);
+    else if (ch === "G") paintGate(c, P, theme, r);
     else if (ch === "X") paintExit(c, P, theme, r);
-    else if (ch === "l") paintLamp(c, P, theme, r, false);
-    else if (ch === "L") paintLamp(c, P, theme, r, true);
+    else if (ch === "l") paintLamp(c, P, theme, r, false, under);
+    else if (ch === "L") paintLamp(c, P, theme, r, true, under);
     else paintFloor(c, P, theme, r);
     cache[key] = cv;
     return cv;
@@ -1149,7 +1221,7 @@ window.Apocalypse = (function () {
         where she can disappear, what she can use, and who else is walking
         about. The map art is baked into one canvas here too.
      ======================================================================= */
-  var SOLID = "#vco=BFKWTLCA";     // she cannot walk through these
+  var SOLID = "#vco=BFKWTLCA";     // she cannot walk through these (G is a door)
   var OPAQUE = "#vcoh";            // and sight cannot pass these
   var ENTITY = "SzAHN";            // drawn as bare floor; something stands on it
 
@@ -1177,7 +1249,9 @@ window.Apocalypse = (function () {
         if (ch === "N") L.things.push({ kind: "note", x: x, y: y, done: false });
         if (ch === "T") L.things.push({ kind: "tv", x: x, y: y, done: false });
         if (ch === "W") L.things.push({ kind: "panel", x: x, y: y, done: false });
+        if (ch === "Q") L.things.push({ kind: "check", x: x, y: y, done: false });
         if (ch === "C") L.things.push({ kind: "car", x: x, y: y, done: false });
+        if (ch === "G") L.doors[x + "," + y] = { open: false, kind: "story" };
         if (ch === "d") L.doors[x + "," + y] = { open: false, kind: "plain" };
         if (ch === "D") L.doors[x + "," + y] = { open: false, kind: "locked" };
         if (ch === "P") L.doors[x + "," + y] = { open: false, kind: "power" };
@@ -1211,7 +1285,15 @@ window.Apocalypse = (function () {
           if (!sameAs(d, x - 1, y)) mask |= 4;
           if (!sameAs(d, x + 1, y)) mask |= 8;
         }
-        mc.drawImage(tileFor(cache, def.theme, d, mask, (x * 7 + y * 13) % VARIANTS), x * T, y * T);
+        var under = null;
+        if (d === "l" || d === "L") {                 // what is this lamp standing on?
+          [[0, -1], [0, 1], [-1, 0], [1, 0]].some(function (n) {
+            var nb = (L.cells[y + n[1]] || [])[x + n[0]];
+            if (nb && (nb.draw === "." || nb.draw === ",")) { under = nb.draw; return true; }
+            return false;
+          });
+        }
+        mc.drawImage(tileFor(cache, def.theme, d, mask, (x * 7 + y * 13) % VARIANTS, under), x * T, y * T);
       }
     }
     return L;
@@ -1272,9 +1354,21 @@ window.Apocalypse = (function () {
   function paintLight(G) {
     ensureLight();
     var L = G.level, c = lightCx, dark = L.def.dark;
-    var v = Math.round(255 * (1 - dark));
+    /* The unlit value, and the colour of it.
+
+       These have to be two separate things. The tint used to be baked into
+       the value — the base colour was v times a fixed cold multiplier —
+       which meant that even a level with dark set to zero came out
+       multiplied by about a half and tinted blue, so the one daylight level
+       in the chapter rendered as another night. The tint now fades out with
+       the dark: at dark 0 this is white and the map is painted exactly as
+       it was drawn; at dark 0.75 it is the cold blue the night levels want. */
+    var v = 255 * (1 - dark);
+    var R = Math.round(Math.max(0, Math.min(255, v * (1 - 0.38 * dark))));
+    var Gc = Math.round(Math.max(0, Math.min(255, v * (1 - 0.26 * dark))));
+    var B = Math.round(Math.max(0, Math.min(255, v * (1 + 0.30 * dark))));
     c.globalCompositeOperation = "source-over";
-    c.fillStyle = "rgb(" + Math.round(v * 0.62) + "," + Math.round(v * 0.74) + "," + Math.round(v * 1.3) + ")";
+    c.fillStyle = "rgb(" + R + "," + Gc + "," + B + ")";
     c.fillRect(0, 0, LW, LH);
     c.globalCompositeOperation = "lighter";
 
@@ -2902,6 +2996,7 @@ window.Apocalypse = (function () {
     }
     if (t.kind === "car") { CAR_USE(G, t); return; }
     if (t.kind === "horse") { HORSE_USE(G, t); return; }
+    if (t.kind === "check") { openCheck(G, t); return; }
   }
 
   function useDoor(G, d) {
@@ -2918,6 +3013,10 @@ window.Apocalypse = (function () {
     }
     if (d.door.kind === "power") {
       say(G, [["", "Dead. No power to it at all — there'll be a panel for this somewhere."]]);
+      return;
+    }
+    if (d.door.kind === "story") {
+      if (GATE_USE[G.levelIndex]) GATE_USE[G.levelIndex](G, d);
     }
   }
 
@@ -3086,6 +3185,10 @@ window.Apocalypse = (function () {
     },
   };
   var OUTRO = {
+    4: [
+      ["", "There is a bed each and there is tea, and there is a whole day of being asked their names by kind people with clipboards."],
+      ["", "Somebody tells them there is a way up onto the roof, and that it is worth it in the evening."],
+    ],
     3: [
       ["", "The gates are steel and somebody has welded a sheet of road sign across them. There is a light on above."],
       ["", "A voice comes down from somewhere above the light, and it sounds tired rather than frightened."],
@@ -3105,6 +3208,14 @@ window.Apocalypse = (function () {
   OUTRO[2] = AP.reunion.hiding;
 
   var LEVEL_INTRO = {
+    4: function (G) {
+      say(G, [
+        ["", "It is properly morning by the time the fence comes up out of the fields. Somebody has been mowing."],
+        ["", "There is a light on over the gate, in daylight, because nobody has been up there to switch it off."],
+        ["OUISSY", "Do we just... walk up to it?"],
+        ["ANWAR", "I think we just walk up to it."],
+      ]);
+    },
     3: function (G) {
       say(G, [
         ["", "There is a radio on the shelf in here, and it has been saying the same thing since before either of them woke up."],
@@ -3144,6 +3255,165 @@ window.Apocalypse = (function () {
 
   /* The car. In the hospital car park it is a thing to get running; on the
      verge outside town it is a thing that has already stopped. */
+  /* =======================================================================
+     THE PROTOCOL — Level 5
+
+        Two small pieces of ceremony, and neither of them can be failed.
+        Ashcombe is not a place that turns her away; the point of doing it
+        at all is that it is done properly, with somebody's hands on her
+        arms and somebody's pen going down a list, because that is what
+        being taken in looks like.
+     ======================================================================= */
+  var CHECK_ROWS = [
+    ["both arms", "sleeves up, wrists to elbows"],
+    ["neck and collar", "she has to lift her hair for it"],
+    ["hands", "front and back, between the fingers"],
+    ["ankles", "socks down. He does his first, to be helpful"],
+  ];
+
+  function openCheck(G, thing) {
+    G.state = "note";
+    G.keys = freshKeys();
+    var wrap = el("div", "ap-check");
+    wrap.appendChild(el("p", "ap-check-title", "ASHCOMBE — ARRIVALS"));
+    wrap.appendChild(el("p", "ap-check-sub", "\u201cNothing personal. I do this to everyone, including me.\u201d"));
+    var list = el("div", "ap-check-list");
+    var left = CHECK_ROWS.length;
+    CHECK_ROWS.forEach(function (row) {
+      var b = el("button", "ap-check-row");
+      b.appendChild(el("span", "ap-check-box", ""));
+      var tx = el("span", "ap-check-tx");
+      tx.appendChild(el("b", null, row[0]));
+      tx.appendChild(el("i", null, row[1]));
+      b.appendChild(tx);
+      b.addEventListener("click", function () {
+        if (b.classList.contains("on")) return;
+        b.classList.add("on");
+        sfx("blip");
+        if (--left === 0) {
+          wrap.classList.add("clear");
+          stamp.hidden = false;
+          go.disabled = false;
+          sfx("found");
+        }
+      });
+      list.appendChild(b);
+    });
+    wrap.appendChild(list);
+    var stamp = el("p", "ap-check-stamp", "CLEAR");
+    stamp.hidden = true;
+    wrap.appendChild(stamp);
+    var go = el("button", "ap-note-ok", "Both of you, then");
+    go.disabled = true;
+    go.addEventListener("click", function () {
+      closeOverlay();
+      thing.done = true;
+      openSerum(G);
+    });
+    wrap.appendChild(go);
+    openOverlay(wrap, "thin");
+  }
+
+  /* the vial and the syringe, drawn rather than described */
+  function paintSerum(c, k) {
+    var w = 96, h = 56;
+    px(c, 0, 0, w, h, "#12151d");
+    for (var i = 0; i < 90; i++) px(c, (Math.random() * w) | 0, (Math.random() * h) | 0, 1, 1, "#171b25");
+    /* the vial, on the left */
+    px(c, 12, 14, 12, 30, "#2a3440");
+    px(c, 13, 15, 10, 28, "#3d4f5e");
+    px(c, 13, 15 + 28 - Math.round(28 * (1 - k)), 10, Math.round(28 * (1 - k)), "#8fd8b0");
+    px(c, 13, 15, 10, 2, "#5d7180");
+    px(c, 14, 10, 8, 5, "#8a9098");
+    px(c, 15, 8, 6, 3, "#b9c0c8");
+    px(c, 13, 20, 2, 12, "#5f7a8a");
+    /* the syringe, filling */
+    var bx = 34, by = 24;
+    px(c, bx, by, 44, 9, "#c9d2da");
+    px(c, bx, by, 44, 2, "#eef3f8");
+    px(c, bx + 2, by + 2, Math.round(40 * k), 5, "#8fd8b0");
+    px(c, bx + 44, by + 3, 12, 3, "#9aa4ae");
+    px(c, bx + 56, by + 4, 10, 1, "#dfe6ec");
+    px(c, bx - 8, by - 2, 8, 13, "#aab4be");
+    px(c, bx - 12, by + 1, 4, 7, "#8a949e");
+    if (k > 0.98) {
+      px(c, bx + 64, by + 2, 3, 3, "#8fd8b0");
+      px(c, bx + 66, by, 2, 2, "#bff0d4");
+    }
+  }
+
+  function openSerum(G) {
+    G.state = "note";
+    var wrap = el("div", "ap-serum");
+    wrap.appendChild(el("p", "ap-check-title", "THE SERUM"));
+    var cv = mkCanvas(96, 56);
+    cv.className = "ap-serum-canvas";
+    wrap.appendChild(cv);
+    var line = el("p", "ap-serum-line",
+      "\u201cIt is not a cure and I am not going to tell you it is. It buys you about a minute, and a minute is the whole of it.\u201d");
+    wrap.appendChild(line);
+    var go = el("button", "ap-note-ok", "Hold still");
+    wrap.appendChild(go);
+    openOverlay(wrap, "thin");
+    var c = cv.getContext("2d");
+    c.imageSmoothingEnabled = false;
+    var k = 0, filling = false, raf2 = null;
+    function tick() {
+      raf2 = requestAnimationFrame(tick);
+      if (filling && k < 1) k = Math.min(1, k + 0.012);
+      paintSerum(c, k);
+      if (!overlay().contains(cv)) cancelAnimationFrame(raf2);
+    }
+    tick();
+    go.addEventListener("click", function () {
+      if (!filling) {
+        filling = true;
+        go.textContent = "\u2026";
+        go.disabled = true;
+        sfx("power");
+        setTimeout(function () {
+          go.disabled = false;
+          go.textContent = "Done";
+          line.textContent = "It goes in the top of the arm and it stings for longer than it should. He does not let go of her hand for any of it.";
+        }, 2200);
+        return;
+      }
+      cancelAnimationFrame(raf2);
+      closeOverlay();
+      G.state = "play";
+      advanceStep(G, "check");
+      /* they open the inner gate */
+      Object.keys(G.level.doors).forEach(function (key) {
+        var d = G.level.doors[key];
+        if (d.kind === "story") d.open = true;
+      });
+      say(G, [
+        ["", "Somebody unbolts the inner gate and walks off without waiting to be thanked."],
+        ["ANWAR", "That's it?"],
+        ["", "\u201cThat's it. There's tea in the second hut and there's a bed each. Go on.\u201d"],
+      ]);
+    });
+  }
+
+  /* what the gates do when she walks up to them */
+  var GATE_USE = {
+    4: function (G, d) {
+      if (G.stepIndex === 0) {
+        advanceStep(G, "hail");
+        d.door.open = true;
+        sfx("door");
+        say(G, [
+          ["", "\u201cStop there. Both of you turn round slowly, and then come to the table. Don't touch anything on the way.\u201d"],
+          ["", "The gate goes back about a foot and a half, which is exactly enough."],
+          ["ANWAR", "They're being careful."],
+          ["OUISSY", "Good."],
+        ]);
+      } else {
+        say(G, [["", "\u201cTable first. I'm not opening that until somebody's looked at the pair of you.\u201d"]]);
+      }
+    },
+  };
+
   function CAR_USE(G, t) {
     if (G.level.def.key === "roadside") {
       say(G, [["", "Nothing. It is not the battery this time — the needle has been on the pin since the ring road."]]);
