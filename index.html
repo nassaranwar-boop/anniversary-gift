@@ -2,16 +2,92 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<!-- No maximum-scale and no user-scalable=no: those forced a scale the
+     page never asked for and blocked pinch entirely. Double-tap zoom is
+     stopped properly with touch-action instead, which leaves a real
+     two-finger pinch working.
+
+     And no viewport-fit=cover. I added it while chasing the blank strip
+     below the page, but cover extends the layout viewport underneath the
+     status bar and the notch — so the top of every screen sat behind the
+     clock, and everything measured against that taller viewport came out
+     larger than the part you could see. That is the "cropped from above,
+     and zoomed" that followed. The height is 100dvh's job, not cover's. -->
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>For My Love 💕</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=8">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=8"></script>
+<link rel="stylesheet" href="style.css?v=78">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
+<script src="vendor/three.bundle.js?v=78"></script>
 
 </head>
 <body>
+
+  <!-- ICON SET — drawn once, used everywhere.
+       These replace the emoji that were standing in for icons. An emoji is
+       a different picture on every device and a different colour from the
+       rest of the site; these are one weight, one palette, and they scale. -->
+  <svg class="ic-sprite" aria-hidden="true" width="0" height="0" style="position:absolute">
+    <defs>
+      <symbol id="ic-trophy" viewBox="0 0 24 24">
+        <path d="M7.5 3.5h9v4.2a4.5 4.5 0 0 1-9 0z"/>
+        <path d="M7.5 4.8H5.2a2.6 2.6 0 0 0 2.6 3.4"/>
+        <path d="M16.5 4.8h2.3a2.6 2.6 0 0 1-2.6 3.4"/>
+        <path d="M12 12.2v3.1"/><path d="M9.6 15.3h4.8v3.1H9.6z"/><path d="M7.8 20.5h8.4"/>
+      </symbol>
+      <!-- Four bold chevrons round a hub, not a plus and not an outlined
+           box. At 20px the enclosing square swallowed the arrow heads and
+           the whole thing read as a circle in a box. -->
+      <symbol id="ic-pad" viewBox="0 0 24 24">
+        <path d="M12 2.4l3.6 5.4H8.4z" fill="currentColor" stroke="none"/>
+        <path d="M12 21.6l-3.6-5.4h7.2z" fill="currentColor" stroke="none"/>
+        <path d="M2.4 12l5.4-3.6v7.2z" fill="currentColor" stroke="none"/>
+        <path d="M21.6 12l-5.4 3.6V8.4z" fill="currentColor" stroke="none"/>
+        <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>
+      </symbol>
+      <symbol id="ic-heart" viewBox="0 0 24 24">
+        <path d="M12 20.2C2.6 13.4 3.4 6.4 8.2 6.4c2 0 3.3 1.2 3.8 2.3.5-1.1 1.8-2.3 3.8-2.3 4.8 0 5.6 7-3.8 13.8z"/>
+      </symbol>
+      <symbol id="ic-moon" viewBox="0 0 24 24">
+        <path d="M20 14.4A8.6 8.6 0 0 1 9.6 4a8.8 8.8 0 1 0 10.4 10.4z"/>
+        <path d="M17.4 4.4l.7 1.7 1.7.7-1.7.7-.7 1.7-.7-1.7-1.7-.7 1.7-.7z"/>
+      </symbol>
+      <symbol id="ic-wisp" viewBox="0 0 24 24">
+        <path d="M5.2 20.4v-8.6a6.8 6.8 0 0 1 13.6 0v8.6l-2.3-1.9-2.3 1.9-2.2-1.9-2.3 1.9z"/>
+        <path d="M9.6 11.2v1.6M14.4 11.2v1.6"/>
+      </symbol>
+      <symbol id="ic-eye" viewBox="0 0 24 24">
+        <path d="M2.4 12S6.3 5.8 12 5.8 21.6 12 21.6 12 17.7 18.2 12 18.2 2.4 12 2.4 12z"/>
+        <circle cx="12" cy="12" r="2.9"/>
+      </symbol>
+      <symbol id="ic-tree" viewBox="0 0 24 24">
+        <path d="M12 2.6l4.2 5.3h-2.4l3.6 4.6h-2.4l4 5.1H5l4-5.1H6.6l3.6-4.6H7.8z"/>
+        <path d="M11 17.6h2v3.8h-2z"/>
+      </symbol>
+      <symbol id="ic-vial" viewBox="0 0 24 24">
+        <path d="M9.4 2.8h5.2v3.6l3.1 8.1a5.7 5.7 0 0 1-11.4 0l3.1-8.1z"/>
+        <path d="M8.2 13.6h7.6"/><path d="M8.6 2.8h6.8"/>
+      </symbol>
+      <symbol id="ic-key" viewBox="0 0 24 24">
+        <circle cx="8.4" cy="8.6" r="4.4"/>
+        <path d="M11.5 11.7l8.3 8.3"/><path d="M16.8 17l2 2M18.9 14.9l2 2"/>
+      </symbol>
+      <symbol id="ic-steps" viewBox="0 0 24 24">
+        <ellipse cx="8" cy="8.4" rx="3.1" ry="4.4" transform="rotate(-12 8 8.4)"/>
+        <ellipse cx="16" cy="15" rx="3.1" ry="4.4" transform="rotate(10 16 15)"/>
+        <path d="M5.6 13.4c1.6.7 3.2.7 4.8 0"/>
+        <path d="M13.6 20c1.6.7 3.2.7 4.8 0"/>
+      </symbol>
+      <symbol id="ic-clock" viewBox="0 0 24 24">
+        <circle cx="12" cy="12.6" r="8.4"/><path d="M12 7.8v4.8l3.2 2"/>
+        <path d="M9 2.4h6"/>
+      </symbol>
+      <symbol id="ic-spark" viewBox="0 0 24 24">
+        <path d="M12 2.8l2.2 5.6 5.6 2.2-5.6 2.2L12 18.4l-2.2-5.6-5.6-2.2 5.6-2.2z"/>
+      </symbol>
+    </defs>
+  </svg>
 
   <!-- SCREEN 0 — REAL CINEMATIC VIDEO INTRO -->
   <section id="screen-videointro" class="screen active">
@@ -19,21 +95,281 @@
     <div id="book-click-prompt" class="book-click-prompt">Tap anywhere to begin</div>
     <div id="book-loading" class="book-loading">Loading the story…</div>
     <div class="white-cut" id="white-cut"></div>
-    <button id="video-skip" class="video-skip-btn">Skip ›</button>
   </section>
 
-  <!-- SCREEN 0a — PASSCODE GATE -->
-  <section id="screen-gate" class="screen">
-    <div class="gate-parchment">
-      <div class="gate-content">
-        <div class="gate-seal-wrap"><img src="assets/wax_seal.png" class="gate-seal" id="gate-seal" alt="seal" /></div>
-        <h1 class="gate-title">A Story Awaits</h1>
-        <p class="gate-sub">Enter the code to begin</p>
-        <div class="gate-input-row">
-          <input type="tel" inputmode="numeric" maxlength="4" id="gate-input" class="gate-input" placeholder="••••" autocomplete="off" />
+  <!-- SCREEN 0a — PASSCODE GATE
+       Everything is drawn: the mottled wash behind, the torn sheet, the
+       filigree, the wax seal and its key. No scanned textures anywhere. -->
+  <section id="screen-gate" class="screen ancient-bg">
+
+    <!-- The backdrop is the supplied wash with its title healed out, so
+         the title can be placed responsively instead of being baked into a
+         16:9 image that a phone would crop in half. Flowers, hearts and
+         little leaf sprays are drawn over it and drift very slowly; they
+         are generated rather than hand-placed, and they keep out of the
+         middle band where the card sits. -->
+    <div class="gate-backdrop" aria-hidden="true"></div>
+    <svg class="gate-wash" viewBox="0 0 400 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <radialGradient id="fPetalA" cx=".38" cy=".3" r=".8">
+          <stop offset="0%" stop-color="#fff3ef" stop-opacity=".95"/><stop offset="100%" stop-color="#f4b8c4" stop-opacity=".7"/>
+        </radialGradient>
+        <radialGradient id="fPetalB" cx=".38" cy=".3" r=".8">
+          <stop offset="0%" stop-color="#fff8ec" stop-opacity=".95"/><stop offset="100%" stop-color="#eec2a4" stop-opacity=".62"/>
+        </radialGradient>
+        <radialGradient id="fPetalC" cx=".38" cy=".3" r=".8">
+          <stop offset="0%" stop-color="#fdeef2" stop-opacity=".9"/><stop offset="100%" stop-color="#e79fb4" stop-opacity=".6"/>
+        </radialGradient>
+        <radialGradient id="fHeartA" cx=".36" cy=".28" r=".85">
+          <stop offset="0%" stop-color="#f6a8b6" stop-opacity=".8"/><stop offset="100%" stop-color="#d0687f" stop-opacity=".55"/>
+        </radialGradient>
+        <radialGradient id="fHeartB" cx=".36" cy=".28" r=".85">
+          <stop offset="0%" stop-color="#f2bfae" stop-opacity=".7"/><stop offset="100%" stop-color="#c9758a" stop-opacity=".5"/>
+        </radialGradient>
+      </defs>
+      <g class="gate-blooms">
+        <g class="gate-bloom" style="--d:5.3s;--t:14.4s"><g transform="translate(380.1 674.8) rotate(-33.3)"><path d="M0 0 C5.9 -7.4 13.2 -5.9 20.6 1.5" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="6.2" cy="-5.0" rx="4.4" ry="1.9" transform="rotate(-28 6.2 -5.0)" fill="rgba(178,192,142,.36)"/><ellipse cx="11.3" cy="-6.1" rx="4.4" ry="1.9" transform="rotate(-28 11.3 -6.1)" fill="rgba(178,192,142,.36)"/><ellipse cx="16.5" cy="-3.6" rx="4.4" ry="1.9" transform="rotate(-28 16.5 -3.6)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:4.1s;--t:11.2s"><path d="M0 5.86 C9.62 0.75 3.91 -5.41 0 -2.10 C-3.91 -5.41 -9.62 0.75 0 5.86 Z" transform="translate(43.2 127.0) rotate(-22.3)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:5.6s;--t:18.8s"><path d="M0 7.16 C11.75 0.92 4.77 -6.61 0 -2.57 C-4.77 -6.61 -11.75 0.92 0 7.16 Z" transform="translate(12.4 555.0) rotate(12.6)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:7.3s;--t:12.4s"><g transform="translate(398.7 191.6) rotate(5.8)"><path d="M0 0 C5.8 -7.2 12.9 -5.8 20.1 1.4" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="6.0" cy="-4.9" rx="4.3" ry="1.9" transform="rotate(-28 6.0 -4.9)" fill="rgba(178,192,142,.36)"/><ellipse cx="11.1" cy="-6.0" rx="4.3" ry="1.9" transform="rotate(-28 11.1 -6.0)" fill="rgba(178,192,142,.36)"/><ellipse cx="16.1" cy="-3.6" rx="4.3" ry="1.9" transform="rotate(-28 16.1 -3.6)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:2.5s;--t:15.7s"><path d="M0 5.97 C9.80 0.77 3.98 -5.51 0 -2.14 C-3.98 -5.51 -9.80 0.77 0 5.97 Z" transform="translate(22.9 296.5) rotate(35.2)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:1.5s;--t:12.8s"><path d="M0 5.52 C9.06 0.71 3.68 -5.10 0 -1.98 C-3.68 -5.10 -9.06 0.71 0 5.52 Z" transform="translate(178.5 12.5) rotate(-8.5)" fill="url(#fHeartA)"/></g>
+        <g class="gate-bloom" style="--d:8.8s;--t:14.0s"><g transform="translate(216.4 703.5) rotate(-12.3)"><path d="M0 0 C4.9 -6.2 11.1 -4.9 17.3 1.2" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="5.2" cy="-4.2" rx="3.7" ry="1.6" transform="rotate(-28 5.2 -4.2)" fill="rgba(178,192,142,.36)"/><ellipse cx="9.5" cy="-5.1" rx="3.7" ry="1.6" transform="rotate(-28 9.5 -5.1)" fill="rgba(178,192,142,.36)"/><ellipse cx="13.8" cy="-3.0" rx="3.7" ry="1.6" transform="rotate(-28 13.8 -3.0)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:0.9s;--t:15.2s"><g transform="translate(71.4 663.9) rotate(-22.7)"><path d="M0 0 C4.9 -6.1 11.0 -4.9 17.1 1.2" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="5.1" cy="-4.1" rx="3.7" ry="1.6" transform="rotate(-28 5.1 -4.1)" fill="rgba(178,192,142,.36)"/><ellipse cx="9.4" cy="-5.1" rx="3.7" ry="1.6" transform="rotate(-28 9.4 -5.1)" fill="rgba(178,192,142,.36)"/><ellipse cx="13.7" cy="-3.0" rx="3.7" ry="1.6" transform="rotate(-28 13.7 -3.0)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:7.3s;--t:18.2s"><g transform="translate(370.0 310.0) rotate(31.4)"><ellipse cx="0" cy="-11.31" rx="6.67" ry="11.60" transform="rotate(0)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-11.31" rx="6.67" ry="11.60" transform="rotate(72)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-11.31" rx="6.67" ry="11.60" transform="rotate(144)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-11.31" rx="6.67" ry="11.60" transform="rotate(216)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-11.31" rx="6.67" ry="11.60" transform="rotate(288)" fill="url(#fPetalB)"/><circle r="4.35" fill="rgba(255,240,214,.75)"/><circle r="2.32" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:2.7s;--t:17.9s"><path d="M0 8.31 C13.64 1.07 5.54 -7.67 0 -2.98 C-5.54 -7.67 -13.64 1.07 0 8.31 Z" transform="translate(368.6 527.9) rotate(-6.0)" fill="url(#fHeartA)"/></g>
+        <g class="gate-bloom" style="--d:5.0s;--t:17.7s"><path d="M0 6.62 C10.87 0.85 4.41 -6.11 0 -2.38 C-4.41 -6.11 -10.87 0.85 0 6.62 Z" transform="translate(338.5 66.5) rotate(-13.4)" fill="url(#fHeartA)"/></g>
+        <g class="gate-bloom" style="--d:3.8s;--t:13.2s"><g transform="translate(0.8 461.9) rotate(36.4)"><path d="M0 0 C6.1 -7.6 13.7 -6.1 21.3 1.5" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="6.4" cy="-5.2" rx="4.6" ry="2.0" transform="rotate(-28 6.4 -5.2)" fill="rgba(178,192,142,.36)"/><ellipse cx="11.7" cy="-6.3" rx="4.6" ry="2.0" transform="rotate(-28 11.7 -6.3)" fill="rgba(178,192,142,.36)"/><ellipse cx="17.0" cy="-3.7" rx="4.6" ry="2.0" transform="rotate(-28 17.0 -3.7)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:0.2s;--t:14.7s"><g transform="translate(84.0 33.0) rotate(-9.8)"><path d="M0 0 C5.6 -6.9 12.5 -5.6 19.4 1.4" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="5.8" cy="-4.7" rx="4.2" ry="1.8" transform="rotate(-28 5.8 -4.7)" fill="rgba(178,192,142,.36)"/><ellipse cx="10.7" cy="-5.8" rx="4.2" ry="1.8" transform="rotate(-28 10.7 -5.8)" fill="rgba(178,192,142,.36)"/><ellipse cx="15.5" cy="-3.4" rx="4.2" ry="1.8" transform="rotate(-28 15.5 -3.4)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:8.0s;--t:15.3s"><path d="M0 8.69 C14.27 1.11 5.80 -8.03 0 -3.12 C-5.80 -8.03 -14.27 1.11 0 8.69 Z" transform="translate(6.1 630.1) rotate(20.5)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:2.3s;--t:17.8s"><path d="M0 6.62 C10.86 0.85 4.41 -6.11 0 -2.38 C-4.41 -6.11 -10.86 0.85 0 6.62 Z" transform="translate(39.3 397.8) rotate(28.7)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:8.2s;--t:12.5s"><g transform="translate(376.0 462.0) rotate(38.1)"><ellipse cx="0" cy="-7.14" rx="4.21" ry="7.32" transform="rotate(0)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.14" rx="4.21" ry="7.32" transform="rotate(72)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.14" rx="4.21" ry="7.32" transform="rotate(144)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.14" rx="4.21" ry="7.32" transform="rotate(216)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.14" rx="4.21" ry="7.32" transform="rotate(288)" fill="url(#fPetalC)"/><circle r="2.75" fill="rgba(255,240,214,.75)"/><circle r="1.46" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:2.7s;--t:17.4s"><g transform="translate(277.6 662.9) rotate(31.7)"><ellipse cx="0" cy="-7.32" rx="4.31" ry="7.50" transform="rotate(0)" fill="url(#fPetalA)"/><ellipse cx="0" cy="-7.32" rx="4.31" ry="7.50" transform="rotate(72)" fill="url(#fPetalA)"/><ellipse cx="0" cy="-7.32" rx="4.31" ry="7.50" transform="rotate(144)" fill="url(#fPetalA)"/><ellipse cx="0" cy="-7.32" rx="4.31" ry="7.50" transform="rotate(216)" fill="url(#fPetalA)"/><ellipse cx="0" cy="-7.32" rx="4.31" ry="7.50" transform="rotate(288)" fill="url(#fPetalA)"/><circle r="2.81" fill="rgba(255,240,214,.75)"/><circle r="1.50" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:1.9s;--t:14.4s"><g transform="translate(126.6 85.1) rotate(28.6)"><ellipse cx="0" cy="-9.00" rx="5.31" ry="9.23" transform="rotate(0)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-9.00" rx="5.31" ry="9.23" transform="rotate(72)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-9.00" rx="5.31" ry="9.23" transform="rotate(144)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-9.00" rx="5.31" ry="9.23" transform="rotate(216)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-9.00" rx="5.31" ry="9.23" transform="rotate(288)" fill="url(#fPetalC)"/><circle r="3.46" fill="rgba(255,240,214,.75)"/><circle r="1.85" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:4.4s;--t:13.8s"><g transform="translate(139.2 699.0) rotate(33.8)"><ellipse cx="0" cy="-8.33" rx="4.91" ry="8.55" transform="rotate(0)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.33" rx="4.91" ry="8.55" transform="rotate(72)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.33" rx="4.91" ry="8.55" transform="rotate(144)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.33" rx="4.91" ry="8.55" transform="rotate(216)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.33" rx="4.91" ry="8.55" transform="rotate(288)" fill="url(#fPetalC)"/><circle r="3.20" fill="rgba(255,240,214,.75)"/><circle r="1.71" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:5.5s;--t:18.4s"><path d="M0 10.05 C16.50 1.29 6.70 -9.28 0 -3.61 C-6.70 -9.28 -16.50 1.29 0 10.05 Z" transform="translate(398.2 376.3) rotate(-5.8)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:8.9s;--t:17.0s"><path d="M0 9.26 C15.19 1.19 6.17 -8.55 0 -3.32 C-6.17 -8.55 -15.19 1.19 0 9.26 Z" transform="translate(403.7 620.7) rotate(-28.5)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:1.3s;--t:16.1s"><g transform="translate(218.0 75.8) rotate(-2.1)"><ellipse cx="0" cy="-8.95" rx="5.28" ry="9.18" transform="rotate(0)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.95" rx="5.28" ry="9.18" transform="rotate(72)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.95" rx="5.28" ry="9.18" transform="rotate(144)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.95" rx="5.28" ry="9.18" transform="rotate(216)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.95" rx="5.28" ry="9.18" transform="rotate(288)" fill="url(#fPetalC)"/><circle r="3.44" fill="rgba(255,240,214,.75)"/><circle r="1.84" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:0.3s;--t:13.1s"><path d="M0 8.01 C13.14 1.03 5.34 -7.39 0 -2.87 C-5.34 -7.39 -13.14 1.03 0 8.01 Z" transform="translate(395.9 12.5) rotate(34.9)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:0.6s;--t:17.6s"><path d="M0 6.28 C10.31 0.81 4.19 -5.80 0 -2.26 C-4.19 -5.80 -10.31 0.81 0 6.28 Z" transform="translate(359.2 131.0) rotate(18.5)" fill="url(#fHeartA)"/></g>
+        <g class="gate-bloom" style="--d:5.8s;--t:18.5s"><g transform="translate(7.4 1.0) rotate(-38.9)"><ellipse cx="0" cy="-10.50" rx="6.19" ry="10.77" transform="rotate(0)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-10.50" rx="6.19" ry="10.77" transform="rotate(72)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-10.50" rx="6.19" ry="10.77" transform="rotate(144)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-10.50" rx="6.19" ry="10.77" transform="rotate(216)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-10.50" rx="6.19" ry="10.77" transform="rotate(288)" fill="url(#fPetalB)"/><circle r="4.04" fill="rgba(255,240,214,.75)"/><circle r="2.15" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:6.5s;--t:11.3s"><path d="M0 6.24 C10.24 0.80 4.16 -5.76 0 -2.24 C-4.16 -5.76 -10.24 0.80 0 6.24 Z" transform="translate(-8.4 347.6) rotate(-17.1)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:4.4s;--t:13.8s"><g transform="translate(-7.4 231.3) rotate(-33.5)"><ellipse cx="0" cy="-12.80" rx="7.55" ry="13.13" transform="rotate(0)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-12.80" rx="7.55" ry="13.13" transform="rotate(72)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-12.80" rx="7.55" ry="13.13" transform="rotate(144)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-12.80" rx="7.55" ry="13.13" transform="rotate(216)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-12.80" rx="7.55" ry="13.13" transform="rotate(288)" fill="url(#fPetalB)"/><circle r="4.92" fill="rgba(255,240,214,.75)"/><circle r="2.63" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:7.8s;--t:13.8s"><g transform="translate(14.2 71.6) rotate(-5.2)"><ellipse cx="0" cy="-7.65" rx="4.51" ry="7.85" transform="rotate(0)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.65" rx="4.51" ry="7.85" transform="rotate(72)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.65" rx="4.51" ry="7.85" transform="rotate(144)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.65" rx="4.51" ry="7.85" transform="rotate(216)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.65" rx="4.51" ry="7.85" transform="rotate(288)" fill="url(#fPetalC)"/><circle r="2.94" fill="rgba(255,240,214,.75)"/><circle r="1.57" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:6.3s;--t:14.5s"><g transform="translate(34.0 711.4) rotate(28.0)"><path d="M0 0 C5.1 -6.4 11.6 -5.1 18.0 1.3" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="5.4" cy="-4.4" rx="3.9" ry="1.7" transform="rotate(-28 5.4 -4.4)" fill="rgba(178,192,142,.36)"/><ellipse cx="9.9" cy="-5.3" rx="3.9" ry="1.7" transform="rotate(-28 9.9 -5.3)" fill="rgba(178,192,142,.36)"/><ellipse cx="14.4" cy="-3.2" rx="3.9" ry="1.7" transform="rotate(-28 14.4 -3.2)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:0.4s;--t:11.7s"><g transform="translate(281.7 -5.3) rotate(-5.3)"><path d="M0 0 C5.8 -7.3 13.1 -5.8 20.3 1.5" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="6.1" cy="-4.9" rx="4.4" ry="1.9" transform="rotate(-28 6.1 -4.9)" fill="rgba(178,192,142,.36)"/><ellipse cx="11.2" cy="-6.0" rx="4.4" ry="1.9" transform="rotate(-28 11.2 -6.0)" fill="rgba(178,192,142,.36)"/><ellipse cx="16.2" cy="-3.6" rx="4.4" ry="1.9" transform="rotate(-28 16.2 -3.6)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:2.8s;--t:18.3s"><path d="M0 8.98 C14.73 1.15 5.98 -8.29 0 -3.22 C-5.98 -8.29 -14.73 1.15 0 8.98 Z" transform="translate(35.2 191.3) rotate(-38.8)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:0.1s;--t:16.9s"><g transform="translate(275.4 59.8) rotate(34.5)"><ellipse cx="0" cy="-9.95" rx="5.87" ry="10.20" transform="rotate(0)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-9.95" rx="5.87" ry="10.20" transform="rotate(72)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-9.95" rx="5.87" ry="10.20" transform="rotate(144)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-9.95" rx="5.87" ry="10.20" transform="rotate(216)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-9.95" rx="5.87" ry="10.20" transform="rotate(288)" fill="url(#fPetalB)"/><circle r="3.83" fill="rgba(255,240,214,.75)"/><circle r="2.04" fill="rgba(226,168,120,.5)"/></g></g>
+      </g>
+    </svg>
+
+    <div class="gate">
+      <h1 class="gate-title"><img src="assets/gate-title.png" alt="Passcode Gate" /></h1>
+
+      <div class="gate-card" id="gate-card">
+        <!-- 1. the sheet: fill, foxing, grain, torn edge -->
+        <svg class="gate-sheet" viewBox="0 0 400 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <defs>
+            <linearGradient id="gPaper" x1="0" y1="0" x2="0.35" y2="1">
+              <stop offset="0%"   stop-color="#f7eeda"/>
+              <stop offset="42%"  stop-color="#f0e2c8"/>
+              <stop offset="100%" stop-color="#e3cfad"/>
+            </linearGradient>
+            <radialGradient id="gFox1"><stop offset="0%" stop-color="#c9a274" stop-opacity=".30"/><stop offset="100%" stop-color="#c9a274" stop-opacity="0"/></radialGradient>
+            <radialGradient id="gFox2"><stop offset="0%" stop-color="#b98d63" stop-opacity=".26"/><stop offset="100%" stop-color="#b98d63" stop-opacity="0"/></radialGradient>
+            <radialGradient id="gVign" cx=".5" cy=".5" r=".72">
+              <stop offset="46%"  stop-color="#8a6136" stop-opacity="0"/>
+              <stop offset="80%"  stop-color="#8a6136" stop-opacity=".2"/>
+              <stop offset="100%" stop-color="#6f4a26" stop-opacity=".48"/>
+            </radialGradient>
+            <!-- Two passes: a coarse one for the tear and a fine one for the
+                 fibre standing off it. One pass alone gives a wobbly edge
+                 rather than a torn one. -->
+            <filter id="gDeckle" x="-14%" y="-11%" width="128%" height="122%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.019 0.026" numOctaves="4" seed="11" result="n1"/>
+              <feDisplacementMap in="SourceGraphic" in2="n1" scale="21" xChannelSelector="R" yChannelSelector="G" result="d1"/>
+              <feTurbulence type="fractalNoise" baseFrequency="0.14" numOctaves="3" seed="4" result="n2"/>
+              <feDisplacementMap in="d1" in2="n2" scale="5" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+            <filter id="gGrain"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" seed="5"/><feColorMatrix type="saturate" values="0"/></filter>
+          </defs>
+          <g filter="url(#gDeckle)"><rect x="14" y="12" width="372" height="676" rx="10" fill="url(#gPaper)"/></g>
+          <g class="gate-sheet-marks">
+            <ellipse cx="96"  cy="120" rx="78" ry="62" fill="url(#gFox1)"/>
+            <ellipse cx="318" cy="540" rx="86" ry="70" fill="url(#gFox2)"/>
+            <ellipse cx="250" cy="300" rx="60" ry="46" fill="url(#gFox1)"/>
+            <ellipse cx="84"  cy="470" rx="66" ry="48" fill="url(#gFox2)"/>
+            <rect x="14" y="12" width="372" height="676" rx="10" fill="url(#gVign)"/>
+          </g>
+          <rect class="gate-sheet-grain" width="400" height="700" filter="url(#gGrain)"/>
+        </svg>
+
+        <!-- 2. the tooled gold frame: corners, and a scrollwork band top and bottom -->
+        <svg class="gate-frame" viewBox="0 0 400 700" aria-hidden="true">
+          <defs>
+            <linearGradient id="gGold" x1="0" y1="0" x2="0.6" y2="1">
+              <stop offset="0%"   stop-color="#e0bb78"/>
+              <stop offset="42%"  stop-color="#a97c3f"/>
+              <stop offset="100%" stop-color="#7d5628"/>
+            </linearGradient>
+            <!-- The ornament is generated, not hand-placed: leaves graded
+                 along guide curves, volute spirals at the terminals, small
+                 rosettes in the gaps. Hand-placing a dozen curls is what
+                 made the earlier passes read as bent wire. One arm is
+                 drawn and mirrored across the 45-degree line to make a
+                 corner, so the two sides always match.
+                 Leaves carry their own fill: a CSS descendant selector
+                 cannot reach inside a use element's shadow tree. -->
+            <g id="gSpray">
+              <path d="M4.0 6.0 C34.0 2.0 72.0 10.0 104.0 30.0" stroke-width="2.90"/>
+              <path d="M4.0 13.0 C30.0 10.0 62.0 16.0 88.0 34.0" stroke-width="2.10"/>
+              <path d="M6.0 20.0 C26.0 20.0 48.0 28.0 66.0 44.0" stroke-width="1.50"/>
+              <path d="M105.2 24.5 Q106.9 24.9 108.5 25.5 Q109.9 26.3 111.0 27.4 Q111.9 28.6 112.6 29.9 Q113.0 31.3 113.1 32.7 Q113.0 34.0 112.7 35.3 Q112.1 36.4 111.4 37.3 Q110.5 38.1 109.6 38.7 Q108.6 39.1 107.5 39.3 Q106.5 39.3 105.5 39.2 Q104.6 38.8 103.9 38.3 Q103.2 37.7 102.7 37.1 Q102.3 36.3 102.1 35.5 Q102.0 34.8 102.0 34.0 Q102.2 33.3 102.5 32.7 Q102.9 32.1 103.4 31.7 Q104.0 31.3 104.5 31.1 Q105.1 31.0 105.7 31.0 Q106.2 31.1 106.7 31.3 Q107.2 31.5 107.6 31.9 Q107.9 32.3 108.1 32.7 Q108.2 33.1 108.3 33.5 Q108.2 34.0 108.1 34.4 Q108.0 34.7 107.7 35.0" stroke-width="2.20" fill="none"/>
+              <path d="M89.0 31.0 Q90.1 31.3 91.1 31.8 Q92.0 32.4 92.7 33.2 Q93.3 34.0 93.8 34.8 Q94.0 35.7 94.2 36.6 Q94.1 37.5 94.0 38.3 Q93.7 39.1 93.3 39.8 Q92.8 40.4 92.3 40.9 Q91.7 41.3 91.0 41.5 Q90.4 41.7 89.7 41.7 Q89.1 41.7 88.5 41.5 Q88.0 41.3 87.5 41.0 Q87.1 40.6 86.8 40.2 Q86.5 39.7 86.4 39.3 Q86.3 38.8 86.3 38.3 Q86.4 37.9 86.5 37.5 Q86.7 37.1 86.9 36.8 Q87.2 36.5 87.5 36.3 Q87.9 36.2 88.2 36.1 Q88.6 36.0 88.9 36.1 Q89.2 36.1 89.5 36.2 Q89.7 36.4 90.0 36.6 Q90.1 36.8 90.3 37.0 Q90.4 37.3 90.4 37.5" stroke-width="1.60" fill="none"/>
+              <g transform="translate(20.9 5.0) rotate(52.6)"><path d="M0 0 C5.9 -7.6 15.1 -6.2 21.0 0 C15.1 6.2 5.9 7.6 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M2.5 0 L17.2 0" stroke="rgba(255,240,205,.5)" stroke-width="0.98" fill="none"/></g>
+              <g transform="translate(32.8 5.6) rotate(-46.5)"><path d="M0 0 C5.3 -6.9 13.8 -5.6 19.1 0 C13.8 5.6 5.3 6.9 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M2.3 0 L15.7 0" stroke="rgba(255,240,205,.5)" stroke-width="0.89" fill="none"/></g>
+              <g transform="translate(45.0 7.3) rotate(62.1)"><path d="M0 0 C4.8 -6.2 12.4 -5.1 17.2 0 C12.4 5.1 4.8 6.2 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M2.1 0 L14.1 0" stroke="rgba(255,240,205,.5)" stroke-width="0.80" fill="none"/></g>
+              <g transform="translate(57.4 10.0) rotate(-37.5)"><path d="M0 0 C4.3 -5.5 11.0 -4.5 15.3 0 C11.0 4.5 4.3 5.5 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M1.8 0 L12.5 0" stroke="rgba(255,240,205,.5)" stroke-width="0.72" fill="none"/></g>
+              <g transform="translate(69.8 13.8) rotate(71.0)"><path d="M0 0 C3.8 -4.8 9.6 -4.0 13.4 0 C9.6 4.0 3.8 4.8 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M1.6 0 L11.0 0" stroke="rgba(255,240,205,.5)" stroke-width="0.63" fill="none"/></g>
+              <g transform="translate(82.2 18.5) rotate(-28.6)"><path d="M0 0 C3.2 -4.1 8.3 -3.4 11.5 0 C8.3 3.4 3.2 4.1 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M1.4 0 L9.4 0" stroke="rgba(255,240,205,.5)" stroke-width="0.54" fill="none"/></g>
+              <g transform="translate(25.3 12.5) rotate(-54.2)"><path d="M0 0 C3.9 -4.8 10.1 -3.9 14.0 0 C10.1 3.9 3.9 4.8 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M1.7 0 L11.5 0" stroke="rgba(255,240,205,.5)" stroke-width="0.62" fill="none"/></g>
+              <g transform="translate(42.5 14.9) rotate(-46.5)"><path d="M0 0 C3.3 -4.0 8.5 -3.3 11.8 0 C8.5 3.3 3.3 4.0 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M1.4 0 L9.7 0" stroke="rgba(255,240,205,.5)" stroke-width="0.52" fill="none"/></g>
+              <g transform="translate(59.9 19.7) rotate(-38.5)"><path d="M0 0 C2.7 -3.3 6.9 -2.7 9.6 0 C6.9 2.7 2.7 3.3 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M1.2 0 L7.9 0" stroke="rgba(255,240,205,.5)" stroke-width="0.50" fill="none"/></g>
+              <path d="M46 8 c12 1 22 6 30 14" stroke-width="1" fill="none"/>
+              <path d="M24 4 c10 0 19 3 27 9" stroke-width=".9" fill="none"/>
+              <g><ellipse cx="58.0" cy="6.9" rx="3.89" ry="2.48" transform="rotate(-90.0 58.0 6.9)" fill="url(#gGold)" stroke="none"/><ellipse cx="62.9" cy="10.4" rx="3.89" ry="2.48" transform="rotate(-18.0 62.9 10.4)" fill="url(#gGold)" stroke="none"/><ellipse cx="61.0" cy="16.2" rx="3.89" ry="2.48" transform="rotate(54.0 61.0 16.2)" fill="url(#gGold)" stroke="none"/><ellipse cx="55.0" cy="16.2" rx="3.89" ry="2.48" transform="rotate(126.0 55.0 16.2)" fill="url(#gGold)" stroke="none"/><ellipse cx="53.1" cy="10.4" rx="3.89" ry="2.48" transform="rotate(198.0 53.1 10.4)" fill="url(#gGold)" stroke="none"/><circle cx="58.0" cy="12.0" r="2.27" fill="rgba(255,238,196,.85)" stroke="none"/></g>
+              <g><ellipse cx="30.0" cy="22.0" rx="3.02" ry="1.93" transform="rotate(-90.0 30.0 22.0)" fill="url(#gGold)" stroke="none"/><ellipse cx="33.8" cy="24.8" rx="3.02" ry="1.93" transform="rotate(-18.0 33.8 24.8)" fill="url(#gGold)" stroke="none"/><ellipse cx="32.3" cy="29.2" rx="3.02" ry="1.93" transform="rotate(54.0 32.3 29.2)" fill="url(#gGold)" stroke="none"/><ellipse cx="27.7" cy="29.2" rx="3.02" ry="1.93" transform="rotate(126.0 27.7 29.2)" fill="url(#gGold)" stroke="none"/><ellipse cx="26.2" cy="24.8" rx="3.02" ry="1.93" transform="rotate(198.0 26.2 24.8)" fill="url(#gGold)" stroke="none"/><circle cx="30.0" cy="26.0" r="1.76" fill="rgba(255,238,196,.85)" stroke="none"/></g>
+            </g>
+            <g id="gFlour">
+              <use href="#gSpray"/>
+              <use href="#gSpray" transform="matrix(0,1,1,0,0,0)"/>
+              <circle fill="url(#gGold)" stroke="none" cx="5" cy="5" r="5.4"/>
+              <circle fill="none" cx="5" cy="5" r="10.5" stroke-width="1.4"/>
+            </g>
+            <g id="gBand">
+              <path d="M0.0 16.0 C30.0 16.0 62.0 10.0 96.0 2.0" stroke-width="2.40"/>
+              <path d="M0.0 24.0 C34.0 24.0 66.0 18.0 100.0 9.0" stroke-width="1.60"/>
+              <path d="M97.5 14.4 Q99.0 14.2 100.4 13.8 Q101.7 13.2 102.8 12.4 Q103.7 11.4 104.4 10.4 Q104.9 9.2 105.2 8.1 Q105.2 6.9 105.1 5.8 Q104.7 4.8 104.3 3.9 Q103.6 3.1 102.9 2.4 Q102.1 1.9 101.3 1.6 Q100.4 1.4 99.6 1.4 Q98.7 1.5 98.0 1.8 Q97.3 2.2 96.7 2.6 Q96.3 3.2 95.9 3.8 Q95.7 4.4 95.6 5.1 Q95.6 5.7 95.7 6.3 Q95.9 6.8 96.2 7.3 Q96.6 7.7 97.0 8.1 Q97.4 8.3 97.9 8.5 Q98.4 8.5 98.8 8.5 Q99.3 8.4 99.7 8.3 Q100.0 8.0 100.3 7.8 Q100.6 7.5 100.7 7.1 Q100.8 6.8 100.9 6.4 Q100.9 6.1 100.8 5.7" stroke-width="2.00" fill="none"/>
+              <g transform="translate(18.2 15.3) rotate(45.8)"><path d="M0 0 C4.8 -6.1 12.2 -5.0 17.0 0 C12.2 5.0 4.8 6.1 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M2.0 0 L13.9 0" stroke="rgba(255,240,205,.5)" stroke-width="0.80" fill="none"/></g>
+              <g transform="translate(33.2 13.9) rotate(-56.9)"><path d="M0 0 C4.3 -5.5 11.0 -4.5 15.3 0 C11.0 4.5 4.3 5.5 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M1.8 0 L12.5 0" stroke="rgba(255,240,205,.5)" stroke-width="0.72" fill="none"/></g>
+              <g transform="translate(48.4 11.7) rotate(40.9)"><path d="M0 0 C3.8 -4.9 9.8 -4.0 13.6 0 C9.8 4.0 3.8 4.9 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M1.6 0 L11.2 0" stroke="rgba(255,240,205,.5)" stroke-width="0.64" fill="none"/></g>
+              <g transform="translate(64.0 8.9) rotate(-60.9)"><path d="M0 0 C3.3 -4.3 8.6 -3.5 11.9 0 C8.6 3.5 3.3 4.3 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M1.4 0 L9.8 0" stroke="rgba(255,240,205,.5)" stroke-width="0.56" fill="none"/></g>
+              <g transform="translate(79.8 5.7) rotate(37.7)"><path d="M0 0 C2.9 -3.7 7.3 -3.0 10.2 0 C7.3 3.0 2.9 3.7 0 0 Z" fill="url(#gGold)" stroke="none"/><path d="M1.2 0 L8.4 0" stroke="rgba(255,240,205,.5)" stroke-width="0.50" fill="none"/></g>
+              <path d="M18 12 c12-1 22-4 32-9" stroke-width=".9" fill="none"/>
+              <g><ellipse cx="46.0" cy="7.6" rx="3.31" ry="2.12" transform="rotate(-90.0 46.0 7.6)" fill="url(#gGold)" stroke="none"/><ellipse cx="50.2" cy="10.6" rx="3.31" ry="2.12" transform="rotate(-18.0 50.2 10.6)" fill="url(#gGold)" stroke="none"/><ellipse cx="48.6" cy="15.5" rx="3.31" ry="2.12" transform="rotate(54.0 48.6 15.5)" fill="url(#gGold)" stroke="none"/><ellipse cx="43.4" cy="15.5" rx="3.31" ry="2.12" transform="rotate(126.0 43.4 15.5)" fill="url(#gGold)" stroke="none"/><ellipse cx="41.8" cy="10.6" rx="3.31" ry="2.12" transform="rotate(198.0 41.8 10.6)" fill="url(#gGold)" stroke="none"/><circle cx="46.0" cy="12.0" r="1.93" fill="rgba(255,238,196,.85)" stroke="none"/></g>
+              <g><ellipse cx="76.0" cy="2.6" rx="2.59" ry="1.66" transform="rotate(-90.0 76.0 2.6)" fill="url(#gGold)" stroke="none"/><ellipse cx="79.3" cy="4.9" rx="2.59" ry="1.66" transform="rotate(-18.0 79.3 4.9)" fill="url(#gGold)" stroke="none"/><ellipse cx="78.0" cy="8.8" rx="2.59" ry="1.66" transform="rotate(54.0 78.0 8.8)" fill="url(#gGold)" stroke="none"/><ellipse cx="74.0" cy="8.8" rx="2.59" ry="1.66" transform="rotate(126.0 74.0 8.8)" fill="url(#gGold)" stroke="none"/><ellipse cx="72.7" cy="4.9" rx="2.59" ry="1.66" transform="rotate(198.0 72.7 4.9)" fill="url(#gGold)" stroke="none"/><circle cx="76.0" cy="6.0" r="1.51" fill="rgba(255,238,196,.85)" stroke="none"/></g>
+            </g>
+          </defs>
+
+          <rect class="gate-rule-o" x="26" y="24" width="348" height="652" rx="6"/>
+          <rect class="gate-rule-i" x="33" y="31" width="334" height="638" rx="4"/>
+
+          <g class="gate-flour">
+            <use href="#gFlour" transform="translate(41,39)"/>
+            <use href="#gFlour" transform="translate(359,39) scale(-1,1)"/>
+            <use href="#gFlour" transform="translate(41,661) scale(1,-1)"/>
+            <use href="#gFlour" transform="translate(359,661) scale(-1,-1)"/>
+          </g>
+          <g class="gate-flour gate-flour-band">
+            <!-- the top pair stands apart to frame the seal; overlapping
+                 them in the middle turned the band into a chain -->
+            <!-- the header pair runs outward from behind the seal -->
+            <use href="#gBand" transform="translate(200,64)"/>
+            <use href="#gBand" transform="translate(200,64) scale(-1,1)"/>
+            <use href="#gBand" transform="translate(200,642) scale(1,-1)"/>
+            <use href="#gBand" transform="translate(200,642) scale(-1,-1)"/>
+          </g>
+        </svg>
+
+        <!-- 3. what she uses -->
+        <div class="gate-body">
+
+          <!-- the seal, on its ribbon -->
+          <div class="gate-seal-wrap">
+            <svg class="gate-seal" id="gate-seal" viewBox="0 0 200 130" aria-hidden="true">
+              <defs>
+                <linearGradient id="gRib" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#e6c68c"/><stop offset="52%" stop-color="#b4873f"/><stop offset="100%" stop-color="#8a6127"/>
+                </linearGradient>
+                <radialGradient id="gWax" cx=".38" cy=".32" r=".78">
+                  <stop offset="0%"   stop-color="#b8384a"/>
+                  <stop offset="46%"  stop-color="#8e1f33"/>
+                  <stop offset="100%" stop-color="#5c0f22"/>
+                </radialGradient>
+                <radialGradient id="gWaxLip" cx=".5" cy=".5" r=".5">
+                  <stop offset="72%" stop-color="#000" stop-opacity="0"/>
+                  <stop offset="100%" stop-color="#3d0a17" stop-opacity=".55"/>
+                </radialGradient>
+              </defs>
+
+              <!-- the ribbon banner it is pressed onto -->
+              <g class="gate-ribbon">
+                <path d="M6 74 L48 66 L48 92 L6 100 L18 87 Z" fill="url(#gRib)"/>
+                <path d="M194 74 L152 66 L152 92 L194 100 L182 87 Z" fill="url(#gRib)"/>
+                <path d="M40 64 H160 V94 H40 Z" fill="url(#gRib)"/>
+                <path d="M40 68 H160" stroke="rgba(255,240,205,.45)" stroke-width="1.4" fill="none"/>
+                <path d="M40 90 H160" stroke="rgba(80,50,14,.45)" stroke-width="1.4" fill="none"/>
+              </g>
+
+              <!-- the wax, its edge pressed rather than cut -->
+              <g class="gate-wax">
+                <path class="gate-wax-blob" d="M100.04 60.00 Q97.46 69.23 95.39 73.36 Q93.32 77.49 90.11 80.66 Q86.90 83.83 84.13 87.39 Q81.36 90.94 77.85 94.37 Q74.34 97.80 69.47 97.84 Q64.60 97.89 60.11 96.96 Q55.63 96.03 51.38 94.98 Q47.13 93.94 41.96 93.79 Q36.78 93.63 34.17 89.42 Q31.55 85.20 29.77 81.00 Q27.98 76.80 25.87 72.87 Q23.75 68.93 22.78 64.47 Q21.82 60.00 20.86 55.06 Q19.91 50.12 24.13 46.76 Q28.36 43.40 30.64 39.70 Q32.92 36.01 35.83 32.61 Q38.75 29.21 42.32 26.01 Q45.90 22.82 50.55 21.69 Q55.21 20.56 59.72 22.85 Q64.23 25.15 68.99 24.46 Q73.74 23.77 77.90 25.91 Q82.05 28.05 86.01 30.75 Q89.96 33.46 90.85 38.40 Q91.75 43.34 93.12 47.42 Q94.49 51.50 97.26 55.75 Q100.04 60.00 98.75 64.62 Z" transform="translate(40,10)" fill="url(#gWax)"/>
+                <path d="M100.04 60.00 Q97.46 69.23 95.39 73.36 Q93.32 77.49 90.11 80.66 Q86.90 83.83 84.13 87.39 Q81.36 90.94 77.85 94.37 Q74.34 97.80 69.47 97.84 Q64.60 97.89 60.11 96.96 Q55.63 96.03 51.38 94.98 Q47.13 93.94 41.96 93.79 Q36.78 93.63 34.17 89.42 Q31.55 85.20 29.77 81.00 Q27.98 76.80 25.87 72.87 Q23.75 68.93 22.78 64.47 Q21.82 60.00 20.86 55.06 Q19.91 50.12 24.13 46.76 Q28.36 43.40 30.64 39.70 Q32.92 36.01 35.83 32.61 Q38.75 29.21 42.32 26.01 Q45.90 22.82 50.55 21.69 Q55.21 20.56 59.72 22.85 Q64.23 25.15 68.99 24.46 Q73.74 23.77 77.90 25.91 Q82.05 28.05 86.01 30.75 Q89.96 33.46 90.85 38.40 Q91.75 43.34 93.12 47.42 Q94.49 51.50 97.26 55.75 Q100.04 60.00 98.75 64.62 Z" transform="translate(40,10)" fill="url(#gWaxLip)"/>
+                <circle cx="100" cy="70" r="27" fill="none" stroke="rgba(58,10,22,.5)" stroke-width="2"/>
+                <circle cx="100" cy="70" r="27" fill="none" stroke="rgba(214,120,132,.28)" stroke-width="1" transform="translate(0,-1.4)"/>
+
+                <!-- a key pressed into the wax: struck twice, dark then light,
+                     so it reads as sunk rather than drawn on -->
+                <g class="gate-key-mark" transform="translate(100,70)">
+                  <g class="mk mk-dark">
+                    <circle cx="0" cy="-11" r="7.5" fill="none" stroke-width="3.4"/>
+                    <path d="M0 -3.5 V15" stroke-width="3.4" stroke-linecap="round"/>
+                    <path d="M0 7 H7.5 M0 13 H6" stroke-width="3.2" stroke-linecap="round"/>
+                  </g>
+                  <g class="mk mk-lite" transform="translate(0,-1.3)">
+                    <circle cx="0" cy="-11" r="7.5" fill="none" stroke-width="1.5"/>
+                    <path d="M0 -3.5 V15" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M0 7 H7.5 M0 13 H6" stroke-width="1.4" stroke-linecap="round"/>
+                  </g>
+                </g>
+              </g>
+              <circle class="gate-seal-glow" cx="100" cy="70" r="44" fill="none"/>
+            </svg>
+          </div>
+
+          <h2 class="gate-heading">A Story Awaits</h2>
+          <p class="gate-sub">a code that could never be forgotten</p>
+
+          <!-- the code: dots in a struck-in parchment field -->
+          <div class="gate-field">
+            <div class="gate-dots" id="gate-code" role="group" aria-label="Your code">
+              <span class="gate-dot" aria-hidden="true"></span>
+              <span class="gate-dot" aria-hidden="true"></span>
+              <span class="gate-dot" aria-hidden="true"></span>
+              <span class="gate-dot" aria-hidden="true"></span>
+            </div>
+          </div>
+          <p class="gate-error" id="gate-error" role="status"></p>
+
+          <div class="gate-pad" id="gate-pad">
+            <button type="button" class="gate-key" data-gate-key="1"><img src="assets/gate-key-1.png" alt="1" /></button>
+            <button type="button" class="gate-key" data-gate-key="2"><img src="assets/gate-key-2.png" alt="2" /></button>
+            <button type="button" class="gate-key" data-gate-key="3"><img src="assets/gate-key-3.png" alt="3" /></button>
+            <button type="button" class="gate-key" data-gate-key="4"><img src="assets/gate-key-4.png" alt="4" /></button>
+            <button type="button" class="gate-key" data-gate-key="5"><img src="assets/gate-key-5.png" alt="5" /></button>
+            <button type="button" class="gate-key" data-gate-key="6"><img src="assets/gate-key-6.png" alt="6" /></button>
+            <button type="button" class="gate-key" data-gate-key="7"><img src="assets/gate-key-7.png" alt="7" /></button>
+            <button type="button" class="gate-key" data-gate-key="8"><img src="assets/gate-key-8.png" alt="8" /></button>
+            <button type="button" class="gate-key" data-gate-key="9"><img src="assets/gate-key-9.png" alt="9" /></button>
+            <button type="button" class="gate-key" data-gate-key="back" aria-label="Delete the last digit"><img src="assets/gate-key-back.png" alt="" /></button>
+            <button type="button" class="gate-key" data-gate-key="0"><img src="assets/gate-key-0.png" alt="0" /></button>
+            <button type="button" class="gate-key" data-gate-key="clear" aria-label="Clear the code"><img src="assets/gate-key-clear.png" alt="" /></button>
+          </div>
+
+          <button type="button" class="gate-unlock" id="gate-submit" aria-label="Unlock">
+            <img src="assets/gate-unlock.png" alt="Unlock" />
+          </button>
         </div>
-        <p class="gate-error" id="gate-error"></p>
-        <button id="gate-submit" class="btn-ancient">Unlock 🔓</button>
       </div>
     </div>
   </section>
@@ -107,7 +443,7 @@
   <section id="screen-hub" class="screen ancient-bg">
     <div class="hub-wrap">
       <h2 class="hub-title">Choose your adventure</h2>
-      <p class="hub-sub" id="hub-sub">— two chapters, either order —</p>
+      <p class="hub-sub" id="hub-sub">— three ways in, any order —</p>
       <div class="hub-cards">
         <button class="hub-card" id="hub-card-maze" data-chapter="maze">
           <span class="hub-badge" id="hub-badge-maze">✓</span>
@@ -120,6 +456,12 @@
           <span class="hub-art hub-art-quest" aria-hidden="true"></span>
           <span class="hub-name">The Long Way Round</span>
           <span class="hub-desc">A story that goes where you choose</span>
+        </button>
+        <button class="hub-card" id="hub-card-ouissy" data-chapter="ouissy">
+          <span class="hub-badge" id="hub-badge-ouissy">✓</span>
+          <span class="hub-art hub-art-ouissy" aria-hidden="true"></span>
+          <span class="hub-name">Super Ouissy</span>
+          <span class="hub-desc">Run, jump and stomp your way to the castle</span>
         </button>
       </div>
       <button id="hub-keepsake" class="btn-ancient hub-keepsake">Open the keepsake 💛</button>
@@ -167,6 +509,97 @@
     </div>
   </section>
 
+  <!-- SCREEN — SUPER OUISSY (the platformer; all of it lives in super-ouissy.js) -->
+  <section id="screen-ouissy" class="screen">
+    <div class="so-frame">
+      <!-- Only ever shown on a portrait phone, where a 16:9 stage cannot
+           fill a screen this tall and the space above it would otherwise
+           be a blank. -->
+      <p class="so-titlebar" aria-hidden="true"><span>SUPER</span><b>OUISSY</b></p>
+
+      <div class="so-stage" id="so-stage">
+        <canvas id="so-canvas" width="320" height="180"></canvas>
+
+        <!-- the HUD sits over the art, in the arcade face -->
+        <div class="so-hud" id="so-hud">
+          <span class="so-hud-item"><b>SCORE</b><i id="so-score">000000</i></span>
+          <span class="so-hud-item so-hud-hearts">
+            <b>&#9829;</b>
+            <!-- the count sits beside the love meter as its label, not
+                 stacked above it with a gap -->
+            <span class="so-love">
+              <i id="so-hearts">00</i>
+              <span class="so-meter" id="so-meter" aria-hidden="true"><span id="so-meter-fill"></span></span>
+            </span>
+          </span>
+          <span class="so-hud-item"><b>WORLD</b><i id="so-world">1-1</i></span>
+          <span class="so-hud-item so-hud-time"><b>TIME</b><i id="so-time">0:00</i></span>
+          <!-- "OUISSY x5" told a new player nothing; this is her lives -->
+          <span class="so-hud-item so-hud-lives"><b>LIVES</b><i id="so-lives"><em>&#9829;</em>&times;3</i></span>
+        </div>
+
+        <div class="so-bossbar" id="so-bossbar"><span id="so-bossfill"></span></div>
+        <button class="so-pause-btn" id="so-pause-btn" aria-label="Pause">&#10074;&#10074;</button>
+
+        <!-- The story scenes speak through this. It is DOM, not canvas:
+             six-pixel text drawn on a 320-wide canvas and then blown up
+             five times is unreadable, however good the panel round it
+             looks. -->
+        <!-- The fight's cue, and the letter. DOM for the same reason the
+             dialogue is: six-pixel text blown up five times is unreadable
+             however good the panel round it looks. -->
+        <div class="so-cue" id="so-cue" hidden>
+          <span class="so-cue-word" id="so-cue-word"></span>
+          <span class="so-cue-bar" aria-hidden="true"><i id="so-cue-fill"></i></span>
+        </div>
+
+        <div class="so-letter" id="so-letter" hidden>
+          <div class="so-letter-paper">
+            <span class="so-letter-corner tl" aria-hidden="true"></span>
+            <span class="so-letter-corner tr" aria-hidden="true"></span>
+            <span class="so-letter-corner bl" aria-hidden="true"></span>
+            <span class="so-letter-corner br" aria-hidden="true"></span>
+            <p class="so-letter-title" id="so-letter-title"></p>
+            <span class="so-letter-rule" aria-hidden="true"></span>
+            <p class="so-letter-body" id="so-letter-body"></p>
+            <p class="so-letter-close" id="so-letter-close"></p>
+            <p class="so-letter-after" id="so-letter-after"></p>
+            <p class="so-letter-sign" id="so-letter-sign"></p>
+            <button class="so-letter-ok" id="so-letter-ok">CLOSE</button>
+          </div>
+        </div>
+
+        <div class="so-dlg" id="so-dlg" aria-hidden="true">
+          <span class="so-dlg-name" id="so-dlg-name"></span>
+          <p class="so-dlg-text" id="so-dlg-text"></p>
+          <button class="so-dlg-next" id="so-dlg-next" aria-label="Continue">&#9654;</button>
+        </div>
+
+        <!-- and the two-way choice, when the story hands her one -->
+        <div class="so-choice" id="so-choice" aria-hidden="true">
+          <p class="so-choice-prompt" id="so-choice-prompt"></p>
+          <button class="so-choice-opt" id="so-choice-0" data-so-choice="0"></button>
+          <button class="so-choice-opt" id="so-choice-1" data-so-choice="1"></button>
+        </div>
+
+        <!-- every menu, card and ending is drawn into this one overlay -->
+        <div class="so-overlay" id="so-overlay" aria-hidden="true"></div>
+      </div>
+
+      <!-- the touch pad, for playing this on a phone -->
+      <div class="so-pad" id="so-pad" aria-hidden="true">
+        <div class="so-pad-side">
+          <button class="so-key" data-so-key="left" aria-label="Left"><svg class="so-ico" viewBox="0 0 9 9" aria-hidden="true"><rect x="4" y="0" width="5" height="1"/><rect x="3" y="1" width="6" height="1"/><rect x="2" y="2" width="7" height="1"/><rect x="1" y="3" width="8" height="1"/><rect x="0" y="4" width="9" height="1"/><rect x="1" y="5" width="8" height="1"/><rect x="2" y="6" width="7" height="1"/><rect x="3" y="7" width="6" height="1"/><rect x="4" y="8" width="5" height="1"/></svg></button>
+          <button class="so-key" data-so-key="right" aria-label="Right"><svg class="so-ico" viewBox="0 0 9 9" aria-hidden="true"><rect x="0" y="0" width="5" height="1"/><rect x="0" y="1" width="6" height="1"/><rect x="0" y="2" width="7" height="1"/><rect x="0" y="3" width="8" height="1"/><rect x="0" y="4" width="9" height="1"/><rect x="0" y="5" width="8" height="1"/><rect x="0" y="6" width="7" height="1"/><rect x="0" y="7" width="6" height="1"/><rect x="0" y="8" width="5" height="1"/></svg></button>
+        </div>
+        <div class="so-pad-side so-pad-right">
+          <button class="so-key so-key-duck" data-so-key="down" aria-label="Duck"><svg class="so-ico" viewBox="0 0 9 5" aria-hidden="true"><rect x="0" y="0" width="9" height="1"/><rect x="1" y="1" width="7" height="1"/><rect x="2" y="2" width="5" height="1"/><rect x="3" y="3" width="3" height="1"/><rect x="4" y="4" width="1" height="1"/></svg></button>
+          <button class="so-key so-key-jump" data-so-key="jump" aria-label="Jump"><svg class="so-ico" viewBox="0 0 9 8" aria-hidden="true"><rect x="1" y="0" width="2" height="1"/><rect x="4" y="0" width="2" height="1"/><rect x="0" y="1" width="9" height="1"/><rect x="0" y="2" width="9" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="1" y="4" width="7" height="1"/><rect x="2" y="5" width="5" height="1"/><rect x="3" y="6" width="3" height="1"/><rect x="4" y="7" width="1" height="1"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- SCREEN 1 — "DO YOU WANT TO PLAY A GAME?" COVER -->
   <section id="screen-hello" class="screen">
     <div class="particle-field" id="pf-hello"></div>
@@ -194,15 +627,15 @@
     <div class="particle-field" id="pf-details"></div>
     <div class="dog-ear"></div>
     <div class="details-card">
-      <span class="note-sticker s1">✨</span><span class="note-sticker s2">💗</span>
       <span class="chapter-label">CHAPTER ONE</span>
-      <img class="mascot-img small" src="assets/bear-hug.gif" alt="bear hug" />
-      <h2><span class="drop-cap">G</span>ame Details 💕</h2>
-      <div class="info-row"><span class="ic-badge">🏆</span><span class="tx">Reward: <b id="reward-text">A sweet kiss 😘</b></span></div>
-      <div class="info-row"><span class="ic-badge">🕹️</span><span class="tx">Arrow keys, swipe, or the pad to move</span></div>
-      <div class="info-row"><span class="ic-badge">💗</span><span class="tx">Collect the hidden hearts along the way for bonus points</span></div>
-      <div class="info-row"><span class="ic-badge">🌙</span><span class="tx">Find your way through the dark to reach me</span></div>
-      <button id="btn-start" class="btn-primary" style="margin-top:10px;">Start Game 💗</button>
+      <img class="mascot-img small" src="assets/bear-hug.gif" alt="" />
+      <h2 class="card-title">Game Details</h2>
+      <span class="card-rule" aria-hidden="true"></span>
+      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-trophy"/></svg></span><span class="tx">Reward: <b id="reward-text"></b></span></div>
+      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-pad"/></svg></span><span class="tx">Arrow keys, a swipe, or the pad to move</span></div>
+      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-heart"/></svg></span><span class="tx">Collect the hidden hearts along the way for bonus points</span></div>
+      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-moon"/></svg></span><span class="tx">Find your way through the dark to reach me</span></div>
+      <button id="btn-start" class="btn-primary">Start the chapter</button>
       <div class="best-time" id="best-time-line"></div>
     </div>
     <div class="page-num">— 1 —</div>
@@ -214,14 +647,15 @@
     <div class="dog-ear"></div>
     <div class="details-card">
       <span class="chapter-label">CHAPTER TWO</span>
-      <h2><span class="drop-cap">I</span>t won't be so easy this time 💪💕</h2>
-      <div class="info-row"><span class="ic-badge">👻</span><span class="tx">Little monsters wander the maze — bump into one and you'll get hurt</span></div>
-      <div class="info-row"><span class="ic-badge">👁️</span><span class="tx">Watchers will shoot if they spot you in a straight line</span></div>
-      <div class="info-row"><span class="ic-badge">🌲</span><span class="tx">Step onto a tree to hide until the coast is clear</span></div>
-      <div class="info-row"><span class="ic-badge">💊</span><span class="tx">Find meds scattered around to heal half a heart each</span></div>
-      <div class="info-row"><span class="ic-badge">🔑</span><span class="tx">Find the hidden key before you can reach me</span></div>
-      <div class="info-row"><span class="ic-badge">❤️</span><span class="tx">You start with <b>3 hearts</b> — max is <b>5</b></span></div>
-      <button id="btn-start2" class="btn-primary" style="margin-top:10px;">I'm Ready 😤💗</button>
+      <h2 class="card-title">It won't be so easy this time</h2>
+      <span class="card-rule" aria-hidden="true"></span>
+      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-wisp"/></svg></span><span class="tx">Little wisps drift through the maze — touch one and it costs you</span></div>
+      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-eye"/></svg></span><span class="tx">Watchers see straight down a corridor, and they take a moment to aim</span></div>
+      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-tree"/></svg></span><span class="tx">Step into a thicket to break their line of sight</span></div>
+      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-vial"/></svg></span><span class="tx">Phials are scattered about; each one gives you back half a heart</span></div>
+      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-key"/></svg></span><span class="tx">Find the key before you can reach me</span></div>
+      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-heart"/></svg></span><span class="tx">You start with <b>3 hearts</b> — five is the most you can hold</span></div>
+      <button id="btn-start2" class="btn-primary">I'm ready</button>
     </div>
     <div class="page-num">— 2 —</div>
   </section>
@@ -240,11 +674,11 @@
     <div class="maze-stars" id="maze-stars"></div>
     <div class="toast-wrap" id="toast-wrap"></div>
     <div class="hud-bar" id="hud-bar">
-      <div class="hud-pill hud-hearts-l1"><span class="lab">💗</span><span class="val" id="hud-hearts">0/0</span></div>
+      <div class="hud-pill hud-hearts-l1"><span class="lab"><svg class="hud-ico hud-ico-fill" aria-hidden="true"><use href="#ic-heart"/></svg></span><span class="val" id="hud-hearts">0/0</span></div>
       <div class="hud-pill hud-hearts-l2"><span class="lab">❤️</span><span class="hp-pips" id="hp-pips"></span></div>
-      <div class="hud-pill"><span class="lab">👣</span><span class="val" id="hud-steps">0</span></div>
-      <div class="hud-pill"><span class="lab">⏱</span><span class="val" id="hud-time">00:00</span></div>
-      <div class="hud-pill hud-hidden-badge" id="hidden-badge"><span class="lab">🌲</span><span class="val">Hidden</span></div>
+      <div class="hud-pill"><span class="lab"><svg class="hud-ico" aria-hidden="true"><use href="#ic-steps"/></svg></span><span class="val" id="hud-steps">0</span></div>
+      <div class="hud-pill"><span class="lab"><svg class="hud-ico" aria-hidden="true"><use href="#ic-clock"/></svg></span><span class="val" id="hud-time">00:00</span></div>
+      <div class="hud-pill hud-hidden-badge" id="hidden-badge"><span class="lab"><svg class="hud-ico" aria-hidden="true"><use href="#ic-tree"/></svg></span><span class="val">Hidden</span></div>
       <div class="hud-pill hud-key-badge" id="key-badge"><img id="key-badge-img" alt="key"/><span class="val">Key!</span></div>
     </div>
     <div class="book-spread">
@@ -257,6 +691,7 @@
           <div id="key-layer"></div>
           <div id="monsters-layer"></div>
           <div id="shooters-layer"></div>
+          <div id="bolts-layer"></div>
           <div class="fog-layer" id="fog-layer"></div>
           <div class="beacon-glow" id="beacon-glow"></div>
           <img id="target-token" class="token target-token" alt="Anwar waiting" />
@@ -265,12 +700,17 @@
         </div>
       </div>
     </div>
+    <!-- One chevron drawn once and rotated for the four directions, so the
+         arrows are identical instead of four glyphs at four optical weights,
+         whatever the device's font happens to ship. Cut into the key: a
+         light lip below the dark face, which is the opposite of a drop
+         shadow and is what reads as engraved. -->
     <div class="dpad-3d">
-      <button class="dpad3-btn dpad3-up" data-dir="up">▲</button>
-      <button class="dpad3-btn dpad3-left" data-dir="left">◀</button>
+      <button class="dpad3-btn dpad3-up" data-dir="up" aria-label="Up"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
+      <button class="dpad3-btn dpad3-left" data-dir="left" aria-label="Left"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
       <div class="dpad3-hub"></div>
-      <button class="dpad3-btn dpad3-right" data-dir="right">▶</button>
-      <button class="dpad3-btn dpad3-down" data-dir="down">▼</button>
+      <button class="dpad3-btn dpad3-right" data-dir="right" aria-label="Right"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
+      <button class="dpad3-btn dpad3-down" data-dir="down" aria-label="Down"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
     </div>
   </section>
 
@@ -305,14 +745,13 @@
   </section>
 
   <!-- ambient music toggle (persists across every screen) -->
-  <button id="music-toggle" class="music-toggle off" aria-label="Turn music on">🔇</button>
 
   <!-- DIALOGUE — cute love note -->
   <div id="dialogue-overlay" class="dialogue-overlay hidden">
     <div class="particle-field" id="pf-dialogue"></div>
     <div class="note-card">
       <div class="washi-tape"></div>
-      <span class="note-sticker n-s1">✨</span><span class="note-sticker n-s2">💗</span>
+      <span class="note-sticker n-s1"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#ffd98a" d="M12 2.4l2.1 6.3 6.3 2.1-6.3 2.1-2.1 6.3-2.1-6.3L3.6 10.8l6.3-2.1z"/></svg></span><span class="note-sticker n-s2"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#ff9ac0" d="M12 20.2C2.6 13.4 3.4 6.4 8.2 6.4c2 0 3.3 1.2 3.8 2.3.5-1.1 1.8-2.3 3.8-2.3 4.8 0 5.6 7-3.8 13.8z"/></svg></span>
       <div class="note-avatar"><img id="dialogue-avatar-img" alt="Anwar" /></div>
       <p class="note-name" id="dialogue-name">Anwar 💗</p>
       <p class="note-text" id="dialogue-text"></p>
@@ -323,8 +762,10 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=8"></script>
-<script src="scrapbook.js?v=8"></script>
-<script src="script.js?v=8"></script>
+<script src="book-scene.js?v=78"></script>
+<script src="scrapbook.js?v=78"></script>
+<script src="script.js?v=78"></script>
+<script src="super-ouissy.js?v=78"></script>
+<script src="rescue.js?v=78"></script>
 </body>
 </html>

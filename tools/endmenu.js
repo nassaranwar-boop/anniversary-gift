@@ -1,0 +1,73 @@
+const { chromium } = require('playwright-core'); const fs = require('fs');
+const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
+(async () => {
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    args: ['--no-sandbox','--no-proxy-server','--disable-gpu'] });
+  const page = await browser.newPage({ viewport: { width: 1180, height: 900 }, deviceScaleFactor: 1 });
+  const errs=[]; page.on('pageerror', e=>errs.push(e.message));
+  await page.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
+  await page.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForTimeout(600);
+
+  const boot = async (d) => {
+    await page.evaluate(() => { window.__soTestDrive = true; try{localStorage.clear();}catch(e){}
+      if (window.SuperOuissy) SuperOuissy.stop(); showScreen('ouissy'); startSuperOuissy(); });
+    await page.waitForSelector('.so-diff-card', { timeout: 6000 });
+    await page.click(`[data-so-diff="${d}"]`); await page.click('#so-play');
+    await page.waitForTimeout(300);
+    const how = await page.$('#so-how-ok'); if (how) await how.click();
+    for (let i=0;i<30;i++){ await page.waitForTimeout(200);
+      if (await page.evaluate(()=>window.__soInfo().state==='play')) break; }
+    await page.evaluate(() => window.__soShowEnding());
+    await page.waitForTimeout(900);
+  };
+
+  for (const [d, expectNext] of [['easy','TRY MEDIUM'], ['medium','TRY HARD'], ['hard',null]]) {
+    await boot(d);
+    const btns = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.so-whatnow .so-btn')).map(b => b.textContent.trim()));
+    ok(d + ': the what-now menu appears', btns.length === (expectNext ? 4 : 3), btns.join(' | '));
+    if (expectNext) ok(d + ': it offers the next difficulty up', btns[0].startsWith(expectNext), btns[0]);
+    else ok('hard: it does not offer a next difficulty', !btns.some(b => b.startsWith('TRY')), btns.join(' | '));
+    ok(d + ': it offers a replay, the title and the games', 
+       btns.some(b=>b.indexOf('AGAIN')>=0) && btns.some(b=>b.indexOf('TITLE')>=0) && btns.some(b=>b.indexOf('GAMES')>=0),
+       btns.join(' | '));
+    /* the message must be the one written for THIS difficulty */
+    const msg = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.so-end-lines p')).map(p => p.textContent).join(' '));
+    const want = { easy: 'like it was never really a fight',
+                   medium: "that's kind of what this year has felt like too",
+                   hard: 'the boss that wouldn' + String.fromCharCode(39) + 't quit' }[d];
+    ok(d + ': the ending says what was written for it', msg.indexOf(want) >= 0,
+       msg.slice(0, 72) + '…');
+
+    if (d === 'easy') {
+      const cdp = await page.context().newCDPSession(page);
+      await page.evaluate(() => { const st=document.createElement('style');
+        st.textContent='*{backdrop-filter:none !important}'; document.head.appendChild(st); });
+      await page.evaluate(() => {
+        var ov = document.querySelector('.so-ov-end') || document.querySelector('.so-overlay');
+        var sc = ov; while (sc && sc.scrollHeight <= sc.clientHeight) sc = sc.firstElementChild;
+        (sc || ov).scrollTop = 99999;
+      });
+      await page.waitForTimeout(200);
+      await page.evaluate(() => window.__soHalt());
+      await page.waitForTimeout(150);
+      const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync('endmenu.png', Buffer.from(data, 'base64'));
+      await page.evaluate(() => window.__soHaltUndo());
+    }
+  }
+
+  // and the next-difficulty button really starts that difficulty
+  await boot('easy');
+  await page.click('#so-end-next');
+  await page.waitForTimeout(1200);
+  const st = await page.evaluate(() => window.__soState());
+  ok('choosing the next difficulty starts it', st.diff === 'medium' && st.world === 1,
+     'diff=' + st.diff + ' world=' + st.world);
+
+  console.log(R.join('\n'));
+  console.log(errs.length ? 'ERRORS: '+errs.join(' | ') : 'no page errors');
+  await browser.close();
+})();

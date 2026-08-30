@@ -889,6 +889,86 @@
     emblemStud.castShadow = true;
     coverBody.add(emblemStud);
 
+    /* --- the title, stamped into the leather ---------------------------
+       The cover carried gold furniture but no name on it. This is a decal
+       lying just above the leather rather than a texture painted into it:
+       the letterforms arrive as an alpha map so only the strokes are
+       drawn, the same canvas is run through heightToNormal so each stroke
+       has a lip that catches the key light, and the material is the same
+       metal as the bosses. That lip is the whole difference between a
+       title stamped INTO a cover and one printed flat on top of it.
+
+       Cinzel was drawn from cut Roman inscriptions, which is exactly the
+       lettering a binder would tool, and the page already loads it.
+       ------------------------------------------------------------------ */
+    var TITLE_TEXT = "Ouissy\u2019s Book";
+    var titleCanvas = makeCanvas(1024, 256, function (ctx, w, h) {
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, w, h);
+    });
+
+    function paintTitle() {
+      var c = titleCanvas, ctx = c.getContext("2d");
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      /* letterSpacing is recent; without it the title is merely tighter */
+      try { ctx.letterSpacing = "10px"; } catch (e) {}
+      var size = 160, font = function (n) {
+        return '600 ' + n + 'px Cinzel, "Playfair Display", Georgia, serif';
+      };
+      ctx.font = font(size);
+      while (ctx.measureText(TITLE_TEXT).width > c.width * 0.86 && size > 40) {
+        size -= 4; ctx.font = font(size);
+      }
+      /* A soft under-glow widens the stroke slightly in the height map, so
+         the normal map gives the tooled edge a shoulder instead of a cliff. */
+      ctx.shadowColor = "rgba(255,255,255,0.55)";
+      ctx.shadowBlur = size * 0.06;
+      ctx.fillStyle = "#fff";
+      ctx.fillText(TITLE_TEXT, c.width / 2, c.height / 2);
+      ctx.shadowBlur = 0;
+    }
+    paintTitle();
+
+    var titleAlphaTex = texFrom(titleCanvas);
+    titleAlphaTex.wrapS = titleAlphaTex.wrapT = THREE.ClampToEdgeWrapping;
+    var titleNormalCanvas = heightToNormal(titleCanvas, 2.2);
+    var titleNormalTex = texFrom(titleNormalCanvas);
+    titleNormalTex.wrapS = titleNormalTex.wrapT = THREE.ClampToEdgeWrapping;
+
+    /* Not pure metal. The bosses get away with metalness 1 because they are
+       round and catch a highlight from somewhere; a flat plate lying face
+       up mirrors whatever is above it, which here is a green field, and the
+       title came out olive. Backing the metalness off and carrying a little
+       emissive gold of its own keeps it foil-coloured wherever the book is
+       standing. */
+    var titleMat = track(new THREE.MeshStandardMaterial({
+      color: 0xf2cd8d, metalness: 0.82, roughness: 0.32, envMapIntensity: 2.0,
+      emissive: 0xc07f2c, emissiveIntensity: 0.68,
+      alphaMap: titleAlphaTex, transparent: true, alphaTest: 0.28,
+      normalMap: titleNormalTex, normalScale: new THREE.Vector2(1.5, 1.5),
+    }));
+
+    var TITLE_W = BOOK_W * 0.80;
+    var titleGeo = track(new THREE.PlaneGeometry(TITLE_W, TITLE_W * (256 / 1024)));
+    titleGeo.rotateX(-Math.PI / 2);          // lie flat on the board, facing up
+    var titleMesh = new THREE.Mesh(titleGeo, titleMat);
+    titleMesh.position.set(BOOK_W / 2, coverTopY + 0.0035, -BOOK_H * 0.21);
+    coverBody.add(titleMesh);
+
+    /* Cinzel may still be loading when the canvas is first painted, which
+       would bake the fallback serif into the texture for good. Repaint
+       once the font is really there. */
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () {
+        paintTitle();
+        titleAlphaTex.needsUpdate = true;
+        var n = heightToNormal(titleCanvas, 2.2);
+        titleNormalTex.image = n;
+        titleNormalTex.needsUpdate = true;
+      });
+    }
+
     // clasp strap on the fore-edge
     var strap = new THREE.Mesh(
       track(new THREE.BoxGeometry(0.14, 0.008, 0.085)),

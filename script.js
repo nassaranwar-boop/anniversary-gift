@@ -4,7 +4,7 @@
    ========================================================= */
 const CONFIG = {
   babyName: "My Baby!",
-  reward: "A sweet kiss 😘",
+  reward: "A sweet kiss",
   mazeSize: 8,
   heartCount: 6,
   sender: { name: "Anwar 💗" },
@@ -66,7 +66,7 @@ document.getElementById("key-badge-img").src = ASSETS.key;
 /* ---------- best time (localStorage) ---------- */
 try {
   const best = localStorage.getItem("fal_best_time");
-  if (best) document.getElementById("best-time-line").textContent = "🏆 Best time: " + best;
+  if (best) document.getElementById("best-time-line").textContent = "Best time — " + best;
 } catch (e) {}
 
 /* ---------- screen manager ---------- */
@@ -86,30 +86,101 @@ function pageTurn(name, callback) {
 }
 function openCover(name) { pageTurn(name); }
 
+/* ---------------------------------------------------------
+   THE REAL HEIGHT OF THE VIEWPORT
+
+   dvh handles this on its own in a modern browser, but it is not
+   everywhere yet and it rounds; this measures the visible area and
+   writes it into --app-h, which the stylesheet uses for every
+   full-height box. That is what closes the blank strip you could swipe
+   down into.
+
+   innerHeight, not visualViewport.height: the visual viewport shrinks
+   when the on-screen keyboard opens, and re-laying the whole site out
+   around the keyboard is worse than the gap ever was. The focus guard
+   below is the belt to that braces.
+   --------------------------------------------------------- */
+/* dvh is the browser's own answer to this and it is correct at every zoom
+   level, which a measured pixel value is not: written too large the fixed
+   screens overflow and the content reads as cropped from the top; written
+   too small, or left stale after a zoom, the body shows through underneath
+   as a band of empty space. Both of those were the same stale number.
+
+   So where dvh exists, CSS owns the height and JS does not touch it. The
+   measurement below is only for browsers old enough to lack dvh. */
+const HAS_DVH = typeof CSS !== "undefined" && CSS.supports &&
+                CSS.supports("height", "100dvh");
+
+function fitViewport() {
+  if (HAS_DVH) return;                      // the stylesheet already has it right
+  const ae = document.activeElement;
+  if (ae && /^(input|textarea|select)$/i.test(ae.tagName)) return;
+  const h = window.innerHeight;
+  if (h > 0) document.documentElement.style.setProperty("--app-h", h + "px");
+}
+
+if (!HAS_DVH) {
+  fitViewport();
+  /* A ResizeObserver on the root element, not just the resize event: some
+     mobile browsers change the viewport as the URL bar slides away without
+     ever firing resize, and at least one scene here stops the event
+     reaching us at all. The observer watches the box itself. */
+  if (window.ResizeObserver) {
+    try { new ResizeObserver(fitViewport).observe(document.documentElement); } catch (e) {}
+  }
+  addEventListener("resize", fitViewport);
+  addEventListener("orientationchange", () => setTimeout(fitViewport, 120));
+  addEventListener("pageshow", fitViewport);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", fitViewport);
+  addEventListener("scroll", () => requestAnimationFrame(fitViewport), { passive: true });
+  document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
+}
+
 /* ---------- ambient particles ---------- */
+/* The drifting decorations used to be emoji, which meant they were a
+   different picture on every device, at a different weight, in colours
+   that had nothing to do with the palette. These are drawn, and they take
+   a tint, so a field of them reads as one thing. */
+const PARTICLE_SHAPES = {
+  heart: "M12 20.2C2.6 13.4 3.4 6.4 8.2 6.4c2 0 3.3 1.2 3.8 2.3.5-1.1 1.8-2.3 3.8-2.3 4.8 0 5.6 7-3.8 13.8z",
+  spark: "M12 2.4l2.1 6.3 6.3 2.1-6.3 2.1-2.1 6.3-2.1-6.3L3.6 10.8l6.3-2.1z",
+  petal: "M12 3.2c3.4 2.4 5.2 5.4 5.2 8.5a5.2 5.2 0 1 1-10.4 0c0-3.1 1.8-6.1 5.2-8.5z",
+  bud:   "M12 4c2.7 0 4.7 2.1 4.7 4.6 0 3.1-2.3 5.8-4.7 7.7-2.4-1.9-4.7-4.6-4.7-7.7C7.3 6.1 9.3 4 12 4z",
+  leaf:  "M4.5 19.5C4.5 11 10 5.5 19.5 4.5c1 9.5-4.5 15-15 15z",
+};
+
 function startParticles(containerId, opts) {
   const el = document.getElementById(containerId);
   if (!el || el.dataset.running) return;
   el.dataset.running = "1";
-  const { emojis, max = 10, interval = 700 } = opts;
+  const { shapes, tints, max = 10, interval = 700 } = opts;
   let alive = 0;
   setInterval(() => {
-    if (el.offsetParent === null) return;
+    if (el.offsetParent === null) return;          // the screen is not showing
     if (alive >= max) return;
-    const span = document.createElement("span");
-    span.className = "particle";
-    span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-    span.style.left = Math.random() * 100 + "%";
-    span.style.fontSize = (12 + Math.random() * 12) + "px";
-    span.style.animationDuration = (6 + Math.random() * 5) + "s";
+    const kind = shapes[Math.floor(Math.random() * shapes.length)];
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "particle");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", PARTICLE_SHAPES[kind]);
+    path.setAttribute("fill", tints[Math.floor(Math.random() * tints.length)]);
+    svg.appendChild(path);
+    const size = 11 + Math.random() * 13;
+    svg.style.left = Math.random() * 100 + "%";
+    svg.style.width = size + "px";
+    svg.style.height = size + "px";
+    svg.style.animationDuration = (6 + Math.random() * 5) + "s";
     alive++;
-    span.addEventListener("animationend", () => { span.remove(); alive--; });
-    el.appendChild(span);
+    svg.addEventListener("animationend", () => { svg.remove(); alive--; });
+    el.appendChild(svg);
   }, interval);
 }
-startParticles("pf-hello", { emojis:["💗","💕","✨"], max:9, interval:750 });
-startParticles("pf-details", { emojis:["💗","💫"], max:6, interval:900 });
-startParticles("pf-l2intro", { emojis:["💗","✨","😤"], max:5, interval:1000 });
+const TINT_WARM = ["rgba(255,150,190,.75)","rgba(255,190,150,.6)","rgba(255,220,180,.6)","rgba(240,130,170,.6)"];
+const TINT_NIGHT = ["rgba(255,169,216,.6)","rgba(255,214,168,.45)","rgba(214,150,220,.5)"];
+startParticles("pf-hello",   { shapes:["heart","spark","petal"], tints:TINT_WARM,  max:9, interval:750 });
+startParticles("pf-details", { shapes:["heart","bud","leaf"],    tints:TINT_WARM,  max:6, interval:900 });
+startParticles("pf-l2intro", { shapes:["heart","spark","bud"],   tints:TINT_NIGHT, max:5, interval:1000 });
 
 /* ---------- maze ambient stars ---------- */
 (function scatterMazeStars(){
@@ -324,7 +395,9 @@ function mzStartFx() { if (!mzFxRaf) { mzFxLast = 0; mzFxRaf = requestAnimationF
 /* ---------- sound ---------- */
 function mzSfx(kind) {
   if (typeof hvSfx === "function") {
-    hvSfx({ step: "tick", heart: "collect", hurt: "bad", win: "yay", key: "collect" }[kind] || "pick");
+    hvSfx({ step: "step", heart: "collect", hurt: "bad", win: "yay", key: "key",
+            spot: "spot", shot: "shot", phial: "phial", locked: "locked",
+            respawn: "respawn" }[kind] || "pick");
   }
 }
 
@@ -450,7 +523,8 @@ function buildHearts() {
   heartCells.forEach((hc) => {
     const el = document.createElement("div");
     el.className = "heart-collect";
-    el.textContent = "💗";
+    el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' +
+      PARTICLE_SHAPES.heart + '"/></svg>';
     el.dataset.r = hc.r; el.dataset.c = hc.c;
     layer.appendChild(el);
   });
@@ -464,7 +538,7 @@ function layoutMaze() {
   document.querySelectorAll(".heart-collect").forEach((el) => {
     const r = +el.dataset.r, c = +el.dataset.c;
     const size = CS*0.62;
-    el.style.width = size+"px"; el.style.height = size+"px"; el.style.fontSize = (size*0.8)+"px";
+    el.style.width = size+"px"; el.style.height = size+"px";   // it holds an SVG, not a glyph
     el.style.left = (c*CS + CS/2 - size/2) + "px";
     el.style.top = (r*CS + CS/2 - size/2) + "px";
   });
@@ -546,7 +620,10 @@ function move(dir) {
   const midR = playerPos.r+mdr, midC = playerPos.c+mdc;
   if (dir==="left") lastFacing="left";
   if (dir==="right") lastFacing="right";
-  if (mazeData[midR] && mazeData[midR][midC] === 1) {
+  /* canStep, not just the wall between: the old test checked the gap and
+     took the destination on trust. The border happens to be solid so it
+     never bit, but it is one carve away from walking her off the grid. */
+  if (canStep(playerPos.r, playerPos.c, mdr, mdc)) {
     const fromR = playerPos.r, fromC = playerPos.c;
     playerPos = { r: playerPos.r+dr, c: playerPos.c+dc };
     stepCount++;
@@ -574,7 +651,7 @@ function checkHeart() {
   const el = document.querySelector(`.heart-collect[data-r="${playerPos.r}"][data-c="${playerPos.c}"]`);
   if (el) {
     heartsCollected++;
-    popText(el.style.left, el.style.top, "+1 💗", "#ff5b98");
+    popText(el.style.left, el.style.top, "+1", "#ff5b98");
     mzSpawn(playerPos.c*CS + CS/2, playerPos.r*CS + CS/2, 16, "#ff8fb8", 70, 30);
     mzSpawn(playerPos.c*CS + CS/2, playerPos.r*CS + CS/2, 10, "#ffe08a", 50, 20);
     mzSfx("heart");
@@ -597,7 +674,8 @@ function popText(left, top, text, color) {
 function checkWin() {
   if (playerPos.r === targetPos.r && playerPos.c === targetPos.c) {
     if (level === 2 && !hasKey) {
-      showToast("Find the key first! 🔑");
+      showToast("The way through is locked — find the key");
+      mzSfx("locked");
       const stage = document.getElementById("maze-stage");
       stage.classList.remove("locked-shake"); void stage.offsetWidth; stage.classList.add("locked-shake");
       return;
@@ -690,10 +768,14 @@ function setupLevel2(pathCells) {
 
   if (level2Tick) clearInterval(level2Tick);
   level2Tick = setInterval(level2TickFn, 800);
+  /* The watchers run on their own, much faster clock: a bolt that only
+     moved every 800ms would be something you watch rather than dodge. */
+  startWatchers();
 }
 
 function stopLevel2Systems() {
   if (level2Tick) { clearInterval(level2Tick); level2Tick = null; }
+  stopWatchers();
 }
 
 function buildLevel2Layers() {
@@ -737,7 +819,10 @@ function buildLevel2Layers() {
     img.src = ASSETS.shooter; img.className = "entity shooter-entity"; img.dataset.i = i;
     shootersLayer.appendChild(img);
     const alert = document.createElement("div");
-    alert.className = "shooter-alert"; alert.textContent = "❗"; alert.dataset.i = i;
+    alert.className = "shooter-alert"; alert.dataset.i = i;
+    alert.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+      '<path d="M12 2.6 22 20.4H2z"/>' +
+      '<path class="bang" d="M12 9v4.6"/><circle class="bang" cx="12" cy="16.8" r="1.1"/></svg>';
     shootersLayer.appendChild(alert);
   });
 }
@@ -813,16 +898,18 @@ function onPlayerMovedLevel2() {
     hp = Math.min(HP_MAX, hp+1);
     renderHeartsHud();
     layoutLevel2Entities();
-    showToast("Found a med! +½ 💗");
+    mzSfx("phial");
+    showToast("A phial — half a heart back");
   }
 
   if (keyPos && !hasKey && playerPos.r===keyPos.r && playerPos.c===keyPos.c) {
     hasKey = true;
     layoutLevel2Entities();
+    mzSfx("key");
     document.getElementById("key-badge").classList.add("show");
     document.getElementById("target-token").classList.remove("locked");
     document.getElementById("beacon-glow").classList.remove("locked");
-    showToast("Got the key! 🔑💗");
+    showToast("The key is yours");
   }
 
   checkMonsterContact();
@@ -832,10 +919,16 @@ function checkMonsterContact() {
   if (isHidden) return;
   if (Date.now() < invulnUntil) return;
   const hit = monsters.some(m => m.r===playerPos.r && m.c===playerPos.c);
-  if (hit) applyDamage("A monster got you! 😱");
+  if (hit) applyDamage("A wisp caught you");
 }
 
 function applyDamage(msg) {
+  /* The invulnerability window used to be checked by the caller, and only
+     one of the two callers did it: a monster could not touch you twice in
+     a row but a watcher could, so bolts chewed through the i-frames a
+     monster respected. Whether a hit lands is decided here now, once, for
+     every source. */
+  if (Date.now() < invulnUntil) return;
   hp = Math.max(0, hp-2);
   invulnUntil = Date.now() + 1800;
   renderHeartsHud();
@@ -850,9 +943,16 @@ function applyDamage(msg) {
 }
 
 function respawnLevel2() {
-  showToast("Sneaky sneaky... try again 😅💕");
+  showToast("Caught. Let's try that again.");
+  mzSfx("respawn");
+  /* anything already in the air belongs to the run that just ended */
+  clearBolts();
+  hideAllBeams();
+  shooters.forEach((s) => { s.state = "idle"; s.until = 0; });
+  document.querySelectorAll(".shooter-alert.show").forEach(el => el.classList.remove("show"));
   playerPos = { r:1, c:1 };
   hp = HP_START;
+  invulnUntil = Date.now() + 900;   // a breath to get your bearings
   renderHeartsHud();
   monsters.forEach(m => { m.r = m.homeR; m.c = m.homeC; });
   layoutLevel2Entities();
@@ -866,7 +966,6 @@ function respawnLevel2() {
 function level2TickFn() {
   if (level !== 2 || gameWon) return;
   moveMonsters();
-  checkShooters();
   checkMonsterContact();
 }
 
@@ -911,22 +1010,192 @@ function hasClearLine(r1,c1,r2,c2) {
   return false;
 }
 
-function checkShooters() {
+/* =========================================================
+   THE WATCHERS
+
+   These used to be called shooters and never shot anything: after a one
+   second warning they simply took a heart off you, from any distance,
+   with nothing travelling between the two of you. There was no way to
+   read it, no way to dodge it, and being hit from eleven cells away felt
+   arbitrary — which is exactly why it did not make sense.
+
+   Now a watcher does three things you can see. It spots you and takes a
+   moment to aim, drawing a beam down the corridor so you know which one
+   has you and from where. It fires a bolt that travels cell by cell, so
+   you can step out of the line, put a thicket between you, or simply be
+   quicker than it. Then it has to reload before it can do it again.
+
+   The bolt is independent once it leaves: it does not track you, and it
+   is stopped by a wall or a thicket. Everything is on its own clock, so
+   the aim never fires late because a slower tick was busy.
+   ========================================================= */
+const WATCH = {
+  range:    11,     // grid steps, so about five cells
+  aim:      850,    // the telegraph you get before it fires
+  cooldown: 2400,   // how long until that one can aim at you again
+  step:     120,    // ms per grid step the bolt travels
+};
+let bolts = [], watchTick = null;
+
+function startWatchers() {
+  stopWatchers();
+  watchTick = setInterval(watchTickFn, WATCH.step);
+}
+function stopWatchers() {
+  if (watchTick) { clearInterval(watchTick); watchTick = null; }
+  clearBolts();
+  shooters.forEach((s) => { s.state = "idle"; s.until = 0; });
+  document.querySelectorAll(".shooter-alert.show").forEach(el => el.classList.remove("show"));
+  hideAllBeams();
+}
+function clearBolts() {
+  bolts.forEach(b => b.el && b.el.remove());
+  bolts = [];
+}
+
+/* how far a shot can travel from here before something stops it */
+function beamEnd(r, c, dr, dc) {
+  let er = r, ec = c, n = 0;
+  while (n < WATCH.range) {
+    const nr = er + dr, nc = ec + dc;          // the wall between cells
+    const tr = er + dr * 2, tc = ec + dc * 2;  // the next cell
+    if (!cellOpen(nr, nc) || !cellOpen(tr, tc)) break;
+    er = tr; ec = tc; n += 2;
+    if (treeSet.has(er + "," + ec)) break;     // a thicket stops it
+  }
+  return { r: er, c: ec, steps: n };
+}
+
+function watchTickFn() {
+  if (level !== 2 || gameWon) return;
+  const now = Date.now();
+
   shooters.forEach((s, i) => {
-    const alertEl = document.querySelector(`.shooter-alert[data-i="${i}"]`);
-    const sees = !isHidden && (s.r===playerPos.r || s.c===playerPos.c) &&
-                 hasClearLine(s.r, s.c, playerPos.r, playerPos.c) &&
-                 (Math.abs(s.r-playerPos.r)+Math.abs(s.c-playerPos.c)) <= 11;
-    if (sees) {
-      if (!s.alerting) { s.alerting = true; s.alertUntil = Date.now()+1000; if (alertEl) alertEl.classList.add("show"); }
-      else if (Date.now() >= s.alertUntil) {
-        s.alerting = false; if (alertEl) alertEl.classList.remove("show");
-        applyDamage("Spotted! 💥");
+    if (!s.state) s.state = "idle";
+    const alertEl = document.querySelector('.shooter-alert[data-i="' + i + '"]');
+
+    if (s.state === "cool") {
+      if (now >= s.until) s.state = "idle";
+      return;
+    }
+
+    if (s.state === "aim") {
+      /* Losing sight of it cancels the shot — ducking behind a corner in
+         time should actually save you, or the telegraph is a lie. */
+      if (!watcherSees(s)) {
+        s.state = "idle";
+        if (alertEl) alertEl.classList.remove("show");
+        hideBeam(i);
+        return;
       }
-    } else {
-      if (s.alerting) { s.alerting = false; if (alertEl) alertEl.classList.remove("show"); }
+      if (now >= s.until) {
+        fireBolt(s);
+        s.state = "cool"; s.until = now + WATCH.cooldown;
+        if (alertEl) alertEl.classList.remove("show");
+        hideBeam(i);
+      }
+      return;
+    }
+
+    if (watcherSees(s)) {
+      s.dr = Math.sign(playerPos.r - s.r);
+      s.dc = Math.sign(playerPos.c - s.c);
+      s.state = "aim"; s.until = now + WATCH.aim;
+      if (alertEl) alertEl.classList.add("show");
+      showBeam(i, s);
+      mzSfx("spot");
     }
   });
+
+  stepBolts();
+}
+
+function watcherSees(s) {
+  if (isHidden) return false;
+  if (s.r !== playerPos.r && s.c !== playerPos.c) return false;
+  if (Math.abs(s.r - playerPos.r) + Math.abs(s.c - playerPos.c) > WATCH.range) return false;
+  return hasClearLine(s.r, s.c, playerPos.r, playerPos.c);
+}
+
+function fireBolt(s) {
+  const layer = document.getElementById("bolts-layer");
+  if (!layer) return;
+  const el = document.createElement("div");
+  el.className = "mz-bolt";
+  el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 18 12l-6 10.5L6 12z"/></svg>';
+  layer.appendChild(el);
+  /* fresh: skip the first step. fireBolt runs earlier in the same tick
+     than stepBolts, so without this the bolt is created and immediately
+     advanced — it never appears at the muzzle, and a watcher standing one
+     cell away hits you before anything is drawn, which is unduckable. */
+  const b = { r: s.r, c: s.c, dr: s.dr, dc: s.dc, dist: 0, el: el, fresh: true };
+  bolts.push(b);
+  placeBolt(b);
+  mzSfx("shot");
+}
+
+function stepBolts() {
+  for (let i = bolts.length - 1; i >= 0; i--) {
+    const b = bolts[i];
+    if (b.fresh) { b.fresh = false; continue; }      // it gets its muzzle frame
+    const wr = b.r + b.dr, wc = b.c + b.dc;          // the wall between
+    const nr = b.r + b.dr * 2, nc = b.c + b.dc * 2;  // the next cell
+    if (b.dist >= WATCH.range || !cellOpen(wr, wc) || !cellOpen(nr, nc)) { killBolt(i); continue; }
+    b.r = nr; b.c = nc; b.dist += 2;
+    placeBolt(b);
+    if (treeSet.has(b.r + "," + b.c)) { killBolt(i); continue; }   // stopped by a thicket
+    if (b.r === playerPos.r && b.c === playerPos.c) {
+      killBolt(i);
+      if (!isHidden) applyDamage("A watcher caught you");
+    }
+  }
+}
+
+function killBolt(i) {
+  const b = bolts[i];
+  if (b.el) {
+    b.el.classList.add("gone");
+    const el = b.el;
+    setTimeout(() => el.remove(), 180);
+  }
+  bolts.splice(i, 1);
+}
+
+function placeBolt(b) {
+  if (!b.el) return;
+  const size = CS * 0.46;
+  b.el.style.width = size + "px";
+  b.el.style.height = size + "px";
+  b.el.style.left = (b.c * CS + CS / 2 - size / 2) + "px";
+  b.el.style.top = (b.r * CS + CS / 2 - size / 2) + "px";
+}
+
+/* the corridor it is about to shoot down */
+function showBeam(i, s) {
+  const layer = document.getElementById("bolts-layer");
+  if (!layer) return;
+  let el = layer.querySelector('.mz-beam[data-i="' + i + '"]');
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "mz-beam"; el.dataset.i = i;
+    layer.appendChild(el);
+  }
+  const end = beamEnd(s.r, s.c, s.dr, s.dc);
+  const x1 = s.c * CS + CS / 2, y1 = s.r * CS + CS / 2;
+  const x2 = end.c * CS + CS / 2, y2 = end.r * CS + CS / 2;
+  const thin = Math.max(3, CS * 0.16);
+  el.style.left = (Math.min(x1, x2) - (s.dc ? 0 : thin / 2)) + "px";
+  el.style.top  = (Math.min(y1, y2) - (s.dr ? 0 : thin / 2)) + "px";
+  el.style.width  = (s.dc ? Math.abs(x2 - x1) : thin) + "px";
+  el.style.height = (s.dr ? Math.abs(y2 - y1) : thin) + "px";
+  el.classList.add("on");
+}
+function hideBeam(i) {
+  const el = document.querySelector('.mz-beam[data-i="' + i + '"]');
+  if (el) el.classList.remove("on");
+}
+function hideAllBeams() {
+  document.querySelectorAll(".mz-beam").forEach(el => el.classList.remove("on"));
 }
 
 /* =========================================================
@@ -939,7 +1208,7 @@ function startDialogue() {
   showMessage();
   const overlay = document.getElementById("dialogue-overlay");
   overlay.classList.remove("hidden");
-  startParticles("pf-dialogue", { emojis:["💕","💗","✨"], max:7, interval:600 });
+  startParticles("pf-dialogue", { shapes:["heart","spark","petal"], tints:TINT_WARM, max:7, interval:600 });
 }
 function currentMessages() { return level === 2 ? CONFIG.messagesFinal : CONFIG.messages; }
 function buildDots() {
@@ -1296,10 +1565,12 @@ function buildSkyline() {
 function buildEndHearts() {
   const field = document.getElementById("end-hearts");
   if (field.childElementCount) return;
-  const icons = ["💗","💕","✨"];
+  const shapes = ["heart", "petal", "spark", "bud"];
+  const tints = ["#ff9ac0", "#ffc9a8", "#ffe3b0", "#f08bb0"];
   for (let i=0;i<7;i++){
     const s = document.createElement("span");
-    s.textContent = icons[i % icons.length];
+    s.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="' +
+      tints[i % tints.length] + '" d="' + PARTICLE_SHAPES[shapes[i % shapes.length]] + '"/></svg>';
     s.style.left = (35 + Math.random()*30) + "%";
     s.style.top = (55 + Math.random()*20) + "%";
     s.style.animationDelay = (Math.random()*3)+"s";
@@ -1314,9 +1585,9 @@ function buildEndHearts() {
 /* ---------- book intro integration ----------
    The actual 3D scene (Three.js) lives in book-scene.js and runs
    independently. It calls window.finishBookIntro() when the climax
-   flash completes, or immediately if the user hits Skip. This keeps
-   the 3D rendering code decoupled from the rest of the site's logic. */
-const videoSkipBtn = document.getElementById("video-skip");
+   flash completes. There is no longer a Skip button — the intro is the
+   thing she opens the site to see, and it is short. window.skipBookIntro
+   still exists in book-scene.js as its teardown, and is used there. */
 let introFinished = false;
 
 window.finishBookIntro = function finishBookIntro() {
@@ -1330,30 +1601,121 @@ window.finishBookIntro = function finishBookIntro() {
   }, 480);
 };
 
-videoSkipBtn.addEventListener("click", () => {
-  if (window.skipBookIntro) window.skipBookIntro();
-  window.finishBookIntro();
-});
+/* ---------- passcode gate ----------
+   No text field. She taps her own keypad, so the phone keyboard never
+   appears and never covers the thing she is typing into. A hardware
+   keyboard still works on a laptop, because refusing it would be rude.
+   gateCode is the single source of truth; paintGate is the only thing
+   that writes to the cells. */
+let gateCode = "";
 
-/* ---------- passcode gate ---------- */
+function paintGate() {
+  const row = document.getElementById("gate-code");
+  if (!row) return;
+  row.querySelectorAll(".gate-dot").forEach((d, i) => {
+    /* Only toggle on a real change. Re-adding the class every keypress
+       restarts the pop on all four dots and the row flickers. */
+    const want = i < gateCode.length;
+    if (d.classList.contains("filled") !== want) d.classList.toggle("filled", want);
+  });
+}
+
+function gateType(d) {
+  if (gateCode.length >= 4) return;
+  gateCode += d;
+  document.getElementById("gate-error").textContent = "";
+  document.getElementById("gate-code").classList.remove("bad");
+  paintGate();
+  gateClick(1);
+  /* four digits is the whole code, so there is nothing left to wait for.
+     The pause lets the last dot land before it is judged. */
+  if (gateCode.length === 4) setTimeout(checkGateCode, 300);
+}
+function gateBack()  { if (!gateCode) return; gateCode = gateCode.slice(0, -1); paintGate(); gateClick(0); }
+function gateClear() { if (!gateCode) return; gateCode = ""; paintGate(); gateClick(0); }
+
+/* A short wooden click with a breath of paper rustle over it, so the
+   keypad answers back. Synthesised, like every other sound on the site —
+   there is not an audio file in the repo and there should not be one. */
+function gateClick(up) {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const c = window.__gateAudio || (window.__gateAudio = new AC());
+    if (c.state !== "running") { if (window.wakeAudio) window.wakeAudio(c); else c.resume(); }
+    const t = c.currentTime;
+
+    // the click: a quick body-resonance blip
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(up ? 760 : 420, t);
+    o.frequency.exponentialRampToValueAtTime(up ? 320 : 200, t + 0.06);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.055, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + 0.11);
+
+    // the rustle: a very short band-passed noise burst
+    const len = Math.floor(c.sampleRate * 0.05);
+    const buf = c.createBuffer(1, len, c.sampleRate);
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2600; bp.Q.value = 0.9;
+    const ng = c.createGain(); ng.gain.value = 0.045;
+    src.connect(bp); bp.connect(ng); ng.connect(c.destination);
+    src.start(t);
+  } catch (e) {}
+}
+
 function checkGateCode() {
-  const input = document.getElementById("gate-input");
-  const val = input.value.trim();
-  if (val === GATE_CODE) {
-    bloomSeal();
-    setTimeout(() => { pageTurn("scrapbook", startDioramas); }, 900);
+  const row = document.getElementById("gate-code");
+  const card = document.getElementById("gate-card");
+  if (gateCode === GATE_CODE) {
+    if (card) card.classList.add("ok");        // the sheet takes the light
+    bloomSeal();                                // and the wax gives way
+    setTimeout(() => { pageTurn("scrapbook", startDioramas); }, 1100);
   } else {
-    document.getElementById("gate-error").textContent = "That's not quite right... try again 💭";
-    input.classList.remove("shake"); void input.offsetWidth; input.classList.add("shake");
-    input.value = "";
+    document.getElementById("gate-error").textContent = "That isn't it — try again.";
+    /* Show her the wrong code flashing before it clears, rather than
+       wiping it out from under her the instant the fourth dot lands. */
+    if (row) row.classList.add("bad");
+    if (card) { card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake"); }
+    gateThud();
+    setTimeout(() => {
+      gateCode = "";
+      if (row) row.classList.remove("bad");
+      paintGate();
+    }, 620);
   }
 }
+
+/* the sound of a lock not turning */
+function gateThud() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const c = window.__gateAudio || (window.__gateAudio = new AC());
+    if (c.state !== "running") { if (window.wakeAudio) window.wakeAudio(c); else c.resume(); }
+    const t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(190, t);
+    o.frequency.exponentialRampToValueAtTime(70, t + 0.22);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.07, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + 0.32);
+  } catch (e) {}
+}
+
 /* Unlock flourish: the wax seal used to crack. Now it blooms — petals
    unfurl outward and a warm glow swells through as the seal dissolves. */
 function bloomSeal() {
   const seal = document.getElementById("gate-seal");
   const wrap = seal ? seal.parentElement : null;
-  if (seal) seal.classList.add("crack");
+  if (seal) seal.classList.add("crack");     // the wax swells, turns and goes
   if (!wrap || wrap.querySelector(".bloom-burst")) return;
 
   const burst = document.createElement("div");
@@ -1376,8 +1738,53 @@ function bloomSeal() {
   setTimeout(() => burst.remove(), 1400);
 }
 
-document.getElementById("gate-submit").addEventListener("click", checkGateCode);
-document.getElementById("gate-input").addEventListener("keydown", (e) => { if (e.key === "Enter") checkGateCode(); });
+(function wireGate() {
+  const pad = document.getElementById("gate-pad");
+  if (!pad) return;
+
+  /* pointerdown, not click: the key should answer the moment she touches
+     it. The .down class is cleared on release anywhere, so dragging off
+     a key never leaves it stuck looking pressed. */
+  pad.addEventListener("pointerdown", (e) => {
+    const btn = e.target.closest("[data-gate-key]");
+    if (!btn) return;
+    e.preventDefault();
+    btn.classList.add("down");
+    const k = btn.getAttribute("data-gate-key");
+    if (k === "back") gateBack();
+    else if (k === "clear") gateClear();
+    else gateType(k);
+    if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+  });
+  const unlock = document.getElementById("gate-submit");
+  if (unlock) {
+    unlock.addEventListener("pointerdown", (e) => { e.preventDefault(); unlock.classList.add("down"); });
+    unlock.addEventListener("click", () => {
+      /* Only judge a complete code. Pressing Unlock on two digits and
+         being told it is wrong is just rude. */
+      if (gateCode.length === 4) checkGateCode();
+      else document.getElementById("gate-error").textContent = "four numbers first.";
+    });
+  }
+  const release = () => {
+    document.querySelectorAll(".gate-key.down,.gate-unlock.down")
+      .forEach((b) => b.classList.remove("down"));
+  };
+  addEventListener("pointerup", release);
+  addEventListener("pointercancel", release);
+
+  /* a real keyboard, for whoever is on a laptop */
+  addEventListener("keydown", (e) => {
+    const g = document.getElementById("screen-gate");
+    if (!g || !g.classList.contains("active")) return;
+    if (e.key >= "0" && e.key <= "9") { gateType(e.key); e.preventDefault(); }
+    else if (e.key === "Backspace") { gateBack(); e.preventDefault(); }
+    else if (e.key === "Escape") { gateClear(); }
+    else if (e.key === "Enter" && gateCode.length === 4) checkGateCode();
+  });
+
+  paintGate();
+})();
 
 /* =========================================================
    THE SCRAPBOOK
@@ -1410,6 +1817,26 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* =========================================================
+   SUPER OUISSY
+   The platformer lives entirely in super-ouissy.js. This half only
+   owns getting in and out of it, exactly as the scrapbook does.
+   Finishing it is remembered, but it is a bonus chapter: the keepsake
+   still unlocks on the maze and the adventure alone, so nothing she has
+   already finished can re-lock itself.
+   ========================================================= */
+function startSuperOuissy() {
+  if (window.SuperOuissy) SuperOuissy.start();
+}
+function stopSuperOuissy() {
+  if (window.SuperOuissy) SuperOuissy.stop();
+}
+window.leaveSuperOuissy = () => {
+  stopSuperOuissy();
+  pageTurn("hub", startHub);
+};
+window.markSuperOuissyDone = () => markChapterDone("ouissy");
+
+/* =========================================================
    HUB — choose your adventure
    Two chapters, either order. Completion is remembered so she can
    put the phone down and come back to it.
@@ -1436,15 +1863,21 @@ function startHub() {
   const d = chaptersDone();
   const both = bothChaptersDone();
 
-  [["maze", d.maze], ["quest", d.quest]].forEach(([name, done]) => {
+  [["maze", d.maze], ["quest", d.quest], ["ouissy", d.ouissy]].forEach(([name, done]) => {
     const card = document.getElementById("hub-card-" + name);
     if (card) card.classList.toggle("done", !!done);
   });
 
+  /* Three cards, so the line has to count three — it still said "two
+     chapters" for as long as Super Ouissy has been on this board. The
+     keepsake itself is still gated on the two story chapters; that is
+     deliberate and unchanged. */
   const sub = document.getElementById("hub-sub");
-  if (both) sub.textContent = "— you finished both. the keepsake is yours —";
-  else if (d.maze || d.quest) sub.textContent = "— one down. the other is still waiting —";
-  else sub.textContent = "— two chapters, either order —";
+  const count = (d.maze ? 1 : 0) + (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0);
+  if (both && count === 3) sub.textContent = "— all three done. the keepsake is yours —";
+  else if (both) sub.textContent = "— both chapters done. the keepsake is yours —";
+  else if (count) sub.textContent = "— " + count + " of three done, any order —";
+  else sub.textContent = "— three ways in, any order —";
 
   document.getElementById("hub-keepsake").classList.toggle("on", both);
 }
@@ -1455,6 +1888,9 @@ document.getElementById("hub-card-maze").addEventListener("click", () => {
 });
 document.getElementById("hub-card-quest").addEventListener("click", () => {
   pageTurn("quest", startQuest);
+});
+document.getElementById("hub-card-ouissy").addEventListener("click", () => {
+  pageTurn("ouissy", startSuperOuissy);
 });
 document.getElementById("hub-keepsake").addEventListener("click", () => {
   pageTurn("keepsake", startKeepsake);
@@ -1486,6 +1922,7 @@ function startKeepsake() {
     { icon: "🗝️", cap: "The Maze" },
     { icon: "🦊", cap: "The Long Way Round" },
   ];
+  if (chaptersDone().ouissy) badges.push({ icon: "👑", cap: "Super Ouissy" });
   badges.forEach((b, i) => {
     const card = document.createElement("div");
     card.className = "ks-card";
@@ -1520,6 +1957,76 @@ document.getElementById("ks-replay").addEventListener("click", () => {
 const MUSIC_KEY = "fal_music_on";
 let audioCtx = null, musicNodes = null, musicOn = false, bellTimer = null;
 
+/* ---------------------------------------------------------
+   KEEPING AUDIO ALIVE
+
+   Every "the music just stopped and the toggle won't bring it back"
+   report came down to the same two mistakes, so the recovery lives in
+   one place and both the pad and the platformer go through it.
+
+   1. Only "suspended" was treated as recoverable. iOS Safari does not
+      use "suspended" when the system takes the audio session away — a
+      call, the lock screen, another app, switching tabs — it uses
+      "interrupted", which is not in the spec and which the old check
+      silently ignored. So the sound died and stayed dead, and toggling
+      it off and on could not help, because the toggle ran that same
+      faulty check.
+
+   2. resume() is asynchronous. The old code fired it and then scheduled
+      a gain ramp against ctx.currentTime in the same breath — but a
+      suspended context has a FROZEN clock, so by the time it really
+      resumed, the whole ramp was already in the past. Silence, with
+      every node reporting itself perfectly healthy.
+
+   So: anything that is not "running" is treated as recoverable, work
+   that depends on the clock waits for the resume to actually land, and
+   a watchdog retries on the events that follow an interruption. A
+   context in state "closed" can never be resumed at all — the only
+   cure there is to build a new one, which the callers do.
+   --------------------------------------------------------- */
+const audioClients = [];
+
+/* a getter, not a context: the caller may rebuild theirs at any point */
+window.registerAudio = function (get) { audioClients.push(get); };
+
+window.wakeAudio = function (ctx, then) {
+  if (!ctx || ctx.state === "closed") return;
+  if (ctx.state === "running") { if (then) then(); return; }
+
+  let fired = false;
+  const fire = () => { if (!fired) { fired = true; if (then) then(); } };
+  const tryResume = () => {
+    try {
+      const p = ctx.resume();
+      if (p && p.then) p.then(fire, () => {});
+      else fire();
+    } catch (e) {}
+  };
+  tryResume();
+
+  /* Safari can resolve resume() while still sitting in "interrupted".
+     One delayed retry costs nothing and covers exactly that case. */
+  setTimeout(() => {
+    if (ctx.state === "running") fire();
+    else if (ctx.state !== "closed") tryResume();
+  }, 350);
+};
+
+function pokeAllAudio() {
+  audioClients.forEach((get) => { try { window.wakeAudio(get()); } catch (e) {} });
+}
+/* The four moments an interrupted context can legally come back. */
+document.addEventListener("visibilitychange", () => { if (!document.hidden) pokeAllAudio(); });
+window.addEventListener("focus", pokeAllAudio);
+window.addEventListener("pageshow", pokeAllAudio);
+document.addEventListener("pointerdown", pokeAllAudio, true);
+
+/* Off unless something explicitly asks for it. This pad is a continuous
+   drone, and when the floating toggle was removed as a dead control I
+   defaulted it ON — which left a noise starting on the first tap of the
+   intro and running for the rest of the visit with nothing anywhere to
+   stop it. The games bring their own music and effects; the site itself
+   is quiet. */
 function musicPreferred() {
   try { return localStorage.getItem(MUSIC_KEY) === "1"; } catch (e) { return false; }
 }
@@ -1569,7 +2076,12 @@ function buildMusic() {
   sweep.connect(sg); sg.connect(filter.frequency);
   sweep.start();
 
+  /* This used to return without rescheduling when the music was off,
+     which quietly ended the chain for good: one bell landing during a
+     silent stretch and there were never any bells again, even after she
+     turned the music back on. startBells() owns restarting it now. */
   function bell() {
+    bellTimer = null;
     if (!musicOn) return;
     const t = ctx.currentTime;
     const o = ctx.createOscillator();
@@ -1583,57 +2095,77 @@ function buildMusic() {
     o.start(t); o.stop(t + 3.6);
     bellTimer = setTimeout(bell, 6000 + Math.random() * 9000);
   }
-  bellTimer = setTimeout(bell, 3500);
 
-  return { ctx, master, voices, sweep, filter };
+  return { ctx, master, voices, sweep, filter, bell };
 }
 
 function setMusic(on) {
   musicOn = on;
-  const btn = document.getElementById("music-toggle");
-  if (btn) {
-    btn.classList.toggle("off", !on);
-    btn.textContent = on ? "🎵" : "🔇";
-    btn.setAttribute("aria-label", on ? "Turn music off" : "Turn music on");
-  }
   try { localStorage.setItem(MUSIC_KEY, on ? "1" : "0"); } catch (e) {}
 
   if (on) {
+    /* A closed context is unrecoverable, so throw the stale graph away
+       and let buildMusic start clean rather than ramping nodes that
+       belong to a context that no longer exists. */
+    if (audioCtx && audioCtx.state === "closed") { audioCtx = null; musicNodes = null; }
     if (!musicNodes) musicNodes = buildMusic();
     if (!musicNodes) return;
-    if (musicNodes.ctx.state === "suspended") musicNodes.ctx.resume();
-    const t = musicNodes.ctx.currentTime;
-    musicNodes.master.gain.cancelScheduledValues(t);
-    musicNodes.master.gain.setValueAtTime(Math.max(0.0001, musicNodes.master.gain.value), t);
-    musicNodes.master.gain.exponentialRampToValueAtTime(0.24, t + 1.6);
+
+    window.wakeAudio(musicNodes.ctx, () => {
+      if (!musicOn || !musicNodes) return;       // she changed her mind while it woke
+      rampMaster(0.24, 1.6);
+      startBells();
+    });
   } else if (musicNodes) {
-    const t = musicNodes.ctx.currentTime;
-    musicNodes.master.gain.cancelScheduledValues(t);
-    musicNodes.master.gain.setValueAtTime(Math.max(0.0001, musicNodes.master.gain.value), t);
-    musicNodes.master.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
-    clearTimeout(bellTimer);
+    rampMaster(0.0001, 0.7);
+    clearTimeout(bellTimer); bellTimer = null;
   }
 }
 
-(function initMusic() {
-  const btn = document.getElementById("music-toggle");
-  if (!btn) return;
-  const want = musicPreferred();
-  musicOn = false;
-  btn.classList.toggle("off", !want);
-  btn.textContent = want ? "🎵" : "🔇";
+/* Ramps are only ever scheduled on a running clock — see wakeAudio. */
+function rampMaster(to, secs) {
+  if (!musicNodes || musicNodes.ctx.state !== "running") return;
+  const g = musicNodes.master.gain, t = musicNodes.ctx.currentTime;
+  g.cancelScheduledValues(t);
+  g.setValueAtTime(Math.max(0.0001, g.value), t);
+  g.exponentialRampToValueAtTime(Math.max(0.0001, to), t + secs);
+}
 
-  btn.addEventListener("click", () => setMusic(!musicOn));
-
-  /* Browsers will not start audio without a gesture, so if she had it on
-     last time, wait for her first tap anywhere and start it then. */
-  if (want) {
-    const kick = () => {
-      document.removeEventListener("pointerdown", kick);
-      setMusic(true);
-    };
-    document.addEventListener("pointerdown", kick, { once: true });
+function startBells() {
+  clearTimeout(bellTimer);
+  if (musicNodes && musicNodes.bell) {
+    bellTimer = setTimeout(musicNodes.bell, 3500 + Math.random() * 4000);
   }
+}
+
+/* A scene with music of its own (the platformer) turns the pad down while
+   it plays and puts it back afterwards. It deliberately does NOT touch the
+   saved preference, so her toggle still means what she set it to. */
+window.duckAmbient = function (on) {
+  if (!musicNodes || !musicOn) return;
+  rampMaster(on ? 0.02 : 0.24, 0.6);
+};
+
+/* Read-only hooks for tools/audio.js. They report; they never drive. */
+window.__audioProbe = () => ({
+  on: musicOn,
+  ctx: musicNodes ? musicNodes.ctx.state : "none",
+  gain: musicNodes ? musicNodes.master.gain.value : 0,
+  bell: bellTimer !== null,
+});
+window.__audioSuspend = () => { if (musicNodes) musicNodes.ctx.suspend(); };
+
+(function initMusic() {
+  window.registerAudio(() => (musicNodes ? musicNodes.ctx : null));
+
+  /* Nothing starts on its own. setMusic(true) still works and everything
+     below it is intact, so a real control can switch the pad back on the
+     day there is one to switch — but a drone that begins by itself and
+     cannot be stopped is not something to ship. */
+  if (!musicPreferred()) return;
+  const kick = () => setMusic(true);
+  document.addEventListener("pointerdown", kick, { once: true });
+  document.addEventListener("keydown", kick, { once: true });
 })();
 
 /* =========================================================
@@ -2289,6 +2821,23 @@ function stones(ctx, W, y, count, tones, rnd) {
   }
 }
 
+/* A paper lantern on a wire: the light source the whole right-hand path
+   is lit by, so it is one function rather than eight copies. */
+function lanternAt(ctx, x, y) {
+  /* The glow first, in rings, so the light falls off instead of being a
+     flat rectangle over the paper — this is the only light source on the
+     whole right-hand path and it has to look like one. */
+  var rings = [[16, 0.05], [12, 0.08], [9, 0.12], [6, 0.18]];
+  for (var i = 0; i < rings.length; i++) {
+    blob(ctx, x, y + 3, rings[i][0], rings[i][0] * 0.9,
+         ["rgba(255,208,132," + rings[i][1] + ")"]);
+  }
+  px(ctx, x, y - 5, 1, 2, "#3a2a1e");                 // the hook
+  blob(ctx, x, y + 3, 5, 6, ["#ffd98a", "#f0a95e", "#c87a44"]);
+  px(ctx, x - 1, y - 1, 3, 1, "#fff2c8");             // the flame inside
+  px(ctx, x - 3, y + 9, 7, 1, "#8a5a38");             // the tassel
+}
+
 const HV_SCENES = {
 
   /* 1. cherry-blossom park — the title screen and the first choice */
@@ -2542,6 +3091,159 @@ const HV_SCENES = {
     grassTufts(ctx, PXW, 158, 150, ["#5c7050", "#4a5c42", "#6b8159"], rnd);
     flowerDots(ctx, PXW, 154, 30, 54, ["#ff9ec4", "#ffd166", "#c9a0ff", "#ffffff"], rnd);
   },
+  /* ===================================================================
+     THE WAY BACK — the right-hand path.
+
+     Same valley, a year on, after dark. Where the spring side is open
+     and bright and full of everything you have not done yet, this one is
+     warm and close and lit by things somebody had to hang up: lanterns,
+     windows, a fire. It is the difference between finding each other and
+     staying, and it should feel like it.
+     =================================================================== */
+
+  /* 5. the lantern path — where the right-hand journey begins */
+  lantern(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#171a3a" }, { p: 0.22, c: "#22254e" },
+      { p: 0.44, c: "#3a3160" }, { p: 0.62, c: "#5d3f65" },
+      { p: 0.78, c: "#8a5560" }, { p: 1.00, c: "#b87a63" },
+    ]);
+    for (var i = 0; i < 70; i++) {
+      var sy = rnd() * 60;
+      px(ctx, rnd() * PXW, sy, 1, 1, sy < 26 ? "#fff6d8" : "#e8dcc0");
+    }
+    /* a low moon, sitting in the last of the light */
+    sunDisc(ctx, PXW - 54, 34, 9, "#fdf3d0", "rgba(255,240,200,0.16)");
+
+    hillBand(ctx, PXW, 92, 11, 0.019, ["#3b3358", "#2f2a48", "#251f38"], rnd, 3);
+    hillBand(ctx, PXW, 106, 8, 0.03, ["#2b2742", "#221e35", "#1a1729"], rnd, 7);
+    pineRow(ctx, PXW, 122, 46, ["#1d2a30", "#162126", "#101a1e"], rnd, 1.0);
+
+    /* the ground, and the path home through it */
+    px(ctx, 0, 120, PXW, PXH - 120, "#2a2b34");
+    ditherSky(ctx, 0, 120, PXW, PXH - 120, [
+      { p: 0.00, c: "#33323f" }, { p: 1.00, c: "#22222c" },
+    ]);
+    pathTo(ctx, PXW, 122, PXH, 0.04, 12, 62, "#6b5a48", "#54473a", "#3d342c");
+    grassTufts(ctx, PXW, 126, 40, ["#2f3a2e", "#26301f", "#1d2618"], rnd);
+    stones(ctx, PXW, 150, 9, ["#4a4650", "#3a3742", "#2c2a33"], rnd);
+
+    /* the lanterns themselves, strung along the path */
+    for (var L = 0; L < 5; L++) {
+      var lx = 26 + L * 62 + rnd() * 10, ly = 74 + rnd() * 8;
+      px(ctx, lx, 0, 1, ly - 6, "#171a2c");           // the wire up into the dark
+      /* the pool it throws on the path below it */
+      blob(ctx, lx, 138 + rnd() * 8, 22, 5, ["rgba(255,198,120,0.10)"]);
+      blob(ctx, lx, 138 + rnd() * 8, 13, 3, ["rgba(255,208,140,0.13)"]);
+      lanternAt(ctx, lx, ly);
+    }
+    /* fireflies, because a warm night should have some */
+    for (var f = 0; f < 22; f++) {
+      var fx = rnd() * PXW, fy = 96 + rnd() * 56;
+      px(ctx, fx, fy, 1, 1, rnd() > 0.5 ? "#ffe9a0" : "#ffd06a");
+      px(ctx, fx - 1, fy, 3, 1, "rgba(255,220,140,0.16)");
+    }
+  },
+
+  /* 6. the ridge — the blue butterfly's way, high and open and cold */
+  ridge(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#0d1230" }, { p: 0.34, c: "#182046" },
+      { p: 0.66, c: "#2b2f5c" }, { p: 1.00, c: "#46406e" },
+    ]);
+    for (var i = 0; i < 150; i++) {
+      var sy = rnd() * 96, b = rnd();
+      px(ctx, rnd() * PXW, sy, 1, 1, b > 0.86 ? "#ffffff" : b > 0.5 ? "#dfe6ff" : "#9aa6d8");
+    }
+    /* the one bright one, low over the ridge */
+    px(ctx, 214, 30, 1, 1, "#ffffff");
+    px(ctx, 213, 30, 3, 1, "rgba(255,255,255,0.5)");
+    px(ctx, 214, 29, 1, 3, "rgba(255,255,255,0.5)");
+
+    hillBand(ctx, PXW, 74, 16, 0.013, ["#2a2f58", "#222648", "#1a1d38"], rnd, 1);
+    hillBand(ctx, PXW, 96, 12, 0.022, ["#1f2342", "#191c34", "#131627"], rnd, 6);
+    pineRow(ctx, PXW, 116, 30, ["#141d24", "#0f161c", "#0a1014"], rnd, 0.9);
+
+    /* the ridge line she is standing on, bare rock and thin grass */
+    px(ctx, 0, 116, PXW, PXH - 116, "#1c2029");
+    ditherSky(ctx, 0, 116, PXW, PXH - 116, [
+      { p: 0.00, c: "#242835" }, { p: 1.00, c: "#161922" },
+    ]);
+    stones(ctx, PXW, 132, 14, ["#3d4250", "#2f3340", "#232630"], rnd);
+    stones(ctx, PXW, 158, 10, ["#343946", "#282c37", "#1d2029"], rnd);
+    grassTufts(ctx, PXW, 122, 26, ["#243026", "#1d271e", "#161e17"], rnd);
+  },
+
+  /* 7. the night orchard — the red butterfly's way, low and close and warm */
+  orchard(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#1a1636" }, { p: 0.36, c: "#2a2048" },
+      { p: 0.68, c: "#452a4e" }, { p: 1.00, c: "#6b3a48" },
+    ]);
+    for (var i = 0; i < 60; i++) px(ctx, rnd() * PXW, rnd() * 54, 1, 1, "#efe4c4");
+    sunDisc(ctx, 42, 28, 7, "#f6ecc8", "rgba(246,236,200,0.13)");
+
+    hillBand(ctx, PXW, 98, 8, 0.026, ["#33254a", "#291d3b", "#20172e"], rnd, 4);
+
+    px(ctx, 0, 116, PXW, PXH - 116, "#2c2733");
+    ditherSky(ctx, 0, 116, PXW, PXH - 116, [
+      { p: 0.00, c: "#37303c", }, { p: 1.00, c: "#241f2b" },
+    ]);
+
+    /* rows of fruit trees, each with a lantern hung in it */
+    var bark = ["#4a3428", "#3a2820", "#2b1e18"];
+    var leaf = ["#2f4436", "#26382c", "#1c2a21"];
+    for (var r = 0; r < 5; r++) {
+      var tx = 18 + r * 66 + rnd() * 12;
+      treeFull(ctx, tx, 120 + (r % 2) * 4, 44 + rnd() * 10, bark, leaf, rnd, { speckle: 10 });
+      if (r % 2 === 0) lanternAt(ctx, tx + 12, 84 + rnd() * 6);
+    }
+    grassTufts(ctx, PXW, 124, 34, ["#2b3a2c", "#22301f", "#192518"], rnd);
+    flowerDots(ctx, PXW, 138, 26, 22, ["#c88aa0", "#a86e8a", "#e0a8b8"], rnd);
+  },
+
+  /* 8. the rope bridge — one at a time, or not at all */
+  bridge(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#121736" }, { p: 0.40, c: "#1e2448" },
+      { p: 0.72, c: "#33305c" }, { p: 1.00, c: "#4d3a5e" },
+    ]);
+    for (var i = 0; i < 110; i++) px(ctx, rnd() * PXW, rnd() * 80, 1, 1, "#d8dcf0");
+
+    hillBand(ctx, PXW, 70, 14, 0.016, ["#262b50", "#1e2240", "#171a31"], rnd, 2);
+    pineRow(ctx, PXW, 96, 26, ["#111a20", "#0c1318", "#080d11"], rnd, 0.8);
+
+    /* the gorge: dark all the way down, with water a long way below */
+    px(ctx, 0, 96, PXW, PXH - 96, "#0b0e16");
+    ditherSky(ctx, 0, 150, PXW, PXH - 150, [
+      { p: 0.00, c: "#1b2740" }, { p: 1.00, c: "#101a2c" },
+    ]);
+    for (var w = 0; w < 26; w++) {
+      var wx = rnd() * PXW, wy = 152 + rnd() * 24;
+      px(ctx, wx, wy, 2 + rnd() * 4, 1, "rgba(150,180,220,0.28)");
+    }
+
+    /* the near and far banks */
+    px(ctx, 0, 96, 54, PXH - 96, "#231f2b");
+    px(ctx, PXW - 58, 96, 58, PXH - 96, "#231f2b");
+    stones(ctx, 54, 104, 6, ["#3b3644", "#2e2a36", "#221f29"], rnd);
+
+    /* the bridge itself — two ropes and a lot of trust */
+    var y0 = 106, sag = 16;
+    for (var x = 54; x < PXW - 58; x++) {
+      var k = (x - 54) / (PXW - 112);
+      var y = y0 + Math.sin(k * Math.PI) * sag;
+      px(ctx, x, y, 1, 1, "#7a6248");
+      px(ctx, x, y - 13, 1, 1, "#5e4b38");
+      if ((x - 54) % 7 === 0) {
+        px(ctx, x, y - 13, 1, 13, "#4a3b2c");        // a hanger
+        px(ctx, x - 1, y + 1, 4, 2, "#6b5540");      // and a plank
+      }
+    }
+    lanternAt(ctx, 50, 88);
+    lanternAt(ctx, PXW - 54, 88);
+  },
+
 };
 
 /* =========================================================
@@ -2584,73 +3286,142 @@ function hvSeed(name) {
    Every node paints a scene, sets what the cat says, and offers
    choices. `pos` places a choice button; `fail` sends her to the
    bear, which returns to this same node. */
+/* =========================================================
+   THE LONG WAY ROUND
+
+   Two paths, and they are not two versions of the same walk.
+
+   The way there is the spring side: bright, open, everything still
+   ahead of you, and its obstacles are all obstacles of not knowing —
+   a wrong turn, a bear that turns out to be nerves, a fog that lifts.
+
+   The way back is the same valley a year on, after dark, lit by things
+   somebody had to hang up. Its obstacles are quieter and harder: weather
+   you shelter through, a climb, a bridge that only holds one at a time.
+
+   Within each path the two butterflies take genuinely different routes —
+   different scenes, different beats — and arrive at the same place,
+   because on that path you were always going to. Neither is a trap.
+   ========================================================= */
 const HV = {
   title: {
     scene: "sakura", cat: "happy", title: true,
-    say: "Ready for a little adventure?",
-    choices: [{ label: "START", to: "pick", style: "start" }],
+    say: "",
+    choices: [{ label: "BEGIN", to: "pick", pos: "centre", style: "start" }],
   },
 
   pick: {
     scene: "sakura", cat: "idle",
-    say: "Pick a heart or a flower?",
-    cards: [
-      { art: "heart", to: "forest", keepsake: "heart" },
-      { art: "flower", to: "forest", keepsake: "flower" },
-    ],
-  },
-
-  forest: {
-    scene: "forest", cat: "idle",
-    say: "You found a secret path! Pick left or right?",
+    say: "Two ways through the valley. Which one are we walking?",
     choices: [
-      { label: "Go Left", to: "butterfly", pos: "left" },
-      { label: "Go Right", to: "bear", pos: "right", fail: true },
+      { label: "THE WAY THERE", to: "there", pos: "left" },
+      { label: "THE WAY BACK", to: "back", pos: "right" },
     ],
   },
 
+  /* ---------------- LEFT: the way there ---------------- */
+  there: {
+    scene: "sakura", cat: "idle", butterflies: true,
+    say: "Spring, and neither of us knows anything yet. A butterfly goes on ahead — which one do we follow?",
+    choices: [
+      { label: "BLUE", to: "there_meadow", pos: "left", style: "blue" },
+      { label: "RED", to: "there_hollow", pos: "right", style: "red" },
+    ],
+  },
+  /* blue: the high meadow, open and a little exposed */
+  there_meadow: {
+    scene: "meadow", cat: "idle",
+    say: "The blue one takes the long way up, over the open grass, where you can see the whole valley and be seen from all of it.",
+    choices: [
+      { label: "KEEP UP", to: "there_brook", pos: "centre", keepsake: "heart" },
+      { label: "CUT THROUGH THE TREES", to: "bear", pos: "right", fail: true },
+    ],
+  },
+  there_brook: {
+    scene: "hollow", cat: "happy",
+    say: "It stops at the brook and waits while you find the stones. You are still not talking much. You are both smiling at nothing.",
+    choices: [{ label: "ACROSS", to: "there_join", pos: "centre" }],
+  },
+  /* red: the hollow, low and close and full of things to notice */
+  there_hollow: {
+    scene: "hollow", cat: "happy", fox: true,
+    say: "The red one drops into the hollow instead, where the light is green and a fox pretends not to have seen you.",
+    /* Both go on to the same place, but they are not the same choice:
+       what she picks up here is what he mentions at the gate. */
+    choices: [
+      { label: "SAY HELLO", to: "there_petals", pos: "left", keepsake: "flower" },
+      { label: "LEAVE IT BE", to: "there_petals", pos: "right", keepsake: "heart" },
+    ],
+  },
+  there_petals: {
+    scene: "sakura", cat: "love",
+    say: "It leads you back up under the blossom the slow way, and something lands in your hair, and you leave it there.",
+    choices: [{ label: "GO ON", to: "there_join", pos: "centre" }],
+  },
+  there_join: {
+    scene: "meadow", cat: "love", callback: true,
+    say: "Both ways come out at the same gate at the top of the meadow. However you got here, here is where it was always going to be.",
+    choices: [{ label: "OVER THE GATE", to: "sunset", pos: "centre" }],
+  },
+
+  /* ---------------- RIGHT: the way back ---------------- */
+  back: {
+    scene: "lantern", cat: "idle", butterflies: true,
+    say: "A year later, the same valley, after dark. Somebody has hung lanterns the whole way. A butterfly is still awake — which one?",
+    choices: [
+      { label: "BLUE", to: "back_ridge", pos: "left", style: "blue" },
+      { label: "RED", to: "back_orchard", pos: "right", style: "red" },
+    ],
+  },
+  /* blue: up and over, in the cold, under everything */
+  back_ridge: {
+    scene: "ridge", cat: "idle",
+    say: "The blue one goes up. It is colder than you expected and the whole sky is out, and neither of you suggests turning round.",
+    choices: [
+      { label: "KEEP CLIMBING", to: "back_storm", pos: "centre", keepsake: "heart" },
+      { label: "GO BACK DOWN", to: "lost", pos: "right", fail: true },
+    ],
+  },
+  back_storm: {
+    scene: "ridge", cat: "happy",
+    say: "Weather comes over the ridge and you get under a rock and wait it out. Twenty minutes, shoulder to shoulder, saying nothing much. It passes.",
+    choices: [{ label: "DOWN THE FAR SIDE", to: "back_join", pos: "centre" }],
+  },
+  /* red: through the orchard, warm and slow, then the crossing */
+  back_orchard: {
+    scene: "orchard", cat: "happy", fox: true,
+    say: "The red one takes the orchard, where the lanterns are in the trees and the fox from last spring is asleep and very much bigger.",
+    choices: [
+      { label: "THE LONG ROW", to: "back_bridge", pos: "left", keepsake: "flower" },
+      { label: "STRAIGHT THROUGH", to: "back_bridge", pos: "right", keepsake: "heart" },
+    ],
+  },
+  back_bridge: {
+    scene: "bridge", cat: "idle",
+    say: "Then the rope bridge, which holds one at a time. You go first. You do not look back until you are across, and he is already halfway.",
+    choices: [{ label: "WAIT FOR HIM", to: "back_join", pos: "centre" }],
+  },
+  back_join: {
+    scene: "lantern", cat: "love", callback: true,
+    say: "Both ways come back to the last lantern on the path. Whichever way round you went, this is where it ends up.",
+    choices: [{ label: "HOME", to: "sunset", pos: "centre" }],
+  },
+
+  /* ---------------- the two ways to get it wrong ---------------- */
   bear: {
     isFail: true,
-    say: "Oops! A bear appeared and ate all your snacks. Try again!",
-    back: "forest",
+    say: "A bear! Or a shadow, or a bush, or nothing at all — but you are not going to stand here and find out.",
+    back: "there_meadow",
   },
-
-  butterfly: {
-    scene: "sakura", cat: "idle", butterflies: true,
-    say: "A butterfly appears! Pick red or blue?",
-    choices: [
-      { label: "BLUE", to: "hollow", pos: "left" },
-      { label: "RED", to: "bear2", pos: "right", fail: true },
-    ],
-  },
-
-  bear2: {
+  lost: {
     isFail: true,
-    say: "The red one was a decoy. The bear is back and it remembers you.",
-    back: "butterfly",
+    say: "Halfway down you cannot find the path, and the lanterns are all above you now. Better to have kept going.",
+    back: "back_ridge",
   },
 
-  hollow: {
-    scene: "hollow", cat: "happy", fox: true,
-    say: "The blue butterfly led you to a shortcut!",
-    choices: [
-      { label: "keep going", to: "meadow", pos: "left" },
-      { label: "Pet me", to: "pet", pos: "right" },
-    ],
-  },
 
-  pet: {
-    scene: "hollow", cat: "love", fox: true,
-    say: "The fox accepts exactly one (1) head pat and then pretends it did not happen.",
-    choices: [{ label: "keep going", to: "meadow", pos: "left" }],
-  },
-
-  meadow: {
-    scene: "meadow", cat: "idle",
-    say: "It's getting dark!", callback: true,
-    choices: [{ label: "keep going", to: "sunset", pos: "left" }],
-  },
-
+  /* Both paths come out here: the valley at the end of the day, and the
+     part of the story that is the same however she walked it. */
   sunset: {
     scene: "sunset", cat: "love",
     say: "What a beautiful sunset! Isn't it?",
@@ -2728,31 +3499,104 @@ const HV = {
    ========================================================= */
 
 /* ---------- sound ---------- */
+/* =========================================================
+   SOUND FOR THE TWO STORY GAMES
+
+   One oscillator with a frequency sweep was the whole engine, and four
+   voices was the whole vocabulary — so most of what happened in these two
+   games happened in silence. This is still synthesis, still no audio file
+   in the repo, but a voice can now layer a second oscillator a set number
+   of semitones away and a short filtered-noise burst, which is the
+   difference between a beep and a footstep or a page turning.
+   ========================================================= */
+const HV_VOICES = {
+  /* the originals, unchanged in character */
+  pick:    { type:"square",   f:620,  to:880,  d:0.10, v:0.05 },
+  collect: { type:"triangle", f:880,  to:1560, d:0.20, v:0.07, harm:7,  hv:0.03 },
+  bad:     { type:"sawtooth", f:220,  to:90,   d:0.28, v:0.05 },
+  yay:     { type:"triangle", f:520,  to:1040, d:0.42, v:0.08, harm:12, hv:0.04 },
+  spot:    { type:"square",   f:300,  to:620,  d:0.16, v:0.05 },
+  shot:    { type:"sawtooth", f:900,  to:260,  d:0.12, v:0.05 },
+
+  /* a footfall: almost no tone, mostly a dry knock */
+  step:    { type:"sine",     f:160,  to:110,  d:0.07, v:0.022, noise:0.03, nf:1600, nq:1.1, nd:0.05 },
+  /* the key: two bright notes, a fifth apart */
+  key:     { type:"triangle", f:784,  to:1175, d:0.34, v:0.06, harm:7,  hv:0.045 },
+  /* a phial: glassy, short */
+  phial:   { type:"sine",     f:1040, to:1560, d:0.22, v:0.05, harm:12, hv:0.025 },
+  /* a locked door: dull, no ring */
+  locked:  { type:"sine",     f:150,  to:78,   d:0.22, v:0.06, noise:0.045, nf:420, nq:.7, nd:0.12 },
+  /* coming back after losing a life: a low swell */
+  respawn: { type:"triangle", f:180,  to:420,  d:0.5,  v:0.05, harm:7,  hv:0.02 },
+  /* arriving somewhere new */
+  arrive:  { type:"sine",     f:660,  to:990,  d:0.5,  v:0.045, harm:5, hv:0.025 },
+  /* a page: no tone at all, just paper */
+  page:    { type:"sine",     f:220,  to:180,  d:0.04, v:0.012, noise:0.05, nf:2700, nq:.8, nd:0.16 },
+  /* the smallest tick, for a button taking focus */
+  hover:   { type:"square",   f:1200, to:1400, d:0.04, v:0.018 },
+};
+
 function hvSfx(kind) {
   try {
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
+    if (audioCtx && audioCtx.state === "closed") audioCtx = null;
     if (!audioCtx) audioCtx = new AC();
-    if (audioCtx.state === "suspended") audioCtx.resume();
-    var t = audioCtx.currentTime;
-    var o = audioCtx.createOscillator();
-    var g = audioCtx.createGain();
-    var spec = ({
-      pick:    { type: "square",   f: 620,  to: 880,  d: 0.10, v: 0.05 },
-      collect: { type: "triangle", f: 880,  to: 1560, d: 0.20, v: 0.07 },
-      bad:     { type: "sawtooth", f: 220,  to: 90,   d: 0.28, v: 0.05 },
-      yay:     { type: "triangle", f: 520,  to: 1040, d: 0.42, v: 0.08 },
-    })[kind] || { type: "square", f: 500, to: 700, d: 0.08, v: 0.04 };
+    /* not just "suspended" — see wakeAudio; iOS uses "interrupted", and
+       the old check let these two games go silent for the whole visit */
+    if (audioCtx.state !== "running") {
+      if (window.wakeAudio) window.wakeAudio(audioCtx); else audioCtx.resume();
+    }
+    /* and never schedule into a frozen clock: the notes would all land at
+       the same instant, already in the past, and never be heard */
+    if (audioCtx.state !== "running") return;
+
+    var c = audioCtx, t = c.currentTime;
+    var spec = HV_VOICES[kind] || HV_VOICES.pick;
+
+    var o = c.createOscillator(), g = c.createGain();
     o.type = spec.type;
     o.frequency.setValueAtTime(spec.f, t);
-    o.frequency.exponentialRampToValueAtTime(spec.to, t + spec.d);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20, spec.to), t + spec.d);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(spec.v, t + 0.012);
     g.gain.exponentialRampToValueAtTime(0.0001, t + spec.d);
-    o.connect(g); g.connect(audioCtx.destination);
+    o.connect(g); g.connect(c.destination);
     o.start(t); o.stop(t + spec.d + 0.02);
+
+    /* a second voice a set number of semitones up, for the ones that
+       should ring rather than beep */
+    if (spec.harm) {
+      var r = Math.pow(2, spec.harm / 12);
+      var o2 = c.createOscillator(), g2 = c.createGain();
+      o2.type = spec.type;
+      o2.frequency.setValueAtTime(spec.f * r, t);
+      o2.frequency.exponentialRampToValueAtTime(Math.max(20, spec.to * r), t + spec.d);
+      g2.gain.setValueAtTime(0.0001, t);
+      g2.gain.exponentialRampToValueAtTime(spec.hv || spec.v * 0.5, t + 0.02);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t + spec.d);
+      o2.connect(g2); g2.connect(c.destination);
+      o2.start(t); o2.stop(t + spec.d + 0.02);
+    }
+
+    /* and a band-passed noise burst, which is what makes a step sound like
+       a foot and a page sound like paper rather than another beep */
+    if (spec.noise) {
+      var nd = spec.nd || 0.06;
+      var len = Math.max(1, Math.floor(c.sampleRate * nd));
+      var buf = c.createBuffer(1, len, c.sampleRate);
+      var ch = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      var src = c.createBufferSource(); src.buffer = buf;
+      var bp = c.createBiquadFilter();
+      bp.type = "bandpass"; bp.frequency.value = spec.nf || 1800; bp.Q.value = spec.nq || 1;
+      var ng = c.createGain(); ng.gain.value = spec.noise;
+      src.connect(bp); bp.connect(ng); ng.connect(c.destination);
+      src.start(t);
+    }
   } catch (e) { /* sound is a bonus, never a blocker */ }
 }
+
 
 /* ---------- the things you can find ---------- */
 const HV_TOKENS = {
@@ -3185,6 +4029,8 @@ function hvPaintFail() {
 }
 
 /* ---------- rendering the DOM layer ---------- */
+let hvLastSounded = null;
+
 function hvRender(withTransition) {
   const n = HV[hvNode];
   if (!n) return;
@@ -3201,9 +4047,12 @@ function hvRender(withTransition) {
      the overlay is up leaves it stuck over every later screen. */
   document.getElementById("hv-fail").classList.remove("on");
 
-  if (withTransition) hvStartTransition();
+  if (withTransition) { hvStartTransition(); hvSfx("page"); }
   hvPaintBase(n);
   hvStartLoop();
+  /* arriving somewhere new deserves a note of its own — until now every
+     scene in this game opened in silence */
+  if (hvNode !== hvLastSounded) { hvLastSounded = hvNode; setTimeout(function(){ hvSfx("arrive"); }, 140); }
 
   const note = document.getElementById("hv-note");
   let say = n.isAsk ? QUEST_FINAL.question : n.say;
@@ -3245,6 +4094,9 @@ function hvRender(withTransition) {
     b.className = "hv-btn" + (ch.style ? " hv-btn-" + ch.style : "");
     b.textContent = ch.label;
     b.addEventListener("click", () => hvChoose(ch));
+    /* the smallest tick as a choice comes under the finger */
+    b.addEventListener("pointerenter", () => hvSfx("hover"));
+    b.addEventListener("focus", () => hvSfx("hover"));
     (ch.pos === "left" ? left : ch.pos === "right" ? right : centre).appendChild(b);
   });
 
