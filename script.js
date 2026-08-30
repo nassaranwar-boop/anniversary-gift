@@ -2821,6 +2821,23 @@ function stones(ctx, W, y, count, tones, rnd) {
   }
 }
 
+/* A paper lantern on a wire: the light source the whole right-hand path
+   is lit by, so it is one function rather than eight copies. */
+function lanternAt(ctx, x, y) {
+  /* The glow first, in rings, so the light falls off instead of being a
+     flat rectangle over the paper — this is the only light source on the
+     whole right-hand path and it has to look like one. */
+  var rings = [[16, 0.05], [12, 0.08], [9, 0.12], [6, 0.18]];
+  for (var i = 0; i < rings.length; i++) {
+    blob(ctx, x, y + 3, rings[i][0], rings[i][0] * 0.9,
+         ["rgba(255,208,132," + rings[i][1] + ")"]);
+  }
+  px(ctx, x, y - 5, 1, 2, "#3a2a1e");                 // the hook
+  blob(ctx, x, y + 3, 5, 6, ["#ffd98a", "#f0a95e", "#c87a44"]);
+  px(ctx, x - 1, y - 1, 3, 1, "#fff2c8");             // the flame inside
+  px(ctx, x - 3, y + 9, 7, 1, "#8a5a38");             // the tassel
+}
+
 const HV_SCENES = {
 
   /* 1. cherry-blossom park — the title screen and the first choice */
@@ -3074,6 +3091,159 @@ const HV_SCENES = {
     grassTufts(ctx, PXW, 158, 150, ["#5c7050", "#4a5c42", "#6b8159"], rnd);
     flowerDots(ctx, PXW, 154, 30, 54, ["#ff9ec4", "#ffd166", "#c9a0ff", "#ffffff"], rnd);
   },
+  /* ===================================================================
+     THE WAY BACK — the right-hand path.
+
+     Same valley, a year on, after dark. Where the spring side is open
+     and bright and full of everything you have not done yet, this one is
+     warm and close and lit by things somebody had to hang up: lanterns,
+     windows, a fire. It is the difference between finding each other and
+     staying, and it should feel like it.
+     =================================================================== */
+
+  /* 5. the lantern path — where the right-hand journey begins */
+  lantern(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#171a3a" }, { p: 0.22, c: "#22254e" },
+      { p: 0.44, c: "#3a3160" }, { p: 0.62, c: "#5d3f65" },
+      { p: 0.78, c: "#8a5560" }, { p: 1.00, c: "#b87a63" },
+    ]);
+    for (var i = 0; i < 70; i++) {
+      var sy = rnd() * 60;
+      px(ctx, rnd() * PXW, sy, 1, 1, sy < 26 ? "#fff6d8" : "#e8dcc0");
+    }
+    /* a low moon, sitting in the last of the light */
+    sunDisc(ctx, PXW - 54, 34, 9, "#fdf3d0", "rgba(255,240,200,0.16)");
+
+    hillBand(ctx, PXW, 92, 11, 0.019, ["#3b3358", "#2f2a48", "#251f38"], rnd, 3);
+    hillBand(ctx, PXW, 106, 8, 0.03, ["#2b2742", "#221e35", "#1a1729"], rnd, 7);
+    pineRow(ctx, PXW, 122, 46, ["#1d2a30", "#162126", "#101a1e"], rnd, 1.0);
+
+    /* the ground, and the path home through it */
+    px(ctx, 0, 120, PXW, PXH - 120, "#2a2b34");
+    ditherSky(ctx, 0, 120, PXW, PXH - 120, [
+      { p: 0.00, c: "#33323f" }, { p: 1.00, c: "#22222c" },
+    ]);
+    pathTo(ctx, PXW, 122, PXH, 0.04, 12, 62, "#6b5a48", "#54473a", "#3d342c");
+    grassTufts(ctx, PXW, 126, 40, ["#2f3a2e", "#26301f", "#1d2618"], rnd);
+    stones(ctx, PXW, 150, 9, ["#4a4650", "#3a3742", "#2c2a33"], rnd);
+
+    /* the lanterns themselves, strung along the path */
+    for (var L = 0; L < 5; L++) {
+      var lx = 26 + L * 62 + rnd() * 10, ly = 74 + rnd() * 8;
+      px(ctx, lx, 0, 1, ly - 6, "#171a2c");           // the wire up into the dark
+      /* the pool it throws on the path below it */
+      blob(ctx, lx, 138 + rnd() * 8, 22, 5, ["rgba(255,198,120,0.10)"]);
+      blob(ctx, lx, 138 + rnd() * 8, 13, 3, ["rgba(255,208,140,0.13)"]);
+      lanternAt(ctx, lx, ly);
+    }
+    /* fireflies, because a warm night should have some */
+    for (var f = 0; f < 22; f++) {
+      var fx = rnd() * PXW, fy = 96 + rnd() * 56;
+      px(ctx, fx, fy, 1, 1, rnd() > 0.5 ? "#ffe9a0" : "#ffd06a");
+      px(ctx, fx - 1, fy, 3, 1, "rgba(255,220,140,0.16)");
+    }
+  },
+
+  /* 6. the ridge — the blue butterfly's way, high and open and cold */
+  ridge(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#0d1230" }, { p: 0.34, c: "#182046" },
+      { p: 0.66, c: "#2b2f5c" }, { p: 1.00, c: "#46406e" },
+    ]);
+    for (var i = 0; i < 150; i++) {
+      var sy = rnd() * 96, b = rnd();
+      px(ctx, rnd() * PXW, sy, 1, 1, b > 0.86 ? "#ffffff" : b > 0.5 ? "#dfe6ff" : "#9aa6d8");
+    }
+    /* the one bright one, low over the ridge */
+    px(ctx, 214, 30, 1, 1, "#ffffff");
+    px(ctx, 213, 30, 3, 1, "rgba(255,255,255,0.5)");
+    px(ctx, 214, 29, 1, 3, "rgba(255,255,255,0.5)");
+
+    hillBand(ctx, PXW, 74, 16, 0.013, ["#2a2f58", "#222648", "#1a1d38"], rnd, 1);
+    hillBand(ctx, PXW, 96, 12, 0.022, ["#1f2342", "#191c34", "#131627"], rnd, 6);
+    pineRow(ctx, PXW, 116, 30, ["#141d24", "#0f161c", "#0a1014"], rnd, 0.9);
+
+    /* the ridge line she is standing on, bare rock and thin grass */
+    px(ctx, 0, 116, PXW, PXH - 116, "#1c2029");
+    ditherSky(ctx, 0, 116, PXW, PXH - 116, [
+      { p: 0.00, c: "#242835" }, { p: 1.00, c: "#161922" },
+    ]);
+    stones(ctx, PXW, 132, 14, ["#3d4250", "#2f3340", "#232630"], rnd);
+    stones(ctx, PXW, 158, 10, ["#343946", "#282c37", "#1d2029"], rnd);
+    grassTufts(ctx, PXW, 122, 26, ["#243026", "#1d271e", "#161e17"], rnd);
+  },
+
+  /* 7. the night orchard — the red butterfly's way, low and close and warm */
+  orchard(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#1a1636" }, { p: 0.36, c: "#2a2048" },
+      { p: 0.68, c: "#452a4e" }, { p: 1.00, c: "#6b3a48" },
+    ]);
+    for (var i = 0; i < 60; i++) px(ctx, rnd() * PXW, rnd() * 54, 1, 1, "#efe4c4");
+    sunDisc(ctx, 42, 28, 7, "#f6ecc8", "rgba(246,236,200,0.13)");
+
+    hillBand(ctx, PXW, 98, 8, 0.026, ["#33254a", "#291d3b", "#20172e"], rnd, 4);
+
+    px(ctx, 0, 116, PXW, PXH - 116, "#2c2733");
+    ditherSky(ctx, 0, 116, PXW, PXH - 116, [
+      { p: 0.00, c: "#37303c", }, { p: 1.00, c: "#241f2b" },
+    ]);
+
+    /* rows of fruit trees, each with a lantern hung in it */
+    var bark = ["#4a3428", "#3a2820", "#2b1e18"];
+    var leaf = ["#2f4436", "#26382c", "#1c2a21"];
+    for (var r = 0; r < 5; r++) {
+      var tx = 18 + r * 66 + rnd() * 12;
+      treeFull(ctx, tx, 120 + (r % 2) * 4, 44 + rnd() * 10, bark, leaf, rnd, { speckle: 10 });
+      if (r % 2 === 0) lanternAt(ctx, tx + 12, 84 + rnd() * 6);
+    }
+    grassTufts(ctx, PXW, 124, 34, ["#2b3a2c", "#22301f", "#192518"], rnd);
+    flowerDots(ctx, PXW, 138, 26, 22, ["#c88aa0", "#a86e8a", "#e0a8b8"], rnd);
+  },
+
+  /* 8. the rope bridge — one at a time, or not at all */
+  bridge(ctx, rnd) {
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: "#121736" }, { p: 0.40, c: "#1e2448" },
+      { p: 0.72, c: "#33305c" }, { p: 1.00, c: "#4d3a5e" },
+    ]);
+    for (var i = 0; i < 110; i++) px(ctx, rnd() * PXW, rnd() * 80, 1, 1, "#d8dcf0");
+
+    hillBand(ctx, PXW, 70, 14, 0.016, ["#262b50", "#1e2240", "#171a31"], rnd, 2);
+    pineRow(ctx, PXW, 96, 26, ["#111a20", "#0c1318", "#080d11"], rnd, 0.8);
+
+    /* the gorge: dark all the way down, with water a long way below */
+    px(ctx, 0, 96, PXW, PXH - 96, "#0b0e16");
+    ditherSky(ctx, 0, 150, PXW, PXH - 150, [
+      { p: 0.00, c: "#1b2740" }, { p: 1.00, c: "#101a2c" },
+    ]);
+    for (var w = 0; w < 26; w++) {
+      var wx = rnd() * PXW, wy = 152 + rnd() * 24;
+      px(ctx, wx, wy, 2 + rnd() * 4, 1, "rgba(150,180,220,0.28)");
+    }
+
+    /* the near and far banks */
+    px(ctx, 0, 96, 54, PXH - 96, "#231f2b");
+    px(ctx, PXW - 58, 96, 58, PXH - 96, "#231f2b");
+    stones(ctx, 54, 104, 6, ["#3b3644", "#2e2a36", "#221f29"], rnd);
+
+    /* the bridge itself — two ropes and a lot of trust */
+    var y0 = 106, sag = 16;
+    for (var x = 54; x < PXW - 58; x++) {
+      var k = (x - 54) / (PXW - 112);
+      var y = y0 + Math.sin(k * Math.PI) * sag;
+      px(ctx, x, y, 1, 1, "#7a6248");
+      px(ctx, x, y - 13, 1, 1, "#5e4b38");
+      if ((x - 54) % 7 === 0) {
+        px(ctx, x, y - 13, 1, 13, "#4a3b2c");        // a hanger
+        px(ctx, x - 1, y + 1, 4, 2, "#6b5540");      // and a plank
+      }
+    }
+    lanternAt(ctx, 50, 88);
+    lanternAt(ctx, PXW - 54, 88);
+  },
+
 };
 
 /* =========================================================
@@ -3116,73 +3286,142 @@ function hvSeed(name) {
    Every node paints a scene, sets what the cat says, and offers
    choices. `pos` places a choice button; `fail` sends her to the
    bear, which returns to this same node. */
+/* =========================================================
+   THE LONG WAY ROUND
+
+   Two paths, and they are not two versions of the same walk.
+
+   The way there is the spring side: bright, open, everything still
+   ahead of you, and its obstacles are all obstacles of not knowing —
+   a wrong turn, a bear that turns out to be nerves, a fog that lifts.
+
+   The way back is the same valley a year on, after dark, lit by things
+   somebody had to hang up. Its obstacles are quieter and harder: weather
+   you shelter through, a climb, a bridge that only holds one at a time.
+
+   Within each path the two butterflies take genuinely different routes —
+   different scenes, different beats — and arrive at the same place,
+   because on that path you were always going to. Neither is a trap.
+   ========================================================= */
 const HV = {
   title: {
     scene: "sakura", cat: "happy", title: true,
-    say: "Ready for a little adventure?",
-    choices: [{ label: "START", to: "pick", style: "start" }],
+    say: "",
+    choices: [{ label: "BEGIN", to: "pick", pos: "centre", style: "start" }],
   },
 
   pick: {
     scene: "sakura", cat: "idle",
-    say: "Pick a heart or a flower?",
-    cards: [
-      { art: "heart", to: "forest", keepsake: "heart" },
-      { art: "flower", to: "forest", keepsake: "flower" },
-    ],
-  },
-
-  forest: {
-    scene: "forest", cat: "idle",
-    say: "You found a secret path! Pick left or right?",
+    say: "Two ways through the valley. Which one are we walking?",
     choices: [
-      { label: "Go Left", to: "butterfly", pos: "left" },
-      { label: "Go Right", to: "bear", pos: "right", fail: true },
+      { label: "THE WAY THERE", to: "there", pos: "left" },
+      { label: "THE WAY BACK", to: "back", pos: "right" },
     ],
   },
 
+  /* ---------------- LEFT: the way there ---------------- */
+  there: {
+    scene: "sakura", cat: "idle", butterflies: true,
+    say: "Spring, and neither of us knows anything yet. A butterfly goes on ahead — which one do we follow?",
+    choices: [
+      { label: "BLUE", to: "there_meadow", pos: "left", style: "blue" },
+      { label: "RED", to: "there_hollow", pos: "right", style: "red" },
+    ],
+  },
+  /* blue: the high meadow, open and a little exposed */
+  there_meadow: {
+    scene: "meadow", cat: "idle",
+    say: "The blue one takes the long way up, over the open grass, where you can see the whole valley and be seen from all of it.",
+    choices: [
+      { label: "KEEP UP", to: "there_brook", pos: "centre", keepsake: "heart" },
+      { label: "CUT THROUGH THE TREES", to: "bear", pos: "right", fail: true },
+    ],
+  },
+  there_brook: {
+    scene: "hollow", cat: "happy",
+    say: "It stops at the brook and waits while you find the stones. You are still not talking much. You are both smiling at nothing.",
+    choices: [{ label: "ACROSS", to: "there_join", pos: "centre" }],
+  },
+  /* red: the hollow, low and close and full of things to notice */
+  there_hollow: {
+    scene: "hollow", cat: "happy", fox: true,
+    say: "The red one drops into the hollow instead, where the light is green and a fox pretends not to have seen you.",
+    /* Both go on to the same place, but they are not the same choice:
+       what she picks up here is what he mentions at the gate. */
+    choices: [
+      { label: "SAY HELLO", to: "there_petals", pos: "left", keepsake: "flower" },
+      { label: "LEAVE IT BE", to: "there_petals", pos: "right", keepsake: "heart" },
+    ],
+  },
+  there_petals: {
+    scene: "sakura", cat: "love",
+    say: "It leads you back up under the blossom the slow way, and something lands in your hair, and you leave it there.",
+    choices: [{ label: "GO ON", to: "there_join", pos: "centre" }],
+  },
+  there_join: {
+    scene: "meadow", cat: "love", callback: true,
+    say: "Both ways come out at the same gate at the top of the meadow. However you got here, here is where it was always going to be.",
+    choices: [{ label: "OVER THE GATE", to: "sunset", pos: "centre" }],
+  },
+
+  /* ---------------- RIGHT: the way back ---------------- */
+  back: {
+    scene: "lantern", cat: "idle", butterflies: true,
+    say: "A year later, the same valley, after dark. Somebody has hung lanterns the whole way. A butterfly is still awake — which one?",
+    choices: [
+      { label: "BLUE", to: "back_ridge", pos: "left", style: "blue" },
+      { label: "RED", to: "back_orchard", pos: "right", style: "red" },
+    ],
+  },
+  /* blue: up and over, in the cold, under everything */
+  back_ridge: {
+    scene: "ridge", cat: "idle",
+    say: "The blue one goes up. It is colder than you expected and the whole sky is out, and neither of you suggests turning round.",
+    choices: [
+      { label: "KEEP CLIMBING", to: "back_storm", pos: "centre", keepsake: "heart" },
+      { label: "GO BACK DOWN", to: "lost", pos: "right", fail: true },
+    ],
+  },
+  back_storm: {
+    scene: "ridge", cat: "happy",
+    say: "Weather comes over the ridge and you get under a rock and wait it out. Twenty minutes, shoulder to shoulder, saying nothing much. It passes.",
+    choices: [{ label: "DOWN THE FAR SIDE", to: "back_join", pos: "centre" }],
+  },
+  /* red: through the orchard, warm and slow, then the crossing */
+  back_orchard: {
+    scene: "orchard", cat: "happy", fox: true,
+    say: "The red one takes the orchard, where the lanterns are in the trees and the fox from last spring is asleep and very much bigger.",
+    choices: [
+      { label: "THE LONG ROW", to: "back_bridge", pos: "left", keepsake: "flower" },
+      { label: "STRAIGHT THROUGH", to: "back_bridge", pos: "right", keepsake: "heart" },
+    ],
+  },
+  back_bridge: {
+    scene: "bridge", cat: "idle",
+    say: "Then the rope bridge, which holds one at a time. You go first. You do not look back until you are across, and he is already halfway.",
+    choices: [{ label: "WAIT FOR HIM", to: "back_join", pos: "centre" }],
+  },
+  back_join: {
+    scene: "lantern", cat: "love", callback: true,
+    say: "Both ways come back to the last lantern on the path. Whichever way round you went, this is where it ends up.",
+    choices: [{ label: "HOME", to: "sunset", pos: "centre" }],
+  },
+
+  /* ---------------- the two ways to get it wrong ---------------- */
   bear: {
     isFail: true,
-    say: "Oops! A bear appeared and ate all your snacks. Try again!",
-    back: "forest",
+    say: "A bear! Or a shadow, or a bush, or nothing at all — but you are not going to stand here and find out.",
+    back: "there_meadow",
   },
-
-  butterfly: {
-    scene: "sakura", cat: "idle", butterflies: true,
-    say: "A butterfly appears! Pick red or blue?",
-    choices: [
-      { label: "BLUE", to: "hollow", pos: "left", style: "blue" },
-      { label: "RED", to: "bear2", pos: "right", fail: true, style: "red" },
-    ],
-  },
-
-  bear2: {
+  lost: {
     isFail: true,
-    say: "The red one was a decoy. The bear is back and it remembers you.",
-    back: "butterfly",
+    say: "Halfway down you cannot find the path, and the lanterns are all above you now. Better to have kept going.",
+    back: "back_ridge",
   },
 
-  hollow: {
-    scene: "hollow", cat: "happy", fox: true,
-    say: "The blue butterfly led you to a shortcut!",
-    choices: [
-      { label: "keep going", to: "meadow", pos: "left" },
-      { label: "Pet me", to: "pet", pos: "right" },
-    ],
-  },
 
-  pet: {
-    scene: "hollow", cat: "love", fox: true,
-    say: "The fox accepts exactly one (1) head pat and then pretends it did not happen.",
-    choices: [{ label: "keep going", to: "meadow", pos: "left" }],
-  },
-
-  meadow: {
-    scene: "meadow", cat: "idle",
-    say: "It's getting dark!", callback: true,
-    choices: [{ label: "keep going", to: "sunset", pos: "left" }],
-  },
-
+  /* Both paths come out here: the valley at the end of the day, and the
+     part of the story that is the same however she walked it. */
   sunset: {
     scene: "sunset", cat: "love",
     say: "What a beautiful sunset! Isn't it?",
