@@ -382,7 +382,8 @@ function mzStartFx() { if (!mzFxRaf) { mzFxLast = 0; mzFxRaf = requestAnimationF
 /* ---------- sound ---------- */
 function mzSfx(kind) {
   if (typeof hvSfx === "function") {
-    hvSfx({ step: "tick", heart: "collect", hurt: "bad", win: "yay", key: "collect" }[kind] || "pick");
+    hvSfx({ step: "tick", heart: "collect", hurt: "bad", win: "yay", key: "collect",
+            spot: "spot", shot: "shot" }[kind] || "pick");
   }
 }
 
@@ -748,10 +749,14 @@ function setupLevel2(pathCells) {
 
   if (level2Tick) clearInterval(level2Tick);
   level2Tick = setInterval(level2TickFn, 800);
+  /* The watchers run on their own, much faster clock: a bolt that only
+     moved every 800ms would be something you watch rather than dodge. */
+  startWatchers();
 }
 
 function stopLevel2Systems() {
   if (level2Tick) { clearInterval(level2Tick); level2Tick = null; }
+  stopWatchers();
 }
 
 function buildLevel2Layers() {
@@ -795,7 +800,10 @@ function buildLevel2Layers() {
     img.src = ASSETS.shooter; img.className = "entity shooter-entity"; img.dataset.i = i;
     shootersLayer.appendChild(img);
     const alert = document.createElement("div");
-    alert.className = "shooter-alert"; alert.textContent = "❗"; alert.dataset.i = i;
+    alert.className = "shooter-alert"; alert.dataset.i = i;
+    alert.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+      '<path d="M12 2.6 22 20.4H2z"/>' +
+      '<path class="bang" d="M12 9v4.6"/><circle class="bang" cx="12" cy="16.8" r="1.1"/></svg>';
     shootersLayer.appendChild(alert);
   });
 }
@@ -908,7 +916,12 @@ function applyDamage(msg) {
 }
 
 function respawnLevel2() {
-  showToast("Sneaky sneaky... try again 😅💕");
+  showToast("Caught. Let's try that again.");
+  /* anything already in the air belongs to the run that just ended */
+  clearBolts();
+  hideAllBeams();
+  shooters.forEach((s) => { s.state = "idle"; s.until = 0; });
+  document.querySelectorAll(".shooter-alert.show").forEach(el => el.classList.remove("show"));
   playerPos = { r:1, c:1 };
   hp = HP_START;
   renderHeartsHud();
@@ -924,7 +937,6 @@ function respawnLevel2() {
 function level2TickFn() {
   if (level !== 2 || gameWon) return;
   moveMonsters();
-  checkShooters();
   checkMonsterContact();
 }
 
@@ -969,22 +981,192 @@ function hasClearLine(r1,c1,r2,c2) {
   return false;
 }
 
-function checkShooters() {
+/* =========================================================
+   THE WATCHERS
+
+   These used to be called shooters and never shot anything: after a one
+   second warning they simply took a heart off you, from any distance,
+   with nothing travelling between the two of you. There was no way to
+   read it, no way to dodge it, and being hit from eleven cells away felt
+   arbitrary — which is exactly why it did not make sense.
+
+   Now a watcher does three things you can see. It spots you and takes a
+   moment to aim, drawing a beam down the corridor so you know which one
+   has you and from where. It fires a bolt that travels cell by cell, so
+   you can step out of the line, put a thicket between you, or simply be
+   quicker than it. Then it has to reload before it can do it again.
+
+   The bolt is independent once it leaves: it does not track you, and it
+   is stopped by a wall or a thicket. Everything is on its own clock, so
+   the aim never fires late because a slower tick was busy.
+   ========================================================= */
+const WATCH = {
+  range:    11,     // grid steps, so about five cells
+  aim:      850,    // the telegraph you get before it fires
+  cooldown: 2400,   // how long until that one can aim at you again
+  step:     120,    // ms per grid step the bolt travels
+};
+let bolts = [], watchTick = null;
+
+function startWatchers() {
+  stopWatchers();
+  watchTick = setInterval(watchTickFn, WATCH.step);
+}
+function stopWatchers() {
+  if (watchTick) { clearInterval(watchTick); watchTick = null; }
+  clearBolts();
+  shooters.forEach((s) => { s.state = "idle"; s.until = 0; });
+  document.querySelectorAll(".shooter-alert.show").forEach(el => el.classList.remove("show"));
+  hideAllBeams();
+}
+function clearBolts() {
+  bolts.forEach(b => b.el && b.el.remove());
+  bolts = [];
+}
+
+/* how far a shot can travel from here before something stops it */
+function beamEnd(r, c, dr, dc) {
+  let er = r, ec = c, n = 0;
+  while (n < WATCH.range) {
+    const nr = er + dr, nc = ec + dc;          // the wall between cells
+    const tr = er + dr * 2, tc = ec + dc * 2;  // the next cell
+    if (!cellOpen(nr, nc) || !cellOpen(tr, tc)) break;
+    er = tr; ec = tc; n += 2;
+    if (treeSet.has(er + "," + ec)) break;     // a thicket stops it
+  }
+  return { r: er, c: ec, steps: n };
+}
+
+function watchTickFn() {
+  if (level !== 2 || gameWon) return;
+  const now = Date.now();
+
   shooters.forEach((s, i) => {
-    const alertEl = document.querySelector(`.shooter-alert[data-i="${i}"]`);
-    const sees = !isHidden && (s.r===playerPos.r || s.c===playerPos.c) &&
-                 hasClearLine(s.r, s.c, playerPos.r, playerPos.c) &&
-                 (Math.abs(s.r-playerPos.r)+Math.abs(s.c-playerPos.c)) <= 11;
-    if (sees) {
-      if (!s.alerting) { s.alerting = true; s.alertUntil = Date.now()+1000; if (alertEl) alertEl.classList.add("show"); }
-      else if (Date.now() >= s.alertUntil) {
-        s.alerting = false; if (alertEl) alertEl.classList.remove("show");
-        applyDamage("Spotted! 💥");
+    if (!s.state) s.state = "idle";
+    const alertEl = document.querySelector('.shooter-alert[data-i="' + i + '"]');
+
+    if (s.state === "cool") {
+      if (now >= s.until) s.state = "idle";
+      return;
+    }
+
+    if (s.state === "aim") {
+      /* Losing sight of it cancels the shot — ducking behind a corner in
+         time should actually save you, or the telegraph is a lie. */
+      if (!watcherSees(s)) {
+        s.state = "idle";
+        if (alertEl) alertEl.classList.remove("show");
+        hideBeam(i);
+        return;
       }
-    } else {
-      if (s.alerting) { s.alerting = false; if (alertEl) alertEl.classList.remove("show"); }
+      if (now >= s.until) {
+        fireBolt(s);
+        s.state = "cool"; s.until = now + WATCH.cooldown;
+        if (alertEl) alertEl.classList.remove("show");
+        hideBeam(i);
+      }
+      return;
+    }
+
+    if (watcherSees(s)) {
+      s.dr = Math.sign(playerPos.r - s.r);
+      s.dc = Math.sign(playerPos.c - s.c);
+      s.state = "aim"; s.until = now + WATCH.aim;
+      if (alertEl) alertEl.classList.add("show");
+      showBeam(i, s);
+      mzSfx("spot");
     }
   });
+
+  stepBolts();
+}
+
+function watcherSees(s) {
+  if (isHidden) return false;
+  if (s.r !== playerPos.r && s.c !== playerPos.c) return false;
+  if (Math.abs(s.r - playerPos.r) + Math.abs(s.c - playerPos.c) > WATCH.range) return false;
+  return hasClearLine(s.r, s.c, playerPos.r, playerPos.c);
+}
+
+function fireBolt(s) {
+  const layer = document.getElementById("bolts-layer");
+  if (!layer) return;
+  const el = document.createElement("div");
+  el.className = "mz-bolt";
+  el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 18 12l-6 10.5L6 12z"/></svg>';
+  layer.appendChild(el);
+  /* fresh: skip the first step. fireBolt runs earlier in the same tick
+     than stepBolts, so without this the bolt is created and immediately
+     advanced — it never appears at the muzzle, and a watcher standing one
+     cell away hits you before anything is drawn, which is unduckable. */
+  const b = { r: s.r, c: s.c, dr: s.dr, dc: s.dc, dist: 0, el: el, fresh: true };
+  bolts.push(b);
+  placeBolt(b);
+  mzSfx("shot");
+}
+
+function stepBolts() {
+  for (let i = bolts.length - 1; i >= 0; i--) {
+    const b = bolts[i];
+    if (b.fresh) { b.fresh = false; continue; }      // it gets its muzzle frame
+    const wr = b.r + b.dr, wc = b.c + b.dc;          // the wall between
+    const nr = b.r + b.dr * 2, nc = b.c + b.dc * 2;  // the next cell
+    if (b.dist >= WATCH.range || !cellOpen(wr, wc) || !cellOpen(nr, nc)) { killBolt(i); continue; }
+    b.r = nr; b.c = nc; b.dist += 2;
+    placeBolt(b);
+    if (treeSet.has(b.r + "," + b.c)) { killBolt(i); continue; }   // stopped by a thicket
+    if (b.r === playerPos.r && b.c === playerPos.c) {
+      killBolt(i);
+      if (!isHidden) applyDamage("A watcher caught you");
+    }
+  }
+}
+
+function killBolt(i) {
+  const b = bolts[i];
+  if (b.el) {
+    b.el.classList.add("gone");
+    const el = b.el;
+    setTimeout(() => el.remove(), 180);
+  }
+  bolts.splice(i, 1);
+}
+
+function placeBolt(b) {
+  if (!b.el) return;
+  const size = CS * 0.46;
+  b.el.style.width = size + "px";
+  b.el.style.height = size + "px";
+  b.el.style.left = (b.c * CS + CS / 2 - size / 2) + "px";
+  b.el.style.top = (b.r * CS + CS / 2 - size / 2) + "px";
+}
+
+/* the corridor it is about to shoot down */
+function showBeam(i, s) {
+  const layer = document.getElementById("bolts-layer");
+  if (!layer) return;
+  let el = layer.querySelector('.mz-beam[data-i="' + i + '"]');
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "mz-beam"; el.dataset.i = i;
+    layer.appendChild(el);
+  }
+  const end = beamEnd(s.r, s.c, s.dr, s.dc);
+  const x1 = s.c * CS + CS / 2, y1 = s.r * CS + CS / 2;
+  const x2 = end.c * CS + CS / 2, y2 = end.r * CS + CS / 2;
+  const thin = Math.max(3, CS * 0.16);
+  el.style.left = (Math.min(x1, x2) - (s.dc ? 0 : thin / 2)) + "px";
+  el.style.top  = (Math.min(y1, y2) - (s.dr ? 0 : thin / 2)) + "px";
+  el.style.width  = (s.dc ? Math.abs(x2 - x1) : thin) + "px";
+  el.style.height = (s.dr ? Math.abs(y2 - y1) : thin) + "px";
+  el.classList.add("on");
+}
+function hideBeam(i) {
+  const el = document.querySelector('.mz-beam[data-i="' + i + '"]');
+  if (el) el.classList.remove("on");
+}
+function hideAllBeams() {
+  document.querySelectorAll(".mz-beam").forEach(el => el.classList.remove("on"));
 }
 
 /* =========================================================
@@ -3051,8 +3233,13 @@ function hvSfx(kind) {
   try {
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
+    if (audioCtx && audioCtx.state === "closed") audioCtx = null;
     if (!audioCtx) audioCtx = new AC();
-    if (audioCtx.state === "suspended") audioCtx.resume();
+    /* not just "suspended" — see wakeAudio; iOS uses "interrupted" and the
+       old check let the maze go silent for the rest of the visit */
+    if (audioCtx.state !== "running") {
+      if (window.wakeAudio) window.wakeAudio(audioCtx); else audioCtx.resume();
+    }
     var t = audioCtx.currentTime;
     var o = audioCtx.createOscillator();
     var g = audioCtx.createGain();
@@ -3061,6 +3248,10 @@ function hvSfx(kind) {
       collect: { type: "triangle", f: 880,  to: 1560, d: 0.20, v: 0.07 },
       bad:     { type: "sawtooth", f: 220,  to: 90,   d: 0.28, v: 0.05 },
       yay:     { type: "triangle", f: 520,  to: 1040, d: 0.42, v: 0.08 },
+      /* a watcher noticing you: a rising two-note warning */
+      spot:    { type: "square",   f: 300,  to: 620,  d: 0.16, v: 0.05 },
+      /* and the bolt leaving: short, dry, downward */
+      shot:    { type: "sawtooth", f: 900,  to: 260,  d: 0.12, v: 0.05 },
     })[kind] || { type: "square", f: 500, to: 700, d: 0.08, v: 0.04 };
     o.type = spec.type;
     o.frequency.setValueAtTime(spec.f, t);

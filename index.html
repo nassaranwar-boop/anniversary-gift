@@ -6,9 +6,9 @@
 <title>For My Love 💕</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=48">
+<link rel="stylesheet" href="style.css?v=51">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Rye&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=48"></script>
+<script src="vendor/three.bundle.js?v=51"></script>
 
 </head>
 <body>
@@ -61,6 +61,12 @@
       <symbol id="ic-key" viewBox="0 0 24 24">
         <circle cx="8.4" cy="8.6" r="4.4"/>
         <path d="M11.5 11.7l8.3 8.3"/><path d="M16.8 17l2 2M18.9 14.9l2 2"/>
+      </symbol>
+      <symbol id="ic-steps" viewBox="0 0 24 24">
+        <ellipse cx="8" cy="8.4" rx="3.1" ry="4.4" transform="rotate(-12 8 8.4)"/>
+        <ellipse cx="16" cy="15" rx="3.1" ry="4.4" transform="rotate(10 16 15)"/>
+        <path d="M5.6 13.4c1.6.7 3.2.7 4.8 0"/>
+        <path d="M13.6 20c1.6.7 3.2.7 4.8 0"/>
       </symbol>
       <symbol id="ic-clock" viewBox="0 0 24 24">
         <circle cx="12" cy="12.6" r="8.4"/><path d="M12 7.8v4.8l3.2 2"/>
@@ -549,12 +555,12 @@
       <!-- the touch pad, for playing this on a phone -->
       <div class="so-pad" id="so-pad" aria-hidden="true">
         <div class="so-pad-side">
-          <button class="so-key" data-so-key="left" aria-label="Left">&#9664;</button>
-          <button class="so-key" data-so-key="right" aria-label="Right">&#9654;</button>
+          <button class="so-key" data-so-key="left" aria-label="Left"><svg class="so-ico" viewBox="0 0 9 9" aria-hidden="true"><rect x="4" y="0" width="5" height="1"/><rect x="3" y="1" width="6" height="1"/><rect x="2" y="2" width="7" height="1"/><rect x="1" y="3" width="8" height="1"/><rect x="0" y="4" width="9" height="1"/><rect x="1" y="5" width="8" height="1"/><rect x="2" y="6" width="7" height="1"/><rect x="3" y="7" width="6" height="1"/><rect x="4" y="8" width="5" height="1"/></svg></button>
+          <button class="so-key" data-so-key="right" aria-label="Right"><svg class="so-ico" viewBox="0 0 9 9" aria-hidden="true"><rect x="0" y="0" width="5" height="1"/><rect x="0" y="1" width="6" height="1"/><rect x="0" y="2" width="7" height="1"/><rect x="0" y="3" width="8" height="1"/><rect x="0" y="4" width="9" height="1"/><rect x="0" y="5" width="8" height="1"/><rect x="0" y="6" width="7" height="1"/><rect x="0" y="7" width="6" height="1"/><rect x="0" y="8" width="5" height="1"/></svg></button>
         </div>
         <div class="so-pad-side so-pad-right">
-          <button class="so-key so-key-duck" data-so-key="down" aria-label="Duck">&#9660;</button>
-          <button class="so-key so-key-jump" data-so-key="jump" aria-label="Jump">&#10084;</button>
+          <button class="so-key so-key-duck" data-so-key="down" aria-label="Duck"><svg class="so-ico" viewBox="0 0 9 5" aria-hidden="true"><rect x="0" y="0" width="9" height="1"/><rect x="1" y="1" width="7" height="1"/><rect x="2" y="2" width="5" height="1"/><rect x="3" y="3" width="3" height="1"/><rect x="4" y="4" width="1" height="1"/></svg></button>
+          <button class="so-key so-key-jump" data-so-key="jump" aria-label="Jump"><svg class="so-ico" viewBox="0 0 9 8" aria-hidden="true"><rect x="1" y="0" width="2" height="1"/><rect x="4" y="0" width="2" height="1"/><rect x="0" y="1" width="9" height="1"/><rect x="0" y="2" width="9" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="1" y="4" width="7" height="1"/><rect x="2" y="5" width="5" height="1"/><rect x="3" y="6" width="3" height="1"/><rect x="4" y="7" width="1" height="1"/></svg></button>
         </div>
       </div>
     </div>
@@ -636,8 +642,8 @@
     <div class="hud-bar" id="hud-bar">
       <div class="hud-pill hud-hearts-l1"><span class="lab">💗</span><span class="val" id="hud-hearts">0/0</span></div>
       <div class="hud-pill hud-hearts-l2"><span class="lab">❤️</span><span class="hp-pips" id="hp-pips"></span></div>
-      <div class="hud-pill"><span class="lab">👣</span><span class="val" id="hud-steps">0</span></div>
-      <div class="hud-pill"><span class="lab">⏱</span><span class="val" id="hud-time">00:00</span></div>
+      <div class="hud-pill"><span class="lab"><svg class="hud-ico" aria-hidden="true"><use href="#ic-steps"/></svg></span><span class="val" id="hud-steps">0</span></div>
+      <div class="hud-pill"><span class="lab"><svg class="hud-ico" aria-hidden="true"><use href="#ic-clock"/></svg></span><span class="val" id="hud-time">00:00</span></div>
       <div class="hud-pill hud-hidden-badge" id="hidden-badge"><span class="lab">🌲</span><span class="val">Hidden</span></div>
       <div class="hud-pill hud-key-badge" id="key-badge"><img id="key-badge-img" alt="key"/><span class="val">Key!</span></div>
     </div>
@@ -651,6 +657,7 @@
           <div id="key-layer"></div>
           <div id="monsters-layer"></div>
           <div id="shooters-layer"></div>
+          <div id="bolts-layer"></div>
           <div class="fog-layer" id="fog-layer"></div>
           <div class="beacon-glow" id="beacon-glow"></div>
           <img id="target-token" class="token target-token" alt="Anwar waiting" />
@@ -659,12 +666,17 @@
         </div>
       </div>
     </div>
+    <!-- One chevron drawn once and rotated for the four directions, so the
+         arrows are identical instead of four glyphs at four optical weights,
+         whatever the device's font happens to ship. Cut into the key: a
+         light lip below the dark face, which is the opposite of a drop
+         shadow and is what reads as engraved. -->
     <div class="dpad-3d">
-      <button class="dpad3-btn dpad3-up" data-dir="up">▲</button>
-      <button class="dpad3-btn dpad3-left" data-dir="left">◀</button>
+      <button class="dpad3-btn dpad3-up" data-dir="up" aria-label="Up"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
+      <button class="dpad3-btn dpad3-left" data-dir="left" aria-label="Left"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
       <div class="dpad3-hub"></div>
-      <button class="dpad3-btn dpad3-right" data-dir="right">▶</button>
-      <button class="dpad3-btn dpad3-down" data-dir="down">▼</button>
+      <button class="dpad3-btn dpad3-right" data-dir="right" aria-label="Right"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
+      <button class="dpad3-btn dpad3-down" data-dir="down" aria-label="Down"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
     </div>
   </section>
 
@@ -716,10 +728,10 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=48"></script>
-<script src="scrapbook.js?v=48"></script>
-<script src="script.js?v=48"></script>
-<script src="super-ouissy.js?v=48"></script>
-<script src="rescue.js?v=48"></script>
+<script src="book-scene.js?v=51"></script>
+<script src="scrapbook.js?v=51"></script>
+<script src="script.js?v=51"></script>
+<script src="super-ouissy.js?v=51"></script>
+<script src="rescue.js?v=51"></script>
 </body>
 </html>

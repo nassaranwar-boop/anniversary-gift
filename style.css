@@ -339,6 +339,13 @@ img{-webkit-user-drag:none; user-select:none;}
 @keyframes twinkle{0%,100%{opacity:.15;} 50%{opacity:1;}}
 
 .hud-bar{display:flex; gap:9px; margin-bottom:14px; z-index:2; position:relative; flex-wrap:wrap; justify-content:center; max-width:92vw;}
+/* the HUD labels are drawn now, not glyphs */
+.hud-ico{
+  width:14px; height:14px; display:block;
+  fill:none; stroke:currentColor; stroke-width:1.8;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+
 .hud-pill{
   background:linear-gradient(160deg,rgba(255,226,170,.20),rgba(255,200,130,.06)); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
   border:1px solid rgba(255,222,160,.28); border-radius:14px; padding:7px 12px;
@@ -397,7 +404,32 @@ img{-webkit-user-drag:none; user-select:none;}
 .tree-entity{z-index:3;}
 .monster-entity{transition:left .5s ease, top .5s ease; filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));}
 .shooter-entity{filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));}
-.shooter-alert{position:absolute; z-index:4; font-size:14px; opacity:0; pointer-events:none; animation:alertPulse .7s ease-in-out infinite;}
+/* ---- the watchers: what they are about to do, and what they fired ----
+   The old version showed an exclamation emoji and then took a heart with
+   nothing in between. These are the two things that make it legible: the
+   corridor it is aiming down, and the bolt actually travelling it. */
+#bolts-layer{position:absolute; inset:0; pointer-events:none; z-index:6;}
+.mz-beam{
+  position:absolute; opacity:0; border-radius:2px;
+  background:linear-gradient(90deg,rgba(255,120,120,.05),rgba(255,120,120,.42),rgba(255,120,120,.05));
+  box-shadow:0 0 10px rgba(255,90,90,.45);
+  transition:opacity .12s ease;
+}
+.mz-beam.on{opacity:1; animation:mzBeamPulse .42s ease-in-out infinite alternate;}
+@keyframes mzBeamPulse{from{opacity:.55;} to{opacity:1;}}
+
+.mz-bolt{
+  position:absolute; pointer-events:none;
+  transition:left .1s linear, top .1s linear, opacity .16s ease, transform .16s ease;
+  filter:drop-shadow(0 0 6px rgba(255,140,110,.9));
+}
+.mz-bolt svg{width:100%; height:100%; display:block; fill:#ffd9a0;}
+.mz-bolt.gone{opacity:0; transform:scale(1.9);}
+
+/* it holds an SVG now, so it needs a box rather than a font size */
+.shooter-alert{position:absolute; z-index:7; width:15px; height:15px; opacity:0; pointer-events:none; animation:alertPulse .7s ease-in-out infinite;}
+.shooter-alert svg{width:100%; height:100%; display:block; fill:#ffcf5a; stroke:#7a3a10; stroke-width:1.6; stroke-linejoin:round;}
+.shooter-alert svg .bang{fill:#7a3a10; stroke:#7a3a10; stroke-width:2.2; stroke-linecap:round;}
 .shooter-alert.show{opacity:1;}
 @keyframes alertPulse{0%,100%{transform:translateY(0) scale(1); opacity:.6;} 50%{transform:translateY(-4px) scale(1.2); opacity:1;}}
 
@@ -439,6 +471,16 @@ img{-webkit-user-drag:none; user-select:none;}
 .dpad-3d{
   margin-top:16px; display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:4px; z-index:2; position:relative;
 }
+/* one chevron, rotated; cut into the key rather than printed on it */
+.mz-ico{width:46%; height:46%; display:block; pointer-events:none;}
+.mz-ico-cut{fill:#5a3412; opacity:.92;}
+.mz-ico-lip{fill:rgba(255,244,214,.75);}
+.dpad3-up    .mz-ico{transform:rotate(0deg);}
+.dpad3-right .mz-ico{transform:rotate(90deg);}
+.dpad3-down  .mz-ico{transform:rotate(180deg);}
+.dpad3-left  .mz-ico{transform:rotate(270deg);}
+.dpad3-btn:active .mz-ico-cut,.dpad3-btn.held .mz-ico-cut{fill:#3f2209;}
+
 .dpad3-btn{
   border:none; cursor:pointer; color:#4a2a10; font-size:16px; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(160deg,#f0c274,#c8873a);
@@ -2685,6 +2727,17 @@ img{-webkit-user-drag:none; user-select:none;}
 #screen-ouissy.so-menu-open .so-pad{opacity:.3; pointer-events:none; filter:saturate(.5);}
 .so-pad{transition:opacity .3s ease, filter .3s ease;}
 .so-pad-right{gap:12px;}
+/* The pad's icons are drawn, not typed. A glyph arrow is whatever the
+   device's font decides it is, and none of those belong to a pixel game.
+   These are stacked 1px rects, so the steps are real steps. */
+.so-ico{
+  width:46%; height:46%; fill:currentColor;
+  shape-rendering:crispEdges; pointer-events:none;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.22));
+}
+.so-key-jump .so-ico{width:44%; height:44%;}
+.so-key-duck .so-ico{width:40%; height:auto;}
+
 .so-key{
   cursor:pointer; user-select:none; touch-action:none;
   -webkit-tap-highlight-color:transparent;
