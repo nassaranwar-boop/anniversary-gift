@@ -47,16 +47,16 @@ window.Rescue = (function () {
     /* What he says when he picks her up. One is chosen at random each
        time, so ten deaths are not ten identical scenes. */
     rescueAlt: [
-      [{ who: "anwar", text: "Up you go. I've got you." }],
-      [{ who: "anwar", text: "That one doesn't count. Try again, love." }],
-      [{ who: "anwar", text: "You're okay. Go again — I'm right here." }],
+      [{ who: "anwar", text: "Up you go. I’ve got you." }],
+      [{ who: "anwar", text: "That one doesn’t count. Try again, love." }],
+      [{ who: "anwar", text: "You’re okay. Go again — I’m right here." }],
       [{ who: "anwar", text: "Not today. Get back up." }],
-      [{ who: "anwar", text: "I'm not going anywhere. Neither are you." }],
+      [{ who: "anwar", text: "I’m not going anywhere. Neither are you." }],
       [{ who: "anwar", text: "Careful, love — one more try." }],
-      [{ who: "anwar", text: "That's just a stumble. Keep going." }],
-      [{ who: "anwar", text: "I'll always catch you. Now go get it." }],
-      [{ who: "anwar", text: "You've got this. I'm just here in case." }],
-      [{ who: "anwar", text: "Back on your feet. That's my girl." }],
+      [{ who: "anwar", text: "That’s just a stumble. Keep going." }],
+      [{ who: "anwar", text: "I’ll always catch you. Now go get it." }],
+      [{ who: "anwar", text: "You’ve got this. I’m just here in case." }],
+      [{ who: "anwar", text: "Back on your feet. That’s my girl." }],
     ],
 
     /* --- 2. the last boss takes her last life ------------------------ */
@@ -624,8 +624,7 @@ window.Rescue = (function () {
       sel: 0, particles: [],
     };
     if (kind === "rescue") {
-      var alts = SCRIPT.rescueAlt;
-      say(alts[(Math.random() * alts.length) | 0]);
+      say(SCRIPT.rescueAlt[nextRescueLine()]);
     }
     return S;
   }
@@ -657,6 +656,31 @@ window.Rescue = (function () {
     return S.li < S.lines.length;
   }
   function textFinished() { return S.lines && S.li >= S.lines.length; }
+
+  /* A shuffled bag rather than a die roll. Picking at random each time
+     means the same line can come up twice in a row, which reads as the
+     scene glitching rather than as him saying something; this deals out
+     all ten in a random order, then reshuffles. */
+  var rescueBag = [], rescueLast = -1;
+  function nextRescueLine() {
+    if (!rescueBag.length) {
+      rescueBag = SCRIPT.rescueAlt.map(function (_, i) { return i; });
+      for (var i = rescueBag.length - 1; i > 0; i--) {
+        var j = (Math.random() * (i + 1)) | 0;
+        var t = rescueBag[i]; rescueBag[i] = rescueBag[j]; rescueBag[j] = t;
+      }
+      /* The bag is dealt from the end, so the last card of one shuffle can
+         land next to the first of the next and he says the same thing
+         twice running — the one case a shuffle does not rule out. Swap it
+         with its neighbour when that happens. */
+      if (rescueBag.length > 1 && rescueBag[rescueBag.length - 1] === rescueLast) {
+        var k = rescueBag.length - 1;
+        rescueBag[k] = rescueBag[k - 1]; rescueBag[k - 1] = rescueLast;
+      }
+    }
+    rescueLast = rescueBag.pop();
+    return rescueLast;
+  }
 
   function phase(n) { S.phase = n; S.pt = 0; }
 

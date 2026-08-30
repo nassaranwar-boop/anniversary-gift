@@ -2550,7 +2550,12 @@ window.SuperOuissy = (function () {
   function afterDeath() {
     G.lives--;
 
-    if (G.lives < 0) {
+    /* <= 0, not < 0. Lives counts the attempts she has left, so when it
+       reaches zero there are none — but the test was < 0, which gave her
+       one more go after the HUD had already said she had none. The HUD
+       clamped the negative away, so what you saw was LIVES x0 and a game
+       that carried on regardless. */
+    if (G.lives <= 0) {
       /* THE one death that leads somewhere else: the last life, taken by
          the last boss, on Hard. Anything else is an ordinary game over. */
       if (rescuesOn() && G.lastHurtBy === "boss" && G.level.boss &&
@@ -3995,6 +4000,8 @@ window.SuperOuissy = (function () {
     if (mw) mw.classList.toggle("full", G.meterFlash > 0);
     setText("so-world", (G.levelIndex + 1) + "-1");
     /* a heart glyph beside the number, so "LIVES ♥x3" reads at a glance */
+    /* the clamp stays as a guard, but it should never have anything to do
+       now: the run ends the moment this reaches zero */
     var lv = $("so-lives"), n = "×" + Math.max(0, G.lives);
     if (lv && lv._n !== n) { lv.innerHTML = "<em>&#9829;</em>" + n; lv._n = n; }
     var timeEl = $("so-time");
