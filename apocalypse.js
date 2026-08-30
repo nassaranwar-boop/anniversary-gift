@@ -601,90 +601,93 @@ window.Apocalypse = (function () {
         face at all, which is the lesson Super Ouissy already paid for.
      ======================================================================= */
   var OUI_TORSO = {
-    down: ["....hhhh....", "..hhhhhhhh..", ".hhhhhhhhhh.", ".hhssssssHh.", ".hsseseshHh.", ".hssssssshh.", ".hhssmmsshh.", "..hsssssshh.", "...ssssss...", "..cccccccc..", ".sccccccccs.", ".sccccccccs.", ".sccccccccs.", ".SccccccccS.", "..cccccccc.."],
-    up: ["....hhhh....", "..hhhhhhhh..", ".hhhhhhhhhh.", ".hhhhhhhhhh.", ".hhhhhhhhhh.", ".hhhhhhhhhh.", ".hhhhhhhhhh.", "..hhhhhhhh..", "...ssssss...", "..cccccccc..", ".sccccccccs.", ".sccccccccs.", ".sccccccccs.", ".SccccccccS.", "..cccccccc.."],
-    side: ["....hhhh....", "...hhhhhhh..", "..hhhhhhhh..", "..hhsssssh..", "..hhssessh..", "..hhsssssm..", "..hhssssss..", "...hssssss..", "...ssssss...", "...cccccc...", "..sccccccc..", "..Sccccccc..", "...ccccccs..", "...ccccccS..", "...cccccc..."]
+    down: [".....KKKKKK.....", "...KKHHHHHHKK...", "..KHHhhhhhhHHK..", ".KHHhhiiiihhHHK.", "KHHhSSSSSSSSshHK", "KHhhSEsSSsESshhK", "KHhhSSSSSSSSshhK", "KHhhSsSmmSsSshhK", "KHhhBSSSSSSBshhK", "KHhhhSSSSSSshhhK", "KHhhhhSSSShhhhHK", "KHhhhhhhhhhhhhHK", "KHhhhKSSSSKhhhHK", "KHhhKKjjjjKKhhHK", "KHhhKjjttttjjKhH", "KhHhjjttttttjjHh", "KhHhjjttttttjjHh", "KHhHjjttttttjjHh", "SKhHjjttttttjjHK", ".KHhjTtttttTjhK."],
+    up: [".....KKKKKK.....", "...KKHHHHHHKK...", "..KHHhhhhhhHHK..", ".KHHhhiiiihhHHK.", "KHHhhhiiiiihhHHK", "KHhhhhiiiihhhhHK", "KHhhhhhiihhhhhHK", "KHhhhhhhhhhhhhHK", "KHhhhhhiiihhhhHK", "KHhhhhhhhhhhhhHK", "KHhhhhhhhhhhhhHK", "KHhhhhhhhhhhhhHK", "KHhhhKSSSSKhhhHK", "KHhhKKjjjjKKhhHK", "KHhhKjjjjjjjKhhH", "KhHhhjjjjjjhhHhK", "KhHhhjjjjjjhhHhK", "KHhHhjjjjjjhHhHK", "SKhHhjjjjjjhHhKS", ".KHhhjJjjjjJjhhK"],
+    side: ["...KKKKKKK......", ".KKHHHHHHHK.....", "KHHhhhhhhhHK....", "KHHhhiiiiihHK...", "KHHhSSSSSSSsK...", "KHhhSSEsSSSsK...", "KHhhSSSSSSSsK...", "KHhhSsSSSSmsK...", "KHhhBSSSSSSsK...", "KHhhhSSSSSSK....", "KHhhhhSSSSK.....", "KHhhhhhhhK......", "KHhhhKSSSK......", "KHhhKKjjjjK.....", "KHhhKjjttttjK...", "KhHhjjttttttjK..", "KhHhjjtttttttjK.", "KHhHjjttttttSjK.", "SKhHjjttttttSjK.", ".KHhjjTttttttjK."]
   };
 
   var OUI_LEGS = {
-    stand: ["..jjjjjjjj..", "..jjj..jjj..", "..bbb..bbb.."],
-    stepA: ["..jjjjjjjj..", ".jjj....jjj.", ".bbb....bbb."],
-    stepB: ["..jjjjjjjj..", "..jjjjjjjj..", "..bbbbbbbb.."]
+    stand: ["...KddddddddK...", "...KdddKKdddK...", "...KdddKKdddK...", "...KdddKKdddK...", "...KDDDKKDDDK...", "...KDDDKKDDDK...", "...KbbbKKbbbK...", "...KbbbKKbbbK..."],
+    stepA: ["...KddddddddK...", "..KdddK..KdddK..", "..KdddK..KdddK..", ".KdddK....KdddK.", ".KDDDK....KDDDK.", ".KDDDK....KDDDK.", ".KbbbK....KbbbK.", ".KbbbK....KbbbK."],
+    stepB: ["...KddddddddK...", "....KddddddK....", "....KddddddK....", "....KddddddK....", "....KDDDDDDK....", "....KDDDDDDK....", "....KbbbbbbK....", "....KbbbbbbK...."]
   };
 
   var OUI_LEGS_SIDE = {
-    stand: ["...jjjjj....", "...jjj.jj...", "...bbb.bb..."],
-    stepA: ["...jjjjj....", "..jjj...jj..", "..bbb...bb.."],
-    stepB: ["...jjjjj....", "...jjjjj....", "...bbbbb...."]
+    stand: ["...KddddddK.....", "...KdddKddK.....", "...KdddKddK.....", "...KdddKddK.....", "...KDDDKDDK.....", "...KDDDKDDK.....", "..KbbbbKbbK.....", "..KbbbbKbbK....."],
+    stepA: ["...KddddddK.....", "..KdddK.ddK.....", "..KdddK.ddK.....", ".KdddK...ddK....", ".KDDDK...DDK....", ".KDDDK...DDK....", ".KbbbbK..bbK....", ".KbbbbK..bbK...."],
+    stepB: ["...KddddddK.....", "...KdddddK......", "...KdddddK......", "...KdddddK......", "...KDDDDDK......", "...KDDDDDK......", "..KbbbbbbK......", "..KbbbbbbK......"]
   };
 
   var ZOM_TORSO = {
-    down: ["....hhhh....", "...hhhhhh...", "..hgggggh...", "..hgeggeg...", "..gggggggg..", "..Ggggkggg..", "...gggggg...", "....gggg....", "..rrrrrrrr..", ".grrrrrrrrg.", ".grrrrrrrrg.", ".Grrrrrrrr..", "..RrrrrrrR..", "..rrrrrrrr..", "..RRrrrrRR.."],
-    up: ["....hhhh....", "...hhhhhh...", "..hhhhhhh...", "..hhhhhhh...", "..hhhhhhhh..", "..hhhhhhhh..", "...gggggg...", "....gggg....", "..rrrrrrrr..", ".grrrrrrrrg.", ".grrrrrrrrg.", "..rrrrrrrrG.", "..RrrrrrrR..", "..rrrrrrrr..", "..RRrrrrRR.."],
-    side: ["....hhhh....", "...hhhhhh...", "..hhgggggh..", "..hhggeggg..", "..hgggggkg..", "..hgggggg...", "...ggggg....", "....ggg.....", "...rrrrrr...", "..grrrrrrg..", "..Grrrrrrg..", "...rrrrrrg..", "...rrrrrrG..", "...RrrrrR...", "...rrrrrr..."]
+    down: ["....KKKKKKK.....", "...KhhhhhhhK....", "..KhhKgggKhhK...", "..KhgggggggKK...", ".KgggggggggggK..", ".KgeKggggKegK...", ".KggggggggggK...", ".KgGgkkkkgGgK...", "..KggkkkkkkgK...", "..KGggggggGK....", "...KKggggKK.....", "....KgggK.......", "....KgggK.......", "..KKrrrrrrKK....", ".KgrrrrrrrrgK...", "KgKrrrrrrrrKgK..", "KGKrrrrrrrrKGK..", ".KKrrrrrrrrKK...", "..KRrrrrrrRK....", "..KRRrrrrRRK...."],
+    up: ["....KKKKKKK.....", "...KhhhhhhhK....", "..KhhhhhhhhhK...", "..KhhhhhhhhKK...", ".KhhhhhhhhhhhK..", ".KhhhhhhhhhhK...", ".KhhhhhhhhhhK...", ".KgGhhhhhhGgK...", "..KgghhhhggK....", "..KGggggggGK....", "...KKggggKK.....", "....KgggK.......", "....KgggK.......", "..KKrrrrrrKK....", ".KgrrrrrrrrgK...", "KgKrrrrrrrrKgK..", "KGKrrrrrrrrKGK..", ".KKrrrrrrrrKK...", "..KRrrrrrrRK....", "..KRRrrrrRRK...."],
+    side: ["...KKKKKKK......", "..KhhhhhhhK.....", ".KhhKggggKK.....", ".KhgggggggK.....", "KhhgggeggggK....", "KhggKggggggK....", "KhggggggkkgK....", "KhgGgkkkkggK....", ".KggggkkkgK.....", ".KGgggggggK.....", "..KKggggKK......", "...KgggK........", "...KgggK........", "..KKrrrrrKK.....", ".KgrrrrrrrgK....", "KgKrrrrrrrrgK...", "KGKrrrrrrrrGK...", ".KKrrrrrrrrK....", "..KRrrrrrrRK....", "..KRRrrrrRRK...."]
   };
 
   var ZOM_LEGS = {
-    stand: ["..kkkkkkkk..", "..kkk..kkk..", "..kk....kk.."],
-    stepA: ["..kkkkkkkk..", ".kkk....kkk.", ".kk......kk."],
-    stepB: ["..kkkkkkkk..", "..kkkkkkkk..", "..kk..kkkk.."]
+    stand: ["...KkkkkkkkkK...", "...KkkkKKkkkK...", "...KkkkKKkkkK...", "...KkkkKKkkkK...", "...KkkkKKkkkK...", "...KkkkKKkkkK...", "...KKKKKKKKKK...", "...KKKKKKKKKK..."],
+    stepA: ["...KkkkkkkkkK...", "..KkkkK..KkkkK..", "..KkkkK..KkkkK..", ".KkkkK....KkkkK.", ".KkkkK....KkkkK.", ".KkkkK....KkkkK.", ".KKKKK....KKKKK.", ".KKKKK....KKKKK."],
+    stepB: ["...KkkkkkkkkK...", "....KkkkkkkK....", "....KkkkkkkK....", "....KkkkkkkK....", "....KkkkkkkK....", "....KkkkkkkK....", "....KKKKKKKK....", "....KKKKKKKK...."]
   };
 
   var ZOM_LEGS_SIDE = {
-    stand: ["...kkkkk....", "...kkk.kk...", "...kk..kk..."],
-    stepA: ["...kkkkk....", "..kkk...kk..", "..kk....kk.."],
-    stepB: ["...kkkkk....", "...kkkkk....", "...kkkkk...."]
+    stand: ["...KkkkkkkK.....", "...KkkkKkkK.....", "...KkkkKkkK.....", "...KkkkKkkK.....", "...KkkkKkkK.....", "...KkkkKkkK.....", "..KKKKKKKKK.....", "..KKKKKKKKK....."],
+    stepA: ["...KkkkkkkK.....", "..KkkkK.kkK.....", "..KkkkK.kkK.....", ".KkkkK...kkK....", ".KkkkK...kkK....", ".KkkkK...kkK....", ".KKKKKK..KKK....", ".KKKKKK..KKK...."],
+    stepB: ["...KkkkkkkK.....", "...KkkkkkK......", "...KkkkkkK......", "...KkkkkkK......", "...KkkkkkK......", "...KkkkkkK......", "..KKKKKKKK......", "..KKKKKKKK......"]
   };
 
   var ANW_TORSO = {
-    down: ["...hhhhhh...", "..hhhhhhhh..", "..hhhhhhhh..", "..hssssssh..", "..hseseesh..", "..hssssssh..", "...ssmmss...", "...ssssss...", "...ssssss...", "..wwwwwwww..", ".swwwwwwwws.", ".swwwwwwwws.", ".swwwwwwwws.", ".SwwwwwwwwS.", "..wwwwwwww.."]
+    down: ["....KKKKKKKK....", "..KKcCcCcCcCKK..", "..KcCyCcCyCcCK..", ".KcCcCcCcCcCcCK.", ".KcCSSSSSSSSscK.", ".KcSFFGFSFGFFsK.", ".KcSFGGFSFGGFsK.", ".KcsSFFSSSFFSsK.", ".KcSSBBSSSBBSsK.", "..KSBBBBBBBBSK..", "...KSBBBmmBBSK..", "....KKBBBBBKK...", ".....KSSSSK.....", "...KKoooooKKK...", "..KooowwwwoooK..", ".KooowwwwwwoooK.", ".KooowwwwwwoooK.", ".KooowwwwwwoooK.", ".SooowwwwwwoooS.", ".KoooWwwwwWoooK."],
+    up: ["....KKKKKKKK....", "..KKcCcCcCcCKK..", "..KcCyCcCyCcCK..", ".KcCcCcCcCcCcCK.", ".KcCcCcCcCcCcCK.", ".KcCcCyCcyCcCcK.", ".KcCcCcCcCcCcCK.", ".KcCcCcCcCcCcCK.", ".KcCcCcCcCcCcCK.", "..KcCcCcCcCcCK..", "...KcCcCcCcCK...", "....KKcCcCcKK...", ".....KSSSSK.....", "...KKoooooKKK...", "..KooooooooooK..", ".KooooooooooooK.", ".KooooooooooooK.", ".KooooooooooooK.", ".SooooooooooooS.", ".KoooOooooOoooK."],
+    side: ["....KKKKKKK.....", "..KKcCcCcCcK....", "..KcCyCcCcCK....", ".KcCcCcCcCcCK...", ".KcCSSSSSSSsK...", ".KcSFGGFSSSsK...", ".KcSFGGFSSSsK...", ".KcsSFFSSSmsK...", ".KcSSBBSSSBsK...", "..KSBBBBBBBSK...", "...KSBBBBBBSK...", "....KKBBBBKK....", ".....KSSSSK.....", "...KKoooooKK....", "..KooowwwwooK...", ".KooowwwwwwoK...", ".KooowwwwwwoK...", ".KooowwwwwwSoK..", ".KooowwwwwwSoK..", ".KoooWwwwwooK..."]
   };
 
-  var ANW_LEGS = ["..pppppppp..", "..ppp..ppp..", "..bbb..bbb.."];
+  var ANW_LEGS = {
+    stand: ["...KppppppppK...", "...KpppKKpppK...", "...KpppKKpppK...", "...KpppKKpppK...", "...KPPPKKPPPK...", "...KPPPKKPPPK...", "...KbbbKKbbbK...", "...KbbbKKbbbK..."],
+    stepA: ["...KppppppppK...", "..KpppK..KpppK..", "..KpppK..KpppK..", ".KpppK....KpppK.", ".KPPPK....KPPPK.", ".KPPPK....KPPPK.", ".KbbbK....KbbbK.", ".KbbbK....KbbbK."],
+    stepB: ["...KppppppppK...", "....KppppppK....", "....KppppppK....", "....KppppppK....", "....KPPPPPPK....", "....KPPPPPPK....", "....KbbbbbbK....", "....KbbbbbbK...."]
+  };
 
-  /* Anwar asleep, seen from above: head on the pillow, one arm out of the
-     blanket, the blanket to his chin. Twelve wide like everyone else so it
-     lands on the grid the same way. */
-  var ANW_SLEEP = [
-    "....hhhh....",
-    "...hhhhhh...",
-    "..hhssssh...",
-    "..hssssssh..",
-    "..hs.ss.sh..",
-    "..hssmmssh..",
-    "...ssssss...",
-    "..wwwwwwww..",
-    ".wwwwwwwwww.",
-    ".wwwwwwwwws.",
-    ".wwwwwwwwwS.",
-    ".WwwwwwwwwW.",
-    ".wwwwwwwwww.",
-    ".WWwwwwwwWW.",
-    "..wwwwwwww..",
-  ];
+  var ANW_LEGS_SIDE = {
+    stand: ["...KppppppK.....", "...KpppKppK.....", "...KpppKppK.....", "...KpppKppK.....", "...KPPPKPPK.....", "...KPPPKPPK.....", "..KbbbbKbbK.....", "..KbbbbKbbK....."],
+    stepA: ["...KppppppK.....", "..KpppK.ppK.....", "..KpppK.ppK.....", ".KpppK...ppK....", ".KPPPK...PPK....", ".KPPPK...PPK....", ".KbbbbK..bbK....", ".KbbbbK..bbK...."],
+    stepB: ["...KppppppK.....", "...KpppppK......", "...KpppppK......", "...KpppppK......", "...KPPPPPK......", "...KPPPPPK......", "..KbbbbbbK......", "..KbbbbbbK......"]
+  };
 
-  /* The horse, side on.
+  var ANW_SLEEP = ["....KKKKKKKK....", "..KKcCcCcCcCKK..", "..KcCyCcCyCcCK..", ".KcCSSSSSSSScK..", ".KcSFFGFSFGFFsK.", ".KcsSFFSSSFFSsK.", ".KcSSBBSSSBBSsK.", "..KSBBBmmBBBSK..", "...KKBBBBBBKK...", "....KSSSSSSK....", ".KWWWWWWWWWWWWK.", "KWwwwwwwwwwwwwWK", "KWwwwwwwwwwwwwWK", "KWwwwwwwwwwwwwSK", "KWwwwwwwwwwwwwsK", ".KWwwwwwwwwwwWK.", ".KWWwwwwwwwwWWK.", "..KWWWwwwwWWWK.."];
 
-     Drawn rather than written out pixel by pixel, because a horse is all
-     curves and a hand-typed pixel map of one comes out as a brown slab with
-     a box for a head — which is exactly what the first attempt was. Body,
-     chest and rump are three overlapping masses, the neck is a taper
-     between two of them, and the legs bend at the knee. Everything is
-     placed from the ground she is standing on, so the same routine draws
-     her at any size: small enough to stand in a barn, and big enough to
-     carry the two of them across a field at dawn.
 
-     She is a big warm animal who has been shut in on her own for two days
-     and is very pleased to see anybody at all. That is the scene. */
-  var HORSE_TONES = ["#8a6141", "#6f4c31", "#573a25", "#41291a"];
-  var HORSE_DARK = ["#2f2015", "#241811", "#1b120c", "#140d08"];
+  /* =======================================================================
+     THE HORSE
+
+        Drawn rather than written out pixel by pixel, because a horse is all
+        curves and a hand-typed pixel map of one comes out as a brown slab
+        with a box for a head. Body, chest and rump are three overlapping
+        masses, the neck tapers between two of them, the legs bend and
+        swing, and everything is placed from the ground she is standing on
+        so the same routine draws her at any size.
+
+        Second pass, after the first read as flat: she has five tones down
+        her instead of four, the light is decided once and used the same way
+        by every mass, she is dappled along the barrel and lighter under the
+        belly the way a real coat goes, and she has a blaze down her face, a
+        soft muzzle, a forelock between her ears and a proper thick tail.
+        She is also standing square rather than splayed, with one hind leg
+        rested, which is what a horse does when it is calm — and she is
+        calm. That is the point of the scene.
+     ======================================================================= */
+  var HORSE_TONES = ["#a2764e", "#8a6141", "#6f4c31", "#573a25", "#41291a"];
+  var HORSE_BELLY = ["#b98c60", "#a2764e", "#8a6141", "#6f4c31", "#573a25"];
+  var HORSE_DARK  = ["#3a2819", "#2f2015", "#241811", "#1b120c", "#140d08"];
+  var HORSE_LIGHT = [-0.55, -0.72];               // one light, used by every mass
 
   function limb(c, x0, y0, x1, y1, w0, w1, tones) {
     var n = Math.max(2, Math.hypot(x1 - x0, y1 - y0) | 0);
     for (var i = 0; i <= n; i++) {
       var t = i / n;
       var w = (w0 + (w1 - w0) * t) / 2;
-      blob(c, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, Math.max(1, w), Math.max(1, w), tones, -0.7, -0.3);
+      blob(c, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, Math.max(1, w), Math.max(1, w),
+           tones, HORSE_LIGHT[0], HORSE_LIGHT[1]);
     }
   }
 
@@ -693,62 +696,109 @@ window.Apocalypse = (function () {
     var f = flip ? -1 : 1;
     function X(v) { return x + v * s * f; }
     function Y(v) { return y + v * s; }
-    function B(vx, vy, rx, ry, tones) { blob(c, X(vx), Y(vy), Math.max(1, rx * s), Math.max(1, ry * s), tones); }
-
+    function B(vx, vy, rx, ry, tones) {
+      blob(c, X(vx), Y(vy), Math.max(1, rx * s), Math.max(1, ry * s), tones,
+           HORSE_LIGHT[0] * f, HORSE_LIGHT[1]);
+    }
     var sw = Math.sin(gait) * 5, sw2 = Math.sin(gait + 3.14) * 5;
+    var rest = gait === 0 ? 2 : 0;               // stood still, one hind leg rested
 
-    /* the far pair first, in shadow, so the near pair reads in front */
-    limb(c, X(13), Y(-16), X(11 + sw2), Y(-1), 5 * s, 3 * s, HORSE_DARK);
-    limb(c, X(-11), Y(-16), X(-13 + sw), Y(-1), 6 * s, 3 * s, HORSE_DARK);
+    /* the far pair first and in shadow, so the near pair reads in front */
+    limb(c, X(12), Y(-17), X(10 + sw2), Y(-1), 5 * s, 3 * s, HORSE_DARK);
+    limb(c, X(-12), Y(-17), X(-14 + sw + rest), Y(-1), 6 * s, 3 * s, HORSE_DARK);
 
-    B(-25, -27, 4, 3, HORSE_DARK);                                    // the dock of the tail
-    limb(c, X(-26), Y(-28), X(-30), Y(-9), 7 * s, 4 * s, HORSE_DARK); // and the tail itself
+    /* the tail: a thick fall off the dock, not a rope */
+    B(-24, -28, 5, 4, HORSE_DARK);
+    limb(c, X(-25), Y(-29), X(-29), Y(-16), 8 * s, 7 * s, HORSE_DARK);
+    limb(c, X(-29), Y(-16), X(-31), Y(-6), 7 * s, 4 * s, HORSE_DARK);
 
     B(0, -22, 21, 8, HORSE_TONES);                                    // barrel
+    B(-1, -18, 18, 5, HORSE_BELLY);                                   // and its pale underside
     B(-15, -23, 11, 9, HORSE_TONES);                                  // rump
     B(14, -23, 10, 9, HORSE_TONES);                                   // chest and shoulder
+    B(-16, -20, 7, 5, HORSE_BELLY);                                   // the light off the quarters
 
-    limb(c, X(19), Y(-27), X(27), Y(-40), 9 * s, 6 * s, HORSE_TONES); // neck
-    B(30, -43, 7, 4, HORSE_TONES);                                    // head
-    B(36, -41, 4, 3, HORSE_TONES);                                    // muzzle
-    px(c, X(38), Y(-41), Math.max(1, s), Math.max(1, s), "#2a1a12");  // nostril
-    px(c, X(31), Y(-45), Math.max(1, 1.6 * s), Math.max(1, 1.6 * s), "#160e08");   // eye
-    px(c, X(31.5), Y(-45.5), Math.max(1, 0.7 * s), Math.max(1, 0.7 * s), "#c9b48a");
-    limb(c, X(26), Y(-47), X(25), Y(-51), 2.6 * s, 1 * s, HORSE_TONES);            // ears
-    limb(c, X(29), Y(-47), X(29), Y(-51), 2.6 * s, 1 * s, HORSE_TONES);
+    /* dapples, the thing that stops a coat reading as one flat brown */
+    var dr = rnd(77);
+    for (var d = 0; d < 16; d++) {
+      var dx = -18 + dr() * 32, dy = -27 + dr() * 9;
+      blob(c, X(dx), Y(dy), Math.max(1, 1.6 * s), Math.max(1, 1.2 * s),
+           HORSE_BELLY, HORSE_LIGHT[0] * f, HORSE_LIGHT[1]);
+    }
 
-    limb(c, X(20), Y(-40), X(24), Y(-30), 5 * s, 6 * s, HORSE_DARK);  // mane down the crest
-    B(17, -29, 4, 3, HORSE_DARK);
+    limb(c, X(18), Y(-27), X(27), Y(-41), 10 * s, 6 * s, HORSE_TONES); // neck
+    B(30, -44, 7, 4, HORSE_TONES);                                     // head
+    B(36, -42, 4.5, 3.2, HORSE_TONES);                                 // muzzle
+    B(37, -41, 3, 2.4, HORSE_BELLY);                                   // soft nose
+    limb(c, X(28), Y(-47), X(35), Y(-42), 2.2 * s, 1.6 * s, HORSE_BELLY);  // a blaze
+    px(c, X(38), Y(-41), Math.max(1, s), Math.max(1, s), "#2a1a12");   // nostril
+    px(c, X(31), Y(-46), Math.max(1, 1.8 * s), Math.max(1, 1.8 * s), "#120b06");   // eye
+    px(c, X(31.6), Y(-46.6), Math.max(1, 0.8 * s), Math.max(1, 0.8 * s), "#d8c49a");
+    limb(c, X(26), Y(-48), X(24.6), Y(-53), 3 * s, 1 * s, HORSE_TONES);            // ears
+    limb(c, X(29.5), Y(-48), X(30), Y(-53), 3 * s, 1 * s, HORSE_TONES);
+    px(c, X(26), Y(-50), Math.max(1, s), Math.max(1, 2 * s), "#5a3f2a");
+    limb(c, X(27), Y(-49), X(30), Y(-45), 3 * s, 2 * s, HORSE_DARK);   // forelock
+    limb(c, X(20), Y(-41), X(25), Y(-30), 6 * s, 7 * s, HORSE_DARK);   // mane down the crest
+    B(16, -29, 5, 4, HORSE_DARK);
 
     /* the near pair, and the white on the off fore */
-    limb(c, X(16), Y(-16), X(18 + sw), Y(-1), 6 * s, 3 * s, HORSE_TONES);
-    limb(c, X(-9), Y(-16), X(-7 + sw2), Y(-1), 7 * s, 3 * s, HORSE_TONES);
-    px(c, X(17 + sw) - 2 * s, Y(-4), 4 * s, 3 * s, "#c9bda4");        // one white sock
-    [[18 + sw, 0], [-7 + sw2, 0], [11 + sw2, 0], [-13 + sw, 0]].forEach(function (h) {
-      px(c, X(h[0]) - 2 * s, Y(-1.5), 4 * s, 2.5 * s, "#1d130c");     // hooves
+    limb(c, X(16), Y(-17), X(18 + sw), Y(-1), 6 * s, 3 * s, HORSE_TONES);
+    limb(c, X(-9), Y(-17), X(-7 + sw2 - rest), Y(-1), 7 * s, 3 * s, HORSE_TONES);
+    px(c, X(17 + sw) - 2 * s, Y(-5), 4 * s, 4 * s, "#d8cdb4");        // one white sock
+    [[18 + sw, 0], [-7 + sw2 - rest, 0], [10 + sw2, 0], [-14 + sw + rest, 0]].forEach(function (h) {
+      px(c, X(h[0]) - 2.2 * s, Y(-1.8), 4.4 * s, 2.8 * s, "#1d130c");  // hooves
     });
   }
 
   /* and one baked into a canvas, for the one standing in the barn */
   function horseSprite() {
-    var s = 0.42, cv = mkCanvas(34, 28), c = cv.getContext("2d");
+    var cv = mkCanvas(38, 32), c = cv.getContext("2d");
     c.imageSmoothingEnabled = false;
-    drawHorse(c, 20, 26, s, 0, true);
+    drawHorse(c, 23, 30, 0.46, 0, true);
     return cv;
   }
 
+  var ANW_SLEEP = ["...KKKKKKKKK....", "..KcCcCcCcCcK...", ".KcCcSSSSCcCK...", ".KcSSSSSSSSCK...", "KcSFGGFSFGGFSK..", "KcsSFFSSSFFSsK..", ".KSSBBBmmBBBSK..", "..KKBBBBBBBKK...", "..KSSSSSSSSSK...", ".KWWWWWWWWWWWK..", "KWwwwwwwwwwwwWK.", "KWwwwwwwwwwwwWK.", "KWwwwwwwwwwwwSK.", "KWwwwwwwwwwwwsK.", ".KWwwwwwwwwwWK..", ".KWWwwwwwwwWWK..", "..KWWWwwwWWWK..."];
+
+
+  /* Her colours are not invented here. They are lifted straight out of
+     super-ouissy.js, where she has been long blonde with fair skin since
+     the platformer was built — three hair tones plus a shine, and an ink
+     outline that keeps her readable against anything she is standing in
+     front of. The outline is the part these sprites were missing: without
+     it a character at this size dissolves into whatever is behind her,
+     which is exactly what the first pass did in a dark house. */
   var OUI_PAL = {
-    h: "#3a2418", H: "#553520", s: "#e8b78f", S: "#c9946c",
-    e: "#20140d", m: "#a75b5c", c: "#e2647f", C: "#b84c64",
-    j: "#3f4f72", J: "#2e3a55", b: "#2a2028",
+    K: "#3d2340",                                  // ink
+    H: "#b8862f", h: "#e0b34e", i: "#ffe9a8",      // long blonde, three tones
+    S: "#ffe6d4", s: "#f2c8b0",                    // fair skin
+    E: "#3d2340", m: "#c9737f", B: "#ff8fae",      // eyes, mouth, blush
+    j: "#3b3550", J: "#2a2640",                    // the jacket she left in
+    t: "#ff9ec4", T: "#df6f9f",                    // her own pink, underneath it
+    d: "#3f4f72", D: "#2e3a55", b: "#6b2f52",      // jeans and boots
   };
-  var ZOM_PAL = {
-    h: "#2e2a24", g: "#93a487", G: "#71805f", k: "#39412f",
-    e: "#b8523a", r: "#5d564b", R: "#443e36",
-  };
+
+  /* And his are lifted out of rescue.js, where he already has the dark
+     curls, the glasses and the beard. He is in what he woke up in: a gown,
+     pyjama bottoms, and a jacket somebody left on the chair. */
   var ANW_PAL = {
-    h: "#231a14", s: "#d8a273", S: "#b8845a", e: "#1b120c", m: "#96524f",
-    w: "#c9d6dd", W: "#a6b5be", p: "#4a5566", b: "#2a2028",
+    K: "#100c16",
+    c: "#241a17", C: "#3a2a24", y: "#4a362e",      // curls, and their shine
+    S: "#e8bb92", s: "#c08e64",                    // light-medium skin
+    F: "#1b1620", G: "#cfe0ee",                    // frames, and the lenses
+    b: "#4a3a30", B: "#7d5c46",                    // the beard, two tones
+    m: "#8a5a52",
+    w: "#c9d6dd", W: "#a6b5be",                    // the gown
+    o: "#2a2a36", O: "#1b1b24",                    // the jacket over it
+    p: "#4a5566", P: "#39424f",                    // pyjama bottoms
+  };
+
+  var ZOM_PAL = {
+    K: "#14161c",                                  // the same ink everyone gets
+    h: "#2e2a24",
+    g: "#93a487", G: "#71805f", k: "#4a5340",      // flesh, and what is under it
+    e: "#b8523a",
+    r: "#5d564b", R: "#443e36",
   };
 
   /* built once, on first use, and kept */
@@ -776,7 +826,7 @@ window.Apocalypse = (function () {
     ART = {
       ouissy: person(OUI_TORSO, OUI_LEGS, OUI_PAL, OUI_PAL, OUI_LEGS_SIDE),
       zombie: person(ZOM_TORSO, ZOM_LEGS, ZOM_PAL, ZOM_PAL, ZOM_LEGS_SIDE),
-      anwar: person(ANW_TORSO, OUI_LEGS, ANW_PAL, ANW_PAL, OUI_LEGS_SIDE),
+      anwar: person(ANW_TORSO, ANW_LEGS, ANW_PAL, ANW_PAL, ANW_LEGS_SIDE),
       anwarAsleep: sprite(ANW_SLEEP, ANW_PAL),
       horse: horseSprite(),
     };
@@ -1716,7 +1766,7 @@ window.Apocalypse = (function () {
         if (a.awake) drawActor(G, c, ART.anwar, a, cx, cy);
         else {
           var x = Math.round(a.x - cx), y = Math.round(a.y - cy);
-          c.drawImage(ART.anwarAsleep, x - 6, y - 9);
+          c.drawImage(ART.anwarAsleep, x - 8, y - 12);
         }
       } });
     }
@@ -1796,7 +1846,7 @@ window.Apocalypse = (function () {
     var alpha = 1;
     if (a === G.player && a.hidden) alpha = 0.45;    // she is inside something
     c.globalAlpha = alpha;
-    c.drawImage(img, x - 6, y - 15);
+    c.drawImage(img, x - 8, y - 25);
     c.globalAlpha = 1;
     if (alert > 0.15) {                              // the mark over an alerted one
       var yy = y - 22 - Math.sin(G.t * 8) * 1;
@@ -2174,6 +2224,7 @@ window.Apocalypse = (function () {
 
   function frame(now) {
     raf = requestAnimationFrame(frame);
+    if (G) G.__frames = (G.__frames || 0) + 1;
     if (!G || !onScreen()) return;
     if (window.__apTestDrive) { if (G.level) { stepCam(G); paint(G); } return; }
     if (!lastT) lastT = now;
@@ -2508,8 +2559,8 @@ window.Apocalypse = (function () {
     /* the sprites' feet are at the bottom of a twelve-by-eighteen frame, so
        they are hung forty-six pixels above the ground she is standing on —
        which puts them on her back rather than in the sky above it */
-    c.drawImage(ART.anwar.down[0], hx - 17, hy - 46);
-    c.drawImage(ART.ouissy.down[0], hx - 3, hy - 48);
+    c.drawImage(ART.anwar.down[0], hx - 20, hy - 56);
+    c.drawImage(ART.ouissy.down[0], hx - 4, hy - 58);
 
     var g2 = c.createLinearGradient(0, 0, VW, VH);                    // the low sun over it
     g2.addColorStop(0, "rgba(255,190,120,0)");
@@ -3617,7 +3668,10 @@ window.Apocalypse = (function () {
     G.__keypad.ok();
     return true;
   };
+  window.__apArt = function () { return buildArt(); };
   window.__apKeys = function () { return G.keys; };
+  window.__apPos = function () { return { x: G.player.x, y: G.player.y }; };
+  window.__apVel = function () { return { vx: Math.round(G.player.vx), vy: Math.round(G.player.vy), frames: G.__frames || 0, steps: G.__steps || 0 }; };
   window.__apMapKey = function () { return G.level.def.key || G.level.def.name; };
   window.__apZombies = function () {
     return G.level.zombies.map(function (z) { return { x: z.x, y: z.y, state: z.state }; });

@@ -1,0 +1,6 @@
+# None of this is the site. tools/ carries a package.json for playwright,
+# and without this Vercel would find it, decide the repo is a Node project
+# and try to install it.
+tools/
+.github/
+HANDOFF.md
