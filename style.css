@@ -2150,8 +2150,10 @@ img{-webkit-user-drag:none; user-select:none;}
 @keyframes hvTokenIn{from{opacity:0; transform:scale(.3) rotate(-25deg);} to{opacity:1; transform:none;}}
 
 /* ---- the taped paper note the cat speaks through ---- */
+/* left:12% put the note over the cat, whose sprite reaches about 17% of
+   the frame — so every line she read had a cat's chin in it. */
 .hv-note{
-  position:absolute; left:12%; bottom:8%; z-index:6; max-width:64%;
+  position:absolute; left:19%; bottom:8%; z-index:6; max-width:62%;
   background:#fffdf5; color:#3f2d18;
   font-family:var(--font-hand); font-size:clamp(13px,2.7vw,21px); line-height:1.25;
   padding:2.2% 3.4%; transform:rotate(-1.2deg);
@@ -2192,8 +2194,13 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 #hv-left{left:5%; align-items:flex-start;}
 #hv-right{right:5%; align-items:flex-end;}
-#screen-quest.hv-pair #hv-left {left:14%;  top:47%;}
-#screen-quest.hv-pair #hv-right{right:14%; top:44%;}
+/* The pair used to sit at 47% and 44% — three percent apart, so the two
+   labels never lined up with each other, and neither sat under the
+   butterfly it names. The butterflies have fixed home points in the
+   320x180 canvas (blue at x52, red at x242), so these are placed under
+   those, and at the same height as each other. */
+#screen-quest.hv-pair #hv-left {left:12.5%; top:44%;}
+#screen-quest.hv-pair #hv-right{right:20.5%; top:44%;}
 #hv-centre{
   position:absolute; z-index:6; left:50%; bottom:26%; transform:translateX(-50%);
   display:flex; gap:10px;
@@ -2211,6 +2218,17 @@ img{-webkit-user-drag:none; user-select:none;}
 .hv-btn{animation:hvBtnIn .42s var(--ease-out) backwards, hvBtnIdle 3.4s ease-in-out .42s infinite;}
 @keyframes hvBtnIdle{0%,100%{transform:translateY(0);} 50%{transform:translateY(-1.5px);}}
 @keyframes hvBtnIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
+/* A choice named after a colour should be that colour — the two labels
+   were identical cream chips, which is the least helpful they could be. */
+.hv-btn-blue{
+  background:linear-gradient(168deg,#eaf4ff,#c3ddf6); color:#1d3a57;
+  border-color:rgba(40,80,120,.45); box-shadow:0 3px 0 rgba(30,64,100,.4);
+}
+.hv-btn-red{
+  background:linear-gradient(168deg,#fff0ee,#f8c9c2); color:#6d221c;
+  border-color:rgba(130,45,35,.45); box-shadow:0 3px 0 rgba(120,40,30,.4);
+}
+
 .hv-btn-start{
   font-family:var(--font-display); letter-spacing:2px; font-size:clamp(13px,2.6vw,20px);
   padding:7px 26px;

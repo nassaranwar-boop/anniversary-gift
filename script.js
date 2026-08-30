@@ -3151,8 +3151,8 @@ const HV = {
     scene: "sakura", cat: "idle", butterflies: true,
     say: "A butterfly appears! Pick red or blue?",
     choices: [
-      { label: "BLUE", to: "hollow", pos: "left" },
-      { label: "RED", to: "bear2", pos: "right", fail: true },
+      { label: "BLUE", to: "hollow", pos: "left", style: "blue" },
+      { label: "RED", to: "bear2", pos: "right", fail: true, style: "red" },
     ],
   },
 
