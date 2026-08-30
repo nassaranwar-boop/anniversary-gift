@@ -76,6 +76,85 @@
 *{box-sizing:border-box; margin:0; padding:0;}
 
 /* ---------------------------------------------------------
+   TOUCH BEHAVIOUR, SITE-WIDE
+
+   Two things a browser does to a page by default that are wrong for a
+   site made mostly of buttons and two games.
+
+   1. Double-tap to zoom. Tapping a game control quickly enough reads as a
+      double tap, and the page zooms in and out under her thumb. The old
+      answer here was user-scalable=no in the viewport tag, which stops
+      that but also takes away a deliberate two-finger pinch — and Safari
+      ignores it anyway. touch-action:manipulation is the right tool: it
+      drops the double-tap gesture on these elements and leaves pinch
+      alone. The game surfaces get `none`, because a drag across them is
+      the game's input, not a scroll.
+
+   2. Long press. Holding a button raises the text-selection and copy
+      menu, as if the word on it were a paragraph. A control is not text.
+
+   Written broadly on purpose. Doing it per-game is how the last three
+   controls ended up behaving differently from each other.
+   --------------------------------------------------------- */
+button,
+a,
+label,
+summary,
+[role="button"],
+[data-so-key],
+[data-gate-key],
+[data-dir],
+[data-so-diff],
+[data-so-setdiff],
+[data-so-choice],
+.hub-card,
+.hv-btn,
+.hv-chip,
+.sb-photo,
+.sb-pin,
+.gate-key,
+.gate-unlock,
+.dpad3-btn,
+.so-key,
+.sb-extras-btn,
+.sb-lb-close,
+.sb-modal-done,
+.sb-pin-close{
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;
+  user-select:none; -webkit-user-select:none;
+}
+
+/* The playfields themselves: a finger dragged across one is aimed at the
+   game, so the browser should not read it as a pan, a scroll or a zoom. */
+#so-canvas,
+#hv-canvas,
+#book-canvas,
+#sb-intro-canvas,
+.so-stage,
+.so-pad,
+.dpad-3d,
+.maze-viewport,
+#maze-stage,
+.gate-pad{
+  touch-action:none;
+  -webkit-touch-callout:none;
+  user-select:none; -webkit-user-select:none;
+}
+
+/* Her own writing is still hers to select — a love letter is text, and
+   being unable to copy a line out of it would be a silly thing to ship. */
+.letter-body,
+.note-text,
+.sb-lb-text,
+.hv-note,
+.ks-closing,
+.gate-sub{
+  user-select:text; -webkit-user-select:text;
+}
+
+/* ---------------------------------------------------------
    THE HEIGHT OF THE PAGE
 
    The blank space you could swipe down into was a mobile viewport
@@ -102,6 +181,10 @@
 html,body{
   height:100%; font-family:'Poppins',sans-serif; overflow:hidden;
   overscroll-behavior:none; -webkit-tap-highlight-color:transparent;
+  /* The ground behind every screen. If a screen is ever a pixel short of
+     the viewport — mid-rotation, mid-zoom — what shows through is the
+     site's own blush rather than a band of white. */
+  background:#f7ddd4;
 }
 /* Fixed elements take their box from the large viewport too, so the real
    height has to be said out loud rather than implied by inset:0. This is

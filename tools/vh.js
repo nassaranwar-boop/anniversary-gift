@@ -42,20 +42,26 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
          !m.canScroll && m.over <= 2, 'app-h=' + m.appH + ' doc=' + m.doc + '/' + m.innerH +
          (m.over > 2 ? ' overflow=' + m.over + 'px by ' + m.who : ''));
     }
-    // --app-h must track a resize (the URL bar hiding is exactly this)
+    /* The height must follow the viewport when the browser UI hides. It is
+       CSS that owns this now — --app-h resolves to the 100dvh keyword, not
+       a pixel value — so measure the thing that matters: does the active
+       screen still come out exactly the height of the viewport? */
     await page.setViewportSize({ width: w, height: h - 90 });
-    /* Poll rather than sample once: the observer callback lands somewhere
-       between one and several frames after the resize in this container,
-       and a fixed wait turns a correct result into a coin toss. */
     let tracked;
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 20; i++) {
       await page.waitForTimeout(100);
-      tracked = await page.evaluate(() => ({
-        appH: getComputedStyle(document.documentElement).getPropertyValue('--app-h').trim(), innerH: innerHeight }));
-      if (parseInt(tracked.appH) === tracked.innerH) break;
+      tracked = await page.evaluate(() => {
+        document.querySelectorAll('.anim-in').forEach(el => el.classList.remove('anim-in'));
+        const scr = document.querySelector('.screen.active');
+        const r = scr ? scr.getBoundingClientRect() : null;
+        return { screenH: r ? Math.round(r.height) : 0, top: r ? Math.round(r.top) : -1,
+                 innerH: innerHeight };
+      });
+      if (Math.abs(tracked.screenH - tracked.innerH) <= 1 && tracked.top === 0) break;
     }
-    ok(label + ': --app-h follows the browser UI hiding and showing',
-       parseInt(tracked.appH) === tracked.innerH, tracked.appH + ' vs ' + tracked.innerH + 'px');
+    ok(label + ': the screen follows the browser UI hiding and showing',
+       Math.abs(tracked.screenH - tracked.innerH) <= 1 && tracked.top === 0,
+       tracked.screenH + 'px at top ' + tracked.top + ' vs ' + tracked.innerH + 'px');
     await page.close();
   }
   console.log(R.join('\n'));

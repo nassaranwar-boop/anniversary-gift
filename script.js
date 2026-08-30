@@ -100,28 +100,41 @@ function openCover(name) { pageTurn(name); }
    around the keyboard is worse than the gap ever was. The focus guard
    below is the belt to that braces.
    --------------------------------------------------------- */
+/* dvh is the browser's own answer to this and it is correct at every zoom
+   level, which a measured pixel value is not: written too large the fixed
+   screens overflow and the content reads as cropped from the top; written
+   too small, or left stale after a zoom, the body shows through underneath
+   as a band of empty space. Both of those were the same stale number.
+
+   So where dvh exists, CSS owns the height and JS does not touch it. The
+   measurement below is only for browsers old enough to lack dvh. */
+const HAS_DVH = typeof CSS !== "undefined" && CSS.supports &&
+                CSS.supports("height", "100dvh");
+
 function fitViewport() {
+  if (HAS_DVH) return;                      // the stylesheet already has it right
   const ae = document.activeElement;
   if (ae && /^(input|textarea|select)$/i.test(ae.tagName)) return;
   const h = window.innerHeight;
   if (h > 0) document.documentElement.style.setProperty("--app-h", h + "px");
 }
-fitViewport();
-/* A ResizeObserver on the root element, not just the resize event: some
-   mobile browsers change the viewport as the URL bar slides away without
-   ever firing resize, and at least one scene here stops the event
-   reaching us at all. The observer watches the box itself, so it cannot
-   be missed the way an event can. */
-if (window.ResizeObserver) {
-  try { new ResizeObserver(fitViewport).observe(document.documentElement); } catch (e) {}
+
+if (!HAS_DVH) {
+  fitViewport();
+  /* A ResizeObserver on the root element, not just the resize event: some
+     mobile browsers change the viewport as the URL bar slides away without
+     ever firing resize, and at least one scene here stops the event
+     reaching us at all. The observer watches the box itself. */
+  if (window.ResizeObserver) {
+    try { new ResizeObserver(fitViewport).observe(document.documentElement); } catch (e) {}
+  }
+  addEventListener("resize", fitViewport);
+  addEventListener("orientationchange", () => setTimeout(fitViewport, 120));
+  addEventListener("pageshow", fitViewport);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", fitViewport);
+  addEventListener("scroll", () => requestAnimationFrame(fitViewport), { passive: true });
+  document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
 }
-addEventListener("resize", fitViewport);
-addEventListener("orientationchange", () => setTimeout(fitViewport, 120));
-addEventListener("pageshow", fitViewport);
-if (window.visualViewport) window.visualViewport.addEventListener("resize", fitViewport);
-/* The URL bar finishes hiding a beat after the scroll that hid it. */
-addEventListener("scroll", () => requestAnimationFrame(fitViewport), { passive: true });
-document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
 
 /* ---------- ambient particles ---------- */
 /* The drifting decorations used to be emoji, which meant they were a
