@@ -1320,12 +1320,32 @@ function nightEnsure() {
   return true;
 }
 
-/* one building, with a lit window grid we can blink later */
-function nightBuilding(ctx, x, w, topY, tones, rnd, depth, collect) {
+/* One building, with a lit window grid we can blink later.
+
+   `hurt` is how badly this one came out of the week: at 0 it is the
+   building it always was, and as it climbs its windows go dark, some of
+   them go black and broken instead of merely unlit, its parapet loses a
+   bite out of one corner, and it may be quietly smoking. Nothing here is
+   graphic and nothing is on fire. It is a skyline with some of the lights
+   off in it, which is what she would actually be looking at. */
+function nightBuilding(ctx, x, w, topY, tones, rnd, depth, collect, hurt, smoke) {
   const baseY = NIGHT_H;
+  hurt = hurt || 0;
   px(ctx, x, topY, w, baseY - topY, tones[1]);
   px(ctx, x, topY, w, 1, tones[0]);                    // moonlit parapet
   px(ctx, x + w - 1, topY, 1, baseY - topY, tones[2]); // shaded side
+
+  /* a bite out of the top corner, on the worst of them */
+  if (hurt > 0.46 && rnd() > 0.4) {
+    const bw = 2 + Math.floor(rnd() * (w / 3));
+    const bh = 2 + Math.floor(rnd() * 4);
+    const bx = rnd() > 0.5 ? x : x + w - bw;
+    for (let by = 0; by < bh; by++) {
+      px(ctx, bx + (rnd() > 0.6 ? 1 : 0), topY + by, bw - by, 1, "#0d0b18");
+    }
+    px(ctx, bx, topY + bh, bw, 1, tones[2]);
+    if (smoke) smoke.push({ x: bx + bw / 2, y: topY + 1, ph: rnd() * 6.28, w: 3 + rnd() * 3 });
+  }
 
   // roof furniture on the nearer blocks
   if (depth > 1 && rnd() > 0.55) {
@@ -1340,36 +1360,153 @@ function nightBuilding(ctx, x, w, topY, tones, rnd, depth, collect) {
       if (rnd() > (depth === 1 ? 0.72 : 0.55)) continue;
       const wx = x + 2 + c * 6, wy = topY + 4 + r * 8;
       if (wy > baseY - 4) continue;
-      const lit = rnd() > 0.35;
+      const roll = rnd();
+      /* the more it was hurt, the fewer of its windows are anybody's */
+      if (roll < hurt * 0.5) {                        // dark and broken
+        px(ctx, wx, wy, 3, 4, "#14111f");
+        px(ctx, wx, wy, 3, 1, "#241f33");
+        if (rnd() > 0.6) px(ctx, wx + 1, wy + 1, 1, 2, "#0a0810");
+        continue;
+      }
+      const lit = roll > 0.35 + hurt * 0.35;
       px(ctx, wx, wy, 3, 4, lit ? "#ffd98a" : "#2b3550");
       if (lit && collect && rnd() > 0.6) collect.push({ x: wx, y: wy, ph: rnd() * 6.28 });
     }
   }
 }
 
-function nightPaintBase() {
-  const ctx = nightBaseCtx;
-  const rnd = mzRnd(9137);
-  ctx.clearRect(0, 0, NIGHT_W, NIGHT_H);
-  nightWindows = [];
+/* =========================================================
+   THE CATS
 
-  /* sky: deep blue at the top warming toward the horizon glow */
-  ditherSky(ctx, 0, 0, NIGHT_W, NIGHT_H, [
+   They used to be four PNGs stacked in a div and wagged with CSS
+   keyframes, which meant they could not be lit by the scene, could not
+   sit on anything, and were the same size in every shot. They are drawn
+   now, from behind, sitting on a ledge looking at the same city she is:
+   haunches, a narrowing back, a round head, two ears and a tail that
+   curls. The same routine draws them at any size, so they can be small
+   on a far parapet in one view and fill the frame in another.
+   ========================================================= */
+const CAT_BLACK = ["#4a4568", "#37324f", "#272338", "#1a1727"];
+const CAT_WHITE = ["#f2f0f8", "#d8d5e6", "#b6b3c9", "#918ea6"];
+
+function catTail(ctx, x, y, s, dir, tones, lift) {
+  /* A cubic, not a quadratic: out along the ledge, up the outside, and
+     then hooked back in at the tip. Two of those facing each other is
+     what makes the shape between them read, and a tail that only goes
+     up is an aerial. */
+  const P = [
+    [x + 5 * s * dir,  y - 1.5 * s],
+    [x + 20 * s * dir, y - 3 * s],
+    [x + 22 * s * dir, y - (16 + lift * 8) * s],
+    [x + 11 * s * dir, y - (26 + lift * 9) * s],
+  ];
+  for (let i = 0; i <= 26; i++) {
+    const t = i / 26, mt = 1 - t;
+    const px2 = mt * mt * mt * P[0][0] + 3 * mt * mt * t * P[1][0] + 3 * mt * t * t * P[2][0] + t * t * t * P[3][0];
+    const py2 = mt * mt * mt * P[0][1] + 3 * mt * mt * t * P[1][1] + 3 * mt * t * t * P[2][1] + t * t * t * P[3][1];
+    const r = Math.max(1, (2.6 - t * 1.4) * s);
+    blob(ctx, px2, py2, r, r, tones, [-0.5, -0.6]);
+  }
+}
+
+/* x,y is the ledge under her; s scales the whole animal.
+
+   NOT called drawCat. It was, and the choice adventure further down this
+   file already has a function declaration by that name at the same scope —
+   so the later one won, every call here silently drew a 40x36 sprite sheet
+   into nothing, and the ending rendered a heart floating over an empty
+   roof. This is the same trap super-ouissy.js documents at its foot, and it
+   cost the same afternoon. */
+function drawEndCat(ctx, x, y, s, tones, dir, t, lift) {
+  const B = (vx, vy, rx, ry) => blob(ctx, x + vx * s, y + vy * s,
+                                     Math.max(1, rx * s), Math.max(1, ry * s), tones, [-0.45, -0.65]);
+  const breathe = Math.sin(t * 1.7 + (dir > 0 ? 0 : 1.4)) * 0.35 * s;
+
+  catTail(ctx, x, y, s, dir, tones, lift || 0);
+
+  B(0, -6, 8.5, 6.5);                                   // haunches, sat down
+  B(0.5 * dir, -14 + breathe * 0.3, 6, 6.5);            // back and shoulders
+  B(1 * dir, -21 + breathe, 5.2, 4.6);                  // head
+
+  /* Ears. Stepped one screen pixel at a time rather than one "cat unit",
+     because a unit is more than a pixel at this scale and stepping by it
+     leaves gaps — which is how the first pass came out as two antennae
+     rather than two ears. They sit on the top of the head with a slight
+     outward lean, and the near one has a pink inside. */
+  const headX = x + 1 * dir * s;
+  const headTop = y + (-25.2 + breathe) * s;
+  const earH = Math.max(3, Math.round(6 * s));
+  for (let e = 0; e < 2; e++) {
+    const out = e ? 1 : -1;
+    const near = out === dir;
+    const baseX = headX + out * 3.1 * s;
+    for (let k = 0; k <= earH; k++) {
+      const f = k / earH;
+      const w = Math.max(1, Math.round((4.4 - 4.0 * f) * s));
+      const cxk = baseX + out * f * 1.6 * s;
+      px(ctx, cxk - w / 2, headTop - k, w, 1, near ? tones[1] : tones[2]);
+      if (near && k > 0 && k < earH - 1) {
+        const iw = Math.max(1, Math.round((2.2 - 2.0 * f) * s));
+        px(ctx, cxk - iw / 2, headTop - k, iw, 1, "#c98fa8");
+      }
+    }
+  }
+
+  /* the front paws, just visible either side of her */
+  B(-5.5 * dir, -1.5, 2.4, 1.8);
+  B(5.5 * dir, -1.5, 2.4, 1.8);
+
+  /* a hint of a cheek, because she is half turned toward the other one */
+  blob(ctx, x + (5 * dir) * s, y + (-20.5 + breathe) * s, Math.max(1, 2 * s), Math.max(1, 2 * s),
+       tones, [-0.9, -0.4]);
+  px(ctx, x + (6.4 * dir) * s, y + (-21.5 + breathe) * s, Math.max(1, 1.1 * s), Math.max(1, 1.1 * s), "#8fd8f0");
+
+  /* The rim light. Without it a dark cat in front of a dark city is not a
+     cat, it is a smudge — which is exactly what the first pass looked
+     like. The moon is up and behind them, so it catches the back of the
+     head, the shoulder and the top of the haunches. */
+  const rim = tones === CAT_BLACK ? "#9a92c8" : "#fffdf4";
+  const rr = Math.max(1, s);
+  const arc = [[-4.6, -21.4], [-4.9, -19.6], [-5.4, -17.4], [-5.9, -14.8],
+               [-6.6, -12.2], [-7.5, -9.4], [-8.2, -6.6], [-8.3, -3.6],
+               [-1.6, -25.6], [0.6, -25.9], [2.6, -25.2]];
+  arc.forEach(function (pt) {
+    px(ctx, x + pt[0] * s * dir, y + (pt[1] + breathe) * s, rr, rr, rim);
+  });
+}
+
+/* =========================================================
+   THE VIEWS
+
+   The ending used to be one picture that the camera pushed into over
+   eleven seconds, which meant the last thing she looked at was the same
+   thing she had already been looking at, only bigger. It is four
+   pictures now, and it moves between them: the roof wide, the two of
+   them close, the window of the room they were given, and the skyline on
+   its own. Each is painted once into its own canvas and they cross-fade.
+   ========================================================= */
+const NIGHT_VIEWS = 4;
+let nightBases = [], nightViewWindows = [], nightViewSmoke = [];
+let nightView = 0, nightNext = 0, nightFade = 0;
+
+function nightSky(ctx, h) {
+  ditherSky(ctx, 0, 0, NIGHT_W, h, [
     { p: 0.00, c: "#0e1030" }, { p: 0.22, c: "#1a1b47" },
     { p: 0.46, c: "#2c2358" }, { p: 0.66, c: "#4a2f63" },
     { p: 0.80, c: "#7a4560" }, { p: 1.00, c: "#a35c56" },
   ]);
+}
 
-  // stars, denser high up
+function nightStarsInto(ctx, rnd, upto) {
   for (let i = 0; i < 150; i++) {
-    const y = Math.pow(rnd(), 1.6) * NIGHT_H * 0.72;
+    const y = Math.pow(rnd(), 1.6) * upto;
     const x = rnd() * NIGHT_W;
     const b = rnd();
     px(ctx, x, y, 1, 1, b > 0.85 ? "#ffffff" : b > 0.5 ? "#dfe4ff" : "#a8b0d8");
   }
+}
 
-  /* the moon: halo, disc, craters, and a terminator */
-  const mx = 244, my = 38, mr = 15;
+function nightMoon(ctx, mx, my, mr) {
   for (let ry = -mr * 3; ry <= mr * 3; ry++) {
     for (let rx = -mr * 3; rx <= mr * 3; rx++) {
       const d = Math.sqrt(rx * rx + ry * ry);
@@ -1388,40 +1525,41 @@ function nightPaintBase() {
       px(ctx, mx + rx, my + ry, 1, 1, lit > 0.15 ? "#fffdf2" : lit > -0.25 ? "#f0ecd8" : "#d8d2bc");
     }
   }
+  const cs = mr / 15;
   [[-5, -3, 3], [4, 2, 4], [-2, 6, 2], [7, -6, 2]].forEach(function (c) {
-    blob(ctx, mx + c[0], my + c[1], c[2], c[2] * 0.85, ["#e8e2cc", "#d6cfb6", "#c2baa0", "#b0a890"]);
+    blob(ctx, mx + c[0] * cs, my + c[1] * cs, c[2] * cs, c[2] * 0.85 * cs,
+         ["#e8e2cc", "#d6cfb6", "#c2baa0", "#b0a890"]);
   });
+}
 
-  /* three depths of city */
-  let x = -6;
-  while (x < NIGHT_W + 6) {
-    const w = 10 + Math.floor(rnd() * 14);
-    nightBuilding(ctx, x, w, 96 + Math.floor(rnd() * 18), ["#3a3560", "#2b2749", "#211d3a"], rnd, 1, null);
-    x += w + 1;
-  }
-  x = -8;
-  while (x < NIGHT_W + 8) {
-    const w = 14 + Math.floor(rnd() * 18);
-    nightBuilding(ctx, x, w, 112 + Math.floor(rnd() * 16), ["#2e2a4e", "#221f3d", "#19172d"], rnd, 2, nightWindows);
-    x += w + 2;
-  }
-  x = -10;
-  while (x < NIGHT_W + 10) {
-    const w = 20 + Math.floor(rnd() * 22);
-    nightBuilding(ctx, x, w, 128 + Math.floor(rnd() * 14), ["#221f3a", "#18162c", "#100f20"], rnd, 3, nightWindows);
-    x += w + 3;
-  }
+/* the city, in three depths, with a week behind it */
+function nightCity(ctx, rnd, collect, smoke, baseTop, scale) {
+  const rows = [
+    { step: 10, span: 14, top: baseTop, tones: ["#3a3560", "#2b2749", "#211d3a"], depth: 1, hurt: 0.92 },
+    { step: 14, span: 18, top: baseTop + 16, tones: ["#2e2a4e", "#221f3d", "#19172d"], depth: 2, hurt: 0.7 },
+    { step: 20, span: 22, top: baseTop + 32, tones: ["#221f3a", "#18162c", "#100f20"], depth: 3, hurt: 0.5 },
+  ];
+  rows.forEach(function (row, i) {
+    let x = -6 - i * 2;
+    while (x < NIGHT_W + 10) {
+      const w = Math.round((row.step + Math.floor(rnd() * row.span)) * (scale || 1));
+      const hurt = rnd() < 0.42 ? row.hurt * (0.45 + rnd() * 0.55) : 0;
+      nightBuilding(ctx, x, w, row.top + Math.floor(rnd() * 16), row.tones, rnd,
+                    row.depth, row.depth > 1 ? collect : null, hurt, smoke);
+      x += w + 1 + i;
+    }
+  });
+}
 
-  /* the rooftop she is standing on */
-  const roofY = 150;
+/* the roof she is standing on, its parapet and its string lights */
+function nightRoof(ctx, rnd, roofY, collect) {
   px(ctx, 0, roofY, NIGHT_W, NIGHT_H - roofY, "#191527");
   px(ctx, 0, roofY, NIGHT_W, 4, "#3b3354");
-  px(ctx, 0, roofY, NIGHT_W, 1, "#6b5c8a");         // moonlit lip
+  px(ctx, 0, roofY, NIGHT_W, 1, "#6b5c8a");
   for (let i = 0; i < 90; i++) {
     px(ctx, rnd() * NIGHT_W, roofY + 5 + rnd() * (NIGHT_H - roofY - 5), 1, 1,
-      rnd() > 0.5 ? "#221d33" : "#12101f");
+       rnd() > 0.5 ? "#221d33" : "#12101f");
   }
-  // aerials and a water tower on the parapet
   [[28, 12], [206, 9], [268, 14]].forEach(function (a) {
     px(ctx, a[0], roofY - a[1], 1, a[1], "#3b3354");
     px(ctx, a[0] - 3, roofY - a[1], 7, 1, "#3b3354");
@@ -1430,46 +1568,147 @@ function nightPaintBase() {
   px(ctx, 60, roofY - 16, 16, 12, "#2b2542");
   px(ctx, 60, roofY - 16, 16, 1, "#5b4f7e");
   px(ctx, 63, roofY - 4, 2, 4, "#2b2542"); px(ctx, 71, roofY - 4, 2, 4, "#2b2542");
-
-  /* string lights across the roofline */
   for (let i = 0; i < 26; i++) {
     const lx = 6 + i * 12;
     const sag = Math.sin((i / 26) * Math.PI) * 5;
     px(ctx, lx, roofY - 20 + sag, 1, 1, "#3b3354");
-    if (i % 2 === 0) nightWindows.push({ x: lx, y: roofY - 19 + sag, ph: rnd() * 6.28, bulb: true });
+    if (i % 2 === 0) collect.push({ x: lx, y: roofY - 19 + sag, ph: rnd() * 6.28, bulb: true });
   }
 }
 
-function nightFrame(now) {
-  nightRaf = requestAnimationFrame(nightFrame);
-  const screen = document.getElementById("screen-end");
-  if (!screen || !screen.classList.contains("active")) return;
-  if (!nightT0) nightT0 = now;
-  const t = (now - nightT0) / 1000;
+function nightPaintView(v) {
+  const cv = nightBases[v];
+  const ctx = cv.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  const rnd = mzRnd(9137 + v * 733);
+  const win = nightViewWindows[v] = [];
+  const smoke = nightViewSmoke[v] = [];
+  ctx.clearRect(0, 0, NIGHT_W, NIGHT_H);
 
-  nightCtx.clearRect(0, 0, NIGHT_W, NIGHT_H);
-  nightCtx.drawImage(nightBase, 0, 0);
+  if (v === 0) {                                    // WIDE — the roof, and all of it
+    nightSky(ctx, NIGHT_H);
+    nightStarsInto(ctx, rnd, NIGHT_H * 0.72);
+    nightMoon(ctx, 244, 38, 15);
+    nightCity(ctx, rnd, win, smoke, 96, 1);
+    nightRoof(ctx, rnd, 150, win);
 
-  // windows and bulbs breathing
-  for (let i = 0; i < nightWindows.length; i++) {
-    const w = nightWindows[i];
-    const v = Math.sin(t * (w.bulb ? 1.6 : 0.5) + w.ph);
+  } else if (v === 1) {                             // CLOSE — the two of them on the ledge
+    nightSky(ctx, NIGHT_H);
+    nightStarsInto(ctx, rnd, NIGHT_H * 0.6);
+    nightMoon(ctx, 232, 44, 26);
+    nightCity(ctx, rnd, win, smoke, 120, 1.6);
+    px(ctx, 0, 158, NIGHT_W, NIGHT_H - 158, "#191527");
+    px(ctx, 0, 158, NIGHT_W, 5, "#443b62");
+    px(ctx, 0, 158, NIGHT_W, 1, "#7d6ca0");
+    for (let i = 0; i < 60; i++) px(ctx, rnd() * NIGHT_W, 164 + rnd() * 14, 1, 1, rnd() > 0.5 ? "#221d33" : "#12101f");
+
+  } else if (v === 2) {                             // WINDOW — from inside the room
+    nightSky(ctx, NIGHT_H);
+    nightStarsInto(ctx, rnd, 90);
+    nightMoon(ctx, 214, 46, 17);
+    nightCity(ctx, rnd, win, smoke, 104, 1.1);
+    px(ctx, 0, 150, NIGHT_W, NIGHT_H - 150, "#191527");
+    /* the room, drawn over the top of it as a frame */
+    px(ctx, 0, 0, 44, NIGHT_H, "#2a1f2e"); px(ctx, 40, 0, 4, NIGHT_H, "#3d2e3f");
+    px(ctx, NIGHT_W - 44, 0, 44, NIGHT_H, "#2a1f2e"); px(ctx, NIGHT_W - 44, 0, 4, NIGHT_H, "#3d2e3f");
+    px(ctx, 0, 0, NIGHT_W, 22, "#2a1f2e"); px(ctx, 0, 20, NIGHT_W, 3, "#3d2e3f");
+    px(ctx, 0, NIGHT_H - 34, NIGHT_W, 34, "#2a1f2e");
+    px(ctx, 40, NIGHT_H - 34, NIGHT_W - 80, 4, "#6b5340");           // the sill
+    px(ctx, 40, NIGHT_H - 34, NIGHT_W - 80, 1, "#96795c");
+    px(ctx, NIGHT_W / 2 - 1, 22, 3, NIGHT_H - 56, "#3d2e3f");        // the glazing bar
+    px(ctx, 44, 96, NIGHT_W - 88, 2, "#3d2e3f");
+    /* a mug somebody put down on the sill and did not pick up again */
+    px(ctx, 66, NIGHT_H - 44, 11, 10, "#c9a88a"); px(ctx, 66, NIGHT_H - 44, 11, 2, "#e6cfb2");
+    px(ctx, 77, NIGHT_H - 41, 3, 5, "#c9a88a"); px(ctx, 78, NIGHT_H - 40, 1, 3, "#2a1f2e");
+    /* a lamp on the sill at the far end, on the room's side of the glass */
+    px(ctx, 238, NIGHT_H - 44, 12, 10, "#6b5340");
+    px(ctx, 238, NIGHT_H - 44, 12, 2, "#96795c");
+    px(ctx, 242, NIGHT_H - 41, 4, 5, "#ffd98a");
+    win.push({ x: 244, y: NIGHT_H - 39, ph: 0.8, bulb: true });
+
+  } else {                                          // SKYLINE — a breath, and the smoke
+    nightSky(ctx, NIGHT_H);
+    nightStarsInto(ctx, rnd, NIGHT_H * 0.66);
+    nightMoon(ctx, 68, 34, 20);
+    nightCity(ctx, rnd, win, smoke, 86, 0.85);
+    px(ctx, 0, 168, NIGHT_W, NIGHT_H - 168, "#191527");
+    px(ctx, 0, 168, NIGHT_W, 2, "#3b3354");
+  }
+}
+
+function nightPaintBase() {
+  for (let v = 0; v < NIGHT_VIEWS; v++) {
+    if (!nightBases[v]) {
+      nightBases[v] = document.createElement("canvas");
+      nightBases[v].width = NIGHT_W; nightBases[v].height = NIGHT_H;
+    }
+    nightPaintView(v);
+  }
+  nightWindows = nightViewWindows[0];
+}
+
+/* where the two of them and the two cats sit, per view */
+const NIGHT_CAST = [
+  { catY: 154, catX: 152, s: 1.0, gap: 23, lift: 0.5 },
+  { catY: 158, catX: 158, s: 1.5, gap: 34, lift: 1.0 },
+  { catY: NIGHT_H - 34, catX: 160, s: 0.9, gap: 21, lift: 0.6 },
+  { catY: 168, catX: 214, s: 0.5, gap: 12, lift: 0.2 },
+];
+
+/* smoke: a slow column of soft blobs going up off a broken parapet */
+function nightSmoke(ctx, list, t) {
+  for (let i = 0; i < list.length; i++) {
+    const sm = list[i];
+    for (let k = 0; k < 9; k++) {
+      const age = ((t * 0.22 + k / 9 + sm.ph) % 1);
+      const y = sm.y - age * 34;
+      const x = sm.x + Math.sin(age * 3.4 + sm.ph) * (2 + age * 6);
+      const r = sm.w * (0.4 + age * 1.5);
+      const a = (1 - age) * 0.30;
+      if (a <= 0.02) continue;
+      ctx.fillStyle = "rgba(126,120,150," + a + ")";
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, 6.2832);
+      ctx.fill();
+    }
+  }
+}
+
+/* everything that moves, for one view */
+function nightLive(ctx, v, t) {
+  const win = nightViewWindows[v] || [];
+  for (let i = 0; i < win.length; i++) {
+    const w = win[i];
+    const val = Math.sin(t * (w.bulb ? 1.6 : 0.5) + w.ph);
     if (w.bulb) {
-      const g = 0.5 + 0.5 * v;
-      px(nightCtx, w.x, w.y, 1, 1, g > 0.5 ? "#ffe9a8" : "#c9a86a");
-      if (g > 0.8) { px(nightCtx, w.x - 1, w.y, 1, 1, "#7a6a3a"); px(nightCtx, w.x + 1, w.y, 1, 1, "#7a6a3a"); }
-    } else if (v > 0.93) {
-      px(nightCtx, w.x, w.y, 3, 4, "#2b3550");     // someone turns in for the night
+      const g = 0.5 + 0.5 * val;
+      px(ctx, w.x, w.y, 1, 1, g > 0.5 ? "#ffe9a8" : "#c9a86a");
+      if (g > 0.8) { px(ctx, w.x - 1, w.y, 1, 1, "#7a6a3a"); px(ctx, w.x + 1, w.y, 1, 1, "#7a6a3a"); }
+    } else if (val > 0.93) {
+      px(ctx, w.x, w.y, 3, 4, "#2b3550");            // someone turns in for the night
     }
   }
 
-  // drifting clouds, lit underneath by the city
+  /* Everything in the sky is clipped to the window on the room view,
+     otherwise the clouds drift straight across the wall. */
+  const framed = v === 2;
+  if (framed) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(44, 22, NIGHT_W - 88, NIGHT_H - 56);
+    ctx.clip();
+  }
+
+  nightSmoke(ctx, nightViewSmoke[v] || [], t);
+
+  // drifting clouds, lit underneath by what is left of the city
+  const cloudTop = v === 2 ? 30 : 34;
   for (let c = 0; c < 4; c++) {
     const cw = 34 + c * 9;
     const cx = ((t * (5 + c * 2) + c * 90) % (NIGHT_W + 120)) - 60;
-    const cy = 34 + c * 13;
-    blob(nightCtx, cx, cy, cw, 5 + c, ["#3a3566", "#302b57", "#272248", "#1e1a39"]);
-    px(nightCtx, cx - cw, cy + 5 + c, cw * 2, 1, "#4a3f6b");
+    const cy = cloudTop + c * 13;
+    blob(ctx, cx, cy, cw, 5 + c, ["#3a3566", "#302b57", "#272248", "#1e1a39"]);
+    px(ctx, cx - cw, cy + 5 + c, cw * 2, 1, "#4a3f6b");
   }
 
   // a shooting star now and then
@@ -1481,7 +1720,7 @@ function nightFrame(now) {
     const sx = nightShoot.x + nightShoot.t * 260;
     const sy = nightShoot.y + nightShoot.t * 90;
     for (let k = 0; k < 12; k++) {
-      px(nightCtx, sx - k * 3, sy - k * 1, 1, 1, k < 3 ? "#ffffff" : "#b9c2f0");
+      px(ctx, sx - k * 3, sy - k * 1, 1, 1, k < 3 ? "#ffffff" : "#b9c2f0");
     }
     if (nightShoot.t > 0.9) nightShoot = null;
   }
@@ -1489,16 +1728,72 @@ function nightFrame(now) {
   // twinkle pass over the star field
   for (let i = 0; i < 26; i++) {
     const sx = (i * 97) % NIGHT_W, sy = (i * 53) % 90;
-    if (Math.sin(t * 2 + i) > 0.86) px(nightCtx, sx, sy, 1, 1, "#ffffff");
+    if (Math.sin(t * 2 + i) > 0.86) px(ctx, sx, sy, 1, 1, "#ffffff");
   }
 
-  // fireflies rising off the roof once the camera has pushed in
-  if (document.getElementById("night-sky").classList.contains("scene-3")) {
+  if (framed) ctx.restore();
+
+  /* the two of them, and the heart their tails make between them */
+  const cast = NIGHT_CAST[v];
+  const gap = cast.gap;
+  drawEndCat(ctx, cast.catX - gap, cast.catY, cast.s, CAT_BLACK, 1, t, cast.lift);
+  drawEndCat(ctx, cast.catX + gap, cast.catY, cast.s, CAT_WHITE, -1, t + 0.7, cast.lift);
+  if (cast.lift > 0.3) {
+    const hy = cast.catY - (26 + cast.lift * 8) * cast.s - Math.sin(t * 1.4) * 1.5;
+    const hs = Math.max(1, cast.s * 1.6);
+    const beat = 0.85 + 0.15 * Math.sin(t * 2.6);
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -3; dx <= 3; dx++) {
+        const fx = dx / 3, fy = dy / 2.4;
+        const inside = Math.pow(fx * fx + fy * fy - 0.36, 3) - fx * fx * fy * fy * fy < 0;
+        if (inside && dy <= 1) px(ctx, cast.catX + dx * hs, hy + dy * hs, hs, hs,
+                                  dy < 0 ? "#ff9ec6" : "#e2648f");
+      }
+    }
+    ctx.globalAlpha = 0.35 * beat;
+    ctx.fillStyle = "#ff9ec6";
+    ctx.beginPath(); ctx.arc(cast.catX, hy, 5 * hs, 0, 6.2832); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // fireflies coming up off the roof, on the close view
+  if (v === 1) {
     for (let i = 0; i < 14; i++) {
       const fy = 176 - ((t * 9 + i * 13) % 60);
       const fx = 20 + ((i * 37) % (NIGHT_W - 40)) + Math.sin(t + i) * 4;
-      if (Math.sin(t * 3 + i) > 0.1) px(nightCtx, fx, fy, 1, 1, "#ffe9a8");
+      if (Math.sin(t * 3 + i) > 0.1) px(ctx, fx, fy, 1, 1, "#ffe9a8");
     }
+  }
+}
+
+const NIGHT_HOLD = 6.5;          // seconds on each view
+const NIGHT_CROSS = 1.1;         // and how long the change takes
+
+function nightFrame(now) {
+  nightRaf = requestAnimationFrame(nightFrame);
+  const screen = document.getElementById("screen-end");
+  if (!screen || !screen.classList.contains("active")) return;
+  if (!nightT0) nightT0 = now;
+  const t = (now - nightT0) / 1000;
+
+  /* which view we are on, and how far through changing to the next */
+  const cycle = NIGHT_HOLD + NIGHT_CROSS;
+  const step = Math.floor(t / cycle);
+  const into = t - step * cycle;
+  nightView = step % NIGHT_VIEWS;
+  nightNext = (nightView + 1) % NIGHT_VIEWS;
+  nightFade = into > NIGHT_HOLD ? (into - NIGHT_HOLD) / NIGHT_CROSS : 0;
+  nightWindows = nightViewWindows[nightView] || [];
+
+  nightCtx.clearRect(0, 0, NIGHT_W, NIGHT_H);
+  nightCtx.drawImage(nightBases[nightView], 0, 0);
+  nightLive(nightCtx, nightView, t);
+
+  if (nightFade > 0) {
+    nightCtx.globalAlpha = nightFade;
+    nightCtx.drawImage(nightBases[nightNext], 0, 0);
+    if (nightFade > 0.45) nightLive(nightCtx, nightNext, t);
+    nightCtx.globalAlpha = 1;
   }
 }
 
@@ -1515,11 +1810,13 @@ function stopNightScene() {
 function activateEndingScene() {
   startNightScene();
   spawnNightStars(); buildEndHearts();
+  /* The camera used to push into one picture over eleven seconds. The
+     scene cycles between four now and does its own timing, so there is
+     nothing left here to schedule. scene-1 is kept only because the
+     hearts and the star field key off it. */
   setScene(1);
-  document.querySelectorAll(".cat-slot").forEach(s => s.classList.remove("lean"));
   clearTimeout(endTimer1); clearTimeout(endTimer2);
-  endTimer1 = setTimeout(() => cutToScene(2), 5500);
-  endTimer2 = setTimeout(() => cutToScene(3), 11500);
+  endTimer1 = setTimeout(() => document.getElementById("night-sky").classList.add("settled"), 5200);
 }
 
 function spawnNightStars() {
@@ -1852,6 +2149,14 @@ window.leaveApocalypse = () => {
   pageTurn("hub", startHub);
 };
 window.markApocalypseDone = () => markChapterDone("apoc");
+
+/* The apocalypse ends where the maze ended: on the roof, with the two
+   cats. It is the same scene — it is just that the city behind it has
+   had a week. */
+window.startApocalypseEnding = () => {
+  stopApocalypse();
+  pageTurn("end", activateEndingScene);
+};
 
 /* =========================================================
    HUB — choose your adventure

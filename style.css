@@ -3583,3 +3583,10 @@ img{-webkit-user-drag:none; user-select:none;}
   border-radius:4px; box-shadow:0 12px 32px rgba(0,0,0,.7), 0 0 0 2px rgba(120,140,180,.35);
 }
 .ap-serum-line{margin:0 0 2.4cqw; font-size:1.9cqw; line-height:1.6; color:#cfd8ee;}
+
+/* The cats are painted into the canvas now, at whatever size the shot
+   wants them, so the four PNGs and their CSS wag are retired. */
+.cats-wrap{display:none !important;}
+.night-sky-inner{transform:none !important;}
+.night-sky .end-hearts{opacity:0; transition:opacity 1.2s ease;}
+.night-sky.settled .end-hearts{opacity:1;}
