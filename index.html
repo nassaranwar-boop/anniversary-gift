@@ -6,9 +6,9 @@
 <title>For My Love 💕</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=43">
+<link rel="stylesheet" href="style.css?v=44">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Rye&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=43"></script>
+<script src="vendor/three.bundle.js?v=44"></script>
 
 </head>
 <body>
@@ -93,7 +93,7 @@
 
       <div class="gate-card" id="gate-card">
         <!-- 1. the sheet: fill, foxing, grain, torn edge -->
-        <svg class="gate-sheet" viewBox="0 0 400 560" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <svg class="gate-sheet" viewBox="0 0 400 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
           <defs>
             <linearGradient id="gPaper" x1="0" y1="0" x2="0.35" y2="1">
               <stop offset="0%"   stop-color="#f7eeda"/>
@@ -118,18 +118,19 @@
             </filter>
             <filter id="gGrain"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" seed="5"/><feColorMatrix type="saturate" values="0"/></filter>
           </defs>
-          <g filter="url(#gDeckle)"><rect x="14" y="12" width="372" height="536" rx="10" fill="url(#gPaper)"/></g>
+          <g filter="url(#gDeckle)"><rect x="14" y="12" width="372" height="676" rx="10" fill="url(#gPaper)"/></g>
           <g class="gate-sheet-marks">
-            <ellipse cx="96"  cy="104" rx="78" ry="54" fill="url(#gFox1)"/>
-            <ellipse cx="318" cy="430" rx="86" ry="60" fill="url(#gFox2)"/>
-            <ellipse cx="250" cy="230" rx="60" ry="40" fill="url(#gFox1)"/>
-            <rect x="14" y="12" width="372" height="536" rx="10" fill="url(#gVign)"/>
+            <ellipse cx="96"  cy="120" rx="78" ry="62" fill="url(#gFox1)"/>
+            <ellipse cx="318" cy="540" rx="86" ry="70" fill="url(#gFox2)"/>
+            <ellipse cx="250" cy="300" rx="60" ry="46" fill="url(#gFox1)"/>
+            <ellipse cx="84"  cy="470" rx="66" ry="48" fill="url(#gFox2)"/>
+            <rect x="14" y="12" width="372" height="676" rx="10" fill="url(#gVign)"/>
           </g>
-          <rect class="gate-sheet-grain" width="400" height="560" filter="url(#gGrain)"/>
+          <rect class="gate-sheet-grain" width="400" height="700" filter="url(#gGrain)"/>
         </svg>
 
         <!-- 2. the tooled gold frame: corners, and a scrollwork band top and bottom -->
-        <svg class="gate-frame" viewBox="0 0 400 560" aria-hidden="true">
+        <svg class="gate-frame" viewBox="0 0 400 700" aria-hidden="true">
           <defs>
             <linearGradient id="gGold" x1="0" y1="0" x2="0.6" y2="1">
               <stop offset="0%"   stop-color="#e0bb78"/>
@@ -185,14 +186,14 @@
             </g>
           </defs>
 
-          <rect class="gate-rule-o" x="26" y="24" width="348" height="512" rx="6"/>
-          <rect class="gate-rule-i" x="33" y="31" width="334" height="498" rx="4"/>
+          <rect class="gate-rule-o" x="26" y="24" width="348" height="652" rx="6"/>
+          <rect class="gate-rule-i" x="33" y="31" width="334" height="638" rx="4"/>
 
           <g class="gate-flour">
             <use href="#gFlour" transform="translate(41,39)"/>
             <use href="#gFlour" transform="translate(359,39) scale(-1,1)"/>
-            <use href="#gFlour" transform="translate(41,521) scale(1,-1)"/>
-            <use href="#gFlour" transform="translate(359,521) scale(-1,-1)"/>
+            <use href="#gFlour" transform="translate(41,661) scale(1,-1)"/>
+            <use href="#gFlour" transform="translate(359,661) scale(-1,-1)"/>
           </g>
           <g class="gate-flour gate-flour-band">
             <!-- the top pair stands apart to frame the seal; overlapping
@@ -200,8 +201,8 @@
             <!-- the header pair runs outward from behind the seal -->
             <use href="#gBand" transform="translate(200,64)"/>
             <use href="#gBand" transform="translate(200,64) scale(-1,1)"/>
-            <use href="#gBand" transform="translate(200,502) scale(1,-1)"/>
-            <use href="#gBand" transform="translate(200,502) scale(-1,-1)"/>
+            <use href="#gBand" transform="translate(200,642) scale(1,-1)"/>
+            <use href="#gBand" transform="translate(200,642) scale(-1,-1)"/>
           </g>
         </svg>
 
@@ -655,10 +656,10 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=43"></script>
-<script src="scrapbook.js?v=43"></script>
-<script src="script.js?v=43"></script>
-<script src="super-ouissy.js?v=43"></script>
-<script src="rescue.js?v=43"></script>
+<script src="book-scene.js?v=44"></script>
+<script src="scrapbook.js?v=44"></script>
+<script src="script.js?v=44"></script>
+<script src="super-ouissy.js?v=44"></script>
+<script src="rescue.js?v=44"></script>
 </body>
 </html>

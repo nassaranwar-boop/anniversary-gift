@@ -631,7 +631,15 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---- the card ---- */
 .gate-card{
   position:relative;
-  width:min(360px,86vw); aspect-ratio:400/560;
+  /* Sized from the height as well as the width. The contents come to
+     roughly 166cqw and the old 400x560 sheet only offered 140, which is
+     precisely why the Unlock plate hung off the bottom edge. At 400x700
+     there is room for all of it, and the third term keeps a tall card
+     from running off a short screen: it caps the WIDTH so the resulting
+     height still fits what the viewport actually has. 190px is the title
+     and the gaps around it. */
+  width:min(360px, 86vw, (var(--app-h) - 190px) * 400 / 700);
+  aspect-ratio:400/700;
   container-type:size; container-name:gate;
   filter:drop-shadow(0 16px 30px rgba(140,84,64,.4)) drop-shadow(0 3px 6px rgba(140,84,64,.28));
   animation:gateCardIn .95s var(--ease-out) .1s both;
@@ -673,7 +681,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .gate-body{
   position:absolute; inset:0; z-index:2;
   display:flex; flex-direction:column; align-items:center;
-  padding:7cqw 12cqw 12cqw;
+  padding:6cqw 11cqw 8cqw;
 }
 
 /* ---- the seal ---- */

@@ -62,6 +62,22 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
   });
   ok('the whole gate fits the screen', fits.top >= 0 && fits.bottom <= fits.vh,
      'title top=' + fits.top + ' card bottom=' + fits.bottom + '/' + fits.vh);
+
+  /* Everything must be INSIDE the sheet, Unlock included — that plate
+     hanging off the bottom edge is the whole reason the card grew. */
+  const inside = await page.evaluate(() => {
+    const card = document.getElementById('gate-card').getBoundingClientRect();
+    const worst = [];
+    document.querySelectorAll('.gate-key, .gate-unlock, .gate-field, .gate-heading, .gate-seal')
+      .forEach(el => {
+        const r = el.getBoundingClientRect();
+        const over = Math.max(card.top - r.top, r.bottom - card.bottom,
+                              card.left - r.left, r.right - card.right);
+        if (over > 1) worst.push(el.className.split(' ')[0] + ' by ' + Math.round(over) + 'px');
+      });
+    return worst;
+  });
+  ok('nothing hangs off the sheet, Unlock included', inside.length === 0, inside.join(', '));
   ok('the title spans the screen without spilling', fits.titleW < fits.vw && fits.titleW > fits.vw * 0.6,
      fits.titleW + 'px of ' + fits.vw);
 
@@ -77,11 +93,18 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
 
   // a wrong code
   for (const k of ['1','1','1','1']) await tap(k);
-  await page.waitForTimeout(800);
-  ok('a wrong code shakes the card and flashes the dots red', await page.evaluate(() =>
-    document.getElementById('gate-card').classList.contains('shake') &&
-    document.getElementById('gate-code').classList.contains('bad')));
-  await page.waitForTimeout(900);
+  /* The judgement fires 300ms after the fourth digit and the red flash is
+     cleared 620ms later, so this has to be sampled inside that window
+     rather than after a fixed wait — poll for it instead of racing it. */
+  let flashed = false;
+  for (let i = 0; i < 25 && !flashed; i++) {
+    flashed = await page.evaluate(() =>
+      document.getElementById('gate-card').classList.contains('shake') &&
+      document.getElementById('gate-code').classList.contains('bad'));
+    if (!flashed) await page.waitForTimeout(40);
+  }
+  ok('a wrong code shakes the card and flashes the dots red', flashed);
+  await page.waitForTimeout(1100);
   ok('and then clears itself', await page.evaluate(() => {
     const e = document.getElementById('gate-error').textContent;
     return e.length > 0 && document.getElementById('screen-gate').classList.contains('active') &&
@@ -108,6 +131,22 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
   ok('Unlock on a short code just asks for the rest', await page.evaluate(() =>
     document.getElementById('screen-gate').classList.contains('active') &&
     document.getElementById('gate-error').textContent.length > 0));
+
+  // a short phone: the card must shrink rather than overflow
+  for (const [w,h] of [[390,667],[360,640],[414,896]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.waitForTimeout(700);
+    const m = await page.evaluate(() => {
+      const c = document.getElementById('gate-card').getBoundingClientRect();
+      const t = document.querySelector('.gate-title').getBoundingClientRect();
+      const u = document.querySelector('.gate-unlock').getBoundingClientRect();
+      return { top: Math.round(t.top), bottom: Math.round(c.bottom), vh: innerHeight,
+               uOver: Math.round(u.bottom - c.bottom) };
+    });
+    ok(w + 'x' + h + ': it fits, and Unlock stays on the sheet',
+       m.top >= -1 && m.bottom <= m.vh + 1 && m.uOver <= 1,
+       'card bottom=' + m.bottom + '/' + m.vh + ' unlock over=' + m.uOver);
+  }
 
   console.log(R.join('\n'));
   console.log(errs.length ? 'ERRORS: '+errs.join(' | ') : 'no page errors');
