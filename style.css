@@ -3474,8 +3474,12 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:inset 0 2px 0 rgba(255,255,255,.16), inset 0 -3px 8px rgba(0,0,0,.55),
              0 20px 48px rgba(0,0,0,.78);
 }
+.ap-tv-canvas{
+  display:block; width:100%; height:auto; image-rendering:pixelated;
+  border-radius:7% / 12%;
+}
 .ap-tv-screen{
-  position:relative; flex:1; padding:4.4cqw 3.4cqw; overflow:hidden;
+  position:relative; flex:1; padding:1.4cqw; overflow:hidden;
   border-radius:9% / 15%;
   background:radial-gradient(ellipse at 50% 42%, #2f4256 0%, #16202c 60%, #080d13 100%);
   box-shadow:inset 0 0 4cqw rgba(140,190,240,.22), inset 0 0 0 .5cqw #17140f,

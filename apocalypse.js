@@ -193,22 +193,22 @@ window.Apocalypse = (function () {
     dark: 0.74,                 // how black the unlit parts of the map go
     grid: [
       "####vv####################v#######",
-      "v.h..BB....#..=.....#.=..BB.....o#",
+      "v.h..BB....#..=.....#.=..nn.....o#",
       "#....BB....#........#....BB......#",
       "#...S......#....h...#..z........h#",
-      "#..=.......#........#............#",
+      "#..=...n...#........#............#",
       "#..........#...=....#.o..=......o#",
       "#####d###########d#########d######",
       "#................................#",
       "#..=.........................o...#",
       "#................................#",
       "#######d########d#########d#######",
-      "#..h......FFF..#KKKK.h...#o.....o#",
-      "#..T......FFF..#....K....#...W...#",
+      "#.nn......FFF..#fKKK.h...#o.....o#",
+      "#.uT......FFF..#....K....#...W...#",
       "v.......rr=r...#....K....#.......#",
-      "v...==..rrrr...#....K....#o.....o#",
+      "v.q.==..rrrr...#....K....#o.....o#",
       "#...==....o....#...z.....#.......#",
-      "#.h............#KKKKKKK..#.......#",
+      "#qh............#KKKKKKK..#.......#",
       "#..............#.........#.......#",
       "#############################P####",
       "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
@@ -1174,6 +1174,62 @@ window.Apocalypse = (function () {
     for (var i = 0; i < 5; i++) px(c, (r() * T) | 0, (r() * T) | 0, 1, 1, shade(col[2], 12));
   }
 
+  /* A bookshelf, seen from above: the top of the carcass, and the tops of
+     the books standing in it in whatever order somebody left them. */
+  function paintShelf(c, P, theme, r) {
+    paintFloor(c, P, theme, r);
+    px(c, 0, 1, T, T - 3, "#4a3524");
+    px(c, 0, 1, T, 2, "#6a4f36");
+    px(c, 0, T - 3, T, 1, "#2e2118");
+    var BOOKS = ["#8a3a3a", "#3a5a7a", "#6a6a3a", "#7a4a6a", "#3a6a5a", "#9a6a3a"];
+    var x = 1;
+    while (x < T - 1) {
+      var w = 1 + ((r() * 2) | 0);
+      var h = 5 + ((r() * 4) | 0);
+      px(c, x, 3, w, h, BOOKS[(r() * BOOKS.length) | 0]);
+      px(c, x, 3, w, 1, "#d8cbb0");
+      x += w + (r() > 0.8 ? 2 : 0);
+    }
+  }
+
+  /* A fridge: a tall white box with a seam and a handle, and whatever is
+     stuck to the front of it. */
+  function paintFridge(c, P, theme, r) {
+    paintFloor(c, P, theme, r);
+    px(c, 1, 0, T - 2, T - 1, "#b9c0c4");
+    px(c, 1, 0, T - 2, 2, "#d8dee2");
+    px(c, T - 3, 0, 2, T - 1, "#8d9498");
+    px(c, 1, 6, T - 2, 1, "#8d9498");
+    px(c, T - 6, 2, 1, 3, "#6e7478");
+    px(c, T - 6, 8, 1, 4, "#6e7478");
+    px(c, 3, 9, 4, 4, "#e8d48a");                 // a note held on by a magnet
+    px(c, 4, 8, 1, 1, "#c94a4a");
+  }
+
+  /* An armchair, from above: back, two arms, a cushion with a dent in it */
+  function paintChair(c, P, theme, r) {
+    paintFloor(c, P, theme, r);
+    px(c, 1, 0, T - 2, 5, "#6d414c");
+    px(c, 1, 0, T - 2, 1, "#8a5560");
+    px(c, 0, 4, 4, T - 6, "#6d414c");
+    px(c, T - 4, 4, 4, T - 6, "#6d414c");
+    px(c, 4, 5, T - 8, T - 8, "#7a4a56");
+    px(c, 5, 7, T - 10, 3, "#5e3742");            // where somebody sits
+    px(c, 2, T - 3, T - 4, 1, "#4a2c34");
+  }
+
+  /* The television, on the stand it actually sits on */
+  function paintTvStand(c, P, theme, r) {
+    paintFloor(c, P, theme, r);
+    px(c, 0, 2, T, T - 5, "#3a2a1e");
+    px(c, 0, 2, T, 2, "#553d2a");
+    px(c, 1, 6, 6, 4, "#241a12");                 // the shelf under it
+    px(c, 9, 6, 6, 4, "#241a12");
+    px(c, 2, 7, 4, 1, "#5a4a3a");
+    px(c, 1, T - 3, 2, 3, "#241a12");
+    px(c, T - 3, T - 3, 2, 3, "#241a12");
+  }
+
   /* A window. It is in a wall, so it stops her and stops sight — but the
      night comes through it, which is the whole point: a room with a window
      is a room she can read without the torch. */
@@ -1228,12 +1284,58 @@ window.Apocalypse = (function () {
     px(c, T - 3, 1, 1, T - 2, "#c9b06a");
   }
 
+  /* --- clutter -----------------------------------------------------------
+     A floor with nothing on it is a floor plan. These are the things that
+     were already on the carpet when the power went: a dropped book, a mug
+     nobody took to the sink, a magazine, a cushion off the sofa, a sock,
+     a phone charger still plugged into nothing. They are drawn onto the
+     floor tile itself when the map is baked, chosen from the tile's own
+     position so the same room is the same mess every time she plays it,
+     and they are sparse on purpose — a house that is knee deep in props
+     reads as a jumble sale, not as somewhere two people live.
+     --------------------------------------------------------------------- */
+  function paintClutter(c, r, theme) {
+    var pick = r();
+    if (pick > 0.16) return;                       // most floor stays floor
+    var x = 2 + ((r() * (T - 6)) | 0), y = 3 + ((r() * (T - 8)) | 0);
+    var k = r();
+    if (theme === "house") {
+      if (k < 0.20) {                              // a book, face down
+        px(c, x, y, 7, 5, "#7a3a3a"); px(c, x, y, 7, 1, "#a05252");
+        px(c, x + 1, y + 5, 5, 1, "#e8e0cc");
+      } else if (k < 0.38) {                       // a mug
+        px(c, x, y, 5, 5, "#d8cdb4"); px(c, x, y, 5, 1, "#f0e8d4");
+        px(c, x + 5, y + 1, 2, 2, "#d8cdb4"); px(c, x + 1, y + 1, 3, 2, "#5a4632");
+      } else if (k < 0.55) {                       // a magazine, splayed open
+        px(c, x, y + 1, 9, 4, "#cfd4dc"); px(c, x, y + 1, 4, 4, "#b9bfc9");
+        px(c, x + 4, y, 1, 5, "#8d939c");
+      } else if (k < 0.70) {                       // a cushion off the sofa
+        px(c, x, y, 7, 6, "#8a5560"); px(c, x + 1, y + 1, 5, 4, "#a06a76");
+        px(c, x, y + 6, 7, 1, "#5e3742");
+      } else if (k < 0.84) {                       // a sock
+        px(c, x, y + 2, 6, 3, "#e0dcd0"); px(c, x + 5, y, 2, 4, "#e0dcd0");
+      } else {                                      // a charger, plugged into nothing
+        px(c, x, y, 3, 3, "#e8e8e8");
+        for (var w = 0; w < 7; w++) px(c, x + 3 + w, y + 1 + ((w * 0.6) | 0), 1, 1, "#d8d8d8");
+      }
+    } else if (theme === "street") {
+      if (k < 0.34) { px(c, x, y, 6, 4, "#8a8474"); px(c, x, y, 6, 1, "#a39d8c"); }   // paper
+      else if (k < 0.6) { for (var i = 0; i < 5; i++) px(c, x + ((r() * 6) | 0), y + ((r() * 4) | 0), 2, 1, "#5a5f6a"); }
+      else if (k < 0.8) { px(c, x, y, 4, 5, "#3a5a3a"); px(c, x + 1, y - 1, 2, 2, "#4a6a45"); }  // a can
+      else { for (var g = 0; g < 7; g++) px(c, x + ((r() * 8) | 0), y + ((r() * 5) | 0), 1, 1, "#9aa0aa"); } // glass
+    } else if (theme === "hospital") {
+      if (k < 0.4) { px(c, x, y, 6, 4, "#e8ecee"); px(c, x, y, 6, 1, "#fbfdfe"); }    // paperwork
+      else if (k < 0.7) { px(c, x, y, 3, 6, "#c9d6dd"); px(c, x, y, 3, 1, "#8fa2ac"); } // a dropped kidney dish
+      else { for (var q = 0; q < 6; q++) px(c, x + ((r() * 7) | 0), y + ((r() * 5) | 0), 1, 2, "#b9c4cc"); }
+    }
+  }
+
   /* --- the atlas -------------------------------------------------------
      Tiles are cached by character, by which of their sides are outside
      edges, and by which of four variants they drew — so a floor is not
      graph paper and a sofa is not four sofas.
      --------------------------------------------------------------------- */
-  var VARIANTS = 4;
+  var VARIANTS = 8;
   var EDGED = "BFK=rc,#";             // the pieces that care about their neighbours
 
   function tileFor(cache, theme, ch, mask, v, under) {
@@ -1252,6 +1354,10 @@ window.Apocalypse = (function () {
     else if (ch === "F") paintSofa(c, P, theme, r, E);
     else if (ch === "K") paintCounter(c, P, theme, r, E);
     else if (ch === "c") paintCar(c, P, theme, r, E);
+    else if (ch === "n") paintShelf(c, P, theme, r);
+    else if (ch === "f") paintFridge(c, P, theme, r);
+    else if (ch === "q") paintChair(c, P, theme, r);
+    else if (ch === "u") paintTvStand(c, P, theme, r);
     else if (ch === "v") paintWindow(c, P, theme, r);
     else if (ch === "r") paintRug(c, P, theme, r, E);
     else if (ch === "h") paintHide(c, P, theme, r);
@@ -1276,8 +1382,8 @@ window.Apocalypse = (function () {
         where she can disappear, what she can use, and who else is walking
         about. The map art is baked into one canvas here too.
      ======================================================================= */
-  var SOLID = "#vco=BFKWTLCA";     // she cannot walk through these (G is a door)
-  var OPAQUE = "#vcoh";            // and sight cannot pass these
+  var SOLID = "#vco=BFKnfquWTLCA"; // she cannot walk through these (G is a door)
+  var OPAQUE = "#vcohnf";          // and sight cannot pass these
   var ENTITY = "SzAHN";            // drawn as bare floor; something stands on it
 
   function buildLevel(def) {
@@ -1349,6 +1455,18 @@ window.Apocalypse = (function () {
           });
         }
         mc.drawImage(tileFor(cache, def.theme, d, mask, (x * 7 + y * 13) % VARIANTS, under), x * T, y * T);
+
+        /* Clutter goes on here rather than into the cached tile. Baked into
+           the tile it would be cached with it, so every tile sharing that
+           variant would carry the same book at the same angle and the room
+           would read as wallpaper. Seeded from the tile's own coordinates it
+           is different everywhere and identical between visits. */
+        if (d === "." || (d === "," && def.theme !== "house")) {
+          mc.save();
+          mc.translate(x * T, y * T);
+          paintClutter(mc, rnd(x * 92821 + y * 31337 + 7), def.theme);
+          mc.restore();
+        }
       }
     }
     return L;
@@ -3152,12 +3270,128 @@ window.Apocalypse = (function () {
       }));
   }
 
-  /* ---- the news, on a television nobody turned off -------------------- */
+  /* =======================================================================
+     THE BROADCAST
+
+        The first pass was a pale blue rectangle with a sentence on it,
+        which is a description of a news programme rather than one. This is
+        drawn: a studio that has lost most of its lights, somebody still
+        sitting at the desk who should have gone home, the emergency
+        triangle on the wall behind them, a chyron running along the bottom
+        with the same four lines going round, and static over all of it that
+        thickens and tears whenever the signal gives up for a moment.
+
+        Nothing on it is graphic. It is unsettling because of what it is
+        doing — still transmitting, on its own, with nobody left to stop it.
+     ======================================================================= */
   var BROADCAST = [
-    "— and we are being told again: stay inside, lock what you can lock —",
-    "— do not approach anyone who seems unwell. Do not try to help them —",
-    "— hospitals in the following districts are no longer taking calls —",
+    "STAY INSIDE. LOCK WHAT YOU CAN LOCK.",
+    "DO NOT APPROACH ANYONE WHO SEEMS UNWELL.",
+    "DO NOT ATTEMPT TO HELP THEM.",
+    "HOSPITALS IN THESE DISTRICTS ARE NO LONGER TAKING CALLS.",
   ];
+  var TICKER =
+    "EMERGENCY BROADCAST  \u2022  THIS IS NOT A TEST  \u2022  REMAIN INDOORS  \u2022  " +
+    "DO NOT TRAVEL  \u2022  KEEP THIS CHANNEL OPEN  \u2022  ";
+
+  var BC_W = 168, BC_H = 104;
+
+  function paintBroadcast(c, t, lineIndex) {
+    var r = rnd(4242);
+    /* how badly the signal is doing this second: mostly fine, and then not */
+    var drop = Math.max(0, Math.sin(t * 0.7) * Math.sin(t * 2.3 + 1.1));
+    var glitch = drop > 0.62 ? (drop - 0.62) / 0.38 : 0;
+
+    px(c, 0, 0, BC_W, BC_H, "#10161e");                       // the studio, mostly dark
+    ditherFill(c, 0, 0, BC_W, 62, [
+      { p: 0, c: "#1b2836" }, { p: 0.6, c: "#16202c" }, { p: 1, c: "#101822" },
+    ]);
+    for (var i = 0; i < 26; i++) {                             // lighting rig, out
+      px(c, 6 + i * 6, 3, 3, 2, i % 4 === 0 ? "#3d4a5c" : "#1d2733");
+    }
+
+    /* the emergency triangle on the wall behind the desk */
+    var tx = 124, ty = 22;
+    for (var k = 0; k < 14; k++) {
+      px(c, tx - k, ty + k, 2 + k * 2, 1, k > 11 ? "#c9a83a" : "#8a7326");
+    }
+    px(c, tx - 13, ty + 14, 28, 2, "#c9a83a");
+    px(c, tx - 1, ty + 4, 2, 6, "#10161e");
+    px(c, tx - 1, ty + 11, 2, 2, "#10161e");
+
+    /* somebody still at the desk. A silhouette, and the shoulders move a
+       little, because they are still breathing and still there. */
+    var sway = Math.sin(t * 0.9) * 1.2;
+    px(c, 40 + sway, 52, 38, 14, "#1c242f");                   // the shoulders
+    px(c, 42 + sway, 50, 34, 3, "#28323f");
+    px(c, 46 + sway, 48, 26, 3, "#222b36");                    // the collar
+    blob(c, 59 + sway * 0.4, 39, 9, 10, ["#33404f", "#2b3644", "#222b36", "#1a2129"]);
+    px(c, 51 + sway, 31, 17, 4, "#1b232d");                    // hair
+    px(c, 50 + sway, 34, 3, 8, "#1b232d");
+    px(c, 66 + sway, 34, 3, 8, "#1b232d");
+    px(c, 54 + sway, 40, 3, 1, "#151b23");                     // the suggestion of a face
+    px(c, 62 + sway, 40, 3, 1, "#151b23");
+    px(c, 40, 64, BC_W - 80, 10, "#1a2430");                   // the desk
+    px(c, 40, 64, BC_W - 80, 2, "#2c3a4a");
+    px(c, 46, 68, 16, 3, "#2c3a4a");                           // papers on it
+
+    /* the chyron */
+    px(c, 0, 76, BC_W, 16, "#0d1219");
+    px(c, 0, 76, BC_W, 2, "#8a2020");
+    px(c, 0, 78, 46, 10, "#8a2020");
+    px(c, 0, 90, BC_W, 2, "#151d26");
+    c.font = "8px 'VT323', monospace";
+    c.textBaseline = "middle";
+    c.fillStyle = "#f0e4cc";
+    c.fillText("LIVE", 9, 84);
+    /* the ticker is clipped to start after the LIVE badge, or it runs
+       straight underneath it and both become unreadable */
+    c.save();
+    c.beginPath(); c.rect(48, 78, BC_W - 48, 12); c.clip();
+    var tick = TICKER + TICKER;
+    var tw = c.measureText(TICKER).width || 380;
+    c.fillStyle = "#c9d4e2";
+    c.fillText(tick, 50 - ((t * 24) % tw), 84);
+    c.restore();
+
+    /* the line itself, over the picture, the way a caption sits */
+    c.fillStyle = "rgba(8,12,18,.72)";
+    c.fillRect(6, 56, BC_W - 12, 0);
+    c.save();
+    c.font = "9px 'VT323', monospace";
+    c.fillStyle = "#dfeaf7";
+    c.textBaseline = "top";
+    var words = BROADCAST[lineIndex].split(" ");
+    var line = "", ly = 90 - 84, out = [];
+    for (var w = 0; w < words.length; w++) {
+      var trial = line ? line + " " + words[w] : words[w];
+      if (c.measureText(trial).width > BC_W - 20 && line) { out.push(line); line = words[w]; }
+      else line = trial;
+    }
+    out.push(line);
+    c.restore();
+
+    /* static, scanlines and the tear */
+    var grain = 90 + glitch * 420;
+    for (var g = 0; g < grain; g++) {
+      var gx = (r() * BC_W) | 0, gy = (r() * BC_H) | 0;
+      px(c, gx, gy, 1 + ((r() * 2) | 0), 1, r() > 0.5 ? "rgba(220,232,246,.30)" : "rgba(10,14,20,.34)");
+    }
+    for (var sl = 0; sl < BC_H; sl += 3) px(c, 0, sl, BC_W, 1, "rgba(0,0,0,.22)");
+    if (glitch > 0.25) {
+      var band = 18 + ((Math.sin(t * 9) * 0.5 + 0.5) * (BC_H - 30)) | 0;
+      var hgt = 3 + ((glitch * 7) | 0);
+      var slice = c.getImageData(0, band, BC_W, hgt);
+      c.putImageData(slice, ((glitch * 14) | 0) - 7, band);
+      px(c, 0, band - 1, BC_W, 1, "rgba(255,255,255,.16)");
+    }
+    /* the tube's own glow, and the curve of it */
+    var vg = c.createRadialGradient(BC_W / 2, BC_H / 2, BC_H * 0.2, BC_W / 2, BC_H / 2, BC_H * 0.95);
+    vg.addColorStop(0, "rgba(140,190,240,.05)");
+    vg.addColorStop(1, "rgba(0,0,0,.55)");
+    c.fillStyle = vg;
+    c.fillRect(0, 0, BC_W, BC_H);
+  }
 
   function showBroadcast(G, thing) {
     G.state = "note";
@@ -3165,10 +3399,10 @@ window.Apocalypse = (function () {
     var wrap = el("div", "ap-tv");
     var set = el("div", "ap-tv-set");
     var scr = el("div", "ap-tv-screen");
-    var line = el("p", "ap-tv-line", "");
-    scr.appendChild(el("span", "ap-tv-scan"));
+    var cv = mkCanvas(BC_W, BC_H);
+    cv.className = "ap-tv-canvas";
+    scr.appendChild(cv);
     scr.appendChild(el("span", "ap-tv-glass"));
-    scr.appendChild(line);
     set.appendChild(scr);
     var side = el("div", "ap-tv-side");
     side.appendChild(el("span", "ap-tv-dial"));
@@ -3177,10 +3411,31 @@ window.Apocalypse = (function () {
     set.appendChild(side);
     wrap.appendChild(set);
     wrap.appendChild(el("span", "ap-tv-feet"));
+    var line = el("p", "ap-tv-line", BROADCAST[0]);
+    wrap.appendChild(line);
     wrap.appendChild(el("p", "ap-tv-cap", "the six o'clock news, still running"));
     var b = el("button", "ap-note-ok", "Turn it off");
+    wrap.appendChild(b);
+    openOverlay(wrap, "thin");
+
+    var c = cv.getContext("2d");
+    c.imageSmoothingEnabled = false;
+    var n = 0, t0 = performance.now(), bRaf = null;
+    function tick(now) {
+      bRaf = requestAnimationFrame(tick);
+      if (!overlay().contains(cv)) { cancelAnimationFrame(bRaf); return; }
+      paintBroadcast(c, (now - t0) / 1000, n);
+    }
+    bRaf = requestAnimationFrame(tick);
+    var iv = setInterval(function () {
+      n = (n + 1) % BROADCAST.length;
+      line.textContent = BROADCAST[n];
+      sfx("static");
+    }, 3400);
+
     b.addEventListener("click", function () {
       clearInterval(iv);
+      cancelAnimationFrame(bRaf);
       closeOverlay();
       G.state = "play";
       thing.done = true;
@@ -3188,20 +3443,11 @@ window.Apocalypse = (function () {
       if (i >= 0) G.level.lights.splice(i, 1);
       advanceStep(G, "tv");
       say(G, [
+        ["", "She turns it off. The room is very quiet with it off."],
         ["OUISSY", "Mum and Dad are four hours away."],
         ["", "The front door won't budge and the garage has no power. There'll be a panel for it somewhere."],
       ]);
     });
-    wrap.appendChild(b);
-    openOverlay(wrap, "thin");
-
-    var n = 0;
-    line.textContent = BROADCAST[0];
-    var iv = setInterval(function () {
-      n = (n + 1) % BROADCAST.length;
-      line.textContent = BROADCAST[n];
-      sfx("blip");
-    }, 3200);
   }
 
   /* ---- what each level's panel is wired to ---------------------------- */
