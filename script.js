@@ -382,8 +382,9 @@ function mzStartFx() { if (!mzFxRaf) { mzFxLast = 0; mzFxRaf = requestAnimationF
 /* ---------- sound ---------- */
 function mzSfx(kind) {
   if (typeof hvSfx === "function") {
-    hvSfx({ step: "tick", heart: "collect", hurt: "bad", win: "yay", key: "collect",
-            spot: "spot", shot: "shot" }[kind] || "pick");
+    hvSfx({ step: "step", heart: "collect", hurt: "bad", win: "yay", key: "key",
+            spot: "spot", shot: "shot", phial: "phial", locked: "locked",
+            respawn: "respawn" }[kind] || "pick");
   }
 }
 
@@ -661,6 +662,7 @@ function checkWin() {
   if (playerPos.r === targetPos.r && playerPos.c === targetPos.c) {
     if (level === 2 && !hasKey) {
       showToast("The way through is locked — find the key");
+      mzSfx("locked");
       const stage = document.getElementById("maze-stage");
       stage.classList.remove("locked-shake"); void stage.offsetWidth; stage.classList.add("locked-shake");
       return;
@@ -883,12 +885,14 @@ function onPlayerMovedLevel2() {
     hp = Math.min(HP_MAX, hp+1);
     renderHeartsHud();
     layoutLevel2Entities();
+    mzSfx("phial");
     showToast("A phial — half a heart back");
   }
 
   if (keyPos && !hasKey && playerPos.r===keyPos.r && playerPos.c===keyPos.c) {
     hasKey = true;
     layoutLevel2Entities();
+    mzSfx("key");
     document.getElementById("key-badge").classList.add("show");
     document.getElementById("target-token").classList.remove("locked");
     document.getElementById("beacon-glow").classList.remove("locked");
@@ -927,6 +931,7 @@ function applyDamage(msg) {
 
 function respawnLevel2() {
   showToast("Caught. Let's try that again.");
+  mzSfx("respawn");
   /* anything already in the air belongs to the run that just ended */
   clearBolts();
   hideAllBeams();
@@ -3237,40 +3242,104 @@ const HV = {
    ========================================================= */
 
 /* ---------- sound ---------- */
+/* =========================================================
+   SOUND FOR THE TWO STORY GAMES
+
+   One oscillator with a frequency sweep was the whole engine, and four
+   voices was the whole vocabulary — so most of what happened in these two
+   games happened in silence. This is still synthesis, still no audio file
+   in the repo, but a voice can now layer a second oscillator a set number
+   of semitones away and a short filtered-noise burst, which is the
+   difference between a beep and a footstep or a page turning.
+   ========================================================= */
+const HV_VOICES = {
+  /* the originals, unchanged in character */
+  pick:    { type:"square",   f:620,  to:880,  d:0.10, v:0.05 },
+  collect: { type:"triangle", f:880,  to:1560, d:0.20, v:0.07, harm:7,  hv:0.03 },
+  bad:     { type:"sawtooth", f:220,  to:90,   d:0.28, v:0.05 },
+  yay:     { type:"triangle", f:520,  to:1040, d:0.42, v:0.08, harm:12, hv:0.04 },
+  spot:    { type:"square",   f:300,  to:620,  d:0.16, v:0.05 },
+  shot:    { type:"sawtooth", f:900,  to:260,  d:0.12, v:0.05 },
+
+  /* a footfall: almost no tone, mostly a dry knock */
+  step:    { type:"sine",     f:160,  to:110,  d:0.07, v:0.022, noise:0.03, nf:1600, nq:1.1, nd:0.05 },
+  /* the key: two bright notes, a fifth apart */
+  key:     { type:"triangle", f:784,  to:1175, d:0.34, v:0.06, harm:7,  hv:0.045 },
+  /* a phial: glassy, short */
+  phial:   { type:"sine",     f:1040, to:1560, d:0.22, v:0.05, harm:12, hv:0.025 },
+  /* a locked door: dull, no ring */
+  locked:  { type:"sine",     f:150,  to:78,   d:0.22, v:0.06, noise:0.045, nf:420, nq:.7, nd:0.12 },
+  /* coming back after losing a life: a low swell */
+  respawn: { type:"triangle", f:180,  to:420,  d:0.5,  v:0.05, harm:7,  hv:0.02 },
+  /* arriving somewhere new */
+  arrive:  { type:"sine",     f:660,  to:990,  d:0.5,  v:0.045, harm:5, hv:0.025 },
+  /* a page: no tone at all, just paper */
+  page:    { type:"sine",     f:220,  to:180,  d:0.04, v:0.012, noise:0.05, nf:2700, nq:.8, nd:0.16 },
+  /* the smallest tick, for a button taking focus */
+  hover:   { type:"square",   f:1200, to:1400, d:0.04, v:0.018 },
+};
+
 function hvSfx(kind) {
   try {
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     if (audioCtx && audioCtx.state === "closed") audioCtx = null;
     if (!audioCtx) audioCtx = new AC();
-    /* not just "suspended" — see wakeAudio; iOS uses "interrupted" and the
-       old check let the maze go silent for the rest of the visit */
+    /* not just "suspended" — see wakeAudio; iOS uses "interrupted", and
+       the old check let these two games go silent for the whole visit */
     if (audioCtx.state !== "running") {
       if (window.wakeAudio) window.wakeAudio(audioCtx); else audioCtx.resume();
     }
-    var t = audioCtx.currentTime;
-    var o = audioCtx.createOscillator();
-    var g = audioCtx.createGain();
-    var spec = ({
-      pick:    { type: "square",   f: 620,  to: 880,  d: 0.10, v: 0.05 },
-      collect: { type: "triangle", f: 880,  to: 1560, d: 0.20, v: 0.07 },
-      bad:     { type: "sawtooth", f: 220,  to: 90,   d: 0.28, v: 0.05 },
-      yay:     { type: "triangle", f: 520,  to: 1040, d: 0.42, v: 0.08 },
-      /* a watcher noticing you: a rising two-note warning */
-      spot:    { type: "square",   f: 300,  to: 620,  d: 0.16, v: 0.05 },
-      /* and the bolt leaving: short, dry, downward */
-      shot:    { type: "sawtooth", f: 900,  to: 260,  d: 0.12, v: 0.05 },
-    })[kind] || { type: "square", f: 500, to: 700, d: 0.08, v: 0.04 };
+    /* and never schedule into a frozen clock: the notes would all land at
+       the same instant, already in the past, and never be heard */
+    if (audioCtx.state !== "running") return;
+
+    var c = audioCtx, t = c.currentTime;
+    var spec = HV_VOICES[kind] || HV_VOICES.pick;
+
+    var o = c.createOscillator(), g = c.createGain();
     o.type = spec.type;
     o.frequency.setValueAtTime(spec.f, t);
-    o.frequency.exponentialRampToValueAtTime(spec.to, t + spec.d);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20, spec.to), t + spec.d);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(spec.v, t + 0.012);
     g.gain.exponentialRampToValueAtTime(0.0001, t + spec.d);
-    o.connect(g); g.connect(audioCtx.destination);
+    o.connect(g); g.connect(c.destination);
     o.start(t); o.stop(t + spec.d + 0.02);
+
+    /* a second voice a set number of semitones up, for the ones that
+       should ring rather than beep */
+    if (spec.harm) {
+      var r = Math.pow(2, spec.harm / 12);
+      var o2 = c.createOscillator(), g2 = c.createGain();
+      o2.type = spec.type;
+      o2.frequency.setValueAtTime(spec.f * r, t);
+      o2.frequency.exponentialRampToValueAtTime(Math.max(20, spec.to * r), t + spec.d);
+      g2.gain.setValueAtTime(0.0001, t);
+      g2.gain.exponentialRampToValueAtTime(spec.hv || spec.v * 0.5, t + 0.02);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t + spec.d);
+      o2.connect(g2); g2.connect(c.destination);
+      o2.start(t); o2.stop(t + spec.d + 0.02);
+    }
+
+    /* and a band-passed noise burst, which is what makes a step sound like
+       a foot and a page sound like paper rather than another beep */
+    if (spec.noise) {
+      var nd = spec.nd || 0.06;
+      var len = Math.max(1, Math.floor(c.sampleRate * nd));
+      var buf = c.createBuffer(1, len, c.sampleRate);
+      var ch = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      var src = c.createBufferSource(); src.buffer = buf;
+      var bp = c.createBiquadFilter();
+      bp.type = "bandpass"; bp.frequency.value = spec.nf || 1800; bp.Q.value = spec.nq || 1;
+      var ng = c.createGain(); ng.gain.value = spec.noise;
+      src.connect(bp); bp.connect(ng); ng.connect(c.destination);
+      src.start(t);
+    }
   } catch (e) { /* sound is a bonus, never a blocker */ }
 }
+
 
 /* ---------- the things you can find ---------- */
 const HV_TOKENS = {
@@ -3703,6 +3772,8 @@ function hvPaintFail() {
 }
 
 /* ---------- rendering the DOM layer ---------- */
+let hvLastSounded = null;
+
 function hvRender(withTransition) {
   const n = HV[hvNode];
   if (!n) return;
@@ -3719,9 +3790,12 @@ function hvRender(withTransition) {
      the overlay is up leaves it stuck over every later screen. */
   document.getElementById("hv-fail").classList.remove("on");
 
-  if (withTransition) hvStartTransition();
+  if (withTransition) { hvStartTransition(); hvSfx("page"); }
   hvPaintBase(n);
   hvStartLoop();
+  /* arriving somewhere new deserves a note of its own — until now every
+     scene in this game opened in silence */
+  if (hvNode !== hvLastSounded) { hvLastSounded = hvNode; setTimeout(function(){ hvSfx("arrive"); }, 140); }
 
   const note = document.getElementById("hv-note");
   let say = n.isAsk ? QUEST_FINAL.question : n.say;
@@ -3763,6 +3837,9 @@ function hvRender(withTransition) {
     b.className = "hv-btn" + (ch.style ? " hv-btn-" + ch.style : "");
     b.textContent = ch.label;
     b.addEventListener("click", () => hvChoose(ch));
+    /* the smallest tick as a choice comes under the finger */
+    b.addEventListener("pointerenter", () => hvSfx("hover"));
+    b.addEventListener("focus", () => hvSfx("hover"));
     (ch.pos === "left" ? left : ch.pos === "right" ? right : centre).appendChild(b);
   });
 
