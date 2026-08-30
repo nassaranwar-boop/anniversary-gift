@@ -149,6 +149,44 @@ window.Rescue = (function () {
   };
 
   /* =======================================================================
+     THE FIGHT
+
+     It is fixed. He wins, because the point of the scene is not whether he
+     is good enough — it is that he stood there. But a fight you cannot
+     lose is only tense if it never SAYS so, so nothing here announces it:
+     the cues come faster each round, a miss costs a beat and a stumble and
+     an unhappy noise, and partway through the scythe gets close enough to
+     take the light out of the room. What a miss cannot do is end it.
+
+     Windows tighten from a very generous 1.5s to a tight 0.62s. The close
+     call lands on round 3 whatever she does, because it is a story beat
+     rather than a punishment.
+     ======================================================================= */
+  var FIGHT = {
+    rounds: 6,
+    window0: 1.5,          // how long she has on round one
+    windowN: 0.62,         // and on the last
+    tell: 0.55,            // the cue is up this long before the window opens
+    beat: 0.85,            // the pause after a resolved round
+    closeAt: 3,            // the near-miss round
+  };
+  /* Each round asks for one of three things. The keys are the ones the
+     platformer already uses, so nothing new has to be learned. */
+  var CUES = [
+    { id: "block",  label: "BLOCK",  keys: ["jump", "confirm", "down"] },
+    { id: "dodge",  label: "DODGE",  keys: ["left", "right"] },
+    { id: "strike", label: "STRIKE", keys: ["jump", "confirm", "down"] },
+  ];
+  function cueFor(i) {
+    /* block, dodge, strike, block, dodge, strike — learnable, not random */
+    return CUES[i % CUES.length];
+  }
+  function windowFor(i) {
+    var k = FIGHT.rounds > 1 ? i / (FIGHT.rounds - 1) : 1;
+    return FIGHT.window0 + (FIGHT.windowN - FIGHT.window0) * k;
+  }
+
+  /* =======================================================================
      PIXEL HELPERS — the same primitives the rest of the site draws with,
      kept local so this file stands on its own.
      ======================================================================= */
@@ -426,7 +464,62 @@ window.Rescue = (function () {
 
   /* the arrow, and the two options, are really tappable */
   var wired = false;
+  /* ---- the cue, and the letter ---- */
+  function showCue(label, k) {
+    var box = $d("so-cue"), word = $d("so-cue-word"), fill = $d("so-cue-fill");
+    if (!box) return;
+    box.hidden = false;
+    setClass(box, "so-cue so-cue-" + (S.cueResult || "live"));
+    if (word && word.textContent !== label) word.textContent = label;
+    if (fill) fill.style.width = Math.max(0, Math.min(1, k)) * 100 + "%";
+  }
+  function hideCue() { var b = $d("so-cue"); if (b) b.hidden = true; }
+
+  function letterChars() {
+    var L = SCRIPT.letter;
+    return L.lines.join(" ").length + L.close.length;
+  }
+  function showLetter() {
+    var box = $d("so-letter");
+    if (!box) return;
+    box.hidden = false;
+    hideLine();                                  // the letter speaks for itself
+    var t = $d("so-letter-title"); if (t) t.textContent = SCRIPT.letter.title;
+    var sg = $d("so-letter-sign"); if (sg) sg.textContent = SCRIPT.letter.sign;
+    var ok = $d("so-letter-ok"); if (ok) ok.hidden = true;
+  }
+  function hideLetter() { var b = $d("so-letter"); if (b) b.hidden = true; }
+  /* It writes itself out rather than appearing: she should read it at the
+     pace it was meant to be said. */
+  function paintLetter(shown) {
+    var L = SCRIPT.letter, body = $d("so-letter-body"), close = $d("so-letter-close");
+    var whole = L.lines.join(" ");
+    var n = Math.floor(shown);
+    if (body) {
+      var want = whole.slice(0, n);
+      if (body.textContent !== want) body.textContent = want;
+    }
+    if (close) {
+      var want2 = n > whole.length ? L.close.slice(0, n - whole.length) : "";
+      if (close.textContent !== want2) close.textContent = want2;
+    }
+    var ok = $d("so-letter-ok");
+    if (ok) ok.hidden = n < letterChars();
+  }
+
   function wireDom() {
+    var lok = $d("so-letter-ok");
+    if (lok && !lok.dataset.wired) {
+      lok.dataset.wired = "1";
+      lok.addEventListener("click", function () { press("confirm"); });
+    }
+    var cue = $d("so-cue");
+    if (cue && !cue.dataset.wired) {
+      cue.dataset.wired = "1";
+      /* the cue itself is the button on a phone — pointerdown, not click,
+         because a window this tight cannot wait for the click to settle */
+      cue.addEventListener("pointerdown", function (e) { e.preventDefault(); press("confirm"); });
+    }
     if (wired) return;
     wired = true;
     var nx = $d("so-dlg-next");
@@ -504,7 +597,7 @@ window.Rescue = (function () {
              pose: "hurt", flinch: 0 },
       anwar: { x: VW + 30, y: 0, k: 0 },
       death: { x: VW + 60, y: 0, k: 0, arrive: 0 },
-      round: 0, cue: null, cueT: 0, hits: 0, closeCalled: false,
+      round: 0, cue: null, cueT: 0, hits: 0, closeCalled: false, leaving: 0,
       swing: undefined, flash: 0, boxIn: 0, chillSfx: false, swungSfx: false, caughtSfx: false,
       thump: 0, landed: false,
       sel: 0, particles: [],
@@ -783,7 +876,112 @@ window.Rescue = (function () {
 
     } else if (S.phase === 6) {                   /* her decision */
       /* nothing moves; it waits for her */
+
+    /* ---------------- the fight ---------------- */
+    } else if (S.phase === 7) {                   /* he explains it first */
+      stepText(dt);
+      if (textFinished()) { S.lines = null; S.round = 0; S.hits = 0; phase(8); }
+
+    } else if (S.phase === 8) {                   /* the tell, before each cue */
+      S.anwar.k = 1;
+      if (S.pt > FIGHT.tell) {
+        S.cue = cueFor(S.round);
+        S.cueT = 0;
+        S.cueWindow = windowFor(S.round);
+        S.cueResult = null;
+        sfx("swing");
+        phase(9);
+      }
+
+    } else if (S.phase === 9) {                   /* the window itself */
+      S.cueT += dt;
+      showCue(S.cue.label, 1 - S.cueT / S.cueWindow);
+      if (S.cueT > S.cueWindow) { resolveCue(false); }
+
+    } else if (S.phase === 10) {                  /* the beat after a round */
+      showCue(S.cue ? S.cue.label : "", 0);       // it holds, showing the verdict
+      S.flash = Math.max(0, S.flash - dt * 3);
+      if (S.pt > FIGHT.beat) {
+        S.round++;
+        S.cue = null; hideCue();
+        if (S.round >= FIGHT.rounds) { say(D.win); phase(12); }
+        else phase(8);
+      }
+
+    } else if (S.phase === 11) {                  /* what they say about it */
+      S.flash = Math.max(0, S.flash - dt * 2);
+      stepText(dt);
+      if (textFinished()) {
+        S.lines = null;
+        if (!S.closeAfterSaid) { S.closeAfterSaid = true; say(SCRIPT.death.closeCallAfter); return; }
+        S.cue = null; S.round++; phase(8);
+      }
+
+    } else if (S.phase === 12) {                  /* he wins */
+      stepText(dt);
+      if (textFinished()) { S.lines = null; phase(13); }
+
+    } else if (S.phase === 13) {                  /* the cold lets go */
+      S.chill = Math.max(0, S.chill - dt * 0.7);
+      S.dim = Math.max(0, S.dim - dt * 0.7);
+      /* leaving, not death.k — that is a sprite frame index, and winding it
+         down as if it were an opacity walks straight off the end of CAST. */
+      S.leaving = Math.min(1, S.leaving + dt * 0.7);
+      if (S.pt > 1.6) S.done = true;
+
+    /* ---------------- letting it go ---------------- */
+    } else if (S.phase === 20) {                  /* what they say instead */
+      stepText(dt);
+      if (textFinished()) { S.lines = null; phase(21); }
+
+    } else if (S.phase === 21) {                  /* the cold lifts, then the letter */
+      S.chill = Math.max(0, S.chill - dt * 0.8);
+      S.dim = Math.max(0, S.dim - dt * 0.8);
+      S.leaving = Math.min(1, S.leaving + dt * 0.8);
+      if (S.pt > 1.4) { S.letterShown = 0; showLetter(); phase(22); }
+
+    } else if (S.phase === 22) {                  /* the letter, writing itself */
+      S.letterShown = Math.min(letterChars(), S.letterShown + dt * 58);
+      paintLetter(S.letterShown);
     }
+  }
+
+  /* she answered — or she did not */
+  function answerCue(name) {
+    if (S.phase !== 9 || !S.cue || S.cueResult) return;
+    var right = S.cue.keys.indexOf(name) >= 0;
+    resolveCue(right);
+  }
+
+  function resolveCue(hit) {
+    S.cueResult = hit ? "hit" : "miss";
+
+    /* The close call is a story beat, not a punishment, so it lands on its
+       round whatever she did — including answering instantly, which is how
+       it used to be skipped entirely: it was gated on the window running
+       most of the way down, and a quick player never got there. */
+    if (S.round === FIGHT.closeAt - 1 && !S.closeCalled) {
+      S.closeCalled = true;
+      S.shake = 12; S.flash = 1; S.dim = Math.min(1, S.dim + 0.25);
+      hideCue();
+      sfx("catch");
+      say(SCRIPT.death.closeCall);
+      phase(11);
+      return;
+    }
+
+    if (hit) {
+      S.hits++;
+      S.flash = 0.6; S.shake = 5;
+      sfx(S.cue.id === "strike" ? "hit" : "block");
+    } else {
+      /* A miss costs a beat and a stumble and an ugly noise. It does not
+         cost the fight — but nothing on screen says so. */
+      S.shake = 7;
+      S.anwar.stumble = 0.5;
+      sfx("thump");
+    }
+    phase(10);
   }
 
   function paintDeathScene(c, t) {
@@ -854,10 +1052,11 @@ window.Rescue = (function () {
     var groundY = S.her.y + 18;
 
     /* Death, drawn before them so they read as standing against him */
-    if (S.phase >= 2) {
-      var d = CAST.death[S.death.k];
+    if (S.phase >= 2 && S.leaving < 1) {
+      var d = CAST.death[S.death.k] || CAST.death[CAST.death.length - 1];
       var dy = groundY - d.height + 4;
       c.save();
+      if (S.leaving > 0) c.globalAlpha *= 1 - S.leaving;   // he goes, he does not vanish
       if (S.swing !== undefined && S.phase >= 4) {
         /* He LEANS into the strike; he does not topple. Pivot at the
            shoulder and keep the angle small — swung from the feet he read
@@ -989,7 +1188,12 @@ window.Rescue = (function () {
     } else {
       hideChoice();
       var ln = line();
+      /* The else was missing here, though the rescue scene has always had
+         it: a finished line left its panel on screen for the rest of the
+         act, so the fight's cue came up over the top of whatever Anwar had
+         last said. */
       if (ln) showLine(ln.who, ln.text, Math.floor(S.shown), S.waiting);
+      else hideLine();
     }
   }
 
@@ -1036,10 +1240,20 @@ window.Rescue = (function () {
         } else if (confirm) {
           S.outcome = S.sel === 0 ? "fight" : "letgo";
           sfx("choose");
-          S.done = true;                          // 6.3 and 6.4 take it from here
+          hideChoice();
+          /* SCRIPT.death, not D: D is a local in the step function and does
+             not exist here. */
+          if (S.outcome === "fight") { say(SCRIPT.death.tutorial); phase(7); }
+          else { say(SCRIPT.death.letgo); phase(20); }
         }
         return;
       }
+
+      /* the fight: one press, and only inside the window */
+      if (S.phase === 9) { answerCue(name); return; }
+      /* the letter closes on any press once it has finished writing itself */
+      if (S.phase === 22) { if (S.letterShown >= letterChars()) S.done = true; else S.letterShown = letterChars(); return; }
+
       if (S.lines && confirm) { pressText(); }
       return;
     }
@@ -1047,7 +1261,7 @@ window.Rescue = (function () {
 
   function done() {
     var d = !S || S.done;
-    if (d) { hideLine(); hideChoice(); }
+    if (d) { hideLine(); hideChoice(); hideCue(); hideLetter(); }
     return d;
   }
   function outcome() { return S ? S.outcome : null; }

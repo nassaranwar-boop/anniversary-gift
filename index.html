@@ -17,9 +17,9 @@
 <title>For My Love 💕</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=60">
+<link rel="stylesheet" href="style.css?v=69">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Rye&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=60"></script>
+<script src="vendor/three.bundle.js?v=69"></script>
 
 </head>
 <body>
@@ -545,6 +545,24 @@
              six-pixel text drawn on a 320-wide canvas and then blown up
              five times is unreadable, however good the panel round it
              looks. -->
+        <!-- The fight's cue, and the letter. DOM for the same reason the
+             dialogue is: six-pixel text blown up five times is unreadable
+             however good the panel round it looks. -->
+        <div class="so-cue" id="so-cue" hidden>
+          <span class="so-cue-word" id="so-cue-word"></span>
+          <span class="so-cue-bar" aria-hidden="true"><i id="so-cue-fill"></i></span>
+        </div>
+
+        <div class="so-letter" id="so-letter" hidden>
+          <div class="so-letter-paper">
+            <p class="so-letter-title" id="so-letter-title"></p>
+            <p class="so-letter-body" id="so-letter-body"></p>
+            <p class="so-letter-close" id="so-letter-close"></p>
+            <p class="so-letter-sign" id="so-letter-sign"></p>
+            <button class="so-letter-ok" id="so-letter-ok">close</button>
+          </div>
+        </div>
+
         <div class="so-dlg" id="so-dlg" aria-hidden="true">
           <span class="so-dlg-name" id="so-dlg-name"></span>
           <p class="so-dlg-text" id="so-dlg-text"></p>
@@ -738,10 +756,10 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=60"></script>
-<script src="scrapbook.js?v=60"></script>
-<script src="script.js?v=60"></script>
-<script src="super-ouissy.js?v=60"></script>
-<script src="rescue.js?v=60"></script>
+<script src="book-scene.js?v=69"></script>
+<script src="scrapbook.js?v=69"></script>
+<script src="script.js?v=69"></script>
+<script src="super-ouissy.js?v=69"></script>
+<script src="rescue.js?v=69"></script>
 </body>
 </html>

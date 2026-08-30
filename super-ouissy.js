@@ -2564,13 +2564,24 @@ window.SuperOuissy = (function () {
     respawn();
   }
 
-  /* What the story chose, once it hands the canvas back. The fight and the
-     letting go are 6.3 and 6.4; for now both land somewhere sane. */
+  /* What the story chose, once it hands the canvas back.
+
+     They are not the same ending and should not resolve the same way. He
+     fought for her and won, so she keeps going — one life, back at the
+     checkpoint, the boss still standing. She let it go, so the run closes
+     and she starts again whenever she likes; the letter has already been
+     read by the time we get here. */
   function afterDeathScene() {
     var chose = window.Rescue ? Rescue.outcome() : null;
+    if (chose === "fight") {
+      G.lives = 1;
+      G.state = "play";
+      respawn();
+      popText(G.player.x, G.player.y - 14, "he bought you one more", "#ffd9a0");
+      return;
+    }
     G.state = "menu";
-    if (chose === "fight") endRun(false);
-    else endRun(false);
+    endRun(false);
   }
 
   function respawn() {
