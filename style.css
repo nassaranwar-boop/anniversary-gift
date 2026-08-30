@@ -2243,40 +2243,27 @@ img{-webkit-user-drag:none; user-select:none;}
 .hv-card:active{transform:translateY(5px); box-shadow:0 2px 0 rgba(150,80,110,.38), 0 6px 14px rgba(40,20,0,.35);}
 .hv-card-art{width:100%; height:100%; image-rendering:pixelated;}
 
-/* ---- the bear ---- */
-.hv-fail{
-  position:absolute; inset:0; z-index:9; display:none;
-  align-items:center; justify-content:center;
+/* ---- the title screen's tagline ----
+   Drawn as DOM rather than into the canvas: the pixel logo font only
+   carries the eleven letters of HEARTVENTURE, and this is a sentence. */
+.hv-tagline{
+  position:absolute; left:50%; top:36%; transform:translateX(-50%);
+  z-index:4; margin:0; white-space:nowrap; pointer-events:none;
+  font-family:'Press Start 2P', ui-monospace, monospace;
+  font-size:clamp(7px,1.6vw,13px);
+  letter-spacing:.06em; color:#ff5f8d;
+  /* an outline, not a glow: the logo above it is drawn pixel by pixel
+     with a hard cream highlight and a hard plum shadow, and a soft halo
+     next to that reads as a different game's typography */
+  text-shadow:
+    -2px 0 0 #fffdf7,  2px 0 0 #fffdf7,  0 -2px 0 #fffdf7,  0 2px 0 #fffdf7,
+    -2px -2px 0 #fffdf7, 2px -2px 0 #fffdf7, -2px 2px 0 #fffdf7, 2px 2px 0 #fffdf7,
+    0 4px 0 #b8365f;
+  animation:hvTagBob 3.4s ease-in-out infinite;
 }
-.hv-fail.on{display:flex; animation:hvJump .38s var(--ease-pop);}
-@keyframes hvJump{
-  0%{opacity:0; transform:scale(1.5);}
-  55%{opacity:1; transform:scale(.97);}
-  100%{opacity:1; transform:scale(1);}
-}
-#hv-fail-canvas{
-  position:absolute; inset:0; width:100%; height:100%;
-  image-rendering:pixelated;
-}
-.hv-fail-note{
-  position:absolute; left:50%; bottom:12%; transform:translateX(-50%) rotate(-1deg);
-  z-index:2; max-width:76%; text-align:center;
-  background:#fffdf5; color:#3f2d18; font-family:var(--font-hand);
-  font-size:clamp(13px,2.8vw,21px); padding:2.4% 3.6%;
-  box-shadow:0 4px 10px rgba(40,20,0,.4);
-}
-.hv-restart{
-  position:absolute; left:4%; top:5%; z-index:2;
-  font-family:var(--font-body); font-weight:600; font-size:clamp(10px,1.9vw,14px);
-  cursor:pointer; background:rgba(255,252,245,.95); color:#3f2d18;
-  border:2px solid rgba(90,52,17,.4); border-radius:7px; padding:5px 14px;
-  box-shadow:0 3px 0 rgba(90,52,17,.32);
-}
-.hv-restart:active{transform:translateY(3px); box-shadow:none;}
-
-@media (prefers-reduced-motion: reduce){
-  .hv-fail.on{animation:none;}
-}
+.hv-tagline.hidden{display:none;}
+@keyframes hvTagBob{0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(-2px);}}
+@media (prefers-reduced-motion: reduce){ .hv-tagline{animation:none;} }
 
 /* =========================================================
    HUB — choose your adventure
