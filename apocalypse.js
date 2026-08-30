@@ -1950,6 +1950,11 @@ window.Apocalypse = (function () {
     o.setAttribute("aria-hidden", "true");
     o.innerHTML = "";
     o.className = "ap-overlay";
+    /* Drop the handles the overlay left behind. They are only read by the
+       offline harness, but a stale one is worse than none: reaching for
+       "the panel" a level later found the previous level's, solved it a
+       second time, and powered a door in a building she had left. */
+    if (G) { G.__panel = null; G.__keypad = null; }
   }
 
   function setHud(G) {
@@ -3601,6 +3606,13 @@ window.Apocalypse = (function () {
     cutscene(G, { dur: 9, caption: "It takes most of the morning, and neither of them minds.",
       paint: paintRide, onDone: function () {} });
   };
+  window.__apKeypadType = function (code) {
+    if (!G.__keypad) return false;
+    G.__keypad.enter(code);
+    G.__keypad.ok();
+    return true;
+  };
+  window.__apKeys = function () { return G.keys; };
   window.__apMapKey = function () { return G.level.def.key || G.level.def.name; };
   window.__apZombies = function () {
     return G.level.zombies.map(function (z) { return { x: z.x, y: z.y, state: z.state }; });

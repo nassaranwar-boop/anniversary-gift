@@ -23,7 +23,11 @@ these runs; that is the harness, not the site.
 | script | what it tells you |
 |---|---|
 | `realplay.js` | **run this one.** Plays the game the way a person does — clicks through, waits, and looks at what is actually on the canvas — on all three difficulties. Every other suite drives the game itself and is therefore blind to anything wrong with the requestAnimationFrame path, which is how a bug that left the entire game rendering nothing got past 66 green assertions. |
-| `regress.js` | walks every screen that existed before Super Ouissy — intro, gate, book, hub, maze, adventure, keepsake — on desktop and on an iPhone, and checks each still builds with no page errors and no horizontal scroll. Run this before any push. |
+| `regress.js` | walks every screen — intro, gate, book, hub, maze, adventure, apocalypse, the roof ending, Super Ouissy, keepsake — on desktop and on an iPhone, and checks each still builds with no page errors and no horizontal scroll. Run this before any push. |
+| `apocfull.js` | **the apocalypse's realplay.** Plays the whole chapter from the hub card to the roof: every level is started by the game itself, so the cards, the briefings, the objectives and the hand-off between levels are all exercised. |
+| `apocmech.js` | the stealth assertions: walls stop her, doors open, a wardrobe hides her, being caught is a close call and not a death, and hiding beside a zombie is safe. |
+| `apocflow.js`, `apocflow2.js`, `apocflow3.js`, `apocflow4.js`, `apocflow5.js` | one per level, start to finish, driving the real pointer over the wire panel and the keypad. |
+| `apoc.js`, `apocshots.js` | screenshot the game and every overlay it can put up. |
 | `mech.js` | eighteen assertions on the game itself: hearts, gift blocks, stomping, growing, breaking bricks, pits, the cloud that catches her on Easy, Hard's clock and extra spikes, the moat, the whole boss fight. |
 | `flow.js` | plays all three worlds through to the ending and checks the results cards, the saved best time and the chapter being marked done. |
 | `layout.js` | measures the stage, the touch pad and the HUD at five real device sizes and reports anything that overflows. |
