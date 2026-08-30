@@ -97,6 +97,11 @@ window.Apocalypse = (function () {
       ],
     },
 
+    /* ✏️  The code on the scrap of paper in the corner shop in Level 2,
+       and therefore the code on the staff gate. Four digits. Change it to
+       something that means something and it changes in both places. */
+    gateCode: "4180",
+
     /* The how-to card, shown once before Level 1. */
     howTo: [
       ["← ↑ ↓ →", "move (or WASD)"],
@@ -3183,7 +3188,7 @@ window.Apocalypse = (function () {
 
   var NOTES = {
     1: {
-      code: "4180",
+      code: AP.gateCode,
       text: "Torn off a staff rota and dropped behind the counter. Somebody has written on the back of it:",
       after: "and underneath, in a different pen — don't write this down",
       then: [["OUISSY", "There's a staff gate off the alley behind these shops. That comes out right by the hospital."]],
