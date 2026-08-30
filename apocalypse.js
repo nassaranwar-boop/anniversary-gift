@@ -321,6 +321,93 @@ window.Apocalypse = (function () {
     ],
   };
 
+
+  /* ---- LEVEL 4 — THE ROAD ---------------------------------------------
+     Two places, one journey. First the hospital again, which is a great
+     deal worse than it was last night, and a car park with something in it
+     that might start. Then a lane twenty miles out of town, where the tank
+     runs dry and the rest of the way is somebody's horse.
+
+     The swap between the two is the drive itself, which is not a thing she
+     plays — it is a thing that happens, painted over the whole canvas.
+     --------------------------------------------------------------------- */
+  LEVELS[3] = {
+    theme: "hospital",
+    key: "escape",
+    name: "GETTING OUT",
+    dark: 0.76,
+    grid: [
+      "####################################",
+      "####################################",
+      "##......#.##########....l........###",
+      "##..S...d.##########..=.=.=.=.=..###",
+      "##.B..h.#.##########...h.....h...###",
+      "##......#l##########..=...=...=..###",
+      "#########.##########d............###",
+      "#########z##########.###############",
+      "##.........z.zl...z...z.l.z....l..##",
+      "##.............................z..##",
+      "#########.##########################",
+      "##......#.###........###.....z...###",
+      "##.h..h.#l###..h.zh..###.o..o..o.###",
+      "##...z..#.......l...........l.B..###",
+      "##......#.###.B....B.###...z.....###",
+      "##.h....#z###..hz.h..###.o..o..o.###",
+      "##......#.###......z.###....d....###",
+      "##,z,,,,,,,,,,,,,,,,,,,,,,.....#####",
+      "##,,cc,,cc,,,z,,cc,,cc,,,,,....#####",
+      "##,,,,l,,,,,C,,,,,,l,,,z,,.....#####",
+      "##,,,,,,,,,,,,,,,,,,,,,,,,##########",
+      "####################################",
+    ],
+    steps: [
+      { task: "Out of the building. Then find anything with four wheels.", clears: "car" },
+      { task: "The tank is dry. Find something else that can carry two.", clears: "horse" },
+    ],
+  };
+
+  /* The second half of Level 4. It is not in LEVELS because it is not its
+     own level — she does not get a card for it, she is already going. */
+  var SUBMAPS = {
+    roadside: {
+      theme: "road",
+      key: "roadside",
+      name: "THE ROAD",
+      base: ",",
+      dark: 0.44,                 // dawn: the first level she can actually see in
+      grid: [
+      "################################################",
+      "#,o,,,,,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,o.CS..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,o..l..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,o..h..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,o.....oooooooooo..ooooooooooooooooooooo,,,,,,#",
+      "#,o.......l.h............z..h......l.....,,,,,,#",
+      "#,o............z....h.l...........h......,,,,,,#",
+      "#,o.....ooooooooooooooooooooo..oooooooo..,,,,,,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,..,,,,,,#",
+      "#,o...z.o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,..,,,,,,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,..................,#",
+      "#,o..h..o,,,,,,,,,,,,,,,,,,,...l.........z..h.,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,......####d####...,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,...h..#.......#...,#",
+      "#,o..l..o,,,,,,,,,,,,,,,,,,,......#.==..=.#...,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,......#...H...#h..,#",
+      "#,o..z..o,,,,,,,,,,,,,,,,,,,......#.......#...,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,......#########...,#",
+      "#,o.....o,,,,,,,,,,,,,,,,,,,..h..z.........l..,#",
+      "#,o,,,,,o,,,,,,,,,,,,,,,,,,,..................,#",
+      "################################################",
+      ],
+    },
+  };
+
   /* =======================================================================
      4. PALETTES — one per place. Everything drawn for a level pulls its
         colours from here, so a whole location can be re-lit in one block.
@@ -357,13 +444,13 @@ window.Apocalypse = (function () {
       amb:   "#101c26",
     },
     road: {
-      floor: ["#6a5a3e", "#5c4d34", "#4e412b", "#7a6a4c"],
-      wall:  ["#4a4034", "#3c342a", "#2e2820", "#5a5042"],
+      floor: ["#6a5a3e", "#5c4d34", "#4e412b", "#7a6a4c"],   // the lane: dirt and gravel
+      wall:  ["#4a4034", "#3c342a", "#2e2820", "#5a5042"],   // barns and field walls
       trim:  "#7e6f52",
       cover: ["#5a4a3a", "#4a3c2e", "#3a2f24"],
       tall:  ["#3d5236", "#31432c", "#253422"],
       hide:  ["#35492e", "#2a3a25", "#1f2b1c"],
-      ground:["#5c4d34", "#544631", "#4a3d2b"],
+      ground:["#3f5236", "#36462d", "#2c3a26"],              // and grass either side
       amb:   "#1a1a2c",
     },
   };
@@ -526,6 +613,80 @@ window.Apocalypse = (function () {
     "..wwwwwwww..",
   ];
 
+  /* The horse, side on.
+
+     Drawn rather than written out pixel by pixel, because a horse is all
+     curves and a hand-typed pixel map of one comes out as a brown slab with
+     a box for a head — which is exactly what the first attempt was. Body,
+     chest and rump are three overlapping masses, the neck is a taper
+     between two of them, and the legs bend at the knee. Everything is
+     placed from the ground she is standing on, so the same routine draws
+     her at any size: small enough to stand in a barn, and big enough to
+     carry the two of them across a field at dawn.
+
+     She is a big warm animal who has been shut in on her own for two days
+     and is very pleased to see anybody at all. That is the scene. */
+  var HORSE_TONES = ["#8a6141", "#6f4c31", "#573a25", "#41291a"];
+  var HORSE_DARK = ["#2f2015", "#241811", "#1b120c", "#140d08"];
+
+  function limb(c, x0, y0, x1, y1, w0, w1, tones) {
+    var n = Math.max(2, Math.hypot(x1 - x0, y1 - y0) | 0);
+    for (var i = 0; i <= n; i++) {
+      var t = i / n;
+      var w = (w0 + (w1 - w0) * t) / 2;
+      blob(c, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, Math.max(1, w), Math.max(1, w), tones, -0.7, -0.3);
+    }
+  }
+
+  /* x,y is the ground under her front feet; s scales the whole animal */
+  function drawHorse(c, x, y, s, gait, flip) {
+    var f = flip ? -1 : 1;
+    function X(v) { return x + v * s * f; }
+    function Y(v) { return y + v * s; }
+    function B(vx, vy, rx, ry, tones) { blob(c, X(vx), Y(vy), Math.max(1, rx * s), Math.max(1, ry * s), tones); }
+
+    var sw = Math.sin(gait) * 5, sw2 = Math.sin(gait + 3.14) * 5;
+
+    /* the far pair first, in shadow, so the near pair reads in front */
+    limb(c, X(13), Y(-16), X(11 + sw2), Y(-1), 5 * s, 3 * s, HORSE_DARK);
+    limb(c, X(-11), Y(-16), X(-13 + sw), Y(-1), 6 * s, 3 * s, HORSE_DARK);
+
+    B(-25, -27, 4, 3, HORSE_DARK);                                    // the dock of the tail
+    limb(c, X(-26), Y(-28), X(-30), Y(-9), 7 * s, 4 * s, HORSE_DARK); // and the tail itself
+
+    B(0, -22, 21, 8, HORSE_TONES);                                    // barrel
+    B(-15, -23, 11, 9, HORSE_TONES);                                  // rump
+    B(14, -23, 10, 9, HORSE_TONES);                                   // chest and shoulder
+
+    limb(c, X(19), Y(-27), X(27), Y(-40), 9 * s, 6 * s, HORSE_TONES); // neck
+    B(30, -43, 7, 4, HORSE_TONES);                                    // head
+    B(36, -41, 4, 3, HORSE_TONES);                                    // muzzle
+    px(c, X(38), Y(-41), Math.max(1, s), Math.max(1, s), "#2a1a12");  // nostril
+    px(c, X(31), Y(-45), Math.max(1, 1.6 * s), Math.max(1, 1.6 * s), "#160e08");   // eye
+    px(c, X(31.5), Y(-45.5), Math.max(1, 0.7 * s), Math.max(1, 0.7 * s), "#c9b48a");
+    limb(c, X(26), Y(-47), X(25), Y(-51), 2.6 * s, 1 * s, HORSE_TONES);            // ears
+    limb(c, X(29), Y(-47), X(29), Y(-51), 2.6 * s, 1 * s, HORSE_TONES);
+
+    limb(c, X(20), Y(-40), X(24), Y(-30), 5 * s, 6 * s, HORSE_DARK);  // mane down the crest
+    B(17, -29, 4, 3, HORSE_DARK);
+
+    /* the near pair, and the white on the off fore */
+    limb(c, X(16), Y(-16), X(18 + sw), Y(-1), 6 * s, 3 * s, HORSE_TONES);
+    limb(c, X(-9), Y(-16), X(-7 + sw2), Y(-1), 7 * s, 3 * s, HORSE_TONES);
+    px(c, X(17 + sw) - 2 * s, Y(-4), 4 * s, 3 * s, "#c9bda4");        // one white sock
+    [[18 + sw, 0], [-7 + sw2, 0], [11 + sw2, 0], [-13 + sw, 0]].forEach(function (h) {
+      px(c, X(h[0]) - 2 * s, Y(-1.5), 4 * s, 2.5 * s, "#1d130c");     // hooves
+    });
+  }
+
+  /* and one baked into a canvas, for the one standing in the barn */
+  function horseSprite() {
+    var s = 0.42, cv = mkCanvas(34, 28), c = cv.getContext("2d");
+    c.imageSmoothingEnabled = false;
+    drawHorse(c, 20, 26, s, 0, true);
+    return cv;
+  }
+
   var OUI_PAL = {
     h: "#3a2418", H: "#553520", s: "#e8b78f", S: "#c9946c",
     e: "#20140d", m: "#a75b5c", c: "#e2647f", C: "#b84c64",
@@ -567,6 +728,7 @@ window.Apocalypse = (function () {
       zombie: person(ZOM_TORSO, ZOM_LEGS, ZOM_PAL, ZOM_PAL, ZOM_LEGS_SIDE),
       anwar: person(ANW_TORSO, OUI_LEGS, ANW_PAL, ANW_PAL, OUI_LEGS_SIDE),
       anwarAsleep: sprite(ANW_SLEEP, ANW_PAL),
+      horse: horseSprite(),
     };
     return ART;
   }
@@ -626,10 +788,13 @@ window.Apocalypse = (function () {
       if (r() > 0.86) blob(c, (r() * T) | 0, (r() * T) | 0, 3, 2, [P.ground[0], P.ground[0], P.ground[2], P.ground[2]]);
       if (r() > 0.93) px(c, (r() * T) | 0, (r() * T) | 0, 2, 2, "#8a8474");
     }
-    if (theme === "road") {                                   // tufts pushing through
-      for (var g = 0; g < 3; g++) {
-        if (r() > 0.55) px(c, (r() * T) | 0, (r() * T) | 0, 1, 2 + ((r() * 2) | 0), "#4c5f3a");
+    if (theme === "road") {                                   // grass, growing every way
+      for (var g = 0; g < 26; g++) {
+        px(c, (r() * T) | 0, (r() * T) | 0, 1, 1 + ((r() * 3) | 0),
+           r() > 0.6 ? "#4b6040" : r() > 0.3 ? "#3a4c30" : "#566b45");
       }
+      if (r() > 0.9) { var fx = (r() * T) | 0, fy = (r() * T) | 0;   // a wildflower
+        px(c, fx, fy - 2, 1, 2, "#4b6040"); px(c, fx - 1, fy - 3, 3, 2, r() > 0.5 ? "#d8c86a" : "#c9a0c0"); }
     }
     /* Where the tarmac stops, a kerb and a worn white line. Two pixels of
        paint is the whole difference between "a grey field" and "a road". */
@@ -1008,7 +1173,7 @@ window.Apocalypse = (function () {
         if (ch === "X") L.exit = { x: x, y: y };
         if (ch === "z") L.zombies.push(mkZombie(x * T + T / 2, y * T + T / 2));
         if (ch === "A") { L.anwar = { x: x * T + T / 2, y: y * T + T / 2, awake: false }; draw = "B"; }
-        if (ch === "H") L.horse = { x: x * T + T / 2, y: y * T + T / 2 };
+        if (ch === "H") { L.horse = { x: x * T + T / 2, y: y * T + T / 2 }; L.things.push({ kind: "horse", x: x, y: y, done: false }); }
         if (ch === "N") L.things.push({ kind: "note", x: x, y: y, done: false });
         if (ch === "T") L.things.push({ kind: "tv", x: x, y: y, done: false });
         if (ch === "W") L.things.push({ kind: "panel", x: x, y: y, done: false });
@@ -1410,6 +1575,21 @@ window.Apocalypse = (function () {
   function paint(G) {
     var c = G.ctx, L = G.level;
     c.clearRect(0, 0, VW, VH);
+
+    /* a cutscene owns the whole canvas; nothing of the level is painted */
+    if (G.state === "cut" && G.cut) {
+      G.cut.paint(G, c, G.cut.t);
+      if (G.cut.t < 0.6) {                         // fade in from the level
+        c.fillStyle = "rgba(4,5,10," + (1 - G.cut.t / 0.6) + ")";
+        c.fillRect(0, 0, VW, VH);
+      }
+      if (G.cut.t > G.cut.dur - 0.6) {             // and out again
+        c.fillStyle = "rgba(4,5,10," + (1 - (G.cut.dur - G.cut.t) / 0.6) + ")";
+        c.fillRect(0, 0, VW, VH);
+      }
+      return;
+    }
+
     c.fillStyle = PAL[L.theme].amb;
     c.fillRect(0, 0, VW, VH);
 
@@ -1423,6 +1603,14 @@ window.Apocalypse = (function () {
     L.zombies.forEach(function (z) {
       actors.push({ y: z.y, draw: function () { drawActor(G, c, ART.zombie, z, cx, cy, z.alert); } });
     });
+    if (L.horse) {
+      var hh = L.horse;
+      actors.push({ y: hh.y, draw: function () {
+        var x = Math.round(hh.x - cx), y = Math.round(hh.y - cy);
+        drawShadow(c, x + 2, y + 2);
+        c.drawImage(ART.horse, x - 20, y - 24);
+      } });
+    }
     if (L.anwar) {
       var a = L.anwar;
       actors.push({ y: a.y + (a.awake ? 0 : 4), draw: function () {
@@ -1860,6 +2048,7 @@ window.Apocalypse = (function () {
       return;
     }
 
+    if (G.state === "cut") { stepCut(G, dt); return; }
     if (G.state !== "play") return;
 
     stepPlayer(G, dt);
@@ -2012,7 +2201,7 @@ window.Apocalypse = (function () {
       player: mkPlayer(0, 0), keys: freshKeys(), cam: { x: 0, y: 0 },
       noises: [], doorFx: [], safe: { x: 0, y: 0 }, safeT: 0,
       caughtT: 0, caughtShown: false, caughtLine: "", closeCalls: 0,
-      flash: 0, hudT: 0, code: null, dlg: null, pressure: 0, pressureT: 0,
+      flash: 0, hudT: 0, code: null, dlg: null, pressure: 0, pressureT: 0, steps: [],
       canvas: $("ap-canvas"), ctx: $("ap-canvas").getContext("2d"),
     };
     G.ctx.imageSmoothingEnabled = false;
@@ -2056,7 +2245,8 @@ window.Apocalypse = (function () {
       G.player = mkPlayer(G.level.start.x, G.level.start.y);
       G.safe = { x: G.level.start.x, y: G.level.start.y };
       G.stepIndex = 0;
-      G.step = G.level.def.steps[0];
+      G.steps = G.level.def.steps || [];
+      G.step = G.steps[0];
       G.state = "play";
       G.keys = freshKeys();
       G.pressure = 0;
@@ -2067,8 +2257,167 @@ window.Apocalypse = (function () {
     });
   }
 
+  /* Some levels are two places. Level 4 is the hospital and then a lane
+     twenty miles out of town, and it would be silly to make her sit through
+     a level card in between — she is on the same journey. This swaps the map
+     under her and keeps everything else: the step she is on, the code in her
+     pocket, how many close calls she has had, and him. */
+  function enterSubmap(G, def, startAt) {
+    var hadAnwar = G.level && G.level.anwar && G.level.anwar.awake;
+    G.level = buildLevel(def);
+    var st = startAt ? { x: startAt[0] * T + T / 2, y: startAt[1] * T + T / 2 } : G.level.start;
+    G.player.x = st.x; G.player.y = st.y;
+    G.player.vx = 0; G.player.vy = 0;
+    G.safe = { x: st.x, y: st.y };
+    G.noises.length = 0;
+    G.doorFx.length = 0;
+    if (hadAnwar && G.level.anwar) {
+      G.level.anwar.awake = true;            // he is not going to be asleep again
+      G.level.anwar.trail = [];
+      G.level.anwar.x = st.x - 12;
+      G.level.anwar.y = st.y;
+    }
+    G.state = "play";
+    G.keys = freshKeys();
+    snapCam(G);
+    setHud(G);
+  }
+
+  /* =======================================================================
+     CUTSCENES
+
+        Two moments in Level 4 are not a thing she plays, they are a thing
+        that happens: the drive out of town, and the ride the rest of the
+        way. Both are painted straight onto the game canvas in the same
+        pixel language as everything else, with a line of text under them.
+     ======================================================================= */
+  function cutscene(G, opts) {
+    $("ap-hud").classList.add("gone");
+    G.state = "cut";
+    G.keys = freshKeys();
+    G.cut = { t: 0, dur: opts.dur, paint: opts.paint, done: opts.onDone, caption: opts.caption };
+    var cap = el("p", "ap-cut-cap", opts.caption);
+    openOverlay(cap, "thin cut");
+  }
+
+  function stepCut(G, dt) {
+    var cu = G.cut;
+    if (!cu) { G.state = "play"; return; }
+    cu.t += dt;
+    if (cu.t >= cu.dur) {
+      G.cut = null;
+      closeOverlay();
+      $("ap-hud").classList.remove("gone");
+      G.state = "play";
+      if (cu.done) cu.done();
+    }
+  }
+
+  /* ---- the drive: a road going past, and then not going past ---------- */
+  function paintDrive(G, c, t) {
+    var dur = G.cut.dur, k = t / dur;
+    var speed = k < 0.62 ? 1 : Math.max(0, 1 - (k - 0.62) / 0.30);   // it coughs and dies
+    var travelled = G.cut.travel = (G.cut.travel || 0) + speed * 190 * (1 / 60);
+
+    ditherFill(c, 0, 0, VW, 96, [
+      { p: 0, c: "#14162c" }, { p: 0.45, c: "#232a48" },
+      { p: 0.72, c: "#3d3a56" }, { p: 1, c: "#6a4a52" },
+    ]);
+    var rr = rnd(4001);
+    for (var i = 0; i < 40; i++) {                                   // stars, going out
+      px(c, (rr() * VW) | 0, (rr() * 60) | 0, 1, 1, "#c9cbe8");
+    }
+    /* three depths of country, each going past at its own rate */
+    [[0.16, 96, "#1b2032"], [0.36, 104, "#232a3d"], [0.7, 112, "#2d3548"]].forEach(function (L, d) {
+      var off = (travelled * L[0]) % 64;
+      for (var x = -64; x < VW + 64; x += 64) {
+        var hx = x - off;
+        blob(c, hx + 16, L[1] + 8, 30, 12 + d * 3, [L[2], L[2], shade(L[2], -6), shade(L[2], -10)]);
+        blob(c, hx + 48, L[1] + 10, 20, 9 + d * 2, [L[2], L[2], shade(L[2], -6), shade(L[2], -10)]);
+        if (d === 2 && ((hx / 64) | 0) % 2 === 0) {                  // a telegraph pole
+          px(c, hx + 30, L[1] - 22, 2, 30, "#20242f");
+          px(c, hx + 25, L[1] - 20, 12, 2, "#20242f");
+        }
+      }
+    });
+    px(c, 0, 118, VW, VH - 118, "#22242c");                          // the road
+    px(c, 0, 118, VW, 2, "#3a3d47");
+    for (var m = -40; m < VW + 40; m += 40) {                        // and its markings
+      px(c, m - ((travelled * 2.4) % 40), 152, 22, 3, "#b9bcc4");
+      px(c, m - ((travelled * 1.5) % 40) + 12, 132, 13, 2, "#7d818c");   // and the row behind
+    }
+    /* the car, from behind: two lamps and a dark shape */
+    var bob = Math.sin(t * (6 + speed * 10)) * (speed > 0.2 ? 1 : 0);
+    var cx = 128, cy = 132 + bob;
+    px(c, cx, cy - 22, 64, 24, "#20242e");
+    px(c, cx + 4, cy - 30, 56, 10, "#171b24");
+    px(c, cx + 8, cy - 28, 48, 6, "#2f3a4a");
+    /* the two of them through the back window, which is the only reason
+       this shot is worth painting at all */
+    blob(c, cx + 22, cy - 25, 4, 3, ["#161a22", "#161a22", "#101319", "#0c0e13"]);
+    blob(c, cx + 38, cy - 25, 4, 3, ["#161a22", "#161a22", "#101319", "#0c0e13"]);
+    px(c, cx + 19, cy - 23, 7, 3, "#12161d");
+    px(c, cx + 35, cy - 23, 7, 3, "#12161d");
+    px(c, cx, cy - 22, 64, 2, "#2f3542");
+    px(c, cx + 2, cy - 4, 10, 5, "#12141a"); px(c, cx + 52, cy - 4, 10, 5, "#12141a");
+    px(c, cx + 4, cy - 12, 8, 4, speed > 0.2 ? "#c94a3a" : "#5a2a26");
+    px(c, cx + 52, cy - 12, 8, 4, speed > 0.2 ? "#c94a3a" : "#5a2a26");
+    /* the headlights it throws forward, off the front of the picture */
+    if (speed > 0.15) {
+      var g = c.createRadialGradient(cx + 32, cy - 10, 4, cx + 32, cy - 10, 130);
+      g.addColorStop(0, "rgba(255,240,200,.14)");
+      g.addColorStop(1, "rgba(255,240,200,0)");
+      c.fillStyle = g; c.fillRect(0, 60, VW, VH - 60);
+    }
+    if (speed <= 0.15) {                                             // and the last of it
+      for (var p2 = 0; p2 < 6; p2++) {
+        px(c, cx + 26 + ((Math.random() * 12) | 0), cy - 36 - ((Math.random() * 20) | 0), 1, 1, "#5a5f6e");
+      }
+    }
+  }
+
+  /* ---- the ride: slower, warmer, and the sun coming up --------------- */
+  function paintRide(G, c, t) {
+    var travelled = G.cut.travel = (G.cut.travel || 0) + 46 * (1 / 60);
+    ditherFill(c, 0, 0, VW, 100, [
+      { p: 0, c: "#2b3358" }, { p: 0.38, c: "#4c4a6a" },
+      { p: 0.66, c: "#8a5f66" }, { p: 0.86, c: "#c98a68" }, { p: 1, c: "#e8b57e" },
+    ]);
+    blob(c, 238, 92, 12, 12, ["#fff0c8", "#ffe0a0", "#f0c078", "#d89a58"]);  // the sun
+    [[0.18, 92, "#2f3550"], [0.42, 100, "#3b3f58"]].forEach(function (L) {
+      var off = (travelled * L[0]) % 80;
+      for (var x = -80; x < VW + 80; x += 80) {
+        blob(c, x - off + 20, L[1] + 6, 36, 11, [L[2], L[2], shade(L[2], -5), shade(L[2], -9)]);
+        blob(c, x - off + 58, L[1] + 8, 24, 8, [L[2], L[2], shade(L[2], -5), shade(L[2], -9)]);
+      }
+    });
+    px(c, 0, 112, VW, VH - 112, "#35462c");                          // the field
+    for (var i = 0; i < 260; i++) {
+      var gx = (((i * 37) - travelled * 1.6) % (VW + 40) + VW + 40) % (VW + 40) - 20;
+      var gy = 114 + ((i * 13) % (VH - 114));
+      px(c, gx, gy, 1, 2, i % 3 ? "#405433" : "#4c6440");
+    }
+    /* the two of them on her, seen from the side */
+    var bob = Math.sin(t * 5.2) * 1.6;
+    var hx = 156, hy = 150 + bob;
+    drawHorse(c, hx, hy, 1, t * 6.4, false);
+    /* the sprites' feet are at the bottom of a twelve-by-eighteen frame, so
+       they are hung forty-six pixels above the ground she is standing on —
+       which puts them on her back rather than in the sky above it */
+    c.drawImage(ART.anwar.down[0], hx - 17, hy - 46);
+    c.drawImage(ART.ouissy.down[0], hx - 3, hy - 48);
+
+    var g2 = c.createLinearGradient(0, 0, VW, VH);                    // the low sun over it
+    g2.addColorStop(0, "rgba(255,190,120,0)");
+    g2.addColorStop(1, "rgba(255,190,120,.12)");
+    c.fillStyle = g2; c.fillRect(0, 0, VW, VH);
+  }
+
   function advanceStep(G, clears) {
-    var steps = G.level.def.steps;
+    /* G.steps, not G.level.def.steps: Level 4 swaps the map under her
+       halfway through and the second map is not a level, so it has no list
+       of its own. The objectives belong to the journey. */
+    var steps = G.steps || [];
     if (G.step && G.step.clears === clears && G.stepIndex < steps.length - 1) {
       G.stepIndex++;
       G.step = steps[G.stepIndex];
@@ -2552,6 +2901,7 @@ window.Apocalypse = (function () {
       return;
     }
     if (t.kind === "car") { CAR_USE(G, t); return; }
+    if (t.kind === "horse") { HORSE_USE(G, t); return; }
   }
 
   function useDoor(G, d) {
@@ -2736,6 +3086,11 @@ window.Apocalypse = (function () {
     },
   };
   var OUTRO = {
+    3: [
+      ["", "The gates are steel and somebody has welded a sheet of road sign across them. There is a light on above."],
+      ["", "A voice comes down from somewhere above the light, and it sounds tired rather than frightened."],
+      ["", "\u201cTwo of you? Stay where you are. Don't come any closer until I say.\u201d"],
+    ],
     2: null,        // filled in below from AP.reunion, so the words stay in one place
     1: [
       ["", "The hospital sign is still lit. Of everything on this street, that is the thing still lit."],
@@ -2750,6 +3105,20 @@ window.Apocalypse = (function () {
   OUTRO[2] = AP.reunion.hiding;
 
   var LEVEL_INTRO = {
+    3: function (G) {
+      say(G, [
+        ["", "There is a radio on the shelf in here, and it has been saying the same thing since before either of them woke up."],
+      ], function () {
+        showRadio(G, function () {
+          say(G, [
+            ["ANWAR", "Ashcombe. That's — what, forty miles?"],
+            ["OUISSY", "Are we walking forty miles?"],
+            ["ANWAR", "There's a staff car park under the east block."],
+            ["OUISSY", "Then we're not walking forty miles."],
+          ]);
+        });
+      });
+    },
     2: function (G) {
       say(G, [
         ["", "The doors are open and nobody is on the desk. The lights are on the emergency circuit — half of them, and not steadily."],
@@ -2773,7 +3142,105 @@ window.Apocalypse = (function () {
     },
   };
 
-  function CAR_USE(G, t) { /* Level 4 fills this in */ }
+  /* The car. In the hospital car park it is a thing to get running; on the
+     verge outside town it is a thing that has already stopped. */
+  function CAR_USE(G, t) {
+    if (G.level.def.key === "roadside") {
+      say(G, [["", "Nothing. It is not the battery this time — the needle has been on the pin since the ring road."]]);
+      return;
+    }
+    openWirePanel(G, {
+      title: "UNDER THE BONNET",
+      hint: "same puzzle, worse light. Follow the run, not the nearest end",
+      seed: 7 + G.levelIndex * 13,
+      count: 5,
+      onDone: function () {
+        t.done = true;
+        sfx("power");
+        cutscene(G, {
+          dur: 9.5,
+          caption: "Out past the ring road, and then twenty miles of nobody.",
+          paint: paintDrive,
+          onDone: function () {
+            enterSubmap(G, SUBMAPS.roadside, [5, 4]);
+            advanceStep(G, "car");
+            say(G, [
+              ["", "It coughs twice on the hill and then it is only the two of them and the noise the wind makes."],
+              ["ANWAR", "How much was in it?"],
+              ["OUISSY", "It was somebody else's car, Anwar."],
+              ["ANWAR", "Fair."],
+            ]);
+          },
+        });
+      },
+    });
+  }
+
+  /* The horse. Nothing about this is a puzzle. She has been shut in for two
+     days and she is delighted, and that is the point of the scene. */
+  function HORSE_USE(G, t) {
+    t.done = true;
+    sfx("found");
+    say(G, [
+      ["", "There is one animal left in the barn and she has heard them coming from the yard."],
+      ["", "She puts her whole head over the door before Ouissy has got near it."],
+      ["OUISSY", "Oh — hello. Hello."],
+      ["ANWAR", "She's enormous."],
+      ["OUISSY", "She's lovely. Look at her."],
+      ["", "There is a headcollar on the hook and somebody's name painted over the stall. She is not going to be collected."],
+      ["ANWAR", "Can you actually ride?"],
+      ["OUISSY", "No."],
+      ["ANWAR", "Right."],
+      ["OUISSY", "Get on."],
+    ], function () {
+      cutscene(G, {
+        dur: 9,
+        caption: "It takes most of the morning, and neither of them minds.",
+        paint: paintRide,
+        onDone: function () { finishLevel(G); },
+      });
+    });
+  }
+
+  /* The radio. It is on a shelf in the day room and it has been repeating
+     the same forty seconds since before either of them woke up. */
+  var RADIO = [
+    "— stay off the roads at night. Do not attempt to reach us after dark —",
+    "— Ashcombe reception is open. We are accepting anyone who is not bitten —",
+    "— you will be checked at the gate and you will be given the serum. Both are required —",
+    "— that is Ashcombe. North road, past the reservoir. We are still here —",
+  ];
+
+  function showRadio(G, onDone) {
+    G.state = "note";
+    G.keys = freshKeys();
+    var wrap = el("div", "ap-radio");
+    var set = el("div", "ap-radio-set");
+    set.appendChild(el("span", "ap-radio-grille"));
+    var dial = el("div", "ap-radio-dial");
+    dial.appendChild(el("span", "ap-radio-needle"));
+    set.appendChild(dial);
+    set.appendChild(el("span", "ap-radio-knob"));
+    wrap.appendChild(set);
+    var line = el("p", "ap-radio-line", RADIO[0]);
+    wrap.appendChild(line);
+    wrap.appendChild(el("p", "ap-radio-cap", "somebody is still broadcasting"));
+    var b = el("button", "ap-note-ok", "Listen to it again, then go");
+    b.addEventListener("click", function () {
+      clearInterval(iv);
+      closeOverlay();
+      G.state = "play";
+      if (onDone) onDone();
+    });
+    wrap.appendChild(b);
+    openOverlay(wrap, "thin");
+    var n = 0;
+    var iv = setInterval(function () {
+      n = (n + 1) % RADIO.length;
+      line.textContent = RADIO[n];
+      sfx("blip");
+    }, 3400);
+  }
 
   /* =======================================================================
      24. OFFLINE TEST HOOKS
@@ -2787,20 +3254,22 @@ window.Apocalypse = (function () {
         and proves nothing. __apPump steps the fixed timestep by hand
         instead — the same lesson super-ouissy.js writes up at its foot.
      ======================================================================= */
-  window.__apEnter = function (i) {
+  window.__apEnter = function (i, withIntro) {
     closeOverlay();
     G.levelIndex = i;
     G.level = buildLevel(LEVELS[i]);
     G.player = mkPlayer(G.level.start.x, G.level.start.y);
     G.safe = { x: G.level.start.x, y: G.level.start.y };
     G.stepIndex = 0;
-    G.step = G.level.def.steps[0];
+    G.steps = G.level.def.steps || [];
+    G.step = G.steps[0];
     G.state = "play";
     G.keys = freshKeys();
     G.pressure = 0;
     G.pressureT = PRESSURE_EVERY;
     snapCam(G);
     setHud(G);
+    if (withIntro && LEVEL_INTRO[i]) LEVEL_INTRO[i](G);
     return { w: G.level.w, h: G.level.h, zombies: G.level.zombies.length,
              things: G.level.things.map(function (t) { return t.kind; }) };
   };
@@ -2854,6 +3323,15 @@ window.Apocalypse = (function () {
              wires: P.wires.map(function (w) { return { key: w.key, ex: w.ex, ey: w.ey, placed: !!w.placed }; }),
              sockets: P.sockets.map(function (s) { return { key: s.key, x: s.x, y: s.y, filled: s.filled }; }) };
   };
+  window.__apDrive = function () {
+    cutscene(G, { dur: 9.5, caption: "Out past the ring road, and then twenty miles of nobody.",
+      paint: paintDrive, onDone: function () { enterSubmap(G, SUBMAPS.roadside, [5, 4]); } });
+  };
+  window.__apRide = function () {
+    cutscene(G, { dur: 9, caption: "It takes most of the morning, and neither of them minds.",
+      paint: paintRide, onDone: function () {} });
+  };
+  window.__apMapKey = function () { return G.level.def.key || G.level.def.name; };
   window.__apZombies = function () {
     return G.level.zombies.map(function (z) { return { x: z.x, y: z.y, state: z.state }; });
   };

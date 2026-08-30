@@ -3493,3 +3493,48 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-dlg.narration .ap-dlg-text{color:#c2ccdf; font-style:italic;}
 .ap-dlg.quiet .ap-dlg-text{color:#6d7793; letter-spacing:.5em; text-align:center;}
 .ap-dlg.quiet .ap-dlg-name{display:none;}
+
+/* ---- the transistor radio in the day room ---- */
+.ap-radio{width:min(72cqw, 440px); text-align:center;}
+.ap-radio-set{
+  position:relative; display:flex; align-items:center; gap:2.4cqw;
+  padding:3cqw 3.4cqw; border-radius:1.6cqw;
+  background:linear-gradient(166deg,#6b5233 0%,#54401f 40%,#3a2c16 100%);
+  box-shadow:inset 0 2px 0 rgba(255,235,190,.18), inset 0 -3px 8px rgba(0,0,0,.55),
+             0 18px 44px rgba(0,0,0,.7);
+}
+.ap-radio-grille{
+  flex:1; height:14cqw; border-radius:4px;
+  background:repeating-linear-gradient(90deg,#2a2013 0 2px,#4a3a22 2px 5px);
+  box-shadow:inset 0 0 10px rgba(0,0,0,.7), 0 1px 0 rgba(255,230,180,.12);
+}
+.ap-radio-dial{
+  position:relative; width:26%; height:14cqw; border-radius:3px;
+  background:linear-gradient(180deg,#d8c38a,#b39a5f);
+  box-shadow:inset 0 0 8px rgba(90,60,20,.6), 0 0 14px rgba(255,210,130,.25);
+  overflow:hidden;
+}
+.ap-radio-dial::before{
+  content:""; position:absolute; inset:0;
+  background:repeating-linear-gradient(90deg, rgba(60,40,15,.55) 0 1px, transparent 1px 7px);
+}
+.ap-radio-needle{
+  position:absolute; top:6%; bottom:6%; left:62%; width:2px; background:#a8302a;
+  box-shadow:0 0 6px rgba(220,70,60,.7);
+}
+.ap-radio-knob{
+  width:7cqw; height:7cqw; border-radius:50%;
+  background:radial-gradient(circle at 36% 30%, #8b7550, #4e3d22 62%, #2b2113);
+  box-shadow:inset 0 -1px 2px rgba(0,0,0,.6), 0 2px 3px rgba(0,0,0,.5);
+}
+.ap-radio-line{margin:3cqw 0 1cqw; font-size:2.2cqw; line-height:1.6; color:#e6dcc4; min-height:7cqw;}
+.ap-radio-cap{margin:0 0 2.4cqw; font-size:1.6cqw; color:#7f8bb0; font-style:italic;}
+
+/* ---- a cutscene caption ---- */
+.ap-overlay.cut{background:transparent; align-items:flex-end; pointer-events:none;}
+.ap-cut-cap{
+  margin:0 0 2.4cqw; padding:1.5cqw 3cqw; border-radius:6px;
+  background:rgba(6,8,14,.72); color:#e8eefc; font-size:2.1cqw; font-style:italic;
+  box-shadow:0 6px 20px rgba(0,0,0,.5);
+}
+.ap-hud.gone, .ap-hud.gone + .ap-pause-btn{opacity:0; transition:opacity .3s ease;}
