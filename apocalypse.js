@@ -290,6 +290,7 @@ window.Apocalypse = (function () {
     theme: "hospital",
     name: "THE HOSPITAL",
     dark: 0.71,
+    deadZone: [20, 1, 39, 10],          // Ward C: no doors, and no lights either
     pressure: true,
     grid: [
       "########################################",
@@ -304,18 +305,18 @@ window.Apocalypse = (function () {
       "##..h.........h.##.l##..BhlBh.Bh.Bh.B.##",
       "##..............##..##................##",
       "##################..####################",
-      "#....l.....z..l.........l.....z...l....#",
-      "#.......z..............................#",
+      "#....lyy...z..l.y.......l.....z..yl....#",
+      "#..y....z..Yy.............yy.......Y...#",
       "#########.########..####################",
-      "##.......d##.....#....................##",
+      "##.......j##.....#....................##",
       "##.X......##.ooo.#...KKKKKK.....=====.##",
-      "##........##.ooo.#.l...z....hh.....z..##",
+      "##........##.ooo.#.l...z....hhY....z..##",
       "##........##h....#...............h....##",
       "#########.####.###..####.###############",
-      "########......z................#########",
-      "########..KKKKKK...l..======...#########",
+      "########......z.......Y........#########",
+      "########..KKKKKK...l..======y..#########",
       "########....l...............l..#########",
-      "########...h....BB........h....#########",
+      "########...h....BB..yy....h....#########",
       "########...........S......z....#########",
       "########################################",
     ],
@@ -896,6 +897,16 @@ window.Apocalypse = (function () {
       if (r() > 0.9) { var fx = (r() * T) | 0, fy = (r() * T) | 0;   // a wildflower
         px(c, fx, fy - 2, 1, 2, "#4b6040"); px(c, fx - 1, fy - 3, 3, 2, r() > 0.5 ? "#d8c86a" : "#c9a0c0"); }
     }
+    /* The centre line, on the half of the carriageway that has no kerb —
+       so a two-tile road gets one dashed line down its middle rather than
+       two, and it reads as a road going somewhere. */
+    if (theme === "street" && !E.w && E.e) {
+      for (var dsh = 1; dsh < T - 2; dsh += 7) px(c, 0, dsh, 2, 4, "#b9bcc4");
+    }
+    if (theme === "street" && !E.n && E.s) {
+      for (var dsh2 = 1; dsh2 < T - 2; dsh2 += 7) px(c, dsh2, 0, 4, 2, "#b9bcc4");
+    }
+
     /* Where the tarmac stops, a kerb and a worn white line. Two pixels of
        paint is the whole difference between "a grey field" and "a road". */
     if (theme === "street") {
@@ -933,6 +944,27 @@ window.Apocalypse = (function () {
          is a window into next door's bathroom. Some of them are still lit:
          the city is empty, it is not switched off. */
       var facade = E.n || E.s || E.w || E.e;
+      /* Ground-floor frontage: a shop window with a shutter half down, or
+         a doorway with a step. It is what makes a row of blocks read as a
+         parade of shops rather than as a wall. */
+      if (theme === "street" && E.s && r() > 0.5) {
+        var kind = r();
+        if (kind > 0.62) {                                   // a shopfront
+          px(c, 1, T - 11, T - 2, 10, "#191d26");
+          px(c, 2, T - 10, T - 4, 8, r() > 0.6 ? "#2e3a4a" : "#141922");
+          for (var sh = 0; sh < 4 + ((r() * 4) | 0); sh++) px(c, 2, T - 10 + sh, T - 4, 1, "#3a4250");
+          px(c, 1, T - 12, T - 2, 2, "#4a5566");             // the fascia
+          px(c, 3, T - 11, T - 6, 1, "#6a7688");
+          px(c, 1, T - 2, T - 2, 2, "#2a303a");              // the step
+        } else {                                              // a doorway
+          px(c, 4, T - 10, 8, 10, "#171b23");
+          px(c, 5, T - 9, 6, 8, r() > 0.7 ? "#3a2f26" : "#20262f");
+          px(c, 4, T - 11, 8, 1, "#4a5566");
+          px(c, 10, T - 5, 1, 2, "#c9a05a");                 // a handle
+          px(c, 3, T - 2, 10, 2, "#2a303a");
+        }
+        return;
+      }
       if (theme === "street" && facade && r() > 0.62) {
         var wx = E.w ? 2 : E.e ? T - 8 : 4 + ((r() * 4) | 0);
         var wy = E.n ? 2 : E.s ? T - 8 : 4 + ((r() * 4) | 0);
@@ -1174,6 +1206,62 @@ window.Apocalypse = (function () {
     for (var i = 0; i < 5; i++) px(c, (r() * T) | 0, (r() * T) | 0, 1, 1, shade(col[2], 12));
   }
 
+  /* A gurney, from above: the mattress, the rails, and the wheels that
+     make it a gurney and not a bed. Half of them are shoved against a wall
+     at whatever angle they stopped at. */
+  function paintGurney(c, P, theme, r, E) {
+    paintFloor(c, P, theme, r);
+    px(c, 1, 1, T - 2, T - 3, "#8a949c");
+    px(c, 2, 2, T - 4, T - 6, "#dfe6ea");
+    px(c, 2, 2, T - 4, 2, "#f4f8fa");
+    px(c, 1, 1, 1, T - 3, "#b0bcc4"); px(c, T - 2, 1, 1, T - 3, "#6e7880");
+    if (E.n) px(c, 2, 2, T - 4, 4, "#eef2f4");                // the pillow end
+    if (E.s) { px(c, 2, T - 6, T - 4, 2, "#aeb8c0");
+               px(c, 2, T - 2, 3, 2, "#3a4048"); px(c, T - 5, T - 2, 3, 2, "#3a4048"); }
+    if (r() > 0.55) { px(c, 4, 6, 8, 5, "#c9d2d8"); }          // a blanket left on it
+  }
+
+  /* A trolley of equipment, or a drip stand somebody wheeled out and left */
+  function paintTrolley(c, P, theme, r) {
+    paintFloor(c, P, theme, r);
+    px(c, 3, 2, 10, 9, "#9aa6ae");
+    px(c, 3, 2, 10, 2, "#c2ccd2");
+    px(c, 4, 5, 8, 5, "#39424a");
+    px(c, 5, 6, 3, 3, r() > 0.5 ? "#7fe0b0" : "#3a4650");      // a screen, some still on
+    px(c, 3, 11, 2, 3, "#5c666e"); px(c, 11, 11, 2, 3, "#5c666e");
+    px(c, 2, T - 2, 4, 2, "#2a3038"); px(c, 10, T - 2, 4, 2, "#2a3038");
+  }
+
+  /* A door that is not going to close again */
+  function paintBrokenDoor(c, P, theme, r) {
+    paintFloor(c, P, theme, r);
+    px(c, 0, 0, 3, T, shade(P.wall[2], -6));
+    px(c, T - 3, 0, 3, T, shade(P.wall[2], -6));
+    px(c, 0, 0, T, 2, P.trim);
+    px(c, 2, 2, 4, T - 4, shade(P.trim, -30));                // one leaf, swung back
+    px(c, 2, 2, 1, T - 4, shade(P.trim, 10));
+    for (var i = 0; i < 5; i++) px(c, 7 + ((r() * 6) | 0), 3 + ((r() * 10) | 0), 2, 1, shade(P.trim, -40));
+  }
+
+  /* Signage. A hospital is mostly signs, and a corridor without any is a
+     corridor in a dream. */
+  function paintSign(c, P, r, E) {
+    if (!E.s) return;
+    var kind = r();
+    px(c, 2, T - 8, T - 4, 6, "#e8eef2");
+    px(c, 2, T - 8, T - 4, 1, "#fbfdfe");
+    px(c, 2, T - 3, T - 4, 1, "#9aa8b0");
+    if (kind > 0.66) {                                         // WARD C, with an arrow
+      px(c, 4, T - 6, 2, 2, "#2a5a8a"); px(c, 7, T - 6, 2, 2, "#2a5a8a");
+      px(c, 10, T - 7, 1, 4, "#2a5a8a"); px(c, 11, T - 6, 1, 2, "#2a5a8a");
+    } else if (kind > 0.33) {                                  // a green running man
+      px(c, 4, T - 7, T - 8, 4, "#2f7a4a");
+      px(c, 6, T - 6, 2, 2, "#e8eef2");
+    } else {                                                    // a line of small type
+      for (var i = 0; i < 3; i++) px(c, 4, T - 7 + i * 2, T - 8 - i * 2, 1, "#5a6870");
+    }
+  }
+
   /* A bookshelf, seen from above: the top of the carcass, and the tops of
      the books standing in it in whatever order somebody left them. */
   function paintShelf(c, P, theme, r) {
@@ -1319,10 +1407,37 @@ window.Apocalypse = (function () {
         for (var w = 0; w < 7; w++) px(c, x + 3 + w, y + 1 + ((w * 0.6) | 0), 1, 1, "#d8d8d8");
       }
     } else if (theme === "street") {
-      if (k < 0.34) { px(c, x, y, 6, 4, "#8a8474"); px(c, x, y, 6, 1, "#a39d8c"); }   // paper
-      else if (k < 0.6) { for (var i = 0; i < 5; i++) px(c, x + ((r() * 6) | 0), y + ((r() * 4) | 0), 2, 1, "#5a5f6a"); }
-      else if (k < 0.8) { px(c, x, y, 4, 5, "#3a5a3a"); px(c, x + 1, y - 1, 2, 2, "#4a6a45"); }  // a can
-      else { for (var g = 0; g < 7; g++) px(c, x + ((r() * 8) | 0), y + ((r() * 5) | 0), 1, 1, "#9aa0aa"); } // glass
+      if (k < 0.20) {                                          // a newspaper, blown flat
+        px(c, x, y, 8, 5, "#8a8474"); px(c, x, y, 8, 1, "#a39d8c");
+        for (var nl = 1; nl < 4; nl++) px(c, x + 1, y + nl, 6, 1, "#6e6a5c");
+      } else if (k < 0.36) {                                   // a drain
+        px(c, x, y, 9, 6, "#2a2e36"); px(c, x, y, 9, 1, "#4a5058");
+        for (var dg = 1; dg < 5; dg++) px(c, x + 1, y + dg, 7, 1, dg % 2 ? "#171a20" : "#343a44");
+      } else if (k < 0.50) {                                   // a manhole
+        blob(c, x + 4, y + 3, 5, 4, ["#4a5058", "#3a4048", "#2c3138", "#22262c"]);
+        px(c, x + 2, y + 3, 5, 1, "#22262c");
+      } else if (k < 0.64) {                                   // a traffic cone, kicked over
+        px(c, x, y + 3, 9, 2, "#c4581f"); px(c, x + 2, y + 1, 5, 2, "#e0e2e6");
+        px(c, x + 4, y, 4, 2, "#c4581f");
+      } else if (k < 0.78) {                                   // a can
+        px(c, x, y, 4, 6, "#3a5a3a"); px(c, x, y, 4, 1, "#5a7a55"); px(c, x + 1, y + 6, 2, 1, "#2a3f2a");
+      } else if (k < 0.9) {                                    // a dropped carrier bag
+        px(c, x, y + 1, 7, 5, "#c9cdd6"); px(c, x + 1, y, 2, 2, "#c9cdd6"); px(c, x + 4, y, 2, 2, "#c9cdd6");
+      } else {                                                  // broken glass
+        for (var g = 0; g < 8; g++) px(c, x + ((r() * 9) | 0), y + ((r() * 6) | 0), 1, 1, "#9aa0aa");
+      }
+    } else if (theme === "road") {
+      if (k < 0.3) {                                            // a puddle in a rut
+        blob(c, x + 4, y + 2, 6, 3, ["#4a5a58", "#3d4d4c", "#334241", "#2b3736"]);
+        px(c, x + 2, y + 1, 4, 1, "#6a7a76");
+      } else if (k < 0.55) {                                    // a stone
+        blob(c, x + 3, y + 2, 3, 2, ["#7a7468", "#665f55", "#4f4a42", "#3b3731"]);
+      } else if (k < 0.78) {                                    // a fallen branch
+        for (var bx = 0; bx < 8; bx++) px(c, x + bx, y + 2 + ((bx * 0.4) | 0), 1, 1, "#4a3a28");
+        px(c, x + 5, y + 1, 2, 1, "#4a3a28");
+      } else {                                                   // a clump of nettles
+        for (var nn = 0; nn < 7; nn++) px(c, x + ((r() * 7) | 0), y + ((r() * 5) | 0), 1, 2, "#4c6040");
+      }
     } else if (theme === "hospital") {
       if (k < 0.4) { px(c, x, y, 6, 4, "#e8ecee"); px(c, x, y, 6, 1, "#fbfdfe"); }    // paperwork
       else if (k < 0.7) { px(c, x, y, 3, 6, "#c9d6dd"); px(c, x, y, 3, 1, "#8fa2ac"); } // a dropped kidney dish
@@ -1336,7 +1451,7 @@ window.Apocalypse = (function () {
      graph paper and a sofa is not four sofas.
      --------------------------------------------------------------------- */
   var VARIANTS = 8;
-  var EDGED = "BFK=rc,#";             // the pieces that care about their neighbours
+  var EDGED = "BFK=rc,#y";            // the pieces that care about their neighbours
 
   function tileFor(cache, theme, ch, mask, v, under) {
     var key = ch + "|" + mask + "|" + v + "|" + (under || "");
@@ -1347,13 +1462,16 @@ window.Apocalypse = (function () {
     var E = { n: !!(mask & 1), s: !!(mask & 2), w: !!(mask & 4), e: !!(mask & 8) };
     if (ch === ".") paintFloor(c, P, theme, r);
     else if (ch === ",") paintGround(c, P, theme, r, E);
-    else if (ch === "#") paintWall(c, P, theme, r, E);
+    else if (ch === "#") { paintWall(c, P, theme, r, E); if (theme === "hospital" && r() > 0.72) paintSign(c, P, r, E); }
     else if (ch === "o") paintTall(c, P, theme, r);
     else if (ch === "=") paintCover(c, P, theme, r);
     else if (ch === "B") paintBed(c, P, theme, r, E);
     else if (ch === "F") paintSofa(c, P, theme, r, E);
     else if (ch === "K") paintCounter(c, P, theme, r, E);
     else if (ch === "c") paintCar(c, P, theme, r, E);
+    else if (ch === "y") paintGurney(c, P, theme, r, E);
+    else if (ch === "Y") paintTrolley(c, P, theme, r);
+    else if (ch === "j") paintBrokenDoor(c, P, theme, r);
     else if (ch === "n") paintShelf(c, P, theme, r);
     else if (ch === "f") paintFridge(c, P, theme, r);
     else if (ch === "q") paintChair(c, P, theme, r);
@@ -1382,7 +1500,7 @@ window.Apocalypse = (function () {
         where she can disappear, what she can use, and who else is walking
         about. The map art is baked into one canvas here too.
      ======================================================================= */
-  var SOLID = "#vco=BFKnfquWTLCA"; // she cannot walk through these (G is a door)
+  var SOLID = "#vco=BFKnfquyYWTLCA"; // she cannot walk through these (G is a door)
   var OPAQUE = "#vcohnf";          // and sight cannot pass these
   var ENTITY = "SzAHN";            // drawn as bare floor; something stands on it
 
@@ -1417,7 +1535,15 @@ window.Apocalypse = (function () {
         if (ch === "D") L.doors[x + "," + y] = { open: false, kind: "locked" };
         if (ch === "P") L.doors[x + "," + y] = { open: false, kind: "power" };
         if (ch === "v") L.lights.push({ x: x * T + T / 2, y: y * T + T + 6, r: 58, warm: -0.9 });
-        if (ch === "l") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2, r: def.theme === "hospital" ? 60 : 62,
+        /* A light inside Ward C is on the same dead circuit as its doors,
+           so the ward is a black hole in the middle of a lit building until
+           she has been to the plant room. That is the whole point of it. */
+        if (ch === "l" && def.deadZone && x >= def.deadZone[0] && x <= def.deadZone[2] &&
+            y >= def.deadZone[1] && y <= def.deadZone[3]) {
+          L.dead = L.dead || [];
+          L.dead.push({ x: x * T + T / 2, y: y * T + T / 2, r: 60, warm: -0.5, flicker: true });
+        }
+        else if (ch === "l") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2, r: def.theme === "hospital" ? 60 : 62,
                                         warm: def.theme === "hospital" ? -0.5 : 1,
                                         flicker: def.theme === "hospital" && ((x + y) % 3 === 0) });
         if (ch === "L") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2, r: 74, warm: 1 });
@@ -1461,7 +1587,7 @@ window.Apocalypse = (function () {
            variant would carry the same book at the same angle and the room
            would read as wallpaper. Seeded from the tile's own coordinates it
            is different everywhere and identical between visits. */
-        if (d === "." || (d === "," && def.theme !== "house")) {
+        if (d === "." || (d === "," && def.theme !== "house" && def.theme !== "road")) {
           mc.save();
           mc.translate(x * T, y * T);
           paintClutter(mc, rnd(x * 92821 + y * 31337 + 7), def.theme);
@@ -1557,6 +1683,15 @@ window.Apocalypse = (function () {
       c.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
     }
 
+    /* the panel throws a spark every few seconds while it is still dead —
+       which is both a hint where the plant room is and the reason the
+       corridor outside it keeps flickering */
+    L.things.forEach(function (th) {
+      if (th.kind !== "panel" || th.done) return;
+      var sp = Math.sin(G.t * 2.7) > 0.985 ? 1 : 0;
+      if (sp) pool(th.x * T + T / 2, th.y * T + T / 2, 54, -1, 0.9);
+    });
+
     for (var i = 0; i < L.lights.length; i++) {
       var li = L.lights[i];
       var s = 1;
@@ -1642,7 +1777,9 @@ window.Apocalypse = (function () {
       }
     });
 
+    var wasHidden = p.hidden;
     p.hidden = isHide(L, tx, ty);
+    if (p.hidden && !wasHidden) sfx("hide");
 
     /* animation, and the sound of her own feet */
     var moving = s > 4;
@@ -2031,6 +2168,7 @@ window.Apocalypse = (function () {
     G.caughtLine = CLOSE_CALLS[(Math.random() * CLOSE_CALLS.length) | 0];
     G.closeCalls++;
     sfx("caught");
+    startHeart();
     setHud(G);
   }
 
@@ -2045,6 +2183,7 @@ window.Apocalypse = (function () {
     G.noises.length = 0;
     G.state = "play";
     G.flash = 0.5;
+    stopHeart();
     snapCam(G);
   }
 
@@ -2201,24 +2340,55 @@ window.Apocalypse = (function () {
   }
 
   /* =======================================================================
-     16. SOUND — Web Audio, no files. Quiet by design: this chapter is
-         mostly the sound of her own feet and a room tone that will not let
-         you relax.
+     16. SOUND
+
+        Web Audio only — there is not an audio file in this chapter, the
+        same rule the art follows. What there is:
+
+        a bed, which is the room she is in. Two of them: a cold one for the
+        house, the streets and the hospital, and a warm one for the road and
+        the gates. They cross-fade when the level changes rather than
+        cutting, so the moment she gets out of the city is something you
+        hear before you read it.
+
+        the horde, which is proximity. One shuffling layer and one groaning
+        voice, both driven every frame by how far away the nearest of them
+        actually is, panned to whichever side it is on, and ducked to
+        nothing when she is hidden. It is the only thing in the game that
+        tells her something is close before she can see it, and it is the
+        reason the dark is worth being afraid of.
+
+        and the effects, which are all short and all synthesised: her feet,
+        doors, the panel, the radio, the sound of getting into a wardrobe,
+        and a heartbeat that only ever plays on a close call.
      ======================================================================= */
-  var actx = null, master = null, room = null;
+  var actx = null, master = null, busSfx = null, busAmb = null, busZom = null;
+  var bed = null, horde = null, heart = null;
 
   function audio() {
     if (actx) return actx;
     try {
       actx = new (window.AudioContext || window.webkitAudioContext)();
-      master = actx.createGain();
-      master.gain.value = 0.5;
-      master.connect(actx.destination);
+      var comp = actx.createDynamicsCompressor();
+      comp.threshold.value = -18; comp.ratio.value = 4; comp.release.value = 0.25;
+      master = actx.createGain(); master.gain.value = 0.55;
+      busSfx = actx.createGain(); busSfx.gain.value = 1;
+      busAmb = actx.createGain(); busAmb.gain.value = 1;
+      busZom = actx.createGain(); busZom.gain.value = 1;
+      busSfx.connect(master); busAmb.connect(master); busZom.connect(master);
+      master.connect(comp); comp.connect(actx.destination);
     } catch (e) { actx = null; }
     return actx;
   }
 
-  function tone(freq, dur, type, vol, slideTo) {
+  function noiseBuffer(secs) {
+    var a = audio(), n = Math.floor(a.sampleRate * secs);
+    var buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  function tone(freq, dur, type, vol, slideTo, bus) {
     var a = audio(); if (!a) return;
     var o = a.createOscillator(), g = a.createGain();
     o.type = type || "square";
@@ -2227,57 +2397,214 @@ window.Apocalypse = (function () {
     g.gain.setValueAtTime(0.0001, a.currentTime);
     g.gain.exponentialRampToValueAtTime(vol || 0.08, a.currentTime + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
-    o.connect(g); g.connect(master);
+    o.connect(g); g.connect(bus || busSfx);
     o.start(); o.stop(a.currentTime + dur + 0.02);
   }
 
-  function noiseBurst(dur, vol, filterHz) {
+  function noiseBurst(dur, vol, filterHz, type, q) {
     var a = audio(); if (!a) return;
-    var n = a.sampleRate * dur;
-    var buf = a.createBuffer(1, n, a.sampleRate);
-    var d = buf.getChannelData(0);
-    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
-    var s = a.createBufferSource(); s.buffer = buf;
-    var f = a.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = filterHz || 1200;
-    var g = a.createGain(); g.gain.value = vol || 0.06;
-    s.connect(f); f.connect(g); g.connect(master);
-    s.start();
+    var s2 = a.createBufferSource(); s2.buffer = noiseBuffer(dur);
+    var f = a.createBiquadFilter(); f.type = type || "lowpass";
+    f.frequency.value = filterHz || 1200; if (q) f.Q.value = q;
+    var g = a.createGain();
+    g.gain.setValueAtTime(vol || 0.06, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
+    s2.connect(f); f.connect(g); g.connect(busSfx);
+    s2.start();
   }
 
-  function sfx(kind) {
-    if (!audio()) return;
-    switch (kind) {
-      case "step":    noiseBurst(0.06, 0.045, 700); break;
-      case "creep":   noiseBurst(0.05, 0.016, 380); break;
-      case "door":    noiseBurst(0.3, 0.06, 900); tone(120, 0.25, "sawtooth", 0.035, 80); break;
-      case "blip":    tone(880, 0.05, "square", 0.03); break;
-      case "connect": tone(520, 0.08, "square", 0.05); tone(780, 0.12, "square", 0.04); break;
-      case "spark":   noiseBurst(0.12, 0.07, 4200); tone(210, 0.1, "sawtooth", 0.04, 90); break;
-      case "power":   tone(160, 0.5, "sawtooth", 0.05, 320); tone(240, 0.7, "sine", 0.04, 480); break;
-      case "caught":  tone(200, 0.5, "sawtooth", 0.09, 60); noiseBurst(0.4, 0.09, 600); break;
-      case "found":   tone(660, 0.1, "sine", 0.05); tone(880, 0.18, "sine", 0.045); break;
-      case "spot":    tone(320, 0.35, "sawtooth", 0.07, 130); noiseBurst(0.35, 0.06, 900); break;
-      case "arrive":  tone(78, 0.9, "sine", 0.045, 52); noiseBurst(0.5, 0.03, 340); break;
-      case "deny":    tone(150, 0.18, "square", 0.05, 110); break;
+  /* ---- the bed ------------------------------------------------------- */
+  var BEDS = {
+    /* two low voices a semitone-ish apart so they beat against each other,
+       a slow wash of filtered noise over them, and nothing resembling a
+       tune. The point is that it never resolves. */
+    cold: { a: 54, b: 81.5, wash: 340, gain: 0.055, wob: 0.06 },
+    warm: { a: 98, b: 147, wash: 900, gain: 0.038, wob: 0.02 },
+  };
+
+  function startBed(which) {
+    var a = audio(); if (!a) return;
+    var spec = BEDS[which] || BEDS.cold;
+    if (bed && bed.which === which) return;
+    var old = bed;
+    var o1 = a.createOscillator(), o2 = a.createOscillator();
+    var f = a.createBiquadFilter(), g = a.createGain(), lfo = a.createOscillator(), lfoG = a.createGain();
+    o1.type = "sine"; o1.frequency.value = spec.a;
+    o2.type = "sine"; o2.frequency.value = spec.b;
+    f.type = "lowpass"; f.frequency.value = spec.wash;
+    g.gain.value = 0.0001;
+    lfo.frequency.value = 0.07; lfoG.gain.value = spec.wash * spec.wob;
+    lfo.connect(lfoG); lfoG.connect(f.frequency);
+    /* the wash: noise so slow and so filtered it reads as a room, not as hiss */
+    var nz = a.createBufferSource(); nz.buffer = noiseBuffer(4); nz.loop = true;
+    var nf = a.createBiquadFilter(); nf.type = "bandpass"; nf.frequency.value = spec.wash * 0.6; nf.Q.value = 0.7;
+    var ng = a.createGain(); ng.gain.value = 0.012;
+    nz.connect(nf); nf.connect(ng); ng.connect(g);
+    o1.connect(f); o2.connect(f); f.connect(g); g.connect(busAmb);
+    o1.start(); o2.start(); lfo.start(); nz.start();
+    g.gain.exponentialRampToValueAtTime(spec.gain, a.currentTime + 2.2);
+    bed = { which: which, o1: o1, o2: o2, lfo: lfo, nz: nz, g: g };
+    if (old) {
+      old.g.gain.cancelScheduledValues(a.currentTime);
+      old.g.gain.setValueAtTime(Math.max(0.0001, old.g.gain.value), a.currentTime);
+      old.g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 2.0);
+      setTimeout(function () {
+        try { old.o1.stop(); old.o2.stop(); old.lfo.stop(); old.nz.stop(); } catch (e) {}
+      }, 2400);
+    }
+  }
+  function stopBed() {
+    if (!bed) return;
+    try { bed.o1.stop(); bed.o2.stop(); bed.lfo.stop(); bed.nz.stop(); } catch (e) {}
+    bed = null;
+  }
+
+  /* ---- the horde ------------------------------------------------------ */
+  function startHorde() {
+    var a = audio(); if (!a || horde) return;
+    /* the shuffle: broadband noise through a low bandpass, always running,
+       almost always silent */
+    var nz = a.createBufferSource(); nz.buffer = noiseBuffer(4); nz.loop = true;
+    var nf = a.createBiquadFilter(); nf.type = "bandpass"; nf.frequency.value = 420; nf.Q.value = 1.4;
+    var ng = a.createGain(); ng.gain.value = 0.0001;
+    var pan = a.createStereoPanner ? a.createStereoPanner() : null;
+    nz.connect(nf); nf.connect(ng);
+    if (pan) { ng.connect(pan); pan.connect(busZom); } else ng.connect(busZom);
+    nz.start();
+    horde = { nz: nz, g: ng, pan: pan, next: 2 + Math.random() * 3, near: 1 };
+  }
+  function stopHorde() {
+    if (!horde) return;
+    try { horde.nz.stop(); } catch (e) {}
+    horde = null;
+  }
+
+  /* one of them, somewhere, making the noise they make */
+  function groan(closeness, side) {
+    var a = audio(); if (!a) return;
+    var o = a.createOscillator(), o2 = a.createOscillator(), g = a.createGain();
+    var f = a.createBiquadFilter();
+    var base = 58 + Math.random() * 26;
+    o.type = "sawtooth"; o2.type = "sine";
+    o.frequency.setValueAtTime(base, a.currentTime);
+    o.frequency.linearRampToValueAtTime(base * 0.72, a.currentTime + 1.1);
+    o2.frequency.setValueAtTime(base * 2.01, a.currentTime);
+    o2.frequency.linearRampToValueAtTime(base * 1.4, a.currentTime + 1.1);
+    f.type = "lowpass";
+    f.frequency.setValueAtTime(220 + closeness * 900, a.currentTime);
+    f.frequency.linearRampToValueAtTime(160 + closeness * 400, a.currentTime + 1.1);
+    var peak = 0.012 + closeness * 0.085;
+    g.gain.setValueAtTime(0.0001, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(peak, a.currentTime + 0.22);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 1.25);
+    o.connect(f); o2.connect(f); f.connect(g);
+    var pan = a.createStereoPanner ? a.createStereoPanner() : null;
+    if (pan) { pan.pan.value = Math.max(-0.9, Math.min(0.9, side)); g.connect(pan); pan.connect(busZom); }
+    else g.connect(busZom);
+    o.start(); o2.start();
+    o.stop(a.currentTime + 1.3); o2.stop(a.currentTime + 1.3);
+  }
+
+  /* Driven from the loop. `near` is 0 at arm's length and 1 at the far end
+     of hearing, so the maths reads the right way round everywhere below. */
+  function stepHorde(G, dt) {
+    if (!horde || !actx) return;
+    var p = G.player, best = 999999, side = 0;
+    for (var i = 0; i < G.level.zombies.length; i++) {
+      var z = G.level.zombies[i];
+      var d = Math.hypot(z.x - p.x, z.y - p.y);
+      if (d < best) { best = d; side = Math.max(-1, Math.min(1, (z.x - p.x) / 150)); }
+    }
+    /* Ten tiles, not sixteen. At sixteen the horde was audible from most
+       of a street at once, which makes it wallpaper rather than a warning;
+       squaring it on top means the last few tiles are where almost all of
+       the loudness lives. */
+    var REACH = 170;
+    var closeness = Math.max(0, 1 - best / REACH);
+    closeness *= closeness;
+    /* inside a wardrobe the world goes quiet, which is half of why hiding
+       feels like hiding */
+    if (p.hidden) closeness *= 0.25;
+    horde.near = closeness;
+    var target = 0.0001 + closeness * 0.10;
+    horde.g.gain.setTargetAtTime(target, actx.currentTime, 0.35);
+    if (horde.pan) horde.pan.pan.setTargetAtTime(side * 0.7, actx.currentTime, 0.4);
+
+    horde.next -= dt;
+    if (horde.next <= 0) {
+      /* the closer the nearest one is, the more often one of them makes a
+         sound — and none of them do at all if she is well clear */
+      horde.next = 1.4 + Math.random() * (5.5 - closeness * 3.4);
+      if (closeness > 0.06) groan(closeness, side);
     }
   }
 
-  /* a low room tone that runs under the whole chapter */
-  function startRoom() {
-    var a = audio(); if (!a || room) return;
-    var o = a.createOscillator(), o2 = a.createOscillator(), g = a.createGain(), f = a.createBiquadFilter();
-    o.type = "sine"; o.frequency.value = 54;
-    o2.type = "sine"; o2.frequency.value = 81.5;
-    f.type = "lowpass"; f.frequency.value = 320;
-    g.gain.value = 0.05;
-    o.connect(f); o2.connect(f); f.connect(g); g.connect(master);
-    o.start(); o2.start();
-    room = { o: o, o2: o2, g: g };
+  /* ---- the heartbeat, which only a close call earns ------------------- */
+  function startHeart() {
+    var a = audio(); if (!a || heart) return;
+    var stop = false;
+    function beat(n) {
+      if (stop || !actx) return;
+      tone(58, 0.14, "sine", 0.10, 42, busZom);
+      setTimeout(function () { if (!stop) tone(48, 0.18, "sine", 0.07, 36, busZom); }, 165);
+      setTimeout(function () { beat(n + 1); }, 620);
+    }
+    beat(0);
+    heart = { stop: function () { stop = true; heart = null; } };
   }
-  function stopRoom() {
-    if (!room) return;
-    try { room.o.stop(); room.o2.stop(); } catch (e) {}
-    room = null;
+  function stopHeart() { if (heart) heart.stop(); }
+
+  /* ---- the short ones ------------------------------------------------- */
+  function sfx(kind) {
+    if (!audio()) return;
+    switch (kind) {
+      case "step":                                   // a soft heel, then a scuff
+        noiseBurst(0.045, 0.05, 420, "lowpass");
+        noiseBurst(0.09, 0.018, 2600, "bandpass", 1.2);
+        break;
+      case "creep":
+        noiseBurst(0.07, 0.012, 900, "bandpass", 2);
+        break;
+      case "door":                                   // hinge, then the weight of it
+        noiseBurst(0.42, 0.03, 1700, "bandpass", 6);
+        tone(190, 0.4, "sawtooth", 0.022, 96);
+        setTimeout(function () { noiseBurst(0.12, 0.05, 260); }, 330);
+        break;
+      case "unlock":                                 // a bolt going back
+        tone(1400, 0.03, "square", 0.05);
+        setTimeout(function () { noiseBurst(0.09, 0.06, 3200, "bandpass", 3); }, 45);
+        break;
+      case "hide":                                   // cloth, and a door pulled to
+        noiseBurst(0.3, 0.035, 2200, "bandpass", 1.1);
+        setTimeout(function () { noiseBurst(0.1, 0.03, 500); }, 190);
+        break;
+      case "blip":    tone(880, 0.05, "square", 0.028); break;
+      case "connect": tone(520, 0.07, "square", 0.045); setTimeout(function(){ tone(784, 0.16, "square", 0.04); }, 60); break;
+      case "spark":   noiseBurst(0.05, 0.09, 6000, "highpass"); tone(210, 0.09, "sawtooth", 0.04, 90);
+                      setTimeout(function(){ noiseBurst(0.07, 0.05, 4200, "highpass"); }, 70); break;
+      case "power":   tone(120, 0.7, "sawtooth", 0.05, 300); tone(180, 0.9, "sine", 0.035, 460);
+                      noiseBurst(0.5, 0.02, 800); break;
+      case "static":  noiseBurst(0.22, 0.045, 5200, "highpass");
+                      noiseBurst(0.3, 0.02, 900, "bandpass", 0.8); break;
+      case "tune":                                   // a dial being turned across a band
+        for (var i = 0; i < 5; i++) {
+          (function (k) { setTimeout(function () {
+            noiseBurst(0.1, 0.03, 1200 + Math.random() * 4200, "bandpass", 4);
+            tone(300 + Math.random() * 900, 0.06, "sine", 0.015);
+          }, k * 110); })(i);
+        }
+        break;
+      case "caught":  tone(190, 0.55, "sawtooth", 0.08, 52); noiseBurst(0.45, 0.07, 520); break;
+      case "spot":    tone(320, 0.35, "sawtooth", 0.06, 130); noiseBurst(0.35, 0.05, 900); break;
+      case "arrive":  tone(74, 0.9, "sine", 0.04, 50); noiseBurst(0.5, 0.022, 320); break;
+      case "found":   tone(660, 0.09, "sine", 0.045); setTimeout(function(){ tone(880, 0.2, "sine", 0.04); }, 80); break;
+      case "deny":    tone(150, 0.18, "square", 0.045, 110); break;
+    }
+  }
+
+  /* which bed a level wants */
+  function bedFor(def) {
+    return (def && (def.theme === "road" || def.key === "gates")) ? "warm" : "cold";
   }
 
   /* =======================================================================
@@ -2325,6 +2652,7 @@ window.Apocalypse = (function () {
 
     stepPlayer(G, dt);
     stepPressure(G, dt);
+    stepHorde(G, dt);
     for (i = 0; i < G.level.zombies.length; i++) stepZombie(G, G.level.zombies[i], dt);
     updateSafe(G, dt);
     checkTriggers(G);
@@ -2332,10 +2660,14 @@ window.Apocalypse = (function () {
     if (G.hudT <= 0) {
       G.hudT = 0.15;
       setHud(G);
-      if (room && room.g) {
+      /* the pressure leans on the bed: it gets louder and its two voices
+         drift further apart, so the room itself sounds less settled the
+         longer she is in the hospital */
+      if (bed && bed.g && actx) {
         var lean = G.level.def.pressure ? (G.pressure || 0) : 0;
-        room.g.gain.value = 0.05 + lean * 0.07;
-        room.o2.frequency.value = 81.5 + lean * 9;
+        var spec = BEDS[bed.which] || BEDS.cold;
+        bed.g.gain.setTargetAtTime(spec.gain * (1 + lean * 1.5), actx.currentTime, 0.6);
+        bed.o2.frequency.setTargetAtTime(spec.b + lean * 11, actx.currentTime, 0.8);
       }
     }
   }
@@ -2482,14 +2814,17 @@ window.Apocalypse = (function () {
     if (window.duckAmbient) window.duckAmbient(true);
     lastT = 0; acc = 0;
     if (!raf) raf = requestAnimationFrame(frame);
-    startRoom();
+    startBed("cold");
+    startHorde();
     showHowTo();
   }
 
   function stop() {
     if (raf) cancelAnimationFrame(raf);
     raf = null;
-    stopRoom();
+    stopBed();
+    stopHorde();
+    stopHeart();
     closeOverlay();
     $("ap-dlg").setAttribute("aria-hidden", "true");
     if (window.duckAmbient) window.duckAmbient(false);
@@ -2524,6 +2859,7 @@ window.Apocalypse = (function () {
       G.keys = freshKeys();
       G.pressure = 0;
       G.pressureT = PRESSURE_EVERY;
+      startBed(bedFor(G.level.def));
       snapCam(G);
       setHud(G);
       if (LEVEL_INTRO[i]) LEVEL_INTRO[i](G);
@@ -2552,6 +2888,7 @@ window.Apocalypse = (function () {
     }
     G.state = "play";
     G.keys = freshKeys();
+    startBed(bedFor(def));
     snapCam(G);
     setHud(G);
   }
@@ -2613,8 +2950,28 @@ window.Apocalypse = (function () {
         }
       }
     });
+    /* the verge: grass, a fence line, and the things that stand beside a
+       road — a post, a sign, a gate — going past at the road's own rate */
+    px(c, 0, 112, VW, 10, "#26301f");
+    for (var vg = 0; vg < 90; vg++) {
+      var vx = ((vg * 37 - travelled * 1.9) % (VW + 40) + VW + 40) % (VW + 40) - 20;
+      px(c, vx, 112 + ((vg * 7) % 9), 1, 2, vg % 3 ? "#31402a" : "#3d4f33");
+    }
+    var postGap = 46;
+    for (var pz = -postGap; pz < VW + postGap; pz += postGap) {
+      var px2 = pz - ((travelled * 1.9) % postGap);
+      px(c, px2, 100, 2, 14, "#2a2620");
+      px(c, px2 - 5, 104, 12, 1, "#332e26");
+      if (((px2 / postGap) | 0) % 3 === 0) {                       // a sign, now and then
+        px(c, px2 - 6, 92, 14, 9, "#3a4250");
+        px(c, px2 - 6, 92, 14, 1, "#5a6470");
+        px(c, px2 - 4, 95, 10, 2, "#9aa4b0");
+        px(c, px2 - 4, 98, 6, 1, "#7a8490");
+      }
+    }
     px(c, 0, 118, VW, VH - 118, "#22242c");                          // the road
     px(c, 0, 118, VW, 2, "#3a3d47");
+    px(c, 0, 120, VW, 1, "#1a1c22");
     for (var m = -40; m < VW + 40; m += 40) {                        // and its markings
       px(c, m - ((travelled * 2.4) % 40), 152, 22, 3, "#b9bcc4");
       px(c, m - ((travelled * 1.5) % 40) + 12, 132, 13, 2, "#7d818c");   // and the row behind
@@ -2642,6 +2999,15 @@ window.Apocalypse = (function () {
       g.addColorStop(1, "rgba(255,240,200,0)");
       c.fillStyle = g; c.fillRect(0, 60, VW, VH - 60);
     }
+    /* the weather: a thin drift of mist crossing the beams, which is what
+       makes headlights read as headlights rather than as two yellow dots */
+    for (var mz = 0; mz < 5; mz++) {
+      var mx = ((travelled * (0.5 + mz * 0.22) + mz * 71) % (VW + 160)) - 80;
+      var my = 96 + mz * 9;
+      c.fillStyle = "rgba(150,160,190," + (0.035 + speed * 0.03) + ")";
+      c.beginPath(); c.ellipse(VW - mx, my, 44 + mz * 12, 5 + mz, 0, 0, 6.2832); c.fill();
+    }
+
     if (speed <= 0.15) {                                             // and the last of it
       for (var p2 = 0; p2 < 6; p2++) {
         px(c, cx + 26 + ((Math.random() * 12) | 0), cy - 36 - ((Math.random() * 20) | 0), 1, 1, "#5a5f6e");
@@ -3117,7 +3483,7 @@ window.Apocalypse = (function () {
         if (d === "c") { entered = ""; sfx("blip"); paint(); return; }
         if (d === "k") {
           if (entered === code) {
-            sfx("power");
+            sfx("unlock");
             door.open = true;
             closeOverlay();
             G.state = "play";
@@ -3460,6 +3826,11 @@ window.Apocalypse = (function () {
     Object.keys(L.doors).forEach(function (k) {
       if (L.doors[k].kind === "power") L.doors[k].open = true;
     });
+    /* whatever was on the dead circuit comes up with the doors */
+    if (L.dead && L.dead.length) {
+      L.lights.push.apply(L.lights, L.dead);
+      L.dead.length = 0;
+    }
     advanceStep(G, "panel");
     if (line) say(G, [["", line]]);
   }
@@ -3812,10 +4183,11 @@ window.Apocalypse = (function () {
     wrap.appendChild(b);
     openOverlay(wrap, "thin");
     var n = 0;
+    sfx("tune");
     var iv = setInterval(function () {
       n = (n + 1) % RADIO.length;
       line.textContent = RADIO[n];
-      sfx("blip");
+      sfx("static");
     }, 3400);
   }
 
@@ -3844,6 +4216,7 @@ window.Apocalypse = (function () {
     G.keys = freshKeys();
     G.pressure = 0;
     G.pressureT = PRESSURE_EVERY;
+    startBed(bedFor(G.level.def));
     snapCam(G);
     setHud(G);
     if (withIntro && LEVEL_INTRO[i]) LEVEL_INTRO[i](G);
@@ -3915,6 +4288,11 @@ window.Apocalypse = (function () {
     return true;
   };
   window.__apArt = function () { return buildArt(); };
+  window.__apAudio = function () {
+    return { ctx: !!actx, bed: bed && bed.which,
+             hordeGain: horde && horde.g ? horde.g.gain.value : -1,
+             near: horde ? horde.near : -1, heart: !!heart };
+  };
   window.__apKeys = function () { return G.keys; };
   window.__apPos = function () { return { x: G.player.x, y: G.player.y }; };
   window.__apVel = function () { return { vx: Math.round(G.player.vx), vy: Math.round(G.player.vy), frames: G.__frames || 0, steps: G.__steps || 0 }; };

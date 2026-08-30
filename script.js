@@ -1398,17 +1398,25 @@ function catTail(ctx, x, y, s, dir, tones, lift) {
      then hooked back in at the tip. Two of those facing each other is
      what makes the shape between them read, and a tail that only goes
      up is an aerial. */
+  /* Second pass. The first ran the tail two and a half body-heights up
+     into the air, which is not a sitting cat, it is an aerial. A cat
+     sitting still lays its tail along the ground and brings the tip round
+     in front of its own feet — so this comes out along the ledge, curls
+     forward, and finishes low. It is about half the length it was, and it
+     lifts only slightly on the shots that want a bit of shape between
+     them. */
+  const reach = 15 + lift * 3;
   const P = [
-    [x + 5 * s * dir,  y - 1.5 * s],
-    [x + 20 * s * dir, y - 3 * s],
-    [x + 22 * s * dir, y - (16 + lift * 8) * s],
-    [x + 11 * s * dir, y - (26 + lift * 9) * s],
+    [x + 5 * s * dir,   y - 1.0 * s],
+    [x + reach * s * dir, y - 1.5 * s],
+    [x + (reach + 2) * s * dir, y - (7 + lift * 3) * s],
+    [x + (reach - 7) * s * dir, y - (9 + lift * 4) * s],
   ];
-  for (let i = 0; i <= 26; i++) {
-    const t = i / 26, mt = 1 - t;
+  for (let i = 0; i <= 24; i++) {
+    const t = i / 24, mt = 1 - t;
     const px2 = mt * mt * mt * P[0][0] + 3 * mt * mt * t * P[1][0] + 3 * mt * t * t * P[2][0] + t * t * t * P[3][0];
     const py2 = mt * mt * mt * P[0][1] + 3 * mt * mt * t * P[1][1] + 3 * mt * t * t * P[2][1] + t * t * t * P[3][1];
-    const r = Math.max(1, (2.6 - t * 1.4) * s);
+    const r = Math.max(1, (2.7 - t * 1.5) * s);
     blob(ctx, px2, py2, r, r, tones, [-0.5, -0.6]);
   }
 }
