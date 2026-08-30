@@ -653,13 +653,6 @@ img{-webkit-user-drag:none; user-select:none;}
 .white-cut{position:fixed; inset:0; z-index:50; pointer-events:none; background:#fff6e2; opacity:0; transition:opacity .5s ease;}
 .white-cut.active{opacity:1;}
 
-.video-skip-btn{
-  position:absolute; bottom:36px; right:20px; z-index:20;
-  background:rgba(74,44,12,.42); color:#fff6e2; border:1px solid rgba(255,240,205,.55); border-radius:20px;
-  padding:8px 16px; font-family:'Poppins',sans-serif; font-size:12.5px; cursor:pointer; backdrop-filter:blur(6px);
-  transition:opacity .3s ease;
-}
-
 /* ---- Gate (on real parchment art) ---- */
 #screen-gate{
   background:
@@ -1098,8 +1091,14 @@ img{-webkit-user-drag:none; user-select:none;}
    away, the second comes down on the other side — nothing is
    ever seen from behind, so nothing can render mirrored.
    ========================================================= */
+/* NOT display:block. The clone already carries .on, so it picks up its own
+   display rule — and the cover's is flex, because that is what centres the
+   card on it. Forcing block here beat .sb-page-cover.on with !important,
+   the centring stopped applying mid-turn, and the card jumped to the top
+   left while the cloth behind it came into view: the "note paper slips up
+   and a pink page appears out of nowhere" on the first and last turns. */
 .sb-page.in-leaf{
-  left:0 !important; width:100% !important; display:block !important;
+  left:0 !important; width:100% !important;
   animation:none !important;
 }
 /* A turning sheet is drawn once per strip, so anything expensive to

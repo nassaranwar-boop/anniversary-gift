@@ -4058,6 +4058,12 @@ window.SuperOuissy = (function () {
   function sfx(kind) {
     var c = actx();
     if (!c || !G || G.muted) return;
+    /* A suspended or interrupted context has a FROZEN clock. Scheduling
+       into it does not queue the sound for later — every note lands at the
+       same instant, already in the past by the time it resumes, and is
+       simply never heard. actx() has just asked it to wake; the next call
+       will find it running. */
+    if (c.state !== "running") return;
     if (kind === "fanfare") return arpeggio([523, 659, 784, 1047], .1, "triangle");
     if (kind === "victory") return arpeggio([523, 659, 784, 1047, 1319, 1568], .12, "triangle");
     var spec = SFX[kind];
@@ -4076,7 +4082,7 @@ window.SuperOuissy = (function () {
   }
 
   function arpeggio(notes, gap, type) {
-    var c = actx(); if (!c) return;
+    var c = actx(); if (!c || c.state !== "running") return;
     notes.forEach(function (f, i) {
       try {
         var t = c.currentTime + i * gap, o = c.createOscillator(), g = c.createGain();
@@ -4092,15 +4098,20 @@ window.SuperOuissy = (function () {
 
   /* ---- the background music: a short chiptune loop, written as note
           numbers so you can retune it without touching the player ------- */
+  /* One bar is 8 steps. Numbers are semitones from C4 and null is a rest.
+
+     null, not 0. The rest used to be written as 0 and voice() tested the
+     note with `if (!note)`, which meant every C — the root — was thrown
+     away as silence. The bass is mostly roots, so what actually played was
+     a line of fifths with the tonic missing under it. */
   var BGM = {
-    /* one bar is 8 steps; 0 is a rest. Numbers are semitones from C4. */
     lead: [
-      12, 0, 16, 0, 19, 0, 16, 0,  14, 0, 17, 0, 21, 0, 17, 0,
-      12, 0, 16, 0, 19, 12, 24, 0, 21, 19, 16, 0, 14, 0, 12, 0,
+      12, null, 16, null, 19, null, 16, null,  14, null, 17, null, 21, null, 17, null,
+      12, null, 16, null, 19, 12,   24, null,  21, 19,   16, null, 14, null, 12, null,
     ],
     bass: [
-      0, 0, 7, 0, 0, 0, 7, 0,   2, 0, 9, 0, 2, 0, 9, 0,
-      0, 0, 7, 0, 0, 0, 7, 0,   5, 0, 0, 0, 7, 0, 7, 0,
+      0, null, 7, null, 0, null, 7, null,   2, null, 9, null, 2, null, 9, null,
+      0, null, 7, null, 0, null, 7, null,   5, null, 0, null, 7, null, 7, null,
     ],
     tempo: 0.14,
   };
@@ -4126,13 +4137,18 @@ window.SuperOuissy = (function () {
 
   function tickBgm() {
     var c = actx(); if (!c || !bgmGain) return;
+    /* Same trap as sfx, and worse here because the timer keeps running:
+       the whole tune would be scheduled into a frozen clock and lost,
+       leaving music that is playing as far as the code is concerned and
+       silent as far as she is concerned. Hold the step until it wakes. */
+    if (c.state !== "running") return;
     var i = bgmStep % BGM.lead.length;
     voice(c, BGM.lead[i], "square", 0, BGM.tempo * 0.9, .5);
     voice(c, BGM.bass[i], "triangle", -24, BGM.tempo * 1.6, .8);
     bgmStep++;
   }
   function voice(c, note, type, shift, dur, vol) {
-    if (!note) return;
+    if (note === null || note === undefined) return;   // 0 is a note, not a rest
     try {
       var t = c.currentTime;
       var o = c.createOscillator(), g = c.createGain();
@@ -4455,6 +4471,16 @@ window.SuperOuissy = (function () {
     return window.__soState();
   };
   window.__soHalt = function () { if (raf) cancelAnimationFrame(raf); raf = null; };
+  /* Drive the music by hand. setInterval is throttled hard in a background
+     or headless tab, so counting notes off the wall clock measures the
+     browser rather than the tune. */
+  window.__soBgmSteps = function (n) { for (var i = 0; i < n; i++) tickBgm(); };
+  window.__soBgmBar = function () {
+    return { steps: BGM.lead.length,
+             leadNotes: BGM.lead.filter(function (v) { return v !== null; }).length,
+             bassNotes: BGM.bass.filter(function (v) { return v !== null; }).length,
+             bassRoots: BGM.bass.filter(function (v) { return v === 0; }).length };
+  };
   /* is the frame loop alive, and is it reaching the canvas? */
   window.__soLoop = function () {
     return { raf: raf !== null, onScreen: onScreen(), state: G && G.state,
@@ -4638,6 +4664,8 @@ window.SuperOuissy = (function () {
       score: G.score, hearts: G.hearts, deaths: G.deaths,
       x: Math.round(G.player.x / T), y: Math.round(G.player.y / T),
       onGround: G.player.onGround, big: G.player.big,
+      bgmOn: G.bgmOn, bgmRunning: bgmTimer !== null,
+      audio: ac ? ac.state : "none",
     };
   };
   /* everything a test might want to assert on, counted off the live level */

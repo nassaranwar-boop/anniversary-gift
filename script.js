@@ -1567,9 +1567,9 @@ function buildEndHearts() {
 /* ---------- book intro integration ----------
    The actual 3D scene (Three.js) lives in book-scene.js and runs
    independently. It calls window.finishBookIntro() when the climax
-   flash completes, or immediately if the user hits Skip. This keeps
-   the 3D rendering code decoupled from the rest of the site's logic. */
-const videoSkipBtn = document.getElementById("video-skip");
+   flash completes. There is no longer a Skip button — the intro is the
+   thing she opens the site to see, and it is short. window.skipBookIntro
+   still exists in book-scene.js as its teardown, and is used there. */
 let introFinished = false;
 
 window.finishBookIntro = function finishBookIntro() {
@@ -1582,11 +1582,6 @@ window.finishBookIntro = function finishBookIntro() {
     setTimeout(() => cut.classList.remove("active"), 200);
   }, 480);
 };
-
-videoSkipBtn.addEventListener("click", () => {
-  if (window.skipBookIntro) window.skipBookIntro();
-  window.finishBookIntro();
-});
 
 /* ---------- passcode gate ----------
    No text field. She taps her own keypad, so the phone keyboard never
