@@ -3466,7 +3466,7 @@ const HV_SCENES = {
    question she is looking at, saying no gets the same crying cat.
    ========================================================= */
 const QUEST_FINAL = {
-  question:     "Will you be my Valentine?",                            // the way there
+  question:     "Do you wanna be mine forever?",                        // the way there
   questionBack: "Same valley, a year on. Would you do it all again?",   // the way back
   nudge: "You sure about that?",
   nudgeYes: "I changed my mind",
