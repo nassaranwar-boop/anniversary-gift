@@ -2535,47 +2535,104 @@ img{-webkit-user-drag:none; user-select:none;}
 .so-cue-miss .so-cue-word{color:#ffb4a8;}
 .so-cue-miss .so-cue-bar i{background:#e0705c;}
 
+/* ---- the letter ----
+   Not a white card. It is the same world as the scene behind it: the
+   cold slate of the Death sequence, a pixel-tooled gold frame like the
+   dialogue box, corner studs, and the same pixel face the dialogue uses,
+   so the letter reads as part of the story rather than a dialog that
+   opened on top of it. */
 .so-letter{
   position:absolute; inset:0; z-index:14;
   display:flex; align-items:flex-start; justify-content:center;
   padding:2.4cqw; overflow-y:auto;
-  background:radial-gradient(ellipse at 50% 40%, rgba(30,14,20,.55), rgba(8,4,10,.86));
-  animation:soLetterIn .8s ease both;
+  background:radial-gradient(ellipse at 50% 40%, rgba(26,20,40,.72), rgba(6,5,12,.93));
+  animation:soLetterIn 1s ease both;
 }
 @keyframes soLetterIn{from{opacity:0;} to{opacity:1;}}
 .so-letter-paper{
-  /* Wide and small rather than narrow and large: the letter is ten lines
-     and it has to sit inside the stage without her scrolling a love
-     letter. max-height keeps it honest on a short phone. */
-  margin-block:auto; width:min(72cqw,620px); max-height:100%; overflow-y:auto;
-  padding:2.4cqw 3.4cqw 2.2cqw;
-  border-radius:.6cqw; text-align:center;
-  background:linear-gradient(168deg,#fdf6e7 0%,#f6e9d2 100%);
-  box-shadow:0 2cqw 4cqw rgba(0,0,0,.5), inset 0 0 0 .2cqw rgba(150,106,42,.25);
+  position:relative; margin-block:auto;
+  width:min(80cqw,700px); max-height:100%; overflow-y:auto;
+  padding:2cqw 2.8cqw 1.8cqw; text-align:center;
+  background:
+    linear-gradient(178deg, rgba(255,255,255,.05), rgba(0,0,0,0) 40%),
+    linear-gradient(168deg,#2b2140 0%,#221a34 55%,#1a1428 100%);
+  /* a tooled frame, the same gold as the dialogue box's edge */
+  box-shadow:
+    inset 0 0 0 .34cqw #c8a06a,
+    inset 0 0 0 .8cqw #3a2a1e,
+    inset 0 0 0 1.1cqw #c8a06a,
+    0 2cqw 4cqw rgba(0,0,0,.55);
+  animation:soPaperIn .7s var(--ease-pop,ease) both .15s;
 }
+@keyframes soPaperIn{
+  from{opacity:0; transform:translateY(2cqw) scale(.985);}
+  to{opacity:1; transform:none;}
+}
+/* studs, as on the frame in the scene */
+.so-letter-corner{
+  position:absolute; width:1.1cqw; height:1.1cqw; background:#c8a06a;
+  box-shadow:inset 0 0 0 .22cqw #6b4a2a;
+}
+.so-letter-corner.tl{left:1.5cqw; top:1.5cqw;}
+.so-letter-corner.tr{right:1.5cqw; top:1.5cqw;}
+.so-letter-corner.bl{left:1.5cqw; bottom:1.5cqw;}
+.so-letter-corner.br{right:1.5cqw; bottom:1.5cqw;}
+
 .so-letter-title{
-  margin:0 0 1.6cqw; font-family:'Great Vibes',cursive;
-  font-size:3.6cqw; line-height:1; color:#8a2a3a;
+  margin:0; font-family:'Press Start 2P',monospace;
+  font-size:2.2cqw; line-height:1.3; letter-spacing:.1em; color:#ffd9a0;
+  text-shadow:0 .3cqw 0 #6b3a2a, 0 0 2cqw rgba(255,200,140,.35);
+}
+.so-letter-rule{
+  display:block; width:34%; height:.26cqw; margin:1.2cqw auto 1.4cqw;
+  background:linear-gradient(90deg, rgba(200,160,106,0), #c8a06a, rgba(200,160,106,0));
+}
+/* each movement fades up as it begins to type */
+.so-letter-body,.so-letter-close,.so-letter-after,.so-letter-sign{
+  opacity:0; transform:translateY(.6cqw);
+  transition:opacity .6s ease, transform .6s var(--ease-out,ease);
+}
+.so-letter-body.on,.so-letter-close.on,.so-letter-after.on,.so-letter-sign.on{
+  opacity:1; transform:none;
 }
 .so-letter-body{
-  margin:0; font-family:'Caveat',cursive; font-size:2.0cqw; line-height:1.46;
-  color:#4a2d1e; min-height:6cqw; white-space:pre-wrap;
+  margin:0; font-family:'Pixelify Sans',ui-monospace,monospace;
+  font-size:1.55cqw; line-height:1.55; color:#efe2d4;
+  white-space:pre-wrap; text-align:left; min-height:2.4cqw;
 }
 .so-letter-close{
-  margin:1.4cqw 0 0; font-family:'Caveat',cursive; font-size:2.4cqw;
-  line-height:1.4; color:#8a2a3a;
+  margin:1.3cqw 0 0; font-family:'Pixelify Sans',ui-monospace,monospace;
+  font-size:1.7cqw; line-height:1.45; color:#ffb9c8;
+  text-shadow:0 0 2cqw rgba(255,150,180,.35);
+}
+.so-letter-after{
+  margin:1.1cqw 0 0; font-family:'Pixelify Sans',ui-monospace,monospace;
+  font-size:1.55cqw; line-height:1.45; color:#efe2d4;
 }
 .so-letter-sign{
-  margin:1cqw 0 0; font-family:'Great Vibes',cursive;
-  font-size:2.6cqw; color:#6d3a2c;
+  margin:1.2cqw 0 0; font-family:'Press Start 2P',monospace;
+  font-size:1.3cqw; letter-spacing:.06em; color:#ffd9a0;
 }
+/* the same plate as the game's own buttons */
 .so-letter-ok{
-  margin-top:1.4cqw; cursor:pointer; border:none; border-radius:.6cqw;
-  padding:1.2cqw 3.4cqw; font-family:'Press Start 2P',monospace; font-size:1.5cqw;
-  color:#4a2d1e; background:linear-gradient(168deg,#f0d9a8,#d3ab6a);
-  box-shadow:0 .6cqw 0 rgba(120,84,40,.6);
-  animation:soLetterIn .5s ease both;
+  margin-top:1.3cqw; cursor:pointer; border:none; border-radius:.5cqw;
+  padding:1cqw 3.2cqw;
+  font-family:'Press Start 2P',monospace; font-size:1.35cqw; letter-spacing:.08em;
+  color:#3d2109;
+  background:linear-gradient(168deg,#ffe6b0 0%,#e0b76e 45%,#b98c4a 100%);
+  box-shadow:
+    inset 0 .3cqw 0 rgba(255,247,220,.8),
+    inset 0 -.36cqw 0 rgba(110,74,30,.5),
+    0 .7cqw 0 #6b4a2a, 0 1.2cqw 1.6cqw rgba(0,0,0,.45);
+  text-shadow:0 .24cqw 0 rgba(255,240,205,.6);
+  transition:transform .09s ease, box-shadow .09s ease, filter .2s ease;
   touch-action:manipulation; user-select:none;
+  animation:soLetterIn .5s ease both;
+}
+.so-letter-ok:hover{filter:brightness(1.06);}
+.so-letter-ok:active{
+  transform:translateY(.6cqw);
+  box-shadow:inset 0 .3cqw 0 rgba(255,247,220,.8), 0 .2cqw 0 #6b4a2a;
 }
 
 .so-dlg{display:none;}
@@ -2608,8 +2665,13 @@ img{-webkit-user-drag:none; user-select:none;}
 .so-dlg-name:empty{display:none;}
 .so-dlg-text{
   margin:0; padding-right:5cqw; min-height:5.6cqw;
-  font-family:var(--font-body); font-weight:500;
-  font-size:2.3cqw; line-height:1.5; color:var(--dlg-ink,#ffeccd);
+  /* A pixel face, not Poppins. The HUD, the cue and the name tab are all
+     Press Start 2P, and a modern sans in the middle of them read as a
+     browser dialog dropped into the game. Pixelify Sans is the same
+     language but built for sentences — Press Start 2P at this length is
+     authentic and unreadable. */
+  font-family:'Pixelify Sans','Press Start 2P',ui-monospace,monospace; font-weight:500;
+  font-size:2.9cqw; line-height:1.45; letter-spacing:.02em; color:var(--dlg-ink,#ffeccd);
   text-shadow:0 .2cqw 0 rgba(4,3,8,.6);
 }
 /* the arrow she taps to move on. It only appears once the line has

@@ -32,6 +32,15 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
     ok(d + ': it offers a replay, the title and the games', 
        btns.some(b=>b.indexOf('AGAIN')>=0) && btns.some(b=>b.indexOf('TITLE')>=0) && btns.some(b=>b.indexOf('GAMES')>=0),
        btns.join(' | '));
+    /* the message must be the one written for THIS difficulty */
+    const msg = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('.so-end-lines p')).map(p => p.textContent).join(' '));
+    const want = { easy: 'like it was never really a fight',
+                   medium: "that's kind of what this year has felt like too",
+                   hard: 'the boss that wouldn' + String.fromCharCode(39) + 't quit' }[d];
+    ok(d + ': the ending says what was written for it', msg.indexOf(want) >= 0,
+       msg.slice(0, 72) + '…');
+
     if (d === 'easy') {
       const cdp = await page.context().newCDPSession(page);
       await page.evaluate(() => { const st=document.createElement('style');

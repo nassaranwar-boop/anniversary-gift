@@ -44,12 +44,19 @@ window.Rescue = (function () {
       { who: "anwar", text: "Not today." },
     ],
     /* a different one each time, so it does not wear out */
+    /* What he says when he picks her up. One is chosen at random each
+       time, so ten deaths are not ten identical scenes. */
     rescueAlt: [
-      [{ who: "anwar", text: "Not today." }],
-      [{ who: "anwar", text: "I've got you. Go again." }],
-      [{ who: "anwar", text: "Up you get. I'm right here." }],
-      [{ who: "anwar", text: "That one wasn't your fault. Again." }],
-      [{ who: "anwar", text: "You're closer than you think." }],
+      [{ who: "anwar", text: "Up you go. I've got you." }],
+      [{ who: "anwar", text: "That one doesn't count. Try again, love." }],
+      [{ who: "anwar", text: "You're okay. Go again — I'm right here." }],
+      [{ who: "anwar", text: "Not today. Get back up." }],
+      [{ who: "anwar", text: "I'm not going anywhere. Neither are you." }],
+      [{ who: "anwar", text: "Careful, love — one more try." }],
+      [{ who: "anwar", text: "That's just a stumble. Keep going." }],
+      [{ who: "anwar", text: "I'll always catch you. Now go get it." }],
+      [{ who: "anwar", text: "You've got this. I'm just here in case." }],
+      [{ who: "anwar", text: "Back on your feet. That's my girl." }],
     ],
 
     /* --- 2. the last boss takes her last life ------------------------ */
@@ -133,17 +140,12 @@ window.Rescue = (function () {
     /* --- the letter, on the let-it-go path --------------------------- */
     letter: {
       title: "for you",
-      lines: [
-        "I know you only wanted to start again, and we will.",
-        "But I want you to know what I was doing, standing there.",
-        "You have never once asked me to be brave about anything.",
-        "You just let me be tired, and be quiet, and be myself,",
-        "and somehow that made me want to be worth the trouble.",
-        "So when he came for you I didn't have to think about it.",
-        "I didn't feel brave. I just felt like there was no version",
-        "of this where I stand still.",
+      paras: [
+        "You chose to let it go, and I understand why — some things aren't meant to be fought, just lived. But before we start again, I want you to know what I was thinking, standing there.",
+        "I wasn't thinking. I never had to. From the first day, being with you was never a decision I made — it was just the only direction I knew how to go. So when he came for you, there was no version of me that stayed still. Not one.",
       ],
-      close: "I would've fought even Death for you, my love.",
+      close: "I would've fought even Death for you, my love. I still would, every time, as many times as it takes.",
+      after: "Now — let's start again. I'll be right here.",
       sign: "— Anwar",
     },
   };
@@ -223,9 +225,9 @@ window.Rescue = (function () {
     "....KhhKGKGKSSSKGKGKhhK...",
     "....KhhKGGGKKKKKGGGKhhK...",
     ".....KSSKKKSSSSSKKKSKK....",
-    ".....KSSbbKbbbbKbbbK......",
-    "......KKSbbKWWKbbSK.......",
-    "........KKKSSSSKKK........",
+    ".....KSBBBBBBBBBBBSK......",
+    "......KSbbbbWWbbbbSK......",
+    "........KbbbbbbbbK........",
     ".KKKKKKKKKssssssKKKKKKKKK.",
     "KjjJJJJJJjkkkkkkjJJJJJJJJK",
     "KjjJJJJJJjkkkkkkjJJJJJJJJK",
@@ -327,7 +329,12 @@ window.Rescue = (function () {
     K: "#100c16",                 // ink
     h: "#241a17", i: "#4a362e",   // dark curls, and their shine
     S: "#e8bb92", s: "#c08e64",   // light-medium skin
-    b: "#4a3a30",                 // the beard, short along the jaw
+    /* The beard used to have the ink colour threaded through it — K at two
+       points on each row — which at this size is not a beard, it is a
+       smear with holes in it. It is one shape now, and it comes in over
+       two tones so it reads as growth rather than as paint: B where it
+       starts along the jaw, b where it is full. */
+    b: "#4a3a30", B: "#7d5c46",   // the beard, short along the jaw
     G: "#cfe0ee", W: "#fff6ea",   // lenses, and a glint of teeth
     J: "#26232e",                 // the leather
     j: "#4e4859",                 // its lapels, and the edge the light finds
@@ -475,9 +482,15 @@ window.Rescue = (function () {
   }
   function hideCue() { var b = $d("so-cue"); if (b) b.hidden = true; }
 
-  function letterChars() {
+  /* The letter arrives in three movements, each one typed out in turn:
+     the body, then the line it was always going to close on, then the
+     invitation to start again. */
+  function letterParts() {
     var L = SCRIPT.letter;
-    return L.lines.join(" ").length + L.close.length;
+    return [L.paras.join("\n\n"), L.close, L.after];
+  }
+  function letterChars() {
+    return letterParts().reduce(function (n, p) { return n + p.length; }, 0);
   }
   function showLetter() {
     var box = $d("so-letter");
@@ -485,26 +498,34 @@ window.Rescue = (function () {
     box.hidden = false;
     hideLine();                                  // the letter speaks for itself
     var t = $d("so-letter-title"); if (t) t.textContent = SCRIPT.letter.title;
-    var sg = $d("so-letter-sign"); if (sg) sg.textContent = SCRIPT.letter.sign;
+    var sg = $d("so-letter-sign");
+    if (sg) { sg.textContent = SCRIPT.letter.sign; sg.classList.remove("on"); }
+    ["so-letter-body", "so-letter-close", "so-letter-after"].forEach(function (id) {
+      var e = $d(id); if (e) { e.textContent = ""; e.classList.remove("on"); }
+    });
     var ok = $d("so-letter-ok"); if (ok) ok.hidden = true;
   }
   function hideLetter() { var b = $d("so-letter"); if (b) b.hidden = true; }
   /* It writes itself out rather than appearing: she should read it at the
      pace it was meant to be said. */
   function paintLetter(shown) {
-    var L = SCRIPT.letter, body = $d("so-letter-body"), close = $d("so-letter-close");
-    var whole = L.lines.join(" ");
+    var parts = letterParts();
+    var ids = ["so-letter-body", "so-letter-close", "so-letter-after"];
     var n = Math.floor(shown);
-    if (body) {
-      var want = whole.slice(0, n);
-      if (body.textContent !== want) body.textContent = want;
+    for (var i = 0; i < parts.length; i++) {
+      var el = $d(ids[i]);
+      if (!el) continue;
+      var want = parts[i].slice(0, Math.max(0, Math.min(parts[i].length, n)));
+      if (el.textContent !== want) el.textContent = want;
+      /* each movement only fades in once it has something to say */
+      var on = want.length > 0;
+      if (el.classList.contains("on") !== on) el.classList.toggle("on", on);
+      n -= parts[i].length;
     }
-    if (close) {
-      var want2 = n > whole.length ? L.close.slice(0, n - whole.length) : "";
-      if (close.textContent !== want2) close.textContent = want2;
-    }
+    var sg = $d("so-letter-sign");
+    if (sg) sg.classList.toggle("on", Math.floor(shown) >= letterChars());
     var ok = $d("so-letter-ok");
-    if (ok) ok.hidden = n < letterChars();
+    if (ok) ok.hidden = Math.floor(shown) < letterChars();
   }
 
   function wireDom() {
@@ -941,7 +962,7 @@ window.Rescue = (function () {
       if (S.pt > 1.4) { S.letterShown = 0; showLetter(); phase(22); }
 
     } else if (S.phase === 22) {                  /* the letter, writing itself */
-      S.letterShown = Math.min(letterChars(), S.letterShown + dt * 58);
+      S.letterShown = Math.min(letterChars(), S.letterShown + dt * 72);
       paintLetter(S.letterShown);
     }
   }

@@ -97,19 +97,27 @@ window.SuperOuissy = (function () {
         ] },
     ],
 
-    /* The castle scene at the very end.
-
-       These are written to be said out loud and to stay on the right side
-       of soppy — plain sentences, no speeches. The third one is the natural
-       place for something private, an in-joke or a date or a name only the
-       two of you use; swap it for that if you have one. */
+    /* The castle scene at the very end. One message per difficulty,
+       because finishing Hard is not the same thing as finishing Easy and
+       should not be met with the same words. */
     ending: {
       kicker: "and there he was —",
-      lines: [
-        "You crossed three worlds to get here. I would have waited at the end of thirty.",
-        "It was never really about the castle. It was that you kept going — and that I got to be what you were going towards.",
-        "Happy anniversary, Ouissy. Come and find me in the real one too.",
-      ],
+      lines: {
+        easy: [
+          "You beat this world the way you do everything else — like it was never really a fight.",
+          "I built this whole thing just to watch you smile at it.",
+        ],
+        medium: [
+          "You didn't just finish this level — you finished it for us.",
+          "Every jump, every fall, every retry… that's kind of what this year has felt like too.",
+          "And I'd do it all again just to get here with you.",
+        ],
+        hard: [
+          "You made it. Through everything — the pits, the falls, the boss that wouldn't quit — just like you make it through everything with me.",
+          "I didn't build this game to be easy. I built it because you're worth the hardest level I could think of, and you beat it anyway.",
+          "I love you more than any line of code could say.",
+        ],
+      },
       signOff: "— Anwar 💗",
       /* The joke the last castle in Mario always makes, turned around. */
       notAnotherCastle: "and this time, the prince really was in this castle.",
@@ -386,7 +394,7 @@ window.SuperOuissy = (function () {
       "............o...o...............................................oo................................................................................................................",
       ".............o.o.?..........................................................BMB..................................................................................?................",
       "..............o.............---...................................................................TT.........................................----.................................",
-      "...............................................................H.........................................................................................V........................",
+      "...............................................................H....................................--...--...--...--...--...............................V........................",
       "...S..................w.................................................w...........................................................................w...............C.......G.....",
       "###############################################################.....###############.######.######..........................##############################....#####################",
       "###############################################################.....###############........B...##..........................##############################....#####################",
@@ -1270,13 +1278,16 @@ window.SuperOuissy = (function () {
       c.closePath(); c.fill();
       px(c, 6, 5 - pop, 2, 2, "#ffffff");
     } else if (kind === "life") {                // a second chance
-      heart(c, 7, 7 - pop, 6, K);
-      heart(c, 7, 7 - pop, 5.2, "#6fd08a", "#c8f4d8");
-      /* a small "1" stamped on it — a letter U is what you get if you try
-         to fit "1UP" into nine pixels */
-      px(c, 7, 4 - pop, 1, 6, "#ffffff");
-      px(c, 6, 5 - pop, 1, 1, "#ffffff");
-      px(c, 5, 10 - pop, 5, 1, "#ffffff");
+      /* The numeral used to be a 1x6 bar with a 5x1 foot, which on a heart
+         this size covered most of it: what you actually saw was a pale
+         blob with a dark band through it, and nobody could tell it was a
+         heart, let alone a life. The heart is bigger and greener now and
+         the "1" is small enough to sit ON it rather than instead of it. */
+      heart(c, 8, 8 - pop, 7.4, "#1e5c34");
+      heart(c, 8, 8 - pop, 6.4, "#6fd08a", "#c8f4d8");
+      px(c, 8, 5 - pop, 1, 5, "#ffffff");       // the stem
+      px(c, 7, 6 - pop, 1, 1, "#ffffff");       // its flag
+      px(c, 7, 10 - pop, 3, 1, "#ffffff");      // and its foot
     } else if (kind === "boost") {               // the love boost
       heart(c, 8, 8 - pop, 4.4, K);
       heart(c, 8, 8 - pop, 3.6, "#ff6f4d", "#ffc9a8");
@@ -3805,7 +3816,7 @@ window.SuperOuissy = (function () {
       '<div class="so-end">' +
         '<div class="so-end-art" id="so-end-art"></div>' +
         '<p class="so-end-kicker">' + SO.ending.kicker + "</p>" +
-        '<div class="so-end-lines">' + SO.ending.lines.map(function (l) { return "<p>" + l + "</p>"; }).join("") + "</div>" +
+        '<div class="so-end-lines">' + endingLines().map(function (l) { return "<p>" + l + "</p>"; }).join("") + "</div>" +
         '<p class="so-end-joke">' + SO.ending.notAnotherCastle + "</p>" +
         '<p class="so-end-sign">' + SO.ending.signOff + "</p>" +
         '<div class="so-res so-end-res">' +
@@ -3833,6 +3844,13 @@ window.SuperOuissy = (function () {
      this one again, the title screen, or out of the game altogether.
      ======================================================================= */
   var DIFF_ORDER = ["easy", "medium", "hard"];
+
+  /* What he says at the end depends on which one she just finished. */
+  function endingLines() {
+    var L = SO.ending.lines;
+    if (Array.isArray(L)) return L;                 // an older single message
+    return L[G.diff] || L.easy || [];
+  }
 
   function nextDifficulty() {
     var i = DIFF_ORDER.indexOf(G.diff);
