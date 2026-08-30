@@ -56,11 +56,22 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
   ok('a resume that resolves but does not take is retried', stuck.calls >= 2 && stuck.state === 'running',
      'calls=' + stuck.calls);
 
-  // the real pad: a gesture starts it, and it reaches "running"
+  /* The pad must NOT start by itself. It is a continuous drone with no
+     control anywhere to stop it, so a tap on the intro used to begin a
+     noise that ran for the whole visit. */
   await page.mouse.click(600, 450);
-  await page.waitForTimeout(1400);
+  await page.waitForTimeout(1200);
   let st = await page.evaluate(() => window.__audioProbe());
-  ok('the ambient pad starts on a gesture and runs', st.ctx === 'running' && st.on === true,
+  ok('a gesture alone does not start the pad', st.on === false && st.gain <= 0.0002,
+     'on=' + st.on + ' gain=' + st.gain);
+
+  /* But the machinery underneath is intact and still worth testing —
+     everything below covers the context recovery a real control would
+     depend on the day there is one. */
+  await page.evaluate(() => setMusic(true));
+  await page.waitForTimeout(1600);
+  st = await page.evaluate(() => window.__audioProbe());
+  ok('asking for it explicitly starts it and it runs', st.ctx === 'running' && st.on === true,
      'ctx=' + st.ctx + ' on=' + st.on);
   ok('and it is actually audible (master gain lifted)', st.gain > 0.05, 'gain=' + st.gain.toFixed(3));
   ok('the bell chain is scheduled', st.bell === true);

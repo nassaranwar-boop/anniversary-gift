@@ -350,6 +350,17 @@ img{-webkit-user-drag:none; user-select:none;}
   letter-spacing:.4px; padding:5px 14px; border-radius:20px; margin-bottom:10px; box-shadow:0 3px 0 rgba(150,70,40,.25), 0 4px 10px rgba(200,80,120,.3);
 }
 .details-card h2{color:#a1237e; margin:4px 0 16px; font-size:24px;}
+/* A short phone: the Chapter Two card carries six rows and came out a few
+   pixels taller than a 667px screen. A centred flex child that overflows
+   is clipped at BOTH ends and cannot be scrolled back to, so those pixels
+   are gone rather than merely off-screen — tighten the rhythm instead. */
+@media (max-height:700px){
+  .details-card{padding-top:16px; padding-bottom:16px;}
+  .details-card .info-row{margin:7px 0; padding:9px 12px;}
+  .details-card .card-rule{margin:7px auto 9px;}
+  .details-card .mascot-img.small{max-height:74px;}
+}
+
 /* ---- the chapter cards ----
    The headings were built from a floated drop cap and an emoji; both are
    gone. The icons are drawn from one sprite so they share a weight and a
@@ -2800,9 +2811,9 @@ img{-webkit-user-drag:none; user-select:none;}
    The touch pad — sized in viewport units, because it lives
    outside the stage and has to stay thumb-sized on a phone
    ========================================================= */
-/* viewport-fit:cover lets the page use the whole screen now, including the
-   strip behind the home indicator. The controls take that inset back as
-   padding so the jump button is never half under it. */
+/* Kept although viewport-fit=cover is gone: without cover these insets
+   resolve to zero, so this costs nothing and stays correct if the page is
+   ever taken edge to edge again. */
 .so-pad{
   display:flex; align-items:center; justify-content:space-between;
   width:100%; max-width:640px; gap:12px; flex:0 0 auto;

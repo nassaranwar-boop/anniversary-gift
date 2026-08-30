@@ -2021,10 +2021,14 @@ window.addEventListener("focus", pokeAllAudio);
 window.addEventListener("pageshow", pokeAllAudio);
 document.addEventListener("pointerdown", pokeAllAudio, true);
 
-/* On by default now that the floating toggle is gone: only an explicit
-   "0" from an older visit turns it off. */
+/* Off unless something explicitly asks for it. This pad is a continuous
+   drone, and when the floating toggle was removed as a dead control I
+   defaulted it ON — which left a noise starting on the first tap of the
+   intro and running for the rest of the visit with nothing anywhere to
+   stop it. The games bring their own music and effects; the site itself
+   is quiet. */
 function musicPreferred() {
-  try { return localStorage.getItem(MUSIC_KEY) !== "0"; } catch (e) { return true; }
+  try { return localStorage.getItem(MUSIC_KEY) === "1"; } catch (e) { return false; }
 }
 
 function buildMusic() {
@@ -2154,9 +2158,10 @@ window.__audioSuspend = () => { if (musicNodes) musicNodes.ctx.suspend(); };
 (function initMusic() {
   window.registerAudio(() => (musicNodes ? musicNodes.ctx : null));
 
-  /* The floating toggle is gone, so nothing here reads or writes a
-     button any more. Browsers still refuse to start audio without a
-     gesture, so the pad waits for her first tap and begins then. */
+  /* Nothing starts on its own. setMusic(true) still works and everything
+     below it is intact, so a real control can switch the pad back on the
+     day there is one to switch — but a drone that begins by itself and
+     cannot be stopped is not something to ship. */
   if (!musicPreferred()) return;
   const kick = () => setMusic(true);
   document.addEventListener("pointerdown", kick, { once: true });

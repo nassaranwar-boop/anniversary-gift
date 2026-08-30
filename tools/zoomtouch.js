@@ -18,6 +18,11 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
        !/maximum-scale/.test(meta) && !/user-scalable\s*=\s*no/.test(meta), meta);
     ok('it still sets width and an initial scale of 1',
        /width=device-width/.test(meta) && /initial-scale=1\b/.test(meta), meta);
+    /* cover extends the layout viewport under the status bar and the notch,
+       which puts the top of every screen behind the clock and makes
+       everything measured against it come out bigger than the visible
+       area — read as "cropped from above, and zoomed". */
+    ok('the layout does not run under the notch', !/viewport-fit\s*=\s*cover/.test(meta), meta);
     ok('the height comes from CSS, not a measured pixel value', await page.evaluate(() =>
       document.documentElement.style.getPropertyValue('--app-h') === '' &&
       getComputedStyle(document.documentElement).getPropertyValue('--app-h').trim() === '100dvh'),
