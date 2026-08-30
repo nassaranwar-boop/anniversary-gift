@@ -1837,6 +1837,23 @@ window.leaveSuperOuissy = () => {
 window.markSuperOuissyDone = () => markChapterDone("ouissy");
 
 /* =========================================================
+   OUISSY AT THE APOCALYPSE
+   Lives entirely in apocalypse.js. This half only owns getting in
+   and out of it, exactly as the scrapbook and the platformer do.
+   ========================================================= */
+function startApocalypse() {
+  if (window.Apocalypse) Apocalypse.start();
+}
+function stopApocalypse() {
+  if (window.Apocalypse) Apocalypse.stop();
+}
+window.leaveApocalypse = () => {
+  stopApocalypse();
+  pageTurn("hub", startHub);
+};
+window.markApocalypseDone = () => markChapterDone("apoc");
+
+/* =========================================================
    HUB — choose your adventure
    Two chapters, either order. Completion is remembered so she can
    put the phone down and come back to it.
@@ -1863,7 +1880,7 @@ function startHub() {
   const d = chaptersDone();
   const both = bothChaptersDone();
 
-  [["maze", d.maze], ["quest", d.quest], ["ouissy", d.ouissy]].forEach(([name, done]) => {
+  [["maze", d.maze], ["quest", d.quest], ["ouissy", d.ouissy], ["apoc", d.apoc]].forEach(([name, done]) => {
     const card = document.getElementById("hub-card-" + name);
     if (card) card.classList.toggle("done", !!done);
   });
@@ -1873,11 +1890,12 @@ function startHub() {
      keepsake itself is still gated on the two story chapters; that is
      deliberate and unchanged. */
   const sub = document.getElementById("hub-sub");
-  const count = (d.maze ? 1 : 0) + (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0);
-  if (both && count === 3) sub.textContent = "— all three done. the keepsake is yours —";
-  else if (both) sub.textContent = "— both chapters done. the keepsake is yours —";
-  else if (count) sub.textContent = "— " + count + " of three done, any order —";
-  else sub.textContent = "— three ways in, any order —";
+  const count = (d.maze ? 1 : 0) + (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0) + (d.apoc ? 1 : 0);
+  const total = document.querySelectorAll(".hub-card").length;
+  if (both && count === total) sub.textContent = "— every one of them done. the keepsake is yours —";
+  else if (both) sub.textContent = "— both story chapters done. the keepsake is yours —";
+  else if (count) sub.textContent = "— " + count + " of " + total + " done, any order —";
+  else sub.textContent = "— " + total + " ways in, any order —";
 
   document.getElementById("hub-keepsake").classList.toggle("on", both);
 }
@@ -1891,6 +1909,9 @@ document.getElementById("hub-card-quest").addEventListener("click", () => {
 });
 document.getElementById("hub-card-ouissy").addEventListener("click", () => {
   pageTurn("ouissy", startSuperOuissy);
+});
+document.getElementById("hub-card-apoc").addEventListener("click", () => {
+  pageTurn("apoc", startApocalypse);
 });
 document.getElementById("hub-keepsake").addEventListener("click", () => {
   pageTurn("keepsake", startKeepsake);
@@ -1923,6 +1944,7 @@ function startKeepsake() {
     { icon: "🦊", cap: "The Long Way Round" },
   ];
   if (chaptersDone().ouissy) badges.push({ icon: "👑", cap: "Super Ouissy" });
+  if (chaptersDone().apoc) badges.push({ icon: "🌒", cap: "Ouissy at the Apocalypse" });
   badges.forEach((b, i) => {
     const card = document.createElement("div");
     card.className = "ks-card";

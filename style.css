@@ -3130,3 +3130,362 @@ img{-webkit-user-drag:none; user-select:none;}
   .so-diff-card.sel{animation:none;}
   .so-hud-time.low i{animation:none;}
 }
+
+/* =========================================================
+   OUISSY AT THE APOCALYPSE
+
+   A top-down stealth game on a 320x180 canvas, blown up with
+   image-rendering:pixelated so the grid stays honest — the same rule
+   Super Ouissy and the adventure follow. Everything on the canvas is
+   drawn at runtime; nothing here loads a file.
+
+   The palette is deliberately colder than the rest of the site: this
+   is the one chapter set at night in a bad week. It still warms
+   toward pink wherever she or Anwar are on screen, so it reads as the
+   same story.
+   ========================================================= */
+#screen-apoc{padding:0; background:#0a0c14; overflow:hidden;}
+.ap-frame{
+  position:relative; width:100%; height:100%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0;
+}
+.ap-titlebar{
+  display:none; margin:0 0 10px; text-align:center; line-height:1.5;
+  font-family:'Press Start 2P', ui-monospace, 'Courier New', monospace;
+}
+.ap-titlebar span{display:block; font-size:9px; letter-spacing:.16em; color:#7f8bb0;}
+.ap-titlebar b{display:block; font-size:15px; letter-spacing:.06em; color:#ff5f95; font-weight:400;
+  text-shadow:0 2px 0 rgba(10,12,20,.9), 0 0 12px rgba(255,95,149,.45);}
+
+.ap-stage{
+  position:relative;
+  width:min(100%, calc((var(--app-h) - 120px) * var(--ap-arn, 1.7778)));
+  aspect-ratio:var(--ap-arn, 1.7778); max-height:100%;
+  container-type:inline-size;
+  background:#05060c; overflow:hidden;
+  box-shadow:0 12px 44px rgba(0,0,0,.7), 0 0 0 2px rgba(120,140,190,.22);
+}
+#ap-canvas{
+  position:absolute; inset:0; width:100%; height:100%; display:block;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+}
+
+/* ---- HUD ---- */
+.ap-hud{
+  position:absolute; left:0; right:0; top:0; z-index:5;
+  display:flex; align-items:flex-start; justify-content:space-between;
+  gap:1cqw; padding:2cqw 2.4cqw; pointer-events:none;
+  font-family:'Press Start 2P', ui-monospace, 'Courier New', monospace;
+  text-shadow:0 2px 0 rgba(4,6,12,.95);
+}
+.ap-hud-item{display:flex; flex-direction:column; gap:.7cqw; line-height:1.35;}
+.ap-hud-right{align-items:flex-end; text-align:right;}
+.ap-hud-item b{font-size:2cqw; font-weight:400; letter-spacing:.1em; color:#8fa2d4;}
+.ap-hud-item i{font-size:1.7cqw; font-style:normal; color:#e7ecfb; opacity:.92; max-width:52cqw;}
+.ap-carry{font-size:1.7cqw; color:#ffd98a; letter-spacing:.06em;}
+.ap-state{font-size:1.7cqw; letter-spacing:.1em; color:#7bd8a0;}
+.ap-state.seen{color:#ff6b6b;}
+.ap-state.hidden-ok{color:#8fa2d4;}
+
+.ap-pause-btn{
+  position:absolute; right:2cqw; bottom:2cqw; z-index:6;
+  width:6.4cqw; height:6.4cqw; min-width:26px; min-height:26px;
+  border-radius:8px; border:2px solid rgba(140,160,210,.4);
+  background:rgba(10,14,26,.72); color:#c8d4f2; font-size:2cqw; line-height:1;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+
+/* the pulse that shows how far a noise carried */
+.ap-alarm{
+  position:absolute; inset:0; z-index:4; pointer-events:none; opacity:0;
+  box-shadow:inset 0 0 0 4px rgba(255,80,80,0);
+  transition:opacity .18s ease;
+}
+.ap-alarm.on{opacity:1; box-shadow:inset 0 0 0 4px rgba(255,80,80,.5), inset 0 0 40px rgba(255,60,60,.35);}
+
+/* ---- dialogue ---- */
+.ap-dlg{
+  position:absolute; left:4cqw; right:4cqw; bottom:4cqw; z-index:8;
+  padding:2.4cqw 3cqw 2.8cqw; border-radius:10px;
+  background:linear-gradient(180deg, rgba(16,20,34,.96), rgba(10,13,24,.96));
+  border:2px solid rgba(140,160,210,.35);
+  box-shadow:0 10px 30px rgba(0,0,0,.6);
+  opacity:0; transform:translateY(8px); pointer-events:none;
+  transition:opacity .2s ease, transform .2s ease;
+}
+.ap-dlg[aria-hidden="false"]{opacity:1; transform:none; pointer-events:auto;}
+.ap-dlg-name{
+  display:block; margin-bottom:1.2cqw; font-size:1.8cqw; letter-spacing:.12em; color:#ff8fb6;
+  font-family:'Press Start 2P', ui-monospace, monospace;
+}
+.ap-dlg-text{margin:0; font-size:2.4cqw; line-height:1.55; color:#eef2ff;}
+.ap-dlg-next{
+  position:absolute; right:2.4cqw; bottom:2cqw; width:5cqw; height:5cqw; min-width:22px; min-height:22px;
+  border:0; border-radius:50%; background:#ff5f95; color:#fff; font-size:1.8cqw; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ---- the overlay every card, panel and keypad mounts into ---- */
+.ap-overlay{
+  position:absolute; inset:0; z-index:9; display:none;
+  align-items:center; justify-content:center;
+  background:rgba(4,6,12,.82);
+}
+.ap-overlay[aria-hidden="false"]{display:flex;}
+
+/* ---- touch pad ---- */
+.ap-pad{display:none;}
+.ap-dpad{position:relative; width:132px; height:132px;}
+.ap-key{
+  position:absolute; width:44px; height:44px; border-radius:10px;
+  border:2px solid rgba(140,160,210,.4); background:rgba(18,22,38,.9);
+  cursor:pointer;
+}
+.ap-key::after{
+  content:""; position:absolute; left:50%; top:50%; width:0; height:0;
+  border:8px solid transparent; border-bottom-color:#c8d4f2; transform:translate(-50%,-62%);
+}
+.ap-key-up{left:44px; top:0;}
+.ap-key-down{left:44px; top:88px; transform:rotate(180deg);}
+.ap-key-left{left:0; top:44px; transform:rotate(-90deg);}
+.ap-key-right{left:88px; top:44px; transform:rotate(90deg);}
+.ap-dpad-hub{position:absolute; left:44px; top:44px; width:44px; height:44px; background:rgba(18,22,38,.5); border-radius:6px;}
+.ap-actions{display:flex; flex-direction:column; gap:12px;}
+.ap-act{
+  width:76px; height:56px; border-radius:12px; cursor:pointer;
+  border:2px solid rgba(255,95,149,.5); background:rgba(40,16,30,.9); color:#ffd6e6;
+  font-family:'Press Start 2P', ui-monospace, monospace; font-size:9px; letter-spacing:.06em;
+}
+.ap-act-sneak{border-color:rgba(140,160,210,.45); background:rgba(18,22,38,.9); color:#c8d4f2;}
+.ap-key:active, .ap-act:active{filter:brightness(1.4);}
+
+/* the hub card art: a street at night, one lit window, the fence */
+.hub-art-apoc{
+  background:
+    radial-gradient(circle at 74% 22%, rgba(226,236,255,.9) 0 5px, transparent 6px),
+    radial-gradient(circle at 22% 62%, rgba(255,190,120,.5) 0 9%, transparent 40%),
+    linear-gradient(180deg,#131a2e 0%,#1b2340 42%,#2a2033 42%,#241a2a 66%,#1a1622 66%,#120f19 100%);
+  position:relative;
+  box-shadow:inset 0 0 22px rgba(0,0,0,.6);
+}
+.hub-art-apoc::after{
+  content:""; position:absolute; left:0; right:0; bottom:30%; height:26%;
+  background:
+    linear-gradient(90deg, transparent 0 6%, #0d1018 6% 15%, transparent 15% 24%, #0d1018 24% 30%, transparent 30% 52%, #0d1018 52% 63%, transparent 63% 74%, #0d1018 74% 82%, transparent 82%),
+    radial-gradient(circle at 27% 30%, #ffcf7a 0 8%, transparent 9%),
+    radial-gradient(circle at 58% 44%, #ffcf7a 0 7%, transparent 8%);
+}
+
+@media (max-width: 900px), (orientation: portrait){
+  .ap-titlebar{display:block;}
+  .ap-pad{
+    display:flex; align-items:center; justify-content:space-between;
+    width:100%; max-width:420px; padding:18px 16px calc(14px + env(safe-area-inset-bottom));
+  }
+  .ap-frame{justify-content:space-between; padding:4vh 0 0;}
+  .ap-stage{width:min(100%, calc(var(--app-h) * 0.52 * var(--ap-arn, 1.7778)));}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .ap-alarm, .ap-dlg{transition:none;}
+}
+
+/* ---- the cards, panels and scraps of paper that mount into ap-overlay ---- */
+.ap-overlay.thin{background:rgba(4,6,12,.58);}
+.ap-card{
+  width:min(86cqw, 560px); max-height:88%; overflow:auto;
+  padding:4cqw 4.5cqw; border-radius:12px; text-align:left;
+  background:linear-gradient(180deg,#161b2b,#0e1220);
+  border:2px solid rgba(150,170,220,.3);
+  box-shadow:0 18px 50px rgba(0,0,0,.7);
+}
+.ap-card-kicker{
+  margin:0 0 1.6cqw; font-size:1.8cqw; letter-spacing:.2em; color:#8fa2d4;
+  font-family:'Press Start 2P', ui-monospace, monospace;
+}
+.ap-card-title{margin:0 0 2.6cqw; font-size:3.4cqw; line-height:1.35; color:#fff3f7; font-weight:600;}
+.ap-card-rows{display:flex; flex-direction:column; gap:1.3cqw; margin-bottom:3cqw;}
+.ap-card-row{display:grid; grid-template-columns:26% 1fr; gap:2cqw; align-items:baseline;}
+.ap-card-row b{
+  font-family:'Press Start 2P', ui-monospace, monospace; font-size:1.5cqw;
+  font-weight:400; color:#ffb0cd; letter-spacing:.04em;
+}
+.ap-card-row span{font-size:2cqw; line-height:1.5; color:#c9d3ee;}
+.ap-card-go{
+  display:block; width:100%; padding:2.2cqw; border:0; border-radius:9px; cursor:pointer;
+  background:linear-gradient(180deg,#ff6f9d,#e04a7c); color:#fff;
+  font-family:'Press Start 2P', ui-monospace, monospace; font-size:1.9cqw; letter-spacing:.06em;
+}
+.ap-card-quit{
+  display:block; width:100%; margin-top:1.6cqw; padding:1.8cqw; cursor:pointer;
+  border:2px solid rgba(150,170,220,.3); border-radius:9px; background:transparent;
+  color:#8fa2d4; font-size:1.8cqw;
+}
+
+/* the close call: no card, just a line held in the dark */
+.ap-close{text-align:center; padding:0 6cqw;}
+.ap-close-line{margin:0 0 1.6cqw; font-size:3cqw; line-height:1.5; color:#f2e6ec;}
+.ap-close-sub{
+  margin:0; font-size:1.7cqw; letter-spacing:.16em; color:#ff9ec0;
+  font-family:'Press Start 2P', ui-monospace, monospace;
+}
+
+/* the wire panel */
+.ap-panel{display:flex; flex-direction:column; align-items:center; gap:1.6cqw; width:min(92cqw, 620px);}
+.ap-panel-title{
+  margin:0; font-family:'Press Start 2P', ui-monospace, monospace;
+  font-size:1.7cqw; letter-spacing:.14em; color:#e8c98a;
+}
+.ap-panel-canvas{
+  width:100%; height:auto; display:block; image-rendering:pixelated;
+  border-radius:4px; box-shadow:0 14px 40px rgba(0,0,0,.8), 0 0 0 2px rgba(90,80,60,.5);
+  touch-action:none;
+}
+.ap-panel-hint{margin:0; font-size:1.8cqw; color:#9fb0d8; text-align:center; max-width:80%;}
+.ap-panel-leave{
+  margin-top:.6cqw; padding:1.4cqw 3cqw; cursor:pointer; border-radius:8px;
+  border:2px solid rgba(150,170,220,.3); background:transparent; color:#9fb0d8; font-size:1.7cqw;
+}
+
+/* the torn note */
+.ap-note{
+  width:min(70cqw, 430px); padding:4cqw 4.5cqw 3cqw; text-align:center; position:relative;
+  background:linear-gradient(178deg,#efe4c6,#ddcda6);
+  transform:rotate(-1.6deg);
+  box-shadow:0 16px 40px rgba(0,0,0,.65);
+  clip-path:polygon(0 2%,8% 0,22% 2%,38% 0,55% 2%,72% 0,88% 2%,100% 0,100% 97%,86% 100%,68% 97%,48% 100%,30% 97%,12% 100%,0 98%);
+}
+.ap-note-tape{
+  position:absolute; top:-1.4cqw; left:50%; width:16cqw; height:3.4cqw; transform:translateX(-50%) rotate(-2deg);
+  background:rgba(228,220,190,.6); box-shadow:0 1px 3px rgba(0,0,0,.25);
+}
+.ap-note-body{margin:0 0 2cqw; font-size:2.2cqw; line-height:1.55; color:#4a3a24;}
+.ap-note-code{
+  margin:0 0 2.4cqw; font-family:'Great Vibes', cursive; font-size:8cqw; line-height:1;
+  color:#2f2418; letter-spacing:.08em;
+}
+.ap-note-ok{
+  padding:1.5cqw 4cqw; border:0; border-radius:7px; cursor:pointer;
+  background:#6b5330; color:#f6ecd6; font-size:1.8cqw; letter-spacing:.08em;
+}
+
+/* ---- the keypad screwed to a fire door ----
+   The site's front door is a passcode on tooled parchment. This is the same
+   idea wearing work clothes: a steel faceplate somebody drilled into a fire
+   door, four screws, rubber keys gone shiny in the middle, and a segment
+   display behind scratched glass. */
+.ap-keypad{
+  position:relative;
+  width:min(46cqw, 268px); padding:3cqw 2.6cqw 2.4cqw; border-radius:5px; text-align:center;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.028) 0 1px, transparent 1px 3px),
+    linear-gradient(168deg,#5c626c 0%,#464c56 26%,#343941 60%,#272b32 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.22), inset 0 -2px 6px rgba(0,0,0,.6),
+    0 16px 44px rgba(0,0,0,.75), 0 0 0 1px rgba(10,12,16,.9);
+}
+.ap-keypad.shake{animation:apShake .38s ease;}
+@keyframes apShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.ap-screw{
+  position:absolute; width:2.2cqw; height:2.2cqw; min-width:9px; min-height:9px; border-radius:50%;
+  background:radial-gradient(circle at 34% 30%, #8b929c, #4a5058 62%, #2b2f36);
+  box-shadow:inset 0 -1px 1px rgba(0,0,0,.6), 0 1px 1px rgba(255,255,255,.12);
+}
+.ap-screw::after{
+  content:""; position:absolute; left:18%; right:18%; top:47%; height:1.4px;
+  background:rgba(18,20,24,.85); transform:rotate(28deg);
+}
+.ap-screw.tl{left:1.4cqw; top:1.4cqw;}   .ap-screw.tr{right:1.4cqw; top:1.4cqw;}
+.ap-screw.bl{left:1.4cqw; bottom:1.4cqw;} .ap-screw.br{right:1.4cqw; bottom:1.4cqw;}
+.ap-keypad-title{
+  margin:0 0 1.8cqw; font-family:'Press Start 2P', ui-monospace, monospace;
+  font-size:1.25cqw; letter-spacing:.14em; color:#9aa3b2;
+  text-shadow:0 1px 0 rgba(255,255,255,.14), 0 -1px 0 rgba(0,0,0,.6);
+}
+.ap-keypad-glass{
+  position:relative; margin-bottom:2.6cqw; border-radius:3px; overflow:hidden;
+  background:linear-gradient(180deg,#0a120c,#060b08);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.9), inset 0 0 0 1px rgba(120,140,130,.18),
+             0 1px 0 rgba(255,255,255,.14);
+}
+.ap-keypad-disp{
+  position:relative; margin:0; padding:1.4cqw 0;
+  font-family:'Press Start 2P', ui-monospace, monospace; font-size:2.6cqw; letter-spacing:.32em;
+  color:#84f0aa; text-shadow:0 0 12px rgba(110,240,160,.75), 0 0 3px rgba(200,255,220,.8);
+}
+.ap-keypad-scan{
+  position:absolute; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.32) 0 1px, transparent 1px 3px);
+}
+.ap-keypad-pad{display:grid; grid-template-columns:repeat(3,1fr); gap:1.3cqw;}
+.ap-key-btn{
+  position:relative; padding:1.5cqw 0; border:0; border-radius:4px; cursor:pointer;
+  font-family:ui-monospace, 'Courier New', monospace; font-size:2.1cqw; font-weight:700;
+  color:#e6ebf4; text-shadow:0 -1px 0 rgba(0,0,0,.7);
+  background:
+    radial-gradient(ellipse at 50% 34%, rgba(255,255,255,.14) 0 42%, transparent 68%),
+    linear-gradient(180deg,#535a66 0%,#3b414b 52%,#2b3038 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), inset 0 -2px 3px rgba(0,0,0,.55),
+             0 2px 0 #1c2026, 0 4px 8px rgba(0,0,0,.5);
+}
+.ap-key-btn:active{transform:translateY(2px); box-shadow:inset 0 2px 5px rgba(0,0,0,.7), 0 0 0 #1c2026;}
+.ap-key-btn.go{
+  background:radial-gradient(ellipse at 50% 34%, rgba(255,255,255,.16) 0 42%, transparent 68%),
+             linear-gradient(180deg,#3f7f56,#255238);
+  color:#d8f6e4; font-size:1.4cqw; letter-spacing:.08em;
+}
+.ap-key-btn.clr{
+  background:radial-gradient(ellipse at 50% 34%, rgba(255,255,255,.16) 0 42%, transparent 68%),
+             linear-gradient(180deg,#7a3c46,#4a2028);
+  color:#f4d4d8; font-size:1.6cqw; letter-spacing:.08em;
+}
+
+/* ---- the television ----
+   A set from before she was born, still going because it is on the ring
+   main and the ring main is the last thing to fail. */
+.ap-tv{width:min(84cqw, 540px); text-align:center;}
+.ap-tv-set{
+  position:relative; display:flex; align-items:stretch; gap:1.4cqw;
+  padding:2.2cqw; border-radius:2.4cqw;
+  background:linear-gradient(162deg,#584f43 0%,#453d33 34%,#322c25 74%,#221e19 100%);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.16), inset 0 -3px 8px rgba(0,0,0,.55),
+             0 20px 48px rgba(0,0,0,.78);
+}
+.ap-tv-screen{
+  position:relative; flex:1; padding:4.4cqw 3.4cqw; overflow:hidden;
+  border-radius:9% / 15%;
+  background:radial-gradient(ellipse at 50% 42%, #2f4256 0%, #16202c 60%, #080d13 100%);
+  box-shadow:inset 0 0 4cqw rgba(140,190,240,.22), inset 0 0 0 .5cqw #17140f,
+             inset 0 0 0 1cqw #4a4238;
+}
+.ap-tv-scan{
+  position:absolute; inset:0; pointer-events:none;
+  background:repeating-linear-gradient(0deg, rgba(255,255,255,.055) 0 1px, transparent 1px 3px);
+  animation:apRoll 6s linear infinite;
+}
+.ap-tv-glass{
+  position:absolute; inset:0; pointer-events:none; border-radius:9% / 15%;
+  background:linear-gradient(128deg, rgba(255,255,255,.12) 0 18%, transparent 34% 100%);
+}
+@keyframes apRoll{to{background-position:0 60px;}}
+.ap-tv-line{position:relative; margin:0; font-size:2.2cqw; line-height:1.6; color:#dfeaf7; min-height:7cqw;}
+.ap-tv-side{width:7cqw; display:flex; flex-direction:column; align-items:center; gap:1.2cqw; padding-top:1cqw;}
+.ap-tv-dial{
+  width:4.6cqw; height:4.6cqw; border-radius:50%;
+  background:radial-gradient(circle at 36% 30%, #8b8073, #4e463b 62%, #2c2721);
+  box-shadow:inset 0 -1px 2px rgba(0,0,0,.6), 0 1px 2px rgba(0,0,0,.5);
+  position:relative;
+}
+.ap-tv-dial::after{content:""; position:absolute; left:48%; top:12%; width:5%; height:38%; background:rgba(20,17,13,.85);}
+.ap-tv-dial.small{width:3.2cqw; height:3.2cqw;}
+.ap-tv-grille{
+  width:5.4cqw; flex:1; margin-top:1cqw; border-radius:2px;
+  background:repeating-linear-gradient(0deg,#231f19 0 2px, #3a342b 2px 4px);
+  box-shadow:inset 0 0 4px rgba(0,0,0,.7);
+}
+.ap-tv-feet{
+  display:block; width:46%; height:1.4cqw; margin:0 auto;
+  background:linear-gradient(180deg,#2b261f,#17140f);
+  border-radius:0 0 4px 4px; box-shadow:0 6px 14px rgba(0,0,0,.6);
+}
+.ap-tv-cap{margin:2.2cqw 0 2.4cqw; font-size:1.6cqw; color:#7f8bb0; font-style:italic;}
