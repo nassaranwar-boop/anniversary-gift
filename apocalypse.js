@@ -89,11 +89,15 @@ window.Apocalypse = (function () {
     noiseSpark: 130,          // so is a wire going wrong
 
     zSpeed: 26,               // a zombie's shuffle
-    zChase: 44,               // and what it does when it has seen her
-    zSight: 74,               // how far it sees down its own facing
+    zChase: 58,               // and what it does when it has seen her: faster
+                              // than she walks, on purpose. Being seen has
+                              // to mean breaking its line of sight, not
+                              // simply jogging away from it.
+    zReact: 0.5,              // but it rears up first, and that is her moment
+    zSight: 84,               // how far it sees down its own facing
     zCone: 0.62,              // half-angle of that, in radians (~35 degrees)
     zNear: 20,                // it notices anything this close whatever way it faces
-    zLose: 2.6,               // seconds out of sight before it gives up
+    zLose: 2.0,               // seconds out of sight before it gives up
     zInvestigate: 4.0,        // seconds it will stand and look at a noise
 
     caughtHold: 1.5,          // how long the close-call beat holds
@@ -170,6 +174,58 @@ window.Apocalypse = (function () {
     ],
   };
 
+
+  /* ---- LEVEL 2 — THE STREETS ------------------------------------------
+     Three roads across, three roads down, and the blocks between them. It
+     is deliberately bigger and more open than the house: there is no one
+     way through it, and every route is a trade. The main road east is the
+     short one and the worst one. The alleys are slow and dark and safe.
+     And behind the shops there is a staff gate with a code on it, which is
+     written on a scrap of paper somebody dropped in the corner shop —
+     find that and the walk gets a great deal shorter.
+     --------------------------------------------------------------------- */
+  LEVELS[1] = {
+    theme: "street",
+    name: "THE STREETS",
+    base: ",",
+    dark: 0.68,
+    grid: [
+      "################################################",
+      "####,S,.############.,,.################.,,.####",
+      "####,,,.############.,,.################.,,.####",
+      "####,,,.############.,,.################.,,.####",
+      "#....,,L...........c.,,L.................,,L...#",
+      "#,,,.,,.,,z,,,,,,,,,.,,.,,,,,,,,,,,,,,,,.,,.,,,#",
+      "#,,,.,,.h,,,,.,,,,,,.,,.,,,,z,,,,,,,,,,,.,,.,,,#",
+      "#....,,.h...........h,,................c.,,....#",
+      "####.,,.#####.######h,,.################.,,.####",
+      "####.,,.#####.######.,,...z..............,,.####",
+      "####.,,.#####z######.,,.################.,,.####",
+      "####.,,.#####.######.,,.################.,h.####",
+      "####h,,.#####.######.,,c################.,h.####",
+      "#...h,,..............,,c.................,,....#",
+      "#,,,.,,.,,,,,,,,,z,,.,,.,,,,,,,,,,z,,,,,.,,.,,,#",
+      "#,,,.,,.,,,,,,,,,,,,.,,.,,,,,,,,,,,,,,,,.,,.z,,#",
+      "#....,,.....L....hh..,,.......h..........,,....#",
+      "####.,,.##d#########.,,.#######.########.,,.####",
+      "####.,,......#######.,,.#######.#....hh#.,,.####",
+      "####.,,......#######.,,.#######z#..c...#.,,.####",
+      "####.,,cKK...#######.,,.#######.D..c...#.,,.####",
+      "####.,,c...N.#######.,,.#######.#....c.#.,,.####",
+      "####.,,.h....#######.,,.#######.#......#.,,.####",
+      "####.,,.#.##########.,,.###########.####.z,.####",
+      "#....,,L......hh.....,,L.........##.####.,,.####",
+      "#,,,.,,.,,,,,,,,,,,,.,,.z,,,,z,,,##.#####,,#####",
+      "#,,,.,,.,,,,,,,,,,,,.,,.,,,,..z...L.......L..h.#",
+      "#....,,.....hh.....c.,,....hh.........c.z..cc.h#",
+      "####.,,.#########################...........X..#",
+      "################################################",
+    ],
+    steps: [
+      { task: "Cross town to the hospital — south, then east.", clears: "exit" },
+    ],
+  };
+
   /* =======================================================================
      4. PALETTES — one per place. Everything drawn for a level pulls its
         colours from here, so a whole location can be re-lit in one block.
@@ -186,13 +242,13 @@ window.Apocalypse = (function () {
       amb:   "#0f1120",
     },
     street: {
-      floor: ["#3b3d47", "#33353e", "#2b2d35", "#454852"],
-      wall:  ["#2f3340", "#262a35", "#1d202a", "#3a3f4e"],
-      trim:  "#5a5f70",
+      floor: ["#4c505c", "#444754", "#3b3e49", "#5b606e"],   // pavement, catching the sky
+      wall:  ["#2b2f3b", "#232733", "#1a1d27", "#363b4a"],   // the buildings behind it
+      trim:  "#6a7082",
       cover: ["#4a3f52", "#3c3243", "#2e2634"],
       tall:  ["#2a3a34", "#213028", "#19241f"],
       hide:  ["#26402f", "#1d3325", "#15261b"],
-      ground:["#33353e", "#2c2e36", "#26282f"],
+      ground:["#26282f", "#202229", "#1a1c22"],              // tarmac, much darker
       amb:   "#0e1020",
     },
     hospital: {
@@ -432,26 +488,48 @@ window.Apocalypse = (function () {
       px(c, 0, 0, T, T, r() > 0.5 ? P.floor[0] : P.floor[1]);
       px(c, 0, 0, T, 1, P.floor[3]); px(c, 0, 0, 1, T, P.floor[3]);
       for (var i = 0; i < 5; i++) px(c, (r() * T) | 0, (r() * T) | 0, 1, 1, P.floor[2]);
-    } else {                                        // asphalt / dirt, speckled
-      for (var k = 0; k < 34; k++) {
+    } else if (theme === "street") {               // paving slabs, and their joints
+      px(c, 0, 0, T, T, P.floor[1]);
+      for (var k = 0; k < 26; k++) px(c, (r() * T) | 0, (r() * T) | 0, 1 + ((r() * 2) | 0), 1, P.floor[(r() * 4) | 0]);
+      px(c, 0, 0, T, 1, P.floor[3]); px(c, 0, 0, 1, T, P.floor[3]);
+      px(c, 0, T - 1, T, 1, P.floor[2]);
+      if (r() > 0.82) for (k = 0; k < 4; k++) px(c, (r() * T) | 0, (r() * T) | 0, 2, 1, "#3d4a38");  // weeds in the joints
+    } else {                                        // dirt, speckled
+      for (var k2 = 0; k2 < 34; k2++) {
         px(c, (r() * T) | 0, (r() * T) | 0, 1 + ((r() * 2) | 0), 1, P.floor[(r() * 4) | 0]);
       }
     }
   }
 
-  function paintGround(c, P, theme, r) {
+  function paintGround(c, P, theme, r, E) {
     px(c, 0, 0, T, T, P.ground[1]);
     for (var k = 0; k < 22; k++) px(c, (r() * T) | 0, (r() * T) | 0, 1, 1, P.ground[(r() * 3) | 0]);
-    if (theme === "street" && r() > 0.7) px(c, 0, (r() * T) | 0, T, 1, P.ground[2]);  // a crack
+    E = E || {};
+    if (theme === "street") {                                  // tarmac: cracks, patches, litter
+      if (r() > 0.7) px(c, 0, (r() * T) | 0, T, 1, P.ground[2]);
+      if (r() > 0.86) blob(c, (r() * T) | 0, (r() * T) | 0, 3, 2, [P.ground[0], P.ground[0], P.ground[2], P.ground[2]]);
+      if (r() > 0.93) px(c, (r() * T) | 0, (r() * T) | 0, 2, 2, "#8a8474");
+    }
     if (theme === "road") {                                   // tufts pushing through
       for (var g = 0; g < 3; g++) {
         if (r() > 0.55) px(c, (r() * T) | 0, (r() * T) | 0, 1, 2 + ((r() * 2) | 0), "#4c5f3a");
       }
     }
+    /* Where the tarmac stops, a kerb and a worn white line. Two pixels of
+       paint is the whole difference between "a grey field" and "a road". */
+    if (theme === "street") {
+      if (E.n) { px(c, 0, 0, T, 1, "#5e6472"); px(c, 0, 2, T, 1, "#b9bcc4"); }
+      if (E.s) { px(c, 0, T - 1, T, 1, "#5e6472"); px(c, 0, T - 3, T, 1, "#b9bcc4"); }
+      if (E.w) { px(c, 0, 0, 1, T, "#5e6472"); px(c, 2, 0, 1, T, "#b9bcc4"); }
+      if (E.e) { px(c, T - 1, 0, 1, T, "#5e6472"); px(c, T - 3, 0, 1, T, "#b9bcc4"); }
+      /* and the paint is old: break it up rather than laying a perfect line */
+      for (var w = 0; w < 5; w++) px(c, (r() * T) | 0, (r() * T) | 0, 2 + ((r() * 3) | 0), 1, P.ground[0]);
+    }
   }
 
   /* --- the things that stop her ---------------------------------------- */
-  function paintWall(c, P, theme, r) {
+  function paintWall(c, P, theme, r, E) {
+    E = E || {};
     px(c, 0, 0, T, T, P.wall[1]);
     if (theme === "house") {                       // papered wall: a quiet stripe
       for (var x = 2; x < T; x += 6) px(c, x, 0, 1, T, shade(P.wall[1], 9));
@@ -468,6 +546,25 @@ window.Apocalypse = (function () {
         for (var xx = (yy % 10 ? 4 : 0) - 4; xx < T; xx += 8) {
           px(c, xx, yy, 7, 4, r() > 0.55 ? P.wall[0] : P.wall[1]);
         }
+      }
+      /* A window, but only in a wall that actually faces the street, and
+         only on the side that faces it. A window in the middle of a block
+         is a window into next door's bathroom. Some of them are still lit:
+         the city is empty, it is not switched off. */
+      var facade = E.n || E.s || E.w || E.e;
+      if (theme === "street" && facade && r() > 0.62) {
+        var wx = E.w ? 2 : E.e ? T - 8 : 4 + ((r() * 4) | 0);
+        var wy = E.n ? 2 : E.s ? T - 8 : 4 + ((r() * 4) | 0);
+        px(c, wx - 1, wy - 1, 8, 8, "#12151c");
+        var lit = r();
+        px(c, wx, wy, 6, 6, lit > 0.76 ? "#c9a05a" : lit > 0.5 ? "#39445a" : "#0d1016");
+        if (lit > 0.76) {                                   // a curtain across half of it
+          px(c, wx, wy, 6, 2, "#8d6f3d");
+          px(c, wx + 4, wy, 2, 6, "#8d6f3d");
+        }
+        px(c, wx + 3, wy, 1, 6, "#12151c");                 // the glazing bars
+        px(c, wx, wy + 3, 6, 1, "#12151c");
+        px(c, wx - 1, wy + 6, 8, 1, shade(P.wall[3], 10));  // the sill
       }
     }
     px(c, 0, 0, T, 2, P.wall[3]);                  // the lit top edge
@@ -600,7 +697,7 @@ window.Apocalypse = (function () {
   }
 
   function paintPanel(c, P, theme, r) {             // the wire panel, closed
-    paintWall(c, P, theme, r);
+    paintWall(c, P, theme, r, {});
     px(c, 2, 3, T - 4, T - 6, "#2a2d34");
     px(c, 2, 3, T - 4, 1, "#4a4f5a");
     px(c, 3, 5, T - 6, T - 9, "#1a1d22");
@@ -630,11 +727,44 @@ window.Apocalypse = (function () {
     }
   }
 
+  /* A car, left where it stopped. Roof, windscreen, bonnet and both wings,
+     seen from above. She can get behind one; nothing sees through one. */
+  var CAR_COLS = [
+    ["#7a2f34", "#5c2226", "#3f181b"],
+    ["#2f4a6a", "#22374f", "#17263a"],
+    ["#6a6660", "#4e4b46", "#35332f"],
+    ["#3f5a44", "#2e4232", "#1f2d22"],
+  ];
+  function paintCar(c, P, theme, r, E) {
+    paintGround(c, P, theme, r);
+    var col = CAR_COLS[(r() * CAR_COLS.length) | 0];
+    px(c, 2, 0, T - 4, T, col[1]);                    // the body, nose to tail
+    px(c, 1, 2, 1, T - 4, col[2]);                    // the wings
+    px(c, T - 2, 2, 1, T - 4, col[2]);
+    px(c, 2, 0, T - 4, 1, col[0]);
+    if (E.n) {                                         // this end is the bonnet
+      px(c, 3, 1, T - 6, 4, col[0]);
+      px(c, 3, 5, T - 6, 4, "#1b2630");                // the windscreen
+      px(c, 3, 5, T - 6, 1, "#3d5468");
+      px(c, 2, 1, 2, 1, "#e8dcb0"); px(c, T - 4, 1, 2, 1, "#e8dcb0");   // lamps
+    } else if (E.s) {                                  // and this one the boot
+      px(c, 3, T - 5, T - 6, 4, col[0]);
+      px(c, 3, T - 9, T - 6, 4, "#1b2630");
+      px(c, 2, T - 2, 2, 1, "#7a2a26"); px(c, T - 4, T - 2, 2, 1, "#7a2a26");
+    } else {
+      px(c, 3, 2, T - 6, T - 4, "#20303c");            // the roof between them
+      px(c, 3, 2, T - 6, 1, "#3d5468");
+    }
+    px(c, 0, 3, 2, 3, "#16181c"); px(c, 0, T - 6, 2, 3, "#16181c");     // wheels
+    px(c, T - 2, 3, 2, 3, "#16181c"); px(c, T - 2, T - 6, 2, 3, "#16181c");
+    for (var i = 0; i < 5; i++) px(c, (r() * T) | 0, (r() * T) | 0, 1, 1, shade(col[2], 12));
+  }
+
   /* A window. It is in a wall, so it stops her and stops sight — but the
      night comes through it, which is the whole point: a room with a window
      is a room she can read without the torch. */
   function paintWindow(c, P, theme, r) {
-    paintWall(c, P, theme, r);
+    paintWall(c, P, theme, r, {});
     px(c, 2, 2, T - 4, T - 5, "#2a3550");
     px(c, 3, 3, T - 6, T - 7, "#4a6a96");
     px(c, 3, 3, T - 6, 3, "#6d90bd");                 // the sky in the top pane
@@ -672,7 +802,7 @@ window.Apocalypse = (function () {
      graph paper and a sofa is not four sofas.
      --------------------------------------------------------------------- */
   var VARIANTS = 4;
-  var EDGED = "BFK=r";                // the pieces that care about their neighbours
+  var EDGED = "BFK=rc,#";             // the pieces that care about their neighbours
 
   function tileFor(cache, theme, ch, mask, v) {
     var key = ch + "|" + mask + "|" + v;
@@ -682,13 +812,14 @@ window.Apocalypse = (function () {
     var r = rnd(1000 + ch.charCodeAt(0) * 97 + v * 13 + mask * 7);
     var E = { n: !!(mask & 1), s: !!(mask & 2), w: !!(mask & 4), e: !!(mask & 8) };
     if (ch === ".") paintFloor(c, P, theme, r);
-    else if (ch === ",") paintGround(c, P, theme, r);
-    else if (ch === "#") paintWall(c, P, theme, r);
+    else if (ch === ",") paintGround(c, P, theme, r, E);
+    else if (ch === "#") paintWall(c, P, theme, r, E);
     else if (ch === "o") paintTall(c, P, theme, r);
     else if (ch === "=") paintCover(c, P, theme, r);
     else if (ch === "B") paintBed(c, P, theme, r, E);
     else if (ch === "F") paintSofa(c, P, theme, r, E);
     else if (ch === "K") paintCounter(c, P, theme, r, E);
+    else if (ch === "c") paintCar(c, P, theme, r, E);
     else if (ch === "v") paintWindow(c, P, theme, r);
     else if (ch === "r") paintRug(c, P, theme, r, E);
     else if (ch === "h") paintHide(c, P, theme, r);
@@ -712,8 +843,8 @@ window.Apocalypse = (function () {
         where she can disappear, what she can use, and who else is walking
         about. The map art is baked into one canvas here too.
      ======================================================================= */
-  var SOLID = "#vo=BFKWTLCA";      // she cannot walk through these
-  var OPAQUE = "#voh";             // and sight cannot pass these
+  var SOLID = "#vco=BFKWTLCA";     // she cannot walk through these
+  var OPAQUE = "#vcoh";            // and sight cannot pass these
   var ENTITY = "SzAHN";            // drawn as bare floor; something stands on it
 
   function buildLevel(def) {
@@ -969,7 +1100,7 @@ window.Apocalypse = (function () {
     return {
       x: x, y: y, hx: x, hy: y,        // hx/hy is the spot it started from
       fx: 0, fy: 1, state: "patrol", timer: 1 + Math.random() * 2,
-      tx: 0, ty: 0, anim: Math.random() * 4, frame: 0, lost: 0, alert: 0,
+      tx: 0, ty: 0, anim: Math.random() * 4, frame: 0, lost: 0, alert: 0, react: 0,
     };
   }
 
@@ -986,7 +1117,9 @@ window.Apocalypse = (function () {
     if (p.hidden) return false;
     var dx = p.x - z.x, dy = p.y - z.y;
     var d = Math.hypot(dx, dy);
-    if (d > TUNE.zSight) return false;
+    /* crouched and moving slowly, she is a shape rather than a person —
+       so SHIFT is worth holding for more than the quiet */
+    if (d > TUNE.zSight * (p.creeping ? 0.68 : 1)) return false;
     if (!canSee(G.level, z.x, z.y, p.x, p.y)) return false;
     if (d < TUNE.zNear) return true;
     var fl = Math.hypot(z.fx, z.fy) || 1;
@@ -998,6 +1131,15 @@ window.Apocalypse = (function () {
     var L = G.level, sp = TUNE.zSpeed;
 
     if (zSees(G, z)) {
+      if (z.state !== "chase") {
+        /* the moment it notices her. It stops dead, straightens up, and
+           makes a sound — which is both her half-second to get behind
+           something and the reason everything else nearby starts walking
+           this way. */
+        z.react = TUNE.zReact;
+        sfx("spot");
+        makeNoise(G, z.x, z.y, 120);
+      }
       z.state = "chase";
       z.lost = 0;
       z.tx = G.player.x; z.ty = G.player.y;
@@ -1008,9 +1150,10 @@ window.Apocalypse = (function () {
     }
 
     if (z.state === "chase") {
-      sp = TUNE.zChase;
       var dx = z.tx - z.x, dy = z.ty - z.y, d = Math.hypot(dx, dy) || 1;
       z.fx = dx / d; z.fy = dy / d;
+      if (z.react > 0) { z.react -= dt; sp = 0; }
+      else sp = TUNE.zChase;
     } else if (z.state === "look") {
       z.alert = Math.max(0, z.alert - dt * 0.5);
       var lx = z.tx - z.x, ly = z.ty - z.y, ld = Math.hypot(lx, ly);
@@ -1173,8 +1316,17 @@ window.Apocalypse = (function () {
     c.globalAlpha = 1;
     if (alert > 0.15) {                              // the mark over an alerted one
       var yy = y - 22 - Math.sin(G.t * 8) * 1;
-      px(c, x - 1, yy, 2, 5, alert > 0.8 ? "#ff5a4a" : "#ffc24a");
-      px(c, x - 1, yy + 6, 2, 2, alert > 0.8 ? "#ff5a4a" : "#ffc24a");
+      var col = alert > 0.8 ? "#ff5a4a" : "#ffc24a";
+      px(c, x - 1, yy, 2, 5, col);
+      px(c, x - 1, yy + 6, 2, 2, col);
+      if (a.react > 0) {                             // and the half-second it rears up
+        var k = a.react / TUNE.zReact;
+        c.strokeStyle = "rgba(255,90,74," + (0.7 * k) + ")";
+        c.lineWidth = 1;
+        c.beginPath();
+        c.arc(x, y - 6, 10 + (1 - k) * 12, 0, 6.2832);
+        c.stroke();
+      }
     }
   }
 
@@ -1244,17 +1396,26 @@ window.Apocalypse = (function () {
     snapCam(G);
   }
 
-  /* the last place she stood still, unseen, with nothing near her */
+  /* The last place she was safe, which is where a close call puts her back.
+
+     Being inside something always counts, however close the thing outside
+     it is — that is what a hiding place is for, and it means the wardrobes
+     and the bushes double as checkpoints. Otherwise it wants a bit of quiet:
+     nothing chasing, and nothing within four tiles. Generous on purpose. A
+     close call that sends her back across half the level is a punishment,
+     and this chapter does not have those. */
   function updateSafe(G, dt) {
     var p = G.player;
     G.safeT -= dt;
     if (G.safeT > 0) return;
-    G.safeT = 0.5;
+    G.safeT = 0.4;
+    if (!freeAt(G.level, p.x, p.y)) return;
+    if (p.hidden) { G.safe = { x: p.x, y: p.y }; return; }
     var near = false;
     G.level.zombies.forEach(function (z) {
-      if (Math.hypot(z.x - p.x, z.y - p.y) < 82 || z.state !== "patrol") near = true;
+      if (z.state === "chase" || Math.hypot(z.x - p.x, z.y - p.y) < 60) near = true;
     });
-    if (!near && freeAt(G.level, p.x, p.y)) { G.safe = { x: p.x, y: p.y }; }
+    if (!near) G.safe = { x: p.x, y: p.y };
   }
 
   /* =======================================================================
@@ -1435,6 +1596,7 @@ window.Apocalypse = (function () {
       case "power":   tone(160, 0.5, "sawtooth", 0.05, 320); tone(240, 0.7, "sine", 0.04, 480); break;
       case "caught":  tone(200, 0.5, "sawtooth", 0.09, 60); noiseBurst(0.4, 0.09, 600); break;
       case "found":   tone(660, 0.1, "sine", 0.05); tone(880, 0.18, "sine", 0.045); break;
+      case "spot":    tone(320, 0.35, "sawtooth", 0.07, 130); noiseBurst(0.35, 0.06, 900); break;
       case "deny":    tone(150, 0.18, "square", 0.05, 110); break;
     }
   }
@@ -2077,7 +2239,7 @@ window.Apocalypse = (function () {
         a keypad — but the paper is torn out of a notebook and the keypad is
         screwed to a fire door.
      ======================================================================= */
-  function showNote(G, thing, text, code) {
+  function showNote(G, thing, text, code, after, then) {
     G.state = "note";
     G.keys = freshKeys();
     G.code = code;
@@ -2085,6 +2247,7 @@ window.Apocalypse = (function () {
     wrap.appendChild(el("span", "ap-note-tape"));
     wrap.appendChild(el("p", "ap-note-body", text));
     wrap.appendChild(el("p", "ap-note-code", code));
+    if (after) wrap.appendChild(el("p", "ap-note-after", after));
     var b = el("button", "ap-note-ok", "Pocket it");
     b.addEventListener("click", function () {
       closeOverlay();
@@ -2092,6 +2255,7 @@ window.Apocalypse = (function () {
       thing.done = true;
       setHud(G);
       advanceStep(G, "note");
+      if (then) say(G, then);
     });
     wrap.appendChild(b);
     openOverlay(wrap, "thin");
@@ -2156,7 +2320,11 @@ window.Apocalypse = (function () {
      ======================================================================= */
   function useThing(G, t) {
     if (t.kind === "tv") { showBroadcast(G, t); return; }
-    if (t.kind === "note") { showNote(G, t, NOTES[G.levelIndex].text, NOTES[G.levelIndex].code); return; }
+    if (t.kind === "note") {
+      var n = NOTES[G.levelIndex];
+      showNote(G, t, n.text, n.code, n.after, n.then);
+      return;
+    }
     if (t.kind === "panel") {
       openWirePanel(G, {
         title: PANELS[G.levelIndex].title,
@@ -2259,8 +2427,7 @@ window.Apocalypse = (function () {
       advanceStep(G, "tv");
       say(G, [
         ["OUISSY", "Mum and Dad are four hours away."],
-        ["OUISSY", "Anwar's at the hospital. He's asleep, he doesn't know any of this."],
-        ["", "The front door won't budge and the garage is dead. There'll be a panel."],
+        ["", "The front door won't budge and the garage has no power. There'll be a panel for it somewhere."],
       ]);
     });
     wrap.appendChild(b);
@@ -2292,8 +2459,19 @@ window.Apocalypse = (function () {
     },
   };
 
-  var NOTES = {};
+  var NOTES = {
+    1: {
+      code: "4180",
+      text: "Torn off a staff rota and dropped behind the counter. Somebody has written on the back of it:",
+      after: "and underneath, in a different pen — don't write this down",
+      then: [["OUISSY", "There's a staff gate off the alley behind these shops. That comes out right by the hospital."]],
+    },
+  };
   var OUTRO = {
+    1: [
+      ["", "The hospital sign is still lit. Of everything on this street, that is the thing still lit."],
+      ["OUISSY", "Please be asleep. Please still be asleep."],
+    ],
     0: [
       ["", "The door gets about waist high and stops. It's enough."],
       ["OUISSY", "Okay. Okay. Hospital."],
@@ -2301,6 +2479,15 @@ window.Apocalypse = (function () {
   };
 
   var LEVEL_INTRO = {
+    1: function (G) {
+      say(G, [
+        ["", "Outside is worse. Not louder — quieter. No cars. No music. Nobody's television but hers."],
+        ["OUISSY", "Okay. Think. Where do I even—"],
+        ["OUISSY", "...Anwar."],
+        ["OUISSY", "He's on a ward with his phone in a drawer. He doesn't know any of this. He's asleep."],
+        ["", "The hospital is south and east of here. Twenty minutes, if she doesn't have to stop."],
+      ]);
+    },
     0: function (G) {
       say(G, [
         ["", "The power went about ten minutes ago. The television didn't."],
