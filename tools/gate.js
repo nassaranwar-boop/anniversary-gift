@@ -28,19 +28,30 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
     document.querySelectorAll('[data-gate-key]').length === 12 &&
     document.querySelectorAll('#gate-code .gate-dot').length === 4 &&
     !document.querySelector('#screen-gate input')));
-  ok('the seal, the sheet and the ornament are all drawn', await page.evaluate(() => {
+  ok('the sheet, seal and ornament are drawn; the plaque and keys are the art', await page.evaluate(() => {
     const c = document.getElementById('gate-card');
     return !!document.querySelector('#gate-seal .gate-wax-blob') &&
            !!c.querySelector('.gate-sheet-grain') &&
            document.querySelectorAll('.gate-flour use').length >= 8 &&
-           !document.querySelector('#screen-gate img');
+           /gate-title\.png/.test(document.querySelector('.gate-title img').src) &&
+           /gate-unlock\.png/.test(document.querySelector('.gate-unlock img').src);
   }));
+  ok('every key carries its own cut-out', await page.evaluate(() => {
+    const want = ['1','2','3','4','5','6','7','8','9','back','0','clear'];
+    return want.every(k => {
+      const b = document.querySelector(`[data-gate-key="${k}"] img`);
+      return b && new RegExp(`gate-key-${k}\\.png`).test(b.src) && b.naturalWidth > 0;
+    });
+  }));
+  ok('the keys sit on one even grid', await page.evaluate(() => {
+    const r = Array.from(document.querySelectorAll('.gate-key')).map(b => b.getBoundingClientRect());
+    return r.every(x => Math.abs(x.width - r[0].width) < 0.6 && Math.abs(x.height - r[0].height) < 0.6);
+  }));
+  ok('flowers and hearts are drifting behind it', await page.evaluate(() =>
+    document.querySelectorAll('.gate-blooms .gate-bloom').length >= 20));
   ok('nothing on the gate leans on an emoji', await page.evaluate(() =>
     !/[\u{1F300}-\u{1FAFF}\u{2190}-\u{27BF}]/u.test(document.getElementById('screen-gate').innerText)));
-  ok('the sheet is drawn, not a picture', await page.evaluate(() => {
-    const g = document.getElementById('gate-card');
-    return !!g.querySelector('svg .gate-sheet-grain') && !/url\(/.test(getComputedStyle(g).backgroundImage);
-  }));
+
 
   // the card must fit the phone with nothing past the fold
   const fits = await page.evaluate(() => {

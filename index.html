@@ -6,9 +6,9 @@
 <title>For My Love 💕</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=41">
+<link rel="stylesheet" href="style.css?v=43">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Rye&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=41"></script>
+<script src="vendor/three.bundle.js?v=43"></script>
 
 </head>
 <body>
@@ -27,27 +27,69 @@
        filigree, the wax seal and its key. No scanned textures anywhere. -->
   <section id="screen-gate" class="screen ancient-bg">
 
-    <!-- the blush wash: soft watercolour blooms plus a paper tooth -->
+    <!-- The backdrop is the supplied wash with its title healed out, so
+         the title can be placed responsively instead of being baked into a
+         16:9 image that a phone would crop in half. Flowers, hearts and
+         little leaf sprays are drawn over it and drift very slowly; they
+         are generated rather than hand-placed, and they keep out of the
+         middle band where the card sits. -->
+    <div class="gate-backdrop" aria-hidden="true"></div>
     <svg class="gate-wash" viewBox="0 0 400 700" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
-        <radialGradient id="gW1"><stop offset="0%" stop-color="#ffd9cf" stop-opacity=".85"/><stop offset="100%" stop-color="#ffd9cf" stop-opacity="0"/></radialGradient>
-        <radialGradient id="gW2"><stop offset="0%" stop-color="#f6b9b4" stop-opacity=".7"/><stop offset="100%" stop-color="#f6b9b4" stop-opacity="0"/></radialGradient>
-        <radialGradient id="gW3"><stop offset="0%" stop-color="#fff1e2" stop-opacity=".9"/><stop offset="100%" stop-color="#fff1e2" stop-opacity="0"/></radialGradient>
-        <filter id="gWashGrain"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="4" seed="17"/><feColorMatrix type="saturate" values="0"/></filter>
-        <filter id="gWashBlur"><feGaussianBlur stdDeviation="26"/></filter>
+        <radialGradient id="fPetalA" cx=".38" cy=".3" r=".8">
+          <stop offset="0%" stop-color="#fff3ef" stop-opacity=".95"/><stop offset="100%" stop-color="#f4b8c4" stop-opacity=".7"/>
+        </radialGradient>
+        <radialGradient id="fPetalB" cx=".38" cy=".3" r=".8">
+          <stop offset="0%" stop-color="#fff8ec" stop-opacity=".95"/><stop offset="100%" stop-color="#eec2a4" stop-opacity=".62"/>
+        </radialGradient>
+        <radialGradient id="fPetalC" cx=".38" cy=".3" r=".8">
+          <stop offset="0%" stop-color="#fdeef2" stop-opacity=".9"/><stop offset="100%" stop-color="#e79fb4" stop-opacity=".6"/>
+        </radialGradient>
+        <radialGradient id="fHeartA" cx=".36" cy=".28" r=".85">
+          <stop offset="0%" stop-color="#f6a8b6" stop-opacity=".8"/><stop offset="100%" stop-color="#d0687f" stop-opacity=".55"/>
+        </radialGradient>
+        <radialGradient id="fHeartB" cx=".36" cy=".28" r=".85">
+          <stop offset="0%" stop-color="#f2bfae" stop-opacity=".7"/><stop offset="100%" stop-color="#c9758a" stop-opacity=".5"/>
+        </radialGradient>
       </defs>
-      <g filter="url(#gWashBlur)">
-        <ellipse cx="72"  cy="120" rx="150" ry="120" fill="url(#gW3)"/>
-        <ellipse cx="340" cy="240" rx="140" ry="130" fill="url(#gW1)"/>
-        <ellipse cx="120" cy="520" rx="170" ry="140" fill="url(#gW2)"/>
-        <ellipse cx="330" cy="640" rx="150" ry="120" fill="url(#gW1)"/>
-        <ellipse cx="210" cy="360" rx="130" ry="110" fill="url(#gW3)"/>
+      <g class="gate-blooms">
+        <g class="gate-bloom" style="--d:5.3s;--t:14.4s"><g transform="translate(380.1 674.8) rotate(-33.3)"><path d="M0 0 C5.9 -7.4 13.2 -5.9 20.6 1.5" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="6.2" cy="-5.0" rx="4.4" ry="1.9" transform="rotate(-28 6.2 -5.0)" fill="rgba(178,192,142,.36)"/><ellipse cx="11.3" cy="-6.1" rx="4.4" ry="1.9" transform="rotate(-28 11.3 -6.1)" fill="rgba(178,192,142,.36)"/><ellipse cx="16.5" cy="-3.6" rx="4.4" ry="1.9" transform="rotate(-28 16.5 -3.6)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:4.1s;--t:11.2s"><path d="M0 5.86 C9.62 0.75 3.91 -5.41 0 -2.10 C-3.91 -5.41 -9.62 0.75 0 5.86 Z" transform="translate(43.2 127.0) rotate(-22.3)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:5.6s;--t:18.8s"><path d="M0 7.16 C11.75 0.92 4.77 -6.61 0 -2.57 C-4.77 -6.61 -11.75 0.92 0 7.16 Z" transform="translate(12.4 555.0) rotate(12.6)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:7.3s;--t:12.4s"><g transform="translate(398.7 191.6) rotate(5.8)"><path d="M0 0 C5.8 -7.2 12.9 -5.8 20.1 1.4" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="6.0" cy="-4.9" rx="4.3" ry="1.9" transform="rotate(-28 6.0 -4.9)" fill="rgba(178,192,142,.36)"/><ellipse cx="11.1" cy="-6.0" rx="4.3" ry="1.9" transform="rotate(-28 11.1 -6.0)" fill="rgba(178,192,142,.36)"/><ellipse cx="16.1" cy="-3.6" rx="4.3" ry="1.9" transform="rotate(-28 16.1 -3.6)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:2.5s;--t:15.7s"><path d="M0 5.97 C9.80 0.77 3.98 -5.51 0 -2.14 C-3.98 -5.51 -9.80 0.77 0 5.97 Z" transform="translate(22.9 296.5) rotate(35.2)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:1.5s;--t:12.8s"><path d="M0 5.52 C9.06 0.71 3.68 -5.10 0 -1.98 C-3.68 -5.10 -9.06 0.71 0 5.52 Z" transform="translate(178.5 12.5) rotate(-8.5)" fill="url(#fHeartA)"/></g>
+        <g class="gate-bloom" style="--d:8.8s;--t:14.0s"><g transform="translate(216.4 703.5) rotate(-12.3)"><path d="M0 0 C4.9 -6.2 11.1 -4.9 17.3 1.2" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="5.2" cy="-4.2" rx="3.7" ry="1.6" transform="rotate(-28 5.2 -4.2)" fill="rgba(178,192,142,.36)"/><ellipse cx="9.5" cy="-5.1" rx="3.7" ry="1.6" transform="rotate(-28 9.5 -5.1)" fill="rgba(178,192,142,.36)"/><ellipse cx="13.8" cy="-3.0" rx="3.7" ry="1.6" transform="rotate(-28 13.8 -3.0)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:0.9s;--t:15.2s"><g transform="translate(71.4 663.9) rotate(-22.7)"><path d="M0 0 C4.9 -6.1 11.0 -4.9 17.1 1.2" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="5.1" cy="-4.1" rx="3.7" ry="1.6" transform="rotate(-28 5.1 -4.1)" fill="rgba(178,192,142,.36)"/><ellipse cx="9.4" cy="-5.1" rx="3.7" ry="1.6" transform="rotate(-28 9.4 -5.1)" fill="rgba(178,192,142,.36)"/><ellipse cx="13.7" cy="-3.0" rx="3.7" ry="1.6" transform="rotate(-28 13.7 -3.0)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:7.3s;--t:18.2s"><g transform="translate(370.0 310.0) rotate(31.4)"><ellipse cx="0" cy="-11.31" rx="6.67" ry="11.60" transform="rotate(0)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-11.31" rx="6.67" ry="11.60" transform="rotate(72)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-11.31" rx="6.67" ry="11.60" transform="rotate(144)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-11.31" rx="6.67" ry="11.60" transform="rotate(216)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-11.31" rx="6.67" ry="11.60" transform="rotate(288)" fill="url(#fPetalB)"/><circle r="4.35" fill="rgba(255,240,214,.75)"/><circle r="2.32" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:2.7s;--t:17.9s"><path d="M0 8.31 C13.64 1.07 5.54 -7.67 0 -2.98 C-5.54 -7.67 -13.64 1.07 0 8.31 Z" transform="translate(368.6 527.9) rotate(-6.0)" fill="url(#fHeartA)"/></g>
+        <g class="gate-bloom" style="--d:5.0s;--t:17.7s"><path d="M0 6.62 C10.87 0.85 4.41 -6.11 0 -2.38 C-4.41 -6.11 -10.87 0.85 0 6.62 Z" transform="translate(338.5 66.5) rotate(-13.4)" fill="url(#fHeartA)"/></g>
+        <g class="gate-bloom" style="--d:3.8s;--t:13.2s"><g transform="translate(0.8 461.9) rotate(36.4)"><path d="M0 0 C6.1 -7.6 13.7 -6.1 21.3 1.5" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="6.4" cy="-5.2" rx="4.6" ry="2.0" transform="rotate(-28 6.4 -5.2)" fill="rgba(178,192,142,.36)"/><ellipse cx="11.7" cy="-6.3" rx="4.6" ry="2.0" transform="rotate(-28 11.7 -6.3)" fill="rgba(178,192,142,.36)"/><ellipse cx="17.0" cy="-3.7" rx="4.6" ry="2.0" transform="rotate(-28 17.0 -3.7)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:0.2s;--t:14.7s"><g transform="translate(84.0 33.0) rotate(-9.8)"><path d="M0 0 C5.6 -6.9 12.5 -5.6 19.4 1.4" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="5.8" cy="-4.7" rx="4.2" ry="1.8" transform="rotate(-28 5.8 -4.7)" fill="rgba(178,192,142,.36)"/><ellipse cx="10.7" cy="-5.8" rx="4.2" ry="1.8" transform="rotate(-28 10.7 -5.8)" fill="rgba(178,192,142,.36)"/><ellipse cx="15.5" cy="-3.4" rx="4.2" ry="1.8" transform="rotate(-28 15.5 -3.4)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:8.0s;--t:15.3s"><path d="M0 8.69 C14.27 1.11 5.80 -8.03 0 -3.12 C-5.80 -8.03 -14.27 1.11 0 8.69 Z" transform="translate(6.1 630.1) rotate(20.5)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:2.3s;--t:17.8s"><path d="M0 6.62 C10.86 0.85 4.41 -6.11 0 -2.38 C-4.41 -6.11 -10.86 0.85 0 6.62 Z" transform="translate(39.3 397.8) rotate(28.7)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:8.2s;--t:12.5s"><g transform="translate(376.0 462.0) rotate(38.1)"><ellipse cx="0" cy="-7.14" rx="4.21" ry="7.32" transform="rotate(0)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.14" rx="4.21" ry="7.32" transform="rotate(72)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.14" rx="4.21" ry="7.32" transform="rotate(144)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.14" rx="4.21" ry="7.32" transform="rotate(216)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.14" rx="4.21" ry="7.32" transform="rotate(288)" fill="url(#fPetalC)"/><circle r="2.75" fill="rgba(255,240,214,.75)"/><circle r="1.46" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:2.7s;--t:17.4s"><g transform="translate(277.6 662.9) rotate(31.7)"><ellipse cx="0" cy="-7.32" rx="4.31" ry="7.50" transform="rotate(0)" fill="url(#fPetalA)"/><ellipse cx="0" cy="-7.32" rx="4.31" ry="7.50" transform="rotate(72)" fill="url(#fPetalA)"/><ellipse cx="0" cy="-7.32" rx="4.31" ry="7.50" transform="rotate(144)" fill="url(#fPetalA)"/><ellipse cx="0" cy="-7.32" rx="4.31" ry="7.50" transform="rotate(216)" fill="url(#fPetalA)"/><ellipse cx="0" cy="-7.32" rx="4.31" ry="7.50" transform="rotate(288)" fill="url(#fPetalA)"/><circle r="2.81" fill="rgba(255,240,214,.75)"/><circle r="1.50" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:1.9s;--t:14.4s"><g transform="translate(126.6 85.1) rotate(28.6)"><ellipse cx="0" cy="-9.00" rx="5.31" ry="9.23" transform="rotate(0)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-9.00" rx="5.31" ry="9.23" transform="rotate(72)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-9.00" rx="5.31" ry="9.23" transform="rotate(144)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-9.00" rx="5.31" ry="9.23" transform="rotate(216)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-9.00" rx="5.31" ry="9.23" transform="rotate(288)" fill="url(#fPetalC)"/><circle r="3.46" fill="rgba(255,240,214,.75)"/><circle r="1.85" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:4.4s;--t:13.8s"><g transform="translate(139.2 699.0) rotate(33.8)"><ellipse cx="0" cy="-8.33" rx="4.91" ry="8.55" transform="rotate(0)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.33" rx="4.91" ry="8.55" transform="rotate(72)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.33" rx="4.91" ry="8.55" transform="rotate(144)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.33" rx="4.91" ry="8.55" transform="rotate(216)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.33" rx="4.91" ry="8.55" transform="rotate(288)" fill="url(#fPetalC)"/><circle r="3.20" fill="rgba(255,240,214,.75)"/><circle r="1.71" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:5.5s;--t:18.4s"><path d="M0 10.05 C16.50 1.29 6.70 -9.28 0 -3.61 C-6.70 -9.28 -16.50 1.29 0 10.05 Z" transform="translate(398.2 376.3) rotate(-5.8)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:8.9s;--t:17.0s"><path d="M0 9.26 C15.19 1.19 6.17 -8.55 0 -3.32 C-6.17 -8.55 -15.19 1.19 0 9.26 Z" transform="translate(403.7 620.7) rotate(-28.5)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:1.3s;--t:16.1s"><g transform="translate(218.0 75.8) rotate(-2.1)"><ellipse cx="0" cy="-8.95" rx="5.28" ry="9.18" transform="rotate(0)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.95" rx="5.28" ry="9.18" transform="rotate(72)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.95" rx="5.28" ry="9.18" transform="rotate(144)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.95" rx="5.28" ry="9.18" transform="rotate(216)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-8.95" rx="5.28" ry="9.18" transform="rotate(288)" fill="url(#fPetalC)"/><circle r="3.44" fill="rgba(255,240,214,.75)"/><circle r="1.84" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:0.3s;--t:13.1s"><path d="M0 8.01 C13.14 1.03 5.34 -7.39 0 -2.87 C-5.34 -7.39 -13.14 1.03 0 8.01 Z" transform="translate(395.9 12.5) rotate(34.9)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:0.6s;--t:17.6s"><path d="M0 6.28 C10.31 0.81 4.19 -5.80 0 -2.26 C-4.19 -5.80 -10.31 0.81 0 6.28 Z" transform="translate(359.2 131.0) rotate(18.5)" fill="url(#fHeartA)"/></g>
+        <g class="gate-bloom" style="--d:5.8s;--t:18.5s"><g transform="translate(7.4 1.0) rotate(-38.9)"><ellipse cx="0" cy="-10.50" rx="6.19" ry="10.77" transform="rotate(0)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-10.50" rx="6.19" ry="10.77" transform="rotate(72)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-10.50" rx="6.19" ry="10.77" transform="rotate(144)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-10.50" rx="6.19" ry="10.77" transform="rotate(216)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-10.50" rx="6.19" ry="10.77" transform="rotate(288)" fill="url(#fPetalB)"/><circle r="4.04" fill="rgba(255,240,214,.75)"/><circle r="2.15" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:6.5s;--t:11.3s"><path d="M0 6.24 C10.24 0.80 4.16 -5.76 0 -2.24 C-4.16 -5.76 -10.24 0.80 0 6.24 Z" transform="translate(-8.4 347.6) rotate(-17.1)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:4.4s;--t:13.8s"><g transform="translate(-7.4 231.3) rotate(-33.5)"><ellipse cx="0" cy="-12.80" rx="7.55" ry="13.13" transform="rotate(0)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-12.80" rx="7.55" ry="13.13" transform="rotate(72)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-12.80" rx="7.55" ry="13.13" transform="rotate(144)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-12.80" rx="7.55" ry="13.13" transform="rotate(216)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-12.80" rx="7.55" ry="13.13" transform="rotate(288)" fill="url(#fPetalB)"/><circle r="4.92" fill="rgba(255,240,214,.75)"/><circle r="2.63" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:7.8s;--t:13.8s"><g transform="translate(14.2 71.6) rotate(-5.2)"><ellipse cx="0" cy="-7.65" rx="4.51" ry="7.85" transform="rotate(0)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.65" rx="4.51" ry="7.85" transform="rotate(72)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.65" rx="4.51" ry="7.85" transform="rotate(144)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.65" rx="4.51" ry="7.85" transform="rotate(216)" fill="url(#fPetalC)"/><ellipse cx="0" cy="-7.65" rx="4.51" ry="7.85" transform="rotate(288)" fill="url(#fPetalC)"/><circle r="2.94" fill="rgba(255,240,214,.75)"/><circle r="1.57" fill="rgba(226,168,120,.5)"/></g></g>
+        <g class="gate-bloom" style="--d:6.3s;--t:14.5s"><g transform="translate(34.0 711.4) rotate(28.0)"><path d="M0 0 C5.1 -6.4 11.6 -5.1 18.0 1.3" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="5.4" cy="-4.4" rx="3.9" ry="1.7" transform="rotate(-28 5.4 -4.4)" fill="rgba(178,192,142,.36)"/><ellipse cx="9.9" cy="-5.3" rx="3.9" ry="1.7" transform="rotate(-28 9.9 -5.3)" fill="rgba(178,192,142,.36)"/><ellipse cx="14.4" cy="-3.2" rx="3.9" ry="1.7" transform="rotate(-28 14.4 -3.2)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:0.4s;--t:11.7s"><g transform="translate(281.7 -5.3) rotate(-5.3)"><path d="M0 0 C5.8 -7.3 13.1 -5.8 20.3 1.5" fill="none" stroke="rgba(196,140,120,.32)" stroke-width="1.3"/><ellipse cx="6.1" cy="-4.9" rx="4.4" ry="1.9" transform="rotate(-28 6.1 -4.9)" fill="rgba(178,192,142,.36)"/><ellipse cx="11.2" cy="-6.0" rx="4.4" ry="1.9" transform="rotate(-28 11.2 -6.0)" fill="rgba(178,192,142,.36)"/><ellipse cx="16.2" cy="-3.6" rx="4.4" ry="1.9" transform="rotate(-28 16.2 -3.6)" fill="rgba(178,192,142,.36)"/></g></g>
+        <g class="gate-bloom" style="--d:2.8s;--t:18.3s"><path d="M0 8.98 C14.73 1.15 5.98 -8.29 0 -3.22 C-5.98 -8.29 -14.73 1.15 0 8.98 Z" transform="translate(35.2 191.3) rotate(-38.8)" fill="url(#fHeartB)"/></g>
+        <g class="gate-bloom" style="--d:0.1s;--t:16.9s"><g transform="translate(275.4 59.8) rotate(34.5)"><ellipse cx="0" cy="-9.95" rx="5.87" ry="10.20" transform="rotate(0)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-9.95" rx="5.87" ry="10.20" transform="rotate(72)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-9.95" rx="5.87" ry="10.20" transform="rotate(144)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-9.95" rx="5.87" ry="10.20" transform="rotate(216)" fill="url(#fPetalB)"/><ellipse cx="0" cy="-9.95" rx="5.87" ry="10.20" transform="rotate(288)" fill="url(#fPetalB)"/><circle r="3.83" fill="rgba(255,240,214,.75)"/><circle r="2.04" fill="rgba(226,168,120,.5)"/></g></g>
       </g>
-      <rect class="gate-wash-grain" width="400" height="700" filter="url(#gWashGrain)"/>
     </svg>
 
     <div class="gate">
-      <h1 class="gate-title"><span>PASSCODE GATE</span></h1>
+      <h1 class="gate-title"><img src="assets/gate-title.png" alt="Passcode Gate" /></h1>
 
       <div class="gate-card" id="gate-card">
         <!-- 1. the sheet: fill, foxing, grain, torn edge -->
@@ -234,31 +276,22 @@
           <p class="gate-error" id="gate-error" role="status"></p>
 
           <div class="gate-pad" id="gate-pad">
-            <button type="button" class="gate-key" data-gate-key="1"><b>1</b></button>
-            <button type="button" class="gate-key" data-gate-key="2"><b>2</b></button>
-            <button type="button" class="gate-key" data-gate-key="3"><b>3</b></button>
-            <button type="button" class="gate-key" data-gate-key="4"><b>4</b></button>
-            <button type="button" class="gate-key" data-gate-key="5"><b>5</b></button>
-            <button type="button" class="gate-key" data-gate-key="6"><b>6</b></button>
-            <button type="button" class="gate-key" data-gate-key="7"><b>7</b></button>
-            <button type="button" class="gate-key" data-gate-key="8"><b>8</b></button>
-            <button type="button" class="gate-key" data-gate-key="9"><b>9</b></button>
-            <button type="button" class="gate-key" data-gate-key="back" aria-label="Delete the last digit"><b>
-              <svg viewBox="0 0 24 24" class="gate-ico"><path d="M10 5 L3 12 L10 19"/><path d="M3.6 12H21"/></svg>
-            </b></button>
-            <button type="button" class="gate-key" data-gate-key="0"><b>0</b></button>
-            <button type="button" class="gate-key" data-gate-key="clear" aria-label="Clear the code"><b>
-              <svg viewBox="0 0 24 24" class="gate-ico"><path d="M6 6 L18 18 M18 6 L6 18"/></svg>
-            </b></button>
+            <button type="button" class="gate-key" data-gate-key="1"><img src="assets/gate-key-1.png" alt="1" /></button>
+            <button type="button" class="gate-key" data-gate-key="2"><img src="assets/gate-key-2.png" alt="2" /></button>
+            <button type="button" class="gate-key" data-gate-key="3"><img src="assets/gate-key-3.png" alt="3" /></button>
+            <button type="button" class="gate-key" data-gate-key="4"><img src="assets/gate-key-4.png" alt="4" /></button>
+            <button type="button" class="gate-key" data-gate-key="5"><img src="assets/gate-key-5.png" alt="5" /></button>
+            <button type="button" class="gate-key" data-gate-key="6"><img src="assets/gate-key-6.png" alt="6" /></button>
+            <button type="button" class="gate-key" data-gate-key="7"><img src="assets/gate-key-7.png" alt="7" /></button>
+            <button type="button" class="gate-key" data-gate-key="8"><img src="assets/gate-key-8.png" alt="8" /></button>
+            <button type="button" class="gate-key" data-gate-key="9"><img src="assets/gate-key-9.png" alt="9" /></button>
+            <button type="button" class="gate-key" data-gate-key="back" aria-label="Delete the last digit"><img src="assets/gate-key-back.png" alt="" /></button>
+            <button type="button" class="gate-key" data-gate-key="0"><img src="assets/gate-key-0.png" alt="0" /></button>
+            <button type="button" class="gate-key" data-gate-key="clear" aria-label="Clear the code"><img src="assets/gate-key-clear.png" alt="" /></button>
           </div>
 
-          <button type="button" class="gate-unlock" id="gate-submit">
-            <svg viewBox="0 0 24 24" class="gate-lock" aria-hidden="true">
-              <path d="M7.4 10V7.4A4.6 4.6 0 0 1 16.6 6.6"/>
-              <rect x="4.6" y="10" width="14.8" height="10.4" rx="2.2"/>
-              <circle cx="12" cy="15.2" r="1.5"/>
-            </svg>
-            <span>Unlock</span>
+          <button type="button" class="gate-unlock" id="gate-submit" aria-label="Unlock">
+            <img src="assets/gate-unlock.png" alt="Unlock" />
           </button>
         </div>
       </div>
@@ -622,10 +655,10 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=41"></script>
-<script src="scrapbook.js?v=41"></script>
-<script src="script.js?v=41"></script>
-<script src="super-ouissy.js?v=41"></script>
-<script src="rescue.js?v=41"></script>
+<script src="book-scene.js?v=43"></script>
+<script src="scrapbook.js?v=43"></script>
+<script src="script.js?v=43"></script>
+<script src="super-ouissy.js?v=43"></script>
+<script src="rescue.js?v=43"></script>
 </body>
 </html>

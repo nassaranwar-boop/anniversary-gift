@@ -593,8 +593,21 @@ img{-webkit-user-drag:none; user-select:none;}
    without a single breakpoint.
    --------------------------------------------------------- */
 #screen-gate{position:relative; overflow:hidden;}
+.gate-backdrop{
+  position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:url("assets/gate-bg.jpg") center/cover no-repeat;
+}
 .gate-wash{position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none;}
-.gate-wash-grain{opacity:.055; mix-blend-mode:multiply;}
+/* every bloom drifts on its own clock — one shared timing would read as a
+   single object breathing rather than a scattering of them */
+.gate-bloom{
+  transform-box:fill-box; transform-origin:center;
+  animation:gateDrift var(--t,15s) ease-in-out var(--d,0s) infinite alternate;
+}
+@keyframes gateDrift{
+  from{transform:translate(0,0) rotate(0) scale(1);}
+  to  {transform:translate(3px,-7px) rotate(4deg) scale(1.05);}
+}
 
 .gate{
   position:relative; z-index:1;
@@ -602,38 +615,15 @@ img{-webkit-user-drag:none; user-select:none;}
   padding:2.5vh 4vw; text-align:center;
 }
 
-/* ---- the title: a struck metal plaque ---- */
+/* ---- the title: the supplied plaque ---- */
 .gate-title{
-  margin:0 0 clamp(10px,2vh,18px);
-  /* Rye: a spurred western slab. None of the faces already loaded has the
-     heavy bracketed serifs the plaque needs — Cinzel is far too fine at
-     this weight and reads as a wedding invitation, not a struck sign. */
-  font-family:'Rye', var(--font-display), serif; font-weight:400;
-  font-size:min(9.4vw,58px); line-height:1.15;
-  letter-spacing:.02em; white-space:nowrap;
+  margin:0 0 clamp(8px,1.6vh,16px); line-height:0;
   animation:gateTitleIn .8s var(--ease-out) both;
 }
-.gate-title span{
-  display:inline-block;
-  color:#8e2f28;
-  /* paint-order puts the stroke behind the fill, so the outline thickens
-     the letter outward instead of eating into its stems */
-  paint-order:stroke fill;
-  -webkit-text-stroke:min(.62vw,3.4px) #3a100c;
-  /* a short hard extrude straight down, then one soft shadow well
-     underneath — the letter sits on the page rather than floating */
-  text-shadow:
-    0 1px 0 #7a3420, 0 2px 0 #63251a, 0 3px 0 #4c1a12, 0 4px 0 #3a100c,
-    0 14px 26px rgba(150,86,64,.42);
+.gate-title img{
+  display:block; width:min(84vw,470px); height:auto;
+  filter:drop-shadow(0 6px 12px rgba(140,84,64,.45));
   animation:gateTitleFloat 6s ease-in-out infinite;
-}
-/* gold at the crown falling to burgundy — the plaque's own gradient, the
-   same one the Unlock plate uses */
-@supports ((-webkit-background-clip:text) or (background-clip:text)){
-  .gate-title span{
-    background:linear-gradient(178deg,#ffeec2 0%,#f0cd8a 18%,#d99f5c 38%,#b25c3a 60%,#8e2b26 82%,#6f1c1a 100%);
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-  }
 }
 @keyframes gateTitleIn{from{opacity:0; transform:translateY(-14px) scale(.96);} to{opacity:1; transform:none;}}
 @keyframes gateTitleFloat{0%,100%{transform:translateY(0);} 50%{transform:translateY(-3px);}}
@@ -683,7 +673,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .gate-body{
   position:absolute; inset:0; z-index:2;
   display:flex; flex-direction:column; align-items:center;
-  padding:7cqw 12cqw 9cqw;
+  padding:7cqw 12cqw 12cqw;
 }
 
 /* ---- the seal ---- */
@@ -767,65 +757,52 @@ img{-webkit-user-drag:none; user-select:none;}
   font-size:3.2cqw; color:#9d3324;
 }
 
-/* ---- the keys: struck brass ---- */
+/* ---- the keys: the supplied coins ----
+   The art already carries its rim, its recessed face and its numeral, so
+   there is nothing here but layout, a shadow to sit it on the paper, and
+   the press. Drawing a gradient underneath would only fight it. */
 .gate-pad{
   display:grid; grid-template-columns:repeat(3,1fr);
-  gap:2.2cqw; width:41cqw; margin-top:1.6cqw;
+  gap:2.4cqw; width:43cqw; margin-top:2.2cqw;
 }
 .gate-key{
-  aspect-ratio:1; border:none; padding:0; cursor:pointer; border-radius:50%;
-  background:linear-gradient(168deg,#e6c88f 0%,#bc9050 42%,#8d6528 100%);
-  box-shadow:
-    inset 0 .28cqw .3cqw rgba(255,240,203,.95),
-    inset 0 -.42cqw .5cqw rgba(74,44,10,.55),
-    0 .7cqw 0 rgba(90,58,20,.55),
-    0 1.3cqw 1.8cqw rgba(90,54,26,.4);
-  display:flex; align-items:center; justify-content:center;
-  transition:transform .09s var(--ease-pop), box-shadow .09s ease, filter .2s ease;
+  /* A square cell with the art contained inside it. The delete key is a
+     rounded tile rather than a coin, so its bounding box is a different
+     shape from the other eleven — left to size itself it sat proud of the
+     grid and broke the row. */
+  aspect-ratio:1;
+  border:none; background:none; padding:0; cursor:pointer; line-height:0;
+  transition:transform .09s var(--ease-pop), filter .15s ease;
   -webkit-tap-highlight-color:transparent; touch-action:manipulation; user-select:none;
 }
-/* the recessed face the numeral is struck into */
-.gate-key b{
-  display:flex; align-items:center; justify-content:center;
-  width:74%; height:74%; border-radius:50%; font-weight:400;
-  background:linear-gradient(168deg,#cba463 0%,#a87e3c 60%,#8f6528 100%);
-  box-shadow:inset 0 .3cqw .5cqw rgba(72,42,10,.5), inset 0 -.24cqw .3cqw rgba(255,238,198,.5);
-  font-family:var(--font-display); font-weight:700; font-size:4.6cqw; color:#3d2109;
-  text-shadow:0 .26cqw 0 rgba(255,238,198,.55);
+.gate-key img{
+  display:block; width:100%; height:100%; object-fit:contain;
+  filter:drop-shadow(0 .55cqw .7cqw rgba(90,54,26,.45));
+  transition:filter .09s ease;
 }
-.gate-key:hover{filter:brightness(1.06);}
-/* .down as well as :active, so a touch that slides off still lets go */
-.gate-key:active,.gate-key.down{
-  transform:translateY(.7cqw) scale(.94);
-  box-shadow:
-    inset 0 .28cqw .3cqw rgba(255,240,203,.8),
-    inset 0 -.3cqw .4cqw rgba(74,44,10,.6),
-    0 0 0 rgba(90,58,20,.55),
-    0 .5cqw .8cqw rgba(90,54,26,.35);
+.gate-key:hover img{filter:drop-shadow(0 .55cqw .7cqw rgba(90,54,26,.45)) brightness(1.07);}
+/* .down as well as :active, so a touch that slides off a key still lets go */
+.gate-key:active,.gate-key.down{transform:translateY(.5cqw) scale(.92);}
+.gate-key:active img,.gate-key.down img{
+  filter:drop-shadow(0 .15cqw .25cqw rgba(90,54,26,.5)) brightness(.94);
 }
-.gate-ico{width:4.4cqw; height:4.4cqw; fill:none; stroke:#3d2109; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;}
 
-/* ---- unlock: the same gold as the title ---- */
+/* ---- unlock: the supplied plate ---- */
 .gate-unlock{
-  margin-top:auto; cursor:pointer; border:none;
-  display:flex; align-items:center; justify-content:center; gap:1.6cqw;
-  padding:2.6cqw 8cqw;
-  /* a banner: notched at both ends rather than a plain pill */
-  clip-path:polygon(0 0, 100% 0, calc(100% - 3.2cqw) 50%, 100% 100%, 0 100%, 3.2cqw 50%);
-  font-family:var(--font-display); font-weight:700; font-size:4.2cqw;
-  letter-spacing:.13em; text-transform:uppercase; color:#43230d;
-  background:linear-gradient(178deg,#f6dda6 0%,#e0b46e 26%,#bd914e 58%,#8f672a 100%);
-  box-shadow:0 1.2cqw 1.8cqw rgba(90,54,26,.4);
-  text-shadow:0 .26cqw 0 rgba(255,243,212,.7);
-  transition:transform .09s var(--ease-pop), filter .2s ease;
+  margin-top:auto; border:none; background:none; padding:0; cursor:pointer; line-height:0;
+  transition:transform .09s var(--ease-pop), filter .15s ease;
   -webkit-tap-highlight-color:transparent; touch-action:manipulation;
 }
-.gate-unlock:hover{filter:brightness(1.06);}
+.gate-unlock img{
+  display:block; width:42cqw; height:auto;
+  filter:drop-shadow(0 1cqw 1.4cqw rgba(70,40,20,.45));
+}
+.gate-unlock:hover img{filter:drop-shadow(0 1cqw 1.4cqw rgba(70,40,20,.45)) brightness(1.08);}
 .gate-unlock:active,.gate-unlock.down{transform:translateY(.6cqw) scale(.97);}
-.gate-lock{width:4.2cqw; height:4.2cqw; fill:none; stroke:#43230d; stroke-width:1.9; stroke-linecap:round;}
+.gate-unlock:active img,.gate-unlock.down img{filter:drop-shadow(0 .3cqw .5cqw rgba(70,40,20,.5)) brightness(.95);}
 
 @media (prefers-reduced-motion: reduce){
-  .gate-title span,.gate-seal-glow,.gate-wax-blob{animation:none;}
+  .gate-title img,.gate-seal-glow,.gate-wax-blob,.gate-bloom{animation:none;}
 }
 
 .btn-ancient{
