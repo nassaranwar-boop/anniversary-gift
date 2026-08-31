@@ -100,8 +100,13 @@ const solvePanel = async (p) => {
   await p.evaluate(() => { try { localStorage.clear(); } catch (e) {} showScreen('hub'); startHub(); });
   await p.waitForTimeout(300);
   await p.click('#hub-card-apoc');
-  await p.waitForTimeout(1400);
-  say('on the apocalypse screen:', await p.evaluate(() => document.getElementById('screen-apoc').classList.contains('active')));
+  /* Wait for the screen rather than sleeping at it. The dissolve plus the
+     chapter starting up takes a little over two seconds here, and a fixed
+     1400ms was simply losing the coin toss. */
+  const onScreen = await p.waitForFunction(
+    () => document.getElementById('screen-apoc').classList.contains('active'),
+    null, { timeout: 12000, polling: 120 }).then(() => true).catch(() => false);
+  say('on the apocalypse screen:', onScreen);
   await goCard(p, 'the world ends', 'the how-to card');
   await goCard(p, 'Level 1', 'the Level 1 card');
   await settle(p);
@@ -189,8 +194,20 @@ const solvePanel = async (p) => {
   await p.waitForTimeout(250); await settle(p);
   say('chapter card:', await p.evaluate(() => { const t = document.querySelector('.ap-card-title'); return t && t.textContent; }));
   await goCard(p, 'you still came and found me', 'the chapter card');
-  await p.waitForTimeout(900);
-  say('on the roof:', await p.evaluate(() => document.getElementById('screen-end').classList.contains('active')));
+  /* the hand-off to the roof runs a 420ms dissolve and then builds four
+     backdrops, and it lands right about where the old fixed wait expired */
+  const onRoof = await p.waitForFunction(
+    () => document.getElementById('screen-end').classList.contains('active'),
+    null, { timeout: 12000, polling: 120 }).then(() => true).catch(() => false);
+  say('on the roof:', onRoof);
+  const painted = await p.waitForFunction(() => {
+    const cv = document.getElementById('night-canvas');
+    if (!cv) return false;
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+    for (let i = 3; i < d.length; i += 4000) if (d[i] > 0) return true;
+    return false;
+  }, null, { timeout: 12000, polling: 200 }).then(() => true).catch(() => false);
+  say('the roof is painted:', painted);
   say('chapter marked done:', await p.evaluate(() => { try { return JSON.parse(localStorage.getItem('fal_chapters_done') || '{}').apoc === true; } catch (e) { return 'n/a'; } }));
   say('close calls on the way:', await p.evaluate(() => window.__apState ? 'n/a after handoff' : ''));
   say('PAGE ERRORS:', errs.length);

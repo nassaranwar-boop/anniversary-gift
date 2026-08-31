@@ -4701,6 +4701,7 @@ window.Apocalypse = (function () {
     return report;
   };
 
+  window.__apFinishChapter = function () { finishChapter(G); };
   window.__apSolvePanel = function () { if (G.__panel) G.__panel.solve(); };
   window.__apState = function () {
     if (!G || !G.level) return { error: "no level is loaded", state: G && G.state };
