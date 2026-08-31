@@ -3372,8 +3372,11 @@ window.Apocalypse = (function () {
 
   /* the socket it belongs in: a recess with the same shape cut into it */
   function drawSocket(c, x, y, shape, col, dark, lit) {
+    px(c, x - 9, y - 10, 21, 21, "#191c21");                    // the shadow it sits in
     px(c, x - 8, y - 9, 19, 19, "#23262c");
-    px(c, x - 8, y - 9, 19, 1, "#454b56");
+    px(c, x - 8, y - 9, 19, 1, "#565d69");                      // the lip catching the bulb
+    px(c, x - 8, y - 9, 1, 19, "#454b56");
+    px(c, x + 10, y - 9, 1, 19, "#15171b");
     px(c, x - 8, y + 9, 19, 1, "#101216");
     px(c, x - 6, y - 7, 15, 15, "#0e1014");                    // the hole
     px(c, x - 7, y - 8, 17, 1, dark);                          // the colour band
@@ -3511,12 +3514,24 @@ window.Apocalypse = (function () {
     px(c, 40, 6, 30, 6, "#b0a486");
     for (i = 0; i < 7; i++) px(c, 43 + i * 4, 8, 2, 2, "#4a4232");
 
-    /* --- the bulb, and everything it does not reach --------------------- */
+    /* --- the bulb, and everything it does not reach ---------------------
+       It hangs on a flex and it swings, very slightly, the whole time — so
+       the pool of light on the plate swings with it. That one detail is
+       most of what separates a lit scene from a picture of a lit scene. */
+    var swing = Math.sin(t * 0.9) * 6;
+    var bulbX = PW_W / 2 + swing, bulbY = 13;
     var glow = P.bulb * (0.88 + 0.12 * Math.sin(t * 2.3)) + P.power * 0.45;
-    px(c, PW_W / 2, 0, 1, 8, "#15171b");                        // the flex
-    px(c, PW_W / 2 - 2, 7, 5, 3, "#3a3f47");                    // the cap
-    blob(c, PW_W / 2, 13, 5, 5, ["#fffbe8", "#ffe9b0", "#e0bd78", "#a8874c"]);
-    px(c, PW_W / 2 - 1, 11, 2, 3, "#fffdf2");                   // the filament
+    for (var fl = 0; fl < 8; fl++) {                            // the flex, curving to it
+      px(c, PW_W / 2 + swing * (fl / 8) * (fl / 8), fl, 1, 1, "#15171b");
+    }
+    px(c, bulbX - 2, 7, 5, 3, "#3a3f47");                       // the cap
+    var halo = c.createRadialGradient(bulbX, bulbY, 2, bulbX, bulbY, 34);
+    halo.addColorStop(0, "rgba(255,232,176,.28)");
+    halo.addColorStop(1, "rgba(255,232,176,0)");
+    c.fillStyle = halo;
+    c.fillRect(bulbX - 34, bulbY - 34, 68, 68);
+    blob(c, bulbX, bulbY, 5, 5, ["#fffbe8", "#ffe9b0", "#e0bd78", "#a8874c"]);
+    px(c, bulbX - 1, bulbY - 2, 2, 3, "#fffdf2");               // the filament
 
     /* --- the wires ------------------------------------------------------ */
     P.wires.forEach(function (w) {
@@ -3544,7 +3559,7 @@ window.Apocalypse = (function () {
 
     /* --- the light. One bulb over a panel in a dark garage: a pool at the
        top, and everything at the corners falling away into nothing. ------- */
-    var g = c.createRadialGradient(PW_W / 2, 14, 4, PW_W / 2, 30, PW_W * 0.66);
+    var g = c.createRadialGradient(bulbX, 14, 4, bulbX, 30, PW_W * 0.66);
     g.addColorStop(0, "rgba(255,236,190," + (0.20 * glow) + ")");
     g.addColorStop(0.30, "rgba(255,226,168,0)");
     g.addColorStop(0.62, "rgba(8,7,10," + (0.34 - glow * 0.10) + ")");

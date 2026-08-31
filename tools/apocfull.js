@@ -14,24 +14,37 @@ const waitFor = async (p, sel, what) => {
   try { await p.waitForSelector(sel, { timeout: 9000 }); return true; }
   catch (e) { say('!! never appeared:', what || sel); return false; }
 };
-/* Drain the dialogue rather than clicking a fixed number of times. A fixed
-   count is fine until a beat is one line longer than you remembered, and
-   then every step after it is one click out of phase — which is what made
-   this suite report a level that had never started. Clicks until the box
-   is gone, with a cap so a stuck box fails loudly instead of hanging. */
-const clicks = async (p, cap) => {
-  for (let i = 0; i < (cap || 40); i++) {
-    const open = await p.evaluate(() => {
-      const d = document.getElementById('ap-dlg');
-      if (!d || d.getAttribute('aria-hidden') !== 'false') return false;
-      document.getElementById('ap-dlg-next').click();
-      return true;
+/* Settle.
+
+   Every failure this suite has reported has been the same mistake: acting
+   in the gap between two beats. A panel finishes, and a second and a half
+   later a line of dialogue arrives; a script that drained the box in that
+   gap saw nothing to drain, moved on, and then found the game busy talking
+   when it tried to do the next thing.
+
+   So this does not click a fixed number of times and it does not sleep. It
+   waits for the game to be back in "play" with nothing on screen, clicking
+   through whatever appears on the way, and gives up loudly rather than
+   quietly if it never gets there. */
+const settle = async (p, what) => {
+  for (let i = 0; i < 120; i++) {
+    const st = await p.evaluate(() => {
+      const dlg = document.getElementById('ap-dlg');
+      const talking = dlg && dlg.getAttribute('aria-hidden') === 'false';
+      if (talking) { document.getElementById('ap-dlg-next').click(); return 'talking'; }
+      if (document.querySelector('.ap-overlay[aria-hidden="false"]')) return 'overlay';
+      const s = window.__apState ? window.__apState() : {};
+      return s.state === 'play' ? 'play' : (s.state || 'unknown');
     });
-    if (!open) return;
-    await p.waitForTimeout(45);
+    if (st === 'play') return true;
+    if (st === 'overlay') return true;          // a card or panel is waiting for us
+    await p.waitForTimeout(90);
   }
-  say('!! dialogue would not close');
+  say('!! never settled' + (what ? ' after ' + what : ''));
+  return false;
 };
+const clicks = settle;
+
 /* Wait for the card we actually mean, by the words on it, and then wait for
    it to go away again after pressing. Waiting on ".ap-card-go" alone matched
    whichever card happened to be up — and with two cards back to back (the
@@ -76,73 +89,80 @@ const solvePanel = async (p) => {
   say('on the apocalypse screen:', await p.evaluate(() => document.getElementById('screen-apoc').classList.contains('active')));
   await goCard(p, 'the world ends', 'the how-to card');
   await goCard(p, 'Level 1', 'the Level 1 card');
-  await clicks(p);
+  await settle(p);
   say('L1 place:', await p.evaluate(() => document.getElementById('ap-place').textContent));
 
   // ---- LEVEL 1 ----
   await p.evaluate(() => { window.__apTeleport(3, 12); window.__apUse(); });
   await waitFor(p, '.ap-tv', 'the television');
   await p.evaluate(() => document.querySelector('.ap-tv .ap-note-ok').click());
-  await p.waitForTimeout(250); await clicks(p);
+  await p.waitForTimeout(250); await settle(p);
   await p.evaluate(() => { window.__apTeleport(29, 12); window.__apUse(); });
   await p.waitForTimeout(350);
-  await solvePanel(p); await clicks(p);
+  await solvePanel(p); await settle(p);
   await p.evaluate(() => { window.__apTeleport(29, 20); window.__apPump(0.4, {}); });
-  await p.waitForTimeout(250); await clicks(p);
+  await p.waitForTimeout(250); await settle(p);
   await goCard(p, 'Level 2', 'the Level 2 card');
-  await clicks(p);
+  await settle(p);
   say('L2 place:', await p.evaluate(() => document.getElementById('ap-place').textContent));
 
   // ---- LEVEL 2 ----
   await p.evaluate(() => { window.__apTeleport(11, 21); window.__apUse(); });
   await waitFor(p, '.ap-note-code', 'the note');
   await p.evaluate(() => document.querySelector('.ap-note-ok').click());
-  await p.waitForTimeout(200); await clicks(p);
+  await p.waitForTimeout(200); await settle(p);
   await p.evaluate(() => { window.__apTeleport(31, 20); window.__apUse(); });
   await waitFor(p, '.ap-keypad', 'the gate keypad');
   await p.evaluate(() => { window.__apKeypadType('4180'); });
   await p.waitForTimeout(300);
   say('L2 gate open:', await p.evaluate(() => window.__apState().doors.filter(d => d.includes('locked')).join()));
   await p.evaluate(() => { window.__apTeleport(44, 28); window.__apPump(0.4, {}); });
-  await p.waitForTimeout(250); await clicks(p);
+  await p.waitForTimeout(250); await settle(p);
   await goCard(p, 'Level 3', 'the Level 3 card');
-  await clicks(p);
+  await settle(p);
   say('L3 place:', await p.evaluate(() => document.getElementById('ap-place').textContent));
 
   // ---- LEVEL 3 ----
   await p.evaluate(() => { window.__apTeleport(5, 5); window.__apUse(); });
   await p.waitForTimeout(350);
-  await solvePanel(p); await clicks(p);
-  await p.evaluate(() => { window.__apTeleport(30, 6); window.__apPump(0.4, {}); });
-  await p.waitForTimeout(250); await clicks(p);
+  await solvePanel(p); await settle(p);
+  await settle(p, 'the ward doors');
+  await p.evaluate(() => { window.__apTeleport(30, 6); window.__apPump(0.6, {}); });
+  await p.waitForTimeout(250); await settle(p);
   say('he is awake:', await p.evaluate(() => window.__apState().anwar.awake));
   await p.evaluate(() => { window.__apTeleport(3, 16); window.__apPump(0.4, {}); });
-  await p.waitForTimeout(250); await clicks(p);
+  await p.waitForTimeout(250); await settle(p);
   await goCard(p, 'Level 4', 'the Level 4 card');
-  await clicks(p);
+  await settle(p);
   await waitFor(p, '.ap-radio', 'the radio');
   await p.evaluate(() => { const b = document.querySelector('.ap-radio .ap-note-ok'); if (b) b.click(); });
-  await p.waitForTimeout(250); await clicks(p);
+  await p.waitForTimeout(250); await settle(p);
   say('L4 place:', await p.evaluate(() => document.getElementById('ap-place').textContent));
 
   // ---- LEVEL 4 ----
+  /* The car takes two goes now: the first is the beat about three cars and
+     only one of them any use, the second is the bonnet. */
   await p.evaluate(() => { window.__apTeleport(12, 18); window.__apUse(); });
-  await p.waitForTimeout(350);
+  await settle(p, 'the three cars');
+  await p.evaluate(() => window.__apUse());
   await solvePanel(p);
   await p.evaluate(() => window.__apPump(11, {}));       // the drive
-  await p.waitForTimeout(250); await clicks(p);
+  await p.waitForTimeout(250); await settle(p);
   say('on the road:', await p.evaluate(() => window.__apMapKey()));
+  await settle(p, 'the lane');
   await p.evaluate(() => { window.__apTeleport(38, 21); window.__apUse(); });
-  await p.waitForTimeout(250); await clicks(p);
+  await p.waitForTimeout(250); await settle(p);
   await p.evaluate(() => window.__apPump(10, {}));       // the ride
-  await p.waitForTimeout(250); await clicks(p);
+  await p.waitForTimeout(250); await settle(p);
   await goCard(p, 'Level 5', 'the Level 5 card');
-  await clicks(p);
+  await settle(p);
   say('L5 place:', await p.evaluate(() => document.getElementById('ap-place').textContent));
 
   // ---- LEVEL 5 ----
+  await settle(p, 'arriving at the gates');
   await p.evaluate(() => { window.__apTeleport(13, 10); window.__apUse(); });
-  await p.waitForTimeout(250); await clicks(p);
+  await p.waitForTimeout(250); await settle(p);
+  await settle(p, 'the hail');
   await p.evaluate(() => { window.__apTeleport(20, 9); window.__apUse(); });
   await waitFor(p, '.ap-check-row', 'the arrivals check');
   await p.evaluate(() => document.querySelectorAll('.ap-check-row').forEach(r => r.click()));
@@ -152,9 +172,9 @@ const solvePanel = async (p) => {
   await p.evaluate(() => document.querySelector('.ap-serum .ap-note-ok').click());
   await p.waitForTimeout(2600);
   await p.evaluate(() => document.querySelector('.ap-serum .ap-note-ok').click());
-  await p.waitForTimeout(300); await clicks(p);
+  await p.waitForTimeout(300); await settle(p);
   await p.evaluate(() => { window.__apTeleport(32, 10); window.__apPump(0.4, {}); });
-  await p.waitForTimeout(250); await clicks(p);
+  await p.waitForTimeout(250); await settle(p);
   say('chapter card:', await p.evaluate(() => { const t = document.querySelector('.ap-card-title'); return t && t.textContent; }));
   await goCard(p);
   await p.waitForTimeout(900);
