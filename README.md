@@ -34,7 +34,8 @@ tools/           offline checks (see tools/README.md); nothing here ships
    bouquet, the song, the Marrakech memory map and the music video.
 4. **Hub** — "choose your adventure", now three chapters, any order
 5a. **The Maze** — level 1 -> level 2 -> divider -> cats night-sky ending
-5b. **The Long Way Round** — branching pixel-art choice adventure
+5b. **The Long Way Round** — branching pixel-art choice adventure: two
+    paths, two routes each, and an ending per path
 5c. **Super Ouissy** — a three-world platformer (`super-ouissy.js`)
 5d. **Ouissy at the Apocalypse** — a five-level top-down stealth story
     (`apocalypse.js`), ending on the same rooftop as the maze
@@ -51,8 +52,8 @@ Top of `script.js`, in clearly marked CONFIG blocks:
 - `MEMORIES` — optional. Only needed if you want a title, a date or a caption
   on a photo (see **Photos** below). Anything still written in [square
   brackets] is treated as scaffolding and never shown.
-- `QUEST_FINAL` — the closing question of the choice adventure, and both
-  answers. Still a placeholder.
+- `QUEST_FINAL` — the two closing questions of the choice adventure (one
+  per path) and the nudge you get for saying no
 - `KEEPSAKE_CLOSING` — the last line she reads. Also a placeholder.
 - `CONFIG` (further down) — maze game text, her name, the reward line, the
   in-maze love notes
@@ -208,7 +209,7 @@ one. It lives in `script.js` with the rest of the ending.
 
 - **Needs a real file:** `assets/our-video.mp4` — the clip of the two of you
   on the last page. The song is already in.
-- **Placeholder, needs real content:** `QUEST_FINAL` and `KEEPSAKE_CLOSING`
+- **Placeholder, needs real content:** `KEEPSAKE_CLOSING`
 - **Waiting on photos:** every frame in the book is deliberately empty and
   shows its own number — see **Photos** above
 - **Rebuilt:** `book-scene.js` — ACES tone mapping, PMREM environment
@@ -228,6 +229,38 @@ globals:
 - `window.skipBookIntro()` — defined in `book-scene.js`; `script.js` calls it
   when the user presses Skip, to halt the render loop
 
+
+## The Long Way Round
+
+Three choice points, in this order, and not one of them can be got wrong:
+
+1. **A heart or a flower.** Decides nothing about where you go — both cards
+   lead to the same screen — but it is remembered for the rest of the walk
+   and it is what you are still carrying at the end.
+2. **The way there, or the way back.** Spring, in the open, everything still
+   ahead of you; or the same valley a year on, after dark, lit by lanterns
+   somebody had to hang. Each has its own ending.
+3. **The blue butterfly, or the red one.** Two routes per path, with
+   different ground and different obstacles, rejoining before the ending
+   that path shares.
+
+| | blue | red |
+|---|---|---|
+| **the way there** | the high meadow: wrong turns, a shape in the trees that turns out to be a deer, fog that lifts | the stream bank: down at the water, seven stones to get over, then follow the current |
+| **the way back** | the ridge: an hour of climbing, then a rope bridge crossed one section at a time | the orchard at dusk: a bear in the windfalls, and three ways to deal with it |
+
+**There is no fail state.** There used to be two — a jumpscare bear on the
+left-blue route and a getting-lost screen on right-blue, both of them
+full-screen overlays with a *Restart* button, both reached from an ordinary
+choice. Both are gone. The one place you can be sent backwards is the
+orchard: walk straight past the bear and it looks up, and you are three
+trees further back than you started, in the same scene, with the same
+buttons. That is the whole penalty.
+
+Scenes live in `HV_SCENES` and the story in `HV`, both near the bottom of
+`script.js`. A node names a scene, what the cat says, and its choices; the
+flags on it (`bear`, `fog`, `lighting`, `envelope`, `butterflies`, `fox`,
+`plank`, `isAsk`, `cards`) are what `hvPaintFrame` draws on top.
 
 ## Super Ouissy
 

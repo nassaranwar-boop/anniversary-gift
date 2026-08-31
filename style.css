@@ -652,20 +652,11 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; inset:0; width:100%; height:100%; display:block;
   image-rendering:pixelated; z-index:0;
 }
-/* the old flat skyline and rooftop are painted into the canvas now */
-.skyline,.rooftop,.px-moon,.px-cloud{display:none !important;}
 .night-sky-inner{position:absolute; inset:0; transform-origin:60% 76%; transform:scale(1) translate(0,0);}
 .night-sky.scene-2 .night-sky-inner{transform:scale(1.24) translate(-4%,-3%);}
 .night-sky.scene-3 .night-sky-inner{transform:scale(1.6) translate(-7%,-6%);}
 .scene-cut-flash{position:absolute; inset:0; z-index:15; background:#000; opacity:0; pointer-events:none; transition:opacity .38s ease;}
 .scene-cut-flash.active{opacity:1;}
-
-.px-moon{position:absolute; top:9%; right:12%; width:68px; height:68px; image-rendering:pixelated; filter:drop-shadow(0 0 24px rgba(220,210,245,.6));}
-.px-cloud{position:absolute; image-rendering:pixelated; opacity:.9;}
-.cl-a{width:150px; top:16%; left:-4%; animation:driftRight 46s linear infinite;}
-.cl-b{width:110px; top:29%; left:30%; opacity:.7; animation:driftRight 60s linear infinite reverse;}
-.cl-c{width:120px; top:36%; left:60%; animation:driftRight 52s linear infinite;}
-@keyframes driftRight{from{transform:translateX(0);} to{transform:translateX(40px);}}
 
 .night-stars{position:absolute; inset:0; transition:opacity .3s ease;}
 .night-stars .star{position:absolute; background:#fff; border-radius:1px; animation:twinkle 2.5s ease-in-out infinite;}
@@ -676,15 +667,6 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .shooting-star{position:absolute; top:16%; left:-10%; width:80px; height:2px; background:linear-gradient(90deg,#fff,transparent); transform:rotate(18deg); opacity:0; animation:shoot 6s ease-in infinite; animation-delay:2s;}
 @keyframes shoot{0%{opacity:0; transform:translateX(0) rotate(18deg);} 4%{opacity:1;} 22%{opacity:0; transform:translateX(260px) rotate(18deg);} 100%{opacity:0;}}
-
-.skyline{position:absolute; bottom:16%; left:0; right:0; height:9%; opacity:.9; transition:opacity .3s ease;}
-.skyline .bld{position:absolute; bottom:0; background:#160f30;}
-.skyline .win{position:absolute; width:3px; height:4px; background:#e8c979; opacity:.85;}
-.night-sky.scene-3 .skyline{opacity:0;}
-
-.rooftop{position:absolute; bottom:0; left:0; right:0; height:16%;}
-.rooftop .ledge{position:absolute; top:0; left:0; right:0; height:34%; background:linear-gradient(180deg,#5b4a86,#4a3c74);}
-.rooftop .facade{position:absolute; top:34%; left:0; right:0; bottom:0; background:#14102a;}
 
 .cats-wrap{position:absolute; bottom:15%; left:50%; transform:translateX(-50%); display:flex; align-items:flex-end; z-index:3;}
 .cat-slot{position:relative; transition:transform 1.6s ease;}
@@ -2261,40 +2243,27 @@ img{-webkit-user-drag:none; user-select:none;}
 .hv-card:active{transform:translateY(5px); box-shadow:0 2px 0 rgba(150,80,110,.38), 0 6px 14px rgba(40,20,0,.35);}
 .hv-card-art{width:100%; height:100%; image-rendering:pixelated;}
 
-/* ---- the bear ---- */
-.hv-fail{
-  position:absolute; inset:0; z-index:9; display:none;
-  align-items:center; justify-content:center;
+/* ---- the title screen's tagline ----
+   Drawn as DOM rather than into the canvas: the pixel logo font only
+   carries the eleven letters of HEARTVENTURE, and this is a sentence. */
+.hv-tagline{
+  position:absolute; left:50%; top:36%; transform:translateX(-50%);
+  z-index:4; margin:0; white-space:nowrap; pointer-events:none;
+  font-family:'Press Start 2P', ui-monospace, monospace;
+  font-size:clamp(7px,1.6vw,13px);
+  letter-spacing:.06em; color:#ff5f8d;
+  /* an outline, not a glow: the logo above it is drawn pixel by pixel
+     with a hard cream highlight and a hard plum shadow, and a soft halo
+     next to that reads as a different game's typography */
+  text-shadow:
+    -2px 0 0 #fffdf7,  2px 0 0 #fffdf7,  0 -2px 0 #fffdf7,  0 2px 0 #fffdf7,
+    -2px -2px 0 #fffdf7, 2px -2px 0 #fffdf7, -2px 2px 0 #fffdf7, 2px 2px 0 #fffdf7,
+    0 4px 0 #b8365f;
+  animation:hvTagBob 3.4s ease-in-out infinite;
 }
-.hv-fail.on{display:flex; animation:hvJump .38s var(--ease-pop);}
-@keyframes hvJump{
-  0%{opacity:0; transform:scale(1.5);}
-  55%{opacity:1; transform:scale(.97);}
-  100%{opacity:1; transform:scale(1);}
-}
-#hv-fail-canvas{
-  position:absolute; inset:0; width:100%; height:100%;
-  image-rendering:pixelated;
-}
-.hv-fail-note{
-  position:absolute; left:50%; bottom:12%; transform:translateX(-50%) rotate(-1deg);
-  z-index:2; max-width:76%; text-align:center;
-  background:#fffdf5; color:#3f2d18; font-family:var(--font-hand);
-  font-size:clamp(13px,2.8vw,21px); padding:2.4% 3.6%;
-  box-shadow:0 4px 10px rgba(40,20,0,.4);
-}
-.hv-restart{
-  position:absolute; left:4%; top:5%; z-index:2;
-  font-family:var(--font-body); font-weight:600; font-size:clamp(10px,1.9vw,14px);
-  cursor:pointer; background:rgba(255,252,245,.95); color:#3f2d18;
-  border:2px solid rgba(90,52,17,.4); border-radius:7px; padding:5px 14px;
-  box-shadow:0 3px 0 rgba(90,52,17,.32);
-}
-.hv-restart:active{transform:translateY(3px); box-shadow:none;}
-
-@media (prefers-reduced-motion: reduce){
-  .hv-fail.on{animation:none;}
-}
+.hv-tagline.hidden{display:none;}
+@keyframes hvTagBob{0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(-2px);}}
+@media (prefers-reduced-motion: reduce){ .hv-tagline{animation:none;} }
 
 /* =========================================================
    HUB — choose your adventure

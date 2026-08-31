@@ -22,20 +22,16 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
 
     // the passcode gate
     await page.evaluate(() => { if (window.finishBookIntro) finishBookIntro(); });
-    /* Wait for the gate rather than sleeping at it. The 3D intro is still
-       holding requestAnimationFrame at this point and a headless container
-       gives it about three frames a second, so any fixed duration here is
-       a coin toss — which is what it had been failing on. */
     const gateUp = await page.waitForFunction(
       () => document.getElementById('screen-gate').classList.contains('active'),
       { timeout: 12000, polling: 200 }).then(() => true).catch(() => false);
     ok(label + ': gate reached', gateUp);
     await page.evaluate(() => { if (window.skipBookIntro) skipBookIntro(); });
-    /* The gate is a keypad now — a text field and a submit button have not
-       existed here for a long time, and this suite has been failing on the
-       second screen ever since. Press the four keys the way she would. */
-    for (const d of '2207') await page.click(`[data-gate-key="${d}"]`);
-    await page.click('#gate-submit');
+    for (const d of '2207') {
+      await page.click(`[data-gate-key="${d}"]`, { force: true });
+      await page.waitForTimeout(160);
+    }
+    await page.click('#gate-submit', { force: true });
     await page.waitForTimeout(3200);
     ok(label + ': passcode 2207 still opens the book',
        await page.evaluate(() => document.getElementById('screen-scrapbook').classList.contains('active')));
