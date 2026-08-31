@@ -31,7 +31,7 @@ window.Rescue = (function () {
   var VW = 320, VH = 180;              // the same stage the game draws on
 
   /* =======================================================================
-     ✏️  THE WORDS
+     THE WORDS
 
      Every line the sequence says. Nothing here is a placeholder; edit any
      of it and the scene changes. `who` is who is speaking and decides the

@@ -32,7 +32,7 @@ window.SuperOuissy = (function () {
   "use strict";
 
   /* =======================================================================
-     1. ✏️  CUSTOMISE ME — the only block you need to touch for the words
+     1. CUSTOMISE ME — the only block you need to touch for the words
      ======================================================================= */
   var SO = {
     /* The worlds, as they appear on the level card and the HUD. Each
@@ -118,7 +118,7 @@ window.SuperOuissy = (function () {
           "I love you more than any line of code could say.",
         ],
       },
-      signOff: "— Anwar 💗",
+      signOff: "— Anwar",
       /* The joke the last castle in Mario always makes, turned around. */
       notAnotherCastle: "and this time, the prince really was in this castle.",
     },
@@ -3590,7 +3590,8 @@ window.SuperOuissy = (function () {
     var cards = ["easy", "medium", "hard"].map(function (k) {
       var d = DIFF[k], b = bestFor(k);
       return '<button class="so-diff-card' + (k === saved ? " sel" : "") + '" data-so-diff="' + k + '">' +
-        '<span class="so-diff-hearts">' + Array(d.lives + 1).join("♥") + "</span>" +
+        '<span class="so-diff-hearts">' + Array(d.lives + 1).join(
+       '<svg class="gl gl-life" aria-hidden="true"><use href="#ic-px-heart"/></svg>') + "</span>" +
         '<span class="so-diff-name">' + d.label + "</span>" +
         '<span class="so-diff-blurb">' + d.blurb + "</span>" +
         (b.cleared ? '<span class="so-diff-best">best ' + b.score + " · " + fmtTime(b.time) + "</span>"
@@ -3769,7 +3770,7 @@ window.SuperOuissy = (function () {
           (timeBonus ? row("TIME BONUS", "+" + timeBonus) : "") +
           row("SCORE", pad(G.score, 6)) +
         "</div>" +
-        '<button class="so-btn so-btn-go" id="so-next">' + (last ? "TO THE CASTLE ♥" : "NEXT WORLD →") + "</button>" +
+        '<button class="so-btn so-btn-go" id="so-next">' + (last ? "TO THE CASTLE" : "NEXT WORLD") + "</button>" +
       "</div>", "so-ov-card");
     function row(a, b) { return '<div class="so-res-row"><span>' + a + "</span><b>" + b + "</b></div>"; }
     $("so-next").addEventListener("click", function () {
@@ -3999,11 +4000,14 @@ window.SuperOuissy = (function () {
     }
     if (mw) mw.classList.toggle("full", G.meterFlash > 0);
     setText("so-world", (G.levelIndex + 1) + "-1");
-    /* a heart glyph beside the number, so "LIVES ♥x3" reads at a glance */
+    /* a pixel heart beside the number, so the lives count reads at a glance */
     /* the clamp stays as a guard, but it should never have anything to do
        now: the run ends the moment this reaches zero */
     var lv = $("so-lives"), n = "×" + Math.max(0, G.lives);
-    if (lv && lv._n !== n) { lv.innerHTML = "<em>&#9829;</em>" + n; lv._n = n; }
+    if (lv && lv._n !== n) {
+      lv.innerHTML = '<em><svg class="gl gl-life" aria-hidden="true"><use href="#ic-px-heart"/></svg></em>' + n;
+      lv._n = n;
+    }
     var timeEl = $("so-time");
     if (timeEl) {
       if (d.timeLimit) {

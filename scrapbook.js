@@ -23,7 +23,7 @@ window.Scrapbook = (function () {
   "use strict";
 
   /* =======================================================================
-     ✏️  CUSTOMISE ME — everything you are likely to want to change
+     CUSTOMISE ME — everything you are likely to want to change
      ======================================================================= */
   var SB = {
 
@@ -2266,7 +2266,7 @@ window.Scrapbook = (function () {
       b.innerHTML = "";
       if (pin.note) {
         b.classList.add("is-note");
-        b.innerHTML = '<span class="sb-map-pin-note">✦</span>';
+        b.innerHTML = '<span class="sb-map-pin-note"><svg class="gl gl-pin" aria-hidden="true"><use href="#ic-px-star"/></svg></span>';
       } else {
         (function (host, m) {
           loadPhotoInto(host, m, function () {
@@ -2427,7 +2427,7 @@ window.Scrapbook = (function () {
       photo.innerHTML = "";
       if (pin.note) {
         var n = el("sb-pin-note");
-        n.innerHTML = '<span class="sb-pin-note-mark">✦</span><p>' + pin.note + "</p>";
+        n.innerHTML = '<span class="sb-pin-note-mark"><svg class="gl gl-pin" aria-hidden="true"><use href="#ic-px-star"/></svg></span><p>' + pin.note + "</p>";
         photo.appendChild(n);
       } else {
         loadPhotoInto(photo, mem, function () {
@@ -2987,7 +2987,7 @@ window.Scrapbook = (function () {
       var st = el("sb-cover-star");
       st.style.left = p.left + "%"; st.style.top = p.top + "%";
       st.style.fontSize = p.s + "cqw";
-      st.textContent = "✦";
+      st.innerHTML = '<svg class="gl gl-pin" aria-hidden="true"><use href="#ic-px-star"/></svg>';
       page.appendChild(st);
     });
 

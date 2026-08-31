@@ -17,6 +17,7 @@ book-scene.js    the Three.js 3D intro scene — self-contained
 scrapbook.js     the memory book — its own config block at the top
 super-ouissy.js  the platformer — its own config block at the top
 rescue.js        the platformer's story scenes (Hard only) — self-contained
+apocalypse.js    the stealth chapter — its own config block at the top
 assets/          images used by the 2D parts of the site
 tools/           offline checks (see tools/README.md); nothing here ships
 ```
@@ -36,6 +37,8 @@ tools/           offline checks (see tools/README.md); nothing here ships
 5b. **The Long Way Round** — branching pixel-art choice adventure: two
     paths, two routes each, and an ending per path
 5c. **Super Ouissy** — a three-world platformer (`super-ouissy.js`)
+5d. **Ouissy at the Apocalypse** — a five-level top-down stealth story
+    (`apocalypse.js`), ending on the same rooftop as the maze
 6. **Keepsake** — scrapbook recap, unlocked once the maze and the adventure
    are done. Super Ouissy is a bonus: finishing it adds a card to the
    keepsake but is deliberately **not** required to unlock it, so nothing
@@ -137,6 +140,70 @@ Everything you are likely to change is in the `SB` block at the top of
 
 The pages themselves are the `PAGES` array further down: one entry per page,
 each a list of pieces positioned in percentages of that page.
+
+## Ouissy at the Apocalypse
+
+A top-down stealth story in five levels, reached from the hub. She is home
+alone when it starts; the game is her getting to Anwar, and then the two of
+them getting somewhere safe.
+
+Arrow keys or WASD to move, **shift** to creep, **E** or space to use
+whatever she is standing at, Esc to pause. On a phone there is a pad and two
+buttons.
+
+**It carries no files of its own**, the same rule Super Ouissy follows.
+Every tile, sprite and backdrop is drawn onto a 320x180 canvas when the
+level loads and every sound is synthesised, so the whole chapter adds
+nothing to the repo but the one script.
+
+### The levels
+
+| | | |
+|---|---|---|
+| 1 | **Home** | the news is still on downstairs; the garage door has no power |
+| 2 | **The Streets** | three ways across town, and a gate code dropped in a shop |
+| 3 | **The Hospital** | Ward C is dead, he is behind it, and it is getting worse |
+| 4 | **The Road** | out of the building, a car that might start, and a horse |
+| 5 | **The Gates** | the check, the serum, and somebody opening a gate |
+
+### Changing it
+
+Everything you are likely to want is in the first two hundred lines of
+`apocalypse.js`:
+
+- `AP` — the words. Level names and briefings, the how-to card, and
+  **`AP.reunion`**, which is the scene in the supply room in Level 3. A line
+  written as `["", ""]` is a beat of silence and is held on screen like any
+  other line; those are doing as much work there as the spoken ones.
+- `TUNE` — how she feels to play. How fast she walks, how far her torch
+  reaches, how far a footstep carries, how far a zombie sees and how fast it
+  moves once it has seen her. Almost every complaint about a stealth game is
+  one of these numbers.
+- `LEVELS` — the maps, as grids of characters, one per 16px tile, with the
+  full legend written above them. Edit a string and the place changes.
+
+### Three mechanics, built once
+
+- **The wire panel** — a salvaged plate under one bulb. Five shape-coded
+  plugs bolted to the left rail, their runs crossing in a tangle, loose ends
+  staged out of order, and sockets shuffled again on the right, so the end
+  nearest a socket is almost never the one that belongs in it. A wrong drop
+  sparks and drops the wire back; there is no other penalty. It is the
+  garage door, the ward doors and the car.
+- **The note and the keypad** — a torn scrap with a code on it, and a keypad
+  in the same spirit as the site's own passcode gate.
+- **The close call** — being caught is not a death. She is grabbed at, she
+  gets away, and she comes back to the last place she was safe. Hiding
+  places are checkpoints in their own right, so it costs seconds, never a
+  level.
+
+### The ending
+
+The chapter hands off to the same rooftop the maze did, reworked: the city
+behind it has had a week (some windows dark or broken, a bite out of a
+parapet, faint smoke — nothing graphic), the two cats are drawn rather than
+four PNGs, and the camera cycles between four shots instead of pushing into
+one. It lives in `script.js` with the rest of the ending.
 
 ## Status
 

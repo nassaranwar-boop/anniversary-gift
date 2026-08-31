@@ -168,6 +168,47 @@ Two things worth knowing before you change it:
   turns to mush. `OUI_HEAD` / `OUI_BODY` / `OUI_LEGS` are one character per
   pixel. Do not go back to blobs for anything this small.
 
+## 7b. Ouissy at the Apocalypse — in progress, on a branch
+
+This one breaks rule 1 on purpose and with his say-so: he asked for it in
+words — *"work on a new branch, and do NOT delete or remove the existing
+Maze game from the live site until the full new game is built, tested, and
+I've confirmed it's working."* Branch `claude/ouissy-apocalypse-game-c8cag8`.
+
+It replaces The Maze entirely, but **it has not replaced it yet.** The maze
+is untouched and still on the hub; the new chapter arrives as a fourth card
+beside it so he can play both. Removing the maze is the last step and is
+**gated on him saying so** — do not do it on your own initiative, and when
+he does say so, it is one commit: the maze screens, its CSS, its half of
+`script.js`, and the hub card, with the new chapter moving into its slot.
+
+Five levels, a top-down stealth story, all of it in `apocalypse.js`, which
+carries no files of its own the way `super-ouissy.js` does not. Everything
+worth editing is in the first two hundred lines: `AP` for the words,
+`TUNE` for how she feels to play, `LEVELS` for the maps as grids of
+characters. The reunion in Level 3 is `AP.reunion`, written underplayed at
+his direction — *"like a real conversation between two people in shock and
+relief, not a dramatic speech"* — and the lines written as `["", ""]` are
+beats of silence, held on screen like any other line. Keep them.
+
+Still open with him: whether the level-by-level screenshots pass, and the
+wire panel's look (he wrote the art direction for it himself and has not
+seen it running yet).
+
+Three things this build learned the hard way, all worth not repeating:
+
+- **A second function declaration with the same name at the same scope
+  wins.** The ending's cat routine was called `drawCat`, and the choice
+  adventure already had one — so every call silently drew the wrong thing
+  and the roof rendered a heart floating over nothing. It is `drawEndCat`.
+  This is the third time this file has been bitten by exactly this.
+- **The light map's tint has to be mixed with the dark, not multiplied into
+  it**, or a level asking for daylight still comes out as night.
+- **A fixed number of clicks through a dialogue is a bug waiting to
+  happen.** Drain the box until it is closed instead; one extra line in one
+  beat put every later step out of phase and the suite reported a level
+  that had never started.
+
 ## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python
@@ -182,7 +223,11 @@ shows one page at a time in portrait and a spread in landscape.
 
 There are scripts for all of this in `tools/` now, with a README. Run
 `tools/regress.js` before any push: it walks every screen on desktop and on
-an iPhone and fails loudly. Two traps are written up there and both cost an
+an iPhone and fails loudly. It had itself been broken for a long time —
+it drove a text field at the passcode gate, which has been a keypad for
+much longer than that — so if it fails on the second screen, suspect the
+suite before the site. For the apocalypse there is `tools/apocfull.js`,
+which plays the whole chapter from the hub card to the roof. Two traps are written up there and both cost an
 hour to find: **requestAnimationFrame runs at about 3fps in this container**,
 so anything that waits on wall-clock time runs in slow motion and proves
 nothing (drive the game with `window.__soPump` instead); and
