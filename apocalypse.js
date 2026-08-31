@@ -199,7 +199,7 @@ window.Apocalypse = (function () {
       "####vv####################v#######",
       "v.h..BB....#..=.....#.=nn.......o#",
       "#....BB....#........#....BB......#",
-      "#...S......#....h...#..z........h#",
+      "#...S......#....h...#..i........h#",
       "#..=...n...#........#............#",
       "#..........#...=....#.o..=......o#",
       "#####d###########d#########d######",
@@ -211,7 +211,7 @@ window.Apocalypse = (function () {
       "#.uT......FFF..#....K....#...W...#",
       "v.......rr=r...#....K....#.......#",
       "v.q.==..rrrr...#....K....#o.....o#",
-      "#...==....o....#...z.....#.......#",
+      "#...==....o....#...i.....#.......#",
       "#qh............#KKKKKKK..#.......#",
       "#..............#.........#.......#",
       "#############################P####",
@@ -252,24 +252,24 @@ window.Apocalypse = (function () {
       "#,,,.,,.h,,,,.,,,,,,.,,.,,,,z,,,,,,,,,,,.,,.,,,#",
       "#....,,.h...........h,,................c.,,....#",
       "####.,,.#####.######h,,.################.,,.####",
-      "####.,,.#####.######.,,...z..............,,.####",
-      "####.,,.#####z######.,,.################.,,.####",
+      "####.,,.#####.######.,,...i..............,,.####",
+      "####.,,.#####x######.,,.################.,,.####",
       "####.,,.#####.######.,,.################.,h.####",
       "####h,,.#####.######.,,c################.,h.####",
       "#...h,,..............,,c.................,,....#",
       "#,,,.,,.,,,,,,,,,z,,.,,.,,,,,,,,,,z,,,,,.,,.,,,#",
-      "#,,,.,,.,,,,,,,,,,,,.,,.,,,,,,,,,,,,,,,,.,,.z,,#",
+      "#,,,.,,.,,,,,,,,,,,,.,,.,,,,,,,,,,,,,,,,.,,.i,,#",
       "#....,,.....L....hh..,,.......h..........,,....#",
       "####.,,.##d#########.,,.#######.########.,,.####",
       "####.,,......#######.,,.#######.#....hh#.,,.####",
-      "####.,,......#######.,,.#######z#..c...#.,,.####",
+      "####.,,......#######.,,.#######x#..c...#.,,.####",
       "####.,,cKK...#######.,,.#######.D..c...#.,,.####",
       "####.,,c...N.#######.,,.#######.#....c.#.,,.####",
       "####.,,.h....#######.,,.#######.#......#.,,.####",
       "####.,,.#.##########.,,.###########.####.z,.####",
       "#....,,L......hh.....,,L.........##.####.,,.####",
-      "#,,,.,,.,,,,,,,,,,,,.,,.z,,,,z,,,##.#####,,#####",
-      "#,,,.,,.,,,,,,,,,,,,.,,.,,,,..z...L.......L..h.#",
+      "#,,,.,,.,,,,,,,,,,,,.,,.z,,,,i,,,##.#####,,#####",
+      "#,,,.,,.,,,,,,,,,,,,.,,.,,,,..x...L.......L..h.#",
       "#....,,.....hh.....c.,,....hh.........c.z..cc.h#",
       "####.,,.#########################...........X..#",
       "################################################",
@@ -305,25 +305,25 @@ window.Apocalypse = (function () {
       "##......=====...##.l##..B..B.lB..B..B.##",
       "##...W.o........##..##................##",
       "##.....o.............P........A.......##",
-      "##....z..............P................##",
+      "##....x..............P................##",
       "##.l............##..##................##",
       "##......=====...##.z##..B..B..B..B..B.##",
       "##..h.........h.##.l##..BhlBh.Bh.Bh.B.##",
       "##..............##..##................##",
       "##################..####################",
-      "#....lyy...z..l.y.......l.....z..yl....#",
-      "#..y....z..Yy.............yy.......Y...#",
+      "#....lyy...x..l.y.......l.....i..yl....#",
+      "#..y....x..Yy.............yy.......Y...#",
       "#########.########..####################",
       "##.......j##.....#....................##",
       "##.X......##.ooo.#...KKKKKK.....=====.##",
-      "##........##.ooo.#.l...z....hhY....z..##",
+      "##........##.ooo.#.l...z....hhY....x..##",
       "##........##h....#...............h....##",
       "#########.####.###..####.###############",
-      "########......z.......Y........#########",
+      "########......i.......Y........#########",
       "########..KKKKKK...l..======y..#########",
       "########....l...............l..#########",
       "########...h....BB..yy....h....#########",
-      "########...........S......z....#########",
+      "########...........S......x....#########",
       "########################################",
     ],
     steps: [
@@ -357,19 +357,19 @@ window.Apocalypse = (function () {
       "##.B..h.#.##########...h.....h...###",
       "##......#l##########..=...=...=..###",
       "#########.##########d............###",
-      "#########z##########.###############",
-      "##.........z.zl...z...z.l.z....l..##",
+      "#########x##########.###############",
+      "##.........x.zl...i...x.l.x....l..##",
       "##.............................z..##",
       "#########.##########################",
-      "##......#.###........###.....z...###",
-      "##.h..h.#l###..h.zh..###.o..o..o.###",
-      "##...z..#.......l...........l.B..###",
+      "##......#.###........###.....i...###",
+      "##.h..h.#l###..h.xh..###.o..o..o.###",
+      "##...x..#.......l...........l.B..###",
       "##......#.###.B....B.###...z.....###",
-      "##.h....#z###..hz.h..###.o..o..o.###",
-      "##......#.###......z.###....d....###",
+      "##.h....#i###..hx.h..###.o..o..o.###",
+      "##......#.###......x.###....d....###",
       "##,z,,,,,,,,,,,,,,,,,,,,,,.....#####",
-      "##,,cc,,cc,,,z,,cc,,cc,,,,,....#####",
-      "##,,,,l,,,,,C,,,,,,l,,,z,,.....#####",
+      "##,,cc,,cc,,,i,,cc,,cc,,,,,....#####",
+      "##,,,,l,,,,,C,,,,,,l,,,x,,.....#####",
       "##,,,,,,,,,,,,,,,,,,,,,,,,##########",
       "####################################",
     ],
@@ -1530,7 +1530,7 @@ window.Apocalypse = (function () {
      ======================================================================= */
   var SOLID = "#vco=BFKnfquyYWTLCA"; // she cannot walk through these (G is a door)
   var OPAQUE = "#vcohnf";          // and sight cannot pass these
-  var ENTITY = "SzAHN";            // drawn as bare floor; something stands on it
+  var ENTITY = "SzixAHN";          // drawn as bare floor; something stands on it
 
   function buildLevel(def) {
     var g = def.grid, h = g.length, w = g[0].length;
@@ -1550,7 +1550,11 @@ window.Apocalypse = (function () {
         if (ENTITY.indexOf(ch) >= 0) draw = base;
         if (ch === "S") L.start = { x: x * T + T / 2, y: y * T + T / 2 };
         if (ch === "X") L.exit = { x: x, y: y };
-        if (ch === "z") L.zombies.push(mkZombie(x * T + T / 2, y * T + T / 2));
+        /* z patrols a line, i stands still, x is restless and hears far */
+        if (ch === "z") L.zombies.push(mkZombie(x * T + T / 2, y * T + T / 2, Z_KIND.PATROL,
+                                                (x + y) % 2 ? "h" : "v"));
+        if (ch === "i") L.zombies.push(mkZombie(x * T + T / 2, y * T + T / 2, Z_KIND.IDLE));
+        if (ch === "x") L.zombies.push(mkZombie(x * T + T / 2, y * T + T / 2, Z_KIND.DRAWN));
         if (ch === "A") { L.anwar = { x: x * T + T / 2, y: y * T + T / 2, awake: false }; draw = "B"; }
         if (ch === "H") { L.horse = { x: x * T + T / 2, y: y * T + T / 2 }; L.things.push({ kind: "horse", x: x, y: y, done: false }); }
         if (ch === "N") L.things.push({ kind: "note", x: x, y: y, done: false });
@@ -1927,11 +1931,38 @@ window.Apocalypse = (function () {
      ======================================================================= */
   var DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
-  function mkZombie(x, y) {
+  /* THREE KINDS OF THEM.
+
+     One random walker everywhere taught the player nothing: every zombie
+     behaved the same, so there was no reading a room, only luck. There are
+     three now, and each one is legible on sight once you have met it:
+
+       idle    stood where it stopped, facing one way, until something
+               gives it a reason. The safest to walk behind and the worst
+               to walk in front of.
+       patrol  walks a line and turns round at the end of it. Predictable
+               on purpose — you can time it.
+       drawn   restless, and it hears twice as far as the others. This is
+               the one that turns a mistimed door into a problem.
+
+     A level's mix is what makes it feel like that level: mostly idle in
+     the house early on, patrols on the long streets, and a lot more drawn
+     ones in the hospital, where the noise never stops. */
+  var Z_KIND = { IDLE: "idle", PATROL: "patrol", DRAWN: "drawn" };
+
+  function mkZombie(x, y, kind, axis) {
+    var k = kind || Z_KIND.PATROL;
     return {
       x: x, y: y, hx: x, hy: y,        // hx/hy is the spot it started from
-      fx: 0, fy: 1, state: "patrol", timer: 1 + Math.random() * 2,
+      kind: k,
+      axis: axis || (Math.random() > 0.5 ? "h" : "v"),
+      leg: 1,                          // which way along its line it is going
+      fx: k === Z_KIND.IDLE ? 0 : 1, fy: k === Z_KIND.IDLE ? 1 : 0,
+      state: "patrol", timer: 1 + Math.random() * 2,
       tx: 0, ty: 0, anim: Math.random() * 4, frame: 0, lost: 0, alert: 0, react: 0,
+      grab: 0, look: Math.random() * 6.28,
+      hear: k === Z_KIND.DRAWN ? 2 : 1,
+      skin: (Math.abs((x * 7 + y * 13) | 0)) % 3,   // which of the three it looks like
     };
   }
 
@@ -1998,12 +2029,36 @@ window.Apocalypse = (function () {
     } else {
       z.alert = Math.max(0, z.alert - dt * 0.7);
       z.timer -= dt;
-      if (z.timer <= 0) {
-        z.timer = 1.4 + Math.random() * 2.6;
-        var d2 = DIRS[(Math.random() * 4) | 0];
-        z.fx = d2[0]; z.fy = d2[1];
+
+      if (z.kind === Z_KIND.IDLE) {
+        /* it does not go anywhere. Every so often its head comes round,
+           which is the whole of its threat: stand in front of it long
+           enough and it will be facing you when it does. */
+        sp = 0;
+        if (z.timer <= 0) {
+          z.timer = 3 + Math.random() * 4;
+          var turn = DIRS[(Math.random() * 4) | 0];
+          z.fx = turn[0]; z.fy = turn[1];
+        }
+      } else if (z.kind === Z_KIND.PATROL) {
+        /* a line, walked up and down. It turns at a wall or at the end of
+           its tether, and it keeps facing the way it walks. */
+        if (z.axis === "h") { z.fx = z.leg; z.fy = 0; }
+        else { z.fx = 0; z.fy = z.leg; }
+        var far = Math.hypot(z.x - z.hx, z.y - z.hy) > 74;
+        if (far || z.timer <= 0) {
+          if (far) { z.leg = -z.leg; z.timer = 1.5 + Math.random() * 2; }
+          else z.timer = 2 + Math.random() * 3;
+        }
+      } else {
+        /* restless: it drifts, and it is always half-listening */
+        if (z.timer <= 0) {
+          z.timer = 0.9 + Math.random() * 1.8;
+          var d2 = DIRS[(Math.random() * 4) | 0];
+          z.fx = d2[0]; z.fy = d2[1];
+        }
+        if (Math.random() < dt * 0.25) sp = 0;
       }
-      if (Math.random() < dt * 0.35) sp = 0;      // they stop and sway
     }
 
     if (sp > 0) {
@@ -2011,10 +2066,15 @@ window.Apocalypse = (function () {
       var movedX = zFreeAt(L, nx, z.y), movedY = zFreeAt(L, z.x, ny);
       if (movedX) z.x = nx;
       if (movedY) z.y = ny;
-      if (!movedX && !movedY) {                    // walked into something: turn
-        var d3 = DIRS[(Math.random() * 4) | 0];
-        z.fx = d3[0]; z.fy = d3[1];
-        z.timer = 0.8 + Math.random();
+      if (!movedX && !movedY) {                    // walked into something
+        if (z.kind === Z_KIND.PATROL && z.state === "patrol") {
+          z.leg = -z.leg;                           // a patrol turns round
+          z.timer = 1.2 + Math.random();
+        } else {
+          var d3 = DIRS[(Math.random() * 4) | 0];
+          z.fx = d3[0]; z.fy = d3[1];
+          z.timer = 0.8 + Math.random();
+        }
       }
       z.anim += dt * (z.state === "chase" ? 6 : 3);
       z.frame = 1 + ((z.anim | 0) % 2);
@@ -2024,7 +2084,7 @@ window.Apocalypse = (function () {
 
     z.face = Math.abs(z.fx) > Math.abs(z.fy) ? (z.fx > 0 ? "right" : "left") : (z.fy > 0 ? "down" : "up");
 
-    if (!G.player.hidden && Math.hypot(z.x - G.player.x, z.y - G.player.y) < 9) caught(G);
+    if (!G.player.hidden && Math.hypot(z.x - G.player.x, z.y - G.player.y) < 9) grabbed(G, z);
   }
 
   /* =======================================================================
@@ -2071,7 +2131,7 @@ window.Apocalypse = (function () {
     for (var i = 0; i < G.level.zombies.length; i++) {
       var z = G.level.zombies[i];
       if (z.state === "chase") continue;
-      if (Math.hypot(z.x - x, z.y - y) < radius) {
+      if (Math.hypot(z.x - x, z.y - y) < radius * (z.hear || 1)) {
         z.state = "look"; z.tx = x; z.ty = y; z.timer = TUNE.zInvestigate;
         z.alert = Math.max(z.alert, 0.5);
       }
@@ -2284,6 +2344,13 @@ window.Apocalypse = (function () {
     c.globalAlpha = alpha;
     c.drawImage(img, x - 8, y - 25);
     c.globalAlpha = 1;
+    if (a.grab) {                                    // it has her
+      c.strokeStyle = "rgba(255,70,60,.85)";
+      c.lineWidth = 2;
+      c.beginPath();
+      c.arc(x, y - 8, 13 + Math.sin(G.t * 22) * 2, 0, 6.2832);
+      c.stroke();
+    }
     if (alert > 0.15) {                              // the mark over an alerted one
       var yy = y - 22 - Math.sin(G.t * 8) * 1;
       var col = alert > 0.8 ? "#ff5a4a" : "#ffc24a";
@@ -2342,6 +2409,97 @@ window.Apocalypse = (function () {
     "You run. It doesn't follow far.",
   ];
 
+  /* =======================================================================
+     THE GRAB
+
+        Touching one used to be the end of it: instant close call, no say in
+        it. Now it takes hold, and she has a moment — press anything, twice
+        — to pull free. Get it and she is shoved back a couple of tiles and
+        keeps going, with the thing that grabbed her thrown off and briefly
+        confused. Miss it and it is the same close call it always was.
+
+        The point is not difficulty. It is that being caught should be
+        something that happens *to* her that she gets to answer, rather than
+        a state transition she watches. It is still never a death.
+     ======================================================================= */
+  var GRAB_WINDOW = 1.6;               // seconds to answer
+  var GRAB_PRESSES = 2;                // and how many times
+
+  function grabbed(G, z) {
+    if (G.state !== "play" || G.grab) return;
+    G.grab = { z: z, t: GRAB_WINDOW, need: GRAB_PRESSES, got: 0, shake: 0 };
+    G.keys = freshKeys();
+    z.grab = 1;
+    sfx("grabbed");
+    startHeart();
+    var el = $("ap-grab");
+    if (el) {
+      el.setAttribute("aria-hidden", "false");
+      el.className = "ap-grab";
+    }
+  }
+
+  /* every press while she is held counts, whatever the key is */
+  function grabPress(G) {
+    var gr = G.grab;
+    if (!gr) return;
+    gr.got++;
+    gr.shake = 1;
+    sfx("struggle");
+    var el = $("ap-grab");
+    if (el) el.style.setProperty("--got", gr.got / gr.need);
+    if (gr.got >= gr.need) breakFree(G);
+  }
+
+  function stepGrab(G, dt) {
+    var gr = G.grab;
+    if (!gr) return;
+    gr.t -= dt;
+    gr.shake = Math.max(0, gr.shake - dt * 4);
+    /* it holds on to her, so it cannot drift away mid-grab */
+    gr.z.x += (G.player.x - gr.z.x) * 0.08;
+    gr.z.y += (G.player.y - gr.z.y) * 0.08;
+    var el = $("ap-grab");
+    if (el) el.style.setProperty("--left", Math.max(0, gr.t / GRAB_WINDOW));
+    if (gr.t <= 0) { closeGrab(G); caught(G); }
+  }
+
+  function breakFree(G) {
+    var gr = G.grab, p = G.player, z = gr.z;
+    var dx = p.x - z.x, dy = p.y - z.y, d = Math.hypot(dx, dy);
+    /* If it has hold of her they can end up on the same pixel, and then
+       "away from it" has no direction — the shove came out as NaN and she
+       did not move at all, so it simply took hold of her again. Fall back
+       to whichever way there is actually room to go. */
+    if (d < 0.5) {
+      var away = [[0, -1], [0, 1], [-1, 0], [1, 0]].filter(function (n) {
+        return freeAt(G.level, p.x + n[0] * 20, p.y + n[1] * 20);
+      })[0] || [0, -1];
+      dx = away[0]; dy = away[1]; d = 1;
+    }
+    /* shoved clear, as far as there is room to be shoved */
+    for (var step = 26; step > 0; step -= 4) {
+      var nx = p.x + (dx / d) * step, ny = p.y + (dy / d) * step;
+      if (freeAt(G.level, nx, ny)) { p.x = nx; p.y = ny; break; }
+    }
+    p.vx = (dx / d) * 40; p.vy = (dy / d) * 40;
+    z.state = "look"; z.timer = 1.2; z.react = TUNE.zReact; z.grab = 0;
+    z.x -= (dx / d) * 10; z.y -= (dy / d) * 10;
+    G.brokeFree = (G.brokeFree || 0) + 1;
+    G.flash = 0.35;
+    sfx("free");
+    closeGrab(G);
+    stopHeart();
+    setHud(G);
+  }
+
+  function closeGrab(G) {
+    if (G.grab) G.grab.z.grab = 0;
+    G.grab = null;
+    var el = $("ap-grab");
+    if (el) el.setAttribute("aria-hidden", "true");
+  }
+
   function caught(G) {
     if (G.state !== "play") return;
     G.state = "caught";
@@ -2354,6 +2512,7 @@ window.Apocalypse = (function () {
   }
 
   function recover(G) {
+    closeGrab(G);
     var p = G.player, s = G.safe;
     p.x = s.x; p.y = s.y; p.vx = 0; p.vy = 0;
     G.level.zombies.forEach(function (z) {
@@ -2463,6 +2622,8 @@ window.Apocalypse = (function () {
     var looking = G.level.zombies.some(function (z) { return z.state === "look"; });
     st.className = "ap-state" + (seen ? " seen" : G.player.hidden ? " hidden-ok" : "");
     st.textContent = seen ? "SEEN" : looking ? "SOMETHING HEARD YOU" : G.player.hidden ? "HIDDEN" : "";
+    var stage = $("ap-stage");
+    if (stage) stage.classList.toggle("ap-hiding", !!G.player.hidden);
   }
 
   /* ---- a plain card, used for the level briefings and the how-to ---- */
@@ -2779,6 +2940,9 @@ window.Apocalypse = (function () {
       case "spot":    tone(320, 0.35, "sawtooth", 0.06, 130); noiseBurst(0.35, 0.05, 900); break;
       case "arrive":  tone(74, 0.9, "sine", 0.04, 50); noiseBurst(0.5, 0.022, 320); break;
       case "found":   tone(660, 0.09, "sine", 0.045); setTimeout(function(){ tone(880, 0.2, "sine", 0.04); }, 80); break;
+      case "grabbed": tone(140, 0.5, "sawtooth", 0.09, 60); noiseBurst(0.4, 0.08, 700); break;
+      case "struggle":noiseBurst(0.1, 0.07, 1800, "bandpass", 1.4); tone(300, 0.07, "square", 0.05, 420); break;
+      case "free":    tone(420, 0.14, "square", 0.06, 700); noiseBurst(0.22, 0.05, 2400, "highpass"); break;
       case "deny":    tone(150, 0.18, "square", 0.045, 110); break;
     }
   }
@@ -2830,6 +2994,7 @@ window.Apocalypse = (function () {
 
     if (G.state === "cut") { stepCut(G, dt); return; }
     if (G.state !== "play") return;
+    if (G.grab) { stepGrab(G, dt); return; }
 
     stepPlayer(G, dt);
     stepPressure(G, dt);
@@ -2841,6 +3006,19 @@ window.Apocalypse = (function () {
     if (G.hudT <= 0) {
       G.hudT = 0.15;
       setHud(G);
+      /* the instinct cue: the same closeness the horde audio is using, so
+         what she hears and what she sees at the edge of the frame are the
+         same fact rather than two guesses */
+      var inst = $("ap-instinct");
+      if (inst) {
+        var near = horde ? horde.near : 0;
+        var showing = near > 0.06 && !G.player.hidden;
+        inst.setAttribute("aria-hidden", showing ? "false" : "true");
+        if (showing) {
+          var pulse = 0.35 + 0.65 * Math.abs(Math.sin(G.t * (1.6 + near * 5)));
+          inst.style.setProperty("--near", (near * pulse * 0.85).toFixed(3));
+        }
+      }
       /* the pressure leans on the bed: it gets louder and its two voices
          drift further apart, so the room itself sounds less settled the
          longer she is in the hospital */
@@ -2891,6 +3069,8 @@ window.Apocalypse = (function () {
         if (e.key === " " || e.key === "Enter" || e.key === "e" || e.key === "E") { e.preventDefault(); nextLine(G); }
         return;
       }
+      /* while she is held, every key is the same key */
+      if (G.grab) { e.preventDefault(); if (!e.repeat) grabPress(G); return; }
       var k = KEYMAP[e.key];
       if (!k) return;
       e.preventDefault();
@@ -2911,6 +3091,7 @@ window.Apocalypse = (function () {
       function down(ev) {
         ev.preventDefault();
         if (!G) return;
+        if (G.grab) { grabPress(G); return; }        // on a phone, any pad button
         if (k === "use") { if (G.state === "dialogue") nextLine(G); else doUse(G); return; }
         G.keys[k] = true;
       }
@@ -4571,13 +4752,16 @@ window.Apocalypse = (function () {
              hordeGain: horde && horde.g ? horde.g.gain.value : -1,
              near: horde ? horde.near : -1, heart: !!heart };
   };
+  window.__apGrabbed = function () { return !!(G && G.grab); };
+  window.__apGrabPress = function () { grabPress(G); };
+  window.__apBrokeFree = function () { return G.brokeFree || 0; };
   window.__apSay = function (lines) { say(G, lines); };
   window.__apKeys = function () { return G.keys; };
   window.__apPos = function () { return { x: G.player.x, y: G.player.y }; };
   window.__apVel = function () { return { vx: Math.round(G.player.vx), vy: Math.round(G.player.vy), frames: G.__frames || 0, steps: G.__steps || 0 }; };
   window.__apMapKey = function () { return G.level.def.key || G.level.def.name; };
   window.__apZombies = function () {
-    return G.level.zombies.map(function (z) { return { x: z.x, y: z.y, state: z.state }; });
+    return G.level.zombies.map(function (z) { return { x: z.x, y: z.y, state: z.state, kind: z.kind, skin: z.skin }; });
   };
   window.__apMoveZombie = function (i, tx, ty) {
     var z = G.level.zombies[i];
