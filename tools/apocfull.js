@@ -41,13 +41,13 @@ const goCard = async (p, match, label) => {
   const ok = await p.waitForFunction((m) => {
     const c = document.querySelector('.ap-card');
     return !!c && c.textContent.includes(m);
-  }, match, { timeout: 12000 }).then(() => true).catch(() => false);
+  }, match, { timeout: 12000, polling: 150 }).then(() => true).catch(() => false);
   if (!ok) { say('!! never appeared:', label || match); return false; }
   await p.evaluate(() => document.querySelector('.ap-card-go').click());
   await p.waitForFunction((m) => {
     const c = document.querySelector('.ap-card');
     return !c || !c.textContent.includes(m);
-  }, match, { timeout: 8000 }).catch(() => {});
+  }, match, { timeout: 8000, polling: 150 }).catch(() => {});
   await p.waitForTimeout(200);
   return true;
 };

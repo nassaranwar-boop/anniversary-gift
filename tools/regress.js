@@ -28,7 +28,7 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
        a coin toss — which is what it had been failing on. */
     const gateUp = await page.waitForFunction(
       () => document.getElementById('screen-gate').classList.contains('active'),
-      { timeout: 12000 }).then(() => true).catch(() => false);
+      { timeout: 12000, polling: 200 }).then(() => true).catch(() => false);
     ok(label + ': gate reached', gateUp);
     await page.evaluate(() => { if (window.skipBookIntro) skipBookIntro(); });
     /* The gate is a keypad now — a text field and a submit button have not
@@ -103,7 +103,7 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
       const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
       for (let i = 3; i < d.length; i += 4000) if (d[i] > 0) return true;
       return false;
-    }, { timeout: 10000 }).catch(() => {});
+    }, { timeout: 10000, polling: 200 }).catch(() => {});
     const endShot = await page.evaluate(() => {
       const cv = document.getElementById('night-canvas');
       if (!cv) return { painted: 0, views: 0 };

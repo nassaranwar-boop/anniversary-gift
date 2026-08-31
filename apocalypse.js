@@ -193,7 +193,8 @@ window.Apocalypse = (function () {
   LEVELS[0] = {
     theme: "house",
     name: "HOME",
-    dark: 0.74,                 // how black the unlit parts of the map go
+    dark: 0.66,                 // how black the unlit parts of the map go
+    grade: [168, 108, 52, 0.14],
     grid: [
       "####vv####################v#######",
       "v.h..BB....#..=.....#.=nn.......o#",
@@ -239,7 +240,8 @@ window.Apocalypse = (function () {
     theme: "street",
     name: "THE STREETS",
     base: ",",
-    dark: 0.68,
+    dark: 0.60,
+    grade: [70, 104, 176, 0.16],
     grid: [
       "################################################",
       "####,S,.############.,,.################.,,.####",
@@ -292,7 +294,8 @@ window.Apocalypse = (function () {
   LEVELS[2] = {
     theme: "hospital",
     name: "THE HOSPITAL",
-    dark: 0.71,
+    dark: 0.63,
+    grade: [104, 176, 168, 0.13],
     deadZone: [20, 1, 39, 10],          // Ward C: no doors, and no lights either
     pressure: true,
     grid: [
@@ -344,7 +347,8 @@ window.Apocalypse = (function () {
     theme: "hospital",
     key: "escape",
     name: "GETTING OUT",
-    dark: 0.76,
+    dark: 0.68,
+    grade: [96, 150, 170, 0.12],
     grid: [
       "####################################",
       "####################################",
@@ -384,6 +388,7 @@ window.Apocalypse = (function () {
       name: "THE ROAD",
       base: ",",
       dark: 0.44,                 // dawn: the first level she can actually see in
+      grade: [214, 176, 108, 0.13],
       grid: [
       "################################################",
       "#,o,,,,,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
@@ -433,6 +438,7 @@ window.Apocalypse = (function () {
     name: "THE GATES",
     base: ",",
     dark: 0.30,                   // full morning. Nothing is hiding out here
+    grade: [214, 176, 108, 0.13],
     grid: [
       "####################################",
       "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
@@ -1619,6 +1625,7 @@ window.Apocalypse = (function () {
           });
         }
         mc.drawImage(tileFor(cache, def.theme, d, mask, (x * 7 + y * 13) % VARIANTS, under), x * T, y * T);
+        // (depth is a second pass, below, because it reads its neighbours)
 
         /* Clutter goes on here rather than into the cached tile. Baked into
            the tile it would be cached with it, so every tile sharing that
@@ -1633,7 +1640,77 @@ window.Apocalypse = (function () {
         }
       }
     }
+    bakeDepth(mc, L);
     return L;
+  }
+
+  /* =======================================================================
+     DEPTH
+
+        Everything was drawn flat on its own tile, which is why the rooms
+        read as a plan rather than as a place. Two passes over the baked map
+        fix most of that:
+
+        a face. Anything tall — a wall, a wardrobe, a hedge, a parked car —
+        gets its lower band darkened and lightly striated, so the tile reads
+        as the top of something with a side to it rather than as a coloured
+        square.
+
+        and the shadow it throws. Light in this chapter comes from the upper
+        left, the way every blob in the file is shaded, so shadows fall down
+        and to the right, and how far they fall depends on how tall the
+        thing is: a wardrobe throws one, a coffee table barely does.
+
+        Both are baked into the map once, so they cost nothing per frame.
+     ======================================================================= */
+  var TALL_TILES = "#vconfWLGTP";      // things with a side you would see
+  var LOW_TILES  = "=BFKyYquhrdDj";    // things you look over the top of
+
+  function bakeDepth(mc, L) {
+    var w = L.w, h = L.h;
+    function kind(x, y) {
+      if (x < 0 || y < 0 || x >= w || y >= h) return null;
+      var ch = L.cells[y][x].draw;
+      if (TALL_TILES.indexOf(ch) >= 0) return "tall";
+      if (LOW_TILES.indexOf(ch) >= 0) return "low";
+      return null;
+    }
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        var k = kind(x, y);
+        if (!k) continue;
+        var below = kind(x, y + 1);
+        if (below === "tall" || (k === "low" && below)) continue;   // buried side
+
+        var faceH = k === "tall" ? 6 : 0;
+        var shadH = k === "tall" ? 9 : 4;
+        var px0 = x * T, py0 = y * T;
+
+        if (faceH) {
+          /* the side of it, darkened and given a little vertical grain */
+          var fg = mc.createLinearGradient(0, py0 + T - faceH, 0, py0 + T);
+          fg.addColorStop(0, "rgba(6,7,12,.30)");
+          fg.addColorStop(1, "rgba(6,7,12,.62)");
+          mc.fillStyle = fg;
+          mc.fillRect(px0, py0 + T - faceH, T, faceH);
+          for (var gx = 0; gx < T; gx += 3) {
+            mc.fillStyle = "rgba(255,255,255,.035)";
+            mc.fillRect(px0 + gx, py0 + T - faceH, 1, faceH);
+          }
+          mc.fillStyle = "rgba(255,255,255,.10)";
+          mc.fillRect(px0, py0 + T - faceH, T, 1);
+        }
+
+        /* and what it throws on the ground in front of it */
+        if (y + 1 < h && !below) {
+          var sg = mc.createLinearGradient(0, (y + 1) * T, 0, (y + 1) * T + shadH);
+          sg.addColorStop(0, "rgba(4,5,9,.50)");
+          sg.addColorStop(1, "rgba(4,5,9,0)");
+          mc.fillStyle = sg;
+          mc.fillRect(px0 + 2, (y + 1) * T, T, shadH);          // offset right, light is upper-left
+        }
+      }
+    }
   }
 
   function at(L, tx, ty) {
@@ -1737,11 +1814,15 @@ window.Apocalypse = (function () {
       if (li.flicker) s = 0.55 + 0.45 * (Math.sin(G.t * 3.1 + i) > -0.4 ? 1 : 0.2);
       pool(li.x, li.y, li.r, li.warm, s);
     }
-    /* her torch, thrown a little way ahead of her */
+    /* Her torch. Three pools rather than one: a wide cold spill so she can
+       see the shape of the room, a warmer throw in the direction she is
+       facing, and a small hot core at her feet. One flat circle reads as a
+       hole cut in the dark; this reads as a light. */
     var p = G.player;
     var tr = (p.creeping ? TUNE.torchCreep : TUNE.torch) * (1 + 0.02 * Math.sin(G.t * 5));
-    pool(p.x + p.fx * 9, p.y + p.fy * 9 - 2, tr * 2, 0.5, 1);
-    pool(p.x, p.y - 2, tr, 0.4, 0.9);
+    pool(p.x + p.fx * 14, p.y + p.fy * 14 - 2, tr * 2.2, -0.35, 0.62);
+    pool(p.x + p.fx * 8, p.y + p.fy * 8 - 2, tr * 1.25, 0.45, 0.85);
+    pool(p.x, p.y - 2, tr * 0.55, 0.8, 1);
 
     c.globalCompositeOperation = "source-over";
   }
@@ -2007,11 +2088,23 @@ window.Apocalypse = (function () {
      ======================================================================= */
   var VW = 320, VH = 180;
 
-  function drawShadow(c, x, y) {
-    c.globalAlpha = 0.35;
-    px(c, x - 5, y - 1, 10, 2, "#05060c");
-    px(c, x - 3, y + 1, 6, 1, "#05060c");
-    c.globalAlpha = 1;
+  /* An ellipse under her feet, darkest where she touches the ground and
+     falling off outward. A hard two-pixel bar was reading as a mark on the
+     floor rather than as her shadow, and without a shadow a sprite floats
+     over the tiles instead of standing on them. */
+  function drawShadow(c, x, y, w) {
+    w = w || 7;
+    c.save();
+    c.globalAlpha = 0.45;
+    var g = c.createRadialGradient(x, y, 0, x, y, w);
+    g.addColorStop(0, "rgba(4,5,10,.85)");
+    g.addColorStop(0.55, "rgba(4,5,10,.45)");
+    g.addColorStop(1, "rgba(4,5,10,0)");
+    c.fillStyle = g;
+    c.beginPath();
+    c.ellipse(x, y, w, w * 0.42, 0, 0, 6.2832);
+    c.fill();
+    c.restore();
   }
 
   function paint(G) {
@@ -2049,7 +2142,7 @@ window.Apocalypse = (function () {
       var hh = L.horse;
       actors.push({ y: hh.y, draw: function () {
         var x = Math.round(hh.x - cx), y = Math.round(hh.y - cy);
-        drawShadow(c, x + 2, y + 2);
+        drawShadow(c, x + 2, y + 3, 15);
         c.drawImage(ART.horse, x - 20, y - 24);
       } });
     }
@@ -2084,11 +2177,61 @@ window.Apocalypse = (function () {
       }
     });
 
+    /* Dust. There is always something in the air in a room nobody has
+       opened a window in, and it is the cheapest thing in the file that
+       makes a torch look like a torch: motes drift slowly, and they are
+       only visible where her light actually reaches them. */
+    if (!G.motes) {
+      G.motes = [];
+      var mr = rnd(5150);
+      for (var mi = 0; mi < 90; mi++) {
+        G.motes.push({ x: mr() * L.w * T, y: mr() * L.h * T,
+                       vx: (mr() - 0.5) * 5, vy: -2 - mr() * 4,
+                       ph: mr() * 6.28, sz: mr() > 0.85 ? 2 : 1 });
+      }
+    }
+    var lit = (G.player.creeping ? TUNE.torchCreep : TUNE.torch) * 1.5;
+    for (var mj = 0; mj < G.motes.length; mj++) {
+      var mo = G.motes[mj];
+      mo.x += (mo.vx + Math.sin(G.t * 0.6 + mo.ph) * 3) * 0.016;
+      mo.y += mo.vy * 0.016;
+      if (mo.y < 0) { mo.y = L.h * T; mo.x = Math.random() * L.w * T; }
+      var mdx = mo.x - G.player.x, mdy = mo.y - G.player.y;
+      var md = Math.hypot(mdx, mdy);
+      if (md > lit) continue;
+      var ma = (1 - md / lit) * 0.5 * (0.55 + 0.45 * Math.sin(G.t * 2 + mo.ph));
+      if (ma <= 0.02) continue;
+      c.fillStyle = "rgba(255,240,214," + ma.toFixed(3) + ")";
+      c.fillRect(Math.round(mo.x - cx), Math.round(mo.y - cy), mo.sz, mo.sz);
+    }
+
     /* the light map, blown up over the frame */
     paintLight(G);
     c.globalCompositeOperation = "multiply";
     c.drawImage(lightCv, 0, 0, LW, LH, 0, 0, VW, VH);
     c.globalCompositeOperation = "source-over";
+
+    /* The grade. Five places should not share one palette: the house is
+       warm and brown, the street is sodium over cold blue, the hospital is
+       clinical green, the road is gold, and the gates are plain daylight.
+       It is one fill over the finished frame and it does more for how
+       different the levels feel than any amount of tile art. */
+    var grade = L.def.grade;
+    if (grade) {
+      c.globalCompositeOperation = grade[4] || "overlay";
+      c.fillStyle = "rgba(" + grade[0] + "," + grade[1] + "," + grade[2] + "," + grade[3] + ")";
+      c.fillRect(0, 0, VW, VH);
+      c.globalCompositeOperation = "source-over";
+    }
+
+    /* and a vignette, so the eye goes to the middle where she is */
+    if (!G.vig) {
+      G.vig = c.createRadialGradient(VW / 2, VH / 2, VH * 0.30, VW / 2, VH / 2, VH * 0.92);
+      G.vig.addColorStop(0, "rgba(0,0,0,0)");
+      G.vig.addColorStop(1, "rgba(3,4,8,.42)");
+    }
+    c.fillStyle = G.vig;
+    c.fillRect(0, 0, VW, VH);
 
     /* vision cones, over the dark, because they are the warning */
     L.zombies.forEach(function (z) { drawCone(c, G, z, cx, cy); });
@@ -2135,7 +2278,7 @@ window.Apocalypse = (function () {
     var img = (set[a.face] || set.down)[a.frame || 0];
     var x = Math.round(a.x - cx), y = Math.round(a.y - cy);
     if (x < -20 || x > VW + 20 || y < -30 || y > VH + 30) return;
-    drawShadow(c, x, y + 2);
+    drawShadow(c, x, y + 3, 8);
     var alpha = 1;
     if (a === G.player && a.hidden) alpha = 0.45;    // she is inside something
     c.globalAlpha = alpha;
@@ -2897,6 +3040,7 @@ window.Apocalypse = (function () {
       G.keys = freshKeys();
       G.pressure = 0;
       G.pressureT = PRESSURE_EVERY;
+      G.motes = null;
       startBed(bedFor(G.level.def));
       snapCam(G);
       setHud(G);
@@ -2926,6 +3070,7 @@ window.Apocalypse = (function () {
     }
     G.state = "play";
     G.keys = freshKeys();
+    G.motes = null;
     startBed(bedFor(def));
     snapCam(G);
     setHud(G);
@@ -4331,6 +4476,7 @@ window.Apocalypse = (function () {
     G.keys = freshKeys();
     G.pressure = 0;
     G.pressureT = PRESSURE_EVERY;
+    G.motes = null;
     startBed(bedFor(G.level.def));
     snapCam(G);
     setHud(G);
