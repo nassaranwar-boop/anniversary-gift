@@ -4571,6 +4571,7 @@ window.Apocalypse = (function () {
              hordeGain: horde && horde.g ? horde.g.gain.value : -1,
              near: horde ? horde.near : -1, heart: !!heart };
   };
+  window.__apSay = function (lines) { say(G, lines); };
   window.__apKeys = function () { return G.keys; };
   window.__apPos = function () { return { x: G.player.x, y: G.player.y }; };
   window.__apVel = function () { return { vx: Math.round(G.player.vx), vy: Math.round(G.player.vy), frames: G.__frames || 0, steps: G.__steps || 0 }; };
