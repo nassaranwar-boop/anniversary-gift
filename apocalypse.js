@@ -3135,29 +3135,29 @@ window.Apocalypse = (function () {
     });
     /* the verge: grass, a fence line, and the things that stand beside a
        road — a post, a sign, a gate — going past at the road's own rate */
-    px(c, 0, 112, VW, 10, "#26301f");
+    px(c, 0, 106, VW, 10, "#26301f");
     for (var vg = 0; vg < 90; vg++) {
       var vx = ((vg * 37 - travelled * 1.9) % (VW + 40) + VW + 40) % (VW + 40) - 20;
-      px(c, vx, 112 + ((vg * 7) % 9), 1, 2, vg % 3 ? "#31402a" : "#3d4f33");
+      px(c, vx, 106 + ((vg * 7) % 9), 1, 2, vg % 3 ? "#31402a" : "#3d4f33");
     }
     var postGap = 46;
     for (var pz = -postGap; pz < VW + postGap; pz += postGap) {
       var px2 = pz - ((travelled * 1.9) % postGap);
-      px(c, px2, 100, 2, 14, "#2a2620");
-      px(c, px2 - 5, 104, 12, 1, "#332e26");
+      px(c, px2, 94, 2, 14, "#2a2620");
+      px(c, px2 - 5, 98, 12, 1, "#332e26");
       if (((px2 / postGap) | 0) % 3 === 0) {                       // a sign, now and then
-        px(c, px2 - 6, 92, 14, 9, "#3a4250");
-        px(c, px2 - 6, 92, 14, 1, "#5a6470");
-        px(c, px2 - 4, 95, 10, 2, "#9aa4b0");
-        px(c, px2 - 4, 98, 6, 1, "#7a8490");
+        px(c, px2 - 6, 86, 14, 9, "#3a4250");
+        px(c, px2 - 6, 86, 14, 1, "#5a6470");
+        px(c, px2 - 4, 89, 10, 2, "#9aa4b0");
+        px(c, px2 - 4, 92, 6, 1, "#7a8490");
       }
     }
-    px(c, 0, 118, VW, VH - 118, "#22242c");                          // the road
-    px(c, 0, 118, VW, 2, "#3a3d47");
-    px(c, 0, 120, VW, 1, "#1a1c22");
+    px(c, 0, 112, VW, VH - 112, "#22242c");                          // the road
+    px(c, 0, 112, VW, 2, "#3a3d47");
+    px(c, 0, 114, VW, 1, "#1a1c22");
     for (var m = -40; m < VW + 40; m += 40) {                        // and its markings
-      px(c, m - ((travelled * 2.4) % 40), 152, 22, 3, "#b9bcc4");
-      px(c, m - ((travelled * 1.5) % 40) + 12, 132, 13, 2, "#7d818c");   // and the row behind
+      px(c, m - ((travelled * 2.4) % 40), 150, 22, 3, "#b9bcc4");
+      px(c, m - ((travelled * 1.5) % 40) + 12, 128, 13, 2, "#7d818c");   // and the row behind
     }
     /* THE CAR.
 
@@ -3169,7 +3169,7 @@ window.Apocalypse = (function () {
        bonnet, screen, both side windows with the two of them behind them,
        a boot, and wheels that actually turn.  */
     var bob = Math.sin(t * (7 + speed * 9)) * (speed > 0.2 ? 0.9 : 0);
-    var cx = 96, cy = 130 + bob, CW = 108;
+    var cx = 96, cy = 124 + bob, CW = 108;
     var body = "#333a4b", bodyHi = "#4a5468", bodyLo = "#1a1e27";
 
     /* the shadow it sits in */
@@ -3232,7 +3232,7 @@ window.Apocalypse = (function () {
        makes headlights read as headlights rather than as two yellow dots */
     for (var mz = 0; mz < 5; mz++) {
       var mx = ((travelled * (0.5 + mz * 0.22) + mz * 71) % (VW + 160)) - 80;
-      var my = 96 + mz * 9;
+      var my = 90 + mz * 9;
       c.fillStyle = "rgba(150,160,190," + (0.035 + speed * 0.03) + ")";
       c.beginPath(); c.ellipse(VW - mx, my, 44 + mz * 12, 5 + mz, 0, 0, 6.2832); c.fill();
     }

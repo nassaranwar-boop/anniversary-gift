@@ -3563,7 +3563,7 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---- a cutscene caption ---- */
 .ap-overlay.cut{background:transparent; align-items:flex-end; pointer-events:none;}
 .ap-cut-cap{
-  margin:0 0 3cqw; padding:1.2cqw 2.6cqw; border-radius:6px; max-width:76%;
+  margin:0 0 1.1cqw; padding:1cqw 2.4cqw; border-radius:6px; max-width:72%;
   background:rgba(6,8,14,.78); color:#e8eefc; font-family:var(--ap-term); font-size:2.4cqw;
   line-height:1.25; text-align:center;
   box-shadow:0 6px 20px rgba(0,0,0,.5);
