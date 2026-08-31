@@ -196,7 +196,7 @@ window.Apocalypse = (function () {
     dark: 0.74,                 // how black the unlit parts of the map go
     grid: [
       "####vv####################v#######",
-      "v.h..BB....#..=.....#.=..nn.....o#",
+      "v.h..BB....#..=.....#.=nn.......o#",
       "#....BB....#........#....BB......#",
       "#...S......#....h...#..z........h#",
       "#..=...n...#........#............#",
@@ -206,7 +206,7 @@ window.Apocalypse = (function () {
       "#..=.........................o...#",
       "#................................#",
       "#######d########d#########d#######",
-      "#.nn......FFF..#fKKK.h...#o.....o#",
+      "#.nn......FFF..#fKKK.h...#.o....o#",
       "#.uT......FFF..#....K....#...W...#",
       "v.......rr=r...#....K....#.......#",
       "v.q.==..rrrr...#....K....#o.....o#",
@@ -443,9 +443,9 @@ window.Apocalypse = (function () {
       "#,,,,,,,,,,,,,#.L......L.#.L####.L.#",
       "#,,,,,,,,,,,,,#....===...#..####...#",
       "#,,,h,,,,,,,,,#.....Q....#.........#",
-      "#.............#..........#.........#",
-      "#S............GL........LG......X..#",
-      "#.............#..........#.........#",
+      "#.............#.L........#.........#",
+      "#S............G..........G......X..#",
+      "#.............#........L.#.........#",
       "#,,,,,h,,h,,,,#..........#.........#",
       "#,,,,,,,,,,,,,#..======..#..####...#",
       "#,,,,,,,,,,,,,#.L......L.#.L####.L.#",
@@ -1556,7 +1556,23 @@ window.Apocalypse = (function () {
         if (ch === "d") L.doors[x + "," + y] = { open: false, kind: "plain" };
         if (ch === "D") L.doors[x + "," + y] = { open: false, kind: "locked" };
         if (ch === "P") L.doors[x + "," + y] = { open: false, kind: "power" };
-        if (ch === "v") L.lights.push({ x: x * T + T / 2, y: y * T + T + 6, r: 58, warm: -0.9 });
+        if (ch === "v") {
+          /* The pool goes into whichever side of the window is open floor.
+             It used to be pushed south always, so a window in a side wall
+             lit the wall it was in, and a window in the top wall lit
+             whatever piece of furniture happened to be under it. */
+          var wdx = 0, wdy = 1, found = false;
+          [1, 2].forEach(function (reach) {
+            if (found) return;
+            [[0, 1], [0, -1], [1, 0], [-1, 0]].some(function (n) {
+              var nb = (g[y + n[1] * reach] || "")[x + n[0] * reach];
+              if (nb && ".,rhBF=".indexOf(nb) >= 0) { wdx = n[0]; wdy = n[1]; found = true; return true; }
+              return false;
+            });
+          });
+          L.lights.push({ x: x * T + T / 2 + wdx * (T * 0.6), y: y * T + T / 2 + wdy * (T * 0.6),
+                          r: 58, warm: -0.9 });
+        }
         /* A light inside Ward C is on the same dead circuit as its doors,
            so the ward is a black hole in the middle of a lit building until
            she has been to the plant room. That is the whole point of it. */
@@ -2998,29 +3014,75 @@ window.Apocalypse = (function () {
       px(c, m - ((travelled * 2.4) % 40), 152, 22, 3, "#b9bcc4");
       px(c, m - ((travelled * 1.5) % 40) + 12, 132, 13, 2, "#7d818c");   // and the row behind
     }
-    /* the car, from behind: two lamps and a dark shape */
-    var bob = Math.sin(t * (6 + speed * 10)) * (speed > 0.2 ? 1 : 0);
-    var cx = 128, cy = 132 + bob;
-    px(c, cx, cy - 22, 64, 24, "#20242e");
-    px(c, cx + 4, cy - 30, 56, 10, "#171b24");
-    px(c, cx + 8, cy - 28, 48, 6, "#2f3a4a");
-    /* the two of them through the back window, which is the only reason
-       this shot is worth painting at all */
-    blob(c, cx + 22, cy - 25, 4, 3, ["#161a22", "#161a22", "#101319", "#0c0e13"]);
-    blob(c, cx + 38, cy - 25, 4, 3, ["#161a22", "#161a22", "#101319", "#0c0e13"]);
-    px(c, cx + 19, cy - 23, 7, 3, "#12161d");
-    px(c, cx + 35, cy - 23, 7, 3, "#12161d");
-    px(c, cx, cy - 22, 64, 2, "#2f3542");
-    px(c, cx + 2, cy - 4, 10, 5, "#12141a"); px(c, cx + 52, cy - 4, 10, 5, "#12141a");
-    px(c, cx + 4, cy - 12, 8, 4, speed > 0.2 ? "#c94a3a" : "#5a2a26");
-    px(c, cx + 52, cy - 12, 8, 4, speed > 0.2 ? "#c94a3a" : "#5a2a26");
-    /* the headlights it throws forward, off the front of the picture */
-    if (speed > 0.15) {
-      var g = c.createRadialGradient(cx + 32, cy - 10, 4, cx + 32, cy - 10, 130);
-      g.addColorStop(0, "rgba(255,240,200,.14)");
-      g.addColorStop(1, "rgba(255,240,200,0)");
-      c.fillStyle = g; c.fillRect(0, 60, VW, VH - 60);
-    }
+    /* THE CAR.
+
+       It used to be drawn from behind, which was simply wrong: the hills,
+       the poles and the road markings all scroll sideways, so the camera is
+       beside the car, not behind it — and a rear view in a side-scrolling
+       shot reads as a car driving into the scenery. It is in profile now,
+       nose to the right, going the way everything else says it is going:
+       bonnet, screen, both side windows with the two of them behind them,
+       a boot, and wheels that actually turn.  */
+    var bob = Math.sin(t * (7 + speed * 9)) * (speed > 0.2 ? 0.9 : 0);
+    var cx = 96, cy = 130 + bob, CW = 108;
+    var body = "#333a4b", bodyHi = "#4a5468", bodyLo = "#1a1e27";
+
+    /* the shadow it sits in */
+    c.globalAlpha = 0.5;
+    px(c, cx + 4, cy + 6, CW - 8, 3, "#141620");
+    c.globalAlpha = 1;
+
+    /* the lower body, from the boot at the left to the nose at the right */
+    px(c, cx + 2, cy - 12, CW - 4, 18, body);
+    px(c, cx, cy - 8, CW, 12, body);
+    px(c, cx + 2, cy - 12, CW - 4, 2, bodyHi);
+    px(c, cx + 2, cy - 10, CW - 4, 1, "#5c687e");              // the shoulder catching the sky
+    px(c, cx, cy - 1, CW, 4, "#252b38");                       // and the sill falling into shadow
+    px(c, cx, cy + 3, CW, 3, bodyLo);
+    px(c, cx - 1, cy - 6, 3, 8, bodyLo);                       // the boot end
+    px(c, cx + CW - 2, cy - 7, 4, 9, body);                    // and the nose
+    px(c, cx + CW - 1, cy - 5, 3, 5, bodyHi);
+
+    /* the cabin: a raked screen at the front, a squarer one at the back */
+    px(c, cx + 26, cy - 27, 52, 16, body);
+    px(c, cx + 26, cy - 27, 52, 2, bodyHi);
+    px(c, cx + 28, cy - 28, 48, 1, "#5c687e");                 // the roof edge
+    for (var rk = 0; rk < 7; rk++) px(c, cx + 78 + rk, cy - 26 + rk, 2, 15 - rk, body);
+    for (var rb = 0; rb < 5; rb++) px(c, cx + 24 - rb, cy - 25 + rb, 2, 13 - rb, body);
+
+    /* the glass */
+    px(c, cx + 30, cy - 24, 20, 11, "#151d28");                // rear side window
+    px(c, cx + 53, cy - 24, 22, 11, "#151d28");                // front side window
+    px(c, cx + 75, cy - 23, 6, 9, "#151d28");
+    px(c, cx + 30, cy - 24, 20, 1, "#39516a");
+    px(c, cx + 53, cy - 24, 22, 1, "#39516a");
+    px(c, cx + 51, cy - 25, 2, 13, bodyLo);                    // the B pillar
+
+    /* the two of them, through the side glass. She is in front. */
+    blob(c, cx + 63, cy - 17, 5, 6, ["#3a2f22", "#2b241a", "#1e1913", "#141009"]);
+    px(c, cx + 59, cy - 14, 10, 4, "#7a4a58");                 // her shoulder, and her hair
+    blob(c, cx + 38, cy - 17, 5, 6, ["#241a17", "#1b1411", "#140f0c", "#0e0a08"]);
+    px(c, cx + 34, cy - 14, 10, 4, "#2a2a36");
+
+    /* the wheels, which turn, and go on turning slower as it dies */
+    [[cx + 16, 1], [cx + CW - 22, -1]].forEach(function (w) {
+      var wx = w[0];
+      blob(c, wx + 6, cy + 4, 9, 9, ["#20242c", "#171a20", "#101318", "#0a0c10"]);
+      blob(c, wx + 6, cy + 4, 5, 5, ["#5a616e", "#484e59", "#373c45", "#282c33"]);
+      var spin = travelled * 0.16 * w[1];
+      for (var sp = 0; sp < 4; sp++) {
+        var an = spin + (sp * Math.PI) / 2;
+        px(c, wx + 6 + Math.cos(an) * 3, cy + 4 + Math.sin(an) * 3, 2, 2, "#8d94a2");
+      }
+    });
+    px(c, cx + 10, cy - 2, 16, 8, bodyLo);                     // the arches over them
+    px(c, cx + CW - 28, cy - 3, 18, 9, bodyLo);
+
+    /* lamps: red at the tail behind her, white throwing forward */
+    px(c, cx - 1, cy - 5, 3, 4, speed > 0.2 ? "#c94a3a" : "#5a2a26");
+    px(c, cx + CW, cy - 4, 3, 4, speed > 0.2 ? "#ffeec2" : "#4a463a");
+    px(c, cx + 34, cy - 9, 40, 2, bodyHi);                     // a trim line down the side
+
     /* the weather: a thin drift of mist crossing the beams, which is what
        makes headlights read as headlights rather than as two yellow dots */
     for (var mz = 0; mz < 5; mz++) {
@@ -3031,8 +3093,9 @@ window.Apocalypse = (function () {
     }
 
     if (speed <= 0.15) {                                             // and the last of it
-      for (var p2 = 0; p2 < 6; p2++) {
-        px(c, cx + 26 + ((Math.random() * 12) | 0), cy - 36 - ((Math.random() * 20) | 0), 1, 1, "#5a5f6e");
+      for (var p2 = 0; p2 < 7; p2++) {
+        px(c, cx + CW - 10 + ((Math.random() * 14) | 0),
+             cy - 30 - ((Math.random() * 22) | 0), 1, 1, "#5a5f6e");
       }
     }
   }
@@ -4359,6 +4422,124 @@ window.Apocalypse = (function () {
     z.x = tx * T + T / 2; z.y = ty * T + T / 2;
     return { x: z.x, y: z.y };
   };
+  /* =======================================================================
+     THE AUDIT
+
+        A level can be perfectly well formed and still be unfinishable,
+        because one tile of furniture landed in front of the one door she
+        has to go through. That is exactly what happened to the garage: a
+        cabinet was dressed into the tile directly below its door, and
+        nothing in the build or the tests had any opinion about it.
+
+        This walks every level with the game's own solidity and door rules
+        and answers the only questions that matter: can she reach the thing
+        she is told to reach, in the order she is told to reach it, and is
+        anything standing somewhere it cannot be. It runs against the real
+        buildLevel, so it cannot drift away from what the game does.
+     ======================================================================= */
+  window.__apGrids = function () {
+    var o = {};
+    LEVELS.forEach(function (d, i) { o["L" + (i + 1) + " " + d.name] = d.grid; });
+    Object.keys(SUBMAPS).forEach(function (k) { o["sub " + k] = SUBMAPS[k].grid; });
+    return o;
+  };
+
+  window.__apAudit = function () {
+    var report = [];
+
+    function floodFrom(L, sx, sy, openKinds) {
+      var seen = {}, stack = [[sx, sy]];
+      function solidHere(x, y) {
+        var ch = at(L, x, y);
+        if (ch === " ") return true;
+        var d = L.doors[x + "," + y];
+        if (d) return !(d.open || openKinds.indexOf(d.kind) >= 0);
+        return SOLID.indexOf(ch) >= 0;
+      }
+      while (stack.length) {
+        var p = stack.pop(), x = p[0], y = p[1], k = x + "," + y;
+        if (seen[k]) continue;
+        if (x < 0 || y < 0 || x >= L.w || y >= L.h) continue;
+        if (solidHere(x, y)) continue;
+        seen[k] = true;
+        stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+      }
+      return seen;
+    }
+    function canStandBy(seen, x, y) {
+      return !!(seen[x + "," + y] || seen[(x + 1) + "," + y] || seen[(x - 1) + "," + y] ||
+                seen[x + "," + (y + 1)] || seen[x + "," + (y - 1)]);
+    }
+
+    function auditOne(name, def) {
+      var L, out = { level: name, problems: [], checks: 0 };
+      try { L = buildLevel(def); }
+      catch (e) { out.problems.push("will not build: " + e.message); return out; }
+
+      var sx = (L.start.x / T) | 0, sy = (L.start.y / T) | 0;
+      /* "plain" counts as open even in the shut pass: an ordinary door is
+         not a puzzle, she opens it by walking into it. Leaving it closed
+         here made the audit report half the level as unreachable and buried
+         the one door that really was blocked. */
+      var shut = floodFrom(L, sx, sy, ["plain"]);                // as she finds it
+      var open = floodFrom(L, sx, sy, ["power", "locked", "story", "plain"]);  // fully unlocked
+
+      function check(cond, msg) { out.checks++; if (!cond) out.problems.push(msg); }
+
+      /* the things she has to be able to walk up to before anything opens */
+      L.things.forEach(function (th) {
+        var label = th.kind + " at " + th.x + "," + th.y;
+        if (th.kind === "panel" || th.kind === "note" || th.kind === "tv" || th.kind === "car") {
+          check(canStandBy(shut, th.x, th.y),
+                "cannot reach the " + label + " before anything is opened");
+        } else {
+          check(canStandBy(open, th.x, th.y), "cannot reach the " + label + " at all");
+        }
+      });
+
+      /* every door has to be approachable from the side she arrives on */
+      Object.keys(L.doors).forEach(function (k) {
+        var xy = k.split(",").map(Number);
+        check(canStandBy(shut, xy[0], xy[1]) || canStandBy(open, xy[0], xy[1]),
+              "cannot reach the " + L.doors[k].kind + " door at " + k);
+      });
+
+      if (L.exit) check(open[L.exit.x + "," + L.exit.y], "the way out at " + L.exit.x + "," + L.exit.y + " is walled off");
+      if (L.anwar) check(canStandBy(open, (L.anwar.x / T) | 0, (L.anwar.y / T) | 0), "cannot reach Anwar");
+      if (L.horse) check(canStandBy(open, (L.horse.x / T) | 0, (L.horse.y / T) | 0), "cannot reach the horse");
+
+      /* nothing should be standing inside a wall */
+      L.zombies.forEach(function (z) {
+        var zx = (z.x / T) | 0, zy = (z.y / T) | 0;
+        check(!isSolid(L, zx, zy), "a zombie is inside solid ground at " + zx + "," + zy);
+      });
+      /* A light landing on a bed or a worktop is fine — that is what a
+         window over a bed does. A light landing inside a wall or a wardrobe
+         is not, because nothing can see it. */
+      var BURIED = "#vonf";
+      L.lights.forEach(function (li) {
+        var lx = (li.x / T) | 0, ly = (li.y / T) | 0;
+        if (ly < 0 || ly >= L.h || li.tv) return;
+        check(BURIED.indexOf(at(L, lx, ly)) < 0,
+              "a light is buried inside " + at(L, lx, ly) + " at " + lx + "," + ly);
+      });
+
+      /* and a level with nowhere to go is a level with a typo in it */
+      var walkable = Object.keys(open).length;
+      check(walkable > 40, "only " + walkable + " tiles are reachable at all");
+      out.reachable = walkable;
+      return out;
+    }
+
+    for (var i = 0; i < LEVELS.length; i++) {
+      report.push(auditOne("LEVEL " + (i + 1) + " — " + LEVELS[i].name, LEVELS[i]));
+    }
+    Object.keys(SUBMAPS).forEach(function (k) {
+      report.push(auditOne("submap — " + k, SUBMAPS[k]));
+    });
+    return report;
+  };
+
   window.__apSolvePanel = function () { if (G.__panel) G.__panel.solve(); };
   window.__apState = function () {
     if (!G || !G.level) return { error: "no level is loaded", state: G && G.state };
