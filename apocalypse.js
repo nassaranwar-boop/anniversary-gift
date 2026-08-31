@@ -195,6 +195,7 @@ window.Apocalypse = (function () {
     name: "HOME",
     dark: 0.66,                 // how black the unlit parts of the map go
     grade: [168, 108, 52, 0.14],
+    haze: [36, 44, 66, .30],
     grid: [
       "####vv####################v#######",
       "v.h..BB....#..=.....#.=nn.......o#",
@@ -242,6 +243,7 @@ window.Apocalypse = (function () {
     base: ",",
     dark: 0.60,
     grade: [70, 104, 176, 0.16],
+    haze: [40, 52, 82, .42],
     grid: [
       "################################################",
       "####,S,.############.,,.################.,,.####",
@@ -296,6 +298,7 @@ window.Apocalypse = (function () {
     name: "THE HOSPITAL",
     dark: 0.63,
     grade: [104, 176, 168, 0.13],
+    haze: [58, 84, 92, .34],
     deadZone: [20, 1, 39, 10],          // Ward C: no doors, and no lights either
     pressure: true,
     grid: [
@@ -349,6 +352,7 @@ window.Apocalypse = (function () {
     name: "GETTING OUT",
     dark: 0.68,
     grade: [96, 150, 170, 0.12],
+    haze: [46, 62, 76, .32],
     grid: [
       "####################################",
       "####################################",
@@ -389,6 +393,7 @@ window.Apocalypse = (function () {
       base: ",",
       dark: 0.44,                 // dawn: the first level she can actually see in
       grade: [214, 176, 108, 0.13],
+      haze: [150, 162, 186, .34],
       grid: [
       "################################################",
       "#,o,,,,,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
@@ -432,6 +437,47 @@ window.Apocalypse = (function () {
      It is the quiet after four levels of not being able to stop, and it
      should feel like being allowed to sit down.
      --------------------------------------------------------------------- */
+
+  /* ---- the depth test bench ------------------------------------------
+     Not part of the game. A small yard built to show every rule of the
+     depth system working at once, so it can be judged on its own before
+     any real location is built on top of it:
+
+       a far skyline scrolling at a fraction of the camera's rate
+       haze thinning the top of the frame
+       walls and tall props with lit tops, side faces and cast shadows
+       a colonnade she walks behind and in front of, to prove occlusion
+       a lamp and a fire as point lights, one steady and one flickering
+       dust in the beams, and a near plane drifting over everything
+     --------------------------------------------------------------------- */
+  SUBMAPS.depthtest = {
+    theme: "street",
+    key: "depthtest",
+    name: "DEPTH TEST",
+    base: ",",
+    dark: 0.22,
+    grade: [70, 104, 176, 0.11],
+    haze: [40, 52, 82, .40],
+    grid: [
+      "                                ",
+      "                                ",
+      "                                ",
+      "################################",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,,oo,,,,oo,,,,oo,,,,oo,,,,oo,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,S,,,,,,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,,cc,,,,,,,,,,,,,,,,,,,,,cc,,,#",
+      "#,,cc,,,,,,L,,,,,*,,l,,,,,,cc,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#nn,,,,,,,,,,,,,,,,,,,,,,,,,,nn#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "################################",
+    ],
+    steps: [{ task: "walk behind the posts, and back in front of them.", clears: "never" }],
+  };
+
   LEVELS[4] = {
     theme: "road",
     key: "gates",
@@ -439,6 +485,7 @@ window.Apocalypse = (function () {
     base: ",",
     dark: 0.30,                   // full morning. Nothing is hiding out here
     grade: [214, 176, 108, 0.13],
+    haze: [150, 168, 190, .30],
     grid: [
       "####################################",
       "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
@@ -1393,6 +1440,23 @@ window.Apocalypse = (function () {
     px(c, 6, T - 5, 4, 3, "#c9a05a");                       // the bolt
   }
 
+  /* A fire. Not a lamp: the light it throws is strong, warm and never the
+     same twice, which is what the campsite is going to need and what makes
+     the clearest case for the point-light system. */
+  function paintFire(c, P, theme, r) {
+    paintGround(c, P, theme, r, {});
+    for (var i = 0; i < 5; i++) {                       // the ring of stones
+      var a = (i / 5) * 6.28;
+      blob(c, 8 + Math.cos(a) * 6, 10 + Math.sin(a) * 4, 2, 2,
+           ["#7a7468", "#665f55", "#4f4a42", "#3b3731"]);
+    }
+    px(c, 4, 9, 9, 2, "#2a2018");                       // the burnt ground
+    px(c, 5, 7, 3, 2, "#4a3524"); px(c, 9, 8, 3, 2, "#4a3524");   // sticks
+    blob(c, 8, 7, 3, 3, ["#ffd98a", "#ff9a3a", "#d2541f", "#7a2a10"]);
+    px(c, 7, 4, 2, 3, "#ffe9b0");
+    px(c, 8, 3, 1, 2, "#fff6d8");
+  }
+
   function paintExit(c, P, theme, r) {
     paintGround(c, P, theme, r);
     for (var y = 2; y < T - 1; y += 4) px(c, 3, y, T - 6, 2, "#e8d48a");
@@ -1514,6 +1578,7 @@ window.Apocalypse = (function () {
     else if (ch === "T") paintTv(c, P, theme, r);
     else if (ch === "G") paintGate(c, P, theme, r);
     else if (ch === "X") paintExit(c, P, theme, r);
+    else if (ch === "*") paintFire(c, P, theme, r);
     else if (ch === "l") paintLamp(c, P, theme, r, false, under);
     else if (ch === "L") paintLamp(c, P, theme, r, true, under);
     else paintFloor(c, P, theme, r);
@@ -1533,6 +1598,7 @@ window.Apocalypse = (function () {
   var ENTITY = "SzixAHN";          // drawn as bare floor; something stands on it
 
   function buildLevel(def) {
+    useLight(def);
     var g = def.grid, h = g.length, w = g[0].length;
     var base = def.base || ".";
     var L = {
@@ -1586,6 +1652,8 @@ window.Apocalypse = (function () {
         /* A light inside Ward C is on the same dead circuit as its doors,
            so the ward is a black hole in the middle of a lit building until
            she has been to the plant room. That is the whole point of it. */
+        if (ch === "*") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2 - 2,
+                                        r: 96, warm: 1.25, fire: true });
         if (ch === "l" && def.deadZone && x >= def.deadZone[0] && x <= def.deadZone[2] &&
             y >= def.deadZone[1] && y <= def.deadZone[3]) {
           L.dead = L.dead || [];
@@ -1645,7 +1713,216 @@ window.Apocalypse = (function () {
       }
     }
     bakeDepth(mc, L);
+    L.far = buildFar(def.theme);
+    /* the run of empty rows at the top, which is the window onto distance */
+    L.skyRows = 0;
+    while (L.skyRows < h && /^ *$/.test(g[L.skyRows])) L.skyRows++;
+    if (!L.skyRows) L.far = null;
+
+    /* every tall tile is a potential occluder — kept as a list so the
+       frame can put the ones in front of her back on top afterwards */
+    L.occluders = [];
+    for (y = 0; y < h; y++) {
+      for (x = 0; x < w; x++) {
+        if (TALL_TILES.indexOf(L.cells[y][x].draw) >= 0) L.occluders.push({ x: x, y: y });
+      }
+    }
     return L;
+  }
+
+  /* =======================================================================
+     THE DEPTH SYSTEM
+
+        One set of rules about light and distance, written once here and
+        obeyed by everything that draws afterwards, so a location inherits
+        depth rather than having it retrofitted scene by scene.
+
+        The rules:
+
+        1. There is one light per scene and it has a direction. Everything
+           shades to it: the side faces baked into the map, the highlight
+           and shade on every sprite, and the direction and length of every
+           cast shadow. Change LIGHT for a level and all three follow.
+
+        2. Distance desaturates. Whatever is further away is hazier and
+           lower in contrast, which in a top-down view means higher up the
+           screen.
+
+        3. Three planes, moving at three speeds. A far backdrop at less
+           than half the camera's rate, the world at its rate, and a near
+           drifting layer above it.
+
+        4. Anything with height in front of her covers her. Not a flat
+           backdrop she is always on top of.
+
+        One honest limit, stated rather than faked: an orthographic
+        top-down view has no true horizon, so a far parallax plane only
+        means anything where there is distance to see — outdoors. Interiors
+        get every other rule and no backdrop, because from inside a
+        corridor there is nothing distant to look at.
+     ======================================================================= */
+
+  /* Light comes from the upper left, which is the direction every blob in
+     this file was already shaded to; this makes that assumption explicit
+     and puts it in one place. A level can override it with `light`. */
+  var LIGHT = { x: -0.55, y: -0.72, warm: "rgba(255,246,225,", cool: "rgba(6,9,20," };
+  var lightKey = "default";
+
+  function useLight(def) {
+    var l = (def && def.light) || null;
+    LIGHT.x = l ? l[0] : -0.55;
+    LIGHT.y = l ? l[1] : -0.72;
+    lightKey = LIGHT.x + "/" + LIGHT.y;
+  }
+
+  /* ---- directional shading on a sprite -------------------------------
+     A pixel map is a flat silhouette until something tells it where the
+     light is. This lays a highlight across the lit face and a shade across
+     the other, clipped to the sprite itself, and keeps the result on the
+     image so it is computed once per sprite per light rather than per
+     frame. */
+  function shaded(img) {
+    if (img.__lk === lightKey && img.__sh) return img.__sh;
+    var w = img.width, h = img.height;
+    var cv = mkCanvas(w, h), x = cv.getContext("2d");
+    x.imageSmoothingEnabled = false;
+    x.drawImage(img, 0, 0);
+    x.globalCompositeOperation = "source-atop";
+    /* the gradient runs along the light's own axis, so moving the light
+       moves the highlight and the shade together */
+    var g = x.createLinearGradient(
+      w / 2 + LIGHT.x * w, h / 2 + LIGHT.y * h,
+      w / 2 - LIGHT.x * w, h / 2 - LIGHT.y * h);
+    g.addColorStop(0.00, LIGHT.warm + ".20)");
+    g.addColorStop(0.42, "rgba(255,255,255,0)");
+    g.addColorStop(0.62, "rgba(0,0,0,0)");
+    g.addColorStop(1.00, LIGHT.cool + ".34)");
+    x.fillStyle = g;
+    x.fillRect(0, 0, w, h);
+    x.globalCompositeOperation = "source-over";
+    img.__lk = lightKey; img.__sh = cv;
+    return cv;
+  }
+
+  /* ---- the shadow a thing throws ------------------------------------
+     Anchored to the ground under it, thrown away from the light, and
+     longer the lower the light sits. Soft at the edge, darkest where the
+     object actually meets the floor. */
+  function castShadow(c, x, y, w, strength) {
+    var lean = 1.35;
+    var ox = -LIGHT.x * w * lean, oy = -LIGHT.y * w * 0.34;
+    var rx = w * (1 + Math.abs(LIGHT.x) * 0.5), ry = w * 0.40;
+    c.save();
+    c.globalAlpha = strength === undefined ? 0.5 : strength;
+    var g = c.createRadialGradient(x + ox * 0.35, y + oy * 0.35, 0,
+                                   x + ox * 0.35, y + oy * 0.35, rx);
+    g.addColorStop(0, "rgba(4,5,10,.9)");
+    g.addColorStop(0.5, "rgba(4,5,10,.42)");
+    g.addColorStop(1, "rgba(4,5,10,0)");
+    c.fillStyle = g;
+    c.beginPath();
+    c.ellipse(x + ox * 0.35, y + oy * 0.35, rx, ry, 0, 0, 6.2832);
+    c.fill();
+    c.restore();
+  }
+
+  /* ---- the far plane -------------------------------------------------
+     What is behind the level, painted once into a wide strip and scrolled
+     at a fraction of the camera's rate. Only outdoor themes declare one:
+     from inside a corridor there is nothing distant to look at, and faking
+     one would read as a poster on the wall.
+     --------------------------------------------------------------------- */
+  var FAR_RATE = 0.38;                 // how much slower than the world
+  var NEAR_RATE = 1.22;                // and how much faster the near plane is
+
+  function buildFar(theme) {
+    if (theme !== "street" && theme !== "road") return null;
+    var W = VW * 2, H = 96;
+    var cv = mkCanvas(W, H), c = cv.getContext("2d");
+    c.imageSmoothingEnabled = false;
+    var r = rnd(theme === "street" ? 6100 : 6200);
+
+    if (theme === "street") {
+      /* three ranks of rooflines, each one paler and flatter than the one
+         in front of it, which is what distance does to contrast */
+      [[0.30, 46, "#1b2130"], [0.55, 32, "#232a3c"], [0.85, 22, "#2c3448"]].forEach(
+        function (rank, i) {
+          var x = -20;
+          while (x < W + 20) {
+            var bw = 14 + ((r() * 26) | 0);
+            var bh = rank[1] + ((r() * 22) | 0);
+            var top = H - bh;
+            px(c, x, top, bw, bh, rank[2]);
+            px(c, x, top, bw, 1, shade(rank[2], 14));
+            if (i === 2) {                       // only the nearest rank has windows
+              for (var wy = top + 5; wy < H - 4; wy += 8) {
+                for (var wx = x + 2; wx < x + bw - 3; wx += 6) {
+                  if (r() > 0.72) px(c, wx, wy, 2, 3, r() > 0.5 ? "#4a5570" : "#8a7a4a");
+                }
+              }
+            }
+            if (r() > 0.86) px(c, x + (bw >> 1), top - 7, 1, 7, rank[2]);   // an aerial
+            x += bw + 1 + i;
+          }
+        });
+    } else {
+      /* hills, and a treeline along the foot of them */
+      [[0.35, "#2a3346"], [0.62, "#314050"], [0.9, "#38495a"]].forEach(function (rank, i) {
+        var y = H - 26 - i * 12;
+        for (var x = 0; x < W; x++) {
+          var hgt = 12 + Math.sin(x * 0.018 + i * 2.1) * 7 + Math.sin(x * 0.005 + i) * 6;
+          px(c, x, y - hgt, 1, H - (y - hgt), rank[1]);
+        }
+        if (i === 2) {
+          for (var t = 0; t < W; t += 3) {
+            if (r() > 0.55) px(c, t, y - 3 - ((r() * 4) | 0), 2, 6, "#26332c");
+          }
+        }
+      });
+    }
+    return cv;
+  }
+
+  /* ---- the near plane -------------------------------------------------
+     Nothing structural — motes and drifting scraps that live in front of
+     everything and move faster than the world, which is the cue that they
+     are between the camera and the scene.
+     --------------------------------------------------------------------- */
+  function paintNear(G, c, cx, cy) {
+    var L = G.level;
+    if (!G.near) {
+      G.near = [];
+      var r = rnd(8080);
+      for (var i = 0; i < 26; i++) {
+        G.near.push({ x: r() * L.w * T, y: r() * L.h * T, sz: r() > 0.7 ? 2 : 1,
+                      sp: 8 + r() * 18, ph: r() * 6.28 });
+      }
+    }
+    for (var n = 0; n < G.near.length; n++) {
+      var m = G.near[n];
+      m.x += Math.sin(G.t * 0.5 + m.ph) * 0.5;
+      m.y -= m.sp * 0.016;
+      if (m.y < cy - 30) { m.y = cy + VH + 20; m.x = cx + Math.random() * VW; }
+      var sx = (m.x - cx * NEAR_RATE) - (cx - cx * NEAR_RATE);
+      var sy = (m.y - cy * NEAR_RATE) - (cy - cy * NEAR_RATE);
+      if (sx < -4 || sx > VW + 4 || sy < -4 || sy > VH + 4) continue;
+      c.fillStyle = "rgba(214,224,246," + (0.10 + 0.10 * Math.sin(G.t * 2 + m.ph)).toFixed(3) + ")";
+      c.fillRect(sx | 0, sy | 0, m.sz, m.sz);
+    }
+  }
+
+  /* ---- haze -----------------------------------------------------------
+     Distance washes contrast out. Up the screen is away in this view, so
+     the wash is strongest at the top and gone by the time it reaches her.
+     --------------------------------------------------------------------- */
+  function paintHaze(G, c) {
+    var h = G.level.def.haze;
+    if (!h) return;
+    var g = c.createLinearGradient(0, 0, 0, VH * 0.78);
+    g.addColorStop(0, "rgba(" + h[0] + "," + h[1] + "," + h[2] + "," + h[3] + ")");
+    g.addColorStop(1, "rgba(" + h[0] + "," + h[1] + "," + h[2] + ",0)");
+    c.fillStyle = g;
+    c.fillRect(0, 0, VW, VH * 0.78);
   }
 
   /* =======================================================================
@@ -1816,6 +2093,12 @@ window.Apocalypse = (function () {
       var s = 1;
       if (li.tv) s = 0.75 + 0.25 * Math.sin(G.t * 9 + i);       // the set flickers
       if (li.flicker) s = 0.55 + 0.45 * (Math.sin(G.t * 3.1 + i) > -0.4 ? 1 : 0.2);
+      /* A fire never repeats: two rates that do not divide into each other,
+         plus a little noise, so the eye cannot find the loop. */
+      if (li.fire) {
+        s = 0.72 + 0.18 * Math.sin(G.t * 5.7 + i) + 0.14 * Math.sin(G.t * 13.3 + i * 2.1)
+              + (Math.random() - 0.5) * 0.06;
+      }
       pool(li.x, li.y, li.r, li.warm, s);
     }
     /* Her torch. Three pools rather than one: a wide cold spill so she can
@@ -2148,23 +2431,8 @@ window.Apocalypse = (function () {
      ======================================================================= */
   var VW = 320, VH = 180;
 
-  /* An ellipse under her feet, darkest where she touches the ground and
-     falling off outward. A hard two-pixel bar was reading as a mark on the
-     floor rather than as her shadow, and without a shadow a sprite floats
-     over the tiles instead of standing on them. */
   function drawShadow(c, x, y, w) {
-    w = w || 7;
-    c.save();
-    c.globalAlpha = 0.45;
-    var g = c.createRadialGradient(x, y, 0, x, y, w);
-    g.addColorStop(0, "rgba(4,5,10,.85)");
-    g.addColorStop(0.55, "rgba(4,5,10,.45)");
-    g.addColorStop(1, "rgba(4,5,10,0)");
-    c.fillStyle = g;
-    c.beginPath();
-    c.ellipse(x, y, w, w * 0.42, 0, 0, 6.2832);
-    c.fill();
-    c.restore();
+    castShadow(c, x, y, w || 7);
   }
 
   function paint(G) {
@@ -2189,35 +2457,95 @@ window.Apocalypse = (function () {
     c.fillRect(0, 0, VW, VH);
 
     var cx = Math.round(G.cam.x), cy = Math.round(G.cam.y);
+
+    /* the far plane, at less than half the camera's rate */
+    /* THE FAR PLANE, and the one real limit of parallax in a view like
+       this one.
+
+       A top-down camera has no horizon: the map fills the frame, so a
+       backdrop painted behind it is never seen. Parallax only means
+       something where the level opens onto distance — so an outdoor level
+       leaves the top of its grid empty, and that band is where the far
+       plane lives. It scrolls at a bit over a third of the camera's rate,
+       which is what sells the gap between there and here. Interiors have
+       no such band and no backdrop, because from inside a corridor there
+       is nothing distant to look at. */
+    if (L.far) {
+      var openTop = L.skyRows * T - cy;          // where the map begins on screen
+      if (openTop > 0) {
+        var fx = -((cx * FAR_RATE) % L.far.width);
+        var fy = openTop - L.far.height + Math.min(0, -cy * FAR_RATE * 0.06);
+        c.save();
+        c.beginPath(); c.rect(0, 0, VW, openTop); c.clip();
+        c.fillStyle = PAL[L.theme].amb;
+        c.fillRect(0, 0, VW, openTop);
+        c.drawImage(L.far, fx, fy);
+        c.drawImage(L.far, fx + L.far.width, fy);
+        paintHaze(G, c);
+        c.restore();
+      }
+    }
+
     c.drawImage(L.map, cx, cy, VW, VH, 0, 0, VW, VH);
+    if (!L.far) paintHaze(G, c);
 
     /* everything that stands up, painted in y order so she can walk behind
        a wardrobe and be behind it */
     var actors = [];
-    actors.push({ y: G.player.y, draw: function () { drawActor(G, c, ART.ouissy, G.player, cx, cy); } });
+    actors.push({ y: G.player.y, x: G.player.x, draw: function () { drawActor(G, c, ART.ouissy, G.player, cx, cy); } });
     L.zombies.forEach(function (z) {
-      actors.push({ y: z.y, draw: function () { drawActor(G, c, ART.zombie, z, cx, cy, z.alert); } });
+      actors.push({ y: z.y, x: z.x, draw: function () { drawActor(G, c, ART.zombie, z, cx, cy, z.alert); } });
     });
     if (L.horse) {
       var hh = L.horse;
-      actors.push({ y: hh.y, draw: function () {
+      actors.push({ y: hh.y, x: hh.x, draw: function () {
         var x = Math.round(hh.x - cx), y = Math.round(hh.y - cy);
         drawShadow(c, x + 2, y + 3, 15);
-        c.drawImage(ART.horse, x - 20, y - 24);
+        c.drawImage(shaded(ART.horse), x - 20, y - 24);
       } });
     }
     if (L.anwar) {
       var a = L.anwar;
-      actors.push({ y: a.y + (a.awake ? 0 : 4), draw: function () {
+      actors.push({ y: a.y + (a.awake ? 0 : 4), x: a.x, draw: function () {
         if (a.awake) drawActor(G, c, ART.anwar, a, cx, cy);
         else {
           var x = Math.round(a.x - cx), y = Math.round(a.y - cy);
-          c.drawImage(ART.anwarAsleep, x - 8, y - 12);
+          c.drawImage(shaded(ART.anwarAsleep), x - 8, y - 12);
         }
       } });
     }
     actors.sort(function (a, b) { return a.y - b.y; });
     actors.forEach(function (a) { a.draw(); });
+
+    /* FOREGROUND OCCLUSION.
+
+       The map is one baked layer under everybody, so until now she walked
+       in front of every wall and every wardrobe in the level, including
+       the ones she was standing behind. Anything tall whose base sits
+       lower on the screen than her feet is nearer the camera than she is,
+       so it goes back on top — and because the pixels come straight out of
+       the same baked map, what is redrawn is exactly what was there,
+       shading and cast shadow included.
+
+       Only tiles close to somebody get redrawn. Everything below her would
+       be half the screen for no visible difference. */
+    var near = [];
+    actors.forEach(function (a) { near.push(a.y); });
+    for (var oi = 0; oi < L.occluders.length; oi++) {
+      var oc = L.occluders[oi];
+      var ox = oc.x * T, oy = oc.y * T;
+      if (ox < cx - T || ox > cx + VW || oy < cy - T || oy > cy + VH) continue;
+      var base = oy + T;
+      var wanted = false;
+      for (var ai = 0; ai < actors.length; ai++) {
+        var ay = actors[ai].y;
+        /* in front of them, and close enough to actually overlap */
+        if (base > ay && base - ay < T * 2.2 &&
+            Math.abs(ox + T / 2 - actors[ai].x) < T * 2) { wanted = true; break; }
+      }
+      if (!wanted) continue;
+      c.drawImage(L.map, ox, oy, T, T, ox - cx, oy - cy, T, T);
+    }
 
     /* the marks that say "there is something here" */
     L.things.forEach(function (t) {
@@ -2264,6 +2592,8 @@ window.Apocalypse = (function () {
       c.fillStyle = "rgba(255,240,214," + ma.toFixed(3) + ")";
       c.fillRect(Math.round(mo.x - cx), Math.round(mo.y - cy), mo.sz, mo.sz);
     }
+
+    paintNear(G, c, cx, cy);
 
     /* the light map, blown up over the frame */
     paintLight(G);
@@ -2335,7 +2665,7 @@ window.Apocalypse = (function () {
   }
 
   function drawActor(G, c, set, a, cx, cy, alert) {
-    var img = (set[a.face] || set.down)[a.frame || 0];
+    var img = shaded((set[a.face] || set.down)[a.frame || 0]);
     var x = Math.round(a.x - cx), y = Math.round(a.y - cy);
     if (x < -20 || x > VW + 20 || y < -30 || y > VH + 30) return;
     drawShadow(c, x, y + 3, 8);
@@ -3221,7 +3551,7 @@ window.Apocalypse = (function () {
       G.keys = freshKeys();
       G.pressure = 0;
       G.pressureT = PRESSURE_EVERY;
-      G.motes = null;
+      G.motes = null; G.near = null;
       startBed(bedFor(G.level.def));
       snapCam(G);
       setHud(G);
@@ -3251,7 +3581,7 @@ window.Apocalypse = (function () {
     }
     G.state = "play";
     G.keys = freshKeys();
-    G.motes = null;
+    G.motes = null; G.near = null;
     startBed(bedFor(def));
     snapCam(G);
     setHud(G);
@@ -4672,7 +5002,7 @@ window.Apocalypse = (function () {
     G.keys = freshKeys();
     G.pressure = 0;
     G.pressureT = PRESSURE_EVERY;
-    G.motes = null;
+    G.motes = null; G.near = null;
     startBed(bedFor(G.level.def));
     snapCam(G);
     setHud(G);
@@ -4783,6 +5113,21 @@ window.Apocalypse = (function () {
         anything standing somewhere it cannot be. It runs against the real
         buildLevel, so it cannot drift away from what the game does.
      ======================================================================= */
+  window.__apDepthTest = function (tx, ty) {
+    closeOverlay();
+    G.levelIndex = 0;
+    enterSubmap(G, SUBMAPS.depthtest, [tx === undefined ? 15 : tx, ty === undefined ? 6 : ty]);
+    G.steps = SUBMAPS.depthtest.steps;
+    G.step = G.steps[0];
+    setHud(G);
+    return { w: G.level.w, h: G.level.h, far: !!G.level.far, occluders: G.level.occluders.length };
+  };
+
+  window.__apLevel = function () {
+    var L = G.level;
+    return { w: L.w, h: L.h, farH: L.far ? L.far.height : 0, occluders: L.occluders.length };
+  };
+
   window.__apGrids = function () {
     var o = {};
     LEVELS.forEach(function (d, i) { o["L" + (i + 1) + " " + d.name] = d.grid; });
