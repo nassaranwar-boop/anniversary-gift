@@ -51,6 +51,7 @@ const clicks = settle;
    how-to, then Level 1) that raced, pressed one twice and reported the other
    as missing. */
 const goCard = async (p, match, label) => {
+  if (!match) { say('!! goCard called with nothing to look for — fix the caller'); return false; }
   const ok = await p.waitForFunction((m) => {
     const c = document.querySelector('.ap-card');
     return !!c && c.textContent.includes(m);
@@ -176,7 +177,7 @@ const solvePanel = async (p) => {
   await p.evaluate(() => { window.__apTeleport(32, 10); window.__apPump(0.4, {}); });
   await p.waitForTimeout(250); await settle(p);
   say('chapter card:', await p.evaluate(() => { const t = document.querySelector('.ap-card-title'); return t && t.textContent; }));
-  await goCard(p);
+  await goCard(p, 'you still came and found me', 'the chapter card');
   await p.waitForTimeout(900);
   say('on the roof:', await p.evaluate(() => document.getElementById('screen-end').classList.contains('active')));
   say('chapter marked done:', await p.evaluate(() => { try { return JSON.parse(localStorage.getItem('fal_chapters_done') || '{}').apoc === true; } catch (e) { return 'n/a'; } }));
