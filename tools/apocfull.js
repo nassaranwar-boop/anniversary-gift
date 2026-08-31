@@ -45,26 +45,40 @@ const settle = async (p, what) => {
 };
 const clicks = settle;
 
-/* Wait for the card we actually mean, by the words on it, and then wait for
-   it to go away again after pressing. Waiting on ".ap-card-go" alone matched
-   whichever card happened to be up — and with two cards back to back (the
-   how-to, then Level 1) that raced, pressed one twice and reported the other
-   as missing. */
+/* Find the card and press it in the same breath.
+
+   The previous version looked for the card in one call and pressed it in
+   the next, and between those two calls the game is free to move on — so
+   now and then it pressed the card that had replaced the one it had just
+   found, skipped a step, and then reported the skipped step as missing.
+   Both halves happen inside a single page evaluation now, so there is no
+   window between seeing it and acting on it. Everything else in this file
+   that presses something waits the same way, for the same reason. */
+const pressWhen = async (p, sel, match, label, timeout) => {
+  const ok = await p.waitForFunction(([s, m]) => {
+    const nodes = Array.from(document.querySelectorAll(s));
+    for (const n of nodes) {
+      const box = n.closest('.ap-card, .ap-tv, .ap-note, .ap-radio, .ap-check, .ap-serum, .ap-panel') || n;
+      if (!m || box.textContent.includes(m)) {
+        if (n.disabled) return false;
+        n.click();
+        return true;
+      }
+    }
+    return false;
+  }, [sel, match || null], { timeout: timeout || 12000, polling: 120 })
+    .then(() => true).catch(() => false);
+  if (!ok) say('!! never appeared:', label || match || sel);
+  return ok;
+};
+
 const goCard = async (p, match, label) => {
   if (!match) { say('!! goCard called with nothing to look for — fix the caller'); return false; }
-  const ok = await p.waitForFunction((m) => {
-    const c = document.querySelector('.ap-card');
-    return !!c && c.textContent.includes(m);
-  }, match, { timeout: 12000, polling: 150 }).then(() => true).catch(() => false);
-  if (!ok) { say('!! never appeared:', label || match); return false; }
-  await p.evaluate(() => document.querySelector('.ap-card-go').click());
-  await p.waitForFunction((m) => {
-    const c = document.querySelector('.ap-card');
-    return !c || !c.textContent.includes(m);
-  }, match, { timeout: 8000, polling: 150 }).catch(() => {});
-  await p.waitForTimeout(200);
-  return true;
+  const ok = await pressWhen(p, '.ap-card-go', match, label || match);
+  await p.waitForTimeout(220);
+  return ok;
 };
+
 const solvePanel = async (p) => {
   if (!await waitFor(p, '.ap-panel-canvas', 'the wire panel')) return false;
   await p.evaluate(() => window.__apSolvePanel());
@@ -95,8 +109,7 @@ const solvePanel = async (p) => {
 
   // ---- LEVEL 1 ----
   await p.evaluate(() => { window.__apTeleport(3, 12); window.__apUse(); });
-  await waitFor(p, '.ap-tv', 'the television');
-  await p.evaluate(() => document.querySelector('.ap-tv .ap-note-ok').click());
+  await pressWhen(p, '.ap-tv .ap-note-ok', null, 'the television');
   await p.waitForTimeout(250); await settle(p);
   await p.evaluate(() => { window.__apTeleport(29, 12); window.__apUse(); });
   await p.waitForTimeout(350);
@@ -109,8 +122,7 @@ const solvePanel = async (p) => {
 
   // ---- LEVEL 2 ----
   await p.evaluate(() => { window.__apTeleport(11, 21); window.__apUse(); });
-  await waitFor(p, '.ap-note-code', 'the note');
-  await p.evaluate(() => document.querySelector('.ap-note-ok').click());
+  await pressWhen(p, '.ap-note .ap-note-ok', null, 'the note');
   await p.waitForTimeout(200); await settle(p);
   await p.evaluate(() => { window.__apTeleport(31, 20); window.__apUse(); });
   await waitFor(p, '.ap-keypad', 'the gate keypad');
@@ -135,8 +147,7 @@ const solvePanel = async (p) => {
   await p.waitForTimeout(250); await settle(p);
   await goCard(p, 'Level 4', 'the Level 4 card');
   await settle(p);
-  await waitFor(p, '.ap-radio', 'the radio');
-  await p.evaluate(() => { const b = document.querySelector('.ap-radio .ap-note-ok'); if (b) b.click(); });
+  await pressWhen(p, '.ap-radio .ap-note-ok', null, 'the radio');
   await p.waitForTimeout(250); await settle(p);
   say('L4 place:', await p.evaluate(() => document.getElementById('ap-place').textContent));
 
@@ -165,14 +176,14 @@ const solvePanel = async (p) => {
   await p.waitForTimeout(250); await settle(p);
   await settle(p, 'the hail');
   await p.evaluate(() => { window.__apTeleport(20, 9); window.__apUse(); });
-  await waitFor(p, '.ap-check-row', 'the arrivals check');
-  await p.evaluate(() => document.querySelectorAll('.ap-check-row').forEach(r => r.click()));
-  await p.waitForTimeout(200);
-  await p.evaluate(() => document.querySelector('.ap-check .ap-note-ok').click());
-  await waitFor(p, '.ap-serum-canvas', 'the serum');
-  await p.evaluate(() => document.querySelector('.ap-serum .ap-note-ok').click());
-  await p.waitForTimeout(2600);
-  await p.evaluate(() => document.querySelector('.ap-serum .ap-note-ok').click());
+  if (await waitFor(p, '.ap-check-row', 'the arrivals check')) {
+    await p.evaluate(() => document.querySelectorAll('.ap-check-row').forEach(r => r.click()));
+    await p.waitForTimeout(200);
+  }
+  await pressWhen(p, '.ap-check .ap-note-ok', null, 'the check, signed off');
+  await pressWhen(p, '.ap-serum .ap-note-ok', null, 'the serum');
+  await p.waitForTimeout(2700);
+  await pressWhen(p, '.ap-serum .ap-note-ok', null, 'the serum, done');
   await p.waitForTimeout(300); await settle(p);
   await p.evaluate(() => { window.__apTeleport(32, 10); window.__apPump(0.4, {}); });
   await p.waitForTimeout(250); await settle(p);
