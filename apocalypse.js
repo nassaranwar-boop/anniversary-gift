@@ -2527,6 +2527,8 @@ window.Apocalypse = (function () {
     var c = G.ctx, L = G.level;
     c.clearRect(0, 0, VW, VH);
 
+    if (G.rooftop) { paintRooftopScene(G, c); return; }
+
     /* a cutscene owns the whole canvas; nothing of the level is painted */
     if (G.state === "cut" && G.cut) {
       G.cut.paint(G, c, G.cut.t);
@@ -4478,13 +4480,7 @@ window.Apocalypse = (function () {
 
   function finishChapter(G) {
     if (window.markApocalypseDone) window.markApocalypseDone();
-    openOverlay(card("THE END OF THE WORLD", "and you still came and found me",
-      [], "Go on", function () {
-        closeOverlay();
-        stop();
-        if (window.startApocalypseEnding) window.startApocalypseEnding();
-        else if (window.leaveApocalypse) window.leaveApocalypse();
-      }));
+    startRooftop(G);
   }
 
   /* =======================================================================
@@ -5157,6 +5153,184 @@ window.Apocalypse = (function () {
     return "#" + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
   }
 
+  /* =======================================================================
+     THE ROOFTOP — the last scene in the chapter
+     ======================================================================= */
+  var rooftopT = 0;
+
+  function paintRooftopScene(G, c) {
+    rooftopT += STEP;
+    var t = rooftopT;
+
+    ditherFill(c, 0, 0, VW, 100, [
+      { p: 0, c: "#0e0e1e" }, { p: 0.35, c: "#181830" },
+      { p: 0.65, c: "#252242" }, { p: 1, c: "#3a2f54" },
+    ]);
+
+    var r = rnd(7741);
+    for (var i = 0; i < 36; i++) {
+      var sx = (r() * VW) | 0, sy = (r() * 68) | 0;
+      if (Math.sin(t * 1.8 + i * 1.7) > 0.7) px(c, sx, sy, 1, 1, "#d0d4f0");
+    }
+
+    var moonX = 248, moonY = 32, moonR = 14;
+    for (var dy = -moonR; dy <= moonR; dy++) {
+      for (var dx = -moonR; dx <= moonR; dx++) {
+        if (dx * dx + dy * dy <= moonR * moonR) {
+          var shade1 = "#e8e4d0";
+          if ((dx + 3) * (dx + 3) + (dy - 1) * (dy - 1) < moonR * moonR * 0.65) shade1 = "#f0ece0";
+          if (Math.abs(dx - 4) + Math.abs(dy + 2) < 3) shade1 = "#d8d4c0";
+          if (Math.abs(dx + 2) + Math.abs(dy - 4) < 4) shade1 = "#d0ccb8";
+          px(c, moonX + dx, moonY + dy, 1, 1, shade1);
+        }
+      }
+    }
+    c.globalAlpha = 0.12;
+    c.fillStyle = "#f0e8c0";
+    c.beginPath(); c.arc(moonX, moonY, moonR + 8, 0, 6.2832); c.fill();
+    c.globalAlpha = 1;
+
+    for (var ci = 0; ci < 3; ci++) {
+      var cw = 30 + ci * 8;
+      var cx = ((t * (4 + ci * 1.5) + ci * 80) % (VW + 100)) - 50;
+      var cy = 36 + ci * 14;
+      blob(c, cx, cy, cw, 4 + ci, ["#302a50", "#282244", "#201c38"]);
+    }
+
+    var base = 100;
+    for (var bi = 0; bi < 28; bi++) {
+      var bx = (bi * 12) % VW;
+      var bh = 14 + ((bi * 7 + 3) % 22);
+      var bc = bi % 3 === 0 ? "#18162a" : bi % 3 === 1 ? "#1c1a30" : "#201e36";
+      px(c, bx, base - bh, 10, bh, bc);
+      for (var wi = 0; wi < 3; wi++) {
+        var wy = base - bh + 3 + wi * 5;
+        if (wy < base - 2) {
+          var lit = Math.sin(t * 0.4 + bi * 2.1 + wi * 3.3) > 0.3;
+          px(c, bx + 2, wy, 2, 2, lit ? "#4a4260" : "#0e0e18");
+          px(c, bx + 6, wy, 2, 2, lit ? "#3a3858" : "#0e0e18");
+        }
+      }
+      if (bi === 5 || bi === 18) {
+        var smokeX = bx + 5;
+        for (var si = 0; si < 4; si++) {
+          var smokeY = base - bh - 4 - si * 3 - Math.sin(t + si) * 1.5;
+          c.globalAlpha = 0.3 - si * 0.06;
+          px(c, smokeX + Math.sin(t * 0.8 + si * 2) * 2, smokeY, 2, 2, "#4a4466");
+        }
+        c.globalAlpha = 1;
+      }
+    }
+    px(c, 0, base, VW, 2, "#3a3060");
+
+    px(c, 0, base + 2, VW, VH - base - 2, "#14121e");
+    px(c, 0, base + 2, VW, 3, "#2a2440");
+
+    px(c, 60, base - 20, 3, 22, "#1a1828");
+    px(c, 58, base - 22, 7, 3, "#1a1828");
+
+    px(c, 200, base - 12, 14, 14, "#1a1828");
+    px(c, 202, base - 14, 10, 3, "#1a1828");
+    px(c, 205, base - 16, 4, 3, "#1a1828");
+
+    for (var li = 0; li < 6; li++) {
+      var lx = 90 + li * 24;
+      var ly = base + 1 + Math.sin(li * 1.1) * 1.5;
+      var flicker = Math.sin(t * 3 + li * 2.3) > -0.2;
+      px(c, lx, ly, 1, 1, flicker ? "#ffe8a0" : "#8a7a50");
+    }
+
+    var ouissyX = 130, ouissyY = base + 6;
+    px(c, ouissyX - 3, ouissyY - 9, 6, 9, "#2a2a3a");
+    px(c, ouissyX - 3, ouissyY - 12, 7, 4, "#c8a050");
+    px(c, ouissyX - 1, ouissyY - 10, 2, 1, "#e0c8a0");
+
+    var anwarX = 142, anwarY = base + 6;
+    px(c, anwarX - 3, anwarY - 9, 6, 9, "#222232");
+    px(c, anwarX - 3, anwarY - 12, 6, 4, "#1a1a28");
+    px(c, anwarX - 1, anwarY - 10, 2, 1, "#8a6a48");
+
+    if (t > 2) {
+      for (var fi = 0; fi < 8; fi++) {
+        var fy = base - 2 - ((t * 6 + fi * 11) % 40);
+        var fx = 80 + ((fi * 31) % 160) + Math.sin(t + fi) * 3;
+        if (Math.sin(t * 2.5 + fi * 1.9) > 0.3) px(c, fx, fy, 1, 1, "#ffe8a8");
+      }
+    }
+  }
+
+  var ROOFTOP_DIALOGUE = [
+    ["", "The roof is flat and wide and the air up here is clean."],
+    ["", "The whole of the valley is underneath them, and whatever is burning in it is a long way off."],
+    ["", ""],
+    ["ANWAR", "I can't believe we're here."],
+    ["OUISSY", "I know."],
+    ["", ""],
+    ["ANWAR", "I didn't think we'd make it past the ring road."],
+    ["OUISSY", "I didn't think past the hospital."],
+    ["", "He laughs, short and real, and it is the first time in days it has sounded like him."],
+    ["", ""],
+    ["ANWAR", "Have you tried the phone again?"],
+    ["OUISSY", "There's no signal. There's been nothing since the second day."],
+    ["ANWAR", "Mine too. Network's gone."],
+    ["", ""],
+    ["OUISSY", "My mum would've gone to Aunt Sara's. That's what they always said — if anything happened, go to Sara's."],
+    ["ANWAR", "My parents would've gone to the mosque. Or to Nana's."],
+    ["OUISSY", "Then that's where we look. When things calm down, that's where we go first."],
+    ["ANWAR", "Both places. Yours and mine."],
+    ["OUISSY", "Both places."],
+    ["", ""],
+    ["", "They are quiet for a while. A light goes on and off in a window three streets away, and then it stays off."],
+    ["", ""],
+    ["ANWAR", "You know the worst part?"],
+    ["OUISSY", "What."],
+    ["ANWAR", "I wasn't scared for me. I was scared because I didn't know where you were."],
+    ["", ""],
+    ["OUISSY", "I was scared for you too."],
+    ["OUISSY", "That's why I walked."],
+    ["", ""],
+    ["", "He reaches over and takes her hand, and neither of them lets go."],
+    ["", ""],
+    ["ANWAR", "What do we do now?"],
+    ["OUISSY", "We wait until it's safe. Then we find our families."],
+    ["ANWAR", "And if it doesn't get safe?"],
+    ["OUISSY", "Then we work it out. Like we worked out everything else."],
+    ["", ""],
+    ["ANWAR", "Together."],
+    ["OUISSY", "Obviously together. That's the whole point."],
+    ["", "He turns and looks at her, properly looks, for the first time since the hospital."],
+    ["", ""],
+    ["ANWAR", "Come here."],
+    ["", "She leans into him, and he puts his arm around her, and the city below them is the quietest it has ever been."],
+    ["", ""],
+    ["", "They stay like that for a long time. There is nowhere else to be."],
+    ["", "The moon is up and the smoke has cleared enough to see the stars."],
+    ["", ""],
+    ["OUISSY", "Hey."],
+    ["ANWAR", "Yeah?"],
+    ["OUISSY", "We made it."],
+    ["", ""],
+    ["ANWAR", "Yeah. We did."],
+  ];
+
+  function startRooftop(G) {
+    G.rooftop = true;
+    rooftopT = 0;
+    $("ap-hud").classList.add("gone");
+    G.state = "dialogue";
+    say(G, ROOFTOP_DIALOGUE, function () {
+      G.state = "card";
+      openOverlay(card("TO BE CONTINUED…", "the world ended. you came and found me anyway.",
+        [], "Go on", function () {
+          closeOverlay();
+          G.rooftop = false;
+          stop();
+          if (window.startApocalypseEnding) window.startApocalypseEnding();
+          else if (window.leaveApocalypse) window.leaveApocalypse();
+        }));
+    });
+  }
+
   /* The horse. Nothing about this is a puzzle. She has been shut in for two
      days and she is delighted, and that is the point of the scene. */
   function HORSE_USE(G, t) {
@@ -5400,6 +5574,12 @@ window.Apocalypse = (function () {
     return { w: G.level.w, h: G.level.h };
   };
 
+  window.__apRooftop = function () {
+    closeOverlay();
+    startRooftop(G);
+    return { state: "rooftop" };
+  };
+
   window.__apLevel = function () {
     var L = G.level;
     return { w: L.w, h: L.h, farH: L.far ? L.far.height : 0, occluders: L.occluders.length };
@@ -5548,6 +5728,11 @@ window.Apocalypse = (function () {
       else { enterSubmap(G, SUBMAPS[k], [3, 3]); G.steps = SUBMAPS[k].steps || []; G.stepIndex = 0; G.step = G.steps[0] || null; setHud(G); }
     }});
   });
+
+  DEBUG_SCENES.push({ label: "Rooftop Ending", go: function () {
+    closeOverlay();
+    startRooftop(G);
+  }});
 
   function showDebugMenu() {
     if (!G) return;
