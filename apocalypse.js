@@ -245,6 +245,9 @@ window.Apocalypse = (function () {
     grade: [70, 104, 176, 0.16],
     haze: [40, 52, 82, .42],
     grid: [
+      "                                                ",
+      "                                                ",
+      "                                                ",
       "################################################",
       "####,S,.############.,,.################.,,.####",
       "####,,,.############.,,.################.,,.####",
@@ -395,6 +398,9 @@ window.Apocalypse = (function () {
       grade: [214, 176, 108, 0.13],
       haze: [150, 162, 186, .34],
       grid: [
+      "                                                ",
+      "                                                ",
+      "                                                ",
       "################################################",
       "#,o,,,,,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
       "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
@@ -437,6 +443,9 @@ window.Apocalypse = (function () {
     grade: [180, 140, 80, 0.10],
     haze: [80, 70, 50, .20],
     grid: [
+      "                             ",
+      "                             ",
+      "                             ",
       ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
       ",,,,,,,,,o,,,,,,,,,,,,,,,,,,,",
       ",,,,,,,,,,,,,,,,,,,,o,,,,,,,,",
@@ -520,6 +529,9 @@ window.Apocalypse = (function () {
     grade: [214, 176, 108, 0.13],
     haze: [150, 168, 190, .30],
     grid: [
+      "                                    ",
+      "                                    ",
+      "                                    ",
       "####################################",
       "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
       "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
@@ -954,25 +966,38 @@ window.Apocalypse = (function () {
 
   /* --- the plain grounds ------------------------------------------------ */
   function paintFloor(c, P, theme, r) {
-    px(c, 0, 0, T, T, P.floor[1]);
+    ditherFill(c, 0, 0, T, T, [
+      { p: 0, c: P.floor[0] }, { p: 1, c: P.floor[1] },
+    ]);
     if (theme === "house") {                       // boards, running across
       for (var y = 0; y < T; y += 4) {
-        px(c, 0, y, T, 3, y % 8 === 0 ? P.floor[0] : P.floor[1]);
+        var bc = y % 8 === 0 ? P.floor[0] : P.floor[1];
+        ditherFill(c, 0, y, T, 3, [
+          { p: 0, c: bc }, { p: 1, c: shade(bc, -6) },
+        ]);
         px(c, 0, y + 3, T, 1, P.floor[2]);
         for (var g = 0; g < 3; g++) px(c, (r() * T) | 0, y + ((r() * 3) | 0), 2, 1, P.floor[2]);
       }
       if (r() > 0.8) px(c, (r() * 12) | 0, (r() * 12) | 0, 3, 2, P.floor[3]);
     } else if (theme === "hospital") {             // lino squares with a seam
-      px(c, 0, 0, T, T, r() > 0.5 ? P.floor[0] : P.floor[1]);
+      var lino = r() > 0.5 ? P.floor[0] : P.floor[1];
+      ditherFill(c, 0, 0, T, T, [
+        { p: 0, c: lino }, { p: 1, c: shade(lino, -4) },
+      ]);
       px(c, 0, 0, T, 1, P.floor[3]); px(c, 0, 0, 1, T, P.floor[3]);
       for (var i = 0; i < 5; i++) px(c, (r() * T) | 0, (r() * T) | 0, 1, 1, P.floor[2]);
     } else if (theme === "street") {               // paving slabs, and their joints
-      px(c, 0, 0, T, T, P.floor[1]);
+      ditherFill(c, 0, 0, T, T, [
+        { p: 0, c: P.floor[0] }, { p: 0.6, c: P.floor[1] }, { p: 1, c: P.floor[2] },
+      ]);
       for (var k = 0; k < 26; k++) px(c, (r() * T) | 0, (r() * T) | 0, 1 + ((r() * 2) | 0), 1, P.floor[(r() * 4) | 0]);
       px(c, 0, 0, T, 1, P.floor[3]); px(c, 0, 0, 1, T, P.floor[3]);
       px(c, 0, T - 1, T, 1, P.floor[2]);
       if (r() > 0.82) for (k = 0; k < 4; k++) px(c, (r() * T) | 0, (r() * T) | 0, 2, 1, "#3d4a38");  // weeds in the joints
     } else {                                        // dirt, speckled
+      ditherFill(c, 0, 0, T, T, [
+        { p: 0, c: P.floor[0] }, { p: 0.5, c: P.floor[1] }, { p: 1, c: P.floor[2] },
+      ]);
       for (var k2 = 0; k2 < 34; k2++) {
         px(c, (r() * T) | 0, (r() * T) | 0, 1 + ((r() * 2) | 0), 1, P.floor[(r() * 4) | 0]);
       }
@@ -980,7 +1005,9 @@ window.Apocalypse = (function () {
   }
 
   function paintGround(c, P, theme, r, E) {
-    px(c, 0, 0, T, T, P.ground[1]);
+    ditherFill(c, 0, 0, T, T, [
+      { p: 0, c: P.ground[0] }, { p: 0.5, c: P.ground[1] }, { p: 1, c: P.ground[2] },
+    ]);
     for (var k = 0; k < 22; k++) px(c, (r() * T) | 0, (r() * T) | 0, 1, 1, P.ground[(r() * 3) | 0]);
     E = E || {};
     if (theme === "street") {                                  // tarmac: cracks, patches, litter
@@ -1021,7 +1048,9 @@ window.Apocalypse = (function () {
   /* --- the things that stop her ---------------------------------------- */
   function paintWall(c, P, theme, r, E) {
     E = E || {};
-    px(c, 0, 0, T, T, P.wall[1]);
+    ditherFill(c, 0, 0, T, T, [
+      { p: 0, c: P.wall[0] }, { p: 0.4, c: P.wall[1] }, { p: 1, c: P.wall[2] },
+    ]);
     if (theme === "house") {                       // papered wall: a quiet stripe
       for (var x = 2; x < T; x += 6) px(c, x, 0, 1, T, shade(P.wall[1], 9));
       for (var i = 0; i < 5; i++) px(c, (r() * T) | 0, (r() * T) | 0, 2, 2, shade(P.wall[1], -7));
@@ -1029,7 +1058,10 @@ window.Apocalypse = (function () {
     } else if (theme === "hospital") {             // glazed tile
       for (var y = 0; y < T; y += 8) {
         for (var x2 = (y % 16 ? 4 : 0); x2 < T; x2 += 8) {
-          px(c, x2, y, 7, 7, r() > 0.5 ? P.wall[0] : P.wall[1]);
+          ditherFill(c, x2, y, 7, 7, [
+            { p: 0, c: r() > 0.5 ? P.wall[0] : P.wall[1] },
+            { p: 1, c: shade(r() > 0.5 ? P.wall[0] : P.wall[1], -5) },
+          ]);
         }
       }
     } else if (theme === "road") {
@@ -1927,46 +1959,95 @@ window.Apocalypse = (function () {
   var NEAR_RATE = 1.22;                // and how much faster the near plane is
 
   function buildFar(theme) {
-    if (theme !== "street" && theme !== "road") return null;
+    if (theme !== "street" && theme !== "road" && theme !== "campsite") return null;
     var W = VW * 2, H = 96;
     var cv = mkCanvas(W, H), c = cv.getContext("2d");
     c.imageSmoothingEnabled = false;
     var r = rnd(theme === "street" ? 6100 : 6200);
 
     if (theme === "street") {
-      /* three ranks of rooflines, each one paler and flatter than the one
-         in front of it, which is what distance does to contrast */
-      [[0.30, 46, "#1b2130"], [0.55, 32, "#232a3c"], [0.85, 22, "#2c3448"]].forEach(
+      ditherFill(c, 0, 0, W, H, [
+        { p: 0, c: "#14183a" }, { p: 0.3, c: "#1e2450" },
+        { p: 0.6, c: "#2a3268" }, { p: 1, c: "#363e78" },
+      ]);
+      var sr = rnd(6150);
+      for (var si = 0; si < 120; si++) {
+        if (sr() > 0.45) {
+          var bright = sr() > 0.65;
+          px(c, (sr() * W) | 0, (sr() * (H - 30)) | 0, 1, 1,
+            bright ? "#e0e4ff" : "#90a0cc");
+        }
+      }
+      [[0.30, 46, "#222840", "#343c5a"], [0.55, 32, "#2c3450", "#404a68"], [0.85, 22, "#38425c", "#4e5878"]].forEach(
         function (rank, i) {
           var x = -20;
           while (x < W + 20) {
             var bw = 14 + ((r() * 26) | 0);
             var bh = rank[1] + ((r() * 22) | 0);
             var top = H - bh;
-            px(c, x, top, bw, bh, rank[2]);
-            px(c, x, top, bw, 1, shade(rank[2], 14));
-            if (i === 2) {                       // only the nearest rank has windows
-              for (var wy = top + 5; wy < H - 4; wy += 8) {
-                for (var wx = x + 2; wx < x + bw - 3; wx += 6) {
-                  if (r() > 0.72) px(c, wx, wy, 2, 3, r() > 0.5 ? "#4a5570" : "#8a7a4a");
+            ditherFill(c, x, top, bw, bh, [
+              { p: 0, c: rank[3] }, { p: 0.3, c: rank[2] },
+              { p: 1, c: shade(rank[2], -10) },
+            ]);
+            px(c, x, top, bw, 2, shade(rank[3], 24));
+            if (i >= 1) {
+              for (var wy = top + 5; wy < H - 4; wy += 6) {
+                for (var wx = x + 2; wx < x + bw - 3; wx += 4) {
+                  if (r() > 0.55) {
+                    var wc = r() > 0.5 ? "#c8a850" : r() > 0.3 ? "#6878a0" : "#4a5878";
+                    px(c, wx, wy, 2, 3, wc);
+                    if (wc === "#c8a850") px(c, wx, wy, 2, 1, "#e8d070");
+                  }
                 }
               }
             }
-            if (r() > 0.86) px(c, x + (bw >> 1), top - 7, 1, 7, rank[2]);   // an aerial
+            if (r() > 0.82) px(c, x + (bw >> 1), top - 7, 1, 7, rank[2]);
+            if (i === 2 && r() > 0.88) {
+              px(c, x + (bw >> 1) - 1, top - 2, 3, 2, shade(rank[3], 20));
+            }
             x += bw + 1 + i;
           }
         });
+    } else if (theme === "campsite") {
+      ditherFill(c, 0, 0, W, H, [
+        { p: 0, c: "#0e1028" }, { p: 0.3, c: "#141838" },
+        { p: 0.65, c: "#1c2040" }, { p: 1, c: "#28243a" },
+      ]);
+      var csr = rnd(6300);
+      for (var csi = 0; csi < 100; csi++) {
+        if (csr() > 0.4) px(c, (csr() * W) | 0, (csr() * (H - 28)) | 0, 1, 1,
+                              csr() > 0.6 ? "#d0d8f0" : "#8898b8");
+      }
+      for (var tx = 0; tx < W; tx += 2) {
+        var cth = 10 + ((csr() * 18) | 0);
+        if (csr() > 0.7) cth += 10;
+        px(c, tx, H - cth, 2, cth, "#141820");
+        if (cth > 14) blob(c, tx + 1, H - cth - 3, 5, 5, ["#1c2228", "#141820", "#101418"]);
+      }
     } else {
-      /* hills, and a treeline along the foot of them */
-      [[0.35, "#2a3346"], [0.62, "#314050"], [0.9, "#38495a"]].forEach(function (rank, i) {
+      ditherFill(c, 0, 0, W, H, [
+        { p: 0, c: "#1e2858" }, { p: 0.3, c: "#2e3868" },
+        { p: 0.6, c: "#445070" }, { p: 0.85, c: "#5a6478" },
+        { p: 1, c: "#6a6e70" },
+      ]);
+      [[0.35, "#344060", "#4a5878"], [0.62, "#3e4e6a", "#546882"], [0.9, "#486070", "#5e7888"]].forEach(function (rank, i) {
         var y = H - 26 - i * 12;
         for (var x = 0; x < W; x++) {
           var hgt = 12 + Math.sin(x * 0.018 + i * 2.1) * 7 + Math.sin(x * 0.005 + i) * 6;
-          px(c, x, y - hgt, 1, H - (y - hgt), rank[1]);
+          var ht = H - (y - hgt);
+          ditherFill(c, x, y - hgt, 1, Math.min(ht, 6), [
+            { p: 0, c: rank[2] }, { p: 1, c: rank[1] },
+          ]);
+          if (ht > 6) px(c, x, y - hgt + 6, 1, ht - 6, rank[1]);
+          px(c, x, y - hgt, 1, 1, shade(rank[2], 10));
         }
         if (i === 2) {
           for (var t = 0; t < W; t += 3) {
-            if (r() > 0.55) px(c, t, y - 3 - ((r() * 4) | 0), 2, 6, "#26332c");
+            if (r() > 0.5) {
+              var th = 4 + ((r() * 5) | 0);
+              px(c, t, y - 3 - th, 2, th, "#26332c");
+              blob(c, t + 1, y - 3 - th - 1, 3, 3, ["#2e3e30", "#26332c", "#1e2a1e"]);
+            }
           }
         }
       });
@@ -2571,8 +2652,6 @@ window.Apocalypse = (function () {
         var fy = openTop - L.far.height + Math.min(0, -cy * FAR_RATE * 0.06);
         c.save();
         c.beginPath(); c.rect(0, 0, VW, openTop); c.clip();
-        c.fillStyle = PAL[L.theme].amb;
-        c.fillRect(0, 0, VW, openTop);
         c.drawImage(L.far, fx, fy);
         c.drawImage(L.far, fx + L.far.width, fy);
         paintHaze(G, c);
@@ -2692,6 +2771,65 @@ window.Apocalypse = (function () {
       c.fillRect(Math.round(mo.x - cx), Math.round(mo.y - cy), mo.sz, mo.sz);
     }
 
+    /* Ambient actors — fireflies for outdoor themes, shimmer near water
+       and light sources. These live in world space and drift like the dust
+       motes do, but they glow on their own instead of needing her torch. */
+    var outdoor = L.theme === "road" || L.theme === "campsite" || L.def.key === "gates";
+    if (outdoor) {
+      if (!G.flies) {
+        G.flies = [];
+        var fr = rnd(6262);
+        for (var fi = 0; fi < 24; fi++) {
+          G.flies.push({
+            x: fr() * L.w * T, y: fr() * L.h * T,
+            vx: (fr() - 0.5) * 8, vy: (fr() - 0.5) * 6,
+            ph: fr() * 6.28, bright: fr() > 0.6,
+          });
+        }
+      }
+      for (var fj = 0; fj < G.flies.length; fj++) {
+        var fl = G.flies[fj];
+        fl.x += (fl.vx + Math.sin(G.t * 0.8 + fl.ph) * 4) * 0.016;
+        fl.y += (fl.vy + Math.cos(G.t * 0.6 + fl.ph * 1.3) * 3) * 0.016;
+        if (fl.x < 0) fl.x = L.w * T;
+        if (fl.x > L.w * T) fl.x = 0;
+        if (fl.y < 0) fl.y = L.h * T;
+        if (fl.y > L.h * T) fl.y = 0;
+        var fsx = Math.round(fl.x - cx), fsy = Math.round(fl.y - cy);
+        if (fsx < -2 || fsx > VW + 2 || fsy < -2 || fsy > VH + 2) continue;
+        var fb = fl.bright ? 0.5 + 0.4 * Math.sin(G.t * 3.5 + fl.ph) : 0.2 + 0.15 * Math.sin(G.t * 2 + fl.ph);
+        if (fb < 0.08) continue;
+        if (fl.bright) {
+          c.fillStyle = "rgba(200,220,140," + (fb * 0.3).toFixed(3) + ")";
+          c.fillRect(fsx - 1, fsy - 1, 3, 3);
+        }
+        c.fillStyle = "rgba(220,240,160," + fb.toFixed(3) + ")";
+        c.fillRect(fsx, fsy, 1, 1);
+      }
+    }
+
+    /* Shimmer — faint sparkles near light sources, giving lamps a warm halo
+       of dancing points the way lanternAt does in Long Way Round */
+    if (L.lights) {
+      for (var si = 0; si < L.lights.length; si++) {
+        var sl = L.lights[si];
+        var slx = sl.x - cx, sly = sl.y - cy;
+        if (slx < -60 || slx > VW + 60 || sly < -60 || sly > VH + 60) continue;
+        var sparkCount = sl.fire ? 6 : 3;
+        for (var sp = 0; sp < sparkCount; sp++) {
+          var sa = Math.sin(G.t * (2 + sp * 0.7) + sl.x * 0.1 + sp * 2.1);
+          if (sa < 0.3) continue;
+          var sd = 6 + sp * 4;
+          var sAngle = G.t * 0.5 + sp * 1.05 + sl.x * 0.03;
+          var spx = slx + Math.cos(sAngle) * sd;
+          var spy = sly + Math.sin(sAngle) * sd - 2;
+          c.fillStyle = sl.warm > 0 ? "rgba(255,230,160," + ((sa - 0.3) * 0.6).toFixed(3) + ")"
+                                    : "rgba(180,210,255," + ((sa - 0.3) * 0.4).toFixed(3) + ")";
+          c.fillRect(spx | 0, spy | 0, 1, 1);
+        }
+      }
+    }
+
     paintNear(G, c, cx, cy);
 
     /* the light map, blown up over the frame */
@@ -2721,6 +2859,28 @@ window.Apocalypse = (function () {
     }
     c.fillStyle = G.vig;
     c.fillRect(0, 0, VW, VH);
+
+    /* Halftone grain — a Bayer-dithered dot pattern that gives every frame
+       the same ordered-dither texture Long Way Round gets from ditherSky.
+       Pre-baked once, then composited at low opacity each frame. */
+    if (!G.grain) {
+      var gc = mkCanvas(VW, VH), gx = gc.getContext("2d");
+      for (var gy = 0; gy < VH; gy++) {
+        for (var gxx = 0; gxx < VW; gxx++) {
+          var thr = (BAYER4[gy & 3][gxx & 3] + 0.5) / 16;
+          if (thr > 0.5) {
+            gx.fillStyle = "#ffffff";
+            gx.fillRect(gxx, gy, 1, 1);
+          }
+        }
+      }
+      G.grain = gc;
+    }
+    c.globalAlpha = 0.03;
+    c.globalCompositeOperation = "overlay";
+    c.drawImage(G.grain, 0, 0);
+    c.globalCompositeOperation = "source-over";
+    c.globalAlpha = 1;
 
     /* vision cones, over the dark, because they are the warning */
     L.zombies.forEach(function (z) { drawCone(c, G, z, cx, cy); });
