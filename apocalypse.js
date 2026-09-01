@@ -1,2922 +1,4260 @@
-/* =========================================================================
-   APOCALYPSE.JS — "Ouissy at the Apocalypse"
+/* =====================================================================
+   OUISSY AT THE APOCALYPSE
+   "the world ends. you come and find me anyway."
 
-   A top-down stealth game in five levels. Ouissy is home alone when the
-   outbreak starts; the game is her getting to Anwar, and then the two of
-   them getting somewhere safe.
+   A third-person 3D stealth game. Real geometry, real lights, real
+   shadows — built on the three.js bundle in vendor/, loaded on demand
+   so the rest of the site does not pay for it.
 
-   It follows the same rules as everything else on this site: not one image
-   file and not one audio file. Every tile, every sprite, every backdrop is
-   drawn pixel by pixel onto a 320x180 canvas when the level loads, and
-   every sound is synthesised. The canvas is blown up with
-   image-rendering:pixelated so the grid stays honest.
-
-   Read it in this order:
-
-     1. CUSTOMISE ME    the words — titles, briefings, every line spoken
-     2. TUNING          how she moves, how far a zombie sees, how loud she is
-     3. LEVELS          the maps, as grids of characters, legend above them
-     4. PALETTES        one per place
-     5. PIXEL HELPERS   px, blob, dither, rnd — the same primitives as the site
-     6. SPRITES         Ouissy, Anwar, the zombies, the horse, the cats
-     7. TILE ART        an atlas per theme, baked once when a level loads
-     8. THE LEVEL       parsing a grid into solids, cover, entities, triggers
-     9. LIGHT           the torch, the lamps, and the dark between them
-    10. THE PLAYER      input, collision, noise
-    11. THE ZOMBIES     patrol, sight, hearing, the close call
-    12. WIRE PANEL      the salvaged-panel mini-game
-    13. KEYPAD + NOTE   the code she finds and the door it opens
-    14. STORY           briefings, dialogue, the beats between levels
-    15. THE GAME LOOP   input -> step -> camera -> paint
-    16. SOUND           Web Audio only
-    17. PUBLIC API      Apocalypse.start() / .stop()
-
-   Public API used by script.js:
+   Public API:
      Apocalypse.start()   title card, then Level 1
-     Apocalypse.stop()    tear the loop down and silence it
-   ========================================================================= */
-window.Apocalypse = (function () {
+     Apocalypse.stop()    tears the loop down and silences it
+
+   There are no image files and no audio files in this chapter. Every
+   surface is a procedural texture painted into an offscreen canvas,
+   every sound is an oscillator, and every character is a rig built out
+   of primitives at load time.
+   ===================================================================== */
+(function () {
   "use strict";
 
-  /* =======================================================================
-     1. CUSTOMISE ME — the words. Nothing outside this block is text.
-     ======================================================================= */
-  var AP = {
-    title: "OUISSY AT THE APOCALYPSE",
-    tagline: "the world ends. you come and find me anyway.",
+  /* =========================================================
+     0 — TUNING
+     Everything the game feels like, in one place. The distances
+     are still quoted in the original pixel units (16 px to a
+     tile) so the stealth reads the way it was designed; PX turns
+     them into world units at the top of the file and nothing
+     below has to think about it again.
+     ========================================================= */
+  var T      = 16;          /* the old pixel tile, kept as the unit of design */
+  var TILE   = 2.0;         /* world units per tile — a 2 m room grid */
+  var PX     = TILE / T;    /* one design pixel, in world units */
 
-    /* The card before each level: where she is and what she is doing. */
-    levels: [
-      { name: "HOME",          card: "Level 1", sub: "Your parents are away. The news is still on." },
-      { name: "THE STREETS",   card: "Level 2", sub: "He's asleep at the hospital. That's where you're going." },
-      { name: "THE HOSPITAL",  card: "Level 3", sub: "Find him before the corridors fill up." },
-      { name: "THE ROAD",      card: "Level 4", sub: "Out of the city, any way you can." },
-      { name: "THE GATES",     card: "Level 5", sub: "They only take you if you're clean." },
-    ],
-
-    /* THE REUNION — Level 3.
-
-       Written to be underplayed. Neither of them makes a speech; they are
-       both still working out that the other one is really there. A line
-       with no words at all is a beat of silence, and it is held on screen
-       like any other line — those are doing as much work here as the
-       spoken ones, so please keep them if you rewrite around them.
-
-       ["ANWAR", "..."]  he says it   ["OUISSY", "..."]  she says it
-       ["", "..."]       narration    ["", ""]           a silence  */
-    reunion: {
-      waking: [
-        ["", "He is on his side with one arm out of the blanket. She says his name twice before anything happens."],
-        ["ANWAR", "...Ouissy?"],
-        ["ANWAR", "What time is it."],
-        ["OUISSY", "We have to go."],
-        ["ANWAR", "Okay."],
-        ["", "He doesn't ask why. That tells her he has already heard something."],
-      ],
-      hiding: [
-        ["", "The door goes shut behind them. There is a bolt on it, and the bolt works."],
-        ["", ""],
-        ["ANWAR", "You walked here."],
-        ["OUISSY", "Yeah."],
-        ["ANWAR", "From the house."],
-        ["OUISSY", "Yeah."],
-        ["", ""],
-        ["ANWAR", "You're insane."],
-        ["OUISSY", "I know."],
-        ["", "He laughs, once, and it comes out wrong, and then he stops."],
-        ["ANWAR", "...Come here."],
-        ["", "They stay like that for a while. Neither of them says anything for a while."],
-        ["ANWAR", "I kept thinking, if this is real, she's on her own in that house."],
-        ["OUISSY", "I'm not on my own."],
-        ["ANWAR", "No."],
-        ["", ""],
-        ["OUISSY", "So what do we do."],
-        ["ANWAR", "I don't know yet."],
-        ["ANWAR", "Give me a minute and we'll work it out."],
-        ["OUISSY", "Okay."],
-        ["", ""],
-        ["", "There has been a radio talking on the shelf behind them for the whole of that, too quiet to be words."],
-        ["OUISSY", "...How long has that been on?"],
-      ],
-    },
-
-    /* The code on the scrap of paper in the corner shop in Level 2,
-       and therefore the code on the staff gate. Four digits. Change it to
-       something that means something and it changes in both places. */
-    gateCode: "4180",
-
-    /* The how-to card, shown once before Level 1. */
-    howTo: [
-      ["← ↑ ↓ →", "move (or WASD)"],
-      ["SHIFT", "hold to creep — slower, but almost silent"],
-      ["E or SPACE", "use whatever you're standing at"],
-      ["ESC", "pause"],
-      ["on a phone", "the pad and the two buttons do all of it"],
-      ["", ""],
-      ["the dark", "you only see as far as your torch. Lit rooms show more"],
-      ["cover", "step into a wardrobe, a bush, or behind a car and they lose you"],
-      ["noise", "running is loud. They come and look at where the sound was"],
-      ["getting caught", "you get pulled back to somewhere safe. That's all. Try again"],
-    ],
-  };
-
-  /* =======================================================================
-     2. TUNING — almost every complaint about how this plays is one of these
-     ======================================================================= */
   var TUNE = {
-    tile: 16,                 // world units per tile
-    walk: 52,                 // px/sec
-    creep: 26,                // px/sec while SHIFT is held
-    accel: 420,
-    friction: 520,
+    walk:        52 * PX,
+    creep:       26 * PX,
+    accel:      420 * PX,
+    friction:   520 * PX,
 
-    torch: 64,                // how far she sees, in px
-    torchCreep: 54,           // a smaller pool while creeping — she is careful
-    lampFall: 1.0,
+    torch:       64 * PX,
+    torchCreep:  54 * PX,
 
-    noiseWalk: 60,            // how far walking carries, in px
-    noiseCreep: 0,            // creeping makes none
-    noiseDoor: 110,           // opening a door is loud
-    noiseSpark: 130,          // so is a wire going wrong
+    noiseWalk:   60 * PX,
+    noiseCreep:   0,
+    noiseDoor:  110 * PX,
+    noiseSpark: 130 * PX,
 
-    zSpeed: 26,               // a zombie's shuffle
-    zChase: 58,               // and what it does when it has seen her: faster
-                              // than she walks, on purpose. Being seen has
-                              // to mean breaking its line of sight, not
-                              // simply jogging away from it.
-    zReact: 0.5,              // but it rears up first, and that is her moment
-    zSight: 84,               // how far it sees down its own facing
-    zCone: 0.62,              // half-angle of that, in radians (~35 degrees)
-    zNear: 20,                // it notices anything this close whatever way it faces
-    zLose: 2.0,               // seconds out of sight before it gives up
-    zInvestigate: 4.0,        // seconds it will stand and look at a noise
+    zSpeed:      26 * PX,
+    zChase:      58 * PX,
+    zReact:      0.5,
+    zSight:      84 * PX,
+    zCone:       0.62,
+    zNear:       20 * PX,
+    zLose:       2.0,
+    zInvestigate: 4.0,
 
-    caughtHold: 1.5,          // how long the close-call beat holds
-    camLerp: 0.12,
+    caughtHold:  1.5,
+    grabWindow:  1.6,
+    camLerp:     0.12,
+
+    playerR:     0.34 * TILE,   /* collision radius */
+    zombieR:     0.34 * TILE,
+    wallH:       3.4,
+    lowH:        0.85,
+    tallH:       2.6,
+    eye:         1.52
   };
 
-  /* =======================================================================
-     3. LEVELS — grids of characters, one per 16px tile.
+  /* =========================================================
+     1 — THE MAPS
+     The grids are the level design. Nothing here is generated.
 
-        LEGEND
-          space  nothing (outside the map)
-          .      floor, walkable
-          ,      outdoor ground
-          #      wall — blocks her and blocks sight
-          o      tall furniture / hedge / car — blocks her and blocks sight
-          =      low furniture — blocks her, sight passes over it
-          h      a hiding place: walkable, and while she is in it nothing
-                 can see her (wardrobe, bush, behind the counter, a curtain)
-          d      a door she can just open
-          D      a door locked with a code — needs the note
-          P      a door with no power — needs the wire panel
-          W      the wire panel itself
-          N      the note with the code on it
-          T      the television / a radio — a story beat
-          C      a car, in Level 4: the one she gets running
-          A      Anwar
-          H      the horse
-          S      where she starts
-          X      the way out — reaching it ends the level
-          z      a zombie
-          l      a lamp: lights the room around it, walkable
-          L      a lamp on a post: lights the street, solid
-     ======================================================================= */
-  var LEVELS = [];
+       space  outside the map          l  floor lamp (walkable)
+       .      floor                    L  lamp post (solid)
+       ,      outdoor ground           G  gate
+       #      wall                     Q  quarantine desk
+       o      tall — blocks sight      v  window
+       =      low — sight passes over  B  bed
+       h      hiding place             F  sofa
+       d      door                     K  counter
+       D      coded door               n  nightstand
+       P      dead door (no power)     u  chair
+       W      wire panel               q  small item
+       N      the note                 r  rug
+       T      television / radio       f  fridge
+       C      the car that starts      i  item
+       A      Anwar                    c  parked car / crate
+       H      the horse                y  medical debris
+       S      start                    Y  large medical unit
+       X      the way out              j  storage
+       z      one of them              w  woodpile
+       x      one of them (alt)        b  bedroll
+       *      fire pit                 g  gathering point
+       ~      stream
+     ========================================================= */
 
-  /* ---- LEVEL 1 — HOME -------------------------------------------------
-     A house at night with the power out: her room and the landing above,
-     the living room, the kitchen and the garage below. The television is
-     still on in the living room, which is where the news is. The only way
-     out is the garage door, and the garage door has no power.
-     --------------------------------------------------------------------- */
-  LEVELS[0] = {
-    theme: "house",
-    name: "HOME",
-    dark: 0.66,                 // how black the unlit parts of the map go
-    grade: [168, 108, 52, 0.14],
-    haze: [36, 44, 66, .30],
-    grid: [
-      "####vv####################v#######",
-      "v.h..BB....#..=.....#.=nn.......o#",
-      "#....BB....#........#....BB......#",
-      "#...S......#....h...#..i........h#",
-      "#..=...n...#........#............#",
-      "#..........#...=....#.o..=......o#",
-      "#####d###########d#########d######",
-      "#................................#",
-      "#..=.........................o...#",
-      "#................................#",
-      "#######d########d#########d#######",
-      "#.nn......FFF..#fKKK.h...#.o....o#",
-      "#.uT......FFF..#....K....#...W...#",
-      "v.......rr=r...#....K....#.......#",
-      "v.q.==..rrrr...#....K....#o.....o#",
-      "#...==....o....#...i.....#.......#",
-      "#qh............#KKKKKKK..#.......#",
-      "#..............#.........#.......#",
-      "#############################P####",
-      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,X,,,#",
-    ],
-    /* The objectives, in order. Each one names the thing that clears it. */
-    steps: [
-      { task: "The TV is still on downstairs. Go and see.", clears: "tv" },
-      { task: "Get out. The garage door has no power.", clears: "panel" },
-      { task: "The garage door is open. Go.", clears: "exit" },
-    ],
-  };
+  var MAPS = {};
 
+  MAPS.home = [
+    "####vv####################v#######",
+    "v.h..BB....#..=.....#.=nn.......o#",
+    "#....BB....#........#....BB......#",
+    "#...S......#....h...#..i........h#",
+    "#..=...n...#........#............#",
+    "#..........#...=....#.o..=......o#",
+    "#####d###########d#########d######",
+    "#................................#",
+    "#..=.........................o...#",
+    "#................................#",
+    "#######d########d#########d#######",
+    "#.nn......FFF..#fKKK.h...#.o....o#",
+    "#.uT......FFF..#....K....#...W...#",
+    "v.......rr=r...#....K....#.......#",
+    "v.q.==..rrrr...#....K....#o.....o#",
+    "#...==....o....#...i.....#.......#",
+    "#qh............#KKKKKKK..#.......#",
+    "#..............#.........#.......#",
+    "#############################P####",
+    "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,X,,,#"
+  ];
 
-  /* ---- LEVEL 2 — THE STREETS ------------------------------------------
-     Three roads across, three roads down, and the blocks between them. It
-     is deliberately bigger and more open than the house: there is no one
-     way through it, and every route is a trade. The main road east is the
-     short one and the worst one. The alleys are slow and dark and safe.
-     And behind the shops there is a staff gate with a code on it, which is
-     written on a scrap of paper somebody dropped in the corner shop —
-     find that and the walk gets a great deal shorter.
-     --------------------------------------------------------------------- */
-  LEVELS[1] = {
-    theme: "street",
-    name: "THE STREETS",
-    base: ",",
-    dark: 0.60,
-    grade: [70, 104, 176, 0.16],
-    haze: [40, 52, 82, .42],
-    grid: [
-      "################################################",
-      "####,S,.############.,,.################.,,.####",
-      "####,,,.############.,,.################.,,.####",
-      "####,,,.############.,,.################.,,.####",
-      "#....,,L...........c.,,L.................,,L...#",
-      "#,,,.,,.,,z,,,,,,,,,.,,.,,,,,,,,,,,,,,,,.,,.,,,#",
-      "#,,,.,,.h,,,,.,,,,,,.,,.,,,,z,,,,,,,,,,,.,,.,,,#",
-      "#....,,.h...........h,,................c.,,....#",
-      "####.,,.#####.######h,,.################.,,.####",
-      "####.,,.#####.######.,,...i..............,,.####",
-      "####.,,.#####x######.,,.################.,,.####",
-      "####.,,.#####.######.,,.################.,h.####",
-      "####h,,.#####.######.,,c################.,h.####",
-      "#...h,,..............,,c.................,,....#",
-      "#,,,.,,.,,,,,,,,,z,,.,,.,,,,,,,,,,z,,,,,.,,.,,,#",
-      "#,,,.,,.,,,,,,,,,,,,.,,.,,,,,,,,,,,,,,,,.,,.i,,#",
-      "#....,,.....L....hh..,,.......h..........,,....#",
-      "####.,,.##d#########.,,.#######.########.,,.####",
-      "####.,,......#######.,,.#######.#....hh#.,,.####",
-      "####.,,......#######.,,.#######x#..c...#.,,.####",
-      "####.,,cKK...#######.,,.#######.D..c...#.,,.####",
-      "####.,,c...N.#######.,,.#######.#....c.#.,,.####",
-      "####.,,.h....#######.,,.#######.#......#.,,.####",
-      "####.,,.#.##########.,,.###########.####.z,.####",
-      "#....,,L......hh.....,,L.........##.####.,,.####",
-      "#,,,.,,.,,,,,,,,,,,,.,,.z,,,,i,,,##.#####,,#####",
-      "#,,,.,,.,,,,,,,,,,,,.,,.,,,,..x...L.......L..h.#",
-      "#....,,.....hh.....c.,,....hh.........c.z..cc.h#",
-      "####.,,.#########################...........X..#",
-      "################################################",
-    ],
-    steps: [
-      { task: "Cross town to the hospital — south, then east.", clears: "exit" },
-    ],
-  };
+  MAPS.streets = [
+    "                                                ",
+    "                                                ",
+    "                                                ",
+    "################################################",
+    "####,S,.############.,,.################.,,.####",
+    "####,,,.############.,,.################.,,.####",
+    "####,,,.############.,,.################.,,.####",
+    "#....,,L...........c.,,L.................,,L...#",
+    "#,,,.,,.,,z,,,,,,,,,.,,.,,,,,,,,,,,,,,,,.,,.,,,#",
+    "#,,,.,,.h,,,,.,,,,,,.,,.,,,,z,,,,,,,,,,,.,,.,,,#",
+    "#....,,.h...........h,,................c.,,....#",
+    "####.,,.#####.######h,,.################.,,.####",
+    "####.,,.#####.######.,,...i..............,,.####",
+    "####.,,.#####x######.,,.################.,,.####",
+    "####.,,.#####.######.,,.################.,h.####",
+    "####h,,.#####.######.,,c################.,h.####",
+    "#...h,,..............,,c.................,,....#",
+    "#,,,.,,.,,,,,,,,,z,,.,,.,,,,,,,,,,z,,,,,.,,.,,,#",
+    "#,,,.,,.,,,,,,,,,,,,.,,.,,,,,,,,,,,,,,,,.,,.i,,#",
+    "#....,,.....L....hh..,,.......h..........,,....#",
+    "####.,,.##d#########.,,.#######.########.,,.####",
+    "####.,,......#######.,,.#######.#....hh#.,,.####",
+    "####.,,......#######.,,.#######x#..c...#.,,.####",
+    "####.,,cKK...#######.,,.#######.D..c...#.,,.####",
+    "####.,,c...N.#######.,,.#######.#....c.#.,,.####",
+    "####.,,.h....#######.,,.#######.#......#.,,.####",
+    "####.,,.#.##########.,,.###########.####.z,.####",
+    "#....,,L......hh.....,,L.........##.####.,,.####",
+    "#,,,.,,.,,,,,,,,,,,,.,,.z,,,,i,,,##.#####,,#####",
+    "#,,,.,,.,,,,,,,,,,,,.,,.,,,,..x...L.......L..h.#",
+    "#....,,.....hh.....c.,,....hh.........c.z..cc.h#",
+    "####.,,.#########################...........X..#",
+    "################################################"
+  ];
 
+  MAPS.hospital = [
+    "########################################",
+    "##################..####################",
+    "##oo............##..##..Bh.Bh.Bh.Bh.B.##",
+    "##......=====...##.l##..B..B.lB..B..B.##",
+    "##...W.o........##..##................##",
+    "##.....o.............P........A.......##",
+    "##....x..............P................##",
+    "##.l............##..##................##",
+    "##......=====...##.z##..B..B..B..B..B.##",
+    "##..h.........h.##.l##..BhlBh.Bh.Bh.B.##",
+    "##..............##..##................##",
+    "##################..####################",
+    "#....lyy...x..l.y.......l.....i..yl....#",
+    "#..y....x..Yy.............yy.......Y...#",
+    "#########.########..####################",
+    "##.......j##.....#....................##",
+    "##.X......##.ooo.#...KKKKKK.....=====.##",
+    "##........##.ooo.#.l...z....hhY....x..##",
+    "##........##h....#...............h....##",
+    "#########.####.###..####.###############",
+    "########......i.......Y........#########",
+    "########..KKKKKK...l..======y..#########",
+    "########....l...............l..#########",
+    "########...h....BB..yy....h....#########",
+    "########...........S......x....#########",
+    "########################################"
+  ];
 
-  /* ---- LEVEL 3 — THE HOSPITAL -----------------------------------------
-     Entrance hall, one corridor east to west and one crossing it, the west
-     wing with the plant room in it, and Ward C behind a set of doors with
-     no power. He is in the far bay of Ward C.
+  MAPS.escape = [
+    "####################################",
+    "####################################",
+    "##......#.##########....l........###",
+    "##..S...d.##########..=.=.=.=.=..###",
+    "##.B..h.#.##########...h.....h...###",
+    "##......#l##########..=...=...=..###",
+    "#########.##########d............###",
+    "#########x##########.###############",
+    "##.........x.zl...i...x.l.x....l..##",
+    "##.............................z..##",
+    "#########.##########################",
+    "##......#.###........###.....i...###",
+    "##.h..h.#l###..h.xh..###.o..o..o.###",
+    "##...x..#.......l...........l.B..###",
+    "##......#.###.B....B.###...z.....###",
+    "##.h....#i###..hx.h..###.o..o..o.###",
+    "##......#.###......x.###....d....###",
+    "##,z,,,,,,,,,,,,,,,,,,,,,,.....#####",
+    "##,,cc,,cc,,,i,,cc,,cc,,,,,....#####",
+    "##,,,,l,,,,,C,,,,,,l,,,x,,.....#####",
+    "##,,,,,,,,,,,,,,,,,,,,,,,,##########",
+    "####################################"
+  ];
 
-     There is no clock on the screen. What there is instead: the room tone
-     climbs the whole time she is in here, and every twenty seconds or so
-     one more of them finds its way in through the front. Nothing about
-     that is announced. She is just meant to notice that it is getting
-     worse and stop dawdling.
-     --------------------------------------------------------------------- */
-  LEVELS[2] = {
-    theme: "hospital",
-    name: "THE HOSPITAL",
-    dark: 0.63,
-    grade: [104, 176, 168, 0.13],
-    haze: [58, 84, 92, .34],
-    deadZone: [20, 1, 39, 10],          // Ward C: no doors, and no lights either
-    pressure: true,
-    grid: [
-      "########################################",
-      "##################..####################",
-      "##oo............##..##..Bh.Bh.Bh.Bh.B.##",
-      "##......=====...##.l##..B..B.lB..B..B.##",
-      "##...W.o........##..##................##",
-      "##.....o.............P........A.......##",
-      "##....x..............P................##",
-      "##.l............##..##................##",
-      "##......=====...##.z##..B..B..B..B..B.##",
-      "##..h.........h.##.l##..BhlBh.Bh.Bh.B.##",
-      "##..............##..##................##",
-      "##################..####################",
-      "#....lyy...x..l.y.......l.....i..yl....#",
-      "#..y....x..Yy.............yy.......Y...#",
-      "#########.########..####################",
-      "##.......j##.....#....................##",
-      "##.X......##.ooo.#...KKKKKK.....=====.##",
-      "##........##.ooo.#.l...z....hhY....x..##",
-      "##........##h....#...............h....##",
-      "#########.####.###..####.###############",
-      "########......i.......Y........#########",
-      "########..KKKKKK...l..======y..#########",
-      "########....l...............l..#########",
-      "########...h....BB..yy....h....#########",
-      "########...........S......x....#########",
-      "########################################",
-    ],
-    steps: [
-      { task: "Ward C has no power on the doors. Find the plant room.", clears: "panel" },
-      { task: "Ward C is open. He's in there somewhere.", clears: "anwar" },
-      { task: "Get off the corridor. Anywhere with a door that shuts.", clears: "exit" },
-    ],
-  };
+  MAPS.roadside = [
+    "                                                ",
+    "                                                ",
+    "                                                ",
+    "################################################",
+    "#,o,,,,,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,o.CS..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,o..l..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,o..h..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,o.....oooooooooo..ooooooooooooooooooooo,,,,,,#",
+    "#,o.......l.h............z..h......l.....,,,,,,#",
+    "#,o............z....h.l...........h......,,,,,,#",
+    "#,o.....ooooooooooooooooooooo..oooooooo..,,,,,,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,..,,,,,,#",
+    "#,o...z.o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,..,,,,,,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,..................,#",
+    "#,o..h..o,,,,,,,,,,,,,,,,,,,...l.........z..h.,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,......####d####...,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,...h..#.......#...,#",
+    "#,o..l..o,,,,,,,,,,,,,,,,,,,......#.==..=.#...,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,......#...H...#h..,#",
+    "#,o..z..o,,,,,,,,,,,,,,,,,,,......#.......#...,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,......#########...,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,..h..z.........l..,#",
+    "#,o,,,,,o,,,,,,,,,,,,,,,,,,,..................,#",
+    "################################################"
+  ];
 
+  MAPS.campsite = [
+    "                             ",
+    "                             ",
+    "                             ",
+    ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,o,,,,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,,,,,,o,,,,,,,,",
+    ",,,o,,,,,,,,,,,~,,,,,,,,,,,,,",
+    ",,,,,,w,,,,,,,,~,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,~,,,,,,,,o,,,,",
+    ",,,,,,,,,,g,,,,~,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,~,,,,b,,,,,,,,",
+    ",,,,,,,,,,g,,,,,,,,,,,,,,,,,,",
+    ",,,,,S,,,,,,,,,,,,,,b,,,,,,,,",
+    ",,,,,,,,,,,,,,,,,w,,,,,,o,,,,",
+    ",,o,,,,,,,,,,,,,,,,,,,,,,,,,o",
+    ",,,,,,,,,,,,w,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
+    ",,,,o,,,,,,,,,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,,,,,,,o,,,,,,,"
+  ];
 
-  /* ---- LEVEL 4 — THE ROAD ---------------------------------------------
-     Two places, one journey. First the hospital again, which is a great
-     deal worse than it was last night, and a car park with something in it
-     that might start. Then a lane twenty miles out of town, where the tank
-     runs dry and the rest of the way is somebody's horse.
+  MAPS.gates = [
+    "                                    ",
+    "                                    ",
+    "                                    ",
+    "####################################",
+    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+    "#,,,,,,,,,,,,,#..........#....L....#",
+    "#,,,,,,,,,,,,,#.L......L.#.L####.L.#",
+    "#,,,,,,,,,,,,,#....===...#..####...#",
+    "#,,,h,,,,,,,,,#.....Q....#.........#",
+    "#.............#.L........#.........#",
+    "#S............G..........G......X..#",
+    "#.............#........L.#.........#",
+    "#,,,,,h,,h,,,,#..........#.........#",
+    "#,,,,,,,,,,,,,#..======..#..####...#",
+    "#,,,,,,,,,,,,,#.L......L.#.L####.L.#",
+    "#,,,,,,,,,,,,,#..........#.........#",
+    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
+    "####################################"
+  ];
 
-     The swap between the two is the drive itself, which is not a thing she
-     plays — it is a thing that happens, painted over the whole canvas.
-     --------------------------------------------------------------------- */
-  LEVELS[3] = {
-    theme: "hospital",
-    key: "escape",
-    name: "GETTING OUT",
-    dark: 0.68,
-    grade: [96, 150, 170, 0.12],
-    haze: [46, 62, 76, .32],
-    grid: [
-      "####################################",
-      "####################################",
-      "##......#.##########....l........###",
-      "##..S...d.##########..=.=.=.=.=..###",
-      "##.B..h.#.##########...h.....h...###",
-      "##......#l##########..=...=...=..###",
-      "#########.##########d............###",
-      "#########x##########.###############",
-      "##.........x.zl...i...x.l.x....l..##",
-      "##.............................z..##",
-      "#########.##########################",
-      "##......#.###........###.....i...###",
-      "##.h..h.#l###..h.xh..###.o..o..o.###",
-      "##...x..#.......l...........l.B..###",
-      "##......#.###.B....B.###...z.....###",
-      "##.h....#i###..hx.h..###.o..o..o.###",
-      "##......#.###......x.###....d....###",
-      "##,z,,,,,,,,,,,,,,,,,,,,,,.....#####",
-      "##,,cc,,cc,,,i,,cc,,cc,,,,,....#####",
-      "##,,,,l,,,,,C,,,,,,l,,,x,,.....#####",
-      "##,,,,,,,,,,,,,,,,,,,,,,,,##########",
-      "####################################",
-    ],
-    steps: [
-      { task: "Out of the building. Then find anything with four wheels.", clears: "car" },
-      { task: "The tank is dry. Find something else that can carry two.", clears: "horse" },
-    ],
-  };
+  /* =========================================================
+     2 — PALETTES AND LEVEL DEFINITIONS
+     Every location gets its own light, its own materials and its
+     own grade. The palette is read by the world builder, the
+     lighting and the post chain, so changing one line here
+     changes the whole look of a place.
+     ========================================================= */
 
-  /* The second half of Level 4. It is not in LEVELS because it is not its
-     own level — she does not get a card for it, she is already going. */
-  var SUBMAPS = {
-    roadside: {
-      theme: "road",
-      key: "roadside",
-      name: "THE ROAD",
-      base: ",",
-      dark: 0.44,                 // dawn: the first level she can actually see in
-      grade: [214, 176, 108, 0.13],
-      haze: [150, 162, 186, .34],
-      grid: [
-      "################################################",
-      "#,o,,,,,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,o.CS..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,o..l..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,o..h..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,o.....oooooooooo..ooooooooooooooooooooo,,,,,,#",
-      "#,o.......l.h............z..h......l.....,,,,,,#",
-      "#,o............z....h.l...........h......,,,,,,#",
-      "#,o.....ooooooooooooooooooooo..oooooooo..,,,,,,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,..,,,,,,#",
-      "#,o...z.o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,..,,,,,,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,..................,#",
-      "#,o..h..o,,,,,,,,,,,,,,,,,,,...l.........z..h.,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,......####d####...,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,...h..#.......#...,#",
-      "#,o..l..o,,,,,,,,,,,,,,,,,,,......#.==..=.#...,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,......#...H...#h..,#",
-      "#,o..z..o,,,,,,,,,,,,,,,,,,,......#.......#...,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,......#########...,#",
-      "#,o.....o,,,,,,,,,,,,,,,,,,,..h..z.........l..,#",
-      "#,o,,,,,o,,,,,,,,,,,,,,,,,,,..................,#",
-      "################################################",
-      ],
-    },
-  };
-
-
-  /* ---- LEVEL 5 — THE GATES --------------------------------------------
-     Almost no game in this one, on purpose. The road up to the fence, a
-     holding pen with a bench and a table in it, and the compound on the
-     other side. What happens here is the protocol: they are looked at,
-     they are given the serum, and then somebody opens a gate for them.
-
-     It is the quiet after four levels of not being able to stop, and it
-     should feel like being allowed to sit down.
-     --------------------------------------------------------------------- */
-
-  /* ---- the depth test bench ------------------------------------------
-     Not part of the game. A small yard built to show every rule of the
-     depth system working at once, so it can be judged on its own before
-     any real location is built on top of it:
-
-       a far skyline scrolling at a fraction of the camera's rate
-       haze thinning the top of the frame
-       walls and tall props with lit tops, side faces and cast shadows
-       a colonnade she walks behind and in front of, to prove occlusion
-       a lamp and a fire as point lights, one steady and one flickering
-       dust in the beams, and a near plane drifting over everything
-     --------------------------------------------------------------------- */
-  SUBMAPS.depthtest = {
-    theme: "street",
-    key: "depthtest",
-    name: "DEPTH TEST",
-    base: ",",
-    dark: 0.22,
-    grade: [70, 104, 176, 0.11],
-    haze: [40, 52, 82, .40],
-    grid: [
-      "                                ",
-      "                                ",
-      "                                ",
-      "################################",
-      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,,oo,,,,oo,,,,oo,,,,oo,,,,oo,,#",
-      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,,,,,,,,,,,,,,S,,,,,,,,,,,,,,,#",
-      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,,cc,,,,,,,,,,,,,,,,,,,,,cc,,,#",
-      "#,,cc,,,,,,L,,,,,*,,l,,,,,,cc,,#",
-      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#nn,,,,,,,,,,,,,,,,,,,,,,,,,,nn#",
-      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "################################",
-    ],
-    steps: [{ task: "walk behind the posts, and back in front of them.", clears: "never" }],
-  };
-
-  LEVELS[4] = {
-    theme: "road",
-    key: "gates",
-    name: "THE GATES",
-    base: ",",
-    dark: 0.30,                   // full morning. Nothing is hiding out here
-    grade: [214, 176, 108, 0.13],
-    haze: [150, 168, 190, .30],
-    grid: [
-      "####################################",
-      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-      "#,,,,,,,,,,,,,#..........#....L....#",
-      "#,,,,,,,,,,,,,#.L......L.#.L####.L.#",
-      "#,,,,,,,,,,,,,#....===...#..####...#",
-      "#,,,h,,,,,,,,,#.....Q....#.........#",
-      "#.............#.L........#.........#",
-      "#S............G..........G......X..#",
-      "#.............#........L.#.........#",
-      "#,,,,,h,,h,,,,#..........#.........#",
-      "#,,,,,,,,,,,,,#..======..#..####...#",
-      "#,,,,,,,,,,,,,#.L......L.#.L####.L.#",
-      "#,,,,,,,,,,,,,#..........#.........#",
-      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-      "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-      "####################################",
-    ],
-    steps: [
-      { task: "Go up to the gate. Do what they tell you.", clears: "hail" },
-      { task: "Wait at the table. They have to look at both of you.", clears: "check" },
-      { task: "They're opening the inner gate. Go in.", clears: "exit" },
-    ],
-  };
-
-  /* =======================================================================
-     4. PALETTES — one per place. Everything drawn for a level pulls its
-        colours from here, so a whole location can be re-lit in one block.
-     ======================================================================= */
   var PAL = {
     house: {
-      floor: ["#6b4f34", "#5e442c", "#523a25", "#7a5b3d"],
-      wall:  ["#3b3750", "#2e2b40", "#232032", "#4b4767"],
-      trim:  "#6b5f48",
-      cover: ["#8a6642", "#6e4f33", "#523a25"],
-      tall:  ["#4a3a2e", "#3a2d24", "#2b211a"],
-      hide:  ["#3d3348", "#2f2739", "#221c2a"],
-      ground:["#3a3a42", "#33333b", "#2c2c33"],
-      amb:   "#0f1120",
+      floor:   0x7a5e3e, floor2: 0x604a30,
+      wall:    0x4a4260, wallTop: 0x6a6088,
+      cover:   0x9a7650, tall:   0x50402c,
+      ambient: 0x0a0c18, fogNear: 0x0b0e1c,
+      key:     0xffd9a8, sky:    0x0a0c1c,
+      accent:  0xc08a52
     },
     street: {
-      floor: ["#4c505c", "#444754", "#3b3e49", "#5b606e"],   // pavement, catching the sky
-      wall:  ["#2b2f3b", "#232733", "#1a1d27", "#363b4a"],   // the buildings behind it
-      trim:  "#6a7082",
-      cover: ["#4a3f52", "#3c3243", "#2e2634"],
-      tall:  ["#2a3a34", "#213028", "#19241f"],
-      hide:  ["#26402f", "#1d3325", "#15261b"],
-      ground:["#26282f", "#202229", "#1a1c22"],              // tarmac, much darker
-      amb:   "#0e1020",
+      floor:   0x586878, floor2: 0x46545f,
+      wall:    0x384454, wallTop: 0x53637a,
+      cover:   0x5a3e36, tall:   0x384e44,
+      ambient: 0x080c18, fogNear: 0x0a0f1e,
+      key:     0xffcf90, sky:    0x0a1024,
+      accent:  0x6e8296
     },
     hospital: {
-      floor: ["#93a3a8", "#82929a", "#6f7f88", "#a5b4b8"],
-      wall:  ["#5b6d76", "#4c5d66", "#3d4c55", "#6c7e88"],
-      trim:  "#9fb0b6",
-      cover: ["#7a8a92", "#68787f", "#56656c"],
-      tall:  ["#4a5a62", "#3c4a52", "#2e3a42", "#5a6a72"],
-      hide:  ["#3f5560", "#33454f", "#26343c"],
-      ground:["#5b6d76", "#4c5d66", "#3d4c55"],
-      amb:   "#101c26",
+      floor:   0x9aacb2, floor2: 0x8496a0,
+      wall:    0x647880, wallTop: 0x8ea2aa,
+      cover:   0xa0b4ba, tall:   0x54666e,
+      ambient: 0x0c1820, fogNear: 0x0d1a24,
+      key:     0xd8f2ec, sky:    0x08141c,
+      accent:  0x68a89c
     },
     road: {
-      floor: ["#6a5a3e", "#5c4d34", "#4e412b", "#7a6a4c"],   // the lane: dirt and gravel
-      wall:  ["#4a4034", "#3c342a", "#2e2820", "#5a5042"],   // barns and field walls
-      trim:  "#7e6f52",
-      cover: ["#5a4a3a", "#4a3c2e", "#3a2f24"],
-      tall:  ["#3d5236", "#31432c", "#253422"],
-      hide:  ["#35492e", "#2a3a25", "#1f2b1c"],
-      ground:["#3f5236", "#36462d", "#2c3a26"],              // and grass either side
-      amb:   "#1a1a2c",
+      floor:   0x7a6a4e, floor2: 0x655743,
+      wall:    0x584e40, wallTop: 0x7d7060,
+      cover:   0x6a5b45, tall:   0x4e7050,
+      ambient: 0x141428, fogNear: 0x2a2c44,
+      key:     0xffd9a0, sky:    0x2a2b52,
+      accent:  0x4a6838
     },
+    campsite: {
+      floor:   0x685c42, floor2: 0x54492f,
+      wall:    0x4a3820, wallTop: 0x6a5434,
+      cover:   0x5a4a30, tall:   0x3a6438,
+      ambient: 0x0e0e20, fogNear: 0x141630,
+      key:     0xffb86a, sky:    0x141838,
+      accent:  0x3a5e30
+    }
   };
 
-  /* =======================================================================
-     5. PIXEL HELPERS — the same primitives the rest of the site draws with
-     ======================================================================= */
-  var BAYER4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
-
-  function px(c, x, y, w, h, col) {
-    c.fillStyle = col;
-    c.fillRect(x | 0, y | 0, Math.max(1, w | 0), Math.max(1, h | 0));
-  }
-
-  /* a deterministic little generator, so a level looks the same every time
-     she plays it — nothing here is allowed to shuffle between visits */
-  function rnd(seed) {
-    var s = seed | 0;
-    return function () {
-      s = (s * 1103515245 + 12345) & 0x7fffffff;
-      return s / 0x7fffffff;
-    };
-  }
-
-  function ditherFill(c, x0, y0, w, h, stops) {
-    for (var y = 0; y < h; y++) {
-      var t = y / (h - 1 || 1), i = 0;
-      while (i < stops.length - 2 && t > stops[i + 1].p) i++;
-      var a = stops[i], b = stops[i + 1];
-      var lt = (t - a.p) / ((b.p - a.p) || 1);
-      for (var x = 0; x < w; x++) {
-        c.fillStyle = lt > (BAYER4[y & 3][x & 3] + 0.5) / 16 ? b.c : a.c;
-        c.fillRect(x0 + x, y0 + y, 1, 1);
-      }
+  /* the five levels, in order, plus the two submaps that hang off
+     Level 4. `base` is what a space in the grid means outdoors. */
+  var LEVELS = [
+    {
+      id: "home", name: "HOME", card: "Level 1: HOME",
+      blurb: "Your parents are away. The news is still on.",
+      map: MAPS.home, theme: "house", base: ".", dark: 0.68,
+      grade: [180, 115, 55, 0.16], haze: [30, 38, 60, 0.28],
+      steps: [
+        { task: "The TV is still on downstairs. Go and see.", clears: "tv" },
+        { task: "Get out. The garage door has no power.",     clears: "panel" },
+        { task: "The garage door is open. Go.",               clears: "exit" }
+      ]
+    },
+    {
+      id: "streets", name: "THE STREETS", card: "Level 2: THE STREETS",
+      blurb: "He's asleep at the hospital. That's where you're going.",
+      map: MAPS.streets, theme: "street", base: ",", dark: 0.62,
+      grade: [60, 90, 180, 0.18], haze: [35, 48, 80, 0.36],
+      steps: [
+        { task: "Cross town to the hospital — south, then east.", clears: "exit" }
+      ]
+    },
+    {
+      id: "hospital", name: "THE HOSPITAL", card: "Level 3: THE HOSPITAL",
+      blurb: "Find him before the corridors fill up.",
+      map: MAPS.hospital, theme: "hospital", base: ".", dark: 0.63,
+      grade: [104, 176, 168, 0.13], haze: [58, 84, 92, 0.34],
+      dead: [20, 1, 39, 10],
+      pressure: 21,
+      steps: [
+        { task: "Ward C has no power on the doors. Find the plant room.", clears: "panel" },
+        { task: "Ward C is open. He's in there somewhere.",               clears: "anwar" },
+        { task: "Get off the corridor. Anywhere with a door that shuts.", clears: "exit" }
+      ]
+    },
+    {
+      id: "escape", name: "THE ROAD", card: "Level 4: THE ROAD",
+      blurb: "Out of the city, any way you can.",
+      map: MAPS.escape, theme: "hospital", base: ".", dark: 0.68,
+      grade: [96, 150, 170, 0.12], haze: [46, 62, 76, 0.32],
+      steps: [
+        { task: "Out of the building. Then find anything with four wheels.", clears: "car" }
+      ]
+    },
+    {
+      id: "gates", name: "THE GATES", card: "Level 5: THE GATES",
+      blurb: "They only take you if you're clean.",
+      map: MAPS.gates, theme: "road", base: ",", dark: 0.28, floorTex: "pave",
+      grade: [225, 185, 110, 0.15], haze: [145, 160, 185, 0.26],
+      steps: [
+        { task: "Go up to the gate. Do what they tell you.",             clears: "hail" },
+        { task: "Wait at the table. They have to look at both of you.",  clears: "check" },
+        { task: "They're opening the inner gate. Go in.",                clears: "exit" }
+      ]
     }
-  }
-
-  function blob(c, cx, cy, rx, ry, tones, lx, ly) {
-    lx = lx === undefined ? -0.5 : lx;
-    ly = ly === undefined ? -0.6 : ly;
-    for (var y = -ry; y <= ry; y++) {
-      for (var x = -rx; x <= rx; x++) {
-        if ((x * x) / (rx * rx) + (y * y) / (ry * ry) > 1) continue;
-        var lit = (x / rx) * lx + (y / ry) * ly;
-        var i = lit > 0.34 ? 0 : lit > -0.05 ? 1 : lit > -0.5 ? 2 : 3;
-        c.fillStyle = tones[Math.min(i, tones.length - 1)];
-        c.fillRect((cx + x) | 0, (cy + y) | 0, 1, 1);
-      }
-    }
-  }
-
-  function mkCanvas(w, h) {
-    var c = document.createElement("canvas");
-    c.width = w; c.height = h;
-    var x = c.getContext("2d");
-    x.imageSmoothingEnabled = false;
-    return c;
-  }
-
-  /* Turn a list of equal-length strings and a palette into a canvas.
-     One character per pixel; "." is transparent. Every sprite in this file
-     is written this way, because at this size a shaded blob turns to mush —
-     the same lesson Super Ouissy learned about Ouissy's face. */
-  function sprite(rows, pal) {
-    var w = rows[0].length, h = rows.length;
-    var c = mkCanvas(w, h), x = c.getContext("2d");
-    for (var y = 0; y < h; y++) {
-      if (rows[y].length !== w) throw new Error("sprite row " + y + " is " + rows[y].length + ", expected " + w);
-      for (var i = 0; i < w; i++) {
-        var col = pal[rows[y][i]];
-        if (!col) continue;
-        x.fillStyle = col;
-        x.fillRect(i, y, 1, 1);
-      }
-    }
-    return c;
-  }
-
-  /* mirror a sprite canvas, so left and right are one drawing */
-  function flip(src) {
-    var c = mkCanvas(src.width, src.height), x = c.getContext("2d");
-    x.translate(src.width, 0);
-    x.scale(-1, 1);
-    x.drawImage(src, 0, 0);
-    return c;
-  }
-
-  /* =======================================================================
-     6. SPRITES
-
-        Every character is a torso and a pair of legs, drawn as two pixel
-        maps and stacked. That is what lets one walk cycle serve four
-        facings without four times the drawing — and it is why her hair and
-        her jacket only have to be got right once.
-
-        One character per pixel. The palette is written beside each set.
-        Nothing here is a shaded blob: at twelve pixels wide a blob has no
-        face at all, which is the lesson Super Ouissy already paid for.
-     ======================================================================= */
-  var OUI_TORSO = {
-    down: [".....KKKKKK.....", "...KKHHHHHHKK...", "..KHHhhhhhhHHK..", ".KHHhhiiiihhHHK.", "KHHhSSSSSSSSshHK", "KHhhSEsSSsESshhK", "KHhhSSSSSSSSshhK", "KHhhSsSmmSsSshhK", "KHhhBSSSSSSBshhK", "KHhhhSSSSSSshhhK", "KHhhhhSSSShhhhHK", "KHhhhhhhhhhhhhHK", "KHhhhKSSSSKhhhHK", "KHhhKKjjjjKKhhHK", "KHhhKjjttttjjKhH", "KhHhjjttttttjjHh", "KhHhjjttttttjjHh", "KHhHjjttttttjjHh", "SKhHjjttttttjjHK", ".KHhjTtttttTjhK."],
-    up: [".....KKKKKK.....", "...KKHHHHHHKK...", "..KHHhhhhhhHHK..", ".KHHhhiiiihhHHK.", "KHHhhhiiiiihhHHK", "KHhhhhiiiihhhhHK", "KHhhhhhiihhhhhHK", "KHhhhhhhhhhhhhHK", "KHhhhhhiiihhhhHK", "KHhhhhhhhhhhhhHK", "KHhhhhhhhhhhhhHK", "KHhhhhhhhhhhhhHK", "KHhhhKSSSSKhhhHK", "KHhhKKjjjjKKhhHK", "KHhhKjjjjjjjKhhH", "KhHhhjjjjjjhhHhK", "KhHhhjjjjjjhhHhK", "KHhHhjjjjjjhHhHK", "SKhHhjjjjjjhHhKS", ".KHhhjJjjjjJjhhK"],
-    side: ["...KKKKKKK......", ".KKHHHHHHHK.....", "KHHhhhhhhhHK....", "KHHhhiiiiihHK...", "KHHhSSSSSSSsK...", "KHhhSSEsSSSsK...", "KHhhSSSSSSSsK...", "KHhhSsSSSSmsK...", "KHhhBSSSSSSsK...", "KHhhhSSSSSSK....", "KHhhhhSSSSK.....", "KHhhhhhhhK......", "KHhhhKSSSK......", "KHhhKKjjjjK.....", "KHhhKjjttttjK...", "KhHhjjttttttjK..", "KhHhjjtttttttjK.", "KHhHjjttttttSjK.", "SKhHjjttttttSjK.", ".KHhjjTttttttjK."]
-  };
-
-  var OUI_LEGS = {
-    stand: ["...KddddddddK...", "...KdddKKdddK...", "...KdddKKdddK...", "...KdddKKdddK...", "...KDDDKKDDDK...", "...KDDDKKDDDK...", "...KbbbKKbbbK...", "...KbbbKKbbbK..."],
-    stepA: ["...KddddddddK...", "..KdddK..KdddK..", "..KdddK..KdddK..", ".KdddK....KdddK.", ".KDDDK....KDDDK.", ".KDDDK....KDDDK.", ".KbbbK....KbbbK.", ".KbbbK....KbbbK."],
-    stepB: ["...KddddddddK...", "....KddddddK....", "....KddddddK....", "....KddddddK....", "....KDDDDDDK....", "....KDDDDDDK....", "....KbbbbbbK....", "....KbbbbbbK...."]
-  };
-
-  var OUI_LEGS_SIDE = {
-    stand: ["...KddddddK.....", "...KdddKddK.....", "...KdddKddK.....", "...KdddKddK.....", "...KDDDKDDK.....", "...KDDDKDDK.....", "..KbbbbKbbK.....", "..KbbbbKbbK....."],
-    stepA: ["...KddddddK.....", "..KdddK.ddK.....", "..KdddK.ddK.....", ".KdddK...ddK....", ".KDDDK...DDK....", ".KDDDK...DDK....", ".KbbbbK..bbK....", ".KbbbbK..bbK...."],
-    stepB: ["...KddddddK.....", "...KdddddK......", "...KdddddK......", "...KdddddK......", "...KDDDDDK......", "...KDDDDDK......", "..KbbbbbbK......", "..KbbbbbbK......"]
-  };
-
-  var ZOM_TORSO = {
-    down: ["....KKKKKKK.....", "...KhhhhhhhK....", "..KhhKgggKhhK...", "..KhgggggggKK...", ".KgggggggggggK..", ".KgeKggggKegK...", ".KggggggggggK...", ".KgGgkkkkgGgK...", "..KggkkkkkkgK...", "..KGggggggGK....", "...KKggggKK.....", "....KgggK.......", "....KgggK.......", "..KKrrrrrrKK....", ".KgrrrrrrrrgK...", "KgKrrrrrrrrKgK..", "KGKrrrrrrrrKGK..", ".KKrrrrrrrrKK...", "..KRrrrrrrRK....", "..KRRrrrrRRK...."],
-    up: ["....KKKKKKK.....", "...KhhhhhhhK....", "..KhhhhhhhhhK...", "..KhhhhhhhhKK...", ".KhhhhhhhhhhhK..", ".KhhhhhhhhhhK...", ".KhhhhhhhhhhK...", ".KgGhhhhhhGgK...", "..KgghhhhggK....", "..KGggggggGK....", "...KKggggKK.....", "....KgggK.......", "....KgggK.......", "..KKrrrrrrKK....", ".KgrrrrrrrrgK...", "KgKrrrrrrrrKgK..", "KGKrrrrrrrrKGK..", ".KKrrrrrrrrKK...", "..KRrrrrrrRK....", "..KRRrrrrRRK...."],
-    side: ["...KKKKKKK......", "..KhhhhhhhK.....", ".KhhKggggKK.....", ".KhgggggggK.....", "KhhgggeggggK....", "KhggKggggggK....", "KhggggggkkgK....", "KhgGgkkkkggK....", ".KggggkkkgK.....", ".KGgggggggK.....", "..KKggggKK......", "...KgggK........", "...KgggK........", "..KKrrrrrKK.....", ".KgrrrrrrrgK....", "KgKrrrrrrrrgK...", "KGKrrrrrrrrGK...", ".KKrrrrrrrrK....", "..KRrrrrrrRK....", "..KRRrrrrRRK...."]
-  };
-
-  var ZOM_LEGS = {
-    stand: ["...KkkkkkkkkK...", "...KkkkKKkkkK...", "...KkkkKKkkkK...", "...KkkkKKkkkK...", "...KkkkKKkkkK...", "...KkkkKKkkkK...", "...KKKKKKKKKK...", "...KKKKKKKKKK..."],
-    stepA: ["...KkkkkkkkkK...", "..KkkkK..KkkkK..", "..KkkkK..KkkkK..", ".KkkkK....KkkkK.", ".KkkkK....KkkkK.", ".KkkkK....KkkkK.", ".KKKKK....KKKKK.", ".KKKKK....KKKKK."],
-    stepB: ["...KkkkkkkkkK...", "....KkkkkkkK....", "....KkkkkkkK....", "....KkkkkkkK....", "....KkkkkkkK....", "....KkkkkkkK....", "....KKKKKKKK....", "....KKKKKKKK...."]
-  };
-
-  var ZOM_LEGS_SIDE = {
-    stand: ["...KkkkkkkK.....", "...KkkkKkkK.....", "...KkkkKkkK.....", "...KkkkKkkK.....", "...KkkkKkkK.....", "...KkkkKkkK.....", "..KKKKKKKKK.....", "..KKKKKKKKK....."],
-    stepA: ["...KkkkkkkK.....", "..KkkkK.kkK.....", "..KkkkK.kkK.....", ".KkkkK...kkK....", ".KkkkK...kkK....", ".KkkkK...kkK....", ".KKKKKK..KKK....", ".KKKKKK..KKK...."],
-    stepB: ["...KkkkkkkK.....", "...KkkkkkK......", "...KkkkkkK......", "...KkkkkkK......", "...KkkkkkK......", "...KkkkkkK......", "..KKKKKKKK......", "..KKKKKKKK......"]
-  };
-
-  var ANW_TORSO = {
-    down: ["....KKKKKKKK....", "..KKcCcCcCcCKK..", "..KcCyCcCyCcCK..", ".KcCcCcCcCcCcCK.", ".KcCSSSSSSSSscK.", ".KcSFFGFSFGFFsK.", ".KcSFGGFSFGGFsK.", ".KcsSFFSSSFFSsK.", ".KcSSBBSSSBBSsK.", "..KSBBBBBBBBSK..", "...KSBBBmmBBSK..", "....KKBBBBBKK...", ".....KSSSSK.....", "...KKoooooKKK...", "..KooowwwwoooK..", ".KooowwwwwwoooK.", ".KooowwwwwwoooK.", ".KooowwwwwwoooK.", ".SooowwwwwwoooS.", ".KoooWwwwwWoooK."],
-    up: ["....KKKKKKKK....", "..KKcCcCcCcCKK..", "..KcCyCcCyCcCK..", ".KcCcCcCcCcCcCK.", ".KcCcCcCcCcCcCK.", ".KcCcCyCcyCcCcK.", ".KcCcCcCcCcCcCK.", ".KcCcCcCcCcCcCK.", ".KcCcCcCcCcCcCK.", "..KcCcCcCcCcCK..", "...KcCcCcCcCK...", "....KKcCcCcKK...", ".....KSSSSK.....", "...KKoooooKKK...", "..KooooooooooK..", ".KooooooooooooK.", ".KooooooooooooK.", ".KooooooooooooK.", ".SooooooooooooS.", ".KoooOooooOoooK."],
-    side: ["....KKKKKKK.....", "..KKcCcCcCcK....", "..KcCyCcCcCK....", ".KcCcCcCcCcCK...", ".KcCSSSSSSSsK...", ".KcSFGGFSSSsK...", ".KcSFGGFSSSsK...", ".KcsSFFSSSmsK...", ".KcSSBBSSSBsK...", "..KSBBBBBBBSK...", "...KSBBBBBBSK...", "....KKBBBBKK....", ".....KSSSSK.....", "...KKoooooKK....", "..KooowwwwooK...", ".KooowwwwwwoK...", ".KooowwwwwwoK...", ".KooowwwwwwSoK..", ".KooowwwwwwSoK..", ".KoooWwwwwooK..."]
-  };
-
-  var ANW_LEGS = {
-    stand: ["...KppppppppK...", "...KpppKKpppK...", "...KpppKKpppK...", "...KpppKKpppK...", "...KPPPKKPPPK...", "...KPPPKKPPPK...", "...KbbbKKbbbK...", "...KbbbKKbbbK..."],
-    stepA: ["...KppppppppK...", "..KpppK..KpppK..", "..KpppK..KpppK..", ".KpppK....KpppK.", ".KPPPK....KPPPK.", ".KPPPK....KPPPK.", ".KbbbK....KbbbK.", ".KbbbK....KbbbK."],
-    stepB: ["...KppppppppK...", "....KppppppK....", "....KppppppK....", "....KppppppK....", "....KPPPPPPK....", "....KPPPPPPK....", "....KbbbbbbK....", "....KbbbbbbK...."]
-  };
-
-  var ANW_LEGS_SIDE = {
-    stand: ["...KppppppK.....", "...KpppKppK.....", "...KpppKppK.....", "...KpppKppK.....", "...KPPPKPPK.....", "...KPPPKPPK.....", "..KbbbbKbbK.....", "..KbbbbKbbK....."],
-    stepA: ["...KppppppK.....", "..KpppK.ppK.....", "..KpppK.ppK.....", ".KpppK...ppK....", ".KPPPK...PPK....", ".KPPPK...PPK....", ".KbbbbK..bbK....", ".KbbbbK..bbK...."],
-    stepB: ["...KppppppK.....", "...KpppppK......", "...KpppppK......", "...KpppppK......", "...KPPPPPK......", "...KPPPPPK......", "..KbbbbbbK......", "..KbbbbbbK......"]
-  };
-
-  var ANW_SLEEP = ["....KKKKKKKK....", "..KKcCcCcCcCKK..", "..KcCyCcCyCcCK..", ".KcCSSSSSSSScK..", ".KcSFFGFSFGFFsK.", ".KcsSFFSSSFFSsK.", ".KcSSBBSSSBBSsK.", "..KSBBBmmBBBSK..", "...KKBBBBBBKK...", "....KSSSSSSK....", ".KWWWWWWWWWWWWK.", "KWwwwwwwwwwwwwWK", "KWwwwwwwwwwwwwWK", "KWwwwwwwwwwwwwSK", "KWwwwwwwwwwwwwsK", ".KWwwwwwwwwwwWK.", ".KWWwwwwwwwwWWK.", "..KWWWwwwwWWWK.."];
-
-
-  /* =======================================================================
-     THE HORSE
-
-        Drawn rather than written out pixel by pixel, because a horse is all
-        curves and a hand-typed pixel map of one comes out as a brown slab
-        with a box for a head. Body, chest and rump are three overlapping
-        masses, the neck tapers between two of them, the legs bend and
-        swing, and everything is placed from the ground she is standing on
-        so the same routine draws her at any size.
-
-        Second pass, after the first read as flat: she has five tones down
-        her instead of four, the light is decided once and used the same way
-        by every mass, she is dappled along the barrel and lighter under the
-        belly the way a real coat goes, and she has a blaze down her face, a
-        soft muzzle, a forelock between her ears and a proper thick tail.
-        She is also standing square rather than splayed, with one hind leg
-        rested, which is what a horse does when it is calm — and she is
-        calm. That is the point of the scene.
-     ======================================================================= */
-  var HORSE_TONES = ["#a2764e", "#8a6141", "#6f4c31", "#573a25", "#41291a"];
-  var HORSE_BELLY = ["#b98c60", "#a2764e", "#8a6141", "#6f4c31", "#573a25"];
-  var HORSE_DARK  = ["#3a2819", "#2f2015", "#241811", "#1b120c", "#140d08"];
-  var HORSE_LIGHT = [-0.55, -0.72];               // one light, used by every mass
-
-  function limb(c, x0, y0, x1, y1, w0, w1, tones) {
-    var n = Math.max(2, Math.hypot(x1 - x0, y1 - y0) | 0);
-    for (var i = 0; i <= n; i++) {
-      var t = i / n;
-      var w = (w0 + (w1 - w0) * t) / 2;
-      blob(c, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, Math.max(1, w), Math.max(1, w),
-           tones, HORSE_LIGHT[0], HORSE_LIGHT[1]);
-    }
-  }
-
-  /* x,y is the ground under her front feet; s scales the whole animal */
-  function drawHorse(c, x, y, s, gait, flip) {
-    var f = flip ? -1 : 1;
-    function X(v) { return x + v * s * f; }
-    function Y(v) { return y + v * s; }
-    function B(vx, vy, rx, ry, tones) {
-      blob(c, X(vx), Y(vy), Math.max(1, rx * s), Math.max(1, ry * s), tones,
-           HORSE_LIGHT[0] * f, HORSE_LIGHT[1]);
-    }
-    var sw = Math.sin(gait) * 5, sw2 = Math.sin(gait + 3.14) * 5;
-    var rest = gait === 0 ? 2 : 0;               // stood still, one hind leg rested
-
-    /* the far pair first and in shadow, so the near pair reads in front */
-    limb(c, X(12), Y(-17), X(10 + sw2), Y(-1), 5 * s, 3 * s, HORSE_DARK);
-    limb(c, X(-12), Y(-17), X(-14 + sw + rest), Y(-1), 6 * s, 3 * s, HORSE_DARK);
-
-    /* the tail: a thick fall off the dock, not a rope */
-    B(-24, -28, 5, 4, HORSE_DARK);
-    limb(c, X(-25), Y(-29), X(-29), Y(-16), 8 * s, 7 * s, HORSE_DARK);
-    limb(c, X(-29), Y(-16), X(-31), Y(-6), 7 * s, 4 * s, HORSE_DARK);
-
-    B(0, -22, 21, 8, HORSE_TONES);                                    // barrel
-    B(-1, -18, 18, 5, HORSE_BELLY);                                   // and its pale underside
-    B(-15, -23, 11, 9, HORSE_TONES);                                  // rump
-    B(14, -23, 10, 9, HORSE_TONES);                                   // chest and shoulder
-    B(-16, -20, 7, 5, HORSE_BELLY);                                   // the light off the quarters
-
-    /* dapples, the thing that stops a coat reading as one flat brown */
-    var dr = rnd(77);
-    for (var d = 0; d < 16; d++) {
-      var dx = -18 + dr() * 32, dy = -27 + dr() * 9;
-      blob(c, X(dx), Y(dy), Math.max(1, 1.6 * s), Math.max(1, 1.2 * s),
-           HORSE_BELLY, HORSE_LIGHT[0] * f, HORSE_LIGHT[1]);
-    }
-
-    limb(c, X(18), Y(-27), X(27), Y(-41), 10 * s, 6 * s, HORSE_TONES); // neck
-    B(30, -44, 7, 4, HORSE_TONES);                                     // head
-    B(36, -42, 4.5, 3.2, HORSE_TONES);                                 // muzzle
-    B(37, -41, 3, 2.4, HORSE_BELLY);                                   // soft nose
-    limb(c, X(28), Y(-47), X(35), Y(-42), 2.2 * s, 1.6 * s, HORSE_BELLY);  // a blaze
-    px(c, X(38), Y(-41), Math.max(1, s), Math.max(1, s), "#2a1a12");   // nostril
-    px(c, X(31), Y(-46), Math.max(1, 1.8 * s), Math.max(1, 1.8 * s), "#120b06");   // eye
-    px(c, X(31.6), Y(-46.6), Math.max(1, 0.8 * s), Math.max(1, 0.8 * s), "#d8c49a");
-    limb(c, X(26), Y(-48), X(24.6), Y(-53), 3 * s, 1 * s, HORSE_TONES);            // ears
-    limb(c, X(29.5), Y(-48), X(30), Y(-53), 3 * s, 1 * s, HORSE_TONES);
-    px(c, X(26), Y(-50), Math.max(1, s), Math.max(1, 2 * s), "#5a3f2a");
-    limb(c, X(27), Y(-49), X(30), Y(-45), 3 * s, 2 * s, HORSE_DARK);   // forelock
-    limb(c, X(20), Y(-41), X(25), Y(-30), 6 * s, 7 * s, HORSE_DARK);   // mane down the crest
-    B(16, -29, 5, 4, HORSE_DARK);
-
-    /* the near pair, and the white on the off fore */
-    limb(c, X(16), Y(-17), X(18 + sw), Y(-1), 6 * s, 3 * s, HORSE_TONES);
-    limb(c, X(-9), Y(-17), X(-7 + sw2 - rest), Y(-1), 7 * s, 3 * s, HORSE_TONES);
-    px(c, X(17 + sw) - 2 * s, Y(-5), 4 * s, 4 * s, "#d8cdb4");        // one white sock
-    [[18 + sw, 0], [-7 + sw2 - rest, 0], [10 + sw2, 0], [-14 + sw + rest, 0]].forEach(function (h) {
-      px(c, X(h[0]) - 2.2 * s, Y(-1.8), 4.4 * s, 2.8 * s, "#1d130c");  // hooves
-    });
-  }
-
-  /* and one baked into a canvas, for the one standing in the barn */
-  function horseSprite() {
-    var cv = mkCanvas(38, 32), c = cv.getContext("2d");
-    c.imageSmoothingEnabled = false;
-    drawHorse(c, 23, 30, 0.46, 0, true);
-    return cv;
-  }
-
-  var ANW_SLEEP = ["...KKKKKKKKK....", "..KcCcCcCcCcK...", ".KcCcSSSSCcCK...", ".KcSSSSSSSSCK...", "KcSFGGFSFGGFSK..", "KcsSFFSSSFFSsK..", ".KSSBBBmmBBBSK..", "..KKBBBBBBBKK...", "..KSSSSSSSSSK...", ".KWWWWWWWWWWWK..", "KWwwwwwwwwwwwWK.", "KWwwwwwwwwwwwWK.", "KWwwwwwwwwwwwSK.", "KWwwwwwwwwwwwsK.", ".KWwwwwwwwwwWK..", ".KWWwwwwwwwWWK..", "..KWWWwwwWWWK..."];
-
-
-  /* Her colours are not invented here. They are lifted straight out of
-     super-ouissy.js, where she has been long blonde with fair skin since
-     the platformer was built — three hair tones plus a shine, and an ink
-     outline that keeps her readable against anything she is standing in
-     front of. The outline is the part these sprites were missing: without
-     it a character at this size dissolves into whatever is behind her,
-     which is exactly what the first pass did in a dark house. */
-  var OUI_PAL = {
-    K: "#3d2340",                                  // ink
-    H: "#b8862f", h: "#e0b34e", i: "#ffe9a8",      // long blonde, three tones
-    S: "#ffe6d4", s: "#f2c8b0",                    // fair skin
-    E: "#3d2340", m: "#c9737f", B: "#ff8fae",      // eyes, mouth, blush
-    j: "#3b3550", J: "#2a2640",                    // the jacket she left in
-    t: "#ff9ec4", T: "#df6f9f",                    // her own pink, underneath it
-    d: "#3f4f72", D: "#2e3a55", b: "#6b2f52",      // jeans and boots
-  };
-
-  /* And his are lifted out of rescue.js, where he already has the dark
-     curls, the glasses and the beard. He is in what he woke up in: a gown,
-     pyjama bottoms, and a jacket somebody left on the chair. */
-  var ANW_PAL = {
-    K: "#100c16",
-    c: "#241a17", C: "#3a2a24", y: "#4a362e",      // curls, and their shine
-    S: "#e8bb92", s: "#c08e64",                    // light-medium skin
-    F: "#1b1620", G: "#cfe0ee",                    // frames, and the lenses
-    b: "#4a3a30", B: "#7d5c46",                    // the beard, two tones
-    m: "#8a5a52",
-    w: "#c9d6dd", W: "#a6b5be",                    // the gown
-    o: "#2a2a36", O: "#1b1b24",                    // the jacket over it
-    p: "#4a5566", P: "#39424f",                    // pyjama bottoms
-  };
-
-  var ZOM_PAL = {
-    K: "#14161c",                                  // the same ink everyone gets
-    h: "#2e2a24",
-    g: "#93a487", G: "#71805f", k: "#4a5340",      // flesh, and what is under it
-    e: "#b8523a",
-    r: "#5d564b", R: "#443e36",
-  };
-
-  /* built once, on first use, and kept */
-  var ART = null;
-
-  function buildArt() {
-    if (ART) return ART;
-
-    function person(torso, legsSet, tPal, lPal, sideLegs) {
-      var out = {};
-      ["down", "up", "side"].forEach(function (face) {
-        var t = torso[face] || torso.down;
-        var set = face === "side" ? sideLegs : legsSet;
-        out[face] = ["stand", "stepA", "stepB"].map(function (pose) {
-          return sprite(t.concat(set[pose]), Object.assign({}, tPal, lPal));
-        });
-      });
-      out.left = out.side.map(flip);
-      out.right = out.side;
-      return out;
-    }
-
-    ANW_TORSO.up = ANW_TORSO.up || ANW_TORSO.down;
-    ANW_TORSO.side = ANW_TORSO.side || ANW_TORSO.down;
-    ART = {
-      ouissy: person(OUI_TORSO, OUI_LEGS, OUI_PAL, OUI_PAL, OUI_LEGS_SIDE),
-      zombie: person(ZOM_TORSO, ZOM_LEGS, ZOM_PAL, ZOM_PAL, ZOM_LEGS_SIDE),
-      anwar: person(ANW_TORSO, ANW_LEGS, ANW_PAL, ANW_PAL, ANW_LEGS_SIDE),
-      anwarAsleep: sprite(ANW_SLEEP, ANW_PAL),
-      horse: horseSprite(),
-    };
-    return ART;
-  }
-
-  /* =======================================================================
-     7. TILE ART
-
-        A 16x16 canvas per tile character per theme, with four variants of
-        the plain ones so a floor does not read as graph paper. The whole
-        map is then baked into one big canvas when the level loads, and the
-        frame only blits the camera's window out of it — so the cost of all
-        this drawing is paid once, not sixty times a second.
-     ======================================================================= */
-  var T = TUNE.tile;
-
-  function shade(hex, k) {
-    var n = parseInt(hex.slice(1), 16);
-    var r = Math.max(0, Math.min(255, ((n >> 16) & 255) + k));
-    var g = Math.max(0, Math.min(255, ((n >> 8) & 255) + k));
-    var b = Math.max(0, Math.min(255, (n & 255) + k));
-    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-  }
-
-  /* --- the plain grounds ------------------------------------------------ */
-  function paintFloor(c, P, theme, r) {
-    px(c, 0, 0, T, T, P.floor[1]);
-    if (theme === "house") {                       // boards, running across
-      for (var y = 0; y < T; y += 4) {
-        px(c, 0, y, T, 3, y % 8 === 0 ? P.floor[0] : P.floor[1]);
-        px(c, 0, y + 3, T, 1, P.floor[2]);
-        for (var g = 0; g < 3; g++) px(c, (r() * T) | 0, y + ((r() * 3) | 0), 2, 1, P.floor[2]);
-      }
-      if (r() > 0.8) px(c, (r() * 12) | 0, (r() * 12) | 0, 3, 2, P.floor[3]);
-    } else if (theme === "hospital") {             // lino squares with a seam
-      px(c, 0, 0, T, T, r() > 0.5 ? P.floor[0] : P.floor[1]);
-      px(c, 0, 0, T, 1, P.floor[3]); px(c, 0, 0, 1, T, P.floor[3]);
-      for (var i = 0; i < 5; i++) px(c, (r() * T) | 0, (r() * T) | 0, 1, 1, P.floor[2]);
-    } else if (theme === "street") {               // paving slabs, and their joints
-      px(c, 0, 0, T, T, P.floor[1]);
-      for (var k = 0; k < 26; k++) px(c, (r() * T) | 0, (r() * T) | 0, 1 + ((r() * 2) | 0), 1, P.floor[(r() * 4) | 0]);
-      px(c, 0, 0, T, 1, P.floor[3]); px(c, 0, 0, 1, T, P.floor[3]);
-      px(c, 0, T - 1, T, 1, P.floor[2]);
-      if (r() > 0.82) for (k = 0; k < 4; k++) px(c, (r() * T) | 0, (r() * T) | 0, 2, 1, "#3d4a38");  // weeds in the joints
-    } else {                                        // dirt, speckled
-      for (var k2 = 0; k2 < 34; k2++) {
-        px(c, (r() * T) | 0, (r() * T) | 0, 1 + ((r() * 2) | 0), 1, P.floor[(r() * 4) | 0]);
-      }
-    }
-  }
-
-  function paintGround(c, P, theme, r, E) {
-    px(c, 0, 0, T, T, P.ground[1]);
-    for (var k = 0; k < 22; k++) px(c, (r() * T) | 0, (r() * T) | 0, 1, 1, P.ground[(r() * 3) | 0]);
-    E = E || {};
-    if (theme === "street") {                                  // tarmac: cracks, patches, litter
-      if (r() > 0.7) px(c, 0, (r() * T) | 0, T, 1, P.ground[2]);
-      if (r() > 0.86) blob(c, (r() * T) | 0, (r() * T) | 0, 3, 2, [P.ground[0], P.ground[0], P.ground[2], P.ground[2]]);
-      if (r() > 0.93) px(c, (r() * T) | 0, (r() * T) | 0, 2, 2, "#8a8474");
-    }
-    if (theme === "road") {                                   // grass, growing every way
-      for (var g = 0; g < 26; g++) {
-        px(c, (r() * T) | 0, (r() * T) | 0, 1, 1 + ((r() * 3) | 0),
-           r() > 0.6 ? "#4b6040" : r() > 0.3 ? "#3a4c30" : "#566b45");
-      }
-      if (r() > 0.9) { var fx = (r() * T) | 0, fy = (r() * T) | 0;   // a wildflower
-        px(c, fx, fy - 2, 1, 2, "#4b6040"); px(c, fx - 1, fy - 3, 3, 2, r() > 0.5 ? "#d8c86a" : "#c9a0c0"); }
-    }
-    /* The centre line, on the half of the carriageway that has no kerb —
-       so a two-tile road gets one dashed line down its middle rather than
-       two, and it reads as a road going somewhere. */
-    if (theme === "street" && !E.w && E.e) {
-      for (var dsh = 1; dsh < T - 2; dsh += 7) px(c, 0, dsh, 2, 4, "#b9bcc4");
-    }
-    if (theme === "street" && !E.n && E.s) {
-      for (var dsh2 = 1; dsh2 < T - 2; dsh2 += 7) px(c, dsh2, 0, 4, 2, "#b9bcc4");
-    }
-
-    /* Where the tarmac stops, a kerb and a worn white line. Two pixels of
-       paint is the whole difference between "a grey field" and "a road". */
-    if (theme === "street") {
-      if (E.n) { px(c, 0, 0, T, 1, "#5e6472"); px(c, 0, 2, T, 1, "#b9bcc4"); }
-      if (E.s) { px(c, 0, T - 1, T, 1, "#5e6472"); px(c, 0, T - 3, T, 1, "#b9bcc4"); }
-      if (E.w) { px(c, 0, 0, 1, T, "#5e6472"); px(c, 2, 0, 1, T, "#b9bcc4"); }
-      if (E.e) { px(c, T - 1, 0, 1, T, "#5e6472"); px(c, T - 3, 0, 1, T, "#b9bcc4"); }
-      /* and the paint is old: break it up rather than laying a perfect line */
-      for (var w = 0; w < 5; w++) px(c, (r() * T) | 0, (r() * T) | 0, 2 + ((r() * 3) | 0), 1, P.ground[0]);
-    }
-  }
-
-  /* --- the things that stop her ---------------------------------------- */
-  function paintWall(c, P, theme, r, E) {
-    E = E || {};
-    px(c, 0, 0, T, T, P.wall[1]);
-    if (theme === "house") {                       // papered wall: a quiet stripe
-      for (var x = 2; x < T; x += 6) px(c, x, 0, 1, T, shade(P.wall[1], 9));
-      for (var i = 0; i < 5; i++) px(c, (r() * T) | 0, (r() * T) | 0, 2, 2, shade(P.wall[1], -7));
-      for (i = 0; i < 10; i++) px(c, (r() * T) | 0, (r() * T) | 0, 1, 1, shade(P.wall[1], r() > 0.5 ? 13 : -11));
-    } else if (theme === "hospital") {             // glazed tile
-      for (var y = 0; y < T; y += 8) {
-        for (var x2 = (y % 16 ? 4 : 0); x2 < T; x2 += 8) {
-          px(c, x2, y, 7, 7, r() > 0.5 ? P.wall[0] : P.wall[1]);
-        }
-      }
-    } else if (theme === "road") {
-      /* Out here a wall is a fence somebody put up in a hurry: corrugated
-         sheet bolted to posts, with the rust coming through the laps and
-         the odd panel a different colour because it came off something
-         else. Brick was reading as a Victorian mill. */
-      var tint = r() > 0.72 ? "#6a5a44" : r() > 0.4 ? "#4e5a52" : "#5a5348";
-      px(c, 0, 0, T, T, tint);
-      for (var cg = 0; cg < T; cg += 3) {
-        px(c, cg, 0, 1, T, shade(tint, 16));
-        px(c, cg + 1, 0, 1, T, shade(tint, -14));
-      }
-      px(c, 0, 0, T, 2, shade(tint, 26));            // the top rail
-      px(c, 0, 2, T, 1, shade(tint, -22));
-      px(c, 0, T - 2, T, 2, shade(tint, -26));
-      for (var rz = 0; rz < 5; rz++) {               // rust at the laps
-        if (r() > 0.55) blob(c, (r() * T) | 0, (r() * T) | 0, 2, 2,
-                             ["#7a5334", "#63432a", "#4c3421", "#3a2819"]);
-      }
-      if (r() > 0.78) { px(c, 3, 5, 3, 3, "#3a3a3a"); px(c, 4, 6, 1, 1, "#6a6a6a"); }  // a bolt
-    } else {                                        // brick and render
-      for (var yy = 0; yy < T; yy += 5) {
-        for (var xx = (yy % 10 ? 4 : 0) - 4; xx < T; xx += 8) {
-          px(c, xx, yy, 7, 4, r() > 0.55 ? P.wall[0] : P.wall[1]);
-        }
-      }
-      /* A window, but only in a wall that actually faces the street, and
-         only on the side that faces it. A window in the middle of a block
-         is a window into next door's bathroom. Some of them are still lit:
-         the city is empty, it is not switched off. */
-      var facade = E.n || E.s || E.w || E.e;
-      /* Ground-floor frontage: a shop window with a shutter half down, or
-         a doorway with a step. It is what makes a row of blocks read as a
-         parade of shops rather than as a wall. */
-      if (theme === "street" && E.s && r() > 0.5) {
-        var kind = r();
-        if (kind > 0.62) {                                   // a shopfront
-          px(c, 1, T - 11, T - 2, 10, "#191d26");
-          px(c, 2, T - 10, T - 4, 8, r() > 0.6 ? "#2e3a4a" : "#141922");
-          for (var sh = 0; sh < 4 + ((r() * 4) | 0); sh++) px(c, 2, T - 10 + sh, T - 4, 1, "#3a4250");
-          px(c, 1, T - 12, T - 2, 2, "#4a5566");             // the fascia
-          px(c, 3, T - 11, T - 6, 1, "#6a7688");
-          px(c, 1, T - 2, T - 2, 2, "#2a303a");              // the step
-        } else {                                              // a doorway
-          px(c, 4, T - 10, 8, 10, "#171b23");
-          px(c, 5, T - 9, 6, 8, r() > 0.7 ? "#3a2f26" : "#20262f");
-          px(c, 4, T - 11, 8, 1, "#4a5566");
-          px(c, 10, T - 5, 1, 2, "#c9a05a");                 // a handle
-          px(c, 3, T - 2, 10, 2, "#2a303a");
-        }
-        return;
-      }
-      if (theme === "street" && facade && r() > 0.62) {
-        var wx = E.w ? 2 : E.e ? T - 8 : 4 + ((r() * 4) | 0);
-        var wy = E.n ? 2 : E.s ? T - 8 : 4 + ((r() * 4) | 0);
-        px(c, wx - 1, wy - 1, 8, 8, "#12151c");
-        var lit = r();
-        px(c, wx, wy, 6, 6, lit > 0.76 ? "#c9a05a" : lit > 0.5 ? "#39445a" : "#0d1016");
-        if (lit > 0.76) {                                   // a curtain across half of it
-          px(c, wx, wy, 6, 2, "#8d6f3d");
-          px(c, wx + 4, wy, 2, 6, "#8d6f3d");
-        }
-        px(c, wx + 3, wy, 1, 6, "#12151c");                 // the glazing bars
-        px(c, wx, wy + 3, 6, 1, "#12151c");
-        px(c, wx - 1, wy + 6, 8, 1, shade(P.wall[3], 10));  // the sill
-      }
-    }
-    px(c, 0, 0, T, 2, P.wall[3]);                  // the lit top edge
-    px(c, 0, 2, T, 1, shade(P.wall[3], -18));
-    px(c, 0, T - 3, T, 2, P.trim);                 // the skirting board along its foot
-    px(c, 0, T - 1, T, 1, shade(P.wall[2], -22));  // and the shadow it throws on the floor
-  }
-
-  function paintTall(c, P, theme, r) {              // wardrobe, hedge, parked car
-    paintFloor(c, P, theme, r);
-    if (theme === "street" || theme === "road") {   // a hedge: clumped foliage
-      for (var i = 0; i < 30; i++) {
-        var x = (r() * T) | 0, y = (r() * T) | 0;
-        blob(c, x, y, 2 + ((r() * 2) | 0), 2, [P.tall[0], P.tall[0], P.tall[1], P.tall[2]]);
-      }
-    } else {                                        // a cabinet, seen from above
-      px(c, 1, 1, T - 2, T - 2, P.tall[1]);
-      px(c, 1, 1, T - 2, 2, P.tall[0]);
-      px(c, 1, T - 3, T - 2, 2, P.tall[2]);
-      px(c, T / 2 | 0, 3, 1, T - 7, P.tall[2]);     // the split between the doors
-      px(c, (T / 2 | 0) - 2, 8, 1, 2, P.trim);      // handles
-      px(c, (T / 2 | 0) + 2, 8, 1, 2, P.trim);
-    }
-  }
-
-  /* A table, a bench, a low wall — the catch-all. Sight passes over all of
-     these; they stop her, they do not hide her. */
-  function paintCover(c, P, theme, r) {
-    paintFloor(c, P, theme, r);
-    px(c, 0, 2, T, T - 4, P.cover[2]);              // the shadow under it
-    px(c, 0, 1, T, T - 5, P.cover[1]);              // the top
-    px(c, 0, 1, T, 2, P.cover[0]);                  // the lit near edge
-    px(c, 0, T - 3, T, 1, shade(P.cover[2], -16));
-    for (var i = 0; i < 5; i++) px(c, (r() * T) | 0, 3 + ((r() * 7) | 0), 3, 1, shade(P.cover[1], 8));
-  }
-
-  /* A bed: pillow at the head, a turned-down duvet, the frame under it.
-
-     From here on the furniture painters take E — which of the tile's four
-     sides face something that is not the same piece of furniture. That is
-     what lets a bed two tiles long be one bed with one pillow and one foot
-     instead of two small beds side by side, without a tile being drawn by
-     hand for every combination. */
-  function paintBed(c, P, theme, r, E) {
-    paintFloor(c, P, theme, r);
-    var ward = theme === "hospital";
-    var frame = ward ? "#8a949c" : "#4a3a30";
-    var cover = ward ? "#9fb4c4" : "#8a5a68";
-    var coverLit = ward ? "#b8c9d6" : "#a06e7c";
-    var coverDark = ward ? "#7e909e" : "#7a4c5c";
-    var x0 = E.w ? 1 : 0, x1 = E.e ? T - 1 : T;
-    px(c, x0, 0, x1 - x0, T, frame);                          // the frame
-    if (ward) {                                                // and its rails
-      px(c, x0, 0, 1, T, "#b0bcc4"); px(c, x1 - 1, 0, 1, T, "#6e7880");
-    }
-    if (E.n) {
-      px(c, x0 + 1, 1, x1 - x0 - 2, 5, "#eef2f4");            // the pillow
-      px(c, x0 + 1, 2, x1 - x0 - 2, 1, "#fbfdfe");
-      if (ward) px(c, x0 + 1, 6, x1 - x0 - 2, 2, "#e8eef2");  // the sheet folded over it
-      px(c, x0 + 1, ward ? 8 : 6, x1 - x0 - 2, T - (ward ? 9 : 7), cover);
-      px(c, x0 + 1, ward ? 8 : 6, x1 - x0 - 2, 2, coverLit);
-    } else {
-      px(c, x0 + 1, 0, x1 - x0 - 2, T - 1, cover);
-      for (var i = 0; i < 3; i++) px(c, x0 + 2 + i * 4, 2, 1, T - 5, coverDark);
-    }
-    if (E.s) px(c, x0 + 1, T - 2, x1 - x0 - 2, 1, coverDark);
-  }
-
-  /* A sofa from above: the back along whichever side faces the wall, an arm
-     at each end, cushions between. */
-  var SOFA = ["#8a5560", "#6d414c", "#523039"];
-  function paintSofa(c, P, theme, r, E) {
-    paintFloor(c, P, theme, r);
-    P = { cover: theme === "house" ? SOFA : P.cover };
-    px(c, 0, 1, T, T - 2, P.cover[2]);
-    var top = 0;
-    if (E.n) { px(c, 0, 0, T, 5, P.cover[1]); px(c, 0, 0, T, 1, P.cover[0]); top = 5; }
-    if (E.w) px(c, 0, top, 3, T - top - 1, P.cover[1]);
-    if (E.e) px(c, T - 3, top, 3, T - top - 1, P.cover[1]);
-    var cx0 = E.w ? 3 : 0, cx1 = E.e ? T - 3 : T;
-    px(c, cx0, top + 1, cx1 - cx0, T - top - 3, shade(P.cover[0], -8));
-    px(c, cx0, top + 1, cx1 - cx0, 1, P.cover[0]);
-    if (!E.w) px(c, cx0, top + 1, 1, T - top - 3, shade(P.cover[0], -16));   // the seam
-    if (E.s) px(c, 0, T - 2, T, 1, shade(P.cover[2], -18));
-  }
-
-  /* A run of kitchen units: the worktop catches the light, the doors and
-     their handles face the room. */
-  function paintCounter(c, P, theme, r, E) {
-    paintFloor(c, P, theme, r);
-    px(c, 0, 0, T, T - 2, "#5a4a3c");
-    px(c, 0, 0, T, 3, "#8a7a62");
-    px(c, 0, 3, T, 1, "#463a2e");
-    if (E.s) {
-      px(c, 0, T - 3, T, 3, "#39301f");
-      px(c, T / 2 | 0, 4, 1, T - 8, "#463a2e");
-      px(c, 3, 7, 3, 1, "#b0a48a");
-      px(c, 10, 7, 3, 1, "#b0a48a");
-    }
-    if (E.w) px(c, 0, 0, 1, T - 2, "#6a5a48");
-    if (E.e) px(c, T - 1, 0, 1, T - 2, "#3d3226");
-    for (var i = 0; i < 4; i++) px(c, (r() * T) | 0, 1, 2, 1, "#9a8a70");
-  }
-
-  /* --- the places she can disappear into -------------------------------- */
-  function paintHide(c, P, theme, r) {
-    paintFloor(c, P, theme, r);
-    if (theme === "street" || theme === "road") {   // a bush, gappy enough to sit in
-      for (var i = 0; i < 26; i++) {
-        blob(c, (r() * T) | 0, (r() * T) | 0, 2 + ((r() * 2) | 0), 2, [P.hide[0], P.hide[0], P.hide[1], P.hide[2]]);
-      }
-      px(c, 6, 9, 4, 5, shade(P.hide[2], -14));     // the gap she gets into
-    } else if (theme === "hospital") {              // a curtain, half pulled round
-      px(c, 0, 1, T, 2, "#9aa6ac");                  // the rail
-      px(c, 0, 1, T, 1, "#c2ccd2");
-      for (var k = 1; k < T; k += 3) px(c, k, 2, 1, 1, "#6e787e");   // the hooks
-      px(c, 0, 3, T, T - 3, "#6f8f88");              // the curtain itself
-      for (var fd = 0; fd < T; fd += 3) {
-        px(c, fd, 3, 1, T - 3, "#83a49c");
-        px(c, fd + 2, 3, 1, T - 3, "#5b7872");
-      }
-      px(c, 0, T - 2, T, 1, "#4e6862");              // its hem
-      px(c, 5, 5, 5, T - 8, "#33443f");              // and the gap she gets behind
-    } else {                                        // a wardrobe, door ajar
-      px(c, 1, 1, T - 2, T - 2, P.hide[1]);
-      px(c, 1, 1, T - 2, 2, P.hide[0]);
-      px(c, 4, 3, 8, T - 6, shade(P.hide[2], -18));  // the dark of the inside
-      px(c, 3, 3, 1, T - 6, P.hide[0]);
-      px(c, 12, 3, 1, T - 6, P.hide[0]);
-      for (var f = 4; f < 12; f += 3) px(c, f, 3, 1, T - 6, shade(P.hide[2], 8)); // folds
-    }
-  }
-
-  /* --- the things she uses ---------------------------------------------- */
-  function paintDoor(c, P, theme, r, kind) {
-    paintFloor(c, P, theme, r);
-    px(c, 0, 0, T, T, shade(P.wall[2], -6));
-    px(c, 2, 1, T - 4, T - 2, P.trim);
-    px(c, 3, 2, T - 6, T - 4, shade(P.trim, -26));
-    if (kind === "locked") {                        // a keypad screwed to it
-      px(c, 5, 5, 6, 7, "#20242e");
-      px(c, 6, 6, 4, 2, "#7fe0b0");
-      for (var y = 9; y < 12; y++) for (var x = 6; x < 10; x += 2) px(c, x, y, 1, 1, "#5a6070");
-    } else if (kind === "power") {                  // a roller door, dead
-      for (var s = 1; s < T - 1; s += 3) px(c, 1, s, T - 2, 2, s % 6 ? P.trim : shade(P.trim, -20));
-      px(c, 12, 12, 2, 2, "#a83a3a");
-    } else {
-      px(c, T - 5, T / 2 | 0, 2, 2, "#d8c48a");     // handle
-    }
-  }
-
-  function paintPanel(c, P, theme, r) {             // the wire panel, closed
-    paintWall(c, P, theme, r, {});
-    px(c, 2, 3, T - 4, T - 6, "#2a2d34");
-    px(c, 2, 3, T - 4, 1, "#4a4f5a");
-    px(c, 3, 5, T - 6, T - 9, "#1a1d22");
-    for (var i = 0; i < 4; i++) px(c, 4, 6 + i * 2, T - 8, 1, ["#c08a2e", "#a8402e", "#3f6a9a", "#4a7a4a"][i]);
-    px(c, T - 5, T - 6, 2, 2, "#a83a3a");
-  }
-
-  function paintTv(c, P, theme, r) {
-    paintFloor(c, P, theme, r);
-    px(c, 1, 4, T - 2, T - 7, "#1b1d22");
-    px(c, 2, 5, T - 4, T - 10, "#8fa8c8");          // the screen, lit
-    for (var y = 5; y < T - 5; y += 2) px(c, 2, y, T - 4, 1, "#b9cde6");
-    px(c, 5, T - 3, 6, 2, "#2a2d34");               // the stand
-  }
-
-  /* A lamp stands on whatever the ground round it is, which sounds obvious
-     and was not: painted on its own it always drew the level's outdoor
-     ground, so a lamp post inside a concrete yard came with its own square
-     of grass round it. `under` is the character of the ground it is
-     actually standing on, worked out from its neighbours when the map is
-     baked. */
-  function paintLamp(c, P, theme, r, solid, under) {
-    if (under === ".") paintFloor(c, P, theme, r);
-    else if (under === ",") paintGround(c, P, theme, r, {});
-    if (solid) {                                     // a lamp on a post, in the street
-      if (!under) paintGround(c, P, theme, r, {});
-      px(c, 7, 2, 2, T - 3, "#3a3f4a");
-      px(c, 4, 1, 8, 3, "#4a505c");
-      px(c, 5, 2, 6, 2, "#ffe0a0");
-    } else if (theme === "hospital") {               // a strip light, overhead
-      if (!under) paintFloor(c, P, theme, r);
-      px(c, 1, 6, T - 2, 4, "#8c979e");
-      px(c, 2, 7, T - 4, 2, r() > 0.42 ? "#f2f8ff" : "#5c666c");  // a good few are out
-      px(c, 1, 10, T - 2, 1, "#5c666c");
-    } else {                                         // a lamp standing in a room
-      if (!under) paintFloor(c, P, theme, r);
-      px(c, 7, 6, 2, 8, "#3a3f4a");
-      px(c, 4, 3, 8, 4, "#e8c98a");
-      px(c, 5, 4, 6, 2, "#fff0c0");
-    }
-  }
-
-  /* A car, left where it stopped. Roof, windscreen, bonnet and both wings,
-     seen from above. She can get behind one; nothing sees through one. */
-  var CAR_COLS = [
-    ["#7a2f34", "#5c2226", "#3f181b"],
-    ["#2f4a6a", "#22374f", "#17263a"],
-    ["#6a6660", "#4e4b46", "#35332f"],
-    ["#3f5a44", "#2e4232", "#1f2d22"],
-  ];
-  function paintCar(c, P, theme, r, E) {
-    paintGround(c, P, theme, r);
-    var col = CAR_COLS[(r() * CAR_COLS.length) | 0];
-    px(c, 2, 0, T - 4, T, col[1]);                    // the body, nose to tail
-    px(c, 1, 2, 1, T - 4, col[2]);                    // the wings
-    px(c, T - 2, 2, 1, T - 4, col[2]);
-    px(c, 2, 0, T - 4, 1, col[0]);
-    if (E.n) {                                         // this end is the bonnet
-      px(c, 3, 1, T - 6, 4, col[0]);
-      px(c, 3, 5, T - 6, 4, "#1b2630");                // the windscreen
-      px(c, 3, 5, T - 6, 1, "#3d5468");
-      px(c, 2, 1, 2, 1, "#e8dcb0"); px(c, T - 4, 1, 2, 1, "#e8dcb0");   // lamps
-    } else if (E.s) {                                  // and this one the boot
-      px(c, 3, T - 5, T - 6, 4, col[0]);
-      px(c, 3, T - 9, T - 6, 4, "#1b2630");
-      px(c, 2, T - 2, 2, 1, "#7a2a26"); px(c, T - 4, T - 2, 2, 1, "#7a2a26");
-    } else {
-      px(c, 3, 2, T - 6, T - 4, "#20303c");            // the roof between them
-      px(c, 3, 2, T - 6, 1, "#3d5468");
-    }
-    px(c, 0, 3, 2, 3, "#16181c"); px(c, 0, T - 6, 2, 3, "#16181c");     // wheels
-    px(c, T - 2, 3, 2, 3, "#16181c"); px(c, T - 2, T - 6, 2, 3, "#16181c");
-    for (var i = 0; i < 5; i++) px(c, (r() * T) | 0, (r() * T) | 0, 1, 1, shade(col[2], 12));
-  }
-
-  /* A gurney, from above: the mattress, the rails, and the wheels that
-     make it a gurney and not a bed. Half of them are shoved against a wall
-     at whatever angle they stopped at. */
-  function paintGurney(c, P, theme, r, E) {
-    paintFloor(c, P, theme, r);
-    px(c, 1, 1, T - 2, T - 3, "#8a949c");
-    px(c, 2, 2, T - 4, T - 6, "#dfe6ea");
-    px(c, 2, 2, T - 4, 2, "#f4f8fa");
-    px(c, 1, 1, 1, T - 3, "#b0bcc4"); px(c, T - 2, 1, 1, T - 3, "#6e7880");
-    if (E.n) px(c, 2, 2, T - 4, 4, "#eef2f4");                // the pillow end
-    if (E.s) { px(c, 2, T - 6, T - 4, 2, "#aeb8c0");
-               px(c, 2, T - 2, 3, 2, "#3a4048"); px(c, T - 5, T - 2, 3, 2, "#3a4048"); }
-    if (r() > 0.55) { px(c, 4, 6, 8, 5, "#c9d2d8"); }          // a blanket left on it
-  }
-
-  /* A trolley of equipment, or a drip stand somebody wheeled out and left */
-  function paintTrolley(c, P, theme, r) {
-    paintFloor(c, P, theme, r);
-    px(c, 3, 2, 10, 9, "#9aa6ae");
-    px(c, 3, 2, 10, 2, "#c2ccd2");
-    px(c, 4, 5, 8, 5, "#39424a");
-    px(c, 5, 6, 3, 3, r() > 0.5 ? "#7fe0b0" : "#3a4650");      // a screen, some still on
-    px(c, 3, 11, 2, 3, "#5c666e"); px(c, 11, 11, 2, 3, "#5c666e");
-    px(c, 2, T - 2, 4, 2, "#2a3038"); px(c, 10, T - 2, 4, 2, "#2a3038");
-  }
-
-  /* A door that is not going to close again */
-  function paintBrokenDoor(c, P, theme, r) {
-    paintFloor(c, P, theme, r);
-    px(c, 0, 0, 3, T, shade(P.wall[2], -6));
-    px(c, T - 3, 0, 3, T, shade(P.wall[2], -6));
-    px(c, 0, 0, T, 2, P.trim);
-    px(c, 2, 2, 4, T - 4, shade(P.trim, -30));                // one leaf, swung back
-    px(c, 2, 2, 1, T - 4, shade(P.trim, 10));
-    for (var i = 0; i < 5; i++) px(c, 7 + ((r() * 6) | 0), 3 + ((r() * 10) | 0), 2, 1, shade(P.trim, -40));
-  }
-
-  /* Signage. A hospital is mostly signs, and a corridor without any is a
-     corridor in a dream. */
-  function paintSign(c, P, r, E) {
-    if (!E.s) return;
-    var kind = r();
-    px(c, 2, T - 8, T - 4, 6, "#e8eef2");
-    px(c, 2, T - 8, T - 4, 1, "#fbfdfe");
-    px(c, 2, T - 3, T - 4, 1, "#9aa8b0");
-    if (kind > 0.66) {                                         // WARD C, with an arrow
-      px(c, 4, T - 6, 2, 2, "#2a5a8a"); px(c, 7, T - 6, 2, 2, "#2a5a8a");
-      px(c, 10, T - 7, 1, 4, "#2a5a8a"); px(c, 11, T - 6, 1, 2, "#2a5a8a");
-    } else if (kind > 0.33) {                                  // a green running man
-      px(c, 4, T - 7, T - 8, 4, "#2f7a4a");
-      px(c, 6, T - 6, 2, 2, "#e8eef2");
-    } else {                                                    // a line of small type
-      for (var i = 0; i < 3; i++) px(c, 4, T - 7 + i * 2, T - 8 - i * 2, 1, "#5a6870");
-    }
-  }
-
-  /* A bookshelf, seen from above: the top of the carcass, and the tops of
-     the books standing in it in whatever order somebody left them. */
-  function paintShelf(c, P, theme, r) {
-    paintFloor(c, P, theme, r);
-    px(c, 0, 1, T, T - 3, "#4a3524");
-    px(c, 0, 1, T, 2, "#6a4f36");
-    px(c, 0, T - 3, T, 1, "#2e2118");
-    var BOOKS = ["#8a3a3a", "#3a5a7a", "#6a6a3a", "#7a4a6a", "#3a6a5a", "#9a6a3a"];
-    var x = 1;
-    while (x < T - 1) {
-      var w = 1 + ((r() * 2) | 0);
-      var h = 5 + ((r() * 4) | 0);
-      px(c, x, 3, w, h, BOOKS[(r() * BOOKS.length) | 0]);
-      px(c, x, 3, w, 1, "#d8cbb0");
-      x += w + (r() > 0.8 ? 2 : 0);
-    }
-  }
-
-  /* A fridge: a tall white box with a seam and a handle, and whatever is
-     stuck to the front of it. */
-  function paintFridge(c, P, theme, r) {
-    paintFloor(c, P, theme, r);
-    px(c, 1, 0, T - 2, T - 1, "#b9c0c4");
-    px(c, 1, 0, T - 2, 2, "#d8dee2");
-    px(c, T - 3, 0, 2, T - 1, "#8d9498");
-    px(c, 1, 6, T - 2, 1, "#8d9498");
-    px(c, T - 6, 2, 1, 3, "#6e7478");
-    px(c, T - 6, 8, 1, 4, "#6e7478");
-    px(c, 3, 9, 4, 4, "#e8d48a");                 // a note held on by a magnet
-    px(c, 4, 8, 1, 1, "#c94a4a");
-  }
-
-  /* An armchair, from above: back, two arms, a cushion with a dent in it */
-  function paintChair(c, P, theme, r) {
-    paintFloor(c, P, theme, r);
-    px(c, 1, 0, T - 2, 5, "#6d414c");
-    px(c, 1, 0, T - 2, 1, "#8a5560");
-    px(c, 0, 4, 4, T - 6, "#6d414c");
-    px(c, T - 4, 4, 4, T - 6, "#6d414c");
-    px(c, 4, 5, T - 8, T - 8, "#7a4a56");
-    px(c, 5, 7, T - 10, 3, "#5e3742");            // where somebody sits
-    px(c, 2, T - 3, T - 4, 1, "#4a2c34");
-  }
-
-  /* The television, on the stand it actually sits on */
-  function paintTvStand(c, P, theme, r) {
-    paintFloor(c, P, theme, r);
-    px(c, 0, 2, T, T - 5, "#3a2a1e");
-    px(c, 0, 2, T, 2, "#553d2a");
-    px(c, 1, 6, 6, 4, "#241a12");                 // the shelf under it
-    px(c, 9, 6, 6, 4, "#241a12");
-    px(c, 2, 7, 4, 1, "#5a4a3a");
-    px(c, 1, T - 3, 2, 3, "#241a12");
-    px(c, T - 3, T - 3, 2, 3, "#241a12");
-  }
-
-  /* A window. It is in a wall, so it stops her and stops sight — but the
-     night comes through it, which is the whole point: a room with a window
-     is a room she can read without the torch. */
-  function paintWindow(c, P, theme, r) {
-    paintWall(c, P, theme, r, {});
-    px(c, 2, 2, T - 4, T - 5, "#2a3550");
-    px(c, 3, 3, T - 6, T - 7, "#4a6a96");
-    px(c, 3, 3, T - 6, 3, "#6d90bd");                 // the sky in the top pane
-    px(c, T / 2 | 0, 2, 1, T - 5, P.trim);            // the glazing bars
-    px(c, 2, 8, T - 4, 1, P.trim);
-    px(c, 1, 1, T - 2, 1, shade(P.trim, 20));         // the frame
-    px(c, 1, T - 4, T - 2, 2, P.trim);
-    for (var i = 0; i < 3; i++) px(c, 4 + ((r() * 8) | 0), 4 + ((r() * 8) | 0), 1, 1, "#93b4dd");
-  }
-
-  /* A rug. Nothing mechanical at all — it is here because a room with one
-     reads as somebody's room and a room without one reads as a grid. */
-  function paintRug(c, P, theme, r, E) {
-    paintFloor(c, P, theme, r);
-    px(c, 0, 0, T, T, "#5a3b34");                     // a worn red, not a pink slab
-    for (var y = 0; y < T; y += 3) px(c, 0, y, T, 1, "#513430");
-    for (var i = 0; i < 7; i++) px(c, (r() * T) | 0, (r() * T) | 0, 2, 1, "#6b4740");
-    for (i = 0; i < 4; i++) px(c, 2 + ((r() * 11) | 0), 2 + ((r() * 11) | 0), 2, 2, "#7d5a45");
-    if (E.n) { px(c, 0, 0, T, 2, "#3e2823"); px(c, 0, 2, T, 1, "#7a544a"); }
-    if (E.s) { px(c, 0, T - 2, T, 2, "#3e2823"); }
-    if (E.w) { px(c, 0, 0, 2, T, "#3e2823"); px(c, 2, 0, 1, T, "#7a544a"); }
-    if (E.e) { px(c, T - 2, 0, 2, T, "#3e2823"); }
-  }
-
-  /* A gate in a chain-link fence, with a sheet of road sign welded across
-     the middle of it because whoever built this had a road sign and no
-     steel plate. */
-  function paintGate(c, P, theme, r) {
-    paintGround(c, P, theme, r, {});
-    px(c, 1, 0, T - 2, T, "#4e545c");
-    px(c, 2, 1, T - 4, T - 2, "#2b2f36");
-    for (var y = 1; y < T - 1; y += 3) {                    // the mesh
-      for (var x = 2; x < T - 2; x += 3) px(c, x, y, 1, 1, "#6a7079");
-    }
-    px(c, 2, 5, T - 4, 7, "#7a8a6a");                       // the sign, bolted on
-    px(c, 2, 5, T - 4, 1, "#96a684");
-    px(c, 4, 7, T - 8, 3, "#e8ecd8");
-    px(c, 1, 0, 2, T, "#5c636c");                           // the frame
-    px(c, T - 3, 0, 2, T, "#3d434a");
-    px(c, 6, T - 5, 4, 3, "#c9a05a");                       // the bolt
-  }
-
-  /* A fire. Not a lamp: the light it throws is strong, warm and never the
-     same twice, which is what the campsite is going to need and what makes
-     the clearest case for the point-light system. */
-  function paintFire(c, P, theme, r) {
-    paintGround(c, P, theme, r, {});
-    for (var i = 0; i < 5; i++) {                       // the ring of stones
-      var a = (i / 5) * 6.28;
-      blob(c, 8 + Math.cos(a) * 6, 10 + Math.sin(a) * 4, 2, 2,
-           ["#7a7468", "#665f55", "#4f4a42", "#3b3731"]);
-    }
-    px(c, 4, 9, 9, 2, "#2a2018");                       // the burnt ground
-    px(c, 5, 7, 3, 2, "#4a3524"); px(c, 9, 8, 3, 2, "#4a3524");   // sticks
-    blob(c, 8, 7, 3, 3, ["#ffd98a", "#ff9a3a", "#d2541f", "#7a2a10"]);
-    px(c, 7, 4, 2, 3, "#ffe9b0");
-    px(c, 8, 3, 1, 2, "#fff6d8");
-  }
-
-  function paintExit(c, P, theme, r) {
-    paintGround(c, P, theme, r);
-    for (var y = 2; y < T - 1; y += 4) px(c, 3, y, T - 6, 2, "#e8d48a");
-    px(c, 2, 1, 1, T - 2, "#c9b06a");
-    px(c, T - 3, 1, 1, T - 2, "#c9b06a");
-  }
-
-  /* --- clutter -----------------------------------------------------------
-     A floor with nothing on it is a floor plan. These are the things that
-     were already on the carpet when the power went: a dropped book, a mug
-     nobody took to the sink, a magazine, a cushion off the sofa, a sock,
-     a phone charger still plugged into nothing. They are drawn onto the
-     floor tile itself when the map is baked, chosen from the tile's own
-     position so the same room is the same mess every time she plays it,
-     and they are sparse on purpose — a house that is knee deep in props
-     reads as a jumble sale, not as somewhere two people live.
-     --------------------------------------------------------------------- */
-  function paintClutter(c, r, theme) {
-    var pick = r();
-    if (pick > 0.16) return;                       // most floor stays floor
-    var x = 2 + ((r() * (T - 6)) | 0), y = 3 + ((r() * (T - 8)) | 0);
-    var k = r();
-    if (theme === "house") {
-      if (k < 0.20) {                              // a book, face down
-        px(c, x, y, 7, 5, "#7a3a3a"); px(c, x, y, 7, 1, "#a05252");
-        px(c, x + 1, y + 5, 5, 1, "#e8e0cc");
-      } else if (k < 0.38) {                       // a mug
-        px(c, x, y, 5, 5, "#d8cdb4"); px(c, x, y, 5, 1, "#f0e8d4");
-        px(c, x + 5, y + 1, 2, 2, "#d8cdb4"); px(c, x + 1, y + 1, 3, 2, "#5a4632");
-      } else if (k < 0.55) {                       // a magazine, splayed open
-        px(c, x, y + 1, 9, 4, "#cfd4dc"); px(c, x, y + 1, 4, 4, "#b9bfc9");
-        px(c, x + 4, y, 1, 5, "#8d939c");
-      } else if (k < 0.70) {                       // a cushion off the sofa
-        px(c, x, y, 7, 6, "#8a5560"); px(c, x + 1, y + 1, 5, 4, "#a06a76");
-        px(c, x, y + 6, 7, 1, "#5e3742");
-      } else if (k < 0.84) {                       // a sock
-        px(c, x, y + 2, 6, 3, "#e0dcd0"); px(c, x + 5, y, 2, 4, "#e0dcd0");
-      } else {                                      // a charger, plugged into nothing
-        px(c, x, y, 3, 3, "#e8e8e8");
-        for (var w = 0; w < 7; w++) px(c, x + 3 + w, y + 1 + ((w * 0.6) | 0), 1, 1, "#d8d8d8");
-      }
-    } else if (theme === "street") {
-      if (k < 0.20) {                                          // a newspaper, blown flat
-        px(c, x, y, 8, 5, "#8a8474"); px(c, x, y, 8, 1, "#a39d8c");
-        for (var nl = 1; nl < 4; nl++) px(c, x + 1, y + nl, 6, 1, "#6e6a5c");
-      } else if (k < 0.36) {                                   // a drain
-        px(c, x, y, 9, 6, "#2a2e36"); px(c, x, y, 9, 1, "#4a5058");
-        for (var dg = 1; dg < 5; dg++) px(c, x + 1, y + dg, 7, 1, dg % 2 ? "#171a20" : "#343a44");
-      } else if (k < 0.50) {                                   // a manhole
-        blob(c, x + 4, y + 3, 5, 4, ["#4a5058", "#3a4048", "#2c3138", "#22262c"]);
-        px(c, x + 2, y + 3, 5, 1, "#22262c");
-      } else if (k < 0.64) {                                   // a traffic cone, kicked over
-        px(c, x, y + 3, 9, 2, "#c4581f"); px(c, x + 2, y + 1, 5, 2, "#e0e2e6");
-        px(c, x + 4, y, 4, 2, "#c4581f");
-      } else if (k < 0.78) {                                   // a can
-        px(c, x, y, 4, 6, "#3a5a3a"); px(c, x, y, 4, 1, "#5a7a55"); px(c, x + 1, y + 6, 2, 1, "#2a3f2a");
-      } else if (k < 0.9) {                                    // a dropped carrier bag
-        px(c, x, y + 1, 7, 5, "#c9cdd6"); px(c, x + 1, y, 2, 2, "#c9cdd6"); px(c, x + 4, y, 2, 2, "#c9cdd6");
-      } else {                                                  // broken glass
-        for (var g = 0; g < 8; g++) px(c, x + ((r() * 9) | 0), y + ((r() * 6) | 0), 1, 1, "#9aa0aa");
-      }
-    } else if (theme === "road") {
-      if (k < 0.3) {                                            // a puddle in a rut
-        blob(c, x + 4, y + 2, 6, 3, ["#4a5a58", "#3d4d4c", "#334241", "#2b3736"]);
-        px(c, x + 2, y + 1, 4, 1, "#6a7a76");
-      } else if (k < 0.55) {                                    // a stone
-        blob(c, x + 3, y + 2, 3, 2, ["#7a7468", "#665f55", "#4f4a42", "#3b3731"]);
-      } else if (k < 0.78) {                                    // a fallen branch
-        for (var bx = 0; bx < 8; bx++) px(c, x + bx, y + 2 + ((bx * 0.4) | 0), 1, 1, "#4a3a28");
-        px(c, x + 5, y + 1, 2, 1, "#4a3a28");
-      } else {                                                   // a clump of nettles
-        for (var nn = 0; nn < 7; nn++) px(c, x + ((r() * 7) | 0), y + ((r() * 5) | 0), 1, 2, "#4c6040");
-      }
-    } else if (theme === "hospital") {
-      if (k < 0.4) { px(c, x, y, 6, 4, "#e8ecee"); px(c, x, y, 6, 1, "#fbfdfe"); }    // paperwork
-      else if (k < 0.7) { px(c, x, y, 3, 6, "#c9d6dd"); px(c, x, y, 3, 1, "#8fa2ac"); } // a dropped kidney dish
-      else { for (var q = 0; q < 6; q++) px(c, x + ((r() * 7) | 0), y + ((r() * 5) | 0), 1, 2, "#b9c4cc"); }
-    }
-  }
-
-  /* --- the atlas -------------------------------------------------------
-     Tiles are cached by character, by which of their sides are outside
-     edges, and by which of four variants they drew — so a floor is not
-     graph paper and a sofa is not four sofas.
-     --------------------------------------------------------------------- */
-  var VARIANTS = 8;
-  var EDGED = "BFK=rc,#y";            // the pieces that care about their neighbours
-
-  function tileFor(cache, theme, ch, mask, v, under) {
-    var key = ch + "|" + mask + "|" + v + "|" + (under || "");
-    if (cache[key]) return cache[key];
-    var P = PAL[theme];
-    var cv = mkCanvas(T, T), c = cv.getContext("2d");
-    var r = rnd(1000 + ch.charCodeAt(0) * 97 + v * 13 + mask * 7);
-    var E = { n: !!(mask & 1), s: !!(mask & 2), w: !!(mask & 4), e: !!(mask & 8) };
-    if (ch === ".") paintFloor(c, P, theme, r);
-    else if (ch === ",") paintGround(c, P, theme, r, E);
-    else if (ch === "#") { paintWall(c, P, theme, r, E); if (theme === "hospital" && r() > 0.72) paintSign(c, P, r, E); }
-    else if (ch === "o") paintTall(c, P, theme, r);
-    else if (ch === "=") paintCover(c, P, theme, r);
-    else if (ch === "B") paintBed(c, P, theme, r, E);
-    else if (ch === "F") paintSofa(c, P, theme, r, E);
-    else if (ch === "K") paintCounter(c, P, theme, r, E);
-    else if (ch === "c") paintCar(c, P, theme, r, E);
-    else if (ch === "y") paintGurney(c, P, theme, r, E);
-    else if (ch === "Y") paintTrolley(c, P, theme, r);
-    else if (ch === "j") paintBrokenDoor(c, P, theme, r);
-    else if (ch === "n") paintShelf(c, P, theme, r);
-    else if (ch === "f") paintFridge(c, P, theme, r);
-    else if (ch === "q") paintChair(c, P, theme, r);
-    else if (ch === "u") paintTvStand(c, P, theme, r);
-    else if (ch === "v") paintWindow(c, P, theme, r);
-    else if (ch === "r") paintRug(c, P, theme, r, E);
-    else if (ch === "h") paintHide(c, P, theme, r);
-    else if (ch === "d") paintDoor(c, P, theme, r, "plain");
-    else if (ch === "D") paintDoor(c, P, theme, r, "locked");
-    else if (ch === "P") paintDoor(c, P, theme, r, "power");
-    else if (ch === "W") paintPanel(c, P, theme, r);
-    else if (ch === "T") paintTv(c, P, theme, r);
-    else if (ch === "G") paintGate(c, P, theme, r);
-    else if (ch === "X") paintExit(c, P, theme, r);
-    else if (ch === "*") paintFire(c, P, theme, r);
-    else if (ch === "l") paintLamp(c, P, theme, r, false, under);
-    else if (ch === "L") paintLamp(c, P, theme, r, true, under);
-    else paintFloor(c, P, theme, r);
-    cache[key] = cv;
-    return cv;
-  }
-
-  /* =======================================================================
-     8. THE LEVEL
-
-        Turning a grid of characters into: what stops her, what stops sight,
-        where she can disappear, what she can use, and who else is walking
-        about. The map art is baked into one canvas here too.
-     ======================================================================= */
-  var SOLID = "#vco=BFKnfquyYWTLCA"; // she cannot walk through these (G is a door)
-  var OPAQUE = "#vcohnf";          // and sight cannot pass these
-  var ENTITY = "SzixAHN";          // drawn as bare floor; something stands on it
-
-  function buildLevel(def) {
-    useLight(def);
-    var g = def.grid, h = g.length, w = g[0].length;
-    var base = def.base || ".";
-    var L = {
-      def: def, w: w, h: h, theme: def.theme,
-      cells: [], doors: {}, zombies: [], things: [], start: null, exit: null,
-      anwar: null, horse: null, lights: [],
-    };
-
-    for (var y = 0; y < h; y++) {
-      if (g[y].length !== w) throw new Error("level row " + y + " is " + g[y].length + " wide, expected " + w);
-      var row = [];
-      for (var x = 0; x < w; x++) {
-        var ch = g[y][x];
-        var draw = ch;
-        if (ENTITY.indexOf(ch) >= 0) draw = base;
-        if (ch === "S") L.start = { x: x * T + T / 2, y: y * T + T / 2 };
-        if (ch === "X") L.exit = { x: x, y: y };
-        /* z patrols a line, i stands still, x is restless and hears far */
-        if (ch === "z") L.zombies.push(mkZombie(x * T + T / 2, y * T + T / 2, Z_KIND.PATROL,
-                                                (x + y) % 2 ? "h" : "v"));
-        if (ch === "i") L.zombies.push(mkZombie(x * T + T / 2, y * T + T / 2, Z_KIND.IDLE));
-        if (ch === "x") L.zombies.push(mkZombie(x * T + T / 2, y * T + T / 2, Z_KIND.DRAWN));
-        if (ch === "A") { L.anwar = { x: x * T + T / 2, y: y * T + T / 2, awake: false }; draw = "B"; }
-        if (ch === "H") { L.horse = { x: x * T + T / 2, y: y * T + T / 2 }; L.things.push({ kind: "horse", x: x, y: y, done: false }); }
-        if (ch === "N") L.things.push({ kind: "note", x: x, y: y, done: false });
-        if (ch === "T") L.things.push({ kind: "tv", x: x, y: y, done: false });
-        if (ch === "W") L.things.push({ kind: "panel", x: x, y: y, done: false });
-        if (ch === "Q") L.things.push({ kind: "check", x: x, y: y, done: false });
-        if (ch === "C") L.things.push({ kind: "car", x: x, y: y, done: false });
-        if (ch === "G") L.doors[x + "," + y] = { open: false, kind: "story" };
-        if (ch === "d") L.doors[x + "," + y] = { open: false, kind: "plain" };
-        if (ch === "D") L.doors[x + "," + y] = { open: false, kind: "locked" };
-        if (ch === "P") L.doors[x + "," + y] = { open: false, kind: "power" };
-        if (ch === "v") {
-          /* The pool goes into whichever side of the window is open floor.
-             It used to be pushed south always, so a window in a side wall
-             lit the wall it was in, and a window in the top wall lit
-             whatever piece of furniture happened to be under it. */
-          var wdx = 0, wdy = 1, found = false;
-          [1, 2].forEach(function (reach) {
-            if (found) return;
-            [[0, 1], [0, -1], [1, 0], [-1, 0]].some(function (n) {
-              var nb = (g[y + n[1] * reach] || "")[x + n[0] * reach];
-              if (nb && ".,rhBF=".indexOf(nb) >= 0) { wdx = n[0]; wdy = n[1]; found = true; return true; }
-              return false;
-            });
-          });
-          L.lights.push({ x: x * T + T / 2 + wdx * (T * 0.6), y: y * T + T / 2 + wdy * (T * 0.6),
-                          r: 58, warm: -0.9 });
-        }
-        /* A light inside Ward C is on the same dead circuit as its doors,
-           so the ward is a black hole in the middle of a lit building until
-           she has been to the plant room. That is the whole point of it. */
-        if (ch === "*") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2 - 2,
-                                        r: 96, warm: 1.25, fire: true });
-        if (ch === "l" && def.deadZone && x >= def.deadZone[0] && x <= def.deadZone[2] &&
-            y >= def.deadZone[1] && y <= def.deadZone[3]) {
-          L.dead = L.dead || [];
-          L.dead.push({ x: x * T + T / 2, y: y * T + T / 2, r: 60, warm: -0.5, flicker: true });
-        }
-        else if (ch === "l") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2, r: def.theme === "hospital" ? 60 : 62,
-                                        warm: def.theme === "hospital" ? -0.5 : 1,
-                                        flicker: def.theme === "hospital" && ((x + y) % 3 === 0) });
-        if (ch === "L") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2, r: 74, warm: 1 });
-        if (ch === "T") L.lights.push({ x: x * T + T / 2, y: y * T + T / 2, r: 44, warm: 0.35, tv: true });
-        row.push({ ch: ch, draw: draw });
-      }
-      L.cells.push(row);
-    }
-    if (!L.start) throw new Error("level has no S");
-
-    /* bake the map: one canvas, drawn once, blitted from ever after */
-    var cache = {};
-    L.map = mkCanvas(w * T, h * T);
-    var mc = L.map.getContext("2d");
-    function sameAs(d, xx, yy) {
-      return yy >= 0 && yy < h && xx >= 0 && xx < w && L.cells[yy][xx].draw === d;
-    }
-    for (y = 0; y < h; y++) {
-      for (x = 0; x < w; x++) {
-        var d = L.cells[y][x].draw;
-        if (d === " ") continue;
-        var mask = 0;
-        if (EDGED.indexOf(d) >= 0) {
-          if (!sameAs(d, x, y - 1)) mask |= 1;
-          if (!sameAs(d, x, y + 1)) mask |= 2;
-          if (!sameAs(d, x - 1, y)) mask |= 4;
-          if (!sameAs(d, x + 1, y)) mask |= 8;
-        }
-        var under = null;
-        if (d === "l" || d === "L") {                 // what is this lamp standing on?
-          [[0, -1], [0, 1], [-1, 0], [1, 0]].some(function (n) {
-            var nb = (L.cells[y + n[1]] || [])[x + n[0]];
-            if (nb && (nb.draw === "." || nb.draw === ",")) { under = nb.draw; return true; }
-            return false;
-          });
-        }
-        mc.drawImage(tileFor(cache, def.theme, d, mask, (x * 7 + y * 13) % VARIANTS, under), x * T, y * T);
-        // (depth is a second pass, below, because it reads its neighbours)
-
-        /* Clutter goes on here rather than into the cached tile. Baked into
-           the tile it would be cached with it, so every tile sharing that
-           variant would carry the same book at the same angle and the room
-           would read as wallpaper. Seeded from the tile's own coordinates it
-           is different everywhere and identical between visits. */
-        if (d === "." || (d === "," && def.theme !== "house" && def.theme !== "road")) {
-          mc.save();
-          mc.translate(x * T, y * T);
-          paintClutter(mc, rnd(x * 92821 + y * 31337 + 7), def.theme);
-          mc.restore();
-        }
-      }
-    }
-    bakeDepth(mc, L);
-    L.far = buildFar(def.theme);
-    /* the run of empty rows at the top, which is the window onto distance */
-    L.skyRows = 0;
-    while (L.skyRows < h && /^ *$/.test(g[L.skyRows])) L.skyRows++;
-    if (!L.skyRows) L.far = null;
-
-    /* every tall tile is a potential occluder — kept as a list so the
-       frame can put the ones in front of her back on top afterwards */
-    L.occluders = [];
-    for (y = 0; y < h; y++) {
-      for (x = 0; x < w; x++) {
-        if (TALL_TILES.indexOf(L.cells[y][x].draw) >= 0) L.occluders.push({ x: x, y: y });
-      }
-    }
-    return L;
-  }
-
-  /* =======================================================================
-     THE DEPTH SYSTEM
-
-        One set of rules about light and distance, written once here and
-        obeyed by everything that draws afterwards, so a location inherits
-        depth rather than having it retrofitted scene by scene.
-
-        The rules:
-
-        1. There is one light per scene and it has a direction. Everything
-           shades to it: the side faces baked into the map, the highlight
-           and shade on every sprite, and the direction and length of every
-           cast shadow. Change LIGHT for a level and all three follow.
-
-        2. Distance desaturates. Whatever is further away is hazier and
-           lower in contrast, which in a top-down view means higher up the
-           screen.
-
-        3. Three planes, moving at three speeds. A far backdrop at less
-           than half the camera's rate, the world at its rate, and a near
-           drifting layer above it.
-
-        4. Anything with height in front of her covers her. Not a flat
-           backdrop she is always on top of.
-
-        One honest limit, stated rather than faked: an orthographic
-        top-down view has no true horizon, so a far parallax plane only
-        means anything where there is distance to see — outdoors. Interiors
-        get every other rule and no backdrop, because from inside a
-        corridor there is nothing distant to look at.
-     ======================================================================= */
-
-  /* Light comes from the upper left, which is the direction every blob in
-     this file was already shaded to; this makes that assumption explicit
-     and puts it in one place. A level can override it with `light`. */
-  var LIGHT = { x: -0.55, y: -0.72, warm: "rgba(255,246,225,", cool: "rgba(6,9,20," };
-  var lightKey = "default";
-
-  function useLight(def) {
-    var l = (def && def.light) || null;
-    LIGHT.x = l ? l[0] : -0.55;
-    LIGHT.y = l ? l[1] : -0.72;
-    lightKey = LIGHT.x + "/" + LIGHT.y;
-  }
-
-  /* ---- directional shading on a sprite -------------------------------
-     A pixel map is a flat silhouette until something tells it where the
-     light is. This lays a highlight across the lit face and a shade across
-     the other, clipped to the sprite itself, and keeps the result on the
-     image so it is computed once per sprite per light rather than per
-     frame. */
-  function shaded(img) {
-    if (img.__lk === lightKey && img.__sh) return img.__sh;
-    var w = img.width, h = img.height;
-    var cv = mkCanvas(w, h), x = cv.getContext("2d");
-    x.imageSmoothingEnabled = false;
-    x.drawImage(img, 0, 0);
-    x.globalCompositeOperation = "source-atop";
-    /* the gradient runs along the light's own axis, so moving the light
-       moves the highlight and the shade together */
-    var g = x.createLinearGradient(
-      w / 2 + LIGHT.x * w, h / 2 + LIGHT.y * h,
-      w / 2 - LIGHT.x * w, h / 2 - LIGHT.y * h);
-    g.addColorStop(0.00, LIGHT.warm + ".20)");
-    g.addColorStop(0.42, "rgba(255,255,255,0)");
-    g.addColorStop(0.62, "rgba(0,0,0,0)");
-    g.addColorStop(1.00, LIGHT.cool + ".34)");
-    x.fillStyle = g;
-    x.fillRect(0, 0, w, h);
-    x.globalCompositeOperation = "source-over";
-    img.__lk = lightKey; img.__sh = cv;
-    return cv;
-  }
-
-  /* ---- the shadow a thing throws ------------------------------------
-     Anchored to the ground under it, thrown away from the light, and
-     longer the lower the light sits. Soft at the edge, darkest where the
-     object actually meets the floor. */
-  function castShadow(c, x, y, w, strength) {
-    var lean = 1.35;
-    var ox = -LIGHT.x * w * lean, oy = -LIGHT.y * w * 0.34;
-    var rx = w * (1 + Math.abs(LIGHT.x) * 0.5), ry = w * 0.40;
-    c.save();
-    c.globalAlpha = strength === undefined ? 0.5 : strength;
-    var g = c.createRadialGradient(x + ox * 0.35, y + oy * 0.35, 0,
-                                   x + ox * 0.35, y + oy * 0.35, rx);
-    g.addColorStop(0, "rgba(4,5,10,.9)");
-    g.addColorStop(0.5, "rgba(4,5,10,.42)");
-    g.addColorStop(1, "rgba(4,5,10,0)");
-    c.fillStyle = g;
-    c.beginPath();
-    c.ellipse(x + ox * 0.35, y + oy * 0.35, rx, ry, 0, 0, 6.2832);
-    c.fill();
-    c.restore();
-  }
-
-  /* ---- the far plane -------------------------------------------------
-     What is behind the level, painted once into a wide strip and scrolled
-     at a fraction of the camera's rate. Only outdoor themes declare one:
-     from inside a corridor there is nothing distant to look at, and faking
-     one would read as a poster on the wall.
-     --------------------------------------------------------------------- */
-  var FAR_RATE = 0.38;                 // how much slower than the world
-  var NEAR_RATE = 1.22;                // and how much faster the near plane is
-
-  function buildFar(theme) {
-    if (theme !== "street" && theme !== "road") return null;
-    var W = VW * 2, H = 96;
-    var cv = mkCanvas(W, H), c = cv.getContext("2d");
-    c.imageSmoothingEnabled = false;
-    var r = rnd(theme === "street" ? 6100 : 6200);
-
-    if (theme === "street") {
-      /* three ranks of rooflines, each one paler and flatter than the one
-         in front of it, which is what distance does to contrast */
-      [[0.30, 46, "#1b2130"], [0.55, 32, "#232a3c"], [0.85, 22, "#2c3448"]].forEach(
-        function (rank, i) {
-          var x = -20;
-          while (x < W + 20) {
-            var bw = 14 + ((r() * 26) | 0);
-            var bh = rank[1] + ((r() * 22) | 0);
-            var top = H - bh;
-            px(c, x, top, bw, bh, rank[2]);
-            px(c, x, top, bw, 1, shade(rank[2], 14));
-            if (i === 2) {                       // only the nearest rank has windows
-              for (var wy = top + 5; wy < H - 4; wy += 8) {
-                for (var wx = x + 2; wx < x + bw - 3; wx += 6) {
-                  if (r() > 0.72) px(c, wx, wy, 2, 3, r() > 0.5 ? "#4a5570" : "#8a7a4a");
-                }
-              }
-            }
-            if (r() > 0.86) px(c, x + (bw >> 1), top - 7, 1, 7, rank[2]);   // an aerial
-            x += bw + 1 + i;
-          }
-        });
-    } else {
-      /* hills, and a treeline along the foot of them */
-      [[0.35, "#2a3346"], [0.62, "#314050"], [0.9, "#38495a"]].forEach(function (rank, i) {
-        var y = H - 26 - i * 12;
-        for (var x = 0; x < W; x++) {
-          var hgt = 12 + Math.sin(x * 0.018 + i * 2.1) * 7 + Math.sin(x * 0.005 + i) * 6;
-          px(c, x, y - hgt, 1, H - (y - hgt), rank[1]);
-        }
-        if (i === 2) {
-          for (var t = 0; t < W; t += 3) {
-            if (r() > 0.55) px(c, t, y - 3 - ((r() * 4) | 0), 2, 6, "#26332c");
-          }
-        }
-      });
-    }
-    return cv;
-  }
-
-  /* ---- the near plane -------------------------------------------------
-     Nothing structural — motes and drifting scraps that live in front of
-     everything and move faster than the world, which is the cue that they
-     are between the camera and the scene.
-     --------------------------------------------------------------------- */
-  function paintNear(G, c, cx, cy) {
-    var L = G.level;
-    if (!G.near) {
-      G.near = [];
-      var r = rnd(8080);
-      for (var i = 0; i < 26; i++) {
-        G.near.push({ x: r() * L.w * T, y: r() * L.h * T, sz: r() > 0.7 ? 2 : 1,
-                      sp: 8 + r() * 18, ph: r() * 6.28 });
-      }
-    }
-    for (var n = 0; n < G.near.length; n++) {
-      var m = G.near[n];
-      m.x += Math.sin(G.t * 0.5 + m.ph) * 0.5;
-      m.y -= m.sp * 0.016;
-      if (m.y < cy - 30) { m.y = cy + VH + 20; m.x = cx + Math.random() * VW; }
-      var sx = (m.x - cx * NEAR_RATE) - (cx - cx * NEAR_RATE);
-      var sy = (m.y - cy * NEAR_RATE) - (cy - cy * NEAR_RATE);
-      if (sx < -4 || sx > VW + 4 || sy < -4 || sy > VH + 4) continue;
-      c.fillStyle = "rgba(214,224,246," + (0.10 + 0.10 * Math.sin(G.t * 2 + m.ph)).toFixed(3) + ")";
-      c.fillRect(sx | 0, sy | 0, m.sz, m.sz);
-    }
-  }
-
-  /* ---- haze -----------------------------------------------------------
-     Distance washes contrast out. Up the screen is away in this view, so
-     the wash is strongest at the top and gone by the time it reaches her.
-     --------------------------------------------------------------------- */
-  function paintHaze(G, c) {
-    var h = G.level.def.haze;
-    if (!h) return;
-    var g = c.createLinearGradient(0, 0, 0, VH * 0.78);
-    g.addColorStop(0, "rgba(" + h[0] + "," + h[1] + "," + h[2] + "," + h[3] + ")");
-    g.addColorStop(1, "rgba(" + h[0] + "," + h[1] + "," + h[2] + ",0)");
-    c.fillStyle = g;
-    c.fillRect(0, 0, VW, VH * 0.78);
-  }
-
-  /* =======================================================================
-     DEPTH
-
-        Everything was drawn flat on its own tile, which is why the rooms
-        read as a plan rather than as a place. Two passes over the baked map
-        fix most of that:
-
-        a face. Anything tall — a wall, a wardrobe, a hedge, a parked car —
-        gets its lower band darkened and lightly striated, so the tile reads
-        as the top of something with a side to it rather than as a coloured
-        square.
-
-        and the shadow it throws. Light in this chapter comes from the upper
-        left, the way every blob in the file is shaded, so shadows fall down
-        and to the right, and how far they fall depends on how tall the
-        thing is: a wardrobe throws one, a coffee table barely does.
-
-        Both are baked into the map once, so they cost nothing per frame.
-     ======================================================================= */
-  var TALL_TILES = "#vconfWLGTP";      // things with a side you would see
-  var LOW_TILES  = "=BFKyYquhrdDj";    // things you look over the top of
-
-  function bakeDepth(mc, L) {
-    var w = L.w, h = L.h;
-    function kind(x, y) {
-      if (x < 0 || y < 0 || x >= w || y >= h) return null;
-      var ch = L.cells[y][x].draw;
-      if (TALL_TILES.indexOf(ch) >= 0) return "tall";
-      if (LOW_TILES.indexOf(ch) >= 0) return "low";
-      return null;
-    }
-    for (var y = 0; y < h; y++) {
-      for (var x = 0; x < w; x++) {
-        var k = kind(x, y);
-        if (!k) continue;
-        var below = kind(x, y + 1);
-        if (below === "tall" || (k === "low" && below)) continue;   // buried side
-
-        var faceH = k === "tall" ? 6 : 0;
-        var shadH = k === "tall" ? 9 : 4;
-        var px0 = x * T, py0 = y * T;
-
-        if (faceH) {
-          /* the side of it, darkened and given a little vertical grain */
-          var fg = mc.createLinearGradient(0, py0 + T - faceH, 0, py0 + T);
-          fg.addColorStop(0, "rgba(6,7,12,.30)");
-          fg.addColorStop(1, "rgba(6,7,12,.62)");
-          mc.fillStyle = fg;
-          mc.fillRect(px0, py0 + T - faceH, T, faceH);
-          for (var gx = 0; gx < T; gx += 3) {
-            mc.fillStyle = "rgba(255,255,255,.035)";
-            mc.fillRect(px0 + gx, py0 + T - faceH, 1, faceH);
-          }
-          mc.fillStyle = "rgba(255,255,255,.10)";
-          mc.fillRect(px0, py0 + T - faceH, T, 1);
-        }
-
-        /* and what it throws on the ground in front of it */
-        if (y + 1 < h && !below) {
-          var sg = mc.createLinearGradient(0, (y + 1) * T, 0, (y + 1) * T + shadH);
-          sg.addColorStop(0, "rgba(4,5,9,.50)");
-          sg.addColorStop(1, "rgba(4,5,9,0)");
-          mc.fillStyle = sg;
-          mc.fillRect(px0 + 2, (y + 1) * T, T, shadH);          // offset right, light is upper-left
-        }
-      }
-    }
-  }
-
-  function at(L, tx, ty) {
-    if (tx < 0 || ty < 0 || ty >= L.h || tx >= L.w) return "#";
-    return L.cells[ty][tx].ch;
-  }
-
-  function isSolid(L, tx, ty) {
-    var ch = at(L, tx, ty);
-    if (ch === " ") return true;
-    var door = L.doors[tx + "," + ty];
-    if (door) return !door.open;
-    return SOLID.indexOf(ch) >= 0;
-  }
-
-  function isOpaque(L, tx, ty) {
-    var ch = at(L, tx, ty);
-    if (ch === " ") return true;
-    var door = L.doors[tx + "," + ty];
-    if (door) return !door.open;
-    return OPAQUE.indexOf(ch) >= 0;
-  }
-
-  function isHide(L, tx, ty) { return at(L, tx, ty) === "h"; }
-
-  /* a straight line between two points, stopped by anything opaque */
-  function canSee(L, x0, y0, x1, y1) {
-    var dx = x1 - x0, dy = y1 - y0;
-    var steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 4);
-    for (var i = 1; i < steps; i++) {
-      var t = i / steps;
-      if (isOpaque(L, ((x0 + dx * t) / T) | 0, ((y0 + dy * t) / T) | 0)) return false;
-    }
-    return true;
-  }
-
-  /* =======================================================================
-     9. LIGHT
-
-        A half-resolution light map: black where the dark is, white where
-        something is lit, multiplied over the finished frame. Half res on
-        purpose — at full resolution the falloff is a smooth photographic
-        vignette, which does not belong on a canvas where everything else
-        is a 16-pixel tile.
-     ======================================================================= */
-  var LW = 160, LH = 90;
-  var lightCv = null, lightCx = null;
-
-  function ensureLight() {
-    if (lightCv) return;
-    lightCv = mkCanvas(LW, LH);
-    lightCx = lightCv.getContext("2d");
-  }
-
-  function paintLight(G) {
-    ensureLight();
-    var L = G.level, c = lightCx, dark = L.def.dark;
-    /* The unlit value, and the colour of it.
-
-       These have to be two separate things. The tint used to be baked into
-       the value — the base colour was v times a fixed cold multiplier —
-       which meant that even a level with dark set to zero came out
-       multiplied by about a half and tinted blue, so the one daylight level
-       in the chapter rendered as another night. The tint now fades out with
-       the dark: at dark 0 this is white and the map is painted exactly as
-       it was drawn; at dark 0.75 it is the cold blue the night levels want. */
-    var v = 255 * (1 - dark);
-    var R = Math.round(Math.max(0, Math.min(255, v * (1 - 0.38 * dark))));
-    var Gc = Math.round(Math.max(0, Math.min(255, v * (1 - 0.26 * dark))));
-    var B = Math.round(Math.max(0, Math.min(255, v * (1 + 0.30 * dark))));
-    c.globalCompositeOperation = "source-over";
-    c.fillStyle = "rgb(" + R + "," + Gc + "," + B + ")";
-    c.fillRect(0, 0, LW, LH);
-    c.globalCompositeOperation = "lighter";
-
-    function pool(wx, wy, radius, warm, strength) {
-      var sx = (wx - G.cam.x) / 2, sy = (wy - G.cam.y) / 2, sr = radius / 2;
-      if (sx < -sr || sy < -sr || sx > LW + sr || sy > LH + sr) return;
-      var grd = c.createRadialGradient(sx, sy, 0, sx, sy, sr);
-      var a = strength === undefined ? 1 : strength;
-      grd.addColorStop(0, "rgba(255," + (238 - warm * 30) + "," + (215 - warm * 70) + "," + a + ")");
-      grd.addColorStop(0.55, "rgba(" + (210 - warm * 20) + "," + (196 - warm * 40) + "," + (172 - warm * 60) + "," + (a * 0.45) + ")");
-      grd.addColorStop(1, "rgba(0,0,0,0)");
-      c.fillStyle = grd;
-      c.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
-    }
-
-    /* the panel throws a spark every few seconds while it is still dead —
-       which is both a hint where the plant room is and the reason the
-       corridor outside it keeps flickering */
-    L.things.forEach(function (th) {
-      if (th.kind !== "panel" || th.done) return;
-      var sp = Math.sin(G.t * 2.7) > 0.985 ? 1 : 0;
-      if (sp) pool(th.x * T + T / 2, th.y * T + T / 2, 54, -1, 0.9);
-    });
-
-    for (var i = 0; i < L.lights.length; i++) {
-      var li = L.lights[i];
-      var s = 1;
-      if (li.tv) s = 0.75 + 0.25 * Math.sin(G.t * 9 + i);       // the set flickers
-      if (li.flicker) s = 0.55 + 0.45 * (Math.sin(G.t * 3.1 + i) > -0.4 ? 1 : 0.2);
-      /* A fire never repeats: two rates that do not divide into each other,
-         plus a little noise, so the eye cannot find the loop. */
-      if (li.fire) {
-        s = 0.72 + 0.18 * Math.sin(G.t * 5.7 + i) + 0.14 * Math.sin(G.t * 13.3 + i * 2.1)
-              + (Math.random() - 0.5) * 0.06;
-      }
-      pool(li.x, li.y, li.r, li.warm, s);
-    }
-    /* Her torch. Three pools rather than one: a wide cold spill so she can
-       see the shape of the room, a warmer throw in the direction she is
-       facing, and a small hot core at her feet. One flat circle reads as a
-       hole cut in the dark; this reads as a light. */
-    var p = G.player;
-    var tr = (p.creeping ? TUNE.torchCreep : TUNE.torch) * (1 + 0.02 * Math.sin(G.t * 5));
-    pool(p.x + p.fx * 14, p.y + p.fy * 14 - 2, tr * 2.2, -0.35, 0.62);
-    pool(p.x + p.fx * 8, p.y + p.fy * 8 - 2, tr * 1.25, 0.45, 0.85);
-    pool(p.x, p.y - 2, tr * 0.55, 0.8, 1);
-
-    c.globalCompositeOperation = "source-over";
-  }
-
-  /* =======================================================================
-     10. THE PLAYER
-     ======================================================================= */
-  function mkPlayer(x, y) {
-    return {
-      x: x, y: y, vx: 0, vy: 0,
-      face: "down", fx: 0, fy: 1,       // fx/fy is the facing as a vector
-      anim: 0, frame: 0,
-      creeping: false, hidden: false, seen: 0,
-      noiseT: 0,
-    };
-  }
-
-  /* she is a small box at her feet, not the whole 12x18 drawing — walking
-     behind a sofa should not be blocked by her hair */
-  var PW = 9, PH = 7;
-
-  function freeAt(L, x, y) {
-    var x0 = ((x - PW / 2) / T) | 0, x1 = ((x + PW / 2 - 0.01) / T) | 0;
-    var y0 = ((y - PH / 2) / T) | 0, y1 = ((y + PH / 2 - 0.01) / T) | 0;
-    for (var ty = y0; ty <= y1; ty++) {
-      for (var tx = x0; tx <= x1; tx++) if (isSolid(L, tx, ty)) return false;
-    }
-    return true;
-  }
-
-  function stepPlayer(G, dt) {
-    var p = G.player, L = G.level, k = G.keys;
-    var ax = (k.right ? 1 : 0) - (k.left ? 1 : 0);
-    var ay = (k.down ? 1 : 0) - (k.up ? 1 : 0);
-    var len = Math.hypot(ax, ay) || 1;
-    ax /= len; ay /= len;
-
-    p.creeping = !!k.sneak;
-    var top = p.creeping ? TUNE.creep : TUNE.walk;
-
-    if (ax || ay) {
-      p.vx += ax * TUNE.accel * dt;
-      p.vy += ay * TUNE.accel * dt;
-      p.fx = ax; p.fy = ay;
-      p.face = Math.abs(ax) > Math.abs(ay) ? (ax > 0 ? "right" : "left") : (ay > 0 ? "down" : "up");
-    } else {
-      var f = TUNE.friction * dt;
-      var sp = Math.hypot(p.vx, p.vy);
-      if (sp <= f) { p.vx = 0; p.vy = 0; }
-      else { p.vx -= (p.vx / sp) * f; p.vy -= (p.vy / sp) * f; }
-    }
-    var s = Math.hypot(p.vx, p.vy);
-    if (s > top) { p.vx = (p.vx / s) * top; p.vy = (p.vy / s) * top; }
-
-    /* the two axes are resolved separately, so a shoulder catching a door
-       frame slides her along it instead of stopping her dead */
-    var nx = p.x + p.vx * dt;
-    if (freeAt(L, nx, p.y)) p.x = nx; else p.vx = 0;
-    var ny = p.y + p.vy * dt;
-    if (freeAt(L, p.x, ny)) p.y = ny; else p.vy = 0;
-
-    /* plain doors open by being walked into; that is loud */
-    var tx = (p.x / T) | 0, ty = (p.y / T) | 0;
-    [[tx + (p.fx > 0 ? 1 : p.fx < 0 ? -1 : 0), ty], [tx, ty + (p.fy > 0 ? 1 : p.fy < 0 ? -1 : 0)]].forEach(function (c) {
-      var d = L.doors[c[0] + "," + c[1]];
-      if (d && !d.open && d.kind === "plain" && Math.hypot(c[0] * T + T / 2 - p.x, c[1] * T + T / 2 - p.y) < 20) {
-        d.open = true;
-        makeNoise(G, c[0] * T + T / 2, c[1] * T + T / 2, TUNE.noiseDoor);
-        sfx("door");
-        G.doorFx.push({ x: c[0] * T + T / 2, y: c[1] * T + T / 2, t: 0 });
-      }
-    });
-
-    var wasHidden = p.hidden;
-    p.hidden = isHide(L, tx, ty);
-    if (p.hidden && !wasHidden) sfx("hide");
-
-    /* animation, and the sound of her own feet */
-    var moving = s > 4;
-    if (moving) {
-      p.anim += dt * (p.creeping ? 4 : 7.5);
-      p.frame = 1 + (((p.anim | 0) % 2));
-      p.noiseT -= dt;
-      if (p.noiseT <= 0) {
-        p.noiseT = p.creeping ? 0.9 : 0.45;
-        if (!p.creeping) makeNoise(G, p.x, p.y, TUNE.noiseWalk);
-        sfx(p.creeping ? "creep" : "step");
-      }
-    } else {
-      p.frame = 0; p.anim = 0;
-    }
-  }
-
-  /* =======================================================================
-     11. THE ZOMBIES
-
-        They patrol, they see down a cone in front of them, they hear, and
-        when they catch her the game does not punish her: the screen goes
-        quiet, she gets pulled back to the last place she was safe, and she
-        tries again. That is the whole penalty, on purpose. This is still a
-        love letter — it is just set in a bad week.
-     ======================================================================= */
-  var DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-
-  /* THREE KINDS OF THEM.
-
-     One random walker everywhere taught the player nothing: every zombie
-     behaved the same, so there was no reading a room, only luck. There are
-     three now, and each one is legible on sight once you have met it:
-
-       idle    stood where it stopped, facing one way, until something
-               gives it a reason. The safest to walk behind and the worst
-               to walk in front of.
-       patrol  walks a line and turns round at the end of it. Predictable
-               on purpose — you can time it.
-       drawn   restless, and it hears twice as far as the others. This is
-               the one that turns a mistimed door into a problem.
-
-     A level's mix is what makes it feel like that level: mostly idle in
-     the house early on, patrols on the long streets, and a lot more drawn
-     ones in the hospital, where the noise never stops. */
-  var Z_KIND = { IDLE: "idle", PATROL: "patrol", DRAWN: "drawn" };
-
-  function mkZombie(x, y, kind, axis) {
-    var k = kind || Z_KIND.PATROL;
-    return {
-      x: x, y: y, hx: x, hy: y,        // hx/hy is the spot it started from
-      kind: k,
-      axis: axis || (Math.random() > 0.5 ? "h" : "v"),
-      leg: 1,                          // which way along its line it is going
-      fx: k === Z_KIND.IDLE ? 0 : 1, fy: k === Z_KIND.IDLE ? 1 : 0,
-      state: "patrol", timer: 1 + Math.random() * 2,
-      tx: 0, ty: 0, anim: Math.random() * 4, frame: 0, lost: 0, alert: 0, react: 0,
-      grab: 0, look: Math.random() * 6.28,
-      hear: k === Z_KIND.DRAWN ? 2 : 1,
-      skin: (Math.abs((x * 7 + y * 13) | 0)) % 3,   // which of the three it looks like
-    };
-  }
-
-  function zFreeAt(L, x, y) {
-    var r = 4;
-    return !isSolid(L, ((x - r) / T) | 0, ((y - r) / T) | 0) &&
-           !isSolid(L, ((x + r) / T) | 0, ((y - r) / T) | 0) &&
-           !isSolid(L, ((x - r) / T) | 0, ((y + r) / T) | 0) &&
-           !isSolid(L, ((x + r) / T) | 0, ((y + r) / T) | 0);
-  }
-
-  function zSees(G, z) {
-    var p = G.player;
-    if (p.hidden) return false;
-    var dx = p.x - z.x, dy = p.y - z.y;
-    var d = Math.hypot(dx, dy);
-    /* crouched and moving slowly, she is a shape rather than a person —
-       so SHIFT is worth holding for more than the quiet */
-    if (d > TUNE.zSight * (p.creeping ? 0.68 : 1)) return false;
-    if (!canSee(G.level, z.x, z.y, p.x, p.y)) return false;
-    if (d < TUNE.zNear) return true;
-    var fl = Math.hypot(z.fx, z.fy) || 1;
-    var dot = (dx * z.fx + dy * z.fy) / (d * fl);
-    return dot > Math.cos(TUNE.zCone);
-  }
-
-  function stepZombie(G, z, dt) {
-    var L = G.level, sp = TUNE.zSpeed;
-
-    if (zSees(G, z)) {
-      if (z.state !== "chase") {
-        /* the moment it notices her. It stops dead, straightens up, and
-           makes a sound — which is both her half-second to get behind
-           something and the reason everything else nearby starts walking
-           this way. */
-        z.react = TUNE.zReact;
-        sfx("spot");
-        makeNoise(G, z.x, z.y, 120);
-      }
-      z.state = "chase";
-      z.lost = 0;
-      z.tx = G.player.x; z.ty = G.player.y;
-      z.alert = Math.min(1, z.alert + dt * 3);
-    } else if (z.state === "chase") {
-      z.lost += dt;
-      if (z.lost > TUNE.zLose) { z.state = "look"; z.timer = TUNE.zInvestigate; }
-    }
-
-    if (z.state === "chase") {
-      var dx = z.tx - z.x, dy = z.ty - z.y, d = Math.hypot(dx, dy) || 1;
-      z.fx = dx / d; z.fy = dy / d;
-      if (z.react > 0) { z.react -= dt; sp = 0; }
-      else sp = TUNE.zChase;
-    } else if (z.state === "look") {
-      z.alert = Math.max(0, z.alert - dt * 0.5);
-      var lx = z.tx - z.x, ly = z.ty - z.y, ld = Math.hypot(lx, ly);
-      if (ld > 8) { z.fx = lx / ld; z.fy = ly / ld; sp = TUNE.zSpeed * 1.15; }
-      else {
-        z.timer -= dt;
-        z.fx = Math.cos(G.t * 1.4 + z.hx); z.fy = Math.sin(G.t * 1.4 + z.hx);
-        sp = 0;
-        if (z.timer <= 0) z.state = "patrol";
-      }
-    } else {
-      z.alert = Math.max(0, z.alert - dt * 0.7);
-      z.timer -= dt;
-
-      if (z.kind === Z_KIND.IDLE) {
-        /* it does not go anywhere. Every so often its head comes round,
-           which is the whole of its threat: stand in front of it long
-           enough and it will be facing you when it does. */
-        sp = 0;
-        if (z.timer <= 0) {
-          z.timer = 3 + Math.random() * 4;
-          var turn = DIRS[(Math.random() * 4) | 0];
-          z.fx = turn[0]; z.fy = turn[1];
-        }
-      } else if (z.kind === Z_KIND.PATROL) {
-        /* a line, walked up and down. It turns at a wall or at the end of
-           its tether, and it keeps facing the way it walks. */
-        if (z.axis === "h") { z.fx = z.leg; z.fy = 0; }
-        else { z.fx = 0; z.fy = z.leg; }
-        var far = Math.hypot(z.x - z.hx, z.y - z.hy) > 74;
-        if (far || z.timer <= 0) {
-          if (far) { z.leg = -z.leg; z.timer = 1.5 + Math.random() * 2; }
-          else z.timer = 2 + Math.random() * 3;
-        }
-      } else {
-        /* restless: it drifts, and it is always half-listening */
-        if (z.timer <= 0) {
-          z.timer = 0.9 + Math.random() * 1.8;
-          var d2 = DIRS[(Math.random() * 4) | 0];
-          z.fx = d2[0]; z.fy = d2[1];
-        }
-        if (Math.random() < dt * 0.25) sp = 0;
-      }
-    }
-
-    if (sp > 0) {
-      var nx = z.x + z.fx * sp * dt, ny = z.y + z.fy * sp * dt;
-      var movedX = zFreeAt(L, nx, z.y), movedY = zFreeAt(L, z.x, ny);
-      if (movedX) z.x = nx;
-      if (movedY) z.y = ny;
-      if (!movedX && !movedY) {                    // walked into something
-        if (z.kind === Z_KIND.PATROL && z.state === "patrol") {
-          z.leg = -z.leg;                           // a patrol turns round
-          z.timer = 1.2 + Math.random();
-        } else {
-          var d3 = DIRS[(Math.random() * 4) | 0];
-          z.fx = d3[0]; z.fy = d3[1];
-          z.timer = 0.8 + Math.random();
-        }
-      }
-      z.anim += dt * (z.state === "chase" ? 6 : 3);
-      z.frame = 1 + ((z.anim | 0) % 2);
-    } else {
-      z.frame = 0;
-    }
-
-    z.face = Math.abs(z.fx) > Math.abs(z.fy) ? (z.fx > 0 ? "right" : "left") : (z.fy > 0 ? "down" : "up");
-
-    if (!G.player.hidden && Math.hypot(z.x - G.player.x, z.y - G.player.y) < 9) grabbed(G, z);
-  }
-
-  /* =======================================================================
-     THE PRESSURE
-
-        Level 3 has no clock on it, because a clock would turn finding him
-        into an exam. What it has instead is weather: the room tone climbs,
-        the light gets a little worse, and every so often one more of them
-        finds the way in through the front doors and starts walking. None
-        of that is announced. She is only meant to notice, somewhere around
-        the third or fourth one, that this is going the wrong way and she
-        should stop reading every sign.
-     ======================================================================= */
-  var PRESSURE_FULL = 165;          // seconds to the worst it gets
-  var PRESSURE_EVERY = 21;          // and one more of them, this often
-
-  function stepPressure(G, dt) {
-    if (!G.level.def.pressure) return;
-    G.pressure = Math.min(1, (G.pressure || 0) + dt / PRESSURE_FULL);
-    G.pressureT = (G.pressureT || 0) - dt;
-    if (G.pressureT > 0) return;
-    G.pressureT = PRESSURE_EVERY;
-    if (G.level.zombies.length > 22) return;
-
-    /* it comes in at the front and it comes in a long way from her, so the
-       level gets heavier without anything ever appearing on top of her */
-    var L = G.level, best = null, bd = -1;
-    for (var i = 0; i < 60; i++) {
-      var tx = 1 + ((Math.random() * (L.w - 2)) | 0);
-      var ty = 1 + ((Math.random() * (L.h - 2)) | 0);
-      if (isSolid(L, tx, ty) || isHide(L, tx, ty)) continue;
-      var d = Math.hypot(tx * T - G.player.x, ty * T - G.player.y);
-      if (d > bd) { bd = d; best = { x: tx, y: ty }; }
-    }
-    if (best && bd > 110) {
-      L.zombies.push(mkZombie(best.x * T + T / 2, best.y * T + T / 2));
-      sfx("arrive");
-    }
-  }
-
-  function makeNoise(G, x, y, radius) {
-    if (radius <= 0) return;
-    G.noises.push({ x: x, y: y, r: radius, t: 0 });
-    for (var i = 0; i < G.level.zombies.length; i++) {
-      var z = G.level.zombies[i];
-      if (z.state === "chase") continue;
-      if (Math.hypot(z.x - x, z.y - y) < radius * (z.hear || 1)) {
-        z.state = "look"; z.tx = x; z.ty = y; z.timer = TUNE.zInvestigate;
-        z.alert = Math.max(z.alert, 0.5);
-      }
-    }
-  }
-
-  /* =======================================================================
-     12. PAINTING A FRAME
-
-        Order matters and it is always the same: the baked map, then the
-        things standing on it sorted back to front, then the light map
-        multiplied over all of it, then the vision cones and the HUD marks
-        on top — because a cone you cannot see in the dark is not a warning.
-     ======================================================================= */
-  var VW = 320, VH = 180;
-
-  function drawShadow(c, x, y, w) {
-    castShadow(c, x, y, w || 7);
-  }
-
-  function paint(G) {
-    var c = G.ctx, L = G.level;
-    c.clearRect(0, 0, VW, VH);
-
-    /* a cutscene owns the whole canvas; nothing of the level is painted */
-    if (G.state === "cut" && G.cut) {
-      G.cut.paint(G, c, G.cut.t);
-      if (G.cut.t < 0.6) {                         // fade in from the level
-        c.fillStyle = "rgba(4,5,10," + (1 - G.cut.t / 0.6) + ")";
-        c.fillRect(0, 0, VW, VH);
-      }
-      if (G.cut.t > G.cut.dur - 0.6) {             // and out again
-        c.fillStyle = "rgba(4,5,10," + (1 - (G.cut.dur - G.cut.t) / 0.6) + ")";
-        c.fillRect(0, 0, VW, VH);
-      }
-      return;
-    }
-
-    c.fillStyle = PAL[L.theme].amb;
-    c.fillRect(0, 0, VW, VH);
-
-    var cx = Math.round(G.cam.x), cy = Math.round(G.cam.y);
-
-    /* the far plane, at less than half the camera's rate */
-    /* THE FAR PLANE, and the one real limit of parallax in a view like
-       this one.
-
-       A top-down camera has no horizon: the map fills the frame, so a
-       backdrop painted behind it is never seen. Parallax only means
-       something where the level opens onto distance — so an outdoor level
-       leaves the top of its grid empty, and that band is where the far
-       plane lives. It scrolls at a bit over a third of the camera's rate,
-       which is what sells the gap between there and here. Interiors have
-       no such band and no backdrop, because from inside a corridor there
-       is nothing distant to look at. */
-    if (L.far) {
-      var openTop = L.skyRows * T - cy;          // where the map begins on screen
-      if (openTop > 0) {
-        var fx = -((cx * FAR_RATE) % L.far.width);
-        var fy = openTop - L.far.height + Math.min(0, -cy * FAR_RATE * 0.06);
-        c.save();
-        c.beginPath(); c.rect(0, 0, VW, openTop); c.clip();
-        c.fillStyle = PAL[L.theme].amb;
-        c.fillRect(0, 0, VW, openTop);
-        c.drawImage(L.far, fx, fy);
-        c.drawImage(L.far, fx + L.far.width, fy);
-        paintHaze(G, c);
-        c.restore();
-      }
-    }
-
-    c.drawImage(L.map, cx, cy, VW, VH, 0, 0, VW, VH);
-    if (!L.far) paintHaze(G, c);
-
-    /* everything that stands up, painted in y order so she can walk behind
-       a wardrobe and be behind it */
-    var actors = [];
-    actors.push({ y: G.player.y, x: G.player.x, draw: function () { drawActor(G, c, ART.ouissy, G.player, cx, cy); } });
-    L.zombies.forEach(function (z) {
-      actors.push({ y: z.y, x: z.x, draw: function () { drawActor(G, c, ART.zombie, z, cx, cy, z.alert); } });
-    });
-    if (L.horse) {
-      var hh = L.horse;
-      actors.push({ y: hh.y, x: hh.x, draw: function () {
-        var x = Math.round(hh.x - cx), y = Math.round(hh.y - cy);
-        drawShadow(c, x + 2, y + 3, 15);
-        c.drawImage(shaded(ART.horse), x - 20, y - 24);
-      } });
-    }
-    if (L.anwar) {
-      var a = L.anwar;
-      actors.push({ y: a.y + (a.awake ? 0 : 4), x: a.x, draw: function () {
-        if (a.awake) drawActor(G, c, ART.anwar, a, cx, cy);
-        else {
-          var x = Math.round(a.x - cx), y = Math.round(a.y - cy);
-          c.drawImage(shaded(ART.anwarAsleep), x - 8, y - 12);
-        }
-      } });
-    }
-    actors.sort(function (a, b) { return a.y - b.y; });
-    actors.forEach(function (a) { a.draw(); });
-
-    /* FOREGROUND OCCLUSION.
-
-       The map is one baked layer under everybody, so until now she walked
-       in front of every wall and every wardrobe in the level, including
-       the ones she was standing behind. Anything tall whose base sits
-       lower on the screen than her feet is nearer the camera than she is,
-       so it goes back on top — and because the pixels come straight out of
-       the same baked map, what is redrawn is exactly what was there,
-       shading and cast shadow included.
-
-       Only tiles close to somebody get redrawn. Everything below her would
-       be half the screen for no visible difference. */
-    var near = [];
-    actors.forEach(function (a) { near.push(a.y); });
-    for (var oi = 0; oi < L.occluders.length; oi++) {
-      var oc = L.occluders[oi];
-      var ox = oc.x * T, oy = oc.y * T;
-      if (ox < cx - T || ox > cx + VW || oy < cy - T || oy > cy + VH) continue;
-      var base = oy + T;
-      var wanted = false;
-      for (var ai = 0; ai < actors.length; ai++) {
-        var ay = actors[ai].y;
-        /* in front of them, and close enough to actually overlap */
-        if (base > ay && base - ay < T * 2.2 &&
-            Math.abs(ox + T / 2 - actors[ai].x) < T * 2) { wanted = true; break; }
-      }
-      if (!wanted) continue;
-      c.drawImage(L.map, ox, oy, T, T, ox - cx, oy - cy, T, T);
-    }
-
-    /* the marks that say "there is something here" */
-    L.things.forEach(function (t) {
-      if (t.done) return;
-      var wx = t.x * T + T / 2 - cx, wy = t.y * T + T / 2 - cy;
-      if (wx < -20 || wx > VW + 20) return;
-      var near = Math.hypot(t.x * T + T / 2 - G.player.x, t.y * T + T / 2 - G.player.y) < 22;
-      var bob = Math.sin(G.t * 3 + t.x) * 1.5;
-      if (t.kind === "note") {                       // a torn scrap on the floor
-        px(c, wx - 3, wy - 2 + bob, 7, 5, "#e6d9b4");
-        px(c, wx - 3, wy - 2 + bob, 7, 1, "#f4ead0");
-        px(c, wx - 1, wy + bob, 3, 1, "#8a7a56");
-      }
-      if (near) {                                    // the prompt
-        px(c, wx - 1, wy - 13 + bob, 2, 6, "#ffe9a8");
-        px(c, wx - 1, wy - 5 + bob, 2, 2, "#ffe9a8");
-      }
-    });
-
-    /* Dust. There is always something in the air in a room nobody has
-       opened a window in, and it is the cheapest thing in the file that
-       makes a torch look like a torch: motes drift slowly, and they are
-       only visible where her light actually reaches them. */
-    if (!G.motes) {
-      G.motes = [];
-      var mr = rnd(5150);
-      for (var mi = 0; mi < 90; mi++) {
-        G.motes.push({ x: mr() * L.w * T, y: mr() * L.h * T,
-                       vx: (mr() - 0.5) * 5, vy: -2 - mr() * 4,
-                       ph: mr() * 6.28, sz: mr() > 0.85 ? 2 : 1 });
-      }
-    }
-    var lit = (G.player.creeping ? TUNE.torchCreep : TUNE.torch) * 1.5;
-    for (var mj = 0; mj < G.motes.length; mj++) {
-      var mo = G.motes[mj];
-      mo.x += (mo.vx + Math.sin(G.t * 0.6 + mo.ph) * 3) * 0.016;
-      mo.y += mo.vy * 0.016;
-      if (mo.y < 0) { mo.y = L.h * T; mo.x = Math.random() * L.w * T; }
-      var mdx = mo.x - G.player.x, mdy = mo.y - G.player.y;
-      var md = Math.hypot(mdx, mdy);
-      if (md > lit) continue;
-      var ma = (1 - md / lit) * 0.5 * (0.55 + 0.45 * Math.sin(G.t * 2 + mo.ph));
-      if (ma <= 0.02) continue;
-      c.fillStyle = "rgba(255,240,214," + ma.toFixed(3) + ")";
-      c.fillRect(Math.round(mo.x - cx), Math.round(mo.y - cy), mo.sz, mo.sz);
-    }
-
-    paintNear(G, c, cx, cy);
-
-    /* the light map, blown up over the frame */
-    paintLight(G);
-    c.globalCompositeOperation = "multiply";
-    c.drawImage(lightCv, 0, 0, LW, LH, 0, 0, VW, VH);
-    c.globalCompositeOperation = "source-over";
-
-    /* The grade. Five places should not share one palette: the house is
-       warm and brown, the street is sodium over cold blue, the hospital is
-       clinical green, the road is gold, and the gates are plain daylight.
-       It is one fill over the finished frame and it does more for how
-       different the levels feel than any amount of tile art. */
-    var grade = L.def.grade;
-    if (grade) {
-      c.globalCompositeOperation = grade[4] || "overlay";
-      c.fillStyle = "rgba(" + grade[0] + "," + grade[1] + "," + grade[2] + "," + grade[3] + ")";
-      c.fillRect(0, 0, VW, VH);
-      c.globalCompositeOperation = "source-over";
-    }
-
-    /* and a vignette, so the eye goes to the middle where she is */
-    if (!G.vig) {
-      G.vig = c.createRadialGradient(VW / 2, VH / 2, VH * 0.30, VW / 2, VH / 2, VH * 0.92);
-      G.vig.addColorStop(0, "rgba(0,0,0,0)");
-      G.vig.addColorStop(1, "rgba(3,4,8,.42)");
-    }
-    c.fillStyle = G.vig;
-    c.fillRect(0, 0, VW, VH);
-
-    /* vision cones, over the dark, because they are the warning */
-    L.zombies.forEach(function (z) { drawCone(c, G, z, cx, cy); });
-
-    /* the ring a noise made, fading */
-    G.noises.forEach(function (n) {
-      var a = 1 - n.t / 0.8;
-      if (a <= 0) return;
-      /* loud enough to be worth watching, faint enough not to be a
-         searchlight — a footstep should whisper, a door should not */
-      var weight = Math.min(1, n.r / TUNE.noiseDoor);
-      c.strokeStyle = "rgba(255,214,150," + (a * a * 0.16 * (0.4 + weight)) + ")";
-      c.lineWidth = 1;
-      c.beginPath();
-      c.arc(n.x - cx, n.y - cy, n.r * (0.35 + 0.65 * (n.t / 0.8)), 0, 6.2832);
-      c.stroke();
-    });
-
-    /* a door swinging open */
-    G.doorFx.forEach(function (d) {
-      var a = 1 - d.t / 0.5;
-      if (a <= 0) return;
-      c.strokeStyle = "rgba(220,200,160," + (a * 0.6) + ")";
-      c.strokeRect(d.x - cx - 8, d.y - cy - 8, 16, 16);
-    });
-
-    /* the pressure, as weather rather than as a number */
-    if (G.pressure > 0.02) {
-      var pg = c.createRadialGradient(VW / 2, VH / 2, VH * 0.34, VW / 2, VH / 2, VH * 0.95);
-      pg.addColorStop(0, "rgba(90,10,18,0)");
-      pg.addColorStop(1, "rgba(90,10,18," + (0.34 * G.pressure) + ")");
-      c.fillStyle = pg;
-      c.fillRect(0, 0, VW, VH);
-    }
-
-    if (G.state === "caught") paintCaught(G, c);
-    if (G.flash > 0) {
-      c.fillStyle = "rgba(255,255,255," + Math.min(0.8, G.flash) + ")";
-      c.fillRect(0, 0, VW, VH);
-    }
-  }
-
-  function drawActor(G, c, set, a, cx, cy, alert) {
-    var img = shaded((set[a.face] || set.down)[a.frame || 0]);
-    var x = Math.round(a.x - cx), y = Math.round(a.y - cy);
-    if (x < -20 || x > VW + 20 || y < -30 || y > VH + 30) return;
-    drawShadow(c, x, y + 3, 8);
-    var alpha = 1;
-    if (a === G.player && a.hidden) alpha = 0.45;    // she is inside something
-    c.globalAlpha = alpha;
-    c.drawImage(img, x - 8, y - 25);
-    c.globalAlpha = 1;
-    if (a.grab) {                                    // it has her
-      c.strokeStyle = "rgba(255,70,60,.85)";
-      c.lineWidth = 2;
-      c.beginPath();
-      c.arc(x, y - 8, 13 + Math.sin(G.t * 22) * 2, 0, 6.2832);
-      c.stroke();
-    }
-    if (alert > 0.15) {                              // the mark over an alerted one
-      var yy = y - 22 - Math.sin(G.t * 8) * 1;
-      var col = alert > 0.8 ? "#ff5a4a" : "#ffc24a";
-      px(c, x - 1, yy, 2, 5, col);
-      px(c, x - 1, yy + 6, 2, 2, col);
-      if (a.react > 0) {                             // and the half-second it rears up
-        var k = a.react / TUNE.zReact;
-        c.strokeStyle = "rgba(255,90,74," + (0.7 * k) + ")";
-        c.lineWidth = 1;
-        c.beginPath();
-        c.arc(x, y - 6, 10 + (1 - k) * 12, 0, 6.2832);
-        c.stroke();
-      }
-    }
-  }
-
-  function drawCone(c, G, z, cx, cy) {
-    if (z.state === "chase") c.fillStyle = "rgba(255,80,64,.16)";
-    else if (z.state === "look") c.fillStyle = "rgba(255,190,90,.12)";
-    else c.fillStyle = "rgba(190,210,255,.075)";
-    var a = Math.atan2(z.fy, z.fx);
-    var x = z.x - cx, y = z.y - cy;
-    var steps = 16, r = TUNE.zSight;
-    c.beginPath();
-    c.moveTo(x, y);
-    for (var i = 0; i <= steps; i++) {
-      var ang = a - TUNE.zCone + (2 * TUNE.zCone * i) / steps;
-      var dx = Math.cos(ang), dy = Math.sin(ang), hit = r;
-      for (var d = 6; d < r; d += 5) {               // stop the cone at a wall
-        if (isOpaque(G.level, ((z.x + dx * d) / T) | 0, ((z.y + dy * d) / T) | 0)) { hit = d; break; }
-      }
-      c.lineTo(x + dx * hit, y + dy * hit);
-    }
-    c.closePath();
-    c.fill();
-  }
-
-  function paintCaught(G, c) {
-    var k = Math.min(1, G.caughtT / 0.35);
-    c.fillStyle = "rgba(6,4,10," + (0.82 * k) + ")";
-    c.fillRect(0, 0, VW, VH);
-  }
-
-  /* =======================================================================
-     13. THE CLOSE CALL
-
-        Not a death. She is grabbed at, she gets away, and she comes back to
-        the last place she was safe. The screen holds still for a moment and
-        says something short, and then she is playing again.
-     ======================================================================= */
-  var CLOSE_CALLS = [
-    "Too close. You pull free and don't look back.",
-    "A hand catches your sleeve. You leave the sleeve.",
-    "You get out of there before it can turn round.",
-    "You back away. It loses you in the dark.",
-    "You run. It doesn't follow far.",
   ];
 
-  /* =======================================================================
-     THE GRAB
-
-        Touching one used to be the end of it: instant close call, no say in
-        it. Now it takes hold, and she has a moment — press anything, twice
-        — to pull free. Get it and she is shoved back a couple of tiles and
-        keeps going, with the thing that grabbed her thrown off and briefly
-        confused. Miss it and it is the same close call it always was.
-
-        The point is not difficulty. It is that being caught should be
-        something that happens *to* her that she gets to answer, rather than
-        a state transition she watches. It is still never a death.
-     ======================================================================= */
-  var GRAB_WINDOW = 1.6;               // seconds to answer
-  var GRAB_PRESSES = 2;                // and how many times
-
-  function grabbed(G, z) {
-    if (G.state !== "play" || G.grab) return;
-    G.grab = { z: z, t: GRAB_WINDOW, need: GRAB_PRESSES, got: 0, shake: 0 };
-    G.keys = freshKeys();
-    z.grab = 1;
-    sfx("grabbed");
-    startHeart();
-    var el = $("ap-grab");
-    if (el) {
-      el.setAttribute("aria-hidden", "false");
-      el.className = "ap-grab";
+  var SUB = {
+    roadside: {
+      id: "roadside", name: "THE ROAD", map: MAPS.roadside, theme: "road",
+      base: ",", dark: 0.42,
+      grade: [220, 180, 100, 0.15], haze: [140, 155, 180, 0.30],
+      steps: [
+        { task: "The tank is dry. Find something else that can carry two.", clears: "horse" }
+      ]
+    },
+    campsite: {
+      id: "campsite", name: "THE CLEARING", map: MAPS.campsite, theme: "campsite",
+      base: ",", dark: 0.40, safe: true,
+      grade: [190, 150, 85, 0.14], haze: [70, 64, 46, 0.22],
+      steps: [
+        { task: "Make camp.",                clears: "arrival" },
+        { task: "Find some wood for a fire.", clears: "wood" },
+        { task: "Light the fire.",            clears: "fire" }
+      ]
     }
-  }
+  };
 
-  /* every press while she is held counts, whatever the key is */
-  function grabPress(G) {
-    var gr = G.grab;
-    if (!gr) return;
-    gr.got++;
-    gr.shake = 1;
-    sfx("struggle");
-    var el = $("ap-grab");
-    if (el) el.style.setProperty("--got", gr.got / gr.need);
-    if (gr.got >= gr.need) breakFree(G);
-  }
+  /* =========================================================
+     3 — EVERY WORD IN THE GAME
+     A line is [speaker, text]. No speaker and no text is a beat
+     of silence, and it is held on screen exactly as long as a
+     line with words in it. No speaker but text is narration.
+     Nothing in here is paraphrased.
+     ========================================================= */
 
-  function stepGrab(G, dt) {
-    var gr = G.grab;
-    if (!gr) return;
-    gr.t -= dt;
-    gr.shake = Math.max(0, gr.shake - dt * 4);
-    /* it holds on to her, so it cannot drift away mid-grab */
-    gr.z.x += (G.player.x - gr.z.x) * 0.08;
-    gr.z.y += (G.player.y - gr.z.y) * 0.08;
-    var el = $("ap-grab");
-    if (el) el.style.setProperty("--left", Math.max(0, gr.t / GRAB_WINDOW));
-    if (gr.t <= 0) { closeGrab(G); caught(G); }
-  }
+  var N = null, SIL = [null, null];
 
-  function breakFree(G) {
-    var gr = G.grab, p = G.player, z = gr.z;
-    var dx = p.x - z.x, dy = p.y - z.y, d = Math.hypot(dx, dy);
-    /* If it has hold of her they can end up on the same pixel, and then
-       "away from it" has no direction — the shove came out as NaN and she
-       did not move at all, so it simply took hold of her again. Fall back
-       to whichever way there is actually room to go. */
-    if (d < 0.5) {
-      var away = [[0, -1], [0, 1], [-1, 0], [1, 0]].filter(function (n) {
-        return freeAt(G.level, p.x + n[0] * 20, p.y + n[1] * 20);
-      })[0] || [0, -1];
-      dx = away[0]; dy = away[1]; d = 1;
-    }
-    /* shoved clear, as far as there is room to be shoved */
-    for (var step = 26; step > 0; step -= 4) {
-      var nx = p.x + (dx / d) * step, ny = p.y + (dy / d) * step;
-      if (freeAt(G.level, nx, ny)) { p.x = nx; p.y = ny; break; }
-    }
-    p.vx = (dx / d) * 40; p.vy = (dy / d) * 40;
-    z.state = "look"; z.timer = 1.2; z.react = TUNE.zReact; z.grab = 0;
-    z.x -= (dx / d) * 10; z.y -= (dy / d) * 10;
-    G.brokeFree = (G.brokeFree || 0) + 1;
-    G.flash = 0.35;
-    sfx("free");
-    closeGrab(G);
-    stopHeart();
-    setHud(G);
-  }
+  var TALK = {};
 
-  function closeGrab(G) {
-    if (G.grab) G.grab.z.grab = 0;
-    G.grab = null;
-    var el = $("ap-grab");
-    if (el) el.setAttribute("aria-hidden", "true");
-  }
+  TALK.wake = [
+    [N, "He is on his side with one arm out of the blanket. She says his name twice before anything happens."],
+    ["ANWAR", "...Ouissy?"],
+    ["ANWAR", "What time is it."],
+    ["OUISSY", "We have to go."],
+    ["ANWAR", "Okay."],
+    [N, "He doesn't ask why. That tells her he has already heard something."]
+  ];
 
-  function caught(G) {
-    if (G.state !== "play") return;
-    G.state = "caught";
-    G.caughtT = 0;
-    G.caughtLine = CLOSE_CALLS[(Math.random() * CLOSE_CALLS.length) | 0];
-    G.closeCalls++;
-    sfx("caught");
-    startHeart();
-    setHud(G);
-  }
+  TALK.hide = [
+    [N, "The door goes shut behind them. There is a bolt on it, and the bolt works."],
+    SIL,
+    ["ANWAR", "You walked here."],
+    ["OUISSY", "Yeah."],
+    ["ANWAR", "From the house."],
+    ["OUISSY", "Yeah."],
+    SIL,
+    ["ANWAR", "You're insane."],
+    ["OUISSY", "I know."],
+    [N, "He laughs, once, and it comes out wrong, and then he stops."],
+    ["ANWAR", "...Come here."],
+    [N, "They stay like that for a while. Neither of them says anything for a while."],
+    ["ANWAR", "I kept thinking, if this is real, she's on her own in that house."],
+    ["OUISSY", "I'm not on my own."],
+    ["ANWAR", "No."],
+    SIL,
+    ["OUISSY", "So what do we do."],
+    ["ANWAR", "I don't know yet."],
+    ["ANWAR", "Give me a minute and we'll work it out."],
+    ["OUISSY", "Okay."],
+    SIL,
+    [N, "There has been a radio talking on the shelf behind them for the whole of that, too quiet to be words."],
+    ["OUISSY", "...How long has that been on?"]
+  ];
 
-  function recover(G) {
-    closeGrab(G);
-    var p = G.player, s = G.safe;
-    p.x = s.x; p.y = s.y; p.vx = 0; p.vy = 0;
-    G.level.zombies.forEach(function (z) {
-      z.state = "patrol"; z.alert = 0; z.timer = 2 + Math.random() * 2;
-      /* and they wander off, so she is not dropped straight back into it */
-      if (Math.hypot(z.x - s.x, z.y - s.y) < 70) { z.x = z.hx; z.y = z.hy; }
-    });
-    G.noises.length = 0;
-    G.state = "play";
-    G.flash = 0.5;
-    stopHeart();
-    snapCam(G);
-  }
+  TALK.horse = [
+    [N, "There is a field gate at the end of the lane with a name painted on it by hand, a long time ago, by somebody who was not in a hurry."],
+    [N, "They hear her before they see her: a shift of weight, and then hooves on a concrete floor."],
+    [N, "There is one animal left in the barn and she has heard them coming from the yard."],
+    [N, "She puts her whole head over the door before Ouissy has got near it."],
+    ["OUISSY", "Oh — hello. Hello."],
+    ["ANWAR", "She's enormous."],
+    ["OUISSY", "She's lovely. Look at her."],
+    [N, "There is a headcollar on the hook and somebody's name painted over the stall. She is not going to be collected."],
+    ["ANWAR", "Can you actually ride?"],
+    ["OUISSY", "No."],
+    ["ANWAR", "Right."],
+    ["OUISSY", "Get on."]
+  ];
 
-  /* The last place she was safe, which is where a close call puts her back.
+  TALK.arrival = [
+    [N, "The clearing is just off the lane, behind a wall that was a house once. The grass is flat enough and the trees cut the wind."],
+    [N, "She lets the horse stop on its own. It dips its head and doesn't move again."],
+    ["ANWAR", "...Here?"],
+    ["OUISSY", "Hang on."],
+    [N, "She stands still and listens. Wind in the branches. The stream somewhere below them. Nothing else."],
+    ["OUISSY", "Yeah. Here."],
+    ["ANWAR", "You're sure? There's nothing — no walls, no—"],
+    ["OUISSY", "That's why here. Nothing to hide behind, nothing to come out of. If anything moves we'll see it a mile off."],
+    [N, "He looks at the treeline and the open grass and the sky, which is starting to turn. He nods."],
+    ["ANWAR", "Okay. What do we need?"],
+    ["OUISSY", "Wood, before it gets dark. There should be enough around — dead branches, anything dry."],
+    ["ANWAR", "I can help—"],
+    ["OUISSY", "You can sit down is what you can do. You've been on a horse for four hours and you were in bed for a week before that."],
+    ["ANWAR", "I'm fine."],
+    ["OUISSY", "You're grey. Sit."],
+    [N, "He sits. She doesn't say anything about the fact that he sits down immediately, which is as close to kindness as she can manage right now."]
+  ];
 
-     Being inside something always counts, however close the thing outside
-     it is — that is what a hiding place is for, and it means the wardrobes
-     and the bushes double as checkpoints. Otherwise it wants a bit of quiet:
-     nothing chasing, and nothing within four tiles. Generous on purpose. A
-     close call that sends her back across half the level is a punishment,
-     and this chapter does not have those. */
-  function updateSafe(G, dt) {
-    var p = G.player;
-    G.safeT -= dt;
-    if (G.safeT > 0) return;
-    G.safeT = 0.4;
-    if (!freeAt(G.level, p.x, p.y)) return;
-    if (p.hidden) { G.safe = { x: p.x, y: p.y }; return; }
-    var near = false;
-    G.level.zombies.forEach(function (z) {
-      if (z.state === "chase" || Math.hypot(z.x - p.x, z.y - p.y) < 60) near = true;
-    });
-    if (!near) G.safe = { x: p.x, y: p.y };
-  }
+  TALK.wood = [
+    [
+      [N, "She snaps a branch off a dead elm. It is dry enough that it comes away clean."],
+      [N, "Across the clearing, he is on his knees pulling grass out of the dirt with both hands, making a bare circle in the ground."]
+    ],
+    [
+      [N, "She finds another piece wedged in a low fork — birch, pale and papery. Good kindling."],
+      ["OUISSY", "How's it going over there?"],
+      ["ANWAR", "I found some stones. Flat ones, for a ring."],
+      ["OUISSY", "You don't have to—"],
+      ["ANWAR", "I want to do something. Let me do something."]
+    ],
+    [
+      ["OUISSY", "Right. That's plenty."],
+      [N, "She carries the last armful back and stops. He has built a proper fire pit — a circle of flat stones on bare earth, with a gap on one side for air."],
+      ["OUISSY", "...That's actually good."],
+      ["ANWAR", "Don't sound so surprised."]
+    ]
+  ];
 
-  /* =======================================================================
-     14. THE CAMERA
-     ======================================================================= */
-  function clampCam(G) {
-    var L = G.level;
-    G.cam.x = Math.max(0, Math.min(L.w * T - VW, G.cam.x));
-    G.cam.y = Math.max(0, Math.min(L.h * T - VH, G.cam.y));
-    if (L.w * T < VW) G.cam.x = (L.w * T - VW) / 2;
-    if (L.h * T < VH) G.cam.y = (L.h * T - VH) / 2;
-  }
-  function snapCam(G) {
-    G.cam.x = G.player.x - VW / 2;
-    G.cam.y = G.player.y - VH / 2;
-    clampCam(G);
-  }
-  function stepCam(G) {
-    var tx = G.player.x - VW / 2, ty = G.player.y - VH / 2;
-    G.cam.x += (tx - G.cam.x) * TUNE.camLerp;
-    G.cam.y += (ty - G.cam.y) * TUNE.camLerp;
-    clampCam(G);
-  }
+  TALK.fire = [
+    [N, "She kneels by the pit he made and starts stacking the wood: a loose cone with the driest pieces in the centre and the bark facing in, the way her mother showed her years ago in somebody's garden."],
+    ["ANWAR", "Where did you learn that?"],
+    ["OUISSY", "Mum. Bonfire night. I was about seven."],
+    [N, "He crouches on the other side of the pit and holds the cone steady while she wedges the last piece in. The birch bark curls inward and the whole thing looks like it might actually work."],
+    ["OUISSY", "Right. Lighter?"],
+    ["ANWAR", "Still in my pocket, somehow."],
+    [N, "The first spark catches nothing. She cups her hand around it and tries again — the flame licks sideways, finds air instead of bark, and goes out."],
+    ["OUISSY", "...Come on."],
+    ["ANWAR", "Try the other side. The wind's coming from—"],
+    ["OUISSY", "I know where the wind's coming from."],
+    [N, "She moves around. He strips a curl of bark off one of the birch pieces and tucks it into the base where the gap in the stones lets air through."],
+    ["OUISSY", "That's good. Hold it there."],
+    [N, "Third try. The spark catches the curl. A thin thread of smoke, and then a crackle, and then the whole thing talks back at once — a low, steady roar that neither of them has heard for days."]
+  ];
 
-  /* =======================================================================
-     15. THE SCREEN FURNITURE
+  TALK.lit = [
+    ["ANWAR", "...Oh, that's good."],
+    [N, "He sits back on his heels and the firelight catches his face and he looks exhausted and relieved and something else she doesn't have a word for."],
+    ["OUISSY", "Sit down properly. You look awful."],
+    ["ANWAR", "I've looked awful for a week. You just couldn't see it in the dark."],
+    SIL,
+    [N, "He moves to the log on the far side of the fire and lowers himself onto it carefully, the way people do when everything hurts. She sits on the other log, closer than she needs to, and pulls her knees up."],
+    [N, "For a while neither of them says anything. The fire crackles. The stream moves. The sky is turning the colour it turns when there is nothing left of the day."],
+    [N, "It is the first time since the television came on that there is nothing she has to do next."]
+  ];
 
-        Cards, prompts and the close-call line are DOM, not canvas, for the
-        same reason Super Ouissy's are: six-pixel text blown up five times
-        cannot be read, however good the panel behind it looks.
-     ======================================================================= */
+  TALK.campfire = [
+    ["ANWAR", "How did you know where I was?"],
+    ["OUISSY", "You were in hospital. Where else were you going to be?"],
+    ["ANWAR", "That's not what I mean. The ward — it was locked. The whole floor was dark. How did you find the right room?"],
+    ["OUISSY", "I tried every door."],
+    ["ANWAR", "...There are a lot of doors in that building."],
+    ["OUISSY", "Yes."],
+    SIL,
+    [N, "He doesn't push it. The fire pops, and something in the wood shifts, and neither of them says anything for a while."],
+    SIL,
+    ["ANWAR", "Were you frightened?"],
+    ["OUISSY", "The whole time."],
+    ["ANWAR", "Of the—"],
+    ["OUISSY", "Of everything. Of the noise, and the dark, and not knowing if you were—"],
+    ["OUISSY", "Yes. I was frightened the whole time."],
+    ["ANWAR", "I woke up and the power was out and nobody was on the ward. I didn't know what had happened. I thought—"],
+    ["ANWAR", "I thought maybe everyone just left."],
+    ["OUISSY", "I didn't leave."],
+    ["ANWAR", "No. You came and got me."],
+    SIL,
+    [N, "A long time passes. The stream sounds different in the dark — closer, as though the water has risen. It hasn't. There is just nothing else to hear."],
+    SIL,
+    ["OUISSY", "Anwar."],
+    ["ANWAR", "Mm."],
+    ["OUISSY", "I need to tell you something and I need you not to make it into a thing."],
+    ["ANWAR", "...Okay."],
+    ["OUISSY", "When I got to the car park and the car actually started — that was the first time I thought I might actually get to you."],
+    ["OUISSY", "Not before that. Not in the house, not on the street, not in the hospital. I was just doing the next thing because I didn't know how to stop."],
+    ["OUISSY", "I wasn't being brave. I didn't have a plan. I was just — moving."],
+    ["ANWAR", "That is brave."],
+    ["OUISSY", "It isn't. It's just not stopping."],
+    ["ANWAR", "Same thing."],
+    SIL,
+    [N, "She pulls a twig apart and drops the pieces into the fire one at a time."],
+    SIL,
+    ["OUISSY", "I'm going to say something and I don't want you to say anything back. I just want you to hear it."],
+    ["ANWAR", "All right."],
+    ["OUISSY", "I would do it again."],
+    ["OUISSY", "All of it. The house, the streets, the hospital. Every door and every dark corridor and every time I thought something was right behind me."],
+    ["OUISSY", "I would do every single second of it again."],
+    SIL,
+    [N, "He doesn't say anything. He said he wouldn't."],
+    SIL,
+    ["ANWAR", "Can I say something now?"],
+    ["OUISSY", "No."],
+    ["ANWAR", "Okay."],
+    ["OUISSY", "...Fine. What."],
+    ["ANWAR", "I know."],
+    SIL,
+    [N, "The fire burns low. Above the clearing the stars are out, which neither of them has seen in a city for a long time, and which neither of them mentions because it would break something."],
+    SIL,
+    ["OUISSY", "We should sleep. The gates can't be far."],
+    ["ANWAR", "How far?"],
+    ["OUISSY", "The radio said north road, past the reservoir. An hour, maybe, on the horse."],
+    ["ANWAR", "You should sleep first. I'll watch the fire."],
+    ["OUISSY", "You were in a hospital bed for a week."],
+    ["ANWAR", "And you carried me out of it. Sleep."],
+    SIL,
+    [N, "She doesn't argue. She doesn't move either."],
+    SIL,
+    [N, "Her head finds his shoulder, and stays there."],
+    [N, "He doesn't move. He barely breathes."],
+    SIL,
+    [N, "She is asleep before he has counted to ten."],
+    [N, "He sits by the fire and watches the dark, which is what it looks like when somebody loves you back."]
+  ];
+
+  TALK.roof = [
+    [N, "The roof is flat and wide and the air up here is clean."],
+    [N, "The whole of the valley is underneath them, and whatever is burning in it is a long way off."],
+    SIL,
+    ["ANWAR", "I can't believe we're here."],
+    ["OUISSY", "I know."],
+    SIL,
+    ["ANWAR", "I didn't think we'd make it past the ring road."],
+    ["OUISSY", "I didn't think past the hospital."],
+    [N, "He laughs, short and real, and it is the first time in days it has sounded like him."],
+    SIL,
+    ["ANWAR", "Have you tried the phone again?"],
+    ["OUISSY", "There's no signal. There's been nothing since the second day."],
+    ["ANWAR", "Mine too. Network's gone."],
+    SIL,
+    ["OUISSY", "My mum would've gone to Aunt Sara's. That's what they always said — if anything happened, go to Sara's."],
+    ["ANWAR", "My parents would've gone to the mosque. Or to Nana's."],
+    ["OUISSY", "Then that's where we look. When things calm down, that's where we go first."],
+    ["ANWAR", "Both places. Yours and mine."],
+    ["OUISSY", "Both places."],
+    SIL,
+    [N, "They are quiet for a while. A light goes on and off in a window three streets away, and then it stays off."],
+    SIL,
+    ["ANWAR", "You know the worst part?"],
+    ["OUISSY", "What."],
+    ["ANWAR", "I wasn't scared for me. I was scared because I didn't know where you were."],
+    SIL,
+    ["OUISSY", "I was scared for you too."],
+    ["OUISSY", "That's why I walked."],
+    SIL,
+    [N, "He reaches over and takes her hand, and neither of them lets go."],
+    SIL,
+    ["ANWAR", "What do we do now?"],
+    ["OUISSY", "We wait until it's safe. Then we find our families."],
+    ["ANWAR", "And if it doesn't get safe?"],
+    ["OUISSY", "Then we work it out. Like we worked out everything else."],
+    SIL,
+    ["ANWAR", "Together."],
+    ["OUISSY", "Obviously together. That's the whole point."],
+    [N, "He turns and looks at her, properly looks, for the first time since the hospital."],
+    SIL,
+    ["ANWAR", "Come here."],
+    [N, "She leans into him, and he puts his arm around her, and the city below them is the quietest it has ever been."],
+    SIL,
+    [N, "They stay like that for a long time. There is nowhere else to be."],
+    [N, "The moon is up and the smoke has cleared enough to see the stars."],
+    SIL,
+    ["OUISSY", "Hey."],
+    ["ANWAR", "Yeah?"],
+    ["OUISSY", "We made it."],
+    SIL,
+    ["ANWAR", "Yeah. We did."]
+  ];
+
+  var RADIO_LINES = [
+    "— stay off the roads at night. Do not attempt to reach us after dark —",
+    "— Ashcombe reception is open. We are accepting anyone who is not bitten —",
+    "— you will be checked at the gate and you will be given the serum. Both are required —",
+    "— that is Ashcombe. North road, past the reservoir. We are still here —"
+  ];
+
+  var TV_LINES = [
+    "STAY INSIDE. LOCK WHAT YOU CAN LOCK.",
+    "DO NOT APPROACH ANYONE WHO SEEMS UNWELL.",
+    "DO NOT ATTEMPT TO HELP THEM.",
+    "HOSPITALS IN THESE DISTRICTS ARE NO LONGER TAKING CALLS."
+  ];
+
+  var TV_TICKER = "EMERGENCY BROADCAST • THIS IS NOT A TEST • REMAIN INDOORS • " +
+                  "DO NOT TRAVEL • KEEP THIS CHANNEL OPEN • ";
+
+  var GATE_CODE = "4180";
+
+  var CLOSE_LINES = [
+    "It had you for a second.",
+    "You get your arm back and you run.",
+    "Not this time.",
+    "You come out of it further back than you were.",
+    "It doesn't hold on. This time."
+  ];
+
+  /* =========================================================
+     4 — SMALL THINGS
+     ========================================================= */
   function $(id) { return document.getElementById(id); }
 
-  function el(tag, cls, html) {
-    var e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (html !== undefined) e.innerHTML = html;
-    return e;
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
   }
 
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function irnd(a, b) { return Math.floor(rnd(a, b + 1)); }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+
+  /* a small deterministic hash, so a given tile always looks the same
+     rather than shimmering every time the level is rebuilt */
+  function hash2(x, y) {
+    var h = x * 374761393 + y * 668265263;
+    h = (h ^ (h >> 13)) * 1274126177;
+    return ((h ^ (h >> 16)) >>> 0) / 4294967296;
+  }
+
+  /* =========================================================
+     5 — SOUND
+     No files. An oscillator bank, a noise buffer, a convolver
+     built out of decaying noise for the corridors, and one
+     ambient bed per location that the rest is mixed over.
+     ========================================================= */
+  var Audio_ = (function () {
+    var ctx = null, master = null, busVerb = null, verb = null, busDry = null;
+    var noiseBuf = null, ambient = null, on = false, pendingBed = null;
+
+    function ac() {
+      if (ctx) return ctx;
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      ctx = new C();
+      master = ctx.createGain();
+      master.gain.value = 0.0;
+      master.connect(ctx.destination);
+
+      busDry = ctx.createGain(); busDry.connect(master);
+      verb = ctx.createConvolver();
+      verb.buffer = impulse(1.9, 2.6);
+      busVerb = ctx.createGain(); busVerb.gain.value = 0.34;
+      busVerb.connect(verb); verb.connect(master);
+
+      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+      var d = noiseBuf.getChannelData(0);
+      for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      return ctx;
+    }
+
+    /* a room, made out of noise that runs out */
+    function impulse(sec, decay) {
+      var len = Math.floor(ctx.sampleRate * sec);
+      var buf = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (var c = 0; c < 2; c++) {
+        var d = buf.getChannelData(c);
+        for (var i = 0; i < len; i++) {
+          d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+        }
+      }
+      return buf;
+    }
+
+    /* A context that is not running never fires the stop() we schedule, so
+       every node we build into it stays alive. Twenty minutes of footsteps
+       into a suspended context is tens of thousands of oscillators and a
+       page that stops responding — so nothing is built until it is running. */
+    function live() { return ctx && ctx.state === "running"; }
+
+    function noise(dur, gain, filt, q, type) {
+      if (!ac() || !live()) return null;
+      var s = ctx.createBufferSource();
+      s.buffer = noiseBuf; s.loop = true;
+      var f = ctx.createBiquadFilter();
+      f.type = type || "bandpass";
+      f.frequency.value = filt; f.Q.value = q || 1;
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), ctx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+      s.connect(f); f.connect(g); g.connect(busDry); g.connect(busVerb);
+      s.start(); s.stop(ctx.currentTime + dur + 0.05);
+      return { src: s, gain: g, filt: f };
+    }
+
+    function tone(freq, dur, gain, type, slideTo, delay) {
+      if (!ac() || !live()) return null;
+      var t0 = ctx.currentTime + (delay || 0);
+      var o = ctx.createOscillator();
+      o.type = type || "sine";
+      o.frequency.setValueAtTime(freq, t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + dur);
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(busDry); g.connect(busVerb);
+      o.start(t0); o.stop(t0 + dur + 0.05);
+      return { osc: o, gain: g };
+    }
+
+    var API = {
+      begin: function () {
+        if (!ac()) return;
+        if (ctx.state === "suspended") ctx.resume().then(function () {
+          if (pendingBed) { var k = pendingBed; pendingBed = null; API.bed(k); }
+        });
+        on = true;
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setTargetAtTime(0.55, ctx.currentTime, 0.4);
+      },
+      end: function () {
+        if (!ctx) return;
+        on = false;
+        API.bed(null);
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setTargetAtTime(0.0, ctx.currentTime, 0.25);
+      },
+      resume: function () {
+        if (!ctx || ctx.state !== "suspended") return;
+        ctx.resume().then(function () {
+          if (pendingBed) { var k = pendingBed; pendingBed = null; API.bed(k); }
+        });
+      },
+
+      /* --- the ambient bed: one per place, crossfaded --- */
+      bed: function (kind) {
+        if (!ac()) return;
+        if (!live() && kind) { pendingBed = kind; return; }
+        if (ambient) {
+          var old = ambient; ambient = null;
+          try {
+            old.g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.5);
+            setTimeout(function () { old.nodes.forEach(function (n) { try { n.stop(); } catch (e) {} }); }, 1600);
+          } catch (e) {}
+        }
+        if (!kind) return;
+
+        var g = ctx.createGain();
+        g.gain.value = 0.0001;
+        g.connect(master);
+        var nodes = [];
+
+        var spec = {
+          house:    { drone: 42,  air: 260,  airQ: 0.7, vol: 0.10 },
+          street:   { drone: 33,  air: 180,  airQ: 0.5, vol: 0.13 },
+          hospital: { drone: 55,  air: 900,  airQ: 1.4, vol: 0.11 },
+          road:     { drone: 38,  air: 420,  airQ: 0.6, vol: 0.09 },
+          campsite: { drone: 46,  air: 620,  airQ: 0.8, vol: 0.08 }
+        }[kind] || { drone: 40, air: 300, airQ: 0.7, vol: 0.09 };
+
+        /* two detuned low oscillators — the room, not a note */
+        [0, 1].forEach(function (i) {
+          var o = ctx.createOscillator();
+          o.type = "sine";
+          o.frequency.value = spec.drone * (i ? 1.0075 : 1);
+          var og = ctx.createGain(); og.gain.value = 0.45;
+          o.connect(og); og.connect(g); o.start(); nodes.push(o);
+        });
+        /* filtered noise — air moving in a building with no people in it */
+        var s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+        var f = ctx.createBiquadFilter();
+        f.type = "bandpass"; f.frequency.value = spec.air; f.Q.value = spec.airQ;
+        var ng = ctx.createGain(); ng.gain.value = 0.30;
+        s.connect(f); f.connect(ng); ng.connect(g); s.start(); nodes.push(s);
+
+        /* a slow wobble on the filter so it is never quite still */
+        var lfo = ctx.createOscillator(); lfo.frequency.value = 0.07;
+        var lg = ctx.createGain(); lg.gain.value = spec.air * 0.25;
+        lfo.connect(lg); lg.connect(f.frequency); lfo.start(); nodes.push(lfo);
+
+        g.gain.setTargetAtTime(spec.vol, ctx.currentTime, 1.2);
+        ambient = { g: g, nodes: nodes, base: spec.vol };
+      },
+
+      /* the bed climbs as the hospital fills up */
+      pressure: function (v) {
+        if (!ambient || !ctx) return;
+        ambient.g.gain.setTargetAtTime(ambient.base * (1 + v * 1.8), ctx.currentTime, 1.5);
+      },
+
+      step: function (creeping, outdoors) {
+        if (!on) return;
+        var f = outdoors ? 300 : 170;
+        noise(creeping ? 0.05 : 0.09, creeping ? 0.02 : 0.075,
+              f * rnd(0.85, 1.2), creeping ? 5 : 2.2);
+      },
+      door: function () {
+        if (!on) return;
+        noise(0.5, 0.06, 420, 4);
+        tone(120, 0.45, 0.05, "sawtooth", 70);
+        tone(70, 0.3, 0.04, "square", 55, 0.35);
+      },
+      spark: function () {
+        if (!on) return;
+        noise(0.14, 0.22, 3600, 0.6, "highpass");
+        tone(1800, 0.09, 0.09, "square", 300);
+      },
+      shuffle: function (dist) {
+        if (!on) return;
+        var g = clamp(0.06 * (1 - dist / 14), 0.004, 0.06);
+        noise(0.22, g, 180 * rnd(0.8, 1.3), 1.6);
+      },
+      alert: function () {
+        if (!on) return;
+        noise(0.4, 0.13, 700, 1.1);
+        tone(190, 0.55, 0.10, "sawtooth", 88);
+        tone(95, 0.7, 0.07, "square", 60);
+      },
+      caught: function () {
+        if (!on) return;
+        tone(58, 1.2, 0.20, "sine", 34);
+        noise(0.9, 0.16, 240, 0.8);
+        API.heart(3);
+      },
+      heart: function (n) {
+        if (!on) return;
+        for (var i = 0; i < (n || 1); i++) {
+          tone(48, 0.16, 0.16, "sine", 30, i * 0.62);
+          tone(44, 0.13, 0.11, "sine", 28, i * 0.62 + 0.20);
+        }
+      },
+      found: function () {
+        if (!on) return;
+        tone(660, 0.16, 0.07, "triangle");
+        tone(990, 0.30, 0.05, "triangle", 1320, 0.09);
+      },
+      keyOk: function () { if (on) { tone(520, 0.1, 0.06, "square"); tone(780, 0.22, 0.05, "square", 900, 0.08); } },
+      keyBad: function () { if (on) { tone(150, 0.3, 0.09, "sawtooth", 70); } },
+      beep: function () { if (on) tone(1200, 0.045, 0.035, "square"); },
+      static: function (dur, g) { if (on) noise(dur || 0.4, g || 0.05, 2600, 0.4, "highpass"); },
+      tune: function () {
+        if (!on) return;
+        noise(0.7, 0.05, 1400, 0.6);
+        tone(1400, 0.6, 0.03, "sine", 320);
+      },
+      fire: function () {
+        if (!on) return;
+        noise(rnd(0.05, 0.16), rnd(0.02, 0.06), rnd(500, 2600), rnd(0.6, 2.4));
+      },
+      engine: function (state) {
+        if (!ac()) return null;
+        if (state === "start") {
+          for (var i = 0; i < 4; i++) tone(70 + i * 4, 0.14, 0.07, "sawtooth", 50, i * 0.16);
+          tone(90, 1.1, 0.10, "sawtooth", 130, 0.66);
+          return null;
+        }
+        return null;
+      },
+      hoof: function () {
+        if (!on) return;
+        noise(0.07, 0.06, 150, 3);
+        tone(90, 0.06, 0.045, "sine", 55);
+      },
+      bird: function () {
+        if (!on) return;
+        var f = rnd(1900, 3400);
+        tone(f, 0.09, 0.035, "sine", f * rnd(1.2, 1.8));
+        tone(f * 1.2, 0.07, 0.025, "sine", f * 0.8, 0.11);
+      },
+      wind: function () { if (on) noise(rnd(1.4, 2.6), 0.03, rnd(300, 700), 0.5); },
+      thump: function (g) { if (on) tone(52, 0.5, g || 0.09, "sine", 30); }
+    };
+    return API;
+  })();
+
+  /* =========================================================
+     6 — LOADING THREE
+     The bundle is 780 KB. The rest of the site should not pay
+     for it, so it is fetched the first time somebody opens this
+     chapter and cached by the browser after that.
+     ========================================================= */
+  var THREE = null;
+  var threePromise = null;
+
+  function scriptBase() {
+    var s = document.currentScript;
+    if (!s) {
+      var all = document.getElementsByTagName("script");
+      for (var i = all.length - 1; i >= 0; i--) {
+        if (/apocalypse\.js/.test(all[i].src)) { s = all[i]; break; }
+      }
+    }
+    if (!s || !s.src) return "";
+    return s.src.replace(/[^/]*$/, "");
+  }
+  var BASE = scriptBase();
+
+  function loadThree() {
+    if (window.THREE) { THREE = window.THREE; return Promise.resolve(THREE); }
+    if (threePromise) return threePromise;
+    threePromise = new Promise(function (res, rej) {
+      var s = document.createElement("script");
+      s.src = BASE + "vendor/three.bundle.js";
+      s.async = true;
+      s.onload = function () {
+        THREE = window.THREE;
+        THREE ? res(THREE) : rej(new Error("three loaded but did not attach"));
+      };
+      s.onerror = function () { rej(new Error("could not load vendor/three.bundle.js")); };
+      document.head.appendChild(s);
+    });
+    return threePromise;
+  }
+
+  /* =========================================================
+     7 — SURFACES
+     Nothing in this game samples an image file, so every
+     material's colour, bump and roughness come out of a canvas
+     painted once at load and cached by name. Painting a plank
+     and letting the light do the rest looks far better than
+     tinting a flat box, and costs one texture.
+     ========================================================= */
+  var TEX = {};
+
+  function canvas2d(size) {
+    var c = document.createElement("canvas");
+    c.width = c.height = size;
+    return { c: c, x: c.getContext("2d") };
+  }
+
+  /* value noise over a canvas, in place, multiplied into what is there */
+  function grain(x, size, amount, cell) {
+    var img = x.getImageData(0, 0, size, size), d = img.data;
+    var n = size / (cell || 1);
+    for (var y = 0; y < size; y++) {
+      for (var i = 0; i < size; i++) {
+        var v = (hash2(Math.floor(i / (cell || 1)), Math.floor(y / (cell || 1))) - 0.5) * amount * 255;
+        var p = (y * size + i) * 4;
+        d[p] = clamp(d[p] + v, 0, 255);
+        d[p + 1] = clamp(d[p + 1] + v, 0, 255);
+        d[p + 2] = clamp(d[p + 2] + v, 0, 255);
+      }
+    }
+    x.putImageData(img, 0, 0);
+  }
+
+  function splotch(x, size, n, colour, rmin, rmax, alpha) {
+    for (var i = 0; i < n; i++) {
+      var cx = Math.random() * size, cy = Math.random() * size,
+          r = rnd(rmin, rmax);
+      var g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, "rgba(" + colour + "," + alpha + ")");
+      g.addColorStop(1, "rgba(" + colour + ",0)");
+      x.fillStyle = g;
+      x.beginPath(); x.arc(cx, cy, r, 0, 6.2832); x.fill();
+    }
+  }
+
+  var PAINT = {
+    /* interior wall: painted plaster that has been there a while */
+    plaster: function (x, s) {
+      x.fillStyle = "#b9b3ad"; x.fillRect(0, 0, s, s);
+      splotch(x, s, 26, "150,140,130", s * 0.05, s * 0.22, 0.30);
+      splotch(x, s, 10, "90,80,70", s * 0.02, s * 0.09, 0.35);
+      grain(x, s, 0.10, 1);
+      /* a skirting shadow at the bottom edge reads as a real wall */
+      var g = x.createLinearGradient(0, s * 0.82, 0, s);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.42)");
+      x.fillStyle = g; x.fillRect(0, s * 0.82, s, s * 0.18);
+    },
+    /* floorboards */
+    boards: function (x, s) {
+      x.fillStyle = "#9a7042"; x.fillRect(0, 0, s, s);
+      var rows = 6, h = s / rows;
+      for (var r = 0; r < rows; r++) {
+        var t = hash2(r, 7);
+        x.fillStyle = "rgba(" + Math.floor(120 + t * 60) + "," +
+                      Math.floor(84 + t * 40) + "," + Math.floor(48 + t * 26) + ",1)";
+        x.fillRect(0, r * h, s, h - 1);
+        /* the gap between boards */
+        x.fillStyle = "rgba(40,26,14,.85)";
+        x.fillRect(0, r * h + h - 1.5, s, 1.5);
+        /* grain lines along it */
+        x.strokeStyle = "rgba(60,40,20,.22)"; x.lineWidth = 1;
+        for (var k = 0; k < 5; k++) {
+          var yy = r * h + 3 + hash2(r, k) * (h - 6);
+          x.beginPath(); x.moveTo(0, yy);
+          x.bezierCurveTo(s * 0.3, yy + 2, s * 0.6, yy - 2, s, yy + 1);
+          x.stroke();
+        }
+        /* the end joint */
+        var jx = hash2(r, 3) * s;
+        x.fillStyle = "rgba(40,26,14,.7)"; x.fillRect(jx, r * h, 1.5, h - 1.5);
+      }
+      grain(x, s, 0.06, 1);
+    },
+    carpet: function (x, s) {
+      x.fillStyle = "#7a3a44"; x.fillRect(0, 0, s, s);
+      splotch(x, s, 40, "120,60,70", s * 0.03, s * 0.13, 0.30);
+      grain(x, s, 0.16, 2);
+    },
+    /* hospital vinyl — big pale squares with a lot of scuff */
+    clinic: function (x, s) {
+      x.fillStyle = "#c9d4d6"; x.fillRect(0, 0, s, s);
+      var n = 4, g = s / n;
+      for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
+        var t = hash2(i, j) * 16 - 8;
+        x.fillStyle = "rgb(" + (198 + t) + "," + (210 + t) + "," + (212 + t) + ")";
+        x.fillRect(i * g + 1, j * g + 1, g - 2, g - 2);
+      }
+      x.strokeStyle = "rgba(120,140,145,.55)"; x.lineWidth = 1.5;
+      for (var k = 0; k <= n; k++) {
+        x.beginPath(); x.moveTo(k * g, 0); x.lineTo(k * g, s); x.stroke();
+        x.beginPath(); x.moveTo(0, k * g); x.lineTo(s, k * g); x.stroke();
+      }
+      splotch(x, s, 14, "90,110,110", s * 0.04, s * 0.18, 0.22);
+      splotch(x, s, 5, "70,30,26", s * 0.02, s * 0.07, 0.30);
+      grain(x, s, 0.05, 1);
+    },
+    /* road: asphalt with aggregate and cracks */
+    asphalt: function (x, s) {
+      x.fillStyle = "#2b2f36"; x.fillRect(0, 0, s, s);
+      splotch(x, s, 22, "58,62,70", s * 0.06, s * 0.2, 0.28);
+      for (var i = 0; i < 420; i++) {
+        var v = 44 + Math.random() * 56;
+        x.fillStyle = "rgba(" + v + "," + (v + 4) + "," + (v + 8) + ",.5)";
+        var r0 = rnd(2.2, 5.5);
+        x.beginPath(); x.ellipse(Math.random() * s, Math.random() * s, r0, r0 * rnd(0.5, 1), Math.random() * 3, 0, 6.2832);
+        x.fill();
+      }
+      x.strokeStyle = "rgba(16,16,20,.85)"; x.lineWidth = 1.6;
+      for (var c = 0; c < 4; c++) {
+        var cx = Math.random() * s, cy = Math.random() * s;
+        x.beginPath(); x.moveTo(cx, cy);
+        for (var k = 0; k < 5; k++) { cx += rnd(-24, 24); cy += rnd(-24, 24); x.lineTo(cx, cy); }
+        x.stroke();
+      }
+      splotch(x, s, 8, "20,22,26", s * 0.05, s * 0.2, 0.4);
+    },
+    /* pavement slabs */
+    pave: function (x, s) {
+      x.fillStyle = "#6c7681"; x.fillRect(0, 0, s, s);
+      var n = 2, g = s / n;
+      for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
+        var t = hash2(i * 3, j * 5) * 20 - 10;
+        x.fillStyle = "rgb(" + (104 + t) + "," + (114 + t) + "," + (124 + t) + ")";
+        x.fillRect(i * g + 2, j * g + 2, g - 4, g - 4);
+      }
+      splotch(x, s, 18, "60,68,76", s * 0.04, s * 0.16, 0.3);
+      grain(x, s, 0.08, 1);
+    },
+    grass: function (x, s) {
+      x.fillStyle = "#43592c"; x.fillRect(0, 0, s, s);
+      splotch(x, s, 16, "58,78,40", s * 0.06, s * 0.22, 0.3);
+      for (var i = 0; i < 1100; i++) {
+        var gx = Math.random() * s, gy = Math.random() * s, l = rnd(5, 13);
+        var v = Math.random();
+        x.strokeStyle = "rgba(" + Math.floor(60 + v * 50) + "," +
+                        Math.floor(88 + v * 62) + "," + Math.floor(38 + v * 30) + ",.75)";
+        x.lineWidth = rnd(1.2, 2.4);
+        x.beginPath(); x.moveTo(gx, gy);
+        x.quadraticCurveTo(gx + rnd(-2, 2), gy - l * 0.6, gx + rnd(-3.5, 3.5), gy - l);
+        x.stroke();
+      }
+      splotch(x, s, 12, "40,52,26", s * 0.06, s * 0.24, 0.3);
+    },
+    dirt: function (x, s) {
+      x.fillStyle = "#7a6748"; x.fillRect(0, 0, s, s);
+      splotch(x, s, 34, "96,80,56", s * 0.04, s * 0.2, 0.4);
+      splotch(x, s, 20, "56,46,32", s * 0.02, s * 0.1, 0.45);
+      for (var i = 0; i < 500; i++) {
+        var v = 60 + Math.random() * 70;
+        x.fillStyle = "rgba(" + v + "," + (v - 12) + "," + (v - 30) + ",.5)";
+        x.fillRect(Math.random() * s, Math.random() * s, rnd(1, 3), rnd(1, 3));
+      }
+    },
+    brick: function (x, s) {
+      x.fillStyle = "#3a2a26"; x.fillRect(0, 0, s, s);
+      var rows = 8, h = s / rows, w = s / 4;
+      for (var r = 0; r < rows; r++) {
+        var off = (r % 2) * w * 0.5;
+        for (var c = -1; c < 5; c++) {
+          var t = hash2(r, c);
+          x.fillStyle = "rgb(" + Math.floor(88 + t * 46) + "," +
+                        Math.floor(52 + t * 24) + "," + Math.floor(44 + t * 20) + ")";
+          x.fillRect(c * w + off + 1.5, r * h + 1.5, w - 3, h - 3);
+        }
+      }
+      splotch(x, s, 14, "40,34,30", s * 0.05, s * 0.2, 0.34);
+      grain(x, s, 0.07, 1);
+    },
+    /* painted breeze block — the outside of the hospital and the compound */
+    block: function (x, s) {
+      x.fillStyle = "#8d9099"; x.fillRect(0, 0, s, s);
+      var rows = 4, h = s / rows, w = s / 2;
+      for (var r = 0; r < rows; r++) for (var c = 0; c < 2; c++) {
+        var t = hash2(r * 7, c * 11) * 18 - 9;
+        x.fillStyle = "rgb(" + (136 + t) + "," + (139 + t) + "," + (148 + t) + ")";
+        x.fillRect(c * w + 2, r * h + 2, w - 4, h - 4);
+      }
+      splotch(x, s, 16, "70,74,82", s * 0.04, s * 0.18, 0.32);
+      grain(x, s, 0.07, 1);
+    },
+    /* felt-and-batten flat roof, seen from directly above */
+    roof: function (x, s) {
+      x.fillStyle = "#2e3138"; x.fillRect(0, 0, s, s);
+      for (var i = 0; i < 900; i++) {
+        var v = 34 + Math.random() * 34;
+        x.fillStyle = "rgba(" + v + "," + (v + 2) + "," + (v + 6) + ",.5)";
+        x.fillRect(Math.random() * s, Math.random() * s, rnd(1, 3), rnd(1, 3));
+      }
+      x.strokeStyle = "rgba(16,18,22,.7)"; x.lineWidth = 2;
+      for (var r = 0; r < 5; r++) {
+        var y = r * s / 5 + 4;
+        x.beginPath(); x.moveTo(0, y); x.lineTo(s, y + rnd(-1, 1)); x.stroke();
+      }
+      splotch(x, s, 10, "60,66,76", s * 0.05, s * 0.22, 0.3);
+      splotch(x, s, 6, "24,26,30", s * 0.04, s * 0.16, 0.4);
+      splotch(x, s, 3, "70,86,100", s * 0.06, s * 0.18, 0.22);
+    },
+    metal: function (x, s) {
+      x.fillStyle = "#5b6068"; x.fillRect(0, 0, s, s);
+      for (var i = 0; i < 260; i++) {
+        x.strokeStyle = "rgba(" + irnd(70, 130) + "," + irnd(74, 134) + "," + irnd(82, 142) + ",.3)";
+        x.lineWidth = rnd(0.5, 1.6);
+        var y = Math.random() * s;
+        x.beginPath(); x.moveTo(0, y); x.lineTo(s, y + rnd(-2, 2)); x.stroke();
+      }
+      splotch(x, s, 8, "110,60,30", s * 0.03, s * 0.12, 0.28);
+    },
+    bark: function (x, s) {
+      x.fillStyle = "#43331f"; x.fillRect(0, 0, s, s);
+      for (var i = 0; i < 90; i++) {
+        var cx = Math.random() * s;
+        x.strokeStyle = "rgba(" + irnd(28, 92) + "," + irnd(22, 66) + "," + irnd(14, 40) + ",.8)";
+        x.lineWidth = rnd(1, 4);
+        x.beginPath(); x.moveTo(cx, 0);
+        for (var y = 0; y < s; y += 12) x.lineTo(cx + rnd(-3, 3), y);
+        x.stroke();
+      }
+      grain(x, s, 0.12, 1);
+    },
+    leaves: function (x, s) {
+      x.fillStyle = "#2c4a24"; x.fillRect(0, 0, s, s);
+      for (var i = 0; i < 700; i++) {
+        var v = Math.random();
+        x.fillStyle = "rgba(" + Math.floor(34 + v * 60) + "," +
+                      Math.floor(62 + v * 74) + "," + Math.floor(26 + v * 40) + ",.85)";
+        var cx = Math.random() * s, cy = Math.random() * s;
+        x.beginPath(); x.ellipse(cx, cy, rnd(3, 8), rnd(2, 5), Math.random() * 3.14, 0, 6.2832); x.fill();
+      }
+    },
+    /* clothing and skin, painted flat then dirtied */
+    cloth: function (x, s) {
+      x.fillStyle = "#cccccc"; x.fillRect(0, 0, s, s);
+      for (var i = 0; i < 800; i++) {
+        var v = irnd(-14, 14) + 200;
+        x.fillStyle = "rgba(" + v + "," + v + "," + v + ",.35)";
+        x.fillRect(Math.random() * s, Math.random() * s, rnd(1, 3), rnd(1, 3));
+      }
+      grain(x, s, 0.08, 1);
+    },
+    rot: function (x, s) {
+      x.fillStyle = "#9aa88c"; x.fillRect(0, 0, s, s);
+      splotch(x, s, 30, "90,104,76", s * 0.04, s * 0.2, 0.5);
+      splotch(x, s, 16, "70,44,42", s * 0.02, s * 0.09, 0.5);
+      splotch(x, s, 10, "40,50,40", s * 0.03, s * 0.13, 0.4);
+      grain(x, s, 0.12, 1);
+    }
+  };
+
+  function tex(name, size, repeat) {
+    var key = name + "|" + (repeat || 1);
+    if (TEX[key]) return TEX[key];
+    var s = size || 256, cc = canvas2d(s);
+    (PAINT[name] || PAINT.plaster)(cc.x, s);
+    var t = new THREE.CanvasTexture(cc.c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    if (repeat) t.repeat.set(repeat, repeat);
+    t.anisotropy = 4;
+    t.colorSpace = THREE.SRGBColorSpace;
+    TEX[key] = t;
+    return t;
+  }
+
+  /* the same canvas again, but read as height — cheap relief without
+     ever computing a normal map */
+  function bump(name, size, repeat) {
+    var key = "B" + name + "|" + (repeat || 1);
+    if (TEX[key]) return TEX[key];
+    var s = size || 256, cc = canvas2d(s);
+    (PAINT[name] || PAINT.plaster)(cc.x, s);
+    var t = new THREE.CanvasTexture(cc.c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    if (repeat) t.repeat.set(repeat, repeat);
+    TEX[key] = t;
+    return t;
+  }
+
+  function surface(name, opts) {
+    opts = opts || {};
+    var m = new THREE.MeshStandardMaterial({
+      map: tex(name, opts.size || 256, opts.repeat || 1),
+      bumpMap: opts.bump === false ? null : bump(name, opts.size || 256, opts.repeat || 1),
+      bumpScale: opts.bumpScale == null ? 0.14 : opts.bumpScale,
+      roughness: opts.rough == null ? 0.92 : opts.rough,
+      metalness: opts.metal == null ? 0.02 : opts.metal,
+      color: opts.tint == null ? 0xffffff : opts.tint
+    });
+    if (opts.emissive) { m.emissive = new THREE.Color(opts.emissive); m.emissiveIntensity = opts.emissiveIntensity || 1; }
+    return m;
+  }
+
+  /* =========================================================
+     8 — SKY
+     A back-side sphere with a gradient painted in the fragment
+     shader, so dawn can be swept from indigo to gold in one
+     uniform, plus a field of stars that twinkle at different
+     rates and a moon that is a real object rather than a decal.
+     ========================================================= */
+  var SKY_VERT = [
+    "varying vec3 vDir;",
+    "void main(){",
+    "  vDir = normalize(position);",
+    "  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);",
+    "}"
+  ].join("\n");
+
+  var SKY_FRAG = [
+    "varying vec3 vDir;",
+    "uniform vec3 cLow; uniform vec3 cMid; uniform vec3 cHigh;",
+    "uniform vec3 sunDir; uniform vec3 sunCol; uniform float sunAmt;",
+    "uniform float time;",
+    "float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }",
+    "void main(){",
+    "  float y = clamp(vDir.y*0.5+0.5, 0.0, 1.0);",
+    "  vec3 col = mix(cLow, cMid, smoothstep(0.42, 0.56, y));",
+    "  col = mix(col, cHigh, smoothstep(0.55, 0.92, y));",
+    /* the sun or the moon's own glow, smeared along the horizon */
+    "  float d = max(dot(normalize(vDir), normalize(sunDir)), 0.0);",
+    "  col += sunCol * pow(d, 42.0) * sunAmt * 2.2;",
+    "  col += sunCol * pow(d, 4.0) * sunAmt * 0.30;",
+    /* a little banding break so the gradient never posterises */
+    "  col += (h21(gl_FragCoord.xy + time) - 0.5) * 0.012;",
+    "  gl_FragColor = vec4(col, 1.0);",
+    "}"
+  ].join("\n");
+
+  function makeSky() {
+    var u = {
+      cLow:   { value: new THREE.Color(0x0a1024) },
+      cMid:   { value: new THREE.Color(0x0d1430) },
+      cHigh:  { value: new THREE.Color(0x05070f) },
+      sunDir: { value: new THREE.Vector3(0.4, 0.15, -1).normalize() },
+      sunCol: { value: new THREE.Color(0xffd9a0) },
+      sunAmt: { value: 0.0 },
+      time:   { value: 0 }
+    };
+    var mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(420, 32, 20),
+      new THREE.ShaderMaterial({
+        vertexShader: SKY_VERT, fragmentShader: SKY_FRAG,
+        uniforms: u, side: THREE.BackSide, depthWrite: false, fog: false
+      })
+    );
+    mesh.renderOrder = -1000;
+    mesh.frustumCulled = false;
+    return { mesh: mesh, u: u };
+  }
+
+  function makeStars(count, radius) {
+    var g = new THREE.BufferGeometry();
+    var pos = new Float32Array(count * 3), siz = new Float32Array(count),
+        pha = new Float32Array(count), bri = new Float32Array(count);
+    for (var i = 0; i < count; i++) {
+      var th = Math.random() * 6.2832;
+      var ph = Math.acos(clamp(Math.random() * 0.92 + 0.06, -1, 1));  /* upper hemisphere */
+      var r = radius;
+      pos[i * 3]     = r * Math.sin(ph) * Math.cos(th);
+      pos[i * 3 + 1] = r * Math.cos(ph);
+      pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+      siz[i] = rnd(0.8, 3.2);
+      pha[i] = Math.random() * 6.2832;
+      bri[i] = rnd(0.3, 1.0);
+    }
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    g.setAttribute("aSize", new THREE.BufferAttribute(siz, 1));
+    g.setAttribute("aPhase", new THREE.BufferAttribute(pha, 1));
+    g.setAttribute("aBright", new THREE.BufferAttribute(bri, 1));
+    var u = { time: { value: 0 }, amt: { value: 1.0 }, pxScale: { value: 1.0 } };
+    var m = new THREE.ShaderMaterial({
+      uniforms: u, transparent: true, depthWrite: false, fog: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: [
+        "attribute float aSize; attribute float aPhase; attribute float aBright;",
+        "uniform float time; uniform float pxScale;",
+        "varying float vB;",
+        "void main(){",
+        "  vec4 mv = modelViewMatrix * vec4(position,1.0);",
+        "  float tw = 0.62 + 0.38*sin(time*(0.7+aPhase*0.21) + aPhase*7.0);",
+        "  vB = aBright * tw;",
+        "  gl_PointSize = aSize * pxScale;",
+        "  gl_Position = projectionMatrix * mv;",
+        "}"
+      ].join("\n"),
+      fragmentShader: [
+        "uniform float amt; varying float vB;",
+        "void main(){",
+        "  vec2 d = gl_PointCoord - 0.5;",
+        "  float a = smoothstep(0.5, 0.06, length(d));",
+        "  gl_FragColor = vec4(vec3(0.86,0.90,1.0) * vB, a * vB * amt);",
+        "}"
+      ].join("\n")
+    });
+    var p = new THREE.Points(g, m);
+    p.frustumCulled = false;
+    p.renderOrder = -900;
+    return { points: p, u: u };
+  }
+
+  function makeMoon(size) {
+    var g = new THREE.Group();
+    var body = new THREE.Mesh(
+      new THREE.SphereGeometry(size, 28, 20),
+      new THREE.MeshBasicMaterial({ color: 0xf3f0e4, fog: false })
+    );
+    /* craters, as slightly darker dimples pressed into the surface */
+    for (var i = 0; i < 9; i++) {
+      var r = size * rnd(0.08, 0.22);
+      var c = new THREE.Mesh(
+        new THREE.CircleGeometry(r, 12),
+        new THREE.MeshBasicMaterial({ color: 0xd6d2c2, fog: false, transparent: true, opacity: 0.75 })
+      );
+      var th = rnd(0, 6.28), ph = rnd(0.4, 2.6);
+      c.position.set(
+        size * 1.002 * Math.sin(ph) * Math.cos(th),
+        size * 1.002 * Math.cos(ph),
+        size * 1.002 * Math.sin(ph) * Math.sin(th)
+      );
+      c.lookAt(0, 0, 0); c.rotateY(Math.PI);
+      body.add(c);
+    }
+    g.add(body);
+    /* the halo — a billboard that always faces us */
+    var halo = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: glowTexture(), color: 0xdfe6ff, transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false, fog: false, opacity: 0.55
+    }));
+    halo.scale.set(size * 9, size * 9, 1);
+    g.add(halo);
+    g.renderOrder = -880;
+    return g;
+  }
+
+  /* one radial-gradient sprite, reused by every glow in the game */
+  var _glowTex = null;
+  function glowTexture() {
+    if (_glowTex) return _glowTex;
+    var cc = canvas2d(128), x = cc.x;
+    var g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0.0, "rgba(255,255,255,1)");
+    g.addColorStop(0.22, "rgba(255,255,255,.55)");
+    g.addColorStop(0.55, "rgba(255,255,255,.14)");
+    g.addColorStop(1.0, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+    _glowTex = new THREE.CanvasTexture(cc.c);
+    return _glowTex;
+  }
+
+  /* a soft round blob used for dust, embers and fireflies */
+  var _dotTex = null;
+  function dotTexture() {
+    if (_dotTex) return _dotTex;
+    var cc = canvas2d(64), x = cc.x;
+    var g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, "rgba(255,255,255,1)");
+    g.addColorStop(0.4, "rgba(255,255,255,.5)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+    _dotTex = new THREE.CanvasTexture(cc.c);
+    return _dotTex;
+  }
+
+  /* =========================================================
+     9 — THE POST CHAIN
+     Bloom for anything that emits, then one pass that does the
+     colour grade, the haze, the vignette, the grain, a touch of
+     lens fringing, and the red pulse when something has hold of
+     her. One pass, so it costs one full-screen draw.
+     ========================================================= */
+  var GRADE_FRAG = [
+    "uniform sampler2D tDiffuse;",
+    "uniform vec3 gradeCol; uniform float gradeAmt;",
+    "uniform vec3 hazeCol;  uniform float hazeAmt;",
+    "uniform float vig; uniform float grain; uniform float time;",
+    "uniform float fringe; uniform float redPulse; uniform float flash;",
+    "uniform float fade; uniform float sat; uniform float exposure;",
+    "varying vec2 vUv;",
+    "float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }",
+    "void main(){",
+    "  vec2 uv = vUv;",
+    "  vec2 c = uv - 0.5;",
+    "  float r2 = dot(c,c);",
+    /* lens fringing — the channels do not quite line up at the edges */
+    "  vec3 col;",
+    "  if (fringe > 0.0001) {",
+    "    vec2 off = c * fringe * (0.4 + r2);",
+    "    col.r = texture2D(tDiffuse, uv + off).r;",
+    "    col.g = texture2D(tDiffuse, uv).g;",
+    "    col.b = texture2D(tDiffuse, uv - off).b;",
+    "  } else { col = texture2D(tDiffuse, uv).rgb; }",
+    "  col *= exposure;",
+    /* the location's grade, laid over as a soft-light-ish tint */
+    "  vec3 g = mix(col, gradeCol * (0.5 + col), 0.5);",
+    "  col = mix(col, g, gradeAmt);",
+    /* haze thins the top of the frame and sits in the distance */
+    "  col = mix(col, hazeCol, hazeAmt * smoothstep(0.0, 0.75, 1.0 - uv.y) * 0.55);",
+    /* saturation */
+    "  float l = dot(col, vec3(0.2126,0.7152,0.0722));",
+    "  col = mix(vec3(l), col, sat);",
+    /* something has hold of her */
+    "  col = mix(col, vec3(l*0.85, l*0.10, l*0.14) + vec3(0.22,0.0,0.02), redPulse);",
+    "  col += flash;",
+    /* vignette */
+    "  col *= 1.0 - vig * smoothstep(0.16, 0.82, r2);",
+    /* grain, animated */
+    "  float n = h21(uv * vec2(1024.0, 768.0) + fract(time) * 91.7);",
+    "  col += (n - 0.5) * grain;",
+    "  col *= fade;",
+    "  gl_FragColor = vec4(col, 1.0);",
+    "}"
+  ].join("\n");
+
+  var GRADE_VERT = [
+    "varying vec2 vUv;",
+    "void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }"
+  ].join("\n");
+
+  /* =========================================================
+     10 — THE STAGE
+     Renderer, camera, composer, and the one place that knows
+     how big the canvas actually is.
+     ========================================================= */
+  var Stage = {
+    renderer: null, camera: null, composer: null, gradePass: null,
+    bloom: null, w: 0, h: 0, dpr: 1, quality: 1, ready: false,
+
+    init: function (canvas) {
+      if (Stage.ready) return;
+      var r;
+      try {
+        r = Stage.build(canvas);
+      } catch (e) {
+        Stage.renderer = null;
+        return;
+      }
+      Stage.finish(canvas, r);
+    },
+
+    build: function (canvas) {
+      return new THREE.WebGLRenderer({
+        canvas: canvas, antialias: false, powerPreference: "high-performance",
+        stencil: false, alpha: false
+      });
+    },
+
+    finish: function (canvas, r) {
+      r.setClearColor(0x000000, 1);
+      r.shadowMap.enabled = true;
+      r.shadowMap.type = THREE.PCFSoftShadowMap;
+      r.toneMapping = THREE.ACESFilmicToneMapping;
+      r.toneMappingExposure = 1.08;
+      r.outputColorSpace = THREE.SRGBColorSpace;
+      Stage.renderer = r;
+
+      /* the canvas is authored at 320x180 in the markup for the old
+         chapter; from here it is a real framebuffer, so the pixelation
+         that used to be the point has to come off */
+      canvas.style.imageRendering = "auto";
+
+      Stage.camera = new THREE.PerspectiveCamera(46, 16 / 9, 0.4, 400);
+      Stage.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      Stage.resize(true);
+      Stage.ready = true;
+    },
+
+    /* the composer is rebuilt whenever the scene it renders changes */
+    attach: function (scene, camera) {
+      var C = THREE.EffectComposer, RP = THREE.RenderPass,
+          SP = THREE.ShaderPass, UB = THREE.UnrealBloomPass, OP = THREE.OutputPass;
+      if (!C) { Stage.composer = null; return; }
+      /* the chapter attaches a new scene eight times over; without this
+         every one of them leaves its render targets on the card */
+      if (Stage.composer) {
+        try {
+          Stage.composer.passes.forEach(function (ps) { if (ps.dispose) ps.dispose(); });
+          Stage.composer.dispose();
+        } catch (e) {}
+      }
+      var comp = new C(Stage.renderer);
+      comp.setSize(Stage.w, Stage.h);
+      comp.addPass(new RP(scene, camera));
+
+      if (UB && Stage.quality > 0) {
+        var b = new UB(new THREE.Vector2(Stage.w, Stage.h), 0.34, 0.70, 0.88);
+        comp.addPass(b);
+        Stage.bloom = b;
+      } else Stage.bloom = null;
+
+      var grade = new SP({
+        uniforms: {
+          tDiffuse:  { value: null },
+          gradeCol:  { value: new THREE.Color(0xb47337) },
+          gradeAmt:  { value: 0.16 },
+          hazeCol:   { value: new THREE.Color(0x1e263c) },
+          hazeAmt:   { value: 0.28 },
+          vig:       { value: 0.78 },
+          grain:     { value: 0.055 },
+          time:      { value: 0 },
+          fringe:    { value: 0.0016 },
+          redPulse:  { value: 0.0 },
+          flash:     { value: 0.0 },
+          fade:      { value: 1.0 },
+          sat:       { value: 1.04 },
+          exposure:  { value: 1.0 }
+        },
+        vertexShader: GRADE_VERT,
+        fragmentShader: GRADE_FRAG
+      });
+      comp.addPass(grade);
+      Stage.gradePass = grade;
+      if (OP) comp.addPass(new OP());
+      Stage.composer = comp;
+    },
+
+    resize: function (force) {
+      var canvas = Stage.renderer && Stage.renderer.domElement;
+      if (!canvas) return;
+      var host = canvas.parentElement || canvas;
+      var cw = Math.max(160, host.clientWidth || 640);
+      var ch = Math.max(90, host.clientHeight || 360);
+      var scale = [1, 0.78, 0.6][Stage.quality] || 1;
+      var w = Math.round(cw * Stage.dpr * scale);
+      var h = Math.round(ch * Stage.dpr * scale);
+      if (!force && w === Stage.w && h === Stage.h) return;
+      Stage.w = w; Stage.h = h;
+      Stage.renderer.setPixelRatio(1);
+      Stage.renderer.setSize(w, h, false);
+      canvas.style.width = "100%"; canvas.style.height = "100%";
+      Stage.camera.aspect = cw / ch;
+      Stage.camera.updateProjectionMatrix();
+      if (Stage.composer) Stage.composer.setSize(w, h);
+      if (Stage.bloom) Stage.bloom.setSize(w, h);
+    },
+
+    grade: function (o) {
+      var u = Stage.gradePass && Stage.gradePass.uniforms;
+      if (!u) return;
+      for (var k in o) if (u[k]) {
+        if (u[k].value && u[k].value.isColor) u[k].value.set(o[k]);
+        else u[k].value = o[k];
+      }
+    },
+
+    render: function (scene, camera) {
+      if (Stage.composer) Stage.composer.render();
+      else Stage.renderer.render(scene, camera);
+    },
+
+    /* one knob for how hard this is on the machine it is running on.
+       0 is everything, 2 is a phone from a few years ago. */
+    setQuality: function (q, scene, camera) {
+      q = clamp(q | 0, 0, 2);
+      if (q === Stage.quality) return;
+      Stage.quality = q;
+      Stage.resize(true);
+      if (scene) Stage.attach(scene, camera || Stage.camera);
+    },
+
+    dispose: function () {
+      if (Stage.composer) { try { Stage.composer.dispose(); } catch (e) {} }
+      if (Stage.renderer) { try { Stage.renderer.dispose(); } catch (e) {} }
+      Stage.composer = null; Stage.bloom = null; Stage.gradePass = null;
+      Stage.renderer = null; Stage.ready = false;
+    }
+  };
+
+  /* =========================================================
+     11 — THE CAMERA RIG
+     Third person, over her shoulder and up, tilted down far
+     enough that you can read a corridor before you walk into
+     it. It leads her slightly in the direction she is facing,
+     pulls in when she creeps, kicks out when something is
+     chasing her, and shakes when she is grabbed.
+     ========================================================= */
+  function CamRig(camera) {
+    this.cam = camera;
+    this.pos = new THREE.Vector3();
+    this.look = new THREE.Vector3();
+    this.want = new THREE.Vector3();
+    this.wantLook = new THREE.Vector3();
+    this.shake = 0;
+    this.dist = 8.6;
+    this.height = 10.4;
+    this.fov = 46;
+    this.fovWant = 46;
+    this.snapped = false;
+  }
+  CamRig.prototype.frame = function (tx, ty, facing, mode, dt) {
+    var lead = 1.9;
+    var lx = tx + Math.cos(facing) * lead;
+    var lz = ty + Math.sin(facing) * lead;
+
+    var d = this.dist, h = this.height;
+    if (mode === "creep") { d = 7.4;  h = 9.0;  this.fovWant = 43; }
+    else if (mode === "chase") { d = 9.8; h = 11.6; this.fovWant = 51; }
+    else { d = 8.6; h = 10.4; this.fovWant = 46; }
+
+    this.want.set(lx, h, lz + d);
+    this.wantLook.set(lx, 1.0, lz);
+
+    var k = this.snapped ? 1 - Math.pow(1 - TUNE.camLerp, dt * 60) : 1;
+    this.pos.lerp(this.want, k);
+    this.look.lerp(this.wantLook, k);
+    this.snapped = true;
+
+    this.fov = lerp(this.fov, this.fovWant, 1 - Math.pow(0.9, dt * 60));
+
+    var sx = 0, sy = 0;
+    if (this.shake > 0.001) {
+      sx = (Math.random() - 0.5) * this.shake;
+      sy = (Math.random() - 0.5) * this.shake;
+      this.shake *= Math.pow(0.06, dt);
+    }
+    this.cam.position.set(this.pos.x + sx, this.pos.y + sy, this.pos.z);
+    this.cam.lookAt(this.look.x, this.look.y, this.look.z);
+    if (Math.abs(this.cam.fov - this.fov) > 0.01) {
+      this.cam.fov = this.fov; this.cam.updateProjectionMatrix();
+    }
+  };
+  CamRig.prototype.snap = function () { this.snapped = false; };
+  CamRig.prototype.kick = function (a) { this.shake = Math.max(this.shake, a); };
+
+  /* =========================================================
+     12 — BODIES
+     Every character is a rig built out of primitives at load
+     time: a pelvis, a spine, two arms with elbows, two legs
+     with knees, a head, and hair. Nothing is skinned — the
+     joints are groups and the animation rotates them, which is
+     all a walk cycle has ever needed.
+     ========================================================= */
+  var GEO = {};
+  function geo(key, make) { return GEO[key] || (GEO[key] = make()); }
+
+  /* the bundle does not expose BufferGeometryUtils, and all that is
+     needed here is concatenating a few boxes that share a material */
+  function mergeGeoms(list) {
+    var pos = [], norm = [], uv = [], idx = [], off = 0;
+    list.forEach(function (g) {
+      var gp = g.attributes.position.array, gn = g.attributes.normal.array,
+          gu = g.attributes.uv.array, gi = g.index ? g.index.array : null;
+      for (var i = 0; i < gp.length; i++) pos.push(gp[i]);
+      for (var j = 0; j < gn.length; j++) norm.push(gn[j]);
+      for (var k = 0; k < gu.length; k++) uv.push(gu[k]);
+      if (gi) for (var m = 0; m < gi.length; m++) idx.push(gi[m] + off);
+      off += gp.length / 3;
+      g.dispose();
+    });
+    var out = new THREE.BufferGeometry();
+    out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    out.setAttribute("normal", new THREE.Float32BufferAttribute(norm, 3));
+    out.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    if (idx.length) out.setIndex(idx);
+    return out;
+  }
+
+  function tapered(len, rTop, rBot, seg) {
+    /* a limb segment whose pivot is its top, so rotating the group
+       swings it from the joint the way a real one does */
+    var g = new THREE.CylinderGeometry(rTop, rBot, len, seg || 7, 1, false);
+    g.translate(0, -len / 2, 0);
+    return g;
+  }
+
+  function joint(len, rTop, rBot, mat, seg) {
+    var grp = new THREE.Group();
+    var m = new THREE.Mesh(tapered(len, rTop, rBot, seg), mat);
+    m.castShadow = true;
+    grp.add(m);
+    grp.userData.len = len;
+    return grp;
+  }
+
+  function skinMat(hex) {
+    return new THREE.MeshStandardMaterial({
+      color: hex, roughness: 0.72, metalness: 0.0,
+      map: tex("cloth", 128, 1), bumpMap: bump("cloth", 128, 1), bumpScale: 0.06
+    });
+  }
+  function clothMat(hex, rough) {
+    return new THREE.MeshStandardMaterial({
+      color: hex, roughness: rough == null ? 0.95 : rough, metalness: 0.0,
+      map: tex("cloth", 128, 2), bumpMap: bump("cloth", 128, 2), bumpScale: 0.18
+    });
+  }
+  function rotMat(hex) {
+    return new THREE.MeshStandardMaterial({
+      color: hex, roughness: 0.98, metalness: 0.0,
+      map: tex("rot", 128, 1), bumpMap: bump("rot", 128, 1), bumpScale: 0.22
+    });
+  }
+
+  /* ---- the humanoid ---- */
+  function buildHuman(spec) {
+    var S = spec.scale || 1;
+    var skin  = skinMat(spec.skin);
+    var top   = clothMat(spec.top);
+    var legs  = clothMat(spec.trousers);
+    var hairM = new THREE.MeshStandardMaterial({ color: spec.hair, roughness: 0.68, metalness: 0.02 });
+    var shoe  = new THREE.MeshStandardMaterial({ color: spec.shoe || 0x241d18, roughness: 0.7 });
+
+    var root = new THREE.Group();          /* on the floor, facing +x at 0 rad */
+    var body = new THREE.Group();          /* everything that bobs */
+    root.add(body);
+
+    var hipY = 0.90 * S;
+    var pelvis = new THREE.Group();
+    pelvis.position.y = hipY;
+    body.add(pelvis);
+
+    /* --- spine and chest --- */
+    var spine = new THREE.Group();
+    pelvis.add(spine);
+    var chestLen = 0.50 * S;
+    var chest = new THREE.Mesh(
+      (function () {
+        var g = new THREE.CylinderGeometry(0.20 * S, 0.155 * S, chestLen, 9, 1);
+        g.translate(0, chestLen / 2, 0);
+        g.scale(1.0, 1.0, spec.depth || 0.72);
+        return g;
+      })(), top);
+    chest.castShadow = true;
+    spine.add(chest);
+
+    /* hips, so the join is not a step */
+    var hips = new THREE.Mesh(
+      (function () {
+        var g = new THREE.SphereGeometry(0.17 * S, 10, 7);
+        g.scale(1.05, 0.8, spec.depth || 0.72); return g;
+      })(), legs);
+    hips.castShadow = true;
+    pelvis.add(hips);
+
+    /* --- neck and head --- */
+    var neck = new THREE.Group();
+    neck.position.y = chestLen;
+    spine.add(neck);
+    var neckMesh = new THREE.Mesh(tapered(0.09 * S, 0.055 * S, 0.062 * S, 7), skin);
+    neckMesh.position.y = 0.09 * S;
+    neck.add(neckMesh);
+
+    var head = new THREE.Group();
+    head.position.y = 0.075 * S;
+    neck.add(head);
+    var skull = new THREE.Mesh(
+      (function () { var g = new THREE.SphereGeometry(0.115 * S, 14, 12); g.scale(0.92, 1.06, 0.94); return g; })(),
+      skin);
+    skull.position.y = 0.105 * S;
+    skull.castShadow = true;
+    head.add(skull);
+    /* a jaw, so the profile is not a ball on a stick */
+    var jaw = new THREE.Mesh(
+      (function () { var g = new THREE.SphereGeometry(0.082 * S, 10, 8); g.scale(0.9, 0.7, 1.0); return g; })(),
+      skin);
+    jaw.position.set(0.026 * S, 0.055 * S, 0);
+    head.add(jaw);
+
+    /* --- hair --- */
+    if (spec.hairStyle === "long") {
+      var cap = new THREE.Mesh(
+        (function () { var g = new THREE.SphereGeometry(0.125 * S, 14, 12, 0, 6.2832, 0, 1.45); g.scale(0.96, 1.02, 1.0); return g; })(),
+        hairM);
+      cap.position.y = 0.112 * S; cap.castShadow = true;
+      head.add(cap);
+      /* the fall down her back, tapering */
+      var fall = new THREE.Mesh(
+        (function () {
+          var g = new THREE.CylinderGeometry(0.115 * S, 0.075 * S, 0.42 * S, 10, 1, true);
+          g.translate(0, -0.21 * S, 0); g.scale(1, 1, 0.66); return g;
+        })(), hairM);
+      fall.position.set(-0.035 * S, 0.11 * S, 0);
+      fall.rotation.z = -0.10;
+      fall.castShadow = true;
+      head.add(fall);
+      var tip = new THREE.Mesh(
+        (function () { var g = new THREE.SphereGeometry(0.075 * S, 10, 8); g.scale(1, 0.7, 0.66); return g; })(),
+        hairM);
+      tip.position.set(-0.075 * S, -0.30 * S, 0);
+      head.add(tip);
+    } else {
+      var crop = new THREE.Mesh(
+        (function () { var g = new THREE.SphereGeometry(0.121 * S, 13, 11, 0, 6.2832, 0, 1.24); g.scale(0.95, 1.0, 0.98); return g; })(),
+        hairM);
+      crop.position.y = 0.114 * S; crop.castShadow = true;
+      head.add(crop);
+    }
+
+    /* --- arms --- */
+    function arm(side) {
+      var sh = new THREE.Group();
+      sh.position.set(0, chestLen - 0.045 * S, side * 0.20 * S);
+      spine.add(sh);
+      var upper = joint(0.30 * S, 0.058 * S, 0.048 * S, spec.sleeves === false ? skin : top);
+      sh.add(upper);
+      var elbow = new THREE.Group();
+      elbow.position.y = -0.30 * S;
+      upper.add(elbow);
+      var lower = joint(0.28 * S, 0.046 * S, 0.038 * S, spec.sleeves === "short" ? skin : (spec.sleeves === false ? skin : top));
+      elbow.add(lower);
+      var hand = new THREE.Mesh(
+        (function () { var g = new THREE.SphereGeometry(0.05 * S, 8, 6); g.scale(1, 1.2, 0.7); return g; })(), skin);
+      hand.position.y = -0.30 * S;
+      elbow.add(hand);
+      return { shoulder: sh, upper: upper, elbow: elbow, lower: lower };
+    }
+    var armL = arm(1), armR = arm(-1);
+
+    /* --- legs --- */
+    function leg(side) {
+      var hip = new THREE.Group();
+      hip.position.set(0, -0.03 * S, side * 0.105 * S);
+      pelvis.add(hip);
+      var upper = joint(0.44 * S, 0.085 * S, 0.068 * S, legs);
+      hip.add(upper);
+      var knee = new THREE.Group();
+      knee.position.y = -0.44 * S;
+      upper.add(knee);
+      var lower = joint(0.42 * S, 0.062 * S, 0.048 * S, legs);
+      knee.add(lower);
+      var foot = new THREE.Mesh(new THREE.BoxGeometry(0.20 * S, 0.07 * S, 0.10 * S), shoe);
+      foot.position.set(0.035 * S, -0.44 * S, 0);
+      foot.castShadow = true;
+      knee.add(foot);
+      return { hip: hip, upper: upper, knee: knee, lower: lower, foot: foot };
+    }
+    var legL = leg(1), legR = leg(-1);
+
+    root.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
+
+    return {
+      root: root, body: body, pelvis: pelvis, spine: spine, neck: neck, head: head,
+      armL: armL, armR: armR, legL: legL, legR: legR,
+      hipY: hipY, S: S, spec: spec, phase: Math.random() * 6.28,
+      blink: 0
+    };
+  }
+
+  /* the walk cycle. `gait` is 0 for standing, 1 for walking, and
+     `style` swaps in the wrongness for the ones that are not people
+     any more. */
+  function poseHuman(rig, t, gait, style, extra) {
+    var S = rig.S, p = rig.phase;
+    var w = t * (style === "z" ? 4.4 : 8.2) + p;
+    var g = clamp(gait, 0, 1);
+    var swing = (style === "z" ? 0.42 : 0.62) * g;
+    var e = extra || {};
+
+    /* the jerk: they do not move continuously, they arrive at poses */
+    var jt = style === "z" ? Math.floor(w * 3.0) / 3.0 + Math.sin(w * 11.0) * 0.03 : w;
+    var s1 = Math.sin(jt), c1 = Math.cos(jt), s2 = Math.sin(jt * 2);
+
+    rig.legL.upper.rotation.z =  s1 * swing;
+    rig.legR.upper.rotation.z = -s1 * swing;
+    rig.legL.knee.rotation.z  = Math.max(0, -c1) * 0.9 * g + 0.05;
+    rig.legR.knee.rotation.z  = Math.max(0,  c1) * 0.9 * g + 0.05;
+
+    if (style === "z") {
+      /* one side drags: the near leg barely leaves the floor */
+      rig.legR.upper.rotation.z *= 0.35;
+      rig.legR.knee.rotation.z = 0.32;
+      rig.legR.upper.rotation.x = 0.16;
+      /* arms up and out in front, hands loose */
+      rig.armL.upper.rotation.z = -1.05 + s1 * 0.18;
+      rig.armR.upper.rotation.z = -0.86 - s1 * 0.14;
+      rig.armL.upper.rotation.x = -0.30;
+      rig.armR.upper.rotation.x =  0.36;
+      rig.armL.elbow.rotation.z = -0.75;
+      rig.armR.elbow.rotation.z = -0.95;
+      /* hunched, head hanging to one side */
+      rig.spine.rotation.z = 0.34 + s2 * 0.04;
+      rig.spine.rotation.x = 0.10;
+      rig.neck.rotation.z = -0.42;
+      rig.neck.rotation.x = 0.26 + Math.sin(w * 0.7) * 0.08;
+      rig.body.position.y = Math.abs(s1) * 0.030 * S * g - 0.045 * S;
+    } else {
+      var crouch = e.crouch || 0;
+      rig.armL.upper.rotation.z = -s1 * swing * 0.72 - crouch * 0.30;
+      rig.armR.upper.rotation.z =  s1 * swing * 0.72 - crouch * 0.30;
+      rig.armL.upper.rotation.x = 0.06 + crouch * 0.22;
+      rig.armR.upper.rotation.x = -0.06 - crouch * 0.22;
+      rig.armL.elbow.rotation.z = -0.22 - Math.max(0, s1) * 0.32 * g - crouch * 0.85;
+      rig.armR.elbow.rotation.z = -0.22 - Math.max(0, -s1) * 0.32 * g - crouch * 0.85;
+      rig.spine.rotation.z = 0.05 * g + crouch * 0.32 + (e.lean || 0);
+      rig.spine.rotation.x = -s2 * 0.03 * g;
+      rig.neck.rotation.z = -0.04 - crouch * 0.16 + (e.headZ || 0);
+      rig.neck.rotation.x = e.headX || 0;
+      /* the bob, and the breath when she is standing still */
+      rig.body.position.y = Math.abs(s1) * 0.035 * S * g
+                          + (1 - g) * Math.sin(t * 1.5 + p) * 0.008 * S
+                          - crouch * 0.20 * S;
+    }
+    rig.legL.upper.rotation.x = rig.legL.upper.rotation.x || 0;
+  }
+
+  /* Sitting on a horse is not standing on one. The thigh comes forward
+     and out around the barrel, the knee drops, and the hands go to the
+     mane; without this they ride like two ironing boards. */
+  function poseRide(rig, t, bounce, front) {
+    var s1 = Math.sin(t * 6.4 + (front ? 0 : 0.5));
+    [[rig.legL, 1], [rig.legR, -1]].forEach(function (pair) {
+      var L = pair[0], side = pair[1];
+      L.hip.rotation.x = side * 0.46;
+      L.upper.rotation.z = 1.16 + s1 * 0.03;
+      L.upper.rotation.x = 0;
+      L.knee.rotation.z = -0.62;
+    });
+    rig.spine.rotation.z = (front ? 0.14 : 0.26) + s1 * 0.035;
+    rig.spine.rotation.x = 0;
+    rig.neck.rotation.z = -0.06;
+    rig.neck.rotation.x = 0;
+    if (front) {
+      /* both hands down on the neck */
+      rig.armL.upper.rotation.z = -0.62; rig.armR.upper.rotation.z = -0.62;
+      rig.armL.upper.rotation.x = 0.18;  rig.armR.upper.rotation.x = -0.18;
+      rig.armL.elbow.rotation.z = -0.34; rig.armR.elbow.rotation.z = -0.34;
+    } else {
+      /* he is holding on to her */
+      rig.armL.upper.rotation.z = -1.02; rig.armR.upper.rotation.z = -1.02;
+      rig.armL.upper.rotation.x = 0.34;  rig.armR.upper.rotation.x = -0.34;
+      rig.armL.elbow.rotation.z = -0.86; rig.armR.elbow.rotation.z = -0.86;
+    }
+    rig.body.position.y = bounce;
+  }
+
+  /* ---- the four people in the game ---- */
+  function makeOuissy() {
+    var r = buildHuman({
+      scale: 1.0, skin: 0xd8a882, hair: 0x8a5a2c, hairStyle: "long",
+      top: 0x9c3f5c, trousers: 0x2f3a52, shoe: 0x201a18, depth: 0.68,
+      sleeves: true
+    });
+    r.name = "ouissy";
+    return r;
+  }
+  function makeAnwar() {
+    var r = buildHuman({
+      scale: 1.06, skin: 0xb9835c, hair: 0x201814, hairStyle: "short",
+      top: 0xd8dce4, trousers: 0x3a4050, shoe: 0x1c1816, depth: 0.82,
+      sleeves: "short"
+    });
+    r.name = "anwar";
+    return r;
+  }
+  function makeZombie(seed) {
+    var skins = [0x8fa08a, 0x9aa894, 0x84947e, 0xa2a894];
+    var tops  = [0x5a5f52, 0x4a4a54, 0x6a5a4a, 0x3f4a52, 0x6a4a4a];
+    var r = buildHuman({
+      scale: rnd(0.94, 1.10), skin: skins[seed % skins.length], hair: 0x2a2420,
+      hairStyle: seed % 3 === 0 ? "long" : "short",
+      top: tops[seed % tops.length], trousers: 0x2e3038, shoe: 0x191614,
+      depth: 0.76, sleeves: seed % 2 ? "short" : true
+    });
+    /* what is left of them: skin gone wrong, clothes torn open */
+    r.root.traverse(function (o) {
+      if (!o.isMesh) return;
+      if (o.material && o.material.color) {
+        o.material = o.material.clone();
+        o.material.map = tex("rot", 128, 1);
+        o.material.bumpMap = bump("rot", 128, 1);
+        o.material.bumpScale = 0.3;
+        o.material.roughness = 0.99;
+        o.material.color.multiplyScalar(0.86);
+      }
+    });
+    r.name = "zombie";
+    return r;
+  }
+
+  /* ---- the horse ---- */
+  function buildHorse() {
+    var hide = new THREE.MeshStandardMaterial({
+      color: 0x6b4a30, roughness: 0.85, metalness: 0.0,
+      map: tex("cloth", 128, 2), bumpMap: bump("cloth", 128, 2), bumpScale: 0.1
+    });
+    var mane = new THREE.MeshStandardMaterial({ color: 0x241a12, roughness: 0.8 });
+
+    var root = new THREE.Group();
+    var body = new THREE.Group();
+    body.position.y = 1.34;
+    root.add(body);
+
+    var barrel = new THREE.Mesh(
+      (function () { var g = new THREE.SphereGeometry(0.60, 16, 12); g.scale(1.55, 0.86, 0.78); return g; })(),
+      hide);
+    barrel.castShadow = true;
+    body.add(barrel);
+
+    /* neck and head, angled forward and down */
+    var neck = new THREE.Group();
+    neck.position.set(0.80, 0.20, 0);
+    neck.rotation.z = -0.62;
+    body.add(neck);
+    var neckM = new THREE.Mesh(tapered(0.72, 0.15, 0.24, 10), hide);
+    neckM.rotation.z = Math.PI;   /* point it up out of the shoulder */
+    neckM.castShadow = true;
+    neck.add(neckM);
+    var headG = new THREE.Group();
+    headG.position.set(0, 0.72, 0);
+    neck.add(headG);
+    var head = new THREE.Mesh(
+      (function () { var g = new THREE.SphereGeometry(0.16, 12, 10); g.scale(1.7, 0.85, 0.8); return g; })(),
+      hide);
+    head.rotation.z = 0.9;
+    head.castShadow = true;
+    headG.add(head);
+    [1, -1].forEach(function (s) {
+      var ear = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.14, 6), hide);
+      ear.position.set(-0.06, 0.13, s * 0.07);
+      headG.add(ear);
+    });
+    var maneM = new THREE.Mesh(
+      (function () { var g = new THREE.BoxGeometry(0.10, 0.80, 0.05); g.translate(0, 0.38, 0); return g; })(), mane);
+    maneM.position.set(-0.12, 0, 0);
+    neck.add(maneM);
+
+    /* tail */
+    var tail = new THREE.Group();
+    tail.position.set(-0.90, 0.16, 0);
+    body.add(tail);
+    var tailM = new THREE.Mesh(tapered(0.66, 0.07, 0.03, 6), mane);
+    tailM.rotation.z = -0.4;
+    tail.add(tailM);
+
+    /* four legs */
+    function hleg(fx, side) {
+      var hip = new THREE.Group();
+      hip.position.set(fx, -0.28, side * 0.30);
+      body.add(hip);
+      var upper = joint(0.56, 0.11, 0.07, hide, 7);
+      hip.add(upper);
+      var knee = new THREE.Group(); knee.position.y = -0.56; upper.add(knee);
+      var lower = joint(0.50, 0.055, 0.045, hide, 6);
+      knee.add(lower);
+      var hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.07, 0.10, 7), mane);
+      hoof.position.y = -0.52; knee.add(hoof);
+      return { hip: hip, upper: upper, knee: knee };
+    }
+    var lfl = hleg(0.62, 1), lfr = hleg(0.62, -1),
+        lbl = hleg(-0.62, 1), lbr = hleg(-0.62, -1);
+
+    root.traverse(function (o) { if (o.isMesh) o.castShadow = true; });
+    return { root: root, body: body, neck: neck, head: headG, tail: tail,
+             legs: [lfl, lfr, lbl, lbr], phase: 0 };
+  }
+
+  function poseHorse(h, t, gait) {
+    var g = clamp(gait, 0, 1);
+    var w = t * 6.4;
+    h.legs.forEach(function (L, i) {
+      var off = [0, Math.PI, Math.PI * 0.55, Math.PI * 1.55][i];
+      var s = Math.sin(w + off);
+      L.upper.rotation.z = s * 0.52 * g;
+      L.knee.rotation.z = Math.max(0, -Math.cos(w + off)) * 0.7 * g + 0.08;
+    });
+    h.body.position.y = 1.34 + Math.abs(Math.sin(w)) * 0.045 * g;
+    h.neck.rotation.z = -0.62 + Math.sin(w) * 0.05 * g;
+    h.head.rotation.z = Math.sin(t * 1.1) * 0.06;
+    h.tail.rotation.z = Math.sin(t * 2.2) * 0.14;
+  }
+
+  /* =========================================================
+     13 — WHAT EACH CHARACTER IN THE GRID MEANS
+     ========================================================= */
+  var SOLID  = "#ovLKcYfB=FnuQwG~T C H W D d P".replace(/ /g, "");
+  var OPAQUE = "#ovLcYfGH~";                 /* stops sight as well as feet */
+  var HIDE   = "hj";
+  var WALK   = ".,hlqriSXzxbg*NA";
+
+  function isSolidChar(ch) { return SOLID.indexOf(ch) >= 0; }
+  function isOpaqueChar(ch) { return OPAQUE.indexOf(ch) >= 0; }
+
+  /* =========================================================
+     14 — THE WORLD
+     A grid goes in; a scene with floors, walls, furniture,
+     trees, cars, lamps and doors comes out. Anything that
+     repeats is an InstancedMesh, so a forty-eight by thirty-
+     three street is still a handful of draw calls.
+     ========================================================= */
+
+  function Batch(geometry, material, castShadow, receiveShadow) {
+    this.g = geometry; this.m = material;
+    this.items = [];
+    this.cast = castShadow !== false;
+    this.recv = !!receiveShadow;
+  }
+  Batch.prototype.add = function (x, y, z, sx, sy, sz, ry, colour) {
+    this.items.push([x, y, z, sx, sy, sz, ry || 0, colour == null ? 0xffffff : colour]);
+  };
+  Batch.prototype.build = function (parent) {
+    if (!this.items.length) return null;
+    var im = new THREE.InstancedMesh(this.g, this.m, this.items.length);
+    im.castShadow = this.cast; im.receiveShadow = this.recv;
+    var d = new THREE.Object3D(), c = new THREE.Color();
+    for (var i = 0; i < this.items.length; i++) {
+      var it = this.items[i];
+      d.position.set(it[0], it[1], it[2]);
+      d.scale.set(it[3], it[4], it[5]);
+      d.rotation.set(0, it[6], 0);
+      d.updateMatrix();
+      im.setMatrixAt(i, d.matrix);
+      im.setColorAt(i, c.setHex(it[7]));
+    }
+    im.instanceMatrix.needsUpdate = true;
+    if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    im.frustumCulled = false;
+    parent.add(im);
+    return im;
+  };
+
+  function luma(hex) {
+    return (0.2126 * ((hex >> 16) & 255) + 0.7152 * ((hex >> 8) & 255) + 0.0722 * (hex & 255)) / 255;
+  }
+
+  /* Two locations lit identically do not look identically lit: the
+     hospital's pale vinyl throws back nearly twice what the house's
+     floorboards do, and blows out. Every light in a level is scaled by
+     how bright the place's own materials are, so "dark" means the same
+     thing in all five of them. */
+  function lightBalance(pal) {
+    return clamp(0.40 / Math.max(0.15, luma(pal.floor)), 0.45, 1.5);
+  }
+
+  function shade(hex, f) {
+    var r = clamp(((hex >> 16) & 255) * f, 0, 255) | 0;
+    var g = clamp(((hex >> 8) & 255) * f, 0, 255) | 0;
+    var b = clamp((hex & 255) * f, 0, 255) | 0;
+    return (r << 16) | (g << 8) | b;
+  }
+
+  function buildWorld(def) {
+    var pal = PAL[def.theme] || PAL.house;
+    var rows = def.map;
+    var H = rows.length, W = 0;
+    for (var i = 0; i < H; i++) W = Math.max(W, rows[i].length);
+
+    var cells = [];
+    for (var y = 0; y < H; y++) {
+      var line = rows[y];
+      var r = new Array(W);
+      for (var x = 0; x < W; x++) {
+        var ch = x < line.length ? line[x] : " ";
+        if (ch === " ") ch = " ";
+        r[x] = ch;
+      }
+      cells.push(r);
+    }
+
+    var world = {
+      def: def, pal: pal, cells: cells, w: W, h: H,
+      group: new THREE.Group(),
+      doors: [], lamps: [], props: [], things: [], anim: [],
+      spawn: null, exit: null, anwarAt: null, horseAt: null, carAt: null,
+      opened: {}, powered: !def.dead, deadZone: def.dead || null,
+      outdoor: def.base === ","
+    };
+    var G = world.group;
+
+    function cx(x) { return (x + 0.5) * TILE; }
+    function cz(y) { return (y + 0.5) * TILE; }
+    function at(x, y) {
+      if (x < 0 || y < 0 || x >= W || y >= H) return "#";
+      return cells[y][x];
+    }
+    world.at = at;
+    world.cx = cx; world.cz = cz;
+
+    /* ---------- materials ---------- */
+    var indoorFloorTex = def.floorTex ||
+                        (def.theme === "hospital" ? "clinic"
+                       : def.theme === "house" ? "boards"
+                       : def.theme === "street" ? "pave"
+                       : "dirt");
+    var matFloor  = surface(indoorFloorTex, { repeat: 1, rough: 0.88, bumpScale: 0.10 });
+    var matGround = def.theme === "street"
+      ? surface("asphalt", { repeat: 1, rough: 0.34, metal: 0.16, bumpScale: 0.10 })
+      : surface("grass",   { repeat: 1, rough: 0.97, bumpScale: 0.16 });
+    var matWall   = surface(def.theme === "street" ? "brick"
+                          : def.theme === "hospital" ? "block" : "plaster",
+                            { repeat: 1, rough: 0.95, bumpScale: 0.18 });
+    var outdoorLevel = def.base === ",";
+    var matCap    = outdoorLevel
+                  ? surface("roof", { repeat: 1, rough: 0.98, bumpScale: 0.22 })
+                  : surface(def.theme === "hospital" ? "block" : "plaster",
+                            { repeat: 1, rough: 0.9, bumpScale: 0.12 });
+    var matWood   = surface("boards", { repeat: 1, rough: 0.8, bumpScale: 0.2 });
+    var matMetal  = surface("metal",  { repeat: 1, rough: 0.42, metal: 0.72, bumpScale: 0.2 });
+    var matLeaf   = surface("leaves", { repeat: 1, rough: 0.95, bumpScale: 0.24 });
+    var matBark   = surface("bark",   { repeat: 1, rough: 0.98, bumpScale: 0.30 });
+    var matCloth  = surface("cloth",  { repeat: 1, rough: 0.98, bumpScale: 0.1 });
+    world.mats = { floor: matFloor, ground: matGround, wall: matWall };
+
+    /* ---------- batches ---------- */
+    var B = {
+      floor:  new Batch(geo("tileF", function () { return new THREE.BoxGeometry(TILE, 0.30, TILE); }), matFloor, false, true),
+      ground: new Batch(geo("tileG", function () { return new THREE.BoxGeometry(TILE, 0.30, TILE); }), matGround, false, true),
+      wall:   new Batch(geo("wallB", function () { return new THREE.BoxGeometry(TILE, TUNE.wallH, TILE); }), matWall, true, true),
+      cap:    new Batch(geo(outdoorLevel ? "capO" : "capB", function () {
+                return new THREE.BoxGeometry(TILE * (outdoorLevel ? 1.16 : 1.04),
+                                             outdoorLevel ? 0.34 : 0.16,
+                                             TILE * (outdoorLevel ? 1.16 : 1.04)); }), matCap, true, true),
+      roofbits: new Batch(geo("roofB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
+                surface("brick", { repeat: 1, rough: 0.98, bumpScale: 0.2 }), true, true),
+      low:    new Batch(geo("lowB",  function () { return new THREE.BoxGeometry(TILE * 0.9, TUNE.lowH, TILE * 0.9); }), matWood, true, true),
+      tall:   new Batch(geo("tallB", function () { return new THREE.BoxGeometry(TILE * 0.88, TUNE.tallH, TILE * 0.88); }), matWood, true, true),
+      hedge:  new Batch(geo("hedgeB",function () { return new THREE.BoxGeometry(TILE * 0.98, 2.1, TILE * 0.98); }), matLeaf, true, true),
+      trunk:  new Batch(geo("trunkC",function () { var g = new THREE.CylinderGeometry(0.17, 0.26, 1, 8); g.translate(0, 0.5, 0); return g; }), matBark, true, true),
+      canopy: new Batch(geo("canopyI",function () { return new THREE.IcosahedronGeometry(1, 1); }), matLeaf, true, false),
+      cloth:  new Batch(geo("clothB", function () { return new THREE.BoxGeometry(1, 1, 1); }), matCloth, true, true),
+      metal:  new Batch(geo("metalB", function () { return new THREE.BoxGeometry(1, 1, 1); }), matMetal, true, true),
+      wood:   new Batch(geo("woodB",  function () { return new THREE.BoxGeometry(1, 1, 1); }), matWood, true, true),
+      kerb:   new Batch(geo("kerbB",  function () { return new THREE.BoxGeometry(TILE, 0.30, 0.16); }),
+                surface("block", { repeat: 1, rough: 0.9, bumpScale: 0.1, tint: 0xb8bcc0 }), true, true)
+    };
+    world.B = B;
+
+    /* ---------- how tall is each building? ----------
+       Outdoors, a run of wall is a building, and buildings are not all the
+       same height. Flooding the mass and giving each one its own storey
+       count is the single thing that stops a street looking like a maze
+       drawn flat on the floor. */
+    var region = [], regionH = [];
+    (function () {
+      for (var y = 0; y < H; y++) { var row = new Array(W); for (var i = 0; i < W; i++) row[i] = -1; region.push(row); }
+      if (!outdoorLevel) return;
+      var next = 0;
+      for (var yy = 0; yy < H; yy++) for (var xx = 0; xx < W; xx++) {
+        var c0 = cells[yy][xx];
+        if ((c0 !== "#" && c0 !== "v") || region[yy][xx] >= 0) continue;
+        var id = next++, stack = [[xx, yy]], n = 0;
+        region[yy][xx] = id;
+        while (stack.length) {
+          var q = stack.pop(); n++;
+          var nb = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+          for (var k = 0; k < 4; k++) {
+            var ax = q[0] + nb[k][0], ay = q[1] + nb[k][1];
+            if (ax < 0 || ay < 0 || ax >= W || ay >= H) continue;
+            var cc = cells[ay][ax];
+            if ((cc !== "#" && cc !== "v") || region[ay][ax] >= 0) continue;
+            region[ay][ax] = id; stack.push([ax, ay]);
+          }
+        }
+        /* a long boundary wall stays a wall; a block of them is a building */
+        var t = hash2(id * 13 + 7, id * 29 + 3);
+        regionH[id] = n < 7 ? 1.0 : 1.15 + Math.floor(t * 4) * 0.42;
+      }
+    })();
+
+    /* ---------- the floor under everything ---------- */
+    function isOutdoorTile(ch) { return ch === "," || ch === "~"; }
+
+    /* Outdoors the comma is the carriageway and the full stop is the
+       footway, and there is a kerb between them. That single 10 cm step
+       is what turns a flat grey grid into a street. */
+    var kerbRise = world.outdoor ? 0.11 : 0;
+    world.kerb = kerbRise;
+    for (var yy = 0; yy < H; yy++) {
+      for (var xx = 0; xx < W; xx++) {
+        var ch = at(xx, yy);
+        if (ch === " ") continue;
+        var t = hash2(xx, yy);
+        var yTop = -0.15;
+        if (isOutdoorTile(ch)) {
+          B.ground.add(cx(xx), yTop - t * 0.02, cz(yy), 1, 1, 1, 0, shade(0xffffff, 0.86 + t * 0.24));
+        } else {
+          B.floor.add(cx(xx), yTop + kerbRise - t * 0.015, cz(yy), 1, 1, 1,
+                      (Math.floor(t * 4) % 2) * Math.PI / 2, shade(0xffffff, 0.84 + t * 0.28));
+          /* the kerb face, wherever a footway meets a road */
+          if (kerbRise > 0) {
+            var nbk = [[1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2], [0, 1, 0], [0, -1, Math.PI]];
+            for (var kk = 0; kk < 4; kk++) {
+              if (at(xx + nbk[kk][0], yy + nbk[kk][1]) !== ",") continue;
+              B.kerb.add(cx(xx) + nbk[kk][0] * TILE * 0.5,
+                         yTop + kerbRise * 0.5,
+                         cz(yy) + nbk[kk][1] * TILE * 0.5,
+                         1, 1, 1, nbk[kk][2], shade(0xffffff, 1.25));
+            }
+          }
+        }
+      }
+    }
+
+    /* ---------- walls ---------- */
+    var glassGeo = geo("glassP", function () { return new THREE.PlaneGeometry(TILE * 0.62, 1.15); });
+    var litWinMat = new THREE.MeshBasicMaterial({ color: 0xe8b06a, toneMapped: false });
+    var darkWinMat = new THREE.MeshStandardMaterial({
+      color: 0x0b1017, roughness: 0.62, metalness: 0.0,
+      emissive: new THREE.Color(0x16283a), emissiveIntensity: 0.7 });
+    var winFrameMat = surface("metal", { repeat: 1, rough: 0.7, metal: 0.2, tint: 0x5a5348 });
+    var glassMat = new THREE.MeshStandardMaterial({
+      color: 0x2a3a4a, roughness: 0.16, metalness: 0.1,
+      emissive: new THREE.Color(0x27405c), emissiveIntensity: 0.9,
+      transparent: true, opacity: 0.92
+    });
+    world.glassMat = glassMat;
+
+    function placeWall(x, y, isWindow) {
+      var t = hash2(x * 3, y * 7);
+      var rid = region[y] ? region[y][x] : -1;
+      var hgt = (rid >= 0 && regionH[rid] ? regionH[rid] : 1) + (t - 0.5) * 0.02;
+      var top = TUNE.wallH * hgt - 0.15;
+      B.wall.add(cx(x), top / 2 - 0.075, cz(y), 1, hgt, 1, 0, shade(0xffffff, 0.62 + t * 0.30));
+      B.cap.add(cx(x), top + (outdoorLevel ? 0.17 : 0.08), cz(y), 1, 1, 1, 0,
+                shade(0xffffff, (outdoorLevel ? 0.88 : 1.22) + t * 0.2));
+
+      if (outdoorLevel) {
+        var edge = false, nb = [[1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2], [0, 1, 0], [0, -1, Math.PI]];
+        for (var e = 0; e < 4; e++) {
+          var ec = at(x + nb[e][0], y + nb[e][1]);
+          if (ec !== "#" && ec !== "v" && ec !== " ") edge = true;
+        }
+        /* a parapet along the roof edge, so the top is a roof and not a lid */
+        if (edge && hgt > 1.05) {
+          B.roofbits.add(cx(x), top + 0.48, cz(y), TILE * 1.16, 0.34, TILE * 1.16, 0,
+                         shade(0xffffff, 0.7 + t * 0.3));
+        }
+        /* and, in the middle of a big roof, the things that live up there */
+        if (!edge && t > 0.72) {
+          var kind = hash2(y * 3, x * 5);
+          if (kind > 0.55) {
+            B.roofbits.add(cx(x) + (t - 0.5) * 0.7, top + 0.9, cz(y) + (kind - 0.5) * 0.7,
+                           0.62, 1.5, 0.62, t * 3, shade(0xffffff, 0.62 + t * 0.3));
+          } else {
+            B.roofbits.add(cx(x), top + 0.5, cz(y), 1.5, 0.7, 1.1, kind * 3, shade(0xffffff, 0.8));
+          }
+        }
+        /* windows in the face, a few of them still on */
+        if (edge && hgt > 1.05) {
+          for (var di = 0; di < 4; di++) {
+            var d = nb[di];
+            var cc2 = at(x + d[0], y + d[1]);
+            if (cc2 === "#" || cc2 === "v" || cc2 === " ") continue;
+            var storeys = Math.max(1, Math.round(hgt * 1.6));
+            for (var f = 0; f < storeys; f++) {
+              var seed = hash2(x * 31 + di * 7 + f * 13, y * 17 + f * 5);
+              if (seed < 0.42) continue;
+              var wy = 1.15 + f * (TUNE.wallH * hgt - 1.0) / storeys;
+              if (wy > top - 0.6) continue;
+              var pane = new THREE.Mesh(
+                geo("winP", function () { return new THREE.PlaneGeometry(TILE * 0.5, 0.8); }),
+                seed > 0.86 ? litWinMat : darkWinMat);
+              pane.position.set(cx(x) + d[0] * (TILE / 2 + 0.03), wy, cz(y) + d[1] * (TILE / 2 + 0.03));
+              pane.rotation.y = d[2];
+              G.add(pane);
+              /* frame and one mullion, which is what makes a lit rectangle
+                 read as a window rather than a light left on */
+              var fr = new THREE.Mesh(
+                geo("winFrame", function () {
+                  var gg = [];
+                  var b1 = new THREE.BoxGeometry(TILE * 0.56, 0.07, 0.09); b1.translate(0, 0.42, 0);
+                  var b2 = new THREE.BoxGeometry(TILE * 0.56, 0.07, 0.09); b2.translate(0, -0.42, 0);
+                  var b3 = new THREE.BoxGeometry(0.07, 0.9, 0.09); b3.translate(-TILE * 0.25, 0, 0);
+                  var b4 = new THREE.BoxGeometry(0.07, 0.9, 0.09); b4.translate(TILE * 0.25, 0, 0);
+                  var b5 = new THREE.BoxGeometry(0.05, 0.86, 0.08);
+                  return mergeGeoms([b1, b2, b3, b4, b5]);
+                }), winFrameMat);
+              fr.position.set(pane.position.x + d[0] * 0.04, wy, pane.position.z + d[1] * 0.04);
+              fr.rotation.y = d[2];
+              G.add(fr);
+              var sill = new THREE.Mesh(
+                geo("sillB", function () { return new THREE.BoxGeometry(TILE * 0.66, 0.10, 0.22); }),
+                matCap);
+              sill.position.set(pane.position.x + d[0] * 0.07, wy - 0.50, pane.position.z + d[1] * 0.07);
+              sill.rotation.y = d[2];
+              G.add(sill);
+            }
+          }
+        }
+      }
+      if (isWindow) {
+        /* glass on whichever faces are open to a room */
+        [[1, 0, 0], [-1, 0, Math.PI], [0, 1, Math.PI / 2], [0, -1, -Math.PI / 2]].forEach(function (d) {
+          if (isSolidChar(at(x + d[0], y + d[1]))) return;
+          var p = new THREE.Mesh(glassGeo, glassMat);
+          p.position.set(cx(x) + d[0] * (TILE / 2 + 0.02), 1.35, cz(y) + d[1] * (TILE / 2 + 0.02));
+          p.rotation.y = d[2] + Math.PI / 2;
+          G.add(p);
+          /* a frame around it */
+          var fr = new THREE.Mesh(
+            geo("frameP", function () { return new THREE.BoxGeometry(TILE * 0.72, 1.3, 0.08); }),
+            matWood);
+          fr.position.copy(p.position); fr.rotation.y = p.rotation.y;
+          fr.position.y = 1.35;
+          fr.scale.z = 1;
+          G.add(fr);
+          p.position.add(new THREE.Vector3(d[0] * 0.05, 0, d[1] * 0.05));
+        });
+      }
+    }
+
+    /* ---------- props ---------- */
+    function lampPost(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var pole = new THREE.Mesh(
+        geo("postC", function () { var gg = new THREE.CylinderGeometry(0.075, 0.11, 4.4, 8); gg.translate(0, 2.2, 0); return gg; }),
+        matMetal);
+      pole.castShadow = true; g.add(pole);
+      var arm = new THREE.Mesh(
+        geo("armC", function () { var gg = new THREE.CylinderGeometry(0.055, 0.055, 0.9, 6); gg.rotateZ(Math.PI / 2); return gg; }),
+        matMetal);
+      arm.position.set(0.42, 4.3, 0); arm.castShadow = true; g.add(arm);
+      var headM = new THREE.Mesh(
+        geo("lhead", function () { var gg = new THREE.SphereGeometry(0.3, 10, 7, 0, 6.2832, 1.6, 1.55); return gg; }),
+        matMetal);
+      headM.position.set(0.85, 4.28, 0); g.add(headM);
+      var bulb = new THREE.Mesh(
+        geo("bulbS", function () { return new THREE.SphereGeometry(0.14, 10, 8); }),
+        new THREE.MeshBasicMaterial({ color: 0xf6d8a4, toneMapped: false }));
+      bulb.position.set(0.85, 4.16, 0); g.add(bulb);
+      var halo = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: glowTexture(), color: 0xffd9a0, blending: THREE.AdditiveBlending,
+        transparent: true, depthWrite: false, opacity: 0.30 }));
+      halo.scale.set(2.6, 2.6, 1); halo.position.set(0.85, 4.16, 0); g.add(halo);
+      G.add(g);
+      world.lamps.push({ x: cx(x) + 0.85, y: 4.1, z: cz(y), colour: 0xffcf90,
+                         power: 2.6, range: 12, kind: "post", bulb: bulb, halo: halo,
+                         tx: x, ty: y });
+      return g;
+    }
+
+    function floorLamp(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var indoor = def.theme !== "road" && def.theme !== "campsite";
+      var pole = new THREE.Mesh(
+        geo("flpole", function () { var gg = new THREE.CylinderGeometry(0.035, 0.09, 1.5, 7); gg.translate(0, 0.75, 0); return gg; }),
+        matMetal);
+      pole.castShadow = true; g.add(pole);
+      var shadeM = new THREE.Mesh(
+        geo("flshade", function () { return new THREE.CylinderGeometry(0.30, 0.38, 0.40, 12, 1, true); }),
+        new THREE.MeshStandardMaterial({ color: 0xe8d6b4, roughness: 0.9, side: THREE.DoubleSide,
+                                         emissive: new THREE.Color(0x6a4c22), emissiveIntensity: 0.8 }));
+      shadeM.position.y = 1.62; g.add(shadeM);
+      var bulb = new THREE.Mesh(
+        geo("bulbS2", function () { return new THREE.SphereGeometry(0.10, 9, 7); }),
+        new THREE.MeshBasicMaterial({ color: 0xf4e0bc, toneMapped: false }));
+      bulb.position.y = 1.58; g.add(bulb);
+      var halo = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: glowTexture(), color: 0xffd9a0, blending: THREE.AdditiveBlending,
+        transparent: true, depthWrite: false, opacity: 0.26 }));
+      halo.scale.set(2.0, 2.0, 1); halo.position.y = 1.58; g.add(halo);
+      G.add(g);
+      world.lamps.push({ x: cx(x), y: 1.7, z: cz(y), colour: indoor ? 0xffd9a8 : 0xffca88,
+                         power: 2.0, range: 9.5, kind: "floor", bulb: bulb, halo: halo,
+                         tx: x, ty: y });
+      return g;
+    }
+
+    /* a tree with a trunk that leans and a canopy with three lobes,
+       so no two of them are the same shape */
+    function tree(x, y, big) {
+      var t = hash2(x * 11, y * 13), t2 = hash2(y * 5, x * 3);
+      var hgt = (big ? 4.6 : 3.4) + t * 1.8;
+      var lean = (t2 - 0.5) * 0.14;
+      B.trunk.add(cx(x) + lean, -0.14, cz(y) + lean * 0.6,
+                  0.9 + t * 0.3, hgt, 0.9 + t * 0.3, t * 6.28, shade(0xffffff, 0.8 + t * 0.4));
+      var lobes = 3;
+      for (var i = 0; i < lobes; i++) {
+        var a = t * 6.28 + i * 2.09;
+        var r = (big ? 1.25 : 0.95) + hash2(x + i, y) * 0.5;
+        B.canopy.add(
+          cx(x) + Math.cos(a) * r * 0.55 + lean * 2,
+          hgt * 0.86 + hash2(x, y + i) * 0.7,
+          cz(y) + Math.sin(a) * r * 0.55,
+          r, r * 0.82, r, a, shade(0xffffff, 0.72 + hash2(i, x + y) * 0.5));
+      }
+    }
+
+    function hedge(x, y) {
+      var t = hash2(x * 7, y * 3);
+      B.hedge.add(cx(x), 1.05 - 0.15 + t * 0.12, cz(y),
+                  1, 0.86 + t * 0.3, 1, t * 0.4, shade(0xffffff, 0.74 + t * 0.44));
+      /* a few loose sprigs breaking the top line */
+      for (var i = 0; i < 3; i++) {
+        var s = 0.30 + hash2(x + i, y) * 0.28;
+        B.canopy.add(cx(x) + (hash2(x, y + i) - 0.5) * TILE * 0.8,
+                     1.9 + hash2(i, y) * 0.3,
+                     cz(y) + (hash2(x + i * 3, y) - 0.5) * TILE * 0.8,
+                     s, s * 0.8, s, i, shade(0xffffff, 0.7 + hash2(i, x) * 0.5));
+      }
+    }
+
+    /* a car: body, cabin, glass, wheels, lights. Used parked, used
+       as the one that starts, and used in the drive cinematic. */
+    function makeCar(colour, dead) {
+      var g = new THREE.Group();
+      var paint = new THREE.MeshStandardMaterial({
+        color: colour, roughness: dead ? 0.82 : 0.42, metalness: 0.55,
+        map: tex("metal", 128, 1), bumpMap: bump("metal", 128, 1), bumpScale: 0.05
+      });
+      var glass = new THREE.MeshStandardMaterial({
+        color: 0x1a2430, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.72
+      });
+      var rubber = new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.95 });
+
+      var body = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.62, 1.62), paint);
+      body.position.y = 0.62; body.castShadow = true; g.add(body);
+      var lowr = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.34, 1.5), paint);
+      lowr.position.y = 0.34; lowr.castShadow = true; g.add(lowr);
+      /* the cabin, set back and narrower — a real roofline */
+      var cabin = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.56, 1.44), paint);
+      cabin.position.set(-0.18, 1.20, 0); cabin.castShadow = true; g.add(cabin);
+      var wind = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.42, 1.48), glass);
+      wind.position.set(-0.18, 1.05, 0); g.add(wind);
+      /* bonnet slope */
+      var bon = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.2, 1.55), paint);
+      bon.position.set(1.16, 0.94, 0); bon.rotation.z = -0.10; g.add(bon);
+
+      [[1.28, 0.85], [-1.28, 0.85], [1.28, -0.85], [-1.28, -0.85]].forEach(function (p) {
+        var w = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.26, 12), rubber);
+        w.rotation.x = Math.PI / 2;
+        w.position.set(p[0], 0.36, p[1]);
+        w.castShadow = true;
+        g.add(w);
+      });
+      g.userData.wheels = g.children.filter(function (c) { return c.geometry && c.geometry.type === "CylinderGeometry"; });
+
+      if (!dead) {
+        [0.7, -0.7].forEach(function (s) {
+          var l = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6),
+            new THREE.MeshBasicMaterial({ color: 0xfff0cc }));
+          l.position.set(1.78, 0.72, s); g.add(l);
+          var t = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.34),
+            new THREE.MeshBasicMaterial({ color: 0x992222 }));
+          t.position.set(-1.78, 0.78, s); g.add(t);
+        });
+      }
+      return g;
+    }
+    world.makeCar = makeCar;
+
+    function parkedCar(x, y) {
+      var t = hash2(x * 17, y * 5);
+      var colours = [0x6a2a30, 0x2a3a52, 0x4a4a4a, 0x6a6255, 0x2f4a3a, 0x7a7a80];
+      var c = makeCar(colours[Math.floor(t * colours.length)], true);
+      c.position.set(cx(x), 0, cz(y));
+      c.rotation.y = (t > 0.5 ? 0 : Math.PI) + (t - 0.5) * 0.24;
+      if (hash2(y, x) > 0.72) c.rotation.y += Math.PI / 2;
+      c.scale.setScalar(0.92);
+      G.add(c);
+      return c;
+    }
+
+    /* a door in a frame, that swings */
+    function door(x, y, kind) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      /* which way is the wall running? */
+      var horiz = isSolidChar(at(x - 1, y)) && isSolidChar(at(x + 1, y));
+      if (!horiz) g.rotation.y = Math.PI / 2;
+
+      var frameMat = kind === "P" ? matMetal : matWood;
+      [-1, 1].forEach(function (s) {
+        var j = new THREE.Mesh(new THREE.BoxGeometry(0.20, 2.7, 0.34), frameMat);
+        j.position.set(s * (TILE / 2 - 0.10), 1.35 - 0.15, 0);
+        j.castShadow = true; g.add(j);
+      });
+      var lintel = new THREE.Mesh(new THREE.BoxGeometry(TILE, 0.34, 0.36), frameMat);
+      lintel.position.y = 2.62; lintel.castShadow = true; g.add(lintel);
+      /* the wall above the frame, so a doorway is a hole in something */
+      var over = new THREE.Mesh(new THREE.BoxGeometry(TILE, TUNE.wallH - 2.62 - 0.15 + 0.3, TILE * 0.9), matWall);
+      over.position.y = 2.62 + (TUNE.wallH - 2.62 - 0.15 + 0.3) / 2;
+      over.castShadow = true; over.receiveShadow = true; g.add(over);
+
+      var hinge = new THREE.Group();
+      hinge.position.set(-(TILE / 2 - 0.16), 0, 0);
+      g.add(hinge);
+      var leafMat = kind === "P" ? matMetal
+                  : kind === "D" ? surface("metal", { repeat: 1, rough: 0.5, metal: 0.6, tint: 0x8a6a3a })
+                  : matWood;
+      var leaf = new THREE.Mesh(new THREE.BoxGeometry(TILE - 0.34, 2.44, 0.10), leafMat);
+      leaf.position.set((TILE - 0.34) / 2, 1.22 - 0.15, 0);
+      leaf.castShadow = true; leaf.receiveShadow = true;
+      hinge.add(leaf);
+      var knob = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6),
+        new THREE.MeshStandardMaterial({ color: 0xb59a5c, roughness: 0.3, metalness: 0.8 }));
+      knob.position.set(TILE - 0.56, 1.16, 0.10);
+      hinge.add(knob);
+
+      if (kind === "D") {
+        /* the keypad, screwed on at eye height */
+        var kp = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.36, 0.07),
+          new THREE.MeshStandardMaterial({ color: 0x30343c, roughness: 0.5, metalness: 0.4,
+            emissive: new THREE.Color(0x223322), emissiveIntensity: 0.6 }));
+        kp.position.set(TILE / 2 - 0.42, 1.42, 0.2);
+        g.add(kp);
+      }
+      if (kind === "P") {
+        var led = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 5),
+          new THREE.MeshBasicMaterial({ color: 0xcc3322 }));
+        led.position.set(TILE / 2 - 0.42, 1.5, 0.2);
+        g.add(led);
+        g.userData.led = led;
+      }
+      G.add(g);
+      var d = { x: x, y: y, kind: kind, group: g, hinge: hinge, open: 0, want: 0, locked: kind !== "d" };
+      world.doors.push(d);
+      return d;
+    }
+
+    /* ---------- the furniture ---------- */
+    function bed(x, y) {
+      var t = hash2(x, y);
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      g.rotation.y = isSolidChar(at(x, y - 1)) || isSolidChar(at(x, y + 1)) ? 0 : Math.PI / 2;
+      var frame = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.82, 0.34, TILE * 0.94),
+        def.theme === "hospital" ? matMetal : matWood);
+      frame.position.y = 0.20; frame.castShadow = true; g.add(frame);
+      var mat = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.74, 0.22, TILE * 0.86),
+        new THREE.MeshStandardMaterial({
+          color: def.theme === "hospital" ? 0xd6dee2 : 0xc9c2d4, roughness: 0.98,
+          map: tex("cloth", 128, 1), bumpMap: bump("cloth", 128, 1), bumpScale: 0.2 }));
+      mat.position.y = 0.46; mat.castShadow = true; g.add(mat);
+      /* the blanket, thrown back on one side */
+      var bl = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.76, 0.12, TILE * 0.54),
+        new THREE.MeshStandardMaterial({
+          color: def.theme === "hospital" ? 0x9aa8b0 : 0x53406a, roughness: 0.99,
+          map: tex("cloth", 128, 2), bumpMap: bump("cloth", 128, 2), bumpScale: 0.4 }));
+      bl.position.set(0, 0.60, TILE * 0.16 * (t > 0.5 ? 1 : -1));
+      bl.rotation.y = (t - 0.5) * 0.1;
+      bl.castShadow = true; g.add(bl);
+      var pil = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.42, 0.14, TILE * 0.24),
+        new THREE.MeshStandardMaterial({ color: 0xe6e2dc, roughness: 0.99 }));
+      pil.position.set(0, 0.62, -TILE * 0.30);
+      g.add(pil);
+      /* the headboard, or the hospital's rails */
+      if (def.theme === "hospital") {
+        [-1, 1].forEach(function (s) {
+          var r = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.7, 0.05, 0.05), matMetal);
+          r.position.set(0, 0.72, s * TILE * 0.36); g.add(r);
+          [-0.3, 0.3].forEach(function (o) {
+            var v = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.05), matMetal);
+            v.position.set(o * TILE, 0.58, s * TILE * 0.36); g.add(v);
+          });
+        });
+      } else {
+        var hb = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.82, 0.7, 0.12), matWood);
+        hb.position.set(0, 0.55, -TILE * 0.46); hb.castShadow = true; g.add(hb);
+      }
+      G.add(g);
+      return g;
+    }
+
+    function sofa(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var uph = new THREE.MeshStandardMaterial({ color: 0x4a3c52, roughness: 0.99,
+        map: tex("cloth", 128, 2), bumpMap: bump("cloth", 128, 2), bumpScale: 0.3 });
+      var seat = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.94, 0.44, TILE * 0.8), uph);
+      seat.position.y = 0.34; seat.castShadow = true; g.add(seat);
+      var back = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.94, 0.56, 0.28), uph);
+      back.position.set(0, 0.72, -TILE * 0.32); back.castShadow = true; g.add(back);
+      G.add(g);
+      return g;
+    }
+
+    function counter(x, y, tall) {
+      var t = hash2(x * 3, y);
+      var body = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.96, tall ? 1.5 : 0.86, TILE * 0.96),
+        def.theme === "hospital" ? surface("block", { repeat: 1, tint: 0xbcc4c8 }) : matWood);
+      body.position.set(cx(x), (tall ? 1.5 : 0.86) / 2 - 0.15, cz(y));
+      body.castShadow = true; body.receiveShadow = true;
+      G.add(body);
+      if (!tall) {
+        var top = new THREE.Mesh(new THREE.BoxGeometry(TILE * 1.0, 0.08, TILE * 1.0),
+          surface("metal", { repeat: 1, rough: 0.35, metal: 0.5, tint: 0x9aa0a8 }));
+        top.position.set(cx(x), 0.78, cz(y)); top.castShadow = true; G.add(top);
+      }
+      return body;
+    }
+
+    function wardrobe(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var box = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.9, 2.35, TILE * 0.72), matWood);
+      box.position.y = 2.35 / 2 - 0.15; box.castShadow = true; box.receiveShadow = true;
+      g.add(box);
+      /* two doors with a gap, and handles */
+      [-1, 1].forEach(function (s) {
+        var d = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.42, 2.1, 0.05),
+          surface("boards", { repeat: 1, tint: 0xd8c4a4 }));
+        d.position.set(s * TILE * 0.22, 1.05, TILE * 0.37);
+        g.add(d);
+        var h = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.16, 6),
+          new THREE.MeshStandardMaterial({ color: 0xb59a5c, metalness: 0.8, roughness: 0.3 }));
+        h.position.set(s * TILE * 0.06, 1.1, TILE * 0.41);
+        g.add(h);
+      });
+      G.add(g);
+      return g;
+    }
+
+    /* the one she can get inside: back, sides and a top, and the doors
+       standing open, so the player can still see where she is */
+    function openWardrobe(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      /* face the opening at whichever side of it is a room */
+      var face = 0;
+      [[0, 1, 0], [0, -1, Math.PI], [1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2]].forEach(function (d) {
+        if (!isSolidChar(at(x + d[0], y + d[1]))) face = d[2];
+      });
+      g.rotation.y = face;
+      var carc = surface("boards", { repeat: 1, tint: 0xb59470 });
+      var back = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.9, 2.35, 0.1), carc);
+      back.position.set(0, 1.02, -TILE * 0.4); back.castShadow = true; g.add(back);
+      [-1, 1].forEach(function (sd) {
+        var side = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.35, TILE * 0.8), carc);
+        side.position.set(sd * TILE * 0.44, 1.02, 0); side.castShadow = true; g.add(side);
+        /* the door, standing open against the side */
+        var dr = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.1, TILE * 0.4), carc);
+        dr.position.set(sd * TILE * 0.60, 1.02, TILE * 0.22);
+        dr.rotation.y = sd * 0.5;
+        dr.castShadow = true; g.add(dr);
+      });
+      var top = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.98, 0.12, TILE * 0.86), carc);
+      top.position.set(0, 2.22, 0); top.castShadow = true; g.add(top);
+      var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, TILE * 0.8, 6),
+        new THREE.MeshStandardMaterial({ color: 0x9a9088, metalness: 0.7, roughness: 0.35 }));
+      rail.rotation.z = Math.PI / 2; rail.position.set(0, 1.9, -0.1); g.add(rail);
+      /* a couple of coats still on it */
+      for (var i = 0; i < 3; i++) {
+        var coat = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.0, TILE * 0.5),
+          new THREE.MeshStandardMaterial({ color: [0x3a4258, 0x5a3a42, 0x2e3830][i], roughness: 0.99,
+            map: tex("cloth", 128, 2), bumpMap: bump("cloth", 128, 2), bumpScale: 0.3 }));
+        coat.position.set(-TILE * 0.28 + i * 0.22, 1.3, -0.14);
+        coat.castShadow = true; g.add(coat);
+      }
+      G.add(g);
+      return g;
+    }
+
+    function bush(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      for (var i = 0; i < 5; i++) {
+        var t = hash2(x + i * 3, y + i);
+        var r = 0.42 + t * 0.4;
+        var m = new THREE.Mesh(geo("canopyI", function () { return new THREE.IcosahedronGeometry(1, 1); }), matLeaf);
+        m.position.set((hash2(x, y + i) - 0.5) * TILE * 0.8, 0.3 + t * 0.55,
+                       (hash2(x + i, y * 2) - 0.5) * TILE * 0.8);
+        m.scale.set(r, r * 0.85, r);
+        m.rotation.set(t * 3, t * 6, t * 2);
+        m.castShadow = true;
+        g.add(m);
+      }
+      G.add(g);
+      return g;
+    }
+
+    function medical(x, y, big) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var greyM = surface("metal", { repeat: 1, rough: 0.45, metal: 0.55, tint: 0xb0b8bc });
+      if (big) {
+        var col = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.6, 1.5, TILE * 0.6), greyM);
+        col.position.y = 0.6; col.castShadow = true; g.add(col);
+        var scr = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.5, 0.42, 0.14),
+          new THREE.MeshStandardMaterial({ color: 0x0d1416, roughness: 0.2,
+            emissive: new THREE.Color(0x1c4a3c), emissiveIntensity: 1.2 }));
+        scr.position.set(0, 1.55, TILE * 0.3); g.add(scr);
+        var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.9, 6), greyM);
+        pole.position.set(TILE * 0.3, 0.9, 0); g.add(pole);
+        var bag = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.3, 0.1),
+          new THREE.MeshStandardMaterial({ color: 0xc8d8c8, transparent: true, opacity: 0.7, roughness: 0.3 }));
+        bag.position.set(TILE * 0.3, 1.7, 0); g.add(bag);
+      } else {
+        /* a trolley on its side, a dropped tray, a chair — debris */
+        var t = hash2(x * 5, y * 9);
+        var b = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.55, 0.5, TILE * 0.4), greyM);
+        b.position.set((t - 0.5) * 0.5, 0.16, (hash2(y, x) - 0.5) * 0.5);
+        b.rotation.set(t * 1.2, t * 3, (hash2(x, y * 3) - 0.5) * 1.6);
+        b.castShadow = true; g.add(b);
+        for (var i = 0; i < 3; i++) {
+          var s = 0.12 + hash2(x + i, y) * 0.1;
+          var p = new THREE.Mesh(new THREE.BoxGeometry(s, s * 0.4, s), greyM);
+          p.position.set((hash2(x + i, y) - 0.5) * TILE * 0.8, 0.05,
+                         (hash2(x, y + i) - 0.5) * TILE * 0.8);
+          p.rotation.y = hash2(i, x) * 6;
+          g.add(p);
+        }
+      }
+      G.add(g);
+      return g;
+    }
+
+    function smallProp(x, y, kind) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var t = hash2(x * 13, y * 7);
+      if (kind === "n") {
+        var b = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.5, 0.62, TILE * 0.5), matWood);
+        b.position.y = 0.16; b.castShadow = true; g.add(b);
+      } else if (kind === "u") {
+        var seat = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.42, 0.08, TILE * 0.42), matWood);
+        seat.position.y = 0.42; seat.castShadow = true; g.add(seat);
+        var bk = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.42, 0.6, 0.07), matWood);
+        bk.position.set(0, 0.72, -TILE * 0.18); g.add(bk);
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (p) {
+          var l = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.42, 0.07), matWood);
+          l.position.set(p[0] * TILE * 0.16, 0.06, p[1] * TILE * 0.16); g.add(l);
+        });
+      } else if (kind === "q" || kind === "i") {
+        var box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.28, 0.3),
+          surface("cloth", { repeat: 1, tint: 0x9a8a6a }));
+        box.position.set((t - 0.5) * 0.6, 0.0, (hash2(y, x) - 0.5) * 0.6);
+        box.rotation.y = t * 6; box.castShadow = true; g.add(box);
+      } else if (kind === "r") {
+        var rug = new THREE.Mesh(new THREE.BoxGeometry(TILE, 0.04, TILE),
+          new THREE.MeshStandardMaterial({ color: 0x7a3a44, roughness: 0.99,
+            map: tex("carpet", 128, 1), bumpMap: bump("carpet", 128, 1), bumpScale: 0.3 }));
+        rug.position.y = -0.13; rug.receiveShadow = true; g.add(rug);
+      } else if (kind === "f") {
+        var fr = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.8, 1.9, TILE * 0.72),
+          surface("metal", { repeat: 1, rough: 0.3, metal: 0.6, tint: 0xd0d4d8 }));
+        fr.position.y = 0.8; fr.castShadow = true; g.add(fr);
+        var hd = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 0.05),
+          new THREE.MeshStandardMaterial({ color: 0x8a8f96, metalness: 0.8, roughness: 0.3 }));
+        hd.position.set(TILE * 0.28, 1.0, TILE * 0.38); g.add(hd);
+      } else if (kind === "y") {
+        return medical(x, y, false);
+      }
+      G.add(g);
+      return g;
+    }
+
+    /* ---------- the things the story happens at ---------- */
+
+    /* the broadcast is painted into one canvas and used twice: as the
+       glass of the set in the world, and full-frame in the overlay */
+    var tvCanvas = null;
+    function tvSurface() {
+      if (!tvCanvas) { tvCanvas = document.createElement("canvas"); tvCanvas.width = 256; tvCanvas.height = 168; }
+      return tvCanvas;
+    }
+    world.tvCanvas = tvSurface();
+
+    function television(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      /* face it into the room */
+      var openDir = 0;
+      [[0, 1, 0], [0, -1, Math.PI], [1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2]].forEach(function (d) {
+        if (!isSolidChar(at(x + d[0], y + d[1]))) openDir = d[2];
+      });
+      g.rotation.y = openDir;
+
+      var shell = new THREE.Mesh(new THREE.BoxGeometry(1.35, 1.0, 0.72),
+        surface("cloth", { repeat: 1, tint: 0x4a4238, rough: 0.7 }));
+      shell.position.y = 0.85; shell.castShadow = true; g.add(shell);
+      var stand = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.36, 0.6), matWood);
+      stand.position.y = 0.18; stand.castShadow = true; g.add(stand);
+
+      var t = new THREE.CanvasTexture(tvSurface());
+      t.colorSpace = THREE.SRGBColorSpace;
+      world.tvTexture = t;
+      var screen = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.72),
+        new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+      screen.position.set(0, 0.90, 0.365); g.add(screen);
+
+      var glow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: glowTexture(), color: 0x8fd0ff, blending: THREE.AdditiveBlending,
+        transparent: true, depthWrite: false, opacity: 0.5 }));
+      glow.scale.set(4.4, 3.4, 1); glow.position.set(0, 0.95, 0.7); g.add(glow);
+      world.tvGlow = glow;
+
+      G.add(g);
+      world.lamps.push({ x: cx(x) + Math.sin(openDir) * 0.9, y: 1.1, z: cz(y) + Math.cos(openDir) * 0.9,
+                         colour: 0x7ec0ff, power: 1.9, range: 8, kind: "tv", tx: x, ty: y, flicker: 0.5 });
+      world.things.push({ kind: "tv", x: x, y: y, group: g });
+      return g;
+    }
+
+    function wirePanel(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var face = 0;
+      [[0, 1, 0], [0, -1, Math.PI], [1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2]].forEach(function (d) {
+        if (!isSolidChar(at(x + d[0], y + d[1]))) face = d[2];
+      });
+      g.rotation.y = face;
+      var box = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.5, 0.42),
+        surface("metal", { repeat: 1, rough: 0.5, metal: 0.6, tint: 0x8a8f96 }));
+      box.position.y = 1.45; box.castShadow = true; g.add(box);
+      var doorP = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, 0.06),
+        surface("metal", { repeat: 1, rough: 0.4, metal: 0.7, tint: 0x6a707a }));
+      doorP.position.set(0.55, 1.45, 0.30); doorP.rotation.y = -1.1; g.add(doorP);
+      /* the guts: sockets that glow */
+      for (var i = 0; i < 4; i++) {
+        var s = new THREE.Mesh(new THREE.SphereGeometry(0.06, 7, 6),
+          new THREE.MeshBasicMaterial({ color: [0xff5a5a, 0x5aff8a, 0x5aa0ff, 0xffd75a][i] }));
+        s.position.set(-0.36 + i * 0.24, 1.72, 0.22); g.add(s);
+      }
+      var warn = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5),
+        new THREE.MeshBasicMaterial({ color: 0xd8c040, toneMapped: false }));
+      warn.position.set(0, 0.95, 0.215); g.add(warn);
+      G.add(g);
+      world.things.push({ kind: "panel", x: x, y: y, group: g });
+      return g;
+    }
+
+    function noteProp(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var p = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.66),
+        new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.95, side: THREE.DoubleSide }));
+      p.rotation.x = -Math.PI / 2;
+      p.rotation.z = hash2(x, y) * 1.4;
+      p.position.y = -0.13;
+      g.add(p);
+      var glow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: glowTexture(), color: 0xffe8b0, blending: THREE.AdditiveBlending,
+        transparent: true, depthWrite: false, opacity: 0.42 }));
+      glow.scale.set(1.5, 1.5, 1); glow.position.y = 0.3; g.add(glow);
+      world.anim.push(function (t) { glow.material.opacity = 0.28 + Math.sin(t * 2.4) * 0.14; });
+      G.add(g);
+      world.things.push({ kind: "note", x: x, y: y, group: g });
+      return g;
+    }
+
+    function itemProp(x, y) {
+      var g = smallProp(x, y, "i");
+      var glow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: glowTexture(), color: 0xa8d8ff, blending: THREE.AdditiveBlending,
+        transparent: true, depthWrite: false, opacity: 0.3 }));
+      glow.scale.set(1.2, 1.2, 1); glow.position.y = 0.4; g.add(glow);
+      world.anim.push(function (t) { glow.material.opacity = 0.18 + Math.sin(t * 2 + x) * 0.1; });
+      world.things.push({ kind: "item", x: x, y: y, group: g });
+      return g;
+    }
+
+    /* ---------- the campsite ---------- */
+    function firePit(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var stoneM = surface("block", { repeat: 1, tint: 0x8a8478, rough: 0.98 });
+      for (var i = 0; i < 11; i++) {
+        var a = i / 11 * 6.2832;
+        var s = new THREE.Mesh(new THREE.DodecahedronGeometry(0.19 + hash2(x + i, y) * 0.08, 0), stoneM);
+        s.position.set(Math.cos(a) * 0.78, -0.06, Math.sin(a) * 0.78);
+        s.rotation.set(hash2(i, x) * 3, hash2(i, y) * 3, hash2(x, i) * 3);
+        s.castShadow = true; g.add(s);
+      }
+      /* the cone of wood */
+      var logs = new THREE.Group();
+      for (var k = 0; k < 7; k++) {
+        var aa = k / 7 * 6.2832;
+        var l = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.9, 6), matBark);
+        l.position.set(Math.cos(aa) * 0.16, 0.28, Math.sin(aa) * 0.16);
+        l.rotation.set(Math.sin(aa) * 0.42, 0, -Math.cos(aa) * 0.42);
+        l.castShadow = true; logs.add(l);
+      }
+      g.add(logs);
+      G.add(g);
+      var fire = makeFire();
+      fire.position.set(cx(x), 0.1, cz(y));
+      fire.visible = false;
+      G.add(fire);
+      world.fire = fire;
+      world.firePitAt = { x: x, y: y };
+      world.things.push({ kind: "pit", x: x, y: y, group: g });
+      return g;
+    }
+
+    function woodpile(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      for (var i = 0; i < 6; i++) {
+        var t = hash2(x + i, y * 3);
+        var l = new THREE.Mesh(new THREE.CylinderGeometry(0.06 + t * 0.03, 0.07 + t * 0.03, 0.7 + t * 0.5, 6), matBark);
+        l.position.set((t - 0.5) * 0.9, -0.06 + (i % 3) * 0.12, (hash2(i, x) - 0.5) * 0.9);
+        l.rotation.set(Math.PI / 2, hash2(i, y) * 3.14, 0);
+        l.castShadow = true; g.add(l);
+      }
+      G.add(g);
+      world.things.push({ kind: "wood", x: x, y: y, group: g });
+      return g;
+    }
+
+    function bedroll(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var r = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.7, 10),
+        new THREE.MeshStandardMaterial({ color: 0x4a5a48, roughness: 0.99,
+          map: tex("cloth", 128, 2), bumpMap: bump("cloth", 128, 2), bumpScale: 0.3 }));
+      r.rotation.z = Math.PI / 2; r.position.y = 0.15; r.castShadow = true;
+      g.add(r);
+      G.add(g);
+      return g;
+    }
+
+    function stream(x, y) {
+      var m = new THREE.MeshStandardMaterial({
+        color: 0x24485c, roughness: 0.04, metalness: 0.5,
+        transparent: true, opacity: 0.88
+      });
+      var p = new THREE.Mesh(new THREE.PlaneGeometry(TILE, TILE, 4, 4), m);
+      p.rotation.x = -Math.PI / 2;
+      p.position.set(cx(x), -0.10, cz(y));
+      p.receiveShadow = true;
+      var base = p.geometry.attributes.position.array.slice();
+      world.anim.push(function (t) {
+        var a = p.geometry.attributes.position.array;
+        for (var i = 0; i < a.length; i += 3) {
+          a[i + 2] = Math.sin(t * 2.2 + base[i] * 2 + base[i + 1] * 3 + x) * 0.045;
+        }
+        p.geometry.attributes.position.needsUpdate = true;
+        p.geometry.computeVertexNormals();
+      });
+      G.add(p);
+      /* wet stones along the bank */
+      for (var i = 0; i < 3; i++) {
+        var s = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + hash2(x + i, y) * 0.1, 0),
+          surface("block", { repeat: 1, tint: 0x6a6a68, rough: 0.4 }));
+        s.position.set(cx(x) + (hash2(x, y + i) - 0.5) * TILE, -0.05, cz(y) + (hash2(i, y) - 0.5) * TILE);
+        G.add(s);
+      }
+      return p;
+    }
+
+    /* ---------- the gates ---------- */
+    function gate(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var horiz = isSolidChar(at(x - 1, y)) && isSolidChar(at(x + 1, y));
+      if (!horiz) g.rotation.y = Math.PI / 2;
+      var frameM = surface("metal", { repeat: 1, rough: 0.55, metal: 0.7, tint: 0x7a8088 });
+      [-1, 1].forEach(function (s) {
+        var p = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 3.2, 8), frameM);
+        p.position.set(s * (TILE / 2 - 0.08), 1.45, 0); p.castShadow = true; g.add(p);
+      });
+      var slide = new THREE.Group();
+      g.add(slide);
+      /* chain-link: a grid of thin bars reads as mesh at this distance */
+      for (var i = 0; i < 9; i++) {
+        var b = new THREE.Mesh(new THREE.BoxGeometry(0.045, 2.7, 0.045), frameM);
+        b.position.set(-TILE / 2 + 0.2 + i * (TILE - 0.4) / 8, 1.35, 0);
+        slide.add(b);
+      }
+      for (var j = 0; j < 5; j++) {
+        var h = new THREE.Mesh(new THREE.BoxGeometry(TILE - 0.3, 0.045, 0.045), frameM);
+        h.position.set(0, 0.3 + j * 0.62, 0);
+        slide.add(h);
+      }
+      var razor = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.02, 5, 12), frameM);
+      razor.position.set(0, 3.0, 0); razor.rotation.y = 0.4; g.add(razor);
+      G.add(g);
+      var d = { x: x, y: y, kind: "G", group: g, slide: slide, open: 0, want: 0, locked: true };
+      world.doors.push(d);
+      return d;
+    }
+
+    function desk(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var top = new THREE.Mesh(new THREE.BoxGeometry(TILE * 1.1, 0.1, TILE * 0.7), matWood);
+      top.position.y = 0.78; top.castShadow = true; g.add(top);
+      [-1, 1].forEach(function (s) {
+        var l = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.9, TILE * 0.6), matWood);
+        l.position.set(s * TILE * 0.46, 0.3, 0); g.add(l);
+      });
+      var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0xfff0c0 }));
+      lamp.position.set(TILE * 0.3, 0.95, 0); g.add(lamp);
+      G.add(g);
+      world.lamps.push({ x: cx(x), y: 1.1, z: cz(y), colour: 0xffe0b0, power: 1.4, range: 6,
+                         kind: "desk", tx: x, ty: y });
+      world.things.push({ kind: "desk", x: x, y: y, group: g });
+      return g;
+    }
+
+    /* the way out, marked so it can be found in the dark */
+    function exitMark(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.78, 24),
+        new THREE.MeshBasicMaterial({ color: 0x8affc8, transparent: true, opacity: 0.42,
+          side: THREE.DoubleSide, toneMapped: false }));
+      ring.rotation.x = -Math.PI / 2; ring.position.y = -0.12; g.add(ring);
+      var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.72, 5.0, 14, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0x7affc0, transparent: true, opacity: 0.09,
+          side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+      beam.position.y = 2.4; g.add(beam);
+      world.anim.push(function (t) {
+        ring.material.opacity = 0.3 + Math.sin(t * 2.2) * 0.16;
+        beam.material.opacity = 0.06 + Math.sin(t * 2.2 + 1) * 0.035;
+        ring.scale.setScalar(1 + Math.sin(t * 2.2) * 0.06);
+      });
+      G.add(g);
+      return g;
+    }
+
+    /* ---------- lay the place out ---------- */
+    var treeChance = def.theme === "campsite" ? 1.0 : def.theme === "road" ? 0.34 : 0.16;
+    for (var y2 = 0; y2 < H; y2++) {
+      for (var x2 = 0; x2 < W; x2++) {
+        var c = at(x2, y2);
+        if (c === " ") continue;
+        switch (c) {
+          case "#": placeWall(x2, y2, false); break;
+          case "v": placeWall(x2, y2, true); break;
+          case "o":
+            if (world.outdoor || def.theme === "campsite" || def.theme === "road") {
+              if (def.theme === "campsite" || hash2(x2 * 31, y2 * 17) < treeChance) tree(x2, y2, def.theme === "campsite");
+              else hedge(x2, y2);
+            } else if (def.theme === "hospital") {
+              counter(x2, y2, true);
+            } else {
+              wardrobe(x2, y2);
+            }
+            break;
+          case "=":
+            if (def.theme === "hospital") medical(x2, y2, false);
+            else {
+              var t2 = hash2(x2, y2);
+              B.low.add(cx(x2), TUNE.lowH / 2 - 0.15, cz(y2), 1, 0.85 + t2 * 0.4, 1,
+                        (t2 - 0.5) * 0.1, shade(0xffffff, 0.8 + t2 * 0.36));
+            }
+            break;
+          case "B": bed(x2, y2); break;
+          case "F": sofa(x2, y2); break;
+          case "K": counter(x2, y2, false); break;
+          case "Q": desk(x2, y2); break;
+          case "n": case "u": case "q": case "r": case "f": case "y":
+            smallProp(x2, y2, c); break;
+          case "Y": medical(x2, y2, true); break;
+          case "c": parkedCar(x2, y2); break;
+          case "C":
+            world.carAt = { x: x2, y: y2 };
+            world.carMesh = (function () {
+              var m = makeCar(0x8a3a44, false);
+              m.position.set(cx(x2), 0, cz(y2));
+              m.rotation.y = -0.2;
+              G.add(m); return m;
+            })();
+            break;
+          case "h":
+            if (def.theme === "street" || def.theme === "road" || def.theme === "campsite") bush(x2, y2);
+            else if (def.theme === "hospital") {
+              /* a curtain on a rail — the hospital's only privacy */
+              var cur = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.9, 2.0, 0.1),
+                new THREE.MeshStandardMaterial({ color: 0x7a9aa8, roughness: 0.99,
+                  map: tex("cloth", 128, 3), bumpMap: bump("cloth", 128, 3), bumpScale: 0.5 }));
+              cur.position.set(cx(x2), 1.0, cz(y2) - TILE * 0.42);
+              cur.castShadow = true; G.add(cur);
+            } else {
+              openWardrobe(x2, y2);
+            }
+            break;
+          case "j": openWardrobe(x2, y2); break;
+          case "l": floorLamp(x2, y2); break;
+          case "L": lampPost(x2, y2); break;
+          case "d": case "D": case "P": door(x2, y2, c); break;
+          case "G": gate(x2, y2); break;
+          case "W": wirePanel(x2, y2); break;
+          case "T": television(x2, y2); break;
+          case "N": noteProp(x2, y2); break;
+          case "i": itemProp(x2, y2); break;
+          case "w": woodpile(x2, y2); break;
+          case "b": bedroll(x2, y2); break;
+          case "g": world.things.push({ kind: "gather", x: x2, y: y2 }); break;
+          case "~": stream(x2, y2); break;
+          case "S": world.spawn = { x: x2, y: y2 }; break;
+          case "X": world.exit = { x: x2, y: y2 }; exitMark(x2, y2); break;
+          case "A": world.anwarAt = { x: x2, y: y2 }; break;
+          case "H": world.horseAt = { x: x2, y: y2 }; break;
+        }
+      }
+    }
+    /* the campsite's fire pit is not in the grid — it goes in the middle
+       of the flat ground, where she would actually build one */
+    if (def.theme === "campsite") firePit(14, 12);
+
+    Object.keys(B).forEach(function (k) { world[k + "Mesh"] = B[k].build(G); });
+
+    /* ---------- a little life in the air ---------- */
+    world.motes = makeMotes(def.theme === "campsite" ? 0xffcf90 : 0xbfd0ff,
+                            def.theme === "campsite" ? 260 : 200,
+                            W * TILE, H * TILE);
+    G.add(world.motes.points);
+
+    /* =========== the lights =========== */
+    /* The night levels are lit by one thing she cannot turn off: the sky.
+       It has to be strong enough that a wall reads as a wall from above —
+       lit along the top, dark down the side — or the whole floor plan
+       disappears and the torch is drawing on black. */
+    var bal = lightBalance(pal);
+    world.balance = bal;
+    var amb = new THREE.HemisphereLight(
+      shade(pal.sky, 2.8), shade(pal.ambient, 1.6),
+      (def.dark > 0.6 ? 0.80 : def.dark > 0.45 ? 1.25 : 2.1) * bal * (def.base === "," ? 1.5 : 1));
+    G.add(amb);
+    world.hemi = amb;
+    /* the last few percent, so an unlit corner is still a corner and not
+       a hole cut in the picture */
+    /* outdoors there is always something in the sky — cloud lit from
+       underneath by a city that has not entirely gone out */
+    var fillAmt = (def.dark > 0.6 ? 0.16 : 0.24) * bal * (def.base === "," ? 2.2 : 1);
+    var floorFill = new THREE.AmbientLight(shade(pal.sky, 1.9), fillAmt);
+    G.add(floorFill);
+
+    /* the one big directional light: moonlight, or the sun at the gates.
+       Only the outdoor levels get a shadow out of it — indoors the
+       torch does that job and two shadow maps is one too many. */
+    var key = new THREE.DirectionalLight(pal.key,
+      (def.dark > 0.6 ? 0.48 : def.dark > 0.4 ? 1.0 : 2.1) * bal);
+    key.position.set(W * TILE * 0.3, 46, -H * TILE * 0.25);
+    key.target.position.set(W * TILE * 0.5, 0, H * TILE * 0.5);
+    G.add(key); G.add(key.target);
+    if (def.dark <= 0.45) {
+      key.castShadow = true;
+      key.shadow.mapSize.set(1024, 1024);
+      var span = Math.max(W, H) * TILE * 0.6;
+      key.shadow.camera.left = -span; key.shadow.camera.right = span;
+      key.shadow.camera.top = span; key.shadow.camera.bottom = -span;
+      key.shadow.camera.far = 140;
+      key.shadow.bias = -0.0016;
+      key.shadow.normalBias = 0.04;
+    }
+    world.key = key;
+
+    /* a pool of point lights, moved to whichever lamps are nearest her.
+       Eight is plenty — she can only ever see a handful at once. */
+    world.pool = [];
+    for (var pi = 0; pi < 8; pi++) {
+      var pl = new THREE.PointLight(0xffffff, 0, 12, 1.8);
+      pl.visible = false;
+      G.add(pl);
+      world.pool.push(pl);
+    }
+
+    world.dispose = function () {
+      G.traverse(function (o) {
+        if (o.geometry && !o.geometry.__shared) { /* shared geometry is cached in GEO */ }
+        if (o.isInstancedMesh) o.dispose();
+      });
+    };
+
+    return world;
+  }
+
+  /* dust hanging in the air. It is a point cloud that drifts and
+     twinkles; in a torch beam it is the thing that sells the beam. */
+  function makeMotes(colour, count, spanX, spanZ) {
+    var g = new THREE.BufferGeometry();
+    var pos = new Float32Array(count * 3), pha = new Float32Array(count), siz = new Float32Array(count);
+    for (var i = 0; i < count; i++) {
+      pos[i * 3] = Math.random() * spanX;
+      pos[i * 3 + 1] = rnd(0.2, 3.6);
+      pos[i * 3 + 2] = Math.random() * spanZ;
+      pha[i] = Math.random() * 6.2832;
+      siz[i] = rnd(1.5, 5.5);
+    }
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    g.setAttribute("aPhase", new THREE.BufferAttribute(pha, 1));
+    g.setAttribute("aSize", new THREE.BufferAttribute(siz, 1));
+    var u = {
+      time: { value: 0 }, near: { value: new THREE.Vector3() },
+      tint: { value: new THREE.Color(colour) }, amt: { value: 1 }
+    };
+    var m = new THREE.ShaderMaterial({
+      uniforms: u, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: [
+        "attribute float aPhase; attribute float aSize;",
+        "uniform float time; uniform vec3 near;",
+        "varying float vF;",
+        "void main(){",
+        "  vec3 p = position;",
+        "  p.x += sin(time*0.35 + aPhase)*0.5;",
+        "  p.y += sin(time*0.22 + aPhase*1.7)*0.35;",
+        "  p.z += cos(time*0.30 + aPhase*0.8)*0.5;",
+        /* only the ones near her are worth drawing */
+        "  float d = distance(p, near);",
+        "  vF = 1.0 - smoothstep(3.0, 11.0, d);",
+        "  vec4 mv = modelViewMatrix * vec4(p,1.0);",
+        "  gl_PointSize = aSize * (18.0 / max(1.0,-mv.z));",
+        "  gl_Position = projectionMatrix * mv;",
+        "}"
+      ].join("\n"),
+      fragmentShader: [
+        "uniform vec3 tint; uniform float amt; varying float vF;",
+        "void main(){",
+        "  float a = smoothstep(0.5, 0.05, length(gl_PointCoord-0.5));",
+        "  gl_FragColor = vec4(tint, a*vF*0.5*amt);",
+        "}"
+      ].join("\n")
+    });
+    var p = new THREE.Points(g, m);
+    p.frustumCulled = false;
+    return { points: p, u: u };
+  }
+
+  /* =========================================================
+     15 — FIRE
+     Two hundred points climbing and cooling, a light that
+     flickers on a noise curve rather than a random number so it
+     breathes instead of strobing, and smoke above it.
+     ========================================================= */
+  function makeFire() {
+    var g = new THREE.Group();
+    var COUNT = 220;
+    var geoF = new THREE.BufferGeometry();
+    var pos = new Float32Array(COUNT * 3), life = new Float32Array(COUNT),
+        spd = new Float32Array(COUNT), sway = new Float32Array(COUNT), siz = new Float32Array(COUNT);
+    for (var i = 0; i < COUNT; i++) {
+      pos[i * 3] = rnd(-0.3, 0.3); pos[i * 3 + 1] = rnd(0, 1.2); pos[i * 3 + 2] = rnd(-0.3, 0.3);
+      life[i] = Math.random(); spd[i] = rnd(0.9, 2.1); sway[i] = Math.random() * 6.28; siz[i] = rnd(3, 10);
+    }
+    geoF.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    geoF.setAttribute("aLife", new THREE.BufferAttribute(life, 1));
+    geoF.setAttribute("aSpeed", new THREE.BufferAttribute(spd, 1));
+    geoF.setAttribute("aSway", new THREE.BufferAttribute(sway, 1));
+    geoF.setAttribute("aSize", new THREE.BufferAttribute(siz, 1));
+    var u = { time: { value: 0 }, scale: { value: 1 } };
+    var mat = new THREE.ShaderMaterial({
+      uniforms: u, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: [
+        "attribute float aLife; attribute float aSpeed; attribute float aSway; attribute float aSize;",
+        "uniform float time; uniform float scale;",
+        "varying float vL;",
+        "void main(){",
+        "  float l = fract(aLife + time*aSpeed*0.32);",
+        "  vL = l;",
+        "  vec3 p = position;",
+        "  p.y = l * 1.9 * scale;",
+        "  float pinch = 1.0 - l*0.75;",
+        "  p.x = p.x*pinch + sin(time*2.6 + aSway + l*5.0)*0.16*l;",
+        "  p.z = p.z*pinch + cos(time*2.2 + aSway*1.3 + l*4.0)*0.16*l;",
+        "  vec4 mv = modelViewMatrix * vec4(p,1.0);",
+        "  gl_PointSize = aSize * (1.0-l*0.55) * scale * (16.0/max(1.0,-mv.z));",
+        "  gl_Position = projectionMatrix * mv;",
+        "}"
+      ].join("\n"),
+      fragmentShader: [
+        "varying float vL;",
+        "void main(){",
+        "  float a = smoothstep(0.5, 0.02, length(gl_PointCoord-0.5));",
+        /* white at the base, orange in the middle, red and gone at the top */
+        "  vec3 c = mix(vec3(1.0,0.78,0.36), vec3(1.0,0.42,0.10), smoothstep(0.0,0.40,vL));",
+        "  c = mix(c, vec3(0.45,0.10,0.03), smoothstep(0.45,1.0,vL));",
+        "  gl_FragColor = vec4(c, a*(1.0-vL)*0.30);",
+        "}"
+      ].join("\n")
+    });
+    var pts = new THREE.Points(geoF, mat);
+    pts.frustumCulled = false;
+    g.add(pts);
+
+    /* embers, going higher and slower */
+    var EC = 60;
+    var eg = new THREE.BufferGeometry();
+    var ep = new Float32Array(EC * 3), el = new Float32Array(EC), es = new Float32Array(EC);
+    for (var k = 0; k < EC; k++) {
+      ep[k * 3] = rnd(-0.4, 0.4); ep[k * 3 + 1] = 0; ep[k * 3 + 2] = rnd(-0.4, 0.4);
+      el[k] = Math.random(); es[k] = rnd(0.16, 0.5);
+    }
+    eg.setAttribute("position", new THREE.BufferAttribute(ep, 3));
+    eg.setAttribute("aLife", new THREE.BufferAttribute(el, 1));
+    eg.setAttribute("aSpeed", new THREE.BufferAttribute(es, 1));
+    var eu = { time: { value: 0 } };
+    var emb = new THREE.Points(eg, new THREE.ShaderMaterial({
+      uniforms: eu, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      vertexShader: [
+        "attribute float aLife; attribute float aSpeed; uniform float time; varying float vL;",
+        "void main(){",
+        "  float l = fract(aLife + time*aSpeed*0.24); vL=l;",
+        "  vec3 p = position;",
+        "  p.y = 0.4 + l*5.5;",
+        "  p.x += sin(time*0.9 + aLife*30.0)*l*1.4;",
+        "  p.z += cos(time*0.7 + aLife*22.0)*l*1.4;",
+        "  vec4 mv = modelViewMatrix * vec4(p,1.0);",
+        "  gl_PointSize = 2.2*(1.0-l*0.6)*(16.0/max(1.0,-mv.z));",
+        "  gl_Position = projectionMatrix * mv;",
+        "}"
+      ].join("\n"),
+      fragmentShader: [
+        "varying float vL;",
+        "void main(){",
+        "  float a = smoothstep(0.5,0.05,length(gl_PointCoord-0.5));",
+        "  gl_FragColor = vec4(1.0,0.55,0.18, a*(1.0-vL)*0.9);",
+        "}"
+      ].join("\n")
+    }));
+    emb.frustumCulled = false;
+    g.add(emb);
+
+    /* smoke, only visible against the sky */
+    var sm = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 1.4, 6.5, 10, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x5a5450, transparent: true, opacity: 0.055,
+        depthWrite: false, side: THREE.DoubleSide }));
+    sm.position.y = 4.2;
+    g.add(sm);
+
+    var light = new THREE.PointLight(0xff9a44, 0, 22, 1.35);
+    light.position.y = 0.9;
+    light.castShadow = false;
+    g.add(light);
+
+    g.userData.update = function (t, dt) {
+      u.time.value = t; eu.time.value = t;
+      /* three sines that do not share a period: it never repeats */
+      var f = 0.72 + Math.sin(t * 7.3) * 0.11 + Math.sin(t * 3.1) * 0.09 + Math.sin(t * 17.7) * 0.05;
+      light.intensity = 12.0 * f * (g.userData.strength == null ? 1 : g.userData.strength);
+      light.position.x = Math.sin(t * 2.1) * 0.10;
+      light.position.z = Math.cos(t * 1.7) * 0.10;
+      u.scale.value = g.userData.strength == null ? 1 : 0.5 + g.userData.strength * 0.5;
+      sm.rotation.y = t * 0.12;
+    };
+    g.userData.light = light;
+    return g;
+  }
+
+  /* =========================================================
+     16 — THE TORCH
+     A spotlight that casts the only shadow indoors, a cone of
+     additive geometry so the beam itself is visible in the
+     dust, and a small warm pool at her feet so she is never a
+     silhouette on black.
+     ========================================================= */
+  function makeTorch() {
+    var g = new THREE.Group();
+
+    var spot = new THREE.SpotLight(0xfff0d0, 46, 28, 0.72, 0.5, 1.1);
+    spot.castShadow = true;
+    spot.shadow.mapSize.set(1024, 1024);
+    spot.shadow.camera.near = 0.4;
+    spot.shadow.camera.far = 24;
+    spot.shadow.bias = -0.0022;
+    spot.shadow.normalBias = 0.035;
+    spot.position.set(0, 1.35, 0);
+    g.add(spot);
+    g.add(spot.target);
+    spot.target.position.set(3, 0.6, 0);
+
+    /* the visible beam: a cone, faded at both ends, drawn additively.
+       It is what makes the dark feel like it has depth in it. */
+    var coneGeo = new THREE.CylinderGeometry(0.06, 3.1, 9.0, 20, 6, true);
+    coneGeo.translate(0, -4.5, 0);
+    coneGeo.rotateZ(-Math.PI / 2);
+    var coneMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      uniforms: { time: { value: 0 }, amt: { value: 0.5 }, tint: { value: new THREE.Color(0xffe6bc) } },
+      vertexShader: [
+        "varying vec2 vUv; varying vec3 vP;",
+        "void main(){ vUv=uv; vP=position;",
+        " gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }"
+      ].join("\n"),
+      fragmentShader: [
+        "uniform float time; uniform float amt; uniform vec3 tint;",
+        "varying vec2 vUv; varying vec3 vP;",
+        "float h(vec2 p){ return fract(sin(dot(p,vec2(41.3,289.1)))*43758.5); }",
+        "void main(){",
+        /* fade along the beam and off at the rim */
+        "  float along = clamp(vP.x/9.0, 0.0, 1.0);",
+        "  float a = (1.0-along)*(1.0-along) * 0.55;",
+        "  a *= smoothstep(0.0, 0.16, along);",
+        "  float rim = abs(sin(vUv.x*3.14159));",
+        "  a *= 0.35 + rim*0.65;",
+        /* dust drifting through it */
+        "  a *= 0.82 + 0.18*sin(vUv.x*22.0 + time*1.4) * sin(along*17.0 - time*2.1);",
+        "  gl_FragColor = vec4(tint, a*amt);",
+        "}"
+      ].join("\n")
+    });
+    var cone = new THREE.Mesh(coneGeo, coneMat);
+    cone.position.set(0, 1.32, 0);
+    cone.frustumCulled = false;
+    cone.renderOrder = 20;
+    g.add(cone);
+
+    /* the pool she stands in */
+    var pool = new THREE.PointLight(0xffd9a8, 2.2, 7.4, 1.9);
+    pool.position.set(0, 1.55, 0);
+    g.add(pool);
+
+    g.userData = { spot: spot, cone: cone, coneMat: coneMat, pool: pool };
+    return g;
+  }
+
+  /* =========================================================
+     17 — THE GAME
+     One object holds the run. Everything below reads and writes
+     it; nothing keeps its own copy of anything.
+     ========================================================= */
+  var G = null;
+  var raf = 0, lastT = 0, running = false;
+
+  /* --- input --- */
+  var KEY = { up: 0, down: 0, left: 0, right: 0, use: 0, sneak: 0 };
+  var keyMap = {
+    ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down",
+    ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right",
+    Space: "use", KeyE: "use", ShiftLeft: "sneak", ShiftRight: "sneak"
+  };
+  var usePressed = false, anyPressed = 0;
+
+  function onKeyDown(e) {
+    if (!running) return;
+    if (e.code === "Escape") { togglePause(); e.preventDefault(); return; }
+    anyPressed++;
+    var k = keyMap[e.code];
+    if (!k) return;
+    if (k === "use" && !KEY.use) usePressed = true;
+    KEY[k] = 1;
+    if (e.code === "Space" || e.code.indexOf("Arrow") === 0) e.preventDefault();
+    Audio_.resume();
+  }
+  function onKeyUp(e) {
+    var k = keyMap[e.code];
+    if (k) KEY[k] = 0;
+  }
+
+  function bindPad() {
+    var pad = $("ap-pad");
+    if (!pad) return;
+    pad.setAttribute("aria-hidden", "false");
+    pad.querySelectorAll("[data-ap-key]").forEach(function (b) {
+      var k = b.getAttribute("data-ap-key");
+      function down(e) {
+        e.preventDefault();
+        anyPressed++;
+        if (k === "use" && !KEY.use) usePressed = true;
+        KEY[k] = 1; b.classList.add("on");
+        Audio_.resume();
+      }
+      function up(e) { e.preventDefault(); KEY[k] = 0; b.classList.remove("on"); }
+      b.addEventListener("touchstart", down, { passive: false });
+      b.addEventListener("touchend", up, { passive: false });
+      b.addEventListener("touchcancel", up, { passive: false });
+      b.addEventListener("mousedown", down);
+      b.addEventListener("mouseup", up);
+      b.addEventListener("mouseleave", up);
+      b.__bound = true;
+    });
+  }
+
+  /* =========================================================
+     18 — SPACE
+     Gameplay happens in world units. These are the only four
+     functions that know the grid is a grid.
+     ========================================================= */
+  function tileAt(w, wx, wz) {
+    return w.at(Math.floor(wx / TILE), Math.floor(wz / TILE));
+  }
+  function doorAtTile(w, tx, ty) {
+    for (var i = 0; i < w.doors.length; i++) {
+      if (w.doors[i].x === tx && w.doors[i].y === ty) return w.doors[i];
+    }
+    return null;
+  }
+  function blocked(w, wx, wz) {
+    var tx = Math.floor(wx / TILE), ty = Math.floor(wz / TILE);
+    var c = w.at(tx, ty);
+    if (c === " ") return true;
+    if ("dDPG".indexOf(c) >= 0) {
+      var d = doorAtTile(w, tx, ty);
+      return !(d && d.open > 0.6);
+    }
+    return isSolidChar(c);
+  }
+  function opaqueAtTile(w, tx, ty) {
+    var c = w.at(tx, ty);
+    if (c === " ") return true;
+    if ("dDPG".indexOf(c) >= 0) {
+      var d = doorAtTile(w, tx, ty);
+      return !(d && d.open > 0.6);
+    }
+    return isOpaqueChar(c);
+  }
+
+  /* the footway is a hand's width above the road; anything standing on it
+     has to come up with it or it walks around shin-deep in concrete */
+  function groundAt(w, wx, wz) {
+    if (!w.kerb) return 0;
+    var c = w.at(Math.floor(wx / TILE), Math.floor(wz / TILE));
+    return (c === "," || c === "~" || c === " ") ? 0 : w.kerb;
+  }
+
+  /* a line between two points, in tiles, stopped by anything opaque */
+  function canSee(w, ax, az, bx, bz) {
+    var x0 = ax / TILE, y0 = az / TILE, x1 = bx / TILE, y1 = bz / TILE;
+    var dx = x1 - x0, dy = y1 - y0;
+    var n = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) * 2.2);
+    if (n <= 0) return true;
+    for (var i = 1; i < n; i++) {
+      var t = i / n;
+      var tx = Math.floor(x0 + dx * t), ty = Math.floor(y0 + dy * t);
+      if (opaqueAtTile(w, tx, ty)) return false;
+    }
+    return true;
+  }
+
+  /* slide along whatever she has walked into, rather than sticking */
+  function moveWithCollision(w, ent, dx, dz, r) {
+    var nx = ent.x + dx;
+    if (!blocked(w, nx + Math.sign(dx) * r, ent.z + r * 0.6) &&
+        !blocked(w, nx + Math.sign(dx) * r, ent.z - r * 0.6) &&
+        !blocked(w, nx + Math.sign(dx) * r, ent.z)) ent.x = nx;
+    var nz = ent.z + dz;
+    if (!blocked(w, ent.x + r * 0.6, nz + Math.sign(dz) * r) &&
+        !blocked(w, ent.x - r * 0.6, nz + Math.sign(dz) * r) &&
+        !blocked(w, ent.x, nz + Math.sign(dz) * r)) ent.z = nz;
+  }
+
+  function nearestFree(w, tx, ty) {
+    for (var r = 0; r < 14; r++) {
+      for (var j = -r; j <= r; j++) for (var i = -r; i <= r; i++) {
+        if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue;
+        var c = w.at(tx + i, ty + j);
+        if (c !== " " && !isSolidChar(c)) return { x: tx + i, y: ty + j };
+      }
+    }
+    return { x: tx, y: ty };
+  }
+
+  /* =========================================================
+     19 — BUILDING A PLACE TO PLAY IN
+     ========================================================= */
+  function makeScene(def) {
+    var pal = PAL[def.theme] || PAL.house;
+    var scene = new THREE.Scene();
+
+    /* fog: the thing that makes the dark feel like it has weight */
+    var fogCol = new THREE.Color(pal.fogNear);
+    scene.fog = new THREE.FogExp2(fogCol.getHex(), def.dark > 0.6 ? 0.020 : def.dark > 0.4 ? 0.013 : 0.0075);
+    scene.background = new THREE.Color(pal.sky);
+
+    var sky = makeSky();
+    var night = def.dark > 0.45;
+    if (def.id === "gates") {
+      sky.u.cLow.value.set(0xffbe86); sky.u.cMid.value.set(0x87a8d8); sky.u.cHigh.value.set(0x2f5c9e);
+      sky.u.sunCol.value.set(0xffe0a0); sky.u.sunAmt.value = 0.85;
+      sky.u.sunDir.value.set(-0.5, 0.16, 0.8).normalize();
+    } else if (def.id === "roadside" || def.id === "campsite") {
+      sky.u.cLow.value.set(0xd8834e); sky.u.cMid.value.set(0x6a5a92); sky.u.cHigh.value.set(0x141c40);
+      sky.u.sunCol.value.set(0xffb070); sky.u.sunAmt.value = 0.62;
+      sky.u.sunDir.value.set(0.7, 0.10, 0.6).normalize();
+    } else {
+      sky.u.cLow.value.set(pal.fogNear); sky.u.cMid.value.set(pal.sky);
+      sky.u.cHigh.value.set(shade(pal.sky, 0.45));
+      sky.u.sunCol.value.set(0xbcd0ff); sky.u.sunAmt.value = 0.18;
+      sky.u.sunDir.value.set(-0.4, 0.35, -0.7).normalize();
+    }
+    scene.add(sky.mesh);
+
+    var stars = null, moon = null;
+    if (night) {
+      stars = makeStars(700, 380);
+      stars.u.amt.value = def.dark > 0.6 ? 1.0 : 0.55;
+      scene.add(stars.points);
+      moon = makeMoon(9);
+      moon.position.set(-150, 130, -250);
+      scene.add(moon);
+    }
+
+    return { scene: scene, sky: sky, stars: stars, moon: moon };
+  }
+
+  function enterLevel(def, opts) {
+    opts = opts || {};
+    closeOverlay();
+    var built = makeScene(def);
+    var world = buildWorld(def);
+    built.scene.add(world.group);
+
+    var spawn = world.spawn || { x: 2, y: 2 };
+    var px = world.cx(spawn.x), pz = world.cz(spawn.y);
+
+    /* --- her --- */
+    var rig = makeOuissy();
+    built.scene.add(rig.root);
+    var torch = makeTorch();
+    rig.root.add(torch);
+
+    var player = {
+      x: px, z: pz, vx: 0, vz: 0, facing: -Math.PI / 2,
+      creeping: false, hidden: false, rig: rig, torch: torch,
+      stepPhase: 0, gait: 0, safe: { x: px, z: pz }, alive: true
+    };
+
+    /* --- them --- */
+    var zombies = [];
+    for (var y = 0; y < world.h; y++) {
+      for (var x = 0; x < world.w; x++) {
+        var c = world.at(x, y);
+        if (c !== "z" && c !== "x") continue;
+        zombies.push(makeZ(world, built.scene, x, y, zombies.length, c === "x" ? "drawn" : null));
+      }
+    }
+
+    /* --- him --- */
+    /* From the ward onwards he is with her, and the grids after the
+       hospital have no A in them because he is not furniture any more —
+       he is wherever she left him standing. */
+    var anwar = null;
+    var carriedOver = !!(G && G.withAnwar);
+    if (!world.anwarAt && carriedOver) {
+      var cr = makeAnwar();
+      built.scene.add(cr.root);
+      var behind = nearestFree(world, spawn.x, spawn.y + 1);
+      cr.root.position.set(world.cx(behind.x), 0, world.cz(behind.y));
+      anwar = { rig: cr, x: world.cx(behind.x), z: world.cz(behind.y),
+                found: true, following: true, asleep: false };
+    }
+    if (world.anwarAt) {
+      var ar = makeAnwar();
+      built.scene.add(ar.root);
+      ar.root.position.set(world.cx(world.anwarAt.x), 0, world.cz(world.anwarAt.y));
+      ar.root.rotation.y = Math.PI / 2;
+      anwar = { rig: ar, x: world.cx(world.anwarAt.x), z: world.cz(world.anwarAt.y),
+                found: false, following: false, asleep: true };
+      /* asleep: lying down until she wakes him */
+      ar.root.rotation.z = -Math.PI / 2;
+      ar.root.position.y = 0.62;
+    }
+
+    /* --- the horse --- */
+    var horse = null;
+    if (world.horseAt) {
+      var h = buildHorse();
+      built.scene.add(h.root);
+      h.root.position.set(world.cx(world.horseAt.x), 0, world.cz(world.horseAt.y));
+      h.root.rotation.y = -Math.PI / 2;
+      horse = { rig: h, x: world.cx(world.horseAt.x), z: world.cz(world.horseAt.y) };
+    }
+
+    if (G) teardownLevel();
+
+    G = G || {};
+    G.def = def;
+    G.scene = built.scene;
+    G.sky = built.sky; G.stars = built.stars; G.moon = built.moon;
+    G.world = world;
+    G.player = player;
+    G.zombies = zombies;
+    G.anwar = anwar;
+    G.horse = horse;
+    G.time = 0;
+    G.state = "play";
+    G.stepIndex = 0;
+    G.cleared = {};
+    G.noises = [];
+    G.pressure = 0;
+    G.pressureT = 0;
+    G.caught = 0;
+    G.closeCalls = G.closeCalls || 0;
+    G.code = G.code || null;
+    G.dlg = null;
+    G.camRig = G.camRig || new CamRig(Stage.camera);
+    G.camRig.snap();
+    G.flash = 0;
+    G.redPulse = 0;
+    G.fade = opts.fade === false ? 1 : 0;
+    G.fadeTo = 1;
+    G.fadeThen = null;
+    G.grab = null;
+    G.cine = null;
+
+    Stage.attach(built.scene, Stage.camera);
+    Stage.grade({
+      gradeCol: (def.grade[0] << 16) | (def.grade[1] << 8) | def.grade[2],
+      gradeAmt: def.grade[3],
+      hazeCol: (def.haze[0] << 16) | (def.haze[1] << 8) | def.haze[2],
+      hazeAmt: def.haze[3],
+      vig: def.dark > 0.55 ? 0.68 : 0.52,
+      grain: def.dark > 0.55 ? 0.034 : 0.024,
+      sat: 1.06, exposure: 1.05, fringe: 0.0015
+    });
+
+    Audio_.bed(def.theme);
+    setStep();
+    setHud();
+    return G;
+  }
+
+  /* Shared geometry lives in GEO and is reused by the next level, so only
+     the one-off geometry a level built for itself is disposed. */
+  function teardownLevel() {
+    if (!G || !G.scene) return;
+    ringPool.forEach(function (q) { q.live = false; q.mesh.visible = false; });
+    disposeScene(G.scene);
+    G.scene = null;
+  }
+
+  function makeZ(world, scene, tx, ty, seed, forceKind) {
+    var kinds = ["idle", "patrol", "patrol", "drawn"];
+    var kind = forceKind || kinds[seed % kinds.length];
+    var rig = makeZombie(seed);
+    scene.add(rig.root);
+    var x = world.cx(tx), z = world.cz(ty);
+    rig.root.position.set(x, 0, z);
+    var dir = [0, Math.PI / 2, Math.PI, -Math.PI / 2][seed % 4];
+
+    /* a patrol walks the longest clear run it can find from where it stands */
+    var route = null;
+    if (kind === "patrol") {
+      var best = null;
+      [[1, 0], [0, 1], [-1, 0], [0, -1]].forEach(function (d) {
+        var n = 0;
+        while (n < 9) {
+          var c = world.at(tx + d[0] * (n + 1), ty + d[1] * (n + 1));
+          if (c === " " || isSolidChar(c)) break;
+          n++;
+        }
+        if (!best || n > best.n) best = { n: n, d: d };
+      });
+      if (best && best.n >= 2) {
+        route = { ax: x, az: z,
+                  bx: world.cx(tx + best.d[0] * best.n),
+                  bz: world.cz(ty + best.d[1] * best.n), to: 1 };
+        dir = Math.atan2(best.d[1], best.d[0]);
+      } else kind = "idle";
+    }
+
+    return {
+      x: x, z: z, rig: rig, kind: kind, facing: dir, home: { x: x, z: z },
+      state: "calm", timer: rnd(0, 3), react: 0, lose: 0, look: null,
+      route: route, gait: 0, seed: seed, sound: rnd(0, 4)
+    };
+  }
+
+  /* =========================================================
+     20 — THE TICK
+     ========================================================= */
+  function step() { return G.def.steps ? G.def.steps[G.stepIndex] : null; }
+
+  function setStep() {
+    var s = step();
+    setHud();
+    if (!s) return;
+  }
+
+  function clearStep(name) {
+    var s = step();
+    if (!s || s.clears !== name) return false;
+    G.stepIndex++;
+    Audio_.found();
+    setHud();
+    if (G.stepIndex >= G.def.steps.length) onLevelDone();
+    return true;
+  }
+
+  var ringPool = [];
+  function noiseRing(x, z, r) {
+    if (!G.scene) return;
+    var ring = null;
+    for (var i = 0; i < ringPool.length; i++) if (!ringPool[i].live) ring = ringPool[i];
+    if (!ring) {
+      var m = new THREE.Mesh(
+        geo("noiseRing", function () { return new THREE.RingGeometry(0.86, 1.0, 40); }),
+        new THREE.MeshBasicMaterial({ color: 0xbcd4ff, transparent: true, opacity: 0,
+          side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
+          toneMapped: false, fog: false }));
+      m.rotation.x = -Math.PI / 2;
+      m.renderOrder = 8;
+      ring = { mesh: m, live: false, t: 0, r: 1 };
+      ringPool.push(ring);
+    }
+    if (ring.mesh.parent !== G.scene) G.scene.add(ring.mesh);
+    ring.mesh.position.set(x, -0.09, z);
+    ring.mesh.visible = true;
+    ring.live = true; ring.t = 0; ring.r = r;
+  }
+
+  function updateRings(dt) {
+    for (var i = 0; i < ringPool.length; i++) {
+      var q = ringPool[i];
+      if (!q.live) continue;
+      q.t += dt / 0.85;
+      if (q.t >= 1) { q.live = false; q.mesh.visible = false; continue; }
+      var e = 1 - Math.pow(1 - q.t, 3);
+      q.mesh.scale.setScalar(0.2 + e * q.r);
+      q.mesh.material.opacity = 0.36 * (1 - q.t) * (1 - q.t);
+    }
+  }
+
+  function noise(x, z, r) {
+    if (r <= 0) return;
+    noiseRing(x, z, r);
+    G.noises.push({ x: x, z: z, r: r, t: G.time });
+    if (G.noises.length > 24) G.noises.splice(0, G.noises.length - 24);
+    for (var i = 0; i < G.zombies.length; i++) {
+      var zz = G.zombies[i];
+      if (zz.state === "chase") continue;
+      var hearing = r * (zz.kind === "drawn" ? 2 : 1);
+      var d = Math.hypot(zz.x - x, zz.z - z);
+      if (d < hearing) {
+        zz.look = { x: x, z: z };
+        zz.state = "look";
+        zz.timer = TUNE.zInvestigate;
+      }
+    }
+    showAlarm(r);
+  }
+
+  function updatePlayer(dt) {
+    var p = G.player, w = G.world;
+    var ix = (KEY.right ? 1 : 0) - (KEY.left ? 1 : 0);
+    var iz = (KEY.down ? 1 : 0) - (KEY.up ? 1 : 0);
+    var mag = Math.hypot(ix, iz);
+    if (mag > 0) { ix /= mag; iz /= mag; }
+
+    p.creeping = !!KEY.sneak;
+    var maxS = p.creeping ? TUNE.creep : TUNE.walk;
+
+    if (mag > 0) {
+      p.vx += ix * TUNE.accel * dt;
+      p.vz += iz * TUNE.accel * dt;
+      var sp = Math.hypot(p.vx, p.vz);
+      if (sp > maxS) { p.vx = p.vx / sp * maxS; p.vz = p.vz / sp * maxS; }
+      p.facing = Math.atan2(iz, ix);
+    } else {
+      var s2 = Math.hypot(p.vx, p.vz);
+      var drop = TUNE.friction * dt;
+      if (s2 <= drop) { p.vx = p.vz = 0; }
+      else { p.vx -= p.vx / s2 * drop; p.vz -= p.vz / s2 * drop; }
+    }
+
+    moveWithCollision(w, p, p.vx * dt, p.vz * dt, TUNE.playerR);
+
+    var speed = Math.hypot(p.vx, p.vz);
+    p.gait = lerp(p.gait, clamp(speed / TUNE.walk, 0, 1), 1 - Math.pow(0.001, dt));
+
+    /* footfalls, and the noise they make */
+    if (speed > 0.4) {
+      p.stepPhase += speed * dt * (p.creeping ? 1.6 : 2.2);
+      if (p.stepPhase > 1) {
+        p.stepPhase -= 1;
+        Audio_.step(p.creeping, G.world.outdoor);
+        noise(p.x, p.z, p.creeping ? TUNE.noiseCreep : TUNE.noiseWalk);
+      }
+    }
+
+    /* hiding */
+    var tx = Math.floor(p.x / TILE), ty = Math.floor(p.z / TILE);
+    var here = w.at(tx, ty);
+    p.hidden = HIDE.indexOf(here) >= 0;
+
+    /* somewhere to be put back to: the last place nothing could see her */
+    var anyChase = false;
+    for (var i = 0; i < G.zombies.length; i++) if (G.zombies[i].state === "chase") anyChase = true;
+    if (!anyChase && speed < 0.2 && !isSolidChar(here)) { p.safe.x = p.x; p.safe.z = p.z; }
+
+    /* pose */
+    p.groundY = lerp(p.groundY || 0, groundAt(w, p.x, p.z), 1 - Math.pow(0.0001, dt));
+    p.rig.root.position.set(p.x, p.groundY, p.z);
+    var want = p.facing;
+    var cur = p.rig.root.rotation.y;
+    var diff = Math.atan2(Math.sin(-want - cur), Math.cos(-want - cur));
+    p.rig.root.rotation.y = cur + diff * (1 - Math.pow(0.0005, dt));
+    poseHuman(p.rig, G.time, p.gait, null, { crouch: p.creeping ? 1 : 0 });
+
+    /* the torch follows her head, not her feet */
+    var td = p.torch.userData;
+    td.spot.target.position.set(Math.cos(0) * 6, -1.2, 0);
+    var reach = p.creeping ? TUNE.torchCreep : TUNE.torch;
+    td.spot.distance = reach * 2.6;
+    td.spot.angle = p.creeping ? 0.62 : 0.76;
+    var bal = G.world.balance == null ? 1 : G.world.balance;
+    /* by the time she gets to the gates it is morning, and a torch in
+       daylight is just something in her hand */
+    var night = clamp((G.def.dark - 0.30) / 0.28, 0, 1);
+    td.spot.intensity = lerp(td.spot.intensity, (p.creeping ? 32 : 48) * bal * night,
+                             1 - Math.pow(0.02, dt));
+    td.coneMat.uniforms.time.value = G.time;
+    td.coneMat.uniforms.amt.value = (p.creeping ? 0.30 : 0.46) * night;
+    td.cone.scale.set(reach / 8.0, reach / 8.0, reach / 8.0);
+    td.pool.intensity = (p.creeping ? 1.5 : 2.2) * bal * (0.35 + night * 0.65);
+  }
+
+  function updateZombies(dt) {
+    var p = G.player, w = G.world;
+    var chasing = 0, looking = 0;
+
+    for (var i = 0; i < G.zombies.length; i++) {
+      var z = G.zombies[i];
+      var dx = p.x - z.x, dz = p.z - z.z;
+      var dist = Math.hypot(dx, dz);
+      var toP = Math.atan2(dz, dx);
+
+      /* can it see her right now? */
+      var sees = false;
+      if (!p.hidden && G.state === "play" && dist < TUNE.zSight) {
+        var da = Math.abs(Math.atan2(Math.sin(toP - z.facing), Math.cos(toP - z.facing)));
+        if ((da < TUNE.zCone || dist < TUNE.zNear) && canSee(w, z.x, z.z, p.x, p.z)) sees = true;
+      }
+
+      if (sees && z.state !== "chase" && z.state !== "react") {
+        z.state = "react"; z.react = TUNE.zReact;
+        Audio_.alert();
+        G.camRig.kick(0.10);
+      }
+
+      var speed = 0;
+      switch (z.state) {
+        case "react":
+          z.react -= dt;
+          z.facing = toP;
+          /* it rears up: the window she has to get out of sight */
+          if (z.react <= 0) { z.state = sees ? "chase" : "look"; z.look = { x: p.x, z: p.z }; z.timer = TUNE.zInvestigate; }
+          break;
+
+        case "chase":
+          chasing++;
+          if (sees) { z.lose = 0; z.look = { x: p.x, z: p.z }; }
+          else {
+            z.lose += dt;
+            if (z.lose > TUNE.zLose) { z.state = "look"; z.timer = TUNE.zInvestigate; }
+          }
+          var tgt = sees ? p : z.look;
+          if (tgt) {
+            var a = Math.atan2(tgt.z - z.z, tgt.x - z.x);
+            z.facing = a;
+            speed = TUNE.zChase;
+          }
+          if (dist < TUNE.playerR + TUNE.zombieR + 0.15 && !p.hidden && G.state === "play") {
+            beginGrab(z);
+          }
+          break;
+
+        case "look":
+          looking++;
+          z.timer -= dt;
+          if (z.look) {
+            var dl = Math.hypot(z.look.x - z.x, z.look.z - z.z);
+            if (dl > TILE * 0.6) {
+              z.facing = Math.atan2(z.look.z - z.z, z.look.x - z.x);
+              speed = TUNE.zSpeed * 1.25;
+            } else {
+              /* stood over the sound, turning its head */
+              z.facing += Math.sin(G.time * 1.4 + z.seed) * dt * 1.5;
+            }
+          }
+          if (z.timer <= 0) { z.state = "calm"; z.look = null; }
+          break;
+
+        default: /* calm */
+          if (z.kind === "patrol" && z.route) {
+            var t = z.route.to ? { x: z.route.bx, z: z.route.bz } : { x: z.route.ax, z: z.route.az };
+            var d2 = Math.hypot(t.x - z.x, t.z - z.z);
+            if (d2 < TILE * 0.4) { z.route.to = z.route.to ? 0 : 1; z.timer = rnd(0.6, 2.2); }
+            else if (z.timer <= 0) {
+              z.facing = Math.atan2(t.z - z.z, t.x - z.x);
+              speed = TUNE.zSpeed;
+            }
+            z.timer -= dt;
+          } else if (z.kind === "drawn") {
+            /* restless: never quite still, drifts around where it stands */
+            z.timer -= dt;
+            if (z.timer <= 0) { z.timer = rnd(1.4, 3.4); z.facing = rnd(0, 6.28); }
+            speed = TUNE.zSpeed * 0.45;
+            var hd = Math.hypot(z.x - z.home.x, z.z - z.home.z);
+            if (hd > TILE * 2.2) z.facing = Math.atan2(z.home.z - z.z, z.home.x - z.x);
+          } else {
+            z.timer -= dt;
+            if (z.timer <= 0) { z.timer = rnd(2.5, 6); z.facing += rnd(-1.2, 1.2); }
+          }
+          break;
+      }
+
+      if (speed > 0) {
+        var mvx = Math.cos(z.facing) * speed * dt;
+        var mvz = Math.sin(z.facing) * speed * dt;
+        var before = z.x + z.z;
+        moveWithCollision(w, z, mvx, mvz, TUNE.zombieR);
+        /* walked into a wall: turn away rather than grinding along it */
+        if (Math.abs((z.x + z.z) - before) < 0.0004 && z.state === "calm") z.facing += 1.9;
+      }
+      z.gait = lerp(z.gait, speed > 0 ? 1 : 0, 1 - Math.pow(0.004, dt));
+
+      z.groundY = lerp(z.groundY || 0, groundAt(w, z.x, z.z), 1 - Math.pow(0.0001, dt));
+      z.rig.root.position.set(z.x, z.groundY, z.z);
+      var cur = z.rig.root.rotation.y, want = -z.facing;
+      var diff = Math.atan2(Math.sin(want - cur), Math.cos(want - cur));
+      z.rig.root.rotation.y = cur + diff * (1 - Math.pow(0.004, dt));
+      poseHuman(z.rig, G.time + z.seed, z.gait, "z");
+
+      /* it is only worth drawing what she could plausibly perceive */
+      var vis = dist < 34;
+      if (z.rig.root.visible !== vis) z.rig.root.visible = vis;
+
+      /* the sound of it dragging itself along */
+      z.sound -= dt * (z.state === "chase" ? 2.4 : 1);
+      if (z.sound <= 0 && dist < 16) { z.sound = rnd(1.4, 3.6); Audio_.shuffle(dist); }
+    }
+
+    G.chasing = chasing;
+    G.looking = looking;
+  }
+
+  /* --- the lights that are not hers --- */
+  function updateLights(dt) {
+    var w = G.world, p = G.player;
+    if (!w.lamps.length) return;
+    var dead = w.deadZone;
+    var live = [];
+    for (var i = 0; i < w.lamps.length; i++) {
+      var L = w.lamps[i];
+      var off = false;
+      if (dead && !w.powered &&
+          L.tx >= dead[0] && L.tx <= dead[2] && L.ty >= dead[1] && L.ty <= dead[3]) off = true;
+      if (L.bulb) L.bulb.visible = !off;
+      if (L.halo) L.halo.visible = !off;
+      if (off) continue;
+      L.d = (L.x - p.x) * (L.x - p.x) + (L.z - p.z) * (L.z - p.z);
+      live.push(L);
+    }
+    live.sort(function (a, b) { return a.d - b.d; });
+    for (var k = 0; k < w.pool.length; k++) {
+      var pl = w.pool[k], L2 = live[k];
+      if (!L2 || L2.d > 34 * 34) { pl.visible = false; continue; }
+      pl.visible = true;
+      pl.position.set(L2.x, L2.y, L2.z);
+      pl.color.setHex(L2.colour);
+      pl.distance = L2.range;
+      var f = L2.flicker ? (0.8 + Math.sin(G.time * 21 + k) * 0.12 + Math.sin(G.time * 6.3) * 0.08) : 1;
+      pl.intensity = L2.power * f * 4.0 * (w.balance == null ? 1 : w.balance);
+    }
+  }
+
+  function updateDoors(dt) {
+    var ds = G.world.doors;
+    for (var i = 0; i < ds.length; i++) {
+      var d = ds[i];
+      if (Math.abs(d.open - d.want) < 0.002) continue;
+      d.open = lerp(d.open, d.want, 1 - Math.pow(0.004, dt));
+      if (d.hinge) d.hinge.rotation.y = -d.open * 1.75;
+      if (d.slide) d.slide.position.x = d.open * (TILE - 0.3);
+    }
+  }
+
+  /* =========================================================
+     21 — THE SCREEN FURNITURE
+     The 3D canvas draws the world; everything with words on it
+     is DOM, because six-point type blown up is not readable and
+     never has been. The plates, bolts, keypads and torn paper
+     are all styled in style.css already.
+     ========================================================= */
   function overlay() { return $("ap-overlay"); }
 
   function openOverlay(node, cls) {
@@ -2925,42 +4263,81 @@ window.Apocalypse = (function () {
     o.className = "ap-overlay" + (cls ? " " + cls : "");
     o.appendChild(node);
     o.setAttribute("aria-hidden", "false");
+    if (G) G.state = "overlay";
   }
 
   function closeOverlay() {
-    var o = overlay();
+    var o = $("ap-overlay");
+    if (!o) return;
     o.setAttribute("aria-hidden", "true");
     o.innerHTML = "";
     o.className = "ap-overlay";
-    /* Drop the handles the overlay left behind. They are only read by the
-       offline harness, but a stale one is worse than none: reaching for
-       "the panel" a level later found the previous level's, solved it a
-       second time, and powered a door in a building she had left. */
+    o.style.background = "";
+    o.style.alignItems = "";
+    o.style.justifyContent = "";
+    o.style.paddingBottom = "";
+    o.style.pointerEvents = "";
     if (G) { G.__panel = null; G.__keypad = null; }
   }
 
-  function setHud(G) {
-    if (!G.level) return;
-    $("ap-place").textContent = G.level.def.name;
-    $("ap-task").textContent = G.step ? G.step.task : "";
+  function setHud() {
+    if (!G || !G.def) return;
+    var place = $("ap-place"), task = $("ap-task");
+    if (place) place.textContent = G.def.name;
+    if (task) task.textContent = step() ? step().task : "";
     var carry = [];
     if (G.code) carry.push("CODE " + G.code);
+    if (G.wood) carry.push("wood: " + G.wood + "/3");
     if (G.closeCalls) carry.push("close calls: " + G.closeCalls);
-    $("ap-carry").textContent = carry.join("   ");
+    var c = $("ap-carry");
+    if (c) c.textContent = carry.join("   ");
     var st = $("ap-state");
-    var seen = G.level.zombies.some(function (z) { return z.state === "chase"; });
-    var looking = G.level.zombies.some(function (z) { return z.state === "look"; });
-    st.className = "ap-state" + (seen ? " seen" : G.player.hidden ? " hidden-ok" : "");
-    st.textContent = seen ? "SEEN" : looking ? "SOMETHING HEARD YOU" : G.player.hidden ? "HIDDEN" : "";
+    if (st) {
+      var seen = G.chasing > 0, looking = G.looking > 0;
+      st.className = "ap-state" + (seen ? " seen" : G.player && G.player.hidden ? " hidden-ok" : "");
+      st.textContent = seen ? "SEEN" : looking ? "SOMETHING HEARD YOU" : (G.player && G.player.hidden) ? "HIDDEN" : "";
+    }
     var stage = $("ap-stage");
-    if (stage) stage.classList.toggle("ap-hiding", !!G.player.hidden);
+    if (stage) stage.classList.toggle("ap-hiding", !!(G.player && G.player.hidden));
   }
 
-  /* ---- a plain card, used for the level briefings and the how-to ---- */
-  function card(title, sub, rows, buttonText, onGo) {
+  /* how close the nearest one is, when she cannot see it yet */
+  function updateInstinct() {
+    var n = $("ap-instinct");
+    if (!n || !G || !G.player) return;
+    var best = 1e9;
+    for (var i = 0; i < G.zombies.length; i++) {
+      var z = G.zombies[i];
+      var d = Math.hypot(z.x - G.player.x, z.z - G.player.z);
+      if (d < best) best = d;
+    }
+    var v = clamp(1 - best / (10 * TILE), 0, 1);
+    n.setAttribute("aria-hidden", v < 0.06 ? "true" : "false");
+    n.style.setProperty("--near", String(v * 0.9));
+  }
+
+  var alarmT = 0;
+  function showAlarm(r) {
+    var a = $("ap-alarm");
+    if (!a || r <= 0) return;
+    alarmT = 0.45;
+    a.setAttribute("aria-hidden", "false");
+    a.style.opacity = "1";
+  }
+  function updateAlarm(dt) {
+    if (alarmT <= 0) return;
+    alarmT -= dt;
+    var a = $("ap-alarm");
+    if (!a) return;
+    a.style.opacity = String(clamp(alarmT / 0.45, 0, 1));
+    if (alarmT <= 0) a.setAttribute("aria-hidden", "true");
+  }
+
+  /* ---- a plate with words on it ---- */
+  function card(kicker, title, rows, buttonText, onGo, quitText, onQuit) {
     var c = el("div", "ap-card");
-    c.appendChild(el("p", "ap-card-kicker", title));
-    c.appendChild(el("h3", "ap-card-title", sub));
+    c.appendChild(el("p", "ap-card-kicker", kicker));
+    c.appendChild(el("h3", "ap-card-title", title));
     if (rows && rows.length) {
       var list = el("div", "ap-card-rows");
       rows.forEach(function (r) {
@@ -2971,2280 +4348,2390 @@ window.Apocalypse = (function () {
       });
       c.appendChild(list);
     }
-    var b = el("button", "ap-card-go", buttonText);
-    b.addEventListener("click", onGo);
-    c.appendChild(b);
+    if (buttonText) {
+      var b = el("button", "ap-card-go", buttonText);
+      b.addEventListener("click", onGo);
+      c.appendChild(b);
+    }
+    if (quitText) {
+      var q = el("button", "ap-card-quit", quitText);
+      q.addEventListener("click", onQuit);
+      c.appendChild(q);
+    }
     return c;
   }
 
-  /* ---- the close-call beat ---- */
-  function showCloseCall(G) {
-    var c = el("div", "ap-close");
-    c.appendChild(el("p", "ap-close-line", G.caughtLine));
-    c.appendChild(el("p", "ap-close-sub", "you're all right. keep going."));
-    openOverlay(c, "thin");
-  }
-
   /* ---- dialogue ---- */
-  function say(G, lines, done) {
+  function say(lines, done) {
     G.dlg = { lines: lines.slice(), i: 0, done: done };
     G.state = "dialogue";
-    nextLine(G);
+    nextLine();
   }
 
-  function nextLine(G) {
+  function nextLine() {
     var d = G.dlg;
+    var box = $("ap-dlg");
     if (!d || d.i >= d.lines.length) {
-      $("ap-dlg").setAttribute("aria-hidden", "true");
+      if (box) box.setAttribute("aria-hidden", "true");
       G.dlg = null;
-      G.state = "play";
+      if (G.state === "dialogue") G.state = "play";
       if (d && d.done) d.done();
       return;
     }
     var line = d.lines[d.i++];
-    var quiet = !line[1];
-    $("ap-dlg-name").textContent = line[0] || "";
-    $("ap-dlg-text").textContent = quiet ? "\u2026" : line[1];
-    $("ap-dlg").classList.toggle("quiet", quiet);
-    $("ap-dlg").classList.toggle("narration", !line[0] && !quiet);
-    $("ap-dlg").setAttribute("aria-hidden", "false");
-    if (!quiet) sfx("blip");
-  }
-
-  /* =======================================================================
-     16. SOUND
-
-        Web Audio only — there is not an audio file in this chapter, the
-        same rule the art follows. What there is:
-
-        a bed, which is the room she is in. Two of them: a cold one for the
-        house, the streets and the hospital, and a warm one for the road and
-        the gates. They cross-fade when the level changes rather than
-        cutting, so the moment she gets out of the city is something you
-        hear before you read it.
-
-        the horde, which is proximity. One shuffling layer and one groaning
-        voice, both driven every frame by how far away the nearest of them
-        actually is, panned to whichever side it is on, and ducked to
-        nothing when she is hidden. It is the only thing in the game that
-        tells her something is close before she can see it, and it is the
-        reason the dark is worth being afraid of.
-
-        and the effects, which are all short and all synthesised: her feet,
-        doors, the panel, the radio, the sound of getting into a wardrobe,
-        and a heartbeat that only ever plays on a close call.
-     ======================================================================= */
-  var actx = null, master = null, busSfx = null, busAmb = null, busZom = null;
-  var bed = null, horde = null, heart = null;
-
-  function audio() {
-    if (actx) return actx;
-    try {
-      actx = new (window.AudioContext || window.webkitAudioContext)();
-      var comp = actx.createDynamicsCompressor();
-      comp.threshold.value = -18; comp.ratio.value = 4; comp.release.value = 0.25;
-      master = actx.createGain(); master.gain.value = 0.55;
-      busSfx = actx.createGain(); busSfx.gain.value = 1;
-      busAmb = actx.createGain(); busAmb.gain.value = 1;
-      busZom = actx.createGain(); busZom.gain.value = 1;
-      busSfx.connect(master); busAmb.connect(master); busZom.connect(master);
-      master.connect(comp); comp.connect(actx.destination);
-    } catch (e) { actx = null; }
-    return actx;
-  }
-
-  function noiseBuffer(secs) {
-    var a = audio(), n = Math.floor(a.sampleRate * secs);
-    var buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
-    for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
-    return buf;
-  }
-
-  function tone(freq, dur, type, vol, slideTo, bus) {
-    var a = audio(); if (!a) return;
-    var o = a.createOscillator(), g = a.createGain();
-    o.type = type || "square";
-    o.frequency.setValueAtTime(freq, a.currentTime);
-    if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), a.currentTime + dur);
-    g.gain.setValueAtTime(0.0001, a.currentTime);
-    g.gain.exponentialRampToValueAtTime(vol || 0.08, a.currentTime + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
-    o.connect(g); g.connect(bus || busSfx);
-    o.start(); o.stop(a.currentTime + dur + 0.02);
-  }
-
-  function noiseBurst(dur, vol, filterHz, type, q) {
-    var a = audio(); if (!a) return;
-    var s2 = a.createBufferSource(); s2.buffer = noiseBuffer(dur);
-    var f = a.createBiquadFilter(); f.type = type || "lowpass";
-    f.frequency.value = filterHz || 1200; if (q) f.Q.value = q;
-    var g = a.createGain();
-    g.gain.setValueAtTime(vol || 0.06, a.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
-    s2.connect(f); f.connect(g); g.connect(busSfx);
-    s2.start();
-  }
-
-  /* ---- the bed ------------------------------------------------------- */
-  var BEDS = {
-    /* two low voices a semitone-ish apart so they beat against each other,
-       a slow wash of filtered noise over them, and nothing resembling a
-       tune. The point is that it never resolves. */
-    cold: { a: 54, b: 81.5, wash: 340, gain: 0.055, wob: 0.06 },
-    warm: { a: 98, b: 147, wash: 900, gain: 0.038, wob: 0.02 },
-  };
-
-  function startBed(which) {
-    var a = audio(); if (!a) return;
-    var spec = BEDS[which] || BEDS.cold;
-    if (bed && bed.which === which) return;
-    var old = bed;
-    var o1 = a.createOscillator(), o2 = a.createOscillator();
-    var f = a.createBiquadFilter(), g = a.createGain(), lfo = a.createOscillator(), lfoG = a.createGain();
-    o1.type = "sine"; o1.frequency.value = spec.a;
-    o2.type = "sine"; o2.frequency.value = spec.b;
-    f.type = "lowpass"; f.frequency.value = spec.wash;
-    g.gain.value = 0.0001;
-    lfo.frequency.value = 0.07; lfoG.gain.value = spec.wash * spec.wob;
-    lfo.connect(lfoG); lfoG.connect(f.frequency);
-    /* the wash: noise so slow and so filtered it reads as a room, not as hiss */
-    var nz = a.createBufferSource(); nz.buffer = noiseBuffer(4); nz.loop = true;
-    var nf = a.createBiquadFilter(); nf.type = "bandpass"; nf.frequency.value = spec.wash * 0.6; nf.Q.value = 0.7;
-    var ng = a.createGain(); ng.gain.value = 0.012;
-    nz.connect(nf); nf.connect(ng); ng.connect(g);
-    o1.connect(f); o2.connect(f); f.connect(g); g.connect(busAmb);
-    o1.start(); o2.start(); lfo.start(); nz.start();
-    g.gain.exponentialRampToValueAtTime(spec.gain, a.currentTime + 2.2);
-    bed = { which: which, o1: o1, o2: o2, lfo: lfo, nz: nz, g: g };
-    if (old) {
-      old.g.gain.cancelScheduledValues(a.currentTime);
-      old.g.gain.setValueAtTime(Math.max(0.0001, old.g.gain.value), a.currentTime);
-      old.g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 2.0);
-      setTimeout(function () {
-        try { old.o1.stop(); old.o2.stop(); old.lfo.stop(); old.nz.stop(); } catch (e) {}
-      }, 2400);
+    var speaker = line[0], text = line[1];
+    var quiet = !speaker && !text;
+    if (box) {
+      $("ap-dlg-name").textContent = speaker || "";
+      $("ap-dlg-text").textContent = quiet ? "…" : (text || "");
+      box.classList.toggle("quiet", quiet);
+      box.classList.toggle("narration", !speaker && !quiet);
+      box.setAttribute("aria-hidden", "false");
     }
-  }
-  function stopBed() {
-    if (!bed) return;
-    try { bed.o1.stop(); bed.o2.stop(); bed.lfo.stop(); bed.nz.stop(); } catch (e) {}
-    bed = null;
+    if (!quiet && speaker) Audio_.beep();
   }
 
-  /* ---- the horde ------------------------------------------------------ */
-  function startHorde() {
-    var a = audio(); if (!a || horde) return;
-    /* the shuffle: broadband noise through a low bandpass, always running,
-       almost always silent */
-    var nz = a.createBufferSource(); nz.buffer = noiseBuffer(4); nz.loop = true;
-    var nf = a.createBiquadFilter(); nf.type = "bandpass"; nf.frequency.value = 420; nf.Q.value = 1.4;
-    var ng = a.createGain(); ng.gain.value = 0.0001;
-    var pan = a.createStereoPanner ? a.createStereoPanner() : null;
-    nz.connect(nf); nf.connect(ng);
-    if (pan) { ng.connect(pan); pan.connect(busZom); } else ng.connect(busZom);
-    nz.start();
-    horde = { nz: nz, g: ng, pan: pan, next: 2 + Math.random() * 3, near: 1 };
-  }
-  function stopHorde() {
-    if (!horde) return;
-    try { horde.nz.stop(); } catch (e) {}
-    horde = null;
+  /* ---- the close call ---- */
+  function showCloseCall() {
+    var c = el("div", "ap-close");
+    c.appendChild(el("p", "ap-close-line", pick(CLOSE_LINES)));
+    c.appendChild(el("p", "ap-close-sub", "you're all right. keep going."));
+    openOverlay(c, "thin");
   }
 
-  /* one of them, somewhere, making the noise they make */
-  function groan(closeness, side) {
-    var a = audio(); if (!a) return;
-    var o = a.createOscillator(), o2 = a.createOscillator(), g = a.createGain();
-    var f = a.createBiquadFilter();
-    var base = 58 + Math.random() * 26;
-    o.type = "sawtooth"; o2.type = "sine";
-    o.frequency.setValueAtTime(base, a.currentTime);
-    o.frequency.linearRampToValueAtTime(base * 0.72, a.currentTime + 1.1);
-    o2.frequency.setValueAtTime(base * 2.01, a.currentTime);
-    o2.frequency.linearRampToValueAtTime(base * 1.4, a.currentTime + 1.1);
-    f.type = "lowpass";
-    f.frequency.setValueAtTime(220 + closeness * 900, a.currentTime);
-    f.frequency.linearRampToValueAtTime(160 + closeness * 400, a.currentTime + 1.1);
-    var peak = 0.012 + closeness * 0.085;
-    g.gain.setValueAtTime(0.0001, a.currentTime);
-    g.gain.exponentialRampToValueAtTime(peak, a.currentTime + 0.22);
-    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 1.25);
-    o.connect(f); o2.connect(f); f.connect(g);
-    var pan = a.createStereoPanner ? a.createStereoPanner() : null;
-    if (pan) { pan.pan.value = Math.max(-0.9, Math.min(0.9, side)); g.connect(pan); pan.connect(busZom); }
-    else g.connect(busZom);
-    o.start(); o2.start();
-    o.stop(a.currentTime + 1.3); o2.stop(a.currentTime + 1.3);
-  }
-
-  /* Driven from the loop. `near` is 0 at arm's length and 1 at the far end
-     of hearing, so the maths reads the right way round everywhere below. */
-  function stepHorde(G, dt) {
-    if (!horde || !actx) return;
-    var p = G.player, best = 999999, side = 0;
-    for (var i = 0; i < G.level.zombies.length; i++) {
-      var z = G.level.zombies[i];
-      var d = Math.hypot(z.x - p.x, z.y - p.y);
-      if (d < best) { best = d; side = Math.max(-1, Math.min(1, (z.x - p.x) / 150)); }
-    }
-    /* Ten tiles, not sixteen. At sixteen the horde was audible from most
-       of a street at once, which makes it wallpaper rather than a warning;
-       squaring it on top means the last few tiles are where almost all of
-       the loudness lives. */
-    var REACH = 170;
-    var closeness = Math.max(0, 1 - best / REACH);
-    closeness *= closeness;
-    /* inside a wardrobe the world goes quiet, which is half of why hiding
-       feels like hiding */
-    if (p.hidden) closeness *= 0.25;
-    horde.near = closeness;
-    var target = 0.0001 + closeness * 0.10;
-    horde.g.gain.setTargetAtTime(target, actx.currentTime, 0.35);
-    if (horde.pan) horde.pan.pan.setTargetAtTime(side * 0.7, actx.currentTime, 0.4);
-
-    horde.next -= dt;
-    if (horde.next <= 0) {
-      /* the closer the nearest one is, the more often one of them makes a
-         sound — and none of them do at all if she is well clear */
-      horde.next = 1.4 + Math.random() * (5.5 - closeness * 3.4);
-      if (closeness > 0.06) groan(closeness, side);
-    }
-  }
-
-  /* ---- the heartbeat, which only a close call earns ------------------- */
-  function startHeart() {
-    var a = audio(); if (!a || heart) return;
-    var stop = false;
-    function beat(n) {
-      if (stop || !actx) return;
-      tone(58, 0.14, "sine", 0.10, 42, busZom);
-      setTimeout(function () { if (!stop) tone(48, 0.18, "sine", 0.07, 36, busZom); }, 165);
-      setTimeout(function () { beat(n + 1); }, 620);
-    }
-    beat(0);
-    heart = { stop: function () { stop = true; heart = null; } };
-  }
-  function stopHeart() { if (heart) heart.stop(); }
-
-  /* ---- the short ones ------------------------------------------------- */
-  function sfx(kind) {
-    if (!audio()) return;
-    switch (kind) {
-      case "step":                                   // a soft heel, then a scuff
-        noiseBurst(0.045, 0.05, 420, "lowpass");
-        noiseBurst(0.09, 0.018, 2600, "bandpass", 1.2);
-        break;
-      case "creep":
-        noiseBurst(0.07, 0.012, 900, "bandpass", 2);
-        break;
-      case "door":                                   // hinge, then the weight of it
-        noiseBurst(0.42, 0.03, 1700, "bandpass", 6);
-        tone(190, 0.4, "sawtooth", 0.022, 96);
-        setTimeout(function () { noiseBurst(0.12, 0.05, 260); }, 330);
-        break;
-      case "unlock":                                 // a bolt going back
-        tone(1400, 0.03, "square", 0.05);
-        setTimeout(function () { noiseBurst(0.09, 0.06, 3200, "bandpass", 3); }, 45);
-        break;
-      case "hide":                                   // cloth, and a door pulled to
-        noiseBurst(0.3, 0.035, 2200, "bandpass", 1.1);
-        setTimeout(function () { noiseBurst(0.1, 0.03, 500); }, 190);
-        break;
-      case "blip":    tone(880, 0.05, "square", 0.028); break;
-      case "connect": tone(520, 0.07, "square", 0.045); setTimeout(function(){ tone(784, 0.16, "square", 0.04); }, 60); break;
-      case "spark":   noiseBurst(0.05, 0.09, 6000, "highpass"); tone(210, 0.09, "sawtooth", 0.04, 90);
-                      setTimeout(function(){ noiseBurst(0.07, 0.05, 4200, "highpass"); }, 70); break;
-      case "power":   tone(120, 0.7, "sawtooth", 0.05, 300); tone(180, 0.9, "sine", 0.035, 460);
-                      noiseBurst(0.5, 0.02, 800); break;
-      case "static":  noiseBurst(0.22, 0.045, 5200, "highpass");
-                      noiseBurst(0.3, 0.02, 900, "bandpass", 0.8); break;
-      case "tune":                                   // a dial being turned across a band
-        for (var i = 0; i < 5; i++) {
-          (function (k) { setTimeout(function () {
-            noiseBurst(0.1, 0.03, 1200 + Math.random() * 4200, "bandpass", 4);
-            tone(300 + Math.random() * 900, 0.06, "sine", 0.015);
-          }, k * 110); })(i);
-        }
-        break;
-      case "caught":  tone(190, 0.55, "sawtooth", 0.08, 52); noiseBurst(0.45, 0.07, 520); break;
-      case "spot":    tone(320, 0.35, "sawtooth", 0.06, 130); noiseBurst(0.35, 0.05, 900); break;
-      case "arrive":  tone(74, 0.9, "sine", 0.04, 50); noiseBurst(0.5, 0.022, 320); break;
-      case "found":   tone(660, 0.09, "sine", 0.045); setTimeout(function(){ tone(880, 0.2, "sine", 0.04); }, 80); break;
-      case "grabbed": tone(140, 0.5, "sawtooth", 0.09, 60); noiseBurst(0.4, 0.08, 700); break;
-      case "struggle":noiseBurst(0.1, 0.07, 1800, "bandpass", 1.4); tone(300, 0.07, "square", 0.05, 420); break;
-      case "free":    tone(420, 0.14, "square", 0.06, 700); noiseBurst(0.22, 0.05, 2400, "highpass"); break;
-      case "deny":    tone(150, 0.18, "square", 0.045, 110); break;
-    }
-  }
-
-  /* which bed a level wants */
-  function bedFor(def) {
-    return (def && (def.theme === "road" || def.key === "gates")) ? "warm" : "cold";
-  }
-
-  /* =======================================================================
-     17. THE GAME LOOP
-
-        A fixed timestep, so how she feels to control does not depend on
-        what the device can manage. Order: input has already landed, then
-        step the world, then the camera, then paint.
-     ======================================================================= */
-  var G = null, raf = null, lastT = 0, acc = 0, booted = false;
-  var STEP = 1 / 60;
-
-  function onScreen() {
-    var s = $("screen-apoc");
-    return s && s.classList.contains("active");
-  }
-
-  function step(G, dt) {
-    LAST_DT = dt;
-    G.t += dt;
-    G.flash = Math.max(0, G.flash - dt * 2);
-
-    for (var i = G.noises.length - 1; i >= 0; i--) {
-      G.noises[i].t += dt;
-      if (G.noises[i].t > 0.8) G.noises.splice(i, 1);
-    }
-    for (i = G.doorFx.length - 1; i >= 0; i--) {
-      G.doorFx[i].t += dt;
-      if (G.doorFx[i].t > 0.5) G.doorFx.splice(i, 1);
-    }
-
-    if (G.state === "caught") {
-      G.caughtT += dt;
-      if (G.caughtT > 0.35 && !G.caughtShown) { G.caughtShown = true; showCloseCall(G); }
-      if (G.caughtT > TUNE.caughtHold + 0.6) {
-        G.caughtShown = false;
-        closeOverlay();
-        recover(G);
-      }
-      return;
-    }
-
-    if (G.state === "cut") { stepCut(G, dt); return; }
-    if (G.state !== "play") return;
-    if (G.grab) { stepGrab(G, dt); return; }
-
-    stepPlayer(G, dt);
-    stepPressure(G, dt);
-    stepHorde(G, dt);
-    for (i = 0; i < G.level.zombies.length; i++) stepZombie(G, G.level.zombies[i], dt);
-    updateSafe(G, dt);
-    checkTriggers(G);
-    G.hudT -= dt;
-    if (G.hudT <= 0) {
-      G.hudT = 0.15;
-      setHud(G);
-      /* the instinct cue: the same closeness the horde audio is using, so
-         what she hears and what she sees at the edge of the frame are the
-         same fact rather than two guesses */
-      var inst = $("ap-instinct");
-      if (inst) {
-        var near = horde ? horde.near : 0;
-        var showing = near > 0.06 && !G.player.hidden;
-        inst.setAttribute("aria-hidden", showing ? "false" : "true");
-        if (showing) {
-          var pulse = 0.35 + 0.65 * Math.abs(Math.sin(G.t * (1.6 + near * 5)));
-          inst.style.setProperty("--near", (near * pulse * 0.85).toFixed(3));
-        }
-      }
-      /* the pressure leans on the bed: it gets louder and its two voices
-         drift further apart, so the room itself sounds less settled the
-         longer she is in the hospital */
-      if (bed && bed.g && actx) {
-        var lean = G.level.def.pressure ? (G.pressure || 0) : 0;
-        var spec = BEDS[bed.which] || BEDS.cold;
-        bed.g.gain.setTargetAtTime(spec.gain * (1 + lean * 1.5), actx.currentTime, 0.6);
-        bed.o2.frequency.setTargetAtTime(spec.b + lean * 11, actx.currentTime, 0.8);
-      }
-    }
-  }
-
-  function frame(now) {
-    raf = requestAnimationFrame(frame);
-    if (G) G.__frames = (G.__frames || 0) + 1;
-    if (!G || !onScreen()) return;
-    if (window.__apTestDrive) { if (G.level) { stepCam(G); paint(G); } return; }
-    if (!lastT) lastT = now;
-    var dt = Math.min(0.1, (now - lastT) / 1000);
-    lastT = now;
-    acc += dt;
-    var guard = 0;
-    while (acc >= STEP && guard++ < 6) { step(G, STEP); acc -= STEP; }
-    if (G.level) { stepCam(G); paint(G); }
-  }
-
-  /* =======================================================================
-     18. INPUT
-     ======================================================================= */
-  var KEYMAP = {
-    ArrowLeft: "left", a: "left", A: "left", q: "left", Q: "left",
-    ArrowRight: "right", d: "right", D: "right",
-    ArrowUp: "up", w: "up", W: "up", z: "up", Z: "up",
-    ArrowDown: "down", s: "down", S: "down",
-    Shift: "sneak",
-    e: "use", E: "use", " ": "use", Enter: "use",
-  };
-
-  function freshKeys() {
-    return { left: false, right: false, up: false, down: false, sneak: false, use: false };
-  }
-
-  function bindInput() {
-    document.addEventListener("keydown", function (e) {
-      if (!onScreen() || !G) return;
-      if (e.key === "Escape") { e.preventDefault(); togglePause(); return; }
-      if (G.state === "dialogue") {
-        if (e.key === " " || e.key === "Enter" || e.key === "e" || e.key === "E") { e.preventDefault(); nextLine(G); }
-        return;
-      }
-      /* while she is held, every key is the same key */
-      if (G.grab) { e.preventDefault(); if (!e.repeat) grabPress(G); return; }
-      var k = KEYMAP[e.key];
-      if (!k) return;
-      e.preventDefault();
-      if (k === "use" && !G.keys.use) doUse(G);
-      G.keys[k] = true;
-    }, { passive: false });
-
-    document.addEventListener("keyup", function (e) {
-      if (!onScreen() || !G) return;
-      var k = KEYMAP[e.key];
-      if (!k) return;
-      G.keys[k] = false;
-    });
-
-    /* the phone pad */
-    document.querySelectorAll("[data-ap-key]").forEach(function (b) {
-      var k = b.getAttribute("data-ap-key");
-      function down(ev) {
-        ev.preventDefault();
-        if (!G) return;
-        if (G.grab) { grabPress(G); return; }        // on a phone, any pad button
-        if (k === "use") { if (G.state === "dialogue") nextLine(G); else doUse(G); return; }
-        G.keys[k] = true;
-      }
-      function up(ev) { ev.preventDefault(); if (G) G.keys[k] = false; }
-      b.addEventListener("pointerdown", down);
-      b.addEventListener("pointerup", up);
-      b.addEventListener("pointercancel", up);
-      b.addEventListener("pointerleave", up);
-    });
-
-    $("ap-dlg-next").addEventListener("click", function () { if (G) nextLine(G); });
-    $("ap-pause-btn").addEventListener("click", togglePause);
-  }
-
-  function togglePause() {
-    if (!G) return;
-    if (G.state === "paused") { closeOverlay(); G.state = G.prevState || "play"; return; }
-    if (G.state !== "play") return;
-    G.prevState = G.state;
-    G.state = "paused";
-    G.keys = freshKeys();
-    var c = card("PAUSED", AP.levels[G.levelIndex].name, [], "Back to it", function () {
-      closeOverlay(); G.state = "play";
-    });
-    var quit = el("button", "ap-card-quit", "Leave the chapter");
-    quit.addEventListener("click", function () {
-      closeOverlay();
-      if (window.leaveApocalypse) window.leaveApocalypse();
-    });
-    c.appendChild(quit);
-    openOverlay(c);
-  }
-
-  /* =======================================================================
-     19. USING THINGS — one button, and it does whatever she is standing at
-     ======================================================================= */
-  function thingNear(G) {
-    var p = G.player, best = null, bd = 26;
-    G.level.things.forEach(function (t) {
-      if (t.done) return;
-      var d = Math.hypot(t.x * T + T / 2 - p.x, t.y * T + T / 2 - p.y);
-      if (d < bd) { bd = d; best = t; }
-    });
-    return best;
-  }
-
-  function doorNear(G) {
-    var p = G.player, best = null, bd = 26;
-    Object.keys(G.level.doors).forEach(function (key) {
-      var d = G.level.doors[key];
-      if (d.open || d.kind === "plain") return;
-      var xy = key.split(",");
-      var dist = Math.hypot(xy[0] * T + T / 2 - p.x, xy[1] * T + T / 2 - p.y);
-      if (dist < bd) { bd = dist; best = { key: key, door: d, x: +xy[0], y: +xy[1] }; }
-    });
-    return best;
-  }
-
-  function doUse(G) {
-    if (G.state !== "play") return;
-    var t = thingNear(G);
-    if (t) { useThing(G, t); return; }
-    var d = doorNear(G);
-    if (d) { useDoor(G, d); return; }
-  }
-
-  /* =======================================================================
-     20. PUBLIC API
-     ======================================================================= */
-  function start() {
-    buildArt();
-    G = {
-      t: 0, state: "card", levelIndex: 0, level: null, step: null, stepIndex: 0,
-      player: mkPlayer(0, 0), keys: freshKeys(), cam: { x: 0, y: 0 },
-      noises: [], doorFx: [], safe: { x: 0, y: 0 }, safeT: 0,
-      caughtT: 0, caughtShown: false, caughtLine: "", closeCalls: 0,
-      flash: 0, hudT: 0, code: null, dlg: null, pressure: 0, pressureT: 0, steps: [],
-      canvas: $("ap-canvas"), ctx: $("ap-canvas").getContext("2d"),
-    };
-    G.ctx.imageSmoothingEnabled = false;
-    if (!booted) { bindInput(); booted = true; }
-    if (window.duckAmbient) window.duckAmbient(true);
-    lastT = 0; acc = 0;
-    if (!raf) raf = requestAnimationFrame(frame);
-    startBed("cold");
-    startHorde();
-    showHowTo();
-  }
-
-  function stop() {
-    if (raf) cancelAnimationFrame(raf);
-    raf = null;
-    stopBed();
-    stopHorde();
-    stopHeart();
-    closeOverlay();
-    $("ap-dlg").setAttribute("aria-hidden", "true");
-    if (window.duckAmbient) window.duckAmbient(false);
-    if (G) { G.state = "card"; G.keys = freshKeys(); }
-  }
-
-  function showHowTo() {
-    openOverlay(card(AP.title, AP.tagline, AP.howTo, "Begin", function () {
-      closeOverlay();
-      startLevel(0);
-    }));
-  }
-
-  function showLevelCard(i, go) {
-    var d = AP.levels[i];
-    openOverlay(card(d.card + " — " + d.name, d.sub, [], "Go", function () {
-      closeOverlay();
-      go();
-    }));
-  }
-
-  function startLevel(i) {
-    G.levelIndex = i;
-    showLevelCard(i, function () {
-      G.level = buildLevel(LEVELS[i]);
-      G.player = mkPlayer(G.level.start.x, G.level.start.y);
-      G.safe = { x: G.level.start.x, y: G.level.start.y };
-      G.stepIndex = 0;
-      G.steps = G.level.def.steps || [];
-      G.step = G.steps[0];
-      G.state = "play";
-      G.keys = freshKeys();
-      G.pressure = 0;
-      G.pressureT = PRESSURE_EVERY;
-      G.motes = null; G.near = null;
-      startBed(bedFor(G.level.def));
-      snapCam(G);
-      setHud(G);
-      if (LEVEL_INTRO[i]) LEVEL_INTRO[i](G);
-    });
-  }
-
-  /* Some levels are two places. Level 4 is the hospital and then a lane
-     twenty miles out of town, and it would be silly to make her sit through
-     a level card in between — she is on the same journey. This swaps the map
-     under her and keeps everything else: the step she is on, the code in her
-     pocket, how many close calls she has had, and him. */
-  function enterSubmap(G, def, startAt) {
-    var hadAnwar = G.level && G.level.anwar && G.level.anwar.awake;
-    G.level = buildLevel(def);
-    var st = startAt ? { x: startAt[0] * T + T / 2, y: startAt[1] * T + T / 2 } : G.level.start;
-    G.player.x = st.x; G.player.y = st.y;
-    G.player.vx = 0; G.player.vy = 0;
-    G.safe = { x: st.x, y: st.y };
-    G.noises.length = 0;
-    G.doorFx.length = 0;
-    if (hadAnwar && G.level.anwar) {
-      G.level.anwar.awake = true;            // he is not going to be asleep again
-      G.level.anwar.trail = [];
-      G.level.anwar.x = st.x - 12;
-      G.level.anwar.y = st.y;
-    }
-    G.state = "play";
-    G.keys = freshKeys();
-    G.motes = null; G.near = null;
-    startBed(bedFor(def));
-    snapCam(G);
-    setHud(G);
-  }
-
-  /* =======================================================================
-     CUTSCENES
-
-        Two moments in Level 4 are not a thing she plays, they are a thing
-        that happens: the drive out of town, and the ride the rest of the
-        way. Both are painted straight onto the game canvas in the same
-        pixel language as everything else, with a line of text under them.
-     ======================================================================= */
-  function cutscene(G, opts) {
-    $("ap-hud").classList.add("gone");
-    G.state = "cut";
-    G.keys = freshKeys();
-    G.cut = { t: 0, dur: opts.dur, paint: opts.paint, done: opts.onDone, caption: opts.caption };
-    var cap = el("p", "ap-cut-cap", opts.caption);
-    openOverlay(cap, "thin cut");
-  }
-
-  function stepCut(G, dt) {
-    var cu = G.cut;
-    if (!cu) { G.state = "play"; return; }
-    cu.t += dt;
-    if (cu.t >= cu.dur) {
-      G.cut = null;
-      closeOverlay();
-      $("ap-hud").classList.remove("gone");
-      G.state = "play";
-      if (cu.done) cu.done();
-    }
-  }
-
-  /* ---- the drive: a road going past, and then not going past ---------- */
-  function paintDrive(G, c, t) {
-    var dur = G.cut.dur, k = t / dur;
-    var speed = k < 0.62 ? 1 : Math.max(0, 1 - (k - 0.62) / 0.30);   // it coughs and dies
-    var travelled = G.cut.travel = (G.cut.travel || 0) + speed * 190 * (1 / 60);
-
-    ditherFill(c, 0, 0, VW, 96, [
-      { p: 0, c: "#14162c" }, { p: 0.45, c: "#232a48" },
-      { p: 0.72, c: "#3d3a56" }, { p: 1, c: "#6a4a52" },
-    ]);
-    var rr = rnd(4001);
-    for (var i = 0; i < 40; i++) {                                   // stars, going out
-      px(c, (rr() * VW) | 0, (rr() * 60) | 0, 1, 1, "#c9cbe8");
-    }
-    /* three depths of country, each going past at its own rate */
-    [[0.16, 96, "#1b2032"], [0.36, 104, "#232a3d"], [0.7, 112, "#2d3548"]].forEach(function (L, d) {
-      var off = (travelled * L[0]) % 64;
-      for (var x = -64; x < VW + 64; x += 64) {
-        var hx = x - off;
-        blob(c, hx + 16, L[1] + 8, 30, 12 + d * 3, [L[2], L[2], shade(L[2], -6), shade(L[2], -10)]);
-        blob(c, hx + 48, L[1] + 10, 20, 9 + d * 2, [L[2], L[2], shade(L[2], -6), shade(L[2], -10)]);
-        if (d === 2 && ((hx / 64) | 0) % 2 === 0) {                  // a telegraph pole
-          px(c, hx + 30, L[1] - 22, 2, 30, "#20242f");
-          px(c, hx + 25, L[1] - 20, 12, 2, "#20242f");
-        }
-      }
-    });
-    /* the verge: grass, a fence line, and the things that stand beside a
-       road — a post, a sign, a gate — going past at the road's own rate */
-    px(c, 0, 106, VW, 10, "#26301f");
-    for (var vg = 0; vg < 90; vg++) {
-      var vx = ((vg * 37 - travelled * 1.9) % (VW + 40) + VW + 40) % (VW + 40) - 20;
-      px(c, vx, 106 + ((vg * 7) % 9), 1, 2, vg % 3 ? "#31402a" : "#3d4f33");
-    }
-    var postGap = 46;
-    for (var pz = -postGap; pz < VW + postGap; pz += postGap) {
-      var px2 = pz - ((travelled * 1.9) % postGap);
-      px(c, px2, 94, 2, 14, "#2a2620");
-      px(c, px2 - 5, 98, 12, 1, "#332e26");
-      if (((px2 / postGap) | 0) % 3 === 0) {                       // a sign, now and then
-        px(c, px2 - 6, 86, 14, 9, "#3a4250");
-        px(c, px2 - 6, 86, 14, 1, "#5a6470");
-        px(c, px2 - 4, 89, 10, 2, "#9aa4b0");
-        px(c, px2 - 4, 92, 6, 1, "#7a8490");
-      }
-    }
-    px(c, 0, 112, VW, VH - 112, "#22242c");                          // the road
-    px(c, 0, 112, VW, 2, "#3a3d47");
-    px(c, 0, 114, VW, 1, "#1a1c22");
-    for (var m = -40; m < VW + 40; m += 40) {                        // and its markings
-      px(c, m - ((travelled * 2.4) % 40), 150, 22, 3, "#b9bcc4");
-      px(c, m - ((travelled * 1.5) % 40) + 12, 128, 13, 2, "#7d818c");   // and the row behind
-    }
-    /* THE CAR.
-
-       It used to be drawn from behind, which was simply wrong: the hills,
-       the poles and the road markings all scroll sideways, so the camera is
-       beside the car, not behind it — and a rear view in a side-scrolling
-       shot reads as a car driving into the scenery. It is in profile now,
-       nose to the right, going the way everything else says it is going:
-       bonnet, screen, both side windows with the two of them behind them,
-       a boot, and wheels that actually turn.  */
-    var bob = Math.sin(t * (7 + speed * 9)) * (speed > 0.2 ? 0.9 : 0);
-    var cx = 96, cy = 124 + bob, CW = 108;
-    var body = "#333a4b", bodyHi = "#4a5468", bodyLo = "#1a1e27";
-
-    /* the shadow it sits in */
-    c.globalAlpha = 0.5;
-    px(c, cx + 4, cy + 6, CW - 8, 3, "#141620");
-    c.globalAlpha = 1;
-
-    /* the lower body, from the boot at the left to the nose at the right */
-    px(c, cx + 2, cy - 12, CW - 4, 18, body);
-    px(c, cx, cy - 8, CW, 12, body);
-    px(c, cx + 2, cy - 12, CW - 4, 2, bodyHi);
-    px(c, cx + 2, cy - 10, CW - 4, 1, "#5c687e");              // the shoulder catching the sky
-    px(c, cx, cy - 1, CW, 4, "#252b38");                       // and the sill falling into shadow
-    px(c, cx, cy + 3, CW, 3, bodyLo);
-    px(c, cx - 1, cy - 6, 3, 8, bodyLo);                       // the boot end
-    px(c, cx + CW - 2, cy - 7, 4, 9, body);                    // and the nose
-    px(c, cx + CW - 1, cy - 5, 3, 5, bodyHi);
-
-    /* the cabin: a raked screen at the front, a squarer one at the back */
-    px(c, cx + 26, cy - 27, 52, 16, body);
-    px(c, cx + 26, cy - 27, 52, 2, bodyHi);
-    px(c, cx + 28, cy - 28, 48, 1, "#5c687e");                 // the roof edge
-    for (var rk = 0; rk < 7; rk++) px(c, cx + 78 + rk, cy - 26 + rk, 2, 15 - rk, body);
-    for (var rb = 0; rb < 5; rb++) px(c, cx + 24 - rb, cy - 25 + rb, 2, 13 - rb, body);
-
-    /* the glass */
-    px(c, cx + 30, cy - 24, 20, 11, "#151d28");                // rear side window
-    px(c, cx + 53, cy - 24, 22, 11, "#151d28");                // front side window
-    px(c, cx + 75, cy - 23, 6, 9, "#151d28");
-    px(c, cx + 30, cy - 24, 20, 1, "#39516a");
-    px(c, cx + 53, cy - 24, 22, 1, "#39516a");
-    px(c, cx + 51, cy - 25, 2, 13, bodyLo);                    // the B pillar
-
-    /* the two of them, through the side glass. She is in front. */
-    blob(c, cx + 63, cy - 17, 5, 6, ["#3a2f22", "#2b241a", "#1e1913", "#141009"]);
-    px(c, cx + 59, cy - 14, 10, 4, "#7a4a58");                 // her shoulder, and her hair
-    blob(c, cx + 38, cy - 17, 5, 6, ["#241a17", "#1b1411", "#140f0c", "#0e0a08"]);
-    px(c, cx + 34, cy - 14, 10, 4, "#2a2a36");
-
-    /* the wheels, which turn, and go on turning slower as it dies */
-    [[cx + 16, 1], [cx + CW - 22, -1]].forEach(function (w) {
-      var wx = w[0];
-      blob(c, wx + 6, cy + 4, 9, 9, ["#20242c", "#171a20", "#101318", "#0a0c10"]);
-      blob(c, wx + 6, cy + 4, 5, 5, ["#5a616e", "#484e59", "#373c45", "#282c33"]);
-      var spin = travelled * 0.16 * w[1];
-      for (var sp = 0; sp < 4; sp++) {
-        var an = spin + (sp * Math.PI) / 2;
-        px(c, wx + 6 + Math.cos(an) * 3, cy + 4 + Math.sin(an) * 3, 2, 2, "#8d94a2");
-      }
-    });
-    px(c, cx + 10, cy - 2, 16, 8, bodyLo);                     // the arches over them
-    px(c, cx + CW - 28, cy - 3, 18, 9, bodyLo);
-
-    /* lamps: red at the tail behind her, white throwing forward */
-    px(c, cx - 1, cy - 5, 3, 4, speed > 0.2 ? "#c94a3a" : "#5a2a26");
-    px(c, cx + CW, cy - 4, 3, 4, speed > 0.2 ? "#ffeec2" : "#4a463a");
-    px(c, cx + 34, cy - 9, 40, 2, bodyHi);                     // a trim line down the side
-
-    /* the weather: a thin drift of mist crossing the beams, which is what
-       makes headlights read as headlights rather than as two yellow dots */
-    for (var mz = 0; mz < 5; mz++) {
-      var mx = ((travelled * (0.5 + mz * 0.22) + mz * 71) % (VW + 160)) - 80;
-      var my = 90 + mz * 9;
-      c.fillStyle = "rgba(150,160,190," + (0.035 + speed * 0.03) + ")";
-      c.beginPath(); c.ellipse(VW - mx, my, 44 + mz * 12, 5 + mz, 0, 0, 6.2832); c.fill();
-    }
-
-    if (speed <= 0.15) {                                             // and the last of it
-      for (var p2 = 0; p2 < 7; p2++) {
-        px(c, cx + CW - 10 + ((Math.random() * 14) | 0),
-             cy - 30 - ((Math.random() * 22) | 0), 1, 1, "#5a5f6e");
-      }
-    }
-  }
-
-  /* ---- the ride: slower, warmer, and the sun coming up --------------- */
-  function paintRide(G, c, t) {
-    var travelled = G.cut.travel = (G.cut.travel || 0) + 46 * (1 / 60);
-    ditherFill(c, 0, 0, VW, 100, [
-      { p: 0, c: "#2b3358" }, { p: 0.38, c: "#4c4a6a" },
-      { p: 0.66, c: "#8a5f66" }, { p: 0.86, c: "#c98a68" }, { p: 1, c: "#e8b57e" },
-    ]);
-    blob(c, 238, 92, 12, 12, ["#fff0c8", "#ffe0a0", "#f0c078", "#d89a58"]);  // the sun
-    [[0.18, 92, "#2f3550"], [0.42, 100, "#3b3f58"]].forEach(function (L) {
-      var off = (travelled * L[0]) % 80;
-      for (var x = -80; x < VW + 80; x += 80) {
-        blob(c, x - off + 20, L[1] + 6, 36, 11, [L[2], L[2], shade(L[2], -5), shade(L[2], -9)]);
-        blob(c, x - off + 58, L[1] + 8, 24, 8, [L[2], L[2], shade(L[2], -5), shade(L[2], -9)]);
-      }
-    });
-    px(c, 0, 112, VW, VH - 112, "#35462c");                          // the field
-    for (var i = 0; i < 260; i++) {
-      var gx = (((i * 37) - travelled * 1.6) % (VW + 40) + VW + 40) % (VW + 40) - 20;
-      var gy = 114 + ((i * 13) % (VH - 114));
-      px(c, gx, gy, 1, 2, i % 3 ? "#405433" : "#4c6440");
-    }
-    /* the two of them on her, seen from the side */
-    var bob = Math.sin(t * 5.2) * 1.6;
-    var hx = 156, hy = 150 + bob;
-    drawHorse(c, hx, hy, 1, t * 6.4, false);
-    /* the sprites' feet are at the bottom of a twelve-by-eighteen frame, so
-       they are hung forty-six pixels above the ground she is standing on —
-       which puts them on her back rather than in the sky above it */
-    c.drawImage(ART.anwar.down[0], hx - 20, hy - 56);
-    c.drawImage(ART.ouissy.down[0], hx - 4, hy - 58);
-
-    var g2 = c.createLinearGradient(0, 0, VW, VH);                    // the low sun over it
-    g2.addColorStop(0, "rgba(255,190,120,0)");
-    g2.addColorStop(1, "rgba(255,190,120,.12)");
-    c.fillStyle = g2; c.fillRect(0, 0, VW, VH);
-  }
-
-  function advanceStep(G, clears) {
-    /* G.steps, not G.level.def.steps: Level 4 swaps the map under her
-       halfway through and the second map is not a level, so it has no list
-       of its own. The objectives belong to the journey. */
-    var steps = G.steps || [];
-    if (G.step && G.step.clears === clears && G.stepIndex < steps.length - 1) {
-      G.stepIndex++;
-      G.step = steps[G.stepIndex];
-      setHud(G);
-    }
-  }
-
-
-  /* =======================================================================
-     21. THE WIRE PANEL
-
-        A salvaged control panel, not a factory one: a scratched metal plate
-        screwed to whatever was behind it, one bulb on a cord over it, and
-        five wires somebody has already had their hands in.
-
-        The puzzle is a tracing puzzle, not a matching one. Every wire is
-        already fixed at its plug on the left rail, and every wire is then
-        routed through the middle in a tangle that crosses the others, so
-        the free end nearest a socket is almost never the one that belongs
-        in it. She has to follow the run with her eyes.
-
-        Getting one wrong costs nothing at all. It sparks, the wire drops
-        back where it was, and she tries again. This is a game about
-        getting to somebody, not about being punished.
-
-        Used by: the garage door (L1), the ward lift (L3), the car (L4).
-     ======================================================================= */
-  var WIRE_KIT = {
-    /* colour, the name of its plug shape, and the shade under it */
-    wires: [
-      { key: "gold",  col: "#c9932f", dark: "#8a6420", shape: "spade" },
-      { key: "red",   col: "#a83a34", dark: "#722520", shape: "ring" },
-      { key: "blue",  col: "#4a6f96", dark: "#31506f", shape: "fork" },
-      { key: "green", col: "#5c7a4a", dark: "#3d5531", shape: "bullet" },
-      { key: "bone",  col: "#a89b84", dark: "#736a58", shape: "hook" },
-    ],
-  };
-
-  var PW_W = 192, PW_H = 124;          // the panel's own pixel grid
-
-  function shuffled(n, seed) {
-    var r = rnd(seed), a = [];
-    for (var i = 0; i < n; i++) a.push(i);
-    for (i = n - 1; i > 0; i--) {
-      var j = (r() * (i + 1)) | 0;
-      var t = a[i]; a[i] = a[j]; a[j] = t;
-    }
-    return a;
-  }
-
-  /* The five plug shapes. They are bigger than they strictly need to be
-     because shape is half the puzzle: if she cannot tell a spade from a
-     fork at a glance, all she has left is colour, and colour under one
-     bulb is not enough to be fair. */
-  function drawPlug(c, x, y, shape, col, dark) {
-    px(c, x - 4, y - 2, 5, 5, "#3a3f47");                     // the crimp behind it
-    px(c, x - 4, y - 2, 5, 1, "#4e545e");
-    if (shape === "spade") {                                   // a flat blade
-      px(c, x + 1, y - 1, 8, 3, col);
-      px(c, x + 4, y - 4, 4, 9, col);
-      px(c, x + 4, y - 4, 4, 1, shade(col, 26));
-    } else if (shape === "ring") {                             // an eyelet
-      px(c, x + 1, y - 1, 4, 3, col);
-      px(c, x + 4, y - 5, 7, 2, col); px(c, x + 4, y + 3, 7, 2, col);
-      px(c, x + 4, y - 4, 2, 7, col); px(c, x + 9, y - 4, 2, 7, col);
-    } else if (shape === "fork") {                             // two prongs
-      px(c, x + 1, y - 1, 4, 3, col);
-      px(c, x + 4, y - 5, 7, 3, col); px(c, x + 4, y + 2, 7, 3, col);
-      px(c, x + 4, y - 2, 2, 4, col);
-    } else if (shape === "bullet") {                           // a round pin
-      px(c, x + 1, y - 1, 3, 3, col);
-      px(c, x + 3, y - 4, 5, 9, col);
-      px(c, x + 8, y - 2, 3, 5, col);
-      px(c, x + 3, y - 4, 5, 1, shade(col, 26));
-    } else {                                                    // a hook
-      px(c, x + 1, y - 1, 4, 3, col);
-      px(c, x + 4, y - 5, 7, 2, col);
-      px(c, x + 9, y - 5, 2, 7, col);
-      px(c, x + 5, y + 2, 5, 2, col);
-    }
-    px(c, x - 5, y + 3, 12, 1, "rgba(0,0,0,.45)");             // it sits on the plate
-  }
-
-  /* the socket it belongs in: a recess with the same shape cut into it */
-  function drawSocket(c, x, y, shape, col, dark, lit) {
-    px(c, x - 9, y - 10, 21, 21, "#191c21");                    // the shadow it sits in
-    px(c, x - 8, y - 9, 19, 19, "#23262c");
-    px(c, x - 8, y - 9, 19, 1, "#565d69");                      // the lip catching the bulb
-    px(c, x - 8, y - 9, 1, 19, "#454b56");
-    px(c, x + 10, y - 9, 1, 19, "#15171b");
-    px(c, x - 8, y + 9, 19, 1, "#101216");
-    px(c, x - 6, y - 7, 15, 15, "#0e1014");                    // the hole
-    px(c, x - 7, y - 8, 17, 1, dark);                          // the colour band
-    px(c, x - 7, y + 8, 17, 1, dark);
-    px(c, x - 8, y - 8, 1, 17, dark); px(c, x + 10, y - 8, 1, 17, dark);
-    var cc = lit ? col : shade(dark, -16);
-    if (shape === "spade") { px(c, x - 1, y - 5, 4, 11, cc); }
-    else if (shape === "ring") {
-      px(c, x - 4, y - 5, 10, 2, cc); px(c, x - 4, y + 4, 10, 2, cc);
-      px(c, x - 4, y - 4, 2, 9, cc); px(c, x + 4, y - 4, 2, 9, cc);
-    }
-    else if (shape === "fork") { px(c, x - 4, y - 5, 10, 3, cc); px(c, x - 4, y + 3, 10, 3, cc); }
-    else if (shape === "bullet") { px(c, x - 3, y - 4, 8, 8, cc); }
-    else { px(c, x - 4, y - 5, 10, 2, cc); px(c, x + 4, y - 5, 2, 9, cc); px(c, x - 3, y + 3, 8, 2, cc); }
-    if (lit) {
-      px(c, x + 12, y - 2, 3, 3, "#8fe8b0");                   // it took
-      px(c, x + 12, y - 2, 3, 1, "#d8fce8");
-    }
-  }
-
-  /* a wire run: plug -> two waypoints -> free end. Sampled as a curve so it
-     hangs like a cable rather than turning corners like a circuit diagram. */
-  function wirePoints(w, endX, endY) {
-    var p = [];
-    var a = { x: w.px + 5, y: w.py }, b = w.m1, cpt = w.m2, d = { x: endX, y: endY };
-    for (var i = 0; i <= 22; i++) {
-      var t = i / 22, mt = 1 - t;
-      p.push({
-        x: mt * mt * mt * a.x + 3 * mt * mt * t * b.x + 3 * mt * t * t * cpt.x + t * t * t * d.x,
-        y: mt * mt * mt * a.y + 3 * mt * mt * t * b.y + 3 * mt * t * t * cpt.y + t * t * t * d.y,
-      });
-    }
-    return p;
-  }
-
-  function strokeWire(c, pts, col, dark, thick) {
-    var i;
-    c.lineJoin = "round"; c.lineCap = "round";
-    c.strokeStyle = "rgba(0,0,0,.55)";              // the shadow it casts on the plate
-    c.lineWidth = thick + 2;
-    c.beginPath(); c.moveTo(pts[0].x, pts[0].y + 1);
-    for (i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y + 1);
-    c.stroke();
-    c.strokeStyle = dark;                            // the underside of the insulation
-    c.lineWidth = thick;
-    c.beginPath(); c.moveTo(pts[0].x, pts[0].y);
-    for (i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y);
-    c.stroke();
-    c.strokeStyle = col;                             // and the lit top of it
-    c.lineWidth = Math.max(1, thick - 1.5);
-    c.beginPath(); c.moveTo(pts[0].x, pts[0].y - 0.5);
-    for (i = 1; i < pts.length; i++) c.lineTo(pts[i].x, pts[i].y - 0.5);
-    c.stroke();
-  }
-
-  function makeWirePuzzle(G, opts) {
-    var count = opts.count || 5;
-    var seed = opts.seed || 7;
-    var kit = WIRE_KIT.wires.slice(0, count);
-    var socketOrder = shuffled(count, seed);          // sockets in a different order
-    var endOrder = shuffled(count, seed + 41);        // and the loose ends in another
-    var midOrder = shuffled(count, seed + 97);
-
-    var top = 16, gap = (PW_H - 32) / (count - 1);
-    var stage = shuffled(count, seed + 17);
-    var W = kit.map(function (k, i) {
-      /* Three different shuffles decide where a wire's two waypoints and
-         its loose end sit. That is what makes them cross: the wire bolted
-         at the top of the rail is very rarely the one whose end is nearest
-         the top socket, and there is no way to know which is which without
-         following the run. */
-      return {
-        key: k.key, col: k.col, dark: k.dark, shape: k.shape,
-        px: 16, py: top + i * gap,                   // where it is bolted down
-        m1: { x: 54 + midOrder[i] * 5, y: top - 6 + endOrder[i] * gap * 1.12 },
-        m2: { x: 96 + endOrder[i] * 4, y: top - 4 + midOrder[i] * gap * 1.16 },
-        ex: 116 + stage[i] * 5,                      // its loose end, before she moves it
-        ey: top + stage[i] * gap,
-        placed: false, spark: 0,
-      };
-    });
-    var S = kit.map(function (k, i) {
-      return { key: kit[socketOrder[i]].key, col: kit[socketOrder[i]].col,
-               dark: kit[socketOrder[i]].dark, shape: kit[socketOrder[i]].shape,
-               x: PW_W - 22, y: top + i * gap, filled: false };
-    });
-
-    return {
-      wires: W, sockets: S, drag: null, done: 0, count: count,
-      power: 0, bulb: 0.55, buzz: 0, title: opts.title, hint: opts.hint,
-      onDone: opts.onDone,
-    };
-  }
-
-  function paintWirePanel(P, c, t) {
-    var i, r = rnd(31);
-
-    /* --- the plate. Not a product: a sheet of steel somebody cut to fit,
-       screwed over an older wooden back board, and then worked on with
-       dirty hands for years. --------------------------------------------- */
-    px(c, 0, 0, PW_W, PW_H, "#4a3a2a");                        // the board behind it
-    for (i = 0; i < PW_H; i += 4) px(c, 0, i, PW_W, 2, "#402f22");
-    px(c, 3, 3, PW_W - 6, PW_H - 6, "#2b2f36");                // the steel over it
-    for (i = 0; i < 300; i++) {                                 // rolled-steel tooth
-      var x = 3 + ((r() * (PW_W - 6)) | 0), y = 3 + ((r() * (PW_H - 6)) | 0);
-      px(c, x, y, 1 + ((r() * 3) | 0), 1, r() > 0.66 ? "#353a43" : "#25282e");
-    }
-    for (i = 0; i < 22; i++) {                                  // scratches, all one way
-      var sx = 3 + ((r() * (PW_W - 20)) | 0), sy = 3 + ((r() * (PW_H - 8)) | 0);
-      var ln = 5 + ((r() * 22) | 0);
-      for (var k = 0; k < ln; k++) px(c, sx + k, sy + ((k * 0.35) | 0), 1, 1, "#454b55");
-    }
-    for (i = 0; i < 16; i++) {                                  // rust, crept in at the edges
-      var rx = (r() * PW_W) | 0, ry = (r() * PW_H) | 0;
-      var edge = Math.min(rx, ry, PW_W - rx, PW_H - ry);
-      if (edge > 22 && r() > 0.35) continue;
-      blob(c, rx, ry, 2 + ((r() * 4) | 0), 2 + ((r() * 2) | 0),
-           ["#7a5334", "#63432a", "#4c3421", "#3a2819"]);
-    }
-    px(c, 3, 3, PW_W - 6, 1, "#5a616d");                        // the lit lip of the cut
-    px(c, 3, PW_H - 4, PW_W - 6, 1, "#1a1d22");
-    [[8, 8], [PW_W - 9, 8], [8, PW_H - 9], [PW_W - 9, PW_H - 9]].forEach(function (sc) {
-      px(c, sc[0] - 3, sc[1] - 3, 6, 6, "#4a5058");             // the screws holding it on
-      px(c, sc[0] - 2, sc[1] - 2, 4, 4, "#5c636d");
-      px(c, sc[0] - 2, sc[1], 4, 1, "#23262b");
-      px(c, sc[0] - 2, sc[1] + 1, 4, 1, "#6a717c");
-    });
-
-    /* the two rails the plugs and the sockets are bolted to */
-    px(c, 10, 10, 4, PW_H - 20, "#20242a");
-    px(c, 10, 10, 1, PW_H - 20, "#3d434d");
-    px(c, PW_W - 34, 10, 4, PW_H - 20, "#20242a");
-    px(c, PW_W - 34, 10, 1, PW_H - 20, "#3d434d");
-    /* a strip of tape with something written on it, gone illegible */
-    px(c, 40, 6, 30, 6, "#b0a486");
-    for (i = 0; i < 7; i++) px(c, 43 + i * 4, 8, 2, 2, "#4a4232");
-
-    /* --- the bulb, and everything it does not reach ---------------------
-       It hangs on a flex and it swings, very slightly, the whole time — so
-       the pool of light on the plate swings with it. That one detail is
-       most of what separates a lit scene from a picture of a lit scene. */
-    var swing = Math.sin(t * 0.9) * 6;
-    var bulbX = PW_W / 2 + swing, bulbY = 13;
-    var glow = P.bulb * (0.88 + 0.12 * Math.sin(t * 2.3)) + P.power * 0.45;
-    for (var fl = 0; fl < 8; fl++) {                            // the flex, curving to it
-      px(c, PW_W / 2 + swing * (fl / 8) * (fl / 8), fl, 1, 1, "#15171b");
-    }
-    px(c, bulbX - 2, 7, 5, 3, "#3a3f47");                       // the cap
-    var halo = c.createRadialGradient(bulbX, bulbY, 2, bulbX, bulbY, 34);
-    halo.addColorStop(0, "rgba(255,232,176,.28)");
-    halo.addColorStop(1, "rgba(255,232,176,0)");
-    c.fillStyle = halo;
-    c.fillRect(bulbX - 34, bulbY - 34, 68, 68);
-    blob(c, bulbX, bulbY, 5, 5, ["#fffbe8", "#ffe9b0", "#e0bd78", "#a8874c"]);
-    px(c, bulbX - 1, bulbY - 2, 2, 3, "#fffdf2");               // the filament
-
-    /* --- the wires ------------------------------------------------------ */
-    P.wires.forEach(function (w) {
-      var ex = w.placed ? w.placed.x - 10 : (P.drag === w ? P.dragX : w.ex);
-      var ey = w.placed ? w.placed.y : (P.drag === w ? P.dragY : w.ey);
-      strokeWire(c, wirePoints(w, ex, ey), w.col, w.dark, 3.4);
-      if (!w.placed) {                                          // the bare copper end
-        px(c, ex - 3, ey - 2, 6, 4, "#8d7346");
-        px(c, ex - 3, ey - 2, 6, 1, "#c9a86a");
-        px(c, ex + 2, ey - 1, 3, 2, "#d8c8a0");
-      }
-    });
-    P.wires.forEach(function (w) { drawPlug(c, w.px, w.py, w.shape, w.col, w.dark); });
-    P.sockets.forEach(function (s) { drawSocket(c, s.x, s.y, s.shape, s.col, s.dark, s.filled); });
-
-    /* sparks, over everything */
-    P.wires.forEach(function (w) {
-      if (w.spark <= 0) return;
-      var ex = w.placed ? w.placed.x - 10 : w.ex, ey = w.placed ? w.placed.y : w.ey;
-      for (var k = 0; k < 9; k++) {
-        var a = Math.random() * 6.28, d = Math.random() * 9 * w.spark;
-        px(c, ex + Math.cos(a) * d, ey + Math.sin(a) * d, 1, 1, k % 2 ? "#fff3cf" : "#ffd166");
-      }
-    });
-
-    /* --- the light. One bulb over a panel in a dark garage: a pool at the
-       top, and everything at the corners falling away into nothing. ------- */
-    var g = c.createRadialGradient(bulbX, 14, 4, bulbX, 30, PW_W * 0.66);
-    g.addColorStop(0, "rgba(255,236,190," + (0.20 * glow) + ")");
-    g.addColorStop(0.30, "rgba(255,226,168,0)");
-    g.addColorStop(0.62, "rgba(8,7,10," + (0.34 - glow * 0.10) + ")");
-    g.addColorStop(1, "rgba(4,4,7," + (0.86 - glow * 0.18) + ")");
-    c.fillStyle = g;
-    c.fillRect(0, 0, PW_W, PW_H);
-    var g2 = c.createLinearGradient(0, 0, 0, PW_H);             // and the floor of it
-    g2.addColorStop(0, "rgba(0,0,0,0)");
-    g2.addColorStop(1, "rgba(3,3,6,.42)");
-    c.fillStyle = g2;
-    c.fillRect(0, 0, PW_W, PW_H);
-
-    if (P.power > 0) {                                          // it comes up in stutters
-      var f = P.power > 0.7 ? 1 : (Math.sin(t * 26) > 0 ? 1 : 0.22);
-      c.fillStyle = "rgba(190,232,255," + (0.16 * P.power * f) + ")";
-      c.fillRect(0, 0, PW_W, PW_H);
-    }
-    if (P.buzz > 0) {
-      c.fillStyle = "rgba(255,90,70," + (0.18 * P.buzz) + ")";
-      c.fillRect(0, 0, PW_W, PW_H);
-    }
-  }
-
-  function openWirePanel(G, opts) {
-    var P = makeWirePuzzle(G, opts);
-    G.state = "panel";
-    G.keys = freshKeys();
-
-    var wrap = el("div", "ap-panel");
-    wrap.appendChild(el("p", "ap-panel-title", opts.title));
-    var cv = mkCanvas(PW_W, PW_H);
-    cv.className = "ap-panel-canvas";
-    wrap.appendChild(cv);
-    wrap.appendChild(el("p", "ap-panel-hint", opts.hint));
-    var out = el("button", "ap-panel-leave", "Step back");
-    out.addEventListener("click", function () { closeOverlay(); G.state = "play"; });
-    wrap.appendChild(out);
-    openOverlay(wrap, "thin");
-
-    var c = cv.getContext("2d");
-    c.imageSmoothingEnabled = false;
-
-    function toPanel(ev) {
-      var b = cv.getBoundingClientRect();
-      return { x: ((ev.clientX - b.left) / b.width) * PW_W, y: ((ev.clientY - b.top) / b.height) * PW_H };
-    }
-    cv.addEventListener("pointerdown", function (ev) {
-      ev.preventDefault();
-      var p = toPanel(ev), best = null, bd = 11;
-      P.wires.forEach(function (w) {
-        if (w.placed) return;
-        var d = Math.hypot(w.ex - p.x, w.ey - p.y);
-        if (d < bd) { bd = d; best = w; }
-      });
-      if (best) { P.drag = best; P.dragX = p.x; P.dragY = p.y; cv.setPointerCapture(ev.pointerId); }
-    });
-    cv.addEventListener("pointermove", function (ev) {
-      if (!P.drag) return;
-      var p = toPanel(ev);
-      P.dragX = p.x; P.dragY = p.y;
-    });
-    function release(ev) {
-      if (!P.drag) return;
-      var w = P.drag, p = toPanel(ev), hit = null, bd = 15;
-      P.sockets.forEach(function (s) {
-        if (s.filled) return;
-        var d = Math.hypot(s.x - p.x, s.y - p.y);
-        if (d < bd) { bd = d; hit = s; }
-      });
-      P.drag = null;
-      if (!hit) return;
-      if (hit.key === w.key) {
-        w.placed = hit; hit.filled = true; w.spark = 1; P.done++;
-        sfx("connect");
-        if (P.done >= P.count) finish();
-      } else {
-        w.spark = 1; P.buzz = 1;
-        sfx("spark");
-        makeNoise(G, G.player.x, G.player.y, TUNE.noiseSpark);
-      }
-    }
-    cv.addEventListener("pointerup", release);
-    cv.addEventListener("pointercancel", function () { P.drag = null; });
-
-    var t0 = performance.now(), done = false, panelRaf = null;
-    function tick(now) {
-      panelRaf = requestAnimationFrame(tick);
-      var t = (now - t0) / 1000;
-      P.wires.forEach(function (w) { w.spark = Math.max(0, w.spark - 0.045); });
-      P.buzz = Math.max(0, P.buzz - 0.03);
-      if (done) P.power = Math.min(1, P.power + 0.012);
-      paintWirePanel(P, c, t);
-      if (!overlay().contains(cv)) cancelAnimationFrame(panelRaf);
-    }
-    panelRaf = requestAnimationFrame(tick);
-
-    function finish() {
-      done = true;
-      sfx("power");
-      setTimeout(function () {
-        cancelAnimationFrame(panelRaf);
-        closeOverlay();
-        G.state = "play";
-        if (opts.onDone) opts.onDone();
-      }, 1500);
-    }
-
-    /* the harness drives it through this rather than the pointer */
-    G.__panel = { P: P, solve: function () { 
-      P.wires.forEach(function (w) {
-        var s = P.sockets.filter(function (s) { return s.key === w.key; })[0];
-        if (s && !s.filled) { w.placed = s; s.filled = true; P.done++; }
-      });
-      finish();
-    } };
-  }
-
-  /* =======================================================================
-     22. THE NOTE, AND THE DOOR IT OPENS
-
-        The same idea as the passcode on the way into the site — a number
-        somebody wrote down, found somewhere else entirely, and typed in on
-        a keypad — but the paper is torn out of a notebook and the keypad is
-        screwed to a fire door.
-     ======================================================================= */
-  function showNote(G, thing, text, code, after, then) {
-    G.state = "note";
-    G.keys = freshKeys();
-    G.code = code;
-    var wrap = el("div", "ap-note");
-    wrap.appendChild(el("span", "ap-note-tape"));
-    wrap.appendChild(el("p", "ap-note-body", text));
-    wrap.appendChild(el("p", "ap-note-code", code));
-    if (after) wrap.appendChild(el("p", "ap-note-after", after));
-    var b = el("button", "ap-note-ok", "Pocket it");
-    b.addEventListener("click", function () {
-      closeOverlay();
-      G.state = "play";
-      thing.done = true;
-      setHud(G);
-      advanceStep(G, "note");
-      if (then) say(G, then);
-    });
-    wrap.appendChild(b);
-    openOverlay(wrap, "thin");
-    sfx("found");
-  }
-
-  function openKeypad(G, door, code, onOpen) {
-    G.state = "keypad";
-    G.keys = freshKeys();
-    var entered = "";
-    var wrap = el("div", "ap-keypad");
-    ["tl", "tr", "bl", "br"].forEach(function (c) { wrap.appendChild(el("span", "ap-screw " + c)); });
-    wrap.appendChild(el("p", "ap-keypad-title", "FIRE DOOR — KEEP LOCKED"));
-    var dwrap = el("div", "ap-keypad-glass");
-    var disp = el("p", "ap-keypad-disp", "————");
-    dwrap.appendChild(disp);
-    dwrap.appendChild(el("span", "ap-keypad-scan"));
-    wrap.appendChild(dwrap);
-    var pad = el("div", "ap-keypad-pad");
-    function paint() { disp.textContent = (entered + "————").slice(0, 4).replace(/\d/g, "•").padEnd(4, "—"); }
-    "123456789".split("").concat(["c", "0", "k"]).forEach(function (d) {
-      var b = el("button", "ap-key-btn" + (d === "k" ? " go" : d === "c" ? " clr" : ""), d === "k" ? "ENTER" : d === "c" ? "CLR" : d);
-      b.addEventListener("click", function () {
-        if (d === "c") { entered = ""; sfx("blip"); paint(); return; }
-        if (d === "k") {
-          if (entered === code) {
-            sfx("unlock");
-            door.open = true;
-            closeOverlay();
-            G.state = "play";
-            if (onOpen) onOpen();
-          } else {
-            sfx("deny");
-            wrap.classList.add("shake");
-            setTimeout(function () { wrap.classList.remove("shake"); }, 400);
-            entered = ""; paint();
-          }
-          return;
-        }
-        if (entered.length < 4) { entered += d; sfx("blip"); paint(); }
-      });
-      pad.appendChild(b);
-    });
-    wrap.appendChild(pad);
-    var out = el("button", "ap-panel-leave", "Step back");
-    out.addEventListener("click", function () { closeOverlay(); G.state = "play"; });
-    wrap.appendChild(out);
-    openOverlay(wrap, "thin");
-    paint();
-    G.__keypad = { enter: function (v) { entered = v; paint(); }, ok: function () {
-      if (entered === code) { door.open = true; closeOverlay(); G.state = "play"; if (onOpen) onOpen(); }
-    } };
-  }
-
-
-  /* =======================================================================
-     23. TRIGGERS AND STORY
-
-        Each level is a short list of steps, and each step is cleared by one
-        thing happening. This is where a thing happening turns into the next
-        line of the story.
-     ======================================================================= */
-  function useThing(G, t) {
-    if (t.kind === "tv") { showBroadcast(G, t); return; }
-    if (t.kind === "note") {
-      var n = NOTES[G.levelIndex];
-      showNote(G, t, n.text, n.code, n.after, n.then);
-      return;
-    }
-    if (t.kind === "panel") {
-      openWirePanel(G, {
-        title: PANELS[G.levelIndex].title,
-        hint: PANELS[G.levelIndex].hint,
-        seed: 7 + G.levelIndex * 13,
-        count: 5,
-        onDone: function () {
-          t.done = true;
-          PANELS[G.levelIndex].onDone(G);
-        },
-      });
-      return;
-    }
-    if (t.kind === "car") { CAR_USE(G, t); return; }
-    if (t.kind === "horse") { HORSE_USE(G, t); return; }
-    if (t.kind === "check") { openCheck(G, t); return; }
-  }
-
-  function useDoor(G, d) {
-    if (d.door.kind === "locked") {
-      if (!G.code) {
-        say(G, [["", "Locked, and it wants four numbers. Somebody must have written them down somewhere."]]);
-        return;
-      }
-      openKeypad(G, d.door, G.code, function () {
-        makeNoise(G, d.x * T + T / 2, d.y * T + T / 2, TUNE.noiseDoor);
-        advanceStep(G, "gate");
-      });
-      return;
-    }
-    if (d.door.kind === "power") {
-      say(G, [["", "Dead. No power to it at all — there'll be a panel for this somewhere."]]);
-      return;
-    }
-    if (d.door.kind === "story") {
-      if (GATE_USE[G.levelIndex]) GATE_USE[G.levelIndex](G, d);
-    }
-  }
-
-  function checkTriggers(G) {
-    var L = G.level, p = G.player;
-
-    /* him: asleep until she is standing over him, then following her */
-    if (L.anwar) {
-      if (!L.anwar.awake) {
-        if (Math.hypot(L.anwar.x - p.x, L.anwar.y - p.y) < 22 && G.state === "play") {
-          L.anwar.awake = true;
-          L.anwar.trail = [];
-          sfx("found");
-          advanceStep(G, "anwar");
-          say(G, AP.reunion.waking);
-        }
-      } else {
-        followHer(G, L.anwar, dtOf(G));
-      }
-    }
-    if (L.exit) {
-      var ex = L.exit.x * T + T / 2, ey = L.exit.y * T + T / 2;
-      if (Math.hypot(ex - p.x, ey - p.y) < 12) finishLevel(G);
-    }
-    if (L.onStep) L.onStep(G);
-  }
-
-  /* He walks where she walked, a little way back, rather than steering at
-     her — a follower that pathfinds is a follower that gets stuck on a
-     door frame, and there is nothing romantic about that. */
-  function followHer(G, a, dt) {
-    var p = G.player;
-    a.trail = a.trail || [];
-    var last = a.trail[a.trail.length - 1];
-    if (!last || Math.hypot(last.x - p.x, last.y - p.y) > 3) a.trail.push({ x: p.x, y: p.y });
-    if (a.trail.length > 26) a.trail.shift();
-    var want = a.trail[0];
-    if (!want) return;
-    var dx = want.x - a.x, dy = want.y - a.y, d = Math.hypot(dx, dy);
-    if (d < 3) { a.frame = 0; return; }
-    var sp = Math.min(TUNE.walk * 1.15, d * 4);
-    a.x += (dx / d) * sp * dt;
-    a.y += (dy / d) * sp * dt;
-    a.face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
-    a.anim = (a.anim || 0) + dt * 7;
-    a.frame = 1 + ((a.anim | 0) % 2);
-  }
-
-  var LAST_DT = 1 / 60;
-  function dtOf() { return LAST_DT; }
-
-  function finishLevel(G) {
-    if (G.state !== "play") return;
-    G.state = "outro";
-    G.keys = freshKeys();
-    var lines = OUTRO[G.levelIndex] || [["", "..."]];
-    say(G, lines, function () {
-      G.state = "outro";
-      if (G.levelIndex + 1 < LEVELS.length) startLevel(G.levelIndex + 1);
-      else finishChapter(G);
-    });
-  }
-
-  function finishChapter(G) {
-    if (window.markApocalypseDone) window.markApocalypseDone();
-    openOverlay(card("THE END OF THE WORLD", "and you still came and found me",
-      [], "Go on", function () {
-        closeOverlay();
-        stop();
-        if (window.startApocalypseEnding) window.startApocalypseEnding();
-        else if (window.leaveApocalypse) window.leaveApocalypse();
-      }));
-  }
-
-  /* =======================================================================
-     THE BROADCAST
-
-        The first pass was a pale blue rectangle with a sentence on it,
-        which is a description of a news programme rather than one. This is
-        drawn: a studio that has lost most of its lights, somebody still
-        sitting at the desk who should have gone home, the emergency
-        triangle on the wall behind them, a chyron running along the bottom
-        with the same four lines going round, and static over all of it that
-        thickens and tears whenever the signal gives up for a moment.
-
-        Nothing on it is graphic. It is unsettling because of what it is
-        doing — still transmitting, on its own, with nobody left to stop it.
-     ======================================================================= */
-  var BROADCAST = [
-    "STAY INSIDE. LOCK WHAT YOU CAN LOCK.",
-    "DO NOT APPROACH ANYONE WHO SEEMS UNWELL.",
-    "DO NOT ATTEMPT TO HELP THEM.",
-    "HOSPITALS IN THESE DISTRICTS ARE NO LONGER TAKING CALLS.",
-  ];
-  var TICKER =
-    "EMERGENCY BROADCAST  \u2022  THIS IS NOT A TEST  \u2022  REMAIN INDOORS  \u2022  " +
-    "DO NOT TRAVEL  \u2022  KEEP THIS CHANNEL OPEN  \u2022  ";
-
-  var BC_W = 168, BC_H = 104;
-
-  function paintBroadcast(c, t, lineIndex) {
-    var r = rnd(4242);
-    /* how badly the signal is doing this second: mostly fine, and then not */
-    var drop = Math.max(0, Math.sin(t * 0.7) * Math.sin(t * 2.3 + 1.1));
-    var glitch = drop > 0.62 ? (drop - 0.62) / 0.38 : 0;
-
-    px(c, 0, 0, BC_W, BC_H, "#10161e");                       // the studio, mostly dark
-    ditherFill(c, 0, 0, BC_W, 62, [
-      { p: 0, c: "#1b2836" }, { p: 0.6, c: "#16202c" }, { p: 1, c: "#101822" },
-    ]);
-    for (var i = 0; i < 26; i++) {                             // lighting rig, out
-      px(c, 6 + i * 6, 3, 3, 2, i % 4 === 0 ? "#3d4a5c" : "#1d2733");
-    }
-
-    /* the emergency triangle on the wall behind the desk */
-    var tx = 124, ty = 22;
-    for (var k = 0; k < 14; k++) {
-      px(c, tx - k, ty + k, 2 + k * 2, 1, k > 11 ? "#c9a83a" : "#8a7326");
-    }
-    px(c, tx - 13, ty + 14, 28, 2, "#c9a83a");
-    px(c, tx - 1, ty + 4, 2, 6, "#10161e");
-    px(c, tx - 1, ty + 11, 2, 2, "#10161e");
-
-    /* somebody still at the desk. A silhouette, and the shoulders move a
-       little, because they are still breathing and still there. */
-    var sway = Math.sin(t * 0.9) * 1.2;
-    px(c, 40 + sway, 52, 38, 14, "#1c242f");                   // the shoulders
-    px(c, 42 + sway, 50, 34, 3, "#28323f");
-    px(c, 46 + sway, 48, 26, 3, "#222b36");                    // the collar
-    blob(c, 59 + sway * 0.4, 39, 9, 10, ["#33404f", "#2b3644", "#222b36", "#1a2129"]);
-    px(c, 51 + sway, 31, 17, 4, "#1b232d");                    // hair
-    px(c, 50 + sway, 34, 3, 8, "#1b232d");
-    px(c, 66 + sway, 34, 3, 8, "#1b232d");
-    px(c, 54 + sway, 40, 3, 1, "#151b23");                     // the suggestion of a face
-    px(c, 62 + sway, 40, 3, 1, "#151b23");
-    px(c, 40, 64, BC_W - 80, 10, "#1a2430");                   // the desk
-    px(c, 40, 64, BC_W - 80, 2, "#2c3a4a");
-    px(c, 46, 68, 16, 3, "#2c3a4a");                           // papers on it
+  /* ---- the emergency broadcast ---- */
+  function paintBroadcast(cv, t) {
+    var x = cv.getContext("2d"), W = cv.width, H = cv.height;
+    var drop = Math.max(0, Math.sin(t * 0.7) * Math.sin(t * 2.3) - 0.72) * 3.4;   /* the signal going */
+
+    /* the studio, most of its lights off */
+    var g = x.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#101a26"); g.addColorStop(0.62, "#16222f"); g.addColorStop(1, "#0a0f16");
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    /* a pool of light on the back wall, and the one that is still working */
+    var lg = x.createRadialGradient(W * 0.30, H * 0.30, 2, W * 0.30, H * 0.30, W * 0.42);
+    lg.addColorStop(0, "rgba(120,150,190,.30)"); lg.addColorStop(1, "rgba(120,150,190,0)");
+    x.fillStyle = lg; x.fillRect(0, 0, W, H);
+
+    /* the emergency triangle on the wall behind them */
+    x.save();
+    x.translate(W * 0.70, H * 0.32);
+    x.globalAlpha = 0.9;
+    x.beginPath(); x.moveTo(0, -20); x.lineTo(20, 16); x.lineTo(-20, 16); x.closePath();
+    x.fillStyle = "#c8a832"; x.fill();
+    x.fillStyle = "#141414"; x.fillRect(-2.4, -10, 4.8, 16); x.fillRect(-2.4, 9, 4.8, 4.4);
+    x.restore();
+
+    /* somebody still sitting at the desk who should have gone home */
+    var cx0 = W * 0.34, base = H * 0.74;
+    x.fillStyle = "#1d2a38";
+    x.beginPath();
+    x.moveTo(cx0 - 30, base); x.lineTo(cx0 - 20, base - 40);
+    x.quadraticCurveTo(cx0, base - 52, cx0 + 20, base - 40);
+    x.lineTo(cx0 + 30, base); x.closePath(); x.fill();
+    x.fillStyle = "#8a6a52";
+    x.beginPath(); x.ellipse(cx0, base - 52, 11, 13, 0, 0, 6.2832); x.fill();
+    x.fillStyle = "#2b1f18";
+    x.beginPath(); x.ellipse(cx0, base - 58, 11.5, 8, 0, Math.PI, 0); x.fill();
+    /* the desk */
+    x.fillStyle = "#0d1620"; x.fillRect(0, base + 2, W, H - base);
+    x.fillStyle = "#16222e"; x.fillRect(0, base, W, 4);
 
     /* the chyron */
-    px(c, 0, 76, BC_W, 16, "#0d1219");
-    px(c, 0, 76, BC_W, 2, "#8a2020");
-    px(c, 0, 78, 46, 10, "#8a2020");
-    px(c, 0, 90, BC_W, 2, "#151d26");
-    c.font = "8px 'VT323', monospace";
-    c.textBaseline = "middle";
-    c.fillStyle = "#f0e4cc";
-    c.fillText("LIVE", 9, 84);
-    /* the ticker is clipped to start after the LIVE badge, or it runs
-       straight underneath it and both become unreadable */
-    c.save();
-    c.beginPath(); c.rect(48, 78, BC_W - 48, 12); c.clip();
-    var tick = TICKER + TICKER;
-    var tw = c.measureText(TICKER).width || 380;
-    c.fillStyle = "#c9d4e2";
-    c.fillText(tick, 50 - ((t * 24) % tw), 84);
-    c.restore();
+    var barY = H - 34;
+    x.fillStyle = "rgba(6,10,16,.86)"; x.fillRect(0, barY, W, 34);
+    x.fillStyle = "#b8342f"; x.fillRect(0, barY, W, 3);
+    var line = TV_LINES[Math.floor(t / 3.4) % TV_LINES.length];
+    x.fillStyle = "#e8eef8";
+    x.font = "bold 10px monospace";
+    x.textAlign = "left";
+    x.fillText(line.slice(0, 44), 7, barY + 15);
+    /* the ticker under it, going round */
+    x.fillStyle = "#0a0f16"; x.fillRect(0, barY + 20, W, 14);
+    x.fillStyle = "#f0c05a"; x.font = "9px monospace";
+    var tick = TV_TICKER + TV_TICKER + TV_TICKER;
+    var off = (t * 46) % (TV_TICKER.length * 5.42);
+    x.save(); x.beginPath(); x.rect(0, barY + 20, W, 14); x.clip();
+    x.fillText(tick, 6 - off, barY + 30);
+    x.restore();
 
-    /* the line itself, over the picture, the way a caption sits */
-    c.fillStyle = "rgba(8,12,18,.72)";
-    c.fillRect(6, 56, BC_W - 12, 0);
-    c.save();
-    c.font = "9px 'VT323', monospace";
-    c.fillStyle = "#dfeaf7";
-    c.textBaseline = "top";
-    var words = BROADCAST[lineIndex].split(" ");
-    var line = "", ly = 90 - 84, out = [];
-    for (var w = 0; w < words.length; w++) {
-      var trial = line ? line + " " + words[w] : words[w];
-      if (c.measureText(trial).width > BC_W - 20 && line) { out.push(line); line = words[w]; }
-      else line = trial;
+    /* scanlines, and the tear when the signal drops */
+    x.globalAlpha = 0.16; x.fillStyle = "#000";
+    for (var yy = 0; yy < H; yy += 3) x.fillRect(0, yy, W, 1);
+    x.globalAlpha = 1;
+    if (drop > 0.02) {
+      var sh = Math.floor(drop * 12);
+      var band = x.getImageData(0, Math.floor(H * 0.3), W, 26);
+      x.putImageData(band, sh, Math.floor(H * 0.3));
+      x.fillStyle = "rgba(200,220,255,.14)";
+      x.fillRect(0, Math.floor(H * 0.3) - 3, W, 3);
     }
-    out.push(line);
-    c.restore();
-
-    /* static, scanlines and the tear */
-    var grain = 90 + glitch * 420;
-    for (var g = 0; g < grain; g++) {
-      var gx = (r() * BC_W) | 0, gy = (r() * BC_H) | 0;
-      px(c, gx, gy, 1 + ((r() * 2) | 0), 1, r() > 0.5 ? "rgba(220,232,246,.30)" : "rgba(10,14,20,.34)");
+    /* static over all of it, heavier as the signal goes */
+    var amount = 0.05 + drop * 0.10;
+    var img = x.getImageData(0, 0, W, H), d = img.data;
+    for (var i = 0; i < d.length; i += 4) {
+      if (Math.random() > amount) continue;
+      var v = Math.random() * 255;
+      d[i] = v; d[i + 1] = v; d[i + 2] = v;
     }
-    for (var sl = 0; sl < BC_H; sl += 3) px(c, 0, sl, BC_W, 1, "rgba(0,0,0,.22)");
-    if (glitch > 0.25) {
-      var band = 18 + ((Math.sin(t * 9) * 0.5 + 0.5) * (BC_H - 30)) | 0;
-      var hgt = 3 + ((glitch * 7) | 0);
-      var slice = c.getImageData(0, band, BC_W, hgt);
-      c.putImageData(slice, ((glitch * 14) | 0) - 7, band);
-      px(c, 0, band - 1, BC_W, 1, "rgba(255,255,255,.16)");
-    }
-    /* the tube's own glow, and the curve of it */
-    var vg = c.createRadialGradient(BC_W / 2, BC_H / 2, BC_H * 0.2, BC_W / 2, BC_H / 2, BC_H * 0.95);
-    vg.addColorStop(0, "rgba(140,190,240,.05)");
-    vg.addColorStop(1, "rgba(0,0,0,.55)");
-    c.fillStyle = vg;
-    c.fillRect(0, 0, BC_W, BC_H);
+    x.putImageData(img, 0, 0);
+    /* the glass */
+    var vg = x.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, W * 0.72);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,.55)");
+    x.fillStyle = vg; x.fillRect(0, 0, W, H);
   }
 
-  function showBroadcast(G, thing) {
-    G.state = "note";
-    G.keys = freshKeys();
+  function showTV() {
     var wrap = el("div", "ap-tv");
     var set = el("div", "ap-tv-set");
-    var scr = el("div", "ap-tv-screen");
-    var cv = mkCanvas(BC_W, BC_H);
-    cv.className = "ap-tv-canvas";
-    scr.appendChild(cv);
-    scr.appendChild(el("span", "ap-tv-glass"));
-    set.appendChild(scr);
+    var screen = el("div", "ap-tv-screen");
+    var cv = document.createElement("canvas");
+    cv.className = "ap-tv-canvas"; cv.width = 256; cv.height = 168;
+    screen.appendChild(cv);
+    screen.appendChild(el("span", "ap-tv-scan"));
+    screen.appendChild(el("span", "ap-tv-glass"));
     var side = el("div", "ap-tv-side");
     side.appendChild(el("span", "ap-tv-dial"));
     side.appendChild(el("span", "ap-tv-dial small"));
     side.appendChild(el("span", "ap-tv-grille"));
-    set.appendChild(side);
+    set.appendChild(screen); set.appendChild(side);
     wrap.appendChild(set);
     wrap.appendChild(el("span", "ap-tv-feet"));
-    var line = el("p", "ap-tv-line", BROADCAST[0]);
-    wrap.appendChild(line);
-    wrap.appendChild(el("p", "ap-tv-cap", "the six o'clock news, still running"));
-    var b = el("button", "ap-note-ok", "Turn it off");
-    wrap.appendChild(b);
-    openOverlay(wrap, "thin");
-
-    var c = cv.getContext("2d");
-    c.imageSmoothingEnabled = false;
-    var n = 0, t0 = performance.now(), bRaf = null;
-    function tick(now) {
-      bRaf = requestAnimationFrame(tick);
-      if (!overlay().contains(cv)) { cancelAnimationFrame(bRaf); return; }
-      paintBroadcast(c, (now - t0) / 1000, n);
-    }
-    bRaf = requestAnimationFrame(tick);
-    var iv = setInterval(function () {
-      n = (n + 1) % BROADCAST.length;
-      line.textContent = BROADCAST[n];
-      sfx("static");
-    }, 3400);
-
+    wrap.appendChild(el("p", "ap-tv-cap", "It has been saying the same four things since this morning."));
+    var b = el("button", "ap-card-go", "TURN IT OFF");
     b.addEventListener("click", function () {
-      clearInterval(iv);
-      cancelAnimationFrame(bRaf);
+      G.__tv = null;
       closeOverlay();
       G.state = "play";
-      thing.done = true;
-      var i = G.level.lights.findIndex(function (l) { return l.tv; });
-      if (i >= 0) G.level.lights.splice(i, 1);
-      advanceStep(G, "tv");
-      say(G, [
-        ["", "She turns it off. The room is very quiet with it off."],
-        ["OUISSY", "Mum and Dad are four hours away."],
-        ["", "The front door won't budge and the garage has no power. There'll be a panel for it somewhere."],
-      ]);
+      clearStep("tv");
+      Audio_.static(0.3, 0.07);
     });
+    wrap.appendChild(b);
+    openOverlay(wrap);
+    G.__tv = cv;
+    Audio_.static(1.4, 0.05);
   }
 
-  /* ---- what each level's panel is wired to ---------------------------- */
-  /* Opening whatever the panel was wired to. Every level's panel does the
-     same physical thing — the doors that had no power now have power — so
-     the difference between them is only what she is standing in front of
-     and what gets said about it. */
-  function powerUp(G, line) {
-    var L = G.level;
-    Object.keys(L.doors).forEach(function (k) {
-      if (L.doors[k].kind === "power") L.doors[k].open = true;
-    });
-    /* whatever was on the dead circuit comes up with the doors */
-    if (L.dead && L.dead.length) {
-      L.lights.push.apply(L.lights, L.dead);
-      L.dead.length = 0;
-    }
-    advanceStep(G, "panel");
-    if (line) say(G, [["", line]]);
-  }
-
-  var PANELS = {
-    0: {
-      title: "GARAGE — DOOR MOTOR",
-      hint: "follow each wire back to its plug, then put it in the socket that matches",
-      onDone: function (G) {
-        G.level.lights.push({ x: G.level.exit.x * T + T / 2, y: G.level.exit.y * T + T / 2 - 20,
-                              r: 70, warm: 0.4, flicker: true });
-        powerUp(G, null);
-        say(G, [
-          ["", "Something under the floor kicks in, and the garage door starts to lift."],
-          ["", "It gets about waist high, finds whatever is wrong with it, and stops there."],
-          ["", "A strip of street light comes in underneath and lies across the floor."],
-          ["OUISSY", "...That'll do."],
-        ]);
-      },
-    },
-    2: {
-      title: "WARD C — DOOR GEAR",
-      hint: "same as the garage. Follow the run, not the nearest end",
-      onDone: function (G) {
-        powerUp(G, null);
-        say(G, [
-          ["", "Down the corridor, two heavy doors give up and roll apart."],
-          ["", "The lights come up inside a beat later, one row at a time, all the way to the far end."],
-          ["", "It is the only quiet corridor left in this building."],
-        ]);
-      },
-    },
-  };
-
-  var NOTES = {
-    1: {
-      code: AP.gateCode,
-      text: "Torn off a staff rota and dropped behind the counter. Somebody has written on the back of it:",
-      after: "and underneath, in a different pen — don't write this down",
-      then: [["OUISSY", "There's a staff gate off the alley behind these shops. That comes out right by the hospital."]],
-    },
-  };
-  var OUTRO = {
-    4: [
-      ["", "There is a bed each and there is tea, and there is a whole day of being asked their names by kind people with clipboards."],
-      ["", ""],
-      ["", "It takes until the evening to stop expecting the noise."],
-      ["", "Somebody tells them there is a way up onto the roof, and that it is worth it about now."],
-    ],
-    3: [
-      ["", "The gates are steel and somebody has welded a sheet of road sign across them. There is a light on above."],
-      ["", "A voice comes down from somewhere above the light, and it sounds tired rather than frightened."],
-      ["", "\u201cTwo of you? Stay where you are. Don't come any closer until I say.\u201d"],
-    ],
-    2: null,        // filled in below from AP.reunion, so the words stay in one place
-    1: [
-      ["", "The hospital sign is still lit. Of everything on this street, that is the thing still lit."],
-      ["OUISSY", "Please be asleep. Please still be asleep."],
-    ],
-    0: [
-      ["", "The door gets about waist high and stops. It's enough."],
-      ["OUISSY", "Okay. Okay. Hospital."],
-    ],
-  };
-
-  OUTRO[2] = AP.reunion.hiding;
-
-  var LEVEL_INTRO = {
-    4: function (G) {
-      say(G, [
-        ["", "It is properly morning by the time the fence comes up out of the fields. Somebody has been mowing."],
-        ["", "There is a light on over the gate, in daylight, because nobody has been up there to switch it off."],
-        ["OUISSY", "Do we just... walk up to it?"],
-        ["ANWAR", "I think we just walk up to it."],
-      ]);
-    },
-    3: function (G) {
-      say(G, [
-        ["", "He reaches up and turns it over, and it has been saying the same forty seconds since before either of them woke up."],
-      ], function () {
-        showRadio(G, function () {
-          say(G, [
-            ["ANWAR", "Ashcombe. That's — what, forty miles?"],
-            ["OUISSY", "Are we walking forty miles?"],
-            ["", "He gets up too fast and has to put a hand on the shelf until the room settles."],
-            ["ANWAR", "Give me a second. I've been horizontal for a week."],
-            ["ANWAR", "...There's a staff car park under the east block."],
-            ["OUISSY", "Then we're not walking forty miles."],
-          ]);
-        });
-      });
-    },
-    2: function (G) {
-      say(G, [
-        ["", "The doors open for her. Somebody left the power on for the doors."],
-        ["", "Nobody is on the desk. The lights are on the emergency circuit — half of them, and not steadily."],
-        ["", "It is not quiet in here. It is getting less quiet."],
-      ]);
-    },
-    1: function (G) {
-      say(G, [
-        ["", "She comes out under the door on her hands and knees, and then stands up on her own street."],
-        ["", "Outside is worse. Not louder — quieter. No cars. No music. Nobody's television but hers."],
-        ["OUISSY", "...Right."],
-        ["OUISSY", "Okay. Think. Where do I even—"],
-        ["OUISSY", "...Anwar."],
-        ["OUISSY", "He's on a ward with his phone in a drawer. He doesn't know any of this. He's asleep."],
-        ["", "The hospital is south and east of here. Twenty minutes, if she doesn't have to stop."],
-      ]);
-    },
-    0: function (G) {
-      say(G, [
-        ["", "The power went about ten minutes ago. The television didn't."],
-        ["OUISSY", "...why is it still on?"],
-      ]);
-    },
-  };
-
-  /* The car. In the hospital car park it is a thing to get running; on the
-     verge outside town it is a thing that has already stopped. */
-  /* =======================================================================
-     THE PROTOCOL — Level 5
-
-        Two small pieces of ceremony, and neither of them can be failed.
-        Ashcombe is not a place that turns her away; the point of doing it
-        at all is that it is done properly, with somebody's hands on her
-        arms and somebody's pen going down a list, because that is what
-        being taken in looks like.
-     ======================================================================= */
-  var CHECK_ROWS = [
-    ["both arms", "sleeves up, wrists to elbows"],
-    ["neck and collar", "she has to lift her hair for it"],
-    ["hands", "front and back, between the fingers"],
-    ["ankles", "socks down. He does his first, to be helpful"],
-  ];
-
-  function openCheck(G, thing) {
-    G.state = "note";
-    G.keys = freshKeys();
-    var wrap = el("div", "ap-check");
-    wrap.appendChild(el("p", "ap-check-title", "ASHCOMBE — ARRIVALS"));
-    wrap.appendChild(el("p", "ap-check-sub", "\u201cNothing personal. I do this to everyone, including me.\u201d"));
-    var list = el("div", "ap-check-list");
-    var left = CHECK_ROWS.length;
-    CHECK_ROWS.forEach(function (row) {
-      var b = el("button", "ap-check-row");
-      b.appendChild(el("span", "ap-check-box", ""));
-      var tx = el("span", "ap-check-tx");
-      tx.appendChild(el("b", null, row[0]));
-      tx.appendChild(el("i", null, row[1]));
-      b.appendChild(tx);
-      b.addEventListener("click", function () {
-        if (b.classList.contains("on")) return;
-        b.classList.add("on");
-        sfx("blip");
-        if (--left === 0) {
-          wrap.classList.add("clear");
-          stamp.hidden = false;
-          go.disabled = false;
-          sfx("found");
-        }
-      });
-      list.appendChild(b);
-    });
-    wrap.appendChild(list);
-    var stamp = el("p", "ap-check-stamp", "CLEAR");
-    stamp.hidden = true;
-    wrap.appendChild(stamp);
-    var go = el("button", "ap-note-ok", "Both of you, then");
-    go.disabled = true;
-    go.addEventListener("click", function () {
-      closeOverlay();
-      thing.done = true;
-      openSerum(G);
-    });
-    wrap.appendChild(go);
-    openOverlay(wrap, "thin");
-  }
-
-  /* the vial and the syringe, drawn rather than described */
-  function paintSerum(c, k) {
-    var w = 96, h = 56;
-    px(c, 0, 0, w, h, "#12151d");
-    for (var i = 0; i < 90; i++) px(c, (Math.random() * w) | 0, (Math.random() * h) | 0, 1, 1, "#171b25");
-    /* the vial, on the left */
-    px(c, 12, 14, 12, 30, "#2a3440");
-    px(c, 13, 15, 10, 28, "#3d4f5e");
-    px(c, 13, 15 + 28 - Math.round(28 * (1 - k)), 10, Math.round(28 * (1 - k)), "#8fd8b0");
-    px(c, 13, 15, 10, 2, "#5d7180");
-    px(c, 14, 10, 8, 5, "#8a9098");
-    px(c, 15, 8, 6, 3, "#b9c0c8");
-    px(c, 13, 20, 2, 12, "#5f7a8a");
-    /* the syringe, filling */
-    var bx = 34, by = 24;
-    px(c, bx, by, 44, 9, "#c9d2da");
-    px(c, bx, by, 44, 2, "#eef3f8");
-    px(c, bx + 2, by + 2, Math.round(40 * k), 5, "#8fd8b0");
-    px(c, bx + 44, by + 3, 12, 3, "#9aa4ae");
-    px(c, bx + 56, by + 4, 10, 1, "#dfe6ec");
-    px(c, bx - 8, by - 2, 8, 13, "#aab4be");
-    px(c, bx - 12, by + 1, 4, 7, "#8a949e");
-    if (k > 0.98) {
-      px(c, bx + 64, by + 2, 3, 3, "#8fd8b0");
-      px(c, bx + 66, by, 2, 2, "#bff0d4");
-    }
-  }
-
-  function openSerum(G) {
-    G.state = "note";
-    var wrap = el("div", "ap-serum");
-    wrap.appendChild(el("p", "ap-check-title", "THE SERUM"));
-    var cv = mkCanvas(96, 56);
-    cv.className = "ap-serum-canvas";
-    wrap.appendChild(cv);
-    var line = el("p", "ap-serum-line",
-      "\u201cIt is not a cure and I am not going to tell you it is. It buys you about a minute, and a minute is the whole of it.\u201d");
-    wrap.appendChild(line);
-    var go = el("button", "ap-note-ok", "Hold still");
-    wrap.appendChild(go);
-    openOverlay(wrap, "thin");
-    var c = cv.getContext("2d");
-    c.imageSmoothingEnabled = false;
-    var k = 0, filling = false, raf2 = null;
-    function tick() {
-      raf2 = requestAnimationFrame(tick);
-      if (filling && k < 1) k = Math.min(1, k + 0.012);
-      paintSerum(c, k);
-      if (!overlay().contains(cv)) cancelAnimationFrame(raf2);
-    }
-    tick();
-    go.addEventListener("click", function () {
-      if (!filling) {
-        filling = true;
-        go.textContent = "\u2026";
-        go.disabled = true;
-        sfx("power");
-        setTimeout(function () {
-          go.disabled = false;
-          go.textContent = "Done";
-          line.textContent = "It goes in the top of the arm and it stings for longer than it should. He does not let go of her hand for any of it.";
-        }, 2200);
-        return;
-      }
-      cancelAnimationFrame(raf2);
-      closeOverlay();
-      G.state = "play";
-      advanceStep(G, "check");
-      /* they open the inner gate */
-      Object.keys(G.level.doors).forEach(function (key) {
-        var d = G.level.doors[key];
-        if (d.kind === "story") d.open = true;
-      });
-      say(G, [
-        ["", "Somebody unbolts the inner gate and walks off without waiting to be thanked."],
-        ["ANWAR", "That's it?"],
-        ["", "\u201cThat's it. There's tea in the second hut and there's a bed each. Go on.\u201d"],
-      ]);
-    });
-  }
-
-  /* what the gates do when she walks up to them */
-  var GATE_USE = {
-    4: function (G, d) {
-      if (G.stepIndex === 0) {
-        advanceStep(G, "hail");
-        d.door.open = true;
-        sfx("door");
-        say(G, [
-          ["", "\u201cStop there. Both of you turn round slowly, and then come to the table. Don't touch anything on the way.\u201d"],
-          ["", "The gate goes back about a foot and a half, which is exactly enough."],
-          ["ANWAR", "They're being careful."],
-          ["OUISSY", "Good."],
-        ]);
-      } else {
-        say(G, [["", "\u201cTable first. I'm not opening that until somebody's looked at the pair of you.\u201d"]]);
-      }
-    },
-  };
-
-  function CAR_USE(G, t) {
-    if (G.level.def.key === "roadside") {
-      say(G, [["", "Nothing. It is not the battery this time — the needle has been on the pin since the ring road."]]);
-      return;
-    }
-    if (!t.tried) {
-      t.tried = true;
-      say(G, [
-        ["", "The first two are locked and the third has somebody's keys still in the door, which tells its own story."],
-        ["ANWAR", "Don't say anything about it."],
-        ["OUISSY", "I wasn't going to."],
-      ], function () { CAR_USE(G, t); });
-      return;
-    }
-    openWirePanel(G, {
-      title: "UNDER THE BONNET",
-      hint: "same puzzle, worse light. Follow the run, not the nearest end",
-      seed: 7 + G.levelIndex * 13,
-      count: 5,
-      onDone: function () {
-        t.done = true;
-        sfx("power");
-        cutscene(G, {
-          dur: 9.5,
-          caption: "Out past the ring road, and then twenty miles of nobody.",
-          paint: paintDrive,
-          onDone: function () {
-            enterSubmap(G, SUBMAPS.roadside, [5, 4]);
-            advanceStep(G, "car");
-            say(G, [
-              ["", "It coughs twice on the hill, the lights go brown, and then there is nothing to listen to but the wind on the glass."],
-              ["", "They sit in it for a while anyway, because it is warm and because neither of them wants to be the one to open the door."],
-              ["ANWAR", "How much was in it?"],
-              ["OUISSY", "It was somebody else's car, Anwar."],
-              ["ANWAR", "Fair."],
-            ]);
-          },
-        });
-      },
-    });
-  }
-
-  /* The horse. Nothing about this is a puzzle. She has been shut in for two
-     days and she is delighted, and that is the point of the scene. */
-  function HORSE_USE(G, t) {
-    t.done = true;
-    sfx("found");
-    say(G, [
-      ["", "There is a field gate at the end of the lane with a name painted on it by hand, a long time ago, by somebody who was not in a hurry."],
-      ["", "They hear her before they see her: a shift of weight, and then hooves on a concrete floor."],
-      ["", "There is one animal left in the barn and she has heard them coming from the yard."],
-      ["", "She puts her whole head over the door before Ouissy has got near it."],
-      ["OUISSY", "Oh — hello. Hello."],
-      ["ANWAR", "She's enormous."],
-      ["OUISSY", "She's lovely. Look at her."],
-      ["", "There is a headcollar on the hook and somebody's name painted over the stall. She is not going to be collected."],
-      ["ANWAR", "Can you actually ride?"],
-      ["OUISSY", "No."],
-      ["ANWAR", "Right."],
-      ["OUISSY", "Get on."],
-    ], function () {
-      cutscene(G, {
-        dur: 9,
-        caption: "It takes most of the morning, and neither of them minds.",
-        paint: paintRide,
-        onDone: function () { finishLevel(G); },
-      });
-    });
-  }
-
-  /* The radio. It is on a shelf in the day room and it has been repeating
-     the same forty seconds since before either of them woke up. */
-  var RADIO = [
-    "— stay off the roads at night. Do not attempt to reach us after dark —",
-    "— Ashcombe reception is open. We are accepting anyone who is not bitten —",
-    "— you will be checked at the gate and you will be given the serum. Both are required —",
-    "— that is Ashcombe. North road, past the reservoir. We are still here —",
-  ];
-
-  function showRadio(G, onDone) {
-    G.state = "note";
-    G.keys = freshKeys();
+  /* ---- the radio ---- */
+  function showRadio(done) {
     var wrap = el("div", "ap-radio");
     var set = el("div", "ap-radio-set");
-    set.appendChild(el("span", "ap-radio-grille"));
+    var grille = el("div", "ap-radio-grille");
     var dial = el("div", "ap-radio-dial");
-    dial.appendChild(el("span", "ap-radio-needle"));
-    set.appendChild(dial);
-    set.appendChild(el("span", "ap-radio-knob"));
+    var needle = el("span", "ap-radio-needle");
+    dial.appendChild(needle);
+    var knob = el("span", "ap-radio-knob");
+    set.appendChild(grille); set.appendChild(dial); set.appendChild(knob);
     wrap.appendChild(set);
-    var line = el("p", "ap-radio-line", RADIO[0]);
+    var line = el("p", "ap-radio-line", RADIO_LINES[0]);
     wrap.appendChild(line);
-    wrap.appendChild(el("p", "ap-radio-cap", "somebody is still broadcasting"));
-    var b = el("button", "ap-note-ok", "Listen to it again, then go");
+    wrap.appendChild(el("p", "ap-radio-cap", "It has been on the whole time."));
+    var i = 0;
+    var b = el("button", "ap-card-go", "LISTEN");
     b.addEventListener("click", function () {
-      clearInterval(iv);
+      i++;
+      Audio_.tune();
+      if (i >= RADIO_LINES.length) { closeOverlay(); G.state = "play"; if (done) done(); return; }
+      line.textContent = RADIO_LINES[i];
+      if (i === RADIO_LINES.length - 1) b.textContent = "ASHCOMBE";
+    });
+    wrap.appendChild(b);
+    openOverlay(wrap);
+    Audio_.tune();
+  }
+
+  /* ---- the note with the code on it ---- */
+  function showNote() {
+    var wrap = el("div", "ap-note");
+    wrap.appendChild(el("span", "ap-note-tape"));
+    wrap.appendChild(el("p", "ap-note-body", "staff gate — back of the parade"));
+    wrap.appendChild(el("p", "ap-note-code", GATE_CODE));
+    wrap.appendChild(el("p", "ap-note-after", "somebody biroed it on the back of a rota so they would stop being called out at night."));
+    var b = el("button", "ap-note-ok", "TAKE IT");
+    b.addEventListener("click", function () {
+      G.code = GATE_CODE;
+      closeOverlay();
+      G.state = "play";
+      Audio_.found();
+      setHud();
+    });
+    wrap.appendChild(b);
+    openOverlay(wrap);
+  }
+
+  /* ---- the keypad on the staff gate ---- */
+  function showKeypad(door) {
+    var wrap = el("div", "ap-keypad");
+    wrap.appendChild(el("p", "ap-keypad-title", "STAFF ONLY"));
+    var glass = el("div", "ap-keypad-glass");
+    var disp = el("p", "ap-keypad-disp", "____");
+    glass.appendChild(disp);
+    glass.appendChild(el("span", "ap-keypad-scan"));
+    wrap.appendChild(glass);
+    var pad = el("div", "ap-keypad-pad");
+    var entry = "";
+    function draw() { disp.textContent = (entry + "____").slice(0, 4); }
+    ["1","2","3","4","5","6","7","8","9","CLR","0","GO"].forEach(function (k) {
+      var b = el("button", "ap-key-btn" + (k === "GO" ? " go" : k === "CLR" ? " clr" : ""), k);
+      b.addEventListener("click", function () {
+        if (k === "CLR") { entry = ""; Audio_.keyBad(); draw(); return; }
+        if (k === "GO") {
+          if (entry === GATE_CODE) {
+            Audio_.keyOk();
+            door.locked = false; door.want = 1;
+            noise(G.world.cx(door.x), G.world.cz(door.y), TUNE.noiseDoor);
+            closeOverlay(); G.state = "play";
+          } else { Audio_.keyBad(); entry = ""; draw(); wrap.classList.add("bad");
+                   setTimeout(function () { wrap.classList.remove("bad"); }, 300); }
+          return;
+        }
+        if (entry.length < 4) { entry += k; Audio_.beep(); draw(); }
+      });
+      pad.appendChild(b);
+    });
+    wrap.appendChild(pad);
+    var leave = el("button", "ap-panel-leave", "step back");
+    leave.addEventListener("click", function () { closeOverlay(); G.state = "play"; });
+    wrap.appendChild(leave);
+    openOverlay(wrap);
+    G.__keypad = { enter: function (s) { entry = s; draw(); },
+                   go: function () { pad.lastChild.click(); } };
+    draw();
+  }
+
+  /* ---- the wire panel ----
+     A salvaged board with the cover off. Four cores hanging out of the
+     loom on the left, four terminals on the right, and no labels — the
+     colours are the only thing telling you what goes where. Getting it
+     wrong arcs, and an arc is the loudest thing she can do. */
+  function showPanel(onDone) {
+    var COLOURS = [
+      { name: "red",    hex: "#d8484a", core: "#8a2a2c" },
+      { name: "green",  hex: "#4ec46e", core: "#2a7a40" },
+      { name: "blue",   hex: "#4a90d8", core: "#2a5a8a" },
+      { name: "yellow", hex: "#e8c44a", core: "#8a7420" }
+    ];
+    var order = [0, 1, 2, 3].sort(function () { return Math.random() - 0.5; });
+
+    var wrap = el("div", "ap-panel");
+    wrap.appendChild(el("p", "ap-panel-title", "DISTRIBUTION BOARD — SUB 3"));
+    var cv = document.createElement("canvas");
+    cv.className = "ap-panel-canvas";
+    cv.width = 420; cv.height = 260;
+    wrap.appendChild(cv);
+    var hint = el("p", "ap-panel-hint", "drag each core across to the terminal of the same colour. it will arc if you get it wrong, and everything nearby will hear that.");
+    wrap.appendChild(hint);
+    var leave = el("button", "ap-panel-leave", "step back");
+    leave.addEventListener("click", function () { closeOverlay(); G.state = "play"; });
+    wrap.appendChild(leave);
+    openOverlay(wrap);
+
+    var x = cv.getContext("2d");
+    var done = [false, false, false, false];
+    var drag = null, sparkT = 0, sparkAt = null, t0 = performance.now();
+
+    function wireY(i) { return 52 + i * 56; }
+    function sockY(i) { return 52 + i * 56; }
+    var WX = 96, SX = 324;
+
+    function draw() {
+      var t = (performance.now() - t0) / 1000;
+      /* the board itself */
+      x.fillStyle = "#2a2c30"; x.fillRect(0, 0, cv.width, cv.height);
+      var g = x.createLinearGradient(0, 0, 0, cv.height);
+      g.addColorStop(0, "rgba(255,255,255,.07)"); g.addColorStop(1, "rgba(0,0,0,.35)");
+      x.fillStyle = g; x.fillRect(0, 0, cv.width, cv.height);
+      for (var i = 0; i < 900; i++) {
+        x.fillStyle = "rgba(0,0,0,.05)";
+        x.fillRect(Math.random() * cv.width, Math.random() * cv.height, 1, 1);
+      }
+      /* four screws */
+      [[12, 12], [cv.width - 12, 12], [12, cv.height - 12], [cv.width - 12, cv.height - 12]].forEach(function (p) {
+        x.fillStyle = "#6a6f78"; x.beginPath(); x.arc(p[0], p[1], 5, 0, 6.2832); x.fill();
+        x.strokeStyle = "#23262b"; x.lineWidth = 1.6;
+        x.beginPath(); x.moveTo(p[0] - 3, p[1] - 3); x.lineTo(p[0] + 3, p[1] + 3); x.stroke();
+      });
+      /* the loom the cores come out of */
+      x.fillStyle = "#17191d"; x.fillRect(30, 26, 46, 200);
+      x.fillStyle = "#3a3e46"; x.fillRect(30, 26, 46, 8);
+
+      /* terminals */
+      for (var s = 0; s < 4; s++) {
+        var c = COLOURS[order[s]];
+        var sy = sockY(s);
+        x.fillStyle = "#15171b"; x.fillRect(SX - 6, sy - 16, 62, 32);
+        x.fillStyle = "#4a4f58"; x.fillRect(SX - 2, sy - 12, 54, 24);
+        x.fillStyle = c.hex; x.globalAlpha = done.indexOf(order[s]) >= 0 ? 1 : 0.55;
+        x.beginPath(); x.arc(SX + 10, sy, 9, 0, 6.2832); x.fill();
+        x.globalAlpha = 1;
+        x.strokeStyle = "#0d0e11"; x.lineWidth = 2;
+        x.beginPath(); x.arc(SX + 10, sy, 9, 0, 6.2832); x.stroke();
+        /* the screw that clamps it */
+        x.fillStyle = "#8a9098"; x.beginPath(); x.arc(SX + 36, sy, 5, 0, 6.2832); x.fill();
+      }
+
+      /* the cores, and anything already landed */
+      for (var w = 0; w < 4; w++) {
+        var col = COLOURS[w], wy = wireY(w);
+        var landedIdx = -1;
+        for (var k = 0; k < 4; k++) if (order[k] === w) landedIdx = k;
+        var isDone = done[w];
+        var ex = isDone ? SX + 10 : WX, ey = isDone ? sockY(landedIdx) : wy;
+        if (drag && drag.wire === w) { ex = drag.x; ey = drag.y; }
+
+        x.strokeStyle = col.core; x.lineWidth = 8; x.lineCap = "round";
+        x.beginPath();
+        x.moveTo(70, wy);
+        var sag = isDone ? 26 : 16;
+        x.bezierCurveTo(70 + (ex - 70) * 0.35, wy + sag, 70 + (ex - 70) * 0.7, ey + sag, ex, ey);
+        x.stroke();
+        x.strokeStyle = col.hex; x.lineWidth = 5;
+        x.beginPath();
+        x.moveTo(70, wy);
+        x.bezierCurveTo(70 + (ex - 70) * 0.35, wy + sag, 70 + (ex - 70) * 0.7, ey + sag, ex, ey);
+        x.stroke();
+        /* the stripped end */
+        x.fillStyle = isDone ? "#d8dde4" : "#b8bec8";
+        x.beginPath(); x.arc(ex, ey, 7, 0, 6.2832); x.fill();
+        if (isDone) {
+          x.fillStyle = "rgba(120,255,180,.5)";
+          x.beginPath(); x.arc(ex, ey, 12 + Math.sin(t * 4 + w) * 2, 0, 6.2832); x.fill();
+        }
+      }
+
+      /* the arc */
+      if (sparkT > 0 && sparkAt) {
+        x.strokeStyle = "rgba(200,235,255," + clamp(sparkT * 3, 0, 1) + ")";
+        x.lineWidth = 2;
+        for (var b = 0; b < 6; b++) {
+          x.beginPath();
+          var px = sparkAt.x, py = sparkAt.y;
+          x.moveTo(px, py);
+          for (var seg = 0; seg < 5; seg++) {
+            px += rnd(-16, 16); py += rnd(-16, 16);
+            x.lineTo(px, py);
+          }
+          x.stroke();
+        }
+        x.fillStyle = "rgba(255,255,255," + clamp(sparkT * 2, 0, 0.5) + ")";
+        x.fillRect(0, 0, cv.width, cv.height);
+      }
+
+      /* how many left */
+      var left = done.filter(function (d) { return !d; }).length;
+      x.fillStyle = "#9fb0d8"; x.font = "12px monospace"; x.textAlign = "right";
+      x.fillText(left ? left + " CORE" + (left > 1 ? "S" : "") + " LOOSE" : "SUPPLY RESTORED", cv.width - 24, cv.height - 16);
+    }
+
+    function pos(e) {
+      var r = cv.getBoundingClientRect();
+      var p = e.touches ? e.touches[0] : e;
+      return { x: (p.clientX - r.left) / r.width * cv.width,
+               y: (p.clientY - r.top) / r.height * cv.height };
+    }
+    function down(e) {
+      e.preventDefault();
+      var p = pos(e);
+      for (var w = 0; w < 4; w++) {
+        if (done[w]) continue;
+        if (Math.hypot(p.x - WX, p.y - wireY(w)) < 24) { drag = { wire: w, x: p.x, y: p.y }; return; }
+      }
+    }
+    function move(e) {
+      if (!drag) return;
+      e.preventDefault();
+      var p = pos(e); drag.x = p.x; drag.y = p.y;
+    }
+    function up(e) {
+      if (!drag) return;
+      e.preventDefault();
+      var p = pos(e), hit = -1;
+      for (var s = 0; s < 4; s++) if (Math.hypot(p.x - (SX + 10), p.y - sockY(s)) < 30) hit = s;
+      if (hit >= 0) {
+        if (order[hit] === drag.wire) {
+          done[drag.wire] = true;
+          Audio_.keyOk();
+          if (done.every(Boolean)) {
+            setTimeout(function () {
+              closeOverlay();
+              G.state = "play";
+              if (onDone) onDone();
+            }, 620);
+          }
+        } else {
+          sparkT = 0.45; sparkAt = { x: SX + 10, y: sockY(hit) };
+          Audio_.spark();
+          noise(G.player.x, G.player.z, TUNE.noiseSpark);
+          G.camRig.kick(0.14);
+        }
+      }
+      drag = null;
+    }
+    cv.addEventListener("mousedown", down); cv.addEventListener("touchstart", down, { passive: false });
+    window.addEventListener("mousemove", move); cv.addEventListener("touchmove", move, { passive: false });
+    window.addEventListener("mouseup", up); cv.addEventListener("touchend", up, { passive: false });
+
+    G.__panel = {
+      canvas: cv,
+      tick: function (dt) { if (sparkT > 0) sparkT -= dt; draw(); },
+      solve: function () {
+        done = [true, true, true, true];
+        draw();
+        setTimeout(function () { closeOverlay(); G.state = "play"; if (onDone) onDone(); }, 200);
+      }
+    };
+    draw();
+  }
+
+  /* ---- the checkpoint at the gates ---- */
+  function showCheck(onDone) {
+    var wrap = el("div", "ap-check");
+    wrap.appendChild(el("p", "ap-check-title", "ASHCOMBE RECEPTION — INTAKE"));
+    wrap.appendChild(el("p", "ap-check-sub", "Both of you. They will not open the inner gate until every line is ticked."));
+    var list = el("div", "ap-check-list");
+    var rows = [
+      ["Skin checked — arms, neck, hands", "OUISSY"],
+      ["Skin checked — arms, neck, hands", "ANWAR"],
+      ["Temperature taken", "both"],
+      ["Serum administered", "both"]
+    ];
+    var state = rows.map(function () { return false; });
+    var okBtn;
+    rows.forEach(function (r, i) {
+      var row = el("button", "ap-check-row");
+      row.appendChild(el("span", "ap-check-box"));
+      var tx = el("span", "ap-check-tx");
+      tx.appendChild(el("b", null, r[0]));
+      tx.appendChild(el("i", null, r[1]));
+      row.appendChild(tx);
+      row.addEventListener("click", function () {
+        state[i] = !state[i];
+        row.classList.toggle("on", state[i]);
+        Audio_.keyOk();
+        okBtn.disabled = !state.every(Boolean);
+      });
+      list.appendChild(row);
+    });
+    wrap.appendChild(list);
+    wrap.appendChild(el("p", "ap-check-stamp", "NOT BITTEN"));
+    okBtn = el("button", "ap-note-ok", "CLEARED");
+    okBtn.disabled = true;
+    okBtn.addEventListener("click", function () {
+      closeOverlay(); G.state = "play"; Audio_.found();
+      if (onDone) onDone();
+    });
+    wrap.appendChild(okBtn);
+    openOverlay(wrap);
+    G.__check = { all: function () { list.querySelectorAll(".ap-check-row").forEach(function (r) { r.click(); }); okBtn.click(); } };
+  }
+
+  /* ---- the serum ----
+     The radio said both are required, so both happen. A barrel, a plunger
+     that goes down when she presses it, and a needle. It is over in four
+     seconds and nobody makes anything of it, which is the point. */
+  function showSerum(onDone) {
+    var wrap = el("div", "ap-serum");
+    wrap.appendChild(el("p", "ap-check-title", "ASHCOMBE RECEPTION — INOCULATION"));
+    var cv = document.createElement("canvas");
+    cv.className = "ap-serum-canvas";
+    cv.width = 320; cv.height = 150;
+    wrap.appendChild(cv);
+    var line = el("p", "ap-serum-line", "\u201cSleeve up. Small scratch. Don't watch it if you don't want to.\u201d");
+    wrap.appendChild(line);
+    var b = el("button", "ap-note-ok", "SLEEVE UP");
+    wrap.appendChild(b);
+    openOverlay(wrap);
+
+    var x = cv.getContext("2d"), given = 0, done = false;
+    function draw() {
+      var W = cv.width, H = cv.height;
+      var g = x.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, "#1b2130"); g.addColorStop(1, "#0d1119");
+      x.fillStyle = g; x.fillRect(0, 0, W, H);
+      /* the tray it came off */
+      x.fillStyle = "#232a38"; x.fillRect(20, 108, W - 40, 22);
+      x.fillStyle = "#2c3446"; x.fillRect(20, 108, W - 40, 4);
+
+      var bx = 56, by = 62, bw = 150, bh = 26;
+      /* barrel */
+      x.fillStyle = "rgba(206,222,238,.22)";
+      x.fillRect(bx, by, bw, bh);
+      /* what is in it */
+      var fill = bw * (1 - given);
+      x.fillStyle = "#8fd8c4";
+      x.fillRect(bx + (bw - fill), by + 3, fill, bh - 6);
+      /* graduations */
+      x.strokeStyle = "rgba(220,235,245,.5)"; x.lineWidth = 1;
+      for (var i = 1; i < 6; i++) {
+        x.beginPath(); x.moveTo(bx + i * bw / 6, by); x.lineTo(bx + i * bw / 6, by + 7); x.stroke();
+      }
+      x.strokeStyle = "rgba(220,235,245,.75)"; x.lineWidth = 2;
+      x.strokeRect(bx, by, bw, bh);
+      /* plunger, going in */
+      var px0 = bx - 26 + given * (bw - 8);
+      x.fillStyle = "#c8d4e2"; x.fillRect(px0, by + 4, 26, bh - 8);
+      x.fillRect(px0 - 12, by - 6, 12, bh + 12);
+      /* needle */
+      x.fillStyle = "#aeb8c4"; x.fillRect(bx + bw, by + bh / 2 - 3, 16, 6);
+      x.fillStyle = "#dde6ef"; x.fillRect(bx + bw + 16, by + bh / 2 - 1, 46, 2);
+      /* a bead at the tip once it has gone in */
+      if (given > 0.15) {
+        x.fillStyle = "rgba(143,216,196," + (0.9 - given * 0.6) + ")";
+        x.beginPath(); x.arc(bx + bw + 62, by + bh / 2, 2 + given * 2, 0, 6.2832); x.fill();
+      }
+      x.fillStyle = "#7f8bb0"; x.font = "10px monospace"; x.textAlign = "left";
+      x.fillText(given >= 1 ? "DOSE GIVEN  x2" : "READY", 24, 124);
+    }
+    draw();
+
+    b.addEventListener("click", function () {
+      if (done) return;
+      if (given < 1) {
+        b.disabled = true;
+        var t0 = performance.now();
+        (function step() {
+          given = clamp((performance.now() - t0) / 1400, 0, 1);
+          draw();
+          if (given < 1) requestAnimationFrame(step);
+          else {
+            done = true;
+            b.disabled = false;
+            b.textContent = "THAT'S IT";
+            line.textContent = "\u201cRight. Both of you are clean. Sit there till the gate goes.\u201d";
+            Audio_.found();
+          }
+        })();
+        Audio_.beep();
+        return;
+      }
       closeOverlay();
       G.state = "play";
       if (onDone) onDone();
     });
-    wrap.appendChild(b);
-    openOverlay(wrap, "thin");
-    var n = 0;
-    sfx("tune");
-    var iv = setInterval(function () {
-      n = (n + 1) % RADIO.length;
-      line.textContent = RADIO[n];
-      sfx("static");
-    }, 3400);
+    G.__serum = { give: function () { b.click(); }, finish: function () { given = 1; done = true; b.click(); } };
   }
 
-  /* =======================================================================
-     24. OFFLINE TEST HOOKS
+  /* ---- pause ---- */
+  function togglePause() {
+    if (!G) return;
+    if (G.state === "paused") { closeOverlay(); G.state = G.__wasState || "play"; return; }
+    if (G.state === "overlay" || G.state === "cine") return;
+    G.__wasState = G.state;
+    G.state = "paused";
+    openOverlay(card("PAUSED", G.def ? G.def.name : "", [
+      ["MOVE", "arrows or WASD"],
+      ["CREEP", "hold shift — slower, almost silent"],
+      ["USE", "E or space"],
+      ["THE DARK", "you only see as far as your torch"]
+    ], "BACK TO IT", function () { closeOverlay(); G.state = G.__wasState || "play"; },
+       "LEAVE THE CHAPTER", function () {
+         closeOverlay();
+         if (window.leaveApocalypse) window.leaveApocalypse();
+         else Api.stop();
+       }));
+    G.state = "paused";
+  }
 
-        None of this runs while she plays and nothing in the game calls any
-        of it. It exists so the chapter can be driven from a headless
-        browser, which is the only way to actually see what it looks like.
+  /* =========================================================
+     22 — USING THINGS
+     ========================================================= */
+  function nearThings(range) {
+    var p = G.player, w = G.world, out = [];
+    var ptx = Math.floor(p.x / TILE), pty = Math.floor(p.z / TILE);
+    var r = range || 1;
+    for (var j = -r; j <= r; j++) for (var i = -r; i <= r; i++) {
+      var tx = ptx + i, ty = pty + j;
+      var c = w.at(tx, ty);
+      if (c === " ") continue;
+      var d = Math.hypot(w.cx(tx) - p.x, w.cz(ty) - p.z);
+      if (d > TILE * 1.5) continue;
+      out.push({ c: c, tx: tx, ty: ty, d: d });
+    }
+    /* Standing between the car and a dropped bottle, she reaches for the
+       car. Sorting on distance alone let a piece of scenery an identical
+       distance away win the tie and eat the press. */
+    var RANK = { C: 0, H: 0, A: 0, W: 0, T: 0, N: 0, Q: 0, G: 0, w: 0, g: 0,
+                 d: 1, D: 1, P: 1, i: 3, q: 3 };
+    out.sort(function (a, b) {
+      var ra = RANK[a.c] == null ? 2 : RANK[a.c];
+      var rb = RANK[b.c] == null ? 2 : RANK[b.c];
+      if (ra !== rb) return ra - rb;
+      return a.d - b.d;
+    });
+    return out;
+  }
 
-        requestAnimationFrame runs at about three frames a second in that
-        container, so anything that waits on the clock runs in slow motion
-        and proves nothing. __apPump steps the fixed timestep by hand
-        instead — the same lesson super-ouissy.js writes up at its foot.
-     ======================================================================= */
-  window.__apEnter = function (i, withIntro) {
+  function tryUse() {
+    if (!G || G.state !== "play") return;
+    var w = G.world, p = G.player;
+    var list = nearThings(1);
+
+    /* him first — she is not going to walk past him to open a door */
+    if (G.anwar && !G.anwar.found) {
+      var da = Math.hypot(G.anwar.x - p.x, G.anwar.z - p.z);
+      if (da < TILE * 1.8) { wakeAnwar(); return; }
+    }
+    if (G.horse) {
+      var dh = Math.hypot(G.horse.x - p.x, G.horse.z - p.z);
+      if (dh < TILE * 2.2) { meetHorse(); return; }
+    }
+
+    for (var i = 0; i < list.length; i++) {
+      var it = list[i], c = it.c;
+
+      if (c === "T") { showTV(); return; }
+      if (c === "W") {
+        showPanel(function () {
+          w.powered = true;
+          /* every dead door in the building lets go at once */
+          w.doors.forEach(function (d) { if (d.kind === "P") { d.locked = false; d.want = 1; } });
+          noise(p.x, p.z, TUNE.noiseDoor);
+          Audio_.found();
+          clearStep("panel");
+        });
+        return;
+      }
+      if (c === "N") { showNote(); return; }
+      if (c === "i") { pickUp(it); return; }
+      if (c === "C") { takeTheCar(); return; }
+      if (c === "w" || c === "g") { gatherWood(it); return; }
+      if (c === "Q") { atTheDesk(); return; }
+
+      if ("dDPG".indexOf(c) >= 0) {
+        var d = doorAtTile(w, it.tx, it.ty);
+        if (!d) continue;
+        if (d.open > 0.5) { d.want = 0; Audio_.door(); return; }
+        if (d.kind === "D" && d.locked) {
+          if (!G.code) { say([[null, "There is a keypad on it. She does not have the number."]]); return; }
+          showKeypad(d); return;
+        }
+        if (d.kind === "P" && d.locked) {
+          say([[null, "Dead. Whatever runs this door is not running."]]);
+          return;
+        }
+        if (d.kind === "G" && d.locked) { hailTheGate(); return; }
+        d.want = 1;
+        Audio_.door();
+        noise(w.cx(it.tx), w.cz(it.ty), TUNE.noiseDoor);
+        return;
+      }
+    }
+
+    /* the fire pit, once she has the wood */
+    if (w.firePitAt) {
+      var dp = Math.hypot(w.cx(w.firePitAt.x) - p.x, w.cz(w.firePitAt.y) - p.z);
+      if (dp < TILE * 2.2 && step() && step().clears === "fire") { lightTheFire(); return; }
+    }
+    say([[null, "Nothing here."]]);
+  }
+
+  function pickUp(it) {
+    /* the small finds: a torch battery, a bottle of water, somebody's
+       keys. They are not inventory — they are a reason to look around. */
+    var lines = [
+      "A bottle of water, still cold. She drinks half of it and puts the rest in her coat.",
+      "Somebody's keys. She puts them down again.",
+      "Batteries. She swaps them into the torch and the beam comes back up.",
+      "A phone with no signal and eleven percent left. She takes it anyway.",
+      "A packet of biscuits. She eats two of them standing up."
+    ];
+    say([[null, pick(lines)]]);
+    Audio_.found();
+    /* take it out of the world */
+    for (var i = 0; i < G.world.things.length; i++) {
+      var t = G.world.things[i];
+      if (t.kind === "item" && t.x === it.tx && t.y === it.ty && t.group) {
+        t.group.visible = false;
+        G.world.cells[it.ty][it.tx] = G.def.base || ".";
+      }
+    }
+  }
+
+  /* =========================================================
+     23 — BEING CAUGHT
+     Not a death. A hand on her arm, a second of answering it,
+     and then she is somewhere further back than she was.
+     ========================================================= */
+  function beginGrab(z) {
+    if (G.state !== "play") return;
+    G.state = "grab";
+    G.grab = { z: z, t: TUNE.grabWindow, presses: 0, start: anyPressed };
+    Audio_.caught();
+    G.camRig.kick(0.5);
+    var box = $("ap-grab");
+    if (box) {
+      box.setAttribute("aria-hidden", "false");
+      var bar = box.querySelector(".ap-grab-bar i");
+      if (bar) bar.style.width = "100%";
+    }
+  }
+
+  function updateGrab(dt) {
+    var g = G.grab;
+    if (!g) return;
+    g.t -= dt;
+    g.presses = anyPressed - g.start;
+    G.redPulse = 0.35 + Math.sin(G.time * 22) * 0.14;
+    var box = $("ap-grab");
+    if (box) {
+      var bar = box.querySelector(".ap-grab-bar i");
+      if (bar) bar.style.width = clamp(g.t / TUNE.grabWindow, 0, 1) * 100 + "%";
+    }
+    /* she pulls the arm back and it lets go */
+    if (g.presses >= 2) { endGrab(true); return; }
+    if (g.t <= 0) endGrab(false);
+  }
+
+  function endGrab(broke) {
+    var g = G.grab;
+    G.grab = null;
+    var box = $("ap-grab");
+    if (box) box.setAttribute("aria-hidden", "true");
+    if (broke) {
+      /* she gets away with it: it staggers back and loses her */
+      G.state = "play";
+      G.redPulse = 0;
+      if (g && g.z) {
+        g.z.state = "look"; g.z.timer = 1.2;
+        g.z.x -= Math.cos(g.z.facing) * TILE * 0.8;
+        g.z.z -= Math.sin(g.z.facing) * TILE * 0.8;
+      }
+      Audio_.thump(0.14);
+      G.camRig.kick(0.22);
+      return;
+    }
+    closeCall();
+  }
+
+  function closeCall() {
+    G.closeT = TUNE.caughtHold;
+    G.closeCalls++;
+    G.redPulse = 0.5;
+    Audio_.heart(2);
+    /* the beat is put up first: openOverlay claims the state for itself,
+       and claiming it after would leave the hold running forever */
+    showCloseCall();
+    G.state = "close";
+    setHud();
+  }
+
+  function endCloseCall() {
+    var p = G.player;
+    p.x = p.safe.x; p.z = p.safe.z;
+    p.vx = p.vz = 0;
+    G.camRig.snap();
+    G.redPulse = 0;
+    /* everything that was after her forgets where she went */
+    G.zombies.forEach(function (z) {
+      z.state = "calm"; z.look = null; z.lose = 0; z.timer = rnd(1, 3);
+      var d = Math.hypot(z.x - p.x, z.z - p.z);
+      if (d < 5 * TILE) {
+        var a = Math.atan2(z.z - p.z, z.x - p.x);
+        z.x += Math.cos(a) * TILE * 2.5;
+        z.z += Math.sin(a) * TILE * 2.5;
+      }
+    });
     closeOverlay();
-    G.levelIndex = i;
-    G.level = buildLevel(LEVELS[i]);
-    G.player = mkPlayer(G.level.start.x, G.level.start.y);
-    G.safe = { x: G.level.start.x, y: G.level.start.y };
-    G.stepIndex = 0;
-    G.steps = G.level.def.steps || [];
-    G.step = G.steps[0];
     G.state = "play";
-    G.keys = freshKeys();
-    G.pressure = 0;
-    G.pressureT = PRESSURE_EVERY;
-    G.motes = null; G.near = null;
-    startBed(bedFor(G.level.def));
-    snapCam(G);
-    setHud(G);
-    if (withIntro && LEVEL_INTRO[i]) LEVEL_INTRO[i](G);
-    return { w: G.level.w, h: G.level.h, zombies: G.level.zombies.length,
-             things: G.level.things.map(function (t) { return t.kind; }) };
-  };
+  }
 
-  window.__apPump = function (secs, keys) {
-    if (!G || !G.level) return { error: "no level is loaded" };
-    var was = G.keys;
-    G.keys = Object.assign(freshKeys(), keys || {});
-    for (var i = 0; i < Math.round(secs * 60); i++) step(G, STEP);
-    G.keys = was;
-    stepCam(G);
-    return { x: Math.round(G.player.x), y: Math.round(G.player.y), state: G.state,
-             hidden: G.player.hidden, closeCalls: G.closeCalls, step: G.step && G.step.clears };
-  };
-
-  window.__apPaint = function () { if (G && G.level) { stepCam(G); paint(G); } };
-
-  window.__apTeleport = function (tx, ty) {
-    if (!G || !G.level) return { error: "no level is loaded" };
-    G.player.x = tx * T + T / 2; G.player.y = ty * T + T / 2;
-    G.player.vx = 0; G.player.vy = 0;
-    snapCam(G);
-    return { x: G.player.x, y: G.player.y };
-  };
-
-  /* open one of the overlays directly, for looking at it */
-  window.__apOpen = function (what) {
-    if (what === "panel") {
-      var t = G.level.things.filter(function (t) { return t.kind === "panel"; })[0] || { done: false };
-      useThing(G, t);
-    } else if (what === "note") {
-      var n = G.level.things.filter(function (t) { return t.kind === "note"; })[0];
-      if (n) useThing(G, n); else showNote(G, { done: false }, NOTES[0] ? NOTES[0].text : "test", "1408");
-    } else if (what === "tv") {
-      var v = G.level.things.filter(function (t) { return t.kind === "tv"; })[0];
-      if (v) useThing(G, v);
-    } else if (what === "keypad") {
-      openKeypad(G, { open: false, kind: "locked" }, "1408", function () {});
-    } else if (what === "caught") {
-      caught(G); G.caughtT = 0.4; G.caughtShown = true; showCloseCall(G);
-    } else if (what === "card") {
-      showLevelCard(G.levelIndex, function () {});
-    } else if (what === "howto") {
-      showHowTo();
+  /* =========================================================
+     24 — THE HOSPITAL FILLS UP
+     Nobody tells her this is happening.
+     ========================================================= */
+  function updatePressure(dt) {
+    if (!G.def.pressure) return;
+    G.pressureT += dt;
+    G.pressure = clamp(G.zombies.length / 22, 0, 1);
+    Audio_.pressure(G.pressure);
+    if (G.pressureT >= G.def.pressure && G.zombies.length < 24) {
+      G.pressureT = 0;
+      var w = G.world;
+      /* they come in the front, which is the bottom of the map */
+      var entry = nearestFree(w, Math.floor(w.w / 2), w.h - 3);
+      var z = makeZ(w, G.scene, entry.x, entry.y, G.zombies.length + 7, "drawn");
+      z.state = "look";
+      z.look = { x: G.player.x, z: G.player.z };
+      z.timer = TUNE.zInvestigate * 2;
+      G.zombies.push(z);
+      Audio_.thump(0.06);
     }
-  };
+  }
 
-  window.__apUse = function () { if (G && G.level) doUse(G); };
-  window.__apPanelState = function () {
-    if (!G.__panel) return null;
-    var P = G.__panel.P;
-    return { w: PW_W, h: PW_H, done: P.done, count: P.count,
-             wires: P.wires.map(function (w) { return { key: w.key, ex: w.ex, ey: w.ey, placed: !!w.placed }; }),
-             sockets: P.sockets.map(function (s) { return { key: s.key, x: s.x, y: s.y, filled: s.filled }; }) };
-  };
-  window.__apDrive = function () {
-    cutscene(G, { dur: 9.5, caption: "Out past the ring road, and then twenty miles of nobody.",
-      paint: paintDrive, onDone: function () { enterSubmap(G, SUBMAPS.roadside, [5, 4]); } });
-  };
-  window.__apRide = function () {
-    cutscene(G, { dur: 9, caption: "It takes most of the morning, and neither of them minds.",
-      paint: paintRide, onDone: function () {} });
-  };
-  window.__apKeypadType = function (code) {
-    if (!G.__keypad) return false;
-    G.__keypad.enter(code);
-    G.__keypad.ok();
-    return true;
-  };
-  window.__apArt = function () { return buildArt(); };
-  window.__apAudio = function () {
-    return { ctx: !!actx, bed: bed && bed.which,
-             hordeGain: horde && horde.g ? horde.g.gain.value : -1,
-             near: horde ? horde.near : -1, heart: !!heart };
-  };
-  window.__apGrabbed = function () { return !!(G && G.grab); };
-  window.__apGrabPress = function () { grabPress(G); };
-  window.__apBrokeFree = function () { return G.brokeFree || 0; };
-  window.__apSay = function (lines) { say(G, lines); };
-  window.__apKeys = function () { return G.keys; };
-  window.__apPos = function () { return { x: G.player.x, y: G.player.y }; };
-  window.__apVel = function () { return { vx: Math.round(G.player.vx), vy: Math.round(G.player.vy), frames: G.__frames || 0, steps: G.__steps || 0 }; };
-  window.__apMapKey = function () { return G.level.def.key || G.level.def.name; };
-  window.__apZombies = function () {
-    return G.level.zombies.map(function (z) { return { x: z.x, y: z.y, state: z.state, kind: z.kind, skin: z.skin }; });
-  };
-  window.__apMoveZombie = function (i, tx, ty) {
-    var z = G.level.zombies[i];
-    z.x = tx * T + T / 2; z.y = ty * T + T / 2;
-    return { x: z.x, y: z.y };
-  };
-  /* =======================================================================
-     THE AUDIT
+  /* =========================================================
+     25 — THE BEATS
+     ========================================================= */
+  function wakeAnwar() {
+    var a = G.anwar;
+    if (!a || a.found) return;
+    a.found = true;
+    G.state = "dialogue";
+    /* he sits up: the rig comes off its side over three quarters of a second */
+    var t0 = 0;
+    G.anim = function (dt) {
+      t0 += dt;
+      var k = clamp(t0 / 0.8, 0, 1);
+      a.rig.root.rotation.z = -Math.PI / 2 * (1 - k);
+      a.rig.root.position.y = 0.62 * (1 - k);
+      if (k >= 1) G.anim = null;
+    };
+    say(TALK.wake, function () {
+      a.following = true;
+      a.asleep = false;
+      G.withAnwar = true;
+      clearStep("anwar");
+    });
+  }
 
-        A level can be perfectly well formed and still be unfinishable,
-        because one tile of furniture landed in front of the one door she
-        has to go through. That is exactly what happened to the garage: a
-        cabinet was dressed into the tile directly below its door, and
-        nothing in the build or the tests had any opinion about it.
+  function meetHorse() {
+    if (!G.horse || G.horse.met) return;
+    G.horse.met = true;
+    Audio_.hoof();
+    say(TALK.horse, function () {
+      clearStep("horse");
+    });
+  }
 
-        This walks every level with the game's own solidity and door rules
-        and answers the only questions that matter: can she reach the thing
-        she is told to reach, in the order she is told to reach it, and is
-        anything standing somewhere it cannot be. It runs against the real
-        buildLevel, so it cannot drift away from what the game does.
-     ======================================================================= */
-  window.__apDepthTest = function (tx, ty) {
+  function takeTheCar() {
+    if (G.__carTaken) return;
+    G.__carTaken = true;
+    Audio_.engine("start");
+    say([
+      [null, "The key is in it. Somebody meant to come back."],
+      [null, "It turns over twice, and catches."]
+    ], function () {
+      clearStep("car");
+    });
+  }
+
+  function gatherWood(it) {
+    if (G.__gathering) return;
+    G.wood = G.wood || 0;
+    if (G.wood >= 3) return;
+    G.__gathering = true;
+    var idx = G.wood;
+    G.wood++;
+    setHud();
+    Audio_.found();
+    /* take that pile out of the world so she cannot farm it */
+    for (var i = 0; i < G.world.things.length; i++) {
+      var t = G.world.things[i];
+      if ((t.kind === "wood" || t.kind === "gather") && t.x === it.tx && t.y === it.ty) {
+        if (t.group) t.group.visible = false;
+        G.world.cells[it.ty][it.tx] = ",";
+      }
+    }
+    say(TALK.wood[idx], function () {
+      G.__gathering = false;
+      if (G.wood >= 3) clearStep("wood");
+    });
+  }
+
+  function lightTheFire() {
+    if (G.__lighting) return;
+    G.__lighting = true;
+    say(TALK.fire, function () {
+      var f = G.world.fire;
+      if (f) {
+        f.visible = true;
+        f.userData.strength = 0;
+        var t0 = 0;
+        G.anim = function (dt) {
+          t0 += dt;
+          f.userData.strength = clamp(t0 / 2.2, 0, 1);
+          if (t0 > 2.4) G.anim = null;
+        };
+      }
+      Audio_.fire();
+      clearStep("fire");
+    });
+  }
+
+  function atTheDesk() {
+    if (!step() || step().clears !== "check") { say([[null, "There is nobody at the table yet."]]); return; }
+    showCheck(function () {
+      showSerum(function () { clearStep("check"); openGates(); });
+    });
+  }
+
+  function hailTheGate() {
+    if (step() && step().clears === "hail") {
+      say([
+        [null, "There is somebody in a high-vis on the other side of the wire, and they have seen her coming for about a mile."],
+        [null, "“Stop there. Both of you. Hands where I can see them.”"],
+        [null, "“Right. Through, and sit at the table. Don't touch anything.”"]
+      ], function () {
+        clearStep("hail");
+        /* the outer gate rolls back */
+        G.world.doors.forEach(function (d) {
+          if (d.kind === "G" && d.x < G.world.w / 2) { d.locked = false; d.want = 1; }
+        });
+        Audio_.door();
+      });
+      return;
+    }
+    say([[null, "It is not open yet."]]);
+  }
+
+  function openGates() {
+    G.world.doors.forEach(function (d) { if (d.kind === "G") { d.locked = false; d.want = 1; } });
+    Audio_.door();
+  }
+
+  /* =========================================================
+     26 — WHERE EACH LEVEL GOES NEXT
+     ========================================================= */
+  function onLevelDone() {
+    var id = G.def.id;
+    if (id === "home")      { fadeTo(function () { levelCard(1); }); return; }
+    if (id === "streets")   { fadeTo(function () { levelCard(2); }); return; }
+    if (id === "hospital")  { afterHospital(); return; }
+    if (id === "escape")    { fadeTo(function () { playDrive(); }); return; }
+    if (id === "roadside")  { fadeTo(function () { playRide(); }); return; }
+    if (id === "campsite")  { afterFire(); return; }
+    if (id === "gates")     { fadeTo(function () { playRooftop(); }); return; }
+  }
+
+  function afterHospital() {
+    /* the room with the bolt on the door */
+    G.state = "dialogue";
+    say(TALK.hide, function () {
+      showRadio(function () {
+        fadeTo(function () { levelCard(3); });
+      });
+    });
+  }
+
+  function afterFire() {
+    say(TALK.lit, function () {
+      say(TALK.campfire, function () {
+        fadeTo(function () { playCampfire(); });
+      });
+    });
+  }
+
+  /* =========================================================
+     27 — FADES
+     ========================================================= */
+  function fadeTo(then) {
+    if (!G) { then(); return; }
+    G.fadeTo = 0;
+    G.fadeThen = then;
+  }
+
+  function updateFade(dt) {
+    if (G.fade === G.fadeTo) {
+      if (G.fadeThen && G.fade <= 0.001) { var f = G.fadeThen; G.fadeThen = null; f(); }
+      return;
+    }
+    var k = 1 - Math.pow(0.004, dt);
+    G.fade = lerp(G.fade, G.fadeTo, k);
+    if (Math.abs(G.fade - G.fadeTo) < 0.008) {
+      G.fade = G.fadeTo;
+      if (G.fadeThen && G.fade <= 0.001) { var g = G.fadeThen; G.fadeThen = null; g(); }
+    }
+    Stage.grade({ fade: G.fade });
+  }
+
+  /* =========================================================
+     28 — THE CUTS
+     Each of these is a scene of its own with its own camera. The
+     game's scene is left alone underneath and picked up again
+     afterwards, or thrown away if the story has moved on.
+     ========================================================= */
+  function caption(text) {
+    var o = overlay();
+    o.innerHTML = "";
+    o.className = "ap-overlay cut";
+    o.style.background = "transparent";
+    o.style.alignItems = "flex-end";
+    o.style.justifyContent = "center";
+    o.style.paddingBottom = "5%";
+    o.style.pointerEvents = "none";
+    if (text) o.appendChild(el("p", "ap-cut-cap", text));
+    o.setAttribute("aria-hidden", "false");
+  }
+
+  function runCine(c) {
+    G.state = "cine";
+    G.dlg = null;
+    var box = $("ap-dlg");
+    if (box) box.setAttribute("aria-hidden", "true");
+    G.cine = c;
+    G.cine.t = 0;
+    var hud = $("ap-hud");
+    if (hud) hud.classList.add("gone");
+    Stage.attach(c.scene, c.camera);
+    Stage.grade(c.grade || {});
+    Stage.grade({ fade: 1 });
+    G.fade = 1; G.fadeTo = 1;
+    caption(c.caption || "");
+  }
+
+  function disposeScene(scene) {
+    if (!scene) return;
+    var shared = [];
+    for (var k in GEO) shared.push(GEO[k]);
+    scene.traverse(function (o) {
+      if (o.geometry && shared.indexOf(o.geometry) < 0 && o.geometry.dispose) o.geometry.dispose();
+      if (o.isInstancedMesh && o.dispose) o.dispose();
+    });
+  }
+
+  function endCine(then) {
+    if (G.cine) disposeScene(G.cine.scene);
+    G.cine = null;
+    var hud = $("ap-hud");
+    if (hud) hud.classList.remove("gone");
     closeOverlay();
-    G.levelIndex = 0;
-    enterSubmap(G, SUBMAPS.depthtest, [tx === undefined ? 15 : tx, ty === undefined ? 6 : ty]);
-    G.steps = SUBMAPS.depthtest.steps;
-    G.step = G.steps[0];
-    setHud(G);
-    return { w: G.level.w, h: G.level.h, far: !!G.level.far, occluders: G.level.occluders.length };
-  };
+    if (then) then();
+  }
 
-  window.__apLevel = function () {
-    var L = G.level;
-    return { w: L.w, h: L.h, farH: L.far ? L.far.height : 0, occluders: L.occluders.length };
-  };
-
-  window.__apGrids = function () {
-    var o = {};
-    LEVELS.forEach(function (d, i) { o["L" + (i + 1) + " " + d.name] = d.grid; });
-    Object.keys(SUBMAPS).forEach(function (k) { o["sub " + k] = SUBMAPS[k].grid; });
-    return o;
-  };
-
-  window.__apAudit = function () {
-    var report = [];
-
-    function floodFrom(L, sx, sy, openKinds) {
-      var seen = {}, stack = [[sx, sy]];
-      function solidHere(x, y) {
-        var ch = at(L, x, y);
-        if (ch === " ") return true;
-        var d = L.doors[x + "," + y];
-        if (d) return !(d.open || openKinds.indexOf(d.kind) >= 0);
-        return SOLID.indexOf(ch) >= 0;
+  /* ---- rolling country, used by the drive and the ride ---- */
+  function landscape(scene, opts) {
+    var far = opts.far || 0x1a2038, mid = opts.mid || 0x232a44, near = opts.near || 0x2c3450;
+    var lengths = [1400, 1100, 900];
+    [[ -160, far, 46, 0.9 ], [ -105, mid, 34, 1.0 ], [ -62, near, 24, 1.1 ]].forEach(function (L, li) {
+      var z = L[0], colour = L[1], amp = L[2], sc = L[3];
+      var pts = [];
+      var span = lengths[li];
+      for (var i = 0; i <= 90; i++) {
+        var x = -span / 2 + (i / 90) * span * 2;
+        var y = Math.sin(i * 0.31 + li * 2) * amp * 0.5 +
+                Math.sin(i * 0.13 + li) * amp * 0.5 +
+                Math.sin(i * 0.7 + li * 3) * amp * 0.12;
+        pts.push(new THREE.Vector2(x, y - 4));
       }
-      while (stack.length) {
-        var p = stack.pop(), x = p[0], y = p[1], k = x + "," + y;
-        if (seen[k]) continue;
-        if (x < 0 || y < 0 || x >= L.w || y >= L.h) continue;
-        if (solidHere(x, y)) continue;
-        seen[k] = true;
-        stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+      var shape = new THREE.Shape();
+      shape.moveTo(pts[0].x, -200);
+      pts.forEach(function (p) { shape.lineTo(p.x, p.y); });
+      shape.lineTo(pts[pts.length - 1].x, -200);
+      shape.closePath();
+      var m = new THREE.Mesh(new THREE.ShapeGeometry(shape),
+        new THREE.MeshBasicMaterial({ color: colour, fog: false }));
+      m.position.z = z;
+      m.scale.setScalar(sc);
+      m.renderOrder = -500 + li;
+      scene.add(m);
+    });
+    /* trees on the near ridge, as silhouettes */
+    var tg = new THREE.ConeGeometry(2.4, 9, 6);
+    var tm = new THREE.MeshBasicMaterial({ color: opts.tree || 0x141a2c, fog: false });
+    var im = new THREE.InstancedMesh(tg, tm, 60);
+    var d = new THREE.Object3D();
+    for (var i = 0; i < 60; i++) {
+      d.position.set(-420 + Math.random() * 1400, rnd(-6, 8), -58 + rnd(-6, 6));
+      d.scale.setScalar(rnd(0.6, 1.8));
+      d.rotation.set(0, Math.random() * 3, 0);
+      d.updateMatrix(); im.setMatrixAt(i, d.matrix);
+    }
+    im.renderOrder = -496;
+    scene.add(im);
+    return im;
+  }
+
+  function roadStrip(scene, opts) {
+    var g = new THREE.Group();
+    var road = new THREE.Mesh(new THREE.PlaneGeometry(2000, 16, 200, 1),
+      surface("asphalt", { repeat: 1, rough: 0.95, bumpScale: 0.5 }));
+    road.material = road.material.clone();
+    road.material.map = tex("asphalt", 256, 1);
+    road.material.map.repeat.set(200, 2);
+    road.material.bumpMap = bump("asphalt", 256, 1);
+    road.rotation.x = -Math.PI / 2;
+    road.receiveShadow = true;
+    g.add(road);
+    /* the dashes down the middle */
+    var dash = new THREE.InstancedMesh(new THREE.PlaneGeometry(3.4, 0.34),
+      new THREE.MeshBasicMaterial({ color: 0xd8d4c0 }), 200);
+    var d = new THREE.Object3D();
+    for (var i = 0; i < 200; i++) {
+      d.position.set(-900 + i * 9, 0.03, 0);
+      d.rotation.x = -Math.PI / 2;
+      d.updateMatrix(); dash.setMatrixAt(i, d.matrix);
+    }
+    g.add(dash);
+    /* the verge */
+    [-1, 1].forEach(function (s) {
+      var edge = new THREE.Mesh(new THREE.PlaneGeometry(2000, 0.28),
+        new THREE.MeshBasicMaterial({ color: 0xb8b4a4 }));
+      edge.rotation.x = -Math.PI / 2;
+      edge.position.set(0, 0.03, s * 7);
+      g.add(edge);
+      var verge = new THREE.Mesh(new THREE.PlaneGeometry(2000, 26),
+        surface("grass", { repeat: 1 }));
+      verge.material = verge.material.clone();
+      verge.material.map = tex("grass", 256, 1);
+      verge.material.map.repeat.set(200, 3);
+      verge.rotation.x = -Math.PI / 2;
+      verge.position.set(0, -0.02, s * 21);
+      verge.receiveShadow = true;
+      g.add(verge);
+    });
+    /* telegraph poles and fence posts running away down the road */
+    var poleG = new THREE.CylinderGeometry(0.16, 0.22, 9, 6); poleG.translate(0, 4.5, 0);
+    var poleM = new THREE.MeshStandardMaterial({ color: 0x3a2e22, roughness: 0.95 });
+    var poles = new THREE.InstancedMesh(poleG, poleM, 46);
+    var arms = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, 0.14, 2.2), poleM, 46);
+    for (var k = 0; k < 46; k++) {
+      d.position.set(-600 + k * 34, 0, 13.5); d.rotation.set(0, 0, 0); d.scale.setScalar(1);
+      d.updateMatrix(); poles.setMatrixAt(k, d.matrix);
+      d.position.y = 8.2; d.updateMatrix(); arms.setMatrixAt(k, d.matrix);
+    }
+    poles.castShadow = true;
+    g.add(poles); g.add(arms);
+
+    var fenceG = new THREE.BoxGeometry(0.12, 1.2, 0.12); fenceG.translate(0, 0.6, 0);
+    var fence = new THREE.InstancedMesh(fenceG, poleM, 240);
+    for (var f = 0; f < 240; f++) {
+      d.position.set(-700 + f * 6, 0, -13.5 + (f % 2 ? 0 : 0)); d.scale.setScalar(1);
+      d.updateMatrix(); fence.setMatrixAt(f, d.matrix);
+    }
+    g.add(fence);
+    scene.add(g);
+    return g;
+  }
+
+  /* ---- THE DRIVE ---- */
+  function playDrive() {
+    var scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x0c1024, 0.0055);
+    var cam = new THREE.PerspectiveCamera(38, Stage.camera.aspect, 0.4, 900);
+
+    var sky = makeSky();
+    sky.u.cLow.value.set(0x1a2244); sky.u.cMid.value.set(0x0d1230); sky.u.cHigh.value.set(0x05070f);
+    sky.u.sunCol.value.set(0x8fa8d8); sky.u.sunAmt.value = 0.25;
+    sky.u.sunDir.value.set(-0.9, 0.12, 0.2).normalize();
+    scene.add(sky.mesh);
+    var stars = makeStars(600, 400);
+    scene.add(stars.points);
+    var moon = makeMoon(7); moon.position.set(-260, 120, -180); scene.add(moon);
+
+    landscape(scene, { far: 0x121834, mid: 0x171d3a, near: 0x1c2340, tree: 0x0d1226 });
+    roadStrip(scene, {});
+
+    scene.add(new THREE.HemisphereLight(0x33436e, 0x0d1220, 1.05));
+    var moonLight = new THREE.DirectionalLight(0xa8c0ff, 0.85);
+    moonLight.position.set(-60, 40, -40);
+    scene.add(moonLight);
+    scene.add(new THREE.AmbientLight(0x1c2440, 0.6));
+
+    /* the car */
+    var car = (function () {
+      var w = { }; /* makeCar lives on a world; rebuild it standalone */
+      return buildStandaloneCar();
+    })();
+    scene.add(car.group);
+    car.group.position.set(0, 0, 0);
+
+    /* two of them in it, just visible through the glass */
+    var her = makeOuissy(); her.root.scale.setScalar(0.82);
+    her.root.position.set(-0.1, 0.52, 0.42); her.root.rotation.y = -Math.PI / 2;
+    poseHuman(her, 0, 0, null, { crouch: 1 });
+    car.group.add(her.root);
+    var him = makeAnwar(); him.root.scale.setScalar(0.82);
+    him.root.position.set(-0.1, 0.52, -0.42); him.root.rotation.y = -Math.PI / 2;
+    poseHuman(him, 0, 0, null, { crouch: 1 });
+    car.group.add(him.root);
+
+    /* headlights: two spots, and the beams you can see in the mist */
+    var beams = [];
+    [0.62, -0.62].forEach(function (s) {
+      var sp = new THREE.SpotLight(0xfff2d4, 220, 120, 0.34, 0.5, 1.0);
+      sp.position.set(1.9, 0.78, s);
+      sp.target.position.set(34, -1.4, s * 2.6);
+      car.group.add(sp); car.group.add(sp.target);
+      var cg = new THREE.CylinderGeometry(0.26, 5.0, 40, 16, 1, true);
+      cg.translate(0, -20, 0); cg.rotateZ(-Math.PI / 2);
+      var cm = new THREE.MeshBasicMaterial({
+        color: 0xffe8c0, transparent: true, opacity: 0.11,
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+      var beam = new THREE.Mesh(cg, cm);
+      beam.position.set(1.9, 0.78, s);
+      beam.rotation.z = -0.035;
+      car.group.add(beam);
+      beams.push({ spot: sp, beam: beam });
+    });
+    var tail = new THREE.PointLight(0xff3322, 6, 9);
+    tail.position.set(-2.3, 0.8, 0);
+    car.group.add(tail);
+    /* a soft top light so the car is a shape and not a hole in the road */
+    var carFill = new THREE.PointLight(0x94aee0, 3.2, 7, 1.6);
+    carFill.position.set(-1.2, 3.0, 0);
+    car.group.add(carFill);
+
+    /* mist drifting through the beams */
+    var mist = makeMotes(0xbfd0ff, 300, 260, 40);
+    mist.points.position.set(-40, 0, -20);
+    scene.add(mist.points);
+
+    /* a few of them at the edge of the light, which is the whole point
+       of driving at night in this */
+    var standing = [];
+    for (var i = 0; i < 7; i++) {
+      var z = makeZombie(i + 3);
+      z.root.position.set(120 + i * 46 + rnd(-14, 14), 0, rnd(-6, 6));
+      z.root.rotation.y = rnd(0, 6.28);
+      scene.add(z.root);
+      standing.push(z);
+    }
+
+    var speed = 30, dead = false, steam = null;
+    Audio_.engine("start");
+
+    runCine({
+      scene: scene, camera: cam,
+      caption: "Out past the ring road, and then twenty miles of nobody.",
+      grade: { gradeCol: 0x4a6ab4, gradeAmt: 0.16, hazeCol: 0x141c34, hazeAmt: 0.34,
+               vig: 0.8, grain: 0.05, sat: 1.0, fringe: 0.002, redPulse: 0, exposure: 1.0 },
+      update: function (dt, t) {
+        /* the tank going */
+        if (t > 8.5 && !dead) { dead = true; }
+        if (dead) speed = Math.max(0, speed - dt * 5.4);
+        else speed = Math.min(34, speed + dt * 4);
+
+        car.group.position.x += speed * dt;
+        car.spin(speed * dt);
+        car.group.position.y = Math.sin(t * 9) * 0.012 * (speed / 30);
+        car.group.rotation.z = Math.sin(t * 3.1) * 0.006;
+
+        /* the camera runs alongside and slightly behind */
+        var cx0 = car.group.position.x;
+        cam.position.set(cx0 - 8.8 + Math.sin(t * 0.35) * 0.7, 2.85 + Math.sin(t * 0.5) * 0.12, 0.9);
+        cam.lookAt(cx0 + 13, 1.35, 0.15);
+
+        stars.u.time.value = t;
+        sky.u.time.value = t;
+        mist.u.time.value = t;
+        mist.u.near.value.set(cx0 + 10, 1, 0);
+        mist.points.position.x = cx0 - 60;
+
+        beams.forEach(function (b) {
+          b.beam.material.opacity = 0.10 + 0.025 * Math.sin(t * 4);
+          b.spot.intensity = dead ? Math.max(30, 220 - (t - 8.5) * 70) : 220;
+        });
+        tail.intensity = 2.4 + Math.sin(t * 6) * 0.4;
+
+        standing.forEach(function (z, i) {
+          poseHuman(z, t + i, 0.2, "z");
+          z.root.rotation.y += dt * 0.2;
+        });
+
+        if (dead && !steam && t > 9.4) {
+          steam = makeFire();
+          steam.userData.strength = 0.22;
+          steam.scale.set(0.5, 0.5, 0.5);
+          steam.position.set(1.5, 1.0, 0);
+          car.group.add(steam);
+          Audio_.static(1.2, 0.05);
+        }
+        if (steam) steam.userData.update(t, dt);
+
+        if (t > 6.2 && t < 6.4) caption("The tank has been on the light for an hour.");
+        if (t > 10.5 && t < 10.7) caption("It coughs twice and stops, and neither of them says anything.");
+      },
+      duration: 13.6,
+      done: function () {
+        endCine(function () {
+          enterSub("roadside");
+        });
       }
-      return seen;
+    });
+  }
+
+  /* the drive and the ride both need a car that is not attached to a
+     level, so the builder is lifted out here */
+  function buildStandaloneCar() {
+    var paint = new THREE.MeshStandardMaterial({
+      color: 0x8a3a44, roughness: 0.42, metalness: 0.55,
+      map: tex("metal", 128, 1), bumpMap: bump("metal", 128, 1), bumpScale: 0.05 });
+    var glass = new THREE.MeshStandardMaterial({ color: 0x1a2430, roughness: 0.08, metalness: 0.3,
+      transparent: true, opacity: 0.5 });
+    var rubber = new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.95 });
+    var g = new THREE.Group();
+    var body = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.66, 1.8), paint);
+    body.position.y = 0.70; body.castShadow = true; g.add(body);
+    var lower = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.38, 1.68), paint);
+    lower.position.y = 0.36; g.add(lower);
+    var cabin = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.62, 1.6), paint);
+    cabin.position.set(-0.25, 1.32, 0); cabin.castShadow = true; g.add(cabin);
+    var glassM = new THREE.Mesh(new THREE.BoxGeometry(2.16, 0.5, 1.64), glass);
+    glassM.position.set(-0.25, 1.14, 0); g.add(glassM);
+    var bonnet = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.22, 1.72), paint);
+    bonnet.position.set(1.34, 1.02, 0); bonnet.rotation.z = -0.09; g.add(bonnet);
+    var wheels = [];
+    [[1.5, 0.94], [-1.5, 0.94], [1.5, -0.94], [-1.5, -0.94]].forEach(function (p) {
+      var w = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.28, 14), rubber);
+      w.rotation.x = Math.PI / 2;
+      w.position.set(p[0], 0.42, p[1]);
+      w.castShadow = true;
+      g.add(w); wheels.push(w);
+    });
+    return {
+      group: g,
+      spin: function (d) { wheels.forEach(function (w) { w.rotation.y -= d / 0.42; }); }
+    };
+  }
+
+  /* ---- THE RIDE ---- */
+  function playRide() {
+    var scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x3a3050, 0.0042);
+    var cam = new THREE.PerspectiveCamera(38, Stage.camera.aspect, 0.4, 900);
+
+    var sky = makeSky();
+    sky.u.cLow.value.set(0xe89a58); sky.u.cMid.value.set(0x8a6a9a); sky.u.cHigh.value.set(0x1e2a58);
+    sky.u.sunCol.value.set(0xffc27a); sky.u.sunAmt.value = 0.9;
+    sky.u.sunDir.value.set(1.0, 0.09, 0.25).normalize();
+    scene.add(sky.mesh);
+    var stars = makeStars(300, 400); stars.u.amt.value = 0.35; scene.add(stars.points);
+
+    /* the sun itself, coming up at the end of the road */
+    var sun = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: glowTexture(), color: 0xffd08a, blending: THREE.AdditiveBlending,
+      transparent: true, depthWrite: false, fog: false, opacity: 0.95 }));
+    sun.scale.set(160, 160, 1);
+    sun.position.set(340, 12, 90);
+    scene.add(sun);
+
+    landscape(scene, { far: 0x6a5a80, mid: 0x4e4468, near: 0x33304e, tree: 0x241f38 });
+    roadStrip(scene, {});
+
+    scene.add(new THREE.HemisphereLight(0xffc890, 0x30283a, 1.0));
+    var sunLight = new THREE.DirectionalLight(0xffc07a, 1.6);
+    sunLight.position.set(90, 22, 40);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(1024, 1024);
+    sunLight.shadow.camera.left = -30; sunLight.shadow.camera.right = 30;
+    sunLight.shadow.camera.top = 30; sunLight.shadow.camera.bottom = -30;
+    sunLight.shadow.bias = -0.002;
+    scene.add(sunLight);
+
+    var horse = buildHorse();
+    scene.add(horse.root);
+    horse.root.position.set(0, 0, 0);
+
+    /* the two of them on it — she in front with the reins, him behind */
+    var her = makeOuissy(); her.root.scale.setScalar(0.92);
+    her.root.position.set(0.24, 1.02, 0);
+    her.root.rotation.y = -Math.PI / 2;
+    horse.root.add(her.root);
+    var him = makeAnwar(); him.root.scale.setScalar(0.92);
+    him.root.position.set(-0.62, 1.00, 0);
+    him.root.rotation.y = -Math.PI / 2;
+    horse.root.add(him.root);
+
+    var motes = makeMotes(0xffd0a0, 220, 200, 40);
+    motes.points.position.set(-40, 0, -10);
+    scene.add(motes.points);
+
+    var hoofT = 0;
+    runCine({
+      scene: scene, camera: cam,
+      caption: "It takes most of the morning, and neither of them minds.",
+      grade: { gradeCol: 0xd8a860, gradeAmt: 0.18, hazeCol: 0x8a7a96, hazeAmt: 0.26,
+               vig: 0.6, grain: 0.036, sat: 1.1, fringe: 0.0015, redPulse: 0, exposure: 1.04 },
+      update: function (dt, t) {
+        var speed = 7.2;
+        horse.root.position.x += speed * dt;
+        poseHorse(horse, t, 1);
+        /* both of them move with it, a beat apart */
+        poseRide(her, t, Math.abs(Math.sin(t * 6.4)) * 0.05, true);
+        poseRide(him, t, Math.abs(Math.sin(t * 6.4 + 0.4)) * 0.05, false);
+
+        var hx = horse.root.position.x;
+        cam.position.set(hx - 3.2 + Math.sin(t * 0.25) * 1.4, 2.85, 7.6);
+        cam.lookAt(hx + 0.3, 1.75, 0);
+        sun.position.x = hx + 340;
+        sun.position.y = 10 + t * 0.8;
+        sunLight.position.set(hx + 90, 22 + t, 40);
+
+        stars.u.time.value = t;
+        stars.u.amt.value = Math.max(0, 0.35 - t * 0.03);
+        sky.u.cLow.value.lerp(new THREE.Color(0xffc890), dt * 0.06);
+        motes.u.time.value = t;
+        motes.u.near.value.set(hx, 1.5, 0);
+        motes.points.position.x = hx - 50;
+
+        hoofT -= dt;
+        if (hoofT <= 0) { hoofT = 0.30; Audio_.hoof(); }
+        if (t > 5.4 && t < 5.6) caption("Twenty miles of hedges, and a lane that keeps going.");
+        if (t > 9.6 && t < 9.8) caption("She has one hand in the mane and one arm holding him on.");
+      },
+      duration: 12.8,
+      done: function () { endCine(function () { enterSub("campsite"); }); }
+    });
+  }
+
+  /* ---- THE CAMPFIRE ---- */
+  function playCampfire() {
+    var scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x0a0c1e, 0.016);
+    var cam = new THREE.PerspectiveCamera(40, Stage.camera.aspect, 0.3, 400);
+
+    var sky = makeSky();
+    sky.u.cLow.value.set(0x101838); sky.u.cMid.value.set(0x0a0f26); sky.u.cHigh.value.set(0x04060f);
+    sky.u.sunAmt.value = 0.05;
+    scene.add(sky.mesh);
+    var stars = makeStars(900, 300); scene.add(stars.points);
+    var moon = makeMoon(6); moon.position.set(-90, 110, -180); scene.add(moon);
+
+    /* the ground */
+    var ground = new THREE.Mesh(new THREE.CircleGeometry(70, 40),
+      surface("grass", { repeat: 1 }));
+    ground.material = ground.material.clone();
+    ground.material.map = tex("grass", 256, 1);
+    ground.material.map.repeat.set(24, 24);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    /* the treeline all the way round */
+    var treeG = new THREE.ConeGeometry(1.6, 8, 7);
+    var treeM = new THREE.MeshStandardMaterial({ color: 0x14201c, roughness: 1 });
+    var trees = new THREE.InstancedMesh(treeG, treeM, 90);
+    var d = new THREE.Object3D();
+    for (var i = 0; i < 90; i++) {
+      var a = (i / 90) * 6.2832 + rnd(-0.03, 0.03);
+      var r = rnd(24, 40);
+      d.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+      d.scale.set(rnd(0.7, 1.9), rnd(0.8, 2.1), rnd(0.7, 1.9));
+      d.rotation.set(0, Math.random() * 3, 0);
+      d.updateMatrix(); trees.setMatrixAt(i, d.matrix);
     }
-    function canStandBy(seen, x, y) {
-      return !!(seen[x + "," + y] || seen[(x + 1) + "," + y] || seen[(x - 1) + "," + y] ||
-                seen[x + "," + (y + 1)] || seen[x + "," + (y - 1)]);
+    trees.castShadow = true;
+    scene.add(trees);
+
+    scene.add(new THREE.HemisphereLight(0x22305c, 0x0c0e18, 0.55));
+    scene.add(new THREE.AmbientLight(0x1a2038, 0.35));
+
+    /* the fire, and the ring of stones somebody made */
+    var fire = makeFire();
+    fire.position.set(0, 0.1, 0);
+    fire.userData.strength = 1;
+    fire.userData.light.castShadow = true;
+    fire.userData.light.shadow.mapSize.set(512, 512);
+    fire.userData.light.shadow.bias = -0.004;
+    scene.add(fire);
+    var stoneM = new THREE.MeshStandardMaterial({ color: 0x6a6458, roughness: 0.98 });
+    for (var k = 0; k < 12; k++) {
+      var aa = k / 12 * 6.2832;
+      var s = new THREE.Mesh(new THREE.DodecahedronGeometry(0.24, 0), stoneM);
+      s.position.set(Math.cos(aa) * 0.95, 0.02, Math.sin(aa) * 0.95);
+      s.rotation.set(aa, aa * 2, aa * 3);
+      s.castShadow = true; s.receiveShadow = true;
+      scene.add(s);
     }
 
-    function auditOne(name, def) {
-      var L, out = { level: name, problems: [], checks: 0 };
-      try { L = buildLevel(def); }
-      catch (e) { out.problems.push("will not build: " + e.message); return out; }
+    /* two logs to sit on */
+    var logM = new THREE.MeshStandardMaterial({ color: 0x4a3a26, roughness: 0.98,
+      map: tex("bark", 128, 2), bumpMap: bump("bark", 128, 2), bumpScale: 0.4 });
+    [1.95, -1.95].forEach(function (zz) {
+      var l = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.38, 3.0, 12), logM);
+      l.rotation.z = Math.PI / 2;
+      l.position.set(0, 0.36, zz);
+      l.castShadow = true; l.receiveShadow = true;
+      scene.add(l);
+      [-1.0, 1.0].forEach(function (o) {
+        var st = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.36, 8), logM);
+        st.position.set(o, 0.18, zz + 0.2);
+        scene.add(st);
+      });
+    });
 
-      var sx = (L.start.x / T) | 0, sy = (L.start.y / T) | 0;
-      /* "plain" counts as open even in the shut pass: an ordinary door is
-         not a puzzle, she opens it by walking into it. Leaving it closed
-         here made the audit report half the level as unreachable and buried
-         the one door that really was blocked. */
-      var shut = floodFrom(L, sx, sy, ["plain"]);                // as she finds it
-      var open = floodFrom(L, sx, sy, ["power", "locked", "story", "plain"]);  // fully unlocked
+    /* the two of them, sitting */
+    var her = makeOuissy();
+    her.root.position.set(0.28, -0.10, 1.92);
+    her.root.rotation.y = Math.PI / 2;      /* facing the fire, which is at -z from her */
+    scene.add(her.root);
+    var him = makeAnwar();
+    him.root.position.set(-0.24, -0.14, -1.92);
+    him.root.rotation.y = -Math.PI / 2;     /* facing it from the other side */
+    scene.add(him.root);
 
-      function check(cond, msg) { out.checks++; if (!cond) out.problems.push(msg); }
+    function sit(rig, fold) {
+      rig.legL.hip.rotation.x = 0.16; rig.legR.hip.rotation.x = -0.16;
+      rig.legL.upper.rotation.z = 1.44; rig.legR.upper.rotation.z = 1.44;
+      rig.legL.knee.rotation.z = -1.72; rig.legR.knee.rotation.z = -1.72;
+      rig.armL.upper.rotation.z = -0.28; rig.armR.upper.rotation.z = -0.28;
+      rig.armL.upper.rotation.x = 0.2;  rig.armR.upper.rotation.x = -0.2;
+      rig.armL.elbow.rotation.z = -1.05; rig.armR.elbow.rotation.z = -1.05;
+      rig.spine.rotation.z = fold ? 0.26 : 0.12;
+      rig.spine.rotation.x = 0;
+    }
+    sit(her, true); sit(him, false);
 
-      /* the things she has to be able to walk up to before anything opens */
-      L.things.forEach(function (th) {
-        var label = th.kind + " at " + th.x + "," + th.y;
-        if (th.kind === "panel" || th.kind === "note" || th.kind === "tv" || th.kind === "car") {
-          check(canStandBy(shut, th.x, th.y),
-                "cannot reach the " + label + " before anything is opened");
-        } else {
-          check(canStandBy(open, th.x, th.y), "cannot reach the " + label + " at all");
+    var leaning = 0;
+    runCine({
+      scene: scene, camera: cam,
+      caption: "",
+      grade: { gradeCol: 0xd08a40, gradeAmt: 0.18, hazeCol: 0x2a2038, hazeAmt: 0.2,
+               vig: 0.82, grain: 0.05, sat: 1.06, fringe: 0.0016, redPulse: 0, exposure: 1.0 },
+      update: function (dt, t) {
+        fire.userData.update(t, dt);
+        stars.u.time.value = t;
+        if (Math.random() < dt * 5) Audio_.fire();
+
+        /* the camera comes in slowly, all the way through */
+        var k = clamp(t / 16, 0, 1);
+        var ease = k * k * (3 - 2 * k);
+        var r = lerp(8.4, 5.0, ease);
+        var a = -1.15 + ease * 0.5;
+        cam.position.set(Math.sin(a) * r, lerp(2.5, 1.7, ease), Math.cos(a) * r);
+        cam.lookAt(0, lerp(0.95, 1.15, ease), 0);
+
+        /* breathing, and the fire moving on them */
+        poseHuman(her, t * 0.5, 0, null, { crouch: 0 });
+        poseHuman(him, t * 0.5 + 1.3, 0, null, { crouch: 0 });
+        sit(her, true); sit(him, false);
+
+        /* she leans over, and her head finds his shoulder */
+        if (t > 9.5) {
+          leaning = clamp(leaning + dt / 2.4, 0, 1);
+          var e2 = leaning * leaning * (3 - 2 * leaning);
+          her.root.position.z = lerp(1.92, -1.05, e2);
+          her.root.rotation.y = lerp(Math.PI / 2, Math.PI * 0.34, e2);
+          her.spine.rotation.x = lerp(0, -0.42, e2);
+          her.neck.rotation.x = lerp(0, -0.5, e2);
+          him.armR.upper.rotation.z = lerp(-0.32, -0.95, e2);
+          him.armR.upper.rotation.x = lerp(0, 0.7, e2);
+        }
+        if (t > 12.4 && t < 12.6) caption("She is asleep before he has counted to ten.");
+      },
+      duration: 17.5,
+      done: function () { endCine(function () { playSunrise(); }); }
+    });
+  }
+
+  /* ---- THE SUNRISE ---- */
+  function playSunrise() {
+    var scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x2a2440, 0.010);
+    var cam = new THREE.PerspectiveCamera(46, Stage.camera.aspect, 0.3, 700);
+
+    var sky = makeSky();
+    sky.u.cLow.value.set(0x2a2450); sky.u.cMid.value.set(0x161a3c); sky.u.cHigh.value.set(0x080c20);
+    sky.u.sunCol.value.set(0xffb070); sky.u.sunAmt.value = 0.3;
+    sky.u.sunDir.value.set(0.15, -0.05, -1).normalize();
+    scene.add(sky.mesh);
+    var stars = makeStars(700, 340); scene.add(stars.points);
+
+    var groundMat = surface("grass", { repeat: 1, rough: 0.99, bumpScale: 0.2 });
+    groundMat.map = tex("grass", 256, 1); groundMat.map.repeat.set(60, 60);
+    var ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), groundMat);
+    ground.rotation.x = -Math.PI / 2; ground.position.y = -0.4;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    /* the treeline the sun comes up behind */
+    var treeG = new THREE.ConeGeometry(2.2, 11, 7);
+    var treeM = new THREE.MeshBasicMaterial({ color: 0x0e1418, fog: false });
+    var trees = new THREE.InstancedMesh(treeG, treeM, 120);
+    var d = new THREE.Object3D();
+    for (var i = 0; i < 120; i++) {
+      d.position.set(-260 + Math.random() * 520, rnd(-2, 2), -168 + rnd(-30, 12));
+      d.scale.set(rnd(1.5, 3.4), rnd(1.8, 4.4), 1);
+      d.rotation.set(0, Math.random() * 3, 0);
+      d.updateMatrix(); trees.setMatrixAt(i, d.matrix);
+    }
+    scene.add(trees);
+
+    var sun = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: glowTexture(), color: 0xffb060, blending: THREE.AdditiveBlending,
+      transparent: true, depthWrite: false, fog: false, opacity: 0 }));
+    sun.scale.set(120, 120, 1);
+    sun.position.set(10, -20, -132);
+    scene.add(sun);
+    var disc = new THREE.Mesh(new THREE.CircleGeometry(11, 40),
+      new THREE.MeshBasicMaterial({ color: 0xffd9a0, fog: false, transparent: true }));
+    disc.position.set(10, -20, -131);
+    scene.add(disc);
+
+    var hemi = new THREE.HemisphereLight(0x2a2450, 0x0a0c14, 0.25);
+    scene.add(hemi);
+
+    /* the fire, down to embers */
+    var fire = makeFire();
+    fire.userData.strength = 0.28;
+    fire.position.set(-3.5, 0, 8);
+    scene.add(fire);
+
+    /* birds */
+    var birdG = new THREE.BufferGeometry();
+    var BN = 26, bp = new Float32Array(BN * 3);
+    for (var b = 0; b < BN; b++) {
+      bp[b * 3] = rnd(-90, 90); bp[b * 3 + 1] = rnd(24, 60); bp[b * 3 + 2] = rnd(-120, -40);
+    }
+    birdG.setAttribute("position", new THREE.BufferAttribute(bp, 3));
+    var birds = new THREE.Points(birdG, new THREE.PointsMaterial({
+      color: 0x14161c, size: 1.8, sizeAttenuation: true, fog: false }));
+    scene.add(birds);
+    var birdT = 1.2;
+
+    runCine({
+      scene: scene, camera: cam,
+      caption: "She wakes to birdsong, and the fire is still warm, and he is still there.",
+      grade: { gradeCol: 0xffb070, gradeAmt: 0.12, hazeCol: 0x8a6a72, hazeAmt: 0.16,
+               vig: 0.46, grain: 0.026, sat: 1.22, fringe: 0.0012, redPulse: 0, exposure: 1.0 },
+      update: function (dt, t) {
+        var k = clamp(t / 7, 0, 1);
+        var e = k * k * (3 - 2 * k);
+        /* indigo, through rose and gold, to a pale morning blue */
+        sky.u.cLow.value.setRGB(
+          lerp(0.16, 1.00, e), lerp(0.14, 0.76, e), lerp(0.31, 0.48, e));
+        sky.u.cMid.value.setRGB(
+          lerp(0.09, 0.62, e), lerp(0.10, 0.66, e), lerp(0.24, 0.86, e));
+        sky.u.cHigh.value.setRGB(
+          lerp(0.03, 0.28, e), lerp(0.05, 0.48, e), lerp(0.13, 0.80, e));
+        sky.u.sunAmt.value = 0.3 + e * 0.7;
+        stars.u.amt.value = Math.max(0, 1 - e * 1.6);
+        stars.u.time.value = t;
+        hemi.intensity = 0.25 + e * 1.5;
+        hemi.color.setRGB(lerp(0.16, 1.0, e), lerp(0.14, 0.86, e), lerp(0.31, 0.72, e));
+
+        sun.material.opacity = 0.25 + e * 0.42;
+        sun.position.y = lerp(-18, 16, e);
+        disc.position.y = sun.position.y;
+        disc.material.color.setRGB(1, lerp(0.62, 0.92, e), lerp(0.36, 0.78, e));
+        sun.scale.setScalar(lerp(120, 78, e));
+
+        fire.userData.update(t, dt);
+        fire.userData.strength = Math.max(0.05, 0.28 - t * 0.02);
+
+        cam.position.set(Math.sin(t * 0.06) * 6, 4.2 + e * 1.4, 22);
+        cam.lookAt(8, 9 + e * 5, -110);
+
+        birds.rotation.y = t * 0.008;
+        var arr = birdG.attributes.position.array;
+        for (var i = 0; i < BN; i++) {
+          arr[i * 3] += dt * (7 + (i % 5));
+          arr[i * 3 + 1] += Math.sin(t * 3 + i) * dt * 1.2;
+          if (arr[i * 3] > 110) arr[i * 3] = -110;
+        }
+        birdG.attributes.position.needsUpdate = true;
+
+        birdT -= dt;
+        if (birdT <= 0 && t > 2.4) { birdT = rnd(0.5, 1.5); Audio_.bird(); }
+      },
+      duration: 10.5,
+      done: function () { endCine(function () { levelCard(4); }); }
+    });
+  }
+
+  /* ---- THE ROOFTOP ---- */
+  function playRooftop() {
+    var scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x0a0e1c, 0.0055);
+    var cam = new THREE.PerspectiveCamera(44, Stage.camera.aspect, 0.3, 900);
+
+    var sky = makeSky();
+    sky.u.cLow.value.set(0x14203c); sky.u.cMid.value.set(0x0a1026); sky.u.cHigh.value.set(0x04060f);
+    sky.u.sunCol.value.set(0xbcd0ff); sky.u.sunAmt.value = 0.12;
+    sky.u.sunDir.value.set(-0.6, 0.3, -0.7).normalize();
+    scene.add(sky.mesh);
+    var stars = makeStars(1100, 380); scene.add(stars.points);
+    var moon = makeMoon(11);
+    moon.position.set(-96, 66, -178);
+    scene.add(moon);
+
+    /* clouds, drifting */
+    var clouds = [];
+    for (var ci = 0; ci < 7; ci++) {
+      var c = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: glowTexture(), color: 0x2a3450, transparent: true, opacity: 0.30,
+        depthWrite: false, fog: false }));
+      c.scale.set(rnd(90, 200), rnd(24, 46), 1);
+      c.position.set(rnd(-260, 260), rnd(60, 130), -300);
+      scene.add(c);
+      clouds.push({ s: c, v: rnd(0.6, 1.9) });
+    }
+
+    /* the roof she is standing on */
+    var roofM = surface("block", { repeat: 1, rough: 0.96, tint: 0x6a6a70 });
+    roofM.map = tex("block", 256, 1); roofM.map.repeat.set(6, 6);
+    var roof = new THREE.Mesh(new THREE.BoxGeometry(30, 1.2, 22), roofM);
+    roof.position.y = -0.6; roof.receiveShadow = true;
+    scene.add(roof);
+    /* the parapet */
+    [[0, -11, 30, 1.2], [0, 11, 30, 1.2], [-15, 0, 1.2, 22], [15, 0, 1.2, 22]].forEach(function (p) {
+      var w = new THREE.Mesh(new THREE.BoxGeometry(p[2], 1.0, p[3]), roofM);
+      w.position.set(p[0], 0.5, p[1]);
+      w.castShadow = true; w.receiveShadow = true;
+      scene.add(w);
+    });
+    /* the water tower and the aerial */
+    var tank = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 2.6, 12),
+      surface("metal", { repeat: 1, rough: 0.8, metal: 0.5, tint: 0x4a4238 }));
+    tank.position.set(-10, 4.6, -7); tank.castShadow = true; scene.add(tank);
+    for (var li = 0; li < 4; li++) {
+      var a = li / 4 * 6.2832 + 0.7;
+      var leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 3.4, 6),
+        new THREE.MeshStandardMaterial({ color: 0x30302e, roughness: 0.9 }));
+      leg.position.set(-10 + Math.cos(a) * 1.4, 1.7, -7 + Math.sin(a) * 1.4);
+      scene.add(leg);
+    }
+    var mast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.10, 7, 6),
+      new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.9 }));
+    mast.position.set(11.5, 3.5, -8); scene.add(mast);
+    var mastLight = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6),
+      new THREE.MeshBasicMaterial({ color: 0xff4433 }));
+    mastLight.position.set(11.5, 7.1, -8); scene.add(mastLight);
+
+    /* the city — thirty-two blocks of it, with windows that are on */
+    var cityG = new THREE.BoxGeometry(1, 1, 1);
+    var cityM = new THREE.MeshStandardMaterial({ color: 0x161c2a, roughness: 1 });
+    var city = new THREE.InstancedMesh(cityG, cityM, 96);
+    var d = new THREE.Object3D(), col = new THREE.Color();
+    var winGeo = new THREE.PlaneGeometry(0.5, 0.7);
+    var winMat = new THREE.MeshBasicMaterial({ color: 0xffcf88, fog: false });
+    var windows = new THREE.InstancedMesh(winGeo, winMat, 420);
+    var winPhase = [];
+    var wi = 0;
+    for (var i = 0; i < 96; i++) {
+      var ang = rnd(0, 6.2832), rad = rnd(24, 190);
+      var bx = Math.cos(ang) * rad, bz = Math.sin(ang) * rad - 40;
+      var bh = rnd(8, 52) * (1 - rad / 320);
+      var bw = rnd(7, 20);
+      d.position.set(bx, bh / 2 - 22, bz);
+      d.scale.set(bw, bh, bw * rnd(0.7, 1.3));
+      d.rotation.set(0, rnd(0, 1.5), 0);
+      d.updateMatrix(); city.setMatrixAt(i, d.matrix);
+      city.setColorAt(i, col.setHex(shade(0x1a2130, 0.6 + Math.random() * 0.8)));
+      /* a handful of windows still on, facing us */
+      var n = irnd(0, 6);
+      for (var k = 0; k < n && wi < 420; k++) {
+        d.position.set(bx + rnd(-bw * 0.4, bw * 0.4), rnd(-18, bh - 24),
+                       bz + d.scale.z / 2 + 0.3);
+        d.scale.setScalar(rnd(0.7, 1.5));
+        d.rotation.set(0, 0, 0);
+        d.updateMatrix(); windows.setMatrixAt(wi, d.matrix);
+        winPhase.push({ i: wi, p: Math.random() * 6.28, r: rnd(0.05, 0.5) });
+        wi++;
+      }
+    }
+    for (; wi < 420; wi++) { d.position.set(0, -900, 0); d.updateMatrix(); windows.setMatrixAt(wi, d.matrix); }
+    city.instanceMatrix.needsUpdate = true;
+    if (city.instanceColor) city.instanceColor.needsUpdate = true;
+    windows.instanceMatrix.needsUpdate = true;
+    scene.add(city); scene.add(windows);
+
+    /* three of them burning, a long way off */
+    var fires = [];
+    for (var f = 0; f < 3; f++) {
+      var ff = makeFire();
+      ff.scale.setScalar(rnd(4, 8));
+      ff.position.set(rnd(-140, 140), rnd(-14, 6), rnd(-190, -90));
+      ff.userData.strength = 0.5;
+      ff.userData.light.intensity = 0;
+      scene.add(ff);
+      fires.push(ff);
+    }
+
+    scene.add(new THREE.HemisphereLight(0x2c3c66, 0x0c1018, 1.0));
+    scene.add(new THREE.AmbientLight(0x1a2440, 0.5));
+    var rim = new THREE.DirectionalLight(0xa8c0ff, 0.8);
+    rim.position.set(-20, 22, -18);
+    rim.castShadow = true;
+    rim.shadow.mapSize.set(1024, 1024);
+    rim.shadow.camera.left = -20; rim.shadow.camera.right = 20;
+    rim.shadow.camera.top = 20; rim.shadow.camera.bottom = -20;
+    rim.shadow.bias = -0.002;
+    scene.add(rim);
+    /* a couple of lights along the roof edge */
+    [[-4.6, 8.4], [5.4, 8.4]].forEach(function (p) {
+      var b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0xffd9a0 }));
+      b.position.set(p[0], 1.4, p[1]); scene.add(b);
+      var pl = new THREE.PointLight(0xffc088, 26, 20, 1.15);
+      pl.position.set(p[0], 2.1, p[1]); scene.add(pl);
+    });
+
+    /* the two of them, sitting on the parapet with their backs to us */
+    var her = makeOuissy();
+    her.root.position.set(0.62, 0.12, 10.9);
+    her.root.rotation.y = Math.PI / 2;      /* backs to us, looking out over it */
+    scene.add(her.root);
+    var him = makeAnwar();
+    him.root.position.set(-0.62, 0.10, 10.9);
+    him.root.rotation.y = Math.PI / 2;
+    scene.add(him.root);
+    /* they are sitting on the parapet with their legs over the far side,
+       so the feet hang out of shot and only the knee break shows */
+    function sitEdge(rig) {
+      rig.legL.hip.rotation.x = 0.12; rig.legR.hip.rotation.x = -0.12;
+      rig.legL.upper.rotation.z = 1.46; rig.legR.upper.rotation.z = 1.46;
+      rig.legL.knee.rotation.z = -1.30; rig.legR.knee.rotation.z = -1.30;
+      rig.armL.upper.rotation.z = -0.14; rig.armR.upper.rotation.z = -0.14;
+      rig.armL.upper.rotation.x = 0.16;  rig.armR.upper.rotation.x = -0.16;
+      rig.armL.elbow.rotation.z = -0.42; rig.armR.elbow.rotation.z = -0.42;
+      rig.spine.rotation.z = 0.06;
+    }
+    sitEdge(her); sitEdge(him);
+
+    /* embers coming up off the city below */
+    var motes = makeMotes(0xffc890, 160, 60, 40);
+    motes.points.position.set(-30, -6, -14);
+    scene.add(motes.points);
+
+    var lean = 0, together = false;
+    runCine({
+      scene: scene, camera: cam,
+      caption: "",
+      duration: Infinity,
+      grade: { gradeCol: 0x6a90d8, gradeAmt: 0.14, hazeCol: 0x141c34, hazeAmt: 0.24,
+               vig: 0.72, grain: 0.038, sat: 1.06, fringe: 0.0014, redPulse: 0, exposure: 1.02 },
+      update: function (dt, t) {
+        stars.u.time.value = t;
+        motes.u.time.value = t;
+        motes.u.near.value.set(0, 2, 6);
+        fires.forEach(function (ff) { ff.userData.update(t, dt); });
+        clouds.forEach(function (c) {
+          c.s.position.x += c.v * dt;
+          if (c.s.position.x > 300) c.s.position.x = -300;
+        });
+        mastLight.material.color.setScalar(0.6 + Math.sin(t * 2.4) * 0.4);
+        mastLight.material.color.multiplyScalar(1);
+        mastLight.material.color.setRGB(1, 0.2 + Math.sin(t * 2.4) * 0.15, 0.15);
+
+        /* windows going on and off, three streets away */
+        winPhase.forEach(function (w) {
+          if (Math.random() < dt * w.r * 0.4) {
+            d.position.set(0, -900, 0); d.scale.setScalar(1); d.rotation.set(0, 0, 0);
+          }
+        });
+
+        poseHuman(her, t * 0.5, 0, null, {});
+        poseHuman(him, t * 0.5 + 0.9, 0, null, {});
+        sitEdge(her); sitEdge(him);
+
+        /* he puts his arm round her, when the line arrives */
+        if (together) {
+          lean = clamp(lean + dt / 2.2, 0, 1);
+          var e = lean * lean * (3 - 2 * lean);
+          her.root.position.x = lerp(0.62, 0.18, e);
+          her.spine.rotation.x = lerp(0, 0.34, e);
+          her.neck.rotation.x = lerp(0, 0.22, e);
+          him.armL.upper.rotation.z = lerp(-0.1, -1.15, e);
+          him.armL.upper.rotation.x = lerp(0, -0.8, e);
+          him.armL.elbow.rotation.z = lerp(-0.3, -1.0, e);
+        }
+
+        /* the camera pulls back and up over the whole scene */
+        var k = clamp(t / 52, 0, 1);
+        var e2 = k * k * (3 - 2 * k);
+        cam.position.set(lerp(1.5, -0.9, e2), lerp(2.15, 4.8, e2), lerp(15.4, 24.0, e2));
+        cam.lookAt(lerp(0.1, 0, e2), lerp(2.05, 4.8, e2), lerp(2.0, -30, e2));
+      },
+      done: null
+    });
+
+    /* the words go over the top of it */
+    G.state = "dialogue";
+    var lines = TALK.roof.slice();
+    say(lines, function () { endingCard(); });
+    /* the moment he says "Come here" */
+    var watch = setInterval(function () {
+      if (!G || !G.dlg) { clearInterval(watch); return; }
+      var idx = G.dlg.i;
+      if (idx > 0 && G.dlg.lines[idx - 1] && G.dlg.lines[idx - 1][1] === "Come here.") {
+        together = true;
+        clearInterval(watch);
+      }
+    }, 120);
+  }
+
+  /* =========================================================
+     29 — CARDS
+     ========================================================= */
+  function titleCard() {
+    var c = el("div", "ap-card");
+    c.appendChild(el("p", "ap-card-kicker", "OUISSY AT THE APOCALYPSE"));
+    c.appendChild(el("h3", "ap-card-title", "the world ends. you come and find me anyway."));
+    var b = el("button", "ap-card-go", "BEGIN");
+    var used = false;
+    b.addEventListener("click", function () {
+      if (used) return; used = true;
+      Audio_.begin(); howToCard();
+    });
+    c.appendChild(b);
+    var q = el("button", "ap-card-quit", "NOT TONIGHT");
+    q.addEventListener("click", function () {
+      if (window.leaveApocalypse) window.leaveApocalypse(); else Api.stop();
+    });
+    c.appendChild(q);
+    openOverlay(c);
+  }
+
+  function howToCard() {
+    var rows = [
+      ["MOVE", "arrow keys, or WASD"],
+      ["CREEP", "hold SHIFT — slower, but almost silent"],
+      ["USE", "E or SPACE — whatever you're standing at"],
+      ["PAUSE", "ESC"],
+      ["ON A PHONE", "the pad and the two buttons do all of it"],
+      ["THE DARK", "you only see as far as your torch. Lit rooms show more"],
+      ["COVER", "step into a wardrobe, a bush, or behind a car and they lose you"],
+      ["NOISE", "running is loud. They come and look at where the sound was"],
+      ["GETTING CAUGHT", "you get pulled back to somewhere safe. That's all. Try again"]
+    ];
+    var used = false;
+    openOverlay(card("HOW THIS GOES", "Everything you need, once.", rows, "GO",
+      function () { if (used) return; used = true; levelCard(0); }));
+  }
+
+  function levelCard(i) {
+    var def = LEVELS[i];
+    G = G || {};
+    G.levelIndex = i;
+    var used = false;
+    openOverlay(card(def.card, def.blurb, null, "GO", function () {
+      if (used) return;
+      used = true;
+      closeOverlay();
+      enterLevel(def);
+      G.levelIndex = i;
+    }));
+  }
+
+  function enterSub(name) {
+    var def = SUB[name];
+    enterLevel(def);
+    if (name === "campsite") setUpCampsite();
+  }
+
+  function setUpCampsite() {
+    var w = G.world;
+    /* he stops following here: this is the one place they are staying put */
+    if (!G.anwar) {
+      var ar = makeAnwar();
+      G.scene.add(ar.root);
+      G.anwar = { rig: ar, x: w.cx(9), z: w.cz(12), found: true, following: false, sitting: false };
+    }
+    G.anwar.following = false;
+    G.anwar.x = w.cx(9); G.anwar.z = w.cz(12);
+    G.anwar.rig.root.position.set(G.anwar.x, 0, G.anwar.z);
+    G.anwar.rig.root.rotation.y = -Math.PI / 2;
+    var h = buildHorse();
+    G.scene.add(h.root);
+    h.root.position.set(w.cx(20), 0, w.cz(6));
+    h.root.rotation.y = 2.2;
+    G.horseRig = h;
+    G.wood = 0;
+    G.state = "dialogue";
+    say(TALK.arrival, function () {
+      clearStep("arrival");
+      G.anwar.sitting = true;
+    });
+  }
+
+  function endingCard() {
+    var c = el("div", "ap-card");
+    c.appendChild(el("p", "ap-card-kicker", "TO BE CONTINUED…"));
+    c.appendChild(el("h3", "ap-card-title", "the world ended. you came and found me anyway."));
+    var b = el("button", "ap-card-go", "CLOSE THE BOOK");
+    b.addEventListener("click", function () {
+      if (window.markApocalypseDone) window.markApocalypseDone();
+      if (window.startApocalypseEnding) window.startApocalypseEnding();
+      else if (window.leaveApocalypse) window.leaveApocalypse();
+      else Api.stop();
+    });
+    c.appendChild(b);
+    openOverlay(c);
+    if (window.markApocalypseDone) window.markApocalypseDone();
+  }
+
+  /* =========================================================
+     30 — WHAT THEY CAN SEE
+     A flat fan on the floor in front of each of them. It is the
+     only piece of interface drawn in the world, and it is there
+     because a stealth game that hides its rules is not tense,
+     it is unfair.
+     ========================================================= */
+  function ensureCone(z) {
+    if (z.cone) return z.cone;
+    var seg = 18, a0 = -TUNE.zCone, a1 = TUNE.zCone;
+    var g = new THREE.BufferGeometry();
+    var pos = [0, 0, 0], idx = [];
+    for (var i = 0; i <= seg; i++) {
+      var a = lerp(a0, a1, i / seg);
+      pos.push(Math.cos(a) * TUNE.zSight, 0, Math.sin(a) * TUNE.zSight);
+      if (i > 0) idx.push(0, i, i + 1);
+    }
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(idx.slice(0, idx.length - 3));
+    var m = new THREE.MeshBasicMaterial({
+      color: 0xffd0a0, transparent: true, opacity: 0.055, depthWrite: false,
+      blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false
+    });
+    var mesh = new THREE.Mesh(g, m);
+    mesh.position.y = -0.11;
+    mesh.renderOrder = 5;
+    z.rig.root.add(mesh);
+    /* the rig is rotated by -facing, so undo it on the cone */
+    z.cone = mesh;
+    return mesh;
+  }
+
+  function updateCones() {
+    for (var i = 0; i < G.zombies.length; i++) {
+      var z = G.zombies[i];
+      var c = ensureCone(z);
+      var chase = z.state === "chase" || z.state === "react";
+      c.material.color.setHex(chase ? 0xff5a4a : z.state === "look" ? 0xffc060 : 0xa8c0e0);
+      c.material.opacity = (chase ? 0.14 : z.state === "look" ? 0.10 : 0.055)
+                         * (1 - clamp(Math.hypot(z.x - G.player.x, z.z - G.player.z) / 32, 0, 1));
+      c.visible = z.rig.root.visible;
+    }
+  }
+
+  /* =========================================================
+     31 — HIM, BEHIND HER
+     Once she has him, he comes. He is not a second player: he
+     keeps a couple of paces back, he cuts corners badly, and he
+     stops when she stops.
+     ========================================================= */
+  function updateAnwar(dt) {
+    var a = G.anwar;
+    if (!a || !a.following) return;
+    var p = G.player;
+    var dx = p.x - a.x, dz = p.z - a.z;
+    var d = Math.hypot(dx, dz);
+    var want = TILE * 1.35;
+    var gait = 0;
+    if (d > want) {
+      var sp = Math.min(TUNE.walk * 1.06, (d - want) * 3.4);
+      var ax = dx / d * sp * dt, az = dz / d * sp * dt;
+      var ent = { x: a.x, z: a.z };
+      moveWithCollision(G.world, ent, ax, az, TUNE.playerR * 0.9);
+      a.x = ent.x; a.z = ent.z;
+      gait = clamp(sp / TUNE.walk, 0, 1);
+      var face = Math.atan2(dz, dx);
+      var cur = a.rig.root.rotation.y;
+      var diff = Math.atan2(Math.sin(-face - cur), Math.cos(-face - cur));
+      a.rig.root.rotation.y = cur + diff * (1 - Math.pow(0.002, dt));
+    }
+    a.groundY = lerp(a.groundY || 0, groundAt(G.world, a.x, a.z), 1 - Math.pow(0.0001, dt));
+    a.rig.root.position.set(a.x, a.groundY, a.z);
+    a.gait = lerp(a.gait || 0, gait, 1 - Math.pow(0.002, dt));
+    poseHuman(a.rig, G.time + 0.8, a.gait, null, { crouch: p.creeping ? 0.8 : 0 });
+  }
+
+  /* =========================================================
+     32 — THE LOOP
+     ========================================================= */
+  function tick(dt) {
+    if (!G) return;
+    G.time += dt;
+
+    /* the cut, if there is one, runs whatever the game's state is */
+    if (G.cine) {
+      G.cine.t += dt;
+      if (G.cine.update) G.cine.update(dt, G.cine.t);
+      if (isFinite(G.cine.duration) && G.cine.t >= G.cine.duration) {
+        var done = G.cine.done;
+        G.cine = null;
+        if (done) done();
+      }
+      updateFade(dt);
+      Stage.grade({ time: G.time });
+      return;
+    }
+
+    if (G.anim) G.anim(dt);
+
+    if (G.state === "grab") updateGrab(dt);
+    else if (G.state === "close") {
+      G.closeT -= dt;
+      G.redPulse = clamp(G.closeT / TUNE.caughtHold, 0, 1) * 0.42;
+      if (G.closeT <= 0) endCloseCall();
+    } else if (G.state === "play") {
+      if (usePressed) { usePressed = false; tryUse(); }
+      updatePlayer(dt);
+      updateZombies(dt);
+      updatePressure(dt);
+      checkExit();
+      G.redPulse = lerp(G.redPulse, G.chasing ? 0.14 : 0, 1 - Math.pow(0.02, dt));
+      if (G.chasing && Math.random() < dt * 1.2) Audio_.heart(1);
+    } else {
+      /* dialogue, overlays and pause: the world holds still but the
+         lights, the fire and the dust keep going */
+      usePressed = false;
+      if (G.player) poseHuman(G.player.rig, G.time, 0, null, { crouch: G.player.creeping ? 1 : 0 });
+      for (var i = 0; G.zombies && i < G.zombies.length; i++) {
+        poseHuman(G.zombies[i].rig, G.time + G.zombies[i].seed, 0, "z");
+      }
+    }
+
+    if (G.world) {
+      updateDoors(dt);
+      updateLights(dt);
+      updateRings(dt);
+      updateAnwar(dt);
+      if (G.zombies && G.player) updateCones();
+      for (var k = 0; k < G.world.anim.length; k++) G.world.anim[k](G.time);
+      if (G.world.motes) {
+        G.world.motes.u.time.value = G.time;
+        if (G.player) G.world.motes.u.near.value.set(G.player.x, 1.4, G.player.z);
+      }
+      if (G.world.fire && G.world.fire.visible) G.world.fire.userData.update(G.time, dt);
+      if (G.world.tvTexture) {
+        /* the set is a texture on a box a few metres away — repainting it
+           sixty times a second is forty thousand random pixels nobody can
+           see. Twelve is more than enough to read as a live picture. */
+        G.__tvT = (G.__tvT || 0) - dt;
+        if (G.__tvT <= 0) {
+          G.__tvT = 1 / 12;
+          paintBroadcast(G.world.tvCanvas, G.time);
+          G.world.tvTexture.needsUpdate = true;
+        }
+        if (G.world.tvGlow) G.world.tvGlow.material.opacity = 0.34 + Math.sin(G.time * 13) * 0.14;
+      }
+      if (G.horseRig) poseHorse(G.horseRig, G.time, 0);
+    }
+
+    if (G.stars) G.stars.u.time.value = G.time;
+    if (G.sky) G.sky.u.time.value = G.time;
+
+    if (G.__tv) {
+      G.__tvOverT = (G.__tvOverT || 0) - dt;
+      if (G.__tvOverT <= 0) { G.__tvOverT = 1 / 18; paintBroadcast(G.__tv, G.time); }
+    }
+    if (G.__panel) G.__panel.tick(dt);
+
+    if (G.player && G.camRig) {
+      var mode = G.chasing ? "chase" : G.player.creeping ? "creep" : "walk";
+      G.camRig.frame(G.player.x, G.player.z, G.player.facing, mode, dt);
+    }
+
+    updateFade(dt);
+    updateAlarm(dt);
+    /* the HUD is DOM: writing to it every frame is layout work for text
+       that changes twice a level */
+    G.__hudT = (G.__hudT || 0) - dt;
+    if (G.__hudT <= 0) { G.__hudT = 0.1; updateInstinct(); setHud(); }
+    Stage.grade({ time: G.time, redPulse: G.redPulse, flash: G.flash });
+    G.flash = lerp(G.flash, 0, 1 - Math.pow(0.001, dt));
+  }
+
+  function checkExit() {
+    var s = step();
+    if (!s || s.clears !== "exit" || !G.world.exit) return;
+    var p = G.player, w = G.world;
+    var d = Math.hypot(w.cx(w.exit.x) - p.x, w.cz(w.exit.y) - p.z);
+    if (d < TILE * 0.9) clearStep("exit");
+  }
+
+  function paint() {
+    if (!Stage.ready || !G) return;
+    var scene = G.cine ? G.cine.scene : G.scene;
+    var cam = G.cine ? G.cine.camera : Stage.camera;
+    if (!scene) return;
+    Stage.render(scene, cam);
+  }
+
+  /* If the machine cannot hold a frame rate, take the render scale down
+     rather than let the game turn into a slideshow. It is measured over a
+     second and a half so a single long frame — a level building, a shader
+     compiling — never triggers it. */
+  var perfAcc = 0, perfN = 0, perfLock = 0;
+  function watchPerformance(dt) {
+    if (perfLock > 0) { perfLock -= dt; return; }
+    perfAcc += dt; perfN++;
+    if (perfAcc < 1.5) return;
+    var avg = perfAcc / perfN;
+    perfAcc = 0; perfN = 0;
+    if (avg > 0.040 && Stage.quality < 2) {
+      perfLock = 3;
+      var scene = G && (G.cine ? G.cine.scene : G.scene);
+      var cam = G && G.cine ? G.cine.camera : Stage.camera;
+      Stage.setQuality(Stage.quality + 1, scene, cam);
+    }
+  }
+
+  function frame(now) {
+    if (!running) return;
+    raf = requestAnimationFrame(frame);
+    var dt = clamp((now - lastT) / 1000, 0, 0.05);
+    lastT = now;
+    if (!loopFrozen) { tick(dt); paint(); }
+    watchPerformance(dt);
+  }
+
+  /* the offline harness drives frames itself, so it freezes this one */
+  var loopFrozen = false;
+
+  /* =========================================================
+     33 — IN AND OUT
+     ========================================================= */
+  var resizeObs = null;
+
+  function bindOnce() {
+    if (bindOnce.done) return;
+    bindOnce.done = true;
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("resize", function () { if (Stage.ready) Stage.resize(); });
+    var next = $("ap-dlg-next");
+    if (next) next.addEventListener("click", function () { if (G && G.dlg) nextLine(); });
+    var dlg = $("ap-dlg");
+    if (dlg) dlg.addEventListener("click", function () { if (G && G.dlg) nextLine(); });
+    var pb = $("ap-pause-btn");
+    if (pb) pb.addEventListener("click", togglePause);
+    /* advancing dialogue with the same key that uses things */
+    window.addEventListener("keydown", function (e) {
+      if (!G || !G.dlg) return;
+      if (e.code === "Space" || e.code === "KeyE" || e.code === "Enter") { nextLine(); e.preventDefault(); }
+    });
+    bindPad();
+  }
+
+  var Api = {
+    start: function () {
+      if (running) return;
+      var canvas = $("ap-canvas");
+      if (!canvas) return;
+      bindOnce();
+      running = true;
+      canvas.style.opacity = "0.001";
+      loadThree().then(function () {
+        if (!running) return;
+        Stage.init(canvas);
+        if (!Stage.renderer) throw new Error("this browser cannot open a 3D canvas");
+        canvas.style.opacity = "1";
+        var stage = $("ap-stage");
+        if (stage && window.ResizeObserver && !resizeObs) {
+          resizeObs = new ResizeObserver(function () { if (Stage.ready) Stage.resize(); });
+          resizeObs.observe(stage);
+        }
+        G = { time: 0, state: "overlay", closeCalls: 0, camRig: new CamRig(Stage.camera),
+              zombies: [], fade: 1, fadeTo: 1, redPulse: 0, flash: 0 };
+        var f = $("ap-stage");
+        if (f) f.style.setProperty("--ap-arn", "1.7778");
+        lastT = performance.now();
+        raf = requestAnimationFrame(frame);
+        titleCard();
+        installHooks();
+      }).catch(function (err) {
+        running = false;
+        var o = $("ap-overlay");
+        if (o) {
+          o.className = "ap-overlay";
+          o.innerHTML = "";
+          o.appendChild(card("SOMETHING IS MISSING", String(err && err.message || err), null,
+            "BACK", function () { if (window.leaveApocalypse) window.leaveApocalypse(); }));
+          o.setAttribute("aria-hidden", "false");
         }
       });
+    },
 
-      /* every door has to be approachable from the side she arrives on */
-      Object.keys(L.doors).forEach(function (k) {
-        var xy = k.split(",").map(Number);
-        check(canStandBy(shut, xy[0], xy[1]) || canStandBy(open, xy[0], xy[1]),
-              "cannot reach the " + L.doors[k].kind + " door at " + k);
-      });
+    stop: function () {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      Audio_.end();
+      closeOverlay();
+      var box = $("ap-dlg");
+      if (box) box.setAttribute("aria-hidden", "true");
+      var grab = $("ap-grab");
+      if (grab) grab.setAttribute("aria-hidden", "true");
+      var hud = $("ap-hud");
+      if (hud) hud.classList.remove("gone");
+      if (resizeObs) { try { resizeObs.disconnect(); } catch (e) {} resizeObs = null; }
+      if (G && G.cine) { disposeScene(G.cine.scene); G.cine = null; }
+      teardownLevel();
+      Stage.dispose();
+      G = null;
+      for (var k in KEY) KEY[k] = 0;
+    },
 
-      if (L.exit) check(open[L.exit.x + "," + L.exit.y], "the way out at " + L.exit.x + "," + L.exit.y + " is walled off");
-      if (L.anwar) check(canStandBy(open, (L.anwar.x / T) | 0, (L.anwar.y / T) | 0), "cannot reach Anwar");
-      if (L.horse) check(canStandBy(open, (L.horse.x / T) | 0, (L.horse.y / T) | 0), "cannot reach the horse");
-
-      /* nothing should be standing inside a wall */
-      L.zombies.forEach(function (z) {
-        var zx = (z.x / T) | 0, zy = (z.y / T) | 0;
-        check(!isSolid(L, zx, zy), "a zombie is inside solid ground at " + zx + "," + zy);
-      });
-      /* A light landing on a bed or a worktop is fine — that is what a
-         window over a bed does. A light landing inside a wall or a wardrobe
-         is not, because nothing can see it. */
-      var BURIED = "#vonf";
-      L.lights.forEach(function (li) {
-        var lx = (li.x / T) | 0, ly = (li.y / T) | 0;
-        if (ly < 0 || ly >= L.h || li.tv) return;
-        check(BURIED.indexOf(at(L, lx, ly)) < 0,
-              "a light is buried inside " + at(L, lx, ly) + " at " + lx + "," + ly);
-      });
-
-      /* and a level with nowhere to go is a level with a typo in it */
-      var walkable = Object.keys(open).length;
-      check(walkable > 40, "only " + walkable + " tiles are reachable at all");
-      out.reachable = walkable;
-      return out;
-    }
-
-    for (var i = 0; i < LEVELS.length; i++) {
-      report.push(auditOne("LEVEL " + (i + 1) + " — " + LEVELS[i].name, LEVELS[i]));
-    }
-    Object.keys(SUBMAPS).forEach(function (k) {
-      report.push(auditOne("submap — " + k, SUBMAPS[k]));
-    });
-    return report;
+    /* the offline harness drives these */
+    get game() { return G; }
   };
 
-  window.__apFinishChapter = function () { finishChapter(G); };
-  window.__apSolvePanel = function () { if (G.__panel) G.__panel.solve(); };
-  window.__apState = function () {
-    if (!G || !G.level) return { error: "no level is loaded", state: G && G.state };
-    return { state: G.state, level: G.levelIndex, step: G.step && G.step.clears,
-             closeCalls: G.closeCalls, code: G.code, pressure: G.pressure,
-             anwar: G.level.anwar ? { awake: G.level.anwar.awake, x: Math.round(G.level.anwar.x), y: Math.round(G.level.anwar.y) } : null,
-             zombies: G.level.zombies.length,
-             doors: Object.keys(G.level.doors).map(function (k) {
-               return k + ":" + G.level.doors[k].kind + (G.level.doors[k].open ? "(open)" : ""); }) };
-  };
-  return {
-    start: start,
-    stop: stop,
-    pause: function () { togglePause(); },
-  };
+  /* =========================================================
+     34 — TEST HOOKS
+     ========================================================= */
+  function installHooks() {
+    window.__apEnter = function (i) {
+      closeOverlay();
+      var defs = LEVELS;
+      enterLevel(defs[clamp(i, 0, defs.length - 1)]);
+      G.levelIndex = i;
+      return G;
+    };
+    window.__apPump = function (dt, times) {
+      var n = times || 1;
+      for (var i = 0; i < n; i++) tick(dt == null ? 1 / 60 : dt);
+      return G && G.state;
+    };
+    window.__apPaint = function () { paint(); return true; };
+    window.__apTeleport = function (tx, ty) {
+      if (!G || !G.player) return false;
+      G.player.x = G.world.cx(tx);
+      G.player.z = G.world.cz(ty);
+      G.player.vx = G.player.vz = 0;
+      G.player.safe.x = G.player.x; G.player.safe.z = G.player.z;
+      G.camRig.snap();
+      return true;
+    };
+    window.__apCampsite = function () { closeOverlay(); enterSub("campsite"); return G; };
+    window.__apRoadside = function () { closeOverlay(); enterSub("roadside"); return G; };
+    window.__apDrive = function () { playDrive(); return G; };
+    window.__apRide = function () { playRide(); return G; };
+    window.__apCampfire = function () { playCampfire(); return G; };
+    window.__apSunrise = function () { playSunrise(); return G; };
+    window.__apRoof = function () { playRooftop(); return G; };
+    window.__apUse = function () { tryUse(); return G && G.state; };
+    window.__apSay = function () { if (G && G.dlg) { nextLine(); return true; } return false; };
+    window.__apSkipDialogue = function () {
+      var n = 0;
+      while (G && G.dlg && n < 400) { nextLine(); n++; }
+      return n;
+    };
+    window.__apSolvePanel = function () { if (G && G.__panel) { G.__panel.solve(); return true; } return false; };
+    window.__apKeypad = function () {
+      if (G && G.__keypad) { G.__keypad.enter(GATE_CODE); G.__keypad.go(); return true; }
+      return false;
+    };
+    window.__apCheck = function () { if (G && G.__check) { G.__check.all(); return true; } return false; };
+    window.__apSerum = function () { if (G && G.__serum) { G.__serum.finish(); return true; } return false; };
+    window.__apState = function () {
+      if (!G) return null;
+      return {
+        state: G.state, level: G.def && G.def.id, step: step() && step().clears,
+        stepIndex: G.stepIndex, closeCalls: G.closeCalls, code: G.code,
+        zombies: G.zombies ? G.zombies.length : 0,
+        player: G.player ? { x: G.player.x, z: G.player.z, hidden: G.player.hidden,
+                             tx: Math.floor(G.player.x / TILE), ty: Math.floor(G.player.z / TILE) } : null,
+        cine: !!G.cine, dialogue: !!G.dlg,
+        presses: anyPressed, grab: G.grab ? { t: G.grab.t, presses: G.grab.presses } : null
+      };
+    };
+    /* put the game back into plain play: no card up, nobody talking.
+       The harness uses it between assertions so one failure cannot
+       cascade into the next one. */
+    window.__apClear = function () {
+      if (!G) return null;
+      G.dlg = null;
+      var box = $("ap-dlg");
+      if (box) box.setAttribute("aria-hidden", "true");
+      closeOverlay();
+      G.grab = null;
+      var grab = $("ap-grab");
+      if (grab) grab.setAttribute("aria-hidden", "true");
+      usePressed = false;
+      G.state = "play";
+      return G.state;
+    };
+    window.__apLoop = function (on) { loopFrozen = !on; return !loopFrozen; };
+    window.__apQuality = function (q) {
+      var scene = G && (G.cine ? G.cine.scene : G.scene);
+      var cam = G && G.cine ? G.cine.camera : Stage.camera;
+      Stage.setQuality(q, scene, cam);
+      return Stage.quality;
+    };
+    window.__apKey = function (k, v) { if (k in KEY) { KEY[k] = v ? 1 : 0; if (k === "use" && v) usePressed = true; } };
+  }
+
+  window.Apocalypse = Api;
 })();
