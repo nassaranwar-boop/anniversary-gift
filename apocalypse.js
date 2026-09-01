@@ -3,8 +3,9 @@
    "the world ends. you come and find me anyway."
 
    A third-person 3D stealth game. Real geometry, real lights, real
-   shadows — built on the three.js bundle in vendor/, loaded on demand
-   so the rest of the site does not pay for it.
+   shadows — built on vendor/three.bundle.js, which index.html already
+   loads for the book intro. If it ever stops loading it there, this
+   fetches it itself the first time somebody opens the chapter.
 
    Public API:
      Apocalypse.start()   title card, then Level 1
@@ -972,9 +973,10 @@
 
   /* =========================================================
      6 — LOADING THREE
-     The bundle is 780 KB. The rest of the site should not pay
-     for it, so it is fetched the first time somebody opens this
-     chapter and cached by the browser after that.
+     index.html loads the bundle for the book intro, so by the
+     time anybody reaches the hub it is already here and this
+     resolves immediately. It is written as a loader anyway so
+     that the chapter keeps working if that tag ever moves.
      ========================================================= */
   var THREE = null;
   var threePromise = null;
@@ -1464,6 +1466,35 @@
     return _glowTex;
   }
 
+  /* The torch is a light at her own eye line, so the shadow it casts of
+     her goes straight out behind her and you never see it. Without this
+     she reads as a cut-out standing in front of the floor rather than on
+     it. Everything that walks gets one. */
+  var _contactTex = null;
+  function contactTexture() {
+    if (_contactTex) return _contactTex;
+    var cc = canvas2d(64), x = cc.x;
+    var g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0.0, "rgba(0,0,0,.85)");
+    g.addColorStop(0.45, "rgba(0,0,0,.5)");
+    g.addColorStop(1.0, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+    _contactTex = new THREE.CanvasTexture(cc.c);
+    return _contactTex;
+  }
+
+  function contactShadow(scale) {
+    var m = new THREE.Mesh(
+      geo("contactP", function () { return new THREE.PlaneGeometry(1, 1); }),
+      new THREE.MeshBasicMaterial({ map: contactTexture(), transparent: true,
+        depthWrite: false, opacity: 0.55, fog: true, toneMapped: false }));
+    m.rotation.x = -Math.PI / 2;
+    m.position.y = 0.02;
+    m.scale.setScalar(scale || 1.05);
+    m.renderOrder = 2;
+    return m;
+  }
+
   /* a soft round blob used for dust, embers and fireflies */
   var _dotTex = null;
   function dotTexture() {
@@ -1577,6 +1608,11 @@
 
       Stage.camera = new THREE.PerspectiveCamera(46, 16 / 9, 0.4, 400);
       Stage.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      /* A phone is a small screen with a big pixel ratio and a thermal
+         budget, so it starts one rung down and climbs nothing. The
+         watchdog can still take it lower. */
+      var coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+      if (coarse || Math.min(screen.width, screen.height) < 820) Stage.quality = 1;
       Stage.resize(true);
       Stage.ready = true;
     },
@@ -1674,11 +1710,19 @@
       if (scene) Stage.attach(scene, camera || Stage.camera);
     },
 
-    dispose: function () {
-      if (Stage.composer) { try { Stage.composer.dispose(); } catch (e) {} }
-      if (Stage.renderer) { try { Stage.renderer.dispose(); } catch (e) {} }
+    /* Leaving the chapter drops everything the last scene was holding but
+       keeps the renderer: a canvas hands out one WebGL context for its
+       lifetime, so building a second one on the way back in gets a dead
+       one. Coming back reuses this. */
+    release: function () {
+      if (Stage.composer) {
+        try {
+          Stage.composer.passes.forEach(function (ps) { if (ps.dispose) ps.dispose(); });
+          Stage.composer.dispose();
+        } catch (e) {}
+      }
       Stage.composer = null; Stage.bloom = null; Stage.gradePass = null;
-      Stage.renderer = null; Stage.ready = false;
+      if (Stage.renderer) { try { Stage.renderer.renderLists.dispose(); } catch (e) {} }
     }
   };
 
@@ -1943,9 +1987,12 @@
     var legL = leg(1), legR = leg(-1);
 
     root.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
+    var contact = contactShadow(1.15 * S);
+    root.add(contact);
 
     return {
-      root: root, body: body, pelvis: pelvis, spine: spine, neck: neck, head: head,
+      root: root, contact: contact,
+      body: body, pelvis: pelvis, spine: spine, neck: neck, head: head,
       armL: armL, armR: armR, legL: legL, legR: legR,
       hipY: hipY, S: S, spec: spec, phase: Math.random() * 6.28,
       blink: 0
@@ -2006,7 +2053,6 @@
                           + (1 - g) * Math.sin(t * 1.5 + p) * 0.008 * S
                           - crouch * 0.20 * S;
     }
-    rig.legL.upper.rotation.x = rig.legL.upper.rotation.x || 0;
   }
 
   /* Sitting on a horse is not standing on one. The thigh comes forward
@@ -2069,7 +2115,7 @@
     });
     /* what is left of them: skin gone wrong, clothes torn open */
     r.root.traverse(function (o) {
-      if (!o.isMesh) return;
+      if (!o.isMesh || o === r.contact) return;
       if (o.material && o.material.color) {
         o.material = o.material.clone();
         o.material.map = tex("rot", 128, 1);
@@ -2156,6 +2202,9 @@
         lbl = hleg(-0.62, 1), lbr = hleg(-0.62, -1);
 
     root.traverse(function (o) { if (o.isMesh) o.castShadow = true; });
+    var hcontact = contactShadow(1);
+    hcontact.scale.set(3.2, 1.9, 1);
+    root.add(hcontact);
     return { root: root, body: body, neck: neck, head: headG, tail: tail,
              legs: [lfl, lfr, lbl, lbr], phase: 0 };
   }
@@ -2927,7 +2976,7 @@
         var rug = new THREE.Mesh(new THREE.BoxGeometry(TILE, 0.04, TILE),
           new THREE.MeshStandardMaterial({ color: 0x7a3a44, roughness: 0.99,
             map: tex("carpet", 128, 1), bumpMap: bump("carpet", 128, 1), bumpScale: 0.3 }));
-        rug.position.y = -0.13; rug.receiveShadow = true; g.add(rug);
+        rug.position.y = 0.015; rug.receiveShadow = true; g.add(rug);
       } else if (kind === "f") {
         var fr = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.8, 1.9, TILE * 0.72),
           surface("metal", { repeat: 1, rough: 0.3, metal: 0.6, tint: 0xd0d4d8 }));
@@ -3024,7 +3073,7 @@
         new THREE.MeshStandardMaterial({ color: 0xe8dcc0, roughness: 0.95, side: THREE.DoubleSide }));
       p.rotation.x = -Math.PI / 2;
       p.rotation.z = hash2(x, y) * 1.4;
-      p.position.y = -0.13;
+      p.position.y = 0.02;
       g.add(p);
       var glow = new THREE.Sprite(new THREE.SpriteMaterial({
         map: glowTexture(), color: 0xffe8b0, blending: THREE.AdditiveBlending,
@@ -3108,13 +3157,19 @@
     }
 
     function stream(x, y) {
+      /* something dark under the water, or it is a blue pane on grass */
+      var bed = new THREE.Mesh(
+        geo("streamBed", function () { return new THREE.BoxGeometry(TILE, 0.16, TILE); }),
+        surface("dirt", { repeat: 1, tint: 0x3a3428, rough: 0.99 }));
+      bed.position.set(cx(x), -0.04, cz(y));
+      G.add(bed);
       var m = new THREE.MeshStandardMaterial({
         color: 0x24485c, roughness: 0.04, metalness: 0.5,
-        transparent: true, opacity: 0.88
+        transparent: true, opacity: 0.86
       });
       var p = new THREE.Mesh(new THREE.PlaneGeometry(TILE, TILE, 4, 4), m);
       p.rotation.x = -Math.PI / 2;
-      p.position.set(cx(x), -0.10, cz(y));
+      p.position.set(cx(x), 0.015, cz(y));
       p.receiveShadow = true;
       var base = p.geometry.attributes.position.array.slice();
       world.anim.push(function (t) {
@@ -3130,7 +3185,7 @@
       for (var i = 0; i < 3; i++) {
         var s = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + hash2(x + i, y) * 0.1, 0),
           surface("block", { repeat: 1, tint: 0x6a6a68, rough: 0.4 }));
-        s.position.set(cx(x) + (hash2(x, y + i) - 0.5) * TILE, -0.05, cz(y) + (hash2(i, y) - 0.5) * TILE);
+        s.position.set(cx(x) + (hash2(x, y + i) - 0.5) * TILE, 0.03, cz(y) + (hash2(i, y) - 0.5) * TILE);
         G.add(s);
       }
       return p;
@@ -3194,7 +3249,7 @@
       var ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.78, 24),
         new THREE.MeshBasicMaterial({ color: 0x8affc8, transparent: true, opacity: 0.42,
           side: THREE.DoubleSide, toneMapped: false }));
-      ring.rotation.x = -Math.PI / 2; ring.position.y = -0.12; g.add(ring);
+      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.045; g.add(ring);
       var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.72, 5.0, 14, 1, true),
         new THREE.MeshBasicMaterial({ color: 0x7affc0, transparent: true, opacity: 0.09,
           side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
@@ -3347,13 +3402,6 @@
       world.pool.push(pl);
     }
 
-    world.dispose = function () {
-      G.traverse(function (o) {
-        if (o.geometry && !o.geometry.__shared) { /* shared geometry is cached in GEO */ }
-        if (o.isInstancedMesh) o.dispose();
-      });
-    };
-
     return world;
   }
 
@@ -3399,7 +3447,7 @@
         "uniform vec3 tint; uniform float amt; varying float vF;",
         "void main(){",
         "  float a = smoothstep(0.5, 0.05, length(gl_PointCoord-0.5));",
-        "  gl_FragColor = vec4(tint, a*vF*0.5*amt);",
+        "  gl_FragColor = vec4(tint, a*vF*0.34*amt);",
         "}"
       ].join("\n")
     });
@@ -3976,7 +4024,7 @@
       ringPool.push(ring);
     }
     if (ring.mesh.parent !== G.scene) G.scene.add(ring.mesh);
-    ring.mesh.position.set(x, -0.09, z);
+    ring.mesh.position.set(x, 0.05, z);
     ring.mesh.visible = true;
     ring.live = true; ring.t = 0; ring.r = r;
   }
@@ -4258,6 +4306,7 @@
   function overlay() { return $("ap-overlay"); }
 
   function openOverlay(node, cls) {
+    if (G && G.__overlayCleanup) { try { G.__overlayCleanup(); } catch (e) {} G.__overlayCleanup = null; }
     var o = overlay();
     o.innerHTML = "";
     o.className = "ap-overlay" + (cls ? " " + cls : "");
@@ -4277,7 +4326,10 @@
     o.style.justifyContent = "";
     o.style.paddingBottom = "";
     o.style.pointerEvents = "";
-    if (G) { G.__panel = null; G.__keypad = null; }
+    if (G) {
+      if (G.__overlayCleanup) { try { G.__overlayCleanup(); } catch (e) {} G.__overlayCleanup = null; }
+      G.__panel = null; G.__keypad = null; G.__check = null; G.__serum = null; G.__tv = null;
+    }
   }
 
   function setHud() {
@@ -4770,6 +4822,13 @@
     cv.addEventListener("mousedown", down); cv.addEventListener("touchstart", down, { passive: false });
     window.addEventListener("mousemove", move); cv.addEventListener("touchmove", move, { passive: false });
     window.addEventListener("mouseup", up); cv.addEventListener("touchend", up, { passive: false });
+    /* the panel is opened twice a chapter, and a drag needs the whole
+       window to follow the pointer off the canvas — so both of those come
+       back off when it closes */
+    G.__overlayCleanup = function () {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
 
     G.__panel = {
       canvas: cv,
@@ -4842,7 +4901,12 @@
     wrap.appendChild(b);
     openOverlay(wrap);
 
-    var x = cv.getContext("2d"), given = 0, done = false;
+    /* three states, not a boolean: ready, going in, and done. A single
+       "done" flag both ended the animation and swallowed the press that
+       was supposed to close the screen, which left her holding her sleeve
+       up at Ashcombe forever. */
+    var x = cv.getContext("2d"), given = 0, phase = 0, killed = false;
+    G.__overlayCleanup = function () { killed = true; };
     function draw() {
       var W = cv.width, H = cv.height;
       var g = x.createLinearGradient(0, 0, 0, H);
@@ -4884,31 +4948,41 @@
     }
     draw();
 
+    function finished() {
+      phase = 2;
+      given = 1;
+      draw();
+      b.disabled = false;
+      b.textContent = "THAT'S IT";
+      line.textContent = "\u201cRight. Both of you are clean. Sit there till the gate goes.\u201d";
+      Audio_.found();
+    }
+
     b.addEventListener("click", function () {
-      if (done) return;
-      if (given < 1) {
+      if (phase === 1) return;                       /* it is going in */
+      if (phase === 0) {
+        phase = 1;
         b.disabled = true;
+        Audio_.beep();
         var t0 = performance.now();
         (function step() {
+          if (killed) return;
           given = clamp((performance.now() - t0) / 1400, 0, 1);
           draw();
           if (given < 1) requestAnimationFrame(step);
-          else {
-            done = true;
-            b.disabled = false;
-            b.textContent = "THAT'S IT";
-            line.textContent = "\u201cRight. Both of you are clean. Sit there till the gate goes.\u201d";
-            Audio_.found();
-          }
+          else finished();
         })();
-        Audio_.beep();
         return;
       }
       closeOverlay();
       G.state = "play";
       if (onDone) onDone();
     });
-    G.__serum = { give: function () { b.click(); }, finish: function () { given = 1; done = true; b.click(); } };
+
+    G.__serum = {
+      give: function () { b.click(); },
+      finish: function () { if (phase !== 2) finished(); b.click(); }
+    };
   }
 
   /* ---- pause ---- */
@@ -5528,10 +5602,12 @@
     var her = makeOuissy(); her.root.scale.setScalar(0.82);
     her.root.position.set(-0.1, 0.52, 0.42); her.root.rotation.y = -Math.PI / 2;
     poseHuman(her, 0, 0, null, { crouch: 1 });
+    her.contact.visible = false;
     car.group.add(her.root);
     var him = makeAnwar(); him.root.scale.setScalar(0.82);
     him.root.position.set(-0.1, 0.52, -0.42); him.root.rotation.y = -Math.PI / 2;
     poseHuman(him, 0, 0, null, { crouch: 1 });
+    him.contact.visible = false;
     car.group.add(him.root);
 
     /* headlights: two spots, and the beams you can see in the mist */
@@ -5720,6 +5796,7 @@
     him.root.position.set(-0.62, 1.00, 0);
     him.root.rotation.y = -Math.PI / 2;
     horse.root.add(him.root);
+    her.contact.visible = false; him.contact.visible = false;
 
     var motes = makeMotes(0xffd0a0, 220, 200, 40);
     motes.points.position.set(-40, 0, -10);
@@ -5860,6 +5937,7 @@
       rig.spine.rotation.x = 0;
     }
     sit(her, true); sit(him, false);
+    her.contact.visible = false; him.contact.visible = false;
 
     var leaning = 0;
     runCine({
@@ -6167,6 +6245,7 @@
       rig.spine.rotation.z = 0.06;
     }
     sitEdge(her); sitEdge(him);
+    her.contact.visible = false; him.contact.visible = false;
 
     /* embers coming up off the city below */
     var motes = makeMotes(0xffc890, 160, 60, 40);
@@ -6272,7 +6351,8 @@
       ["THE DARK", "you only see as far as your torch. Lit rooms show more"],
       ["COVER", "step into a wardrobe, a bush, or behind a car and they lose you"],
       ["NOISE", "running is loud. They come and look at where the sound was"],
-      ["GETTING CAUGHT", "you get pulled back to somewhere safe. That's all. Try again"]
+      ["GETTING CAUGHT", "you get pulled back to somewhere safe. That's all. Try again"],
+      ["A CUT SCENE", "USE runs it to the end, if you have seen it before"]
     ];
     var used = false;
     openOverlay(card("HOW THIS GOES", "Everything you need, once.", rows, "GO",
@@ -6364,7 +6444,10 @@
       blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false
     });
     var mesh = new THREE.Mesh(g, m);
-    mesh.position.y = -0.11;
+    /* The floor tiles are 0.30 boxes sitting at -0.15, so the surface a
+       player is looking at is y = 0. Anything meant to lie on it has to
+       be just above that, or it is inside the floor and invisible. */
+    mesh.position.y = 0.035;
     mesh.renderOrder = 5;
     z.rig.root.add(mesh);
     /* the rig is rotated by -facing, so undo it on the cone */
@@ -6426,6 +6509,16 @@
     /* the cut, if there is one, runs whatever the game's state is */
     if (G.cine) {
       G.cine.t += dt;
+      /* Nobody should have to sit through the drive twice. After a couple
+         of seconds — long enough that the press that started it cannot
+         end it — USE runs the cut to its end. The roof has no end to run
+         to; there the same key turns the page of the conversation. */
+      if (usePressed && isFinite(G.cine.duration) && G.cine.t > 2.0) {
+        usePressed = false;
+        G.cine.t = G.cine.duration;
+        if (G.cine.update) G.cine.update(0, G.cine.t);
+      }
+      if (usePressed && !isFinite(G.cine.duration)) usePressed = false;
       if (G.cine.update) G.cine.update(dt, G.cine.t);
       if (isFinite(G.cine.duration) && G.cine.t >= G.cine.duration) {
         var done = G.cine.done;
@@ -6639,7 +6732,7 @@
       if (resizeObs) { try { resizeObs.disconnect(); } catch (e) {} resizeObs = null; }
       if (G && G.cine) { disposeScene(G.cine.scene); G.cine = null; }
       teardownLevel();
-      Stage.dispose();
+      Stage.release();
       G = null;
       for (var k in KEY) KEY[k] = 0;
     },

@@ -156,8 +156,9 @@ buttons.
 ### It is a real 3D game
 
 It runs on `vendor/three.bundle.js` — three.js r180 with the postprocessing
-addons, bundled for offline use. `apocalypse.js` fetches it the first time
-somebody opens the chapter, so the rest of the site never pays for it.
+addons, bundled for offline use, and the same one `index.html` already loads
+for the book intro. `apocalypse.js` will fetch it itself if it is not there,
+so the chapter keeps working if that tag ever moves.
 
 Everything you look at is geometry with lights on it:
 

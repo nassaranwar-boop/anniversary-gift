@@ -182,32 +182,64 @@ beside it so he can play both. Removing the maze is the last step and is
 he does say so, it is one commit: the maze screens, its CSS, its half of
 `script.js`, and the hub card, with the new chapter moving into its slot.
 
-Five levels, a top-down stealth story, all of it in `apocalypse.js`, which
-carries no files of its own the way `super-ouissy.js` does not. Everything
-worth editing is in the first two hundred lines: `AP` for the words,
-`TUNE` for how she feels to play, `LEVELS` for the maps as grids of
-characters. The reunion in Level 3 is `AP.reunion`, written underplayed at
-his direction — *"like a real conversation between two people in shock and
-relief, not a dramatic speech"* — and the lines written as `["", ""]` are
-beats of silence, held on screen like any other line. Keep them.
+Five levels, a stealth story, all of it in `apocalypse.js`.
 
-Still open with him: whether the level-by-level screenshots pass, and the
-wire panel's look (he wrote the art direction for it himself and has not
-seen it running yet).
+**It is a real 3D game now.** It was a 320x180 canvas with tiles painted on
+it; it is a third-person 3D game running on `vendor/three.bundle.js` —
+three.js r180 with the postprocessing addons, the same bundle `index.html`
+already loads for the book intro, so it costs the page nothing new.
+`apocalypse.js` will fetch it itself if that tag ever moves. Same story, same maps,
+same words, and still no files of its own: every surface is a texture
+painted into an offscreen canvas at load, every sound is an oscillator, and
+the sky is a fragment shader.
 
-Three things this build learned the hard way, all worth not repeating:
+Everything worth editing is in the first six hundred lines: `MAPS` for the
+maps as grids of characters, `LEVELS` and `SUB` for what each place is and
+what has to happen in it, `PAL` for the five palettes the world builder,
+the lighting and the post chain all read from, `TALK` for every word in the
+game, and `TUNE` for how she feels to play. The reunion in Level 3 is
+`TALK.wake` and `TALK.hide`, written underplayed at his direction — *"like a
+real conversation between two people in shock and relief, not a dramatic
+speech"* — and the lines written as `[null, null]` are beats of silence,
+held on screen like any other line. Keep them.
+
+Still open with him: whether the look is what he wanted, and the wire
+panel (he wrote the art direction for it himself and has not seen it
+running).
+
+Things this build learned the hard way, all worth not repeating:
 
 - **A second function declaration with the same name at the same scope
   wins.** The ending's cat routine was called `drawCat`, and the choice
   adventure already had one — so every call silently drew the wrong thing
   and the roof rendered a heart floating over nothing. It is `drawEndCat`.
   This is the third time this file has been bitten by exactly this.
-- **The light map's tint has to be mixed with the dark, not multiplied into
-  it**, or a level asking for daylight still comes out as night.
 - **A fixed number of clicks through a dialogue is a bug waiting to
   happen.** Drain the box until it is closed instead; one extra line in one
   beat put every later step out of phase and the suite reported a level
   that had never started.
+- **A suspended AudioContext never fires the `stop()` you schedule**, so
+  every node you build into one stays alive. Twenty minutes of footsteps
+  was tens of thousands of oscillators and a page that stopped responding.
+  Nothing is built now unless `ctx.state === "running"`.
+- **`openOverlay` claims the game's state for itself.** The close call set
+  its own state first and then put the beat up, so the hold ran forever and
+  the game never came back. Put the overlay up, then claim the state.
+- **A canvas hands out one WebGL context for its lifetime.** Disposing the
+  renderer on the way out and building another on the way back in gets a
+  dead one, so leaving the chapter keeps the renderer and only drops what
+  the scene was holding.
+- **The floor's top face is y = 0, not y = -0.15.** The tiles are 0.30
+  boxes sitting at -0.15. Every decal meant to lie on the floor — the
+  vision cones, the noise rings, the note, the rugs — was placed at a
+  negative y and was therefore inside the floor and invisible.
+- **Sorting interactions on distance alone lets a tie decide.** Standing
+  between the car she has to start and a dropped bottle, she reached for
+  the bottle. Story tiles are ranked ahead of scenery now.
+- **One boolean cannot both end an animation and gate the press that
+  follows it.** The serum screen used `done` for both, so the button that
+  said "THAT'S IT" did nothing and she stood at Ashcombe with her sleeve up
+  forever. Three states, not two.
 
 ## 8. Testing
 
@@ -226,8 +258,14 @@ There are scripts for all of this in `tools/` now, with a README. Run
 an iPhone and fails loudly. It had itself been broken for a long time —
 it drove a text field at the passcode gate, which has been a keypad for
 much longer than that — so if it fails on the second screen, suspect the
-suite before the site. For the apocalypse there is `tools/apocfull.js`,
-which plays the whole chapter from the hub card to the roof. Two traps are written up there and both cost an
+suite before the site. For the apocalypse there is
+`tools/apocflow3d.js`, which plays the whole chapter from the hub card to
+the roof, and `tools/apocmech3d.js`, which holds the stealth assertions.
+Both need a real GL context, so launch Chromium with `--use-gl=swiftshader
+--enable-unsafe-swiftshader` and **not** `--disable-gpu`. SwiftShader is
+software rendering: a full-resolution frame takes the best part of a second,
+so drive the game with `__apLoop(false)` and `__apPump` and drop the render
+scale with `__apQuality(2)` rather than waiting on the real loop. Two traps are written up there and both cost an
 hour to find: **requestAnimationFrame runs at about 3fps in this container**,
 so anything that waits on wall-clock time runs in slow motion and proves
 nothing (drive the game with `window.__soPump` instead); and

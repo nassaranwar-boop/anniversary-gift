@@ -208,9 +208,12 @@ const need = (name, cond, extra) => {
   need('the intake sheet is up', await p.$('.ap-check-list') !== null);
   await p.evaluate(() => window.__apCheck()); await pump(30);
   need('the serum comes next', await waitSel('.ap-serum-canvas'));
-  await p.evaluate(() => window.__apSerum());
+  /* press it the way a person does: once to give it, once to move on */
+  await click('.ap-serum .ap-note-ok');
   await p.waitForTimeout(1700);
-  await p.evaluate(() => window.__apSerum()); await pump(30);
+  need('the button comes back after the dose',
+       (await p.$eval('.ap-serum .ap-note-ok', e => e.textContent).catch(()=>null)) === "THAT'S IT");
+  await click('.ap-serum .ap-note-ok'); await pump(30);
   need('both of them are cleared', await waitFor(s => s.step === 'exit', 600));
 
   const ex5 = await p.evaluate(() => window.Apocalypse.game.world.exit);
