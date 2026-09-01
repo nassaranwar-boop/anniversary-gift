@@ -5519,6 +5519,63 @@ window.Apocalypse = (function () {
              doors: Object.keys(G.level.doors).map(function (k) {
                return k + ":" + G.level.doors[k].kind + (G.level.doors[k].open ? "(open)" : ""); }) };
   };
+  /* ---- debug scene jump ---- */
+  var DEBUG_SCENES = [];
+  for (var di = 0; di < LEVELS.length; di++) {
+    (function (idx) {
+      DEBUG_SCENES.push({ label: "Level " + (idx + 1) + " — " + LEVELS[idx].name, go: function () {
+        closeOverlay();
+        G.levelIndex = idx;
+        G.level = buildLevel(LEVELS[idx]);
+        G.player = mkPlayer(G.level.start.x, G.level.start.y);
+        G.safe = { x: G.level.start.x, y: G.level.start.y };
+        G.stepIndex = 0; G.steps = G.level.def.steps || [];
+        G.step = G.steps[0] || null; G.state = "play";
+        G.code = null; G.closeCalls = 0; G.pressure = 0;
+        setHud(G);
+        startBed(bedFor(G.level.def));
+      }});
+    })(di);
+  }
+  Object.keys(SUBMAPS).forEach(function (k) {
+    DEBUG_SCENES.push({ label: "Submap — " + k.toUpperCase(), go: function () {
+      closeOverlay();
+      G.levelIndex = 0;
+      G.level = buildLevel(LEVELS[0]);
+      G.player = mkPlayer(G.level.start.x, G.level.start.y);
+      G.state = "play";
+      if (k === "campsite") { window.__apCampsite(); }
+      else { enterSubmap(G, SUBMAPS[k], [3, 3]); G.steps = SUBMAPS[k].steps || []; G.stepIndex = 0; G.step = G.steps[0] || null; setHud(G); }
+    }});
+  });
+
+  function showDebugMenu() {
+    if (!G) return;
+    var wrap = el("div", "ap-card");
+    wrap.appendChild(el("p", "ap-card-kicker", "DEBUG — JUMP TO SCENE"));
+    wrap.appendChild(el("h3", "ap-card-title", "Pick a scene to load directly."));
+    var list = el("div", "ap-card-rows");
+    DEBUG_SCENES.forEach(function (s) {
+      var btn = el("button", "ap-card-go", s.label);
+      btn.style.cssText = "margin:4px 0;width:100%;font-size:11px;padding:6px 10px;";
+      btn.addEventListener("click", s.go);
+      list.appendChild(btn);
+    });
+    wrap.appendChild(list);
+    var close = el("button", "ap-card-go", "Cancel");
+    close.style.cssText = "margin-top:12px;opacity:0.6;";
+    close.addEventListener("click", function () { closeOverlay(); G.state = "play"; });
+    wrap.appendChild(close);
+    G.state = "card";
+    openOverlay(wrap);
+  }
+
+  window.__apDebugMenu = showDebugMenu;
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "`" && G && G.state !== "cut") { e.preventDefault(); showDebugMenu(); }
+  });
+
   return {
     start: start,
     stop: stop,
