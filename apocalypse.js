@@ -2632,34 +2632,53 @@ window.Apocalypse = (function () {
         var k = kind(x, y);
         if (!k) continue;
         var below = kind(x, y + 1);
-        if (below === "tall" || (k === "low" && below)) continue;   // buried side
+        if (below === "tall" || (k === "low" && below)) continue;
 
-        var faceH = k === "tall" ? 6 : 0;
-        var shadH = k === "tall" ? 9 : 4;
+        var faceH = k === "tall" ? 7 : 0;
+        var shadH = k === "tall" ? 10 : 5;
         var px0 = x * T, py0 = y * T;
 
         if (faceH) {
-          /* the side of it, darkened and given a little vertical grain */
+          /* the visible side face — darker gradient with vertical grain */
           var fg = mc.createLinearGradient(0, py0 + T - faceH, 0, py0 + T);
-          fg.addColorStop(0, "rgba(6,7,12,.30)");
-          fg.addColorStop(1, "rgba(6,7,12,.62)");
+          fg.addColorStop(0, "rgba(6,7,12,.28)");
+          fg.addColorStop(0.4, "rgba(6,7,12,.45)");
+          fg.addColorStop(1, "rgba(6,7,12,.65)");
           mc.fillStyle = fg;
           mc.fillRect(px0, py0 + T - faceH, T, faceH);
-          for (var gx = 0; gx < T; gx += 3) {
-            mc.fillStyle = "rgba(255,255,255,.035)";
+          /* vertical grain lines — alternating light/dark for texture */
+          for (var gx = 0; gx < T; gx += 2) {
+            mc.fillStyle = gx % 4 === 0 ? "rgba(255,255,255,.04)" : "rgba(0,0,0,.03)";
             mc.fillRect(px0 + gx, py0 + T - faceH, 1, faceH);
           }
-          mc.fillStyle = "rgba(255,255,255,.10)";
+          /* bright top edge where light catches */
+          mc.fillStyle = "rgba(255,255,255,.12)";
           mc.fillRect(px0, py0 + T - faceH, T, 1);
+          /* left edge lit, right edge darker (light from upper-left) */
+          mc.fillStyle = "rgba(255,255,255,.06)";
+          mc.fillRect(px0, py0 + T - faceH, 1, faceH);
+          mc.fillStyle = "rgba(0,0,0,.08)";
+          mc.fillRect(px0 + T - 1, py0 + T - faceH, 1, faceH);
         }
 
-        /* and what it throws on the ground in front of it */
+        /* shadow cast onto the ground below */
         if (y + 1 < h && !below) {
           var sg = mc.createLinearGradient(0, (y + 1) * T, 0, (y + 1) * T + shadH);
-          sg.addColorStop(0, "rgba(4,5,9,.50)");
+          sg.addColorStop(0, "rgba(4,5,9,.55)");
+          sg.addColorStop(0.4, "rgba(4,5,9,.28)");
           sg.addColorStop(1, "rgba(4,5,9,0)");
           mc.fillStyle = sg;
-          mc.fillRect(px0 + 2, (y + 1) * T, T, shadH);          // offset right, light is upper-left
+          mc.fillRect(px0 + 2, (y + 1) * T, T, shadH);
+
+          /* side shadow (light from upper-left, so shadow extends right) */
+          var right = kind(x + 1, y);
+          if (!right && x + 1 < w) {
+            var ssg = mc.createLinearGradient((x + 1) * T, 0, (x + 1) * T + 4, 0);
+            ssg.addColorStop(0, "rgba(4,5,9,.30)");
+            ssg.addColorStop(1, "rgba(4,5,9,0)");
+            mc.fillStyle = ssg;
+            mc.fillRect((x + 1) * T, py0 + 2, 4, T - 2);
+          }
         }
       }
     }
@@ -3459,60 +3478,117 @@ window.Apocalypse = (function () {
     var img = shaded((set[a.face] || set.down)[a.frame || 0]);
     var x = Math.round(a.x - cx), y = Math.round(a.y - cy);
     if (x < -20 || x > VW + 20 || y < -30 || y > VH + 30) return;
-    drawShadow(c, x, y + 3, 8);
+
+    /* ground shadow — elongated ellipse, darker near feet */
+    drawShadow(c, x, y + 3, 9);
+
     var alpha = 1;
-    if (a === G.player && a.hidden) alpha = 0.45;    // she is inside something
+    if (a === G.player && a.hidden) alpha = 0.40;
     c.globalAlpha = alpha;
+
+    /* subtle foot-contact darkening */
+    c.fillStyle = "rgba(4,5,10,.15)";
+    c.fillRect(x - 4, y + 1, 8, 2);
+
     c.drawImage(img, x - 8, y - 25);
-    c.globalAlpha = 1;
-    if (a.grab) {                                    // it has her
+
+    /* highlight rim on the lit side (upper-left light) */
+    if (alpha > 0.8) {
+      c.globalAlpha = 0.06;
+      c.globalCompositeOperation = "lighter";
+      c.drawImage(img, x - 9, y - 26);
+      c.globalCompositeOperation = "source-over";
+      c.globalAlpha = 1;
+    } else {
+      c.globalAlpha = 1;
+    }
+
+    if (a.grab) {
       c.strokeStyle = "rgba(255,70,60,.85)";
       c.lineWidth = 2;
       c.beginPath();
       c.arc(x, y - 8, 13 + Math.sin(G.t * 22) * 2, 0, 6.2832);
       c.stroke();
+      /* inner glow */
+      c.strokeStyle = "rgba(255,100,80,.3)";
+      c.lineWidth = 4;
+      c.beginPath();
+      c.arc(x, y - 8, 11 + Math.sin(G.t * 22) * 2, 0, 6.2832);
+      c.stroke();
+      c.lineWidth = 1;
     }
-    if (alert > 0.15) {                              // the mark over an alerted one
-      var yy = y - 22 - Math.sin(G.t * 8) * 1;
+    if (alert > 0.15) {
+      var yy = y - 24 - Math.sin(G.t * 8) * 1.5;
       var col = alert > 0.8 ? "#ff5a4a" : "#ffc24a";
       px(c, x - 1, yy, 2, 5, col);
       px(c, x - 1, yy + 6, 2, 2, col);
-      if (a.react > 0) {                             // and the half-second it rears up
+      /* glow behind the alert mark */
+      c.fillStyle = alert > 0.8 ? "rgba(255,60,40,.12)" : "rgba(255,180,60,.10)";
+      c.fillRect(x - 4, yy - 2, 8, 12);
+      if (a.react > 0) {
         var k = a.react / TUNE.zReact;
         c.strokeStyle = "rgba(255,90,74," + (0.7 * k) + ")";
         c.lineWidth = 1;
         c.beginPath();
-        c.arc(x, y - 6, 10 + (1 - k) * 12, 0, 6.2832);
+        c.arc(x, y - 6, 10 + (1 - k) * 14, 0, 6.2832);
         c.stroke();
       }
     }
   }
 
   function drawCone(c, G, z, cx, cy) {
-    if (z.state === "chase") c.fillStyle = "rgba(255,80,64,.16)";
-    else if (z.state === "look") c.fillStyle = "rgba(255,190,90,.12)";
-    else c.fillStyle = "rgba(190,210,255,.075)";
     var a = Math.atan2(z.fy, z.fx);
     var x = z.x - cx, y = z.y - cy;
-    var steps = 16, r = TUNE.zSight;
+    var steps = 20, r = TUNE.zSight;
+
+    /* build the cone path */
     c.beginPath();
     c.moveTo(x, y);
     for (var i = 0; i <= steps; i++) {
       var ang = a - TUNE.zCone + (2 * TUNE.zCone * i) / steps;
       var dx = Math.cos(ang), dy = Math.sin(ang), hit = r;
-      for (var d = 6; d < r; d += 5) {               // stop the cone at a wall
+      for (var d = 6; d < r; d += 5) {
         if (isOpaque(G.level, ((z.x + dx * d) / T) | 0, ((z.y + dy * d) / T) | 0)) { hit = d; break; }
       }
       c.lineTo(x + dx * hit, y + dy * hit);
     }
     c.closePath();
+
+    /* radial gradient for softer falloff */
+    var grd = c.createRadialGradient(x, y, 0, x, y, r);
+    if (z.state === "chase") {
+      grd.addColorStop(0, "rgba(255,60,40,.22)");
+      grd.addColorStop(0.5, "rgba(255,80,64,.12)");
+      grd.addColorStop(1, "rgba(255,80,64,.03)");
+    } else if (z.state === "look") {
+      grd.addColorStop(0, "rgba(255,180,70,.18)");
+      grd.addColorStop(0.5, "rgba(255,190,90,.10)");
+      grd.addColorStop(1, "rgba(255,190,90,.02)");
+    } else {
+      grd.addColorStop(0, "rgba(180,200,255,.10)");
+      grd.addColorStop(0.5, "rgba(190,210,255,.06)");
+      grd.addColorStop(1, "rgba(190,210,255,.01)");
+    }
+    c.fillStyle = grd;
     c.fill();
   }
 
   function paintCaught(G, c) {
     var k = Math.min(1, G.caughtT / 0.35);
-    c.fillStyle = "rgba(6,4,10," + (0.82 * k) + ")";
+    /* dark vignette closing in */
+    var cg = c.createRadialGradient(VW / 2, VH / 2, VH * 0.15 * (1 - k), VW / 2, VH / 2, VH * 0.6);
+    cg.addColorStop(0, "rgba(6,4,10," + (0.3 * k) + ")");
+    cg.addColorStop(1, "rgba(6,4,10," + (0.9 * k) + ")");
+    c.fillStyle = cg;
     c.fillRect(0, 0, VW, VH);
+    /* red pulse at the edges */
+    if (k > 0.3) {
+      var rg = c.createRadialGradient(VW / 2, VH / 2, VH * 0.3, VW / 2, VH / 2, VH * 0.9);
+      rg.addColorStop(0, "rgba(90,10,10,0)");
+      rg.addColorStop(1, "rgba(90,10,10," + (0.25 * k) + ")");
+      c.fillStyle = rg;
+      c.fillRect(0, 0, VW, VH);
+    }
   }
 
   /* =======================================================================
