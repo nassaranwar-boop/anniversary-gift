@@ -428,6 +428,36 @@ window.Apocalypse = (function () {
   };
 
 
+  SUBMAPS.campsite = {
+    theme: "campsite",
+    key: "campsite",
+    name: "THE CLEARING",
+    base: ",",
+    dark: 0.38,
+    grade: [180, 140, 80, 0.10],
+    haze: [80, 70, 50, .20],
+    grid: [
+      "ooooooooooooooooooooooo",
+      "o,,,,,o,,,,~,,,,o,,,,,o",
+      "o,,w,,,,,,,~,,,,,,,,,,o",
+      "o,,,,,,,,,,~,,,,,,,,,,o",
+      "o,,,,,,,,g,~,,,,,,,,,,o",
+      "o,o,,,,,,,,~,,,,b,,,,,o",
+      "o,,,,,,,,*,~,,,,b,,,,,o",
+      "o,,,,,,,,,,,,,,,,,w,,,o",
+      "o,,,,,,,,g,,,,,,,,,,,,o",
+      "o,,,S,,,,,,,,,,,,,,o,,o",
+      "o,,,,,,,,,,,,,,,,,,,,,o",
+      "o,,,,o,,,,,w,,,,,,,,,,o",
+      "o,,,,,,,,,,,,,,,,,,,,,o",
+      "ooooooooooooooooooooooo",
+    ],
+    steps: [
+      { task: "Find some wood for a fire.", clears: "wood" },
+      { task: "Light the fire.", clears: "fire" },
+    ],
+  };
+
   /* ---- LEVEL 5 — THE GATES --------------------------------------------
      Almost no game in this one, on purpose. The road up to the fence, a
      holding pen with a bench and a table in it, and the compound on the
@@ -559,6 +589,16 @@ window.Apocalypse = (function () {
       hide:  ["#35492e", "#2a3a25", "#1f2b1c"],
       ground:["#3f5236", "#36462d", "#2c3a26"],              // and grass either side
       amb:   "#1a1a2c",
+    },
+    campsite: {
+      floor: ["#5a5038", "#4e4530", "#433b28", "#655a40"],
+      wall:  ["#3a3428", "#2e2820", "#221e18", "#4a4236"],
+      trim:  "#6e6248",
+      cover: ["#4a4030", "#3c3426", "#2e281e"],
+      tall:  ["#2e4428", "#254020", "#1c3218"],
+      hide:  ["#2a3e24", "#22341c", "#1a2a16"],
+      ground:["#3a4a30", "#324028", "#2a3620"],
+      amb:   "#141422",
     },
   };
 
@@ -1457,6 +1497,49 @@ window.Apocalypse = (function () {
     px(c, 8, 3, 1, 2, "#fff6d8");
   }
 
+  function paintWoodpile(c, P, theme, r) {
+    paintGround(c, P, theme, r, {});
+    for (var i = 0; i < 4; i++) {
+      var lx = 2 + i * 3, ly = 6 + ((r() * 3) | 0);
+      px(c, lx, ly, 2, 7, "#5a422a");
+      px(c, lx, ly, 2, 1, "#6e5438");
+    }
+    for (var j = 0; j < 3; j++) {
+      px(c, 3 + j * 3, 5, 3, 1, "#4a3620");
+    }
+  }
+
+  function paintStream(c, P, theme, r) {
+    paintGround(c, P, theme, r, {});
+    var darks = ["#2a3e42", "#263a3e", "#22363a"];
+    var mids  = ["#304a4e", "#2c4448", "#283e42"];
+    for (var y = 0; y < T; y++) {
+      var wobble = Math.sin(y * 0.7 + r() * 6) * 1.5;
+      var sx = 4 + wobble, sw = 7 + ((r() * 2) | 0);
+      px(c, sx | 0, y, sw, 1, darks[(r() * 3) | 0]);
+      if (r() > 0.6) px(c, (sx + 1 + r() * (sw - 2)) | 0, y, 2, 1, mids[(r() * 3) | 0]);
+    }
+    for (var s = 0; s < 2; s++) {
+      px(c, (5 + r() * 5) | 0, (r() * T) | 0, 1, 1, "#3a5658");
+    }
+  }
+
+  function paintBedroll(c, P, theme, r) {
+    paintGround(c, P, theme, r, {});
+    px(c, 2, 3, 12, 10, "#5a4838");
+    px(c, 3, 4, 10, 8, "#6e5a42");
+    px(c, 3, 4, 10, 3, "#7a6850");
+    px(c, 4, 5, 3, 2, "#8a7a60");
+    px(c, 2, 13, 12, 1, "#4a3a28");
+  }
+
+  function paintLog(c, P, theme, r) {
+    paintGround(c, P, theme, r, {});
+    px(c, 2, 7, 12, 3, "#5a422a");
+    px(c, 2, 7, 12, 1, "#6e5438");
+    px(c, 1, 10, 14, 1, "#3a2e1a");
+  }
+
   function paintExit(c, P, theme, r) {
     paintGround(c, P, theme, r);
     for (var y = 2; y < T - 1; y += 4) px(c, 3, y, T - 6, 2, "#e8d48a");
@@ -1579,6 +1662,10 @@ window.Apocalypse = (function () {
     else if (ch === "G") paintGate(c, P, theme, r);
     else if (ch === "X") paintExit(c, P, theme, r);
     else if (ch === "*") paintFire(c, P, theme, r);
+    else if (ch === "p") paintWoodpile(c, P, theme, r);
+    else if (ch === "~") paintStream(c, P, theme, r);
+    else if (ch === "b") paintBedroll(c, P, theme, r);
+    else if (ch === "g") paintLog(c, P, theme, r);
     else if (ch === "l") paintLamp(c, P, theme, r, false, under);
     else if (ch === "L") paintLamp(c, P, theme, r, true, under);
     else paintFloor(c, P, theme, r);
@@ -1593,9 +1680,9 @@ window.Apocalypse = (function () {
         where she can disappear, what she can use, and who else is walking
         about. The map art is baked into one canvas here too.
      ======================================================================= */
-  var SOLID = "#vco=BFKnfquyYWTLCA"; // she cannot walk through these (G is a door)
+  var SOLID = "#vco=BFKnfquyYWTLCAp~g"; // she cannot walk through these (G is a door)
   var OPAQUE = "#vcohnf";          // and sight cannot pass these
-  var ENTITY = "SzixAHN";          // drawn as bare floor; something stands on it
+  var ENTITY = "SzixAHNw";         // drawn as bare floor; something stands on it
 
   function buildLevel(def) {
     useLight(def);
@@ -1623,6 +1710,7 @@ window.Apocalypse = (function () {
         if (ch === "x") L.zombies.push(mkZombie(x * T + T / 2, y * T + T / 2, Z_KIND.DRAWN));
         if (ch === "A") { L.anwar = { x: x * T + T / 2, y: y * T + T / 2, awake: false }; draw = "B"; }
         if (ch === "H") { L.horse = { x: x * T + T / 2, y: y * T + T / 2 }; L.things.push({ kind: "horse", x: x, y: y, done: false }); }
+        if (ch === "w") L.things.push({ kind: "wood", x: x, y: y, done: false });
         if (ch === "N") L.things.push({ kind: "note", x: x, y: y, done: false });
         if (ch === "T") L.things.push({ kind: "tv", x: x, y: y, done: false });
         if (ch === "W") L.things.push({ kind: "panel", x: x, y: y, done: false });
@@ -2559,6 +2647,11 @@ window.Apocalypse = (function () {
         px(c, wx - 3, wy - 2 + bob, 7, 1, "#f4ead0");
         px(c, wx - 1, wy + bob, 3, 1, "#8a7a56");
       }
+      if (t.kind === "wood") {
+        px(c, wx - 4, wy + bob, 8, 2, "#5a422a");
+        px(c, wx - 3, wy - 2 + bob, 6, 2, "#6e5438");
+        px(c, wx - 1, wy + 2 + bob, 4, 1, "#4a3620");
+      }
       if (near) {                                    // the prompt
         px(c, wx - 1, wy - 13 + bob, 2, 6, "#ffe9a8");
         px(c, wx - 1, wy - 5 + bob, 2, 2, "#ffe9a8");
@@ -3279,7 +3372,7 @@ window.Apocalypse = (function () {
 
   /* which bed a level wants */
   function bedFor(def) {
-    return (def && (def.theme === "road" || def.key === "gates")) ? "warm" : "cold";
+    return (def && (def.theme === "road" || def.theme === "campsite" || def.key === "gates")) ? "warm" : "cold";
   }
 
   /* =======================================================================
@@ -4295,6 +4388,8 @@ window.Apocalypse = (function () {
       });
       return;
     }
+    if (t.kind === "wood") { WOOD_USE(G, t); return; }
+    if (t.kind === "campfire") { CAMPFIRE_USE(G, t); return; }
     if (t.kind === "car") { CAR_USE(G, t); return; }
     if (t.kind === "horse") { HORSE_USE(G, t); return; }
     if (t.kind === "check") { openCheck(G, t); return; }
@@ -4908,6 +5003,160 @@ window.Apocalypse = (function () {
     });
   }
 
+  /* The campsite. Beat 1: gathering wood, lighting the fire. Then beats 3-9
+     play as dialogue over the clearing once it is warm. No zombies, no
+     stealth — this is the only safe place in the game. */
+
+  var WOOD_LINES = [
+    ["OUISSY", "That'll do."],
+    ["OUISSY", "One more should be enough."],
+    ["OUISSY", "Right. That's plenty."],
+  ];
+
+  function WOOD_USE(G, t) {
+    t.done = true;
+    sfx("found");
+    G.campWood = (G.campWood || 0) + 1;
+    var line = WOOD_LINES[Math.min(G.campWood - 1, 2)];
+    if (G.campWood >= 3) {
+      advanceStep(G, "wood");
+      G.level.things.push({ kind: "campfire", x: 7, y: 6, done: false });
+      say(G, [line, ["", "The fire pit has enough in it now. She just needs to light it."]]);
+    } else {
+      say(G, [line]);
+    }
+  }
+
+  function CAMPFIRE_USE(G, t) {
+    t.done = true;
+    G.campLit = true;
+    sfx("found");
+    advanceStep(G, "fire");
+    say(G, [
+      ["", "She stacks them the way her mother showed her, years ago in somebody's garden: a loose cone with the driest pieces in the centre and the bark facing in."],
+      ["", "The lighter from the car is still in his pocket. It takes two tries."],
+      ["", "The first tongue of flame goes sideways, finds the bark, and the whole thing talks back at once — a crackle, and then a low, steady roar that neither of them has heard for days."],
+      ["ANWAR", "...Oh, that's good."],
+      ["OUISSY", "Sit down. You look awful."],
+      ["ANWAR", "I've looked awful for a week. You just couldn't see it in the dark."],
+    ], function () {
+      campfireDialogue(G);
+    });
+  }
+
+  function campfireDialogue(G) {
+    say(G, [
+      ["", "The fire settles. She sits on the log across from him and pulls her knees up, and for the first time since the television came on there is nothing she has to do next."],
+      ["", ""],
+      ["ANWAR", "How did you know where I was?"],
+      ["OUISSY", "You were in hospital. Where else were you going to be?"],
+      ["ANWAR", "That's not what I mean. The ward — it was locked. The whole floor was dark. How did you find the right room?"],
+      ["OUISSY", "I tried every door."],
+      ["ANWAR", "...There are a lot of doors in that building."],
+      ["OUISSY", "Yes."],
+      ["", ""],
+      ["", "He doesn't push it. The fire pops, and something in the wood shifts, and neither of them says anything for a while."],
+      ["", ""],
+      ["ANWAR", "Were you frightened?"],
+      ["OUISSY", "The whole time."],
+      ["ANWAR", "Of the—"],
+      ["OUISSY", "Of everything. Of the noise, and the dark, and not knowing if you were—"],
+      ["OUISSY", "Yes. I was frightened the whole time."],
+      ["ANWAR", "I woke up and the power was out and nobody was on the ward. I didn't know what had happened. I thought—"],
+      ["ANWAR", "I thought maybe everyone just left."],
+      ["OUISSY", "I didn't leave."],
+      ["ANWAR", "No. You came and got me."],
+      ["", ""],
+      ["", "A long time passes. The stream sounds different in the dark — closer, as though the water has risen. It hasn't. There is just nothing else to hear."],
+      ["", ""],
+      ["OUISSY", "Anwar."],
+      ["ANWAR", "Mm."],
+      ["OUISSY", "I need to tell you something and I need you not to make it into a thing."],
+      ["ANWAR", "...Okay."],
+      ["OUISSY", "When I got to the car park and the car actually started — that was the first time I thought I might actually get to you."],
+      ["OUISSY", "Not before that. Not in the house, not on the street, not in the hospital. I was just doing the next thing because I didn't know how to stop."],
+      ["OUISSY", "I wasn't being brave. I didn't have a plan. I was just — moving."],
+      ["ANWAR", "That is brave."],
+      ["OUISSY", "It isn't. It's just not stopping."],
+      ["ANWAR", "Same thing."],
+      ["", ""],
+      ["", "She pulls a twig apart and drops the pieces into the fire one at a time."],
+      ["", ""],
+      ["OUISSY", "I'm going to say something and I don't want you to say anything back. I just want you to hear it."],
+      ["ANWAR", "All right."],
+      ["OUISSY", "I would do it again."],
+      ["OUISSY", "All of it. The house, the streets, the hospital. Every door and every dark corridor and every time I thought something was right behind me."],
+      ["OUISSY", "I would do every single second of it again."],
+      ["", ""],
+      ["", "He doesn't say anything. He said he wouldn't."],
+      ["", ""],
+      ["ANWAR", "Can I say something now?"],
+      ["OUISSY", "No."],
+      ["ANWAR", "Okay."],
+      ["OUISSY", "...Fine. What."],
+      ["ANWAR", "I know."],
+      ["", ""],
+      ["", "The fire burns low. Above the clearing the stars are out, which neither of them has seen in a city for a long time, and which neither of them mentions because it would break something."],
+      ["", ""],
+      ["OUISSY", "We should sleep. The gates can't be far."],
+      ["ANWAR", "How far?"],
+      ["OUISSY", "The radio said north road, past the reservoir. An hour, maybe, on the horse."],
+      ["ANWAR", "You should sleep first. I'll watch the fire."],
+      ["OUISSY", "You were in a hospital bed for a week."],
+      ["ANWAR", "And you carried me out of it. Sleep."],
+      ["", ""],
+      ["", "She doesn't argue. She lies down on the bedroll with her back to the fire and is asleep before he has counted to ten."],
+      ["", "He sits by the fire and watches the dark, which is what it looks like when somebody loves you back."],
+    ], function () {
+      campfireSunrise(G);
+    });
+  }
+
+  function campfireSunrise(G) {
+    cutscene(G, {
+      dur: 7,
+      caption: "She wakes to birdsong, and the fire is still warm, and he is still there.",
+      paint: paintCampSunrise,
+      onDone: function () { finishLevel(G); },
+    });
+  }
+
+  function paintCampSunrise(G, c, t) {
+    var p = t / 7;
+    var skyTop = lerpColor("#1a1a2c", "#4a6a8a", p);
+    var skyMid = lerpColor("#2a2040", "#8aaac0", p);
+    var skyBot = lerpColor("#3a2848", "#d4a868", p);
+    ditherFill(c, 0, 0, VW, 90, [
+      { p: 0, c: skyTop }, { p: 0.5, c: skyMid }, { p: 1, c: skyBot },
+    ]);
+    var sunY = 88 - p * 14;
+    blob(c, 260, sunY, 10 + p * 6, 8 + p * 4, ["#fff0c8", "#ffe0a0", "#f0c078", "#d89a58"]);
+    px(c, 0, 90, VW, VH - 90, lerpColor("#1a2a18", "#3a5230", p));
+    for (var i = 0; i < 12; i++) {
+      var tx = ((i * 29 + 7) % VW);
+      var th = 20 + (i * 7) % 16;
+      px(c, tx, 90 - th, 6, th, lerpColor("#1a3018", "#2a4420", p));
+      blob(c, tx + 3, 90 - th - 4, 10, 8, [lerpColor("#1e3820", "#2e5830", p)]);
+    }
+    var fireGlow = Math.max(0, 1 - p * 1.8);
+    if (fireGlow > 0) {
+      blob(c, 160, 130, 4, 3, ["rgba(255,180,60," + (fireGlow * 0.5).toFixed(2) + ")"]);
+    }
+    for (var g = 0; g < 180; g++) {
+      var gx = (g * 23 + 5) % VW;
+      var gy = 92 + (g * 11) % (VH - 94);
+      px(c, gx, gy, 1, 2, g % 3 ? lerpColor("#2a3a20", "#405433", p) : lerpColor("#324228", "#4c6440", p));
+    }
+  }
+
+  function lerpColor(a, b, t) {
+    t = Math.max(0, Math.min(1, t));
+    var ra = parseInt(a.slice(1, 3), 16), ga = parseInt(a.slice(3, 5), 16), ba = parseInt(a.slice(5, 7), 16);
+    var rb = parseInt(b.slice(1, 3), 16), gb = parseInt(b.slice(3, 5), 16), bb = parseInt(b.slice(5, 7), 16);
+    var r = Math.round(ra + (rb - ra) * t), g = Math.round(ga + (gb - ga) * t), bl = Math.round(ba + (bb - ba) * t);
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
+  }
+
   /* The horse. Nothing about this is a puzzle. She has been shut in for two
      days and she is delighted, and that is the point of the scene. */
   function HORSE_USE(G, t) {
@@ -4931,7 +5180,21 @@ window.Apocalypse = (function () {
         dur: 9,
         caption: "It takes most of the morning, and neither of them minds.",
         paint: paintRide,
-        onDone: function () { finishLevel(G); },
+        onDone: function () {
+          G.campWood = 0;
+          G.campLit = false;
+          enterSubmap(G, SUBMAPS.campsite, [4, 9]);
+          G.level.anwar = { x: 5 * T + T / 2, y: 9 * T + T / 2, awake: true, trail: [], face: "down", anim: 0, frame: 0 };
+          G.steps = SUBMAPS.campsite.steps;
+          G.stepIndex = 0;
+          G.step = G.steps[0];
+          setHud(G);
+          say(G, [
+            ["", "The clearing is just off the lane, behind a wall that was a house once. The grass is flat enough and the trees cut the wind."],
+            ["ANWAR", "Here?"],
+            ["OUISSY", "Here. There's wood around — we can get a fire going before it gets dark."],
+          ]);
+        },
       });
     });
   }
@@ -5121,6 +5384,20 @@ window.Apocalypse = (function () {
     G.step = G.steps[0];
     setHud(G);
     return { w: G.level.w, h: G.level.h, far: !!G.level.far, occluders: G.level.occluders.length };
+  };
+
+  window.__apCampsite = function () {
+    closeOverlay();
+    G.levelIndex = 3;
+    G.campWood = 0;
+    G.campLit = false;
+    enterSubmap(G, SUBMAPS.campsite, [4, 9]);
+    G.level.anwar = { x: 5 * T + T / 2, y: 9 * T + T / 2, awake: true, trail: [], face: "down", anim: 0, frame: 0 };
+    G.steps = SUBMAPS.campsite.steps;
+    G.stepIndex = 0;
+    G.step = G.steps[0];
+    setHud(G);
+    return { w: G.level.w, h: G.level.h };
   };
 
   window.__apLevel = function () {
