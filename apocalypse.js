@@ -437,22 +437,25 @@ window.Apocalypse = (function () {
     grade: [180, 140, 80, 0.10],
     haze: [80, 70, 50, .20],
     grid: [
-      "ooooooooooooooooooooooo",
-      "o,,,,,o,,,,~,,,,o,,,,,o",
-      "o,,w,,,,,,,~,,,,,,,,,,o",
-      "o,,,,,,,,,,~,,,,,,,,,,o",
-      "o,,,,,,,,g,~,,,,,,,,,,o",
-      "o,o,,,,,,,,~,,,,b,,,,,o",
-      "o,,,,,,,,*,~,,,,b,,,,,o",
-      "o,,,,,,,,,,,,,,,,,w,,,o",
-      "o,,,,,,,,g,,,,,,,,,,,,o",
-      "o,,,S,,,,,,,,,,,,,,o,,o",
-      "o,,,,,,,,,,,,,,,,,,,,,o",
-      "o,,,,o,,,,,w,,,,,,,,,,o",
-      "o,,,,,,,,,,,,,,,,,,,,,o",
-      "ooooooooooooooooooooooo",
+      ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
+      ",,,,,,,,,o,,,,,,,,,,,,,,,,,,,",
+      ",,,,,,,,,,,,,,,,,,,,o,,,,,,,,",
+      ",,,o,,,,,,,,,,,~,,,,,,,,,,,,,",
+      ",,,,,,w,,,,,,,,~,,,,,,,,,,,,,",
+      ",,,,,,,,,,,,,,,~,,,,,,,,o,,,,",
+      ",,,,,,,,,,g,,,,~,,,,,,,,,,,,,",
+      ",,,,,,,,,,,,,,,~,,,,b,,,,,,,,",
+      ",,,,,,,,,,g,,,,,,,,,,,,,,,,,,",
+      ",,,,,S,,,,,,,,,,,,,,b,,,,,,,,",
+      ",,,,,,,,,,,,,,,,,w,,,,,,o,,,,",
+      ",,o,,,,,,,,,,,,,,,,,,,,,,,,,o",
+      ",,,,,,,,,,,,w,,,,,,,,,,,,,,,,",
+      ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
+      ",,,,o,,,,,,,,,,,,,,,,,,,,,,,,",
+      ",,,,,,,,,,,,,,,,,,,,,o,,,,,,,",
     ],
     steps: [
+      { task: "Make camp.", clears: "arrival" },
       { task: "Find some wood for a fire.", clears: "wood" },
       { task: "Light the fire.", clears: "fire" },
     ],
@@ -2528,6 +2531,7 @@ window.Apocalypse = (function () {
     c.clearRect(0, 0, VW, VH);
 
     if (G.rooftop) { paintRooftopScene(G, c); return; }
+    if (G.campCinematic) { paintCampfireCinematic(G, c); return; }
 
     /* a cutscene owns the whole canvas; nothing of the level is painted */
     if (G.state === "cut" && G.cut) {
@@ -4431,6 +4435,8 @@ window.Apocalypse = (function () {
           advanceStep(G, "anwar");
           say(G, AP.reunion.waking);
         }
+      } else if (L.anwar.campTask) {
+        campAnwarWork(G, L.anwar, dtOf(G));
       } else {
         followHer(G, L.anwar, dtOf(G));
       }
@@ -4999,51 +5005,266 @@ window.Apocalypse = (function () {
     });
   }
 
+  function stampFireOnMap(G, lit) {
+    var mc = G.level.map.getContext("2d");
+    mc.save();
+    mc.translate(11 * T, 7 * T);
+    var r = rnd(1000 + 42 * 97 + 13 * 7);
+    var P = PAL[G.level.theme];
+    paintGround(mc, P, G.level.theme, r, {});
+    for (var i = 0; i < 5; i++) {
+      var a = (i / 5) * 6.28;
+      blob(mc, 8 + Math.cos(a) * 6, 10 + Math.sin(a) * 4, 2, 2,
+           ["#7a7468", "#665f55", "#4f4a42", "#3b3731"]);
+    }
+    px(mc, 4, 9, 9, 2, "#2a2018");
+    if (lit) {
+      px(mc, 5, 7, 3, 2, "#4a3524"); px(mc, 9, 8, 3, 2, "#4a3524");
+      blob(mc, 8, 7, 3, 3, ["#ffd98a", "#ff9a3a", "#d2541f", "#7a2a10"]);
+      px(mc, 7, 4, 2, 3, "#ffe9b0");
+      px(mc, 8, 3, 1, 2, "#fff6d8");
+      G.level.lights.push({ x: 11 * T + T / 2, y: 7 * T + T / 2 - 2,
+                             r: 96, warm: 1.25, fire: true });
+    }
+    mc.restore();
+  }
+
+  /* Cinematic campfire — a composed wide shot for the conversation scene.
+     The canvas becomes a silhouette composition: treeline, sky, fire glow,
+     two distinct figures rim-lit by the fire, embers and smoke. */
+  var campCinT = 0;
+  function paintCampfireCinematic(G, c) {
+    campCinT += STEP;
+    var t = campCinT;
+    var ground = 120;
+
+    // sky — dark blue-black with slight warm glow from fire
+    ditherFill(c, 0, 0, VW, ground, [
+      { p: 0, c: "#08090f" }, { p: 0.3, c: "#0c0d16" },
+      { p: 0.6, c: "#10111c" }, { p: 1, c: "#1a1520" },
+    ]);
+
+    // stars
+    var sr = rnd(4412);
+    for (var si = 0; si < 28; si++) {
+      var stx = (sr() * VW) | 0, sty = (sr() * 70) | 0;
+      if (Math.sin(t * 1.2 + si * 2.7) > 0.55) px(c, stx, sty, 1, 1, "#c0c8e0");
+    }
+
+    // treeline silhouette
+    var tr = rnd(7788);
+    for (var tx = 0; tx < VW; tx += 2) {
+      var th = 8 + (tr() * 14) | 0;
+      if (tr() > 0.7) th += 6;
+      px(c, tx, ground - th, 2, th, "#0a0b12");
+    }
+
+    // ground
+    px(c, 0, ground, VW, VH - ground, "#0a0b10");
+
+    // fire glow on ground — warm radial gradient
+    var fireX = VW / 2, fireY = ground + 8;
+    c.globalAlpha = 0.18;
+    var grad = c.createRadialGradient(fireX, fireY, 2, fireX, fireY, 100);
+    grad.addColorStop(0, "#ff8830");
+    grad.addColorStop(0.4, "#aa4010");
+    grad.addColorStop(1, "transparent");
+    c.fillStyle = grad;
+    c.fillRect(0, ground - 20, VW, VH - ground + 20);
+    c.globalAlpha = 1;
+
+    // fire — small flickering cluster
+    var fBase = ground + 2;
+    for (var fi = 0; fi < 5; fi++) {
+      var fh = 4 + Math.sin(t * 8 + fi * 1.4) * 2;
+      var fx = fireX - 3 + fi * 2 + Math.sin(t * 6 + fi) * 0.5;
+      var fy = fBase - fh;
+      var fc = fi % 2 === 0 ? "#ff9930" : "#ffcc50";
+      if (Math.sin(t * 12 + fi * 3) > 0.5) fc = "#ff6620";
+      px(c, fx, fy, 1, fh | 0, fc);
+    }
+    // fire base glow
+    px(c, fireX - 5, fBase, 10, 1, "#552200");
+    px(c, fireX - 4, fBase + 1, 8, 1, "#331100");
+
+    // embers floating up
+    for (var ei = 0; ei < 10; ei++) {
+      var ey = ground - 2 - ((t * 8 + ei * 13) % 50);
+      var ex = fireX - 6 + ((ei * 19) % 12) + Math.sin(t * 1.5 + ei) * 4;
+      var ea = 0.7 - ((t * 8 + ei * 13) % 50) / 60;
+      if (ea > 0) {
+        c.globalAlpha = ea;
+        px(c, ex, ey, 1, 1, ei % 3 === 0 ? "#ff6620" : "#ffaa40");
+      }
+    }
+    c.globalAlpha = 1;
+
+    // smoke wisps
+    for (var wi = 0; wi < 3; wi++) {
+      var wy = ground - 20 - wi * 10 - Math.sin(t * 0.6 + wi) * 3;
+      var wx = fireX + Math.sin(t * 0.3 + wi * 2) * 8;
+      c.globalAlpha = 0.08 - wi * 0.02;
+      px(c, wx - 1, wy, 3, 2, "#998877");
+    }
+    c.globalAlpha = 1;
+
+    // asleep animation — she leans toward him over 2 seconds
+    var lean = 0;
+    if (G.campAsleep) {
+      G.campAsleepT = (G.campAsleepT || 0) + STEP;
+      lean = Math.min(1, G.campAsleepT / 2);
+    }
+
+    // Ouissy silhouette (left of fire) — smaller frame, long hair
+    var oX = fireX - 28 + lean * 18, oY = ground - 1;
+    var headTilt = lean * 4;
+    // body
+    px(c, oX - 2, oY - 10, 5, 10, "#0e0e14");
+    // head — tilts right when leaning
+    px(c, oX - 2 + headTilt, oY - 14 - (lean > 0.5 ? 1 : 0), 4, 4, "#0e0e14");
+    // hair — longer, falls past shoulders
+    px(c, oX - 3 + headTilt, oY - 15 - (lean > 0.5 ? 1 : 0), 6, 5, "#0e0e14");
+    px(c, oX - 3, oY - 10, 2, 5, "#0e0e14");
+    px(c, oX + 2, oY - 10, 2, 4, "#0e0e14");
+    // knees pulled up
+    px(c, oX - 1, oY - 3, 4, 3, "#0e0e14");
+    // rim light — warm edge facing fire (right side)
+    px(c, oX + 2, oY - 13, 1, 12, "#cc6620");
+    px(c, oX + 3, oY - 9, 1, 4, "#aa5518");
+    // hair rim
+    px(c, oX + 2 + headTilt, oY - 15 - (lean > 0.5 ? 1 : 0), 1, 2, "#bb5520");
+    // face detail — tiny warm highlight
+    px(c, oX + 1 + headTilt, oY - 13 - (lean > 0.5 ? 1 : 0), 1, 1, "#dda060");
+
+    // Anwar silhouette (right of fire) — broader, shorter hair
+    var aX = fireX + 24, aY = ground - 1;
+    // body — broader shoulders
+    px(c, aX - 3, aY - 10, 6, 10, "#0e0e14");
+    // head
+    px(c, aX - 2, aY - 14, 5, 4, "#0e0e14");
+    // hair — short, close-cropped
+    px(c, aX - 2, aY - 15, 5, 2, "#0e0e14");
+    // sitting on log (legs out)
+    px(c, aX - 3, aY - 3, 7, 3, "#0e0e14");
+    // rim light — warm edge facing fire (left side)
+    px(c, aX - 3, aY - 13, 1, 12, "#cc6620");
+    px(c, aX - 4, aY - 9, 1, 4, "#aa5518");
+    // hair rim
+    px(c, aX - 3, aY - 15, 1, 2, "#bb5520");
+    // face detail
+    px(c, aX - 2, aY - 13, 1, 1, "#c08050");
+
+    // log silhouettes under each figure
+    px(c, oX - 5, oY, 12, 2, "#0e0e14");
+    px(c, aX - 5, aY, 12, 2, "#0e0e14");
+
+    // subtle firelight on their near sides — warm ambient glow
+    c.globalAlpha = 0.06;
+    c.fillStyle = "#ff8830";
+    c.fillRect(oX - 3, oY - 14, 8, 14);
+    c.fillRect(aX - 5, aY - 14, 8, 14);
+    c.globalAlpha = 1;
+  }
+
   /* The campsite. Beat 1: gathering wood, lighting the fire. Then beats 3-9
      play as dialogue over the clearing once it is warm. No zombies, no
      stealth — this is the only safe place in the game. */
 
-  var WOOD_LINES = [
-    ["OUISSY", "That'll do."],
-    ["OUISSY", "One more should be enough."],
-    ["OUISSY", "Right. That's plenty."],
+  function campAnwarWork(G, a, dt) {
+    var pitX = 11 * T + T / 2, pitY = 7 * T + T / 2;
+    var dx = pitX - a.x, dy = pitY - a.y, d = Math.hypot(dx, dy);
+    if (d > 6) {
+      var sp = Math.min(TUNE.walk * 0.8, d * 3);
+      a.x += (dx / d) * sp * dt;
+      a.y += (dy / d) * sp * dt;
+      a.face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+      a.anim = (a.anim || 0) + dt * 6;
+      a.frame = 1 + ((a.anim | 0) % 2);
+    } else {
+      a.anim = (a.anim || 0) + dt * 2;
+      a.frame = 1 + ((a.anim | 0) % 2);
+      a.face = "down";
+    }
+  }
+
+  var WOOD_DIALOGUE = [
+    [
+      ["", "She snaps a branch off a dead elm. It is dry enough that it comes away clean."],
+      ["", "Across the clearing, he is on his knees pulling grass out of the dirt with both hands, making a bare circle in the ground."],
+    ],
+    [
+      ["", "She finds another piece wedged in a low fork — birch, pale and papery. Good kindling."],
+      ["OUISSY", "How's it going over there?"],
+      ["ANWAR", "I found some stones. Flat ones, for a ring."],
+      ["OUISSY", "You don't have to—"],
+      ["ANWAR", "I want to do something. Let me do something."],
+    ],
+    [
+      ["OUISSY", "Right. That's plenty."],
+      ["", "She carries the last armful back and stops. He has built a proper fire pit — a circle of flat stones on bare earth, with a gap on one side for air."],
+      ["OUISSY", "...That's actually good."],
+      ["ANWAR", "Don't sound so surprised."],
+    ],
   ];
 
   function WOOD_USE(G, t) {
     t.done = true;
     sfx("found");
     G.campWood = (G.campWood || 0) + 1;
-    var line = WOOD_LINES[Math.min(G.campWood - 1, 2)];
+    var lines = WOOD_DIALOGUE[Math.min(G.campWood - 1, 2)];
     if (G.campWood >= 3) {
       advanceStep(G, "wood");
-      G.level.things.push({ kind: "campfire", x: 7, y: 6, done: false });
-      say(G, [line, ["", "The fire pit has enough in it now. She just needs to light it."]]);
+      G.level.things.push({ kind: "campfire", x: 11, y: 7, done: false });
+      stampFireOnMap(G, false);
+      if (G.level.anwar) G.level.anwar.campTask = false;
+      say(G, lines);
     } else {
-      say(G, [line]);
+      say(G, lines);
     }
   }
 
   function CAMPFIRE_USE(G, t) {
     t.done = true;
-    G.campLit = true;
     sfx("found");
     advanceStep(G, "fire");
     say(G, [
-      ["", "She stacks them the way her mother showed her, years ago in somebody's garden: a loose cone with the driest pieces in the centre and the bark facing in."],
-      ["", "The lighter from the car is still in his pocket. It takes two tries."],
-      ["", "The first tongue of flame goes sideways, finds the bark, and the whole thing talks back at once — a crackle, and then a low, steady roar that neither of them has heard for days."],
-      ["ANWAR", "...Oh, that's good."],
-      ["OUISSY", "Sit down. You look awful."],
-      ["ANWAR", "I've looked awful for a week. You just couldn't see it in the dark."],
+      ["", "She kneels by the pit he made and starts stacking the wood: a loose cone with the driest pieces in the centre and the bark facing in, the way her mother showed her years ago in somebody's garden."],
+      ["ANWAR", "Where did you learn that?"],
+      ["OUISSY", "Mum. Bonfire night. I was about seven."],
+      ["", "He crouches on the other side of the pit and holds the cone steady while she wedges the last piece in. The birch bark curls inward and the whole thing looks like it might actually work."],
+      ["OUISSY", "Right. Lighter?"],
+      ["ANWAR", "Still in my pocket, somehow."],
+      ["", "The first spark catches nothing. She cups her hand around it and tries again — the flame licks sideways, finds air instead of bark, and goes out."],
+      ["OUISSY", "...Come on."],
+      ["ANWAR", "Try the other side. The wind's coming from—"],
+      ["OUISSY", "I know where the wind's coming from."],
+      ["", "She moves around. He strips a curl of bark off one of the birch pieces and tucks it into the base where the gap in the stones lets air through."],
+      ["OUISSY", "That's good. Hold it there."],
+      ["", "Third try. The spark catches the curl. A thin thread of smoke, and then a crackle, and then the whole thing talks back at once — a low, steady roar that neither of them has heard for days."],
     ], function () {
-      campfireDialogue(G);
+      G.campLit = true;
+      stampFireOnMap(G, true);
+      say(G, [
+        ["ANWAR", "...Oh, that's good."],
+        ["", "He sits back on his heels and the firelight catches his face and he looks exhausted and relieved and something else she doesn't have a word for."],
+        ["OUISSY", "Sit down properly. You look awful."],
+        ["ANWAR", "I've looked awful for a week. You just couldn't see it in the dark."],
+        ["", ""],
+        ["", "He moves to the log on the far side of the fire and lowers himself onto it carefully, the way people do when everything hurts. She sits on the other log, closer than she needs to, and pulls her knees up."],
+        ["", "For a while neither of them says anything. The fire crackles. The stream moves. The sky is turning the colour it turns when there is nothing left of the day."],
+        ["", "It is the first time since the television came on that there is nothing she has to do next."],
+      ], function () {
+        campfireDialogue(G);
+      });
     });
   }
 
   function campfireDialogue(G) {
+    G.campCinematic = true;
+    campCinT = 0;
+    $("ap-hud").style.display = "none";
+    $("ap-dlg").classList.add("caption");
     say(G, [
-      ["", "The fire settles. She sits on the log across from him and pulls her knees up, and for the first time since the television came on there is nothing she has to do next."],
-      ["", ""],
       ["ANWAR", "How did you know where I was?"],
       ["OUISSY", "You were in hospital. Where else were you going to be?"],
       ["ANWAR", "That's not what I mean. The ward — it was locked. The whole floor was dark. How did you find the right room?"],
@@ -5101,10 +5322,29 @@ window.Apocalypse = (function () {
       ["OUISSY", "You were in a hospital bed for a week."],
       ["ANWAR", "And you carried me out of it. Sleep."],
       ["", ""],
-      ["", "She doesn't argue. She lies down on the bedroll with her back to the fire and is asleep before he has counted to ten."],
+      ["", "She doesn't argue. She doesn't move either."],
+      ["", ""],
+      ["", "Her head finds his shoulder, and stays there."],
+      ["", "He doesn't move. He barely breathes."],
+      ["", ""],
+      ["", "She is asleep before he has counted to ten."],
       ["", "He sits by the fire and watches the dark, which is what it looks like when somebody loves you back."],
     ], function () {
-      campfireSunrise(G);
+      G.campAsleep = true;
+      G.campAsleepT = 0;
+      cutscene(G, {
+        dur: 6,
+        paint: function (G, c) {
+          paintCampfireCinematic(G, c);
+        },
+        onDone: function () {
+          G.campCinematic = false;
+          G.campAsleep = false;
+          $("ap-hud").style.display = "";
+          $("ap-dlg").classList.remove("caption");
+          campfireSunrise(G);
+        },
+      });
     });
   }
 
@@ -5119,29 +5359,127 @@ window.Apocalypse = (function () {
 
   function paintCampSunrise(G, c, t) {
     var p = t / 7;
-    var skyTop = lerpColor("#1a1a2c", "#4a6a8a", p);
-    var skyMid = lerpColor("#2a2040", "#8aaac0", p);
-    var skyBot = lerpColor("#3a2848", "#d4a868", p);
-    ditherFill(c, 0, 0, VW, 90, [
-      { p: 0, c: skyTop }, { p: 0.5, c: skyMid }, { p: 1, c: skyBot },
+    var horizon = 95;
+
+    // sky — deep indigo → rose → gold → pale morning blue
+    var skyTop = lerpColor("#0e0e20", "#4a6a9a", p);
+    var skyHigh = lerpColor("#18142e", "#7a98b8", p);
+    var skyMid = lerpColor("#2a1838", "#c4889a", p);
+    var skyLow = lerpColor("#3a2040", "#e8b070", p);
+    ditherFill(c, 0, 0, VW, horizon, [
+      { p: 0, c: skyTop }, { p: 0.3, c: skyHigh },
+      { p: 0.7, c: skyMid }, { p: 1, c: skyLow },
     ]);
-    var sunY = 88 - p * 14;
-    blob(c, 260, sunY, 10 + p * 6, 8 + p * 4, ["#fff0c8", "#ffe0a0", "#f0c078", "#d89a58"]);
-    px(c, 0, 90, VW, VH - 90, lerpColor("#1a2a18", "#3a5230", p));
-    for (var i = 0; i < 12; i++) {
-      var tx = ((i * 29 + 7) % VW);
-      var th = 20 + (i * 7) % 16;
-      px(c, tx, 90 - th, 6, th, lerpColor("#1a3018", "#2a4420", p));
-      blob(c, tx + 3, 90 - th - 4, 10, 8, [lerpColor("#1e3820", "#2e5830", p)]);
+
+    // sun — rises from behind the treeline
+    var sunY = horizon - 2 - p * 18;
+    var sunR = 6 + p * 5;
+    if (p > 0.2) {
+      var sa = Math.min(1, (p - 0.2) / 0.3);
+      // glow halo
+      c.globalAlpha = sa * 0.15;
+      c.fillStyle = "#ffe890";
+      c.beginPath(); c.arc(240, sunY, sunR + 16, 0, 6.2832); c.fill();
+      c.globalAlpha = sa * 0.3;
+      c.fillStyle = "#ffd870";
+      c.beginPath(); c.arc(240, sunY, sunR + 6, 0, 6.2832); c.fill();
+      // sun disk
+      c.globalAlpha = sa;
+      c.fillStyle = "#fff4d0";
+      c.beginPath(); c.arc(240, sunY, sunR, 0, 6.2832); c.fill();
+      c.globalAlpha = 1;
     }
-    var fireGlow = Math.max(0, 1 - p * 1.8);
+
+    // rays — subtle light streaks in late sunrise
+    if (p > 0.5) {
+      var ra = (p - 0.5) * 0.12;
+      c.globalAlpha = ra;
+      c.fillStyle = "#ffe8a0";
+      for (var ri = 0; ri < 5; ri++) {
+        var rx = 240 + (ri - 2) * 30;
+        c.fillRect(rx, 0, 1, horizon);
+      }
+      c.globalAlpha = 1;
+    }
+
+    // treeline — varied shapes, taller center
+    var tr = rnd(5533);
+    for (var tx = 0; tx < VW; tx += 3) {
+      var dist = Math.abs(tx - 240);
+      var th = 10 + (tr() * 16) | 0;
+      if (dist < 60) th = Math.max(4, th - 8);
+      if (tr() > 0.75) th += 8;
+      var tc = lerpColor("#0c1210", "#1a3018", p);
+      px(c, tx, horizon - th, 3, th, tc);
+      if (th > 12) blob(c, tx + 1, horizon - th - 2, 5, 4, [lerpColor("#0e1612", "#1e3820", p)]);
+    }
+
+    // ground — dark green brightening to morning green
+    var gndTop = lerpColor("#0e1a10", "#2a4422", p);
+    var gndBot = lerpColor("#0a1208", "#22381a", p);
+    ditherFill(c, 0, horizon, VW, VH - horizon, [
+      { p: 0, c: gndTop }, { p: 1, c: gndBot },
+    ]);
+
+    // grass detail
+    var gr = rnd(8812);
+    for (var g = 0; g < 120; g++) {
+      var gx = (gr() * VW) | 0;
+      var gy = horizon + 3 + (gr() * (VH - horizon - 6)) | 0;
+      px(c, gx, gy, 1, 2, lerpColor("#1a2a16", "#3a5830", p));
+    }
+
+    // dying campfire — embers fading
+    var fireGlow = Math.max(0, 1 - p * 2);
     if (fireGlow > 0) {
-      blob(c, 160, 130, 4, 3, ["rgba(255,180,60," + (fireGlow * 0.5).toFixed(2) + ")"]);
+      c.globalAlpha = fireGlow * 0.15;
+      var fg = c.createRadialGradient(160, horizon + 12, 1, 160, horizon + 12, 40);
+      fg.addColorStop(0, "#ff6620"); fg.addColorStop(1, "transparent");
+      c.fillStyle = fg;
+      c.fillRect(120, horizon, 80, 50);
+      c.globalAlpha = fireGlow;
+      px(c, 158, horizon + 10, 4, 2, "#aa4410");
+      px(c, 159, horizon + 9, 2, 1, "#cc6630");
+      c.globalAlpha = 1;
     }
-    for (var g = 0; g < 180; g++) {
-      var gx = (g * 23 + 5) % VW;
-      var gy = 92 + (g * 11) % (VH - 94);
-      px(c, gx, gy, 1, 2, g % 3 ? lerpColor("#2a3a20", "#405433", p) : lerpColor("#324228", "#4c6440", p));
+
+    // ground mist — burns off as sun rises
+    var mistAlpha = Math.max(0, 0.25 - p * 0.3);
+    if (mistAlpha > 0) {
+      var mr = rnd(3344);
+      for (var mi = 0; mi < 8; mi++) {
+        var mx = (mr() * VW) | 0;
+        var my = horizon + 2 + (mr() * 20) | 0;
+        var mw = 20 + (mr() * 30) | 0;
+        c.globalAlpha = mistAlpha * (0.5 + mr() * 0.5);
+        px(c, mx, my, mw, 2, "#b8c8b0");
+      }
+      c.globalAlpha = 1;
+    }
+
+    // bird silhouettes — appear in late sunrise
+    if (p > 0.6) {
+      var ba = Math.min(1, (p - 0.6) * 3);
+      c.globalAlpha = ba * 0.6;
+      for (var bi = 0; bi < 3; bi++) {
+        var bx = 60 + bi * 80 + t * (3 + bi) * 2;
+        var by = 20 + bi * 12 + Math.sin(t * 2 + bi) * 3;
+        if (bx > VW + 10) bx -= VW + 20;
+        px(c, bx - 2, by, 1, 1, "#2a3040");
+        px(c, bx + 2, by, 1, 1, "#2a3040");
+        px(c, bx - 1, by - 1, 1, 1, "#2a3040");
+        px(c, bx + 1, by - 1, 1, 1, "#2a3040");
+        px(c, bx, by - 1, 1, 1, "#2a3040");
+      }
+      c.globalAlpha = 1;
+    }
+
+    // dissolve from night — first 15% is a cross-fade
+    if (p < 0.15) {
+      c.globalAlpha = 1 - p / 0.15;
+      c.fillStyle = "#08090f";
+      c.fillRect(0, 0, VW, VH);
+      c.globalAlpha = 1;
     }
   }
 
@@ -5357,17 +5695,33 @@ window.Apocalypse = (function () {
         onDone: function () {
           G.campWood = 0;
           G.campLit = false;
-          enterSubmap(G, SUBMAPS.campsite, [4, 9]);
-          G.level.anwar = { x: 5 * T + T / 2, y: 9 * T + T / 2, awake: true, trail: [], face: "down", anim: 0, frame: 0 };
+          enterSubmap(G, SUBMAPS.campsite, [5, 9]);
+          G.level.anwar = { x: 6 * T + T / 2, y: 9 * T + T / 2, awake: true, trail: [], face: "down", anim: 0, frame: 0 };
           G.steps = SUBMAPS.campsite.steps;
           G.stepIndex = 0;
           G.step = G.steps[0];
           setHud(G);
           say(G, [
             ["", "The clearing is just off the lane, behind a wall that was a house once. The grass is flat enough and the trees cut the wind."],
-            ["ANWAR", "Here?"],
-            ["OUISSY", "Here. There's wood around — we can get a fire going before it gets dark."],
-          ]);
+            ["", "She lets the horse stop on its own. It dips its head and doesn't move again."],
+            ["ANWAR", "...Here?"],
+            ["OUISSY", "Hang on."],
+            ["", "She stands still and listens. Wind in the branches. The stream somewhere below them. Nothing else."],
+            ["OUISSY", "Yeah. Here."],
+            ["ANWAR", "You're sure? There's nothing — no walls, no—"],
+            ["OUISSY", "That's why here. Nothing to hide behind, nothing to come out of. If anything moves we'll see it a mile off."],
+            ["", "He looks at the treeline and the open grass and the sky, which is starting to turn. He nods."],
+            ["ANWAR", "Okay. What do we need?"],
+            ["OUISSY", "Wood, before it gets dark. There should be enough around — dead branches, anything dry."],
+            ["ANWAR", "I can help—"],
+            ["OUISSY", "You can sit down is what you can do. You've been on a horse for four hours and you were in bed for a week before that."],
+            ["ANWAR", "I'm fine."],
+            ["OUISSY", "You're grey. Sit."],
+            ["", "He sits. She doesn't say anything about the fact that he sits down immediately, which is as close to kindness as she can manage right now."],
+          ], function () {
+            advanceStep(G, "arrival");
+            if (G.level.anwar) G.level.anwar.campTask = true;
+          });
         },
       });
     });
@@ -5565,11 +5919,11 @@ window.Apocalypse = (function () {
     G.levelIndex = 3;
     G.campWood = 0;
     G.campLit = false;
-    enterSubmap(G, SUBMAPS.campsite, [4, 9]);
-    G.level.anwar = { x: 5 * T + T / 2, y: 9 * T + T / 2, awake: true, trail: [], face: "down", anim: 0, frame: 0 };
+    enterSubmap(G, SUBMAPS.campsite, [5, 9]);
+    G.level.anwar = { x: 6 * T + T / 2, y: 9 * T + T / 2, awake: true, trail: [], face: "down", anim: 0, frame: 0, campTask: true };
     G.steps = SUBMAPS.campsite.steps;
-    G.stepIndex = 0;
-    G.step = G.steps[0];
+    G.stepIndex = 1;
+    G.step = G.steps[1];
     setHud(G);
     return { w: G.level.w, h: G.level.h };
   };

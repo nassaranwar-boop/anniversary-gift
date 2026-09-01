@@ -3676,6 +3676,35 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-dlg.quiet .ap-dlg-text{color:#6d7793; letter-spacing:.5em; text-align:center;}
 .ap-dlg.quiet .ap-dlg-name{display:none;}
 
+/* cinematic caption — lighter, part of the composed shot */
+.ap-dlg.caption{
+  left:8cqw; right:8cqw; bottom:2cqw;
+  padding:2.4cqw 3cqw 2cqw;
+  background:rgba(6,8,14,.55);
+  box-shadow:none;
+  border:none;
+  backdrop-filter:blur(2px);
+}
+.ap-dlg.caption::before,
+.ap-dlg.caption::after{display:none;}
+.ap-dlg.caption .ap-dlg-text{
+  font-size:3cqw; color:#e0ddd6;
+  text-shadow:0 1px 4px rgba(0,0,0,.6);
+}
+.ap-dlg.caption .ap-dlg-name{
+  background:none; border:none; box-shadow:none;
+  color:#dda860; font-size:1.4cqw; letter-spacing:.18em;
+  padding:0 0 .4cqw; position:relative; top:0; left:0;
+}
+.ap-dlg.caption.narration .ap-dlg-text{
+  color:#b8b4a8; font-style:italic;
+}
+.ap-dlg.caption .ap-dlg-next{
+  background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.2);
+  box-shadow:none;
+}
+
 /* ---- the transistor radio in the day room ---- */
 .ap-radio{width:min(72cqw, 440px); text-align:center;}
 .ap-radio-set{
