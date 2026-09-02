@@ -160,24 +160,57 @@ addons, bundled for offline use, and the same one `index.html` already loads
 for the book intro. `apocalypse.js` will fetch it itself if it is not there,
 so the chapter keeps working if that tag ever moves.
 
+Everything you look at is geometry with lights on it, rendered clean —
+multisampled, half-float, analytically anti-aliased, and with no film grain
+or dither anywhere in the chain. Grain is a way of hiding a render; this one
+does not need hiding.
+
 Everything you look at is geometry with lights on it:
 
 - **The world is built from the grid at load time.** Walls, floors, kerbs,
-  roofs, hedges and furniture go into `InstancedMesh` batches, so a
-  forty-eight by thirty-three street is a handful of draw calls. Outdoors the
-  walls are flood-filled into buildings and each building gets its own storey
-  count, a felt roof with a parapet, chimneys, and windows — some of them
-  still on.
-- **Nobody is a sprite.** Ouissy, Anwar, every one of them and the horse are
-  rigs built out of primitives with real joints, animated by rotating them.
-  The walk cycle, the creep, the lurch, sitting on a log and sitting astride
-  a horse are all poses on the same rig.
+  roofs, facades, debris and furniture go into `InstancedMesh` batches, so a
+  street of forty buildings with two hundred windows in it is still a couple
+  of dozen draw calls. Outdoors the walls are flood-filled into buildings and
+  each one gets its own storey count and its own roofline — a parapet with a
+  coping on it, a stair head, a water tank on legs, plant, an aerial. The
+  facades are real: a plinth at the pavement, a string course at every floor,
+  windows set into a dark reveal with a sill, a lintel and a mullioned frame,
+  shopfronts at street level with fascias and half-down shutters, and a
+  cornice under the parapet. A week into this, some of them are boarded, some
+  have lost their glass, and one or two have soot up the wall above them.
+  Rubble banks up where a wall meets the pavement, litter blows about, and
+  somebody's bin is still out.
+- **Nobody is a sprite.** One builder makes every figure in the game from a
+  spec — a lathed torso with a waist in it, a jacket over the top of it, a
+  deltoid at each shoulder, a skull with a jaw and a brow and eyes with lids
+  and brows over them, and boots with soles. Ouissy has long blonde wavy hair
+  built as a cap, a fringe and fourteen tapered locks, each waved on its own
+  phase. The ones that used to be people come out of a combination of nine
+  skin tones, six wardrobes, four builds and a set of things that can have
+  gone wrong, so a corridor with eight in it has eight different people in
+  it. Ashcombe has staff on the gate in hi-vis with rifles slung, and a dozen
+  people waiting inside who got there first. The walk cycle, the creep, the
+  lurch, sitting on a log and sitting astride a horse are all poses on the
+  same rig.
 - **The dark is lit, not painted.** A hemisphere light for the sky, one
   directional for the moon or the sun, a pool of eight point lights moved to
   whichever lamps are nearest her, and her torch — a shadow-casting spotlight
-  with a visible additive cone that dust drifts through. Every light in a
-  level is scaled by how bright that location's own materials are, so "dark"
-  means the same thing in the hospital as it does in the house.
+  with a soft-gradient cone that dust drifts through and that arrives where
+  she is pointing about a tenth of a second after she does. One streetlight
+  in six is on its way out and flickers like a failing tube. Every light in
+  a level is scaled by how bright that location's own materials are, so
+  "dark" means the same thing in the hospital as it does in the house.
+- **Materials have something to reflect.** Each level renders its own sky
+  into a cube at load and runs it through PMREM, so glass picks up the sky
+  and the building opposite, wet tarmac picks up the streetlights, and metal
+  stops looking like plastic. The road's roughness comes out of a painted map:
+  the standing water in it is mirror-smooth while the aggregate around it
+  stays matt.
+- **Nothing snaps.** Every follower in the game — her turn, her crouch, the
+  torch, the camera position, the camera's lead, its distance, its field of
+  view, the doors, the fades — runs through a frame-rate-independent ease,
+  and the camera itself is on critically damped springs, so it settles
+  without overshoot and behaves the same at 30 fps as at 144.
 - **Post**: bloom, then one pass that does the colour grade, the haze, the
   vignette, the grain, a touch of lens fringing and the red pulse when
   something has hold of her.

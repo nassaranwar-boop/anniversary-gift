@@ -392,7 +392,25 @@
       id: "gates", name: "THE GATES", card: "Level 5: THE GATES",
       blurb: "They only take you if you're clean.",
       map: MAPS.gates, theme: "road", base: ",", dark: 0.28, floorTex: "pave",
-      grade: [225, 185, 110, 0.15], haze: [145, 160, 185, 0.26],
+      people: [
+        /* the two on the outer gate, watching the road she comes up */
+        { kind: "guard", x: 15, y: 12, face: Math.PI },
+        { kind: "guard", x: 15, y: 14, face: Math.PI },
+        /* the one at the table, who will look at both of them */
+        { kind: "guard", x: 20, y: 12, face: Math.PI / 2 },
+        /* and the one on the inner gate, who opens it */
+        { kind: "guard", x: 24, y: 14, face: Math.PI },
+        /* everybody who got here first */
+        { kind: "civil", x: 17, y: 16, face: 0.6, pace: 1 },
+        { kind: "civil", x: 18, y: 17, face: -0.4 },
+        { kind: "civil", x: 22, y: 16, face: 2.4 },
+        { kind: "civil", x: 21, y: 9, face: 1.9, pace: 1 },
+        { kind: "civil", x: 17, y: 9, face: 0.2 },
+        { kind: "civil", x: 23, y: 10, face: 3.0 },
+        { kind: "civil", x: 28, y: 12, face: Math.PI },
+        { kind: "civil", x: 30, y: 15, face: 2.0, pace: 1 }
+      ],
+      grade: [255, 214, 150, 0.17], haze: [178, 186, 196, 0.14],
       steps: [
         { task: "Go up to the gate. Do what they tell you.",             clears: "hail" },
         { task: "Wait at the table. They have to look at both of you.",  clears: "check" },
@@ -405,7 +423,7 @@
     roadside: {
       id: "roadside", name: "THE ROAD", map: MAPS.roadside, theme: "road",
       base: ",", dark: 0.42,
-      grade: [220, 180, 100, 0.15], haze: [140, 155, 180, 0.30],
+      grade: [246, 200, 128, 0.16], haze: [162, 168, 186, 0.18],
       steps: [
         { task: "The tank is dry. Find something else that can carry two.", clears: "horse" }
       ]
@@ -712,6 +730,37 @@
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function lerp(a, b, t) { return a + (b - a) * t; }
+
+  /* Everything that follows something else in this game follows it through
+     one of these. `damp` is an exponential ease whose rate is expressed as
+     the time to close most of the gap, so it behaves identically at 30 fps
+     and at 144; `spring` is critically damped, which means it eases in as
+     well as out and never overshoots, and it is what the camera uses. */
+  function damp(current, target, smoothTime, dt) {
+    if (smoothTime <= 0) return target;
+    return target + (current - target) * Math.exp(-dt / (smoothTime * 0.4));
+  }
+
+  function dampAngle(current, target, smoothTime, dt) {
+    var d = Math.atan2(Math.sin(target - current), Math.cos(target - current));
+    return current + d * (1 - Math.exp(-dt / (smoothTime * 0.4)));
+  }
+
+  function Spring1(value, smoothTime) {
+    this.v = value; this.vel = 0; this.t = smoothTime;
+  }
+  Spring1.prototype.step = function (target, dt) {
+    /* the standard critically damped approximation: stable at any dt */
+    var omega = 2 / Math.max(0.0001, this.t);
+    var x = omega * Math.min(dt, 0.1);
+    var exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+    var change = this.v - target;
+    var temp = (this.vel + omega * change) * Math.min(dt, 0.1);
+    this.vel = (this.vel - omega * temp) * exp;
+    this.v = target + (change + temp) * exp;
+    return this.v;
+  };
+  Spring1.prototype.set = function (v) { this.v = v; this.vel = 0; return v; };
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function irnd(a, b) { return Math.floor(rnd(a, b + 1)); }
   function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
@@ -1027,6 +1076,76 @@
     return { c: c, x: c.getContext("2d") };
   }
 
+  /* ---- the noise every surface in the game is built out of ----
+     Smooth value noise with bilinear interpolation, summed over octaves.
+     Painting with this instead of with per-pixel randomness is the whole
+     difference between a texture and a screenful of static: noise at the
+     scale of a stain looks like a stain, noise at the scale of a pixel
+     looks like a fault. */
+  function valueNoise(size, cells, seed) {
+    var g = new Float32Array((cells + 1) * (cells + 1));
+    for (var j = 0; j <= cells; j++) {
+      for (var i = 0; i <= cells; i++) {
+        g[j * (cells + 1) + (i % cells)] = hash2(i % cells + seed * 131, j % cells + seed * 977);
+      }
+      g[j * (cells + 1) + cells] = g[j * (cells + 1)];
+    }
+    for (var i2 = 0; i2 <= cells; i2++) g[cells * (cells + 1) + i2] = g[i2];
+
+    var out = new Float32Array(size * size);
+    var step = cells / size;
+    for (var y = 0; y < size; y++) {
+      var fy = y * step, y0 = Math.floor(fy), ty = fy - y0;
+      ty = ty * ty * (3 - 2 * ty);
+      for (var x = 0; x < size; x++) {
+        var fx = x * step, x0 = Math.floor(fx), tx = fx - x0;
+        tx = tx * tx * (3 - 2 * tx);
+        var a = g[y0 * (cells + 1) + x0],       b = g[y0 * (cells + 1) + x0 + 1];
+        var c = g[(y0 + 1) * (cells + 1) + x0], d = g[(y0 + 1) * (cells + 1) + x0 + 1];
+        out[y * size + x] = (a + (b - a) * tx) + ((c + (d - c) * tx) - (a + (b - a) * tx)) * ty;
+      }
+    }
+    return out;
+  }
+
+  function fbm(size, cells, octaves, seed) {
+    var out = new Float32Array(size * size);
+    var amp = 1, total = 0, c = cells;
+    for (var o = 0; o < octaves; o++) {
+      var layer = valueNoise(size, Math.max(2, Math.round(c)), seed + o * 17);
+      for (var i = 0; i < out.length; i++) out[i] += layer[i] * amp;
+      total += amp; amp *= 0.5; c *= 2;
+    }
+    for (var k = 0; k < out.length; k++) out[k] /= total;
+    return out;
+  }
+
+  /* lay a noise field over whatever is on the canvas, as light and shade */
+  function shadeWith(x, size, field, strength, bias) {
+    var img = x.getImageData(0, 0, size, size), d = img.data;
+    for (var i = 0, p = 0; i < field.length; i++, p += 4) {
+      var v = (field[i] - (bias == null ? 0.5 : bias)) * strength * 255;
+      d[p] = clamp(d[p] + v, 0, 255);
+      d[p + 1] = clamp(d[p + 1] + v, 0, 255);
+      d[p + 2] = clamp(d[p + 2] + v, 0, 255);
+    }
+    x.putImageData(img, 0, 0);
+  }
+
+  /* a wandering line: cracks, mortar breaks, tyre marks, kerb chips */
+  function crack(x, x0, y0, len, seg, wobble, width, colour) {
+    x.strokeStyle = colour; x.lineWidth = width; x.lineCap = "round";
+    x.beginPath(); x.moveTo(x0, y0);
+    var a = Math.random() * 6.2832;
+    for (var i = 0; i < seg; i++) {
+      a += rnd(-wobble, wobble);
+      x0 += Math.cos(a) * len; y0 += Math.sin(a) * len;
+      x.lineTo(x0, y0);
+    }
+    x.stroke();
+    return { x: x0, y: y0 };
+  }
+
   /* value noise over a canvas, in place, multiplied into what is there */
   function grain(x, size, amount, cell) {
     var img = x.getImageData(0, 0, size, size), d = img.data;
@@ -1056,215 +1175,454 @@
   }
 
   var PAINT = {
-    /* interior wall: painted plaster that has been there a while */
+    /* ---- interior wall: painted plaster with a life behind it ---- */
     plaster: function (x, s) {
-      x.fillStyle = "#b9b3ad"; x.fillRect(0, 0, s, s);
-      splotch(x, s, 26, "150,140,130", s * 0.05, s * 0.22, 0.30);
-      splotch(x, s, 10, "90,80,70", s * 0.02, s * 0.09, 0.35);
-      grain(x, s, 0.10, 1);
-      /* a skirting shadow at the bottom edge reads as a real wall */
-      var g = x.createLinearGradient(0, s * 0.82, 0, s);
-      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.42)");
-      x.fillStyle = g; x.fillRect(0, s * 0.82, s, s * 0.18);
+      x.fillStyle = "#c3bdb6"; x.fillRect(0, 0, s, s);
+      shadeWith(x, s, fbm(s, 3, 4, 11), 0.20);
+      /* the wide, soft discolouration of a room nobody has repainted */
+      splotch(x, s, 14, "150,140,128", s * 0.10, s * 0.34, 0.22);
+      splotch(x, s, 8, "104,96,86", s * 0.04, s * 0.14, 0.20);
+      /* hairline cracks out of the corners */
+      for (var i = 0; i < 3; i++) {
+        crack(x, Math.random() * s, Math.random() * s, s * 0.05, 7, 0.7, 1, "rgba(120,110,100,.45)");
+      }
+      /* a skirting shadow, so a wall has a bottom */
+      var g = x.createLinearGradient(0, s * 0.80, 0, s);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(40,34,30,.40)");
+      x.fillStyle = g; x.fillRect(0, s * 0.80, s, s * 0.20);
+      grain(x, s, 0.025, 2);
     },
-    /* floorboards */
+
+    /* ---- floorboards ---- */
     boards: function (x, s) {
       x.fillStyle = "#9a7042"; x.fillRect(0, 0, s, s);
-      var rows = 6, h = s / rows;
+      var rows = 7, h = s / rows;
       for (var r = 0; r < rows; r++) {
-        var t = hash2(r, 7);
-        x.fillStyle = "rgba(" + Math.floor(120 + t * 60) + "," +
-                      Math.floor(84 + t * 40) + "," + Math.floor(48 + t * 26) + ",1)";
+        var t = hash2(r, 7), t2 = hash2(r, 19);
+        x.fillStyle = "rgb(" + Math.floor(112 + t * 62) + "," +
+                      Math.floor(78 + t * 42) + "," + Math.floor(44 + t * 28) + ")";
         x.fillRect(0, r * h, s, h - 1);
-        /* the gap between boards */
-        x.fillStyle = "rgba(40,26,14,.85)";
-        x.fillRect(0, r * h + h - 1.5, s, 1.5);
-        /* grain lines along it */
-        x.strokeStyle = "rgba(60,40,20,.22)"; x.lineWidth = 1;
-        for (var k = 0; k < 5; k++) {
-          var yy = r * h + 3 + hash2(r, k) * (h - 6);
-          x.beginPath(); x.moveTo(0, yy);
-          x.bezierCurveTo(s * 0.3, yy + 2, s * 0.6, yy - 2, s, yy + 1);
+        /* the grain of the timber, running along it */
+        x.save();
+        x.beginPath(); x.rect(0, r * h, s, h - 1.5); x.clip();
+        for (var k = 0; k < 9; k++) {
+          var yy = r * h + 2 + hash2(r, k * 3) * (h - 4);
+          x.strokeStyle = "rgba(" + Math.floor(58 + t2 * 30) + ",38,18," + (0.10 + hash2(k, r) * 0.16) + ")";
+          x.lineWidth = 0.6 + hash2(k, r + 4) * 1.5;
+          x.beginPath(); x.moveTo(-4, yy);
+          x.bezierCurveTo(s * 0.3, yy + rnd(-2.5, 2.5), s * 0.66, yy + rnd(-2.5, 2.5), s + 4, yy + rnd(-1.5, 1.5));
           x.stroke();
         }
+        /* a knot every few boards */
+        if (t > 0.62) {
+          var kx = hash2(r, 5) * s, ky = r * h + h * 0.5;
+          for (var q = 4; q > 0; q--) {
+            x.strokeStyle = "rgba(52,32,14,.32)"; x.lineWidth = 1.2;
+            x.beginPath(); x.ellipse(kx, ky, q * 2.4, q * 1.5, 0.4, 0, 6.2832); x.stroke();
+          }
+        }
+        x.restore();
+        /* the gap between boards, with the light catching the near edge */
+        x.fillStyle = "rgba(34,20,10,.85)"; x.fillRect(0, r * h + h - 2, s, 2);
+        x.fillStyle = "rgba(255,230,190,.10)"; x.fillRect(0, r * h, s, 1);
         /* the end joint */
         var jx = hash2(r, 3) * s;
-        x.fillStyle = "rgba(40,26,14,.7)"; x.fillRect(jx, r * h, 1.5, h - 1.5);
+        x.fillStyle = "rgba(34,20,10,.6)"; x.fillRect(jx, r * h, 1.5, h - 2);
       }
-      grain(x, s, 0.06, 1);
+      shadeWith(x, s, fbm(s, 2, 3, 5), 0.10);
     },
+
     carpet: function (x, s) {
       x.fillStyle = "#7a3a44"; x.fillRect(0, 0, s, s);
-      splotch(x, s, 40, "120,60,70", s * 0.03, s * 0.13, 0.30);
-      grain(x, s, 0.16, 2);
+      shadeWith(x, s, fbm(s, 8, 3, 21), 0.16);
+      splotch(x, s, 20, "120,60,70", s * 0.05, s * 0.18, 0.24);
+      grain(x, s, 0.07, 2);
     },
-    /* hospital vinyl — big pale squares with a lot of scuff */
+
+    /* ---- hospital vinyl: pale, scuffed, and walked on for years ---- */
     clinic: function (x, s) {
-      x.fillStyle = "#c9d4d6"; x.fillRect(0, 0, s, s);
+      x.fillStyle = "#ccd6d8"; x.fillRect(0, 0, s, s);
       var n = 4, g = s / n;
       for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
-        var t = hash2(i, j) * 16 - 8;
-        x.fillStyle = "rgb(" + (198 + t) + "," + (210 + t) + "," + (212 + t) + ")";
+        var t = hash2(i, j) * 14 - 7;
+        x.fillStyle = "rgb(" + (200 + t) + "," + (212 + t) + "," + (214 + t) + ")";
         x.fillRect(i * g + 1, j * g + 1, g - 2, g - 2);
       }
-      x.strokeStyle = "rgba(120,140,145,.55)"; x.lineWidth = 1.5;
+      /* the joints, dark with a lit edge */
       for (var k = 0; k <= n; k++) {
-        x.beginPath(); x.moveTo(k * g, 0); x.lineTo(k * g, s); x.stroke();
-        x.beginPath(); x.moveTo(0, k * g); x.lineTo(s, k * g); x.stroke();
+        x.fillStyle = "rgba(126,142,146,.55)"; x.fillRect(k * g - 1, 0, 2, s); x.fillRect(0, k * g - 1, s, 2);
+        x.fillStyle = "rgba(255,255,255,.22)"; x.fillRect(k * g + 1, 0, 1, s); x.fillRect(0, k * g + 1, s, 1);
       }
-      splotch(x, s, 14, "90,110,110", s * 0.04, s * 0.18, 0.22);
-      splotch(x, s, 5, "70,30,26", s * 0.02, s * 0.07, 0.30);
-      grain(x, s, 0.05, 1);
+      /* the arcs a trolley wheel leaves, and the traffic down the middle */
+      x.strokeStyle = "rgba(120,132,136,.22)";
+      for (var a = 0; a < 7; a++) {
+        x.lineWidth = rnd(1, 3);
+        x.beginPath();
+        x.arc(rnd(-s * 0.2, s * 1.2), rnd(-s * 0.2, s * 1.2), rnd(s * 0.2, s * 0.7),
+              rnd(0, 3), rnd(3, 6.2));
+        x.stroke();
+      }
+      shadeWith(x, s, fbm(s, 3, 4, 33), 0.12);
+      splotch(x, s, 6, "86,74,58", s * 0.03, s * 0.09, 0.22);
+      grain(x, s, 0.02, 2);
     },
-    /* road: asphalt with aggregate and cracks */
+
+    /* ---- asphalt: aggregate, patches, cracks, and standing water ---- */
     asphalt: function (x, s) {
-      x.fillStyle = "#2b2f36"; x.fillRect(0, 0, s, s);
-      splotch(x, s, 22, "58,62,70", s * 0.06, s * 0.2, 0.28);
-      for (var i = 0; i < 420; i++) {
-        var v = 44 + Math.random() * 56;
-        x.fillStyle = "rgba(" + v + "," + (v + 4) + "," + (v + 8) + ",.5)";
-        var r0 = rnd(2.2, 5.5);
-        x.beginPath(); x.ellipse(Math.random() * s, Math.random() * s, r0, r0 * rnd(0.5, 1), Math.random() * 3, 0, 6.2832);
+      x.fillStyle = "#2a2e34"; x.fillRect(0, 0, s, s);
+      /* the big tonal patching that makes a road look resurfaced */
+      shadeWith(x, s, fbm(s, 3, 4, 7), 0.26);
+      /* aggregate */
+      for (var i = 0; i < 900; i++) {
+        var v = 44 + Math.random() * 62;
+        x.fillStyle = "rgba(" + v + "," + (v + 3) + "," + (v + 8) + ",.45)";
+        var r0 = rnd(1.6, 4.6);
+        x.beginPath();
+        x.ellipse(Math.random() * s, Math.random() * s, r0, r0 * rnd(0.55, 1), Math.random() * 3, 0, 6.2832);
         x.fill();
       }
-      x.strokeStyle = "rgba(16,16,20,.85)"; x.lineWidth = 1.6;
-      for (var c = 0; c < 4; c++) {
-        var cx = Math.random() * s, cy = Math.random() * s;
-        x.beginPath(); x.moveTo(cx, cy);
-        for (var k = 0; k < 5; k++) { cx += rnd(-24, 24); cy += rnd(-24, 24); x.lineTo(cx, cy); }
-        x.stroke();
+      /* cracking, with the tar somebody poured into it */
+      for (var c = 0; c < 5; c++) {
+        var sx = Math.random() * s, sy = Math.random() * s;
+        crack(x, sx, sy, s * 0.055, 9, 0.8, rnd(2, 4), "rgba(14,15,18,.8)");
+        crack(x, sx, sy, s * 0.045, 6, 1.1, rnd(1, 2), "rgba(20,21,25,.6)");
       }
-      splotch(x, s, 8, "20,22,26", s * 0.05, s * 0.2, 0.4);
+      /* a repair patch */
+      x.fillStyle = "rgba(26,28,33,.75)";
+      x.beginPath();
+      x.ellipse(s * rnd(0.2, 0.8), s * rnd(0.2, 0.8), s * rnd(0.10, 0.20), s * rnd(0.07, 0.16),
+                Math.random() * 3, 0, 6.2832);
+      x.fill();
+      /* and the water that has not drained off it */
+      var wet = fbm(s, 4, 3, 91);
+      var img = x.getImageData(0, 0, s, s), d = img.data;
+      for (var q = 0, pp = 0; q < wet.length; q++, pp += 4) {
+        if (wet[q] < 0.42) {
+          var k = (0.42 - wet[q]) * 2.4;
+          d[pp] *= 1 - k * 0.5; d[pp + 1] *= 1 - k * 0.46; d[pp + 2] *= 1 - k * 0.36;
+        }
+      }
+      x.putImageData(img, 0, 0);
     },
-    /* pavement slabs */
+
+    /* the roughness of that same road: the puddles are the smooth parts */
+    asphaltR: function (x, s) {
+      x.fillStyle = "#d8d8d8"; x.fillRect(0, 0, s, s);
+      var wet = fbm(s, 4, 3, 91);
+      var fine = fbm(s, 24, 2, 3);
+      var img = x.getImageData(0, 0, s, s), d = img.data;
+      for (var q = 0, pp = 0; q < wet.length; q++, pp += 4) {
+        var v = 190 + fine[q] * 50;
+        if (wet[q] < 0.42) v = 18 + (wet[q] / 0.42) * 90;      /* standing water */
+        else if (wet[q] < 0.52) v = 90 + ((wet[q] - 0.42) / 0.10) * 110;  /* damp */
+        d[pp] = d[pp + 1] = d[pp + 2] = v;
+      }
+      x.putImageData(img, 0, 0);
+    },
+
+    /* ---- pavement: slabs, chipped, stained, weeds in the joints ---- */
     pave: function (x, s) {
-      x.fillStyle = "#6c7681"; x.fillRect(0, 0, s, s);
+      x.fillStyle = "#77808a"; x.fillRect(0, 0, s, s);
       var n = 2, g = s / n;
       for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
-        var t = hash2(i * 3, j * 5) * 20 - 10;
-        x.fillStyle = "rgb(" + (104 + t) + "," + (114 + t) + "," + (124 + t) + ")";
-        x.fillRect(i * g + 2, j * g + 2, g - 4, g - 4);
+        var t = hash2(i * 3, j * 5) * 22 - 11;
+        x.fillStyle = "rgb(" + (116 + t) + "," + (124 + t) + "," + (134 + t) + ")";
+        x.beginPath();
+        x.rect(i * g + 3, j * g + 3, g - 6, g - 6);
+        x.fill();
+        /* a lit top edge and a shadowed bottom, so a slab has thickness */
+        x.fillStyle = "rgba(255,255,255,.14)"; x.fillRect(i * g + 3, j * g + 3, g - 6, 2);
+        x.fillStyle = "rgba(0,0,0,.24)"; x.fillRect(i * g + 3, j * g + g - 5, g - 6, 2);
+        /* chipped corners */
+        for (var c = 0; c < 3; c++) {
+          x.fillStyle = "rgba(56,62,70,.5)";
+          x.beginPath();
+          x.arc(i * g + 3 + Math.random() * (g - 6), j * g + 3 + Math.random() * (g - 6),
+                rnd(1.5, 4), 0, 6.2832);
+          x.fill();
+        }
       }
-      splotch(x, s, 18, "60,68,76", s * 0.04, s * 0.16, 0.3);
-      grain(x, s, 0.08, 1);
+      /* what grows in the joints */
+      x.strokeStyle = "rgba(72,92,48,.5)";
+      for (var w = 0; w < 22; w++) {
+        var jx = (Math.random() < 0.5 ? g : 0) + rnd(-2, 2);
+        var jy = Math.random() * s;
+        x.lineWidth = 1;
+        x.beginPath(); x.moveTo(jx, jy); x.lineTo(jx + rnd(-3, 3), jy - rnd(3, 9)); x.stroke();
+      }
+      shadeWith(x, s, fbm(s, 3, 4, 13), 0.16);
+      splotch(x, s, 10, "48,52,58", s * 0.04, s * 0.16, 0.22);
+      grain(x, s, 0.02, 2);
     },
+
     grass: function (x, s) {
       x.fillStyle = "#43592c"; x.fillRect(0, 0, s, s);
-      splotch(x, s, 16, "58,78,40", s * 0.06, s * 0.22, 0.3);
-      for (var i = 0; i < 1100; i++) {
-        var gx = Math.random() * s, gy = Math.random() * s, l = rnd(5, 13);
+      shadeWith(x, s, fbm(s, 4, 4, 3), 0.28);
+      splotch(x, s, 10, "92,80,48", s * 0.05, s * 0.18, 0.26);   /* worn patches */
+      for (var i = 0; i < 1300; i++) {
+        var gx = Math.random() * s, gy = Math.random() * s, l = rnd(5, 14);
         var v = Math.random();
-        x.strokeStyle = "rgba(" + Math.floor(60 + v * 50) + "," +
-                        Math.floor(88 + v * 62) + "," + Math.floor(38 + v * 30) + ",.75)";
-        x.lineWidth = rnd(1.2, 2.4);
+        x.strokeStyle = "rgba(" + Math.floor(56 + v * 54) + "," +
+                        Math.floor(84 + v * 66) + "," + Math.floor(34 + v * 34) + ",.7)";
+        x.lineWidth = rnd(1.1, 2.3);
         x.beginPath(); x.moveTo(gx, gy);
-        x.quadraticCurveTo(gx + rnd(-2, 2), gy - l * 0.6, gx + rnd(-3.5, 3.5), gy - l);
+        x.quadraticCurveTo(gx + rnd(-2, 2), gy - l * 0.6, gx + rnd(-4, 4), gy - l);
         x.stroke();
       }
-      splotch(x, s, 12, "40,52,26", s * 0.06, s * 0.24, 0.3);
     },
+
     dirt: function (x, s) {
       x.fillStyle = "#7a6748"; x.fillRect(0, 0, s, s);
-      splotch(x, s, 34, "96,80,56", s * 0.04, s * 0.2, 0.4);
-      splotch(x, s, 20, "56,46,32", s * 0.02, s * 0.1, 0.45);
-      for (var i = 0; i < 500; i++) {
-        var v = 60 + Math.random() * 70;
-        x.fillStyle = "rgba(" + v + "," + (v - 12) + "," + (v - 30) + ",.5)";
-        x.fillRect(Math.random() * s, Math.random() * s, rnd(1, 3), rnd(1, 3));
+      shadeWith(x, s, fbm(s, 4, 4, 29), 0.26);
+      splotch(x, s, 22, "96,80,56", s * 0.05, s * 0.2, 0.3);
+      splotch(x, s, 14, "52,42,30", s * 0.02, s * 0.09, 0.34);
+      for (var i = 0; i < 420; i++) {
+        var v = 62 + Math.random() * 66;
+        x.fillStyle = "rgba(" + v + "," + (v - 14) + "," + (v - 34) + ",.42)";
+        x.beginPath();
+        x.arc(Math.random() * s, Math.random() * s, rnd(1, 3.4), 0, 6.2832);
+        x.fill();
       }
+      /* a rut, and what has washed into it */
+      crack(x, 0, Math.random() * s, s * 0.08, 14, 0.35, 5, "rgba(64,52,36,.4)");
     },
+
+    /* ---- brick: real bond, real mortar, and a century of weather ---- */
     brick: function (x, s) {
-      x.fillStyle = "#3a2a26"; x.fillRect(0, 0, s, s);
-      var rows = 8, h = s / rows, w = s / 4;
+      x.fillStyle = "#8d8378"; x.fillRect(0, 0, s, s);        /* the mortar */
+      shadeWith(x, s, fbm(s, 6, 3, 61), 0.18);
+      var rows = 9, h = s / rows, w = s / 4;
       for (var r = 0; r < rows; r++) {
         var off = (r % 2) * w * 0.5;
         for (var c = -1; c < 5; c++) {
-          var t = hash2(r, c);
-          x.fillStyle = "rgb(" + Math.floor(88 + t * 46) + "," +
-                        Math.floor(52 + t * 24) + "," + Math.floor(44 + t * 20) + ")";
-          x.fillRect(c * w + off + 1.5, r * h + 1.5, w - 3, h - 3);
+          var t = hash2(r * 7, c * 5), t2 = hash2(c * 11, r * 3);
+          var bx = c * w + off + 2, by = r * h + 2, bw = w - 4, bh = h - 4;
+          /* the brick */
+          x.fillStyle = "rgb(" + Math.floor(96 + t * 62) + "," +
+                        Math.floor(54 + t * 30) + "," + Math.floor(44 + t2 * 26) + ")";
+          x.fillRect(bx, by, bw, bh);
+          /* face texture and the odd spalled one */
+          x.save(); x.beginPath(); x.rect(bx, by, bw, bh); x.clip();
+          for (var f = 0; f < 5; f++) {
+            x.fillStyle = "rgba(" + Math.floor(60 + t * 50) + ",34,28,.16)";
+            x.beginPath();
+            x.arc(bx + Math.random() * bw, by + Math.random() * bh, rnd(1, 4), 0, 6.2832);
+            x.fill();
+          }
+          if (t2 > 0.88) {
+            x.fillStyle = "rgba(150,140,128,.5)";
+            x.beginPath();
+            x.arc(bx + Math.random() * bw, by + Math.random() * bh, rnd(3, 7), 0, 6.2832);
+            x.fill();
+          }
+          x.restore();
+          /* lit top edge, shadowed bottom: brick has depth in it */
+          x.fillStyle = "rgba(255,225,200,.13)"; x.fillRect(bx, by, bw, 1.5);
+          x.fillStyle = "rgba(0,0,0,.30)"; x.fillRect(bx, by + bh - 1.5, bw, 1.5);
+          x.fillStyle = "rgba(0,0,0,.18)"; x.fillRect(bx + bw - 1.5, by, 1.5, bh);
         }
       }
-      splotch(x, s, 14, "40,34,30", s * 0.05, s * 0.2, 0.34);
-      grain(x, s, 0.07, 1);
+      /* soot, damp and the stain under a broken gutter */
+      splotch(x, s, 7, "38,32,28", s * 0.06, s * 0.24, 0.26);
+      var gx = Math.random() * s;
+      var gg = x.createLinearGradient(gx, 0, gx, s);
+      gg.addColorStop(0, "rgba(30,26,22,.34)"); gg.addColorStop(1, "rgba(30,26,22,0)");
+      x.fillStyle = gg; x.fillRect(gx - s * 0.05, 0, s * 0.1, s);
+      grain(x, s, 0.02, 2);
     },
-    /* painted breeze block — the outside of the hospital and the compound */
+
+    /* ---- concrete panel: cast, tied, stained, rust-streaked ---- */
     block: function (x, s) {
-      x.fillStyle = "#8d9099"; x.fillRect(0, 0, s, s);
-      var rows = 4, h = s / rows, w = s / 2;
-      for (var r = 0; r < rows; r++) for (var c = 0; c < 2; c++) {
-        var t = hash2(r * 7, c * 11) * 18 - 9;
-        x.fillStyle = "rgb(" + (136 + t) + "," + (139 + t) + "," + (148 + t) + ")";
-        x.fillRect(c * w + 2, r * h + 2, w - 4, h - 4);
+      x.fillStyle = "#9aa0a8"; x.fillRect(0, 0, s, s);
+      shadeWith(x, s, fbm(s, 3, 4, 41), 0.16);
+      shadeWith(x, s, fbm(s, 14, 2, 7), 0.07);
+      /* the marks the shuttering left */
+      var panels = 2, pw = s / panels;
+      for (var i = 0; i <= panels; i++) {
+        x.fillStyle = "rgba(70,76,84,.45)"; x.fillRect(i * pw - 1, 0, 2, s);
+        x.fillStyle = "rgba(255,255,255,.10)"; x.fillRect(i * pw + 1, 0, 1, s);
       }
-      splotch(x, s, 16, "70,74,82", s * 0.04, s * 0.18, 0.32);
-      grain(x, s, 0.07, 1);
+      /* form-tie holes, and the rust running out of them */
+      for (var t = 0; t < 6; t++) {
+        var hx = rnd(0.1, 0.9) * s, hy = rnd(0.1, 0.9) * s;
+        x.fillStyle = "rgba(64,68,74,.75)";
+        x.beginPath(); x.arc(hx, hy, 2.6, 0, 6.2832); x.fill();
+        var rg = x.createLinearGradient(hx, hy, hx, hy + s * 0.22);
+        rg.addColorStop(0, "rgba(126,76,42,.40)"); rg.addColorStop(1, "rgba(126,76,42,0)");
+        x.fillStyle = rg; x.fillRect(hx - 3, hy, 6, s * 0.22);
+      }
+      /* water staining down the face */
+      for (var w = 0; w < 4; w++) {
+        var wx = Math.random() * s;
+        var wg = x.createLinearGradient(wx, 0, wx, s);
+        wg.addColorStop(0, "rgba(58,62,66,.30)"); wg.addColorStop(1, "rgba(58,62,66,0)");
+        x.fillStyle = wg; x.fillRect(wx - rnd(2, 9), 0, rnd(6, 20), s);
+      }
+      crack(x, Math.random() * s, 0, s * 0.07, 8, 0.5, 1.4, "rgba(74,78,84,.6)");
+      splotch(x, s, 6, "60,64,70", s * 0.05, s * 0.18, 0.2);
+      grain(x, s, 0.02, 2);
     },
-    /* felt-and-batten flat roof, seen from directly above */
-    roof: function (x, s) {
-      x.fillStyle = "#2e3138"; x.fillRect(0, 0, s, s);
-      for (var i = 0; i < 900; i++) {
-        var v = 34 + Math.random() * 34;
-        x.fillStyle = "rgba(" + v + "," + (v + 2) + "," + (v + 6) + ",.5)";
-        x.fillRect(Math.random() * s, Math.random() * s, rnd(1, 3), rnd(1, 3));
-      }
-      x.strokeStyle = "rgba(16,18,22,.7)"; x.lineWidth = 2;
-      for (var r = 0; r < 5; r++) {
-        var y = r * s / 5 + 4;
-        x.beginPath(); x.moveTo(0, y); x.lineTo(s, y + rnd(-1, 1)); x.stroke();
-      }
-      splotch(x, s, 10, "60,66,76", s * 0.05, s * 0.22, 0.3);
-      splotch(x, s, 6, "24,26,30", s * 0.04, s * 0.16, 0.4);
-      splotch(x, s, 3, "70,86,100", s * 0.06, s * 0.18, 0.22);
-    },
+
     metal: function (x, s) {
       x.fillStyle = "#5b6068"; x.fillRect(0, 0, s, s);
-      for (var i = 0; i < 260; i++) {
-        x.strokeStyle = "rgba(" + irnd(70, 130) + "," + irnd(74, 134) + "," + irnd(82, 142) + ",.3)";
-        x.lineWidth = rnd(0.5, 1.6);
+      shadeWith(x, s, fbm(s, 5, 3, 71), 0.14);
+      /* brushed, along one axis */
+      for (var i = 0; i < 320; i++) {
+        x.strokeStyle = "rgba(" + irnd(74, 138) + "," + irnd(78, 142) + "," + irnd(86, 150) + ",.22)";
+        x.lineWidth = rnd(0.5, 1.8);
         var y = Math.random() * s;
-        x.beginPath(); x.moveTo(0, y); x.lineTo(s, y + rnd(-2, 2)); x.stroke();
+        x.beginPath(); x.moveTo(0, y); x.lineTo(s, y + rnd(-1.5, 1.5)); x.stroke();
       }
-      splotch(x, s, 8, "110,60,30", s * 0.03, s * 0.12, 0.28);
+      /* rust where the coating has gone */
+      splotch(x, s, 7, "122,68,34", s * 0.02, s * 0.11, 0.34);
+      splotch(x, s, 3, "86,44,20", s * 0.01, s * 0.05, 0.4);
+      grain(x, s, 0.02, 2);
     },
+
+    /* ---- glass: not clear, but dirty, cracked and reflecting ---- */
+    glass: function (x, s) {
+      x.fillStyle = "#20303e"; x.fillRect(0, 0, s, s);
+      var g = x.createLinearGradient(0, 0, s, s);
+      g.addColorStop(0, "rgba(150,190,225,.42)");
+      g.addColorStop(0.45, "rgba(70,100,130,.12)");
+      g.addColorStop(1, "rgba(30,46,62,.30)");
+      x.fillStyle = g; x.fillRect(0, 0, s, s);
+      shadeWith(x, s, fbm(s, 4, 3, 53), 0.10);
+      /* grime at the edges */
+      x.fillStyle = "rgba(40,44,42,.35)";
+      x.fillRect(0, 0, s, s * 0.08); x.fillRect(0, s * 0.92, s, s * 0.08);
+      x.fillRect(0, 0, s * 0.06, s); x.fillRect(s * 0.94, 0, s * 0.06, s);
+      /* and a star crack, because it is that kind of week */
+      if (Math.random() < 0.55) {
+        var cx = rnd(0.3, 0.7) * s, cy = rnd(0.3, 0.7) * s;
+        for (var i2 = 0; i2 < 7; i2++) {
+          var a = i2 / 7 * 6.2832 + rnd(-0.2, 0.2);
+          x.strokeStyle = "rgba(225,240,255,.5)"; x.lineWidth = rnd(0.8, 1.8);
+          x.beginPath(); x.moveTo(cx, cy);
+          x.lineTo(cx + Math.cos(a) * rnd(s * 0.1, s * 0.4), cy + Math.sin(a) * rnd(s * 0.1, s * 0.4));
+          x.stroke();
+        }
+      }
+    },
+
     bark: function (x, s) {
       x.fillStyle = "#43331f"; x.fillRect(0, 0, s, s);
-      for (var i = 0; i < 90; i++) {
+      shadeWith(x, s, fbm(s, 3, 3, 83), 0.2);
+      for (var i = 0; i < 110; i++) {
         var cx = Math.random() * s;
-        x.strokeStyle = "rgba(" + irnd(28, 92) + "," + irnd(22, 66) + "," + irnd(14, 40) + ",.8)";
-        x.lineWidth = rnd(1, 4);
-        x.beginPath(); x.moveTo(cx, 0);
-        for (var y = 0; y < s; y += 12) x.lineTo(cx + rnd(-3, 3), y);
+        x.strokeStyle = "rgba(" + irnd(26, 96) + "," + irnd(20, 70) + "," + irnd(12, 42) + ",.72)";
+        x.lineWidth = rnd(1, 4.5);
+        x.beginPath(); x.moveTo(cx, -4);
+        for (var y = 0; y < s + 8; y += 10) x.lineTo(cx + rnd(-3, 3), y);
         x.stroke();
       }
-      grain(x, s, 0.12, 1);
+      splotch(x, s, 8, "94,108,72", s * 0.02, s * 0.08, 0.22);   /* moss */
+      grain(x, s, 0.03, 2);
     },
+
     leaves: function (x, s) {
       x.fillStyle = "#2c4a24"; x.fillRect(0, 0, s, s);
-      for (var i = 0; i < 700; i++) {
+      shadeWith(x, s, fbm(s, 5, 3, 97), 0.24);
+      for (var i = 0; i < 620; i++) {
         var v = Math.random();
-        x.fillStyle = "rgba(" + Math.floor(34 + v * 60) + "," +
-                      Math.floor(62 + v * 74) + "," + Math.floor(26 + v * 40) + ",.85)";
+        x.fillStyle = "rgba(" + Math.floor(32 + v * 62) + "," +
+                      Math.floor(60 + v * 78) + "," + Math.floor(24 + v * 42) + ",.8)";
         var cx = Math.random() * s, cy = Math.random() * s;
-        x.beginPath(); x.ellipse(cx, cy, rnd(3, 8), rnd(2, 5), Math.random() * 3.14, 0, 6.2832); x.fill();
+        x.beginPath(); x.ellipse(cx, cy, rnd(3, 9), rnd(2, 5), Math.random() * 3.14, 0, 6.2832); x.fill();
       }
     },
-    /* clothing and skin, painted flat then dirtied */
+
+    /* ---- cloth: a weave, and the way it creases ---- */
     cloth: function (x, s) {
       x.fillStyle = "#cccccc"; x.fillRect(0, 0, s, s);
-      for (var i = 0; i < 800; i++) {
-        var v = irnd(-14, 14) + 200;
-        x.fillStyle = "rgba(" + v + "," + v + "," + v + ",.35)";
-        x.fillRect(Math.random() * s, Math.random() * s, rnd(1, 3), rnd(1, 3));
+      /* the weave */
+      for (var i = 0; i < s; i += 3) {
+        x.fillStyle = "rgba(255,255,255,.055)"; x.fillRect(i, 0, 1.5, s);
+        x.fillStyle = "rgba(0,0,0,.045)"; x.fillRect(0, i, s, 1.5);
       }
-      grain(x, s, 0.08, 1);
+      /* soft folds */
+      shadeWith(x, s, fbm(s, 4, 3, 23), 0.13);
+      shadeWith(x, s, fbm(s, 11, 2, 47), 0.05);
+      grain(x, s, 0.02, 2);
     },
+
+    /* the same, as height, so a jacket creases under the light */
+    clothR: function (x, s) {
+      x.fillStyle = "#bdbdbd"; x.fillRect(0, 0, s, s);
+      shadeWith(x, s, fbm(s, 4, 3, 23), 0.5);
+      shadeWith(x, s, fbm(s, 16, 2, 5), 0.12);
+    },
+
+    denim: function (x, s) {
+      x.fillStyle = "#b9c2cf"; x.fillRect(0, 0, s, s);
+      for (var i = 0; i < s; i += 2) {
+        x.fillStyle = "rgba(255,255,255,.10)"; x.fillRect(i, 0, 1, s);
+        x.fillStyle = "rgba(0,0,0,.09)"; x.fillRect(0, i + 1, s, 1);
+      }
+      shadeWith(x, s, fbm(s, 5, 3, 31), 0.14);
+      /* the pale wear along a seam */
+      splotch(x, s, 5, "255,255,255", s * 0.03, s * 0.14, 0.16);
+      grain(x, s, 0.02, 2);
+    },
+
+    /* ---- skin: not one colour ---- */
+    skin: function (x, s) {
+      x.fillStyle = "#e6c6ad"; x.fillRect(0, 0, s, s);
+      shadeWith(x, s, fbm(s, 6, 3, 67), 0.055);
+      splotch(x, s, 12, "216,168,148", s * 0.05, s * 0.16, 0.18);
+      splotch(x, s, 6, "246,226,212", s * 0.04, s * 0.12, 0.16);
+      grain(x, s, 0.012, 2);
+    },
+
+    /* ---- what is left of them ---- */
     rot: function (x, s) {
       x.fillStyle = "#9aa88c"; x.fillRect(0, 0, s, s);
-      splotch(x, s, 30, "90,104,76", s * 0.04, s * 0.2, 0.5);
-      splotch(x, s, 16, "70,44,42", s * 0.02, s * 0.09, 0.5);
-      splotch(x, s, 10, "40,50,40", s * 0.03, s * 0.13, 0.4);
-      grain(x, s, 0.12, 1);
+      shadeWith(x, s, fbm(s, 5, 4, 43), 0.20);
+      splotch(x, s, 22, "88,102,74", s * 0.04, s * 0.2, 0.4);
+      splotch(x, s, 10, "116,82,74", s * 0.02, s * 0.08, 0.34);
+      splotch(x, s, 8, "56,64,52", s * 0.03, s * 0.12, 0.34);
+      /* the veining under it */
+      for (var i = 0; i < 12; i++) {
+        crack(x, Math.random() * s, Math.random() * s, s * 0.035, 6, 1.0, 1, "rgba(70,58,64,.34)");
+      }
+      grain(x, s, 0.03, 2);
+    },
+
+    hair: function (x, s) {
+      x.fillStyle = "#cfcfcf"; x.fillRect(0, 0, s, s);
+      for (var i = 0; i < 900; i++) {
+        var v = Math.random();
+        var g0 = Math.floor(150 + v * 105);
+        x.strokeStyle = "rgba(" + g0 + "," + g0 + "," + g0 + ",.5)";
+        x.lineWidth = rnd(0.7, 2.1);
+        var hx = Math.random() * s, hy = Math.random() * s;
+        x.beginPath(); x.moveTo(hx, hy);
+        x.quadraticCurveTo(hx + rnd(-4, 4), hy + s * 0.12, hx + rnd(-8, 8), hy + s * 0.26);
+        x.stroke();
+      }
+      shadeWith(x, s, fbm(s, 7, 3, 19), 0.22);
+    },
+
+    /* ---- felt-and-batten flat roof, seen from above ---- */
+    roof: function (x, s) {
+      x.fillStyle = "#2e3138"; x.fillRect(0, 0, s, s);
+      shadeWith(x, s, fbm(s, 4, 4, 59), 0.20);
+      for (var i = 0; i < 700; i++) {
+        var v = 36 + Math.random() * 36;
+        x.fillStyle = "rgba(" + v + "," + (v + 2) + "," + (v + 6) + ",.42)";
+        x.fillRect(Math.random() * s, Math.random() * s, rnd(1, 3), rnd(1, 3));
+      }
+      /* the laps, and the bitumen squeezed out of them */
+      for (var r = 0; r < 5; r++) {
+        var y = r * s / 5 + 4;
+        x.strokeStyle = "rgba(15,17,20,.7)"; x.lineWidth = 2.4;
+        x.beginPath(); x.moveTo(0, y); x.lineTo(s, y + rnd(-1, 1)); x.stroke();
+        x.strokeStyle = "rgba(96,100,108,.16)"; x.lineWidth = 1;
+        x.beginPath(); x.moveTo(0, y - 2); x.lineTo(s, y - 2 + rnd(-1, 1)); x.stroke();
+      }
+      splotch(x, s, 6, "26,28,32", s * 0.05, s * 0.2, 0.34);
+      splotch(x, s, 3, "78,94,106", s * 0.06, s * 0.18, 0.20);   /* ponding */
+      crack(x, Math.random() * s, Math.random() * s, s * 0.05, 7, 0.8, 2, "rgba(18,19,22,.6)");
     }
   };
 
@@ -1296,16 +1654,39 @@
     return t;
   }
 
+  /* The roughness channel, painted by its own painter, so one surface can
+     be wet in one place and dry in another — which is most of what makes a
+     night street look like a night street rather than a grey plane. */
+  function roughTex(name, size, repeat) {
+    var key = "R" + name + "|" + (repeat || 1);
+    if (TEX[key]) return TEX[key];
+    var s2 = size || 256, cc = canvas2d(s2);
+    (PAINT[name] || PAINT.plaster)(cc.x, s2);
+    var t = new THREE.CanvasTexture(cc.c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    if (repeat) t.repeat.set(repeat, repeat);
+    t.anisotropy = 8;
+    TEX[key] = t;
+    return t;
+  }
+
   function surface(name, opts) {
     opts = opts || {};
+    var size = opts.size || 256, rep2 = opts.repeat || 1;
     var m = new THREE.MeshStandardMaterial({
-      map: tex(name, opts.size || 256, opts.repeat || 1),
-      bumpMap: opts.bump === false ? null : bump(name, opts.size || 256, opts.repeat || 1),
+      map: tex(name, size, rep2),
+      bumpMap: opts.bump === false ? null : bump(name, size, rep2),
       bumpScale: opts.bumpScale == null ? 0.14 : opts.bumpScale,
       roughness: opts.rough == null ? 0.92 : opts.rough,
       metalness: opts.metal == null ? 0.02 : opts.metal,
-      color: opts.tint == null ? 0xffffff : opts.tint
+      color: opts.tint == null ? 0xffffff : opts.tint,
+      envMapIntensity: opts.envInt == null ? 1 : opts.envInt
     });
+    if (opts.roughMap) {
+      /* the map multiplies the scalar, so the scalar becomes the ceiling */
+      m.roughnessMap = roughTex(opts.roughMap, size, rep2);
+      m.roughness = opts.rough == null ? 1 : opts.rough;
+    }
     if (opts.emissive) { m.emissive = new THREE.Color(opts.emissive); m.emissiveIntensity = opts.emissiveIntensity || 1; }
     return m;
   }
@@ -1512,19 +1893,25 @@
   /* =========================================================
      9 — THE POST CHAIN
      Bloom for anything that emits, then one pass that does the
-     colour grade, the haze, the vignette, the grain, a touch of
-     lens fringing, and the red pulse when something has hold of
-     her. One pass, so it costs one full-screen draw.
+     colour grade, the haze, the vignette, a touch of lens
+     fringing, and the red pulse when something has hold of her.
+     One pass, so it costs one full-screen draw.
+
+     There is deliberately no film grain and no dither in here.
+     Grain is a way of hiding a render; this one does not need
+     hiding, and at any resolution above a phone it reads as
+     dirt on the screen rather than as atmosphere. The banding
+     it used to cover is handled by rendering to a half-float
+     target instead.
      ========================================================= */
   var GRADE_FRAG = [
     "uniform sampler2D tDiffuse;",
     "uniform vec3 gradeCol; uniform float gradeAmt;",
     "uniform vec3 hazeCol;  uniform float hazeAmt;",
-    "uniform float vig; uniform float grain; uniform float time;",
+    "uniform float vig; uniform float time;",
     "uniform float fringe; uniform float redPulse; uniform float flash;",
     "uniform float fade; uniform float sat; uniform float exposure;",
     "varying vec2 vUv;",
-    "float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }",
     "void main(){",
     "  vec2 uv = vUv;",
     "  vec2 c = uv - 0.5;",
@@ -1549,11 +1936,8 @@
     /* something has hold of her */
     "  col = mix(col, vec3(l*0.85, l*0.10, l*0.14) + vec3(0.22,0.0,0.02), redPulse);",
     "  col += flash;",
-    /* vignette */
-    "  col *= 1.0 - vig * smoothstep(0.16, 0.82, r2);",
-    /* grain, animated */
-    "  float n = h21(uv * vec2(1024.0, 768.0) + fract(time) * 91.7);",
-    "  col += (n - 0.5) * grain;",
+    /* vignette: a wide, soft falloff, not a black ring */
+    "  col *= 1.0 - vig * smoothstep(0.10, 0.95, r2) * (0.55 + 0.45*r2);",
     "  col *= fade;",
     "  gl_FragColor = vec4(col, 1.0);",
     "}"
@@ -1563,6 +1947,61 @@
     "varying vec2 vUv;",
     "void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }"
   ].join("\n");
+
+  /* =========================================================
+     9b — THE ENVIRONMENT
+     A physically based material with nothing to reflect is a
+     flat colour with a highlight on it. This renders the level's
+     own sky and ground into a cube once, runs it through PMREM,
+     and hands it to the scene — so glass has a sky in it, wet
+     tarmac has the streetlights in it, and metal stops looking
+     like plastic. It costs one render at load and nothing after.
+     ========================================================= */
+  function buildEnvironment(renderer, sky, pal, dark) {
+    var pm = new THREE.PMREMGenerator(renderer);
+    pm.compileEquirectangularShader();
+
+    var envScene = new THREE.Scene();
+    /* the same gradient the sky dome is using, so reflections agree with
+       what is actually overhead */
+    var dome = new THREE.Mesh(
+      new THREE.SphereGeometry(60, 24, 16),
+      new THREE.ShaderMaterial({
+        vertexShader: SKY_VERT, fragmentShader: SKY_FRAG,
+        uniforms: {
+          cLow: { value: sky.u.cLow.value.clone() },
+          cMid: { value: sky.u.cMid.value.clone() },
+          cHigh: { value: sky.u.cHigh.value.clone() },
+          sunDir: { value: sky.u.sunDir.value.clone() },
+          sunCol: { value: sky.u.sunCol.value.clone() },
+          sunAmt: { value: sky.u.sunAmt.value },
+          time: { value: 0 }
+        },
+        side: THREE.BackSide, depthWrite: false, fog: false
+      }));
+    envScene.add(dome);
+
+    /* a ground half, or everything shiny reflects sky from underneath too
+       and reads as floating */
+    var ground = new THREE.Mesh(
+      new THREE.SphereGeometry(59, 20, 12, 0, 6.2832, Math.PI / 2, Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: shade(pal.ambient, 2.2), side: THREE.BackSide, fog: false }));
+    envScene.add(ground);
+
+    /* one soft source so there is something for a highlight to be */
+    var glow = new THREE.Mesh(
+      new THREE.SphereGeometry(7, 12, 8),
+      new THREE.MeshBasicMaterial({ color: shade(pal.key, dark > 0.5 ? 0.55 : 1.4), fog: false }));
+    glow.position.set(-26, 22, -30);
+    envScene.add(glow);
+
+    var rt = pm.fromScene(envScene, 0.04, 0.1, 120);
+    dome.geometry.dispose(); dome.material.dispose();
+    ground.geometry.dispose(); ground.material.dispose();
+    glow.geometry.dispose(); glow.material.dispose();
+    pm.dispose();
+    return rt.texture;
+  }
 
   /* =========================================================
      10 — THE STAGE
@@ -1587,7 +2026,7 @@
 
     build: function (canvas) {
       return new THREE.WebGLRenderer({
-        canvas: canvas, antialias: false, powerPreference: "high-performance",
+        canvas: canvas, antialias: true, powerPreference: "high-performance",
         stencil: false, alpha: false
       });
     },
@@ -1596,10 +2035,18 @@
       r.setClearColor(0x000000, 1);
       r.shadowMap.enabled = true;
       r.shadowMap.type = THREE.PCFSoftShadowMap;
+      r.shadowMap.autoUpdate = true;
       r.toneMapping = THREE.ACESFilmicToneMapping;
       r.toneMappingExposure = 1.08;
       r.outputColorSpace = THREE.SRGBColorSpace;
       Stage.renderer = r;
+      Stage.maxSamples = 4;
+      try {
+        var gl = r.getContext();
+        if (gl && gl.getParameter && gl.MAX_SAMPLES) {
+          Stage.maxSamples = Math.min(8, gl.getParameter(gl.MAX_SAMPLES) || 4);
+        }
+      } catch (e) {}
 
       /* the canvas is authored at 320x180 in the markup for the old
          chapter; from here it is a real framebuffer, so the pixelation
@@ -1630,7 +2077,22 @@
           Stage.composer.dispose();
         } catch (e) {}
       }
-      var comp = new C(Stage.renderer);
+      /* The composer's own target is where every edge in the game gets
+         resolved, so it is multisampled — the renderer's `antialias` flag
+         does nothing once you are drawing through a composer — and it is
+         half-float, which is what removes the banding that film grain used
+         to be covering up. */
+      var samples = Stage.quality === 0 ? Stage.maxSamples : Stage.quality === 1 ? 4 : 0;
+      var target = new THREE.WebGLRenderTarget(Stage.w, Stage.h, {
+        type: THREE.HalfFloatType,
+        colorSpace: THREE.LinearSRGBColorSpace,
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
+        depthBuffer: true,
+        stencilBuffer: false,
+        samples: samples
+      });
+      var comp = new C(Stage.renderer, target);
       comp.setSize(Stage.w, Stage.h);
       comp.addPass(new RP(scene, camera));
 
@@ -1648,7 +2110,6 @@
           hazeCol:   { value: new THREE.Color(0x1e263c) },
           hazeAmt:   { value: 0.28 },
           vig:       { value: 0.78 },
-          grain:     { value: 0.055 },
           time:      { value: 0 },
           fringe:    { value: 0.0016 },
           redPulse:  { value: 0.0 },
@@ -1663,6 +2124,11 @@
       comp.addPass(grade);
       Stage.gradePass = grade;
       if (OP) comp.addPass(new OP());
+      /* and a last analytic pass over the tone-mapped image, which catches
+         the stair-stepping MSAA cannot see: the edges post has created */
+      if (THREE.SMAAPass && Stage.quality === 0) {
+        comp.addPass(new THREE.SMAAPass(Stage.w, Stage.h));
+      }
       Stage.composer = comp;
     },
 
@@ -1672,7 +2138,7 @@
       var host = canvas.parentElement || canvas;
       var cw = Math.max(160, host.clientWidth || 640);
       var ch = Math.max(90, host.clientHeight || 360);
-      var scale = [1, 0.78, 0.6][Stage.quality] || 1;
+      var scale = [1, 0.82, 0.62][Stage.quality] || 1;
       var w = Math.round(cw * Stage.dpr * scale);
       var h = Math.round(ch * Stage.dpr * scale);
       if (!force && w === Stage.w && h === Stage.h) return;
@@ -1736,47 +2202,63 @@
      ========================================================= */
   function CamRig(camera) {
     this.cam = camera;
-    this.pos = new THREE.Vector3();
-    this.look = new THREE.Vector3();
-    this.want = new THREE.Vector3();
-    this.wantLook = new THREE.Vector3();
+    /* Six springs: three for where the camera is, two for where it is
+       looking, one for the lens. Nothing here lerps by a fixed fraction
+       per frame, so nothing steps when the frame rate does. */
+    this.px = new Spring1(0, 0.38); this.py = new Spring1(0, 0.30); this.pz = new Spring1(0, 0.38);
+    this.lx = new Spring1(0, 0.30); this.lz = new Spring1(0, 0.30);
+    this.ly = new Spring1(1.0, 0.35);
+    this.sDist = new Spring1(8.6, 0.55);
+    this.sHeight = new Spring1(10.4, 0.55);
+    this.sFov = new Spring1(46, 0.55);
     this.shake = 0;
-    this.dist = 8.6;
-    this.height = 10.4;
-    this.fov = 46;
-    this.fovWant = 46;
+    this.shakeX = new Spring1(0, 0.06); this.shakeY = new Spring1(0, 0.06);
     this.snapped = false;
+    this.lead = new THREE.Vector2(0, 0);
   }
+
   CamRig.prototype.frame = function (tx, ty, facing, mode, dt) {
-    var lead = 1.9;
-    var lx = tx + Math.cos(facing) * lead;
-    var lz = ty + Math.sin(facing) * lead;
+    /* the lead itself is eased, so turning on the spot swings the frame
+       round rather than flicking it */
+    var lead = mode === "chase" ? 2.4 : 1.9;
+    this.lead.x = damp(this.lead.x, Math.cos(facing) * lead, 0.42, dt);
+    this.lead.y = damp(this.lead.y, Math.sin(facing) * lead, 0.42, dt);
+    var lx = tx + this.lead.x, lz = ty + this.lead.y;
 
-    var d = this.dist, h = this.height;
-    if (mode === "creep") { d = 7.4;  h = 9.0;  this.fovWant = 43; }
-    else if (mode === "chase") { d = 9.8; h = 11.6; this.fovWant = 51; }
-    else { d = 8.6; h = 10.4; this.fovWant = 46; }
+    var wantD = mode === "creep" ? 8.2 : mode === "chase" ? 10.6 : 9.4;
+    var wantH = mode === "creep" ? 9.8 : mode === "chase" ? 12.4 : 11.2;
+    var wantF = mode === "creep" ? 43 : mode === "chase" ? 51 : 46;
 
-    this.want.set(lx, h, lz + d);
-    this.wantLook.set(lx, 1.0, lz);
-
-    var k = this.snapped ? 1 - Math.pow(1 - TUNE.camLerp, dt * 60) : 1;
-    this.pos.lerp(this.want, k);
-    this.look.lerp(this.wantLook, k);
-    this.snapped = true;
-
-    this.fov = lerp(this.fov, this.fovWant, 1 - Math.pow(0.9, dt * 60));
-
-    var sx = 0, sy = 0;
-    if (this.shake > 0.001) {
-      sx = (Math.random() - 0.5) * this.shake;
-      sy = (Math.random() - 0.5) * this.shake;
-      this.shake *= Math.pow(0.06, dt);
+    if (!this.snapped) {
+      this.sDist.set(wantD); this.sHeight.set(wantH); this.sFov.set(wantF);
+      this.px.set(lx); this.py.set(wantH); this.pz.set(lz + wantD);
+      this.lx.set(lx); this.ly.set(1.0); this.lz.set(lz);
+      this.lead.set(Math.cos(facing) * lead, Math.sin(facing) * lead);
+      this.snapped = true;
     }
-    this.cam.position.set(this.pos.x + sx, this.pos.y + sy, this.pos.z);
-    this.cam.lookAt(this.look.x, this.look.y, this.look.z);
-    if (Math.abs(this.cam.fov - this.fov) > 0.01) {
-      this.cam.fov = this.fov; this.cam.updateProjectionMatrix();
+
+    var d = this.sDist.step(wantD, dt);
+    var h = this.sHeight.step(wantH, dt);
+    var f = this.sFov.step(wantF, dt);
+
+    var cx = this.px.step(lx, dt);
+    var cy = this.py.step(h, dt);
+    var cz = this.pz.step(lz + d, dt);
+    var ax = this.lx.step(lx, dt);
+    var ay = this.ly.step(1.0, dt);
+    var az = this.lz.step(lz, dt);
+
+    /* the shake is sprung too, so a scare is a lurch and not a jitter */
+    var target = this.shake;
+    this.shake *= Math.exp(-dt / 0.13);
+    if (this.shake < 0.0005) this.shake = 0;
+    var sx = this.shakeX.step((Math.random() - 0.5) * target, dt);
+    var sy = this.shakeY.step((Math.random() - 0.5) * target, dt);
+
+    this.cam.position.set(cx + sx, cy + sy, cz);
+    this.cam.lookAt(ax, ay, az);
+    if (Math.abs(this.cam.fov - f) > 0.004) {
+      this.cam.fov = f; this.cam.updateProjectionMatrix();
     }
   };
   CamRig.prototype.snap = function () { this.snapped = false; };
@@ -1815,6 +2297,66 @@
     return out;
   }
 
+  /* ---- a tapered sweep along a curve ----
+     Hair, cables, a fringe, a strap: anything that is a tube whose radius
+     changes along its length. three has TubeGeometry, but its radius is
+     constant, and a lock of hair that does not taper reads as a sausage. */
+  function sweep(points, r0, r1, radial, twist) {
+    var curve = new THREE.CatmullRomCurve3(points);
+    var seg = Math.max(8, points.length * 5);
+    var pos = [], nor = [], uv = [], idx = [];
+    var up = new THREE.Vector3(0, 1, 0);
+    var prevN = null;
+    for (var i = 0; i <= seg; i++) {
+      var t = i / seg;
+      var p = curve.getPointAt(t);
+      var tan = curve.getTangentAt(t).normalize();
+      var n = prevN ? prevN.clone() : (Math.abs(tan.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : up.clone());
+      n.sub(tan.clone().multiplyScalar(n.dot(tan))).normalize();
+      prevN = n.clone();
+      var b = new THREE.Vector3().crossVectors(tan, n).normalize();
+      var r = r0 + (r1 - r0) * t;
+      for (var j = 0; j <= radial; j++) {
+        var a = j / radial * 6.2832 + (twist || 0) * t;
+        var c = Math.cos(a), sn = Math.sin(a);
+        var nx = n.x * c + b.x * sn, ny = n.y * c + b.y * sn, nz = n.z * c + b.z * sn;
+        pos.push(p.x + nx * r, p.y + ny * r, p.z + nz * r);
+        nor.push(nx, ny, nz);
+        uv.push(j / radial, t);
+      }
+    }
+    for (var i2 = 0; i2 < seg; i2++) {
+      for (var j2 = 0; j2 < radial; j2++) {
+        var a2 = i2 * (radial + 1) + j2, b2 = a2 + radial + 1;
+        idx.push(a2, b2, a2 + 1, b2, b2 + 1, a2 + 1);
+      }
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    return g;
+  }
+
+  /* a rounded box, for anything with a soft edge — a jacket, a boot, a
+     bench. Sharp corners are the fastest way to look untextured. */
+  function roundBox(w, h, d, r, seg) {
+    var g = new THREE.BoxGeometry(w, h, d, seg || 3, seg || 3, seg || 3);
+    var pos = g.attributes.position;
+    var hw = w / 2 - r, hh = h / 2 - r, hd = d / 2 - r;
+    var v = new THREE.Vector3(), c = new THREE.Vector3();
+    for (var i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      c.set(clamp(v.x, -hw, hw), clamp(v.y, -hh, hh), clamp(v.z, -hd, hd));
+      var d2 = v.clone().sub(c);
+      if (d2.lengthSq() > 1e-9) d2.normalize().multiplyScalar(r);
+      pos.setXYZ(i, c.x + d2.x, c.y + d2.y, c.z + d2.z);
+    }
+    g.computeVertexNormals();
+    return g;
+  }
+
   function tapered(len, rTop, rBot, seg) {
     /* a limb segment whose pivot is its top, so rotating the group
        swings it from the joint the way a real one does */
@@ -1832,33 +2374,70 @@
     return grp;
   }
 
-  function skinMat(hex) {
+  function skinMat(hex, rough) {
     return new THREE.MeshStandardMaterial({
-      color: hex, roughness: 0.72, metalness: 0.0,
-      map: tex("cloth", 128, 1), bumpMap: bump("cloth", 128, 1), bumpScale: 0.06
+      color: hex, roughness: rough == null ? 0.62 : rough, metalness: 0.0,
+      map: tex("skin", 256, 1), bumpMap: bump("skin", 256, 1), bumpScale: 0.03,
+      envMapIntensity: 0.5
     });
   }
-  function clothMat(hex, rough) {
+  function clothMat(hex, rough, weave) {
+    var name = weave || "cloth";
     return new THREE.MeshStandardMaterial({
-      color: hex, roughness: rough == null ? 0.95 : rough, metalness: 0.0,
-      map: tex("cloth", 128, 2), bumpMap: bump("cloth", 128, 2), bumpScale: 0.18
+      color: hex, roughness: rough == null ? 0.88 : rough, metalness: 0.0,
+      map: tex(name, 256, 2), bumpMap: bump(name, 256, 2), bumpScale: 0.09,
+      roughnessMap: roughTex("clothR", 256, 2),
+      envMapIntensity: 0.35
+    });
+  }
+  function leatherMat(hex) {
+    return new THREE.MeshStandardMaterial({
+      color: hex, roughness: 0.44, metalness: 0.05,
+      map: tex("cloth", 256, 3), bumpMap: bump("cloth", 256, 3), bumpScale: 0.05,
+      envMapIntensity: 1.0
     });
   }
   function rotMat(hex) {
     return new THREE.MeshStandardMaterial({
-      color: hex, roughness: 0.98, metalness: 0.0,
-      map: tex("rot", 128, 1), bumpMap: bump("rot", 128, 1), bumpScale: 0.22
+      color: hex, roughness: 0.78, metalness: 0.0,
+      map: tex("rot", 256, 1), bumpMap: bump("rot", 256, 1), bumpScale: 0.10,
+      envMapIntensity: 0.4
+    });
+  }
+  function hairMat(hex, rough) {
+    return new THREE.MeshStandardMaterial({
+      color: hex, roughness: rough == null ? 0.42 : rough, metalness: 0.0,
+      map: tex("hair", 256, 1), bumpMap: bump("hair", 256, 1), bumpScale: 0.06,
+      envMapIntensity: 0.9
     });
   }
 
-  /* ---- the humanoid ---- */
+  /* =========================================================
+     THE FIGURE
+     One builder, driven by a spec, and everything in the game
+     that walks on two legs comes out of it: her, him, the ones
+     that used to be people, and the two at the gate. The joints
+     are the same set every time, so one pose function drives
+     all of them.
+     ========================================================= */
+  var BUILD = {
+    slim:    { chest: 0.90, waist: 0.86, arm: 0.88, leg: 0.92, shoulder: 0.92 },
+    average: { chest: 1.00, waist: 1.00, arm: 1.00, leg: 1.00, shoulder: 1.00 },
+    broad:   { chest: 1.16, waist: 1.06, arm: 1.14, leg: 1.06, shoulder: 1.18 },
+    heavy:   { chest: 1.22, waist: 1.30, arm: 1.16, leg: 1.10, shoulder: 1.10 }
+  };
+
   function buildHuman(spec) {
     var S = spec.scale || 1;
-    var skin  = skinMat(spec.skin);
-    var top   = clothMat(spec.top);
-    var legs  = clothMat(spec.trousers);
-    var hairM = new THREE.MeshStandardMaterial({ color: spec.hair, roughness: 0.68, metalness: 0.02 });
-    var shoe  = new THREE.MeshStandardMaterial({ color: spec.shoe || 0x241d18, roughness: 0.7 });
+    var B = BUILD[spec.build || "average"];
+    var depth = spec.depth || 0.74;
+
+    var skin  = spec.skinMat || skinMat(spec.skin);
+    var top   = spec.topMat || clothMat(spec.top, 0.9, spec.weave);
+    var legsM = spec.legMat || clothMat(spec.trousers, 0.92, spec.legWeave || "denim");
+    var hairM = hairMat(spec.hair, spec.hairRough);
+    var shoe  = spec.shoeMat || leatherMat(spec.shoe || 0x241d18);
+    var trim  = spec.trimMat || leatherMat(spec.trim || 0x2a2320);
 
     var root = new THREE.Group();          /* on the floor, facing +x at 0 rad */
     var body = new THREE.Group();          /* everything that bobs */
@@ -1869,120 +2448,272 @@
     pelvis.position.y = hipY;
     body.add(pelvis);
 
-    /* --- spine and chest --- */
+    /* ---------------- spine, chest, jacket ---------------- */
     var spine = new THREE.Group();
     pelvis.add(spine);
     var chestLen = 0.50 * S;
-    var chest = new THREE.Mesh(
+
+    var torso = new THREE.Mesh(
       (function () {
-        var g = new THREE.CylinderGeometry(0.20 * S, 0.155 * S, chestLen, 9, 1);
-        g.translate(0, chestLen / 2, 0);
-        g.scale(1.0, 1.0, spec.depth || 0.72);
+        /* a lathe, so the silhouette has a waist and a ribcage in it
+           instead of being a cylinder with clothes painted on */
+        var pts = [];
+        var prof = [[0.19, 0.00], [0.205, 0.10], [0.196, 0.26], [0.178, 0.44],
+                    [0.196, 0.62], [0.212, 0.80], [0.196, 0.94], [0.10, 1.00]];
+        prof.forEach(function (q) {
+          var w = q[0] * (q[1] < 0.45 ? B.waist : B.chest);
+          pts.push(new THREE.Vector2(w * S, q[1] * chestLen));
+        });
+        var g = new THREE.LatheGeometry(pts, 16);
+        g.scale(depth, 1, 1);          /* thin front-to-back, not side-to-side */
         return g;
       })(), top);
-    chest.castShadow = true;
-    spine.add(chest);
+    torso.castShadow = true;
+    spine.add(torso);
 
-    /* hips, so the join is not a step */
+    /* the hips, so the join is not a step */
     var hips = new THREE.Mesh(
       (function () {
-        var g = new THREE.SphereGeometry(0.17 * S, 10, 7);
-        g.scale(1.05, 0.8, spec.depth || 0.72); return g;
-      })(), legs);
+        var g = new THREE.SphereGeometry(0.175 * S * B.waist, 14, 10);
+        g.scale(depth * 1.02, 0.82, 1.04); return g;
+      })(), legsM);
     hips.castShadow = true;
     pelvis.add(hips);
 
-    /* --- neck and head --- */
+    /* an outer shell — a jacket, a coat, a hi-vis — over the top of it */
+    if (spec.jacket) {
+      var jm = spec.jacketMat || clothMat(spec.jacket, 0.82, spec.jacketWeave);
+      var shell = new THREE.Mesh(
+        (function () {
+          var pts = [];
+          [[0.216, -0.06], [0.230, 0.10], [0.222, 0.30], [0.208, 0.48],
+           [0.224, 0.66], [0.238, 0.84], [0.214, 0.96]].forEach(function (q) {
+            pts.push(new THREE.Vector2(q[0] * S * B.chest, q[1] * chestLen));
+          });
+          var g = new THREE.LatheGeometry(pts, 16);
+          g.scale(depth * 1.05, 1, 1);
+          return g;
+        })(), jm);
+      shell.castShadow = true;
+      spine.add(shell);
+      /* the opening down the front, and a collar standing up at the neck */
+      var gap = new THREE.Mesh(new THREE.BoxGeometry(0.06 * S, chestLen * 0.9, 0.09 * S), top);
+      gap.position.set(0.205 * S * B.chest * depth, chestLen * 0.46, 0);
+      spine.add(gap);
+      var collar = new THREE.Mesh(
+        (function () {
+          var g = new THREE.CylinderGeometry(0.135 * S, 0.115 * S, 0.11 * S, 16, 1, true);
+          g.scale(depth * 1.1, 1, 1); return g;
+        })(), jm);
+      collar.position.y = chestLen * 0.99;
+      collar.castShadow = true;
+      spine.add(collar);
+    }
+
+    if (spec.belt) {
+      var belt = new THREE.Mesh(
+        (function () {
+          var g = new THREE.CylinderGeometry(0.198 * S * B.waist, 0.198 * S * B.waist, 0.055 * S, 18, 1, true);
+          g.scale(depth * 1.02, 1, 1); return g;
+        })(), trim);
+      belt.position.y = chestLen * 0.04;
+      spine.add(belt);
+      var buckle = new THREE.Mesh(new THREE.BoxGeometry(0.055 * S, 0.05 * S, 0.02 * S),
+        new THREE.MeshStandardMaterial({ color: 0xb8a068, roughness: 0.3, metalness: 0.9, envMapIntensity: 1.6 }));
+      buckle.position.set(0.196 * S * depth * B.waist, chestLen * 0.04, 0);
+      spine.add(buckle);
+    }
+
+    /* ---------------- neck and head ---------------- */
     var neck = new THREE.Group();
     neck.position.y = chestLen;
     spine.add(neck);
-    var neckMesh = new THREE.Mesh(tapered(0.09 * S, 0.055 * S, 0.062 * S, 7), skin);
-    neckMesh.position.y = 0.09 * S;
+    var neckMesh = new THREE.Mesh(tapered(0.115 * S, 0.056 * S, 0.068 * S, 12), skin);
+    neckMesh.position.y = 0.115 * S;
     neck.add(neckMesh);
 
     var head = new THREE.Group();
-    head.position.y = 0.075 * S;
+    head.position.y = 0.098 * S;
     neck.add(head);
+
     var skull = new THREE.Mesh(
-      (function () { var g = new THREE.SphereGeometry(0.115 * S, 14, 12); g.scale(0.92, 1.06, 0.94); return g; })(),
-      skin);
-    skull.position.y = 0.105 * S;
+      (function () {
+        /* A smooth falloff rather than a threshold: the previous version
+           tested a vertex's position and moved it, which tore a step into
+           the mesh wherever the test flipped. */
+        var g = new THREE.SphereGeometry(0.107 * S, 22, 16);
+        g.scale(1.02, 1.06, 0.90);
+        var pos = g.attributes.position;
+        for (var i = 0; i < pos.count; i++) {
+          var vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
+          var up = clamp(vy / (0.11 * S), -1, 1);
+          pos.setZ(i, vz * (1 - Math.max(0, up) * 0.10));
+          pos.setX(i, vx * (vx < 0 ? 0.94 : 1.0) + (1 - clamp(up + 0.4, 0, 1)) * 0.010 * S);
+        }
+        g.computeVertexNormals();
+        return g;
+      })(), skin);
+    skull.position.y = 0.104 * S;
     skull.castShadow = true;
     head.add(skull);
-    /* a jaw, so the profile is not a ball on a stick */
-    var jaw = new THREE.Mesh(
-      (function () { var g = new THREE.SphereGeometry(0.082 * S, 10, 8); g.scale(0.9, 0.7, 1.0); return g; })(),
-      skin);
-    jaw.position.set(0.026 * S, 0.055 * S, 0);
-    head.add(jaw);
 
-    /* --- hair --- */
-    if (spec.hairStyle === "long") {
-      var cap = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.125 * S, 14, 12, 0, 6.2832, 0, 1.45); g.scale(0.96, 1.02, 1.0); return g; })(),
-        hairM);
-      cap.position.y = 0.112 * S; cap.castShadow = true;
-      head.add(cap);
-      /* the fall down her back, tapering */
-      var fall = new THREE.Mesh(
-        (function () {
-          var g = new THREE.CylinderGeometry(0.115 * S, 0.075 * S, 0.42 * S, 10, 1, true);
-          g.translate(0, -0.21 * S, 0); g.scale(1, 1, 0.66); return g;
-        })(), hairM);
-      fall.position.set(-0.035 * S, 0.11 * S, 0);
-      fall.rotation.z = -0.10;
-      fall.castShadow = true;
-      head.add(fall);
-      var tip = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.075 * S, 10, 8); g.scale(1, 0.7, 0.66); return g; })(),
-        hairM);
-      tip.position.set(-0.075 * S, -0.30 * S, 0);
-      head.add(tip);
-    } else {
-      var crop = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.121 * S, 13, 11, 0, 6.2832, 0, 1.24); g.scale(0.95, 1.0, 0.98); return g; })(),
-        hairM);
-      crop.position.y = 0.114 * S; crop.castShadow = true;
-      head.add(crop);
+    /* jaw, brow, nose and ears: four small solids that turn a sphere into
+       a face at the distance this camera keeps */
+    var jaw = new THREE.Mesh(
+      (function () { var g = new THREE.SphereGeometry(0.082 * S, 13, 10); g.scale(1.0, 0.74, 0.88); return g; })(), skin);
+    jaw.position.set(0.022 * S, 0.052 * S, 0);
+    head.add(jaw);
+    var brow = new THREE.Mesh(
+      (function () { var g = new THREE.SphereGeometry(0.052 * S, 12, 8); g.scale(0.50, 0.34, 1.45); return g; })(), skin);
+    brow.position.set(0.062 * S, 0.140 * S, 0);
+    head.add(brow);
+    var nose = new THREE.Mesh(
+      (function () {
+        var g = new THREE.SphereGeometry(0.019 * S, 10, 8);
+        g.scale(1.6, 1.0, 0.78); return g;
+      })(), skin);
+    nose.position.set(0.100 * S, 0.092 * S, 0);
+    head.add(nose);
+    [1, -1].forEach(function (sd) {
+      var ear = new THREE.Mesh(
+        (function () { var g = new THREE.SphereGeometry(0.030 * S, 8, 6); g.scale(0.4, 1.1, 0.8); return g; })(), skin);
+      ear.position.set(-0.008 * S, 0.104 * S, sd * 0.092 * S);
+      head.add(ear);
+    });
+    /* Eyes and brows. A sphere sitting on a sphere reads as a lens, so the
+       eye is small, set into a socket, has a lid closing the top third of
+       it and a brow above that — which is most of what makes a face read
+       at any distance at all. */
+    var eyeM = new THREE.MeshStandardMaterial({
+      color: 0xefebe4, roughness: 0.22, metalness: 0, envMapIntensity: 1.0 });
+    var irisM = new THREE.MeshStandardMaterial({
+      color: spec.eyes || 0x2b1d14, roughness: 0.16, metalness: 0, envMapIntensity: 1.6 });
+    var browM = new THREE.MeshStandardMaterial({
+      color: spec.browColour || spec.hair, roughness: 0.62, metalness: 0 });
+    [1, -1].forEach(function (sd) {
+      var socket = new THREE.Group();
+      socket.position.set(0.083 * S, 0.114 * S, sd * 0.040 * S);
+      head.add(socket);
+      var ball = new THREE.Mesh(new THREE.SphereGeometry(0.0152 * S, 10, 8), eyeM);
+      socket.add(ball);
+      var iris = new THREE.Mesh(new THREE.SphereGeometry(0.0080 * S, 8, 6), irisM);
+      iris.position.set(0.0104 * S, 0, 0);
+      socket.add(iris);
+      var lid = new THREE.Mesh(
+        (function () { var g = new THREE.SphereGeometry(0.0176 * S, 10, 8, 0, 6.2832, 0, 0.92); return g; })(), skin);
+      lid.rotation.z = -0.52;
+      socket.add(lid);
+      var brow2 = new THREE.Mesh(
+        (function () { var gb = new THREE.SphereGeometry(0.0155 * S, 10, 6); gb.scale(0.34, 0.20, 1.30); return gb; })(),
+        browM);
+      brow2.position.set(0.008 * S, 0.0255 * S, 0);
+      brow2.rotation.x = sd * 0.22;
+      socket.add(brow2);
+      if (sd === 1) {
+        var mouth = new THREE.Mesh(
+          new THREE.BoxGeometry(0.008 * S, 0.0055 * S, 0.032 * S),
+          new THREE.MeshStandardMaterial({ color: 0x8f5c53, roughness: 0.55 }));
+        mouth.position.set(0.089 * S, 0.056 * S, 0);
+        head.add(mouth);
+      }
+    });
+
+    /* ---------------- hair ---------------- */
+    var hairGroup = new THREE.Group();
+    head.add(hairGroup);
+    buildHair(hairGroup, spec.hairStyle, hairM, S, spec);
+
+    if (spec.helmet) {
+      var hel = new THREE.Mesh(
+        (function () { var g = new THREE.SphereGeometry(0.132 * S, 16, 12, 0, 6.2832, 0, 1.34); g.scale(1, 0.94, 1); return g; })(),
+        new THREE.MeshStandardMaterial({ color: spec.helmet, roughness: 0.34, metalness: 0.15, envMapIntensity: 1.4 }));
+      hel.position.y = 0.112 * S; hel.castShadow = true;
+      head.add(hel);
+      var peak = new THREE.Mesh(
+        (function () { var g = new THREE.CylinderGeometry(0.135 * S, 0.135 * S, 0.02 * S, 16, 1, false, 0, 2.2); g.rotateY(-1.1); return g; })(),
+        new THREE.MeshStandardMaterial({ color: spec.helmet, roughness: 0.34, metalness: 0.15 }));
+      peak.position.set(0.02 * S, 0.086 * S, 0);
+      head.add(peak);
+    }
+    if (spec.mask) {
+      var mask = new THREE.Mesh(
+        (function () { var g = new THREE.SphereGeometry(0.086 * S, 12, 9, 0, 3.2, 0.6, 1.5); g.rotateY(-1.6); return g; })(),
+        new THREE.MeshStandardMaterial({ color: spec.mask, roughness: 0.85, metalness: 0 }));
+      mask.position.set(0.028 * S, 0.072 * S, 0);
+      head.add(mask);
     }
 
-    /* --- arms --- */
+    /* ---------------- arms ---------------- */
     function arm(side) {
+      var sleeveM = spec.sleeves === false ? skin
+                  : spec.jacket ? (spec.jacketMat || clothMat(spec.jacket, 0.82, spec.jacketWeave))
+                  : top;
+      var lowerM = spec.sleeves === "short" ? skin : sleeveM;
+
       var sh = new THREE.Group();
-      sh.position.set(0, chestLen - 0.045 * S, side * 0.20 * S);
+      sh.position.set(0, chestLen - 0.056 * S, side * 0.201 * S * B.shoulder);
       spine.add(sh);
-      var upper = joint(0.30 * S, 0.058 * S, 0.048 * S, spec.sleeves === false ? skin : top);
+      /* the deltoid, sunk into the chest so the two read as one shape */
+      var delt = new THREE.Mesh(
+        (function () { var g = new THREE.SphereGeometry(0.058 * S * B.arm, 12, 9); g.scale(0.88, 1.05, 1.0); return g; })(),
+        sleeveM);
+      delt.position.set(0, -0.012 * S, -side * 0.010 * S);
+      delt.castShadow = true;
+      sh.add(delt);
+
+      var upper = joint(0.30 * S, 0.058 * S * B.arm, 0.048 * S * B.arm, sleeveM, 10);
       sh.add(upper);
       var elbow = new THREE.Group();
       elbow.position.y = -0.30 * S;
       upper.add(elbow);
-      var lower = joint(0.28 * S, 0.046 * S, 0.038 * S, spec.sleeves === "short" ? skin : (spec.sleeves === false ? skin : top));
+      if (spec.sleeves === "short") {
+        var cuff = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.052 * S * B.arm, 0.050 * S * B.arm, 0.03 * S, 10), sleeveM);
+        cuff.position.y = -0.005 * S;
+        elbow.add(cuff);
+      }
+      var lower = joint(0.28 * S, 0.046 * S * B.arm, 0.037 * S * B.arm, lowerM, 9);
       elbow.add(lower);
       var hand = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.05 * S, 8, 6); g.scale(1, 1.2, 0.7); return g; })(), skin);
-      hand.position.y = -0.30 * S;
+        (function () { var g = new THREE.SphereGeometry(0.049 * S, 9, 7); g.scale(1, 1.28, 0.66); return g; })(), skin);
+      hand.position.y = -0.302 * S;
+      hand.castShadow = true;
       elbow.add(hand);
-      return { shoulder: sh, upper: upper, elbow: elbow, lower: lower };
+      return { shoulder: sh, upper: upper, elbow: elbow, lower: lower, hand: hand };
     }
     var armL = arm(1), armR = arm(-1);
 
-    /* --- legs --- */
+    /* ---------------- legs ---------------- */
     function leg(side) {
       var hip = new THREE.Group();
-      hip.position.set(0, -0.03 * S, side * 0.105 * S);
+      hip.position.set(0, -0.036 * S, side * 0.102 * S);
       pelvis.add(hip);
-      var upper = joint(0.44 * S, 0.085 * S, 0.068 * S, legs);
+      var upper = joint(0.44 * S, 0.088 * S * B.leg, 0.066 * S * B.leg, legsM, 10);
       hip.add(upper);
       var knee = new THREE.Group();
       knee.position.y = -0.44 * S;
       upper.add(knee);
-      var lower = joint(0.42 * S, 0.062 * S, 0.048 * S, legs);
+      var lower = joint(0.42 * S, 0.062 * S * B.leg, 0.046 * S * B.leg, legsM, 9);
       knee.add(lower);
-      var foot = new THREE.Mesh(new THREE.BoxGeometry(0.20 * S, 0.07 * S, 0.10 * S), shoe);
-      foot.position.set(0.035 * S, -0.44 * S, 0);
-      foot.castShadow = true;
-      knee.add(foot);
-      return { hip: hip, upper: upper, knee: knee, lower: lower, foot: foot };
+      /* the boot: a sole, an upper, and a heel */
+      var boot = new THREE.Group();
+      boot.position.y = -0.42 * S;
+      knee.add(boot);
+      var bootUp = new THREE.Mesh(roundBox(0.115 * S, 0.11 * S, 0.098 * S, 0.03 * S, 2), shoe);
+      bootUp.position.set(0.006 * S, -0.032 * S, 0);
+      bootUp.castShadow = true;
+      boot.add(bootUp);
+      var sole = new THREE.Mesh(roundBox(0.205 * S, 0.036 * S, 0.098 * S, 0.014 * S, 2), shoe);
+      sole.position.set(0.030 * S, -0.078 * S, 0);
+      sole.castShadow = true;
+      boot.add(sole);
+      if (spec.boots) {
+        var shaft = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.062 * S, 0.058 * S, 0.13 * S, 10), shoe);
+        shaft.position.y = 0.04 * S;
+        boot.add(shaft);
+      }
+      return { hip: hip, upper: upper, knee: knee, lower: lower, foot: boot };
     }
     var legL = leg(1), legR = leg(-1);
 
@@ -1993,10 +2724,154 @@
     return {
       root: root, contact: contact,
       body: body, pelvis: pelvis, spine: spine, neck: neck, head: head,
+      hair: hairGroup,
       armL: armL, armR: armR, legL: legL, legR: legR,
       hipY: hipY, S: S, spec: spec, phase: Math.random() * 6.28,
       blink: 0
     };
+  }
+
+  /* ---- hair, per style ---- */
+  function buildHair(g, style, mat, S, spec) {
+    if (style === "bald") return;
+
+    if (style === "longWavy") {
+      /* A cap over the crown, a fringe swept to one side, and a mane of
+         locks down the back and over both shoulders — each waved on its
+         own phase so no two fall the same way. The cap is a clean sphere
+         segment tilted back off the forehead rather than a sphere with
+         its vertices shoved about, which is what was tearing a notch in
+         the top of her head. */
+      var cap = new THREE.Mesh(
+        (function () {
+          /* A sphere segment covers all the way round at a given angle, so
+             a cap low enough to reach the nape also comes down over the
+             face. The front of it is lifted back to a hairline by a smooth
+             function of how far forward each vertex is — smooth, because
+             a threshold tears a step across the forehead. */
+          var gg = new THREE.SphereGeometry(0.118 * S, 24, 18, 0, 6.2832, 0, 2.05);
+          gg.scale(1.02, 1.08, 1.03);
+          var pos = gg.attributes.position, r = 0.118 * S;
+          for (var i = 0; i < pos.count; i++) {
+            var vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
+            var front = clamp(vx / r, 0, 1);
+            var lift = front * front * 0.100 * S;
+            pos.setY(i, vy + lift);
+            /* and pull it in slightly at the temples so it sits on a head */
+            pos.setZ(i, vz * (1 - front * 0.10));
+          }
+          gg.computeVertexNormals();
+          return gg;
+        })(), mat);
+      cap.position.set(-0.008 * S, 0.098 * S, 0);
+      cap.castShadow = true;
+      g.add(cap);
+
+      /* the volume at the back of the head that long hair actually has */
+      var mass = new THREE.Mesh(
+        (function () { var gg = new THREE.SphereGeometry(0.112 * S, 18, 14); gg.scale(0.94, 1.02, 1.0); return gg; })(), mat);
+      mass.position.set(-0.046 * S, 0.070 * S, 0);
+      mass.castShadow = true;
+      g.add(mass);
+
+      /* The fringe sweeps sideways across the forehead from a parting and
+         tucks behind the ear. It stops above the brow — hair over the eyes
+         reads as a mask, not as a hairstyle. */
+      for (var f = 0; f < 3; f++) {
+        var fu0 = f / 3;
+        var fp = [];
+        for (var fk = 0; fk <= 5; fk++) {
+          var fu = fk / 5;
+          fp.push(new THREE.Vector3(
+            (0.048 + fu0 * 0.012) * S - fu * fu * 0.052 * S,
+            (0.196 - fu * 0.052 - fu0 * 0.010) * S,
+            (-0.020 + fu * 0.120) * S));
+        }
+        var fr = new THREE.Mesh(sweep(fp, 0.022 * S, 0.012 * S, 8, 0.2), mat);
+        fr.castShadow = true;
+        g.add(fr);
+      }
+
+      var locks = 14;
+      for (var i2 = 0; i2 < locks; i2++) {
+        var t = i2 / (locks - 1);
+        var ang = -1.35 + t * 2.70;                   /* round the back of the head */
+        var side = Math.sin(ang);
+        var back = -Math.cos(ang);
+        var len = 0.46 + hash2(i2, 3) * 0.22;
+        var ph = hash2(i2 * 7, 5) * 6.28;
+        var wave = 0.026 + hash2(i2, 11) * 0.024;
+        var pts = [];
+        var n = 7;
+        for (var k = 0; k <= n; k++) {
+          var u = k / n;
+          var ease = u * u * (3 - 2 * u);
+          /* it leaves the scalp under the cap, hugs the head, then hangs */
+          var r = (0.086 + ease * 0.030) * S;
+          pts.push(new THREE.Vector3(
+            back * r * 0.86 - ease * 0.030 * S + Math.sin(u * 4.2 + ph) * wave * S * 0.55,
+            0.118 * S - u * len * S,
+            side * r + Math.sin(u * 3.4 + ph) * wave * S));
+        }
+        var strand = new THREE.Mesh(
+          sweep(pts, 0.030 * S, 0.010 * S, 8, 0.5), mat);
+        strand.castShadow = true;
+        g.add(strand);
+      }
+      return;
+    }
+
+    if (style === "bun") {
+      var cap2 = new THREE.Mesh(
+        (function () { var gg = new THREE.SphereGeometry(0.121 * S, 14, 11, 0, 6.2832, 0, 1.5); return gg; })(), mat);
+      cap2.position.y = 0.112 * S; cap2.castShadow = true; g.add(cap2);
+      var bun = new THREE.Mesh(new THREE.SphereGeometry(0.056 * S, 12, 9), mat);
+      bun.position.set(-0.098 * S, 0.148 * S, 0); bun.castShadow = true; g.add(bun);
+      return;
+    }
+
+    if (style === "long") {
+      var cap3 = new THREE.Mesh(
+        (function () { var gg = new THREE.SphereGeometry(0.124 * S, 14, 11, 0, 6.2832, 0, 1.5); return gg; })(), mat);
+      cap3.position.y = 0.110 * S; cap3.castShadow = true; g.add(cap3);
+      for (var i3 = 0; i3 < 7; i3++) {
+        var t3 = i3 / 6, side3 = Math.cos(t3 * Math.PI);
+        var pts3 = [];
+        for (var k3 = 0; k3 <= 4; k3++) {
+          var u3 = k3 / 4;
+          pts3.push(new THREE.Vector3(
+            -0.05 * S - u3 * u3 * 0.05 * S,
+            0.112 * S - u3 * 0.36 * S,
+            (0.09 + u3 * 0.02) * S * side3));
+        }
+        var st3 = new THREE.Mesh(sweep(pts3, 0.036 * S, 0.020 * S, 5, 0), mat);
+        st3.castShadow = true; g.add(st3);
+      }
+      return;
+    }
+
+    /* short: a crop that follows the skull, with a hairline */
+    var crop = new THREE.Mesh(
+      (function () {
+        var gg = new THREE.SphereGeometry(0.120 * S, 16, 12, 0, 6.2832, 0, 1.30);
+        gg.scale(0.96, 1.0, 0.99);
+        var pos = gg.attributes.position;
+        for (var i = 0; i < pos.count; i++) {
+          var vx = pos.getX(i), vy = pos.getY(i);
+          if (vx > 0.06 * S && vy < 0.02 * S) pos.setY(i, vy + 0.03 * S);
+        }
+        gg.computeVertexNormals();
+        return gg;
+      })(), mat);
+    crop.position.y = 0.113 * S;
+    crop.castShadow = true;
+    g.add(crop);
+    if (spec && spec.beard) {
+      var beard = new THREE.Mesh(
+        (function () { var gg = new THREE.SphereGeometry(0.086 * S, 12, 9); gg.scale(0.92, 0.66, 0.98); return gg; })(), mat);
+      beard.position.set(0.030 * S, 0.044 * S, 0);
+      g.add(beard);
+    }
   }
 
   /* the walk cycle. `gait` is 0 for standing, 1 for walking, and
@@ -2085,47 +2960,288 @@
     rig.body.position.y = bounce;
   }
 
-  /* ---- the four people in the game ---- */
+  /* ---- the people in the game ---- */
+
   function makeOuissy() {
     var r = buildHuman({
-      scale: 1.0, skin: 0xd8a882, hair: 0x8a5a2c, hairStyle: "long",
-      top: 0x9c3f5c, trousers: 0x2f3a52, shoe: 0x201a18, depth: 0.68,
+      scale: 1.0, build: "slim", depth: 0.70,
+      skin: 0xf0d3bc,                       /* fair */
+      skinMat: skinMat(0xf2d6c0, 0.58),
+      eyes: 0x35526a,
+      hair: 0xe0c894, hairStyle: "longWavy", hairRough: 0.36,
+      top: 0x8e2f4c,                        /* a dark red top under it */
+      jacket: 0x2f3a4e,                     /* a canvas jacket, collar up */
+      jacketWeave: "cloth",
+      trousers: 0x39506b, legWeave: "denim",
+      shoe: 0x2a211c, boots: true, belt: true, trim: 0x33261f,
       sleeves: true
     });
     r.name = "ouissy";
+    /* a strap across her, because she left the house with something */
+    var strap = new THREE.Mesh(roundBox(0.10, 0.42, 0.036, 0.014, 2), leatherMat(0x4a3a2a));
+    strap.position.set(0.128, 0.30, 0.058);
+    strap.rotation.set(0, 0, -0.34);
+    strap.castShadow = true;
+    r.spine.add(strap);
     return r;
   }
+
   function makeAnwar() {
     var r = buildHuman({
-      scale: 1.06, skin: 0xb9835c, hair: 0x201814, hairStyle: "short",
-      top: 0xd8dce4, trousers: 0x3a4050, shoe: 0x1c1816, depth: 0.82,
+      scale: 1.06, build: "broad", depth: 0.84,
+      skin: 0xc08a60, eyes: 0x2a1c14,
+      hair: 0x231a15, hairStyle: "short", beard: true,
+      top: 0xd9dde5,                        /* what they gave him on the ward */
+      trousers: 0x39404e, legWeave: "cloth",
+      shoe: 0x1e1a17,
       sleeves: "short"
     });
     r.name = "anwar";
     return r;
   }
+
+  /* ---------------------------------------------------------------
+     THEM
+     Nine bodies, six wardrobes, four builds and a set of things that
+     can have gone wrong, combined off the seed — so a corridor with
+     eight in it has eight different people in it, and none of them
+     is the one you just walked past.
+     --------------------------------------------------------------- */
+  var Z_SKIN = [0xa8b09c, 0x9aa890, 0xb2b4a2, 0x8e9c88, 0xa6a292, 0x94a496, 0xb0a898, 0x9c9a8c, 0xa4b2a4];
+  var Z_HAIR = [0x2a2420, 0x3a3028, 0x1c1814, 0x584a3a, 0x6a5a4a, 0x241c18];
+  var Z_KIT = [
+    { top: 0x7fa8b4, trousers: 0x7fa8b4, name: "scrubs", weave: "cloth", legWeave: "cloth" },
+    { top: 0xb8a642, trousers: 0x2f3540, name: "hivis", weave: "cloth", legWeave: "denim", vest: 0xc8b83a },
+    { top: 0xd8d4cc, trousers: 0x2a2e38, name: "shirt", weave: "cloth", legWeave: "cloth", jacket: 0x30343e },
+    { top: 0x5a4a52, trousers: 0x3a4250, name: "hoodie", weave: "cloth", legWeave: "denim", hood: true },
+    { top: 0x6a6250, trousers: 0x4a4438, name: "work", weave: "cloth", legWeave: "denim" },
+    { top: 0x9a4a4a, trousers: 0x33384a, name: "tee", weave: "cloth", legWeave: "denim", sleeves: "short" }
+  ];
+  var Z_BUILD = ["slim", "average", "broad", "heavy"];
+
   function makeZombie(seed) {
-    var skins = [0x8fa08a, 0x9aa894, 0x84947e, 0xa2a894];
-    var tops  = [0x5a5f52, 0x4a4a54, 0x6a5a4a, 0x3f4a52, 0x6a4a4a];
-    var r = buildHuman({
-      scale: rnd(0.94, 1.10), skin: skins[seed % skins.length], hair: 0x2a2420,
-      hairStyle: seed % 3 === 0 ? "long" : "short",
-      top: tops[seed % tops.length], trousers: 0x2e3038, shoe: 0x191614,
-      depth: 0.76, sleeves: seed % 2 ? "short" : true
-    });
-    /* what is left of them: skin gone wrong, clothes torn open */
+    var h = function (a, b) { return hash2(seed * 37 + a, seed * 91 + b); };
+    var kit = Z_KIT[Math.floor(h(1, 2) * Z_KIT.length) % Z_KIT.length];
+    var build = Z_BUILD[Math.floor(h(3, 4) * Z_BUILD.length) % Z_BUILD.length];
+    var skinHex = Z_SKIN[Math.floor(h(5, 6) * Z_SKIN.length) % Z_SKIN.length];
+
+    var spec = {
+      scale: 0.92 + h(7, 8) * 0.20,
+      build: build,
+      depth: 0.74 + h(9, 1) * 0.12,
+      skin: skinHex,
+      skinMat: rotMat(skinHex),
+      eyes: 0xc8c4b0,                       /* gone milky */
+      hair: Z_HAIR[Math.floor(h(2, 9) * Z_HAIR.length) % Z_HAIR.length],
+      hairStyle: h(4, 5) < 0.18 ? "bald" : h(4, 5) < 0.42 ? "long" : h(4, 5) < 0.6 ? "bun" : "short",
+      beard: h(6, 7) > 0.66,
+      top: kit.top, weave: kit.weave,
+      trousers: kit.trousers, legWeave: kit.legWeave,
+      jacket: kit.jacket, jacketWeave: "cloth",
+      shoe: 0x191614,
+      sleeves: kit.sleeves || (h(8, 3) > 0.5 ? "short" : true)
+    };
+
+    var r = buildHuman(spec);
+
+    /* the clothes have been through it: everything they are wearing gets
+       the same rot pass, but only the fabric — not the eyes, not the
+       shadow under them */
+    var keep = [r.contact];
     r.root.traverse(function (o) {
-      if (!o.isMesh || o === r.contact) return;
-      if (o.material && o.material.color) {
-        o.material = o.material.clone();
-        o.material.map = tex("rot", 128, 1);
-        o.material.bumpMap = bump("rot", 128, 1);
-        o.material.bumpScale = 0.3;
-        o.material.roughness = 0.99;
-        o.material.color.multiplyScalar(0.86);
-      }
+      if (!o.isMesh || keep.indexOf(o) >= 0) return;
+      if (!o.material || !o.material.color) return;
+      if (o.material.map === tex("rot", 256, 1)) return;
+      o.material = o.material.clone();
+      o.material.map = tex("rot", 256, 1);
+      o.material.bumpMap = bump("rot", 256, 1);
+      o.material.bumpScale = 0.12;
+      o.material.roughness = 0.93;
+      o.material.envMapIntensity = 0.25;
+      o.material.color.multiplyScalar(0.80);
     });
+
+    if (kit.vest) {
+      var vest = new THREE.Mesh(
+        (function () {
+          var g = new THREE.CylinderGeometry(0.238 * spec.scale, 0.226 * spec.scale, 0.34 * spec.scale, 16, 1, true);
+          g.scale(spec.depth * 1.04, 1, 1);
+          return g;
+        })(),
+        new THREE.MeshStandardMaterial({ color: kit.vest, roughness: 0.72, metalness: 0.02,
+          map: tex("rot", 256, 1), bumpMap: bump("rot", 256, 1), bumpScale: 0.08, envMapIntensity: 0.6 }));
+      vest.position.y = 0.30 * spec.scale;
+      vest.castShadow = true;
+      r.spine.add(vest);
+      [0.20, 0.30].forEach(function (yy) {
+        var band = new THREE.Mesh(
+          (function () {
+            var g = new THREE.CylinderGeometry(0.243 * spec.scale, 0.243 * spec.scale, 0.035 * spec.scale, 16, 1, true);
+            g.scale(spec.depth * 1.04, 1, 1); return g;
+          })(),
+          new THREE.MeshStandardMaterial({ color: 0xd8dce4, roughness: 0.28, metalness: 0.1, envMapIntensity: 1.8 }));
+        band.position.y = yy * spec.scale;
+        r.spine.add(band);
+      });
+    }
+
+    if (kit.hood) {
+      var hood = new THREE.Mesh(
+        (function () { var g = new THREE.SphereGeometry(0.15 * spec.scale, 12, 9, 0, 6.2832, 0, 1.8); g.scale(1, 0.9, 1.02); return g; })(),
+        new THREE.MeshStandardMaterial({ color: kit.top, roughness: 0.95,
+          map: tex("rot", 256, 1), bumpMap: bump("rot", 256, 1), bumpScale: 0.12, envMapIntensity: 0.25 }));
+      hood.position.set(-0.045 * spec.scale, 0.02 * spec.scale, 0);
+      hood.castShadow = true;
+      r.neck.add(hood);
+    }
+
+    /* what has happened to them. Nothing gratuitous — a torn sleeve, an
+       arm that hangs, a shoulder that does not sit level. */
+    var dmg = h(11, 13);
+    r.damage = {};
+    if (dmg > 0.80) {
+      /* one forearm gone: the sleeve ends at the elbow and so does the arm */
+      r.armR.lower.visible = false;
+      if (r.armR.hand) r.armR.hand.visible = false;
+      var stump = new THREE.Mesh(
+        new THREE.SphereGeometry(0.045 * spec.scale, 8, 6), rotMat(0x8a6a62));
+      stump.position.y = -0.02 * spec.scale;
+      r.armR.elbow.add(stump);
+      r.damage.arm = true;
+    } else if (dmg > 0.62) {
+      r.damage.limp = true;                 /* one leg drags harder */
+    } else if (dmg > 0.44) {
+      r.damage.tilt = (h(3, 17) - 0.5) * 0.5;   /* a shoulder out of line */
+      r.spine.rotation.x = r.damage.tilt;
+    }
+    if (h(19, 2) > 0.5) {
+      /* something dark down the front, which is as far as this goes */
+      var stain = new THREE.Mesh(
+        (function () { var g = new THREE.SphereGeometry(0.15 * spec.scale, 10, 8, 0, 2.0, 0.7, 1.2); g.rotateY(-1.0); return g; })(),
+        new THREE.MeshStandardMaterial({ color: 0x4a1e1c, roughness: 0.7, transparent: true, opacity: 0.7,
+          map: tex("rot", 256, 1) }));
+      stain.position.set(0.02 * spec.scale, 0.26 * spec.scale, 0);
+      stain.scale.set(spec.depth, 1, 1);
+      r.spine.add(stain);
+    }
+
     r.name = "zombie";
+    return r;
+  }
+
+  /* ---------------------------------------------------------------
+     THE ONES WHO ARE STILL PEOPLE
+     Ashcombe has staff on the gate and people waiting inside it, and
+     they should not look like the same man four times.
+     --------------------------------------------------------------- */
+  var CIVIL_SKIN = [0xe8c8a8, 0xc79a6c, 0x8d6242, 0xf0d6bd, 0xa87a52, 0x6b4a33];
+  var CIVIL_HAIR = [0x2a2018, 0x6a4a26, 0x3a2a1e, 0x8a7a5a, 0x141210, 0xa89060];
+
+  function makeGuard(seed) {
+    var h = function (a, b) { return hash2(seed * 53 + a, seed * 29 + b); };
+    var r = buildHuman({
+      scale: 1.02 + h(1, 1) * 0.10,
+      build: h(2, 2) > 0.5 ? "broad" : "average",
+      depth: 0.82,
+      skin: CIVIL_SKIN[Math.floor(h(3, 3) * CIVIL_SKIN.length) % CIVIL_SKIN.length],
+      eyes: 0x2e2218,
+      hair: CIVIL_HAIR[Math.floor(h(4, 4) * CIVIL_HAIR.length) % CIVIL_HAIR.length],
+      hairStyle: h(5, 5) > 0.6 ? "bun" : "short",
+      beard: h(6, 6) > 0.5,
+      top: 0x2b3038, trousers: 0x262b33, legWeave: "cloth",
+      jacket: 0x333a44, jacketWeave: "cloth",
+      shoe: 0x171513, boots: true, belt: true,
+      helmet: h(7, 7) > 0.35 ? 0x3c4652 : null,
+      mask: h(8, 8) > 0.55 ? 0x3a4048 : null,
+      sleeves: true
+    });
+    /* the hi-vis over the top, which is the whole uniform really */
+    var S = r.S;
+    var vest = new THREE.Mesh(
+      (function () {
+        var g = new THREE.CylinderGeometry(0.245 * S, 0.232 * S, 0.36 * S, 16, 1, true);
+        g.scale(0.86, 1, 1); return g;
+      })(),
+      new THREE.MeshStandardMaterial({ color: 0xe8e21c, roughness: 0.58, metalness: 0.02,
+        emissive: new THREE.Color(0x3a3a06), emissiveIntensity: 1.0,
+        map: tex("cloth", 256, 2), bumpMap: bump("cloth", 256, 2), bumpScale: 0.07, envMapIntensity: 0.8 }));
+    vest.position.y = 0.30 * S; vest.castShadow = true;
+    r.spine.add(vest);
+    [0.20, 0.31].forEach(function (yy) {
+      var band = new THREE.Mesh(
+        (function () {
+          var g = new THREE.CylinderGeometry(0.251 * S, 0.251 * S, 0.038 * S, 16, 1, true);
+          g.scale(0.86, 1, 1); return g;
+        })(),
+        new THREE.MeshStandardMaterial({ color: 0xe8ecf4, roughness: 0.2, metalness: 0.2, envMapIntensity: 2.4 }));
+      band.position.y = yy * S;
+      r.spine.add(band);
+    });
+    /* a rifle on a sling, held across, muzzle down */
+    if (h(9, 9) > 0.25) {
+      var gun = new THREE.Group();
+      var gm = new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.42, metalness: 0.55, envMapIntensity: 1.2 });
+      var barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.014 * S, 0.016 * S, 0.34 * S, 8), gm);
+      barrel.rotation.z = Math.PI / 2; barrel.position.set(0.10 * S, 0, 0);
+      gun.add(barrel);
+      var recv = new THREE.Mesh(roundBox(0.20 * S, 0.062 * S, 0.036 * S, 0.012 * S, 2), gm);
+      gun.add(recv);
+      var mag = new THREE.Mesh(roundBox(0.05 * S, 0.10 * S, 0.03 * S, 0.01 * S, 2), gm);
+      mag.position.set(-0.01 * S, -0.07 * S, 0); mag.rotation.z = 0.16;
+      gun.add(mag);
+      var stock = new THREE.Mesh(roundBox(0.13 * S, 0.055 * S, 0.032 * S, 0.012 * S, 2), gm);
+      stock.position.set(-0.155 * S, -0.012 * S, 0);
+      gun.add(stock);
+      gun.position.set(0.16 * S, 0.30 * S, -0.10 * S);
+      gun.rotation.set(0, 0.4, -0.5);
+      gun.traverse(function (o) { if (o.isMesh) o.castShadow = true; });
+      r.spine.add(gun);
+      var sling = new THREE.Mesh(new THREE.BoxGeometry(0.022 * S, 0.46 * S, 0.06 * S), leatherMat(0x2e2a26));
+      sling.position.set(0.11 * S, 0.30 * S, -0.02 * S);
+      sling.rotation.z = 0.42;
+      r.spine.add(sling);
+    }
+    r.name = "guard";
+    return r;
+  }
+
+  function makeCivilian(seed) {
+    var h = function (a, b) { return hash2(seed * 71 + a, seed * 13 + b); };
+    var coats = [0x4a5560, 0x6a4a3a, 0x3a4a3e, 0x5a4a5e, 0x7a6a52, 0x2f4450];
+    var tops  = [0xc8ccd4, 0x9a5a62, 0x5a7a6a, 0xd8c8a8, 0x6a6a7a];
+    var legs  = [0x39506b, 0x2f3540, 0x4a4438, 0x565a64];
+    var styles = ["short", "long", "bun", "longWavy", "bald"];
+    var r = buildHuman({
+      scale: 0.94 + h(1, 1) * 0.16,
+      build: Z_BUILD[Math.floor(h(2, 2) * 4) % 4],
+      depth: 0.74 + h(3, 3) * 0.12,
+      skin: CIVIL_SKIN[Math.floor(h(4, 4) * CIVIL_SKIN.length) % CIVIL_SKIN.length],
+      eyes: h(5, 5) > 0.7 ? 0x3a5a4a : 0x2e2218,
+      hair: CIVIL_HAIR[Math.floor(h(6, 6) * CIVIL_HAIR.length) % CIVIL_HAIR.length],
+      hairStyle: styles[Math.floor(h(7, 7) * styles.length) % styles.length],
+      beard: h(8, 8) > 0.66,
+      top: tops[Math.floor(h(9, 9) * tops.length) % tops.length],
+      jacket: h(10, 10) > 0.35 ? coats[Math.floor(h(11, 11) * coats.length) % coats.length] : null,
+      jacketWeave: "cloth",
+      trousers: legs[Math.floor(h(12, 12) * legs.length) % legs.length],
+      legWeave: h(13, 13) > 0.5 ? "denim" : "cloth",
+      shoe: 0x231e1a, belt: h(14, 14) > 0.5,
+      sleeves: h(15, 15) > 0.7 ? "short" : true
+    });
+    /* a bag, because everybody who got here brought something */
+    if (h(16, 16) > 0.4) {
+      var S = r.S;
+      var bag = new THREE.Mesh(roundBox(0.16 * S, 0.22 * S, 0.12 * S, 0.04 * S, 2),
+        clothMat(0x4a4238, 0.95));
+      bag.position.set(-0.20 * S, 0.20 * S, 0.16 * S);
+      bag.castShadow = true;
+      r.spine.add(bag);
+      var strap = new THREE.Mesh(new THREE.BoxGeometry(0.028 * S, 0.42 * S, 0.09 * S), leatherMat(0x3a332c));
+      strap.position.set(-0.02 * S, 0.30 * S, 0.10 * S);
+      strap.rotation.z = 0.30;
+      r.spine.add(strap);
+    }
+    r.name = "civilian";
     return r;
   }
 
@@ -2336,28 +3452,70 @@
                        : def.theme === "house" ? "boards"
                        : def.theme === "street" ? "pave"
                        : "dirt");
-    var matFloor  = surface(indoorFloorTex, { repeat: 1, rough: 0.88, bumpScale: 0.10 });
+    var matFloor  = surface(indoorFloorTex, {
+      size: 512, rough: indoorFloorTex === "clinic" ? 0.40 : 0.72,
+      bumpScale: 0.10, envInt: indoorFloorTex === "clinic" ? 1.0 : 0.5 });
     /* what the comma means is a property of the place, not of the theme:
        it is the drive outside the garage, the road, the hospital car park,
        the fields and the clearing, in that order */
     var groundTex = def.groundTex || (def.theme === "street" ? "asphalt" : "grass");
+    /* The road is wet. Its roughness comes out of a map, so the standing
+       water is mirror-smooth and takes the streetlights while the dry
+       aggregate around it stays matt — one material, two surfaces. */
     var matGround = groundTex === "asphalt"
-      ? surface("asphalt", { repeat: 1, rough: 0.34, metal: 0.16, bumpScale: 0.10 })
-      : surface(groundTex, { repeat: 1, rough: 0.97, bumpScale: 0.16 });
+      ? surface("asphalt", { size: 512, roughMap: "asphaltR", rough: 1.0,
+                             metal: 0.05, bumpScale: 0.06, envInt: 1.6 })
+      : surface(groundTex, { size: 512, rough: 0.97, bumpScale: 0.16, envInt: 0.5 });
     var matWall   = surface(def.theme === "street" ? "brick"
                           : def.theme === "hospital" ? "block" : "plaster",
-                            { repeat: 1, rough: 0.95, bumpScale: 0.18 });
+                            { size: 512, rough: 0.9, bumpScale: 0.26, envInt: 0.35 });
     var outdoorLevel = def.base === ",";
     var matCap    = outdoorLevel
                   ? surface("roof", { repeat: 1, rough: 0.98, bumpScale: 0.22 })
                   : surface(def.theme === "hospital" ? "block" : "plaster",
                             { repeat: 1, rough: 0.9, bumpScale: 0.12 });
     var matWood   = surface("boards", { repeat: 1, rough: 0.8, bumpScale: 0.2 });
-    var matMetal  = surface("metal",  { repeat: 1, rough: 0.42, metal: 0.72, bumpScale: 0.2 });
+    var matMetal  = surface("metal",  { size: 512, rough: 0.38, metal: 0.85, bumpScale: 0.16, envInt: 1.4 });
     var matLeaf   = surface("leaves", { repeat: 1, rough: 0.95, bumpScale: 0.24 });
-    var matBark   = surface("bark",   { repeat: 1, rough: 0.98, bumpScale: 0.30 });
+    var matBark   = surface("bark",   { size: 512, rough: 0.96, bumpScale: 0.34, envInt: 0.3 });
     var matCloth  = surface("cloth",  { repeat: 1, rough: 0.98, bumpScale: 0.1 });
     world.mats = { floor: matFloor, ground: matGround, wall: matWall };
+
+    /* Dark glass is not a dark rectangle: it is a mirror with almost
+       nothing behind it. Given the environment it picks up the sky, the
+       streetlights and the building opposite, which is what makes a row of
+       windows at night read as windows. */
+    var darkWinMat = new THREE.MeshStandardMaterial({
+      map: tex("glass", 256, 1),
+      color: 0xdbe6f2, roughness: 0.05, metalness: 0.0,
+      emissive: new THREE.Color(0x0d1620), emissiveIntensity: 0.5,
+      envMapIntensity: 2.6 });
+    var litWinMat = new THREE.MeshStandardMaterial({
+      color: 0xffd8a0, roughness: 0.4, metalness: 0,
+      emissive: new THREE.Color(0xffb867), emissiveIntensity: 1.5, toneMapped: true });
+    var winFrameMat = surface("metal", { size: 256, rough: 0.6, metal: 0.5, tint: 0x59524a, envInt: 1.0 });
+
+    /* a soot plume, painted once */
+    function sootTexture() {
+      if (TEX.__soot) return TEX.__soot;
+      var cc = canvas2d(128), sx = cc.x;
+      var g2 = sx.createLinearGradient(0, 128, 0, 0);
+      g2.addColorStop(0, "rgba(0,0,0,.95)");
+      g2.addColorStop(0.5, "rgba(0,0,0,.45)");
+      g2.addColorStop(1, "rgba(0,0,0,0)");
+      sx.fillStyle = g2; sx.fillRect(0, 0, 128, 128);
+      var f2 = fbm(128, 5, 3, 77);
+      var img = sx.getImageData(0, 0, 128, 128), dd = img.data;
+      for (var i = 0, p2 = 3; i < f2.length; i++, p2 += 4) {
+        dd[p2] = clamp(dd[p2] * (0.35 + f2[i] * 1.3), 0, 255);
+        /* pinch it in at the sides so it reads as a plume, not a panel */
+        var cxp = (i % 128) / 128 - 0.5;
+        dd[p2] = clamp(dd[p2] * (1 - Math.abs(cxp) * 1.7), 0, 255);
+      }
+      sx.putImageData(img, 0, 0);
+      TEX.__soot = new THREE.CanvasTexture(cc.c);
+      return TEX.__soot;
+    }
 
     /* ---------- batches ---------- */
     var B = {
@@ -2384,8 +3542,62 @@
       metal:  new Batch(geo("metalB", function () { return new THREE.BoxGeometry(1, 1, 1); }), matMetal, true, true),
       wood:   new Batch(geo("woodB",  function () { return new THREE.BoxGeometry(1, 1, 1); }), matWood, true, true),
       kerb:   new Batch(geo("kerbB",  function () { return new THREE.BoxGeometry(TILE, 0.30, 0.16); }),
-                surface("block", { repeat: 1, rough: 0.9, bumpScale: 0.1, tint: 0xb8bcc0 }), true, true)
+                surface("block", { size: 512, rough: 0.86, bumpScale: 0.12, tint: 0xb8bcc0 }), true, true),
+
+      /* ---- the pieces a facade is made of ----
+         Each is one instanced batch across the whole level, so a street of
+         forty buildings with two hundred windows in it is still a dozen
+         draw calls. */
+      coping:  new Batch(geo("copingB", function () { return new THREE.BoxGeometry(TILE * 1.22, 0.14, TILE * 1.22); }),
+                surface("block", { size: 512, rough: 0.84, bumpScale: 0.14, tint: 0xa8aeb6 }), true, true),
+      plinth:  new Batch(geo("plinthB", function () { return new THREE.BoxGeometry(TILE * 1.06, 0.60, 0.24); }),
+                surface("block", { size: 512, rough: 0.88, bumpScale: 0.16, tint: 0x9aa0a8 }), true, true),
+      band:    new Batch(geo("bandB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
+                surface("block", { size: 512, rough: 0.86, bumpScale: 0.12, tint: 0xa4aab2 }), true, true),
+      sill:    new Batch(geo("sillB2", function () { return new THREE.BoxGeometry(TILE * 0.72, 0.11, 0.26); }),
+                surface("block", { size: 512, rough: 0.82, bumpScale: 0.1, tint: 0xb0b6be }), true, true),
+      reveal:  new Batch(geo("revealB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
+                new THREE.MeshStandardMaterial({ color: 0x14181e, roughness: 0.95, metalness: 0 }), false, true),
+      winDark: new Batch(geo("winB", function () { return new THREE.BoxGeometry(TILE * 0.56, 0.92, 0.06); }),
+                null, false, false),
+      winLit:  new Batch(geo("winB2", function () { return new THREE.BoxGeometry(TILE * 0.56, 0.92, 0.06); }),
+                null, false, false),
+      winFrame: new Batch(geo("winFrameB", function () {
+                  /* a frame with a transom and a mullion in it */
+                  var a = new THREE.BoxGeometry(TILE * 0.62, 0.07, 0.10); a.translate(0, 0.49, 0);
+                  var b = new THREE.BoxGeometry(TILE * 0.62, 0.07, 0.10); b.translate(0, -0.49, 0);
+                  var c = new THREE.BoxGeometry(0.07, 1.05, 0.10); c.translate(-TILE * 0.29, 0, 0);
+                  var d = new THREE.BoxGeometry(0.07, 1.05, 0.10); d.translate(TILE * 0.29, 0, 0);
+                  var e = new THREE.BoxGeometry(0.05, 0.98, 0.09);
+                  var f = new THREE.BoxGeometry(TILE * 0.58, 0.045, 0.09); f.translate(0, 0.16, 0);
+                  return mergeGeoms([a, b, c, d, e, f]);
+                }), null, true, false),
+      board:   new Batch(geo("boardB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
+                surface("boards", { size: 256, rough: 0.95, bumpScale: 0.2, tint: 0x9a8464 }), true, false),
+      shutter: new Batch(geo("shutB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
+                surface("metal", { size: 256, rough: 0.55, metal: 0.7, tint: 0x8a8f96, envInt: 1.1 }), true, false),
+      soot:    new Batch(geo("sootB", function () { return new THREE.PlaneGeometry(1, 1); }),
+                new THREE.MeshBasicMaterial({ map: sootTexture(), transparent: true, opacity: 0.72,
+                  depthWrite: false, color: 0x0a0a0c }), false, false),
+      tank:    new Batch(geo("tankB", function () { return new THREE.CylinderGeometry(0.62, 0.62, 1.1, 14); }),
+                surface("metal", { size: 256, rough: 0.7, metal: 0.6, tint: 0x6a6258, envInt: 1.0 }), true, true),
+      thin:    new Batch(geo("thinB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
+                surface("metal", { size: 256, rough: 0.5, metal: 0.75, tint: 0x585c62, envInt: 1.2 }), true, true),
+      rubble:  new Batch(geo("rubbleB", function () { return new THREE.DodecahedronGeometry(1, 0); }),
+                surface("block", { size: 256, rough: 0.96, bumpScale: 0.3, tint: 0x8a8278 }), true, true),
+      litter:  new Batch(geo("litterB", function () {
+                  var g = new THREE.PlaneGeometry(1, 1);
+                  g.rotateX(-Math.PI / 2);
+                  return g;
+                }),
+                new THREE.MeshStandardMaterial({ color: 0xb0aca0, roughness: 0.95,
+                  side: THREE.DoubleSide }), false, true)
     };
+    /* the glass and the frames are declared with the batches but built
+       from the materials below them, so they are filled in here */
+    B.winDark.m = darkWinMat;
+    B.winLit.m = litWinMat;
+    B.winFrame.m = winFrameMat;
     world.B = B;
 
     /* ---------- how tall is each building? ----------
@@ -2485,15 +3697,12 @@
 
     /* ---------- walls ---------- */
     var glassGeo = geo("glassP", function () { return new THREE.PlaneGeometry(TILE * 0.62, 1.15); });
-    var litWinMat = new THREE.MeshBasicMaterial({ color: 0xe8b06a, toneMapped: false });
-    var darkWinMat = new THREE.MeshStandardMaterial({
-      color: 0x0b1017, roughness: 0.62, metalness: 0.0,
-      emissive: new THREE.Color(0x16283a), emissiveIntensity: 0.7 });
-    var winFrameMat = surface("metal", { repeat: 1, rough: 0.7, metal: 0.2, tint: 0x5a5348 });
     var glassMat = new THREE.MeshStandardMaterial({
-      color: 0x2a3a4a, roughness: 0.16, metalness: 0.1,
-      emissive: new THREE.Color(0x27405c), emissiveIntensity: 0.9,
-      transparent: true, opacity: 0.92
+      map: tex("glass", 256, 1),
+      color: 0xffffff, roughness: 0.06, metalness: 0.0,
+      emissive: new THREE.Color(0x18283a), emissiveIntensity: 0.5,
+      envMapIntensity: 2.2,
+      transparent: true, opacity: 0.86, side: THREE.DoubleSide
     });
     world.glassMat = glassMat;
 
@@ -2507,65 +3716,147 @@
                 shade(0xffffff, (outdoorLevel ? 0.88 : 1.22) + t * 0.2));
 
       if (outdoorLevel) {
-        var edge = false, nb = [[1, 0, Math.PI / 2], [-1, 0, -Math.PI / 2], [0, 1, 0], [0, -1, Math.PI]];
+        var nb = [[1, 0, Math.PI / 2], [-1, 0, -Math.PI / 2], [0, 1, 0], [0, -1, Math.PI]];
+        var edge = false;
         for (var e = 0; e < 4; e++) {
           var ec = at(x + nb[e][0], y + nb[e][1]);
           if (ec !== "#" && ec !== "v" && ec !== " ") edge = true;
         }
-        /* a parapet along the roof edge, so the top is a roof and not a lid */
-        if (edge && hgt > 1.05) {
-          B.roofedge.add(cx(x), top + 0.48, cz(y), TILE * 1.16, 0.34, TILE * 1.16, 0,
+
+        /* ---------------- the roofline ----------------
+           A parapet with a coping on it, and then the things that actually
+           live on a roof: a stair head, a tank, plant, an aerial. Flat
+           lids are what made these read as boxes. */
+        if (edge && hgt > 1.02) {
+          B.roofedge.add(cx(x), top + 0.44, cz(y), TILE * 1.16, 0.42, TILE * 1.16, 0,
                          shade(0xffffff, 0.72 + t * 0.3));
+          B.coping.add(cx(x), top + 0.68, cz(y), 1, 1, 1, 0, shade(0xffffff, 1.25 + t * 0.2));
         }
-        /* and, in the middle of a big roof, the things that live up there */
-        if (!edge && t > 0.72) {
+        if (!edge && hgt > 1.02) {
           var kind = hash2(y * 3, x * 5);
-          if (kind > 0.55) {
-            B.roofbits.add(cx(x) + (t - 0.5) * 0.7, top + 0.9, cz(y) + (kind - 0.5) * 0.7,
-                           0.62, 1.5, 0.62, t * 3, shade(0xffffff, 0.62 + t * 0.3));
-          } else {
-            B.roofbits.add(cx(x), top + 0.5, cz(y), 1.5, 0.7, 1.1, kind * 3, shade(0xffffff, 0.8));
+          if (t > 0.86) {
+            /* the stair head, the only thing on a roof with a door in it */
+            B.roofbits.add(cx(x), top + 1.05, cz(y), TILE * 0.86, 2.1, TILE * 0.78, 0,
+                           shade(0xffffff, 0.66 + t * 0.3));
+            B.coping.add(cx(x), top + 2.13, cz(y), 0.9, 1, 0.82, 0, shade(0xffffff, 1.2));
+          } else if (t > 0.74) {
+            /* a water tank on legs */
+            var tankY = top + 1.55;
+            B.tank.add(cx(x), tankY, cz(y), 1, 1, 1, kind * 3, shade(0xffffff, 0.8 + t * 0.3));
+            for (var lg = 0; lg < 4; lg++) {
+              var la = lg / 4 * 6.2832 + 0.78;
+              B.thin.add(cx(x) + Math.cos(la) * 0.55, top + 0.75, cz(y) + Math.sin(la) * 0.55,
+                         0.10, 1.6, 0.10, 0, shade(0xffffff, 0.7));
+            }
+          } else if (t > 0.56) {
+            /* plant: two boxes and a cowl */
+            B.roofbits.add(cx(x) - 0.3, top + 0.42, cz(y), 1.3, 0.85, 1.0, kind * 0.4,
+                           shade(0xffffff, 0.86));
+            B.thin.add(cx(x) + 0.55, top + 0.72, cz(y) + 0.3, 0.42, 1.45, 0.42, 0,
+                       shade(0xffffff, 0.75));
+          } else if (t > 0.44) {
+            /* an aerial */
+            B.thin.add(cx(x), top + 1.5, cz(y), 0.07, 3.0, 0.07, 0, shade(0xffffff, 0.6));
+            B.thin.add(cx(x), top + 2.5, cz(y), 0.9, 0.05, 0.05, kind * 3, shade(0xffffff, 0.6));
+            B.thin.add(cx(x), top + 2.2, cz(y), 0.7, 0.05, 0.05, kind * 3 + 0.3, shade(0xffffff, 0.6));
           }
         }
-        /* windows in the face, a few of them still on */
-        if (edge && hgt > 1.05) {
+
+        /* ---------------- the facade ----------------
+           A plinth at the pavement, a band at every floor, windows set
+           into a reveal with a sill and a lintel, a shopfront at street
+           level, and the odd one boarded, broken or burnt out. */
+        if (edge) {
+          var storeys = Math.max(1, Math.round(hgt * 1.55));
+          var floorH = (TUNE.wallH * hgt - 0.55) / storeys;
+
           for (var di = 0; di < 4; di++) {
             var d = nb[di];
             var cc2 = at(x + d[0], y + d[1]);
             if (cc2 === "#" || cc2 === "v" || cc2 === " ") continue;
-            var storeys = Math.max(1, Math.round(hgt * 1.6));
+
+            var ox = cx(x) + d[0] * (TILE / 2), oz = cz(y) + d[1] * (TILE / 2);
+            var face = d[2];
+            var fseed = hash2(x * 31 + di * 7, y * 17 + di * 3);
+
+            /* the plinth: a course of stone the building stands on */
+            B.plinth.add(ox + d[0] * 0.05, 0.30, oz + d[1] * 0.05, 1, 1, 1, face,
+                         shade(0xffffff, 1.1 + t * 0.2));
+            /* the cornice under the parapet */
+            B.band.add(ox + d[0] * 0.07, top - 0.16, oz + d[1] * 0.07, TILE * 1.02, 0.26, 0.20, face,
+                       shade(0xffffff, 1.15));
+
             for (var f = 0; f < storeys; f++) {
+              var wy = 0.62 + f * floorH + floorH * 0.5;
+              if (wy > top - 0.75) continue;
               var seed = hash2(x * 31 + di * 7 + f * 13, y * 17 + f * 5);
-              if (seed < 0.42) continue;
-              var wy = 1.15 + f * (TUNE.wallH * hgt - 1.0) / storeys;
-              if (wy > top - 0.6) continue;
-              var pane = new THREE.Mesh(
-                geo("winP", function () { return new THREE.PlaneGeometry(TILE * 0.5, 0.8); }),
-                seed > 0.86 ? litWinMat : darkWinMat);
-              pane.position.set(cx(x) + d[0] * (TILE / 2 + 0.03), wy, cz(y) + d[1] * (TILE / 2 + 0.03));
-              pane.rotation.y = d[2];
-              G.add(pane);
-              /* frame and one mullion, which is what makes a lit rectangle
-                 read as a window rather than a light left on */
-              var fr = new THREE.Mesh(
-                geo("winFrame", function () {
-                  var gg = [];
-                  var b1 = new THREE.BoxGeometry(TILE * 0.56, 0.07, 0.09); b1.translate(0, 0.42, 0);
-                  var b2 = new THREE.BoxGeometry(TILE * 0.56, 0.07, 0.09); b2.translate(0, -0.42, 0);
-                  var b3 = new THREE.BoxGeometry(0.07, 0.9, 0.09); b3.translate(-TILE * 0.25, 0, 0);
-                  var b4 = new THREE.BoxGeometry(0.07, 0.9, 0.09); b4.translate(TILE * 0.25, 0, 0);
-                  var b5 = new THREE.BoxGeometry(0.05, 0.86, 0.08);
-                  return mergeGeoms([b1, b2, b3, b4, b5]);
-                }), winFrameMat);
-              fr.position.set(pane.position.x + d[0] * 0.04, wy, pane.position.z + d[1] * 0.04);
-              fr.rotation.y = d[2];
-              G.add(fr);
-              var sill = new THREE.Mesh(
-                geo("sillB", function () { return new THREE.BoxGeometry(TILE * 0.66, 0.10, 0.22); }),
-                matCap);
-              sill.position.set(pane.position.x + d[0] * 0.07, wy - 0.50, pane.position.z + d[1] * 0.07);
-              sill.rotation.y = d[2];
-              G.add(sill);
+
+              /* a string course between floors */
+              if (f > 0) {
+                B.band.add(ox + d[0] * 0.045, 0.62 + f * floorH, oz + d[1] * 0.045,
+                           TILE * 1.0, 0.12, 0.13, face, shade(0xffffff, 1.08));
+              }
+
+              var ground = (f === 0);
+              var shopfront = ground && fseed > 0.55 && hgt > 1.2;
+
+              if (shopfront) {
+                /* a wide glazed opening, a stall riser under it, a fascia
+                   over it, and a security shutter half down on some */
+                B.reveal.add(ox + d[0] * 0.02, wy + 0.05, oz + d[1] * 0.02,
+                             TILE * 0.90, floorH * 0.80, 0.12, face, shade(0xffffff, 0.5));
+                var shutter = seed > 0.72;
+                if (shutter) {
+                  B.shutter.add(ox + d[0] * 0.08, wy + 0.05, oz + d[1] * 0.08,
+                                TILE * 0.86, floorH * 0.74, 0.06, face, shade(0xffffff, 0.9 + seed * 0.3));
+                } else {
+                  B.winDark.add(ox + d[0] * 0.075, wy + 0.05, oz + d[1] * 0.075,
+                                TILE * 0.86 / (TILE * 0.5), floorH * 0.74 / 0.8, 1, face,
+                                shade(0xffffff, 0.9));
+                }
+                B.band.add(ox + d[0] * 0.09, wy + floorH * 0.46, oz + d[1] * 0.09,
+                           TILE * 1.04, 0.34, 0.16, face, shade(0xffffff, 0.55 + seed * 0.3));
+                B.plinth.add(ox + d[0] * 0.06, wy - floorH * 0.40, oz + d[1] * 0.06, 1, 0.6, 1, face,
+                             shade(0xffffff, 0.95));
+                continue;
+              }
+
+              if (seed < 0.30) continue;      /* solid wall: not every bay has a window */
+
+              var brokenIn = seed > 0.93;
+              var boarded  = seed > 0.86 && seed <= 0.93;
+
+              /* the reveal: a dark recess, so the window has depth */
+              B.reveal.add(ox + d[0] * 0.02, wy, oz + d[1] * 0.02,
+                           TILE * 0.60, 0.98, 0.14, face, shade(0xffffff, 0.42));
+              /* the sill, projecting, with the stain it drips down the wall */
+              B.sill.add(ox + d[0] * 0.085, wy - 0.53, oz + d[1] * 0.085, 1, 1, 1, face,
+                         shade(0xffffff, 1.2));
+              /* the lintel over it */
+              B.band.add(ox + d[0] * 0.06, wy + 0.55, oz + d[1] * 0.06,
+                         TILE * 0.70, 0.14, 0.16, face, shade(0xffffff, 1.12));
+
+              if (boarded) {
+                for (var bd = 0; bd < 3; bd++) {
+                  B.board.add(ox + d[0] * 0.075, wy - 0.30 + bd * 0.30, oz + d[1] * 0.075,
+                              TILE * 0.60, 0.22, 0.05, face + (hash2(bd, f) - 0.5) * 0.10,
+                              shade(0xffffff, 0.8 + hash2(bd, seed * 10) * 0.4));
+                }
+              } else if (brokenIn) {
+                /* the frame is still there; the glass is not */
+                B.winFrame.add(ox + d[0] * 0.065, wy, oz + d[1] * 0.065, 1, 1, 1, face, 0xffffff);
+                if (seed > 0.965) {
+                  /* and it has burned: soot up the wall above it */
+                  B.soot.add(ox + d[0] * 0.03, wy + 0.95, oz + d[1] * 0.03,
+                             TILE * 0.8, 1.5, 0.02, face, 0xffffff);
+                }
+              } else {
+                var lit = seed > 0.80;
+                (lit ? B.winLit : B.winDark).add(
+                  ox + d[0] * 0.068, wy, oz + d[1] * 0.068, 1, 1, 1, face,
+                  lit ? shade(0xffffff, 0.7 + seed) : shade(0xffffff, 0.85 + seed * 0.3));
+                B.winFrame.add(ox + d[0] * 0.062, wy, oz + d[1] * 0.062, 1, 1, 1, face, 0xffffff);
+              }
             }
           }
         }
@@ -2634,9 +3925,49 @@
         map: glowTexture(), color: 0xffd9a0, blending: THREE.AdditiveBlending,
         transparent: true, depthWrite: false, opacity: 0.30 }));
       halo.scale.set(2.6, 2.6, 1); halo.position.set(0.85, 4.16, 0); g.add(halo);
+
+      /* the shaft of it, hanging in the air under the lamp — the same
+         trick as the torch, and the reason a wet street reads as weather
+         rather than as a shiny floor */
+      var shaft = new THREE.Mesh(
+        geo("lampCone", function () {
+          var gg = new THREE.CylinderGeometry(0.30, 2.30, 4.10, 20, 4, true);
+          gg.translate(0, -2.05, 0);
+          return gg;
+        }),
+        new THREE.ShaderMaterial({
+          transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+          side: THREE.DoubleSide, fog: false,
+          uniforms: { amt: { value: 0.16 }, tint: { value: new THREE.Color(0xffd7a2) } },
+          vertexShader: [
+            "varying vec2 vUv; varying float vY;",
+            "void main(){ vUv = uv; vY = position.y;",
+            " gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }"
+          ].join("\n"),
+          fragmentShader: [
+            "uniform float amt; uniform vec3 tint;",
+            "varying vec2 vUv; varying float vY;",
+            "void main(){",
+            "  float down = clamp(-vY/4.1, 0.0, 1.0);",
+            "  float a = (1.0 - down) * (1.0 - down);",
+            "  a *= smoothstep(0.0, 0.22, down);",
+            "  float across = abs(vUv.x*2.0 - 1.0);",
+            "  a *= pow(1.0 - across*across, 1.5);",
+            "  gl_FragColor = vec4(tint, a*amt);",
+            "}"
+          ].join("\n")
+        }));
+      shaft.position.set(0.85, 4.14, 0);
+      shaft.renderOrder = 18;
+      shaft.frustumCulled = false;
+      g.add(shaft);
+
       G.add(g);
+      /* one lamp in six has had it, and is on its way out */
+      var failing = hash2(x * 71 + 3, y * 29 + 7) > 0.82;
       world.lamps.push({ x: cx(x) + 0.85, y: 4.1, z: cz(y), colour: 0xffcf90,
                          power: 2.6, range: 12, kind: "post", bulb: bulb, halo: halo,
+                         shaft: shaft, flicker: failing ? 1 : 0,
                          tx: x, ty: y });
       return g;
     }
@@ -3238,6 +4569,50 @@
       return p;
     }
 
+    /* ---------- what a week of this leaves lying about ---------- */
+    function wheelieBin(wx, wz, rot, tipped) {
+      var g = new THREE.Group();
+      g.position.set(wx, 0, wz);
+      g.rotation.y = rot;
+      var body = new THREE.Mesh(roundBox(0.62, 0.98, 0.52, 0.06, 2),
+        surface("cloth", { size: 256, rough: 0.62, tint: 0x33403a, envInt: 0.6 }));
+      body.position.y = 0.50;
+      var lid = new THREE.Mesh(roundBox(0.66, 0.09, 0.56, 0.03, 2),
+        surface("cloth", { size: 256, rough: 0.62, tint: 0x2a352f, envInt: 0.6 }));
+      lid.position.y = 1.02;
+      g.add(body); g.add(lid);
+      [-1, 1].forEach(function (sd) {
+        var wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.06, 10),
+          new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.9 }));
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(-0.24, 0.09, sd * 0.20);
+        g.add(wheel);
+      });
+      if (tipped) { g.rotation.z = Math.PI / 2 * 0.92; g.position.y = 0.30; }
+      g.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      G.add(g);
+      return g;
+    }
+
+    function trafficCone(wx, wz) {
+      var g = new THREE.Group();
+      g.position.set(wx, 0, wz);
+      var cone = new THREE.Mesh(new THREE.ConeGeometry(0.19, 0.52, 12),
+        new THREE.MeshStandardMaterial({ color: 0xd85a1e, roughness: 0.66, envMapIntensity: 0.8 }));
+      cone.position.y = 0.28;
+      var band = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.155, 0.09, 12),
+        new THREE.MeshStandardMaterial({ color: 0xe8ecf0, roughness: 0.3, metalness: 0.1, envMapIntensity: 2.0 }));
+      band.position.y = 0.30;
+      var base = new THREE.Mesh(roundBox(0.34, 0.05, 0.34, 0.02, 2),
+        new THREE.MeshStandardMaterial({ color: 0x1e1c1a, roughness: 0.9 }));
+      base.position.y = 0.025;
+      g.add(cone); g.add(band); g.add(base);
+      if (hash2(wx * 3, wz * 7) > 0.7) { g.rotation.z = 1.4; g.position.y = 0.16; }
+      g.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+      G.add(g);
+      return g;
+    }
+
     /* ---------- the gates ---------- */
     function gate(x, y) {
       var g = new THREE.Group();
@@ -3387,6 +4762,62 @@
         }
       }
     }
+    /* Rubble against the walls, litter blowing about, a bin somebody put
+       out and nobody collected, cones round a hole nobody came back to
+       fix. All of it instanced or counted, so it costs almost nothing. */
+    if (world.outdoor && def.theme !== "campsite") {
+      var bins = 0, cones = 0;
+      for (var dy = 0; dy < H; dy++) {
+        for (var dx = 0; dx < W; dx++) {
+          var dc = at(dx, dy);
+          if (dc === " " || isSolidChar(dc)) continue;
+          var r0 = hash2(dx * 91 + 5, dy * 47 + 11);
+
+          var wallDir = null;
+          var nbs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+          for (var wq = 0; wq < 4; wq++) {
+            var nc = at(dx + nbs[wq][0], dy + nbs[wq][1]);
+            if (nc === "#" || nc === "v") wallDir = nbs[wq];
+          }
+          /* rubble piles up where a wall meets the ground */
+          if (wallDir && r0 > 0.55) {
+            var n0 = 3 + Math.floor(r0 * 5);
+            for (var q = 0; q < n0; q++) {
+              var rr = 0.10 + hash2(dx + q, dy * 3) * 0.20;
+              B.rubble.add(
+                cx(dx) + wallDir[0] * (TILE * 0.34) + (hash2(q, dx) - 0.5) * TILE * 0.7,
+                rr * 0.5,
+                cz(dy) + wallDir[1] * (TILE * 0.34) + (hash2(dy, q) - 0.5) * TILE * 0.7,
+                rr, rr * 0.72, rr, hash2(q, dy) * 6.28,
+                shade(0xffffff, 0.7 + hash2(q, dx + dy) * 0.5));
+            }
+          }
+          /* litter, flat on the ground */
+          if (r0 > 0.72) {
+            var ln = 2 + Math.floor(hash2(dy, dx) * 4);
+            for (var l = 0; l < ln; l++) {
+              var ls = 0.10 + hash2(l, dx) * 0.16;
+              B.litter.add(cx(dx) + (hash2(l * 3, dy) - 0.5) * TILE * 0.85,
+                           0.045,
+                           cz(dy) + (hash2(dx, l * 5) - 0.5) * TILE * 0.85,
+                           ls, ls * (0.5 + hash2(l, dy) * 0.8), 1,
+                           hash2(l, dy) * 6.28,
+                           shade(0xffffff, 0.55 + hash2(l, dx) * 0.6));
+            }
+          }
+          if (r0 > 0.955 && bins < 9) {
+            bins++;
+            wheelieBin(cx(dx) + (r0 - 0.5) * 0.6, cz(dy), hash2(dx, dy) * 6.28,
+                       hash2(dy * 7, dx * 5) > 0.55);
+          } else if (r0 > 0.93 && cones < 12) {
+            cones++;
+            trafficCone(cx(dx) + (hash2(dx, dy) - 0.5) * TILE * 0.6,
+                        cz(dy) + (hash2(dy, dx) - 0.5) * TILE * 0.6);
+          }
+        }
+      }
+    }
+
     /* the campsite's fire pit is not in the grid — it goes in the middle
        of the flat ground, where she would actually build one */
     if (def.theme === "campsite") firePit(14, 12);
@@ -3408,14 +4839,14 @@
     world.balance = bal;
     var amb = new THREE.HemisphereLight(
       shade(pal.sky, 2.8), shade(pal.ambient, 1.6),
-      (def.dark > 0.6 ? 0.80 : def.dark > 0.45 ? 1.25 : 2.1) * bal * (def.base === "," ? 1.5 : 1));
+      (def.dark > 0.6 ? 1.05 : def.dark > 0.45 ? 1.5 : 2.3) * bal * (def.base === "," ? 1.6 : 1));
     G.add(amb);
     world.hemi = amb;
     /* the last few percent, so an unlit corner is still a corner and not
        a hole cut in the picture */
     /* outdoors there is always something in the sky — cloud lit from
        underneath by a city that has not entirely gone out */
-    var fillAmt = (def.dark > 0.6 ? 0.16 : 0.24) * bal * (def.base === "," ? 2.2 : 1);
+    var fillAmt = (def.dark > 0.6 ? 0.22 : 0.30) * bal * (def.base === "," ? 2.4 : 1);
     var floorFill = new THREE.AmbientLight(shade(pal.sky, 1.9), fillAmt);
     G.add(floorFill);
 
@@ -3423,7 +4854,7 @@
        Only the outdoor levels get a shadow out of it — indoors the
        torch does that job and two shadow maps is one too many. */
     var key = new THREE.DirectionalLight(pal.key,
-      (def.dark > 0.6 ? 0.48 : def.dark > 0.4 ? 1.0 : 2.1) * bal);
+      (def.dark > 0.6 ? 0.62 : def.dark > 0.4 ? 1.15 : 2.2) * bal);
     key.position.set(W * TILE * 0.3, 46, -H * TILE * 0.25);
     key.target.position.set(W * TILE * 0.5, 0, H * TILE * 0.5);
     G.add(key); G.add(key.target);
@@ -3632,17 +5063,22 @@
      ========================================================= */
   function makeTorch() {
     var g = new THREE.Group();
+    /* an inner group the beam lives in, so it can swing behind her turn
+       without dragging her shoulders round with it */
+    var arm = new THREE.Group();
+    g.add(arm);
 
-    var spot = new THREE.SpotLight(0xfff0d0, 46, 28, 0.72, 0.5, 1.1);
+    var spot = new THREE.SpotLight(0xfff0d0, 46, 28, 0.72, 0.86, 1.1);
     spot.castShadow = true;
-    spot.shadow.mapSize.set(1024, 1024);
-    spot.shadow.camera.near = 0.4;
-    spot.shadow.camera.far = 24;
-    spot.shadow.bias = -0.0022;
-    spot.shadow.normalBias = 0.035;
+    spot.shadow.mapSize.set(2048, 2048);
+    spot.shadow.camera.near = 0.5;
+    spot.shadow.camera.far = 26;
+    spot.shadow.bias = -0.0011;
+    spot.shadow.normalBias = 0.028;
+    spot.shadow.radius = 3;
     spot.position.set(0, 1.35, 0);
-    g.add(spot);
-    g.add(spot.target);
+    arm.add(spot);
+    arm.add(spot.target);
     spot.target.position.set(3, 0.6, 0);
 
     /* the visible beam: a cone, faded at both ends, drawn additively.
@@ -3662,16 +5098,20 @@
       fragmentShader: [
         "uniform float time; uniform float amt; uniform vec3 tint;",
         "varying vec2 vUv; varying vec3 vP;",
-        "float h(vec2 p){ return fract(sin(dot(p,vec2(41.3,289.1)))*43758.5); }",
         "void main(){",
-        /* fade along the beam and off at the rim */
+        /* Along the beam: an exponential falloff rather than a quadratic
+           one, so the far end dissolves instead of stopping, with a soft
+           shoulder where it leaves the lens. */
         "  float along = clamp(vP.x/9.0, 0.0, 1.0);",
-        "  float a = (1.0-along)*(1.0-along) * 0.55;",
-        "  a *= smoothstep(0.0, 0.16, along);",
-        "  float rim = abs(sin(vUv.x*3.14159));",
-        "  a *= 0.35 + rim*0.65;",
-        /* dust drifting through it */
-        "  a *= 0.82 + 0.18*sin(vUv.x*22.0 + time*1.4) * sin(along*17.0 - time*2.1);",
+        "  float a = exp(-along*3.1) * 0.62;",
+        "  a *= smoothstep(0.0, 0.30, along);",
+        /* Across it: a smooth radial gradient to nothing at the rim, which
+           is what stops the cone reading as a solid wedge of colour. */
+        "  float across = abs(vUv.x*2.0 - 1.0);",
+        "  a *= pow(1.0 - across*across, 1.6);",
+        /* the faintest breathing, well under the level where it reads as
+           noise, so the beam is alive without shimmering */
+        "  a *= 0.93 + 0.07*sin(along*9.0 - time*1.7);",
         "  gl_FragColor = vec4(tint, a*amt);",
         "}"
       ].join("\n")
@@ -3680,14 +5120,14 @@
     cone.position.set(0, 1.32, 0);
     cone.frustumCulled = false;
     cone.renderOrder = 20;
-    g.add(cone);
+    arm.add(cone);
 
     /* the pool she stands in */
     var pool = new THREE.PointLight(0xffd9a8, 2.2, 7.4, 1.9);
     pool.position.set(0, 1.55, 0);
     g.add(pool);
 
-    g.userData = { spot: spot, cone: cone, coneMat: coneMat, pool: pool };
+    g.userData = { rig: arm, spot: spot, cone: cone, coneMat: coneMat, pool: pool };
     return g;
   }
 
@@ -3866,6 +5306,16 @@
       scene.add(moon);
     }
 
+    /* one cube, built from this level's own sky, so every material in it
+       has something real to reflect */
+    if (Stage.renderer) {
+      try {
+        var env = buildEnvironment(Stage.renderer, sky, pal, def.dark);
+        scene.environment = env;
+        scene.environmentIntensity = def.dark > 0.55 ? 0.42 : def.dark > 0.4 ? 0.7 : 1.0;
+      } catch (e) { /* an old card without float textures: no reflections, still plays */ }
+    }
+
     return { scene: scene, sky: sky, stars: stars, moon: moon };
   }
 
@@ -3887,9 +5337,11 @@
 
     var player = {
       x: px, z: pz, vx: 0, vz: 0, facing: -Math.PI / 2,
+      turn: Math.PI / 2, beam: Math.PI / 2, crouch: 0, groundY: 0,
       creeping: false, hidden: false, rig: rig, torch: torch,
       stepPhase: 0, gait: 0, safe: { x: px, z: pz }, alive: true
     };
+    rig.root.rotation.y = player.turn;
 
     /* --- them --- */
     var zombies = [];
@@ -3931,6 +5383,26 @@
                 bedAt: { x: world.anwarAt.x, y: world.anwarAt.y } };
     }
 
+    /* --- the people who are still people ---
+       Ashcombe is not an empty car park with a fence round it: there are
+       two on the gate, one at the table, and a dozen waiting inside who
+       got here before she did. */
+    var people = [];
+    if (def.people) {
+      def.people.forEach(function (p2, i) {
+        var rig = p2.kind === "guard" ? makeGuard(i + 1) : makeCivilian(i + 3);
+        built.scene.add(rig.root);
+        rig.root.position.set(world.cx(p2.x), 0, world.cz(p2.y));
+        rig.root.rotation.y = -(p2.face == null ? Math.PI : p2.face);
+        people.push({
+          rig: rig, x: world.cx(p2.x), z: world.cz(p2.y),
+          face: p2.face == null ? Math.PI : p2.face,
+          kind: p2.kind, phase: hash2(i * 13, 7) * 6.28,
+          sit: !!p2.sit, pace: p2.pace || 0
+        });
+      });
+    }
+
     /* --- the horse --- */
     var horse = null;
     if (world.horseAt) {
@@ -3951,6 +5423,7 @@
     G.player = player;
     G.zombies = zombies;
     G.anwar = anwar;
+    G.people = people;
     G.horse = horse;
     G.time = 0;
     G.state = "play";
@@ -3974,13 +5447,17 @@
     G.cine = null;
 
     Stage.attach(built.scene, Stage.camera);
+    /* Compile every program this scene needs before the first frame is
+       asked for. Otherwise the first second of a level is a series of
+       long frames as each new material reaches the card, which is exactly
+       where a player notices stutter. */
+    try { Stage.renderer.compile(built.scene, Stage.camera); } catch (e) {}
     Stage.grade({
       gradeCol: (def.grade[0] << 16) | (def.grade[1] << 8) | def.grade[2],
       gradeAmt: def.grade[3],
       hazeCol: (def.haze[0] << 16) | (def.haze[1] << 8) | def.haze[2],
       hazeAmt: def.haze[3],
       vig: def.dark > 0.55 ? 0.68 : 0.52,
-      grain: def.dark > 0.55 ? 0.034 : 0.024,
       sat: 1.06, exposure: 1.05, fringe: 0.0015,
       /* attach() builds a fresh grade pass whose fade defaults to open, so
          without this the first frame of a new level flashes at full
@@ -4140,7 +5617,7 @@
     moveWithCollision(w, p, p.vx * dt, p.vz * dt, TUNE.playerR);
 
     var speed = Math.hypot(p.vx, p.vz);
-    p.gait = lerp(p.gait, clamp(speed / TUNE.walk, 0, 1), 1 - Math.pow(0.001, dt));
+    p.gait = damp(p.gait, clamp(speed / TUNE.walk, 0, 1), 0.12, dt);
 
     /* footfalls, and the noise they make */
     if (speed > 0.4) {
@@ -4163,29 +5640,35 @@
     if (!anyChase && speed < 0.2 && !isSolidChar(here)) { p.safe.x = p.x; p.safe.z = p.z; }
 
     /* pose */
-    p.groundY = lerp(p.groundY || 0, groundAt(w, p.x, p.z), 1 - Math.pow(0.0001, dt));
+    p.groundY = damp(p.groundY || 0, groundAt(w, p.x, p.z), 0.16, dt);
     p.rig.root.position.set(p.x, p.groundY, p.z);
-    var want = p.facing;
-    var cur = p.rig.root.rotation.y;
-    var diff = Math.atan2(Math.sin(-want - cur), Math.cos(-want - cur));
-    p.rig.root.rotation.y = cur + diff * (1 - Math.pow(0.0005, dt));
-    poseHuman(p.rig, G.time, p.gait, null, { crouch: p.creeping ? 1 : 0 });
+    p.turn = dampAngle(p.turn == null ? -p.facing : p.turn, -p.facing, 0.11, dt);
+    p.rig.root.rotation.y = p.turn;
+    p.crouch = damp(p.crouch || 0, p.creeping ? 1 : 0, 0.20, dt);
+    poseHuman(p.rig, G.time, p.gait, null, { crouch: p.crouch });
 
-    /* the torch follows her head, not her feet */
+    /* The torch is in her hand, not welded to her shoulders: it arrives
+       where she is pointing about a tenth of a second after she does,
+       which is the single thing that stops the beam looking like a
+       spotlight bolted to a turret. */
     var td = p.torch.userData;
-    td.spot.target.position.set(Math.cos(0) * 6, -1.2, 0);
+    p.beam = dampAngle(p.beam == null ? -p.facing : p.beam, -p.facing, 0.15, dt);
+    var swing = Math.atan2(Math.sin(p.beam - p.turn), Math.cos(p.beam - p.turn));
+    td.rig.rotation.y = swing;
+    td.rig.position.y = Math.sin(G.time * 2.1) * 0.012 + p.gait * Math.sin(G.time * 8.2) * 0.02;
+    td.spot.target.position.set(6, -1.2, 0);
     var reach = p.creeping ? TUNE.torchCreep : TUNE.torch;
-    td.spot.distance = reach * 2.6;
-    td.spot.angle = p.creeping ? 0.62 : 0.76;
+    td.spot.distance = damp(td.spot.distance, reach * 2.6, 0.35, dt);
+    td.spot.angle = damp(td.spot.angle, p.creeping ? 0.62 : 0.76, 0.35, dt);
     var bal = G.world.balance == null ? 1 : G.world.balance;
     /* by the time she gets to the gates it is morning, and a torch in
        daylight is just something in her hand */
     var night = clamp((G.def.dark - 0.30) / 0.28, 0, 1);
-    td.spot.intensity = lerp(td.spot.intensity, (p.creeping ? 32 : 48) * bal * night,
-                             1 - Math.pow(0.02, dt));
+    td.spot.intensity = damp(td.spot.intensity, (p.creeping ? 32 : 48) * bal * night, 0.24, dt);
     td.coneMat.uniforms.time.value = G.time;
     td.coneMat.uniforms.amt.value = (p.creeping ? 0.30 : 0.46) * night;
-    td.cone.scale.set(reach / 8.0, reach / 8.0, reach / 8.0);
+    td.coneScale = damp(td.coneScale == null ? reach / 8 : td.coneScale, reach / 8.0, 0.35, dt);
+    td.cone.scale.setScalar(td.coneScale);
     td.pool.intensity = (p.creeping ? 1.5 : 2.2) * bal * (0.35 + night * 0.65);
   }
 
@@ -4287,13 +5770,13 @@
         /* walked into a wall: turn away rather than grinding along it */
         if (Math.abs((z.x + z.z) - before) < 0.0004 && z.state === "calm") z.facing += 1.9;
       }
-      z.gait = lerp(z.gait, speed > 0 ? 1 : 0, 1 - Math.pow(0.004, dt));
+      z.gait = damp(z.gait, speed > 0 ? 1 : 0, 0.22, dt);
 
-      z.groundY = lerp(z.groundY || 0, groundAt(w, z.x, z.z), 1 - Math.pow(0.0001, dt));
+      z.groundY = damp(z.groundY || 0, groundAt(w, z.x, z.z), 0.16, dt);
       z.rig.root.position.set(z.x, z.groundY, z.z);
-      var cur = z.rig.root.rotation.y, want = -z.facing;
-      var diff = Math.atan2(Math.sin(want - cur), Math.cos(want - cur));
-      z.rig.root.rotation.y = cur + diff * (1 - Math.pow(0.004, dt));
+      /* they turn slower than she does, which is half of why she can get
+         round behind one */
+      z.rig.root.rotation.y = dampAngle(z.rig.root.rotation.y, -z.facing, 0.30, dt);
       poseHuman(z.rig, G.time + z.seed, z.gait, "z");
 
       /* it is only worth drawing what she could plausibly perceive */
@@ -4334,8 +5817,22 @@
       pl.position.set(L2.x, L2.y, L2.z);
       pl.color.setHex(L2.colour);
       pl.distance = L2.range;
-      var f = L2.flicker ? (0.8 + Math.sin(G.time * 21 + k) * 0.12 + Math.sin(G.time * 6.3) * 0.08) : 1;
+      /* A failing tube does not strobe evenly: it holds, drops out, comes
+         back hard, and buzzes. Three sines that do not share a period and
+         one hard cut-out get most of the way there. */
+      var f = 1;
+      if (L2.flicker) {
+        var tt = G.time * (L2.kind === "tv" ? 1 : 0.65) + L2.tx * 3.1 + L2.ty * 1.7;
+        f = 0.72 + Math.sin(tt * 21) * 0.10 + Math.sin(tt * 6.3) * 0.09 + Math.sin(tt * 2.1) * 0.09;
+        if (L2.kind !== "tv") {
+          var out = Math.sin(tt * 0.9) * Math.sin(tt * 3.7);
+          if (out > 0.86) f *= 0.12;
+        }
+      }
       pl.intensity = L2.power * f * 4.0 * (w.balance == null ? 1 : w.balance);
+      if (L2.bulb) L2.bulb.material.color.setScalar(clamp(f, 0.05, 1.4));
+      if (L2.halo) L2.halo.material.opacity = 0.30 * clamp(f, 0.05, 1.3);
+      if (L2.shaft) L2.shaft.material.uniforms.amt.value = 0.16 * clamp(f, 0.02, 1.3);
     }
   }
 
@@ -4344,7 +5841,7 @@
     for (var i = 0; i < ds.length; i++) {
       var d = ds[i];
       if (Math.abs(d.open - d.want) < 0.002) continue;
-      d.open = lerp(d.open, d.want, 1 - Math.pow(0.004, dt));
+      d.open = damp(d.open, d.want, 0.28, dt);
       if (d.hinge) d.hinge.rotation.y = -d.open * 1.75;
       if (d.slide) d.slide.position.x = d.open * (TILE - 0.3);
     }
@@ -5462,8 +6959,7 @@
       if (G.fadeThen && G.fade <= 0.001) { var f = G.fadeThen; G.fadeThen = null; f(); }
       return;
     }
-    var k = 1 - Math.pow(0.004, dt);
-    G.fade = lerp(G.fade, G.fadeTo, k);
+    G.fade = damp(G.fade, G.fadeTo, 0.22, dt);
     if (Math.abs(G.fade - G.fadeTo) < 0.008) {
       G.fade = G.fadeTo;
       if (G.fadeThen && G.fade <= 0.001) { var g = G.fadeThen; G.fadeThen = null; g(); }
@@ -5490,6 +6986,15 @@
     o.setAttribute("aria-hidden", "false");
   }
 
+  /* the cuts build their own skies, so they get their own cube */
+  function cineEnvironment(scene, sky, palName, dark) {
+    if (!Stage.renderer) return;
+    try {
+      scene.environment = buildEnvironment(Stage.renderer, sky, PAL[palName] || PAL.street, dark);
+      scene.environmentIntensity = dark > 0.55 ? 0.5 : 0.95;
+    } catch (e) {}
+  }
+
   function runCine(c) {
     G.state = "cine";
     G.dlg = null;
@@ -5500,6 +7005,7 @@
     var hud = $("ap-hud");
     if (hud) hud.classList.add("gone");
     Stage.attach(c.scene, c.camera);
+    try { Stage.renderer.compile(c.scene, c.camera); } catch (e) {}
     Stage.grade(c.grade || {});
     Stage.grade({ fade: 1 });
     G.fade = 1; G.fadeTo = 1;
@@ -5645,6 +7151,7 @@
     scene.add(stars.points);
     var moon = makeMoon(7); moon.position.set(-260, 120, -180); scene.add(moon);
 
+    cineEnvironment(scene, sky, "street", 0.7);
     landscape(scene, { far: 0x121834, mid: 0x171d3a, near: 0x1c2340, tree: 0x0d1226 });
     roadStrip(scene, {});
 
@@ -5723,7 +7230,7 @@
       scene: scene, camera: cam,
       caption: "Out past the ring road, and then twenty miles of nobody.",
       grade: { gradeCol: 0x4a6ab4, gradeAmt: 0.16, hazeCol: 0x141c34, hazeAmt: 0.34,
-               vig: 0.8, grain: 0.05, sat: 1.0, fringe: 0.002, redPulse: 0, exposure: 1.0 },
+               vig: 0.8, sat: 1.0, fringe: 0.002, redPulse: 0, exposure: 1.0 },
       update: function (dt, t) {
         /* the tank going */
         if (t > 8.5 && !dead) { dead = true; }
@@ -5834,6 +7341,7 @@
     sun.position.set(340, 12, 90);
     scene.add(sun);
 
+    cineEnvironment(scene, sky, "road", 0.42);
     landscape(scene, { far: 0x6a5a80, mid: 0x4e4468, near: 0x33304e, tree: 0x241f38 });
     roadStrip(scene, {});
 
@@ -5871,7 +7379,7 @@
       scene: scene, camera: cam,
       caption: "It takes most of the morning, and neither of them minds.",
       grade: { gradeCol: 0xd8a860, gradeAmt: 0.18, hazeCol: 0x8a7a96, hazeAmt: 0.26,
-               vig: 0.6, grain: 0.036, sat: 1.1, fringe: 0.0015, redPulse: 0, exposure: 1.04 },
+               vig: 0.6, sat: 1.1, fringe: 0.0015, redPulse: 0, exposure: 1.04 },
       update: function (dt, t) {
         var speed = 7.2;
         horse.root.position.x += speed * dt;
@@ -5916,6 +7424,8 @@
     scene.add(sky.mesh);
     var stars = makeStars(900, 300); scene.add(stars.points);
     var moon = makeMoon(6); moon.position.set(-90, 110, -180); scene.add(moon);
+
+    cineEnvironment(scene, sky, "campsite", 0.7);
 
     /* the ground */
     var ground = new THREE.Mesh(new THREE.CircleGeometry(70, 40),
@@ -6008,7 +7518,7 @@
       scene: scene, camera: cam,
       caption: "",
       grade: { gradeCol: 0xd08a40, gradeAmt: 0.18, hazeCol: 0x2a2038, hazeAmt: 0.2,
-               vig: 0.82, grain: 0.05, sat: 1.06, fringe: 0.0016, redPulse: 0, exposure: 1.0 },
+               vig: 0.82, sat: 1.06, fringe: 0.0016, redPulse: 0, exposure: 1.0 },
       update: function (dt, t) {
         fire.userData.update(t, dt);
         stars.u.time.value = t;
@@ -6058,6 +7568,7 @@
     scene.add(sky.mesh);
     var stars = makeStars(700, 340); scene.add(stars.points);
 
+    cineEnvironment(scene, sky, "road", 0.3);
     var groundMat = surface("grass", { repeat: 1, rough: 0.99, bumpScale: 0.2 });
     groundMat.map = tex("grass", 256, 1); groundMat.map.repeat.set(60, 60);
     var ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), groundMat);
@@ -6114,7 +7625,7 @@
       scene: scene, camera: cam,
       caption: "She wakes to birdsong, and the fire is still warm, and he is still there.",
       grade: { gradeCol: 0xffb070, gradeAmt: 0.12, hazeCol: 0x8a6a72, hazeAmt: 0.16,
-               vig: 0.46, grain: 0.026, sat: 1.22, fringe: 0.0012, redPulse: 0, exposure: 1.0 },
+               vig: 0.46, sat: 1.22, fringe: 0.0012, redPulse: 0, exposure: 1.0 },
       update: function (dt, t) {
         var k = clamp(t / 7, 0, 1);
         var e = k * k * (3 - 2 * k);
@@ -6187,6 +7698,8 @@
       scene.add(c);
       clouds.push({ s: c, v: rnd(0.6, 1.9) });
     }
+
+    cineEnvironment(scene, sky, "street", 0.62);
 
     /* the roof she is standing on */
     var roofM = surface("block", { repeat: 1, rough: 0.96, tint: 0x6a6a70 });
@@ -6322,7 +7835,7 @@
       caption: "",
       duration: Infinity,
       grade: { gradeCol: 0x6a90d8, gradeAmt: 0.14, hazeCol: 0x141c34, hazeAmt: 0.24,
-               vig: 0.72, grain: 0.038, sat: 1.06, fringe: 0.0014, redPulse: 0, exposure: 1.02 },
+               vig: 0.72, sat: 1.06, fringe: 0.0014, redPulse: 0, exposure: 1.02 },
       update: function (dt, t) {
         stars.u.time.value = t;
         motes.u.time.value = t;
@@ -6564,14 +8077,40 @@
       a.x = ent.x; a.z = ent.z;
       gait = clamp(sp / TUNE.walk, 0, 1);
       var face = Math.atan2(dz, dx);
-      var cur = a.rig.root.rotation.y;
-      var diff = Math.atan2(Math.sin(-face - cur), Math.cos(-face - cur));
-      a.rig.root.rotation.y = cur + diff * (1 - Math.pow(0.002, dt));
+      a.rig.root.rotation.y = dampAngle(a.rig.root.rotation.y, -face, 0.16, dt);
     }
-    a.groundY = lerp(a.groundY || 0, groundAt(G.world, a.x, a.z), 1 - Math.pow(0.0001, dt));
+    a.groundY = damp(a.groundY || 0, groundAt(G.world, a.x, a.z), 0.16, dt);
     a.rig.root.position.set(a.x, a.groundY, a.z);
-    a.gait = lerp(a.gait || 0, gait, 1 - Math.pow(0.002, dt));
-    poseHuman(a.rig, G.time + 0.8, a.gait, null, { crouch: p.creeping ? 0.8 : 0 });
+    a.gait = damp(a.gait || 0, gait, 0.16, dt);
+    a.crouch = damp(a.crouch || 0, p.creeping ? 0.8 : 0, 0.24, dt);
+    poseHuman(a.rig, G.time + 0.8, a.gait, null, { crouch: a.crouch });
+  }
+
+  /* Nobody at Ashcombe is doing anything, and that is the point — but
+     standing perfectly still is what makes a crowd read as a shop window.
+     They breathe, they shift their weight, and one or two of them are
+     walking a short line and back. */
+  function updatePeople(dt) {
+    var list = G.people;
+    if (!list || !list.length) return;
+    for (var i = 0; i < list.length; i++) {
+      var p = list[i];
+      var sway = Math.sin(G.time * 0.7 + p.phase) * 0.05;
+      var gait = 0;
+      if (p.pace) {
+        var t = Math.sin(G.time * 0.32 + p.phase);
+        var along = t * 1.8;
+        p.rig.root.position.set(p.x + Math.cos(p.face) * along, 0,
+                                p.z + Math.sin(p.face) * along);
+        gait = clamp(Math.abs(Math.cos(G.time * 0.32 + p.phase)) * 0.7, 0, 1);
+        var dir = Math.cos(G.time * 0.32 + p.phase) > 0 ? p.face : p.face + Math.PI;
+        p.rig.root.rotation.y = dampAngle(p.rig.root.rotation.y, -dir, 0.5, dt);
+      } else {
+        p.rig.root.rotation.y = dampAngle(p.rig.root.rotation.y, -(p.face + sway * 0.5), 0.9, dt);
+      }
+      poseHuman(p.rig, G.time * 0.55 + p.phase, gait, null,
+                { lean: sway * 0.4, headZ: Math.sin(G.time * 0.41 + p.phase * 2) * 0.12 });
+    }
   }
 
   /* =========================================================
@@ -6618,7 +8157,7 @@
       updateZombies(dt);
       updatePressure(dt);
       checkExit();
-      G.redPulse = lerp(G.redPulse, G.chasing ? 0.14 : 0, 1 - Math.pow(0.02, dt));
+      G.redPulse = damp(G.redPulse, G.chasing ? 0.14 : 0, 0.28, dt);
       if (G.chasing && Math.random() < dt * 1.2) Audio_.heart(1);
     } else {
       /* dialogue, overlays and pause: the world holds still but the
@@ -6635,6 +8174,7 @@
       updateLights(dt);
       updateRings(dt);
       updateAnwar(dt);
+      updatePeople(dt);
       if (G.zombies && G.player) updateCones();
       for (var k = 0; k < G.world.anim.length; k++) G.world.anim[k](G.time);
       if (G.world.motes) {
@@ -6678,7 +8218,7 @@
     G.__hudT = (G.__hudT || 0) - dt;
     if (G.__hudT <= 0) { G.__hudT = 0.1; updateInstinct(); setHud(); }
     Stage.grade({ time: G.time, redPulse: G.redPulse, flash: G.flash });
-    G.flash = lerp(G.flash, 0, 1 - Math.pow(0.001, dt));
+    G.flash = damp(G.flash, 0, 0.10, dt);
   }
 
   function checkExit() {
@@ -6897,6 +8437,91 @@
       var cam = G && G.cine ? G.cine.camera : Stage.camera;
       Stage.setQuality(q, scene, cam);
       return Stage.quality;
+    };
+    /* A lit turntable with one figure on it. There is no way to judge a
+       character model from a torch-lit shot of the back of its head at
+       twenty metres, and this is the only thing in the file that exists
+       purely so somebody can look at the work. */
+    window.__apPortrait = function (who, seed) {
+      var scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x1a1e26);
+      var cam = new THREE.PerspectiveCamera(34, Stage.camera.aspect, 0.1, 60);
+
+      var sky = makeSky();
+      sky.u.cLow.value.set(0x50607a); sky.u.cMid.value.set(0x38445a);
+      sky.u.cHigh.value.set(0x1c2430); sky.u.sunAmt.value = 0.5;
+      sky.mesh.visible = false;
+      try {
+        scene.environment = buildEnvironment(Stage.renderer, sky, PAL.street, 0.2);
+        scene.environmentIntensity = 1.0;
+      } catch (e) {}
+
+      var rig = who === "anwar" ? makeAnwar()
+              : who === "zombie" ? makeZombie(seed == null ? 3 : seed)
+              : who === "guard" ? makeGuard(seed == null ? 1 : seed)
+              : who === "civilian" ? makeCivilian(seed == null ? 1 : seed)
+              : makeOuissy();
+      scene.add(rig.root);
+      rig.root.rotation.y = -0.95;
+      poseHuman(rig, 0.6, 0.35, who === "zombie" ? "z" : null, {});
+
+      var floor = new THREE.Mesh(new THREE.CircleGeometry(3, 40),
+        new THREE.MeshStandardMaterial({ color: 0x2a2f38, roughness: 0.55, metalness: 0.1 }));
+      floor.rotation.x = -Math.PI / 2;
+      floor.receiveShadow = true;
+      scene.add(floor);
+
+      scene.add(new THREE.HemisphereLight(0x8098c0, 0x2a2620, 1.1));
+      var key = new THREE.DirectionalLight(0xfff0dc, 3.2);
+      key.position.set(2.4, 3.4, 2.6);
+      key.castShadow = true;
+      key.shadow.mapSize.set(2048, 2048);
+      key.shadow.camera.left = -2; key.shadow.camera.right = 2;
+      key.shadow.camera.top = 3; key.shadow.camera.bottom = -1;
+      key.shadow.bias = -0.0008; key.shadow.normalBias = 0.02;
+      scene.add(key);
+      var fill = new THREE.DirectionalLight(0x90b0e0, 2.0);
+      fill.position.set(-3, 2, 1.4); scene.add(fill);
+      var back = new THREE.DirectionalLight(0xbfd0ea, 1.2);
+      back.position.set(-2, 1.2, 2.4); scene.add(back);
+      var rim = new THREE.DirectionalLight(0xffd0a0, 2.2);
+      rim.position.set(-1.6, 2.2, -3); scene.add(rim);
+
+      cam.position.set(1.85, 1.30, 2.75);
+      cam.lookAt(0, 0.92, 0);
+
+      G.cine = { scene: scene, camera: cam, t: 0, duration: Infinity,
+                 update: function () {} };
+      G.state = "cine";
+      var hud = $("ap-hud"); if (hud) hud.classList.add("gone");
+      Stage.attach(scene, cam);
+      Stage.grade({ gradeAmt: 0.04, hazeAmt: 0.0, vig: 0.28, sat: 1.05,
+                    exposure: 1.0, fringe: 0, redPulse: 0, flash: 0, fade: 1 });
+      return true;
+    };
+    window.__apPortraitHead = function () {
+      if (!G || !G.cine) return false;
+      G.cine.camera.position.set(0.60, 1.58, 0.84);
+      G.cine.camera.lookAt(0.02, 1.47, 0.02);
+      return true;
+    };
+
+    /* what the card was actually asked to do on the last frame */
+    window.__apRenderStats = function () {
+      var scene = G && (G.cine ? G.cine.scene : G.scene);
+      var cam = G && G.cine ? G.cine.camera : Stage.camera;
+      if (!scene) return null;
+      Stage.renderer.info.reset();
+      Stage.render(scene, cam);
+      var info = Stage.renderer.info;
+      var lights = 0;
+      scene.traverse(function (o) { if (o.isLight && o.visible && o.intensity > 0) lights++; });
+      return {
+        calls: info.render.calls, triangles: info.render.triangles,
+        lines: info.render.lines, points: info.render.points,
+        geometries: info.memory.geometries, textures: info.memory.textures,
+        lights: lights
+      };
     };
     window.__apKey = function (k, v) { if (k in KEY) { KEY[k] = v ? 1 : 0; if (k === "use" && v) usePressed = true; } };
   }

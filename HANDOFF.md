@@ -207,6 +207,42 @@ Still open with him: whether the look is what he wanted, and the wire
 panel (he wrote the art direction for it himself and has not seen it
 running).
 
+**The polish pass.** He asked for "a polished modern release, not a rough
+prototype", and named the two halves: smoothness and a full visual upgrade.
+What that turned into:
+
+- **No grain, no dither, anywhere.** The composer renders into a
+  multisampled half-float target — the renderer's own `antialias` flag does
+  nothing once you draw through a composer — with SMAA on top at full
+  quality. Half-float is what removed the banding the grain had been
+  covering.
+- **Nothing snaps.** Every follower runs through `damp`/`dampAngle` (an
+  exponential ease expressed as a time, so it is identical at 30 fps and at
+  144) and the camera is on six critically damped `Spring1`s. The torch
+  lags her turn by about a tenth of a second and its cone has an
+  exponential falloff along the beam and a smooth radial one across it.
+- **An environment.** Each level renders its own sky into a cube at load
+  and PMREMs it. Without that, a PBR material is a flat colour with a
+  highlight on it — this is the single biggest thing in the pass.
+- **Roughness maps.** The road is wet: its roughness comes from its own
+  painted map, so the puddles are mirror-smooth and take the streetlights
+  while the aggregate stays matt.
+- **Textures painted with noise, not randomness.** `valueNoise`/`fbm` at
+  the scale of a stain looks like a stain; per-pixel randomness looks like
+  a fault. Every surface was repainted on that basis.
+- **Facades, not walls.** Plinth, string courses, reveals, sills, lintels,
+  mullioned frames, shopfronts, cornices, boarded and burnt-out windows,
+  and roofs with stair heads, tanks and aerials on them — all instanced.
+- **One figure builder.** Everything on two legs comes out of `buildHuman`
+  off a spec. Watch the axes: the figure faces +x, so front-to-back is x
+  and shoulder-to-shoulder is z. Squashing the torso on z (which is what
+  it did at first) makes everybody narrow across the shoulders and deep
+  through the chest, and leaves the arms hanging in space outside the body.
+- **`__apPortrait(who, seed)`** puts one figure on a lit turntable. There
+  is no way to judge a character model from a torch-lit shot of the back of
+  its head at twenty metres. **`__apRenderStats()`** returns the draw calls
+  and triangles for the current frame.
+
 Things this build learned the hard way, all worth not repeating:
 
 - **A second function declaration with the same name at the same scope
@@ -236,6 +272,14 @@ Things this build learned the hard way, all worth not repeating:
 - **Sorting interactions on distance alone lets a tie decide.** Standing
   between the car she has to start and a dropped bottle, she reached for
   the bottle. Story tiles are ranked ahead of scenery now.
+- **A vertex shader written as a threshold tears the mesh.** Moving every
+  vertex that passes a test — "if it is in front of the ear, pull it back"
+  — puts a visible step exactly where the test flips. Her hair had a square
+  notch cut out of the crown because of it. Ease the displacement instead.
+- **A sphere segment covers all the way round at a given angle**, so a hair
+  cap low enough to reach the nape also comes down over the face. Lift the
+  front of it to a hairline with a smooth function of how far forward each
+  vertex is.
 - **One boolean cannot both end an animation and gate the press that
   follows it.** The serum screen used `done` for both, so the button that
   said "THAT'S IT" did nothing and she stood at Ashcombe with her sleeve up
