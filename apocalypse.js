@@ -2411,30 +2411,55 @@
       }
     })();
 
-    /* ---------- the floor under everything ---------- */
+    /* ---------- the floor under everything ----------
+       Outdoors, "not a comma" is not the same as "a made surface": the
+       gathering points, the woodpiles, the bedrolls and the spot she
+       starts on are all standing in grass. Anything architectural gets a
+       floor, anything obviously ground keeps the ground, and the handful
+       of characters that could be either take the surface most of their
+       neighbours have. */
+    var ARCH = ".hlLGQ=oc#vKBFnufYyjdDPWNT";
     function isOutdoorTile(ch) { return ch === "," || ch === "~"; }
+    function surfaceOf(ch) {
+      if (ch === "," || ch === "~" || ch === " ") return 0;   /* ground */
+      if (ARCH.indexOf(ch) >= 0) return 1;                    /* made */
+      return -1;                                              /* could be either */
+    }
+    function madeSurface(x, y) {
+      var v = surfaceOf(at(x, y));
+      if (v >= 0) return v === 1;
+      var made = 0, open = 0;
+      for (var j = -1; j <= 1; j++) for (var i = -1; i <= 1; i++) {
+        if (!i && !j) continue;
+        var n = surfaceOf(at(x + i, y + j));
+        if (n === 1) made++; else if (n === 0) open++;
+      }
+      return made > open;
+    }
 
     /* Outdoors the comma is the carriageway and the full stop is the
        footway, and there is a kerb between them. That single 10 cm step
        is what turns a flat grey grid into a street. */
     var kerbRise = world.outdoor ? 0.11 : 0;
     world.kerb = kerbRise;
+    world.made = madeSurface;
     for (var yy = 0; yy < H; yy++) {
       for (var xx = 0; xx < W; xx++) {
         var ch = at(xx, yy);
         if (ch === " ") continue;
         var t = hash2(xx, yy);
         var yTop = -0.15;
-        if (isOutdoorTile(ch)) {
-          B.ground.add(cx(xx), yTop - t * 0.02, cz(yy), 1, 1, 1, 0, shade(0xffffff, 0.86 + t * 0.24));
+        if (!madeSurface(xx, yy)) {
+          B.ground.add(cx(xx), yTop - t * 0.02, cz(yy), 1, 1, 1, 0, shade(0xffffff, 0.94 + t * 0.12));
         } else {
           B.floor.add(cx(xx), yTop + kerbRise - t * 0.015, cz(yy), 1, 1, 1,
-                      (Math.floor(t * 4) % 2) * Math.PI / 2, shade(0xffffff, 0.84 + t * 0.28));
+                      (Math.floor(t * 4) % 2) * Math.PI / 2, shade(0xffffff, 0.92 + t * 0.16));
           /* the kerb face, wherever a footway meets a road */
           if (kerbRise > 0) {
-            var nbk = [[1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2], [0, 1, 0], [0, -1, Math.PI]];
+            var nbk = [[1, 0, Math.PI / 2], [-1, 0, -Math.PI / 2], [0, 1, 0], [0, -1, Math.PI]];
             for (var kk = 0; kk < 4; kk++) {
-              if (at(xx + nbk[kk][0], yy + nbk[kk][1]) !== ",") continue;
+              if (madeSurface(xx + nbk[kk][0], yy + nbk[kk][1])) continue;
+              if (at(xx + nbk[kk][0], yy + nbk[kk][1]) === " ") continue;
               B.kerb.add(cx(xx) + nbk[kk][0] * TILE * 0.5,
                          yTop + kerbRise * 0.5,
                          cz(yy) + nbk[kk][1] * TILE * 0.5,
@@ -2469,7 +2494,7 @@
                 shade(0xffffff, (outdoorLevel ? 0.88 : 1.22) + t * 0.2));
 
       if (outdoorLevel) {
-        var edge = false, nb = [[1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2], [0, 1, 0], [0, -1, Math.PI]];
+        var edge = false, nb = [[1, 0, Math.PI / 2], [-1, 0, -Math.PI / 2], [0, 1, 0], [0, -1, Math.PI]];
         for (var e = 0; e < 4; e++) {
           var ec = at(x + nb[e][0], y + nb[e][1]);
           if (ec !== "#" && ec !== "v" && ec !== " ") edge = true;
@@ -2551,6 +2576,25 @@
           p.position.add(new THREE.Vector3(d[0] * 0.05, 0, d[1] * 0.05));
         });
       }
+    }
+
+    /* Which way should a thing standing against a wall face? Whichever
+       side of it has the most room, measured three tiles out — not
+       whichever open direction the loop happened to finish on, which is
+       how the television ended up facing the wall behind it. */
+    var FACES = [[0, 1, 0], [0, -1, Math.PI], [1, 0, Math.PI / 2], [-1, 0, -Math.PI / 2]];
+    function faceOpen(x, y) {
+      var best = 0, bestN = -1;
+      for (var i = 0; i < 4; i++) {
+        var d = FACES[i], n = 0;
+        for (var k = 1; k <= 3; k++) {
+          var c = at(x + d[0] * k, y + d[1] * k);
+          if (c === " " || isSolidChar(c)) break;
+          n++;
+        }
+        if (n > bestN) { bestN = n; best = d[2]; }
+      }
+      return best;
     }
 
     /* ---------- props ---------- */
@@ -2807,6 +2851,7 @@
       G.add(g);
       return g;
     }
+    world.makeBed = bed;
 
     function sofa(x, y) {
       var g = new THREE.Group();
@@ -2862,12 +2907,7 @@
     function openWardrobe(x, y) {
       var g = new THREE.Group();
       g.position.set(cx(x), 0, cz(y));
-      /* face the opening at whichever side of it is a room */
-      var face = 0;
-      [[0, 1, 0], [0, -1, Math.PI], [1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2]].forEach(function (d) {
-        if (!isSolidChar(at(x + d[0], y + d[1]))) face = d[2];
-      });
-      g.rotation.y = face;
+      g.rotation.y = faceOpen(x, y);      /* the opening looks into the room */
       var carc = surface("boards", { repeat: 1, tint: 0xb59470 });
       var back = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.9, 2.35, 0.1), carc);
       back.position.set(0, 1.02, -TILE * 0.4); back.castShadow = true; g.add(back);
@@ -3006,10 +3046,7 @@
       var g = new THREE.Group();
       g.position.set(cx(x), 0, cz(y));
       /* face it into the room */
-      var openDir = 0;
-      [[0, 1, 0], [0, -1, Math.PI], [1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2]].forEach(function (d) {
-        if (!isSolidChar(at(x + d[0], y + d[1]))) openDir = d[2];
-      });
+      var openDir = faceOpen(x, y);
       g.rotation.y = openDir;
 
       var shell = new THREE.Mesh(new THREE.BoxGeometry(1.35, 1.0, 0.72),
@@ -3041,11 +3078,7 @@
     function wirePanel(x, y) {
       var g = new THREE.Group();
       g.position.set(cx(x), 0, cz(y));
-      var face = 0;
-      [[0, 1, 0], [0, -1, Math.PI], [1, 0, -Math.PI / 2], [-1, 0, Math.PI / 2]].forEach(function (d) {
-        if (!isSolidChar(at(x + d[0], y + d[1]))) face = d[2];
-      });
-      g.rotation.y = face;
+      g.rotation.y = faceOpen(x, y);
       var box = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.5, 0.42),
         surface("metal", { repeat: 1, rough: 0.5, metal: 0.6, tint: 0x8a8f96 }));
       box.position.y = 1.45; box.castShadow = true; g.add(box);
@@ -3164,8 +3197,9 @@
       bed.position.set(cx(x), -0.04, cz(y));
       G.add(bed);
       var m = new THREE.MeshStandardMaterial({
-        color: 0x24485c, roughness: 0.04, metalness: 0.5,
-        transparent: true, opacity: 0.86
+        color: 0x2c5e78, roughness: 0.16, metalness: 0.12,
+        emissive: new THREE.Color(0x14384c), emissiveIntensity: 1.0,
+        transparent: true, opacity: 0.9
       });
       var p = new THREE.Mesh(new THREE.PlaneGeometry(TILE, TILE, 4, 4), m);
       p.rotation.x = -Math.PI / 2;
@@ -3738,9 +3772,8 @@
   /* the footway is a hand's width above the road; anything standing on it
      has to come up with it or it walks around shin-deep in concrete */
   function groundAt(w, wx, wz) {
-    if (!w.kerb) return 0;
-    var c = w.at(Math.floor(wx / TILE), Math.floor(wz / TILE));
-    return (c === "," || c === "~" || c === " ") ? 0 : w.kerb;
+    if (!w.kerb || !w.made) return 0;
+    return w.made(Math.floor(wx / TILE), Math.floor(wz / TILE)) ? w.kerb : 0;
   }
 
   /* a line between two points, in tiles, stopped by anything opaque */
@@ -3872,13 +3905,17 @@
     if (world.anwarAt) {
       var ar = makeAnwar();
       built.scene.add(ar.root);
-      ar.root.position.set(world.cx(world.anwarAt.x), 0, world.cz(world.anwarAt.y));
-      ar.root.rotation.y = Math.PI / 2;
-      anwar = { rig: ar, x: world.cx(world.anwarAt.x), z: world.cz(world.anwarAt.y),
-                found: false, following: false, asleep: true };
-      /* asleep: lying down until she wakes him */
-      ar.root.rotation.z = -Math.PI / 2;
-      ar.root.position.y = 0.62;
+      var ax = world.cx(world.anwarAt.x), az = world.cz(world.anwarAt.y);
+      /* "He is on his side with one arm out of the blanket" — so there has
+         to be a bed under him, and the far bay of Ward C does not have one
+         in the grid. Lay one down and put him on it. */
+      if (world.makeBed) world.makeBed(world.anwarAt.x, world.anwarAt.y);
+      ar.root.position.set(ax, 0.86, az);
+      ar.root.rotation.set(-Math.PI / 2, 0, 0);   /* on his side, along -z */
+      ar.contact.visible = false;
+      poseHuman(ar, 0, 0, null, { crouch: 0.25 });
+      anwar = { rig: ar, x: ax, z: az, found: false, following: false, asleep: true,
+                bedAt: { x: world.anwarAt.x, y: world.anwarAt.y } };
     }
 
     /* --- the horse --- */
@@ -3931,7 +3968,11 @@
       hazeAmt: def.haze[3],
       vig: def.dark > 0.55 ? 0.68 : 0.52,
       grain: def.dark > 0.55 ? 0.034 : 0.024,
-      sat: 1.06, exposure: 1.05, fringe: 0.0015
+      sat: 1.06, exposure: 1.05, fringe: 0.0015,
+      /* attach() builds a fresh grade pass whose fade defaults to open, so
+         without this the first frame of a new level flashes at full
+         brightness before the fade-in starts */
+      fade: G.fade, redPulse: 0, flash: 0
     });
 
     Audio_.bed(def.theme);
@@ -5240,14 +5281,24 @@
     if (!a || a.found) return;
     a.found = true;
     G.state = "dialogue";
-    /* he sits up: the rig comes off its side over three quarters of a second */
-    var t0 = 0;
+    /* he gets up: off his side, off the bed, onto his feet beside it */
+    var spot = a.bedAt ? nearestFree(G.world, a.bedAt.x, a.bedAt.y + 1) : null;
+    var toX = spot ? G.world.cx(spot.x) : a.x;
+    var toZ = spot ? G.world.cz(spot.y) : a.z;
+    var fromX = a.x, fromZ = a.z, t0 = 0;
     G.anim = function (dt) {
       t0 += dt;
-      var k = clamp(t0 / 0.8, 0, 1);
-      a.rig.root.rotation.z = -Math.PI / 2 * (1 - k);
-      a.rig.root.position.y = 0.62 * (1 - k);
-      if (k >= 1) G.anim = null;
+      var k = clamp(t0 / 1.4, 0, 1);
+      var e = k * k * (3 - 2 * k);
+      a.rig.root.rotation.x = -Math.PI / 2 * (1 - e);
+      a.x = lerp(fromX, toX, e);
+      a.z = lerp(fromZ, toZ, e);
+      a.rig.root.position.set(a.x, 0.86 * (1 - e), a.z);
+      poseHuman(a.rig, G.time, 0, null, { crouch: 0.6 * (1 - e) });
+      if (k >= 1) {
+        a.rig.contact.visible = true;
+        G.anim = null;
+      }
     };
     say(TALK.wake, function () {
       a.following = true;
@@ -6461,8 +6512,8 @@
       var c = ensureCone(z);
       var chase = z.state === "chase" || z.state === "react";
       c.material.color.setHex(chase ? 0xff5a4a : z.state === "look" ? 0xffc060 : 0xa8c0e0);
-      c.material.opacity = (chase ? 0.14 : z.state === "look" ? 0.10 : 0.055)
-                         * (1 - clamp(Math.hypot(z.x - G.player.x, z.z - G.player.z) / 32, 0, 1));
+      c.material.opacity = (chase ? 0.22 : z.state === "look" ? 0.16 : 0.10)
+                         * (1 - clamp(Math.hypot(z.x - G.player.x, z.z - G.player.z) / 34, 0, 1) * 0.7);
       c.visible = z.rig.root.visible;
     }
   }
@@ -6475,7 +6526,13 @@
      ========================================================= */
   function updateAnwar(dt) {
     var a = G.anwar;
-    if (!a || !a.following) return;
+    if (!a) return;
+    if (!a.following) {
+      /* he is still breathing when he is not walking, and if he is asleep
+         the wake animation owns him */
+      if (!a.asleep && !G.anim) poseHuman(a.rig, G.time + 0.8, 0, null, {});
+      return;
+    }
     var p = G.player;
     var dx = p.x - a.x, dz = p.z - a.z;
     var d = Math.hypot(dx, dz);

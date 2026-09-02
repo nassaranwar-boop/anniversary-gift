@@ -20,7 +20,7 @@ async function run(label, viewport, touch) {
   await p.goto('http://localhost:8899/index.html', { waitUntil: 'domcontentloaded' });
   await p.evaluate(() => { try { localStorage.clear(); } catch (e) {} showScreen('hub'); startHub(); });
   await p.waitForTimeout(200);
-  await p.click('#hub-card-apoc');
+  await p.evaluate(() => document.getElementById('hub-card-apoc').click());
   await p.waitForSelector('.ap-card-go', { timeout: 40000 });
   await p.evaluate(() => document.querySelector('.ap-card-go').click());   // BEGIN
   await p.waitForTimeout(200);
@@ -28,10 +28,18 @@ async function run(label, viewport, touch) {
   await p.waitForTimeout(200);
   await p.evaluate(() => document.querySelector('.ap-card-go').click());   // GO -> play
   await p.waitForTimeout(1200);
+  /* SwiftShader paints about one frame a second in here, so anything
+     measured against the wall clock measures the container rather than the
+     game. Drop the render scale, hold every input for seconds rather than
+     milliseconds, and measure against the game's own clock: how far did she
+     get per second of game time. */
+  await p.evaluate(() => window.__apQuality(2));
+  await p.waitForTimeout(800);
 
   const where = () => p.evaluate(() => {
     const s = window.__apState();
-    return { x: s.player.x, z: s.player.z, state: s.state };
+    return { x: s.player.x, z: s.player.z, state: s.state,
+             t: window.Apocalypse.game.time };
   });
 
   // put her somewhere with room, and let the real loop run
@@ -41,7 +49,7 @@ async function run(label, viewport, touch) {
 
   if (!touch) {
     await p.keyboard.down('ArrowRight');
-    await p.waitForTimeout(900);
+    await p.waitForTimeout(6000);
     await p.keyboard.up('ArrowRight');
   } else {
     const btn = await p.$('.ap-key-right');
@@ -53,27 +61,29 @@ async function run(label, viewport, touch) {
         const el = document.querySelector('.ap-key-right');
         el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true }));
       });
-      await p.waitForTimeout(900);
+      await p.waitForTimeout(6000);
       await p.evaluate(() => {
         const el = document.querySelector('.ap-key-right');
         el.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true }));
       });
     } else ok(label + ': the pad is on the page', false);
   }
-  await p.waitForTimeout(200);
+  await p.waitForTimeout(1200);
   const c = await where();
-  ok(label + ': she moves when a person asks her to', c.x - a.x > 2, { from: a.x, to: c.x });
+  const gdt = c.t - a.t, gdx = c.x - a.x, speed = gdt > 0 ? gdx / gdt : 0;
+  ok(label + ': she moves when a person asks her to, at a walk',
+     gdt > 0.05 && speed > 3.5 && speed < 8.5, { gdx, gdt, speed });
 
   // she stops when the input stops
-  await p.waitForTimeout(500);
+  await p.waitForTimeout(2500);
   const d = await where();
-  ok(label + ': and stops when they let go', Math.abs(d.x - c.x) < 0.6, { c: c.x, d: d.x });
+  ok(label + ': and stops when they let go', Math.abs(d.x - c.x) < 0.8, { c: c.x, d: d.x });
 
-  // the loop is really running: the clock moves on its own
+  // the loop is really turning over on its own
   const t1 = await p.evaluate(() => window.Apocalypse.game.time);
-  await p.waitForTimeout(500);
+  await p.waitForTimeout(4000);
   const t2 = await p.evaluate(() => window.Apocalypse.game.time);
-  ok(label + ': the render loop is running', t2 - t1 > 0.2, { t1, t2 });
+  ok(label + ': the render loop is turning over on its own', t2 - t1 > 0.02, { t1, t2 });
 
   if (!touch) {
     await p.keyboard.press('Escape');
@@ -84,7 +94,7 @@ async function run(label, viewport, touch) {
     await p.waitForTimeout(250);
     ok(label + ': and lets go again', (await p.evaluate(() => window.__apState().state)) === 'play');
   } else {
-    await p.click('#ap-pause-btn');
+    await p.evaluate(() => document.getElementById('ap-pause-btn').click());
     await p.waitForTimeout(250);
     ok(label + ': the pause button pauses',
        (await p.evaluate(() => window.__apState().state)) === 'paused');
@@ -105,7 +115,7 @@ async function run(label, viewport, touch) {
      hands out one WebGL context */
   await p.evaluate(() => { showScreen('hub'); startHub(); });
   await p.waitForTimeout(200);
-  await p.click('#hub-card-apoc');
+  await p.evaluate(() => document.getElementById('hub-card-apoc').click());
   await p.waitForSelector('.ap-card-go', { timeout: 20000 }).catch(() => {});
   await p.evaluate(() => document.querySelector('.ap-card-go').click());
   await p.waitForTimeout(200);
@@ -113,7 +123,13 @@ async function run(label, viewport, touch) {
   await p.waitForTimeout(200);
   await p.evaluate(() => document.querySelector('.ap-card-go').click());
   await p.waitForTimeout(1400);
+  /* the drawing buffer is not preserved, so the read has to happen in the
+     same turn as the paint that filled it */
   const again = await p.evaluate(() => {
+    window.__apLoop(false);
+    window.__apQuality(2);
+    for (let i = 0; i < 20; i++) window.__apPump(1 / 60);
+    window.__apPaint();
     const cv = document.getElementById('ap-canvas');
     const gl = cv.getContext('webgl2') || cv.getContext('webgl');
     if (!gl || gl.isContextLost()) return { painted: -1 };
