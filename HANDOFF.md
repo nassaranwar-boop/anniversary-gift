@@ -233,11 +233,29 @@ What that turned into:
 - **Facades, not walls.** Plinth, string courses, reveals, sills, lintels,
   mullioned frames, shopfronts, cornices, boarded and burnt-out windows,
   and roofs with stair heads, tanks and aerials on them — all instanced.
-- **One figure builder.** Everything on two legs comes out of `buildHuman`
-  off a spec. Watch the axes: the figure faces +x, so front-to-back is x
-  and shoulder-to-shoulder is z. Squashing the torso on z (which is what
-  it did at first) makes everybody narrow across the shoulders and deep
-  through the chest, and leaves the arms hanging in space outside the body.
+- **Everybody is a skinned mesh.** `buildHuman` makes a twenty-two bone
+  skeleton, one continuous body surface, and garments as separate skinned
+  shells, all out of `skinnedTube` — a stack of rings each carrying up to
+  three bone weights. Attachments (vests, guns, bags, hair, shoes) are
+  plain meshes parented to a bone. Watch the axes: the figure faces +x, so
+  front-to-back is x and shoulder-to-shoulder is z.
+
+  Three traps in that, all of which cost an hour:
+  - **A `Skeleton` computes its inverse bind matrices in its constructor,
+    from the bones' world matrices at that instant.** Build it before the
+    bones are in a scene graph and before anything has called
+    `updateMatrixWorld`, and every one of them is identity — so each vertex
+    gets a bone's whole world transform instead of the difference from
+    rest, and the model explodes. Attach, `updateMatrixWorld(true)`, *then*
+    `new THREE.Skeleton(...)`, then `mesh.bind(skeleton, mesh.matrixWorld)`.
+  - **A ring stack authored top-down is the mirror of one authored
+    bottom-up**, so half the tubes came out inside out and were culled to
+    nothing. `skinnedTube` now checks the stack direction against its own
+    frame and flips the winding when they disagree.
+  - **A garment is a bag.** Left open at the collar or the hips it is a
+    hole you can see the body through, and the body underneath has to be
+    narrower than the cloth over it at every height or it comes through at
+    the hip.
 - **`__apPortrait(who, seed)`** puts one figure on a lit turntable. There
   is no way to judge a character model from a torch-lit shot of the back of
   its head at twenty metres. **`__apRenderStats()`** returns the draw calls

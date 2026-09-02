@@ -2054,7 +2054,10 @@
       canvas.style.imageRendering = "auto";
 
       Stage.camera = new THREE.PerspectiveCamera(46, 16 / 9, 0.4, 400);
-      Stage.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      /* A game rendered at 1.35x a 1440-wide stage is already past the
+         point where anybody can see the difference; rendering it at 2x
+         costs twice the pixels for nothing. */
+      Stage.dpr = Math.min(window.devicePixelRatio || 1, 1.35);
       /* A phone is a small screen with a big pixel ratio and a thermal
          budget, so it starts one rung down and climbs nothing. The
          watchdog can still take it lower. */
@@ -2082,7 +2085,9 @@
          does nothing once you are drawing through a composer — and it is
          half-float, which is what removes the banding that film grain used
          to be covering up. */
-      var samples = Stage.quality === 0 ? Stage.maxSamples : Stage.quality === 1 ? 4 : 0;
+      /* 4x is where multisampling stops being visible on a moving image;
+         8x is bandwidth spent on nothing. */
+      var samples = Stage.quality === 0 ? Math.min(4, Stage.maxSamples) : 0;
       var target = new THREE.WebGLRenderTarget(Stage.w, Stage.h, {
         type: THREE.HalfFloatType,
         colorSpace: THREE.LinearSRGBColorSpace,
@@ -2096,8 +2101,12 @@
       comp.setSize(Stage.w, Stage.h);
       comp.addPass(new RP(scene, camera));
 
-      if (UB && Stage.quality > 0) {
-        var b = new UB(new THREE.Vector2(Stage.w, Stage.h), 0.34, 0.70, 0.88);
+      /* Bloom is a mip chain of blurs — five render targets and ten passes.
+         It runs at half resolution, which is invisible on a glow and half
+         the cost, and it comes off entirely at the bottom quality rung. */
+      if (UB && Stage.quality < 2) {
+        var b = new UB(new THREE.Vector2(Math.round(Stage.w / 2), Math.round(Stage.h / 2)),
+                       0.34, 0.70, 0.88);
         comp.addPass(b);
         Stage.bloom = b;
       } else Stage.bloom = null;
@@ -2132,6 +2141,10 @@
       Stage.composer = comp;
     },
 
+    resizeBloom: function () {
+      if (Stage.bloom) Stage.bloom.setSize(Math.round(Stage.w / 2), Math.round(Stage.h / 2));
+    },
+
     resize: function (force) {
       var canvas = Stage.renderer && Stage.renderer.domElement;
       if (!canvas) return;
@@ -2149,7 +2162,7 @@
       Stage.camera.aspect = cw / ch;
       Stage.camera.updateProjectionMatrix();
       if (Stage.composer) Stage.composer.setSize(w, h);
-      if (Stage.bloom) Stage.bloom.setSize(w, h);
+      Stage.resizeBloom();
     },
 
     grade: function (o) {
@@ -2279,20 +2292,36 @@
      needed here is concatenating a few boxes that share a material */
   function mergeGeoms(list) {
     var pos = [], norm = [], uv = [], idx = [], off = 0;
+    /* a face is one mesh whose eyes, irises and brows are vertex colours,
+       so the merge has to carry colour when any part of it has one */
+    var wantColour = false;
+    list.forEach(function (g) { if (g.attributes.color) wantColour = true; });
+    var col = wantColour ? [] : null;
     list.forEach(function (g) {
       var gp = g.attributes.position.array, gn = g.attributes.normal.array,
-          gu = g.attributes.uv.array, gi = g.index ? g.index.array : null;
+          gu = g.attributes.uv ? g.attributes.uv.array : null,
+          gi = g.index ? g.index.array : null;
+      var n = gp.length / 3;
       for (var i = 0; i < gp.length; i++) pos.push(gp[i]);
       for (var j = 0; j < gn.length; j++) norm.push(gn[j]);
-      for (var k = 0; k < gu.length; k++) uv.push(gu[k]);
+      if (gu) { for (var k = 0; k < gu.length; k++) uv.push(gu[k]); }
+      else { for (var k2 = 0; k2 < n * 2; k2++) uv.push(0); }
+      if (col) {
+        var gc = g.attributes.color;
+        for (var c = 0; c < n; c++) {
+          if (gc) col.push(gc.getX(c), gc.getY(c), gc.getZ(c));
+          else col.push(1, 1, 1);
+        }
+      }
       if (gi) for (var m = 0; m < gi.length; m++) idx.push(gi[m] + off);
-      off += gp.length / 3;
+      off += n;
       g.dispose();
     });
     var out = new THREE.BufferGeometry();
     out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
     out.setAttribute("normal", new THREE.Float32BufferAttribute(norm, 3));
     out.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    if (col) out.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
     if (idx.length) out.setIndex(idx);
     return out;
   }
@@ -2374,631 +2403,946 @@
     return grp;
   }
 
+  /* =========================================================
+     THE CAST
+     Everything on two legs in this game is a skinned mesh on a
+     real skeleton. It used to be about twenty-five separate
+     primitives parented to each other, which is why it read as
+     a shop mannequin: every joint was a visible cut, nothing
+     deformed, and the whole thing cost twenty-five draw calls.
+
+     Now there is one continuous body surface, garments as their
+     own shells over it, and bones underneath. An elbow bends
+     instead of hinging, a shoulder is a shoulder rather than a
+     ball sitting on a tube, and a figure costs seven calls.
+     ========================================================= */
+
+  /* ---- materials ---- */
   function skinMat(hex, rough) {
     return new THREE.MeshStandardMaterial({
-      color: hex, roughness: rough == null ? 0.62 : rough, metalness: 0.0,
-      map: tex("skin", 256, 1), bumpMap: bump("skin", 256, 1), bumpScale: 0.03,
-      envMapIntensity: 0.5
+      color: hex, roughness: rough == null ? 0.66 : rough, metalness: 0.0,
+      map: tex("skin", 256, 1), bumpMap: bump("skin", 256, 1), bumpScale: 0.02,
+      envMapIntensity: 0.55
     });
   }
   function clothMat(hex, rough, weave) {
     var name = weave || "cloth";
     return new THREE.MeshStandardMaterial({
-      color: hex, roughness: rough == null ? 0.88 : rough, metalness: 0.0,
-      map: tex(name, 256, 2), bumpMap: bump(name, 256, 2), bumpScale: 0.09,
+      color: hex, roughness: rough == null ? 0.90 : rough, metalness: 0.0,
+      map: tex(name, 256, 2), bumpMap: bump(name, 256, 2), bumpScale: 0.10,
       roughnessMap: roughTex("clothR", 256, 2),
       envMapIntensity: 0.35
     });
   }
   function leatherMat(hex) {
     return new THREE.MeshStandardMaterial({
-      color: hex, roughness: 0.44, metalness: 0.05,
+      color: hex, roughness: 0.46, metalness: 0.05,
       map: tex("cloth", 256, 3), bumpMap: bump("cloth", 256, 3), bumpScale: 0.05,
       envMapIntensity: 1.0
     });
   }
   function rotMat(hex) {
     return new THREE.MeshStandardMaterial({
-      color: hex, roughness: 0.78, metalness: 0.0,
-      map: tex("rot", 256, 1), bumpMap: bump("rot", 256, 1), bumpScale: 0.10,
+      color: hex, roughness: 0.80, metalness: 0.0,
+      map: tex("rot", 256, 1), bumpMap: bump("rot", 256, 1), bumpScale: 0.09,
       envMapIntensity: 0.4
     });
   }
   function hairMat(hex, rough) {
     return new THREE.MeshStandardMaterial({
-      color: hex, roughness: rough == null ? 0.42 : rough, metalness: 0.0,
-      map: tex("hair", 256, 1), bumpMap: bump("hair", 256, 1), bumpScale: 0.06,
+      color: hex, roughness: rough == null ? 0.44 : rough, metalness: 0.0,
+      map: tex("hair", 256, 1), bumpMap: bump("hair", 256, 1), bumpScale: 0.05,
       envMapIntensity: 0.9
     });
   }
 
-  /* =========================================================
-     THE FIGURE
-     One builder, driven by a spec, and everything in the game
-     that walks on two legs comes out of it: her, him, the ones
-     that used to be people, and the two at the gate. The joints
-     are the same set every time, so one pose function drives
-     all of them.
-     ========================================================= */
+  /* ---- the skeleton ----
+     Twenty bones. The two extra ones — a clavicle either side and a hip
+     pivot either leg — exist so that swinging a limb and splaying it are
+     separate rotations rather than fighting over the same joint. */
+  var BONES = [
+    ["root",   null,     0,      0,      0],
+    ["hips",   "root",   0,      0.880,  0],
+    ["spine",  "hips",   0,      0.130,  0],
+    ["chest",  "spine",  0,      0.170,  0],
+    ["neck",   "chest",  0,      0.250,  0],
+    ["head",   "neck",   0,      0.100,  0],
+    ["clavL",  "chest",  0,      0.150,  0.055],
+    ["armL",   "clavL",  0,      0,      0.125],
+    ["foreL",  "armL",   0,     -0.290,  0],
+    ["handL",  "foreL",  0,     -0.270,  0],
+    ["clavR",  "chest",  0,      0.150, -0.055],
+    ["armR",   "clavR",  0,      0,     -0.125],
+    ["foreR",  "armR",   0,     -0.290,  0],
+    ["handR",  "foreR",  0,     -0.270,  0],
+    ["hipL",   "hips",   0,     -0.020,  0.095],
+    ["thighL", "hipL",   0,      0,      0],
+    ["shinL",  "thighL", 0,     -0.420,  0],
+    ["footL",  "shinL",  0,     -0.380,  0],
+    ["hipR",   "hips",   0,     -0.020, -0.095],
+    ["thighR", "hipR",   0,      0,      0],
+    ["shinR",  "thighR", 0,     -0.420,  0],
+    ["footR",  "shinR",  0,     -0.380,  0]
+  ];
+  var BONE_INDEX = (function () {
+    var m = {};
+    for (var i = 0; i < BONES.length; i++) m[BONES[i][0]] = i;
+    return m;
+  })();
+
+  function makeSkeleton(S, legLen, armLen) {
+    var list = [], byName = {};
+    for (var i = 0; i < BONES.length; i++) {
+      var d = BONES[i];
+      var b = new THREE.Bone();
+      b.name = d[0];
+      var y = d[3], z = d[4];
+      /* long-limbed or short-limbed people are a bone length, not a scale */
+      if (d[0] === "shinL" || d[0] === "shinR" || d[0] === "footL" || d[0] === "footR") y *= legLen;
+      if (d[0] === "foreL" || d[0] === "foreR" || d[0] === "handL" || d[0] === "handR") y *= armLen;
+      b.position.set(d[2] * S, y * S, z * S);
+      list.push(b); byName[d[0]] = b;
+      if (d[1]) byName[d[1]].add(b);
+    }
+    /* the skeleton itself is built later, once these are in a scene graph
+       and their world matrices mean something */
+    return { list: list, byName: byName, root: list[0] };
+  }
+
+  /* where the joints actually end up, so the geometry can be authored to
+     land on them rather than near them */
+  function jointHeights(B) {
+    var chest = 0.880 + 0.130 + 0.170;
+    var elbow = chest + 0.150 - 0.290 * B.armLen;
+    return {
+      chest: chest,
+      shoulder: chest + 0.150,
+      elbow: elbow,
+      wrist: elbow - 0.270 * B.armLen,
+      knee: 0.860 - 0.420 * B.legLen,
+      ankle: 0.860 - 0.800 * B.legLen
+    };
+  }
+
+  /* ---- a swept, skinned tube ----
+     Every limb, every torso and every garment in the game is a stack of
+     rings with bone weights on them. One builder, so an arm and a sleeve
+     are the same kind of object and deform together. */
+  function skinnedTube(rings, radial, capStart, capEnd) {
+    var pos = [], uv = [], si = [], sw = [], idx = [];
+    var n = rings.length, ringVerts = radial + 1;
+
+    for (var r = 0; r < n; r++) {
+      var ring = rings[r];
+      var c = ring.c;
+      var ux = ring.u ? ring.u[0] : 1, uy = ring.u ? ring.u[1] : 0, uz = ring.u ? ring.u[2] : 0;
+      var vx = ring.v ? ring.v[0] : 0, vy = ring.v ? ring.v[1] : 0, vz = ring.v ? ring.v[2] : 1;
+      var w = ring.w;
+      for (var j = 0; j <= radial; j++) {
+        var a = j / radial * 6.2831853;
+        var ca = Math.cos(a) * ring.ru, sa = Math.sin(a) * ring.rv;
+        pos.push(c[0] + ux * ca + vx * sa,
+                 c[1] + uy * ca + vy * sa,
+                 c[2] + uz * ca + vz * sa);
+        uv.push(j / radial, r / (n - 1));
+        si.push(w[0] ? w[0][0] : 0, w[1] ? w[1][0] : 0, w[2] ? w[2][0] : 0, 0);
+        sw.push(w[0] ? w[0][1] : 1, w[1] ? w[1][1] : 0, w[2] ? w[2][1] : 0, 0);
+      }
+    }
+    /* Which way round a tube's triangles wind depends on whether its rings
+       run along its frame or against it. A stack authored top-down is the
+       mirror of one authored bottom-up, and gets built inside out — every
+       face pointing into the model, every one of them culled. */
+    var r0 = rings[0].c, rN = rings[n - 1].c;
+    var dir = [rN[0] - r0[0], rN[1] - r0[1], rN[2] - r0[2]];
+    var u0 = rings[0].u || [1, 0, 0], v0 = rings[0].v || [0, 0, 1];
+    var cr = [u0[1] * v0[2] - u0[2] * v0[1],
+              u0[2] * v0[0] - u0[0] * v0[2],
+              u0[0] * v0[1] - u0[1] * v0[0]];
+    var flipWind = (dir[0] * cr[0] + dir[1] * cr[1] + dir[2] * cr[2]) > 0;
+
+    for (var r2 = 0; r2 < n - 1; r2++) {
+      for (var j2 = 0; j2 < radial; j2++) {
+        var a2 = r2 * ringVerts + j2, b2 = a2 + ringVerts;
+        if (flipWind) idx.push(a2, a2 + 1, b2, b2, a2 + 1, b2 + 1);
+        else idx.push(a2, b2, a2 + 1, b2, b2 + 1, a2 + 1);
+      }
+    }
+    /* caps, as a fan to a centre vertex that carries the ring's weights */
+    function cap(ringIdx, flip) {
+      var ring = rings[ringIdx];
+      var base = pos.length / 3;
+      pos.push(ring.c[0], ring.c[1], ring.c[2]);
+      uv.push(0.5, 0.5);
+      var w2 = ring.w;
+      si.push(w2[0] ? w2[0][0] : 0, w2[1] ? w2[1][0] : 0, w2[2] ? w2[2][0] : 0, 0);
+      sw.push(w2[0] ? w2[0][1] : 1, w2[1] ? w2[1][1] : 0, w2[2] ? w2[2][1] : 0, 0);
+      var off = ringIdx * ringVerts;
+      var f2 = flipWind ? !flip : flip;
+      for (var j3 = 0; j3 < radial; j3++) {
+        if (f2) idx.push(base, off + j3, off + j3 + 1);
+        else idx.push(base, off + j3 + 1, off + j3);
+      }
+    }
+    if (capStart) cap(0, true);
+    if (capEnd) cap(n - 1, false);
+
+    var g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    g.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(si, 4));
+    g.setAttribute("skinWeight", new THREE.Float32BufferAttribute(sw, 4));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    /* the seam column is the same ring of points twice over; without this
+       there is a visible crease straight up the model */
+    var nor = g.attributes.normal;
+    for (var r3 = 0; r3 < n; r3++) {
+      var i0 = r3 * ringVerts, i1 = i0 + radial;
+      var nx = (nor.getX(i0) + nor.getX(i1)) * 0.5;
+      var ny = (nor.getY(i0) + nor.getY(i1)) * 0.5;
+      var nz = (nor.getZ(i0) + nor.getZ(i1)) * 0.5;
+      var l = Math.hypot(nx, ny, nz) || 1;
+      nor.setXYZ(i0, nx / l, ny / l, nz / l);
+      nor.setXYZ(i1, nx / l, ny / l, nz / l);
+    }
+    nor.needsUpdate = true;
+    return g;
+  }
+
+  /* give an ordinary geometry the weights to ride one bone */
+  function rigidSkin(g, boneIdx) {
+    var count = g.attributes.position.count;
+    var si = new Uint16Array(count * 4), sw = new Float32Array(count * 4);
+    for (var i = 0; i < count; i++) { si[i * 4] = boneIdx; sw[i * 4] = 1; }
+    g.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(si, 4));
+    g.setAttribute("skinWeight", new THREE.Float32BufferAttribute(sw, 4));
+    if (!g.attributes.uv) {
+      var uv = new Float32Array(count * 2);
+      g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    }
+    return g;
+  }
+
+  /* merge geometries that carry skin weights */
+  function mergeSkinned(list) {
+    var pos = [], nor = [], uv = [], si = [], sw = [], col = null, idx = [], off = 0;
+    var wantColour = list.some(function (g) { return !!g.attributes.color; });
+    if (wantColour) col = [];
+    list.forEach(function (g) {
+      var gp = g.attributes.position.array, gn = g.attributes.normal.array,
+          gu = g.attributes.uv.array, gs = g.attributes.skinIndex.array,
+          gw = g.attributes.skinWeight.array, gi = g.index ? g.index.array : null;
+      for (var i = 0; i < gp.length; i++) pos.push(gp[i]);
+      for (var j = 0; j < gn.length; j++) nor.push(gn[j]);
+      for (var k = 0; k < gu.length; k++) uv.push(gu[k]);
+      for (var m = 0; m < gs.length; m++) si.push(gs[m]);
+      for (var q = 0; q < gw.length; q++) sw.push(gw[q]);
+      if (col) {
+        var gc = g.attributes.color;
+        for (var c = 0; c < gp.length / 3; c++) {
+          if (gc) col.push(gc.getX(c), gc.getY(c), gc.getZ(c));
+          else col.push(1, 1, 1);
+        }
+      }
+      if (gi) for (var t = 0; t < gi.length; t++) idx.push(gi[t] + off);
+      off += gp.length / 3;
+      g.dispose();
+    });
+    var out = new THREE.BufferGeometry();
+    out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    out.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
+    out.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    out.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(si, 4));
+    out.setAttribute("skinWeight", new THREE.Float32BufferAttribute(sw, 4));
+    if (col) out.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+    if (idx.length) out.setIndex(idx);
+    return out;
+  }
+
+  function colourGeom(g, hex) {
+    var c = new THREE.Color(hex), n = g.attributes.position.count;
+    var arr = new Float32Array(n * 3);
+    for (var i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+    g.setAttribute("color", new THREE.Float32BufferAttribute(arr, 3));
+    return g;
+  }
+
+  /* ---- the shape of a person ----
+     Widths in figure units, where the figure is about 1.72 tall. `build`
+     scales the parts of it that differ between people rather than scaling
+     the whole silhouette, which is what stops four builds from reading as
+     one build at four sizes. */
   var BUILD = {
-    slim:    { chest: 0.90, waist: 0.86, arm: 0.88, leg: 0.92, shoulder: 0.92 },
-    average: { chest: 1.00, waist: 1.00, arm: 1.00, leg: 1.00, shoulder: 1.00 },
-    broad:   { chest: 1.16, waist: 1.06, arm: 1.14, leg: 1.06, shoulder: 1.18 },
-    heavy:   { chest: 1.22, waist: 1.30, arm: 1.16, leg: 1.10, shoulder: 1.10 }
+    slim:    { chest: 0.92, waist: 0.86, hip: 0.96, arm: 0.90, leg: 0.94, shoulder: 0.94, legLen: 1.02, armLen: 1.00 },
+    average: { chest: 1.00, waist: 1.00, hip: 1.00, arm: 1.00, leg: 1.00, shoulder: 1.00, legLen: 1.00, armLen: 1.00 },
+    broad:   { chest: 1.14, waist: 1.06, hip: 1.06, arm: 1.16, leg: 1.08, shoulder: 1.16, legLen: 0.99, armLen: 1.02 },
+    heavy:   { chest: 1.20, waist: 1.30, hip: 1.24, arm: 1.18, leg: 1.14, shoulder: 1.08, legLen: 0.96, armLen: 0.98 }
   };
 
+  var BI = BONE_INDEX;
+
+  /* ---------------- the body ---------------- */
+  function buildBody(S, B, depth, spec) {
+    var parts = [];
+    var W = function (a, wa, b, wb) {
+      return b ? [[BI[a], wa], [BI[b], wb]] : [[BI[a], 1]];
+    };
+
+    /* torso: hips through the ribcage to the base of the neck */
+    var torso = [
+      { c: [0, 0.700 * S, 0], ru: 0.100 * S * depth * B.hip,  rv: 0.132 * S * B.hip,   w: W("hips", 1) },
+      { c: [0, 0.800 * S, 0], ru: 0.113 * S * depth * B.hip,  rv: 0.150 * S * B.hip,   w: W("hips", 1) },
+      { c: [0, 0.880 * S, 0], ru: 0.112 * S * depth * B.hip,  rv: 0.152 * S * B.hip,   w: W("hips", 1) },
+      { c: [0, 0.950 * S, 0], ru: 0.100 * S * depth * B.waist, rv: 0.134 * S * B.waist, w: W("hips", 0.55, "spine", 0.45) },
+      { c: [0, 1.010 * S, 0], ru: 0.094 * S * depth * B.waist, rv: 0.126 * S * B.waist, w: W("spine", 1) },
+      { c: [0, 1.090 * S, 0], ru: 0.102 * S * depth * B.chest, rv: 0.144 * S * B.chest, w: W("spine", 0.55, "chest", 0.45) },
+      { c: [0, 1.180 * S, 0], ru: 0.110 * S * depth * B.chest, rv: 0.164 * S * B.chest, w: W("chest", 1) },
+      { c: [0, 1.270 * S, 0], ru: 0.108 * S * depth * B.chest, rv: 0.172 * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.330 * S, 0], ru: 0.098 * S * depth * B.chest, rv: 0.166 * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.390 * S, 0], ru: 0.062 * S, rv: 0.076 * S, w: W("chest", 0.5, "neck", 0.5) },
+      { c: [0, 1.440 * S, 0], ru: 0.050 * S, rv: 0.055 * S, w: W("neck", 1) },
+      { c: [0, 1.500 * S, 0], ru: 0.050 * S, rv: 0.055 * S, w: W("neck", 0.45, "head", 0.55) }
+    ];
+    parts.push(skinnedTube(torso, 22, true, false));
+
+    /* arms, with a hand on the end of each rather than a ball */
+    var J = jointHeights(B);
+    [["L", 1], ["R", -1]].forEach(function (sd) {
+      var s = sd[0], sign = sd[1], z = sign * 0.180 * S * B.shoulder;
+      var sh = J.shoulder, el = J.elbow, wr = J.wrist;
+      var arm = [
+        { c: [0, sh * S,            z], ru: 0.062 * S * B.arm, rv: 0.062 * S * B.arm, w: W("arm" + s, 1) },
+        { c: [0, (sh - 0.080) * S,  z], ru: 0.056 * S * B.arm, rv: 0.058 * S * B.arm, w: W("arm" + s, 1) },
+        { c: [0, (el + 0.115) * S,  z], ru: 0.048 * S * B.arm, rv: 0.050 * S * B.arm, w: W("arm" + s, 1) },
+        { c: [0, (el + 0.040) * S,  z], ru: 0.044 * S * B.arm, rv: 0.046 * S * B.arm, w: W("arm" + s, 0.70, "fore" + s, 0.30) },
+        { c: [0, el * S,            z], ru: 0.043 * S * B.arm, rv: 0.045 * S * B.arm, w: W("arm" + s, 0.35, "fore" + s, 0.65) },
+        { c: [0, (el - 0.075) * S,  z], ru: 0.042 * S * B.arm, rv: 0.043 * S * B.arm, w: W("fore" + s, 1) },
+        { c: [0, (wr + 0.075) * S,  z], ru: 0.036 * S * B.arm, rv: 0.037 * S * B.arm, w: W("fore" + s, 1) },
+        { c: [0, (wr + 0.018) * S,  z], ru: 0.031 * S * B.arm, rv: 0.032 * S * B.arm, w: W("fore" + s, 0.45, "hand" + s, 0.55) },
+        /* the hand: wide front-to-back, thin across, tapering to fingers */
+        { c: [0, (wr - 0.012) * S,  z], ru: 0.043 * S, rv: 0.025 * S, w: W("hand" + s, 1) },
+        { c: [0, (wr - 0.058) * S,  z], ru: 0.047 * S, rv: 0.026 * S, w: W("hand" + s, 1) },
+        { c: [0, (wr - 0.100) * S,  z], ru: 0.043 * S, rv: 0.024 * S, w: W("hand" + s, 1) },
+        { c: [0, (wr - 0.130) * S,  z], ru: 0.029 * S, rv: 0.018 * S, w: W("hand" + s, 1) },
+        { c: [0, (wr - 0.144) * S,  z], ru: 0.013 * S, rv: 0.009 * S, w: W("hand" + s, 1) }
+      ];
+      parts.push(skinnedTube(arm, 16, true, true));
+
+      /* the thumb, which is most of what makes a hand a hand */
+      var tz = z - sign * 0.028 * S;
+      var thumb = [
+        { c: [0.012 * S, (wr - 0.024) * S, tz], ru: 0.015 * S, rv: 0.013 * S, w: W("hand" + s, 1) },
+        { c: [0.024 * S, (wr - 0.056) * S, tz - sign * 0.006 * S], ru: 0.014 * S, rv: 0.012 * S, w: W("hand" + s, 1) },
+        { c: [0.028 * S, (wr - 0.084) * S, tz - sign * 0.009 * S], ru: 0.010 * S, rv: 0.009 * S, w: W("hand" + s, 1) }
+      ];
+      parts.push(skinnedTube(thumb, 10, true, true));
+    });
+
+    /* legs */
+    [["L", 1], ["R", -1]].forEach(function (sd) {
+      var s = sd[0], sign = sd[1], z = sign * 0.095 * S * B.hip;
+      var yk = J.knee, ya = J.ankle;
+      var leg = [
+        { c: [0, 0.905 * S, z], ru: 0.088 * S * B.leg, rv: 0.090 * S * B.leg, w: W("thigh" + s, 1) },
+        { c: [0, 0.800 * S, z], ru: 0.090 * S * B.leg, rv: 0.092 * S * B.leg, w: W("thigh" + s, 1) },
+        { c: [0, 0.660 * S, z], ru: 0.079 * S * B.leg, rv: 0.081 * S * B.leg, w: W("thigh" + s, 1) },
+        { c: [0, (yk + 0.055) * S, z], ru: 0.068 * S * B.leg, rv: 0.070 * S * B.leg, w: W("thigh" + s, 0.72, "shin" + s, 0.28) },
+        { c: [0, yk * S, z], ru: 0.066 * S * B.leg, rv: 0.068 * S * B.leg, w: W("thigh" + s, 0.35, "shin" + s, 0.65) },
+        { c: [0, (yk - 0.070) * S, z], ru: 0.066 * S * B.leg, rv: 0.068 * S * B.leg, w: W("shin" + s, 1) },
+        { c: [0, (yk - 0.180) * S, z], ru: 0.055 * S * B.leg, rv: 0.057 * S * B.leg, w: W("shin" + s, 1) },
+        { c: [0, (ya + 0.085) * S, z], ru: 0.042 * S * B.leg, rv: 0.044 * S * B.leg, w: W("shin" + s, 1) },
+        { c: [0, (ya + 0.015) * S, z], ru: 0.038 * S, rv: 0.042 * S, w: W("shin" + s, 0.45, "foot" + s, 0.55) }
+      ];
+      parts.push(skinnedTube(leg, 18, true, true));
+    });
+
+    /* ---- the head ----
+       Built as geometry, weighted whole to the head bone and merged into
+       the body, so the neck runs into the jaw without a joint in it. */
+    var HEAD = BI.head;
+    var hy = 1.600 * S;
+    var headParts = [];
+    (function () {
+      var g = new THREE.SphereGeometry(0.108 * S, 26, 20);
+      g.scale(1.00, 1.08, 0.92);
+      var p = g.attributes.position;
+      for (var i = 0; i < p.count; i++) {
+        var vx = p.getX(i), vy = p.getY(i), vz = p.getZ(i);
+        var up = clamp(vy / (0.115 * S), -1, 1);
+        p.setZ(i, vz * (1 - Math.max(0, up) * 0.12));           /* crown narrows */
+        p.setX(i, vx * (vx < 0 ? 0.93 : 1.0)                     /* flatter behind */
+                 + (1 - clamp(up + 0.35, 0, 1)) * 0.012 * S);    /* jaw forward */
+      }
+      g.computeVertexNormals();
+      g.translate(0, hy, 0);
+      headParts.push(g);
+    })();
+    (function () {                                    /* jaw and chin */
+      var g = new THREE.SphereGeometry(0.079 * S, 16, 12);
+      g.scale(1.02, 0.76, 0.88);
+      g.translate(0.020 * S, hy - 0.052 * S, 0);
+      headParts.push(g);
+    })();
+    (function () {                                    /* brow */
+      var g = new THREE.SphereGeometry(0.050 * S, 14, 10);
+      g.scale(0.52, 0.34, 1.42);
+      g.translate(0.058 * S, hy + 0.036 * S, 0);
+      headParts.push(g);
+    })();
+    (function () {                                    /* nose */
+      var g = new THREE.SphereGeometry(0.018 * S, 12, 9);
+      g.scale(1.7, 1.05, 0.82);
+      g.translate(0.098 * S, hy - 0.012 * S, 0);
+      headParts.push(g);
+    })();
+    [1, -1].forEach(function (sd) {                   /* ears */
+      var g = new THREE.SphereGeometry(0.029 * S, 10, 8);
+      g.scale(0.38, 1.10, 0.78);
+      g.translate(-0.010 * S, hy, sd * 0.090 * S);
+      headParts.push(g);
+    });
+    [1, -1].forEach(function (sd) {                   /* eyelids */
+      var g = new THREE.SphereGeometry(0.0182 * S, 12, 9, 0, 6.2832, 0, 0.95);
+      g.rotateZ(-0.55);
+      g.translate(0.081 * S, hy + 0.010 * S, sd * 0.039 * S);
+      headParts.push(g);
+    });
+    headParts.forEach(function (g) { parts.push(rigidSkin(g, HEAD)); });
+
+    var body = mergeSkinned(parts);
+    body.userData.headY = hy;
+    return body;
+  }
+
+  /* ---- the face, as one mesh with vertex colours ----
+     Eyes, irises, brows and a mouth are four different colours and used to
+     be four draw calls; they are one now. */
+  function buildFaceBits(S, hy, spec) {
+    var g = [];
+    [1, -1].forEach(function (sd) {
+      var e = new THREE.SphereGeometry(0.0158 * S, 12, 9);
+      e.translate(0.081 * S, hy + 0.010 * S, sd * 0.039 * S);
+      g.push(colourGeom(e, 0xefebe4));
+      var ir = new THREE.SphereGeometry(0.0082 * S, 10, 8);
+      ir.translate(0.0918 * S, hy + 0.010 * S, sd * 0.039 * S);
+      g.push(colourGeom(ir, spec.eyes || 0x2b1d14));
+      var pu = new THREE.SphereGeometry(0.0040 * S, 8, 6);
+      pu.translate(0.0958 * S, hy + 0.010 * S, sd * 0.039 * S);
+      g.push(colourGeom(pu, 0x141014));
+      var br = new THREE.SphereGeometry(0.0150 * S, 12, 8);
+      br.scale(0.34, 0.22, 1.32);
+      br.rotateX(sd * 0.20);
+      br.translate(0.088 * S, hy + 0.038 * S, sd * 0.040 * S);
+      g.push(colourGeom(br, spec.browColour || spec.hair));
+    });
+    var m = new THREE.SphereGeometry(0.020 * S, 14, 8);
+    m.scale(0.30, 0.24, 1.05);
+    m.translate(0.086 * S, hy - 0.048 * S, 0);
+    g.push(colourGeom(m, spec.lips || 0x9a6058));
+    var merged = mergeGeoms(g);
+    return merged;
+  }
+
+  /* ---------------- garments ----------------
+     A shirt is not the body tinted a different colour: it is a shell that
+     stands off the body, hangs below the waist, and ends in a cuff. */
+  function buildTop(S, B, depth, kind) {
+    var W = function (a, wa, b, wb) {
+      return b ? [[BI[a], wa], [BI[b], wb]] : [[BI[a], 1]];
+    };
+    var parts = [];
+    var loose = kind === "tee" ? 0.020 : kind === "jacket" ? 0.030 : 0.024;
+    var hem = kind === "tee" ? 0.930 : kind === "jacket" ? 0.880 : 0.905;
+
+    var body = [
+      { c: [0, hem * S, 0], ru: (0.116 + loose) * S * depth * B.hip, rv: (0.156 + loose) * S * B.hip, w: W("hips", 0.7, "spine", 0.3) },
+      { c: [0, (hem + 0.035) * S, 0], ru: (0.112 + loose) * S * depth * B.hip, rv: (0.152 + loose) * S * B.hip, w: W("hips", 0.5, "spine", 0.5) },
+      { c: [0, 0.995 * S, 0], ru: (0.100 + loose) * S * depth * B.waist, rv: (0.136 + loose) * S * B.waist, w: W("spine", 1) },
+      { c: [0, 1.090 * S, 0], ru: (0.106 + loose) * S * depth * B.chest, rv: (0.150 + loose) * S * B.chest, w: W("spine", 0.5, "chest", 0.5) },
+      { c: [0, 1.180 * S, 0], ru: (0.114 + loose) * S * depth * B.chest, rv: (0.170 + loose) * S * B.chest, w: W("chest", 1) },
+      { c: [0, 1.275 * S, 0], ru: (0.112 + loose) * S * depth * B.chest, rv: (0.178 + loose) * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.330 * S, 0], ru: (0.104 + loose) * S * depth * B.chest, rv: (0.176 + loose) * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.372 * S, 0], ru: (0.090 + loose) * S * depth * B.chest, rv: (0.140 + loose) * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.404 * S, 0], ru: 0.068 * S, rv: 0.082 * S, w: W("chest", 0.5, "neck", 0.5) },
+      { c: [0, 1.428 * S, 0], ru: 0.058 * S, rv: 0.063 * S, w: W("neck", 1) }
+    ];
+    parts.push(skinnedTube(body, 22, true, true));
+
+    /* sleeves. A short sleeve is a tube that ends in mid-air, and the ring
+       it ends on is wider than the arm inside it — that gap is the whole
+       reason a t-shirt reads as cloth. */
+    var short = kind === "tee" || kind === "shirtShort";
+    [["L", 1], ["R", -1]].forEach(function (sd) {
+      var s = sd[0], sign = sd[1], z = sign * 0.180 * S * B.shoulder;
+      var sleeve = [
+        { c: [0, 1.372 * S, z], ru: 0.070 * S * B.arm, rv: 0.072 * S * B.arm, w: W("arm" + s, 1) },
+        { c: [0, 1.330 * S, z], ru: 0.086 * S * B.arm, rv: 0.088 * S * B.arm, w: W("arm" + s, 1) },
+        { c: [0, 1.275 * S, z], ru: 0.079 * S * B.arm, rv: 0.081 * S * B.arm, w: W("arm" + s, 1) }
+      ];
+      if (short) {
+        sleeve.push({ c: [0, 1.190 * S, z], ru: 0.073 * S * B.arm, rv: 0.075 * S * B.arm, w: W("arm" + s, 1) });
+        sleeve.push({ c: [0, 1.168 * S, z], ru: 0.075 * S * B.arm, rv: 0.077 * S * B.arm, w: W("arm" + s, 1) });
+      } else {
+        sleeve.push({ c: [0, 1.160 * S, z], ru: 0.066 * S * B.arm, rv: 0.068 * S * B.arm, w: W("arm" + s, 1) });
+        sleeve.push({ c: [0, 1.075 * S, z], ru: 0.058 * S * B.arm, rv: 0.060 * S * B.arm, w: W("arm" + s, 0.55, "fore" + s, 0.45) });
+        sleeve.push({ c: [0, 0.960 * S, z], ru: 0.054 * S * B.arm, rv: 0.056 * S * B.arm, w: W("fore" + s, 1) });
+        sleeve.push({ c: [0, 0.862 * S, z], ru: 0.048 * S * B.arm, rv: 0.050 * S * B.arm, w: W("fore" + s, 1) });
+        sleeve.push({ c: [0, 0.845 * S, z], ru: 0.050 * S * B.arm, rv: 0.052 * S * B.arm, w: W("fore" + s, 1) });
+      }
+      parts.push(skinnedTube(sleeve, 16, true, false));
+    });
+    return mergeSkinned(parts);
+  }
+
+  function buildTrousers(S, B, depth, kind) {
+    var W = function (a, wa, b, wb, c, wc) {
+      if (c) return [[BI[a], wa], [BI[b], wb], [BI[c], wc]];
+      return b ? [[BI[a], wa], [BI[b], wb]] : [[BI[a], 1]];
+    };
+    var parts = [];
+    var loose = kind === "joggers" ? 0.026 : kind === "cargo" ? 0.020 : 0.012;
+    var cuff = kind === "joggers";
+
+    /* the seat: one shell over both hips */
+    var seat = [
+      { c: [0, 1.000 * S, 0], ru: (0.100 + loose) * S * depth * B.waist, rv: (0.138 + loose) * S * B.waist, w: W("hips", 1) },
+      { c: [0, 0.940 * S, 0], ru: (0.116 + loose) * S * depth * B.hip, rv: (0.164 + loose) * S * B.hip, w: W("hips", 1) },
+      { c: [0, 0.880 * S, 0], ru: (0.122 + loose) * S * depth * B.hip, rv: (0.176 + loose) * S * B.hip, w: W("hips", 1) },
+      { c: [0, 0.850 * S, 0], ru: (0.120 + loose) * S * depth * B.hip, rv: (0.176 + loose) * S * B.hip, w: W("hips", 1) },
+      { c: [0, 0.790 * S, 0], ru: (0.112 + loose) * S * depth * B.hip, rv: (0.172 + loose) * S * B.hip, w: W("hips", 0.6, "thighL", 0.2, "thighR", 0.2) },
+      { c: [0, 0.755 * S, 0], ru: (0.100 + loose) * S * depth * B.hip, rv: (0.166 + loose) * S * B.hip, w: W("hips", 0.5, "thighL", 0.25, "thighR", 0.25) }
+    ];
+    parts.push(skinnedTube(seat, 20, true, true));
+
+    [["L", 1], ["R", -1]].forEach(function (sd) {
+      var s = sd[0], sign = sd[1], z = sign * 0.095 * S * B.hip;
+      var J = jointHeights(B), yk = J.knee, ya = J.ankle;
+      var leg = [
+        { c: [0, 0.912 * S, z], ru: (0.104 + loose) * S * B.leg, rv: (0.106 + loose) * S * B.leg, w: W("thigh" + s, 1) },
+        { c: [0, 0.840 * S, z], ru: (0.102 + loose) * S * B.leg, rv: (0.104 + loose) * S * B.leg, w: W("thigh" + s, 1) },
+        { c: [0, 0.760 * S, z], ru: (0.096 + loose) * S * B.leg, rv: (0.098 + loose) * S * B.leg, w: W("thigh" + s, 1) },
+        { c: [0, 0.640 * S, z], ru: (0.086 + loose) * S * B.leg, rv: (0.088 + loose) * S * B.leg, w: W("thigh" + s, 1) },
+        { c: [0, (yk + 0.050) * S, z], ru: (0.078 + loose) * S * B.leg, rv: (0.080 + loose) * S * B.leg, w: W("thigh" + s, 0.7, "shin" + s, 0.3) },
+        { c: [0, yk * S, z], ru: (0.076 + loose) * S * B.leg, rv: (0.078 + loose) * S * B.leg, w: W("thigh" + s, 0.3, "shin" + s, 0.7) },
+        { c: [0, (yk - 0.110) * S, z], ru: (0.072 + loose) * S * B.leg, rv: (0.074 + loose) * S * B.leg, w: W("shin" + s, 1) },
+        { c: [0, (ya + 0.140) * S, z], ru: (0.062 + loose) * S * B.leg, rv: (0.064 + loose) * S * B.leg, w: W("shin" + s, 1) }
+      ];
+      if (cuff) {
+        /* the elastic: the leg gathers in, then a short straight band */
+        leg.push({ c: [0, (ya + 0.095) * S, z], ru: 0.058 * S * B.leg, rv: 0.060 * S * B.leg, w: W("shin" + s, 1) });
+        leg.push({ c: [0, (ya + 0.070) * S, z], ru: 0.046 * S * B.leg, rv: 0.048 * S * B.leg, w: W("shin" + s, 1) });
+        leg.push({ c: [0, (ya + 0.020) * S, z], ru: 0.045 * S * B.leg, rv: 0.047 * S * B.leg, w: W("shin" + s, 0.6, "foot" + s, 0.4) });
+      } else {
+        leg.push({ c: [0, (ya + 0.055) * S, z], ru: (0.058 + loose) * S * B.leg, rv: (0.060 + loose) * S * B.leg, w: W("shin" + s, 1) });
+        leg.push({ c: [0, (ya + 0.010) * S, z], ru: (0.056 + loose) * S * B.leg, rv: (0.058 + loose) * S * B.leg, w: W("shin" + s, 0.7, "foot" + s, 0.3) });
+      }
+      parts.push(skinnedTube(leg, 18, true, false));
+    });
+    return mergeSkinned(parts);
+  }
+
+  /* ---- shoes ----
+     A sole, a toe box and an ankle collar, swept along the foot rather than
+     stacked as boxes. Rigid to the foot bone, so it is one mesh a side. */
+  function buildShoe(S, B, kind) {
+    var ankle = jointHeights(B).ankle;
+    var rings = [], base = [
+      [-0.075, 0.048, 0.036, 0.052],
+      [-0.045, 0.062, 0.042, 0.056],
+      [ 0.000, 0.068, 0.045, 0.058],
+      [ 0.055, 0.062, 0.045, 0.056],
+      [ 0.110, 0.052, 0.043, 0.050],
+      [ 0.155, 0.040, 0.038, 0.042],
+      [ 0.185, 0.024, 0.028, 0.030],
+      [ 0.198, 0.010, 0.016, 0.016]
+    ];
+    base.forEach(function (b) {
+      rings.push({
+        c: [b[0] * S, (0.044 + b[1] * 0.0) * S, 0],
+        u: [0, 1, 0], v: [0, 0, 1],
+        ru: b[2] * S, rv: b[3] * S,
+        w: [[0, 1]]
+      });
+    });
+    var g1 = skinnedTube(rings, 14, true, true);
+    /* the sole: a flat slab under it, which is what gives a shoe its line */
+    var sole = roundBox(0.30 * S, 0.030 * S, 0.108 * S, 0.012 * S, 2);
+    sole.translate(0.055 * S, 0.016 * S, 0);
+    /* the collar round the ankle */
+    var collar = new THREE.CylinderGeometry(0.052 * S, 0.056 * S, 0.05 * S, 14);
+    collar.translate(-0.010 * S, 0.086 * S, 0);
+    var parts = [g1, rigidSkin(sole, 0), rigidSkin(collar, 0)];
+    if (kind === "boot") {
+      var shaft = new THREE.CylinderGeometry(0.056 * S, 0.058 * S, 0.14 * S, 14);
+      shaft.translate(-0.010 * S, 0.145 * S, 0);
+      parts.push(rigidSkin(shaft, 0));
+    }
+    var g = mergeSkinned(parts);
+    /* authored with the sole on the floor, then dropped so it hangs off
+       the ankle joint rather than floating near it */
+    g.translate(0, -ankle * S, 0);
+    return g;
+  }
+
+  /* ---------------- hair ----------------
+     Rigid to the head bone, so it is one mesh however many locks are in it. */
+  function buildHairGeom(style, S, spec) {
+    var g = [], hy = 1.600 * S;
+    if (style === "bald") return null;
+
+    function cap(radius, theta, lift, drop) {
+      var gg = new THREE.SphereGeometry(radius, 26, 20, 0, 6.2832, 0, theta);
+      gg.scale(1.02, 1.08, 1.03);
+      var p = gg.attributes.position, r = radius;
+      for (var i = 0; i < p.count; i++) {
+        var vx = p.getX(i), vy = p.getY(i), vz = p.getZ(i);
+        var front = clamp(vx / r, 0, 1);
+        p.setY(i, vy + front * front * lift);
+        p.setZ(i, vz * (1 - front * 0.10));
+        if (drop) p.setY(i, p.getY(i) - Math.max(0, -vx / r) * drop);
+      }
+      gg.computeVertexNormals();
+      gg.translate(-0.008 * S, hy - 0.004 * S, 0);
+      return gg;
+    }
+
+    if (style === "longWavy") {
+      g.push(cap(0.120 * S, 2.10, 0.104 * S, 0));
+      /* the mass at the back that long hair actually has */
+      var mass = new THREE.SphereGeometry(0.115 * S, 20, 16);
+      mass.scale(0.94, 1.02, 1.0);
+      mass.translate(-0.046 * S, hy - 0.026 * S, 0);
+      g.push(mass);
+      /* a fringe swept sideways across the forehead, clear of the brow */
+      for (var f = 0; f < 3; f++) {
+        var fp = [];
+        for (var fk = 0; fk <= 5; fk++) {
+          var fu = fk / 5;
+          fp.push(new THREE.Vector3(
+            (0.048 + f * 0.012) * S - fu * fu * 0.054 * S,
+            hy + (0.096 - fu * 0.052 - f * 0.010) * S,
+            (-0.020 + fu * 0.122) * S));
+        }
+        g.push(sweep(fp, 0.023 * S, 0.013 * S, 9, 0.2));
+      }
+      /* and the length of it: sixteen locks, each waved on its own phase */
+      var locks = 16;
+      for (var i2 = 0; i2 < locks; i2++) {
+        var t = i2 / (locks - 1);
+        var ang = -1.42 + t * 2.84;
+        var side = Math.sin(ang), back = -Math.cos(ang);
+        var len = 0.44 + hash2(i2, 3) * 0.24;
+        var ph = hash2(i2 * 7, 5) * 6.28;
+        var wave = 0.024 + hash2(i2, 11) * 0.022;
+        var pts = [];
+        for (var k = 0; k <= 8; k++) {
+          var u = k / 8, ease = u * u * (3 - 2 * u);
+          var rr = (0.090 + ease * 0.032) * S;
+          pts.push(new THREE.Vector3(
+            back * rr * 0.86 - ease * 0.028 * S + Math.sin(u * 4.2 + ph) * wave * S * 0.5,
+            hy + 0.016 * S - u * len * S,
+            side * rr + Math.sin(u * 3.4 + ph) * wave * S));
+        }
+        g.push(sweep(pts, 0.030 * S, 0.011 * S, 9, 0.4));
+      }
+    } else if (style === "afro") {
+      var a = new THREE.SphereGeometry(0.155 * S, 22, 18);
+      a.scale(1.0, 0.98, 1.0);
+      var pa = a.attributes.position;
+      for (var q = 0; q < pa.count; q++) {
+        var qx = pa.getX(q), qy = pa.getY(q), qz = pa.getZ(q);
+        var d = Math.hypot(qx, qy, qz);
+        /* clumps, so it is hair and not a ball */
+        var bump2 = 1 + Math.sin(qx * 46) * Math.sin(qy * 41) * Math.sin(qz * 44) * 0.055;
+        pa.setXYZ(q, qx * bump2, qy * bump2, qz * bump2);
+      }
+      a.computeVertexNormals();
+      a.translate(-0.018 * S, hy + 0.030 * S, 0);
+      g.push(a);
+    } else if (style === "bun") {
+      g.push(cap(0.118 * S, 1.62, 0.090 * S, 0));
+      var bun = new THREE.SphereGeometry(0.056 * S, 16, 12);
+      bun.translate(-0.106 * S, hy + 0.046 * S, 0);
+      g.push(bun);
+    } else if (style === "long") {
+      g.push(cap(0.120 * S, 1.95, 0.098 * S, 0));
+      for (var i3 = 0; i3 < 9; i3++) {
+        var t3 = i3 / 8, s3 = Math.sin(-1.2 + t3 * 2.4), b3 = -Math.cos(-1.2 + t3 * 2.4);
+        var pts3 = [];
+        for (var k3 = 0; k3 <= 5; k3++) {
+          var u3 = k3 / 5;
+          pts3.push(new THREE.Vector3(
+            b3 * 0.086 * S - u3 * 0.026 * S,
+            hy + 0.012 * S - u3 * 0.30 * S,
+            s3 * (0.088 + u3 * 0.018) * S));
+        }
+        g.push(sweep(pts3, 0.032 * S, 0.016 * S, 8, 0));
+      }
+    } else {
+      /* short: a crop that follows the skull with a hairline at the front */
+      g.push(cap(0.116 * S, 1.42, 0.070 * S, 0));
+      if (spec && spec.beard) {
+        var bd = new THREE.SphereGeometry(0.084 * S, 16, 12);
+        bd.scale(0.96, 0.70, 0.96);
+        bd.translate(0.026 * S, hy - 0.058 * S, 0);
+        g.push(bd);
+      }
+    }
+    return mergeGeoms(g);
+  }
+
+  /* ---------------- assembly ---------------- */
   function buildHuman(spec) {
     var S = spec.scale || 1;
     var B = BUILD[spec.build || "average"];
     var depth = spec.depth || 0.74;
 
-    var skin  = spec.skinMat || skinMat(spec.skin);
-    var top   = spec.topMat || clothMat(spec.top, 0.9, spec.weave);
-    var legsM = spec.legMat || clothMat(spec.trousers, 0.92, spec.legWeave || "denim");
-    var hairM = hairMat(spec.hair, spec.hairRough);
-    var shoe  = spec.shoeMat || leatherMat(spec.shoe || 0x241d18);
-    var trim  = spec.trimMat || leatherMat(spec.trim || 0x2a2320);
+    var sk = makeSkeleton(S, B.legLen, B.armLen);
+    var bn = sk.byName;
 
-    var root = new THREE.Group();          /* on the floor, facing +x at 0 rad */
+    var root = new THREE.Group();
     var body = new THREE.Group();          /* everything that bobs */
     root.add(body);
+    body.add(sk.root);
 
-    var hipY = 0.90 * S;
-    var pelvis = new THREE.Group();
-    pelvis.position.y = hipY;
-    body.add(pelvis);
+    /* the rest pose has to be real before the skeleton is made from it */
+    root.updateMatrixWorld(true);
+    var skeleton = new THREE.Skeleton(sk.list);
 
-    /* ---------------- spine, chest, jacket ---------------- */
-    var spine = new THREE.Group();
-    pelvis.add(spine);
-    var chestLen = 0.50 * S;
+    var meshes = [];
+    function add(geom, mat) {
+      var m = new THREE.SkinnedMesh(geom, mat);
+      m.castShadow = true;
+      m.receiveShadow = false;
+      m.frustumCulled = false;
+      body.add(m);
+      m.updateMatrixWorld(true);
+      m.bind(skeleton, m.matrixWorld);
+      meshes.push(m);
+      return m;
+    }
 
-    var torso = new THREE.Mesh(
-      (function () {
-        /* a lathe, so the silhouette has a waist and a ribcage in it
-           instead of being a cylinder with clothes painted on */
-        var pts = [];
-        var prof = [[0.152, 0.00], [0.164, 0.10], [0.157, 0.26], [0.142, 0.44],
-                    [0.157, 0.62], [0.170, 0.80], [0.157, 0.94], [0.082, 1.00]];
-        prof.forEach(function (q) {
-          var w = q[0] * (q[1] < 0.45 ? B.waist : B.chest);
-          pts.push(new THREE.Vector2(w * S, q[1] * chestLen));
-        });
-        var g = new THREE.LatheGeometry(pts, 16);
-        g.scale(depth, 1, 1);          /* thin front-to-back, not side-to-side */
-        return g;
-      })(), top);
-    torso.castShadow = true;
-    spine.add(torso);
+    var skin = spec.skinMat || skinMat(spec.skin);
+    var bodyMesh = add(buildBody(S, B, depth, spec), skin);
 
-    /* the hips, so the join is not a step */
-    var hips = new THREE.Mesh(
-      (function () {
-        var g = new THREE.SphereGeometry(0.150 * S * B.waist, 14, 10);
-        g.scale(depth * 1.02, 0.82, 1.04); return g;
-      })(), legsM);
-    hips.castShadow = true;
-    pelvis.add(hips);
+    var topKind = spec.topKind || "tee";
+    var topMat = spec.topMat || clothMat(spec.top, 0.90, spec.weave);
+    add(buildTop(S, B, depth, topKind), topMat);
 
-    /* an outer shell — a jacket, a coat, a hi-vis — over the top of it */
     if (spec.jacket) {
-      var jm = spec.jacketMat || clothMat(spec.jacket, 0.82, spec.jacketWeave);
-      var shell = new THREE.Mesh(
-        (function () {
-          var pts = [];
-          [[0.173, -0.06], [0.184, 0.10], [0.178, 0.30], [0.166, 0.48],
-           [0.179, 0.66], [0.190, 0.84], [0.171, 0.96]].forEach(function (q) {
-            pts.push(new THREE.Vector2(q[0] * S * B.chest, q[1] * chestLen));
-          });
-          var g = new THREE.LatheGeometry(pts, 16);
-          g.scale(depth * 1.05, 1, 1);
-          return g;
-        })(), jm);
-      shell.castShadow = true;
-      spine.add(shell);
-      /* the opening down the front, and a collar standing up at the neck */
-      var gap = new THREE.Mesh(new THREE.BoxGeometry(0.06 * S, chestLen * 0.9, 0.09 * S), top);
-      gap.position.set(0.166 * S * B.chest * depth, chestLen * 0.46, 0);
-      spine.add(gap);
-      var collar = new THREE.Mesh(
-        (function () {
-          var g = new THREE.CylinderGeometry(0.118 * S, 0.100 * S, 0.11 * S, 16, 1, true);
-          g.scale(depth * 1.1, 1, 1); return g;
-        })(), jm);
-      collar.position.y = chestLen * 0.99;
-      collar.castShadow = true;
-      spine.add(collar);
+      var jm = spec.jacketMat || clothMat(spec.jacket, 0.84, spec.jacketWeave);
+      add(buildTop(S, B, depth, "jacket"), jm);
     }
 
-    if (spec.belt) {
-      var belt = new THREE.Mesh(
-        (function () {
-          var g = new THREE.CylinderGeometry(0.170 * S * B.waist, 0.170 * S * B.waist, 0.055 * S, 18, 1, true);
-          g.scale(depth * 1.02, 1, 1); return g;
-        })(), trim);
-      belt.position.y = chestLen * 0.04;
-      spine.add(belt);
-      var buckle = new THREE.Mesh(new THREE.BoxGeometry(0.055 * S, 0.05 * S, 0.02 * S),
-        new THREE.MeshStandardMaterial({ color: 0xb8a068, roughness: 0.3, metalness: 0.9, envMapIntensity: 1.6 }));
-      buckle.position.set(0.170 * S * depth * B.waist, chestLen * 0.04, 0);
-      spine.add(buckle);
+    var legKind = spec.legKind || "jeans";
+    var legMat = spec.legMat || clothMat(spec.trousers, 0.92, spec.legWeave || "denim");
+    add(buildTrousers(S, B, depth, legKind), legMat);
+
+    /* the face, one mesh with the colours baked into the vertices */
+    var faceMat = new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 0.34, metalness: 0.0, envMapIntensity: 1.2 });
+    var face = new THREE.Mesh(buildFaceBits(S, 1.600 * S, spec), faceMat);
+    face.position.y = -1.600 * S;
+    bn.head.add(face);
+
+    /* hair rides the head bone */
+    var hairGeom = buildHairGeom(spec.hairStyle, S, spec);
+    if (hairGeom) {
+      var hair = new THREE.Mesh(hairGeom, hairMat(spec.hair, spec.hairRough));
+      hair.position.y = -1.600 * S;
+      hair.castShadow = true;
+      bn.head.add(hair);
     }
 
-    /* ---------------- neck and head ---------------- */
-    var neck = new THREE.Group();
-    neck.position.y = chestLen;
-    spine.add(neck);
-    var neckMesh = new THREE.Mesh(tapered(0.115 * S, 0.056 * S, 0.068 * S, 12), skin);
-    neckMesh.position.y = 0.115 * S;
-    neck.add(neckMesh);
-
-    var head = new THREE.Group();
-    head.position.y = 0.098 * S;
-    neck.add(head);
-
-    /* ---- the head, as one mesh ----
-       Skull, jaw, brow, nose, ears and both eyelids never move relative to
-       each other, so they are built as geometry, put where they belong and
-       merged. Fifteen draw calls a head times twelve people at the gates is
-       what the difference looks like. */
-    var headParts = [];
-    (function () {
-      var g = new THREE.SphereGeometry(0.107 * S, 22, 16);
-      g.scale(1.02, 1.06, 0.90);
-      var pos = g.attributes.position;
-      for (var i = 0; i < pos.count; i++) {
-        var vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
-        var up = clamp(vy / (0.11 * S), -1, 1);
-        pos.setZ(i, vz * (1 - Math.max(0, up) * 0.10));
-        pos.setX(i, vx * (vx < 0 ? 0.94 : 1.0) + (1 - clamp(up + 0.4, 0, 1)) * 0.010 * S);
-      }
-      g.computeVertexNormals();
-      g.translate(0, 0.104 * S, 0);
-      headParts.push(g);
-    })();
-    (function () {                                   /* the jaw */
-      var g = new THREE.SphereGeometry(0.082 * S, 13, 10);
-      g.scale(1.0, 0.74, 0.88);
-      g.translate(0.022 * S, 0.052 * S, 0);
-      headParts.push(g);
-    })();
-    (function () {                                   /* the brow ridge */
-      var g = new THREE.SphereGeometry(0.052 * S, 12, 8);
-      g.scale(0.50, 0.34, 1.45);
-      g.translate(0.062 * S, 0.140 * S, 0);
-      headParts.push(g);
-    })();
-    (function () {                                   /* the nose */
-      var g = new THREE.SphereGeometry(0.019 * S, 10, 8);
-      g.scale(1.6, 1.0, 0.78);
-      g.translate(0.100 * S, 0.092 * S, 0);
-      headParts.push(g);
-    })();
-    [1, -1].forEach(function (sd) {                  /* ears */
-      var g = new THREE.SphereGeometry(0.030 * S, 8, 6);
-      g.scale(0.4, 1.1, 0.8);
-      g.translate(-0.008 * S, 0.104 * S, sd * 0.092 * S);
-      headParts.push(g);
+    /* shoes ride the foot bones */
+    var shoeMat = spec.shoeMat || leatherMat(spec.shoe || 0x241d18);
+    var shoeGeom = buildShoe(S, B, spec.boots ? "boot" : "shoe");
+    [["L", 1], ["R", -1]].forEach(function (sd) {
+      var m = new THREE.Mesh(shoeGeom.clone(), shoeMat);
+      m.castShadow = true;
+      bn["foot" + sd[0]].add(m);
     });
-    [1, -1].forEach(function (sd) {                  /* eyelids */
-      var g = new THREE.SphereGeometry(0.0176 * S, 10, 8, 0, 6.2832, 0, 0.92);
-      g.rotateZ(-0.52);
-      g.translate(0.083 * S, 0.114 * S, sd * 0.040 * S);
-      headParts.push(g);
-    });
-    var faceMesh = new THREE.Mesh(mergeGeoms(headParts), skin);
-    faceMesh.castShadow = true;
-    head.add(faceMesh);
-
-    /* Eyes and brows. A sphere sitting on a sphere reads as a lens, so the
-       eye is small, set into a socket behind a lid, with a brow over it —
-       which is most of what makes a face read at any distance at all. */
-    var eyeM = new THREE.MeshStandardMaterial({
-      color: 0xefebe4, roughness: 0.22, metalness: 0, envMapIntensity: 1.0 });
-    var irisM = new THREE.MeshStandardMaterial({
-      color: spec.eyes || 0x2b1d14, roughness: 0.16, metalness: 0, envMapIntensity: 1.6 });
-    var browM = new THREE.MeshStandardMaterial({
-      color: spec.browColour || spec.hair, roughness: 0.62, metalness: 0 });
-
-    var eyeParts = [], irisParts = [], browParts = [];
-    [1, -1].forEach(function (sd) {
-      var e0 = new THREE.SphereGeometry(0.0152 * S, 10, 8);
-      e0.translate(0.083 * S, 0.114 * S, sd * 0.040 * S);
-      eyeParts.push(e0);
-      var i0 = new THREE.SphereGeometry(0.0080 * S, 8, 6);
-      i0.translate(0.0934 * S, 0.114 * S, sd * 0.040 * S);
-      irisParts.push(i0);
-      var b0 = new THREE.SphereGeometry(0.0155 * S, 10, 6);
-      b0.scale(0.34, 0.20, 1.30);
-      b0.rotateX(sd * 0.22);
-      b0.translate(0.091 * S, 0.1395 * S, sd * 0.040 * S);
-      browParts.push(b0);
-    });
-    var mouthG = new THREE.BoxGeometry(0.008 * S, 0.0055 * S, 0.032 * S);
-    mouthG.translate(0.089 * S, 0.056 * S, 0);
-    head.add(new THREE.Mesh(mergeGeoms(eyeParts), eyeM));
-    head.add(new THREE.Mesh(mergeGeoms(irisParts), irisM));
-    head.add(new THREE.Mesh(mergeGeoms(browParts), browM));
-    head.add(new THREE.Mesh(mouthG,
-      new THREE.MeshStandardMaterial({ color: 0x8f5c53, roughness: 0.55 })));
-
-    /* ---------------- hair ---------------- */
-    var hairGroup = new THREE.Group();
-    head.add(hairGroup);
-    buildHair(hairGroup, spec.hairStyle, hairM, S, spec);
 
     if (spec.helmet) {
       var hel = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.132 * S, 16, 12, 0, 6.2832, 0, 1.34); g.scale(1, 0.94, 1); return g; })(),
-        new THREE.MeshStandardMaterial({ color: spec.helmet, roughness: 0.34, metalness: 0.15, envMapIntensity: 1.4 }));
-      hel.position.y = 0.112 * S; hel.castShadow = true;
-      head.add(hel);
-      var peak = new THREE.Mesh(
-        (function () { var g = new THREE.CylinderGeometry(0.135 * S, 0.135 * S, 0.02 * S, 16, 1, false, 0, 2.2); g.rotateY(-1.1); return g; })(),
-        new THREE.MeshStandardMaterial({ color: spec.helmet, roughness: 0.34, metalness: 0.15 }));
-      peak.position.set(0.02 * S, 0.086 * S, 0);
-      head.add(peak);
+        (function () {
+          var g = new THREE.SphereGeometry(0.136 * S, 20, 15, 0, 6.2832, 0, 1.36);
+          g.scale(1, 0.94, 1); return g;
+        })(),
+        new THREE.MeshStandardMaterial({ color: spec.helmet, roughness: 0.36, metalness: 0.18, envMapIntensity: 1.4 }));
+      hel.position.y = 0.012 * S; hel.castShadow = true;
+      bn.head.add(hel);
+      var peak = new THREE.Mesh(roundBox(0.11 * S, 0.018 * S, 0.19 * S, 0.008 * S, 2),
+        new THREE.MeshStandardMaterial({ color: spec.helmet, roughness: 0.36, metalness: 0.18 }));
+      peak.position.set(0.108 * S, -0.024 * S, 0);
+      peak.rotation.z = 0.10;
+      bn.head.add(peak);
     }
     if (spec.mask) {
       var mask = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.086 * S, 12, 9, 0, 3.2, 0.6, 1.5); g.rotateY(-1.6); return g; })(),
-        new THREE.MeshStandardMaterial({ color: spec.mask, roughness: 0.85, metalness: 0 }));
-      mask.position.set(0.028 * S, 0.072 * S, 0);
-      head.add(mask);
+        (function () { var g = new THREE.SphereGeometry(0.088 * S, 14, 11, 0, 3.2, 0.6, 1.5); g.rotateY(-1.6); return g; })(),
+        new THREE.MeshStandardMaterial({ color: spec.mask, roughness: 0.86, metalness: 0 }));
+      mask.position.set(0.024 * S, -0.030 * S, 0);
+      bn.head.add(mask);
+    }
+    if (spec.glasses) {
+      var gm = new THREE.MeshStandardMaterial({ color: 0x2a2a2e, roughness: 0.3, metalness: 0.5, envMapIntensity: 1.6 });
+      [1, -1].forEach(function (sd) {
+        var rim = new THREE.Mesh(new THREE.TorusGeometry(0.028 * S, 0.0045 * S, 6, 16), gm);
+        rim.position.set(0.092 * S, 0.010 * S, sd * 0.040 * S);
+        rim.rotation.y = Math.PI / 2;
+        bn.head.add(rim);
+        var arm2 = new THREE.Mesh(new THREE.BoxGeometry(0.09 * S, 0.005 * S, 0.005 * S), gm);
+        arm2.position.set(0.046 * S, 0.014 * S, sd * 0.062 * S);
+        bn.head.add(arm2);
+      });
+      var bridge = new THREE.Mesh(new THREE.BoxGeometry(0.005 * S, 0.005 * S, 0.028 * S), gm);
+      bridge.position.set(0.096 * S, 0.014 * S, 0);
+      bn.head.add(bridge);
     }
 
-    /* ---------------- arms ---------------- */
-    function arm(side) {
-      var sleeveM = spec.sleeves === false ? skin
-                  : spec.jacket ? (spec.jacketMat || clothMat(spec.jacket, 0.82, spec.jacketWeave))
-                  : top;
-      var lowerM = spec.sleeves === "short" ? skin : sleeveM;
-
-      var sh = new THREE.Group();
-      sh.position.set(0, chestLen - 0.056 * S, side * 0.196 * S * B.shoulder);
-      spine.add(sh);
-      /* the deltoid, sunk into the chest so the two read as one shape */
-      var delt = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.058 * S * B.arm, 12, 9); g.scale(0.88, 1.05, 1.0); return g; })(),
-        sleeveM);
-      delt.position.set(0, -0.012 * S, -side * 0.010 * S);
-      delt.castShadow = true;
-      sh.add(delt);
-
-      var upper = joint(0.30 * S, 0.058 * S * B.arm, 0.048 * S * B.arm, sleeveM, 10);
-      sh.add(upper);
-      var elbow = new THREE.Group();
-      elbow.position.y = -0.30 * S;
-      upper.add(elbow);
-      if (spec.sleeves === "short") {
-        var cuff = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.052 * S * B.arm, 0.050 * S * B.arm, 0.03 * S, 10), sleeveM);
-        cuff.position.y = -0.005 * S;
-        elbow.add(cuff);
-      }
-      var lower = joint(0.28 * S, 0.046 * S * B.arm, 0.037 * S * B.arm, lowerM, 9);
-      elbow.add(lower);
-      var hand = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.049 * S, 9, 7); g.scale(1, 1.28, 0.66); return g; })(), skin);
-      hand.position.y = -0.302 * S;
-      hand.castShadow = true;
-      elbow.add(hand);
-      return { shoulder: sh, upper: upper, elbow: elbow, lower: lower, hand: hand };
-    }
-    var armL = arm(1), armR = arm(-1);
-
-    /* ---------------- legs ---------------- */
-    function leg(side) {
-      var hip = new THREE.Group();
-      hip.position.set(0, -0.036 * S, side * 0.102 * S);
-      pelvis.add(hip);
-      var upper = joint(0.44 * S, 0.088 * S * B.leg, 0.066 * S * B.leg, legsM, 10);
-      hip.add(upper);
-      var knee = new THREE.Group();
-      knee.position.y = -0.44 * S;
-      upper.add(knee);
-      var lower = joint(0.42 * S, 0.062 * S * B.leg, 0.046 * S * B.leg, legsM, 9);
-      knee.add(lower);
-      /* the boot: a sole, an upper, and a heel */
-      var boot = new THREE.Group();
-      boot.position.y = -0.42 * S;
-      knee.add(boot);
-      var bootUp = new THREE.Mesh(roundBox(0.115 * S, 0.11 * S, 0.098 * S, 0.03 * S, 2), shoe);
-      bootUp.position.set(0.006 * S, -0.032 * S, 0);
-      bootUp.castShadow = true;
-      boot.add(bootUp);
-      var sole = new THREE.Mesh(roundBox(0.205 * S, 0.036 * S, 0.098 * S, 0.014 * S, 2), shoe);
-      sole.position.set(0.030 * S, -0.078 * S, 0);
-      sole.castShadow = true;
-      boot.add(sole);
-      if (spec.boots) {
-        var shaft = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.062 * S, 0.058 * S, 0.13 * S, 10), shoe);
-        shaft.position.y = 0.04 * S;
-        boot.add(shaft);
-      }
-      return { hip: hip, upper: upper, knee: knee, lower: lower, foot: boot };
-    }
-    var legL = leg(1), legR = leg(-1);
-
-    root.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
     var contact = contactShadow(1.15 * S);
     root.add(contact);
 
-    return {
-      root: root, contact: contact,
-      body: body, pelvis: pelvis, spine: spine, neck: neck, head: head,
-      hair: hairGroup,
-      armL: armL, armR: armR, legL: legL, legR: legR,
-      hipY: hipY, S: S, spec: spec, phase: Math.random() * 6.28,
-      blink: 0
+    /* The old rig exposed groups by these names and the whole game poses
+       through them, so the bones answer to the same ones. */
+    var rig = {
+      root: root, body: body, contact: contact,
+      bones: bn, skeleton: skeleton, meshes: meshes,
+      pelvis: bn.hips, spine: bn.spine, chest: bn.chest, neck: bn.neck, head: bn.head,
+      armL: { shoulder: bn.clavL, upper: bn.armL, elbow: bn.foreL, lower: bn.foreL, hand: bn.handL },
+      armR: { shoulder: bn.clavR, upper: bn.armR, elbow: bn.foreR, lower: bn.foreR, hand: bn.handR },
+      legL: { hip: bn.hipL, upper: bn.thighL, knee: bn.shinL, lower: bn.shinL, foot: bn.footL },
+      legR: { hip: bn.hipR, upper: bn.thighR, knee: bn.shinR, lower: bn.shinR, foot: bn.footR },
+      hipY: 0.88 * S, S: S, spec: spec, phase: Math.random() * 6.28, blink: 0
     };
+    /* a skinned mesh's bounds do not follow its pose, so give it one that
+       covers anything the animation can do */
+    var sphere = new THREE.Sphere(new THREE.Vector3(0, 0.9 * S, 0), 1.5 * S);
+    meshes.forEach(function (m) { m.geometry.boundingSphere = sphere.clone(); });
+    return rig;
   }
 
-  /* ---- hair, per style ---- */
-  function buildHair(g, style, mat, S, spec) {
-    if (style === "bald") return;
-
-    if (style === "longWavy") {
-      /* A cap over the crown, a fringe swept to one side, and a mane of
-         locks down the back and over both shoulders — each waved on its
-         own phase so no two fall the same way. The cap is a clean sphere
-         segment tilted back off the forehead rather than a sphere with
-         its vertices shoved about, which is what was tearing a notch in
-         the top of her head. */
-      var cap = new THREE.Mesh(
-        (function () {
-          /* A sphere segment covers all the way round at a given angle, so
-             a cap low enough to reach the nape also comes down over the
-             face. The front of it is lifted back to a hairline by a smooth
-             function of how far forward each vertex is — smooth, because
-             a threshold tears a step across the forehead. */
-          var gg = new THREE.SphereGeometry(0.118 * S, 24, 18, 0, 6.2832, 0, 2.05);
-          gg.scale(1.02, 1.08, 1.03);
-          var pos = gg.attributes.position, r = 0.118 * S;
-          for (var i = 0; i < pos.count; i++) {
-            var vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
-            var front = clamp(vx / r, 0, 1);
-            var lift = front * front * 0.100 * S;
-            pos.setY(i, vy + lift);
-            /* and pull it in slightly at the temples so it sits on a head */
-            pos.setZ(i, vz * (1 - front * 0.10));
-          }
-          gg.computeVertexNormals();
-          return gg;
-        })(), mat);
-      cap.position.set(-0.008 * S, 0.098 * S, 0);
-      cap.castShadow = true;
-      g.add(cap);
-
-      /* the volume at the back of the head that long hair actually has */
-      var mass = new THREE.Mesh(
-        (function () { var gg = new THREE.SphereGeometry(0.112 * S, 18, 14); gg.scale(0.94, 1.02, 1.0); return gg; })(), mat);
-      mass.position.set(-0.046 * S, 0.070 * S, 0);
-      mass.castShadow = true;
-      g.add(mass);
-
-      /* The fringe sweeps sideways across the forehead from a parting and
-         tucks behind the ear. It stops above the brow — hair over the eyes
-         reads as a mask, not as a hairstyle. */
-      for (var f = 0; f < 3; f++) {
-        var fu0 = f / 3;
-        var fp = [];
-        for (var fk = 0; fk <= 5; fk++) {
-          var fu = fk / 5;
-          fp.push(new THREE.Vector3(
-            (0.048 + fu0 * 0.012) * S - fu * fu * 0.052 * S,
-            (0.196 - fu * 0.052 - fu0 * 0.010) * S,
-            (-0.020 + fu * 0.120) * S));
-        }
-        var fr = new THREE.Mesh(sweep(fp, 0.022 * S, 0.012 * S, 8, 0.2), mat);
-        fr.castShadow = true;
-        g.add(fr);
-      }
-
-      var locks = 14;
-      for (var i2 = 0; i2 < locks; i2++) {
-        var t = i2 / (locks - 1);
-        var ang = -1.35 + t * 2.70;                   /* round the back of the head */
-        var side = Math.sin(ang);
-        var back = -Math.cos(ang);
-        var len = 0.46 + hash2(i2, 3) * 0.22;
-        var ph = hash2(i2 * 7, 5) * 6.28;
-        var wave = 0.026 + hash2(i2, 11) * 0.024;
-        var pts = [];
-        var n = 7;
-        for (var k = 0; k <= n; k++) {
-          var u = k / n;
-          var ease = u * u * (3 - 2 * u);
-          /* it leaves the scalp under the cap, hugs the head, then hangs */
-          var r = (0.086 + ease * 0.030) * S;
-          pts.push(new THREE.Vector3(
-            back * r * 0.86 - ease * 0.030 * S + Math.sin(u * 4.2 + ph) * wave * S * 0.55,
-            0.118 * S - u * len * S,
-            side * r + Math.sin(u * 3.4 + ph) * wave * S));
-        }
-        var strand = new THREE.Mesh(
-          sweep(pts, 0.030 * S, 0.010 * S, 8, 0.5), mat);
-        strand.castShadow = true;
-        g.add(strand);
-      }
-      return;
-    }
-
-    if (style === "bun") {
-      var cap2 = new THREE.Mesh(
-        (function () { var gg = new THREE.SphereGeometry(0.121 * S, 14, 11, 0, 6.2832, 0, 1.5); return gg; })(), mat);
-      cap2.position.y = 0.112 * S; cap2.castShadow = true; g.add(cap2);
-      var bun = new THREE.Mesh(new THREE.SphereGeometry(0.056 * S, 12, 9), mat);
-      bun.position.set(-0.098 * S, 0.148 * S, 0); bun.castShadow = true; g.add(bun);
-      return;
-    }
-
-    if (style === "long") {
-      var cap3 = new THREE.Mesh(
-        (function () { var gg = new THREE.SphereGeometry(0.124 * S, 14, 11, 0, 6.2832, 0, 1.5); return gg; })(), mat);
-      cap3.position.y = 0.110 * S; cap3.castShadow = true; g.add(cap3);
-      for (var i3 = 0; i3 < 7; i3++) {
-        var t3 = i3 / 6, side3 = Math.cos(t3 * Math.PI);
-        var pts3 = [];
-        for (var k3 = 0; k3 <= 4; k3++) {
-          var u3 = k3 / 4;
-          pts3.push(new THREE.Vector3(
-            -0.05 * S - u3 * u3 * 0.05 * S,
-            0.112 * S - u3 * 0.36 * S,
-            (0.09 + u3 * 0.02) * S * side3));
-        }
-        var st3 = new THREE.Mesh(sweep(pts3, 0.036 * S, 0.020 * S, 5, 0), mat);
-        st3.castShadow = true; g.add(st3);
-      }
-      return;
-    }
-
-    /* short: a crop that follows the skull, with a hairline */
-    var crop = new THREE.Mesh(
-      (function () {
-        var gg = new THREE.SphereGeometry(0.120 * S, 16, 12, 0, 6.2832, 0, 1.30);
-        gg.scale(0.96, 1.0, 0.99);
-        var pos = gg.attributes.position;
-        for (var i = 0; i < pos.count; i++) {
-          var vx = pos.getX(i), vy = pos.getY(i);
-          if (vx > 0.06 * S && vy < 0.02 * S) pos.setY(i, vy + 0.03 * S);
-        }
-        gg.computeVertexNormals();
-        return gg;
-      })(), mat);
-    crop.position.y = 0.113 * S;
-    crop.castShadow = true;
-    g.add(crop);
-    if (spec && spec.beard) {
-      var beard = new THREE.Mesh(
-        (function () { var gg = new THREE.SphereGeometry(0.086 * S, 12, 9); gg.scale(0.92, 0.66, 0.98); return gg; })(), mat);
-      beard.position.set(0.030 * S, 0.044 * S, 0);
-      g.add(beard);
-    }
-  }
-
-  /* the walk cycle. `gait` is 0 for standing, 1 for walking, and
-     `style` swaps in the wrongness for the ones that are not people
-     any more. */
+  /* ---------------- the walk ----------------
+     The same joints as before, driving bones now, so a knee bends the mesh
+     around it instead of sliding one cylinder past another. */
   function poseHuman(rig, t, gait, style, extra) {
-    var S = rig.S, p = rig.phase;
+    var S = rig.S, p = rig.phase, b = rig.bones;
     var w = t * (style === "z" ? 4.4 : 8.2) + p;
     var g = clamp(gait, 0, 1);
-    var swing = (style === "z" ? 0.42 : 0.62) * g;
+    var swing = (style === "z" ? 0.42 : 0.66) * g;
     var e = extra || {};
 
     /* the jerk: they do not move continuously, they arrive at poses */
     var jt = style === "z" ? Math.floor(w * 3.0) / 3.0 + Math.sin(w * 11.0) * 0.03 : w;
     var s1 = Math.sin(jt), c1 = Math.cos(jt), s2 = Math.sin(jt * 2);
 
-    rig.legL.upper.rotation.z =  s1 * swing;
-    rig.legR.upper.rotation.z = -s1 * swing;
-    rig.legL.knee.rotation.z  = Math.max(0, -c1) * 0.9 * g + 0.05;
-    rig.legR.knee.rotation.z  = Math.max(0,  c1) * 0.9 * g + 0.05;
+    b.hipL.rotation.set(0, 0, 0);
+    b.hipR.rotation.set(0, 0, 0);
+    b.thighL.rotation.set(0, 0,  s1 * swing);
+    b.thighR.rotation.set(0, 0, -s1 * swing);
+    b.shinL.rotation.z = -(Math.max(0, -c1) * 0.95 * g + 0.04);
+    b.shinR.rotation.z = -(Math.max(0,  c1) * 0.95 * g + 0.04);
+    /* the ankle keeps the foot flat instead of pointing it at the floor */
+    b.footL.rotation.z = -b.thighL.rotation.z - b.shinL.rotation.z * 0.55;
+    b.footR.rotation.z = -b.thighR.rotation.z - b.shinR.rotation.z * 0.55;
 
     if (style === "z") {
-      /* one side drags: the near leg barely leaves the floor */
-      rig.legR.upper.rotation.z *= 0.35;
-      rig.legR.knee.rotation.z = 0.32;
-      rig.legR.upper.rotation.x = 0.16;
-      /* arms up and out in front, hands loose */
-      rig.armL.upper.rotation.z = -1.05 + s1 * 0.18;
-      rig.armR.upper.rotation.z = -0.86 - s1 * 0.14;
-      rig.armL.upper.rotation.x = -0.30;
-      rig.armR.upper.rotation.x =  0.36;
-      rig.armL.elbow.rotation.z = -0.75;
-      rig.armR.elbow.rotation.z = -0.95;
-      /* hunched, head hanging to one side */
-      rig.spine.rotation.z = 0.34 + s2 * 0.04;
-      rig.spine.rotation.x = 0.10;
-      rig.neck.rotation.z = -0.42;
-      rig.neck.rotation.x = 0.26 + Math.sin(w * 0.7) * 0.08;
+      b.thighR.rotation.z *= 0.35;
+      b.shinR.rotation.z = -0.34;
+      b.hipR.rotation.x = 0.16;
+      b.armL.rotation.set(-0.30, 0, -1.05 + s1 * 0.18);
+      b.armR.rotation.set( 0.36, 0, -0.86 - s1 * 0.14);
+      b.foreL.rotation.z = -0.78;
+      b.foreR.rotation.z = -0.98;
+      b.clavL.rotation.z = -0.10;
+      b.clavR.rotation.z = -0.06;
+      b.spine.rotation.set(0.10, 0, 0.30 + s2 * 0.04);
+      b.chest.rotation.set(0, 0, 0.10);
+      b.neck.rotation.set(0.26 + Math.sin(w * 0.7) * 0.08, 0, -0.44);
+      b.head.rotation.set(0, Math.sin(w * 0.5) * 0.12, -0.10);
       rig.body.position.y = Math.abs(s1) * 0.030 * S * g - 0.045 * S;
-    } else {
-      var crouch = e.crouch || 0;
-      rig.armL.upper.rotation.z = -s1 * swing * 0.72 - crouch * 0.30;
-      rig.armR.upper.rotation.z =  s1 * swing * 0.72 - crouch * 0.30;
-      rig.armL.upper.rotation.x = 0.06 + crouch * 0.22;
-      rig.armR.upper.rotation.x = -0.06 - crouch * 0.22;
-      rig.armL.elbow.rotation.z = -0.22 - Math.max(0, s1) * 0.32 * g - crouch * 0.85;
-      rig.armR.elbow.rotation.z = -0.22 - Math.max(0, -s1) * 0.32 * g - crouch * 0.85;
-      rig.spine.rotation.z = 0.05 * g + crouch * 0.32 + (e.lean || 0);
-      rig.spine.rotation.x = -s2 * 0.03 * g;
-      rig.neck.rotation.z = -0.04 - crouch * 0.16 + (e.headZ || 0);
-      rig.neck.rotation.x = e.headX || 0;
-      /* the bob, and the breath when she is standing still */
-      rig.body.position.y = Math.abs(s1) * 0.035 * S * g
-                          + (1 - g) * Math.sin(t * 1.5 + p) * 0.008 * S
-                          - crouch * 0.20 * S;
+      return;
     }
+
+    var crouch = e.crouch || 0;
+    b.armL.rotation.set( 0.06 + crouch * 0.20, 0, -s1 * swing * 0.68 - crouch * 0.28);
+    b.armR.rotation.set(-0.06 - crouch * 0.20, 0,  s1 * swing * 0.68 - crouch * 0.28);
+    b.foreL.rotation.z = -0.20 - Math.max(0,  s1) * 0.36 * g - crouch * 0.85;
+    b.foreR.rotation.z = -0.20 - Math.max(0, -s1) * 0.36 * g - crouch * 0.85;
+    /* the arm hangs a little away from the body, or it clips the ribs */
+    b.clavL.rotation.x = -0.10 - crouch * 0.06;
+    b.clavR.rotation.x =  0.10 + crouch * 0.06;
+    b.clavL.rotation.z = b.clavR.rotation.z = 0;
+
+    b.spine.rotation.set(-s2 * 0.026 * g, s1 * 0.055 * g, 0.045 * g + crouch * 0.20 + (e.lean || 0));
+    b.chest.rotation.set(0, -s1 * 0.075 * g, crouch * 0.12);
+    b.neck.rotation.set(e.headX || 0, 0, -0.03 - crouch * 0.14 + (e.headZ || 0));
+    b.head.rotation.set(0, 0, 0);
+
+    b.hips.rotation.set(0, -s1 * 0.075 * g, 0);
+
+    rig.body.position.y = Math.abs(s1) * 0.032 * S * g
+                        + (1 - g) * Math.sin(t * 1.5 + p) * 0.007 * S
+                        - crouch * 0.19 * S;
   }
 
-  /* Sitting on a horse is not standing on one. The thigh comes forward
-     and out around the barrel, the knee drops, and the hands go to the
-     mane; without this they ride like two ironing boards. */
+  /* sitting astride something */
   function poseRide(rig, t, bounce, front) {
+    var b = rig.bones;
     var s1 = Math.sin(t * 6.4 + (front ? 0 : 0.5));
-    [[rig.legL, 1], [rig.legR, -1]].forEach(function (pair) {
-      var L = pair[0], side = pair[1];
-      L.hip.rotation.x = side * 0.46;
-      L.upper.rotation.z = 1.16 + s1 * 0.03;
-      L.upper.rotation.x = 0;
-      L.knee.rotation.z = -0.62;
+    [["L", 1], ["R", -1]].forEach(function (sd) {
+      var s = sd[0], side = sd[1];
+      b["hip" + s].rotation.x = side * 0.46;
+      b["thigh" + s].rotation.set(0, 0, 1.16 + s1 * 0.03);
+      b["shin" + s].rotation.z = -0.62;
+      b["foot" + s].rotation.z = -0.30;
     });
-    rig.spine.rotation.z = (front ? 0.14 : 0.26) + s1 * 0.035;
-    rig.spine.rotation.x = 0;
-    rig.neck.rotation.z = -0.06;
-    rig.neck.rotation.x = 0;
+    b.spine.rotation.set(0, 0, (front ? 0.14 : 0.26) + s1 * 0.035);
+    b.chest.rotation.set(0, 0, 0);
+    b.neck.rotation.set(0, 0, -0.06);
     if (front) {
-      /* both hands down on the neck */
-      rig.armL.upper.rotation.z = -0.62; rig.armR.upper.rotation.z = -0.62;
-      rig.armL.upper.rotation.x = 0.18;  rig.armR.upper.rotation.x = -0.18;
-      rig.armL.elbow.rotation.z = -0.34; rig.armR.elbow.rotation.z = -0.34;
+      b.armL.rotation.set( 0.18, 0, -0.62); b.armR.rotation.set(-0.18, 0, -0.62);
+      b.foreL.rotation.z = -0.34; b.foreR.rotation.z = -0.34;
     } else {
-      /* he is holding on to her */
-      rig.armL.upper.rotation.z = -1.02; rig.armR.upper.rotation.z = -1.02;
-      rig.armL.upper.rotation.x = 0.34;  rig.armR.upper.rotation.x = -0.34;
-      rig.armL.elbow.rotation.z = -0.86; rig.armR.elbow.rotation.z = -0.86;
+      b.armL.rotation.set( 0.34, 0, -1.02); b.armR.rotation.set(-0.34, 0, -1.02);
+      b.foreL.rotation.z = -0.86; b.foreR.rotation.z = -0.86;
     }
     rig.body.position.y = bounce;
   }
 
-  /* ---- the people in the game ---- */
+  /* ---------------- the cast ---------------- */
 
   function makeOuissy() {
     var r = buildHuman({
-      scale: 1.0, build: "slim", depth: 0.70,
-      skin: 0xf0d3bc,                       /* fair */
-      skinMat: skinMat(0xf2d6c0, 0.58),
-      eyes: 0x35526a,
-      hair: 0xe0c894, hairStyle: "longWavy", hairRough: 0.36,
-      top: 0x8e2f4c,                        /* a dark red top under it */
-      jacket: 0x2f3a4e,                     /* a canvas jacket, collar up */
-      jacketWeave: "cloth",
-      trousers: 0x39506b, legWeave: "denim",
-      shoe: 0x2a211c, boots: true, belt: true, trim: 0x33261f,
-      sleeves: true
+      scale: 1.0, build: "slim", depth: 0.72,
+      skin: 0xf2d8c2, skinMat: skinMat(0xf3dac6, 0.58),
+      eyes: 0x4a6a86, lips: 0xb47a72,
+      hair: 0xe2caa0, hairStyle: "longWavy", hairRough: 0.38,
+      browColour: 0xa88a5c,
+      top: 0x9a9fa6, topKind: "tee", weave: "cloth",
+      trousers: 0x93aac6, legKind: "joggers", legWeave: "denim",
+      shoe: 0x2b2320, boots: true
     });
     r.name = "ouissy";
-    /* a strap across her, because she left the house with something */
-    var strap = new THREE.Mesh(roundBox(0.10, 0.42, 0.036, 0.014, 2), leatherMat(0x4a3a2a));
-    strap.position.set(0.108, 0.30, 0.050);
-    strap.rotation.set(0, 0, -0.34);
+    /* the strap of whatever she left the house with */
+    var strap = new THREE.Mesh(roundBox(0.055, 0.36, 0.024, 0.009, 2), leatherMat(0x54402c));
+    strap.position.set(0.088, -0.120, 0.072);      /* chest-bone local */
+    strap.rotation.set(0, 0, -0.40);
     strap.castShadow = true;
-    r.spine.add(strap);
+    r.chest.add(strap);
     return r;
   }
 
   function makeAnwar() {
     var r = buildHuman({
-      scale: 1.06, build: "broad", depth: 0.84,
-      skin: 0xc08a60, eyes: 0x2a1c14,
-      hair: 0x231a15, hairStyle: "short", beard: true,
-      top: 0xd9dde5,                        /* what they gave him on the ward */
-      trousers: 0x39404e, legWeave: "cloth",
-      shoe: 0x1e1a17,
-      sleeves: "short"
+      scale: 1.05, build: "broad", depth: 0.82,
+      skin: 0xc2905f, eyes: 0x33241a, lips: 0x8a5a4a,
+      hair: 0x241a14, hairStyle: "short", beard: true, browColour: 0x241a14,
+      top: 0xdfe3ea, topKind: "tee", weave: "cloth",
+      trousers: 0x3b424f, legKind: "joggers", legWeave: "cloth",
+      shoe: 0x1f1a17
     });
     r.name = "anwar";
     return r;
@@ -3008,243 +3352,210 @@
      THEM
      Nine bodies, six wardrobes, four builds and a set of things that
      can have gone wrong, combined off the seed — so a corridor with
-     eight in it has eight different people in it, and none of them
-     is the one you just walked past.
+     eight in it has eight different people in it.
      --------------------------------------------------------------- */
-  var Z_SKIN = [0xa8b09c, 0x9aa890, 0xb2b4a2, 0x8e9c88, 0xa6a292, 0x94a496, 0xb0a898, 0x9c9a8c, 0xa4b2a4];
+  var Z_SKIN = [0x9fae96, 0x93a58c, 0xacb2a0, 0x8a9a86, 0xa2a08e, 0x90a292, 0xaca694, 0x9a9a8a, 0xa0b0a0];
   var Z_HAIR = [0x2a2420, 0x3a3028, 0x1c1814, 0x584a3a, 0x6a5a4a, 0x241c18];
   var Z_KIT = [
-    { top: 0x7fa8b4, trousers: 0x7fa8b4, name: "scrubs", weave: "cloth", legWeave: "cloth" },
-    { top: 0xb8a642, trousers: 0x2f3540, name: "hivis", weave: "cloth", legWeave: "denim", vest: 0xc8b83a },
-    { top: 0xd8d4cc, trousers: 0x2a2e38, name: "shirt", weave: "cloth", legWeave: "cloth", jacket: 0x30343e },
-    { top: 0x5a4a52, trousers: 0x3a4250, name: "hoodie", weave: "cloth", legWeave: "denim", hood: true },
-    { top: 0x6a6250, trousers: 0x4a4438, name: "work", weave: "cloth", legWeave: "denim" },
-    { top: 0x9a4a4a, trousers: 0x33384a, name: "tee", weave: "cloth", legWeave: "denim", sleeves: "short" }
+    { top: 0x6f97a4, trousers: 0x6f97a4, weave: "cloth", legWeave: "cloth", legKind: "joggers", topKind: "tee" },
+    { top: 0xa89a3e, trousers: 0x2f3540, weave: "cloth", legWeave: "denim", legKind: "cargo", vest: 0xb8aa34, topKind: "shirtShort" },
+    { top: 0xc8c4bc, trousers: 0x2a2e38, weave: "cloth", legWeave: "cloth", legKind: "jeans", jacket: 0x2e323c, topKind: "shirt" },
+    { top: 0x53454c, trousers: 0x3a4250, weave: "cloth", legWeave: "denim", legKind: "joggers", hood: true, topKind: "tee" },
+    { top: 0x635c4b, trousers: 0x4a4438, weave: "cloth", legWeave: "denim", legKind: "cargo", topKind: "shirt" },
+    { top: 0x8e4646, trousers: 0x33384a, weave: "cloth", legWeave: "denim", legKind: "jeans", topKind: "tee" }
   ];
   var Z_BUILD = ["slim", "average", "broad", "heavy"];
+  var Z_HAIRSTYLE = ["short", "afro", "long", "bun", "bald", "short"];
 
   function makeZombie(seed) {
-    var h = function (a, b) { return hash2(seed * 37 + a, seed * 91 + b); };
+    var h = function (a, b2) { return hash2(seed * 37 + a, seed * 91 + b2); };
     var kit = Z_KIT[Math.floor(h(1, 2) * Z_KIT.length) % Z_KIT.length];
     var build = Z_BUILD[Math.floor(h(3, 4) * Z_BUILD.length) % Z_BUILD.length];
     var skinHex = Z_SKIN[Math.floor(h(5, 6) * Z_SKIN.length) % Z_SKIN.length];
 
     var spec = {
-      scale: 0.92 + h(7, 8) * 0.20,
+      scale: 0.94 + h(7, 8) * 0.18,
       build: build,
-      depth: 0.74 + h(9, 1) * 0.12,
-      skin: skinHex,
-      skinMat: rotMat(skinHex),
-      eyes: 0xc8c4b0,                       /* gone milky */
+      depth: 0.74 + h(9, 1) * 0.10,
+      skin: skinHex, skinMat: rotMat(skinHex),
+      eyes: 0xcfcbb6, lips: 0x6a4a48,
       hair: Z_HAIR[Math.floor(h(2, 9) * Z_HAIR.length) % Z_HAIR.length],
-      hairStyle: h(4, 5) < 0.18 ? "bald" : h(4, 5) < 0.42 ? "long" : h(4, 5) < 0.6 ? "bun" : "short",
+      hairStyle: Z_HAIRSTYLE[Math.floor(h(4, 5) * Z_HAIRSTYLE.length) % Z_HAIRSTYLE.length],
       beard: h(6, 7) > 0.66,
-      top: kit.top, weave: kit.weave,
-      trousers: kit.trousers, legWeave: kit.legWeave,
+      glasses: h(12, 4) > 0.72,
+      top: kit.top, weave: kit.weave, topKind: kit.topKind,
+      trousers: kit.trousers, legWeave: kit.legWeave, legKind: kit.legKind,
       jacket: kit.jacket, jacketWeave: "cloth",
-      shoe: 0x191614,
-      sleeves: kit.sleeves || (h(8, 3) > 0.5 ? "short" : true)
+      shoe: 0x2a221c, boots: h(14, 6) > 0.5
     };
 
     var r = buildHuman(spec);
 
     /* The clothes have been through it, but they are still clothes: dirty
-       them and take the light out of them, and leave their own weave alone.
-       Painting the rot texture over everything — which is what this did at
-       first — made scrubs, denim and skin all the same shade of green, and
-       every one of them read as one moulded object. */
-    var keep = [r.contact];
-    r.root.traverse(function (o) {
-      if (!o.isMesh || keep.indexOf(o) >= 0) return;
-      if (!o.material || !o.material.color) return;
-      if (o.material.map === tex("rot", 256, 1)) return;    /* skin already is */
-      o.material = o.material.clone();
-      o.material.roughness = Math.min(1, (o.material.roughness || 0.9) + 0.08);
-      o.material.envMapIntensity = 0.22;
-      /* worn towards the colour of everything else on the street */
-      o.material.color.multiplyScalar(0.62);
-      o.material.color.lerp(new THREE.Color(0x4a4a42), 0.28);
+       them and take the light out of them, and leave the weave alone. */
+    r.meshes.forEach(function (m) {
+      if (m.material === spec.skinMat) return;
+      m.material = m.material.clone();
+      m.material.roughness = Math.min(1, (m.material.roughness || 0.9) + 0.07);
+      m.material.envMapIntensity = 0.22;
+      m.material.color.multiplyScalar(0.66);
+      m.material.color.lerp(new THREE.Color(0x4a4a42), 0.26);
     });
 
+    var S = spec.scale;
     if (kit.vest) {
       var vest = new THREE.Mesh(
         (function () {
-          var g = new THREE.CylinderGeometry(0.196 * spec.scale, 0.186 * spec.scale, 0.34 * spec.scale, 16, 1, true);
-          g.scale(spec.depth * 1.04, 1, 1);
-          return g;
+          var g = new THREE.CylinderGeometry(0.196 * S, 0.186 * S, 0.34 * S, 18, 1, true);
+          g.scale(spec.depth * 1.04, 1, 1); return g;
         })(),
-        new THREE.MeshStandardMaterial({ color: kit.vest, roughness: 0.72, metalness: 0.02,
-          map: tex("rot", 256, 1), bumpMap: bump("rot", 256, 1), bumpScale: 0.08, envMapIntensity: 0.6 }));
-      vest.position.y = 0.30 * spec.scale;
+        new THREE.MeshStandardMaterial({ color: kit.vest, roughness: 0.74, metalness: 0.02,
+          map: tex("rot", 256, 1), bumpMap: bump("rot", 256, 1), bumpScale: 0.07,
+          envMapIntensity: 0.5, side: THREE.DoubleSide }));
+      vest.position.y = -0.02 * S;
       vest.castShadow = true;
-      r.spine.add(vest);
-      [0.20, 0.30].forEach(function (yy) {
-        var band = new THREE.Mesh(
-          (function () {
-            var g = new THREE.CylinderGeometry(0.201 * spec.scale, 0.201 * spec.scale, 0.035 * spec.scale, 16, 1, true);
-            g.scale(spec.depth * 1.04, 1, 1); return g;
-          })(),
-          new THREE.MeshStandardMaterial({ color: 0xd8dce4, roughness: 0.28, metalness: 0.1, envMapIntensity: 1.8 }));
-        band.position.y = yy * spec.scale;
-        r.spine.add(band);
-      });
+      r.chest.add(vest);
     }
-
     if (kit.hood) {
       var hood = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.15 * spec.scale, 12, 9, 0, 6.2832, 0, 1.8); g.scale(1, 0.9, 1.02); return g; })(),
+        (function () { var g = new THREE.SphereGeometry(0.150 * S, 14, 11, 0, 6.2832, 0, 1.8); g.scale(1, 0.9, 1.02); return g; })(),
         new THREE.MeshStandardMaterial({ color: kit.top, roughness: 0.95,
-          map: tex("rot", 256, 1), bumpMap: bump("rot", 256, 1), bumpScale: 0.12, envMapIntensity: 0.25 }));
-      hood.position.set(-0.045 * spec.scale, 0.02 * spec.scale, 0);
+          map: tex("rot", 256, 1), bumpMap: bump("rot", 256, 1), bumpScale: 0.1, envMapIntensity: 0.22 }));
+      hood.position.set(-0.050 * S, 0.010 * S, 0);
       hood.castShadow = true;
       r.neck.add(hood);
     }
 
-    /* what has happened to them. Nothing gratuitous — a torn sleeve, an
-       arm that hangs, a shoulder that does not sit level. */
+    /* what has happened to them. A torn sleeve, an arm that hangs, a
+       shoulder out of line — nothing gratuitous. */
     var dmg = h(11, 13);
     r.damage = {};
-    if (dmg > 0.80) {
-      /* one forearm gone: the sleeve ends at the elbow and so does the arm */
-      r.armR.lower.visible = false;
-      if (r.armR.hand) r.armR.hand.visible = false;
-      var stump = new THREE.Mesh(
-        new THREE.SphereGeometry(0.045 * spec.scale, 8, 6), rotMat(0x8a6a62));
-      stump.position.y = -0.02 * spec.scale;
-      r.armR.elbow.add(stump);
+    if (dmg > 0.84) {
+      /* one forearm gone: collapsing the bone takes the mesh with it */
+      r.bones.foreR.scale.setScalar(0.001);
       r.damage.arm = true;
-    } else if (dmg > 0.62) {
-      r.damage.limp = true;                 /* one leg drags harder */
-    } else if (dmg > 0.44) {
-      r.damage.tilt = (h(3, 17) - 0.5) * 0.5;   /* a shoulder out of line */
-      r.spine.rotation.x = r.damage.tilt;
+    } else if (dmg > 0.64) {
+      r.damage.limp = true;
+    } else if (dmg > 0.46) {
+      r.damage.tilt = (h(3, 17) - 0.5) * 0.5;
     }
-    if (h(19, 2) > 0.5) {
-      /* something dark down the front, which is as far as this goes */
-      var stain = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.15 * spec.scale, 10, 8, 0, 2.0, 0.7, 1.2); g.rotateY(-1.0); return g; })(),
-        new THREE.MeshStandardMaterial({ color: 0x4a1e1c, roughness: 0.7, transparent: true, opacity: 0.7,
-          map: tex("rot", 256, 1) }));
-      stain.position.set(0.02 * spec.scale, 0.26 * spec.scale, 0);
-      stain.scale.set(spec.depth, 1, 1);
-      r.spine.add(stain);
-    }
-
     r.name = "zombie";
     return r;
   }
 
   /* ---------------------------------------------------------------
      THE ONES WHO ARE STILL PEOPLE
-     Ashcombe has staff on the gate and people waiting inside it, and
-     they should not look like the same man four times.
      --------------------------------------------------------------- */
-  var CIVIL_SKIN = [0xe8c8a8, 0xc79a6c, 0x8d6242, 0xf0d6bd, 0xa87a52, 0x6b4a33];
+  var CIVIL_SKIN = [0xecd0b2, 0xc99d70, 0x8f6444, 0xf2dac2, 0xaa7c54, 0x6d4c35];
   var CIVIL_HAIR = [0x2a2018, 0x6a4a26, 0x3a2a1e, 0x8a7a5a, 0x141210, 0xa89060];
 
   function makeGuard(seed) {
-    var h = function (a, b) { return hash2(seed * 53 + a, seed * 29 + b); };
+    var h = function (a, b2) { return hash2(seed * 53 + a, seed * 29 + b2); };
+    var S = 1.02 + h(1, 1) * 0.08;
     var r = buildHuman({
-      scale: 1.02 + h(1, 1) * 0.10,
+      scale: S,
       build: h(2, 2) > 0.5 ? "broad" : "average",
-      depth: 0.82,
+      depth: 0.80,
       skin: CIVIL_SKIN[Math.floor(h(3, 3) * CIVIL_SKIN.length) % CIVIL_SKIN.length],
-      eyes: 0x2e2218,
+      eyes: 0x33261c, lips: 0x9a6a5e,
       hair: CIVIL_HAIR[Math.floor(h(4, 4) * CIVIL_HAIR.length) % CIVIL_HAIR.length],
       hairStyle: h(5, 5) > 0.6 ? "bun" : "short",
       beard: h(6, 6) > 0.5,
-      top: 0x2b3038, trousers: 0x262b33, legWeave: "cloth",
-      jacket: 0x333a44, jacketWeave: "cloth",
-      shoe: 0x171513, boots: true, belt: true,
+      top: 0x39414d, topKind: "shirtShort", weave: "cloth",
+      trousers: 0x272c34, legKind: "cargo", legWeave: "cloth",
+      shoe: 0x191614, boots: true,
       helmet: h(7, 7) > 0.35 ? 0x3c4652 : null,
-      mask: h(8, 8) > 0.55 ? 0x3a4048 : null,
-      sleeves: true
+      mask: h(8, 8) > 0.55 ? 0x3a4048 : null
     });
-    /* the hi-vis over the top, which is the whole uniform really */
-    var S = r.S;
+    /* the hi-vis, which is the whole uniform really */
     var vest = new THREE.Mesh(
       (function () {
-        var g = new THREE.CylinderGeometry(0.202 * S, 0.192 * S, 0.36 * S, 16, 1, true);
-        g.scale(0.86, 1, 1); return g;
+        var g = new THREE.CylinderGeometry(0.205 * S, 0.196 * S, 0.36 * S, 20, 1, true);
+        g.scale(0.84, 1, 1); return g;
       })(),
-      new THREE.MeshStandardMaterial({ color: 0xe8e21c, roughness: 0.58, metalness: 0.02,
-        emissive: new THREE.Color(0x3a3a06), emissiveIntensity: 1.0,
-        map: tex("cloth", 256, 2), bumpMap: bump("cloth", 256, 2), bumpScale: 0.07, envMapIntensity: 0.8 }));
-    vest.position.y = 0.30 * S; vest.castShadow = true;
-    r.spine.add(vest);
-    [0.20, 0.31].forEach(function (yy) {
+      new THREE.MeshStandardMaterial({ color: 0xe4de20, roughness: 0.58, metalness: 0.02,
+        emissive: new THREE.Color(0x33330a), emissiveIntensity: 1.0,
+        map: tex("cloth", 256, 2), bumpMap: bump("cloth", 256, 2), bumpScale: 0.06,
+        envMapIntensity: 0.8, side: THREE.DoubleSide }));
+    vest.position.y = -0.01 * S;
+    vest.castShadow = true;
+    r.chest.add(vest);
+    [-0.075, 0.030].forEach(function (yy) {
       var band = new THREE.Mesh(
         (function () {
-          var g = new THREE.CylinderGeometry(0.208 * S, 0.208 * S, 0.038 * S, 16, 1, true);
-          g.scale(0.86, 1, 1); return g;
+          var g = new THREE.CylinderGeometry(0.212 * S, 0.212 * S, 0.036 * S, 20, 1, true);
+          g.scale(0.84, 1, 1); return g;
         })(),
-        new THREE.MeshStandardMaterial({ color: 0xe8ecf4, roughness: 0.2, metalness: 0.2, envMapIntensity: 2.4 }));
+        new THREE.MeshStandardMaterial({ color: 0xe8ecf4, roughness: 0.22, metalness: 0.2,
+          envMapIntensity: 2.4, side: THREE.DoubleSide }));
       band.position.y = yy * S;
-      r.spine.add(band);
+      r.chest.add(band);
     });
-    /* a rifle on a sling, held across, muzzle down */
     if (h(9, 9) > 0.25) {
       var gun = new THREE.Group();
       var gm = new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.42, metalness: 0.55, envMapIntensity: 1.2 });
-      var barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.014 * S, 0.016 * S, 0.34 * S, 8), gm);
+      var barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.013 * S, 0.015 * S, 0.32 * S, 10), gm);
       barrel.rotation.z = Math.PI / 2; barrel.position.set(0.10 * S, 0, 0);
       gun.add(barrel);
-      var recv = new THREE.Mesh(roundBox(0.20 * S, 0.062 * S, 0.036 * S, 0.012 * S, 2), gm);
-      gun.add(recv);
-      var mag = new THREE.Mesh(roundBox(0.05 * S, 0.10 * S, 0.03 * S, 0.01 * S, 2), gm);
-      mag.position.set(-0.01 * S, -0.07 * S, 0); mag.rotation.z = 0.16;
+      gun.add(new THREE.Mesh(roundBox(0.19 * S, 0.058 * S, 0.034 * S, 0.010 * S, 2), gm));
+      var mag = new THREE.Mesh(roundBox(0.046 * S, 0.095 * S, 0.028 * S, 0.008 * S, 2), gm);
+      mag.position.set(-0.01 * S, -0.066 * S, 0); mag.rotation.z = 0.16;
       gun.add(mag);
-      var stock = new THREE.Mesh(roundBox(0.13 * S, 0.055 * S, 0.032 * S, 0.012 * S, 2), gm);
-      stock.position.set(-0.155 * S, -0.012 * S, 0);
+      var stock = new THREE.Mesh(roundBox(0.125 * S, 0.052 * S, 0.030 * S, 0.010 * S, 2), gm);
+      stock.position.set(-0.148 * S, -0.012 * S, 0);
       gun.add(stock);
-      gun.position.set(0.14 * S, 0.30 * S, -0.10 * S);
+      gun.position.set(0.13 * S, -0.02 * S, -0.10 * S);
       gun.rotation.set(0, 0.4, -0.5);
       gun.traverse(function (o) { if (o.isMesh) o.castShadow = true; });
-      r.spine.add(gun);
-      var sling = new THREE.Mesh(new THREE.BoxGeometry(0.022 * S, 0.46 * S, 0.06 * S), leatherMat(0x2e2a26));
-      sling.position.set(0.095 * S, 0.30 * S, -0.02 * S);
+      r.chest.add(gun);
+      var sling = new THREE.Mesh(roundBox(0.075 * S, 0.42 * S, 0.022 * S, 0.008 * S, 2), leatherMat(0x2e2a26));
+      sling.position.set(0.085 * S, -0.02 * S, -0.02 * S);
       sling.rotation.z = 0.42;
-      r.spine.add(sling);
+      r.chest.add(sling);
     }
     r.name = "guard";
     return r;
   }
 
   function makeCivilian(seed) {
-    var h = function (a, b) { return hash2(seed * 71 + a, seed * 13 + b); };
+    var h = function (a, b2) { return hash2(seed * 71 + a, seed * 13 + b2); };
     var coats = [0x4a5560, 0x6a4a3a, 0x3a4a3e, 0x5a4a5e, 0x7a6a52, 0x2f4450];
-    var tops  = [0xc8ccd4, 0x9a5a62, 0x5a7a6a, 0xd8c8a8, 0x6a6a7a];
+    var tops  = [0x4a7ab4, 0xc8ccd4, 0x9a5a62, 0x5a7a6a, 0xd8c8a8, 0x6a6a7a];
     var legs  = [0x39506b, 0x2f3540, 0x4a4438, 0x565a64];
-    var styles = ["short", "long", "bun", "longWavy", "bald"];
+    var styles = ["short", "long", "bun", "longWavy", "afro", "bald"];
+    var kinds = ["tee", "shirt", "shirtShort"];
+    var lk = ["jeans", "joggers", "cargo"];
+    var S = 0.94 + h(1, 1) * 0.16;
     var r = buildHuman({
-      scale: 0.94 + h(1, 1) * 0.16,
+      scale: S,
       build: Z_BUILD[Math.floor(h(2, 2) * 4) % 4],
-      depth: 0.74 + h(3, 3) * 0.12,
+      depth: 0.74 + h(3, 3) * 0.10,
       skin: CIVIL_SKIN[Math.floor(h(4, 4) * CIVIL_SKIN.length) % CIVIL_SKIN.length],
-      eyes: h(5, 5) > 0.7 ? 0x3a5a4a : 0x2e2218,
+      eyes: h(5, 5) > 0.7 ? 0x3f6350 : 0x33261c,
+      lips: 0x9a6a5e,
       hair: CIVIL_HAIR[Math.floor(h(6, 6) * CIVIL_HAIR.length) % CIVIL_HAIR.length],
       hairStyle: styles[Math.floor(h(7, 7) * styles.length) % styles.length],
       beard: h(8, 8) > 0.66,
+      glasses: h(17, 3) > 0.66,
       top: tops[Math.floor(h(9, 9) * tops.length) % tops.length],
-      jacket: h(10, 10) > 0.35 ? coats[Math.floor(h(11, 11) * coats.length) % coats.length] : null,
+      topKind: kinds[Math.floor(h(18, 5) * kinds.length) % kinds.length],
+      jacket: h(10, 10) > 0.45 ? coats[Math.floor(h(11, 11) * coats.length) % coats.length] : null,
       jacketWeave: "cloth",
       trousers: legs[Math.floor(h(12, 12) * legs.length) % legs.length],
+      legKind: lk[Math.floor(h(19, 7) * lk.length) % lk.length],
       legWeave: h(13, 13) > 0.5 ? "denim" : "cloth",
-      shoe: 0x231e1a, belt: h(14, 14) > 0.5,
-      sleeves: h(15, 15) > 0.7 ? "short" : true
+      shoe: 0x241f1a, boots: h(20, 2) > 0.6
     });
-    /* a bag, because everybody who got here brought something */
     if (h(16, 16) > 0.4) {
-      var S = r.S;
-      var bag = new THREE.Mesh(roundBox(0.16 * S, 0.22 * S, 0.12 * S, 0.04 * S, 2),
+      var bag = new THREE.Mesh(roundBox(0.15 * S, 0.21 * S, 0.115 * S, 0.035 * S, 2),
         clothMat(0x4a4238, 0.95));
-      bag.position.set(-0.17 * S, 0.20 * S, 0.15 * S);
+      bag.position.set(-0.17 * S, -0.04 * S, 0.15 * S);
       bag.castShadow = true;
-      r.spine.add(bag);
-      var strap = new THREE.Mesh(new THREE.BoxGeometry(0.028 * S, 0.42 * S, 0.09 * S), leatherMat(0x3a332c));
-      strap.position.set(-0.02 * S, 0.30 * S, 0.10 * S);
+      r.chest.add(bag);
+      var strap = new THREE.Mesh(roundBox(0.075 * S, 0.40 * S, 0.024 * S, 0.008 * S, 2), leatherMat(0x3a332c));
+      strap.position.set(-0.02 * S, -0.02 * S, 0.095 * S);
       strap.rotation.z = 0.30;
-      r.spine.add(strap);
+      r.chest.add(strap);
     }
     r.name = "civilian";
     return r;
@@ -3389,7 +3700,11 @@
     }
     im.instanceMatrix.needsUpdate = true;
     if (im.instanceColor) im.instanceColor.needsUpdate = true;
-    im.frustumCulled = false;
+    /* These were all marked never-cull, which meant every level drew the
+       whole of itself every frame, including everything behind the camera.
+       An InstancedMesh can work out its own bounds from its matrices. */
+    im.computeBoundingSphere();
+    im.frustumCulled = true;
     parent.add(im);
     return im;
   };
@@ -3527,6 +3842,9 @@
       floor:  new Batch(geo("tileF", function () { return new THREE.BoxGeometry(TILE, 0.30, TILE); }), matFloor, false, true),
       ground: new Batch(geo("tileG", function () { return new THREE.BoxGeometry(TILE, 0.30, TILE); }), matGround, false, true),
       wall:   new Batch(geo("wallB", function () { return new THREE.BoxGeometry(TILE, TUNE.wallH, TILE); }), matWall, true, true),
+      /* `false` in the third slot means "does not cast": everything small
+         enough that its shadow is invisible stays out of the shadow pass,
+         which is a full re-render of the scene from the torch every frame. */
       cap:    new Batch(geo(outdoorLevel ? "capO" : "capB", function () {
                 return new THREE.BoxGeometry(TILE * (outdoorLevel ? 1.16 : 1.04),
                                              outdoorLevel ? 0.34 : 0.16,
@@ -3547,7 +3865,7 @@
       metal:  new Batch(geo("metalB", function () { return new THREE.BoxGeometry(1, 1, 1); }), matMetal, true, true),
       wood:   new Batch(geo("woodB",  function () { return new THREE.BoxGeometry(1, 1, 1); }), matWood, true, true),
       kerb:   new Batch(geo("kerbB",  function () { return new THREE.BoxGeometry(TILE, 0.30, 0.16); }),
-                surface("block", { size: 512, rough: 0.86, bumpScale: 0.12, tint: 0xb8bcc0 }), true, true),
+                surface("block", { size: 512, rough: 0.86, bumpScale: 0.12, tint: 0xb8bcc0 }), false, true),
 
       /* ---- the pieces a facade is made of ----
          Each is one instanced batch across the whole level, so a street of
@@ -3556,17 +3874,18 @@
       coping:  new Batch(geo("copingB", function () { return new THREE.BoxGeometry(TILE * 1.22, 0.14, TILE * 1.22); }),
                 surface("block", { size: 512, rough: 0.84, bumpScale: 0.14, tint: 0xa8aeb6 }), true, true),
       plinth:  new Batch(geo("plinthB", function () { return new THREE.BoxGeometry(TILE * 1.06, 0.60, 0.24); }),
-                surface("block", { size: 512, rough: 0.88, bumpScale: 0.16, tint: 0x9aa0a8 }), true, true),
+                surface("block", { size: 512, rough: 0.88, bumpScale: 0.16, tint: 0x9aa0a8 }), false, true),
       band:    new Batch(geo("bandB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
-                surface("block", { size: 512, rough: 0.86, bumpScale: 0.12, tint: 0xa4aab2 }), true, true),
+                surface("block", { size: 512, rough: 0.86, bumpScale: 0.12, tint: 0xa4aab2 }), false, true),
       sill:    new Batch(geo("sillB2", function () { return new THREE.BoxGeometry(TILE * 0.72, 0.11, 0.26); }),
-                surface("block", { size: 512, rough: 0.82, bumpScale: 0.1, tint: 0xb0b6be }), true, true),
+                surface("block", { size: 512, rough: 0.82, bumpScale: 0.1, tint: 0xb0b6be }), false, true),
       reveal:  new Batch(geo("revealB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
                 new THREE.MeshStandardMaterial({ color: 0x14181e, roughness: 0.95, metalness: 0 }), false, true),
       winDark: new Batch(geo("winB", function () { return new THREE.BoxGeometry(TILE * 0.56, 0.92, 0.06); }),
                 null, false, false),
       winLit:  new Batch(geo("winB2", function () { return new THREE.BoxGeometry(TILE * 0.56, 0.92, 0.06); }),
                 null, false, false),
+      /* a window frame casting a shadow into a room nobody can see into */
       winFrame: new Batch(geo("winFrameB", function () {
                   /* a frame with a transom and a mullion in it */
                   var a = new THREE.BoxGeometry(TILE * 0.62, 0.07, 0.10); a.translate(0, 0.49, 0);
@@ -3576,9 +3895,9 @@
                   var e = new THREE.BoxGeometry(0.05, 0.98, 0.09);
                   var f = new THREE.BoxGeometry(TILE * 0.58, 0.045, 0.09); f.translate(0, 0.16, 0);
                   return mergeGeoms([a, b, c, d, e, f]);
-                }), null, true, false),
+                }), null, false, false),
       board:   new Batch(geo("boardB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
-                surface("boards", { size: 256, rough: 0.95, bumpScale: 0.2, tint: 0x9a8464 }), true, false),
+                surface("boards", { size: 256, rough: 0.95, bumpScale: 0.2, tint: 0x9a8464 }), false, false),
       shutter: new Batch(geo("shutB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
                 surface("metal", { size: 256, rough: 0.55, metal: 0.7, tint: 0x8a8f96, envInt: 1.1 }), true, false),
       soot:    new Batch(geo("sootB", function () { return new THREE.PlaneGeometry(1, 1); }),
@@ -3587,9 +3906,9 @@
       tank:    new Batch(geo("tankB", function () { return new THREE.CylinderGeometry(0.62, 0.62, 1.1, 14); }),
                 surface("metal", { size: 256, rough: 0.7, metal: 0.6, tint: 0x6a6258, envInt: 1.0 }), true, true),
       thin:    new Batch(geo("thinB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
-                surface("metal", { size: 256, rough: 0.5, metal: 0.75, tint: 0x585c62, envInt: 1.2 }), true, true),
+                surface("metal", { size: 256, rough: 0.5, metal: 0.75, tint: 0x585c62, envInt: 1.2 }), false, true),
       rubble:  new Batch(geo("rubbleB", function () { return new THREE.DodecahedronGeometry(1, 0); }),
-                surface("block", { size: 256, rough: 0.96, bumpScale: 0.3, tint: 0x8a8278 }), true, true),
+                surface("block", { size: 256, rough: 0.96, bumpScale: 0.3, tint: 0x8a8278 }), false, true),
       litter:  new Batch(geo("litterB", function () {
                   var g = new THREE.PlaneGeometry(1, 1);
                   g.rotateX(-Math.PI / 2);
@@ -5075,7 +5394,7 @@
 
     var spot = new THREE.SpotLight(0xfff0d0, 46, 28, 0.72, 0.86, 1.1);
     spot.castShadow = true;
-    spot.shadow.mapSize.set(2048, 2048);
+    spot.shadow.mapSize.set(1024, 1024);
     spot.shadow.camera.near = 0.5;
     spot.shadow.camera.far = 26;
     spot.shadow.bias = -0.0011;
@@ -8250,11 +8569,11 @@
   function watchPerformance(dt) {
     if (perfLock > 0) { perfLock -= dt; return; }
     perfAcc += dt; perfN++;
-    if (perfAcc < 1.5) return;
+    if (perfAcc < 0.8) return;
     var avg = perfAcc / perfN;
     perfAcc = 0; perfN = 0;
-    if (avg > 0.040 && Stage.quality < 2) {
-      perfLock = 3;
+    if (avg > 0.0235 && Stage.quality < 2) {
+      perfLock = 2.5;
       var scene = G && (G.cine ? G.cine.scene : G.scene);
       var cam = G && G.cine ? G.cine.camera : Stage.camera;
       Stage.setQuality(Stage.quality + 1, scene, cam);

@@ -180,18 +180,23 @@ Everything you look at is geometry with lights on it:
   have lost their glass, and one or two have soot up the wall above them.
   Rubble banks up where a wall meets the pavement, litter blows about, and
   somebody's bin is still out.
-- **Nobody is a sprite.** One builder makes every figure in the game from a
-  spec — a lathed torso with a waist in it, a jacket over the top of it, a
-  deltoid at each shoulder, a skull with a jaw and a brow and eyes with lids
-  and brows over them, and boots with soles. Ouissy has long blonde wavy hair
-  built as a cap, a fringe and fourteen tapered locks, each waved on its own
-  phase. The ones that used to be people come out of a combination of nine
-  skin tones, six wardrobes, four builds and a set of things that can have
-  gone wrong, so a corridor with eight in it has eight different people in
-  it. Ashcombe has staff on the gate in hi-vis with rifles slung, and a dozen
-  people waiting inside who got there first. The walk cycle, the creep, the
-  lurch, sitting on a log and sitting astride a horse are all poses on the
-  same rig.
+- **Everybody is a skinned mesh on a real skeleton.** Twenty-two bones, one
+  continuous body surface, and garments as their own shells over it. An
+  elbow bends the mesh around it instead of hinging one cylinder past
+  another, and a figure costs seven draw calls rather than twenty-five.
+  Every limb, torso and garment comes out of one builder — a stack of rings
+  with bone weights on them — so an arm and the sleeve over it are the same
+  kind of object and deform together. A t-shirt hangs below the waist and
+  ends in a cuff that stands off the arm; joggers gather into an elastic at
+  the ankle; hands have thumbs; shoes have a sole, a toe box and a collar.
+  Ouissy has fair skin and long blonde wavy hair built as a cap, a fringe
+  and sixteen tapered locks each waved on its own phase. The ones that used
+  to be people come out of nine skin tones, six wardrobes, four builds, six
+  hairstyles and a set of things that can have gone wrong, so a corridor
+  with eight in it has eight different people in it. Ashcombe has staff on
+  the gate in hi-vis with rifles slung, and a dozen people waiting inside
+  who got there first. The walk cycle, the creep, the lurch, sitting on a
+  log and sitting astride a horse are all poses on the same skeleton.
 - **The dark is lit, not painted.** A hemisphere light for the sky, one
   directional for the moon or the sun, a pool of eight point lights moved to
   whichever lamps are nearest her, and her torch — a shadow-casting spotlight
