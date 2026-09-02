@@ -17,9 +17,9 @@
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=83">
+<link rel="stylesheet" href="style.css?v=84">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=83"></script>
+<script src="vendor/three.bundle.js?v=84"></script>
 
 </head>
 <body>
@@ -1026,6 +1026,9 @@
           <div class="rc-boost" id="rc-boost" data-tier="1" hidden><i id="rc-boost-f"></i></div>
         </div>
 
+        <!-- the tutorial's speech bubble -->
+        <div class="rc-tut" id="rc-tut" hidden></div>
+
         <p class="rc-count" id="rc-count" data-go="0" hidden></p>
         <p class="rc-banner" id="rc-banner" hidden></p>
 
@@ -1033,23 +1036,25 @@
           <span class="gl-pause" aria-hidden="true"></span>
         </button>
 
+        <!-- the touch controls sit over the track, low in both corners
+             so a thumb reaches them without covering the road -->
+        <div class="rc-pad" id="rc-pad" hidden>
+          <div class="rc-pad-cluster rc-pad-l">
+            <button class="rc-key rc-key-steer" data-k="left"  aria-label="Steer left"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+            <button class="rc-key rc-key-steer" data-k="right" aria-label="Steer right"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+          </div>
+          <div class="rc-pad-cluster rc-pad-r">
+            <button class="rc-key rc-key-sm" data-k="down"  aria-label="Brake"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+            <button class="rc-key rc-key-sm" data-k="item"  aria-label="Use item"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+            <button class="rc-key rc-key-big rc-key-drift" data-k="drift" aria-label="Drift"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+            <button class="rc-key rc-key-big rc-key-gas"   data-k="up"    aria-label="Accelerate"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+          </div>
+        </div>
+
         <!-- every menu, card and podium mounts into this -->
         <div class="rc-overlay" id="rc-overlay" aria-hidden="true"></div>
       </div>
 
-      <!-- the touch pad, for playing this on a phone -->
-      <div class="rc-pad" id="rc-pad" hidden>
-        <div class="rc-pad-dir">
-          <button class="rc-key rc-key-l" data-k="left"  aria-label="Left"></button>
-          <button class="rc-key rc-key-r" data-k="right" aria-label="Right"></button>
-        </div>
-        <div class="rc-pad-act">
-          <button class="rc-key rc-key-item"  data-k="item"  aria-label="Use item">ITEM</button>
-          <button class="rc-key rc-key-brake" data-k="down"  aria-label="Brake">BRAKE</button>
-          <button class="rc-key rc-key-drift" data-k="drift" aria-label="Drift">DRIFT</button>
-          <button class="rc-key rc-key-gas"   data-k="up"    aria-label="Accelerate">GO</button>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -1095,12 +1100,12 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=83"></script>
-<script src="scrapbook.js?v=83"></script>
-<script src="script.js?v=83"></script>
-<script src="super-ouissy.js?v=83"></script>
-<script src="rescue.js?v=83"></script>
-<script src="apocalypse.js?v=83"></script>
-<script src="racing.js?v=83"></script>
+<script src="book-scene.js?v=84"></script>
+<script src="scrapbook.js?v=84"></script>
+<script src="script.js?v=84"></script>
+<script src="super-ouissy.js?v=84"></script>
+<script src="rescue.js?v=84"></script>
+<script src="apocalypse.js?v=84"></script>
+<script src="racing.js?v=84"></script>
 </body>
 </html>

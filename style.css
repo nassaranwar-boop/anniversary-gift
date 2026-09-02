@@ -4186,15 +4186,192 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-fin-art{line-height:0;}
 .rc-fin-art canvas{width:min(70cqw, 60cqh); height:auto; image-rendering:pixelated; border-radius:.8cqw;}
 
-/* ---------- the touch pad ---------- */
-.rc-pad{display:none;}
-.rc-pad[hidden]{display:none !important;}
-.rc-key{
-  font-family:var(--rc-face); border:0; cursor:pointer; color:var(--rc-ink);
-  display:grid; place-items:center; user-select:none; -webkit-user-select:none;
-  touch-action:none;
+/* ---------- the tutorial's speech bubble ---------- */
+.rc-tut{
+  position:absolute; left:50%; top:4cqh; transform:translateX(-50%);
+  z-index:7; width:min(74cqw, 96%); pointer-events:auto;
+  font-family:var(--rc-face);
 }
-.rc-key.on{filter:brightness(1.45); transform:translateY(2px);}
+.rc-tut[hidden]{display:none;}
+.rc-bubble{
+  position:relative;
+  padding:2.2cqh 3cqw 2.6cqh;
+  border-radius:1.6cqw;
+  background:linear-gradient(180deg, rgba(28,18,42,.94), rgba(20,12,32,.94));
+  box-shadow:inset 0 0 0 .34cqw rgba(255,248,232,.55), 0 1cqh 3cqw rgba(0,0,0,.5);
+  text-align:center;
+  animation:rcBubbleIn .28s ease-out;
+}
+/* the tail, pointing down at the kart */
+.rc-bubble::after{
+  content:""; position:absolute; left:50%; bottom:-1.6cqh; width:0; height:0;
+  transform:translateX(-50%);
+  border-left:1.6cqw solid transparent; border-right:1.6cqw solid transparent;
+  border-top:1.8cqh solid rgba(20,12,32,.94);
+  filter:drop-shadow(0 .2cqh 0 rgba(255,248,232,.4));
+}
+@keyframes rcBubbleIn{ from{ transform:translateX(-50%) translateY(-1.4cqh); opacity:0; } }
+.rc-bubble-tag{
+  position:absolute; top:-1.2cqh; left:2cqw;
+  padding:.5cqh 1.2cqw; border-radius:.7cqw;
+  background:var(--rc-gold); color:#3a2412; font-size:1.2cqh;
+}
+.rc-bubble h4{
+  margin:0 0 1cqh; font-weight:400; font-size:2.1cqh;
+  color:var(--rc-gold); letter-spacing:.1em;
+}
+.rc-bubble p{ margin:0; font-size:1.5cqh; line-height:2; color:var(--rc-ink); }
+.rc-bubble p b{
+  font-weight:400; color:#2a1a2e; background:var(--rc-sky);
+  padding:.2cqh .7cqw; border-radius:.4cqw; white-space:nowrap;
+}
+.rc-bubble-goal{
+  display:inline-block; margin-top:1.4cqh;
+  padding:.7cqh 1.8cqw; border-radius:.7cqw; font-size:1.3cqh;
+  color:#c9b8d8; background:rgba(255,248,232,.08);
+  box-shadow:inset 0 0 0 .2cqw rgba(255,248,232,.2);
+}
+.rc-bubble-goal::before{ content:"› "; color:var(--rc-rose); }
+/* the tick when she has actually done it */
+.rc-tut.ok .rc-bubble-goal{
+  color:#1d3a26; background:var(--rc-mint);
+  box-shadow:inset 0 0 0 .2cqw rgba(255,255,255,.5);
+}
+.rc-tut.ok .rc-bubble-goal::before{ content:"✓ "; color:#1d3a26; }
+.rc-tut.ok .rc-bubble{ box-shadow:inset 0 0 0 .34cqw var(--rc-mint), 0 1cqh 3cqw rgba(0,0,0,.5); }
+.rc-bubble-btn{ margin-top:1.6cqh; }
+.rc-bubble-skip{
+  display:block; margin:1.2cqh auto 0; border:0; background:none; cursor:pointer;
+  font-family:var(--rc-face); font-size:1.1cqh; color:#8d7f9e; letter-spacing:.06em;
+}
+.rc-bubble-skip:hover{ color:var(--rc-ink); }
+
+/* in the practice loop there is no lap and no position to report */
+.rc-hud[data-mode="tutorial"] .rc-hud-tr,
+.rc-hud[data-mode="tutorial"] .rc-chip:first-child{ display:none; }
+
+/* ---------- the sound sliders ---------- */
+.rc-sliders{ display:flex; flex-direction:column; gap:1.6cqh; width:min(54cqw, 100%); }
+.rc-slider{ display:grid; grid-template-columns:11cqw 1fr 5cqw; gap:1.4cqw; align-items:center; }
+.rc-slider-lab{ font-size:1.3cqh; color:#c9b8d8; letter-spacing:.08em; text-align:left; }
+.rc-slider output{ font-size:1.3cqh; color:var(--rc-gold); text-align:right; }
+.rc-slider input[type="range"]{
+  -webkit-appearance:none; appearance:none; width:100%; height:1.6cqh;
+  background:rgba(255,248,232,.12); border-radius:1cqh; outline:none; cursor:pointer;
+  box-shadow:inset 0 0 0 .2cqw rgba(255,248,232,.22);
+}
+.rc-slider input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none;
+  width:2.6cqh; height:2.6cqh; border-radius:.5cqw;
+  background:linear-gradient(180deg, var(--rc-rose), #c4407a);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.7), 0 .3cqh 0 rgba(20,8,26,.6);
+}
+.rc-slider input[type="range"]::-moz-range-thumb{
+  width:2.6cqh; height:2.6cqh; border:0; border-radius:.5cqw;
+  background:linear-gradient(180deg, var(--rc-rose), #c4407a);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.7), 0 .3cqh 0 rgba(20,8,26,.6);
+}
+
+/* ---------- the touch pad ----------
+   Two clusters low in the corners, over the track rather than under it.
+   The panel is pastel and see-through so the road still reads through
+   it, and every key breathes gently in the chosen racer's accent so the
+   controls feel like part of the game and not a browser widget. */
+.rc-pad{
+  position:absolute; inset:0; z-index:5;
+  display:none; pointer-events:none;
+  --rc-accent:#ff5f95; --rc-kart:#ff7f8a;
+}
+.rc-pad[hidden]{display:none !important;}
+/* shown when the pointer is a finger, hidden the moment a key is used */
+.rc-pad[data-want="1"]{display:block;}
+
+.rc-pad-cluster{
+  position:absolute; bottom:4.5cqh; display:flex; gap:1.6cqw;
+  pointer-events:auto;
+  padding:1.4cqh 1.6cqw; border-radius:2cqw;
+  background:linear-gradient(180deg, rgba(255,248,232,.16), rgba(155,93,229,.14));
+  backdrop-filter:blur(2px);
+  box-shadow:inset 0 0 0 .3cqw rgba(255,248,232,.28);
+}
+.rc-pad-l{left:2.5cqw;}
+.rc-pad-r{right:2.5cqw; align-items:flex-end;}
+
+.rc-key{
+  position:relative; overflow:visible;
+  border:0; cursor:pointer; padding:0;
+  display:grid; place-items:center;
+  user-select:none; -webkit-user-select:none; touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+  border-radius:1.6cqw;
+  background:linear-gradient(180deg, rgba(255,248,232,.30), rgba(255,248,232,.12));
+  box-shadow:
+    inset 0 0 0 .32cqw rgba(255,248,232,.5),
+    inset 0 -0.6cqh 0 rgba(20,10,26,.22),
+    0 .7cqh 0 rgba(20,10,26,.45);
+  animation:rcBreath 2.6s ease-in-out infinite;
+  transition:transform .06s ease, filter .06s ease, box-shadow .06s ease;
+}
+.rc-ico{
+  width:70%; height:70%;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+  filter:drop-shadow(0 .25cqh 0 rgba(20,10,26,.5));
+}
+.rc-key-steer{width:15cqh; height:15cqh;}
+.rc-key-big  {width:14cqh; height:14cqh;}
+.rc-key-sm   {width:9.5cqh; height:9.5cqh; align-self:flex-end;}
+
+/* the idle glow, in the racer's colour */
+@keyframes rcBreath{
+  0%,100%{ box-shadow:
+    inset 0 0 0 .32cqw rgba(255,248,232,.5),
+    inset 0 -0.6cqh 0 rgba(20,10,26,.22),
+    0 .7cqh 0 rgba(20,10,26,.45),
+    0 0 1.2cqw color-mix(in srgb, var(--rc-accent) 40%, transparent); }
+  50%{ box-shadow:
+    inset 0 0 0 .32cqw rgba(255,248,232,.62),
+    inset 0 -0.6cqh 0 rgba(20,10,26,.22),
+    0 .7cqh 0 rgba(20,10,26,.45),
+    0 0 3cqw color-mix(in srgb, var(--rc-accent) 72%, transparent); }
+}
+.rc-key-gas   { background:linear-gradient(180deg, rgba(125,219,163,.62), rgba(79,174,124,.5)); }
+.rc-key-drift { background:linear-gradient(180deg, rgba(126,200,227,.62), rgba(74,158,196,.5)); }
+.rc-key[data-k="item"]{ background:linear-gradient(180deg, rgba(255,95,149,.6), rgba(196,64,122,.5)); }
+
+/* pressed: it goes down onto its shadow and darkens */
+.rc-key.on{
+  transform:translateY(.7cqh);
+  filter:brightness(1.28) saturate(1.1);
+  animation:none;
+  box-shadow:
+    inset 0 0 0 .32cqw rgba(255,248,232,.75),
+    inset 0 .5cqh 1cqh rgba(20,10,26,.4),
+    0 0 0 rgba(20,10,26,.45),
+    0 0 2.4cqw color-mix(in srgb, var(--rc-accent) 80%, transparent);
+}
+
+/* the little burst a tap throws off */
+.rc-spark{
+  position:absolute; left:50%; top:50%;
+  width:.9cqh; height:.9cqh; margin:-.45cqh 0 0 -.45cqh;
+  background:var(--rc-accent); pointer-events:none;
+  animation:rcSpark .4s ease-out forwards;
+}
+.rc-spark.heart{
+  background:none; width:1.4cqh; height:1.4cqh; margin:-.7cqh 0 0 -.7cqh;
+  /* a four-block pixel heart, drawn with gradients rather than a glyph */
+  background-image:
+    radial-gradient(circle at 30% 30%, var(--rc-accent) 0 50%, transparent 51%),
+    radial-gradient(circle at 70% 30%, var(--rc-accent) 0 50%, transparent 51%),
+    linear-gradient(var(--rc-accent), var(--rc-accent));
+  background-size:70% 70%, 70% 70%, 74% 52%;
+  background-position:0 0, 100% 0, 50% 68%;
+  background-repeat:no-repeat;
+}
+@keyframes rcSpark{
+  from{ transform:translate(0,0) scale(1); opacity:1; }
+  to  { transform:translate(var(--dx), var(--dy)) scale(.3); opacity:0; }
+}
 
 /* ---------- the hub card: a pastel road running to a heart ---------- */
 .hub-art-race{
@@ -4235,43 +4412,6 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-frame{justify-content:space-between; padding:3vh 0 0;}
   .rc-stage{width:min(100%, calc(var(--app-h) * 0.52 * 1.7778));}
 
-  .rc-pad{
-    display:flex; align-items:center; justify-content:space-between;
-    width:100%; max-width:520px; gap:12px;
-    padding:14px 16px calc(12px + env(safe-area-inset-bottom));
-  }
-  .rc-pad-dir{display:flex; gap:12px;}
-  .rc-pad-act{
-    display:grid; grid-template-columns:repeat(2, auto); gap:10px; align-items:center;
-  }
-  .rc-key{
-    width:64px; height:64px; border-radius:16px; font-size:9px; letter-spacing:.06em;
-    background:linear-gradient(180deg, rgba(255,248,232,.16), rgba(255,248,232,.06));
-    box-shadow:inset 0 0 0 2px rgba(255,248,232,.28), 0 4px 0 rgba(20,8,26,.6);
-  }
-  .rc-key-gas{
-    background:linear-gradient(180deg, var(--rc-mint), #4fae7c);
-    box-shadow:inset 0 0 0 2px rgba(255,248,232,.45), 0 4px 0 rgba(20,8,26,.6);
-    color:#173a26;
-  }
-  .rc-key-drift{
-    background:linear-gradient(180deg, var(--rc-sky), #4a9ec4);
-    box-shadow:inset 0 0 0 2px rgba(255,248,232,.45), 0 4px 0 rgba(20,8,26,.6);
-    color:#123244;
-  }
-  .rc-key-item{
-    background:linear-gradient(180deg, var(--rc-rose), #c4407a);
-    box-shadow:inset 0 0 0 2px rgba(255,248,232,.45), 0 4px 0 rgba(20,8,26,.6);
-  }
-  /* the two steering keys are the big ones — they are held constantly */
-  .rc-key-l, .rc-key-r{width:74px; height:74px;}
-  .rc-key-l::after, .rc-key-r::after{
-    content:""; width:0; height:0;
-    border-block:16px solid transparent;
-  }
-  .rc-key-l::after{border-right:22px solid var(--rc-ink);}
-  .rc-key-r::after{border-left:22px solid var(--rc-ink);}
-
   /* the HUD gets out of the way of a thumb-sized screen */
   .rc-map{width:16cqh; height:16cqh;}
   .rc-cards-4{grid-template-columns:repeat(2, minmax(0, 36cqw));}
@@ -4281,6 +4421,6 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 @media (prefers-reduced-motion: reduce){
-  .rc-count, .rc-banner, .rc-item[data-empty="0"]{animation:none;}
+  .rc-count, .rc-banner, .rc-item[data-empty="0"], .rc-key, .rc-spark, .rc-bubble{animation:none;}
   .rc-card, .rc-btn{transition:none;}
 }

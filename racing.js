@@ -25,7 +25,20 @@ window.SuperOuissyRace = (function () {
    These are tuned together. Changing one without the others is what
    turns a racer into a slideshow of a carpet.
    --------------------------------------------------------- */
-const TEX      = 2048;   // the baked world, in texture pixels
+/* World units and texture pixels are deliberately not the same thing.
+
+   A lap has to last 45-75 seconds, and the honest way to get there is a
+   longer course — slowing the kart down to pad the clock just makes it
+   feel like a milk float. But the baked sheet cannot grow without the
+   memory growing with the square of it, so instead the sheet covers a
+   bigger world at a slightly coarser resolution: WORLD units across,
+   painted into TEX pixels. Every physics and camera number below stays
+   in world units and stays exactly as it was tuned; only the sampling
+   step divides through by TSCALE. */
+const WORLD    = 3072;   // the world is this many units square
+const TEX      = 2048;   // ...painted into this many pixels square
+const TSCALE   = WORLD / TEX;   // world units per texel
+
 const RW       = 400;    // internal render width  (then scaled up, unsmoothed)
 const RH       = 225;    // internal render height
 const HORIZON  = 90;     // screen row the ground vanishes at
@@ -34,9 +47,10 @@ const CAM_H    = 30;     // camera height above the road
 const CAM_DIST = 115;    // how far the camera trails the kart
 const MAX_Z    = 2600;   // beyond this the ground is just haze
 
-const ROAD_HALF   = 46;  // half the driveable width, texture pixels
+const ROAD_HALF   = 46;  // half the driveable width, world units
 const RUMBLE_HALF = 56;  // rumble strip ends here
 const SHOULDER    = 78;  // graded shoulder ends here; past it is scenery
+const CUT_HALF    = 30;  // a shortcut is narrower, and that is the risk
 
 const TWO_PI = Math.PI * 2;
 const DEG    = Math.PI / 180;
@@ -93,55 +107,85 @@ function packRgb(c) { return (255 << 24) | (c[2] << 16) | (c[1] << 8) | c[0]; }
 const TRACKS = [
   {
     id:"woods", name:"Cabin Woods", laps:3,
-    blurb:"Through the pines, past the river bend, around the little cabin where it all began.",
+    blurb:"Out past the pines, over the log bridge, and round the little cabin where it all began.",
     grass:"#4f8f52", grassAlt:"#478248", shoulder:"#8a6b45",
     road:"#8f7a5e", roadAlt:"#877257", rumbleA:"#ff7f8a", rumbleB:"#fff8e8",
     sky:["#8fd0ea","#c9ecd8"], haze:"#bfe0d2", accent:"#7ddba3",
-    scenery:["pine","pine","pine","cabin","rock","bush"],
-    pts:[[0.50,0.90],[0.33,0.88],[0.21,0.80],[0.17,0.68],[0.25,0.60],[0.37,0.57],
-         [0.43,0.49],[0.35,0.41],[0.21,0.37],[0.14,0.27],[0.23,0.15],[0.39,0.10],
-         [0.55,0.12],[0.67,0.20],[0.71,0.33],[0.81,0.37],[0.89,0.47],[0.87,0.61],
-         [0.77,0.69],[0.79,0.81],[0.67,0.89]],
+    light:-0.7,                       // sun bearing, for every cast shadow
+    scenery:["pine","pine","pine","bush","rock","cabin","shed","signpost","flowerbox"],
+    /* opening straight, sweep, forest esses, cabin detour, river wiggle,
+       and a run home down the right-hand side */
+    pts:[[0.54,0.93],[0.42,0.94],[0.30,0.93],
+         [0.19,0.89],[0.11,0.81],[0.08,0.71],
+         [0.14,0.63],[0.24,0.60],[0.30,0.53],[0.24,0.46],[0.13,0.44],
+         [0.07,0.36],[0.08,0.26],[0.14,0.18],
+         [0.24,0.12],[0.35,0.11],
+         [0.42,0.17],[0.47,0.25],[0.55,0.28],[0.62,0.22],
+         [0.68,0.14],[0.78,0.11],[0.87,0.16],
+         [0.92,0.25],[0.90,0.35],[0.83,0.41],[0.86,0.50],[0.93,0.57],
+         [0.92,0.68],[0.87,0.78],[0.79,0.86],[0.68,0.92]],
+    /* the log bridge: straight over the top, skipping the cabin loop */
+    cut:{ name:"log bridge", pts:[[0.37,0.12],[0.47,0.075],[0.58,0.07],[0.68,0.115]] },
   },
   {
     id:"town", name:"Hometown Streets", laps:3,
-    blurb:"Corner stores, porch lights, and the sprinklers that never once got the memo.",
+    blurb:"Corner stores, porch lights, the sprinklers that never got the memo, and the alley you always cut through.",
     grass:"#6fae5c", grassAlt:"#64a153", shoulder:"#b9a684",
     road:"#8e8e96", roadAlt:"#87878f", rumbleA:"#ffc4a3", rumbleB:"#fff8e8",
     sky:["#8fd0ea","#ffe6bd"], haze:"#e2d3b6", accent:"#ffc4a3",
-    scenery:["house","lamp","house","tree","postbox","bush"],
-    pts:[[0.50,0.90],[0.30,0.87],[0.18,0.79],[0.15,0.66],[0.22,0.57],[0.34,0.53],
-         [0.32,0.43],[0.20,0.38],[0.15,0.26],[0.26,0.16],[0.42,0.13],[0.52,0.20],
-         [0.62,0.14],[0.76,0.17],[0.86,0.28],[0.84,0.41],[0.72,0.47],[0.74,0.58],
-         [0.86,0.64],[0.85,0.79],[0.70,0.89]],
+    light:-0.5,
+    scenery:["house","house","lamp","tree","postbox","bush","store","hydrant","flowerbox"],
+    pts:[[0.55,0.93],[0.40,0.94],[0.26,0.92],
+         [0.15,0.87],[0.09,0.78],[0.10,0.67],
+         [0.18,0.60],[0.29,0.58],[0.35,0.50],
+         [0.29,0.42],[0.17,0.40],[0.09,0.32],
+         [0.11,0.21],[0.20,0.14],[0.32,0.11],
+         [0.44,0.14],[0.50,0.22],[0.58,0.26],[0.66,0.21],
+         [0.71,0.13],[0.82,0.12],[0.90,0.19],
+         [0.92,0.30],[0.85,0.37],[0.79,0.45],
+         [0.85,0.53],[0.93,0.61],[0.92,0.72],
+         [0.86,0.81],[0.76,0.88],[0.66,0.92]],
+    cut:{ name:"the back alley", pts:[[0.335,0.495],[0.42,0.44],[0.52,0.42],[0.60,0.45],[0.655,0.475]] },
   },
   {
     id:"ward", name:"Hospital Dash", laps:3,
-    blurb:"Bright halls, gift-cart shortcuts, and a slalom of IV poles. All joy, no gloom.",
-    /* Bright, but not bleached: the ward was washing out to one flat
-       white because the floor, the road and the sky were all within a
-       few percent of each other. The road stays the lightest thing on
-       screen and everything around it steps down, so the ribbon reads. */
+    blurb:"Sunlit halls, a slalom of IV poles, and the gift-cart run everybody pretends not to take.",
     grass:"#b9c8de", grassAlt:"#adbdd6", shoulder:"#93a8c6",
     road:"#e9edf5", roadAlt:"#dde4ef", rumbleA:"#7ec8e3", rumbleB:"#fff8e8",
     sky:["#cfe4f4","#eef5fb"], haze:"#d6e6f2", accent:"#7ec8e3",
-    scenery:["pole","cart","plant","pole","chair","plant"],
-    pts:[[0.50,0.90],[0.32,0.86],[0.22,0.76],[0.26,0.65],[0.38,0.60],[0.36,0.50],
-         [0.24,0.45],[0.16,0.34],[0.24,0.21],[0.40,0.14],[0.56,0.15],[0.66,0.23],
-         [0.62,0.35],[0.70,0.43],[0.83,0.42],[0.90,0.53],[0.84,0.66],[0.72,0.71],
-         [0.76,0.83],[0.64,0.90]],
+    light:-1.1,
+    scenery:["pole","pole","plant","cart","chair","vending","plant","sign","bench"],
+    pts:[[0.52,0.93],[0.38,0.94],[0.25,0.91],
+         [0.14,0.85],[0.09,0.75],[0.12,0.65],
+         [0.21,0.59],[0.32,0.61],[0.38,0.54],
+         [0.33,0.46],[0.22,0.45],[0.13,0.38],
+         [0.10,0.27],[0.18,0.17],[0.30,0.12],
+         [0.41,0.15],[0.46,0.24],[0.54,0.29],[0.63,0.25],
+         [0.69,0.16],[0.80,0.13],[0.89,0.20],
+         [0.91,0.31],[0.84,0.39],[0.80,0.48],
+         [0.87,0.56],[0.92,0.65],[0.88,0.76],
+         [0.79,0.85],[0.66,0.91]],
+    cut:{ name:"the gift-cart run", pts:[[0.383,0.535],[0.47,0.50],[0.56,0.49],[0.63,0.52],[0.665,0.555]] },
   },
   {
     id:"roof", name:"Rooftop Sunset", laps:3,
-    blurb:"String lights, laundry lines, and every cat in the city out to watch the finish.",
+    blurb:"String lights, laundry lines, a plank across the gap, and every cat in the city out to watch the finish.",
     grass:"#4a3a63", grassAlt:"#433457", shoulder:"#6d5a49",
     road:"#8a7a68", roadAlt:"#82735f", rumbleA:"#ffd166", rumbleB:"#ff7f8a",
     sky:["#ff8a5c","#ffd08a"], haze:"#ffb583", accent:"#ffd166",
-    scenery:["lamp","cat","laundry","cat","vent","lamp"],
-    pts:[[0.50,0.90],[0.31,0.86],[0.19,0.75],[0.22,0.62],[0.34,0.56],[0.30,0.45],
-         [0.18,0.39],[0.17,0.26],[0.30,0.17],[0.46,0.13],[0.58,0.18],[0.56,0.29],
-         [0.66,0.35],[0.79,0.31],[0.88,0.41],[0.86,0.55],[0.74,0.62],[0.79,0.74],
-         [0.68,0.86]],
+    light:-2.2,                       // low sun, long shadows the other way
+    scenery:["lamp","cat","laundry","vent","cat","watertank","aircon","stringpole","planter"],
+    pts:[[0.53,0.93],[0.40,0.93],[0.27,0.90],
+         [0.16,0.84],[0.10,0.74],[0.13,0.63],
+         [0.23,0.57],[0.33,0.59],[0.39,0.51],
+         [0.32,0.44],[0.20,0.42],[0.12,0.34],
+         [0.13,0.23],[0.22,0.15],[0.34,0.12],
+         [0.43,0.16],[0.48,0.25],[0.57,0.27],[0.64,0.20],
+         [0.70,0.12],[0.81,0.12],[0.90,0.21],
+         [0.90,0.32],[0.83,0.40],[0.81,0.49],
+         [0.88,0.58],[0.92,0.68],[0.86,0.79],
+         [0.76,0.87],[0.65,0.92]],
+    cut:{ name:"the plank", pts:[[0.392,0.505],[0.48,0.46],[0.57,0.45],[0.66,0.48],[0.72,0.51]] },
   },
 ];
 
@@ -221,20 +265,21 @@ function rollItem(place, total) {
 /* =========================================================
    6. TRACK GEOMETRY
    ========================================================= */
-let path = [];      // {x,y} in texture pixels, closed loop
+let path = [];      // {x,y} in world units, closed loop
 let segLen = [];    // length of each segment
 let cumLen = [];    // distance from start to each node
 let pathLen = 0;
 
-function buildPath(def) {
-  const raw = def.pts.map((p) => ({ x: p[0] * TEX, y: p[1] * TEX }));
-  const n = raw.length;
-  const out = [];
-  /* Catmull-Rom through every control point, so the loop closes cleanly
-     and there are no corners the spline did not ask for */
-  for (let i = 0; i < n; i++) {
-    const p0 = raw[(i - 1 + n) % n], p1 = raw[i];
-    const p2 = raw[(i + 1) % n],     p3 = raw[(i + 2) % n];
+/* the shortcut, when a track has one: an open spline that leaves the
+   main loop and rejoins it further round */
+let cut = null;     // { pts, from, to }  — from/to are along-values 0..1
+
+function catmull(raw, closed) {
+  const n = raw.length, out = [];
+  const at = (i) => raw[closed ? (i + n) % n : Math.max(0, Math.min(n - 1, i))];
+  const last = closed ? n : n - 1;
+  for (let i = 0; i < last; i++) {
+    const p0 = at(i - 1), p1 = at(i), p2 = at(i + 1), p3 = at(i + 2);
     for (let t = 0; t < 1; t += 1 / 14) {
       const t2 = t * t, t3 = t2 * t;
       out.push({
@@ -243,7 +288,12 @@ function buildPath(def) {
       });
     }
   }
-  path = out;
+  if (!closed) out.push({ x: raw[n - 1].x, y: raw[n - 1].y });
+  return out;
+}
+
+function buildPath(def) {
+  path = catmull(def.pts.map((p) => ({ x: p[0] * WORLD, y: p[1] * WORLD })), true);
   segLen = []; cumLen = []; pathLen = 0;
   for (let i = 0; i < path.length; i++) {
     cumLen.push(pathLen);
@@ -252,6 +302,24 @@ function buildPath(def) {
     segLen.push(d);
     pathLen += d;
   }
+
+  cut = null;
+  if (def.cut) {
+    const pts = catmull(def.cut.pts.map((p) => ({ x: p[0] * WORLD, y: p[1] * WORLD })), false);
+    /* where it leaves and where it rejoins, in main-loop along-values.
+       These have to be found against the finished main path, which is
+       why the shortcut is built second. */
+    const a = projectMain(pts[0].x, pts[0].y);
+    const b = projectMain(pts[pts.length - 1].x, pts[pts.length - 1].y);
+    const len = [];
+    let total = 0;
+    for (let i = 0; i < pts.length - 1; i++) {
+      len.push(total);
+      total += Math.hypot(pts[i+1].x - pts[i].x, pts[i+1].y - pts[i].y);
+    }
+    len.push(total);
+    cut = { pts, from: a.along, to: b.along, cum: len, len: total, name: def.cut.name };
+  }
 }
 
 function tangentAt(i) {
@@ -259,9 +327,9 @@ function tangentAt(i) {
   return Math.atan2(path[j].y - path[i].y, path[j].x - path[i].x);
 }
 
-/* Nearest point on the loop. `hint` keeps the search local — without it
-   this is the most expensive thing in the frame. */
-function project(x, y, hint) {
+/* Nearest point on the main loop. `hint` keeps the search local —
+   without it this is the most expensive thing in the frame. */
+function projectMain(x, y, hint) {
   const n = path.length;
   let lo = 0, hi = n;
   if (hint != null) { lo = hint - 24; hi = hint + 24; }
@@ -277,16 +345,64 @@ function project(x, y, hint) {
     const d = (x-cx)*(x-cx) + (y-cy)*(y-cy);
     if (d < bd) { bd = d; bi = i; bt = t; }
   }
-  const dist = Math.sqrt(bd);
-  const along = (cumLen[bi] + bt * segLen[bi]) / pathLen;
-  /* which side of the road we are on, for nudging back on */
   const ta = tangentAt(bi);
   const nx = -Math.sin(ta), ny = Math.cos(ta);
   const j = (bi + 1) % n;
   const cx = path[bi].x + bt * (path[j].x - path[bi].x);
   const cy = path[bi].y + bt * (path[j].y - path[bi].y);
-  const side = (x - cx) * nx + (y - cy) * ny;
-  return { dist, idx: bi, t: bt, along, cx, cy, side, nx, ny, tan: ta };
+  return {
+    dist: Math.sqrt(bd), idx: bi, t: bt,
+    along: (cumLen[bi] + bt * segLen[bi]) / pathLen,
+    cx, cy, side: (x - cx) * nx + (y - cy) * ny,
+    nx, ny, tan: ta, half: ROAD_HALF, onCut: false,
+  };
+}
+
+/* Same, against the shortcut. Its along-value is interpolated between
+   the two points where it meets the loop, so a kart on it keeps making
+   ordinary forward progress and the lap counter never notices. */
+function projectCut(x, y) {
+  const p = cut.pts, n = p.length;
+  let bd = Infinity, bi = 0, bt = 0;
+  for (let i = 0; i < n - 1; i++) {
+    const ax = p[i].x, ay = p[i].y;
+    const dx = p[i+1].x - ax, dy = p[i+1].y - ay;
+    const l2 = dx*dx + dy*dy;
+    let t = l2 > 0 ? ((x-ax)*dx + (y-ay)*dy) / l2 : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const cx = ax + t*dx, cy = ay + t*dy;
+    const d = (x-cx)*(x-cx) + (y-cy)*(y-cy);
+    if (d < bd) { bd = d; bi = i; bt = t; }
+  }
+  const ta = Math.atan2(p[bi+1].y - p[bi].y, p[bi+1].x - p[bi].x);
+  const nx = -Math.sin(ta), ny = Math.cos(ta);
+  const cx = p[bi].x + bt * (p[bi+1].x - p[bi].x);
+  const cy = p[bi].y + bt * (p[bi+1].y - p[bi].y);
+  const f = cut.len > 0
+    ? (cut.cum[bi] + bt * (cut.cum[bi+1] - cut.cum[bi])) / cut.len : 0;
+  /* the shortcut may straddle the start line, so walk forward from
+     `from` rather than lerping straight to `to` */
+  let span = cut.to - cut.from;
+  if (span < 0) span += 1;
+  let along = cut.from + span * f;
+  if (along >= 1) along -= 1;
+  return {
+    dist: Math.sqrt(bd), idx: bi, t: bt, along,
+    cx, cy, side: (x - cx) * nx + (y - cy) * ny,
+    nx, ny, tan: ta, half: CUT_HALF, onCut: true,
+  };
+}
+
+/* Whichever ribbon you are actually on. Being nearer the shortcut only
+   counts while you are close enough to be on it — otherwise a kart out
+   in the scenery could claim the shortcut's progress. */
+function project(x, y, hint) {
+  const m = projectMain(x, y, hint);
+  if (!cut) return m;
+  if (m.dist < ROAD_HALF) return m;          // plainly on the main road
+  const c = projectCut(x, y);
+  if (c.dist < m.dist && c.dist < SHOULDER) return c;
+  return m;
 }
 
 /* =========================================================
@@ -300,17 +416,20 @@ function project(x, y, hint) {
 let texCvs = null, tex32 = null, bakedId = null;
 let voidColor = 0;
 
-function strokeLoop(g, width, style) {
+function strokeLoop(g, width, style) { strokePts(g, path, width, style, true); }
+
+function strokePts(g, pts, width, style, closed) {
   g.strokeStyle = style;
   g.lineWidth = width;
   g.lineJoin = "round";
   g.lineCap = "round";
   g.beginPath();
-  for (let i = 0; i <= path.length; i++) {
-    const p = path[i % path.length];
+  const n = closed ? pts.length + 1 : pts.length;
+  for (let i = 0; i < n; i++) {
+    const p = pts[i % pts.length];
     if (i === 0) g.moveTo(p.x, p.y); else g.lineTo(p.x, p.y);
   }
-  g.closePath();
+  if (closed) g.closePath();
   g.stroke();
 }
 
@@ -318,7 +437,7 @@ function strokeLoop(g, width, style) {
    per-pixel loop. Reads as pixel texture and bakes in a few ms. */
 function speckle(g, count, size, colors) {
   for (let i = 0; i < count; i++) {
-    const x = Math.random() * TEX, y = Math.random() * TEX;
+    const x = Math.random() * WORLD, y = Math.random() * WORLD;
     g.fillStyle = colors[(Math.random() * colors.length) | 0];
     const s = size + ((Math.random() * 2) | 0);
     g.fillRect(x | 0, y | 0, s, s);
@@ -348,9 +467,14 @@ function bakeTrack(def) {
   if (!texCvs) { texCvs = document.createElement("canvas"); texCvs.width = texCvs.height = TEX; }
   const g = texCvs.getContext("2d", { willReadFrequently: true });
 
+  /* Everything below is drawn in WORLD units. One transform here means
+     every width, offset and radius in this function is the same number
+     the physics uses, instead of each one needing a conversion. */
+  g.setTransform(1 / TSCALE, 0, 0, 1 / TSCALE, 0, 0);
+
   /* --- the ground everything else sits on --- */
   g.fillStyle = def.grass;
-  g.fillRect(0, 0, TEX, TEX);
+  g.fillRect(0, 0, WORLD, WORLD);
   speckle(g, 14000, 3, [def.grassAlt, shade(def.grass, 1.08), shade(def.grass, 0.92)]);
 
   /* a few broad patches so the field is not one flat colour */
@@ -359,10 +483,43 @@ function bakeTrack(def) {
     g.fillStyle = i % 2 ? shade(def.grass, 1.14) : shade(def.grass, 0.86);
     const r = 60 + Math.random() * 190;
     g.beginPath();
-    g.ellipse(Math.random()*TEX, Math.random()*TEX, r, r*(0.6+Math.random()*0.6), Math.random()*Math.PI, 0, TWO_PI);
+    g.ellipse(Math.random()*WORLD, Math.random()*WORLD, r, r*(0.6+Math.random()*0.6), Math.random()*Math.PI, 0, TWO_PI);
     g.fill();
   }
   g.globalAlpha = 1;
+
+  /* --- the shortcut, first, so the main ribbon paints over its ends --- */
+  if (cut) {
+    strokePts(g, cut.pts, CUT_HALF * 2 + 26, "rgba(0,0,0,.14)", false);
+    strokePts(g, cut.pts, CUT_HALF * 2 + 14, def.shoulder, false);
+    strokePts(g, cut.pts, CUT_HALF * 2, shade(def.road, 0.94), false);
+    /* boards across it, so it reads as a plank run rather than tarmac */
+    g.save();
+    g.globalAlpha = 0.45;
+    g.strokeStyle = shade(def.road, 0.78);
+    g.lineWidth = 2.5;
+    for (let i = 0; i < cut.pts.length - 1; i += 2) {
+      const a = cut.pts[i], b = cut.pts[i+1];
+      const ta = Math.atan2(b.y - a.y, b.x - a.x);
+      const nx = -Math.sin(ta) * CUT_HALF, ny = Math.cos(ta) * CUT_HALF;
+      g.beginPath(); g.moveTo(a.x - nx, a.y - ny); g.lineTo(a.x + nx, a.y + ny); g.stroke();
+    }
+    g.restore();
+    /* a chevron at the mouth, so you can see it coming */
+    const m = cut.pts[1], mt = Math.atan2(cut.pts[2].y - m.y, cut.pts[2].x - m.x);
+    g.save();
+    g.translate(m.x, m.y); g.rotate(mt);
+    g.fillStyle = "rgba(255,248,232,.55)";
+    for (let k = 0; k < 3; k++) {
+      g.beginPath();
+      g.moveTo(k * 16, -CUT_HALF * 0.55);
+      g.lineTo(k * 16 + 9, 0);
+      g.lineTo(k * 16, CUT_HALF * 0.55);
+      g.lineTo(k * 16 - 4, 0);
+      g.fill();
+    }
+    g.restore();
+  }
 
   /* --- shoulder, rumble, road: three strokes, widest first --- */
   g.strokeStyle = "rgba(0,0,0,.18)";
@@ -433,13 +590,42 @@ function bakeTrack(def) {
   }
   g.restore();
 
+  bakeGroundShadows(g, def);
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
   const img = g.getImageData(0, 0, TEX, TEX);
   tex32 = new Uint32Array(img.data.buffer);
   /* Past the edge of the baked world there is nothing to sample. Filling
      it with flat grass leaves a hard band; pulling it towards the haze
      colour lets it pass for ground too far off to make out. */
-  voidColor = packRgb(mixRgb(def.grass, def.haze, 0.5));
+  voidColor = packRgb(mixRgb(def.grass, def.haze, 0.3));
   bakedId = def.id;
+}
+
+/* Every track has one sun bearing, and everything that stands up drops
+   a shadow along it — baked into the ground rather than drawn per frame,
+   because these never move. This is most of what stops the scenery
+   looking like stickers pasted onto a lawn. */
+function bakeGroundShadows(g, def) {
+  const a = def.light != null ? def.light : -0.7;
+  const dx = Math.cos(a), dy = Math.sin(a);
+  g.save();
+  g.globalAlpha = 0.20;
+  g.fillStyle = "#101018";
+  for (const pr of props) {
+    const spec = SCENERY[pr.kind];
+    if (!spec) continue;
+    const h = spec.h * pr.hv;
+    const len = h * 0.62, wid = h * spec.foot * 0.42;
+    g.save();
+    g.translate(pr.x, pr.y);
+    g.rotate(a);
+    g.beginPath();
+    g.ellipse(len * 0.45, 0, len * 0.55, wid, 0, 0, TWO_PI);
+    g.fill();
+    g.restore();
+  }
+  g.restore();
 }
 
 /* =========================================================
@@ -449,14 +635,17 @@ function bakeTrack(def) {
    that slides sideways with the camera. Two copies are blitted so it
    wraps without a seam.
    ========================================================= */
-let panoCvs = null, panoId = null;
-const PANO_W = 1600, PANO_H = 150;
+let panoCvs = null, panoFar = null, panoMid = null, panoId = null;
+const PANO_W = 1600, PANO_H = 150, PANO_MID = 46;
 
 function bakePano(def) {
   if (panoId === def.id && panoCvs) return;
-  if (!panoCvs) { panoCvs = document.createElement("canvas"); panoCvs.width = PANO_W; panoCvs.height = PANO_H; }
+  const mk = (h) => { const c = document.createElement("canvas"); c.width = PANO_W; c.height = h; return c; };
+  if (!panoCvs) { panoCvs = mk(PANO_H); panoFar = mk(PANO_H); panoMid = mk(PANO_MID); }
   const g = panoCvs.getContext("2d");
   g.clearRect(0, 0, PANO_W, PANO_H);
+  const gf = panoFar.getContext("2d"); gf.clearRect(0, 0, PANO_W, PANO_H);
+  const gm = panoMid.getContext("2d"); gm.clearRect(0, 0, PANO_W, PANO_MID);
 
   const sky = g.createLinearGradient(0, 0, 0, PANO_H);
   sky.addColorStop(0, def.sky[0]);
@@ -550,7 +739,60 @@ function bakePano(def) {
       }
     }
   }
+  buildParallax(def, gf, gm);
   panoId = def.id;
+}
+
+/* the two extra depths: a pale ridge behind everything, and a band of
+   nearer silhouettes that sits just above the horizon line */
+function buildParallax(def, gf, gm) {
+  const rnd = mulberry(def.id.length * 613 + 41);
+  const far = mixRgb(def.haze, def.sky[0], 0.35);
+  gf.fillStyle = `rgba(${far[0]},${far[1]},${far[2]},.55)`;
+
+  if (def.id === "roof" || def.id === "town") {
+    /* a further, paler skyline */
+    let x = -20;
+    while (x < PANO_W + 20) {
+      const w = 30 + rnd() * 60, h = 20 + rnd() * 50;
+      gf.fillRect(x, PANO_H - 6 - h, w, h);
+      x += w + 8 + rnd() * 16;
+    }
+  } else if (def.id === "ward") {
+    gf.fillRect(0, PANO_H - 40, PANO_W, 40);
+  } else {
+    /* rolling hills */
+    for (let k = 0; k < 3; k++) {
+      gf.beginPath();
+      gf.moveTo(-10, PANO_H);
+      for (let x = -10; x < PANO_W + 20; x += 40)
+        gf.lineTo(x, PANO_H - 18 - Math.sin(x * 0.004 + k) * 14 - rnd() * 8);
+      gf.lineTo(PANO_W + 20, PANO_H); gf.closePath(); gf.fill();
+    }
+  }
+
+  /* the near band: whatever this track has lining its edges, in
+     silhouette, so the middle distance is not empty */
+  const midCol = mixRgb(def.grass, "#101018", 0.42);
+  gm.fillStyle = `rgb(${midCol[0]},${midCol[1]},${midCol[2]})`;
+  const kinds = def.scenery;
+  for (let x = -20; x < PANO_W + 20; ) {
+    const k = kinds[(rnd() * kinds.length) | 0];
+    const tall = /pine|tree|lamp|pole|watertank|stringpole|laundry|signpost/.test(k);
+    const w = tall ? 8 + rnd() * 10 : 16 + rnd() * 26;
+    const h = tall ? 22 + rnd() * 18 : 10 + rnd() * 14;
+    if (tall) {
+      gm.beginPath();
+      gm.moveTo(x, PANO_MID); gm.lineTo(x + w / 2, PANO_MID - h); gm.lineTo(x + w, PANO_MID);
+      gm.closePath(); gm.fill();
+    } else {
+      gm.fillRect(x, PANO_MID - h, w, h);
+      gm.beginPath();
+      gm.moveTo(x - 2, PANO_MID - h); gm.lineTo(x + w / 2, PANO_MID - h - 7);
+      gm.lineTo(x + w + 2, PANO_MID - h); gm.closePath(); gm.fill();
+    }
+    x += w + 10 + rnd() * 34;
+  }
 }
 
 /* small deterministic RNG so a track looks the same every time it loads */
@@ -769,19 +1011,31 @@ function buildAllKarts() {
   });
 }
 
-/* --- scenery: one small canvas per kind, drawn as a billboard ---
+/* --- scenery ---
 
-   Each is painted into a 64x96 sheet and then cropped to whatever it
-   actually covers. Without the crop a bush — which only occupies the
-   bottom quarter of its sheet — gets drawn as a tall mostly-empty
-   rectangle, so it floats and carries a shadow far wider than itself.
-   Cropping means the world height below is the height you see.        */
+   Everything that stands beside the track. Each piece is painted into a
+   sheet and then cropped to what it actually covers, so the world height
+   below is the height you see and the shadow matches the footprint.
+
+   The rule for every structure here: never a flat rectangle. A building
+   is a foundation, a wall and a roof, each with its own shading, its own
+   material pattern, and a lit side and a shaded side agreeing with the
+   track's one sun. That plus real window frames is the whole difference
+   between "a box with a triangle on top" and something you would believe
+   somebody lives in.                                                     */
 const SCENERY = {
-  pine:{ h:170, foot:.55 }, tree:{ h:140, foot:.6 },  bush:{ h:34, foot:.9 },
-  rock:{ h:32,  foot:.9  }, cabin:{ h:150, foot:.9 }, house:{ h:145, foot:.9 },
-  lamp:{ h:135, foot:.3  }, postbox:{ h:46, foot:.8 },pole:{ h:130, foot:.35 },
-  cart:{ h:76,  foot:.8  }, chair:{ h:66, foot:.7 },  plant:{ h:58, foot:.8 },
-  vent:{ h:56,  foot:.9  }, laundry:{ h:130, foot:.3 },cat:{ h:52, foot:.85 },
+  pine:{ h:158, foot:.55 }, tree:{ h:130, foot:.6 },  bush:{ h:26, foot:.9 },
+  rock:{ h:24,  foot:.9  }, cabin:{ h:132, foot:.9, smoke:true },
+  house:{ h:128, foot:.9, smoke:true }, store:{ h:126, foot:.95 },
+  shed:{ h:80,  foot:.9, smoke:true },
+  lamp:{ h:112, foot:.3  }, postbox:{ h:30, foot:.8 }, hydrant:{ h:26, foot:.8 },
+  signpost:{ h:76, foot:.35 }, flowerbox:{ h:22, foot:.95 },
+  pole:{ h:104, foot:.35 }, cart:{ h:58, foot:.8 },  chair:{ h:46, foot:.7 },
+  plant:{ h:48, foot:.8  }, vending:{ h:80, foot:.85 }, sign:{ h:72, foot:.4 },
+  bench:{ h:38, foot:.95 },
+  laundry:{ h:108, foot:.3 }, cat:{ h:18, foot:.85 }, vent:{ h:44, foot:.9 },
+  watertank:{ h:122, foot:.7 }, aircon:{ h:46, foot:.9 },
+  stringpole:{ h:112, foot:.25 }, planter:{ h:32, foot:.95 },
 };
 
 function cropToContent(c) {
@@ -805,145 +1059,536 @@ function cropToContent(c) {
 }
 
 const sceneryCache = {};
-function buildScenery(kind) {
-  if (sceneryCache[kind]) return sceneryCache[kind];
-  const W = 64, H = 96;
+
+function buildScenery(kind, def) {
+  /* the sun sits on one side per track, and the sprites are baked with
+     that side lit — so the cache is keyed by which side that is */
+  const sunX = def ? Math.cos(def.light != null ? def.light : -0.7) : 0.75;
+  const litRight = sunX >= 0;
+  const key = kind + (litRight ? "|R" : "|L");
+  if (sceneryCache[key]) return sceneryCache[key];
+
+  const W = 96, H = 128;
   const c = document.createElement("canvas");
   c.width = W; c.height = H;
   const g = c.getContext("2d");
-  const R = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
   const mid = W / 2;
 
+  /* ---- shared painters ---- */
+  const R = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+  const LIT = 1.14, DIM = 0.74;          // the two faces of everything
+
+  /* a wall with its lit return, its material pattern, and a shadow
+     gathering where it meets the ground */
+  function wall(x, y, w, h, col, material) {
+    const side = Math.max(4, Math.round(w * 0.16));
+    R(x, y, w, h, col);
+    // the return face, on whichever side the sun is not
+    R(litRight ? x : x + w - side, y, side, h, shade(col, DIM));
+    R(litRight ? x + w - side : x, y, side, h, shade(col, LIT));
+
+    if (material === "wood") {
+      g.save(); g.globalAlpha = 0.22;
+      for (let yy = y + 3; yy < y + h; yy += 5) {
+        g.fillStyle = (yy & 1) ? shade(col, 0.82) : shade(col, 1.12);
+        g.fillRect(Math.round(x), Math.round(yy), Math.round(w), 1);
+      }
+      // a few grain streaks running with the boards
+      g.globalAlpha = 0.16; g.fillStyle = shade(col, 0.7);
+      for (let i = 0; i < 8; i++) {
+        const gy = y + 4 + ((i * 37) % Math.max(1, h - 8));
+        g.fillRect(Math.round(x + ((i * 23) % Math.max(1, w - 10))), Math.round(gy), 6 + (i % 3) * 3, 1);
+      }
+      g.restore();
+    } else if (material === "brick") {
+      g.save(); g.globalAlpha = 0.20; g.fillStyle = shade(col, 0.66);
+      for (let yy = y + 4, row = 0; yy < y + h; yy += 5, row++) {
+        g.fillRect(Math.round(x), Math.round(yy), Math.round(w), 1);
+        for (let xx = x + (row % 2 ? 5 : 0); xx < x + w; xx += 10)
+          g.fillRect(Math.round(xx), Math.round(yy - 4), 1, 4);
+      }
+      g.restore();
+    } else if (material === "siding") {
+      g.save(); g.globalAlpha = 0.18;
+      for (let yy = y + 4; yy < y + h; yy += 6) {
+        g.fillStyle = shade(col, 0.72);
+        g.fillRect(Math.round(x), Math.round(yy), Math.round(w), 1);
+        g.fillStyle = shade(col, 1.18);
+        g.fillRect(Math.round(x), Math.round(yy + 1), Math.round(w), 1);
+      }
+      g.restore();
+    } else if (material === "panel") {
+      g.save(); g.globalAlpha = 0.16; g.fillStyle = shade(col, 0.7);
+      for (let xx = x + 6; xx < x + w - 2; xx += 9) g.fillRect(Math.round(xx), Math.round(y + 2), 1, h - 4);
+      g.restore();
+    }
+
+    // ambient occlusion where the wall meets the ground
+    g.save(); g.globalAlpha = 0.24; g.fillStyle = "#1a1420";
+    g.fillRect(Math.round(x), Math.round(y + h - 3), Math.round(w), 3);
+    g.restore();
+  }
+
+  /* a foundation course, so nothing sits straight on the grass */
+  function footing(x, y, w, h, col) {
+    R(x - 2, y, w + 4, h, shade(col, 0.8));
+    R(x - 2, y, w + 4, 1, shade(col, 1.1));
+    g.save(); g.globalAlpha = 0.3; g.fillStyle = shade(col, 0.55);
+    for (let xx = x; xx < x + w; xx += 7) g.fillRect(Math.round(xx), Math.round(y + 1), 1, h - 1);
+    g.restore();
+  }
+
+  /* a pitched roof with courses of shingles, an overhang and a gutter */
+  function roof(x, y, w, rise, col) {
+    const over = 5;
+    const x0 = x - over, x1 = x + w + over, apex = y - rise;
+    g.fillStyle = col;
+    g.beginPath(); g.moveTo(x0, y); g.lineTo(mid, apex); g.lineTo(x1, y); g.closePath(); g.fill();
+    // the shaded half, split down the ridge
+    g.fillStyle = shade(col, DIM);
+    g.beginPath();
+    g.moveTo(litRight ? x0 : x1, y); g.lineTo(mid, apex); g.lineTo(mid, y); g.closePath(); g.fill();
+    // shingle courses, clipped to the roof
+    g.save();
+    g.beginPath(); g.moveTo(x0, y); g.lineTo(mid, apex); g.lineTo(x1, y); g.closePath(); g.clip();
+    g.globalAlpha = 0.30;
+    for (let yy = y - 3; yy > apex; yy -= 4) {
+      g.fillStyle = shade(col, 0.72);
+      g.fillRect(x0, Math.round(yy), x1 - x0, 1);
+      const off = ((y - yy) / 4 | 0) % 2 ? 4 : 0;
+      for (let xx = x0 + off; xx < x1; xx += 8) g.fillRect(Math.round(xx), Math.round(yy - 3), 1, 3);
+    }
+    g.restore();
+    // ridge cap and gutter
+    R(mid - 2, apex, 4, 3, shade(col, 1.2));
+    R(x0, y - 1, x1 - x0, 2, shade(col, 0.6));
+    R(x0, y + 1, x1 - x0, 1, "rgba(0,0,0,.3)");
+  }
+
+  /* a window: frame, panes, a mullion, and warmer light behind */
+  function window_(x, y, w, h, lit) {
+    R(x - 1, y - 1, w + 2, h + 2, "#5b4634");
+    R(x, y, w, h, lit ? "#ffd98a" : "#9fb4c8");
+    // interior light is a touch warmer at the bottom of the pane
+    g.save(); g.globalAlpha = 0.5;
+    g.fillStyle = lit ? "#ffb457" : "#7f97ad";
+    g.fillRect(Math.round(x), Math.round(y + h * 0.55), Math.round(w), Math.round(h * 0.45));
+    g.restore();
+    // glazing bars
+    R(x + w / 2 - 0.5, y, 1, h, "#5b4634");
+    R(x, y + h / 2 - 0.5, w, 1, "#5b4634");
+    // a highlight across the top-left pane
+    g.save(); g.globalAlpha = 0.4; g.fillStyle = "#fff";
+    g.fillRect(Math.round(x + 1), Math.round(y + 1), Math.round(w / 2 - 2), 1);
+    g.restore();
+    // sill
+    R(x - 2, y + h, w + 4, 2, "#6d5540");
+  }
+
+  function door(x, y, w, h, col) {
+    R(x, y, w, h, col);
+    R(x, y, w, 1, shade(col, 1.25));
+    R(x, y, 1, h, shade(col, litRight ? 1.15 : 0.85));
+    // two sunken panels
+    g.save(); g.globalAlpha = 0.28; g.fillStyle = shade(col, 0.6);
+    g.fillRect(Math.round(x + 2), Math.round(y + 2), Math.round(w - 4), Math.round(h * 0.36));
+    g.fillRect(Math.round(x + 2), Math.round(y + h * 0.5), Math.round(w - 4), Math.round(h * 0.36));
+    g.restore();
+    R(x + w - 3, y + h * 0.5, 2, 2, "#ffd166");    // the handle
+  }
+
+  function chimney(x, y, h, col) {
+    R(x, y - h, 8, h, col);
+    R(litRight ? x + 6 : x, y - h, 2, h, shade(col, litRight ? LIT : DIM));
+    R(x - 1, y - h - 3, 10, 3, shade(col, 0.7));   // the cap
+  }
+
+  /* ---- the pieces ---- */
   if (kind === "pine") {
-    /* the trunk goes down first and the lowest skirt comes down over
-       it, so only a few pixels of stem show — a long bare trunk reads
-       as a fence post once the foliage is up out of frame */
     R(mid - 3, H - 14, 6, 14, "#5a3f28");
     R(mid - 3, H - 14, 2, 14, "#6f5136");
-    for (let i = 0; i < 4; i++) {
-      const y = H - 5 - i * 17, w = 29 - i * 5.5;
+    for (let i = 0; i < 5; i++) {
+      const y = H - 5 - i * 19, w = 32 - i * 5.5;
       g.fillStyle = i % 2 ? "#2f6b3d" : "#3b8149";
-      g.beginPath();
-      g.moveTo(mid, y - 26); g.lineTo(mid - w, y); g.lineTo(mid + w, y);
-      g.fill();
-      g.fillStyle = "rgba(255,255,255,.10)";
-      g.beginPath();
-      g.moveTo(mid, y - 26); g.lineTo(mid - w, y); g.lineTo(mid - w * 0.3, y);
-      g.fill();
+      g.beginPath(); g.moveTo(mid, y - 29); g.lineTo(mid - w, y); g.lineTo(mid + w, y); g.fill();
+      g.fillStyle = litRight ? "rgba(255,255,255,.12)" : "rgba(0,0,0,.14)";
+      g.beginPath(); g.moveTo(mid, y - 29); g.lineTo(mid + w, y); g.lineTo(mid + w * 0.25, y); g.fill();
     }
   } else if (kind === "tree") {
-    R(mid - 4, H - 24, 8, 24, "#6a4a2c");
-    g.fillStyle = "#3f8a48";
-    g.beginPath(); g.arc(mid, H - 44, 22, 0, TWO_PI); g.fill();
-    g.beginPath(); g.arc(mid - 15, H - 34, 15, 0, TWO_PI); g.fill();
-    g.beginPath(); g.arc(mid + 15, H - 34, 15, 0, TWO_PI); g.fill();
-    g.fillStyle = "#4f9e58";
-    g.beginPath(); g.arc(mid - 5, H - 50, 13, 0, TWO_PI); g.fill();
+    R(mid - 4, H - 26, 8, 26, "#6a4a2c");
+    R(mid - 4, H - 26, 3, 26, "#7d5936");
+    const blobs = [[0,-48,24],[-17,-36,17],[17,-36,17],[-7,-58,15],[9,-56,14]];
+    blobs.forEach(([bx,by,br]) => {
+      g.fillStyle = "#3f8a48";
+      g.beginPath(); g.arc(mid+bx, H+by, br, 0, TWO_PI); g.fill();
+    });
+    // dappled light along the sunward edge, not one flat disc over the top
+    g.save();
+    g.beginPath();
+    blobs.forEach(([bx,by,br]) => { g.moveTo(mid+bx+br, H+by); g.arc(mid+bx, H+by, br, 0, TWO_PI); });
+    g.clip();
+    g.fillStyle = "#5cab63";
+    blobs.forEach(([bx,by,br]) => {
+      g.beginPath();
+      g.arc(mid+bx+(litRight?br*0.34:-br*0.34), H+by-br*0.34, br*0.7, 0, TWO_PI);
+      g.fill();
+    });
+    g.fillStyle = "rgba(255,255,255,.14)";
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * TWO_PI, rr = 18 + (i % 4) * 9;
+      g.fillRect(mid + Math.cos(a) * rr + (litRight ? 6 : -6),
+                 H - 46 + Math.sin(a) * rr * 0.7, 3, 3);
+    }
+    g.restore();
   } else if (kind === "bush") {
     g.fillStyle = "#3f8a48";
-    g.beginPath(); g.arc(mid, H - 12, 14, 0, TWO_PI); g.fill();
-    g.beginPath(); g.arc(mid - 11, H - 8, 10, 0, TWO_PI); g.fill();
-    g.beginPath(); g.arc(mid + 11, H - 8, 10, 0, TWO_PI); g.fill();
-    g.fillStyle = "#ff9ec4";
-    R(mid - 6, H - 20, 3, 3, "#ff9ec4"); R(mid + 6, H - 16, 3, 3, "#fff1e0");
+    [[0,-16,16],[-13,-10,12],[13,-10,12]].forEach(([bx,by,br]) => {
+      g.beginPath(); g.arc(mid+bx, H+by, br, 0, TWO_PI); g.fill();
+    });
+    g.fillStyle = "rgba(255,255,255,.16)";
+    g.beginPath(); g.arc(mid + (litRight?5:-5), H-22, 9, 0, TWO_PI); g.fill();
+    // blossom sits ON the foliage, not floating above it
+    [[-8,-20],[6,-16],[-2,-25]].forEach(([bx,by],i) =>
+      R(mid+bx, H+by, 3, 3, i%2 ? "#ff9ec4" : "#fff1e0"));
   } else if (kind === "rock") {
     g.fillStyle = "#8c8577";
-    g.beginPath(); g.moveTo(mid - 16, H); g.lineTo(mid - 10, H - 18);
-    g.lineTo(mid + 4, H - 22); g.lineTo(mid + 16, H); g.fill();
-    g.fillStyle = "#a49c8c";
-    g.beginPath(); g.moveTo(mid - 6, H - 14); g.lineTo(mid + 2, H - 20);
-    g.lineTo(mid + 8, H - 8); g.lineTo(mid - 2, H - 6); g.fill();
+    g.beginPath(); g.moveTo(mid-18, H); g.lineTo(mid-11, H-20);
+    g.lineTo(mid+5, H-24); g.lineTo(mid+18, H); g.fill();
+    g.fillStyle = litRight ? "#a49c8c" : "#7a7367";
+    g.beginPath(); g.moveTo(mid+1, H-22); g.lineTo(mid+18, H); g.lineTo(mid+6, H); g.fill();
+    g.fillStyle = "rgba(255,255,255,.18)";
+    g.beginPath(); g.moveTo(mid-6,H-16); g.lineTo(mid+2,H-22); g.lineTo(mid+5,H-13); g.fill();
+
   } else if (kind === "cabin") {
-    R(mid - 26, H - 38, 52, 38, "#8a6a4a");
-    for (let y = H - 36; y < H - 2; y += 7) R(mid - 26, y, 52, 1, "#6f523a");
-    g.fillStyle = "#7a3f30";
-    g.beginPath(); g.moveTo(mid - 32, H - 38); g.lineTo(mid, H - 62);
-    g.lineTo(mid + 32, H - 38); g.fill();
-    R(mid - 7, H - 22, 14, 22, "#5c3b26");
-    R(mid + 10, H - 32, 11, 10, "#ffd98a");
-    R(mid - 21, H - 32, 11, 10, "#ffd98a");
+    footing(mid - 30, H - 8, 60, 8, "#7a6a58");
+    wall(mid - 30, H - 46, 60, 38, "#8a6a4a", "wood");
+    roof(mid - 30, H - 46, 60, 26, "#7a3f30");
+    chimney(mid + 14, H - 60, 16, "#8d6b57");
+    window_(mid - 22, H - 38, 13, 11, true);
+    window_(mid + 9, H - 38, 13, 11, true);
+    door(mid - 6, H - 26, 13, 18, "#5c3b26");
+    // a porch step and two posts holding a small awning
+    R(mid - 12, H - 8, 25, 3, "#6f523a");
+    R(mid - 13, H - 22, 2, 14, "#6f523a");
+    R(mid + 11, H - 22, 2, 14, "#6f523a");
+    R(mid - 15, H - 24, 30, 2, "#5e4630");
+    // a couple of logs stacked against the lit wall
+    for (let i = 0; i < 3; i++) R(mid + 22, H - 14 - i * 4, 9, 3, i % 2 ? "#8a6a4a" : "#7a5c3f");
+
   } else if (kind === "house") {
-    R(mid - 24, H - 40, 48, 40, "#e0c3a4");
-    g.fillStyle = "#9c6152";
-    g.beginPath(); g.moveTo(mid - 29, H - 40); g.lineTo(mid, H - 60);
-    g.lineTo(mid + 29, H - 40); g.fill();
-    R(mid - 6, H - 20, 12, 20, "#7d5340");
-    R(mid + 9, H - 34, 10, 9, "#ffd98a");
-    R(mid - 19, H - 34, 10, 9, "#ffd98a");
-    R(mid - 26, H - 22, 52, 3, "#c8a98c");     // porch lip
+    footing(mid - 30, H - 8, 60, 8, "#9a8a76");
+    wall(mid - 30, H - 50, 60, 42, "#e0c3a4", "siding");
+    roof(mid - 30, H - 50, 60, 24, "#9c6152");
+    chimney(mid - 20, H - 66, 14, "#a8705c");
+    window_(mid - 23, H - 43, 14, 12, false);
+    window_(mid + 9, H - 43, 14, 12, true);
+    door(mid - 6, H - 28, 13, 20, "#7d5340");
+    // porch: deck, posts, a shallow awning with a scalloped edge
+    R(mid - 20, H - 8, 41, 3, "#c8a98c");
+    R(mid - 20, H - 26, 2, 18, "#c8a98c");
+    R(mid + 19, H - 26, 2, 18, "#c8a98c");
+    R(mid - 22, H - 29, 45, 3, "#8c5b4a");
+    g.fillStyle = "#a8705c";
+    for (let x = mid - 22; x < mid + 23; x += 5) { g.beginPath(); g.arc(x + 2, H - 26, 2.5, 0, Math.PI); g.fill(); }
+    // a flower box under the lit window
+    R(mid + 8, H - 30, 16, 5, "#8c5b4a");
+    [0,4,8,12].forEach((o,i) => R(mid + 9 + o, H - 33, 3, 3, ["#ff9ec4","#ffe07a","#fff1e0","#ff7f8a"][i]));
+
+  } else if (kind === "store") {
+    footing(mid - 34, H - 8, 68, 8, "#8e8378");
+    wall(mid - 34, H - 54, 68, 46, "#cbb59a", "brick");
+    // a flat parapet rather than a pitch, so it reads as a shop
+    R(mid - 37, H - 60, 74, 6, "#a8927a");
+    R(mid - 37, H - 60, 74, 2, "#c2ab90");
+    R(mid - 37, H - 54, 74, 2, "rgba(0,0,0,.28)");
+    // striped awning over the full frontage
+    for (let i = 0, x = mid - 34; x < mid + 34; x += 8, i++) {
+      g.fillStyle = i % 2 ? "#ff9ec4" : "#fff1e0";
+      g.beginPath();
+      g.moveTo(x, H - 34); g.lineTo(x + 8, H - 34);
+      g.lineTo(x + 8, H - 27); g.lineTo(x, H - 27); g.fill();
+    }
+    R(mid - 34, H - 27, 68, 2, "rgba(0,0,0,.25)");
+    // shopfront glazing, in three bays
+    for (let i = 0; i < 3; i++) window_(mid - 30 + i * 21, H - 24, 17, 14, true);
+    door(mid + 22, H - 24, 11, 16, "#6f5a44");
+    // a small hanging sign
+    R(mid - 3, H - 46, 6, 2, "#6f5a44");
+    R(mid - 12, H - 44, 24, 8, "#7ec8e3");
+    R(mid - 12, H - 44, 24, 1, "#a8dcef");
+    for (let i = 0; i < 4; i++) R(mid - 8 + i * 5, H - 41, 3, 3, "#2e4a58");
+
+  } else if (kind === "shed") {
+    footing(mid - 18, H - 6, 36, 6, "#7a6a58");
+    wall(mid - 18, H - 32, 36, 26, "#9a7a52", "wood");
+    // a lean-to roof, one slope only
+    g.fillStyle = "#6a4030";
+    g.beginPath();
+    g.moveTo(mid - 22, H - 32); g.lineTo(mid + 22, H - 42);
+    g.lineTo(mid + 22, H - 38); g.lineTo(mid - 22, H - 28); g.fill();
+    g.fillStyle = "rgba(0,0,0,.22)";
+    g.beginPath(); g.moveTo(mid - 22, H - 30); g.lineTo(mid + 22, H - 40); g.lineTo(mid + 22, H - 38); g.lineTo(mid - 22, H - 28); g.fill();
+    door(mid - 6, H - 24, 12, 18, "#5c3b26");
+    window_(mid + 6, H - 28, 9, 8, false);
+
   } else if (kind === "lamp") {
-    R(mid - 2, H - 56, 4, 56, "#4d4a55");
-    R(mid - 8, H - 62, 16, 8, "#6a6675");
-    R(mid - 6, H - 60, 12, 5, "#ffe6a8");
-    g.globalAlpha = 0.35; g.fillStyle = "#ffd166";
-    g.beginPath(); g.arc(mid, H - 57, 15, 0, TWO_PI); g.fill();
-    g.globalAlpha = 1;
+    R(mid - 3, H - 6, 6, 6, "#4a4650");           // base
+    R(mid - 2, H - 62, 4, 56, "#4d4a55");
+    R(mid - 2, H - 62, 1, 56, "#63606d");
+    R(mid - 9, H - 70, 18, 8, "#6a6675");
+    R(mid - 9, H - 70, 18, 2, "#807c8c");
+    R(mid - 7, H - 68, 14, 5, "#ffe6a8");
+    g.save(); g.globalAlpha = 0.30; g.fillStyle = "#ffd166";
+    g.beginPath(); g.arc(mid, H - 64, 17, 0, TWO_PI); g.fill();
+    g.restore();
+    // a hanging basket, because a bare pole is a bare pole
+    R(mid + 6, H - 56, 2, 5, "#4d4a55");
+    R(mid + 3, H - 51, 8, 4, "#8c5b4a");
+    [0,3,6].forEach((o,i) => R(mid + 3 + o, H - 54, 3, 3, ["#ff9ec4","#ffe07a","#ff7f8a"][i]));
+
   } else if (kind === "postbox") {
-    R(mid - 8, H - 30, 16, 30, "#c0524f");
+    R(mid - 4, H - 6, 8, 6, "#6a5550");
+    R(mid - 9, H - 32, 18, 26, "#c0524f");
+    R(litRight ? mid + 5 : mid - 9, H - 32, 4, 26, shade("#c0524f", litRight ? LIT : DIM));
     g.fillStyle = "#a8403f";
-    g.beginPath(); g.arc(mid, H - 30, 8, Math.PI, 0); g.fill();
-    R(mid - 5, H - 26, 10, 3, "#2f2530");
-  } else if (kind === "pole") {          // IV pole
-    R(mid - 1, H - 62, 3, 62, "#b9c2d1");
-    R(mid - 9, H - 66, 18, 4, "#b9c2d1");
-    R(mid - 7, H - 60, 8, 14, "#dff0ff");
-    R(mid - 6, H - 56, 6, 9, "#a8d8ef");
-    R(mid - 7, H - 4, 14, 4, "#98a2b3");
-  } else if (kind === "cart") {          // gift cart
-    R(mid - 16, H - 26, 32, 18, "#e3e8f0");
-    R(mid - 16, H - 30, 32, 5, "#c3cbd8");
-    R(mid - 12, H - 42, 24, 13, "#ff9ec4");
-    R(mid - 12, H - 37, 24, 3, "#fff1e0");
-    R(mid - 2, H - 42, 4, 13, "#fff1e0");
-    R(mid - 13, H - 8, 6, 6, "#5a5f6b"); R(mid + 7, H - 8, 6, 6, "#5a5f6b");
+    g.beginPath(); g.arc(mid, H - 32, 9, Math.PI, 0); g.fill();
+    g.fillStyle = "#cf615e";
+    g.beginPath(); g.arc(mid - 2, H - 33, 5, Math.PI, 0); g.fill();
+    R(mid - 6, H - 27, 12, 3, "#2f2530");
+    R(mid - 6, H - 18, 12, 1, "#8e3a38");
+
+  } else if (kind === "hydrant") {
+    R(mid - 6, H - 4, 12, 4, "#8a3f3c");
+    R(mid - 5, H - 22, 10, 18, "#c85a4e");
+    R(litRight ? mid + 2 : mid - 5, H - 22, 3, 18, shade("#c85a4e", litRight ? LIT : DIM));
+    R(mid - 8, H - 18, 16, 3, "#c85a4e");
+    g.fillStyle = "#d97a6b";
+    g.beginPath(); g.arc(mid, H - 22, 5, Math.PI, 0); g.fill();
+    R(mid - 1, H - 29, 2, 4, "#8a3f3c");
+
+  } else if (kind === "signpost") {
+    R(mid - 2, H - 52, 4, 52, "#6f5a44");
+    R(mid - 2, H - 52, 1, 52, "#87705a");
+    // two fingerposts pointing opposite ways
+    g.fillStyle = "#fff1e0";
+    g.beginPath(); g.moveTo(mid - 26, H - 48); g.lineTo(mid + 2, H - 48);
+    g.lineTo(mid + 2, H - 40); g.lineTo(mid - 26, H - 40); g.lineTo(mid - 31, H - 44); g.fill();
+    g.fillStyle = "#e8d9c0";
+    g.fillRect(mid - 26, H - 42, 28, 2);
+    for (let i = 0; i < 4; i++) R(mid - 23 + i * 5, H - 46, 3, 2, "#7a5c3f");
+    g.fillStyle = "#ffd9a0";
+    g.beginPath(); g.moveTo(mid - 2, H - 36); g.lineTo(mid + 24, H - 36);
+    g.lineTo(mid + 29, H - 32); g.lineTo(mid + 24, H - 28); g.lineTo(mid - 2, H - 28); g.fill();
+    for (let i = 0; i < 3; i++) R(mid + 2 + i * 5, H - 34, 3, 2, "#7a5c3f");
+
+  } else if (kind === "flowerbox") {
+    R(mid - 16, H - 10, 32, 10, "#8c5b4a");
+    R(mid - 16, H - 10, 32, 2, "#a8705c");
+    g.save(); g.globalAlpha = 0.3; g.fillStyle = "#5e3d31";
+    for (let x = mid - 14; x < mid + 15; x += 6) g.fillRect(x, H - 8, 1, 8);
+    g.restore();
+    R(mid - 14, H - 13, 28, 3, "#3f7a48");
+    for (let i = 0; i < 7; i++)
+      R(mid - 14 + i * 4, H - 17, 3, 4, ["#ff9ec4","#ffe07a","#fff1e0","#ff7f8a","#ffc4a3"][i % 5]);
+
+  } else if (kind === "pole") {                    // IV pole
+    R(mid - 6, H - 4, 12, 4, "#98a2b3");
+    R(mid - 1, H - 66, 3, 62, "#b9c2d1");
+    R(mid - 1, H - 66, 1, 62, "#d5dce7");
+    R(mid - 10, H - 70, 20, 4, "#b9c2d1");
+    R(mid - 8, H - 64, 9, 16, "#e8f4ff");
+    R(mid - 7, H - 60, 7, 10, "#a8d8ef");
+    R(mid - 7, H - 60, 7, 2, "#c9e8f7");
+    R(mid + 3, H - 66, 2, 12, "#cfd8e4");
+
+  } else if (kind === "cart") {                    // the gift cart
+    R(mid - 18, H - 30, 36, 20, "#e3e8f0");
+    R(litRight ? mid + 12 : mid - 18, H - 30, 6, 20, "#c8d0dc");
+    R(mid - 18, H - 34, 36, 5, "#c3cbd8");
+    R(mid - 18, H - 34, 36, 1, "#dfe5ee");
+    // the parcel on top, with a ribbon and a bow
+    R(mid - 13, H - 48, 26, 14, "#ff9ec4");
+    R(mid - 13, H - 48, 26, 2, "#ffc0d8");
+    R(mid - 2, H - 48, 4, 14, "#fff1e0");
+    R(mid - 13, H - 42, 26, 3, "#fff1e0");
+    g.fillStyle = "#fff1e0";
+    g.beginPath(); g.arc(mid - 3, H - 50, 3, 0, TWO_PI); g.arc(mid + 3, H - 50, 3, 0, TWO_PI); g.fill();
+    [-14, 8].forEach((o) => { R(mid + o, H - 10, 7, 7, "#5a5f6b"); R(mid + o + 2, H - 8, 3, 3, "#8f96a4"); });
+
   } else if (kind === "chair") {
-    R(mid - 11, H - 20, 22, 6, "#9fb4cc");
-    R(mid - 11, H - 36, 5, 18, "#9fb4cc");
-    R(mid - 12, H - 6, 5, 6, "#4f5865"); R(mid + 7, H - 6, 5, 6, "#4f5865");
+    R(mid - 13, H - 24, 26, 6, "#9fb4cc");
+    R(mid - 13, H - 24, 26, 1, "#bccbdd");
+    R(mid - 13, H - 42, 5, 20, "#9fb4cc");
+    R(mid - 13, H - 42, 5, 1, "#bccbdd");
+    R(mid - 14, H - 8, 5, 8, "#4f5865"); R(mid + 8, H - 8, 5, 8, "#4f5865");
+    R(mid - 8, H - 20, 18, 2, "#8aa0ba");
+
   } else if (kind === "plant") {
-    /* stems first, so the leaves grow out of the pot instead of hovering
-       a few pixels above it with daylight in between */
     g.strokeStyle = "#3f7a48"; g.lineWidth = 2;
     for (let i = 0; i < 5; i++) {
       const t = -Math.PI / 2 + (i - 2) * 0.42;
-      g.beginPath();
-      g.moveTo(mid, H - 16);
-      g.lineTo(mid + Math.cos(t) * 11, H - 18 + Math.sin(t) * 13);
-      g.stroke();
+      g.beginPath(); g.moveTo(mid, H - 16);
+      g.lineTo(mid + Math.cos(t) * 12, H - 19 + Math.sin(t) * 15); g.stroke();
     }
     g.fillStyle = "#4f9e58";
     for (let i = 0; i < 5; i++) {
       const t = -Math.PI / 2 + (i - 2) * 0.42;
       g.beginPath();
-      g.ellipse(mid + Math.cos(t) * 12, H - 20 + Math.sin(t) * 13, 5, 10, t + Math.PI / 2, 0, TWO_PI);
+      g.ellipse(mid + Math.cos(t) * 13, H - 21 + Math.sin(t) * 15, 5, 11, t + Math.PI / 2, 0, TWO_PI);
       g.fill();
     }
-    R(mid - 9, H - 17, 18, 5, "#d69a72");
-    R(mid - 7, H - 13, 14, 13, "#c98f68");
-    R(mid - 7, H - 13, 3, 13, "#d9a67f");
-  } else if (kind === "vent") {
-    R(mid - 14, H - 22, 28, 22, "#6f6a78");
-    R(mid - 14, H - 26, 28, 5, "#88818f");
-    for (let x = mid - 10; x < mid + 10; x += 6) R(x, H - 18, 3, 14, "#544f5e");
+    g.fillStyle = "rgba(255,255,255,.18)";
+    g.beginPath(); g.ellipse(mid + (litRight?6:-6), H - 30, 4, 8, 0, 0, TWO_PI); g.fill();
+    R(mid - 10, H - 18, 20, 5, "#d69a72");
+    R(mid - 8, H - 14, 16, 14, "#c98f68");
+    R(litRight ? mid + 4 : mid - 8, H - 14, 4, 14, shade("#c98f68", litRight ? LIT : DIM));
+
+  } else if (kind === "vending") {
+    footing(mid - 15, H - 5, 30, 5, "#6f7684");
+    wall(mid - 15, H - 46, 30, 41, "#5f7f9a", "panel");
+    R(mid - 11, H - 42, 15, 24, "#0f1a24");
+    // rows of little bottles behind the glass
+    for (let r = 0; r < 4; r++)
+      for (let cc = 0; cc < 4; cc++)
+        R(mid - 10 + cc * 4, H - 41 + r * 6, 3, 5, ["#ff7f8a","#ffd166","#7ddba3","#7ec8e3"][(r+cc)%4]);
+    g.save(); g.globalAlpha = 0.18; g.fillStyle = "#fff";
+    g.beginPath(); g.moveTo(mid - 11, H - 20); g.lineTo(mid - 11, H - 42); g.lineTo(mid - 3, H - 42); g.fill();
+    g.restore();
+    R(mid + 6, H - 40, 7, 12, "#3f4a58");
+    for (let i = 0; i < 3; i++) R(mid + 7, H - 38 + i * 4, 5, 2, "#7f8b9c");
+    R(mid + 6, H - 24, 7, 4, "#2a323c");
+
+  } else if (kind === "sign") {
+    R(mid - 2, H - 40, 4, 40, "#9aa6b6");
+    R(mid - 2, H - 40, 1, 40, "#b7c1ce");
+    R(mid - 20, H - 62, 40, 22, "#fff8e8");
+    R(mid - 20, H - 62, 40, 2, "#ffffff");
+    R(mid - 20, H - 42, 40, 2, "rgba(0,0,0,.2)");
+    R(mid - 17, H - 58, 34, 3, "#7ec8e3");
+    for (let i = 0; i < 3; i++) R(mid - 17, H - 53 + i * 4, 20 - i * 4, 2, "#9fb0c4");
+    // a little heart in the corner, because it is that kind of hospital
+    g.fillStyle = "#ff7f8a";
+    g.beginPath();
+    g.moveTo(mid + 13, H - 47); g.bezierCurveTo(mid + 8, H - 52, mid + 10, H - 56, mid + 13, H - 53);
+    g.bezierCurveTo(mid + 16, H - 56, mid + 18, H - 52, mid + 13, H - 47); g.fill();
+
+  } else if (kind === "bench") {
+    R(mid - 20, H - 6, 4, 6, "#6f7684"); R(mid + 16, H - 6, 4, 6, "#6f7684");
+    for (let i = 0; i < 3; i++) R(mid - 22, H - 14 + i * 3, 44, 2, i % 2 ? "#b58a5f" : "#c9a06f");
+    for (let i = 0; i < 3; i++) R(mid - 22, H - 30 + i * 4, 44, 3, "#c9a06f");
+    R(mid - 22, H - 30, 44, 1, "#dcb885");
+
   } else if (kind === "laundry") {
-    R(mid - 2, H - 60, 4, 60, "#7a6a58");
-    R(mid - 24, H - 58, 48, 2, "#d8cfc0");
-    const cols = ["#ff9ec4", "#ffe07a", "#7ec8e3", "#fff1e0"];
-    for (let i = 0; i < 4; i++) R(mid - 20 + i * 12, H - 56, 9, 16, cols[i]);
+    R(mid - 3, H - 6, 6, 6, "#5e5044");
+    R(mid - 2, H - 64, 4, 58, "#7a6a58");
+    R(mid - 2, H - 64, 1, 58, "#8f7d68");
+    g.strokeStyle = "#d8cfc0"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(mid - 30, H - 60); g.quadraticCurveTo(mid, H - 54, mid + 30, H - 60); g.stroke();
+    const cols = ["#ff9ec4", "#ffe07a", "#7ec8e3", "#fff1e0", "#ffc4a3"];
+    for (let i = 0; i < 5; i++) {
+      const x = mid - 26 + i * 12;
+      const sag = H - 59 + Math.sin((i / 4) * Math.PI) * 4;
+      R(x, sag, 9, 16, cols[i]);
+      R(x, sag, 9, 2, shade(cols[i], 1.15));
+      R(x, sag + 16, 9, 1, "rgba(0,0,0,.2)");
+      R(x + 3, sag - 2, 3, 2, "#c9b8a4");            // the peg
+    }
+
+  } else if (kind === "watertank") {
+    // legs
+    [-14, 10].forEach((o) => { R(mid + o, H - 30, 4, 30, "#5e5248"); R(mid + o, H - 30, 1, 30, "#75675a"); });
+    R(mid - 16, H - 22, 32, 2, "#5e5248");
+    // the drum, banded
+    R(mid - 18, H - 66, 36, 36, "#8a7461");
+    R(litRight ? mid + 10 : mid - 18, H - 66, 8, 36, shade("#8a7461", litRight ? LIT : DIM));
+    for (let i = 0; i < 3; i++) R(mid - 18, H - 60 + i * 11, 36, 2, "#6d5c4c");
+    g.save(); g.globalAlpha = 0.2;
+    for (let x = mid - 16; x < mid + 17; x += 5) g.fillRect(x, H - 66, 1, 36);
+    g.restore();
+    // conical lid
+    g.fillStyle = "#6d5c4c";
+    g.beginPath(); g.moveTo(mid - 20, H - 66); g.lineTo(mid, H - 78); g.lineTo(mid + 20, H - 66); g.fill();
+    g.fillStyle = "rgba(0,0,0,.2)";
+    g.beginPath(); g.moveTo(litRight ? mid - 20 : mid + 20, H - 66); g.lineTo(mid, H - 78); g.lineTo(mid, H - 66); g.fill();
+
+  } else if (kind === "aircon") {
+    R(mid - 17, H - 26, 34, 26, "#8d8894");
+    R(litRight ? mid + 11 : mid - 17, H - 26, 6, 26, shade("#8d8894", litRight ? LIT : DIM));
+    R(mid - 17, H - 30, 34, 5, "#a29daa");
+    R(mid - 17, H - 30, 34, 1, "#bab5c2");
+    g.fillStyle = "#4f4a58";
+    g.beginPath(); g.arc(mid, H - 14, 10, 0, TWO_PI); g.fill();
+    g.strokeStyle = "#8d8894"; g.lineWidth = 2;
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * TWO_PI + 0.4;
+      g.beginPath(); g.moveTo(mid, H - 14);
+      g.lineTo(mid + Math.cos(a) * 9, H - 14 + Math.sin(a) * 9); g.stroke();
+    }
+    for (let i = 0; i < 3; i++) R(mid - 14, H - 6 + i, 28, 1, "#6e6976");
+
+  } else if (kind === "stringpole") {
+    R(mid - 4, H - 6, 8, 6, "#4a4038");
+    R(mid - 2, H - 66, 4, 60, "#5e5044");
+    R(mid - 2, H - 66, 1, 60, "#75675a");
+    // two runs of lights leaving in both directions
+    [-1, 1].forEach((s) => {
+      g.strokeStyle = "rgba(60,50,44,.7)"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(mid, H - 64);
+      g.quadraticCurveTo(mid + s * 20, H - 56, mid + s * 40, H - 60); g.stroke();
+      for (let i = 1; i <= 4; i++) {
+        const t = i / 5;
+        const x = mid + s * (40 * t);
+        const y = H - 64 + (1 - (1 - t) * (1 - t)) * 8 - t * 4;
+        const col = ["#ffd166", "#ff9ec4", "#7ec8e3", "#7ddba3"][i % 4];
+        R(x - 1, y, 3, 4, col);
+        g.save(); g.globalAlpha = 0.35; g.fillStyle = col;
+        g.beginPath(); g.arc(x, y + 2, 5, 0, TWO_PI); g.fill();
+        g.restore();
+      }
+    });
+
+  } else if (kind === "planter") {
+    R(mid - 18, H - 14, 36, 14, "#7a6a58");
+    R(mid - 18, H - 14, 36, 2, "#8f7d68");
+    R(litRight ? mid + 12 : mid - 18, H - 14, 6, 14, shade("#7a6a58", litRight ? LIT : DIM));
+    g.save(); g.globalAlpha = 0.25; g.fillStyle = "#5b4c3d";
+    for (let x = mid - 16; x < mid + 17; x += 7) g.fillRect(x, H - 12, 1, 12);
+    g.restore();
+    g.fillStyle = "#3f7a48";
+    [[-10,-20,8],[0,-24,9],[10,-20,8]].forEach(([bx,by,br]) => {
+      g.beginPath(); g.arc(mid+bx, H+by, br, 0, TWO_PI); g.fill();
+    });
+    [[-8,-26],[4,-29],[10,-24]].forEach(([bx,by],i) =>
+      R(mid+bx, H+by, 3, 3, ["#ffd166","#ff9ec4","#fff1e0"][i]));
+
+  } else if (kind === "vent") {
+    R(mid - 16, H - 24, 32, 24, "#6f6a78");
+    R(litRight ? mid + 10 : mid - 16, H - 24, 6, 24, shade("#6f6a78", litRight ? LIT : DIM));
+    R(mid - 16, H - 29, 32, 5, "#88818f");
+    R(mid - 16, H - 29, 32, 1, "#9f98a6");
+    for (let x = mid - 12; x < mid + 12; x += 6) R(x, H - 20, 3, 16, "#544f5e");
+    R(mid - 12, H - 20, 24, 1, "#3f3b47");
+
   } else if (kind === "cat") {
     const body = "#3a3340";
     g.fillStyle = body;
-    g.beginPath(); g.ellipse(mid, H - 10, 12, 10, 0, 0, TWO_PI); g.fill();
-    g.beginPath(); g.arc(mid + 2, H - 24, 9, 0, TWO_PI); g.fill();
-    g.beginPath(); g.moveTo(mid - 5, H - 30); g.lineTo(mid - 2, H - 38); g.lineTo(mid + 2, H - 30); g.fill();
-    g.beginPath(); g.moveTo(mid + 5, H - 30); g.lineTo(mid + 9, H - 38); g.lineTo(mid + 11, H - 30); g.fill();
-    R(mid - 2, H - 26, 2, 2, "#ffd166"); R(mid + 5, H - 26, 2, 2, "#ffd166");
+    g.beginPath(); g.ellipse(mid, H - 11, 13, 11, 0, 0, TWO_PI); g.fill();
+    g.beginPath(); g.arc(mid + 2, H - 26, 10, 0, TWO_PI); g.fill();
+    g.beginPath(); g.moveTo(mid - 6, H - 33); g.lineTo(mid - 2, H - 42); g.lineTo(mid + 3, H - 33); g.fill();
+    g.beginPath(); g.moveTo(mid + 5, H - 33); g.lineTo(mid + 10, H - 42); g.lineTo(mid + 12, H - 33); g.fill();
+    g.fillStyle = "rgba(255,255,255,.14)";
+    g.beginPath(); g.arc(mid + (litRight ? 6 : -3), H - 29, 5, 0, TWO_PI); g.fill();
+    R(mid - 3, H - 28, 3, 3, "#ffd166"); R(mid + 5, H - 28, 3, 3, "#ffd166");
+    R(mid - 2, H - 28, 1, 3, "#2a2230"); R(mid + 6, H - 28, 1, 3, "#2a2230");
     g.strokeStyle = body; g.lineWidth = 3;
-    g.beginPath(); g.moveTo(mid - 11, H - 8); g.quadraticCurveTo(mid - 22, H - 14, mid - 18, H - 26); g.stroke();
+    g.beginPath(); g.moveTo(mid - 12, H - 9);
+    g.quadraticCurveTo(mid - 24, H - 16, mid - 19, H - 29); g.stroke();
   }
-  sceneryCache[kind] = cropToContent(c);
-  return sceneryCache[kind];
+
+  sceneryCache[key] = cropToContent(c);
+  return sceneryCache[key];
 }
+
 
 /* the heart box, spinning — eight frames is plenty at this size */
 let boxFrames = null;
@@ -991,6 +1636,9 @@ function buildBoxFrames() {
    10. RENDER TARGETS
    ========================================================= */
 let cvs, ctx, cw = 0, ch = 0;
+
+/* live camera state — the spring the chase camera rides on */
+let camAngle = 0, camLag = 0, camFocal = FOCAL, camStep = 1 / 60;
 let sceneCvs, sceneCtx, sceneImg, buf32;
 
 function initBuffers() {
@@ -1003,14 +1651,14 @@ function initBuffers() {
 }
 
 /* --- the Mode 7 floor --- */
-function renderGround(camX, camY, camA) {
+function renderGround(camX, camY, camA, focal) {
   const cosA = Math.cos(camA), sinA = Math.sin(camA);
   const rx = -sinA, ry = cosA;              // camera right vector
   const halfW = RW / 2;
 
   for (let py = HORIZON; py < RH; py++) {
     const dy = py - HORIZON;
-    const z = (CAM_H * FOCAL) / (dy < 1 ? 1 : dy);
+    const z = (CAM_H * focal) / (dy < 1 ? 1 : dy);
     let o = py * RW;
 
     if (z > MAX_Z) {                        // too far to resolve — haze it
@@ -1018,10 +1666,12 @@ function renderGround(camX, camY, camA) {
       continue;
     }
 
-    const sc = z / FOCAL;
-    let wx = camX + cosA * z + rx * -halfW * sc;
-    let wy = camY + sinA * z + ry * -halfW * sc;
-    const sx = rx * sc, sy = ry * sc;
+    /* step straight into texel space — the divide by TSCALE happens once
+       per row here rather than once per pixel in the inner loop */
+    const sc = z / focal;
+    let wx = (camX + cosA * z + rx * -halfW * sc) / TSCALE;
+    let wy = (camY + sinA * z + ry * -halfW * sc) / TSCALE;
+    const sx = rx * sc / TSCALE, sy = ry * sc / TSCALE;
 
     for (let px = 0; px < RW; px++, o++) {
       const tx = wx | 0, ty = wy | 0;
@@ -1043,11 +1693,22 @@ function renderSky(def, camA) {
   g.fillStyle = grad;
   g.fillRect(0, 0, RW, HORIZON);
 
-  const off = ((camA / TWO_PI) * PANO_W) % PANO_W;
-  const y = HORIZON - PANO_H + 4;
-  g.drawImage(panoCvs, -off, y);
-  g.drawImage(panoCvs, -off + PANO_W, y);
-  if (off < RW) g.drawImage(panoCvs, -off - PANO_W, y);
+  /* Three depths, each scrolling at its own rate against the camera's
+     heading. Far ridge barely moves, the midground band moves about
+     twice as fast, and the ground under them moves fastest of all —
+     which is what reads as distance rather than as a painted backdrop. */
+  const draw = (cvs2, rate, y, alpha) => {
+    if (!cvs2) return;
+    const off = (((camA / TWO_PI) * PANO_W * rate) % PANO_W + PANO_W) % PANO_W;
+    g.globalAlpha = alpha;
+    g.drawImage(cvs2, -off, y);
+    g.drawImage(cvs2, -off + PANO_W, y);
+    if (off < RW) g.drawImage(cvs2, -off - PANO_W, y);
+    g.globalAlpha = 1;
+  };
+  draw(panoFar, 0.55, HORIZON - PANO_H + 10, 0.85);
+  draw(panoCvs, 1.0, HORIZON - PANO_H + 4, 1);
+  draw(panoMid, 1.9, HORIZON - PANO_MID + 3, 1);
 }
 
 /* --- distance haze, so the far road melts into the sky. Kept shallow
@@ -1072,24 +1733,43 @@ function projectSprite(wx, wy, camX, camY, camA) {
   const x = -dx * sinA + dy * cosA;
   /* Anything nearer than this is between the camera and the player, and
      1/z blows it up to fill the screen. The camera trails by CAM_DIST,
-     so this only ever culls things already well behind the kart. */
-  if (z < 50) return null;
+     so this only ever culls things already well behind the kart — and
+     it fades out over the last stretch rather than vanishing. */
+  if (z < 62) return null;
   return {
     z,
-    sx: RW / 2 + (x / z) * FOCAL,
-    sy: HORIZON + (CAM_H / z) * FOCAL,
-    scale: FOCAL / z,
+    sx: RW / 2 + (x / z) * camFocal,
+    sy: HORIZON + (CAM_H / z) * camFocal,
+    scale: camFocal / z,
+    fade: z < 96 ? (z - 62) / 34 : 1,
   };
 }
 
 /* =========================================================
    11. RACERS
    ========================================================= */
-const TOP_SPEED = 4.55;         // texture pixels per frame at 60fps
-const ACCEL     = 0.055;
-const BRAKE     = 0.11;
-const DRAG      = 0.018;
-const TURN      = 2.5 * DEG;
+/* ---------------------------------------------------------
+   HANDLING
+
+   The first pass drove like a cursor: the throttle added a constant
+   number every frame, and the steering wrote straight into the heading
+   so the kart changed direction with no sense of weight. These are the
+   numbers for a model that behaves like a kart instead.
+
+   Speeds are world units per frame at 60fps; the loop runs a fixed
+   step so they mean the same thing on any display.
+   --------------------------------------------------------- */
+const TOP_SPEED = 4.55;   // flat out on tarmac
+const ENGINE    = 0.150;  // pull off the line, before the taper
+const ACC_TAPER = 2.15;   // how hard acceleration falls away near the top
+const BRAKE     = 0.115;  // on the brake
+const ENGINE_BR = 0.030;  // off the throttle entirely
+const ROLL      = 0.006;  // rolling resistance, always
+const TURN      = 3.05 * DEG;  // steering authority at the sweet spot
+const GRIP      = 0.14;   // how fast the kart's heading catches its steer
+const DRIFT_GRIP= 0.075;  // ...and how much lazier it is mid-drift
+const OFFROAD_SP= 0.56;   // top speed multiplier off the tarmac
+const OFFROAD_DR= 0.55;   // and how much steering authority you keep there
 
 class Racer {
   constructor(def, isPlayer, lane, back) {
@@ -1103,6 +1783,7 @@ class Racer {
     this.x = p.x - Math.sin(ta) * lane;
     this.y = p.y + Math.cos(ta) * lane;
     this.angle = ta;
+    this.steer = 0;      // where the wheels point; the heading chases it
     this.speed = 0;
     this.hint = startIdx;
 
@@ -1128,14 +1809,17 @@ class Racer {
     this.shield = 0;
     this.offroad = false;
     this.aiTarget = (startIdx + 8) % path.length;
+    this.aiLine = null;
     this.aiJitter = Math.random() * TWO_PI;
     this.aiItemWait = 1 + Math.random() * 3;
+    /* about half the grid knows about the shortcut */
+    this.takesCut = !isPlayer && Math.random() < 0.5;
   }
 
   get maxSpeed() {
     let m = TOP_SPEED;
     if (!this.isPlayer) m *= [0.955, 0.995, 1.03][difficulty];
-    if (this.offroad) m *= 0.52;
+    if (this.offroad) m *= OFFROAD_SP;
     if (this.boost > 0) m *= 1.55;
     return m;
   }
@@ -1164,14 +1848,25 @@ class Racer {
     const gas   = input.up,   rev  = input.down;
     const left  = input.left, right = input.right;
     const dkey  = input.drift;
+    const k     = dt * 60;
+    const max   = this.maxSpeed;
 
-    if (gas)      this.speed += ACCEL * dt * 60;
-    else if (rev) this.speed -= BRAKE * dt * 60;
-    else          this.speed -= Math.sign(this.speed) * DRAG * dt * 60;
-
-    const max = this.maxSpeed;
-    if (this.speed >  max) this.speed += (max - this.speed) * 0.08;
-    if (this.speed < -max * 0.35) this.speed = -max * 0.35;
+    /* Acceleration tapers towards the top end instead of being a flat
+       addition: hard shove off the line, and the last few units of speed
+       take real time to find. */
+    if (gas) {
+      const head = Math.max(0, 1 - Math.max(0, this.speed) / max);
+      this.speed += ENGINE * Math.pow(head, ACC_TAPER) * k;
+      if (this.speed > max) this.speed += (max - this.speed) * 0.10 * k;
+    } else if (rev) {
+      this.speed -= BRAKE * k;
+      if (this.speed < -max * 0.32) this.speed = -max * 0.32;
+    } else {
+      /* engine braking, not a handbrake — you coast */
+      const drop = (ENGINE_BR + ROLL) * k;
+      this.speed -= Math.sign(this.speed) * Math.min(Math.abs(this.speed), drop);
+    }
+    if (this.speed > 0) this.speed -= Math.min(this.speed, ROLL * k);
     if (!gas && !rev && Math.abs(this.speed) < 0.02) this.speed = 0;
 
     /* Drift: hold the button while turning and it locks a direction,
@@ -1179,49 +1874,100 @@ class Racer {
        flagged by the colour of the sparks. */
     const turning = left || right;
     if (dkey && turning && this.speed > TOP_SPEED * 0.42) {
-      if (!this.drifting) { this.drifting = true; this.driftDir = left ? -1 : 1; this.driftCharge = 0; }
+      if (!this.drifting) {
+        this.drifting = true; this.driftDir = left ? -1 : 1; this.driftCharge = 0;
+        Snd.drift(true);
+      }
       this.driftCharge = Math.min(this.driftCharge + dt, 3);
     } else if (this.drifting) {
-      if (this.driftCharge > 1.7)      this.boost = 1.15;
-      else if (this.driftCharge > 1.0) this.boost = 0.75;
-      else if (this.driftCharge > 0.5) this.boost = 0.42;
+      let tier = 0;
+      if (this.driftCharge > 1.7)      { this.boost = 1.15; tier = 3; }
+      else if (this.driftCharge > 1.0) { this.boost = 0.75; tier = 2; }
+      else if (this.driftCharge > 0.5) { this.boost = 0.42; tier = 1; }
       this.drifting = false;
       this.driftCharge = 0;
+      Snd.drift(false);
+      if (tier) Snd.boost(tier);
     }
 
-    let rate = TURN * (this.drifting ? 1.5 : 1);
-    rate *= 0.55 + 0.45 * Math.min(1, Math.abs(this.speed) / (TOP_SPEED * 0.6));
+    /* Steering sets where the front wheels point; the kart's heading
+       then chases it. That gap is the whole difference between a kart
+       with mass and a cursor that snaps to its new direction. */
+    const speedFrac = Math.min(1, Math.abs(this.speed) / TOP_SPEED);
+    /* tight at low speed, lazier as it winds up — a real turning circle */
+    let rate = TURN * (1.35 - 0.55 * speedFrac);
+    if (this.drifting) rate *= 1.45;
+    if (this.offroad)  rate *= OFFROAD_DR;
+    /* Authority falls off as you slow, but never to nothing. Letting it
+       reach zero meant a kart that nosed into the verge and stopped
+       could not steer out of it, because steering needed speed and
+       speed needed steering — you were simply stuck there for good. */
+    rate *= Math.min(1, (Math.abs(this.speed) + 0.30) / (TOP_SPEED * 0.30));
     const dir = this.speed < 0 ? -1 : 1;
-    if (left)  this.angle -= rate * dt * 60 * dir;
-    if (right) this.angle += rate * dt * 60 * dir;
-    /* a drift keeps pulling the way it was started, even mid-correction */
-    if (this.drifting) this.angle += this.driftDir * TURN * 0.32 * dt * 60;
+    if (left)  this.steer -= rate * k * dir;
+    if (right) this.steer += rate * k * dir;
+    if (!left && !right) {
+      /* self-centring, so letting go straightens the kart out */
+      const back = TURN * 1.5 * k;
+      this.steer -= Math.sign(this.steer) * Math.min(Math.abs(this.steer), back);
+    }
+    const lock = TURN * 22;
+    this.steer = Math.max(-lock, Math.min(lock, this.steer));
+    if (this.drifting) this.steer += this.driftDir * TURN * 0.30 * k;
+
+    const grip = (this.drifting ? DRIFT_GRIP : GRIP) * (this.offroad ? 0.7 : 1);
+    this.angle += (this.steer) * grip * k;
+    /* the heading having caught up spends the steering input */
+    this.steer -= this.steer * grip * k;
 
     if (input.itemPressed) { input.itemPressed = false; this.fire(); }
   }
 
   driveAI(dt) {
     const n = path.length;
-    /* aim a few nodes ahead, offset onto its own line so the field does
-       not drive as one stack */
-    let tries = 0;
-    while (tries++ < 8) {
-      const tp = path[this.aiTarget];
-      if (Math.hypot(tp.x - this.x, tp.y - this.y) > 55) break;
-      this.aiTarget = (this.aiTarget + 1) % n;
+    const k = dt * 60;
+
+    /* Some of the field will take the shortcut. They aim at its own
+       waypoints while their progress sits inside its span, then rejoin. */
+    let line = path, tIdxMax = n;
+    if (cut && this.takesCut) {
+      let span = cut.to - cut.from; if (span < 0) span += 1;
+      let rel = this.along - cut.from; if (rel < 0) rel += 1;
+      if (rel < span * 1.05 && rel > -0.01) { line = cut.pts; tIdxMax = cut.pts.length; }
     }
-    const tIdx = this.aiTarget;
-    const ta = tangentAt(tIdx);
+    if (line !== this.aiLine) { this.aiLine = line; this.aiTarget = 0; }
+
+    let tries = 0;
+    while (tries++ < 10) {
+      const tp = line[Math.min(this.aiTarget, tIdxMax - 1)];
+      if (Math.hypot(tp.x - this.x, tp.y - this.y) > 60) break;
+      this.aiTarget = line === path ? (this.aiTarget + 1) % n
+                                    : Math.min(this.aiTarget + 1, tIdxMax - 1);
+    }
+    const tIdx = line === path ? this.aiTarget : Math.min(this.aiTarget, tIdxMax - 1);
+    const nx2 = line[Math.min(tIdx + 1, tIdxMax - 1)] || line[tIdx];
+    const ta = Math.atan2(nx2.y - line[tIdx].y, nx2.x - line[tIdx].x);
     this.aiJitter += dt * 0.7;
-    const lane = this.lane * 0.75 + Math.sin(this.aiJitter) * 10;
-    const tx = path[tIdx].x - Math.sin(ta) * lane;
-    const ty = path[tIdx].y + Math.cos(ta) * lane;
+    const lane = (line === path ? this.lane * 0.75 : this.lane * 0.3)
+               + Math.sin(this.aiJitter) * 10;
+    const tx = line[tIdx].x - Math.sin(ta) * lane;
+    const ty = line[tIdx].y + Math.cos(ta) * lane;
 
     let diff = Math.atan2(ty - this.y, tx - this.x) - this.angle;
     while (diff >  Math.PI) diff -= TWO_PI;
     while (diff < -Math.PI) diff += TWO_PI;
-    const rate = TURN * 1.25 * dt * 60;
-    this.angle += Math.max(-rate, Math.min(rate, diff));
+
+    /* the AI steers through the same wheels-then-heading model the
+       player does, so they lean into corners rather than pivoting */
+    const speedFrac = Math.min(1, Math.abs(this.speed) / TOP_SPEED);
+    const rate = TURN * (1.35 - 0.55 * speedFrac) * 1.7 * k;
+    const wantSteer = Math.max(-rate, Math.min(rate, diff * 2.6));
+    this.steer += (wantSteer - this.steer) * 0.35 * k;
+    const lock = TURN * 22;
+    this.steer = Math.max(-lock, Math.min(lock, this.steer));
+    const grip = GRIP * (this.offroad ? 0.7 : 1);
+    this.angle += this.steer * grip * k;
+    this.steer -= this.steer * grip * k;
 
     /* ease off through the tight stuff, and rubber-band gently so the
        race stays alive without feeling rigged */
@@ -1246,13 +1992,18 @@ class Racer {
     this.y += Math.sin(this.angle) * this.speed * k;
 
     const pr = project(this.x, this.y, this.hint);
-    this.hint = pr.idx;
-    this.offroad = pr.dist > RUMBLE_HALF;
+    if (!pr.onCut) this.hint = pr.idx;
+    this.onCut = pr.onCut;
+    /* widths are relative to whichever ribbon you are on — the shortcut
+       is narrower, which is the price of taking it */
+    const rumble = pr.half + (RUMBLE_HALF - ROAD_HALF);
+    const bound  = pr.half + (SHOULDER - ROAD_HALF);
+    this.offroad = pr.dist > rumble;
 
     /* the wall is soft: past the shoulder you get pushed back and lose
        most of your speed, rather than stopping dead */
-    if (pr.dist > SHOULDER) {
-      const push = pr.dist - SHOULDER;
+    if (pr.dist > bound) {
+      const push = pr.dist - bound;
       const s = Math.sign(pr.side) || 1;
       this.x -= pr.nx * s * push;
       this.y -= pr.ny * s * push;
@@ -1260,6 +2011,13 @@ class Racer {
          motion; taking a big bite out of the speed as well every frame
          meant a kart that touched the verge simply died there. */
       this.speed *= 0.97;
+      /* and swing the nose back down the road, so a kart that arrives
+         at the barrier square-on slides along it rather than grinding
+         to a halt pointing at the scenery */
+      let td = pr.tan - this.angle;
+      while (td >  Math.PI) td -= TWO_PI;
+      while (td < -Math.PI) td += TWO_PI;
+      if (Math.abs(td) < Math.PI * 0.55) this.angle += td * 0.07 * k;
       if (this.isPlayer) shake = Math.min(2, shake + push * 0.04);
     }
     if (this.offroad && Math.abs(this.speed) > 1.2 && Math.random() < 0.5) {
@@ -1273,8 +2031,11 @@ class Racer {
       this.lap++;
       /* lap 0 is the start line itself — announcing "LAP 1" there just
          puts a banner over the countdown you have only just cleared */
-      if (this.isPlayer && this.lap >= 1 && this.lap < trackDef.laps)
+      if (mode !== "tutorial" && this.isPlayer &&
+          this.lap >= 1 && this.lap < trackDef.laps) {
         flashBanner("LAP " + (this.lap + 1));
+        Snd.lap();
+      }
       if (this.lap >= trackDef.laps && !this.finished) {
         this.finished = true;
         this.finishTime = raceTime;
@@ -1297,6 +2058,7 @@ class Racer {
     if (!this.item) return;
     const it = this.item;
     this.item = null;
+    if (this.isPlayer) Snd.use(it);
     if (it === "letter") {
       this.boost = Math.max(this.boost, 1.0);
       if (this.isPlayer) flashBanner("BOOST!");
@@ -1397,6 +2159,7 @@ let gpRound = 0, gpPoints = [];
 let state = "title";           // title|chars|tracks|count|race|paused|results|gpboard
 let ghost = null, ghostRec = null, ghostPlay = null;
 let bannerT = 0;
+let lastPlace = 0;
 
 const GP_POINTS = [15, 12, 10, 8, 6, 4, 3, 2];
 
@@ -1426,6 +2189,7 @@ function placeProps(def) {
         y: path[i].y + Math.cos(ta) * off * s,
         kind,
         hv: 0.85 + rnd() * 0.35,   // a little variety in height per instance
+        smokeX: (rnd() < 0.5 ? -1 : 1) * (0.14 + rnd() * 0.14),
       });
     }
   }
@@ -1450,9 +2214,11 @@ function placeBoxes() {
 function startRace() {
   trackDef = TRACKS[trackIdx];
   buildPath(trackDef);
+  /* props are placed before the bake so their shadows can be painted
+     into the ground texture along with everything else */
+  placeProps(trackDef);
   bakeTrack(trackDef);
   bakePano(trackDef);
-  placeProps(trackDef);
   placeBoxes();
 
   shots = []; hazards = []; fx = [];
@@ -1484,6 +2250,12 @@ function startRace() {
   } else {
     ghostRec = null; ghostPlay = null; ghost = null;
   }
+
+  camAngle = racers[0] ? racers[0].angle : 0;
+  camLag = 0; camFocal = FOCAL;
+  lastPlace = 0;
+  Snd.resume();
+  Snd.music(trackDef.id);
 
   state = "count";
   showHud(true);
@@ -1518,6 +2290,10 @@ function finishRace() {
   }
   state = "results";
   showHud(false);
+  Snd.engineOff();
+  Snd.drift(false);
+  Snd.music("menu");
+  Snd.fanfare();
   renderResults();
 }
 
@@ -1548,9 +2324,12 @@ function saveGhost(id, rec) {
    ========================================================= */
 function step(dt) {
   if (state === "count") {
+    const before = Math.ceil(countdown - 0.9);
     countdown -= dt;
+    const after = Math.ceil(countdown - 0.9);
+    if (after !== before) Snd.beep(after <= 0);
     paintCount();
-    if (countdown <= 0) { state = "race"; setCount(""); }
+    if (countdown <= 0) { state = "race"; setCount(""); Snd.engineOn(); }
     return;
   }
   if (state !== "race") return;
@@ -1561,6 +2340,14 @@ function step(dt) {
 
   racers.forEach((r) => r.update(dt));
   order();
+
+  const me0 = racers.find((r) => r.isPlayer);
+  if (me0) {
+    Snd.engine(Math.min(1, Math.abs(me0.speed) / TOP_SPEED), me0.offroad);
+    if (me0.drifting) Snd.driftCharge(me0.driftCharge > 1.7 ? 3 : me0.driftCharge > 1.0 ? 2 : 1);
+    if (me0.offroad && Math.abs(me0.speed) > 1.4 && Math.random() < 0.12) Snd.scrape();
+    if (me0.place !== lastPlace) { if (lastPlace) Snd.tick(); lastPlace = me0.place; }
+  }
 
   /* ghost: record where we were, replay where we were last time */
   if (mode === "trial") {
@@ -1586,7 +2373,7 @@ function step(dt) {
         r.item = rollItem(r.place, racers.length);
         b.alive = false; b.t = 4;
         addPop(b.x, b.y, "#ff9ec4");
-        if (r.isPlayer) paintItem();
+        if (r.isPlayer) { paintItem(); Snd.pickup(); }
         break;
       }
     }
@@ -1674,6 +2461,8 @@ function step(dt) {
     }
   }
 
+  if (mode === "tutorial") stepTutorial(dt);
+
   stepFx(dt);
 }
 
@@ -1689,7 +2478,7 @@ function hit(r) {
   r.speed *= 0.34;
   r.boost = 0;
   r.drifting = false;
-  if (r.isPlayer) { shake = 3; flashBanner("OUCH!"); }
+  if (r.isPlayer) { shake = 3; flashBanner("OUCH!"); Snd.hit(); }
 }
 
 /* =========================================================
@@ -1699,13 +2488,23 @@ function draw() {
   const me = racers.find((r) => r.isPlayer);
   if (!me) return;
 
-  /* the camera trails the kart, and lags its heading a touch so hard
-     corners swing rather than snap */
-  const camA = me.angle;
-  const camX = me.x - Math.cos(camA) * CAM_DIST;
-  const camY = me.y - Math.sin(camA) * CAM_DIST;
+  /* The camera trails the kart on a spring rather than being welded to
+     its back. Turning in swings the tail out and you see into the
+     corner; on boost it drops back and the lens widens, which is most
+     of why a boost reads as fast rather than just numerically faster. */
+  let d = me.angle - camAngle;
+  while (d >  Math.PI) d -= TWO_PI;
+  while (d < -Math.PI) d += TWO_PI;
+  camAngle += d * Math.min(1, 0.12 * camStep * 60);
+  camLag += ((me.boost > 0 ? 1 : 0) - camLag) * Math.min(1, 0.06 * camStep * 60);
 
-  renderGround(camX, camY, camA);
+  const dist = CAM_DIST * (1 + camLag * 0.14);
+  const camA = camAngle;
+  const camX = me.x - Math.cos(camA) * dist;
+  const camY = me.y - Math.sin(camA) * dist;
+  camFocal = FOCAL * (1 - camLag * 0.10);
+
+  renderGround(camX, camY, camA, camFocal);
   renderSky(trackDef, camA);
   renderHaze(trackDef);
 
@@ -1777,13 +2576,34 @@ function shadowUnder(g, sx, sy, w) {
 
 function drawProp(g, b) {
   const { s, o } = b;
-  const img = buildScenery(o.kind);
+  if (s.fade < 1) g.globalAlpha = s.fade;
+  const img = buildScenery(o.kind, trackDef);
   const spec = SCENERY[o.kind] || { h: 90, foot: 0.6 };
   const h = spec.h * o.hv * s.scale;
   const w = h * (img.width / img.height);
   if (w < 1.2) return;
-  shadowUnder(g, s.sx, s.sy, w * spec.foot);
+  shadowUnder(g, s.sx, s.sy, w * spec.foot * 0.8);
   g.drawImage(img, s.sx - w / 2, s.sy - h, w, h);
+
+  /* smoke from the chimney, drawn live rather than baked so it drifts.
+     Three puffs on staggered phases, rising and spreading as they go. */
+  if (spec.smoke && w > 14) {
+    const cx = s.sx + w * (o.smokeX || 0.2);
+    const cy = s.sy - h * 0.9;
+    g.save();
+    for (let i = 0; i < 3; i++) {
+      const t = ((raceTime * 0.34 + i / 3 + o.hv) % 1);
+      const r = w * (0.045 + t * 0.075);
+      if (r < 0.6) continue;
+      g.globalAlpha = 0.30 * (1 - t);
+      g.fillStyle = "#e8e2ea";
+      g.beginPath();
+      g.arc(cx + Math.sin(t * 3.2 + i) * w * 0.06, cy - t * h * 0.34, r, 0, TWO_PI);
+      g.fill();
+    }
+    g.restore();
+  }
+  g.globalAlpha = 1;
 }
 
 function drawBox(g, b) {
@@ -1838,6 +2658,12 @@ function drawShot(g, b) {
 }
 
 function drawKart(g, b, camA, isGhost) {
+  const { s, o } = b;
+  if (s.fade < 1 && !o.isPlayer) { g.save(); g.globalAlpha = s.fade; drawKartInner(g, b, camA, isGhost); g.restore(); return; }
+  drawKartInner(g, b, camA, isGhost);
+}
+
+function drawKartInner(g, b, camA, isGhost) {
   const { s, o } = b;
   const rel = o.angle - camA;
   let ai = Math.round((((rel % TWO_PI) + TWO_PI) % TWO_PI) / TWO_PI * ANGLES) % ANGLES;
@@ -1940,6 +2766,7 @@ function grabEls() {
     posSuf: id("rc-pos-s"), item: id("rc-item"), itemCvs: id("rc-item-cvs"),
     map: id("rc-map"), boost: id("rc-boost"), boostFill: id("rc-boost-f"),
     count: id("rc-count"), banner: id("rc-banner"), overlay: id("rc-overlay"),
+    tut: id("rc-tut"),
     pad: id("rc-pad"), pause: id("rc-pause-btn"),
   };
 }
@@ -1967,6 +2794,21 @@ function paintCount() {
 function paintHud() {
   const me = racers.find((r) => r.isPlayer);
   if (!me || !el.lap) return;
+  if (el.hud) el.hud.dataset.mode = mode === "tutorial" ? "tutorial" : "race";
+  if (mode === "tutorial") {
+    el.time.textContent = fmt(raceTime);
+    paintItem();
+    drawMini();
+    if (el.boost) {
+      const on = me.drifting && me.driftCharge > 0.1;
+      el.boost.hidden = !on;
+      if (on) {
+        el.boostFill.style.width = (Math.min(1, me.driftCharge / 1.7) * 100) + "%";
+        el.boost.dataset.tier = me.driftCharge > 1.7 ? "3" : me.driftCharge > 1.0 ? "2" : "1";
+      }
+    }
+    return;
+  }
   el.lap.textContent = Math.max(1, Math.min(me.lap + 1, trackDef.laps)) + "/" + trackDef.laps;
   el.time.textContent = fmt(raceTime);
   if (el.posNum) {
@@ -2061,7 +2903,8 @@ function drawMini() {
 
   const pad = 10;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const p of path) {
+  const extent = cut ? path.concat(cut.pts) : path;
+  for (const p of extent) {
     if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
     if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
   }
@@ -2082,6 +2925,16 @@ function drawMini() {
   g.beginPath();
   path.forEach((p, i) => { const m = M(p); i ? g.lineTo(m.x, m.y) : g.moveTo(m.x, m.y); });
   g.closePath(); g.stroke();
+
+  /* the shortcut, dashed, so she can see there is another way round */
+  if (cut) {
+    g.setLineDash([4, 4]);
+    g.strokeStyle = "rgba(255,209,102,.9)"; g.lineWidth = 3;
+    g.beginPath();
+    cut.pts.forEach((p, i) => { const m = M(p); i ? g.lineTo(m.x, m.y) : g.moveTo(m.x, m.y); });
+    g.stroke();
+    g.setLineDash([]);
+  }
 
   const s0 = M(path[0]);
   g.fillStyle = "#26202a"; g.fillRect(s0.x - 3, s0.y - 3, 6, 6);
@@ -2111,6 +2964,9 @@ function setOverlay(html, cls) {
 function renderTitle() {
   state = "title";
   showHud(false);
+  Snd.engineOff();
+  Snd.drift(false);
+  Snd.music("menu");
   setOverlay(`
     <div class="rc-title">
       <p class="rc-logo"><span>SUPER</span><b>OUISSY</b><i>RACE</i></p>
@@ -2119,6 +2975,8 @@ function renderTitle() {
         <button class="rc-btn" data-go="single">SINGLE RACE</button>
         <button class="rc-btn" data-go="gp">GRAND PRIX</button>
         <button class="rc-btn" data-go="trial">TIME TRIAL</button>
+        <button class="rc-btn rc-btn-s" data-tut="1">HOW TO RACE</button>
+        <button class="rc-btn rc-btn-s" data-settings="title">SOUND</button>
       </div>
       <div class="rc-diff">
         <span class="rc-diff-lab">DIFFICULTY</span>
@@ -2345,15 +3203,655 @@ function renderGPEnd() {
 
 function renderPause() {
   state = "paused";
+  Snd.engineOff();
+  Snd.drift(false);
   setOverlay(`
     <div class="rc-panel rc-pausep">
       <h3 class="rc-h">PAUSED</h3>
       <div class="rc-menu">
         <button class="rc-btn" data-resume="1">RESUME</button>
         <button class="rc-btn" data-restart="1">RESTART</button>
+        <button class="rc-btn" data-settings="pause">SOUND</button>
+        <button class="rc-btn" data-tut="1">HOW TO RACE</button>
         <button class="rc-btn" data-back="title">QUIT TO MENU</button>
       </div>
     </div>`, "rc-ov-panel");
+}
+
+/* Sound settings. `from` remembers where we came in from, so closing
+   goes back to the pause card rather than dumping you on the title. */
+function renderSettings(from) {
+  const pct = (v) => Math.round(v * 100);
+  const row = (k, label) => `
+    <label class="rc-slider">
+      <span class="rc-slider-lab">${label}</span>
+      <input type="range" min="0" max="100" value="${pct(Snd.vol[k])}" data-vol="${k}">
+      <output data-out="${k}">${pct(Snd.vol[k])}</output>
+    </label>`;
+  setOverlay(`
+    <div class="rc-panel">
+      <h3 class="rc-h">SOUND</h3>
+      <div class="rc-sliders">
+        ${row("master", "MASTER")}
+        ${row("music",  "MUSIC")}
+        ${row("sfx",    "EFFECTS")}
+      </div>
+      <button class="rc-btn rc-btn-s" data-mute="1">${Snd.muted() ? "UNMUTE" : "MUTE ALL"}</button>
+      <div class="rc-row">
+        <button class="rc-btn rc-btn-go" data-closeset="${from}">‹ BACK</button>
+      </div>
+    </div>`, "rc-ov-panel");
+
+  el.overlay.querySelectorAll("[data-vol]").forEach((sl) => {
+    const k = sl.dataset.vol;
+    const out = el.overlay.querySelector(`[data-out="${k}"]`);
+    sl.addEventListener("input", () => {
+      Snd.resume();
+      Snd.setVol(k, sl.value / 100);
+      out.textContent = sl.value;
+    });
+    /* a click on the track counts as a preview, so you hear the change */
+    sl.addEventListener("change", () => Snd.click());
+  });
+}
+
+
+/* =========================================================
+   17b. AUDIO  (named Snd, so it does not shadow the DOM's Audio)
+
+   All of it is synthesised here and now — oscillators, a noise buffer,
+   and envelopes. Nothing is fetched, nothing is licensed, and the whole
+   soundtrack costs a few hundred lines instead of a few megabytes.
+
+   Chiptune in practice means: square and pulse waves for the melody,
+   a triangle for the bass, filtered white noise for percussion, and
+   hard little envelopes so every note has an edge on it.
+
+   The context cannot start until she touches the page, so everything
+   is written to be safe to call before that and to wake up on the
+   first gesture.
+   ========================================================= */
+const Snd = (function () {
+  let ctx = null, master = null, musicBus = null, sfxBus = null;
+  let noiseBuf = null;
+  let ready = false;
+  let vol = { master: 0.75, music: 0.55, sfx: 0.8 };
+  let muted = false;
+
+  /* the running engine, kept alive between calls */
+  let engine = null;
+  let driftNode = null;
+  let song = null;          // the scheduler for whatever is playing
+
+  try {
+    const saved = JSON.parse(localStorage.getItem("sor_vol") || "null");
+    if (saved) vol = Object.assign(vol, saved);
+    muted = localStorage.getItem("sor_mute") === "1";
+  } catch (e) {}
+
+  function save() {
+    try {
+      localStorage.setItem("sor_vol", JSON.stringify(vol));
+      localStorage.setItem("sor_mute", muted ? "1" : "0");
+    } catch (e) {}
+  }
+
+  function init() {
+    if (ctx) return true;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return false;
+    ctx = new AC();
+    master = ctx.createGain();
+    musicBus = ctx.createGain();
+    sfxBus = ctx.createGain();
+    musicBus.connect(master); sfxBus.connect(master);
+    master.connect(ctx.destination);
+
+    /* one second of white noise, reused for every percussive sound */
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+
+    applyVol();
+    ready = true;
+    return true;
+  }
+
+  function resume() {
+    if (!init()) return;
+    if (ctx.state === "suspended") ctx.resume();
+  }
+
+  function applyVol() {
+    if (!ctx) return;
+    master.gain.value = muted ? 0 : vol.master;
+    musicBus.gain.value = vol.music;
+    sfxBus.gain.value = vol.sfx;
+  }
+
+  /* ---- primitives ---- */
+
+  /* a pulse wave, which is the sound the NES actually made. Built from
+     a periodic wave so the duty cycle is real rather than a filtered
+     square pretending. */
+  const waveCache = {};
+  function pulseWave(duty) {
+    const key = duty.toFixed(2);
+    if (waveCache[key]) return waveCache[key];
+    const n = 32;
+    const re = new Float32Array(n), im = new Float32Array(n);
+    for (let i = 1; i < n; i++) {
+      re[i] = (2 / (i * Math.PI)) * Math.sin(Math.PI * i * duty);
+    }
+    const w = ctx.createPeriodicWave(re, im, { disableNormalization: false });
+    waveCache[key] = w;
+    return w;
+  }
+
+  function tone(opt) {
+    if (!ready) return null;
+    const t0 = opt.at != null ? opt.at : ctx.currentTime;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    if (opt.duty) o.setPeriodicWave(pulseWave(opt.duty));
+    else o.type = opt.type || "square";
+    o.frequency.setValueAtTime(opt.f, t0);
+    if (opt.f2) o.frequency.exponentialRampToValueAtTime(Math.max(1, opt.f2), t0 + opt.dur);
+    const peak = opt.gain != null ? opt.gain : 0.2;
+    const atk = opt.atk != null ? opt.atk : 0.005;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + atk);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + opt.dur);
+    o.connect(g); g.connect(opt.bus || sfxBus);
+    o.start(t0); o.stop(t0 + opt.dur + 0.02);
+    return { o, g };
+  }
+
+  function noise(opt) {
+    if (!ready) return null;
+    const t0 = opt.at != null ? opt.at : ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    src.loop = true;
+    const f = ctx.createBiquadFilter();
+    f.type = opt.filter || "bandpass";
+    f.frequency.setValueAtTime(opt.f, t0);
+    if (opt.f2) f.frequency.exponentialRampToValueAtTime(Math.max(40, opt.f2), t0 + opt.dur);
+    f.Q.value = opt.q != null ? opt.q : 1;
+    const g = ctx.createGain();
+    const peak = opt.gain != null ? opt.gain : 0.2;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, t0 + (opt.atk || 0.004));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + opt.dur);
+    src.connect(f); f.connect(g); g.connect(opt.bus || sfxBus);
+    src.start(t0); src.stop(t0 + opt.dur + 0.02);
+    return { src, g, f };
+  }
+
+  /* ---- the songs ----
+
+     Each track gets a mood, written as note names over a chord loop.
+     A tiny scheduler walks a bar ahead of the clock, which is what keeps
+     the loop seamless — waiting on setInterval alone drifts and clicks. */
+  const NOTE = { C:0, "C#":1, D:2, "D#":3, E:4, F:5, "F#":6, G:7, "G#":8, A:9, "A#":10, B:11 };
+  function hz(name) {
+    const m = /^([A-G]#?)(-?\d)$/.exec(name);
+    if (!m) return 0;
+    return 440 * Math.pow(2, (NOTE[m[1]] + (+m[2] - 4) * 12 - 9) / 12);
+  }
+
+  /* "-" holds, "." rests */
+  const SONGS = {
+    menu: {
+      bpm: 104, duty: 0.5,
+      lead:"E4 . G4 A4 - . B4 A4 G4 . E4 . D4 . E4 . " +
+           "C5 . B4 A4 - . G4 A4 B4 . A4 . G4 . E4 . ",
+      bass:"A2 - E2 - F2 - C3 - G2 - D2 - A2 - E2 - " +
+           "A2 - E2 - F2 - C3 - G2 - E2 - A2 - - - ",
+      drums:"k . h . s . h . k . h . s . h h ",
+    },
+    woods: {
+      bpm: 132, duty: 0.5,
+      lead:"E4 G4 A4 B4 - A4 G4 A4 E4 G4 A4 C5 - B4 A4 G4 " +
+           "D4 F4 A4 B4 - A4 F4 A4 E4 G4 B4 A4 - G4 E4 D4 ",
+      bass:"E2 - E3 - A2 - A3 - D2 - D3 - E2 - B2 - " +
+           "E2 - E3 - A2 - A3 - G2 - D3 - E2 - E3 - ",
+      drums:"k h s h k h s h k h s h k h s s ",
+    },
+    town: {
+      bpm: 124, duty: 0.25,
+      lead:"C4 E4 G4 - E4 G4 C5 - B4 G4 E4 - D4 E4 G4 - " +
+           "F4 A4 C5 - A4 C5 F5 - E5 C5 A4 - G4 E4 C4 - ",
+      bass:"C2 - G2 - C2 - G2 - F2 - C3 - F2 - G2 - " +
+           "C2 - G2 - A2 - E3 - F2 - G2 - C2 - - - ",
+      drums:"k . s . k . s . k . s . k k s . ",
+    },
+    ward: {
+      bpm: 116, duty: 0.5,
+      lead:"G4 - B4 - D5 - B4 - C5 - A4 - G4 - - - " +
+           "A4 - C5 - E5 - C5 - D5 - B4 - G4 - - - ",
+      bass:"G2 - D3 - G2 - D3 - C3 - G2 - C3 - D3 - " +
+           "G2 - D3 - E3 - B2 - C3 - D3 - G2 - - - ",
+      drums:"k . h . s . h . k . h . s . h . ",
+    },
+    roof: {
+      bpm: 108, duty: 0.35,
+      lead:"A4 - C5 D5 - E5 - D5 C5 - A4 - G4 - A4 - " +
+           "F4 - A4 C5 - D5 - C5 A4 - G4 - E4 - D4 - ",
+      bass:"A2 - E3 - F2 - C3 - G2 - D3 - A2 - E3 - " +
+           "F2 - C3 - G2 - D3 - A2 - - - - - - - ",
+      drums:"k . h . s . h k . h s . k . s h ",
+    },
+  };
+
+  function parse(s) { return s.trim().split(/\s+/); }
+
+  function playSong(name) {
+    if (!ready) { song = { pending: name }; return; }
+    if (song && song.name === name && !song.stopped) return;
+    stopSong();
+    const def = SONGS[name];
+    if (!def) return;
+    const lead = parse(def.lead), bass = parse(def.bass), drums = parse(def.drums);
+    const steps = Math.max(lead.length, bass.length);
+    const spb = 60 / def.bpm / 4;          // one sixteenth
+    song = { name, stopped: false, step: 0, next: ctx.currentTime + 0.06, timer: 0 };
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0.5;
+    gain.connect(musicBus);
+    song.gain = gain;
+
+    function schedule() {
+      if (!song || song.stopped) return;
+      while (song.next < ctx.currentTime + 0.25) {
+        const i = song.step % steps;
+        const t = song.next;
+
+        const L = lead[i % lead.length];
+        if (L && L !== "-" && L !== ".") {
+          tone({ f: hz(L), dur: spb * 2.6, gain: 0.13, duty: def.duty, at: t, bus: gain });
+        }
+        const B = bass[i % bass.length];
+        if (B && B !== "-" && B !== ".") {
+          tone({ f: hz(B), dur: spb * 3.2, gain: 0.20, type: "triangle", at: t, bus: gain });
+        }
+        const D = drums[i % drums.length];
+        if (D === "k") {
+          tone({ f: 130, f2: 42, dur: 0.13, gain: 0.32, type: "sine", at: t, bus: gain });
+        } else if (D === "s") {
+          noise({ f: 1500, q: 0.8, dur: 0.11, gain: 0.11, at: t, bus: gain });
+        } else if (D === "h") {
+          noise({ f: 7200, q: 1.4, dur: 0.035, gain: 0.045, at: t, bus: gain });
+        }
+
+        song.next += spb;
+        song.step++;
+      }
+      song.timer = setTimeout(schedule, 60);
+    }
+    schedule();
+  }
+
+  function stopSong() {
+    if (!song) return;
+    song.stopped = true;
+    if (song.timer) clearTimeout(song.timer);
+    if (song.gain) {
+      try {
+        song.gain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.08);
+        const g = song.gain;
+        setTimeout(() => { try { g.disconnect(); } catch (e) {} }, 600);
+      } catch (e) {}
+    }
+    song = null;
+  }
+
+  /* ---- the engine, which never stops while a race is running ---- */
+  function engineOn() {
+    if (!ready || engine) return;
+    const o = ctx.createOscillator();
+    o.setPeriodicWave(pulseWave(0.18));
+    o.frequency.value = 60;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = 900;
+    const g = ctx.createGain();
+    g.gain.value = 0.0001;
+    o.connect(lp); lp.connect(g); g.connect(sfxBus);
+    o.start();
+    engine = { o, g, lp };
+  }
+  function engineOff() {
+    if (!engine) return;
+    try {
+      engine.g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.05);
+      const e = engine;
+      setTimeout(() => { try { e.o.stop(); e.g.disconnect(); } catch (x) {} }, 300);
+    } catch (e) {}
+    engine = null;
+  }
+  /* frac 0..1 of top speed, load 0..1 for how hard it is working */
+  function engineAt(frac, offroad) {
+    if (!engine || !ready) return;
+    const t = ctx.currentTime;
+    const f = 48 + frac * 132;
+    engine.o.frequency.setTargetAtTime(f, t, 0.05);
+    engine.lp.frequency.setTargetAtTime(offroad ? 480 : 700 + frac * 900, t, 0.08);
+    engine.g.gain.setTargetAtTime(0.035 + frac * 0.055, t, 0.06);
+  }
+
+  /* ---- tyres ---- */
+  function driftSound(on) {
+    if (!ready) return;
+    if (on && !driftNode) {
+      const src = ctx.createBufferSource();
+      src.buffer = noiseBuf; src.loop = true;
+      const f = ctx.createBiquadFilter();
+      f.type = "bandpass"; f.frequency.value = 2200; f.Q.value = 3.5;
+      const g = ctx.createGain();
+      g.gain.value = 0.0001;
+      src.connect(f); f.connect(g); g.connect(sfxBus);
+      src.start();
+      g.gain.setTargetAtTime(0.075, ctx.currentTime, 0.05);
+      driftNode = { src, f, g };
+    } else if (!on && driftNode) {
+      const d = driftNode; driftNode = null;
+      try {
+        d.g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.04);
+        setTimeout(() => { try { d.src.stop(); d.g.disconnect(); } catch (x) {} }, 300);
+      } catch (e) {}
+    }
+  }
+  /* the charge climbing through its three tiers */
+  function driftCharge(tier) {
+    if (!driftNode || !ready) return;
+    driftNode.f.frequency.setTargetAtTime(1600 + tier * 900, ctx.currentTime, 0.08);
+  }
+
+  /* ---- one-shots ---- */
+  const S = {
+    boost(tier) {
+      const t = ctx ? ctx.currentTime : 0;
+      tone({ f: 180 + tier * 90, f2: 900 + tier * 320, dur: 0.24, gain: 0.24, duty: 0.5, at: t });
+      noise({ f: 900, f2: 4200, dur: 0.22, gain: 0.14, at: t });
+      tone({ f: 520 + tier * 120, dur: 0.1, gain: 0.16, duty: 0.25, at: t + 0.02 });
+    },
+    pickup() {
+      const t = ctx ? ctx.currentTime : 0;
+      [660, 880, 1320].forEach((f, i) =>
+        tone({ f, dur: 0.1, gain: 0.16, duty: 0.5, at: t + i * 0.055 }));
+    },
+    use(kind) {
+      const t = ctx ? ctx.currentTime : 0;
+      if (kind === "letter")      tone({ f: 500, f2: 1400, dur: 0.2, gain: 0.2, duty: 0.5, at: t });
+      else if (kind === "arrow")  { tone({ f: 1200, f2: 420, dur: 0.28, gain: 0.18, duty: 0.25, at: t }); }
+      else if (kind === "heart")  tone({ f: 780, f2: 560, dur: 0.16, gain: 0.18, duty: 0.5, at: t });
+      else if (kind === "rose")   noise({ f: 700, f2: 240, dur: 0.2, gain: 0.16, at: t });
+      else if (kind === "bouquet"){ [660,830,990].forEach((f,i)=>tone({f,dur:0.14,gain:0.13,duty:0.35,at:t+i*0.04})); }
+      else if (kind === "ring")   { [523,659,784,1047,1319].forEach((f,i)=>tone({f,dur:0.3,gain:0.15,duty:0.5,at:t+i*0.06})); }
+    },
+    hit() {
+      const t = ctx ? ctx.currentTime : 0;
+      noise({ f: 420, f2: 90, dur: 0.3, gain: 0.28, filter: "lowpass", at: t });
+      tone({ f: 190, f2: 55, dur: 0.26, gain: 0.2, type: "square", at: t });
+    },
+    scrape() {   /* the verge, while you are on it */
+      if (!ready) return;
+      noise({ f: 320, dur: 0.14, gain: 0.05, filter: "lowpass", q: 0.5 });
+    },
+    click() { tone({ f: 720, dur: 0.05, gain: 0.12, duty: 0.5 }); },
+    hover() { tone({ f: 480, dur: 0.035, gain: 0.06, duty: 0.25 }); },
+    beep(last) {
+      const t = ctx ? ctx.currentTime : 0;
+      if (last) {
+        [523, 784, 1047].forEach((f, i) =>
+          tone({ f, dur: 0.34, gain: 0.24, duty: 0.5, at: t + i * 0.045 }));
+        noise({ f: 3000, f2: 800, dur: 0.3, gain: 0.14, at: t });
+      } else {
+        tone({ f: 440, dur: 0.16, gain: 0.2, duty: 0.5, at: t });
+      }
+    },
+    lap() {
+      const t = ctx ? ctx.currentTime : 0;
+      [784, 1047].forEach((f, i) => tone({ f, dur: 0.16, gain: 0.18, duty: 0.5, at: t + i * 0.08 }));
+    },
+    tick() { tone({ f: 1400, dur: 0.03, gain: 0.07, duty: 0.25 }); },
+    fanfare() {
+      const t = ctx ? ctx.currentTime : 0;
+      const notes = [523, 659, 784, 1047, 784, 1047, 1319];
+      notes.forEach((f, i) =>
+        tone({ f, dur: i === notes.length - 1 ? 0.7 : 0.17, gain: 0.2, duty: 0.5, at: t + i * 0.15 }));
+      [0, 0.15, 0.3, 0.45].forEach((d) =>
+        tone({ f: 131, dur: 0.14, gain: 0.18, type: "triangle", at: t + d }));
+      /* a small crowd: filtered noise swelling under the last chord */
+      noise({ f: 900, q: 0.4, dur: 1.6, gain: 0.09, atk: 0.5, at: t + 0.5 });
+    },
+  };
+
+  /* every one-shot needs the context awake and must be harmless before */
+  const api = {};
+  ["boost","pickup","use","hit","scrape","click","hover","beep","lap","tick","fanfare"]
+    .forEach((k) => { api[k] = (a) => { if (!ready) return; S[k](a); }; });
+
+  api.resume = resume;
+  api.music = (name) => { if (!ready) { init(); } if (ready) playSong(name); };
+  api.stopMusic = stopSong;
+  api.engineOn = () => { if (ready) engineOn(); };
+  api.engineOff = engineOff;
+  api.engine = engineAt;
+  api.drift = driftSound;
+  api.driftCharge = driftCharge;
+  api.vol = vol;
+  api.setVol = (k, v) => { vol[k] = v; applyVol(); save(); };
+  api.muted = () => muted;
+  api.setMuted = (m) => { muted = m; applyVol(); save(); };
+  api.ready = () => ready;
+  return api;
+})();
+
+
+/* =========================================================
+   17c. HOW TO RACE
+
+   A short practice loop on its own small track. Each step names one
+   thing and then waits until she has actually done it — the drift step
+   will not advance on a description of a drift, only on a drift. That
+   is the whole point: you cannot skim past a mechanic you have not
+   performed.
+
+   It runs on the ordinary race loop, with the field emptied out and a
+   watcher stepping the prompts, so nothing here is a second physics
+   implementation that could drift away from the real one.
+   ========================================================= */
+const TUT_TRACK = {
+  id:"tutorial", name:"Practice Loop", laps:99,
+  blurb:"A quiet loop behind the cabin, with nobody watching.",
+  grass:"#4f8f52", grassAlt:"#478248", shoulder:"#8a6b45",
+  road:"#8f7a5e", roadAlt:"#877257", rumbleA:"#ff7f8a", rumbleB:"#fff8e8",
+  sky:["#8fd0ea","#c9ecd8"], haze:"#bfe0d2", accent:"#7ddba3",
+  light:-0.7,
+  scenery:["pine","bush","rock","flowerbox","signpost","pine"],
+  /* a soft oval with one long straight and two open bends — nothing
+     here should be hard, it is a place to feel the kart */
+  pts:[[0.50,0.80],[0.32,0.78],[0.20,0.68],[0.18,0.54],[0.24,0.42],
+       [0.38,0.34],[0.54,0.32],[0.68,0.36],[0.78,0.46],[0.80,0.60],
+       [0.72,0.72],[0.62,0.79]],
+};
+
+const TUT_STEPS = [
+  { id:"gas",    title:"THE THROTTLE",
+    body:"Hold {GAS} to go. It builds — the last of the speed takes a moment to arrive.",
+    goal:"get up to speed" },
+  { id:"brake",  title:"THE BRAKE",
+    body:"{BRAKE} slows you. Let go of everything and you coast, you don't stop dead.",
+    goal:"slow down again" },
+  { id:"steer",  title:"STEERING",
+    body:"{LEFT} and {RIGHT} turn the wheels; the kart leans in after them. Follow the bend.",
+    goal:"take a corner" },
+  { id:"drift",  title:"DRIFTING",
+    body:"Hold {DRIFT} while you turn to slide. Sparks go blue, then gold, then pink.",
+    goal:"hold a drift" },
+  { id:"boost",  title:"THE MINI-TURBO",
+    body:"Let {DRIFT} go while the sparks are lit and the slide pays you back a boost.",
+    goal:"release for a boost" },
+  { id:"item",   title:"HEART BOXES",
+    body:"Drive through a heart box to pick something up.",
+    goal:"collect an item" },
+  { id:"use",    title:"USING IT",
+    body:"{ITEM} sends it. A Love Letter shoves you forward; an arrow goes hunting.",
+    goal:"use the item" },
+  { id:"grass",  title:"OFF THE TARMAC",
+    body:"The grass drags — you lose your top end and the steering goes vague. Stay on the road.",
+    goal:"feel the grass" },
+  { id:"done",   title:"THAT'S EVERYTHING",
+    body:"That's the whole game. The rest is just which road we're on.",
+    goal:null },
+];
+
+let tut = null;   // { i, held, doneAt } while the tutorial is running
+
+function tutKeyName(tag) {
+  const touch = el.pad && el.pad.dataset.want === "1";
+  const map = touch
+    ? { GAS:"GO", BRAKE:"BRAKE", LEFT:"◀", RIGHT:"▶", DRIFT:"DRIFT", ITEM:"ITEM" }
+    : { GAS:"↑", BRAKE:"↓", LEFT:"←", RIGHT:"→", DRIFT:"SPACE", ITEM:"E" };
+  return map[tag] || tag;
+}
+
+function startTutorial() {
+  mode = "tutorial";
+  trackDef = TUT_TRACK;
+  buildPath(trackDef);
+  placeProps(trackDef);
+  bakeTrack(trackDef);
+  bakePano(trackDef);
+
+  /* one heart box on the straight, and nothing else to worry about */
+  boxes = [];
+  const n = path.length;
+  for (let k = -1; k <= 1; k++) {
+    const base = Math.floor(n * 0.42);
+    const ta = tangentAt(base);
+    boxes.push({
+      x: path[base].x - Math.sin(ta) * k * 26,
+      y: path[base].y + Math.cos(ta) * k * 26,
+      alive: true, t: 0, spin: Math.random() * 8,
+    });
+  }
+
+  shots = []; hazards = []; fx = [];
+  raceTime = 0; countdown = 0; shake = 0; bannerT = 0; setBanner("");
+  lastItem = "__"; lastPlace = 0;
+
+  racers = [new Racer(CHARS[playerCharIdx], true, 0, 6)];
+  racers[0].lap = 0;                 // no lap counting in here
+  camAngle = racers[0].angle; camLag = 0; camFocal = FOCAL;
+
+  tut = { i: 0, held: 0, cornered: 0, startAngle: racers[0].angle, seen: {} };
+  state = "race";
+  showHud(true);
+  setOverlay("");
+  Snd.resume();
+  Snd.music("woods");
+  Snd.engineOn();
+  drawMini();
+  paintTutStep();
+}
+
+function paintTutStep() {
+  if (!tut) return;
+  const st = TUT_STEPS[tut.i];
+  if (!el.tut) return;
+  const body = st.body.replace(/\{(\w+)\}/g, (_, t) => `<b>${tutKeyName(t)}</b>`);
+  el.tut.innerHTML = `
+    <div class="rc-bubble">
+      <span class="rc-bubble-tag">${tut.i + 1}/${TUT_STEPS.length}</span>
+      <h4>${st.title}</h4>
+      <p>${body}</p>
+      ${st.goal ? `<span class="rc-bubble-goal" id="rc-tut-goal">${st.goal}</span>`
+                : `<button class="rc-btn rc-btn-go rc-bubble-btn" data-tutend="1">BACK TO THE MENU</button>`}
+      <button class="rc-bubble-skip" data-tutskip="1">skip the lesson</button>
+    </div>`;
+  el.tut.hidden = false;
+}
+
+function tutSatisfied() { el.tut && el.tut.classList.add("ok"); }
+
+/* watches the kart and ticks a step off once she has actually done it */
+function stepTutorial(dt) {
+  if (!tut) return;
+  const me = racers[0];
+  if (!me) return;
+  if (tut.advancing) return;
+  const st = TUT_STEPS[tut.i];
+  if (!st || !st.goal) return;
+  let hit = false;
+
+  switch (st.id) {
+    case "gas":
+      if (me.speed > TOP_SPEED * 0.55) hit = true;
+      break;
+    case "brake":
+      if (tut.seen.fast || me.speed > TOP_SPEED * 0.5) tut.seen.fast = true;
+      if (tut.seen.fast && me.speed < TOP_SPEED * 0.16) hit = true;
+      break;
+    case "steer": {
+      let d = me.angle - tut.startAngle;
+      while (d >  Math.PI) d -= TWO_PI;
+      while (d < -Math.PI) d += TWO_PI;
+      if (Math.abs(d) > 1.05) hit = true;
+      break;
+    }
+    case "drift":
+      if (me.drifting) tut.held += dt; else tut.held = 0;
+      if (tut.held > 0.75) hit = true;
+      break;
+    case "boost":
+      if (me.boost > 0) hit = true;
+      break;
+    case "item":
+      if (me.item) hit = true;
+      break;
+    case "use":
+      if (tut.seen.hadItem && !me.item) hit = true;
+      if (me.item) tut.seen.hadItem = true;
+      break;
+    case "grass":
+      if (me.offroad) tut.held += dt; else tut.held = 0;
+      if (tut.held > 0.5) hit = true;
+      break;
+  }
+
+  if (hit) {
+    tut.held = 0;
+    tut.startAngle = me.angle;
+    tut.advancing = true;         // the beat between "well done" and the next card
+    tutSatisfied();
+    Snd.lap();
+    tut.wait = setTimeout(() => {
+      if (!tut) return;
+      tut.advancing = false;
+      el.tut.classList.remove("ok");
+      tut.i++;
+      /* make sure a box is back for the item step */
+      if (TUT_STEPS[tut.i] && TUT_STEPS[tut.i].id === "item")
+        boxes.forEach((b) => { b.alive = true; b.t = 0; });
+      if (TUT_STEPS[tut.i]) paintTutStep();
+    }, 750);
+  }
+}
+
+function endTutorial() {
+  if (tut && tut.wait) clearTimeout(tut.wait);
+  tut = null;
+  if (el.tut) { el.tut.hidden = true; el.tut.classList.remove("ok"); el.tut.innerHTML = ""; }
+  mode = "single";
+  racers = [];
+  state = "title";
+  showHud(false);
+  Snd.engineOff();
+  Snd.drift(false);
+  renderTitle();
 }
 
 /* =========================================================
@@ -2377,6 +3875,7 @@ function onKey(e) {
 
   if (e.key === "e" || e.key === "E" || e.key === "Control") input.itemPressed = true;
   if (e.key === "Escape") {
+    if (mode === "tutorial" && state === "race") { endTutorial(); return; }
     if (state === "race") renderPause();
     else if (state === "paused") { setOverlay(""); state = "race"; }
     else if (state === "chars") renderTitle();
@@ -2415,17 +3914,27 @@ function next(from) {
 function onOverlayClick(e) {
   const t = e.target.closest("button");
   if (!t) return;
+  Snd.resume();
+  Snd.click();
   const d = t.dataset;
 
   if (d.quit)    { leave(); return; }
   if (d.diff)    { difficulty = +d.diff; markDiff(); return; }
   if (d.diff === "0") { difficulty = 0; markDiff(); return; }
   if (d.go)      { mode = d.go; renderChars(); return; }
-  if (d.char !== undefined) { playerCharIdx = +d.char; renderChars(); return; }
+  if (d.char !== undefined) { playerCharIdx = +d.char; padAccent(); renderChars(); return; }
   if (d.track !== undefined) { trackIdx = +d.track; renderTracks(); return; }
   if (d.back === "title") { setOverlay(""); showHud(false); renderTitle(); return; }
   if (d.back === "chars") { renderChars(); return; }
-  if (d.resume)  { setOverlay(""); state = "race"; return; }
+  if (d.settings) { renderSettings(d.settings); return; }
+  if (d.closeset) {
+    if (d.closeset === "pause") renderPause(); else renderTitle();
+    return;
+  }
+  if (d.mute) { Snd.setMuted(!Snd.muted()); renderSettings(
+      el.overlay.querySelector("[data-closeset]").dataset.closeset); return; }
+  if (d.tut) { startTutorial(); return; }
+  if (d.resume)  { setOverlay(""); state = "race"; Snd.engineOn(); return; }
   if (d.restart) { setOverlay(""); startRace(); return; }
   if (d.next === "chars" || d.next === "tracks") { next(d.next); return; }
   if (d.next === "again")  { startRace(); return; }
@@ -2433,16 +3942,92 @@ function onOverlayClick(e) {
   if (d.next === "gpend")  { renderGPEnd(); return; }
 }
 
-/* the on-screen pad: press-and-hold, multi-touch, and it never scrolls
-   the page out from under her */
+/* ---------------------------------------------------------
+   THE TOUCH PAD
+
+   Drawn, not borrowed: each key's face is a little canvas painted at
+   20x20 and blown up unsmoothed, so the chevrons and the drift glyph
+   are the same pixel art as everything else rather than a font
+   character or an SVG that would sit at a different weight.
+   --------------------------------------------------------- */
+function paintPadIcons() {
+  if (!el.pad) return;
+  el.pad.querySelectorAll("[data-k]").forEach((btn) => {
+    const c = btn.querySelector(".rc-ico");
+    if (!c) return;
+    const g = c.getContext("2d");
+    g.clearRect(0, 0, 20, 20);
+    const k = btn.dataset.k;
+    const px = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+    const ink = "#fff8e8", dim = "rgba(20,10,26,.45)";
+
+    if (k === "left" || k === "right") {
+      /* a chevron, mirrored — one shape so both keys match exactly */
+      g.save();
+      if (k === "right") { g.translate(20, 0); g.scale(-1, 1); }
+      for (let i = 0; i < 6; i++) { px(12 - i, 4 + i, 3, 2, ink); px(12 - i, 14 - i, 3, 2, ink); }
+      px(6, 9, 9, 2, ink);
+      g.restore();
+    } else if (k === "up") {
+      /* a chunky throttle arrow */
+      for (let i = 0; i < 5; i++) px(9 - i, 5 + i, 2 + i * 2, 2, ink);
+      px(7, 12, 6, 5, ink);
+      px(7, 12, 6, 1, dim);
+    } else if (k === "down") {
+      for (let i = 0; i < 5; i++) px(5 + i, 13 - i, 10 - i * 2, 2, ink);
+      px(7, 4, 6, 5, ink);
+      px(7, 8, 6, 1, dim);
+    } else if (k === "drift") {
+      /* a kart tail sliding, with two skid marks behind it */
+      px(7, 6, 8, 5, ink);
+      px(6, 11, 10, 2, ink);
+      px(6, 8, 2, 2, dim); px(14, 8, 2, 2, dim);
+      px(2, 14, 5, 2, "#7ec8e3"); px(9, 15, 6, 2, "#7ec8e3");
+      px(4, 17, 4, 2, "rgba(126,200,227,.5)");
+    } else if (k === "item") {
+      /* the heart box */
+      px(4, 5, 12, 11, ink);
+      px(4, 5, 12, 2, "rgba(255,255,255,.55)");
+      g.fillStyle = "#ff5f95";
+      px(6, 8, 3, 3, "#ff5f95"); px(11, 8, 3, 3, "#ff5f95");
+      px(6, 10, 8, 2, "#ff5f95"); px(7, 12, 6, 1, "#ff5f95"); px(9, 13, 2, 1, "#ff5f95");
+    }
+  });
+}
+
+/* a small burst of pixels when a key goes down, so a tap answers back */
+function padSpark(btn) {
+  const kind = btn.dataset.k;
+  for (let i = 0; i < 6; i++) {
+    const s = document.createElement("i");
+    s.className = "rc-spark" + (kind === "item" ? " heart" : "");
+    const a = (i / 6) * TWO_PI + Math.random() * 0.6;
+    s.style.setProperty("--dx", (Math.cos(a) * (16 + Math.random() * 14)).toFixed(1) + "px");
+    s.style.setProperty("--dy", (Math.sin(a) * (16 + Math.random() * 14)).toFixed(1) + "px");
+    btn.appendChild(s);
+    setTimeout(() => s.remove(), 420);
+  }
+}
+
+/* press-and-hold, multi-touch, and it never scrolls the page out from
+   under her */
 function bindPad() {
   if (!el.pad) return;
   el.pad.querySelectorAll("[data-k]").forEach((btn) => {
     const k = btn.dataset.k;
-    const on  = (e) => { e.preventDefault(); btn.classList.add("on");
-                         if (k === "item") input.itemPressed = true; else input[k] = true; };
-    const off = (e) => { e.preventDefault(); btn.classList.remove("on");
-                         if (k !== "item") input[k] = false; };
+    const on = (e) => {
+      e.preventDefault();
+      if (btn.classList.contains("on")) return;
+      btn.classList.add("on");
+      padSpark(btn);
+      Snd.resume();
+      if (k === "item") input.itemPressed = true; else input[k] = true;
+    };
+    const off = (e) => {
+      e.preventDefault();
+      btn.classList.remove("on");
+      if (k !== "item") input[k] = false;
+    };
     btn.addEventListener("touchstart", on,  { passive:false });
     btn.addEventListener("touchend",   off, { passive:false });
     btn.addEventListener("touchcancel",off, { passive:false });
@@ -2450,6 +4035,30 @@ function bindPad() {
     btn.addEventListener("mouseup",    off);
     btn.addEventListener("mouseleave", off);
   });
+  paintPadIcons();
+}
+
+/* The pad shows itself when it is wanted and gets out of the way when
+   it is not: visible on a touch device, gone the moment a key is
+   pressed, back again on the next touch. */
+let padWanted = false;
+function setPadVisible(on) {
+  padWanted = on;
+  if (el.pad) el.pad.dataset.want = on ? "1" : "0";
+}
+function watchPointer() {
+  try { setPadVisible(window.matchMedia("(pointer: coarse)").matches); } catch (e) {}
+  window.addEventListener("touchstart", () => setPadVisible(true), { passive: true, capture: true });
+  window.addEventListener("keydown", (e) => {
+    if (KEYMAP[e.key] || e.key === "e" || e.key === "E") setPadVisible(false);
+  }, { capture: true });
+}
+
+/* the pad borrows the chosen racer's accent for its glow */
+function padAccent() {
+  if (!el.pad) return;
+  el.pad.style.setProperty("--rc-accent", CHARS[playerCharIdx].accent);
+  el.pad.style.setProperty("--rc-kart", CHARS[playerCharIdx].kart);
 }
 
 /* =========================================================
@@ -2477,6 +4086,7 @@ function frame(ts) {
   dt = Math.min(dt, 0.1);
 
   resize();
+  camStep = dt;
 
   /* physics on a fixed step so the handling is identical on a 60Hz
      laptop and a 120Hz phone */
@@ -2517,10 +4127,18 @@ function start() {
   document.addEventListener("keydown", onKey);
   document.addEventListener("keyup", onKey);
   if (el.overlay) el.overlay.addEventListener("click", onOverlayClick);
+  if (el.tut) el.tut.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    Snd.click();
+    if (b.dataset.tutskip || b.dataset.tutend) endTutorial();
+  });
   if (el.pause) el.pause.addEventListener("click", () => {
     if (state === "race") renderPause(); else if (state === "paused") { setOverlay(""); state = "race"; }
   });
   bindPad();
+  watchPointer();
+  padAccent();
 
   resize();
   renderTitle();
@@ -2529,6 +4147,12 @@ function start() {
 
 function stop() {
   running = false;
+  if (tut && tut.wait) clearTimeout(tut.wait);
+  tut = null;
+  if (el.tut) { el.tut.hidden = true; el.tut.innerHTML = ""; }
+  Snd.engineOff();
+  Snd.drift(false);
+  Snd.stopMusic();
   if (raf) cancelAnimationFrame(raf);
   raf = null;
   document.removeEventListener("keydown", onKey);
