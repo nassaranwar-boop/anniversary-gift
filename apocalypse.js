@@ -2458,8 +2458,8 @@
         /* a lathe, so the silhouette has a waist and a ribcage in it
            instead of being a cylinder with clothes painted on */
         var pts = [];
-        var prof = [[0.19, 0.00], [0.205, 0.10], [0.196, 0.26], [0.178, 0.44],
-                    [0.196, 0.62], [0.212, 0.80], [0.196, 0.94], [0.10, 1.00]];
+        var prof = [[0.152, 0.00], [0.164, 0.10], [0.157, 0.26], [0.142, 0.44],
+                    [0.157, 0.62], [0.170, 0.80], [0.157, 0.94], [0.082, 1.00]];
         prof.forEach(function (q) {
           var w = q[0] * (q[1] < 0.45 ? B.waist : B.chest);
           pts.push(new THREE.Vector2(w * S, q[1] * chestLen));
@@ -2474,7 +2474,7 @@
     /* the hips, so the join is not a step */
     var hips = new THREE.Mesh(
       (function () {
-        var g = new THREE.SphereGeometry(0.175 * S * B.waist, 14, 10);
+        var g = new THREE.SphereGeometry(0.150 * S * B.waist, 14, 10);
         g.scale(depth * 1.02, 0.82, 1.04); return g;
       })(), legsM);
     hips.castShadow = true;
@@ -2486,8 +2486,8 @@
       var shell = new THREE.Mesh(
         (function () {
           var pts = [];
-          [[0.216, -0.06], [0.230, 0.10], [0.222, 0.30], [0.208, 0.48],
-           [0.224, 0.66], [0.238, 0.84], [0.214, 0.96]].forEach(function (q) {
+          [[0.173, -0.06], [0.184, 0.10], [0.178, 0.30], [0.166, 0.48],
+           [0.179, 0.66], [0.190, 0.84], [0.171, 0.96]].forEach(function (q) {
             pts.push(new THREE.Vector2(q[0] * S * B.chest, q[1] * chestLen));
           });
           var g = new THREE.LatheGeometry(pts, 16);
@@ -2498,11 +2498,11 @@
       spine.add(shell);
       /* the opening down the front, and a collar standing up at the neck */
       var gap = new THREE.Mesh(new THREE.BoxGeometry(0.06 * S, chestLen * 0.9, 0.09 * S), top);
-      gap.position.set(0.205 * S * B.chest * depth, chestLen * 0.46, 0);
+      gap.position.set(0.166 * S * B.chest * depth, chestLen * 0.46, 0);
       spine.add(gap);
       var collar = new THREE.Mesh(
         (function () {
-          var g = new THREE.CylinderGeometry(0.135 * S, 0.115 * S, 0.11 * S, 16, 1, true);
+          var g = new THREE.CylinderGeometry(0.118 * S, 0.100 * S, 0.11 * S, 16, 1, true);
           g.scale(depth * 1.1, 1, 1); return g;
         })(), jm);
       collar.position.y = chestLen * 0.99;
@@ -2513,14 +2513,14 @@
     if (spec.belt) {
       var belt = new THREE.Mesh(
         (function () {
-          var g = new THREE.CylinderGeometry(0.198 * S * B.waist, 0.198 * S * B.waist, 0.055 * S, 18, 1, true);
+          var g = new THREE.CylinderGeometry(0.170 * S * B.waist, 0.170 * S * B.waist, 0.055 * S, 18, 1, true);
           g.scale(depth * 1.02, 1, 1); return g;
         })(), trim);
       belt.position.y = chestLen * 0.04;
       spine.add(belt);
       var buckle = new THREE.Mesh(new THREE.BoxGeometry(0.055 * S, 0.05 * S, 0.02 * S),
         new THREE.MeshStandardMaterial({ color: 0xb8a068, roughness: 0.3, metalness: 0.9, envMapIntensity: 1.6 }));
-      buckle.position.set(0.196 * S * depth * B.waist, chestLen * 0.04, 0);
+      buckle.position.set(0.170 * S * depth * B.waist, chestLen * 0.04, 0);
       spine.add(buckle);
     }
 
@@ -2655,7 +2655,7 @@
       var lowerM = spec.sleeves === "short" ? skin : sleeveM;
 
       var sh = new THREE.Group();
-      sh.position.set(0, chestLen - 0.056 * S, side * 0.201 * S * B.shoulder);
+      sh.position.set(0, chestLen - 0.056 * S, side * 0.196 * S * B.shoulder);
       spine.add(sh);
       /* the deltoid, sunk into the chest so the two read as one shape */
       var delt = new THREE.Mesh(
@@ -2983,7 +2983,7 @@
     r.name = "ouissy";
     /* a strap across her, because she left the house with something */
     var strap = new THREE.Mesh(roundBox(0.10, 0.42, 0.036, 0.014, 2), leatherMat(0x4a3a2a));
-    strap.position.set(0.128, 0.30, 0.058);
+    strap.position.set(0.108, 0.30, 0.050);
     strap.rotation.set(0, 0, -0.34);
     strap.castShadow = true;
     r.spine.add(strap);
@@ -3068,7 +3068,7 @@
     if (kit.vest) {
       var vest = new THREE.Mesh(
         (function () {
-          var g = new THREE.CylinderGeometry(0.238 * spec.scale, 0.226 * spec.scale, 0.34 * spec.scale, 16, 1, true);
+          var g = new THREE.CylinderGeometry(0.196 * spec.scale, 0.186 * spec.scale, 0.34 * spec.scale, 16, 1, true);
           g.scale(spec.depth * 1.04, 1, 1);
           return g;
         })(),
@@ -3080,7 +3080,7 @@
       [0.20, 0.30].forEach(function (yy) {
         var band = new THREE.Mesh(
           (function () {
-            var g = new THREE.CylinderGeometry(0.243 * spec.scale, 0.243 * spec.scale, 0.035 * spec.scale, 16, 1, true);
+            var g = new THREE.CylinderGeometry(0.201 * spec.scale, 0.201 * spec.scale, 0.035 * spec.scale, 16, 1, true);
             g.scale(spec.depth * 1.04, 1, 1); return g;
           })(),
           new THREE.MeshStandardMaterial({ color: 0xd8dce4, roughness: 0.28, metalness: 0.1, envMapIntensity: 1.8 }));
@@ -3163,7 +3163,7 @@
     var S = r.S;
     var vest = new THREE.Mesh(
       (function () {
-        var g = new THREE.CylinderGeometry(0.245 * S, 0.232 * S, 0.36 * S, 16, 1, true);
+        var g = new THREE.CylinderGeometry(0.202 * S, 0.192 * S, 0.36 * S, 16, 1, true);
         g.scale(0.86, 1, 1); return g;
       })(),
       new THREE.MeshStandardMaterial({ color: 0xe8e21c, roughness: 0.58, metalness: 0.02,
@@ -3174,7 +3174,7 @@
     [0.20, 0.31].forEach(function (yy) {
       var band = new THREE.Mesh(
         (function () {
-          var g = new THREE.CylinderGeometry(0.251 * S, 0.251 * S, 0.038 * S, 16, 1, true);
+          var g = new THREE.CylinderGeometry(0.208 * S, 0.208 * S, 0.038 * S, 16, 1, true);
           g.scale(0.86, 1, 1); return g;
         })(),
         new THREE.MeshStandardMaterial({ color: 0xe8ecf4, roughness: 0.2, metalness: 0.2, envMapIntensity: 2.4 }));
@@ -3196,12 +3196,12 @@
       var stock = new THREE.Mesh(roundBox(0.13 * S, 0.055 * S, 0.032 * S, 0.012 * S, 2), gm);
       stock.position.set(-0.155 * S, -0.012 * S, 0);
       gun.add(stock);
-      gun.position.set(0.16 * S, 0.30 * S, -0.10 * S);
+      gun.position.set(0.14 * S, 0.30 * S, -0.10 * S);
       gun.rotation.set(0, 0.4, -0.5);
       gun.traverse(function (o) { if (o.isMesh) o.castShadow = true; });
       r.spine.add(gun);
       var sling = new THREE.Mesh(new THREE.BoxGeometry(0.022 * S, 0.46 * S, 0.06 * S), leatherMat(0x2e2a26));
-      sling.position.set(0.11 * S, 0.30 * S, -0.02 * S);
+      sling.position.set(0.095 * S, 0.30 * S, -0.02 * S);
       sling.rotation.z = 0.42;
       r.spine.add(sling);
     }
@@ -3237,7 +3237,7 @@
       var S = r.S;
       var bag = new THREE.Mesh(roundBox(0.16 * S, 0.22 * S, 0.12 * S, 0.04 * S, 2),
         clothMat(0x4a4238, 0.95));
-      bag.position.set(-0.20 * S, 0.20 * S, 0.16 * S);
+      bag.position.set(-0.17 * S, 0.20 * S, 0.15 * S);
       bag.castShadow = true;
       r.spine.add(bag);
       var strap = new THREE.Mesh(new THREE.BoxGeometry(0.028 * S, 0.42 * S, 0.09 * S), leatherMat(0x3a332c));
@@ -8466,8 +8466,8 @@
               : who === "civilian" ? makeCivilian(seed == null ? 1 : seed)
               : makeOuissy();
       scene.add(rig.root);
-      rig.root.rotation.y = -0.95;
-      poseHuman(rig, 0.6, 0.35, who === "zombie" ? "z" : null, {});
+      rig.root.rotation.y = -0.72;
+      poseHuman(rig, 0.42, 0.55, who === "zombie" ? "z" : null, {});
 
       var floor = new THREE.Mesh(new THREE.CircleGeometry(3, 40),
         new THREE.MeshStandardMaterial({ color: 0x2a2f38, roughness: 0.55, metalness: 0.1 }));
@@ -8491,8 +8491,8 @@
       var rim = new THREE.DirectionalLight(0xffd0a0, 2.2);
       rim.position.set(-1.6, 2.2, -3); scene.add(rim);
 
-      cam.position.set(1.85, 1.30, 2.75);
-      cam.lookAt(0, 0.92, 0);
+      cam.position.set(1.62, 1.62, 2.45);
+      cam.lookAt(0.0, 0.98, 0.0);
 
       G.cine = { scene: scene, camera: cam, t: 0, duration: Infinity,
                  update: function () {} };
