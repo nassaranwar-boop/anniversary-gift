@@ -3048,21 +3048,22 @@
 
     var r = buildHuman(spec);
 
-    /* the clothes have been through it: everything they are wearing gets
-       the same rot pass, but only the fabric — not the eyes, not the
-       shadow under them */
+    /* The clothes have been through it, but they are still clothes: dirty
+       them and take the light out of them, and leave their own weave alone.
+       Painting the rot texture over everything — which is what this did at
+       first — made scrubs, denim and skin all the same shade of green, and
+       every one of them read as one moulded object. */
     var keep = [r.contact];
     r.root.traverse(function (o) {
       if (!o.isMesh || keep.indexOf(o) >= 0) return;
       if (!o.material || !o.material.color) return;
-      if (o.material.map === tex("rot", 256, 1)) return;
+      if (o.material.map === tex("rot", 256, 1)) return;    /* skin already is */
       o.material = o.material.clone();
-      o.material.map = tex("rot", 256, 1);
-      o.material.bumpMap = bump("rot", 256, 1);
-      o.material.bumpScale = 0.12;
-      o.material.roughness = 0.93;
-      o.material.envMapIntensity = 0.25;
-      o.material.color.multiplyScalar(0.80);
+      o.material.roughness = Math.min(1, (o.material.roughness || 0.9) + 0.08);
+      o.material.envMapIntensity = 0.22;
+      /* worn towards the colour of everything else on the street */
+      o.material.color.multiplyScalar(0.62);
+      o.material.color.lerp(new THREE.Color(0x4a4a42), 0.28);
     });
 
     if (kit.vest) {
