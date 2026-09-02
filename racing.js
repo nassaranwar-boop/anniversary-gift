@@ -39,10 +39,14 @@ const WORLD    = 3072;   // the world is this many units square
 const TEX      = 2048;   // ...painted into this many pixels square
 const TSCALE   = WORLD / TEX;   // world units per texel
 
-const RW       = 400;    // internal render width  (then scaled up, unsmoothed)
-const RH       = 225;    // internal render height
-const HORIZON  = 90;     // screen row the ground vanishes at
-const FOCAL    = 300;    // lens; bigger = narrower field of view
+/* The ground is drawn at this size and blown up unsmoothed, which is
+   where the chunky Mode 7 look comes from. RW/RH, HORIZON and FOCAL
+   scale together — change one alone and the horizon stops agreeing with
+   where the billboards think the ground is. */
+const RW       = 480;    // internal render width  (then scaled up, unsmoothed)
+const RH       = 270;    // internal render height
+const HORIZON  = 108;    // screen row the ground vanishes at
+const FOCAL    = 360;    // lens; bigger = narrower field of view
 const CAM_H    = 30;     // camera height above the road
 const CAM_DIST = 115;    // how far the camera trails the kart
 const MAX_Z    = 2600;   // beyond this the ground is just haze
@@ -112,7 +116,7 @@ const TRACKS = [
     road:"#8f7a5e", roadAlt:"#877257", rumbleA:"#ff7f8a", rumbleB:"#fff8e8",
     sky:["#8fd0ea","#c9ecd8"], haze:"#bfe0d2", accent:"#7ddba3",
     light:-0.7,                       // sun bearing, for every cast shadow
-    scenery:["pine","pine","pine","bush","rock","cabin","shed","signpost","flowerbox"],
+    scenery:["pine","pine","pine","pine","tree","bush","bush","rock","cabin","shed","signpost","flowerbox"],
     /* opening straight, sweep, forest esses, cabin detour, river wiggle,
        and a run home down the right-hand side */
     pts:[[0.54,0.93],[0.42,0.94],[0.30,0.93],
@@ -134,7 +138,8 @@ const TRACKS = [
     road:"#8e8e96", roadAlt:"#87878f", rumbleA:"#ffc4a3", rumbleB:"#fff8e8",
     sky:["#8fd0ea","#ffe6bd"], haze:"#e2d3b6", accent:"#ffc4a3",
     light:-0.5,
-    scenery:["house","house","lamp","tree","postbox","bush","store","hydrant","flowerbox"],
+    scenery:["house","house","house","tree","bush","lamp","store","hydrant","postbox",
+             "flowerbox","mailbox","bike","hoop","car","bench"],
     pts:[[0.55,0.93],[0.40,0.94],[0.26,0.92],
          [0.15,0.87],[0.09,0.78],[0.10,0.67],
          [0.18,0.60],[0.29,0.58],[0.35,0.50],
@@ -152,9 +157,9 @@ const TRACKS = [
     blurb:"Sunlit halls, a slalom of IV poles, and the gift-cart run everybody pretends not to take.",
     grass:"#b9c8de", grassAlt:"#adbdd6", shoulder:"#93a8c6",
     road:"#e9edf5", roadAlt:"#dde4ef", rumbleA:"#7ec8e3", rumbleB:"#fff8e8",
-    sky:["#cfe4f4","#eef5fb"], haze:"#d6e6f2", accent:"#7ec8e3",
+    sky:["#cfe4f4","#eef5fb"], haze:"#d6e6f2", accent:"#7ec8e3", tiles:true,
     light:-1.1,
-    scenery:["pole","pole","plant","cart","chair","vending","plant","sign","bench"],
+    scenery:["pole","pole","plant","plant","cart","chair","vending","sign","bench"],
     pts:[[0.52,0.93],[0.38,0.94],[0.25,0.91],
          [0.14,0.85],[0.09,0.75],[0.12,0.65],
          [0.21,0.59],[0.32,0.61],[0.38,0.54],
@@ -174,7 +179,8 @@ const TRACKS = [
     road:"#8a7a68", roadAlt:"#82735f", rumbleA:"#ffd166", rumbleB:"#ff7f8a",
     sky:["#ff8a5c","#ffd08a"], haze:"#ffb583", accent:"#ffd166",
     light:-2.2,                       // low sun, long shadows the other way
-    scenery:["lamp","cat","laundry","vent","cat","watertank","aircon","stringpole","planter"],
+    scenery:["stringpole","cat","laundry","vent","cat","watertank","acunit","skylight",
+             "dish","planter","shelter","trafficlight","car","lamp"],
     pts:[[0.53,0.93],[0.40,0.93],[0.27,0.90],
          [0.16,0.84],[0.10,0.74],[0.13,0.63],
          [0.23,0.57],[0.33,0.59],[0.39,0.51],
@@ -521,6 +527,74 @@ function bakeTrack(def) {
     g.fillRect(x | 0, y | 0, 2, 4 + ((Math.random() * 3) | 0));
   }
 
+  /* a hard floor rather than ground: a tile grid with a sheen on it */
+  if (def.tiles) {
+    const T = 46;
+    g.save();
+    g.globalAlpha = 0.5;
+    for (let x = 0; x < WORLD; x += T) {
+      for (let y = 0; y < WORLD; y += T) {
+        if (((x / T) + (y / T)) % 2 === 0) {
+          g.fillStyle = shade(def.grass, 1.05);
+          g.fillRect(x, y, T, T);
+        }
+        /* the grout, and a highlight along the top-left of each tile */
+        g.fillStyle = shade(def.grass, 0.86);
+        g.fillRect(x, y, T, 1.5); g.fillRect(x, y, 1.5, T);
+        g.fillStyle = "rgba(255,255,255,.30)";
+        g.fillRect(x + 1.5, y + 1.5, T - 3, 1);
+      }
+    }
+    /* long soft reflections, as if the polish were catching the windows */
+    g.globalAlpha = 0.10; g.fillStyle = "#ffffff";
+    for (let i = 0; i < 90; i++) {
+      const x = Math.random() * WORLD, y = Math.random() * WORLD;
+      g.fillRect(x, y, 10 + Math.random() * 90, 5 + Math.random() * 10);
+    }
+    g.restore();
+  }
+
+  /* Broad tonal patches, then bands running with the road like mown
+     stripes, then clumps. One flat plane of green is the thing that
+     reads as unfinished more than anything else out here. */
+  const gr = mulberry(seedOf(def.id, 7717));
+  for (let i = 0; i < path.length; i += 7) {
+    const ta = tangentAt(i);
+    for (const sgn of [-1, 1]) {
+      if (gr() > 0.55) continue;
+      const off = SHOULDER + 20 + gr() * 260;
+      const cx = path[i].x - Math.sin(ta) * off * sgn;
+      const cy = path[i].y + Math.cos(ta) * off * sgn;
+      g.save();
+      g.globalAlpha = 0.13 + gr() * 0.12;
+      g.fillStyle = gr() > 0.5 ? shade(def.grass, 1.18) : shade(def.grass, 0.84);
+      g.beginPath();
+      g.ellipse(cx, cy, 40 + gr() * 90, 22 + gr() * 50, ta, 0, TWO_PI);
+      g.fill();
+      g.restore();
+    }
+  }
+  /* clumps of planting, and the odd bare patch of earth */
+  for (let i = 0; i < 240; i++) {
+    const k = (gr() * path.length) | 0;
+    const ta = tangentAt(k);
+    const sgn = gr() < 0.5 ? -1 : 1;
+    const off = SHOULDER + 12 + gr() * 190;
+    const cx = path[k].x - Math.sin(ta) * off * sgn;
+    const cy = path[k].y + Math.cos(ta) * off * sgn;
+    if (gr() > 0.34) {
+      g.fillStyle = shade(def.grass, 0.72);
+      for (let b = 0; b < 9; b++)
+        g.fillRect((cx + (gr() - 0.5) * 26) | 0, (cy + (gr() - 0.5) * 18) | 0, 3, 3);
+    } else {
+      const cols = ["#ff9ec4", "#ffe07a", "#fff1e0", "#ff7f8a", "#c8a8ff"];
+      for (let b = 0; b < 7; b++) {
+        g.fillStyle = cols[(gr() * cols.length) | 0];
+        g.fillRect((cx + (gr() - 0.5) * 22) | 0, (cy + (gr() - 0.5) * 14) | 0, 2, 2);
+      }
+    }
+  }
+
   /* a few broad patches so the field is not one flat colour */
   for (let i = 0; i < 60; i++) {
     g.globalAlpha = 0.10 + Math.random() * 0.10;
@@ -606,6 +680,36 @@ function bakeTrack(def) {
   strokeLoop(g, ROAD_HALF * 0.85, "#000");
   g.globalAlpha = 1;
 
+  /* worn patches and a few painted arrows, so the tarmac has something
+     going on other than being grey */
+  const rr = mulberry(seedOf(def.id, 4441));
+  for (let i = 0; i < 90; i++) {
+    const k = (rr() * path.length) | 0;
+    const ta = tangentAt(k);
+    const off = (rr() - 0.5) * ROAD_HALF * 1.5;
+    g.save();
+    g.globalAlpha = 0.10 + rr() * 0.10;
+    g.fillStyle = rr() > 0.5 ? shade(def.road, 0.78) : shade(def.road, 1.14);
+    g.beginPath();
+    g.ellipse(path[k].x - Math.sin(ta) * off, path[k].y + Math.cos(ta) * off,
+              9 + rr() * 22, 5 + rr() * 12, ta, 0, TWO_PI);
+    g.fill();
+    g.restore();
+  }
+  for (let k = 26; k < path.length; k += 70) {
+    const ta = tangentAt(k);
+    g.save();
+    g.translate(path[k].x, path[k].y);
+    g.rotate(ta);
+    g.globalAlpha = 0.4;
+    g.fillStyle = "#fff8e8";
+    g.beginPath();
+    g.moveTo(16, 0); g.lineTo(2, -9); g.lineTo(2, -3.5);
+    g.lineTo(-14, -3.5); g.lineTo(-14, 3.5); g.lineTo(2, 3.5); g.lineTo(2, 9);
+    g.closePath(); g.fill();
+    g.restore();
+  }
+
   /* dashed centre line */
   g.setLineDash([26, 30]);
   strokeLoop(g, 4, "rgba(255,255,255,.5)");
@@ -683,17 +787,17 @@ function bakeGroundShadows(g, def) {
    that slides sideways with the camera. Two copies are blitted so it
    wraps without a seam.
    ========================================================= */
-let panoCvs = null, panoFar = null, panoMid = null, panoId = null;
-const PANO_W = 1600, PANO_H = 150, PANO_MID = 24;
+let panoCvs = null, panoFar = null, panoId = null;
+const PANO_W = 1600, PANO_H = 150;
+const PANO_K  = RH / 225;      // the band was authored for a 225-tall buffer
 
 function bakePano(def) {
   if (panoId === def.id && panoCvs) return;
   const mk = (h) => { const c = document.createElement("canvas"); c.width = PANO_W; c.height = h; return c; };
-  if (!panoCvs) { panoCvs = mk(PANO_H); panoFar = mk(PANO_H); panoMid = mk(PANO_MID); }
+  if (!panoCvs) { panoCvs = mk(PANO_H); panoFar = mk(PANO_H); }
   const g = panoCvs.getContext("2d");
   g.clearRect(0, 0, PANO_W, PANO_H);
   const gf = panoFar.getContext("2d"); gf.clearRect(0, 0, PANO_W, PANO_H);
-  const gm = panoMid.getContext("2d"); gm.clearRect(0, 0, PANO_W, PANO_MID);
 
   const sky = g.createLinearGradient(0, 0, 0, PANO_H);
   sky.addColorStop(0, def.sky[0]);
@@ -705,25 +809,122 @@ function bakePano(def) {
   const base = PANO_H - 4;
 
   if (def.id === "roof") {
-    /* a low sun, then a city that keeps going past the edge of the frame */
+    /* --- a night skyline with a low sun still on it ---
+       Varied silhouettes: flat tops, stepped setbacks, water towers,
+       antenna spires and a lit rooftop sign, with the windows lit in
+       irregular runs rather than a uniform grid. */
     g.fillStyle = "rgba(255,236,180,.9)";
     g.beginPath(); g.arc(PANO_W * 0.32, base - 30, 22, 0, TWO_PI); g.fill();
-    g.fillStyle = "rgba(255,170,110,.28)";
-    g.beginPath(); g.arc(PANO_W * 0.32, base - 30, 40, 0, TWO_PI); g.fill();
+    g.fillStyle = "rgba(255,170,110,.26)";
+    g.beginPath(); g.arc(PANO_W * 0.32, base - 30, 42, 0, TWO_PI); g.fill();
+    /* a soft glow band along the tops, the city lighting the haze */
+    const glow = g.createLinearGradient(0, base - 70, 0, base);
+    glow.addColorStop(0, "rgba(255,170,120,0)");
+    glow.addColorStop(1, "rgba(255,150,110,.30)");
+    g.fillStyle = glow; g.fillRect(0, base - 70, PANO_W, 70);
 
-    let x = -20;
-    while (x < PANO_W + 20) {
-      const w = 16 + rnd() * 26, h = 18 + rnd() * 44;
+    const lightWindows = (x, w, top, bot) => {
+      /* lit in runs, with whole floors dark, and the odd neon one */
+      for (let wy = top + 5; wy < bot - 4; wy += 7) {
+        if (rnd() < 0.28) continue;                 // this floor is dark
+        let on = rnd() < 0.5;
+        for (let wx = x + 3; wx < x + w - 3; wx += 6) {
+          if (rnd() < 0.34) on = !on;               // runs, not a grid
+          if (!on) continue;
+          const neon = rnd() < 0.06;
+          g.fillStyle = neon
+            ? ["#7ec8e3", "#ff9ec4", "#7ddba3"][(rnd() * 3) | 0]
+            : (rnd() < 0.25 ? "#ffd9a0" : "#ffce7a");
+          g.fillRect(wx, wy, 2, 3);
+          if (neon) {
+            g.save(); g.globalAlpha = 0.35; g.fillStyle = g.fillStyle;
+            g.fillRect(wx - 1, wy - 1, 4, 5); g.restore();
+          }
+        }
+      }
+    };
+
+    let x = -24;
+    while (x < PANO_W + 24) {
+      const w = 18 + rnd() * 30;
+      const h = 22 + rnd() * 52;
+      const top = base - h;
+      const shape = rnd();
+
       g.fillStyle = "#2b2440";
-      g.fillRect(x, base - h, w, h);
-      g.fillStyle = "#352c4d";                       // the lit return
-      g.fillRect(x, base - h, Math.max(2, w * 0.22), h);
-      if (rnd() > 0.55) g.fillRect(x + w * 0.3, base - h - 5, w * 0.25, 5);  // a roof box
-      g.fillStyle = "rgba(255,206,122,.75)";
-      for (let wy = base - h + 5; wy < base - 4; wy += 7)
-        for (let wx = x + 3; wx < x + w - 3; wx += 6)
-          if (rnd() > 0.5) g.fillRect(wx, wy, 2, 3);
-      x += w + 2 + rnd() * 7;
+      g.fillRect(x, top, w, h);
+      g.fillStyle = "#372e50";                       // the lit return
+      g.fillRect(x, top, Math.max(2, w * 0.24), h);
+      g.fillStyle = "#4a3f66";                       // the roof edge catching light
+      g.fillRect(x, top, w, 2);
+      lightWindows(x, w, top, base);
+
+      if (shape < 0.28) {
+        /* a stepped setback tower */
+        const w2 = w * 0.6, h2 = 10 + rnd() * 22;
+        const x2 = x + (w - w2) / 2;
+        g.fillStyle = "#2b2440"; g.fillRect(x2, top - h2, w2, h2);
+        g.fillStyle = "#372e50"; g.fillRect(x2, top - h2, Math.max(2, w2 * 0.24), h2);
+        g.fillStyle = "#4a3f66"; g.fillRect(x2, top - h2, w2, 2);
+        lightWindows(x2, w2, top - h2, top);
+        if (rnd() < 0.5) {                           // spire with a red lamp
+          g.fillStyle = "#3a3252"; g.fillRect(x2 + w2 / 2 - 1, top - h2 - 14, 2, 14);
+          g.fillStyle = "#ff6b6b"; g.fillRect(x2 + w2 / 2 - 1.5, top - h2 - 16, 3, 3);
+        }
+      } else if (shape < 0.46) {
+        /* a rooftop water tower on legs */
+        const tx = x + w * 0.5 - 6;
+        g.fillStyle = "#4a3f36";
+        g.fillRect(tx + 1, top - 7, 2, 7); g.fillRect(tx + 9, top - 7, 2, 7);
+        g.fillRect(tx, top - 20, 12, 13);
+        g.fillStyle = "#5c4e42"; g.fillRect(tx, top - 20, 4, 13);
+        g.beginPath();
+        g.moveTo(tx - 2, top - 20); g.lineTo(tx + 6, top - 26); g.lineTo(tx + 14, top - 20);
+        g.closePath(); g.fill();
+      } else if (shape < 0.60) {
+        /* a lit rooftop sign */
+        const sw = Math.min(w - 4, 22);
+        const sx3 = x + (w - sw) / 2;
+        g.fillStyle = "#3a3252"; g.fillRect(sx3 - 1, top - 12, sw + 2, 11);
+        g.fillStyle = ["#ff9ec4", "#ffd166", "#7ec8e3"][(rnd() * 3) | 0];
+        g.fillRect(sx3, top - 11, sw, 9);
+        g.save(); g.globalAlpha = 0.30; g.fillStyle = g.fillStyle;
+        g.fillRect(sx3 - 3, top - 14, sw + 6, 15); g.restore();
+        g.fillStyle = "#2b2440";
+        for (let i = 0; i < 3; i++) g.fillRect(sx3 + 3 + i * 6, top - 8, 3, 4);
+      } else if (shape < 0.70) {
+        /* aerials */
+        g.fillStyle = "#3a3252";
+        for (let i = 0; i < 3; i++)
+          g.fillRect(x + 4 + i * (w / 3), top - 6 - rnd() * 8, 1, 6 + rnd() * 8);
+      }
+      x += w + 2 + rnd() * 6;
+    }
+
+    /* --- the street below: shopfronts, lamps and parked cars --- */
+    g.fillStyle = "#1d1830"; g.fillRect(0, base - 12, PANO_W, 12);
+    for (let sx4 = -10; sx4 < PANO_W + 10; sx4 += 24 + rnd() * 22) {
+      if (rnd() < 0.45) {                            // a lit shopfront
+        const sw = 12 + rnd() * 14;
+        g.fillStyle = "#ffce7a"; g.fillRect(sx4, base - 10, sw, 7);
+        g.save(); g.globalAlpha = 0.28; g.fillStyle = "#ffce7a";
+        g.fillRect(sx4 - 3, base - 12, sw + 6, 12); g.restore();
+        g.fillStyle = "#241d3a";                     // an awning over it
+        g.fillRect(sx4 - 2, base - 12, sw + 4, 3);
+      }
+      if (rnd() < 0.4) {                             // a streetlamp and its pool
+        g.fillStyle = "#3a3252"; g.fillRect(sx4 + 6, base - 18, 1, 18);
+        g.fillStyle = "#ffe6a8"; g.fillRect(sx4 + 4, base - 20, 5, 2);
+        g.save(); g.globalAlpha = 0.22; g.fillStyle = "#ffd166";
+        g.beginPath(); g.ellipse(sx4 + 6, base - 1, 9, 3, 0, 0, TWO_PI); g.fill();
+        g.restore();
+      }
+      if (rnd() < 0.35) {                            // a car at the kerb
+        g.fillStyle = "#171227";
+        g.fillRect(sx4 + 2, base - 6, 14, 4);
+        g.fillRect(sx4 + 5, base - 9, 8, 3);
+        g.fillStyle = "#ff8a6b"; g.fillRect(sx4 + 1, base - 5, 2, 2);
+      }
     }
 
   } else if (def.id === "ward") {
@@ -755,19 +956,38 @@ function bakePano(def) {
     }
     let x = -10;
     while (x < PANO_W + 10) {
-      const w = 20 + rnd() * 20, h = 14 + rnd() * 16;
-      const wall = rnd() > 0.5 ? "#a2937f" : "#93a087";
-      g.fillStyle = wall;
-      g.fillRect(x, base - h, w, h);
-      g.fillStyle = shade(wall, 1.12);
-      g.fillRect(x, base - h, Math.max(2, w * 0.25), h);
-      g.fillStyle = "#7d6555";
+      /* a mixed roofline: bungalows, two-storeys, the odd garage, each
+         with a lit face and a shaded one so none of them reads flat */
+      const two = rnd() < 0.42;
+      const w = (two ? 22 : 26) + rnd() * 16;
+      const h = (two ? 26 : 14) + rnd() * 12;
+      const wall = ["#a2937f", "#93a087", "#a89383", "#8f9aa2"][(rnd() * 4) | 0];
+      const roofC = ["#7d6555", "#6f7580", "#85614f"][(rnd() * 3) | 0];
+      g.fillStyle = wall;      g.fillRect(x, base - h, w, h);
+      g.fillStyle = shade(wall, 1.16);
+      g.fillRect(x, base - h, Math.max(3, w * 0.28), h);
+      g.fillStyle = shade(wall, 0.82);
+      g.fillRect(x + w - 3, base - h, 3, h);
+      g.fillStyle = roofC;
       g.beginPath();
-      g.moveTo(x - 3, base - h); g.lineTo(x + w / 2, base - h - 9);
+      g.moveTo(x - 3, base - h); g.lineTo(x + w / 2, base - h - (two ? 12 : 9));
       g.lineTo(x + w + 3, base - h); g.closePath(); g.fill();
-      g.fillStyle = "rgba(255,224,160,.8)";
-      for (let wx = x + 4; wx < x + w - 4; wx += 7)
-        if (rnd() > 0.45) g.fillRect(wx, base - h + 5, 3, 4);
+      g.fillStyle = shade(roofC, 0.78);
+      g.beginPath();
+      g.moveTo(x + w / 2, base - h - (two ? 12 : 9));
+      g.lineTo(x + w + 3, base - h); g.lineTo(x + w / 2, base - h); g.closePath(); g.fill();
+      if (rnd() < 0.45) {                       // a chimney
+        g.fillStyle = shade(roofC, 1.1);
+        g.fillRect(x + w * 0.68, base - h - (two ? 15 : 12), 4, 8);
+      }
+      g.fillStyle = "rgba(255,224,160,.85)";
+      for (let wy = base - h + 4; wy < base - 4; wy += 9)
+        for (let wx = x + 4; wx < x + w - 4; wx += 8)
+          if (rnd() > 0.4) g.fillRect(wx, wy, 3, 4);
+      if (rnd() < 0.3) {                        // a hedge out front
+        g.fillStyle = "#5f8f57";
+        g.fillRect(x + 2, base - 4, w - 4, 4);
+      }
       x += w + 4 + rnd() * 12;
     }
 
@@ -793,7 +1013,7 @@ function bakePano(def) {
     }
   }
 
-  buildParallax(def, gf, gm);
+  buildParallax(def, gf);
   panoId = def.id;
 }
 
@@ -804,7 +1024,7 @@ function bakePano(def) {
    flat silhouettes across the horizon that fought with the real
    billboards in front of them — it read as a bug rather than as depth.
    Distance means smaller, paler and slower, all three at once. */
-function buildParallax(def, gf, gm) {
+function buildParallax(def, gf) {
   const rnd = mulberry(seedOf(def.id, 613));
   const far = mixRgb(def.haze, def.sky[0], 0.4);
   const fbase = PANO_H - 4;
@@ -829,26 +1049,6 @@ function buildParallax(def, gf, gm) {
     }
   }
 
-  /* the near band: a thin line of small shapes just on the horizon */
-  const midCol = mixRgb(def.grass, "#141420", 0.34);
-  const mbase = PANO_MID - 1;
-  for (let x = -20; x < PANO_W + 20; ) {
-    const tall = rnd() > 0.45;
-    const w = tall ? 5 + rnd() * 5 : 9 + rnd() * 13;
-    const h = tall ? 11 + rnd() * 9 : 6 + rnd() * 7;
-    gm.fillStyle = `rgb(${midCol[0]},${midCol[1]},${midCol[2]})`;
-    if (tall) {
-      gm.beginPath();
-      gm.moveTo(x, mbase); gm.lineTo(x + w / 2, mbase - h); gm.lineTo(x + w, mbase);
-      gm.closePath(); gm.fill();
-    } else {
-      gm.fillRect(x, mbase - h, w, h);
-      gm.beginPath();
-      gm.moveTo(x - 1, mbase - h); gm.lineTo(x + w / 2, mbase - h - 4);
-      gm.lineTo(x + w + 1, mbase - h); gm.closePath(); gm.fill();
-    }
-    x += w + 7 + rnd() * 26;
-  }
 }
 
 /* A real string hash. Seeding off def.id.length gave "town", "ward" and
@@ -1091,19 +1291,42 @@ function buildAllKarts() {
    track's one sun. That plus real window frames is the whole difference
    between "a box with a triangle on top" and something you would believe
    somebody lives in.                                                     */
+/* --- scenery ---
+
+   Everything that stands beside the track. Each piece is painted into a
+   sheet and then cropped to what it actually covers, so the world height
+   below is the height you see and the shadow matches the footprint.
+
+   Two rules run through all of it.
+
+   Nothing is a flat silhouette. Every solid is built with box3(), which
+   draws a front, a receding side and a top in three different tones —
+   a single-colour rectangle reads as a sticker no matter how much
+   detail you paint on it, and three faces is the cheapest thing that
+   reads as an object with a back to it.
+
+   Nothing repeats. Most kinds have several variants and each instance
+   picks one, so a street is a row of different houses rather than one
+   house printed nine times.                                            */
 const SCENERY = {
-  pine:{ h:158, foot:.55 }, tree:{ h:130, foot:.6 },  bush:{ h:26, foot:.9 },
-  rock:{ h:24,  foot:.9  }, cabin:{ h:132, foot:.9, smoke:true },
-  house:{ h:128, foot:.9, smoke:true }, store:{ h:126, foot:.95 },
+  pine:{ h:158, foot:.55, variants:3 }, tree:{ h:130, foot:.6, variants:3 },
+  bush:{ h:26,  foot:.9,  variants:3 }, rock:{ h:24, foot:.9, variants:2 },
+  cabin:{ h:132, foot:.9, smoke:true, variants:2 },
+  house:{ h:126, foot:.9, smoke:true, variants:4 },
+  store:{ h:126, foot:.95, variants:2 },
   shed:{ h:80,  foot:.9, smoke:true },
   lamp:{ h:112, foot:.3  }, postbox:{ h:30, foot:.8 }, hydrant:{ h:26, foot:.8 },
-  signpost:{ h:76, foot:.35 }, flowerbox:{ h:22, foot:.95 },
+  signpost:{ h:76, foot:.35 }, flowerbox:{ h:22, foot:.95, variants:2 },
+  mailbox:{ h:34, foot:.5 }, bike:{ h:30, foot:.8 }, hoop:{ h:96, foot:.35 },
   pole:{ h:104, foot:.35 }, cart:{ h:58, foot:.8 },  chair:{ h:46, foot:.7 },
-  plant:{ h:48, foot:.8  }, vending:{ h:80, foot:.85 }, sign:{ h:72, foot:.4 },
-  bench:{ h:38, foot:.95 },
-  laundry:{ h:108, foot:.3 }, cat:{ h:18, foot:.85 }, vent:{ h:44, foot:.9 },
-  watertank:{ h:122, foot:.7 }, aircon:{ h:46, foot:.9 },
+  plant:{ h:48, foot:.8, variants:2 }, vending:{ h:80, foot:.85 },
+  sign:{ h:72, foot:.4, variants:2 }, bench:{ h:38, foot:.95 },
+  laundry:{ h:108, foot:.3 }, cat:{ h:18, foot:.85, variants:3 },
+  vent:{ h:44, foot:.9 }, watertank:{ h:122, foot:.7 },
+  acunit:{ h:40, foot:.9 }, skylight:{ h:26, foot:.95 }, dish:{ h:52, foot:.5 },
   stringpole:{ h:112, foot:.25 }, planter:{ h:32, foot:.95 },
+  trafficlight:{ h:104, foot:.3 }, shelter:{ h:86, foot:.95 },
+  car:{ h:44, foot:.95, variants:3 },
 };
 
 function cropToContent(c) {
@@ -1128,235 +1351,250 @@ function cropToContent(c) {
 
 const sceneryCache = {};
 
-function buildScenery(kind, def) {
+function buildScenery(kind, variant, def) {
   /* the sun sits on one side per track, and the sprites are baked with
      that side lit — so the cache is keyed by which side that is */
   const sunX = def ? Math.cos(def.light != null ? def.light : -0.7) : 0.75;
   const litRight = sunX >= 0;
-  const key = kind + (litRight ? "|R" : "|L");
+  const v = variant | 0;
+  const key = kind + "|" + v + (litRight ? "|R" : "|L");
   if (sceneryCache[key]) return sceneryCache[key];
 
-  const W = 96, H = 128;
+  const W = 128, H = 150;
   const c = document.createElement("canvas");
   c.width = W; c.height = H;
   const g = c.getContext("2d");
   const mid = W / 2;
 
+  /* a tiny deterministic stream, so a variant is the same every load */
+  const rnd = mulberry(seedOf(kind + v, 5381));
+
   /* ---- shared painters ---- */
   const R = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
-  const LIT = 1.14, DIM = 0.74;          // the two faces of everything
+  const poly = (pts, col) => {
+    g.fillStyle = col; g.beginPath();
+    pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])));
+    g.closePath(); g.fill();
+  };
+  const LIT = 1.16, SIDE = 0.66, TOP = 1.24;
+  /* the box recedes away from the sun, so the face you see most is lit */
+  const sd = litRight ? -1 : 1;
 
-  /* a wall with its lit return, its material pattern, and a shadow
-     gathering where it meets the ground */
-  function wall(x, y, w, h, col, material) {
-    const side = Math.max(4, Math.round(w * 0.16));
+  /* THE primitive: a solid with a front, a side and a top, each its own
+     tone. Everything built out of these reads as having a back to it. */
+  function box3(x, y, w, h, d, col, opts) {
+    const o = opts || {};
+    const dx = sd * d * 0.52, dy = -d * 0.40;
+    const xs = sd < 0 ? x : x + w;
+    /* side first, so the front edge sits over it cleanly */
+    poly([[xs, y], [xs + dx, y + dy], [xs + dx, y + h + dy], [xs, y + h]], shade(col, SIDE));
+    if (o.top !== false)
+      poly([[x, y], [x + dx, y + dy], [x + w + dx, y + dy], [x + w, y]], shade(col, TOP));
     R(x, y, w, h, col);
-    // the return face, on whichever side the sun is not
-    R(litRight ? x : x + w - side, y, side, h, shade(col, DIM));
-    R(litRight ? x + w - side : x, y, side, h, shade(col, LIT));
+    if (o.material) material(x, y, w, h, col, o.material);
+    /* the seam where two faces meet, and the dark gather at the ground */
+    g.save(); g.globalAlpha = 0.35; g.fillStyle = "#120e18";
+    g.fillRect(Math.round(sd < 0 ? x : x + w - 1), Math.round(y), 1, Math.round(h));
+    g.globalAlpha = 0.28;
+    g.fillRect(Math.round(x), Math.round(y + h - 3), Math.round(w), 3);
+    g.restore();
+    return { dx, dy };
+  }
 
-    if (material === "wood") {
-      g.save(); g.globalAlpha = 0.22;
+  function material(x, y, w, h, col, kind2) {
+    g.save();
+    if (kind2 === "wood") {
+      g.globalAlpha = 0.22;
       for (let yy = y + 3; yy < y + h; yy += 5) {
-        g.fillStyle = (yy & 1) ? shade(col, 0.82) : shade(col, 1.12);
+        g.fillStyle = shade(col, (yy & 1) ? 0.82 : 1.12);
         g.fillRect(Math.round(x), Math.round(yy), Math.round(w), 1);
       }
-      // a few grain streaks running with the boards
       g.globalAlpha = 0.16; g.fillStyle = shade(col, 0.7);
-      for (let i = 0; i < 8; i++) {
-        const gy = y + 4 + ((i * 37) % Math.max(1, h - 8));
-        g.fillRect(Math.round(x + ((i * 23) % Math.max(1, w - 10))), Math.round(gy), 6 + (i % 3) * 3, 1);
+      for (let i = 0; i < 10; i++)
+        g.fillRect(Math.round(x + ((i * 23) % Math.max(1, w - 10))),
+                   Math.round(y + 4 + ((i * 37) % Math.max(1, h - 8))), 6 + (i % 3) * 3, 1);
+    } else if (kind2 === "log") {
+      g.globalAlpha = 0.30;
+      for (let yy = y + 4; yy < y + h; yy += 7) {
+        g.fillStyle = shade(col, 0.72);
+        g.fillRect(Math.round(x), Math.round(yy), Math.round(w), 1);
+        g.fillStyle = shade(col, 1.14);
+        g.fillRect(Math.round(x), Math.round(yy + 1), Math.round(w), 2);
       }
-      g.restore();
-    } else if (material === "brick") {
-      g.save(); g.globalAlpha = 0.20; g.fillStyle = shade(col, 0.66);
+      /* the cut ends of the logs at the corner */
+      g.globalAlpha = 0.5; g.fillStyle = shade(col, 0.6);
+      for (let yy = y + 4; yy < y + h; yy += 7)
+        g.fillRect(Math.round(sd < 0 ? x : x + w - 3), Math.round(yy), 3, 4);
+    } else if (kind2 === "brick") {
+      g.globalAlpha = 0.20; g.fillStyle = shade(col, 0.62);
       for (let yy = y + 4, row = 0; yy < y + h; yy += 5, row++) {
         g.fillRect(Math.round(x), Math.round(yy), Math.round(w), 1);
         for (let xx = x + (row % 2 ? 5 : 0); xx < x + w; xx += 10)
           g.fillRect(Math.round(xx), Math.round(yy - 4), 1, 4);
       }
-      g.restore();
-    } else if (material === "siding") {
-      g.save(); g.globalAlpha = 0.18;
+    } else if (kind2 === "siding") {
+      g.globalAlpha = 0.20;
       for (let yy = y + 4; yy < y + h; yy += 6) {
-        g.fillStyle = shade(col, 0.72);
-        g.fillRect(Math.round(x), Math.round(yy), Math.round(w), 1);
-        g.fillStyle = shade(col, 1.18);
-        g.fillRect(Math.round(x), Math.round(yy + 1), Math.round(w), 1);
+        g.fillStyle = shade(col, 0.70); g.fillRect(Math.round(x), Math.round(yy), Math.round(w), 1);
+        g.fillStyle = shade(col, 1.20); g.fillRect(Math.round(x), Math.round(yy + 1), Math.round(w), 1);
       }
-      g.restore();
-    } else if (material === "panel") {
-      g.save(); g.globalAlpha = 0.16; g.fillStyle = shade(col, 0.7);
-      for (let xx = x + 6; xx < x + w - 2; xx += 9) g.fillRect(Math.round(xx), Math.round(y + 2), 1, h - 4);
-      g.restore();
+    } else if (kind2 === "stucco") {
+      g.globalAlpha = 0.12;
+      for (let i = 0; i < 90; i++) {
+        g.fillStyle = shade(col, i % 2 ? 1.2 : 0.8);
+        g.fillRect(Math.round(x + rnd() * w), Math.round(y + rnd() * h), 2, 2);
+      }
+    } else if (kind2 === "panel") {
+      g.globalAlpha = 0.18; g.fillStyle = shade(col, 0.68);
+      for (let xx = x + 7; xx < x + w - 2; xx += 10) g.fillRect(Math.round(xx), Math.round(y + 2), 1, h - 4);
     }
-
-    // ambient occlusion where the wall meets the ground
-    g.save(); g.globalAlpha = 0.24; g.fillStyle = "#1a1420";
-    g.fillRect(Math.round(x), Math.round(y + h - 3), Math.round(w), 3);
     g.restore();
   }
 
-  /* a foundation course, so nothing sits straight on the grass */
+  /* a pitched roof as a solid: gable end, receding slope, ridge, eaves */
+  function gable(x, y, w, rise, d, col) {
+    const over = 5;
+    const x0 = x - over, x1 = x + w + over;
+    const apex = y - rise, cx = x + w / 2;
+    const dx = sd * d * 0.52, dy = -d * 0.40;
+    /* the slope going back */
+    poly([[cx, apex], [cx + dx, apex + dy], [x1 + dx, y + dy], [x1, y]], shade(col, 0.72));
+    poly([[cx, apex], [cx + dx, apex + dy], [x0 + dx, y + dy], [x0, y]], shade(col, 0.58));
+    /* the gable you are looking at */
+    poly([[x0, y], [cx, apex], [x1, y]], col);
+    /* shingle courses, clipped to the gable */
+    g.save();
+    g.beginPath(); g.moveTo(x0, y); g.lineTo(cx, apex); g.lineTo(x1, y); g.closePath(); g.clip();
+    g.globalAlpha = 0.28;
+    for (let yy = y - 3; yy > apex; yy -= 4) {
+      g.fillStyle = shade(col, 0.7);
+      g.fillRect(x0, Math.round(yy), x1 - x0, 1);
+      const off = (((y - yy) / 4) | 0) % 2 ? 4 : 0;
+      for (let xx = x0 + off; xx < x1; xx += 8) g.fillRect(Math.round(xx), Math.round(yy - 3), 1, 3);
+    }
+    g.restore();
+    R(cx - 2, apex, 4, 3, shade(col, 1.25));          // ridge cap
+    R(x0, y - 1, x1 - x0, 2, shade(col, 0.55));       // eaves
+    R(x0, y + 1, x1 - x0, 1, "rgba(0,0,0,.32)");      // and their shadow
+  }
+
+  /* a flat roof with a parapet, for shops and towers */
+  function parapet(x, y, w, d, col) {
+    const dx = sd * d * 0.52, dy = -d * 0.40;
+    poly([[x - 3, y], [x - 3 + dx, y + dy], [x + w + 3 + dx, y + dy], [x + w + 3, y]], shade(col, TOP));
+    R(x - 3, y - 5, w + 6, 6, col);
+    R(x - 3, y - 5, w + 6, 2, shade(col, LIT));
+    R(x - 3, y + 1, w + 6, 2, "rgba(0,0,0,.3)");
+  }
+
   function footing(x, y, w, h, col) {
-    R(x - 2, y, w + 4, h, shade(col, 0.8));
-    R(x - 2, y, w + 4, 1, shade(col, 1.1));
-    g.save(); g.globalAlpha = 0.3; g.fillStyle = shade(col, 0.55);
+    R(x - 2, y, w + 4, h, shade(col, 0.78));
+    R(x - 2, y, w + 4, 1, shade(col, 1.12));
+    g.save(); g.globalAlpha = 0.3; g.fillStyle = shade(col, 0.5);
     for (let xx = x; xx < x + w; xx += 7) g.fillRect(Math.round(xx), Math.round(y + 1), 1, h - 1);
     g.restore();
   }
 
-  /* a pitched roof with courses of shingles, an overhang and a gutter */
-  function roof(x, y, w, rise, col) {
-    const over = 5;
-    const x0 = x - over, x1 = x + w + over, apex = y - rise;
-    g.fillStyle = col;
-    g.beginPath(); g.moveTo(x0, y); g.lineTo(mid, apex); g.lineTo(x1, y); g.closePath(); g.fill();
-    // the shaded half, split down the ridge
-    g.fillStyle = shade(col, DIM);
-    g.beginPath();
-    g.moveTo(litRight ? x0 : x1, y); g.lineTo(mid, apex); g.lineTo(mid, y); g.closePath(); g.fill();
-    // shingle courses, clipped to the roof
-    g.save();
-    g.beginPath(); g.moveTo(x0, y); g.lineTo(mid, apex); g.lineTo(x1, y); g.closePath(); g.clip();
-    g.globalAlpha = 0.30;
-    for (let yy = y - 3; yy > apex; yy -= 4) {
-      g.fillStyle = shade(col, 0.72);
-      g.fillRect(x0, Math.round(yy), x1 - x0, 1);
-      const off = ((y - yy) / 4 | 0) % 2 ? 4 : 0;
-      for (let xx = x0 + off; xx < x1; xx += 8) g.fillRect(Math.round(xx), Math.round(yy - 3), 1, 3);
-    }
+  /* frame, panes, mullions, sill — and a warmer light deeper in */
+  function window_(x, y, w, h, lit, frameCol) {
+    R(x - 1.5, y - 1.5, w + 3, h + 3, frameCol || "#5b4634");
+    R(x, y, w, h, lit ? "#ffd98a" : "#93a9c0");
+    g.save(); g.globalAlpha = 0.55;
+    g.fillStyle = lit ? "#ffab48" : "#74899e";
+    g.fillRect(Math.round(x), Math.round(y + h * 0.52), Math.round(w), Math.round(h * 0.48));
     g.restore();
-    // ridge cap and gutter
-    R(mid - 2, apex, 4, 3, shade(col, 1.2));
-    R(x0, y - 1, x1 - x0, 2, shade(col, 0.6));
-    R(x0, y + 1, x1 - x0, 1, "rgba(0,0,0,.3)");
-  }
-
-  /* a window: frame, panes, a mullion, and warmer light behind */
-  function window_(x, y, w, h, lit) {
-    R(x - 1, y - 1, w + 2, h + 2, "#5b4634");
-    R(x, y, w, h, lit ? "#ffd98a" : "#9fb4c8");
-    // interior light is a touch warmer at the bottom of the pane
-    g.save(); g.globalAlpha = 0.5;
-    g.fillStyle = lit ? "#ffb457" : "#7f97ad";
-    g.fillRect(Math.round(x), Math.round(y + h * 0.55), Math.round(w), Math.round(h * 0.45));
-    g.restore();
-    // glazing bars
-    R(x + w / 2 - 0.5, y, 1, h, "#5b4634");
-    R(x, y + h / 2 - 0.5, w, 1, "#5b4634");
-    // a highlight across the top-left pane
-    g.save(); g.globalAlpha = 0.4; g.fillStyle = "#fff";
+    R(x + w / 2 - 0.5, y, 1, h, frameCol || "#5b4634");
+    R(x, y + h / 2 - 0.5, w, 1, frameCol || "#5b4634");
+    g.save(); g.globalAlpha = 0.45; g.fillStyle = "#fff";
     g.fillRect(Math.round(x + 1), Math.round(y + 1), Math.round(w / 2 - 2), 1);
     g.restore();
-    // sill
-    R(x - 2, y + h, w + 4, 2, "#6d5540");
+    R(x - 2.5, y + h + 1.5, w + 5, 2, shade(frameCol || "#6d5540", 1.05));
+    if (lit) {                                   // light spilling on the sill
+      g.save(); g.globalAlpha = 0.2; g.fillStyle = "#ffd98a";
+      g.fillRect(Math.round(x - 3), Math.round(y + h + 3), Math.round(w + 6), 2);
+      g.restore();
+    }
   }
 
   function door(x, y, w, h, col) {
     R(x, y, w, h, col);
-    R(x, y, w, 1, shade(col, 1.25));
-    R(x, y, 1, h, shade(col, litRight ? 1.15 : 0.85));
-    // two sunken panels
-    g.save(); g.globalAlpha = 0.28; g.fillStyle = shade(col, 0.6);
-    g.fillRect(Math.round(x + 2), Math.round(y + 2), Math.round(w - 4), Math.round(h * 0.36));
-    g.fillRect(Math.round(x + 2), Math.round(y + h * 0.5), Math.round(w - 4), Math.round(h * 0.36));
+    R(x, y, w, 1, shade(col, 1.3));
+    R(x, y, 1, h, shade(col, litRight ? 1.18 : 0.82));
+    g.save(); g.globalAlpha = 0.3; g.fillStyle = shade(col, 0.55);
+    g.fillRect(Math.round(x + 2), Math.round(y + 2), Math.round(w - 4), Math.round(h * 0.34));
+    g.fillRect(Math.round(x + 2), Math.round(y + h * 0.48), Math.round(w - 4), Math.round(h * 0.34));
     g.restore();
-    R(x + w - 3, y + h * 0.5, 2, 2, "#ffd166");    // the handle
+    R(x + w - 3, y + h * 0.5, 2, 2, "#ffd166");
+    R(x - 2, y + h, w + 4, 2, "#b9a68e");            // the step
+    R(x - 2, y + h + 2, w + 4, 1, "rgba(0,0,0,.3)");
   }
 
-  function chimney(x, y, h, col) {
-    R(x, y - h, 8, h, col);
-    R(litRight ? x + 6 : x, y - h, 2, h, shade(col, litRight ? LIT : DIM));
-    R(x - 1, y - h - 3, 10, 3, shade(col, 0.7));   // the cap
+  function chimney(x, y, h, col, stone) {
+    box3(x, y - h, 9, h, 6, col, { });
+    if (stone) {
+      g.save(); g.globalAlpha = 0.32; g.fillStyle = shade(col, 0.6);
+      for (let yy = y - h + 3; yy < y; yy += 4)
+        for (let xx = x + ((yy & 1) ? 0 : 3); xx < x + 9; xx += 5)
+          g.fillRect(Math.round(xx), Math.round(yy), 3, 2);
+      g.restore();
+    }
+    R(x - 1.5, y - h - 3, 12, 3, shade(col, 0.62));
   }
 
-  /* ---- the pieces ---- */
+  /* =============== the pieces =============== */
+
   if (kind === "pine") {
-    /* A conifer reads as a conifer because of its silhouette: layered
-       boughs that droop and come to points, not a stack of clean
-       triangles. Each bough is a cone with a saw-toothed hem, drawn
-       bottom-up so the one above casts onto the one below. */
+    /* three shapes of conifer: tall and narrow, broad, and a young one */
+    const P = [{b:6,w:37,s:16,r:30},{b:5,w:44,s:19,r:26},{b:4,w:32,s:14,r:24}][v % 3];
+    const tip = ["#3e8850", "#46905a", "#4d9a5e"][v % 3];
+    const dk  = ["#2e6b3c", "#2a6238", "#356f42"][v % 3];
     const trunkTop = H - 30;
-    g.fillStyle = "#54391f";
-    g.beginPath();
-    g.moveTo(mid - 5, H); g.lineTo(mid - 2.5, trunkTop);
-    g.lineTo(mid + 2.5, trunkTop); g.lineTo(mid + 5, H);
-    g.closePath(); g.fill();
-    g.fillStyle = litRight ? "#6d4b2b" : "#412c18";
-    g.beginPath();
-    g.moveTo(mid + (litRight ? 1 : -5), H); g.lineTo(mid + (litRight ? 1 : -2.5), trunkTop);
-    g.lineTo(mid + (litRight ? 2.5 : -1), trunkTop); g.lineTo(mid + (litRight ? 5 : -1), H);
-    g.closePath(); g.fill();
-
-    const boughs = 6;
-    for (let i = 0; i < boughs; i++) {
-      const t = i / (boughs - 1);
-      const base = H - 16 - i * 16;
-      const halfW = 37 * (1 - t * 0.80) + 3;
-      const rise = 30 - t * 8;
-      const teeth = 9 - i;
-      const hem = 9 - t * 4;
-
-      /* the bough itself */
+    poly([[mid - 5, H], [mid - 2.5, trunkTop], [mid + 2.5, trunkTop], [mid + 5, H]], "#54391f");
+    poly([[mid + (litRight ? 1 : -5), H], [mid + (litRight ? 1 : -2.5), trunkTop],
+          [mid + (litRight ? 2.5 : -1), trunkTop], [mid + (litRight ? 5 : -1), H]],
+         litRight ? "#6d4b2b" : "#412c18");
+    for (let i = 0; i < P.b; i++) {
+      const t = i / (P.b - 1);
+      const base = H - 16 - i * P.s;
+      const halfW = P.w * (1 - t * 0.80) + 3;
+      const rise = P.r - t * 8, teeth = 9 - i, hem = 9 - t * 4;
       g.beginPath();
       g.moveTo(mid, base - rise);
       for (let k = 0; k <= teeth; k++) {
         const f = k / teeth;
-        const x = mid - halfW + halfW * 2 * f;
-        /* the hem dips between the needle tips */
-        g.lineTo(x, base + (k % 2 ? hem : hem * 0.25));
+        g.lineTo(mid - halfW + halfW * 2 * f, base + (k % 2 ? hem : hem * 0.25));
       }
       g.closePath();
-      g.fillStyle = i % 2 ? "#2e6b3c" : "#356f42";
-      g.fill();
-
-      /* sunward face, clipped to this bough */
-      g.save();
-      g.clip();
-      g.fillStyle = i % 2 ? "#3e8850" : "#468f58";
-      g.beginPath();
-      g.moveTo(mid, base - rise);
-      g.lineTo(mid + (litRight ? halfW : -halfW), base + hem);
-      g.lineTo(mid + (litRight ? halfW * 0.18 : -halfW * 0.18), base + hem);
-      g.closePath(); g.fill();
-      /* and the shadow the bough above drops onto it */
+      g.fillStyle = i % 2 ? dk : shade(dk, 1.08); g.fill();
+      g.save(); g.clip();
+      g.fillStyle = i % 2 ? tip : shade(tip, 1.05);
+      poly([[mid, base - rise],
+            [mid + (litRight ? halfW : -halfW), base + hem],
+            [mid + (litRight ? halfW * 0.18 : -halfW * 0.18), base + hem]], g.fillStyle);
       g.fillStyle = "rgba(18,40,26,.34)";
       g.fillRect(mid - halfW, base - rise, halfW * 2, 6);
       g.restore();
-
-      /* needle ticks catching the light along the top edges */
-      g.fillStyle = "rgba(190,232,178,.28)";
-      for (let k = 1; k < teeth; k += 2) {
-        const f = k / teeth;
-        const x = mid - halfW + halfW * 2 * f;
-        const y = base - rise * (1 - Math.abs(f - 0.5) * 1.7);
-        if (litRight ? f < 0.5 : f > 0.5) continue;
-        g.fillRect(Math.round(x), Math.round(y + 4), 2, 2);
-      }
     }
-    /* the leader at the very top */
-    g.fillStyle = "#3e8850";
-    g.beginPath();
-    g.moveTo(mid, H - 16 - (boughs - 1) * 16 - 34);
-    g.lineTo(mid - 3, H - 16 - (boughs - 1) * 16 - 22);
-    g.lineTo(mid + 3, H - 16 - (boughs - 1) * 16 - 22);
-    g.closePath(); g.fill();
+    poly([[mid, H - 16 - (P.b - 1) * P.s - P.r - 4], [mid - 3, H - 16 - (P.b - 1) * P.s - 22],
+          [mid + 3, H - 16 - (P.b - 1) * P.s - 22]], tip);
 
   } else if (kind === "tree") {
-    /* A broadleaf is a trunk that forks into branches, and a canopy of
-       overlapping clumps — not one green ball. The silhouette gets its
-       character from the lobes; the depth comes from three tone bands
-       and a scalloped lit edge. */
+    /* round, tall-oval, and a wind-leaned one */
+    const shapes = [
+      [[0,-66,25],[-19,-56,19],[19,-55,19],[-10,-78,18],[11,-76,17],[-27,-44,14],[27,-43,14],[1,-50,21],[-14,-40,13],[15,-39,13]],
+      [[0,-78,20],[-14,-64,17],[14,-63,17],[-6,-92,15],[7,-90,14],[-20,-50,13],[20,-49,13],[0,-58,19]],
+      [[6,-64,24],[-14,-52,18],[22,-58,17],[-4,-80,16],[16,-76,15],[-22,-42,13],[26,-46,12],[4,-50,20]],
+    ][v % 3];
+    const tone = [["#2c6b39","#3a8449","#4d9c5b","#63b26e"],
+                  ["#2f6d40","#3d8a52","#519f63","#68b477"],
+                  ["#356b34","#438442","#579b55","#6db26a"]][v % 3];
     const forkY = H - 34;
-    g.fillStyle = "#5f4126";
-    g.beginPath();
-    g.moveTo(mid - 6, H); g.lineTo(mid - 3, forkY);
-    g.lineTo(mid + 3, forkY); g.lineTo(mid + 6, H);
-    g.closePath(); g.fill();
-    g.fillStyle = litRight ? "#79532f" : "#48311c";
-    g.fillRect(mid + (litRight ? 1 : -5), forkY, 4, H - forkY);
-    /* two limbs going up into the leaves */
+    poly([[mid - 6, H], [mid - 3, forkY], [mid + 3, forkY], [mid + 6, H]], "#5f4126");
+    R(mid + (litRight ? 1 : -5), forkY, 4, H - forkY, litRight ? "#79532f" : "#48311c");
+    /* bark */
+    g.save(); g.globalAlpha = 0.3; g.fillStyle = "#3d2a17";
+    for (let i = 0; i < 9; i++) g.fillRect(mid - 4 + (i % 3) * 3, forkY + 3 + i * 3, 1, 4);
+    g.restore();
     g.strokeStyle = "#5f4126"; g.lineWidth = 5; g.lineCap = "round";
     g.beginPath(); g.moveTo(mid, forkY + 4); g.lineTo(mid - 13, forkY - 16); g.stroke();
     g.beginPath(); g.moveTo(mid, forkY + 4); g.lineTo(mid + 12, forkY - 18); g.stroke();
@@ -1364,409 +1602,464 @@ function buildScenery(kind, def) {
     g.beginPath(); g.moveTo(mid - 9, forkY - 10); g.lineTo(mid - 18, forkY - 22); g.stroke();
     g.beginPath(); g.moveTo(mid + 8, forkY - 12); g.lineTo(mid + 17, forkY - 24); g.stroke();
 
-    /* the canopy, as one lumpy silhouette */
-    const lobes = [
-      [  0, -66, 25], [-19, -56, 19], [ 19, -55, 19],
-      [-10, -78, 18], [ 11, -76, 17], [-27, -44, 14],
-      [ 27, -43, 14], [  1, -50, 21], [-14, -40, 13], [ 15, -39, 13],
-    ];
     const canopy = () => {
       g.beginPath();
-      lobes.forEach(([bx, by, br]) => {
-        g.moveTo(mid + bx + br, H + by);
-        g.arc(mid + bx, H + by, br, 0, TWO_PI);
-      });
+      shapes.forEach(([bx, by, br]) => { g.moveTo(mid + bx + br, H + by); g.arc(mid + bx, H + by, br, 0, TWO_PI); });
     };
-
-    canopy(); g.fillStyle = "#2c6b39"; g.fill();      // the shaded mass
-
-    g.save();
-    canopy(); g.clip();
-
-    /* mid tone over most of it, leaving the underside dark */
-    g.fillStyle = "#3a8449";
-    lobes.forEach(([bx, by, br]) => {
-      g.beginPath();
-      g.arc(mid + bx, H + by - br * 0.22, br * 0.94, 0, TWO_PI);
-      g.fill();
-    });
-
-    /* the sunward highlight, offset into the light */
+    canopy(); g.fillStyle = tone[0]; g.fill();
+    g.save(); canopy(); g.clip();
+    g.fillStyle = tone[1];
+    shapes.forEach(([bx, by, br]) => { g.beginPath(); g.arc(mid + bx, H + by - br * 0.22, br * 0.94, 0, TWO_PI); g.fill(); });
     const sx2 = litRight ? 1 : -1;
-    g.fillStyle = "#4d9c5b";
-    lobes.forEach(([bx, by, br]) => {
-      g.beginPath();
-      g.arc(mid + bx + br * 0.30 * sx2, H + by - br * 0.34, br * 0.68, 0, TWO_PI);
-      g.fill();
-    });
-    g.fillStyle = "#63b26e";
-    lobes.slice(0, 5).forEach(([bx, by, br]) => {
-      g.beginPath();
-      g.arc(mid + bx + br * 0.44 * sx2, H + by - br * 0.46, br * 0.38, 0, TWO_PI);
-      g.fill();
-    });
-
-    /* a couple of gaps you can see sky through, so it is not a solid mass */
+    g.fillStyle = tone[2];
+    shapes.forEach(([bx, by, br]) => { g.beginPath(); g.arc(mid + bx + br * 0.30 * sx2, H + by - br * 0.34, br * 0.68, 0, TWO_PI); g.fill(); });
+    g.fillStyle = tone[3];
+    shapes.slice(0, 5).forEach(([bx, by, br]) => { g.beginPath(); g.arc(mid + bx + br * 0.44 * sx2, H + by - br * 0.46, br * 0.38, 0, TWO_PI); g.fill(); });
     g.fillStyle = "rgba(24,52,32,.55)";
-    [[-6, -60, 4], [12, -64, 3], [-20, -50, 3]].forEach(([bx, by, br]) => {
-      g.beginPath(); g.arc(mid + bx, H + by, br, 0, TWO_PI); g.fill();
-    });
-
-    /* leaf clumps picked out along the lit rim */
+    [[-6,-60,4],[12,-64,3],[-20,-50,3]].forEach(([bx,by,br]) => { g.beginPath(); g.arc(mid+bx, H+by, br, 0, TWO_PI); g.fill(); });
     g.fillStyle = "rgba(206,238,180,.34)";
-    for (let i = 0; i < 22; i++) {
-      const a = (i / 22) * TWO_PI;
-      const rr = 30 + (i % 3) * 6;
-      const x = mid + Math.cos(a) * rr * 0.95 + sx2 * 5;
-      const y = H - 62 + Math.sin(a) * rr * 0.62 - 4;
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * TWO_PI, rr = 30 + (i % 3) * 6;
       if (litRight ? Math.cos(a) < -0.15 : Math.cos(a) > 0.15) continue;
       if (Math.sin(a) > 0.55) continue;
-      g.fillRect(Math.round(x), Math.round(y), 3, 2);
+      g.fillRect(Math.round(mid + Math.cos(a) * rr * 0.95 + sx2 * 5),
+                 Math.round(H - 62 + Math.sin(a) * rr * 0.62 - 4), 3, 2);
     }
     g.restore();
-
-    /* and a soft occlusion where the canopy sits over the trunk */
     g.save(); g.globalAlpha = 0.3; g.fillStyle = "#1c4326";
-    g.beginPath(); g.ellipse(mid, forkY - 4, 16, 6, 0, 0, TWO_PI); g.fill();
-    g.restore();
+    g.beginPath(); g.ellipse(mid, forkY - 4, 16, 6, 0, 0, TWO_PI); g.fill(); g.restore();
 
   } else if (kind === "bush") {
-    g.fillStyle = "#3f8a48";
-    [[0,-16,16],[-13,-10,12],[13,-10,12]].forEach(([bx,by,br]) => {
-      g.beginPath(); g.arc(mid+bx, H+by, br, 0, TWO_PI); g.fill();
-    });
-    g.fillStyle = "rgba(255,255,255,.16)";
-    g.beginPath(); g.arc(mid + (litRight?5:-5), H-22, 9, 0, TWO_PI); g.fill();
-    // blossom sits ON the foliage, not floating above it
-    [[-8,-20],[6,-16],[-2,-25]].forEach(([bx,by],i) =>
+    const sets = [[[0,-16,16],[-13,-10,12],[13,-10,12]],
+                  [[0,-13,13],[-11,-8,10],[10,-9,11],[3,-19,9]],
+                  [[-8,-12,12],[8,-14,13],[0,-8,10]]][v % 3];
+    const col = ["#3f8a48", "#458f4e", "#3a8455"][v % 3];
+    g.fillStyle = col;
+    sets.forEach(([bx,by,br]) => { g.beginPath(); g.arc(mid+bx, H+by, br, 0, TWO_PI); g.fill(); });
+    g.save();
+    g.beginPath(); sets.forEach(([bx,by,br]) => { g.moveTo(mid+bx+br,H+by); g.arc(mid+bx, H+by, br, 0, TWO_PI); });
+    g.clip();
+    g.fillStyle = shade(col, 1.22);
+    sets.forEach(([bx,by,br]) => { g.beginPath(); g.arc(mid+bx+(litRight?br*0.3:-br*0.3), H+by-br*0.3, br*0.66, 0, TWO_PI); g.fill(); });
+    g.restore();
+    if (v !== 2) [[-8,-20],[6,-16],[-2,-25]].forEach(([bx,by],i) =>
       R(mid+bx, H+by, 3, 3, i%2 ? "#ff9ec4" : "#fff1e0"));
+
   } else if (kind === "rock") {
-    g.fillStyle = "#8c8577";
-    g.beginPath(); g.moveTo(mid-18, H); g.lineTo(mid-11, H-20);
-    g.lineTo(mid+5, H-24); g.lineTo(mid+18, H); g.fill();
-    g.fillStyle = litRight ? "#a49c8c" : "#7a7367";
-    g.beginPath(); g.moveTo(mid+1, H-22); g.lineTo(mid+18, H); g.lineTo(mid+6, H); g.fill();
-    g.fillStyle = "rgba(255,255,255,.18)";
-    g.beginPath(); g.moveTo(mid-6,H-16); g.lineTo(mid+2,H-22); g.lineTo(mid+5,H-13); g.fill();
+    const P = v % 2 ? [20,26,10] : [18,22,8];
+    poly([[mid-P[0], H],[mid-P[0]*0.6, H-P[1]],[mid+P[2]*0.4, H-P[1]-3],[mid+P[0], H]], "#8c8577");
+    poly([[mid+1, H-P[1]-1],[mid+P[0], H],[mid+P[0]*0.35, H]], litRight ? "#a49c8c" : "#767065");
+    g.fillStyle = "rgba(255,255,255,.2)";
+    poly([[mid-6,H-P[1]*0.7],[mid+2,H-P[1]],[mid+5,H-P[1]*0.45]], g.fillStyle);
+    g.save(); g.globalAlpha = 0.25; g.fillStyle = "#4f4a44";
+    for (let i = 0; i < 7; i++) g.fillRect(mid - P[0] + rnd() * P[0] * 2, H - rnd() * P[1], 2, 2);
+    g.restore();
 
   } else if (kind === "cabin") {
-    footing(mid - 30, H - 8, 60, 8, "#7a6a58");
-    wall(mid - 30, H - 46, 60, 38, "#8a6a4a", "wood");
-    roof(mid - 30, H - 46, 60, 26, "#7a3f30");
-    chimney(mid + 14, H - 60, 16, "#8d6b57");
-    window_(mid - 22, H - 38, 13, 11, true);
-    window_(mid + 9, H - 38, 13, 11, true);
-    door(mid - 6, H - 26, 13, 18, "#5c3b26");
-    // a porch step and two posts holding a small awning
-    R(mid - 12, H - 8, 25, 3, "#6f523a");
-    R(mid - 13, H - 22, 2, 14, "#6f523a");
-    R(mid + 11, H - 22, 2, 14, "#6f523a");
-    R(mid - 15, H - 24, 30, 2, "#5e4630");
-    // a couple of logs stacked against the lit wall
-    for (let i = 0; i < 3; i++) R(mid + 22, H - 14 - i * 4, 9, 3, i % 2 ? "#8a6a4a" : "#7a5c3f");
+    const wallCol = v % 2 ? "#8a6a4a" : "#7d6144";
+    footing(mid - 32, H - 8, 64, 8, "#7a6a58");
+    box3(mid - 32, H - 48, 64, 40, 20, wallCol, { material: "log", top: false });
+    gable(mid - 32, H - 48, 64, 26, 20, v % 2 ? "#7a3f30" : "#6b4a35");
+    chimney(mid + (v % 2 ? 15 : -22), H - 62, 18, "#9a8c80", true);
+    window_(mid - 24, H - 40, 14, 12, true);
+    window_(mid + 10, H - 40, 14, 12, true);
+    door(mid - 6, H - 27, 13, 19, "#5c3b26");
+    R(mid - 14, H - 8, 28, 3, "#6f523a");
+    R(mid - 15, H - 24, 2, 16, "#6f523a");
+    R(mid + 13, H - 24, 2, 16, "#6f523a");
+    R(mid - 17, H - 26, 34, 2, "#5e4630");
+    for (let i = 0; i < 3; i++) R(mid + 24, H - 14 - i * 4, 10, 3, i % 2 ? "#8a6a4a" : "#7a5c3f");
 
   } else if (kind === "house") {
-    footing(mid - 30, H - 8, 60, 8, "#9a8a76");
-    wall(mid - 30, H - 50, 60, 42, "#e0c3a4", "siding");
-    roof(mid - 30, H - 50, 60, 24, "#9c6152");
-    chimney(mid - 20, H - 66, 14, "#a8705c");
-    window_(mid - 23, H - 43, 14, 12, false);
-    window_(mid + 9, H - 43, 14, 12, true);
-    door(mid - 6, H - 28, 13, 20, "#7d5340");
-    // porch: deck, posts, a shallow awning with a scalloped edge
-    R(mid - 20, H - 8, 41, 3, "#c8a98c");
-    R(mid - 20, H - 26, 2, 18, "#c8a98c");
-    R(mid + 19, H - 26, 2, 18, "#c8a98c");
-    R(mid - 22, H - 29, 45, 3, "#8c5b4a");
-    g.fillStyle = "#a8705c";
-    for (let x = mid - 22; x < mid + 23; x += 5) { g.beginPath(); g.arc(x + 2, H - 26, 2.5, 0, Math.PI); g.fill(); }
-    // a flower box under the lit window
-    R(mid + 8, H - 30, 16, 5, "#8c5b4a");
-    [0,4,8,12].forEach((o,i) => R(mid + 9 + o, H - 33, 3, 3, ["#ff9ec4","#ffe07a","#fff1e0","#ff7f8a"][i]));
+    /* four genuinely different houses, so a street is a street */
+    const wallCols = ["#e0c3a4", "#cfd8c4", "#e8d4c0", "#d6c8dc"];
+    const roofCols = ["#9c6152", "#6f7f8c", "#8c6a4a", "#7a6280"];
+    const trimCols = ["#fff4e6", "#f2f6ee", "#fff0dc", "#f4eefa"];
+    const wall = wallCols[v % 4], roof = roofCols[v % 4], trim = trimCols[v % 4];
+
+    if (v % 4 === 0) {                       /* single-storey ranch, wide */
+      footing(mid - 36, H - 8, 72, 8, "#9a8a76");
+      box3(mid - 36, H - 42, 72, 34, 22, wall, { material: "siding", top: false });
+      gable(mid - 36, H - 42, 72, 18, 22, roof);
+      chimney(mid + 20, H - 54, 13, "#a8705c");
+      window_(mid - 28, H - 36, 15, 12, false, trim);
+      window_(mid + 12, H - 36, 15, 12, true, trim);
+      door(mid - 6, H - 26, 13, 18, "#7d5340");
+      R(mid - 22, H - 8, 44, 3, "#c8a98c");
+      R(mid - 22, H - 25, 2, 17, trim); R(mid + 20, H - 25, 2, 17, trim);
+      R(mid - 24, H - 28, 48, 3, shade(roof, 0.9));
+
+    } else if (v % 4 === 1) {                /* two-storey colonial */
+      footing(mid - 28, H - 8, 56, 8, "#9a8a76");
+      box3(mid - 28, H - 58, 56, 50, 20, wall, { material: "siding", top: false });
+      gable(mid - 28, H - 58, 56, 20, 20, roof);
+      chimney(mid - 20, H - 70, 15, "#a8705c");
+      window_(mid - 21, H - 52, 12, 11, true,  trim);
+      window_(mid + 9,  H - 52, 12, 11, false, trim);
+      window_(mid - 21, H - 33, 12, 11, false, trim);
+      window_(mid + 9,  H - 33, 12, 11, true,  trim);
+      door(mid - 6, H - 26, 13, 18, "#5f4a6b");
+      R(mid - 12, H - 30, 25, 3, shade(roof, 0.9));   // door hood
+      R(mid - 11, H - 27, 2, 1, trim);
+
+    } else if (v % 4 === 2) {                /* cottage with a wrap porch */
+      footing(mid - 30, H - 8, 60, 8, "#9a8a76");
+      box3(mid - 30, H - 44, 60, 36, 18, wall, { material: "stucco", top: false });
+      gable(mid - 30, H - 44, 60, 22, 18, roof);
+      window_(mid - 22, H - 38, 13, 11, true, trim);
+      window_(mid + 10, H - 38, 13, 11, true, trim);
+      door(mid - 5, H - 26, 12, 18, "#8a5a44");
+      /* the porch: deck, four posts, a scalloped valance */
+      R(mid - 34, H - 8, 68, 3, "#c8a98c");
+      for (const px of [-34, -14, 12, 31]) R(mid + px, H - 27, 2, 19, trim);
+      R(mid - 36, H - 30, 72, 3, shade(roof, 0.85));
+      g.fillStyle = shade(roof, 1.05);
+      for (let x = mid - 36; x < mid + 37; x += 5) { g.beginPath(); g.arc(x + 2, H - 27, 2.5, 0, Math.PI); g.fill(); }
+      R(mid + 14, H - 34, 16, 5, "#8c5b4a");
+      [0,4,8,12].forEach((o,i) => R(mid + 15 + o, H - 37, 3, 3, ["#ff9ec4","#ffe07a","#fff1e0","#ff7f8a"][i]));
+
+    } else {                                  /* small bungalow, hipped */
+      footing(mid - 24, H - 6, 48, 6, "#9a8a76");
+      box3(mid - 24, H - 36, 48, 30, 16, wall, { material: "siding", top: false });
+      /* a hipped roof: shallow, with the ridge short */
+      const dx = sd * 16 * 0.52, dy = -16 * 0.40;
+      poly([[mid - 28, H - 36], [mid - 8, H - 50], [mid + 8, H - 50], [mid + 28, H - 36]], roof);
+      poly([[mid - 8, H - 50], [mid + 8, H - 50], [mid + 8 + dx, H - 50 + dy], [mid - 8 + dx, H - 50 + dy]], shade(roof, 1.15));
+      poly([[mid + 8, H - 50], [mid + 28, H - 36], [mid + 28 + dx, H - 36 + dy], [mid + 8 + dx, H - 50 + dy]], shade(roof, 0.7));
+      R(mid - 28, H - 37, 56, 2, shade(roof, 0.55));
+      window_(mid - 18, H - 31, 13, 11, true, trim);
+      door(mid + 4, H - 24, 12, 18, "#6b5340");
+      R(mid + 2, H - 28, 17, 3, shade(roof, 0.9));
+    }
+    /* every house gets a path out to the kerb */
+    R(mid - 5, H - 4, 11, 4, "#c9c2b4");
+    R(mid - 5, H - 4, 11, 1, "#dcd6ca");
 
   } else if (kind === "store") {
-    footing(mid - 34, H - 8, 68, 8, "#8e8378");
-    wall(mid - 34, H - 54, 68, 46, "#cbb59a", "brick");
-    // a flat parapet rather than a pitch, so it reads as a shop
-    R(mid - 37, H - 60, 74, 6, "#a8927a");
-    R(mid - 37, H - 60, 74, 2, "#c2ab90");
-    R(mid - 37, H - 54, 74, 2, "rgba(0,0,0,.28)");
-    // striped awning over the full frontage
-    for (let i = 0, x = mid - 34; x < mid + 34; x += 8, i++) {
-      g.fillStyle = i % 2 ? "#ff9ec4" : "#fff1e0";
-      g.beginPath();
-      g.moveTo(x, H - 34); g.lineTo(x + 8, H - 34);
-      g.lineTo(x + 8, H - 27); g.lineTo(x, H - 27); g.fill();
+    const wall = v % 2 ? "#cbb59a" : "#b9c2cc";
+    footing(mid - 36, H - 8, 72, 8, "#8e8378");
+    box3(mid - 36, H - 54, 72, 46, 24, wall, { material: "brick", top: false });
+    parapet(mid - 36, H - 54, 72, 24, shade(wall, 0.85));
+    for (let i = 0, x = mid - 36; x < mid + 36; x += 8, i++) {
+      poly([[x, H - 34], [x + 8, H - 34], [x + 8, H - 27], [x, H - 27]],
+           i % 2 ? (v % 2 ? "#ff9ec4" : "#7ec8e3") : "#fff1e0");
     }
-    R(mid - 34, H - 27, 68, 2, "rgba(0,0,0,.25)");
-    // shopfront glazing, in three bays
-    for (let i = 0; i < 3; i++) window_(mid - 30 + i * 21, H - 24, 17, 14, true);
-    door(mid + 22, H - 24, 11, 16, "#6f5a44");
-    // a small hanging sign
+    R(mid - 36, H - 27, 72, 2, "rgba(0,0,0,.28)");
+    for (let i = 0; i < 3; i++) window_(mid - 32 + i * 22, H - 24, 18, 14, true, "#6f5a44");
+    door(mid + 24, H - 24, 11, 16, "#6f5a44");
     R(mid - 3, H - 46, 6, 2, "#6f5a44");
-    R(mid - 12, H - 44, 24, 8, "#7ec8e3");
-    R(mid - 12, H - 44, 24, 1, "#a8dcef");
-    for (let i = 0; i < 4; i++) R(mid - 8 + i * 5, H - 41, 3, 3, "#2e4a58");
+    R(mid - 13, H - 44, 26, 9, v % 2 ? "#7ec8e3" : "#ffd166");
+    R(mid - 13, H - 44, 26, 1, "rgba(255,255,255,.6)");
+    for (let i = 0; i < 4; i++) R(mid - 9 + i * 5, H - 41, 3, 3, "#2e4a58");
 
   } else if (kind === "shed") {
-    footing(mid - 18, H - 6, 36, 6, "#7a6a58");
-    wall(mid - 18, H - 32, 36, 26, "#9a7a52", "wood");
-    // a lean-to roof, one slope only
-    g.fillStyle = "#6a4030";
-    g.beginPath();
-    g.moveTo(mid - 22, H - 32); g.lineTo(mid + 22, H - 42);
-    g.lineTo(mid + 22, H - 38); g.lineTo(mid - 22, H - 28); g.fill();
-    g.fillStyle = "rgba(0,0,0,.22)";
-    g.beginPath(); g.moveTo(mid - 22, H - 30); g.lineTo(mid + 22, H - 40); g.lineTo(mid + 22, H - 38); g.lineTo(mid - 22, H - 28); g.fill();
-    door(mid - 6, H - 24, 12, 18, "#5c3b26");
-    window_(mid + 6, H - 28, 9, 8, false);
+    footing(mid - 20, H - 6, 40, 6, "#7a6a58");
+    box3(mid - 20, H - 34, 40, 28, 14, "#9a7a52", { material: "wood", top: false });
+    const dx = sd * 14 * 0.52, dy = -14 * 0.40;
+    poly([[mid - 24, H - 34], [mid + 24, H - 44], [mid + 24 + dx, H - 44 + dy], [mid - 24 + dx, H - 34 + dy]], shade("#6a4030", 1.1));
+    poly([[mid - 24, H - 34], [mid + 24, H - 44], [mid + 24, H - 40], [mid - 24, H - 30]], "#6a4030");
+    door(mid - 6, H - 26, 12, 20, "#5c3b26");
+    window_(mid + 7, H - 30, 9, 8, false);
 
   } else if (kind === "lamp") {
-    R(mid - 3, H - 6, 6, 6, "#4a4650");           // base
-    R(mid - 2, H - 62, 4, 56, "#4d4a55");
-    R(mid - 2, H - 62, 1, 56, "#63606d");
-    R(mid - 9, H - 70, 18, 8, "#6a6675");
-    R(mid - 9, H - 70, 18, 2, "#807c8c");
-    R(mid - 7, H - 68, 14, 5, "#ffe6a8");
-    g.save(); g.globalAlpha = 0.30; g.fillStyle = "#ffd166";
-    g.beginPath(); g.arc(mid, H - 64, 17, 0, TWO_PI); g.fill();
+    R(mid - 4, H - 6, 8, 6, "#4a4650");
+    R(mid - 4, H - 6, 8, 1, "#5e5a66");
+    box3(mid - 2, H - 64, 4, 58, 3, "#544f5e", { top: false });
+    R(mid - 10, H - 72, 20, 8, "#6a6675");
+    R(mid - 10, H - 72, 20, 2, "#847f92");
+    R(mid - 8, H - 70, 16, 5, "#ffe6a8");
+    g.save(); g.globalAlpha = 0.32; g.fillStyle = "#ffd166";
+    g.beginPath(); g.arc(mid, H - 66, 18, 0, TWO_PI); g.fill();
+    /* the pool of light it throws on the ground */
+    g.globalAlpha = 0.22;
+    g.beginPath(); g.ellipse(mid, H - 2, 22, 7, 0, 0, TWO_PI); g.fill();
     g.restore();
-    // a hanging basket, because a bare pole is a bare pole
-    R(mid + 6, H - 56, 2, 5, "#4d4a55");
-    R(mid + 3, H - 51, 8, 4, "#8c5b4a");
-    [0,3,6].forEach((o,i) => R(mid + 3 + o, H - 54, 3, 3, ["#ff9ec4","#ffe07a","#ff7f8a"][i]));
+    R(mid + 7, H - 58, 2, 5, "#544f5e");
+    R(mid + 4, H - 53, 9, 4, "#8c5b4a");
+    [0,3,6].forEach((o,i) => R(mid + 4 + o, H - 56, 3, 3, ["#ff9ec4","#ffe07a","#ff7f8a"][i]));
 
   } else if (kind === "postbox") {
-    R(mid - 4, H - 6, 8, 6, "#6a5550");
-    R(mid - 9, H - 32, 18, 26, "#c0524f");
-    R(litRight ? mid + 5 : mid - 9, H - 32, 4, 26, shade("#c0524f", litRight ? LIT : DIM));
-    g.fillStyle = "#a8403f";
-    g.beginPath(); g.arc(mid, H - 32, 9, Math.PI, 0); g.fill();
-    g.fillStyle = "#cf615e";
-    g.beginPath(); g.arc(mid - 2, H - 33, 5, Math.PI, 0); g.fill();
+    R(mid - 5, H - 6, 10, 6, "#6a5550");
+    box3(mid - 9, H - 32, 18, 26, 9, "#c0524f", { top: false });
+    g.fillStyle = "#a8403f"; g.beginPath(); g.arc(mid, H - 32, 9, Math.PI, 0); g.fill();
+    g.fillStyle = "#cf615e"; g.beginPath(); g.arc(mid - 2, H - 33, 5, Math.PI, 0); g.fill();
     R(mid - 6, H - 27, 12, 3, "#2f2530");
     R(mid - 6, H - 18, 12, 1, "#8e3a38");
 
   } else if (kind === "hydrant") {
-    R(mid - 6, H - 4, 12, 4, "#8a3f3c");
-    R(mid - 5, H - 22, 10, 18, "#c85a4e");
-    R(litRight ? mid + 2 : mid - 5, H - 22, 3, 18, shade("#c85a4e", litRight ? LIT : DIM));
-    R(mid - 8, H - 18, 16, 3, "#c85a4e");
-    g.fillStyle = "#d97a6b";
-    g.beginPath(); g.arc(mid, H - 22, 5, Math.PI, 0); g.fill();
-    R(mid - 1, H - 29, 2, 4, "#8a3f3c");
+    R(mid - 7, H - 4, 14, 4, "#7a3a36");
+    box3(mid - 5, H - 22, 10, 18, 6, "#c85a4e", { top: false });
+    R(mid - 9, H - 18, 18, 3, "#c85a4e");
+    R(mid - 9, H - 18, 18, 1, "#dd7566");
+    g.fillStyle = "#d97a6b"; g.beginPath(); g.arc(mid, H - 22, 5, Math.PI, 0); g.fill();
+    R(mid - 1.5, H - 29, 3, 5, "#8a3f3c");
+    R(mid - 3, H - 30, 6, 2, "#a04c46");
 
   } else if (kind === "signpost") {
-    R(mid - 2, H - 52, 4, 52, "#6f5a44");
-    R(mid - 2, H - 52, 1, 52, "#87705a");
-    // two fingerposts pointing opposite ways
-    g.fillStyle = "#fff1e0";
-    g.beginPath(); g.moveTo(mid - 26, H - 48); g.lineTo(mid + 2, H - 48);
-    g.lineTo(mid + 2, H - 40); g.lineTo(mid - 26, H - 40); g.lineTo(mid - 31, H - 44); g.fill();
-    g.fillStyle = "#e8d9c0";
-    g.fillRect(mid - 26, H - 42, 28, 2);
-    for (let i = 0; i < 4; i++) R(mid - 23 + i * 5, H - 46, 3, 2, "#7a5c3f");
-    g.fillStyle = "#ffd9a0";
-    g.beginPath(); g.moveTo(mid - 2, H - 36); g.lineTo(mid + 24, H - 36);
-    g.lineTo(mid + 29, H - 32); g.lineTo(mid + 24, H - 28); g.lineTo(mid - 2, H - 28); g.fill();
-    for (let i = 0; i < 3; i++) R(mid + 2 + i * 5, H - 34, 3, 2, "#7a5c3f");
+    box3(mid - 2, H - 52, 4, 52, 3, "#6f5a44", { top: false });
+    poly([[mid - 27, H - 48], [mid + 2, H - 48], [mid + 2, H - 40], [mid - 27, H - 40], [mid - 32, H - 44]], "#fff1e0");
+    R(mid - 27, H - 42, 29, 2, "#e0d0b6");
+    for (let i = 0; i < 4; i++) R(mid - 24 + i * 5, H - 46, 3, 2, "#7a5c3f");
+    poly([[mid - 2, H - 36], [mid + 25, H - 36], [mid + 30, H - 32], [mid + 25, H - 28], [mid - 2, H - 28]], "#ffd9a0");
+    for (let i = 0; i < 3; i++) R(mid + 3 + i * 5, H - 34, 3, 2, "#7a5c3f");
 
-  } else if (kind === "flowerbox") {
-    R(mid - 16, H - 10, 32, 10, "#8c5b4a");
-    R(mid - 16, H - 10, 32, 2, "#a8705c");
-    g.save(); g.globalAlpha = 0.3; g.fillStyle = "#5e3d31";
-    for (let x = mid - 14; x < mid + 15; x += 6) g.fillRect(x, H - 8, 1, 8);
-    g.restore();
-    R(mid - 14, H - 13, 28, 3, "#3f7a48");
-    for (let i = 0; i < 7; i++)
-      R(mid - 14 + i * 4, H - 17, 3, 4, ["#ff9ec4","#ffe07a","#fff1e0","#ff7f8a","#ffc4a3"][i % 5]);
+  } else if (kind === "flowerbox" || kind === "planter") {
+    const w = kind === "planter" ? 20 : 17;
+    box3(mid - w, H - 12, w * 2, 12, 8, "#8c5b4a", { top: false });
+    R(mid - w, H - 14, w * 2, 3, "#a8705c");
+    R(mid - w + 2, H - 16, w * 2 - 4, 3, "#3f7a48");
+    const cols = ["#ff9ec4","#ffe07a","#fff1e0","#ff7f8a","#ffc4a3","#c8a8ff"];
+    for (let i = 0; i * 4 < w * 2 - 4; i++)
+      R(mid - w + 2 + i * 4, H - 20, 3, 4, cols[(i + v) % cols.length]);
 
-  } else if (kind === "pole") {                    // IV pole
-    R(mid - 6, H - 4, 12, 4, "#98a2b3");
-    R(mid - 1, H - 66, 3, 62, "#b9c2d1");
-    R(mid - 1, H - 66, 1, 62, "#d5dce7");
-    R(mid - 10, H - 70, 20, 4, "#b9c2d1");
-    R(mid - 8, H - 64, 9, 16, "#e8f4ff");
-    R(mid - 7, H - 60, 7, 10, "#a8d8ef");
-    R(mid - 7, H - 60, 7, 2, "#c9e8f7");
-    R(mid + 3, H - 66, 2, 12, "#cfd8e4");
+  } else if (kind === "mailbox") {
+    box3(mid - 1.5, H - 24, 3, 24, 3, "#6f5a44", { top: false });
+    box3(mid - 8, H - 34, 16, 10, 8, "#7f8c9c", { top: true });
+    R(mid + 6, H - 33, 2, 6, "#c0524f");            // the flag, up
+    R(mid + 5, H - 34, 4, 3, "#c0524f");
 
-  } else if (kind === "cart") {                    // the gift cart
-    R(mid - 18, H - 30, 36, 20, "#e3e8f0");
-    R(litRight ? mid + 12 : mid - 18, H - 30, 6, 20, "#c8d0dc");
-    R(mid - 18, H - 34, 36, 5, "#c3cbd8");
-    R(mid - 18, H - 34, 36, 1, "#dfe5ee");
-    // the parcel on top, with a ribbon and a bow
-    R(mid - 13, H - 48, 26, 14, "#ff9ec4");
-    R(mid - 13, H - 48, 26, 2, "#ffc0d8");
+  } else if (kind === "bike") {
+    g.strokeStyle = "#3a3540"; g.lineWidth = 2;
+    g.beginPath(); g.arc(mid - 8, H - 8, 7, 0, TWO_PI); g.stroke();
+    g.beginPath(); g.arc(mid + 9, H - 8, 7, 0, TWO_PI); g.stroke();
+    g.strokeStyle = "#e8556f"; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(mid - 8, H - 8); g.lineTo(mid - 1, H - 20);
+    g.lineTo(mid + 9, H - 8); g.moveTo(mid - 1, H - 20); g.lineTo(mid + 4, H - 20);
+    g.stroke();
+    R(mid - 4, H - 23, 7, 2, "#2f2a34");
+
+  } else if (kind === "hoop") {
+    box3(mid - 2, H - 52, 4, 52, 3, "#6a6675", { top: false });
+    R(mid - 12, H - 62, 24, 14, "#f2ede4");
+    R(mid - 12, H - 62, 24, 2, "#ffffff");
+    R(mid - 5, H - 56, 10, 6, "#c0524f");
+    g.strokeStyle = "#e8863f"; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(mid - 6, H - 48); g.lineTo(mid + 6, H - 48); g.stroke();
+    g.strokeStyle = "rgba(255,255,255,.7)"; g.lineWidth = 1;
+    for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(mid - 5 + i * 3.3, H - 47); g.lineTo(mid - 3 + i * 2.2, H - 41); g.stroke(); }
+
+  } else if (kind === "pole") {
+    R(mid - 7, H - 4, 14, 4, "#98a2b3");
+    box3(mid - 1.5, H - 66, 3, 62, 3, "#b9c2d1", { top: false });
+    R(mid - 11, H - 70, 22, 4, "#b9c2d1");
+    R(mid - 11, H - 70, 22, 1, "#dfe6ef");
+    R(mid - 9, H - 64, 10, 17, "#e8f4ff");
+    R(mid - 8, H - 60, 8, 11, "#a8d8ef");
+    R(mid - 8, H - 60, 8, 2, "#c9e8f7");
+    R(mid + 3, H - 66, 2, 13, "#cfd8e4");
+
+  } else if (kind === "cart") {
+    box3(mid - 19, H - 30, 38, 20, 12, "#e3e8f0", { top: true });
+    R(mid - 19, H - 34, 38, 5, "#c3cbd8");
+    R(mid - 19, H - 34, 38, 1, "#dfe5ee");
+    box3(mid - 14, H - 48, 28, 14, 10, "#ff9ec4", { top: true });
     R(mid - 2, H - 48, 4, 14, "#fff1e0");
-    R(mid - 13, H - 42, 26, 3, "#fff1e0");
+    R(mid - 14, H - 42, 28, 3, "#fff1e0");
     g.fillStyle = "#fff1e0";
     g.beginPath(); g.arc(mid - 3, H - 50, 3, 0, TWO_PI); g.arc(mid + 3, H - 50, 3, 0, TWO_PI); g.fill();
-    [-14, 8].forEach((o) => { R(mid + o, H - 10, 7, 7, "#5a5f6b"); R(mid + o + 2, H - 8, 3, 3, "#8f96a4"); });
+    [-15, 9].forEach((o) => { R(mid + o, H - 10, 7, 7, "#5a5f6b"); R(mid + o + 2, H - 8, 3, 3, "#8f96a4"); });
 
   } else if (kind === "chair") {
-    R(mid - 13, H - 24, 26, 6, "#9fb4cc");
-    R(mid - 13, H - 24, 26, 1, "#bccbdd");
-    R(mid - 13, H - 42, 5, 20, "#9fb4cc");
-    R(mid - 13, H - 42, 5, 1, "#bccbdd");
-    R(mid - 14, H - 8, 5, 8, "#4f5865"); R(mid + 8, H - 8, 5, 8, "#4f5865");
-    R(mid - 8, H - 20, 18, 2, "#8aa0ba");
+    box3(mid - 14, H - 24, 28, 6, 10, "#9fb4cc", { top: true });
+    box3(mid - 14, H - 44, 5, 22, 8, "#9fb4cc", { top: true });
+    R(mid - 15, H - 8, 5, 8, "#4f5865"); R(mid + 9, H - 8, 5, 8, "#4f5865");
+    R(mid - 9, H - 20, 19, 2, "#8aa0ba");
 
   } else if (kind === "plant") {
     g.strokeStyle = "#3f7a48"; g.lineWidth = 2;
     for (let i = 0; i < 5; i++) {
-      const t = -Math.PI / 2 + (i - 2) * 0.42;
+      const t = -Math.PI / 2 + (i - 2) * (v % 2 ? 0.5 : 0.42);
       g.beginPath(); g.moveTo(mid, H - 16);
       g.lineTo(mid + Math.cos(t) * 12, H - 19 + Math.sin(t) * 15); g.stroke();
     }
     g.fillStyle = "#4f9e58";
     for (let i = 0; i < 5; i++) {
-      const t = -Math.PI / 2 + (i - 2) * 0.42;
+      const t = -Math.PI / 2 + (i - 2) * (v % 2 ? 0.5 : 0.42);
       g.beginPath();
-      g.ellipse(mid + Math.cos(t) * 13, H - 21 + Math.sin(t) * 15, 5, 11, t + Math.PI / 2, 0, TWO_PI);
+      g.ellipse(mid + Math.cos(t) * 13, H - 21 + Math.sin(t) * 13, 5, 10, t + Math.PI / 2, 0, TWO_PI);
       g.fill();
     }
-    g.fillStyle = "rgba(255,255,255,.18)";
-    g.beginPath(); g.ellipse(mid + (litRight?6:-6), H - 30, 4, 8, 0, 0, TWO_PI); g.fill();
-    R(mid - 10, H - 18, 20, 5, "#d69a72");
-    R(mid - 8, H - 14, 16, 14, "#c98f68");
-    R(litRight ? mid + 4 : mid - 8, H - 14, 4, 14, shade("#c98f68", litRight ? LIT : DIM));
+    g.fillStyle = "rgba(255,255,255,.2)";
+    g.beginPath(); g.ellipse(mid + (litRight ? 6 : -6), H - 30, 4, 8, 0, 0, TWO_PI); g.fill();
+    R(mid - 10, H - 18, 20, 4, "#d69a72");
+    box3(mid - 8, H - 14, 16, 14, 8, "#c98f68", { top: false });
 
   } else if (kind === "vending") {
-    footing(mid - 15, H - 5, 30, 5, "#6f7684");
-    wall(mid - 15, H - 46, 30, 41, "#5f7f9a", "panel");
-    R(mid - 11, H - 42, 15, 24, "#0f1a24");
-    // rows of little bottles behind the glass
+    footing(mid - 16, H - 5, 32, 5, "#6f7684");
+    box3(mid - 16, H - 46, 32, 41, 12, "#5f7f9a", { material: "panel", top: true });
+    R(mid - 12, H - 42, 16, 25, "#0f1a24");
     for (let r = 0; r < 4; r++)
       for (let cc = 0; cc < 4; cc++)
-        R(mid - 10 + cc * 4, H - 41 + r * 6, 3, 5, ["#ff7f8a","#ffd166","#7ddba3","#7ec8e3"][(r+cc)%4]);
-    g.save(); g.globalAlpha = 0.18; g.fillStyle = "#fff";
-    g.beginPath(); g.moveTo(mid - 11, H - 20); g.lineTo(mid - 11, H - 42); g.lineTo(mid - 3, H - 42); g.fill();
+        R(mid - 11 + cc * 4, H - 41 + r * 6, 3, 5, ["#ff7f8a","#ffd166","#7ddba3","#7ec8e3"][(r+cc)%4]);
+    g.save(); g.globalAlpha = 0.2; g.fillStyle = "#fff";
+    poly([[mid - 12, H - 19],[mid - 12, H - 42],[mid - 4, H - 42]], "#fff");
     g.restore();
-    R(mid + 6, H - 40, 7, 12, "#3f4a58");
-    for (let i = 0; i < 3; i++) R(mid + 7, H - 38 + i * 4, 5, 2, "#7f8b9c");
-    R(mid + 6, H - 24, 7, 4, "#2a323c");
+    R(mid + 6, H - 40, 8, 13, "#3f4a58");
+    for (let i = 0; i < 3; i++) R(mid + 7, H - 38 + i * 4, 6, 2, "#7f8b9c");
+    R(mid + 6, H - 24, 8, 4, "#2a323c");
 
   } else if (kind === "sign") {
-    R(mid - 2, H - 40, 4, 40, "#9aa6b6");
-    R(mid - 2, H - 40, 1, 40, "#b7c1ce");
-    R(mid - 20, H - 62, 40, 22, "#fff8e8");
-    R(mid - 20, H - 62, 40, 2, "#ffffff");
-    R(mid - 20, H - 42, 40, 2, "rgba(0,0,0,.2)");
-    R(mid - 17, H - 58, 34, 3, "#7ec8e3");
-    for (let i = 0; i < 3; i++) R(mid - 17, H - 53 + i * 4, 20 - i * 4, 2, "#9fb0c4");
-    // a little heart in the corner, because it is that kind of hospital
+    box3(mid - 2, H - 40, 4, 40, 3, "#9aa6b6", { top: false });
+    box3(mid - 21, H - 62, 42, 22, 6, "#fff8e8", { top: true });
+    R(mid - 18, H - 58, 36, 3, v % 2 ? "#7ec8e3" : "#7ddba3");
+    for (let i = 0; i < 3; i++) R(mid - 18, H - 53 + i * 4, 22 - i * 5, 2, "#9fb0c4");
     g.fillStyle = "#ff7f8a";
     g.beginPath();
-    g.moveTo(mid + 13, H - 47); g.bezierCurveTo(mid + 8, H - 52, mid + 10, H - 56, mid + 13, H - 53);
-    g.bezierCurveTo(mid + 16, H - 56, mid + 18, H - 52, mid + 13, H - 47); g.fill();
+    g.moveTo(mid + 14, H - 47); g.bezierCurveTo(mid + 9, H - 52, mid + 11, H - 56, mid + 14, H - 53);
+    g.bezierCurveTo(mid + 17, H - 56, mid + 19, H - 52, mid + 14, H - 47); g.fill();
 
   } else if (kind === "bench") {
-    R(mid - 20, H - 6, 4, 6, "#6f7684"); R(mid + 16, H - 6, 4, 6, "#6f7684");
-    for (let i = 0; i < 3; i++) R(mid - 22, H - 14 + i * 3, 44, 2, i % 2 ? "#b58a5f" : "#c9a06f");
-    for (let i = 0; i < 3; i++) R(mid - 22, H - 30 + i * 4, 44, 3, "#c9a06f");
-    R(mid - 22, H - 30, 44, 1, "#dcb885");
+    R(mid - 21, H - 6, 4, 6, "#6f7684"); R(mid + 17, H - 6, 4, 6, "#6f7684");
+    for (let i = 0; i < 3; i++) R(mid - 23, H - 14 + i * 3, 46, 2, i % 2 ? "#b58a5f" : "#c9a06f");
+    for (let i = 0; i < 3; i++) R(mid - 23, H - 30 + i * 4, 46, 3, "#c9a06f");
+    R(mid - 23, H - 30, 46, 1, "#dcb885");
 
   } else if (kind === "laundry") {
-    R(mid - 3, H - 6, 6, 6, "#5e5044");
-    R(mid - 2, H - 64, 4, 58, "#7a6a58");
-    R(mid - 2, H - 64, 1, 58, "#8f7d68");
+    R(mid - 4, H - 6, 8, 6, "#5e5044");
+    box3(mid - 2, H - 66, 4, 60, 3, "#7a6a58", { top: false });
     g.strokeStyle = "#d8cfc0"; g.lineWidth = 1;
-    g.beginPath(); g.moveTo(mid - 30, H - 60); g.quadraticCurveTo(mid, H - 54, mid + 30, H - 60); g.stroke();
+    g.beginPath(); g.moveTo(mid - 32, H - 62); g.quadraticCurveTo(mid, H - 55, mid + 32, H - 62); g.stroke();
     const cols = ["#ff9ec4", "#ffe07a", "#7ec8e3", "#fff1e0", "#ffc4a3"];
     for (let i = 0; i < 5; i++) {
-      const x = mid - 26 + i * 12;
-      const sag = H - 59 + Math.sin((i / 4) * Math.PI) * 4;
-      R(x, sag, 9, 16, cols[i]);
-      R(x, sag, 9, 2, shade(cols[i], 1.15));
-      R(x, sag + 16, 9, 1, "rgba(0,0,0,.2)");
-      R(x + 3, sag - 2, 3, 2, "#c9b8a4");            // the peg
+      const x = mid - 28 + i * 13;
+      const sag = H - 61 + Math.sin((i / 4) * Math.PI) * 5;
+      /* a hanging shape rather than a flat rectangle */
+      poly([[x, sag], [x + 10, sag], [x + 11, sag + 17], [x - 1, sag + 17]], cols[i]);
+      R(x, sag, 10, 2, shade(cols[i], 1.18));
+      R(x - 1, sag + 17, 12, 1, "rgba(0,0,0,.22)");
+      R(x + 3, sag - 2, 3, 2, "#c9b8a4");
     }
 
   } else if (kind === "watertank") {
-    // legs
-    [-14, 10].forEach((o) => { R(mid + o, H - 30, 4, 30, "#5e5248"); R(mid + o, H - 30, 1, 30, "#75675a"); });
-    R(mid - 16, H - 22, 32, 2, "#5e5248");
-    // the drum, banded
-    R(mid - 18, H - 66, 36, 36, "#8a7461");
-    R(litRight ? mid + 10 : mid - 18, H - 66, 8, 36, shade("#8a7461", litRight ? LIT : DIM));
-    for (let i = 0; i < 3; i++) R(mid - 18, H - 60 + i * 11, 36, 2, "#6d5c4c");
-    g.save(); g.globalAlpha = 0.2;
-    for (let x = mid - 16; x < mid + 17; x += 5) g.fillRect(x, H - 66, 1, 36);
+    [-15, 11].forEach((o) => { box3(mid + o, H - 30, 4, 30, 3, "#5e5248", { top: false }); });
+    R(mid - 17, H - 22, 34, 2, "#5e5248");
+    box3(mid - 19, H - 66, 38, 36, 16, "#8a7461", { top: false });
+    for (let i = 0; i < 3; i++) R(mid - 19, H - 60 + i * 11, 38, 2, "#6d5c4c");
+    g.save(); g.globalAlpha = 0.22; g.fillStyle = "#5b4c3d";
+    for (let x = mid - 17; x < mid + 18; x += 5) g.fillRect(x, H - 66, 1, 36);
     g.restore();
-    // conical lid
-    g.fillStyle = "#6d5c4c";
-    g.beginPath(); g.moveTo(mid - 20, H - 66); g.lineTo(mid, H - 78); g.lineTo(mid + 20, H - 66); g.fill();
-    g.fillStyle = "rgba(0,0,0,.2)";
-    g.beginPath(); g.moveTo(litRight ? mid - 20 : mid + 20, H - 66); g.lineTo(mid, H - 78); g.lineTo(mid, H - 66); g.fill();
+    poly([[mid - 21, H - 66], [mid, H - 80], [mid + 21, H - 66]], "#6d5c4c");
+    poly([[litRight ? mid - 21 : mid + 21, H - 66], [mid, H - 80], [mid, H - 66]], "rgba(0,0,0,.22)");
 
-  } else if (kind === "aircon") {
-    R(mid - 17, H - 26, 34, 26, "#8d8894");
-    R(litRight ? mid + 11 : mid - 17, H - 26, 6, 26, shade("#8d8894", litRight ? LIT : DIM));
-    R(mid - 17, H - 30, 34, 5, "#a29daa");
-    R(mid - 17, H - 30, 34, 1, "#bab5c2");
-    g.fillStyle = "#4f4a58";
-    g.beginPath(); g.arc(mid, H - 14, 10, 0, TWO_PI); g.fill();
-    g.strokeStyle = "#8d8894"; g.lineWidth = 2;
+  } else if (kind === "acunit") {
+    /* Squarely a machine bolted to a roof: a boxed housing with a louvre
+       grille and a small recessed fan. The old one was a big bare disc
+       and read as an ambiguous icon rather than an object. */
+    R(mid - 20, H - 5, 40, 5, "#4f4a58");
+    box3(mid - 18, H - 30, 36, 25, 16, "#8d8894", { material: "panel", top: true });
+    R(mid - 14, H - 27, 15, 19, "#5a5563");
+    for (let yy = H - 25; yy < H - 9; yy += 3) R(mid - 13, yy, 13, 2, "#726d7c");
+    g.fillStyle = "#3f3a48";
+    g.beginPath(); g.arc(mid + 8, H - 18, 7, 0, TWO_PI); g.fill();
+    g.strokeStyle = "#a49fac"; g.lineWidth = 1.6;
     for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * TWO_PI + 0.4;
-      g.beginPath(); g.moveTo(mid, H - 14);
-      g.lineTo(mid + Math.cos(a) * 9, H - 14 + Math.sin(a) * 9); g.stroke();
+      const a = (i / 4) * TWO_PI + 0.5;
+      g.beginPath(); g.moveTo(mid + 8, H - 18);
+      g.lineTo(mid + 8 + Math.cos(a) * 6, H - 18 + Math.sin(a) * 6); g.stroke();
     }
-    for (let i = 0; i < 3; i++) R(mid - 14, H - 6 + i, 28, 1, "#6e6976");
+    R(mid + 7, H - 19, 2, 2, "#c6c1ce");
+    R(mid - 18, H - 34, 8, 4, "#6e6976");           // the pipe run
+    R(mid - 16, H - 40, 4, 7, "#6e6976");
 
-  } else if (kind === "stringpole") {
-    R(mid - 4, H - 6, 8, 6, "#4a4038");
-    R(mid - 2, H - 66, 4, 60, "#5e5044");
-    R(mid - 2, H - 66, 1, 60, "#75675a");
-    // two runs of lights leaving in both directions
-    [-1, 1].forEach((s) => {
-      g.strokeStyle = "rgba(60,50,44,.7)"; g.lineWidth = 1;
-      g.beginPath(); g.moveTo(mid, H - 64);
-      g.quadraticCurveTo(mid + s * 20, H - 56, mid + s * 40, H - 60); g.stroke();
-      for (let i = 1; i <= 4; i++) {
-        const t = i / 5;
-        const x = mid + s * (40 * t);
-        const y = H - 64 + (1 - (1 - t) * (1 - t)) * 8 - t * 4;
-        const col = ["#ffd166", "#ff9ec4", "#7ec8e3", "#7ddba3"][i % 4];
-        R(x - 1, y, 3, 4, col);
-        g.save(); g.globalAlpha = 0.35; g.fillStyle = col;
-        g.beginPath(); g.arc(x, y + 2, 5, 0, TWO_PI); g.fill();
-        g.restore();
-      }
-    });
-
-  } else if (kind === "planter") {
-    R(mid - 18, H - 14, 36, 14, "#7a6a58");
-    R(mid - 18, H - 14, 36, 2, "#8f7d68");
-    R(litRight ? mid + 12 : mid - 18, H - 14, 6, 14, shade("#7a6a58", litRight ? LIT : DIM));
-    g.save(); g.globalAlpha = 0.25; g.fillStyle = "#5b4c3d";
-    for (let x = mid - 16; x < mid + 17; x += 7) g.fillRect(x, H - 12, 1, 12);
+  } else if (kind === "skylight") {
+    R(mid - 18, H - 6, 36, 6, "#5e5a66");
+    poly([[mid - 16, H - 6], [mid - 8, H - 20], [mid + 16, H - 20], [mid + 8, H - 6]], "#9fd6ea");
+    poly([[mid - 8, H - 20], [mid + 16, H - 20], [mid + 16, H - 17], [mid - 8, H - 17]], "#cfeaf6");
+    g.save(); g.globalAlpha = 0.35; g.fillStyle = "#fff";
+    poly([[mid - 13, H - 8], [mid - 7, H - 18], [mid + 1, H - 18], [mid - 5, H - 8]], "#fff");
     g.restore();
-    g.fillStyle = "#3f7a48";
-    [[-10,-20,8],[0,-24,9],[10,-20,8]].forEach(([bx,by,br]) => {
-      g.beginPath(); g.arc(mid+bx, H+by, br, 0, TWO_PI); g.fill();
+    g.strokeStyle = "#6e6976"; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(mid - 4, H - 19); g.lineTo(mid + 4, H - 6); g.stroke();
+
+  } else if (kind === "dish") {
+    box3(mid - 2, H - 26, 4, 26, 3, "#6e6976", { top: false });
+    g.save();
+    g.translate(mid, H - 34); g.rotate(litRight ? -0.5 : 0.5);
+    g.fillStyle = "#c6c1ce";
+    g.beginPath(); g.ellipse(0, 0, 15, 11, 0, 0, TWO_PI); g.fill();
+    g.fillStyle = "#9a95a4";
+    g.beginPath(); g.ellipse(2, 1, 12, 8, 0, 0, TWO_PI); g.fill();
+    g.fillStyle = "#6e6976"; g.fillRect(-1, -2, 8, 2);
+    g.restore();
+
+  } else if (kind === "trafficlight") {
+    R(mid - 6, H - 5, 12, 5, "#3f3a48");
+    box3(mid - 2, H - 56, 4, 51, 3, "#4a4650", { top: false });
+    box3(mid - 8, H - 78, 16, 24, 8, "#3a3540", { top: true });
+    [["#e8556f", -73], ["#ffd166", -66], ["#7ddba3", -59]].forEach(([col, yy]) => {
+      g.fillStyle = col; g.beginPath(); g.arc(mid, H + yy, 4, 0, TWO_PI); g.fill();
+      g.save(); g.globalAlpha = 0.3; g.fillStyle = col;
+      g.beginPath(); g.arc(mid, H + yy, 8, 0, TWO_PI); g.fill(); g.restore();
     });
-    [[-8,-26],[4,-29],[10,-24]].forEach(([bx,by],i) =>
-      R(mid+bx, H+by, 3, 3, ["#ffd166","#ff9ec4","#fff1e0"][i]));
+
+  } else if (kind === "shelter") {
+    box3(mid - 24, H - 34, 3, 34, 6, "#6e7884", { top: false });
+    box3(mid + 21, H - 34, 3, 34, 6, "#6e7884", { top: false });
+    g.save(); g.globalAlpha = 0.42;
+    R(mid - 21, H - 32, 42, 26, "#bcd6e4");
+    g.restore();
+    R(mid - 21, H - 32, 42, 1, "rgba(255,255,255,.5)");
+    box3(mid - 27, H - 40, 54, 6, 12, "#8a94a2", { top: true });
+    R(mid - 20, H - 12, 40, 4, "#c9a06f");           // the seat
+    R(mid - 20, H - 12, 40, 1, "#dcb885");
+    R(mid - 16, H - 30, 20, 12, "#ffd166");          // a lit poster
+    R(mid - 15, H - 29, 18, 10, "#ffe9a8");
+
+  } else if (kind === "car") {
+    const body = ["#7f9ec4", "#c47f8a", "#8fb98f"][v % 3];
+    R(mid - 22, H - 6, 44, 6, "rgba(0,0,0,.18)");
+    box3(mid - 20, H - 18, 40, 13, 12, body, { top: true });
+    /* the cabin, set back and glassed */
+    box3(mid - 11, H - 28, 21, 10, 10, shade(body, 0.92), { top: true });
+    R(mid - 9, H - 26, 17, 6, "#2e3a48");
+    R(mid - 9, H - 26, 17, 1, "rgba(255,255,255,.35)");
+    R(mid - 20, H - 12, 40, 2, shade(body, 1.2));
+    R(mid + 16, H - 15, 4, 3, "#ffe6a8");            // lights
+    R(mid - 20, H - 15, 4, 3, "#e8556f");
+    [-14, 8].forEach((o) => {
+      g.fillStyle = "#2a2530";
+      g.beginPath(); g.arc(mid + o + 3, H - 5, 5, 0, TWO_PI); g.fill();
+      g.fillStyle = "#6a6572";
+      g.beginPath(); g.arc(mid + o + 3, H - 5, 2, 0, TWO_PI); g.fill();
+    });
 
   } else if (kind === "vent") {
-    R(mid - 16, H - 24, 32, 24, "#6f6a78");
-    R(litRight ? mid + 10 : mid - 16, H - 24, 6, 24, shade("#6f6a78", litRight ? LIT : DIM));
-    R(mid - 16, H - 29, 32, 5, "#88818f");
-    R(mid - 16, H - 29, 32, 1, "#9f98a6");
+    box3(mid - 17, H - 24, 34, 24, 14, "#6f6a78", { material: "panel", top: true });
     for (let x = mid - 12; x < mid + 12; x += 6) R(x, H - 20, 3, 16, "#544f5e");
     R(mid - 12, H - 20, 24, 1, "#3f3b47");
 
+  } else if (kind === "stringpole") {
+    R(mid - 5, H - 6, 10, 6, "#4a4038");
+    box3(mid - 2, H - 68, 4, 62, 3, "#5e5044", { top: false });
+    [-1, 1].forEach((s2) => {
+      g.strokeStyle = "rgba(60,50,44,.75)"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(mid, H - 66);
+      g.quadraticCurveTo(mid + s2 * 22, H - 57, mid + s2 * 44, H - 62); g.stroke();
+      for (let i = 1; i <= 4; i++) {
+        const t = i / 5;
+        const x = mid + s2 * (44 * t);
+        const y = H - 66 + (1 - (1 - t) * (1 - t)) * 9 - t * 4;
+        const col = ["#ffd166", "#ff9ec4", "#7ec8e3", "#7ddba3"][i % 4];
+        /* a bulb with a filament and its own halo, not a dot on a line */
+        g.save(); g.globalAlpha = 0.4; g.fillStyle = col;
+        g.beginPath(); g.arc(x, y + 3, 6, 0, TWO_PI); g.fill(); g.restore();
+        R(x - 1, y, 3, 2, "#6b5f52");
+        g.fillStyle = col;
+        g.beginPath(); g.arc(x + 0.5, y + 4, 2.6, 0, TWO_PI); g.fill();
+        g.fillStyle = "rgba(255,255,255,.8)";
+        g.fillRect(Math.round(x), Math.round(y + 3), 1, 1);
+      }
+    });
+
   } else if (kind === "cat") {
-    const body = "#3a3340";
+    const coats = ["#3a3340", "#e8a060", "#f0e8d8"];
+    const body = coats[v % 3];
     g.fillStyle = body;
     g.beginPath(); g.ellipse(mid, H - 11, 13, 11, 0, 0, TWO_PI); g.fill();
     g.beginPath(); g.arc(mid + 2, H - 26, 10, 0, TWO_PI); g.fill();
-    g.beginPath(); g.moveTo(mid - 6, H - 33); g.lineTo(mid - 2, H - 42); g.lineTo(mid + 3, H - 33); g.fill();
-    g.beginPath(); g.moveTo(mid + 5, H - 33); g.lineTo(mid + 10, H - 42); g.lineTo(mid + 12, H - 33); g.fill();
-    g.fillStyle = "rgba(255,255,255,.14)";
+    poly([[mid - 6, H - 33], [mid - 2, H - 42], [mid + 3, H - 33]], body);
+    poly([[mid + 5, H - 33], [mid + 10, H - 42], [mid + 12, H - 33]], body);
+    g.fillStyle = "rgba(255,255,255,.16)";
     g.beginPath(); g.arc(mid + (litRight ? 6 : -3), H - 29, 5, 0, TWO_PI); g.fill();
     R(mid - 3, H - 28, 3, 3, "#ffd166"); R(mid + 5, H - 28, 3, 3, "#ffd166");
     R(mid - 2, H - 28, 1, 3, "#2a2230"); R(mid + 6, H - 28, 1, 3, "#2a2230");
@@ -1778,7 +2071,6 @@ function buildScenery(kind, def) {
   sceneryCache[key] = cropToContent(c);
   return sceneryCache[key];
 }
-
 
 /* the heart box, spinning — eight frames is plenty at this size */
 let boxFrames = null;
@@ -1887,18 +2179,25 @@ function renderSky(def, camA) {
      heading. Far ridge barely moves, the midground band moves about
      twice as fast, and the ground under them moves fastest of all —
      which is what reads as distance rather than as a painted backdrop. */
+  const PW = PANO_W * PANO_K, PH = PANO_H * PANO_K;
   const draw = (cvs2, rate, y, alpha) => {
     if (!cvs2) return;
-    const off = (((camA / TWO_PI) * PANO_W * rate) % PANO_W + PANO_W) % PANO_W;
+    const off = (((camA / TWO_PI) * PW * rate) % PW + PW) % PW;
     g.globalAlpha = alpha;
-    g.drawImage(cvs2, -off, y);
-    g.drawImage(cvs2, -off + PANO_W, y);
-    if (off < RW) g.drawImage(cvs2, -off - PANO_W, y);
+    g.drawImage(cvs2, -off, y, PW, PH);
+    g.drawImage(cvs2, -off + PW, y, PW, PH);
+    if (off < RW) g.drawImage(cvs2, -off - PW, y, PW, PH);
     g.globalAlpha = 1;
   };
-  draw(panoFar, 0.5, HORIZON - PANO_H + 8, 0.8);
-  draw(panoCvs, 1.0, HORIZON - PANO_H + 4, 1);
-  draw(panoMid, 1.35, HORIZON - PANO_MID + 2, 0.92);
+  /* Only genuinely distant things live up here, and they respond to the
+     camera turning and nothing else. A band pretending to be midground
+     was the other half of the "props don't stay put" problem: it slid
+     with rotation but not with travel, so driving straight down a road
+     it hung motionless while the world went past it. Anything close
+     enough to need travel parallax is a real world-space billboard now,
+     and gets it for free from the projection. */
+  draw(panoFar, 0.55, HORIZON - PH + 8 * PANO_K, 0.8);
+  draw(panoCvs, 1.0,  HORIZON - PH + 4 * PANO_K, 1);
 }
 
 /* --- distance haze, so the far road melts into the sky. Kept shallow
@@ -1906,12 +2205,13 @@ function renderSky(def, camA) {
    and starts reading as a lake sitting across the track. --- */
 function renderHaze(def) {
   const g = sceneCtx;
-  const grad = g.createLinearGradient(0, HORIZON, 0, HORIZON + 44);
+  const hz = 44 * PANO_K;
+  const grad = g.createLinearGradient(0, HORIZON, 0, HORIZON + hz);
   grad.addColorStop(0, def.haze);
   grad.addColorStop(1, "rgba(255,255,255,0)");
   g.globalAlpha = 0.6;
   g.fillStyle = grad;
-  g.fillRect(0, HORIZON, RW, 44);
+  g.fillRect(0, HORIZON, RW, hz);
   g.globalAlpha = 1;
 }
 
@@ -2404,27 +2704,53 @@ function distToAnyTrack(x, y) {
   return Math.sqrt(best);
 }
 
+/* Small enough to stand close to the road without towering over it when
+   you pass. Anything not on this list gets held back beyond the camera
+   distance so it can never fill the screen. */
+const NEAR_KINDS = {
+  bush:1, rock:1, flowerbox:1, planter:1, mailbox:1, hydrant:1,
+  postbox:1, cat:1, bike:1, plant:1, skylight:1,
+};
+
 function placeProps(def) {
   props = [];
+  const lastVariant = {};
+  let lastKind = "";
   const rnd = mulberry(seedOf(def.id, 3121));
-  for (let i = 0; i < path.length; i += 4) {
+  for (let i = 0; i < path.length; i += 3) {
     for (const s of [-1, 1]) {
-      if (rnd() > 0.62) continue;
+      if (rnd() > 0.66) continue;
       const ta = tangentAt(i);
-      const kind = def.scenery[(rnd() * def.scenery.length) | 0];
+      /* Not the same kind twice running either. Guarding only the
+         variant still let three signposts line up in a row, because a
+         kind with no variants repeats happily. */
+      let kind = def.scenery[(rnd() * def.scenery.length) | 0];
+      for (let t2 = 0; t2 < 3 && kind === lastKind; t2++)
+        kind = def.scenery[(rnd() * def.scenery.length) | 0];
+      lastKind = kind;
       const spec = SCENERY[kind] || { h: 90, foot: 0.6 };
       const hv = 0.85 + rnd() * 0.35;
+      /* Pick a variant, and never the same one twice running for this
+         kind — a row of nine identical houses is the single thing that
+         makes a street look copy-pasted. */
+      const nv = spec.variants || 1;
+      let vv = (rnd() * nv) | 0;
+      if (nv > 1 && vv === lastVariant[kind]) vv = (vv + 1) % nv;
+      lastVariant[kind] = vv;
       /* the bigger the thing, the more room it needs beside the road */
       const bulk = spec.h * hv * spec.foot * 0.22;
-      const clear = SHOULDER + 22 + bulk;
+      const clear = SHOULDER + (NEAR_KINDS[kind] ? 6 : 20) + bulk;
 
+      /* Two bands. Small things line the verge, where they read as
+         planting and kerbside clutter; anything with bulk is held back
+         past the camera distance so it can never loom. Without the near
+         band the ground beside the road is one uninterrupted plane of
+         green, which is what made it look unfinished. */
+      const near = !!NEAR_KINDS[kind];
       let placed = null;
       for (let attempt = 0; attempt < 5; attempt++) {
-        /* Never nearer the centreline than the camera trails the kart.
-           Closer than that and a passing hydrant is literally nearer to
-           the lens than the player's own kart, so it towers over the
-           whole screen — correct perspective, terrible to look at. */
-        const off = SHOULDER + 58 + rnd() * 190;
+        const off = near ? SHOULDER + 10 + rnd() * 60
+                         : SHOULDER + 48 + rnd() * 210;
         const jitter = (rnd() - 0.5) * 40;
         const x = path[i].x - Math.sin(ta) * off * s + Math.cos(ta) * jitter;
         const y = path[i].y + Math.cos(ta) * off * s + Math.sin(ta) * jitter;
@@ -2436,7 +2762,7 @@ function placeProps(def) {
       if (!placed) continue;      // nowhere safe here; leave the gap
 
       props.push({
-        x: placed.x, y: placed.y, kind, hv,
+        x: placed.x, y: placed.y, kind, hv, v: vv,
         smokeX: (rnd() < 0.5 ? -1 : 1) * (0.14 + rnd() * 0.14),
       });
     }
@@ -2789,7 +3115,31 @@ function draw() {
 
   bill.sort((a, b) => b.s.z - a.s.z);
 
-  const g = sceneCtx;
+  /* ------------------------------------------------------------------
+     The ground goes down first, at the low internal resolution, and is
+     blown up to the panel. Everything that STANDS UP is then drawn
+     straight onto the full-size canvas through a scale transform.
+
+     This is the fix for props that would not stay put. They were always
+     stored in world space and re-projected properly — but they were
+     being drawn into the 400x225 buffer, so a prop could only ever land
+     on that coarse grid. Its true position slid smoothly while its
+     drawn position snapped a whole buffer pixel at a time, which at
+     this zoom is three or four screen pixels, and the Mode 7 ground
+     under it was sampled per-pixel and flowed on smoothly. The prop
+     therefore swam against the road. Drawing through the transform
+     keeps the coordinates below in the same 400x225 space — so none of
+     the code changes — while the positions themselves stay continuous.
+     ------------------------------------------------------------------ */
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  const shX = shake ? (Math.random() - 0.5) * shake * (cw / RW) * 2 : 0;
+  const shY = shake ? (Math.random() - 0.5) * shake * (ch / RH) * 2 : 0;
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.drawImage(sceneCvs, shX, shY, cw, ch);
+
+  ctx.setTransform(cw / RW, 0, 0, ch / RH, shX, shY);
+  const g = ctx;
   g.imageSmoothingEnabled = false;
   bill.forEach((b) => {
     /* belt and braces: whatever the previous billboard did, this one
@@ -2811,12 +3161,7 @@ function draw() {
   /* boost pulls the whole picture in a little */
   if (me.boost > 0) drawSpeedLines(g, me.boost);
 
-  /* --- blit to the visible canvas, unsmoothed so it stays pixel art --- */
-  ctx.imageSmoothingEnabled = false;
-  const sx = shake ? (Math.random() - 0.5) * shake * (cw / RW) * 2 : 0;
-  const sy = shake ? (Math.random() - 0.5) * shake * (ch / RH) * 2 : 0;
-  ctx.clearRect(0, 0, cw, ch);
-  ctx.drawImage(sceneCvs, sx, sy, cw, ch);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 function shadowUnder(g, sx, sy, w) {
@@ -2828,7 +3173,7 @@ function shadowUnder(g, sx, sy, w) {
 
 function drawProp(g, b) {
   const { s, o } = b;
-  const img = buildScenery(o.kind, trackDef);
+  const img = buildScenery(o.kind, o.v || 0, trackDef);
   const spec = SCENERY[o.kind] || { h: 90, foot: 0.6 };
   const h = spec.h * o.hv * s.scale;
   const w = h * (img.width / img.height);
