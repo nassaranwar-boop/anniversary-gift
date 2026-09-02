@@ -112,7 +112,7 @@
     "#..rrr......................rrr..#",
     "#................................#",
     "#######d########d#########d#######",
-    "#kk..p........a#fOKKsK..p#JJ....M#",
+    "#kk..p........a#.fOKsK..p#.JJ...M#",
     "#uTU......FFF..#....K....#..II.WM#",
     "v.......rrtrr..#..e.K....#..II..M#",
     "v.q.....rrrrr.p#.ett.i...#o.II..o#",
@@ -2045,6 +2045,44 @@
      tarmac has the streetlights in it, and metal stops looking
      like plastic. It costs one render at load and nothing after.
      ========================================================= */
+  /* Every one of these renders a cube and hands back its texture. The
+     render target behind that texture was never released, so a playthrough
+     left one alive per level and per cut — and they do not merely waste
+     memory, they make the next one slower: 42ms, then 731, then 2310, and
+     by the time the drive starts after five levels, thirty seconds. The
+     scene that asked for it owns it now, and gives it back when it is
+     torn down, so only ever one or two are alive. */
+  /* Four cubes for the whole chapter, built while the first loading card
+     is up and kept. Building one costs forty milliseconds with the stage
+     quiet and thirty seconds in the middle of a scene change, so the only
+     sane time to do it is once, at the start, under cover. */
+  var CUBES = {};
+  function cubeFor(key, sky, pal, dark) {
+    if (CUBES[key]) return CUBES[key].texture;
+    var rt = buildEnvironment(Stage.renderer, sky, pal, dark);
+    CUBES[key] = rt;
+    return rt.texture;
+  }
+  function warmCubes() {
+    if (!Stage.renderer || warmCubes.done) return;
+    warmCubes.done = true;
+    [{ id: "gates", theme: "road", dark: 0.28 },
+     { id: "roadside", theme: "road", dark: 0.34 },
+     { id: "home", theme: "house", dark: 0.68 },
+     { id: "streets", theme: "street", dark: 0.62 },
+     { id: "hospital", theme: "hospital", dark: 0.63 }].forEach(function (d) {
+      try {
+        var m = skyFor(d);
+        cubeFor(m.key, m.sky, PAL[d.theme] || PAL.house, d.dark);
+      } catch (e) {}
+    });
+  }
+  function disposeCubes() {
+    for (var k in CUBES) { try { CUBES[k].dispose(); } catch (e) {} }
+    CUBES = {};
+    warmCubes.done = false;
+  }
+
   function buildEnvironment(renderer, sky, pal, dark) {
     var pm = new THREE.PMREMGenerator(renderer);
     pm.compileEquirectangularShader();
@@ -2088,7 +2126,7 @@
     ground.geometry.dispose(); ground.material.dispose();
     glow.geometry.dispose(); glow.material.dispose();
     pm.dispose();
-    return rt.texture;
+    return rt;
   }
 
   /* =========================================================
@@ -2290,6 +2328,7 @@
       }
       Stage.composer = null; Stage.bloom = null; Stage.gradePass = null;
       if (Stage.renderer) { try { Stage.renderer.renderLists.dispose(); } catch (e) {} }
+      disposeCubes();
     }
   };
 
@@ -4402,7 +4441,6 @@
   var SOLID  = "#ovLKcYfB=FnuQwG~T C H W D d P V k E t e O s R Z m M J U p".replace(/ /g, "");
   var OPAQUE = "#ovLcYfGH~kJMU";             /* stops sight as well as feet */
   var HIDE   = "hj";
-  var WALK   = ".,hlqriSXzxbg*NAaI";
 
   function isSolidChar(ch) { return SOLID.indexOf(ch) >= 0; }
   function isOpaqueChar(ch) { return OPAQUE.indexOf(ch) >= 0; }
@@ -6946,6 +6984,31 @@
   /* =========================================================
      19 — BUILDING A PLACE TO PLAY IN
      ========================================================= */
+  /* The chapter has four skies: dawn at the gates, dusk on the road out,
+     and night everywhere else in each place's own colours. Naming them
+     means the reflection cube for each can be built once. */
+  function skyFor(def) {
+    var sky = makeSky();
+    if (def.id === "gates") {
+      sky.u.cLow.value.set(0xffbe86); sky.u.cMid.value.set(0x87a8d8); sky.u.cHigh.value.set(0x2f5c9e);
+      sky.u.sunCol.value.set(0xffe0a0); sky.u.sunAmt.value = 0.85;
+      sky.u.sunDir.value.set(-0.5, 0.16, 0.8).normalize();
+      return { sky: sky, key: "dawn" };
+    }
+    if (def.id === "roadside" || def.id === "campsite") {
+      sky.u.cLow.value.set(0xd8834e); sky.u.cMid.value.set(0x6a5a92); sky.u.cHigh.value.set(0x141c40);
+      sky.u.sunCol.value.set(0xffb070); sky.u.sunAmt.value = 0.62;
+      sky.u.sunDir.value.set(0.7, 0.10, 0.6).normalize();
+      return { sky: sky, key: "dusk" };
+    }
+    var pal = PAL[def.theme] || PAL.house;
+    sky.u.cLow.value.set(pal.fogNear); sky.u.cMid.value.set(pal.sky);
+    sky.u.cHigh.value.set(shade(pal.sky, 0.45));
+    sky.u.sunCol.value.set(0xbcd0ff); sky.u.sunAmt.value = 0.18;
+    sky.u.sunDir.value.set(-0.4, 0.35, -0.7).normalize();
+    return { sky: sky, key: "night:" + (def.theme || "house") };
+  }
+
   function makeScene(def) {
     var pal = PAL[def.theme] || PAL.house;
     var scene = new THREE.Scene();
@@ -6955,22 +7018,8 @@
     scene.fog = new THREE.FogExp2(fogCol.getHex(), def.dark > 0.6 ? 0.020 : def.dark > 0.4 ? 0.013 : 0.0075);
     scene.background = new THREE.Color(pal.sky);
 
-    var sky = makeSky();
+    var made = skyFor(def), sky = made.sky;
     var night = def.dark > 0.45;
-    if (def.id === "gates") {
-      sky.u.cLow.value.set(0xffbe86); sky.u.cMid.value.set(0x87a8d8); sky.u.cHigh.value.set(0x2f5c9e);
-      sky.u.sunCol.value.set(0xffe0a0); sky.u.sunAmt.value = 0.85;
-      sky.u.sunDir.value.set(-0.5, 0.16, 0.8).normalize();
-    } else if (def.id === "roadside" || def.id === "campsite") {
-      sky.u.cLow.value.set(0xd8834e); sky.u.cMid.value.set(0x6a5a92); sky.u.cHigh.value.set(0x141c40);
-      sky.u.sunCol.value.set(0xffb070); sky.u.sunAmt.value = 0.62;
-      sky.u.sunDir.value.set(0.7, 0.10, 0.6).normalize();
-    } else {
-      sky.u.cLow.value.set(pal.fogNear); sky.u.cMid.value.set(pal.sky);
-      sky.u.cHigh.value.set(shade(pal.sky, 0.45));
-      sky.u.sunCol.value.set(0xbcd0ff); sky.u.sunAmt.value = 0.18;
-      sky.u.sunDir.value.set(-0.4, 0.35, -0.7).normalize();
-    }
     scene.add(sky.mesh);
 
     var stars = null, moon = null;
@@ -6987,8 +7036,7 @@
        has something real to reflect */
     if (Stage.renderer) {
       try {
-        var env = buildEnvironment(Stage.renderer, sky, pal, def.dark);
-        scene.environment = env;
+        scene.environment = cubeFor(made.key, sky, pal, def.dark);
         scene.environmentIntensity = def.dark > 0.55 ? 0.42 : def.dark > 0.4 ? 0.7 : 1.0;
       } catch (e) { /* an old card without float textures: no reflections, still plays */ }
     }
@@ -6999,6 +7047,12 @@
   function enterLevel(def, opts) {
     opts = opts || {};
     closeOverlay();
+    /* Let the old level go before building the new one. Building first and
+       tearing down after meant both were resident at once, which doubles
+       the peak and makes rendering the new reflection cube far slower than
+       it is with the old scene already gone. */
+    if (G && G.scene) teardownLevel();
+    warmCubes();
     var built = makeScene(def);
     var world = buildWorld(def);
     built.scene.add(world.group);
@@ -7103,8 +7157,6 @@
       h.root.rotation.y = -Math.PI / 2;
       horse = { rig: h, x: world.cx(world.horseAt.x), z: world.cz(world.horseAt.y) };
     }
-
-    if (G) teardownLevel();
 
     G = G || {};
     G.def = def;
@@ -8850,10 +8902,22 @@
   }
 
   /* the cuts build their own skies, so they get their own cube */
+  /* A cut is built while the level it is cutting away from is still
+     resident, and rendering a fresh reflection cube in that state costs
+     thirty seconds — where the same call inside a level build, with the
+     old scene already gone, costs forty milliseconds. So a cut borrows
+     the level's cube. Two night skies reflect close enough alike that
+     nothing in a driving shot can tell, and it does not own what it
+     borrows, so tearing the cut down leaves the level's intact. */
   function cineEnvironment(scene, sky, palName, dark) {
     if (!Stage.renderer) return;
     try {
-      scene.environment = buildEnvironment(Stage.renderer, sky, PAL[palName] || PAL.street, dark);
+      if (G && G.scene && G.scene.environment) {
+        scene.environment = G.scene.environment;
+        scene.environmentIntensity = dark > 0.55 ? 0.5 : 0.95;
+        return;
+      }
+      scene.environment = cubeFor("night:" + palName, sky, PAL[palName] || PAL.street, dark);
       scene.environmentIntensity = dark > 0.55 ? 0.5 : 0.95;
     } catch (e) {}
   }
@@ -8891,6 +8955,7 @@
 
   function disposeScene(scene) {
     if (!scene) return;
+    scene.environment = null;          /* shared between scenes: not ours */
     var shared = [];
     for (var k in GEO) shared.push(GEO[k]);
     scene.traverse(function (o) {
@@ -10369,7 +10434,7 @@
       sky.u.cHigh.value.set(0x1c2430); sky.u.sunAmt.value = 0.5;
       sky.mesh.visible = false;
       try {
-        scene.environment = buildEnvironment(Stage.renderer, sky, PAL.street, 0.2);
+        scene.environment = cubeFor("night:street", sky, PAL.street, 0.2);
         scene.environmentIntensity = 1.0;
       } catch (e) {}
 
@@ -10432,6 +10497,13 @@
     };
 
     /* what the card was actually asked to do on the last frame */
+    window.__apEndCine = function () { if (G && G.cine) endCine(); return true; };
+    window.__apGpu = function () {
+      var r = Stage.renderer;
+      if (!r) return null;
+      return { geo: r.info.memory.geometries, tex: r.info.memory.textures,
+               prog: r.info.programs ? r.info.programs.length : -1 };
+    };
     window.__apRenderStats = function () {
       var scene = G && (G.cine ? G.cine.scene : G.scene);
       var cam = G && G.cine ? G.cine.camera : Stage.camera;
