@@ -183,8 +183,9 @@ Everything you look at is geometry with lights on it:
   something has hold of her.
 - **It still carries no files.** Every surface is a texture painted into an
   offscreen canvas at load, every sound is an oscillator, and the sky is a
-  fragment shader. The chapter adds nothing to the repo but the one script
-  and the vendored library.
+  fragment shader. The chapter adds one script to the repo and nothing
+  else — no images, no audio, and no library the site was not already
+  loading.
 
 If the machine cannot hold a frame rate the render scale drops on its own,
 measured over a second and a half so one long frame never triggers it.

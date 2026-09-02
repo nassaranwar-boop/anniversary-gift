@@ -349,7 +349,7 @@
     {
       id: "home", name: "HOME", card: "Level 1: HOME",
       blurb: "Your parents are away. The news is still on.",
-      map: MAPS.home, theme: "house", base: ".", dark: 0.68,
+      map: MAPS.home, theme: "house", base: ".", dark: 0.68, groundTex: "asphalt",
       grade: [180, 115, 55, 0.16], haze: [30, 38, 60, 0.28],
       steps: [
         { task: "The TV is still on downstairs. Go and see.", clears: "tv" },
@@ -382,7 +382,7 @@
     {
       id: "escape", name: "THE ROAD", card: "Level 4: THE ROAD",
       blurb: "Out of the city, any way you can.",
-      map: MAPS.escape, theme: "hospital", base: ".", dark: 0.68,
+      map: MAPS.escape, theme: "hospital", base: ".", dark: 0.68, groundTex: "asphalt",
       grade: [96, 150, 170, 0.12], haze: [46, 62, 76, 0.32],
       steps: [
         { task: "Out of the building. Then find anything with four wheels.", clears: "car" }
@@ -2337,9 +2337,13 @@
                        : def.theme === "street" ? "pave"
                        : "dirt");
     var matFloor  = surface(indoorFloorTex, { repeat: 1, rough: 0.88, bumpScale: 0.10 });
-    var matGround = def.theme === "street"
+    /* what the comma means is a property of the place, not of the theme:
+       it is the drive outside the garage, the road, the hospital car park,
+       the fields and the clearing, in that order */
+    var groundTex = def.groundTex || (def.theme === "street" ? "asphalt" : "grass");
+    var matGround = groundTex === "asphalt"
       ? surface("asphalt", { repeat: 1, rough: 0.34, metal: 0.16, bumpScale: 0.10 })
-      : surface("grass",   { repeat: 1, rough: 0.97, bumpScale: 0.16 });
+      : surface(groundTex, { repeat: 1, rough: 0.97, bumpScale: 0.16 });
     var matWall   = surface(def.theme === "street" ? "brick"
                           : def.theme === "hospital" ? "block" : "plaster",
                             { repeat: 1, rough: 0.95, bumpScale: 0.18 });
@@ -2364,7 +2368,12 @@
                 return new THREE.BoxGeometry(TILE * (outdoorLevel ? 1.16 : 1.04),
                                              outdoorLevel ? 0.34 : 0.16,
                                              TILE * (outdoorLevel ? 1.16 : 1.04)); }), matCap, true, true),
-      roofbits: new Batch(geo("roofB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
+      /* the parapet is part of the roof and the chimney is part of the
+         house, so they are not the same material */
+      roofedge: new Batch(geo("roofB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
+                outdoorLevel ? surface("roof", { repeat: 1, rough: 0.97, bumpScale: 0.2, tint: 0xc0c4cc })
+                             : matCap, true, true),
+      roofbits: new Batch(geo("roofB2", function () { return new THREE.BoxGeometry(1, 1, 1); }),
                 surface("brick", { repeat: 1, rough: 0.98, bumpScale: 0.2 }), true, true),
       low:    new Batch(geo("lowB",  function () { return new THREE.BoxGeometry(TILE * 0.9, TUNE.lowH, TILE * 0.9); }), matWood, true, true),
       tall:   new Batch(geo("tallB", function () { return new THREE.BoxGeometry(TILE * 0.88, TUNE.tallH, TILE * 0.88); }), matWood, true, true),
@@ -2418,7 +2427,10 @@
        floor, anything obviously ground keeps the ground, and the handful
        of characters that could be either take the surface most of their
        neighbours have. */
-    var ARCH = ".hlLGQ=oc#vKBFnufYyjdDPWNT";
+    /* h, o and c are a wardrobe indoors and a bush, a hedge and a parked
+       car outdoors, so they take whatever their neighbours are standing on
+       rather than dragging a slab of pavement into a field */
+    var ARCH = ".lLGQ=#vKBFnufYyjdDPWNT";
     function isOutdoorTile(ch) { return ch === "," || ch === "~"; }
     function surfaceOf(ch) {
       if (ch === "," || ch === "~" || ch === " ") return 0;   /* ground */
@@ -2437,10 +2449,11 @@
       return made > open;
     }
 
-    /* Outdoors the comma is the carriageway and the full stop is the
-       footway, and there is a kerb between them. That single 10 cm step
-       is what turns a flat grey grid into a street. */
-    var kerbRise = world.outdoor ? 0.11 : 0;
+    /* On the streets the comma is the carriageway and the full stop is the
+       footway, and there is a kerb between them: that single 10 cm step is
+       what turns a flat grey grid into a street. A farm lane has no kerb —
+       it just runs out into the grass. */
+    var kerbRise = def.theme === "street" ? 0.11 : 0;
     world.kerb = kerbRise;
     world.made = madeSurface;
     for (var yy = 0; yy < H; yy++) {
@@ -2501,8 +2514,8 @@
         }
         /* a parapet along the roof edge, so the top is a roof and not a lid */
         if (edge && hgt > 1.05) {
-          B.roofbits.add(cx(x), top + 0.48, cz(y), TILE * 1.16, 0.34, TILE * 1.16, 0,
-                         shade(0xffffff, 0.7 + t * 0.3));
+          B.roofedge.add(cx(x), top + 0.48, cz(y), TILE * 1.16, 0.34, TILE * 1.16, 0,
+                         shade(0xffffff, 0.72 + t * 0.3));
         }
         /* and, in the middle of a big roof, the things that live up there */
         if (!edge && t > 0.72) {
@@ -3473,7 +3486,7 @@
         "  float d = distance(p, near);",
         "  vF = 1.0 - smoothstep(3.0, 11.0, d);",
         "  vec4 mv = modelViewMatrix * vec4(p,1.0);",
-        "  gl_PointSize = aSize * (18.0 / max(1.0,-mv.z));",
+        "  gl_PointSize = min(aSize * (18.0 / max(1.0,-mv.z)), 9.0);",
         "  gl_Position = projectionMatrix * mv;",
         "}"
       ].join("\n"),
@@ -3527,7 +3540,7 @@
         "  p.x = p.x*pinch + sin(time*2.6 + aSway + l*5.0)*0.16*l;",
         "  p.z = p.z*pinch + cos(time*2.2 + aSway*1.3 + l*4.0)*0.16*l;",
         "  vec4 mv = modelViewMatrix * vec4(p,1.0);",
-        "  gl_PointSize = aSize * (1.0-l*0.55) * scale * (16.0/max(1.0,-mv.z));",
+        "  gl_PointSize = min(aSize * (1.0-l*0.55) * scale * (16.0/max(1.0,-mv.z)), 46.0);",
         "  gl_Position = projectionMatrix * mv;",
         "}"
       ].join("\n"),
@@ -3569,7 +3582,7 @@
         "  p.x += sin(time*0.9 + aLife*30.0)*l*1.4;",
         "  p.z += cos(time*0.7 + aLife*22.0)*l*1.4;",
         "  vec4 mv = modelViewMatrix * vec4(p,1.0);",
-        "  gl_PointSize = 2.2*(1.0-l*0.6)*(16.0/max(1.0,-mv.z));",
+        "  gl_PointSize = min(2.2*(1.0-l*0.6)*(16.0/max(1.0,-mv.z)), 14.0);",
         "  gl_Position = projectionMatrix * mv;",
         "}"
       ].join("\n"),
@@ -6511,10 +6524,15 @@
       var z = G.zombies[i];
       var c = ensureCone(z);
       var chase = z.state === "chase" || z.state === "react";
-      c.material.color.setHex(chase ? 0xff5a4a : z.state === "look" ? 0xffc060 : 0xa8c0e0);
-      c.material.opacity = (chase ? 0.22 : z.state === "look" ? 0.16 : 0.10)
-                         * (1 - clamp(Math.hypot(z.x - G.player.x, z.z - G.player.z) / 34, 0, 1) * 0.7);
-      c.visible = z.rig.root.visible;
+      var d = Math.hypot(z.x - G.player.x, z.z - G.player.z);
+      /* A cone is five tiles of additive colour. One is a warning; four
+         overlapping is a red screen — so only the ones near enough to
+         matter are drawn, and they tint rather than glow. */
+      c.visible = z.rig.root.visible && d < 22;
+      if (!c.visible) continue;
+      c.material.color.setHex(chase ? 0xd8564a : z.state === "look" ? 0xd8a054 : 0x8aa4c4);
+      c.material.opacity = (chase ? 0.105 : z.state === "look" ? 0.075 : 0.05)
+                         * (1 - clamp(d / 22, 0, 1) * 0.55);
     }
   }
 
