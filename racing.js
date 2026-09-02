@@ -47,8 +47,8 @@ const RW       = 480;    // internal render width  (then scaled up, unsmoothed)
 const RH       = 270;    // internal render height
 const HORIZON  = 108;    // screen row the ground vanishes at
 const FOCAL    = 360;    // lens; bigger = narrower field of view
-const CAM_H    = 30;     // camera height above the road
-const CAM_DIST = 115;    // how far the camera trails the kart
+const CAM_H    = 33;     // camera height above the road
+const CAM_DIST = 122;    // how far the camera trails the kart
 const MAX_Z    = 2600;   // beyond this the ground is just haze
 
 const ROAD_HALF   = 46;  // half the driveable width, world units
@@ -662,6 +662,10 @@ function bakeTrack(def) {
     g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
   }
 
+  /* a scuffed edge on the kerb blocks */
+  speckleAlong(g, 2600, 2, ["rgba(255,255,255,.22)", "rgba(0,0,0,.16)"],
+               ROAD_HALF + 2, RUMBLE_HALF - 1);
+
   strokeLoop(g, ROAD_HALF * 2, def.road);
   speckleAlong(g, 4200, 2, [def.roadAlt, shade(def.road, 1.07), shade(def.road, 0.93)],
                0, ROAD_HALF - 3);
@@ -679,6 +683,27 @@ function bakeTrack(def) {
   g.globalAlpha = 0.08;
   strokeLoop(g, ROAD_HALF * 0.85, "#000");
   g.globalAlpha = 1;
+
+  /* Two darkened bands where the racing line runs, laid down before the
+     patches so the wear sits under them. Nothing sells a track surface
+     like the marks of everyone who has already been round it. */
+  for (const lane of [-0.34, 0.34]) {
+    g.save();
+    g.globalAlpha = 0.13;
+    g.strokeStyle = shade(def.road, 0.7);
+    g.lineWidth = ROAD_HALF * 0.30;
+    g.lineJoin = g.lineCap = "round";
+    g.beginPath();
+    for (let i = 0; i <= path.length; i++) {
+      const idx = i % path.length;
+      const ta = tangentAt(idx);
+      const px = path[idx].x - Math.sin(ta) * ROAD_HALF * lane;
+      const py = path[idx].y + Math.cos(ta) * ROAD_HALF * lane;
+      if (i === 0) g.moveTo(px, py); else g.lineTo(px, py);
+    }
+    g.closePath(); g.stroke();
+    g.restore();
+  }
 
   /* worn patches and a few painted arrows, so the tarmac has something
      going on other than being grey */
@@ -1085,7 +1110,12 @@ function mulberry(a) {
    Sixteen angles per character, baked once at start-up.
    --------------------------------------------------------- */
 const ANGLES = 16;
-const SPR_W = 64, SPR_H = 56;
+/* The rider is a whole little body now, so the sheet needs headroom
+   above the kart. KART_H below is scaled by the same amount, so the kart
+   itself comes out exactly the size it was — only the empty space above
+   it grew. */
+const SPR_W = 64, SPR_H = 68;
+const KART_H = 21 * (68 / 56);
 const FLAT = 0.34;          // how hard the ground plane foreshortens
 const kartSprites = {};     // id -> [canvas x16]
 
@@ -1182,23 +1212,54 @@ function buildKart(def, ai) {
   return c;
 }
 
+function litSideDim(side) { return side > 0 ? 0.86 : 0.94; }
+
 function drawRider(g, def, a, cx, cy) {
   const facing = Math.cos(a), side = Math.sin(a);
   const R = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(Math.round(cx + x), Math.round(cy + y), w, h); };
 
-  /* torso — a jacket, shoulders squared off, sleeves in the accent */
-  R(-7, -9, 14, 11, def.jacket);
-  R(-7, -9, 14, 2, shade(def.jacket, 1.12));
+  /* A whole little person, not a coloured block with a face on it.
+     Shoulders, a chest with a collar, two arms that reach forward to the
+     wheel with hands on it, and a head sitting proud of the shoulders —
+     that reads as a character at a glance, which the old flat torso
+     never did on the AI racers. */
   const sx = Math.round(side * 2);
-  R(-9 + sx, -8, 3, 9, def.sleeve);
-  R( 6 + sx, -8, 3, 9, def.sleeve);
+
+  /* arms reaching to the wheel, drawn behind the chest */
+  const reach = facing < 0 ? 5 : 3;
+  R(-9 + sx, -8, 3, 7, shade(def.sleeve, 0.9));
+  R( 6 + sx, -8, 3, 7, shade(def.sleeve, 0.9));
+  R(-9 + sx, -3, 4, reach, def.sleeve);
+  R( 5 + sx, -3, 4, reach, def.sleeve);
+  if (facing < 0) {                       // hands, when we can see them
+    R(-9 + sx, -3 + reach, 4, 3, def.skin);
+    R( 5 + sx, -3 + reach, 4, 3, def.skin);
+  }
+
+  /* the torso: shoulders wider than the waist, with a collar */
+  R(-7, -10, 14, 12, def.jacket);
+  R(-8, -10, 16, 3, def.jacket);          // shoulder line
+  R(-8, -10, 16, 2, shade(def.jacket, 1.16));
   R(-7, -1, 14, 2, def.sleeve);           // waistband
+  R(-7, -10, 3, 12, shade(def.jacket, litSideDim(side)));
+  if (facing < 0) {                       // a collar and a zip facing us
+    R(-4, -8, 8, 2, def.sleeve);
+    R(-1, -8, 2, 8, shade(def.jacket, 0.86));
+  } else {                                // a number panel on the back
+    R(-4, -7, 8, 7, shade(def.jacket, 1.1));
+    R(-2, -5, 4, 3, def.accent);
+  }
+
+  /* a neck, so the head is not resting straight on the shoulders */
+  R(-2, -12, 4, 3, shade(def.skin, 0.9));
 
   /* head: an 11px ball, then whatever this character has on top */
-  const hy = -20;
+  const hy = -23;
   R(-5, hy, 10, 11, def.skin);
   R(-5, hy, 10, 2, shade(def.skin, 1.08));
   R(-5, hy + 9, 10, 2, shade(def.skin, 0.88));
+  R(-6, hy + 2, 1, 6, shade(def.skin, 0.9));   // ears
+  R( 5, hy + 2, 1, 6, shade(def.skin, 0.9));
 
   const h = def.head;
   if (h === "ouissy") {
@@ -1309,12 +1370,12 @@ function buildAllKarts() {
    picks one, so a street is a row of different houses rather than one
    house printed nine times.                                            */
 const SCENERY = {
-  pine:{ h:158, foot:.55, variants:3 }, tree:{ h:130, foot:.6, variants:3 },
+  pine:{ h:158, foot:.55, variants:4 }, tree:{ h:130, foot:.6, variants:3 },
   bush:{ h:26,  foot:.9,  variants:3 }, rock:{ h:24, foot:.9, variants:2 },
   cabin:{ h:132, foot:.9, smoke:true, variants:2 },
   house:{ h:126, foot:.9, smoke:true, variants:4 },
   store:{ h:126, foot:.95, variants:2 },
-  shed:{ h:80,  foot:.9, smoke:true },
+  shed:{ h:80,  foot:.9, smoke:true, variants:2 },
   lamp:{ h:112, foot:.3  }, postbox:{ h:30, foot:.8 }, hydrant:{ h:26, foot:.8 },
   signpost:{ h:76, foot:.35 }, flowerbox:{ h:22, foot:.95, variants:2 },
   mailbox:{ h:34, foot:.5 }, bike:{ h:30, foot:.8 }, hoop:{ h:96, foot:.35 },
@@ -1351,13 +1412,19 @@ function cropToContent(c) {
 
 const sceneryCache = {};
 
-function buildScenery(kind, variant, def) {
+/* Three colour casts. Two pines of the same variant standing next to
+   each other still want to be different greens, and a tint costs one
+   composited rectangle at bake time rather than anything per frame. */
+const TINTS = [null, "rgba(70,110,150,.13)", "rgba(255,190,120,.13)"];
+
+function buildScenery(kind, variant, def, tint) {
   /* the sun sits on one side per track, and the sprites are baked with
      that side lit — so the cache is keyed by which side that is */
   const sunX = def ? Math.cos(def.light != null ? def.light : -0.7) : 0.75;
   const litRight = sunX >= 0;
   const v = variant | 0;
-  const key = kind + "|" + v + (litRight ? "|R" : "|L");
+  const ti = (tint | 0) % TINTS.length;
+  const key = kind + "|" + v + "|" + ti + (litRight ? "|R" : "|L");
   if (sceneryCache[key]) return sceneryCache[key];
 
   const W = 128, H = 150;
@@ -1545,9 +1612,12 @@ function buildScenery(kind, variant, def) {
 
   if (kind === "pine") {
     /* three shapes of conifer: tall and narrow, broad, and a young one */
-    const P = [{b:6,w:37,s:16,r:30},{b:5,w:44,s:19,r:26},{b:4,w:32,s:14,r:24}][v % 3];
-    const tip = ["#3e8850", "#46905a", "#4d9a5e"][v % 3];
-    const dk  = ["#2e6b3c", "#2a6238", "#356f42"][v % 3];
+    /* four genuinely different conifers: a tall spire, a broad old one,
+       a young sapling, and a wind-thinned ragged one */
+    const P = [{b:7,w:33,s:15,r:34},{b:5,w:47,s:20,r:25},
+               {b:4,w:29,s:13,r:22},{b:6,w:39,s:17,r:28}][v % 4];
+    const tip = ["#3e8850", "#46905a", "#4d9a5e", "#3a7f54"][v % 4];
+    const dk  = ["#2e6b3c", "#2a6238", "#356f42", "#27603c"][v % 4];
     const trunkTop = H - 30;
     poly([[mid - 5, H], [mid - 2.5, trunkTop], [mid + 2.5, trunkTop], [mid + 5, H]], "#54391f");
     poly([[mid + (litRight ? 1 : -5), H], [mid + (litRight ? 1 : -2.5), trunkTop],
@@ -1556,7 +1626,10 @@ function buildScenery(kind, variant, def) {
     for (let i = 0; i < P.b; i++) {
       const t = i / (P.b - 1);
       const base = H - 16 - i * P.s;
-      const halfW = P.w * (1 - t * 0.80) + 3;
+      /* the ragged variant loses width unevenly, which is what stops a
+         treeline reading as the same cone printed over and over */
+      const rag = v % 4 === 3 ? (i % 2 ? 0.82 : 1.06) : 1;
+      const halfW = (P.w * (1 - t * 0.80) + 3) * rag;
       const rise = P.r - t * 8, teeth = 9 - i, hem = 9 - t * 4;
       g.beginPath();
       g.moveTo(mid, base - rise);
@@ -1753,13 +1826,51 @@ function buildScenery(kind, variant, def) {
     for (let i = 0; i < 4; i++) R(mid - 9 + i * 5, H - 41, 3, 3, "#2e4a58");
 
   } else if (kind === "shed") {
-    footing(mid - 20, H - 6, 40, 6, "#7a6a58");
-    box3(mid - 20, H - 34, 40, 28, 14, "#9a7a52", { material: "wood", top: false });
+    /* A lean-to, seated properly.
+
+       The first version drew a flat wall top and then a roof that rose
+       ten pixels above it on the high side, with nothing filling the
+       triangle underneath — so the roof read as a slab floating off the
+       building at the wrong angle. The wall now carries a gable wedge up
+       to meet the roof, and the roof sits on it with an eave overhang,
+       which is what makes it look attached rather than balanced there. */
+    const hi = v % 2 ? 12 : 10;              // how far the high side lifts
+    const wallCol = v % 2 ? "#9a7a52" : "#8b7157";
+    const roofCol = v % 2 ? "#6a4030" : "#5d5342";
+    const L = mid - 20, Rt = mid + 20, top = H - 34;
+    footing(L, H - 6, 40, 6, "#7a6a58");
+    box3(L, top, 40, 28, 14, wallCol, { material: "wood", top: false });
+    /* the wedge that carries the roof up to its high edge */
+    poly([[L, top], [Rt, top - hi], [Rt, top], [L, top]], wallCol);
+    material(L, top - hi, 40, hi + 2, wallCol, "wood");
+    poly([[L, top], [Rt, top - hi], [Rt, top]], shade(wallCol, 0.9));
+
     const dx = sd * 14 * 0.52, dy = -14 * 0.40;
-    poly([[mid - 24, H - 34], [mid + 24, H - 44], [mid + 24 + dx, H - 44 + dy], [mid - 24 + dx, H - 34 + dy]], shade("#6a4030", 1.1));
-    poly([[mid - 24, H - 34], [mid + 24, H - 44], [mid + 24, H - 40], [mid - 24, H - 30]], "#6a4030");
-    door(mid - 6, H - 26, 12, 20, "#5c3b26");
-    window_(mid + 7, H - 30, 9, 8, false);
+    /* the roof plane, overhanging both ends, and its fascia */
+    poly([[L - 5, top + 2], [Rt + 5, top - hi - 1],
+          [Rt + 5 + dx, top - hi - 1 + dy], [L - 5 + dx, top + 2 + dy]], shade(roofCol, 1.12));
+    poly([[L - 5, top + 2], [Rt + 5, top - hi - 1],
+          [Rt + 5, top - hi + 3], [L - 5, top + 6]], roofCol);
+    /* plank lines running down the slope */
+    g.save();
+    g.beginPath();
+    g.moveTo(L - 5, top + 2); g.lineTo(Rt + 5, top - hi - 1);
+    g.lineTo(Rt + 5 + dx, top - hi - 1 + dy); g.lineTo(L - 5 + dx, top + 2 + dy);
+    g.closePath(); g.clip();
+    g.globalAlpha = 0.3; g.strokeStyle = shade(roofCol, 0.7); g.lineWidth = 1;
+    for (let k = -5; k <= 45; k += 6) {
+      g.beginPath();
+      g.moveTo(L + k, top + 2 - k * (hi / 50));
+      g.lineTo(L + k + dx, top + 2 - k * (hi / 50) + dy);
+      g.stroke();
+    }
+    g.restore();
+    door(mid - 7, H - 26, 13, 20, "#5c3b26");
+    window_(mid + 8, H - 30, 9, 8, v % 2 === 0);
+    if (v % 2) {                              // a water butt against the wall
+      box3(mid + 20, H - 20, 9, 14, 6, "#5f6b52", { top: true });
+      R(mid + 19, H - 21, 11, 2, "#75835f");
+    }
 
   } else if (kind === "lamp") {
     R(mid - 4, H - 6, 8, 6, "#4a4650");
@@ -2068,6 +2179,12 @@ function buildScenery(kind, variant, def) {
     g.quadraticCurveTo(mid - 24, H - 16, mid - 19, H - 29); g.stroke();
   }
 
+  if (TINTS[ti]) {
+    g.globalCompositeOperation = "source-atop";
+    g.fillStyle = TINTS[ti];
+    g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = "source-over";
+  }
   sceneryCache[key] = cropToContent(c);
   return sceneryCache[key];
 }
@@ -2252,10 +2369,24 @@ function projectSprite(wx, wy, camX, camY, camA) {
    Speeds are world units per frame at 60fps; the loop runs a fixed
    step so they mean the same thing on any display.
    --------------------------------------------------------- */
-const TOP_SPEED = 4.55;   // flat out on tarmac
-const ENGINE    = 0.150;  // pull off the line, before the taper
-const ACC_TAPER = 2.15;   // how hard acceleration falls away near the top
-const BRAKE     = 0.115;  // on the brake
+/* Lowered from 4.55 when the throttle curve was fixed. The old curve
+   never reached its own maximum — it topped out around 77% — so the
+   number was a fiction and the real speed was about 3.5. Making the
+   maximum reachable made the karts genuinely faster and dropped laps to
+   40s, under the 45s the courses are built for, so the figure now says
+   what it means. */
+const TOP_SPEED = 3.70;   // flat out on tarmac
+/* The throttle curve, fitted rather than guessed.
+
+   The previous pair asymptoted: acceleration fell to nothing as the
+   speed approached the maximum, so the kart never actually got there —
+   eight seconds flat out still left it at 77% of its own top speed,
+   which is most of why it felt gutless. An exponent below one keeps it
+   pulling right to the end. Simulated at 60Hz this reaches half speed
+   at 0.65s and full speed at 2.27s. */
+const ENGINE    = 0.0565; // pull off the line
+const ACC_TAPER = 0.36;   // <1, so top speed is actually reachable
+const BRAKE     = 0.150;  // on the brake — clearly harder than coasting
 const ENGINE_BR = 0.030;  // off the throttle entirely
 const ROLL      = 0.006;  // rolling resistance, always
 const TURN      = 3.05 * DEG;  // steering authority at the sweet spot
@@ -2277,6 +2408,9 @@ class Racer {
     this.y = p.y + Math.cos(ta) * lane;
     this.angle = ta;
     this.steer = 0;      // where the wheels point; the heading chases it
+    this.yaw = 0;        // how far the body is turned out of its travel
+    this.roll = 0;       // lean into the corner
+    this.dip = 0;        // weight shift under braking
     this.speed = 0;
     this.hint = startIdx;
     this.nav = { hint: startIdx, onCut: false };
@@ -2351,7 +2485,7 @@ class Racer {
     if (gas) {
       const head = Math.max(0, 1 - Math.max(0, this.speed) / max);
       this.speed += ENGINE * Math.pow(head, ACC_TAPER) * k;
-      if (this.speed > max) this.speed += (max - this.speed) * 0.10 * k;
+      if (this.speed > max) this.speed = max;
     } else if (rev) {
       this.speed -= BRAKE * k;
       if (this.speed < -max * 0.32) this.speed = -max * 0.32;
@@ -2374,10 +2508,12 @@ class Racer {
       }
       this.driftCharge = Math.min(this.driftCharge + dt, 3);
     } else if (this.drifting) {
+      /* Three tiers, and nothing at all below the first — the risk of
+         holding the slide a moment longer is the whole point. */
       let tier = 0;
-      if (this.driftCharge > 1.7)      { this.boost = 1.15; tier = 3; }
-      else if (this.driftCharge > 1.0) { this.boost = 0.75; tier = 2; }
-      else if (this.driftCharge > 0.5) { this.boost = 0.42; tier = 1; }
+      if (this.driftCharge > 2.0)      { this.boost = 1.30; tier = 3; }
+      else if (this.driftCharge > 1.2) { this.boost = 0.85; tier = 2; }
+      else if (this.driftCharge > 0.5) { this.boost = 0.45; tier = 1; }
       this.drifting = false;
       this.driftCharge = 0;
       Snd.drift(false);
@@ -2413,6 +2549,23 @@ class Racer {
     this.angle += (this.steer) * grip * k;
     /* the heading having caught up spends the steering input */
     this.steer -= this.steer * grip * k;
+
+    /* ---- what the body does, as opposed to where it is going ----
+       In a slide the kart points noticeably out of its direction of
+       travel; in a normal corner it just leans. Both are visual only —
+       the physics above is untouched — but they are most of what makes
+       a corner feel like it has weight in it. */
+    const wantYaw = this.drifting
+      ? this.driftDir * (0.30 + Math.min(0.22, this.driftCharge * 0.12))
+      : Math.max(-0.13, Math.min(0.13, this.steer * 1.6));
+    this.yaw += (wantYaw - this.yaw) * 0.14 * k;
+
+    const wantRoll = Math.max(-0.16, Math.min(0.16,
+      (this.drifting ? this.driftDir * 0.13 : 0) + this.steer * 1.9)) * speedFrac;
+    this.roll += (wantRoll - this.roll) * 0.16 * k;
+
+    const wantDip = rev && this.speed > TOP_SPEED * 0.2 ? 1 : 0;
+    this.dip += (wantDip - this.dip) * 0.20 * k;
 
     if (input.itemPressed) { input.itemPressed = false; this.fire(); }
   }
@@ -2462,6 +2615,10 @@ class Racer {
     const grip = GRIP * (this.offroad ? 0.7 : 1);
     this.angle += this.steer * grip * k;
     this.steer -= this.steer * grip * k;
+    const sf = Math.min(1, Math.abs(this.speed) / TOP_SPEED);
+    const wr = Math.max(-0.14, Math.min(0.14, this.steer * 1.7)) * sf;
+    this.roll += (wr - this.roll) * 0.14 * k;
+    this.yaw  += (Math.max(-0.11, Math.min(0.11, this.steer * 1.4)) - this.yaw) * 0.12 * k;
 
     /* ease off through the tight stuff, and rubber-band gently so the
        race stays alive without feeling rigged */
@@ -2591,8 +2748,8 @@ let fx = [];
    kart, and they are small and quick — big slow ones read as litter
    blowing across the track rather than as tyres letting go. */
 function addSpark(x, y, a, charge) {
-  const tier = charge > 1.7 ? 2 : charge > 1.0 ? 1 : 0;
-  const col = ["#9ad9ef", "#ffd166", "#ff5f95"][tier];
+  const tier = charge > 2.0 ? 2 : charge > 1.2 ? 1 : 0;
+  const col = ["#fff8e8", "#7ec8e3", "#ff9a3c"][tier];
   const back = a + Math.PI;
   const lx = -Math.sin(a), ly = Math.cos(a);
   for (const sgn of [-1, 1]) {
@@ -2729,7 +2886,7 @@ function placeProps(def) {
         kind = def.scenery[(rnd() * def.scenery.length) | 0];
       lastKind = kind;
       const spec = SCENERY[kind] || { h: 90, foot: 0.6 };
-      const hv = 0.85 + rnd() * 0.35;
+      const hv = 0.76 + rnd() * 0.56;
       /* Pick a variant, and never the same one twice running for this
          kind — a row of nine identical houses is the single thing that
          makes a street look copy-pasted. */
@@ -2763,6 +2920,10 @@ function placeProps(def) {
 
       props.push({
         x: placed.x, y: placed.y, kind, hv, v: vv,
+        /* a mirror and a colour cast, so even two of the same variant
+           standing together do not read as a printed pattern */
+        flip: rnd() < 0.5,
+        tint: (rnd() * 3) | 0,
         smokeX: (rnd() < 0.5 ? -1 : 1) * (0.14 + rnd() * 0.14),
       });
     }
@@ -2918,7 +3079,7 @@ function step(dt) {
   const me0 = racers.find((r) => r.isPlayer);
   if (me0) {
     Snd.engine(Math.min(1, Math.abs(me0.speed) / TOP_SPEED), me0.offroad);
-    if (me0.drifting) Snd.driftCharge(me0.driftCharge > 1.7 ? 3 : me0.driftCharge > 1.0 ? 2 : 1);
+    if (me0.drifting) Snd.driftCharge(me0.driftCharge > 2.0 ? 3 : me0.driftCharge > 1.2 ? 2 : 1);
     if (me0.offroad && Math.abs(me0.speed) > 1.4 && Math.random() < 0.12) Snd.scrape();
     if (me0.place !== lastPlace) { if (lastPlace) Snd.tick(); lastPlace = me0.place; }
   }
@@ -3031,6 +3192,13 @@ function step(dt) {
       const ux = dx / d, uy = dy / d;
       a.x -= ux * push; a.y -= uy * push;
       b.x += ux * push; b.y += uy * push;
+      /* a knock costs a little speed and shoves you off line, rather
+         than the two of you passing through each other politely */
+      const closing = (a.speed - b.speed);
+      if (Math.abs(closing) > 0.6) {
+        a.speed *= 0.93; b.speed *= 0.93;
+        if (a.isPlayer || b.isPlayer) shake = Math.max(shake, 1.2);
+      }
     }
   }
 
@@ -3173,7 +3341,7 @@ function shadowUnder(g, sx, sy, w) {
 
 function drawProp(g, b) {
   const { s, o } = b;
-  const img = buildScenery(o.kind, o.v || 0, trackDef);
+  const img = buildScenery(o.kind, o.v || 0, trackDef, o.tint || 0);
   const spec = SCENERY[o.kind] || { h: 90, foot: 0.6 };
   const h = spec.h * o.hv * s.scale;
   const w = h * (img.width / img.height);
@@ -3184,7 +3352,14 @@ function drawProp(g, b) {
      — which is exactly what the flickering was. */
   if (s.fade < 1) g.globalAlpha = s.fade;
   shadowUnder(g, s.sx, s.sy, w * spec.foot * 0.8);
-  g.drawImage(img, s.sx - w / 2, s.sy - h, w, h);
+  if (o.flip) {
+    g.save();
+    g.translate(s.sx, 0); g.scale(-1, 1);
+    g.drawImage(img, -w / 2, s.sy - h, w, h);
+    g.restore();
+  } else {
+    g.drawImage(img, s.sx - w / 2, s.sy - h, w, h);
+  }
 
   /* smoke from the chimney, drawn live rather than baked so it drifts.
      Three puffs on staggered phases, rising and spreading as they go. */
@@ -3215,6 +3390,16 @@ function drawBox(g, b) {
   if (w < 1.2) return;
   const bob = Math.sin(o.spin * 0.8) * 3 * s.scale;
   shadowUnder(g, s.sx, s.sy, w * 0.5);
+  /* a glow that breathes under the box, so it reads as something worth
+     driving into rather than a decal on the tarmac */
+  const pulse = 0.55 + Math.sin(o.spin * 1.6) * 0.45;
+  g.save();
+  g.globalAlpha = 0.16 + pulse * 0.18;
+  g.fillStyle = "#ff9ec4";
+  g.beginPath();
+  g.arc(s.sx, s.sy - h * 0.45 + bob, w * (0.62 + pulse * 0.16), 0, TWO_PI);
+  g.fill();
+  g.restore();
   g.drawImage(img, s.sx - w / 2, s.sy - h + bob, w, h);
 }
 
@@ -3266,7 +3451,10 @@ function drawKart(g, b, camA, isGhost) {
 
 function drawKartInner(g, b, camA, isGhost) {
   const { s, o } = b;
-  const rel = o.angle - camA;
+  /* the body's own heading — in a slide that is turned out of the
+     direction the kart is actually travelling, which is what makes a
+     drift look like a drift rather than a tight turn */
+  const rel = o.angle + (o.yaw || 0) - camA;
   let ai = Math.round((((rel % TWO_PI) + TWO_PI) % TWO_PI) / TWO_PI * ANGLES) % ANGLES;
   const set = kartSprites[o.def.id];
   if (!set) return;
@@ -3277,13 +3465,20 @@ function drawKartInner(g, b, camA, isGhost) {
      footprint on purpose: drawn at literal scale the player's own kart
      fills half the screen and you cannot see the corner you are about
      to take. A quarter of the screen height is the SNES proportion. */
-  const h = 21 * s.scale;
+  const h = KART_H * s.scale;
   const w = h * (img.width / img.height);
   if (w < 1.5) return;
 
   shadowUnder(g, s.sx, s.sy, w * 0.5);
 
   g.save();
+  /* lean into the corner, and dip the nose under braking */
+  if (!isGhost && (o.roll || o.dip)) {
+    g.translate(s.sx, s.sy);
+    g.rotate(-(o.roll || 0) * 0.55);
+    g.translate(0, (o.dip || 0) * h * 0.05);
+    g.translate(-s.sx, -s.sy);
+  }
   if (isGhost) g.globalAlpha = 0.4;
   /* the ring makes you flash; a spin makes you wobble */
   if (!isGhost && o.invuln > 0 && Math.floor(o.invuln * 12) % 2) g.globalAlpha = 0.55;
@@ -3404,8 +3599,8 @@ function paintHud() {
       const on = me.drifting && me.driftCharge > 0.1;
       el.boost.hidden = !on;
       if (on) {
-        el.boostFill.style.width = (Math.min(1, me.driftCharge / 1.7) * 100) + "%";
-        el.boost.dataset.tier = me.driftCharge > 1.7 ? "3" : me.driftCharge > 1.0 ? "2" : "1";
+        el.boostFill.style.width = (Math.min(1, me.driftCharge / 2.0) * 100) + "%";
+        el.boost.dataset.tier = me.driftCharge > 2.0 ? "3" : me.driftCharge > 1.2 ? "2" : "1";
       }
     }
     return;
@@ -3421,9 +3616,9 @@ function paintHud() {
     const on = me.drifting && me.driftCharge > 0.1;
     el.boost.hidden = !on;
     if (on) {
-      const f = Math.min(1, me.driftCharge / 1.7);
+      const f = Math.min(1, me.driftCharge / 2.0);
       el.boostFill.style.width = (f * 100) + "%";
-      el.boost.dataset.tier = me.driftCharge > 1.7 ? "3" : me.driftCharge > 1.0 ? "2" : "1";
+      el.boost.dataset.tier = me.driftCharge > 2.0 ? "3" : me.driftCharge > 1.2 ? "2" : "1";
     }
   }
   paintItem();
