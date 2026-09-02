@@ -318,7 +318,10 @@ function buildPath(def) {
       total += Math.hypot(pts[i+1].x - pts[i].x, pts[i+1].y - pts[i].y);
     }
     len.push(total);
-    cut = { pts, from: a.along, to: b.along, cum: len, len: total, name: def.cut.name };
+    cut = {
+      pts, from: a.along, to: b.along, cum: len, len: total,
+      fromIdx: a.idx, toIdx: b.idx, name: def.cut.name,
+    };
   }
 }
 
@@ -378,8 +381,9 @@ function projectCut(x, y) {
   const nx = -Math.sin(ta), ny = Math.cos(ta);
   const cx = p[bi].x + bt * (p[bi+1].x - p[bi].x);
   const cy = p[bi].y + bt * (p[bi+1].y - p[bi].y);
-  const f = cut.len > 0
+  const frac = cut.len > 0
     ? (cut.cum[bi] + bt * (cut.cum[bi+1] - cut.cum[bi])) / cut.len : 0;
+  const f = frac;
   /* the shortcut may straddle the start line, so walk forward from
      `from` rather than lerping straight to `to` */
   let span = cut.to - cut.from;
@@ -389,20 +393,53 @@ function projectCut(x, y) {
   return {
     dist: Math.sqrt(bd), idx: bi, t: bt, along,
     cx, cy, side: (x - cx) * nx + (y - cy) * ny,
-    nx, ny, tan: ta, half: CUT_HALF, onCut: true,
+    nx, ny, tan: ta, half: CUT_HALF, onCut: true, frac,
   };
 }
 
-/* Whichever ribbon you are actually on. Being nearer the shortcut only
-   counts while you are close enough to be on it — otherwise a kart out
-   in the scenery could claim the shortcut's progress. */
-function project(x, y, hint) {
-  const m = projectMain(x, y, hint);
-  if (!cut) return m;
-  if (m.dist < ROAD_HALF) return m;          // plainly on the main road
+/* Whichever ribbon you are actually on.
+
+   `st` is the caller's memory — {hint, onCut} — and it matters. Deciding
+   fresh every frame let a kart near a junction flip between the loop and
+   the shortcut from one frame to the next, and because the two disagree
+   about how far round you are in the middle of the shortcut, the tangent
+   flipped with them. That is what was yanking the steering: the barrier
+   nudge kept being handed a heading from the other ribbon. So a kart
+   commits to one, and only leaves it off the end or by straying well
+   clear of it. */
+function project(x, y, st) {
+  if (!cut) {
+    const m = projectMain(x, y, st ? st.hint : null);
+    if (st) { st.hint = m.idx; st.onCut = false; }
+    return m;
+  }
+
   const c = projectCut(x, y);
-  if (c.dist < m.dist && c.dist < SHOULDER) return c;
-  return m;
+  let use;
+
+  if (st && st.onCut) {
+    if (c.frac <= 0.03) {
+      use = projectMain(x, y, cut.fromIdx);         // backed out of the mouth
+    } else if (c.frac >= 0.97) {
+      use = projectMain(x, y, cut.toIdx);           // out the far end
+    } else if (c.dist > CUT_HALF + 46) {
+      use = projectMain(x, y, c.frac < 0.5 ? cut.fromIdx : cut.toIdx);
+    } else {
+      use = c;
+    }
+  } else {
+    const m = projectMain(x, y, st ? st.hint : null);
+    /* only joinable from on the shortcut itself, and never from the far
+       side of the loop where it happens to pass close by */
+    use = (c.dist < CUT_HALF && c.frac > 0.04 && c.frac < 0.96 && c.dist < m.dist)
+        ? c : m;
+  }
+
+  if (st) {
+    st.onCut = !!use.onCut;
+    if (!use.onCut) st.hint = use.idx;
+  }
+  return use;
 }
 
 /* =========================================================
@@ -475,7 +512,14 @@ function bakeTrack(def) {
   /* --- the ground everything else sits on --- */
   g.fillStyle = def.grass;
   g.fillRect(0, 0, WORLD, WORLD);
-  speckle(g, 14000, 3, [def.grassAlt, shade(def.grass, 1.08), shade(def.grass, 0.92)]);
+  speckle(g, 26000, 3, [def.grassAlt, shade(def.grass, 1.14), shade(def.grass, 0.86),
+                        shade(def.grass, 1.06), shade(def.grass, 0.94)]);
+  /* a scatter of longer tufts, so the ground has a direction to it */
+  for (let i = 0; i < 5200; i++) {
+    const x = Math.random() * WORLD, y = Math.random() * WORLD;
+    g.fillStyle = Math.random() < 0.5 ? shade(def.grass, 1.2) : shade(def.grass, 0.8);
+    g.fillRect(x | 0, y | 0, 2, 4 + ((Math.random() * 3) | 0));
+  }
 
   /* a few broad patches so the field is not one flat colour */
   for (let i = 0; i < 60; i++) {
@@ -487,6 +531,12 @@ function bakeTrack(def) {
     g.fill();
   }
   g.globalAlpha = 1;
+
+  /* Shadows go down before any tarmac does. A tall pine standing just
+     off the verge throws a shadow long enough to reach the racing line,
+     and a dark smear lying across the road looked like a hole in it.
+     Painting the road afterwards clips them for free. */
+  bakeGroundShadows(g, def);
 
   /* --- the shortcut, first, so the main ribbon paints over its ends --- */
   if (cut) {
@@ -590,8 +640,6 @@ function bakeTrack(def) {
   }
   g.restore();
 
-  bakeGroundShadows(g, def);
-
   g.setTransform(1, 0, 0, 1, 0, 0);
   const img = g.getImageData(0, 0, TEX, TEX);
   tex32 = new Uint32Array(img.data.buffer);
@@ -636,7 +684,7 @@ function bakeGroundShadows(g, def) {
    wraps without a seam.
    ========================================================= */
 let panoCvs = null, panoFar = null, panoMid = null, panoId = null;
-const PANO_W = 1600, PANO_H = 150, PANO_MID = 46;
+const PANO_W = 1600, PANO_H = 150, PANO_MID = 24;
 
 function bakePano(def) {
   if (panoId === def.id && panoCvs) return;
@@ -653,146 +701,166 @@ function bakePano(def) {
   g.fillStyle = sky;
   g.fillRect(0, 0, PANO_W, PANO_H);
 
-  const rnd = mulberry(def.id.length * 977 + 13);
+  const rnd = mulberry(seedOf(def.id, 977));
+  const base = PANO_H - 4;
 
   if (def.id === "roof") {
-    /* a sunset, a low sun, and a city that goes on past the edge */
-    g.fillStyle = "rgba(255,236,180,.85)";
-    g.beginPath(); g.arc(PANO_W * 0.32, PANO_H - 34, 30, 0, TWO_PI); g.fill();
-    g.fillStyle = "rgba(255,170,110,.35)";
-    g.beginPath(); g.arc(PANO_W * 0.32, PANO_H - 34, 52, 0, TWO_PI); g.fill();
-    for (let layer = 0; layer < 2; layer++) {
-      const base = PANO_H - 6 - layer * 4;
-      g.fillStyle = layer ? "#3a2b4e" : "#26203a";
-      let x = -20;
-      while (x < PANO_W + 20) {
-        const w = 22 + rnd() * 40, h = 26 + rnd() * (layer ? 46 : 74);
-        g.fillRect(x, base - h, w, h);
-        if (!layer) {
-          g.fillStyle = "rgba(255,206,122,.6)";
-          for (let wy = base - h + 6; wy < base - 6; wy += 9)
-            for (let wx = x + 4; wx < x + w - 5; wx += 8)
-              if (rnd() > 0.45) g.fillRect(wx, wy, 3, 4);
-          g.fillStyle = "#26203a";
-        }
-        x += w + 3 + rnd() * 8;
-      }
+    /* a low sun, then a city that keeps going past the edge of the frame */
+    g.fillStyle = "rgba(255,236,180,.9)";
+    g.beginPath(); g.arc(PANO_W * 0.32, base - 30, 22, 0, TWO_PI); g.fill();
+    g.fillStyle = "rgba(255,170,110,.28)";
+    g.beginPath(); g.arc(PANO_W * 0.32, base - 30, 40, 0, TWO_PI); g.fill();
+
+    let x = -20;
+    while (x < PANO_W + 20) {
+      const w = 16 + rnd() * 26, h = 18 + rnd() * 44;
+      g.fillStyle = "#2b2440";
+      g.fillRect(x, base - h, w, h);
+      g.fillStyle = "#352c4d";                       // the lit return
+      g.fillRect(x, base - h, Math.max(2, w * 0.22), h);
+      if (rnd() > 0.55) g.fillRect(x + w * 0.3, base - h - 5, w * 0.25, 5);  // a roof box
+      g.fillStyle = "rgba(255,206,122,.75)";
+      for (let wy = base - h + 5; wy < base - 4; wy += 7)
+        for (let wx = x + 3; wx < x + w - 3; wx += 6)
+          if (rnd() > 0.5) g.fillRect(wx, wy, 2, 3);
+      x += w + 2 + rnd() * 7;
     }
+
   } else if (def.id === "ward") {
-    /* a sunlit window wall at the end of the corridor: the mullions are
-       what stop it reading as a blank white field */
+    /* the sunlit window wall at the end of the corridor */
     g.fillStyle = "#dae4f0";
-    g.fillRect(0, PANO_H - 66, PANO_W, 66);
-    for (let x = 0; x < PANO_W; x += 46) {
+    g.fillRect(0, base - 54, PANO_W, 54);
+    for (let x = 0; x < PANO_W; x += 38) {
       g.fillStyle = "#f6fbff";
-      g.fillRect(x + 3, PANO_H - 62, 38, 54);
-      g.fillStyle = "rgba(126,200,227,.55)";
-      g.fillRect(x + 6, PANO_H - 59, 32, 30);
+      g.fillRect(x + 3, base - 50, 30, 42);
+      g.fillStyle = "rgba(126,200,227,.5)";
+      g.fillRect(x + 6, base - 47, 24, 22);
       g.fillStyle = "#9db0ca";
-      g.fillRect(x, PANO_H - 66, 3, 62);
+      g.fillRect(x, base - 54, 3, 50);
     }
-    g.fillStyle = "#9db0ca";
-    g.fillRect(0, PANO_H - 10, PANO_W, 4);
-    g.fillStyle = "#8698b2";
-    g.fillRect(0, PANO_H - 6, PANO_W, 6);
+    g.fillStyle = "#9db0ca"; g.fillRect(0, base - 8, PANO_W, 3);
+    g.fillStyle = "#8698b2"; g.fillRect(0, base - 5, PANO_W, 5);
+
   } else if (def.id === "town") {
-    /* a low skyline of roofs, and a water tower */
-    g.fillStyle = "rgba(255,255,255,.55)";
-    for (let i = 0; i < 14; i++) {
-      const x = rnd() * PANO_W, y = 18 + rnd() * 40, r = 12 + rnd() * 18;
+    /* clouds, then a modest roofline — houses at the horizon should be
+       small. Slabs the size of the ones the first pass drew read as
+       cardboard flats standing behind the track. */
+    g.fillStyle = "rgba(255,255,255,.6)";
+    for (let i = 0; i < 16; i++) {
+      const x = rnd() * PANO_W, y = 16 + rnd() * 34, r = 8 + rnd() * 13;
       g.beginPath();
-      g.arc(x, y, r, 0, TWO_PI); g.arc(x + r, y + 3, r * 0.8, 0, TWO_PI);
-      g.arc(x - r, y + 4, r * 0.7, 0, TWO_PI);
+      g.arc(x, y, r, 0, TWO_PI); g.arc(x + r, y + 2, r * 0.75, 0, TWO_PI);
+      g.arc(x - r * 0.9, y + 3, r * 0.65, 0, TWO_PI);
       g.fill();
     }
     let x = -10;
     while (x < PANO_W + 10) {
-      const w = 34 + rnd() * 34, h = 22 + rnd() * 34;
-      g.fillStyle = rnd() > 0.5 ? "#8a6f5c" : "#6f7f66";
-      g.fillRect(x, PANO_H - 6 - h, w, h);
-      g.fillStyle = "#5c4a3d";
+      const w = 20 + rnd() * 20, h = 14 + rnd() * 16;
+      const wall = rnd() > 0.5 ? "#a2937f" : "#93a087";
+      g.fillStyle = wall;
+      g.fillRect(x, base - h, w, h);
+      g.fillStyle = shade(wall, 1.12);
+      g.fillRect(x, base - h, Math.max(2, w * 0.25), h);
+      g.fillStyle = "#7d6555";
       g.beginPath();
-      g.moveTo(x - 4, PANO_H - 6 - h);
-      g.lineTo(x + w / 2, PANO_H - 6 - h - 14);
-      g.lineTo(x + w + 4, PANO_H - 6 - h);
-      g.fill();
-      x += w + 6 + rnd() * 10;
+      g.moveTo(x - 3, base - h); g.lineTo(x + w / 2, base - h - 9);
+      g.lineTo(x + w + 3, base - h); g.closePath(); g.fill();
+      g.fillStyle = "rgba(255,224,160,.8)";
+      for (let wx = x + 4; wx < x + w - 4; wx += 7)
+        if (rnd() > 0.45) g.fillRect(wx, base - h + 5, 3, 4);
+      x += w + 4 + rnd() * 12;
     }
+
   } else {
-    /* woods: clouds and a ridge of far pines */
-    g.fillStyle = "rgba(255,255,255,.6)";
-    for (let i = 0; i < 16; i++) {
-      const x = rnd() * PANO_W, y = 14 + rnd() * 36, r = 10 + rnd() * 16;
+    /* woods: clouds and two ridges of far pines */
+    g.fillStyle = "rgba(255,255,255,.62)";
+    for (let i = 0; i < 18; i++) {
+      const x = rnd() * PANO_W, y = 12 + rnd() * 32, r = 8 + rnd() * 12;
       g.beginPath();
       g.arc(x, y, r, 0, TWO_PI); g.arc(x + r, y + 2, r * 0.75, 0, TWO_PI);
       g.arc(x - r * 0.9, y + 3, r * 0.65, 0, TWO_PI);
       g.fill();
     }
     for (let layer = 0; layer < 2; layer++) {
-      g.fillStyle = layer ? "#3f7a4c" : "#2f5f3c";
-      const base = PANO_H - 4 - layer * 6;
-      for (let x = -10; x < PANO_W + 10; x += 13 + rnd() * 10) {
-        const h = (layer ? 26 : 42) + rnd() * 26;
+      g.fillStyle = layer ? "#41805090" : "#2f5f3c";
+      const yb = base - layer * 5;
+      for (let x = -10; x < PANO_W + 10; x += 9 + rnd() * 7) {
+        const h = (layer ? 16 : 26) + rnd() * 16;
         g.beginPath();
-        g.moveTo(x, base); g.lineTo(x + 9, base - h); g.lineTo(x + 18, base);
-        g.fill();
+        g.moveTo(x, yb); g.lineTo(x + 5, yb - h); g.lineTo(x + 10, yb);
+        g.closePath(); g.fill();
       }
     }
   }
+
   buildParallax(def, gf, gm);
   panoId = def.id;
 }
 
-/* the two extra depths: a pale ridge behind everything, and a band of
-   nearer silhouettes that sits just above the horizon line */
-function buildParallax(def, gf, gm) {
-  const rnd = mulberry(def.id.length * 613 + 41);
-  const far = mixRgb(def.haze, def.sky[0], 0.35);
-  gf.fillStyle = `rgba(${far[0]},${far[1]},${far[2]},.55)`;
+/* The two extra depths.
 
+   Both are deliberately small and low-contrast. The first attempt drew
+   them at the same size as the main band, which put a row of enormous
+   flat silhouettes across the horizon that fought with the real
+   billboards in front of them — it read as a bug rather than as depth.
+   Distance means smaller, paler and slower, all three at once. */
+function buildParallax(def, gf, gm) {
+  const rnd = mulberry(seedOf(def.id, 613));
+  const far = mixRgb(def.haze, def.sky[0], 0.4);
+  const fbase = PANO_H - 4;
+
+  gf.fillStyle = `rgba(${far[0]},${far[1]},${far[2]},.5)`;
   if (def.id === "roof" || def.id === "town") {
-    /* a further, paler skyline */
     let x = -20;
     while (x < PANO_W + 20) {
-      const w = 30 + rnd() * 60, h = 20 + rnd() * 50;
-      gf.fillRect(x, PANO_H - 6 - h, w, h);
-      x += w + 8 + rnd() * 16;
+      const w = 22 + rnd() * 34, h = 12 + rnd() * 26;
+      gf.fillRect(x, fbase - h, w, h);
+      x += w + 6 + rnd() * 14;
     }
   } else if (def.id === "ward") {
-    gf.fillRect(0, PANO_H - 40, PANO_W, 40);
+    gf.fillRect(0, fbase - 26, PANO_W, 26);
   } else {
-    /* rolling hills */
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; k < 2; k++) {
       gf.beginPath();
       gf.moveTo(-10, PANO_H);
-      for (let x = -10; x < PANO_W + 20; x += 40)
-        gf.lineTo(x, PANO_H - 18 - Math.sin(x * 0.004 + k) * 14 - rnd() * 8);
+      for (let x = -10; x < PANO_W + 20; x += 46)
+        gf.lineTo(x, fbase - 10 - Math.sin(x * 0.0032 + k * 1.7) * 9 - rnd() * 5);
       gf.lineTo(PANO_W + 20, PANO_H); gf.closePath(); gf.fill();
     }
   }
 
-  /* the near band: whatever this track has lining its edges, in
-     silhouette, so the middle distance is not empty */
-  const midCol = mixRgb(def.grass, "#101018", 0.42);
-  gm.fillStyle = `rgb(${midCol[0]},${midCol[1]},${midCol[2]})`;
-  const kinds = def.scenery;
+  /* the near band: a thin line of small shapes just on the horizon */
+  const midCol = mixRgb(def.grass, "#141420", 0.34);
+  const mbase = PANO_MID - 1;
   for (let x = -20; x < PANO_W + 20; ) {
-    const k = kinds[(rnd() * kinds.length) | 0];
-    const tall = /pine|tree|lamp|pole|watertank|stringpole|laundry|signpost/.test(k);
-    const w = tall ? 8 + rnd() * 10 : 16 + rnd() * 26;
-    const h = tall ? 22 + rnd() * 18 : 10 + rnd() * 14;
+    const tall = rnd() > 0.45;
+    const w = tall ? 5 + rnd() * 5 : 9 + rnd() * 13;
+    const h = tall ? 11 + rnd() * 9 : 6 + rnd() * 7;
+    gm.fillStyle = `rgb(${midCol[0]},${midCol[1]},${midCol[2]})`;
     if (tall) {
       gm.beginPath();
-      gm.moveTo(x, PANO_MID); gm.lineTo(x + w / 2, PANO_MID - h); gm.lineTo(x + w, PANO_MID);
+      gm.moveTo(x, mbase); gm.lineTo(x + w / 2, mbase - h); gm.lineTo(x + w, mbase);
       gm.closePath(); gm.fill();
     } else {
-      gm.fillRect(x, PANO_MID - h, w, h);
+      gm.fillRect(x, mbase - h, w, h);
       gm.beginPath();
-      gm.moveTo(x - 2, PANO_MID - h); gm.lineTo(x + w / 2, PANO_MID - h - 7);
-      gm.lineTo(x + w + 2, PANO_MID - h); gm.closePath(); gm.fill();
+      gm.moveTo(x - 1, mbase - h); gm.lineTo(x + w / 2, mbase - h - 4);
+      gm.lineTo(x + w + 1, mbase - h); gm.closePath(); gm.fill();
     }
-    x += w + 10 + rnd() * 34;
+    x += w + 7 + rnd() * 26;
   }
+}
+
+/* A real string hash. Seeding off def.id.length gave "town", "ward" and
+   "roof" — all four characters — the identical seed, so three of the
+   four tracks laid out their scenery and skyline exactly alike. */
+function seedOf(str, salt) {
+  let h = 2166136261 ^ salt;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
 }
 
 /* small deterministic RNG so a track looks the same every time it loads */
@@ -1205,41 +1273,163 @@ function buildScenery(kind, def) {
 
   /* ---- the pieces ---- */
   if (kind === "pine") {
-    R(mid - 3, H - 14, 6, 14, "#5a3f28");
-    R(mid - 3, H - 14, 2, 14, "#6f5136");
-    for (let i = 0; i < 5; i++) {
-      const y = H - 5 - i * 19, w = 32 - i * 5.5;
-      g.fillStyle = i % 2 ? "#2f6b3d" : "#3b8149";
-      g.beginPath(); g.moveTo(mid, y - 29); g.lineTo(mid - w, y); g.lineTo(mid + w, y); g.fill();
-      g.fillStyle = litRight ? "rgba(255,255,255,.12)" : "rgba(0,0,0,.14)";
-      g.beginPath(); g.moveTo(mid, y - 29); g.lineTo(mid + w, y); g.lineTo(mid + w * 0.25, y); g.fill();
-    }
-  } else if (kind === "tree") {
-    R(mid - 4, H - 26, 8, 26, "#6a4a2c");
-    R(mid - 4, H - 26, 3, 26, "#7d5936");
-    const blobs = [[0,-48,24],[-17,-36,17],[17,-36,17],[-7,-58,15],[9,-56,14]];
-    blobs.forEach(([bx,by,br]) => {
-      g.fillStyle = "#3f8a48";
-      g.beginPath(); g.arc(mid+bx, H+by, br, 0, TWO_PI); g.fill();
-    });
-    // dappled light along the sunward edge, not one flat disc over the top
-    g.save();
+    /* A conifer reads as a conifer because of its silhouette: layered
+       boughs that droop and come to points, not a stack of clean
+       triangles. Each bough is a cone with a saw-toothed hem, drawn
+       bottom-up so the one above casts onto the one below. */
+    const trunkTop = H - 30;
+    g.fillStyle = "#54391f";
     g.beginPath();
-    blobs.forEach(([bx,by,br]) => { g.moveTo(mid+bx+br, H+by); g.arc(mid+bx, H+by, br, 0, TWO_PI); });
-    g.clip();
-    g.fillStyle = "#5cab63";
-    blobs.forEach(([bx,by,br]) => {
+    g.moveTo(mid - 5, H); g.lineTo(mid - 2.5, trunkTop);
+    g.lineTo(mid + 2.5, trunkTop); g.lineTo(mid + 5, H);
+    g.closePath(); g.fill();
+    g.fillStyle = litRight ? "#6d4b2b" : "#412c18";
+    g.beginPath();
+    g.moveTo(mid + (litRight ? 1 : -5), H); g.lineTo(mid + (litRight ? 1 : -2.5), trunkTop);
+    g.lineTo(mid + (litRight ? 2.5 : -1), trunkTop); g.lineTo(mid + (litRight ? 5 : -1), H);
+    g.closePath(); g.fill();
+
+    const boughs = 6;
+    for (let i = 0; i < boughs; i++) {
+      const t = i / (boughs - 1);
+      const base = H - 16 - i * 16;
+      const halfW = 37 * (1 - t * 0.80) + 3;
+      const rise = 30 - t * 8;
+      const teeth = 9 - i;
+      const hem = 9 - t * 4;
+
+      /* the bough itself */
       g.beginPath();
-      g.arc(mid+bx+(litRight?br*0.34:-br*0.34), H+by-br*0.34, br*0.7, 0, TWO_PI);
+      g.moveTo(mid, base - rise);
+      for (let k = 0; k <= teeth; k++) {
+        const f = k / teeth;
+        const x = mid - halfW + halfW * 2 * f;
+        /* the hem dips between the needle tips */
+        g.lineTo(x, base + (k % 2 ? hem : hem * 0.25));
+      }
+      g.closePath();
+      g.fillStyle = i % 2 ? "#2e6b3c" : "#356f42";
+      g.fill();
+
+      /* sunward face, clipped to this bough */
+      g.save();
+      g.clip();
+      g.fillStyle = i % 2 ? "#3e8850" : "#468f58";
+      g.beginPath();
+      g.moveTo(mid, base - rise);
+      g.lineTo(mid + (litRight ? halfW : -halfW), base + hem);
+      g.lineTo(mid + (litRight ? halfW * 0.18 : -halfW * 0.18), base + hem);
+      g.closePath(); g.fill();
+      /* and the shadow the bough above drops onto it */
+      g.fillStyle = "rgba(18,40,26,.34)";
+      g.fillRect(mid - halfW, base - rise, halfW * 2, 6);
+      g.restore();
+
+      /* needle ticks catching the light along the top edges */
+      g.fillStyle = "rgba(190,232,178,.28)";
+      for (let k = 1; k < teeth; k += 2) {
+        const f = k / teeth;
+        const x = mid - halfW + halfW * 2 * f;
+        const y = base - rise * (1 - Math.abs(f - 0.5) * 1.7);
+        if (litRight ? f < 0.5 : f > 0.5) continue;
+        g.fillRect(Math.round(x), Math.round(y + 4), 2, 2);
+      }
+    }
+    /* the leader at the very top */
+    g.fillStyle = "#3e8850";
+    g.beginPath();
+    g.moveTo(mid, H - 16 - (boughs - 1) * 16 - 34);
+    g.lineTo(mid - 3, H - 16 - (boughs - 1) * 16 - 22);
+    g.lineTo(mid + 3, H - 16 - (boughs - 1) * 16 - 22);
+    g.closePath(); g.fill();
+
+  } else if (kind === "tree") {
+    /* A broadleaf is a trunk that forks into branches, and a canopy of
+       overlapping clumps — not one green ball. The silhouette gets its
+       character from the lobes; the depth comes from three tone bands
+       and a scalloped lit edge. */
+    const forkY = H - 34;
+    g.fillStyle = "#5f4126";
+    g.beginPath();
+    g.moveTo(mid - 6, H); g.lineTo(mid - 3, forkY);
+    g.lineTo(mid + 3, forkY); g.lineTo(mid + 6, H);
+    g.closePath(); g.fill();
+    g.fillStyle = litRight ? "#79532f" : "#48311c";
+    g.fillRect(mid + (litRight ? 1 : -5), forkY, 4, H - forkY);
+    /* two limbs going up into the leaves */
+    g.strokeStyle = "#5f4126"; g.lineWidth = 5; g.lineCap = "round";
+    g.beginPath(); g.moveTo(mid, forkY + 4); g.lineTo(mid - 13, forkY - 16); g.stroke();
+    g.beginPath(); g.moveTo(mid, forkY + 4); g.lineTo(mid + 12, forkY - 18); g.stroke();
+    g.lineWidth = 3;
+    g.beginPath(); g.moveTo(mid - 9, forkY - 10); g.lineTo(mid - 18, forkY - 22); g.stroke();
+    g.beginPath(); g.moveTo(mid + 8, forkY - 12); g.lineTo(mid + 17, forkY - 24); g.stroke();
+
+    /* the canopy, as one lumpy silhouette */
+    const lobes = [
+      [  0, -66, 25], [-19, -56, 19], [ 19, -55, 19],
+      [-10, -78, 18], [ 11, -76, 17], [-27, -44, 14],
+      [ 27, -43, 14], [  1, -50, 21], [-14, -40, 13], [ 15, -39, 13],
+    ];
+    const canopy = () => {
+      g.beginPath();
+      lobes.forEach(([bx, by, br]) => {
+        g.moveTo(mid + bx + br, H + by);
+        g.arc(mid + bx, H + by, br, 0, TWO_PI);
+      });
+    };
+
+    canopy(); g.fillStyle = "#2c6b39"; g.fill();      // the shaded mass
+
+    g.save();
+    canopy(); g.clip();
+
+    /* mid tone over most of it, leaving the underside dark */
+    g.fillStyle = "#3a8449";
+    lobes.forEach(([bx, by, br]) => {
+      g.beginPath();
+      g.arc(mid + bx, H + by - br * 0.22, br * 0.94, 0, TWO_PI);
       g.fill();
     });
-    g.fillStyle = "rgba(255,255,255,.14)";
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * TWO_PI, rr = 18 + (i % 4) * 9;
-      g.fillRect(mid + Math.cos(a) * rr + (litRight ? 6 : -6),
-                 H - 46 + Math.sin(a) * rr * 0.7, 3, 3);
+
+    /* the sunward highlight, offset into the light */
+    const sx2 = litRight ? 1 : -1;
+    g.fillStyle = "#4d9c5b";
+    lobes.forEach(([bx, by, br]) => {
+      g.beginPath();
+      g.arc(mid + bx + br * 0.30 * sx2, H + by - br * 0.34, br * 0.68, 0, TWO_PI);
+      g.fill();
+    });
+    g.fillStyle = "#63b26e";
+    lobes.slice(0, 5).forEach(([bx, by, br]) => {
+      g.beginPath();
+      g.arc(mid + bx + br * 0.44 * sx2, H + by - br * 0.46, br * 0.38, 0, TWO_PI);
+      g.fill();
+    });
+
+    /* a couple of gaps you can see sky through, so it is not a solid mass */
+    g.fillStyle = "rgba(24,52,32,.55)";
+    [[-6, -60, 4], [12, -64, 3], [-20, -50, 3]].forEach(([bx, by, br]) => {
+      g.beginPath(); g.arc(mid + bx, H + by, br, 0, TWO_PI); g.fill();
+    });
+
+    /* leaf clumps picked out along the lit rim */
+    g.fillStyle = "rgba(206,238,180,.34)";
+    for (let i = 0; i < 22; i++) {
+      const a = (i / 22) * TWO_PI;
+      const rr = 30 + (i % 3) * 6;
+      const x = mid + Math.cos(a) * rr * 0.95 + sx2 * 5;
+      const y = H - 62 + Math.sin(a) * rr * 0.62 - 4;
+      if (litRight ? Math.cos(a) < -0.15 : Math.cos(a) > 0.15) continue;
+      if (Math.sin(a) > 0.55) continue;
+      g.fillRect(Math.round(x), Math.round(y), 3, 2);
     }
     g.restore();
+
+    /* and a soft occlusion where the canopy sits over the trunk */
+    g.save(); g.globalAlpha = 0.3; g.fillStyle = "#1c4326";
+    g.beginPath(); g.ellipse(mid, forkY - 4, 16, 6, 0, 0, TWO_PI); g.fill();
+    g.restore();
+
   } else if (kind === "bush") {
     g.fillStyle = "#3f8a48";
     [[0,-16,16],[-13,-10,12],[13,-10,12]].forEach(([bx,by,br]) => {
@@ -1706,9 +1896,9 @@ function renderSky(def, camA) {
     if (off < RW) g.drawImage(cvs2, -off - PANO_W, y);
     g.globalAlpha = 1;
   };
-  draw(panoFar, 0.55, HORIZON - PANO_H + 10, 0.85);
+  draw(panoFar, 0.5, HORIZON - PANO_H + 8, 0.8);
   draw(panoCvs, 1.0, HORIZON - PANO_H + 4, 1);
-  draw(panoMid, 1.9, HORIZON - PANO_MID + 3, 1);
+  draw(panoMid, 1.35, HORIZON - PANO_MID + 2, 0.92);
 }
 
 /* --- distance haze, so the far road melts into the sky. Kept shallow
@@ -1731,17 +1921,20 @@ function projectSprite(wx, wy, camX, camY, camA) {
   const cosA = Math.cos(camA), sinA = Math.sin(camA);
   const z =  dx * cosA + dy * sinA;
   const x = -dx * sinA + dy * cosA;
-  /* Anything nearer than this is between the camera and the player, and
-     1/z blows it up to fill the screen. The camera trails by CAM_DIST,
-     so this only ever culls things already well behind the kart — and
-     it fades out over the last stretch rather than vanishing. */
-  if (z < 62) return null;
+  /* Anything nearer than this is between the camera and the player. The
+     camera trails by CAM_DIST, so cutting at a little under that drops
+     karts once they are behind you — which is what you want, and what
+     stops one lingering half-transparent in the middle of the screen
+     looking like a ghost. Roadside props sit far enough off the
+     centreline that by this depth they are already off the side of the
+     frame, so nothing visibly pops. */
+  if (z < 78) return null;
   return {
     z,
     sx: RW / 2 + (x / z) * camFocal,
     sy: HORIZON + (CAM_H / z) * camFocal,
     scale: camFocal / z,
-    fade: z < 96 ? (z - 62) / 34 : 1,
+    fade: z < 102 ? (z - 78) / 24 : 1,
   };
 }
 
@@ -1786,12 +1979,13 @@ class Racer {
     this.steer = 0;      // where the wheels point; the heading chases it
     this.speed = 0;
     this.hint = startIdx;
+    this.nav = { hint: startIdx, onCut: false };
 
     /* Everyone starts *behind* the line, so the very first crossing is
        the start of lap one rather than the end of it. Counting from -1
        is what makes that work without a separate "have we begun" flag. */
     this.lap = -1;
-    this.along = project(this.x, this.y, this.hint).along;
+    this.along = project(this.x, this.y, this.nav).along;
     this.prevAlong = this.along;
     this.progress = -1;          // laps + along, for ordering
     this.place = 1;
@@ -1991,9 +2185,9 @@ class Racer {
     this.x += Math.cos(this.angle) * this.speed * k;
     this.y += Math.sin(this.angle) * this.speed * k;
 
-    const pr = project(this.x, this.y, this.hint);
-    if (!pr.onCut) this.hint = pr.idx;
-    this.onCut = pr.onCut;
+    const pr = project(this.x, this.y, this.nav);
+    this.hint = this.nav.hint;
+    this.onCut = this.nav.onCut;
     /* widths are relative to whichever ribbon you are on — the shortcut
        is narrower, which is the price of taking it */
     const rumble = pr.half + (RUMBLE_HALF - ROAD_HALF);
@@ -2083,7 +2277,7 @@ class Racer {
         owner: this,
         life: it === "arrow" ? 6 : 5,
         bounce: it === "heart" ? 4 : 0,
-        hint: this.hint,
+        nav: { hint: this.hint, onCut: false },
       });
     }
   }
@@ -2175,20 +2369,74 @@ function flashBanner(t) {
   el.banner.hidden = false;
 }
 
+/* How far the nearest bit of ANY driveable ribbon is. The offset from
+   the local stretch of road is not enough on its own: the loop doubles
+   back on itself, and there is a shortcut cutting across the middle, so
+   a tree placed a comfortable distance from the corner it belongs to
+   could still be standing in the middle of the road somewhere else. */
+function distToAnyTrack(x, y) {
+  let best = Infinity;
+  const n = path.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const ax = path[i].x, ay = path[i].y;
+    const dx = path[j].x - ax, dy = path[j].y - ay;
+    const l2 = dx*dx + dy*dy;
+    let t = l2 > 0 ? ((x-ax)*dx + (y-ay)*dy) / l2 : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const cx = ax + t*dx, cy = ay + t*dy;
+    const d = (x-cx)*(x-cx) + (y-cy)*(y-cy);
+    if (d < best) best = d;
+  }
+  if (cut) {
+    const p = cut.pts;
+    for (let i = 0; i < p.length - 1; i++) {
+      const ax = p[i].x, ay = p[i].y;
+      const dx = p[i+1].x - ax, dy = p[i+1].y - ay;
+      const l2 = dx*dx + dy*dy;
+      let t = l2 > 0 ? ((x-ax)*dx + (y-ay)*dy) / l2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const cx = ax + t*dx, cy = ay + t*dy;
+      const d = (x-cx)*(x-cx) + (y-cy)*(y-cy);
+      if (d < best) best = d;
+    }
+  }
+  return Math.sqrt(best);
+}
+
 function placeProps(def) {
   props = [];
-  const rnd = mulberry(def.id.length * 3121 + 7);
+  const rnd = mulberry(seedOf(def.id, 3121));
   for (let i = 0; i < path.length; i += 4) {
     for (const s of [-1, 1]) {
       if (rnd() > 0.62) continue;
       const ta = tangentAt(i);
-      const off = SHOULDER + 26 + rnd() * 150;
       const kind = def.scenery[(rnd() * def.scenery.length) | 0];
+      const spec = SCENERY[kind] || { h: 90, foot: 0.6 };
+      const hv = 0.85 + rnd() * 0.35;
+      /* the bigger the thing, the more room it needs beside the road */
+      const bulk = spec.h * hv * spec.foot * 0.22;
+      const clear = SHOULDER + 22 + bulk;
+
+      let placed = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        /* Never nearer the centreline than the camera trails the kart.
+           Closer than that and a passing hydrant is literally nearer to
+           the lens than the player's own kart, so it towers over the
+           whole screen — correct perspective, terrible to look at. */
+        const off = SHOULDER + 58 + rnd() * 190;
+        const jitter = (rnd() - 0.5) * 40;
+        const x = path[i].x - Math.sin(ta) * off * s + Math.cos(ta) * jitter;
+        const y = path[i].y + Math.cos(ta) * off * s + Math.sin(ta) * jitter;
+        if (x < 30 || y < 30 || x > WORLD - 30 || y > WORLD - 30) continue;
+        if (distToAnyTrack(x, y) < clear) continue;
+        placed = { x, y };
+        break;
+      }
+      if (!placed) continue;      // nowhere safe here; leave the gap
+
       props.push({
-        x: path[i].x - Math.sin(ta) * off * s,
-        y: path[i].y + Math.cos(ta) * off * s,
-        kind,
-        hv: 0.85 + rnd() * 0.35,   // a little variety in height per instance
+        x: placed.x, y: placed.y, kind, hv,
         smokeX: (rnd() < 0.5 ? -1 : 1) * (0.14 + rnd() * 0.14),
       });
     }
@@ -2406,9 +2654,8 @@ function step(dt) {
     s.y += Math.sin(s.a) * s.sp * dt * 60;
 
     if (s.bounce > 0) {
-      const pr = project(s.x, s.y, s.hint);
-      s.hint = pr.idx;
-      if (pr.dist > ROAD_HALF) {
+      const pr = project(s.x, s.y, s.nav);
+      if (pr.dist > pr.half) {
         /* reflect off the verge, so paper hearts ping down the road */
         const nx = pr.nx * Math.sign(pr.side), ny = pr.ny * Math.sign(pr.side);
         const dot = Math.cos(s.a) * nx + Math.sin(s.a) * ny;
@@ -2545,6 +2792,11 @@ function draw() {
   const g = sceneCtx;
   g.imageSmoothingEnabled = false;
   bill.forEach((b) => {
+    /* belt and braces: whatever the previous billboard did, this one
+       starts from a clean slate. One unbalanced alpha in here dims
+       every sprite drawn after it, and that is a maddening bug to see
+       and an easy one to reintroduce. */
+    g.globalAlpha = 1;
     switch (b.kind) {
       case "prop":  drawProp(g, b);  break;
       case "box":   drawBox(g, b);   break;
@@ -2576,12 +2828,16 @@ function shadowUnder(g, sx, sy, w) {
 
 function drawProp(g, b) {
   const { s, o } = b;
-  if (s.fade < 1) g.globalAlpha = s.fade;
   const img = buildScenery(o.kind, trackDef);
   const spec = SCENERY[o.kind] || { h: 90, foot: 0.6 };
   const h = spec.h * o.hv * s.scale;
   const w = h * (img.width / img.height);
   if (w < 1.2) return;
+  /* The fade is set AFTER the early return. Setting it before meant a
+     prop too small to draw bailed out with the canvas still dimmed, and
+     every tree and house drawn after it that frame came out translucent
+     — which is exactly what the flickering was. */
+  if (s.fade < 1) g.globalAlpha = s.fade;
   shadowUnder(g, s.sx, s.sy, w * spec.foot * 0.8);
   g.drawImage(img, s.sx - w / 2, s.sy - h, w, h);
 
