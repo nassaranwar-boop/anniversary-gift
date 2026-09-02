@@ -2519,9 +2519,14 @@ function buildScenery(kind, variant, def, tint) {
     const bags = v ? 2 : 1;
     for (let i = 0; i < bags; i++) {
       const bx = mid + (bags === 1 ? 0 : (i ? 8 : -8));
-      const col = i ? "#ffd8e2" : "#dff0f7";
+      /* Saturated, not pale. The ward's road is #e9edf5 and the bags
+         used to be #dff0f7 — a hundred and thirteen units apart in RGB,
+         which is to say invisible. A thing standing in the road has to
+         be a different colour from the road. */
+      const col = i ? "#f2a1bb" : "#7fcfc0";
       g.strokeStyle = "#8f9aa6"; g.lineWidth = 1;
       g.beginPath(); g.moveTo(bx, H - 74); g.lineTo(bx, H - 68); g.stroke();
+      poly([[bx - 7, H - 69], [bx + 7, H - 69], [bx + 6, H - 47], [bx - 6, H - 47]], "#3f4a55");
       poly([[bx - 6, H - 68], [bx + 6, H - 68], [bx + 5, H - 48], [bx - 5, H - 48]], col);
       g.save(); g.globalAlpha = 0.5;
       R(bx - 6, H - 68, 3, 20, shade(col, 1.12));
@@ -6279,7 +6284,7 @@ function stop() {
 
 /* a hatch for the test harness — nothing in the page uses it */
 if (typeof window !== "undefined")
-  window.__RACE_DEBUG = () => ({ obstacles, coins, racers, props, trackDef, state, mode, path, cut, buildScenery, SCENERY, HAZ });
+  window.__RACE_DEBUG = () => ({ obstacles, coins, racers, props, trackDef, state, mode, path, cut, raceTime, buildScenery, SCENERY, HAZ });
 
 return { start, stop };
 })();
