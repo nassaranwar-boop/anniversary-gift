@@ -160,7 +160,20 @@ const TRACKS = [
          [0.92,0.30],[0.85,0.37],[0.79,0.45],
          [0.85,0.53],[0.93,0.61],[0.92,0.72],
          [0.86,0.81],[0.76,0.88],[0.66,0.92]],
-    cut:{ name:"the back alley", pts:[[0.335,0.495],[0.42,0.44],[0.52,0.42],[0.60,0.45],[0.655,0.475]] },
+    /* THE ENDPOINTS HAVE TO LAND ON THE MAIN LOOP.
+
+       This one used to run from (0.335,0.495) to (0.655,0.475) — and
+       there is no road within four hundred units of that second point.
+       A kart coming out of it got snapped to the nearest ribbon, which
+       was the RETURN leg on the far side of the infield, so the alley
+       skipped half the circuit: measured at 40% of a lap, and the
+       autopilot's lap times fell from 53s to 30s. The gift-cart run and
+       the plank had the same fault. All three ends now sit on real
+       main-path samples, leaving and rejoining within 25 degrees of the
+       racing line, and each saves the three or four per cent of a lap
+       the log bridge always did. */
+    cut:{ name:"the back alley",
+          pts:[[0.410,0.126],[0.485,0.116],[0.560,0.113],[0.635,0.118],[0.710,0.130]] },
     /* "the sprinklers that never got the memo" — they pulse, so a lap
        learned is a lap you can time your way through */
     hazard:{ kind:"sprinkler", n:9, warn:"WATCH OUT · sprinklers, and the wet patch they leave" },
@@ -183,7 +196,8 @@ const TRACKS = [
          [0.91,0.31],[0.84,0.39],[0.80,0.48],
          [0.87,0.56],[0.92,0.65],[0.88,0.76],
          [0.79,0.85],[0.66,0.91]],
-    cut:{ name:"the gift-cart run", pts:[[0.383,0.535],[0.47,0.50],[0.56,0.49],[0.63,0.52],[0.665,0.555]] },
+    cut:{ name:"the gift-cart run",
+          pts:[[0.410,0.150],[0.480,0.143],[0.550,0.141],[0.620,0.148],[0.690,0.160]] },
     hazard:{ kind:"ivpole", n:10, warn:"WATCH OUT · a slalom of IV poles" },
   },
   {
@@ -205,7 +219,8 @@ const TRACKS = [
          [0.90,0.32],[0.83,0.40],[0.81,0.49],
          [0.88,0.58],[0.92,0.68],[0.86,0.79],
          [0.76,0.87],[0.65,0.92]],
-    cut:{ name:"the plank", pts:[[0.392,0.505],[0.48,0.46],[0.57,0.45],[0.66,0.48],[0.72,0.51]] },
+    cut:{ name:"the plank",
+          pts:[[0.396,0.136],[0.472,0.132],[0.548,0.128],[0.624,0.124],[0.700,0.120]] },
     hazard:{ kind:"washline", n:8, warn:"WATCH OUT · laundry lines hung too low" },
   },
 ];
