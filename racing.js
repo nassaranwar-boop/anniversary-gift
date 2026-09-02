@@ -3027,9 +3027,29 @@ class Racer {
     if (input.itemPressed) { input.itemPressed = false; this.fire(); }
   }
 
+  /* Nearest index on a ribbon. Searched in a sliding window around last
+     frame's answer, because a full scan of five hundred samples for
+     eight karts every frame is not free. `full` forces the whole scan,
+     which is what a kart wants the moment it changes ribbons. */
+  nearIdx(line, from, wrap, full) {
+    const m = line.length;
+    let best = 0, bd = Infinity;
+    const lo = full ? 0 : -6, hi = full ? m - 1 : 16;
+    for (let o = lo; o <= hi; o++) {
+      let i = full ? o : from + o;
+      if (wrap) i = ((i % m) + m) % m;
+      else if (i < 0 || i >= m) continue;
+      const dx = line[i].x - this.x, dy = line[i].y - this.y;
+      const d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+
   driveAI(dt) {
     const n = path.length;
     const k = dt * 60;
+    const sf0 = Math.min(1, Math.abs(this.speed) / TOP_SPEED);
 
     /* Some of the field will take the shortcut. They aim at its own
        waypoints while their progress sits inside its span, then rejoin. */
@@ -3037,20 +3057,54 @@ class Racer {
     if (cut && this.takesCut) {
       let span = cut.to - cut.from; if (span < 0) span += 1;
       let rel = this.along - cut.from; if (rel < 0) rel += 1;
-      if (rel < span * 1.05 && rel > -0.01) { line = cut.pts; tIdxMax = cut.pts.length; }
+      if (rel < span * 1.05) {
+        /* ...and only when the alley is actually within reach. An
+           along-value inside the span is not the same thing as being
+           next to the mouth, and a kart that swings at it from the far
+           side of the main road just sets off across the scenery. */
+        const ci = this.nearIdx(cut.pts, 0, false, true);
+        const cx = cut.pts[ci].x - this.x, cy = cut.pts[ci].y - this.y;
+        if (cx * cx + cy * cy < 150 * 150) { line = cut.pts; tIdxMax = cut.pts.length; }
+      }
     }
-    if (line !== this.aiLine) { this.aiLine = line; this.aiTarget = 0; }
 
-    let tries = 0;
-    while (tries++ < 10) {
-      const tp = line[Math.min(this.aiTarget, tIdxMax - 1)];
-      if (Math.hypot(tp.x - this.x, tp.y - this.y) > 60) break;
-      this.aiTarget = line === path ? (this.aiTarget + 1) % n
-                                    : Math.min(this.aiTarget + 1, tIdxMax - 1);
+    /* THE AIM POINT FOLLOWS THE KART. IT DOES NOT RUN FREE.
+
+       aiTarget used to be a counter that crept forward only while the
+       kart was within sixty units of it, and it was reset to zero every
+       time a kart moved between the main line and the shortcut. So an
+       opponent rejoining the road at sample three hundred began aiming
+       at sample zero — half a lap behind itself — turned round, and
+       spent the rest of the race pinned against the shoulder at walking
+       pace. Measured: all eight opponents permanently off-road, lap
+       pace 90-150s against the player's 50-58s on the same course.
+
+       Anchoring the aim to where the kart actually IS on the ribbon
+       makes it self-correcting. Shoved, spun, knocked wide or dropped
+       out of the alley, it has the racing line again on the next
+       frame, because the aim point is derived rather than remembered. */
+    const swapped = line !== this.aiLine;
+    if (swapped) this.aiLine = line;
+    const here = this.nearIdx(line, this.aiTarget, line === path, swapped);
+    this.aiTarget = here;
+
+    /* look a fixed distance up the road, further the faster you go */
+    const stepLen = Math.max(1, line === path
+      ? pathLen / n
+      : cut.len / Math.max(1, cut.pts.length - 1));
+    const look = Math.max(3, Math.round((95 + 85 * sf0) / stepLen));
+    const tIdx = line === path ? (here + look) % n
+                               : Math.min(here + look, tIdxMax - 1);
+    const nIdx = line === path ? (tIdx + 1) % n : Math.min(tIdx + 1, tIdxMax - 1);
+    let ta;
+    if (nIdx === tIdx) {
+      /* the very end of the shortcut: take the heading from behind it,
+         so the tangent is never atan2 of nothing */
+      const pIdx = Math.max(0, tIdx - 1);
+      ta = Math.atan2(line[tIdx].y - line[pIdx].y, line[tIdx].x - line[pIdx].x);
+    } else {
+      ta = Math.atan2(line[nIdx].y - line[tIdx].y, line[nIdx].x - line[tIdx].x);
     }
-    const tIdx = line === path ? this.aiTarget : Math.min(this.aiTarget, tIdxMax - 1);
-    const nx2 = line[Math.min(tIdx + 1, tIdxMax - 1)] || line[tIdx];
-    const ta = Math.atan2(nx2.y - line[tIdx].y, nx2.x - line[tIdx].x);
     this.aiJitter += dt * 0.7;
     let lane = (line === path ? this.lane * 0.75 : this.lane * 0.3)
              + Math.sin(this.aiJitter) * 10;
