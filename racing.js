@@ -136,6 +136,10 @@ const TRACKS = [
        painted afterwards, so it reads as a culvert. */
     river:{ w:30, pts:[[0.58,-0.08],[0.555,-0.01],[0.53,0.06],[0.515,0.13],
                        [0.505,0.20],[0.50,0.27],[0.505,0.34],[0.515,0.41],[0.53,0.47]] },
+    /* the thing the blurb promises: logs down off the hill, lying half
+       across the road. Always one side at a time, so there is a line
+       through — an obstacle you cannot avoid is just a tax. */
+    hazard:{ kind:"log", n:7, warn:"WATCH OUT · fallen logs across the road" },
   },
   {
     id:"town", name:"Hometown Streets", laps:3,
@@ -157,6 +161,9 @@ const TRACKS = [
          [0.85,0.53],[0.93,0.61],[0.92,0.72],
          [0.86,0.81],[0.76,0.88],[0.66,0.92]],
     cut:{ name:"the back alley", pts:[[0.335,0.495],[0.42,0.44],[0.52,0.42],[0.60,0.45],[0.655,0.475]] },
+    /* "the sprinklers that never got the memo" — they pulse, so a lap
+       learned is a lap you can time your way through */
+    hazard:{ kind:"sprinkler", n:9, warn:"WATCH OUT · sprinklers, and the wet patch they leave" },
   },
   {
     id:"ward", name:"Hospital Dash", laps:3,
@@ -177,6 +184,7 @@ const TRACKS = [
          [0.87,0.56],[0.92,0.65],[0.88,0.76],
          [0.79,0.85],[0.66,0.91]],
     cut:{ name:"the gift-cart run", pts:[[0.383,0.535],[0.47,0.50],[0.56,0.49],[0.63,0.52],[0.665,0.555]] },
+    hazard:{ kind:"ivpole", n:10, warn:"WATCH OUT · a slalom of IV poles" },
   },
   {
     id:"roof", name:"Rooftop Sunset", laps:3,
@@ -198,6 +206,7 @@ const TRACKS = [
          [0.88,0.58],[0.92,0.68],[0.86,0.79],
          [0.76,0.87],[0.65,0.92]],
     cut:{ name:"the plank", pts:[[0.392,0.505],[0.48,0.46],[0.57,0.45],[0.66,0.48],[0.72,0.51]] },
+    hazard:{ kind:"washline", n:8, warn:"WATCH OUT · laundry lines hung too low" },
   },
 ];
 
@@ -1499,6 +1508,23 @@ const SCENERY = {
   stringpole:{ h:112, foot:.25 }, planter:{ h:32, foot:.95 },
   trafficlight:{ h:104, foot:.3 }, shelter:{ h:86, foot:.95 },
   car:{ h:44, foot:.95, variants:3 },
+  /* the track furniture — these stand ON the road, not beside it */
+  log:{ h:30, foot:1 , variants:2 }, sprinkler:{ h:36, foot:.6 },
+  ivpole:{ h:88, foot:.28, variants:2 }, washline:{ h:74, foot:.3, variants:2 },
+};
+
+/* WHAT EACH ONE DOES TO YOU
+
+   Every course promised something in its blurb and then had nothing on
+   the road to back it up. These are the promises kept. Radii are in
+   world units; a kart is about 34 across. */
+const HAZ = {
+  log:      { r:27, effect:"spin"  },
+  sprinkler:{ r:23, effect:"slick", cycle:3.1, duty:0.42 },
+  /* a pole on castors goes flying rather than stopping you dead — the
+     slalom is meant to be threaded, not survived */
+  ivpole:   { r:18, effect:"knock" },
+  washline: { r:28, effect:"snag"  },
 };
 
 function cropToContent(c) {
@@ -1572,12 +1598,15 @@ function shadowSprite(img, id) {
 
 /* Lay the silhouette flat on the ground: anchored at the foot, sheared
    along the sun's bearing and squashed towards the horizon. */
-function castShadow(g, img, id, sx, sy, w, h, strength) {
+function castShadow(g, img, id, sx, sy, w, h, strength, fade) {
   const L = 0.62 * (strength || 1);
   const dx = Math.sin(sunRel) * L;
   const dy = -Math.cos(sunRel) * L * 0.34;
   g.save();
-  g.globalAlpha = 0.26;
+  /* a shadow fades into the distance with the thing throwing it — a
+     full-strength shadow under a half-faded tree is the tell that the
+     two are drawn by different code */
+  g.globalAlpha = 0.26 * (fade == null ? 1 : fade);
   g.setTransform(1, 0, 0, 1, 0, 0);          // shear is applied by hand
   g.transform(cw / RW, 0, 0, ch / RH, shakeX, shakeY);
   g.transform(1, 0, -dx, -dy, sx, sy);
@@ -2368,6 +2397,157 @@ function buildScenery(kind, variant, def, tint) {
     g.strokeStyle = body; g.lineWidth = 3;
     g.beginPath(); g.moveTo(mid - 12, H - 9);
     g.quadraticCurveTo(mid - 24, H - 16, mid - 19, H - 29); g.stroke();
+
+  /* ---- track furniture: things that stand ON the road ---- */
+
+  } else if (kind === "log") {
+    /* A pine that came down off the hill and never got moved. Lying
+       lengthways, sawn end towards you, so it reads as a cylinder
+       rather than a brown stripe. */
+    const bark = v ? "#6b5240" : "#7a5f47";
+    const len = 74, rad = 12, y0 = H - 8 - rad * 2;
+    /* the barrel */
+    g.fillStyle = bark;
+    g.beginPath(); g.roundRect ? g.roundRect(mid - len / 2, y0, len, rad * 2, rad)
+                               : g.rect(mid - len / 2, y0, len, rad * 2);
+    g.fill();
+    /* lit along the top, dark in the gutter underneath */
+    g.save(); g.globalAlpha = 0.5;
+    R(mid - len / 2 + 3, y0 + 2, len - 6, 4, shade(bark, 1.26));
+    g.globalAlpha = 0.42;
+    R(mid - len / 2 + 3, y0 + rad * 2 - 6, len - 6, 5, shade(bark, 0.64));
+    g.restore();
+    /* bark: long broken ridges, not stripes */
+    g.save(); g.globalAlpha = 0.30;
+    for (let i = 0; i < 26; i++) {
+      const bx = mid - len / 2 + 5 + rnd() * (len - 12);
+      const by = y0 + 4 + rnd() * (rad * 2 - 9);
+      g.fillStyle = shade(bark, rnd() < 0.5 ? 0.7 : 1.2);
+      g.fillRect(Math.round(bx), Math.round(by), 3 + ((rnd() * 9) | 0), 1);
+    }
+    g.restore();
+    /* the sawn end, with rings */
+    const ex = sd < 0 ? mid - len / 2 : mid + len / 2 - 9;
+    g.fillStyle = "#c9a877";
+    g.beginPath(); g.ellipse(ex + 4, y0 + rad, 6, rad - 1, 0, 0, TWO_PI); g.fill();
+    g.strokeStyle = "rgba(120,92,58,.55)"; g.lineWidth = 1;
+    for (let rr = 2.5; rr < rad - 2; rr += 3.2) {
+      g.beginPath(); g.ellipse(ex + 4, y0 + rad, rr * 0.45, rr, 0, 0, TWO_PI); g.stroke();
+    }
+    /* a snapped branch stub and a patch of moss, so no two read alike */
+    poly([[mid + (v ? 13 : -16), y0 + 4], [mid + (v ? 22 : -25), y0 - 6],
+          [mid + (v ? 25 : -28), y0 - 3], [mid + (v ? 16 : -13), y0 + 8]], shade(bark, 0.82));
+    g.save(); g.globalAlpha = 0.55; g.fillStyle = "#6f9a5a";
+    for (let i = 0; i < (v ? 14 : 6); i++)
+      g.fillRect(Math.round(mid - len / 2 + 4 + rnd() * (len - 10)),
+                 Math.round(y0 + 1 + rnd() * (v ? 8 : 4)), 4 + ((rnd() * 7) | 0), 2);
+    g.restore();
+    /* the second one has been down a lot longer: the bark has come away
+       in a long strip and the heartwood underneath has gone silver */
+    if (v) {
+      g.save();
+      g.fillStyle = "#a89078";
+      g.beginPath();
+      g.moveTo(mid - 20, y0 + rad * 0.5);
+      g.quadraticCurveTo(mid - 2, y0 + rad * 0.1, mid + 20, y0 + rad * 0.6);
+      g.quadraticCurveTo(mid - 2, y0 + rad * 1.0, mid - 20, y0 + rad * 0.5);
+      g.fill();
+      g.globalAlpha = 0.35; g.fillStyle = "#7a6650";
+      for (let xx = mid - 17; xx < mid + 17; xx += 5)
+        g.fillRect(Math.round(xx), Math.round(y0 + rad * 0.42), 1, 6);
+      g.restore();
+      /* and a split running out from the sawn end */
+      g.save(); g.globalAlpha = 0.45;
+      g.strokeStyle = "#3f3126"; g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(sd < 0 ? mid - len / 2 + 8 : mid + len / 2 - 8, y0 + rad);
+      g.lineTo(mid + (sd < 0 ? -6 : 6), y0 + rad * 1.35);
+      g.stroke();
+      g.restore();
+    }
+
+  } else if (kind === "sprinkler") {
+    /* just the head — the water is drawn live, because it pulses */
+    g.fillStyle = "#5f7a4e";
+    g.beginPath(); g.ellipse(mid, H - 6, 11, 4, 0, 0, TWO_PI); g.fill();
+    g.fillStyle = "#7c9a66";
+    g.beginPath(); g.ellipse(mid, H - 7, 9, 3, 0, 0, TWO_PI); g.fill();
+    box3(mid - 3, H - 18, 6, 12, 5, "#8a9aa6", { top: true });
+    R(mid - 5, H - 21, 10, 4, "#b3c0c8");
+    R(mid - 5, H - 21, 10, 1, "#e2eaee");
+    /* the nozzle, cocked over the way it throws */
+    poly([[mid + sd * 4, H - 20], [mid + sd * 13, H - 25],
+          [mid + sd * 14, H - 22], [mid + sd * 5, H - 17]], "#9fb0ba");
+    R(mid - 1, H - 24, 2, 4, "#cfd9de");
+
+  } else if (kind === "ivpole") {
+    /* chrome stand, castor base, a bag of something hopeful */
+    [-9, 0, 9].forEach((o) => {
+      g.strokeStyle = "#6d7a89"; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(mid, H - 10); g.lineTo(mid + o, H - 4); g.stroke();
+      g.fillStyle = "#3d4552";
+      g.beginPath(); g.arc(mid + o, H - 3, 2.4, 0, TWO_PI); g.fill();
+    });
+    /* Against the ward's white walls a chrome pole disappears. A mint
+       bumper collar at knee height is what makes it read as an object
+       standing in the road from far enough away to do something about
+       it — and it is the kind of thing a real ward would have. */
+    R(mid - 2, H - 74, 4, 65, "#8d9aa8");
+    R(mid - 2, H - 74, 1, 65, "#dbe4ec");          // the chrome highlight
+    R(mid + 1, H - 74, 1, 65, "#5d6875");
+    R(mid - 4, H - 30, 8, 5, "#5ab8a6");
+    R(mid - 4, H - 30, 8, 1, "#8fded0");
+    R(mid - 4, H - 26, 8, 1, "#3d8c7e");
+    /* the T-bar */
+    R(mid - 11, H - 76, 22, 3, "#aab6c2");
+    R(mid - 11, H - 76, 22, 1, "#e6edf3");
+    const bags = v ? 2 : 1;
+    for (let i = 0; i < bags; i++) {
+      const bx = mid + (bags === 1 ? 0 : (i ? 8 : -8));
+      const col = i ? "#ffd8e2" : "#dff0f7";
+      g.strokeStyle = "#8f9aa6"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(bx, H - 74); g.lineTo(bx, H - 68); g.stroke();
+      poly([[bx - 6, H - 68], [bx + 6, H - 68], [bx + 5, H - 48], [bx - 5, H - 48]], col);
+      g.save(); g.globalAlpha = 0.5;
+      R(bx - 6, H - 68, 3, 20, shade(col, 1.12));
+      R(bx + 3, H - 68, 3, 20, shade(col, 0.84));
+      g.restore();
+      R(bx - 5, H - 58, 10, 8, shade(col, 0.9));   // the fill line
+      g.strokeStyle = "rgba(140,150,160,.8)";
+      g.beginPath(); g.moveTo(bx, H - 48); g.lineTo(bx + 1, H - 34); g.stroke();
+    }
+
+  } else if (kind === "washline") {
+    /* somebody's washing, strung too low, right where you want to be */
+    box3(mid - 2, H - 70, 4, 65, 4, "#8c7a62", { top: false });
+    R(mid - 9, H - 72, 18, 3, "#7a6a55");
+    g.strokeStyle = "rgba(60,52,44,.8)"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(mid - 30, H - 68);
+    g.quadraticCurveTo(mid, H - 62, mid + 30, H - 68); g.stroke();
+    const wash = v ? ["#ffd9c2", "#cfe6f2", "#ffe9a8"] : ["#e8dff2", "#d6f0dc", "#ffd0d8"];
+    [-19, 0, 19].forEach((o, i) => {
+      const col = wash[i % 3];
+      const top = H - 66 + Math.abs(o) * -0.09 + 3;
+      const w2 = 15 - i % 2 * 3, h2 = 26 + (i % 2) * 7;
+      /* two pegs and a sheet that hangs with a bit of a belly */
+      R(mid + o - 1, top - 3, 2, 4, "#c08a5a");
+      g.fillStyle = col;
+      g.beginPath();
+      g.moveTo(mid + o - w2 / 2, top);
+      g.lineTo(mid + o + w2 / 2, top);
+      g.quadraticCurveTo(mid + o + w2 / 2 + 2, top + h2 * 0.6, mid + o + w2 / 2 - 1, top + h2);
+      g.quadraticCurveTo(mid + o, top + h2 + 3, mid + o - w2 / 2 + 1, top + h2);
+      g.quadraticCurveTo(mid + o - w2 / 2 - 2, top + h2 * 0.6, mid + o - w2 / 2, top);
+      g.fill();
+      g.save(); g.globalAlpha = 0.42;
+      R(mid + o - w2 / 2, top, 4, h2, shade(col, litRight ? 0.78 : 1.18));
+      R(mid + o + w2 / 2 - 4, top, 4, h2, shade(col, litRight ? 1.18 : 0.78));
+      g.restore();
+      g.save(); g.globalAlpha = 0.22; g.fillStyle = shade(col, 0.7);
+      for (let yy = top + 5; yy < top + h2; yy += 6)
+        g.fillRect(Math.round(mid + o - w2 / 2 + 2), Math.round(yy), w2 - 4, 1);
+      g.restore();
+    });
   }
 
   if (TINTS[ti]) {
@@ -2648,6 +2828,11 @@ class Racer {
     this.iframe = 0;   // the moment after a hit, so you cannot be chained
     this.shield = 0;
     this.bog = 0;        // a flooded start, briefly
+    this.slick = 0;      // through a sprinkler: the grip goes away
+    this.snag = 0;       // through the washing: dragging it with you
+    this.coins = 0;      // hearts picked up off the road
+    this.jolt = 0;       // suspension, loaded up over the rumble strip
+    this.squash = 0;     // and the compression on landing a hop
     this.draft = 0;      // how long we have been sitting in clean air
     this.hop = 0;        // the little jump that starts a drift
     this.ammo = 0;       // how many of a multi-shot item are left
@@ -2665,6 +2850,10 @@ class Racer {
     if (!this.isPlayer) m *= [0.955, 0.995, 1.03][difficulty];
     if (this.offroad) m *= OFFROAD_SP;
     if (this.bog > 0) m *= 0.45;
+    if (this.snag > 0) m *= 0.62;
+    /* a full set of hearts is worth about six per cent — enough to
+       matter down a straight, not enough to decide a race on its own */
+    m *= 1 + Math.min(this.coins, COIN_CAP) * 0.006;
     if (this.boost > 0) m *= 1.55;
     return m;
   }
@@ -2674,6 +2863,9 @@ class Racer {
 
     if (this.iframe > 0) this.iframe -= dt;
     if (this.bog > 0) this.bog -= dt;
+    if (this.slick > 0) this.slick -= dt;
+    if (this.snag > 0) this.snag -= dt;
+    if (this.squash > 0) this.squash = Math.max(0, this.squash - dt * 3.2);
 
     if (this.spin > 0) {
       this.spin -= dt;
@@ -2726,7 +2918,23 @@ class Racer {
       Snd.hop();
     }
     this.dkeyWas = dkey;
-    if (this.hop > 0) this.hop -= dt;
+    if (this.hop > 0) {
+      const was = this.hop;
+      this.hop -= dt;
+      /* the landing: the chassis compresses, the tyres puff, and for a
+         moment you are wider than you are tall. Coming down with no
+         weight in it was the last thing that made the hop feel like a
+         sprite moving up and down rather than a kart jumping. */
+      if (this.hop <= 0 && was > 0) {
+        this.squash = 0.26;
+        const back = this.angle + Math.PI;
+        for (const sgn of [-1, 1])
+          addPuff(this.x + Math.cos(back) * 12 - Math.sin(this.angle) * sgn * 12,
+                  this.y + Math.sin(back) * 12 + Math.cos(this.angle) * sgn * 12,
+                  "#fff8e8");
+        if (this.isPlayer) shake = Math.max(shake, 0.9);
+      }
+    }
 
     const turning = left || right;
     if (dkey && turning && this.speed > TOP_SPEED * 0.42) {
@@ -2773,7 +2981,8 @@ class Racer {
     this.steer = Math.max(-lock, Math.min(lock, this.steer));
     if (this.drifting) this.steer += this.driftDir * TURN * 0.30 * k;
 
-    const grip = (this.drifting ? DRIFT_GRIP : GRIP) * (this.offroad ? 0.7 : 1);
+    const grip = (this.drifting ? DRIFT_GRIP : GRIP)
+               * (this.offroad ? 0.7 : 1) * (this.slick > 0 ? 0.40 : 1);
     this.angle += (this.steer) * grip * k;
     /* the heading having caught up spends the steering input */
     this.steer -= this.steer * grip * k;
@@ -2823,8 +3032,14 @@ class Racer {
     const nx2 = line[Math.min(tIdx + 1, tIdxMax - 1)] || line[tIdx];
     const ta = Math.atan2(nx2.y - line[tIdx].y, nx2.x - line[tIdx].x);
     this.aiJitter += dt * 0.7;
-    const lane = (line === path ? this.lane * 0.75 : this.lane * 0.3)
-               + Math.sin(this.aiJitter) * 10;
+    let lane = (line === path ? this.lane * 0.75 : this.lane * 0.3)
+             + Math.sin(this.aiJitter) * 10;
+
+    /* Look up the road and move off the line if something is parked on
+       it. Without this the field simply drives into the logs, which
+       turns a hazard into a lottery and makes the AI look blind. */
+    lane += this.dodge(ta);
+
     const tx = line[tIdx].x - Math.sin(ta) * lane;
     const ty = line[tIdx].y + Math.cos(ta) * lane;
 
@@ -2840,7 +3055,7 @@ class Racer {
     this.steer += (wantSteer - this.steer) * 0.35 * k;
     const lock = TURN * 22;
     this.steer = Math.max(-lock, Math.min(lock, this.steer));
-    const grip = GRIP * (this.offroad ? 0.7 : 1);
+    const grip = GRIP * (this.offroad ? 0.7 : 1) * (this.slick > 0 ? 0.45 : 1);
     this.angle += this.steer * grip * k;
     this.steer -= this.steer * grip * k;
     const sf = Math.min(1, Math.abs(this.speed) / TOP_SPEED);
@@ -2854,15 +3069,95 @@ class Racer {
     const p = racers.find((r) => r.isPlayer);
     if (p && !p.finished) {
       const gap = p.progress - this.progress;
-      if (gap >  0.06) want *= 1.05 + Math.min(0.10, gap * 0.5);
-      if (gap < -0.06) want *= 0.94;
+      if (this.rival) {
+        /* THE RIVAL
+
+           One of them is written to stay in your mirrors from the lights
+           to the flag: he will not run away up the road and he will not
+           drop off the back. Everything a race needs emotionally comes
+           from having exactly one car you are actually racing, and it
+           was missing — the field simply strung out by lap two. */
+        if (gap >  0.015) want *= 1.10 + Math.min(0.18, gap * 1.1);
+        if (gap < -0.015) want *= 0.89;
+      } else {
+        if (gap >  0.06) want *= 1.05 + Math.min(0.10, gap * 0.5);
+        if (gap < -0.06) want *= 0.94;
+      }
     }
     this.speed += (want - this.speed) * 2.4 * dt;
 
-    if (this.item) {
-      this.aiItemWait -= dt;
-      if (this.aiItemWait <= 0) { this.fire(); this.aiItemWait = 4 + Math.random() * 6; }
+    if (this.item) this.thinkItem(dt);
+  }
+
+  /* How far sideways to move to miss whatever is coming. Returns a
+     lateral offset in world units, biased towards whichever side of the
+     obstacle has more road behind it. */
+  dodge(ta) {
+    let push = 0;
+    const lx = -Math.sin(ta), ly = Math.cos(ta);
+    for (const h of obstacles) {
+      const spec = HAZ[h.kind];
+      if (spec.cycle && !h.on) continue;       // a sprinkler between bursts
+      const dx = h.x - this.x, dy = h.y - this.y;
+      const ahead = dx * Math.cos(ta) + dy * Math.sin(ta);
+      if (ahead < 10 || ahead > 260) continue;
+      const across = dx * lx + dy * ly;        // its offset from our line
+      const room = spec.r + 22;
+      if (Math.abs(across) > room) continue;
+      /* go round the side it is not on; nearer means harder */
+      const urgency = 1 - ahead / 260;
+      const dir = across >= 0 ? -1 : 1;
+      push += dir * (room - Math.abs(across)) * (0.7 + urgency * 0.9);
     }
+    return Math.max(-ROAD_HALF * 0.8, Math.min(ROAD_HALF * 0.8, push));
+  }
+
+  /* AI items used to go off on a stopwatch, which meant hearts fired
+     down empty road and a boost spent halfway round a hairpin. Each
+     item now waits for the moment it was made for, and the better the
+     difficulty the more often it recognises one. */
+  thinkItem(dt) {
+    this.aiItemWait -= dt;
+    if (this.aiItemWait > 0) return;
+    const it = this.item;
+    const skill = [0.35, 0.62, 0.9][difficulty];
+    let go = false;
+
+    if (it === "letter" || it === "ring") {
+      /* spend the speed where there is road to use it */
+      go = Math.abs(this.steer) < TURN * 5 && !this.offroad
+        && Math.abs(this.speed) > TOP_SPEED * 0.5;
+    } else if (it === "rose") {
+      /* drop it in front of whoever is close behind */
+      go = racers.some((o) => o !== this && !o.finished
+        && o.progress < this.progress
+        && (o.x - this.x) ** 2 + (o.y - this.y) ** 2 < 300 * 300);
+    } else if (it === "arrow") {
+      /* it homes, so all it needs is somebody up the road */
+      go = racers.some((o) => o !== this && !o.finished && o.progress > this.progress);
+    } else {
+      go = !!this.aimAt();
+    }
+
+    if (!go) { this.aiItemWait = 0.3; return; }
+    /* and even then, they miss their moment sometimes */
+    if (Math.random() > skill) { this.aiItemWait = 0.7; return; }
+    this.fire();
+    this.aiItemWait = 1.4 + Math.random() * 2.4;
+  }
+
+  /* anyone actually in the firing line? */
+  aimAt() {
+    for (const o of racers) {
+      if (o === this || o.finished) continue;
+      const dx = o.x - this.x, dy = o.y - this.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > 520 * 520 || d2 < 26 * 26) continue;
+      let bear = Math.atan2(dy, dx) - this.angle;
+      bear = Math.atan2(Math.sin(bear), Math.cos(bear));
+      if (Math.abs(bear) < 0.32) return o;
+    }
+    return null;
   }
 
   advance(dt) {
@@ -2878,6 +3173,18 @@ class Racer {
     const rumble = pr.half + (RUMBLE_HALF - ROAD_HALF);
     const bound  = pr.half + (SHOULDER - ROAD_HALF);
     this.offroad = pr.dist > rumble;
+
+    /* SUSPENSION
+
+       Riding the kerb should be felt, not just heard. The chassis loads
+       up over the rumble strip and unloads again on the way off it, and
+       the drawing reads that number — so a wheel dropping off the edge
+       of the road makes the whole kart shudder. */
+    const onKerb = pr.dist > pr.half && pr.dist <= rumble;
+    const load = onKerb ? Math.min(1, Math.abs(this.speed) / (TOP_SPEED * 0.55)) : 0;
+    this.jolt += (load - this.jolt) * (onKerb ? 0.35 : 0.10) * k;
+    if (onKerb && this.isPlayer && Math.abs(this.speed) > TOP_SPEED * 0.4)
+      shake = Math.max(shake, 0.55 * load);
 
     /* the wall is soft: past the shoulder you get pushed back and lose
        most of your speed, rather than stopping dead */
@@ -3079,6 +3386,7 @@ function stepFx(dt) {
    13. RACE STATE
    ========================================================= */
 let racers = [], boxes = [], shots = [], hazards = [], props = [];
+let obstacles = [], coins = [];
 let trackDef = TRACKS[0];
 let raceTime = 0, countdown = 0, shake = 0;
 let mode = "single";           // single | gp | trial
@@ -3093,6 +3401,9 @@ let lastPlace = 0;
 let revUp = 0, revTotal = 0;      // how the player worked the countdown
 let draftOn = false;
 let finalLap = false;
+let rivalCall = 0;   // cooldown on the rival calling you out
+let photoDone = false;
+let slowMo = 0;      // the photo-finish stretch
 
 const GP_POINTS = [15, 12, 10, 8, 6, 4, 3, 2];
 
@@ -3160,6 +3471,9 @@ const GLOWS = {
   lamp:{ n:1, rate:1.3, base:0.26, amp:0.07, r:0.16, y:0.86, spread:0,
          cols:["#ffd166"] },
 };
+
+/* who gets up and cheers when the bell rings */
+const CROWD = { cat:1, bike:1, plant:1, flowerbox:1, planter:1, bush:1 };
 
 const NEAR_KINDS = {
   bush:1, rock:1, flowerbox:1, planter:1, mailbox:1, hydrant:1,
@@ -3243,6 +3557,88 @@ function placeBoxes() {
   }
 }
 
+/* THE TRACK FURNITURE
+
+   Each course's blurb named something — logs, sprinklers, a slalom of
+   IV poles, laundry lines — and for a long time none of it existed. It
+   does now, and the placement rule is the whole design: never more than
+   one obstacle across the road at a time, and never further out than
+   two thirds of the half-width, so there is always a line through for
+   somebody who is paying attention. An obstacle you cannot avoid is
+   not a hazard, it is a toll. */
+function placeObstacles(def) {
+  obstacles = [];
+  const spec = def.hazard;
+  if (!spec) return;
+  const rnd = mulberry(seedOf(def.id, 7717));
+  const n = path.length;
+  for (let k = 0; k < spec.n; k++) {
+    /* spread round the loop, leaving the start-finish stretch clear so
+       nobody eats one before the lights have finished */
+    const f = 0.09 + ((k + 0.35 + rnd() * 0.3) / spec.n) * 0.84;
+    const i = Math.floor(f * n) % n;
+    const ta = tangentAt(i);
+    /* Out towards the edge of the lane, never straddling the middle.
+       Measured: at a third of the half-width the centre line runs
+       straight through everything, and a lap went from fifty seconds to
+       ninety because the only line was the one through the obstacle. */
+    const side = (k % 2 ? 1 : -1) * (0.46 + rnd() * 0.38);
+    const off = side * ROAD_HALF;
+    let hx = path[i].x - Math.sin(ta) * off;
+    let hy = path[i].y + Math.cos(ta) * off;
+    /* never on top of an item box — being unable to reach a box because
+       something is parked in it is the sort of thing you only find out
+       about on the fifth playthrough, when it is somebody else playing */
+    let clash = 0, ii = i;
+    while (clash < 6 && boxes.some((bx) => (bx.x - hx) ** 2 + (bx.y - hy) ** 2 < 74 * 74)) {
+      clash++;
+      ii = (i + clash * 4) % n;
+      const ta2 = tangentAt(ii);
+      hx = path[ii].x - Math.sin(ta2) * off;
+      hy = path[ii].y + Math.cos(ta2) * off;
+    }
+    obstacles.push({
+      x: hx, y: hy,
+      kind: spec.kind, a: tangentAt(ii),
+      v: (rnd() * (SCENERY[spec.kind].variants || 1)) | 0,
+      idx: ii, phase: rnd() * TWO_PI, t: 0, on: true, hitT: 0,
+    });
+  }
+}
+
+/* HEARTS ON THE ROAD
+
+   The item boxes come round every fifth of a lap, and between them
+   there was nothing to aim at — you simply held the throttle. Trails of
+   hearts give the straights a line to follow and the corners a reason
+   to take the inside. Ten of them is a real edge; a hit costs you two,
+   so they are worth defending. */
+const COIN_CAP = 10;
+function placeCoins(def) {
+  coins = [];
+  const rnd = mulberry(seedOf(def.id, 4441));
+  const n = path.length;
+  for (let g = 0; g < 9; g++) {
+    const base = Math.floor(((g + 0.30) / 9) * n) % n;
+    const len = 5 + ((rnd() * 4) | 0);
+    const lane = (rnd() * 2 - 1) * 22;
+    const arc  = (rnd() - 0.5) * 46;
+    for (let k = 0; k < len; k++) {
+      const i = (base + k * 2) % n;
+      const ta = tangentAt(i);
+      const t = len > 1 ? k / (len - 1) : 0;
+      const off = lane + Math.sin(t * Math.PI) * arc;
+      const cx = path[i].x - Math.sin(ta) * off;
+      const cy = path[i].y + Math.cos(ta) * off;
+      /* and a trail never leads you straight into something. Bait is
+         only fun if taking it is a decision rather than a trap. */
+      if (obstacles.some((h) => (h.x - cx) ** 2 + (h.y - cy) ** 2
+                                < (HAZ[h.kind].r + 20) ** 2)) continue;
+      coins.push({ x: cx, y: cy, alive: true, t: 0, ph: rnd() * TWO_PI });
+    }
+  }
+}
+
 /* Baking a 2048-square world takes long enough to drop a frame or two,
    and a silent freeze reads as a crash. Put a card up, let the browser
    paint it, then do the work. */
@@ -3261,6 +3657,8 @@ function buildRace() {
   bakeTrack(trackDef);
   bakePano(trackDef);
   placeBoxes();
+  placeObstacles(trackDef);
+  placeCoins(trackDef);
 
   shots = []; hazards = []; fx = [];
   raceTime = 0; countdown = 3.9; shake = 0;
@@ -3282,6 +3680,10 @@ function buildRace() {
     return new Racer(f.def, f.player, lane, back);
   });
   racers.forEach((r) => { r.progress = r.lap + r.along; });
+  /* the other half of the pair is your rival — Anwar if you picked
+     Ouissy, Ouissy if you picked Anwar */
+  if (mode !== "trial" && racers[1]) racers[1].rival = true;
+  rivalCall = 0;
 
   /* time trial: race your own best lap as a ghost */
   if (mode === "trial") {
@@ -3296,6 +3698,7 @@ function buildRace() {
   camLag = 0; camFocal = FOCAL;
   lastPlace = 0;
   revUp = 0; revTotal = 0; draftOn = false; finalLap = false;
+  rivalCall = 0; photoDone = false; slowMo = 0;
   Snd.resume();
   Snd.music(trackDef.id);
 
@@ -3448,6 +3851,72 @@ function step(dt) {
     }
   });
 
+  /* the track's own furniture */
+  for (const h of obstacles) {
+    h.t += dt;
+    if (h.hitT > 0) h.hitT -= dt;
+    const spec = HAZ[h.kind];
+    /* the ones that pulse are learnable: watch a lap and you can time
+       your way through without lifting */
+    h.on = spec.cycle
+      ? ((h.t + h.phase) % spec.cycle) < spec.cycle * spec.duty
+      : true;
+    if (!h.on) continue;
+    for (const r of racers) {
+      if (r.finished || r.spin > 0 || r.invuln > 0) continue;
+      const dx = r.x - h.x, dy = r.y - h.y;
+      if (dx * dx + dy * dy > spec.r * spec.r) continue;
+      if (spec.effect === "spin") {
+        if (r.iframe > 0) continue;
+        hit(r);
+        addPop(h.x, h.y, "#c9a877");
+        h.hitT = 0.45;
+      } else if (spec.effect === "slick") {
+        if (r.slick > 0.9) continue;
+        r.slick = 1.5;
+        r.speed *= 0.90;
+        for (let i = 0; i < 4; i++) addPuff(h.x, h.y, "#dff0f7");
+        if (r.isPlayer) { flashBanner("SLIPPERY!"); shake = Math.max(shake, 1.4); Snd.splash(); }
+      } else if (spec.effect === "knock") {
+        if (r.iframe > 0 || h.hitT > 0.5) continue;
+        r.speed *= 0.58;
+        r.iframe = 0.5;
+        r.jolt = 1;
+        h.hitT = 1.0;
+        /* and it topples away from you rather than standing there */
+        h.knock = Math.sign((r.x - h.x) * -Math.sin(h.a) + (r.y - h.y) * Math.cos(h.a)) || 1;
+        addPop(h.x, h.y, "#dff0f7");
+        if (r.isPlayer) { shake = Math.max(shake, 2.2); flashBanner("CLATTER!"); Snd.clatter(); }
+      } else if (spec.effect === "snag") {
+        if (r.snag > 0.4) continue;
+        r.snag = 1.0;
+        r.speed *= 0.52;
+        r.boost = 0;
+        addPop(h.x, h.y, "#ffd9c2");
+        if (r.isPlayer) { flashBanner("TANGLED!"); shake = Math.max(shake, 1.8); Snd.scrape(); }
+      }
+    }
+  }
+
+  /* hearts on the road */
+  for (const c of coins) {
+    if (!c.alive) { c.t -= dt; if (c.t <= 0) c.alive = true; continue; }
+    for (const r of racers) {
+      if (r.finished) continue;
+      const dx = r.x - c.x, dy = r.y - c.y;
+      if (dx * dx + dy * dy > 26 * 26) continue;
+      c.alive = false; c.t = 9;
+      if (r.coins < COIN_CAP) r.coins++;
+      r.speed += 0.09;
+      if (r.isPlayer) {
+        Snd.pickup();
+        addPop(c.x, c.y, "#ff9ec4");
+        if (r.coins === COIN_CAP) flashBanner("HEARTS FULL!");
+      }
+      break;
+    }
+  }
+
   /* shots */
   for (let i = shots.length - 1; i >= 0; i--) {
     const s = shots[i];
@@ -3573,6 +4042,43 @@ function step(dt) {
     }
   }
 
+  /* THE RIVAL, AND THE PHOTO FINISH
+
+     Two small things that turn a lap counter into a race. The rival
+     says something when he gets past you, so a pass registers as an
+     event; and if the two of you arrive at the line together the whole
+     picture goes into slow motion for the last stretch, which is the
+     single most Mario-Kart thing a racing game can do. */
+  if (rivalCall > 0) rivalCall -= dt;
+  const you = racers.find((r) => r.isPlayer);
+  const riv = racers.find((r) => r.rival);
+  if (you && riv && !you.finished && !riv.finished && mode !== "tutorial") {
+    const gap = riv.progress - you.progress;
+    if (riv.wasAhead === undefined) riv.wasAhead = gap > 0;
+    if (gap > 0 && !riv.wasAhead && rivalCall <= 0) {
+      flashBanner(riv.def.name.toUpperCase() + " IS PAST YOU!");
+      rivalCall = 9;
+    } else if (gap <= 0 && riv.wasAhead && rivalCall <= 0) {
+      flashBanner("YOU GOT " + riv.def.name.toUpperCase() + "!");
+      rivalCall = 9;
+    }
+    riv.wasAhead = gap > 0;
+
+    if (finalLap && !photoDone && you.along > 0.94) {
+      let closest = Infinity;
+      for (const o of racers) {
+        if (o === you || o.finished) continue;
+        closest = Math.min(closest, Math.abs(o.progress - you.progress));
+      }
+      if (closest < 0.014) {
+        photoDone = true;
+        slowMo = 1.6;
+        flashBanner("PHOTO FINISH!");
+        Snd.finalLap();
+      }
+    }
+  }
+
   if (mode === "tutorial") stepTutorial(dt);
 
   stepFx(dt);
@@ -3588,6 +4094,13 @@ function hit(r) {
   r.spin = 1.05;
   r.iframe = 2.0;
   r.speed *= 0.34;
+  /* and it scatters two of your hearts, which is what makes them worth
+     holding onto rather than just worth collecting */
+  if (r.coins > 0) {
+    const lost = Math.min(2, r.coins);
+    r.coins -= lost;
+    for (let i = 0; i < lost * 3; i++) addPuff(r.x, r.y, "#ff9ec4");
+  }
   r.boost = 0;
   r.drifting = false;
   if (r.isPlayer) { shake = 3; flashBanner("OUCH!"); Snd.hit(); }
@@ -3632,6 +4145,15 @@ function draw() {
     const s = projectSprite(b.x, b.y, camX, camY, camA);
     if (s) bill.push({ s, kind: "box", o: b });
   });
+  obstacles.forEach((h) => {
+    const s = projectSprite(h.x, h.y, camX, camY, camA);
+    if (s && s.z < MAX_Z) bill.push({ s, kind: "haz", o: h });
+  });
+  coins.forEach((c) => {
+    if (!c.alive) return;
+    const s = projectSprite(c.x, c.y, camX, camY, camA);
+    if (s && s.z < MAX_Z * 0.5) bill.push({ s, kind: "coin", o: c });
+  });
   hazards.forEach((h) => {
     const s = projectSprite(h.x, h.y, camX, camY, camA);
     if (s) bill.push({ s, kind: "rose", o: h });
@@ -3654,6 +4176,13 @@ function draw() {
   });
 
   bill.sort((a, b) => b.s.z - a.s.z);
+
+  /* Shadows all go down first, in their own pass.
+
+     Drawing each sprite's shadow immediately before that sprite meant a
+     near object's shadow could land on top of a far object that had
+     already been painted — a tree's shadow lying across a house behind
+     it. Ground first, then everything standing on it. */
 
   /* ------------------------------------------------------------------
      The ground goes down first, at the low internal resolution, and is
@@ -3682,6 +4211,44 @@ function draw() {
   const g = ctx;
   g.imageSmoothingEnabled = false;
   bill.forEach((b) => {
+    g.globalAlpha = 1;
+    if (b.kind === "prop") {
+      const spec = SCENERY[b.o.kind] || { h: 90, foot: 0.6 };
+      const img = buildScenery(b.o.kind, b.o.v || 0, trackDef, b.o.tint || 0);
+      const hh = spec.h * b.o.hv * b.s.scale;
+      const ww = hh * (img.width / img.height);
+      if (ww < 1.2) return;
+      castShadow(g, img, b.o.kind + b.o.v + (b.o.tint || 0),
+                 b.s.sx, b.s.sy, ww, hh, 0.55 + Math.min(0.5, spec.h / 300), b.s.fade);
+      contactPatch(g, b.s.sx, b.s.sy, ww * spec.foot * 0.62, b.s.fade);
+    } else if (b.kind === "kart" || b.kind === "ghost") {
+      const o = b.o;
+      const rel2 = o.angle + (o.yaw || 0) - camA;
+      const ai2 = Math.round((((rel2 % TWO_PI) + TWO_PI) % TWO_PI) / TWO_PI * ANGLES) % ANGLES;
+      const st2 = o.steer || 0, lk = TURN * 22;
+      const pz2 = o.spin > 0 ? 0 : st2 < -lk * 0.22 ? 1 : st2 > lk * 0.22 ? 2 : 0;
+      const im2 = kartFrame(o.def.id, ai2, pz2);
+      if (!im2) return;
+      const hh = KART_H * b.s.scale, ww = hh * (im2.width / im2.height);
+      if (ww < 1.5) return;
+      castShadow(g, im2, "k" + o.def.id + ai2 + "p" + pz2, b.s.sx, b.s.sy, ww, hh, 0.6, b.s.fade);
+      contactPatch(g, b.s.sx, b.s.sy, ww * 0.42, b.s.fade);
+    } else if (b.kind === "haz") {
+      const spec = SCENERY[b.o.kind] || { h: 40, foot: 0.8 };
+      const img = buildScenery(b.o.kind, b.o.v || 0, trackDef, 0);
+      const hh = spec.h * b.s.scale;
+      const ww = hh * (img.width / img.height);
+      if (ww < 1.2) return;
+      castShadow(g, img, "h" + b.o.kind + b.o.v, b.s.sx, b.s.sy, ww, hh, 0.6, b.s.fade);
+      contactPatch(g, b.s.sx, b.s.sy, ww * spec.foot * 0.7, b.s.fade);
+    } else if (b.kind === "box") {
+      contactPatch(g, b.s.sx, b.s.sy, 20 * b.s.scale * 0.5);
+    } else if (b.kind === "coin") {
+      contactPatch(g, b.s.sx, b.s.sy, 9 * b.s.scale);
+    }
+  });
+
+  bill.forEach((b) => {
     /* belt and braces: whatever the previous billboard did, this one
        starts from a clean slate. One unbalanced alpha in here dims
        every sprite drawn after it, and that is a maddening bug to see
@@ -3690,6 +4257,8 @@ function draw() {
     switch (b.kind) {
       case "prop":  drawProp(g, b);  break;
       case "box":   drawBox(g, b);   break;
+      case "haz":   drawHaz(g, b);   break;
+      case "coin":  drawCoin(g, b);  break;
       case "rose":  drawRose(g, b);  break;
       case "shot":  drawShot(g, b);  break;
       case "kart":  drawKart(g, b, camA); break;
@@ -3704,6 +4273,24 @@ function draw() {
   const lines = (me.boost > 0 ? 1 : 0) + Math.max(0, (sf - 0.55) / 0.45) * 0.55;
   if (lines > 0.02) drawSpeedLines(g, lines);
 
+  /* THE PHOTO FINISH
+
+     Bars in from the top and bottom and the colour pushed warm, for as
+     long as the slow motion lasts. It is a cheap trick and it works
+     every time somebody sees it. */
+  if (slowMo > 0) {
+    const k = Math.min(1, slowMo / 0.35);
+    g.save();
+    g.fillStyle = "#140b1a";
+    const bar = RH * 0.10 * k;
+    g.fillRect(0, 0, RW, bar);
+    g.fillRect(0, RH - bar, RW, bar);
+    g.globalAlpha = 0.13 * k;
+    g.fillStyle = "#ffd166";
+    g.fillRect(0, 0, RW, RH);
+    g.restore();
+  }
+
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
@@ -3713,8 +4300,9 @@ function draw() {
    ground rather than parking it there. `sunScreen` is the sun's bearing
    relative to where the camera is looking, so both fall out of it. */
 let sunRel = 0.7;
-function contactPatch(g, sx, sy, w) {
+function contactPatch(g, sx, sy, w, fade) {
   g.save();
+  if (fade != null && fade < 1) g.globalAlpha = fade;
   g.fillStyle = "rgba(18,12,24,.30)";
   g.beginPath();
   g.ellipse(sx, sy, w * 0.5, w * 0.17, 0, 0, TWO_PI);
@@ -3752,13 +4340,30 @@ function drawProp(g, b) {
      every tree and house drawn after it that frame came out translucent
      — which is exactly what the flickering was. */
   if (s.fade < 1) g.globalAlpha = s.fade;
-  const sid = o.kind + o.v + (o.tint || 0);
-  castShadow(g, img, sid, s.sx, s.sy, w, h, 0.55 + Math.min(0.5, spec.h / 300));
-  contactPatch(g, s.sx, s.sy, w * spec.foot * 0.62);
   /* A world where the only moving thing is chimney smoke reads as a
      diorama. Whatever ought to be moving in the breeze, moves. */
+  /* THE CROWD, ON THE LAST LAP
+
+     Everything alive at the side of the road gets to its feet when the
+     bell goes. It costs one sine wave and it is the difference between
+     a final lap that is announced and a final lap that is felt. */
+  let cheer = 0;
+  if (finalLap && CROWD[o.kind]) {
+    const ph = raceTime * 6.5 + (o.x + o.y) * 0.02;
+    cheer = Math.max(0, Math.sin(ph)) * h * 0.22;
+  }
+
   const sway = SWAY[o.kind];
-  if (sway) {
+  if (cheer > 0) {
+    g.save();
+    g.translate(0, -cheer);
+    if (sway) {
+      const ph = raceTime * sway.rate + (o.x + o.y) * 0.004;
+      g.translate(s.sx, s.sy); g.rotate(Math.sin(ph) * sway.amt); g.translate(-s.sx, -s.sy);
+    }
+    drawHazed(g, img, o.kind + o.v + (o.tint || 0), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
+    g.restore();
+  } else if (sway) {
     const ph = raceTime * sway.rate + (o.x + o.y) * 0.004;
     g.save();
     /* Pivot at the FOOT, not the top. Rotating about the top swung the
@@ -3818,7 +4423,6 @@ function drawBox(g, b) {
   const h = 20 * s.scale, w = h;
   if (w < 1.2) return;
   const bob = Math.sin(o.spin * 0.8) * 3 * s.scale;
-  shadowUnder(g, s.sx, s.sy, w * 0.5);
   /* a glow that breathes under the box, so it reads as something worth
      driving into rather than a decal on the tarmac */
   const pulse = 0.55 + Math.sin(o.spin * 1.6) * 0.45;
@@ -3830,6 +4434,147 @@ function drawBox(g, b) {
   g.fill();
   g.restore();
   g.drawImage(img, s.sx - w / 2, s.sy - h + bob, w, h);
+}
+
+/* The furniture standing on the road. Half of it is alive — the
+   sprinklers pulse, the washing swings, and a log you just clipped
+   shudders — so the sprite is only the still half of the drawing. */
+function drawHaz(g, b) {
+  const { s, o } = b;
+  const spec = SCENERY[o.kind] || { h: 40, foot: 0.8 };
+  const hz = HAZ[o.kind];
+  const img = buildScenery(o.kind, o.v || 0, trackDef, 0);
+  const h = spec.h * s.scale;
+  const w = h * (img.width / img.height);
+  if (w < 1.2) return;
+
+  /* distant billboards fade in rather than popping in, the same as the
+     scenery does */
+  const fa = s.fade < 1 ? s.fade : 1;
+  g.save();
+  if (o.kind === "sprinkler") {
+    const cy = s.sy - h * 0.66;
+    const span = w * 2.6;                       // how far it throws
+    /* The damp ring never dries out. It is the thing you read at
+       distance — a dark, shiny patch of road in the middle of the lane
+       is a warning you can take a line around before you can make out
+       what is standing in it. */
+    g.globalAlpha = 0.30 * fa;
+    g.fillStyle = "#5f6f7a";
+    g.beginPath();
+    g.ellipse(s.sx, s.sy - h * 0.03, span * 0.8, span * 0.26, 0, 0, TWO_PI);
+    g.fill();
+    g.globalAlpha = 0.16 * fa;
+    g.fillStyle = "#cfe6f2";
+    g.beginPath();
+    g.ellipse(s.sx - span * 0.14, s.sy - h * 0.05, span * 0.46, span * 0.13, 0, 0, TWO_PI);
+    g.fill();
+
+    if (o.on && w > 2) {
+      /* four arcs of water leaving the nozzle a beat apart, so it reads
+         as a sweep rather than a static fan */
+      for (let k = 0; k < 4; k++) {
+        const ph = ((o.t * 1.6 + o.phase * 0.4 + k * 0.25) % 1);
+        const a = 0.55 * (1 - ph * 0.8) * fa;
+        g.globalAlpha = a;
+        g.strokeStyle = k % 2 ? "#f2fbff" : "#cfe6f2";
+        g.lineWidth = Math.max(0.7, w * 0.10);
+        for (const dir of [-1, 1]) {
+          g.beginPath();
+          g.moveTo(s.sx, cy);
+          g.quadraticCurveTo(s.sx + dir * span * 0.32 * (0.3 + ph),
+                             cy - h * 0.85 * (1 - ph * 0.55),
+                             s.sx + dir * span * 0.5 * (0.35 + ph * 0.65),
+                             s.sy - h * 0.04);
+          g.stroke();
+        }
+      }
+      /* and the spatter where it lands */
+      g.globalAlpha = 0.5 * fa;
+      g.fillStyle = "#f2fbff";
+      for (let k = 0; k < 8; k++) {
+        const t2 = (o.t * 3 + k * 0.77) % 1;
+        const dir = k % 2 ? 1 : -1;
+        const q = Math.max(0.8, w * 0.07);
+        g.fillRect(s.sx + dir * span * (0.2 + t2 * 0.32) - q / 2,
+                   s.sy - h * 0.05 - Math.sin(t2 * Math.PI) * h * 0.18, q, q);
+      }
+    }
+    g.globalAlpha = fa;
+  }
+  g.globalAlpha = fa;
+
+  /* the washing swings on its line; a heavier swing just after a kart
+     has been through it */
+  let rot = 0;
+  if (o.kind === "washline") rot = Math.sin(raceTime * 1.7 + o.phase) * 0.05
+                                 + (o.hitT > 0 ? Math.sin(raceTime * 22) * o.hitT * 0.22 : 0);
+  /* a clipped log rocks, then settles */
+  if (o.kind === "log" && o.hitT > 0) rot = Math.sin(raceTime * 26) * o.hitT * 0.10;
+  if (o.kind === "ivpole") rot = Math.sin(raceTime * 1.1 + o.phase) * 0.02
+                               + (o.hitT > 0
+                                  ? (o.knock || 1) * o.hitT * 0.55
+                                    + Math.sin(raceTime * 19) * o.hitT * 0.14
+                                  : 0);
+
+  if (rot) {
+    /* pivot at the foot, never the middle — a sway about the centre
+       lifts the base off the ground, which is the exact bug that made
+       everything look like it was floating */
+    g.translate(s.sx, s.sy);
+    g.rotate(rot);
+    g.translate(-s.sx, -s.sy);
+  }
+  drawHazed(g, img, "h" + o.kind + (o.v || 0), s.sx - w / 2, s.sy - h, w, h, s.z, false);
+  g.restore();
+
+  /* a warning glint on the ones that will actually put you in the wall,
+     so a first lap is a lesson and not an ambush */
+  if (hz && hz.effect !== "slick" && w > 8) {
+    const p = 0.5 + Math.sin(raceTime * 4 + o.phase) * 0.5;
+    g.save();
+    g.globalAlpha = (0.10 + p * 0.12) * fa;
+    g.fillStyle = "#ffd166";
+    g.beginPath();
+    g.ellipse(s.sx, s.sy - h * 0.03, w * 0.62, w * 0.20, 0, 0, TWO_PI);
+    g.fill();
+    g.restore();
+  }
+}
+
+/* A heart on the road: spins on its vertical axis, bobs, and throws a
+   soft light down onto the tarmac. Drawn rather than blitted, because
+   at this size a cached sprite would be four pixels of mush. */
+function drawCoin(g, b) {
+  const { s, o } = b;
+  const r = 7 * s.scale;
+  if (r < 0.5) return;
+  const t = raceTime * 3.4 + o.ph;
+  const spin = Math.abs(Math.cos(t));          // 0 = edge on
+  const bob = Math.sin(t * 0.8) * r * 0.5;
+  const cy = s.sy - r * 2.1 + bob;
+
+  const fa = s.fade < 1 ? s.fade : 1;
+  g.save();
+  g.globalAlpha = (0.18 + spin * 0.12) * fa;
+  g.fillStyle = "#ff9ec4";
+  g.beginPath(); g.ellipse(s.sx, s.sy, r * 1.5, r * 0.5, 0, 0, TWO_PI); g.fill();
+  g.globalAlpha = fa;
+
+  const hw = Math.max(0.6, r * (0.25 + spin * 0.75));
+  g.fillStyle = spin > 0.28 ? "#ff5f95" : "#d64a78";
+  g.beginPath();
+  g.moveTo(s.sx, cy + r * 0.85);
+  g.bezierCurveTo(s.sx - hw * 1.5, cy + r * 0.05, s.sx - hw, cy - r * 0.9, s.sx, cy - r * 0.25);
+  g.bezierCurveTo(s.sx + hw, cy - r * 0.9, s.sx + hw * 1.5, cy + r * 0.05, s.sx, cy + r * 0.85);
+  g.fill();
+  if (spin > 0.45 && r > 1.6) {
+    g.fillStyle = "rgba(255,255,255,.75)";
+    g.beginPath();
+    g.ellipse(s.sx - hw * 0.42, cy - r * 0.18, hw * 0.24, r * 0.20, -0.5, 0, TWO_PI);
+    g.fill();
+  }
+  g.restore();
 }
 
 function drawRose(g, b) {
@@ -3901,10 +4646,6 @@ function drawKartInner(g, b, camA, isGhost) {
   const w = h * (img.width / img.height);
   if (w < 1.5) return;
 
-  const kid = "k" + o.def.id + ai + "p" + pose;
-  castShadow(g, img, kid, s.sx, s.sy, w, h, 0.6);
-  contactPatch(g, s.sx, s.sy, w * 0.42);
-
   g.save();
   /* lean into the corner, and dip the nose under braking */
   if (!isGhost && (o.roll || o.dip)) {
@@ -3927,9 +4668,16 @@ function drawKartInner(g, b, camA, isGhost) {
   const hopY = o.hop > 0 ? Math.sin((1 - o.hop / 0.34) * Math.PI) * h * 0.16 : 0;
   const bob = Math.sin((raceTime * 13 + (o.lane || 0)) ) * bobA * h * 0.018
             + (o.offroad ? Math.sin(raceTime * 27) * bobA * h * 0.028 : 0)
+            /* the kerb, going through the springs */
+            + Math.sin(raceTime * 41 + (o.lane || 0)) * (o.jolt || 0) * h * 0.030
             - hopY;
+  /* squash and stretch. The chassis is compressed on landing and again
+     over a big jolt; conserving area — wider by as much as it is
+     shorter — is what stops it reading as the sprite being resized. */
+  const sq = Math.min(0.30, (o.squash || 0) + (o.jolt || 0) * 0.05);
+  const hS = h * (1 - sq), wS = w * (1 + sq * 0.62);
   drawHazed(g, img, "k" + o.def.id + ai + "p" + pose,
-            s.sx - w / 2, s.sy - h + bob, w, h, s.z, false);
+            s.sx - wS / 2, s.sy - hS + bob, wS, hS, s.z, false);
   g.restore();
 
   /* the bouquet orbits whoever is holding it */
@@ -4035,6 +4783,7 @@ function grabEls() {
     map: id("rc-map"), boost: id("rc-boost"), boostFill: id("rc-boost-f"),
     count: id("rc-count"), banner: id("rc-banner"), overlay: id("rc-overlay"),
     tut: id("rc-tut"),
+    hearts: id("rc-hearts"), heartsChip: id("rc-hearts-chip"),
     pad: id("rc-pad"), pause: id("rc-pause-btn"),
   };
 }
@@ -4063,8 +4812,10 @@ function paintHud() {
   const me = racers.find((r) => r.isPlayer);
   if (!me || !el.lap) return;
   if (el.hud) el.hud.dataset.mode = mode === "tutorial" ? "tutorial" : "race";
+  if (el.heartsChip) el.heartsChip.hidden = mode === "tutorial";
   if (mode === "tutorial") {
     el.time.textContent = fmt(raceTime);
+    if (el.heartsChip) el.heartsChip.hidden = true;
     paintItem();
     drawMini();
     if (el.boost) {
@@ -4079,6 +4830,10 @@ function paintHud() {
   }
   el.lap.textContent = Math.max(1, Math.min(me.lap + 1, trackDef.laps)) + "/" + trackDef.laps;
   el.time.textContent = fmt(raceTime);
+  if (el.hearts) {
+    el.hearts.textContent = me.coins + "/" + COIN_CAP;
+    el.heartsChip.dataset.full = me.coins >= COIN_CAP ? "1" : "0";
+  }
   if (el.posNum) {
     el.posNum.textContent = me.place;
     el.posSuf.textContent = ["ST","ND","RD","TH","TH","TH","TH","TH"][Math.min(me.place - 1, 7)];
@@ -4204,6 +4959,20 @@ function drawMini() {
     g.setLineDash([]);
   }
 
+  /* what is lying in wait, and where the hearts are — a lap you can
+     read off the map before you get there is a lap you can plan */
+  obstacles.forEach((h) => {
+    const m = M(h);
+    g.fillStyle = h.on ? "rgba(255,127,138,.95)" : "rgba(255,127,138,.35)";
+    g.fillRect(m.x - 1.5, m.y - 1.5, 3, 3);
+  });
+  g.fillStyle = "rgba(255,95,149,.55)";
+  coins.forEach((c) => {
+    if (!c.alive) return;
+    const m = M(c);
+    g.fillRect(m.x - 0.8, m.y - 0.8, 1.6, 1.6);
+  });
+
   const s0 = M(path[0]);
   g.fillStyle = "#26202a"; g.fillRect(s0.x - 3, s0.y - 3, 6, 6);
   g.fillStyle = "#fff8e8"; g.fillRect(s0.x - 3, s0.y - 3, 3, 3); g.fillRect(s0.x, s0.y, 3, 3);
@@ -4215,6 +4984,9 @@ function drawMini() {
     if (r.isPlayer) {
       g.strokeStyle = r.def.accent; g.lineWidth = 2;
       g.beginPath(); g.arc(m.x, m.y, 6, 0, TWO_PI); g.stroke();
+    } else if (r.rival) {
+      g.strokeStyle = "rgba(255,209,102,.9)"; g.lineWidth = 1.6;
+      g.beginPath(); g.arc(m.x, m.y, 5, 0, TWO_PI); g.stroke();
     }
   });
 }
@@ -4301,6 +5073,8 @@ function renderTracks() {
       <h3 class="rc-h">CHOOSE YOUR TRACK</h3>
       <div class="rc-cards rc-cards-4">${cards}</div>
       <p class="rc-blurb" id="rc-blurb">${TRACKS[trackIdx].blurb}</p>
+      ${TRACKS[trackIdx].hazard && TRACKS[trackIdx].hazard.warn
+        ? `<p class="rc-warn">${TRACKS[trackIdx].hazard.warn}</p>` : ""}
       <div class="rc-row">
         <button class="rc-btn rc-btn-s" data-back="chars">‹ BACK</button>
         <button class="rc-btn rc-btn-go" data-next="tracks">START ›</button>
@@ -4390,6 +5164,11 @@ function renderResults() {
   } else {
     msg = "Every lap was worth it. Same time tomorrow?";
   }
+
+  /* the hearts get counted at the end, because a thing you collect and
+     nobody mentions afterwards stops feeling worth collecting */
+  if (me.coins > 0)
+    msg += ` <b>${me.coins}</b> heart${me.coins === 1 ? "" : "s"} in hand at the flag.`;
 
   const isGP = mode === "gp";
   const more = isGP && gpRound < TRACKS.length - 1;
@@ -4885,6 +5664,19 @@ const Snd = (function () {
       noise({ f: 420, f2: 90, dur: 0.3, gain: 0.28, filter: "lowpass", at: t });
       tone({ f: 190, f2: 55, dur: 0.26, gain: 0.2, type: "square", at: t });
     },
+    /* a chrome pole going over: three bright metal hits, falling away */
+    clatter() {
+      const t = ctx ? ctx.currentTime : 0;
+      [1180, 860, 640].forEach((f, i) =>
+        tone({ f, f2: f * 0.55, dur: 0.09, gain: 0.13 - i * 0.03, type: "square", at: t + i * 0.055 }));
+      noise({ f: 2400, f2: 700, dur: 0.22, gain: 0.10, filter: "bandpass", at: t });
+    },
+    /* the sprinkler catching you: a wet slap and a hiss */
+    splash() {
+      const t = ctx ? ctx.currentTime : 0;
+      noise({ f: 900, f2: 2600, dur: 0.30, gain: 0.13, filter: "bandpass", at: t });
+      tone({ f: 300, f2: 140, dur: 0.14, gain: 0.10, duty: 0.5, at: t });
+    },
     scrape() {   /* the verge, while you are on it */
       if (!ready) return;
       noise({ f: 320, dur: 0.14, gain: 0.05, filter: "lowpass", q: 0.5 });
@@ -4931,7 +5723,7 @@ const Snd = (function () {
 
   /* every one-shot needs the context awake and must be harmless before */
   const api = {};
-  ["boost","pickup","use","hit","scrape","click","hover","beep","lap","tick","fanfare","hop","finalLap"]
+  ["boost","pickup","use","hit","scrape","click","hover","beep","lap","tick","fanfare","hop","finalLap","clatter","splash"]
     .forEach((k) => { api[k] = (a) => { if (!ready) return; S[k](a); }; });
 
   api.resume = resume;
@@ -5041,6 +5833,7 @@ function startTutorial() {
   }
 
   shots = []; hazards = []; fx = [];
+  obstacles = []; coins = [];      // the tutorial lane stays clear
   raceTime = 0; countdown = 0; shake = 0; bannerT = 0; setBanner("");
   lastItem = "__"; lastPlace = 0;
 
@@ -5392,6 +6185,9 @@ function frame(ts) {
   /* physics on a fixed step so the handling is identical on a 60Hz
      laptop and a 120Hz phone */
   if (state === "race" || state === "count") {
+    /* the photo finish: everything but the clock on the wall drops to a
+       third speed for the run to the line */
+    if (slowMo > 0) { slowMo = Math.max(0, slowMo - dt); dt *= 0.34; }
     acc += dt;
     let guard = 0;
     while (acc >= FIXED && guard++ < 5) { step(FIXED); acc -= FIXED; }
@@ -5465,6 +6261,10 @@ function stop() {
   setCount("");
   setBanner("");
 }
+
+/* a hatch for the test harness — nothing in the page uses it */
+if (typeof window !== "undefined")
+  window.__RACE_DEBUG = () => ({ obstacles, coins, racers, props, trackDef, state, mode, path, cut, buildScenery, SCENERY, HAZ });
 
 return { start, stop };
 })();

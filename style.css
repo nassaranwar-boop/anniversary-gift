@@ -3950,6 +3950,33 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-chip b{font-weight:400; font-size:1.7cqh; color:var(--rc-gold); letter-spacing:.1em;}
 .rc-chip i{font-style:normal; font-size:2.3cqh; color:var(--rc-ink);}
 
+/* The heart count. The pip is drawn out of two circles and a rotated
+   square rather than being a character or an image, so it stays sharp
+   at any size and matches everything else on the panel. */
+.rc-chip-h{ align-items:center; gap:.8cqw; }
+.rc-hicon{
+  position:relative; display:block;
+  width:1.9cqh; height:1.9cqh; flex:0 0 auto;
+  background:var(--rc-rose, #ff5f95);
+  transform:rotate(-45deg);
+  border-radius:.16cqh;
+  filter:drop-shadow(0 .22cqh 0 rgba(20,8,26,.55));
+}
+.rc-hicon::before,.rc-hicon::after{
+  content:""; position:absolute; width:100%; height:100%;
+  background:inherit; border-radius:50%;
+}
+.rc-hicon::before{ top:-50%; left:0; }
+.rc-hicon::after { top:0; right:-50%; }
+.rc-chip-h i{ min-width:2.6cqw; text-align:left; }
+/* it flares when the set is complete */
+.rc-chip-h[data-full="1"] .rc-hicon{ animation:rcHeartBeat .7s ease-in-out infinite; }
+.rc-chip-h[data-full="1"] i{ color:var(--rc-gold); }
+@keyframes rcHeartBeat{
+  0%,100%{ transform:rotate(-45deg) scale(1); }
+  50%    { transform:rotate(-45deg) scale(1.22); }
+}
+
 /* position, in the big arcade numeral */
 .rc-hud-tr{position:absolute; top:2cqh; right:2cqw;}
 .rc-pos{
@@ -4249,6 +4276,12 @@ img{-webkit-user-drag:none; user-select:none;}
 /* in the practice loop there is no lap and no position to report */
 .rc-hud[data-mode="tutorial"] .rc-hud-tr,
 .rc-hud[data-mode="tutorial"] .rc-chip:first-child{ display:none; }
+
+/* what each course throws at you, under its blurb on the track picker */
+.rc-warn{
+  margin:.6cqh 0 0; font-size:1.25cqh; letter-spacing:.06em;
+  color:#ffb37f; text-align:center;
+}
 
 /* ---------- the sound sliders ---------- */
 .rc-sliders{ display:flex; flex-direction:column; gap:1.6cqh; width:min(54cqw, 100%); }
