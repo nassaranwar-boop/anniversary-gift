@@ -1534,6 +1534,7 @@ const sceneryCache = {};
    from its depth blends it toward the horizon for the cost of one extra
    drawImage. */
 const hazeCache = new Map();
+const shadeCache = new Map();
 let hazeKey = "";
 
 function hazeSprite(img, id) {
@@ -1549,6 +1550,39 @@ function hazeSprite(img, id) {
   g2.fillRect(0, 0, c.width, c.height);
   hazeCache.set(k, c);
   return c;
+}
+
+/* The same trick as the haze silhouette, but dark: a shadow shaped like
+   the thing throwing it. An ellipse under a house is a puddle; a
+   house-shaped shadow lying away from the sun is a building standing in
+   daylight. */
+function shadowSprite(img, id) {
+  let c = shadeCache.get(id);
+  if (c) return c;
+  c = document.createElement("canvas");
+  c.width = img.width; c.height = img.height;
+  const g2 = c.getContext("2d");
+  g2.drawImage(img, 0, 0);
+  g2.globalCompositeOperation = "source-in";
+  g2.fillStyle = "#17121f";
+  g2.fillRect(0, 0, c.width, c.height);
+  shadeCache.set(id, c);
+  return c;
+}
+
+/* Lay the silhouette flat on the ground: anchored at the foot, sheared
+   along the sun's bearing and squashed towards the horizon. */
+function castShadow(g, img, id, sx, sy, w, h, strength) {
+  const L = 0.62 * (strength || 1);
+  const dx = Math.sin(sunRel) * L;
+  const dy = -Math.cos(sunRel) * L * 0.34;
+  g.save();
+  g.globalAlpha = 0.26;
+  g.setTransform(1, 0, 0, 1, 0, 0);          // shear is applied by hand
+  g.transform(cw / RW, 0, 0, ch / RH, shakeX, shakeY);
+  g.transform(1, 0, -dx, -dy, sx, sy);
+  g.drawImage(shadowSprite(img, id), -w / 2, -h, w, h);
+  g.restore();
 }
 
 /* 0 at the near plane, rising to a cap far out */
@@ -2395,6 +2429,7 @@ let cvs, ctx, cw = 0, ch = 0;
 
 /* live camera state — the spring the chase camera rides on */
 let camAngle = 0, camLag = 0, camFocal = FOCAL, camStep = 1 / 60;
+let shakeX = 0, shakeY = 0;
 let sceneCvs, sceneCtx, sceneImg, buf32;
 
 function initBuffers() {
@@ -2613,6 +2648,8 @@ class Racer {
     this.iframe = 0;   // the moment after a hit, so you cannot be chained
     this.shield = 0;
     this.bog = 0;        // a flooded start, briefly
+    this.draft = 0;      // how long we have been sitting in clean air
+    this.hop = 0;        // the little jump that starts a drift
     this.ammo = 0;       // how many of a multi-shot item are left
     this.offroad = false;
     this.aiTarget = (startIdx + 8) % path.length;
@@ -2681,6 +2718,16 @@ class Racer {
     /* Drift: hold the button while turning and it locks a direction,
        builds a charge, and pays out a boost on release. Three tiers,
        flagged by the colour of the sparks. */
+    /* Tapping drift hops the kart. It does nothing mechanically, and
+       that is the point — it is the tell that says the button did
+       something, and it is what a kart racer feels like. */
+    if (dkey && !this.dkeyWas && this.speed > TOP_SPEED * 0.2 && this.hop <= 0) {
+      this.hop = 0.34;
+      Snd.hop();
+    }
+    this.dkeyWas = dkey;
+    if (this.hop > 0) this.hop -= dt;
+
     const turning = left || right;
     if (dkey && turning && this.speed > TOP_SPEED * 0.42) {
       if (!this.drifting) {
@@ -2870,8 +2917,15 @@ class Racer {
          puts a banner over the countdown you have only just cleared */
       if (mode !== "tutorial" && this.isPlayer &&
           this.lap >= 1 && this.lap < trackDef.laps) {
-        flashBanner("LAP " + (this.lap + 1));
-        Snd.lap();
+        if (this.lap === trackDef.laps - 1) {
+          /* the last one should feel like the last one */
+          flashBanner("FINAL LAP!");
+          Snd.finalLap();
+          finalLap = true;
+        } else {
+          flashBanner("LAP " + (this.lap + 1));
+          Snd.lap();
+        }
       }
       if (this.lap >= trackDef.laps && !this.finished) {
         this.finished = true;
@@ -2885,8 +2939,14 @@ class Racer {
     this.along = a;
     this.progress = this.lap + a;
 
-    if (this.drifting && Math.abs(this.speed) > 1)
+    if (this.drifting && Math.abs(this.speed) > 1) {
       addSpark(this.x, this.y, this.angle, this.driftCharge);
+      if (Math.random() < 0.6) {
+        const back = this.angle + Math.PI;
+        addPuff(this.x + Math.cos(back) * 16, this.y + Math.sin(back) * 16,
+                "rgba(240,236,244,.55)");
+      }
+    }
     if (this.boost > 0 && Math.random() < 0.7)
       addFlame(this.x, this.y, this.angle, this.def.accent);
   }
@@ -2972,13 +3032,30 @@ function addFlame(x, y, a, col) {
     life: 0.24, max: 0.24, col, size: 2.6,
   });
 }
+/* thin lines of disturbed air, pulled off whoever is in front */
+function addStreak(r) {
+  const side = (Math.random() < 0.5 ? -1 : 1) * (12 + Math.random() * 16);
+  const lx = -Math.sin(r.angle), ly = Math.cos(r.angle);
+  fx.push({
+    x: r.x + lx * side + Math.cos(r.angle) * 30,
+    y: r.y + ly * side + Math.sin(r.angle) * 30,
+    z: 6 + Math.random() * 10,
+    vx: -Math.cos(r.angle) * 5.2, vy: -Math.sin(r.angle) * 5.2, vz: 0,
+    life: 0.24, max: 0.24, col: "rgba(255,255,255,.85)", size: 2.2, streak: true,
+  });
+}
+
 function addPuff(x, y, col) {
   fx.push({
     x, y, z: 2, vx: (Math.random()-0.5)*1.1, vy: (Math.random()-0.5)*1.1, vz: 1.0,
     life: 0.42, max: 0.42, col, size: 3.2,
   });
 }
+function addRing(x, y, col) {
+  fx.push({ x, y, z: 6, vx:0, vy:0, vz:0, life:0.45, max:0.45, col, size:1, ring:true });
+}
 function addPop(x, y, col) {
+  addRing(x, y, col);
   for (let i = 0; i < 12; i++) {
     const t = Math.random() * TWO_PI;
     fx.push({
@@ -3014,6 +3091,8 @@ let ghost = null, ghostRec = null, ghostPlay = null;
 let bannerT = 0;
 let lastPlace = 0;
 let revUp = 0, revTotal = 0;      // how the player worked the countdown
+let draftOn = false;
+let finalLap = false;
 
 const GP_POINTS = [15, 12, 10, 8, 6, 4, 3, 2];
 
@@ -3216,7 +3295,7 @@ function buildRace() {
   camAngle = racers[0] ? racers[0].angle : 0;
   camLag = 0; camFocal = FOCAL;
   lastPlace = 0;
-  revUp = 0; revTotal = 0;
+  revUp = 0; revTotal = 0; draftOn = false; finalLap = false;
   Snd.resume();
   Snd.music(trackDef.id);
 
@@ -3436,6 +3515,43 @@ function step(dt) {
     }
   }
 
+  /* SLIPSTREAM
+
+     Tuck in behind someone and the air comes off them; hold it and you
+     get pulled along, which is the mechanic that makes a pack of karts
+     a race rather than a queue. You have to stay in the cone to keep
+     it, and it fades the moment you pull out. */
+  for (const r of racers) {
+    if (r.finished) { r.draft = 0; continue; }
+    let inWake = false;
+    for (const o of racers) {
+      if (o === r || o.finished) continue;
+      const dx = o.x - r.x, dy = o.y - r.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 26 || d > 190) continue;
+      /* is he in front of us, and are we pointing at him? */
+      const bearing = Math.atan2(dy, dx) - r.angle;
+      const bs = Math.abs(Math.atan2(Math.sin(bearing), Math.cos(bearing)));
+      if (bs > 0.42) continue;
+      /* and is he going roughly our way, not sideways across us? */
+      let hd = o.angle - r.angle;
+      hd = Math.abs(Math.atan2(Math.sin(hd), Math.cos(hd)));
+      if (hd > 0.9) continue;
+      inWake = true; break;
+    }
+    if (inWake) r.draft = Math.min(2.4, r.draft + dt);
+    else        r.draft = Math.max(0, r.draft - dt * 2.2);
+
+    if (r.draft > 0.75) {
+      const pull = Math.min(1, (r.draft - 0.75) / 1.2);
+      r.speed += 0.030 * pull * dt * 60;
+      if (r.isPlayer) {
+        if (!draftOn) { draftOn = true; flashBanner("SLIPSTREAM!"); }
+        if (Math.random() < 0.5) addStreak(r);
+      }
+    } else if (r.isPlayer) draftOn = false;
+  }
+
   /* kart on kart: a nudge, not a crash */
   for (let i = 0; i < racers.length; i++) {
     for (let j = i + 1; j < racers.length; j++) {
@@ -3557,12 +3673,12 @@ function draw() {
      ------------------------------------------------------------------ */
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = false;
-  const shX = shake ? (Math.random() - 0.5) * shake * (cw / RW) * 2 : 0;
-  const shY = shake ? (Math.random() - 0.5) * shake * (ch / RH) * 2 : 0;
+  shakeX = shake ? (Math.random() - 0.5) * shake * (cw / RW) * 2 : 0;
+  shakeY = shake ? (Math.random() - 0.5) * shake * (ch / RH) * 2 : 0;
   ctx.clearRect(0, 0, cw, ch);
-  ctx.drawImage(sceneCvs, shX, shY, cw, ch);
+  ctx.drawImage(sceneCvs, shakeX, shakeY, cw, ch);
 
-  ctx.setTransform(cw / RW, 0, 0, ch / RH, shX, shY);
+  ctx.setTransform(cw / RW, 0, 0, ch / RH, shakeX, shakeY);
   const g = ctx;
   g.imageSmoothingEnabled = false;
   bill.forEach((b) => {
@@ -3597,6 +3713,15 @@ function draw() {
    ground rather than parking it there. `sunScreen` is the sun's bearing
    relative to where the camera is looking, so both fall out of it. */
 let sunRel = 0.7;
+function contactPatch(g, sx, sy, w) {
+  g.save();
+  g.fillStyle = "rgba(18,12,24,.30)";
+  g.beginPath();
+  g.ellipse(sx, sy, w * 0.5, w * 0.17, 0, 0, TWO_PI);
+  g.fill();
+  g.restore();
+}
+
 function shadowUnder(g, sx, sy, w, tall) {
   const len = (tall || 0.55) * w;
   const dx = Math.sin(sunRel) * len;
@@ -3627,16 +3752,22 @@ function drawProp(g, b) {
      every tree and house drawn after it that frame came out translucent
      — which is exactly what the flickering was. */
   if (s.fade < 1) g.globalAlpha = s.fade;
-  shadowUnder(g, s.sx, s.sy, w * spec.foot * 0.8, 0.34 + Math.min(0.30, spec.h / 420));
+  const sid = o.kind + o.v + (o.tint || 0);
+  castShadow(g, img, sid, s.sx, s.sy, w, h, 0.55 + Math.min(0.5, spec.h / 300));
+  contactPatch(g, s.sx, s.sy, w * spec.foot * 0.62);
   /* A world where the only moving thing is chimney smoke reads as a
      diorama. Whatever ought to be moving in the breeze, moves. */
   const sway = SWAY[o.kind];
   if (sway) {
     const ph = raceTime * sway.rate + (o.x + o.y) * 0.004;
     g.save();
-    g.translate(s.sx, s.sy - h);                 // pivot at the top
+    /* Pivot at the FOOT, not the top. Rotating about the top swung the
+       base of everything off the ground and left a visible gap under
+       every bush, tree and planter — a thing that sways is rooted and
+       moves at its crown. */
+    g.translate(s.sx, s.sy);
     g.rotate(Math.sin(ph) * sway.amt);
-    g.translate(-s.sx, -(s.sy - h));
+    g.translate(-s.sx, -s.sy);
     drawHazed(g, img, o.kind + o.v + (o.tint || 0), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
     g.restore();
   } else {
@@ -3770,7 +3901,9 @@ function drawKartInner(g, b, camA, isGhost) {
   const w = h * (img.width / img.height);
   if (w < 1.5) return;
 
-  shadowUnder(g, s.sx, s.sy, w * 0.5);
+  const kid = "k" + o.def.id + ai + "p" + pose;
+  castShadow(g, img, kid, s.sx, s.sy, w, h, 0.6);
+  contactPatch(g, s.sx, s.sy, w * 0.42);
 
   g.save();
   /* lean into the corner, and dip the nose under braking */
@@ -3791,8 +3924,10 @@ function drawKartInner(g, b, camA, isGhost) {
   /* a little vertical bob, faster the quicker you are going, so the
      kart rides the road instead of sliding along a sheet of glass */
   const bobA = Math.min(1, Math.abs(o.speed || 0) / TOP_SPEED);
+  const hopY = o.hop > 0 ? Math.sin((1 - o.hop / 0.34) * Math.PI) * h * 0.16 : 0;
   const bob = Math.sin((raceTime * 13 + (o.lane || 0)) ) * bobA * h * 0.018
-            + (o.offroad ? Math.sin(raceTime * 27) * bobA * h * 0.028 : 0);
+            + (o.offroad ? Math.sin(raceTime * 27) * bobA * h * 0.028 : 0)
+            - hopY;
   drawHazed(g, img, "k" + o.def.id + ai + "p" + pose,
             s.sx - w / 2, s.sy - h + bob, w, h, s.z, false);
   g.restore();
@@ -3816,6 +3951,20 @@ function drawKartInner(g, b, camA, isGhost) {
       g.fill();
     }
   }
+  /* seeing stars, while spun */
+  if (!isGhost && o.spin > 0) {
+    for (let i = 0; i < 4; i++) {
+      const t = raceTime * 9 + (i / 4) * TWO_PI;
+      const px = s.sx + Math.cos(t) * w * 0.42;
+      const py = s.sy - h * 1.02 + Math.sin(t) * h * 0.10;
+      const q = Math.max(1.5, w * 0.075);
+      g.fillStyle = i % 2 ? "#ffd166" : "#fff8e8";
+      g.fillRect(px - q / 2, py - q / 2, q, q);
+      g.fillRect(px - q, py - q / 6, q * 2, q / 3);
+      g.fillRect(px - q / 6, py - q, q / 3, q * 2);
+    }
+  }
+
   /* the ring's sparkle */
   if (!isGhost && o.invuln > 0) {
     for (let i = 0; i < 4; i++) {
@@ -3831,11 +3980,26 @@ function drawKartInner(g, b, camA, isGhost) {
 
 function drawFx(g, b) {
   const { s, o } = b;
-  const q = Math.max(1, o.size * s.scale * 0.5);
   const a = Math.max(0, o.life / o.max);
+  const y = s.sy - o.z * s.scale;
   g.globalAlpha = a;
-  g.fillStyle = o.col;
-  g.fillRect(s.sx - q / 2, s.sy - o.z * s.scale - q / 2, q, q);
+  if (o.streak) {
+    const len = Math.max(2, 16 * s.scale);
+    g.strokeStyle = o.col;
+    g.lineWidth = Math.max(1, o.size * s.scale * 0.4);
+    g.beginPath(); g.moveTo(s.sx, y); g.lineTo(s.sx, y + len); g.stroke();
+  } else if (o.ring) {
+    g.strokeStyle = o.col;
+    g.lineWidth = Math.max(1, 2 * s.scale);
+    g.beginPath();
+    g.ellipse(s.sx, y, (1 - a) * o.size * 8 * s.scale,
+              (1 - a) * o.size * 3 * s.scale, 0, 0, TWO_PI);
+    g.stroke();
+  } else {
+    const q = Math.max(1, o.size * s.scale * 0.5);
+    g.fillStyle = o.col;
+    g.fillRect(s.sx - q / 2, y - q / 2, q, q);
+  }
   g.globalAlpha = 1;
 }
 
@@ -4593,6 +4757,7 @@ const Snd = (function () {
         const i = song.step % steps;
         const t = song.next;
 
+        if (finalLap && !song.pushed) { song.pushed = true; }
         const L = lead[i % lead.length];
         if (L && L !== "-" && L !== ".") {
           tone({ f: hz(L), dur: spb * 2.6, gain: 0.13, duty: def.duty, at: t, bus: gain });
@@ -4610,7 +4775,7 @@ const Snd = (function () {
           noise({ f: 7200, q: 1.4, dur: 0.035, gain: 0.045, at: t, bus: gain });
         }
 
-        song.next += spb;
+        song.next += spb * (finalLap ? 0.88 : 1);   // last lap runs hotter
         song.step++;
       }
       song.timer = setTimeout(schedule, 60);
@@ -4724,6 +4889,17 @@ const Snd = (function () {
       if (!ready) return;
       noise({ f: 320, dur: 0.14, gain: 0.05, filter: "lowpass", q: 0.5 });
     },
+    hop() {
+      const t = ctx ? ctx.currentTime : 0;
+      tone({ f: 520, f2: 900, dur: 0.09, gain: 0.13, duty: 0.25, at: t });
+      noise({ f: 2400, dur: 0.05, gain: 0.05, at: t });
+    },
+    finalLap() {
+      const t = ctx ? ctx.currentTime : 0;
+      [660, 880, 1047, 1319].forEach((f, i) =>
+        tone({ f, dur: 0.2, gain: 0.20, duty: 0.5, at: t + i * 0.09 }));
+      noise({ f: 2600, f2: 900, dur: 0.35, gain: 0.10, at: t });
+    },
     click() { tone({ f: 720, dur: 0.05, gain: 0.12, duty: 0.5 }); },
     hover() { tone({ f: 480, dur: 0.035, gain: 0.06, duty: 0.25 }); },
     beep(last) {
@@ -4755,7 +4931,7 @@ const Snd = (function () {
 
   /* every one-shot needs the context awake and must be harmless before */
   const api = {};
-  ["boost","pickup","use","hit","scrape","click","hover","beep","lap","tick","fanfare"]
+  ["boost","pickup","use","hit","scrape","click","hover","beep","lap","tick","fanfare","hop","finalLap"]
     .forEach((k) => { api[k] = (a) => { if (!ready) return; S[k](a); }; });
 
   api.resume = resume;
