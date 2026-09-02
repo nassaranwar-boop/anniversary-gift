@@ -102,22 +102,22 @@
 
   MAPS.home = [
     "####vv####################v#######",
-    "v.h..BB....#..=.....#.=nn.......o#",
-    "#....BB....#........#....BB......#",
-    "#...S......#....h...#..i........h#",
-    "#..=...n...#........#............#",
-    "#..........#...=....#.o..=......o#",
+    "vkh.nBBn.p.#Z.m..RR.#j.nBBn..k.p.#",
+    "#..a....a..#..a.....#..a......a..#",
+    "#V..S..rr..#...r....#......rr.h..#",
+    "#E.....rr.l#........#......rr...l#",
+    "#..p.......#........#E...........#",
     "#####d###########d#########d######",
-    "#................................#",
-    "#..=.........................o...#",
+    "#.a.....l......p........l.....a..#",
+    "#..rrr......................rrr..#",
     "#................................#",
     "#######d########d#########d#######",
-    "#.nn......FFF..#fKKK.h...#.o....o#",
-    "#.uT......FFF..#....K....#...W...#",
-    "v.......rr=r...#....K....#.......#",
-    "v.q.==..rrrr...#....K....#o.....o#",
-    "#...==....o....#...i.....#.......#",
-    "#qh............#KKKKKKK..#.......#",
+    "#kk..p........a#fOKKsK..p#JJ....M#",
+    "#uTU......FFF..#....K....#..II.WM#",
+    "v.......rrtrr..#..e.K....#..II..M#",
+    "v.q.....rrrrr.p#.ett.i...#o.II..o#",
+    "#..............#..e......#..II..J#",
+    "#qh...a........#.....p...#l.....a#",
     "#..............#.........#.......#",
     "#############################P####",
     "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
@@ -354,6 +354,15 @@
       id: "home", name: "HOME", card: "Level 1: HOME",
       blurb: "Tuesday they flew to Portugal. It is Friday and the news is still on.",
       map: MAPS.home, theme: "house", base: ".", dark: 0.68, groundTex: "asphalt",
+      /* [x0, y0, x1, y1, texture, tint] — the bathroom and the kitchen are
+         tiled and the garage is a slab; the rest of it is boards */
+      floors: [
+        [12, 1, 19, 5, "clinic", 0xd8dcd8],
+        [16, 11, 24, 17, "pave", 0xcfcabe],
+        [26, 11, 32, 17, "block", 0x8e8f8c]
+      ],
+      /* the string of lights along the wall over her bed */
+      fairy: [[1, 1, 10, 1, 2.55]],
       grade: [180, 115, 55, 0.16], haze: [30, 38, 60, 0.28],
       steps: [
         { task: "The TV is still on downstairs. Go and see.",                clears: "tv" },
@@ -4390,10 +4399,10 @@
   /* =========================================================
      13 — WHAT EACH CHARACTER IN THE GRID MEANS
      ========================================================= */
-  var SOLID  = "#ovLKcYfB=FnuQwG~T C H W D d P".replace(/ /g, "");
-  var OPAQUE = "#ovLcYfGH~";                 /* stops sight as well as feet */
+  var SOLID  = "#ovLKcYfB=FnuQwG~T C H W D d P V k E t e O s R Z m M J U p".replace(/ /g, "");
+  var OPAQUE = "#ovLcYfGH~kJMU";             /* stops sight as well as feet */
   var HIDE   = "hj";
-  var WALK   = ".,hlqriSXzxbg*NA";
+  var WALK   = ".,hlqriSXzxbg*NAaI";
 
   function isSolidChar(ch) { return SOLID.indexOf(ch) >= 0; }
   function isOpaqueChar(ch) { return OPAQUE.indexOf(ch) >= 0; }
@@ -5466,10 +5475,14 @@
         box.position.set((t - 0.5) * 0.6, 0.0, (hash2(y, x) - 0.5) * 0.6);
         box.rotation.y = t * 6; box.castShadow = true; g.add(box);
       } else if (kind === "r") {
+        /* a rug is the warmest thing in a room; it was a black rectangle */
+        var RUGS = [0xb08a86, 0xa8968a, 0x9a8ea6, 0xb0a288, 0x8e9aa4];
         var rug = new THREE.Mesh(new THREE.BoxGeometry(TILE, 0.04, TILE),
-          new THREE.MeshStandardMaterial({ color: 0x7a3a44, roughness: 0.99,
+          new THREE.MeshStandardMaterial({
+            color: RUGS[Math.floor(hash2(x * 3, y * 5) * RUGS.length) % RUGS.length],
+            roughness: 0.99,
             map: tex("carpet", 128, 1), bumpMap: bump("carpet", 128, 1), bumpScale: 0.3 }));
-        rug.position.y = 0.015; rug.receiveShadow = true; g.add(rug);
+        rug.position.y = 0.016; rug.receiveShadow = true; g.add(rug);
       } else if (kind === "f") {
         var fr = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.8, 1.9, TILE * 0.72),
           surface("metal", { repeat: 1, rough: 0.3, metal: 0.6, tint: 0xd0d4d8 }));
@@ -5549,6 +5562,431 @@
       warn.position.set(0, 0.95, 0.215); g.add(warn);
       G.add(g);
       world.things.push({ kind: "panel", x: x, y: y, group: g });
+      return g;
+    }
+
+    /* ---------------------------------------------------------------
+       The rooms of the house. Every one of these faces the nearest wall
+       it can find, so a wardrobe never stands in the middle of a floor
+       with its back to you.
+       --------------------------------------------------------------- */
+    function facingAway(x, y) {
+      /* the direction pointing out of the nearest wall */
+      if (isSolidChar(at(x, y - 1))) return 0;
+      if (isSolidChar(at(x + 1, y))) return -Math.PI / 2;
+      if (isSolidChar(at(x, y + 1))) return Math.PI;
+      if (isSolidChar(at(x - 1, y))) return Math.PI / 2;
+      return 0;
+    }
+    function propGroup(x, y, faceWall) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      if (faceWall !== false) g.rotation.y = facingAway(x, y);
+      G.add(g);
+      return g;
+    }
+    function box(w, h, d, mat, px, py, pz, g) {
+      var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(px || 0, py || 0, pz || 0);
+      m.castShadow = true; m.receiveShadow = true;
+      if (g) g.add(m);
+      return m;
+    }
+
+    var matPine  = surface("boards", { repeat: 1, rough: 0.78, tint: 0xd9c39a, bumpScale: 0.16 });
+    var matWhite = surface("plaster", { repeat: 1, rough: 0.62, tint: 0xe8e6e0 });
+    var matTile  = surface("clinic", { repeat: 2, rough: 0.30, tint: 0xdfe6e6, envInt: 1.2 });
+    var matChrome = new THREE.MeshStandardMaterial({ color: 0xcfd6dc, roughness: 0.18, metalness: 0.92, envMapIntensity: 1.6 });
+    var matGlassM = new THREE.MeshStandardMaterial({ color: 0xdfe8f2, roughness: 0.05, metalness: 0.6,
+                                                     envMapIntensity: 2.2, transparent: true, opacity: 0.55 });
+
+    /* her vanity: a table with drawers, a round mirror on it, and the
+       clutter of somebody who actually uses it */
+    function vanity(x, y) {
+      var g = propGroup(x, y);
+      box(TILE * 0.88, 0.06, TILE * 0.52, matPine, 0, 0.76, 0, g);
+      [-1, 1].forEach(function (s) {
+        box(0.07, 0.76, 0.07, matPine, s * TILE * 0.40, 0.38, TILE * 0.22, g);
+        box(0.07, 0.76, 0.07, matPine, s * TILE * 0.40, 0.38, -TILE * 0.22, g);
+      });
+      var dr = box(TILE * 0.52, 0.26, TILE * 0.44, matPine, 0, 0.58, 0.02, g);
+      dr.material = matPine;
+      [-1, 1].forEach(function (s) {
+        box(0.14, 0.03, 0.03, matChrome, s * 0.20, 0.58, TILE * 0.23, g);
+      });
+      /* the mirror, on a stand, angled the way a mirror ends up */
+      var ring = new THREE.Mesh(new THREE.TorusGeometry(0.30, 0.028, 8, 26), matPine);
+      ring.position.set(0, 1.16, -TILE * 0.14); ring.rotation.x = 0.10; g.add(ring);
+      var glass = new THREE.Mesh(new THREE.CircleGeometry(0.29, 26), matGlassM);
+      glass.position.set(0, 1.16, -TILE * 0.13); glass.rotation.x = 0.10; g.add(glass);
+      box(0.05, 0.30, 0.05, matPine, 0, 0.92, -TILE * 0.16, g);
+      /* bottles and pots */
+      for (var i = 0; i < 6; i++) {
+        var t = hash2(x * 7 + i, y * 3);
+        var h2 = 0.06 + t * 0.10;
+        var b = new THREE.Mesh(new THREE.CylinderGeometry(0.026 + t * 0.014, 0.030 + t * 0.014, h2, 8),
+          new THREE.MeshStandardMaterial({
+            color: [0xd8a0b4, 0xe4d2b8, 0xb8c8d8, 0xd6b48a, 0xc0a8c8, 0xe8dcc0][i],
+            roughness: 0.42, metalness: 0.1, envMapIntensity: 1.2 }));
+        b.position.set(-0.30 + i * 0.12 + (t - 0.5) * 0.04, 0.79 + h2 / 2, 0.10 + (t - 0.5) * 0.14);
+        b.castShadow = true; g.add(b);
+      }
+      return g;
+    }
+
+    /* a bookcase with actual books in it: spines of different heights,
+       depths and colours, a few leaning, one shelf used for other things */
+    function bookshelf(x, y) {
+      var g = propGroup(x, y);
+      var W2 = TILE * 0.86, D2 = TILE * 0.34, H2 = 2.05;
+      box(W2, H2, D2, matPine, 0, H2 / 2 - 0.15, -TILE * 0.30, g);
+      var shelves = 5;
+      for (var s = 1; s < shelves; s++) {
+        var sy = -0.15 + (H2 / shelves) * s;
+        box(W2 - 0.06, 0.035, D2 - 0.04, matPine, 0, sy, -TILE * 0.30, g);
+        /* the books on it */
+        var n = 0, bx = -W2 / 2 + 0.06;
+        while (bx < W2 / 2 - 0.10 && n < 18) {
+          var t = hash2(x * 13 + s * 7 + n, y * 5 + n);
+          if (t > 0.90) { bx += 0.05; n++; continue; }      /* a gap */
+          var bw = 0.026 + t * 0.030, bh = 0.20 + t * 0.10;
+          var bk = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, D2 * (0.55 + t * 0.3)),
+            new THREE.MeshStandardMaterial({
+              color: [0x7a3a3a, 0x2f4a5e, 0x4a5a3a, 0x6a5a3a, 0x3a3a4e, 0x8a6a4a,
+                      0x5e3a52, 0x2e4a44][n % 8],
+              roughness: 0.86 }));
+          bk.position.set(bx + bw / 2, sy + bh / 2 + 0.018, -TILE * 0.30 + 0.02);
+          if (t > 0.82) { bk.rotation.z = 0.24; bk.position.x += 0.03; }
+          bk.castShadow = true; g.add(bk);
+          bx += bw + 0.004; n++;
+        }
+      }
+      return g;
+    }
+
+    /* a desk with a laptop open on it, the screen still on */
+    function deskProp(x, y) {
+      var g = propGroup(x, y);
+      box(TILE * 0.92, 0.06, TILE * 0.56, matPine, 0, 0.74, 0, g);
+      [-1, 1].forEach(function (s) {
+        box(0.06, 0.74, TILE * 0.5, matPine, s * TILE * 0.42, 0.37, 0, g);
+      });
+      var base = box(0.34, 0.018, 0.24, matChrome, 0.02, 0.786, 0.06, g);
+      base.material = new THREE.MeshStandardMaterial({ color: 0x9aa2ac, roughness: 0.34, metalness: 0.7 });
+      var lid = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.014),
+        new THREE.MeshStandardMaterial({ color: 0x8e969f, roughness: 0.34, metalness: 0.7 }));
+      lid.position.set(0.02, 0.895, -0.05); lid.rotation.x = -0.28; g.add(lid);
+      var scr = new THREE.Mesh(new THREE.PlaneGeometry(0.30, 0.18),
+        new THREE.MeshBasicMaterial({ color: 0x6a86b8, toneMapped: false }));
+      scr.position.set(0.02, 0.895, -0.042); scr.rotation.x = -0.28; g.add(scr);
+      world.lamps.push({ x: cx(x), y: 0.95, z: cz(y), colour: 0x7ea0d8, power: 0.30,
+                         range: 2.4, kind: "static", tx: x, ty: y });
+      /* a mug and a stack of paper */
+      var mug = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.040, 0.10, 10),
+        new THREE.MeshStandardMaterial({ color: 0xe0dcd4, roughness: 0.5 }));
+      mug.position.set(-0.30, 0.83, 0.10); mug.castShadow = true; g.add(mug);
+      box(0.22, 0.03, 0.30, matWhite, 0.30, 0.79, -0.02, g);
+      return g;
+    }
+
+    /* something alive, which is most of what a room needs */
+    function plantProp(x, y) {
+      var g = propGroup(x, y, false);
+      var t = hash2(x * 3, y * 7);
+      var pot = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.15, 0.28, 12),
+        surface("brick", { repeat: 1, rough: 0.9, tint: t > 0.5 ? 0xb08060 : 0xd8d2c6 }));
+      pot.position.y = -0.01; pot.castShadow = true; g.add(pot);
+      var soil = new THREE.Mesh(new THREE.CylinderGeometry(0.185, 0.185, 0.03, 12),
+        new THREE.MeshStandardMaterial({ color: 0x3a2e22, roughness: 1 }));
+      soil.position.y = 0.13; g.add(soil);
+      var leafM = new THREE.MeshStandardMaterial({ color: t > 0.5 ? 0x3f6a3a : 0x4a7a44,
+        roughness: 0.72, side: THREE.DoubleSide });
+      for (var i = 0; i < 9; i++) {
+        var a = hash2(x + i, y * 3) * 6.2832, lean = 0.4 + hash2(i, x) * 0.7;
+        var len = 0.34 + hash2(i * 3, y) * 0.42;
+        var leaf = new THREE.Mesh(new THREE.PlaneGeometry(0.16, len, 1, 3), leafM);
+        var pos = leaf.geometry.attributes.position;
+        for (var v = 0; v < pos.count; v++) {
+          var ly = pos.getY(v) / len + 0.5;
+          pos.setX(v, pos.getX(v) * (0.35 + Math.sin(ly * 3.14) * 0.9));
+          pos.setZ(v, -Math.pow(ly, 2) * len * 0.5);
+        }
+        leaf.geometry.computeVertexNormals();
+        leaf.position.set(Math.cos(a) * 0.05, 0.14 + len * 0.42, Math.sin(a) * 0.05);
+        leaf.rotation.set(-lean, a, 0);
+        leaf.castShadow = true;
+        g.add(leaf);
+      }
+      return g;
+    }
+
+    /* the two of them, framed, on whichever wall is nearest */
+    function wallArt(x, y) {
+      var g = propGroup(x, y);
+      /* propGroup turned it to face out of the wall; the frames go back
+         onto it */
+      var n = 1 + Math.floor(hash2(x * 5, y * 11) * 3);
+      for (var i = 0; i < n; i++) {
+        var t = hash2(x + i * 3, y + i);
+        var w2 = 0.34 + t * 0.26, h2 = 0.28 + hash2(i, x) * 0.30;
+        var fg = new THREE.Group();
+        fg.position.set((i - (n - 1) / 2) * 0.72, 1.55 + (t - 0.5) * 0.24, -TILE * 0.47);
+        box(w2 + 0.05, h2 + 0.05, 0.04, matPine, 0, 0, 0, fg);
+        var pic = new THREE.Mesh(new THREE.PlaneGeometry(w2, h2),
+          new THREE.MeshStandardMaterial({
+            color: [0x6a7a94, 0x8a7a6a, 0x7a8a7a, 0x94867a][i % 4],
+            roughness: 0.5, map: tex("cloth", 64, 1) }));
+        pic.position.z = 0.026; fg.add(pic);
+        g.add(fg);
+      }
+      return g;
+    }
+
+    /* a table: dining height if there are chairs round it, coffee height
+       if it is sitting on a rug */
+    function tableProp(x, y) {
+      var chairs = "eu".indexOf(at(x - 1, y)) >= 0 || "eu".indexOf(at(x + 1, y)) >= 0 ||
+                   "eu".indexOf(at(x, y - 1)) >= 0 || "eu".indexOf(at(x, y + 1)) >= 0;
+      var g = propGroup(x, y, false);
+      var h2 = chairs ? 0.74 : 0.40;
+      box(TILE * 0.94, 0.07, TILE * 0.94, matPine, 0, h2, 0, g);
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) {
+        box(0.08, h2, 0.08, matPine, c[0] * TILE * 0.38, h2 / 2, c[1] * TILE * 0.38, g);
+      });
+      if (chairs) {
+        /* laid, because somebody was going to eat */
+        for (var i = 0; i < 2; i++) {
+          var pl = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.12, 0.02, 16),
+            new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.34, envMapIntensity: 1.4 }));
+          pl.position.set((i ? 0.34 : -0.34), h2 + 0.045, 0);
+          pl.castShadow = true; g.add(pl);
+        }
+      } else {
+        var mug2 = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.10, 10),
+          new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: 0.5 }));
+        mug2.position.set(0.16, h2 + 0.085, 0.10); g.add(mug2);
+        box(0.30, 0.03, 0.22, matWhite, -0.14, h2 + 0.05, -0.06, g);
+      }
+      return g;
+    }
+
+    function chairProp(x, y) {
+      var g = propGroup(x, y);
+      box(TILE * 0.46, 0.06, TILE * 0.46, matPine, 0, 0.46, 0, g);
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) {
+        box(0.06, 0.46, 0.06, matPine, c[0] * TILE * 0.18, 0.23, c[1] * TILE * 0.18, g);
+      });
+      box(TILE * 0.46, 0.52, 0.06, matPine, 0, 0.74, -TILE * 0.20, g);
+      return g;
+    }
+
+    /* the cooker, with a hob and a door you can see the racks through */
+    function ovenProp(x, y) {
+      var g = propGroup(x, y);
+      var body = box(TILE * 0.94, 0.90, TILE * 0.86, matWhite, 0, 0.30, 0, g);
+      body.material = surface("metal", { repeat: 1, rough: 0.42, metal: 0.55, tint: 0xb8bcc0, envInt: 1.4 });
+      box(TILE * 0.98, 0.05, TILE * 0.90, matChrome, 0, 0.775, 0, g);
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) {
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.018, 6, 18),
+          new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.5 }));
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(c[0] * TILE * 0.22, 0.805, c[1] * TILE * 0.20);
+        g.add(ring);
+      });
+      var glass = new THREE.Mesh(new THREE.PlaneGeometry(TILE * 0.66, 0.40),
+        new THREE.MeshStandardMaterial({ color: 0x14171c, roughness: 0.16, metalness: 0.4,
+                                         envMapIntensity: 1.8 }));
+      glass.position.set(0, 0.34, TILE * 0.435); g.add(glass);
+      box(TILE * 0.72, 0.045, 0.045, matChrome, 0, 0.60, TILE * 0.46, g);
+      return g;
+    }
+
+    /* a run of counter with a basin sunk into it and a tap */
+    function sinkUnit(x, y) {
+      var g = propGroup(x, y);
+      box(TILE * 0.96, 0.86, TILE * 0.94, matPine, 0, 0.28, 0, g);
+      box(TILE * 1.0, 0.08, TILE * 0.98, matTile, 0, 0.75, 0, g);
+      var basin = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.26, 0.20, 18, 1, true),
+        new THREE.MeshStandardMaterial({ color: 0xc8ced4, roughness: 0.18, metalness: 0.85,
+                                         side: THREE.DoubleSide, envMapIntensity: 1.8 }));
+      basin.position.set(0, 0.70, 0); g.add(basin);
+      var tap = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.30, 8), matChrome);
+      tap.position.set(0, 0.94, -TILE * 0.30); g.add(tap);
+      var spout = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.22, 8), matChrome);
+      spout.rotation.x = Math.PI / 2; spout.position.set(0, 1.07, -TILE * 0.22); g.add(spout);
+      /* what nobody washed up */
+      for (var i = 0; i < 3; i++) {
+        var pl = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.11, 0.018, 14),
+          new THREE.MeshStandardMaterial({ color: 0xdedad2, roughness: 0.4 }));
+        pl.position.set(0.02 + i * 0.01, 0.62 + i * 0.02, 0.02);
+        pl.rotation.z = 0.06 * i; g.add(pl);
+      }
+      return g;
+    }
+
+    function bathProp(x, y) {
+      var g = propGroup(x, y, false);
+      var shell = box(TILE * 0.94, 0.56, TILE * 0.92, matWhite, 0, 0.13, 0, g);
+      shell.material = new THREE.MeshStandardMaterial({ color: 0xeceae4, roughness: 0.14,
+                                                        metalness: 0.05, envMapIntensity: 1.6 });
+      var inner = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.78, 0.40, TILE * 0.76),
+        new THREE.MeshStandardMaterial({ color: 0xd2d6d8, roughness: 0.2, side: THREE.BackSide }));
+      inner.position.y = 0.26; g.add(inner);
+      /* the screen, only on the end that has a wall behind it */
+      if (isSolidChar(at(x - 1, y)) || isSolidChar(at(x + 1, y))) {
+        var sd = isSolidChar(at(x - 1, y)) ? -1 : 1;
+        var scr = new THREE.Mesh(new THREE.PlaneGeometry(TILE * 0.88, 1.5), matGlassM);
+        scr.position.set(sd * TILE * 0.44, 1.15, 0);
+        scr.rotation.y = Math.PI / 2; g.add(scr);
+        var head = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 10), matChrome);
+        head.position.set(sd * TILE * 0.40, 1.85, 0);
+        head.rotation.z = sd * 0.5; g.add(head);
+      }
+      var rail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, TILE * 0.6, 8), matChrome);
+      rail.rotation.z = Math.PI / 2; rail.position.set(0, 0.92, -TILE * 0.44); g.add(rail);
+      var towel = box(0.34, 0.46, 0.05,
+        new THREE.MeshStandardMaterial({ color: 0xc8d4d0, roughness: 0.98,
+          map: tex("cloth", 64, 1), bumpMap: bump("cloth", 64, 1), bumpScale: 0.3 }),
+        0.16, 0.70, -TILE * 0.42, g);
+      towel.rotation.z = 0.04;
+      return g;
+    }
+
+    function toiletProp(x, y) {
+      var g = propGroup(x, y);
+      var white = new THREE.MeshStandardMaterial({ color: 0xeeece6, roughness: 0.16,
+                                                   envMapIntensity: 1.5 });
+      var pan = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.15, 0.40, 14), white);
+      pan.position.set(0, 0.05, 0.06); pan.castShadow = true; g.add(pan);
+      var seat = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.045, 8, 20), white);
+      seat.rotation.x = -Math.PI / 2; seat.position.set(0, 0.27, 0.06); g.add(seat);
+      box(0.40, 0.52, 0.20, white, 0, 0.11, -TILE * 0.28, g).material = white;
+      box(0.34, 0.03, 0.03, matChrome, 0.10, 0.40, -TILE * 0.18, g);
+      return g;
+    }
+
+    /* the basin with the mirror over it, which is where a bathroom reads */
+    function basinProp(x, y) {
+      var g = propGroup(x, y);
+      var white = new THREE.MeshStandardMaterial({ color: 0xeeece6, roughness: 0.14,
+                                                   envMapIntensity: 1.6 });
+      var ped = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.14, 0.62, 12), white);
+      ped.position.set(0, 0.16, -TILE * 0.14); g.add(ped);
+      var bowl = new THREE.Mesh(new THREE.SphereGeometry(0.26, 18, 12, 0, 6.2832, 0, 1.5), white);
+      bowl.scale.set(1, 0.5, 0.8);
+      bowl.rotation.x = Math.PI; bowl.position.set(0, 0.72, -TILE * 0.14);
+      bowl.castShadow = true; g.add(bowl);
+      var tap = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.22, 8), matChrome);
+      tap.position.set(0, 0.84, -TILE * 0.30); g.add(tap);
+      /* the mirror and the light over it */
+      var fr = box(0.78, 0.92, 0.05, matPine, 0, 1.52, -TILE * 0.46, g);
+      fr.material = matPine;
+      var gl = new THREE.Mesh(new THREE.PlaneGeometry(0.70, 0.84), matGlassM);
+      gl.position.set(0, 1.52, -TILE * 0.43); g.add(gl);
+      var strip = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.05, 0.06),
+        new THREE.MeshBasicMaterial({ color: 0xdfe8f4, toneMapped: false }));
+      strip.position.set(0, 2.04, -TILE * 0.42); g.add(strip);
+      world.lamps.push({ x: cx(x), y: 2.0, z: cz(y), colour: 0xcfe0f4, power: 1.1,
+                         range: 5.0, kind: "static", tx: x, ty: y });
+      return g;
+    }
+
+    /* the garage: a bench with a pegboard over it, and a rack of boxes */
+    function workbench(x, y) {
+      var g = propGroup(x, y);
+      box(TILE * 0.96, 0.09, TILE * 0.62, matPine, 0, 0.86, 0, g);
+      [-1, 1].forEach(function (s) {
+        box(0.09, 0.90, 0.09, matPine, s * TILE * 0.42, 0.45, TILE * 0.24, g);
+        box(0.09, 0.90, 0.09, matPine, s * TILE * 0.42, 0.45, -TILE * 0.24, g);
+      });
+      box(TILE * 0.90, 0.05, TILE * 0.50, matPine, 0, 0.36, 0, g);
+      /* the pegboard */
+      var pb = box(TILE * 0.96, 1.10, 0.05,
+        surface("boards", { repeat: 1, rough: 0.9, tint: 0xc8a878 }), 0, 1.58, -TILE * 0.40, g);
+      pb.material = surface("boards", { repeat: 1, rough: 0.9, tint: 0xc8a878 });
+      for (var i = 0; i < 7; i++) {
+        var t = hash2(x * 3 + i, y * 5);
+        var tool = new THREE.Mesh(
+          new THREE.BoxGeometry(0.035 + t * 0.03, 0.18 + t * 0.16, 0.03),
+          new THREE.MeshStandardMaterial({ color: t > 0.5 ? 0x9aa0a8 : 0x6a4a30,
+                                           roughness: 0.5, metalness: t > 0.5 ? 0.7 : 0.1 }));
+        tool.position.set(-TILE * 0.38 + i * (TILE * 0.76 / 6), 1.58 + (t - 0.5) * 0.34, -TILE * 0.36);
+        tool.castShadow = true; g.add(tool);
+      }
+      /* a vice on the end */
+      var vice = box(0.20, 0.16, 0.14, matChrome, TILE * 0.30, 0.98, 0.02, g);
+      vice.material = new THREE.MeshStandardMaterial({ color: 0x4a5058, roughness: 0.5, metalness: 0.6 });
+      return g;
+    }
+
+    function shelving(x, y) {
+      var g = propGroup(x, y);
+      var W2 = TILE * 0.90, D2 = TILE * 0.40, H2 = 2.1;
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) {
+        box(0.06, H2, 0.06, matMetal, c[0] * W2 / 2, H2 / 2 - 0.15, -TILE * 0.28 + c[1] * D2 / 2, g);
+      });
+      for (var s = 0; s < 4; s++) {
+        var sy = 0.10 + s * 0.60;
+        box(W2, 0.04, D2, matMetal, 0, sy, -TILE * 0.28, g);
+        var n = 1 + Math.floor(hash2(x + s, y * 3) * 3);
+        for (var i = 0; i < n; i++) {
+          var t = hash2(x * 7 + s * 3 + i, y);
+          var bw = 0.24 + t * 0.22, bh = 0.20 + t * 0.20;
+          var bx2 = box(bw, bh, D2 * 0.7,
+            surface("cloth", { repeat: 1, rough: 0.95, tint: t > 0.5 ? 0xa8895e : 0x8a7a62 }),
+            -W2 / 2 + 0.14 + i * (W2 - 0.28) / Math.max(1, n - 0.0001) * 0.9,
+            sy + bh / 2 + 0.02, -TILE * 0.28, g);
+          bx2.rotation.y = (t - 0.5) * 0.2;
+        }
+      }
+      return g;
+    }
+
+    /* the console the television stands on */
+    function mediaUnit(x, y) {
+      var g = propGroup(x, y);
+      box(TILE * 0.96, 0.52, TILE * 0.44, matPine, 0, 0.11, 0, g);
+      box(TILE * 1.0, 0.05, TILE * 0.48, matPine, 0, 0.40, 0, g);
+      [-1, 1].forEach(function (s) {
+        box(TILE * 0.40, 0.30, 0.04, surface("boards", { repeat: 1, tint: 0xb89a72 }),
+            s * TILE * 0.24, 0.10, TILE * 0.22, g);
+        box(0.16, 0.025, 0.025, matChrome, s * TILE * 0.24, 0.10, TILE * 0.245, g);
+      });
+      /* a soundbar and a stack of cases */
+      box(TILE * 0.70, 0.08, 0.10,
+          new THREE.MeshStandardMaterial({ color: 0x2a2e34, roughness: 0.7 }), 0, 0.465, 0, g);
+      for (var i = 0; i < 4; i++) {
+        box(0.14, 0.02, 0.19,
+            new THREE.MeshStandardMaterial({ color: [0x8a3a3a, 0x2f4a5e, 0x4a5a3a, 0x6a5a3a][i],
+                                             roughness: 0.6 }),
+            TILE * 0.34, 0.44 + i * 0.022, -0.02, g);
+      }
+      return g;
+    }
+
+    /* the empty bay: a painted outline and the stain of a car that stood
+       on it for eleven years */
+    function bayMark(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var paint = new THREE.MeshBasicMaterial({ color: 0xd8cc9a, transparent: true, opacity: 0.30 });
+      [[0, -TILE * 0.46, TILE * 0.9, 0.08], [0, TILE * 0.46, TILE * 0.9, 0.08]].forEach(function (b) {
+        if (at(x, y + (b[1] > 0 ? 1 : -1)) === "I") return;
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(b[2], b[3]), paint);
+        m.rotation.x = -Math.PI / 2; m.position.set(b[0], 0.018, b[1]); g.add(m);
+      });
+      [-1, 1].forEach(function (s) {
+        if (at(x + s, y) === "I") return;
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(0.08, TILE * 0.96), paint);
+        m.rotation.x = -Math.PI / 2; m.position.set(s * TILE * 0.46, 0.018, 0); g.add(m);
+      });
+      var stain = new THREE.Mesh(new THREE.PlaneGeometry(TILE * 0.7, TILE * 0.7),
+        new THREE.MeshBasicMaterial({ map: bloodTexture("pool"), color: 0x1a1a18,
+          transparent: true, opacity: 0.55, depthWrite: false }));
+      stain.rotation.x = -Math.PI / 2;
+      stain.position.set((hash2(x, y) - 0.5) * 0.5, 0.019, (hash2(y, x) - 0.5) * 0.5);
+      g.add(stain);
+      G.add(g);
       return g;
     }
 
@@ -5852,6 +6290,22 @@
             }
             break;
           case "j": openWardrobe(x2, y2); break;
+          case "V": vanity(x2, y2); break;
+          case "k": bookshelf(x2, y2); break;
+          case "E": deskProp(x2, y2); break;
+          case "p": plantProp(x2, y2); break;
+          case "a": wallArt(x2, y2); break;
+          case "t": tableProp(x2, y2); break;
+          case "e": chairProp(x2, y2); break;
+          case "O": ovenProp(x2, y2); break;
+          case "s": sinkUnit(x2, y2); break;
+          case "R": bathProp(x2, y2); break;
+          case "Z": toiletProp(x2, y2); break;
+          case "m": basinProp(x2, y2); break;
+          case "M": workbench(x2, y2); break;
+          case "J": shelving(x2, y2); break;
+          case "U": mediaUnit(x2, y2); break;
+          case "I": bayMark(x2, y2); break;
           case "l": floorLamp(x2, y2); break;
           case "L": lampPost(x2, y2); break;
           case "d": case "D": case "P": door(x2, y2, c); break;
@@ -5871,11 +6325,52 @@
         }
       }
     }
+    /* Not every floor in a house is the same floor: the bathroom is
+       tiled, the kitchen is tiled, the garage is a concrete slab. Laid
+       over the boards rather than replacing them, which costs one plane
+       a room. */
+    if (def.floors) {
+      def.floors.forEach(function (f) {
+        var pl = new THREE.Mesh(
+          new THREE.PlaneGeometry((f[2] - f[0] + 1) * TILE, (f[3] - f[1] + 1) * TILE),
+          surface(f[4], { size: 512, repeat: Math.max(2, (f[2] - f[0] + 1) * 0.7),
+                          rough: f[4] === "block" ? 0.94 : 0.36, tint: f[5],
+                          envInt: f[4] === "block" ? 0.3 : 1.1 }));
+        pl.rotation.x = -Math.PI / 2;
+        pl.position.set((cx(f[0]) + cx(f[2])) / 2, 0.012, (cz(f[1]) + cz(f[3])) / 2);
+        pl.receiveShadow = true;
+        G.add(pl);
+      });
+    }
+
     /* ---- the state of the place ----
        Pools where somebody went down, drags where something was pulled
        along a corridor, spatter up the wall by the doors. Heaviest in the
        wards and at the doors, because that is where people were when it
        started. Three instanced meshes for the whole building. */
+    if (def.fairy) {
+      def.fairy.forEach(function (f) {
+        var g2 = new THREE.Group();
+        var n = Math.max(2, Math.round(Math.hypot(f[2] - f[0], f[3] - f[1])) * 3);
+        var bulbGeo = new THREE.SphereGeometry(0.035, 6, 5);
+        for (var i = 0; i <= n; i++) {
+          var t = i / n;
+          var sag = Math.sin(t * Math.PI) * 0.16;
+          var b = new THREE.Mesh(bulbGeo, new THREE.MeshBasicMaterial({
+            color: i % 3 === 0 ? 0xffd6a0 : i % 3 === 1 ? 0xffeccc : 0xffc888,
+            toneMapped: false }));
+          b.position.set(cx(f[0]) + (cx(f[2]) - cx(f[0])) * t, f[4] - sag,
+                         cz(f[1]) + (cz(f[3]) - cz(f[1])) * t);
+          g2.add(b);
+        }
+        G.add(g2);
+        world.lamps.push({ x: (cx(f[0]) + cx(f[2])) / 2, y: f[4],
+                           z: (cz(f[1]) + cz(f[3])) / 2, colour: 0xffcf9a,
+                           power: 0.55, range: 6.0, kind: "static",
+                           tx: f[0], ty: f[1] });
+      });
+    }
+
     if (def.blood) {
       var pools = [], drags = [], spats = [];
       for (var by = 1; by < H - 1; by++) {
@@ -7072,6 +7567,13 @@
     var o = overlay();
     o.innerHTML = "";
     o.className = "ap-overlay" + (cls ? " " + cls : "");
+    /* a caption leaves the overlay click-through and bottom-aligned; if one
+       was up when this opened, the buttons on it would be unpressable */
+    o.style.background = "";
+    o.style.alignItems = "";
+    o.style.justifyContent = "";
+    o.style.paddingBottom = "";
+    o.style.pointerEvents = "";
     o.appendChild(node);
     o.setAttribute("aria-hidden", "false");
     if (G) G.state = "overlay";

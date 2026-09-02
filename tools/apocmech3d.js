@@ -122,7 +122,8 @@ function ok(name, cond, extra) {
   // ---- 7. the wire panel restores power and opens the dead door ---------
   r = await ev(() => {
     function G(){ return window.Apocalypse.game; }
-    window.__apTeleport(28, 11);         // beside the W at (28,12)
+    const pw = window.Apocalypse.game.world.panelAt;
+    window.__apTeleport(pw.x, pw.y + 1);   // beside the wire panel, wherever it is
     for (let i=0;i<4;i++) window.__apPump(1/60);
     window.__apUse();
     const hasPanel = !!document.querySelector('.ap-panel-canvas');

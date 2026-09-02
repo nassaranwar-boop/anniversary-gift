@@ -98,7 +98,8 @@ const need = (name, cond, extra) => {
   await talk();
   st = await S(); need('the TV clears its step', st.step === 'panel', st);
 
-  await walkTo(28, 11); await use();
+  const pan1 = await p.evaluate(() => window.Apocalypse.game.world.panelAt);
+  await walkTo(pan1.x, pan1.y + 1); await use();
   need('the wire panel is up', await p.$('.ap-panel-canvas') !== null);
   await p.evaluate(() => window.__apSolvePanel()); await p.waitForTimeout(400); await pump(20);
   need('the garage is empty', await waitFor(s => s.dialogue === true, 600));
@@ -141,7 +142,8 @@ const need = (name, cond, extra) => {
   const zAfter = (await S()).zombies;
   need('the hospital fills up on its own', zAfter > zBefore, { zBefore, zAfter });
 
-  await walkTo(5, 4); await use();
+  const pan3 = await p.evaluate(() => window.Apocalypse.game.world.panelAt);
+  await walkTo(pan3.x, pan3.y + 1); await use();
   need('the plant room panel is up', await p.$('.ap-panel-canvas') !== null);
   await p.evaluate(() => window.__apSolvePanel()); await p.waitForTimeout(400); await pump(20);
   st = await S(); need('Ward C has power', st.step === 'anwar', st);
