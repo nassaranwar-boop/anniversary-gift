@@ -2536,87 +2536,91 @@
     head.position.y = 0.098 * S;
     neck.add(head);
 
-    var skull = new THREE.Mesh(
-      (function () {
-        /* A smooth falloff rather than a threshold: the previous version
-           tested a vertex's position and moved it, which tore a step into
-           the mesh wherever the test flipped. */
-        var g = new THREE.SphereGeometry(0.107 * S, 22, 16);
-        g.scale(1.02, 1.06, 0.90);
-        var pos = g.attributes.position;
-        for (var i = 0; i < pos.count; i++) {
-          var vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
-          var up = clamp(vy / (0.11 * S), -1, 1);
-          pos.setZ(i, vz * (1 - Math.max(0, up) * 0.10));
-          pos.setX(i, vx * (vx < 0 ? 0.94 : 1.0) + (1 - clamp(up + 0.4, 0, 1)) * 0.010 * S);
-        }
-        g.computeVertexNormals();
-        return g;
-      })(), skin);
-    skull.position.y = 0.104 * S;
-    skull.castShadow = true;
-    head.add(skull);
-
-    /* jaw, brow, nose and ears: four small solids that turn a sphere into
-       a face at the distance this camera keeps */
-    var jaw = new THREE.Mesh(
-      (function () { var g = new THREE.SphereGeometry(0.082 * S, 13, 10); g.scale(1.0, 0.74, 0.88); return g; })(), skin);
-    jaw.position.set(0.022 * S, 0.052 * S, 0);
-    head.add(jaw);
-    var brow = new THREE.Mesh(
-      (function () { var g = new THREE.SphereGeometry(0.052 * S, 12, 8); g.scale(0.50, 0.34, 1.45); return g; })(), skin);
-    brow.position.set(0.062 * S, 0.140 * S, 0);
-    head.add(brow);
-    var nose = new THREE.Mesh(
-      (function () {
-        var g = new THREE.SphereGeometry(0.019 * S, 10, 8);
-        g.scale(1.6, 1.0, 0.78); return g;
-      })(), skin);
-    nose.position.set(0.100 * S, 0.092 * S, 0);
-    head.add(nose);
-    [1, -1].forEach(function (sd) {
-      var ear = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.030 * S, 8, 6); g.scale(0.4, 1.1, 0.8); return g; })(), skin);
-      ear.position.set(-0.008 * S, 0.104 * S, sd * 0.092 * S);
-      head.add(ear);
+    /* ---- the head, as one mesh ----
+       Skull, jaw, brow, nose, ears and both eyelids never move relative to
+       each other, so they are built as geometry, put where they belong and
+       merged. Fifteen draw calls a head times twelve people at the gates is
+       what the difference looks like. */
+    var headParts = [];
+    (function () {
+      var g = new THREE.SphereGeometry(0.107 * S, 22, 16);
+      g.scale(1.02, 1.06, 0.90);
+      var pos = g.attributes.position;
+      for (var i = 0; i < pos.count; i++) {
+        var vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
+        var up = clamp(vy / (0.11 * S), -1, 1);
+        pos.setZ(i, vz * (1 - Math.max(0, up) * 0.10));
+        pos.setX(i, vx * (vx < 0 ? 0.94 : 1.0) + (1 - clamp(up + 0.4, 0, 1)) * 0.010 * S);
+      }
+      g.computeVertexNormals();
+      g.translate(0, 0.104 * S, 0);
+      headParts.push(g);
+    })();
+    (function () {                                   /* the jaw */
+      var g = new THREE.SphereGeometry(0.082 * S, 13, 10);
+      g.scale(1.0, 0.74, 0.88);
+      g.translate(0.022 * S, 0.052 * S, 0);
+      headParts.push(g);
+    })();
+    (function () {                                   /* the brow ridge */
+      var g = new THREE.SphereGeometry(0.052 * S, 12, 8);
+      g.scale(0.50, 0.34, 1.45);
+      g.translate(0.062 * S, 0.140 * S, 0);
+      headParts.push(g);
+    })();
+    (function () {                                   /* the nose */
+      var g = new THREE.SphereGeometry(0.019 * S, 10, 8);
+      g.scale(1.6, 1.0, 0.78);
+      g.translate(0.100 * S, 0.092 * S, 0);
+      headParts.push(g);
+    })();
+    [1, -1].forEach(function (sd) {                  /* ears */
+      var g = new THREE.SphereGeometry(0.030 * S, 8, 6);
+      g.scale(0.4, 1.1, 0.8);
+      g.translate(-0.008 * S, 0.104 * S, sd * 0.092 * S);
+      headParts.push(g);
     });
+    [1, -1].forEach(function (sd) {                  /* eyelids */
+      var g = new THREE.SphereGeometry(0.0176 * S, 10, 8, 0, 6.2832, 0, 0.92);
+      g.rotateZ(-0.52);
+      g.translate(0.083 * S, 0.114 * S, sd * 0.040 * S);
+      headParts.push(g);
+    });
+    var faceMesh = new THREE.Mesh(mergeGeoms(headParts), skin);
+    faceMesh.castShadow = true;
+    head.add(faceMesh);
+
     /* Eyes and brows. A sphere sitting on a sphere reads as a lens, so the
-       eye is small, set into a socket, has a lid closing the top third of
-       it and a brow above that — which is most of what makes a face read
-       at any distance at all. */
+       eye is small, set into a socket behind a lid, with a brow over it —
+       which is most of what makes a face read at any distance at all. */
     var eyeM = new THREE.MeshStandardMaterial({
       color: 0xefebe4, roughness: 0.22, metalness: 0, envMapIntensity: 1.0 });
     var irisM = new THREE.MeshStandardMaterial({
       color: spec.eyes || 0x2b1d14, roughness: 0.16, metalness: 0, envMapIntensity: 1.6 });
     var browM = new THREE.MeshStandardMaterial({
       color: spec.browColour || spec.hair, roughness: 0.62, metalness: 0 });
+
+    var eyeParts = [], irisParts = [], browParts = [];
     [1, -1].forEach(function (sd) {
-      var socket = new THREE.Group();
-      socket.position.set(0.083 * S, 0.114 * S, sd * 0.040 * S);
-      head.add(socket);
-      var ball = new THREE.Mesh(new THREE.SphereGeometry(0.0152 * S, 10, 8), eyeM);
-      socket.add(ball);
-      var iris = new THREE.Mesh(new THREE.SphereGeometry(0.0080 * S, 8, 6), irisM);
-      iris.position.set(0.0104 * S, 0, 0);
-      socket.add(iris);
-      var lid = new THREE.Mesh(
-        (function () { var g = new THREE.SphereGeometry(0.0176 * S, 10, 8, 0, 6.2832, 0, 0.92); return g; })(), skin);
-      lid.rotation.z = -0.52;
-      socket.add(lid);
-      var brow2 = new THREE.Mesh(
-        (function () { var gb = new THREE.SphereGeometry(0.0155 * S, 10, 6); gb.scale(0.34, 0.20, 1.30); return gb; })(),
-        browM);
-      brow2.position.set(0.008 * S, 0.0255 * S, 0);
-      brow2.rotation.x = sd * 0.22;
-      socket.add(brow2);
-      if (sd === 1) {
-        var mouth = new THREE.Mesh(
-          new THREE.BoxGeometry(0.008 * S, 0.0055 * S, 0.032 * S),
-          new THREE.MeshStandardMaterial({ color: 0x8f5c53, roughness: 0.55 }));
-        mouth.position.set(0.089 * S, 0.056 * S, 0);
-        head.add(mouth);
-      }
+      var e0 = new THREE.SphereGeometry(0.0152 * S, 10, 8);
+      e0.translate(0.083 * S, 0.114 * S, sd * 0.040 * S);
+      eyeParts.push(e0);
+      var i0 = new THREE.SphereGeometry(0.0080 * S, 8, 6);
+      i0.translate(0.0934 * S, 0.114 * S, sd * 0.040 * S);
+      irisParts.push(i0);
+      var b0 = new THREE.SphereGeometry(0.0155 * S, 10, 6);
+      b0.scale(0.34, 0.20, 1.30);
+      b0.rotateX(sd * 0.22);
+      b0.translate(0.091 * S, 0.1395 * S, sd * 0.040 * S);
+      browParts.push(b0);
     });
+    var mouthG = new THREE.BoxGeometry(0.008 * S, 0.0055 * S, 0.032 * S);
+    mouthG.translate(0.089 * S, 0.056 * S, 0);
+    head.add(new THREE.Mesh(mergeGeoms(eyeParts), eyeM));
+    head.add(new THREE.Mesh(mergeGeoms(irisParts), irisM));
+    head.add(new THREE.Mesh(mergeGeoms(browParts), browM));
+    head.add(new THREE.Mesh(mouthG,
+      new THREE.MeshStandardMaterial({ color: 0x8f5c53, roughness: 0.55 })));
 
     /* ---------------- hair ---------------- */
     var hairGroup = new THREE.Group();
@@ -8511,9 +8515,13 @@
       var scene = G && (G.cine ? G.cine.scene : G.scene);
       var cam = G && G.cine ? G.cine.camera : Stage.camera;
       if (!scene) return null;
+      /* the composer runs several passes and each one resets the counters,
+         so they have to be held open across the whole frame */
+      Stage.renderer.info.autoReset = false;
       Stage.renderer.info.reset();
       Stage.render(scene, cam);
       var info = Stage.renderer.info;
+      Stage.renderer.info.autoReset = true;
       var lights = 0;
       scene.traverse(function (o) { if (o.isLight && o.visible && o.intensity > 0) lights++; });
       return {
