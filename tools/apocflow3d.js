@@ -94,11 +94,15 @@ const need = (name, cond, extra) => {
   await walkTo(2, 12); await use();
   need('the broadcast is on the set', await p.$('.ap-tv-canvas') !== null);
   await click('.ap-tv .ap-card-go'); await pump(6);
+  need('turning it off starts her thinking', await waitFor(s => s.dialogue === true, 400));
+  await talk();
   st = await S(); need('the TV clears its step', st.step === 'panel', st);
 
   await walkTo(28, 11); await use();
   need('the wire panel is up', await p.$('.ap-panel-canvas') !== null);
   await p.evaluate(() => window.__apSolvePanel()); await p.waitForTimeout(400); await pump(20);
+  need('the garage is empty', await waitFor(s => s.dialogue === true, 600));
+  await talk();
   st = await S(); need('power comes back on', st.step === 'exit', st);
 
   const ex1 = await p.evaluate(() => window.Apocalypse.game.world.exit);
@@ -125,12 +129,15 @@ const need = (name, cond, extra) => {
   need('the Level 3 card comes up', await waitCard('Level 3: THE HOSPITAL'));
   await click('.ap-card-go'); await pump(20);
   st = await S(); need('Level 3 is running', st.level === 'hospital', st);
+  await pump(70);
+  need('the board over reception tells her where to go', await waitFor(s => s.dialogue === true, 400));
+  await talk();
   log('level 2 done');
 
   // ---- Level 3: the plant room, him, the room with the bolt --------------
   await walkTo(4, 9, 10);                    // a curtained bay: nothing can see her in it
   const zBefore = (await S()).zombies;
-  await pump(60 * 22);                       // let the pressure system run
+  await pump(60 * 32);                       // let the pressure system run
   const zAfter = (await S()).zombies;
   need('the hospital fills up on its own', zAfter > zBefore, { zBefore, zAfter });
 
@@ -141,7 +148,8 @@ const need = (name, cond, extra) => {
   const lit = await p.evaluate(() => window.Apocalypse.game.world.powered);
   need('and its lights come on', lit === true);
 
-  await walkTo(29, 5); await use();
+  const aw = await p.evaluate(() => window.Apocalypse.game.world.anwarAt);
+  await walkTo(aw.x, aw.y + 1); await use();
   st = await S(); need('waking him starts the reunion', st.dialogue === true, st);
   await talk();
   st = await S(); need('and clears the step', st.step === 'exit', st);

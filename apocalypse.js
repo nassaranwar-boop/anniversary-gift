@@ -46,13 +46,17 @@
     noiseSpark: 130 * PX,
 
     zSpeed:      26 * PX,
-    zChase:      58 * PX,
-    zReact:      0.5,
-    zSight:      84 * PX,
-    zCone:       0.62,
-    zNear:       20 * PX,
-    zLose:       2.0,
-    zInvestigate: 4.0,
+    zChase:      54 * PX,
+    zReact:      0.55,
+    /* They used to sweep a 71-degree cone five and a bit tiles deep,
+       which meant crossing a room in front of one was not a decision, it
+       was a dice roll. Three and a half tiles, 52 degrees, and it has to
+       be very close indeed to notice her behind it. */
+    zSight:      56 * PX,
+    zCone:       0.46,
+    zNear:       12 * PX,
+    zLose:       1.7,
+    zInvestigate: 3.4,
 
     caughtHold:  1.5,
     grabWindow:  1.6,
@@ -129,7 +133,7 @@
     "####,,,.############.,,.################.,,.####",
     "####,,,.############.,,.################.,,.####",
     "#....,,L...........c.,,L.................,,L...#",
-    "#,,,.,,.,,z,,,,,,,,,.,,.,,,,,,,,,,,,,,,,.,,.,,,#",
+    "#,,,.,,.,,,,,,,,,,,,.,,.,,,,,,,,,,,,,,,,.,,.,,,#",
     "#,,,.,,.h,,,,.,,,,,,.,,.,,,,z,,,,,,,,,,,.,,.,,,#",
     "#....,,.h...........h,,................c.,,....#",
     "####.,,.#####.######h,,.################.,,.####",
@@ -138,7 +142,7 @@
     "####.,,.#####.######.,,.################.,h.####",
     "####h,,.#####.######.,,c################.,h.####",
     "#...h,,..............,,c.................,,....#",
-    "#,,,.,,.,,,,,,,,,z,,.,,.,,,,,,,,,,z,,,,,.,,.,,,#",
+    "#,,,.,,.,,,,,,,,,,,,.,,.,,,,,,,,,,z,,,,,.,,.,,,#",
     "#,,,.,,.,,,,,,,,,,,,.,,.,,,,,,,,,,,,,,,,.,,.i,,#",
     "#....,,.....L....hh..,,.......h..........,,....#",
     "####.,,.##d#########.,,.#######.########.,,.####",
@@ -147,11 +151,11 @@
     "####.,,cKK...#######.,,.#######.D..c...#.,,.####",
     "####.,,c...N.#######.,,.#######.#....c.#.,,.####",
     "####.,,.h....#######.,,.#######.#......#.,,.####",
-    "####.,,.#.##########.,,.###########.####.z,.####",
+    "####.,,.#.##########.,,.###########.####.,,.####",
     "#....,,L......hh.....,,L.........##.####.,,.####",
-    "#,,,.,,.,,,,,,,,,,,,.,,.z,,,,i,,,##.#####,,#####",
+    "#,,,.,,.,,,,,,,,,,,,.,,.,,,,,i,,,##.#####,,#####",
     "#,,,.,,.,,,,,,,,,,,,.,,.,,,,..x...L.......L..h.#",
-    "#....,,.....hh.....c.,,....hh.........c.z..cc.h#",
+    "#....,,.....hh.....c.,,....hh.........c....cc.h#",
     "####.,,.#########################...........X..#",
     "################################################"
   ];
@@ -159,22 +163,22 @@
   MAPS.hospital = [
     "########################################",
     "##################..####################",
-    "##oo............##..##..Bh.Bh.Bh.Bh.B.##",
-    "##......=====...##.l##..B..B.lB..B..B.##",
-    "##...W.o........##..##................##",
-    "##.....o.............P........A.......##",
-    "##....x..............P................##",
+    "##oo............##..##..Bh.Bh.#..j..A.##",
+    "##......=====...##.l##..B..B.l#.h....n##",
+    "##...W.o........##..##........#.y...X.##",
+    "##.....o.............P.........###d#####",
+    "##...................P................##",
     "##.l............##..##................##",
     "##......=====...##.z##..B..B..B..B..B.##",
     "##..h.........h.##.l##..BhlBh.Bh.Bh.B.##",
     "##..............##..##................##",
     "##################..####################",
-    "#....lyy...x..l.y.......l.....i..yl....#",
+    "#....lyy......l.y.......l.....i..yl....#",
     "#..y....x..Yy.............yy.......Y...#",
     "#########.########..####################",
     "##.......j##.....#....................##",
-    "##.X......##.ooo.#...KKKKKK.....=====.##",
-    "##........##.ooo.#.l...z....hhY....x..##",
+    "##........##.ooo.#...KKKKKK.....=====.##",
+    "##........##.ooo.#.l...z....hhY.......##",
     "##........##h....#...............h....##",
     "#########.####.###..####.###############",
     "########......i.......Y........#########",
@@ -348,44 +352,44 @@
   var LEVELS = [
     {
       id: "home", name: "HOME", card: "Level 1: HOME",
-      blurb: "Your parents are away. The news is still on.",
+      blurb: "Tuesday they flew to Portugal. It is Friday and the news is still on.",
       map: MAPS.home, theme: "house", base: ".", dark: 0.68, groundTex: "asphalt",
       grade: [180, 115, 55, 0.16], haze: [30, 38, 60, 0.28],
       steps: [
-        { task: "The TV is still on downstairs. Go and see.", clears: "tv" },
-        { task: "Get out. The garage door has no power.",     clears: "panel" },
-        { task: "The garage door is open. Go.",               clears: "exit" }
+        { task: "The TV is still on downstairs. Go and see.",                clears: "tv" },
+        { task: "Anwar is at Mercy General, Ward C. Get to the garage.",     clears: "panel" },
+        { task: "No car. Four miles on foot, then — south to the river.",    clears: "exit" }
       ]
     },
     {
       id: "streets", name: "THE STREETS", card: "Level 2: THE STREETS",
-      blurb: "He's asleep at the hospital. That's where you're going.",
+      blurb: "Four miles. South to the river, then east along it.",
       map: MAPS.streets, theme: "street", base: ",", dark: 0.62,
       grade: [60, 90, 180, 0.18], haze: [35, 48, 80, 0.36],
       steps: [
-        { task: "Cross town to the hospital — south, then east.", clears: "exit" }
+        { task: "South to the river, then east along it. Mercy General. (M for the map.)", clears: "exit" }
       ]
     },
     {
       id: "hospital", name: "THE HOSPITAL", card: "Level 3: THE HOSPITAL",
-      blurb: "Find him before the corridors fill up.",
+      blurb: "It was the first place it got into. Ward C, east wing.",
       map: MAPS.hospital, theme: "hospital", base: ".", dark: 0.63,
       grade: [104, 176, 168, 0.13], haze: [58, 84, 92, 0.34],
       dead: [20, 1, 39, 10],
-      pressure: 21,
+      pressure: 26, pressureMax: 5, blood: true,
       steps: [
-        { task: "Ward C has no power on the doors. Find the plant room.", clears: "panel" },
-        { task: "Ward C is open. He's in there somewhere.",               clears: "anwar" },
-        { task: "Get off the corridor. Anywhere with a door that shuts.", clears: "exit" }
+        { task: "The ward doors run off the plant room. West side, past the link corridor.", clears: "panel" },
+        { task: "Ward C is open. Bed by the window — but he won't be in it.",                clears: "anwar" },
+        { task: "There's a fire door in here. Shut it behind you.",                          clears: "exit" }
       ]
     },
     {
       id: "escape", name: "THE ROAD", card: "Level 4: THE ROAD",
-      blurb: "Out of the city, any way you can.",
-      map: MAPS.escape, theme: "hospital", base: ".", dark: 0.68, groundTex: "asphalt",
+      blurb: "Ashcombe. North road, past the reservoir. Forty miles.",
+      map: MAPS.escape, theme: "hospital", base: ".", dark: 0.68, groundTex: "asphalt", blood: true,
       grade: [96, 150, 170, 0.12], haze: [46, 62, 76, 0.32],
       steps: [
-        { task: "Out of the building. Then find anything with four wheels.", clears: "car" }
+        { task: "Out through the ambulance bay. Then anything with four wheels.", clears: "car" }
       ]
     },
     {
@@ -451,6 +455,38 @@
   var N = null, SIL = [null, null];
 
   var TALK = {};
+
+  TALK.tv = [
+    [N, "The set has been on since before she woke up. Nobody in the studio is reading anything; the man at the desk is just sitting there while the captions run themselves."],
+    [N, "Day three. She has been counting two."],
+    ["OUISSY", "...Mercy General."],
+    [N, "She has the phone out before she has decided to. It rings. It rings for a long time and then it stops ringing, the way it has all morning."],
+    ["OUISSY", "Come on. Come on, pick up—"],
+    [N, "Ward C, third floor, east side. Bed by the window. She was there on Sunday and he was complaining about the food."],
+    [N, "Eight days post-op. He is not walking anywhere on his own."],
+    ["OUISSY", "Okay."],
+    ["OUISSY", "Okay. I'm coming to get you."],
+    [N, "She turns the television off. The house is very quiet after that."]
+  ];
+
+  TALK.garage = [
+    [N, "The space where the car goes is empty. There is a clean rectangle on the concrete where it has been sitting all winter, and nothing on it."],
+    [N, "Portugal. They drove to the airport on Tuesday and left it in long stay, and she stood on the step and waved them off."],
+    ["OUISSY", "...Right."],
+    [N, "Mercy General is four miles. She has done it on a bike in twenty minutes and she is not going to do it on a bike today."],
+    [N, "There is a road atlas in the door pocket of a car that is in Portugal. There is one on the shelf by the door as well, from before anyone had a phone."],
+    ["OUISSY", "South to the river, then east along it. Four miles."],
+    [N, "She takes it. It goes in the bag with the torch."]
+  ];
+
+  TALK.lobby = [
+    [N, "The doors are open because somebody put a wheelchair through them from the inside."],
+    [N, "Reception is dark. The board above it is not: it is on the emergency circuit, and it still knows where everybody is."],
+    [N, "WARDS A–B — GROUND. WARD C — EAST WING, THIRD. THEATRES — SECOND. MORTUARY — LOWER GROUND."],
+    [N, "Under it somebody has written on the desk in marker, in capitals, DOORS ARE ON THE PLANT ROOM. WEST SIDE. And then, smaller, underneath, SORRY."],
+    ["OUISSY", "West side. Plant room. Then east."],
+    [N, "The floor between here and there has been walked through by a lot of people who were bleeding."]
+  ];
 
   TALK.wake = [
     [N, "He is on his side with one arm out of the blanket. She says his name twice before anything happens."],
@@ -697,14 +733,22 @@
   ];
 
   var TV_LINES = [
+    "DAY THREE. THIS IS THE LAST SCHEDULED BULLETIN.",
     "STAY INSIDE. LOCK WHAT YOU CAN LOCK.",
     "DO NOT APPROACH ANYONE WHO SEEMS UNWELL.",
-    "DO NOT ATTEMPT TO HELP THEM.",
-    "HOSPITALS IN THESE DISTRICTS ARE NO LONGER TAKING CALLS."
+    "DO NOT ATTEMPT TO HELP THEM. THEY CANNOT BE HELPED.",
+    "ALL CITY HOSPITALS ARE CLOSED TO THE PUBLIC.",
+    "MERCY GENERAL. ST BRIDE'S. THE ROYAL. ALL CLOSED.",
+    "THEY WERE THE FIRST PLACES IT GOT INTO.",
+    "IF YOU CAN TRAVEL, GO NORTH.",
+    "ASHCOMBE IS OPEN. NORTH ROAD, PAST THE RESERVOIR.",
+    "YOU WILL BE CHECKED AT THE GATE AND GIVEN THE SERUM.",
+    "BOTH ARE REQUIRED. THERE ARE NO EXCEPTIONS."
   ];
 
-  var TV_TICKER = "EMERGENCY BROADCAST • THIS IS NOT A TEST • REMAIN INDOORS • " +
-                  "DO NOT TRAVEL • KEEP THIS CHANNEL OPEN • ";
+  var TV_TICKER = "EMERGENCY BROADCAST • DAY 3 • THIS IS NOT A TEST • " +
+                  "ALL CITY HOSPITALS CLOSED • ASHCOMBE OPEN: NORTH ROAD PAST THE RESERVOIR • " +
+                  "CHECKPOINT AND SERUM REQUIRED • NO FURTHER BULLETINS ARE SCHEDULED • ";
 
   var GATE_CODE = "4180";
 
@@ -957,11 +1001,18 @@
         var g = clamp(0.06 * (1 - dist / 14), 0.004, 0.06);
         noise(0.22, g, 180 * rnd(0.8, 1.3), 1.6);
       },
-      alert: function () {
+      /* This used to be a sawtooth-and-square sting with a noise burst on
+         top, which is the sound of a menu error, not of something turning
+         round. What you hear now is the thing itself — a breath catching
+         and a low note under the floor — and it gets quieter the further
+         away it is. */
+      alert: function (dist) {
         if (!on) return;
-        noise(0.4, 0.13, 700, 1.1);
-        tone(190, 0.55, 0.10, "sawtooth", 88);
-        tone(95, 0.7, 0.07, "square", 60);
+        var near = clamp(1 - (dist || 0) / 12, 0.25, 1);
+        noise(0.34, 0.055 * near, 340, 0.8);
+        noise(0.5, 0.030 * near, 900, 2.4);
+        tone(104, 1.05, 0.055 * near, "sine", 88);
+        tone(156, 0.85, 0.022 * near, "triangle", 148, 0.05);
       },
       caught: function () {
         if (!on) return;
@@ -4432,6 +4483,7 @@
       group: new THREE.Group(),
       doors: [], lamps: [], props: [], things: [], anim: [],
       spawn: null, exit: null, anwarAt: null, horseAt: null, carAt: null,
+      panelAt: null, tvAt: null, seen: null,
       opened: {}, powered: !def.dead, deadZone: def.dead || null,
       outdoor: def.base === ","
     };
@@ -4445,6 +4497,8 @@
     }
     world.at = at;
     world.cx = cx; world.cz = cz;
+    world.tx = function (v) { return v / TILE - 0.5; };
+    world.ty = function (v) { return v / TILE - 0.5; };
 
     /* ---------- materials ---------- */
     var indoorFloorTex = def.floorTex ||
@@ -4515,6 +4569,57 @@
       sx.putImageData(img, 0, 0);
       TEX.__soot = new THREE.CanvasTexture(cc.c);
       return TEX.__soot;
+    }
+
+    /* ---- what is on the floor of a hospital that stopped coping ----
+       Every one of them was a patient or somebody working the ward before
+       it happened, and that happened in these corridors. Two shapes: a
+       pool that spread and dried at the edges, and a drag, which is what
+       it looks like when something was pulled somewhere. */
+    function bloodTexture(kind) {
+      var key = "__blood" + kind;
+      if (TEX[key]) return TEX[key];
+      var S2 = 128, cc = canvas2d(S2), sx = cc.x;
+      sx.clearRect(0, 0, S2, S2);
+      function blob(cx2, cy2, rx, ry, a, alpha) {
+        sx.save();
+        sx.translate(cx2, cy2); sx.rotate(a); sx.scale(rx, ry);
+        var gr = sx.createRadialGradient(0, 0, 0.05, 0, 0, 1);
+        gr.addColorStop(0, "rgba(74,10,10," + alpha + ")");
+        gr.addColorStop(0.62, "rgba(58,8,9," + (alpha * 0.94) + ")");
+        gr.addColorStop(0.88, "rgba(40,8,10," + (alpha * 0.55) + ")");
+        gr.addColorStop(1, "rgba(34,8,10,0)");
+        sx.fillStyle = gr;
+        sx.beginPath(); sx.arc(0, 0, 1, 0, 6.2832); sx.fill();
+        sx.restore();
+      }
+      if (kind === "drag") {
+        for (var d = 0; d < 22; d++) {
+          var t = d / 21;
+          blob(S2 * 0.5 + Math.sin(t * 3.1) * S2 * 0.05, S2 * (0.06 + t * 0.88),
+               S2 * (0.20 - t * 0.13), S2 * 0.10, 0, 0.72 - t * 0.42);
+        }
+      } else {
+        blob(S2 * 0.5, S2 * 0.5, S2 * 0.40, S2 * 0.34, 0.3, 0.90);
+        for (var b2 = 0; b2 < 9; b2++) {
+          var a2 = hash2(b2 * 7 + (kind === "spatter" ? 31 : 3), 5) * 6.2832;
+          var rr = (kind === "spatter" ? 0.46 : 0.30) * hash2(b2, 11);
+          blob(S2 * (0.5 + Math.cos(a2) * rr), S2 * (0.5 + Math.sin(a2) * rr),
+               S2 * (0.05 + hash2(b2, 13) * 0.13), S2 * (0.04 + hash2(b2, 17) * 0.11),
+               a2, 0.30 + hash2(b2, 19) * 0.45);
+        }
+      }
+      /* break the edge up so it is not a soft airbrushed circle */
+      var f3 = fbm(S2, 5, 3, kind === "drag" ? 23 : 91);
+      var im = sx.getImageData(0, 0, S2, S2), dd2 = im.data;
+      for (var i2 = 0, p3 = 3; i2 < f3.length; i2++, p3 += 4) {
+        dd2[p3] = clamp(dd2[p3] * (0.45 + f3[i2] * 1.5), 0, 255);
+      }
+      sx.putImageData(im, 0, 0);
+      var t2 = new THREE.CanvasTexture(cc.c);
+      t2.colorSpace = THREE.SRGBColorSpace;
+      TEX[key] = t2;
+      return t2;
     }
 
     /* ---------- batches ---------- */
@@ -5751,8 +5856,8 @@
           case "L": lampPost(x2, y2); break;
           case "d": case "D": case "P": door(x2, y2, c); break;
           case "G": gate(x2, y2); break;
-          case "W": wirePanel(x2, y2); break;
-          case "T": television(x2, y2); break;
+          case "W": world.panelAt = { x: x2, y: y2 }; wirePanel(x2, y2); break;
+          case "T": world.tvAt = { x: x2, y: y2 }; television(x2, y2); break;
           case "N": noteProp(x2, y2); break;
           case "i": itemProp(x2, y2); break;
           case "w": woodpile(x2, y2); break;
@@ -5766,6 +5871,73 @@
         }
       }
     }
+    /* ---- the state of the place ----
+       Pools where somebody went down, drags where something was pulled
+       along a corridor, spatter up the wall by the doors. Heaviest in the
+       wards and at the doors, because that is where people were when it
+       started. Three instanced meshes for the whole building. */
+    if (def.blood) {
+      var pools = [], drags = [], spats = [];
+      for (var by = 1; by < H - 1; by++) {
+        for (var bx = 1; bx < W - 1; bx++) {
+          var bc = at(bx, by);
+          if (bc === " " || isSolidChar(bc)) continue;
+          /* how likely this tile is to have something on it */
+          var near = 0;
+          for (var ny = -1; ny <= 1; ny++) {
+            for (var nx = -1; nx <= 1; nx++) {
+              var nc = at(bx + nx, by + ny);
+              if (nc === "B") near += 1.0;         /* a bed */
+              else if (nc === "y" || nc === "Y") near += 0.7;
+              else if (nc === "d" || nc === "P" || nc === "D") near += 0.9;
+              else if (nc === "h") near += 0.35;
+            }
+          }
+          var r1 = hash2(bx * 131 + 7, by * 57 + 3);
+          var chance = 0.045 + near * 0.10;
+          if (r1 > chance) continue;
+          var jx = (hash2(bx, by * 3) - 0.5) * TILE * 0.55;
+          var jz = (hash2(bx * 5, by) - 0.5) * TILE * 0.55;
+          var rot = hash2(bx * 3, by * 7) * 6.2832;
+          var sc = 0.7 + hash2(bx * 11, by * 13) * 1.5;
+          var dark = 0.55 + hash2(bx * 17, by * 19) * 0.45;
+          var pick = hash2(bx * 23, by * 29);
+          var slot = pick < 0.24 ? drags : (pick < 0.40 ? spats : pools);
+          slot.push([cx(bx) + jx, cz(by) + jz, rot, sc, dark]);
+        }
+      }
+      [["pool", pools, 0.020], ["drag", drags, 0.021], ["spatter", spats, 0.022]]
+        .forEach(function (set) {
+          if (!set[1].length) return;
+          var mesh = new THREE.InstancedMesh(
+            new THREE.PlaneGeometry(TILE * 0.95, TILE * 0.95),
+            new THREE.MeshBasicMaterial({
+              map: bloodTexture(set[0]), transparent: true, depthWrite: false,
+              opacity: 0.92, toneMapped: true, polygonOffset: true,
+              polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
+            set[1].length);
+          var mm = new THREE.Matrix4(), qq = new THREE.Quaternion(),
+              ee = new THREE.Euler(), vv = new THREE.Vector3(), sv = new THREE.Vector3();
+          var cl = new THREE.Color();
+          set[1].forEach(function (d3, i3) {
+            ee.set(-Math.PI / 2, 0, d3[2]);
+            qq.setFromEuler(ee);
+            vv.set(d3[0], set[2], d3[1]);
+            sv.set(d3[3], set[0] === "drag" ? d3[3] * 1.9 : d3[3], 1);
+            mm.compose(vv, qq, sv);
+            mesh.setMatrixAt(i3, mm);
+            cl.setRGB(d3[4], d3[4] * 0.94, d3[4] * 0.94);
+            mesh.setColorAt(i3, cl);
+          });
+          mesh.instanceMatrix.needsUpdate = true;
+          if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+          mesh.renderOrder = 2;
+          mesh.frustumCulled = true;
+          mesh.computeBoundingSphere();
+          G.add(mesh);
+        });
+    }
+
     /* Rubble against the walls, litter blowing about, a bin somebody put
        out and nobody collected, cones round a hole nobody came back to
        fix. All of it instanced or counted, so it costs almost nothing. */
@@ -6155,6 +6327,12 @@
   function onKeyDown(e) {
     if (!running) return;
     if (e.code === "Escape") { togglePause(); e.preventDefault(); return; }
+    if (e.code === "KeyM" || e.code === "Tab") {
+      e.preventDefault();
+      if (G && G.state === "map") { closeOverlay(); G.state = "play"; }
+      else showMap();
+      return;
+    }
     anyPressed++;
     var k = keyMap[e.code];
     if (!k) return;
@@ -6357,6 +6535,18 @@
       }
     }
 
+    /* the ones the hospital will let in later, built now while there is a
+       loading card on the screen to hide it */
+    var spare = [];
+    if (def.pressure) {
+      for (var sp = 0; sp < (def.pressureMax || 5); sp++) {
+        var sr = makeZombie(200 + sp * 7);
+        sr.root.visible = false;
+        built.scene.add(sr.root);
+        spare.push(sr);
+      }
+    }
+
     /* --- him --- */
     /* From the ward onwards he is with her, and the grids after the
        hospital have no A in them because he is not furniture any more —
@@ -6428,6 +6618,7 @@
     G.world = world;
     G.player = player;
     G.zombies = zombies;
+    G.spare = spare;
     G.anwar = anwar;
     G.people = people;
     G.horse = horse;
@@ -6448,6 +6639,8 @@
     G.redPulse = 0;
     G.fade = opts.fade === false ? 1 : 0;
     G.fadeTo = 1;
+    G.hasMap = G.hasMap || def.id !== "home";
+    G.__lobby = false;
     G.fadeThen = null;
     G.grab = null;
     G.cine = null;
@@ -6486,11 +6679,17 @@
     G.scene = null;
   }
 
-  function makeZ(world, scene, tx, ty, seed, forceKind) {
+  /* Building one of these is 30,000 triangles of sculpting, skinning and
+     rot — a tenth of a second, easily. Doing it inside a frame is what was
+     locking the game up for a beat every time the hospital filled. Nothing
+     calls makeZombie during play any more: the level builds every body it
+     will ever need up front and this hands them out. */
+  function makeZ(world, scene, tx, ty, seed, forceKind, prebuilt) {
     var kinds = ["idle", "patrol", "patrol", "drawn"];
     var kind = forceKind || kinds[seed % kinds.length];
-    var rig = makeZombie(seed);
-    scene.add(rig.root);
+    var rig = prebuilt || makeZombie(seed);
+    if (!prebuilt) scene.add(rig.root);
+    rig.root.visible = true;
     var x = world.cx(tx), z = world.cz(ty);
     rig.root.position.set(x, 0, z);
     var dir = [0, Math.PI / 2, Math.PI, -Math.PI / 2][seed % 4];
@@ -6681,6 +6880,7 @@
   function updateZombies(dt) {
     var p = G.player, w = G.world;
     var chasing = 0, looking = 0;
+    G.alertT = (G.alertT || 0) - dt;
 
     for (var i = 0; i < G.zombies.length; i++) {
       var z = G.zombies[i];
@@ -6697,8 +6897,13 @@
 
       if (sees && z.state !== "chase" && z.state !== "react") {
         z.state = "react"; z.react = TUNE.zReact;
-        Audio_.alert();
-        G.camRig.kick(0.10);
+        /* when three of them turn round together you should hear one
+           thing happen, not three stings on top of each other */
+        if (G.alertT <= 0) {
+          G.alertT = 1.8;
+          Audio_.alert(dist);
+          G.camRig.kick(0.05);
+        }
       }
 
       var speed = 0;
@@ -6906,12 +7111,15 @@
       st.className = "ap-state" + (seen ? " seen" : G.player && G.player.hidden ? " hidden-ok" : "");
       st.textContent = seen ? "SEEN" : looking ? "SOMETHING HEARD YOU" : (G.player && G.player.hidden) ? "HIDDEN" : "";
     }
+    var mb2 = $("ap-map-btn");
+    if (mb2) mb2.style.display = G.hasMap ? "" : "none";
     var stage = $("ap-stage");
     if (stage) stage.classList.toggle("ap-hiding", !!(G.player && G.player.hidden));
   }
 
   /* how close the nearest one is, when she cannot see it yet */
   function updateInstinct() {
+    if (G && G.world && G.state === "play") markSeen();
     var n = $("ap-instinct");
     if (!n || !G || !G.player) return;
     var best = 1e9;
@@ -7006,6 +7214,139 @@
     c.appendChild(el("p", "ap-close-line", pick(CLOSE_LINES)));
     c.appendChild(el("p", "ap-close-sub", "you're all right. keep going."));
     openOverlay(c, "thin");
+  }
+
+  /* =========================================================
+     THE MAP
+     She took a road atlas off the shelf on the way out of the
+     garage, and after that she has one. It draws the level she
+     is standing in from the same grid the world was built from,
+     greys out everything she has not walked past yet, and puts
+     an arrow on the thing the current step is asking for. Above
+     it, the four places of the chapter and which one she is in,
+     because "south, then east" means nothing without them.
+     ========================================================= */
+  var CHAPTER_MAP = [
+    { id: "home",     name: "HOME",           note: "Tuesday. Portugal." },
+    { id: "streets",  name: "THE CITY",       note: "South to the river, east along it." },
+    { id: "hospital", name: "MERCY GENERAL",  note: "Ward C, east wing." },
+    { id: "escape",   name: "THE ROAD",       note: "Out through the ambulance bay." },
+    { id: "gates",    name: "ASHCOMBE",       note: "North road, past the reservoir." }
+  ];
+
+  /* which tiles she has been near enough to have seen */
+  function markSeen() {
+    var w = G.world;
+    if (!w) return;
+    if (!w.seen) w.seen = new Uint8Array(w.w * w.h);
+    var px = Math.round((G.player.x / TILE) - 0.5 + w.w / 2);
+    var py = Math.round((G.player.z / TILE) - 0.5 + w.h / 2);
+    px = Math.round(w.tx ? w.tx(G.player.x) : px);
+    py = Math.round(w.ty ? w.ty(G.player.z) : py);
+    var R = 5;
+    for (var dy = -R; dy <= R; dy++) {
+      for (var dx = -R; dx <= R; dx++) {
+        if (dx * dx + dy * dy > R * R) continue;
+        var x = px + dx, y = py + dy;
+        if (x < 0 || y < 0 || x >= w.w || y >= w.h) continue;
+        w.seen[y * w.w + x] = 1;
+      }
+    }
+  }
+
+  /* where the current step wants her to go */
+  function objectiveTile() {
+    var w = G.world, s = step();
+    if (!w || !s) return null;
+    if (s.clears === "exit" || s.clears === "car") return w.exit || w.carAt;
+    if (s.clears === "anwar") return w.anwarAt;
+    if (s.clears === "panel") return w.panelAt;
+    if (s.clears === "tv") return w.tvAt;
+    return w.exit;
+  }
+
+  function showMap() {
+    if (!G || !G.world || !G.hasMap) return;
+    if (G.state !== "play") return;
+    var w = G.world;
+    var wrap = el("div", "ap-map");
+    wrap.appendChild(el("p", "ap-map-title", "THE ROUTE"));
+
+    /* the chapter, as five stops on a line */
+    var chain = el("div", "ap-map-chain");
+    var hereIdx = 0;
+    CHAPTER_MAP.forEach(function (c, i) { if (c.id === G.def.id) hereIdx = i; });
+    CHAPTER_MAP.forEach(function (c, i) {
+      var s2 = el("span", "ap-map-stop" + (i === hereIdx ? " here" : i < hereIdx ? " past" : ""));
+      s2.appendChild(el("b", "", c.name));
+      s2.appendChild(el("i", "", i === hereIdx ? c.note : ""));
+      chain.appendChild(s2);
+    });
+    wrap.appendChild(chain);
+
+    /* and the floor she is standing on */
+    var cv = document.createElement("canvas");
+    var cell = clamp(Math.floor(560 / w.w), 4, 13);
+    cv.className = "ap-map-canvas";
+    cv.width = w.w * cell; cv.height = w.h * cell;
+    var x2 = cv.getContext("2d");
+    x2.fillStyle = "#0b0f16"; x2.fillRect(0, 0, cv.width, cv.height);
+    for (var y = 0; y < w.h; y++) {
+      for (var x = 0; x < w.w; x++) {
+        var c = w.at(x, y);
+        if (c === " ") continue;
+        var seen = w.seen && w.seen[y * w.w + x];
+        var solid = isSolidChar(c);
+        var col;
+        if (!seen) col = solid ? "#161b24" : "#11161e";
+        else if (solid) col = "#3c4757";
+        else if (c === "h") col = "#2b4a52";
+        else if (c === "d" || c === "P" || c === "D" || c === "G") col = "#6a5a2e";
+        else col = "#233040";
+        x2.fillStyle = col;
+        x2.fillRect(x * cell, y * cell, cell - 1, cell - 1);
+      }
+    }
+    /* the thing she is looking for, and her */
+    var tgt = objectiveTile();
+    if (tgt) {
+      x2.fillStyle = "#8affc8";
+      x2.fillRect(tgt.x * cell - 1, tgt.y * cell - 1, cell + 1, cell + 1);
+      x2.strokeStyle = "rgba(138,255,200,.55)";
+      x2.lineWidth = 2;
+      x2.beginPath();
+      x2.arc(tgt.x * cell + cell / 2, tgt.y * cell + cell / 2, cell * 1.9, 0, 6.2832);
+      x2.stroke();
+    }
+    var hx = Math.round(w.tx(G.player.x)), hy = Math.round(w.ty(G.player.z));
+    x2.fillStyle = "#ffd88a";
+    x2.beginPath();
+    x2.arc(hx * cell + cell / 2, hy * cell + cell / 2, Math.max(2.5, cell * 0.46), 0, 6.2832);
+    x2.fill();
+    if (tgt) {
+      /* the way to it, in words, because an arrow on its own is not a hint */
+      var ddx = tgt.x - hx, ddy = tgt.y - hy;
+      var bits = [];
+      if (Math.abs(ddy) > 2) bits.push(ddy > 0 ? "south" : "north");
+      if (Math.abs(ddx) > 2) bits.push(ddx > 0 ? "east" : "west");
+      wrap.appendChild(el("p", "ap-map-dir",
+        bits.length ? "From here: " + bits.join(", then ") + "." : "You are on top of it."));
+      /* and the arrow */
+      var a3 = Math.atan2(ddy, ddx);
+      x2.strokeStyle = "rgba(255,216,138,.7)"; x2.lineWidth = 2;
+      x2.beginPath();
+      x2.moveTo(hx * cell + cell / 2, hy * cell + cell / 2);
+      x2.lineTo(hx * cell + cell / 2 + Math.cos(a3) * cell * 3.2,
+                hy * cell + cell / 2 + Math.sin(a3) * cell * 3.2);
+      x2.stroke();
+    }
+    wrap.appendChild(cv);
+    var b = el("button", "ap-card-go", "CLOSE");
+    b.addEventListener("click", function () { closeOverlay(); G.state = "play"; });
+    wrap.appendChild(b);
+    openOverlay(wrap);
+    G.state = "map";
+    Audio_.tune();
   }
 
   /* ---- the emergency broadcast ---- */
@@ -7106,14 +7447,13 @@
     set.appendChild(screen); set.appendChild(side);
     wrap.appendChild(set);
     wrap.appendChild(el("span", "ap-tv-feet"));
-    wrap.appendChild(el("p", "ap-tv-cap", "It has been saying the same four things since this morning."));
+    wrap.appendChild(el("p", "ap-tv-cap", "It has been saying the same things since before she woke up."));
     var b = el("button", "ap-card-go", "TURN IT OFF");
     b.addEventListener("click", function () {
       G.__tv = null;
       closeOverlay();
-      G.state = "play";
-      clearStep("tv");
       Audio_.static(0.3, 0.07);
+      say(TALK.tv, function () { clearStep("tv"); });
     });
     wrap.appendChild(b);
     openOverlay(wrap);
@@ -7619,6 +7959,9 @@
           noise(p.x, p.z, TUNE.noiseDoor);
           Audio_.found();
           clearStep("panel");
+          /* the shutter goes up on an empty bay, which is the moment the
+             rest of this chapter becomes a walk */
+          if (G.def.id === "home") emptyGarage();
         });
         return;
       }
@@ -7773,19 +8116,22 @@
   function updatePressure(dt) {
     if (!G.def.pressure) return;
     G.pressureT += dt;
-    G.pressure = clamp(G.zombies.length / 22, 0, 1);
+    G.pressure = clamp(G.zombies.length / 14, 0, 1);
     Audio_.pressure(G.pressure);
-    if (G.pressureT >= G.def.pressure && G.zombies.length < 24) {
+    if (G.pressureT >= G.def.pressure && G.spare && G.spare.length) {
       G.pressureT = 0;
       var w = G.world;
-      /* they come in the front, which is the bottom of the map */
+      /* they come in the front, which is the bottom of the map, and they
+         come in a long way from wherever she is standing */
       var entry = nearestFree(w, Math.floor(w.w / 2), w.h - 3);
-      var z = makeZ(w, G.scene, entry.x, entry.y, G.zombies.length + 7, "drawn");
-      z.state = "look";
-      z.look = { x: G.player.x, z: G.player.z };
-      z.timer = TUNE.zInvestigate * 2;
+      var ex = w.cx(entry.x), ez = w.cz(entry.y);
+      if (Math.hypot(ex - G.player.x, ez - G.player.z) < TILE * 7) return;
+      var z = makeZ(w, G.scene, entry.x, entry.y, G.zombies.length + 7, "drawn",
+                    G.spare.pop());
+      z.state = "calm";
+      z.timer = rnd(1.4, 3.4);
       G.zombies.push(z);
-      Audio_.thump(0.06);
+      Audio_.thump(0.045);
     }
   }
 
@@ -7831,6 +8177,15 @@
     say(TALK.horse, function () {
       clearStep("horse");
     });
+  }
+
+  /* The empty garage. She goes down there for the car and it is in long
+     stay at the airport, which is the reason the whole chapter is on foot
+     — and the reason he says "you walked here" when she finds him. */
+  function emptyGarage() {
+    if (G.__garage) return;
+    G.__garage = true;
+    say(TALK.garage, function () { G.hasMap = true; setHud(); });
   }
 
   function takeTheCar() {
@@ -8015,7 +8370,21 @@
     Stage.grade(c.grade || {});
     Stage.grade({ fade: 1 });
     G.fade = 1; G.fadeTo = 1;
+    /* `lines` is [seconds, speaker, text] — a scene can talk over itself
+       instead of holding one caption for its whole length */
+    c.__line = -1;
     caption(c.caption || "");
+  }
+
+  function cineCaption(c) {
+    if (!c.lines) return;
+    var i = -1;
+    for (var k = 0; k < c.lines.length; k++) if (c.t >= c.lines[k][0]) i = k;
+    if (i === c.__line) return;
+    c.__line = i;
+    if (i < 0) { caption(c.caption || ""); return; }
+    var L = c.lines[i];
+    caption(L[1] ? L[1] + "  —  " + L[2] : L[2]);
   }
 
   function disposeScene(scene) {
@@ -8235,11 +8604,27 @@
     runCine({
       scene: scene, camera: cam,
       caption: "Out past the ring road, and then twenty miles of nobody.",
+      lines: [
+        [0.0,  null,     "Out past the ring road, and then twenty miles of nobody."],
+        [3.4,  "ANWAR",  "You didn't tell anybody you were coming."],
+        [5.8,  "OUISSY", "There wasn't anybody to tell."],
+        [8.0,  "ANWAR",  "Your mum and dad—"],
+        [9.8,  "OUISSY", "Portugal. Since Tuesday. The line rings and then it stops ringing."],
+        [13.0, "ANWAR",  "How bad was the walk."],
+        [15.0, "OUISSY", "It was fine."],
+        [16.6, "ANWAR",  "Ouissy."],
+        [18.0, "OUISSY", "...Nine hours. I went round the park because the high street was—"],
+        [21.4, "OUISSY", "It was fine. I'm here."],
+        [23.4, null,     "He puts his hand flat on her arm and leaves it there. The needle has been under the line for an hour."],
+        [26.6, null,     "It coughs twice and stops, and neither of them says anything."],
+        [29.4, "ANWAR",  "Ashcombe's forty miles."],
+        [31.0, "OUISSY", "Then we're walking again."]
+      ],
       grade: { gradeCol: 0x4a6ab4, gradeAmt: 0.16, hazeCol: 0x141c34, hazeAmt: 0.34,
                vig: 0.8, sat: 1.0, fringe: 0.002, redPulse: 0, exposure: 1.0 },
       update: function (dt, t) {
         /* the tank going */
-        if (t > 8.5 && !dead) { dead = true; }
+        if (t > 24.0 && !dead) { dead = true; }
         if (dead) speed = Math.max(0, speed - dt * 5.4);
         else speed = Math.min(34, speed + dt * 4);
 
@@ -8270,7 +8655,7 @@
           z.root.rotation.y += dt * 0.2;
         });
 
-        if (dead && !steam && t > 9.4) {
+        if (dead && !steam && t > 25.4) {
           steam = makeFire();
           steam.userData.strength = 0.22;
           steam.scale.set(0.5, 0.5, 0.5);
@@ -8280,10 +8665,8 @@
         }
         if (steam) steam.userData.update(t, dt);
 
-        if (t > 6.2 && t < 6.4) caption("The tank has been on the light for an hour.");
-        if (t > 10.5 && t < 10.7) caption("It coughs twice and stops, and neither of them says anything.");
       },
-      duration: 13.6,
+      duration: 33.0,
       done: function () {
         endCine(function () {
           enterSub("roadside");
@@ -9126,6 +9509,16 @@
     if (!G) return;
     G.time += dt;
 
+    /* the board over reception, read once, a beat after the card clears —
+       hung off game time rather than a timer so it lands in the same place
+       every run */
+    if (!G.__lobby && G.def && G.def.id === "hospital" &&
+        G.state === "play" && G.time > 0.9) {
+      G.__lobby = true;
+      say(TALK.lobby);
+      return;
+    }
+
     /* the cut, if there is one, runs whatever the game's state is */
     if (G.cine) {
       G.cine.t += dt;
@@ -9140,6 +9533,7 @@
       }
       if (usePressed && !isFinite(G.cine.duration)) usePressed = false;
       if (G.cine.update) G.cine.update(dt, G.cine.t);
+      cineCaption(G.cine);
       if (isFinite(G.cine.duration) && G.cine.t >= G.cine.duration) {
         var done = G.cine.done;
         G.cine = null;
@@ -9248,18 +9642,27 @@
      second and a half so a single long frame — a level building, a shader
      compiling — never triggers it. */
   var perfAcc = 0, perfN = 0, perfLock = 0;
+  var perfSlow = 0;
   function watchPerformance(dt) {
     if (perfLock > 0) { perfLock -= dt; return; }
     perfAcc += dt; perfN++;
     if (perfAcc < 0.8) return;
     var avg = perfAcc / perfN;
     perfAcc = 0; perfN = 0;
-    if (avg > 0.0235 && Stage.quality < 2) {
-      perfLock = 2.5;
-      var scene = G && (G.cine ? G.cine.scene : G.scene);
-      var cam = G && G.cine ? G.cine.camera : Stage.camera;
-      Stage.setQuality(Stage.quality + 1, scene, cam);
-    }
+    /* Dropping quality rebuilds the render targets and the post chain,
+       which costs a frame — so doing it because of one slow frame makes
+       the stutter it is trying to cure. It takes three slow windows in a
+       row now, and it will not chase a spike back down. */
+    if (avg > 0.0250 && Stage.quality < 2) {
+      perfSlow++;
+      if (perfSlow >= 3) {
+        perfSlow = 0;
+        perfLock = 12;
+        var scene = G && (G.cine ? G.cine.scene : G.scene);
+        var cam = G && G.cine ? G.cine.camera : Stage.camera;
+        Stage.setQuality(Stage.quality + 1, scene, cam);
+      }
+    } else perfSlow = 0;
   }
 
   function frame(now) {
@@ -9291,6 +9694,11 @@
     if (dlg) dlg.addEventListener("click", function () { if (G && G.dlg) nextLine(); });
     var pb = $("ap-pause-btn");
     if (pb) pb.addEventListener("click", togglePause);
+    var mb = $("ap-map-btn");
+    if (mb) mb.addEventListener("click", function () {
+      if (G && G.state === "map") { closeOverlay(); G.state = "play"; }
+      else showMap();
+    });
     /* advancing dialogue with the same key that uses things */
     window.addEventListener("keydown", function (e) {
       if (!G || !G.dlg) return;
@@ -9318,7 +9726,7 @@
           resizeObs.observe(stage);
         }
         G = { time: 0, state: "overlay", closeCalls: 0, camRig: new CamRig(Stage.camera),
-              zombies: [], fade: 1, fadeTo: 1, redPulse: 0, flash: 0 };
+              zombies: [], spare: [], fade: 1, fadeTo: 1, redPulse: 0, flash: 0 };
         var f = $("ap-stage");
         if (f) f.style.setProperty("--ap-arn", "1.7778");
         lastT = performance.now();
@@ -9407,6 +9815,7 @@
       if (G && G.__keypad) { G.__keypad.enter(GATE_CODE); G.__keypad.go(); return true; }
       return false;
     };
+    window.__apMap = function () { showMap(); return G && G.state; };
     window.__apCheck = function () { if (G && G.__check) { G.__check.all(); return true; } return false; };
     window.__apSerum = function () { if (G && G.__serum) { G.__serum.finish(); return true; } return false; };
     window.__apState = function () {

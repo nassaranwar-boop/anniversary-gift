@@ -3255,6 +3255,68 @@ img{-webkit-user-drag:none; user-select:none;}
   display:flex; align-items:center; justify-content:center; cursor:pointer;
 }
 
+.ap-dlg[aria-hidden="false"] ~ .ap-map-btn,
+.ap-stage:has(.ap-dlg[aria-hidden="false"]) .ap-map-btn{
+  opacity:0; pointer-events:none; transition:opacity .2s ease;
+}
+.ap-map-btn{
+  position:absolute; right:2cqw; bottom:9.6cqw; z-index:6;
+  width:6.4cqw; height:6.4cqw; min-width:26px; min-height:26px;
+  border-radius:8px; border:2px solid rgba(140,160,210,.4);
+  background:rgba(10,14,26,.72); color:#c8d4f2;
+  font:700 1.5cqw/1 ui-monospace,monospace; letter-spacing:.06em;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.ap-hud.gone ~ .ap-map-btn{opacity:0; transition:opacity .3s ease;}
+
+/* ---- the atlas she took off the shelf ----
+   The chapter as five stops on a line, then the floor she is standing on,
+   drawn from the same grid the level was built from, with everywhere she
+   has not walked past left dark. */
+.ap-map{
+  position:absolute; inset:0; z-index:8;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:1.0cqw; overflow:auto; padding:1.6cqw 2.4cqw;
+  background:radial-gradient(120% 90% at 50% 40%, rgba(14,20,32,.97), rgba(5,7,12,.985));
+}
+.ap-map .ap-card-go{margin-top:.4cqw;}
+.ap-map-title{
+  margin:0; font:700 2.0cqw/1 ui-monospace,monospace; letter-spacing:.22em;
+  color:#e6d9a8;
+}
+.ap-map-chain{
+  display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:center;
+  gap:0; width:100%;
+}
+.ap-map-stop{
+  position:relative; flex:1 1 0; min-width:16%; text-align:center;
+  padding:0 .6cqw;
+}
+.ap-map-stop + .ap-map-stop::before{
+  content:""; position:absolute; left:-50%; top:.9cqw; width:100%; height:2px;
+  background:rgba(140,160,210,.22);
+}
+.ap-map-stop b{
+  position:relative; display:block; min-height:3.2cqw;
+  font:700 1.5cqw/1.8 ui-monospace,monospace;
+  letter-spacing:.10em; color:rgba(200,212,242,.34);
+}
+.ap-map-stop i{
+  display:block; font:italic 1.35cqw/1.5 Georgia,serif; color:#9fb0d8;
+  margin-top:.4cqw;
+}
+.ap-map-stop.past b{color:rgba(200,212,242,.62);}
+.ap-map-stop.here b{color:#8affc8; text-shadow:0 0 10px rgba(138,255,200,.45);}
+.ap-map-canvas{
+  image-rendering:pixelated; max-width:100%; max-height:42cqh;
+  border:2px solid rgba(140,160,210,.28);
+  border-radius:4px; background:#0b0f16;
+}
+.ap-map-dir{
+  margin:0; font:1.6cqw/1.4 ui-monospace,monospace; color:#ffd88a;
+  letter-spacing:.06em;
+}
+
 /* the pulse that shows how far a noise carried */
 .ap-alarm{
   position:absolute; inset:0; z-index:4; pointer-events:none; opacity:0;

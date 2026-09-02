@@ -111,6 +111,9 @@ function ok(name, cond, extra) {
     const btn = document.querySelector('.ap-tv .ap-card-go');
     if (btn) btn.click();
     for (let i=0;i<10;i++) window.__apPump(1/60);
+    /* turning it off starts her working out what to do about it */
+    window.__apSkipDialogue();
+    for (let i=0;i<10;i++) window.__apPump(1/60);
     return { overlayUp, hasTv, step0, step1: G().stepIndex, state: G().state };
   });
   ok('the TV comes up and clears the first step',
@@ -127,6 +130,9 @@ function ok(name, cond, extra) {
     window.__apSolvePanel();
     return new Promise(res => setTimeout(() => {
       for (let i=0;i<30;i++) window.__apPump(1/60);
+      /* the shutter goes up on an empty bay and she says so */
+      window.__apSkipDialogue();
+      for (let i=0;i<10;i++) window.__apPump(1/60);
       const dead = G().world.doors.find(d => d.kind === 'P');
       res({ hasPanel, before, after: G().stepIndex,
             powered: G().world.powered, deadOpen: dead && dead.want });
