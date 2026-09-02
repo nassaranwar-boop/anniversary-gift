@@ -130,6 +130,12 @@ const TRACKS = [
          [0.92,0.68],[0.87,0.78],[0.79,0.86],[0.68,0.92]],
     /* the log bridge: straight over the top, skipping the cabin loop */
     cut:{ name:"log bridge", pts:[[0.37,0.12],[0.47,0.075],[0.58,0.07],[0.68,0.115]] },
+    /* It runs down out of the hills, under the log bridge, and pools in
+       the middle of the circuit. Placed to clear the racing surface
+       everywhere — and where the road does cross it, the tarmac is
+       painted afterwards, so it reads as a culvert. */
+    river:{ w:30, pts:[[0.58,-0.08],[0.555,-0.01],[0.53,0.06],[0.515,0.13],
+                       [0.505,0.20],[0.50,0.27],[0.505,0.34],[0.515,0.41],[0.53,0.47]] },
   },
   {
     id:"town", name:"Hometown Streets", laps:3,
@@ -209,31 +215,31 @@ const TRACKS = [
    Anwar gets the matching bomber in teal so the two never blur together.
    --------------------------------------------------------- */
 const CHARS = [
-  { id:"ouissy", name:"Ouissy", head:"ouissy",
+  { id:"ouissy", kart_shape:"round", name:"Ouissy", head:"ouissy",
     kart:"#ff7f8a", trim:"#fff1e0", accent:"#ff5f95",
     skin:"#f6dcc2", hair:"#8a6440", jacket:"#fff1e0", sleeve:"#ff7f8a",
     fit:"Varsity jacket + goggles" },
-  { id:"anwar", name:"Anwar", head:"anwar",
+  { id:"anwar", kart_shape:"long", name:"Anwar", head:"anwar",
     kart:"#5ab8a6", trim:"#eaf6f2", accent:"#4a7fb5",
     skin:"#d9ab7d", hair:"#2b1c12", jacket:"#5ab8a6", sleeve:"#3f8f80",
     fit:"Bomber jacket + goggles" },
 
-  { id:"whiskers", name:"Whiskers", head:"cat",
+  { id:"whiskers", kart_shape:"wide", name:"Whiskers", head:"cat",
     kart:"#e8a060", trim:"#fff0d8", accent:"#c97b3d",
     skin:"#e8a060", hair:"#c97b3d", jacket:"#fff0d8", sleeve:"#e8a060" },
-  { id:"reaper", name:"Reaper", head:"reaper",
+  { id:"reaper", kart_shape:"tall", name:"Reaper", head:"reaper",
     kart:"#8f7bc4", trim:"#e6dcff", accent:"#6a5a8a",
     skin:"#d8cfe8", hair:"#4a3a6a", jacket:"#6a5a8a", sleeve:"#4a3a6a" },
-  { id:"blossom", name:"Blossom", head:"flower",
+  { id:"blossom", kart_shape:"round", name:"Blossom", head:"flower",
     kart:"#f2a3bb", trim:"#ffe6ee", accent:"#d97a95",
     skin:"#ffe6ee", hair:"#e8778f", jacket:"#ffe6ee", sleeve:"#f2a3bb" },
-  { id:"sparky", name:"Sparky", head:"star",
+  { id:"sparky", kart_shape:"wide", name:"Sparky", head:"star",
     kart:"#ffd166", trim:"#fff6cf", accent:"#e0a83a",
     skin:"#ffe9a8", hair:"#e0a83a", jacket:"#fff6cf", sleeve:"#ffd166" },
-  { id:"frosty", name:"Frosty", head:"ice",
+  { id:"frosty", kart_shape:"long", name:"Frosty", head:"ice",
     kart:"#8fd4e8", trim:"#e8f8ff", accent:"#5aa8c4",
     skin:"#e8f8ff", hair:"#5aa8c4", jacket:"#e8f8ff", sleeve:"#8fd4e8" },
-  { id:"coco", name:"Coco", head:"bear",
+  { id:"coco", kart_shape:"tall", name:"Coco", head:"bear",
     kart:"#c08a63", trim:"#f2ddc4", accent:"#8f6242",
     skin:"#c08a63", hair:"#8f6242", jacket:"#f2ddc4", sleeve:"#c08a63" },
 ];
@@ -242,6 +248,7 @@ const CHARS = [
    5. ITEMS — the Mario Kart formula, reflavoured
    --------------------------------------------------------- */
 const ITEMS = {
+  bouqshot:{ name:"Bouquet",      weight:0,  tint:"#ff9ec4" },
   letter:  { name:"Love Letter",  weight:26, tint:"#fff8e8" },
   arrow:   { name:"Cupid's Arrow",weight:18, tint:"#ff5f95" },
   heart:   { name:"Paper Heart",  weight:18, tint:"#ff7f8a" },
@@ -249,7 +256,7 @@ const ITEMS = {
   bouquet: { name:"Bouquet",      weight:12, tint:"#ff9ec4" },
   ring:    { name:"Anniversary Ring", weight:6, tint:"#ffd166" },
 };
-const ITEM_KEYS = Object.keys(ITEMS);
+const ITEM_KEYS = Object.keys(ITEMS).filter((k) => ITEMS[k].weight > 0);
 
 /* items are luck-of-the-draw, but the tail of the field gets the good
    stuff — same as the original, and it is what keeps a race close */
@@ -271,6 +278,7 @@ function rollItem(place, total) {
 /* =========================================================
    6. TRACK GEOMETRY
    ========================================================= */
+let river = null;   // an open spline of water, when a track has one
 let path = [];      // {x,y} in world units, closed loop
 let segLen = [];    // length of each segment
 let cumLen = [];    // distance from start to each node
@@ -308,6 +316,11 @@ function buildPath(def) {
     segLen.push(d);
     pathLen += d;
   }
+
+  river = def.river
+    ? { pts: catmull(def.river.pts.map((q) => ({ x: q[0] * WORLD, y: q[1] * WORLD })), false),
+        w: def.river.w }
+    : null;
 
   cut = null;
   if (def.cut) {
@@ -606,6 +619,71 @@ function bakeTrack(def) {
   }
   g.globalAlpha = 1;
 
+  /* --- water, before anything paved, so every crossing bridges it --- */
+  if (river) {
+    const W2 = river.w;
+    const wr = mulberry(seedOf(def.id, 9187));
+    /* damp earth and pebbles along the banks */
+    strokePts(g, river.pts, W2 * 2 + 42, "rgba(90,74,48,.35)", false);
+    strokePts(g, river.pts, W2 * 2 + 22, "#8a7554", false);
+    for (let i = 0; i < 900; i++) {
+      const k = (wr() * (river.pts.length - 1)) | 0;
+      const a2 = Math.atan2(river.pts[k+1].y - river.pts[k].y, river.pts[k+1].x - river.pts[k].x);
+      const off = (W2 + 2 + wr() * 18) * (wr() < 0.5 ? -1 : 1);
+      const px = river.pts[k].x - Math.sin(a2) * off;
+      const py = river.pts[k].y + Math.cos(a2) * off;
+      g.fillStyle = ["#9a8a70", "#7d6f58", "#b2a48a"][(wr() * 3) | 0];
+      g.fillRect(px | 0, py | 0, 2 + ((wr() * 3) | 0), 2 + ((wr() * 2) | 0));
+    }
+    /* the water itself: shallow at the edges, deep down the middle */
+    strokePts(g, river.pts, W2 * 2,       "#5f9fb0", false);
+    strokePts(g, river.pts, W2 * 1.55,    "#4a8ba4", false);
+    strokePts(g, river.pts, W2 * 0.95,    "#3d7b96", false);
+    /* current lines running with the flow */
+    g.save();
+    g.globalAlpha = 0.30;
+    for (let lane = -0.62; lane <= 0.62; lane += 0.31) {
+      g.strokeStyle = "#8fd0dd"; g.lineWidth = 2;
+      g.setLineDash([16 + wr() * 20, 26 + wr() * 26]);
+      g.beginPath();
+      river.pts.forEach((q, i) => {
+        const j = Math.min(i + 1, river.pts.length - 1);
+        const a2 = Math.atan2(river.pts[j].y - q.y, river.pts[j].x - q.x);
+        const px = q.x - Math.sin(a2) * W2 * lane;
+        const py = q.y + Math.cos(a2) * W2 * lane;
+        if (i === 0) g.moveTo(px, py); else g.lineTo(px, py);
+      });
+      g.stroke();
+    }
+    g.setLineDash([]);
+    /* glints where the light catches the ripples */
+    g.globalAlpha = 0.5;
+    for (let i = 0; i < 260; i++) {
+      const k = (wr() * (river.pts.length - 1)) | 0;
+      const a2 = Math.atan2(river.pts[k+1].y - river.pts[k].y, river.pts[k+1].x - river.pts[k].x);
+      const off = (wr() * 2 - 1) * W2 * 0.85;
+      g.fillStyle = wr() > 0.5 ? "#cfeef5" : "#a8dce8";
+      g.fillRect((river.pts[k].x - Math.sin(a2) * off) | 0,
+                 (river.pts[k].y + Math.cos(a2) * off) | 0, 3 + ((wr() * 4) | 0), 1);
+    }
+    g.restore();
+    /* a few boulders standing in the water */
+    for (let i = 0; i < 14; i++) {
+      const k = (wr() * (river.pts.length - 1)) | 0;
+      const a2 = Math.atan2(river.pts[k+1].y - river.pts[k].y, river.pts[k+1].x - river.pts[k].x);
+      const off = (wr() * 2 - 1) * W2 * 0.7;
+      const px = river.pts[k].x - Math.sin(a2) * off;
+      const py = river.pts[k].y + Math.cos(a2) * off;
+      const r2 = 4 + wr() * 7;
+      g.fillStyle = "#7f7869";
+      g.beginPath(); g.ellipse(px, py, r2, r2 * 0.72, 0, 0, TWO_PI); g.fill();
+      g.fillStyle = "#9a9384";
+      g.beginPath(); g.ellipse(px - r2 * 0.2, py - r2 * 0.25, r2 * 0.55, r2 * 0.4, 0, 0, TWO_PI); g.fill();
+      g.fillStyle = "rgba(207,238,245,.55)";
+      g.fillRect((px - r2) | 0, (py + r2 * 0.5) | 0, r2 * 2, 1);
+    }
+  }
+
   /* Shadows go down before any tarmac does. A tall pine standing just
      off the verge throws a shadow long enough to reach the racing line,
      and a dark smear lying across the road looked like a hole in it.
@@ -776,6 +854,7 @@ function bakeTrack(def) {
      it with flat grass leaves a hard band; pulling it towards the haze
      colour lets it pass for ground too far off to make out. */
   voidColor = packRgb(mixRgb(def.grass, def.haze, 0.3));
+  if (hazeKey !== def.haze) { hazeKey = def.haze; hazeCache.clear(); }
   bakedId = def.id;
 }
 
@@ -1135,7 +1214,7 @@ function quad(g, pts, fill) {
   g.fill();
 }
 
-function buildKart(def, ai) {
+function buildKart(def, ai, pose) {
   const a = (ai / ANGLES) * TWO_PI;
   const c = document.createElement("canvas");
   c.width = SPR_W; c.height = SPR_H;
@@ -1144,12 +1223,22 @@ function buildKart(def, ai) {
   g.translate(SPR_W / 2, SPR_H - 16);
 
   const facing = Math.cos(a);        // >0 we see its back, <0 it faces us
-  const bodyH  = 9;                  // how tall the chassis box stands
+  /* Everyone drove the identical box in a different colour. Each racer
+     now has a chassis of their own: a rounded runabout, a long low one,
+     a wide stubby one, and so on. Same silhouette language, different
+     machine. */
+  const K = {
+    round: { hw:13, hl:16, h:9,  wx:11, wy:13, nose:1.0, tail:1.0 },
+    long:  { hw:11, hl:20, h:8,  wx:10, wy:16, nose:1.2, tail:0.9 },
+    wide:  { hw:15, hl:14, h:10, wx:13, wy:12, nose:0.9, tail:1.2 },
+    tall:  { hw:12, hl:15, h:12, wx:11, wy:12, nose:1.0, tail:1.0 },
+  }[def.kart_shape || "round"];
+  const bodyH  = K.h;                // how tall the chassis box stands
 
   /* --- wheels, far pair first --- */
   const wheels = [
-    { x:-12, y: 14 }, { x: 12, y: 14 },   // front
-    { x:-12, y:-14 }, { x: 12, y:-14 },   // rear
+    { x:-K.wx, y: K.wy }, { x: K.wx, y: K.wy },   // front
+    { x:-K.wx, y:-K.wy }, { x: K.wx, y:-K.wy },   // rear
   ].map((w) => { const p = proj2(w.x, w.y, a); p.src = w; return p; })
    .sort((u, v) => u.y - v.y);
 
@@ -1169,7 +1258,10 @@ function buildKart(def, ai) {
   wheels.slice(0, 2).forEach(drawWheel);
 
   /* --- chassis, as a box --- */
-  const corners = [{x:-13,y:-17},{x:13,y:-17},{x:13,y:17},{x:-13,y:17}].map((p) => proj2(p.x, p.y, a));
+  const corners = [
+    { x:-K.hw * K.tail, y:-K.hl }, { x: K.hw * K.tail, y:-K.hl },
+    { x: K.hw * K.nose, y: K.hl }, { x:-K.hw * K.nose, y: K.hl },
+  ].map((p) => proj2(p.x, p.y, a));
   const top = corners.map((p) => ({ x: p.x, y: p.y - bodyH }));
 
   /* side walls: every edge whose bottom sits in front of its top */
@@ -1180,23 +1272,23 @@ function buildKart(def, ai) {
   quad(g, top, def.kart);
 
   /* a lighter panel down the middle, and the trim band */
-  const midA = proj2(-6, -17, a), midB = proj2(6, -17, a);
-  const midC = proj2(6, 17, a),   midD = proj2(-6, 17, a);
+  const midA = proj2(-6, -K.hl, a), midB = proj2(6, -K.hl, a);
+  const midC = proj2(6, K.hl, a),   midD = proj2(-6, K.hl, a);
   quad(g, [midA, midB, midC, midD].map((p) => ({ x: p.x, y: p.y - bodyH })), shade(def.kart, 1.16));
 
-  const trimA = proj2(-13, 2, a), trimB = proj2(13, 2, a);
-  const trimC = proj2(13, 6, a),  trimD = proj2(-13, 6, a);
+  const trimA = proj2(-K.hw, 2, a), trimB = proj2(K.hw, 2, a);
+  const trimC = proj2(K.hw, 6, a),  trimD = proj2(-K.hw, 6, a);
   quad(g, [trimA, trimB, trimC, trimD].map((p) => ({ x: p.x, y: p.y - bodyH })), def.trim);
 
   /* rear spoiler when we can see the back of it, nose when we cannot */
   if (facing > 0.15) {
-    const sA = proj2(-11, -18, a), sB = proj2(11, -18, a);
+    const sA = proj2(-K.hw + 2, -K.hl - 1, a), sB = proj2(K.hw - 2, -K.hl - 1, a);
     quad(g, [
       { x: sA.x, y: sA.y - bodyH - 7 }, { x: sB.x, y: sB.y - bodyH - 7 },
       { x: sB.x, y: sB.y - bodyH - 2 }, { x: sA.x, y: sA.y - bodyH - 2 },
     ], def.accent);
   } else if (facing < -0.15) {
-    const nA = proj2(-10, 18, a), nB = proj2(10, 18, a);
+    const nA = proj2(-K.hw + 3, K.hl + 1, a), nB = proj2(K.hw - 3, K.hl + 1, a);
     quad(g, [
       { x: nA.x, y: nA.y - bodyH + 1 }, { x: nB.x, y: nB.y - bodyH + 1 },
       { x: nB.x, y: nB.y - bodyH + 5 }, { x: nA.x, y: nA.y - bodyH + 5 },
@@ -1207,14 +1299,14 @@ function buildKart(def, ai) {
 
   /* --- the rider --- */
   const seat = proj2(0, -3, a);
-  drawRider(g, def, a, seat.x, seat.y - bodyH - 3);
+  drawRider(g, def, a, seat.x, seat.y - bodyH - 3, pose | 0);
 
   return c;
 }
 
 function litSideDim(side) { return side > 0 ? 0.86 : 0.94; }
 
-function drawRider(g, def, a, cx, cy) {
+function drawRider(g, def, a, cx, cy, pose) {
   const facing = Math.cos(a), side = Math.sin(a);
   const R = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(Math.round(cx + x), Math.round(cy + y), w, h); };
 
@@ -1224,16 +1316,22 @@ function drawRider(g, def, a, cx, cy) {
      that reads as a character at a glance, which the old flat torso
      never did on the AI racers. */
   const sx = Math.round(side * 2);
+  /* pose 1 hauls the wheel left, pose 2 right: the inside arm pulls in
+     and down, the outside arm reaches across */
+  const pz = pose | 0;
+  const turn = pz === 1 ? -1 : pz === 2 ? 1 : 0;
 
   /* arms reaching to the wheel, drawn behind the chest */
   const reach = facing < 0 ? 5 : 3;
-  R(-9 + sx, -8, 3, 7, shade(def.sleeve, 0.9));
-  R( 6 + sx, -8, 3, 7, shade(def.sleeve, 0.9));
-  R(-9 + sx, -3, 4, reach, def.sleeve);
-  R( 5 + sx, -3, 4, reach, def.sleeve);
+  const lDrop = turn > 0 ? 2 : 0, rDrop = turn < 0 ? 2 : 0;
+  const lOut  = turn < 0 ? -1 : 1, rOut = turn > 0 ? 1 : -1;
+  R(-9 + sx + lOut, -8 + lDrop, 3, 7, shade(def.sleeve, 0.9));
+  R( 6 + sx + rOut, -8 + rDrop, 3, 7, shade(def.sleeve, 0.9));
+  R(-9 + sx + lOut, -3 + lDrop, 4, reach, def.sleeve);
+  R( 5 + sx + rOut, -3 + rDrop, 4, reach, def.sleeve);
   if (facing < 0) {                       // hands, when we can see them
-    R(-9 + sx, -3 + reach, 4, 3, def.skin);
-    R( 5 + sx, -3 + reach, 4, 3, def.skin);
+    R(-9 + sx + lOut, -3 + reach + lDrop, 4, 3, def.skin);
+    R( 5 + sx + rOut, -3 + reach + rDrop, 4, 3, def.skin);
   }
 
   /* the torso: shoulders wider than the waist, with a collar */
@@ -1253,8 +1351,10 @@ function drawRider(g, def, a, cx, cy) {
   /* a neck, so the head is not resting straight on the shoulders */
   R(-2, -12, 4, 3, shade(def.skin, 0.9));
 
-  /* head: an 11px ball, then whatever this character has on top */
+  /* head: an 11px ball, then whatever this character has on top. It
+     leans into the corner with the shoulders. */
   const hy = -23;
+  if (turn) { cx += turn * 1; }
   R(-5, hy, 10, 11, def.skin);
   R(-5, hy, 10, 2, shade(def.skin, 1.08));
   R(-5, hy + 9, 10, 2, shade(def.skin, 0.88));
@@ -1332,12 +1432,23 @@ function drawRider(g, def, a, cx, cy) {
   }
 }
 
+/* Three poses per facing: sitting square, and hauling the wheel each
+   way. The rider was completely static before — nobody turned the
+   wheel, nobody leaned — which for a game about two people was the
+   detail most worth fixing. Poses are baked (the sprites are), and the
+   bob and the flinch are applied live at draw time on top. */
+const POSES = 3;
 function buildAllKarts() {
   CHARS.forEach((def) => {
     const arr = [];
-    for (let i = 0; i < ANGLES; i++) arr.push(buildKart(def, i));
+    for (let pz = 0; pz < POSES; pz++)
+      for (let i = 0; i < ANGLES; i++) arr.push(buildKart(def, i, pz));
     kartSprites[def.id] = arr;
   });
+}
+function kartFrame(id, ai, pose) {
+  const set = kartSprites[id];
+  return set ? set[(pose | 0) * ANGLES + ai] : null;
 }
 
 /* --- scenery ---
@@ -1411,6 +1522,52 @@ function cropToContent(c) {
 }
 
 const sceneryCache = {};
+
+/* AERIAL PERSPECTIVE
+
+   A tree a hundred units away and one two thousand units away were
+   rendering at identical saturation, which flattens the whole scene —
+   distance is mostly read as things washing out towards the colour of
+   the air. Repainting a sprite per frame is far too expensive, so each
+   one gets a silhouette of itself filled with the track's haze colour,
+   cached alongside it; drawing that over the sprite at an opacity taken
+   from its depth blends it toward the horizon for the cost of one extra
+   drawImage. */
+const hazeCache = new Map();
+let hazeKey = "";
+
+function hazeSprite(img, id) {
+  const k = id + "|" + hazeKey;
+  let h = hazeCache.get(k);
+  if (h) return h;
+  const c = document.createElement("canvas");
+  c.width = img.width; c.height = img.height;
+  const g2 = c.getContext("2d");
+  g2.drawImage(img, 0, 0);
+  g2.globalCompositeOperation = "source-in";
+  g2.fillStyle = hazeKey || "#ffffff";
+  g2.fillRect(0, 0, c.width, c.height);
+  hazeCache.set(k, c);
+  return c;
+}
+
+/* 0 at the near plane, rising to a cap far out */
+const HAZE_NEAR = 260, HAZE_FAR = 2100, HAZE_MAX = 0.62;
+function hazeAmount(z) {
+  if (z <= HAZE_NEAR) return 0;
+  return Math.min(HAZE_MAX, ((z - HAZE_NEAR) / (HAZE_FAR - HAZE_NEAR)) * HAZE_MAX);
+}
+function drawHazed(g, img, id, x, y, w, h, z, flip) {
+  const a = hazeAmount(z);
+  const put = (im) => {
+    if (flip) { g.save(); g.translate(x + w / 2, 0); g.scale(-1, 1); g.drawImage(im, -w / 2, y, w, h); g.restore(); }
+    else g.drawImage(im, x, y, w, h);
+  };
+  put(img);
+  if (a > 0.01) {
+    g.save(); g.globalAlpha = a; put(hazeSprite(img, id)); g.restore();
+  }
+}
 
 /* Three colour casts. Two pines of the same variant standing next to
    each other still want to be different greens, and a tint costs one
@@ -2315,6 +2472,26 @@ function renderSky(def, camA) {
      and gets it for free from the projection. */
   draw(panoFar, 0.55, HORIZON - PH + 8 * PANO_K, 0.8);
   draw(panoCvs, 1.0,  HORIZON - PH + 4 * PANO_K, 1);
+
+  /* Clouds drift on their own clock as well as with the camera — the
+     one thing up there that is allowed to move by itself. */
+  if (def.clouds !== false) {
+    g.save();
+    g.globalAlpha = 0.5;
+    g.fillStyle = def.cloud || "rgba(255,255,255,.85)";
+    for (let i = 0; i < 7; i++) {
+      const spd = 5 + (i % 3) * 3;
+      const cx = (((i * 137 + raceTime * spd - (camA / TWO_PI) * PW * 0.35) % (RW + 200)) + RW + 200) % (RW + 200) - 100;
+      const cy = 10 + (i * 13) % Math.max(12, HORIZON - 46);
+      const r = 7 + (i % 4) * 4;
+      g.beginPath();
+      g.arc(cx, cy, r, 0, TWO_PI);
+      g.arc(cx + r, cy + 2, r * 0.72, 0, TWO_PI);
+      g.arc(cx - r * 0.9, cy + 3, r * 0.6, 0, TWO_PI);
+      g.fill();
+    }
+    g.restore();
+  }
 }
 
 /* --- distance haze, so the far road melts into the sky. Kept shallow
@@ -2435,6 +2612,8 @@ class Racer {
     this.invuln = 0;   // the ring: flashes, and shrugs off everything
     this.iframe = 0;   // the moment after a hit, so you cannot be chained
     this.shield = 0;
+    this.bog = 0;        // a flooded start, briefly
+    this.ammo = 0;       // how many of a multi-shot item are left
     this.offroad = false;
     this.aiTarget = (startIdx + 8) % path.length;
     this.aiLine = null;
@@ -2448,6 +2627,7 @@ class Racer {
     let m = TOP_SPEED;
     if (!this.isPlayer) m *= [0.955, 0.995, 1.03][difficulty];
     if (this.offroad) m *= OFFROAD_SP;
+    if (this.bog > 0) m *= 0.45;
     if (this.boost > 0) m *= 1.55;
     return m;
   }
@@ -2456,6 +2636,7 @@ class Racer {
     if (this.finished) { this.speed *= 0.94; this.advance(dt); return; }
 
     if (this.iframe > 0) this.iframe -= dt;
+    if (this.bog > 0) this.bog -= dt;
 
     if (this.spin > 0) {
       this.spin -= dt;
@@ -2673,6 +2854,11 @@ class Racer {
     }
     if (this.offroad && Math.abs(this.speed) > 1.2 && Math.random() < 0.5) {
       addPuff(this.x, this.y, "#d9c9a8");
+    } else if (Math.abs(this.speed) > TOP_SPEED * 0.45 && Math.random() < 0.22) {
+      /* a thin wake off the tarmac too, so speed reads before a boost */
+      const back = this.angle + Math.PI;
+      addPuff(this.x + Math.cos(back) * 20, this.y + Math.sin(back) * 20,
+              "rgba(255,248,232,.5)");
     }
 
     /* lap counting, with the wrap in both directions so reversing over
@@ -2717,7 +2903,22 @@ class Racer {
       this.invuln = 6; this.boost = Math.max(this.boost, 5.4);
       if (this.isPlayer) flashBanner("INVINCIBLE!");
     } else if (it === "bouquet") {
-      this.shield = 8;
+      /* three of them, orbiting until thrown, one per press */
+      this.ammo = 3;
+      this.item = "bouqshot";
+      this.shield = 0;
+      return;
+    } else if (it === "bouqshot") {
+      shots.push({
+        x: this.x + Math.cos(this.angle) * 42,
+        y: this.y + Math.sin(this.angle) * 42,
+        a: this.angle, sp: 7.0, kind: "heart", owner: this,
+        life: 5, bounce: 3, nav: { hint: this.hint, onCut: false },
+      });
+      this.ammo--;
+      if (this.ammo > 0) this.item = "bouqshot";
+      if (this.isPlayer) paintItem();
+      return;
     } else if (it === "rose") {
       hazards.push({
         x: this.x - Math.cos(this.angle) * 44,
@@ -2807,10 +3008,12 @@ let mode = "single";           // single | gp | trial
 let difficulty = 1;
 let playerCharIdx = 0, trackIdx = 0;
 let gpRound = 0, gpPoints = [];
+let gpTable = {};
 let state = "title";           // title|chars|tracks|count|race|paused|results|gpboard
 let ghost = null, ghostRec = null, ghostPlay = null;
 let bannerT = 0;
 let lastPlace = 0;
+let revUp = 0, revTotal = 0;      // how the player worked the countdown
 
 const GP_POINTS = [15, 12, 10, 8, 6, 4, 3, 2];
 
@@ -2864,6 +3067,21 @@ function distToAnyTrack(x, y) {
 /* Small enough to stand close to the road without towering over it when
    you pass. Anything not on this list gets held back beyond the camera
    distance so it can never fill the screen. */
+/* what sways, and how hard */
+const SWAY = {
+  laundry:{ rate:1.5, amt:0.045 }, stringpole:{ rate:1.1, amt:0.028 },
+  tree:{ rate:0.9, amt:0.014 },    bush:{ rate:1.7, amt:0.030 },
+  plant:{ rate:1.4, amt:0.032 },   flowerbox:{ rate:1.9, amt:0.022 },
+  planter:{ rate:1.6, amt:0.020 },
+};
+/* what glows, and how it breathes */
+const GLOWS = {
+  stringpole:{ n:6, rate:2.2, base:0.24, amp:0.16, r:0.055, y:0.52, spread:1.5,
+               cols:["#ffd166","#ff9ec4","#7ec8e3","#7ddba3","#ffd166","#ff9ec4"] },
+  lamp:{ n:1, rate:1.3, base:0.26, amp:0.07, r:0.16, y:0.86, spread:0,
+         cols:["#ffd166"] },
+};
+
 const NEAR_KINDS = {
   bush:1, rock:1, flowerbox:1, planter:1, mailbox:1, hydrant:1,
   postbox:1, cat:1, bike:1, plant:1, skylight:1,
@@ -2946,7 +3164,16 @@ function placeBoxes() {
   }
 }
 
+/* Baking a 2048-square world takes long enough to drop a frame or two,
+   and a silent freeze reads as a crash. Put a card up, let the browser
+   paint it, then do the work. */
 function startRace() {
+  setOverlay(`<div class="rc-loading"><p>${TRACKS[trackIdx].name}</p><span></span></div>`, "rc-ov-load");
+  showHud(false);
+  requestAnimationFrame(() => requestAnimationFrame(() => buildRace()));
+}
+
+function buildRace() {
   trackDef = TRACKS[trackIdx];
   buildPath(trackDef);
   /* props are placed before the bake so their shadows can be painted
@@ -2989,6 +3216,7 @@ function startRace() {
   camAngle = racers[0] ? racers[0].angle : 0;
   camLag = 0; camFocal = FOCAL;
   lastPlace = 0;
+  revUp = 0; revTotal = 0;
   Snd.resume();
   Snd.music(trackDef.id);
 
@@ -3022,6 +3250,10 @@ function finishRace() {
   if (mode === "gp") {
     const me = racers.find((r) => r.isPlayer);
     gpPoints[gpRound] = GP_POINTS[Math.min(me.place - 1, GP_POINTS.length - 1)];
+    racers.forEach((r) => {
+      const id = r.def.id;
+      gpTable[id] = (gpTable[id] || 0) + GP_POINTS[Math.min(r.place - 1, GP_POINTS.length - 1)];
+    });
   }
   state = "results";
   showHud(false);
@@ -3064,7 +3296,30 @@ function step(dt) {
     const after = Math.ceil(countdown - 0.9);
     if (after !== before) Snd.beep(after <= 0);
     paintCount();
-    if (countdown <= 0) { state = "race"; setCount(""); Snd.engineOn(); }
+
+    /* The rocket start. Come on the throttle inside the last stretch of
+       the countdown and you launch; sit on it from the very beginning
+       and you flood it and bog down instead. That gamble at the lights
+       is free excitement and it was missing. */
+    if (input.up) revUp += dt; else revUp = 0;
+    if (revUp > 0.02) revTotal += dt;
+
+    if (countdown <= 0) {
+      state = "race";
+      setCount("");
+      Snd.engineOn();
+      const me = racers.find((r) => r.isPlayer);
+      if (me) {
+        if (revTotal > 1.45) {            // held far too long: flooded
+          me.bog = 1.1;
+          flashBanner("FLOODED!");
+        } else if (revUp > 0.14 && revUp < 0.95) {
+          me.boost = Math.max(me.boost, 1.05);
+          flashBanner("ROCKET START!");
+          Snd.boost(3);
+        }
+      }
+    }
     return;
   }
   if (state !== "race") return;
@@ -3245,6 +3500,7 @@ function draw() {
   const camY = me.y - Math.sin(camA) * dist;
   camFocal = FOCAL * (1 - camLag * 0.10);
 
+  sunRel = (trackDef.light != null ? trackDef.light : -0.7) - camA;
   renderGround(camX, camY, camA, camFocal);
   renderSky(trackDef, camA);
   renderHaze(trackDef);
@@ -3326,17 +3582,37 @@ function draw() {
     }
   });
 
-  /* boost pulls the whole picture in a little */
-  if (me.boost > 0) drawSpeedLines(g, me.boost);
+  /* Speed lines come in with the speedometer, not only with a boost —
+     the picture should already be moving before you are boosting. */
+  const sf = Math.min(1, Math.abs(me.speed) / TOP_SPEED);
+  const lines = (me.boost > 0 ? 1 : 0) + Math.max(0, (sf - 0.55) / 0.45) * 0.55;
+  if (lines > 0.02) drawSpeedLines(g, lines);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
-function shadowUnder(g, sx, sy, w) {
-  g.fillStyle = "rgba(0,0,0,.3)";
+/* The blob under everything was the same blob whatever the sun was
+   doing. A shadow that leans away from the light, and squashes as the
+   light comes round towards the camera, is what plants a thing on the
+   ground rather than parking it there. `sunScreen` is the sun's bearing
+   relative to where the camera is looking, so both fall out of it. */
+let sunRel = 0.7;
+function shadowUnder(g, sx, sy, w, tall) {
+  const len = (tall || 0.55) * w;
+  const dx = Math.sin(sunRel) * len;
+  const dy = -Math.cos(sunRel) * len * 0.34;
+  g.save();
+  g.fillStyle = "rgba(20,14,26,.24)";
   g.beginPath();
-  g.ellipse(sx, sy, w * 0.5, w * 0.2, 0, 0, TWO_PI);
+  g.ellipse(sx + dx * 0.5, sy + dy * 0.5,
+            w * 0.5 + Math.abs(dx) * 0.30, w * 0.20, Math.atan2(dy, dx) * 0.35, 0, TWO_PI);
   g.fill();
+  /* a tighter, darker core right at the contact point */
+  g.fillStyle = "rgba(20,14,26,.26)";
+  g.beginPath();
+  g.ellipse(sx, sy, w * 0.34, w * 0.13, 0, 0, TWO_PI);
+  g.fill();
+  g.restore();
 }
 
 function drawProp(g, b) {
@@ -3351,14 +3627,36 @@ function drawProp(g, b) {
      every tree and house drawn after it that frame came out translucent
      — which is exactly what the flickering was. */
   if (s.fade < 1) g.globalAlpha = s.fade;
-  shadowUnder(g, s.sx, s.sy, w * spec.foot * 0.8);
-  if (o.flip) {
+  shadowUnder(g, s.sx, s.sy, w * spec.foot * 0.8, 0.34 + Math.min(0.30, spec.h / 420));
+  /* A world where the only moving thing is chimney smoke reads as a
+     diorama. Whatever ought to be moving in the breeze, moves. */
+  const sway = SWAY[o.kind];
+  if (sway) {
+    const ph = raceTime * sway.rate + (o.x + o.y) * 0.004;
     g.save();
-    g.translate(s.sx, 0); g.scale(-1, 1);
-    g.drawImage(img, -w / 2, s.sy - h, w, h);
+    g.translate(s.sx, s.sy - h);                 // pivot at the top
+    g.rotate(Math.sin(ph) * sway.amt);
+    g.translate(-s.sx, -(s.sy - h));
+    drawHazed(g, img, o.kind + o.v + (o.tint || 0), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
     g.restore();
   } else {
-    g.drawImage(img, s.sx - w / 2, s.sy - h, w, h);
+    drawHazed(g, img, o.kind + o.v + (o.tint || 0), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
+  }
+
+  /* bulbs and lamps breathe, independently of each other */
+  const lit = GLOWS[o.kind];
+  if (lit && w > 10) {
+    g.save();
+    for (let i = 0; i < lit.n; i++) {
+      const ph = raceTime * lit.rate + i * 2.1 + o.x * 0.01;
+      const a2 = lit.base + Math.sin(ph) * lit.amp;
+      g.globalAlpha = Math.max(0, a2);
+      g.fillStyle = lit.cols[i % lit.cols.length];
+      const gx = s.sx + (i / (lit.n - 1) - 0.5) * w * lit.spread;
+      const gy = s.sy - h * lit.y;
+      g.beginPath(); g.arc(gx, gy, w * lit.r, 0, TWO_PI); g.fill();
+    }
+    g.restore();
   }
 
   /* smoke from the chimney, drawn live rather than baked so it drifts.
@@ -3456,9 +3754,12 @@ function drawKartInner(g, b, camA, isGhost) {
      drift look like a drift rather than a tight turn */
   const rel = o.angle + (o.yaw || 0) - camA;
   let ai = Math.round((((rel % TWO_PI) + TWO_PI) % TWO_PI) / TWO_PI * ANGLES) % ANGLES;
-  const set = kartSprites[o.def.id];
-  if (!set) return;
-  const img = set[ai];
+  /* which way the rider is hauling the wheel */
+  const st = o.steer || 0;
+  const lock = TURN * 22;
+  const pose = o.spin > 0 ? 0 : st < -lock * 0.22 ? 1 : st > lock * 0.22 ? 2 : 0;
+  const img = kartFrame(o.def.id, ai, pose);
+  if (!img) return;
 
   /* KART_ON_SCREEN is the kart's height in world units as far as the
      projection is concerned. It is smaller than the sprite's true
@@ -3487,13 +3788,20 @@ function drawKartInner(g, b, camA, isGhost) {
     g.rotate(Math.sin(o.spin * 22) * 0.22);
     g.translate(-s.sx, -s.sy);
   }
-  g.drawImage(img, s.sx - w / 2, s.sy - h, w, h);
+  /* a little vertical bob, faster the quicker you are going, so the
+     kart rides the road instead of sliding along a sheet of glass */
+  const bobA = Math.min(1, Math.abs(o.speed || 0) / TOP_SPEED);
+  const bob = Math.sin((raceTime * 13 + (o.lane || 0)) ) * bobA * h * 0.018
+            + (o.offroad ? Math.sin(raceTime * 27) * bobA * h * 0.028 : 0);
+  drawHazed(g, img, "k" + o.def.id + ai + "p" + pose,
+            s.sx - w / 2, s.sy - h + bob, w, h, s.z, false);
   g.restore();
 
   /* the bouquet orbits whoever is holding it */
-  if (!isGhost && o.shield > 0) {
-    for (let i = 0; i < 3; i++) {
-      const t = raceTime * 3 + (i / 3) * TWO_PI;
+  const orbit = o.item === "bouqshot" ? (o.ammo || 0) : (o.shield > 0 ? 3 : 0);
+  if (!isGhost && orbit > 0) {
+    for (let i = 0; i < orbit; i++) {
+      const t = raceTime * 3 + (i / Math.max(1, orbit)) * TWO_PI;
       const ox = Math.cos(t) * w * 0.55, oy = Math.sin(t) * w * 0.2;
       const hr = w * 0.13;
       g.fillStyle = "#ff9ec4";
@@ -3673,7 +3981,7 @@ function drawItemIcon(g, kind, S) {
     heart(0, "#e8556f");
     g.fillStyle = "#e8556f"; g.beginPath(); g.arc(0, -4, 9, 0, TWO_PI); g.fill();
     g.fillStyle = "#ff9ec4"; g.beginPath(); g.arc(-2, -6, 4.5, 0, TWO_PI); g.fill();
-  } else if (kind === "bouquet") {
+  } else if (kind === "bouquet" || kind === "bouqshot") {
     for (let i = 0; i < 3; i++) {
       const t = -Math.PI / 2 + (i - 1) * 0.9;
       g.save(); g.translate(Math.cos(t) * 9, Math.sin(t) * 9 + 2); heart(6, "#ff9ec4"); g.restore();
@@ -3853,7 +4161,7 @@ function paintCardArt() {
       grad.addColorStop(0, mix(def.kart, "#fff8e8", 0.55));
       grad.addColorStop(1, mix(def.accent, "#2a1840", 0.35));
       g.fillStyle = grad; g.fillRect(0, 0, 120, 84);
-      const spr = kartSprites[def.id][0];
+      const spr = kartFrame(def.id, 0, 0);
       const h = 74, w = h * (spr.width / spr.height);
       g.drawImage(spr, 60 - w / 2, 82 - h, w, h);
     } else {
@@ -3928,7 +4236,7 @@ function renderResults() {
       <h3 class="rc-h">${isGP ? "ROUND " + (gpRound + 1) + " OF " + TRACKS.length : "RESULTS"}</h3>
       <div class="rc-podium">${podium}</div>
       <ol class="rc-rest">${rest}</ol>
-      ${isGP ? `<p class="rc-points">GRAND PRIX POINTS · ${total}</p>` : ""}
+      ${isGP ? gpStandings() : ""}
       <p class="rc-msg">${msg}</p>
       <div class="rc-row">
         <button class="rc-btn rc-btn-s" data-back="title">MENU</button>
@@ -3944,9 +4252,29 @@ function renderResults() {
     c.width = 64; c.height = 56;
     const g = c.getContext("2d");
     g.imageSmoothingEnabled = false;
-    g.drawImage(kartSprites[def.id][8], 0, 0);   // facing the camera
+    g.drawImage(kartFrame(def.id, 8, 0), 0, 0);  // facing the camera
     span.appendChild(c);
   });
+}
+
+/* The championship as it actually stands, everyone in it. A single
+   number for the player told you nothing about whether you were
+   winning. */
+function gpStandings() {
+  const rows = Object.keys(gpTable)
+    .map((id) => ({ def: CHARS.find((c) => c.id === id), pts: gpTable[id] }))
+    .filter((r) => r.def)
+    .sort((a, b) => b.pts - a.pts);
+  if (!rows.length) return "";
+  const me = CHARS[playerCharIdx].id;
+  return `
+    <div class="rc-standings">
+      <h4>CHAMPIONSHIP &middot; AFTER ROUND ${gpRound + 1} OF ${TRACKS.length}</h4>
+      <ol>${rows.map((r, i) => `
+        <li${r.def.id === me ? ' class="me"' : ""}>
+          <b>${i + 1}</b><span>${r.def.name}</span><i>${r.pts}</i>
+        </li>`).join("")}</ol>
+    </div>`;
 }
 
 /* the Grand Prix closer: both of them over the line at once */
@@ -3959,6 +4287,7 @@ function renderGPEnd() {
       <h3 class="rc-h">GRAND PRIX COMPLETE</h3>
       <div class="rc-fin-art" id="rc-fin-art"></div>
       <p class="rc-points">${total} POINTS ACROSS ${TRACKS.length} TRACKS</p>
+      ${gpStandings()}
       <p class="rc-msg rc-msg-big">
         No winner today. You crossed the line together, on the roof,
         with the whole city lit up behind you — which was always the point.
@@ -4698,7 +5027,7 @@ function onKey(e) {
 
 function next(from) {
   if (from === "chars") {
-    if (mode === "gp") { gpRound = 0; gpPoints = []; trackIdx = 0; startRace(); }
+    if (mode === "gp") { gpRound = 0; gpPoints = []; gpTable = {}; trackIdx = 0; startRace(); }
     else renderTracks();
   } else if (from === "tracks") {
     startRace();
@@ -4717,7 +5046,7 @@ function onOverlayClick(e) {
   if (d.quit)    { leave(); return; }
   if (d.diff)    { difficulty = +d.diff; markDiff(); return; }
   if (d.diff === "0") { difficulty = 0; markDiff(); return; }
-  if (d.go)      { mode = d.go; renderChars(); return; }
+  if (d.go)      { mode = d.go; gpTable = {}; renderChars(); return; }
   if (d.char !== undefined) { playerCharIdx = +d.char; padAccent(); renderChars(); return; }
   if (d.track !== undefined) { trackIdx = +d.track; renderTracks(); return; }
   if (d.back === "title") { setOverlay(""); showHud(false); renderTitle(); return; }
