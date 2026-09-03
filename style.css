@@ -4085,7 +4085,15 @@ img{-webkit-user-drag:none; user-select:none;}
   font-family:var(--rc-face); color:var(--rc-ink);
   padding:3cqh 3cqw;
 }
-.rc-overlay.on{display:grid; place-items:center;}
+/* A panel taller than the stage has to scroll from its top. Plain
+   centring pushes the overhang off both ends and the heading, which is
+   the part that says what you are looking at, becomes unreachable;
+   `safe` centring falls back to start alignment the moment it would
+   overflow. */
+.rc-overlay.on{
+  display:grid; justify-items:center; align-items:center;
+  align-content:safe center; justify-content:safe center;
+}
 .rc-overlay.on::before{
   content:""; position:absolute; inset:0; z-index:-1;
   background:
@@ -4107,6 +4115,9 @@ img{-webkit-user-drag:none; user-select:none;}
   color:#ffc4a3; text-shadow:0 .3cqh 0 rgba(20,8,26,.8);
 }
 .rc-menu{display:flex; flex-direction:column; gap:1.4cqh; align-items:center;}
+/* the three small ones share a line: with a cup to resume the menu is
+   eight items long, which on a 16:9 stage is taller than the stage */
+.rc-menu-row{ display:flex; flex-wrap:wrap; gap:1.4cqw; justify-content:center; }
 
 .rc-btn{
   font-family:var(--rc-face); font-size:2.4cqh; color:var(--rc-ink); cursor:pointer;
@@ -4286,7 +4297,9 @@ img{-webkit-user-drag:none; user-select:none;}
 /* the postcard from the finish */
 .rc-card-shot{ margin:1cqh 0 .2cqh; display:flex; justify-content:center; }
 .rc-card-shot canvas{
-  width:min(58cqw, 100%); height:auto; image-rendering:pixelated;
+  /* small enough that it never pushes the buttons under the fold on a
+     short screen, big enough to see what the photograph is of */
+  width:min(42cqw, 100%); height:auto; image-rendering:pixelated;
   border-radius:.8cqw;
   box-shadow:0 1cqh 2.4cqw rgba(0,0,0,.5), inset 0 0 0 .2cqw rgba(255,248,232,.3);
 }
@@ -4356,6 +4369,98 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.55), 0 0 2.6cqw rgba(255,209,102,.4);
 }
 .rc-duo-row.win i{ color:#2a1b10; }
+
+/* THE RESULTS, SIDE BY SIDE
+
+   A championship round has a podium, a table and a photograph to show,
+   and a stage that is 16:9 has plenty of width and none of the height
+   they need stacked. Above a wide enough stage the table and the
+   photograph sit next to each other, which is what keeps the buttons on
+   the screen without cutting anything out of the panel. */
+.rc-split{
+  display:grid; gap:2cqw; width:100%;
+  align-items:center; justify-items:center;
+}
+/* the results panel carries the most of any panel, so it packs tighter */
+.rc-res{ gap:1.5cqh; }
+@container rcstage (min-width: 620px){
+  .rc-split-2{ grid-template-columns:1.05fr .95fr; align-items:start; }
+  .rc-split-2 .rc-card-shot{ margin-top:0; }
+  .rc-split-2 .rc-card-shot canvas{ width:100%; }
+}
+
+/* ---------- badges ---------- */
+
+/* the strip under a result: only what this race just earned */
+.rc-earned{
+  display:flex; flex-wrap:wrap; justify-content:center; gap:1.4cqw;
+  margin:.2cqh 0 0; width:min(60cqw, 100%);
+}
+.rc-badge{
+  display:flex; flex-direction:column; gap:.4cqh; text-align:left;
+  padding:.8cqh 1.8cqw; border-radius:.8cqw;
+  background:rgba(28,18,42,.72);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.18);
+}
+.rc-badge b{ font-size:1.25cqh; letter-spacing:.12em; color:#8d7f9e; }
+.rc-badge i{ font-style:normal; font-size:1.1cqh; line-height:1.7; color:#6f6480; }
+/* earned: gold, and lit */
+.rc-badge.on, .rc-badge-new{
+  background:linear-gradient(180deg, rgba(255,209,102,.16), rgba(232,165,60,.10));
+  box-shadow:inset 0 0 0 .22cqw rgba(255,209,102,.55), 0 0 2.4cqw rgba(255,209,102,.22);
+}
+.rc-badge.on b, .rc-badge-new b{ color:var(--rc-gold); }
+.rc-badge.on i, .rc-badge-new i{ color:#e6d8f0; }
+.rc-badge-new{ animation:rc-badge-pop .5s ease-out both; }
+@keyframes rc-badge-pop{
+  from{ opacity:0; transform:translateY(1.2cqh) scale(.94); }
+  to  { opacity:1; transform:none; }
+}
+
+/* the whole board, from the title screen */
+.rc-badges{ max-width:74cqw; }
+.rc-badge-list{
+  display:grid; gap:1.2cqw; width:100%; margin:1cqh 0 .4cqh;
+  /* two up while there is room for two, one up when there is not */
+  grid-template-columns:repeat(auto-fit, minmax(min(100%, 30cqw), 1fr));
+}
+
+/* the title button once every one of them is in */
+.rc-btn-gold{
+  background:linear-gradient(180deg, #ffd166, #e8a53c);
+  color:#2a1b10;
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.55), 0 0 2.6cqw rgba(255,209,102,.4);
+}
+
+/* ---------- the note ----------
+
+   Not a game element. It sits on the screen after the championship
+   like a piece of paper left on the table, and its lines arrive one
+   at a time rather than all at once. */
+.rc-note{
+  width:min(62cqw, 100%); margin:1.6cqh 0 .4cqh;
+  padding:2.2cqh 3cqw; border-radius:1cqw; text-align:left;
+  background:linear-gradient(180deg, rgba(255,248,232,.06), rgba(255,248,232,.02));
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.22);
+}
+.rc-note-line{
+  margin:0 0 1.2cqh; font-size:1.45cqh; line-height:2.1;
+  letter-spacing:.03em; color:#f2e8dc;
+  opacity:0; transform:translateY(.8cqh);
+  transition:opacity .8s ease, transform .8s ease;
+}
+.rc-note-line.in{ opacity:1; transform:none; }
+.rc-note-line:last-child{ margin-bottom:0; }
+.rc-fin-left{
+  display:flex; flex-direction:column; align-items:center; gap:1.4cqh;
+  width:100%;
+}
+.rc-note-sign{
+  margin:1.6cqh 0 0; text-align:right;
+  font-size:1.35cqh; letter-spacing:.14em; color:var(--rc-gold);
+  opacity:0; transition:opacity .9s ease;
+}
+.rc-note-sign.in{ opacity:1; }
 
 /* ---------- the sound sliders ---------- */
 .rc-sliders{ display:flex; flex-direction:column; gap:1.6cqh; width:min(54cqw, 100%); }

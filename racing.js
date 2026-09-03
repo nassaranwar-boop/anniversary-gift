@@ -269,6 +269,88 @@ const CHARS = [
 ];
 
 /* ---------------------------------------------------------
+   BADGES
+
+   Eight things worth doing that the race itself does not ask
+   you to do. They exist because a game you have finished is a
+   game you stop opening: a best time is a number that only
+   means something to the person who set it, while "win one in
+   the rain" is an evening's worth of reasons to press START
+   again.
+
+   Each one is checked against a small record of what actually
+   happened in the race just finished — see raceFacts() — so
+   nothing here has to reach into the physics.
+   --------------------------------------------------------- */
+const BADGES = [
+  { id:"win",    name:"FIRST ACROSS",
+    text:"Win a race.",
+    test:(f) => f.placed && f.place === 1 },
+  { id:"clean",  name:"CLEAN SHEET",
+    text:"Finish a race without touching a barrier.",
+    test:(f) => f.finished && f.clean },
+  { id:"hearts", name:"POCKETS FULL",
+    text:"Cross the line holding ten hearts.",
+    test:(f) => f.finished && f.coins >= 10 },
+  { id:"drift",  name:"THE LONG WAY ROUND",
+    text:"Hold one drift for three whole seconds.",
+    test:(f) => f.drift >= 2.95 },
+  { id:"ghost",  name:"OUTRUN YOURSELF",
+    text:"Beat your own ghost in a time trial.",
+    test:(f) => f.beatGhost },
+  { id:"wet",    name:"WELLIES ON",
+    text:"Win a race in the rain.",
+    test:(f) => f.placed && f.place === 1 && f.wet },
+  { id:"flip",   name:"BOTH WAYS ROUND",
+    text:"Win a race on a flipped course.",
+    test:(f) => f.placed && f.place === 1 && f.mirror },
+  { id:"cup",    name:"THE WHOLE CUP",
+    text:"See a Grand Prix all the way to the end.",
+    test:(f) => f.cup },
+];
+
+/* the line under the logo changes as they come in */
+const TAGLINES = [
+  "Two racers. Four memories. One finish line \u2014 and we cross it together.",
+  "Four badges in. You are getting good at this, and it shows.",
+  "Every badge earned. There is nothing left to prove and one more lap anyway.",
+];
+
+
+/* =========================================================
+   THE NOTE
+
+   ---------------------------------------------------------
+   ANWAR \u2014 THIS PART IS YOURS. EDIT THE LINES BELOW.
+   ---------------------------------------------------------
+
+   Everything else in this file is the game. This is the one
+   thing in it that is not, and it should be in your words
+   rather than in anybody else's.
+
+   It is shown once, on the screen after the whole Grand Prix
+   is finished \u2014 which is the only moment in the game she
+   has genuinely earned. One paragraph per line in the array.
+   Keep them short; they are typed out on screen a line at a
+   time, and long ones lose the rhythm. Nothing else in the
+   file depends on what they say, so you can rewrite them
+   freely, add a fourth, or cut it to one.
+
+   What is written here now is a placeholder. It is meant to
+   be good enough to ship if you run out of time, and it is
+   not meant to survive you having five minutes.
+   ========================================================= */
+const NOTE = {
+  from: "Anwar",
+  lines: [
+    "You just drove four tracks I built for you, past a hundred small things I put there hoping you would notice one of them.",
+    "That is the whole trick of it. I have been doing that for a year, only usually without a steering wheel.",
+    "Happy anniversary. Same time tomorrow?",
+  ],
+};
+
+
+/* ---------------------------------------------------------
    5. ITEMS — the Mario Kart formula, reflavoured
    --------------------------------------------------------- */
 const ITEMS = {
@@ -4114,6 +4196,7 @@ class Racer {
         Snd.drift(true);
       }
       this.driftCharge = Math.min(this.driftCharge + dt, 3);
+      if (this.isPlayer && this.driftCharge > raceDrift) raceDrift = this.driftCharge;
     } else if (this.drifting) {
       /* Three tiers, and nothing at all below the first — the risk of
          holding the slide a moment longer is the whole point. */
@@ -4431,7 +4514,7 @@ class Racer {
       while (td >  Math.PI) td -= TWO_PI;
       while (td < -Math.PI) td += TWO_PI;
       if (Math.abs(td) < Math.PI * 0.55) this.angle += td * 0.07 * k;
-      if (this.isPlayer) shake = Math.min(2, shake + push * 0.04);
+      if (this.isPlayer) { shake = Math.min(2, shake + push * 0.04); raceClean = false; }
     }
     if (this.offroad && Math.abs(this.speed) > 1.2 && Math.random() < 0.5) {
       addPuff(this.x, this.y, "#d9c9a8");
@@ -4659,6 +4742,11 @@ let duoTimes = [null, null];
 let duoGhost = null;
 let duoChars = [0, 1];
 
+let raceBeatGhost = false;   // the trial run came in under the ghost's
+let justEarned = [];         // badges won by the race just finished
+let raceClean = true;    // no barrier touched this race
+let raceDrift = 0;       // the longest drift held this race
+
 let reduceMotion = false;
 let boltCyc = -1;        // so one flash fires one roll of thunder
 let mirror = false;      // the course, the other way round
@@ -4675,6 +4763,7 @@ let finalLap = false;
 let rivalCall = 0;   // cooldown on the rival calling you out
 let photoDone = false;
 let slowMo = 0;      // the photo-finish stretch
+let finishCam = 0;   // 0..1, the camera closing in after she crosses
 
 const GP_POINTS = [15, 12, 10, 8, 6, 4, 3, 2];
 
@@ -4996,6 +5085,8 @@ function buildRace() {
   trackDef = variantDef(TRACKS[trackIdx]);
   Snd.setRain(!!trackDef.wet);
   boltCyc = -1;
+  raceClean = true; raceDrift = 0; raceBeatGhost = false;
+  justEarned = []; finishCam = 0; finishShot = null;
   buildPath(trackDef);
   /* props are placed before the bake so their shadows can be painted
      into the ground texture along with everything else */
@@ -5067,13 +5158,11 @@ function buildRace() {
 function onPlayerFinished() {
   const me = racers.find((r) => r.isPlayer);
   order();
-  /* Keep the picture of the moment she crossed. It has to be taken here
-     — a couple of seconds later the results panel is over the top of it
-     and the karts have rolled to a stop. */
-  grabFinishShot();
   if (mode === "trial") {
     const best = loadBest(trackDef.id);
     if (!best || me.finishTime < best) {
+      /* beating the ghost only counts if there was one to beat */
+      if (ghostPlay) raceBeatGhost = true;
       saveBest(trackDef.id, me.finishTime);
       if (ghostRec) saveGhost(trackDef.id, ghostRec);
       flashBanner("NEW BEST!");
@@ -5083,9 +5172,11 @@ function onPlayerFinished() {
     duoTimes[duoLeg] = me.finishTime;
     if (duoLeg === 0) duoGhost = ghostRec;
   }
+  /* long enough for the camera to come round, her name to land and be
+     read, and the moment to sit for a beat before the panel */
   setTimeout(() => {
     if (state === "race") finishRace();
-  }, 2200);
+  }, 2900);
 }
 
 function finishRace() {
@@ -5105,6 +5196,9 @@ function finishRace() {
        every round and offered back on the title screen. */
     saveCup();
   }
+  /* the badges are settled here, where the places finally are */
+  justEarned = awardBadges(raceFacts(racers.find((r) => r.isPlayer),
+                                     { beatGhost: raceBeatGhost }));
   state = "results";
   showHud(false);
   Snd.engineOff();
@@ -5235,6 +5329,58 @@ function loadCup() {
   } catch (e) { return null; }
 }
 function clearCup() { try { localStorage.removeItem("sor_cup"); } catch (e) {} }
+
+/* ---- badges ----
+
+   A set of ids, written down the moment one is earned so that a closed
+   tab never costs her one. Unknown ids are dropped on the way in, so a
+   badge removed from the table later cannot leave a ghost in the count. */
+let badges = null;
+function loadBadges() {
+  if (badges) return badges;
+  const ok = BADGES.map((b) => b.id);
+  try {
+    const v = JSON.parse(localStorage.getItem("sor_badges") || "[]");
+    badges = Array.isArray(v) ? v.filter((id) => ok.indexOf(id) >= 0) : [];
+  } catch (e) { badges = []; }
+  return badges;
+}
+function hasBadge(id) { return loadBadges().indexOf(id) >= 0; }
+function saveBadges() {
+  try { localStorage.setItem("sor_badges", JSON.stringify(badges || [])); } catch (e) {}
+}
+/* returns the ones that were new, so the finish can announce them */
+function awardBadges(facts) {
+  loadBadges();
+  const won = [];
+  BADGES.forEach((b) => {
+    if (badges.indexOf(b.id) >= 0) return;
+    let ok = false;
+    try { ok = !!b.test(facts); } catch (e) { ok = false; }
+    if (ok) { badges.push(b.id); won.push(b); }
+  });
+  if (won.length) saveBadges();
+  return won;
+}
+function badgeCount() { return loadBadges().length; }
+
+/* what the race that just ended actually was, in the few terms the
+   badges are written in */
+function raceFacts(me, extra) {
+  const f = {
+    finished: !!(me && me.finished),
+    placed: mode === "single" || mode === "gp",
+    place: me ? me.place : 0,
+    coins: me ? me.coins : 0,
+    clean: raceClean,
+    drift: raceDrift,
+    wet: !!trackDef.wet,
+    mirror: !!mirror,
+    beatGhost: false,
+    cup: false,
+  };
+  return Object.assign(f, extra || {});
+}
 
 function loadBest(id) {
   try { const v = localStorage.getItem("sor_best_" + id); return v ? parseFloat(v) : null; } catch (e) { return null; }
@@ -5602,11 +5748,26 @@ function draw() {
   camAngle += d * Math.min(1, 0.12 * camStep * 60);
   camLag += ((me.boost > 0 ? 1 : 0) - camLag) * Math.min(1, 0.06 * camStep * 60);
 
-  const dist = CAM_DIST * (1 + camLag * 0.14);
-  const camA = camAngle;
+  /* THE LAST SECOND
+
+     The flag used to be a fanfare and a panel over a shot of the back of
+     a kart, which is the same shot as every other second of the race.
+     Now the camera comes off her tail and swings round as it closes, so
+     the picture the panel lands on top of is a portrait rather than a
+     rear view. Smoothstepped, so it eases out of the drive and into the
+     hold instead of snapping. Off in calm mode. */
+  const fc = reduceMotion ? 0 : finishCam * finishCam * (3 - 2 * finishCam);
+
+  /* The close-up is mostly lens, not legwork: projectSprite drops
+     anything nearer than 78 so that karts you have passed stop hanging
+     half-transparent in the middle of the frame, and CAM_DIST is 122 —
+     so pulling the camera in much past a fifth would cull the very kart
+     it is closing on. Twenty per cent nearer, a quarter longer lens. */
+  const dist = CAM_DIST * (1 + camLag * 0.14) * (1 - fc * 0.20);
+  const camA = camAngle + fc * 0.40;
   const camX = me.x - Math.cos(camA) * dist;
   const camY = me.y - Math.sin(camA) * dist;
-  camFocal = FOCAL * (1 - camLag * 0.10);
+  camFocal = FOCAL * (1 - camLag * 0.10) * (1 + fc * 0.26);
 
   sunRel = (trackDef.light != null ? trackDef.light : -0.7) - camA;
   renderGround(camX, camY, camA, camFocal);
@@ -5807,7 +5968,57 @@ function draw() {
     g.restore();
   }
 
+  /* The postcard's photograph is taken here rather than at the line:
+     by now the camera has come round onto her, and it is taken before
+     the name plate goes on, because the card prints her name itself. */
+  if (finishCam > 0.62 && !finishShot) grabFinishShot();
+
+  if (finishCam > 0) drawFinishPlate(g, me);
+
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+/* HER NAME, ON THE SCREEN
+
+   Drawn into the buffer rather than laid over it in HTML, so it is the
+   same chunky type as the rest of the game, it scales with the picture
+   on any screen, and it is still there in the photograph the postcard
+   is cut from. Two lines: who, and what they just did. */
+function drawFinishPlate(g, me) {
+  const a = Math.max(0, Math.min(1, (finishCam - 0.22) / 0.3));
+  if (a <= 0) return;
+  const name = (me.def.name || "").toUpperCase();
+  const sub = mode === "trial" || mode === "duo"
+    ? fmt(me.finishTime)
+    : `${me.place}${["ST","ND","RD","TH","TH","TH","TH","TH"][Math.min(me.place - 1, 7)]}` +
+      `  \u00b7  ${fmt(me.finishTime)}`;
+  const cy = RH * 0.30 + (1 - a) * 6;          // it settles as it arrives
+
+  g.save();
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+
+  /* a band behind it, so the type never has to fight the road */
+  g.globalAlpha = a * 0.42;
+  g.fillStyle = "#140b1a";
+  g.fillRect(0, cy - 15, RW, 34);
+  g.globalAlpha = a * 0.5;
+  g.fillStyle = "#ffd166";
+  g.fillRect(0, cy - 15, RW, 0.7);
+  g.fillRect(0, cy + 19, RW, 0.7);
+
+  g.globalAlpha = a;
+  g.font = "16px 'Press Start 2P', monospace";
+  g.fillStyle = "#140b1a";
+  g.fillText(name, RW / 2 + 1, cy - 3 + 1);
+  g.fillStyle = "#ffd166";
+  g.fillText(name, RW / 2, cy - 3);
+
+  g.font = "8px 'Press Start 2P', monospace";
+  g.fillStyle = "#ffe6ee";
+  g.fillText(sub, RW / 2, cy + 12);
+  g.restore();
+  g.globalAlpha = 1;
 }
 
 /* The blob under everything was the same blob whatever the sun was
@@ -6745,6 +6956,9 @@ function drawMini() {
    ========================================================= */
 function setOverlay(html, cls) {
   if (!el.overlay) return;
+  /* whatever was being typed into the last panel is not being typed
+     into this one */
+  stopNote();
   el.overlay.innerHTML = html;
   el.overlay.className = "rc-overlay" + (html ? " on" : "") + (cls ? " " + cls : "");
   el.overlay.setAttribute("aria-hidden", html ? "false" : "true");
@@ -6759,7 +6973,7 @@ function renderTitle() {
   setOverlay(`
     <div class="rc-title">
       <p class="rc-logo"><span>SUPER</span><b>OUISSY</b><i>RACE</i></p>
-      <p class="rc-tag">Two racers. Four memories. One finish line — and we cross it together.</p>
+      <p class="rc-tag">${TAGLINES[badgeCount() >= BADGES.length ? 2 : badgeCount() >= 4 ? 1 : 0]}</p>
       <div class="rc-menu">
         <button class="rc-btn" data-go="single">SINGLE RACE</button>
         <button class="rc-btn" data-go="gp">GRAND PRIX</button>
@@ -6768,8 +6982,12 @@ function renderTitle() {
           : ""; })()}
         <button class="rc-btn" data-go="trial">TIME TRIAL</button>
         <button class="rc-btn" data-go="duo">TWO PLAYERS &middot; TAKE TURNS</button>
-        <button class="rc-btn rc-btn-s" data-tut="1">HOW TO RACE</button>
-        <button class="rc-btn rc-btn-s" data-settings="title">SOUND</button>
+        <div class="rc-menu-row">
+          <button class="rc-btn rc-btn-s" data-tut="1">HOW TO RACE</button>
+          <button class="rc-btn rc-btn-s${badgeCount() >= BADGES.length ? " rc-btn-gold" : ""}"
+            data-badges="1">BADGES &middot; ${badgeCount()}/${BADGES.length}</button>
+          <button class="rc-btn rc-btn-s" data-settings="title">SOUND</button>
+        </div>
       </div>
       <div class="rc-diff">
         <span class="rc-diff-lab">DIFFICULTY</span>
@@ -6783,6 +7001,34 @@ function renderTitle() {
     </div>`, "rc-ov-title");
   markDiff();
 }
+/* THE BADGE BOARD
+
+   Everything on it is visible from the start, earned or not, because a
+   list of things you might do is a reason to play and a list of blanks
+   is a puzzle. */
+function renderBadges() {
+  state = "badges";
+  const got = badgeCount(), all = BADGES.length;
+  const rows = BADGES.map((b) => {
+    const on = hasBadge(b.id);
+    return `<div class="rc-badge${on ? " on" : ""}">
+      <b>${b.name}</b><i>${b.text}</i>
+    </div>`;
+  }).join("");
+  setOverlay(`
+    <div class="rc-panel rc-badges">
+      <h3 class="rc-h">BADGES</h3>
+      <p class="rc-msg">${got} of ${all}${got >= all
+        ? " \u2014 all of them. Nothing left on the list, and the road is still there."
+        : got === 0 ? " \u2014 pick one and go and get it."
+        : " \u2014 keep going."}</p>
+      <div class="rc-badge-list">${rows}</div>
+      <div class="rc-row">
+        <button class="rc-btn rc-btn-go" data-back="title">\u2039 BACK</button>
+      </div>
+    </div>`, "rc-ov-panel");
+}
+
 function markDiff() {
   if (!el.overlay) return;
   el.overlay.querySelectorAll(".rc-dbtn").forEach((b) => {
@@ -6896,6 +7142,13 @@ function paintCardArt() {
   });
 }
 
+/* the strip under a result that says what the race just earned */
+function earnedStrip() {
+  if (!justEarned.length) return "";
+  return `<div class="rc-earned">${justEarned.map((b) => `
+    <span class="rc-badge rc-badge-new"><b>${b.name}</b><i>${b.text}</i></span>`).join("")}</div>`;
+}
+
 function renderResults() {
   if (mode === "duo") { renderDuo(); return; }
   const me = racers.find((r) => r.isPlayer);
@@ -6913,7 +7166,14 @@ function renderResults() {
     </div>`;
   }).join("");
 
-  const rest = sorted.slice(3).map((r) => `
+  /* A championship round already carries the standings table, and two
+     eight-row lists one above the other push the buttons off the bottom
+     of a short screen. So in the cup the also-rans are dropped and only
+     her own line is kept, and only when she is off the podium. */
+  const tail = mode === "gp"
+    ? sorted.slice(3).filter((r) => r.isPlayer)
+    : sorted.slice(3);
+  const rest = tail.map((r) => `
     <li${r.isPlayer ? ' class="me"' : ""}><b>${r.place}</b><span>${r.def.name}</span><i>${fmt(r.finishTime)}</i></li>`).join("");
 
   let msg;
@@ -6942,9 +7202,12 @@ function renderResults() {
       <h3 class="rc-h">${isGP ? "ROUND " + (gpRound + 1) + " OF " + TRACKS.length : "RESULTS"}</h3>
       <div class="rc-podium">${podium}</div>
       <ol class="rc-rest">${rest}</ol>
-      ${isGP ? gpStandings() : ""}
+      <div class="rc-split${isGP ? " rc-split-2" : ""}">
+        ${isGP ? gpStandings() : ""}
+        <div class="rc-card-shot" id="rc-postcard"></div>
+      </div>
       <p class="rc-msg">${msg}</p>
-      <div class="rc-card-shot" id="rc-postcard"></div>
+      ${earnedStrip()}
       <div class="rc-row">
         <button class="rc-btn rc-btn-s" data-back="title">MENU</button>
         <button class="rc-btn rc-btn-s" data-card="1">KEEP THE PHOTO</button>
@@ -7018,6 +7281,7 @@ function renderDuo() {
       <p class="rc-msg">${gap < 0.35
         ? `${gap.toFixed(2)} seconds in it. Run it again, that one doesn't count.`
         : `${gap.toFixed(2)} seconds between you.`}</p>
+      ${earnedStrip()}
       <div class="rc-card-shot" id="rc-postcard"></div>
       <div class="rc-row">
         <button class="rc-btn rc-btn-s" data-back="title">MENU</button>
@@ -7057,6 +7321,30 @@ function savePostcard() {
   }
 }
 
+/* The note arrives a line at a time rather than all at once, because a
+   paragraph that is simply there gets skimmed and one that appears gets
+   read. Each line fades in a beat after the one above it; the timers are
+   cancelled if she leaves the screen before it finishes. */
+let noteTimers = [];
+function typeNote() {
+  noteTimers.forEach(clearTimeout);
+  noteTimers = [];
+  const host = document.querySelector("#rc-note .rc-note-lines");
+  const sign = document.querySelector("#rc-note .rc-note-sign");
+  if (!host) return;
+  NOTE.lines.forEach((text, i) => {
+    const p = document.createElement("p");
+    p.className = "rc-note-line";
+    p.textContent = text;
+    host.appendChild(p);
+    noteTimers.push(setTimeout(() => { p.classList.add("in"); }, 500 + i * 1100));
+  });
+  noteTimers.push(setTimeout(() => {
+    if (sign) sign.classList.add("in");
+  }, 500 + NOTE.lines.length * 1100));
+}
+function stopNote() { noteTimers.forEach(clearTimeout); noteTimers = []; }
+
 /* The championship as it actually stands, everyone in it. A single
    number for the player told you nothing about whether you were
    winning. */
@@ -7083,21 +7371,34 @@ function renderGPEnd() {
   clearCup();
   const total = gpPoints.reduce((a, b) => a + (b || 0), 0);
   markDone();
+  /* seeing the whole cup out is itself one of the eight */
+  justEarned = awardBadges(raceFacts(racers.find((r) => r.isPlayer), { cup: true }));
   setOverlay(`
     <div class="rc-panel rc-fin">
       <h3 class="rc-h">GRAND PRIX COMPLETE</h3>
-      <div class="rc-fin-art" id="rc-fin-art"></div>
-      <p class="rc-points">${total} POINTS ACROSS ${TRACKS.length} TRACKS</p>
-      ${gpStandings()}
-      <p class="rc-msg rc-msg-big">
-        No winner today. You crossed the line together, on the roof,
-        with the whole city lit up behind you — which was always the point.
-      </p>
+      <div class="rc-split rc-split-2">
+        <div class="rc-fin-left">
+          <div class="rc-fin-art" id="rc-fin-art"></div>
+          <p class="rc-points">${total} POINTS ACROSS ${TRACKS.length} TRACKS</p>
+          <p class="rc-msg">
+            No winner today. You crossed the line together, on the roof,
+            with the whole city lit up behind you — which was always the point.
+          </p>
+        </div>
+        ${gpStandings()}
+      </div>
+      ${earnedStrip()}
+      <div class="rc-note" id="rc-note">
+        <div class="rc-note-lines"></div>
+        <p class="rc-note-sign">&mdash; ${NOTE.from}</p>
+      </div>
       <div class="rc-row">
         <button class="rc-btn rc-btn-go" data-back="title">‹ MENU</button>
         <button class="rc-quit" data-quit="1">back to the hub</button>
       </div>
     </div>`, "rc-ov-panel rc-ov-fin");
+
+  typeNote();
 
   /* a small drawn curtain call, with confetti */
   const host = document.getElementById("rc-fin-art");
@@ -8009,6 +8310,7 @@ function onKey(e) {
     else if (state === "paused") { setOverlay(""); state = "race"; }
     else if (state === "chars") renderTitle();
     else if (state === "tracks") renderChars();
+    else if (state === "badges") renderTitle();
   }
   if (e.key === "Enter") {
     if (state === "title")  { mode = "single"; renderChars(); }
@@ -8081,6 +8383,7 @@ function onOverlayClick(e) {
   if (d.track !== undefined) { trackIdx = +d.track; renderTracks(); return; }
   if (d.mirror) { mirror = !mirror; renderTracks(); return; }
   if (d.wet)    { wet = !wet;       renderTracks(); return; }
+  if (d.badges) { renderBadges(); return; }
   if (d.back === "title") { setOverlay(""); showHud(false); renderTitle(); return; }
   if (d.back === "chars") { renderChars(); return; }
   if (d.settings) { renderSettings(d.settings); return; }
@@ -8407,6 +8710,14 @@ function frame(ts) {
 
   resize();
   camStep = dt;
+
+  /* Once she is over the line the camera has about a second to make
+     something of it. Real seconds, not the slowed ones, so the move
+     lands at the same speed whether or not it was a photo finish. */
+  if (state === "race" && racers.length) {
+    const p0 = racers.find((r) => r.isPlayer);
+    if (p0 && p0.finished) finishCam = Math.min(1, finishCam + dt / 1.05);
+  }
 
   /* physics on a fixed step so the handling is identical on a 60Hz
      laptop and a 120Hz phone */
