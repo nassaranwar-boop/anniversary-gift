@@ -4378,8 +4378,8 @@ img{-webkit-user-drag:none; user-select:none;}
 /* With the throttle holding itself and the steering under the whole
    picture, DRIFT is the one button a thumb hunts for at speed, so it is
    the one that gets the room. */
-.rc-pad[data-mode="slide"] .rc-key-drift{ width:17cqh; height:17cqh; }
-.rc-pad[data-mode="slide"] .rc-key-sm{ width:8.5cqh; height:8.5cqh; }
+.rc-pad[data-mode="slide"] .rc-key-drift{ width:max(56px, 17cqh); height:max(56px, 17cqh); }
+.rc-pad[data-mode="slide"] .rc-key-sm{ width:max(42px, 8.5cqh); height:max(42px, 8.5cqh); }
 
 /* THE MAP MOVES OUT OF THE WAY OF THE THUMB.
 
@@ -4427,9 +4427,19 @@ img{-webkit-user-drag:none; user-select:none;}
   image-rendering:pixelated; image-rendering:crisp-edges;
   filter:drop-shadow(0 .25cqh 0 rgba(20,10,26,.5));
 }
-.rc-key-steer{width:15cqh; height:15cqh;}
-.rc-key-big  {width:14cqh; height:14cqh;}
-.rc-key-sm   {width:9.5cqh; height:9.5cqh; align-self:flex-end;}
+/* A FLOOR IN REAL PIXELS, NOT JUST CONTAINER UNITS.
+
+   These are sized off the height of the stage, which is right on a wide
+   screen and wrong on a phone held upright: there the stage is a short
+   letterboxed strip, and 8.5cqh of it comes out at nineteen physical
+   pixels. Measured on a 390-wide portrait phone the brake and item keys
+   were 19px across and drift was 37px — targets you cannot reliably hit
+   with a thumb, on the one device this is most likely to be played on.
+   The container units still win on anything roomy; the floor only
+   applies where the strip is too short to give a usable size. */
+.rc-key-steer{width:max(52px, 15cqh); height:max(52px, 15cqh);}
+.rc-key-big  {width:max(52px, 14cqh); height:max(52px, 14cqh);}
+.rc-key-sm   {width:max(42px, 9.5cqh); height:max(42px, 9.5cqh); align-self:flex-end;}
 
 /* the idle glow, in the racer's colour */
 @keyframes rcBreath{
