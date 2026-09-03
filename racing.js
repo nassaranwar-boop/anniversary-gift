@@ -584,7 +584,8 @@ function bakeTrack(def) {
     }
     /* long soft reflections, as if the polish were catching the windows */
     g.globalAlpha = 0.10; g.fillStyle = "#ffffff";
-    for (let i = 0; i < 90; i++) {
+    const drops = reduceMotion ? 34 : 90;
+  for (let i = 0; i < drops; i++) {
       const x = Math.random() * WORLD, y = Math.random() * WORLD;
       g.fillRect(x, y, 10 + Math.random() * 90, 5 + Math.random() * 10);
     }
@@ -594,7 +595,7 @@ function bakeTrack(def) {
   /* Broad tonal patches, then bands running with the road like mown
      stripes, then clumps. One flat plane of green is the thing that
      reads as unfinished more than anything else out here. */
-  const gr = mulberry(seedOf(def.id, 7717));
+  const gr = mulberry(seedOf(def.base || def.id, 7717));
   for (let i = 0; i < path.length; i += 7) {
     const ta = tangentAt(i);
     for (const sgn of [-1, 1]) {
@@ -646,7 +647,7 @@ function bakeTrack(def) {
   /* --- water, before anything paved, so every crossing bridges it --- */
   if (river) {
     const W2 = river.w;
-    const wr = mulberry(seedOf(def.id, 9187));
+    const wr = mulberry(seedOf(def.base || def.id, 9187));
     /* damp earth and pebbles along the banks */
     strokePts(g, river.pts, W2 * 2 + 42, "rgba(90,74,48,.35)", false);
     strokePts(g, river.pts, W2 * 2 + 22, "#8a7554", false);
@@ -809,7 +810,7 @@ function bakeTrack(def) {
 
   /* worn patches and a few painted arrows, so the tarmac has something
      going on other than being grey */
-  const rr = mulberry(seedOf(def.id, 4441));
+  const rr = mulberry(seedOf(def.base || def.id, 4441));
   for (let i = 0; i < 90; i++) {
     const k = (rr() * path.length) | 0;
     const ta = tangentAt(k);
@@ -933,10 +934,11 @@ function bakePano(def) {
   g.fillStyle = sky;
   g.fillRect(0, 0, PANO_W, PANO_H);
 
-  const rnd = mulberry(seedOf(def.id, 977));
+  const rnd = mulberry(seedOf(def.base || def.id, 977));
   const base = PANO_H - 4;
 
-  if (def.id === "roof") {
+  const baseId = def.base || def.id;
+  if (baseId === "roof") {
     /* --- a night skyline with a low sun still on it ---
        Varied silhouettes: flat tops, stepped setbacks, water towers,
        antenna spires and a lit rooftop sign, with the windows lit in
@@ -1055,7 +1057,7 @@ function bakePano(def) {
       }
     }
 
-  } else if (def.id === "ward") {
+  } else if (baseId === "ward") {
     /* THE SUNLIT WALL AT THE END OF THE CORRIDOR
 
        Every other backdrop on these courses is a horizon: far enough
@@ -1124,7 +1126,7 @@ function bakePano(def) {
                 0, -(base + 26), PANO_W, 26);
     g.restore();
 
-  } else if (def.id === "town") {
+  } else if (baseId === "town") {
     /* clouds, then a modest roofline — houses at the horizon should be
        small. Slabs the size of the ones the first pass drew read as
        cardboard flats standing behind the track. */
@@ -1259,6 +1261,19 @@ function bakePano(def) {
     }
   }
 
+  if (def.wet) {
+    /* One overcast over the whole band. Without it the clouds painted
+       into the backdrop stay bright white against a grey sky, which
+       reads as a sunny day someone has turned the lights down on. */
+    const w = g.createLinearGradient(0, 0, 0, PANO_H);
+    w.addColorStop(0, "rgba(118,127,142,.52)");
+    w.addColorStop(1, "rgba(150,158,170,.30)");
+    g.fillStyle = w;
+    g.fillRect(0, 0, PANO_W, PANO_H);
+    gf.globalAlpha = 0.5; gf.fillStyle = "rgba(130,140,155,.7)";
+    gf.fillRect(0, 0, PANO_W, PANO_H); gf.globalAlpha = 1;
+  }
+
   buildParallax(def, gf);
   panoId = def.id;
 }
@@ -1271,19 +1286,20 @@ function bakePano(def) {
    billboards in front of them — it read as a bug rather than as depth.
    Distance means smaller, paler and slower, all three at once. */
 function buildParallax(def, gf) {
-  const rnd = mulberry(seedOf(def.id, 613));
+  const rnd = mulberry(seedOf(def.base || def.id, 613));
   const far = mixRgb(def.haze, def.sky[0], 0.4);
   const fbase = PANO_H - 4;
 
   gf.fillStyle = `rgba(${far[0]},${far[1]},${far[2]},.5)`;
-  if (def.id === "roof" || def.id === "town") {
+  const bId = def.base || def.id;
+  if (bId === "roof" || bId === "town") {
     let x = -20;
     while (x < PANO_W + 20) {
       const w = 22 + rnd() * 34, h = 12 + rnd() * 26;
       gf.fillRect(x, fbase - h, w, h);
       x += w + 6 + rnd() * 14;
     }
-  } else if (def.id === "ward") {
+  } else if (bId === "ward") {
     gf.fillRect(0, fbase - 26, PANO_W, 26);
   } else {
     for (let k = 0; k < 2; k++) {
@@ -3294,7 +3310,7 @@ const solidCache = {};
 function solidParts(kind, v, def, ti) {
   const key = kind + "|" + v + "|" + ti + "|" + (def ? def.id : "-");
   if (solidCache[key]) return solidCache[key];
-  const night = def && def.id === "roof";
+  const night = def && (def.base || def.id) === "roof";
   const T = (c) => tintHex(c, ti);
   let parts = [];
 
@@ -3923,6 +3939,16 @@ const ROLL      = 0.006;  // rolling resistance, always
 const TURN      = 3.05 * DEG;  // steering authority at the sweet spot
 const GRIP      = 0.14;   // how fast the kart's heading catches its steer
 const DRIFT_GRIP= 0.075;  // ...and how much lazier it is mid-drift
+/* RAIN
+
+   Not a filter over the top: a different road. The heading chases the
+   steering more slowly, so the kart runs wide unless you slow for it,
+   and the brakes need more room. Deliberately gentle — enough that you
+   drive differently, not so much that the course stops being the
+   course. Measured against the dry lap so the times stay in band. */
+const WET_GRIP  = 0.84;
+const WET_BRAKE = 0.84;
+
 const OFFROAD_SP= 0.56;   // top speed multiplier off the tarmac
 const OFFROAD_DR= 0.55;   // and how much steering authority you keep there
 
@@ -4042,7 +4068,8 @@ class Racer {
       this.speed += ENGINE * Math.pow(head, ACC_TAPER) * k;
       if (this.speed > max) this.speed = max;
     } else if (rev) {
-      this.speed -= BRAKE * k;
+      /* and it takes longer to stop on a wet road */
+      this.speed -= BRAKE * (trackDef.wet ? WET_BRAKE : 1) * k;
       if (this.speed < -max * 0.32) this.speed = -max * 0.32;
     } else {
       /* engine braking, not a handbrake — you coast */
@@ -4127,7 +4154,8 @@ class Racer {
     if (this.drifting) this.steer += this.driftDir * TURN * 0.30 * k;
 
     const grip = (this.drifting ? DRIFT_GRIP : GRIP)
-               * (this.offroad ? 0.7 : 1) * (this.slick > 0 ? 0.40 : 1);
+               * (this.offroad ? 0.7 : 1) * (this.slick > 0 ? 0.40 : 1)
+               * (trackDef.wet ? WET_GRIP : 1);
     this.angle += (this.steer) * grip * k;
     /* the heading having caught up spends the steering input */
     this.steer -= this.steer * grip * k;
@@ -4254,7 +4282,8 @@ class Racer {
     this.steer += (wantSteer - this.steer) * 0.35 * k;
     const lock = TURN * 22;
     this.steer = Math.max(-lock, Math.min(lock, this.steer));
-    const grip = GRIP * (this.offroad ? 0.7 : 1) * (this.slick > 0 ? 0.45 : 1);
+    const grip = GRIP * (this.offroad ? 0.7 : 1) * (this.slick > 0 ? 0.45 : 1)
+               * (trackDef.wet ? WET_GRIP : 1);
     this.angle += this.steer * grip * k;
     this.steer -= this.steer * grip * k;
     const sf = Math.min(1, Math.abs(this.speed) / TOP_SPEED);
@@ -4407,6 +4436,20 @@ class Racer {
     }
     if (this.offroad && Math.abs(this.speed) > 1.2 && Math.random() < 0.5) {
       addPuff(this.x, this.y, "#d9c9a8");
+    } else if (trackDef.wet && Math.abs(this.speed) > TOP_SPEED * 0.25 && Math.random() < 0.55) {
+      /* the rooster tail: thrown up off both rear wheels, and it hangs
+         longer than dust does */
+      const back = this.angle + Math.PI;
+      const lx = -Math.sin(this.angle), ly = Math.cos(this.angle);
+      const sgn = Math.random() < 0.5 ? -1 : 1;
+      fx.push({
+        x: this.x + Math.cos(back) * 15 + lx * sgn * 11,
+        y: this.y + Math.sin(back) * 15 + ly * sgn * 11,
+        z: 2 + Math.random() * 4,
+        vx: Math.cos(back) * 0.7, vy: Math.sin(back) * 0.7, vz: 1.5,
+        life: 0.42, max: 0.42, col: "rgba(226,238,248,.55)",
+        size: 2.2 + Math.random() * 1.8,
+      });
     } else if (Math.abs(this.speed) > TOP_SPEED * 0.45 && Math.random() < 0.22) {
       /* a thin wake off the tarmac too, so speed reads before a boost */
       const back = this.angle + Math.PI;
@@ -4598,6 +4641,25 @@ let raceTime = 0, countdown = 0, shake = 0;
 let mode = "single";           // single | gp | trial
 let difficulty = 1;
 let playerCharIdx = 0, trackIdx = 0;
+/* Shake and speed lines are the two things here that make some people
+   feel ill, and they are both decoration: the game plays identically
+   without them. Off means off, not merely quieter. */
+/* ---- HOT SEAT ----
+
+   Two people, one screen, taking turns. The first drives the course
+   alone and the run is kept; the second drives the same course with the
+   first one's ghost alongside, so you are racing each other even though
+   only one of you is holding the phone. It reuses the ghost the time
+   trial already records — the whole feature is a flow around machinery
+   that was already there. */
+let duoLeg = 0;                 // 0 = first up, 1 = the reply
+let duoTimes = [null, null];
+let duoGhost = null;
+let duoChars = [0, 1];
+
+let reduceMotion = false;
+let mirror = false;      // the course, the other way round
+let wet = false;         // and the same course in the rain
 let gpRound = 0, gpPoints = [];
 let gpTable = {};
 let state = "title";           // title|chars|tracks|count|race|paused|results|gpboard
@@ -4690,7 +4752,7 @@ function placeProps(def) {
   props = [];
   const lastVariant = {};
   let lastKind = "";
-  const rnd = mulberry(seedOf(def.id, 3121));
+  const rnd = mulberry(seedOf(def.base || def.id, 3121));
   for (let i = 0; i < path.length; i += 3) {
     for (const s of [-1, 1]) {
       if (rnd() > 0.66) continue;
@@ -4793,7 +4855,7 @@ function placeObstacles(def) {
   obstacles = [];
   const spec = def.hazard;
   if (!spec) return;
-  const rnd = mulberry(seedOf(def.id, 7717));
+  const rnd = mulberry(seedOf(def.base || def.id, 7717));
   const n = path.length;
   for (let k = 0; k < spec.n; k++) {
     /* spread round the loop, leaving the start-finish stretch clear so
@@ -4841,7 +4903,7 @@ function placeObstacles(def) {
 const COIN_CAP = 10;
 function placeCoins(def) {
   coins = [];
-  const rnd = mulberry(seedOf(def.id, 4441));
+  const rnd = mulberry(seedOf(def.base || def.id, 4441));
   const n = path.length;
   for (let g = 0; g < 9; g++) {
     const base = Math.floor(((g + 0.30) / 9) * n) % n;
@@ -4873,8 +4935,62 @@ function startRace() {
   requestAnimationFrame(() => requestAnimationFrame(() => buildRace()));
 }
 
+/* ---------------------------------------------------------
+   TRACK VARIANTS
+
+   A course is a set of control points, a palette and a scenery kit.
+   Everything downstream — the ribbon, the bake, the props, the hazards
+   — is derived from those, so a variant is just a different def handed
+   to the same machinery rather than a second code path.
+
+   MIRRORED flips the world about its middle, which turns every corner
+   the other way and makes a course you know how to drive into one you
+   have to read again. The sun has to flip with it or every shadow
+   points the wrong way. It keeps its own id, so it keeps its own best
+   lap and its own ghost — a mirrored lap is not a lap of the original.
+
+   WET is the same road under rain: darker, greyer, with the sky pulled
+   down over it, and the grip taken away. The colours are derived from
+   the dry ones so a wet course still looks like itself.
+   --------------------------------------------------------- */
+function variantDef(base) {
+  if (!mirror && !wet) return base;
+  const d = Object.assign({}, base);
+  d.base = base.id;
+  d.id = base.id + (mirror ? "~m" : "") + (wet ? "~w" : "");
+
+  if (mirror) {
+    const flip = (pts) => pts.map((p) => [1 - p[0], p[1]]);
+    d.pts = flip(base.pts);
+    if (base.cut) d.cut = Object.assign({}, base.cut, { pts: flip(base.cut.pts) });
+    if (base.river) d.river = Object.assign({}, base.river, { pts: flip(base.river.pts) });
+    /* the sun is a bearing in world space, so it mirrors about the
+       north-south axis exactly as the ground does */
+    d.light = Math.PI - (base.light != null ? base.light : -0.7);
+  }
+
+  if (wet) {
+    const dim = (hex, f, toward) => {
+      const c = mixRgb(hex, toward || "#3f4653", f);
+      return "#" + c.map((v) => v.toString(16).padStart(2, "0")).join("");
+    };
+    d.grass    = dim(base.grass, 0.34);
+    d.grassAlt = dim(base.grassAlt, 0.34);
+    d.shoulder = dim(base.shoulder, 0.34);
+    d.road     = dim(base.road, 0.42);
+    d.roadAlt  = dim(base.roadAlt, 0.42);
+    d.rumbleA  = dim(base.rumbleA, 0.24);
+    d.rumbleB  = dim(base.rumbleB, 0.24);
+    d.sky      = [dim(base.sky[0], 0.52, "#6b7484"), dim(base.sky[1], 0.46, "#8b93a0")];
+    d.haze     = dim(base.haze, 0.40, "#93a0ae");
+    d.wet      = true;
+    d.clouds   = false;              // the overcast is the whole sky now
+  }
+  return d;
+}
+
 function buildRace() {
-  trackDef = TRACKS[trackIdx];
+  trackDef = variantDef(TRACKS[trackIdx]);
   buildPath(trackDef);
   /* props are placed before the bake so their shadows can be painted
      into the ground texture along with everything else */
@@ -4891,9 +5007,9 @@ function buildRace() {
   lastItem = "__";           // force the item slot to repaint from empty
 
   const field = [];
-  const playerDef = CHARS[playerCharIdx];
+  const playerDef = mode === "duo" ? CHARS[duoChars[duoLeg]] : CHARS[playerCharIdx];
   field.push({ def: playerDef, player: true });
-  if (mode !== "trial") {
+  if (mode !== "trial" && mode !== "duo") {
     field.push({ def: CHARS[playerCharIdx === 0 ? 1 : 0], player: false });
     const pool = CHARS.slice(2);
     for (let i = 0; i < 6; i++) field.push({ def: pool[i % pool.length], player: false });
@@ -4907,14 +5023,23 @@ function buildRace() {
   racers.forEach((r) => { r.progress = r.lap + r.along; });
   /* the other half of the pair is your rival — Anwar if you picked
      Ouissy, Ouissy if you picked Anwar */
-  if (mode !== "trial" && racers[1]) racers[1].rival = true;
+  if (mode !== "trial" && mode !== "duo" && racers[1]) racers[1].rival = true;
+  if (mode === "duo" && duoLeg === 0)
+    duoChars = [playerCharIdx, playerCharIdx === 0 ? 1 : 0];
   rivalCall = 0;
 
-  /* time trial: race your own best lap as a ghost */
+  /* time trial: race your own best lap as a ghost.
+     hot seat: race whoever went before you. */
   if (mode === "trial") {
     ghostRec = [];
     ghostPlay = loadGhost(trackDef.id);
     ghost = ghostPlay ? { x: 0, y: 0, angle: 0, def: playerDef } : null;
+  } else if (mode === "duo") {
+    ghostRec = [];
+    ghostPlay = duoLeg === 1 ? duoGhost : null;
+    ghost = ghostPlay
+      ? { x: 0, y: 0, angle: 0, def: CHARS[duoChars[0]] }
+      : null;
   } else {
     ghostRec = null; ghostPlay = null; ghost = null;
   }
@@ -4926,7 +5051,7 @@ function buildRace() {
   revUp = 0; revTotal = 0; draftOn = false; finalLap = false;
   rivalCall = 0; photoDone = false; slowMo = 0;
   Snd.resume();
-  Snd.music(trackDef.id);
+  Snd.music(trackDef.base || trackDef.id);
 
   state = "count";
   showHud(true);
@@ -4937,6 +5062,10 @@ function buildRace() {
 function onPlayerFinished() {
   const me = racers.find((r) => r.isPlayer);
   order();
+  /* Keep the picture of the moment she crossed. It has to be taken here
+     — a couple of seconds later the results panel is over the top of it
+     and the karts have rolled to a stop. */
+  grabFinishShot();
   if (mode === "trial") {
     const best = loadBest(trackDef.id);
     if (!best || me.finishTime < best) {
@@ -4944,6 +5073,10 @@ function onPlayerFinished() {
       if (ghostRec) saveGhost(trackDef.id, ghostRec);
       flashBanner("NEW BEST!");
     }
+  }
+  if (mode === "duo") {
+    duoTimes[duoLeg] = me.finishTime;
+    if (duoLeg === 0) duoGhost = ghostRec;
   }
   setTimeout(() => {
     if (state === "race") finishRace();
@@ -4962,6 +5095,10 @@ function finishRace() {
       const id = r.def.id;
       gpTable[id] = (gpTable[id] || 0) + GP_POINTS[Math.min(r.place - 1, GP_POINTS.length - 1)];
     });
+    /* A championship is four races. Nobody sits through four races
+       because a browser tab asked them to, so it is written down after
+       every round and offered back on the title screen. */
+    saveCup();
   }
   state = "results";
   showHud(false);
@@ -4983,6 +5120,107 @@ function order() {
 }
 
 /* ---- best times & ghosts ---- */
+/* ---- THE POSTCARD ----
+
+   A racing game hands you a table of numbers at the end. This is a
+   present, so it hands you a picture as well: the frame from the moment
+   you crossed, with the course, the time and the date set into it like
+   a postcard from a day out. It is drawn at the size it is shown at, so
+   a screenshot of it is a clean image rather than a photograph of a
+   screen. */
+let finishShot = null;
+function grabFinishShot() {
+  try {
+    if (!cvs || !cw || !ch) return;
+    const c = document.createElement("canvas");
+    c.width = cw; c.height = ch;
+    c.getContext("2d").drawImage(cvs, 0, 0);
+    finishShot = c;
+  } catch (e) { finishShot = null; }
+}
+
+function buildPostcard(me, place) {
+  const W = 640, H = 400;
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  g.imageSmoothingEnabled = false;
+
+  /* the photograph, cropped to the card and inset like a print */
+  const pad = 16, iw = W - pad * 2, ih = 236;
+  g.fillStyle = "#1b1226";
+  g.fillRect(0, 0, W, H);
+  if (finishShot) {
+    const sc = Math.max(iw / finishShot.width, ih / finishShot.height);
+    const sw = iw / sc, sh = ih / sc;
+    g.drawImage(finishShot,
+      (finishShot.width - sw) / 2, (finishShot.height - sh) * 0.34, sw, sh,
+      pad, pad, iw, ih);
+  } else {
+    g.fillStyle = "#2c2338"; g.fillRect(pad, pad, iw, ih);
+  }
+  /* a warm wash and a soft edge, so it reads as a print not a crop */
+  const warm = g.createLinearGradient(0, pad, 0, pad + ih);
+  warm.addColorStop(0, "rgba(255,209,102,.10)");
+  warm.addColorStop(1, "rgba(255,95,149,.14)");
+  g.fillStyle = warm; g.fillRect(pad, pad, iw, ih);
+  g.strokeStyle = "rgba(255,248,232,.5)"; g.lineWidth = 2;
+  g.strokeRect(pad + 1, pad + 1, iw - 2, ih - 2);
+
+  /* the caption */
+  const ink = "#fff8e8", gold = "#ffd166", rose = "#ff9ec4";
+  g.textBaseline = "top";
+  g.font = "18px 'Press Start 2P', monospace";
+  g.fillStyle = gold;
+  g.fillText((trackDef.name || "").toUpperCase(), pad + 4, pad + ih + 20);
+
+  g.font = "13px 'Press Start 2P', monospace";
+  g.fillStyle = ink;
+  const line = mode === "trial" || mode === "duo"
+    ? fmt(me.finishTime)
+    : `${place} \u00b7 ${fmt(me.finishTime)}`;
+  g.fillText(line, pad + 4, pad + ih + 50);
+
+  g.font = "10px 'Press Start 2P', monospace";
+  g.fillStyle = rose;
+  const bits = [me.def.name.toUpperCase()];
+  if (mirror) bits.push("MIRROR");
+  if (wet) bits.push("RAIN");
+  if (me.coins) bits.push(me.coins + " HEARTS");
+  g.fillText(bits.join("  \u00b7  "), pad + 4, pad + ih + 76);
+
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  g.fillStyle = "rgba(255,248,232,.55)";
+  const stamp = `${dd}.${mm}.${d.getFullYear()}`;
+  g.fillText(stamp, W - pad - 4 - stamp.length * 10, pad + ih + 76);
+
+  /* the little kart, bottom right, like a maker's mark */
+  const spr = kartSprites[me.def.id] && kartSprites[me.def.id][8];
+  if (spr) g.drawImage(spr, W - pad - 62, pad + ih + 8, 58, 50);
+  return c;
+}
+
+/* ---- the championship, written down between rounds ---- */
+function saveCup() {
+  try {
+    localStorage.setItem("sor_cup", JSON.stringify({
+      round: gpRound, points: gpPoints, table: gpTable,
+      chr: playerCharIdx, diff: difficulty,
+    }));
+  } catch (e) {}
+}
+function loadCup() {
+  try {
+    const c = JSON.parse(localStorage.getItem("sor_cup") || "null");
+    if (!c || !Array.isArray(c.points)) return null;
+    if (c.round == null || c.round >= TRACKS.length - 1) return null;
+    return c;
+  } catch (e) { return null; }
+}
+function clearCup() { try { localStorage.removeItem("sor_cup"); } catch (e) {} }
+
 function loadBest(id) {
   try { const v = localStorage.getItem("sor_best_" + id); return v ? parseFloat(v) : null; } catch (e) { return null; }
 }
@@ -5048,7 +5286,7 @@ function step(dt) {
   }
 
   /* ghost: record where we were, replay where we were last time */
-  if (mode === "trial") {
+  if (mode === "trial" || mode === "duo") {
     const me = racers.find((r) => r.isPlayer);
     if (ghostRec && !me.finished) {
       const slot = Math.floor(raceTime * 10);
@@ -5298,7 +5536,7 @@ function step(dt) {
       }
       if (closest < 0.014) {
         photoDone = true;
-        slowMo = 1.6;
+        slowMo = reduceMotion ? 0 : 1.6;
         flashBanner("PHOTO FINISH!");
         Snd.finalLap();
       }
@@ -5440,8 +5678,9 @@ function draw() {
      ------------------------------------------------------------------ */
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = false;
-  shakeX = shake ? (Math.random() - 0.5) * shake * (cw / RW) * 2 : 0;
-  shakeY = shake ? (Math.random() - 0.5) * shake * (ch / RH) * 2 : 0;
+  const mo = reduceMotion ? 0 : 1;
+  shakeX = shake ? (Math.random() - 0.5) * shake * (cw / RW) * 2 * mo : 0;
+  shakeY = shake ? (Math.random() - 0.5) * shake * (ch / RH) * 2 * mo : 0;
   ctx.clearRect(0, 0, cw, ch);
   ctx.drawImage(sceneCvs, shakeX, shakeY, cw, ch);
 
@@ -5514,7 +5753,7 @@ function draw() {
      the picture should already be moving before you are boosting. */
   const sf = Math.min(1, Math.abs(me.speed) / TOP_SPEED);
   const lines = (me.boost > 0 ? 1 : 0) + Math.max(0, (sf - 0.55) / 0.45) * 0.55;
-  if (lines > 0.02) drawSpeedLines(g, lines);
+  if (lines > 0.02 && !reduceMotion) drawSpeedLines(g, lines);
 
   /* THE LENS
 
@@ -5532,6 +5771,8 @@ function draw() {
   g.setTransform(cw / RW, 0, 0, ch / RH, 0, 0);
   g.drawImage(lensCvs, 0, 0);
   g.restore();
+
+  if (trackDef.wet) drawRain(g, me);
 
   /* THE PHOTO FINISH
 
@@ -6052,6 +6293,62 @@ function drawSpeedLines(g, boost) {
   g.globalAlpha = 1;
 }
 
+/* RAIN
+
+   Screen space, not world space. Rain close enough to see is close
+   enough that projecting it would put nearly all of it behind the
+   camera; what you actually see out of a windscreen is streaks across
+   the glass and drops sitting on it. Both are drawn here, and both lean
+   with how fast you are going, which is most of what sells it.
+
+   Deterministic per streak, so nothing has to be stored between
+   frames: each one's position comes from its index and the clock. */
+function drawRain(g, me) {
+  const sp = Math.min(1, Math.abs(me.speed || 0) / TOP_SPEED);
+  const lean = 0.22 + sp * 0.55;             // faster, and it slants in
+  const t = raceTime;
+
+  g.save();
+  g.globalAlpha = 0.30;
+  g.strokeStyle = "#d8e4f0";
+  g.lineWidth = 0.8;
+  g.beginPath();
+  for (let i = 0; i < 90; i++) {
+    /* a stable pseudo-random column and speed per streak */
+    const a = ((i * 2654435761) >>> 0) / 4294967296;
+    const b = ((i * 40503 + 12345) >>> 0 % 1000) / 1000;
+    const x0 = a * (RW + 120) - 60;
+    const fall = 220 + b * 260 + sp * 190;
+    const y0 = ((t * fall + b * RH * 3) % (RH + 60)) - 30;
+    const len = 7 + b * 9 + sp * 11;
+    g.moveTo(x0, y0);
+    g.lineTo(x0 - lean * len, y0 + len);
+  }
+  g.stroke();
+
+  /* and the drops that have landed on the glass and stayed there */
+  g.globalAlpha = 0.16;
+  g.fillStyle = "#eaf2fa";
+  for (let i = 0; i < 14; i++) {
+    const a = ((i * 1103515245 + 12345) >>> 0) / 4294967296;
+    const b = ((i * 22695477 + 1) >>> 0) / 4294967296;
+    /* each drop sits for a couple of seconds, then is replaced */
+    const life = 2.2 + b * 2.6;
+    const k = Math.floor(t / life) + i;
+    const jx = ((k * 9301 + 49297) % 233280) / 233280;
+    const jy = ((k * 4021 + 6151) % 233280) / 233280;
+    const x = (a * 0.2 + jx * 0.8) * RW;
+    const y = (b * 0.2 + jy * 0.8) * RH * 0.9;
+    const r = 0.8 + ((k * 7) % 5) * 0.35;
+    const age = (t % life) / life;
+    g.globalAlpha = 0.20 * (1 - age * 0.7);
+    g.beginPath();
+    g.ellipse(x, y + age * 9, r, r * 1.5, 0, 0, TWO_PI);
+    g.fill();
+  }
+  g.restore();
+}
+
 /* The lens overlay, baked once per track: a corner falloff and a band of
    the track's air along the skyline. */
 let lensCvs = null, lensId = "", lensW = 0;
@@ -6064,6 +6361,23 @@ function buildLens() {
   /* No air wash here. renderHaze already lays the distance haze along
      the horizon, and a second one on top of it was half of why the
      skyline looked like it was floating on a cloud. One haze. */
+
+  /* WET ROAD
+
+     The single strongest cue that a road is wet is not the colour, it
+     is that it reflects: a bright band of sky lying along the surface
+     just short of the horizon, brightest where the road runs straight
+     away from you. It is one gradient, and it does more than any amount
+     of darkening. */
+  if (trackDef.wet) {
+    const sk = hexToRgb(trackDef.sky[1]);
+    const sheen = g.createLinearGradient(0, HORIZON, 0, HORIZON + RH * 0.30);
+    sheen.addColorStop(0.00, `rgba(${sk[0]},${sk[1]},${sk[2]},.30)`);
+    sheen.addColorStop(0.35, `rgba(${sk[0]},${sk[1]},${sk[2]},.13)`);
+    sheen.addColorStop(1.00, `rgba(${sk[0]},${sk[1]},${sk[2]},0)`);
+    g.fillStyle = sheen;
+    g.fillRect(0, HORIZON, RW, RH * 0.30);
+  }
 
   /* and the corners, falling off the way a lens does */
   const vig = g.createRadialGradient(RW / 2, RH * 0.54, RH * 0.34,
@@ -6322,7 +6636,11 @@ function renderTitle() {
       <div class="rc-menu">
         <button class="rc-btn" data-go="single">SINGLE RACE</button>
         <button class="rc-btn" data-go="gp">GRAND PRIX</button>
+        ${(() => { const c = loadCup(); return c
+          ? `<button class="rc-btn rc-btn-cup" data-cup="1">RESUME CUP &middot; ROUND ${c.round + 2}</button>`
+          : ""; })()}
         <button class="rc-btn" data-go="trial">TIME TRIAL</button>
+        <button class="rc-btn" data-go="duo">TWO PLAYERS &middot; TAKE TURNS</button>
         <button class="rc-btn rc-btn-s" data-tut="1">HOW TO RACE</button>
         <button class="rc-btn rc-btn-s" data-settings="title">SOUND</button>
       </div>
@@ -6368,7 +6686,7 @@ function renderChars() {
 function renderTracks() {
   state = "tracks";
   const cards = TRACKS.map((t, i) => {
-    const best = loadBest(t.id);
+    const best = loadBest(t.id + (mirror ? "~m" : "") + (wet ? "~w" : ""));
     return `
     <button class="rc-card rc-track${i === trackIdx ? " sel" : ""}" data-track="${i}">
       <span class="rc-card-art" data-art="track" data-i="${i}"></span>
@@ -6383,6 +6701,15 @@ function renderTracks() {
       <p class="rc-blurb" id="rc-blurb">${TRACKS[trackIdx].blurb}</p>
       ${TRACKS[trackIdx].hazard && TRACKS[trackIdx].hazard.warn
         ? `<p class="rc-warn">${TRACKS[trackIdx].hazard.warn}</p>` : ""}
+      <div class="rc-row rc-vars">
+        <button class="rc-vbtn${mirror ? " on" : ""}" data-mirror="1">MIRROR</button>
+        <button class="rc-vbtn${wet ? " on" : ""}" data-wet="1">RAIN</button>
+      </div>
+      <p class="rc-varnote">${
+        mirror && wet ? "Backwards, in the wet. Good luck."
+        : mirror ? "Every corner the other way round."
+        : wet ? "Less grip, longer braking, and the wipers on."
+        : "Same road, two ways to make it new."}</p>
       <div class="rc-row">
         <button class="rc-btn rc-btn-s" data-back="chars">‹ BACK</button>
         <button class="rc-btn rc-btn-go" data-next="tracks">START ›</button>
@@ -6443,6 +6770,7 @@ function paintCardArt() {
 }
 
 function renderResults() {
+  if (mode === "duo") { renderDuo(); return; }
   const me = racers.find((r) => r.isPlayer);
   const sorted = [...racers].sort((a, b) => a.place - b.place);
 
@@ -6489,8 +6817,10 @@ function renderResults() {
       <ol class="rc-rest">${rest}</ol>
       ${isGP ? gpStandings() : ""}
       <p class="rc-msg">${msg}</p>
+      <div class="rc-card-shot" id="rc-postcard"></div>
       <div class="rc-row">
         <button class="rc-btn rc-btn-s" data-back="title">MENU</button>
+        <button class="rc-btn rc-btn-s" data-card="1">KEEP THE PHOTO</button>
         <button class="rc-btn rc-btn-go" data-next="${more ? "gpnext" : isGP ? "gpend" : "again"}">
           ${more ? "NEXT TRACK ›" : isGP ? "FINISH ›" : "RACE AGAIN ›"}
         </button>
@@ -6506,6 +6836,98 @@ function renderResults() {
     g.drawImage(kartFrame(def.id, 8, 0), 0, 0);  // facing the camera
     span.appendChild(c);
   });
+
+  showPostcard(me, `${me.place}${["ST","ND","RD","TH","TH","TH","TH","TH"][Math.min(me.place - 1, 7)]}`);
+}
+
+/* THE HANDOVER, AND THE VERDICT
+
+   Two screens. After the first run, one that says whose turn it is and
+   nothing else — because the whole point is that the phone changes
+   hands and the next person should not be reading someone else's
+   result. After the second, the two times side by side with the gap
+   between them, which is the only number either of them cares about. */
+function renderDuo() {
+  const me = racers.find((r) => r.isPlayer);
+
+  if (duoLeg === 0) {
+    const who = CHARS[duoChars[1]];
+    state = "results";
+    showHud(false);
+    Snd.engineOff();
+    setOverlay(`
+      <div class="rc-panel rc-duo">
+        <h3 class="rc-h">${CHARS[duoChars[0]].name.toUpperCase()} IS DONE</h3>
+        <p class="rc-duo-time">${fmt(duoTimes[0])}</p>
+        <p class="rc-msg">Hand it over. ${who.name}, you're up — and you'll
+          be racing ${CHARS[duoChars[0]].name}'s ghost, so you'll see exactly
+          where you're losing it.</p>
+        <div class="rc-row">
+          <button class="rc-btn rc-btn-s" data-back="title">MENU</button>
+          <button class="rc-btn rc-btn-go" data-duonext="1">${who.name.toUpperCase()}'S TURN ›</button>
+        </div>
+      </div>`, "rc-ov-panel");
+    return;
+  }
+
+  const a = duoTimes[0], b = duoTimes[1];
+  const winA = a <= b;
+  const win = CHARS[duoChars[winA ? 0 : 1]];
+  const gap = Math.abs(a - b);
+  state = "results";
+  showHud(false);
+  Snd.engineOff();
+  Snd.fanfare();
+  markDone();
+  setOverlay(`
+    <div class="rc-panel rc-duo">
+      <h3 class="rc-h">${win.name.toUpperCase()} TAKES IT</h3>
+      <div class="rc-duo-rows">
+        <div class="rc-duo-row${winA ? " win" : ""}">
+          <span>${CHARS[duoChars[0]].name}</span><i>${fmt(a)}</i></div>
+        <div class="rc-duo-row${winA ? "" : " win"}">
+          <span>${CHARS[duoChars[1]].name}</span><i>${fmt(b)}</i></div>
+      </div>
+      <p class="rc-msg">${gap < 0.35
+        ? `${gap.toFixed(2)} seconds in it. Run it again, that one doesn't count.`
+        : `${gap.toFixed(2)} seconds between you.`}</p>
+      <div class="rc-card-shot" id="rc-postcard"></div>
+      <div class="rc-row">
+        <button class="rc-btn rc-btn-s" data-back="title">MENU</button>
+        <button class="rc-btn rc-btn-s" data-card="1">KEEP THE PHOTO</button>
+        <button class="rc-btn rc-btn-go" data-duoagain="1">BEST OF THREE ›</button>
+      </div>
+    </div>`, "rc-ov-panel");
+  showPostcard(me, win.name.toUpperCase());
+}
+
+/* the card goes under the result, and the button below it saves it */
+function showPostcard(me, place) {
+  const host = document.getElementById("rc-postcard");
+  if (!host) return;
+  const card = buildPostcard(me, place);
+  postcardCvs = card;
+  host.appendChild(card);
+}
+let postcardCvs = null;
+
+/* Saving it is best-effort: a canvas download works on a desktop
+   browser and on Android, and iOS Safari will open it in a tab instead,
+   which is still a picture she can press and hold to keep. If even that
+   is refused, the card is on the screen and a screenshot is fine. */
+function savePostcard() {
+  if (!postcardCvs) return;
+  try {
+    const url = postcardCvs.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "super-ouissy-race.png";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (e) {
+    try { window.open(postcardCvs.toDataURL("image/png"), "_blank"); } catch (x) {}
+  }
 }
 
 /* The championship as it actually stands, everyone in it. A single
@@ -6531,6 +6953,7 @@ function gpStandings() {
 /* the Grand Prix closer: both of them over the line at once */
 function renderGPEnd() {
   state = "gpboard";
+  clearCup();
   const total = gpPoints.reduce((a, b) => a + (b || 0), 0);
   markDone();
   setOverlay(`
@@ -6617,6 +7040,8 @@ function renderSettings(from) {
       <p class="rc-setlab">ON A PHONE OR TABLET</p>
       <button class="rc-btn rc-btn-s" data-tmode="1">STEERING &middot; ${touchMode === "slide" ? "SLIDE ANYWHERE" : "ARROW KEYS"}</button>
       <button class="rc-btn rc-btn-s" data-autogas="1">AUTO GO &middot; ${autoGas ? "ON" : "OFF"}</button>
+      <p class="rc-setlab">COMFORT</p>
+      <button class="rc-btn rc-btn-s" data-calm="1">SCREEN SHAKE &middot; ${reduceMotion ? "OFF" : "ON"}</button>
       <p class="rc-setnote">${touchMode === "slide"
         ? "Put a thumb anywhere on the track and slide to steer."
         : "Steer with the arrow keys in the bottom left."}${autoGas
@@ -7386,11 +7811,12 @@ function loadTouchPrefs() {
       const o = JSON.parse(v);
       if (o.mode === "slide" || o.mode === "buttons") touchMode = o.mode;
       if (typeof o.auto === "boolean") autoGas = o.auto;
+      if (typeof o.calm === "boolean") reduceMotion = o.calm;
     }
   } catch (e) {}
 }
 function saveTouchPrefs() {
-  try { localStorage.setItem("sor_touch", JSON.stringify({ mode: touchMode, auto: autoGas })); } catch (e) {}
+  try { localStorage.setItem("sor_touch", JSON.stringify({ mode: touchMode, auto: autoGas, calm: reduceMotion })); } catch (e) {}
 }
 const KEYMAP = {
   ArrowUp:"up", w:"up", W:"up",
@@ -7436,7 +7862,11 @@ function onKey(e) {
 
 function next(from) {
   if (from === "chars") {
-    if (mode === "gp") { gpRound = 0; gpPoints = []; gpTable = {}; trackIdx = 0; startRace(); }
+    if (mode === "gp") {
+      /* a championship is run on the courses as they are */
+      mirror = false; wet = false;
+      gpRound = 0; gpPoints = []; gpTable = {}; trackIdx = 0; startRace();
+    }
     else renderTracks();
   } else if (from === "tracks") {
     startRace();
@@ -7455,9 +7885,33 @@ function onOverlayClick(e) {
   if (d.quit)    { leave(); return; }
   if (d.diff)    { difficulty = +d.diff; markDiff(); return; }
   if (d.diff === "0") { difficulty = 0; markDiff(); return; }
-  if (d.go)      { mode = d.go; gpTable = {}; renderChars(); return; }
+  if (d.cup) {
+    const c = loadCup();
+    if (!c) { renderTitle(); return; }
+    /* pick the championship up exactly where it was put down */
+    mode = "gp";
+    mirror = false; wet = false;
+    gpRound = c.round + 1;
+    gpPoints = c.points;
+    gpTable = c.table || {};
+    playerCharIdx = c.chr || 0;
+    difficulty = c.diff != null ? c.diff : difficulty;
+    trackIdx = gpRound;
+    startRace();
+    return;
+  }
+  if (d.go) {
+    mode = d.go;
+    gpTable = {};
+    if (d.go === "gp") clearCup();
+    if (d.go === "duo") { duoLeg = 0; duoTimes = [null, null]; duoGhost = null; }
+    renderChars();
+    return;
+  }
   if (d.char !== undefined) { playerCharIdx = +d.char; padAccent(); renderChars(); return; }
   if (d.track !== undefined) { trackIdx = +d.track; renderTracks(); return; }
+  if (d.mirror) { mirror = !mirror; renderTracks(); return; }
+  if (d.wet)    { wet = !wet;       renderTracks(); return; }
   if (d.back === "title") { setOverlay(""); showHud(false); renderTitle(); return; }
   if (d.back === "chars") { renderChars(); return; }
   if (d.settings) { renderSettings(d.settings); return; }
@@ -7468,6 +7922,15 @@ function onOverlayClick(e) {
   if (d.tmode) {
     touchMode = touchMode === "slide" ? "buttons" : "slide";
     saveTouchPrefs(); applyTouchMode();
+    renderSettings(el.overlay.querySelector("[data-closeset]").dataset.closeset);
+    return;
+  }
+  if (d.duonext)  { duoLeg = 1; startRace(); return; }
+  if (d.duoagain) { duoLeg = 0; duoTimes = [null, null]; duoGhost = null; startRace(); return; }
+  if (d.card) { savePostcard(); return; }
+  if (d.calm) {
+    reduceMotion = !reduceMotion;
+    saveTouchPrefs();
     renderSettings(el.overlay.querySelector("[data-closeset]").dataset.closeset);
     return;
   }
@@ -7869,7 +8332,7 @@ function stop() {
 
 /* a hatch for the test harness — nothing in the page uses it */
 if (typeof window !== "undefined")
-  window.__RACE_DEBUG = () => ({ obstacles, coins, racers, props, trackDef, state, mode, path, cut, raceTime, buildScenery, SCENERY, HAZ,
+  window.__RACE_DEBUG = () => ({ obstacles, coins, racers, props, trackDef, state, mode, path, cut, raceTime, buildScenery, SCENERY, HAZ, ghost,
      audioState: Snd.state(), audioCtx: Snd.ctx() });
 
 return { start, stop };

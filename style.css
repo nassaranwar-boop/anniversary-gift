@@ -4283,6 +4283,40 @@ img{-webkit-user-drag:none; user-select:none;}
   color:#ffb37f; text-align:center;
 }
 
+/* the postcard from the finish */
+.rc-card-shot{ margin:1cqh 0 .2cqh; display:flex; justify-content:center; }
+.rc-card-shot canvas{
+  width:min(58cqw, 100%); height:auto; image-rendering:pixelated;
+  border-radius:.8cqw;
+  box-shadow:0 1cqh 2.4cqw rgba(0,0,0,.5), inset 0 0 0 .2cqw rgba(255,248,232,.3);
+}
+
+/* the half-finished championship, offered back on the title screen */
+.rc-btn-cup{
+  background:linear-gradient(180deg, #ffd166, #e8a53c);
+  color:#2a1b10;
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.55), 0 0 2.6cqw rgba(255,209,102,.4);
+}
+
+/* the mirror and rain toggles on the track picker */
+.rc-vars{ gap:2cqw; margin-top:.6cqh; }
+.rc-vbtn{
+  font-family:inherit; cursor:pointer;
+  padding:.9cqh 2.4cqw; border:0; border-radius:.8cqw;
+  font-size:1.3cqh; letter-spacing:.14em;
+  color:#c9b8d8; background:rgba(28,18,42,.72);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.22);
+  transition:color .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.rc-vbtn:hover{ color:var(--rc-ink); }
+.rc-vbtn.on{
+  color:#1b1226; background:var(--rc-gold);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.5), 0 0 2.4cqw rgba(255,209,102,.45);
+}
+.rc-varnote{
+  margin:.5cqh 0 0; font-size:1.15cqh; letter-spacing:.05em; color:#a99cbb;
+}
+
 /* headings and notes inside the settings panel */
 .rc-setlab{
   margin:1.4cqh 0 .2cqh; font-size:1.25cqh; letter-spacing:.16em;
@@ -4292,6 +4326,36 @@ img{-webkit-user-drag:none; user-select:none;}
   margin:.4cqh 0 0; max-width:56cqw; font-size:1.15cqh; line-height:1.8;
   color:#c9b8d8; letter-spacing:.04em;
 }
+
+/* ---------- hot seat: two people, one phone ---------- */
+.rc-duo{ max-width:64cqw; }
+
+/* the handover screen: one time, big, and nothing else to read */
+.rc-duo-time{
+  margin:1.2cqh 0 .4cqh; font-size:3.4cqh; letter-spacing:.1em;
+  color:var(--rc-gold);
+  text-shadow:0 .35cqh 0 rgba(0,0,0,.45), 0 0 2.6cqw rgba(255,209,102,.35);
+}
+
+/* the verdict: both times stacked, the winner's row lit */
+.rc-duo-rows{
+  display:flex; flex-direction:column; gap:.9cqh;
+  width:min(46cqw, 100%); margin:1.4cqh auto .2cqh;
+}
+.rc-duo-row{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:2cqw; padding:1.1cqh 2.2cqw; border-radius:.8cqw;
+  background:rgba(28,18,42,.72);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.18);
+  font-size:1.5cqh; letter-spacing:.1em; color:#c9b8d8;
+}
+.rc-duo-row span{ text-transform:uppercase; }
+.rc-duo-row i{ font-style:normal; font-size:1.8cqh; color:var(--rc-ink); }
+.rc-duo-row.win{
+  color:#2a1b10; background:linear-gradient(180deg, #ffd166, #e8a53c);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.55), 0 0 2.6cqw rgba(255,209,102,.4);
+}
+.rc-duo-row.win i{ color:#2a1b10; }
 
 /* ---------- the sound sliders ---------- */
 .rc-sliders{ display:flex; flex-direction:column; gap:1.6cqh; width:min(54cqw, 100%); }
