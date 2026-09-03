@@ -45,12 +45,17 @@ async function run(label, viewport, touch) {
   // put her somewhere with room, and let the real loop run
   await p.evaluate(() => window.__apTeleport(8, 8));
   await p.waitForTimeout(400);
-  const a = await where();
-
-  let held = null;
+  /* The clock starts when the key goes down, not before. Sampling earlier
+     folds the tap that precedes the hold, and the idle between them, into
+     an average that is then compared against a walking speed — which makes
+     this a test of how fast the renderer is rather than of whether the
+     input arrived. */
+  let a = await where(), held = null;
   if (!touch) {
     await p.keyboard.down('ArrowRight');
-    await p.waitForTimeout(6000);
+    await p.waitForTimeout(250);
+    a = await where();
+    await p.waitForTimeout(5750);
     held = await where();                         // sample while it is still down
     await p.keyboard.up('ArrowRight');
   } else {
@@ -63,7 +68,9 @@ async function run(label, viewport, touch) {
         const el = document.querySelector('.ap-key-right');
         el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true }));
       });
-      await p.waitForTimeout(6000);
+      await p.waitForTimeout(250);
+      a = await where();
+      await p.waitForTimeout(5750);
       held = await where();                       // sample while it is still down
       await p.evaluate(() => {
         const el = document.querySelector('.ap-key-right');

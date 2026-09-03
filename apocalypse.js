@@ -3630,10 +3630,12 @@
                    + (f3 % 5) * 0.05 * fs;
           var th3 = rimTheta(Math.abs(fa)) * (0.80 + ea * 0.26 + (f3 % 5) * 0.045);
           var st3 = Math.sin(th3);
+          /* it sat proud of the scalp and crossed it with a visible seam;
+             laid on it, it is a fringe rather than a bar */
           fp.push(new THREE.Vector3(
-            AX + Rx * st3 * Math.cos(fa) * 1.03,
-            hy + Ry * Math.cos(th3) - ea * 0.030 * S,
-            Rz * st3 * Math.sin(fa) * 1.03));
+            AX + Rx * st3 * Math.cos(fa) * 1.004,
+            hy + Ry * Math.cos(th3) - ea * 0.026 * S,
+            Rz * st3 * Math.sin(fa) * 1.004));
         }
         g.push(sweep(fp, 0.017 * S, 0.009 * S, lod ? 5 : 9, 0.25, lod ? 8 : 0));
       }
@@ -4531,19 +4533,34 @@
              legs: [lfl, lfr, lbl, lbr], phase: 0 };
   }
 
+  /* A walk is a four-beat gait: near hind, near fore, off hind, off fore,
+     a quarter of a stride apart, so there are always three feet down. It
+     was two pairs half a stride apart, which is a trot, and it read as a
+     rocking horse. The head nods with it, because a walking horse uses its
+     neck for balance and a still head is the thing that makes a model of
+     one look like a model. */
   function poseHorse(h, t, gait) {
     var g = clamp(gait, 0, 1);
-    var w = t * 6.4;
+    var w = t * 4.4;
+    /* legs come in as [front-left, front-right, back-left, back-right] */
+    var PH = [Math.PI * 0.5, Math.PI * 1.5, 0, Math.PI];
     h.legs.forEach(function (L, i) {
-      var off = [0, Math.PI, Math.PI * 0.55, Math.PI * 1.55][i];
-      var s = Math.sin(w + off);
-      L.upper.rotation.z = s * 0.52 * g;
-      L.knee.rotation.z = Math.max(0, -Math.cos(w + off)) * 0.7 * g + 0.08;
+      var a = w + PH[i];
+      var s = Math.sin(a);
+      /* the swing forward is quick and the stance is long, which is what
+         makes a walk read as weight-bearing */
+      var swing = Math.max(0, s);
+      L.upper.rotation.z = (s * 0.30 - swing * swing * 0.16) * g;
+      L.knee.rotation.z = Math.pow(Math.max(0, Math.sin(a - 0.5)), 2) * 0.92 * g + 0.06;
     });
-    h.body.position.y = 1.34 + Math.abs(Math.sin(w)) * 0.045 * g;
-    h.neck.rotation.z = -0.62 + Math.sin(w) * 0.05 * g;
-    h.head.rotation.z = Math.sin(t * 1.1) * 0.06;
-    h.tail.rotation.z = Math.sin(t * 2.2) * 0.14;
+    /* the body rises twice a stride and rolls a little side to side */
+    h.body.position.y = 1.34 + Math.abs(Math.sin(w * 2)) * 0.028 * g;
+    h.body.rotation.x = Math.sin(w) * 0.030 * g;
+    h.neck.rotation.z = -0.62 + Math.sin(w * 2 + 0.6) * 0.075 * g;
+    h.head.rotation.z = Math.sin(w * 2 + 1.1) * 0.07 * g + Math.sin(t * 0.9) * 0.03;
+    h.head.rotation.y = Math.sin(t * 0.43) * 0.10;
+    h.tail.rotation.z = -0.4 + Math.sin(t * 1.7) * 0.16;
+    h.tail.rotation.x = Math.sin(t * 1.1) * 0.12;
   }
 
   /* =========================================================
@@ -6189,7 +6206,15 @@
     }
 
     function bathProp(x, y) {
+      /* A tub is two tiles long, and building one per tile made two tubs
+         end to end. The first tile of a run builds the whole thing and the
+         rest of the run builds nothing. */
+      if (at(x - 1, y) === "R") return null;
+      var runN = 1;
+      while (at(x + runN, y) === "R") runN++;
       var g = propGroup(x, y, false);
+      g.position.x += (runN - 1) * TILE * 0.5;
+      g.scale.x = runN;
       var shell = box(TILE * 0.94, 0.56, TILE * 0.92, matWhite, 0, 0.13, 0, g);
       shell.material = new THREE.MeshStandardMaterial({ color: 0xeceae4, roughness: 0.14,
                                                         metalness: 0.05, envMapIntensity: 1.6 });
@@ -7597,6 +7622,11 @@
   function teardownLevel() {
     if (!G || !G.scene) return;
     ringPool.forEach(function (q) { q.live = false; q.mesh.visible = false; });
+    /* the broadcast is painted into a canvas of its own, one per house */
+    if (G.world && G.world.tvTexture) {
+      try { G.world.tvTexture.dispose(); } catch (e) {}
+      G.world.tvTexture = null;
+    }
     disposeScene(G.scene);
     G.scene = null;
   }
@@ -7709,6 +7739,7 @@
   }
 
   function updateRings(dt) {
+    updateWind(dt);
     for (var i = 0; i < ringPool.length; i++) {
       var q = ringPool[i];
       if (!q.live) continue;
@@ -8110,6 +8141,17 @@
   }
 
   /* how close the nearest one is, when she cannot see it yet */
+  /* Wind, which was written into the sound bank a long time ago and wired
+     to nothing. Outdoors only, in gusts rather than on a metronome. */
+  var gustAt = 0;
+  function updateWind(dt) {
+    if (!G || !G.world || !G.world.outdoor || G.state !== "play") return;
+    gustAt -= dt;
+    if (gustAt > 0) return;
+    gustAt = rnd(5.5, 13.0);
+    Audio_.wind();
+  }
+
   function updateInstinct() {
     updateCut();
     updateCompass();
@@ -9420,6 +9462,13 @@
     scene.traverse(function (o) {
       if (o.geometry && shared.indexOf(o.geometry) < 0 && o.geometry.dispose) o.geometry.dispose();
       if (o.isInstancedMesh && o.dispose) o.dispose();
+      /* A light that casts owns a depth texture, and nothing was giving
+         those back: two or three per level, for the length of a session.
+         Geometry was already being freed — this was the whole of it. */
+      if (o.isLight && o.shadow && o.shadow.map) {
+        try { o.shadow.map.dispose(); } catch (e) {}
+        o.shadow.map = null;
+      }
     });
   }
 
@@ -9433,50 +9482,328 @@
   }
 
   /* ---- rolling country, used by the drive and the ride ---- */
+  /* ---- the country they are driving through ----
+     This was three flat shapes in three flat colours, unlit and unhazed —
+     cardboard cut-outs standing behind the road, which is exactly what it
+     looked like. Distance is not a darker colour, it is less contrast and
+     more sky: the further a ridge is, the more of the sky's own colour is
+     mixed into it, and the more of that mix happens at the top of the
+     ridge rather than the bottom. Six layers of it, each with its own kind
+     of country on it, and the whole thing washed with the sky it stands
+     against. */
   function landscape(scene, opts) {
-    var far = opts.far || 0x1a2038, mid = opts.mid || 0x232a44, near = opts.near || 0x2c3450;
-    var lengths = [1400, 1100, 900];
-    [[ -160, far, 46, 0.9 ], [ -105, mid, 34, 1.0 ], [ -62, near, 24, 1.1 ]].forEach(function (L, li) {
-      var z = L[0], colour = L[1], amp = L[2], sc = L[3];
+    var skyC = new THREE.Color(opts.sky == null ? 0x2a3350 : opts.sky);
+    var groundC = new THREE.Color(opts.near == null ? 0x2c3450 : opts.near);
+    var farC = new THREE.Color(opts.far == null ? 0x1a2038 : opts.far);
+    var treeC = new THREE.Color(opts.tree == null ? 0x141a2c : opts.tree);
+
+    /* z, ridge height, roughness, how far it has faded into the sky, how
+       many trees stand on it, how big they are */
+    var LAYERS = [
+      { z: -290, amp: 78, rough: 0.20, haze: 0.80, trees:  0, ts: 0 },
+      { z: -226, amp: 62, rough: 0.34, haze: 0.66, trees: 34, ts: 0.7 },
+      { z: -172, amp: 48, rough: 0.52, haze: 0.52, trees: 44, ts: 0.9 },
+      { z: -124, amp: 36, rough: 0.72, haze: 0.38, trees: 52, ts: 1.1 },
+      { z:  -84, amp: 26, rough: 0.92, haze: 0.24, trees: 54, ts: 1.4 },
+      { z:  -52, amp: 17, rough: 1.10, haze: 0.11, trees: 44, ts: 1.8 }
+    ];
+
+    var built = null;
+    LAYERS.forEach(function (L, li) {
+      var span = 2600, N = 200;
+      var seed = li * 37.1;
       var pts = [];
-      var span = lengths[li];
-      for (var i = 0; i <= 90; i++) {
-        var x = -span / 2 + (i / 90) * span * 2;
-        var y = Math.sin(i * 0.31 + li * 2) * amp * 0.5 +
-                Math.sin(i * 0.13 + li) * amp * 0.5 +
-                Math.sin(i * 0.7 + li * 3) * amp * 0.12;
-        pts.push(new THREE.Vector2(x, y - 4));
+      for (var i = 0; i <= N; i++) {
+        var u = i / N, x = -span / 2 + u * span;
+        /* four octaves: the shape of the land, then the shape of what is
+           on it */
+        var y = Math.sin(u * 3.1 + seed) * L.amp * 0.52
+              + Math.sin(u * 7.7 + seed * 1.7) * L.amp * 0.26
+              + Math.sin(u * 17.3 + seed * 2.3) * L.amp * 0.13 * L.rough
+              + Math.sin(u * 41.0 + seed * 3.1) * L.amp * 0.06 * L.rough;
+        pts.push(new THREE.Vector2(x, y - 6));
       }
+
       var shape = new THREE.Shape();
-      shape.moveTo(pts[0].x, -200);
+      shape.moveTo(pts[0].x, -260);
       pts.forEach(function (p) { shape.lineTo(p.x, p.y); });
-      shape.lineTo(pts[pts.length - 1].x, -200);
+      shape.lineTo(pts[N].x, -260);
       shape.closePath();
-      var m = new THREE.Mesh(new THREE.ShapeGeometry(shape),
-        new THREE.MeshBasicMaterial({ color: colour, fog: false }));
-      m.position.z = z;
-      m.scale.setScalar(sc);
-      m.renderOrder = -500 + li;
+      var geom = new THREE.ShapeGeometry(shape);
+
+      /* the wash: sky at the skyline, the land's own colour underneath it,
+         so a ridge has a lit edge and a body rather than being one flat
+         fill */
+      var base = farC.clone().lerp(groundC, 1 - L.haze);
+      var top = base.clone().lerp(skyC, Math.min(0.94, L.haze + 0.14));
+      var bot = base.clone().lerp(skyC, Math.max(0, L.haze - 0.16))
+                    .multiplyScalar(0.72 + L.haze * 0.3);
+      var pos = geom.attributes.position;
+      var col = new Float32Array(pos.count * 3), c = new THREE.Color();
+      /* how high this vertex is inside its own ridge */
+      var hi = -1e9, lo = 1e9;
+      for (var v = 0; v < pos.count; v++) {
+        var yy = pos.getY(v);
+        if (yy > -200) { if (yy > hi) hi = yy; if (yy < lo) lo = yy; }
+      }
+      for (var v2 = 0; v2 < pos.count; v2++) {
+        var y2 = pos.getY(v2);
+        var t = clamp((y2 - (lo - 40)) / Math.max(1, (hi - lo) + 40), 0, 1);
+        c.copy(bot).lerp(top, t * t);
+        col[v2 * 3] = c.r; col[v2 * 3 + 1] = c.g; col[v2 * 3 + 2] = c.b;
+      }
+      geom.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+
+      var m = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({
+        vertexColors: true, fog: false }));
+      m.position.z = L.z;
+      m.renderOrder = -600 + li;
       scene.add(m);
+
+      /* what grows on it, at the scale that layer is at, in that layer's
+         haze — a treeline four hundred metres off is not the same black as
+         one at fifty */
+      if (!L.trees) return;
+      var tc = treeC.clone().lerp(skyC, Math.min(0.9, L.haze + 0.06));
+      var tg = new THREE.ConeGeometry(2.2, 8.4, 6);
+      var im = new THREE.InstancedMesh(tg, new THREE.MeshBasicMaterial({
+        color: tc, fog: false }), L.trees);
+      var d = new THREE.Object3D();
+      for (var t2 = 0; t2 < L.trees; t2++) {
+        var ux = t2 / L.trees + (Math.random() - 0.5) * 0.02;
+        var rx = -span / 2 + ux * span;
+        /* stand them on the ridge rather than through it */
+        var ry = Math.sin(ux * 3.1 + seed) * L.amp * 0.52
+               + Math.sin(ux * 7.7 + seed * 1.7) * L.amp * 0.26
+               + Math.sin(ux * 17.3 + seed * 2.3) * L.amp * 0.13 * L.rough - 6;
+        var s2 = L.ts * rnd(0.62, 1.5);
+        d.position.set(rx, ry + 8.4 * s2 * 0.42, L.z + rnd(-5, 5));
+        d.scale.set(s2 * rnd(0.8, 1.3), s2, s2);
+        d.rotation.set(0, Math.random() * 3, 0);
+        d.updateMatrix(); im.setMatrixAt(t2, d.matrix);
+      }
+      im.renderOrder = -600 + li;
+      im.frustumCulled = false;
+      scene.add(im);
+      built = im;
     });
-    /* trees on the near ridge, as silhouettes */
-    var tg = new THREE.ConeGeometry(2.4, 9, 6);
-    var tm = new THREE.MeshBasicMaterial({ color: opts.tree || 0x141a2c, fog: false });
-    var im = new THREE.InstancedMesh(tg, tm, 60);
-    var d = new THREE.Object3D();
-    for (var i = 0; i < 60; i++) {
-      d.position.set(-420 + Math.random() * 1400, rnd(-6, 8), -58 + rnd(-6, 6));
-      d.scale.setScalar(rnd(0.6, 1.8));
-      d.rotation.set(0, Math.random() * 3, 0);
-      d.updateMatrix(); im.setMatrixAt(i, d.matrix);
+
+    /* one thing on the skyline that is not a hill: a mast, because empty
+       country with nothing built in it reads as a backdrop */
+    var mastC = farC.clone().lerp(skyC, 0.55);
+    var mast = new THREE.Group();
+    [[0, 0], [0.9, 5.5], [-0.9, 5.5]].forEach(function (p, k) {
+      var b2 = new THREE.Mesh(new THREE.BoxGeometry(k ? 0.5 : 0.9, k ? 22 : 34, 0.5),
+        new THREE.MeshBasicMaterial({ color: mastC, fog: false }));
+      b2.position.set(p[0] * 3, p[1] + (k ? 11 : 17), 0);
+      mast.add(b2);
+    });
+    /* standing on the far ridge, not floating over it */
+    mast.position.set(rnd(-260, 320), -26, -196);
+    mast.renderOrder = -594;
+    scene.add(mast);
+
+    /* and cloud, in bands, because a gradient with nothing in it is a wall
+       of paint however well graded it is */
+    var cloudTex = (function () {
+      if (TEX.__cloud) return TEX.__cloud;
+      var s = 256, cc = canvas2d(s), x = cc.x;
+      x.clearRect(0, 0, s, s);
+      for (var i = 0; i < 34; i++) {
+        var cx2 = s * (0.1 + Math.random() * 0.8), cy2 = s * (0.34 + Math.random() * 0.32);
+        var r = s * (0.06 + Math.random() * 0.16);
+        var gr = x.createRadialGradient(cx2, cy2, 0, cx2, cy2, r);
+        gr.addColorStop(0, "rgba(255,255,255,.55)");
+        gr.addColorStop(0.55, "rgba(255,255,255,.24)");
+        gr.addColorStop(1, "rgba(255,255,255,0)");
+        x.fillStyle = gr; x.beginPath(); x.arc(cx2, cy2, r, 0, 6.2832); x.fill();
+      }
+      var f = fbm(s, 5, 3, 13);
+      var im2 = x.getImageData(0, 0, s, s), dd = im2.data;
+      for (var q = 0, pp = 3; q < f.length; q++, pp += 4) dd[pp] = clamp(dd[pp] * (0.3 + f[q] * 1.5), 0, 255);
+      x.putImageData(im2, 0, 0);
+      var t3 = new THREE.CanvasTexture(cc.c);
+      t3.wrapS = THREE.RepeatWrapping;
+      TEX.__cloud = t3;
+      return t3;
+    })();
+    var clouds = [];
+    /* Low, wide and barely there. Bright cloud on a night sky is a smear;
+       what you actually see at night is a slightly paler band with the
+       stars going out behind it. */
+    [[-340, 66, 0.16, 0.30, 5], [-268, 48, 0.24, 0.22, 4], [-206, 34, 0.34, 0.15, 3]]
+      .forEach(function (C, ci) {
+        var cm = new THREE.Mesh(new THREE.PlaneGeometry(2400, 96),
+          new THREE.MeshBasicMaterial({
+            map: cloudTex.clone(), transparent: true, depthWrite: false, fog: false,
+            color: skyC.clone().lerp(new THREE.Color(0xffffff), C[2]),
+            opacity: C[3] }));
+        cm.material.map.wrapS = cm.material.map.wrapT = THREE.RepeatWrapping;
+        cm.material.map.repeat.set(C[4], 1);
+        cm.material.map.offset.x = ci * 0.37;
+        cm.position.set(0, C[1], C[0]);
+        cm.renderOrder = -612;
+        scene.add(cm);
+        clouds.push({ mesh: cm, drift: 0.004 + ci * 0.003 });
+      });
+    scene.userData.clouds = clouds;
+    return built;
+  }
+
+  /* ---- what sits between the hills and the road ----
+     Layers of ridge alone still read as flat, because in real country the
+     air between you and them is doing something. Bands of mist lying in
+     the dips, lit by whatever the sky is doing, and each one a little
+     brighter and lower than the one behind it. This is the thing that
+     turns a row of cut-outs into distance. */
+  function groundMist(scene, opts) {
+    var col = new THREE.Color(opts.colour == null ? 0x8fa0c0 : opts.colour);
+    var tex2 = (function () {
+      if (TEX.__mistband) return TEX.__mistband;
+      var s = 256, cc = canvas2d(s), x = cc.x;
+      x.clearRect(0, 0, s, s);
+      var g = x.createLinearGradient(0, 0, 0, s);
+      g.addColorStop(0.00, "rgba(255,255,255,0)");
+      g.addColorStop(0.45, "rgba(255,255,255,.85)");
+      g.addColorStop(0.72, "rgba(255,255,255,.55)");
+      g.addColorStop(1.00, "rgba(255,255,255,0)");
+      x.fillStyle = g; x.fillRect(0, 0, s, s);
+      var f = fbm(s, 6, 3, 29);
+      var im = x.getImageData(0, 0, s, s), d = im.data;
+      for (var i = 0, p = 3; i < f.length; i++, p += 4) {
+        d[p] = clamp(d[p] * (0.18 + f[i] * 1.9), 0, 255);
+      }
+      x.putImageData(im, 0, 0);
+      var t = new THREE.CanvasTexture(cc.c);
+      t.wrapS = THREE.RepeatWrapping;
+      TEX.__mistband = t;
+      return t;
+    })();
+    var bands = [];
+    /* a scene whose own trees stand at sixty metres wants its mist to
+       start beyond them, or the nearest band hangs in front of them as a
+       pale panel */
+    var skip = opts.skipNear || 0;
+    [[-250, 16, 0.30, 6], [-190, 11, 0.38, 5], [-140, 7.5, 0.44, 4],
+     [-96, 5.0, 0.46, 3], [-62, 3.2, 0.42, 3]].slice(0, 5 - skip).forEach(function (B, bi) {
+      var m = new THREE.Mesh(new THREE.PlaneGeometry(2400, B[1] * 3.4),
+        new THREE.MeshBasicMaterial({
+          map: tex2.clone(), transparent: true, depthWrite: false, fog: false,
+          color: col.clone().lerp(new THREE.Color(0xffffff), bi * 0.06),
+          opacity: B[2] * (opts.amount == null ? 1 : opts.amount) }));
+      m.material.map.wrapS = THREE.RepeatWrapping;
+      m.material.map.repeat.set(B[3], 1);
+      m.material.map.offset.x = bi * 0.31;
+      m.position.set(0, B[1] * 0.42 - 3, B[0]);
+      m.renderOrder = -590 + bi;
+      scene.add(m);
+      bands.push({ mesh: m, drift: 0.002 + bi * 0.0016 });
+    });
+    scene.userData.mist = bands;
+    return bands;
+  }
+
+  /* a flock, because an empty dawn sky is a wall of paint. Not called
+     `birds`: the sunrise already has a local of that name and it wins the
+     hoist. */
+  function flock(scene, opts) {
+    var n = opts.count || 14;
+    var g = new THREE.Group();
+    var m = new THREE.MeshBasicMaterial({ color: opts.colour == null ? 0x2a2434 : opts.colour,
+                                          fog: false, side: THREE.DoubleSide });
+    var wings = [];
+    for (var i = 0; i < n; i++) {
+      var b = new THREE.Group();
+      [1, -1].forEach(function (s) {
+        var w = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.16), m);
+        w.position.set(s * 0.75, 0, 0);
+        w.rotation.y = s * 0.2;
+        b.add(w);
+      });
+      b.position.set(rnd(-160, 160), rnd(26, 52), rnd(-150, -70));
+      b.scale.setScalar(rnd(0.7, 1.5));
+      b.userData.ph = Math.random() * 6.28;
+      b.userData.sp = rnd(2.2, 4.4);
+      g.add(b);
+      wings.push(b);
     }
-    im.renderOrder = -496;
-    scene.add(im);
-    return im;
+    g.renderOrder = -585;
+    scene.add(g);
+    scene.userData.birds = wings;
+    return g;
   }
 
   function roadStrip(scene, opts) {
     var g = new THREE.Group();
+    /* Poles, fencing and marker posts down both verges. Nothing sells the
+       speed of a shot like something close going past, and a road with a
+       verge and nothing standing in it reads as a treadmill. */
+    (function () {
+      var poleC = opts.pole || 0x2a2620;
+      var poleM = new THREE.MeshStandardMaterial({ color: poleC, roughness: 0.9 });
+      var wireM = new THREE.LineBasicMaterial({ color: 0x141414, fog: false });
+      var poles = new THREE.InstancedMesh(
+        (function () { var q = new THREE.CylinderGeometry(0.11, 0.16, 8.4, 6); q.translate(0, 4.2, 0); return q; })(),
+        poleM, 46);
+      var arms = new THREE.InstancedMesh(new THREE.BoxGeometry(1.9, 0.10, 0.10), poleM, 46);
+      var d2 = new THREE.Object3D();
+      var wirePts = [];
+      for (var i = 0; i < 46; i++) {
+        var px = -900 + i * 40 + rnd(-2, 2), pz = 11.5 + rnd(-0.6, 0.6);
+        d2.position.set(px, 0, pz); d2.rotation.set(0, rnd(-0.05, 0.05), rnd(-0.03, 0.03));
+        d2.scale.setScalar(rnd(0.94, 1.06));
+        d2.updateMatrix(); poles.setMatrixAt(i, d2.matrix);
+        d2.position.set(px, 7.7, pz); d2.rotation.set(0, 0, 0); d2.scale.setScalar(1);
+        d2.updateMatrix(); arms.setMatrixAt(i, d2.matrix);
+        /* the wire between them, sagging */
+        if (i) {
+          var ax = -900 + (i - 1) * 40, bx = px;
+          for (var s3 = 0; s3 <= 6; s3++) {
+            var u2 = s3 / 6;
+            wirePts.push(new THREE.Vector3(ax + (bx - ax) * u2,
+              7.6 - Math.sin(u2 * Math.PI) * 0.9, pz));
+          }
+        }
+      }
+      poles.castShadow = true;
+      g.add(poles); g.add(arms);
+      var wireG = new THREE.BufferGeometry().setFromPoints(wirePts);
+      g.add(new THREE.Line(wireG, wireM));
+
+      /* post-and-rail down the other side */
+      var fp = new THREE.InstancedMesh(
+        (function () { var q = new THREE.BoxGeometry(0.12, 1.15, 0.12); q.translate(0, 0.575, 0); return q; })(),
+        new THREE.MeshStandardMaterial({ color: 0x3a3228, roughness: 0.95 }), 200);
+      for (var f2 = 0; f2 < 200; f2++) {
+        d2.position.set(-900 + f2 * 9, 0, -11.2 + rnd(-0.3, 0.3));
+        d2.rotation.set(0, 0, rnd(-0.06, 0.06)); d2.scale.setScalar(rnd(0.9, 1.1));
+        d2.updateMatrix(); fp.setMatrixAt(f2, d2.matrix);
+      }
+      g.add(fp);
+      [0, 1].forEach(function (r2) {
+        var rail = new THREE.Mesh(new THREE.BoxGeometry(1800, 0.09, 0.06),
+          new THREE.MeshStandardMaterial({ color: 0x3a3228, roughness: 0.95 }));
+        rail.position.set(0, 0.55 + r2 * 0.42, -11.2);
+        g.add(rail);
+      });
+
+      /* marker posts at the edge of the carriageway, with a reflector on
+         each one that catches the headlights */
+      var mk = new THREE.InstancedMesh(
+        (function () { var q = new THREE.BoxGeometry(0.10, 0.95, 0.06); q.translate(0, 0.48, 0); return q; })(),
+        new THREE.MeshStandardMaterial({ color: 0xd8d4c8, roughness: 0.7 }), 90);
+      var rf = new THREE.InstancedMesh(new THREE.BoxGeometry(0.09, 0.13, 0.02),
+        new THREE.MeshStandardMaterial({ color: 0xff5a3a, roughness: 0.25, metalness: 0.1,
+          emissive: new THREE.Color(0x501008), emissiveIntensity: 1 }), 90);
+      for (var k2 = 0; k2 < 90; k2++) {
+        var mx = -900 + k2 * 20, mz = 8.4;
+        d2.position.set(mx, 0, mz); d2.rotation.set(0, 0, 0); d2.scale.setScalar(1);
+        d2.updateMatrix(); mk.setMatrixAt(k2, d2.matrix);
+        d2.position.set(mx, 0.74, mz - 0.05);
+        d2.updateMatrix(); rf.setMatrixAt(k2, d2.matrix);
+      }
+      g.add(mk); g.add(rf);
+    })();
     var road = new THREE.Mesh(new THREE.PlaneGeometry(2000, 16, 200, 1),
       surface("asphalt", { repeat: 1, rough: 0.95, bumpScale: 0.5 }));
     road.material = road.material.clone();
@@ -9553,7 +9880,9 @@
     var moon = makeMoon(7); moon.position.set(-260, 120, -180); scene.add(moon);
 
     cineEnvironment(scene, sky, "street", 0.7);
-    landscape(scene, { far: 0x121834, mid: 0x171d3a, near: 0x1c2340, tree: 0x0d1226 });
+    landscape(scene, { far: 0x121834, mid: 0x171d3a, near: 0x1c2340, tree: 0x0d1226,
+                       sky: 0x141a34 });
+    groundMist(scene, { colour: 0x2e3a5c, amount: 0.46 });
     roadStrip(scene, {});
 
     scene.add(new THREE.HemisphereLight(0x33436e, 0x0d1220, 1.05));
@@ -9589,10 +9918,23 @@
       sp.position.set(1.9, 0.78, s);
       sp.target.position.set(34, -1.4, s * 2.6);
       car.group.add(sp); car.group.add(sp.target);
-      var cg = new THREE.CylinderGeometry(0.26, 5.0, 40, 16, 1, true);
-      cg.translate(0, -20, 0); cg.rotateZ(-Math.PI / 2);
+      /* Forty metres long and ten across reads as a beam from behind the
+         car and as a grey wedge across half the picture from beside it,
+         which is where the camera now is. Shorter, narrower, fainter, and
+         it fades out along its length so it has an end. */
+      var cg = new THREE.CylinderGeometry(0.22, 2.6, 24, 16, 4, true);
+      cg.translate(0, -12, 0); cg.rotateZ(-Math.PI / 2);
+      (function () {
+        var pa = cg.attributes.position, cl = new Float32Array(pa.count * 3);
+        for (var q = 0; q < pa.count; q++) {
+          var f = clamp(1 - Math.abs(pa.getX(q)) / 24, 0, 1);
+          f = f * f;
+          cl[q * 3] = f; cl[q * 3 + 1] = f; cl[q * 3 + 2] = f;
+        }
+        cg.setAttribute("color", new THREE.Float32BufferAttribute(cl, 3));
+      })();
       var cm = new THREE.MeshBasicMaterial({
-        color: 0xffe8c0, transparent: true, opacity: 0.11,
+        color: 0xffe8c0, transparent: true, opacity: 0.075, vertexColors: true,
         blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
       var beam = new THREE.Mesh(cg, cm);
       beam.position.set(1.9, 0.78, s);
@@ -9659,10 +10001,28 @@
         car.group.position.y = Math.sin(t * 9) * 0.012 * (speed / 30);
         car.group.rotation.z = Math.sin(t * 3.1) * 0.006;
 
-        /* the camera runs alongside and slightly behind */
+        /* The camera runs alongside and slightly behind, but it is being
+           held rather than bolted on: a slow drift in and out, a little
+           roll, and a shiver on the bad surface. It also settles lower and
+           closer once the engine dies, because the shot changes meaning
+           at that point and the framing should say so. */
+        /* It sat almost directly behind the car, so the shot was the back
+           of a boot with a road behind it. It travels beside them now,
+           out on the verge and a little back — you see the flank of the
+           car, both of them through the glass, the road running away in
+           front, and the poles going past close to the lens, which is what
+           makes thirty miles an hour look like thirty miles an hour.
+           When the engine dies it drifts back and settles. */
         var cx0 = car.group.position.x;
-        cam.position.set(cx0 - 8.8 + Math.sin(t * 0.35) * 0.7, 2.85 + Math.sin(t * 0.5) * 0.12, 0.9);
-        cam.lookAt(cx0 + 13, 1.35, 0.15);
+        var settle = dead ? clamp((t - 24) / 6, 0, 1) : 0;
+        var hold = Math.sin(t * 0.31) * 0.45 + Math.sin(t * 0.11 + 1.3) * 0.30;
+        var jitter = (speed / 34) * 0.030;
+        cam.position.set(
+          cx0 - 3.2 + hold - settle * 4.5,
+          2.55 + Math.sin(t * 0.5) * 0.10 + Math.sin(t * 19) * jitter + settle * 0.30,
+          9.4 + Math.sin(t * 0.19) * 0.30 - settle * 1.6);
+        cam.up.set(Math.sin(t * 0.23) * 0.010, 1, 0);
+        cam.lookAt(cx0 + 1.2 + settle * 3.5, 1.15, settle * 0.6);
 
         stars.u.time.value = t;
         sky.u.time.value = t;
@@ -9757,7 +10117,10 @@
     scene.add(sun);
 
     cineEnvironment(scene, sky, "road", 0.42);
-    landscape(scene, { far: 0x6a5a80, mid: 0x4e4468, near: 0x33304e, tree: 0x241f38 });
+    landscape(scene, { far: 0x6a5a80, mid: 0x4e4468, near: 0x33304e, tree: 0x241f38,
+                       sky: 0x8a6a90 });
+    groundMist(scene, { colour: 0xc0a0b4, amount: 0.82 });
+    flock(scene, { count: 16, colour: 0x3a2c40 });
     roadStrip(scene, {});
 
     scene.add(new THREE.HemisphereLight(0xffc890, 0x30283a, 1.0));
@@ -9842,6 +10205,10 @@
     var moon = makeMoon(6); moon.position.set(-90, 110, -180); scene.add(moon);
 
     cineEnvironment(scene, sky, "campsite", 0.7);
+    /* the country the clearing is in, rather than a black wall behind it */
+    landscape(scene, { far: 0x111834, mid: 0x141c34, near: 0x18202e, tree: 0x0a0e18,
+                       sky: 0x0c1226 });
+    groundMist(scene, { colour: 0x24304e, amount: 0.62, skipNear: 2 });
 
     /* the ground */
     var ground = new THREE.Mesh(new THREE.CircleGeometry(70, 40),
@@ -9985,6 +10352,11 @@
     var stars = makeStars(700, 340); scene.add(stars.points);
 
     cineEnvironment(scene, sky, "road", 0.3);
+    /* country behind the treeline, and the mist that is in it at that hour */
+    landscape(scene, { far: 0x4a3f5e, mid: 0x3a3450, near: 0x2a2a42, tree: 0x171827,
+                       sky: 0x3a3358 });
+    groundMist(scene, { colour: 0xa88ea0, amount: 0.95, skipNear: 1 });
+    flock(scene, { count: 18, colour: 0x241d2e });
     var groundMat = surface("grass", { repeat: 1, rough: 0.99, bumpScale: 0.2 });
     groundMat.map = tex("grass", 256, 1); groundMat.map.repeat.set(60, 60);
     var ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), groundMat);
@@ -10025,16 +10397,9 @@
     fire.position.set(-3.5, 0, 8);
     scene.add(fire);
 
-    /* birds */
-    var birdG = new THREE.BufferGeometry();
-    var BN = 26, bp = new Float32Array(BN * 3);
-    for (var b = 0; b < BN; b++) {
-      bp[b * 3] = rnd(-90, 90); bp[b * 3 + 1] = rnd(24, 60); bp[b * 3 + 2] = rnd(-120, -40);
-    }
-    birdG.setAttribute("position", new THREE.BufferAttribute(bp, 3));
-    var birds = new THREE.Points(birdG, new THREE.PointsMaterial({
-      color: 0x14161c, size: 1.8, sizeAttenuation: true, fog: false }));
-    scene.add(birds);
+    /* These were twenty-six points with no map on them, which a card draws
+       as hard black squares — a scatter of dead pixels across a sunrise.
+       The flock above has wings and beats them; this is gone. */
     var birdT = 1.2;
 
     runCine({
@@ -10070,15 +10435,7 @@
         cam.position.set(Math.sin(t * 0.06) * 6, 4.2 + e * 1.4, 22);
         cam.lookAt(8, 9 + e * 5, -110);
 
-        birds.rotation.y = t * 0.008;
-        var arr = birdG.attributes.position.array;
-        for (var i = 0; i < BN; i++) {
-          arr[i * 3] += dt * (7 + (i % 5));
-          arr[i * 3 + 1] += Math.sin(t * 3 + i) * dt * 1.2;
-          if (arr[i * 3] > 110) arr[i * 3] = -110;
-        }
-        birdG.attributes.position.needsUpdate = true;
-
+        /* the flock flies itself, from the cut's own tick */
         birdT -= dt;
         if (birdT <= 0 && t > 2.4) { birdT = rnd(0.5, 1.5); Audio_.bird(); }
       },
@@ -10571,6 +10928,24 @@
       }
       if (usePressed && !isFinite(G.cine.duration)) usePressed = false;
       if (G.cine.update) G.cine.update(dt, G.cine.t);
+      /* the sky is not a painting: the cloud bands crawl */
+      var ud = G.cine.scene && G.cine.scene.userData;
+      var cl = ud && ud.clouds;
+      if (cl) for (var ci2 = 0; ci2 < cl.length; ci2++) {
+        cl[ci2].mesh.material.map.offset.x += cl[ci2].drift * dt;
+      }
+      var mb = ud && ud.mist;
+      if (mb) for (var mi = 0; mi < mb.length; mi++) {
+        mb[mi].mesh.material.map.offset.x += mb[mi].drift * dt;
+      }
+      var bd = ud && ud.birds;
+      if (bd) for (var bi2 = 0; bi2 < bd.length; bi2++) {
+        var B2 = bd[bi2];
+        B2.position.x += B2.userData.sp * dt;
+        if (B2.position.x > 180) B2.position.x = -180;
+        B2.children[0].rotation.z = Math.sin(G.cine.t * 7 + B2.userData.ph) * 0.6;
+        B2.children[1].rotation.z = -Math.sin(G.cine.t * 7 + B2.userData.ph) * 0.6;
+      }
       cineCaption(G.cine);
       if (isFinite(G.cine.duration) && G.cine.t >= G.cine.duration) {
         var done = G.cine.done;
@@ -11013,6 +11388,12 @@
 
     /* what the card was actually asked to do on the last frame */
     window.__apEndCine = function () { if (G && G.cine) endCine(); return true; };
+    window.__apReattach = function () {
+      var s = G && (G.cine ? G.cine.scene : G.scene);
+      var c = G && G.cine ? G.cine.camera : Stage.camera;
+      if (s) Stage.attach(s, c);
+      return true;
+    };
     window.__apScale = function () { return { dpr: Stage.dpr, scale: Stage.scale, rung: Stage.rung, w: Stage.w, h: Stage.h }; };
     window.__apShadows = function (on) {
       if (Stage.renderer) { Stage.renderer.shadowMap.enabled = !!on; Stage.renderer.shadowMap.needsUpdate = true; }
