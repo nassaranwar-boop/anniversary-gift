@@ -2750,7 +2750,7 @@ const SOLID = {
   cart: 1, chair: 1, planter: 1, flowerbox: 1, trafficlight: 1, plant: 1,
   /* and the sprinkler, which you drive straight at, so it is the one
      hazard you ever see from close enough to catch it being paint */
-  sprinkler: 1,
+  sprinkler: 1, log: 1, ivpole: 1, washline: 1,
 };
 
 /* Standing height and footprint radius, for placement clearance and for
@@ -2763,7 +2763,8 @@ const SOLID_SIZE = {
   postbox:{ h:32, r:13 }, mailbox:{ h:36, r:12 }, bench:{ h:34, r:24 },
   cart:{ h:58, r:24 }, chair:{ h:48, r:18 }, planter:{ h:34, r:20 },
   flowerbox:{ h:24, r:17 }, trafficlight:{ h:106, r:9 }, plant:{ h:50, r:16 },
-  sprinkler:{ h:36, r:14 },
+  sprinkler:{ h:36, r:14 }, log:{ h:30, r:40 },
+  ivpole:{ h:88, r:14 }, washline:{ h:76, r:32 },
 };
 
 /* ---- the painter -------------------------------------------------
@@ -2889,9 +2890,13 @@ function solidShadow(g, o, camX, camY, camA, fade) {
   const parts = solidParts(o.kind, o.v | 0, trackDef, o.tint | 0);
   if (!parts || !parts.length) return;
   const base = parts[0];
-  const hw = (base.w || size.r) / 2, hd = (base.d || size.r) / 2;
+  const prism = base.k === "prism";
+  const lying = prism && base.axis === "x";
+  const hw = lying ? base.len / 2 : prism ? base.r : (base.w || size.r) / 2;
+  const hd = prism ? base.r : (base.d || size.r) / 2;
   const hv = 0.90 + ((o.hv || 1) - 1.04) * 0.38;
-  const top = (base.z || 0) + (base.h || size.h) * 0.9;
+  const top = lying ? (base.z || 0) + base.r
+            : (base.z || 0) + (base.h || size.h) * 0.9;
 
   const yaw = o.yaw || 0;
   const cy = Math.cos(yaw), sy = Math.sin(yaw);
@@ -3016,6 +3021,41 @@ function partFaces(part, P, lamp, add) {
     add([P(u0, w1, z + rise), P(u0, w0, z), P(u0, w1, z)], shade(part.endCol || rc, lamp(-1, 0)));
     add([P(u1, w0, z), P(u1, w1, z + rise), P(u1, w1, z)], shade(part.endCol || rc, lamp(1, 0)));
 
+  } else if (part.k === "prism" && part.axis === "x") {
+    /* A CYLINDER LYING DOWN.
+
+       A fallen log is the one thing on these courses that is a barrel
+       on its side, and the upright prism cannot say that. The circle
+       lives in the depth-and-height plane and the solid is extruded
+       along the width, with a sawn end at each end of it. */
+    const n = part.sides || 10, r = part.r, len = part.len;
+    const uA = x - len / 2, uB = x + len / 2;
+    const ring = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TWO_PI + (part.rot || 0);
+      ring.push([y + Math.cos(a) * r, z + Math.sin(a) * r, Math.cos(a), Math.sin(a)]);
+    }
+    for (let i = 0; i < n; i++) {
+      const A = ring[i], B = ring[(i + 1) % n];
+      const M = (uu, vv) => {
+        const t = vv;                       /* along the barrel's girth */
+        return P(uA + (uB - uA) * uu,
+                 A[0] + (B[0] - A[0]) * t,
+                 A[1] + (B[1] - A[1]) * t);
+      };
+      const nw = (A[2] + B[2]) / 2, nv = (A[3] + B[3]) / 2;
+      /* the top staves catch the sky, the underside gathers dark */
+      const up = 1 + Math.max(0, nv) * 0.26 - Math.max(0, -nv) * 0.30;
+      add([M(0, 0), M(1, 0), M(1, 1), M(0, 1)],
+          shade(col, lamp(0, nw) * up),
+          part.plain ? null : barkDetail(M, len));
+    }
+    /* the sawn ends */
+    const endCol = part.endCol || "#c9a877";
+    add(ring.map((V) => P(uA, V[0], V[1])), shade(endCol, lamp(-1, 0)), ringsDetail(part));
+    add(ring.slice().reverse().map((V) => P(uB, V[0], V[1])),
+        shade(endCol, lamp(1, 0)), ringsDetail(part));
+
   } else if (part.k === "prism") {
     /* a round thing, as ten flat ones. A water butt or a roof tank is
        the one shape on these courses that a box cannot fake. */
@@ -3059,6 +3099,41 @@ function partFaces(part, P, lamp, add) {
     pw(u1, w1, u0, w1,  0,  1);
     pw(u0, w1, u0, w0, -1,  0);
   }
+}
+
+/* Bark: broken ridges running the length of the barrel, not neat rows */
+function barkDetail(M, len) {
+  return (g) => {
+    g.globalAlpha = 0.22;
+    g.strokeStyle = "#120c18";
+    g.lineWidth = 0.7;
+    for (let i = 1; i < 4; i++) {
+      const t = i / 4;
+      const a = M(0, t), b = M(1, t);
+      g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke();
+    }
+    g.globalAlpha = 1;
+  };
+}
+
+/* the growth rings on a sawn end */
+function ringsDetail(part) {
+  return (g, f) => {
+    let cx = 0, cy = 0;
+    for (const p of f.pts) { cx += p.sx; cy += p.sy; }
+    cx /= f.pts.length; cy /= f.pts.length;
+    let rr = 0;
+    for (const p of f.pts) rr = Math.max(rr, Math.hypot(p.sx - cx, p.sy - cy));
+    g.globalAlpha = 0.4;
+    g.strokeStyle = "#8a6b46";
+    g.lineWidth = 0.7;
+    for (let k = 1; k <= 3; k++) {
+      g.beginPath();
+      g.arc(cx, cy, rr * (k / 4), 0, TWO_PI);
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+  };
 }
 
 /* Shingle courses, or the ribs of a corrugated sheet — drawn inside the
@@ -3499,6 +3574,65 @@ function solidParts(kind, v, def, ti) {
       { k:"box", x:-15, y: 12, z:0, w:9, d:5, h:9, col:"#2a2530", plain:true },
       { k:"box", x: 15, y: 12, z:0, w:9, d:5, h:9, col:"#2a2530", plain:true },
     ];
+  } else if (kind === "log") {
+    const bark = T(v % 2 ? "#6b5240" : "#7a5f47");
+    parts = [
+      { k:"prism", axis:"x", sides:11, r:13, len:74, z:13,
+        col:bark, endCol:"#c9a877" },
+      /* a snapped branch, and the moss that says how long it has lain */
+      { k:"box", x:v % 2 ? 16 : -16, y:0, z:20, w:20, d:5, h:5,
+        col:shadeHex(bark, 0.86), plain:true },
+      { k:"box", x:-8, z:24, w:26, d:12, h:3, col:"#6f9a5a", plain:true },
+      { k:"box", x:19, z:24, w:14, d:9,  h:3, col:"#5f8a4e", plain:true },
+    ];
+    if (v) parts.push({ k:"box", x:2, z:23, w:22, d:10, h:2, col:"#a89078", plain:true });
+
+  } else if (kind === "ivpole") {
+    const bagA = "#7fcfc0", bagB = "#f2a1bb";
+    parts = [
+      { k:"prism", sides:6, r:11, h:2, col:"#5c6672", plain:true },
+      { k:"box", x:-9, z:0, w:5, d:5, h:4, col:"#3d4552", plain:true },
+      { k:"box", x: 9, z:0, w:5, d:5, h:4, col:"#3d4552", plain:true },
+      { k:"box", y: 9, z:0, w:5, d:5, h:4, col:"#3d4552", plain:true },
+      { k:"box", z:2, w:4, d:4, h:66, col:T("#8d9aa8"), plain:true },
+      { k:"box", z:30, w:9, d:9, h:5, col:"#5ab8a6" },
+      { k:"box", z:68, w:24, d:4, h:3, col:T("#aab6c2"), plain:true },
+      { k:"box", x:v ? -8 : 0, z:48, w:12, d:5, h:19, col:bagA },
+      { k:"box", x:v ? -8 : 0, z:67, w:2, d:2, h:2, col:"#8f9aa6", plain:true },
+    ];
+    if (v) {
+      parts.push({ k:"box", x:8, z:50, w:12, d:5, h:17, col:bagB });
+      parts.push({ k:"box", x:8, z:67, w:2, d:2, h:2, col:"#8f9aa6", plain:true });
+    }
+
+  } else if (kind === "washline") {
+    /* A LINE NEEDS TWO ENDS AND A LINE.
+
+       The first pass hung the washing off one fat post with nothing
+       between, so the sheets read as panels floating beside a beam. It
+       is a span now: a slim post at each end, the line itself sagging
+       between them as three short segments, and the sheets pegged along
+       it with the pegs where they ought to be. */
+    const wash = v ? ["#ffd9c2", "#cfe6f2", "#ffe9a8"] : ["#e8dff2", "#d6f0dc", "#ffd0d8"];
+    const post = T("#8c7a62"), SP2 = 27, TOP = 60;
+    parts = [
+      { k:"box", x:-SP2, w:5, d:5, h:TOP, col:post, mat:"wood" },
+      { k:"box", x: SP2, w:5, d:5, h:TOP, col:post, mat:"wood" },
+      { k:"box", x:-SP2, z:TOP, w:11, d:6, h:3, col:shadeHex(post, 0.86), plain:true },
+      { k:"box", x: SP2, z:TOP, w:11, d:6, h:3, col:shadeHex(post, 0.86), plain:true },
+      /* the line, sagging in the middle */
+      { k:"box", x:-14, z:TOP - 1, w:28, d:1.4, h:1.4, col:"#4a4038", plain:true },
+      { k:"box", x:  0, z:TOP - 3, w:14, d:1.4, h:1.4, col:"#4a4038", plain:true },
+      { k:"box", x: 14, z:TOP - 1, w:28, d:1.4, h:1.4, col:"#4a4038", plain:true },
+    ];
+    [[-16, 0], [0, 3], [16, 0]].forEach(([ox, sag], i) => {
+      const drop = 25 + (i % 2) * 6;
+      const top = TOP - 2 - sag;
+      parts.push({ k:"box", x:ox, z:top - drop, w:14 - (i % 2) * 3, d:3,
+                   h:drop, col:wash[i % 3] });
+      parts.push({ k:"box", x:ox - 4, z:top - 1, w:2, d:4, h:4, col:"#c08a5a", plain:true });
+      parts.push({ k:"box", x:ox + 4, z:top - 1, w:2, d:4, h:4, col:"#c08a5a", plain:true });
+    });
   }
 
   solidCache[key] = parts;
@@ -3581,13 +3715,24 @@ function renderGround(camX, camY, camA, focal) {
 
   for (let py = HORIZON; py < RH; py++) {
     const dy = py - HORIZON;
-    const z = (CAM_H * focal) / (dy < 1 ? 1 : dy);
-    let o = py * RW;
+    /* THE ROWS RIGHT UNDER THE HORIZON.
 
-    if (z > MAX_Z) {                        // too far to resolve — haze it
-      for (let px = 0; px < RW; px++) buf32[o++] = voidColor;
-      continue;
-    }
+       These used to be filled with a flat colour and skipped, because
+       past MAX_Z the texture step per pixel is enormous and sampling it
+       gives noise. But "skipped" meant four rows of one flat tone laid
+       immediately beneath the skyline — a hard-edged strip, the full
+       width of the picture, sitting exactly between the feet of the
+       distant buildings and the ground. That strip is a large part of
+       why the whole backdrop looked like it was hovering.
+
+       Clamping the depth instead costs nothing and removes the seam:
+       those rows sample the same distance as the first row that was
+       already being drawn, so they carry the real ground colour and
+       join it without a step. The haze laid over the horizon afterwards
+       is what says "far away" — that is its job, not this one. */
+    let z = (CAM_H * focal) / (dy < 1 ? 1 : dy);
+    if (z > MAX_Z) z = MAX_Z;
+    let o = py * RW;
 
     /* step straight into texel space — the divide by TSCALE happens once
        per row here rather than once per pixel in the inner loop */
@@ -3620,7 +3765,22 @@ function renderSky(def, camA) {
      heading. Far ridge barely moves, the midground band moves about
      twice as fast, and the ground under them moves fastest of all —
      which is what reads as distance rather than as a painted backdrop. */
+  /* THE BACKDROP STOPS AT THE HORIZON.
+
+     The band is 150 rows authored for a 225-tall buffer, so at this
+     size it is 180 tall and was being hung with its base four and a bit
+     pixels BELOW the horizon — which meant its own sky colour was
+     painted over the top of the ground, in a strip running the full
+     width of the picture directly under the feet of the buildings. Add
+     the haze wash that goes down from the horizon on top of that and
+     the two together made a pale bar the whole skyline appeared to be
+     standing on. Clipping to the horizon puts the feet of those
+     buildings exactly where the ground begins. */
   const PW = PANO_W * PANO_K, PH = PANO_H * PANO_K;
+  g.save();
+  g.beginPath();
+  g.rect(0, 0, RW, HORIZON);
+  g.clip();
   const draw = (cvs2, rate, y, alpha) => {
     if (!cvs2) return;
     const off = (((camA / TWO_PI) * PW * rate) % PW + PW) % PW;
@@ -3637,8 +3797,11 @@ function renderSky(def, camA) {
      it hung motionless while the world went past it. Anything close
      enough to need travel parallax is a real world-space billboard now,
      and gets it for free from the projection. */
-  draw(panoFar, 0.55, HORIZON - PH + 8 * PANO_K, 0.8);
+  /* and both layers hang from their own base row, so the far ridge and
+     the near band share one ground line rather than two */
+  draw(panoFar, 0.55, HORIZON - PH + 4 * PANO_K, 0.8);
   draw(panoCvs, 1.0,  HORIZON - PH + 4 * PANO_K, 1);
+  g.restore();
 
   /* Clouds drift on their own clock as well as with the camera — the
      one thing up there that is allowed to move by itself. */
@@ -3670,7 +3833,11 @@ function renderHaze(def) {
   const grad = g.createLinearGradient(0, HORIZON, 0, HORIZON + hz);
   grad.addColorStop(0, def.haze);
   grad.addColorStop(1, "rgba(255,255,255,0)");
-  g.globalAlpha = 0.6;
+  /* Six tenths of a pale colour over the far ground does not read as
+     distance, it reads as a bank of fog with the world balanced on it.
+     A third is enough to say "far away" and still leave the ground
+     looking like ground right up to the feet of the skyline. */
+  g.globalAlpha = 0.32;
   g.fillStyle = grad;
   g.fillRect(0, HORIZON, RW, hz);
   g.globalAlpha = 1;
@@ -4252,7 +4419,14 @@ class Racer {
         if (this.isPlayer) onPlayerFinished();
       }
     } else if (this.prevAlong < 0.18 && a > 0.82) {
-      this.lap = Math.max(0, this.lap - 1);
+      /* Clamped at -1, not at 0, because -1 is where a lap counter
+         starts here: the grid sits behind the line, so the first
+         forward crossing is what makes it lap 0. Stopping the
+         decrement at 0 meant going forward over the line, backing up
+         over it and going forward again left you a whole lap to the
+         good — which is precisely the farming this branch exists to
+         prevent. */
+      this.lap = Math.max(-1, this.lap - 1);
     }
     this.prevAlong = a;
     this.along = a;
@@ -5867,23 +6041,9 @@ function buildLens() {
   lensId = trackDef.id; lensW = RW;
   const g = lensCvs.getContext("2d");
 
-  /* THE AIR AT THE FAR END OF THE ROAD
-
-     This has to fade in from nothing at BOTH ends. The first version
-     started at full strength six pixels above the horizon, which put a
-     hard-edged bright stripe straight across the middle of the picture
-     — measured at a forty-level brightness step on one row, and plainly
-     visible as a band once you look for it. A haze with an edge on it
-     is not haze, it is a rectangle. */
-  const hz = hexToRgb(trackDef.haze);
-  const top = HORIZON - 34, span = 86;
-  const air = g.createLinearGradient(0, top, 0, top + span);
-  air.addColorStop(0.00, `rgba(${hz[0]},${hz[1]},${hz[2]},0)`);
-  air.addColorStop(0.40, `rgba(${hz[0]},${hz[1]},${hz[2]},.15)`);
-  air.addColorStop(0.52, `rgba(${hz[0]},${hz[1]},${hz[2]},.15)`);
-  air.addColorStop(1.00, `rgba(${hz[0]},${hz[1]},${hz[2]},0)`);
-  g.fillStyle = air;
-  g.fillRect(0, top, RW, span);
+  /* No air wash here. renderHaze already lays the distance haze along
+     the horizon, and a second one on top of it was half of why the
+     skyline looked like it was floating on a cloud. One haze. */
 
   /* and the corners, falling off the way a lens does */
   const vig = g.createRadialGradient(RW / 2, RH * 0.54, RH * 0.34,
