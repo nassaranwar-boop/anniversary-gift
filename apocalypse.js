@@ -197,14 +197,14 @@
     "##.B..h.#.##########...h.....h...###",
     "##......#l##########..=...=...=..###",
     "#########.##########d............###",
-    "#########x##########.###############",
-    "##.........x.zl...i...x.l.x....l..##",
+    "#########.##########.###############",
+    "##...........zl...i.....l.x....l..##",
     "##.............................z..##",
     "#########.##########################",
-    "##......#.###........###.....i...###",
-    "##.h..h.#l###..h.xh..###.o..o..o.###",
+    "##..x...#.###........###.....i...###",
+    "##.h..h.#l###..h.xh..###.o..ox.o.###",
     "##...x..#.......l...........l.B..###",
-    "##......#.###.B....B.###...z.....###",
+    "##...x..#.###.B....B.###...z.....###",
     "##.h....#i###..hx.h..###.o..o..o.###",
     "##......#.###......x.###....d....###",
     "##,z,,,,,,,,,,,,,,,,,,,,,,.....#####",
@@ -311,8 +311,13 @@
      dead hospital is cold and green and comes from the ceiling; a street
      at night is sodium overhead and nothing underneath. */
   var LIGHTING = {
-    house:    { sky: 0xffd2a0, bounce: 0x2a1c14, amb: 1.85,
-                fill: 0.34, fillCol: 0xffbe86, key: 0xffd9a8, keyAmt: 0.52 },
+    /* The power is out — that is the whole reason she has to get the
+       garage shutter open by hand. So the house is not lit by its own
+       bulbs: it is lit by what comes through the windows, by the
+       television nobody turned off, and by whatever lamp is still on its
+       own circuit. Everything else in here she has to find in the dark. */
+    house:    { sky: 0x9fb0cc, bounce: 0x161a24, amb: 1.02,
+                fill: 0.22, fillCol: 0x8899b4, key: 0xc8d8f4, keyAmt: 0.44 },
     street:   { sky: 0x5a74b4, bounce: 0x101422, amb: 1.05,
                 fill: 0.20, fillCol: 0x6a80c0, key: 0xbcd0ff, keyAmt: 0.68 },
     hospital: { sky: 0xd6f2e6, bounce: 0x18262a, amb: 1.35,
@@ -6091,7 +6096,7 @@
       G.add(g);
       world.lamps.push({ x: cx(x), y: 1.7, z: cz(y), colour: indoor ? 0xffd9a8 : 0xffca88,
                          power: 2.0, range: 9.5, kind: "floor", bulb: bulb, halo: halo,
-                         tx: x, ty: y });
+                         shade: shadeM, tx: x, ty: y });
       return g;
     }
 
@@ -7256,7 +7261,7 @@
       lamp.position.set(TILE * 0.3, 0.95, 0); g.add(lamp);
       G.add(g);
       world.lamps.push({ x: cx(x), y: 1.1, z: cz(y), colour: 0xffe0b0, power: 1.4, range: 6,
-                         kind: "desk", tx: x, ty: y });
+                         kind: "desk", bulb: lamp, tx: x, ty: y });
       world.things.push({ kind: "desk", x: x, y: y, group: g });
       return g;
     }
@@ -7632,6 +7637,25 @@
        disappears and the torch is drawing on black. */
     var bal = lightBalance(pal);
     world.balance = bal;
+
+    /* ---- the power is out ----
+       The garage shutter has to be cranked open by hand, which is only a
+       problem in a house with no electricity in it — and a house with no
+       electricity in it does not have three lamps burning. Everything on
+       the mains goes off here; the television keeps going because it is
+       the one thing the story says is still on, and the windows and her
+       torch do the rest. */
+    if (def.id === "home") {
+      for (var lo = 0; lo < world.lamps.length; lo++) {
+        var lp = world.lamps[lo];
+        if (lp.kind === "tv") continue;
+        lp.dead = true;
+        lp.power = 0;
+        if (lp.bulb && lp.bulb.material) lp.bulb.material.color.setHex(0x3a3630);
+        if (lp.halo) lp.halo.visible = false;
+        if (lp.shade && lp.shade.material) lp.shade.material.emissiveIntensity = 0.0;
+      }
+    }
     /* Every place was lit by the same sky in a slightly different colour,
        which is why the house and the hospital felt like the same building.
        A place is lit by whatever is actually lighting it: her house by its
@@ -10296,8 +10320,15 @@
     Stage.attach(c.scene, c.camera);
     try { Stage.renderer.compile(c.scene, c.camera); } catch (e) {}
     Stage.grade(c.grade || {});
-    Stage.grade({ fade: 1 });
-    G.fade = 1; G.fadeTo = 1;
+    /* ---- come up from black ----
+       Compiling the programs a new scene needs is only half of what a cut
+       costs: the other half is every texture in it reaching the card on
+       the first frame that draws it, and that frame lands after this
+       function returns. Starting black and coming up over a third of a
+       second puts that frame behind a fade instead of in the middle of a
+       moving shot, and it is a better cut anyway. */
+    Stage.grade({ fade: 0 });
+    G.fade = 0; G.fadeTo = 1;
     /* `lines` is [seconds, speaker, text] — a scene can talk over itself
        instead of holding one caption for its whole length */
     c.__line = -1;
@@ -11608,10 +11639,27 @@
     var windows = new THREE.InstancedMesh(winGeo, winMat, 420);
     var winPhase = [];
     var wi = 0;
+    /* ---- where the city is allowed to stand ----
+       There was no exclusion zone at all, so a tower block could be — and
+       was — put down two metres in front of the camera, filling the frame
+       with a flat black wall and hiding the entire view this scene exists
+       to show. Nothing goes near the roof, nothing stands in the corridor
+       she is looking down, and the ones nearest the roof are the low ones
+       so you see over them into the rest of it. */
     for (var i = 0; i < 96; i++) {
-      var ang = rnd(0, 6.2832), rad = rnd(24, 190);
-      var bx = Math.cos(ang) * rad, bz = Math.sin(ang) * rad - 40;
-      var bh = rnd(8, 52) * (1 - rad / 320);
+      var ang, rad, bx, bz, tries = 0;
+      do {
+        ang = rnd(0, 6.2832);
+        rad = 52 + Math.pow(Math.random(), 0.7) * 165;
+        bx = Math.cos(ang) * rad;
+        bz = Math.sin(ang) * rad - 52;
+        tries++;
+      } while (tries < 24 &&
+               (bz > -40 ||                                  /* level with the roof or behind it */
+                (bz > -95 && Math.abs(bx) < 34)));           /* straight down the sightline */
+      if (bz > -40) { bz = -40 - Math.random() * 30; }
+      var near = clamp((-bz - 40) / 130, 0, 1);
+      var bh = (7 + Math.random() * 50) * (0.34 + near * 0.9);
       var bw = rnd(7, 20);
       d.position.set(bx, bh / 2 - 22, bz);
       d.scale.set(bw, bh, bw * rnd(0.7, 1.3));
@@ -11668,12 +11716,17 @@
     });
 
     /* the two of them, sitting on the parapet with their backs to us */
+    /* They were sitting at z = 10.9 on a parapet that runs from 10.4 to
+       11.6, so both of them were half inside it, on the near wall with
+       the whole roof between them and the view. They sit on the far
+       parapet now, on the edge, with the city in front of them and their
+       legs over the drop — which is what the line says they are doing. */
     var her = makeOuissy();
-    her.root.position.set(0.62, 0.12, 10.9);
+    her.root.position.set(0.60, 0.12, -10.5);
     her.root.rotation.y = Math.PI / 2;      /* backs to us, looking out over it */
     scene.add(her.root);
     var him = makeAnwar();
-    him.root.position.set(-0.62, 0.10, 10.9);
+    him.root.position.set(-0.62, 0.10, -10.5);
     him.root.rotation.y = Math.PI / 2;
     scene.add(him.root);
     /* they are sitting on the parapet with their legs over the far side,
@@ -11730,7 +11783,7 @@
         if (together) {
           lean = clamp(lean + dt / 2.2, 0, 1);
           var e = lean * lean * (3 - 2 * lean);
-          her.root.position.x = lerp(0.62, 0.18, e);
+          her.root.position.x = lerp(0.60, 0.16, e);
           her.spine.rotation.x = lerp(0, 0.34, e);
           her.neck.rotation.x = lerp(0, 0.22, e);
           him.armL.upper.rotation.z = lerp(-0.1, -1.15, e);
@@ -11741,8 +11794,10 @@
         /* the camera pulls back and up over the whole scene */
         var k = clamp(t / 52, 0, 1);
         var e2 = k * k * (3 - 2 * k);
-        cam.position.set(lerp(1.5, -0.9, e2), lerp(2.15, 4.8, e2), lerp(15.4, 24.0, e2));
-        cam.lookAt(lerp(0.1, 0, e2), lerp(2.05, 4.8, e2), lerp(2.0, -30, e2));
+        /* in behind their shoulders, then back and up until the whole
+           roof and the city beyond it are in one frame */
+        cam.position.set(lerp(1.35, -1.1, e2), lerp(2.05, 5.6, e2), lerp(-5.6, 9.5, e2));
+        cam.lookAt(lerp(0.0, 0, e2), lerp(1.55, 2.4, e2), lerp(-24, -46, e2));
       },
       done: null
     });
@@ -12212,6 +12267,25 @@
       Stage.setQuality(want, scene, cam);      /* resizes on its own */
     } else {
       Stage.resize(true);
+    }
+    /* ---- the torch's own shadow pass ----
+       Her torch casts, which means the whole scene is drawn a second time
+       every frame from where she is standing. On a machine that is
+       already dropping rungs that is the most expensive thing left, and
+       the one nobody misses in the dark: below the halfway point of the
+       ladder the beam still lights the room, it just stops carving
+       silhouettes out of it. Cheap to turn on again when the frames come
+       back. */
+    var wantShadow = rung < 3;
+    if (G && G.player && G.player.torch) {
+      var sp = G.player.torch.userData.spot;
+      if (sp && sp.castShadow !== wantShadow) {
+        sp.castShadow = wantShadow;
+        if (!wantShadow && sp.shadow && sp.shadow.map) {
+          try { sp.shadow.map.dispose(); } catch (e) {}
+          sp.shadow.map = null;
+        }
+      }
     }
     perfHold = hold;
     perfBuf.length = 0;
