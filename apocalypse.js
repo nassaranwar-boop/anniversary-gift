@@ -1910,58 +1910,214 @@
     return { mesh: mesh, u: u };
   }
 
-  function makeStars(count, radius) {
+  function makeStars(count, radius, opts) {
+    opts = opts || {};
+    /* ---- a real night sky ----
+       Seven hundred identical blue-white dots scattered evenly is a
+       screensaver. A sky has structure: most of its stars lie in a band,
+       they are not all the same colour, and the brightness distribution
+       is steep — a handful carry the sky and the rest are dust. */
     var g = new THREE.BufferGeometry();
     var pos = new Float32Array(count * 3), siz = new Float32Array(count),
-        pha = new Float32Array(count), bri = new Float32Array(count);
+        pha = new Float32Array(count), bri = new Float32Array(count),
+        col = new Float32Array(count * 3);
+    /* the plane of the band, tilted so it runs corner to corner */
+    var bt = opts.bandTilt == null ? 0.62 : opts.bandTilt;
+    var bn = [Math.sin(bt), Math.cos(bt), 0.25];
+    var bl = Math.hypot(bn[0], bn[1], bn[2]);
+    bn = [bn[0] / bl, bn[1] / bl, bn[2] / bl];
+    var bandFrac = opts.band == null ? 0.52 : opts.band;
+    /* star colours, from hot blue-white through white to old amber */
+    var TINT = [[0.72, 0.80, 1.00], [0.84, 0.89, 1.00], [1.00, 1.00, 1.00],
+                [1.00, 0.96, 0.88], [1.00, 0.88, 0.72], [1.00, 0.76, 0.60]];
     for (var i = 0; i < count; i++) {
-      var th = Math.random() * 6.2832;
-      var ph = Math.acos(clamp(Math.random() * 0.92 + 0.06, -1, 1));  /* upper hemisphere */
+      var x, y, z;
+      if (i < count * bandFrac) {
+        /* near the band: pick a direction, then pull it onto the plane */
+        var th = Math.random() * 6.2832, ph = Math.acos(Math.random() * 2 - 1);
+        x = Math.sin(ph) * Math.cos(th); y = Math.cos(ph); z = Math.sin(ph) * Math.sin(th);
+        var d = x * bn[0] + y * bn[1] + z * bn[2];
+        /* a squared pull, so the band has a dense core and soft edges */
+        var pull = 1 - Math.pow(Math.random(), 2) * 0.30;
+        x -= bn[0] * d * pull; y -= bn[1] * d * pull; z -= bn[2] * d * pull;
+        var l = Math.hypot(x, y, z) || 1;
+        x /= l; y /= l; z /= l;
+      } else {
+        var th2 = Math.random() * 6.2832, ph2 = Math.acos(Math.random() * 2 - 1);
+        x = Math.sin(ph2) * Math.cos(th2); y = Math.cos(ph2); z = Math.sin(ph2) * Math.sin(th2);
+      }
+      if (y < 0.02) y = 0.02 + Math.random() * 0.06;   /* keep them up */
       var r = radius;
-      pos[i * 3]     = r * Math.sin(ph) * Math.cos(th);
-      pos[i * 3 + 1] = r * Math.cos(ph);
-      pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
-      siz[i] = rnd(0.8, 3.2);
+      pos[i * 3] = r * x; pos[i * 3 + 1] = r * y; pos[i * 3 + 2] = r * z;
+      /* a steep magnitude curve: a fifth power puts nearly everything
+         faint and leaves a few that actually carry the sky */
+      var m = Math.pow(Math.random(), 5);
+      bri[i] = 0.16 + m * 1.10;
+      siz[i] = 0.9 + m * 6.4;
       pha[i] = Math.random() * 6.2832;
-      bri[i] = rnd(0.3, 1.0);
+      var tc = TINT[Math.floor(Math.random() * TINT.length)];
+      col[i * 3] = tc[0]; col[i * 3 + 1] = tc[1]; col[i * 3 + 2] = tc[2];
     }
     g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     g.setAttribute("aSize", new THREE.BufferAttribute(siz, 1));
     g.setAttribute("aPhase", new THREE.BufferAttribute(pha, 1));
     g.setAttribute("aBright", new THREE.BufferAttribute(bri, 1));
+    g.setAttribute("aTint", new THREE.BufferAttribute(col, 3));
     var u = { time: { value: 0 }, amt: { value: 1.0 }, pxScale: { value: 1.0 } };
-    var m = new THREE.ShaderMaterial({
+    var m2 = new THREE.ShaderMaterial({
       uniforms: u, transparent: true, depthWrite: false, fog: false,
       blending: THREE.AdditiveBlending,
       vertexShader: [
         "attribute float aSize; attribute float aPhase; attribute float aBright;",
+        "attribute vec3 aTint;",
+        "uniform float time; uniform float pxScale;",
+        "varying float vB; varying vec3 vT;",
+        "void main(){",
+        "  vec4 mv = modelViewMatrix * vec4(position,1.0);",
+        /* the faint ones scintillate, the bright ones barely move: that
+           is how the sky actually behaves and it stops the whole field
+           pulsing together */
+        "  float amp = mix(0.42, 0.10, clamp(aBright, 0.0, 1.0));",
+        "  float tw = (1.0-amp) + amp*sin(time*(0.7+aPhase*0.21) + aPhase*7.0);",
+        "  vB = aBright * tw; vT = aTint;",
+        "  gl_PointSize = aSize * pxScale;",
+        "  gl_Position = projectionMatrix * mv;",
+        "}"
+      ].join("\n"),
+      fragmentShader: [
+        "uniform float amt; varying float vB; varying vec3 vT;",
+        "void main(){",
+        "  vec2 d = gl_PointCoord - 0.5;",
+        "  float r = length(d);",
+        /* a hard core with a soft halo round it, rather than one blurred
+           blob: the halo is what makes a bright star read as bright */
+        "  float core = smoothstep(0.34, 0.02, r);",
+        "  float halo = smoothstep(0.50, 0.10, r) * 0.34;",
+        "  float a = core + halo*vB;",
+        "  gl_FragColor = vec4(vT * (0.55 + vB*0.9), a * vB * amt);",
+        "}"
+      ].join("\n")
+    });
+    var p = new THREE.Points(g, m2);
+    p.frustumCulled = false;
+    p.renderOrder = -900;
+
+    /* ---- and the light of the ones too faint to draw ----
+       A band of stars with nothing between them still reads as dots. The
+       glow underneath is what makes it the Milky Way. */
+    var glow = null;
+    if (opts.glow !== false) {
+      var gm = new THREE.Mesh(
+        new THREE.SphereGeometry(radius * 0.98, 40, 26),
+        new THREE.ShaderMaterial({
+          side: THREE.BackSide, transparent: true, depthWrite: false, fog: false,
+          blending: THREE.AdditiveBlending,
+          uniforms: { amt: u.amt, bn: { value: new THREE.Vector3(bn[0], bn[1], bn[2]) } },
+          vertexShader: "varying vec3 vD; void main(){ vD = normalize(position);" +
+            " gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+          fragmentShader: [
+            "uniform float amt; uniform vec3 bn; varying vec3 vD;",
+            "float h(vec3 p){ return fract(sin(dot(p, vec3(12.99,78.23,37.71)))*43758.5453); }",
+            "float n3(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);",
+            "  float a=mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),",
+            "              mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z);",
+            "  return a; }",
+            "void main(){",
+            "  float d = abs(dot(vD, bn));",
+            "  float band = pow(1.0 - clamp(d/0.30, 0.0, 1.0), 2.2);",
+            /* clouds and dust lanes along it */
+            "  float cl = n3(vD*7.0)*0.6 + n3(vD*17.0)*0.3 + n3(vD*38.0)*0.14;",
+            "  band *= 0.35 + cl*0.95;",
+            "  band *= smoothstep(-0.02, 0.22, vD.y);",
+            "  vec3 c = mix(vec3(0.42,0.48,0.72), vec3(0.78,0.74,0.68), cl);",
+            "  gl_FragColor = vec4(c, band*0.15*amt);",
+            "}"
+          ].join("\n")
+        }));
+      gm.frustumCulled = false;
+      gm.renderOrder = -905;
+      glow = gm;
+    }
+    return { points: p, u: u, glow: glow };
+  }
+
+  /* ---- fireflies ----
+     The cheapest thing in the world that makes a dark clearing feel like
+     somewhere you could sit down: a few dozen warm motes drifting at
+     knee height, each on its own slow loop, each fading in and out on
+     its own clock so the field never blinks together. */
+  function fireflies(count, spread, height) {
+    var g = new THREE.BufferGeometry();
+    var n = count, pos = new Float32Array(n * 3), pha = new Float32Array(n),
+        spd = new Float32Array(n), rad = new Float32Array(n), siz = new Float32Array(n);
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * 6.2832, r = Math.sqrt(Math.random()) * spread;
+      pos[i * 3] = Math.cos(a) * r;
+      pos[i * 3 + 1] = 0.25 + Math.random() * height;
+      pos[i * 3 + 2] = Math.sin(a) * r;
+      pha[i] = Math.random() * 6.2832;
+      spd[i] = 0.30 + Math.random() * 0.55;
+      rad[i] = 0.20 + Math.random() * 0.85;
+      siz[i] = 5.0 + Math.random() * 9.0;
+    }
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    g.setAttribute("aPhase", new THREE.BufferAttribute(pha, 1));
+    g.setAttribute("aSpeed", new THREE.BufferAttribute(spd, 1));
+    g.setAttribute("aRadius", new THREE.BufferAttribute(rad, 1));
+    g.setAttribute("aSize", new THREE.BufferAttribute(siz, 1));
+    var u = { time: { value: 0 }, amt: { value: 1 }, pxScale: { value: 1 } };
+    var m = new THREE.ShaderMaterial({
+      uniforms: u, transparent: true, depthWrite: false, fog: false,
+      blending: THREE.AdditiveBlending,
+      vertexShader: [
+        "attribute float aPhase; attribute float aSpeed; attribute float aRadius;",
+        "attribute float aSize;",
         "uniform float time; uniform float pxScale;",
         "varying float vB;",
         "void main(){",
-        "  vec4 mv = modelViewMatrix * vec4(position,1.0);",
-        "  float tw = 0.62 + 0.38*sin(time*(0.7+aPhase*0.21) + aPhase*7.0);",
-        "  vB = aBright * tw;",
-        "  gl_PointSize = aSize * pxScale;",
+        "  float t = time*aSpeed + aPhase;",
+        "  vec3 p = position;",
+        "  p.x += sin(t)*aRadius + sin(t*0.41+1.7)*aRadius*0.5;",
+        "  p.z += cos(t*0.83)*aRadius + sin(t*0.29+3.1)*aRadius*0.6;",
+        "  p.y += sin(t*0.61+aPhase)*0.22;",
+        /* they do not glow steadily: each one comes up, holds, and goes */
+        "  float pulse = sin(t*1.35 + aPhase*3.0);",
+        "  vB = smoothstep(-0.15, 0.75, pulse);",
+        "  vec4 mv = modelViewMatrix * vec4(p,1.0);",
+        "  gl_PointSize = aSize * pxScale / max(1.0, -mv.z*0.10);",
         "  gl_Position = projectionMatrix * mv;",
         "}"
       ].join("\n"),
       fragmentShader: [
         "uniform float amt; varying float vB;",
         "void main(){",
-        "  vec2 d = gl_PointCoord - 0.5;",
-        "  float a = smoothstep(0.5, 0.06, length(d));",
-        "  gl_FragColor = vec4(vec3(0.86,0.90,1.0) * vB, a * vB * amt);",
+        "  float r = length(gl_PointCoord - 0.5);",
+        "  float core = smoothstep(0.30, 0.02, r);",
+        "  float halo = smoothstep(0.50, 0.08, r)*0.42;",
+        "  gl_FragColor = vec4(vec3(1.0,0.86,0.45), (core+halo)*vB*amt);",
         "}"
       ].join("\n")
     });
-    var p = new THREE.Points(g, m);
-    p.frustumCulled = false;
-    p.renderOrder = -900;
-    return { points: p, u: u };
+    var pts = new THREE.Points(g, m);
+    pts.frustumCulled = false;
+    pts.renderOrder = 18;
+    return { points: pts, u: u };
   }
 
   function makeMoon(size) {
     var g = new THREE.Group();
+    /* the halo: a moon with a hard edge and nothing round it is a hole
+       cut in the sky. Two soft discs behind it, facing the camera, are
+       the air between here and there. */
+    [[9.0, 0.13], [4.2, 0.18], [2.1, 0.30]].forEach(function (h) {
+      /* sprites, so they face the camera wherever the moon is hung */
+      var d = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: glowTexture(), color: 0xbcd4f4, fog: false, transparent: true,
+        opacity: h[1], blending: THREE.AdditiveBlending, depthWrite: false }));
+      d.scale.set(size * h[0], size * h[0], 1);
+      d.renderOrder = -880;
+      g.add(d);
+    });
     var body = new THREE.Mesh(
       new THREE.SphereGeometry(size, 28, 20),
       new THREE.MeshBasicMaterial({ color: 0xf3f0e4, fog: false })
@@ -2708,11 +2864,11 @@
     ["neck",   "chest",  0,      0.250,  0],
     ["head",   "neck",   0,      0.100,  0],
     ["clavL",  "chest",  0,      0.150,  0.055],
-    ["armL",   "clavL",  0,      0,      0.125],
+    ["armL",   "clavL",  0,      0,      0.142],
     ["foreL",  "armL",   0,     -0.290,  0],
     ["handL",  "foreL",  0,     -0.270,  0],
     ["clavR",  "chest",  0,      0.150, -0.055],
-    ["armR",   "clavR",  0,      0,     -0.125],
+    ["armR",   "clavR",  0,      0,     -0.142],
     ["foreR",  "armR",   0,     -0.290,  0],
     ["handR",  "foreR",  0,     -0.270,  0],
     ["hipL",   "hips",   0,     -0.020,  0.095],
@@ -2730,7 +2886,7 @@
     return m;
   })();
 
-  function makeSkeleton(S, legLen, armLen) {
+  function makeSkeleton(S, legLen, armLen, shoulderW) {
     var list = [], byName = {};
     for (var i = 0; i < BONES.length; i++) {
       var d = BONES[i];
@@ -2740,6 +2896,11 @@
       /* long-limbed or short-limbed people are a bone length, not a scale */
       if (d[0] === "shinL" || d[0] === "shinR" || d[0] === "footL" || d[0] === "footR") y *= legLen;
       if (d[0] === "foreL" || d[0] === "foreR" || d[0] === "handL" || d[0] === "handR") y *= armLen;
+      /* the arm roots follow the shoulders. They used to sit at a fixed
+         width while the mesh around them scaled with the build, so a
+         broad character's arm rotated about a point inside their chest */
+      if (d[0] === "clavL" || d[0] === "clavR" || d[0] === "armL" || d[0] === "armR")
+        z *= (shoulderW == null ? 1 : shoulderW);
       b.position.set(d[2] * S, y * S, z * S);
       list.push(b); byName[d[0]] = b;
       if (d[1]) byName[d[1]].add(b);
@@ -3151,17 +3312,22 @@
       { c: [0, 0.950 * S, 0], ru: 0.100 * S * depth * B.waist, rv: 0.134 * S * B.waist, w: W("hips", 0.55, "spine", 0.45) },
       { c: [0, 1.010 * S, 0], ru: 0.094 * S * depth * B.waist, rv: 0.126 * S * B.waist, w: W("spine", 1) },
       { c: [0, 1.090 * S, 0], ru: 0.102 * S * depth * B.chest, rv: 0.144 * S * B.chest, w: W("spine", 0.55, "chest", 0.45) },
-      { c: [0, 1.180 * S, 0], ru: 0.110 * S * depth * B.chest, rv: 0.164 * S * B.chest, w: W("chest", 1) },
-      { c: [0, 1.270 * S, 0], ru: 0.108 * S * depth * B.chest, rv: 0.172 * S * B.shoulder, w: W("chest", 1) },
-      { c: [0, 1.330 * S, 0], ru: 0.098 * S * depth * B.chest, rv: 0.174 * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.180 * S, 0], ru: 0.110 * S * depth * B.chest, rv: 0.172 * S * B.chest, w: W("chest", 1) },
+      /* ---- the shoulders ----
+         These were narrower than the hips and fell away from the neck at
+         once, which is the silhouette of somebody hunched over a desk.
+         The line across the top of a pair of shoulders is nearly flat and
+         it is the widest thing on a body above the hips. */
+      { c: [0, 1.270 * S, 0], ru: 0.110 * S * depth * B.chest, rv: 0.196 * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.330 * S, 0], ru: 0.104 * S * depth * B.chest, rv: 0.202 * S * B.shoulder, w: W("chest", 1) },
       /* ---- the trapezius ----
          The shoulders used to fall from their full width to a neck in
          three centimetres, which is a shelf with a post standing on it.
          The slope from the base of the neck out to the point of the
          shoulder is one of the few lines on a body you can read from
          across a street, so it is given its own rings and takes its time. */
-      { c: [0, 1.352 * S, 0], ru: 0.092 * S * depth * B.chest, rv: 0.161 * S * B.shoulder, w: W("chest", 1) },
-      { c: [0, 1.374 * S, 0], ru: 0.083 * S * depth * B.chest, rv: 0.140 * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.352 * S, 0], ru: 0.098 * S * depth * B.chest, rv: 0.188 * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.374 * S, 0], ru: 0.088 * S * depth * B.chest, rv: 0.152 * S * B.shoulder, w: W("chest", 1) },
       { c: [0, 1.394 * S, 0], ru: 0.073 * S * depth * B.chest, rv: 0.114 * S * B.shoulder, w: W("chest", 0.75, "neck", 0.25) },
       { c: [0, 1.412 * S, 0], ru: 0.063 * S, rv: 0.088 * S, w: W("chest", 0.45, "neck", 0.55) },
       { c: [0, 1.430 * S, 0], ru: 0.055 * S, rv: 0.068 * S, w: W("chest", 0.18, "neck", 0.82) },
@@ -3175,12 +3341,16 @@
     /* arms, with a hand on the end of each rather than a ball */
     var J = jointHeights(B);
     [["L", 1], ["R", -1]].forEach(function (sd) {
-      var s = sd[0], sign = sd[1], z = sign * 0.180 * S * B.shoulder;
+      var s = sd[0], sign = sd[1], z = sign * 0.197 * S * B.shoulder;
       var sh = J.shoulder, el = J.elbow, wr = J.wrist;
       var arm = [
-        { c: [0, sh * S,            z], ru: 0.055 * S * B.arm, rv: 0.056 * S * B.arm, w: W("arm" + s, 1) },
-        { c: [0, (sh - 0.038) * S,  z], ru: 0.065 * S * B.arm, rv: 0.066 * S * B.arm, w: W("arm" + s, 1) },
-        { c: [0, (sh - 0.095) * S,  z], ru: 0.055 * S * B.arm, rv: 0.057 * S * B.arm, w: W("arm" + s, 1) },
+        /* the deltoid: a cap over the joint, thickest just below it */
+        /* the top of the deltoid draws in, or it comes out through the
+           shoulder of the shirt as a bare notch */
+        { c: [0, (sh + 0.026) * S, z * 0.86], ru: 0.042 * S * B.arm, rv: 0.042 * S * B.arm, w: W("arm" + s, 1) },
+        { c: [0, sh * S,            z], ru: 0.064 * S * B.arm, rv: 0.065 * S * B.arm, w: W("arm" + s, 1) },
+        { c: [0, (sh - 0.038) * S,  z], ru: 0.072 * S * B.arm, rv: 0.073 * S * B.arm, w: W("arm" + s, 1) },
+        { c: [0, (sh - 0.095) * S,  z], ru: 0.058 * S * B.arm, rv: 0.060 * S * B.arm, w: W("arm" + s, 1) },
         { c: [0, (el + 0.115) * S,  z], ru: 0.048 * S * B.arm, rv: 0.050 * S * B.arm, w: W("arm" + s, 1) },
         { c: [0, (el + 0.040) * S,  z], ru: 0.044 * S * B.arm, rv: 0.046 * S * B.arm, w: W("arm" + s, 0.70, "fore" + s, 0.30) },
         { c: [0, el * S,            z], ru: 0.043 * S * B.arm, rv: 0.045 * S * B.arm, w: W("arm" + s, 0.35, "fore" + s, 0.65) },
@@ -3470,13 +3640,13 @@
       { c: [0, (hem + 0.035) * S, 0], ru: (0.112 + loose) * S * depth * B.hip, rv: (0.152 + loose) * S * B.hip, w: W("hips", 0.5, "spine", 0.5) },
       { c: [0, 0.995 * S, 0], ru: (0.100 + loose) * S * depth * B.waist, rv: (0.136 + loose) * S * B.waist, w: W("spine", 1) },
       { c: [0, 1.090 * S, 0], ru: (0.106 + loose) * S * depth * B.chest, rv: (0.150 + loose) * S * B.chest, w: W("spine", 0.5, "chest", 0.5) },
-      { c: [0, 1.180 * S, 0], ru: (0.114 + loose) * S * depth * B.chest, rv: (0.170 + loose) * S * B.chest, w: W("chest", 1) },
-      { c: [0, 1.275 * S, 0], ru: (0.112 + loose) * S * depth * B.chest, rv: (0.178 + loose) * S * B.shoulder, w: W("chest", 1) },
-      { c: [0, 1.330 * S, 0], ru: (0.104 + loose) * S * depth * B.chest, rv: (0.178 + loose) * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.180 * S, 0], ru: (0.114 + loose) * S * depth * B.chest, rv: (0.178 + loose) * S * B.chest, w: W("chest", 1) },
+      { c: [0, 1.275 * S, 0], ru: (0.114 + loose) * S * depth * B.chest, rv: (0.202 + loose) * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.330 * S, 0], ru: (0.110 + loose) * S * depth * B.chest, rv: (0.208 + loose) * S * B.shoulder, w: W("chest", 1) },
       /* the shirt follows the trapezius rather than sitting on it like a
          shelf, and gathers into a collar rather than stopping at one */
-      { c: [0, 1.356 * S, 0], ru: (0.098 + loose) * S * depth * B.chest, rv: (0.166 + loose) * S * B.shoulder, w: W("chest", 1) },
-      { c: [0, 1.380 * S, 0], ru: (0.090 + loose) * S * depth * B.chest, rv: (0.144 + loose) * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.356 * S, 0], ru: (0.104 + loose) * S * depth * B.chest, rv: (0.194 + loose) * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.380 * S, 0], ru: (0.094 + loose) * S * depth * B.chest, rv: (0.156 + loose) * S * B.shoulder, w: W("chest", 1) },
       { c: [0, 1.402 * S, 0], ru: (0.080 + loose * 0.6) * S * depth * B.chest, rv: (0.116 + loose * 0.6) * S * B.shoulder, w: W("chest", 0.7, "neck", 0.3) },
       { c: [0, 1.422 * S, 0], ru: 0.068 * S, rv: 0.090 * S, w: W("chest", 0.4, "neck", 0.6) },
       { c: [0, 1.442 * S, 0], ru: 0.058 * S, rv: 0.066 * S, w: W("neck", 1) },
@@ -3498,15 +3668,18 @@
        reason a t-shirt reads as cloth. */
     var short = kind === "tee" || kind === "shirtShort";
     [["L", 1], ["R", -1]].forEach(function (sd) {
-      var s = sd[0], sign = sd[1], z = sign * 0.180 * S * B.shoulder;
+      var s = sd[0], sign = sd[1], z = sign * 0.197 * S * B.shoulder;
       var sleeve = [
-        { c: [0, 1.362 * S, z * 0.60], ru: 0.046 * S * B.arm, rv: 0.048 * S * B.arm, w: W("arm" + s, 1) },
-        { c: [0, 1.326 * S, z * 0.92], ru: 0.084 * S * B.arm, rv: 0.086 * S * B.arm, w: W("arm" + s, 1) },
-        { c: [0, 1.275 * S, z], ru: 0.079 * S * B.arm, rv: 0.081 * S * B.arm, w: W("arm" + s, 1) }
+        /* tucked well inside the shoulder, or the shell and the sleeve
+           leave a slot at the top of the arm you can see through */
+        { c: [0, 1.392 * S, z * 0.34], ru: 0.052 * S * B.arm, rv: 0.054 * S * B.arm, w: W("arm" + s, 1) },
+        { c: [0, 1.366 * S, z * 0.66], ru: 0.090 * S * B.arm, rv: 0.092 * S * B.arm, w: W("arm" + s, 1) },
+        { c: [0, 1.330 * S, z * 0.94], ru: 0.092 * S * B.arm, rv: 0.094 * S * B.arm, w: W("arm" + s, 1) },
+        { c: [0, 1.275 * S, z], ru: 0.086 * S * B.arm, rv: 0.088 * S * B.arm, w: W("arm" + s, 1) }
       ];
       if (short) {
-        sleeve.push({ c: [0, 1.190 * S, z], ru: 0.073 * S * B.arm, rv: 0.075 * S * B.arm, w: W("arm" + s, 1) });
-        sleeve.push({ c: [0, 1.168 * S, z], ru: 0.075 * S * B.arm, rv: 0.077 * S * B.arm, w: W("arm" + s, 1) });
+        sleeve.push({ c: [0, 1.190 * S, z], ru: 0.078 * S * B.arm, rv: 0.080 * S * B.arm, w: W("arm" + s, 1) });
+        sleeve.push({ c: [0, 1.168 * S, z], ru: 0.080 * S * B.arm, rv: 0.082 * S * B.arm, w: W("arm" + s, 1) });
       } else {
         sleeve.push({ c: [0, 1.160 * S, z], ru: 0.066 * S * B.arm, rv: 0.068 * S * B.arm, w: W("arm" + s, 1) });
         sleeve.push({ c: [0, 1.075 * S, z], ru: 0.058 * S * B.arm, rv: 0.060 * S * B.arm, w: W("arm" + s, 0.55, "fore" + s, 0.45) });
@@ -3548,8 +3721,8 @@
       { c: [0, 0.755 * S, 0], ru: (0.100 + loose) * S * depth * B.hip, rv: (0.166 + loose) * S * B.hip, w: W("hips", 0.5, "thighL", 0.25, "thighR", 0.25) },
       /* down past the crotch: stopping at the hip left a patch of her
          showing between the two trouser legs */
-      { c: [0, 0.720 * S, 0], ru: (0.092 + loose) * S * depth * B.hip, rv: (0.158 + loose) * S * B.hip, w: W("hips", 0.4, "thighL", 0.3, "thighR", 0.3) },
-      { c: [0, 0.690 * S, 0], ru: (0.082 + loose) * S * depth * B.hip, rv: (0.150 + loose) * S * B.hip, w: W("hips", 0.3, "thighL", 0.35, "thighR", 0.35) }
+      { c: [0, 0.720 * S, 0], ru: (0.114 + loose) * S * depth * B.hip, rv: (0.158 + loose) * S * B.hip, w: W("hips", 0.4, "thighL", 0.3, "thighR", 0.3) },
+      { c: [0, 0.688 * S, 0], ru: (0.110 + loose) * S * depth * B.hip, rv: (0.148 + loose) * S * B.hip, w: W("hips", 0.3, "thighL", 0.35, "thighR", 0.35) }
     ];
     parts.push(skinnedTube(seat, lod ? 14 : 24, true, true, { folds: 0.016, foldN: 9 }));
 
@@ -4127,7 +4300,7 @@
     }
     var depth = spec.depth || 0.74;
 
-    var sk = makeSkeleton(S, B.legLen, B.armLen);
+    var sk = makeSkeleton(S, B.legLen, B.armLen, B.shoulder);
     var bn = sk.byName;
 
     var root = new THREE.Group();
@@ -4411,6 +4584,26 @@
        degrees so the palm faces the thigh rather than straight back. */
     b.handL.rotation.set(0, -0.16 - stand * 0.06, -flexL * 0.30 - 0.05 + Math.sin(w + 1.1) * 0.03 * g);
     b.handR.rotation.set(0,  0.16 + stand * 0.06, -flexR * 0.30 - 0.05 + Math.sin(w + 2.3) * 0.03 * g);
+
+    /* ---- carrying the torch ----
+       The right arm comes up and forward and stops swinging with the
+       walk: you cannot hold a beam steady with an arm that is counting
+       out your steps. e.aim turns the whole shoulder girdle so she can
+       point it away from the way she is walking. */
+    var carry = clamp(e.torch || 0, 0, 1);
+    if (carry > 0) {
+      var bob = Math.sin(w) * 0.045 * g + Math.sin(w * 2 + 0.7) * 0.018 * g;
+      b.armR.rotation.x = lerp(b.armR.rotation.x, -0.30, carry);
+      b.armR.rotation.z = lerp(b.armR.rotation.z, 0.40 + bob, carry);
+      b.foreR.rotation.z = lerp(b.foreR.rotation.z, 1.22 - bob * 0.5, carry);
+      b.handR.rotation.set(lerp(b.handR.rotation.x, 0, carry),
+                           lerp(b.handR.rotation.y, 0.10, carry),
+                           lerp(b.handR.rotation.z, -0.34, carry));
+      b.clavR.rotation.y = (e.aim || 0) * carry;
+      b.clavR.rotation.z = lerp(b.clavR.rotation.z, 0.10, carry);
+    } else {
+      b.clavR.rotation.y = 0;
+    }
     /* the arm hangs a little away from the body, or it clips the ribs, and
        the whole girdle rolls with the swing rather than sitting in the
        chest like a coat hook */
@@ -7739,7 +7932,9 @@
     spot.shadow.bias = -0.0011;
     spot.shadow.normalBias = 0.028;
     spot.shadow.radius = 3;
-    spot.position.set(0, 1.35, 0);
+    /* where the lens ends up once she is holding it: forward of her
+       chest and a little to her right, not level with her eyes */
+    spot.position.set(0.26, 1.20, -0.11);
     arm.add(spot);
     arm.add(spot.target);
     spot.target.position.set(3, 0.6, 0);
@@ -7780,17 +7975,57 @@
       ].join("\n")
     });
     var cone = new THREE.Mesh(coneGeo, coneMat);
-    cone.position.set(0, 1.32, 0);
+    cone.position.set(0.26, 1.20, -0.11);
     cone.frustumCulled = false;
     cone.renderOrder = 20;
     arm.add(cone);
 
     /* the pool she stands in */
     var pool = new THREE.PointLight(0xffd9a8, 2.2, 7.4, 1.9);
-    pool.position.set(0, 1.55, 0);
+    pool.position.set(0.22, 1.22, -0.09);
     g.add(pool);
 
-    g.userData = { rig: arm, spot: spot, cone: cone, coneMat: coneMat, pool: pool };
+    /* ---- the torch itself ----
+       There was no torch. The light came out of a point level with her
+       eyes and the beam started in mid-air in front of her face, which
+       is a head-mounted lamp however you dress it up. This is a thing:
+       a knurled barrel, a bezel, a lens with the light behind it, and a
+       switch — built pointing down its own -y so it can be dropped into
+       a fist and point where the hand points. */
+    var prop = new THREE.Group();
+    var caseMat = new THREE.MeshStandardMaterial({
+      color: 0x3a3f45, roughness: 0.44, metalness: 0.62, envMapIntensity: 1.1 });
+    var gripMat = new THREE.MeshStandardMaterial({
+      color: 0x24282c, roughness: 0.92, metalness: 0.10 });
+    var bezelMat = new THREE.MeshStandardMaterial({
+      color: 0x9aa0a6, roughness: 0.30, metalness: 0.85, envMapIntensity: 1.5 });
+    var lensMat = new THREE.MeshBasicMaterial({ color: 0xfff3d6, toneMapped: false });
+
+    var barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.0215, 0.0195, 0.115, 16), caseMat);
+    barrel.position.y = -0.058; prop.add(barrel);
+    /* the grip, where a hand goes */
+    var grip = new THREE.Mesh(new THREE.CylinderGeometry(0.0228, 0.0228, 0.052, 16), gripMat);
+    grip.position.y = -0.070; prop.add(grip);
+    /* the head flares out to the bezel */
+    var head2 = new THREE.Mesh(new THREE.CylinderGeometry(0.0320, 0.0224, 0.046, 18), caseMat);
+    head2.position.y = -0.010; prop.add(head2);
+    var bezel = new THREE.Mesh(new THREE.CylinderGeometry(0.0336, 0.0322, 0.010, 18), bezelMat);
+    bezel.position.y = 0.014; prop.add(bezel);
+    var lens = new THREE.Mesh(new THREE.CircleGeometry(0.0308, 20), lensMat);
+    lens.rotation.x = -Math.PI / 2;
+    lens.position.y = 0.0185; prop.add(lens);
+    /* the tail cap and the switch, which is what makes it a torch rather
+       than a tube */
+    var tail = new THREE.Mesh(new THREE.CylinderGeometry(0.0206, 0.0186, 0.012, 16), bezelMat);
+    tail.position.y = -0.121; prop.add(tail);
+    var sw = new THREE.Mesh(new THREE.BoxGeometry(0.009, 0.016, 0.014), gripMat);
+    sw.position.set(0.0215, -0.040, 0); prop.add(sw);
+    prop.traverse(function (o) { if (o.isMesh) o.castShadow = true; });
+    prop.visible = false;                   /* until it is in her hand */
+    g.add(prop);
+
+    g.userData = { rig: arm, spot: spot, cone: cone, coneMat: coneMat,
+                   pool: pool, prop: prop, lens: lens, lensMat: lensMat };
     return g;
   }
 
@@ -7975,9 +8210,10 @@
 
     var stars = null, moon = null;
     if (night) {
-      stars = makeStars(700, 380);
+      stars = makeStars(1500, 380);
       stars.u.amt.value = def.dark > 0.6 ? 1.0 : 0.55;
       scene.add(stars.points);
+      if (stars.glow) scene.add(stars.glow);
       moon = makeMoon(9);
       moon.position.set(-150, 130, -250);
       scene.add(moon);
@@ -8025,6 +8261,13 @@
        It carries between levels once she has it. */
     var torch = makeTorch();
     rig.root.add(torch);
+    /* the torch body leaves the light rig and goes into her fist, so it
+       moves with the arm that is aiming it */
+    var tp = torch.userData.prop;
+    torch.remove(tp);
+    tp.position.set(0.026, -0.052, 0.004);
+    tp.rotation.set(0, 0, Math.PI);
+    rig.armR.hand.add(tp);
     var hasTorch = def.id !== "home" || !!(G && G.hasTorch);
     torch.visible = hasTorch;
 
@@ -8387,22 +8630,27 @@
     p.turn = dampAngle(p.turn == null ? -p.facing : p.turn, -p.facing, 0.11, dt);
     p.rig.root.rotation.y = p.turn;
     p.crouch = damp(p.crouch || 0, p.creeping ? 1 : 0, 0.20, dt);
-    poseHuman(p.rig, G.time, p.gait, null, { crouch: p.crouch });
-
-    /* The torch is in her hand, not welded to her shoulders: it arrives
-       where she is pointing about a tenth of a second after she does,
-       which is the single thing that stops the beam looking like a
-       spotlight bolted to a turret. */
     var td = p.torch.userData;
+    /* it is only in her hand while it is doing something */
+    var lit = p.hasTorch && G.def.dark > 0.32;
+    p.carry = damp(p.carry || 0, lit ? 1 : 0, 0.22, dt);
+    p.beam = dampAngle(p.beam == null ? -p.facing : p.beam, -p.facing, 0.15, dt);
+    var swing = Math.atan2(Math.sin(p.beam - p.turn), Math.cos(p.beam - p.turn));
+    poseHuman(p.rig, G.time, p.gait, null,
+              { crouch: p.crouch, torch: p.carry, aim: swing });
+
+    /* The torch is a thing she is holding. The beam leaves its lens,
+       which is on the end of her arm, and the arm is what aims it. */
     if (!p.hasTorch) {
       td.spot.intensity = 0;
       td.pool.intensity = 0;
       td.coneMat.uniforms.amt.value = 0;
+      td.prop.visible = false;
       p.torch.visible = false;
       return;
     }
-    p.beam = dampAngle(p.beam == null ? -p.facing : p.beam, -p.facing, 0.15, dt);
-    var swing = Math.atan2(Math.sin(p.beam - p.turn), Math.cos(p.beam - p.turn));
+    td.prop.visible = p.carry > 0.04;
+    td.lensMat.color.setHex(p.carry > 0.5 ? 0xfff3d6 : 0x6a6258);
     td.rig.rotation.y = swing;
     td.rig.position.y = Math.sin(G.time * 2.1) * 0.012 + p.gait * Math.sin(G.time * 8.2) * 0.02;
     td.spot.target.position.set(6, -1.2, 0);
@@ -10113,12 +10361,15 @@
     /* z, ridge height, roughness, how far it has faded into the sky, how
        many trees stand on it, how big they are */
     var LAYERS = [
-      { z: -290, amp: 78, rough: 0.20, haze: 0.80, trees:  0, ts: 0 },
-      { z: -226, amp: 62, rough: 0.34, haze: 0.66, trees: 34, ts: 0.7 },
-      { z: -172, amp: 48, rough: 0.52, haze: 0.52, trees: 44, ts: 0.9 },
-      { z: -124, amp: 36, rough: 0.72, haze: 0.38, trees: 52, ts: 1.1 },
-      { z:  -84, amp: 26, rough: 0.92, haze: 0.24, trees: 54, ts: 1.4 },
-      { z:  -52, amp: 17, rough: 1.10, haze: 0.11, trees: 44, ts: 1.8 }
+      /* Fifty trees over two and a half kilometres of ridge is one every
+         fifty metres, which is not a wood, it is a row of markers. They
+         are instanced; the only cost of a real treeline is the draw. */
+      { z: -290, amp: 78, rough: 0.20, haze: 0.80, trees:   0, ts: 0 },
+      { z: -226, amp: 62, rough: 0.34, haze: 0.66, trees: 150, ts: 0.9 },
+      { z: -172, amp: 48, rough: 0.52, haze: 0.52, trees: 190, ts: 1.1 },
+      { z: -124, amp: 36, rough: 0.72, haze: 0.38, trees: 210, ts: 1.3 },
+      { z:  -84, amp: 26, rough: 0.92, haze: 0.24, trees: 220, ts: 1.6 },
+      { z:  -52, amp: 17, rough: 1.10, haze: 0.11, trees: 180, ts: 2.0 }
     ];
 
     var built = null;
@@ -10178,7 +10429,23 @@
          one at fifty */
       if (!L.trees) return;
       var tc = treeC.clone().lerp(skyC, Math.min(0.9, L.haze + 0.06));
-      var tg = new THREE.ConeGeometry(2.2, 8.4, 6);
+      /* A treeline of identical needles is a comb. Three tiers and a
+         trunk give each one a stepped silhouette, and the run of them
+         reads as a wood at a distance instead of a picket fence — the
+         one shape you see behind every outdoor scene in the chapter. */
+      var tg = mergeGeoms((function () {
+        var out = [];
+        for (var q = 0; q < 3; q++) {
+          var f = q / 2;
+          var c2 = new THREE.ConeGeometry(2.5 - f * 1.55, 4.6 - f * 1.2, 7);
+          c2.translate(0, 2.4 + f * 2.9, 0);
+          out.push(c2);
+        }
+        var tr = new THREE.CylinderGeometry(0.30, 0.44, 2.0, 5);
+        tr.translate(0, 1.0, 0);
+        out.push(tr);
+        return out;
+      })());
       var im = new THREE.InstancedMesh(tg, new THREE.MeshBasicMaterial({
         color: tc, fog: false }), L.trees);
       var d = new THREE.Object3D();
@@ -10190,8 +10457,10 @@
                + Math.sin(ux * 7.7 + seed * 1.7) * L.amp * 0.26
                + Math.sin(ux * 17.3 + seed * 2.3) * L.amp * 0.13 * L.rough - 6;
         var s2 = L.ts * rnd(0.62, 1.5);
-        d.position.set(rx, ry + 8.4 * s2 * 0.42, L.z + rnd(-5, 5));
-        d.scale.set(s2 * rnd(0.8, 1.3), s2, s2);
+        /* the merged tree stands on its own origin, so the ridge height
+           is the height: the old cone was centred and needed lifting */
+        d.position.set(rx, ry, L.z + rnd(-5, 5));
+        d.scale.set(s2 * rnd(0.85, 1.35), s2 * rnd(0.95, 1.5), s2);
         d.rotation.set(0, Math.random() * 3, 0);
         d.updateMatrix(); im.setMatrixAt(t2, d.matrix);
       }
@@ -10488,7 +10757,8 @@
     sky.u.sunCol.value.set(0x8fa8d8); sky.u.sunAmt.value = 0.25;
     sky.u.sunDir.value.set(-0.9, 0.12, 0.2).normalize();
     scene.add(sky.mesh);
-    var stars = makeStars(600, 400);
+    var stars = makeStars(1500, 400);
+    if (stars.glow) scene.add(stars.glow);
     scene.add(stars.points);
     var moon = makeMoon(7); moon.position.set(-260, 120, -180); scene.add(moon);
 
@@ -10722,7 +10992,7 @@
     sky.u.sunCol.value.set(0xffc27a); sky.u.sunAmt.value = 0.9;
     sky.u.sunDir.value.set(1.0, 0.09, 0.25).normalize();
     scene.add(sky.mesh);
-    var stars = makeStars(300, 400); stars.u.amt.value = 0.35; scene.add(stars.points);
+    var stars = makeStars(700, 400, { glow: false }); stars.u.amt.value = 0.35; scene.add(stars.points);
 
     /* the sun itself, coming up at the end of the road */
     var sun = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -10817,7 +11087,12 @@
     sky.u.cLow.value.set(0x101838); sky.u.cMid.value.set(0x0a0f26); sky.u.cHigh.value.set(0x04060f);
     sky.u.sunAmt.value = 0.05;
     scene.add(sky.mesh);
-    var stars = makeStars(900, 300); scene.add(stars.points);
+    var stars = makeStars(1800, 300); scene.add(stars.points);
+    if (stars.glow) scene.add(stars.glow);
+    /* the clearing has things living in it */
+    var flies = fireflies(80, 15, 1.6);
+    scene.add(flies.points);
+    if (stars.glow) scene.add(stars.glow);
     var moon = makeMoon(6); moon.position.set(-90, 110, -180); scene.add(moon);
 
     cineEnvironment(scene, sky, "campsite", 0.7);
@@ -10836,21 +11111,65 @@
     ground.receiveShadow = true;
     scene.add(ground);
 
-    /* the treeline all the way round */
-    var treeG = new THREE.ConeGeometry(1.6, 8, 7);
-    var treeM = new THREE.MeshStandardMaterial({ color: 0x14201c, roughness: 1 });
-    var trees = new THREE.InstancedMesh(treeG, treeM, 90);
-    var d = new THREE.Object3D();
-    for (var i = 0; i < 90; i++) {
-      var a = (i / 90) * 6.2832 + rnd(-0.03, 0.03);
-      var r = rnd(24, 40);
-      d.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
-      d.scale.set(rnd(0.7, 1.9), rnd(0.8, 2.1), rnd(0.7, 1.9));
-      d.rotation.set(0, Math.random() * 3, 0);
-      d.updateMatrix(); trees.setMatrixAt(i, d.matrix);
+    /* ---- the treeline all the way round ----
+       One cone each was ninety black triangles standing in a ring. A
+       conifer is a stack of skirts that get wider as they go down, with
+       a bare trunk under them and a spire on top, and the ones nearest
+       the fire are lit from underneath while the ones behind are almost
+       black — so the ring has depth in it instead of being a fence. */
+    var tiers = [];
+    for (var ti = 0; ti < 5; ti++) {
+      var f = ti / 4;
+      var cg = new THREE.ConeGeometry(1.15 - f * 0.72, 2.5 - f * 0.85, 8);
+      cg.translate(0, 1.9 + f * 1.85, 0);
+      tiers.push(cg);
     }
+    var trunkG = new THREE.CylinderGeometry(0.17, 0.24, 2.4, 6);
+    trunkG.translate(0, 1.2, 0);
+    tiers.push(trunkG);
+    var treeG = mergeGeoms(tiers);
+    var treeM = new THREE.MeshStandardMaterial({
+      color: 0x1b2a22, roughness: 0.98, metalness: 0,
+      vertexColors: true, flatShading: true });
+    /* per-instance colour, so the far side of the ring falls away into
+       the dark rather than every tree being the same green */
+    var NT = 130;
+    var trees = new THREE.InstancedMesh(treeG, treeM, NT);
+    trees.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(NT * 3), 3);
+    var d = new THREE.Object3D(), tc = new THREE.Color();
+    for (var i = 0; i < NT; i++) {
+      var a = (i / NT) * 6.2832 + rnd(-0.06, 0.06);
+      var r = rnd(20, 46);
+      d.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+      var sc = rnd(0.75, 1.9);
+      d.scale.set(sc * rnd(0.85, 1.15), sc * rnd(0.9, 1.45), sc * rnd(0.85, 1.15));
+      d.rotation.set(rnd(-0.04, 0.04), Math.random() * 3, rnd(-0.04, 0.04));
+      d.updateMatrix(); trees.setMatrixAt(i, d.matrix);
+      /* near the fire they pick up its warmth; far away they go blue */
+      var near = clamp(1 - (r - 20) / 26, 0, 1);
+      tc.setRGB(0.30 + near * 0.62, 0.40 + near * 0.34, 0.44 - near * 0.14);
+      tc.multiplyScalar(0.28 + near * 0.52);
+      trees.setColorAt(i, tc);
+    }
+    trees.instanceColor.needsUpdate = true;
     trees.castShadow = true;
+    trees.receiveShadow = true;
     scene.add(trees);
+    /* undergrowth: low scrub between the trunks, so the floor of the
+       clearing meets the trees instead of running under them */
+    var scrubG = new THREE.SphereGeometry(0.9, 7, 5);
+    scrubG.scale(1, 0.55, 1);
+    var scrub = new THREE.InstancedMesh(scrubG,
+      new THREE.MeshStandardMaterial({ color: 0x1d2a1e, roughness: 1, flatShading: true }), 90);
+    for (var si = 0; si < 90; si++) {
+      var sa = Math.random() * 6.2832, sr = rnd(15, 40);
+      d.position.set(Math.cos(sa) * sr, rnd(-0.2, 0.1), Math.sin(sa) * sr);
+      d.scale.set(rnd(0.6, 1.9), rnd(0.5, 1.4), rnd(0.6, 1.9));
+      d.rotation.set(0, Math.random() * 3, 0);
+      d.updateMatrix(); scrub.setMatrixAt(si, d.matrix);
+    }
+    scrub.receiveShadow = true;
+    scene.add(scrub);
 
     scene.add(new THREE.HemisphereLight(0x22305c, 0x0c0e18, 0.55));
     scene.add(new THREE.AmbientLight(0x1a2038, 0.35));
@@ -10954,6 +11273,7 @@
       update: function (dt, t) {
         fire.userData.update(t, dt);
         stars.u.time.value = t;
+        flies.u.time.value = t;
         if (Math.random() < dt * 5) Audio_.fire();
 
         if (!cued && heard(MOVE_CUE)) { cued = true; phase = "rising"; phaseT = 0; }
@@ -11078,7 +11398,8 @@
     sky.u.sunCol.value.set(0xffb070); sky.u.sunAmt.value = 0.3;
     sky.u.sunDir.value.set(0.15, -0.05, -1).normalize();
     scene.add(sky.mesh);
-    var stars = makeStars(700, 340); scene.add(stars.points);
+    var stars = makeStars(1600, 340); scene.add(stars.points);
+    if (stars.glow) scene.add(stars.glow);
 
     cineEnvironment(scene, sky, "road", 0.3);
     /* country behind the treeline, and the mist that is in it at that hour */
@@ -11119,6 +11440,36 @@
 
     var hemi = new THREE.HemisphereLight(0x2a2450, 0x0a0c14, 0.25);
     scene.add(hemi);
+    /* ---- the sun as a light, not just a picture ----
+       There was a disc on the horizon and nothing lit by it, so the
+       field in front of it stayed the same dead grey it was at three in
+       the morning. This is the light that comes with the sun: very low,
+       very warm, raking straight across the grass. */
+    var sunKey = new THREE.DirectionalLight(0xffb46a, 0.0);
+    sunKey.position.set(10, 4, -120);
+    sunKey.target.position.set(0, 0, 20);
+    scene.add(sunKey); scene.add(sunKey.target);
+    /* and the shafts it throws through the treeline, which is most of
+       what a sunrise actually looks like */
+    var shaftG = new THREE.Group();
+    shaftG.position.set(10, -14, -128);
+    shaftG.rotation.y = -Math.PI / 2;      /* the beams run out toward her */
+    scene.add(shaftG);
+    var shafts = [];
+    for (var sh = 0; sh < 7; sh++) {
+      /* built along +x, which is the axis beamMaterial fades along */
+      var sg = new THREE.CylinderGeometry(1.4, 13 + sh * 2.6, 165, 12, 4, true);
+      sg.translate(0, -82, 0);
+      sg.rotateZ(-Math.PI / 2);
+      var sm = beamMaterial(0xffc98a, 0.0, 165, { fall: 1.5, soft: 2.6 });
+      var mesh = new THREE.Mesh(sg, sm);
+      mesh.rotation.y = (sh - 3) * 0.115 + (hash2(sh, 3) - 0.5) * 0.05;
+      mesh.rotation.z = 0.055 + (hash2(sh, 7) - 0.5) * 0.05;
+      mesh.frustumCulled = false;
+      mesh.renderOrder = 14;
+      shaftG.add(mesh);
+      shafts.push(mesh);
+    }
 
     /* the fire, down to embers */
     var fire = makeFire();
@@ -11154,6 +11505,18 @@
 
         sun.material.opacity = 0.25 + e * 0.42;
         sun.position.y = lerp(-18, 16, e);
+        /* the light comes up with the disc, and the shafts fade as the
+           air warms and stops holding them */
+        sunKey.intensity = e * 2.6;
+        sunKey.position.set(10, lerp(-4, 22, e), -120);
+        for (var si2 = 0; si2 < shafts.length; si2++) {
+          var u2 = shafts[si2].material.uniforms;
+          if (u2) {
+            u2.time.value = t;
+            u2.amt.value = Math.sin(Math.PI * clamp(0.12 + e * 0.95, 0, 1)) * 1.25;
+          }
+        }
+        shaftG.position.y = lerp(-16, 12, e);
         disc.position.y = sun.position.y;
         disc.material.color.setRGB(1, lerp(0.62, 0.92, e), lerp(0.36, 0.78, e));
         sun.scale.setScalar(lerp(120, 78, e));
@@ -11184,7 +11547,8 @@
     sky.u.sunCol.value.set(0xbcd0ff); sky.u.sunAmt.value = 0.12;
     sky.u.sunDir.value.set(-0.6, 0.3, -0.7).normalize();
     scene.add(sky.mesh);
-    var stars = makeStars(1100, 380); scene.add(stars.points);
+    var stars = makeStars(2000, 380); scene.add(stars.points);
+    if (stars.glow) scene.add(stars.glow);
     var moon = makeMoon(11);
     moon.position.set(-96, 66, -178);
     scene.add(moon);
