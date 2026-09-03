@@ -2687,6 +2687,10 @@ const ZNEAR_G = 26;
 const SOLID = {
   cabin: 1, house: 1, store: 1, shed: 1, shelter: 1, vending: 1,
   acunit: 1, vent: 1, skylight: 1, watertank: 1, car: 1,
+  /* The kerbside things too. They stand closest to the road, so they
+     are the biggest things on the screen when you pass them, and a flat
+     one at that size is the most obvious flat of all. */
+  postbox: 1, mailbox: 1, bench: 1,
 };
 
 /* Standing height and footprint radius, for placement clearance and for
@@ -2696,6 +2700,7 @@ const SOLID_SIZE = {
   shed:{ h:76, r:34 },   shelter:{ h:86, r:46 }, vending:{ h:80, r:20 },
   acunit:{ h:40, r:20 }, vent:{ h:44, r:20 },   skylight:{ h:22, r:22 },
   watertank:{ h:120, r:30 }, car:{ h:44, r:36 },
+  postbox:{ h:32, r:13 }, mailbox:{ h:36, r:12 }, bench:{ h:34, r:24 },
 };
 
 /* ---- the painter -------------------------------------------------
@@ -3304,6 +3309,34 @@ function solidParts(kind, v, def, ti) {
       { k:"box", x: 17, y:-17, w:6, d:6, h:36, col:"#5e5346", plain:true },
       { k:"box", x:-17, y: 17, w:6, d:6, h:36, col:"#5e5346", plain:true },
       { k:"box", x: 17, y: 17, w:6, d:6, h:36, col:"#5e5346", plain:true },
+    ];
+
+  } else if (kind === "postbox") {
+    parts = [
+      { k:"box", w:22, d:19, h:24, col:T("#c8465a"), mat:"panel" },
+      { k:"box", z:24, w:24, d:21, h:5, col:T("#a8384c") },
+      { k:"box", z:29, w:17, d:15, h:3, col:T("#8f2f42") },
+      { k:"box", y:-10, z:15, w:13, d:2, h:3, col:"#2e2530", plain:true },
+      { k:"box", y:-10, z:5,  w:15, d:2, h:5, col:"#f0e2c8", plain:true },
+    ];
+
+  } else if (kind === "mailbox") {
+    parts = [
+      { k:"box", w:20, d:14, h:12, z:22, col:T("#8fa2b4"), mat:"panel" },
+      { k:"gable", w:20, d:14, h:0, z:34, rise:5, eave:1, col:T("#7d90a2"), endCol:T("#8fa2b4") },
+      { k:"box", w:6, d:6, h:22, col:"#6b5340", plain:true },
+      { k:"box", x:11, z:26, w:3, d:2, h:9, col:"#e8556f", plain:true },
+      { k:"box", y:-8, z:26, w:12, d:1, h:5, col:"#5e6a76", plain:true },
+    ];
+
+  } else if (kind === "bench") {
+    const wood = T(v % 2 ? "#a8794c" : "#96703f");
+    parts = [
+      { k:"box", z:15, w:52, d:19, h:4, col:wood, mat:"wood" },
+      { k:"box", y:8, z:19, w:52, d:4, h:15, col:wood, mat:"wood" },
+      { k:"box", x:-21, z:0, w:5, d:17, h:15, col:"#4e5560", plain:true },
+      { k:"box", x: 21, z:0, w:5, d:17, h:15, col:"#4e5560", plain:true },
+      { k:"box", z:11, w:46, d:3, h:3, col:"#4e5560", plain:true },
     ];
 
   } else if (kind === "car") {
@@ -5139,6 +5172,23 @@ function draw() {
   const lines = (me.boost > 0 ? 1 : 0) + Math.max(0, (sf - 0.55) / 0.45) * 0.55;
   if (lines > 0.02) drawSpeedLines(g, lines);
 
+  /* THE LENS
+
+     Two things a picture gets for free from a real camera and has to be
+     given by hand here. A vignette, because the corners of any lens fall
+     off and a perfectly even frame reads as a diagram; and a wash of the
+     track's own haze colour along the horizon, so the far end of the
+     road sits in air rather than being the same crisp paint as the
+     kerb under your wheels. Both are one rectangle each. */
+  if (!lensCvs || lensId !== trackDef.id || lensW !== RW) buildLens();
+  /* without the shake: the lens belongs to the camera, not to the world
+     being rattled inside it, and letting it slide leaves a bright strip
+     down whichever edge the shake has just pulled it off */
+  g.save();
+  g.setTransform(cw / RW, 0, 0, ch / RH, 0, 0);
+  g.drawImage(lensCvs, 0, 0);
+  g.restore();
+
   /* THE PHOTO FINISH
 
      Bars in from the top and bottom and the colour pushed warm, for as
@@ -5640,6 +5690,33 @@ function drawSpeedLines(g, boost) {
     g.stroke();
   }
   g.globalAlpha = 1;
+}
+
+/* The lens overlay, baked once per track: a corner falloff and a band of
+   the track's air along the skyline. */
+let lensCvs = null, lensId = "", lensW = 0;
+function buildLens() {
+  lensCvs = document.createElement("canvas");
+  lensCvs.width = RW; lensCvs.height = RH;
+  lensId = trackDef.id; lensW = RW;
+  const g = lensCvs.getContext("2d");
+
+  /* the air at the far end of the road */
+  const hz = hexToRgb(trackDef.haze);
+  const air = g.createLinearGradient(0, HORIZON - 6, 0, HORIZON + 54);
+  air.addColorStop(0, `rgba(${hz[0]},${hz[1]},${hz[2]},.34)`);
+  air.addColorStop(1, `rgba(${hz[0]},${hz[1]},${hz[2]},0)`);
+  g.fillStyle = air;
+  g.fillRect(0, HORIZON - 6, RW, 60);
+
+  /* and the corners, falling off the way a lens does */
+  const vig = g.createRadialGradient(RW / 2, RH * 0.54, RH * 0.34,
+                                     RW / 2, RH * 0.54, RH * 1.06);
+  vig.addColorStop(0, "rgba(24,14,32,0)");
+  vig.addColorStop(0.62, "rgba(24,14,32,.10)");
+  vig.addColorStop(1, "rgba(24,14,32,.34)");
+  g.fillStyle = vig;
+  g.fillRect(0, 0, RW, RH);
 }
 
 /* =========================================================
