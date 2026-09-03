@@ -584,8 +584,7 @@ function bakeTrack(def) {
     }
     /* long soft reflections, as if the polish were catching the windows */
     g.globalAlpha = 0.10; g.fillStyle = "#ffffff";
-    const drops = reduceMotion ? 34 : 90;
-  for (let i = 0; i < drops; i++) {
+    for (let i = 0; i < 90; i++) {
       const x = Math.random() * WORLD, y = Math.random() * WORLD;
       g.fillRect(x, y, 10 + Math.random() * 90, 5 + Math.random() * 10);
     }
@@ -4436,19 +4435,22 @@ class Racer {
     }
     if (this.offroad && Math.abs(this.speed) > 1.2 && Math.random() < 0.5) {
       addPuff(this.x, this.y, "#d9c9a8");
-    } else if (trackDef.wet && Math.abs(this.speed) > TOP_SPEED * 0.25 && Math.random() < 0.55) {
+    } else if (trackDef.wet && Math.abs(this.speed) > TOP_SPEED * 0.25 && Math.random() < 0.8) {
       /* the rooster tail: thrown up off both rear wheels, and it hangs
-         longer than dust does */
+         longer than dust does. Small and often rather than big and
+         rarely — water off a tyre is a mist, not a handful of lumps */
       const back = this.angle + Math.PI;
       const lx = -Math.sin(this.angle), ly = Math.cos(this.angle);
       const sgn = Math.random() < 0.5 ? -1 : 1;
       fx.push({
-        x: this.x + Math.cos(back) * 15 + lx * sgn * 11,
-        y: this.y + Math.sin(back) * 15 + ly * sgn * 11,
-        z: 2 + Math.random() * 4,
-        vx: Math.cos(back) * 0.7, vy: Math.sin(back) * 0.7, vz: 1.5,
-        life: 0.42, max: 0.42, col: "rgba(226,238,248,.55)",
-        size: 2.2 + Math.random() * 1.8,
+        x: this.x + Math.cos(back) * 15 + lx * sgn * (8 + Math.random() * 6),
+        y: this.y + Math.sin(back) * 15 + ly * sgn * (8 + Math.random() * 6),
+        z: 2 + Math.random() * 5,
+        vx: Math.cos(back) * 0.7 + lx * sgn * 0.5,
+        vy: Math.sin(back) * 0.7 + ly * sgn * 0.5,
+        vz: 1.4 + Math.random(),
+        life: 0.5, max: 0.5, col: "rgba(228,240,250,.42)",
+        size: 1.2 + Math.random() * 1.1,
       });
     } else if (Math.abs(this.speed) > TOP_SPEED * 0.45 && Math.random() < 0.22) {
       /* a thin wake off the tarmac too, so speed reads before a boost */
@@ -4658,6 +4660,7 @@ let duoGhost = null;
 let duoChars = [0, 1];
 
 let reduceMotion = false;
+let boltCyc = -1;        // so one flash fires one roll of thunder
 let mirror = false;      // the course, the other way round
 let wet = false;         // and the same course in the rain
 let gpRound = 0, gpPoints = [];
@@ -4943,7 +4946,7 @@ function startRace() {
    — is derived from those, so a variant is just a different def handed
    to the same machinery rather than a second code path.
 
-   MIRRORED flips the world about its middle, which turns every corner
+   FLIPPED mirrors the world about its middle, which turns every corner
    the other way and makes a course you know how to drive into one you
    have to read again. The sun has to flip with it or every shadow
    points the wrong way. It keeps its own id, so it keeps its own best
@@ -4991,6 +4994,8 @@ function variantDef(base) {
 
 function buildRace() {
   trackDef = variantDef(TRACKS[trackIdx]);
+  Snd.setRain(!!trackDef.wet);
+  boltCyc = -1;
   buildPath(trackDef);
   /* props are placed before the bake so their shadows can be painted
      into the ground texture along with everything else */
@@ -5174,17 +5179,27 @@ function buildPostcard(me, place) {
   g.fillStyle = gold;
   g.fillText((trackDef.name || "").toUpperCase(), pad + 4, pad + ih + 20);
 
+  /* A hot-seat card belongs to both of them, so it carries both times
+     and says who took it, rather than reporting the second run alone. */
+  const duoCard = mode === "duo" && duoTimes[0] != null && duoTimes[1] != null;
+  const winA = duoCard && duoTimes[0] <= duoTimes[1];
+
   g.font = "13px 'Press Start 2P', monospace";
   g.fillStyle = ink;
-  const line = mode === "trial" || mode === "duo"
+  const line = duoCard
+    ? `${fmt(duoTimes[0])}  vs  ${fmt(duoTimes[1])}`
+    : mode === "trial" || mode === "duo"
     ? fmt(me.finishTime)
     : `${place} \u00b7 ${fmt(me.finishTime)}`;
   g.fillText(line, pad + 4, pad + ih + 50);
 
   g.font = "10px 'Press Start 2P', monospace";
   g.fillStyle = rose;
-  const bits = [me.def.name.toUpperCase()];
-  if (mirror) bits.push("MIRROR");
+  const bits = duoCard
+    ? [`${CHARS[duoChars[winA ? 0 : 1]].name.toUpperCase()} BEAT ` +
+       `${CHARS[duoChars[winA ? 1 : 0]].name.toUpperCase()}`]
+    : [me.def.name.toUpperCase()];
+  if (mirror) bits.push("FLIPPED");
   if (wet) bits.push("RAIN");
   if (me.coins) bits.push(me.coins + " HEARTS");
   g.fillText(bits.join("  \u00b7  "), pad + 4, pad + ih + 76);
@@ -6269,9 +6284,19 @@ function drawFx(g, b) {
               (1 - a) * o.size * 3 * s.scale, 0, 0, TWO_PI);
     g.stroke();
   } else {
-    const q = Math.max(1, o.size * s.scale * 0.5);
+    /* A PUFF IS ROUND.
+
+       This was an axis-aligned square, which is invisible at distance
+       and, right beside the camera, is a twenty-pixel grey tile lying
+       on the grass — the only hard right angle in the picture. It is
+       now a small ellipse that opens out as it dies, which is what
+       thrown-up water and kicked-up dust actually do. */
+    const q = Math.max(0.9, o.size * s.scale * 0.5);
+    const rx = q * (0.42 + (1 - a) * 0.5);
     g.fillStyle = o.col;
-    g.fillRect(s.sx - q / 2, y - q / 2, q, q);
+    g.beginPath();
+    g.ellipse(s.sx, y, rx, rx * 0.78, 0, 0, TWO_PI);
+    g.fill();
   }
   g.globalAlpha = 1;
 }
@@ -6297,55 +6322,157 @@ function drawSpeedLines(g, boost) {
 
    Screen space, not world space. Rain close enough to see is close
    enough that projecting it would put nearly all of it behind the
-   camera; what you actually see out of a windscreen is streaks across
-   the glass and drops sitting on it. Both are drawn here, and both lean
-   with how fast you are going, which is most of what sells it.
+   camera; what you actually see out of a windscreen is weather on the
+   glass and in the air just past it.
 
-   Deterministic per streak, so nothing has to be stored between
-   frames: each one's position comes from its index and the clock. */
+   Rain that reads as weather rather than as a filter over the picture
+   needs three things a single sheet of streaks cannot give you.
+
+   Depth: three sheets at once. The far one is short, faint, thin and
+   nearly upright; the near one is long, wide, quick and leaning hard.
+   Your eye reads the difference in speed between them as distance, and
+   the frame gains a front and a back.
+
+   Convergence: rain arriving at the horizon is miles away, so its
+   streaks shorten and fade towards it. Falling at full length up there
+   is what makes flat rain look like scratches on the film.
+
+   Weather: the whole sheet leans on a slow gust, so the rain drifts
+   instead of ruling the same lines forever, and it lands — a scatter of
+   splashes on the road, denser at the bottom of the frame where the
+   ground is close.
+
+   All of it is deterministic per streak, so nothing flickers between
+   frames; only time moves. */
 function drawRain(g, me) {
   const sp = Math.min(1, Math.abs(me.speed || 0) / TOP_SPEED);
-  const lean = 0.22 + sp * 0.55;             // faster, and it slants in
   const t = raceTime;
+  const calm = reduceMotion;
+
+  /* two gusts of different lengths, so the wind never repeats cleanly */
+  const gust = calm ? 0 : Math.sin(t * 0.29) * 0.15 + Math.sin(t * 0.11 + 1.7) * 0.09;
+  const lean = 0.18 + sp * 0.42 + gust;
+
+  const SHEETS = calm
+    ? [{ n: 42, len: 8,  spd: 240, w: 0.7, a: 0.17, k: 0.55 }]
+    : [{ n: 58, len: 5,  spd: 200, w: 0.6, a: 0.14, k: 0.45 },   // far
+       { n: 52, len: 12, spd: 350, w: 0.9, a: 0.26, k: 0.85 },   // mid
+       { n: 24, len: 24, spd: 560, w: 1.8, a: 0.16, k: 1.10 }];  // right at the glass
 
   g.save();
-  g.globalAlpha = 0.30;
-  g.strokeStyle = "#d8e4f0";
-  g.lineWidth = 0.8;
-  g.beginPath();
-  for (let i = 0; i < 90; i++) {
-    /* a stable pseudo-random column and speed per streak */
-    const a = ((i * 2654435761) >>> 0) / 4294967296;
-    const b = ((i * 40503 + 12345) >>> 0 % 1000) / 1000;
-    const x0 = a * (RW + 120) - 60;
-    const fall = 220 + b * 260 + sp * 190;
-    const y0 = ((t * fall + b * RH * 3) % (RH + 60)) - 30;
-    const len = 7 + b * 9 + sp * 11;
-    g.moveTo(x0, y0);
-    g.lineTo(x0 - lean * len, y0 + len);
-  }
-  g.stroke();
+  g.strokeStyle = "#dfeaf5";
+  g.lineCap = "butt";
 
-  /* and the drops that have landed on the glass and stayed there */
-  g.globalAlpha = 0.16;
-  g.fillStyle = "#eaf2fa";
-  for (let i = 0; i < 14; i++) {
+  const top = HORIZON - 14;                    // where the sheet starts to die
+  SHEETS.forEach((L, li) => {
+    g.lineWidth = L.w;
+    g.globalAlpha = L.a;
+    g.beginPath();
+    for (let i = 0; i < L.n; i++) {
+      /* a fixed column, fall rate and phase for this streak */
+      const h = ((i * 2654435761 + li * 40503) >>> 0);
+      const a = (h & 0xffff) / 65536;
+      const b = ((h >>> 16) & 0xffff) / 65536;
+      const x0 = a * (RW + 140) - 70;
+      const fall = L.spd * (0.75 + b * 0.5) + sp * 190;
+      const y0 = ((t * fall + b * (RH + 60) * 7) % (RH + 70)) - 35;
+      /* short and faint at the horizon, full length by the bottom */
+      const d = y0 < top ? 0.18 : Math.min(1, 0.18 + (y0 - top) / (RH - top) * 1.5);
+      const len = L.len * (0.55 + b * 0.5) * d;
+      if (len < 0.7) continue;
+      const sl = lean * L.k * len;
+      g.moveTo(x0, y0);
+      g.lineTo(x0 - sl, y0 + len);
+    }
+    g.stroke();
+  });
+
+  /* IT LANDS
+
+     Splashes on the road, thrown thicker towards the bottom of the
+     frame because that ground is nearer. Each one lives about a fifth
+     of a second and is then replaced somewhere else, which at this size
+     reads as a surface being rained on rather than as sparkles. */
+  if (!calm) {
+    const n = 42, life = 0.17;
+    g.fillStyle = "#eef6ff";
+    for (let i = 0; i < n; i++) {
+      const cyc = Math.floor(t / life + i * 0.37);
+      const r1 = ((cyc * 1103515245 + i * 12345) >>> 0) / 4294967296;
+      const r2 = ((cyc * 22695477 + i * 6151) >>> 0) / 4294967296;
+      const age = (t / life + i * 0.37) % 1;
+      const y = HORIZON + 6 + Math.pow(r2, 2.1) * (RH - HORIZON - 6);
+      const x = r1 * RW;
+      /* The buffer is 400 across. A splash is one or two pixels of it —
+         anything bigger stops being a drop hitting the road and starts
+         being a grey square sitting on it. */
+      const w = 0.45 + age * 0.75;
+      g.globalAlpha = 0.20 * (1 - age) * (0.3 + 0.7 * ((y - HORIZON) / (RH - HORIZON)));
+      g.fillRect(x - w, y, w * 2, 0.55);
+    }
+  }
+
+  /* ON THE GLASS
+
+     A dozen drops sitting on the lens, each with the bright point where
+     the sky catches it and the thin trail it has already slid down.
+     They sit for a couple of seconds, then are replaced. */
+  for (let i = 0; i < 13; i++) {
     const a = ((i * 1103515245 + 12345) >>> 0) / 4294967296;
     const b = ((i * 22695477 + 1) >>> 0) / 4294967296;
-    /* each drop sits for a couple of seconds, then is replaced */
-    const life = 2.2 + b * 2.6;
+    const life = 2.4 + b * 2.8;
     const k = Math.floor(t / life) + i;
     const jx = ((k * 9301 + 49297) % 233280) / 233280;
     const jy = ((k * 4021 + 6151) % 233280) / 233280;
     const x = (a * 0.2 + jx * 0.8) * RW;
-    const y = (b * 0.2 + jy * 0.8) * RH * 0.9;
-    const r = 0.8 + ((k * 7) % 5) * 0.35;
+    const y0 = (b * 0.2 + jy * 0.8) * RH * 0.88;
     const age = (t % life) / life;
-    g.globalAlpha = 0.20 * (1 - age * 0.7);
+    const slide = age * age * 11;                   // it gathers and then runs
+    const y = y0 + slide;
+    const r = 0.9 + ((k * 7) % 5) * 0.32;
+    const fade = 1 - age * 0.65;
+
+    g.globalAlpha = 0.11 * fade;                    // the trail behind it
+    g.fillStyle = "#dfeaf5";
+    g.fillRect(x - 0.35, y0 - 1, 0.8, slide + 1);
+
+    g.globalAlpha = 0.22 * fade;                    // the drop
+    g.fillStyle = "#eaf2fa";
     g.beginPath();
-    g.ellipse(x, y + age * 9, r, r * 1.5, 0, 0, TWO_PI);
+    g.ellipse(x, y, r, r * 1.55, 0, 0, TWO_PI);
     g.fill();
+
+    g.globalAlpha = 0.34 * fade;                    // the light in it
+    g.fillStyle = "#ffffff";
+    g.fillRect(x - r * 0.35, y - r * 0.75, 0.7, 0.7);
   }
+
+  /* FAR OFF
+
+     A storm somewhere else: two soft pulses across the sky and, half a
+     second later, the roll of it. Never bright, never sudden — it lifts
+     the top of the frame and settles. Off entirely in calm mode. */
+  if (!calm) {
+    const PERIOD = 26;
+    const cyc = Math.floor(t / PERIOD);
+    const at = 3 + (((cyc * 2654435761) >>> 0) / 4294967296) * (PERIOD - 8);
+    const dt = (t % PERIOD) - at;
+    if (dt >= 0 && dt < 0.5) {
+      if (boltCyc !== cyc) { boltCyc = cyc; Snd.thunder(); }
+      const pulse = dt < 0.09 ? 1 - dt / 0.09
+                  : dt < 0.16 ? 0
+                  : dt < 0.42 ? (1 - (dt - 0.16) / 0.26) * 0.7 : 0;
+      if (pulse > 0) {
+        g.globalAlpha = 0.13 * pulse;
+        const fl = g.createLinearGradient(0, 0, 0, HORIZON + 30);
+        fl.addColorStop(0, "#ffffff");
+        fl.addColorStop(1, "rgba(255,255,255,0)");
+        g.fillStyle = fl;
+        g.fillRect(0, 0, RW, HORIZON + 30);
+      }
+    }
+  }
+
   g.restore();
 }
 
@@ -6702,12 +6829,12 @@ function renderTracks() {
       ${TRACKS[trackIdx].hazard && TRACKS[trackIdx].hazard.warn
         ? `<p class="rc-warn">${TRACKS[trackIdx].hazard.warn}</p>` : ""}
       <div class="rc-row rc-vars">
-        <button class="rc-vbtn${mirror ? " on" : ""}" data-mirror="1">MIRROR</button>
+        <button class="rc-vbtn${mirror ? " on" : ""}" data-mirror="1">FLIPPED</button>
         <button class="rc-vbtn${wet ? " on" : ""}" data-wet="1">RAIN</button>
       </div>
       <p class="rc-varnote">${
-        mirror && wet ? "Backwards, in the wet. Good luck."
-        : mirror ? "Every corner the other way round."
+        mirror && wet ? "Flipped, and wet through. Good luck."
+        : mirror ? "The same track flipped left to right \u2014 every corner the other way."
         : wet ? "Less grip, longer braking, and the wipers on."
         : "Same road, two ways to make it new."}</p>
       <div class="rc-row">
@@ -7091,6 +7218,7 @@ const Snd = (function () {
   let engine = null;
   let engineBus = null;
   let driftNode = null;
+  let rainNode = null, rainWanted = false;
   let song = null;          // the scheduler for whatever is playing
 
   try {
@@ -7433,6 +7561,44 @@ const Snd = (function () {
     driftNode.f.frequency.setTargetAtTime(1600 + tier * 900, ctx.currentTime, 0.08);
   }
 
+  /* ---- weather ----
+
+     Rain you can hear. One loop of the same noise buffer everything
+     else uses, run through two filters: a low shelf for the body of it
+     on the roof of the car and a soft top end for the hiss on the road.
+     It fades in over a second rather than switching on, because rain
+     that arrives instantly sounds like a fault. */
+  function rainOn() {
+    if (!ready || rainNode) return;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf; src.loop = true;
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = 620;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass"; lp.frequency.value = 5200; lp.Q.value = 0.3;
+    const g = ctx.createGain();
+    g.gain.value = 0.0001;
+    src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(sfxBus);
+    src.start();
+    g.gain.setTargetAtTime(0.055, ctx.currentTime, 0.9);
+    rainNode = { src, g, lp };
+  }
+  function rainOff() {
+    if (!rainNode) return;
+    const r = rainNode; rainNode = null;
+    try {
+      r.g.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.25);
+      setTimeout(() => { try { r.src.stop(); r.g.disconnect(); } catch (x) {} }, 1400);
+    } catch (e) {}
+  }
+  /* a long way off: no crack, just the roll of it arriving late */
+  function thunder() {
+    if (!ready) return;
+    const t = ctx.currentTime + 0.55;
+    noise({ f: 190, f2: 55, dur: 2.1, gain: 0.075, atk: 0.35, filter: "lowpass", q: 0.6, at: t });
+    noise({ f: 320, f2: 120, dur: 1.1, gain: 0.030, atk: 0.6, filter: "lowpass", q: 0.5, at: t + 0.5 });
+  }
+
   /* ---- one-shots ---- */
   const S = {
     boost(tier) {
@@ -7530,8 +7696,10 @@ const Snd = (function () {
   api.ctx = () => ctx;
   api.music = (name) => { if (!ready) { init(); } if (ready) playSong(name); };
   api.stopMusic = stopSong;
-  api.engineOn = () => { if (ready) engineOn(); };
-  api.engineOff = engineOff;
+  api.engineOn = () => { if (ready) { engineOn(); if (rainWanted) rainOn(); } };
+  api.engineOff = () => { engineOff(); rainOff(); };
+  api.setRain = (on) => { rainWanted = !!on; if (!on) rainOff(); };
+  api.thunder = thunder;
   api.engine = engineAt;
   api.drift = driftSound;
   api.driftCharge = driftCharge;
@@ -7636,6 +7804,7 @@ function tutKeyName(tag) {
 function startTutorial() {
   mode = "tutorial";
   trackDef = TUT_TRACK;
+  Snd.setRain(false);          // the practice loop is always dry
   buildPath(trackDef);
   placeProps(trackDef);
   bakeTrack(trackDef);
