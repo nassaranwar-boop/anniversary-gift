@@ -17,9 +17,9 @@
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=85">
+<link rel="stylesheet" href="style.css?v=86">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=85"></script>
+<script src="vendor/three.bundle.js?v=86"></script>
 
 </head>
 <body>
@@ -1039,6 +1039,14 @@
 
         <!-- the touch controls sit over the track, low in both corners
              so a thumb reaches them without covering the road -->
+        <!-- the whole picture is the steering wheel: put a thumb
+             down anywhere and slide. It sits under the buttons so a
+             thumb on DRIFT still hits DRIFT. -->
+        <div class="rc-steer" id="rc-steer" hidden>
+          <span class="rc-steer-ring" id="rc-steer-ring"><i></i></span>
+          <span class="rc-steer-hint" id="rc-steer-hint">slide to steer</span>
+        </div>
+
         <div class="rc-pad" id="rc-pad" hidden>
           <div class="rc-pad-cluster rc-pad-l">
             <button class="rc-key rc-key-steer" data-k="left"  aria-label="Steer left"><canvas class="rc-ico" width="20" height="20"></canvas></button>
@@ -1101,12 +1109,12 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=85"></script>
-<script src="scrapbook.js?v=85"></script>
-<script src="script.js?v=85"></script>
-<script src="super-ouissy.js?v=85"></script>
-<script src="rescue.js?v=85"></script>
-<script src="apocalypse.js?v=85"></script>
-<script src="racing.js?v=85"></script>
+<script src="book-scene.js?v=86"></script>
+<script src="scrapbook.js?v=86"></script>
+<script src="script.js?v=86"></script>
+<script src="super-ouissy.js?v=86"></script>
+<script src="rescue.js?v=86"></script>
+<script src="apocalypse.js?v=86"></script>
+<script src="racing.js?v=86"></script>
 </body>
 </html>

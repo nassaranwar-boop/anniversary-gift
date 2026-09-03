@@ -1082,42 +1082,106 @@ function bakePano(def) {
       g.arc(x - r * 0.9, y + 3, r * 0.65, 0, TWO_PI);
       g.fill();
     }
+    /* THE ROOFLINE, AS SOLIDS
+
+       The first version drew each house as a rectangle with a three
+       pixel dark strip down one edge for "the side". Beside the
+       foreground buildings — which are real boxes now — that read as
+       exactly what it was, a row of painted flats. These get a proper
+       receding gable end, a roof with two slopes meeting at a ridge,
+       eaves that overhang, and a shadow gathered where they sit on the
+       ground. They are still painted once into a backdrop, because at
+       this distance nothing turns; but they are painted as objects. */
+    const lit = Math.cos(def.light != null ? def.light : -0.5) >= 0;
+    const sd = lit ? -1 : 1;           // the side recedes away from the sun
+
+    const panoHouse = (x, w, h, two, wall, roofC, dep) => {
+      const rise = two ? 13 : 10;
+      const dx = sd * dep, dy = -dep * 0.72;
+      const top = base - h, apex = top - rise, cx = x + w / 2;
+      /* the gable end going back, then the roof planes, then the front */
+      g.fillStyle = shade(wall, 0.70);
+      g.beginPath();
+      g.moveTo(x + (sd < 0 ? 0 : w), top);
+      g.lineTo(x + (sd < 0 ? 0 : w) + dx, top + dy);
+      g.lineTo(x + (sd < 0 ? 0 : w) + dx, base + dy);
+      g.lineTo(x + (sd < 0 ? 0 : w), base);
+      g.closePath(); g.fill();
+      /* the far roof plane */
+      g.fillStyle = shade(roofC, 0.72);
+      g.beginPath();
+      g.moveTo(cx, apex); g.lineTo(cx + dx, apex + dy);
+      g.lineTo(x + w + 3 + dx, top + dy); g.lineTo(x + w + 3, top);
+      g.closePath(); g.fill();
+      /* the front wall */
+      g.fillStyle = wall;
+      g.fillRect(x, top, w, h);
+      g.fillStyle = shade(wall, 1.14);
+      g.fillRect(x, top, Math.max(2, w * 0.16), h);
+      /* windows, lit in runs rather than a grid */
+      for (let wy = top + 5; wy < base - 5; wy += 9) {
+        for (let wx = x + 4; wx < x + w - 5; wx += 8) {
+          const on = rnd() > 0.42;
+          g.fillStyle = on ? "rgba(255,224,160,.9)" : "rgba(96,110,130,.75)";
+          g.fillRect(wx, wy, 3, 4);
+          g.fillStyle = "rgba(255,248,232,.35)";
+          g.fillRect(wx - 1, wy - 1, 5, 1);
+        }
+      }
+      /* the near roof plane and its ridge, overhanging both walls */
+      g.fillStyle = roofC;
+      g.beginPath();
+      g.moveTo(x - 3, top); g.lineTo(cx, apex);
+      g.lineTo(cx + dx, apex + dy); g.lineTo(x - 3 + dx, top + dy);
+      g.closePath(); g.fill();
+      g.fillStyle = shade(roofC, 0.94);
+      g.beginPath();
+      g.moveTo(x - 3, top); g.lineTo(cx, apex);
+      g.lineTo(x + w + 3, top); g.closePath(); g.fill();
+      g.fillStyle = shade(roofC, 1.22);
+      g.fillRect(cx - 1, apex, 2 + Math.abs(dx), 2);
+      /* the fascia under the eave, and the dark where it meets the ground */
+      g.fillStyle = shade(roofC, 0.6);
+      g.fillRect(x - 3, top, w + 6, 1.6);
+      g.fillStyle = "rgba(30,22,40,.22)";
+      g.fillRect(x, base - 3, w, 3);
+      return dx;
+    };
+
     let x = -10;
     while (x < PANO_W + 10) {
-      /* a mixed roofline: bungalows, two-storeys, the odd garage, each
-         with a lit face and a shaded one so none of them reads flat */
       const two = rnd() < 0.42;
       const w = (two ? 22 : 26) + rnd() * 16;
       const h = (two ? 26 : 14) + rnd() * 12;
       const wall = ["#a2937f", "#93a087", "#a89383", "#8f9aa2"][(rnd() * 4) | 0];
       const roofC = ["#7d6555", "#6f7580", "#85614f"][(rnd() * 3) | 0];
-      g.fillStyle = wall;      g.fillRect(x, base - h, w, h);
-      g.fillStyle = shade(wall, 1.16);
-      g.fillRect(x, base - h, Math.max(3, w * 0.28), h);
-      g.fillStyle = shade(wall, 0.82);
-      g.fillRect(x + w - 3, base - h, 3, h);
-      g.fillStyle = roofC;
-      g.beginPath();
-      g.moveTo(x - 3, base - h); g.lineTo(x + w / 2, base - h - (two ? 12 : 9));
-      g.lineTo(x + w + 3, base - h); g.closePath(); g.fill();
-      g.fillStyle = shade(roofC, 0.78);
-      g.beginPath();
-      g.moveTo(x + w / 2, base - h - (two ? 12 : 9));
-      g.lineTo(x + w + 3, base - h); g.lineTo(x + w / 2, base - h); g.closePath(); g.fill();
-      if (rnd() < 0.45) {                       // a chimney
-        g.fillStyle = shade(roofC, 1.1);
-        g.fillRect(x + w * 0.68, base - h - (two ? 15 : 12), 4, 8);
+      const dep = 5 + rnd() * 5;
+      panoHouse(x, w, h, two, wall, roofC, dep);
+      if (rnd() < 0.45) {                       // a chimney, as a little box
+        const chx = x + w * 0.66;
+        g.fillStyle = shade(roofC, 1.16);
+        g.fillRect(chx, base - h - (two ? 16 : 13), 4, 9);
+        g.fillStyle = shade(roofC, 0.8);
+        g.fillRect(chx + 3, base - h - (two ? 16 : 13), 1.5, 9);
+        g.fillStyle = shade(roofC, 1.34);
+        g.fillRect(chx - 1, base - h - (two ? 17 : 14), 6, 1.5);
       }
-      g.fillStyle = "rgba(255,224,160,.85)";
-      for (let wy = base - h + 4; wy < base - 4; wy += 9)
-        for (let wx = x + 4; wx < x + w - 4; wx += 8)
-          if (rnd() > 0.4) g.fillRect(wx, wy, 3, 4);
       if (rnd() < 0.3) {                        // a hedge out front
         g.fillStyle = "#5f8f57";
         g.fillRect(x + 2, base - 4, w - 4, 4);
+        g.fillStyle = "#6f9f63";
+        g.fillRect(x + 2, base - 4, w - 4, 1.4);
       }
       x += w + 4 + rnd() * 12;
     }
+
+    /* the air between here and there */
+    const hz = hexToRgb(def.haze);
+    g.save();
+    g.globalAlpha = 0.16;
+    g.fillStyle = `rgb(${hz[0]},${hz[1]},${hz[2]})`;
+    g.fillRect(0, base - 62, PANO_W, 62);
+    g.restore();
 
   } else {
     /* woods: clouds and two ridges of far pines */
@@ -1652,11 +1716,21 @@ function drawHazed(g, img, id, x, y, w, h, z, flip) {
    composited rectangle at bake time rather than anything per frame. */
 const TINTS = [null, "rgba(70,110,150,.13)", "rgba(255,190,120,.13)"];
 
-function buildScenery(kind, variant, def, tint) {
-  /* the sun sits on one side per track, and the sprites are baked with
-     that side lit — so the cache is keyed by which side that is */
-  const sunX = def ? Math.cos(def.light != null ? def.light : -0.7) : 0.75;
-  const litRight = sunX >= 0;
+function buildScenery(kind, variant, def, tint, litSide) {
+  /* WHICH SIDE THE LIGHT IS ON
+
+     A billboard always turns to face you, so the side of it the sun
+     falls on has to be worked out from where you are standing, not from
+     a fixed compass bearing. Baking one lit side per track was fine
+     while everything was a billboard: it was consistently wrong and
+     nothing contradicted it. Now that the buildings are solids and
+     light their faces properly, a tree beside one that keeps its
+     highlight on the same side as you drive back down the road is
+     plainly wrong. Both bakes are cached, so this costs one extra
+     sprite per kind and nothing per frame. */
+  const litRight = litSide !== undefined
+    ? !!litSide
+    : (def ? Math.cos(def.light != null ? def.light : -0.7) : 0.75) >= 0;
   const v = variant | 0;
   const ti = (tint | 0) % TINTS.length;
   const key = kind + "|" + v + "|" + ti + (litRight ? "|R" : "|L");
@@ -2580,6 +2654,684 @@ function buildScenery(kind, variant, def, tint) {
   return sceneryCache[key];
 }
 
+
+/* =========================================================
+   9b. BUILDINGS, BUILT OUT OF THEIR OWN CORNERS
+
+   Everything else in this world is a billboard, and for a pine or a
+   bush that is the right answer: they look like themselves from any
+   angle. A building does not. A billboard building has its corner
+   painted on — the same wall stays lit and the same side keeps
+   receding whether you are coming up the street at it or looking back
+   down the road from the other end — and no amount of shading fixes
+   that. It reads as a flat because it is one.
+
+   These are built out of their own corners instead. Each has a
+   footprint, a height and a yaw in world space; the corners go through
+   the same Mode 7 camera as the ground, the wall tops are those corners
+   lifted by the wall height times their own scale, and only the faces
+   that turn towards the camera get drawn. Windows, doors, siding
+   courses, roof slopes and chimneys all live in the building's own
+   coordinates and are projected with it, so nothing slides against
+   anything else. Drive past one and the near corner walks across its
+   front, the far wall swings out of sight, and the lit face changes as
+   the sun comes round it — because all of that is geometry now rather
+   than paint.
+   ========================================================= */
+
+/* Geometry may come closer than a billboard is allowed to: a building
+   you are passing should slide off the edge of the frame, not vanish. */
+const ZNEAR_G = 26;
+
+/* the kinds that are solids rather than pictures of solids */
+const SOLID = {
+  cabin: 1, house: 1, store: 1, shed: 1, shelter: 1, vending: 1,
+  acunit: 1, vent: 1, skylight: 1, watertank: 1, car: 1,
+};
+
+/* Standing height and footprint radius, for placement clearance and for
+   deciding when a solid is too small on screen to be worth its detail. */
+const SOLID_SIZE = {
+  cabin:{ h:118, r:62 }, house:{ h:124, r:64 }, store:{ h:126, r:66 },
+  shed:{ h:76, r:34 },   shelter:{ h:86, r:46 }, vending:{ h:80, r:20 },
+  acunit:{ h:40, r:20 }, vent:{ h:44, r:20 },   skylight:{ h:22, r:22 },
+  watertank:{ h:120, r:30 }, car:{ h:44, r:36 },
+};
+
+/* ---- the painter -------------------------------------------------
+
+   One entry point. It walks the parts list for this kind and variant,
+   turns every part into a set of world-space faces, throws away the
+   ones pointing away from the camera, sorts what is left back to front
+   and fills it. Each face carries a mapper so its own detail — a
+   window, a course of siding, a shop sign — is placed in the face's
+   coordinates and comes out in perspective for free.                  */
+function drawSolid(g, o, camX, camY, camA, fade) {
+  const kind = o.kind;
+  const parts = solidParts(kind, o.v | 0, trackDef, o.tint | 0);
+  if (!parts || !parts.length) return;
+
+  /* Height varies from building to building, footprint far less — a
+     street of houses differs in storey height, not in plot size. */
+  const hv = 0.90 + ((o.hv || 1) - 1.04) * 0.38;
+  const yaw = o.yaw || 0;
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const cosA = Math.cos(camA), sinA = Math.sin(camA);
+  const light = trackDef.light != null ? trackDef.light : -0.7;
+
+  /* building-local (across, deep, up) -> screen */
+  const P = (lu, lw, lv) => {
+    const wx = o.x + lu * cy - lw * sy;
+    const wy = o.y + lu * sy + lw * cy;
+    const dx = wx - camX, dy = wy - camY;
+    let z = dx * cosA + dy * sinA;
+    if (z < ZNEAR_G) z = ZNEAR_G;
+    const x = -dx * sinA + dy * cosA;
+    const sc = camFocal / z;
+    return { sx: RW / 2 + x * sc, sy: HORIZON + CAM_H * sc - lv * hv * sc, z, sc };
+  };
+
+  /* How bright a face is, from where it points relative to the sun.
+     This is the whole reason a solid reads as solid: two walls meeting
+     at a corner are never the same colour, and which of them is the
+     bright one changes as the building turns. */
+  const lamp = (nu, nw) => {
+    const bearing = Math.atan2(nu * sy + nw * cy, nu * cy - nw * sy);
+    return 0.60 + 0.44 * Math.max(0, Math.cos(bearing - light));
+  };
+
+  const faces = [];
+  /* pts are given outward-facing; anything that lands wound the wrong
+     way on screen is pointing away from us and is dropped */
+  const add = (pts, col, detail, flat) => {
+    let a = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i], q = pts[(i + 1) % pts.length];
+      a += p.sx * q.sy - q.sx * p.sy;
+    }
+    if (a <= 0.0001 && !flat) return;
+    let z = 0;
+    for (const p of pts) z += p.z;
+    faces.push({ pts, col, detail, z: z / pts.length, area: Math.abs(a) });
+  };
+
+  for (const part of parts) partFaces(part, P, lamp, add, o, fade);
+
+  faces.sort((a, b) => b.z - a.z);
+
+  g.save();
+  if (fade < 1) g.globalAlpha = fade;
+  for (const f of faces) {
+    if (f.area < 0.6) continue;
+    g.fillStyle = f.col;
+    g.beginPath();
+    f.pts.forEach((p, i) => (i ? g.lineTo(p.sx, p.sy) : g.moveTo(p.sx, p.sy)));
+    g.closePath();
+    g.fill();
+    /* Every face gets its outline. Two walls meeting at a corner differ
+       in tone, but at this resolution a tone step alone goes mushy —
+       the line is what makes the corner an edge, and the edge is what
+       says the thing has a back to it. */
+    if (f.area > 8) {
+      g.strokeStyle = "rgba(24,16,30,.30)";
+      g.lineWidth = 0.7;
+      g.stroke();
+    }
+    if (f.detail && f.area > 26) {
+      g.save();
+      g.clip();
+      f.detail(g, f);
+      g.restore();
+    }
+  }
+
+  /* Smoke leaves the chimney it is standing on, because the chimney is
+     a thing in the world now rather than a bump in a picture. */
+  for (const part of parts) {
+    if (!part.smoke) continue;
+    const top = P(part.x || 0, part.y || 0, (part.z || 0) + (part.h || 0));
+    if (top.sc < 0.05) break;
+    for (let i = 0; i < 4; i++) {
+      const t = (raceTime * 0.30 + i / 4 + (o.hv || 1)) % 1;
+      const r = top.sc * (5 + t * 16);
+      if (r < 0.5) continue;
+      g.globalAlpha = 0.30 * (1 - t) * (fade < 1 ? fade : 1);
+      g.fillStyle = "#e8e2ea";
+      g.beginPath();
+      g.arc(top.sx + Math.sin(t * 3.1 + i) * top.sc * 9,
+            top.sy - t * top.sc * 46, r, 0, TWO_PI);
+      g.fill();
+    }
+    break;
+  }
+  g.restore();
+}
+
+/* The shadow a solid throws: its own footprint, and its footprint
+   pushed away from the sun by its height, wrapped in the hull of the
+   two. It changes shape as the building turns, which an ellipse under
+   a sprite never did. */
+function solidShadow(g, o, camX, camY, camA, fade) {
+  const size = SOLID_SIZE[o.kind] || { h: 80, r: 40 };
+  const parts = solidParts(o.kind, o.v | 0, trackDef, o.tint | 0);
+  if (!parts || !parts.length) return;
+  const base = parts[0];
+  const hw = (base.w || size.r) / 2, hd = (base.d || size.r) / 2;
+  const hv = 0.90 + ((o.hv || 1) - 1.04) * 0.38;
+  const top = (base.z || 0) + (base.h || size.h) * 0.9;
+
+  const yaw = o.yaw || 0;
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const light = trackDef.light != null ? trackDef.light : -0.7;
+  const len = top * hv * 0.62;
+  const ox = Math.cos(light + Math.PI) * len, oy = Math.sin(light + Math.PI) * len;
+
+  const cosA = Math.cos(camA), sinA = Math.sin(camA);
+  const pts = [];
+  for (const [u, w] of [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]]) {
+    for (const push of [0, 1]) {
+      const wx = o.x + u * cy - w * sy + ox * push;
+      const wy = o.y + u * sy + w * cy + oy * push;
+      const dx = wx - camX, dy = wy - camY;
+      let z = dx * cosA + dy * sinA;
+      if (z < ZNEAR_G) z = ZNEAR_G;
+      const x = -dx * sinA + dy * cosA;
+      const sc = camFocal / z;
+      pts.push({ x: RW / 2 + x * sc, y: HORIZON + CAM_H * sc });
+    }
+  }
+  /* convex hull of the eight, so the shadow is one shape and not two */
+  pts.sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (O, A, B) => (A.x - O.x) * (B.y - O.y) - (A.y - O.y) * (B.x - O.x);
+  const lower = [], upper = [];
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  lower.pop(); upper.pop();
+  const hull = lower.concat(upper);
+  if (hull.length < 3) return;
+
+  g.save();
+  g.globalAlpha = 0.26 * (fade < 1 ? fade : 1);
+  g.fillStyle = "#120c18";
+  g.beginPath();
+  hull.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
+  g.closePath();
+  g.fill();
+  g.restore();
+}
+
+/* ---- one part, turned into faces --------------------------------
+
+   Faces are always wound the same way round the solid — along the
+   bottom edge in loop order, then up and back — so a face that lands on
+   screen wound the other way is one we are looking at the back of, and
+   it is dropped before anything is filled.                            */
+function partFaces(part, P, lamp, add) {
+  const x = part.x || 0, y = part.y || 0, z = part.z || 0;
+  const w = part.w, d = part.d, h = part.h || 0;
+  const u0 = x - w / 2, u1 = x + w / 2;
+  const w0 = y - d / 2, w1 = y + d / 2;
+  const col = part.col;
+
+  /* a mapper for one upright face: uu runs 0..1 along its foot, vv is
+     height above the foot, both in the building's own units */
+  const face = (au, aw, bu, bw) => (uu, vv) =>
+    P(au + (bu - au) * uu, aw + (bw - aw) * uu, z + vv);
+
+  const wall = (au, aw, bu, bw, nu, nw, spanW, front) => {
+    if (h <= 0) return;
+    const M = face(au, aw, bu, bw);
+    const lit = lamp(nu, nw);
+    const pts = [M(0, 0), M(1, 0), M(1, h), M(0, h)];
+    add(pts, shade(col, lit),
+        part.plain ? null : wallDetail(M, spanW, h, part, front));
+  };
+
+  if (part.k === "box" || part.k === undefined) {
+    wall(u0, w0, u1, w0,  0, -1, w, true);
+    wall(u1, w0, u1, w1,  1,  0, d, false);
+    wall(u1, w1, u0, w1,  0,  1, w, false);
+    wall(u0, w1, u0, w0, -1,  0, d, false);
+    if (part.top !== false) {
+      add([P(u0, w0, z + h), P(u1, w0, z + h), P(u1, w1, z + h), P(u0, w1, z + h)],
+          shade(col, 1.30), part.topDetail || null);
+    }
+
+  } else if (part.k === "gable") {
+    const e = part.eave || 0, rise = part.rise;
+    const a0 = u0 - e, a1 = u1 + e, b0 = w0 - e, b1 = w1 + e;
+    const rc = part.col, rl = lamp(0, -1) * 1.10, rd = lamp(0, 1) * 1.10;
+    add([P(a0, b0, z), P(a1, b0, z), P(a1, y, z + rise), P(a0, y, z + rise)],
+        shade(rc, rl), shingles(part, 1));
+    add([P(a1, b1, z), P(a0, b1, z), P(a0, y, z + rise), P(a1, y, z + rise)],
+        shade(rc, rd), shingles(part, 1));
+    /* the gable ends, in the wall's colour, sitting on the wall below */
+    const gc = part.endCol || rc;
+    add([P(u0, w1, z), P(u0, w0, z), P(u0, y, z + rise)], shade(gc, lamp(-1, 0)));
+    add([P(u1, w0, z), P(u1, w1, z), P(u1, y, z + rise)], shade(gc, lamp(1, 0)));
+    /* the ridge cap, and the fascia under each eave */
+    add([P(a0, y - 1.6, z + rise), P(a1, y - 1.6, z + rise),
+         P(a1, y + 1.6, z + rise), P(a0, y + 1.6, z + rise)], shade(rc, 1.34));
+
+  } else if (part.k === "hip") {
+    const e = part.eave || 0, rise = part.rise, rh = (part.ridge || w * 0.3) / 2;
+    const a0 = u0 - e, a1 = u1 + e, b0 = w0 - e, b1 = w1 + e;
+    const rc = part.col;
+    add([P(a0, b0, z), P(a1, b0, z), P(x + rh, y, z + rise), P(x - rh, y, z + rise)],
+        shade(rc, lamp(0, -1) * 1.10), shingles(part, 1));
+    add([P(a1, b1, z), P(a0, b1, z), P(x - rh, y, z + rise), P(x + rh, y, z + rise)],
+        shade(rc, lamp(0, 1) * 1.10), shingles(part, 1));
+    add([P(a0, b1, z), P(a0, b0, z), P(x - rh, y, z + rise)], shade(rc, lamp(-1, 0) * 1.06));
+    add([P(a1, b0, z), P(a1, b1, z), P(x + rh, y, z + rise)], shade(rc, lamp(1, 0) * 1.06));
+    add([P(x - rh, y - 1.4, z + rise), P(x + rh, y - 1.4, z + rise),
+         P(x + rh, y + 1.4, z + rise), P(x - rh, y + 1.4, z + rise)], shade(rc, 1.34));
+
+  } else if (part.k === "lean") {
+    const e = part.eave || 0, rise = part.rise;
+    const a0 = u0 - e, a1 = u1 + e, b0 = w0 - e, b1 = w1 + e;
+    const rc = part.col;
+    /* one plane, low at the front and high at the back */
+    add([P(a0, b0, z), P(a1, b0, z), P(a1, b1, z + rise), P(a0, b1, z + rise)],
+        shade(rc, lamp(0, -0.55) * 1.14), shingles(part, 1));
+    add([P(u0, w1, z + rise), P(u0, w0, z), P(u0, w1, z)], shade(part.endCol || rc, lamp(-1, 0)));
+    add([P(u1, w0, z), P(u1, w1, z + rise), P(u1, w1, z)], shade(part.endCol || rc, lamp(1, 0)));
+
+  } else if (part.k === "prism") {
+    /* a round thing, as ten flat ones. A water butt or a roof tank is
+       the one shape on these courses that a box cannot fake. */
+    const n = part.sides || 10, r = part.r;
+    const vtx = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TWO_PI + (part.rot || 0);
+      vtx.push([x + Math.cos(a) * r, y + Math.sin(a) * r, Math.cos(a), Math.sin(a)]);
+    }
+    for (let i = 0; i < n; i++) {
+      const A = vtx[i], B = vtx[(i + 1) % n];
+      const M = (uu, vv) => P(A[0] + (B[0] - A[0]) * uu, A[1] + (B[1] - A[1]) * uu, z + vv);
+      add([M(0, 0), M(1, 0), M(1, h), M(0, h)],
+          shade(col, lamp((A[2] + B[2]) / 2, (A[3] + B[3]) / 2)),
+          part.plain ? null : wallDetail(M, (TWO_PI * r) / n, h, part, false));
+    }
+    if (part.top !== false)
+      add(vtx.map((V) => P(V[0], V[1], z + h)), shade(col, 1.28));
+
+  } else if (part.k === "flat") {
+    /* a deck set down behind a parapet: you see the parapet from the
+       road and a sliver of roof from anywhere with height on it */
+    const ph = part.parapet || 6;
+    add([P(u0, w0, z), P(u1, w0, z), P(u1, w1, z), P(u0, w1, z)],
+        shade(part.deckCol || col, 1.06), part.topDetail || null);
+    const pc = part.capCol || col;
+    const pw = (au, aw, bu, bw, nu, nw) => {
+      const M = (uu, vv) => P(au + (bu - au) * uu, aw + (bw - aw) * uu, z + vv);
+      add([M(0, 0), M(1, 0), M(1, ph), M(0, ph)], shade(pc, lamp(nu, nw)),
+          (g2, f2) => {
+            g2.fillStyle = shade(pc, 1.3);
+            const t = f2.pts;
+            g2.beginPath();
+            g2.moveTo(t[3].sx, t[3].sy); g2.lineTo(t[2].sx, t[2].sy);
+            g2.lineTo(t[2].sx, t[2].sy + 2); g2.lineTo(t[3].sx, t[3].sy + 2);
+            g2.closePath(); g2.fill();
+          });
+    };
+    pw(u0, w0, u1, w0,  0, -1);
+    pw(u1, w0, u1, w1,  1,  0);
+    pw(u1, w1, u0, w1,  0,  1);
+    pw(u0, w1, u0, w0, -1,  0);
+  }
+}
+
+/* Shingle courses, or the ribs of a corrugated sheet — drawn inside the
+   roof plane that has just been filled, so they follow it in
+   perspective instead of lying flat across it. */
+function shingles(part, n) {
+  return (g, f) => {
+    const p = f.pts;
+    if (p.length < 4) return;
+    g.globalAlpha = 0.16;
+    g.strokeStyle = "#1a1220";
+    g.lineWidth = 0.8;
+    const rows = part.ribs ? 9 : 5;
+    for (let i = 1; i < rows; i++) {
+      const t = i / rows;
+      g.beginPath();
+      g.moveTo(p[0].sx + (p[3].sx - p[0].sx) * t, p[0].sy + (p[3].sy - p[0].sy) * t);
+      g.lineTo(p[1].sx + (p[2].sx - p[1].sx) * t, p[1].sy + (p[2].sy - p[1].sy) * t);
+      g.stroke();
+    }
+    g.globalAlpha = 1;
+  };
+}
+
+/* ---- what is painted on a wall ----------------------------------
+
+   All of it in the wall's own coordinates, so a window is a hole in
+   that wall and stays put on it however the building is turned.        */
+function wallDetail(M, spanW, wallH, part, isFront) {
+  return (g) => {
+    const quad = (u0, v0, u1, v1, fill) => {
+      const a = M(u0, v0), b = M(u1, v0), c = M(u1, v1), d = M(u0, v1);
+      g.fillStyle = fill;
+      g.beginPath();
+      g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy);
+      g.lineTo(c.sx, c.sy); g.lineTo(d.sx, d.sy);
+      g.closePath(); g.fill();
+    };
+
+    /* the material: courses of siding, rows of brick, a rendered wall */
+    const mat = part.mat;
+    if (mat === "siding" || mat === "log" || mat === "wood") {
+      const step = mat === "log" ? 9 : 7;
+      g.globalAlpha = mat === "log" ? 0.30 : 0.20;
+      for (let v = step; v < wallH; v += step) {
+        const a = M(0, v), b = M(1, v);
+        g.strokeStyle = "#120c18"; g.lineWidth = 0.9;
+        g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke();
+        const a2 = M(0, v + 1.4), b2 = M(1, v + 1.4);
+        g.strokeStyle = "#ffffff"; g.lineWidth = 0.7;
+        g.beginPath(); g.moveTo(a2.sx, a2.sy); g.lineTo(b2.sx, b2.sy); g.stroke();
+      }
+      g.globalAlpha = 1;
+    } else if (mat === "brick") {
+      g.globalAlpha = 0.17; g.strokeStyle = "#120c18"; g.lineWidth = 0.8;
+      for (let v = 6; v < wallH; v += 6) {
+        const a = M(0, v), b = M(1, v);
+        g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke();
+      }
+      const cols = Math.max(3, Math.round(spanW / 9));
+      for (let i = 1; i < cols; i++) {
+        const a = M(i / cols, 0), b = M(i / cols, wallH);
+        g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke();
+      }
+      g.globalAlpha = 1;
+    } else if (mat === "panel") {
+      g.globalAlpha = 0.18; g.strokeStyle = "#120c18"; g.lineWidth = 0.8;
+      const cols = Math.max(2, Math.round(spanW / 11));
+      for (let i = 1; i < cols; i++) {
+        const a = M(i / cols, 0), b = M(i / cols, wallH);
+        g.beginPath(); g.moveTo(a.sx, a.sy); g.lineTo(b.sx, b.sy); g.stroke();
+      }
+      g.globalAlpha = 1;
+    }
+
+    /* the dark gather where the wall meets the ground, which is most of
+       what stops a building looking like it is hovering */
+    g.globalAlpha = 0.30;
+    quad(0, 0, 1, Math.min(4, wallH * 0.08), "#120c18");
+    g.globalAlpha = 1;
+
+    if (!part.win) return;
+    const win = part.win;
+    const cols = Math.max(1, Math.round(spanW / (win.pitch || 26)));
+    const ww = (win.w || 13) / spanW, wh = win.h || 12;
+    for (let r = 0; r < (win.rows || 1); r++) {
+      const v = (win.v0 || 16) + r * (win.dv || 22);
+      if (v + wh > wallH - 3) continue;
+      for (let c = 0; c < cols; c++) {
+        const cu = (c + 0.5) / cols;
+        /* nothing goes where the door is */
+        if (isFront && part.door) {
+          const du = part.door.u != null ? part.door.u : 0.5;
+          const dw = (part.door.w || 14) / spanW;
+          if (v < (part.door.h || 22) && Math.abs(cu - du) < dw * 0.9 + 0.04) continue;
+        }
+        const glass = win.lit && (((c * 7 + r * 3) % 5) < 3) ? (win.litCol || "#ffd98a") : (win.glass || "#5d7a92");
+        quad(cu - ww / 2 - 0.012, v - 2, cu + ww / 2 + 0.012, v + wh + 2, win.frame || "#fff4e6");
+        quad(cu - ww / 2, v, cu + ww / 2, v + wh, glass);
+        /* a slash of sky across the pane, and the glazing bar */
+        g.globalAlpha = 0.35;
+        quad(cu - ww / 2, v + wh * 0.55, cu + ww * 0.06, v + wh, "#ffffff");
+        g.globalAlpha = 1;
+        quad(cu - 0.006, v, cu + 0.006, v + wh, win.frame || "#fff4e6");
+        quad(cu - ww / 2, v + wh * 0.48, cu + ww / 2, v + wh * 0.52, win.frame || "#fff4e6");
+        if (win.sill) quad(cu - ww / 2 - 0.02, v - 4, cu + ww / 2 + 0.02, v - 2, win.sill);
+      }
+    }
+
+    if (part.door && isFront) {
+      const dw = (part.door.w || 14) / spanW, dh = part.door.h || 22;
+      const du = part.door.u != null ? part.door.u : 0.5;
+      quad(du - dw / 2 - 0.014, 0, du + dw / 2 + 0.014, dh + 2, part.door.frame || "#fff4e6");
+      quad(du - dw / 2, 0, du + dw / 2, dh, part.door.col || "#7d5340");
+      quad(du + dw * 0.22, dh * 0.44, du + dw * 0.34, dh * 0.52, "#ffd166");
+    }
+  };
+}
+
+/* a colour cast, so two houses of the same variant are not twins */
+function tintHex(hex, ti) {
+  if (!ti) return hex;
+  const t = ti === 1 ? [70, 110, 150] : [255, 190, 120];
+  const [r, g, b] = hexToRgb(hex);
+  const m = 0.13;
+  const c = (a, bb) => Math.round(a + (bb - a) * m);
+  const h = (n) => n.toString(16).padStart(2, "0");
+  return "#" + h(c(r, t[0])) + h(c(g, t[1])) + h(c(b, t[2]));
+}
+
+const solidCache = {};
+
+/* ---- what each solid is made of ---------------------------------
+
+   Parts, in the building's own coordinates: x across, y deep, z up
+   from the ground, all in world units. The first part is always the
+   main mass, because that is what the ground shadow is cast from.     */
+function solidParts(kind, v, def, ti) {
+  const key = kind + "|" + v + "|" + ti + "|" + (def ? def.id : "-");
+  if (solidCache[key]) return solidCache[key];
+  const night = def && def.id === "roof";
+  const T = (c) => tintHex(c, ti);
+  let parts = [];
+
+  if (kind === "house") {
+    const walls = ["#e0c3a4", "#cfd8c4", "#e8d4c0", "#d6c8dc"];
+    const roofs = ["#9c6152", "#6f7f8c", "#8c6a4a", "#7a6280"];
+    const trims = ["#fff4e6", "#f2f6ee", "#fff0dc", "#f4eefa"];
+    const doors = ["#7d5340", "#5f4a6b", "#8a5a44", "#6b5340"];
+    const wall = T(walls[v % 4]), roof = T(roofs[v % 4]);
+    const trim = trims[v % 4], door = doors[v % 4];
+
+    if (v % 4 === 0) {                       /* wide single-storey ranch */
+      const W = 112, D = 78, H = 50;
+      parts = [
+        { k:"box", w:W, d:D, h:H, col:wall, mat:"siding",
+          win:{ rows:1, pitch:30, w:16, h:15, v0:20, glass:"#5d7a92",
+                frame:trim, sill:"#d8cdbc", lit:night, litCol:"#ffd98a" },
+          door:{ w:15, h:26, col:door, frame:trim } },
+        { k:"gable", w:W, d:D, h:0, z:H, rise:28, eave:7, col:roof, endCol:wall },
+        { k:"box", x:W*0.28, y:0, z:H+8, w:12, d:12, h:26, col:"#a8705c", mat:"brick" },
+        { k:"box", x:W*0.28, y:0, z:H+32, w:15, d:15, h:4, col:"#8c5b48", smoke:true },
+        { k:"box", y:-D/2-9, z:0, w:W*0.42, d:18, h:2, col:"#c9c2b4", plain:true },
+      ];
+    } else if (v % 4 === 1) {                /* two-storey colonial */
+      const W = 88, D = 72, H = 80;
+      parts = [
+        { k:"box", w:W, d:D, h:H, col:wall, mat:"siding",
+          win:{ rows:2, pitch:28, w:14, h:16, v0:16, dv:34, glass:"#546f88",
+                frame:trim, sill:"#d8cdbc", lit:night, litCol:"#ffd98a" },
+          door:{ w:15, h:26, col:door, frame:trim } },
+        { k:"gable", w:W, d:D, h:0, z:H, rise:24, eave:6, col:roof, endCol:wall },
+        { k:"box", x:-W*0.3, y:0, z:H+6, w:11, d:11, h:24, col:"#a8705c", mat:"brick" },
+        { k:"box", x:-W*0.3, y:0, z:H+28, w:14, d:14, h:4, col:"#8c5b48", smoke:true },
+        { k:"box", y:-D/2-4, z:28, w:26, d:9, h:3, col:roof },   /* door hood */
+      ];
+    } else if (v % 4 === 2) {                /* cottage with a porch */
+      const W = 94, D = 74, H = 52;
+      parts = [
+        { k:"box", w:W, d:D, h:H, col:wall, mat:"stucco",
+          win:{ rows:1, pitch:28, w:14, h:14, v0:22, glass:"#5d7a92",
+                frame:trim, sill:"#d8cdbc", lit:night, litCol:"#ffd98a" },
+          door:{ w:14, h:25, col:door, frame:trim } },
+        { k:"hip", w:W, d:D, h:0, z:H, rise:26, eave:8, ridge:W*0.34, col:roof },
+        { k:"box", y:-D/2-11, z:0, w:W+8, d:22, h:5, col:"#c8a98c", plain:true },
+        { k:"box", x:-W*0.44, y:-D/2-19, z:5, w:6, d:6, h:29, col:trim },
+        { k:"box", x:-W*0.15, y:-D/2-19, z:5, w:6, d:6, h:29, col:trim },
+        { k:"box", x: W*0.15, y:-D/2-19, z:5, w:6, d:6, h:29, col:trim },
+        { k:"box", x: W*0.44, y:-D/2-19, z:5, w:6, d:6, h:29, col:trim },
+        /* the rail between the posts, so the porch has a front to it */
+        { k:"box", y:-D/2-19, z:16, w:W+2, d:3, h:3, col:trim, plain:true },
+        { k:"box", y:-D/2-19, z:5,  w:W+2, d:2, h:2, col:trim, plain:true },
+        /* and a roof that slopes out over it rather than sitting flat */
+        { k:"lean", w:W+12, d:26, h:0, z:34, y:-D/2-12, rise:6, eave:3,
+          col:roof, endCol:trim },
+      ];
+    } else {                                  /* small hipped bungalow */
+      const W = 84, D = 68, H = 46;
+      parts = [
+        { k:"box", w:W, d:D, h:H, col:wall, mat:"siding",
+          win:{ rows:1, pitch:26, w:14, h:13, v0:20, glass:"#5d7a92",
+                frame:trim, sill:"#d8cdbc", lit:night, litCol:"#ffd98a" },
+          door:{ w:14, h:24, col:door, frame:trim } },
+        { k:"hip", w:W, d:D, h:0, z:H, rise:24, eave:7, ridge:W*0.3, col:roof },
+        { k:"box", y:-D/2-5, z:26, w:20, d:11, h:3, col:roof },
+      ];
+    }
+
+  } else if (kind === "cabin") {
+    const wall = T(v % 2 ? "#8a6a4a" : "#7d6144");
+    const roof = T(v % 2 ? "#7a3f30" : "#6b4a35");
+    const W = 92, D = 72, H = 50;
+    parts = [
+      { k:"box", w:W, d:D, h:H, col:wall, mat:"log",
+        win:{ rows:1, pitch:30, w:14, h:13, v0:22, glass:"#4e6a80",
+              frame:"#6f523a", lit:true, litCol:"#ffc978" },
+        door:{ w:14, h:25, col:"#5c3b26", frame:"#6f523a" } },
+      { k:"gable", w:W, d:D, h:0, z:H, rise:30, eave:8, col:roof, endCol:wall },
+      { k:"box", x:v % 2 ? W*0.3 : -W*0.34, y:0, z:H+10, w:13, d:13, h:26, col:"#9a8c80", mat:"brick" },
+      { k:"box", x:v % 2 ? W*0.3 : -W*0.34, y:0, z:H+32, w:16, d:16, h:4, col:"#7d7168", smoke:true },
+      { k:"box", y:-D/2-8, z:0, w:W*0.5, d:16, h:3, col:"#6f523a", plain:true },
+      { k:"box", x:W*0.42, y:-D/2+6, z:0, w:12, d:10, h:16, col:"#7a5c3f", plain:true },
+    ];
+
+  } else if (kind === "store") {
+    const wall = T(v % 2 ? "#cbb59a" : "#b9c2cc");
+    const band = v % 2 ? "#ff9ec4" : "#7ec8e3";
+    const W = 108, D = 78, H = 78;
+    parts = [
+      { k:"box", w:W, d:D, h:H, col:wall, mat:"brick",
+        win:{ rows:1, pitch:26, w:17, h:20, v0:44, glass:"#4f6c85",
+              frame:"#6f5a44", lit:night, litCol:"#ffd98a" },
+        door:{ u:0.5, w:16, h:28, col:"#6f5a44", frame:"#8a7358" } },
+      { k:"flat", w:W+4, d:D+4, h:0, z:H, parapet:10, col:T("#a89680"),
+        capCol:T("#a89680"), deckCol:"#6f6a62" },
+      /* THE SHOPFRONT
+
+         A slab of colour across the front of a building is a poster of
+         a shop. This is a glazed bay set proud of the brick, with its
+         own mullions and a stall riser under them, a striped awning
+         that actually slopes out over the pavement, and a sign board
+         above it — all of them separate solids, so the awning throws
+         its own edge across the glass as you come past. */
+      { k:"box", y:-D/2-4, z:4, w:W*0.84, d:8, h:30, col:T("#6a5a48"), plain:true },
+      { k:"box", y:-D/2-8, z:9, w:W*0.80, d:2, h:23, col:"#3d5164",
+        win:{ rows:1, pitch:22, w:17, h:17, v0:3, glass:"#4f7f96",
+              frame:T("#f2e6d2"), lit:true, litCol:"#ffe9b0" } },
+      { k:"lean", w:W*0.94, d:20, h:0, z:34, y:-D/2-10, rise:7,
+        col:v % 2 ? "#e8556f" : "#4a9fc4", eave:2, ribs:true },
+      { k:"box", y:-D/2-2, z:46, w:W*0.56, d:5, h:16, col:T("#4a4250"), plain:true },
+      { k:"box", y:-D/2-4, z:49, w:W*0.50, d:2, h:10, col:v % 2 ? "#ffd166" : "#7ec8e3", plain:true },
+      { k:"box", y:-D/2-3, z:2, w:W*0.86, d:6, h:3, col:"#b9b0a2", plain:true },
+    ];
+
+  } else if (kind === "shed") {
+    const wall = T(v % 2 ? "#9a7a52" : "#8b7157");
+    const roof = T(v % 2 ? "#6a4030" : "#5d5342");
+    const W = 54, D = 46, H = 32;
+    parts = [
+      { k:"box", w:W, d:D, h:H, col:wall, mat:"wood",
+        win:{ rows:1, pitch:34, w:10, h:9, v0:16, glass:"#4e6a80", frame:"#6f523a" },
+        door:{ w:15, h:24, col:"#5c3b26", frame:"#6f523a" } },
+      { k:"lean", w:W, d:D, h:0, z:H, rise:12, eave:6, col:roof, endCol:wall, ribs:true },
+    ];
+    if (v % 2) parts.push({ k:"box", x:W*0.4, y:-D*0.3, z:0, w:12, d:12, h:18, col:"#5f6b52" });
+
+  } else if (kind === "shelter") {
+    const roof = T("#7f8a96");
+    const W = 76, D = 38;
+    parts = [
+      { k:"box", w:W, d:D, h:6, col:T("#9aa0a8"), plain:true },
+      { k:"box", y:D/2-2, z:6, w:W, d:3, h:44, col:"#cfe4f2", plain:true },
+      { k:"box", x:-W/2+3, y:-D/2+3, z:6, w:5, d:5, h:48, col:"#6f7a86", plain:true },
+      { k:"box", x: W/2-3, y:-D/2+3, z:6, w:5, d:5, h:48, col:"#6f7a86", plain:true },
+      { k:"box", x:-W/2+3, y: D/2-3, z:6, w:5, d:5, h:48, col:"#6f7a86", plain:true },
+      { k:"box", x: W/2-3, y: D/2-3, z:6, w:5, d:5, h:48, col:"#6f7a86", plain:true },
+      { k:"box", z:54, w:W+10, d:D+10, h:5, col:roof },
+      { k:"box", y:D/2-6, z:12, w:W*0.7, d:6, h:5, col:"#8a7358", plain:true },
+    ];
+
+  } else if (kind === "vending") {
+    parts = [
+      { k:"box", w:32, d:22, h:72, col:T("#c8556a"), mat:"panel",
+        win:{ rows:2, pitch:40, w:20, h:20, v0:30, dv:24,
+              glass:"#2e3a48", frame:"#f4e3c8", lit:true, litCol:"#ffe6a8" } },
+      { k:"box", z:72, w:34, d:24, h:4, col:T("#a8455a") },
+      { k:"box", y:-12, z:14, w:18, d:2, h:5, col:"#3a3340", plain:true },
+    ];
+
+  } else if (kind === "acunit") {
+    parts = [
+      { k:"box", w:36, d:28, h:30, col:T("#9aa2ac"), mat:"panel" },
+      { k:"box", z:30, w:38, d:30, h:4, col:T("#8a929c") },
+      { k:"box", y:-14, z:6, w:24, d:2, h:20, col:"#6f7780", plain:true },
+    ];
+
+  } else if (kind === "vent") {
+    parts = [
+      { k:"box", w:30, d:26, h:34, col:T("#6f6a78"), mat:"panel" },
+      { k:"box", z:34, w:34, d:30, h:5, col:T("#5e5a68") },
+      { k:"box", z:39, w:20, d:16, h:6, col:T("#4a4654") },
+    ];
+
+  } else if (kind === "skylight") {
+    parts = [
+      { k:"box", w:36, d:30, h:8, col:T("#7d8892"), plain:true },
+      { k:"gable", w:34, d:28, h:0, z:8, rise:10, eave:1, col:"#bfe0f0", endCol:"#8fa8b8" },
+    ];
+
+  } else if (kind === "watertank") {
+    parts = [
+      { k:"prism", sides:10, r:26, h:56, z:36, col:T("#8a6a4a"), mat:"log" },
+      { k:"prism", sides:10, r:28, h:5, z:92, col:T("#6f523a") },
+      { k:"prism", sides:10, r:27, h:4, z:32, col:T("#6f523a") },
+      { k:"box", x:-17, y:-17, w:6, d:6, h:36, col:"#5e5346", plain:true },
+      { k:"box", x: 17, y:-17, w:6, d:6, h:36, col:"#5e5346", plain:true },
+      { k:"box", x:-17, y: 17, w:6, d:6, h:36, col:"#5e5346", plain:true },
+      { k:"box", x: 17, y: 17, w:6, d:6, h:36, col:"#5e5346", plain:true },
+    ];
+
+  } else if (kind === "car") {
+    const body = T(["#7f9ec4", "#c47f8a", "#8fb98f"][v % 3]);
+    parts = [
+      { k:"box", z:8, w:46, d:24, h:14, col:body },
+      { k:"box", x:-3, z:22, w:26, d:22, h:12, col:shadeHex(body, 0.92),
+        win:{ rows:1, pitch:16, w:9, h:8, v0:2, glass:"#2e3a48", frame:body } },
+      { k:"box", y:-13, z:12, w:8, d:3, h:4, col:"#ffe6a8", plain:true },
+      { k:"box", y: 13, z:12, w:8, d:3, h:4, col:"#e8556f", plain:true },
+      { k:"box", x:-15, y:-12, z:0, w:9, d:5, h:9, col:"#2a2530", plain:true },
+      { k:"box", x: 15, y:-12, z:0, w:9, d:5, h:9, col:"#2a2530", plain:true },
+      { k:"box", x:-15, y: 12, z:0, w:9, d:5, h:9, col:"#2a2530", plain:true },
+      { k:"box", x: 15, y: 12, z:0, w:9, d:5, h:9, col:"#2a2530", plain:true },
+    ];
+  }
+
+  solidCache[key] = parts;
+  return parts;
+}
+
+/* shade(), but it hands back a hex so the result can be shaded again */
+function shadeHex(hex, f) {
+  const [r, g, b] = hexToRgb(hex);
+  const c = (x) => Math.max(0, Math.min(255, Math.round(x * f))).toString(16).padStart(2, "0");
+  return "#" + c(r) + c(g) + c(b);
+}
+
 /* the heart box, spinning — eight frames is plenty at this size */
 let boxFrames = null;
 function buildBoxFrames() {
@@ -2903,8 +3655,14 @@ class Racer {
   }
 
   drivePlayer(dt) {
-    const gas   = input.up,   rev  = input.down;
-    const left  = input.left, right = input.right;
+    const rev   = input.down;
+    /* the throttle holds itself unless you are on the brake */
+    const gas   = input.up || (autoGas && padWanted && !rev);
+    /* a thumb on the glass gives a real angle, not a yes or a no */
+    const ax    = input.axis || 0;
+    const left  = input.left  || ax < -0.05;
+    const right = input.right || ax >  0.05;
+    const mag   = ax ? Math.min(1, Math.abs(ax)) : 1;
     const dkey  = input.drift;
     const k     = dt * 60;
     const max   = this.maxSpeed;
@@ -2990,8 +3748,8 @@ class Racer {
        speed needed steering — you were simply stuck there for good. */
     rate *= Math.min(1, (Math.abs(this.speed) + 0.30) / (TOP_SPEED * 0.30));
     const dir = this.speed < 0 ? -1 : 1;
-    if (left)  this.steer -= rate * k * dir;
-    if (right) this.steer += rate * k * dir;
+    if (left)  this.steer -= rate * k * dir * mag;
+    if (right) this.steer += rate * k * dir * mag;
     if (!left && !right) {
       /* self-centring, so letting go straightens the kart out */
       const back = TURN * 1.5 * k;
@@ -3580,7 +4338,12 @@ function placeProps(def) {
       if (nv > 1 && vv === lastVariant[kind]) vv = (vv + 1) % nv;
       lastVariant[kind] = vv;
       /* the bigger the thing, the more room it needs beside the road */
-      const bulk = spec.h * hv * spec.foot * 0.22;
+      /* A solid's footprint is a real number now, not a fraction of a
+         sprite's height, so the room it needs beside the road is the
+         room it actually takes up. */
+      const bulk = SOLID[kind]
+        ? (SOLID_SIZE[kind] ? SOLID_SIZE[kind].r : 40) * 0.62
+        : spec.h * hv * spec.foot * 0.22;
       const clear = SHOULDER + (NEAR_KINDS[kind] ? 6 : 20) + bulk;
 
       /* Two bands. Small things line the verge, where they read as
@@ -3589,10 +4352,17 @@ function placeProps(def) {
          band the ground beside the road is one uninterrupted plane of
          green, which is what made it look unfinished. */
       const near = !!NEAR_KINDS[kind];
+      /* Three bands, not two. Kerbside clutter hugs the verge, scenery
+         is held back past the camera distance — and buildings get a band
+         of their own between the two, because a house three hundred
+         units off the road is a smudge on the horizon rather than the
+         street you are driving down. */
+      const build = !!SOLID[kind];
       let placed = null;
       for (let attempt = 0; attempt < 5; attempt++) {
-        const off = near ? SHOULDER + 10 + rnd() * 60
-                         : SHOULDER + 48 + rnd() * 210;
+        const off = near  ? SHOULDER + 10 + rnd() * 60
+                  : build ? SHOULDER + 26 + rnd() * 120
+                          : SHOULDER + 48 + rnd() * 210;
         const jitter = (rnd() - 0.5) * 40;
         const x = path[i].x - Math.sin(ta) * off * s + Math.cos(ta) * jitter;
         const y = path[i].y + Math.cos(ta) * off * s + Math.sin(ta) * jitter;
@@ -3603,8 +4373,13 @@ function placeProps(def) {
       }
       if (!placed) continue;      // nowhere safe here; leave the gap
 
+      /* A solid needs to know which way it is pointing, and a building
+         beside a road points at the road. The small jitter is what stops
+         a street looking like it was laid out with a set square. */
+      const yaw = ta + (s < 0 ? Math.PI : 0) + (rnd() - 0.5) * 0.20;
+
       props.push({
-        x: placed.x, y: placed.y, kind, hv, v: vv,
+        x: placed.x, y: placed.y, kind, hv, v: vv, yaw,
         /* a mirror and a colour cast, so even two of the same variant
            standing together do not read as a printed pattern */
         flip: rnd() < 0.5,
@@ -3768,6 +4543,7 @@ function buildRace() {
     ghostRec = null; ghostPlay = null; ghost = null;
   }
 
+  if (el.steer) el.steer.dataset.hint = "1";
   camAngle = racers[0] ? racers[0].angle : 0;
   camLag = 0; camFocal = FOCAL;
   lastPlace = 0;
@@ -4212,7 +4988,19 @@ function draw() {
   const bill = [];
   props.forEach((p) => {
     const s = projectSprite(p.x, p.y, camX, camY, camA);
-    if (s && s.z < MAX_Z) bill.push({ s, kind: "prop", o: p });
+    if (s && s.z < MAX_Z) { bill.push({ s, kind: "prop", o: p, camX, camY, camA }); return; }
+    /* A billboard is cut once its centre comes inside the camera's
+       trail, and for a tree that is right — it is behind you. A
+       building is thirty metres across: its near corner is still filling
+       the side of the frame long after its centre has gone past, so the
+       solids get their own, closer cut. */
+    if (SOLID[p.kind]) {
+      const dx = p.x - camX, dy = p.y - camY;
+      const z = dx * Math.cos(camA) + dy * Math.sin(camA);
+      if (z > 34 && z < MAX_Z)
+        bill.push({ s: { z, fade: 1, sx: RW / 2, sy: HORIZON, scale: camFocal / z },
+                    kind: "prop", o: p, camX, camY, camA });
+    }
   });
   boxes.forEach((b) => {
     if (!b.alive) return;
@@ -4287,12 +5075,14 @@ function draw() {
   bill.forEach((b) => {
     g.globalAlpha = 1;
     if (b.kind === "prop") {
+      if (SOLID[b.o.kind]) { solidShadow(g, b.o, camX, camY, camA, b.s.fade); return; }
       const spec = SCENERY[b.o.kind] || { h: 90, foot: 0.6 };
-      const img = buildScenery(b.o.kind, b.o.v || 0, trackDef, b.o.tint || 0);
+      const lr = litFromCam();
+      const img = buildScenery(b.o.kind, b.o.v || 0, trackDef, b.o.tint || 0, lr);
       const hh = spec.h * b.o.hv * b.s.scale;
       const ww = hh * (img.width / img.height);
       if (ww < 1.2) return;
-      castShadow(g, img, b.o.kind + b.o.v + (b.o.tint || 0),
+      castShadow(g, img, b.o.kind + b.o.v + (b.o.tint || 0) + (lr ? "R" : "L"),
                  b.s.sx, b.s.sy, ww, hh, 0.55 + Math.min(0.5, spec.h / 300), b.s.fade);
       contactPatch(g, b.s.sx, b.s.sy, ww * spec.foot * 0.62, b.s.fade);
     } else if (b.kind === "kart" || b.kind === "ghost") {
@@ -4309,11 +5099,13 @@ function draw() {
       contactPatch(g, b.s.sx, b.s.sy, ww * 0.42, b.s.fade);
     } else if (b.kind === "haz") {
       const spec = SCENERY[b.o.kind] || { h: 40, foot: 0.8 };
-      const img = buildScenery(b.o.kind, b.o.v || 0, trackDef, 0);
+      const lr2 = litFromCam();
+      const img = buildScenery(b.o.kind, b.o.v || 0, trackDef, 0, lr2);
       const hh = spec.h * b.s.scale;
       const ww = hh * (img.width / img.height);
       if (ww < 1.2) return;
-      castShadow(g, img, "h" + b.o.kind + b.o.v, b.s.sx, b.s.sy, ww, hh, 0.6, b.s.fade);
+      castShadow(g, img, "h" + b.o.kind + b.o.v + (lr2 ? "R" : "L"),
+                 b.s.sx, b.s.sy, ww, hh, 0.6, b.s.fade);
       contactPatch(g, b.s.sx, b.s.sy, ww * spec.foot * 0.7, b.s.fade);
     } else if (b.kind === "box") {
       contactPatch(g, b.s.sx, b.s.sy, 20 * b.s.scale * 0.5);
@@ -4402,9 +5194,16 @@ function shadowUnder(g, sx, sy, w, tall) {
   g.restore();
 }
 
+/* the sun's screen-side, from the camera-relative bearing kept for the
+   cast shadows: positive means it is off to the right of the frame */
+function litFromCam() { return Math.sin(sunRel) > 0; }
+
 function drawProp(g, b) {
   const { s, o } = b;
-  const img = buildScenery(o.kind, o.v || 0, trackDef, o.tint || 0);
+  /* the ones that are solids are drawn from their corners instead */
+  if (SOLID[o.kind]) { drawSolid(g, o, b.camX, b.camY, b.camA, s.fade); return; }
+  const lr = litFromCam();
+  const img = buildScenery(o.kind, o.v || 0, trackDef, o.tint || 0, lr);
   const spec = SCENERY[o.kind] || { h: 90, foot: 0.6 };
   const h = spec.h * o.hv * s.scale;
   const w = h * (img.width / img.height);
@@ -4435,7 +5234,7 @@ function drawProp(g, b) {
       const ph = raceTime * sway.rate + (o.x + o.y) * 0.004;
       g.translate(s.sx, s.sy); g.rotate(Math.sin(ph) * sway.amt); g.translate(-s.sx, -s.sy);
     }
-    drawHazed(g, img, o.kind + o.v + (o.tint || 0), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
+    drawHazed(g, img, o.kind + o.v + (o.tint || 0) + (lr ? "R" : "L"), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
     g.restore();
   } else if (sway) {
     const ph = raceTime * sway.rate + (o.x + o.y) * 0.004;
@@ -4447,10 +5246,10 @@ function drawProp(g, b) {
     g.translate(s.sx, s.sy);
     g.rotate(Math.sin(ph) * sway.amt);
     g.translate(-s.sx, -s.sy);
-    drawHazed(g, img, o.kind + o.v + (o.tint || 0), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
+    drawHazed(g, img, o.kind + o.v + (o.tint || 0) + (lr ? "R" : "L"), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
     g.restore();
   } else {
-    drawHazed(g, img, o.kind + o.v + (o.tint || 0), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
+    drawHazed(g, img, o.kind + o.v + (o.tint || 0) + (lr ? "R" : "L"), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
   }
 
   /* bulbs and lamps breathe, independently of each other */
@@ -4517,7 +5316,8 @@ function drawHaz(g, b) {
   const { s, o } = b;
   const spec = SCENERY[o.kind] || { h: 40, foot: 0.8 };
   const hz = HAZ[o.kind];
-  const img = buildScenery(o.kind, o.v || 0, trackDef, 0);
+  const lr = litFromCam();
+  const img = buildScenery(o.kind, o.v || 0, trackDef, 0, lr);
   const h = spec.h * s.scale;
   const w = h * (img.width / img.height);
   if (w < 1.2) return;
@@ -4599,7 +5399,7 @@ function drawHaz(g, b) {
     g.rotate(rot);
     g.translate(-s.sx, -s.sy);
   }
-  drawHazed(g, img, "h" + o.kind + (o.v || 0), s.sx - w / 2, s.sy - h, w, h, s.z, false);
+  drawHazed(g, img, "h" + o.kind + (o.v || 0) + (lr ? "R" : "L"), s.sx - w / 2, s.sy - h, w, h, s.z, false);
   g.restore();
 
   /* a warning glint on the ones that will actually put you in the wall,
@@ -4859,6 +5659,7 @@ function grabEls() {
     tut: id("rc-tut"),
     hearts: id("rc-hearts"), heartsChip: id("rc-hearts-chip"),
     pad: id("rc-pad"), pause: id("rc-pause-btn"),
+    steer: id("rc-steer"), steerRing: id("rc-steer-ring"),
   };
 }
 function showHud(on) {
@@ -5372,13 +6173,20 @@ function renderSettings(from) {
     </label>`;
   setOverlay(`
     <div class="rc-panel">
-      <h3 class="rc-h">SOUND</h3>
+      <h3 class="rc-h">SOUND &amp; CONTROLS</h3>
       <div class="rc-sliders">
         ${row("master", "MASTER")}
         ${row("music",  "MUSIC")}
         ${row("sfx",    "EFFECTS")}
       </div>
       <button class="rc-btn rc-btn-s" data-mute="1">${Snd.muted() ? "UNMUTE" : "MUTE ALL"}</button>
+      <p class="rc-setlab">ON A PHONE OR TABLET</p>
+      <button class="rc-btn rc-btn-s" data-tmode="1">STEERING &middot; ${touchMode === "slide" ? "SLIDE ANYWHERE" : "ARROW KEYS"}</button>
+      <button class="rc-btn rc-btn-s" data-autogas="1">AUTO GO &middot; ${autoGas ? "ON" : "OFF"}</button>
+      <p class="rc-setnote">${touchMode === "slide"
+        ? "Put a thumb anywhere on the track and slide to steer."
+        : "Steer with the arrow keys in the bottom left."}${autoGas
+        ? " The kart drives itself forward — hold BRAKE to slow." : ""}</p>
       <div class="rc-row">
         <button class="rc-btn rc-btn-go" data-closeset="${from}">‹ BACK</button>
       </div>
@@ -6025,7 +6833,46 @@ function endTutorial() {
 /* =========================================================
    18. INPUT
    ========================================================= */
-const input = { up:false, down:false, left:false, right:false, drift:false, itemPressed:false };
+const input = { up:false, down:false, left:false, right:false, drift:false,
+                itemPressed:false,
+                /* analog steer, -1..1, from a thumb sliding on the glass */
+                axis:0 };
+
+/* ---------------------------------------------------------
+   HOW A THUMB DRIVES THIS
+
+   The first touch layout asked for the throttle to be held down with
+   one thumb while the other hunted for a steering key, and on a phone
+   that is two jobs for a hand that only has one thumb free. Both are
+   gone:
+
+   AUTO THROTTLE — the kart drives itself forward. There is no button to
+   keep held. Braking is still yours, and lifting is still yours through
+   the brake, but the default state of a kart in a kart racer is "going",
+   and making the player hold that down was making them pay rent on it.
+
+   SLIDE STEERING — put a thumb down anywhere on the picture and slide.
+   Wherever it lands is centre; sliding left or right steers by how far
+   you have gone, all the way to full lock and anywhere in between,
+   which the old left/right keys could never do. Nothing to aim at, so
+   nothing to miss, and the other thumb is free for drift and items.
+
+   Both are switchable, because somebody will want the buttons back. */
+let autoGas = true;         // the throttle holds itself
+let touchMode = "slide";    // "slide" | "buttons"
+function loadTouchPrefs() {
+  try {
+    const v = localStorage.getItem("sor_touch");
+    if (v) {
+      const o = JSON.parse(v);
+      if (o.mode === "slide" || o.mode === "buttons") touchMode = o.mode;
+      if (typeof o.auto === "boolean") autoGas = o.auto;
+    }
+  } catch (e) {}
+}
+function saveTouchPrefs() {
+  try { localStorage.setItem("sor_touch", JSON.stringify({ mode: touchMode, auto: autoGas })); } catch (e) {}
+}
 const KEYMAP = {
   ArrowUp:"up", w:"up", W:"up",
   ArrowDown:"down", s:"down", S:"down",
@@ -6097,6 +6944,18 @@ function onOverlayClick(e) {
   if (d.settings) { renderSettings(d.settings); return; }
   if (d.closeset) {
     if (d.closeset === "pause") renderPause(); else renderTitle();
+    return;
+  }
+  if (d.tmode) {
+    touchMode = touchMode === "slide" ? "buttons" : "slide";
+    saveTouchPrefs(); applyTouchMode();
+    renderSettings(el.overlay.querySelector("[data-closeset]").dataset.closeset);
+    return;
+  }
+  if (d.autogas) {
+    autoGas = !autoGas;
+    saveTouchPrefs(); applyTouchMode();
+    renderSettings(el.overlay.querySelector("[data-closeset]").dataset.closeset);
     return;
   }
   if (d.mute) { Snd.setMuted(!Snd.muted()); renderSettings(
@@ -6204,6 +7063,112 @@ function bindPad() {
     btn.addEventListener("mouseleave", off);
   });
   paintPadIcons();
+  bindSteer();
+  applyTouchMode();
+}
+
+/* ---------------------------------------------------------
+   SLIDE STEERING
+
+   One thumb, anywhere on the picture. Where it lands is centre; how far
+   it has slid since is the lock, all the way in between rather than the
+   on-or-off the old keys gave. Two details make it feel right rather
+   than merely work:
+
+   The anchor follows. Slide past full lock and the centre point comes
+   with you, so a thumb that has drifted up the screen through a long
+   corner can still come back through neutral without lifting.
+
+   And during the countdown a thumb held down is the throttle, so the
+   rocket start is still on the table for somebody playing on glass.
+   --------------------------------------------------------- */
+function bindSteer() {
+  const zone = el.steer;
+  if (!zone) return;
+  const ring = el.steerRing;
+  let id = null, x0 = 0, y0 = 0, revving = false;
+
+  const radius = () => {
+    const w = el.stage ? el.stage.clientWidth : 320;
+    return Math.max(38, w * 0.155);
+  };
+  const place = (cx, cy) => {
+    if (!ring || !el.stage) return;
+    const r = el.stage.getBoundingClientRect();
+    ring.style.setProperty("--rc-sx", (cx - r.left) + "px");
+    ring.style.setProperty("--rc-sy", (cy - r.top) + "px");
+  };
+  const setAxis = (a) => {
+    input.axis = a;
+    if (ring) ring.style.setProperty("--rc-tx", (a * radius() * 0.30).toFixed(1) + "px");
+  };
+
+  const start = (t) => {
+    id = t.identifier != null ? t.identifier : "m";
+    x0 = t.clientX; y0 = t.clientY;
+    zone.dataset.on = "1";
+    zone.dataset.hint = "0";
+    place(x0, y0);
+    setAxis(0);
+    /* holding through the lights is how you launch */
+    if (state === "count") { input.up = true; revving = true; }
+    Snd.resume();
+  };
+  const move = (t) => {
+    const r = radius();
+    let a = (t.clientX - x0) / r;
+    /* let the centre travel with a thumb that has run out of room */
+    if (a >  1) { a = 1;  x0 = t.clientX - r; y0 = t.clientY; place(x0, y0); }
+    if (a < -1) { a = -1; x0 = t.clientX + r; y0 = t.clientY; place(x0, y0); }
+    setAxis(a);
+  };
+  const end = () => {
+    id = null;
+    zone.dataset.on = "0";
+    setAxis(0);
+    if (revving) { input.up = false; revving = false; }
+  };
+
+  const find = (list) => {
+    for (let i = 0; i < list.length; i++)
+      if ((list[i].identifier != null ? list[i].identifier : "m") === id) return list[i];
+    return null;
+  };
+
+  zone.addEventListener("touchstart", (e) => {
+    if (id !== null) return;
+    e.preventDefault();
+    start(e.changedTouches[0]);
+  }, { passive: false });
+  zone.addEventListener("touchmove", (e) => {
+    const t = find(e.changedTouches);
+    if (!t) return;
+    e.preventDefault();
+    move(t);
+  }, { passive: false });
+  const lift = (e) => { if (find(e.changedTouches)) { e.preventDefault(); end(); } };
+  zone.addEventListener("touchend", lift, { passive: false });
+  zone.addEventListener("touchcancel", lift, { passive: false });
+
+  /* and the same thing with a mouse, so it can be tried on a desktop */
+  zone.addEventListener("mousedown", (e) => { e.preventDefault(); start(e); });
+  window.addEventListener("mousemove", (e) => { if (id === "m") move(e); });
+  window.addEventListener("mouseup",   () => { if (id === "m") end(); });
+}
+
+/* which controls are on screen, and what they do */
+function applyTouchMode() {
+  if (el.stage) el.stage.dataset.touch = padWanted ? "1" : "0";
+  if (el.pad) {
+    el.pad.dataset.mode = touchMode;
+    el.pad.dataset.auto = autoGas ? "1" : "0";
+  }
+  if (el.steer) {
+    const live = touchMode === "slide" && padWanted;
+    el.steer.hidden = !live;
+    el.steer.dataset.live = live ? "1" : "0";
+    if (!live) { input.axis = 0; el.steer.dataset.on = "0"; }
+  }
 }
 
 /* The pad shows itself when it is wanted and gets out of the way when
@@ -6213,6 +7178,7 @@ let padWanted = false;
 function setPadVisible(on) {
   padWanted = on;
   if (el.pad) el.pad.dataset.want = on ? "1" : "0";
+  applyTouchMode();
 }
 function watchPointer() {
   try { setPadVisible(window.matchMedia("(pointer: coarse)").matches); } catch (e) {}
@@ -6286,6 +7252,7 @@ function start() {
   if (!cvs) return;
   ctx = cvs.getContext("2d");
   grabEls();
+  loadTouchPrefs();
   if (!sceneCvs) initBuffers();
   if (!Object.keys(kartSprites).length) buildAllKarts();
 

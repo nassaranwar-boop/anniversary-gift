@@ -4283,6 +4283,16 @@ img{-webkit-user-drag:none; user-select:none;}
   color:#ffb37f; text-align:center;
 }
 
+/* headings and notes inside the settings panel */
+.rc-setlab{
+  margin:1.4cqh 0 .2cqh; font-size:1.25cqh; letter-spacing:.16em;
+  color:var(--rc-gold);
+}
+.rc-setnote{
+  margin:.4cqh 0 0; max-width:56cqw; font-size:1.15cqh; line-height:1.8;
+  color:#c9b8d8; letter-spacing:.04em;
+}
+
 /* ---------- the sound sliders ---------- */
 .rc-sliders{ display:flex; flex-direction:column; gap:1.6cqh; width:min(54cqw, 100%); }
 .rc-slider{ display:grid; grid-template-columns:11cqw 1fr 5cqw; gap:1.4cqw; align-items:center; }
@@ -4315,6 +4325,73 @@ img{-webkit-user-drag:none; user-select:none;}
   display:none; pointer-events:none;
   --rc-accent:#ff5f95; --rc-kart:#ff7f8a;
 }
+/* ---------- the steering surface ----------
+
+   It covers the whole picture and sits under the buttons, so a thumb
+   anywhere that is not a button is a steering thumb. There is nothing
+   to aim at, which is the point: on a phone the old left/right keys
+   were a target you had to find while also holding the throttle down
+   with your other hand. */
+.rc-steer{
+  position:absolute; inset:0; z-index:4;
+  pointer-events:none; touch-action:none;
+}
+.rc-steer[hidden]{display:none !important;}
+.rc-pad[data-want="1"] ~ .rc-steer,
+.rc-steer[data-live="1"]{ pointer-events:auto; }
+
+/* the ring follows the thumb, and the pip inside it shows the lock */
+.rc-steer-ring{
+  position:absolute; left:0; top:0;
+  width:26cqw; height:26cqw; margin:-13cqw 0 0 -13cqw;
+  border-radius:50%;
+  border:.5cqw solid rgba(255,248,232,.30);
+  background:radial-gradient(circle at 50% 50%,
+             rgba(255,248,232,.10), rgba(255,248,232,0) 70%);
+  opacity:0; transition:opacity .14s ease;
+  transform:translate(var(--rc-sx,0px), var(--rc-sy,0px));
+}
+.rc-steer[data-on="1"] .rc-steer-ring{ opacity:1; }
+.rc-steer-ring i{
+  position:absolute; left:50%; top:50%;
+  width:9cqw; height:9cqw; margin:-4.5cqw 0 0 -4.5cqw;
+  border-radius:50%;
+  background:radial-gradient(circle at 38% 34%,
+             var(--rc-accent,#ff5f95), rgba(20,10,26,.55));
+  box-shadow:0 0 2.4cqw rgba(255,95,149,.55), inset 0 0 0 .3cqw rgba(255,248,232,.5);
+  transform:translateX(var(--rc-tx,0px));
+  transition:transform .04s linear;
+}
+/* a one-time nudge for the first race, then it stays out of the way */
+.rc-steer-hint{
+  position:absolute; left:50%; bottom:16cqh; transform:translateX(-50%);
+  font-size:1.5cqh; letter-spacing:.14em; color:rgba(255,248,232,.72);
+  text-shadow:0 .3cqh 0 rgba(20,8,26,.8);
+  opacity:0; transition:opacity .4s ease; pointer-events:none;
+}
+.rc-steer[data-hint="1"] .rc-steer-hint{ opacity:1; }
+
+/* what the pad shows depends on how she is driving */
+.rc-pad[data-mode="slide"] .rc-pad-l{ display:none; }
+.rc-pad[data-mode="slide"][data-auto="1"] .rc-key-gas{ display:none; }
+.rc-pad[data-mode="slide"] .rc-pad-r{ right:2.5cqw; gap:1.2cqw; }
+/* With the throttle holding itself and the steering under the whole
+   picture, DRIFT is the one button a thumb hunts for at speed, so it is
+   the one that gets the room. */
+.rc-pad[data-mode="slide"] .rc-key-drift{ width:17cqh; height:17cqh; }
+.rc-pad[data-mode="slide"] .rc-key-sm{ width:8.5cqh; height:8.5cqh; }
+
+/* THE MAP MOVES OUT OF THE WAY OF THE THUMB.
+
+   On a keyboard the minimap sits bottom right, which is exactly where
+   the drift button has to be on glass. On touch the map goes over to
+   the other corner and the pause button goes up top, so nothing that
+   matters is under a hand. */
+.rc-stage[data-touch="1"] .rc-map{ right:auto; left:2cqw; bottom:2cqh;
+  width:15cqh; height:15cqh; opacity:.9; }
+.rc-stage[data-touch="1"] .rc-pause-btn{ bottom:auto; top:2cqh; left:auto; right:16cqw; }
+.rc-stage[data-touch="1"] .rc-boost{ bottom:24cqh; }
+
 .rc-pad[hidden]{display:none !important;}
 /* shown when the pointer is a finger, hidden the moment a key is used */
 .rc-pad[data-want="1"]{display:block;}
