@@ -344,8 +344,8 @@ const NOTE = {
   from: "Anwar",
   lines: [
     "You just drove four tracks I built for you, past a hundred small things I put there hoping you would notice one of them.",
-    "That is the whole trick of it. I have been doing that for a year, only usually without a steering wheel.",
-    "Happy anniversary. Same time tomorrow?",
+    "That is the whole trick of it. I have been doing that all along, only usually without a steering wheel.",
+    "Same time tomorrow?",
   ],
 };
 
@@ -360,7 +360,7 @@ const ITEMS = {
   heart:   { name:"Paper Heart",  weight:18, tint:"#ff7f8a" },
   rose:    { name:"Rose Thorns",  weight:16, tint:"#e8556f" },
   bouquet: { name:"Bouquet",      weight:12, tint:"#ff9ec4" },
-  ring:    { name:"Anniversary Ring", weight:6, tint:"#ffd166" },
+  ring:    { name:"Gold Ring",    weight:6,  tint:"#ffd166" },
 };
 const ITEM_KEYS = Object.keys(ITEMS).filter((k) => ITEMS[k].weight > 0);
 
@@ -4764,6 +4764,7 @@ let rivalCall = 0;   // cooldown on the rival calling you out
 let photoDone = false;
 let slowMo = 0;      // the photo-finish stretch
 let finishCam = 0;   // 0..1, the camera closing in after she crosses
+let finishHold = 0;  // seconds of that left to run before the panel
 
 const GP_POINTS = [15, 12, 10, 8, 6, 4, 3, 2];
 
@@ -5086,7 +5087,7 @@ function buildRace() {
   Snd.setRain(!!trackDef.wet);
   boltCyc = -1;
   raceClean = true; raceDrift = 0; raceBeatGhost = false;
-  justEarned = []; finishCam = 0; finishShot = null;
+  justEarned = []; finishCam = 0; finishHold = 0; finishShot = null;
   buildPath(trackDef);
   /* props are placed before the bake so their shadows can be painted
      into the ground texture along with everything else */
@@ -5172,11 +5173,15 @@ function onPlayerFinished() {
     duoTimes[duoLeg] = me.finishTime;
     if (duoLeg === 0) duoGhost = ghostRec;
   }
-  /* long enough for the camera to come round, her name to land and be
-     read, and the moment to sit for a beat before the panel */
-  setTimeout(() => {
-    if (state === "race") finishRace();
-  }, 2900);
+  /* Long enough for the camera to come round, her name to land and be
+     read, and the moment to sit for a beat before the panel.
+
+     Counted down in the frame loop rather than left to setTimeout: a
+     timer keeps running while the game is paused, and it used to fire
+     into a paused race, find the state was not "race" any more, and
+     quietly do nothing — which left the race with no way to finish. On
+     the loop it simply stops while she is paused and picks up again. */
+  finishHold = 2.9;
 }
 
 function finishRace() {
@@ -7252,6 +7257,7 @@ function renderDuo() {
         <p class="rc-msg">Hand it over. ${who.name}, you're up — and you'll
           be racing ${CHARS[duoChars[0]].name}'s ghost, so you'll see exactly
           where you're losing it.</p>
+        ${earnedStrip()}
         <div class="rc-row">
           <button class="rc-btn rc-btn-s" data-back="title">MENU</button>
           <button class="rc-btn rc-btn-go" data-duonext="1">${who.name.toUpperCase()}'S TURN ›</button>
@@ -8128,6 +8134,12 @@ function startTutorial() {
   obstacles = []; coins = [];      // the tutorial lane stays clear
   raceTime = 0; countdown = 0; shake = 0; bannerT = 0; setBanner("");
   lastItem = "__"; lastPlace = 0;
+  /* The practice loop does not go through buildRace, so anything the
+     last race left standing has to be put down here as well. A finished
+     race leaves finishCam at 1, and without this the winner's name plate
+     is still sitting across the middle of the lesson. */
+  finishCam = 0; finishHold = 0; finishShot = null; slowMo = 0;
+  photoDone = true; justEarned = []; raceClean = true; raceDrift = 0;
 
   racers = [new Racer(CHARS[playerCharIdx], true, 0, 6)];
   racers[0].lap = 0;                 // no lap counting in here
@@ -8716,7 +8728,13 @@ function frame(ts) {
      lands at the same speed whether or not it was a photo finish. */
   if (state === "race" && racers.length) {
     const p0 = racers.find((r) => r.isPlayer);
-    if (p0 && p0.finished) finishCam = Math.min(1, finishCam + dt / 1.05);
+    if (p0 && p0.finished) {
+      finishCam = Math.min(1, finishCam + dt / 1.05);
+      if (finishHold > 0) {
+        finishHold -= dt;
+        if (finishHold <= 0) { finishHold = 0; finishRace(); }
+      }
+    }
   }
 
   /* physics on a fixed step so the handling is identical on a 60Hz

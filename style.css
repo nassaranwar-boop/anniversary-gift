@@ -4383,6 +4383,22 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 /* the results panel carries the most of any panel, so it packs tighter */
 .rc-res{ gap:1.5cqh; }
+
+/* On a phone the stage is about two hundred pixels tall, and a podium, a
+   table, a photograph and a badge will not fit in that however they are
+   arranged. Rather than cut any of it, the buttons stay on the screen
+   while the rest scrolls under them, so getting to the next race never
+   depends on finding the bottom of the panel first. */
+@container rcstage (max-height: 320px){
+  .rc-res > .rc-row,
+  .rc-fin > .rc-row,
+  .rc-duo > .rc-row{
+    position:sticky; bottom:0; z-index:2;
+    width:100%; margin-bottom:-1cqh;
+    padding:1.2cqh 0 1.4cqh;
+    background:linear-gradient(180deg, rgba(18,11,28,0), rgba(18,11,28,.94) 32%);
+  }
+}
 @container rcstage (min-width: 620px){
   .rc-split-2{ grid-template-columns:1.05fr .95fr; align-items:start; }
   .rc-split-2 .rc-card-shot{ margin-top:0; }
