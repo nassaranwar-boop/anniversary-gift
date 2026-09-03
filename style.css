@@ -3258,12 +3258,23 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-stage:has(.ap-dlg[aria-hidden="false"]) .ap-pause-btn{
   opacity:0; pointer-events:none; transition:opacity .2s ease;
 }
+/* ---- the two in the corner ----
+   Round, hairline, and the same cold blue as the compass above them, so
+   the three of them read as one instrument rather than three widgets. */
 .ap-pause-btn{
   position:absolute; right:2cqw; bottom:2cqw; z-index:6;
-  width:6.4cqw; height:6.4cqw; min-width:26px; min-height:26px;
-  border-radius:8px; border:2px solid rgba(140,160,210,.4);
-  background:rgba(10,14,26,.72); color:#c8d4f2; font-size:2cqw; line-height:1;
+  width:6.4cqw; height:6.4cqw; min-width:30px; min-height:30px;
+  border-radius:50%; border:1px solid rgba(168,192,240,.26);
+  background:rgba(7,11,21,.62); color:#bccdf0; font-size:1.9cqw; line-height:1;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
+  transition:color .16s ease, border-color .16s ease, background .16s ease;
+}
+.ap-pause-btn:hover, .ap-map-btn:hover{
+  color:#ffdcaa; border-color:rgba(240,181,103,.62); background:rgba(240,181,103,.10);
+}
+.ap-pause-btn:active, .ap-map-btn:active{transform:scale(.94);}
+.ap-pause-btn:focus-visible, .ap-map-btn:focus-visible{
+  outline:none; border-color:#f0b567; box-shadow:0 0 0 1px rgba(240,181,103,.4);
 }
 
 .ap-dlg[aria-hidden="false"] ~ .ap-map-btn,
@@ -3272,11 +3283,12 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .ap-map-btn{
   position:absolute; right:2cqw; bottom:9.6cqw; z-index:6;
-  width:6.4cqw; height:6.4cqw; min-width:26px; min-height:26px;
-  border-radius:8px; border:2px solid rgba(140,160,210,.4);
-  background:rgba(10,14,26,.72); color:#c8d4f2;
-  font:700 1.5cqw/1 ui-monospace,monospace; letter-spacing:.06em;
+  width:6.4cqw; height:6.4cqw; min-width:30px; min-height:30px;
+  border-radius:50%; border:1px solid rgba(168,192,240,.26);
+  background:rgba(7,11,21,.62); color:#bccdf0;
+  font-family:var(--ap-sign); font-size:1.05cqw; letter-spacing:.14em;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
+  transition:color .16s ease, border-color .16s ease, background .16s ease;
 }
 .ap-hud.gone ~ .ap-map-btn{opacity:0; transition:opacity .3s ease;}
 
@@ -3458,7 +3470,17 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-overlay{
   position:absolute; inset:0; z-index:9; display:none;
   align-items:center; justify-content:center;
-  background:rgba(4,6,12,.82);
+  padding:3cqw;
+  /* A full-screen backdrop blur is one of the most expensive things a
+     phone can be asked to do every frame, and the dim alone reads the
+     same. Only the card blurs, and only over its own footprint. */
+  background:radial-gradient(120% 100% at 50% 45%,
+             rgba(6,9,18,.80) 0%, rgba(3,5,11,.93) 100%);
+  animation:apVeilIn .32s ease both;
+}
+@keyframes apVeilIn{from{opacity:0;} to{opacity:1;}}
+@media (prefers-reduced-motion: reduce){
+  .ap-overlay, .ap-card{animation:none;}
 }
 .ap-overlay[aria-hidden="false"]{display:flex;}
 
@@ -3554,95 +3576,190 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---- the cards, panels and scraps of paper that mount into ap-overlay ---- */
 .ap-overlay.thin{background:rgba(4,6,12,.58);}
 /* ---- cards ----
-   Level briefings, the how-to and the pause menu all mount on the same
-   plate as the dialogue does: a header band with a stencilled kicker, the
-   body under it, and a bolt in each corner. */
+   Level briefings, the how-to, the pause menu and every panel in the
+   chapter share one plate. It used to be a gold title bar over a
+   grey striped panel with bolts in the corners and a hot pink glossy
+   button on it — five different eras of interface on one screen, none of
+   them the game's. This is the game's: a pane of dark glass with the
+   scene still visible through it, one hairline round it, two corner
+   ticks like a viewfinder, and an amber rule for the one thing that
+   matters. Nothing here has a gradient, a bevel or a highlight on it. */
 .ap-card{
   position:relative;
-  width:min(86cqw, 600px); max-height:90%; overflow:auto;
+  /* A column, so a long briefing scrolls its rows and never pushes the
+     buttons off the bottom of the screen — which is what the pause menu
+     was doing on any level with four lines of help in it. */
+  display:flex; flex-direction:column;
+  width:min(84cqw, 620px); max-height:100%;
+  overflow:hidden;
   padding:0 0 3.4cqw; text-align:left;
-  background:var(--ap-plate);
-  box-shadow:var(--ap-shadow), inset 0 1px 0 var(--ap-lip),
-             inset 0 -2px 8px rgba(0,0,0,.6), inset 0 0 0 1px rgba(8,10,16,.92);
-}
-.ap-card::before{
-  content:""; position:absolute; inset:0; pointer-events:none;
-  background-image:var(--ap-grain); opacity:.28; mix-blend-mode:soft-light;
-}
-/* four bolts, because it is screwed to something */
-.ap-card::after{
-  content:""; position:absolute; inset:1.1cqw; pointer-events:none;
   background:
-    radial-gradient(circle, #8a94a4 0 34%, #3d434e 36%, transparent 60%) left top/1.5cqw 1.5cqw no-repeat,
-    radial-gradient(circle, #8a94a4 0 34%, #3d434e 36%, transparent 60%) right top/1.5cqw 1.5cqw no-repeat,
-    radial-gradient(circle, #8a94a4 0 34%, #3d434e 36%, transparent 60%) left bottom/1.5cqw 1.5cqw no-repeat,
-    radial-gradient(circle, #8a94a4 0 34%, #3d434e 36%, transparent 60%) right bottom/1.5cqw 1.5cqw no-repeat;
-  opacity:.75;
+    linear-gradient(180deg, rgba(12,17,30,.90) 0%, rgba(7,10,20,.95) 100%);
+  /* No backdrop-filter. Blurring what is behind a panel is recomposited
+     every frame and it is one of the slowest things a weak GPU does; at
+     this opacity there is nothing behind it to see anyway. */
+  border:1px solid rgba(168,192,240,.15);
+  box-shadow:0 30px 72px rgba(0,0,0,.70), inset 0 1px 0 rgba(190,214,255,.09);
+  animation:apCardIn .40s cubic-bezier(.18,.72,.22,1) both;
 }
+@keyframes apCardIn{
+  from{opacity:0; transform:translateY(9px) scale(.994); filter:blur(2px);}
+  to  {opacity:1; transform:none; filter:none;}
+}
+/* two corner ticks rather than four bolts: it is a frame, not a hatch */
+.ap-card::before, .ap-card::after{
+  content:""; position:absolute; width:2.1cqw; height:2.1cqw;
+  min-width:12px; min-height:12px; pointer-events:none; z-index:2;
+  border-color:rgba(240,181,103,.45); border-style:solid;
+}
+.ap-card::before{left:1.3cqw; top:1.3cqw; border-width:1px 0 0 1px;}
+.ap-card::after{right:1.3cqw; bottom:1.3cqw; border-width:0 1px 1px 0;}
+.ap-card::-webkit-scrollbar{width:3px;}
+.ap-card::-webkit-scrollbar-thumb{background:rgba(168,192,240,.22);}
+
 .ap-card-kicker{
   position:relative; z-index:1; margin:0 0 2.4cqw;
-  padding:1.3cqw 3.4cqw 1.1cqw;
-  font-family:var(--ap-sign); font-size:1.6cqw; letter-spacing:.24em; color:#0f1219;
-  background:
-    repeating-linear-gradient(90deg, rgba(0,0,0,.12) 0 1px, transparent 1px 6px),
-    linear-gradient(180deg, #c8a04c, #9a7630);
-  box-shadow:inset 0 -2px 0 rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.28);
+  padding:2.9cqw 3.4cqw 1.5cqw 3.4cqw;
+  font-family:var(--ap-sign); font-size:1.42cqw; line-height:1.2;
+  letter-spacing:.32em; text-transform:uppercase; color:#f0b567;
+  border-bottom:1px solid rgba(168,192,240,.13);
 }
+
 .ap-card-title{
-  position:relative; z-index:1; margin:0 3.4cqw 2.6cqw;
-  font-family:var(--ap-term); font-size:3.4cqw; line-height:1.18;
-  color:#f2f5ff; font-weight:400;
+  position:relative; z-index:1; margin:0 3.4cqw 2.4cqw;
+  font-family:var(--ap-term); font-size:3.5cqw; line-height:1.14;
+  color:#eef3ff; font-weight:400; letter-spacing:.005em;
 }
-.ap-card-rows{position:relative; z-index:1; display:flex; flex-direction:column; gap:.75cqw;
-  margin:0 3.4cqw 2.6cqw;}
+/* a page that is mostly rows gives its heading less room */
+.ap-card-title.tight{font-size:2.7cqw; margin-bottom:1.4cqw;}
+.ap-card-rows{position:relative; z-index:1; display:flex; flex-direction:column; gap:.5cqw;
+  margin:0 3.4cqw 2.4cqw;
+  flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain;}
+.ap-card-rows::-webkit-scrollbar{width:3px;}
+.ap-card-rows::-webkit-scrollbar-thumb{background:rgba(168,192,240,.22);}
+.ap-card-kicker, .ap-card-title{flex:0 0 auto;}
 .ap-card-row{
-  display:grid; grid-template-columns:27% 1fr; gap:2cqw; align-items:baseline;
-  padding-bottom:.9cqw; border-bottom:1px solid rgba(150,170,210,.13);
+  display:grid; grid-template-columns:26% 1fr; gap:2cqw; align-items:baseline;
+  padding-bottom:.85cqw; border-bottom:1px solid rgba(150,170,210,.10);
 }
+.ap-card-row:last-child{border-bottom:0;}
 .ap-card-row b{
-  font-family:var(--ap-sign); font-size:1.15cqw; font-weight:400;
-  color:#e0b45c; letter-spacing:.05em;
+  font-family:var(--ap-sign); font-size:1.05cqw; font-weight:400;
+  color:#c69553; letter-spacing:.16em; text-transform:uppercase;
 }
-.ap-card-row span{font-family:var(--ap-term); font-size:2.3cqw; line-height:1.25; color:#c3cee6;}
+.ap-card-row span{font-family:var(--ap-term); font-size:2.25cqw; line-height:1.25; color:#c3cee6;}
 
 /* ---- buttons ----
-   One button, everywhere: a stamped metal key with a bevel, a lit top edge,
-   a hard drop that disappears when it is pressed, and a plate of colour to
-   say what kind of thing it does. Nothing in this chapter is a flat
-   rectangle with a label on it any more. */
+   Ghost buttons: a hairline, a letterspaced label and nothing else until
+   you touch them. The one that carries the scene forward keeps an amber
+   edge down its left and an arrow on its right, so which one is the way
+   on is obvious without shouting. */
 .ap-card-go, .ap-note-ok, .ap-panel-leave, .ap-card-quit{
-  position:relative; z-index:1;
-  display:block; margin:0 3.4cqw; width:calc(100% - 6.8cqw);
-  padding:2cqw 2.4cqw; border:0; cursor:pointer;
-  font-family:var(--ap-sign); font-size:1.6cqw; letter-spacing:.1em;
-  color:#1a0f14;
-  background:
-    repeating-linear-gradient(112deg, rgba(255,255,255,.07) 0 1px, transparent 1px 7px),
-    linear-gradient(180deg, #ff8fb4 0%, #ef6d99 42%, #cf4d79 100%);
-  box-shadow:0 4px 0 #8f2e51, 0 8px 16px rgba(0,0,0,.5),
-             inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 4px rgba(0,0,0,.22);
-  transition:transform .07s ease, box-shadow .07s ease, filter .12s ease;
+  position:relative; z-index:1; flex:0 0 auto;
+  display:block; margin:1.1cqw 3.4cqw 0; width:calc(100% - 6.8cqw);
+  padding:1.85cqw 3.6cqw 1.75cqw 2.6cqw; cursor:pointer; text-align:left;
+  font-family:var(--ap-sign); font-size:1.42cqw; letter-spacing:.2em;
+  text-transform:uppercase; color:#cfdcf6;
+  background:rgba(150,180,240,.035);
+  border:1px solid rgba(168,192,240,.20);
+  border-radius:0;
+  transition:color .16s ease, border-color .16s ease,
+             background .16s ease, transform .10s ease;
 }
-.ap-card-go:hover, .ap-note-ok:hover, .ap-panel-leave:hover, .ap-card-quit:hover{filter:brightness(1.09);}
-.ap-card-go:active, .ap-note-ok:active, .ap-panel-leave:active, .ap-card-quit:active{
-  transform:translateY(4px);
-  box-shadow:0 0 0 #8f2e51, 0 3px 7px rgba(0,0,0,.45),
-             inset 0 2px 5px rgba(0,0,0,.4);
+.ap-card-go, .ap-note-ok{
+  color:#ffdcaa; border-color:rgba(240,181,103,.36);
+  background:rgba(240,181,103,.055);
 }
-.ap-card-go:disabled, .ap-note-ok:disabled{filter:grayscale(.7) brightness(.6); cursor:not-allowed;}
+/* the amber edge, and the arrow that says which way this goes */
+.ap-card-go::before, .ap-note-ok::before{
+  content:""; position:absolute; left:-1px; top:-1px; bottom:-1px; width:2px;
+  background:#f0b567;
+}
+.ap-card-go::after, .ap-note-ok::after{
+  content:"\2192"; position:absolute; right:2.2cqw; top:50%;
+  transform:translateY(-50%); font-size:1.7cqw; letter-spacing:0;
+  color:#f0b567; opacity:.65; transition:transform .18s ease, opacity .18s ease;
+}
+.ap-card-go:hover, .ap-note-ok:hover{
+  color:#fff1da; border-color:rgba(240,181,103,.85);
+  background:rgba(240,181,103,.13);
+}
+.ap-card-go:hover::after, .ap-note-ok:hover::after{
+  transform:translate(3px, -50%); opacity:1;
+}
+.ap-card-quit:hover, .ap-panel-leave:hover{
+  color:#eaf1ff; border-color:rgba(168,192,240,.46);
+  background:rgba(150,180,240,.09);
+}
+.ap-card-go:active, .ap-note-ok:active,
+.ap-panel-leave:active, .ap-card-quit:active{transform:translateY(1px);}
+.ap-card-go:focus-visible, .ap-note-ok:focus-visible,
+.ap-panel-leave:focus-visible, .ap-card-quit:focus-visible{
+  outline:none; border-color:#f0b567;
+  box-shadow:0 0 0 1px rgba(240,181,103,.45), 0 0 22px rgba(240,181,103,.16);
+}
+.ap-card-go:disabled, .ap-note-ok:disabled{
+  color:#6c789a; opacity:.42; cursor:not-allowed;
+}
+.ap-card-go:disabled::after, .ap-note-ok:disabled::after{opacity:.2;}
 
 /* the quieter one — stepping back, leaving, standing down */
 .ap-card-quit, .ap-panel-leave{
-  margin-top:1.4cqw; color:#c6d2e8;
-  background:
-    repeating-linear-gradient(112deg, rgba(255,255,255,.05) 0 1px, transparent 1px 7px),
-    linear-gradient(180deg, #3a4152 0%, #2b3140 42%, #1e232e 100%);
-  box-shadow:0 4px 0 #12151c, 0 8px 16px rgba(0,0,0,.5),
-             inset 0 1px 0 rgba(255,255,255,.16), inset 0 -2px 4px rgba(0,0,0,.35);
+  color:#9fb0d0; border-color:rgba(168,192,240,.14);
+  background:transparent;
 }
-.ap-card-quit:active, .ap-panel-leave:active{
-  box-shadow:0 0 0 #12151c, 0 3px 7px rgba(0,0,0,.45), inset 0 2px 5px rgba(0,0,0,.5);
+
+/* ---- controls and settings ----
+   The same plate, one page further in: what the keys do drawn as keys,
+   and four switches under a rule. */
+.ap-set .ap-set-row{
+  display:grid; grid-template-columns:26% 1fr; gap:2cqw;
+  align-items:center; padding:.75cqw 0;
+  border-bottom:1px solid rgba(150,170,210,.09);
 }
+.ap-set .ap-set-row b{
+  font-family:var(--ap-sign); font-size:1.05cqw; font-weight:400;
+  color:#c69553; letter-spacing:.16em; text-transform:uppercase;
+}
+.ap-set-keys{display:flex; align-items:center; gap:.6cqw; flex-wrap:wrap;}
+.ap-cap{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:3.1cqw; height:3.1cqw; padding:0 .8cqw;
+  font-family:var(--ap-sign); font-size:1.15cqw; letter-spacing:.06em;
+  color:#dbe6fb; background:rgba(150,180,240,.06);
+  border:1px solid rgba(168,192,240,.26);
+  box-shadow:inset 0 -2px 0 rgba(0,0,0,.30);
+}
+.ap-cap.wide{min-width:6.4cqw;}
+.ap-set-join{
+  font-family:var(--ap-term); font-style:normal; font-size:1.6cqw;
+  color:#7d8db0; padding:0 .2cqw;
+}
+.ap-set-note{
+  font-family:var(--ap-term); font-size:1.75cqw;
+  color:#8fa0c2; line-height:1.2; margin-left:.8cqw;
+}
+.ap-set-head{
+  margin:2.6cqw 0 .4cqw; padding-top:1.6cqw;
+  border-top:1px solid rgba(240,181,103,.22);
+  font-family:var(--ap-sign); font-size:1.15cqw; letter-spacing:.3em;
+  color:#f0b567; text-transform:uppercase;
+}
+/* the switches: one strip, the live one lit in amber */
+.ap-seg{display:inline-flex; border:1px solid rgba(168,192,240,.20);}
+.ap-seg-btn{
+  appearance:none; cursor:pointer;
+  padding:.85cqw 1.9cqw; border:0; border-right:1px solid rgba(168,192,240,.16);
+  background:transparent; color:#93a3c4;
+  font-family:var(--ap-sign); font-size:1.02cqw; letter-spacing:.16em;
+  transition:color .15s ease, background .15s ease;
+}
+.ap-seg-btn:last-child{border-right:0;}
+.ap-seg-btn:hover{color:#e6eeff; background:rgba(150,180,240,.08);}
+.ap-seg-btn.on{
+  color:#0d1017; background:#f0b567;
+}
+.ap-seg-btn:focus-visible{outline:none; box-shadow:inset 0 0 0 1px #f0b567;}
 
 /* the close call: no card, just a line held in the dark */
 .ap-close{text-align:center; padding:0 6cqw;}

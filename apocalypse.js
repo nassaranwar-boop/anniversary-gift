@@ -2644,7 +2644,10 @@
     }
   };
   CamRig.prototype.snap = function () { this.snapped = false; };
-  CamRig.prototype.kick = function (a) { this.shake = Math.max(this.shake, a); };
+  CamRig.prototype.kick = function (a) {
+    if (!SETTINGS.shake) return;
+    this.shake = Math.max(this.shake, a);
+  };
 
   /* =========================================================
      12 — BODIES
@@ -8607,7 +8610,13 @@
     var mag = Math.hypot(ix, iz);
     if (mag > 0) { ix /= mag; iz /= mag; }
 
-    p.creeping = !!KEY.sneak;
+    /* hold to creep, or press once to stay creeping until pressed again */
+    if (SETTINGS.creepHold) { p.creeping = !!KEY.sneak; p.creepLatch = false; }
+    else {
+      if (KEY.sneak && !p.__sneakWas) p.creepLatch = !p.creepLatch;
+      p.creeping = !!p.creepLatch;
+    }
+    p.__sneakWas = !!KEY.sneak;
     var maxS = p.creeping ? TUNE.creep : TUNE.walk;
 
     if (mag > 0) {
@@ -9028,8 +9037,40 @@
     if (alarmT <= 0) a.setAttribute("aria-hidden", "true");
   }
 
+  /* =========================================================
+     SETTINGS
+     Four things a person might actually want to change, kept in
+     localStorage so the chapter remembers them, and applied by whoever
+     reads them rather than by a pile of listeners.
+     ========================================================= */
+  var SETTINGS = { sound: true, shake: true, creepHold: true, quality: "auto" };
+  (function () {
+    try {
+      var raw = localStorage.getItem("apoc.settings");
+      if (raw) {
+        var got = JSON.parse(raw);
+        for (var k in SETTINGS) if (got[k] != null) SETTINGS[k] = got[k];
+      }
+    } catch (e) {}
+  })();
+  function saveSettings() {
+    try { localStorage.setItem("apoc.settings", JSON.stringify(SETTINGS)); } catch (e) {}
+  }
+  function applySettings() {
+    /* Sound can only be started by a gesture, and the game already does
+       that on its own; all this has to do is stop it. */
+    if (!SETTINGS.sound) Audio_.end();
+    /* quality: auto lets the ladder do its work, the other two pin it */
+    if (Stage.renderer) {
+      if (SETTINGS.quality === "crisp") { perfPin = 0; perfStep(0, 4); }
+      else if (SETTINGS.quality === "smooth") { perfPin = 3; perfStep(3, 4); }
+      else perfPin = -1;
+    }
+  }
+  var perfPin = -1;
+
   /* ---- a plate with words on it ---- */
-  function card(kicker, title, rows, buttonText, onGo, quitText, onQuit) {
+  function card(kicker, title, rows, buttonText, onGo, quitText, onQuit, extras) {
     var c = el("div", "ap-card");
     c.appendChild(el("p", "ap-card-kicker", kicker));
     c.appendChild(el("h3", "ap-card-title", title));
@@ -9047,6 +9088,13 @@
       var b = el("button", "ap-card-go", buttonText);
       b.addEventListener("click", onGo);
       c.appendChild(b);
+    }
+    if (extras) {
+      extras.forEach(function (ex) {
+        var e2 = el("button", "ap-card-quit", ex[0]);
+        e2.addEventListener("click", ex[1]);
+        c.appendChild(e2);
+      });
     }
     if (quitText) {
       var q = el("button", "ap-card-quit", quitText);
@@ -9792,6 +9840,83 @@
     };
   }
 
+  /* ---- the controls panel ----
+     What the keys do, drawn as keys, and the four switches. Same plate,
+     same rules, same amber: it is another page of the same book rather
+     than a settings dialog that wandered in from somewhere else. */
+  function keycapRow(label, caps, note) {
+    var row = el("div", "ap-set-row");
+    row.appendChild(el("b", null, label));
+    var keys = el("div", "ap-set-keys");
+    caps.forEach(function (cap, i) {
+      if (cap === "+" || cap === "/") {
+        keys.appendChild(el("i", "ap-set-join", cap));
+        return;
+      }
+      var k = el("kbd", "ap-cap" + (cap.length > 2 ? " wide" : ""), cap);
+      keys.appendChild(k);
+      if (i < caps.length - 1 && caps[i + 1] !== "+" && caps[i + 1] !== "/") { /* spacing only */ }
+    });
+    if (note) keys.appendChild(el("span", "ap-set-note", note));
+    row.appendChild(keys);
+    return row;
+  }
+
+  function switchRow(label, note, options, get, set) {
+    var row = el("div", "ap-set-row");
+    row.appendChild(el("b", null, label));
+    var seg = el("div", "ap-seg");
+    options.forEach(function (o) {
+      var btn = el("button", "ap-seg-btn", o[0]);
+      if (get() === o[1]) btn.classList.add("on");
+      btn.addEventListener("click", function () {
+        set(o[1]);
+        saveSettings();
+        applySettings();
+        var sibs = seg.querySelectorAll(".ap-seg-btn");
+        for (var i = 0; i < sibs.length; i++) sibs[i].classList.remove("on");
+        btn.classList.add("on");
+        Audio_.click && Audio_.click();
+      });
+      seg.appendChild(btn);
+    });
+    var wrap = el("div", "ap-set-keys");
+    wrap.appendChild(seg);
+    if (note) wrap.appendChild(el("span", "ap-set-note", note));
+    row.appendChild(wrap);
+    return row;
+  }
+
+  function showControls(back) {
+    var c = el("div", "ap-card");
+    c.appendChild(el("p", "ap-card-kicker", "CONTROLS"));
+    var t = el("h3", "ap-card-title", "How she moves.");
+    t.classList.add("tight");
+    c.appendChild(t);
+    var list = el("div", "ap-card-rows ap-set");
+    list.appendChild(keycapRow("MOVE", ["W", "A", "S", "D"], "or the arrow keys"));
+    list.appendChild(keycapRow("CREEP", ["SHIFT"], "slower, and almost silent"));
+    list.appendChild(keycapRow("USE", ["E", "/", "SPACE"], "whatever she is standing at"));
+    list.appendChild(keycapRow("MAP", ["M"], "where she has been"));
+    list.appendChild(keycapRow("PAUSE", ["ESC"], ""));
+    list.appendChild(el("p", "ap-set-head", "SETTINGS"));
+    list.appendChild(switchRow("SOUND", "", [["ON", true], ["OFF", false]],
+      function () { return SETTINGS.sound; }, function (v) { SETTINGS.sound = v; }));
+    list.appendChild(switchRow("CAMERA SHAKE", "", [["ON", true], ["OFF", false]],
+      function () { return SETTINGS.shake; }, function (v) { SETTINGS.shake = v; }));
+    list.appendChild(switchRow("CREEPING", "hold the key, or press it once",
+      [["HOLD", true], ["TOGGLE", false]],
+      function () { return SETTINGS.creepHold; }, function (v) { SETTINGS.creepHold = v; }));
+    list.appendChild(switchRow("PICTURE", "smooth trades sharpness for frames",
+      [["AUTO", "auto"], ["CRISP", "crisp"], ["SMOOTH", "smooth"]],
+      function () { return SETTINGS.quality; }, function (v) { SETTINGS.quality = v; }));
+    c.appendChild(list);
+    var b = el("button", "ap-card-go", "BACK");
+    b.addEventListener("click", back);
+    c.appendChild(b);
+    openOverlay(c);
+  }
+
   /* ---- pause ---- */
   function togglePause() {
     if (!G) return;
@@ -9809,7 +9934,15 @@
          closeOverlay();
          if (window.leaveApocalypse) window.leaveApocalypse();
          else Api.stop();
-       }));
+       },
+       [["CONTROLS & SETTINGS", function () {
+         closeOverlay();
+         showControls(function () {
+           closeOverlay();
+           G.state = G.__wasState || "play";
+           togglePause();
+         });
+       }]]));
     G.state = "paused";
   }
 
@@ -12237,6 +12370,9 @@
     var med = sorted[sorted.length >> 1];
     var p90 = sorted[Math.floor(sorted.length * 0.9)];
     if (perfHold > 0) return;
+    /* a person who has chosen crisp or smooth has said what they want;
+       the ladder stops second-guessing them */
+    if (perfPin >= 0) { if (Stage.rung !== perfPin) perfStep(perfPin, 4); return; }
 
     /* 16.7ms is the budget; leave a little room either side of it so it
        does not sit on the boundary flipping between two rungs */
@@ -12360,6 +12496,8 @@
         var f = $("ap-stage");
         if (f) f.style.setProperty("--ap-arn", "1.7778");
         lastT = performance.now();
+        /* whatever was chosen last time takes effect before the first frame */
+        applySettings();
         raf = requestAnimationFrame(frame);
         titleCard();
         installHooks();
