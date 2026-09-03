@@ -951,6 +951,15 @@
         <button class="ap-pause-btn" id="ap-pause-btn" aria-label="Pause"><span class="gl-pause" aria-hidden="true"></span></button>
         <button class="ap-map-btn" id="ap-map-btn" aria-label="Map">MAP</button>
 
+        <!-- the card: north is up the screen, and the needle is the errand -->
+        <div class="ap-compass" id="ap-compass" aria-hidden="true">
+          <span class="ap-compass-ring" aria-hidden="true">
+            <i class="n">N</i><i class="e">E</i><i class="s">S</i><i class="w">W</i>
+          </span>
+          <span class="ap-compass-needle" id="ap-compass-needle" aria-hidden="true"></span>
+          <span class="ap-compass-dist" id="ap-compass-dist"></span>
+        </div>
+
         <!-- being taken hold of: the window to answer it -->
         <div class="ap-grab" id="ap-grab" aria-hidden="true">
           <p class="ap-grab-word">IT HAS YOU</p>
@@ -1040,6 +1049,6 @@
 <script src="script.js?v=82"></script>
 <script src="super-ouissy.js?v=82"></script>
 <script src="rescue.js?v=82"></script>
-<script src="apocalypse.js?v=89"></script>
+<script src="apocalypse.js?v=91"></script>
 </body>
 </html>

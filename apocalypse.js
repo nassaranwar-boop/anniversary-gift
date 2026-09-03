@@ -365,9 +365,9 @@
       fairy: [[1, 1, 10, 1, 2.55]],
       grade: [180, 115, 55, 0.16], haze: [30, 38, 60, 0.28],
       steps: [
-        { task: "The TV is still on downstairs. Go and see.",                clears: "tv" },
-        { task: "Anwar is at Mercy General, Ward C. Get to the garage.",     clears: "panel" },
-        { task: "No car. Four miles on foot, then — south to the river.",    clears: "exit" }
+        { task: "Downstairs. The television is still on — stand at it and press USE.", clears: "tv" },
+        { task: "Anwar is at Mercy General. Take the car — the garage is the far room downstairs.", clears: "panel" },
+        { task: "The shutter is up. Walk out through it, onto the drive.", clears: "exit" }
       ]
     },
     {
@@ -376,7 +376,7 @@
       map: MAPS.streets, theme: "street", base: ",", dark: 0.62,
       grade: [60, 90, 180, 0.18], haze: [35, 48, 80, 0.36],
       steps: [
-        { task: "South to the river, then east along it. Mercy General. (M for the map.)", clears: "exit" }
+        { task: "Cross town on foot. South first, then east — the compass points the way, M opens the map.", clears: "exit" }
       ]
     },
     {
@@ -387,9 +387,9 @@
       dead: [20, 1, 39, 10],
       pressure: 26, pressureMax: 5, blood: true,
       steps: [
-        { task: "The ward doors run off the plant room. West side, past the link corridor.", clears: "panel" },
-        { task: "Ward C is open. Bed by the window — but he won't be in it.",                clears: "anwar" },
-        { task: "There's a fire door in here. Shut it behind you.",                          clears: "exit" }
+        { task: "Ward C has no power on its doors. The plant room is west — find the panel and use it.", clears: "panel" },
+        { task: "The ward doors are open. He is east, off the ward — look for the room with a door on it.", clears: "anwar" },
+        { task: "Get to the fire door in this room. It is the green light.", clears: "exit" }
       ]
     },
     {
@@ -398,7 +398,7 @@
       map: MAPS.escape, theme: "hospital", base: ".", dark: 0.68, groundTex: "asphalt", blood: true,
       grade: [96, 150, 170, 0.12], haze: [46, 62, 76, 0.32],
       steps: [
-        { task: "Out through the ambulance bay. Then anything with four wheels.", clears: "car" }
+        { task: "Out of the building, then find a car and use it. The compass is pointing at one.", clears: "car" }
       ]
     },
     {
@@ -425,9 +425,9 @@
       ],
       grade: [255, 214, 150, 0.17], haze: [178, 186, 196, 0.14],
       steps: [
-        { task: "Go up to the gate. Do what they tell you.",             clears: "hail" },
-        { task: "Wait at the table. They have to look at both of you.",  clears: "check" },
-        { task: "They're opening the inner gate. Go in.",                clears: "exit" }
+        { task: "Walk up to the gate and use it. They will speak first.", clears: "hail" },
+        { task: "The table by the fence. Stand at it and use it — both of you have to be seen.", clears: "check" },
+        { task: "The inner gate is open. Walk through it.",               clears: "exit" }
       ]
     }
   ];
@@ -435,20 +435,20 @@
   var SUB = {
     roadside: {
       id: "roadside", name: "THE ROAD", map: MAPS.roadside, theme: "road",
-      base: ",", dark: 0.42,
+      base: ",", dark: 0.42, horizon: true,
       grade: [246, 200, 128, 0.16], haze: [162, 168, 186, 0.18],
       steps: [
-        { task: "The tank is dry. Find something else that can carry two.", clears: "horse" }
+        { task: "The tank is dry. There is a barn up the lane — the compass knows where.", clears: "horse" }
       ]
     },
     campsite: {
       id: "campsite", name: "THE CLEARING", map: MAPS.campsite, theme: "campsite",
-      base: ",", dark: 0.40, safe: true,
+      base: ",", dark: 0.40, safe: true, horizon: true,
       grade: [190, 150, 85, 0.14], haze: [70, 64, 46, 0.22],
       steps: [
-        { task: "Make camp.",                clears: "arrival" },
-        { task: "Find some wood for a fire.", clears: "wood" },
-        { task: "Light the fire.",            clears: "fire" }
+        { task: "Make camp. Talk to him first.",                         clears: "arrival" },
+        { task: "Three pieces of dry wood. Walk onto one and press USE.", clears: "wood" },
+        { task: "Take the wood to the ring of stones and light it.",      clears: "fire" }
       ]
     }
   };
@@ -1822,6 +1822,9 @@
       m.roughness = opts.rough == null ? 1 : opts.rough;
     }
     if (opts.emissive) { m.emissive = new THREE.Color(opts.emissive); m.emissiveIntensity = opts.emissiveIntensity || 1; }
+    /* everything solid a level is made of can stand between the camera and
+       her, so everything solid a level is made of can be seen through */
+    if (opts.cut !== false) occlude(m);
     return m;
   }
 
@@ -4021,12 +4024,14 @@
   function poseRide(rig, t, bounce, front) {
     var b = rig.bones;
     var s1 = Math.sin(t * 6.4 + (front ? 0 : 0.5));
+    /* thigh forward and out over the barrel, knee bent back so the calf
+       hangs down its side, heel down: a seat, not a chair */
     [["L", 1], ["R", -1]].forEach(function (sd) {
       var s = sd[0], side = sd[1];
-      b["hip" + s].rotation.x = side * 0.46;
-      b["thigh" + s].rotation.set(0, 0, 1.16 + s1 * 0.03);
-      b["shin" + s].rotation.z = -0.62;
-      b["foot" + s].rotation.z = -0.30;
+      b["hip" + s].rotation.x = side * 0.62;
+      b["thigh" + s].rotation.set(0, 0, 0.78 + s1 * 0.03);
+      b["shin" + s].rotation.z = -1.24;
+      b["foot" + s].rotation.z = -0.10;
     });
     b.spine.rotation.set(0, 0, (front ? 0.14 : 0.26) + s1 * 0.035);
     b.chest.rotation.set(0, 0, 0);
@@ -4035,8 +4040,10 @@
       b.armL.rotation.set( 0.18, 0, -0.62); b.armR.rotation.set(-0.18, 0, -0.62);
       b.foreL.rotation.z = -0.34; b.foreR.rotation.z = -0.34;
     } else {
-      b.armL.rotation.set( 0.34, 0, -1.02); b.armR.rotation.set(-0.34, 0, -1.02);
-      b.foreL.rotation.z = -0.86; b.foreR.rotation.z = -0.86;
+      /* he has both hands on the strap in front of him, which is what you
+         do when you have never been on one of these before */
+      b.armL.rotation.set( 0.26, 0, -0.12); b.armR.rotation.set(-0.26, 0, -0.12);
+      b.foreL.rotation.z = -1.62; b.foreR.rotation.z = -1.62;
     }
     rig.body.position.y = bounce;
   }
@@ -4400,10 +4407,26 @@
     root.add(body);
 
     var barrel = new THREE.Mesh(
-      (function () { var g = new THREE.SphereGeometry(0.60, 16, 12); g.scale(1.55, 0.86, 0.78); return g; })(),
+      (function () { var g = new THREE.SphereGeometry(0.60, 20, 14); g.scale(1.72, 0.82, 0.74); return g; })(),
       hide);
     barrel.castShadow = true;
     body.add(barrel);
+    /* the chest and the quarters, which is what stops it being an egg */
+    var chestM = new THREE.Mesh(
+      (function () { var g = new THREE.SphereGeometry(0.42, 16, 12); g.scale(0.98, 0.96, 0.86); return g; })(),
+      hide);
+    chestM.position.set(0.66, 0.00, 0); chestM.castShadow = true; body.add(chestM);
+    var rumpM = new THREE.Mesh(
+      (function () { var g = new THREE.SphereGeometry(0.45, 16, 12); g.scale(0.94, 1.00, 0.90); return g; })(),
+      hide);
+    rumpM.position.set(-0.70, 0.04, 0); rumpM.castShadow = true; body.add(rumpM);
+    /* somebody's saddle blanket, still on her */
+    var blanket = new THREE.Mesh(
+      (function () { var g = new THREE.SphereGeometry(0.60, 18, 12, 0, 6.2832, 0, 1.15);
+                     g.scale(0.92, 0.86, 0.86); return g; })(),
+      new THREE.MeshStandardMaterial({ color: 0x6a4450, roughness: 0.96,
+        map: tex("cloth", 128, 3), bumpMap: bump("cloth", 128, 3), bumpScale: 0.3 }));
+    blanket.position.set(-0.05, 0.10, 0); blanket.castShadow = true; body.add(blanket);
 
     /* neck and head, angled forward and down */
     var neck = new THREE.Group();
@@ -4417,20 +4440,45 @@
     var headG = new THREE.Group();
     headG.position.set(0, 0.72, 0);
     neck.add(headG);
+    /* the skull, then the long bone of the face, then a muzzle: a horse's
+       head is three shapes and it was one */
+    headG.rotation.z = 0.86;
     var head = new THREE.Mesh(
-      (function () { var g = new THREE.SphereGeometry(0.16, 12, 10); g.scale(1.7, 0.85, 0.8); return g; })(),
+      (function () { var g = new THREE.SphereGeometry(0.17, 14, 11); g.scale(1.05, 1.0, 0.92); return g; })(),
       hide);
-    head.rotation.z = 0.9;
-    head.castShadow = true;
-    headG.add(head);
+    head.castShadow = true; headG.add(head);
+    var face = new THREE.Mesh(
+      (function () { var g = new THREE.SphereGeometry(0.13, 14, 11); g.scale(1.9, 0.86, 0.84); return g; })(),
+      hide);
+    face.position.set(0.22, -0.05, 0); face.castShadow = true; headG.add(face);
+    var muzzle = new THREE.Mesh(
+      (function () { var g = new THREE.SphereGeometry(0.115, 12, 10); g.scale(0.92, 0.90, 0.92); return g; })(),
+      hide);
+    muzzle.position.set(0.44, -0.09, 0); muzzle.castShadow = true; headG.add(muzzle);
+    [1, -1].forEach(function (s) {
+      var eye = new THREE.Mesh(new THREE.SphereGeometry(0.030, 8, 6),
+        new THREE.MeshStandardMaterial({ color: 0x140f0c, roughness: 0.25, envMapIntensity: 2 }));
+      eye.position.set(0.06, 0.05, s * 0.135); headG.add(eye);
+      var nos = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6),
+        new THREE.MeshStandardMaterial({ color: 0x241812, roughness: 0.6 }));
+      nos.position.set(0.52, -0.07, s * 0.055); headG.add(nos);
+    });
+    /* the headcollar on the hook by the stall, which she is still wearing */
+    var strapM = new THREE.MeshStandardMaterial({ color: 0x3a2c22, roughness: 0.8 });
+    var noseband = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.017, 6, 16), strapM);
+    noseband.rotation.y = Math.PI / 2; noseband.position.set(0.30, -0.06, 0);
+    headG.add(noseband);
+    var cheekS = new THREE.Mesh(new THREE.TorusGeometry(0.155, 0.016, 6, 16), strapM);
+    cheekS.rotation.y = Math.PI / 2; cheekS.position.set(0.02, 0.00, 0);
+    headG.add(cheekS);
     [1, -1].forEach(function (s) {
       var ear = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.14, 6), hide);
       ear.position.set(-0.06, 0.13, s * 0.07);
       headG.add(ear);
     });
     var maneM = new THREE.Mesh(
-      (function () { var g = new THREE.BoxGeometry(0.10, 0.80, 0.05); g.translate(0, 0.38, 0); return g; })(), mane);
-    maneM.position.set(-0.12, 0, 0);
+      (function () { var g = new THREE.BoxGeometry(0.09, 0.92, 0.16); g.translate(0, 0.40, 0); return g; })(), mane);
+    maneM.position.set(-0.13, 0, 0);
     neck.add(maneM);
 
     /* tail */
@@ -4498,6 +4546,94 @@
      repeats is an InstancedMesh, so a forty-eight by thirty-
      three street is still a handful of draw calls.
      ========================================================= */
+
+  /* ---- seeing through what is in the way ----
+     The camera looks down the street from above and behind her, so any
+     wall on the near side of her stands between the two and she vanishes
+     behind it. Every solid material in a level gets this: anything drawn
+     nearer to the camera than she is, and within a circle around where she
+     is on the screen, is cut away — solidly in the middle, on an ordered
+     4x4 dither at the edge so the hole has a soft rim rather than a
+     stencilled outline. It is a fragment test, so it works on instanced
+     geometry, which is what a wall is.
+
+     Ordered, not random: a noise dither is the grain this game spent a
+     week getting rid of. */
+  /* three is fetched at run time, so nothing here may build a Vector until
+     it has arrived */
+  var CUT = { at: { value: null }, rad: { value: 96 } };
+  function cutReady() {
+    if (!CUT.at.value && window.THREE) CUT.at.value = new THREE.Vector4(0, 0, 0, 0);
+    return !!CUT.at.value;
+  }
+  var CUT_VERT_HEAD = "varying float vCutDepth;\nvarying float vCutY;\n";
+  /* the world height as well as the depth: the floor in front of her is
+     nearer to the camera than she is, and punching a hole in that would
+     drop her through it */
+  var CUT_VERT_BODY = [
+    "",
+    "vCutDepth = -mvPosition.z;",
+    "vec4 apWp = vec4(transformed, 1.0);",
+    "#ifdef USE_INSTANCING",
+    "  apWp = instanceMatrix * apWp;",
+    "#endif",
+    "vCutY = (modelMatrix * apWp).y;"
+  ].join("\n");
+  var CUT_FRAG_HEAD = [
+    "varying float vCutDepth;",
+    "varying float vCutY;",
+    "uniform vec4 uCutAt;",
+    "uniform float uCutRad;",
+    "float apBayer2(vec2 a){ a = floor(a); return fract(a.x * 0.5 + a.y * a.y * 0.75); }",
+    ""
+  ].join("\n");
+  var CUT_FRAG_BODY = [
+    "if (uCutAt.w > 0.5 && vCutY > 0.34 && vCutDepth < uCutAt.z - 0.65) {",
+    "  float dCut = length(gl_FragCoord.xy - uCutAt.xy);",
+    "  if (dCut < uCutRad) {",
+    "    float band = smoothstep(uCutRad * 0.52, uCutRad, dCut);",
+    "    float thr = apBayer2(gl_FragCoord.xy * 0.5) * 0.25 + apBayer2(gl_FragCoord.xy);",
+    "    if (band < thr) discard;",
+    "  }",
+    "}"
+  ].join("\n");
+
+  function occlude(mat) {
+    if (!mat || mat.__cut) return mat;
+    cutReady();
+    mat.__cut = true;
+    mat.onBeforeCompile = function (sh) {
+      sh.uniforms.uCutAt = CUT.at;
+      sh.uniforms.uCutRad = CUT.rad;
+      sh.vertexShader = sh.vertexShader
+        .replace("#include <common>", "#include <common>\n" + CUT_VERT_HEAD)
+        .replace("#include <project_vertex>", "#include <project_vertex>" + CUT_VERT_BODY);
+      sh.fragmentShader = sh.fragmentShader
+        .replace("#include <common>", "#include <common>\n" + CUT_FRAG_HEAD)
+        .replace("#include <clipping_planes_fragment>",
+                 "#include <clipping_planes_fragment>\n" + CUT_FRAG_BODY);
+    };
+    mat.customProgramCacheKey = function () { return "apCut"; };
+    return mat;
+  }
+
+  /* where she is on the screen, and how far away, for the cut above */
+  var _cutV = null, _cutW = null, _cutS = null;
+  function updateCut() {
+    if (!cutReady()) return;
+    var on = G && G.player && G.state !== "cine" && !G.cine && Stage.renderer;
+    if (!on) { CUT.at.value.w = 0; return; }
+    if (!_cutV) { _cutV = new THREE.Vector3(); _cutW = new THREE.Vector3(); _cutS = new THREE.Vector2(); }
+    var cam = Stage.camera;
+    _cutW.set(G.player.x, 1.05, G.player.z);
+    _cutV.copy(_cutW).applyMatrix4(cam.matrixWorldInverse);
+    var depth = -_cutV.z;
+    _cutW.project(cam);
+    Stage.renderer.getDrawingBufferSize(_cutS);
+    CUT.at.value.set((_cutW.x * 0.5 + 0.5) * _cutS.x,
+                     (_cutW.y * 0.5 + 0.5) * _cutS.y, depth, 1);
+    CUT.rad.value = Math.max(70, _cutS.y * 0.135);
+  }
 
   function Batch(geometry, material, castShadow, receiveShadow) {
     this.g = geometry; this.m = material;
@@ -4894,6 +5030,47 @@
     var kerbRise = def.theme === "street" ? 0.11 : 0;
     world.kerb = kerbRise;
     world.made = madeSurface;
+    /* ---- the world past the edge of the map ----
+       A grid ends, and where it ended you could see the sky through the
+       floor — a green polygon sitting in an orange void, which is what a
+       clearing in the middle of a wood should least look like. The ground
+       carries on for another sixteen tiles in every direction, and past
+       that there is a treeline. She still cannot walk out there: anything
+       off the grid reads as wall to her feet. It is scenery, and scenery
+       is what was missing. */
+    if (def.horizon) {
+      var MARG = 16;
+      for (var ay = -MARG; ay < H + MARG; ay++) {
+        for (var ax = -MARG; ax < W + MARG; ax++) {
+          if (ax >= 0 && ay >= 0 && ax < W && ay < H && at(ax, ay) !== " ") continue;
+          var at2 = hash2(ax * 7 + 3, ay * 11 + 5);
+          /* unbroken, or the sky shows through the floor; it darkens and
+             falls away instead, which is what distance does */
+          var edge = Math.max(0, Math.max(-ax, ax - W, -ay, ay - H)) / MARG;
+          B.ground.add(cx(ax), -0.15 - at2 * 0.05 - edge * edge * 0.9, cz(ay), 1, 1, 1, 0,
+                       shade(0xffffff, (0.82 + at2 * 0.12) * (1 - edge * 0.34)));
+        }
+      }
+      /* and a treeline round the whole of it */
+      var ringR = Math.max(W, H) * 0.5 + MARG * 0.72;
+      var ringN = Math.round(ringR * 2.6);
+      for (var ri = 0; ri < ringN; ri++) {
+        var ra = ri / ringN * 6.2832;
+        var rr = ringR + hash2(ri, 7) * 5.5;
+        var rx = W / 2 + Math.cos(ra) * rr, rz = H / 2 + Math.sin(ra) * rr;
+        var rs = 1.5 + hash2(ri, 13) * 1.9;
+        B.trunk.add(cx(rx), -0.1, cz(rz), 1, 2.0 + hash2(ri, 3) * 1.6, 1, 0,
+                    shade(0xffffff, 0.5 + hash2(ri, 5) * 0.2));
+        for (var rl = 0; rl < 3; rl++) {
+          B.canopy.add(cx(rx) + (hash2(ri, rl) - 0.5) * 1.5,
+                       2.4 + rl * 0.8 + hash2(ri, rl * 3) * 0.6,
+                       cz(rz) + (hash2(rl, ri) - 0.5) * 1.5,
+                       rs, rs * 0.86, rs, hash2(ri, rl) * 3,
+                       shade(0xffffff, 0.34 + hash2(ri, rl + 9) * 0.22));
+        }
+      }
+    }
+
     for (var yy = 0; yy < H; yy++) {
       for (var xx = 0; xx < W; xx++) {
         var ch = at(xx, yy);
@@ -6480,7 +6657,7 @@
        solid one, and where the camber takes the water there is a gully and
        a drain. Without them a road is a grey rectangle you happen to walk
        on. */
-    if (outdoorLevel) {
+    if (outdoorLevel && (def.theme === "street" || def.theme === "road")) {
       var isRoad = function (x, y) { return at(x, y) === ","; };
       for (var ry = 1; ry < H - 1; ry++) {
         for (var rx = 1; rx < W - 1; rx++) {
@@ -6656,10 +6833,10 @@
             }
           }
           /* litter, flat on the ground */
-          if (r0 > 0.72) {
-            var ln = 2 + Math.floor(hash2(dy, dx) * 4);
+          if (r0 > 0.86) {
+            var ln = 1 + Math.floor(hash2(dy, dx) * 3);
             for (var l = 0; l < ln; l++) {
-              var ls = 0.10 + hash2(l, dx) * 0.16;
+              var ls = 0.07 + hash2(l, dx) * 0.11;
               B.litter.add(cx(dx) + (hash2(l * 3, dy) - 0.5) * TILE * 0.85,
                            0.045,
                            cz(dy) + (hash2(dx, l * 5) - 0.5) * TILE * 0.85,
@@ -6685,6 +6862,10 @@
        of the flat ground, where she would actually build one */
     if (def.theme === "campsite") firePit(14, 12);
 
+    /* the batches that were handed a material rather than making one */
+    Object.keys(B).forEach(function (k) {
+      if (B[k].m && B[k].m.isMeshStandardMaterial) occlude(B[k].m);
+    });
     Object.keys(B).forEach(function (k) { world[k + "Mesh"] = B[k].build(G); });
 
     /* ---------- a little life in the air ---------- */
@@ -7206,6 +7387,11 @@
        the peak and makes rendering the new reflection cube far slower than
        it is with the old scene already gone. */
     if (G && G.scene) teardownLevel();
+    /* a line left on the screen from the last place is not narration, it
+       is a leak */
+    if (G) G.dlg = null;
+    var dbox = $("ap-dlg");
+    if (dbox) dbox.setAttribute("aria-hidden", "true");
     warmCubes();
     var built = makeScene(def);
     var world = buildWorld(def);
@@ -7445,16 +7631,37 @@
   }
 
   var ringPool = [];
+  /* a band that fades to nothing at both of its edges */
+  function ringTexture() {
+    if (TEX.__ring) return TEX.__ring;
+    var s = 64, cc = canvas2d(s), x = cc.x;
+    var g = x.createLinearGradient(0, 0, 0, s);
+    g.addColorStop(0.00, "rgba(255,255,255,0)");
+    g.addColorStop(0.34, "rgba(255,255,255,0.10)");
+    g.addColorStop(0.72, "rgba(255,255,255,0.85)");
+    g.addColorStop(0.90, "rgba(255,255,255,0.30)");
+    g.addColorStop(1.00, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.fillRect(0, 0, s, s);
+    var t = new THREE.CanvasTexture(cc.c);
+    t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+    TEX.__ring = t;
+    return t;
+  }
+
   function noiseRing(x, z, r) {
     if (!G.scene) return;
     var ring = null;
     for (var i = 0; i < ringPool.length; i++) if (!ringPool[i].live) ring = ringPool[i];
     if (!ring) {
+      /* It was a hard-edged wire circle, forty segments of it, drawn in
+         additive white — a debug overlay somebody forgot to take out. It
+         is a soft band now, wide and faint, on a gradient that has no edge
+         to catch the eye. */
       var m = new THREE.Mesh(
-        geo("noiseRing", function () { return new THREE.RingGeometry(0.86, 1.0, 40); }),
-        new THREE.MeshBasicMaterial({ color: 0xbcd4ff, transparent: true, opacity: 0,
-          side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
-          toneMapped: false, fog: false }));
+        geo("noiseRing", function () { return new THREE.RingGeometry(0.40, 1.0, 64); }),
+        new THREE.MeshBasicMaterial({ map: ringTexture(), color: 0x9ec4ff,
+          transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false,
+          blending: THREE.AdditiveBlending, toneMapped: false, fog: false }));
       m.rotation.x = -Math.PI / 2;
       m.renderOrder = 8;
       ring = { mesh: m, live: false, t: 0, r: 1 };
@@ -7474,7 +7681,7 @@
       if (q.t >= 1) { q.live = false; q.mesh.visible = false; continue; }
       var e = 1 - Math.pow(1 - q.t, 3);
       q.mesh.scale.setScalar(0.2 + e * q.r);
-      q.mesh.material.opacity = 0.36 * (1 - q.t) * (1 - q.t);
+      q.mesh.material.opacity = 0.20 * (1 - q.t) * (1 - q.t);
     }
   }
 
@@ -7802,6 +8009,43 @@
     }
   }
 
+  /* ---- the compass ----
+     "South to the river, then east along it" is only an instruction if
+     south and east mean something on the screen. The camera never turns,
+     so the card does not either: north is up the screen and east is to the
+     right, always, and this says so. The needle points at whatever the
+     current step is asking for, and the number under it is how far. */
+  var COMPASS_LAST = "";
+  function updateCompass() {
+    var el2 = $("ap-compass");
+    if (!el2) return;
+    var show = G && G.player && G.world && G.state === "play" && G.hasMap && !G.cine;
+    el2.setAttribute("aria-hidden", show ? "false" : "true");
+    if (!show) return;
+    var tgt = objectiveTile();
+    var needle = $("ap-compass-needle"), lab = $("ap-compass-dist");
+    if (!tgt) {
+      if (needle) needle.style.opacity = "0";
+      if (lab) lab.textContent = "";
+      return;
+    }
+    var w = G.world;
+    var dx = w.cx(tgt.x) - G.player.x, dz = w.cz(tgt.y) - G.player.z;
+    /* screen up is -z and screen right is +x, so a bearing measured from
+       north clockwise is atan2(east, -south) */
+    var deg = Math.atan2(dx, -dz) * 180 / Math.PI;
+    if (needle) {
+      needle.style.opacity = "1";
+      needle.style.transform = "rotate(" + deg.toFixed(1) + "deg)";
+    }
+    var m = Math.round(Math.hypot(dx, dz));
+    var word = Math.abs(deg) < 22.5 ? "N" : Math.abs(deg) > 157.5 ? "S"
+             : deg > 0 ? (deg < 67.5 ? "NE" : deg < 112.5 ? "E" : "SE")
+             : (deg > -67.5 ? "NW" : deg > -112.5 ? "W" : "SW");
+    var txt = word + " " + m + "m";
+    if (lab && txt !== COMPASS_LAST) { lab.textContent = txt; COMPASS_LAST = txt; }
+  }
+
   function setHud() {
     if (!G || !G.def) return;
     var place = $("ap-place"), task = $("ap-task");
@@ -7827,6 +8071,8 @@
 
   /* how close the nearest one is, when she cannot see it yet */
   function updateInstinct() {
+    updateCut();
+    updateCompass();
     if (G && G.world && G.state === "play") markSeen();
     var n = $("ap-instinct");
     if (!n || !G || !G.player) return;
@@ -7893,6 +8139,16 @@
     nextLine();
   }
 
+  /* one line per press, whatever pressed it */
+  var lastAdvance = 0;
+  function advanceLine() {
+    if (!G || !G.dlg) return;
+    var now = (window.performance && performance.now) ? performance.now() : Date.now();
+    if (now - lastAdvance < 180) return;
+    lastAdvance = now;
+    nextLine();
+  }
+
   function nextLine() {
     var d = G.dlg;
     var box = $("ap-dlg");
@@ -7909,8 +8165,13 @@
     if (box) {
       $("ap-dlg-name").textContent = speaker || "";
       $("ap-dlg-text").textContent = quiet ? "…" : (text || "");
-      box.classList.toggle("quiet", quiet);
-      box.classList.toggle("narration", !speaker && !quiet);
+      /* The narrator and the people in the room are not the same voice and
+         should not arrive in the same box: narration is a line of prose
+         across the foot of the screen, and somebody speaking is a plate
+         with their name on it, on their own side. */
+      box.className = "ap-dlg" +
+        (quiet ? " quiet" : speaker ? " speech" : " narration") +
+        (speaker === "OUISSY" ? " her" : speaker ? " them" : "");
       box.setAttribute("aria-hidden", "false");
     }
     if (!quiet && speaker) Audio_.beep();
@@ -7966,7 +8227,9 @@
   function objectiveTile() {
     var w = G.world, s = step();
     if (!w || !s) return null;
-    if (s.clears === "exit" || s.clears === "car") return w.exit || w.carAt;
+    if (s.clears === "car") return w.carAt || w.exit;
+    if (s.clears === "horse") return w.horseAt || w.exit;
+    if (s.clears === "exit") return w.exit;
     if (s.clears === "anwar") return w.anwarAt;
     if (s.clears === "panel") return w.panelAt;
     if (s.clears === "tv") return w.tvAt;
@@ -9085,6 +9348,8 @@
     G.cine.t = 0;
     var hud = $("ap-hud");
     if (hud) hud.classList.add("gone");
+    var cmp = $("ap-compass");
+    if (cmp) cmp.setAttribute("aria-hidden", "true");
     Stage.attach(c.scene, c.camera);
     try { Stage.renderer.compile(c.scene, c.camera); } catch (e) {}
     Stage.grade(c.grade || {});
@@ -9470,13 +9735,14 @@
     horse.root.position.set(0, 0, 0);
 
     /* the two of them on it — she in front with the reins, him behind */
+    /* The figures face +x and so does the horse, so turning them a quarter
+       turn sat them side-saddle facing the verge — which is most of why
+       this looked wrong. They face the way it is going now. */
     var her = makeOuissy(); her.root.scale.setScalar(0.92);
-    her.root.position.set(0.24, 1.02, 0);
-    her.root.rotation.y = -Math.PI / 2;
+    her.root.position.set(0.34, 0.96, 0);
     horse.root.add(her.root);
     var him = makeAnwar(); him.root.scale.setScalar(0.92);
-    him.root.position.set(-0.62, 1.00, 0);
-    him.root.rotation.y = -Math.PI / 2;
+    him.root.position.set(-0.34, 0.95, 0);
     horse.root.add(him.root);
     her.contact.visible = false; him.contact.visible = false;
 
@@ -10409,10 +10675,14 @@
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("resize", function () { if (Stage.ready) Stage.resize(); });
-    var next = $("ap-dlg-next");
-    if (next) next.addEventListener("click", function () { if (G && G.dlg) nextLine(); });
+    /* The Continue button is inside the box, and both of them had a click
+       handler on them, so one press on the button ran nextLine twice and
+       every second line of the conversation went past unseen — which is
+       most of what she says, because she mostly answers. One handler, on
+       the box, and one guard against two advances landing in the same
+       moment however they arrive. */
     var dlg = $("ap-dlg");
-    if (dlg) dlg.addEventListener("click", function () { if (G && G.dlg) nextLine(); });
+    if (dlg) dlg.addEventListener("click", function () { advanceLine(); });
     var pb = $("ap-pause-btn");
     if (pb) pb.addEventListener("click", togglePause);
     var mb = $("ap-map-btn");
@@ -10423,7 +10693,7 @@
     /* advancing dialogue with the same key that uses things */
     window.addEventListener("keydown", function (e) {
       if (!G || !G.dlg) return;
-      if (e.code === "Space" || e.code === "KeyE" || e.code === "Enter") { nextLine(); e.preventDefault(); }
+      if (e.code === "Space" || e.code === "KeyE" || e.code === "Enter") { advanceLine(); e.preventDefault(); }
     });
     bindPad();
   }
@@ -10526,6 +10796,7 @@
     window.__apRoof = function () { playRooftop(); return G; };
     window.__apUse = function () { tryUse(); return G && G.state; };
     window.__apSay = function () { if (G && G.dlg) { nextLine(); return true; } return false; };
+    window.__apAdvance = function () { advanceLine(); return G && !!G.dlg; };
     window.__apSkipDialogue = function () {
       var n = 0;
       while (G && G.dlg && n < 400) { nextLine(); n++; }
