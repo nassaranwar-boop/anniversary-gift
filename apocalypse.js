@@ -2521,7 +2521,12 @@
           else col.push(1, 1, 1);
         }
       }
+      /* A geometry with no index of its own contributed none, and the
+         merged result got an index from its indexed neighbours — so every
+         un-indexed part in the list was silently dropped from the draw.
+         Give it the sequential index it implies. */
       if (gi) for (var m = 0; m < gi.length; m++) idx.push(gi[m] + off);
+      else for (var m2 = 0; m2 < n; m2++) idx.push(m2 + off);
       off += n;
       g.dispose();
     });
@@ -2683,9 +2688,11 @@
   }
   function hairMat(hex, rough) {
     return new THREE.MeshStandardMaterial({
-      color: hex, roughness: rough == null ? 0.44 : rough, metalness: 0.0,
-      map: tex("hair", 256, 6), bumpMap: bump("hair", 256, 6), bumpScale: 0.05,
-      envMapIntensity: 0.30, side: THREE.DoubleSide
+      /* 0.44 is lacquer: it put a moving white highlight across the top
+         of every head in the game. Hair scatters, it does not reflect. */
+      color: hex, roughness: rough == null ? 0.86 : rough, metalness: 0.0,
+      map: tex("hair", 256, 6), bumpMap: bump("hair", 256, 6), bumpScale: 0.09,
+      envMapIntensity: 0.16, side: THREE.DoubleSide
     });
   }
 
@@ -2960,6 +2967,27 @@
     return d;
   }
 
+  /* A sphere's first and last column of vertices sit on top of each other
+     but belong to different triangles, so computeVertexNormals gives them
+     different normals and a hard line runs from the crown down the middle
+     of the face. Average the pair, the way the limb tubes already do. */
+  function weldSphereSeam(g, wSeg, hSeg) {
+    var nor = g.attributes.normal;
+    if (!nor) return g;
+    for (var iy = 0; iy <= hSeg; iy++) {
+      var a = iy * (wSeg + 1), b = a + wSeg;
+      if (b >= nor.count) break;
+      var nx = (nor.getX(a) + nor.getX(b)) * 0.5;
+      var ny = (nor.getY(a) + nor.getY(b)) * 0.5;
+      var nz = (nor.getZ(a) + nor.getZ(b)) * 0.5;
+      var l = Math.hypot(nx, ny, nz) || 1;
+      nor.setXYZ(a, nx / l, ny / l, nz / l);
+      nor.setXYZ(b, nx / l, ny / l, nz / l);
+    }
+    nor.needsUpdate = true;
+    return g;
+  }
+
   function sculptHead(g, S, face) {
     var D = faceDial(face);
     var pos = g.attributes.position;
@@ -2996,7 +3024,10 @@
       if (x > 0) x += jt * jt * 0.013 * S * D.chin * (1 - clamp(az / (0.066 * S), 0, 1));
       /* a flatter back to the skull, and a crown that narrows */
       if (x < 0) x -= x * clamp(-x / (0.100 * S), 0, 1) * 0.12;
-      if (y < 0) y *= 0.94;              /* the lower face is not that long */
+      /* The lower face was 58% of the head, which is what makes a face
+         read as long and horsey however good the features on it are. The
+         eyes should sit near the middle of a skull. */
+      if (y < 0) y *= 0.87;
       var ct = clamp((y - 0.045 * S) / (0.071 * S), 0, 1);
       x *= 1 - ct * 0.05; z *= 1 - ct * 0.09;
       pos.setXYZ(p, x, y, z);
@@ -3017,16 +3048,16 @@
       [ 0.082,  eY, eZ, 0.026, 0.022, 0.024, -0.017 * D.socket - D.gaunt * 0.010],
       /* cheekbones, the hollow under them, and the fold beside the nose */
       [ 0.056, -0.004, 0.052, 0.032, 0.022, 0.026,  0.008 * D.cheek + D.gaunt * 0.005],
-      [ 0.052, -0.040, 0.048, 0.030, 0.024, 0.026, -0.007 - D.gaunt * 0.007],
-      [ 0.070, -0.048, 0.022, 0.018, 0.018, 0.012, -0.005],
+      [ 0.052, -0.036, 0.048, 0.030, 0.024, 0.026, -0.007 - D.gaunt * 0.007],
+      [ 0.070, -0.042, 0.022, 0.018, 0.018, 0.012, -0.005],
       /* the philtrum, the crease under the lower lip, and the chin */
-      [ 0.080, -0.048 + mY, 0.000, 0.010, 0.010, 0.005, -0.003],
-      [ 0.066, -0.082 + mY, 0.000, 0.024, 0.010, 0.020, -0.005],
-      [ 0.066, -0.096, 0.000, 0.026, 0.020, 0.022,  0.011 * D.chin],
+      [ 0.080, -0.042 + mY, 0.000, 0.010, 0.010, 0.005, -0.003],
+      [ 0.066, -0.070 + mY, 0.000, 0.024, 0.010, 0.020, -0.005],
+      [ 0.066, -0.084, 0.000, 0.026, 0.020, 0.022,  0.011 * D.chin],
       /* the jawline, running back from the chin to under the ear */
-      [ 0.044, -0.088, 0.048, 0.038, 0.022, 0.028,  0.012 * D.jaw],
-      [ 0.004, -0.076, 0.070, 0.042, 0.026, 0.026,  0.011 * D.jaw],
-      [-0.030, -0.050, 0.076, 0.036, 0.030, 0.024,  0.008 * D.jaw],
+      [ 0.044, -0.078, 0.048, 0.038, 0.022, 0.028,  0.012 * D.jaw],
+      [ 0.004, -0.068, 0.070, 0.042, 0.026, 0.026,  0.011 * D.jaw],
+      [-0.030, -0.046, 0.076, 0.036, 0.030, 0.024,  0.008 * D.jaw],
       /* temples in a shade, and the hollow at the base of the skull */
       [ 0.036,  0.062, 0.060, 0.030, 0.032, 0.022, -0.005],
       [-0.080, -0.055, 0.000, 0.045, 0.032, 0.050, -0.007]
@@ -3058,21 +3089,29 @@
      make a mound where it should be. */
   function buildNose(S, face) {
     var D = faceDial(face), L = D.noseL, W = D.noseW;
+    /* The bridge is the narrowest part of a nose and the tip is the
+       widest. It was built the other way round — a sweep that got fatter
+       all the way down and then a tip smaller than the sweep it capped —
+       which is a wedge with a point on it, and a wedge is what the eye
+       reads as a beak. It also stood too far off the face: the whole
+       thing is shorter and closer in now. */
     var ridge = sweep([
-      new THREE.Vector3(0.076 * S,  0.038 * S, 0),
-      new THREE.Vector3(0.085 * S,  0.020 * S * L, 0),
-      new THREE.Vector3(0.093 * S,  0.002 * S * L, 0),
-      new THREE.Vector3(0.098 * S, -0.018 * S * L, 0)
-    ], 0.0104 * S * W, 0.0150 * S * W, 16, 0);
-    ridge.scale(1, 1, 1.10);                      /* wider than it is deep */
-    var tip = new THREE.SphereGeometry(0.0142 * S, 20, 15);
-    tip.scale(0.90, 0.80, 0.92 * W);
-    tip.translate(0.0965 * S, -0.0248 * S * L, 0);
+      new THREE.Vector3(0.0700 * S,  0.0400 * S, 0),
+      new THREE.Vector3(0.0782 * S,  0.0230 * S * L, 0),
+      new THREE.Vector3(0.0840 * S,  0.0060 * S * L, 0),
+      new THREE.Vector3(0.0876 * S, -0.0110 * S * L, 0)
+    ], 0.0072 * S * W, 0.0112 * S * W, 16, 0);
+    ridge.scale(1, 1, 1.16);                      /* wider than it is deep */
+    var tip = new THREE.SphereGeometry(0.0132 * S, 20, 15);
+    tip.scale(0.86, 0.74, 0.98 * W);
+    tip.translate(0.0888 * S, -0.0206 * S * L, 0);
     var parts = [ridge, tip];
     [1, -1].forEach(function (sd) {
-      var w = new THREE.SphereGeometry(0.0122 * S, 16, 12);
-      w.scale(0.72, 0.66, 0.74);
-      w.translate(0.0902 * S, -0.0288 * S * L, sd * 0.0128 * S * W);
+      /* the wings, which sit low and to the side and are what gives a
+         nose its width where it meets the face */
+      var w = new THREE.SphereGeometry(0.0120 * S, 16, 12);
+      w.scale(0.70, 0.62, 0.78);
+      w.translate(0.0836 * S, -0.0250 * S * L, sd * 0.0132 * S * W);
       parts.push(w);
     });
     return mergeGeoms(parts);
@@ -3097,11 +3136,22 @@
       { c: [0, 1.090 * S, 0], ru: 0.102 * S * depth * B.chest, rv: 0.144 * S * B.chest, w: W("spine", 0.55, "chest", 0.45) },
       { c: [0, 1.180 * S, 0], ru: 0.110 * S * depth * B.chest, rv: 0.164 * S * B.chest, w: W("chest", 1) },
       { c: [0, 1.270 * S, 0], ru: 0.108 * S * depth * B.chest, rv: 0.172 * S * B.shoulder, w: W("chest", 1) },
-      { c: [0, 1.330 * S, 0], ru: 0.098 * S * depth * B.chest, rv: 0.172 * S * B.shoulder, w: W("chest", 1) },
-      { c: [0, 1.362 * S, 0], ru: 0.082 * S * depth * B.chest, rv: 0.132 * S * B.shoulder, w: W("chest", 1) },
-      { c: [0, 1.396 * S, 0], ru: 0.060 * S, rv: 0.074 * S, w: W("chest", 0.5, "neck", 0.5) },
-      { c: [0, 1.440 * S, 0], ru: 0.050 * S, rv: 0.055 * S, w: W("neck", 1) },
-      { c: [0, 1.500 * S, 0], ru: 0.050 * S, rv: 0.055 * S, w: W("neck", 0.45, "head", 0.55) }
+      { c: [0, 1.330 * S, 0], ru: 0.098 * S * depth * B.chest, rv: 0.174 * S * B.shoulder, w: W("chest", 1) },
+      /* ---- the trapezius ----
+         The shoulders used to fall from their full width to a neck in
+         three centimetres, which is a shelf with a post standing on it.
+         The slope from the base of the neck out to the point of the
+         shoulder is one of the few lines on a body you can read from
+         across a street, so it is given its own rings and takes its time. */
+      { c: [0, 1.352 * S, 0], ru: 0.092 * S * depth * B.chest, rv: 0.161 * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.374 * S, 0], ru: 0.083 * S * depth * B.chest, rv: 0.140 * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.394 * S, 0], ru: 0.073 * S * depth * B.chest, rv: 0.114 * S * B.shoulder, w: W("chest", 0.75, "neck", 0.25) },
+      { c: [0, 1.412 * S, 0], ru: 0.063 * S, rv: 0.088 * S, w: W("chest", 0.45, "neck", 0.55) },
+      { c: [0, 1.430 * S, 0], ru: 0.055 * S, rv: 0.068 * S, w: W("chest", 0.18, "neck", 0.82) },
+      /* the neck itself: narrower than the jaw, and not a straight pipe */
+      { c: [0, 1.452 * S, 0], ru: 0.048 * S, rv: 0.053 * S, w: W("neck", 1) },
+      { c: [0, 1.486 * S, 0], ru: 0.047 * S, rv: 0.051 * S, w: W("neck", 0.7, "head", 0.3) },
+      { c: [0, 1.516 * S, 0], ru: 0.050 * S, rv: 0.055 * S, w: W("neck", 0.3, "head", 0.7) }
     ];
     parts.push(skinnedTube(torso, lod ? 14 : 22, true, false));
 
@@ -3119,12 +3169,19 @@
         { c: [0, el * S,            z], ru: 0.043 * S * B.arm, rv: 0.045 * S * B.arm, w: W("arm" + s, 0.35, "fore" + s, 0.65) },
         { c: [0, (el - 0.075) * S,  z], ru: 0.042 * S * B.arm, rv: 0.043 * S * B.arm, w: W("fore" + s, 1) },
         { c: [0, (wr + 0.075) * S,  z], ru: 0.036 * S * B.arm, rv: 0.037 * S * B.arm, w: W("fore" + s, 1) },
-        { c: [0, (wr + 0.018) * S,  z], ru: 0.031 * S * B.arm, rv: 0.032 * S * B.arm, w: W("fore" + s, 0.45, "hand" + s, 0.55) },
-        /* the hand: wide front-to-back, thin across, tapering to fingers */
-        { c: [0, (wr - 0.012) * S,  z], ru: 0.042 * S, rv: 0.024 * S, w: W("hand" + s, 1) },
-        { c: [0, (wr - 0.048) * S,  z], ru: 0.046 * S, rv: 0.025 * S, w: W("hand" + s, 1) },
-        { c: [0, (wr - 0.082) * S,  z], ru: 0.044 * S, rv: 0.023 * S, w: W("hand" + s, 1) },
-        { c: [0, (wr - 0.098) * S,  z], ru: 0.040 * S, rv: 0.021 * S, w: W("hand" + s, 1) }
+        /* the wrist proper: a hand does not grow straight out of a
+           forearm at the same width, it narrows first */
+        { c: [0, (wr + 0.020) * S, z], ru: 0.030 * S * B.arm, rv: 0.029 * S * B.arm, w: W("fore" + s, 0.55, "hand" + s, 0.45) },
+        { c: [0, (wr + 0.004) * S, z], ru: 0.030 * S, rv: 0.026 * S, w: W("fore" + s, 0.18, "hand" + s, 0.82) },
+        /* the palm: wide front-to-back, thin across, widest at the
+           knuckles and drawn in again at the heel of the thumb */
+        { c: [0, (wr - 0.016) * S,  z], ru: 0.040 * S, rv: 0.023 * S, w: W("hand" + s, 1) },
+        { c: [0.002 * S, (wr - 0.048) * S,  z], ru: 0.046 * S, rv: 0.025 * S, w: W("hand" + s, 1) },
+        { c: [0.004 * S, (wr - 0.076) * S,  z], ru: 0.047 * S, rv: 0.024 * S, w: W("hand" + s, 1) },
+        /* the knuckle line, which is the widest part of a hand and the
+           thing that makes it read as a hand rather than a mitten */
+        { c: [0.006 * S, (wr - 0.094) * S,  z], ru: 0.045 * S, rv: 0.022 * S, w: W("hand" + s, 1) },
+        { c: [0.008 * S, (wr - 0.104) * S,  z], ru: 0.038 * S, rv: 0.018 * S, w: W("hand" + s, 1) }
       ];
       if (lod) {                                   /* a mitt, at a distance */
         arm.push({ c: [0, (wr - 0.140) * S, z], ru: 0.036 * S, rv: 0.019 * S, w: W("hand" + s, 1) });
@@ -3132,30 +3189,58 @@
       }
       parts.push(skinnedTube(arm, lod ? 10 : 18, true, true));
 
-      /* four fingers, because a hand that ends in a paddle is the first
-         thing the eye picks out as wrong */
-      var FING = lod ? [] : [[ 0.031, 0.074, 0.004], [ 0.007, 0.082, 0.000],
-                  [-0.017, 0.076, -0.003], [-0.040, 0.060, -0.007]];
+      /* ---- four fingers ----
+         Four straight prongs hanging off a paddle was the first thing the
+         eye picked out as wrong. A hand at rest is never flat: every
+         finger is curled, the little finger most and the index least, and
+         they curl in an arc through two knuckles rather than bending on
+         one hinge. Each is swept along that arc here, so the curl is in
+         the mesh and no extra bones are needed to carry it.
+         [x across the knuckles, length, splay, how much it curls] */
+      var FING = lod ? [] : [[ 0.032, 0.076, 0.004, 0.80],
+                             [ 0.009, 0.084, 0.000, 0.92],
+                             [-0.015, 0.078, -0.003, 1.00],
+                             [-0.037, 0.062, -0.007, 1.14]];
+      /* The palm faces the thigh, so a finger closes across the z axis
+         toward it — curling them forward instead gave four claws coming
+         out of the front of the fist. */
+      var curlZ = -sign;
       FING.forEach(function (fg) {
-        var fx = fg[0] * S, fl = fg[1] * S, spl = fg[2] * S, ring = [];
-        for (var q = 0; q <= 5; q++) {
-          var t = q / 5, curl = t * t * 0.019 * S;
-          /* a knuckle, then a taper: a finger is not a cone */
-          var rr = (0.0078 - t * 0.0018 + (t > 0.02 && t < 0.30 ? 0.0009 : 0)) * S;
-          ring.push({ c: [fx + curl, (wr - 0.092) * S - t * fl, z + spl * t],
-                      ru: rr, rv: rr * 0.92, w: W("hand" + s, 1) });
+        var fx = fg[0] * S, fl = fg[1] * S, spl = fg[2] * S, cu = fg[3], ring = [];
+        var px = fx, py = (wr - 0.098) * S, pz = z + spl, ang = 0.22 * cu;
+        for (var q = 0; q <= 6; q++) {
+          var t = q / 6;
+          /* a knuckle at the base, a slimmer middle, a blunt tip: fingers
+             end in a pad, not a point */
+          var rr = (0.0080 - t * 0.0016 + (t < 0.22 ? 0.0010 : 0)
+                            + (t > 0.40 && t < 0.62 ? 0.0005 : 0)) * S;
+          ring.push({ c: [px, py, pz], ru: rr, rv: rr * 0.94, w: W("hand" + s, 1) });
+          if (q === 6) break;
+          var seg = fl / 6;
+          pz += Math.sin(ang) * seg * curlZ;
+          py -= Math.cos(ang) * seg;
+          px += 0.10 * seg;                      /* and forward a little */
+          ang += (q < 2 ? 0.26 : 0.21) * cu;     /* two knuckles, then the tip */
         }
         parts.push(skinnedTube(ring, 9, true, true));
       });
 
-      /* the thumb, which is most of what makes a hand a hand */
-      var tz = z - sign * 0.028 * S;
-      var thumb = [
-        { c: [0.012 * S, (wr - 0.024) * S, tz], ru: 0.015 * S, rv: 0.013 * S, w: W("hand" + s, 1) },
-        { c: [0.024 * S, (wr - 0.056) * S, tz - sign * 0.006 * S], ru: 0.014 * S, rv: 0.012 * S, w: W("hand" + s, 1) },
-        { c: [0.028 * S, (wr - 0.084) * S, tz - sign * 0.009 * S], ru: 0.010 * S, rv: 0.009 * S, w: W("hand" + s, 1) }
-      ];
-      parts.push(skinnedTube(thumb, 10, true, true));
+      /* ---- the thumb ----
+         Most of what makes a hand a hand. It comes off the side of the
+         palm rather than the end of it, sits forward of the fingers, and
+         curls toward them: a thumb parallel to the fingers reads as a
+         fifth finger. */
+      if (!lod) {
+        var tz = z - sign * 0.026 * S;
+        var thumb = [
+          { c: [-0.006 * S, (wr - 0.026) * S, tz], ru: 0.017 * S, rv: 0.015 * S, w: W("hand" + s, 1) },
+          { c: [ 0.010 * S, (wr - 0.046) * S, tz - sign * 0.008 * S], ru: 0.015 * S, rv: 0.013 * S, w: W("hand" + s, 1) },
+          { c: [ 0.026 * S, (wr - 0.064) * S, tz - sign * 0.014 * S], ru: 0.013 * S, rv: 0.012 * S, w: W("hand" + s, 1) },
+          { c: [ 0.040 * S, (wr - 0.082) * S, tz - sign * 0.018 * S], ru: 0.011 * S, rv: 0.010 * S, w: W("hand" + s, 1) },
+          { c: [ 0.046 * S, (wr - 0.096) * S, tz - sign * 0.020 * S], ru: 0.008 * S, rv: 0.008 * S, w: W("hand" + s, 1) }
+        ];
+        parts.push(skinnedTube(thumb, 10, true, true));
+      }
     });
 
     /* legs */
@@ -3185,14 +3270,16 @@
     (function () {
       /* one sphere, then sculpted — dense enough that a lip or an eye
          socket has vertices to be made out of */
-      var g = new THREE.SphereGeometry(0.100 * S, lod ? 18 : 52, lod ? 13 : 40);
-      g.scale(1.00, 1.15 * D.long, 0.86 * D.wide);
+      var hw = lod ? 18 : 52, hh = lod ? 13 : 40;
+      var g = new THREE.SphereGeometry(0.100 * S, hw, hh);
+      g.scale(1.00, 1.055 * D.long, 0.90 * D.wide);
       (function () {                                /* UVs in metres, as the body's are */
         var uvA = g.attributes.uv;
         for (var i = 0; i < uvA.count; i++)
           uvA.setXY(i, uvA.getX(i) * 0.60 * S, uvA.getY(i) * 0.23 * S);
       })();
       sculptHead(g, S, spec && spec.face);
+      weldSphereSeam(g, hw, hh);
       g.translate(0, hy, 0);
       headParts.push(g);
       var nose = buildNose(S, spec && spec.face);   /* cheap enough to keep */
@@ -3216,14 +3303,18 @@
       /* the eyeball sits at x 0.0625 with a radius of 0.0135; the lids are
          shells a shade larger, so they close over it rather than clip it */
       var EZ = sd * (0.032 + D.eyeZ) * S, EY = hy + (0.012 + D.eyeY) * S;
-      var g = new THREE.SphereGeometry(0.0152 * S, lod ? 10 : 20, lod ? 7 : 15, 0, 6.2832, 0, 0.52);
-      g.rotateZ(-0.42);
-      g.translate(0.0658 * S, EY + 0.0005 * S, EZ);
+      /* These covered thirty degrees of a ball and left the whole eye
+         showing, which is a bead glued to a face. A lid comes down over
+         the top of the iris and the lower one comes up to meet the
+         cheek; between them the sclera is an almond, not a circle. */
+      var g = new THREE.SphereGeometry(0.0150 * S, lod ? 10 : 20, lod ? 7 : 15, 0, 6.2832, 0, 0.88);
+      g.rotateZ(-0.46);
+      g.translate(0.0652 * S, EY + 0.0005 * S, EZ);
       headParts.push(g);
       /* the lower lid, which is what gives an eye a shape rather than a hole */
-      var g2 = new THREE.SphereGeometry(0.0149 * S, lod ? 10 : 20, lod ? 7 : 15, 0, 6.2832, 0, 0.40);
-      g2.rotateZ(-2.84);
-      g2.translate(0.0658 * S, EY + 0.0002 * S, EZ);
+      var g2 = new THREE.SphereGeometry(0.0147 * S, lod ? 10 : 20, lod ? 7 : 15, 0, 6.2832, 0, 0.62);
+      g2.rotateZ(-2.76);
+      g2.translate(0.0652 * S, EY + 0.0002 * S, EZ);
       headParts.push(g2);
       /* the fold above the lid, which is what stops an eye looking painted on */
       if (!lod) {
@@ -3253,25 +3344,32 @@
       var ez = sd * (0.032 + D.eyeZ) * S;             /* 64mm between pupils */
       var ey = (0.012 + D.eyeY) * S;
       /* the eyeball, set into the socket the skull was sculpted with */
-      var e = new THREE.SphereGeometry(0.0135 * S, 18, 14);
-      e.translate(0.0658 * S, hy + ey, ez);
+      var e = new THREE.SphereGeometry(0.0132 * S, 18, 14);
+      e.translate(0.0650 * S, hy + ey, ez);
       g.push(colourGeom(e, 0xf6f2ea));
       /* the iris as a shallow dome on the front of it, so it reads as
          looking at something rather than as a bead in a socket */
-      var ir = new THREE.SphereGeometry(0.0076 * S, 18, 13);
+      var ir = new THREE.SphereGeometry(0.0088 * S, 18, 13);
       ir.scale(0.50, 1, 1);
-      ir.translate(0.0768 * S, hy + ey, ez);
+      ir.translate(0.0757 * S, hy + ey, ez);
       g.push(colourGeom(ir, spec.eyes || 0x2b1d14));
-      var pu = new THREE.SphereGeometry(0.0042 * S, 12, 9);
+      var pu = new THREE.SphereGeometry(0.0046 * S, 12, 9);
       pu.scale(0.44, 1, 1);
-      pu.translate(0.0790 * S, hy + ey, ez);
+      pu.translate(0.0779 * S, hy + ey, ez);
       g.push(colourGeom(pu, 0x120f12));
+      /* ---- the lids ----
+         An eyeball with nothing over it shows a full circle of white and
+         reads as a bead glued to a face — which is exactly what these
+         were doing. Two shells of skin, one heavier and lower than the
+         other, cut the sclera down to the almond a real eye shows, put a
+         shadow in the socket, and give the lash line something to sit on
+         instead of floating. */
       /* the lash line along the upper lid, which is most of what makes an
          eye legible from across a room */
-      var la = new THREE.TorusGeometry(0.0148 * S, 0.0026 * S, 6, 22, 2.6);
+      var la = new THREE.TorusGeometry(0.0142 * S, 0.0022 * S, 6, 22, 2.4);
       la.rotateY(Math.PI / 2);
-      la.rotateX(-0.42);
-      la.translate(0.0681 * S, hy + ey + 0.0016 * S, ez);
+      la.rotateX(-0.30);
+      la.translate(0.0668 * S, hy + ey + 0.0034 * S, ez);
       g.push(colourGeom(la, 0x35262a));
       /* and a brow, sitting on the ridge rather than floating over it */
       var br = new THREE.SphereGeometry(0.0150 * S, 16, 10);
@@ -3290,8 +3388,8 @@
     /* the mouth: an upper lip with a bow in it, a fuller lower lip, and a
        line between the two */
     var lipT = new THREE.SphereGeometry(0.0200 * S, 22, 12);
-    lipT.scale(0.22, 0.17 * D.lip, 1.22 * D.mouthW);
-    lipT.translate(0.0790 * S, hy + (-0.0592 + D.mouthY) * S, 0);
+    lipT.scale(0.21, 0.150 * D.lip, 1.16 * D.mouthW);
+    lipT.translate(0.0782 * S, hy + (-0.0512 + D.mouthY) * S, 0);
     (function () {
       var lp = lipT.attributes.position;
       for (var i = 0; i < lp.count; i++) {            /* the cupid's bow */
@@ -3302,13 +3400,13 @@
     })();
     g.push(colourGeom(lipT, spec.lips || 0x9a6058));
     var lipB = new THREE.SphereGeometry(0.0206 * S, 22, 12);
-    lipB.scale(0.25, 0.22 * D.lip, 1.12 * D.mouthW);
-    lipB.translate(0.0786 * S, hy + (-0.0742 + D.mouthY) * S, 0);
+    lipB.scale(0.24, 0.185 * D.lip, 1.08 * D.mouthW);
+    lipB.translate(0.0778 * S, hy + (-0.0642 + D.mouthY) * S, 0);
     g.push(colourGeom(lipB, spec.lips || 0x9a6058));
     var line = new THREE.SphereGeometry(0.0192 * S, 22, 8);
-    line.scale(0.15, 0.045, 1.20 * D.mouthW);
-    line.translate(0.0808 * S, hy + (-0.0664 + D.mouthY) * S, 0);
-    g.push(colourGeom(line, 0x6a4038));
+    line.scale(0.13, 0.030, 1.12 * D.mouthW);
+    line.translate(0.0798 * S, hy + (-0.0578 + D.mouthY) * S, 0);
+    g.push(colourGeom(line, 0x7d5048));
     return mergeGeoms(g);
   }
 
@@ -3330,10 +3428,15 @@
       { c: [0, 1.090 * S, 0], ru: (0.106 + loose) * S * depth * B.chest, rv: (0.150 + loose) * S * B.chest, w: W("spine", 0.5, "chest", 0.5) },
       { c: [0, 1.180 * S, 0], ru: (0.114 + loose) * S * depth * B.chest, rv: (0.170 + loose) * S * B.chest, w: W("chest", 1) },
       { c: [0, 1.275 * S, 0], ru: (0.112 + loose) * S * depth * B.chest, rv: (0.178 + loose) * S * B.shoulder, w: W("chest", 1) },
-      { c: [0, 1.330 * S, 0], ru: (0.104 + loose) * S * depth * B.chest, rv: (0.176 + loose) * S * B.shoulder, w: W("chest", 1) },
-      { c: [0, 1.372 * S, 0], ru: (0.090 + loose) * S * depth * B.chest, rv: (0.140 + loose) * S * B.shoulder, w: W("chest", 1) },
-      { c: [0, 1.412 * S, 0], ru: 0.068 * S, rv: 0.082 * S, w: W("chest", 0.5, "neck", 0.5) },
-      { c: [0, 1.446 * S, 0], ru: 0.056 * S, rv: 0.061 * S, w: W("neck", 1) }
+      { c: [0, 1.330 * S, 0], ru: (0.104 + loose) * S * depth * B.chest, rv: (0.178 + loose) * S * B.shoulder, w: W("chest", 1) },
+      /* the shirt follows the trapezius rather than sitting on it like a
+         shelf, and gathers into a collar rather than stopping at one */
+      { c: [0, 1.356 * S, 0], ru: (0.098 + loose) * S * depth * B.chest, rv: (0.166 + loose) * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.380 * S, 0], ru: (0.090 + loose) * S * depth * B.chest, rv: (0.144 + loose) * S * B.shoulder, w: W("chest", 1) },
+      { c: [0, 1.402 * S, 0], ru: (0.080 + loose * 0.6) * S * depth * B.chest, rv: (0.116 + loose * 0.6) * S * B.shoulder, w: W("chest", 0.7, "neck", 0.3) },
+      { c: [0, 1.422 * S, 0], ru: 0.068 * S, rv: 0.090 * S, w: W("chest", 0.4, "neck", 0.6) },
+      { c: [0, 1.442 * S, 0], ru: 0.058 * S, rv: 0.066 * S, w: W("neck", 1) },
+      { c: [0, 1.456 * S, 0], ru: 0.056 * S, rv: 0.062 * S, w: W("neck", 1) }
     ];
     /* cloth gathers at a hem and at a waist, and hangs smooth over a chest */
     parts.push(skinnedTube(body, lod ? 14 : 26, true, true, {
@@ -3572,15 +3675,20 @@
                 dz * rad + drift * Math.sign(dz || 1), dx, dz];
       }
       (function () {
-        var N = lod ? 7 : 20, CA = lod ? 5 : 11, CJ = lod ? 7 : 20;
+        /* More of them, each narrower and rounder and lying closer in.
+           Twenty broad tresses standing off the skull read as flat cards
+           with hard edges catching the light one facet at a time; the
+           silhouette needs enough overlapping pieces that no single edge
+           is the edge of the hair. */
+        var N = lod ? 8 : 27, CA = lod ? 5 : 9, CJ = lod ? 7 : 20;
         for (var k = 0; k < N; k++) {
-          var ac = A0 + (A1 - A0) * ((k + 0.5) / N) + (hash2(k, 2) - 0.5) * 0.14;
-          var hw = 0.20 + hash2(k, 5) * 0.13;
+          var ac = A0 + (A1 - A0) * ((k + 0.5) / N) + (hash2(k, 2) - 0.5) * 0.16;
+          var hw = 0.145 + hash2(k, 5) * 0.105;
           var len = (0.42 + hash2(k, 7) * 0.44) * S;
           var amp = (0.011 + hash2(k, 11) * 0.015) * S;
           var ph = hash2(k, 13) * 6.2832;
-          var lift = 1 + (k % 3) * 0.040 + hash2(k, 17) * 0.020;
-          var wide = (0.017 + hash2(k, 19) * 0.009) * S;
+          var lift = 1 + (k % 3) * 0.016 + hash2(k, 17) * 0.014;
+          var wide = (0.021 + hash2(k, 19) * 0.010) * S;
           var pos = [], uv = [], idx = [];
           var stride = (CA + 1) * (CJ + 1);
           for (var side = 0; side < 2; side++) {
@@ -3750,37 +3858,97 @@
      built any other way sits on the face like a mask, because it is not
      the shape of that face. */
   function buildBeard(S, hy, spec) {
-    var g = new THREE.SphereGeometry(0.100 * S, 40, 30);
-    g.scale(1.00, 1.15, 0.86);
+    var D = faceDial(spec && spec.face);
+    /* the same sphere the head is made from, with the same dials on it —
+       a beard cut from a differently shaped skull sinks into one cheek
+       and floats off the other */
+    var g = new THREE.SphereGeometry(0.100 * S, 56, 42);
+    g.scale(1.00, 1.055 * D.long, 0.90 * D.wide);
     sculptHead(g, S, spec && spec.face);
     var pos = g.attributes.position, nor = g.attributes.normal;
-    var keep = [], full = (spec && spec.fullBeard) ? 0.014 : 0;
-    for (var i = 0; i < pos.count; i++) {
-      var x = pos.getX(i) / S, y = pos.getY(i) / S, z = pos.getZ(i) / S;
-      /* the line it grows to: high by the ear, low under the lip */
-      var line = -0.008 - 0.062 * clamp(x / 0.090, 0, 1) + full;
-      var jaw = x > -0.034 && y < line;
-      /* and the moustache, which stops clear of the mouth */
-      var tache = x > 0.058 && y < -0.032 && y > -0.052 && Math.abs(z) < 0.030;
-      keep.push(jaw || tache);
+    var full = (spec && spec.fullBeard) ? 0.014 : 0;
+
+    /* How far inside the beard a point is, in head units; zero is the
+       edge. Keeping whole triangles by a yes/no test left the beard
+       ending on the staircase of the mesh's own quads, which is the one
+       thing on a face nobody can look past. This is a field instead, and
+       the triangles that straddle it are cut on the line. */
+    function fld(x, y, z) {
+      var line = 0.018 - 0.084 * clamp(x / 0.078, 0, 1) + full;
+      /* a hairline is not a ruled line */
+      line += Math.sin(z / 0.0085) * 0.0018 + Math.sin(x / 0.011 + 1.7) * 0.0014;
+      return Math.min(line - y, (x + 0.030) * 0.8);
     }
-    var src = g.index.array, idx = [];
+    var f = new Float32Array(pos.count);
+    for (var i = 0; i < pos.count; i++)
+      f[i] = fld(pos.getX(i) / S, pos.getY(i) / S, pos.getZ(i) / S);
+
+    /* Marching triangles. A triangle that straddles the edge is cut on
+       the line and the inside part re-tiled — collapsing the outside
+       corner onto one of its edges instead leaves a notch every other
+       triangle, which is the staircase back again by another route. */
+    var src = g.index.array, P = [];
+    /* a point on the surface, pushed out along its normal by how far
+       inside the beard it is: thick in the middle, nothing at the edge */
+    function emit(v, other, u) {
+      var x = pos.getX(v), y = pos.getY(v), z = pos.getZ(v);
+      var nx = nor.getX(v), ny = nor.getY(v), nz = nor.getZ(v);
+      var fv = f[v];
+      if (other >= 0) {
+        x += (pos.getX(other) - x) * u;
+        y += (pos.getY(other) - y) * u;
+        z += (pos.getZ(other) - z) * u;
+        nx += (nor.getX(other) - nx) * u;
+        ny += (nor.getY(other) - ny) * u;
+        nz += (nor.getZ(other) - nz) * u;
+        fv = 0;
+      }
+      var l = Math.hypot(nx, ny, nz) || 1;
+      var d = 0.0072 * S * clamp(Math.max(fv, 0) / 0.011, 0.06, 1);
+      P.push(x + nx / l * d, y + ny / l * d, z + nz / l * d);
+    }
+    function cross(a, b) { return f[a] / (f[a] - f[b]); }   /* a is inside */
     for (var t = 0; t < src.length; t += 3) {
-      if (keep[src[t]] && keep[src[t + 1]] && keep[src[t + 2]])
-        idx.push(src[t], src[t + 1], src[t + 2]);
+      var v0 = src[t], v1 = src[t + 1], v2 = src[t + 2];
+      var inside = [], outside = [];
+      [v0, v1, v2].forEach(function (v) { (f[v] > 0 ? inside : outside).push(v); });
+      if (inside.length === 0) continue;
+      if (inside.length === 3) {
+        emit(v0, -1, 0); emit(v1, -1, 0); emit(v2, -1, 0);
+      } else if (inside.length === 1) {
+        var a = inside[0], b = outside[0], c = outside[1];
+        emit(a, -1, 0); emit(a, b, cross(a, b)); emit(a, c, cross(a, c));
+      } else {
+        /* two in, one out: the inside part is a quad */
+        var p = inside[0], q = inside[1], r = outside[0];
+        var up = cross(p, r), uq = cross(q, r);
+        emit(p, -1, 0); emit(q, -1, 0); emit(q, r, uq);
+        emit(p, -1, 0); emit(q, r, uq); emit(p, r, up);
+      }
     }
-    for (var v = 0; v < pos.count; v++) {
-      if (!keep[v]) continue;
-      var d = 0.0065 * S;
-      pos.setXYZ(v, pos.getX(v) + nor.getX(v) * d,
-                    pos.getY(v) + nor.getY(v) * d,
-                    pos.getZ(v) + nor.getZ(v) * d);
-    }
-    g.setIndex(idx);
-    g.computeVertexNormals();
-    g.translate(0, hy, 0);
-    return g;
+    var out = new THREE.BufferGeometry();
+    out.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
+    out.computeVertexNormals();
+
+    /* the moustache, built rather than cut: two halves with the philtrum
+       between them, sitting clear of the lip */
+    var mus = [out];
+    [1, -1].forEach(function (sd) {
+      var m = new THREE.SphereGeometry(1, 18, 12);
+      m.scale(0.0060 * S, 0.0044 * S, 0.0148 * S);
+      m.rotateX(sd * 0.16);
+      m.translate(0.0762 * S, -0.0350 * S, sd * 0.0106 * S);
+      mus.push(m);
+    });
+    var mid = new THREE.SphereGeometry(1, 16, 10);
+    mid.scale(0.0054 * S, 0.0028 * S, 0.0054 * S);
+    mid.translate(0.0768 * S, -0.0362 * S, 0);
+    mus.push(mid);
+    var all = mergeGeoms(mus);
+    all.translate(0, hy, 0);
+    return all;
   }
+
 
   /* ---- wear and tear ----
      Two things clothes do when nobody has washed or mended them for weeks:
@@ -4002,26 +4170,61 @@
      The same joints as before, driving bones now, so a knee bends the mesh
      around it instead of sliding one cylinder past another. */
   var EMPTY = {};
+  /* ---- which way a joint bends ----
+     Every limb hangs down -y in the bind pose and the body faces +x, so a
+     positive rotation about z swings a limb forward. An elbow folds the
+     hand forward, which is +z; a knee folds the heel back, which is -z.
+     Every elbow in the game was being driven negative — a hyperextended
+     arm with the hand thrown out behind the body, which is exactly what a
+     backwards-bending elbow looks like. Knees were right all along.
+     ELBOW_MIN keeps a bent elbow off zero: there is no pose in which a
+     forearm and an upper arm are one straight line. */
+  var ELBOW_MIN = 0.09;
   function poseHuman(rig, t, gait, style, extra) {
     var S = rig.S, p = rig.phase, b = rig.bones;
     var w = t * (style === "z" ? 4.4 : 8.2) + p;
     var g = clamp(gait, 0, 1);
-    var swing = (style === "z" ? 0.42 : 0.66) * g;
+    var swing = (style === "z" ? 0.38 : 0.42) * g;
     var e = extra || {};
 
     /* the jerk: they do not move continuously, they arrive at poses */
     var jt = style === "z" ? Math.floor(w * 3.0) / 3.0 + Math.sin(w * 11.0) * 0.03 : w;
     var s1 = Math.sin(jt), c1 = Math.cos(jt), s2 = Math.sin(jt * 2);
+    /* how much of her is standing rather than walking: the posture below
+       fades in as the walk fades out, so nothing pops at either end */
+    var stand = 1 - g;
+    var sway = Math.sin(t * 0.9 + p);
 
     b.hipL.rotation.set(0, 0, 0);
     b.hipR.rotation.set(0, 0, 0);
-    b.thighL.rotation.set(0, 0,  s1 * swing);
-    b.thighR.rotation.set(0, 0, -s1 * swing);
-    b.shinL.rotation.z = -(Math.max(0, -c1) * 0.95 * g + 0.04);
-    b.shinR.rotation.z = -(Math.max(0,  c1) * 0.95 * g + 0.04);
-    /* the ankle keeps the foot flat instead of pointing it at the floor */
-    b.footL.rotation.z = -b.thighL.rotation.z - b.shinL.rotation.z * 0.55;
-    b.footR.rotation.z = -b.thighR.rotation.z - b.shinR.rotation.z * 0.55;
+    /* Standing still, the weight is on one leg and the other is a little
+       forward and soft. Standing with both legs locked straight and both
+       feet square is a shop dummy, not a person. */
+    b.thighL.rotation.set(0, 0,  s1 * swing + stand * ( 0.052 + sway * 0.014));
+    b.thighR.rotation.set(0, 0, -s1 * swing + stand * (-0.034 + sway * 0.011));
+    /* ---- when a knee bends ----
+       A knee folds while the leg is swinging through, and is close to
+       straight while it is carrying weight. This was the other way round:
+       the flexion peaked when the leg was driving backwards under the
+       body, which straightens the swing leg and gives the long scissor
+       stride of somebody being dragged along by their hips. The thigh
+       angle is sin(jt), so the leg is furthest back at jt = 3pi/2; peak
+       flexion belongs a little after that, as the foot leaves the floor. */
+    var TOEOFF = 5.40;
+    b.shinL.rotation.z = -(Math.max(0, Math.cos(jt - TOEOFF)) * 0.98 * g
+                           + 0.05 + stand * 0.075);
+    b.shinR.rotation.z = -(Math.max(0, Math.cos(jt - TOEOFF + Math.PI)) * 0.98 * g
+                           + 0.05 + stand * 0.125);
+    /* The ankle keeps the foot flat instead of pointing it at the floor,
+       and then rolls it through the step: toe up as the heel lands, toe
+       down as it leaves. A foot held level all the way round is a ski. */
+    var roll = 0.34 * g * s1;
+    b.footL.rotation.z = -b.thighL.rotation.z - b.shinL.rotation.z * 0.55 + roll;
+    b.footR.rotation.z = -b.thighR.rotation.z - b.shinR.rotation.z * 0.55 - roll;
+    /* toes out a few degrees, because nobody stands with their feet
+       parallel */
+    b.footL.rotation.y =  stand * 0.13;
+    b.footR.rotation.y = -stand * 0.13;
 
     if (style === "z") {
       b.thighR.rotation.z *= 0.35;
@@ -4029,8 +4232,10 @@
       b.hipR.rotation.x = 0.16;
       b.armL.rotation.set(-0.30, 0, -1.05 + s1 * 0.18);
       b.armR.rotation.set( 0.36, 0, -0.86 - s1 * 0.14);
-      b.foreL.rotation.z = -0.78;
-      b.foreR.rotation.z = -0.98;
+      b.foreL.rotation.z = 0.78;
+      b.foreR.rotation.z = 0.98;
+      b.handL.rotation.set(0, -0.20, -0.34);
+      b.handR.rotation.set(0,  0.20, -0.30);
       b.clavL.rotation.z = -0.10;
       b.clavR.rotation.z = -0.06;
       var T = rig.tilt || EMPTY;
@@ -4043,24 +4248,48 @@
     }
 
     var crouch = e.crouch || 0;
-    b.armL.rotation.set( 0.06 + crouch * 0.20, 0, -s1 * swing * 0.68 - crouch * 0.28);
-    b.armR.rotation.set(-0.06 - crouch * 0.20, 0,  s1 * swing * 0.68 - crouch * 0.28);
-    b.foreL.rotation.z = -0.20 - Math.max(0,  s1) * 0.36 * g - crouch * 0.85;
-    b.foreR.rotation.z = -0.20 - Math.max(0, -s1) * 0.36 * g - crouch * 0.85;
-    /* the arm hangs a little away from the body, or it clips the ribs */
+    /* the upper arm: swinging against the legs, held a little off the
+       ribs, and resting slightly forward of the side seam when she is
+       standing — arms hang in front of the seam, not on it */
+    var swL = -s1 * swing * 1.05, swR = s1 * swing * 1.05;
+    var restL = stand * (0.055 + sway * 0.008), restR = stand * (0.046 - sway * 0.008);
+    b.armL.rotation.set( 0.06 + crouch * 0.20, 0, swL + restL + crouch * 0.30);
+    b.armR.rotation.set(-0.06 - crouch * 0.20, 0, swR + restR + crouch * 0.30);
+    /* the elbow: a resting flexion that is always there, more of it as the
+       arm comes forward, and a floor so it can never straighten out or go
+       through into a hyperextension */
+    var flexL = 0.13 + Math.max(0, swL) * 0.95 + stand * 0.05 + crouch * 0.95;
+    var flexR = 0.13 + Math.max(0, swR) * 0.95 + stand * 0.05 + crouch * 0.95;
+    b.foreL.rotation.z = Math.max(ELBOW_MIN, flexL);
+    b.foreR.rotation.z = Math.max(ELBOW_MIN, flexR);
+    /* the wrist. A hand carried rigidly on the line of the forearm is the
+       single thing that reads as a mannequin from any distance: it trails
+       the elbow slightly, tips toward the little finger, and turns a few
+       degrees so the palm faces the thigh rather than straight back. */
+    b.handL.rotation.set(0, -0.16 - stand * 0.06, -flexL * 0.30 - 0.05 + Math.sin(w + 1.1) * 0.03 * g);
+    b.handR.rotation.set(0,  0.16 + stand * 0.06, -flexR * 0.30 - 0.05 + Math.sin(w + 2.3) * 0.03 * g);
+    /* the arm hangs a little away from the body, or it clips the ribs, and
+       the whole girdle rolls with the swing rather than sitting in the
+       chest like a coat hook */
     b.clavL.rotation.x = -0.10 - crouch * 0.06;
     b.clavR.rotation.x =  0.10 + crouch * 0.06;
-    b.clavL.rotation.z = b.clavR.rotation.z = 0;
+    b.clavL.rotation.z = swL * 0.15 - stand * 0.020;
+    b.clavR.rotation.z = swR * 0.15 - stand * 0.020;
 
-    b.spine.rotation.set(-s2 * 0.026 * g, s1 * 0.055 * g, 0.045 * g + crouch * 0.20 + (e.lean || 0));
-    b.chest.rotation.set(0, -s1 * 0.075 * g, crouch * 0.12);
-    b.neck.rotation.set(e.headX || 0, 0, -0.03 - crouch * 0.14 + (e.headZ || 0));
-    b.head.rotation.set(0, 0, 0);
-
-    b.hips.rotation.set(0, -s1 * 0.075 * g, 0);
+    /* A spine has a shape when nothing is happening to it. The pelvis tips
+       forward, the small of the back answers it, and the chest comes back
+       over the hips — an S, not a post. */
+    b.hips.rotation.set(0, -s1 * 0.075 * g, stand * 0.045);
+    b.spine.rotation.set(-s2 * 0.026 * g, s1 * 0.055 * g,
+                         0.045 * g - stand * 0.062 + crouch * 0.20 + (e.lean || 0));
+    b.chest.rotation.set(0, -s1 * 0.075 * g, stand * 0.036 + crouch * 0.12);
+    b.neck.rotation.set(e.headX || 0, stand * sway * 0.03,
+                        -0.03 - stand * 0.028 - crouch * 0.14 + (e.headZ || 0));
+    b.head.rotation.set(0, 0, stand * 0.022);
 
     rig.body.position.y = Math.abs(s1) * 0.032 * S * g
                         + (1 - g) * Math.sin(t * 1.5 + p) * 0.007 * S
+                        - stand * 0.012 * S          /* soft knees cost height */
                         - crouch * 0.19 * S;
   }
 
@@ -4081,13 +4310,13 @@
     b.chest.rotation.set(0, 0, 0);
     b.neck.rotation.set(0, 0, -0.06);
     if (front) {
-      b.armL.rotation.set( 0.18, 0, -0.62); b.armR.rotation.set(-0.18, 0, -0.62);
-      b.foreL.rotation.z = -0.34; b.foreR.rotation.z = -0.34;
+      b.armL.rotation.set( 0.18, 0, -0.30); b.armR.rotation.set(-0.18, 0, -0.30);
+      b.foreL.rotation.z = 0.86; b.foreR.rotation.z = 0.86;
     } else {
       /* he has both hands on the strap in front of him, which is what you
          do when you have never been on one of these before */
       b.armL.rotation.set( 0.26, 0, -0.12); b.armR.rotation.set(-0.26, 0, -0.12);
-      b.foreL.rotation.z = -1.62; b.foreR.rotation.z = -1.62;
+      b.foreL.rotation.z = 1.62; b.foreR.rotation.z = 1.62;
     }
     rig.body.position.y = bounce;
   }
@@ -4099,10 +4328,10 @@
       scale: 1.0, build: "slim", depth: 0.72,
       skin: 0xf2d8c2, skinMat: skinMat(0xf3dac6, 0.66),
       eyes: 0x4a6a86, lips: 0xb47a72,
-      face: { wide: 0.94, long: 1.00, jaw: 0.74, chin: 0.86, cheek: 1.10,
+      face: { wide: 1.02, long: 0.98, jaw: 0.76, chin: 0.84, cheek: 1.10,
               brow: 0.72, socket: 0.92, noseL: 0.88, noseW: 0.86,
-              mouthW: 1.06, lip: 1.12 },
-      hair: 0xd0a55f, hairStyle: "longWavy", hairRough: 0.56,
+              mouthW: 0.94, lip: 0.94 },
+      hair: 0xd0a55f, hairStyle: "longWavy", hairRough: 0.82,
       browColour: 0xa88a5c,
       top: 0x9a9fa6, topKind: "tee", weave: "cloth",
       trousers: 0x93aac6, legKind: "joggers", legWeave: "denim",
@@ -10535,7 +10764,7 @@
       mix(rig.legL.foot, "z", 0.24);  mix(rig.legR.foot, "z", 0.24);
       mix(rig.armL.upper, "z", -0.28); mix(rig.armR.upper, "z", -0.28);
       mix(rig.armL.upper, "x", 0.20);  mix(rig.armR.upper, "x", -0.20);
-      mix(rig.armL.elbow, "z", -1.05); mix(rig.armR.elbow, "z", -1.05);
+      mix(rig.armL.elbow, "z", 1.05);  mix(rig.armR.elbow, "z", 1.05);
       mix(rig.spine, "z", fold ? 0.26 : 0.12);
       mix(rig.spine, "x", 0);
       /* and she is lower, because she is on a log */
@@ -10639,7 +10868,7 @@
              on her side of him; posing armL put it out over open ground. */
           him.armR.upper.rotation.x = lerp(him.armR.upper.rotation.x, 0.95, e2);
           him.armR.upper.rotation.z = lerp(him.armR.upper.rotation.z, -1.10, e2);
-          him.armR.elbow.rotation.z = lerp(him.armR.elbow.rotation.z, -1.45, e2);
+          him.armR.elbow.rotation.z = lerp(him.armR.elbow.rotation.z, 1.45, e2);
         }
 
         /* the camera comes in slowly, and swings round to take them both
@@ -10943,7 +11172,7 @@
       rig.legL.knee.rotation.z = -1.30; rig.legR.knee.rotation.z = -1.30;
       rig.armL.upper.rotation.z = -0.14; rig.armR.upper.rotation.z = -0.14;
       rig.armL.upper.rotation.x = 0.16;  rig.armR.upper.rotation.x = -0.16;
-      rig.armL.elbow.rotation.z = -0.42; rig.armR.elbow.rotation.z = -0.42;
+      rig.armL.elbow.rotation.z = 0.42; rig.armR.elbow.rotation.z = 0.42;
       rig.spine.rotation.z = 0.06;
     }
     sitEdge(her); sitEdge(him);
@@ -10994,7 +11223,7 @@
           her.neck.rotation.x = lerp(0, 0.22, e);
           him.armL.upper.rotation.z = lerp(-0.1, -1.15, e);
           him.armL.upper.rotation.x = lerp(0, -0.8, e);
-          him.armL.elbow.rotation.z = lerp(-0.3, -1.0, e);
+          him.armL.elbow.rotation.z = lerp(0.3, 1.0, e);
         }
 
         /* the camera pulls back and up over the whole scene */
@@ -11737,6 +11966,26 @@
       G.cine.camera.position.set(0.74, 1.65, 0.30);
       G.cine.camera.lookAt(0.02, 1.598, 0.0);
       return true;
+    };
+    /* re-pose the figure on the stand: phase, how much of a walk, and
+       anything poseHuman takes. Standing still and mid-stride are two
+       different things to look at. */
+    window.__apPortraitPose = function (t, gait, opts) {
+      if (!G || !G.cine || !G.cine.figure) return false;
+      poseHuman(G.cine.figure, t == null ? 0 : t, gait == null ? 0 : gait, null, opts || {});
+      return true;
+    };
+    /* where a bone actually ended up, for a test that has to measure */
+    window.__apBone = function (path) {
+      if (!G || !G.cine || !G.cine.figure) return null;
+      var o = G.cine.figure, parts = path.split(".");
+      for (var i = 0; i < parts.length; i++) { o = o[parts[i]]; if (!o) return null; }
+      o.updateWorldMatrix(true, false);
+      var p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+      o.matrixWorld.decompose(p, q, sc);
+      var e = new THREE.Euler().setFromQuaternion(q, "YXZ");
+      return { p: [p.x, p.y, p.z], e: [e.x, e.y, e.z],
+               l: [o.rotation.x, o.rotation.y, o.rotation.z] };
     };
     /* turn the figure on the stand: 0 is facing you, PI is the back of it */
     window.__apPortraitTurn = function (a) {

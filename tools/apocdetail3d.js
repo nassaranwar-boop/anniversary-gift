@@ -134,6 +134,52 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   ok('no two places are lit the same way', dupes.length === 0, dupes);
   ok('every place is lit at all', ids.every(k => lit[k].length > 0), lit);
 
+
+  /* ---- which way the joints bend ----
+     The elbows in this game were driven negative about z, which in this
+     skeleton is a forearm folding out behind the arm: a hyperextended
+     elbow with the hand thrown backwards. It looked like a rigging
+     accident and it was one, and nothing in any suite noticed. These
+     assertions are cheap and they mean it cannot come back. */
+  const joints = await p.evaluate(() => {
+    window.__apPortrait('ouissy');
+    window.__apPortraitTurn(0.72);            /* root rotation y = 0 */
+    const out = { elbowMin: 99, kneeMax: -99, standElbow: 0, standKnee: 0,
+                  handAhead: 0, heelBehind: 0, n: 0 };
+    for (let i = 0; i < 24; i++) {
+      window.__apPortraitPose(i * 0.08, 1.0, {});
+      const eL = window.__apBone('armL.elbow'), eR = window.__apBone('armR.elbow');
+      const kL = window.__apBone('legL.knee'), kR = window.__apBone('legR.knee');
+      out.elbowMin = Math.min(out.elbowMin, eL.l[2], eR.l[2]);
+      out.kneeMax = Math.max(out.kneeMax, kL.l[2], kR.l[2]);
+      /* forward is +x in the rig's own frame */
+      const hand = window.__apBone('armR.hand');
+      if (eR.l[2] > 0.30 && hand.p[0] > eR.p[0]) out.handAhead++;
+      const foot = window.__apBone('legR.foot');
+      if (kR.l[2] < -0.30 && foot.p[0] < kR.p[0]) out.heelBehind++;
+      out.n++;
+    }
+    /* and the same for a crouch, which has its own elbow term */
+    for (let i = 0; i < 8; i++) {
+      window.__apPortraitPose(i * 0.2, 0.4, { crouch: 1 });
+      const eL = window.__apBone('armL.elbow'), eR = window.__apBone('armR.elbow');
+      out.elbowMin = Math.min(out.elbowMin, eL.l[2], eR.l[2]);
+    }
+    window.__apPortraitPose(0, 0, {});
+    out.standElbow = window.__apBone('armR.elbow').l[2];
+    out.standKnee = window.__apBone('legR.knee').l[2];
+    return out;
+  });
+  console.log(JSON.stringify(joints));
+  ok('an elbow never bends backwards', joints.elbowMin > 0, joints);
+  ok('a knee never bends forwards', joints.kneeMax < 0, joints);
+  ok('a flexed elbow puts the hand in front of it', joints.handAhead > 0, joints);
+  ok('a flexed knee puts the heel behind it', joints.heelBehind > 0, joints);
+  ok('standing, the arms are not locked straight',
+     joints.standElbow > 0.06 && joints.standElbow < 0.6, joints);
+  ok('standing, the knees are not locked straight',
+     joints.standKnee < -0.06 && joints.standKnee > -0.5, joints);
+
   console.log('');
   console.log(pass + ' passed, ' + fail + ' failed');
   await b.close();
