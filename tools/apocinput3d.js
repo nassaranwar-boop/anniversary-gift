@@ -47,9 +47,11 @@ async function run(label, viewport, touch) {
   await p.waitForTimeout(400);
   const a = await where();
 
+  let held = null;
   if (!touch) {
     await p.keyboard.down('ArrowRight');
     await p.waitForTimeout(6000);
+    held = await where();                         // sample while it is still down
     await p.keyboard.up('ArrowRight');
   } else {
     const btn = await p.$('.ap-key-right');
@@ -62,14 +64,19 @@ async function run(label, viewport, touch) {
         el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true }));
       });
       await p.waitForTimeout(6000);
+      held = await where();                       // sample while it is still down
       await p.evaluate(() => {
         const el = document.querySelector('.ap-key-right');
         el.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true }));
       });
     } else ok(label + ': the pad is on the page', false);
   }
+  /* Measure her while the key is down. Sampling after the release folds
+     the slowing-down into the average, and how much of the window that is
+     depends on the frame rate — which makes this a test of the renderer
+     rather than of whether the input arrived. */
+  const c = held || await where();
   await p.waitForTimeout(1200);
-  const c = await where();
   const gdt = c.t - a.t, gdx = c.x - a.x, speed = gdt > 0 ? gdx / gdt : 0;
   ok(label + ': she moves when a person asks her to, at a walk',
      gdt > 0.05 && speed > 3.5 && speed < 8.5, { gdx, gdt, speed });

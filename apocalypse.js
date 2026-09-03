@@ -2183,9 +2183,15 @@
      Renderer, camera, composer, and the one place that knows
      how big the canvas actually is.
      ========================================================= */
+  /* the rungs of the resolution ladder, from the screen's own pixels
+     down to a little over half of them */
+  var RUNGS = [1.00, 0.90, 0.80, 0.72, 0.64, 0.56];
+
   var Stage = {
     renderer: null, camera: null, composer: null, gradePass: null,
-    bloom: null, w: 0, h: 0, dpr: 1, quality: 1, ready: false,
+    bloom: null, w: 0, h: 0, dpr: 1, quality: 0, ready: false,
+    /* the rung of the resolution ladder we are currently standing on */
+    scale: 1, rung: 0,
 
     init: function (canvas) {
       if (Stage.ready) return;
@@ -2232,7 +2238,19 @@
       /* A game rendered at 1.35x a 1440-wide stage is already past the
          point where anybody can see the difference; rendering it at 2x
          costs twice the pixels for nothing. */
-      Stage.dpr = Math.min(window.devicePixelRatio || 1, 1.35);
+      /* Render at the screen's own pixels. Capping this at 1.35 made a
+         retina display permanently soft to buy headroom the machine might
+         not have needed. The cap is the real ratio now, and where it sits
+         on the ladder is decided by what the machine can actually hold.
+
+         A phone at three times density starts two rungs down rather than
+         at the top — a nine-times-the-pixels first second on a device that
+         cannot take it is a worse first impression than a resolution that
+         climbs — and the ladder walks it back up within a few seconds if
+         there is room. Even two rungs down is sharper than the old cap. */
+      Stage.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      Stage.rung = Stage.dpr >= 1.9 ? 2 : Stage.dpr >= 1.4 ? 1 : 0;
+      Stage.scale = RUNGS[Stage.rung];
       /* A phone is a small screen with a big pixel ratio and a thermal
          budget, so it starts one rung down and climbs nothing. The
          watchdog can still take it lower. */
@@ -2326,7 +2344,7 @@
       var host = canvas.parentElement || canvas;
       var cw = Math.max(160, host.clientWidth || 640);
       var ch = Math.max(90, host.clientHeight || 360);
-      var scale = [1, 0.82, 0.62][Stage.quality] || 1;
+      var scale = ([1, 0.82, 0.62][Stage.quality] || 1) * Stage.scale;
       var w = Math.round(cw * Stage.dpr * scale);
       var h = Math.round(ch * Stage.dpr * scale);
       if (!force && w === Stage.w && h === Stage.h) return;
@@ -2517,9 +2535,12 @@
      Hair, cables, a fringe, a strap: anything that is a tube whose radius
      changes along its length. three has TubeGeometry, but its radius is
      constant, and a lock of hair that does not taper reads as a sausage. */
-  function sweep(points, r0, r1, radial, twist) {
+  function sweep(points, r0, r1, radial, twist, segs) {
     var curve = new THREE.CatmullRomCurve3(points);
-    var seg = Math.max(8, points.length * 5);
+    /* five rings per control point is a cable, not a lock of hair: at
+       three it is the same silhouette for forty per cent of the triangles,
+       and there are two hundred of these on a head */
+    var seg = segs || Math.max(6, points.length * 3);
     var pos = [], nor = [], uv = [], idx = [];
     var up = new THREE.Vector3(0, 1, 0);
     var prevN = null;
@@ -3150,7 +3171,7 @@
     (function () {
       /* one sphere, then sculpted — dense enough that a lip or an eye
          socket has vertices to be made out of */
-      var g = new THREE.SphereGeometry(0.100 * S, lod ? 26 : 52, lod ? 20 : 40);
+      var g = new THREE.SphereGeometry(0.100 * S, lod ? 18 : 52, lod ? 13 : 40);
       g.scale(1.00, 1.15 * D.long, 0.86 * D.wide);
       (function () {                                /* UVs in metres, as the body's are */
         var uvA = g.attributes.uv;
@@ -3165,7 +3186,7 @@
       headParts.push(nose);
     })();
     [1, -1].forEach(function (sd) {                   /* ears */
-      var g = new THREE.SphereGeometry(0.028 * S, 16, 12);
+      var g = new THREE.SphereGeometry(0.028 * S, lod ? 9 : 16, lod ? 7 : 12);
       g.scale(0.36, 1.14, 0.70);
       var ep = g.attributes.position;
       for (var i = 0; i < ep.count; i++) {           /* a fold round the rim */
@@ -3181,12 +3202,12 @@
       /* the eyeball sits at x 0.0625 with a radius of 0.0135; the lids are
          shells a shade larger, so they close over it rather than clip it */
       var EZ = sd * (0.032 + D.eyeZ) * S, EY = hy + (0.012 + D.eyeY) * S;
-      var g = new THREE.SphereGeometry(0.0152 * S, 20, 15, 0, 6.2832, 0, 0.52);
+      var g = new THREE.SphereGeometry(0.0152 * S, lod ? 10 : 20, lod ? 7 : 15, 0, 6.2832, 0, 0.52);
       g.rotateZ(-0.42);
       g.translate(0.0658 * S, EY + 0.0005 * S, EZ);
       headParts.push(g);
       /* the lower lid, which is what gives an eye a shape rather than a hole */
-      var g2 = new THREE.SphereGeometry(0.0149 * S, 20, 15, 0, 6.2832, 0, 0.40);
+      var g2 = new THREE.SphereGeometry(0.0149 * S, lod ? 10 : 20, lod ? 7 : 15, 0, 6.2832, 0, 0.40);
       g2.rotateZ(-2.84);
       g2.translate(0.0658 * S, EY + 0.0002 * S, EZ);
       headParts.push(g2);
@@ -3451,7 +3472,7 @@
        the height of that hairline for an angle round the head, 0 being
        straight ahead. */
     function scalp(Rx, Ry, Rz, AX, rimFn, dip, dipAt) {
-      var CA = lod ? 24 : 48, CJ = lod ? 8 : 16, pos = [], uv = [], idx = [];
+      var CA = lod ? 18 : 48, CJ = lod ? 6 : 16, pos = [], uv = [], idx = [];
       for (var j = 0; j <= CJ; j++) {
         for (var i = 0; i <= CA; i++) {
           var a = i / CA * 6.2832, v = j / CJ;
@@ -3542,7 +3563,7 @@
                 dz * rad + drift * Math.sign(dz || 1), dx, dz];
       }
       (function () {
-        var N = lod ? 9 : 20, CA = lod ? 6 : 11, CJ = lod ? 10 : 20;
+        var N = lod ? 7 : 20, CA = lod ? 5 : 11, CJ = lod ? 7 : 20;
         for (var k = 0; k < N; k++) {
           var ac = A0 + (A1 - A0) * ((k + 0.5) / N) + (hash2(k, 2) - 0.5) * 0.14;
           var hw = 0.20 + hash2(k, 5) * 0.13;
@@ -3600,7 +3621,7 @@
 
       /* ---- locks laid over the tresses, to catch the light along their
              length and keep the outer edge broken ---- */
-      var NL = lod ? 8 : 22;
+      var NL = lod ? 5 : 22;
       for (var L = 0; L < NL; L++) {
         var la = A0 + (A1 - A0) * ((L + 0.5) / NL) + (hash2(L, 3) - 0.5) * 0.12;
         var llen = (0.44 + hash2(L, 23) * 0.34) * S;
@@ -3612,7 +3633,7 @@
           pts.push(new THREE.Vector3(f2[0], hy + f2[1], f2[2]));
         }
         var th2 = (0.016 + hash2(L, 13) * 0.011) * S;
-        g.push(sweep(pts, th2, th2 * 0.25, 7, 0.4));
+        g.push(sweep(pts, th2, th2 * 0.25, lod ? 5 : 7, 0.4, lod ? 8 : 0));
       }
 
       /* ---- the fringe: sweeps out of the parting across the forehead ---- */
@@ -3630,7 +3651,7 @@
             hy + Ry * Math.cos(th3) - ea * 0.030 * S,
             Rz * st3 * Math.sin(fa) * 1.03));
         }
-        g.push(sweep(fp, 0.017 * S, 0.009 * S, 9, 0.25));
+        g.push(sweep(fp, 0.017 * S, 0.009 * S, lod ? 5 : 9, 0.25, lod ? 8 : 0));
       }
     } else if (style === "afro") {
       /* it was a whole sphere centred on the head, which meant it covered
@@ -3654,7 +3675,7 @@
       g.push(bun);
     } else if (style === "long") {
       g.push(cap(0.058, 0.022));
-      var N3 = lod ? 10 : 24;
+      var N3 = lod ? 7 : 24;
       for (var i3 = 0; i3 < N3; i3++) {
         var a3 = 1.46 + (6.2832 - 2.92) * (i3 + 0.5) / N3;
         var pts3 = [], ln3 = (0.24 + hash2(i3, 3) * 0.14) * S;
@@ -3666,7 +3687,7 @@
             Math.sin(a3) * (0.094 + u3 * 0.016) * S));
         }
         var w3 = (0.014 + hash2(i3, 7) * 0.009) * S;
-        g.push(sweep(pts3, w3, w3 * 0.45, 8, 0.2));
+        g.push(sweep(pts3, w3, w3 * 0.45, lod ? 5 : 8, 0.2, lod ? 8 : 0));
       }
     } else {
       /* short: a crop that follows the skull with a hairline at the front */
@@ -3947,6 +3968,18 @@
       legR: { hip: bn.hipR, upper: bn.thighR, knee: bn.shinR, lower: bn.shinR, foot: bn.footR },
       hipY: 0.88 * S, S: S, spec: spec, phase: Math.random() * 6.28, blink: 0
     };
+    /* Everything a body is made of gets drawn again from every light that
+       casts a shadow. Across a car park that shadow is four pixels wide,
+       so past a certain distance it stops paying for itself. */
+    var casters = [];
+    root.traverse(function (o) { if (o.isMesh || o.isSkinnedMesh) casters.push(o); });
+    rig.shadowOn = true;
+    rig.setShadow = function (on) {
+      if (on === rig.shadowOn) return;
+      rig.shadowOn = on;
+      for (var ci = 0; ci < casters.length; ci++) casters[ci].castShadow = on;
+    };
+
     /* a skinned mesh's bounds do not follow its pose, so give it one that
        covers anything the animation can do */
     var sphere = new THREE.Sphere(new THREE.Vector3(0, 0.9 * S, 0), 1.5 * S);
@@ -4644,29 +4677,51 @@
   Batch.prototype.add = function (x, y, z, sx, sy, sz, ry, colour) {
     this.items.push([x, y, z, sx, sy, sz, ry || 0, colour == null ? 0xffffff : colour]);
   };
+  /* One batch per level meant one InstancedMesh whose bounding sphere
+     covered the whole level, so frustum culling could never reject it: a
+     street of forty buildings drew all forty however few were on the
+     screen, twice over, because the shadow pass draws it again. The
+     instances are sorted into squares of the map first, and each square
+     becomes its own mesh with its own bounds. Standing in one street then
+     costs the streets you can see and nothing else. */
+  var CHUNK = 26;                                  /* world units a side */
   Batch.prototype.build = function (parent) {
     if (!this.items.length) return null;
-    var im = new THREE.InstancedMesh(this.g, this.m, this.items.length);
-    im.castShadow = this.cast; im.receiveShadow = this.recv;
-    var d = new THREE.Object3D(), c = new THREE.Color();
+    var self = this;
+    var buckets = {}, order = [];
+    /* below a certain size the split costs more in draw calls than it
+       saves in triangles */
+    var split = this.items.length >= 48;
     for (var i = 0; i < this.items.length; i++) {
       var it = this.items[i];
-      d.position.set(it[0], it[1], it[2]);
-      d.scale.set(it[3], it[4], it[5]);
-      d.rotation.set(0, it[6], 0);
-      d.updateMatrix();
-      im.setMatrixAt(i, d.matrix);
-      im.setColorAt(i, c.setHex(it[7]));
+      var key = split
+        ? (Math.floor(it[0] / CHUNK) + "," + Math.floor(it[2] / CHUNK))
+        : "all";
+      if (!buckets[key]) { buckets[key] = []; order.push(key); }
+      buckets[key].push(it);
     }
-    im.instanceMatrix.needsUpdate = true;
-    if (im.instanceColor) im.instanceColor.needsUpdate = true;
-    /* These were all marked never-cull, which meant every level drew the
-       whole of itself every frame, including everything behind the camera.
-       An InstancedMesh can work out its own bounds from its matrices. */
-    im.computeBoundingSphere();
-    im.frustumCulled = true;
-    parent.add(im);
-    return im;
+    var d = new THREE.Object3D(), c = new THREE.Color(), first = null;
+    for (var b = 0; b < order.length; b++) {
+      var list = buckets[order[b]];
+      var im = new THREE.InstancedMesh(this.g, this.m, list.length);
+      im.castShadow = self.cast; im.receiveShadow = self.recv;
+      for (var j = 0; j < list.length; j++) {
+        var q = list[j];
+        d.position.set(q[0], q[1], q[2]);
+        d.scale.set(q[3], q[4], q[5]);
+        d.rotation.set(0, q[6], 0);
+        d.updateMatrix();
+        im.setMatrixAt(j, d.matrix);
+        im.setColorAt(j, c.setHex(q[7]));
+      }
+      im.instanceMatrix.needsUpdate = true;
+      if (im.instanceColor) im.instanceColor.needsUpdate = true;
+      im.computeBoundingSphere();
+      im.frustumCulled = true;
+      parent.add(im);
+      if (!first) first = im;
+    }
+    return first;
   };
 
   function luma(hex) {
@@ -7898,9 +7953,14 @@
       z.rig.root.rotation.y = dampAngle(z.rig.root.rotation.y, -z.facing, 0.30, dt);
       poseHuman(z.rig, G.time + z.seed, z.gait, "z");
 
-      /* it is only worth drawing what she could plausibly perceive */
+      /* it is only worth drawing what she could plausibly perceive, and
+         only worth shadowing what is close enough for the shadow to be
+         more than a smudge */
       var vis = dist < 34;
       if (z.rig.root.visible !== vis) z.rig.root.visible = vis;
+      /* hysteresis, or one walking back and forth across the boundary
+         rebuilds the shadow map every other frame */
+      if (z.rig.setShadow) z.rig.setShadow(z.rig.shadowOn ? dist < 19 : dist < 16);
 
       /* the sound of it dragging itself along */
       z.sound -= dt * (z.state === "chase" ? 2.4 : 1);
@@ -10467,6 +10527,17 @@
      They breathe, they shift their weight, and one or two of them are
      walking a short line and back. */
   function updatePeople(dt) {
+    /* the crowd inside the fence: same rule */
+    if (G.people && G.player) {
+      for (var pi = 0; pi < G.people.length; pi++) {
+        var pp = G.people[pi];
+        if (!pp.rig.setShadow) continue;
+        var pd = Math.hypot(pp.x - G.player.x, pp.z - G.player.z);
+        pp.rig.setShadow(pp.rig.shadowOn ? pd < 19 : pd < 16);
+        var pv = pd < 42;
+        if (pp.rig.root.visible !== pv) pp.rig.root.visible = pv;
+      }
+    }
     var list = G.people;
     if (!list || !list.length) return;
     for (var i = 0; i < list.length; i++) {
@@ -10629,27 +10700,67 @@
      second and a half so a single long frame — a level building, a shader
      compiling — never triggers it. */
   var perfAcc = 0, perfN = 0, perfLock = 0;
-  var perfSlow = 0;
+  /* =========================================================
+     KEEPING SIXTY
+     Render at the screen's own pixel ratio, and only give that
+     up if the machine says it cannot hold the frame. Six rungs
+     between full resolution and just over half; one step at a
+     time, with a long wait after each so a spike cannot start
+     an avalanche, and it climbs back up when there is room.
+
+     It measures the median of the last two seconds rather than
+     the mean, because one 40ms frame while a door opens is not
+     the same problem as forty 20ms frames in a row.
+     ========================================================= */
+  var perfBuf = [], perfHold = 0, perfSince = 0;
+
   function watchPerformance(dt) {
-    if (perfLock > 0) { perfLock -= dt; return; }
-    perfAcc += dt; perfN++;
-    if (perfAcc < 0.8) return;
-    var avg = perfAcc / perfN;
-    perfAcc = 0; perfN = 0;
-    /* Dropping quality rebuilds the render targets and the post chain,
-       which costs a frame — so doing it because of one slow frame makes
-       the stutter it is trying to cure. It takes three slow windows in a
-       row now, and it will not chase a spike back down. */
-    if (avg > 0.0250 && Stage.quality < 2) {
-      perfSlow++;
-      if (perfSlow >= 3) {
-        perfSlow = 0;
-        perfLock = 12;
-        var scene = G && (G.cine ? G.cine.scene : G.scene);
-        var cam = G && G.cine ? G.cine.camera : Stage.camera;
-        Stage.setQuality(Stage.quality + 1, scene, cam);
-      }
-    } else perfSlow = 0;
+    if (!Stage.ready || !Stage.renderer) return;
+    perfHold -= dt;
+    perfSince += dt;
+    perfBuf.push(dt);
+    if (perfBuf.length > 120) perfBuf.shift();
+    /* Twenty-four frames is under two seconds at any rate worth calling
+       playable. But a machine in real trouble may not manage twenty-four
+       frames for half a minute, and waiting for them is exactly the wrong
+       thing to do to it — so after three seconds it will act on whatever
+       it has. */
+    if (perfSince < 1.4) return;
+    if (perfBuf.length < 6) return;
+    if (perfBuf.length < 24 && perfSince < 3.0) return;
+    perfSince = 0;
+
+    var sorted = perfBuf.slice().sort(function (a, b) { return a - b; });
+    var med = sorted[sorted.length >> 1];
+    var p90 = sorted[Math.floor(sorted.length * 0.9)];
+    if (perfHold > 0) return;
+
+    /* 16.7ms is the budget; leave a little room either side of it so it
+       does not sit on the boundary flipping between two rungs */
+    if ((med > 0.0198 || p90 > 0.0290) && Stage.rung < RUNGS.length - 1) {
+      perfStep(Stage.rung + 1, 4.5);
+    } else if (med < 0.0140 && p90 < 0.0190 && Stage.rung > 0) {
+      perfStep(Stage.rung - 1, 7.0);  /* slower to climb than to fall */
+    }
+  }
+
+  function perfStep(rung, hold) {
+    Stage.rung = rung;
+    Stage.scale = RUNGS[rung];
+    /* Near the bottom of the ladder, resolution alone is not enough: the
+       heavier settings — the multisampling and the size of the bloom —
+       come off too. Both cost a rebuild, so they ride along with a resize
+       that was going to happen anyway. */
+    var want = rung >= 5 ? 2 : rung >= 3 ? 1 : 0;
+    if (want !== Stage.quality) {
+      var scene = G && (G.cine ? G.cine.scene : G.scene);
+      var cam = G && G.cine ? G.cine.camera : Stage.camera;
+      Stage.setQuality(want, scene, cam);      /* resizes on its own */
+    } else {
+      Stage.resize(true);
+    }
+    perfHold = hold;
+    perfBuf.length = 0;
   }
 
   function frame(now) {
@@ -10923,6 +11034,11 @@
 
     /* what the card was actually asked to do on the last frame */
     window.__apEndCine = function () { if (G && G.cine) endCine(); return true; };
+    window.__apScale = function () { return { dpr: Stage.dpr, scale: Stage.scale, rung: Stage.rung, w: Stage.w, h: Stage.h }; };
+    window.__apShadows = function (on) {
+      if (Stage.renderer) { Stage.renderer.shadowMap.enabled = !!on; Stage.renderer.shadowMap.needsUpdate = true; }
+      return !!on;
+    };
     window.__apGpu = function () {
       var r = Stage.renderer;
       if (!r) return null;
