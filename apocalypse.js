@@ -320,7 +320,12 @@
     road:     { sky: 0xffc79a, bounce: 0x2a2440, amb: 2.10,
                 fill: 0.30, fillCol: 0xffd0a4, key: 0xffd9a0, keyAmt: 2.00 },
     campsite: { sky: 0x6a7ec0, bounce: 0x1a1810, amb: 1.15,
-                fill: 0.22, fillCol: 0x8090c8, key: 0xffb86a, keyAmt: 0.55 }
+                fill: 0.22, fillCol: 0x8090c8, key: 0xffb86a, keyAmt: 0.55 },
+    /* The road out of the ambulance bay is built out of hospital parts, so
+       it took the ward's lighting with it — a night road lit like a
+       treatment room. Sodium off the bay canopy, cold sky above it. */
+    bay:      { sky: 0x4e5e86, bounce: 0x1a1a1e, amb: 0.95,
+                fill: 0.24, fillCol: 0x7e8ea8, key: 0xffb070, keyAmt: 0.80 }
   };
 
   var PAL = {
@@ -414,7 +419,8 @@
     {
       id: "escape", name: "THE ROAD", card: "Level 4: THE ROAD",
       blurb: "Ashcombe. North road, past the reservoir. Forty miles.",
-      map: MAPS.escape, theme: "hospital", base: ".", dark: 0.68, groundTex: "asphalt", blood: true,
+      map: MAPS.escape, theme: "hospital", light: "bay", base: ".", dark: 0.68,
+      groundTex: "asphalt", blood: true,
       grade: [96, 150, 170, 0.12], haze: [46, 62, 76, 0.32],
       steps: [
         { task: "Out of the building, then find a car and use it. The compass is pointing at one.", clears: "car" }
@@ -4786,7 +4792,7 @@
     var world = {
       def: def, pal: pal, cells: cells, w: W, h: H,
       group: new THREE.Group(),
-      doors: [], lamps: [], props: [], things: [], anim: [],
+      doors: [], lamps: [], props: [], things: [], anim: [], wallArt: [],
       spawn: null, exit: null, anwarAt: null, horseAt: null, carAt: null, torchAt: null,
       panelAt: null, tvAt: null, seen: null,
       opened: {}, powered: !def.dead, deadZone: def.dead || null,
@@ -6156,7 +6162,11 @@
           !isSolidChar(at(x, y - 1)) && !isSolidChar(at(x, y + 1))) return null;
       var g = propGroup(x, y);
       /* propGroup turned it to face out of the wall; the frames go back
-         onto it */
+         onto it. Record which tile they ended up against, so a test can
+         say whether every picture in the chapter is on something. */
+      var bx = x + Math.round(-Math.sin(g.rotation.y));
+      var by = y + Math.round(-Math.cos(g.rotation.y));
+      world.wallArt.push({ x: x, y: y, backed: isSolidChar(at(bx, by)) });
       var n = 1 + Math.floor(hash2(x * 5, y * 11) * 3);
       for (var i = 0; i < n; i++) {
         var t = hash2(x + i * 3, y + i);
@@ -7058,7 +7068,9 @@
        own warm bulbs while the power is still on, the hospital by the cold
        green-white of a corridor on the emergency circuit, the street by a
        sodium sky and nothing else. */
-    var lit = LIGHTING[def.theme] || LIGHTING.street;
+    /* theme decides what a place is made of; light decides what it looks
+       like. Usually the same answer, but not always. */
+    var lit = LIGHTING[def.light || def.theme] || LIGHTING.street;
     var amb = new THREE.HemisphereLight(
       lit.sky, lit.bounce,
       lit.amb * bal * (def.base === "," ? 1.5 : 1));
@@ -9641,6 +9653,9 @@
     } catch (e) {}
   }
 
+  /* set by playDrive just before it starts, picked up by runCine */
+  var driveParts = null;
+
   function runCine(c) {
     G.state = "cine";
     G.dlg = null;
@@ -9648,6 +9663,7 @@
     if (box) box.setAttribute("aria-hidden", "true");
     G.cine = c;
     G.cine.t = 0;
+    if (driveParts) { G.cine.parts = driveParts; driveParts = null; }
     var hud = $("ap-hud");
     if (hud) hud.classList.add("gone");
     var cmp = $("ap-compass");
@@ -10182,6 +10198,10 @@
 
     var speed = 30, dead = false, steam = null;
     Audio_.engine("start");
+
+    /* the car and the two in it, reachable from a test: whether a head is
+       through a roof is a measurement, not an opinion */
+    driveParts = { car: car, her: her, him: him };
 
     runCine({
       scene: scene, camera: cam,
