@@ -820,10 +820,24 @@
 
   /* a small deterministic hash, so a given tile always looks the same
      rather than shimmering every time the level is rebuilt */
+  /* Every scrap of variety in this game comes out of here: which way a
+     bed faces, which shirt one of them is wearing, whether a window is
+     lit, whether a roof has a tank on it.
+
+     It was returning nothing above 0.5. The multiply produced a number
+     past 2^53, so the low bits were rounded away before the shift ever
+     saw them, and the top bit of the result could never be set. Which
+     meant every threshold above a half in the whole file was dead code —
+     no lit windows, no boarded ones, no shutters, no soot, no roof stair
+     heads, no graffiti — and every table indexed by hash * length only
+     ever reached its first half, so half the hairstyles, half the kits and
+     half the skin tones had never been seen.
+
+     Math.imul keeps it in 32 bits, and the shifts are unsigned. */
   function hash2(x, y) {
-    var h = x * 374761393 + y * 668265263;
-    h = (h ^ (h >> 13)) * 1274126177;
-    return ((h ^ (h >> 16)) >>> 0) / 4294967296;
+    var h = (x | 0) * 374761393 + (y | 0) * 668265263;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
   }
 
   /* =========================================================
@@ -1611,6 +1625,38 @@
       x.fillStyle = "#bdbdbd"; x.fillRect(0, 0, s, s);
       shadeWith(x, s, fbm(s, 4, 3, 23), 0.5);
       shadeWith(x, s, fbm(s, 16, 2, 5), 0.12);
+    },
+
+    /* a tag: fat overlapping strokes in one colour with a highlight,
+       which is what a piece looks like from across a road at night */
+    graffiti: function (x, s) {
+      x.clearRect(0, 0, s, s);
+      var hue = [0x6ad0e8, 0xe8d24a, 0xe0603a, 0x8ae05a, 0xd05ad0][Math.floor(Math.random() * 5)];
+      var col = function (a) {
+        return "rgba(" + ((hue >> 16) & 255) + "," + ((hue >> 8) & 255) + "," + (hue & 255) + "," + a + ")";
+      };
+      x.lineCap = "round"; x.lineJoin = "round";
+      for (var pass2 = 0; pass2 < 2; pass2++) {
+        x.strokeStyle = pass2 ? col(0.95) : "rgba(12,10,14,.85)";
+        x.lineWidth = pass2 ? s * 0.055 : s * 0.085;
+        for (var i = 0; i < 4; i++) {
+          var y0 = s * (0.34 + Math.random() * 0.30);
+          x.beginPath();
+          x.moveTo(s * (0.08 + i * 0.21), y0);
+          for (var k = 1; k <= 3; k++) {
+            x.quadraticCurveTo(
+              s * (0.08 + i * 0.21 + k * 0.05), y0 + (Math.random() - 0.5) * s * 0.34,
+              s * (0.08 + i * 0.21 + k * 0.06), y0 + (Math.random() - 0.5) * s * 0.26);
+          }
+          x.stroke();
+        }
+      }
+      /* the drips */
+      x.strokeStyle = col(0.7); x.lineWidth = s * 0.012;
+      for (var d = 0; d < 7; d++) {
+        var dx = s * Math.random(), dy = s * (0.5 + Math.random() * 0.14);
+        x.beginPath(); x.moveTo(dx, dy); x.lineTo(dx, dy + s * (0.05 + Math.random() * 0.16)); x.stroke();
+      }
     },
 
     /* heavy cotton duck: a coarse, flat basket weave */
@@ -4735,6 +4781,30 @@
       soot:    new Batch(geo("sootB", function () { return new THREE.PlaneGeometry(1, 1); }),
                 new THREE.MeshBasicMaterial({ map: sootTexture(), transparent: true, opacity: 0.72,
                   depthWrite: false, color: 0x0a0a0c }), false, false),
+      /* what forty years of rain does under a sill, and what somebody with
+         a can did to the shutter */
+      damp:    new Batch(geo("dampB", function () { return new THREE.PlaneGeometry(1, 1); }),
+                new THREE.MeshBasicMaterial({ map: sootTexture(), transparent: true, opacity: 0.34,
+                  depthWrite: false, color: 0x39423a }), false, false),
+      tag:     new Batch(geo("tagB", function () { return new THREE.PlaneGeometry(1, 1); }),
+                new THREE.MeshBasicMaterial({ map: tex("graffiti", 256, 1), transparent: true,
+                  opacity: 0.9, depthWrite: false, toneMapped: true }), false, false),
+      /* the spill of a lit window onto the wall it is set into, so a light
+         on the fourth floor reads from the pavement */
+      winGlow: new Batch(geo("winGlowB", function () { return new THREE.PlaneGeometry(1, 1); }),
+                new THREE.MeshBasicMaterial({ map: glowTexture(), transparent: true,
+                  blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.42,
+                  toneMapped: false }), false, false),
+      /* road markings, and the drains they run into */
+      paint:   new Batch(geo("paintB", function () {
+                  var g = new THREE.PlaneGeometry(1, 1); g.rotateX(-Math.PI / 2); return g;
+                }),
+                new THREE.MeshStandardMaterial({ color: 0xd8d2be, roughness: 0.86,
+                  transparent: true, opacity: 0.62, depthWrite: false,
+                  polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), false, false),
+      drain:   new Batch(geo("drainB", function () { return new THREE.BoxGeometry(0.62, 0.06, 0.44); }),
+                surface("metal", { size: 256, rough: 0.72, metal: 0.6, tint: 0x4a4c50, envInt: 0.9 }),
+                false, true),
       tank:    new Batch(geo("tankB", function () { return new THREE.CylinderGeometry(0.62, 0.62, 1.1, 14); }),
                 surface("metal", { size: 256, rough: 0.7, metal: 0.6, tint: 0x6a6258, envInt: 1.0 }), true, true),
       thin:    new Batch(geo("thinB", function () { return new THREE.BoxGeometry(1, 1, 1); }),
@@ -4938,6 +5008,16 @@
             /* the plinth: a course of stone the building stands on */
             B.plinth.add(ox + d[0] * 0.05, 0.30, oz + d[1] * 0.05, 1, 1, 1, face,
                          shade(0xffffff, 1.1 + t * 0.2));
+            /* somebody got at the bottom of this one with a can */
+            if (fseed > 0.74) {
+              B.tag.add(ox + d[0] * 0.035, 1.10 + fseed * 0.5, oz + d[1] * 0.035,
+                        TILE * (0.9 + fseed * 0.5), 1.1 + fseed * 0.4, 0.02, face, 0xffffff);
+            }
+            /* and the damp that comes up out of the pavement into it */
+            if (fseed < 0.30) {
+              B.damp.add(ox + d[0] * 0.03, 1.05, oz + d[1] * 0.03,
+                         TILE * 1.0, 2.1, 0.02, face, 0xffffff);
+            }
             /* the cornice under the parapet */
             B.band.add(ox + d[0] * 0.07, top - 0.16, oz + d[1] * 0.07, TILE * 1.02, 0.26, 0.20, face,
                        shade(0xffffff, 1.15));
@@ -4988,6 +5068,11 @@
               /* the sill, projecting, with the stain it drips down the wall */
               B.sill.add(ox + d[0] * 0.085, wy - 0.53, oz + d[1] * 0.085, 1, 1, 1, face,
                          shade(0xffffff, 1.2));
+              /* forty years of rain coming off the end of that sill */
+              if (seed > 0.42) {
+                B.damp.add(ox + d[0] * 0.03, wy - 1.05, oz + d[1] * 0.03,
+                           TILE * 0.5, 1.0, 0.02, face, 0xffffff);
+              }
               /* the lintel over it */
               B.band.add(ox + d[0] * 0.06, wy + 0.55, oz + d[1] * 0.06,
                          TILE * 0.70, 0.14, 0.16, face, shade(0xffffff, 1.12));
@@ -5007,10 +5092,25 @@
                              TILE * 0.8, 1.5, 0.02, face, 0xffffff);
                 }
               } else {
-                var lit = seed > 0.80;
-                (lit ? B.winLit : B.winDark).add(
-                  ox + d[0] * 0.068, wy, oz + d[1] * 0.068, 1, 1, 1, face,
-                  lit ? shade(0xffffff, 0.7 + seed) : shade(0xffffff, 0.85 + seed * 0.3));
+                /* A fifth of the windows being lit is a town that has been
+                   evacuated. A third of them, in three or four different
+                   colours, is a town people are still hiding in — which is
+                   the one she is walking through. */
+                var lit = seed > 0.66;
+                if (lit) {
+                  var wc = seed > 0.955 ? 0x7fa8d8      /* a television */
+                         : seed > 0.90  ? 0xffb060      /* a lamp */
+                         : seed > 0.80  ? 0xffd8a0      /* a ceiling light */
+                         :                0xffe6c0;     /* a bare bulb */
+                  B.winLit.add(ox + d[0] * 0.068, wy, oz + d[1] * 0.068, 1, 1, 1, face,
+                               shade(wc, 0.80 + seed * 0.5));
+                  /* the light it throws on the wall around it */
+                  B.winGlow.add(ox + d[0] * 0.105, wy, oz + d[1] * 0.105,
+                                TILE * 2.0, 2.4, 1, face, shade(wc, 0.55 + seed * 0.4));
+                } else {
+                  B.winDark.add(ox + d[0] * 0.068, wy, oz + d[1] * 0.068, 1, 1, 1, face,
+                                shade(0xffffff, 0.85 + seed * 0.3));
+                }
                 B.winFrame.add(ox + d[0] * 0.062, wy, oz + d[1] * 0.062, 1, 1, 1, face, 0xffffff);
               }
             }
@@ -5061,6 +5161,12 @@
     function lampPost(x, y) {
       var g = new THREE.Group();
       g.position.set(cx(x), 0, cz(y));
+      /* Not every light on a street works, and a street where they all do
+         is a street nothing has happened to. One in six is out; one in
+         five of the rest is on its way out. */
+      var lampT = hash2(x * 17 + 3, y * 29 + 7);
+      var lampDead = lampT < 0.11;
+      var lampBad = !lampDead && lampT > 0.80;
       var pole = new THREE.Mesh(
         geo("postC", function () { var gg = new THREE.CylinderGeometry(0.075, 0.11, 4.4, 8); gg.translate(0, 2.2, 0); return gg; }),
         matMetal);
@@ -5119,11 +5225,16 @@
       g.add(shaft);
 
       G.add(g);
-      /* one lamp in six has had it, and is on its way out */
-      var failing = hash2(x * 71 + 3, y * 29 + 7) > 0.82;
-      world.lamps.push({ x: cx(x) + 0.85, y: 4.1, z: cz(y), colour: 0xffcf90,
-                         power: 2.6, range: 12, kind: "post", bulb: bulb, halo: halo,
-                         shaft: shaft, flicker: failing ? 1 : 0,
+      if (lampDead) {
+        /* dark, and the glass gone out of the head of it */
+        bulb.visible = false; halo.visible = false; shaft.visible = false;
+        return g;
+      }
+      world.lamps.push({ x: cx(x) + 0.85, y: 4.1, z: cz(y),
+                         colour: lampBad ? 0xe6e2d4 : 0xffcf90,
+                         power: lampBad ? 2.2 : 2.6, range: 12, kind: "post",
+                         bulb: bulb, halo: halo,
+                         shaft: shaft, flicker: lampBad ? 1 : 0,
                          tx: x, ty: y });
       return g;
     }
@@ -6363,6 +6474,49 @@
         }
       }
     }
+    /* ---- the road itself ----
+       A carriageway is a run of open ground two or more tiles wide. Down
+       the middle of one goes a broken white line, along the edges of it a
+       solid one, and where the camber takes the water there is a gully and
+       a drain. Without them a road is a grey rectangle you happen to walk
+       on. */
+    if (outdoorLevel) {
+      var isRoad = function (x, y) { return at(x, y) === ","; };
+      for (var ry = 1; ry < H - 1; ry++) {
+        for (var rx = 1; rx < W - 1; rx++) {
+          if (!isRoad(rx, ry)) continue;
+          var vert = isRoad(rx, ry - 1) && isRoad(rx, ry + 1);
+          var horz = isRoad(rx - 1, ry) && isRoad(rx + 1, ry);
+          /* the centre line: down the middle of a run, dashed */
+          if (vert && !horz) {
+            var midV = !isRoad(rx - 1, ry) || !isRoad(rx + 1, ry);
+            if (!midV && (ry % 2 === 0) && isRoad(rx - 1, ry) !== isRoad(rx + 1, ry)) { /* keep */ }
+            if (isRoad(rx - 1, ry) && !isRoad(rx - 2, ry) && ry % 2 === 0) {
+              B.paint.add(cx(rx) - TILE * 0.5, 0.016, cz(ry), 0.16, 1, TILE * 0.52, 0, 0xffffff);
+            }
+          }
+          if (horz && !vert) {
+            if (isRoad(rx, ry - 1) && !isRoad(rx, ry - 2) && rx % 2 === 0) {
+              B.paint.add(cx(rx), 0.016, cz(ry) - TILE * 0.5, TILE * 0.52, 1, 0.16, 0, 0xffffff);
+            }
+          }
+          /* the gutter line where the road meets the kerb */
+          [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+            if (isRoad(rx + d[0], ry + d[1])) return;
+            if (at(rx + d[0], ry + d[1]) === " ") return;
+            B.paint.add(cx(rx) + d[0] * (TILE * 0.42), 0.016, cz(ry) + d[1] * (TILE * 0.42),
+                        d[0] ? 0.10 : TILE * 0.96, 1, d[1] ? 0.10 : TILE * 0.96, 0,
+                        shade(0xffffff, 0.72));
+            /* and a drain in it every so often */
+            if (hash2(rx * 13 + d[0], ry * 7 + d[1]) > 0.90) {
+              B.drain.add(cx(rx) + d[0] * (TILE * 0.34), 0.02, cz(ry) + d[1] * (TILE * 0.34),
+                          1, 1, 1, d[0] ? Math.PI / 2 : 0, 0xffffff);
+            }
+          });
+        }
+      }
+    }
+
     /* Not every floor in a house is the same floor: the bathroom is
        tiled, the kitchen is tiled, the garage is a concrete slab. Laid
        over the boards rather than replacing them, which costs one plane
