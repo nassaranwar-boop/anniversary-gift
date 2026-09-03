@@ -1056,19 +1056,73 @@ function bakePano(def) {
     }
 
   } else if (def.id === "ward") {
-    /* the sunlit window wall at the end of the corridor */
+    /* THE SUNLIT WALL AT THE END OF THE CORRIDOR
+
+       Every other backdrop on these courses is a horizon: far enough
+       away that flat is honest. This one is a wall a few metres behind
+       the track, and painting it as a white band with blue rectangles
+       in it made the most prominent surface on the course the flattest
+       thing in the game. It cannot be geometry — a panorama has no
+       parallax to give — but it can be painted like a wall that has
+       thickness: every opening gets a reveal down one side and a
+       shadow down the other, a sill with a line of dark under it, a
+       transom above, and a skirting that the floor runs into. */
     g.fillStyle = "#dae4f0";
-    g.fillRect(0, base - 54, PANO_W, 54);
-    for (let x = 0; x < PANO_W; x += 38) {
-      g.fillStyle = "#f6fbff";
-      g.fillRect(x + 3, base - 50, 30, 42);
-      g.fillStyle = "rgba(126,200,227,.5)";
-      g.fillRect(x + 6, base - 47, 24, 22);
-      g.fillStyle = "#9db0ca";
-      g.fillRect(x, base - 54, 3, 50);
+    g.fillRect(0, base - 58, PANO_W, 58);
+    /* the ceiling run, with its recessed panels */
+    g.fillStyle = "#c6d3e4"; g.fillRect(0, base - 58, PANO_W, 7);
+    g.fillStyle = "#b4c4d8"; g.fillRect(0, base - 52, PANO_W, 1.5);
+    for (let x = 6; x < PANO_W; x += 34) {
+      g.fillStyle = "#fdfeff"; g.fillRect(x, base - 57, 18, 4);
+      g.fillStyle = "rgba(255,255,255,.55)"; g.fillRect(x - 2, base - 53, 22, 3);
     }
+
+    const bay = 38;
+    for (let x = 0; x < PANO_W; x += bay) {
+      /* the pier between two openings, lit on the sunward face */
+      g.fillStyle = "#c3d0e2"; g.fillRect(x, base - 51, 7, 44);
+      g.fillStyle = "#e7eef8"; g.fillRect(x, base - 51, 2.5, 44);
+      g.fillStyle = "#9db0ca"; g.fillRect(x + 5.5, base - 51, 1.5, 44);
+
+      const ox = x + 7, ow = bay - 9;
+      /* the reveal: the wall has depth, so the opening is a box in it */
+      g.fillStyle = "#aebfd4"; g.fillRect(ox, base - 51, ow, 44);
+      g.fillStyle = "#f6fbff"; g.fillRect(ox + 2, base - 49, ow - 3, 40);
+      /* what is outside — sky, and the tops of trees */
+      const sky2 = g.createLinearGradient(0, base - 49, 0, base - 20);
+      sky2.addColorStop(0, "#bcdcf0"); sky2.addColorStop(1, "#e6f3fb");
+      g.fillStyle = sky2; g.fillRect(ox + 3, base - 48, ow - 5, 27);
+      g.fillStyle = "rgba(110,160,120,.5)";
+      for (let k = 0; k < 3; k++) {
+        const tx = ox + 4 + k * (ow / 3.2);
+        g.beginPath();
+        g.moveTo(tx, base - 21); g.lineTo(tx + 5, base - 30 - (k % 2) * 4);
+        g.lineTo(tx + 10, base - 21); g.closePath(); g.fill();
+      }
+      /* the glazing bar, and the light falling through */
+      g.fillStyle = "#e7eef8"; g.fillRect(ox + 3, base - 34, ow - 5, 2);
+      g.save(); g.globalAlpha = 0.4; g.fillStyle = "#ffffff";
+      g.beginPath();
+      g.moveTo(ox + 3, base - 48); g.lineTo(ox + 13, base - 48);
+      g.lineTo(ox + 4, base - 21); g.lineTo(ox + 3, base - 21);
+      g.closePath(); g.fill(); g.restore();
+      /* the sill, and the dark it casts on the wall below */
+      g.fillStyle = "#dfe8f4"; g.fillRect(ox - 1, base - 21, ow + 2, 3);
+      g.fillStyle = "rgba(90,110,140,.30)"; g.fillRect(ox - 1, base - 18, ow + 2, 2);
+      /* the panel under it */
+      g.fillStyle = "#e3eaf5"; g.fillRect(ox + 2, base - 16, ow - 3, 8);
+      g.fillStyle = "#cbd8e8"; g.fillRect(ox + 4, base - 14, ow - 7, 4);
+    }
+    /* skirting, and the floor meeting it */
     g.fillStyle = "#9db0ca"; g.fillRect(0, base - 8, PANO_W, 3);
     g.fillStyle = "#8698b2"; g.fillRect(0, base - 5, PANO_W, 5);
+    g.fillStyle = "rgba(60,80,110,.22)"; g.fillRect(0, base - 5, PANO_W, 1.5);
+    /* and the wall's own reflection in the polished floor */
+    g.save(); g.globalAlpha = 0.16;
+    g.scale(1, -1);
+    g.drawImage(panoCvs, 0, base - 58, PANO_W, 26,
+                0, -(base + 26), PANO_W, 26);
+    g.restore();
 
   } else if (def.id === "town") {
     /* clouds, then a modest roofline — houses at the horizon should be
@@ -2691,6 +2745,12 @@ const SOLID = {
      are the biggest things on the screen when you pass them, and a flat
      one at that size is the most obvious flat of all. */
   postbox: 1, mailbox: 1, bench: 1,
+  /* and the rest of the boxy ones. A gift cart or a waiting-room chair
+     is a box on legs; there is no angle it looks right from as paint. */
+  cart: 1, chair: 1, planter: 1, flowerbox: 1, trafficlight: 1, plant: 1,
+  /* and the sprinkler, which you drive straight at, so it is the one
+     hazard you ever see from close enough to catch it being paint */
+  sprinkler: 1,
 };
 
 /* Standing height and footprint radius, for placement clearance and for
@@ -2701,6 +2761,9 @@ const SOLID_SIZE = {
   acunit:{ h:40, r:20 }, vent:{ h:44, r:20 },   skylight:{ h:22, r:22 },
   watertank:{ h:120, r:30 }, car:{ h:44, r:36 },
   postbox:{ h:32, r:13 }, mailbox:{ h:36, r:12 }, bench:{ h:34, r:24 },
+  cart:{ h:58, r:24 }, chair:{ h:48, r:18 }, planter:{ h:34, r:20 },
+  flowerbox:{ h:24, r:17 }, trafficlight:{ h:106, r:9 }, plant:{ h:50, r:16 },
+  sprinkler:{ h:36, r:14 },
 };
 
 /* ---- the painter -------------------------------------------------
@@ -2714,7 +2777,11 @@ const SOLID_SIZE = {
 function drawSolid(g, o, camX, camY, camA, fade) {
   const kind = o.kind;
   const parts = solidParts(kind, o.v | 0, trackDef, o.tint | 0);
-  if (!parts || !parts.length) return;
+  /* A kind listed as a solid with no spec behind it used to draw
+     nothing at all, and an invisible object is a far worse bug than an
+     old-looking one — it took a screenshot and a hunt to notice twice.
+     Saying so lets the caller fall back to the flat art instead. */
+  if (!parts || !parts.length) return false;
 
   /* Height varies from building to building, footprint far less — a
      street of houses differs in storey height, not in plot size. */
@@ -2810,6 +2877,7 @@ function drawSolid(g, o, camX, camY, camA, fade) {
     break;
   }
   g.restore();
+  return true;
 }
 
 /* The shadow a solid throws: its own footprint, and its footprint
@@ -3337,6 +3405,85 @@ function solidParts(kind, v, def, ti) {
       { k:"box", x:-21, z:0, w:5, d:17, h:15, col:"#4e5560", plain:true },
       { k:"box", x: 21, z:0, w:5, d:17, h:15, col:"#4e5560", plain:true },
       { k:"box", z:11, w:46, d:3, h:3, col:"#4e5560", plain:true },
+    ];
+
+  } else if (kind === "cart") {
+    /* the gift-cart run: a trolley with something wrapped on the top */
+    const wrap = ["#ff9ec4", "#ffd166", "#bfe0f0"][v % 3];
+    parts = [
+      { k:"box", z:8,  w:40, d:26, h:3, col:T("#c8cdd4"), plain:true },
+      { k:"box", z:34, w:44, d:28, h:4, col:T("#dfe4ea"), plain:true },
+      { k:"box", x:-17, y:-11, w:3, d:3, h:34, col:"#8f98a2", plain:true },
+      { k:"box", x: 17, y:-11, w:3, d:3, h:34, col:"#8f98a2", plain:true },
+      { k:"box", x:-17, y: 11, w:3, d:3, h:34, col:"#8f98a2", plain:true },
+      { k:"box", x: 17, y: 11, w:3, d:3, h:34, col:"#8f98a2", plain:true },
+      { k:"box", y:13, z:38, w:40, d:3, h:14, col:"#a8b0b8", plain:true },
+      { k:"box", z:38, w:18, d:15, h:13, col:T(wrap) },
+      { k:"box", z:51, w:20, d:17, h:2, col:shadeHex(T(wrap), 0.86), plain:true },
+      { k:"box", z:38, w:5,  d:16, h:14, col:"#fff4e6", plain:true },
+    ];
+
+  } else if (kind === "chair") {
+    const seat = T(v % 2 ? "#7ec8e3" : "#8fa8c0");
+    parts = [
+      { k:"box", z:20, w:30, d:28, h:5, col:seat },
+      { k:"box", y:12, z:25, w:30, d:5, h:22, col:seat },
+      { k:"box", x:-12, y:-11, w:3, d:3, h:20, col:"#6f7a86", plain:true },
+      { k:"box", x: 12, y:-11, w:3, d:3, h:20, col:"#6f7a86", plain:true },
+      { k:"box", x:-12, y: 11, w:3, d:3, h:20, col:"#6f7a86", plain:true },
+      { k:"box", x: 12, y: 11, w:3, d:3, h:20, col:"#6f7a86", plain:true },
+    ];
+
+  } else if (kind === "planter" || kind === "flowerbox" || kind === "plant") {
+    /* A tub is a solid; what grows out of it is not. The tub is built
+       properly and the planting is a handful of little prisms on top,
+       which at this size reads as clipped shrubbery and keeps the whole
+       thing turning with everything else. */
+    const big = kind === "planter", pot = kind === "plant";
+    const W = pot ? 22 : big ? 34 : 30;
+    const D = pot ? 22 : big ? 26 : 15;
+    const HH = pot ? 18 : big ? 20 : 12;
+    const tub = pot ? T("#c98d6a") : T(v % 2 ? "#9a7a52" : "#a8865c");
+    parts = [
+      { k:"box", w:W, d:D, h:HH, col:tub, mat:pot ? null : "wood" },
+      { k:"box", z:HH, w:W + 4, d:D + 4, h:3, col:shadeHex(tub, 0.88) },
+      { k:"box", z:HH - 1, w:W - 3, d:D - 3, h:2, col:"#4e3f30", plain:true },
+    ];
+    const leaf = ["#5f9a52", "#6faa5e", "#548f4c"];
+    const n = pot ? 3 : big ? 4 : 5;
+    for (let i = 0; i < n; i++) {
+      const t = n > 1 ? i / (n - 1) - 0.5 : 0;
+      parts.push({ k:"prism", sides:6, r:(pot ? 8 : big ? 8.5 : 5.5),
+                   x:t * (W - 10), y:(i % 2 ? 2 : -2),
+                   z:HH + 3, h:(pot ? 20 : big ? 12 : 7) + (i % 2) * 4,
+                   col:leaf[i % 3], plain:true });
+    }
+    if (!big && !pot) {
+      const bloom = ["#ff9ec4", "#ffd166", "#fff1e0", "#ff7f8a"];
+      for (let i = 0; i < 4; i++)
+        parts.push({ k:"box", x:(i - 1.5) * 7, y:-2, z:HH + 11, w:4, d:4, h:4,
+                     col:bloom[i % 4], plain:true });
+    }
+
+  } else if (kind === "sprinkler") {
+    parts = [
+      { k:"prism", sides:8, r:12, h:5, col:T("#5f7a4e"), plain:true },
+      { k:"prism", sides:8, r:9,  z:5,  h:3,  col:T("#7c9a66"), plain:true },
+      { k:"box", z:8,  w:7, d:7, h:14, col:T("#8a9aa6"), plain:true },
+      { k:"box", z:22, w:11, d:11, h:4, col:T("#b3c0c8") },
+      { k:"box", x:5, z:24, w:11, d:4, h:4, col:T("#9fb0ba"), plain:true },
+      { k:"box", z:26, w:3, d:3, h:5, col:T("#cfd9de"), plain:true },
+    ];
+
+  } else if (kind === "trafficlight") {
+    parts = [
+      { k:"box", w:12, d:12, h:4, col:"#4e5560", plain:true },
+      { k:"box", w:6, d:6, h:76, col:T("#5e6670"), plain:true },
+      { k:"box", z:76, w:14, d:12, h:28, col:T("#3f464e"), mat:"panel" },
+      { k:"box", z:104, w:16, d:14, h:3, col:T("#343a42"), plain:true },
+      { k:"box", y:-7, z:97, w:7, d:1, h:7, col:"#e8556f", plain:true },
+      { k:"box", y:-7, z:88, w:7, d:1, h:7, col:"#ffd166", plain:true },
+      { k:"box", y:-7, z:79, w:7, d:1, h:7, col:"#7ddba3", plain:true },
     ];
 
   } else if (kind === "car") {
@@ -4482,6 +4629,8 @@ function placeObstacles(def) {
     obstacles.push({
       x: hx, y: hy,
       kind: spec.kind, a: tangentAt(ii),
+      /* solids among the furniture need a facing like anything else */
+      yaw: tangentAt(ii) + Math.PI / 2 + (rnd() - 0.5) * 0.5,
       v: (rnd() * (SCENERY[spec.kind].variants || 1)) | 0,
       idx: ii, phase: rnd() * TWO_PI, t: 0, on: true, hitT: 0,
     });
@@ -5042,7 +5191,7 @@ function draw() {
   });
   obstacles.forEach((h) => {
     const s = projectSprite(h.x, h.y, camX, camY, camA);
-    if (s && s.z < MAX_Z) bill.push({ s, kind: "haz", o: h });
+    if (s && s.z < MAX_Z) bill.push({ s, kind: "haz", o: h, camX, camY, camA });
   });
   coins.forEach((c) => {
     if (!c.alive) return;
@@ -5067,7 +5216,7 @@ function draw() {
   });
   fx.forEach((p) => {
     const s = projectSprite(p.x, p.y, camX, camY, camA);
-    if (s) bill.push({ s, kind: "fx", o: p });
+    if (s) bill.push({ s, kind: "fx", o: p, camX, camY, camA });
   });
 
   bill.sort((a, b) => b.s.z - a.s.z);
@@ -5131,6 +5280,7 @@ function draw() {
       castShadow(g, im2, "k" + o.def.id + ai2 + "p" + pz2, b.s.sx, b.s.sy, ww, hh, 0.6, b.s.fade);
       contactPatch(g, b.s.sx, b.s.sy, ww * 0.42, b.s.fade);
     } else if (b.kind === "haz") {
+      if (SOLID[b.o.kind]) { solidShadow(g, b.o, camX, camY, camA, b.s.fade); return; }
       const spec = SCENERY[b.o.kind] || { h: 40, foot: 0.8 };
       const lr2 = litFromCam();
       const img = buildScenery(b.o.kind, b.o.v || 0, trackDef, 0, lr2);
@@ -5251,7 +5401,7 @@ function litFromCam() { return Math.sin(sunRel) > 0; }
 function drawProp(g, b) {
   const { s, o } = b;
   /* the ones that are solids are drawn from their corners instead */
-  if (SOLID[o.kind]) { drawSolid(g, o, b.camX, b.camY, b.camA, s.fade); return; }
+  if (SOLID[o.kind] && drawSolid(g, o, b.camX, b.camY, b.camA, s.fade)) return;
   const lr = litFromCam();
   const img = buildScenery(o.kind, o.v || 0, trackDef, o.tint || 0, lr);
   const spec = SCENERY[o.kind] || { h: 90, foot: 0.6 };
@@ -5366,10 +5516,11 @@ function drawHaz(g, b) {
   const { s, o } = b;
   const spec = SCENERY[o.kind] || { h: 40, foot: 0.8 };
   const hz = HAZ[o.kind];
+  const solid = !!SOLID[o.kind] && !!(solidParts(o.kind, o.v | 0, trackDef, 0) || []).length;
   const lr = litFromCam();
-  const img = buildScenery(o.kind, o.v || 0, trackDef, 0, lr);
-  const h = spec.h * s.scale;
-  const w = h * (img.width / img.height);
+  const img = solid ? null : buildScenery(o.kind, o.v || 0, trackDef, 0, lr);
+  const h = (solid ? (SOLID_SIZE[o.kind] ? SOLID_SIZE[o.kind].h : spec.h) : spec.h) * s.scale;
+  const w = solid ? h : h * (img.width / img.height);
   if (w < 1.2) return;
 
   /* distant billboards fade in rather than popping in, the same as the
@@ -5449,7 +5600,9 @@ function drawHaz(g, b) {
     g.rotate(rot);
     g.translate(-s.sx, -s.sy);
   }
-  drawHazed(g, img, "h" + o.kind + (o.v || 0) + (lr ? "R" : "L"), s.sx - w / 2, s.sy - h, w, h, s.z, false);
+  if (solid) drawSolid(g, o, b.camX, b.camY, b.camA, fa);
+  else drawHazed(g, img, "h" + o.kind + (o.v || 0) + (lr ? "R" : "L"),
+                 s.sx - w / 2, s.sy - h, w, h, s.z, false);
   g.restore();
 
   /* a warning glint on the ones that will actually put you in the wall,
@@ -5656,10 +5809,23 @@ function drawFx(g, b) {
   const y = s.sy - o.z * s.scale;
   g.globalAlpha = a;
   if (o.streak) {
-    const len = Math.max(2, 16 * s.scale);
+    /* A STREAK LIES ALONG THE AIR, NOT DOWN THE SCREEN.
+
+       This used to be a vertical line of 16 * scale, which is fine at
+       distance and becomes an eighty-unit white bar standing on the
+       tarmac when the thing is close — a row of them across the road
+       looked like broken geometry rather than like moving air. It is
+       now the segment between where the wisp is and where it was, both
+       projected, so it lies along its own travel and shortens into the
+       distance the way everything else does. */
+    const tail = projectSprite(o.x - o.vx * 6, o.y - o.vy * 6, b.camX, b.camY, b.camA);
     g.strokeStyle = o.col;
-    g.lineWidth = Math.max(1, o.size * s.scale * 0.4);
-    g.beginPath(); g.moveTo(s.sx, y); g.lineTo(s.sx, y + len); g.stroke();
+    g.lineWidth = Math.max(0.7, Math.min(2.4, o.size * s.scale * 0.35));
+    g.beginPath();
+    g.moveTo(s.sx, y);
+    if (tail) g.lineTo(tail.sx, tail.sy - o.z * tail.scale);
+    else      g.lineTo(s.sx, y + Math.min(9, 12 * s.scale));
+    g.stroke();
   } else if (o.ring) {
     g.strokeStyle = o.col;
     g.lineWidth = Math.max(1, 2 * s.scale);
@@ -5701,13 +5867,23 @@ function buildLens() {
   lensId = trackDef.id; lensW = RW;
   const g = lensCvs.getContext("2d");
 
-  /* the air at the far end of the road */
+  /* THE AIR AT THE FAR END OF THE ROAD
+
+     This has to fade in from nothing at BOTH ends. The first version
+     started at full strength six pixels above the horizon, which put a
+     hard-edged bright stripe straight across the middle of the picture
+     — measured at a forty-level brightness step on one row, and plainly
+     visible as a band once you look for it. A haze with an edge on it
+     is not haze, it is a rectangle. */
   const hz = hexToRgb(trackDef.haze);
-  const air = g.createLinearGradient(0, HORIZON - 6, 0, HORIZON + 54);
-  air.addColorStop(0, `rgba(${hz[0]},${hz[1]},${hz[2]},.34)`);
-  air.addColorStop(1, `rgba(${hz[0]},${hz[1]},${hz[2]},0)`);
+  const top = HORIZON - 34, span = 86;
+  const air = g.createLinearGradient(0, top, 0, top + span);
+  air.addColorStop(0.00, `rgba(${hz[0]},${hz[1]},${hz[2]},0)`);
+  air.addColorStop(0.40, `rgba(${hz[0]},${hz[1]},${hz[2]},.15)`);
+  air.addColorStop(0.52, `rgba(${hz[0]},${hz[1]},${hz[2]},.15)`);
+  air.addColorStop(1.00, `rgba(${hz[0]},${hz[1]},${hz[2]},0)`);
   g.fillStyle = air;
-  g.fillRect(0, HORIZON - 6, RW, 60);
+  g.fillRect(0, top, RW, span);
 
   /* and the corners, falling off the way a lens does */
   const vig = g.createRadialGradient(RW / 2, RH * 0.54, RH * 0.34,
