@@ -2889,14 +2889,34 @@ function solidShadow(g, o, camX, camY, camA, fade) {
   const size = SOLID_SIZE[o.kind] || { h: 80, r: 40 };
   const parts = solidParts(o.kind, o.v | 0, trackDef, o.tint | 0);
   if (!parts || !parts.length) return;
-  const base = parts[0];
-  const prism = base.k === "prism";
-  const lying = prism && base.axis === "x";
-  const hw = lying ? base.len / 2 : prism ? base.r : (base.w || size.r) / 2;
-  const hd = prism ? base.r : (base.d || size.r) / 2;
+  /* THE WHOLE THING CASTS THE SHADOW, NOT ITS FIRST PART.
+
+     This used to take its footprint from parts[0], which is fine for a
+     house — the first part is the mass — and wrong for anything built
+     out of several: a laundry line threw the shadow of one post rather
+     than of the span, and a cart the shadow of its bottom shelf. The
+     footprint is the bounding box of every part now, worked out once
+     and kept on the cached parts list. */
+  let b = parts.__bounds;
+  if (!b) {
+    b = { u0: Infinity, u1: -Infinity, w0: Infinity, w1: -Infinity, top: 0 };
+    for (const pt of parts) {
+      const px = pt.x || 0, py = pt.y || 0, pz = pt.z || 0;
+      const lying2 = pt.k === "prism" && pt.axis === "x";
+      const hu = lying2 ? pt.len / 2 : pt.k === "prism" ? pt.r : (pt.w || 0) / 2;
+      const hh = pt.k === "prism" ? pt.r : (pt.d || 0) / 2;
+      const ht = lying2 ? pz + pt.r : pz + (pt.h || 0) + (pt.rise || 0);
+      if (px - hu < b.u0) b.u0 = px - hu;
+      if (px + hu > b.u1) b.u1 = px + hu;
+      if (py - hh < b.w0) b.w0 = py - hh;
+      if (py + hh > b.w1) b.w1 = py + hh;
+      if (ht > b.top) b.top = ht;
+    }
+    if (!isFinite(b.u0)) { b.u0 = -size.r; b.u1 = size.r; b.w0 = -size.r; b.w1 = size.r; b.top = size.h; }
+    parts.__bounds = b;
+  }
   const hv = 0.90 + ((o.hv || 1) - 1.04) * 0.38;
-  const top = lying ? (base.z || 0) + base.r
-            : (base.z || 0) + (base.h || size.h) * 0.9;
+  const top = b.top * 0.92;
 
   const yaw = o.yaw || 0;
   const cy = Math.cos(yaw), sy = Math.sin(yaw);
@@ -2906,7 +2926,7 @@ function solidShadow(g, o, camX, camY, camA, fade) {
 
   const cosA = Math.cos(camA), sinA = Math.sin(camA);
   const pts = [];
-  for (const [u, w] of [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]]) {
+  for (const [u, w] of [[b.u0, b.w0], [b.u1, b.w0], [b.u1, b.w1], [b.u0, b.w1]]) {
     for (const push of [0, 1]) {
       const wx = o.x + u * cy - w * sy + ox * push;
       const wy = o.y + u * sy + w * cy + oy * push;
@@ -6591,6 +6611,7 @@ function renderSettings(from) {
         ${row("master", "MASTER")}
         ${row("music",  "MUSIC")}
         ${row("sfx",    "EFFECTS")}
+        ${row("engine", "ENGINE")}
       </div>
       <button class="rc-btn rc-btn-s" data-mute="1">${Snd.muted() ? "UNMUTE" : "MUTE ALL"}</button>
       <p class="rc-setlab">ON A PHONE OR TABLET</p>
@@ -6638,11 +6659,12 @@ const Snd = (function () {
   let ctx = null, master = null, musicBus = null, sfxBus = null;
   let noiseBuf = null;
   let ready = false;
-  let vol = { master: 0.75, music: 0.55, sfx: 0.8 };
+  let vol = { master: 0.75, music: 0.55, sfx: 0.8, engine: 0.5 };
   let muted = false;
 
   /* the running engine, kept alive between calls */
   let engine = null;
+  let engineBus = null;
   let driftNode = null;
   let song = null;          // the scheduler for whatever is playing
 
@@ -6667,7 +6689,13 @@ const Snd = (function () {
     master = ctx.createGain();
     musicBus = ctx.createGain();
     sfxBus = ctx.createGain();
+    /* The engine gets its own trim. It is the one sound that never
+       stops, so it is the one that wears you down, and turning it down
+       used to mean turning the item pickups and the lap chime down with
+       it. It still hangs off the effects bus, so muting still mutes. */
+    engineBus = ctx.createGain();
     musicBus.connect(master); sfxBus.connect(master);
+    engineBus.connect(sfxBus);
     master.connect(ctx.destination);
 
     /* one second of white noise, reused for every percussive sound */
@@ -6677,6 +6705,7 @@ const Snd = (function () {
 
     applyVol();
     ready = true;
+    watchWake();
     return true;
   }
 
@@ -6685,11 +6714,44 @@ const Snd = (function () {
     if (ctx.state === "suspended") ctx.resume();
   }
 
+  /* COMING BACK TO THE TAB.
+
+     A browser suspends the audio clock when you switch away, and
+     nothing was ever waking it up again: the only calls to resume() sat
+     on menu clicks, and somebody who alt-tabs mid-race and comes back
+     does not click a menu. The game carried on in silence for the rest
+     of the session. The page tells us when it is visible again, and the
+     context tells us if it was interrupted underneath us — which is how
+     iOS reports a phone call taking the audio away. */
+  function wake() {
+    if (!ctx) return;
+    if (ctx.state !== "running") {
+      const p = ctx.resume();
+      if (p && p.catch) p.catch(() => {});
+    }
+  }
+  function watchWake() {
+    if (typeof document === "undefined" || watchWake.bound) return;
+    watchWake.bound = true;
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) wake();
+    });
+    window.addEventListener("focus", wake);
+    window.addEventListener("pageshow", wake);
+    /* and a belt-and-braces nudge on the first input after coming back */
+    window.addEventListener("pointerdown", wake, { capture: true, passive: true });
+    window.addEventListener("keydown", wake, { capture: true });
+    if (ctx.onstatechange === null) {
+      ctx.onstatechange = () => { if (ctx.state === "interrupted") wake(); };
+    }
+  }
+
   function applyVol() {
     if (!ctx) return;
     master.gain.value = muted ? 0 : vol.master;
     musicBus.gain.value = vol.music;
     sfxBus.gain.value = vol.sfx;
+    if (engineBus) engineBus.gain.value = vol.engine;
   }
 
   /* ---- primitives ---- */
@@ -6827,6 +6889,16 @@ const Snd = (function () {
 
     function schedule() {
       if (!song || song.stopped) return;
+      /* CATCH UP, DO NOT GRIND.
+
+         This runs on a setTimeout, and a browser throttles or stops
+         those in a tab you have switched away from — while the audio
+         clock may keep running. Come back after a few minutes and the
+         next note is due minutes ago, so the loop below would schedule
+         every note in between, all at times already past: thousands of
+         voices firing at once. Falling more than a beat behind means
+         the gap was not music, it was absence, so skip it. */
+      if (song.next < ctx.currentTime - 0.5) song.next = ctx.currentTime + 0.06;
       while (song.next < ctx.currentTime + 0.25) {
         const i = song.step % steps;
         const t = song.next;
@@ -6875,13 +6947,17 @@ const Snd = (function () {
   function engineOn() {
     if (!ready || engine) return;
     const o = ctx.createOscillator();
-    o.setPeriodicWave(pulseWave(0.18));
+    /* A duty of 0.18 is a very thin pulse — nasal, and all upper
+       harmonics. Held under everything for a whole race that is what
+       makes it grating rather than loud. A fatter pulse through a much
+       lower filter is the same engine an octave less annoying. */
+    o.setPeriodicWave(pulseWave(0.32));
     o.frequency.value = 60;
     const lp = ctx.createBiquadFilter();
-    lp.type = "lowpass"; lp.frequency.value = 900;
+    lp.type = "lowpass"; lp.frequency.value = 420;
     const g = ctx.createGain();
     g.gain.value = 0.0001;
-    o.connect(lp); lp.connect(g); g.connect(sfxBus);
+    o.connect(lp); lp.connect(g); g.connect(engineBus || sfxBus);
     o.start();
     engine = { o, g, lp };
   }
@@ -6900,8 +6976,8 @@ const Snd = (function () {
     const t = ctx.currentTime;
     const f = 48 + frac * 132;
     engine.o.frequency.setTargetAtTime(f, t, 0.05);
-    engine.lp.frequency.setTargetAtTime(offroad ? 480 : 700 + frac * 900, t, 0.08);
-    engine.g.gain.setTargetAtTime(0.035 + frac * 0.055, t, 0.06);
+    engine.lp.frequency.setTargetAtTime(offroad ? 300 : 380 + frac * 460, t, 0.08);
+    engine.g.gain.setTargetAtTime(0.030 + frac * 0.049, t, 0.06);
   }
 
   /* ---- tyres ---- */
@@ -7022,6 +7098,11 @@ const Snd = (function () {
     .forEach((k) => { api[k] = (a) => { if (!ready) return; S[k](a); }; });
 
   api.resume = resume;
+  api.wake = wake;
+  api.state = () => (ctx ? ctx.state : "none");
+  /* the test harness needs to be able to take the clock away and check
+     that coming back brings it round again */
+  api.ctx = () => ctx;
   api.music = (name) => { if (!ready) { init(); } if (ready) playSong(name); };
   api.stopMusic = stopSong;
   api.engineOn = () => { if (ready) engineOn(); };
@@ -7069,12 +7150,21 @@ const TUT_TRACK = {
 const TUT_STEPS = [
   { id:"gas",    title:"THE THROTTLE",
     body:"Hold {GAS} to go. It builds — the last of the speed takes a moment to arrive.",
+    /* On a phone with the throttle automatic there is no key to hold,
+       and telling her to hold one that is not on the screen is worse
+       than saying nothing. */
+    bodyAuto:"You are already rolling — the kart holds its own throttle. "
+           + "{BRAKE} is still yours whenever you want it.",
     goal:"get up to speed" },
   { id:"brake",  title:"THE BRAKE",
     body:"{BRAKE} slows you. Let go of everything and you coast, you don't stop dead.",
+    bodyAuto:"{BRAKE} slows you, and holding it is how you lift — with the "
+           + "throttle automatic, that is what the brake is for.",
     goal:"slow down again" },
   { id:"steer",  title:"STEERING",
     body:"{LEFT} and {RIGHT} turn the wheels; the kart leans in after them. Follow the bend.",
+    bodySlide:"Put a thumb anywhere on the track and slide. How far you slide "
+            + "is how hard it turns — the kart leans in after the wheels.",
     goal:"take a corner" },
   { id:"drift",  title:"DRIFTING",
     body:"Hold {DRIFT} while you turn to slide. Sparks go blue, then gold, then pink.",
@@ -7100,9 +7190,21 @@ let tut = null;   // { i, held, doneAt } while the tutorial is running
 
 function tutKeyName(tag) {
   const touch = el.pad && el.pad.dataset.want === "1";
-  const map = touch
-    ? { GAS:"GO", BRAKE:"BRAKE", LEFT:"◀", RIGHT:"▶", DRIFT:"DRIFT", ITEM:"ITEM" }
-    : { GAS:"↑", BRAKE:"↓", LEFT:"←", RIGHT:"→", DRIFT:"SPACE", ITEM:"E" };
+  if (!touch) {
+    return { GAS:"↑", BRAKE:"↓", LEFT:"←", RIGHT:"→", DRIFT:"SPACE", ITEM:"E" }[tag] || tag;
+  }
+  /* Naming a key that is not on the screen is how a tutorial teaches
+     somebody the wrong game. Under slide steering the arrows are gone
+     and under auto throttle so is the GO button. */
+  const slide = touchMode === "slide";
+  const map = {
+    GAS:   autoGas ? "nothing at all" : "GO",
+    BRAKE: "BRAKE",
+    LEFT:  slide ? "sliding left"  : "◀",
+    RIGHT: slide ? "sliding right" : "▶",
+    DRIFT: "DRIFT",
+    ITEM:  "ITEM",
+  };
   return map[tag] || tag;
 }
 
@@ -7151,7 +7253,11 @@ function paintTutStep() {
   if (!tut) return;
   const st = TUT_STEPS[tut.i];
   if (!el.tut) return;
-  const body = st.body.replace(/\{(\w+)\}/g, (_, t) => `<b>${tutKeyName(t)}</b>`);
+  /* the lesson has to describe the controls she actually has */
+  const slide = touchMode === "slide" && padWanted;
+  const auto  = autoGas && padWanted;
+  const src = (slide && st.bodySlide) || (auto && st.bodyAuto) || st.body;
+  const body = src.replace(/\{(\w+)\}/g, (_, t) => `<b>${tutKeyName(t)}</b>`);
   el.tut.innerHTML = `
     <div class="rc-bubble">
       <span class="rc-bubble-tag">${tut.i + 1}/${TUT_STEPS.length}</span>
@@ -7450,9 +7556,18 @@ function padSpark(btn) {
 }
 
 /* press-and-hold, multi-touch, and it never scrolls the page out from
-   under her */
+   under her.
+
+   Bound ONCE. These elements live in the page for as long as the site
+   does, but start() runs every time she comes back in from the hub, and
+   for a long time this ran with it — six events on each of six keys,
+   plus the steering surface and two window listeners, added again on
+   every entry and never taken off. Measured: a hundred and fifty
+   listeners after three trips to the hub and back, with every pad
+   button carrying four copies of its own handler. */
 function bindPad() {
-  if (!el.pad) return;
+  if (!el.pad || bindPad.done) return;
+  bindPad.done = true;
   el.pad.querySelectorAll("[data-k]").forEach((btn) => {
     const k = btn.dataset.k;
     const on = (e) => {
@@ -7475,9 +7590,7 @@ function bindPad() {
     btn.addEventListener("mouseup",    off);
     btn.addEventListener("mouseleave", off);
   });
-  paintPadIcons();
   bindSteer();
-  applyTouchMode();
 }
 
 /* ---------------------------------------------------------
@@ -7497,7 +7610,8 @@ function bindPad() {
    --------------------------------------------------------- */
 function bindSteer() {
   const zone = el.steer;
-  if (!zone) return;
+  if (!zone || bindSteer.done) return;
+  bindSteer.done = true;
   const ring = el.steerRing;
   let id = null, x0 = 0, y0 = 0, revving = false;
 
@@ -7593,8 +7707,35 @@ function setPadVisible(on) {
   if (el.pad) el.pad.dataset.want = on ? "1" : "0";
   applyTouchMode();
 }
+/* AWAY AND BACK.
+
+   Leaving the tab stops requestAnimationFrame, so the race freezes
+   wherever it was and thaws when you return — which means coming back
+   to a kart already in the scenery. Pausing properly on the way out is
+   both kinder and cleaner: the engine drone is shut down rather than
+   left hanging on a suspended clock, and the clock the lap timer reads
+   is not left counting a stretch nobody drove. */
+let visBound = false;
+let wiredOnce = false;
+function watchVisibility() {
+  if (visBound || typeof document === "undefined") return;
+  visBound = true;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (running && state === "race" && mode !== "tutorial") renderPause();
+      else Snd.engineOff();
+    } else {
+      Snd.wake();
+      prev = performance.now();
+      acc = 0;
+    }
+  });
+}
+
 function watchPointer() {
   try { setPadVisible(window.matchMedia("(pointer: coarse)").matches); } catch (e) {}
+  if (watchPointer.done) return;
+  watchPointer.done = true;
   window.addEventListener("touchstart", () => setPadVisible(true), { passive: true, capture: true });
   window.addEventListener("keydown", (e) => {
     if (KEYMAP[e.key] || e.key === "e" || e.key === "E") setPadVisible(false);
@@ -7666,6 +7807,7 @@ function start() {
   ctx = cvs.getContext("2d");
   grabEls();
   loadTouchPrefs();
+  watchVisibility();
   if (!sceneCvs) initBuffers();
   if (!Object.keys(kartSprites).length) buildAllKarts();
 
@@ -7675,20 +7817,29 @@ function start() {
   racers = [];
   state = "title";
 
+  /* these two come off again in stop(), so the game is deaf while she is
+     back on the hub — they are the only pair that is meant to cycle */
   document.addEventListener("keydown", onKey);
   document.addEventListener("keyup", onKey);
   if (el.overlay) el.overlay.addEventListener("click", onOverlayClick);
-  if (el.tut) el.tut.addEventListener("click", (e) => {
-    const b = e.target.closest("button");
-    if (!b) return;
-    Snd.click();
-    if (b.dataset.tutskip || b.dataset.tutend) endTutorial();
-  });
-  if (el.pause) el.pause.addEventListener("click", () => {
-    if (state === "race") renderPause(); else if (state === "paused") { setOverlay(""); state = "race"; }
-  });
-  bindPad();
-  watchPointer();
+
+  /* everything else is wired to elements that outlive the session */
+  if (!wiredOnce) {
+    wiredOnce = true;
+    if (el.tut) el.tut.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      Snd.click();
+      if (b.dataset.tutskip || b.dataset.tutend) endTutorial();
+    });
+    if (el.pause) el.pause.addEventListener("click", () => {
+      if (state === "race") renderPause(); else if (state === "paused") { setOverlay(""); state = "race"; }
+    });
+    bindPad();
+    watchPointer();
+  }
+  paintPadIcons();
+  applyTouchMode();
   padAccent();
 
   resize();
@@ -7718,7 +7869,8 @@ function stop() {
 
 /* a hatch for the test harness — nothing in the page uses it */
 if (typeof window !== "undefined")
-  window.__RACE_DEBUG = () => ({ obstacles, coins, racers, props, trackDef, state, mode, path, cut, raceTime, buildScenery, SCENERY, HAZ });
+  window.__RACE_DEBUG = () => ({ obstacles, coins, racers, props, trackDef, state, mode, path, cut, raceTime, buildScenery, SCENERY, HAZ,
+     audioState: Snd.state(), audioCtx: Snd.ctx() });
 
 return { start, stop };
 })();
