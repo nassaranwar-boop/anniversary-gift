@@ -77,7 +77,17 @@ function ok(name, cond, extra) {
   // ---- 4. a hiding place hides her --------------------------------------
   r = await ev(() => {
     function G(){ return window.Apocalypse.game; }
-    window.__apTeleport(2, 1);           // 'h' in the top row of the house
+    /* find a hiding place rather than knowing where one is: the house
+       gets rearranged and a hard-coded tile goes stale */
+    const w = G().world;
+    let hx = -1, hy = -1;
+    for (let y = 0; y < w.h && hx < 0; y++) {
+      for (let x = 0; x < w.w; x++) {
+        const c = w.at(x, y);
+        if (c === 'h' || c === 'j') { hx = x; hy = y; break; }
+      }
+    }
+    window.__apTeleport(hx, hy);
     for (let i=0;i<6;i++) window.__apPump(1/60);
     const hidden = G().player.hidden;
     window.__apTeleport(8, 8);

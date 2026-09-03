@@ -38,7 +38,7 @@ for (const name of NAMES) {
 
   /* 2. every character is one the builder knows */
   const KNOWN = new Set((SOLID + OPAQUE + HIDE + EXTRA +
-    'hlqriSXzxbg*NAaI').split(''));
+    'hlqriSXzxbg*NAaI1').split(''));
   const unknown = {};
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const c = at(x, y);

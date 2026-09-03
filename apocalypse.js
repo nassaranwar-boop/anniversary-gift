@@ -102,23 +102,23 @@
 
   MAPS.home = [
     "####vv####################v#######",
-    "vkh.nBBn.p.#Z.m..RR.#j.nBBn..k.p.#",
-    "#..a....a..#..a.....#..a......a..#",
-    "#V..S..rr..#...r....#......rr.h..#",
-    "#E.....rr.l#........#......rr...l#",
-    "#..p.......#........#E...........#",
+    "#nB..k.p.a.#Zsm...RR#k.a.n.q.n.aj#",
+    "#j....V.a.p#..rr...R#.......te..j#",
+    "#E.uS.rr.q.#........#.rr....e..ul#",
+    "#k....rr..l#..q.....#.rr......p..#",
+    "#..p....q..#.......q#nBBnq......p#",
     "#####d###########d#########d######",
-    "#.a.....l......p........l.....a..#",
-    "#..rrr......................rrr..#",
+    "#a...l......p........l......a....#",
+    "#.rrr......................rrr...#",
     "#................................#",
     "#######d########d#########d#######",
-    "#kk..p........a#.fOKsK..p#.JJ...M#",
-    "#uTU......FFF..#....K....#..II.WM#",
-    "v.......rrtrr..#..e.K....#..II..M#",
-    "v.q.....rrrrr.p#.ett.i...#o.II..o#",
-    "#..............#..e......#..II..J#",
-    "#qh...a........#.....p...#l.....a#",
-    "#..............#.........#.......#",
+    "#kk..p.......a#..fOKsK1p#..JJ...M#",
+    "#uTU..........#....K....#..II.WM.#",
+    "v...rrtrr.FFF.#....K....#..II..M.#",
+    "v.q.rrrrr..u..#.ett.i...#o.II...o#",
+    "#p...........k#..e......#..II..J.#",
+    "#qh...a.......#.....p...#l......a#",
+    "#.............#.........#........#",
     "#############################P####",
     "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
     "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,X,,,#"
@@ -303,6 +303,25 @@
      lighting and the post chain, so changing one line here
      changes the whole look of a place.
      ========================================================= */
+
+  /* ---- what is lighting each place ----
+     sky and bounce are the two halves of the hemisphere: what comes down
+     and what comes back up off the floor. key is the one directional
+     light. A house with the power on is warm and comes from inside it; a
+     dead hospital is cold and green and comes from the ceiling; a street
+     at night is sodium overhead and nothing underneath. */
+  var LIGHTING = {
+    house:    { sky: 0xffd2a0, bounce: 0x2a1c14, amb: 1.85,
+                fill: 0.34, fillCol: 0xffbe86, key: 0xffd9a8, keyAmt: 0.52 },
+    street:   { sky: 0x5a74b4, bounce: 0x101422, amb: 1.05,
+                fill: 0.20, fillCol: 0x6a80c0, key: 0xbcd0ff, keyAmt: 0.68 },
+    hospital: { sky: 0xd6f2e6, bounce: 0x18262a, amb: 1.35,
+                fill: 0.28, fillCol: 0xa8ccc4, key: 0xe4fff4, keyAmt: 0.42 },
+    road:     { sky: 0xffc79a, bounce: 0x2a2440, amb: 2.10,
+                fill: 0.30, fillCol: 0xffd0a4, key: 0xffd9a0, keyAmt: 2.00 },
+    campsite: { sky: 0x6a7ec0, bounce: 0x1a1810, amb: 1.15,
+                fill: 0.22, fillCol: 0x8090c8, key: 0xffb86a, keyAmt: 0.55 }
+  };
 
   var PAL = {
     house: {
@@ -4566,6 +4585,7 @@
   /* =========================================================
      13 — WHAT EACH CHARACTER IN THE GRID MEANS
      ========================================================= */
+  /* 1 is the torch on the worktop — every letter was already spoken for */
   var SOLID  = "#ovLKcYfB=FnuQwG~T C H W D d P V k E t e O s R Z m M J U p".replace(/ /g, "");
   var OPAQUE = "#ovLcYfGH~kJMU";             /* stops sight as well as feet */
   var HIDE   = "hj";
@@ -4767,7 +4787,7 @@
       def: def, pal: pal, cells: cells, w: W, h: H,
       group: new THREE.Group(),
       doors: [], lamps: [], props: [], things: [], anim: [],
-      spawn: null, exit: null, anwarAt: null, horseAt: null, carAt: null,
+      spawn: null, exit: null, anwarAt: null, horseAt: null, carAt: null, torchAt: null,
       panelAt: null, tvAt: null, seen: null,
       opened: {}, powered: !def.dead, deadZone: def.dead || null,
       outdoor: def.base === ","
@@ -5653,30 +5673,53 @@
 
     /* ---------- the furniture ---------- */
     function bed(x, y) {
+      /* Two tiles of B side by side is one double bed, not two singles
+         with a crack down the middle. The first tile of a run builds the
+         whole thing; a lone B is still a single. */
       var t = hash2(x, y);
+      var run = 1;
+      if (at(x - 1, y) === "B") return null;
+      while (at(x + run, y) === "B") run++;
       var g = new THREE.Group();
-      g.position.set(cx(x), 0, cz(y));
-      g.rotation.y = isSolidChar(at(x, y - 1)) || isSolidChar(at(x, y + 1)) ? 0 : Math.PI / 2;
-      var frame = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.82, 0.34, TILE * 0.94),
+      g.position.set(cx(x) + (run - 1) * TILE * 0.5, 0, cz(y));
+      g.userData.run = run;
+      /* The headboard is built at the near end, so the bed has to be turned
+         to put that end against whichever wall it is actually against —
+         backing a bed onto the south wall and leaving the headboard out in
+         the room is the sort of thing you notice immediately. */
+      var wallN = isSolidChar(at(x, y - 1)), wallS = isSolidChar(at(x, y + 1));
+      g.rotation.y = wallN ? 0 : wallS ? Math.PI
+                   : isSolidChar(at(x - 1, y)) ? Math.PI / 2 : -Math.PI / 2;
+      /* A run of tiles is the bed's width only when its head is against
+         the wall the run is parallel to. Turned the other way the run is
+         its length, and widening it would make a bed you could land a
+         plane on. */
+      var wide = (wallN || wallS) ? run : 1;
+      var frame = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.82 * wide, 0.34, TILE * 0.94),
         def.theme === "hospital" ? matMetal : matWood);
       frame.position.y = 0.20; frame.castShadow = true; g.add(frame);
-      var mat = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.74, 0.22, TILE * 0.86),
+      var mat = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.74 * wide, 0.22, TILE * 0.86),
         new THREE.MeshStandardMaterial({
           color: def.theme === "hospital" ? 0xd6dee2 : 0xc9c2d4, roughness: 0.98,
           map: tex("cloth", 128, 1), bumpMap: bump("cloth", 128, 1), bumpScale: 0.2 }));
       mat.position.y = 0.46; mat.castShadow = true; g.add(mat);
       /* the blanket, thrown back on one side */
-      var bl = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.76, 0.12, TILE * 0.54),
+      var bl = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.76 * wide, 0.12, TILE * 0.54),
         new THREE.MeshStandardMaterial({
           color: def.theme === "hospital" ? 0x9aa8b0 : 0x53406a, roughness: 0.99,
           map: tex("cloth", 128, 2), bumpMap: bump("cloth", 128, 2), bumpScale: 0.4 }));
       bl.position.set(0, 0.60, TILE * 0.16 * (t > 0.5 ? 1 : -1));
       bl.rotation.y = (t - 0.5) * 0.1;
       bl.castShadow = true; g.add(bl);
-      var pil = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.42, 0.14, TILE * 0.24),
+      var pil = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.42 * (wide > 1 ? 0.9 : 1), 0.14, TILE * 0.24),
         new THREE.MeshStandardMaterial({ color: 0xe6e2dc, roughness: 0.99 }));
-      pil.position.set(0, 0.62, -TILE * 0.30);
+      pil.position.set(wide > 1 ? -TILE * 0.24 : 0, 0.62, -TILE * 0.30);
       g.add(pil);
+      if (wide > 1) {                       /* two of them sleep in it */
+        var pil2 = pil.clone();
+        pil2.position.x = TILE * 0.24;
+        g.add(pil2);
+      }
       /* the headboard, or the hospital's rails */
       if (def.theme === "hospital") {
         [-1, 1].forEach(function (s) {
@@ -5858,9 +5901,10 @@
       } else if (kind === "r") {
         /* a rug is the warmest thing in a room; it was a black rectangle */
         var RUGS = [0xb08a86, 0xa8968a, 0x9a8ea6, 0xb0a288, 0x8e9aa4];
+        var an = rugAnchor[x + "," + y], ax2 = an ? an[0] : x, ay2 = an ? an[1] : y;
         var rug = new THREE.Mesh(new THREE.BoxGeometry(TILE, 0.04, TILE),
           new THREE.MeshStandardMaterial({
-            color: RUGS[Math.floor(hash2(x * 3, y * 5) * RUGS.length) % RUGS.length],
+            color: RUGS[Math.floor(hash2(ax2 * 3, ay2 * 5) * RUGS.length) % RUGS.length],
             roughness: 0.99,
             map: tex("carpet", 128, 1), bumpMap: bump("carpet", 128, 1), bumpScale: 0.3 }));
         rug.position.y = 0.016; rug.receiveShadow = true; g.add(rug);
@@ -5908,6 +5952,7 @@
       var screen = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.72),
         new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
       screen.position.set(0, 0.90, 0.365); g.add(screen);
+      world.tvScreen = screen;
 
       var glow = new THREE.Sprite(new THREE.SpriteMaterial({
         map: glowTexture(), color: 0x8fd0ff, blending: THREE.AdditiveBlending,
@@ -6103,6 +6148,12 @@
 
     /* the two of them, framed, on whichever wall is nearest */
     function wallArt(x, y) {
+      /* propGroup turns a prop to face away from the nearest wall, and
+         quietly faces north when there is no wall at all — which hung
+         framed photographs in the middle of a room. If there is nothing to
+         hang them on, there are no photographs. */
+      if (!isSolidChar(at(x - 1, y)) && !isSolidChar(at(x + 1, y)) &&
+          !isSolidChar(at(x, y - 1)) && !isSolidChar(at(x, y + 1))) return null;
       var g = propGroup(x, y);
       /* propGroup turned it to face out of the wall; the frames go back
          onto it */
@@ -6379,6 +6430,36 @@
       return g;
     }
 
+    /* the torch, on the worktop where it lives */
+    function torchProp(x, y) {
+      var g = new THREE.Group();
+      g.position.set(cx(x), 0, cz(y));
+      var body = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.052, 0.26, 12),
+        surface("metal", { repeat: 1, rough: 0.35, metal: 0.7, tint: 0x3a4048, envInt: 1.4 }));
+      body.rotation.z = Math.PI / 2;
+      body.position.set(0, 0.82, 0);
+      body.castShadow = true; g.add(body);
+      var lens = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.048, 0.07, 12),
+        new THREE.MeshStandardMaterial({ color: 0xd8dce4, roughness: 0.15, metalness: 0.5,
+          envMapIntensity: 2 }));
+      lens.rotation.z = Math.PI / 2;
+      lens.position.set(0.16, 0.82, 0);
+      g.add(lens);
+      /* a little glint so the eye finds it on a dark worktop */
+      var halo = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: glowTexture(), color: 0xbfd4ff, blending: THREE.AdditiveBlending,
+        transparent: true, depthWrite: false, opacity: 0.30 }));
+      halo.scale.set(0.8, 0.8, 1);
+      halo.position.set(0.12, 0.86, 0);
+      g.add(halo);
+      world.anim.push(function (t) {
+        halo.material.opacity = 0.20 + Math.sin(t * 2.4) * 0.10;
+      });
+      G.add(g);
+      world.things.push({ kind: "torch", x: x, y: y, group: g });
+      return g;
+    }
+
     function noteProp(x, y) {
       var g = new THREE.Group();
       g.position.set(cx(x), 0, cz(y));
@@ -6621,6 +6702,32 @@
       return g;
     }
 
+    /* A rug is one object even when it covers six tiles. Colouring each tile
+       from its own coordinates gave a single rug a patchwork of reds, which
+       reads as a bug rather than as a rug — so find the connected runs of
+       'r' first and let every tile in a run answer to the same anchor. */
+    var rugAnchor = {};
+    (function () {
+      for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+        if (at(x, y) !== "r" || rugAnchor[x + "," + y]) continue;
+        var stack = [[x, y]], seen = [], ax = x, ay = y;
+        rugAnchor[x + "," + y] = true;
+        while (stack.length) {
+          var p2 = stack.pop(); seen.push(p2);
+          if (p2[1] < ay || (p2[1] === ay && p2[0] < ax)) { ax = p2[0]; ay = p2[1]; }
+          var nb = [[p2[0] + 1, p2[1]], [p2[0] - 1, p2[1]], [p2[0], p2[1] + 1], [p2[0], p2[1] - 1]];
+          for (var k = 0; k < 4; k++) {
+            var q = nb[k], key = q[0] + "," + q[1];
+            if (q[0] < 0 || q[1] < 0 || q[0] >= W || q[1] >= H) continue;
+            if (at(q[0], q[1]) !== "r" || rugAnchor[key]) continue;
+            rugAnchor[key] = true; stack.push(q);
+          }
+        }
+        for (var i2 = 0; i2 < seen.length; i2++)
+          rugAnchor[seen[i2][0] + "," + seen[i2][1]] = [ax, ay];
+      }
+    })();
+
     /* ---------- lay the place out ---------- */
     var treeChance = def.theme === "campsite" ? 1.0 : def.theme === "road" ? 0.34 : 0.16;
     for (var y2 = 0; y2 < H; y2++) {
@@ -6703,6 +6810,7 @@
           case "T": world.tvAt = { x: x2, y: y2 }; television(x2, y2); break;
           case "N": noteProp(x2, y2); break;
           case "i": itemProp(x2, y2); break;
+          case "1": world.torchAt = { x: x2, y: y2 }; torchProp(x2, y2); break;
           case "w": woodpile(x2, y2); break;
           case "b": bedroll(x2, y2); break;
           case "g": world.things.push({ kind: "gather", x: x2, y: y2 }); break;
@@ -6944,24 +7052,30 @@
        disappears and the torch is drawing on black. */
     var bal = lightBalance(pal);
     world.balance = bal;
+    /* Every place was lit by the same sky in a slightly different colour,
+       which is why the house and the hospital felt like the same building.
+       A place is lit by whatever is actually lighting it: her house by its
+       own warm bulbs while the power is still on, the hospital by the cold
+       green-white of a corridor on the emergency circuit, the street by a
+       sodium sky and nothing else. */
+    var lit = LIGHTING[def.theme] || LIGHTING.street;
     var amb = new THREE.HemisphereLight(
-      shade(pal.sky, 2.8), shade(pal.ambient, 1.6),
-      (def.dark > 0.6 ? 1.05 : def.dark > 0.45 ? 1.5 : 2.3) * bal * (def.base === "," ? 1.6 : 1));
+      lit.sky, lit.bounce,
+      lit.amb * bal * (def.base === "," ? 1.5 : 1));
     G.add(amb);
     world.hemi = amb;
     /* the last few percent, so an unlit corner is still a corner and not
        a hole cut in the picture */
     /* outdoors there is always something in the sky — cloud lit from
        underneath by a city that has not entirely gone out */
-    var fillAmt = (def.dark > 0.6 ? 0.22 : 0.30) * bal * (def.base === "," ? 2.4 : 1);
-    var floorFill = new THREE.AmbientLight(shade(pal.sky, 1.9), fillAmt);
+    var fillAmt = lit.fill * bal * (def.base === "," ? 2.2 : 1);
+    var floorFill = new THREE.AmbientLight(lit.fillCol, fillAmt);
     G.add(floorFill);
 
     /* the one big directional light: moonlight, or the sun at the gates.
        Only the outdoor levels get a shadow out of it — indoors the
        torch does that job and two shadow maps is one too many. */
-    var key = new THREE.DirectionalLight(pal.key,
-      (def.dark > 0.6 ? 0.62 : def.dark > 0.4 ? 1.15 : 2.2) * bal);
+    var key = new THREE.DirectionalLight(lit.key, lit.keyAmt * bal);
     key.position.set(W * TILE * 0.3, 46, -H * TILE * 0.25);
     key.target.position.set(W * TILE * 0.5, 0, H * TILE * 0.5);
     G.add(key); G.add(key.target);
@@ -7047,6 +7161,51 @@
      flickers on a noise curve rather than a random number so it
      breathes instead of strobing, and smoke above it.
      ========================================================= */
+  /* ---- a beam you can see ----
+     An open-ended cylinder with a flat colour on it is a white tube with
+     a hard rim, which is what the headlights and the smoke off the fire
+     both were. This is the shader the torch already used, lifted out so
+     nothing has to draw a tube again: it fades along its length, fades to
+     nothing at its silhouette, and breathes very slightly.
+
+     The rim is the important part. A volume of light has no edge — the
+     moment you can see where it stops being lit, it stops being light and
+     becomes a cone of paint. */
+  function beamMaterial(tint, strength, len, opts) {
+    opts = opts || {};
+    return new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide, fog: false,
+      uniforms: {
+        time: { value: 0 },
+        amt: { value: strength },
+        len: { value: len },
+        fall: { value: opts.fall == null ? 3.1 : opts.fall },
+        soft: { value: opts.soft == null ? 1.6 : opts.soft },
+        tint: { value: new THREE.Color(tint) }
+      },
+      vertexShader: [
+        "varying vec2 vUv; varying vec3 vP;",
+        "void main(){ vUv = uv; vP = position;",
+        " gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }"
+      ].join("\n"),
+      fragmentShader: [
+        "uniform float time; uniform float amt; uniform float len;",
+        "uniform float fall; uniform float soft; uniform vec3 tint;",
+        "varying vec2 vUv; varying vec3 vP;",
+        "void main(){",
+        "  float along = clamp(vP.x / len, 0.0, 1.0);",
+        "  float a = exp(-along * fall) * 0.62;",
+        "  a *= smoothstep(0.0, 0.26, along);",
+        "  float across = abs(vUv.x * 2.0 - 1.0);",
+        "  a *= pow(1.0 - across * across, soft);",
+        "  a *= 0.93 + 0.07 * sin(along * 9.0 - time * 1.7);",
+        "  gl_FragColor = vec4(tint, a * amt);",
+        "}"
+      ].join("\n")
+    });
+  }
+
   function makeFire() {
     var g = new THREE.Group();
     var COUNT = 220;
@@ -7135,12 +7294,20 @@
     emb.frustumCulled = false;
     g.add(emb);
 
-    /* smoke, only visible against the sky */
-    var sm = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 1.4, 6.5, 10, 1, true),
-      new THREE.MeshBasicMaterial({ color: 0x5a5450, transparent: true, opacity: 0.055,
-        depthWrite: false, side: THREE.DoubleSide }));
-    sm.position.y = 4.2;
+    /* Smoke. It was an open-ended cylinder with a flat grey on it, which
+       is a lampshade standing over the fire, not a plume. Same treatment
+       as the beam: gone at the rim, gone at the top. */
+    var smG = new THREE.CylinderGeometry(0.30, 1.9, 7.4, 14, 6, true);
+    smG.translate(0, 3.7, 0);
+    smG.rotateZ(-Math.PI / 2);          /* the shader measures along +x */
+    var smM = beamMaterial(0x6a6058, 0.40, 7.4, { fall: 1.5, soft: 2.4 });
+    var sm = new THREE.Mesh(smG, smM);
+    sm.rotation.z = Math.PI / 2;
+    sm.position.y = 0.6;
+    sm.renderOrder = 19;
+    sm.frustumCulled = false;
     g.add(sm);
+    g.userData.smokeMat = smM;
 
     var light = new THREE.PointLight(0xff9a44, 0, 22, 1.35);
     light.position.y = 0.9;
@@ -7463,14 +7630,21 @@
     /* --- her --- */
     var rig = makeOuissy();
     built.scene.add(rig.root);
+    /* She is at home with the lights on when this starts. The torch is in
+       the kitchen drawer where it lives, and until she has been to get it
+       she is walking around her own house in the dark like anybody would.
+       It carries between levels once she has it. */
     var torch = makeTorch();
     rig.root.add(torch);
+    var hasTorch = def.id !== "home" || !!(G && G.hasTorch);
+    torch.visible = hasTorch;
 
     var player = {
       x: px, z: pz, vx: 0, vz: 0, facing: -Math.PI / 2,
       turn: Math.PI / 2, beam: Math.PI / 2, crouch: 0, groundY: 0,
       creeping: false, hidden: false, rig: rig, torch: torch,
-      stepPhase: 0, gait: 0, safe: { x: px, z: pz }, alive: true
+      stepPhase: 0, gait: 0, safe: { x: px, z: pz }, alive: true,
+      hasTorch: hasTorch
     };
     rig.root.rotation.y = player.turn;
 
@@ -7831,6 +8005,13 @@
        which is the single thing that stops the beam looking like a
        spotlight bolted to a turret. */
     var td = p.torch.userData;
+    if (!p.hasTorch) {
+      td.spot.intensity = 0;
+      td.pool.intensity = 0;
+      td.coneMat.uniforms.amt.value = 0;
+      p.torch.visible = false;
+      return;
+    }
     p.beam = dampAngle(p.beam == null ? -p.facing : p.beam, -p.facing, 0.15, dt);
     var swing = Math.atan2(Math.sin(p.beam - p.turn), Math.cos(p.beam - p.turn));
     td.rig.rotation.y = swing;
@@ -7990,7 +8171,7 @@
     var live = [];
     for (var i = 0; i < w.lamps.length; i++) {
       var L = w.lamps[i];
-      var off = false;
+      var off = !!L.dead;
       if (dead && !w.powered &&
           L.tx >= dead[0] && L.tx <= dead[2] && L.ty >= dead[1] && L.ty <= dead[3]) off = true;
       if (L.bulb) L.bulb.visible = !off;
@@ -8506,6 +8687,21 @@
       G.__tv = null;
       closeOverlay();
       Audio_.static(0.3, 0.07);
+      /* It stopped being repainted and went on glowing with whatever was
+         on it last, and the light it threw into the room stayed on. Off
+         means off: a dead grey panel and the room a good deal darker. */
+      var w = G.world;
+      if (w) {
+        if (w.tvScreen) {
+          w.tvScreen.material.map = null;
+          w.tvScreen.material.color.setHex(0x0e1014);
+          w.tvScreen.material.needsUpdate = true;
+        }
+        if (w.tvGlow) w.tvGlow.visible = false;
+        for (var i = 0; i < w.lamps.length; i++) {
+          if (w.lamps[i].kind === "tv") { w.lamps[i].dead = true; break; }
+        }
+      }
       say(TALK.tv, function () { clearStep("tv"); });
     });
     wrap.appendChild(b);
@@ -9018,6 +9214,7 @@
         });
         return;
       }
+      if (c === "1") { takeTorch(it); return; }
       if (c === "N") { showNote(); return; }
       if (c === "i") { pickUp(it); return; }
       if (c === "C") { takeTheCar(); return; }
@@ -9050,6 +9247,27 @@
       if (dp < TILE * 2.2 && step() && step().clears === "fire") { lightTheFire(); return; }
     }
     say([[null, "Nothing here."]]);
+  }
+
+  function takeTorch(it) {
+    if (G.player.hasTorch) return;
+    G.player.hasTorch = true;
+    G.hasTorch = true;
+    G.player.torch.visible = true;
+    Audio_.found();
+    var w = G.world;
+    for (var i = 0; i < w.things.length; i++) {
+      var t = w.things[i];
+      if (t.kind === "torch" && t.group) {
+        t.group.visible = false;
+        w.cells[t.y][t.x] = G.def.base || ".";
+      }
+    }
+    say([
+      [null, "The big torch, in the drawer under the kettle, where it has lived since she was small and there was a power cut every winter."],
+      [null, "She thumbs it on. The beam is yellow and enormous and it makes the kitchen look like somewhere else."],
+      ["OUISSY", "Okay."]
+    ]);
   }
 
   function pickUp(it) {
@@ -9352,10 +9570,12 @@
   }
 
   function afterFire() {
+    /* the long conversation used to run as text before the scene, so the
+       scene itself was seventeen silent seconds of the two of them not
+       moving. It happens in the scene now, and she gets up and crosses to
+       him while it does. */
     say(TALK.lit, function () {
-      say(TALK.campfire, function () {
-        fadeTo(function () { playCampfire(); });
-      });
+      fadeTo(function () { playCampfire(); });
     });
   }
 
@@ -9901,12 +10121,12 @@
 
     /* two of them in it, just visible through the glass */
     var her = makeOuissy(); her.root.scale.setScalar(0.82);
-    her.root.position.set(-0.1, 0.52, 0.42); her.root.rotation.y = -Math.PI / 2;
+    her.root.position.set(-0.1, 0.20, 0.42); her.root.rotation.y = -Math.PI / 2;
     poseHuman(her, 0, 0, null, { crouch: 1 });
     her.contact.visible = false;
     car.group.add(her.root);
     var him = makeAnwar(); him.root.scale.setScalar(0.82);
-    him.root.position.set(-0.1, 0.52, -0.42); him.root.rotation.y = -Math.PI / 2;
+    him.root.position.set(-0.1, 0.18, -0.42); him.root.rotation.y = -Math.PI / 2;
     poseHuman(him, 0, 0, null, { crouch: 1 });
     him.contact.visible = false;
     car.group.add(him.root);
@@ -9918,24 +10138,13 @@
       sp.position.set(1.9, 0.78, s);
       sp.target.position.set(34, -1.4, s * 2.6);
       car.group.add(sp); car.group.add(sp.target);
-      /* Forty metres long and ten across reads as a beam from behind the
-         car and as a grey wedge across half the picture from beside it,
-         which is where the camera now is. Shorter, narrower, fainter, and
-         it fades out along its length so it has an end. */
-      var cg = new THREE.CylinderGeometry(0.22, 2.6, 24, 16, 4, true);
-      cg.translate(0, -12, 0); cg.rotateZ(-Math.PI / 2);
-      (function () {
-        var pa = cg.attributes.position, cl = new Float32Array(pa.count * 3);
-        for (var q = 0; q < pa.count; q++) {
-          var f = clamp(1 - Math.abs(pa.getX(q)) / 24, 0, 1);
-          f = f * f;
-          cl[q * 3] = f; cl[q * 3 + 1] = f; cl[q * 3 + 2] = f;
-        }
-        cg.setAttribute("color", new THREE.Float32BufferAttribute(cl, 3));
-      })();
-      var cm = new THREE.MeshBasicMaterial({
-        color: 0xffe8c0, transparent: true, opacity: 0.075, vertexColors: true,
-        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+      /* It was an open cylinder with a flat colour on it: a white tube
+         with a hard rim coming out of the front of the car. Same shader as
+         the torch — gone at the rim, gone at the far end, so what you see
+         is the air being lit rather than a cone of paint. */
+      var cg = new THREE.CylinderGeometry(0.20, 2.2, 22, 18, 6, true);
+      cg.translate(0, -11, 0); cg.rotateZ(-Math.PI / 2);
+      var cm = beamMaterial(0xffe8c0, 0.44, 22, { fall: 2.6, soft: 2.0 });
       var beam = new THREE.Mesh(cg, cm);
       beam.position.set(1.9, 0.78, s);
       beam.rotation.z = -0.035;
@@ -9946,6 +10155,11 @@
     tail.position.set(-2.3, 0.8, 0);
     car.group.add(tail);
     /* a soft top light so the car is a shape and not a hole in the road */
+    /* enough on the bodywork that the car is a car and not a hole in the
+       picture — the headlights only light what is in front of it */
+    var rim = new THREE.DirectionalLight(0x9ab4e8, 0.55);
+    rim.position.set(-6, 5, 9);
+    car.group.add(rim); car.group.add(rim.target);
     var carFill = new THREE.PointLight(0x94aee0, 3.2, 7, 1.6);
     carFill.position.set(-1.2, 3.0, 0);
     car.group.add(carFill);
@@ -10031,7 +10245,10 @@
         mist.points.position.x = cx0 - 60;
 
         beams.forEach(function (b) {
-          b.beam.material.opacity = 0.10 + 0.025 * Math.sin(t * 4);
+          if (b.beam.material.uniforms) {
+            b.beam.material.uniforms.time.value = t;
+            b.beam.material.uniforms.amt.value = 0.44 + 0.05 * Math.sin(t * 4);
+          }
           b.spot.intensity = dead ? Math.max(30, 220 - (t - 8.5) * 70) : 220;
         });
         tail.intensity = 2.4 + Math.sin(t * 6) * 0.4;
@@ -10075,10 +10292,12 @@
     body.position.y = 0.70; body.castShadow = true; g.add(body);
     var lower = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.38, 1.68), paint);
     lower.position.y = 0.36; g.add(lower);
-    var cabin = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.62, 1.6), paint);
-    cabin.position.set(-0.25, 1.32, 0); cabin.castShadow = true; g.add(cabin);
-    var glassM = new THREE.Mesh(new THREE.BoxGeometry(2.16, 0.5, 1.64), glass);
-    glassM.position.set(-0.25, 1.14, 0); g.add(glassM);
+    /* the cabin was too shallow for anybody to sit in: heads came out
+       through the roof */
+    var cabin = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.74, 1.6), paint);
+    cabin.position.set(-0.25, 1.44, 0); cabin.castShadow = true; g.add(cabin);
+    var glassM = new THREE.Mesh(new THREE.BoxGeometry(2.16, 0.62, 1.64), glass);
+    glassM.position.set(-0.25, 1.22, 0); g.add(glassM);
     var bonnet = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.22, 1.72), paint);
     bonnet.position.set(1.34, 1.02, 0); bonnet.rotation.z = -0.09; g.add(bonnet);
     var wheels = [];
@@ -10283,20 +10502,53 @@
     him.root.rotation.y = -Math.PI / 2;     /* facing it from the other side */
     scene.add(him.root);
 
-    function sit(rig, fold) {
-      rig.legL.hip.rotation.x = 0.16; rig.legR.hip.rotation.x = -0.16;
-      rig.legL.upper.rotation.z = 1.44; rig.legR.upper.rotation.z = 1.44;
-      rig.legL.knee.rotation.z = -1.72; rig.legR.knee.rotation.z = -1.72;
-      rig.armL.upper.rotation.z = -0.28; rig.armR.upper.rotation.z = -0.28;
-      rig.armL.upper.rotation.x = 0.2;  rig.armR.upper.rotation.x = -0.2;
-      rig.armL.elbow.rotation.z = -1.05; rig.armR.elbow.rotation.z = -1.05;
-      rig.spine.rotation.z = fold ? 0.26 : 0.12;
-      rig.spine.rotation.x = 0;
+    /* Sitting, as an amount rather than a state, so she can stand out of
+       it and lower herself back into it without either end snapping. It
+       is applied after the walk pose, which has already written every
+       bone this touches. */
+    function seat(rig, k, fold) {
+      if (k <= 0.0005) return;
+      function mix(o, ax, target) { o.rotation[ax] = lerp(o.rotation[ax], target, k); }
+      mix(rig.legL.hip, "x", 0.16);   mix(rig.legR.hip, "x", -0.16);
+      mix(rig.legL.upper, "z", 1.44); mix(rig.legR.upper, "z", 1.44);
+      mix(rig.legL.knee, "z", -1.72); mix(rig.legR.knee, "z", -1.72);
+      mix(rig.legL.foot, "z", 0.24);  mix(rig.legR.foot, "z", 0.24);
+      mix(rig.armL.upper, "z", -0.28); mix(rig.armR.upper, "z", -0.28);
+      mix(rig.armL.upper, "x", 0.20);  mix(rig.armR.upper, "x", -0.20);
+      mix(rig.armL.elbow, "z", -1.05); mix(rig.armR.elbow, "z", -1.05);
+      mix(rig.spine, "z", fold ? 0.26 : 0.12);
+      mix(rig.spine, "x", 0);
+      /* and she is lower, because she is on a log */
+      rig.root.position.y = lerp(rig.root.position.y, -0.10, k);
     }
-    sit(her, true); sit(him, false);
+
     her.contact.visible = false; him.contact.visible = false;
 
-    var leaning = 0;
+    /* the way round the fire, on the side away from it */
+    var walkPath = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.28, 0, 1.92),
+      new THREE.Vector3(2.10, 0, 1.30),
+      new THREE.Vector3(2.55, 0, 0.00),
+      new THREE.Vector3(2.10, 0, -1.30),
+      new THREE.Vector3(0.52, 0, -1.92)
+    ]);
+    var SEAT = new THREE.Vector3(0.52, 0, -1.92);
+
+    /* what she is doing, and what in the conversation makes her do it */
+    var MOVE_CUE = "You should sleep first. I'll watch the fire.";
+    var LEAN_CUE = "Her head finds his shoulder, and stays there.";
+    var phase = "sitting", phaseT = 0, seatK = 1, leanK = 0, cued = false, leanCued = false;
+    var STAND = 1.1, WALK = 3.4, LOWER = 1.1;
+    var pTmp = new THREE.Vector3(), tTmp = new THREE.Vector3();
+
+    function heard(cue) {
+      if (!G.dlg) return false;
+      for (var i = 0; i < G.dlg.i; i++) {
+        if (G.dlg.lines[i] && G.dlg.lines[i][1] === cue) return true;
+      }
+      return false;
+    }
+
     runCine({
       scene: scene, camera: cam,
       caption: "",
@@ -10307,38 +10559,118 @@
         stars.u.time.value = t;
         if (Math.random() < dt * 5) Audio_.fire();
 
-        /* the camera comes in slowly, all the way through */
-        var k = clamp(t / 16, 0, 1);
-        var ease = k * k * (3 - 2 * k);
-        var r = lerp(8.4, 5.0, ease);
-        var a = -1.15 + ease * 0.5;
-        cam.position.set(Math.sin(a) * r, lerp(2.5, 1.7, ease), Math.cos(a) * r);
-        cam.lookAt(0, lerp(0.95, 1.15, ease), 0);
+        if (!cued && heard(MOVE_CUE)) { cued = true; phase = "rising"; phaseT = 0; }
+        if (!leanCued && heard(LEAN_CUE)) { leanCued = true; }
+        phaseT += dt;
 
-        /* breathing, and the fire moving on them */
-        poseHuman(her, t * 0.5, 0, null, { crouch: 0 });
-        poseHuman(him, t * 0.5 + 1.3, 0, null, { crouch: 0 });
-        sit(her, true); sit(him, false);
-
-        /* she leans over, and her head finds his shoulder */
-        if (t > 9.5) {
-          leaning = clamp(leaning + dt / 2.4, 0, 1);
-          var e2 = leaning * leaning * (3 - 2 * leaning);
-          her.root.position.z = lerp(1.92, -1.05, e2);
-          her.root.rotation.y = lerp(Math.PI / 2, Math.PI * 0.34, e2);
-          her.spine.rotation.x = lerp(0, -0.42, e2);
-          her.neck.rotation.x = lerp(0, -0.5, e2);
-          him.armR.upper.rotation.z = lerp(-0.32, -0.95, e2);
-          him.armR.upper.rotation.x = lerp(0, 0.7, e2);
+        /* ---- what she is doing with herself ---- */
+        var gait = 0;
+        if (phase === "rising") {
+          seatK = 1 - clamp(phaseT / STAND, 0, 1);
+          her.root.position.set(0.28, 0, 1.92);
+          her.root.rotation.y = Math.PI / 2;
+          if (phaseT >= STAND) { phase = "walking"; phaseT = 0; }
+        } else if (phase === "walking") {
+          seatK = 0;
+          gait = clamp(phaseT / 0.35, 0, 1) * clamp((WALK - phaseT) / 0.4, 0, 1);
+          var u = clamp(phaseT / WALK, 0, 1);
+          var e = u * u * (3 - 2 * u);          /* she does not set off at a sprint */
+          walkPath.getPointAt(e, pTmp);
+          her.root.position.set(pTmp.x, 0, pTmp.z);
+          walkPath.getTangentAt(Math.min(0.999, e), tTmp);
+          her.root.rotation.y = Math.atan2(-tTmp.z, tTmp.x);
+          if (phaseT >= WALK) { phase = "lowering"; phaseT = 0; }
+        } else if (phase === "lowering") {
+          seatK = clamp(phaseT / LOWER, 0, 1);
+          her.root.position.set(SEAT.x, 0, SEAT.z);
+          /* she turns to the fire as she sits */
+          her.root.rotation.y = lerp(her.root.rotation.y, -Math.PI / 2, clamp(dt * 5, 0, 1));
+          if (phaseT >= LOWER) { phase = "beside"; phaseT = 0; }
+        } else if (phase === "beside") {
+          seatK = 1;
+          her.root.position.set(SEAT.x, 0, SEAT.z);
+          her.root.rotation.y = -Math.PI / 2;
+        } else {
+          seatK = 1;
+          her.root.position.set(0.28, 0, 1.92);
+          her.root.rotation.y = Math.PI / 2;
         }
-        if (t > 12.4 && t < 12.6) caption("She is asleep before he has counted to ten.");
+
+        /* breathing under all of it, and the walk when she is walking */
+        poseHuman(her, t * (gait > 0.1 ? 1 : 0.5), gait, null, { crouch: 0 });
+        poseHuman(him, t * 0.5 + 1.3, 0, null, { crouch: 0 });
+        seat(her, seatK, true);
+        seat(him, 1, false);
+
+        /* ---- and then her head goes down ---- */
+        if (leanCued && phase === "beside") leanK = clamp(leanK + dt / 2.6, 0, 1);
+        if (leanK > 0) {
+          var e2 = leanK * leanK * (3 - 2 * leanK);
+          /* The seated pose has already folded her the other way, so these
+             have to be big enough to cross it and then lean: her spine
+             lands near -0.22 rather than at it. Every number here was
+             picked off a render, not out of the air. */
+          her.spine.rotation.z += -0.48 * e2;       /* she tips toward him */
+          her.neck.rotation.z += -0.25 * e2;
+          her.head.rotation.z = -0.20 * e2;
+          /* and shifts along the log until there is no gap left */
+          her.root.position.x = lerp(SEAT.x, 0.24, e2);
+          /* His arm comes round her — the near one. It is armR that sits
+             on her side of him; posing armL put it out over open ground. */
+          him.armR.upper.rotation.x = lerp(him.armR.upper.rotation.x, 0.95, e2);
+          him.armR.upper.rotation.z = lerp(him.armR.upper.rotation.z, -1.10, e2);
+          him.armR.elbow.rotation.z = lerp(him.armR.elbow.rotation.z, -1.45, e2);
+        }
+
+        /* the camera comes in slowly, and swings round to take them both
+           in once she has crossed */
+        var k = clamp(t / 26, 0, 1);
+        var ease = k * k * (3 - 2 * k);
+        var over = phase === "beside" || phase === "lowering" ? 1 : 0;
+        var swing = damp(cam.userData.sw == null ? 0 : cam.userData.sw, over, 0.9, dt);
+        cam.userData.sw = swing;
+        /* Any camera pointed at the fire has the fire's far side directly
+           behind it, and her way round is on that far side — so while she
+           walks, the talking shot has her passing through the flames. Go
+           outside the arc and watch her instead: the fire ends up behind
+           her shoulder, lighting her, and nothing eclipses anything. */
+        var crossTo = phase === "rising" || phase === "walking" ? 1 : 0;
+        var cross = damp(cam.userData.cr == null ? 0 : cam.userData.cr, crossTo, 0.55, dt);
+        cam.userData.cr = cross;
+        var r = lerp(8.4, 5.2, ease);
+        var a = -1.15 + ease * 0.5;
+        /* Across the fire while they are talking across it; round onto
+           their side of it once she has crossed, close and low and off to
+           one shoulder, so the fire is lighting their faces and you can
+           see her head go down. */
+        var ox = Math.sin(a) * r, oy = lerp(2.6, 1.75, ease), oz = Math.cos(a) * r;
+        var px = lerp(ox, 6.60, cross), py = lerp(oy, 2.45, cross), pz = lerp(oz, 3.55, cross);
+        var lx = lerp(0, her.root.position.x, cross);
+        var ly = lerp(0.95, 1.02, ease);
+        var lz = lerp(0, her.root.position.z, cross);
+        /* Their side of the fire, three-quarters on. Straight down the log
+           they eclipse each other; straight through the fire it is in
+           front of their laps. From here you can see both faces, the
+           fire is lighting them, and it sits just off the near edge. */
+        cam.position.set(lerp(px, 1.60, swing), lerp(py, 1.85, swing), lerp(pz, 1.20, swing));
+        cam.lookAt(lerp(lx, 0.14, swing), lerp(ly, 1.02, swing), lerp(lz, -1.90, swing));
       },
-      duration: 17.5,
-      done: function () { endCine(function () { playSunrise(); }); }
+      duration: Infinity,
+      done: null
+    });
+
+    /* the two of them, reachable from a test — posing two people so they
+       touch is the sort of thing that has to be looked at, not reasoned
+       about, and a harness needs a handle on the bones */
+    if (G.cine) { G.cine.her = her; G.cine.him = him; }
+
+    /* the conversation, over the top of it */
+    G.state = "dialogue";
+    say(TALK.campfire, function () {
+      endCine(function () { playSunrise(); });
     });
   }
 
-  /* ---- THE SUNRISE ---- */
   function playSunrise() {
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x2a2440, 0.010);
@@ -11005,7 +11337,8 @@
           paintBroadcast(G.world.tvCanvas, G.time);
           G.world.tvTexture.needsUpdate = true;
         }
-        if (G.world.tvGlow) G.world.tvGlow.material.opacity = 0.34 + Math.sin(G.time * 13) * 0.14;
+        if (G.world.tvGlow && G.world.tvGlow.visible)
+          G.world.tvGlow.material.opacity = 0.34 + Math.sin(G.time * 13) * 0.14;
       }
       if (G.horseRig) poseHorse(G.horseRig, G.time, 0);
     }
@@ -11092,7 +11425,13 @@
     /* 16.7ms is the budget; leave a little room either side of it so it
        does not sit on the boundary flipping between two rungs */
     if ((med > 0.0198 || p90 > 0.0290) && Stage.rung < RUNGS.length - 1) {
-      perfStep(Stage.rung + 1, 4.5);
+      /* One rung at a time is right for a machine that is a little over
+         budget. A machine at half the frame rate it needs should not have
+         to wait twenty-five seconds to walk down six of them, so how far
+         it drops is how far over it is. */
+      var over = med / 0.0167;
+      var drop = over > 2.4 ? 3 : over > 1.7 ? 2 : 1;
+      perfStep(Math.min(RUNGS.length - 1, Stage.rung + drop), drop > 1 ? 3.0 : 4.5);
     } else if (med < 0.0140 && p90 < 0.0190 && Stage.rung > 0) {
       perfStep(Stage.rung - 1, 7.0);  /* slower to climb than to fall */
     }
