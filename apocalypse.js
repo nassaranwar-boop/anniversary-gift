@@ -2014,18 +2014,7 @@
   }
 
   /* a soft round blob used for dust, embers and fireflies */
-  var _dotTex = null;
-  function dotTexture() {
-    if (_dotTex) return _dotTex;
-    var cc = canvas2d(64), x = cc.x;
-    var g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
-    g.addColorStop(0, "rgba(255,255,255,1)");
-    g.addColorStop(0.4, "rgba(255,255,255,.5)");
-    g.addColorStop(1, "rgba(255,255,255,0)");
-    x.fillStyle = g; x.fillRect(0, 0, 64, 64);
-    _dotTex = new THREE.CanvasTexture(cc.c);
-    return _dotTex;
-  }
+
 
   /* =========================================================
      9 — THE POST CHAIN
@@ -3528,11 +3517,6 @@
       function rimY(a) { return (0.012 + 0.068 * Math.cos(a)) * S; }
       function rimTheta(a) { return Math.acos(clamp(rimY(a) / Ry, -1, 1)); }
       /* the scalp lifts either side of the parting and dips along it */
-      function partDip(a, u) {
-        var d1 = (a - PART) / 0.26, d2 = (a - PART + 6.2832) / 0.26;
-        var d = Math.min(Math.abs(d1), Math.abs(d2));
-        return Math.exp(-d * d) * Math.sin(Math.PI * Math.min(1, u * 1.15)) * 0.010 * S;
-      }
 
       g.push(scalp(Rx, Ry, Rz, AX, rimY, 0.010 * S, PART));
 
@@ -3864,7 +3848,7 @@
 
     var skin = spec.skinMat || skinMat(spec.skin);
     skin.vertexColors = true;              /* the head carries its own tone */
-    var bodyMesh = add(buildBody(S, B, depth, spec), skin);
+    add(buildBody(S, B, depth, spec), skin);
 
     var topKind = spec.topKind || "tee";
     var topMat = spec.topMat || clothMat(spec.top, 0.90, spec.weave);
@@ -5060,8 +5044,7 @@
        car outdoors, so they take whatever their neighbours are standing on
        rather than dragging a slab of pavement into a field */
     var ARCH = ".lLGQ=#vKBFnufYyjdDPWNT";
-    function isOutdoorTile(ch) { return ch === "," || ch === "~"; }
-    function surfaceOf(ch) {
+      function surfaceOf(ch) {
       if (ch === "," || ch === "~" || ch === " ") return 0;   /* ground */
       if (ARCH.indexOf(ch) >= 0) return 1;                    /* made */
       return -1;                                              /* could be either */
@@ -7298,9 +7281,6 @@
      Gameplay happens in world units. These are the only four
      functions that know the grid is a grid.
      ========================================================= */
-  function tileAt(w, wx, wz) {
-    return w.at(Math.floor(wx / TILE), Math.floor(wz / TILE));
-  }
   function doorAtTile(w, tx, ty) {
     for (var i = 0; i < w.doors.length; i++) {
       if (w.doors[i].x === tx && w.doors[i].y === ty) return w.doors[i];
@@ -10699,7 +10679,6 @@
      rather than let the game turn into a slideshow. It is measured over a
      second and a half so a single long frame — a level building, a shader
      compiling — never triggers it. */
-  var perfAcc = 0, perfN = 0, perfLock = 0;
   /* =========================================================
      KEEPING SIXTY
      Render at the screen's own pixel ratio, and only give that
