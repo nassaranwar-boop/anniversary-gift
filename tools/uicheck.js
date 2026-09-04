@@ -46,31 +46,54 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
       caps: document.querySelectorAll('.ap-cap').length,
       segs: document.querySelectorAll('.ap-seg').length,
       on: document.querySelectorAll('.ap-seg-btn.on').length,
+      lvls: document.querySelectorAll('.ap-lvl-in').length,
+      nums: [...document.querySelectorAll('.ap-lvl-num')].map(x => x.textContent),
       back: !!document.querySelector('.ap-card-go')
     };
   });
   ok('the controls panel draws the keys as keys', panel.caps >= 7, panel);
-  ok('and has a switch for each setting', panel.segs === 5, panel);
-  ok('each switch shows which way it is set', panel.on === 5, panel);
+  ok('and has a switch for each setting', panel.segs === 3, panel);
+  ok('each switch shows which way it is set', panel.on === 3, panel);
+  ok('sound and music are levels, not switches', panel.lvls === 2, panel);
+  ok('and each level says where it is set', panel.nums.length === 2 &&
+     panel.nums.every(t => /^\d+$/.test(t)), panel);
   ok('and there is a way back', panel.back, panel);
 
-  /* a switch that actually switches, and is remembered */
-  const flipped = await p.evaluate(() => {
-    const segs = [...document.querySelectorAll('.ap-seg')];
-    /* the sound switch is the first one; press OFF */
-    const off = [...segs[0].querySelectorAll('.ap-seg-btn')].find(x => x.textContent === 'OFF');
-    off.click();
-    let saved = null;
-    try { saved = JSON.parse(localStorage.getItem('apoc.settings')); } catch (e) {}
-    return { lit: off.classList.contains('on'), saved: saved };
+  /* the sound levels: they move, they are remembered, and nought is off */
+  const vol = await p.evaluate(() => {
+    const ins = [...document.querySelectorAll('.ap-lvl-in')];
+    ins[1].value = '40';
+    ins[1].dispatchEvent(new Event('input', { bubbles: true }));
+    ins[1].dispatchEvent(new Event('change', { bubbles: true }));
+    const mid = JSON.parse(localStorage.getItem('apoc.settings'));
+    ins[0].value = '0';
+    ins[0].dispatchEvent(new Event('input', { bubbles: true }));
+    const zero = JSON.parse(localStorage.getItem('apoc.settings'));
+    return { mid: mid, zero: zero,
+             reads: [...document.querySelectorAll('.ap-lvl-num')].map(x => x.textContent) };
   });
-  ok('pressing a switch lights it', flipped.lit, flipped);
-  ok('and the choice is written down', flipped.saved && flipped.saved.sound === false, flipped);
+  ok('moving the music level writes it down',
+     vol.mid && Math.abs(vol.mid.musicVol - 0.4) < 0.001, vol.mid);
+  ok('sliding the sound to nought turns the sound off',
+     vol.zero && vol.zero.sound === false && vol.zero.vol === 0, vol.zero);
+  ok('and nought reads OFF rather than 0', vol.reads[0] === 'OFF', vol.reads);
+
+  /* sound off and then on again used to be a one-way door */
+  const backOn = await p.evaluate(() => {
+    const ins = [...document.querySelectorAll('.ap-lvl-in')];
+    ins[0].value = '80';
+    ins[0].dispatchEvent(new Event('input', { bubbles: true }));
+    const s = JSON.parse(localStorage.getItem('apoc.settings'));
+    return { sound: s.sound, vol: s.vol, level: window.__apAudio ? window.__apAudio() : null };
+  });
+  ok('and turning it back on turns it back on',
+     backOn.sound === true && Math.abs(backOn.vol - 0.8) < 0.001, backOn);
 
   /* creeping can be a toggle rather than a hold */
   const creep = await p.evaluate(() => {
     const segs = [...document.querySelectorAll('.ap-seg')];
-    const tog = [...segs[3].querySelectorAll('.ap-seg-btn')].find(x => x.textContent === 'TOGGLE');
+    /* shake, creeping, picture — creeping is the middle one */
+    const tog = [...segs[1].querySelectorAll('.ap-seg-btn')].find(x => x.textContent === 'TOGGLE');
     tog.click();
     document.querySelector('.ap-card-go').click();          /* BACK */
     document.querySelector('.ap-card-go').click();          /* BACK TO IT */

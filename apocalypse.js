@@ -949,8 +949,21 @@
   var Audio_ = (function () {
     var ctx = null, master = null, busVerb = null, verb = null, busDry = null;
     var noiseBuf = null, ambient = null, on = false, pendingBed = null;
+    /* how loud the chapter is allowed to be, 0..1, from the settings */
+    var level = 0.8;
+    /* whether the player has ever pressed BEGIN — settings may turn the
+       sound back on, but they may not turn it on for the first time,
+       because that has to be the gesture that starts the chapter */
+    var everOn = false;
 
     function ac() {
+      /* A closed context can never be resumed, and every node hanging off
+         it is dead. Start again rather than going quiet for the session. */
+      if (ctx && ctx.state === "closed") {
+        try { API.score.dropContext(); } catch (e) {}
+        ctx = null; master = null; busVerb = null; verb = null;
+        busDry = null; noiseBuf = null; ambient = null;
+      }
       if (ctx) return ctx;
       var C = window.AudioContext || window.webkitAudioContext;
       if (!C) return null;
@@ -968,7 +981,93 @@
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       var d = noiseBuf.getChannelData(0);
       for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      watchForWaking();
       return ctx;
+    }
+
+    /* ============================================================
+       COMING BACK TO THE TAB
+
+       Leaving the page suspends the audio context, which is right —
+       nobody wants a game playing at them from a tab they are not
+       looking at. Coming back did not un-suspend it, and every single
+       sound in this file is behind live(), which is `state === running`.
+       So one alt-tab and the chapter went silent for good: no music, no
+       footsteps, no doors, nothing, until a reload.
+
+       Three things had to be true and none of them were. It has to wake
+       on the way back in, from *any* stopped state — Safari parks a
+       context in "interrupted", not "suspended", and the old resume()
+       tested only for "suspended" and returned. It has to survive a
+       browser that refuses to resume until it has a gesture, which means
+       trying again on the first touch or key after the tab is visible
+       again. And the score has to be told, because its scheduler works
+       in context time: while the context was stopped its clock stood
+       still, so the next beat is due at a moment that has already gone
+       and the pump would sit there scheduling into the past. It is
+       re-anchored to now and picked up again on the beat.
+       ============================================================ */
+    var wakeBound = false, waking = false;
+    function stopped() {
+      return !!ctx && ctx.state !== "running" && ctx.state !== "closed";
+    }
+    function afterWake() {
+      waking = false;
+      if (!ctx || ctx.state !== "running") return;
+      if (pendingBed) { var k = pendingBed; pendingBed = null; API.bed(k); }
+      /* the tune picks up where the clock left off, not where it was */
+      try { API.score.reanchor(); } catch (e) {}
+      /* the master fader is scheduled in context time too */
+      if (on && master) {
+        try {
+          master.gain.cancelScheduledValues(ctx.currentTime);
+          master.gain.setTargetAtTime(0.69 * level, ctx.currentTime, 0.25);
+        } catch (e) {}
+      }
+    }
+    function wake() {
+      if (!ctx) return;
+      if (ctx.state === "closed") {
+        var wasOn = on, bedBack = ambient ? ambient.kind : pendingBed;
+        var tune = null;
+        try { tune = API.score.playing(); } catch (e) {}
+        if (!ac()) return;
+        on = wasOn;
+        if (wasOn) {
+          master.gain.cancelScheduledValues(ctx.currentTime);
+          master.gain.setTargetAtTime(0.69 * level, ctx.currentTime, 0.3);
+        }
+        if (bedBack) API.bed(bedBack);
+        if (tune) API.score(tune);
+        return;
+      }
+      if (ctx.state === "running") { afterWake(); return; }
+      if (waking) return;
+      waking = true;
+      var p;
+      try { p = ctx.resume(); } catch (e) { waking = false; return; }
+      if (p && p.then) p.then(afterWake, function () { waking = false; });
+      else afterWake();
+    }
+    function watchForWaking() {
+      if (wakeBound || typeof document === "undefined") return;
+      wakeBound = true;
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) wake();
+      });
+      window.addEventListener("pageshow", wake);
+      window.addEventListener("focus", wake);
+      /* the belt and braces: a browser that will not resume without a
+         gesture gets one the moment the player touches anything */
+      ["pointerdown", "touchstart", "keydown", "mousedown"].forEach(function (n) {
+        window.addEventListener(n, function () { if (stopped()) wake(); },
+                                { capture: true, passive: true });
+      });
+      if ("onstatechange" in ctx) {
+        ctx.onstatechange = function () {
+          if (stopped() && !document.hidden) wake();
+        };
+      }
     }
 
     /* a room, made out of noise that runs out */
@@ -1025,12 +1124,29 @@
     var API = {
       begin: function () {
         if (!ac()) return;
-        if (ctx.state === "suspended") ctx.resume().then(function () {
-          if (pendingBed) { var k = pendingBed; pendingBed = null; API.bed(k); }
-        });
-        on = true;
+        if (stopped()) wake();
+        on = true; everOn = true;
         master.gain.cancelScheduledValues(ctx.currentTime);
-        master.gain.setTargetAtTime(0.55, ctx.currentTime, 0.4);
+        master.gain.setTargetAtTime(0.69 * level, ctx.currentTime, 0.4);
+      },
+      /* the volume slider in the settings; 0 is silence, and it takes
+         effect on the note that is already sounding */
+      level: function (v) {
+        level = clamp(v == null ? 0.8 : v, 0, 1);
+        if (!ctx || !master || !on) return;
+        try {
+          master.gain.cancelScheduledValues(ctx.currentTime);
+          master.gain.setTargetAtTime(0.69 * level, ctx.currentTime, 0.12);
+        } catch (e) {}
+      },
+      levelOf: function () { return level; },
+      everStarted: function () { return everOn; },
+      stateOf: function () { return ctx ? ctx.state : "none"; },
+      /* the offline harness leaving the tab */
+      __suspend: function () {
+        if (!ctx || ctx.state !== "running") return Promise.resolve(false);
+        try { return ctx.suspend().then(function () { return true; }); }
+        catch (e) { return Promise.resolve(false); }
       },
       end: function () {
         if (!ctx) return;
@@ -1039,12 +1155,9 @@
         master.gain.cancelScheduledValues(ctx.currentTime);
         master.gain.setTargetAtTime(0.0, ctx.currentTime, 0.25);
       },
-      resume: function () {
-        if (!ctx || ctx.state !== "suspended") return;
-        ctx.resume().then(function () {
-          if (pendingBed) { var k = pendingBed; pendingBed = null; API.bed(k); }
-        });
-      },
+      /* Safari parks a context in "interrupted" rather than "suspended",
+         and this used to test for one of those and give up on the other. */
+      resume: function () { if (stopped()) wake(); },
 
       /* --- the ambient bed: one per place, crossfaded --- */
       bed: function (kind) {
@@ -1093,7 +1206,7 @@
         lfo.connect(lg); lg.connect(f.frequency); lfo.start(); nodes.push(lfo);
 
         g.gain.setTargetAtTime(spec.vol, ctx.currentTime, 1.2);
-        ambient = { g: g, nodes: nodes, base: spec.vol };
+        ambient = { g: g, nodes: nodes, base: spec.vol, kind: kind };
       },
 
       /* =====================================================
@@ -1492,7 +1605,7 @@
           timer = setTimeout(pump, 240);
         }
 
-        var wanted = null, muted = false;
+        var wanted = null, muted = false, mvol = 0.9;
         function setPiece(name, vol) {
           wanted = name;
           if (!ac() || muted) { if (muted) stopAll(1.1); return; }
@@ -1502,7 +1615,8 @@
           bus = ctx.createGain();
           bus.gain.value = 0.0001;
           bus.connect(master);
-          bus.gain.setTargetAtTime(vol == null ? 0.9 : vol, ctx.currentTime, 2.4);
+          bus.gain.setTargetAtTime((vol == null ? 0.9 : vol) * (mvol / 0.9),
+                                   ctx.currentTime, 2.4);
           /* everything the score plays goes through this pair, so the
              whole cue fades as one thing */
           dry = ctx.createGain(); dry.connect(bus);
@@ -1523,7 +1637,39 @@
           if (muted) stopAll(0.9);
           else if (wanted) { var w = wanted; piece = null; setPiece(w); }
         };
+        /* The scheduler works a second and a bit ahead in context time.
+           A context that was stopped froze that clock, so on the way back
+           the next beat can be due at a moment that has already passed
+           and the pump would sit scheduling into the past forever. This
+           puts the next beat just ahead of now and restarts the pump —
+           and if the cue was lost altogether, plays it again. */
+        setPiece.reanchor = function () {
+          if (!ctx || ctx.state !== "running") return;
+          if (!piece) {
+            if (wanted && !muted) { var w = wanted; wanted = null; setPiece(w); }
+            return;
+          }
+          if (nextAt < ctx.currentTime + 0.05) nextAt = ctx.currentTime + 0.15;
+          if (timer) { clearTimeout(timer); timer = 0; }
+          pump();
+        };
+        /* the context went away under us: drop every node built into it */
+        setPiece.dropContext = function () {
+          if (timer) { clearTimeout(timer); timer = 0; }
+          bus = null; dry = null; wet = null; vib = null; vibGain = null;
+          voices = []; piece = null;
+        };
         setPiece.playing = function () { return piece ? piece.name : null; };
+        /* the music slider — separate from the rest of the sound, because
+           somebody who wants to hear the footsteps in the dark may not
+           want a piano over them */
+        setPiece.volume = function (v) {
+          mvol = clamp(v == null ? 0.9 : v, 0, 1) ;
+          if (bus && ctx) {
+            try { bus.gain.setTargetAtTime(mvol, ctx.currentTime, 0.25); } catch (e) {}
+          }
+        };
+        setPiece.volumeOf = function () { return mvol; };
         return setPiece;
       })(),
 
@@ -9178,7 +9324,10 @@
   /* =========================================================
      20 — THE TICK
      ========================================================= */
-  function step() { return G.def.steps ? G.def.steps[G.stepIndex] : null; }
+  /* a cut can run before any level has been entered — the harness does
+     exactly that — and asking a level that is not there for its steps
+     should be a no, not a crash */
+  function step() { return (G && G.def && G.def.steps) ? G.def.steps[G.stepIndex] : null; }
 
   function setStep() {
     var s = step();
@@ -9247,7 +9396,12 @@
       q.t += dt / 0.85;
       if (q.t >= 1) { q.live = false; q.mesh.visible = false; continue; }
       var e = 1 - Math.pow(1 - q.t, 3);
-      q.mesh.scale.setScalar(0.2 + e * q.r);
+      /* It opened out to the full radius the sound actually carries,
+         which is most of a room: a saucer the size of the kitchen every
+         time she takes a step. It reads as a tell, not as a map — it
+         only has to say "that was loud" — so it opens to a bit over half
+         that now and stays close to her feet. */
+      q.mesh.scale.setScalar(0.12 + e * q.r * 0.52);
       q.mesh.material.opacity = 0.20 * (1 - q.t) * (1 - q.t);
     }
   }
@@ -9715,7 +9869,8 @@
      localStorage so the chapter remembers them, and applied by whoever
      reads them rather than by a pile of listeners.
      ========================================================= */
-  var SETTINGS = { sound: true, music: true, shake: true, creepHold: true, quality: "auto" };
+  var SETTINGS = { sound: true, music: true, shake: true, creepHold: true, quality: "auto",
+                   vol: 0.8, musicVol: 0.9 };
   (function () {
     try {
       var raw = localStorage.getItem("apoc.settings");
@@ -9729,10 +9884,17 @@
     try { localStorage.setItem("apoc.settings", JSON.stringify(SETTINGS)); } catch (e) {}
   }
   function applySettings() {
-    /* Sound can only be started by a gesture, and the game already does
-       that on its own; all this has to do is stop it. */
+    /* Sound off and then on again used to be a one-way door: this called
+       end(), and nothing anywhere called begin() a second time, so the
+       chapter went silent for the rest of the session. Every path that
+       reaches here is a press on a button, which is the gesture a browser
+       wants before it will make a sound, so turning it back on is allowed
+       to be done from here. */
+    Audio_.level(SETTINGS.vol);
+    Audio_.score.volume(SETTINGS.musicVol);
     if (!SETTINGS.sound) Audio_.end();
-    Audio_.score.mute(!SETTINGS.music || !SETTINGS.sound);
+    else if (Audio_.everStarted()) { Audio_.begin(); Audio_.resume(); }
+    Audio_.score.mute(!SETTINGS.music || !SETTINGS.sound || SETTINGS.musicVol <= 0);
     /* quality: auto lets the ladder do its work, the other two pin it */
     if (Stage.renderer) {
       if (SETTINGS.quality === "crisp") { perfPin = 0; perfStep(0, 4); }
@@ -9742,12 +9904,37 @@
   }
   var perfPin = -1;
 
+  /* A list that is taller than the plate scrolls, and there was nothing
+     on screen to say so: the last row simply stopped halfway through a
+     line, which reads as the same fault as a heading squeezed to
+     nothing. It fades out at the bottom edge while there is more below
+     it, and stops fading the moment you reach the end. */
+  function scrollFade(list, card) {
+    var cue = el("p", "ap-card-more", "\u2304");
+    cue.setAttribute("aria-hidden", "true");
+    function upd() {
+      var more = list.scrollTop + list.clientHeight < list.scrollHeight - 2;
+      if (more) cue.classList.add("on"); else cue.classList.remove("on");
+    }
+    list.addEventListener("scroll", upd, { passive: true });
+    upd();
+    /* the plate animates in, so its real height arrives a frame later */
+    requestAnimationFrame(upd);
+    setTimeout(upd, 450);
+    card.appendChild(list);
+    card.appendChild(cue);
+    return card;
+  }
+
   /* ---- a plate with words on it ---- */
   function card(kicker, title, rows, buttonText, onGo, quitText, onQuit, extras) {
     var c = el("div", "ap-card");
     c.appendChild(el("p", "ap-card-kicker", kicker));
     c.appendChild(el("h3", "ap-card-title", title));
     if (rows && rows.length) {
+      /* the rows do the scrolling on this card, not the heading: see
+         .ap-card.has-rows in the stylesheet */
+      c.classList.add("has-rows");
       var list = el("div", "ap-card-rows");
       rows.forEach(function (r) {
         var row = el("div", "ap-card-row");
@@ -9755,7 +9942,7 @@
         row.appendChild(el("span", null, r[1]));
         list.appendChild(row);
       });
-      c.appendChild(list);
+      scrollFade(list, c);
     }
     if (buttonText) {
       var b = el("button", "ap-card-go", buttonText);
@@ -9805,6 +9992,8 @@
       useLatched = true;
       usePressed = false;
       if (G.state === "dialogue") G.state = "play";
+      /* the narrator gets the bottom of the screen back */
+      drawCaption();
       if (d && d.done) d.done();
       return;
     }
@@ -9830,6 +10019,8 @@
         (quiet ? " quiet" : speaker ? " speech" : " narration") + voice + side;
       box.setAttribute("aria-hidden", "false");
     }
+    /* if a cut is holding underneath this, its caption stands down */
+    drawCaption();
     if (!quiet && speaker) Audio_.beep();
   }
 
@@ -10571,23 +10762,58 @@
     return row;
   }
 
+  /* a level, rather than a switch: 0 is off and the number says where it
+     is, so nobody has to guess what "on" means */
+  function sliderRow(label, note, get, set) {
+    var row = el("div", "ap-set-row");
+    row.appendChild(el("b", null, label));
+    var wrap = el("div", "ap-set-keys");
+    var lane = el("div", "ap-lvl");
+    var input = document.createElement("input");
+    input.type = "range";
+    input.min = "0"; input.max = "100"; input.step = "5";
+    input.className = "ap-lvl-in";
+    input.value = String(Math.round(clamp(get(), 0, 1) * 100));
+    input.setAttribute("aria-label", label);
+    var read = el("span", "ap-lvl-num", input.value === "0" ? "OFF" : input.value);
+    function apply(fire) {
+      var v = Number(input.value) / 100;
+      read.textContent = input.value === "0" ? "OFF" : input.value;
+      set(v);
+      saveSettings();
+      applySettings();
+      if (fire && v > 0) Audio_.beep && Audio_.beep();
+    }
+    input.addEventListener("input", function () { apply(false); });
+    /* one sound at the end of the drag, not forty during it */
+    input.addEventListener("change", function () { apply(true); });
+    lane.appendChild(input);
+    lane.appendChild(read);
+    wrap.appendChild(lane);
+    if (note) wrap.appendChild(el("span", "ap-set-note", note));
+    row.appendChild(wrap);
+    return row;
+  }
+
   function showControls(back) {
     var c = el("div", "ap-card");
     c.appendChild(el("p", "ap-card-kicker", "CONTROLS"));
-    var t = el("h3", "ap-card-title", "How she moves.");
+    var t = el("h3", "ap-card-title", "Sound, and how she moves.");
     t.classList.add("tight");
     c.appendChild(t);
+    c.classList.add("has-rows");
     var list = el("div", "ap-card-rows ap-set");
-    list.appendChild(keycapRow("MOVE", ["W", "A", "S", "D"], "or the arrow keys"));
-    list.appendChild(keycapRow("CREEP", ["SHIFT"], "slower, and almost silent"));
-    list.appendChild(keycapRow("USE", ["E", "/", "SPACE"], "whatever she is standing at"));
-    list.appendChild(keycapRow("MAP", ["M"], "where she has been"));
-    list.appendChild(keycapRow("PAUSE", ["ESC"], ""));
-    list.appendChild(el("p", "ap-set-head", "SETTINGS"));
-    list.appendChild(switchRow("SOUND", "", [["ON", true], ["OFF", false]],
-      function () { return SETTINGS.sound; }, function (v) { SETTINGS.sound = v; }));
-    list.appendChild(switchRow("MUSIC", "", [["ON", true], ["OFF", false]],
-      function () { return SETTINGS.music; }, function (v) { SETTINGS.music = v; }));
+    /* The two things somebody opens this panel to change go at the top.
+       The keys are a reminder and can live at the bottom: nobody comes
+       here to be told that W is up. */
+    list.appendChild(el("p", "ap-set-head first", "SOUND"));
+    list.appendChild(sliderRow("EVERYTHING", "doors and footsteps",
+      function () { return SETTINGS.sound ? SETTINGS.vol : 0; },
+      function (v) { SETTINGS.vol = v; SETTINGS.sound = v > 0; }));
+    list.appendChild(sliderRow("MUSIC", "the score, on its own",
+      function () { return SETTINGS.music ? SETTINGS.musicVol : 0; },
+      function (v) { SETTINGS.musicVol = v; SETTINGS.music = v > 0; }));
+    list.appendChild(el("p", "ap-set-head", "PLAYING"));
     list.appendChild(switchRow("CAMERA SHAKE", "", [["ON", true], ["OFF", false]],
       function () { return SETTINGS.shake; }, function (v) { SETTINGS.shake = v; }));
     list.appendChild(switchRow("CREEPING", "hold the key, or press it once",
@@ -10596,7 +10822,13 @@
     list.appendChild(switchRow("PICTURE", "smooth trades sharpness for frames",
       [["AUTO", "auto"], ["CRISP", "crisp"], ["SMOOTH", "smooth"]],
       function () { return SETTINGS.quality; }, function (v) { SETTINGS.quality = v; }));
-    c.appendChild(list);
+    list.appendChild(el("p", "ap-set-head", "KEYS"));
+    list.appendChild(keycapRow("MOVE", ["W", "A", "S", "D"], "or the arrow keys"));
+    list.appendChild(keycapRow("CREEP", ["SHIFT"], "slower, and almost silent"));
+    list.appendChild(keycapRow("USE", ["E", "/", "SPACE"], "whatever she is standing at"));
+    list.appendChild(keycapRow("MAP", ["M"], "where she has been"));
+    list.appendChild(keycapRow("PAUSE", ["ESC"], ""));
+    scrollFade(list, c);
     var b = el("button", "ap-card-go", "BACK");
     b.addEventListener("click", back);
     c.appendChild(b);
@@ -11140,8 +11372,33 @@
      game's scene is left alone underneath and picked up again
      afterwards, or thrown away if the story has moved on.
      ========================================================= */
+  /* THE NARRATOR AND THE PEOPLE IN THE SHOT ARE NOT BOTH ALLOWED TO TALK.
+
+     A cut draws its narration into the overlay; a conversation draws
+     into #ap-dlg. Both of them sit across the bottom of the screen, and
+     the three cuts that hold while the two of them talk — the sunrise,
+     the second ride, the roof — start a conversation the instant the cut
+     opens. So the cut's line and the first line of the conversation were
+     landing on the same six inches of screen at the same time, one on top
+     of the other. That is what the "lag" through the whole sunrise was:
+     not a dropped frame, two texts in one place.
+
+     There is one caption, it is remembered here, and it is only ever
+     drawn when nobody is speaking. A conversation takes the floor and
+     gives it back when it ends — so a cut with no dialogue over it reads
+     exactly as before, and a cut with dialogue over it shows the
+     conversation and nothing else. */
+  var capText = "";
   function caption(text) {
+    capText = text || "";
+    drawCaption();
+  }
+  function drawCaption() {
+    /* only a running cut owns this layer — a card, the map or the pause
+       menu is in it otherwise, and redrawing would throw that away */
+    if (!G || !G.cine) return;
     var o = overlay();
+    if (!o) return;
     o.innerHTML = "";
     o.className = "ap-overlay cut";
     o.style.background = "transparent";
@@ -11149,7 +11406,9 @@
     o.style.justifyContent = "center";
     o.style.paddingBottom = "5%";
     o.style.pointerEvents = "none";
-    if (text) o.appendChild(el("p", "ap-cut-cap", text));
+    /* somebody speaking beats the narrator, every time */
+    var t = (G && G.dlg) ? "" : capText;
+    if (t) o.appendChild(el("p", "ap-cut-cap", t));
     o.setAttribute("aria-hidden", "false");
   }
 
@@ -11239,6 +11498,7 @@
   function endCine(then) {
     if (G.cine) disposeScene(G.cine.scene);
     G.cine = null;
+    capText = "";
     var hud = $("ap-hud");
     if (hud) hud.classList.remove("gone");
     closeOverlay();
@@ -12922,7 +13182,7 @@
       ["CREEP", "hold SHIFT — slower, but almost silent"],
       ["USE", "E or SPACE — whatever you're standing at"],
       ["PAUSE", "ESC"],
-      ["ON A PHONE", "the pad and the two buttons do all of it"],
+      ["ON A TABLET", "touch anywhere on the left to put the stick down — how far you push is how fast she walks"],
       ["THE DARK", "you only see as far as your torch. Lit rooms show more"],
       ["COVER", "step into a wardrobe, a bush, or behind a car and they lose you"],
       ["NOISE", "running is loud. They come and look at where the sound was"],
@@ -13396,10 +13656,15 @@
   function frame(now) {
     if (!running) return;
     raf = requestAnimationFrame(frame);
-    var dt = clamp((now - lastT) / 1000, 0, 0.05);
+    var raw = (now - lastT) / 1000;
+    var dt = clamp(raw, 0, 0.05);
     lastT = now;
     if (!loopFrozen) { tick(dt); paint(); }
-    watchPerformance(dt);
+    /* Coming back from another tab, the first frame is however long you
+       were away, and the quality ladder would read that as the machine
+       falling over and drop the picture a rung for nothing. A gap that
+       big is not a slow frame, it is no frames at all. */
+    if (raw < 0.25) watchPerformance(dt);
   }
 
   /* the offline harness drives frames itself, so it freezes this one */
@@ -13534,7 +13799,7 @@
     window.__apCampsite = function () { closeOverlay(); enterSub("campsite"); return G; };
     window.__apRoadside = function () { closeOverlay(); enterSub("roadside"); return G; };
     window.__apDrive = function () { playDrive(); return G; };
-    window.__apRide = function () { playRide(); return G; };
+    window.__apRide = function (second) { playRide(!!second); return G; };
     window.__apCampfire = function () { playCampfire(); return G; };
     window.__apSunrise = function () { playSunrise(); return G; };
     window.__apRoof = function () { playRooftop(); return G; };
@@ -13690,6 +13955,20 @@
 
     /* what the card was actually asked to do on the last frame */
     window.__apEndCine = function () { if (G && G.cine) endCine(); return true; };
+    /* the three cuts that hold while the two of them talk over them */
+    window.__apCut = function (which) {
+      if (G && G.cine) endCine();
+      if (which === "sunrise") playSunrise();
+      else if (which === "ride2") playRide(true);
+      else if (which === "roof") playRooftop();
+      else return false;
+      return true;
+    };
+    window.__apNoise = function (x, z, r) { noise(x, z, r); return true; };
+    window.__apCaption = function () {
+      var c = document.querySelector(".ap-cut-cap");
+      return c ? c.textContent : null;
+    };
     window.__apReattach = function () {
       var s = G && (G.cine ? G.cine.scene : G.scene);
       var c = G && G.cine ? G.cine.camera : Stage.camera;
@@ -13730,6 +14009,15 @@
     window.__apScore = function () { return Audio_.score.playing(); };
     window.__apMusic = function (v) { SETTINGS.music = !!v; Audio_.score.mute(!v); return !!v; };
     window.__apAudio = function () { Audio_.begin(); return true; };
+    /* what state the sound is actually in, so a test can prove it came
+       back after the tab did */
+    window.__apAudioState = function () {
+      return { state: Audio_.stateOf(), level: Audio_.levelOf(),
+               music: Audio_.score.volumeOf(), playing: Audio_.score.playing(),
+               started: Audio_.everStarted() };
+    };
+    /* what a browser does when you leave the tab */
+    window.__apAudioSuspend = function () { return Audio_.__suspend(); };
     window.__apKey = function (k, v) {
       if (!(k in KEY)) return;
       KEY[k] = v ? 1 : 0;

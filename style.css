@@ -3711,11 +3711,40 @@ img{-webkit-user-drag:none; user-select:none;}
   flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain;}
 .ap-card-rows::-webkit-scrollbar{width:3px;}
 .ap-card-rows::-webkit-scrollbar-thumb{background:rgba(168,192,240,.22);}
+/* THERE IS MORE BELOW THIS, AND IT HAS TO SAY SO.
+   The first version faded the bottom edge with a mask. A mask puts the
+   element on its own compositing layer, and this file already learned
+   once — with backdrop-filter — what a separate layer costs a weak GPU:
+   the whole plate stopped painting under software rendering. So it is a
+   chevron instead, the same one the dialogue box uses for "keep going",
+   which is a glyph and costs nothing. */
+.ap-card-more{
+  flex:0 0 auto; margin:.2cqw 3.4cqw 0; padding:0;
+  text-align:center; line-height:1; color:#7d8db0; font-size:2.1cqw;
+  pointer-events:none; opacity:0; transition:opacity .18s ease;
+  animation:apMoreNudge 1.9s ease-in-out infinite;
+}
+.ap-card-more.on{opacity:.75;}
+@keyframes apMoreNudge{
+  0%,100%{transform:translateY(0);} 50%{transform:translateY(2px);}
+}
+@media (prefers-reduced-motion:reduce){ .ap-card-more{animation:none;} }
 .ap-card-kicker{flex:0 0 auto;}
 /* A card whose only content is a long line of prose has to be able to
    give ground, or the title pushes the button off the bottom and there
-   is no way on from the screen at all. */
+   is no way on from the screen at all.
+
+   But it must only give ground when it is the ONLY thing that can. On
+   the how-to screen — a one-line heading over ten rows of help — the
+   card overflows, flexbox takes the overrun out of every shrinkable
+   child, and the heading gets squeezed to a couple of pixels: you see
+   the tops of the letters and nothing else, which is what "the text
+   above the controls does not show up completely" was. A card that has
+   rows keeps its heading whole and makes the rows do the scrolling;
+   only a card that is nothing but prose is allowed to scroll its own
+   title. */
 .ap-card-title{flex:0 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain;}
+.ap-card.has-rows > .ap-card-title{flex:0 0 auto; overflow:visible;}
 .ap-card-title::-webkit-scrollbar{width:3px;}
 .ap-card-title::-webkit-scrollbar-thumb{background:rgba(168,192,240,.22);}
 .ap-card-row{
@@ -3821,12 +3850,58 @@ img{-webkit-user-drag:none; user-select:none;}
   font-size:1.62cqw;
   color:#8fa0c2; line-height:1.2; margin-left:.8cqw;
 }
+.ap-set-head.first{margin-top:0; padding-top:0; border-top:0;}
+/* the heading brings its own rule, so the row above it does not need
+   one as well — two hairlines a few pixels apart read as a mistake */
+.ap-set .ap-set-row:has(+ .ap-set-head){border-bottom:0;}
 .ap-set-head{
-  margin:2.6cqw 0 .4cqw; padding-top:1.6cqw;
+  margin:1.9cqw 0 .4cqw; padding-top:1.4cqw;
   border-top:1px solid rgba(240,181,103,.22);
   font-family:var(--ap-sign); font-size:1.15cqw; letter-spacing:.3em;
   color:#f0b567; text-transform:uppercase;
 }
+/* ---- a level, rather than a switch ----
+   A volume is not two states, so it is not two buttons. One lane, an
+   amber fill up to where it is set, a square handle, and the number
+   beside it — reading OFF at nought, which is the only place a switch
+   was ever right. Drawn with the same hairline-and-amber grammar as
+   everything else on the plate, in both engines' pseudo-elements
+   because there is no one property that styles a range input. */
+/* the lane and its note share one line: a note that wraps under the
+   slider makes every sound row twice as tall as every other row */
+.ap-lvl{display:inline-flex; align-items:center; gap:.9cqw;
+        flex:0 0 auto; width:min(52%, 19cqw);}
+.ap-set-keys > .ap-set-note{flex:1 1 6cqw; min-width:0;}
+.ap-lvl-in{
+  appearance:none; -webkit-appearance:none; cursor:pointer;
+  flex:1 1 auto; min-width:7cqw; height:2.6cqw; margin:0;
+  background:transparent; border:0; outline:none;
+}
+.ap-lvl-in::-webkit-slider-runnable-track{
+  height:2px; background:rgba(168,192,240,.22); border:0;
+}
+.ap-lvl-in::-moz-range-track{height:2px; background:rgba(168,192,240,.22); border:0;}
+.ap-lvl-in::-moz-range-progress{height:2px; background:#f0b567;}
+.ap-lvl-in::-webkit-slider-thumb{
+  appearance:none; -webkit-appearance:none;
+  width:.95cqw; min-width:7px; height:1.7cqw; min-height:13px;
+  margin-top:calc(-0.85cqw + 1px);
+  background:#f0b567; border:0; border-radius:0;
+  box-shadow:0 0 0 1px rgba(10,14,24,.9), 0 2px 6px rgba(0,0,0,.5);
+}
+.ap-lvl-in::-moz-range-thumb{
+  width:.95cqw; min-width:7px; height:1.7cqw; min-height:13px;
+  background:#f0b567; border:0; border-radius:0;
+  box-shadow:0 0 0 1px rgba(10,14,24,.9), 0 2px 6px rgba(0,0,0,.5);
+}
+.ap-lvl-in:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 2px #eef3ff;}
+.ap-lvl-in:focus-visible::-moz-range-thumb{box-shadow:0 0 0 2px #eef3ff;}
+.ap-lvl-num{
+  font-family:var(--ap-sign); font-size:1.02cqw; letter-spacing:.14em;
+  color:#c8d3ea; min-width:3.4cqw; text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
 /* the switches: one strip, the live one lit in amber */
 .ap-seg{display:inline-flex; border:1px solid rgba(168,192,240,.20);}
 .ap-seg-btn{
