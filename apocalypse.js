@@ -442,7 +442,7 @@
     },
     {
       id: "escape", name: "THE COAST ROAD", card: "Level 4: THE COAST ROAD",
-      blurb: "Essaouira. The coast road, past Chichaoua. A hundred and seventy kilometres.",
+      blurb: "The safe house at Essaouira. The coast road, past Chichaoua. A hundred and seventy kilometres.",
       map: MAPS.escape, theme: "hospital", light: "bay", base: ".", dark: 0.68,
       groundTex: "asphalt", blood: true,
       grade: [96, 150, 170, 0.12], haze: [46, 62, 76, 0.32],
@@ -451,8 +451,8 @@
       ]
     },
     {
-      id: "gates", name: "ESSAOUIRA", card: "Level 5: ESSAOUIRA",
-      blurb: "They only take you if you're clean.",
+      id: "gates", name: "THE SAFE HOUSE", card: "Level 5: THE SAFE HOUSE",
+      blurb: "Essaouira, and a fence round it. They only take you if you're clean.",
       map: MAPS.gates, theme: "road", base: ",", dark: 0.28, floorTex: "pave",
       people: [
         /* the two on the outer gate, watching the road she comes up */
@@ -785,7 +785,7 @@
     SIL,
     ["OUISSY", "We should sleep. The gate can't be far now."],
     ["ANWAR", "How far?"],
-    ["OUISSY", "The radio said the coast road, past Chichaoua. Two hours, maybe, at this pace."],
+    ["OUISSY", "The radio said the coast road, past Chichaoua, and then follow the water. Two hours, maybe, at this pace."],
     ["ANWAR", "You should sleep first. I'll watch the fire."],
     ["OUISSY", "You were in a hospital bed for a week."],
     ["ANWAR", "And you carried me out of it. Sleep."],
@@ -902,11 +902,19 @@
     ["ANWAR", "Yeah. We did."]
   ];
 
+  /* A LOOP ON A TRANSMITTER, TALKING TO NOBODY IN PARTICULAR.
+
+     It used to say it would accept the two of them, which it cannot
+     possibly know: it is a recording going out to a whole province and
+     there is not a person on the other end of it. Everything it says is
+     addressed to anyone at all. And the place it names is a house with a
+     fence round it — Essaouira is where the house is, not the thing that
+     is open. */
   var RADIO_LINES = [
-    "— stay off the roads at night. Do not attempt to reach us after dark —",
-    "— Essaouira reception is open. We are accepting anyone who is not bitten —",
+    "— repeating. Stay off the roads after dark. Do not travel at night —",
+    "— the safe house at Essaouira is open. Anyone who is not bitten will be let in —",
     "— you will be checked at the gate and you will be given the serum. Both are required —",
-    "— that is Essaouira. The coast road, past Chichaoua. We are still here —"
+    "— the coast road, past Chichaoua, and then follow the water. We are still here —"
   ];
 
   var TV_LINES = [
@@ -918,13 +926,15 @@
     "HUPM. IBN TOFAIL. MOHAMMED VI. ALL CLOSED.",
     "THEY WERE THE FIRST PLACES IT GOT INTO.",
     "IF YOU CAN TRAVEL, GO WEST, TO THE COAST.",
-    "ESSAOUIRA IS OPEN. THE COAST ROAD, PAST CHICHAOUA.",
+    "THERE IS A SAFE HOUSE AT ESSAOUIRA. IT IS OPEN.",
+    "THE COAST ROAD, PAST CHICHAOUA. FOLLOW THE WATER.",
     "YOU WILL BE CHECKED AT THE GATE AND GIVEN THE SERUM.",
     "BOTH ARE REQUIRED. THERE ARE NO EXCEPTIONS."
   ];
 
   var TV_TICKER = "EMERGENCY BROADCAST • DAY 3 • THIS IS NOT A TEST • " +
-                  "ALL MARRAKECH HOSPITALS CLOSED • ESSAOUIRA OPEN: COAST ROAD PAST CHICHAOUA • " +
+                  "ALL MARRAKECH HOSPITALS CLOSED • SAFE HOUSE AT ESSAOUIRA OPEN • " +
+                  "COAST ROAD PAST CHICHAOUA, THEN FOLLOW THE WATER • " +
                   "CHECKPOINT AND SERUM REQUIRED • NO FURTHER BULLETINS ARE SCHEDULED • ";
 
   var GATE_CODE = "4180";
@@ -1483,8 +1493,12 @@
         }
         /* a music box: a sine and an inharmonic partial, ringing a long
            time, for the places that are too cold for a piano */
+        /* a music box: a sine and one inharmonic partial. The partial
+           used to be at 2.76 times the note and a third of its level,
+           which on a note up in the octave above the stave put a hard
+           ring near five kilohertz. Closer in, and quieter. */
         function bell(fr, at, v) {
-          [[1, 1, 4.5], [2.76, 0.30, 2.6]].forEach(function (h) {
+          [[1, 1, 4.5], [2.31, 0.16, 2.4]].forEach(function (h) {
             var o = ctx.createOscillator();
             o.type = "sine"; o.frequency.value = fr * h[0];
             var g = ctx.createGain();
@@ -1615,13 +1629,16 @@
           sterile: { bpm: 46, play: function (b, at, sp) {
             var d = DYN(b), pass = passOf(b), c = CH(b);
             if (b % 8 === 0) {
-              strings([hz(c[1], 1), hz(c[2], 1)], at, sp * 9, 0.026 * d, 1500);
-              /* the room gets colder the longer she is in it */
-              if (pass >= 2) strings([hz(c[0], 2)], at, sp * 9, 0.010 * d, 2600);
+              strings([hz(c[1], 0), hz(c[2], 0)], at, sp * 9, 0.030 * d, 1100);
+              /* the room gets colder the longer she is in it — a fifth
+                 opening above the chord, not two octaves above it: that
+                 was a sawtooth at two kilohertz and it was the sound
+                 that hurt */
+              if (pass >= 2) strings([hz(c[2] + 7, 0)], at, sp * 9, 0.012 * d, 1400);
             }
-            if (b % 64 === 8)  bell(hz(7, 1), at, 0.026 * d);
-            if (b % 64 === 12) bell(hz(10, 1), at, 0.022 * d);
-            if (b % 64 === 14) bell(hz(12, 1), at, 0.020 * d);
+            if (b % 64 === 8)  bell(hz(7, 0), at, 0.028 * d);
+            if (b % 64 === 12) bell(hz(10, 0), at, 0.024 * d);
+            if (b % 64 === 14) bell(hz(12, 0), at, 0.022 * d);
             if (b % 16 === 0) tick(at, 0.010 * d);
           } },
 
@@ -1633,15 +1650,28 @@
                first time round it is a car going somewhere, and after
                that it is two people talking in one */
             var late = b >= 64;
+            /* THE FIRST TWELVE BEATS BELONG TO THE PIANO.
+
+               The four notes at the top of this cue are the best thing in
+               the chapter and they were being played over: a pulse on
+               every beat and a string chord every bar, from the first
+               moment, so the tune arrived already buried. The engine and
+               the chord stand well back until it has said its piece. */
+            var opening = b < 12;
             pulse(hz(RT(b), -2), at,
-                  (b % 2 ? 0.030 : 0.052) * (late ? 0.45 : 1) * d, sp * 0.8);
+                  (b % 2 ? 0.030 : 0.052) * (late ? 0.45 : opening ? 0.30 : 1) * d,
+                  sp * 0.8);
             if (b % 4 === 2)
               strings([hz(c[0], 0), hz(c[1], 0), hz(c[2], 0)],
-                      at, sp * 1.6, (late ? 0.020 : 0.026) * d, 1800);
+                      at, sp * 1.6, (late ? 0.020 : opening ? 0.012 : 0.026) * d, 1800);
             if (late && b % 8 === 0)
               strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 8.6, 0.026 * d, 900);
-            /* her tune, four notes of it, while they are still driving */
-            if ((b % 64) < 8 && !late) line(TUNE_AT, b % 64, at, sp, 0, 0.030 * d, piano);
+            /* her tune, the whole first phrase of it, in the clear */
+            if (opening) line(TUNE_AT, b, at, sp, 0, 0.046 * d, function (f, t2, v, dd) {
+              piano(f, t2, v, Math.max(2.2, dd * 1.3));
+            });
+            /* and once more, quieter, under the conversation */
+            else if ((b % 64) < 8 && !late) line(TUNE_AT, b % 64, at, sp, 0, 0.026 * d, piano);
             /* and then the other one, on a piano, once they start talking */
             if (late) line(WARM_AT, b, at, sp, 0, 0.040 * d, function (f, t2, v, dd) {
               piano(f, t2, v, Math.max(2.0, dd * 1.2));
@@ -1821,6 +1851,40 @@
                 strings([f], t2, dd + sp * 0.5, v, 3000);
               });
             line(UNDER_AT, b, at, sp, -1, 0.034 * d, cello);
+          } },
+
+          /* AFTERWARDS. THE ROOF, THE CATS, THE STARS.
+
+             Every cue in this chapter ends on the fifth so that it can go
+             round again — that is what makes them all sound like
+             something unfinished, which is right while she is still
+             walking. This one is the only piece of music in the whole
+             thing that is allowed to land: the warm tune at half speed
+             on a music box, her tune underneath it on one bowed line,
+             and at the end of every second time round the bass goes to
+             the root and stays there.
+
+             It is not a cue the game ever uses. It plays over the last
+             screen, when there is nothing left to be frightened of. */
+          after: { bpm: 46, play: function (b, at, sp) {
+            var d = DYN(b), pass = passOf(b), c = CH(b);
+            if (b % 8 === 0) {
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 8.6, 0.030 * d, 900);
+              cello(hz(RT(b), -2), at, sp * 8.4, 0.055 * d);
+            }
+            /* the warm one, halved, high up, one note at a time */
+            if (b % 2 === 0)
+              line(WARM_AT, (b / 2) % 32, at, sp * 2, 1, 0.040 * d, function (f, t2, v) {
+                bell(f, t2, v);
+              });
+            /* and hers under it, bowed, so that both of them are here */
+            if (pass >= 1 && b % 2 === 0)
+              line(TUNE_AT, (b / 2) % 32, at, sp * 2, -1, 0.030 * d, cello);
+            /* the one place in the chapter that comes to rest */
+            if (b % 64 === 56) {
+              piano(hz(0, 0), at, 0.050 * d, 7.0);
+              cello(hz(0, -2), at, sp * 8, 0.070 * d);
+            }
           } }
         };
 
@@ -1871,7 +1935,25 @@
         function startBus(at, rise) {
           bus = ctx.createGain();
           bus.gain.value = 0.0001;
-          bus.connect(master);
+          /* A CEILING ON THE WHOLE SCORE.
+
+             A sawtooth at two kilohertz has harmonics at four, six and
+             eight, and a bell with an inharmonic partial at 2.76 times
+             its note is putting energy near five. Individually every one
+             of those was written at a sensible level; together, on a
+             pair of laptop speakers or in earphones, they are a needle,
+             and the hospital was where they all happened at once.
+
+             So the music — and only the music, not the doors and the
+             footsteps, which need their edge — goes through a gentle
+             roof on the way out. It takes nothing away that you would
+             miss and it makes it impossible for any one voice, written
+             now or later, to come out sharp. */
+          var roof = ctx.createBiquadFilter();
+          roof.type = "lowpass"; roof.frequency.value = 5200; roof.Q.value = 0.6;
+          var tame = ctx.createBiquadFilter();
+          tame.type = "highshelf"; tame.frequency.value = 3000; tame.gain.value = -7;
+          bus.connect(roof); roof.connect(tame); tame.connect(master);
           bus.gain.setTargetAtTime(mvol, at, rise);
           /* everything a cue plays goes through this pair, so the whole
              thing rises and falls as one */
@@ -1927,11 +2009,42 @@
         }
 
         var wanted = null, muted = false, mvol = 0.9, pending = null, urgent = false;
-        function setPiece(name, vol, now) {
+        var handOff = 0;
+        /* TWO CUES SHOULD NOT TALK OVER EACH OTHER AT A SCENE CHANGE.
+
+           Inside a level a change is a crossfade on a bar line, which is
+           right: the place has changed but the moment has not, and the
+           harmony carries across. A CUT is different. The picture cuts,
+           the story moves, and the piece that was playing has finished
+           its job — so it should finish, and then the next one should
+           begin, with a breath in between. Crossfading them put the
+           motorway's four piano notes underneath the last of the
+           hospital and turned the one into mud.
+
+           So a cut asks for a hand-off: the old cue goes out over half a
+           second, there is most of a second of nothing, and the new one
+           comes in at the top of its own first bar. */
+        function setPiece(name, vol, now, cut) {
           wanted = name;
           if (!ac() || muted) { if (muted) stopAll(1.1); return; }
           if (!name || !PIECES[name]) { stopAll(1.4); return; }
-          if (piece && piece.name === name) { pending = null; return; }
+          if (piece && piece.name === name && !cut) { pending = null; return; }
+          if (cut) {
+            if (timer) { clearTimeout(timer); timer = 0; }
+            if (bus) retireBus(ctx.currentTime, 0.42);
+            piece = null; pending = null; urgent = false;
+            var tag = ++handOff, nm = name;
+            setTimeout(function () {
+              /* something may have happened in the meantime */
+              if (tag !== handOff || wanted !== nm || muted) return;
+              if (!ctx || ctx.state !== "running") return;
+              startBus(ctx.currentTime, 1.0);
+              piece = PIECES[nm]; piece.name = nm;
+              beat = 0; nextAt = ctx.currentTime + 0.15;
+              pump();
+            }, 1400);
+            return;
+          }
           if (!piece) {
             /* nothing is playing: there is no join to make */
             startBus(ctx.currentTime, 2.0);
@@ -2057,10 +2170,13 @@
       keyBad: function () { if (on) { tone(150, 0.3, 0.09, "sawtooth", 70); } },
       beep: function () { if (on) tone(1200, 0.045, 0.035, "square"); },
       static: function (dur, g) { if (on) noise(dur || 0.4, g || 0.05, 2600, 0.4, "highpass"); },
+      /* the dial moving: a band of hiss sliding down, not a whistle.
+         It used to sit at 1400 with the hospital's bells ringing on top
+         of it, which is where the note that hurt was coming from. */
       tune: function () {
         if (!on) return;
-        noise(0.7, 0.05, 1400, 0.6);
-        tone(1400, 0.6, 0.03, "sine", 320);
+        noise(0.7, 0.045, 820, 0.5);
+        tone(760, 0.55, 0.022, "sine", 240);
       },
       fire: function () {
         if (!on) return;
@@ -9819,6 +9935,10 @@
       var zz = G.zombies[i];
       if (zz.state === "chase") continue;
       var hearing = r * (zz.kind === "drawn" ? 2 : 1);
+      /* a wall does not stop a sound, but it does take most of it: a
+         door closing two rooms away should not bring something across
+         the house at a walk */
+      if (!canSee(G.world, zz.x, zz.z, x, z)) hearing *= 0.45;
       var d = Math.hypot(zz.x - x, zz.z - z);
       if (d < hearing) {
         zz.look = { x: x, z: z };
@@ -9932,20 +10052,41 @@
     td.pool.intensity = (p.creeping ? 1.5 : 2.2) * bal * (0.35 + night * 0.65);
   }
 
+  /* THE YARD IN FRONT OF THE BARN IS HERS.
+
+     The horse is the end of that level and the beginning of the morning.
+     Being pulled down in the last ten metres of it, in the dark, with a
+     scene waiting on the other side, is not tension — it is a hand
+     reaching into a story that has already turned. So there is a circle
+     round the barn that nothing follows her into: anything already after
+     her loses her at the edge of it and goes back to wandering, and
+     nothing inside it can start. She has done the running by then. */
+  var BARN_SAFE = TILE * 6.5;
+  function inTheYard() {
+    var w = G.world;
+    if (!w || !w.horseAt || !G.player) return false;
+    var hx = w.cx(w.horseAt.x), hz = w.cz(w.horseAt.y);
+    return Math.hypot(G.player.x - hx, G.player.z - hz) < BARN_SAFE;
+  }
+
   function updateZombies(dt) {
     var p = G.player, w = G.world;
     var chasing = 0, looking = 0;
     G.alertT = (G.alertT || 0) - dt;
+    var safeYard = inTheYard();
 
     for (var i = 0; i < G.zombies.length; i++) {
       var z = G.zombies[i];
+      if (safeYard && (z.state === "chase" || z.state === "react" || z.state === "look")) {
+        z.state = "calm"; z.look = null; z.lose = 0; z.timer = rnd(1.4, 3.2);
+      }
       var dx = p.x - z.x, dz = p.z - z.z;
       var dist = Math.hypot(dx, dz);
       var toP = Math.atan2(dz, dx);
 
       /* can it see her right now? */
       var sees = false;
-      if (!p.hidden && G.state === "play" && dist < TUNE.zSight) {
+      if (!p.hidden && !safeYard && G.state === "play" && dist < TUNE.zSight) {
         var da = Math.abs(Math.atan2(Math.sin(toP - z.facing), Math.cos(toP - z.facing)));
         if ((da < TUNE.zCone || dist < TUNE.zNear) && canSee(w, z.x, z.z, p.x, p.z)) sees = true;
       }
@@ -10459,7 +10600,7 @@
     { id: "streets",  name: "MARRAKECH",    note: "South out of the Zaytoune, east on the rocade." },
     { id: "hospital", name: "HUPM",         note: "Chrifiya. Ward C, east wing." },
     { id: "escape",   name: "THE ROAD",     note: "Out through the ambulance bay." },
-    { id: "gates",    name: "ESSAOUIRA",    note: "The coast road, past Chichaoua." }
+    { id: "gates",    name: "THE SAFE HOUSE", note: "Essaouira. Past Chichaoua, then follow the water." }
   ];
 
   /* which tiles she has been near enough to have seen */
@@ -10986,7 +11127,7 @@
       Audio_.tune();
       if (i >= RADIO_LINES.length) { closeOverlay(); G.state = "play"; if (done) done(); return; }
       line.textContent = RADIO_LINES[i];
-      if (i === RADIO_LINES.length - 1) b.textContent = "ASHCOMBE";
+      if (i === RADIO_LINES.length - 1) b.textContent = "ESSAOUIRA";
     });
     wrap.appendChild(b);
     openOverlay(wrap);
@@ -11246,7 +11387,7 @@
   /* ---- the checkpoint at the gates ---- */
   function showCheck(onDone) {
     var wrap = el("div", "ap-check");
-    wrap.appendChild(el("p", "ap-check-title", "ASHCOMBE RECEPTION — INTAKE"));
+    wrap.appendChild(el("p", "ap-check-title", "ESSAOUIRA SAFE HOUSE — INTAKE"));
     wrap.appendChild(el("p", "ap-check-sub", "Both of you. They will not open the inner gate until every line is ticked."));
     var list = el("div", "ap-check-list");
     var rows = [
@@ -11291,7 +11432,7 @@
      seconds and nobody makes anything of it, which is the point. */
   function showSerum(onDone) {
     var wrap = el("div", "ap-serum");
-    wrap.appendChild(el("p", "ap-check-title", "ASHCOMBE RECEPTION — INOCULATION"));
+    wrap.appendChild(el("p", "ap-check-title", "ESSAOUIRA SAFE HOUSE — INOCULATION"));
     var cv = document.createElement("canvas");
     cv.className = "ap-serum-canvas";
     cv.width = 320; cv.height = 150;
@@ -12035,6 +12176,8 @@
      ========================================================= */
   function beginGrab(z) {
     if (G.state !== "play") return;
+    /* nothing takes hold of her in the barn yard */
+    if (inTheYard()) return;
     G.state = "grab";
     G.grab = { z: z, t: TUNE.grabWindow, presses: 0, start: anyPressed };
     Audio_.caught();
@@ -12906,7 +13049,7 @@
 
   /* ---- THE DRIVE ---- */
   function playDrive() {
-    Audio_.score("drive");
+    Audio_.score("drive", null, false, true);
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x0c1024, 0.0055);
     var cam = new THREE.PerspectiveCamera(38, Stage.camera.aspect, 0.4, 900);
@@ -13012,27 +13155,40 @@
     runCine({
       scene: scene, camera: cam,
       caption: "Out past the rocade, and then forty kilometres of nobody.",
+      /* NOBODY SPEAKS FOR THE FIRST SIX SECONDS.
+
+         Two people who have not been in the same room for a week, in a
+         car, at night, do not start talking as the door shuts. They
+         drive. The shot needs that silence for its own sake — it is the
+         first time in the chapter that nothing is chasing her — and the
+         music needs it too, because this is where the piano gets its
+         four notes and it was being talked over.
+
+         Everything after it is a third slower than it was. The gaps are
+         the scene: he asks, she deflects, he says her name, and the
+         length of the pause before she gives in is the whole point of
+         the exchange. */
       lines: [
         [0.0,  null,     "Out past the rocade, and then forty kilometres of nobody."],
-        [3.4,  "ANWAR",  "You didn't tell anybody you were coming."],
-        [5.8,  "OUISSY", "There wasn't anybody to tell."],
-        [8.0,  "ANWAR",  "Your mum and dad—"],
-        [9.8,  "OUISSY", "Azilal. Since Tuesday. The line rings and then it stops ringing."],
-        [13.0, "ANWAR",  "How bad was the walk."],
-        [15.0, "OUISSY", "It was fine."],
-        [16.6, "ANWAR",  "Ouissy."],
-        [18.0, "OUISSY", "...Nine hours. I went round the park because the high street was—"],
-        [21.4, "OUISSY", "It was fine. I'm here."],
-        [23.4, null,     "He puts his hand flat on her arm and leaves it there. The needle has been under the line for an hour."],
-        [26.6, null,     "It coughs twice and stops, and neither of them says anything."],
-        [29.4, "ANWAR",  "Essaouira is a hundred and seventy kilometres."],
-        [31.0, "OUISSY", "Then we're walking again."]
+        [6.2,  "ANWAR",  "You didn't tell anybody you were coming."],
+        [9.6,  "OUISSY", "There wasn't anybody to tell."],
+        [13.0, "ANWAR",  "Your mother and father—"],
+        [15.6, "OUISSY", "Azilal. Since Tuesday. The line rings and then it stops ringing."],
+        [20.4, "ANWAR",  "How bad was the walk."],
+        [23.4, "OUISSY", "It was fine."],
+        [25.8, "ANWAR",  "Ouissy."],
+        [28.2, "OUISSY", "...Nine hours. I went round the park because the main road was—"],
+        [32.8, "OUISSY", "It was fine. I'm here."],
+        [35.8, null,     "He puts his hand flat on her arm and leaves it there. The needle has been under the line for an hour."],
+        [40.4, null,     "It coughs twice and stops, and neither of them says anything."],
+        [44.4, "ANWAR",  "Essaouira is a hundred and seventy kilometres."],
+        [46.8, "OUISSY", "Then we're walking again."]
       ],
       grade: { gradeCol: 0x4a6ab4, gradeAmt: 0.16, hazeCol: 0x141c34, hazeAmt: 0.34,
                vig: 0.8, sat: 1.0, fringe: 0.002, redPulse: 0, exposure: 1.0 },
       update: function (dt, t) {
         /* the tank going */
-        if (t > 24.0 && !dead) { dead = true; }
+        if (t > 38.6 && !dead) { dead = true; }
         if (dead) speed = Math.max(0, speed - dt * 5.4);
         else speed = Math.min(34, speed + dt * 4);
 
@@ -13054,7 +13210,7 @@
            makes thirty miles an hour look like thirty miles an hour.
            When the engine dies it drifts back and settles. */
         var cx0 = car.group.position.x;
-        var settle = dead ? clamp((t - 24) / 6, 0, 1) : 0;
+        var settle = dead ? clamp((t - 38.6) / 6, 0, 1) : 0;
         var hold = Math.sin(t * 0.31) * 0.45 + Math.sin(t * 0.11 + 1.3) * 0.30;
         var jitter = (speed / 34) * 0.030;
         cam.position.set(
@@ -13075,7 +13231,7 @@
             b.beam.material.uniforms.time.value = t;
             b.beam.material.uniforms.amt.value = 0.44 + 0.05 * Math.sin(t * 4);
           }
-          b.spot.intensity = dead ? Math.max(30, 220 - (t - 8.5) * 70) : 220;
+          b.spot.intensity = dead ? Math.max(30, 220 - (t - 38.6) * 70) : 220;
         });
         tail.intensity = 2.4 + Math.sin(t * 6) * 0.4;
 
@@ -13084,7 +13240,7 @@
           z.root.rotation.y += dt * 0.2;
         });
 
-        if (dead && !steam && t > 25.4) {
+        if (dead && !steam && t > 40.0) {
           steam = makeFire();
           steam.userData.strength = 0.22;
           steam.scale.set(0.5, 0.5, 0.5);
@@ -13095,7 +13251,7 @@
         if (steam) steam.userData.update(t, dt);
 
       },
-      duration: 33.0,
+      duration: 49.5,
       done: function () {
         endCine(function () {
           enterSub("roadside");
@@ -13145,7 +13301,7 @@
      and again the next one, on the last leg to Essaouira. Same road, same
      horse, different light and different words. */
   function playRide(second) {
-    Audio_.score("open");
+    Audio_.score("open", null, false, true);
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x3a3050, 0.0042);
     var cam = new THREE.PerspectiveCamera(38, Stage.camera.aspect, 0.4, 900);
@@ -13255,7 +13411,7 @@
 
   /* ---- THE CAMPFIRE ---- */
   function playCampfire() {
-    Audio_.score("hearth");
+    Audio_.score("hearth", null, false, true);
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x0a0c1e, 0.016);
     var cam = new THREE.PerspectiveCamera(40, Stage.camera.aspect, 0.3, 400);
@@ -13568,7 +13724,7 @@
   }
 
   function playSunrise() {
-    Audio_.score("open");
+    Audio_.score("open", null, false, true);
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x2a2440, 0.010);
     var cam = new THREE.PerspectiveCamera(46, Stage.camera.aspect, 0.3, 700);
@@ -13729,7 +13885,7 @@
      the light goes out of it: the queue for the tap, the children, the
      hour in which neither of them has to do anything next. */
   function playSettling() {
-    Audio_.score("open");
+    Audio_.score("open", null, false, true);
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x1a1c2c, 0.0075);
     var cam = new THREE.PerspectiveCamera(42, Stage.camera.aspect, 0.3, 700);
@@ -13838,7 +13994,7 @@
 
   /* ---- THE ROOFTOP ---- */
   function playRooftop() {
-    Audio_.score("home");
+    Audio_.score("home", null, false, true);
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x0a0e1c, 0.0055);
     var cam = new THREE.PerspectiveCamera(44, Stage.camera.aspect, 0.3, 900);
@@ -14257,9 +14413,56 @@
      because a stealth game that hides its rules is not tense,
      it is unfair.
      ========================================================= */
+  /* THE CONE HAS TO STOP AT THE WALL.
+
+     It was a fixed wedge five tiles deep, drawn on the floor and turned
+     with the thing that owns it — which meant it went straight through
+     the kitchen wall and lay across the hall on the other side. The game
+     itself was never fooled (canSee has always stopped at anything
+     opaque), but the player was: you would see a cone lying over the
+     doorway you were standing in and back away from something that could
+     not possibly have seen you. A cone that shows the wrong thing is
+     worse than no cone at all, because you play against it.
+
+     So each of the nineteen edges of the fan is a ray now, and each ray
+     stops at the first opaque tile it meets. The shape that gets drawn
+     is the shape of what that thing can actually see. It is recomputed
+     only when the thing has moved or turned enough to matter, which on
+     a floor with a dozen of them is a few hundred tile lookups a second
+     and nothing on the card at all. */
+  var CONE_SEG = 18;
+  function coneRay(w, ox, oz, ang) {
+    var far = TUNE.zSight;
+    var step = TILE * 0.34;
+    var cx = Math.cos(ang), cz = Math.sin(ang);
+    for (var d = step; d <= far; d += step) {
+      if (opaqueAtTile(w, Math.floor((ox + cx * d) / TILE),
+                          Math.floor((oz + cz * d) / TILE))) {
+        return Math.max(TILE * 0.25, d - step);
+      }
+    }
+    return far;
+  }
+  function reshapeCone(z) {
+    var w = G.world;
+    if (!w || !z.cone) return;
+    var g = z.cone.geometry;
+    var a = g.attributes.position.array;
+    for (var i = 0; i <= CONE_SEG; i++) {
+      var ang = lerp(-TUNE.zCone, TUNE.zCone, i / CONE_SEG);
+      /* the fan is drawn in the thing's own space, so the ray has to be
+         cast in the world's: its facing plus the fan angle */
+      var r = coneRay(w, z.x, z.z, z.facing + ang);
+      a[(i + 1) * 3] = Math.cos(ang) * r;
+      a[(i + 1) * 3 + 2] = Math.sin(ang) * r;
+    }
+    g.attributes.position.needsUpdate = true;
+    g.computeBoundingSphere();
+  }
+
   function ensureCone(z) {
     if (z.cone) return z.cone;
-    var seg = 18, a0 = -TUNE.zCone, a1 = TUNE.zCone;
+    var seg = CONE_SEG, a0 = -TUNE.zCone, a1 = TUNE.zCone;
     var g = new THREE.BufferGeometry();
     var pos = [0, 0, 0], idx = [];
     for (var i = 0; i <= seg; i++) {
@@ -14299,6 +14502,17 @@
       c.material.color.setHex(chase ? 0xd8564a : z.state === "look" ? 0xd8a054 : 0x8aa4c4);
       c.material.opacity = (chase ? 0.105 : z.state === "look" ? 0.075 : 0.05)
                          * (1 - clamp(d / 22, 0, 1) * 0.55);
+      /* recut it against the walls, but only when it has actually moved
+         or turned: a thing standing still in a doorway does not need its
+         sight line recomputed sixty times a second */
+      var moved = z.__coneX == null ||
+                  Math.abs(z.x - z.__coneX) > TILE * 0.16 ||
+                  Math.abs(z.z - z.__coneZ) > TILE * 0.16 ||
+                  Math.abs(z.facing - z.__coneA) > 0.06;
+      if (moved) {
+        z.__coneX = z.x; z.__coneZ = z.z; z.__coneA = z.facing;
+        reshapeCone(z);
+      }
     }
   }
 
@@ -15040,6 +15254,16 @@
     };
     window.__apNoise = function (x, z, r) { noise(x, z, r); return true; };
     window.__apTouchUI = function (on) { setTouchUI(!!on); return touchUI; };
+    /* what they can see, and where they may not go */
+    window.__apTile = function () { return TILE; };
+    window.__apSightRange = function () { return TUNE.zSight; };
+    window.__apSolid = function (c) { return isSolidChar(c); };
+    window.__apCanSee = function (ax, az, bx, bz) {
+      return canSee(G.world, ax, az, bx, bz);
+    };
+    window.__apCones = function () { updateCones(); return true; };
+    window.__apConeRay = function (x, z, ang) { return coneRay(G.world, x, z, ang); };
+    window.__apInYard = function () { return inTheYard(); };
     window.__apCaption = function () {
       var c = document.querySelector(".ap-cut-cap");
       return c ? c.textContent : null;
@@ -15121,6 +15345,18 @@
       }
     };
   }
+
+  /* ---- THE MUSIC, FOR THE PAGE THAT COMES AFTER THE GAME ----
+     The ending screen belongs to the site rather than to this chapter,
+     but the music does not: it is the same two tunes, and the point of
+     the ending is that they finally settle. This is the only way in. */
+  Api.afterTheme = function (on) {
+    if (!on) { Audio_.score(null); return false; }
+    Audio_.begin();
+    Audio_.resume();
+    Audio_.score("after", null, false, true);
+    return true;
+  };
 
   window.Apocalypse = Api;
 })();

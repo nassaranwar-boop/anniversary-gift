@@ -690,12 +690,53 @@ img{-webkit-user-drag:none; user-select:none;}
 .end-heading{position:absolute; top:6%; left:0; right:0; text-align:center; z-index:3;}
 .end-heading span{font-family:'Fredoka',sans-serif; font-weight:600; font-size:14.5px; color:#ffd6ec; letter-spacing:.5px; text-shadow:0 0 14px rgba(255,143,196,.6); opacity:.92;}
 
+/* ---- the way on from the roof ----
+   It was a line of bare text floating over a painted night, in a
+   different typeface from the heading above it and with nothing to say
+   it could be pressed. This is a lit window: a small pane of warm glass
+   on a dark rooftop, with a hairline round it and a glow under it, the
+   same pink the stars and the hearts are. It breathes very slowly, the
+   way the lights in the painting do, and it lifts towards you when you
+   reach for it. */
 .btn-replay{
-  position:absolute; bottom:4.5%; left:50%; transform:translateX(-50%); z-index:4; background:none; border:none;
-  color:#ffe3f2; font-family:'Poppins'; font-size:14px; font-weight:600; cursor:pointer; padding:8px 14px;
-  text-shadow:0 0 10px rgba(255,143,196,.5); transition:transform .15s ease, text-shadow .15s ease; letter-spacing:.3px;
+  position:absolute; bottom:5.5%; left:50%; transform:translateX(-50%); z-index:4;
+  display:inline-flex; align-items:center; gap:8px;
+  padding:11px 22px; cursor:pointer;
+  font-family:'Fredoka',sans-serif; font-weight:600; font-size:13.5px;
+  letter-spacing:.6px; color:#ffe6f4;
+  border:1px solid rgba(255,169,208,.42);
+  border-radius:999px;
+  background:
+    radial-gradient(120% 160% at 50% 118%, rgba(255,143,196,.26), rgba(255,143,196,0) 62%),
+    linear-gradient(180deg, rgba(58,30,72,.72), rgba(24,10,38,.80));
+  box-shadow:
+    0 0 20px rgba(255,143,196,.20),
+    0 10px 26px rgba(8,3,18,.55),
+    inset 0 1px 0 rgba(255,214,236,.16);
+  text-shadow:0 0 12px rgba(255,143,196,.45);
+  transition:transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s ease,
+             border-color .18s ease, color .18s ease;
+  animation:replayGlow 4.2s ease-in-out infinite;
 }
-.btn-replay:hover{transform:translateX(-50%) scale(1.08); text-shadow:0 0 18px rgba(255,143,196,.9);}
+@keyframes replayGlow{
+  0%,100%{box-shadow:0 0 18px rgba(255,143,196,.16), 0 10px 26px rgba(8,3,18,.55),
+                     inset 0 1px 0 rgba(255,214,236,.16);}
+  50%    {box-shadow:0 0 30px rgba(255,143,196,.34), 0 10px 26px rgba(8,3,18,.55),
+                     inset 0 1px 0 rgba(255,214,236,.22);}
+}
+.btn-replay .gl{opacity:.9;}
+.btn-replay:hover{
+  transform:translateX(-50%) translateY(-3px);
+  border-color:rgba(255,190,220,.75); color:#fff3fa;
+  box-shadow:0 0 36px rgba(255,143,196,.40), 0 14px 30px rgba(8,3,18,.6),
+             inset 0 1px 0 rgba(255,214,236,.26);
+}
+.btn-replay:active{transform:translateX(-50%) translateY(-1px) scale(.985);}
+.btn-replay:focus-visible{
+  outline:none; border-color:#ffd6ec;
+  box-shadow:0 0 0 2px rgba(255,214,236,.5), 0 0 30px rgba(255,143,196,.35);
+}
+@media (prefers-reduced-motion:reduce){ .btn-replay{animation:none;} }
 
 @media (max-width:420px){
   .hello-card h1{font-size:27px;} .hello-card h2{font-size:25px;} .mascot-img{width:118px;}

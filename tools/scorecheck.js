@@ -154,11 +154,11 @@ const cueBlock = src.slice(src.indexOf('var PIECES = {'),
 const cues = [...cueBlock.matchAll(/^          ([a-z]+): \{ bpm: (\d+)/gm)]
                 .map(m => ({ name: m[1], bpm: Number(m[2]) }));
 const want = ['dread','sterile','drive','open','hearth','hunt','held',
-              'search','grief','gate','home'];
+              'search','grief','gate','home','after'];
 ok('every cue the game asks for exists',
    want.every(n => cues.some(c => c.name === n)),
    { found: cues.map(c => c.name), want });
-ok('there are eleven of them, not six', cues.length === want.length, cues.length);
+ok('there are twelve of them, not six', cues.length === want.length, cues.length);
 
 /* each one has to take its harmony from the shared progression */
 const bodies = {};
@@ -167,6 +167,13 @@ for (const c of cues) {
   const j = cueBlock.indexOf('\n          } },', i);
   bodies[c.name] = cueBlock.slice(i, j < 0 ? cueBlock.length : j);
 }
+/* the last cue is the only piece in the chapter allowed to come to rest:
+   everything else ends on the fifth so that it can go round again */
+ok('one of them, and only one, lands on the root',
+   /hz\(0, 0\)/.test(bodies.after) &&
+   cues.filter(c => /piano\(hz\(0, 0\)/.test(bodies[c.name])).length === 1,
+   cues.filter(c => /piano\(hz\(0, 0\)/.test(bodies[c.name])).map(c => c.name));
+
 const rogue = cues.filter(c => !/RT\(b|CH\(b/.test(bodies[c.name]));
 ok('and every one of them sits on the shared eight bars',
    rogue.length === 0, rogue.map(c => c.name));
@@ -202,12 +209,23 @@ const swap = src.slice(src.indexOf('function pump() {'),
                        src.indexOf('var wanted = null, muted'));
 ok('a change waits for a bar line', /beat % 4 === 0/.test(swap), swap.slice(0, 80));
 ok('unless it cannot wait', /urgent \|\| beat % 4 === 0/.test(swap));
-/* the count may only be reset where there is nothing to carry it across
-   from — inside the scheduler, a change never touches it */
-ok('the beat carries across the change', !/beat = 0/.test(swap));
-ok('and it is only ever reset when nothing was playing',
-   /if \(!piece\) \{[\s\S]{0,400}beat = 0/.test(src.slice(src.indexOf('function setPiece(name, vol, now)'),
-                                                          src.indexOf('setPiece.mute'))));
+/* The count may only be reset in the two places where restarting is the
+   right answer: coming from silence, and a hand-off at a scene change,
+   where the picture has cut and the new piece should begin at the top of
+   its own first bar. Inside the scheduler — a change of cue within a
+   level — it must never be touched, or the phrase restarts and the join
+   sounds like a track change. */
+ok('the beat carries across a change within a scene', !/beat = 0/.test(swap));
+const setter = src.slice(src.indexOf('function setPiece(name, vol, now, cut)'),
+                         src.indexOf('setPiece.mute'));
+const resets = (setter.match(/beat = 0/g) || []).length;
+ok('and it is only ever reset in the two places that earn it', resets === 2, resets);
+ok('one of them is coming from silence', /if \(!piece\) \{[\s\S]{0,400}beat = 0/.test(setter));
+ok('and the other is a scene change handing over',
+   /if \(cut\) \{[\s\S]{0,900}beat = 0/.test(setter));
+/* a hand-off has to actually be a hand-off: old one out, a gap, new one in */
+ok('a cut lets the old cue finish before the new one starts',
+   /retireBus\(ctx\.currentTime, 0\.4/.test(setter) && /setTimeout\(function/.test(setter));
 ok('and both sides of it are scheduled in the audio clock, not wall time',
    /retireBus\(nextAt/.test(swap) && /startBus\(nextAt/.test(swap));
 
