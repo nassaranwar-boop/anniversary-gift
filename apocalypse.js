@@ -517,51 +517,76 @@
 
   var TALK = {};
 
+  /* THE FIRST SCENE, AND WHAT IT HAS TO DO.
+
+     She has to end it walking out of the door, and the audience has to
+     want her to. Everything in between is her getting there on her own.
+
+     The rule the scene is written to: the narrator only says what a
+     camera could see. Everything that happens inside her head, she says
+     out loud, to an empty room, because that is what people do when
+     they are frightened and alone in a house. The family used to be a
+     line of five names and a joke about a bathroom, which is a cast
+     list read out by a stranger. It is one picture in her own mouth
+     now — the two of them arguing on the roof and the third pretending
+     to sleep through it — which says the same thing and also says that
+     she is not there. */
   TALK.tv = [
     [N, "The set has been on since before she woke up. Nobody in the studio is reading anything; the man at the desk is just sitting there while the captions run themselves."],
     [N, "STAY INDOORS. DO NOT TRAVEL. DO NOT ATTEMPT TO REACH RELATIVES."],
     [N, "Day three. She has been counting two."],
     SIL,
-    /* She used to say "HUPM" one line after the broadcast, as
-       though she had known all along. She does not know all along. She
-       stands in her parents' living room for a while first. */
     [N, "She stands there for a while with the remote in her hand and does not turn it off."],
     ["OUISSY", "Okay. Okay, think."],
-    [N, "The doors are locked. There is food. There is water while there is water. The television says stay where you are, and the television has been right about nothing else this week."],
-    ["OUISSY", "They are in Azilal. Azilal is four hours up the mountain and nothing ever happens in Azilal."],
-    [N, "Her mother, her father, Bouchra, Amal, and Amal's husband Youssef, in one house with one bathroom, since Tuesday."],
-    [N, "She tries the number anyway. It does not ring. It has not rung since Wednesday."],
+    [N, "The door is locked. There is food. There is water while there is water. The television says stay where you are, and the television has been right about nothing else this week."],
+    SIL,
+    ["OUISSY", "Baba would have a plan by now. Baba would have a list, and the list would have numbers on it."],
+    [N, "She picks the phone up off the arm of the sofa without deciding to."],
+    ["OUISSY", "Pick up. Pick up, pick up, pick up—"],
+    [N, "It does not ring. It has not rung since Wednesday."],
+    SIL,
+    ["OUISSY", "...They're in Azilal. It is four hours up the mountain and nothing has ever happened in Azilal."],
+    ["OUISSY", "They're fine. Bouchra and Amal are on the roof arguing about something stupid and Youssef is pretending to be asleep through it, and they are fine."],
+    SIL,
     ["OUISSY", "So I stay. I stay, and I wait, and somebody comes."],
     SIL,
     [N, "The captions run round again. HOSPITALS ARE NOT ACCEPTING VISITORS."],
     SIL,
     ["OUISSY", "...Hospitals."],
-    [N, "And there it is, and she is already moving."],
+    SIL,
+    [N, "She is on her feet before she has finished the thought."],
     ["OUISSY", "Anwar."],
-    [N, "HUPM, out at Chrifiya. Ward C, third floor, east side, bed by the window. She was there on Sunday and he was complaining about the food and she said she would come back Thursday."],
-    [N, "Eight days post-op. He is not walking anywhere on his own. There is nobody else left in Marrakech who is going to go and get him."],
+    [N, "Sunday. Third floor, east side, the bed by the window. He complained about the food for twenty solid minutes and she said she would come back Thursday and bring him something decent."],
+    ["OUISSY", "It's Friday."],
+    SIL,
+    ["OUISSY", "He can't walk. Eight days since they opened him up, he can't get to the end of the ward on his own—"],
+    ["OUISSY", "So who's there? Who is actually there?"],
+    [N, "It takes her about a second and a half to get to the answer, and she does not say it out loud."],
     ["OUISSY", "Come on. Come on, pick up—"],
     [N, "The ward line rings for a long time and then it stops ringing, the way everything has all morning."],
     SIL,
     ["OUISSY", "Okay."],
-    ["OUISSY", "Okay. I\'m coming to get you."],
+    ["OUISSY", "Okay. I'm coming to get you."],
     [N, "She turns the television off. The house is very quiet after that."],
     SIL,
-    /* She does not walk out of the door in the clothes she woke up in.
-       Two lines, and the second of them is hers — the errand itself is
-       the HUD's job to say, not the narrator's. */
     [N, "In the hall she stops with her hand on the latch, and makes herself go back."],
     ["OUISSY", "Kitchen first. Then I go."]
   ];
 
   /* ---- the fridge ---- */
   TALK.fridge = [
-    [N, "The light does not come on. It is still cold, which means the power went in the night and not on Monday, which means what is in there is still food."],
-    [N, "Cold pizza from Thursday. Msemen under a plate. The tin of ghriba her mother keeps behind the flour so that nobody eats them all at once."],
-    ["OUISSY", "Sorry, Mama."],
-    [N, "She eats standing at the counter, out of the box, which she has been told off for since she was eleven."],
+    [N, "The light does not come on. The cold comes out anyway."],
+    ["OUISSY", "Okay, so it went last night. Last night is fine. Last night is still food."],
     SIL,
-    [N, "Then two bottles filled from the tap while there is still pressure in it, and the rest of the ghriba in the bag, because she is not going to be back tonight and she knows it."],
+    [N, "She eats standing at the counter, out of the box, which she has been told off for since she was eleven."],
+    ["OUISSY", "Sorry, Mama."],
+    SIL,
+    ["OUISSY", "Right. Water while there's still pressure in the tap—"],
+    [N, "Two bottles. The rest of the ghriba goes in the bag on top of them."],
+    ["OUISSY", "—because I am not coming back here tonight."],
+    SIL,
+    [N, "She says it out loud and then stands very still for a moment, because she has not said it out loud before."],
+    ["OUISSY", "...Okay."],
     [N, "It is the first thing she has eaten since yesterday. It makes an enormous difference, and she is annoyed about how much."]
   ];
   TALK.fridgeAgain = [
@@ -569,13 +594,17 @@
   ];
 
   TALK.garage = [
-    [N, "The space where the car goes is empty. There is a clean rectangle on the concrete where it has been sitting all winter, and nothing on it."],
-    [N, "Azilal. Five of them and a week of luggage, on Tuesday morning, and she stood in the doorway and waved them off."],
-    ["OUISSY", "...Right."],
-    [N, "Chrifiya is eight kilometres. She has done it on a bike in half an hour and she is not doing it on a bike today."],
-    [N, "The road atlas is in the door pocket of a car that is halfway up the Atlas. There is another on the shelf by the door, from before anybody had a phone."],
-    ["OUISSY", "South out of the Zaytoune, then east on the rocade. Eight kilometres."],
-    [N, "She takes it. It goes in the bag with the torch."]
+    [N, "The space where the car goes is empty. There is a clean rectangle on the concrete where it sat all winter, and nothing on it."],
+    SIL,
+    ["OUISSY", "...Of course. Of course it's not here."],
+    [N, "Tuesday morning. Five of them and a week of luggage, and she stood in that doorway and waved them off."],
+    SIL,
+    ["OUISSY", "Fine. Fine. It's eight kilometres, I've done it on a bike—"],
+    ["OUISSY", "I am not doing it on a bike."],
+    SIL,
+    [N, "The road atlas is in the door pocket of a car that is halfway up the Atlas. There is another one on the shelf by the door, from before anybody had a phone."],
+    ["OUISSY", "South out of the Zaytoune. East on the rocade. Eight kilometres."],
+    [N, "It goes in the bag with the torch."]
   ];
 
   TALK.lobby = [

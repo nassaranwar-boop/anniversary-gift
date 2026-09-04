@@ -32,7 +32,39 @@ const need = (name, cond, extra) => {
 
   const S  = () => p.evaluate(() => window.__apState());
   const pump = (n=30) => p.evaluate(k => { for (let i=0;i<k;i++) window.__apPump(1/60); }, n);
-  const click = async sel => { const el = await p.$(sel); if (el) { await el.click(); return true; } return false; };
+  /* CLICK FROM INSIDE THE PAGE.
+
+     Playwright's own click dispatches real mouse events and then waits
+     for the renderer to acknowledge them. Entering a level is three
+     seconds of synchronous world-building on that same thread, and
+     under software rendering the acknowledgement can arrive after the
+     thirty-second budget even though the click itself landed and the
+     game is already playing. That is a property of the harness, not of
+     the game — the button is hit, the level starts — but it made this
+     suite fail at random on the level cards.
+
+     So this one presses buttons from inside the page, which is what
+     every other suite here does. Real pointer and touch input has a
+     suite of its own that does nothing else: tools/touchcheck.js. */
+  /* and then WAIT for the page to come back. Playwright's own click got
+     this for free by blocking on the acknowledgement; pressing from
+     inside the page does not, so without this the suite ran four times
+     faster than the game and started asking about level five while
+     level five was still being built. Two animation frames only arrive
+     once the main thread is free again, which is exactly the signal
+     that was being waited for in the first place. */
+  const settle = () => p.evaluate(() => new Promise(r =>
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 0)))));
+  const click = async sel => {
+    const hit = await p.evaluate(s2 => {
+      const el = document.querySelector(s2);
+      if (!el) return false;
+      el.click();
+      return true;
+    }, sel);
+    if (hit) await settle();
+    return hit;
+  };
   const trace = async where => log('   .. ' + where + ' ' + JSON.stringify(await S()));
   const talk = async () => { await p.evaluate(() => window.__apSkipDialogue()); await pump(4); };
   const walkTo = async (tx, ty, frames=30) => {
