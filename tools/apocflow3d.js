@@ -103,8 +103,26 @@ const need = (name, cond, extra) => {
   const fr1 = await p.evaluate(() => window.Apocalypse.game.world.fridgeAt);
   need('there is a fridge in the kitchen', !!fr1, fr1);
   await walkTo(fr1.x, fr1.y + 1); await use();
-  need('the fridge opens', await p.$('.ap-card') !== null);
-  await click('.ap-card-go');                       // EAT SOMETHING
+  need('the fridge opens', await p.$('.ap-fridge-canvas, .ap-fridge .ap-panel-canvas') !== null);
+  /* reach in and take every one of the things that keep — at the
+     coordinates the game itself says they are at, not at guessed ones */
+  const fridgeTook = await p.evaluate(() => {
+    const cv = document.querySelector('.ap-fridge .ap-panel-canvas');
+    const r = cv.getBoundingClientRect();
+    const keeps = window.__apFridgeItems().filter(i => i.keep);
+    keeps.forEach(it => {
+      cv.dispatchEvent(new MouseEvent('click', { bubbles: true,
+        clientX: r.left + (it.x + it.w / 2) * (r.width / cv.width),
+        clientY: r.top + (it.y + it.h / 2) * (r.height / cv.height) }));
+    });
+    return { wanted: keeps.length,
+             left: window.__apFridgeItems().filter(i => i.keep && !i.gone).length,
+             label: document.querySelector('.ap-fridge .ap-card-go').textContent };
+  });
+  need('there is more than one thing worth taking', fridgeTook.wanted >= 3, fridgeTook);
+  need('reaching in takes every one of them', fridgeTook.left === 0, fridgeTook);
+  need('and the panel says so', fridgeTook.label === 'THAT IS EVERYTHING', fridgeTook);
+  await click('.ap-fridge .ap-card-go');
   await pump(6);
   need('and she stops to eat', await waitFor(s => s.dialogue === true, 600));
   await talk();
@@ -126,7 +144,7 @@ const need = (name, cond, extra) => {
 
   const ex1 = await p.evaluate(() => window.Apocalypse.game.world.exit);
   await walkTo(ex1.x, ex1.y, 24);
-  need('the Level 2 card comes up', await waitCard('Level 2: THE STREETS'));
+  need('the Level 2 card comes up', await waitCard('Level 2: MARRAKECH'));
   await click('.ap-card-go'); await pump(20);
   st = await S(); need('Level 2 is running', st.level === 'streets', st);
   log('level 1 done');
@@ -145,7 +163,7 @@ const need = (name, cond, extra) => {
 
   const ex2 = await p.evaluate(() => window.Apocalypse.game.world.exit);
   await walkTo(ex2.x, ex2.y, 24);
-  need('the Level 3 card comes up', await waitCard('Level 3: THE HOSPITAL'));
+  need('the Level 3 card comes up', await waitCard('Level 3: HUPM, CHRIFIYA'));
   await click('.ap-card-go'); await pump(20);
   st = await S(); need('Level 3 is running', st.level === 'hospital', st);
   await pump(70);
@@ -184,7 +202,7 @@ const need = (name, cond, extra) => {
   await talk();
   need('the radio is on the shelf', await waitSel('.ap-radio-line'));
   for (let i = 0; i < 5; i++) { await click('.ap-radio .ap-card-go'); await pump(3); }
-  need('the Level 4 card comes up', await waitCard('Level 4: THE ROAD'));
+  need('the Level 4 card comes up', await waitCard('Level 4: THE COAST ROAD'));
   await click('.ap-card-go'); await pump(20);
   st = await S(); need('Level 4 is running', st.level === 'escape', st);
   log('level 3 done');

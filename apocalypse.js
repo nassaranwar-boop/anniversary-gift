@@ -112,7 +112,7 @@
     "#.rrr......................rrr...#",
     "#................................#",
     "#######d########d#########d#######",
-    "#kk..p.......a#..fOKsK1p#..JJ...M#",
+    "#kk..p.......a#..f1KsKOp#..JJ...M#",
     "#uTU..........#....K....#..II.WM.#",
     "v...rrtrr.FFF.#....K....#..II..M.#",
     "v.q.rrrrr..u..#.ett.i...#o.II...o#",
@@ -384,8 +384,8 @@
      Level 4. `base` is what a space in the grid means outdoors. */
   var LEVELS = [
     {
-      id: "home", name: "HOME", card: "Level 1: HOME",
-      blurb: "Her mum and dad flew to Portugal on Tuesday. It is Friday, she is alone in the house, and the news is still on.",
+      id: "home", name: "HAY ZAYTOUNE", card: "Level 1: HOME",
+      blurb: "Her family drove up to Azilal on Tuesday. It is Friday, she is alone in the house in Hay Zaytoune, and the news is still on.",
       map: MAPS.home, theme: "house", base: ".", dark: 0.68, groundTex: "asphalt",
       /* [x0, y0, x1, y1, texture, tint] — the bathroom and the kitchen are
          tiled and the garage is a slab; the rest of it is boards */
@@ -407,24 +407,24 @@
         { task: "Go through the house first. The torch is in the kitchen, and there is food in the fridge.",
           clears: "torch", cue: "search",
           after: ["search", 14] },
-        { task: "Anwar is at Mercy General. Take the car — the garage is the far room downstairs.",
+        { task: "Anwar is at HUPM, out at Chrifiya. Take the car — the garage is the far room downstairs.",
           clears: "panel", cue: "search" },
         { task: "The shutter is up. Walk out through it, onto the drive.",
           clears: "exit" }
       ]
     },
     {
-      id: "streets", name: "THE STREETS", card: "Level 2: THE STREETS",
-      blurb: "Four miles. South to the river, then east along it.",
+      id: "streets", name: "MARRAKECH", card: "Level 2: MARRAKECH",
+      blurb: "Eight kilometres of it, on foot. South out of the Zaytoune, then east on the rocade.",
       map: MAPS.streets, theme: "street", base: ",", dark: 0.62,
       grade: [60, 90, 180, 0.18], haze: [35, 48, 80, 0.36],
       steps: [
-        { task: "Cross town on foot. South first, then east — the compass points the way, M opens the map.", clears: "exit" }
+        { task: "Cross the city on foot. South first, then east — the compass points the way, M opens the map.", clears: "exit" }
       ]
     },
     {
-      id: "hospital", name: "THE HOSPITAL", card: "Level 3: THE HOSPITAL",
-      blurb: "It was the first place it got into. Ward C, east wing.",
+      id: "hospital", name: "HUPM", card: "Level 3: HUPM, CHRIFIYA",
+      blurb: "It was the first place it got into. Ward C, east wing, third floor.",
       map: MAPS.hospital, theme: "hospital", base: ".", dark: 0.63,
       grade: [104, 176, 168, 0.13], haze: [58, 84, 92, 0.34],
       dead: [20, 1, 39, 10],
@@ -441,8 +441,8 @@
       ]
     },
     {
-      id: "escape", name: "THE ROAD", card: "Level 4: THE ROAD",
-      blurb: "Ashcombe. North road, past the reservoir. Forty miles.",
+      id: "escape", name: "THE COAST ROAD", card: "Level 4: THE COAST ROAD",
+      blurb: "Essaouira. The coast road, past Chichaoua. A hundred and seventy kilometres.",
       map: MAPS.escape, theme: "hospital", light: "bay", base: ".", dark: 0.68,
       groundTex: "asphalt", blood: true,
       grade: [96, 150, 170, 0.12], haze: [46, 62, 76, 0.32],
@@ -451,7 +451,7 @@
       ]
     },
     {
-      id: "gates", name: "THE GATES", card: "Level 5: THE GATES",
+      id: "gates", name: "ESSAOUIRA", card: "Level 5: ESSAOUIRA",
       blurb: "They only take you if you're clean.",
       map: MAPS.gates, theme: "road", base: ",", dark: 0.28, floorTex: "pave",
       people: [
@@ -522,14 +522,15 @@
     [N, "STAY INDOORS. DO NOT TRAVEL. DO NOT ATTEMPT TO REACH RELATIVES."],
     [N, "Day three. She has been counting two."],
     SIL,
-    /* She used to say "Mercy General" one line after the broadcast, as
+    /* She used to say "HUPM" one line after the broadcast, as
        though she had known all along. She does not know all along. She
        stands in her parents' living room for a while first. */
     [N, "She stands there for a while with the remote in her hand and does not turn it off."],
     ["OUISSY", "Okay. Okay, think."],
     [N, "The doors are locked. There is food. There is water while there is water. The television says stay where you are, and the television has been right about nothing else this week."],
-    ["OUISSY", "Mum and Dad are in Portugal. Portugal is fine. Portugal is on the news being fine."],
-    [N, "She tries their number anyway. It does not ring. It has not rung since Wednesday."],
+    ["OUISSY", "They are in Azilal. Azilal is four hours up the mountain and nothing ever happens in Azilal."],
+    [N, "Her mother, her father, Salma, Ghita, and Ghita's husband Mehdi, in one house with one bathroom, since Tuesday."],
+    [N, "She tries the number anyway. It does not ring. It has not rung since Wednesday."],
     ["OUISSY", "So I stay. I stay, and I wait, and somebody comes."],
     SIL,
     [N, "The captions run round again. HOSPITALS ARE NOT ACCEPTING VISITORS."],
@@ -537,8 +538,8 @@
     ["OUISSY", "...Hospitals."],
     [N, "And there it is, and she is already moving."],
     ["OUISSY", "Anwar."],
-    [N, "Ward C, third floor, east side. Bed by the window. She was there on Sunday and he was complaining about the food and she said she would come back Thursday."],
-    [N, "Eight days post-op. He is not walking anywhere on his own. There is nobody else in this city who is going to go and get him."],
+    [N, "HUPM, out at Chrifiya. Ward C, third floor, east side, bed by the window. She was there on Sunday and he was complaining about the food and she said she would come back Thursday."],
+    [N, "Eight days post-op. He is not walking anywhere on his own. There is nobody else left in Marrakech who is going to go and get him."],
     ["OUISSY", "Come on. Come on, pick up—"],
     [N, "The ward line rings for a long time and then it stops ringing, the way everything has all morning."],
     SIL,
@@ -546,25 +547,21 @@
     ["OUISSY", "Okay. I\'m coming to get you."],
     [N, "She turns the television off. The house is very quiet after that."],
     SIL,
-    /* Somebody who has just decided to cross a city does not walk out of
-       the front door in the clothes she woke up in. She goes round her
-       own house first — and that is also, quietly, how the player learns
-       that USE is a thing you point at furniture. */
-    [N, "Then she stands in the hall and makes herself think, because going out of that door with nothing is how people die on the news."],
-    ["OUISSY", "Right. Kitchen. Torch, water, something to eat, and then I go."],
-    [N, "Go through the house. The torch lives in the drawer under the kettle. There is a fridge, and whatever is in it is not going to keep."]
+    /* She does not walk out of the door in the clothes she woke up in.
+       Two lines, and the second of them is hers — the errand itself is
+       the HUD's job to say, not the narrator's. */
+    [N, "In the hall she stops with her hand on the latch, and makes herself go back."],
+    ["OUISSY", "Kitchen first. Then I go."]
   ];
 
   /* ---- the fridge ---- */
   TALK.fridge = [
-    [N, "The light does not come on. It is still cold in there, which means it went off in the night rather than on Monday, which means what is in it is still food."],
-    ["OUISSY", "Okay. Sitting down. Two minutes."],
-    [N, "She eats standing up at the counter, out of the box, the way she has been told off for eating since she was eleven."],
-    [N, "Cold pizza from Sunday. Half a packet of the biscuits her mother hides behind the flour. A carton of orange juice, drunk out of the carton."],
-    ["OUISSY", "Sorry, Mum."],
+    [N, "The light does not come on. It is still cold, which means the power went in the night and not on Monday, which means what is in there is still food."],
+    [N, "Cold pizza from Thursday. Msemen under a plate. The tin of ghriba her mother keeps behind the flour so that nobody eats them all at once."],
+    ["OUISSY", "Sorry, Mama."],
+    [N, "She eats standing at the counter, out of the box, which she has been told off for since she was eleven."],
     SIL,
-    [N, "Then she fills two bottles from the tap while there is still pressure in it, and puts them in her bag with the rest of the biscuits, because she is not going to be back tonight and she knows it."],
-    ["OUISSY", "That's the last hot meal in this house. Great."],
+    [N, "Then two bottles filled from the tap while there is still pressure in it, and the rest of the ghriba in the bag, because she is not going to be back tonight and she knows it."],
     [N, "It is the first thing she has eaten since yesterday. It makes an enormous difference, and she is annoyed about how much."]
   ];
   TALK.fridgeAgain = [
@@ -573,11 +570,11 @@
 
   TALK.garage = [
     [N, "The space where the car goes is empty. There is a clean rectangle on the concrete where it has been sitting all winter, and nothing on it."],
-    [N, "Portugal. They drove to the airport on Tuesday and left it in long stay, and she stood on the step and waved them off."],
+    [N, "Azilal. Five of them and a week of luggage, on Tuesday morning, and she stood in the doorway and waved them off."],
     ["OUISSY", "...Right."],
-    [N, "Mercy General is four miles. She has done it on a bike in twenty minutes and she is not going to do it on a bike today."],
-    [N, "There is a road atlas in the door pocket of a car that is in Portugal. There is one on the shelf by the door as well, from before anyone had a phone."],
-    ["OUISSY", "South to the river, then east along it. Four miles."],
+    [N, "Chrifiya is eight kilometres. She has done it on a bike in half an hour and she is not doing it on a bike today."],
+    [N, "The road atlas is in the door pocket of a car that is halfway up the Atlas. There is another on the shelf by the door, from before anybody had a phone."],
+    ["OUISSY", "South out of the Zaytoune, then east on the rocade. Eight kilometres."],
     [N, "She takes it. It goes in the bag with the torch."]
   ];
 
@@ -661,11 +658,11 @@
 
   TALK.wood = [
     [
-      [N, "She snaps a branch off a dead elm. It is dry enough that it comes away clean."],
+      [N, "She snaps a branch off a dead eucalyptus. It is dry enough that it comes away clean."],
       [N, "Across the clearing, he is on his knees pulling grass out of the dirt with both hands, making a bare circle in the ground."]
     ],
     [
-      [N, "She finds another piece wedged in a low fork — birch, pale and papery. Good kindling."],
+      [N, "She finds another piece wedged in a low fork, with the bark coming off it in long dry curls. Good kindling."],
       ["OUISSY", "How's it going over there?"],
       ["ANWAR", "I found some stones. Flat ones, for a ring."],
       ["OUISSY", "You don't have to—"],
@@ -680,17 +677,17 @@
   ];
 
   TALK.fire = [
-    [N, "She kneels by the pit he made and starts stacking the wood: a loose cone with the driest pieces in the centre and the bark facing in, the way her mother showed her years ago in somebody's garden."],
+    [N, "She kneels by the pit he made and starts stacking the wood: a loose cone with the driest pieces in the centre and the bark facing in, the way her mother showed her years ago in a courtyard in Azilal."],
     ["ANWAR", "Where did you learn that?"],
-    ["OUISSY", "Mum. Bonfire night. I was about seven."],
-    [N, "He crouches on the other side of the pit and holds the cone steady while she wedges the last piece in. The birch bark curls inward and the whole thing looks like it might actually work."],
+    ["OUISSY", "Mama. Every summer at my grandmother's. I was about seven."],
+    [N, "He crouches on the other side of the pit and holds the cone steady while she wedges the last piece in. The loose bark curls inward and the whole thing looks like it might actually work."],
     ["OUISSY", "Right. Lighter?"],
     ["ANWAR", "Still in my pocket, somehow."],
     [N, "The first spark catches nothing. She cups her hand around it and tries again — the flame licks sideways, finds air instead of bark, and goes out."],
     ["OUISSY", "...Come on."],
     ["ANWAR", "Try the other side. The wind's coming from—"],
     ["OUISSY", "I know where the wind's coming from."],
-    [N, "She moves around. He strips a curl of bark off one of the birch pieces and tucks it into the base where the gap in the stones lets air through."],
+    [N, "She moves around. He strips a curl of bark off one of the eucalyptus pieces and tucks it into the base where the gap in the stones lets air through."],
     ["OUISSY", "That's good. Hold it there."],
     [N, "Third try. The spark catches the curl. A thin thread of smoke, and then a crackle, and then the whole thing talks back at once — a low, steady roar that neither of them has heard for days."]
   ];
@@ -755,11 +752,11 @@
     ["OUISSY", "...Fine. What."],
     ["ANWAR", "I know."],
     SIL,
-    [N, "The fire burns low. Above the clearing the stars are out, which neither of them has seen in a city for a long time, and which neither of them mentions because it would break something."],
+    [N, "The fire burns low. Above the clearing the stars are out — all of them, the way they are not over Marrakech — and neither of them mentions it, because it would break something."],
     SIL,
-    ["OUISSY", "We should sleep. The gates can't be far."],
+    ["OUISSY", "We should sleep. The gate can't be far now."],
     ["ANWAR", "How far?"],
-    ["OUISSY", "The radio said north road, past the reservoir. An hour, maybe, on the horse."],
+    ["OUISSY", "The radio said the coast road, past Chichaoua. Two hours, maybe, at this pace."],
     ["ANWAR", "You should sleep first. I'll watch the fire."],
     ["OUISSY", "You were in a hospital bed for a week."],
     ["ANWAR", "And you carried me out of it. Sleep."],
@@ -786,24 +783,24 @@
     ["ANWAR", "That would be my fault."],
     ["OUISSY", "It is entirely your fault."],
     [N, "She stands up in stages, the way you do after a night on the ground, and looks at the light coming through the trees."],
-    ["OUISSY", "Reservoir, then north road. An hour, they said."],
-    ["ANWAR", "They said an hour on a horse. Nobody asked whether we could ride one."],
+    ["OUISSY", "Coast road, then the argan country. Two hours, they said."],
+    ["ANWAR", "They said two hours on a horse. Nobody asked whether we could ride one."],
     ["OUISSY", "We got this far."],
     [N, "He puts the last of the wood on the embers and stands on it until it is out, because you do not leave a fire in a wood."]
   ];
 
-  /* ---- coming up on Ashcombe ---- */
+  /* ---- coming up on the gate ---- */
   TALK.arrive = [
-    [N, "The reservoir is on their left for two miles, flat and grey and absolutely still, and neither of them says anything about how beautiful it is."],
-    [N, "Then the road lifts, and at the top of it there is a fence."],
+    [N, "The argan trees go on for an hour, low and grey-green and full of goats that watch them go past, and neither of them says anything about how beautiful it is."],
+    [N, "Then the road lifts, and there is salt in the wind, and at the top of it there is a fence."],
     ["ANWAR", "That is a lot of fence."],
     ["OUISSY", "That is the point of it."],
-    [N, "Floodlights on poles. A gate made out of scaffolding and a lorry parked sideways behind it. Somebody on the roof of the lorry with binoculars, who has already seen them."],
+    [N, "Floodlights on poles. A gate made out of scaffolding and a truck parked sideways behind it. Somebody on the roof of the truck with binoculars, who has already seen them."],
     ["ANWAR", "They have seen us."],
     ["OUISSY", "Good."],
     ["ANWAR", "Is it?"],
     ["OUISSY", "It is better than the alternative."],
-    [N, "She walks the horse the last two hundred yards at a pace that says they are not in a hurry and they are not hiding anything."]
+    [N, "She walks the horse the last two hundred metres at a pace that says they are not in a hurry and they are not hiding anything."]
   ];
 
   /* ---- let in ---- */
@@ -820,13 +817,13 @@
   ];
 
   TALK.roof = [
-    [N, "The roof is flat and wide and the air up here is clean."],
-    [N, "The whole of the valley is underneath them, and whatever is burning in it is a long way off."],
+    [N, "The roof is flat and white and the air up here is salt and cold."],
+    [N, "The whole of the town is underneath them, and past the last of it the Atlantic is going on doing what it has always done."],
     SIL,
     ["ANWAR", "I can't believe we're here."],
     ["OUISSY", "I know."],
     SIL,
-    ["ANWAR", "I didn't think we'd make it past the ring road."],
+    ["ANWAR", "I didn't think we'd make it past the rocade."],
     ["OUISSY", "I didn't think past the hospital."],
     [N, "He laughs, short and real, and it is the first time in days it has sounded like him."],
     SIL,
@@ -834,13 +831,16 @@
     ["OUISSY", "There's no signal. There's been nothing since the second day."],
     ["ANWAR", "Mine too. Network's gone."],
     SIL,
-    ["OUISSY", "My mum would've gone to Aunt Sara's. That's what they always said — if anything happened, go to Sara's."],
-    ["ANWAR", "My parents would've gone to the mosque. Or to Nana's."],
-    ["OUISSY", "Then that's where we look. When things calm down, that's where we go first."],
-    ["ANWAR", "Both places. Yours and mine."],
-    ["OUISSY", "Both places."],
+    ["OUISSY", "They are in Azilal. All five of them, in my grandmother's house, and there is one road in and one road out."],
+    ["ANWAR", "That is a good place to be."],
+    ["OUISSY", "It is the best place to be. Nothing has ever happened in Azilal."],
     SIL,
-    [N, "They are quiet for a while. A light goes on and off in a window three streets away, and then it stays off."],
+    ["ANWAR", "Mine went up to Safi on the Sunday. That is two hours from here, along the water."],
+    ["OUISSY", "Then that is where we go first. Safi, then Azilal."],
+    ["ANWAR", "Yours are further."],
+    ["OUISSY", "Yours are closer. We go to the close one first. That is not a discussion."],
+    SIL,
+    [N, "They are quiet for a while. A light goes on and off in a window three streets down towards the port, and then it stays off."],
     SIL,
     ["ANWAR", "You know the worst part?"],
     ["OUISSY", "What."],
@@ -861,10 +861,10 @@
     [N, "He turns and looks at her, properly looks, for the first time since the hospital."],
     SIL,
     ["ANWAR", "Come here."],
-    [N, "She leans into him, and he puts his arm around her, and the city below them is the quietest it has ever been."],
+    [N, "She leans into him, and he puts his arm around her, and the town below them is the quietest it has ever been."],
     SIL,
     [N, "They stay like that for a long time. There is nowhere else to be."],
-    [N, "The moon is up and the smoke has cleared enough to see the stars."],
+    [N, "The moon is up and it is lying in a long line across the water, all the way out."],
     SIL,
     ["OUISSY", "Hey."],
     ["ANWAR", "Yeah?"],
@@ -875,9 +875,9 @@
 
   var RADIO_LINES = [
     "— stay off the roads at night. Do not attempt to reach us after dark —",
-    "— Ashcombe reception is open. We are accepting anyone who is not bitten —",
+    "— Essaouira reception is open. We are accepting anyone who is not bitten —",
     "— you will be checked at the gate and you will be given the serum. Both are required —",
-    "— that is Ashcombe. North road, past the reservoir. We are still here —"
+    "— that is Essaouira. The coast road, past Chichaoua. We are still here —"
   ];
 
   var TV_LINES = [
@@ -885,17 +885,17 @@
     "STAY INSIDE. LOCK WHAT YOU CAN LOCK.",
     "DO NOT APPROACH ANYONE WHO SEEMS UNWELL.",
     "DO NOT ATTEMPT TO HELP THEM. THEY CANNOT BE HELPED.",
-    "ALL CITY HOSPITALS ARE CLOSED TO THE PUBLIC.",
-    "MERCY GENERAL. ST BRIDE'S. THE ROYAL. ALL CLOSED.",
+    "EVERY HOSPITAL IN MARRAKECH IS CLOSED TO THE PUBLIC.",
+    "HUPM. IBN TOFAIL. MOHAMMED VI. ALL CLOSED.",
     "THEY WERE THE FIRST PLACES IT GOT INTO.",
-    "IF YOU CAN TRAVEL, GO NORTH.",
-    "ASHCOMBE IS OPEN. NORTH ROAD, PAST THE RESERVOIR.",
+    "IF YOU CAN TRAVEL, GO WEST, TO THE COAST.",
+    "ESSAOUIRA IS OPEN. THE COAST ROAD, PAST CHICHAOUA.",
     "YOU WILL BE CHECKED AT THE GATE AND GIVEN THE SERUM.",
     "BOTH ARE REQUIRED. THERE ARE NO EXCEPTIONS."
   ];
 
   var TV_TICKER = "EMERGENCY BROADCAST • DAY 3 • THIS IS NOT A TEST • " +
-                  "ALL CITY HOSPITALS CLOSED • ASHCOMBE OPEN: NORTH ROAD PAST THE RESERVOIR • " +
+                  "ALL MARRAKECH HOSPITALS CLOSED • ESSAOUIRA OPEN: COAST ROAD PAST CHICHAOUA • " +
                   "CHECKPOINT AND SERUM REQUIRED • NO FURTHER BULLETINS ARE SCHEDULED • ";
 
   var GATE_CODE = "4180";
@@ -1322,6 +1322,46 @@
                       [-2, 2, 5], [0, 3, 7], [-4, 0, 3], [-5, -2, 2]];
         var ROOTS = [0, -5, 3, -4, -2, 0, -4, -5];
 
+        /* ============================================================
+           THE SECOND TIME ROUND
+
+           Eight bars is thirty seconds. Played the same way every time,
+           you hear the loop rather than the music, and after the third
+           pass you have stopped listening — which is the whole of what
+           was wrong with it.
+
+           So the second time round the same melodies sit on a different
+           set of chords. Every bar here still contains the note the tune
+           lands on, and the note the other tune lands on, so nothing has
+           to be rewritten and nothing can clash — but the colour under
+           it changes completely and the bass walks somewhere new:
+
+             F   G   Am7  Dm7  Em7  Dm  C   Am7
+             ▲ the same E on top, a different floor underneath
+
+           and the four passes are not the same volume either. It goes
+           quiet, builds, opens out, and falls back, which is the
+           difference between music that is playing and music that is
+           going somewhere.
+           ============================================================ */
+        var CHORDS_B = [[-4, 0, 3, 7], [-2, 2, 5], [0, 3, 7, 10], [-4, 0, 3, 5],
+                        [-5, -2, 2, 5], [-7, -4, 0], [3, 7, 10], [0, 3, 7, 10]];
+        var ROOTS_B = [-4, -2, 0, -7, -5, -7, 3, 0];
+        var DYNS = [0.80, 1.00, 1.14, 0.88];
+
+        function passOf(b) { return Math.floor(b / 32) % 4; }
+        /* the chord this beat is over, on whichever time round it is */
+        function CH(b) {
+          var bar = Math.floor(b / 4) % 8;
+          return (passOf(b) % 2) ? CHORDS_B[bar] : CHORDS[bar];
+        }
+        function RT(b) {
+          var bar = Math.floor(b / 4) % 8;
+          return (passOf(b) % 2) ? ROOTS_B[bar] : ROOTS[bar];
+        }
+        /* how loud this time round is */
+        function DYN(b) { return DYNS[passOf(b)]; }
+
         var A0 = 27.5;                       /* the A everything is measured from */
         function hz(semi, oct) { return A0 * Math.pow(2, (semi / 12) + 4 + (oct || 0)); }
 
@@ -1453,16 +1493,49 @@
           o.type = "sawtooth"; o.frequency.value = fr;
           o.connect(f); o.start(at); o.stop(at + (len || 0.5) + 0.1); voices.push(o);
         }
+        /* THE CLICK.
+
+           This was the sound that hurt: a square wave switched on at
+           full amplitude. `setValueAtTime(v, at)` is not an attack, it
+           is a step — the speaker cone is asked to go from nowhere to
+           somewhere between one sample and the next, and what you hear
+           is not the note, it is the edge. Through a bandpass at 2.3k
+           with a Q of five it came out as a needle, once every two bars,
+           for the whole of the streets and the whole of the hospital.
+
+           It is a wood block now: a triangle rather than a square, so
+           there is far less up there to begin with; a real attack, four
+           milliseconds of it, which is short enough to still read as a
+           tick and long enough that nothing steps; a lowpass over the
+           top; and a little noise underneath, because a real tick is
+           mostly the sound of two things touching. */
         function tick(at, v) {
           var g = ctx.createGain();
-          g.gain.setValueAtTime(v, at);
-          g.gain.exponentialRampToValueAtTime(0.0001, at + 0.09);
+          g.gain.setValueAtTime(0.0001, at);
+          g.gain.exponentialRampToValueAtTime(Math.max(0.0002, v), at + 0.004);
+          g.gain.exponentialRampToValueAtTime(0.0001, at + 0.10);
           var f = ctx.createBiquadFilter();
-          f.type = "bandpass"; f.frequency.value = 2300; f.Q.value = 5;
-          f.connect(g); out(g, 0.25);
+          f.type = "bandpass"; f.frequency.value = 1500; f.Q.value = 2.2;
+          var lp = ctx.createBiquadFilter();
+          lp.type = "lowpass"; lp.frequency.value = 3200;
+          f.connect(lp); lp.connect(g); out(g, 0.25);
           var o = ctx.createOscillator();
-          o.type = "square"; o.frequency.value = 1500;
-          o.connect(f); o.start(at); o.stop(at + 0.11); voices.push(o);
+          o.type = "triangle"; o.frequency.setValueAtTime(1180, at);
+          o.frequency.exponentialRampToValueAtTime(760, at + 0.07);
+          o.connect(f); o.start(at); o.stop(at + 0.13); voices.push(o);
+          /* the wood, under the note */
+          if (noiseBuf) {
+            var ns = ctx.createBufferSource();
+            ns.buffer = noiseBuf;
+            var nf = ctx.createBiquadFilter();
+            nf.type = "bandpass"; nf.frequency.value = 2100; nf.Q.value = 1.1;
+            var ng = ctx.createGain();
+            ng.gain.setValueAtTime(0.0001, at);
+            ng.gain.exponentialRampToValueAtTime(Math.max(0.0002, v * 0.5), at + 0.003);
+            ng.gain.exponentialRampToValueAtTime(0.0001, at + 0.045);
+            ns.connect(nf); nf.connect(ng); ng.connect(g);
+            ns.start(at); ns.stop(at + 0.06);
+          }
         }
 
         /* play whatever the written line has on this beat */
@@ -1475,113 +1548,124 @@
           }
         }
 
-        /* ---- the six cues, all of them the same eight bars ---- */
+        /* ---- THE ELEVEN CUES ----
+           All of them on the same eight bars, so any one can follow any
+           other; all of them reading the chord through CH() and the bass
+           through RT(), so the second time round they land somewhere
+           else; and all of them scaled by DYN(), so the four passes
+           breathe instead of repeating. Each one also asks what time
+           round it is and changes what carries the line, which is the
+           difference between a loop and an arrangement. */
         var PIECES = {
           /* HER HOUSE, AND THE STREETS.
              No tune. The bass of it at a quarter speed, a tick, and once
              every four times round, the first two notes an octave down
              and slowed to nothing — you are meant to not quite hear it. */
           dread: { bpm: 50, play: function (b, at, sp) {
-            var bar = Math.floor(b / 4) % 8;
+            var d = DYN(b), pass = passOf(b);
             if (b % 4 === 0) {
-              cello(hz(ROOTS[bar], -2), at, sp * 4.4, 0.075);
-              if (bar % 2 === 0) swell(hz(0, -3), at, sp * 8, 0.10);
+              cello(hz(RT(b), -2), at, sp * 4.4, 0.075 * d);
+              if (Math.floor(b / 4) % 2 === 0) swell(hz(0, -3), at, sp * 8, 0.10 * d);
             }
-            if (b % 2 === 0) tick(at, 0.016);
-            if (b % 128 === 40) { piano(hz(7, -1), at, 0.030, 6.0); }
-            if (b % 128 === 52) { piano(hz(10, -1), at, 0.026, 6.0); }
-            if (b % 32 === 16) strings([hz(ROOTS[bar], -1), hz(ROOTS[bar] + 7, -1)],
-                                       at, sp * 12, 0.022, 420);
+            if (b % 2 === 0) tick(at, 0.016 * d);
+            /* two notes of her, a long way down, once in a while — and
+               on the third time round they come an octave higher, which
+               is the first thing in this cue that has ever moved */
+            if (b % 128 === 40) piano(hz(7, pass === 2 ? 0 : -1), at, 0.030 * d, 6.0);
+            if (b % 128 === 52) piano(hz(10, pass === 2 ? 0 : -1), at, 0.026 * d, 6.0);
+            if (b % 32 === 16) {
+              var c = CH(b);
+              strings([hz(RT(b), -1), hz(RT(b) + 7, -1)], at, sp * 12, 0.022 * d, 420);
+              if (pass === 2) strings([hz(c[1], 0)], at, sp * 10, 0.014 * d, 620);
+            }
           } },
 
           /* THE HOSPITAL. The same eight bars with the floor taken out:
              no bass at all, two high voices holding a fifth, and the
              first phrase on a music box, once, a long way off. */
           sterile: { bpm: 46, play: function (b, at, sp) {
-            var bar = Math.floor(b / 4) % 8;
+            var d = DYN(b), pass = passOf(b), c = CH(b);
             if (b % 8 === 0) {
-              var c = CHORDS[bar];
-              strings([hz(c[1], 1), hz(c[2], 1)], at, sp * 9, 0.026, 1500);
+              strings([hz(c[1], 1), hz(c[2], 1)], at, sp * 9, 0.026 * d, 1500);
+              /* the room gets colder the longer she is in it */
+              if (pass >= 2) strings([hz(c[0], 2)], at, sp * 9, 0.010 * d, 2600);
             }
-            if (b % 64 === 8)  bell(hz(7, 1), at, 0.026);
-            if (b % 64 === 12) bell(hz(10, 1), at, 0.022);
-            if (b % 64 === 14) bell(hz(12, 1), at, 0.020);
-            if (b % 16 === 0) tick(at, 0.010);
+            if (b % 64 === 8)  bell(hz(7, 1), at, 0.026 * d);
+            if (b % 64 === 12) bell(hz(10, 1), at, 0.022 * d);
+            if (b % 64 === 14) bell(hz(12, 1), at, 0.020 * d);
+            if (b % 16 === 0) tick(at, 0.010 * d);
           } },
 
           /* THE CAR. The only part of the chapter that is moving, so it
              is the only cue with a pulse in it. */
           drive: { bpm: 100, play: function (b, at, sp) {
-            var bar = Math.floor(b / 4) % 8;
+            var d = DYN(b), c = CH(b);
             /* the pulse eases off as the conversation gets going: the
                first time round it is a car going somewhere, and after
                that it is two people talking in one */
             var late = b >= 64;
-            pulse(hz(ROOTS[bar], -2), at,
-                  (b % 2 ? 0.030 : 0.052) * (late ? 0.45 : 1), sp * 0.8);
-            if (b % 4 === 2) {
-              var c = CHORDS[bar];
+            pulse(hz(RT(b), -2), at,
+                  (b % 2 ? 0.030 : 0.052) * (late ? 0.45 : 1) * d, sp * 0.8);
+            if (b % 4 === 2)
               strings([hz(c[0], 0), hz(c[1], 0), hz(c[2], 0)],
-                      at, sp * 1.6, late ? 0.020 : 0.026, 1800);
-            }
-            if (late && b % 8 === 0) {
-              var c2 = CHORDS[bar];
-              strings([hz(c2[0], -1), hz(c2[1], -1), hz(c2[2], -1)], at, sp * 8.6, 0.026, 900);
-            }
+                      at, sp * 1.6, (late ? 0.020 : 0.026) * d, 1800);
+            if (late && b % 8 === 0)
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 8.6, 0.026 * d, 900);
             /* her tune, four notes of it, while they are still driving */
-            if ((b % 64) < 8 && !late) line(TUNE_AT, b % 64, at, sp, 0, 0.030, piano);
+            if ((b % 64) < 8 && !late) line(TUNE_AT, b % 64, at, sp, 0, 0.030 * d, piano);
             /* and then the other one, on a piano, once they start talking */
-            if (late) line(WARM_AT, b, at, sp, 0, 0.040, function (f, t2, v, d) {
-              piano(f, t2, v, Math.max(2.0, d * 1.2));
+            if (late) line(WARM_AT, b, at, sp, 0, 0.040 * d, function (f, t2, v, dd) {
+              piano(f, t2, v, Math.max(2.0, dd * 1.2));
             });
           } },
 
           /* THE MORNING, THE HORSE, THE ROAD UP TO THE GATE.
              The first time it is allowed to be a tune. Strings carry it,
-             the piano doubles it an octave up on the way round again. */
+             and each time round somebody else joins in. */
           open: { bpm: 66, play: function (b, at, sp) {
-            var bar = Math.floor(b / 4) % 8;
+            var d = DYN(b), pass = passOf(b), c = CH(b);
             if (b % 4 === 0) {
-              var c = CHORDS[bar];
-              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.6, 0.030, 1300);
-              cello(hz(ROOTS[bar], -2), at, sp * 4.4, 0.055);
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.6, 0.030 * d, 1300);
+              cello(hz(RT(b), -2), at, sp * 4.4, 0.055 * d);
             }
-            line(TUNE_AT, b, at, sp, 0, 0.034, function (f, t2, v, d) {
-              strings([f], t2, d + sp * 0.4, v, 2400);
-            });
-            if (b >= 32 && (b % 64) >= 32) line(TUNE_AT, b, at, sp, 1, 0.020, piano);
-            line(UNDER_AT, b, at, sp, -1, 0.026, cello);
+            /* first time round: strings alone. Second: the piano doubles
+               it an octave up. Third: the low line comes in under it.
+               Fourth: it thins out again and the piano is left holding it. */
+            if (pass !== 3)
+              line(TUNE_AT, b, at, sp, 0, 0.034 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd + sp * 0.4, v, 2400);
+              });
+            if (pass >= 1) line(TUNE_AT, b, at, sp, 1, (pass === 3 ? 0.030 : 0.020) * d, piano);
+            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.026 * d, cello);
           } },
 
           /* THE FIRE. One piano, close, and something warm underneath.
              This is the cue the whole thing is written for. */
           hearth: { bpm: 56, play: function (b, at, sp) {
-            var bar = Math.floor(b / 4) % 8;
-            if (b % 4 === 0) {
-              var c = CHORDS[bar];
-              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.6, 0.024, 900);
-            }
-            if (b % 8 === 0) cello(hz(ROOTS[bar], -2), at, sp * 8, 0.045);
+            var d = DYN(b), pass = passOf(b), c = CH(b);
+            if (b % 4 === 0)
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.6, 0.024 * d, 900);
+            if (b % 8 === 0) cello(hz(RT(b), -2), at, sp * 8, 0.045 * d);
             /* Her tune first, alone, while she is still doing things —
                and then the other one, which is the two of them. It comes
                in the second time round and does not leave. */
             var warmNow = (b % 128) >= 32;
             if (!warmNow) {
-              line(TUNE_AT, b, at, sp, 0, 0.048, function (f, t2, v, d) {
-                piano(f, t2, v, Math.max(2.4, d * 1.3));
+              line(TUNE_AT, b, at, sp, 0, 0.048 * d, function (f, t2, v, dd) {
+                piano(f, t2, v, Math.max(2.4, dd * 1.3));
               });
             } else {
-              line(WARM_AT, b, at, sp, 0, 0.052, function (f, t2, v, d) {
-                piano(f, t2, v, Math.max(2.6, d * 1.35));
+              line(WARM_AT, b, at, sp, 0, 0.052 * d, function (f, t2, v, dd) {
+                piano(f, t2, v, Math.max(2.6, dd * 1.35));
               });
               /* her tune underneath it now, on strings, very quiet: the
                  two of them are the same piece of music by this point */
-              if ((b % 128) >= 64)
-                line(TUNE_AT, b, at, sp, -1, 0.014, function (f, t2, v, d) {
-                  strings([f], t2, d + sp * 0.5, v, 700);
+              if (pass >= 2)
+                line(TUNE_AT, b, at, sp, -1, 0.014 * d, function (f, t2, v, dd) {
+                  strings([f], t2, dd + sp * 0.5, v, 700);
                 });
             }
-            if ((b % 64) >= 32) line(UNDER_AT, b, at, sp, -1, 0.030, cello);
+            if (pass % 2 === 1) line(UNDER_AT, b, at, sp, -1, 0.030 * d, cello);
           } },
 
           /* ---- THE FIVE THAT ARE NOT PLACES BUT SITUATIONS ----
@@ -1596,16 +1680,20 @@
              room she was just standing in, and no tune at all — a melody
              is something you get when you are safe. Root and tritone held
              over the top, which is the only interval in the chapter that
-             is allowed to be ugly. */
+             is allowed to be ugly, and it climbs each time round. */
           hunt: { bpm: 132, play: function (b, at, sp) {
-            var bar = Math.floor(b / 4) % 8;
-            pulse(hz(ROOTS[bar], -2), at, b % 4 === 0 ? 0.085 : 0.048, sp * 0.55);
-            if (b % 2 === 1) tick(at, 0.022);
+            var d = DYN(b), pass = passOf(b);
+            pulse(hz(RT(b), -2), at, (b % 4 === 0 ? 0.085 : 0.048) * d, sp * 0.55);
+            if (b % 2 === 1) tick(at, 0.022 * d);
             if (b % 8 === 0) {
-              cello(hz(ROOTS[bar], -2), at, sp * 8.2, 0.090);
-              strings([hz(ROOTS[bar], 0), hz(ROOTS[bar] + 6, 0)], at, sp * 7.4, 0.022, 2800);
+              cello(hz(RT(b), -2), at, sp * 8.2, 0.090 * d);
+              strings([hz(RT(b), pass >= 2 ? 1 : 0), hz(RT(b) + 6, pass >= 2 ? 1 : 0)],
+                      at, sp * 7.4, 0.022 * d, 2800);
             }
-            if (b % 32 === 24) swell(hz(0, -3), at, sp * 8, 0.11);
+            /* an off-beat that is not there at first and will not go away
+               once it arrives */
+            if (pass >= 1 && b % 4 === 2) pulse(hz(RT(b) + 7, -2), at, 0.030 * d, sp * 0.4);
+            if (b % 32 === 24) swell(hz(0, -3), at, sp * 8, 0.11 * d);
           } },
 
           /* IN A WARDROBE WITH SOMETHING IN THE ROOM. The opposite of the
@@ -1614,13 +1702,13 @@
              way off. It is quiet enough that the game's own sounds — a
              footstep on the landing, a door — come through it. */
           held: { bpm: 50, play: function (b, at, sp) {
-            var bar = Math.floor(b / 4) % 8;
-            if (b % 8 === 0) cello(hz(ROOTS[bar], -2), at, sp * 8.4, 0.058);
+            var d = DYN(b);
+            if (b % 8 === 0) cello(hz(RT(b), -2), at, sp * 8.4, 0.058 * d);
             if (b % 4 === 0) {
-              pulse(hz(0, -3), at, 0.060, sp * 0.32);
-              pulse(hz(0, -3), at + sp * 0.30, 0.040, sp * 0.28);
+              pulse(hz(0, -3), at, 0.060 * d, sp * 0.32);
+              pulse(hz(0, -3), at + sp * 0.30, 0.040 * d, sp * 0.28);
             }
-            if (b % 32 === 24) bell(hz(12, 1), at, 0.014);
+            if (b % 32 === 24) bell(hz(12, 1), at, 0.014 * d);
           } },
 
           /* LOOKING FOR SOMETHING, WITH NOTHING LOOKING FOR HER. The chord
@@ -1628,13 +1716,15 @@
              being searched sounds like: patient, and going over the same
              ground twice. */
           search: { bpm: 58, play: function (b, at, sp) {
-            var bar = Math.floor(b / 4) % 8;
-            var c = CHORDS[bar];
-            if (b % 4 === 0) cello(hz(ROOTS[bar], -2), at, sp * 4.3, 0.048);
-            piano(hz([c[0], c[1], c[2], c[1]][b % 4], 0), at, 0.026, 2.6);
+            var d = DYN(b), pass = passOf(b), c = CH(b);
+            if (b % 4 === 0) cello(hz(RT(b), -2), at, sp * 4.3, 0.048 * d);
+            /* up and back on the odd passes, down and back on the even
+               ones, so the same four notes are not the same four notes */
+            var up = [c[0], c[1], c[2], c[1]], dn = [c[2], c[1], c[0], c[1]];
+            piano(hz((pass % 2 ? dn : up)[b % 4], 0), at, 0.026 * d, 2.6);
             if (b % 16 === 8)
-              strings([hz(c[0], -1), hz(c[2], -1)], at, sp * 8, 0.020, 1100);
-            if (b % 64 === 48) line(TUNE_AT, b, at, sp, 0, 0.018, function (f, t2, v, d) {
+              strings([hz(c[0], -1), hz(c[2], -1)], at, sp * 8, 0.020 * d, 1100);
+            if (b % 64 === 48) line(TUNE_AT, b, at, sp, 0, 0.018 * d, function (f, t2, v) {
               bell(f, t2, v);
             });
           } },
@@ -1645,12 +1735,18 @@
              the same tune; it is just being played slowly enough to hear
              what it is. */
           grief: { bpm: 44, play: function (b, at, sp) {
-            var bar = Math.floor(b / 8) % 8;
+            var d = DYN(b), pass = passOf(b);
             if (b % 8 === 0) {
-              var c = CHORDS[bar];
-              strings([hz(c[1], 0), hz(c[2], 0)], at, sp * 8.6, 0.020, 900);
+              var c = CH(b * 2);          /* half speed: two bars per bar */
+              strings([hz(c[1], 0), hz(c[2], 0)], at, sp * 8.6, 0.020 * d, 900);
             }
-            if (b % 2 === 0) line(TUNE_AT, (b / 2) % 32, at, sp * 2, -1, 0.055, cello);
+            if (b % 2 === 0) line(TUNE_AT, (b / 2) % 32, at, sp * 2, -1, 0.055 * d, cello);
+            /* and the second time through, one voice above it, so that
+               she is not entirely on her own in it */
+            if (pass >= 2 && b % 2 === 0)
+              line(TUNE_AT, (b / 2) % 32, at, sp * 2, 1, 0.010 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd, v, 2400);
+              });
           } },
 
           /* A FENCE WITH PEOPLE BEHIND IT. Not frightening — nobody here
@@ -1659,16 +1755,14 @@
              every eight bars four notes of her tune on strings, so far
              back you might not notice it. */
           gate: { bpm: 76, play: function (b, at, sp) {
-            var bar = Math.floor(b / 4) % 8;
-            if (b % 4 === 0) {
-              var c = CHORDS[bar];
-              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.4, 0.026, 1100);
-            }
-            if (b % 8 === 0) cello(hz(ROOTS[bar], -2), at, sp * 8, 0.050);
-            tick(at, b % 4 === 0 ? 0.016 : 0.009);
+            var d = DYN(b), c = CH(b);
+            if (b % 4 === 0)
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.4, 0.026 * d, 1100);
+            if (b % 8 === 0) cello(hz(RT(b), -2), at, sp * 8, 0.050 * d);
+            tick(at, (b % 4 === 0 ? 0.016 : 0.009) * d);
             if ((b % 64) >= 32 && (b % 64) < 48)
-              line(TUNE_AT, b, at, sp, 0, 0.022, function (f, t2, v, d) {
-                strings([f], t2, d + sp * 0.4, v, 1900);
+              line(TUNE_AT, b, at, sp, 0, 0.022 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd + sp * 0.4, v, 1900);
               });
           } },
 
@@ -1677,28 +1771,27 @@
              middle of each half. The last note of the eighth bar is the
              fifth, not the root, so it goes round rather than finishing. */
           home: { bpm: 54, play: function (b, at, sp) {
-            var bar = Math.floor(b / 4) % 8;
+            var d = DYN(b), pass = passOf(b), c = CH(b);
             if (b % 4 === 0) {
-              var c = CHORDS[bar];
-              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.6, 0.034, 1700);
-              cello(hz(ROOTS[bar], -2), at, sp * 4.4, 0.060);
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.6, 0.034 * d, 1700);
+              cello(hz(RT(b), -2), at, sp * 4.4, 0.060 * d);
             }
-            if (b % 32 === 0 || b % 32 === 16) swell(hz(0, -3), at, sp * 16, 0.055);
+            if (b % 32 === 0 || b % 32 === 16) swell(hz(0, -3), at, sp * 16, 0.055 * d);
             /* the last cue in the chapter, so it gets both tunes: hers
                on the strings over the top, the one about the two of them
                on the piano underneath, and the eight bars they have been
                sharing all along holding them together */
-            line(WARM_AT, b, at, sp, 0, 0.054, function (f, t2, v, d) {
-              piano(f, t2, v, Math.max(2.8, d * 1.4));
+            line(WARM_AT, b, at, sp, 0, 0.054 * d, function (f, t2, v, dd) {
+              piano(f, t2, v, Math.max(2.8, dd * 1.4));
             });
-            line(TUNE_AT, b, at, sp, 1, 0.020, function (f, t2, v, d) {
-              strings([f], t2, d + sp * 0.5, v, 2600);
+            line(TUNE_AT, b, at, sp, 1, 0.020 * d, function (f, t2, v, dd) {
+              strings([f], t2, dd + sp * 0.5, v, 2600);
             });
-            if ((b % 128) >= 64)
-              line(WARM_AT, b, at, sp, 1, 0.012, function (f, t2, v, d) {
-                strings([f], t2, d + sp * 0.5, v, 3000);
+            if (pass >= 2)
+              line(WARM_AT, b, at, sp, 1, 0.012 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd + sp * 0.5, v, 3000);
               });
-            line(UNDER_AT, b, at, sp, -1, 0.034, cello);
+            line(UNDER_AT, b, at, sp, -1, 0.034 * d, cello);
           } }
         };
 
@@ -1775,6 +1868,16 @@
           var sp = 60 / piece.bpm;
           while (nextAt < ctx.currentTime + 1.2) {
             if (nextAt < ctx.currentTime) nextAt = ctx.currentTime + 0.05;
+            /* A CHANGE THAT IS COMING SHOULD SOUND LIKE ONE.
+               On the last beat before the join, the outgoing cue plays a
+               low swell into it — the thing film music does, and the
+               difference between a cue that changes and a cue that gets
+               cut off. It is scheduled on the bus that is about to fade,
+               so it rises as that bus falls and lands under the first
+               bar of the new one. */
+            if (pending && PIECES[pending] && !urgent && beat % 4 === 3 && bus) {
+              try { swell(hz(RT(beat), -3), nextAt, sp * 5.0, 0.075); } catch (e) {}
+            }
             /* the change happens HERE, on a real bar line in the
                schedule, rather than whenever this function happened to
                be called */
@@ -6005,7 +6108,8 @@
   /* =========================================================
      13 — WHAT EACH CHARACTER IN THE GRID MEANS
      ========================================================= */
-  /* 1 is the torch on the worktop — every letter was already spoken for */
+  /* 1 is the torch on the worktop, and it sits directly beside the fridge
+     so that the one errand leads your eye straight to the other */
   var SOLID  = "#ovLKcYfB=FnuQwG~T C H W D d P V k E t e O s R Z m M J U p".replace(/ /g, "");
   var OPAQUE = "#ovLcYfGH~kJMU";             /* stops sight as well as feet */
   var HIDE   = "hj";
@@ -9405,7 +9509,7 @@
     }
 
     /* --- the people who are still people ---
-       Ashcombe is not an empty car park with a fence round it: there are
+       Essaouira is not an empty car park with a fence round it: there are
        two on the gate, one at the table, and a dozen waiting inside who
        got here before she did. */
     var people = [];
@@ -10322,11 +10426,11 @@
      because "south, then east" means nothing without them.
      ========================================================= */
   var CHAPTER_MAP = [
-    { id: "home",     name: "HOME",           note: "Tuesday. Portugal." },
-    { id: "streets",  name: "THE CITY",       note: "South to the river, east along it." },
-    { id: "hospital", name: "MERCY GENERAL",  note: "Ward C, east wing." },
-    { id: "escape",   name: "THE ROAD",       note: "Out through the ambulance bay." },
-    { id: "gates",    name: "ASHCOMBE",       note: "North road, past the reservoir." }
+    { id: "home",     name: "HAY ZAYTOUNE", note: "Friday. They are all in Azilal." },
+    { id: "streets",  name: "MARRAKECH",    note: "South out of the Zaytoune, east on the rocade." },
+    { id: "hospital", name: "HUPM",         note: "Chrifiya. Ward C, east wing." },
+    { id: "escape",   name: "THE ROAD",     note: "Out through the ambulance bay." },
+    { id: "gates",    name: "ESSAOUIRA",    note: "The coast road, past Chichaoua." }
   ];
 
   /* which tiles she has been near enough to have seen */
@@ -10864,9 +10968,9 @@
   function showNote() {
     var wrap = el("div", "ap-note");
     wrap.appendChild(el("span", "ap-note-tape"));
-    wrap.appendChild(el("p", "ap-note-body", "staff gate — back of the parade"));
+    wrap.appendChild(el("p", "ap-note-body", "staff gate — behind the pharmacy"));
     wrap.appendChild(el("p", "ap-note-code", GATE_CODE));
-    wrap.appendChild(el("p", "ap-note-after", "somebody biroed it on the back of a rota so they would stop being called out at night."));
+    wrap.appendChild(el("p", "ap-note-after", "somebody wrote it in ballpoint on the back of a duty sheet, so they would stop being called out at night."));
     var b = el("button", "ap-note-ok", "TAKE IT");
     b.addEventListener("click", function () {
       G.code = GATE_CODE;
@@ -11172,7 +11276,7 @@
     /* three states, not a boolean: ready, going in, and done. A single
        "done" flag both ended the animation and swallowed the press that
        was supposed to close the screen, which left her holding her sleeve
-       up at Ashcombe forever. */
+       up at Essaouira forever. */
     var x = cv.getContext("2d"), given = 0, phase = 0, killed = false;
     G.__overlayCleanup = function () { killed = true; };
     function draw() {
@@ -11566,36 +11670,311 @@
      the chapter: no zombies, no timer, nothing to solve — she stands at
      her own counter and eats her own food, and after that everything
      that happens to her happens outdoors. */
+  /* ---- THE FRIDGE ----
+     Built the way the distribution board and the keypad are built: a
+     drawn thing you reach into, not a list of words with a button under
+     it. Both doors open — the cabinet with its four shelves and the door
+     with its racks — and every shelf has what is actually on it.
+
+     The power has been off since the night before, so the light does not
+     come on. What lights the inside is her torch, from over her left
+     shoulder, and everything outside that cone stays the colour a fridge
+     is at four in the morning. She takes things off the shelves one at a
+     time and they go, and the shelf they were on stays empty. */
   function openFridge() {
     if (G.ate) { say(TALK.fridgeAgain); return; }
-    var rows = [
-      ["SUNDAY", "half a pizza, in the box it came in"],
-      ["THE TIN", "the biscuits her mother hides behind the flour"],
-      ["THE DOOR", "orange juice, and most of a bottle of milk that has gone"],
-      ["THE TAP", "still running — two bottles' worth, while it lasts"]
-    ];
-    var used = false;
-    openOverlay(card("THE FRIDGE",
-      "The light does not come on.",
-      rows, "EAT SOMETHING", function () {
-        if (used) return;
-        used = true;
-        G.ate = true;
-        closeOverlay();
-        G.state = "play";
-        Audio_.found();
-        setHud();
-        /* the one calm scene in the level gets the one calm cue */
-        scoreMood("search", 26);
-        say(TALK.fridge);
-      },
-      "SHUT IT", function () {
-        if (used) return;
-        used = true;
-        closeOverlay();
-        G.state = "play";
-      }));
+
+    var wrap = el("div", "ap-fridge");
+    wrap.appendChild(el("p", "ap-panel-title", "THE FRIDGE"));
+    var cv = document.createElement("canvas");
+    cv.className = "ap-panel-canvas ap-fridge-canvas";
+    cv.width = 520; cv.height = 320;
+    wrap.appendChild(cv);
+    var hint = el("p", "ap-panel-hint",
+      "the light does not come on. it is still cold, which means the power went in the night. take what will keep.");
+    wrap.appendChild(hint);
+
+    var go = el("button", "ap-card-go", "SHUT IT");
+    var leave = el("button", "ap-panel-leave", "leave it");
+    wrap.appendChild(go);
+    wrap.appendChild(leave);
+    openOverlay(wrap);
     G.state = "overlay";
+
+    var x = cv.getContext("2d");
+    var t0 = performance.now();
+    var hover = -1, killed = false;
+
+    /* --- what is in there ---
+       keep: it goes in the bag and the game says so. Everything else is
+       the rest of somebody's week, and she leaves it. */
+    var ITEMS = [
+      { id: "pizza", keep: true, x: 44,  y: 52,  w: 92, h: 30, kind: "box",
+        say: "Half a pizza from Thursday, in the box it came in." },
+      { id: "msemen", keep: true, x: 150, y: 46,  w: 72, h: 36, kind: "plate",
+        say: "Msemen under a plate. Cold, and still better than nothing." },
+      { id: "tagine", keep: false, x: 44,  y: 112, w: 86, h: 40, kind: "tagine",
+        say: "Friday's tagine. It will not travel and she knows it." },
+      { id: "veg",   keep: false, x: 146, y: 118, w: 78, h: 34, kind: "veg",
+        say: "Tomatoes, and a bunch of coriander going soft at the ends." },
+      { id: "ghriba", keep: true, x: 44,  y: 176, w: 64, h: 42, kind: "tin",
+        say: "The tin of ghriba her mother keeps behind the flour." },
+      { id: "eggs",  keep: false, x: 124, y: 182, w: 96, h: 34, kind: "eggs",
+        say: "A tray of eggs. Nothing to cook them on after tonight." },
+      { id: "water", keep: true, x: 48,  y: 236, w: 100, h: 56, kind: "bottles",
+        say: "Two bottles filled at the tap, while there is still pressure in it." },
+      { id: "milk",  keep: false, x: 160, y: 240, w: 58, h: 52, kind: "carton",
+        say: "Milk, and it has gone. She shuts the door on that one quickly." },
+      { id: "juice", keep: false, x: 320, y: 60,  w: 40, h: 62, kind: "carton",
+        say: "Orange juice. She drinks what is left standing up." },
+      { id: "jam",   keep: false, x: 378, y: 74,  w: 38, h: 48, kind: "jar",
+        say: "Jam. Her father's, and nobody else is allowed it." },
+      { id: "oil",   keep: false, x: 434, y: 56,  w: 30, h: 66, kind: "oil",
+        say: "Olive oil from the cousins in Beni Mellal. Five litres of it." },
+      { id: "bread", keep: false, x: 318, y: 168, w: 150, h: 30, kind: "bread",
+        say: "Khobz from Wednesday, hard as a plate." },
+      { id: "olives", keep: false, x: 326, y: 236, w: 54, h: 50, kind: "jar",
+        say: "Olives. She takes one, because she is standing at a fridge." },
+      { id: "carrots", keep: false, x: 398, y: 232, w: 72, h: 58, kind: "veg",
+        say: "Carrots, still with the earth on them." }
+    ];
+    var gone = {}, taken = 0;
+    var KEEPS = ITEMS.filter(function (i) { return i.keep; }).length;
+
+    /* --- the shell --- */
+    var BODY = "#b8c6d4", EDGE = "#8fa0b2", DARK = "#2a3440";
+    function shell() {
+      /* the room behind it, so the fridge is standing in a dark kitchen */
+      x.fillStyle = "#0b0f16"; x.fillRect(0, 0, cv.width, cv.height);
+      /* cabinet */
+      x.fillStyle = BODY; x.fillRect(10, 6, 250, 308);
+      x.fillStyle = DARK; x.fillRect(24, 20, 222, 280);
+      /* the door, hinged open to the right, drawn as a shallow trapezoid
+         so it reads as swung out rather than as a second box */
+      x.fillStyle = EDGE;
+      x.beginPath();
+      x.moveTo(268, 6); x.lineTo(500, 24); x.lineTo(500, 296); x.lineTo(268, 314);
+      x.closePath(); x.fill();
+      x.fillStyle = "#33404e";
+      x.beginPath();
+      x.moveTo(282, 24); x.lineTo(488, 40); x.lineTo(488, 280); x.lineTo(282, 296);
+      x.closePath(); x.fill();
+      /* the hinge side, and the seal */
+      x.fillStyle = "#94a5b6"; x.fillRect(258, 6, 12, 308);
+      x.strokeStyle = "rgba(0,0,0,.35)"; x.lineWidth = 2;
+      x.strokeRect(24, 20, 222, 280);
+      /* shelves: glass, so a line and a shine */
+      [96, 158, 222].forEach(function (yy) {
+        x.fillStyle = "rgba(190,214,240,.30)"; x.fillRect(24, yy, 222, 4);
+        x.fillStyle = "rgba(255,255,255,.10)"; x.fillRect(24, yy, 222, 1);
+      });
+      /* the salad drawer at the bottom */
+      x.strokeStyle = "rgba(190,214,240,.22)"; x.lineWidth = 1.5;
+      x.strokeRect(32, 232, 206, 60);
+      /* door racks */
+      [[300, 130, 190], [296, 202, 196], [292, 292, 200]].forEach(function (r) {
+        x.fillStyle = "rgba(190,214,240,.26)";
+        x.fillRect(r[0] - 20, r[1], r[2], 4);
+      });
+      /* the handle, on the outside of the swung door */
+      x.fillStyle = "#7e8f9f"; x.fillRect(494, 120, 8, 90);
+    }
+
+    /* --- the things on the shelves --- */
+    function rr(a, b, w, h, r, col) {
+      x.fillStyle = col;
+      x.beginPath();
+      x.moveTo(a + r, b); x.lineTo(a + w - r, b); x.quadraticCurveTo(a + w, b, a + w, b + r);
+      x.lineTo(a + w, b + h - r); x.quadraticCurveTo(a + w, b + h, a + w - r, b + h);
+      x.lineTo(a + r, b + h); x.quadraticCurveTo(a, b + h, a, b + h - r);
+      x.lineTo(a, b + r); x.quadraticCurveTo(a, b, a + r, b);
+      x.closePath(); x.fill();
+    }
+    function drawItem(it, lit) {
+      var a = it.x, b = it.y, w = it.w, h = it.h;
+      switch (it.kind) {
+        case "box":
+          rr(a, b, w, h, 2, "#c9a06a");
+          x.fillStyle = "#a8814f"; x.fillRect(a, b + h * 0.42, w, 2);
+          x.fillStyle = "#8d6a3f"; x.fillRect(a + w * 0.22, b + 5, w * 0.56, 8);
+          break;
+        case "plate":
+          x.fillStyle = "#e6e9ee";
+          x.beginPath(); x.ellipse(a + w / 2, b + h * 0.62, w / 2, h * 0.36, 0, 0, 6.2832); x.fill();
+          x.fillStyle = "#d8b177";
+          x.beginPath(); x.ellipse(a + w / 2, b + h * 0.46, w * 0.36, h * 0.26, 0, 0, 6.2832); x.fill();
+          x.fillStyle = "#c39a5f";
+          x.beginPath(); x.ellipse(a + w / 2, b + h * 0.36, w * 0.30, h * 0.20, 0, 0, 6.2832); x.fill();
+          break;
+        case "tagine":
+          x.fillStyle = "#7a4a34";
+          x.beginPath(); x.moveTo(a, b + h); x.lineTo(a + w, b + h);
+          x.lineTo(a + w * 0.82, b + h * 0.6); x.lineTo(a + w * 0.18, b + h * 0.6);
+          x.closePath(); x.fill();
+          x.fillStyle = "#8f5a3e";
+          x.beginPath(); x.moveTo(a + w * 0.16, b + h * 0.6);
+          x.quadraticCurveTo(a + w / 2, b - h * 0.32, a + w * 0.84, b + h * 0.6);
+          x.closePath(); x.fill();
+          x.fillStyle = "#5f3a28";
+          x.beginPath(); x.arc(a + w / 2, b - h * 0.04, 4, 0, 6.2832); x.fill();
+          break;
+        case "veg":
+          x.fillStyle = "#c0413a";
+          [0.18, 0.42].forEach(function (f) {
+            x.beginPath(); x.arc(a + w * f, b + h * 0.62, h * 0.30, 0, 6.2832); x.fill();
+          });
+          x.fillStyle = "#3f7a44";
+          x.beginPath();
+          x.moveTo(a + w * 0.60, b + h);
+          x.quadraticCurveTo(a + w * 0.72, b + h * 0.2, a + w * 0.98, b + h * 0.05);
+          x.quadraticCurveTo(a + w * 0.82, b + h * 0.55, a + w * 0.86, b + h);
+          x.closePath(); x.fill();
+          break;
+        case "tin":
+          rr(a, b, w, h, 3, "#3f6f8f");
+          x.fillStyle = "#dfe7f2"; x.fillRect(a + 5, b + h * 0.34, w - 10, h * 0.26);
+          x.fillStyle = "#26485e"; x.fillRect(a, b, w, 5);
+          break;
+        case "eggs":
+          rr(a, b + h * 0.34, w, h * 0.66, 3, "#a8a294");
+          for (var e = 0; e < 6; e++) {
+            x.fillStyle = "#efe6d4";
+            x.beginPath();
+            x.ellipse(a + 10 + e * ((w - 20) / 5), b + h * 0.36, 6.5, 8, 0, 0, 6.2832);
+            x.fill();
+          }
+          break;
+        case "bottles":
+          for (var k = 0; k < 3; k++) {
+            var bx = a + k * 34;
+            rr(bx, b + 12, 22, h - 12, 4, "rgba(196,224,240,.72)");
+            x.fillStyle = "#9fd8ea"; x.fillRect(bx + 6, b, 10, 14);
+            x.fillStyle = "rgba(255,255,255,.35)"; x.fillRect(bx + 4, b + 18, 3, h - 26);
+          }
+          break;
+        case "carton":
+          x.fillStyle = "#e8ecf2"; x.fillRect(a, b + 12, w, h - 12);
+          x.fillStyle = "#cfd6e0";
+          x.beginPath(); x.moveTo(a, b + 12); x.lineTo(a + w / 2, b); x.lineTo(a + w, b + 12);
+          x.closePath(); x.fill();
+          x.fillStyle = it.id === "juice" ? "#e0902f" : "#6f9fd0";
+          x.fillRect(a + 4, b + h * 0.5, w - 8, h * 0.26);
+          break;
+        case "jar":
+          rr(a, b + 8, w, h - 8, 4, it.id === "jam" ? "#a83b46" : "#5e7a3a");
+          x.fillStyle = "#c8a24a"; x.fillRect(a + 3, b, w - 6, 10);
+          x.fillStyle = "rgba(255,255,255,.22)"; x.fillRect(a + 5, b + 14, 4, h - 24);
+          break;
+        case "oil":
+          rr(a + w * 0.18, b + 16, w * 0.64, h - 16, 3, "#7a8a3a");
+          x.fillStyle = "#3d4a1e"; x.fillRect(a + w * 0.34, b, w * 0.32, 18);
+          x.fillStyle = "#e8e2c8"; x.fillRect(a + w * 0.2, b + h * 0.52, w * 0.6, 12);
+          break;
+        case "bread":
+          for (var n = 0; n < 5; n++) {
+            x.fillStyle = "#d3a765";
+            x.beginPath();
+            x.ellipse(a + 18 + n * ((w - 36) / 4), b + h / 2, 16, h * 0.46, 0, 0, 6.2832);
+            x.fill();
+            x.strokeStyle = "rgba(140,100,55,.5)"; x.lineWidth = 1;
+            x.beginPath();
+            x.moveTo(a + 8 + n * ((w - 36) / 4), b + h / 2);
+            x.lineTo(a + 28 + n * ((w - 36) / 4), b + h / 2);
+            x.stroke();
+          }
+          break;
+      }
+      if (lit) {
+        x.strokeStyle = "rgba(240,181,103,.9)"; x.lineWidth = 2;
+        x.strokeRect(a - 4, b - 4, w + 8, h + 8);
+      }
+    }
+
+    function draw() {
+      if (killed) return;
+      var t = (performance.now() - t0) / 1000;
+      shell();
+      for (var i = 0; i < ITEMS.length; i++) {
+        if (gone[ITEMS[i].id]) continue;
+        drawItem(ITEMS[i], i === hover);
+      }
+      /* THE LIGHT DOES NOT COME ON. What is in here is lit by the thing
+         in her other hand, from over her shoulder, and it wanders. */
+      var lx = 96 + Math.sin(t * 0.7) * 26, ly = 40 + Math.sin(t * 1.1) * 14;
+      var g = x.createRadialGradient(lx, ly, 20, lx, ly, 300);
+      g.addColorStop(0, "rgba(255,214,150,.20)");
+      g.addColorStop(0.45, "rgba(255,214,150,.06)");
+      g.addColorStop(1, "rgba(4,7,13,.80)");
+      x.fillStyle = g; x.fillRect(0, 0, cv.width, cv.height);
+      /* and the cold that comes out of an open fridge */
+      x.fillStyle = "rgba(120,170,220,.05)";
+      x.fillRect(24, 20, 222, 280);
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+    function at(ev) {
+      var r = cv.getBoundingClientRect();
+      var px = (ev.clientX - r.left) * (cv.width / r.width);
+      var py = (ev.clientY - r.top) * (cv.height / r.height);
+      for (var i = ITEMS.length - 1; i >= 0; i--) {
+        var it = ITEMS[i];
+        if (gone[it.id]) continue;
+        if (px >= it.x - 6 && px <= it.x + it.w + 6 &&
+            py >= it.y - 6 && py <= it.y + it.h + 6) return i;
+      }
+      return -1;
+    }
+    cv.addEventListener("mousemove", function (ev) {
+      hover = at(ev);
+      cv.style.cursor = hover >= 0 ? "pointer" : "default";
+    });
+    cv.addEventListener("mouseleave", function () { hover = -1; });
+    function reach(ev) {
+      ev.preventDefault();
+      var t = ev.changedTouches ? ev.changedTouches[0] : ev;
+      var i = at(t);
+      if (i < 0) return;
+      var it = ITEMS[i];
+      hover = -1;
+      if (it.keep) {
+        gone[it.id] = true;
+        taken++;
+        Audio_.found();
+      } else {
+        Audio_.beep();
+      }
+      hint.textContent = it.say;
+      go.textContent = taken >= KEEPS ? "THAT IS EVERYTHING" :
+                       taken > 0 ? "TAKE IT AND GO" : "SHUT IT";
+      go.classList.toggle("ready", taken > 0);
+    }
+    cv.addEventListener("click", reach);
+    cv.addEventListener("touchstart", reach, { passive: false });
+    /* so a test can reach for a thing where the thing actually is */
+    window.__apFridgeItems = function () {
+      return ITEMS.map(function (i) {
+        return { id: i.id, keep: !!i.keep, gone: !!gone[i.id],
+                 x: i.x, y: i.y, w: i.w, h: i.h };
+      });
+    };
+
+    var used = false;
+    function shut(ate) {
+      if (used) return;
+      used = true; killed = true;
+      closeOverlay();
+      G.state = "play";
+      if (!ate) return;
+      G.ate = true;
+      Audio_.found();
+      setHud();
+      /* the one calm scene in the level gets the one calm cue */
+      scoreMood("search", 26);
+      say(TALK.fridge);
+    }
+    go.addEventListener("click", function () { shut(taken > 0); });
+    leave.addEventListener("click", function () { shut(false); });
   }
 
   function pickUp(it) {
@@ -11782,7 +12161,7 @@
   }
 
   /* The empty garage. She goes down there for the car and it is in long
-     stay at the airport, which is the reason the whole chapter is on foot
+     be four hours up the Atlas, which is the reason the whole chapter is on foot
      — and the reason he says "you walked here" when she finds him. */
   function emptyGarage() {
     if (G.__garage) return;
@@ -12603,13 +12982,13 @@
 
     runCine({
       scene: scene, camera: cam,
-      caption: "Out past the ring road, and then twenty miles of nobody.",
+      caption: "Out past the rocade, and then forty kilometres of nobody.",
       lines: [
-        [0.0,  null,     "Out past the ring road, and then twenty miles of nobody."],
+        [0.0,  null,     "Out past the rocade, and then forty kilometres of nobody."],
         [3.4,  "ANWAR",  "You didn't tell anybody you were coming."],
         [5.8,  "OUISSY", "There wasn't anybody to tell."],
         [8.0,  "ANWAR",  "Your mum and dad—"],
-        [9.8,  "OUISSY", "Portugal. Since Tuesday. The line rings and then it stops ringing."],
+        [9.8,  "OUISSY", "Azilal. Since Tuesday. The line rings and then it stops ringing."],
         [13.0, "ANWAR",  "How bad was the walk."],
         [15.0, "OUISSY", "It was fine."],
         [16.6, "ANWAR",  "Ouissy."],
@@ -12617,7 +12996,7 @@
         [21.4, "OUISSY", "It was fine. I'm here."],
         [23.4, null,     "He puts his hand flat on her arm and leaves it there. The needle has been under the line for an hour."],
         [26.6, null,     "It coughs twice and stops, and neither of them says anything."],
-        [29.4, "ANWAR",  "Ashcombe's forty miles."],
+        [29.4, "ANWAR",  "Essaouira is a hundred and seventy kilometres."],
         [31.0, "OUISSY", "Then we're walking again."]
       ],
       grade: { gradeCol: 0x4a6ab4, gradeAmt: 0.16, hazeCol: 0x141c34, hazeAmt: 0.34,
@@ -12734,7 +13113,7 @@
 
   /* ---- THE RIDE ---- */
   /* The ride happens twice: out to the clearing on the first morning,
-     and again the next one, on the last leg to Ashcombe. Same road, same
+     and again the next one, on the last leg to Essaouira. Same road, same
      horse, different light and different words. */
   function playRide(second) {
     Audio_.score("open");
@@ -12799,7 +13178,7 @@
       /* he is on the left of frame in this one, she is on the right */
       sides: { ANWAR: "l", OUISSY: "r" },
       scene: scene, camera: cam,
-      caption: second ? "The reservoir road, and a fence at the top of it."
+      caption: second ? "The last of the argan country, and a fence at the top of the road."
                       : "It takes most of the morning, and neither of them minds.",
       grade: { gradeCol: 0xd8a860, gradeAmt: 0.18, hazeCol: 0x8a7a96, hazeAmt: 0.26,
                vig: 0.6, sat: 1.1, fringe: 0.0015, redPulse: 0, exposure: 1.04 },
@@ -12828,7 +13207,7 @@
         hoofT -= dt;
         if (hoofT <= 0) { hoofT = 0.30; Audio_.hoof(); }
         if (!second) {
-          if (t > 5.4 && t < 5.6) caption("Twenty miles of hedges, and a lane that keeps going.");
+          if (t > 5.4 && t < 5.6) caption("Dry-stone walls, and a road that keeps going.");
           if (t > 9.6 && t < 9.8) caption("She has one hand in the mane and one arm holding him on.");
         }
       },
@@ -13539,7 +13918,7 @@
        she is looking down, and the ones nearest the roof are the low ones
        so you see over them into the rest of it. */
     /* ---- where the city is ----
-       Ashcombe is a fenced camp on a hill outside the town, so the town
+       Essaouira is a fenced camp on a hill outside the town, so the town
        is a long way off: a skyline on the horizon, not a wall at the end
        of the roof. Nothing stands nearer than a couple of hundred metres
        and the whole of it sits in one band across the far distance. */
@@ -13952,7 +14331,7 @@
     poseHuman(a.rig, G.time + 0.8, a.gait, null, { crouch: a.crouch });
   }
 
-  /* Nobody at Ashcombe is doing anything, and that is the point — but
+  /* Nobody at Essaouira is doing anything, and that is the point — but
      standing perfectly still is what makes a crowd read as a shop window.
      They breathe, they shift their weight, and one or two of them are
      walking a short line and back. */

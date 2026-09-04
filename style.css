@@ -4018,6 +4018,28 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* the wire panel */
+/* ---- the fridge ----
+   Same plate as the distribution board: a title, the thing itself, a
+   line of prose under it, and a way out. It is wider than the board
+   because a fridge with both doors open is a wide thing. */
+.ap-fridge{display:flex; flex-direction:column; align-items:center;
+  gap:1.0cqw; width:min(94cqw, 700px); max-height:100%;}
+.ap-fridge .ap-panel-canvas{
+  /* both ways, so the plate fits the screen it is on: a canvas keeps its
+     own ratio when only one of the two is fixed, and this one has a
+     title over it and two buttons under it to leave room for */
+  width:auto; height:auto;
+  max-width:min(100%, 620px); max-height:42cqh;
+  /* a fridge is not pixel art: it has curves in it */
+  image-rendering:auto;
+  box-shadow:0 18px 46px rgba(0,0,0,.8), 0 0 0 2px rgba(120,140,170,.35);
+}
+.ap-fridge .ap-panel-hint{min-height:4.4cqw; text-align:center; font-size:2.1cqw;}
+.ap-fridge .ap-card-go, .ap-fridge .ap-panel-leave{margin-top:.3cqw;}
+/* the way on only looks like the way on once she has picked something up */
+.ap-fridge .ap-card-go{opacity:.55;}
+.ap-fridge .ap-card-go.ready{opacity:1;}
+
 .ap-panel{display:flex; flex-direction:column; align-items:center; gap:1.6cqw; width:min(92cqw, 620px);}
 .ap-panel-title{
   margin:0; font-family:var(--ap-sign);

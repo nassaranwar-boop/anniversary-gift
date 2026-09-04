@@ -13,6 +13,8 @@ function grab(name) {
 }
 const TUNE = grab('TUNE'), UNDER = grab('UNDER'), WARM = grab('WARM');
 const CHORDS = grab('CHORDS'), ROOTS = grab('ROOTS');
+const CHORDS_B = grab('CHORDS_B'), ROOTS_B = grab('ROOTS_B');
+const DYNS = grab('DYNS');
 
 let pass = 0, fail = 0;
 const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
@@ -100,6 +102,47 @@ ok('and it settles where the first one does not',
    { wLast });
 
 
+/* ---- THE SECOND TIME ROUND ----
+   The whole point of the second chord table is that the same two
+   melodies can be played over it without a single note being changed.
+   That is only true if every bar of it still contains the note each
+   tune lands on, so it is checked exactly the way the first one is —
+   and it has to actually be DIFFERENT, or it has bought nothing. */
+const pc = n => ((n % 12) + 12) % 12;
+ok('the second progression is eight bars too', CHORDS_B.length === 8, CHORDS_B.length);
+ok('and has a bass note for each of them', ROOTS_B.length === 8, ROOTS_B.length);
+const bOut = [];
+CHORDS_B.forEach((c, i) => c.forEach(n => { if (!inScale(n)) bOut.push({ bar: i, n }); }));
+ok('every note in it is in the key', bOut.length === 0, bOut);
+const bRoot = ROOTS_B.map((r, i) => ({ bar: i, r, chord: CHORDS_B[i].map(pc) }))
+                     .filter(o => o.chord.indexOf(pc(o.r)) < 0);
+ok('and the bass is playing a note of its own chord', bRoot.length === 0, bRoot);
+
+for (const [name, mel] of [['the tune', TUNE], ['the second tune', WARM]]) {
+  const bad = [];
+  for (const [b, n] of mel) {
+    if (b % 4 !== 0) continue;
+    const chord = CHORDS_B[Math.floor(b / 4)].map(pc);
+    if (chord.indexOf(pc(n)) < 0) bad.push({ beat: b, note: n, chord });
+  }
+  ok(name + ' still lands on a chord tone the second time round',
+     bad.length === 0, bad);
+}
+const sameTable = JSON.stringify(CHORDS_B.map(c => c.map(pc).sort())) ===
+                  JSON.stringify(CHORDS.map(c => c.map(pc).sort()));
+ok('and it is a different set of chords, not the same ones again', !sameTable);
+const movedBars = CHORDS_B.filter((c, i) =>
+  JSON.stringify(c.map(pc).sort()) !== JSON.stringify(CHORDS[i].map(pc).sort())).length;
+ok('most of the bars actually change', movedBars >= 6, { movedBars });
+const bassMoved = ROOTS_B.filter((r, i) => pc(r) !== pc(ROOTS[i])).length;
+ok('and the bass walks somewhere new', bassMoved >= 5, { bassMoved });
+
+/* the four passes have to be four different volumes, or they are one */
+ok('the four times round are four different weights',
+   new Set(DYNS).size === 4 && DYNS.length === 4, DYNS);
+ok('and none of them is silent or twice as loud as the piece',
+   DYNS.every(v => v > 0.5 && v <= 1.25), DYNS);
+
 /* ---- THE CUES ----
    Eleven of them now, and the whole reason any one can follow any other
    without the harmony jumping is that they are all written on the same
@@ -124,9 +167,16 @@ for (const c of cues) {
   const j = cueBlock.indexOf('\n          } },', i);
   bodies[c.name] = cueBlock.slice(i, j < 0 ? cueBlock.length : j);
 }
-const rogue = cues.filter(c => !/ROOTS\[bar\]|CHORDS\[bar\]/.test(bodies[c.name]));
+const rogue = cues.filter(c => !/RT\(b|CH\(b/.test(bodies[c.name]));
 ok('and every one of them sits on the shared eight bars',
    rogue.length === 0, rogue.map(c => c.name));
+/* and every one of them has to breathe with the passes, or it is a loop */
+const flat = cues.filter(c => !/DYN\(b\)/.test(bodies[c.name]));
+ok('and every one of them changes weight as the passes go round',
+   flat.length === 0, flat.map(c => c.name));
+const staticCues = cues.filter(c => !/passOf\(b\)|b % 128|b % 64|warmNow|late/.test(bodies[c.name]));
+ok('and almost all of them play differently on a later pass',
+   staticCues.length <= 1, staticCues.map(c => c.name));
 
 /* a bar of the fastest cue and a bar of the slowest have to be joinable:
    a tempo change on a bar line is normal, a tempo change of ten times is
@@ -173,6 +223,24 @@ ok('a mood beats the step',
    driver.indexOf('moodT > 0') < driver.indexOf('st.cue'));
 ok('and the danger holds on after the danger has gone',
    /dangerHold = 5\.0|dangerHold -= dt/.test(driver));
+
+/* ---- THE THING THAT HURT ----
+   A gain set straight to its value is not an attack, it is a step, and a
+   step on a square wave is a click. Nothing in the score may do that. */
+const voices = src.slice(src.indexOf('/* ---- the instruments ---- */'),
+                         src.indexOf('/* play whatever the written line'));
+/* only the value AT THE START of a note matters: holding a level part
+   way through an envelope it has already ramped to is not a step. */
+const steps = [...voices.matchAll(/gain\.setValueAtTime\(([^,]+), at\)/g)]
+                 .map(m => m[1].trim())
+                 .filter(v => !/^0\.0001$/.test(v));
+ok('no voice in the score starts at full volume', steps.length === 0, steps);
+ok('and the tick is not a square wave any more',
+   !/o\.type = "square"/.test(voices.slice(voices.indexOf('function tick'))), 'tick');
+
+/* ---- THE JOIN ---- */
+ok('a change is played into, not cut to',
+   /swell\(hz\(RT\(beat\), -3\), nextAt/.test(src));
 
 console.log('');
 console.log(pass + ' passed, ' + fail + ' failed');
