@@ -5110,7 +5110,14 @@ function customCfg(d) {
   const active = {};
   CAST.forEach((c) => { if (d[c.id] > 0) active[c.id] = 0; });
   const top = Math.max(d.cogsworth, d.chime, d.marabelle, d.jax);
-  const base = 0.4 + top * 0.1;
+  /* The hour curve is a constant, pitched at the pace night six runs
+     at, and every performer's own dial multiplies it in stepCast. It
+     used to be derived from the highest dial, which quietly coupled all
+     four sliders together: turning Jax up to twenty made Cogsworth two
+     and a half times faster at the same setting of five. The hazards
+     still read the highest dial, because those belong to the shop
+     rather than to anyone in it. */
+  const base = 1.4;
   return {
     n: 0,
     name: "CUSTOM NIGHT",
@@ -5561,6 +5568,10 @@ function rateNight() {
 function awardBadges() {
   const got = [];
   const st = G.stats;
+  /* the shelf is the record of the story. A custom night with every dial
+     at nought is six quiet minutes, and it used to be worth three of
+     these. */
+  if (G.mode !== "story") return got;
   if (giveBadge("first")) got.push("first");
   /* CLOSING TIME says "finish every night", so it means every night —
      not just the last one reached from the night-select list */
@@ -6734,20 +6745,32 @@ function togglePause() {
   else if (G.phase === "pause") route("resume");
 }
 
+/* the only thing in the chapter that holds a key down rather than
+   toggling on the press */
+function onKeyUp(e) {
+  if (!running || !ARC.on) return;
+  const k = e.key;
+  if (k === "a" || k === "A" || k === "ArrowLeft") ARC.keys.left = false;
+  else if (k === "d" || k === "D" || k === "ArrowRight") ARC.keys.right = false;
+}
+
 function onKey(e) {
   if (!running) return;
   const k = e.key;
   if (k === "Escape") { e.preventDefault(); togglePause(); return; }
+  /* the cabinet is checked before the phase, because playing it puts the
+     chapter in its own phase — asking for "play" first made every key in
+     KEYWIND dead and turned the space bar into the exit button */
+  if (ARC.on) {
+    if (k === "a" || k === "A" || k === "ArrowLeft") { e.preventDefault(); ARC.keys.left = true; }
+    else if (k === "d" || k === "D" || k === "ArrowRight") { e.preventDefault(); ARC.keys.right = true; }
+    return;
+  }
   if (G.phase !== "play") {
     if (k === "Enter" || k === " ") {
       const b = EL["ns-overlay"] && EL["ns-overlay"].querySelector("[data-go].ns-btn-go");
       if (b) { e.preventDefault(); b.click(); }
     }
-    return;
-  }
-  if (ARC.on) {
-    if (k === "a" || k === "A" || k === "ArrowLeft") { e.preventDefault(); ARC.keys.left = true; }
-    else if (k === "d" || k === "D" || k === "ArrowRight") { e.preventDefault(); ARC.keys.right = true; }
     return;
   }
   if (k === "a" || k === "A" || k === "ArrowLeft") { e.preventDefault(); toggleDoor("left"); }
@@ -6854,6 +6877,7 @@ function finishStart(cvs) {
   if (!boundKeys) {
     boundKeys = true;
     window.addEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKeyUp);
     window.addEventListener("resize", onResize);
     if (window.ResizeObserver && stageEl) { ro = new ResizeObserver(onResize); ro.observe(stageEl); }
     const st = stageEl;
@@ -6874,6 +6898,13 @@ function finishStart(cvs) {
 function stop() {
   running = false;
   if (raf) { cancelAnimationFrame(raf); raf = 0; }
+  /* leaving from the gallery used to keep the daylight vignette, and
+     leaving with the cabinet open used to leave it open for good —
+     arcadeOpen returns early on ARC.on and nothing ever cleared it */
+  if (stageEl) delete stageEl.dataset.day;
+  ARC.on = false;
+  ARC.keys.left = ARC.keys.right = false;
+  sayClear();
   bedStop();
   audioDuck(1, 10);
   G.phase = "idle";

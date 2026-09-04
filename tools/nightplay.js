@@ -357,6 +357,17 @@ function ok(name, cond, extra) {
      JSON.stringify(rec.stats));
   ok('the nights survived are remembered', rec.done.length > 0, rec.done.join(','));
   ok('badges are earned, not given', rec.badges.length > 0, rec.badges.join(','));
+  /* and a custom night with everyone asleep is not a way to earn them */
+  const farm = await page.evaluate(() => {
+    const w = OuissysNightShift.__night;
+    localStorage.setItem('ns_badges', '{}');
+    localStorage.setItem('ns_custom', JSON.stringify({ cogsworth: 0, chime: 0, marabelle: 0, jax: 0 }));
+    w.route('customGo');
+    const s = w.state();
+    while (s.phase === 'play') w.pump(20);
+    return Object.keys(JSON.parse(localStorage.getItem('ns_badges') || '{}'));
+  });
+  ok('an empty custom night earns nothing', farm.length === 0, farm.join(','));
 
   console.log('\n— everything the story unlocks —');
   await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); });
@@ -380,6 +391,19 @@ function ok(name, cond, extra) {
     return { saved: d.cogsworth, mode: s.mode, night: s.night };
   });
   ok('dials cap at twenty', dial.saved === 20, String(dial.saved));
+  /* each slider is that performer's own. The hour curve used to be
+     derived from the highest dial, so turning one up sped all four up */
+  const indep = await page.evaluate(() => {
+    const w = OuissysNightShift.__night;
+    const curve = (jax) => {
+      localStorage.setItem('ns_custom', JSON.stringify({ cogsworth: 5, chime: 5, marabelle: 5, jax }));
+      w.route('customGo');
+      return +w.state().cfg.ramp[5].toFixed(3);
+    };
+    return { quiet: curve(5), loud: curve(20) };
+  });
+  ok('one slider does not move the other three', indep.quiet === indep.loud,
+     JSON.stringify(indep));
   ok('and a custom night runs', dial.mode === 'custom', JSON.stringify(dial));
   await shot('custom');
   await page.evaluate(() => OuissysNightShift.__night.route('gallery'));
@@ -440,6 +464,31 @@ function ok(name, cond, extra) {
   await page.waitForTimeout(250);
   ok('and it plays', played === 'arcade', played);
   ok('on its own screen', await page.locator('.ns-arc-cvs').count() === 1);
+  /* the keyboard reaches the cabinet rather than the exit button: the
+     phase check used to come first, which made every key in KEYWIND
+     dead and turned the space bar into BACK TO THE SHIFT */
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(200);
+  ok('the space bar does not throw you out of it',
+     await page.evaluate(() => OuissysNightShift.__night.state().phase) === 'arcade');
+  const drove = await page.evaluate(async () => {
+    const cvs = document.querySelector('.ns-arc-cvs');
+    const px = () => { const d = cvs.getContext('2d').getImageData(0, 140, cvs.width, 10).data;
+      let sum = 0, n = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i] + d[i+1] + d[i+2] > 260) { sum += (i / 4) % cvs.width; n++; }
+      return n ? sum / n : -1; };
+    const before = px();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'd' }));
+    await new Promise(r => setTimeout(r, 900));
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'd' }));
+    const held = px();
+    await new Promise(r => setTimeout(r, 600));
+    return { before, held, after: px() };
+  });
+  ok('and D drives the mouse across it', drove.held > drove.before + 4,
+     JSON.stringify(drove));
+  ok('and letting go stops her', Math.abs(drove.after - drove.held) < 24,
+     JSON.stringify(drove));
   await shot('arcade');
   await page.evaluate(() => OuissysNightShift.__night.route('arcadeOut'));
   await page.waitForTimeout(200);
