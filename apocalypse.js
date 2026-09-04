@@ -504,14 +504,31 @@
 
   TALK.tv = [
     [N, "The set has been on since before she woke up. Nobody in the studio is reading anything; the man at the desk is just sitting there while the captions run themselves."],
+    [N, "STAY INDOORS. DO NOT TRAVEL. DO NOT ATTEMPT TO REACH RELATIVES."],
     [N, "Day three. She has been counting two."],
-    ["OUISSY", "...Mercy General."],
-    [N, "She has the phone out before she has decided to. It rings. It rings for a long time and then it stops ringing, the way it has all morning."],
+    SIL,
+    /* She used to say "Mercy General" one line after the broadcast, as
+       though she had known all along. She does not know all along. She
+       stands in her parents' living room for a while first. */
+    [N, "She stands there for a while with the remote in her hand and does not turn it off."],
+    ["OUISSY", "Okay. Okay, think."],
+    [N, "The doors are locked. There is food. There is water while there is water. The television says stay where you are, and the television has been right about nothing else this week."],
+    ["OUISSY", "Mum and Dad are in Portugal. Portugal is fine. Portugal is on the news being fine."],
+    [N, "She tries their number anyway. It does not ring. It has not rung since Wednesday."],
+    ["OUISSY", "So I stay. I stay, and I wait, and somebody comes."],
+    SIL,
+    [N, "The captions run round again. HOSPITALS ARE NOT ACCEPTING VISITORS."],
+    SIL,
+    ["OUISSY", "...Hospitals."],
+    [N, "And there it is, and she is already moving."],
+    ["OUISSY", "Anwar."],
+    [N, "Ward C, third floor, east side. Bed by the window. She was there on Sunday and he was complaining about the food and she said she would come back Thursday."],
+    [N, "Eight days post-op. He is not walking anywhere on his own. There is nobody else in this city who is going to go and get him."],
     ["OUISSY", "Come on. Come on, pick up—"],
-    [N, "Ward C, third floor, east side. Bed by the window. She was there on Sunday and he was complaining about the food."],
-    [N, "Eight days post-op. He is not walking anywhere on his own."],
+    [N, "The ward line rings for a long time and then it stops ringing, the way everything has all morning."],
+    SIL,
     ["OUISSY", "Okay."],
-    ["OUISSY", "Okay. I'm coming to get you."],
+    ["OUISSY", "Okay. I\'m coming to get you."],
     [N, "She turns the television off. The house is very quiet after that."]
   ];
 
@@ -1078,6 +1095,211 @@
         g.gain.setTargetAtTime(spec.vol, ctx.currentTime, 1.2);
         ambient = { g: g, nodes: nodes, base: spec.vol };
       },
+
+      /* =====================================================
+         THE SCORE
+         The bed is the room; this is the music. One theme —
+         five notes, and the fifth one does not resolve — that
+         turns up first as something she is walking through and
+         comes back at the end as something she can hear. The
+         frightening places get the same theme underneath, too
+         low and too slow to recognise, which is the only trick
+         in here worth knowing.
+         ===================================================== */
+      score: (function () {
+        var bus = null, voices = [], timer = 0, piece = null, beat = 0, nextAt = 0;
+
+        /* the theme, in semitones from the root. The last note is a ninth:
+           it sits there wanting the next chord and never gets it. */
+        var THEME = [0, 7, 5, 3, 14];
+        var A = 55;                                     /* the root, low A */
+        function hz(semi, oct) { return A * Math.pow(2, (semi / 12) + (oct || 0)); }
+
+        /* a note with a body: two detuned saws through a filter that opens
+           and shuts, which is as close to bowed as this gets */
+        function pad(freqs, at, len, vol, cut) {
+          var g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, at);
+          g.gain.exponentialRampToValueAtTime(vol, at + len * 0.34);
+          g.gain.setTargetAtTime(0.0001, at + len * 0.62, len * 0.30);
+          var f = ctx.createBiquadFilter();
+          f.type = "lowpass";
+          f.frequency.setValueAtTime(cut * 0.5, at);
+          f.frequency.linearRampToValueAtTime(cut, at + len * 0.45);
+          f.frequency.linearRampToValueAtTime(cut * 0.6, at + len);
+          f.Q.value = 1.2;
+          f.connect(g); g.connect(bus);
+          freqs.forEach(function (fr) {
+            [0, 1].forEach(function (d) {
+              var o = ctx.createOscillator();
+              o.type = "sawtooth";
+              o.frequency.value = fr * (d ? 1.004 : 0.997);
+              o.connect(f); o.start(at); o.stop(at + len + 0.4);
+              voices.push(o);
+            });
+          });
+        }
+        /* a struck note: a triangle with a hard decay, which reads as a
+           piano at this distance and costs one oscillator */
+        function pluck(fr, at, vol, len) {
+          len = len || 2.4;
+          var g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, at);
+          g.gain.exponentialRampToValueAtTime(vol, at + 0.012);
+          g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+          var f = ctx.createBiquadFilter();
+          f.type = "lowpass"; f.frequency.value = 2600; f.Q.value = 0.6;
+          f.connect(g); g.connect(bus);
+          var o = ctx.createOscillator();
+          o.type = "triangle"; o.frequency.value = fr;
+          o.connect(f); o.start(at); o.stop(at + len + 0.1);
+          voices.push(o);
+          var o2 = ctx.createOscillator();       /* the hammer, an octave up */
+          o2.type = "sine"; o2.frequency.value = fr * 2;
+          var g2 = ctx.createGain();
+          g2.gain.setValueAtTime(vol * 0.34, at);
+          g2.gain.exponentialRampToValueAtTime(0.0001, at + 0.5);
+          o2.connect(g2); g2.connect(bus); o2.start(at); o2.stop(at + 0.6);
+          voices.push(o2);
+        }
+        /* the low swell: what a film does when something is coming */
+        function swell(fr, at, len, vol) {
+          var g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, at);
+          g.gain.linearRampToValueAtTime(vol, at + len * 0.7);
+          g.gain.linearRampToValueAtTime(0.0001, at + len);
+          var f = ctx.createBiquadFilter();
+          f.type = "lowpass"; f.frequency.value = 220; f.Q.value = 0.7;
+          f.connect(g); g.connect(bus);
+          [1, 1.0031, 1.5].forEach(function (m) {
+            var o = ctx.createOscillator();
+            o.type = "sawtooth"; o.frequency.value = fr * m;
+            o.connect(f); o.start(at); o.stop(at + len + 0.2);
+            voices.push(o);
+          });
+        }
+        function tick(at, vol) {
+          var g = ctx.createGain();
+          g.gain.setValueAtTime(vol, at);
+          g.gain.exponentialRampToValueAtTime(0.0001, at + 0.10);
+          var o = ctx.createOscillator();
+          o.type = "square"; o.frequency.value = 1400;
+          var f = ctx.createBiquadFilter();
+          f.type = "bandpass"; f.frequency.value = 2200; f.Q.value = 4;
+          o.connect(f); f.connect(g); g.connect(bus);
+          o.start(at); o.stop(at + 0.12); voices.push(o);
+        }
+
+        /* ---- the pieces ---- */
+        var PIECES = {
+          /* somewhere with something in it */
+          dread: { bpm: 46, bar: 8, play: function (b, at, sp) {
+            if (b % 8 === 0) swell(hz(0, -1), at, sp * 8, 0.16);
+            if (b % 2 === 0) tick(at, 0.020);
+            if (b % 8 === 4) pad([hz(0), hz(3), hz(7)], at, sp * 4, 0.030, 520);
+            /* the theme, underneath, too slow to hear as a tune */
+            if (b % 16 === 2) pluck(hz(THEME[(b / 16) % 5] - 12), at, 0.028, 5.0);
+          } },
+          /* a corridor with the power half on */
+          sterile: { bpm: 44, bar: 8, play: function (b, at, sp) {
+            if (b % 8 === 0) pad([hz(0, 1), hz(7, 1)], at, sp * 8, 0.024, 900);
+            if (b % 8 === 5) pluck(hz(14, 1), at, 0.020, 3.2);
+            if (b % 16 === 11) pluck(hz(15, 1), at, 0.016, 3.2);
+            if (b % 4 === 0) tick(at, 0.012);
+          } },
+          /* the car, going */
+          drive: { bpm: 92, bar: 8, play: function (b, at, sp) {
+            if (b % 2 === 0) pluck(hz(0, -1), at, 0.045, 0.7);
+            if (b % 8 === 0) pad([hz(0), hz(7), hz(10)], at, sp * 8, 0.026, 700);
+            if (b % 8 === 6) pluck(hz(THEME[(b / 8) % 5]), at, 0.024, 1.8);
+          } },
+          /* the morning, on a horse, on a road with nothing on it */
+          open: { bpm: 58, bar: 8, play: function (b, at, sp) {
+            var CH = [[0, 7, 16], [5, 12, 21], [3, 10, 19], [7, 14, 22]];
+            if (b % 8 === 0) {
+              var c = CH[(b / 8) % 4];
+              pad([hz(c[0] - 12), hz(c[1] - 12), hz(c[2] - 12)], at, sp * 8, 0.034, 1100);
+            }
+            /* the theme, out in the open, one note a bar */
+            if (b % 2 === 0) pluck(hz(THEME[(b / 2) % 5] + 12), at, 0.040, 3.4);
+          } },
+          /* the fire, and the two of them on the log */
+          hearth: { bpm: 50, bar: 8, play: function (b, at, sp) {
+            var CH = [[0, 7, 15], [3, 10, 19], [5, 12, 19], [0, 7, 14]];
+            if (b % 8 === 0) {
+              var c = CH[(b / 8) % 4];
+              pad([hz(c[0] - 12), hz(c[1] - 12), hz(c[2] - 12)], at, sp * 8, 0.030, 780);
+            }
+            if (b % 4 === 0) pluck(hz(THEME[(b / 4) % 5] + 12), at, 0.030, 4.2);
+            if (b % 16 === 9) pluck(hz(THEME[2] + 24), at, 0.014, 3.0);
+          } },
+          /* the roof: the theme, all of it, and the ninth left hanging */
+          home: { bpm: 52, bar: 8, play: function (b, at, sp) {
+            var CH = [[0, 7, 16], [5, 12, 19], [3, 10, 17], [7, 14, 21]];
+            if (b % 8 === 0) {
+              var c = CH[(b / 8) % 4];
+              pad([hz(c[0] - 12), hz(c[1] - 12), hz(c[2] - 12)], at, sp * 8, 0.038, 1400);
+              swell(hz(0, -1), at, sp * 8, 0.05);
+            }
+            if (b % 2 === 0) pluck(hz(THEME[(b / 2) % 5] + 12), at, 0.044, 4.6);
+            if (b % 8 === 7) pluck(hz(THEME[4] + 24), at, 0.020, 5.0);
+          } }
+        };
+
+        function stopAll(fade) {
+          if (timer) { clearTimeout(timer); timer = 0; }
+          if (!bus) return;
+          var old = bus, dead = voices;
+          bus = null; voices = []; piece = null;
+          try {
+            old.gain.setTargetAtTime(0.0001, ctx.currentTime, fade || 0.8);
+            setTimeout(function () {
+              dead.forEach(function (v) { try { v.stop(); } catch (e) {} });
+              try { old.disconnect(); } catch (e) {}
+            }, (fade || 0.8) * 4000);
+          } catch (e) {}
+        }
+
+        function pump() {
+          if (!piece || !ctx) return;
+          var sp = 60 / piece.bpm;
+          /* schedule a second ahead, so a busy frame never drops a note */
+          while (nextAt < ctx.currentTime + 1.0) {
+            if (nextAt < ctx.currentTime) nextAt = ctx.currentTime + 0.05;
+            try { piece.play(beat, nextAt, sp); } catch (e) {}
+            beat++; nextAt += sp;
+            /* voices accumulate; the stopped ones are only references */
+            if (voices.length > 220) voices = voices.slice(-120);
+          }
+          timer = setTimeout(pump, 260);
+        }
+
+        var wanted = null, muted = false;
+        function setPiece(name, vol) {
+          wanted = name;
+          if (!ac() || muted) { if (muted) stopAll(1.1); return; }
+          if (piece && piece.name === name) return;
+          stopAll(1.1);
+          if (!name || !PIECES[name]) return;
+          bus = ctx.createGain();
+          bus.gain.value = 0.0001;
+          bus.connect(master);
+          bus.gain.setTargetAtTime(vol == null ? 0.85 : vol, ctx.currentTime, 2.2);
+          piece = PIECES[name];
+          piece.name = name;
+          beat = 0; nextAt = ctx.currentTime + 0.25;
+          pump();
+        }
+        /* the music can be turned off without turning the world off: the
+           footsteps, the doors and the fire are not the score */
+        setPiece.mute = function (v) {
+          muted = !!v;
+          if (muted) stopAll(0.9);
+          else if (wanted) { var w = wanted; piece = null; setPiece(w); }
+        };
+        setPiece.playing = function () { return piece ? piece.name : null; };
+        return setPiece;
+      })(),
 
       /* the bed climbs as the hospital fills up */
       pressure: function (v) {
@@ -8514,6 +8736,20 @@
     });
 
     Audio_.bed(def.theme);
+    /* ---- what is playing ----
+       A place gets a piece, not a theme tune: the two frightening ones
+       share the same low material so the streets and the hospital feel
+       like the same night, and the road out of the city is the first
+       time the tune is allowed above a whisper. */
+    Audio_.score({
+      home:     "dread",
+      streets:  "dread",
+      hospital: "sterile",
+      escape:   "sterile",
+      roadside: "open",
+      campsite: "hearth",
+      gates:    "open"
+    }[def.id] || "dread");
     setStep();
     setHud();
     return G;
@@ -9112,7 +9348,7 @@
      localStorage so the chapter remembers them, and applied by whoever
      reads them rather than by a pile of listeners.
      ========================================================= */
-  var SETTINGS = { sound: true, shake: true, creepHold: true, quality: "auto" };
+  var SETTINGS = { sound: true, music: true, shake: true, creepHold: true, quality: "auto" };
   (function () {
     try {
       var raw = localStorage.getItem("apoc.settings");
@@ -9129,6 +9365,7 @@
     /* Sound can only be started by a gesture, and the game already does
        that on its own; all this has to do is stop it. */
     if (!SETTINGS.sound) Audio_.end();
+    Audio_.score.mute(!SETTINGS.music || !SETTINGS.sound);
     /* quality: auto lets the ladder do its work, the other two pin it */
     if (Stage.renderer) {
       if (SETTINGS.quality === "crisp") { perfPin = 0; perfStep(0, 4); }
@@ -9978,6 +10215,8 @@
     list.appendChild(el("p", "ap-set-head", "SETTINGS"));
     list.appendChild(switchRow("SOUND", "", [["ON", true], ["OFF", false]],
       function () { return SETTINGS.sound; }, function (v) { SETTINGS.sound = v; }));
+    list.appendChild(switchRow("MUSIC", "", [["ON", true], ["OFF", false]],
+      function () { return SETTINGS.music; }, function (v) { SETTINGS.music = v; }));
     list.appendChild(switchRow("CAMERA SHAKE", "", [["ON", true], ["OFF", false]],
       function () { return SETTINGS.shake; }, function (v) { SETTINGS.shake = v; }));
     list.appendChild(switchRow("CREEPING", "hold the key, or press it once",
@@ -11005,6 +11244,7 @@
 
   /* ---- THE DRIVE ---- */
   function playDrive() {
+    Audio_.score("drive");
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x0c1024, 0.0055);
     var cam = new THREE.PerspectiveCamera(38, Stage.camera.aspect, 0.4, 900);
@@ -11243,6 +11483,7 @@
      and again the next one, on the last leg to Ashcombe. Same road, same
      horse, different light and different words. */
   function playRide(second) {
+    Audio_.score("open");
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x3a3050, 0.0042);
     var cam = new THREE.PerspectiveCamera(38, Stage.camera.aspect, 0.4, 900);
@@ -11352,6 +11593,7 @@
 
   /* ---- THE CAMPFIRE ---- */
   function playCampfire() {
+    Audio_.score("hearth");
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x0a0c1e, 0.016);
     var cam = new THREE.PerspectiveCamera(40, Stage.camera.aspect, 0.3, 400);
@@ -11664,6 +11906,7 @@
   }
 
   function playSunrise() {
+    Audio_.score("open");
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x2a2440, 0.010);
     var cam = new THREE.PerspectiveCamera(46, Stage.camera.aspect, 0.3, 700);
@@ -11824,6 +12067,7 @@
      the light goes out of it: the queue for the tap, the children, the
      hour in which neither of them has to do anything next. */
   function playSettling() {
+    Audio_.score("open");
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x1a1c2c, 0.0075);
     var cam = new THREE.PerspectiveCamera(42, Stage.camera.aspect, 0.3, 700);
@@ -11932,6 +12176,7 @@
 
   /* ---- THE ROOFTOP ---- */
   function playRooftop() {
+    Audio_.score("home");
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x0a0e1c, 0.0055);
     var cam = new THREE.PerspectiveCamera(44, Stage.camera.aspect, 0.3, 900);
@@ -13070,6 +13315,9 @@
         lights: lights
       };
     };
+    window.__apScore = function () { return Audio_.score.playing(); };
+    window.__apMusic = function (v) { SETTINGS.music = !!v; Audio_.score.mute(!v); return !!v; };
+    window.__apAudio = function () { Audio_.begin(); return true; };
     window.__apKey = function (k, v) { if (k in KEY) { KEY[k] = v ? 1 : 0; if (k === "use" && v) usePressed = true; } };
   }
 

@@ -50,8 +50,8 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
     };
   });
   ok('the controls panel draws the keys as keys', panel.caps >= 7, panel);
-  ok('and has a switch for each setting', panel.segs === 4, panel);
-  ok('each switch shows which way it is set', panel.on === 4, panel);
+  ok('and has a switch for each setting', panel.segs === 5, panel);
+  ok('each switch shows which way it is set', panel.on === 5, panel);
   ok('and there is a way back', panel.back, panel);
 
   /* a switch that actually switches, and is remembered */
@@ -70,7 +70,7 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   /* creeping can be a toggle rather than a hold */
   const creep = await p.evaluate(() => {
     const segs = [...document.querySelectorAll('.ap-seg')];
-    const tog = [...segs[2].querySelectorAll('.ap-seg-btn')].find(x => x.textContent === 'TOGGLE');
+    const tog = [...segs[3].querySelectorAll('.ap-seg-btn')].find(x => x.textContent === 'TOGGLE');
     tog.click();
     document.querySelector('.ap-card-go').click();          /* BACK */
     document.querySelector('.ap-card-go').click();          /* BACK TO IT */
