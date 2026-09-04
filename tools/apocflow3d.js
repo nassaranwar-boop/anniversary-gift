@@ -96,7 +96,25 @@ const need = (name, cond, extra) => {
   await click('.ap-tv .ap-card-go'); await pump(6);
   need('turning it off starts her thinking', await waitFor(s => s.dialogue === true, 400));
   await talk();
-  st = await S(); need('the TV clears its step', st.step === 'panel', st);
+  st = await S(); need('the TV clears its step', st.step === 'torch', st);
+
+  /* she goes round her own house before she leaves it: the fridge, and
+     then the torch out of the drawer under the kettle */
+  const fr1 = await p.evaluate(() => window.Apocalypse.game.world.fridgeAt);
+  need('there is a fridge in the kitchen', !!fr1, fr1);
+  await walkTo(fr1.x, fr1.y + 1); await use();
+  need('the fridge opens', await p.$('.ap-card') !== null);
+  await click('.ap-card-go');                       // EAT SOMETHING
+  await pump(6);
+  need('and she stops to eat', await waitFor(s => s.dialogue === true, 600));
+  await talk();
+  need('she has water after that', await p.evaluate(() => !!window.Apocalypse.game.ate));
+
+  const to1 = await p.evaluate(() => window.Apocalypse.game.world.torchAt);
+  await walkTo(to1.x, to1.y + 1); await use();
+  need('the torch is hers', await waitFor(s => s.dialogue === true, 600));
+  await talk();
+  st = await S(); need('and that clears the search', st.step === 'panel', st);
 
   const pan1 = await p.evaluate(() => window.Apocalypse.game.world.panelAt);
   await walkTo(pan1.x, pan1.y + 1); await use();

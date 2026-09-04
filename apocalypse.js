@@ -398,9 +398,19 @@
       fairy: [[1, 1, 10, 1, 2.55]],
       grade: [180, 115, 55, 0.16], haze: [30, 38, 60, 0.28],
       steps: [
-        { task: "Downstairs. The television is still on — stand at it and press USE.", clears: "tv" },
-        { task: "Anwar is at Mercy General. Take the car — the garage is the far room downstairs.", clears: "panel" },
-        { task: "The shutter is up. Walk out through it, onto the drive.", clears: "exit" }
+        { task: "Downstairs. The television is still on — stand at it and press USE.",
+          clears: "tv" },
+        /* Going round her own house before she leaves it: a torch she
+           will need in every dark room after this, and a meal she has
+           not had since yesterday. It is also the quietest possible
+           place to learn that USE is pointed at furniture. */
+        { task: "Go through the house first. The torch is in the kitchen, and there is food in the fridge.",
+          clears: "torch", cue: "search",
+          after: ["search", 14] },
+        { task: "Anwar is at Mercy General. Take the car — the garage is the far room downstairs.",
+          clears: "panel", cue: "search" },
+        { task: "The shutter is up. Walk out through it, onto the drive.",
+          clears: "exit" }
       ]
     },
     {
@@ -420,8 +430,13 @@
       dead: [20, 1, 39, 10],
       pressure: 26, pressureMax: 5, blood: true,
       steps: [
-        { task: "Ward C has no power on its doors. The plant room is west — find the panel and use it.", clears: "panel" },
-        { task: "The ward doors are open. He is east, off the ward — look for the room with a door on it.", clears: "anwar" },
+        { task: "Ward C has no power on its doors. The plant room is west — find the panel and use it.",
+          clears: "panel", cue: "search" },
+        { task: "The ward doors are open. He is east, off the ward — look for the room with a door on it.",
+          clears: "anwar", cue: "search",
+          /* finding him is the middle of this chapter, and the music is
+             allowed to say so for half a minute */
+          after: ["grief", 34] },
         { task: "Get to the fire door in this room. It is the green light.", clears: "exit" }
       ]
     },
@@ -529,7 +544,31 @@
     SIL,
     ["OUISSY", "Okay."],
     ["OUISSY", "Okay. I\'m coming to get you."],
-    [N, "She turns the television off. The house is very quiet after that."]
+    [N, "She turns the television off. The house is very quiet after that."],
+    SIL,
+    /* Somebody who has just decided to cross a city does not walk out of
+       the front door in the clothes she woke up in. She goes round her
+       own house first — and that is also, quietly, how the player learns
+       that USE is a thing you point at furniture. */
+    [N, "Then she stands in the hall and makes herself think, because going out of that door with nothing is how people die on the news."],
+    ["OUISSY", "Right. Kitchen. Torch, water, something to eat, and then I go."],
+    [N, "Go through the house. The torch lives in the drawer under the kettle. There is a fridge, and whatever is in it is not going to keep."]
+  ];
+
+  /* ---- the fridge ---- */
+  TALK.fridge = [
+    [N, "The light does not come on. It is still cold in there, which means it went off in the night rather than on Monday, which means what is in it is still food."],
+    ["OUISSY", "Okay. Sitting down. Two minutes."],
+    [N, "She eats standing up at the counter, out of the box, the way she has been told off for eating since she was eleven."],
+    [N, "Cold pizza from Sunday. Half a packet of the biscuits her mother hides behind the flour. A carton of orange juice, drunk out of the carton."],
+    ["OUISSY", "Sorry, Mum."],
+    SIL,
+    [N, "Then she fills two bottles from the tap while there is still pressure in it, and puts them in her bag with the rest of the biscuits, because she is not going to be back tonight and she knows it."],
+    ["OUISSY", "That's the last hot meal in this house. Great."],
+    [N, "It is the first thing she has eaten since yesterday. It makes an enormous difference, and she is annoyed about how much."]
+  ];
+  TALK.fridgeAgain = [
+    [N, "Cold air and an empty shelf. She has had what was worth having."]
   ];
 
   TALK.garage = [
@@ -1545,6 +1584,94 @@
             if ((b % 64) >= 32) line(UNDER_AT, b, at, sp, -1, 0.030, cello);
           } },
 
+          /* ---- THE FIVE THAT ARE NOT PLACES BUT SITUATIONS ----
+             A level is not one feeling for twenty minutes. The house is
+             quiet until it is not; the hospital is cold until something
+             has seen her. These five are cued by what is happening rather
+             than by where she is standing, they are written on the same
+             eight bars as everything else, and because of that any of
+             them can follow any other without the harmony jumping. */
+
+          /* SOMETHING HAS SEEN HER. Nearly three times the tempo of the
+             room she was just standing in, and no tune at all — a melody
+             is something you get when you are safe. Root and tritone held
+             over the top, which is the only interval in the chapter that
+             is allowed to be ugly. */
+          hunt: { bpm: 132, play: function (b, at, sp) {
+            var bar = Math.floor(b / 4) % 8;
+            pulse(hz(ROOTS[bar], -2), at, b % 4 === 0 ? 0.085 : 0.048, sp * 0.55);
+            if (b % 2 === 1) tick(at, 0.022);
+            if (b % 8 === 0) {
+              cello(hz(ROOTS[bar], -2), at, sp * 8.2, 0.090);
+              strings([hz(ROOTS[bar], 0), hz(ROOTS[bar] + 6, 0)], at, sp * 7.4, 0.022, 2800);
+            }
+            if (b % 32 === 24) swell(hz(0, -3), at, sp * 8, 0.11);
+          } },
+
+          /* IN A WARDROBE WITH SOMETHING IN THE ROOM. The opposite of the
+             one above: almost nothing. One bowed note under the floor, two
+             beats of a heart every bar, and once in a while a bell a long
+             way off. It is quiet enough that the game's own sounds — a
+             footstep on the landing, a door — come through it. */
+          held: { bpm: 50, play: function (b, at, sp) {
+            var bar = Math.floor(b / 4) % 8;
+            if (b % 8 === 0) cello(hz(ROOTS[bar], -2), at, sp * 8.4, 0.058);
+            if (b % 4 === 0) {
+              pulse(hz(0, -3), at, 0.060, sp * 0.32);
+              pulse(hz(0, -3), at + sp * 0.30, 0.040, sp * 0.28);
+            }
+            if (b % 32 === 24) bell(hz(12, 1), at, 0.014);
+          } },
+
+          /* LOOKING FOR SOMETHING, WITH NOTHING LOOKING FOR HER. The chord
+             one note at a time, up and back down, which is what a room
+             being searched sounds like: patient, and going over the same
+             ground twice. */
+          search: { bpm: 58, play: function (b, at, sp) {
+            var bar = Math.floor(b / 4) % 8;
+            var c = CHORDS[bar];
+            if (b % 4 === 0) cello(hz(ROOTS[bar], -2), at, sp * 4.3, 0.048);
+            piano(hz([c[0], c[1], c[2], c[1]][b % 4], 0), at, 0.026, 2.6);
+            if (b % 16 === 8)
+              strings([hz(c[0], -1), hz(c[2], -1)], at, sp * 8, 0.020, 1100);
+            if (b % 64 === 48) line(TUNE_AT, b, at, sp, 0, 0.018, function (f, t2, v, d) {
+              bell(f, t2, v);
+            });
+          } },
+
+          /* THE ONE THAT IS ALLOWED TO HURT. Her tune at half speed, an
+             octave down, on one bowed line with two held notes behind it
+             and nothing else — no pulse, no bass movement, no tick. It is
+             the same tune; it is just being played slowly enough to hear
+             what it is. */
+          grief: { bpm: 44, play: function (b, at, sp) {
+            var bar = Math.floor(b / 8) % 8;
+            if (b % 8 === 0) {
+              var c = CHORDS[bar];
+              strings([hz(c[1], 0), hz(c[2], 0)], at, sp * 8.6, 0.020, 900);
+            }
+            if (b % 2 === 0) line(TUNE_AT, (b / 2) % 32, at, sp * 2, -1, 0.055, cello);
+          } },
+
+          /* A FENCE WITH PEOPLE BEHIND IT. Not frightening — nobody here
+             wants to hurt her — but nothing here is hers either. A clock
+             that will not stop, the chord held flat underneath, and once
+             every eight bars four notes of her tune on strings, so far
+             back you might not notice it. */
+          gate: { bpm: 76, play: function (b, at, sp) {
+            var bar = Math.floor(b / 4) % 8;
+            if (b % 4 === 0) {
+              var c = CHORDS[bar];
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.4, 0.026, 1100);
+            }
+            if (b % 8 === 0) cello(hz(ROOTS[bar], -2), at, sp * 8, 0.050);
+            tick(at, b % 4 === 0 ? 0.016 : 0.009);
+            if ((b % 64) >= 32 && (b % 64) < 48)
+              line(TUNE_AT, b, at, sp, 0, 0.022, function (f, t2, v, d) {
+                strings([f], t2, d + sp * 0.4, v, 1900);
+              });
+          } },
+
           /* THE ROOF. All of it: the tune on the piano, the ensemble
              under it, the low line, and the swell coming up through the
              middle of each half. The last note of the eighth bar is the
@@ -1575,50 +1702,57 @@
           } }
         };
 
-        function stopAll(fade) {
-          if (timer) { clearTimeout(timer); timer = 0; }
+        /* ---- HOW ONE CUE BECOMES ANOTHER ----
+
+           It used to stop the old piece, build a new one, and set the
+           beat back to nought. Two things were wrong with that. The
+           phrase restarted from the top, so a cue change always sounded
+           like a track change; and the old cue faded from wherever it
+           was while the new one began at the top of bar one, so for two
+           seconds you heard the same eight bars in two different places
+           at once.
+
+           Every cue in this chapter is written on the SAME eight bars —
+           that was the point of writing them that way — so if a change
+           lands on a bar line and the bar count carries over, the
+           harmony simply continues while the instruments change under
+           it. The tempo may jump (from the house at fifty to being
+           chased at a hundred and thirty), which is a tempo change on a
+           bar line, and that is a normal thing for music to do.
+
+           So: a change is queued, not made. The scheduler makes it at
+           the next bar — or at the next beat, if something has just
+           seen her and the music cannot afford to wait. The old bus
+           fades and the new one rises around that same moment, both
+           scheduled in the audio clock rather than in wall time, so the
+           join is exactly where the music says it is. */
+
+        function retireBus(at, fade) {
           if (!bus) return;
           var old = bus, oldDry = dry, oldWet = wet, oldVib = vib, dead = voices;
           bus = null; dry = null; wet = null; vib = null; vibGain = null;
-          voices = []; piece = null;
+          voices = [];
           try {
-            old.gain.setTargetAtTime(0.0001, ctx.currentTime, fade || 0.8);
+            old.gain.cancelScheduledValues(at);
+            old.gain.setTargetAtTime(0.0001, at, fade);
+            var wait = Math.max(0, at - ctx.currentTime) + fade * 5;
             setTimeout(function () {
               dead.forEach(function (v) { try { v.stop(); } catch (e) {} });
               try { if (oldVib) oldVib.stop(); } catch (e) {}
               try { old.disconnect(); } catch (e) {}
               try { if (oldDry) oldDry.disconnect(); } catch (e) {}
               try { if (oldWet) oldWet.disconnect(); } catch (e) {}
-            }, (fade || 0.8) * 4000);
+            }, wait * 1000);
           } catch (e) {}
         }
 
-        function pump() {
-          if (!piece || !ctx) return;
-          var sp = 60 / piece.bpm;
-          while (nextAt < ctx.currentTime + 1.2) {
-            if (nextAt < ctx.currentTime) nextAt = ctx.currentTime + 0.05;
-            try { piece.play(beat, nextAt, sp); } catch (e) {}
-            beat++; nextAt += sp;
-            if (voices.length > 260) voices = voices.slice(-140);
-          }
-          timer = setTimeout(pump, 240);
-        }
-
-        var wanted = null, muted = false, mvol = 0.9;
-        function setPiece(name, vol) {
-          wanted = name;
-          if (!ac() || muted) { if (muted) stopAll(1.1); return; }
-          if (piece && piece.name === name) return;
-          stopAll(1.4);
-          if (!name || !PIECES[name]) return;
+        function startBus(at, rise) {
           bus = ctx.createGain();
           bus.gain.value = 0.0001;
           bus.connect(master);
-          bus.gain.setTargetAtTime((vol == null ? 0.9 : vol) * (mvol / 0.9),
-                                   ctx.currentTime, 2.4);
-          /* everything the score plays goes through this pair, so the
-             whole cue fades as one thing */
+          bus.gain.setTargetAtTime(mvol, at, rise);
+          /* everything a cue plays goes through this pair, so the whole
+             thing rises and falls as one */
           dry = ctx.createGain(); dry.connect(bus);
           wet = ctx.createGain(); wet.gain.value = 1;
           wet.connect(busVerb);
@@ -1626,11 +1760,57 @@
           vib = ctx.createOscillator();
           vib.type = "sine"; vib.frequency.value = 4.7;
           vibGain = ctx.createGain(); vibGain.gain.value = 4.5;
-          vib.connect(vibGain); vib.start();
-          piece = PIECES[name];
-          piece.name = name;
-          beat = 0; nextAt = ctx.currentTime + 0.3;
-          pump();
+          vib.connect(vibGain); vib.start(at);
+        }
+
+        function stopAll(fade) {
+          if (timer) { clearTimeout(timer); timer = 0; }
+          piece = null; pending = null; urgent = false;
+          if (!bus || !ctx) return;
+          retireBus(ctx.currentTime, fade || 0.8);
+        }
+
+        function pump() {
+          if (!piece || !ctx) return;
+          var sp = 60 / piece.bpm;
+          while (nextAt < ctx.currentTime + 1.2) {
+            if (nextAt < ctx.currentTime) nextAt = ctx.currentTime + 0.05;
+            /* the change happens HERE, on a real bar line in the
+               schedule, rather than whenever this function happened to
+               be called */
+            if (pending && PIECES[pending] && (urgent || beat % 4 === 0)) {
+              var soft = urgent ? 0.30 : 0.85;
+              retireBus(nextAt, soft * 1.25);
+              startBus(nextAt, soft);
+              piece = PIECES[pending];
+              piece.name = pending;
+              pending = null; urgent = false;
+              sp = 60 / piece.bpm;
+            }
+            try { piece.play(beat, nextAt, sp); } catch (e) {}
+            beat++; nextAt += sp;
+            if (voices.length > 260) voices = voices.slice(-140);
+          }
+          timer = setTimeout(pump, 240);
+        }
+
+        var wanted = null, muted = false, mvol = 0.9, pending = null, urgent = false;
+        function setPiece(name, vol, now) {
+          wanted = name;
+          if (!ac() || muted) { if (muted) stopAll(1.1); return; }
+          if (!name || !PIECES[name]) { stopAll(1.4); return; }
+          if (piece && piece.name === name) { pending = null; return; }
+          if (!piece) {
+            /* nothing is playing: there is no join to make */
+            startBus(ctx.currentTime, 2.0);
+            piece = PIECES[name]; piece.name = name;
+            beat = 0; nextAt = ctx.currentTime + 0.3;
+            pump();
+            return;
+          }
+          /* something is: queue it, and let the scheduler pick the moment */
+          pending = name;
+          if (now) urgent = true;
         }
         setPiece.mute = function (v) {
           muted = !!v;
@@ -1657,9 +1837,18 @@
         setPiece.dropContext = function () {
           if (timer) { clearTimeout(timer); timer = 0; }
           bus = null; dry = null; wet = null; vib = null; vibGain = null;
-          voices = []; piece = null;
+          voices = []; piece = null; pending = null; urgent = false;
         };
         setPiece.playing = function () { return piece ? piece.name : null; };
+        /* what it has been ASKED for, which is what anything deciding
+           whether to ask for something else needs to compare against —
+           a queued change has not landed yet but is already decided */
+        setPiece.wantedName = function () { return pending || wanted; };
+        /* where in the eight bars it is, and what is playing them */
+        setPiece.where = function () {
+          return { beat: beat, bar: Math.floor(beat / 4) % 8,
+                   name: piece ? piece.name : null, pending: pending };
+        };
         /* the music slider — separate from the rest of the sound, because
            somebody who wants to hear the footsteps in the dark may not
            want a piano over them */
@@ -7146,6 +7335,26 @@
         var hd = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 0.05),
           new THREE.MeshStandardMaterial({ color: 0x8a8f96, metalness: 0.8, roughness: 0.3 }));
         hd.position.set(TILE * 0.28, 1.0, TILE * 0.38); g.add(hd);
+        /* the line where the door meets the body, so it reads as a
+           thing that opens rather than a white box */
+        var sm2 = new THREE.Mesh(new THREE.BoxGeometry(TILE * 0.82, 0.03, TILE * 0.74),
+          new THREE.MeshStandardMaterial({ color: 0x9aa0a8, metalness: 0.5, roughness: 0.5 }));
+        sm2.position.y = 1.18; g.add(sm2);
+        /* somebody's magnets, and a photograph nobody has looked at
+           since Sunday */
+        for (var mg = 0; mg < 4; mg++) {
+          var mm = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.02),
+            new THREE.MeshStandardMaterial({
+              color: [0xd8624a, 0xe0b24a, 0x5f9bd0, 0x7cb87c][mg],
+              roughness: 0.6 }));
+          mm.position.set(-0.22 + mg * 0.15, 1.42 - (mg % 2) * 0.5, TILE * 0.37);
+          g.add(mm);
+        }
+        var ph = new THREE.Mesh(new THREE.PlaneGeometry(0.30, 0.22),
+          new THREE.MeshStandardMaterial({ color: 0xe8e2d4, roughness: 0.9 }));
+        ph.position.set(0.06, 1.30, TILE * 0.368);
+        g.add(ph);
+        world.fridgeAt = { x: x, y: y };
       } else if (kind === "y") {
         return medical(x, y, false);
       }
@@ -8786,6 +8995,7 @@
   function setTouchUI(on) {
     if (touchUI === on) return;
     touchUI = on;
+    if (on) fitTouch();
     var t = $("ap-touch");
     if (t) t.setAttribute("aria-hidden", on ? "false" : "true");
     if (!on) {
@@ -8798,6 +9008,33 @@
     }
   }
 
+  /* The controls live outside the picture and have to be laid over it.
+     Doing it here rather than in the stylesheet is the only way to be
+     exact: the picture is centred in one layout and pushed to the top in
+     another, and a button that is a hundred pixels below where it looks
+     is worse than no button. */
+  var touchBox = "";
+  function fitTouch() {
+    var t = $("ap-touch"), st = $("ap-stage");
+    if (!t || !st) return;
+    var host = t.offsetParent || st.parentElement;
+    if (!host) return;
+    var a = st.getBoundingClientRect(), b = host.getBoundingClientRect();
+    if (!a.width || !a.height) return;
+    /* This is called from a ResizeObserver, and a ResizeObserver callback
+       that writes a style every time it runs is a callback that runs
+       again. Writing only when the number has actually changed keeps it
+       to one pass, which matters here: a frame that never settles starves
+       everything behind it, input included. */
+    var key = [a.left - b.left, a.top - b.top, a.width, a.height].join("|");
+    if (key === touchBox) return;
+    touchBox = key;
+    t.style.left = (a.left - b.left) + "px";
+    t.style.top = (a.top - b.top) + "px";
+    t.style.width = a.width + "px";
+    t.style.height = a.height + "px";
+  }
+
   function bindStick() {
     var zone = $("ap-stick");
     var stage = $("ap-stage");
@@ -8806,7 +9043,10 @@
     var knob = zone.querySelector(".ap-stick-knob");
 
     function place(cx, cy) {
-      var r = stage.getBoundingClientRect();
+      /* against the layer the stick actually lives in, not against the
+         picture — they lie on top of one another, but only one of them
+         is this element's containing block */
+      var r = (zone.offsetParent || stage).getBoundingClientRect();
       zone.style.left = (cx - r.left) + "px";
       zone.style.top = (cy - r.top) + "px";
       STICK.ox = cx; STICK.oy = cy;
@@ -8890,11 +9130,16 @@
   function bindPad() {
     var pad = $("ap-pad");
     if (pad) pad.setAttribute("aria-hidden", "false");
-    /* the action buttons live with the stick now, so bind by what a
-       thing says it is rather than by which box it sits in */
-    var stage = $("ap-stage");
-    if (!stage) return;
-    stage.querySelectorAll("[data-ap-key]").forEach(function (b) {
+    /* Bind by what a thing says it is, from the whole chapter screen —
+       not from inside the stage. USE and CREEP did nothing at all for as
+       long as they existed because this searched the stage and they were
+       one element outside it. They live inside it now, and this looks
+       wider than that anyway so moving a control can never silently
+       unbind it again. */
+    var root = $("screen-apoc") || document;
+    var found = root.querySelectorAll("[data-ap-key]");
+    if (!found.length) return;
+    Array.prototype.forEach.call(found, function (b) {
       if (b.__bound) return;
       var k = b.getAttribute("data-ap-key");
       function down(e) {
@@ -9245,20 +9490,11 @@
     });
 
     Audio_.bed(def.theme);
+    dangerHold = 0; dangerCue = null; moodCue = null; moodT = 0;
     /* ---- what is playing ----
-       A place gets a piece, not a theme tune: the two frightening ones
-       share the same low material so the streets and the hospital feel
-       like the same night, and the road out of the city is the first
-       time the tune is allowed above a whisper. */
-    Audio_.score({
-      home:     "dread",
-      streets:  "dread",
-      hospital: "sterile",
-      escape:   "sterile",
-      roadside: "open",
-      campsite: "hearth",
-      gates:    "open"
-    }[def.id] || "dread");
+       The place sets the floor of it; from here on updateScore decides,
+       every frame, from what is actually happening to her. */
+    Audio_.score(CUE_LEVEL[def.id] || "dread");
     setStep();
     setHud();
     return G;
@@ -9335,11 +9571,46 @@
     if (!s) return;
   }
 
+  /* SHE IS ALLOWED TO DO THINGS IN THE WRONG ORDER.
+
+     The story asks for one thing at a time, but the house does not lock
+     its doors in that order: she can walk into the garage and mend the
+     panel before she has been anywhere near the kitchen. That used to do
+     nothing at all — the panel was solved, the step it belonged to was
+     still two steps away, and nothing would ever ask for it again. The
+     door was open and the game was stuck.
+
+     So anything she finishes early is written down, and when the story
+     reaches it, it is already done. The one thing that is never
+     remembered is walking out: standing on the way out is checked every
+     frame anyway, so it does not need a memory, and giving it one would
+     end the level the moment the last errand cleared. */
+  var ONE_SHOT_DONE = "exit";
   function clearStep(name) {
+    if (!G || !G.def || !G.def.steps) return false;
     var s = step();
-    if (!s || s.clears !== name) return false;
+    if (!s) return false;
+    if (s.clears !== name) {
+      if (name !== ONE_SHOT_DONE) {
+        var later = false;
+        for (var k = G.stepIndex + 1; k < G.def.steps.length; k++)
+          if (G.def.steps[k].clears === name) later = true;
+        if (later) { G.done = G.done || {}; G.done[name] = true; }
+      }
+      return false;
+    }
     G.stepIndex++;
     Audio_.found();
+    /* some beats leave something behind them that the next step's cue
+       should not walk straight over */
+    if (s.after) scoreMood(s.after[0], s.after[1]);
+    /* and anything she did early is already behind her */
+    while (G.stepIndex < G.def.steps.length) {
+      var nx = G.def.steps[G.stepIndex];
+      if (!G.done || !G.done[nx.clears]) break;
+      G.stepIndex++;
+      if (nx.after) scoreMood(nx.after[0], nx.after[1]);
+    }
     setHud();
     if (G.stepIndex >= G.def.steps.length) onLevelDone();
     return true;
@@ -9476,7 +9747,7 @@
     /* hiding */
     var tx = Math.floor(p.x / TILE), ty = Math.floor(p.z / TILE);
     var here = w.at(tx, ty);
-    p.hidden = HIDE.indexOf(here) >= 0;
+    p.hidden = HIDE.indexOf(here) >= 0 || !!G.__forceHide;
 
     /* somewhere to be put back to: the last place nothing could see her */
     var anyChase = false;
@@ -9657,6 +9928,11 @@
 
     G.chasing = chasing;
     G.looking = looking;
+    /* the offline harness standing in for something that has seen her:
+       these are recomputed from the zombies every frame, so a test that
+       only sets them once would have them wiped on the next tick */
+    if (G.__forceChase) G.chasing = 1;
+    if (G.__forceLook) G.looking = 1;
   }
 
   /* --- the lights that are not hers --- */
@@ -9800,6 +10076,9 @@
     if (place) place.textContent = G.def.name;
     if (task) task.textContent = step() ? step().task : "";
     var carry = [];
+    /* what is actually in her bag, in the order she would say it */
+    if (G.player && G.player.hasTorch) carry.push("torch");
+    if (G.ate) carry.push("water \u00d7 2");
     if (G.code) carry.push("CODE " + G.code);
     if (G.wood) carry.push("wood: " + G.wood + "/3");
     if (G.closeCalls) carry.push("close calls: " + G.closeCalls);
@@ -10080,7 +10359,71 @@
     if (s.clears === "anwar") return w.anwarAt;
     if (s.clears === "panel") return w.panelAt;
     if (s.clears === "tv") return w.tvAt;
+    if (s.clears === "torch") return w.torchAt || w.fridgeAt;
     return w.exit;
+  }
+
+  /* ---- THE ATLAS ----
+     It was a heat map: one filled square per tile, four shades of blue-grey,
+     and everywhere she had not been drawn in a slightly darker version of
+     the same square — so the parts she knew and the parts she did not
+     looked like the same thing at two brightnesses, and the whole page
+     read as a spreadsheet.
+
+     A plan of a building is not made of filled squares. It is made of
+     LINES. So: the rooms she has walked are a warm wash, the walls round
+     them are drawn as the edges between a floor and what is not a floor,
+     doorways are amber breaks in those lines, and everywhere she has not
+     been is simply not drawn — the paper is blank there, which is what a
+     map you are still filling in actually looks like. Her route to the
+     next thing is a dashed line that follows corridors instead of cutting
+     through walls, there is a north point, and there is a scale.
+
+     It is drawn at the device's own pixel density, because a plan is
+     hairlines and hairlines are what a half-resolution canvas destroys. */
+
+  /* the way there, through the building rather than through it: a
+     breadth-first walk of the grid, which on a floor this size is a
+     fraction of a millisecond and only happens when the map is opened */
+  function mapRoute(w, from, to) {
+    if (!from || !to) return null;
+    var W = w.w, H = w.h, N = W * H;
+    var prev = new Int32Array(N).fill(-1);
+    var seen = new Uint8Array(N);
+    var q = [from.y * W + from.x];
+    seen[q[0]] = 1;
+    var goal = to.y * W + to.x;
+    var head = 0;
+    function open(x, y) {
+      if (x < 0 || y < 0 || x >= W || y >= H) return false;
+      var c = w.at(x, y);
+      /* the thing she is walking to is very often a solid object — a car,
+         a television, a panel on a wall — so the goal itself is allowed */
+      if (y * W + x === goal) return true;
+      /* and a door is a door: the grid calls it solid because it is shut
+         until she opens it, but a route through a house goes through the
+         doorways. Without this the plan could not find a way out of the
+         room she was standing in and drew no route at all. */
+      if ("dDPG".indexOf(c) >= 0) return true;
+      return c !== " " && !isSolidChar(c);
+    }
+    while (head < q.length) {
+      var cur = q[head++];
+      if (cur === goal) break;
+      var cx = cur % W, cy = (cur - cx) / W;
+      for (var d = 0; d < 4; d++) {
+        var nx = cx + (d === 0 ? 1 : d === 1 ? -1 : 0);
+        var ny = cy + (d === 2 ? 1 : d === 3 ? -1 : 0);
+        if (!open(nx, ny)) continue;
+        var ni = ny * W + nx;
+        if (seen[ni]) continue;
+        seen[ni] = 1; prev[ni] = cur; q.push(ni);
+      }
+    }
+    if (!seen[goal]) return null;
+    var out = [], at = goal;
+    while (at !== -1) { out.push({ x: at % W, y: Math.floor(at / W) }); at = prev[at]; }
+    return out.reverse();
   }
 
   function showMap() {
@@ -10088,7 +10431,8 @@
     if (G.state !== "play") return;
     var w = G.world;
     var wrap = el("div", "ap-map");
-    wrap.appendChild(el("p", "ap-map-title", "THE ROUTE"));
+    wrap.appendChild(el("p", "ap-map-kicker", "THE ROAD ATLAS"));
+    wrap.appendChild(el("p", "ap-map-title", "Where she is, and where she is going."));
 
     /* the chapter, as five stops on a line */
     var chain = el("div", "ap-map-chain");
@@ -10096,69 +10440,263 @@
     CHAPTER_MAP.forEach(function (c, i) { if (c.id === G.def.id) hereIdx = i; });
     CHAPTER_MAP.forEach(function (c, i) {
       var s2 = el("span", "ap-map-stop" + (i === hereIdx ? " here" : i < hereIdx ? " past" : ""));
+      s2.appendChild(el("span", "ap-map-node", ""));
       s2.appendChild(el("b", "", c.name));
-      s2.appendChild(el("i", "", i === hereIdx ? c.note : ""));
       chain.appendChild(s2);
     });
     wrap.appendChild(chain);
+    /* the note about where she is goes under the whole line and centred —
+       hung under its own stop it was wider than the column and dragged
+       the row out of true */
+    if (CHAPTER_MAP[hereIdx] && CHAPTER_MAP[hereIdx].note) {
+      wrap.appendChild(el("p", "ap-map-when", CHAPTER_MAP[hereIdx].note));
+    }
 
-    /* and the floor she is standing on */
+    /* ---- the floor she is standing on ----
+       A grid is mostly nothing: the house sits in the top-left of it and
+       the rest is the space around the level. Drawing all of that put the
+       plan in one corner of a mostly empty rectangle, so the page is
+       cropped to what is actually on it — everywhere she has been, plus
+       where she is, plus where she is going — with a margin for the north
+       point and the scale. */
     var cv = document.createElement("canvas");
-    var cell = clamp(Math.floor(560 / w.w), 4, 13);
     cv.className = "ap-map-canvas";
-    cv.width = w.w * cell; cv.height = w.h * cell;
-    var x2 = cv.getContext("2d");
-    x2.fillStyle = "#0b0f16"; x2.fillRect(0, 0, cv.width, cv.height);
-    for (var y = 0; y < w.h; y++) {
-      for (var x = 0; x < w.w; x++) {
-        var c = w.at(x, y);
-        if (c === " ") continue;
-        var seen = w.seen && w.seen[y * w.w + x];
-        var solid = isSolidChar(c);
-        var col;
-        if (!seen) col = solid ? "#161b24" : "#11161e";
-        else if (solid) col = "#3c4757";
-        else if (c === "h") col = "#2b4a52";
-        else if (c === "d" || c === "P" || c === "D" || c === "G") col = "#6a5a2e";
-        else col = "#233040";
-        x2.fillStyle = col;
-        x2.fillRect(x * cell, y * cell, cell - 1, cell - 1);
+    var bx0 = w.w, by0 = w.h, bx1 = 0, by1 = 0, anySeen = false;
+    for (var by = 0; by < w.h; by++) {
+      for (var bx = 0; bx < w.w; bx++) {
+        if (!(w.seen && w.seen[by * w.w + bx])) continue;
+        anySeen = true;
+        if (bx < bx0) bx0 = bx; if (bx > bx1) bx1 = bx;
+        if (by < by0) by0 = by; if (by > by1) by1 = by;
       }
     }
-    /* the thing she is looking for, and her */
-    var tgt = objectiveTile();
-    if (tgt) {
-      x2.fillStyle = "#8affc8";
-      x2.fillRect(tgt.x * cell - 1, tgt.y * cell - 1, cell + 1, cell + 1);
-      x2.strokeStyle = "rgba(138,255,200,.55)";
-      x2.lineWidth = 2;
-      x2.beginPath();
-      x2.arc(tgt.x * cell + cell / 2, tgt.y * cell + cell / 2, cell * 1.9, 0, 6.2832);
-      x2.stroke();
+    var tgt0 = objectiveTile();
+    var hx0 = clamp(Math.round(w.tx(G.player.x)), 0, w.w - 1);
+    var hy0 = clamp(Math.round(w.ty(G.player.z)), 0, w.h - 1);
+    function widen(tx, ty) {
+      if (tx == null) return;
+      if (tx < bx0) bx0 = tx; if (tx > bx1) bx1 = tx;
+      if (ty < by0) by0 = ty; if (ty > by1) by1 = ty;
     }
-    var hx = Math.round(w.tx(G.player.x)), hy = Math.round(w.ty(G.player.z));
-    x2.fillStyle = "#ffd88a";
-    x2.beginPath();
-    x2.arc(hx * cell + cell / 2, hy * cell + cell / 2, Math.max(2.5, cell * 0.46), 0, 6.2832);
-    x2.fill();
+    if (!anySeen) { bx0 = bx1 = hx0; by0 = by1 = hy0; }
+    widen(hx0, hy0);
+    if (tgt0) widen(tgt0.x, tgt0.y);
+    /* a little air round it, and never so small it is a postage stamp */
+    bx0 = Math.max(0, bx0 - 2); by0 = Math.max(0, by0 - 2);
+    bx1 = Math.min(w.w - 1, bx1 + 2); by1 = Math.min(w.h - 1, by1 + 2);
+    var VW = bx1 - bx0 + 1, VH = by1 - by0 + 1;
+    var cell = clamp(Math.floor(Math.min(720 / VW, 430 / VH)), 5, 22);
+    var PAD = Math.round(cell * 2.1);
+    var CW = VW * cell + PAD * 2, CH = VH * cell + PAD * 2;
+    var dpr = clamp(window.devicePixelRatio || 1, 1, 2.5);
+    cv.width = Math.round(CW * dpr); cv.height = Math.round(CH * dpr);
+    cv.style.width = CW + "px"; cv.style.height = CH + "px";
+    var x2 = cv.getContext("2d");
+    x2.scale(dpr, dpr);
+    x2.translate(PAD - bx0 * cell, PAD - by0 * cell);
+    x2.lineCap = "round"; x2.lineJoin = "round";
+
+    var seenAt = function (x, y) {
+      return !!(w.seen && w.seen[y * w.w + x]);
+    };
+    var floorAt = function (x, y) {
+      if (x < 0 || y < 0 || x >= w.w || y >= w.h) return false;
+      var c = w.at(x, y);
+      return c !== " " && !isSolidChar(c);
+    };
+    var known = function (x, y) {
+      return x >= 0 && y >= 0 && x < w.w && y < w.h && seenAt(x, y);
+    };
+    var DOORS = "dPDG";
+
+    /* the paper, and a grid so faint it is texture rather than lines */
+    x2.save();
+    x2.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var pg = x2.createLinearGradient(0, 0, 0, CH);
+    pg.addColorStop(0, "#0d1219"); pg.addColorStop(1, "#080b11");
+    x2.fillStyle = pg; x2.fillRect(0, 0, CW, CH);
+    x2.strokeStyle = "rgba(150,175,220,.045)";
+    x2.lineWidth = 1;
+    for (var gx = 0; gx <= CW; gx += cell * 4) {
+      x2.beginPath(); x2.moveTo(gx + 0.5, 0); x2.lineTo(gx + 0.5, CH); x2.stroke();
+    }
+    for (var gy = 0; gy <= CH; gy += cell * 4) {
+      x2.beginPath(); x2.moveTo(0, gy + 0.5); x2.lineTo(CW, gy + 0.5); x2.stroke();
+    }
+    x2.restore();
+
+    /* 1 — the rooms she has been in, as a wash */
+    for (var y = 0; y < w.h; y++) {
+      for (var x = 0; x < w.w; x++) {
+        if (!seenAt(x, y) || !floorAt(x, y)) continue;
+        var c0 = w.at(x, y);
+        x2.fillStyle = HIDE.indexOf(c0) >= 0 ? "rgba(96,190,190,.14)"
+                     : DOORS.indexOf(c0) >= 0 ? "rgba(240,181,103,.10)"
+                     : "rgba(150,185,240,.075)";
+        x2.fillRect(x * cell, y * cell, cell, cell);
+      }
+    }
+
+    /* 2 — the walls: the edge between a floor she has seen and whatever
+       is not a floor. This is the whole difference between a plan and a
+       heat map, and it costs one pass over the grid. */
+    var wallSeg = [], doorSeg = [];
+    for (var y2 = 0; y2 < w.h; y2++) {
+      for (var x3 = 0; x3 < w.w; x3++) {
+        if (!seenAt(x3, y2) || !floorAt(x3, y2)) continue;
+        var X = x3 * cell, Y = y2 * cell;
+        var here = w.at(x3, y2);
+        var isDoor = DOORS.indexOf(here) >= 0;
+        /* N, S, W, E */
+        if (!floorAt(x3, y2 - 1)) (isDoor ? doorSeg : wallSeg).push([X, Y, X + cell, Y]);
+        if (!floorAt(x3, y2 + 1)) (isDoor ? doorSeg : wallSeg).push([X, Y + cell, X + cell, Y + cell]);
+        if (!floorAt(x3 - 1, y2)) (isDoor ? doorSeg : wallSeg).push([X, Y, X, Y + cell]);
+        if (!floorAt(x3 + 1, y2)) (isDoor ? doorSeg : wallSeg).push([X + cell, Y, X + cell, Y + cell]);
+        /* and the edge of what she knows, which is a different kind of
+           line: where the floor carries on into paper she has not filled
+           in yet, the plan simply stops */
+        if (floorAt(x3, y2 - 1) && !known(x3, y2 - 1)) wallSeg.push([X, Y, X + cell, Y, 1]);
+        if (floorAt(x3, y2 + 1) && !known(x3, y2 + 1)) wallSeg.push([X, Y + cell, X + cell, Y + cell, 1]);
+        if (floorAt(x3 - 1, y2) && !known(x3 - 1, y2)) wallSeg.push([X, Y, X, Y + cell, 1]);
+        if (floorAt(x3 + 1, y2) && !known(x3 + 1, y2)) wallSeg.push([X + cell, Y, X + cell, Y + cell, 1]);
+      }
+    }
+    function strokeSegs(list, col, wid, dash, edgeCol) {
+      x2.lineWidth = wid;
+      x2.setLineDash(dash || []);
+      for (var i = 0; i < list.length; i++) {
+        var g2 = list[i];
+        x2.strokeStyle = (g2[4] && edgeCol) ? edgeCol : col;
+        x2.beginPath(); x2.moveTo(g2[0], g2[1]); x2.lineTo(g2[2], g2[3]); x2.stroke();
+      }
+      x2.setLineDash([]);
+    }
+    strokeSegs(wallSeg, "rgba(186,208,248,.66)", Math.max(1.2, cell * 0.13),
+               null, "rgba(186,208,248,.16)");
+    /* a doorway is a break in the wall with a warm line across it */
+    strokeSegs(doorSeg, "rgba(240,181,103,.85)", Math.max(1.4, cell * 0.16));
+
+    /* 3 — the places she can get out of sight in, marked the way a plan
+       marks a cupboard: a corner tick rather than a filled block */
+    for (var y3 = 0; y3 < w.h; y3++) {
+      for (var x4 = 0; x4 < w.w; x4++) {
+        if (!seenAt(x4, y3) || HIDE.indexOf(w.at(x4, y3)) < 0) continue;
+        var hx2 = x4 * cell, hy2 = y3 * cell, q2 = cell * 0.34;
+        x2.strokeStyle = "rgba(120,226,214,.75)";
+        x2.lineWidth = Math.max(1, cell * 0.1);
+        x2.beginPath();
+        x2.moveTo(hx2 + q2, hy2 + cell - q2); x2.lineTo(hx2 + cell - q2, hy2 + q2);
+        x2.stroke();
+      }
+    }
+
+    /* 4 — the way there */
+    var tgt = tgt0, hx = hx0, hy = hy0;
+    var route = tgt ? mapRoute(w, { x: hx, y: hy }, tgt) : null;
+    if (route && route.length > 1) {
+      x2.strokeStyle = "rgba(255,214,150,.62)";
+      x2.lineWidth = Math.max(1.4, cell * 0.17);
+      x2.setLineDash([cell * 0.42, cell * 0.44]);
+      x2.beginPath();
+      for (var r2 = 0; r2 < route.length; r2++) {
+        var rx = route[r2].x * cell + cell / 2, ry = route[r2].y * cell + cell / 2;
+        if (r2 === 0) x2.moveTo(rx, ry); else x2.lineTo(rx, ry);
+      }
+      x2.stroke();
+      x2.setLineDash([]);
+    }
+
+    /* 5 — the thing she is looking for */
     if (tgt) {
-      /* the way to it, in words, because an arrow on its own is not a hint */
+      var tcx = tgt.x * cell + cell / 2, tcy = tgt.y * cell + cell / 2;
+      x2.strokeStyle = "rgba(138,255,200,.85)";
+      x2.lineWidth = Math.max(1.2, cell * 0.13);
+      x2.beginPath(); x2.arc(tcx, tcy, cell * 1.15, 0, 6.2832); x2.stroke();
+      x2.strokeStyle = "rgba(138,255,200,.30)";
+      x2.beginPath(); x2.arc(tcx, tcy, cell * 1.95, 0, 6.2832); x2.stroke();
+      /* cross hairs, so it is a mark on a plan and not a bubble */
+      x2.strokeStyle = "rgba(138,255,200,.60)";
+      x2.lineWidth = 1;
+      x2.beginPath();
+      x2.moveTo(tcx - cell * 1.9, tcy); x2.lineTo(tcx - cell * 1.35, tcy);
+      x2.moveTo(tcx + cell * 1.35, tcy); x2.lineTo(tcx + cell * 1.9, tcy);
+      x2.moveTo(tcx, tcy - cell * 1.9); x2.lineTo(tcx, tcy - cell * 1.35);
+      x2.moveTo(tcx, tcy + cell * 1.35); x2.lineTo(tcx, tcy + cell * 1.9);
+      x2.stroke();
+      x2.fillStyle = "rgba(138,255,200,.95)";
+      x2.beginPath(); x2.arc(tcx, tcy, Math.max(1.6, cell * 0.2), 0, 6.2832); x2.fill();
+    }
+
+    /* 6 — her, and which way she is looking */
+    var pcx = hx * cell + cell / 2, pcy = hy * cell + cell / 2;
+    var gl = x2.createRadialGradient(pcx, pcy, 0, pcx, pcy, cell * 2.4);
+    gl.addColorStop(0, "rgba(255,214,150,.30)");
+    gl.addColorStop(1, "rgba(255,214,150,0)");
+    x2.fillStyle = gl;
+    x2.beginPath(); x2.arc(pcx, pcy, cell * 2.4, 0, 6.2832); x2.fill();
+    /* the wedge is her heading; the world's +z is down the page */
+    var ang = (G.player.turn || 0);
+    var look = -ang + Math.PI / 2;
+    x2.fillStyle = "rgba(255,214,150,.34)";
+    x2.beginPath();
+    x2.moveTo(pcx, pcy);
+    x2.arc(pcx, pcy, cell * 2.1, look - 0.42, look + 0.42);
+    x2.closePath(); x2.fill();
+    x2.fillStyle = "#ffd88a";
+    x2.beginPath(); x2.arc(pcx, pcy, Math.max(2.4, cell * 0.30), 0, 6.2832); x2.fill();
+    x2.strokeStyle = "rgba(12,16,24,.9)"; x2.lineWidth = 1;
+    x2.beginPath(); x2.arc(pcx, pcy, Math.max(2.4, cell * 0.30), 0, 6.2832); x2.stroke();
+
+    /* 7 — the north point and the scale, in the margin the plan was
+       given for exactly this */
+    x2.save();
+    var nx2 = bx0 * cell - PAD * 0.55, ny2 = by0 * cell - PAD * 0.30;
+    x2.strokeStyle = "rgba(186,208,248,.55)"; x2.lineWidth = 1.2;
+    x2.beginPath();
+    x2.moveTo(nx2, ny2 + PAD * 0.62); x2.lineTo(nx2, ny2 - PAD * 0.10);
+    x2.moveTo(nx2 - PAD * 0.16, ny2 + PAD * 0.10); x2.lineTo(nx2, ny2 - PAD * 0.10);
+    x2.lineTo(nx2 + PAD * 0.16, ny2 + PAD * 0.10);
+    x2.stroke();
+    x2.fillStyle = "rgba(186,208,248,.75)";
+    x2.font = "600 " + Math.max(8, PAD * 0.42) + "px ui-monospace, monospace";
+    x2.textAlign = "center"; x2.textBaseline = "middle";
+    x2.fillText("N", nx2, ny2 + PAD * 0.92);
+    /* five tiles, said in tiles, because the chapter never claims metres */
+    var sx = (bx1 + 1) * cell - cell * 5, sy = (by1 + 1) * cell + PAD * 0.44;
+    x2.strokeStyle = "rgba(186,208,248,.40)";
+    x2.beginPath();
+    x2.moveTo(sx, sy); x2.lineTo(sx + cell * 5, sy);
+    x2.moveTo(sx, sy - 3); x2.lineTo(sx, sy + 3);
+    x2.moveTo(sx + cell * 5, sy - 3); x2.lineTo(sx + cell * 5, sy + 3);
+    x2.stroke();
+    x2.fillStyle = "rgba(186,208,248,.55)";
+    x2.font = Math.max(7, PAD * 0.34) + "px ui-monospace, monospace";
+    x2.fillText("five paces", sx + cell * 2.5, sy + PAD * 0.38);
+    x2.restore();
+
+    wrap.appendChild(cv);
+
+    /* the legend, so nothing on the plan is a guess */
+    var key = el("div", "ap-map-key");
+    [["you", "you"], ["goal", "what you want"], ["route", "the way"],
+     ["door", "a door"], ["hide", "out of sight"]].forEach(function (k) {
+      var it = el("span", "ap-map-key-item");
+      it.appendChild(el("i", "k-" + k[0], ""));
+      it.appendChild(document.createTextNode(k[1]));
+      key.appendChild(it);
+    });
+    wrap.appendChild(key);
+
+    if (tgt) {
+      /* the way to it, in words, because a line on its own is not a hint */
       var ddx = tgt.x - hx, ddy = tgt.y - hy;
       var bits = [];
       if (Math.abs(ddy) > 2) bits.push(ddy > 0 ? "south" : "north");
       if (Math.abs(ddx) > 2) bits.push(ddx > 0 ? "east" : "west");
-      wrap.appendChild(el("p", "ap-map-dir",
-        bits.length ? "From here: " + bits.join(", then ") + "." : "You are on top of it."));
-      /* and the arrow */
-      var a3 = Math.atan2(ddy, ddx);
-      x2.strokeStyle = "rgba(255,216,138,.7)"; x2.lineWidth = 2;
-      x2.beginPath();
-      x2.moveTo(hx * cell + cell / 2, hy * cell + cell / 2);
-      x2.lineTo(hx * cell + cell / 2 + Math.cos(a3) * cell * 3.2,
-                hy * cell + cell / 2 + Math.sin(a3) * cell * 3.2);
-      x2.stroke();
+      var line2 = bits.length ? "From here: " + bits.join(", then ") + "." : "You are on top of it.";
+      if (route) line2 += "  " + (route.length - 1) + " paces by the corridors.";
+      wrap.appendChild(el("p", "ap-map-dir", line2));
     }
-    wrap.appendChild(cv);
     var b = el("button", "ap-card-go", "CLOSE");
     b.addEventListener("click", function () { closeOverlay(); G.state = "play"; });
     wrap.appendChild(b);
@@ -10963,6 +11501,7 @@
         return;
       }
       if (c === "1") { takeTorch(it); return; }
+      if (c === "f") { openFridge(); return; }
       if (c === "N") { showNote(); return; }
       if (c === "i") { pickUp(it); return; }
       if (c === "C") { takeTheCar(); return; }
@@ -11014,8 +11553,49 @@
     say([
       [null, "The big torch, in the drawer under the kettle, where it has lived since she was small and there was a power cut every winter."],
       [null, "She thumbs it on. The beam is yellow and enormous and it makes the kitchen look like somewhere else."],
-      ["OUISSY", "Okay."]
+      ["OUISSY", "Okay."],
+      [null, G.ate ? "That is the torch and that is a meal. Nothing else in this house is coming with her."
+                   : "There is a fridge two steps behind her, and she has not eaten since yesterday."]
     ]);
+    clearStep("torch");
+  }
+
+  /* ---- THE FRIDGE ----
+     A house somebody is about to walk out of for good should have one
+     thing in it worth stopping for. It is the last ordinary minute in
+     the chapter: no zombies, no timer, nothing to solve — she stands at
+     her own counter and eats her own food, and after that everything
+     that happens to her happens outdoors. */
+  function openFridge() {
+    if (G.ate) { say(TALK.fridgeAgain); return; }
+    var rows = [
+      ["SUNDAY", "half a pizza, in the box it came in"],
+      ["THE TIN", "the biscuits her mother hides behind the flour"],
+      ["THE DOOR", "orange juice, and most of a bottle of milk that has gone"],
+      ["THE TAP", "still running — two bottles' worth, while it lasts"]
+    ];
+    var used = false;
+    openOverlay(card("THE FRIDGE",
+      "The light does not come on.",
+      rows, "EAT SOMETHING", function () {
+        if (used) return;
+        used = true;
+        G.ate = true;
+        closeOverlay();
+        G.state = "play";
+        Audio_.found();
+        setHud();
+        /* the one calm scene in the level gets the one calm cue */
+        scoreMood("search", 26);
+        say(TALK.fridge);
+      },
+      "SHUT IT", function () {
+        if (used) return;
+        used = true;
+        closeOverlay();
+        G.state = "play";
+      }));
+    G.state = "overlay";
   }
 
   function pickUp(it) {
@@ -11126,6 +11706,9 @@
     });
     closeOverlay();
     G.state = "play";
+    /* she is somewhere safe and nothing knows where she is, and for the
+       next few seconds that is the only fact in the world */
+    scoreMood("held", 6);
   }
 
   /* =========================================================
@@ -11448,6 +12031,10 @@
     if (hud) hud.classList.add("gone");
     var cmp = $("ap-compass");
     if (cmp) cmp.setAttribute("aria-hidden", "true");
+    /* nothing to walk to and nothing to use: the controls stand down,
+       through the same door they came in by, so the next touch of the
+       screen brings them back */
+    setTouchUI(false);
     Stage.attach(c.scene, c.camera);
     try { Stage.renderer.compile(c.scene, c.camera); } catch (e) {}
     Stage.grade(c.grade || {});
@@ -13406,6 +13993,78 @@
   /* =========================================================
      32 — THE LOOP
      ========================================================= */
+  /* =========================================================
+     WHAT THE MUSIC IS DOING
+
+     A level used to get one cue and keep it until the level ended, which
+     meant the same four bars were playing whether she was reading a note
+     in her own kitchen or being run down a corridor. A cue belongs to a
+     SITUATION, not to a postcode.
+
+     Three things can decide it, in this order:
+
+       1. danger   — something can see her, or something is looking. This
+                     beats everything, arrives on the next beat rather
+                     than the next bar, and holds for a few seconds after
+                     the danger has gone, because a piece of music that
+                     stops the instant a zombie loses interest tells the
+                     player the zombie has lost interest.
+       2. a mood   — set by hand for a scene that has a feeling of its
+                     own: reading the note, the minute after a close call.
+                     It runs out on its own.
+       3. the step — every beat of the story can name its own cue; if it
+                     does not, the level's does.
+
+     A cut is not on this list. A cut says what it plays and nothing
+     argues with it.
+     ========================================================= */
+  var CUE_LEVEL = {
+    home:     "dread",
+    streets:  "dread",
+    hospital: "sterile",
+    escape:   "sterile",
+    roadside: "open",
+    campsite: "hearth",
+    gates:    "gate"
+  };
+  var dangerHold = 0, dangerCue = null, moodCue = null, moodT = 0;
+
+  /* a scene with a feeling of its own, for as long as it lasts */
+  function scoreMood(name, secs) {
+    moodCue = name; moodT = secs || 24;
+  }
+
+  function updateScore(dt) {
+    if (!G || !G.def) return;
+    if (G.cine) return;                       /* a cut speaks for itself */
+    var want = null, now = false;
+
+    var chased = G.chasing > 0;
+    var looked = G.looking > 0;
+    var hidden = !!(G.player && G.player.hidden);
+    if (chased) { dangerCue = "hunt"; dangerHold = 5.0; }
+    else if (looked) {
+      /* in a wardrobe with something in the room is not the same feeling
+         as being run down a corridor, and should not sound like it */
+      dangerCue = hidden ? "held" : "hunt";
+      dangerHold = Math.max(dangerHold, hidden ? 2.6 : 3.4);
+    } else if (dangerHold > 0) dangerHold -= dt;
+
+    if (dangerHold > 0 && dangerCue) {
+      want = dangerCue;
+      /* being seen cannot wait for the bar line */
+      now = (Audio_.score.wantedName() !== want) && chased;
+    } else {
+      dangerCue = null;
+      if (moodT > 0) { moodT -= dt; want = moodCue; }
+      else {
+        var st = step();
+        want = (st && st.cue) || CUE_LEVEL[G.def.id] || "dread";
+      }
+    }
+    if (want && want !== Audio_.score.wantedName()) Audio_.score(want, null, now);
+  }
+
   function tick(dt) {
     if (!G) return;
     G.time += dt;
@@ -13489,6 +14148,7 @@
     }
 
     updateHint(dt);
+    updateScore(dt);
     if (G.world) {
       updateDoors(dt);
       updateLights(dt);
@@ -13680,7 +14340,7 @@
     bindOnce.done = true;
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("resize", function () { if (Stage.ready) Stage.resize(); });
+    window.addEventListener("resize", function () { if (Stage.ready) Stage.resize(); fitTouch(); });
     /* The Continue button is inside the box, and both of them had a click
        handler on them, so one press on the button ran nextLine twice and
        every second line of the conversation went past unseen — which is
@@ -13703,6 +14363,7 @@
     });
     bindPad();
     bindStick();
+    fitTouch();
   }
 
   var Api = {
@@ -13720,7 +14381,12 @@
         canvas.style.opacity = "1";
         var stage = $("ap-stage");
         if (stage && window.ResizeObserver && !resizeObs) {
-          resizeObs = new ResizeObserver(function () { if (Stage.ready) Stage.resize(); });
+          resizeObs = new ResizeObserver(function () {
+            if (Stage.ready) Stage.resize();
+            /* out of the observer's own callback, so the write lands in
+               the next frame rather than in the middle of this one */
+            requestAnimationFrame(fitTouch);
+          });
           resizeObs.observe(stage);
         }
         G = { time: 0, state: "overlay", closeCalls: 0, camRig: new CamRig(Stage.camera),
@@ -13965,6 +14631,7 @@
       return true;
     };
     window.__apNoise = function (x, z, r) { noise(x, z, r); return true; };
+    window.__apTouchUI = function (on) { setTouchUI(!!on); return touchUI; };
     window.__apCaption = function () {
       var c = document.querySelector(".ap-cut-cap");
       return c ? c.textContent : null;
@@ -14007,6 +14674,25 @@
       };
     };
     window.__apScore = function () { return Audio_.score.playing(); };
+    /* what the music has been ASKED for, which is what the driver decides */
+    window.__apScoreWant = function () { return Audio_.score.wantedName(); };
+    window.__apScoreBeat = function () { return Audio_.score.where(); };
+    /* the harness standing in for something that has seen her */
+    window.__apChase = function (on) {
+      if (!G) return false;
+      G.__forceChase = !!on;
+      G.chasing = on ? 1 : 0;
+      return true;
+    };
+    window.__apLook = function (on, hidden) {
+      if (!G) return false;
+      G.__forceLook = !!on;
+      G.__forceHide = !!hidden;
+      G.looking = on ? 1 : 0;
+      if (G.player) G.player.hidden = !!hidden;
+      return true;
+    };
+    window.__apMood = function (name, secs) { scoreMood(name, secs); return true; };
     window.__apMusic = function (v) { SETTINGS.music = !!v; Audio_.score.mute(!v); return !!v; };
     window.__apAudio = function () { Audio_.begin(); return true; };
     /* what state the sound is actually in, so a test can prove it came

@@ -58,6 +58,71 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   const back = await p.evaluate(() => window.__osc);
   ok('and turning it back on starts it again', back > after, { after, back });
 
+  /* ---- THE CUE FOLLOWS THE SCENE ----
+     The music is chosen every frame from what is happening to her, so
+     this drives what is happening to her and reads back what the music
+     decided. None of it is about sound: it is about whether the piece
+     playing is the piece the moment deserves. */
+  const drive = await p.evaluate(async () => {
+    window.__apLoop(false);
+    window.__apEnter(1);                       /* the streets */
+    window.__apSkipDialogue();
+    for (let i = 0; i < 30; i++) window.__apPump(1 / 60);
+    const calm = window.__apScoreWant();
+
+    /* something sees her */
+    window.__apChase(true);
+    for (let i = 0; i < 20; i++) window.__apPump(1 / 60);
+    const chased = window.__apScoreWant();
+
+    /* it loses her — and the music does not drop the moment it does */
+    window.__apChase(false);
+    for (let i = 0; i < 40; i++) window.__apPump(1 / 60);   /* two thirds of a second */
+    const justAfter = window.__apScoreWant();
+    for (let i = 0; i < 420; i++) window.__apPump(1 / 60);  /* seven seconds */
+    const settled = window.__apScoreWant();
+
+    /* in a wardrobe with something in the room is its own feeling */
+    window.__apLook(true, true);
+    for (let i = 0; i < 20; i++) window.__apPump(1 / 60);
+    const hiding = window.__apScoreWant();
+    window.__apLook(false, false);
+    for (let i = 0; i < 420; i++) window.__apPump(1 / 60);
+
+    /* and a scene with a feeling of its own outranks the level */
+    window.__apMood('grief', 8);
+    for (let i = 0; i < 20; i++) window.__apPump(1 / 60);
+    const mood = window.__apScoreWant();
+    for (let i = 0; i < 620; i++) window.__apPump(1 / 60);
+    const afterMood = window.__apScoreWant();
+    return { calm, chased, justAfter, settled, hiding, mood, afterMood };
+  });
+  ok('a street with nothing on it plays the street', drive.calm === 'dread', drive);
+  ok('being seen changes the music', drive.chased === 'hunt', drive);
+  ok('and it does not stop the instant they lose her',
+     drive.justAfter === 'hunt', drive);
+  ok('but it does let go afterwards', drive.settled === 'dread', drive);
+  ok('hiding while something looks is its own cue', drive.hiding === 'held', drive);
+  ok('a scene with its own feeling gets it', drive.mood === 'grief', drive);
+  ok('and gives it back when it is over', drive.afterMood === 'dread', drive);
+
+  /* the change itself: it lands on a bar line and the count carries */
+  const joinInfo = await p.evaluate(async () => {
+    window.__apEnter(0);
+    window.__apSkipDialogue();
+    for (let i = 0; i < 30; i++) window.__apPump(1 / 60);
+    const a = window.__apScoreBeat();
+    window.__apChase(true);
+    for (let i = 0; i < 30; i++) window.__apPump(1 / 60);
+    await new Promise(r => setTimeout(r, 1600));
+    const b = window.__apScoreBeat();
+    window.__apChase(false);
+    return { a, b };
+  });
+  ok('the bar count carries across a change rather than restarting',
+     joinInfo.b.beat > joinInfo.a.beat, joinInfo);
+  ok('and the cue really did change', joinInfo.b.name !== joinInfo.a.name, joinInfo);
+
   ok('no page errors', errs.length === 0, errs.slice(0, 3));
   console.log('');
   console.log(pass + ' passed, ' + fail + ' failed');

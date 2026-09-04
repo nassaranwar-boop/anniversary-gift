@@ -985,9 +985,27 @@
         </div>
       </div>
 
-      <!-- The touch controls. They live over the picture rather than
-           under it, they only appear once somebody touches the screen,
-           and they go away again the moment a key is pressed. -->
+      <!-- THE TOUCH CONTROLS, AND WHY THEY ARE NOT INSIDE THE STAGE.
+
+           They cover the whole picture. An element that size inside the
+           box the WebGL canvas lives in has to be composited over that
+           canvas on every single frame, and on a machine with no GPU
+           worth the name that costs more than the game does — the same
+           lesson this file already learned from backdrop-filter, and
+           again from a mask on a scrolling list. Measured here, moving
+           them inside took a frame from milliseconds to seconds.
+
+           Out here they cost nothing, and fitTouch() lays them exactly
+           over the picture whenever the picture changes size, so the
+           buttons are where they look like they are on any shape of
+           screen — rather than in the black band under a letterboxed
+           game, which is where they landed before it existed.
+
+           They still had to be FOUND, and that was the bug the player
+           hit: the code that wires up USE and CREEP searched inside the
+           stage while they sat one element outside it, so for as long as
+           they have existed neither of them was connected to anything at
+           all. It searches the whole chapter screen now. -->
       <div class="ap-touch" id="ap-touch" aria-hidden="true">
         <div class="ap-stick" id="ap-stick" aria-label="Move">
           <span class="ap-stick-ring"></span>
@@ -1058,6 +1076,6 @@
 <script src="script.js?v=82"></script>
 <script src="super-ouissy.js?v=82"></script>
 <script src="rescue.js?v=82"></script>
-<script src="apocalypse.js?v=103"></script>
+<script src="apocalypse.js?v=104"></script>
 </body>
 </html>

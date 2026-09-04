@@ -132,6 +132,15 @@ function ok(name, cond, extra) {
   // ---- 7. the wire panel restores power and opens the dead door ---------
   r = await ev(() => {
     function G(){ return window.Apocalypse.game; }
+    /* she goes round the house first, the way the story asks — and the
+       game no longer minds if she does not, but the assertion below is
+       about the step advancing, so do it in order */
+    const tw = window.Apocalypse.game.world.torchAt;
+    window.__apTeleport(tw.x, tw.y + 1);
+    for (let i=0;i<4;i++) window.__apPump(1/60);
+    window.__apUse();
+    window.__apSkipDialogue();
+    for (let i=0;i<6;i++) window.__apPump(1/60);
     const pw = window.Apocalypse.game.world.panelAt;
     window.__apTeleport(pw.x, pw.y + 1);   // beside the wire panel, wherever it is
     for (let i=0;i<4;i++) window.__apPump(1/60);

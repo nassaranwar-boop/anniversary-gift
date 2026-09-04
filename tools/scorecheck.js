@@ -99,6 +99,81 @@ ok('and it settles where the first one does not',
    ((wLast % 12) + 12) % 12 !== ((sorted[sorted.length - 1][1] % 12) + 12) % 12,
    { wLast });
 
+
+/* ---- THE CUES ----
+   Eleven of them now, and the whole reason any one can follow any other
+   without the harmony jumping is that they are all written on the same
+   eight bars. That is an invariant, not a coincidence, so it is checked:
+   every cue must read its bar out of the shared progression, and none
+   may keep a chord table of its own. */
+const cueBlock = src.slice(src.indexOf('var PIECES = {'),
+                           src.indexOf('function retireBus'));
+const cues = [...cueBlock.matchAll(/^          ([a-z]+): \{ bpm: (\d+)/gm)]
+                .map(m => ({ name: m[1], bpm: Number(m[2]) }));
+const want = ['dread','sterile','drive','open','hearth','hunt','held',
+              'search','grief','gate','home'];
+ok('every cue the game asks for exists',
+   want.every(n => cues.some(c => c.name === n)),
+   { found: cues.map(c => c.name), want });
+ok('there are eleven of them, not six', cues.length === want.length, cues.length);
+
+/* each one has to take its harmony from the shared progression */
+const bodies = {};
+for (const c of cues) {
+  const i = cueBlock.indexOf(c.name + ': { bpm:');
+  const j = cueBlock.indexOf('\n          } },', i);
+  bodies[c.name] = cueBlock.slice(i, j < 0 ? cueBlock.length : j);
+}
+const rogue = cues.filter(c => !/ROOTS\[bar\]|CHORDS\[bar\]/.test(bodies[c.name]));
+ok('and every one of them sits on the shared eight bars',
+   rogue.length === 0, rogue.map(c => c.name));
+
+/* a bar of the fastest cue and a bar of the slowest have to be joinable:
+   a tempo change on a bar line is normal, a tempo change of ten times is
+   a different piece of music */
+const bpms = cues.map(c => c.bpm);
+const ratio = Math.max(...bpms) / Math.min(...bpms);
+ok('the fastest and the slowest are within reach of each other',
+   ratio <= 3.2, { fastest: Math.max(...bpms), slowest: Math.min(...bpms), ratio });
+
+/* the frightened ones must not carry a tune, and the tender ones must */
+ok('being chased has no melody in it',
+   !/line\(TUNE_AT|line\(WARM_AT/.test(bodies.hunt), 'hunt');
+ok('and neither does hiding',
+   !/line\(TUNE_AT|line\(WARM_AT/.test(bodies.held), 'held');
+ok('the one that is allowed to hurt is her tune, slowly',
+   /line\(TUNE_AT/.test(bodies.grief) && cues.find(c => c.name === 'grief').bpm <= 50,
+   'grief');
+
+/* ---- HOW ONE BECOMES ANOTHER ----
+   The join is the whole point of writing them on one progression, so the
+   machinery that makes it is checked too. */
+const swap = src.slice(src.indexOf('function pump() {'),
+                       src.indexOf('var wanted = null, muted'));
+ok('a change waits for a bar line', /beat % 4 === 0/.test(swap), swap.slice(0, 80));
+ok('unless it cannot wait', /urgent \|\| beat % 4 === 0/.test(swap));
+/* the count may only be reset where there is nothing to carry it across
+   from — inside the scheduler, a change never touches it */
+ok('the beat carries across the change', !/beat = 0/.test(swap));
+ok('and it is only ever reset when nothing was playing',
+   /if \(!piece\) \{[\s\S]{0,400}beat = 0/.test(src.slice(src.indexOf('function setPiece(name, vol, now)'),
+                                                          src.indexOf('setPiece.mute'))));
+ok('and both sides of it are scheduled in the audio clock, not wall time',
+   /retireBus\(nextAt/.test(swap) && /startBus\(nextAt/.test(swap));
+
+/* ---- WHO CHOOSES ----
+   Danger over a mood over the step over the level, and a cut over all of
+   it. If that order is wrong the music argues with the scene. */
+const driver = src.slice(src.indexOf('function updateScore(dt) {'),
+                         src.indexOf('function tick(dt)'));
+ok('a cut is never argued with', /if \(G\.cine\) return;/.test(driver));
+ok('being seen beats everything else',
+   driver.indexOf('dangerCue = "hunt"') < driver.indexOf('moodT > 0'));
+ok('a mood beats the step',
+   driver.indexOf('moodT > 0') < driver.indexOf('st.cue'));
+ok('and the danger holds on after the danger has gone',
+   /dangerHold = 5\.0|dangerHold -= dt/.test(driver));
+
 console.log('');
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
