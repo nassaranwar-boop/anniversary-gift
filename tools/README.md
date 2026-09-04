@@ -25,6 +25,11 @@ these runs; that is the harness, not the site.
 | `realplay.js` | **run this one.** Plays the game the way a person does — clicks through, waits, and looks at what is actually on the canvas — on all three difficulties. Every other suite drives the game itself and is therefore blind to anything wrong with the requestAnimationFrame path, which is how a bug that left the entire game rendering nothing got past 66 green assertions. |
 | `quest.js` | **the adventure, checked as a graph.** Walks every node from the title, and clicks all four routes through to their endings. Asserts no node is a dead end, no node is a fail state, all four routes are distinct in the nodes and scenery they use, and the two endings are different. Two dead-end nodes with a *Restart* overlay lived on the live site through several passes because nothing here had ever looked at the story graph. |
 | `regress.js` | walks every screen — intro, gate, book, hub, maze, adventure, apocalypse, the roof ending, Super Ouissy, keepsake — on desktop and on an iPhone, and checks each still builds with no page errors and no horizontal scroll. Run this before any push. |
+| `wickplay.js` | **the night shift's realplay.** Plays Wick & Cogs from the hub card to the way out: the screens, the doors, the meter, every camera, and one assertion per performer for the thing it is supposed to punish — the owl going through a shut door, the ballerina frozen while she is watched, Jax charging you for every knock. It also plays a whole night as an attentive guard would and checks she gets to six with power in hand, which is the only way to know the budget is a budget and not a wall. |
+| `wickui.js` | photographs every screen of it — title, how-to, briefing, office, doors shut, cameras, a dead camera, the game over, six o'clock and the finale — composited, DOM over canvas, through CDP. |
+| `wickshot.js` | one still of any room from any of its cameras, with any of the cast standing on any of its marks. `node wickshot.js out.png stage main '[{"id":"cogsworth","anchor":"s0"}]'` |
+| `wicklayout.js` | measures the panel at five real device sizes and fails on anything smaller than a thumb, anything outside the frame, and any horizontal scroll. |
+| `wicktime.js` | what a frame costs: build time, and draw calls, triangles and CPU milliseconds per room. |
 | `apocfull.js` | **the apocalypse's realplay.** Plays the whole chapter from the hub card to the roof: every level is started by the game itself, so the cards, the briefings, the objectives and the hand-off between levels are all exercised. |
 | `apocmech.js` | the stealth assertions: walls stop her, doors open, a wardrobe hides her, being caught is a close call and not a death, and hiding beside a zombie is safe. |
 | `apocflow.js`, `apocflow2.js`, `apocflow3.js`, `apocflow4.js`, `apocflow5.js` | one per level, start to finish, driving the real pointer over the wire panel and the keypad. |
@@ -56,6 +61,17 @@ That is fast and deterministic and it never once touches
 shadowing the game loop at the same scope, made the whole game render
 nothing while all 66 assertions stayed green. `realplay.js` exists because
 of that: it clicks, it waits, and it reads pixels off the canvas.
+
+**Two more that only bite the night shift.** `page.click` hangs on this
+site: the page never fires `load` because every non-localhost request is
+aborted, so playwright's post-click "waiting for scheduled navigations"
+sits there until it times out — click through `page.evaluate` instead,
+and dispatch a `pointerdown` as well as a `click`, because the office's
+buttons answer to the former. And `book-scene.js` has to be kept from
+loading at all: it is ACES, PMREM, bloom, bokeh and light shafts, and on
+a software rasteriser it takes the main thread and does not give it
+back, so everything after it times out before it can even be told to
+stop.
 
 **`page.screenshot()` hangs** while the game loop is painting: playwright waits
 for the element box to be stable and never gets it. Either call

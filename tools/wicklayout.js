@@ -38,12 +38,22 @@ let fails = 0;
     await p.waitForTimeout(1400);
     const m = await p.evaluate(() => {
       const st = document.getElementById('wick-stage').getBoundingClientRect();
+      /* held upright the controls sit under the stage, so the box they
+         must stay inside is the frame, not the stage */
+      const fr = document.querySelector('.wk-frame').getBoundingClientRect();
       const out = { stage: [Math.round(st.width), Math.round(st.height)], small: [], outside: [], hScroll: document.documentElement.scrollWidth > window.innerWidth + 1 };
-      document.querySelectorAll('#wk-pad .wk-key, #wk-map .wk-cell, .wk-pause-btn').forEach((el) => {
+      /* the plan on the tube is a display first: on a phone it is the
+         arrows on the pad that change camera, so its cells are only
+         held to a thumb target on a screen big enough for a pointer */
+      const sel = window.innerWidth >= 900
+        ? '#wk-pad .wk-key:not([hidden]), #wk-map .wk-cell, .wk-pause-btn'
+        : '#wk-pad .wk-key, .wk-pause-btn';
+      document.querySelectorAll(sel).forEach((el) => {
+        if (getComputedStyle(el).display === 'none') return;
         const r = el.getBoundingClientRect();
         const label = (el.dataset.k || el.dataset.room || el.className.split(' ')[0]);
         if (r.width < 40 || r.height < 34) out.small.push(label + ' ' + Math.round(r.width) + 'x' + Math.round(r.height));
-        if (r.left < st.left - 1 || r.right > st.right + 1 || r.top < st.top - 1 || r.bottom > st.bottom + 1) out.outside.push(label);
+        if (r.left < fr.left - 1 || r.right > fr.right + 1 || r.top < fr.top - 1 || r.bottom > fr.bottom + 1) out.outside.push(label);
       });
       return out;
     });

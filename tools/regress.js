@@ -41,7 +41,12 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     await page.evaluate(() => { stopDioramas(); showScreen('hub'); startHub(); });
     await page.waitForTimeout(500);
     const cards = await page.evaluate(() => Array.from(document.querySelectorAll('.hub-card')).map(c => c.id));
-    ok(label + ': the hub has every card', cards.length === 4, cards.join(','));
+    /* checked by name rather than by count: the count was still asserting
+       four cards long after there were five */
+    const want = ['hub-card-maze', 'hub-card-quest', 'hub-card-ouissy',
+                  'hub-card-apoc', 'hub-card-race', 'hub-card-wick'];
+    ok(label + ': the hub has every card',
+       want.every((c) => cards.indexOf(c) >= 0) && cards.length === want.length, cards.join(','));
     ok(label + ': no horizontal scroll on the hub', (await hs()) === 0, 'overflow ' + (await hs()));
 
     await page.evaluate(() => { level = 1; showScreen('details'); });
@@ -128,6 +133,26 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
       { timeout: 6000 }).catch(() => {});
     ok(label + ': quitting returns to the hub',
        await page.evaluate(() => document.getElementById('screen-hub').classList.contains('active')));
+    // and Wick & Cogs, in and straight back out
+    await page.evaluate(() => { showScreen('hub'); startHub(); });
+    await page.waitForTimeout(300);
+    await page.evaluate(() => document.getElementById('hub-card-wick').click());
+    await page.waitForSelector('#screen-wick.active .wk-overlay.on', { timeout: 9000 }).catch(() => {});
+    ok(label + ': the hub card opens Wick & Cogs',
+       await page.evaluate(() => document.getElementById('screen-wick').classList.contains('active')
+                              && !!document.querySelector('#wk-overlay.on')));
+    ok(label + ': no horizontal scroll in the night shift', (await hs()) === 0, 'overflow ' + (await hs()));
+    await page.evaluate(() => {
+      const b = Array.from(document.querySelectorAll('#wk-overlay .wk-btn'))
+        .find((e) => /LEAVE|BACK TO THE HUB/.test(e.textContent));
+      if (b) b.click();
+    });
+    await page.waitForFunction(
+      () => document.getElementById('screen-hub').classList.contains('active'),
+      { timeout: 6000 }).catch(() => {});
+    ok(label + ': leaving the night shift returns to the hub',
+       await page.evaluate(() => document.getElementById('screen-hub').classList.contains('active')));
+
     ok(label + ': still no page errors after all of that', errors.length === 0, errors.slice(0,2).join(' | '));
     await page.close();
   }

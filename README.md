@@ -392,6 +392,11 @@ were problems on the racer:
   arcade cabinets, three chairs, three crates, six toys, five wall
   fittings, four grates) and `place()` varies rotation and scale on top.
 
+Nine rooms cost between 1 and 3 milliseconds of CPU a frame and between
+160 and 460 draw calls, and the whole shop builds in about six hundred
+milliseconds — which is long enough to notice, so entering the chapter
+puts a card up and waits a frame before it starts.
+
 It carries no files of its own. Every surface — planks, lino, brick,
 galvanised duct, velvet, carpet, plaster, wallpaper, concrete, brass,
 porcelain, harlequin diamonds, the night outside the window, the standby

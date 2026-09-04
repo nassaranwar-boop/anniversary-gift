@@ -4840,11 +4840,11 @@ img{-webkit-user-drag:none; user-select:none;}
   background:linear-gradient(180deg, rgba(30,34,32,.86), rgba(14,16,15,.88));
   box-shadow:inset 0 0 0 .18cqw rgba(200,162,96,.4), 0 .3cqh .8cqh rgba(0,0,0,.5);
 }
-.wk-chip b{ font-weight:700; font-size:1.7cqh; color:var(--wk-brass); letter-spacing:.18em; }
-.wk-chip i{ font-style:normal; font-size:2.6cqh; color:var(--wk-ink); letter-spacing:.04em; }
+.wk-chip b{ font-weight:700; font-size:max(1.7cqh, 10px); color:var(--wk-brass); letter-spacing:.18em; }
+.wk-chip i{ font-style:normal; font-size:max(2.6cqh, 15px); color:var(--wk-ink); letter-spacing:.04em; }
 
 .wk-bar{
-  position:relative; display:block; width:22cqw; height:1.5cqh;
+  position:relative; display:block; width:max(22cqw, 120px); height:max(1.5cqh, 8px);
   border-radius:.75cqh; overflow:hidden;
   background:rgba(10,12,11,.9);
   box-shadow:inset 0 0 0 .16cqw rgba(200,162,96,.4), inset 0 .3cqh .6cqh rgba(0,0,0,.6);
@@ -4859,14 +4859,14 @@ img{-webkit-user-drag:none; user-select:none;}
 @keyframes wkPulse{ 50%{ filter:brightness(1.6); } }
 
 .wk-usage{
-  font-size:1.6cqh; letter-spacing:.35em; color:var(--wk-amber);
+  font-size:max(1.6cqh, 10px); letter-spacing:.35em; color:var(--wk-amber);
   text-shadow:0 0 .6cqh rgba(255,179,71,.5);
 }
 .wk-clock{
-  font-size:3.4cqh; font-weight:700; letter-spacing:.1em; color:var(--wk-amber);
+  font-size:max(3.4cqh, 19px); font-weight:700; letter-spacing:.1em; color:var(--wk-amber);
   text-shadow:0 0 1.2cqh rgba(255,179,71,.45), 0 .3cqh 0 rgba(0,0,0,.8);
 }
-.wk-night{ font-size:1.6cqh; letter-spacing:.3em; color:rgba(232,223,200,.6); }
+.wk-night{ font-size:max(1.6cqh, 9px); letter-spacing:.3em; color:rgba(232,223,200,.6); }
 
 /* the warm bloom at the edge when something is at a door */
 .wk-edge{
@@ -4913,7 +4913,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .wk-mon-top{
   position:absolute; top:2.8cqh; left:26cqw; right:26cqw;
   display:flex; align-items:center; justify-content:space-between; gap:2cqw;
-  font-family:var(--wk-face); font-size:2.1cqh; letter-spacing:.18em;
+  font-family:var(--wk-face); font-size:max(2.1cqh, 11px); letter-spacing:.18em;
   color:var(--wk-phos); text-shadow:0 0 1cqh rgba(127,228,208,.5);
 }
 .wk-rec{ display:flex; align-items:center; gap:.8cqw; color:var(--wk-red); font-weight:700; }
@@ -4934,8 +4934,8 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* the plan of the shop, bottom right of the tube */
 .wk-map{
-  position:absolute; right:4cqw; bottom:4cqh;
-  width:34cqw; aspect-ratio:1.15;
+  position:absolute; right:2.6cqw; bottom:max(17cqh, 62px);
+  width:max(30cqw, 208px); aspect-ratio:1.15;
   pointer-events:auto;
   background:linear-gradient(180deg, rgba(14,20,18,.86), rgba(8,12,11,.9));
   box-shadow:inset 0 0 0 .22cqw rgba(127,228,208,.35), 0 .6cqh 2cqh rgba(0,0,0,.6);
@@ -4952,8 +4952,8 @@ img{-webkit-user-drag:none; user-select:none;}
   border-radius:.3cqw;
   transition:background .12s linear, color .12s linear;
 }
-.wk-cell b{ font-size:1.7cqh; font-weight:700; letter-spacing:.06em; padding-left:.5cqw; }
-.wk-cell i{ font-style:normal; font-size:1.15cqh; letter-spacing:.06em; opacity:.72; padding-left:.5cqw;
+.wk-cell b{ font-size:max(1.7cqh, 11px); font-weight:700; letter-spacing:.06em; padding-left:.5cqw; }
+.wk-cell i{ font-style:normal; font-size:max(1.15cqh, 8px); letter-spacing:.06em; opacity:.72; padding-left:.5cqw;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 .wk-cell u{ display:none; }
 .wk-cell:hover{ background:rgba(127,228,208,.16); }
@@ -4982,7 +4982,7 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---------- pause ---------- */
 .wk-pause-btn{
   position:absolute; right:2cqw; bottom:2.4cqh; z-index:7;
-  width:6cqh; height:6cqh; padding:0; cursor:pointer;
+  width:max(6cqh, 40px); height:max(6cqh, 40px); padding:0; cursor:pointer;
   display:grid; place-items:center;
   border:none; border-radius:50%;
   background:linear-gradient(180deg, rgba(38,42,40,.92), rgba(16,18,17,.94));
@@ -4990,7 +4990,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .wk-pause-btn[hidden]{display:none;}
 .wk-pause-btn .gl-pause{
-  width:2.2cqh; height:2.6cqh;
+  width:max(2.2cqh, 12px); height:max(2.6cqh, 15px);
   background:linear-gradient(90deg, var(--wk-brass) 0 36%, transparent 36% 64%, var(--wk-brass) 64% 100%);
 }
 
@@ -4999,13 +4999,19 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; left:0; right:0; bottom:0; z-index:7;
   display:flex; align-items:flex-end; justify-content:space-between;
   padding:0 2cqw 2.4cqh; gap:2cqw; pointer-events:none;
+  /* a safety net: whatever the floors work out to, nothing leaves the stage */
+  flex-wrap:wrap;
 }
 .wk-pad[hidden]{display:none;}
 .wk-pad-mid{ display:flex; gap:1.6cqw; align-items:flex-end; }
+/* Sizes are in cq units so the panel scales with the stage, but every
+   control has a pixel floor under it. On a 390px phone the 16:9 stage
+   is only 219px tall, and 9cqh of that is a 20px button — small enough
+   that nobody could hit it and nothing in the layout would look wrong. */
 .wk-key{
   pointer-events:auto; cursor:pointer;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.2cqh;
-  padding:1.4cqh 2cqw; min-width:14cqw; min-height:9cqh;
+  padding:1.4cqh 2cqw; min-width:max(9cqw, 72px); min-height:max(9cqh, 54px);
   border:none; border-radius:.9cqw;
   font-family:var(--wk-face); color:var(--wk-ink);
   background:linear-gradient(180deg, #2b302d 0%, #1a1e1c 55%, #141715 100%);
@@ -5016,8 +5022,8 @@ img{-webkit-user-drag:none; user-select:none;}
   transition:transform .07s ease-out, box-shadow .07s ease-out, background .14s linear;
   touch-action:manipulation; -webkit-tap-highlight-color:transparent;
 }
-.wk-key b{ font-size:2cqh; font-weight:700; letter-spacing:.2em; }
-.wk-key i{ font-style:normal; font-size:1.3cqh; letter-spacing:.24em; opacity:.6; }
+.wk-key b{ font-size:max(2cqh, 12px); font-weight:700; letter-spacing:.2em; }
+.wk-key i{ font-style:normal; font-size:max(1.3cqh, 9px); letter-spacing:.24em; opacity:.6; }
 .wk-key:active{ transform:translateY(.6cqh); box-shadow:inset 0 0 0 .2cqw rgba(200,162,96,.42), 0 .2cqh 0 rgba(6,8,7,.9); }
 .wk-key.on{
   background:linear-gradient(180deg,#6d2a22 0%,#43170f 60%,#2c0f09 100%);
@@ -5030,7 +5036,11 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:inset 0 0 0 .2cqw rgba(127,228,208,.7), 0 .8cqh 0 rgba(6,8,7,.9), 0 0 2.4cqh rgba(127,228,208,.35);
 }
 .wk-key.dead{ opacity:.42; }
-.wk-key-h, .wk-key-m{ min-width:11cqw; min-height:7cqh; }
+.wk-key-h, .wk-key-m{ min-width:max(7cqw, 56px); min-height:max(7cqh, 46px); }
+/* the two camera arrows only exist while the monitor is up */
+.wk-key-step{ display:none; min-width:max(5cqw, 44px); min-height:max(7cqh, 46px); }
+.wk-pad[data-mon="1"] .wk-key-step{ display:flex; }
+.wk-key-step b{ font-size:max(2.2cqh, 15px); letter-spacing:0; }
 
 /* ---------- the cards ---------- */
 .wk-overlay{
@@ -5067,7 +5077,10 @@ img{-webkit-user-drag:none; user-select:none;}
   0%,72%,100%{ opacity:1; }
   73%{ opacity:.35; } 74%{ opacity:1; } 77%{ opacity:.5; } 78%{ opacity:1; }
 }
-.wk-tag{ margin:0 0 3cqh; font-size:1.6cqh; letter-spacing:.14em; color:rgba(232,223,200,.55); }
+.wk-tag{ margin:0 0 3cqh; font-size:max(1.6cqh, 10px); letter-spacing:.14em; color:rgba(232,223,200,.55); }
+/* the card that stands in front of the shop being built */
+.wk-card-load .wk-tag{ margin:0; animation:wkBreathe 1.6s ease-in-out infinite; }
+@keyframes wkBreathe{ 50%{ opacity:.35; } }
 .wk-btns{ display:flex; flex-wrap:wrap; gap:1.4cqw; justify-content:center; margin-top:2.4cqh; }
 .wk-btn{
   cursor:pointer; padding:1.4cqh 2.6cqw;
@@ -5147,13 +5160,39 @@ img{-webkit-user-drag:none; user-select:none;}
   filter:drop-shadow(0 0 6px rgba(255,179,71,.85));
 }
 
-/* ---------- phones and iPads ---------- */
+/* ---------- phones and iPads ----------
+   A phone on its side gets as much stage as the height allows, because
+   the office is a wide picture. Held upright it gets a band at the top
+   with the titlebar over it, the way the racer does. */
+@media (max-width: 900px) and (orientation: landscape){
+  .wk-frame{ justify-content:center; padding:0; gap:0; }
+  .wk-stage{ width:min(100%, calc(var(--app-h) * 1.7778)); }
+  .wk-titlebar{ display:none; }
+}
+/* Held upright, the office is a band across the middle and the controls
+   sit under it rather than over it: there is a screen's worth of space
+   down there going spare, and a thumb on a button is a thumb that is
+   not covering the doorway it is meant to be watching. */
+@media (orientation: portrait){
+  .wk-frame{ justify-content:center; padding:2vh 0 0; gap:0; }
+  .wk-stage{ width:min(100%, calc(var(--app-h) * 0.52 * 1.7778)); overflow:visible; }
+  .wk-stage::after{ border-radius:6px; }
+  .wk-pad{
+    top:100%; bottom:auto; padding:2.4vh 3vw 0;
+    align-items:stretch;
+  }
+  .wk-pad-mid{ align-items:stretch; }
+  .wk-pause-btn{ top:auto; bottom:2.4cqh; right:2cqw; }
+  .wk-titlebar{ margin-bottom:2vh; }
+}
 @media (max-width: 900px), (orientation: portrait){
   .wk-titlebar{display:block;}
-  .wk-frame{justify-content:space-between; padding:3vh 0 0;}
-  .wk-stage{ width:min(100%, calc(var(--app-h) * 0.52 * 1.7778)); }
-  .wk-map{ width:46cqw; bottom:22cqh; }
-  .wk-mon-top{ left:4cqw; right:4cqw; top:9cqh; }
+  /* the frame's own layout is set per orientation above; setting it
+     again here is what put the stage at the bottom of a portrait screen
+     and pushed the controls off the end of it */
+  .wk-map{ width:max(40cqw, 186px); bottom:max(8cqh, 24px); }
+  .wk-mon-top{ left:4cqw; right:4cqw; top:max(9cqh, 34px); }
+  .wk-pad{ padding:0 1.4cqw 1.6cqh; gap:1.2cqw; }
   .wk-card{ max-width:92cqw; padding:2.6cqh 4cqw; }
   .wk-card-wide{ max-width:94cqw; }
   .wk-lines{ max-width:84cqw; }
@@ -5161,10 +5200,28 @@ img{-webkit-user-drag:none; user-select:none;}
   .wk-cast li{ grid-template-columns:2.2cqh 1fr; }
   .wk-cast b{ grid-column:2; }
   .wk-cast span:last-child{ grid-column:2; }
-  .wk-key{ min-width:20cqw; min-height:11cqh; }
-  .wk-key-h, .wk-key-m{ min-width:15cqw; min-height:9cqh; }
+  .wk-key{ min-width:max(11cqw, 72px); min-height:max(11cqh, 54px); }
+  .wk-key-h, .wk-key-m{ min-width:max(8cqw, 56px); min-height:max(9cqh, 48px); }
+  .wk-key-step{ min-width:max(6cqw, 44px); min-height:max(9cqh, 46px); }
   .wk-pause-btn{ bottom:auto; top:2.4cqh; right:2cqw; }
   .wk-hud-tr{ top:2.4cqh; right:11cqw; }
+}
+
+/* A phone held upright is only 390 points across, and six controls with
+   a 84px floor under them do not fit on one row of that. They shrink to
+   the accessibility minimum rather than wrapping, because a second row
+   would take a third of a stage that is already only 219 points tall. */
+@media (max-width: 560px){
+  .wk-pad{ gap:4px; padding:0 4px 8px; }
+  .wk-pad-mid{ gap:4px; }
+  .wk-key{ min-width:72px; min-height:52px; padding:.6cqh 1cqw; }
+  .wk-key-h, .wk-key-m{ min-width:56px; min-height:46px; }
+  .wk-key-step{ min-width:44px; min-height:46px; }
+  .wk-key b{ font-size:11px; letter-spacing:.12em; }
+  .wk-key i{ font-size:8px; letter-spacing:.14em; }
+  /* the pad is below the stage in portrait, so the plan does not have
+     to clear it — it has to fit inside a 219px tall tube instead */
+  .wk-map{ width:186px; bottom:6px; right:6px; }
 }
 
 @media (prefers-reduced-motion: reduce){

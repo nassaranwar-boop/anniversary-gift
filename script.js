@@ -2299,7 +2299,8 @@ function startKeepsake() {
   if (chaptersDone().ouissy) badges.push({ icon: "px-crown", cap: "Super Ouissy" });
   if (chaptersDone().apoc) badges.push({ icon: "px-moon", cap: "Ouissy at the Apocalypse" });
   if (chaptersDone().race) badges.push({ icon: "px-ribbon", cap: "Super Ouissy Race" });
-  if (chaptersDone().wick) badges.push({ icon: "px-key", cap: "Wick & Cogs" });
+  /* the camera rather than the key: the key is already the maze's */
+  if (chaptersDone().wick) badges.push({ icon: "px-camera", cap: "Wick & Cogs" });
   badges.forEach((b, i) => {
     const card = document.createElement("div");
     card.className = "ks-card";

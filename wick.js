@@ -3832,7 +3832,7 @@ const BUILDERS = {
   workshop: buildWorkshop,
 };
 
-let built = false;
+let built = false, noWebGL = false;
 let officeParts = null, officeDoors = null;
 let stageEl = null, canvasEl = null;
 let pixelCap = 1.5;
@@ -3841,10 +3841,22 @@ function buildWorld(cvs) {
   if (built) return;
   canvasEl = cvs;
 
-  renderer = new T.WebGLRenderer({
-    canvas: cvs, antialias: true, alpha: false,
-    powerPreference: "high-performance", stencil: false,
-  });
+  /* A browser with WebGL switched off is a real thing — some corporate
+     builds, some privacy settings, an old machine with a blocklisted
+     driver. It should say so and offer the way back rather than throwing
+     and leaving her on a black screen with no button. */
+  try {
+    renderer = new T.WebGLRenderer({
+      canvas: cvs, antialias: true, alpha: false,
+      powerPreference: "high-performance", stencil: false,
+    });
+  } catch (e) {
+    renderer = null;
+  }
+  if (!renderer || !renderer.getContext || !renderer.getContext()) {
+    noWebGL = true;
+    return;
+  }
   renderer.outputColorSpace = T.SRGBColorSpace;
   renderer.toneMapping = T.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -3887,7 +3899,7 @@ function buildWorld(cvs) {
 }
 
 function sizeRenderer() {
-  if (!renderer || !stageEl) return;
+  if (!renderer || !stageEl || noWebGL) return;
   const w = stageEl.clientWidth || 960;
   const h = stageEl.clientHeight || 540;
   const dpr = Math.min(window.devicePixelRatio || 1, pixelCap);
@@ -4496,6 +4508,7 @@ function stepSignal(dt) {
     const r = pick(Math.random, pool);
     G.lost[r.id] = range(Math.random, 14, 22);
     if (G.monitor && G.cam === r.id) SFX.hiss(1.2);
+    bumpUI();
   }
 }
 
@@ -4609,6 +4622,7 @@ let lastT = 0, raf = 0, fpsAcc = 0, fpsN = 0;
 
 function frame(ts) {
   raf = requestAnimationFrame(frame);
+  if (noWebGL) return;
   if (!lastT) lastT = ts;
   let dt = (ts - lastT) / 1000;
   lastT = ts;
@@ -4969,9 +4983,11 @@ function bumpUI() {
   else if (G.phase === "shift") screenShift();
   /* the touch buttons show their own state, so a thumb can read them */
   if (EL["wk-pad"]) {
+    EL["wk-pad"].dataset.mon = G.monitor ? "1" : "0";
     EL["wk-pad"].querySelectorAll("[data-k]").forEach((b) => {
       const k = b.dataset.k;
       if (k === "monitor") b.classList.toggle("on", G.monitor);
+      else if (k === "prev" || k === "next") b.classList.remove("on");
       else b.classList.toggle("on", !!G.doors[k]);
       b.classList.toggle("dead", G.blackout);
     });
@@ -5021,6 +5037,9 @@ function uiTick(dt) {
       const img = staticCtx.createImageData(w, h);
       const d = img.data;
       const heavy = isLost(G.cam);
+      /* a dead camera is nearly all noise; a live one has a little in it,
+         because a live one on this system always has a little in it */
+      if (EL["wk-static"]) EL["wk-static"].style.opacity = heavy ? 0.94 : 0.5;
       const amt = heavy ? 210 : 34;
       for (let i = 0; i < d.length; i += 4) {
         const v = (Math.random() * amt) | 0;
@@ -5039,6 +5058,9 @@ function uiTick(dt) {
    way to play. The doors are the two outside buttons because that is
    where the doors are.
    ========================================================= */
+/* the camera list, in the order the numbers on the monitor run */
+const CAM_ORDER = ROOMS.filter((r) => r.cam > 0).sort((a, b) => a.cam - b.cam);
+
 function toggleDoor(k) {
   if (G.phase !== "play") return;
   if (G.blackout) { SFX.beep(false); return; }
@@ -5078,15 +5100,25 @@ function press(k) {
   audioInit();
   if (AC && AC.state === "suspended") AC.resume();
   if (k === "monitor") toggleMonitor();
+  else if (k === "prev" || k === "next") stepCam(k === "next" ? 1 : -1);
   else toggleDoor(k);
+}
+
+/* walking the camera list one at a time. On a phone the plan drawn on
+   the tube is too small to be the only way to change camera, so the pad
+   grows a pair of arrows whenever the monitor is up. */
+function stepCam(d) {
+  if (G.phase !== "play" || !G.monitor) return;
+  let i = 0;
+  for (let k = 0; k < CAM_ORDER.length; k++) if (CAM_ORDER[k].id === G.cam) i = k;
+  const n = CAM_ORDER.length;
+  selectCam(CAM_ORDER[((i + d) % n + n) % n].id);
 }
 
 function togglePause() {
   if (G.phase === "play") { G.phase = "pause"; screenPause(); showHud(false); }
   else if (G.phase === "pause") route("resume");
 }
-
-const CAM_ORDER = ROOMS.filter((r) => r.cam > 0).sort((a, b) => a.cam - b.cam);
 
 function onKey(e) {
   if (!running) return;
@@ -5150,7 +5182,42 @@ function start() {
      one bulb; the quality ladder is one number and it is here */
   const touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
   pixelCap = touch ? 1.25 : 1.6;
+
+  /* Building the shop is about half a second of solid work — nine rooms,
+     four performers and two dozen painted surfaces — and it is one
+     synchronous block, so nothing paints while it runs. Put a card up
+     and let it reach the screen before starting. */
+  if (!built && !noWebGL) {
+    G.phase = "load";
+    showHud(false);
+    overlay(
+      '<div class="wk-card wk-card-load">' +
+        '<p class="wk-sign"><span>' + WK.shop + '</span><b>' + WK.sub + '</b></p>' +
+        '<p class="wk-tag">unlocking the shop&hellip;</p>' +
+      '</div>', "wk-ov-title");
+    requestAnimationFrame(() => requestAnimationFrame(() => finishStart(cvs)));
+    return;
+  }
+  finishStart(cvs);
+}
+
+function finishStart(cvs) {
+  /* she may have gone back to the hub in the frame we waited */
+  if (G.phase === "idle") return;
   buildWorld(cvs);
+  if (noWebGL) {
+    running = true;
+    G.phase = "title";
+    showHud(false);
+    overlay(
+      '<div class="wk-card">' +
+        '<h3>THE SHOP IS DARK</h3>' +
+        '<p class="wk-blurb">This one needs 3D graphics, and this browser has them turned off. ' +
+        'Everything else on the site works without them.</p>' +
+        '<div class="wk-btns"><button class="wk-btn wk-btn-go" data-go="quit">BACK TO THE HUB</button></div>' +
+      '</div>', "wk-ov-title");
+    return;
+  }
   sizeRenderer();
   useView.__last = null;
   running = true;
@@ -5272,5 +5339,6 @@ const testHooks = {
   silence(v) { audioMute(v !== false); },
 };
 
-return { start, stop, preview, __wick: testHooks };
+return { start, stop, preview, __wick: testHooks,
+         __three: () => ({ renderer, scene, view }) };
 })();
