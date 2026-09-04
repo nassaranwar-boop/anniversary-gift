@@ -209,6 +209,47 @@ Three things this build learned the hard way, all worth not repeating:
   beat put every later step out of phase and the suite reported a level
   that had never started.
 
+## 7c. Wick & Cogs — the night-shift chapter
+
+The fifth game, and the first one in this repo that is actually 3D in
+the way the racer never was. Written on a branch at his request
+(`claude/wick-cogs-horror-game-1i25wl`), added as a sixth hub card,
+nothing removed.
+
+Read `README.md` for what it is and how to change it. What matters for
+whoever picks it up:
+
+- **It is Three.js on the bundled copy, and the racer is not.** The
+  racer looked like a 3D game and is a hand-written Mode 7 scanline
+  renderer with no `THREE` in it at all. Do not go looking for shared
+  code between the two; there is none, and the tooling worth sharing
+  (the texture library, the prop kit, the light rig, `place()`) is in
+  `wick.js` for a future rebuild of the racer to use.
+- **Four rules are enforced in code**, all of them from complaints
+  about the racer: `slab()` has a minimum thickness so a flat cutout
+  cannot be built by accident; `place()` is the only way a prop enters
+  a room and it lays a contact shadow, so nothing floats; a room is
+  composed once and frozen, so the frame loop cannot drift it; and
+  anything appearing twice comes out of a variant kit.
+- **Two ordering traps cost an hour each and are written up in the
+  file.** Freezing a subtree *before* parenting it leaves every prop
+  stacked at the origin — one of them ended up across the camera lens.
+  And freezing before the room's own world matrix exists puts a whole
+  room in its neighbour's space, which looks exactly like a room that
+  failed to build.
+- **Light intensity is candela.** three.js has been on physical units
+  since r155, so the readable 0–3 numbers each room asks for are
+  multiplied by `LUX` in one place. The first build of the office was
+  black and it was this.
+- The light rig is a fixed eight point lights plus one ambient, always
+  in the scene, re-pointed when the view changes. That is deliberate:
+  adding or removing a light changes the shader and stalls, and a stall
+  when you flip to a camera is the worst possible moment for one.
+
+Still open with him: whether the difficulty of night three is where he
+wants it, and the closing lines of the finale, which are written but are
+mine and not his.
+
 ## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python
@@ -226,7 +267,17 @@ There are scripts for all of this in `tools/` now, with a README. Run
 an iPhone and fails loudly. It had itself been broken for a long time —
 it drove a text field at the passcode gate, which has been a keypad for
 much longer than that — so if it fails on the second screen, suspect the
-suite before the site. For the apocalypse there is `tools/apocfull.js`,
+suite before the site. For Wick & Cogs there is `tools/wickplay.js`, which plays the chapter
+from the hub card to the way out and asserts every threat's counter, and
+`tools/wickshot.js`, which photographs any room from any of its cameras
+with any of the cast standing in it. Two harness quirks are worth
+knowing there: playwright's `page.click` hangs on this site because the
+page never fires `load` (every non-localhost request is aborted), so the
+suite clicks through the DOM; and the site's 0.65s screen-entry
+animation does not finish inside playwright's actionability check under
+swiftshader, so the suite turns it off.
+
+For the apocalypse there is `tools/apocfull.js`,
 which plays the whole chapter from the hub card to the roof. Two traps are written up there and both cost an
 hour to find: **requestAnimationFrame runs at about 3fps in this container**,
 so anything that waits on wall-clock time runs in slow motion and proves

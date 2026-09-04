@@ -5,8 +5,8 @@
 <script src="../vendor/three.bundle.js"></script>
 <script src="../wick.js"></script>
 <script>
-window.__shoot = function(room, cam){
-  WickAndCogs.preview(document.getElementById('stage'), document.getElementById('cvs'), room, cam);
+window.__shoot = function(room, cam, who){
+  WickAndCogs.preview(document.getElementById('stage'), document.getElementById('cvs'), room, cam, who);
   return document.getElementById('cvs').toDataURL('image/png');
 };
 </script>

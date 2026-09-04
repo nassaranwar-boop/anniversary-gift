@@ -18,6 +18,8 @@ scrapbook.js     the memory book — its own config block at the top
 super-ouissy.js  the platformer — its own config block at the top
 rescue.js        the platformer's story scenes (Hard only) — self-contained
 apocalypse.js    the stealth chapter — its own config block at the top
+racing.js        the kart racer — a hand-written Mode 7 renderer, not Three.js
+wick.js          the night-shift horror — Three.js, on the bundled copy
 assets/          images used by the 2D parts of the site
 tools/           offline checks (see tools/README.md); nothing here ships
 ```
@@ -39,6 +41,8 @@ tools/           offline checks (see tools/README.md); nothing here ships
 5c. **Super Ouissy** — a three-world platformer (`super-ouissy.js`)
 5d. **Ouissy at the Apocalypse** — a five-level top-down stealth story
     (`apocalypse.js`), ending on the same rooftop as the maze
+5e. **Super Ouissy Race** — the Mode 7 kart racer (`racing.js`)
+5f. **Wick & Cogs** — a three-night camera-and-doors horror (`wick.js`)
 6. **Keepsake** — scrapbook recap, unlocked once the maze and the adventure
    are done. Super Ouissy is a bonus: finishing it adds a card to the
    keepsake but is deliberately **not** required to unlock it, so nothing
@@ -308,3 +312,88 @@ Every row must stay sixteen characters long.
 
 Best score and time are kept per difficulty in `localStorage`, and the
 difficulty can be changed mid-game from the pause menu.
+
+
+## Wick & Cogs
+
+A night-shift survival horror, reached from the hub. You are the new
+security guard at an old wind-up toy shop, alone from midnight to six,
+with two doors, a ceiling hatch, eight cameras and one charge of power
+between you and four automatons that were built to move.
+
+Original from the ground up — the shop, the four performers, the story,
+the sounds and every piece of art in it. Nothing is borrowed from any
+existing game.
+
+**A/D or the arrow keys** shut the two doors, **W** the hatch,
+**space** raises the camera monitor, **1–8** jump straight to a camera,
+**Esc** pauses. On a phone the same five things are buttons along the
+bottom. Drag anywhere in the office to look around.
+
+### How a night works
+
+Six in-game hours, about five and a half real minutes. One power meter
+for the whole shift, drained by sitting there, by every second the
+monitor is up, and by every second a door is held shut. At zero the
+lights go out, the doors stop answering, and you wait — which you can
+survive, if you were not wasteful, because six o'clock might come first.
+
+| | | |
+|---|---|---|
+| **Cogsworth** | tin soldier | Marches down the main hall. You hear him coming; the marching stops when he is at your door. |
+| **Chime** | clockwork owl | Lives in the ducts. Doors mean nothing to it — the hatch is the only thing that does. |
+| **Marabelle** | music-box ballerina | Cannot move while she is on a camera. Can move the whole time she is not. |
+| **Jax** | jack-in-the-box | Fast, and he does not leave. A shut door only makes him knock, and each knock costs power. |
+
+Between them they close off every lazy strategy: watching one camera all
+night loses to Chime, never watching loses to Marabelle, and holding
+everything shut loses to Jax and the meter.
+
+Three nights. Each adds something rather than just going faster — night
+two wakes the owl and kills the workshop camera for good, night three
+drops cameras at random and puts the hall lights out, so Cogsworth has
+to be tracked by ear.
+
+### Changing it
+
+The first three hundred lines of `wick.js`, in this order:
+
+- `WK` — every word in it: the voicemail that opens night one, the notes
+  between nights, the finale, the how-to card.
+- `TUNE` — how the night feels. Seconds per hour, every power rate, and
+  a step interval, a movement chance and a door grace per performer.
+  Almost every complaint about a game like this is one of these numbers.
+- `NIGHTS` — one entry per night: who is awake and from which hour, the
+  aggression multiplier for each of the six hours, and any hazards.
+  Adding a fourth night is adding an entry; nothing else counts them.
+- `ROOMS` — the nine rooms and how they join up, on the floor and in the
+  ducts. `MAP_PLAN` is the plan drawn on the monitor.
+- `CAST` — the four performers and the route each walks to the office.
+
+### How the 3D is built
+
+Three.js, on the copy in `vendor/` that the book intro already uses. The
+racing chapter is **not** Three.js — it is a hand-written Mode 7 scanline
+renderer — so there was nothing there to share; this is a clean parallel
+setup, written generically (texture library, prop kit, light rig, contact
+shadows) so it is tooling rather than a one-off.
+
+Four rules are enforced in code rather than by care, because all four
+were problems on the racer:
+
+- `slab()` is the only box builder and it has a minimum thickness, so a
+  flat cutout cannot be built by accident.
+- `place()` is the only way a prop enters a room, and it lays a contact
+  shadow sized to that prop's own footprint. Nothing floats.
+- a room is composed once in its own space, parked at its own address
+  sixty metres from its neighbours, and then frozen — matrices off, world
+  matrices off. The frame loop has no handle on a static prop at all.
+- anything that appears twice has a variant kit (four shelves, four
+  arcade cabinets, three chairs, three crates, six toys, five wall
+  fittings, four grates) and `place()` varies rotation and scale on top.
+
+It carries no files of its own. Every surface — planks, lino, brick,
+galvanised duct, velvet, carpet, plaster, wallpaper, concrete, brass,
+porcelain, harlequin diamonds, the night outside the window, the standby
+screen on the desk monitor — is painted into a canvas at boot, and every
+sound is synthesised.

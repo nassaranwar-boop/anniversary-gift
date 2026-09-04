@@ -3,7 +3,7 @@
    Goes through toDataURL rather than page.screenshot, because a
    screenshot hangs while a canvas loop is painting. */
 const { chromium } = require('playwright-core'); const fs = require('fs');
-const [out, room = 'office', cam = 'main', W = 1280, H = 720] = process.argv.slice(2);
+const [out, room = 'office', cam = 'main', who = '[]', W = 1280, H = 720] = process.argv.slice(2);
 (async () => {
   const browser = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -18,7 +18,7 @@ const [out, room = 'office', cam = 'main', W = 1280, H = 720] = process.argv.sli
   await page.evaluate(([w, h]) => {
     const s = document.getElementById('stage'); s.style.width = w + 'px'; s.style.height = h + 'px';
   }, [+W, +H]);
-  const data = await page.evaluate(([r, c]) => window.__shoot(r, c), [room, cam]);
+  const data = await page.evaluate(([r, c, w]) => window.__shoot(r, c, JSON.parse(w)), [room, cam, who]);
   fs.writeFileSync(out, Buffer.from(data.split(',')[1], 'base64'));
   console.log('wrote', out, room + '/' + cam);
   await browser.close();

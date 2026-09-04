@@ -124,14 +124,25 @@ const WK = {
 const TUNE = {
   hourSeconds:  56,     // real seconds per in-game hour (6 hours ≈ 5:36)
 
+  /* These are a budget, and the budget is the game.
+
+     A night is 6 x hourSeconds = 336 seconds. Sitting there doing
+     absolutely nothing spends idle x 336 = about 27% of the meter, so
+     two thirds of it is yours to spend on knowing things and on being
+     safe. An attentive shift — the monitor up about a fifth of the
+     night, a door shut only while something is actually at it — lands
+     around 88% used. A wasteful one is dark by four. Jax is the one
+     that breaks a careless budget: every knock is charged. The first build of this had idle at 0.62, which spends 208%
+     of a meter that only holds 100 — the night was unsurvivable and no
+     amount of skill would have fixed it. */
   power: {
     start:      100,
-    idle:       0.62,   // %/s just sitting there
-    camera:     0.75,   // %/s extra while the monitor is up
-    door:       1.05,   // %/s extra per closed door
-    hatch:      0.85,   // %/s extra while the hatch is latched
-    jaxDoor:    1.15,   // Jax leaning on a shut door costs this much more
-    knock:      2.2,    // and each of his knocks takes this off outright
+    idle:       0.08,   // %/s just sitting there            -> ~27%/night
+    camera:     0.26,   // %/s extra while the monitor is up -> ~17% at 20% use
+    door:       0.32,   // %/s extra per closed door
+    hatch:      0.28,   // %/s extra while the hatch is latched
+    jaxDoor:    0.65,   // Jax leaning on a shut door costs this much more
+    knock:      1.6,    // and each of his knocks takes this off outright
     warn:       25,     // the meter starts complaining here
     critical:   10,
   },
@@ -147,10 +158,20 @@ const TUNE = {
   cast: {
     /* seconds between movement rolls, and the chance each roll lands.
        Both are scaled per night and per hour by NIGHTS below. */
-    cogsworth: { step: 5.0, chance: 0.30, doorGrace: 4.2, retreat: 2.4 },
-    chime:     { step: 6.5, chance: 0.26, hatchGrace: 5.0, retreat: 3.0 },
-    marabelle: { step: 4.4, chance: 0.34, doorGrace: 4.6, retreat: 2.6 },
-    jax:       { step: 3.4, chance: 0.40, doorGrace: 3.4, retreat: 1.6 },
+    /* `doorGrace` is the reaction window once it is at your door, and it
+       is read by name — the owl's used to be called `hatchGrace`, which
+       meant its timer was undefined, which meant NaN, which meant it
+       could neither reach you nor ever go away again.
+
+       `back` is how far down its own route being shut out sends it, and
+       `retreat` is how long it sulks there. Both used to be small, and
+       the effect was that everything was back at your door inside half a
+       minute — which is not tension, it is a metronome, and it spent the
+       whole meter before four o'clock however well you played. */
+    cogsworth: { step: 5.0, chance: 0.30, doorGrace: 4.2, retreat: 6.0, back: 3 },
+    chime:     { step: 6.5, chance: 0.26, doorGrace: 5.0, retreat: 7.0, back: 3 },
+    marabelle: { step: 4.4, chance: 0.34, doorGrace: 4.6, retreat: 5.0, back: 3 },
+    jax:       { step: 3.8, chance: 0.34, doorGrace: 3.4, retreat: 6.0, back: 3 },
   },
 
   /* how loud a cue is at each distance from the office, in rooms */
@@ -246,7 +267,7 @@ const CAST = [
     threat:"Marches. You will hear him long before you see him — and the marching stops when he is at your door.",
     colour:"#c8564a",
     home:"stage",
-    route:["stage","hall","hall","office"],
+    route:[["stage","s0"], ["stage","s1"], ["hall","far"], ["hall","mid"], ["hall","near"], ["office","leftDoor"]],
     door:"left",
   },
   {
@@ -255,7 +276,7 @@ const CAST = [
     threat:"Lives above the ceiling. Doors mean nothing to it. Watch the ducts, and latch the hatch.",
     colour:"#8ea9c6",
     home:"workshop",
-    route:["workshop","ducts","ducts","office"],
+    route:[["workshop","s0"], ["workshop","s1"], ["ducts","s0"], ["ducts","s1"], ["ducts","s2"], ["office","hatch"]],
     door:"hatch",
     usesDuct:true,
   },
@@ -265,7 +286,7 @@ const CAST = [
     threat:"Cannot move while she is being watched. Can move the entire time she is not.",
     colour:"#e6b7cd",
     home:"party",
-    route:["party","party","office"],
+    route:[["party","s0"], ["party","s1"], ["party","s2"], ["office","rightDoor"]],
     door:"right",
   },
   {
@@ -274,7 +295,7 @@ const CAST = [
     threat:"Fast, and he does not wait politely. A shut door only makes him knock, and every knock costs you.",
     colour:"#b46fd0",
     home:"closet",
-    route:["closet","party","arcade","party","office"],
+    route:[["closet","s0"], ["closet","s1"], ["arcade","s0"], ["party","s1"], ["party","s2"], ["office","rightDoor"]],
     door:"right",
   },
 ];
@@ -721,6 +742,93 @@ function paintCRT(g, S, rnd) {
   grain(g, S, S, rnd, 0.05, 0);
 }
 
+/* --- three surfaces that only the performers wear ------------------ */
+
+/* brass, gone slightly green in the joints */
+function paintBrass(g, S, rnd, base) {
+  const gr = g.createLinearGradient(0, 0, S * 0.6, S);
+  gr.addColorStop(0, shadeHex(base, 0.22));
+  gr.addColorStop(0.42, base);
+  gr.addColorStop(0.75, shadeHex(base, -0.22));
+  gr.addColorStop(1, shadeHex(base, 0.05));
+  g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  /* the verdigris that collects wherever two parts meet */
+  for (let i = 0; i < 26; i++) {
+    const x = rnd() * S, y = rnd() * S, r = range(rnd, 4, 22);
+    const vg = g.createRadialGradient(x, y, 0, x, y, r);
+    vg.addColorStop(0, "rgba(96,142,120,.4)");
+    vg.addColorStop(1, "rgba(96,142,120,0)");
+    g.fillStyle = vg; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+  }
+  /* turned-metal swirl, and the polish marks over it */
+  for (let i = 0; i < 40; i++) {
+    g.strokeStyle = rgba(rnd() > 0.5 ? "#ffffff" : "#000000", range(rnd, 0.02, 0.09));
+    g.lineWidth = range(rnd, 0.5, 2);
+    const y = rnd() * S;
+    g.beginPath(); g.moveTo(0, y);
+    for (let x = 0; x <= S; x += S / 6) g.lineTo(x, y + Math.sin(x / 22 + i) * 2.5);
+    g.stroke();
+  }
+  grain(g, S, S, rnd, 0.05, 0);
+}
+
+/* glazed porcelain: a warm white, hairline crazing, a blush of colour */
+function paintPorcelain(g, S, rnd, base, blush) {
+  const gr = g.createLinearGradient(0, 0, S * 0.3, S);
+  gr.addColorStop(0, shadeHex(base, 0.1));
+  gr.addColorStop(0.6, base);
+  gr.addColorStop(1, shadeHex(base, -0.12));
+  g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  if (blush) {
+    for (let i = 0; i < 5; i++) {
+      const x = rnd() * S, y = rnd() * S, r = range(rnd, S * 0.1, S * 0.28);
+      const bg = g.createRadialGradient(x, y, 0, x, y, r);
+      bg.addColorStop(0, rgba(blush, 0.3)); bg.addColorStop(1, rgba(blush, 0));
+      g.fillStyle = bg; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+    }
+  }
+  /* crazing: short forked lines, the way old glaze actually goes */
+  for (let i = 0; i < 22; i++) {
+    let x = rnd() * S, y = rnd() * S;
+    g.strokeStyle = "rgba(120,104,88,.3)"; g.lineWidth = 0.7;
+    g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 5; k++) { x += range(rnd, -12, 12); y += range(rnd, -12, 12); g.lineTo(x, y); }
+    g.stroke();
+  }
+  grain(g, S, S, rnd, 0.025, 0);
+}
+
+/* the jester's diamonds, off-register and rubbed thin at the points */
+function paintHarlequin(g, S, rnd, a, b) {
+  g.fillStyle = a; g.fillRect(0, 0, S, S);
+  const n = 4, w = S / n, h = S / n;
+  for (let y = -1; y < n + 1; y++) for (let x = -1; x < n + 1; x++) {
+    if ((x + y) % 2) continue;
+    const cx = x * w + w / 2 + range(rnd, -1.5, 1.5);
+    const cy = y * h + h / 2 + range(rnd, -1.5, 1.5);
+    g.fillStyle = shadeHex(b, range(rnd, -0.1, 0.08));
+    g.beginPath();
+    g.moveTo(cx, cy - h / 2); g.lineTo(cx + w / 2, cy);
+    g.lineTo(cx, cy + h / 2); g.lineTo(cx - w / 2, cy);
+    g.closePath(); g.fill();
+  }
+  /* the gold outline, broken where the paint has worn */
+  g.strokeStyle = "rgba(226,190,110,.35)"; g.lineWidth = 1.4;
+  for (let y = -1; y < n + 1; y++) for (let x = -1; x < n + 1; x++) {
+    if ((x + y) % 2) continue;
+    const cx = x * w + w / 2, cy = y * h + h / 2;
+    g.beginPath();
+    g.moveTo(cx, cy - h / 2); g.lineTo(cx + w / 2, cy);
+    g.lineTo(cx, cy + h / 2); g.lineTo(cx - w / 2, cy);
+    g.closePath(); g.stroke();
+  }
+  for (let i = 0; i < 40; i++) {
+    g.fillStyle = "rgba(0,0,0," + range(rnd, 0.04, 0.14) + ")";
+    g.beginPath(); g.ellipse(rnd() * S, rnd() * S, range(rnd, 2, 9), range(rnd, 1, 5), rnd() * Math.PI, 0, TAU); g.fill();
+  }
+  grain(g, S, S, rnd, 0.04, 0);
+}
+
 /* the contact shadow every prop stands on. One texture, shared. */
 function paintBlob(g, S) {
   const gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
@@ -762,6 +870,7 @@ function buildTextures() {
   TX.wallOffice  = tex("wallOffice",  (g,S,r) => paintPlaster(g,S,r,"#6d6152"));
   TX.wallPaper   = tex("wallPaper",   (g,S,r) => paintPaper(g,S,r,"#7d5f52","#8f6f5c","#e0c08a"));
   TX.brick       = tex("brick",       (g,S,r) => paintBrick(g,S,r,"#7a4c3c"));
+  TX.brickPale   = tex("brickPale",   (g,S,r) => paintBrick(g,S,r,"#8a8274"));
   TX.metal       = tex("metal",       (g,S,r) => paintMetal(g,S,r,"#6f7780"));
   TX.velvet      = tex("velvet",      (g,S,r) => paintVelvet(g,S,r,"#5e1f2c"));
   TX.enamelRed   = tex("enamelRed",   (g,S,r) => paintEnamel(g,S,r,"#8c3f3a"));
@@ -770,6 +879,11 @@ function buildTextures() {
   TX.enamelCream = tex("enamelCream", (g,S,r) => paintEnamel(g,S,r,"#a89876"));
   TX.woodShelf   = tex("woodShelf",   (g,S,r) => paintWood(g,S,r,"#7d5b3c",{boards:3}));
   TX.woodDark    = tex("woodDark",    (g,S,r) => paintWood(g,S,r,"#4a3524",{boards:4}));
+  TX.brass       = tex("brass",     (g,S,r) => paintBrass(g,S,r,"#b08c46"));
+  TX.brassDark   = tex("brassDark", (g,S,r) => paintBrass(g,S,r,"#7a6236"));
+  TX.pewter      = tex("pewter",    (g,S,r) => paintBrass(g,S,r,"#8a8f96"));
+  TX.porcelain   = tex("porcelain", (g,S,r) => paintPorcelain(g,S,r,"#e8e0d4","#d08a96"));
+  TX.harlequin   = tex("harlequin", (g,S,r) => paintHarlequin(g,S,r,"#5b3f7a","#c9a03c"));
   TX.crt         = tex("crt", paintCRT, 256);
   TX.crt.wrapS = TX.crt.wrapT = T.ClampToEdgeWrapping;
   TX.night       = tex("night", paintNight, 256);
@@ -1987,7 +2101,7 @@ function buildOffice(R) {
      monitor is cold, the ceiling bulb is failing, and each doorway has
      just enough light beyond it to make a silhouette out of anything
      standing there. */
-  R.light({ x: -0.86, y: 1.16, z: deskZ - 0.16, color: "#ffb765", intensity: 2.4, distance: 5.0, decay: 1.4, tag: "desk" });
+  R.light({ x: -0.72, y: 1.02, z: deskZ - 0.02, color: "#ffb765", intensity: 2.3, distance: 5.2, decay: 1.4, tag: "desk" });
   R.light({ x: 0.66, y: 1.12, z: deskZ + 0.2, color: "#79b6e2", intensity: 1.5, distance: 3.0, decay: 1.6, tag: "monitor" });
   R.light({ x: -0.35, y: 2.3, z: -0.45, color: "#ffd0a0", intensity: 1.5, distance: 7.4, decay: 1.35, tag: "pendant" });
   R.light({ x: -1.75, y: 1.5, z: -D / 2 + 0.75, color: "#7f9ad6", intensity: 0.8, distance: 4.8, decay: 1.6, tag: "window" });
@@ -2003,6 +2117,9 @@ function buildOffice(R) {
   R.cam("main", [0, 1.62, 2.16], [0, 1.06, -2.7], 74);
 
   /* where the cast stands when it gets here */
+  R.anchor("s0",        -W / 2 - 0.62, 0, doorZ,  Math.PI / 2);
+  R.anchor("s1",         W / 2 + 0.62, 0, doorZ, -Math.PI / 2);
+  R.anchor("s2",         1.9, 1.86, -D / 2 - 0.36, 0);
   R.anchor("leftDoor",  -W / 2 - 0.62, 0, doorZ,  Math.PI / 2);
   R.anchor("rightDoor",  W / 2 + 0.62, 0, doorZ, -Math.PI / 2);
   R.anchor("leftHall",  -W / 2 - 1.5, 0, doorZ,  Math.PI / 2);
@@ -2306,9 +2423,1394 @@ function buildHall(R) {
   R.anchor("far",  -0.4, 0, -4.6, 0);
   R.anchor("mid",  -0.1, 0, -0.9, 0);
   R.anchor("near",  0.3, 0,  3.1, 0);
+  R.anchor("s0",   -0.6, 0, -3.4, 0.3);
+  R.anchor("s1",    0.7, 0, -1.4, -0.4);
+  R.anchor("s2",   -0.9, 0,  1.2, 0.6);
+  /* four marks side by side, only ever used by the offline check that
+     photographs the cast together */
+  for (let i = 0; i < 4; i++) R.anchor("line" + i, -1.5 + i * 1.0, 0, -0.4, Math.PI);
+  /* one mark in the clear middle of the hall, and a camera two metres
+     off it, for photographing a performer on its own */
+  R.anchor("studio", 0, 0, -0.6, 0);
+  R.cam("studio", [0, 1.15, 1.5], [0, 0.95, -0.6], 52);
+  R.cam("studioHigh", [0.9, 2.0, 1.3], [0, 1.0, -0.6], 52);
   R.anchor("stageDoor", W / 2 - 0.8, 0, -2.6, -Math.PI / 2);
   R.anchor("arcadeDoor", W / 2 - 0.8, 0, 2.3, -Math.PI / 2);
   R.anchor("foyerArch", 0, 0, -5.4, Math.PI);
+}
+
+/* =========================================================
+   15d. THE REST OF THE SHOP
+
+   Seven more rooms. None of them shares a builder with another, none
+   shares a floor, a wall, a ceiling or a light rig, and the props in
+   each are drawn from different corners of the kit. If two of these
+   read as the same room with a filter over it, that is a bug.
+   ========================================================= */
+
+/* A doorway onto the clear colour is the flattest thing a room can do,
+   so every opening in the shop gets something behind it: a short box of
+   walls and floor with a little of the next room's tone in it. The hall
+   gets full recesses with props in them because its doorways are big and
+   straight on; everywhere else this is enough to give the hole depth. */
+function recessBox(R, x, z, ry, o) {
+  o = o || {};
+  const W = o.w || 2.6, H = o.h || 2.7, DEP = o.dep || 2.0;
+  const m = mat(o.wall || "wallGreen", 1.2, 1, o.tint || "#5a5f5c");
+  const b = new T.Group();
+  b.add(sb(W, 0.12, DEP, mat(o.floor || "floorTile", 3, 3, o.floorTint || "#6e6860"), 0, -0.06, -DEP / 2 + 0.1));
+  b.add(sb(W, H, 0.12, m, 0, H / 2, -DEP + 0.1));
+  for (const sx of [-1, 1]) b.add(sb(0.12, H, DEP, m, sx * W / 2, H / 2, -DEP / 2 + 0.1));
+  b.add(sb(W, 0.12, DEP, mat("wallCream", 2, 2, "#3e3a32"), 0, H, -DEP / 2 + 0.1));
+  for (const sx of [-1, 1]) b.add(sb(0.1, 0.13, DEP, mat("woodDark", 1, 0.4, "#4a3826"), sx * (W / 2 - 0.05), 0.065, -DEP / 2 + 0.1));
+  if (o.fill) o.fill(b);
+  R.place(freeze(b), x, o.y || 0, z, { ry: ry, shadow: false });
+}
+
+/* --- CAM 02 · THE SHOW STAGE ---------------------------------------
+   A little proscenium at the back of the shop with three plinths on it.
+   Two of them have somebody standing on them all day. The third is
+   Cogsworth's, and on a night when he is awake it is empty, which is
+   the point of pointing a camera at it. */
+function buildStage(R) {
+  const W = 9.0, D = 9.5, H = 4.2;
+  const rnd = R.rnd;
+  const wallM = mat("wallGreen", 3, 1.4, "#7e8c7e");
+  const floorM = mat("floorStage", 5, 5, "#8a6a48");
+
+  R.add(freeze(shell({
+    w: W, d: D, h: H,
+    floor: floorM, wall: wallM,
+    ceil: mat("wallGreen", 3, 3, "#4e5a4e"),
+    jamb: mat("woodDark", 0.6, 0.6, "#6a5038"),
+    joists: true,
+    openings: { s: [{ x: -2.6, w: 1.5, h: 2.3 }], w: [{ x: 1.0, w: 1.3, h: 2.2 }] },
+    aoFloor: 0.5, aoWall: 0.3,
+  })));
+
+  /* the stage itself: a deck on a framed apron, with steps */
+  const deck = new T.Group();
+  const deckM = mat("floorStage", 3, 2, "#a07c50");
+  deck.add(sb(7.2, 0.16, 3.6, deckM, 0, 0.72, 0));
+  deck.add(sb(7.3, 0.1, 0.14, mat("woodDark", 2, 0.4, "#5e4430"), 0, 0.75, 1.8));
+  deck.add(sb(7.2, 0.64, 0.12, mat("woodDark", 3, 1, "#4a3524"), 0, 0.32, 1.74));
+  for (let i = 0; i < 8; i++) deck.add(sb(0.1, 0.64, 3.4, mat("woodDark", 1, 1, "#3f2c1e"), -3.2 + i * 0.92, 0.32, 0));
+  for (let i = 0; i < 2; i++) {
+    deck.add(sb(1.6, 0.12, 0.34, deckM, -2.2, 0.24 + i * 0.24, 1.98 + i * 0.3));
+    deck.add(sb(1.6, 0.24, 0.06, mat("woodDark", 1, 1, "#4a3524"), -2.2, 0.12 + i * 0.24, 2.14 + i * 0.3));
+  }
+  R.place(freeze(deck), 0, 0, -2.2, { shadowOpacity: 0.7 });
+
+  /* the proscenium: two piers, a header, and a pelmet */
+  const arch = new T.Group();
+  const gild = mat("brass", 2, 1, "#c8a260");
+  const pier = mat("woodDark", 1, 2, "#6a4a30");
+  for (const sx of [-1, 1]) {
+    arch.add(sb(0.44, 3.5, 0.5, pier, sx * 3.55, 1.75, 0));
+    arch.add(sb(0.54, 0.16, 0.6, gild, sx * 3.55, 3.5, 0));
+    arch.add(sb(0.5, 0.12, 0.56, gild, sx * 3.55, 0.9, 0));
+    for (let i = 0; i < 5; i++) arch.add(sb(0.48, 0.05, 0.52, gild, sx * 3.55, 1.2 + i * 0.5, 0));
+  }
+  arch.add(sb(7.7, 0.5, 0.5, pier, 0, 3.6, 0));
+  arch.add(sb(7.9, 0.14, 0.6, gild, 0, 3.85, 0));
+  /* the pelmet: a scalloped valance, real lobes */
+  for (let i = 0; i < 11; i++) {
+    arch.add(at(new T.Mesh(new T.SphereGeometry(0.34, 10, 8), mat("velvet", 0.6, 0.6, "#8a3040")),
+      -3.3 + i * 0.66, 3.28, 0.05, 0, 0, 0, 1, 0.72, 0.6));
+  }
+  R.place(freeze(arch), 0, 0, -0.5, { shadow: false });
+
+  /* the curtains, drawn back to the piers, each a column of folds */
+  [-1, 1].forEach((sx) => {
+    const c = new T.Group();
+    for (let i = 0; i < 5; i++) {
+      const w = 0.34 - i * 0.03;
+      c.add(at(new T.Mesh(new T.CylinderGeometry(w, w * 1.25, 3.0, 10, 1, true),
+        mat("velvet", 0.5, 1.4, i % 2 ? "#7e2b38" : "#93374a", { side: T.DoubleSide })),
+        sx * i * 0.26, 1.55, -i * 0.1));
+    }
+    c.add(at(new T.Mesh(new T.TorusGeometry(0.42, 0.05, 6, 18), gild), sx * 0.3, 1.35, -0.2, 0.2, 0, sx * 0.5));
+    R.place(freeze(c), sx * 3.0, 0.88, -1.1, { shadow: false, shadowOpacity: 0.5 });
+  });
+
+  /* three plinths. The middle one is bare. */
+  const names = [0, 1, 2];
+  names.forEach((i) => {
+    const x = -2.0 + i * 2.0;
+    const pl = new T.Group();
+    pl.add(sb(0.9, 0.5, 0.9, mat("woodDark", 1, 1, "#6a4a30"), 0, 0.25, 0));
+    pl.add(sb(1.02, 0.07, 1.02, gild, 0, 0.53, 0));
+    pl.add(sb(0.98, 0.06, 0.98, mat("woodShelf", 1, 1, "#a07c50"), 0, 0.03, 0));
+    pl.add(sb(0.44, 0.16, 0.03, mat("brass", 1, 1, "#d0aa64"), 0, 0.3, 0.46));
+    R.place(freeze(pl), x, 0.88, -2.6, { ry: range(rnd, -0.06, 0.06), shadowOpacity: 0.68 });
+  });
+  /* two of them are occupied by things that are not part of the cast:
+     a barrel organ and a hurdy-gurdy monkey, so the empty one reads */
+  const organ = new T.Group();
+  organ.add(sb(0.62, 0.8, 0.42, mat("woodShelf", 1, 1, "#a8804e"), 0, 0.4, 0));
+  organ.add(sb(0.68, 0.07, 0.48, mat("brass", 1, 1, "#c8a260"), 0, 0.82, 0));
+  for (let i = 0; i < 9; i++) {
+    organ.add(at(new T.Mesh(new T.CylinderGeometry(0.022, 0.022, 0.3 + (i % 3) * 0.14, 8), mat("brass", 1, 1, "#d4b06a")),
+      -0.24 + i * 0.06, 1.0 + (i % 3) * 0.07, 0));
+  }
+  organ.add(at(new T.Mesh(new T.TorusGeometry(0.11, 0.016, 5, 16), mat("brass", 1, 1, "#c09a56")), 0.36, 0.5, 0, 0, Math.PI / 2));
+  R.place(freeze(organ), -2.0, 1.44, -2.6, { ry: 0.12, shadowOpacity: 0.5 });
+
+  const monkey = new T.Group();
+  monkey.add(at(new T.Mesh(new T.SphereGeometry(0.17, 12, 9), flat("#7a5a3e")), 0, 0.34, 0));
+  monkey.add(at(new T.Mesh(new T.SphereGeometry(0.13, 12, 9), flat("#7a5a3e")), 0, 0.6, 0.02));
+  monkey.add(at(new T.Mesh(new T.SphereGeometry(0.085, 10, 8), flat("#c8a882")), 0, 0.57, 0.09));
+  for (const sx of [-1, 1]) {
+    monkey.add(at(new T.Mesh(new T.SphereGeometry(0.055, 8, 6), flat("#7a5a3e")), sx * 0.12, 0.68, 0));
+    monkey.add(at(new T.Mesh(new T.SphereGeometry(0.017, 6, 5), flat("#120e0c")), sx * 0.038, 0.62, 0.15));
+    monkey.add(at(new T.Mesh(new T.CylinderGeometry(0.035, 0.03, 0.3, 8), flat("#8a4a44")), sx * 0.17, 0.34, 0.02, 0, 0, sx * 0.5));
+    monkey.add(at(new T.Mesh(new T.CylinderGeometry(0.04, 0.035, 0.22, 8), flat("#7a5a3e")), sx * 0.09, 0.1, 0.02));
+  }
+  monkey.add(at(new T.Mesh(new T.CylinderGeometry(0.14, 0.16, 0.14, 12), flat("#8a4a44")), 0, 0.76, 0));
+  monkey.add(at(new T.Mesh(new T.SphereGeometry(0.03, 8, 6), mat("brass", 1, 1, "#d4b06a")), 0, 0.85, 0));
+  /* the little cymbals */
+  for (const sx of [-1, 1]) monkey.add(at(new T.Mesh(new T.CylinderGeometry(0.075, 0.075, 0.012, 12), mat("brass", 1, 1, "#d8b86e")), sx * 0.2, 0.4, 0.14, 0, 0, sx * 1.3));
+  R.place(freeze(monkey), 2.0, 1.44, -2.6, { ry: -0.2, shadowOpacity: 0.5 });
+
+  /* footlights along the front of the deck */
+  for (let i = 0; i < 7; i++) {
+    const f = new T.Group();
+    f.add(at(new T.Mesh(new T.CylinderGeometry(0.09, 0.11, 0.1, 10, 1, true), mat("metal", 1, 1, "#6a7078", { side: T.DoubleSide })), 0, 0.06, 0, 0.5));
+    f.add(at(new T.Mesh(new T.SphereGeometry(0.04, 8, 6), glow("#ffd9a0")), 0, 0.07, 0.02));
+    f.add(sb(0.16, 0.03, 0.14, mat("metal", 1, 1, "#5a6068"), 0, 0.015, 0));
+    R.place(freeze(f), -2.7 + i * 0.9, 0.88, -0.62, { shadow: false });
+  }
+
+  /* the seating: four rows of stacked chairs, none stacked the same */
+  for (let r = 0; r < 3; r++) for (let i = 0; i < 5; i++) {
+    if ((r + i) % 4 === 0) continue;
+    const c = KIT.chair(0, rnd);
+    R.place(freeze(c), -2.4 + i * 1.2 + range(rnd, -0.12, 0.12), 0, 1.4 + r * 1.1,
+      { ry: Math.PI + range(rnd, -0.22, 0.22), shadowOpacity: 0.66 });
+  }
+  R.place(freeze(KIT.crate(0, rnd)), -3.6, 0, 3.2, { ry: 0.4, shadowOpacity: 0.7 });
+  R.place(freeze(KIT.crate(2, rnd)), 3.5, 0, 2.4, { ry: -0.3, shadowOpacity: 0.7 });
+  R.place(freeze(KIT.decor(4, rnd)), 0, 3.0, D / 2 - 0.12, { ry: Math.PI, shadow: false });
+  R.place(freeze(KIT.grate(1, rnd)), W / 2 - 0.09, 3.3, 2.0, { ry: -Math.PI / 2, shadow: false });
+
+  R.light({ x: 0, y: 1.05, z: -0.7, color: "#ffb05a", intensity: 3.2, distance: 9.0, decay: 1.4, tag: "foot" });
+  R.light({ x: -2.4, y: 3.3, z: -2.0, color: "#c86a7a", intensity: 2.3, distance: 8.0, decay: 1.5, tag: "wash1" });
+  R.light({ x: 2.4, y: 3.3, z: -2.0, color: "#6a86c0", intensity: 2.3, distance: 8.0, decay: 1.5, tag: "wash2" });
+  R.light({ x: 0, y: 3.6, z: 2.4, color: "#96a0ac", intensity: 2.0, distance: 11.0, decay: 1.5, tag: "house" });
+  R.light({ x: -3.4, y: 1.9, z: 4.2, color: "#ffbe7a", intensity: 0.9, distance: 4.4, decay: 1.6, tag: "hallSpill" });
+  R.light({ x: -W / 2 - 0.8, y: 1.8, z: 1.0, color: "#7f9ad6", intensity: 0.8, distance: 4.2, decay: 1.6, tag: "shopSpill" });
+
+  recessBox(R, -2.6, D / 2 + 0.18, Math.PI, { tint: "#7d7260", floor: "floorCheck", w: 2.4 });
+  recessBox(R, -W / 2 - 0.18, 1.0, Math.PI / 2, { tint: "#6a7280", floor: "floorTile", w: 2.2 });
+
+  R.mood({ fog: { color: "#080b0c", near: 5, far: 26 }, ambient: { color: "#252e28", intensity: 0.5 } });
+  R.cam("main", [0.2, 3.3, 4.4], [0, 1.35, -2.4], 62);
+  R.anchor("s0", -2.0, 1.44, -2.6, Math.PI);
+  R.anchor("s1", 1.1, 0.88, -1.4, Math.PI - 0.4);
+  R.anchor("s2", -1.3, 0, 1.6, Math.PI + 0.3);
+}
+
+/* --- CAM 03 · ARCADE ROW -------------------------------------------
+   Narrow, loud in the day, and the only room in the shop lit mostly by
+   its own machines. Two banks of cabinets facing each other down a
+   patterned runner, and a prize wall at the end. */
+function buildArcade(R) {
+  const W = 5.4, D = 8.0, H = 3.0;
+  const rnd = R.rnd;
+  R.add(freeze(shell({
+    w: W, d: D, h: H,
+    floor: mat("floorCarpet", 4, 6, "#7a5f74"),
+    wall: mat("wallBlue", 2.6, 1.2, "#5e6d80"),
+    ceil: mat("wallBlue", 3, 3, "#333d4a"),
+    jamb: mat("metal", 0.6, 0.6, "#7a828a"),
+    openings: { n: [{ x: -1.2, w: 1.4, h: 2.3 }], e: [{ x: 2.2, w: 1.4, h: 2.3 }] },
+    aoFloor: 0.55, aoWall: 0.36,
+  })));
+
+  /* two rows of cabinets, alternating build, none square to the wall */
+  for (let i = 0; i < 4; i++) {
+    const c = KIT.cabinet(i % 4, rnd);
+    R.place(freeze(c), -W / 2 + 0.62, 0, -2.6 + i * 1.5, { ry: Math.PI / 2 + range(rnd, -0.05, 0.05), shadowOpacity: 0.72 });
+  }
+  for (let i = 0; i < 3; i++) {
+    const c = KIT.cabinet((i + 2) % 4, rnd);
+    R.place(freeze(c), W / 2 - 0.62, 0, -2.2 + i * 1.6, { ry: -Math.PI / 2 + range(rnd, -0.05, 0.05), shadowOpacity: 0.72 });
+  }
+
+  /* the prize wall: three different shelf builds, stocked */
+  [0, 2, 3].forEach((v, i) => {
+    const sh = KIT.shelf(v, rnd, { w: 1.3, h: 1.7 + i * 0.14 });
+    R.place(freeze(sh), -1.5 + i * 1.5, 0, -D / 2 + 0.34, { ry: range(rnd, -0.04, 0.04), shadowOpacity: 0.72 });
+  });
+  /* the change machine, with a real coin tray */
+  const ch = new T.Group();
+  const cm = mat("enamelRed", 1, 1.6, "#a8544a");
+  ch.add(sb(0.52, 1.5, 0.4, cm, 0, 0.75, 0));
+  ch.add(sb(0.56, 0.08, 0.44, mat("brass", 1, 1, "#c8a260"), 0, 1.52, 0));
+  ch.add(sb(0.34, 0.26, 0.05, flat("#1c2028"), 0, 1.1, 0.21));
+  ch.add(sb(0.3, 0.1, 0.12, mat("metal", 1, 1, "#8a9098"), 0, 0.62, 0.2));
+  ch.add(sb(0.3, 0.02, 0.14, flat("#2a2e36"), 0, 0.6, 0.24));
+  for (let i = 0; i < 2; i++) ch.add(at(new T.Mesh(new T.CylinderGeometry(0.03, 0.03, 0.03, 10), mat("brass", 1, 1, "#d4b06a")), -0.08 + i * 0.16, 0.9, 0.22, Math.PI / 2));
+  R.place(freeze(ch), W / 2 - 0.35, 0, -3.0, { ry: -Math.PI / 2, shadowOpacity: 0.7 });
+
+  /* a bin of loose tokens, and a stool somebody left in the aisle */
+  R.place(freeze(KIT.crate(1, rnd)), 1.4, 0, 2.7, { ry: 0.6, shadowOpacity: 0.72 });
+  R.place(freeze(KIT.chair(1, rnd)), -0.9, 0, 1.9, { ry: 0.9, shadowOpacity: 0.7 });
+  R.place(freeze(KIT.decor(4, rnd)), 0, 2.55, -D / 2 + 0.1, { shadow: false });
+  R.place(freeze(KIT.decor(3, rnd)), W / 2 - 0.09, 1.5, 1.0, { ry: -Math.PI / 2, shadow: false });
+  R.place(freeze(KIT.grate(3, rnd)), -W / 2 + 0.09, 2.5, 2.6, { ry: Math.PI / 2, shadow: false });
+
+  /* the ceiling is a run of bare fluorescents, one of them out */
+  for (let i = 0; i < 2; i++) R.place(freeze(KIT.bulb("strip")), 0, H - 0.14, -1.8 + i * 3.4, { ry: Math.PI / 2, shadow: false });
+
+  R.light({ x: -W / 2 + 0.9, y: 1.4, z: -1.6, color: "#5f7fd0", intensity: 2.2, distance: 5.4, decay: 1.55, tag: "cab1" });
+  R.light({ x: W / 2 - 0.9, y: 1.4, z: -0.6, color: "#d06a8a", intensity: 2.2, distance: 5.4, decay: 1.55, tag: "cab2" });
+  R.light({ x: -W / 2 + 0.9, y: 1.4, z: 1.4, color: "#5fc0a0", intensity: 1.4, distance: 4.2, decay: 1.6, tag: "cab3" });
+  R.light({ x: 0, y: H - 0.35, z: -1.8, color: "#cfd8e6", intensity: 1.9, distance: 7.4, decay: 1.45, tag: "strip0" });
+  R.light({ x: 0, y: H - 0.35, z: 1.6, color: "#cfd8e6", intensity: 0.45, distance: 5.0, decay: 1.5, tag: "strip1" });
+  R.light({ x: 0, y: 1.9, z: -D / 2 - 0.6, color: "#e0b060", intensity: 0.9, distance: 4.0, decay: 1.6, tag: "prize" });
+
+  recessBox(R, -1.2, -D / 2 - 0.18, 0, { tint: "#7d7260", floor: "floorCheck", w: 2.2, h: 2.5 });
+  recessBox(R, W / 2 + 0.18, 2.2, -Math.PI / 2, { tint: "#8a7a68", floor: "floorCheck", w: 2.2, h: 2.5 });
+
+  R.mood({ fog: { color: "#070a10", near: 5, far: 24 }, ambient: { color: "#242c3a", intensity: 0.5 } });
+  R.cam("main", [1.4, 2.65, 3.5], [-0.4, 1.0, -3.0], 66);
+  R.anchor("s0", -0.4, 0, -1.6, 0);
+  R.anchor("s1", 0.9, 0, 0.4, -0.5);
+  R.anchor("s2", -0.7, 0, 2.2, 0.4);
+}
+
+/* --- CAM 04 · THE PARTY ROOM ---------------------------------------
+   The brightest room in the building in the day and the worst one at
+   night: paper, balloons and a long table with eleven places laid and
+   nobody at any of them. */
+function buildParty(R) {
+  const W = 7.6, D = 7.0, H = 3.1;
+  const rnd = R.rnd;
+  R.add(freeze(shell({
+    w: W, d: D, h: H,
+    floor: mat("floorCheck", 6, 6, "#a08a70"),
+    wall: mat("wallPaper", 3.4, 1.1, "#9a8272"),
+    ceil: mat("wallCream", 3, 3, "#6a6252"),
+    jamb: mat("woodShelf", 0.6, 0.6, "#a07c50"),
+    rail: 1.0,
+    openings: { n: [{ x: 2.0, w: 1.4, h: 2.3 }], w: [{ x: -1.6, w: 1.3, h: 2.2 }], e: [{ x: 1.8, w: 1.2, h: 2.2 }] },
+    aoFloor: 0.48, aoWall: 0.3,
+  })));
+
+  /* the table: trestles, a cloth with a real hem, and what is on it */
+  const table = new T.Group();
+  const topM = mat("woodShelf", 2, 0.8, "#b08c5c");
+  table.add(sb(4.4, 0.06, 1.1, topM, 0, 0.72, 0));
+  table.add(sb(4.5, 0.05, 1.2, flat("#e8d8c0"), 0, 0.755, 0));
+  for (const sz of [-1, 1]) table.add(sb(4.5, 0.2, 0.04, flat("#e8d8c0"), 0, 0.66, sz * 0.6));
+  for (const sz of [-1, 1]) table.add(sb(4.5, 0.06, 0.05, flat("#d0405a"), 0, 0.55, sz * 0.61));
+  for (const sx of [-1, 1]) {
+    table.add(sb(0.1, 0.66, 0.1, mat("woodDark", 1, 1, "#6a4a30"), sx * 1.7, 0.33, -0.42));
+    table.add(sb(0.1, 0.66, 0.1, mat("woodDark", 1, 1, "#6a4a30"), sx * 1.7, 0.33, 0.42));
+    table.add(sb(0.08, 0.08, 0.94, mat("woodDark", 1, 1, "#5e4028"), sx * 1.7, 0.14, 0));
+  }
+  /* eleven places: a plate, a cup and a paper hat at each */
+  for (let i = 0; i < 11; i++) {
+    const sz = i % 2 ? 1 : -1;
+    const x = -1.9 + ((i / 2) | 0) * 0.72;
+    table.add(at(new T.Mesh(new T.CylinderGeometry(0.11, 0.1, 0.014, 14), flat(pick(rnd, ["#e4dcc8", "#dcc4d0", "#cfd8c4"]))), x, 0.79, sz * 0.3));
+    table.add(at(new T.Mesh(new T.CylinderGeometry(0.04, 0.033, 0.09, 10), flat(pick(rnd, ["#d0607a", "#5f9ec4", "#e0b04c"]))), x + 0.17, 0.83, sz * 0.3));
+    table.add(at(new T.Mesh(new T.ConeGeometry(0.06, 0.14, 10), flat(pick(rnd, ["#d0405a", "#3f7fb0", "#e0b040", "#6fb07a"]))), x - 0.02, 0.86, sz * 0.14, range(rnd, -0.3, 0.3), 0, range(rnd, -0.4, 0.4)));
+  }
+  /* the cake, uncut, with candles */
+  const cake = new T.Group();
+  cake.add(at(new T.Mesh(new T.CylinderGeometry(0.26, 0.27, 0.14, 18), flat("#efe0d0")), 0, 0.07, 0));
+  cake.add(at(new T.Mesh(new T.CylinderGeometry(0.19, 0.2, 0.12, 18), flat("#f2d4dd")), 0, 0.2, 0));
+  cake.add(at(new T.Mesh(new T.TorusGeometry(0.26, 0.02, 5, 22), flat("#d0607a")), 0, 0.14, 0, Math.PI / 2));
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * TAU;
+    cake.add(at(new T.Mesh(new T.CylinderGeometry(0.011, 0.011, 0.1, 6), flat(i % 2 ? "#d0405a" : "#5f9ec4")), Math.cos(a) * 0.12, 0.31, Math.sin(a) * 0.12));
+  }
+  cake.add(at(new T.Mesh(new T.CylinderGeometry(0.3, 0.32, 0.02, 20), mat("brass", 1, 1, "#c8a260")), 0, 0.0, 0));
+  at(cake, 0, 0.785, 0);
+  const cs = contactShadow(cake, { y: 0.785, opacity: 0.5 });
+  if (cs) table.add(cs);
+  table.add(cake);
+  R.place(freeze(table), -0.2, 0, 0.2, { shadowOpacity: 0.72 });
+
+  /* chairs down both sides, no two at the same angle */
+  for (let i = 0; i < 5; i++) for (const sz of [-1, 1]) {
+    if (i === 3 && sz > 0) continue;
+    R.place(freeze(KIT.chair(0, rnd)), -1.9 + i * 0.85, 0, 0.2 + sz * 1.05,
+      { ry: sz > 0 ? Math.PI + range(rnd, -0.3, 0.3) : range(rnd, -0.3, 0.3), shadowOpacity: 0.68 });
+  }
+
+  /* the serving counter along the far wall */
+  const counter = new T.Group();
+  const cm = mat("enamelCream", 2, 1, "#a89876");
+  counter.add(sb(2.6, 0.9, 0.6, cm, 0, 0.45, 0));
+  counter.add(sb(2.72, 0.08, 0.7, mat("woodShelf", 2, 1, "#a8825a"), 0, 0.93, 0));
+  for (let i = 0; i < 3; i++) counter.add(sb(0.78, 0.5, 0.03, mat("enamelCream", 1, 1, "#9a8a68"), -0.86 + i * 0.86, 0.5, 0.31));
+  for (let i = 0; i < 3; i++) counter.add(sb(0.2, 0.03, 0.05, mat("brass", 1, 1, "#c8a260"), -0.86 + i * 0.86, 0.66, 0.33));
+  counter.add(sb(2.6, 0.1, 0.06, flat("#3a3028"), 0, 0.05, -0.28));
+  for (let i = 0; i < 4; i++) {
+    const jug = new T.Mesh(new T.CylinderGeometry(0.07, 0.09, 0.2, 12), flat(pick(rnd, ["#d0607a", "#5f9ec4", "#e0b04c", "#6fb07a"])));
+    counter.add(at(jug, -0.9 + i * 0.6, 1.07, range(rnd, -0.1, 0.1)));
+  }
+  R.place(freeze(counter), 1.9, 0, -D / 2 + 0.42, { shadowOpacity: 0.72 });
+
+  /* bunting across the ceiling in two runs, and balloons in the corners */
+  R.place(freeze(KIT.decor(4, rnd)), -1.4, 2.55, -1.6, { ry: 0.2, shadow: false });
+  R.place(freeze(KIT.decor(4, rnd)), 1.4, 2.62, 1.4, { ry: -0.3, shadow: false });
+  [[-3.0, -2.4], [3.0, 2.2], [-2.8, 2.6]].forEach(([x, z], i) => {
+    const bunch = new T.Group();
+    for (let k = 0; k < 3; k++) {
+      const b = new T.Mesh(new T.SphereGeometry(0.16, 12, 10), flat(pick(rnd, ["#d0405a", "#3f7fb0", "#e0b040", "#6fb07a", "#a86ac0"])));
+      const y = 1.5 + k * 0.16 + range(rnd, -0.06, 0.06);
+      at(b, range(rnd, -0.16, 0.16), y, range(rnd, -0.16, 0.16), 0, 0, 0, 1, 1.12, 1);
+      bunch.add(b);
+      bunch.add(at(new T.Mesh(new T.ConeGeometry(0.035, 0.07, 6), flat("#cfc4b0")), b.position.x, y - 0.17, b.position.z, Math.PI));
+      bunch.add(at(new T.Mesh(new T.CylinderGeometry(0.004, 0.004, y - 0.28, 4), flat("#e0d8c8")), b.position.x * 0.4, (y - 0.28) / 2 + 0.06, b.position.z * 0.4, 0, 0, b.position.x * 0.2));
+    }
+    const w = KIT.crate(i % 3, rnd);
+    at(w, 0, 0, 0, 0, range(rnd, 0, TAU), 0);
+    bunch.add(w);
+    R.place(freeze(bunch), x, 0, z, { shadowOpacity: 0.7 });
+  });
+
+  R.place(freeze(KIT.decor(0, rnd)), -W / 2 + 0.09, 1.8, -1.0, { ry: Math.PI / 2, shadow: false });
+  R.place(freeze(KIT.decor(2, rnd)), W / 2 - 0.09, 1.6, -1.6, { ry: -Math.PI / 2, shadow: false });
+  R.place(freeze(KIT.grate(0, rnd)), -W / 2 + 0.09, 2.6, 1.8, { ry: Math.PI / 2, shadow: false });
+  R.place(freeze(KIT.bulb("pendant", "#8a5a52")), -0.2, 2.5, 0.2, { shadow: false });
+  R.place(freeze(KIT.bulb("sconce", "#9a7452")), W / 2 - 0.1, 2.1, 1.6, { ry: -Math.PI / 2, shadow: false });
+
+  R.light({ x: -0.2, y: 2.35, z: 0.2, color: "#ffc078", intensity: 2.0, distance: 7.4, decay: 1.4, tag: "pendant" });
+  R.light({ x: W / 2 - 0.5, y: 2.1, z: 1.6, color: "#ffbe8a", intensity: 1.0, distance: 4.0, decay: 1.6, tag: "sconce" });
+  R.light({ x: 1.9, y: 1.4, z: -D / 2 + 0.8, color: "#c0d0e0", intensity: 0.9, distance: 4.4, decay: 1.6, tag: "counter" });
+  R.light({ x: -3.0, y: 1.7, z: -2.4, color: "#7a6ab0", intensity: 0.7, distance: 3.6, decay: 1.7, tag: "corner" });
+  R.light({ x: -W / 2 - 0.8, y: 1.8, z: -1.6, color: "#8ea8c0", intensity: 0.9, distance: 4.2, decay: 1.6, tag: "officeSpill" });
+  R.light({ x: 2.0, y: 1.8, z: -D / 2 - 0.8, color: "#7f9ad6", intensity: 0.8, distance: 4.0, decay: 1.6, tag: "arcadeSpill" });
+
+  recessBox(R, 2.0, -D / 2 - 0.18, 0, { tint: "#6f7a86", floor: "floorCarpet", w: 2.2, h: 2.5 });
+  recessBox(R, -W / 2 - 0.18, -1.6, Math.PI / 2, { tint: "#8a8070", floor: "floorOffice", w: 2.1, h: 2.4 });
+  recessBox(R, W / 2 + 0.18, 1.8, -Math.PI / 2, { tint: "#6a665c", floor: "floorCon", w: 2.0, h: 2.4 });
+
+  R.mood({ fog: { color: "#0a0810", near: 5, far: 24 }, ambient: { color: "#2a2436", intensity: 0.46 } });
+  R.cam("main", [-2.9, 2.62, 2.9], [0.4, 1.0, -1.2], 68);
+  R.anchor("s0", 2.5, 0, 1.9, -2.2);
+  R.anchor("s1", -0.2, 0, 2.0, Math.PI);
+  R.anchor("s2", -2.4, 0, 0.2, -1.2);
+}
+
+/* --- CAM 05 · THE FRONT FOYER --------------------------------------
+   The street end. Shutters down over the glass, moonlight coming
+   through the fanlight above them, a till nobody has cashed up and one
+   enormous wind-up piece in the middle of the floor that is not part of
+   the cast and never moves. */
+function buildFoyer(R) {
+  const W = 7.0, D = 6.0, H = 3.6;
+  const rnd = R.rnd;
+  R.add(freeze(shell({
+    w: W, d: D, h: H,
+    floor: mat("floorTile", 5, 5, "#8e8478"),
+    wall: mat("wallCream", 3, 1.4, "#8e8270"),
+    ceil: mat("wallCream", 3, 3, "#5e5648"),
+    jamb: mat("woodDark", 0.6, 0.6, "#6a4a30"),
+    rail: 1.1,
+    openings: { s: [{ x: 0, w: 2.4, h: 2.5 }], n: [{ x: 0, w: 3.2, h: 2.6 }] },
+    aoFloor: 0.5, aoWall: 0.32,
+  })));
+
+  /* the shopfront: shutter slats behind a mullioned frame, and the
+     fanlight over it that lets the night in */
+  const front = new T.Group();
+  const fm = mat("woodDark", 1, 1, "#5e4430");
+  for (let i = 0; i < 22; i++) front.add(sb(3.1, 0.09, 0.06, mat("metal", 2, 0.3, "#6a727a"), 0, 0.1 + i * 0.105, -0.1));
+  front.add(sb(3.3, 0.16, 0.2, mat("metal", 1, 1, "#5a6068"), 0, 2.44, -0.1));
+  for (const sx of [-1, 1]) front.add(sb(0.14, 2.5, 0.24, fm, sx * 1.62, 1.25, 0));
+  front.add(sb(3.4, 0.14, 0.26, fm, 0, 2.56, 0));
+  /* the fanlight, and the night behind it */
+  front.add(at(new T.Mesh(new T.PlaneGeometry(2.9, 0.7), new T.MeshBasicMaterial({ map: TX.night, fog: true })), 0, 3.0, -0.13));
+  for (let i = 0; i < 5; i++) front.add(sb(0.06, 0.72, 0.1, fm, -1.2 + i * 0.6, 3.0, -0.06));
+  front.add(sb(3.4, 0.12, 0.22, fm, 0, 3.4, 0));
+  /* the letterbox and the mat under it */
+  front.add(sb(0.36, 0.06, 0.1, mat("brass", 1, 1, "#c8a260"), -0.7, 1.0, 0.03));
+  R.place(freeze(front), 0, 0, -D / 2 + 0.12, { shadow: false });
+  R.place(freeze(sb(1.5, 0.02, 0.85, mat("floorCarpet", 1.4, 1, "#7a6a54"), 0, 0.011, 0)), -0.2, 0, -2.1, { shadow: false });
+
+  /* the till counter, an L of two carcasses with a raised lip */
+  const till = new T.Group();
+  const wm = mat("woodShelf", 2, 1, "#a8825a");
+  till.add(sb(2.4, 0.95, 0.66, wm, 0, 0.475, 0));
+  till.add(sb(2.5, 0.07, 0.76, mat("woodDark", 2, 1, "#6a4a30"), 0, 0.99, 0));
+  till.add(sb(0.66, 0.95, 1.1, wm, -1.53, 0.475, 0.4));
+  till.add(sb(0.76, 0.07, 1.2, mat("woodDark", 1, 1, "#6a4a30"), -1.53, 0.99, 0.4));
+  for (let i = 0; i < 3; i++) {
+    till.add(sb(0.66, 0.24, 0.03, mat("woodShelf", 1, 1, "#b8925e"), -0.7 + i * 0.7, 0.68, 0.33));
+    till.add(at(new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.14, 6), mat("brass", 1, 1, "#c8a260")), -0.7 + i * 0.7, 0.68, 0.36, 0, 0, Math.PI / 2));
+  }
+  till.add(sb(2.5, 0.12, 0.06, mat("brass", 1, 1, "#b8945a"), 0, 1.06, -0.33));
+  /* the register: a real machine with keys and a drawer */
+  const reg = new T.Group();
+  reg.add(sb(0.42, 0.3, 0.36, mat("brass", 1, 1, "#c09a56"), 0, 0.15, 0));
+  reg.add(sb(0.46, 0.06, 0.4, mat("brass", 1, 1, "#d0aa64"), 0, 0.32, 0));
+  reg.add(sb(0.3, 0.2, 0.03, flat("#2a2620"), 0, 0.42, -0.02));
+  reg.add(sb(0.26, 0.14, 0.02, glow("#8a7a44", 0.9), 0, 0.42, 0.0));
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) {
+    reg.add(at(new T.Mesh(new T.CylinderGeometry(0.017, 0.017, 0.03, 8), flat(r === 2 ? "#c8b070" : "#e8e0cc")), -0.14 + c * 0.07, 0.31, 0.07 + r * 0.07, Math.PI / 2));
+  }
+  reg.add(sb(0.4, 0.09, 0.1, mat("brass", 1, 1, "#b8945a"), 0, 0.06, 0.2));
+  at(reg, -0.5, 1.03, 0.02, 0, 0.2, 0);
+  const rs = contactShadow(reg, { y: 1.03, opacity: 0.5 });
+  if (rs) till.add(rs);
+  till.add(reg);
+  R.place(freeze(till), 2.0, 0, 0.9, { ry: -0.5, shadowOpacity: 0.72 });
+
+  /* the centrepiece: a big brass wind-up carousel under a dome, on its
+     own plinth, roped off. It is scenery — it never moves. */
+  const piece = new T.Group();
+  piece.add(at(new T.Mesh(new T.CylinderGeometry(0.72, 0.82, 0.42, 20), mat("woodDark", 1, 1, "#6a4a30")), 0, 0.21, 0));
+  piece.add(at(new T.Mesh(new T.TorusGeometry(0.76, 0.03, 6, 24), mat("brass", 1, 1, "#c8a260")), 0, 0.43, 0, Math.PI / 2));
+  piece.add(at(new T.Mesh(new T.CylinderGeometry(0.06, 0.06, 0.9, 10), mat("brass", 1, 1, "#d0aa64")), 0, 0.9, 0));
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * TAU;
+    piece.add(at(new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.5, 6), mat("brass", 1, 1, "#c8a260")), Math.cos(a) * 0.4, 0.82, Math.sin(a) * 0.4));
+    const horse = new T.Group();
+    horse.add(sb(0.22, 0.12, 0.09, flat(pick(rnd, ["#e0d0b8", "#c8a882", "#b06a62"])), 0, 0, 0));
+    horse.add(sb(0.1, 0.13, 0.08, flat("#e0d0b8"), 0.11, 0.08, 0, 0, 0, -0.5));
+    for (let k = 0; k < 4; k++) horse.add(sb(0.03, 0.13, 0.03, flat("#e0d0b8"), -0.07 + (k % 2) * 0.15, -0.11, -0.03 + ((k / 2) | 0) * 0.06));
+    at(horse, Math.cos(a) * 0.4, 0.72, Math.sin(a) * 0.4, 0, -a, 0);
+    piece.add(horse);
+  }
+  piece.add(at(new T.Mesh(new T.ConeGeometry(0.62, 0.38, 16), mat("velvet", 1, 1, "#8a3a48")), 0, 1.32, 0));
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * TAU;
+    piece.add(at(new T.Mesh(new T.SphereGeometry(0.035, 8, 6), mat("brass", 1, 1, "#d8b86e")), Math.cos(a) * 0.6, 1.16, Math.sin(a) * 0.6));
+  }
+  R.place(freeze(piece), -0.6, 0, 0.6, { ry: 0.3, shadowOpacity: 0.75 });
+  /* the rope: four posts and three swags, each swag three segments */
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * TAU + 0.78;
+    const post = new T.Group();
+    post.add(at(new T.Mesh(new T.CylinderGeometry(0.11, 0.13, 0.03, 12), mat("brass", 1, 1, "#b8945a")), 0, 0.015, 0));
+    post.add(at(new T.Mesh(new T.CylinderGeometry(0.028, 0.032, 0.86, 10), mat("brass", 1, 1, "#c8a260")), 0, 0.44, 0));
+    post.add(at(new T.Mesh(new T.SphereGeometry(0.052, 10, 8), mat("brass", 1, 1, "#d0aa64")), 0, 0.9, 0));
+    R.place(freeze(post), -0.6 + Math.cos(a) * 1.5, 0, 0.6 + Math.sin(a) * 1.5, { shadowOpacity: 0.6 });
+  }
+
+  R.place(freeze(KIT.shelf(1, rnd)), -W / 2 + 0.4, 0, 1.9, { ry: Math.PI / 2 + 0.05, shadowOpacity: 0.72 });
+  R.place(freeze(KIT.crate(2, rnd)), -2.6, 0, -1.7, { ry: -0.4, shadowOpacity: 0.7 });
+  R.place(freeze(KIT.decor(1, rnd)), W / 2 - 0.09, 2.1, -1.4, { ry: -Math.PI / 2, shadow: false });
+  R.place(freeze(KIT.decor(0, rnd)), -W / 2 + 0.09, 1.9, -0.6, { ry: Math.PI / 2, shadow: false });
+  R.place(freeze(KIT.grate(2, rnd)), W / 2 - 0.09, 3.0, 1.6, { ry: -Math.PI / 2, shadow: false });
+  R.place(freeze(KIT.bulb("pendant", "#7a6a4a")), -0.6, 3.0, 0.6, { shadow: false });
+
+  R.light({ x: 0, y: 2.9, z: -D / 2 + 0.6, color: "#7f9ad6", intensity: 2.2, distance: 8.0, decay: 1.4, tag: "moon" });
+  R.light({ x: -0.6, y: 2.85, z: 0.6, color: "#ffd0a0", intensity: 1.2, distance: 6.4, decay: 1.5, tag: "pendant" });
+  R.light({ x: 2.0, y: 1.5, z: 0.9, color: "#e0b070", intensity: 0.9, distance: 3.6, decay: 1.6, tag: "till" });
+  R.light({ x: 0, y: 1.9, z: D / 2 + 0.8, color: "#cfd8e6", intensity: 1.0, distance: 5.0, decay: 1.6, tag: "hallSpill" });
+  R.light({ x: -2.6, y: 1.4, z: 2.2, color: "#5a6a8a", intensity: 0.6, distance: 3.4, decay: 1.7, tag: "corner" });
+
+  recessBox(R, 0, D / 2 + 0.18, Math.PI, { tint: "#8a7f6c", floor: "floorCheck", w: 3.0, h: 2.7, dep: 2.6 });
+
+  R.mood({ fog: { color: "#080c14", near: 5, far: 24 }, ambient: { color: "#242c3c", intensity: 0.48 } });
+  R.cam("main", [2.7, 3.05, 2.5], [-0.5, 1.05, -1.8], 66);
+  R.anchor("s0", -2.3, 0, -0.8, 0.9);
+  R.anchor("s1", 1.2, 0, -1.4, 2.6);
+  R.anchor("s2", -0.6, 0, 2.1, 0.2);
+}
+
+/* --- CAM 06 · THE SUPPLY CLOSET ------------------------------------
+   Two and a half metres square, one bulb, and the fuse board the whole
+   building runs off. The smallest room in the game and the one where a
+   shape has nowhere to hide. */
+function buildCloset(R) {
+  const W = 3.4, D = 4.0, H = 2.7;
+  const rnd = R.rnd;
+  R.add(freeze(shell({
+    w: W, d: D, h: H,
+    floor: mat("floorCon", 3, 3, "#8a867c"),
+    wall: mat("brickPale", 2.0, 1.3, "#a09484"),
+    ceil: mat("wallCream", 2, 2, "#4e4638"),
+    jamb: mat("metal", 0.5, 0.5, "#7a828a"),
+    skirtMat: mat("floorCon", 2, 0.3, "#6a665c"),
+    openings: { n: [{ x: -0.4, w: 1.0, h: 2.1 }] },
+    aoFloor: 0.62, aoWall: 0.42,
+  })));
+
+  /* steel shelving on two walls, three different builds, well stocked */
+  R.place(freeze(KIT.shelf(2, rnd, { w: 2.6, h: 2.1, d: 0.42 })), 0, 0, -D / 2 + 0.25, { shadowOpacity: 0.75 });
+  /* the second run of shelving used to stand here, right under the
+     camera, where all it ever showed was the back of itself */
+
+  /* paint tins stacked on the floor, and a mop in a bucket */
+  for (let i = 0; i < 5; i++) {
+    const tin = new T.Group();
+    const r = range(rnd, 0.09, 0.13);
+    tin.add(at(new T.Mesh(new T.CylinderGeometry(r, r, range(rnd, 0.14, 0.2), 14), mat("enamelCream", 1, 1, pick(rnd, ["#9a8a68", "#7a8a94", "#8a7a6a"]))), 0, 0.09, 0));
+    tin.add(at(new T.Mesh(new T.TorusGeometry(r, 0.012, 5, 16), mat("metal", 1, 1, "#8a9098")), 0, 0.18, 0, Math.PI / 2));
+    tin.add(at(new T.Mesh(new T.TorusGeometry(r * 0.8, 0.008, 4, 12), mat("metal", 1, 1, "#9aa2aa")), 0, 0.2, 0, 0, 0, 0.4));
+    R.place(freeze(tin), W / 2 - 0.42 - (i % 2) * 0.28, (i > 3 ? 0.19 : 0), 0.9 + ((i / 2) | 0) * 0.3,
+      { ry: range(rnd, 0, TAU), shadowOpacity: 0.7 });
+  }
+  const bucket = new T.Group();
+  bucket.add(at(new T.Mesh(new T.CylinderGeometry(0.16, 0.13, 0.26, 14, 1, true), mat("metal", 1, 1, "#7a828a", { side: T.DoubleSide })), 0, 0.13, 0));
+  bucket.add(at(new T.Mesh(new T.CylinderGeometry(0.13, 0.13, 0.02, 14), flat("#2e3238")), 0, 0.01, 0));
+  bucket.add(at(new T.Mesh(new T.TorusGeometry(0.16, 0.012, 5, 18), mat("metal", 1, 1, "#98a0a8")), 0, 0.26, 0, Math.PI / 2));
+  bucket.add(at(new T.Mesh(new T.TorusGeometry(0.16, 0.008, 4, 16, Math.PI), mat("metal", 1, 1, "#8a9098")), 0, 0.3, 0, 0, 0, 0));
+  bucket.add(at(new T.Mesh(new T.CylinderGeometry(0.018, 0.02, 1.25, 8), mat("woodShelf", 1, 1, "#a8825a")), 0.05, 0.68, -0.03, 0.1, 0, 0.06));
+  for (let i = 0; i < 9; i++) {
+    bucket.add(at(new T.Mesh(new T.CylinderGeometry(0.008, 0.006, 0.2, 5), flat("#cfc4a8")), 0.05 + range(rnd, -0.05, 0.05), 0.14, -0.03 + range(rnd, -0.05, 0.05), range(rnd, -0.2, 0.2), 0, range(rnd, -0.2, 0.2)));
+  }
+  R.place(freeze(bucket), -W / 2 + 0.5, 0, -0.3, { ry: 0.4, shadowOpacity: 0.72 });
+
+  /* the fuse board — the reason this room exists */
+  const board = new T.Group();
+  board.add(sb(0.72, 0.56, 0.12, mat("metal", 1, 1, "#6e767e"), 0, 0, 0));
+  board.add(sb(0.66, 0.5, 0.03, flat("#2a2e34"), 0, 0, 0.075));
+  for (let i = 0; i < 8; i++) {
+    board.add(sb(0.06, 0.16, 0.05, mat("enamelCream", 1, 1, "#9a9280"), -0.27 + i * 0.077, 0.1, 0.09));
+    board.add(sb(0.03, 0.05, 0.03, flat(i === 5 ? "#c04a3c" : "#3a3e44"), -0.27 + i * 0.077, 0.16, 0.115));
+  }
+  board.add(sb(0.6, 0.05, 0.06, mat("metal", 1, 1, "#8a9098"), 0, -0.12, 0.085));
+  board.add(sb(0.1, 0.16, 0.06, mat("enamelRed", 1, 1, "#a8544a"), 0.22, -0.2, 0.09));
+  for (let i = 0; i < 3; i++) {
+    board.add(at(new T.Mesh(new T.CylinderGeometry(0.008, 0.008, 0.5, 5), flat("#2a2620")), -0.2 + i * 0.06, -0.55, 0.05));
+  }
+  R.place(freeze(board), W / 2 - 0.12, 1.5, -0.6, { ry: -Math.PI / 2, shadow: false });
+
+  R.place(freeze(KIT.crate(1, rnd)), -0.5, 0, 1.3, { ry: 0.5, shadowOpacity: 0.74 });
+  R.place(freeze(KIT.crate(0, rnd)), -1.0, 0, 0.8, { ry: -0.3, shadowOpacity: 0.74 });
+  R.place(freeze(KIT.grate(1, rnd)), W / 2 - 0.09, 2.2, 1.1, { ry: -Math.PI / 2, shadow: false });
+  R.place(freeze(KIT.bulb("pendant", "#5e564a")), 0, 2.4, 0.3, { shadow: false });
+
+  R.light({ x: 0, y: 2.24, z: 0.3, color: "#ffdcb0", intensity: 2.4, distance: 5.6, decay: 1.4, tag: "bulb" });
+  R.light({ x: -0.4, y: 1.6, z: -D / 2 - 0.7, color: "#c08a6a", intensity: 0.8, distance: 3.4, decay: 1.7, tag: "doorSpill" });
+  R.light({ x: W / 2 - 0.3, y: 1.5, z: -0.6, color: "#6a8ab0", intensity: 0.4, distance: 2.2, decay: 1.8, tag: "board" });
+
+  recessBox(R, -0.4, -D / 2 - 0.18, 0, { tint: "#8a8070", floor: "floorCheck", w: 1.8, h: 2.2, dep: 1.8 });
+
+  R.mood({ fog: { color: "#0a0808", near: 3, far: 15 }, ambient: { color: "#2c2622", intensity: 0.46 } });
+  R.cam("main", [-1.35, 2.45, 1.72], [0.5, 0.8, -1.7], 74);
+  R.anchor("s0", -0.65, 0, -0.5, 0.4);
+  R.anchor("s1", 0.5, 0, 0.5, -0.8);
+  R.anchor("s2", -0.5, 0, 0.9, 0.2);
+}
+
+/* --- CAM 07 · THE DUCT JUNCTION ------------------------------------
+   Inside the ductwork, where four runs meet over the shop floor. It is
+   the only place in the building with no floor to speak of and it is
+   the only route Chime uses. */
+function buildDucts(R) {
+  const W = 2.4, D = 6.4, H = 1.9;
+  const rnd = R.rnd;
+  const skin = mat("metal", 1.3, 0.8, "#93a2b0");
+  R.add(freeze(shell({
+    w: W, d: D, h: H,
+    floor: mat("metal", 1.2, 3, "#8695a4"),
+    wall: skin, ceil: mat("metal", 1.2, 1.4, "#74828f"),
+    jamb: mat("metal", 0.5, 0.5, "#9aa2aa"),
+    skirt: false,
+    openings: { n: [{ x: 0, w: 1.4, h: 1.5 }], w: [{ x: -1.4, w: 1.2, h: 1.4 }], e: [{ x: 1.6, w: 1.2, h: 1.4 }] },
+    aoFloor: 0.6, aoWall: 0.45,
+  })));
+
+  /* stiffening ribs all the way down, which is what tells you this is a
+     duct and not a corridor */
+  for (let i = 0; i < 9; i++) {
+    const z = -D / 2 + 0.5 + i * 0.72;
+    const rib = new T.Group();
+    rib.add(sb(W + 0.06, 0.1, 0.09, mat("metal", 1, 1, "#9aa2aa"), 0, H - 0.05, 0));
+    rib.add(sb(W + 0.06, 0.09, 0.09, mat("metal", 1, 1, "#7e868e"), 0, 0.045, 0));
+    for (const sx of [-1, 1]) rib.add(sb(0.09, H, 0.09, mat("metal", 1, 1, "#8a929a"), sx * (W / 2 - 0.03), H / 2, 0));
+    R.place(freeze(rib), 0, 0, z, { shadow: false });
+  }
+  /* the grates that let the shop through, each one a different build */
+  [[-2.2, -1], [0.4, 1], [2.4, -1]].forEach(([z, sx], i) => {
+    R.place(freeze(KIT.grate(i, rnd)), sx * (W / 2 - 0.06), 0.9, z, { ry: sx > 0 ? -Math.PI / 2 : Math.PI / 2, shadow: false });
+  });
+  /* a grate in the floor, looking down onto a lit room */
+  const floorGrate = KIT.grate(2, rnd, 0.9, 0.7);
+  R.place(freeze(floorGrate), 0, 0.03, -0.9, { rx: -Math.PI / 2, shadow: false });
+  R.add(freeze(sb(0.86, 0.02, 0.66, glow("#8a6a3a", 0.55), 0, -0.03, -0.9)));
+
+  /* cable trays and a run of conduit down one side */
+  const tray = new T.Group();
+  tray.add(sb(0.22, 0.04, D - 0.5, mat("metal", 1, 3, "#6e767e"), 0, 0, 0));
+  for (const sz of [-1, 1]) tray.add(sb(0.03, 0.09, D - 0.5, mat("metal", 1, 3, "#8a929a"), sz * 0.11, 0.04, 0));
+  for (let i = 0; i < 5; i++) {
+    tray.add(at(new T.Mesh(new T.CylinderGeometry(0.022, 0.022, D - 0.6, 6), flat(["#2a2620", "#3a3028", "#4a3a2a", "#2e2a24", "#3a2f2a"][i])),
+      -0.08 + i * 0.04, 0.05 + (i % 2) * 0.02, 0, Math.PI / 2));
+  }
+  R.place(freeze(tray), -W / 2 + 0.2, H - 0.24, 0.1, { shadow: false });
+  for (let i = 0; i < 4; i++) {
+    R.place(freeze(at(new T.Mesh(new T.CylinderGeometry(0.03, 0.03, W - 0.2, 8), mat("metal", 1, 1, "#7a828a")), 0, 0, 0, 0, 0, Math.PI / 2)),
+      0, H - 0.12, -2.2 + i * 1.5, { shadow: false });
+  }
+  /* dust, insulation and one dropped spanner, so it is a real place */
+  for (let i = 0; i < 7; i++) {
+    const w = new T.Mesh(new T.SphereGeometry(range(rnd, 0.04, 0.09), 7, 5), flat("#7a7266"));
+    R.place(freeze(at(w, 0, 0, 0, 0, 0, 0, 1.4, 0.4, 1.2)), range(rnd, -0.9, 0.9), 0.02, range(rnd, -2.8, 2.8), { shadowOpacity: 0.4 });
+  }
+  const spanner = new T.Group();
+  spanner.add(sb(0.03, 0.012, 0.22, mat("pewter", 1, 1, "#9aa2aa"), 0, 0, 0));
+  spanner.add(sb(0.07, 0.014, 0.06, mat("pewter", 1, 1, "#a8b0b8"), 0, 0, 0.13));
+  spanner.add(sb(0.06, 0.014, 0.05, mat("pewter", 1, 1, "#a8b0b8"), 0, 0, -0.12));
+  R.place(freeze(spanner), 0.6, 0.012, 1.7, { ry: 0.7, shadowOpacity: 0.5 });
+
+  R.light({ x: 0, y: 1.2, z: -2.6, color: "#6f8ab0", intensity: 1.1, distance: 4.2, decay: 1.6, tag: "far" });
+  R.light({ x: 0, y: 0.35, z: -0.9, color: "#e0a860", intensity: 1.3, distance: 3.0, decay: 1.6, tag: "floorGrate" });
+  R.light({ x: W / 2 - 0.4, y: 1.0, z: 0.4, color: "#c08a5a", intensity: 0.9, distance: 2.8, decay: 1.7, tag: "grate1" });
+  R.light({ x: -W / 2 + 0.4, y: 1.0, z: 2.4, color: "#7aa0c8", intensity: 0.9, distance: 2.8, decay: 1.7, tag: "grate2" });
+  R.light({ x: 0, y: 1.0, z: D / 2 + 0.6, color: "#8a94a0", intensity: 0.7, distance: 3.4, decay: 1.7, tag: "mouth" });
+
+  const ductRecess = { wall: "metal", tint: "#6a7684", floor: "metal", floorTint: "#6a7684", w: 1.7, h: 1.5, dep: 2.2 };
+  recessBox(R, -W / 2 - 0.18, 1.4, Math.PI / 2, ductRecess);
+  recessBox(R, W / 2 + 0.18, 1.6, -Math.PI / 2, ductRecess);
+  recessBox(R, 0, -D / 2 - 0.18, 0, { wall: "metal", tint: "#5e6a78", floor: "metal", floorTint: "#5e6a78", w: 1.8, h: 1.6, dep: 3.0 });
+
+  R.mood({ fog: { color: "#06080a", near: 2.5, far: 12 }, ambient: { color: "#1e2833", intensity: 0.42 } });
+  R.cam("main", [0.35, 1.42, 2.75], [0, 0.75, -2.8], 74);
+  R.anchor("s0", -0.45, 0.06, -2.3, 0.2);
+  R.anchor("s1", 0.4, 0.06, -0.5, -0.3);
+  R.anchor("s2", -0.2, 0.06, 1.3, 0.1);
+}
+
+/* --- CAM 08 · THE REPAIR WORKSHOP ----------------------------------
+   Where they get mended. A bench, a pegboard, a half-finished figure on
+   a stand with no head on it yet, and drawers of parts. On the second
+   night this camera stops working and nobody says why. */
+function buildWorkshop(R) {
+  const W = 5.2, D = 5.6, H = 2.9;
+  const rnd = R.rnd;
+  R.add(freeze(shell({
+    w: W, d: D, h: H,
+    floor: mat("floorWood", 4, 4, "#8a6a48"),
+    wall: mat("wallGreen", 2.6, 1.2, "#6e7a6a"),
+    ceil: mat("wallGreen", 2, 2, "#454e44"),
+    jamb: mat("woodDark", 0.6, 0.6, "#6a4a30"),
+    joists: true,
+    openings: { s: [{ x: 1.4, w: 1.2, h: 2.2 }] },
+    aoFloor: 0.55, aoWall: 0.36,
+  })));
+
+  /* the bench: a slab top on a braced frame, with a vice on the corner */
+  const bench = new T.Group();
+  const topM = mat("woodDark", 2, 1, "#7a5a3a");
+  bench.add(sb(3.0, 0.08, 0.8, topM, 0, 0.9, 0));
+  bench.add(sb(3.0, 0.05, 0.1, mat("woodShelf", 2, 1, "#a8825a"), 0, 0.86, 0.4));
+  for (const sx of [-1, 1]) {
+    bench.add(sb(0.1, 0.86, 0.1, mat("woodDark", 1, 1, "#5e4028"), sx * 1.4, 0.43, -0.32));
+    bench.add(sb(0.1, 0.86, 0.1, mat("woodDark", 1, 1, "#5e4028"), sx * 1.4, 0.43, 0.32));
+    bench.add(sb(0.08, 0.08, 0.72, mat("woodDark", 1, 1, "#54381f"), sx * 1.4, 0.18, 0));
+  }
+  bench.add(sb(2.9, 0.06, 0.7, mat("woodDark", 2, 1, "#5e4028"), 0, 0.2, 0));
+  /* a drawer bank under one end */
+  for (let i = 0; i < 3; i++) {
+    bench.add(sb(0.8, 0.2, 0.03, mat("woodShelf", 1, 1, "#a8825a"), -0.9, 0.36 + i * 0.24, 0.39));
+    bench.add(at(new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.14, 6), mat("brass", 1, 1, "#c8a260")), -0.9, 0.36 + i * 0.24, 0.42, 0, 0, Math.PI / 2));
+  }
+  /* the vice */
+  const vice = new T.Group();
+  vice.add(sb(0.2, 0.1, 0.16, mat("pewter", 1, 1, "#7a828a"), 0, 0.05, 0));
+  vice.add(sb(0.22, 0.16, 0.05, mat("pewter", 1, 1, "#8a929a"), 0, 0.14, -0.06));
+  vice.add(sb(0.22, 0.16, 0.05, mat("pewter", 1, 1, "#8a929a"), 0, 0.14, 0.08));
+  vice.add(at(new T.Mesh(new T.CylinderGeometry(0.016, 0.016, 0.3, 8), mat("pewter", 1, 1, "#9aa2aa")), 0, 0.14, 0.2, Math.PI / 2));
+  vice.add(at(new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.2, 6), mat("pewter", 1, 1, "#a8b0b8")), 0, 0.14, 0.34, 0, 0, Math.PI / 2));
+  at(vice, 1.18, 0.94, -0.1, 0, 0.2, 0);
+  bench.add(vice);
+  /* tools laid out, none of them the same */
+  for (let i = 0; i < 6; i++) {
+    const t = new T.Group();
+    const L = range(rnd, 0.14, 0.26);
+    t.add(sb(range(rnd, 0.02, 0.035), 0.012, L, mat("pewter", 1, 1, "#98a0a8"), 0, 0, 0));
+    t.add(sb(range(rnd, 0.03, 0.05), 0.024, range(rnd, 0.05, 0.09), mat("woodDark", 1, 1, "#7a4a2a"), 0, 0.006, -L / 2 - 0.03));
+    at(t, -0.6 + i * 0.34 + range(rnd, -0.06, 0.06), 0.946, range(rnd, -0.24, 0.24), 0, range(rnd, -1.2, 1.2), 0);
+    const ts = contactShadow(t, { y: 0.946, opacity: 0.4 });
+    if (ts) bench.add(ts);
+    bench.add(t);
+  }
+  R.place(freeze(bench), -0.4, 0, -D / 2 + 0.55, { shadowOpacity: 0.74 });
+
+  /* the pegboard over it, with hooks and outlines of the missing tools */
+  const peg = new T.Group();
+  peg.add(sb(2.4, 1.0, 0.04, mat("enamelCream", 2, 1, "#8a7a58"), 0, 0, 0));
+  for (let y = 0; y < 6; y++) for (let x = 0; x < 14; x++) {
+    if ((x + y) % 3) continue;
+    peg.add(at(new T.Mesh(new T.CylinderGeometry(0.01, 0.01, 0.05, 6), flat("#3a3228")), -1.1 + x * 0.17, -0.42 + y * 0.17, 0.03, Math.PI / 2));
+  }
+  for (let i = 0; i < 7; i++) {
+    const x = -1.0 + i * 0.32, y = range(rnd, -0.3, 0.32);
+    peg.add(at(new T.Mesh(new T.CylinderGeometry(0.008, 0.008, 0.09, 5), mat("pewter", 1, 1, "#9aa2aa")), x, y, 0.05, Math.PI / 2));
+    if (i % 3 === 2) continue;                       // a hook with nothing on it
+    peg.add(sb(range(rnd, 0.03, 0.05), range(rnd, 0.16, 0.3), 0.02, mat("pewter", 1, 1, "#8a929a"), x, y - 0.14, 0.06));
+    peg.add(sb(range(rnd, 0.04, 0.06), 0.07, 0.03, mat("woodDark", 1, 1, "#7a4a2a"), x, y - 0.28, 0.06));
+  }
+  R.place(freeze(peg), -0.4, 1.72, -D / 2 + 0.14, { shadow: false });
+
+  /* the one on the stand: a body with no head, which is the thing you
+     are meant to notice is still there */
+  const stand = new T.Group();
+  stand.add(at(new T.Mesh(new T.CylinderGeometry(0.28, 0.32, 0.05, 16), mat("pewter", 1, 1, "#7a828a")), 0, 0.025, 0));
+  stand.add(at(new T.Mesh(new T.CylinderGeometry(0.04, 0.05, 1.1, 10), mat("pewter", 1, 1, "#8a929a")), 0, 0.6, 0));
+  stand.add(at(new T.Mesh(new T.CylinderGeometry(0.06, 0.06, 0.06, 10), mat("brass", 1, 1, "#c8a260")), 0, 1.14, 0));
+  const torso = new T.Group();
+  torso.add(sb(0.42, 0.52, 0.26, mat("enamelBlue", 1, 1, "#5a6e84"), 0, 0, 0));
+  torso.add(sb(0.2, 0.2, 0.03, flat("#14161a"), 0, 0.05, 0.135));
+  torso.add(at(new T.Mesh(new T.CylinderGeometry(0.07, 0.07, 0.02, 12), mat("brass", 1, 1, "#d0aa64")), 0, 0.05, 0.15, Math.PI / 2));
+  torso.add(at(new T.Mesh(new T.CylinderGeometry(0.045, 0.045, 0.02, 10), mat("brass", 1, 1, "#b8945a")), 0.06, -0.02, 0.152, Math.PI / 2));
+  torso.add(sb(0.46, 0.06, 0.3, mat("pewter", 1, 1, "#8a929a"), 0, 0.28, 0));
+  /* a neck socket with nothing in it */
+  torso.add(at(new T.Mesh(new T.CylinderGeometry(0.07, 0.08, 0.08, 12), mat("pewter", 1, 1, "#6a727a")), 0, 0.34, 0));
+  torso.add(at(new T.Mesh(new T.CylinderGeometry(0.055, 0.055, 0.02, 12), flat("#0d0f12")), 0, 0.38, 0));
+  for (const sx of [-1, 1]) {
+    torso.add(at(new T.Mesh(new T.CylinderGeometry(0.055, 0.05, 0.34, 9), mat("enamelBlue", 1, 1, "#4e6274")), sx * 0.26, -0.12, 0, 0, 0, sx * 0.2));
+  }
+  at(torso, 0, 1.42, 0, 0, -0.4, 0);
+  stand.add(torso);
+  R.place(freeze(stand), 1.5, 0, 0.4, { shadowOpacity: 0.72 });
+
+  /* parts bins, a stool, a swept pile of sawdust */
+  for (let i = 0; i < 6; i++) {
+    const bin = new T.Group();
+    bin.add(sb(0.3, 0.18, 0.24, mat("enamelRed", 1, 1, pick(rnd, ["#a8544a", "#7a8a94", "#8a7a4a"])), 0, 0.09, 0));
+    bin.add(sb(0.32, 0.03, 0.26, mat("metal", 1, 1, "#8a9098"), 0, 0.185, 0));
+    bin.add(sb(0.16, 0.04, 0.02, mat("brass", 1, 1, "#c8a260"), 0, 0.1, 0.13));
+    for (let k = 0; k < 3; k++) {
+      bin.add(at(new T.Mesh(new T.SphereGeometry(range(rnd, 0.02, 0.035), 7, 6), mat("brass", 1, 1, "#c09a56")),
+        range(rnd, -0.09, 0.09), 0.19, range(rnd, -0.07, 0.07)));
+    }
+    R.place(freeze(bin), -W / 2 + 0.35 + (i % 2) * 0.36, ((i / 2) | 0) * 0.2, 0.4 + ((i / 2) | 0) * 0.05,
+      { ry: range(rnd, -0.2, 0.2), shadowOpacity: 0.6 });
+  }
+  R.place(freeze(KIT.chair(1, rnd)), 0.3, 0, -1.1, { ry: 0.6, shadowOpacity: 0.7 });
+  R.place(freeze(KIT.crate(0, rnd)), W / 2 - 0.6, 0, 2.0, { ry: -0.5, shadowOpacity: 0.72 });
+  R.place(freeze(KIT.shelf(2, rnd, { w: 1.5, h: 1.5 })), W / 2 - 0.3, 0, -1.5, { ry: -Math.PI / 2, shadowOpacity: 0.72 });
+  R.place(freeze(KIT.grate(3, rnd)), -W / 2 + 0.09, 2.4, -1.2, { ry: Math.PI / 2, shadow: false });
+  R.place(freeze(KIT.decor(1, rnd)), W / 2 - 0.09, 2.0, 1.2, { ry: -Math.PI / 2, shadow: false });
+
+  /* one work lamp on an arm over the bench, and a bulb by the door */
+  R.place(freeze(KIT.bulb("desk")), 0.9, 0.94, -D / 2 + 0.4, { ry: -0.8, s: 1.5, shadowOpacity: 0.45 });
+  R.place(freeze(KIT.bulb("pendant", "#5e564a")), 1.2, 2.4, 1.4, { shadow: false });
+
+  R.light({ x: 0.5, y: 1.5, z: -D / 2 + 0.7, color: "#ffcc86", intensity: 2.1, distance: 4.6, decay: 1.5, tag: "work" });
+  R.light({ x: 1.2, y: 2.2, z: 1.4, color: "#ffd0a0", intensity: 1.0, distance: 5.4, decay: 1.5, tag: "pendant" });
+  R.light({ x: 1.5, y: 1.5, z: 0.4, color: "#6a86a8", intensity: 0.5, distance: 2.6, decay: 1.8, tag: "stand" });
+  R.light({ x: 1.4, y: 1.7, z: D / 2 + 0.7, color: "#c07a5a", intensity: 0.8, distance: 3.6, decay: 1.7, tag: "stageSpill" });
+  R.light({ x: -1.8, y: 1.2, z: 1.8, color: "#4e5a6a", intensity: 0.5, distance: 3.0, decay: 1.8, tag: "corner" });
+
+  recessBox(R, 1.4, D / 2 + 0.18, Math.PI, { tint: "#7e8c7e", floor: "floorStage", w: 2.0, h: 2.4 });
+
+  R.mood({ fog: { color: "#080a08", near: 4, far: 18 }, ambient: { color: "#242a24", intensity: 0.44 } });
+  R.cam("main", [-1.9, 2.4, 2.3], [0.4, 1.0, -1.7], 66);
+  R.anchor("s0", 1.5, 0, 0.4, -0.4);
+  R.anchor("s1", -1.0, 0, -0.4, 0.6);
+  R.anchor("s2", 0.2, 0, 1.5, 0.1);
+}
+
+/* =========================================================
+   15b. THE PERFORMERS
+
+   Four figures, four silhouettes, nothing shared between them. Each is
+   built once at boot, faces +Z, and carries a `joints` record so the
+   frame loop can pose it — the only geometry in the game that is
+   allowed to move besides the shutters.
+
+   They are deliberately readable as shapes before they are readable as
+   detail: a square-shouldered column with a tall hat, a wide low disc
+   with two lit eyes, a narrow cone on a plinth, and a lanky thing with
+   three points on its head. In a doorway with one bulb behind it, the
+   silhouette is all the player gets, and it has to be enough.
+   ========================================================= */
+const MODELS = {};
+
+/* Every figure is built at whatever size its parts came out, then sat on
+   the floor and scaled to the height it is supposed to be. Doing it here
+   rather than by hand means a change to one part cannot leave a
+   performer standing three centimetres into the carpet, which is exactly
+   the class of fault this build is trying not to repeat. */
+function fitFigure(g, targetH) {
+  const b = new T.Box3().setFromObject(g);
+  const h = Math.max(0.01, b.max.y - b.min.y);
+  const k = targetH / h;
+  const inner = new T.Group();
+  while (g.children.length) inner.add(g.children[0]);
+  inner.scale.setScalar(k);
+  inner.position.y = -b.min.y * k;
+  g.add(inner);
+  g.userData.height = targetH;
+  if (g.userData.eyeY) g.userData.eyeY = (g.userData.eyeY - b.min.y) * k;
+  return g;
+}
+
+/* --- COGSWORTH: a tin soldier, a metre and nine, all right angles --- */
+MODELS.cogsworth = function () {
+  const g = new T.Group();
+  const rnd = rngFor("cogsworth");
+  const joints = {};
+
+  const tunic = mat("enamelRed", 1, 1.4, "#c05248");
+  const trews = mat("enamelBlue", 1, 1.4, "#3c4a68");
+  const brass = mat("brass", 1, 1, "#d0a860");
+  const black = flat("#1c1c22");
+  const white = flat("#d8d2c4");
+
+  /* boots and legs, each on its own hinge so he can march */
+  [["legL", -1], ["legR", 1]].forEach(([k, sx]) => {
+    const hip = part(sx * 0.13, 0.86, 0);
+    hip.add(sb(0.17, 0.5, 0.17, trews, 0, -0.25, 0));
+    hip.add(sb(0.185, 0.09, 0.19, black, 0, -0.5, 0));
+    hip.add(sb(0.19, 0.34, 0.2, black, 0, -0.68, 0));
+    hip.add(sb(0.2, 0.09, 0.3, black, 0, -0.83, 0.06));
+    hip.add(sb(0.21, 0.04, 0.32, flat("#0f0f13"), 0, -0.87, 0.07));
+    /* a red seam down the outside of the trouser */
+    hip.add(sb(0.02, 0.5, 0.18, flat("#a8443c"), sx * 0.086, -0.25, 0));
+    g.add(hip);
+    joints[k] = hip;
+  });
+
+  /* the body: a squared-off tunic with a brass gear where a heart goes */
+  const torso = part(0, 0, 0);
+  torso.add(sb(0.46, 0.56, 0.28, tunic, 0, 1.14, 0));
+  torso.add(sb(0.5, 0.09, 0.31, brass, 0, 0.87, 0));            // waist plate
+  torso.add(sb(0.52, 0.1, 0.3, black, 0, 0.92, 0));             // belt
+  torso.add(sb(0.14, 0.11, 0.04, brass, 0, 0.92, 0.155));       // buckle
+  /* cross belts, two real straps at an angle */
+  for (const sx of [-1, 1]) torso.add(sb(0.07, 0.62, 0.03, white, 0, 1.16, 0.152, 0, 0, sx * 0.42));
+  /* the frogging: four bars of braid across the lower tunic, which is
+     what stops the coat reading as a red box */
+  for (let i = 0; i < 3; i++) {
+    torso.add(sb(0.3 - i * 0.03, 0.026, 0.03, brass, 0, 0.98 + i * 0.075, 0.146));
+  }
+  torso.add(sb(0.4, 0.07, 0.29, brass, 0, 1.42, 0));            // collar
+  /* six buttons, in two rows */
+  for (let i = 0; i < 3; i++) for (const sx of [-1, 1]) {
+    const b = new T.Mesh(new T.CylinderGeometry(0.022, 0.022, 0.016, 10), brass);
+    torso.add(at(b, sx * 0.11, 1.02 + i * 0.14, 0.145, Math.PI / 2));
+  }
+  /* the movement, showing through a cut-out in his chest */
+  torso.add(sb(0.21, 0.21, 0.03, flat("#14161a"), 0, 1.31, 0.144));
+  torso.add(sb(0.23, 0.024, 0.035, brass, 0, 1.42, 0.15));
+  torso.add(sb(0.23, 0.024, 0.035, brass, 0, 1.2, 0.15));
+  const gear = new T.Mesh(new T.CylinderGeometry(0.082, 0.082, 0.018, 14), brass);
+  at(gear, 0, 1.31, 0.158, Math.PI / 2);
+  torso.add(gear);
+  joints.gear = gear;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU;
+    gear.add(at(sb(0.026, 0.02, 0.03, brass, Math.cos(a) * 0.082, 0, Math.sin(a) * 0.082, 0, 0, 0), 0, 0, 0));
+  }
+  /* epaulettes with real bullion */
+  for (const sx of [-1, 1]) {
+    torso.add(sb(0.16, 0.05, 0.2, brass, sx * 0.24, 1.4, 0));
+    for (let i = 0; i < 4; i++) {
+      torso.add(sb(0.02, 0.09, 0.02, brass, sx * (0.19 + i * 0.035), 1.35, 0.03));
+    }
+  }
+  /* the key in his back — the thing you hear */
+  const key = part(0, 1.24, -0.16);
+  const shaft = new T.Mesh(new T.CylinderGeometry(0.024, 0.024, 0.1, 8), brass);
+  key.add(at(shaft, 0, 0, -0.05, Math.PI / 2));
+  for (const rz of [0, Math.PI / 2]) {
+    const wing = sb(0.19, 0.06, 0.018, brass, 0, 0, -0.09, 0, 0, rz);
+    key.add(wing);
+  }
+  torso.add(key);
+  joints.key = key;
+  g.add(torso);
+  joints.torso = torso;
+
+  /* arms, hinged at the shoulder, gloved */
+  [["armL", -1], ["armR", 1]].forEach(([k, sx]) => {
+    const sh = part(sx * 0.27, 1.36, 0);
+    sh.add(sb(0.14, 0.34, 0.15, tunic, 0, -0.17, 0));
+    sh.add(sb(0.15, 0.05, 0.16, brass, 0, -0.36, 0));
+    sh.add(sb(0.13, 0.26, 0.14, tunic, 0, -0.51, 0));
+    sh.add(sb(0.145, 0.045, 0.155, brass, 0, -0.62, 0));         // cuff
+    sh.add(sb(0.14, 0.14, 0.15, white, 0, -0.71, 0.01));
+    g.add(sh);
+    joints[k] = sh;
+  });
+
+  /* the head: a block, a jaw on a hinge, a shako over it */
+  const head = part(0, 1.46, 0);
+  head.add(sb(0.28, 0.24, 0.26, mat("porcelain", 1, 1, "#e0cdb6"), 0, 0.14, 0));
+  /* eyes, wide and painted, with a black pupil that catches a highlight */
+  for (const sx of [-1, 1]) {
+    head.add(sb(0.08, 0.09, 0.02, white, sx * 0.07, 0.17, 0.132));
+    const p = new T.Mesh(new T.SphereGeometry(0.024, 8, 6), flat("#101018"));
+    head.add(at(p, sx * 0.07, 0.17, 0.142));
+    head.add(sb(0.09, 0.02, 0.022, flat("#2b2119"), sx * 0.07, 0.225, 0.133));  // brow
+    const ch = new T.Mesh(new T.SphereGeometry(0.03, 8, 6), flat("#c86a62"));
+    head.add(at(ch, sx * 0.105, 0.09, 0.115, 0, 0, 0, 1, 0.6, 0.35));
+  }
+  /* moustache, and the hinged jaw under it */
+  head.add(sb(0.15, 0.028, 0.03, flat("#3a2a20"), 0, 0.075, 0.13));
+  const jaw = part(0, 0.055, -0.02);
+  jaw.add(sb(0.24, 0.08, 0.22, mat("porcelain", 1, 1, "#dcc8b0"), 0, -0.04, 0.02));
+  jaw.add(sb(0.19, 0.02, 0.02, flat("#8a3a34"), 0, -0.005, 0.115));
+  head.add(jaw);
+  joints.jaw = jaw;
+  /* the shako: a tall drum, a peak, a brass plate and a plume */
+  head.add(sb(0.3, 0.04, 0.28, black, 0, 0.27, 0));
+  head.add(sb(0.29, 0.3, 0.27, black, 0, 0.43, 0));
+  head.add(sb(0.31, 0.035, 0.29, black, 0, 0.59, 0));
+  head.add(sb(0.3, 0.03, 0.1, black, 0, 0.26, 0.16, 0, -0.25));   // the peak
+  head.add(sb(0.13, 0.13, 0.02, brass, 0, 0.44, 0.14));
+  head.add(sb(0.31, 0.035, 0.29, brass, 0, 0.325, 0));
+  const plume = new T.Mesh(new T.CylinderGeometry(0.03, 0.055, 0.18, 8), flat("#b8443c"));
+  head.add(at(plume, 0, 0.68, 0));
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.05, 10, 8), brass), 0, 0.6, 0));
+  head.add(at(new T.Mesh(new T.CylinderGeometry(0.045, 0.06, 0.06, 10), brass), 0, 0.61, 0));
+  g.add(head);
+  joints.head = head;
+
+  g.userData.joints = joints;
+  g.userData.eyeY = 1.63;
+  void rnd;
+  return fitFigure(g, 1.88);
+};
+
+/* --- CHIME: an owl, wide and low, made of riveted plate ------------- */
+MODELS.chime = function () {
+  const g = new T.Group();
+  const joints = {};
+  const plate = mat("pewter", 1, 1, "#96a0aa");
+  const bronze = mat("brassDark", 1, 1, "#9a7c48");
+
+  /* the body is a barrel, banded, with the bands proud of it */
+  const body = part(0, 0, 0);
+  const barrel = new T.Mesh(new T.CylinderGeometry(0.27, 0.32, 0.44, 14), plate);
+  body.add(at(barrel, 0, 0.34, 0));
+  for (let i = 0; i < 3; i++) {
+    const band = new T.Mesh(new T.TorusGeometry(0.29 - i * 0.012, 0.018, 6, 18), bronze);
+    body.add(at(band, 0, 0.2 + i * 0.14, 0, Math.PI / 2));
+  }
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * TAU;
+    const r = new T.Mesh(new T.SphereGeometry(0.014, 6, 5), bronze);
+    body.add(at(r, Math.cos(a) * 0.3, 0.28, Math.sin(a) * 0.3));
+  }
+  /* a glass belly with the movement behind it */
+  body.add(sb(0.2, 0.2, 0.03, flat("#12161c"), 0, 0.34, 0.28));
+  const esc = new T.Mesh(new T.TorusGeometry(0.06, 0.012, 6, 16), bronze);
+  at(esc, 0, 0.34, 0.3, 0, 0, 0);
+  body.add(esc);
+  joints.escape = esc;
+  const pend = part(0, 0.34, 0.3);
+  pend.add(at(new T.Mesh(new T.CylinderGeometry(0.006, 0.006, 0.16, 5), bronze), 0, -0.08, 0));
+  pend.add(at(new T.Mesh(new T.CylinderGeometry(0.035, 0.035, 0.012, 12), bronze), 0, -0.16, 0, Math.PI / 2));
+  body.add(pend);
+  joints.pendulum = pend;
+  g.add(body);
+
+  /* the wings: three layered plates a side, folded back */
+  [["wingL", -1], ["wingR", 1]].forEach(([k, sx]) => {
+    const w = part(sx * 0.27, 0.42, -0.02);
+    for (let i = 0; i < 3; i++) {
+      w.add(sb(0.09, 0.34 - i * 0.05, 0.16, plate, sx * i * 0.045, -i * 0.05, -i * 0.05, 0, 0, sx * (0.1 + i * 0.08)));
+      w.add(sb(0.095, 0.02, 0.17, bronze, sx * i * 0.045, -i * 0.05 - 0.16 + i * 0.025, -i * 0.05, 0, 0, sx * (0.1 + i * 0.08)));
+    }
+    g.add(w);
+    joints[k] = w;
+  });
+
+  /* the head: a wide disc of a face, two brass eye rings, ear tufts */
+  const head = part(0, 0.6, 0.01);
+  head.add(at(new T.Mesh(new T.CylinderGeometry(0.25, 0.23, 0.2, 14), plate), 0, 0.1, 0, Math.PI / 2, 0, 0));
+  head.add(sb(0.42, 0.34, 0.05, plate, 0, 0.1, 0.11));            // the facial disc
+  head.add(sb(0.44, 0.03, 0.06, bronze, 0, 0.26, 0.11));
+  for (const sx of [-1, 1]) {
+    const ring = new T.Mesh(new T.TorusGeometry(0.082, 0.018, 6, 18), bronze);
+    head.add(at(ring, sx * 0.11, 0.11, 0.135));
+    const lens = new T.Mesh(new T.CylinderGeometry(0.072, 0.072, 0.02, 14), glow("#e8a94a"));
+    lens.userData.eye = true;
+    head.add(at(lens, sx * 0.11, 0.11, 0.14, Math.PI / 2));
+    const pupil = new T.Mesh(new T.CylinderGeometry(0.026, 0.026, 0.022, 10), flat("#160f08"));
+    head.add(at(pupil, sx * 0.11, 0.11, 0.146, Math.PI / 2));
+    /* ear tufts, angled out */
+    head.add(at(new T.Mesh(new T.ConeGeometry(0.045, 0.16, 6), plate), sx * 0.17, 0.29, 0.02, 0, 0, sx * 0.4));
+  }
+  const beak = new T.Mesh(new T.ConeGeometry(0.05, 0.13, 5), bronze);
+  head.add(at(beak, 0, 0.03, 0.16, 1.35));
+  g.add(head);
+  joints.head = head;
+
+  /* talons, so it is gripping something rather than hovering */
+  for (const sx of [-1, 1]) {
+    const foot = part(sx * 0.11, 0.1, 0.06);
+    foot.add(at(new T.Mesh(new T.CylinderGeometry(0.022, 0.026, 0.11, 7), bronze), 0, -0.04, 0));
+    for (let i = 0; i < 3; i++) {
+      const a = -0.5 + i * 0.5;
+      foot.add(sb(0.02, 0.02, 0.11, bronze, Math.sin(a) * 0.04, -0.1, 0.04 + Math.cos(a) * 0.02, a, 0.5));
+    }
+    g.add(foot);
+  }
+
+  g.userData.joints = joints;
+  g.userData.eyeY = 0.71;
+  return fitFigure(g, 0.86);
+};
+
+/* --- MARABELLE: porcelain, on the plinth she came with -------------- */
+MODELS.marabelle = function () {
+  const g = new T.Group();
+  const joints = {};
+  const skin = mat("porcelain", 1, 1, "#efe6da");
+  const gilt = mat("brass", 1, 1, "#cfa860");
+  const satin = mat("porcelain", 1, 1, "#e2b0c0");
+  const net1 = flat("#f0d4dd", { side: T.DoubleSide });
+  const net2 = flat("#e2b6c6", { side: T.DoubleSide });
+
+  /* --- the music box she stands on: turned, gilt-lined, with the key --- */
+  const base = part(0, 0, 0);
+  base.add(at(new T.Mesh(new T.CylinderGeometry(0.28, 0.32, 0.13, 20), mat("woodDark", 1, 1, "#7a5236")), 0, 0.065, 0));
+  base.add(at(new T.Mesh(new T.TorusGeometry(0.295, 0.016, 6, 22), gilt), 0, 0.132, 0, Math.PI / 2));
+  base.add(at(new T.Mesh(new T.CylinderGeometry(0.21, 0.26, 0.06, 20), mat("woodDark", 1, 1, "#8a5f3e")), 0, 0.165, 0));
+  base.add(at(new T.Mesh(new T.CylinderGeometry(0.135, 0.135, 0.03, 18), gilt), 0, 0.205, 0));
+  base.add(at(new T.Mesh(new T.TorusGeometry(0.135, 0.008, 5, 20), gilt), 0, 0.222, 0, Math.PI / 2));
+  /* four little feet, so it sits on something */
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * TAU + 0.4;
+    base.add(at(new T.Mesh(new T.SphereGeometry(0.028, 8, 6), gilt), Math.cos(a) * 0.24, 0.014, Math.sin(a) * 0.24));
+  }
+  const wind = part(0.29, 0.065, 0);
+  wind.add(at(new T.Mesh(new T.CylinderGeometry(0.015, 0.015, 0.08, 8), gilt), 0.035, 0, 0, 0, 0, Math.PI / 2));
+  for (const rz of [0, Math.PI / 2]) wind.add(sb(0.12, 0.04, 0.013, gilt, 0.08, 0, 0, Math.PI / 2, 0, rz));
+  base.add(wind);
+  joints.wind = wind;
+  g.add(base);
+
+  /* --- the figure, everything above the plinth on one turning mount --- */
+  const fig = part(0, 0.22, 0);
+
+  /* the supporting leg, en pointe: a shoe block, ankle, calf, thigh */
+  fig.add(at(new T.Mesh(new T.CylinderGeometry(0.028, 0.038, 0.07, 10), satin), -0.01, 0.035, 0.01, -0.12));
+  fig.add(at(new T.Mesh(new T.CylinderGeometry(0.036, 0.028, 0.22, 10), skin), -0.015, 0.18, 0.008, -0.06));
+  fig.add(at(new T.Mesh(new T.CylinderGeometry(0.045, 0.036, 0.24, 10), skin), -0.02, 0.4, 0));
+  /* the ribbons up the ankle */
+  for (let i = 0; i < 3; i++) {
+    fig.add(at(new T.Mesh(new T.TorusGeometry(0.032 + i * 0.001, 0.005, 4, 12), satin), -0.014, 0.1 + i * 0.035, 0.008, Math.PI / 2 - 0.2));
+  }
+
+  /* the raised leg, out behind and up — the line that makes her hers.
+     Built as three segments on a hinge so the arabesque is a real pose
+     and not a flat cutout of one. */
+  const back = part(0.0, 0.5, -0.02);
+  back.rotation.x = 1.05;
+  back.add(at(new T.Mesh(new T.CylinderGeometry(0.045, 0.036, 0.26, 10), skin), 0.03, -0.13, 0));
+  back.add(at(new T.Mesh(new T.SphereGeometry(0.04, 8, 6), skin), 0.05, -0.26, 0));
+  back.add(at(new T.Mesh(new T.CylinderGeometry(0.034, 0.026, 0.26, 10), skin), 0.07, -0.39, 0.01, 0.18));
+  back.add(at(new T.Mesh(new T.CylinderGeometry(0.026, 0.02, 0.09, 10), satin), 0.09, -0.54, 0.02, 0.3));
+  fig.add(back);
+  joints.legBack = back;
+
+  /* the tutu: five layers of net, each a real ring with thickness and
+     each set a little lower and wider than the one above it. A single
+     wide cone reads as a saucer; five shallow ones read as a skirt. */
+  const skirt = part(0, 0.62, 0);
+  for (let i = 0; i < 5; i++) {
+    const rIn = 0.085 + i * 0.012;
+    const rOut = 0.15 + i * 0.036;
+    const drop = i * 0.019;
+    skirt.add(at(new T.Mesh(new T.CylinderGeometry(rIn, rOut, 0.05 + i * 0.006, 22, 1, true), i % 2 ? net2 : net1), 0, -drop, 0));
+    /* a rolled hem, so the edge of each layer is not a knife */
+    skirt.add(at(new T.Mesh(new T.TorusGeometry(rOut, 0.011, 5, 24), i % 2 ? net2 : net1), 0, -drop - (0.025 + i * 0.003), 0, Math.PI / 2));
+  }
+  skirt.add(at(new T.Mesh(new T.TorusGeometry(0.088, 0.017, 6, 20), gilt), 0, 0.028, 0, Math.PI / 2));
+  fig.add(skirt);
+  joints.skirt = skirt;
+
+  /* bodice, shoulders, neck */
+  fig.add(at(new T.Mesh(new T.CylinderGeometry(0.062, 0.088, 0.24, 14), satin), 0, 0.74, 0));
+  fig.add(at(new T.Mesh(new T.SphereGeometry(0.075, 12, 9), satin), 0, 0.86, 0, 0, 0, 0, 1.15, 0.7, 0.9));
+  fig.add(at(new T.Mesh(new T.CylinderGeometry(0.024, 0.028, 0.06, 10), skin), 0, 0.9, 0));
+  /* a gilt band at the waist and a line of seed pearls up the bodice */
+  fig.add(at(new T.Mesh(new T.TorusGeometry(0.064, 0.009, 5, 18), gilt), 0, 0.635, 0, Math.PI / 2));
+  for (let i = 0; i < 4; i++) {
+    fig.add(at(new T.Mesh(new T.SphereGeometry(0.011, 7, 6), gilt), 0, 0.67 + i * 0.05, 0.072 - i * 0.004));
+  }
+
+  /* the arms, carried in a ring above her head: four segments a side so
+     the arc is an arc and not an elbow */
+  [["armL", -1], ["armR", 1]].forEach(([k, sx]) => {
+    const a = part(sx * 0.075, 0.855, 0);
+    a.add(at(new T.Mesh(new T.CylinderGeometry(0.024, 0.028, 0.19, 9), skin), sx * 0.055, 0.08, 0, 0, 0, -sx * 0.62));
+    a.add(at(new T.Mesh(new T.SphereGeometry(0.026, 8, 6), skin), sx * 0.1, 0.16, 0));
+    a.add(at(new T.Mesh(new T.CylinderGeometry(0.019, 0.024, 0.18, 9), skin), sx * 0.105, 0.25, 0, 0, 0, -sx * 0.12));
+    a.add(at(new T.Mesh(new T.CylinderGeometry(0.016, 0.019, 0.14, 9), skin), sx * 0.072, 0.36, 0, 0, 0, sx * 0.6));
+    a.add(at(new T.Mesh(new T.SphereGeometry(0.022, 8, 6), skin), sx * 0.032, 0.41, 0, 0, 0, 0, 1.3, 0.7, 1));
+    fig.add(a);
+    joints[k] = a;
+  });
+
+  /* the head: smaller than a doll's wants to be, hair over the crown,
+     a bun, a ribbon, and a face that is painted rather than modelled */
+  const head = part(0, 0.96, 0);
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.082, 16, 12), skin), 0, 0.06, 0, 0, 0, 0, 0.94, 1.08, 0.96));
+  /* the hair sits over the crown and down the back only: a full sphere
+     here, however slightly bigger, swallows the face whole */
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.087, 16, 12), flat("#3a2820")), 0, 0.075, -0.022, 0, 0, 0, 1.02, 1.02, 0.84));
+  head.add(sb(0.14, 0.052, 0.055, flat("#3a2820"), 0, 0.108, 0.046));           // the fringe
+  head.add(sb(0.03, 0.14, 0.05, flat("#33241c"), -0.072, 0.05, 0.0, 0, 0, 0.16));
+  head.add(sb(0.03, 0.14, 0.05, flat("#33241c"), 0.072, 0.05, 0.0, 0, 0, -0.16));
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.045, 12, 9), flat("#33241c")), 0, 0.1, -0.085));
+  head.add(at(new T.Mesh(new T.TorusGeometry(0.048, 0.009, 5, 16), satin), 0, 0.1, -0.085, 0.4));
+  for (const sx of [-1, 1]) {
+    /* a lash line over an eye, the way a painted doll is done */
+    head.add(sb(0.032, 0.006, 0.01, flat("#2a1e22"), sx * 0.031, 0.077, 0.073));
+    const eye = new T.Mesh(new T.SphereGeometry(0.013, 9, 7), flat("#243a4e"));
+    eye.userData.eye = true;
+    head.add(at(eye, sx * 0.031, 0.062, 0.072));
+    head.add(at(new T.Mesh(new T.SphereGeometry(0.006, 6, 5), flat("#0e1218")), sx * 0.031, 0.062, 0.079));
+    const bl = new T.Mesh(new T.SphereGeometry(0.022, 8, 6), flat("#dd9aa4"));
+    head.add(at(bl, sx * 0.05, 0.032, 0.06, 0, 0, 0, 1, 0.55, 0.4));
+  }
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.009, 7, 6), skin), 0, 0.05, 0.082));
+  head.add(sb(0.02, 0.011, 0.012, flat("#b8555e"), 0, 0.026, 0.079));
+  fig.add(head);
+  joints.head = head;
+
+  g.add(fig);
+  joints.fig = fig;
+
+  g.userData.joints = joints;
+  g.userData.eyeY = 1.24;
+  return fitFigure(g, 1.34);
+};
+
+/* --- JAX: all limbs, three points on his hat, and a grin ------------ */
+MODELS.jax = function () {
+  const g = new T.Group();
+  const joints = {};
+  const cloth = mat("harlequin", 1, 1.6, "#b9a6cc");
+  const cloth2 = mat("harlequin", 1.4, 1, "#a894bd", { rot: 0.8 });
+  const gold = mat("brass", 1, 1, "#d8b264");
+  const pale = mat("porcelain", 1, 1, "#e6dcc8");
+
+  /* long spindly legs with a kick in them */
+  [["legL", -1], ["legR", 1]].forEach(([k, sx]) => {
+    const hip = part(sx * 0.11, 0.98, 0);
+    hip.add(at(new T.Mesh(new T.CylinderGeometry(0.055, 0.045, 0.52, 9), cloth), 0, -0.26, 0));
+    hip.add(at(new T.Mesh(new T.SphereGeometry(0.055, 8, 6), gold), 0, -0.52, 0));
+    hip.add(at(new T.Mesh(new T.CylinderGeometry(0.045, 0.038, 0.4, 9), cloth), 0, -0.72, 0));
+    /* a curled shoe with a bell on the toe */
+    hip.add(sb(0.09, 0.07, 0.2, flat("#4a2f6a"), 0, -0.94, 0.06));
+    hip.add(at(new T.Mesh(new T.SphereGeometry(0.038, 8, 6), flat("#4a2f6a")), 0, -0.9, 0.15));
+    const bell = new T.Mesh(new T.SphereGeometry(0.032, 8, 6), gold);
+    hip.add(at(bell, 0, -0.86, 0.19));
+    g.add(hip);
+    joints[k] = hip;
+  });
+
+  /* a narrow torso with a big ruff, so the shoulders read wide and the
+     body reads thin — the shape you see first in a doorway */
+  const torso = part(0, 0, 0);
+  torso.add(at(new T.Mesh(new T.CylinderGeometry(0.15, 0.19, 0.5, 12), cloth), 0, 1.22, 0));
+  torso.add(at(new T.Mesh(new T.CylinderGeometry(0.19, 0.13, 0.1, 12), gold), 0, 0.97, 0));
+  /* the ruff: eight real lobes, not a disc */
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU;
+    const lobe = new T.Mesh(new T.SphereGeometry(0.085, 9, 7), i % 2 ? cloth2 : flat("#e3d0a0"));
+    torso.add(at(lobe, Math.cos(a) * 0.2, 1.45, Math.sin(a) * 0.2, 0, 0, 0, 1, 0.6, 1));
+  }
+  /* three buttons down the front, and a spring coming out of his back */
+  for (let i = 0; i < 3; i++) {
+    torso.add(at(new T.Mesh(new T.SphereGeometry(0.03, 8, 6), gold), 0, 1.1 + i * 0.14, 0.17));
+  }
+  const coil = part(0, 1.06, -0.16);
+  for (let i = 0; i < 5; i++) {
+    const r = new T.Mesh(new T.TorusGeometry(0.075, 0.014, 5, 14), mat("pewter", 1, 1, "#9aa2aa"));
+    coil.add(at(r, 0, -i * 0.05, -i * 0.012, Math.PI / 2 - 0.2));
+  }
+  torso.add(coil);
+  joints.coil = coil;
+  g.add(torso);
+  joints.torso = torso;
+
+  /* arms that hang far too low, with hands too big for them */
+  [["armL", -1], ["armR", 1]].forEach(([k, sx]) => {
+    const sh = part(sx * 0.19, 1.42, 0);
+    sh.add(at(new T.Mesh(new T.CylinderGeometry(0.045, 0.038, 0.42, 9), cloth), sx * 0.05, -0.2, 0, 0, 0, -sx * 0.2));
+    sh.add(at(new T.Mesh(new T.SphereGeometry(0.045, 8, 6), gold), sx * 0.11, -0.4, 0));
+    sh.add(at(new T.Mesh(new T.CylinderGeometry(0.036, 0.03, 0.4, 9), cloth), sx * 0.14, -0.6, 0.02, 0.1, 0, -sx * 0.1));
+    /* the hand: a palm and four fingers, deliberately oversized */
+    const hand = part(sx * 0.17, -0.82, 0.03);
+    hand.add(sb(0.12, 0.14, 0.06, pale, 0, 0, 0));
+    for (let i = 0; i < 4; i++) {
+      hand.add(sb(0.024, 0.11, 0.03, pale, -0.042 + i * 0.028, -0.11, 0.005, 0, 0, (i - 1.5) * 0.09));
+    }
+    hand.add(sb(0.04, 0.08, 0.032, pale, sx * -0.07, -0.03, 0.01, 0, 0, sx * 0.7));
+    sh.add(hand);
+    joints[k + "Hand"] = hand;
+    g.add(sh);
+    joints[k] = sh;
+  });
+
+  /* the head: a long pale face, black diamonds over the eyes, a grin
+     that goes further round than it should */
+  const head = part(0, 1.56, 0);
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.14, 14, 11), pale), 0, 0.12, 0, 0, 0, 0, 0.92, 1.15, 0.95));
+  for (const sx of [-1, 1]) {
+    const eye = new T.Mesh(new T.SphereGeometry(0.028, 9, 7), glow("#f2e6c8"));
+    eye.userData.eye = true;
+    head.add(at(eye, sx * 0.055, 0.15, 0.115));
+    head.add(at(new T.Mesh(new T.SphereGeometry(0.013, 7, 6), flat("#100c14")), sx * 0.055, 0.15, 0.135));
+    /* the diamond, built as two triangles so it stands off the face */
+    head.add(at(new T.Mesh(new T.ConeGeometry(0.05, 0.07, 3), flat("#241a30")), sx * 0.055, 0.225, 0.116, 0, 0, 0, 1, 1, 0.35));
+    head.add(at(new T.Mesh(new T.ConeGeometry(0.05, 0.07, 3), flat("#241a30")), sx * 0.055, 0.078, 0.116, Math.PI, 0, 0, 1, 1, 0.35));
+  }
+  head.add(at(new T.Mesh(new T.ConeGeometry(0.03, 0.06, 7), flat("#c07a86")), 0, 0.1, 0.14, 1.4));
+  /* the grin: nine teeth in a curved jaw, each one its own block */
+  const grin = part(0, 0.055, 0.108);
+  grin.add(sb(0.2, 0.06, 0.05, flat("#3a1e28"), 0, 0, 0));
+  for (let i = 0; i < 9; i++) {
+    const t = (i / 8 - 0.5);
+    grin.add(sb(0.019, 0.045, 0.02, flat("#efe6d0"), t * 0.19, 0.006 - Math.abs(t) * 0.012, 0.02, 0, 0, t * 0.5));
+  }
+  head.add(grin);
+  joints.grin = grin;
+  /* the hat: three points, each on its own hinge, each with a bell */
+  const hat = part(0, 0.24, 0);
+  hat.add(at(new T.Mesh(new T.CylinderGeometry(0.145, 0.155, 0.07, 14), cloth2), 0, 0.02, 0));
+  [[-0.55, -0.5, 0], [0, 0, -0.55], [0.55, -0.5, 0]].forEach(([rz, , rx], i) => {
+    const horn = part(0, 0.05, 0);
+    horn.rotation.set(rx || 0, 0, rz);
+    for (let k = 0; k < 3; k++) {
+      horn.add(at(new T.Mesh(new T.ConeGeometry(0.06 - k * 0.016, 0.13, 7), k % 2 ? cloth : cloth2), 0, 0.06 + k * 0.12, 0, 0, 0, 0.12 * (k % 2 ? 1 : -1)));
+    }
+    horn.add(at(new T.Mesh(new T.SphereGeometry(0.036, 8, 6), gold), 0, 0.42, 0));
+    hat.add(horn);
+    joints["horn" + i] = horn;
+  });
+  head.add(hat);
+  g.add(head);
+  joints.head = head;
+
+  g.userData.joints = joints;
+  g.userData.eyeY = 1.71;
+  return fitFigure(g, 2.04);
+};
+
+/* =========================================================
+   15c. THE CAST AT RUNTIME
+
+   The four figures live in the scene, not in a room: a room is a frozen
+   branch and they are the one thing that has to move between rooms.
+   Putting them where they belong is one write of position and rotation
+   when their state changes — never per frame, and never relative to the
+   camera.
+   ========================================================= */
+const cast = {};
+
+function buildCast() {
+  CAST.forEach((def) => {
+    const g = MODELS[def.id]();
+    g.visible = false;
+    scene.add(g);
+    cast[def.id] = {
+      def, group: g, joints: g.userData.joints || {},
+      room: def.home, anchor: "s0",
+      step: 0,          // index along `route`
+      phase: 0,         // animation phase
+      pose: "idle",
+      cool: 0,          // seconds before it may move again
+      atDoor: false,    // standing in the office doorway
+      knockCool: 0,
+      awake: false,
+      seen: 0,          // seconds it has been on camera this look
+    };
+  });
+}
+
+/* the world position of a room anchor */
+function anchorAt(roomId, name) {
+  const rec = rooms[roomId];
+  if (!rec) return null;
+  const a = rec.anchors[name] || rec.anchors.s0 || { x: 0, y: 0, z: 0, ry: 0 };
+  return { x: a.x + rec.index * SPACING, y: a.y, z: a.z, ry: a.ry };
+}
+
+/* a walker gets its own standing spot in a room so two of them never
+   share one, chosen by name rather than at random so it is stable */
+const SPOT_FOR = { cogsworth: "s0", chime: "s2", marabelle: "s1", jax: "s2" };
+
+function putChar(ch, roomId, anchorName) {
+  const a = anchorAt(roomId, anchorName || SPOT_FOR[ch.def.id] || "s0");
+  if (!a) return;
+  ch.room = roomId;
+  ch.anchor = anchorName || SPOT_FOR[ch.def.id] || "s0";
+  ch.group.position.set(a.x, a.y, a.z);
+  ch.group.rotation.set(0, a.ry, 0);
+  ch.group.updateMatrix();
+}
+
+/* only the figures in the room being looked at are drawn */
+function syncCastVisibility() {
+  for (const id in cast) {
+    const ch = cast[id];
+    ch.group.visible = !!(ch.awake && ch.room === shownRoom);
+  }
+}
+
+/* --- posing ---------------------------------------------------------
+   Small, cheap, and different per character: a march, a wingbeat and a
+   swinging pendulum, a slow turn on a plinth, and a lot of twitching.
+   Only the visible one is posed. */
+function poseCast(dt, t) {
+  for (const id in cast) {
+    const ch = cast[id];
+    if (!ch.group.visible) continue;
+    ch.phase += dt;
+    const j = ch.joints;
+    const p = ch.phase;
+    if (id === "cogsworth") {
+      const m = ch.pose === "walk" ? 1 : 0.14;
+      const sw = Math.sin(p * 3.4) * 0.5 * m;
+      if (j.legL) j.legL.rotation.x = sw;
+      if (j.legR) j.legR.rotation.x = -sw;
+      if (j.armL) j.armL.rotation.x = -sw * 0.7;
+      if (j.armR) j.armR.rotation.x = sw * 0.7;
+      if (j.key) j.key.rotation.z = p * 2.2;
+      if (j.gear) j.gear.rotation.y = -p * 1.1;
+      if (j.head) j.head.rotation.y = Math.sin(p * 0.7) * 0.12 * (ch.pose === "idle" ? 1 : 0.3);
+      if (j.jaw) j.jaw.rotation.x = ch.pose === "scare" ? -0.6 : 0;
+    } else if (id === "chime") {
+      const beat = ch.pose === "walk" ? 1 : 0.2;
+      if (j.wingL) j.wingL.rotation.z = 0.1 + Math.sin(p * 5.5) * 0.35 * beat;
+      if (j.wingR) j.wingR.rotation.z = -0.1 - Math.sin(p * 5.5) * 0.35 * beat;
+      if (j.head) {
+        /* an owl's head turn: held, then snapped */
+        const q = (p * 0.5) % 1;
+        j.head.rotation.y = (q < 0.82 ? 0 : smooth((q - 0.82) / 0.18)) * 1.1 - 0.55;
+      }
+      if (j.pendulum) j.pendulum.rotation.z = Math.sin(p * 3.1) * 0.4;
+      if (j.escape) j.escape.rotation.z = p * 1.6;
+    } else if (id === "marabelle") {
+      /* she only turns while nobody is looking; when watched she is
+         a porcelain figure and completely still */
+      if (ch.pose !== "frozen") {
+        if (j.fig) j.fig.rotation.y = p * 0.9;
+        if (j.wind) j.wind.rotation.x = -p * 3.0;
+        if (j.armL) j.armL.rotation.z = Math.sin(p * 0.9) * 0.12;
+        if (j.armR) j.armR.rotation.z = -Math.sin(p * 0.9) * 0.12;
+        if (j.head) j.head.rotation.z = Math.sin(p * 0.45) * 0.14;
+      }
+    } else if (id === "jax") {
+      const tw = ch.pose === "walk" ? 1 : 0.35;
+      const sw = Math.sin(p * 4.6) * 0.55 * tw;
+      if (j.legL) j.legL.rotation.x = sw;
+      if (j.legR) j.legR.rotation.x = -sw;
+      if (j.armL) j.armL.rotation.z = -0.12 + Math.sin(p * 3.1) * 0.22 * tw;
+      if (j.armR) j.armR.rotation.z = 0.12 - Math.sin(p * 3.1 + 1) * 0.22 * tw;
+      if (j.torso) j.torso.rotation.y = Math.sin(p * 1.7) * 0.16;
+      if (j.head) {
+        j.head.rotation.z = Math.sin(p * 2.3) * 0.18;
+        j.head.rotation.y = Math.sin(p * 1.1) * 0.3;
+      }
+      ["horn0", "horn1", "horn2"].forEach((k, i) => {
+        if (j[k]) j[k].rotation.x = (j[k].userData.rx0 === undefined
+          ? (j[k].userData.rx0 = j[k].rotation.x) : j[k].userData.rx0) + Math.sin(p * 3.4 + i * 2) * 0.14;
+      });
+    }
+    ch.group.updateMatrix();
+  }
 }
 
 /* =========================================================
@@ -2319,8 +3821,15 @@ function buildHall(R) {
    visible, so the draw call count is a room's worth and not a shop's.
    ========================================================= */
 const BUILDERS = {
-  office: buildOffice,
-  hall:   buildHall,
+  office:   buildOffice,
+  hall:     buildHall,
+  stage:    buildStage,
+  arcade:   buildArcade,
+  party:    buildParty,
+  foyer:    buildFoyer,
+  closet:   buildCloset,
+  ducts:    buildDucts,
+  workshop: buildWorkshop,
 };
 
 let built = false;
@@ -2372,6 +3881,7 @@ function buildWorld(cvs) {
      in the doorways the shell cut */
   officeParts = rooms.office.parts;
   officeDoors = buildOfficeDoors(roomAPI(rooms.office));
+  buildCast();
 
   built = true;
 }
@@ -2396,16 +3906,1312 @@ function showRoom(id) {
   if (rooms[id]) rooms[id].group.visible = true;
 }
 
+/* =========================================================
+   17. SOUND
+
+   Synthesised, like everything else in this repo. Four voices that have
+   to be told apart with your eyes shut, over a bed that never goes
+   quiet — silence in a game like this reads as a bug, not as tension.
+
+   Every cue is built from the same three ideas: a noise burst shaped by
+   a filter, a small stack of detuned oscillators, and an envelope. What
+   makes Cogsworth sound like Cogsworth and Chime sound like Chime is
+   the shape of those three, not a sample.
+   ========================================================= */
+let AC = null, master = null, bedGain = null, cueGain = null, duckGain = null;
+let bedNodes = [], creakTimer = 0, audioOn = false, muted = false;
+
+function noiseBuffer(sec) {
+  const n = (AC.sampleRate * sec) | 0;
+  const b = AC.createBuffer(1, n, AC.sampleRate);
+  const d = b.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < n; i++) {
+    const w = Math.random() * 2 - 1;
+    last = (last + 0.02 * w) / 1.02;      // brown-ish, not white: it sits under
+    d[i] = last * 3.2;
+  }
+  return b;
+}
+let NB = null;
+
+function audioInit() {
+  if (AC) return;
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) return;
+  AC = new C();
+  master = AC.createGain(); master.gain.value = 0.9; master.connect(AC.destination);
+  duckGain = AC.createGain(); duckGain.gain.value = 1; duckGain.connect(master);
+  bedGain = AC.createGain(); bedGain.gain.value = 0.0; bedGain.connect(duckGain);
+  cueGain = AC.createGain(); cueGain.gain.value = 1.0; cueGain.connect(duckGain);
+  NB = noiseBuffer(3);
+}
+function ac() { audioInit(); return AC; }
+function now() { return AC ? AC.currentTime : 0; }
+
+/* the room tone: a filtered rumble, a mains hum, and a very slow
+   breathing on top of both so it never sits still */
+function bedStart() {
+  if (!ac() || audioOn) return;
+  audioOn = true;
+  const t = now();
+  const src = AC.createBufferSource(); src.buffer = NB; src.loop = true;
+  const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 240; lp.Q.value = 0.7;
+  const g1 = AC.createGain(); g1.gain.value = 0.5;
+  src.connect(lp); lp.connect(g1); g1.connect(bedGain); src.start();
+
+  const hum = AC.createOscillator(); hum.type = "sine"; hum.frequency.value = 51;
+  const hum2 = AC.createOscillator(); hum2.type = "sine"; hum2.frequency.value = 102.6;
+  const hg = AC.createGain(); hg.gain.value = 0.075;
+  hum.connect(hg); hum2.connect(hg); hg.connect(bedGain);
+  hum.start(); hum2.start();
+
+  /* the breathing */
+  const lfo = AC.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 0.07;
+  const lg = AC.createGain(); lg.gain.value = 90;
+  lfo.connect(lg); lg.connect(lp.frequency); lfo.start();
+
+  bedGain.gain.cancelScheduledValues(t);
+  bedGain.gain.setValueAtTime(0.0001, t);
+  bedGain.gain.linearRampToValueAtTime(0.5, t + 2.5);
+  bedNodes = [src, hum, hum2, lfo];
+}
+function bedStop() {
+  if (!AC || !audioOn) return;
+  audioOn = false;
+  const t = now();
+  bedGain.gain.cancelScheduledValues(t);
+  bedGain.gain.setValueAtTime(bedGain.gain.value, t);
+  bedGain.gain.linearRampToValueAtTime(0.0001, t + 0.5);
+  const dead = bedNodes.slice();
+  bedNodes = [];
+  setTimeout(() => dead.forEach((n) => { try { n.stop(); } catch (e) {} }), 700);
+}
+function audioDuck(v, ms) {
+  if (!AC) return;
+  const t = now();
+  duckGain.gain.cancelScheduledValues(t);
+  duckGain.gain.setValueAtTime(duckGain.gain.value, t);
+  duckGain.gain.linearRampToValueAtTime(v, t + (ms || 120) / 1000);
+}
+
+/* --- the two primitives everything else is made of ---------------- */
+function burst(o) {
+  if (!ac() || muted) return;
+  const t = now() + (o.at || 0);
+  const src = AC.createBufferSource(); src.buffer = NB;
+  src.playbackRate.value = o.rate || 1;
+  const f = AC.createBiquadFilter();
+  f.type = o.filter || "bandpass";
+  f.frequency.setValueAtTime(o.f0 || 800, t);
+  if (o.f1) f.frequency.exponentialRampToValueAtTime(Math.max(30, o.f1), t + (o.dur || 0.2));
+  f.Q.value = o.q === undefined ? 1.2 : o.q;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, o.gain || 0.2), t + (o.attack || 0.004));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + (o.dur || 0.2));
+  src.connect(f); f.connect(g); g.connect(o.bus || cueGain);
+  src.start(t); src.stop(t + (o.dur || 0.2) + 0.05);
+}
+function tone(o) {
+  if (!ac() || muted) return;
+  const t = now() + (o.at || 0);
+  const osc = AC.createOscillator();
+  osc.type = o.type || "sine";
+  osc.frequency.setValueAtTime(o.f0 || 440, t);
+  if (o.f1) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.f1), t + (o.dur || 0.3));
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, o.gain || 0.15), t + (o.attack || 0.006));
+  g.gain.exponentialRampToValueAtTime(0.0001, t + (o.dur || 0.3));
+  let node = osc;
+  if (o.filter) {
+    const f = AC.createBiquadFilter();
+    f.type = o.filter; f.frequency.value = o.ff || 1200; f.Q.value = o.q || 1;
+    osc.connect(f); node = f;
+  }
+  node.connect(g); g.connect(o.bus || cueGain);
+  osc.start(t); osc.stop(t + (o.dur || 0.3) + 0.05);
+}
+
+/* --- the voices ---------------------------------------------------- */
+const SFX = {
+  /* COGSWORTH — a boot on a board, and the metal in it ringing after */
+  step(gain) {
+    const v = gain === undefined ? 0.5 : gain;
+    burst({ f0: 180, f1: 70, dur: 0.16, gain: 0.5 * v, q: 0.8, filter: "lowpass" });
+    tone({ type: "square", f0: 96, f1: 62, dur: 0.13, gain: 0.11 * v, filter: "lowpass", ff: 500 });
+    tone({ type: "triangle", f0: 1420, dur: 0.24, gain: 0.045 * v, at: 0.012 });
+    tone({ type: "triangle", f0: 2130, dur: 0.19, gain: 0.03 * v, at: 0.012 });
+  },
+  tick(gain) {
+    const v = gain === undefined ? 0.4 : gain;
+    burst({ f0: 3200, dur: 0.03, gain: 0.16 * v, q: 3 });
+    tone({ type: "square", f0: 1800, dur: 0.02, gain: 0.03 * v });
+  },
+  wind(gain) {                     // his key, turning
+    const v = gain === undefined ? 0.4 : gain;
+    for (let i = 0; i < 7; i++) burst({ f0: 1600 + i * 90, dur: 0.035, gain: 0.09 * v, q: 4, at: i * 0.062 });
+  },
+
+  /* CHIME — a hoot with a mechanical wobble in it, and feathers of tin */
+  hoot(gain) {
+    const v = gain === undefined ? 0.5 : gain;
+    [0, 0.34].forEach((d, k) => {
+      tone({ type: "sine", f0: k ? 300 : 340, f1: k ? 250 : 286, dur: 0.42, gain: 0.16 * v, at: d, attack: 0.05 });
+      tone({ type: "sine", f0: k ? 601 : 681, f1: k ? 500 : 572, dur: 0.34, gain: 0.05 * v, at: d, attack: 0.05 });
+    });
+    for (let i = 0; i < 6; i++) burst({ f0: 2400, dur: 0.02, gain: 0.05 * v, q: 6, at: 0.02 + i * 0.052 });
+  },
+  flutter(gain) {
+    const v = gain === undefined ? 0.4 : gain;
+    for (let i = 0; i < 5; i++) {
+      burst({ f0: 480 - i * 40, f1: 200, dur: 0.11, gain: 0.13 * v, q: 0.7, at: i * 0.1, filter: "bandpass" });
+      burst({ f0: 3000, dur: 0.02, gain: 0.04 * v, q: 8, at: i * 0.1 + 0.01 });
+    }
+  },
+
+  /* MARABELLE — a music box. Her tune, eight notes, hers alone. */
+  boxNote(f, gain, at, dur) {
+    const v = gain === undefined ? 0.4 : gain;
+    tone({ type: "sine", f0: f, dur: dur || 0.9, gain: 0.15 * v, at: at || 0, attack: 0.004 });
+    tone({ type: "sine", f0: f * 2, dur: (dur || 0.9) * 0.5, gain: 0.06 * v, at: at || 0, attack: 0.003 });
+    tone({ type: "sine", f0: f * 3.01, dur: (dur || 0.9) * 0.28, gain: 0.03 * v, at: at || 0, attack: 0.002 });
+    burst({ f0: 5200, dur: 0.012, gain: 0.03 * v, q: 8, at: at || 0 });
+  },
+  /* B, G#, E, F#, G#, E, B(low), E — a small turning phrase that does
+     not resolve, which is the point of it */
+  tune(gain, speed) {
+    const sp = speed || 1;
+    const seq = [493.9, 415.3, 329.6, 370.0, 415.3, 329.6, 246.9, 329.6];
+    seq.forEach((f, i) => SFX.boxNote(f, gain, i * 0.34 * sp, 0.85 * sp));
+  },
+
+  /* JAX — a crank that will not stop, and something laughing under it */
+  crank(gain) {
+    const v = gain === undefined ? 0.5 : gain;
+    const seq = [392, 440, 494, 523, 587, 494, 392];
+    seq.forEach((f, i) => {
+      tone({ type: "triangle", f0: f, dur: 0.2, gain: 0.13 * v, at: i * 0.17, filter: "lowpass", ff: 1600 });
+      burst({ f0: 2600, dur: 0.02, gain: 0.05 * v, q: 7, at: i * 0.17 });
+    });
+  },
+  laugh(gain) {
+    const v = gain === undefined ? 0.5 : gain;
+    for (let i = 0; i < 6; i++) {
+      const f = 210 - i * 12;
+      tone({ type: "sawtooth", f0: f, f1: f * 0.82, dur: 0.11, gain: 0.1 * v, at: i * 0.115, filter: "bandpass", ff: 900, q: 3 });
+      tone({ type: "square", f0: f * 2.51, f1: f * 2.1, dur: 0.09, gain: 0.035 * v, at: i * 0.115 });
+    }
+  },
+  bells(gain) {
+    const v = gain === undefined ? 0.4 : gain;
+    [1180, 1560, 2040].forEach((f, i) => tone({ type: "triangle", f0: f, dur: 0.5, gain: 0.05 * v, at: i * 0.03 }));
+  },
+
+  /* the room and the desk */
+  doorClose() {
+    burst({ f0: 900, f1: 120, dur: 0.5, gain: 0.5, q: 0.6, filter: "lowpass" });
+    tone({ type: "square", f0: 130, f1: 48, dur: 0.34, gain: 0.2, filter: "lowpass", ff: 400 });
+    burst({ f0: 2600, dur: 0.06, gain: 0.12, q: 3, at: 0.26 });
+  },
+  doorOpen() {
+    burst({ f0: 500, f1: 1500, dur: 0.34, gain: 0.3, q: 0.8 });
+    tone({ type: "square", f0: 70, f1: 120, dur: 0.3, gain: 0.09, filter: "lowpass", ff: 400 });
+  },
+  hatch() {
+    burst({ f0: 1800, f1: 700, dur: 0.28, gain: 0.28, q: 2 });
+    tone({ type: "triangle", f0: 320, f1: 180, dur: 0.2, gain: 0.07 });
+  },
+  monitor(up) {
+    burst({ f0: up ? 1200 : 700, f1: up ? 400 : 1400, dur: 0.16, gain: 0.28, q: 1.4 });
+    tone({ type: "square", f0: up ? 140 : 110, dur: 0.09, gain: 0.07, filter: "lowpass", ff: 500 });
+  },
+  hiss(gain) { burst({ f0: 2600, dur: 0.22, gain: 0.16 * (gain || 1), q: 0.5, filter: "highpass" }); },
+  camSwitch() {
+    burst({ f0: 3000, dur: 0.09, gain: 0.16, q: 0.4, filter: "highpass" });
+    tone({ type: "square", f0: 900, dur: 0.03, gain: 0.04 });
+  },
+  beep(hi) { tone({ type: "square", f0: hi ? 1300 : 880, dur: 0.09, gain: 0.09, filter: "lowpass", ff: 2600 }); },
+  knock() {
+    burst({ f0: 260, f1: 90, dur: 0.22, gain: 0.55, q: 0.7, filter: "lowpass" });
+    tone({ type: "square", f0: 88, f1: 55, dur: 0.2, gain: 0.16, filter: "lowpass", ff: 300 });
+  },
+  powerDown() {
+    tone({ type: "sawtooth", f0: 180, f1: 22, dur: 2.2, gain: 0.16, filter: "lowpass", ff: 900 });
+    tone({ type: "sine", f0: 90, f1: 18, dur: 2.4, gain: 0.12 });
+    burst({ f0: 1400, f1: 90, dur: 1.6, gain: 0.2, q: 0.5, filter: "lowpass" });
+  },
+  sixAM() {
+    [1046.5, 1318.5, 1568, 2093].forEach((f, i) => {
+      tone({ type: "sine", f0: f, dur: 2.4, gain: 0.13, at: i * 0.42, attack: 0.01 });
+      tone({ type: "sine", f0: f * 2.76, dur: 1.2, gain: 0.035, at: i * 0.42 });
+    });
+  },
+  creak() {
+    const f = 90 + Math.random() * 200;
+    tone({ type: "sawtooth", f0: f, f1: f * (0.7 + Math.random() * 0.5), dur: 0.9 + Math.random(), gain: 0.035, filter: "bandpass", ff: 420, q: 5 });
+  },
+
+  /* the four ways it ends. Sharp, loud, short — and different enough
+     that you know which one got you before the screen tells you. */
+  scare(id) {
+    audioDuck(0.25, 40);
+    if (id === "cogsworth") {
+      burst({ f0: 2600, f1: 300, dur: 0.9, gain: 0.85, q: 0.6, filter: "bandpass" });
+      for (let i = 0; i < 5; i++) tone({ type: "square", f0: 180 + i * 37, f1: 60, dur: 0.7, gain: 0.14, at: i * 0.012, filter: "lowpass", ff: 2200 });
+      tone({ type: "sawtooth", f0: 1400, f1: 90, dur: 1.1, gain: 0.2, filter: "bandpass", ff: 1600, q: 2 });
+    } else if (id === "chime") {
+      tone({ type: "sawtooth", f0: 2400, f1: 700, dur: 0.5, gain: 0.4, filter: "bandpass", ff: 2600, q: 3 });
+      tone({ type: "sawtooth", f0: 2860, f1: 820, dur: 0.5, gain: 0.3, at: 0.02, filter: "bandpass", ff: 3000, q: 3 });
+      burst({ f0: 5200, f1: 900, dur: 0.7, gain: 0.5, q: 1.2, filter: "highpass" });
+      for (let i = 0; i < 8; i++) burst({ f0: 3400, dur: 0.02, gain: 0.14, q: 8, at: 0.06 * i });
+    } else if (id === "marabelle") {
+      /* porcelain: a cluster of high partials, then the box winding down */
+      [1860, 2340, 2790, 3520, 4180].forEach((f, i) => tone({ type: "sine", f0: f, dur: 0.9, gain: 0.16, at: i * 0.006 }));
+      burst({ f0: 6000, dur: 0.45, gain: 0.45, q: 0.6, filter: "highpass" });
+      const seq = [493.9, 415.3, 329.6, 246.9];
+      seq.forEach((f, i) => SFX.boxNote(f * 0.5, 1.1, 0.3 + i * 0.2, 1.0));
+    } else {
+      /* Jax: the spring, then the whole box */
+      burst({ f0: 900, f1: 3200, dur: 0.2, gain: 0.4, q: 1 });
+      for (let i = 0; i < 9; i++) tone({ type: "square", f0: 260 + i * 130, f1: 120, dur: 0.5, gain: 0.09, at: i * 0.008, filter: "bandpass", ff: 1200, q: 2 });
+      tone({ type: "sawtooth", f0: 150, f1: 40, dur: 1.2, gain: 0.25, filter: "lowpass", ff: 1400 });
+      SFX.laugh(1.1);
+    }
+    setTimeout(() => audioDuck(1, 700), 900);
+  },
+};
+
+/* the creaks that keep the bed from ever being flat */
+function audioTick(dt) {
+  if (!audioOn || muted) return;
+  creakTimer -= dt;
+  if (creakTimer <= 0) {
+    creakTimer = 7 + Math.random() * 13;
+    SFX.creak();
+  }
+}
+function audioMute(v) {
+  muted = v;
+  if (master) master.gain.value = v ? 0 : 0.9;
+}
+
+/* =========================================================
+   18. THE SHIFT
+
+   All the state of a night, in one object, so that "what is happening"
+   is one thing to read rather than eight. Everything that changes
+   during a shift changes here; the world does not change at all.
+   ========================================================= */
+const G = {
+  phase: "idle",        // idle | title | howto | brief | play | pause | over | shift | finale
+  night: 1,
+  cfg: NIGHTS[0],
+  hour: 0,              // 0 = 12 AM ... 6 = out
+  hourT: 0,
+  power: 100,
+  drain: 0,
+  monitor: false,
+  cam: "hall",
+  doors: { left: false, right: false, hatch: false },
+  blackout: false,
+  blackoutT: 0,
+  blackoutLen: 0,
+  approaching: null,
+  dead: null,
+  deadT: 0,
+  shake: 0,
+  flick: 1,             // the failing ceiling bulb
+  flickT: 0,
+  hallDark: false,
+  lost: {},             // roomId -> seconds of signal left
+  lostT: 12,
+  t: 0,
+  warned: 0,
+  best: {},
+};
+
+/* --- the numbers a night actually runs on ------------------------- */
+function nightCfg(n) { return NIGHTS[clamp(n, 1, NIGHTS.length) - 1]; }
+function ramp() {
+  const r = G.cfg.ramp;
+  return r[clamp(G.hour, 0, r.length - 1)];
+}
+function hazard(name) { return G.cfg.hazards.indexOf(name) >= 0; }
+
+function routeOf(ch) { return ch.def.route; }
+function stepsLeft(ch) { return routeOf(ch).length - 1 - ch.step; }
+
+/* is a figure being looked at right now? Marabelle is the only one this
+   matters to, but the answer is the same question for all of them and
+   the HUD wants it too. */
+function observed(ch) {
+  if (G.monitor) return G.cam === ch.room && !isLost(G.cam);
+  return ch.room === "office";
+}
+function isLost(roomId) {
+  return (G.lost[roomId] || 0) > 0 || (hazard("deadWorkshop") && roomId === "workshop");
+}
+
+/* --- putting a figure at its current station ---------------------- */
+function syncChar(ch) {
+  const r = routeOf(ch)[clamp(ch.step, 0, routeOf(ch).length - 1)];
+  putChar(ch, r[0], r[1]);
+  ch.atDoor = r[0] === "office";
+}
+
+function resetCast() {
+  CAST.forEach((def) => {
+    const ch = cast[def.id];
+    ch.step = 0;
+    ch.cool = range(Math.random, 3, 9);
+    ch.pose = "idle";
+    ch.atDoor = false;
+    ch.doorT = 0;
+    ch.knocks = 0;
+    ch.knockT = 0;
+    ch.awake = false;
+    ch.asleep = false;
+    ch.phase = Math.random() * 10;
+    syncChar(ch);
+  });
+}
+
+/* --- one figure's turn -------------------------------------------- */
+function stepCast(ch, dt) {
+  const tune = TUNE.cast[ch.def.id];
+  const from = G.cfg.active[ch.def.id];
+  if (from === undefined) return;                  // asleep all night
+  if (ch.asleep) return;                           // held asleep by a test
+  if (!ch.awake) {
+    if (G.hour < from) return;
+    ch.awake = true;
+    /* the moment one of them wakes up is worth hearing */
+    cue(ch, 0.55);
+  }
+
+  /* at the door: the only place the player's actions matter */
+  if (ch.atDoor) {
+    const shut = G.doors[ch.def.door] && !G.blackout;
+    if (shut) {
+      if (ch.def.id === "jax") {
+        /* Jax does not go away politely. He knocks, and every knock is
+           power you do not get back — which is the whole answer to
+           "why not just hold both doors all night". */
+        ch.knockT -= dt;
+        if (ch.knockT <= 0) {
+          ch.knockT = 2.0;
+          ch.knocks++;
+          spendPower(TUNE.power.knock);
+          SFX.knock();
+          G.shake = Math.max(G.shake, 0.5);
+          if (ch.knocks >= 3) retreat(ch);
+        }
+      } else {
+        ch.doorT -= dt;
+        if (ch.doorT <= 0) retreat(ch);
+      }
+      return;
+    }
+    /* the door is open. This is the reaction window. */
+    ch.doorT -= dt;
+    if (ch.doorT <= 0) { kill(ch); return; }
+    return;
+  }
+
+  /* Marabelle cannot move while she is watched, and her clock does not
+     run either — keeping the camera on her is a real, and expensive,
+     defence */
+  if (ch.def.id === "marabelle") {
+    const watched = observed(ch);
+    ch.pose = watched ? "frozen" : "idle";
+    if (watched) return;
+  }
+
+  ch.cool -= dt;
+  if (ch.cool > 0) return;
+  const agg = ramp();
+  ch.cool = tune.step / agg;
+  if (Math.random() > tune.chance * agg) return;
+
+  /* Jax skips, and occasionally doubles back, which is why he is the
+     one you cannot plan around */
+  let adv = 1;
+  if (ch.def.id === "jax") {
+    const r = Math.random();
+    if (r > 0.82) adv = 2;
+    else if (r < 0.12 && ch.step > 0) adv = -1;
+  }
+  ch.step = clamp(ch.step + adv, 0, routeOf(ch).length - 1);
+  syncChar(ch);
+  ch.pose = "walk";
+  if (ch.atDoor) {
+    ch.doorT = tune.doorGrace / Math.max(0.8, agg * 0.85);
+    ch.knocks = 0;
+    ch.knockT = 0.7;
+    arriveCue(ch);
+  } else {
+    cue(ch, TUNE.cueGain[clamp(stepsLeft(ch), 0, 3)]);
+  }
+}
+
+function retreat(ch) {
+  const tune = TUNE.cast[ch.def.id];
+  ch.step = Math.max(0, ch.step - (tune.back || 2));
+  ch.atDoor = false;
+  ch.cool = tune.retreat;
+  ch.knocks = 0;
+  syncChar(ch);
+  cue(ch, 0.3);
+}
+
+/* the sound a figure makes when it moves */
+function cue(ch, g) {
+  const v = clamp(g, 0.08, 1);
+  if (ch.def.id === "cogsworth") { SFX.step(v); setTimeout(() => SFX.step(v * 0.85), 260); SFX.tick(v * 0.5); }
+  else if (ch.def.id === "chime") { SFX.flutter(v * 0.8); setTimeout(() => SFX.hoot(v), 220); }
+  else if (ch.def.id === "marabelle") { SFX.tune(v * 0.8, 1); }
+  else { SFX.crank(v * 0.7); setTimeout(() => SFX.bells(v), 300); }
+}
+/* and the different, closer sound it makes when it is at the door */
+function arriveCue(ch) {
+  if (ch.def.id === "cogsworth") { SFX.step(1); SFX.wind(0.9); }
+  else if (ch.def.id === "chime") { SFX.hoot(1); SFX.flutter(0.9); }
+  else if (ch.def.id === "marabelle") { SFX.tune(1, 0.72); }
+  else { SFX.laugh(0.9); SFX.bells(0.9); }
+}
+
+/* --- power --------------------------------------------------------- */
+function spendPower(v) {
+  G.power = Math.max(0, G.power - v);
+  if (G.power <= 0 && !G.blackout) startBlackout();
+}
+function powerRate() {
+  const p = TUNE.power;
+  let r = p.idle;
+  if (G.monitor) r += p.camera;
+  if (G.doors.left) r += p.door;
+  if (G.doors.right) r += p.door;
+  if (G.doors.hatch) r += p.hatch;
+  /* Jax leaning on a shut door costs extra for as long as he is there */
+  const jax = cast.jax;
+  if (jax && jax.awake && jax.atDoor && G.doors[jax.def.door]) r += p.jaxDoor;
+  return r * (0.92 + ramp() * 0.09);
+}
+
+function startBlackout() {
+  G.blackout = true;
+  G.blackoutT = 0;
+  G.blackoutLen = range(Math.random, TUNE.blackout.graceMin, TUNE.blackout.graceMax);
+  G.approaching = null;
+  G.doors.left = G.doors.right = G.doors.hatch = false;
+  G.monitor = false;
+  SFX.powerDown();
+  bumpUI();
+}
+
+/* the dark. Not a game over — a held breath, and whether it ends badly
+   depends entirely on how much of the night you had left when the meter
+   ran out. Waste nothing and the shutters go up before it reaches you. */
+function stepBlackout(dt) {
+  G.blackoutT += dt;
+  if (!G.approaching && G.blackoutT > G.blackoutLen) {
+    const awake = CAST.map((d) => cast[d.id]).filter((c) => c.awake);
+    const pick = awake.filter((c) => c.def.id === "jax");
+    G.approaching = (pick.length ? pick : awake.length ? awake : [cast.cogsworth])[0];
+    G.approaching.step = routeOf(G.approaching).length - 1;
+    syncChar(G.approaching);
+    G.approaching.atDoor = true;
+    SFX.tune(0.8, 1.35);
+  }
+  if (G.approaching) {
+    G.approaching.doorT = (G.approaching.doorT || TUNE.blackout.approach) - dt;
+    if (G.approaching.doorT <= 0) kill(G.approaching);
+  }
+}
+
+/* --- the end of it ------------------------------------------------- */
+function kill(ch) {
+  if (G.phase !== "play") return;
+  G.phase = "over";
+  G.dead = ch.def.id;
+  G.deadT = 0;
+  G.shake = 1;
+  ch.pose = "scare";
+  ch.awake = true;
+  /* right in the lens, and lit by nothing but the office */
+  const base = view.userData.base;
+  const dir = new T.Vector3(0, 0, -1).applyQuaternion(view.quaternion);
+  ch.group.position.copy(base.pos).addScaledVector(dir, 0.92);
+  /* line its eyes up with the lens rather than a fraction of its height:
+     the four of them are very different shapes and only the eyes are in
+     the same place on all of them */
+  ch.group.position.y = base.pos.y - (ch.group.userData.eyeY || 1.5) + 0.1;
+  ch.group.rotation.set(0, Math.atan2(-dir.x, -dir.z), 0);
+  ch.group.visible = true;
+  ch.group.updateMatrix();
+  G.killChar = ch;
+  G.cardT = 0;
+  SFX.scare(ch.def.id);
+  bedStop();
+  showHud(false);
+  noOverlay();
+}
+
+function winNight() {
+  G.phase = "shift";
+  G.deadT = 0;
+  showHud(false);
+  SFX.sixAM();
+  try {
+    const done = JSON.parse(localStorage.getItem("wk_nights") || "{}");
+    done[G.night] = true;
+    localStorage.setItem("wk_nights", JSON.stringify(done));
+    if (G.night >= NIGHTS.length && window.markWickDone) window.markWickDone();
+  } catch (e) { /* private mode: the shift still counts, it just won't keep */ }
+  bumpUI();
+}
+
+/* --- the clock ------------------------------------------------------ */
+function stepClock(dt) {
+  G.hourT += dt;
+  if (G.hourT >= TUNE.hourSeconds) {
+    G.hourT -= TUNE.hourSeconds;
+    G.hour++;
+    if (G.hour >= 6) { winNight(); return; }
+    SFX.beep(false);
+    bumpUI();
+  }
+}
+
+/* --- the cameras that give out --------------------------------------- */
+function stepSignal(dt) {
+  if (!hazard("signalLoss")) return;
+  for (const k in G.lost) if (G.lost[k] > 0) G.lost[k] -= dt;
+  G.lostT -= dt;
+  if (G.lostT <= 0) {
+    G.lostT = range(Math.random, 26, 46);
+    const pool = ROOMS.filter((r) => r.cam > 0 && r.id !== "workshop");
+    const r = pick(Math.random, pool);
+    G.lost[r.id] = range(Math.random, 14, 22);
+    if (G.monitor && G.cam === r.id) SFX.hiss(1.2);
+  }
+}
+
+/* =========================================================
+   19. WHAT THE FRAME DOES
+
+   The only writes here are to lights, the two shutters, the needle, the
+   lamps, the cast's joints and the camera. No prop, wall, shelf or
+   fitting is touched by anything below this line.
+   ========================================================= */
+const _dir = new T.Vector3();
+let panX = 0, panY = 0, panTX = 0, panTY = 0;
+
+function applyLighting(dt) {
+  /* the ceiling bulb in the office has been going for weeks */
+  G.flickT -= dt;
+  if (G.flickT <= 0) {
+    G.flickT = G.flick < 0.7 ? range(Math.random, 0.04, 0.12) : range(Math.random, 0.6, 3.4);
+    G.flick = G.flick < 0.7 ? range(Math.random, 0.85, 1.05) : (Math.random() < 0.45 ? range(Math.random, 0.15, 0.5) : 1);
+  }
+  const low = G.blackout ? 0.06 : 1;
+  const warn = G.power < TUNE.power.critical && !G.blackout ? 0.55 + 0.45 * Math.sin(G.t * 9) : 1;
+  for (let i = 0; i < RIG_N; i++) {
+    const l = rig[i];
+    let k = low * warn;
+    if (l.userData.tag === "pendant") k *= G.flick;
+    if (G.hallDark && /^strip/.test(l.userData.tag || "")) k *= 0.12;
+    l.intensity = l.userData.base * k;
+  }
+  rigAmbient.intensity = rigAmbient.userData.base * (G.blackout ? 0.22 : 1);
+}
+
+function animateOffice(dt) {
+  if (!officeDoors) return;
+  /* the two shutters and the hatch plate, and nothing else in the room */
+  ["left", "right"].forEach((k) => {
+    const d = officeDoors[k];
+    const target = G.doors[k] ? d.closedY : d.openY;
+    const sp = (G.doors[k] ? 3.4 : 2.6) * dt * 2.2;
+    d.y += clamp(target - d.y, -sp, sp);
+    d.mesh.position.y = d.y + (G.shake > 0 && Math.abs(d.y - d.closedY) < 0.05 ? Math.sin(G.t * 60) * G.shake * 0.012 : 0);
+    d.mesh.updateMatrix();
+  });
+  const h = officeDoors.hatch;
+  const ht = G.doors.hatch ? h.closedX : h.openX;
+  h.x += clamp(ht - h.x, -dt * 1.9, dt * 1.9);
+  h.mesh.position.x = h.x;
+  h.mesh.updateMatrix();
+
+  const parts = officeParts;
+  if (!parts) return;
+  /* the fan */
+  if (parts.blades) { parts.blades.rotation.z -= dt * (G.blackout ? 0.6 : 11); parts.blades.updateMatrix(); }
+  /* the needle: it settles towards the reading and overshoots a little,
+     because a real moving-iron meter does */
+  if (parts.needleHolder) {
+    const n = parts.needleHolder.userData.needle;
+    /* the dial's ticks were drawn with -a, so the needle turns the other
+       way: at a full meter it has to point right, not left */
+    const want = -(-1.05 + (G.power / 100) * 2.1);
+    n.userData.v = (n.userData.v || 0) * 0.86 + (want - (n.rotation.z || 0)) * 0.34;
+    n.rotation.z += n.userData.v;
+    n.rotation.z += Math.sin(G.t * 17) * 0.004 * (G.drain / 2);
+    n.updateMatrix();
+  }
+  /* the three lamps */
+  if (parts.lampMeshes) {
+    parts.lampMeshes.forEach((m) => {
+      const k = m.userData.statusLamp;
+      const on = G.doors[k];
+      const c = G.blackout ? "#231a18" : on ? "#ff5a48" : "#2f6a3c";
+      m.material = glow(c, 1);
+    });
+  }
+  /* the pendant's own bulb dims with the light it stands for */
+  if (parts.pend) {
+    parts.pend.traverse((o) => {
+      if (o.userData.lamp && o.material) {
+        o.material = glow(G.blackout ? "#2a2018" : (G.flick < 0.7 ? "#6a5a44" : "#ffe7bd"), 1);
+      }
+    });
+    parts.pend.rotation.z = Math.sin(G.t * 0.8) * 0.012 + (G.shake > 0 ? Math.sin(G.t * 40) * G.shake * 0.05 : 0);
+    parts.pend.updateMatrix();
+  }
+}
+
+/* the seat is not bolted down: a slow drift, plus whatever the player
+   is doing with the mouse or a thumb */
+function moveView(dt) {
+  const base = view.userData.base;
+  if (!base) return;
+  panX += (panTX - panX) * Math.min(1, dt * 5);
+  panY += (panTY - panY) * Math.min(1, dt * 5);
+  const idle = G.phase === "play" && !G.monitor;
+  const drift = idle ? Math.sin(G.t * 0.31) * 0.012 : 0;
+  const sh = G.shake > 0 ? G.shake : 0;
+  view.quaternion.copy(base.quat);
+  const e = new T.Euler(panY * 0.22 + Math.sin(G.t * 0.23) * 0.004 + (sh ? Math.sin(G.t * 47) * sh * 0.03 : 0),
+                        panX * 0.34 + drift + (sh ? Math.sin(G.t * 39) * sh * 0.04 : 0), 0, "YXZ");
+  const q = new T.Quaternion().setFromEuler(e);
+  view.quaternion.multiply(q);
+  view.position.copy(base.pos);
+  if (sh) {
+    view.position.x += Math.sin(G.t * 51) * sh * 0.02;
+    view.position.y += Math.sin(G.t * 61) * sh * 0.02;
+  }
+  view.updateMatrixWorld(true);
+}
+
+let lastT = 0, raf = 0, fpsAcc = 0, fpsN = 0;
+
+function frame(ts) {
+  raf = requestAnimationFrame(frame);
+  if (!lastT) lastT = ts;
+  let dt = (ts - lastT) / 1000;
+  lastT = ts;
+  if (dt > 0.1) dt = 0.1;                 // a tab coming back must not skip a night
+  G.t += dt;
+
+  if (G.phase === "play") {
+    stepClock(dt);
+    if (G.phase === "play") {
+      G.drain = powerRate();
+      spendPower(G.drain * dt);
+      if (G.blackout) stepBlackout(dt);
+      CAST.forEach((d) => stepCast(cast[d.id], dt));
+      stepSignal(dt);
+      /* the meter's own warnings */
+      if (G.power < TUNE.power.critical && G.warned < 2) { G.warned = 2; SFX.beep(true); }
+      else if (G.power < TUNE.power.warn && G.warned < 1) { G.warned = 1; SFX.beep(false); }
+      audioTick(dt);
+      uiTick(dt);
+    }
+  } else if (G.phase === "over") {
+    G.deadT += dt;
+    /* the card waits for the scare to land. A game over screen arriving
+       on the same frame as the thing that caused it reads as a bug. */
+    if (G.deadT > 1.15 && !G.cardT) { G.cardT = 1; screenOver(); }
+  }
+
+  G.shake = Math.max(0, G.shake - dt * 1.9);
+  applyLighting(dt);
+  animateOffice(dt);
+
+  /* which room the one camera is looking at */
+  const room = (G.phase === "play" && G.monitor) ? G.cam : "office";
+  const camName = "main";
+  if (room !== shownRoom || useView.__last !== room + camName) {
+    showRoom(room);
+    useView(room, camName);
+    useView.__last = room + camName;
+    panX = panY = panTX = panTY = 0;
+  }
+  syncCastVisibility();
+  if (G.phase === "over" && G.killChar) G.killChar.group.visible = true;
+  poseCast(dt, G.t);
+  moveView(dt);
+
+  /* the jumpscare pushes the figure at the lens */
+  if (G.phase === "over" && G.killChar) {
+    const ch = G.killChar;
+    const k = Math.min(1, G.deadT * 6);
+    _dir.set(0, 0, -1).applyQuaternion(view.userData.base.quat);
+    ch.group.position.copy(view.userData.base.pos).addScaledVector(_dir, lerp(1.45, 0.66, k));
+    ch.group.position.y = view.userData.base.pos.y - (ch.group.userData.eyeY || 1.5) + lerp(0.22, 0.06, k);
+    ch.group.rotation.set(Math.sin(G.t * 30) * 0.05, Math.atan2(-_dir.x, -_dir.z) + Math.sin(G.t * 24) * 0.09, Math.sin(G.t * 27) * 0.06);
+    ch.group.updateMatrix();
+    G.shake = Math.max(G.shake, 0.8 - G.deadT * 0.5);
+  }
+
+  renderer.render(scene, view);
+  fpsAcc += dt; fpsN++;
+  if (fpsAcc > 2) { G.fps = fpsN / fpsAcc; fpsAcc = 0; fpsN = 0; }
+}
+
+/* =========================================================
+   20. THE PANEL
+
+   DOM over the canvas, the same way the racer and the platformer do it:
+   pixel text drawn into a render buffer and blown up cannot be read, and
+   this is a game about reading a number under pressure.
+
+   It is meant to feel like the shop's own equipment — a brass-framed
+   meter, a rec light, a plan of the building scratched onto a card —
+   rather than a dashboard.
+   ========================================================= */
+const EL = {};
+let uiReady = false, staticCtx = null, staticT = 0;
+
+function el(id) { return document.getElementById(id); }
+
+function buildUI() {
+  if (uiReady) return;
+  ["wick-stage", "wick-canvas", "wk-mon", "wk-static", "wk-camname", "wk-mon-lost",
+   "wk-map", "wk-hud", "wk-power", "wk-bar-f", "wk-usage", "wk-clock", "wk-nightlab",
+   "wk-warn", "wk-edge", "wk-pause-btn", "wk-pad", "wk-overlay", "wk-mon-time"].forEach((id) => {
+    EL[id] = el(id);
+  });
+  stageEl = EL["wick-stage"];
+
+  /* the plan of the shop, built from the room list so adding a room
+     adds a cell */
+  const map = EL["wk-map"];
+  if (map) {
+    map.innerHTML = "";
+    MAP_PLAN.forEach((m) => {
+      const r = ROOM[m.id];
+      if (!r) return;
+      const b = document.createElement("button");
+      b.className = "wk-cell";
+      b.dataset.room = m.id;
+      b.style.left = m.x + "%"; b.style.top = m.y + "%";
+      b.style.width = m.w + "%"; b.style.height = m.h + "%";
+      b.innerHTML = '<b>' + (r.cam < 10 ? "0" + r.cam : r.cam) + '</b><i>' + r.name + '</i><u></u>';
+      b.addEventListener("click", (e) => { e.stopPropagation(); selectCam(m.id); });
+      map.appendChild(b);
+    });
+    /* the office, marked but not selectable — it is where you are */
+    const you = document.createElement("span");
+    you.className = "wk-you";
+    you.innerHTML = "<i>YOU</i>";
+    map.appendChild(you);
+  }
+
+  if (EL["wk-static"]) {
+    EL["wk-static"].width = 176; EL["wk-static"].height = 99;
+    staticCtx = EL["wk-static"].getContext("2d");
+  }
+
+  /* The buttons answer to pointerdown so a thumb gets the door moving on
+     the way down rather than on the way up, and to click as well so a
+     keyboard or an assistive device can work them. The guard is what
+     stops the pair of them counting as two presses. */
+  if (EL["wk-pad"]) {
+    EL["wk-pad"].querySelectorAll("[data-k]").forEach((b) => {
+      const k = b.dataset.k;
+      const go = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const t = (window.performance ? performance.now() : Date.now());
+        if (t - (b.__wkT || 0) < 320) return;
+        b.__wkT = t;
+        press(k);
+      };
+      b.addEventListener("pointerdown", go);
+      b.addEventListener("click", go);
+    });
+  }
+  if (EL["wk-pause-btn"]) EL["wk-pause-btn"].addEventListener("click", () => togglePause());
+
+  uiReady = true;
+}
+
+/* --- the overlay cards -------------------------------------------- */
+function overlay(html, cls) {
+  const o = EL["wk-overlay"];
+  if (!o) return;
+  o.className = "wk-overlay on " + (cls || "");
+  o.innerHTML = html;
+  o.setAttribute("aria-hidden", "false");
+  o.querySelectorAll("[data-go]").forEach((b) => {
+    b.addEventListener("click", (e) => { e.stopPropagation(); route(b.dataset.go); });
+  });
+}
+function noOverlay() {
+  const o = EL["wk-overlay"];
+  if (!o) return;
+  o.className = "wk-overlay";
+  o.innerHTML = "";
+  o.setAttribute("aria-hidden", "true");
+}
+
+function nightsDone() {
+  try { return JSON.parse(localStorage.getItem("wk_nights") || "{}") || {}; }
+  catch (e) { return {}; }
+}
+function maxUnlocked() {
+  const d = nightsDone();
+  let n = 1;
+  for (let i = 1; i <= NIGHTS.length; i++) if (d[i]) n = Math.min(NIGHTS.length, i + 1);
+  return n;
+}
+
+function screenTitle() {
+  const un = maxUnlocked();
+  const sel = un > 1 ? NIGHTS.slice(0, un).map((n) =>
+    '<button class="wk-btn wk-btn-sm" data-go="night:' + n.n + '">' + n.n + '</button>').join("") : "";
+  overlay(
+    '<div class="wk-card wk-card-title">' +
+      '<p class="wk-sign"><span>' + WK.shop + '</span><b>' + WK.sub + '</b></p>' +
+      '<p class="wk-tag">' + WK.tag + '</p>' +
+      '<div class="wk-btns">' +
+        '<button class="wk-btn wk-btn-go" data-go="start">BEGIN THE SHIFT</button>' +
+        '<button class="wk-btn" data-go="howto">HOW IT WORKS</button>' +
+        '<button class="wk-btn" data-go="quit">LEAVE</button>' +
+      '</div>' +
+      (sel ? '<p class="wk-pick">NIGHT ' + sel + '</p>' : "") +
+    '</div>', "wk-ov-title");
+}
+
+function screenHowTo() {
+  const rows = WK.howTo.map((r) => '<li><b>' + r[0] + '</b><span>' + r[1] + '</span></li>').join("");
+  const who = CAST.map((c) =>
+    '<li class="wk-who"><span class="wk-swatch" style="--c:' + c.colour + '"></span>' +
+    '<b>' + c.name + '</b><i>' + c.what + '</i><span>' + c.threat + '</span></li>').join("");
+  overlay(
+    '<div class="wk-card wk-card-wide">' +
+      '<h3>HOW IT WORKS</h3>' +
+      '<ul class="wk-rules">' + rows + '</ul>' +
+      '<h3>WHO ELSE IS IN</h3>' +
+      '<ul class="wk-cast">' + who + '</ul>' +
+      '<p class="wk-keys">Keys: <b>A</b>/<b>&larr;</b> left door &middot; <b>D</b>/<b>&rarr;</b> right door &middot; ' +
+      '<b>W</b>/<b>&uarr;</b> hatch &middot; <b>SPACE</b> cameras &middot; <b>1&ndash;8</b> pick a camera &middot; <b>ESC</b> pause</p>' +
+      '<div class="wk-btns"><button class="wk-btn wk-btn-go" data-go="title">BACK</button></div>' +
+    '</div>', "wk-ov-howto");
+}
+
+function screenBrief() {
+  const cfg = G.cfg;
+  const beat = G.night === 1 ? null : WK.beats[G.night];
+  const voice = G.night === 1 ? WK.intro : null;
+  let body = "";
+  if (voice) {
+    body = '<p class="wk-from">' + voice.from + '</p><div class="wk-lines">' +
+      voice.lines.map((l) => "<p>" + l + "</p>").join("") + "</div>";
+  } else if (beat) {
+    body = '<p class="wk-from">' + beat.title + '</p><div class="wk-lines">' +
+      beat.lines.map((l) => "<p>" + l + "</p>").join("") + "</div>";
+  }
+  overlay(
+    '<div class="wk-card wk-card-brief">' +
+      '<p class="wk-nightno">' + cfg.name + '</p>' +
+      '<p class="wk-blurb">' + cfg.blurb + '</p>' +
+      body +
+      '<div class="wk-btns"><button class="wk-btn wk-btn-go" data-go="go">12:00 AM</button>' +
+      '<button class="wk-btn" data-go="title">BACK</button></div>' +
+    '</div>', "wk-ov-brief");
+}
+
+function screenPause() {
+  overlay(
+    '<div class="wk-card">' +
+      '<h3>PAUSED</h3>' +
+      '<p class="wk-blurb">The shop waits.</p>' +
+      '<div class="wk-btns">' +
+        '<button class="wk-btn wk-btn-go" data-go="resume">BACK TO IT</button>' +
+        '<button class="wk-btn" data-go="restart">RESTART NIGHT</button>' +
+        '<button class="wk-btn" data-go="title">TITLE</button>' +
+        '<button class="wk-btn" data-go="quit">LEAVE</button>' +
+      '</div>' +
+    '</div>', "wk-ov-pause");
+}
+
+function screenOver() {
+  const c = BY_ID[G.dead] || CAST[0];
+  overlay(
+    '<div class="wk-card wk-card-over">' +
+      '<p class="wk-got" style="--c:' + c.colour + '">' + c.name + '</p>' +
+      '<p class="wk-blurb">reached the office &middot; ' + G.cfg.name.toLowerCase() + ' &middot; ' + clockLabel() + '</p>' +
+      '<p class="wk-lines"><i>' + c.threat + '</i></p>' +
+      '<div class="wk-btns">' +
+        '<button class="wk-btn wk-btn-go" data-go="restart">TRY THE NIGHT AGAIN</button>' +
+        '<button class="wk-btn" data-go="title">TITLE</button>' +
+      '</div>' +
+    '</div>', "wk-ov-over");
+}
+
+function screenShift() {
+  const last = G.night >= NIGHTS.length;
+  if (last) {
+    overlay(
+      '<div class="wk-card wk-card-fin">' +
+        '<p class="wk-nightno">' + WK.finale.title + '</p>' +
+        '<div class="wk-lines">' + WK.finale.lines.map((l) => "<p>" + l + "</p>").join("") + '</div>' +
+        '<div class="wk-btns">' +
+          '<button class="wk-btn wk-btn-go" data-go="quit">CLOCK OFF</button>' +
+          '<button class="wk-btn" data-go="title">TITLE</button>' +
+        '</div>' +
+      '</div>', "wk-ov-fin");
+  } else {
+    overlay(
+      '<div class="wk-card wk-card-win">' +
+        '<p class="wk-six">6:00 AM</p>' +
+        '<p class="wk-blurb">' + G.cfg.name.toLowerCase() + ', survived. The shutters are going up.</p>' +
+        '<div class="wk-btns">' +
+          '<button class="wk-btn wk-btn-go" data-go="next">NIGHT ' + (G.night + 1) + '</button>' +
+          '<button class="wk-btn" data-go="title">TITLE</button>' +
+        '</div>' +
+      '</div>', "wk-ov-win");
+  }
+}
+
+/* --- where every button goes -------------------------------------- */
+function route(cmd) {
+  audioInit();
+  if (AC && AC.state === "suspended") AC.resume();
+  if (cmd === "start") { G.night = 1; G.cfg = nightCfg(1); G.phase = "brief"; screenBrief(); }
+  else if (cmd === "howto") { G.phase = "howto"; screenHowTo(); }
+  else if (cmd === "title") { G.phase = "title"; bedStop(); screenTitle(); showHud(false); }
+  else if (cmd === "go") { beginNight(G.night); }
+  else if (cmd === "resume") { G.phase = "play"; noOverlay(); showHud(true); bedStart(); }
+  else if (cmd === "restart") { beginNight(G.night); }
+  else if (cmd === "next") { beginNight(Math.min(NIGHTS.length, G.night + 1)); }
+  else if (cmd === "quit") { if (window.leaveWick) window.leaveWick(); }
+  else if (cmd.indexOf("night:") === 0) {
+    G.night = clamp(parseInt(cmd.slice(6), 10) || 1, 1, NIGHTS.length);
+    G.cfg = nightCfg(G.night);
+    G.phase = "brief"; screenBrief();
+  }
+}
+
+function beginNight(n) {
+  G.night = clamp(n, 1, NIGHTS.length);
+  G.cfg = nightCfg(G.night);
+  G.hour = 0; G.hourT = 0;
+  G.power = G.cfg.power;
+  G.drain = 0;
+  G.monitor = false;
+  G.cam = "hall";
+  G.doors.left = G.doors.right = G.doors.hatch = false;
+  G.blackout = false; G.blackoutT = 0; G.approaching = null;
+  G.dead = null; G.deadT = 0; G.killChar = null; G.cardT = 0;
+  G.warned = 0; G.shake = 0;
+  G.lost = {}; G.lostT = 20;
+  G.hallDark = hazard("hallDark");
+  resetCast();
+  if (officeDoors) {
+    officeDoors.left.y = officeDoors.left.openY;
+    officeDoors.right.y = officeDoors.right.openY;
+    officeDoors.hatch.x = officeDoors.hatch.openX;
+  }
+  G.phase = "play";
+  noOverlay();
+  showHud(true);
+  bedStart();
+  bumpUI();
+}
+
+function showHud(on) {
+  if (EL["wk-hud"]) EL["wk-hud"].hidden = !on;
+  if (EL["wk-pad"]) EL["wk-pad"].hidden = !on;
+  if (EL["wk-pause-btn"]) EL["wk-pause-btn"].hidden = !on;
+  if (!on && EL["wk-mon"]) EL["wk-mon"].hidden = true;
+}
+
+function clockLabel() {
+  if (G.hour >= 6) return "6 AM";
+  const h = clamp(G.hour, 0, 5);
+  return (h === 0 ? "12" : String(h)) + " AM";
+}
+
+/* --- what changes only when something happens --------------------- */
+function bumpUI() {
+  if (!uiReady) return;
+  if (EL["wk-clock"]) EL["wk-clock"].textContent = clockLabel();
+  if (EL["wk-nightlab"]) EL["wk-nightlab"].textContent = "NIGHT " + G.night;
+  if (EL["wk-mon"]) EL["wk-mon"].hidden = !(G.phase === "play" && G.monitor);
+  const r = ROOM[G.cam];
+  if (EL["wk-camname"] && r) EL["wk-camname"].textContent = "CAM " + (r.cam < 10 ? "0" + r.cam : r.cam) + " — " + r.name;
+  if (EL["wk-mon-lost"]) EL["wk-mon-lost"].hidden = !isLost(G.cam);
+  if (EL["wk-map"]) {
+    EL["wk-map"].querySelectorAll(".wk-cell").forEach((b) => {
+      const id = b.dataset.room;
+      b.classList.toggle("on", id === G.cam);
+      b.classList.toggle("dead", isLost(id));
+      let n = 0;
+      for (const k in cast) if (cast[k].awake && cast[k].room === id) n++;
+      b.classList.toggle("busy", n > 0 && id === G.cam);
+    });
+  }
+  if (G.phase === "over") screenOver();
+  else if (G.phase === "shift") screenShift();
+  /* the touch buttons show their own state, so a thumb can read them */
+  if (EL["wk-pad"]) {
+    EL["wk-pad"].querySelectorAll("[data-k]").forEach((b) => {
+      const k = b.dataset.k;
+      if (k === "monitor") b.classList.toggle("on", G.monitor);
+      else b.classList.toggle("on", !!G.doors[k]);
+      b.classList.toggle("dead", G.blackout);
+    });
+  }
+}
+
+/* --- and what changes every frame --------------------------------- */
+function uiTick(dt) {
+  if (!uiReady) return;
+  const p = Math.max(0, Math.round(G.power));
+  if (EL["wk-power"]) EL["wk-power"].textContent = p + "%";
+  if (EL["wk-bar-f"]) {
+    EL["wk-bar-f"].style.width = clamp(G.power, 0, 100) + "%";
+    EL["wk-bar-f"].dataset.lvl = G.power < TUNE.power.critical ? "3" : G.power < TUNE.power.warn ? "2" : "1";
+  }
+  if (EL["wk-usage"]) {
+    const bars = clamp(Math.round(G.drain / 0.62), 1, 5);
+    EL["wk-usage"].textContent = "▉".repeat(bars) + "░".repeat(5 - bars);
+  }
+  /* the edge of the screen warms when something is next to the office */
+  let near = null;
+  for (const k in cast) {
+    const ch = cast[k];
+    if (ch.awake && ch.atDoor) { near = ch; break; }
+  }
+  if (EL["wk-edge"]) {
+    EL["wk-edge"].dataset.side = near ? near.def.door : "";
+    EL["wk-edge"].style.setProperty("--c", near ? near.def.colour : "transparent");
+    EL["wk-edge"].style.opacity = near ? (0.5 + 0.5 * Math.sin(G.t * 5)) : 0;
+  }
+  if (EL["wk-warn"]) {
+    let msg = "";
+    if (G.blackout) msg = G.approaching ? "" : "POWER OUT";
+    else if (G.power < TUNE.power.critical) msg = "POWER CRITICAL";
+    EL["wk-warn"].textContent = msg;
+    EL["wk-warn"].hidden = !msg;
+  }
+  if (EL["wk-mon-time"]) EL["wk-mon-time"].textContent = clockLabel();
+
+  /* the static: a real noise field, redrawn a few times a second, so a
+     dead camera looks dead rather than grey */
+  if (staticCtx && G.monitor) {
+    staticT -= dt;
+    if (staticT <= 0) {
+      staticT = 0.05;
+      const w = 176, h = 99;
+      const img = staticCtx.createImageData(w, h);
+      const d = img.data;
+      const heavy = isLost(G.cam);
+      const amt = heavy ? 210 : 34;
+      for (let i = 0; i < d.length; i += 4) {
+        const v = (Math.random() * amt) | 0;
+        d[i] = d[i + 1] = d[i + 2] = v;
+        d[i + 3] = heavy ? 190 + ((Math.random() * 60) | 0) : 26 + ((Math.random() * 30) | 0);
+      }
+      staticCtx.putImageData(img, 0, 0);
+    }
+  }
+}
+
+/* =========================================================
+   21. CONTROLS
+
+   Everything is on a key and on a button, and neither is a second-class
+   way to play. The doors are the two outside buttons because that is
+   where the doors are.
+   ========================================================= */
+function toggleDoor(k) {
+  if (G.phase !== "play") return;
+  if (G.blackout) { SFX.beep(false); return; }
+  G.doors[k] = !G.doors[k];
+  if (k === "hatch") SFX.hatch();
+  else if (G.doors[k]) { SFX.doorClose(); G.shake = Math.max(G.shake, 0.35); }
+  else SFX.doorOpen();
+  /* opening a door on something standing behind it gives you a moment,
+     and only a moment */
+  if (!G.doors[k]) {
+    for (const id in cast) {
+      const ch = cast[id];
+      if (ch.awake && ch.atDoor && ch.def.door === k) ch.doorT = Math.min(ch.doorT, 1.3);
+    }
+  }
+  bumpUI();
+}
+
+function toggleMonitor() {
+  if (G.phase !== "play") return;
+  if (G.blackout) { SFX.beep(false); return; }
+  G.monitor = !G.monitor;
+  SFX.monitor(G.monitor);
+  if (G.monitor) SFX.hiss(0.7);
+  bumpUI();
+}
+
+function selectCam(id) {
+  if (!ROOM[id] || id === "office") return;
+  if (G.cam === id) return;
+  G.cam = id;
+  SFX.camSwitch();
+  bumpUI();
+}
+
+function press(k) {
+  audioInit();
+  if (AC && AC.state === "suspended") AC.resume();
+  if (k === "monitor") toggleMonitor();
+  else toggleDoor(k);
+}
+
+function togglePause() {
+  if (G.phase === "play") { G.phase = "pause"; screenPause(); showHud(false); }
+  else if (G.phase === "pause") route("resume");
+}
+
+const CAM_ORDER = ROOMS.filter((r) => r.cam > 0).sort((a, b) => a.cam - b.cam);
+
+function onKey(e) {
+  if (!running) return;
+  const k = e.key;
+  if (k === "Escape") { e.preventDefault(); togglePause(); return; }
+  if (G.phase !== "play") {
+    if (k === "Enter" || k === " ") {
+      const b = EL["wk-overlay"] && EL["wk-overlay"].querySelector("[data-go].wk-btn-go");
+      if (b) { e.preventDefault(); b.click(); }
+    }
+    return;
+  }
+  if (k === "a" || k === "A" || k === "ArrowLeft") { e.preventDefault(); toggleDoor("left"); }
+  else if (k === "d" || k === "D" || k === "ArrowRight") { e.preventDefault(); toggleDoor("right"); }
+  else if (k === "w" || k === "W" || k === "ArrowUp" || k === "s" || k === "S" || k === "ArrowDown") { e.preventDefault(); toggleDoor("hatch"); }
+  else if (k === " ") { e.preventDefault(); toggleMonitor(); }
+  else if (k >= "1" && k <= "8") {
+    const r = CAM_ORDER[parseInt(k, 10) - 1];
+    if (r) { if (!G.monitor) toggleMonitor(); selectCam(r.id); }
+  }
+}
+
+/* look around from the seat: a drag, or the mouse when it is over the
+   office. It changes nothing but the view, and it is optional. */
+let dragging = false, dragX = 0, dragY = 0;
+function onPointerDown(e) {
+  if (G.phase !== "play" || G.monitor) return;
+  dragging = true; dragX = e.clientX; dragY = e.clientY;
+}
+function onPointerMove(e) {
+  if (G.phase !== "play" || G.monitor) return;
+  if (dragging) {
+    panTX = clamp(panTX + (e.clientX - dragX) * 0.004, -1, 1);
+    panTY = clamp(panTY - (e.clientY - dragY) * 0.004, -0.7, 0.7);
+    dragX = e.clientX; dragY = e.clientY;
+  } else if (e.pointerType === "mouse" && stageEl) {
+    const r = stageEl.getBoundingClientRect();
+    panTX = clamp(((e.clientX - r.left) / r.width - 0.5) * -1.5, -1, 1);
+    panTY = clamp(((e.clientY - r.top) / r.height - 0.5) * -0.8, -0.7, 0.7);
+  }
+}
+function onPointerUp() { dragging = false; }
+
+/* =========================================================
+   22. IN AND OUT
+
+   The chapter owns nothing outside its own screen. start() builds the
+   world the first time it is asked and then only ever wakes it up;
+   stop() halts the loop and the sound and leaves everything standing,
+   so coming back in is instant.
+   ========================================================= */
+let running = false, boundKeys = false, ro = null;
+
+function onResize() { sizeRenderer(); }
+
+function start() {
+  const cvs = el("wick-canvas");
+  if (!cvs) return;
+  buildUI();
+  /* a phone is not asked to draw four million pixels for a room lit by
+     one bulb; the quality ladder is one number and it is here */
+  const touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  pixelCap = touch ? 1.25 : 1.6;
+  buildWorld(cvs);
+  sizeRenderer();
+  useView.__last = null;
+  running = true;
+  G.phase = "title";
+  G.night = maxUnlocked();
+  G.cfg = nightCfg(G.night);
+  resetCast();
+  showRoom("office");
+  useView("office", "main");
+  showHud(false);
+  screenTitle();
+  if (!boundKeys) {
+    boundKeys = true;
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    if (window.ResizeObserver && stageEl) { ro = new ResizeObserver(onResize); ro.observe(stageEl); }
+    const st = stageEl;
+    if (st) {
+      st.addEventListener("pointerdown", onPointerDown);
+      st.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+      st.addEventListener("pointerleave", onPointerUp);
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && G.phase === "play") togglePause();
+    });
+  }
+  lastT = 0;
+  if (!raf) raf = requestAnimationFrame(frame);
+}
+
+function stop() {
+  running = false;
+  if (raf) { cancelAnimationFrame(raf); raf = 0; }
+  bedStop();
+  audioDuck(1, 10);
+  G.phase = "idle";
+  noOverlay();
+  showHud(false);
+}
+
 /* --- a still of any room from any of its cameras -------------------
    Used by the offline checks in tools/ to look at the geometry without
    playing a shift. It is also the fastest way to answer "is anything
    floating?", which is the question this build has to keep answering. */
-function preview(stage, cvs, roomId, camName) {
+function preview(stage, cvs, roomId, camName, who) {
   stageEl = stage;
   buildWorld(cvs);
   sizeRenderer();
   showRoom(roomId);
   useView(roomId, camName || "main");
+  for (const id in cast) { cast[id].awake = false; }
+  (who || []).forEach((w) => {
+    const ch = cast[w.id];
+    if (!ch) return;
+    ch.awake = true;
+    ch.pose = w.pose || "idle";
+    putChar(ch, roomId, w.anchor);
+  });
+  syncCastVisibility();
+  poseCast(0.0001, 0);
   if (rooms.office && officeDoors) {
     officeDoors.left.mesh.updateMatrixWorld(true);
     officeDoors.right.mesh.updateMatrixWorld(true);
@@ -2413,5 +5219,58 @@ function preview(stage, cvs, roomId, camName) {
   renderer.render(scene, view);
 }
 
-return { preview, __rooms: rooms, __three: () => ({ renderer, scene, view }) };
+/* ---------------------------------------------------------
+   Hooks for the offline checks in tools/. Nothing here is used by the
+   game itself; they exist so a suite can drive a night in seconds
+   instead of waiting six real minutes for one.
+   --------------------------------------------------------- */
+const testHooks = {
+  state: () => G,
+  cast: () => cast,
+  rooms: () => rooms,
+  press,
+  cam: selectCam,
+  route,
+  /* advance the shift by hand, in fixed slices, with no rendering */
+  pump(seconds, slice) {
+    const st = slice || 1 / 30;
+    let left = seconds;
+    while (left > 0 && G.phase === "play") {
+      const dt = Math.min(st, left);
+      left -= dt;
+      G.t += dt;
+      stepClock(dt);
+      if (G.phase !== "play") break;
+      G.drain = powerRate();
+      spendPower(G.drain * dt);
+      if (G.blackout) stepBlackout(dt);
+      CAST.forEach((d) => stepCast(cast[d.id], dt));
+      stepSignal(dt);
+    }
+    return { phase: G.phase, hour: G.hour, power: G.power, dead: G.dead };
+  },
+  put(id, step) {
+    const ch = cast[id];
+    if (!ch) return;
+    ch.awake = true;
+    ch.step = clamp(step, 0, ch.def.route.length - 1);
+    syncChar(ch);
+    if (ch.atDoor) ch.doorT = TUNE.cast[id].doorGrace;
+  },
+  /* put the whole cast back in its box and then stand one of them
+     somewhere. Setting awake=false by hand is not enough — a figure
+     whose hour has come wakes itself up again on the next tick, which
+     is correct in a game and confusing in a test. */
+  only(id, step) {
+    resetCast();
+    G.phase = "play";
+    G.dead = null; G.killChar = null;
+    CAST.forEach((d) => { cast[d.id].asleep = d.id !== id; });
+    testHooks.put(id, step === undefined ? cast[id].def.route.length - 1 : step);
+  },
+  render() { if (renderer) renderer.render(scene, view); },
+  silence(v) { audioMute(v !== false); },
+};
+
+return { start, stop, preview, __wick: testHooks };
 })();
