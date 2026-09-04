@@ -1,5 +1,5 @@
 /* Still of any Wick & Cogs room, straight out of the WebGL canvas.
-   node wickshot.js <out.png> <room> [cam] [w] [h]
+   node nightshot.js <out.png> <room> [cam] [w] [h]
    Goes through toDataURL rather than page.screenshot, because a
    screenshot hangs while a canvas loop is painting. */
 const { chromium } = require('playwright-core'); const fs = require('fs');
@@ -13,7 +13,7 @@ const [out, room = 'office', cam = 'main', who = '[]', W = 1280, H = 720] = proc
   page.on('pageerror', e => console.log('PAGEERROR', e.message));
   page.on('console', m => { if (m.type() === 'error') console.log('CONSOLE', m.text()); });
   await page.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
-  await page.goto('http://127.0.0.1:8899/tools/wickshot.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.goto('http://127.0.0.1:8899/tools/nightshot.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(500);
   await page.evaluate(([w, h]) => {
     const s = document.getElementById('stage'); s.style.width = w + 'px'; s.style.height = h + 'px';

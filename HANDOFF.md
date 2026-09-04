@@ -209,12 +209,14 @@ Three things this build learned the hard way, all worth not repeating:
   beat put every later step out of phase and the suite reported a level
   that had never started.
 
-## 7c. Wick & Cogs — the night-shift chapter
+## 7c. Ouissy's Night Shift — the night-shift chapter
 
 The fifth game, and the first one in this repo that is actually 3D in
 the way the racer never was. Written on a branch at his request
 (`claude/wick-cogs-horror-game-1i25wl`), added as a sixth hub card,
-nothing removed.
+nothing removed. It was built first as **Wick & Cogs** and then
+personalised in a second pass: the shop kept that name, the game took
+hers, and Ouissy became the guard rather than an unnamed one.
 
 Read `README.md` for what it is and how to change it. What matters for
 whoever picks it up:
@@ -224,7 +226,7 @@ whoever picks it up:
   renderer with no `THREE` in it at all. Do not go looking for shared
   code between the two; there is none, and the tooling worth sharing
   (the texture library, the prop kit, the light rig, `place()`) is in
-  `wick.js` for a future rebuild of the racer to use.
+  `night-shift.js` for a future rebuild of the racer to use.
 - **Four rules are enforced in code**, all of them from complaints
   about the racer: `slab()` has a minimum thickness so a flat cutout
   cannot be built by accident; `place()` is the only way a prop enters
@@ -246,9 +248,44 @@ whoever picks it up:
   adding or removing a light changes the shader and stalls, and a stall
   when you flip to a camera is the worst possible moment for one.
 
-Still open with him: whether the difficulty of night three is where he
-wants it, and the closing lines of the finale, which are written but are
-mine and not his.
+The second pass added the things that are easiest to get wrong, so they
+are worth knowing before touching any of them:
+
+- **There is deliberately no narrator.** He asked for this twice. The
+  only voice is the building's security annunciator — a formant-pair
+  vocoder over `NS.sys`, which is a closed list of status lines. It
+  reports states and stops: no reassurance, no story, no use of her
+  name, no mention of the performers except as a sensor reading. If a
+  line being added to `NS.sys` would sound like a person, it belongs on
+  a piece of paper instead.
+- **All the lore is found, never spoken.** Night one briefs off a card
+  taped inside the desk drawer; nights two to six each open on one
+  small found thing (`NS.beats`), a sentence or two at a time, and the
+  toymaker's story resolves in `NS.finale`. Nobody in the chapter ever
+  states the theme.
+- **The one personal touch is walled off from the horror.** The framed
+  photo of the two of them is only ever visible in the daylight
+  gallery (`parts.usFrame.visible = G.mode === "gallery"`). It is not
+  in the office at night, and it is not in `SHIFTIES` — the pairs of
+  props that quietly swap between camera checks are all the shop's own
+  objects. Keep it that way; he asked for it explicitly.
+- **The power budget is tuned against night six, not night one.**
+  `TUNE.power` is a budget with a comment explaining it. The way to
+  retune it is not to guess: drive an attentive guard through every
+  night with `__night.pump` and look at where the meter lands. Night
+  one should finish around a third full and night six on fumes. Note
+  that `pump` runs the same step list as the frame loop — alarms,
+  shifties and hazards included — precisely so that measurement is
+  honest; an earlier version left the surges out and made night four
+  look winnable when it was not.
+- **Cozy Mode is a first-class difficulty, not an accessibility
+  afterthought.** It is one multiplier table (`TUNE.cozy`) read through
+  `cozyK()`, and it touches aggression, door grace, power, alarm
+  frequency, decay and the force of a jumpscare.
+
+Still open with him: whether the difficulty of nights five and six is
+where he wants it, and the closing lines of the finale, which are
+written but are mine and not his.
 
 ## 8. Testing
 
@@ -267,10 +304,14 @@ There are scripts for all of this in `tools/` now, with a README. Run
 an iPhone and fails loudly. It had itself been broken for a long time —
 it drove a text field at the passcode gate, which has been a keypad for
 much longer than that — so if it fails on the second screen, suspect the
-suite before the site. For Wick & Cogs there is `tools/wickplay.js`, which plays the chapter
-from the hub card to the way out and asserts every threat's counter, and
-`tools/wickshot.js`, which photographs any room from any of its cameras
-with any of the cast standing in it. Two harness quirks are worth
+suite before the site. For the night shift there is `tools/nightplay.js`, which plays the
+chapter from the hub card to the way out in 65 checks — every threat's
+counter, the whole six-night ramp, the finale, the record, the custom
+night, the gallery, cozy mode and the arcade cabinet — and
+`tools/nightshot.js`, which photographs any room from any of its cameras
+with any of the cast standing in it. `tools/nightui.js` composites every
+screen (DOM and canvas together) which is the only way to see a layout
+problem in a card. Two harness quirks are worth
 knowing there: playwright's `page.click` hangs on this site because the
 page never fires `load` (every non-localhost request is aborted), so the
 suite clicks through the DOM; and the site's 0.65s screen-entry

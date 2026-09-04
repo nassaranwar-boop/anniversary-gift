@@ -44,7 +44,7 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     /* checked by name rather than by count: the count was still asserting
        four cards long after there were five */
     const want = ['hub-card-maze', 'hub-card-quest', 'hub-card-ouissy',
-                  'hub-card-apoc', 'hub-card-race', 'hub-card-wick'];
+                  'hub-card-apoc', 'hub-card-race', 'hub-card-nightshift'];
     ok(label + ': the hub has every card',
        want.every((c) => cards.indexOf(c) >= 0) && cards.length === want.length, cards.join(','));
     ok(label + ': no horizontal scroll on the hub', (await hs()) === 0, 'overflow ' + (await hs()));
@@ -133,17 +133,17 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
       { timeout: 6000 }).catch(() => {});
     ok(label + ': quitting returns to the hub',
        await page.evaluate(() => document.getElementById('screen-hub').classList.contains('active')));
-    // and Wick & Cogs, in and straight back out
+    // and Ouissy's Night Shift, in and straight back out
     await page.evaluate(() => { showScreen('hub'); startHub(); });
     await page.waitForTimeout(300);
-    await page.evaluate(() => document.getElementById('hub-card-wick').click());
-    await page.waitForSelector('#screen-wick.active .wk-overlay.on', { timeout: 9000 }).catch(() => {});
-    ok(label + ': the hub card opens Wick & Cogs',
-       await page.evaluate(() => document.getElementById('screen-wick').classList.contains('active')
-                              && !!document.querySelector('#wk-overlay.on')));
+    await page.evaluate(() => document.getElementById('hub-card-nightshift').click());
+    await page.waitForSelector('#screen-nightshift.active .ns-overlay.on', { timeout: 9000 }).catch(() => {});
+    ok(label + ': the hub card opens Ouissy\'s Night Shift',
+       await page.evaluate(() => document.getElementById('screen-nightshift').classList.contains('active')
+                              && !!document.querySelector('#ns-overlay.on')));
     ok(label + ': no horizontal scroll in the night shift', (await hs()) === 0, 'overflow ' + (await hs()));
     await page.evaluate(() => {
-      const b = Array.from(document.querySelectorAll('#wk-overlay .wk-btn'))
+      const b = Array.from(document.querySelectorAll('#ns-overlay .ns-btn'))
         .find((e) => /LEAVE|BACK TO THE HUB/.test(e.textContent));
       if (b) b.click();
     });

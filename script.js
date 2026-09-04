@@ -2171,17 +2171,17 @@ window.markSuperOuissyRaceDone = () => markChapterDone("race");
    The night-shift chapter. Same contract as the others: this half
    only owns getting in and out of it.
    ========================================================= */
-function startWick() {
-  if (window.WickAndCogs) WickAndCogs.start();
+function startNightShift() {
+  if (window.OuissysNightShift) OuissysNightShift.start();
 }
-function stopWick() {
-  if (window.WickAndCogs) WickAndCogs.stop();
+function stopNightShift() {
+  if (window.OuissysNightShift) OuissysNightShift.stop();
 }
-window.leaveWick = () => {
-  stopWick();
+window.leaveNightShift = () => {
+  stopNightShift();
   pageTurn("hub", startHub);
 };
-window.markWickDone = () => markChapterDone("wick");
+window.markNightShiftDone = () => markChapterDone("nightshift");
 
 /* The apocalypse ends where the maze ended: on the roof, with the two
    cats. It is the same scene — it is just that the city behind it has
@@ -2219,7 +2219,7 @@ function startHub() {
   const both = bothChaptersDone();
 
   [["maze", d.maze], ["quest", d.quest], ["ouissy", d.ouissy], ["apoc", d.apoc], ["race", d.race],
-   ["wick", d.wick]].forEach(([name, done]) => {
+   ["nightshift", d.nightshift]].forEach(([name, done]) => {
     const card = document.getElementById("hub-card-" + name);
     if (card) card.classList.toggle("done", !!done);
   });
@@ -2230,7 +2230,7 @@ function startHub() {
      deliberate and unchanged. */
   const sub = document.getElementById("hub-sub");
   const count = (d.maze ? 1 : 0) + (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0) + (d.apoc ? 1 : 0) +
-                (d.race ? 1 : 0) + (d.wick ? 1 : 0);
+                (d.race ? 1 : 0) + (d.nightshift ? 1 : 0);
   const total = document.querySelectorAll(".hub-card").length;
   if (both && count === total) sub.textContent = "— every one of them done. the keepsake is yours —";
   else if (both) sub.textContent = "— both story chapters done. the keepsake is yours —";
@@ -2256,8 +2256,8 @@ document.getElementById("hub-card-apoc").addEventListener("click", () => {
 document.getElementById("hub-card-race").addEventListener("click", () => {
   pageTurn("race", startSuperOuissyRace);
 });
-document.getElementById("hub-card-wick").addEventListener("click", () => {
-  pageTurn("wick", startWick);
+document.getElementById("hub-card-nightshift").addEventListener("click", () => {
+  pageTurn("nightshift", startNightShift);
 });
 document.getElementById("hub-keepsake").addEventListener("click", () => {
   pageTurn("keepsake", startKeepsake);
@@ -2300,7 +2300,7 @@ function startKeepsake() {
   if (chaptersDone().apoc) badges.push({ icon: "px-moon", cap: "Ouissy at the Apocalypse" });
   if (chaptersDone().race) badges.push({ icon: "px-ribbon", cap: "Super Ouissy Race" });
   /* the camera rather than the key: the key is already the maze's */
-  if (chaptersDone().wick) badges.push({ icon: "px-camera", cap: "Wick & Cogs" });
+  if (chaptersDone().nightshift) badges.push({ icon: "px-camera", cap: "Ouissy's Night Shift" });
   badges.forEach((b, i) => {
     const card = document.createElement("div");
     card.className = "ks-card";

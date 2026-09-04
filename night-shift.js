@@ -47,61 +47,96 @@
    every sound is synthesised, so the chapter adds one script and nothing
    else to the repo.
    ========================================================= */
-window.WickAndCogs = (function () {
+window.OuissysNightShift = (function () {
 "use strict";
 
 /* =========================================================
    1. THE WORDS — everything the player reads
    ========================================================= */
-const WK = {
+const NS = {
+  title: "OUISSY’S",
+  title2:"NIGHT SHIFT",
   shop:  "WICK & COGS",
   sub:   "TOY EMPORIUM",
   tag:   "est. 1931 · wind-ups, marvels & mechanical friends",
+  who:   "OUISSY",
 
-  /* the voicemail that opens night one. Kept short and mundane on
-     purpose — the horror is in what it does not say. */
-  intro: {
-    from: "voicemail — 11:52 PM",
+  /* --------------------------------------------------------------
+     Nobody talks to her.
+
+     There is no voice on a phone explaining the job and no friend
+     checking in between nights. Everything she learns, she finds: a
+     laminated card taped inside the drawer, a page out of a ledger,
+     something scratched into the underside of a music box. The only
+     voice in the building is the security system's, and that one only
+     ever reports its own state — see ANNUNCIATOR further down.
+     -------------------------------------------------------------- */
+
+  /* Night one opens on the card that was already on the desk. The
+     printed half is the job; the pencil at the bottom is not. */
+  shiftCard: {
+    title: "taped inside the desk drawer",
     lines: [
-      "Hey. You must be the new one. Sorry, I'd have met you at the door but I'm not coming back in.",
-      "Rules are on the desk. Two doors, one hatch, and the power's on a meter — the whole night runs off one charge, so don't sit there with everything shut.",
-      "The cameras cost you a bit too. Look when you need to. Not the whole time.",
-      "The old performers... look. They were built to move. That's what they were for. Nobody ever wrote down how to make them stop.",
-      "If one of them's at your door, shut it. If you hear the ceiling, that's not the pipes.",
-      "Six o'clock and you're out. The last one didn't finish their shift. You will.",
+      "NIGHT SECURITY — SHIFT CARD",
+      "12:00 to 06:00. One charge on the meter for the whole of it.",
+      "Both doors close by hand. So does the ceiling hatch.",
+      "The monitor shows the shop floor. It draws while it is up.",
+      "Do not leave the office.",
     ],
+    pencil: "and underneath, in pencil, in a different hand — they wind down on their own. they always have. don’t go out to check.",
   },
 
-  /* short beats between nights. Found paper, mostly. */
+  /* Between nights: paper, and one object. Two sentences at a time.
+     Nobody explains it and nobody says what it means. */
   beats: {
     2: {
-      title: "a note, taped inside the desk drawer",
+      title: "a page out of a ledger, in the back of the drawer",
       lines: [
-        "They wind down by themselves around four. That's what the manual says.",
-        "The manual is from 1931 and whoever wrote it never worked a night.",
-        "— G.",
+        "17 Nov — the soldier’s escapement true at last. He keeps better time than I do.",
+        "She says the shop is too quiet after closing. So: the owl next, for the rafters. Something awake up there while she locks up.",
       ],
     },
     3: {
-      title: "voicemail — 12:04 AM",
+      title: "a note pinned to the workshop board, gone brown at the edges",
       lines: [
-        "It's me again. I shouldn't be calling you.",
-        "The ballerina — Marabelle. Don't take your eyes off her and she can't do anything. That's not superstition, I timed it.",
-        "The owl doesn't care about your doors. It never did. Watch the ducts.",
-        "And the jester. If he's at your door and you hold it, he'll just keep knocking until the meter's empty. Let him go past. I know how that sounds.",
-        "Six o'clock. That's all any of us get.",
+        "Four of them. One for each of the things she likes best.",
+        "They only have to keep going until she is back.",
+      ],
+    },
+    4: {
+      title: "scratched into the underside of the music box",
+      lines: [
+        "FOR HER. WOUND EVERY EVENING.",
+        "and beneath it, later, in a shakier hand — she did not come back. wind it anyway.",
+      ],
+    },
+    5: {
+      title: "the last entry in the ledger",
+      lines: [
+        "They will not stop now. I have checked, and I do not think they can.",
+        "Leave the shutters. Leave the lights. Somebody should be here when she comes.",
+      ],
+    },
+    6: {
+      title: "a card in the till, never posted",
+      lines: [
+        "The shop is doing well. You would like what it has become.",
+        "I keep the ballerina wound. She is the one you liked.",
       ],
     },
   },
 
+  /* Six o'clock on the last night. Dawn, a still shop, and the one
+     object that finishes it. */
   finale: {
     title: "6:00 AM",
     lines: [
       "The shutters go up on their own at six. They always have.",
-      "Out on the shop floor everything is exactly where it was at midnight — the soldier on his plinth, the owl in the rafters, the ballerina under her glass, the jester folded back into his box.",
-      "One of them is facing the office. None of them were, last night.",
-      "You lock up, and the morning comes in through the front windows the colour of weak tea, and the shop smells like brass and dust and nothing at all.",
-      "Same time tomorrow.",
+      "Out on the shop floor everything is exactly where it was at midnight — the soldier on his plinth, the owl in the rafters, the ballerina under her glass, the jester folded back into his box. Not one of them so much as ticking.",
+      "Under the shift card on the desk there is a photograph she has not seen before. A man outside a new shop with the paint still wet on the sign, and a woman half-turned away, laughing, caught in the middle of a word.",
+      "On the back, in the same hand as the music box: <i>she liked the ballerina best, so it plays last.</i>",
+      "And somewhere out on the dark floor, once, the music box starts — and this time it goes all the way to the end of the tune.",
+      "Then the shop is quiet, and the morning comes in through the front windows the colour of weak tea, and Ouissy locks up and goes home.",
     ],
   },
 
@@ -111,10 +146,52 @@ const WK = {
     ["THE DOORS", "One on each side of you. Closed doors keep things out and drain the meter the whole time they are shut."],
     ["THE HATCH", "The ceiling vent. One of them does not use doors at all."],
     ["THE METER", "One charge for the whole night. Idle drain, cameras, doors. At zero the lights go and the doors will not answer."],
-    ["LISTEN", "Every one of them sounds like itself. Headphones, if you have them."],
+    ["THE SYSTEM", "The building announces its own state and nothing else. It is not company."],
+    ["LISTEN", "Every one of them sounds like itself, and sounds like the side it is on. Headphones, if you have them."],
+    ["LOOK", "The shop is not always the same shop it was a minute ago. Watch the shelves."],
+  ],
+
+  /* Everything the security system is allowed to say. It reports and it
+     stops. It never reassures, never explains, never uses her name and
+     never mentions the performers by anything but a sensor reading. The
+     line between a system and a guide character is exactly here. */
+  sys: {
+    boot:      "SYSTEM ONLINE. NIGHT MODE.",
+    hour:      "HOUR $1.",
+    pwr25:     "RESERVE AT TWENTY FIVE PERCENT.",
+    pwr10:     "RESERVE AT TEN PERCENT.",
+    pwrOut:    "RESERVE DEPLETED. DOOR CONTROL OFFLINE.",
+    doorShut:  "DOOR $1: CLOSED.",
+    doorOpen:  "DOOR $1: OPEN.",
+    hatchShut: "VENT HATCH: SEALED.",
+    hatchOpen: "VENT HATCH: OPEN.",
+    motion:    "MOTION: $1.",
+    camLost:   "CAMERA $1: SIGNAL LOST.",
+    camBack:   "CAMERA $1: RESTORED.",
+    surge:     "LOAD SPIKE ON THE MAIN BUS.",
+    lampFail:  "OFFICE LIGHTING: FAULT.",
+    doorFault: "DOOR TWO: ACTUATOR DEGRADED.",
+    monFault:  "MONITOR FEED: INTERRUPTED.",
+    six:       "SIX HUNDRED HOURS. SHIFT ENDS.",
+    cozy:      "SAFETY LIMITS ENGAGED.",
+  },
+
+  ratings: [
+    { key:"flawless", name:"FLAWLESS NIGHT", note:"never once out of hand" },
+    { key:"steady",   name:"STEADY",         note:"you had it the whole way" },
+    { key:"rattled",  name:"RATTLED",        note:"it got close, twice" },
+    { key:"skin",     name:"BY THE SKIN OF IT", note:"do not do that again" },
+  ],
+
+  badges: [
+    { id:"first",   name:"FIRST LIGHT",      note:"finish a night" },
+    { id:"story",   name:"CLOSING TIME",     note:"finish every night" },
+    { id:"onepc",   name:"ON THE FUMES",     note:"reach six with one percent left" },
+    { id:"nodoor",  name:"HANDS OFF",        note:"clear a night without shutting a door" },
+    { id:"nocam",   name:"EYES SHUT",        note:"clear a night with under twenty seconds of camera" },
+    { id:"arcade",  name:"OUT OF ORDER",     note:"find whatever is still running in the arcade" },
   ],
 };
-
 /* =========================================================
    2. TUNING — how the night feels
 
@@ -127,22 +204,25 @@ const TUNE = {
   /* These are a budget, and the budget is the game.
 
      A night is 6 x hourSeconds = 336 seconds. Sitting there doing
-     absolutely nothing spends idle x 336 = about 27% of the meter, so
-     two thirds of it is yours to spend on knowing things and on being
-     safe. An attentive shift — the monitor up about a fifth of the
-     night, a door shut only while something is actually at it — lands
-     around 88% used. A wasteful one is dark by four. Jax is the one
-     that breaks a careless budget: every knock is charged. The first build of this had idle at 0.62, which spends 208%
-     of a meter that only holds 100 — the night was unsurvivable and no
-     amount of skill would have fixed it. */
+     absolutely nothing spends idle x 336 = about 23% of the meter, so
+     three quarters of it is yours to spend on knowing things and on
+     being safe. The budget is set against night six, not night one: an
+     attentive shift on the last night — four of them awake, a door shut
+     only while something is actually at it — lands around 91% used, so
+     it comes down to the last ten percent and it is meant to. The same
+     care on night one leaves nearly a third of the meter in hand. A
+     wasteful shift is dark by four on any of them. Jax is the one that
+     breaks a careless budget: every knock is charged, and he does not
+     knock politely. */
   power: {
     start:      100,
-    idle:       0.08,   // %/s just sitting there            -> ~27%/night
-    camera:     0.26,   // %/s extra while the monitor is up -> ~17% at 20% use
-    door:       0.32,   // %/s extra per closed door
-    hatch:      0.28,   // %/s extra while the hatch is latched
-    jaxDoor:    0.65,   // Jax leaning on a shut door costs this much more
-    knock:      1.6,    // and each of his knocks takes this off outright
+    idle:       0.068,  // %/s just sitting there            -> ~23%/night
+    camera:     0.20,   // %/s extra while the monitor is up
+    door:       0.155,  // %/s extra per closed door
+    hatch:      0.15,   // %/s extra while the hatch is latched
+    jaxDoor:    0.26,   // Jax leaning on a shut door costs this much more
+    knock:      0.60,   // and each of his knocks takes this off outright
+    surge:      2.2,    // a load spike off the meter, from night four
     warn:       25,     // the meter starts complaining here
     critical:   10,
   },
@@ -157,8 +237,9 @@ const TUNE = {
 
   cast: {
     /* seconds between movement rolls, and the chance each roll lands.
-       Both are scaled per night and per hour by NIGHTS below. */
-    /* `doorGrace` is the reaction window once it is at your door, and it
+       Both are scaled per night and per hour by NIGHTS below.
+
+       `doorGrace` is the reaction window once it is at your door, and it
        is read by name — the owl's used to be called `hatchGrace`, which
        meant its timer was undefined, which meant NaN, which meant it
        could neither reach you nor ever go away again.
@@ -171,20 +252,95 @@ const TUNE = {
     cogsworth: { step: 5.0, chance: 0.30, doorGrace: 4.2, retreat: 6.0, back: 3 },
     chime:     { step: 6.5, chance: 0.26, doorGrace: 5.0, retreat: 7.0, back: 3 },
     marabelle: { step: 4.4, chance: 0.34, doorGrace: 4.6, retreat: 5.0, back: 3 },
-    jax:       { step: 3.8, chance: 0.34, doorGrace: 3.4, retreat: 6.0, back: 3 },
+    /* Jax goes further back and stays away longer than the rest. He
+       has to: he is the only one who costs power while you are doing
+       the right thing, so how often he comes back is the size of that
+       tax, and on the last night it should be about a fifth of the
+       meter — enough to hurt, not enough to decide the night on its
+       own. */
+    jax:       { step: 3.8, chance: 0.34, doorGrace: 3.4, retreat: 10.0, back: 4 },
   },
 
   /* how loud a cue is at each distance from the office, in rooms */
   cueGain: [0.9, 0.55, 0.3, 0.16],
+
+  /* Which way a sound comes from. Cogsworth is always the hall side,
+     Marabelle and Jax the party side, the owl is overhead — so the pan
+     is a property of the door it attacks from, and it holds all the way
+     down the route. On headphones this is most of the information. */
+  pan: { left: -0.72, right: 0.72, hatch: 0 },
+
+  /* --- the things that are not a threat -----------------------------
+     A shut building makes noises. Some of them are nothing, and knowing
+     that does not help, because you still have to look. False alarms
+     are what keeps the quiet from becoming safe — but they are never
+     one of the four voices, so a player who listens properly is never
+     punished for reading them right. */
+  alarm: {
+    firstAt:  [40, 90],   // seconds into the night before the first one
+    every:    [34, 76],   // and the gap after that
+    perHour:  0.14,       // ...shortening as the night goes on
+  },
+
+  /* --- the shop not staying still -----------------------------------
+     A toy that is not where it was. Never on a camera she is currently
+     looking at — it has to happen behind her back or it is a magic
+     trick rather than a fright. */
+  shift: {
+    firstAt: [55, 110],
+    every:   [50, 105],
+  },
+
+  /* --- the building getting worse ------------------------------------
+     Fog closes in, the ambient drops and the bulb goes more often as
+     the clock runs. By five it is a different room. */
+  decay: {
+    fogNear:  -0.34,      // fraction of the room's near plane, per hour
+    fogFar:   -0.07,
+    ambient:  -0.055,
+    flicker:   0.10,      // added chance the office bulb drops out
+    static:    0.055,     // added camera noise
+  },
+
+  /* Cozy mode. The same shop and the same story with the edges taken
+     off: they move slower, they wait longer at the door, the meter is
+     kinder and a jumpscare is a short soft thing rather than a hard one.
+     It is not easy mode for people who are bad at it — it is for a night
+     she wants the place without the fright. */
+  cozy: {
+    aggression: 0.62,
+    doorGrace:  1.65,
+    power:      0.68,
+    alarms:     0.35,
+    decay:      0.4,
+    scare:      0.42,
+  },
 };
 
 /* =========================================================
    3. THE NIGHTS
 
-   A night names who is awake, when they wake, and a multiplier over
-   TUNE.cast for each hour. Adding a fourth night is adding an entry —
-   nothing else in the file knows how many there are.
+   Six of them, and every one changes a rule rather than a number. A
+   night that is only the last night played faster is how this genre
+   goes stale, so none of these is that: one takes a camera away for
+   good, one puts the hall lights out so the soldier has to be tracked
+   by ear, one starts pulling spikes off the meter, one lets the office
+   bulb fail on its own, one lets a door actuator go, and the last one
+   drops the monitor feed in the middle of a look.
+
+   `ramp` is the aggression multiplier for each of the six hours.
+   Adding a seventh night is adding an entry; nothing counts them.
    ========================================================= */
+const HAZARDS = {
+  deadWorkshop: "Camera eight has been dead since last night.",
+  signalLoss:   "The feeds drop out, one at a time, and come back on their own.",
+  hallDark:     "The hall lights are gone. He is still in there.",
+  surges:       "The main bus spikes. It takes what it takes.",
+  officeDark:   "The office bulb has started going out by itself.",
+  stickyDoor:   "The right-hand actuator is going. That door is slow now, and expensive.",
+  monitorDrop:  "The monitor cuts out mid-look. It comes back.",
+};
+
 const NIGHTS = [
   {
     n: 1,
@@ -193,7 +349,6 @@ const NIGHTS = [
     power: 100,
     /* who is awake, and from which hour (0 = midnight) */
     active: { cogsworth: 0, marabelle: 2, jax: 4 },
-    /* aggression per hour, 12am → 5am */
     ramp: [0.55, 0.7, 0.85, 1.0, 1.15, 1.3],
     hazards: [],
   },
@@ -203,8 +358,7 @@ const NIGHTS = [
     blurb: "Something in the ducts has started keeping time with you.",
     power: 100,
     active: { cogsworth: 0, chime: 0, marabelle: 1, jax: 2 },
-    ramp: [0.8, 0.95, 1.1, 1.25, 1.45, 1.6],
-    /* the workshop camera never came back after last night */
+    ramp: [0.75, 0.9, 1.05, 1.2, 1.35, 1.5],
     hazards: ["deadWorkshop"],
   },
   {
@@ -213,9 +367,35 @@ const NIGHTS = [
     blurb: "The hall light has been going since ten. Nobody is coming to fix it.",
     power: 100,
     active: { cogsworth: 0, chime: 0, marabelle: 0, jax: 0 },
-    ramp: [1.0, 1.15, 1.35, 1.55, 1.75, 2.0],
-    /* cameras drop out one at a time, and the hall light dies with them */
+    ramp: [0.9, 1.0, 1.1, 1.25, 1.4, 1.55],
     hazards: ["deadWorkshop", "signalLoss", "hallDark"],
+  },
+  {
+    n: 4,
+    name: "NIGHT FOUR",
+    blurb: "The meter has started losing chunks of itself to nothing at all.",
+    power: 100,
+    active: { cogsworth: 0, chime: 0, marabelle: 0, jax: 0 },
+    ramp: [1.0, 1.1, 1.2, 1.35, 1.5, 1.62],
+    hazards: ["deadWorkshop", "signalLoss", "hallDark", "surges", "officeDark"],
+  },
+  {
+    n: 5,
+    name: "NIGHT FIVE",
+    blurb: "The right-hand door takes its time now. So does everything else.",
+    power: 100,
+    active: { cogsworth: 0, chime: 0, marabelle: 0, jax: 0 },
+    ramp: [1.05, 1.2, 1.3, 1.45, 1.55, 1.7],
+    hazards: ["deadWorkshop", "signalLoss", "hallDark", "surges", "officeDark", "stickyDoor"],
+  },
+  {
+    n: 6,
+    name: "NIGHT SIX",
+    blurb: "Last one. The shop knows it too.",
+    power: 100,
+    active: { cogsworth: 0, chime: 0, marabelle: 0, jax: 0 },
+    ramp: [1.1, 1.25, 1.35, 1.5, 1.62, 1.75],
+    hazards: ["deadWorkshop", "signalLoss", "hallDark", "surges", "officeDark", "stickyDoor", "monitorDrop"],
   },
 ];
 
@@ -256,9 +436,10 @@ const MAP_PLAN = [
 /* =========================================================
    5. THE CAST
 
-   `route` is the floor path each one walks toward the office. The last
-   entry is the doorway it attacks from: "left" is the hall side,
-   "right" is the party side, "hatch" is the ceiling.
+   `route` is the floor path each one walks toward the office, as
+   [room, mark] pairs. The last entry is the doorway it attacks from:
+   "left" is the hall side, "right" is the party side, "hatch" is the
+   ceiling.
    ========================================================= */
 const CAST = [
   {
@@ -273,7 +454,7 @@ const CAST = [
   {
     id:"chime", name:"CHIME",
     what:"clockwork owl",
-    threat:"Lives above the ceiling. Doors mean nothing to it. Watch the ducts, and latch the hatch.",
+    threat:"Lives above the ceiling. Doors mean nothing to it — watch the ducts, and latch the hatch.",
     colour:"#8ea9c6",
     home:"workshop",
     route:[["workshop","s0"], ["workshop","s1"], ["ducts","s0"], ["ducts","s1"], ["ducts","s2"], ["office","hatch"]],
@@ -829,6 +1010,161 @@ function paintHarlequin(g, S, rnd, a, b) {
   grain(g, S, S, rnd, 0.04, 0);
 }
 
+/* --- OUISSY ---------------------------------------------------------
+   Her colours come straight off the racer's character sheet so she is
+   the same person in both games: warm skin, mid-brown hair worn long
+   and centre-parted, a cream varsity jacket with coral sleeves, and the
+   goggles pushed up on her forehead.
+
+   (The platformer draws her blonde. The racer is the reference this was
+   asked to match, so brown it is — worth knowing that the two existing
+   games already disagree with each other about her hair.) */
+const OUI = {
+  ink:    "#3d2340",
+  skin:   "#f6dcc2", skinSh: "#e0bc9c", skinHi: "#fdeedd",
+  hair:   "#8a6440", hairMid: "#a67c52", hairHi: "#c49a6c",
+  jacket: "#fff1e0", jacketSh: "#e6d5c2",
+  sleeve: "#ff7f8a", sleeveSh: "#e0656f",
+  accent: "#ff5f95",
+  goggle: "#4a3a3a", lens: "#ffd28a",
+  jeans:  "#4a5a72", boot: "#6b4a3a",
+  blush:  "#ff8fae",
+  /* what her hands and sleeves are painted in when they are the nearest
+     thing to the desk lamp */
+  handSkin: "#c99f7c", handSleeve: "#b8434e",
+};
+
+/* her face, painted — for the photograph on the board and the plate on
+   the desk. Drawn rather than modelled because at photograph size a
+   drawing reads and a model does not. */
+function paintOuissyPhoto(g, S, rnd) {
+  const bg = g.createLinearGradient(0, 0, 0, S);
+  bg.addColorStop(0, "#c8a882"); bg.addColorStop(1, "#8a6a52");
+  g.fillStyle = bg; g.fillRect(0, 0, S, S);
+  /* the white border of a photobooth strip */
+  g.fillStyle = "#f4ece0"; g.fillRect(0, 0, S, S);
+  g.fillStyle = "#a8845e"; g.fillRect(S * 0.06, S * 0.06, S * 0.88, S * 0.8);
+  const cx = S * 0.5, cy = S * 0.56, r = S * 0.2;
+  /* shoulders and jacket */
+  g.fillStyle = OUI.jacket;
+  g.beginPath(); g.ellipse(cx, cy + r * 2.0, r * 1.85, r * 1.1, 0, 0, TAU); g.fill();
+  g.fillStyle = OUI.sleeve;
+  g.beginPath(); g.ellipse(cx - r * 1.5, cy + r * 2.2, r * 0.6, r * 0.85, 0.2, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(cx + r * 1.5, cy + r * 2.2, r * 0.6, r * 0.85, -0.2, 0, TAU); g.fill();
+  g.fillStyle = OUI.accent;
+  g.fillRect(cx - r * 0.5, cy + r * 1.2, r, r * 0.28);
+  /* hair behind */
+  g.fillStyle = OUI.hair;
+  g.beginPath(); g.ellipse(cx, cy + r * 0.5, r * 1.45, r * 1.85, 0, 0, TAU); g.fill();
+  /* face */
+  g.fillStyle = OUI.skin;
+  g.beginPath(); g.ellipse(cx, cy, r * 0.98, r * 1.14, 0, 0, TAU); g.fill();
+  g.fillStyle = OUI.skinHi;
+  g.beginPath(); g.ellipse(cx - r * 0.3, cy - r * 0.3, r * 0.4, r * 0.45, 0, 0, TAU); g.fill();
+  /* the centre parting and the two front curtains */
+  g.fillStyle = OUI.hairMid;
+  g.beginPath(); g.ellipse(cx, cy - r * 0.72, r * 1.08, r * 0.55, 0, 0, TAU); g.fill();
+  g.fillStyle = OUI.hair;
+  g.beginPath(); g.ellipse(cx - r * 0.86, cy - r * 0.1, r * 0.34, r * 0.95, 0.1, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(cx + r * 0.86, cy - r * 0.1, r * 0.34, r * 0.95, -0.1, 0, TAU); g.fill();
+  g.strokeStyle = OUI.hairHi; g.lineWidth = S * 0.008;
+  g.beginPath(); g.moveTo(cx, cy - r * 1.2); g.lineTo(cx, cy - r * 0.5); g.stroke();
+  /* the goggles, pushed up */
+  g.fillStyle = OUI.goggle;
+  g.fillRect(cx - r * 1.05, cy - r * 1.02, r * 2.1, r * 0.3);
+  g.fillStyle = OUI.lens;
+  g.beginPath(); g.ellipse(cx - r * 0.5, cy - r * 0.88, r * 0.34, r * 0.24, 0, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(cx + r * 0.5, cy - r * 0.88, r * 0.34, r * 0.24, 0, 0, TAU); g.fill();
+  /* eyes, a nose and a small closed smile */
+  g.fillStyle = OUI.ink;
+  g.beginPath(); g.ellipse(cx - r * 0.34, cy - r * 0.05, r * 0.1, r * 0.13, 0, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(cx + r * 0.34, cy - r * 0.05, r * 0.1, r * 0.13, 0, 0, TAU); g.fill();
+  g.fillStyle = "#ffffff";
+  g.beginPath(); g.arc(cx - r * 0.3, cy - r * 0.1, r * 0.04, 0, TAU); g.fill();
+  g.beginPath(); g.arc(cx + r * 0.38, cy - r * 0.1, r * 0.04, 0, TAU); g.fill();
+  g.fillStyle = OUI.blush; g.globalAlpha = 0.5;
+  g.beginPath(); g.ellipse(cx - r * 0.6, cy + r * 0.3, r * 0.22, r * 0.14, 0, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(cx + r * 0.6, cy + r * 0.3, r * 0.22, r * 0.14, 0, 0, TAU); g.fill();
+  g.globalAlpha = 1;
+  g.strokeStyle = OUI.skinSh; g.lineWidth = S * 0.01;
+  g.beginPath(); g.moveTo(cx, cy + r * 0.1); g.lineTo(cx - r * 0.06, cy + r * 0.32); g.stroke();
+  g.strokeStyle = "#b0576a"; g.lineWidth = S * 0.014;
+  g.beginPath(); g.arc(cx, cy + r * 0.4, r * 0.28, 0.25, Math.PI - 0.25); g.stroke();
+  /* the caption strip along the bottom */
+  g.fillStyle = "#f4ece0"; g.fillRect(0, S * 0.86, S, S * 0.14);
+  g.fillStyle = "#6a5240";
+  g.font = "bold " + (S * 0.075) + "px ui-monospace, monospace";
+  g.textAlign = "center";
+  g.fillText("OUISSY", S / 2, S * 0.965);
+  grain(g, S, S, rnd, 0.05, 0);
+}
+
+/* the two of them, and this one never appears during a shift — it hangs
+   in the daylight gallery only, where nothing is going to move it or
+   use it for a fright */
+function paintUsPhoto(g, S, rnd) {
+  const sky = g.createLinearGradient(0, 0, 0, S);
+  sky.addColorStop(0, "#f6d7b0"); sky.addColorStop(0.62, "#f3bfa0"); sky.addColorStop(1, "#c98f76");
+  g.fillStyle = sky; g.fillRect(0, 0, S, S);
+  g.fillStyle = "rgba(255,236,200,.75)";
+  g.beginPath(); g.arc(S * 0.76, S * 0.24, S * 0.09, 0, TAU); g.fill();
+  /* a low skyline and a rooftop parapet, warm and out of focus */
+  g.fillStyle = "#a87a68";
+  for (let i = 0; i < 9; i++) {
+    const w = S * range(rnd, 0.06, 0.14), x = S * (i / 9) + range(rnd, -6, 6);
+    g.fillRect(x, S * range(rnd, 0.5, 0.62), w, S);
+  }
+  g.fillStyle = "#8a5e50"; g.fillRect(0, S * 0.72, S, S * 0.28);
+  /* two figures, shoulder to shoulder, backs to the light */
+  const draw = (cx, hair, jacket, sleeve, tall) => {
+    const base = S * 0.78, h = S * (tall ? 0.4 : 0.36);
+    g.fillStyle = jacket;
+    g.beginPath(); g.ellipse(cx, base - h * 0.28, h * 0.3, h * 0.36, 0, 0, TAU); g.fill();
+    g.fillStyle = sleeve;
+    g.beginPath(); g.ellipse(cx - h * 0.28, base - h * 0.24, h * 0.11, h * 0.24, 0.2, 0, TAU); g.fill();
+    g.beginPath(); g.ellipse(cx + h * 0.28, base - h * 0.24, h * 0.11, h * 0.24, -0.2, 0, TAU); g.fill();
+    g.fillStyle = hair;
+    g.beginPath(); g.ellipse(cx, base - h * 0.68, h * 0.22, h * 0.26, 0, 0, TAU); g.fill();
+    g.fillStyle = "rgba(60,34,24,.35)";
+    g.beginPath(); g.ellipse(cx, base - h * 0.62, h * 0.2, h * 0.2, 0, 0, TAU); g.fill();
+  };
+  draw(S * 0.4, OUI.hair, OUI.jacket, OUI.sleeve, false);
+  draw(S * 0.6, "#2b1c12", "#5ab8a6", "#3f8f80", true);
+  /* the white border and a corner of tape */
+  g.strokeStyle = "#f6efe2"; g.lineWidth = S * 0.07;
+  g.strokeRect(0, 0, S, S);
+  grain(g, S, S, rnd, 0.05, 0);
+}
+
+/* the same window, six hours later. Only ever shown once. */
+function paintDawn(g, S, rnd) {
+  const sky = g.createLinearGradient(0, 0, 0, S);
+  sky.addColorStop(0, "#8fb0d0");
+  sky.addColorStop(0.34, "#e6c49a");
+  sky.addColorStop(0.52, "#f0a882");
+  sky.addColorStop(1, "#c8896e");
+  g.fillStyle = sky; g.fillRect(0, 0, S, S);
+  const mx = S * 0.3, my = S * 0.46;
+  const mg = g.createRadialGradient(mx, my, 0, mx, my, S * 0.42);
+  mg.addColorStop(0, "rgba(255,244,214,.95)");
+  mg.addColorStop(0.2, "rgba(255,220,160,.5)");
+  mg.addColorStop(1, "rgba(255,200,150,0)");
+  g.fillStyle = mg; g.fillRect(0, 0, S, S);
+  g.fillStyle = "#5e5048";
+  g.fillRect(0, S * 0.56, S, S * 0.44);
+  g.fillStyle = "#6a5a50"; g.fillRect(0, S * 0.54, S, S * 0.03);
+  for (const w of [[0.14, 0.62], [0.62, 0.68]]) {
+    g.fillStyle = "rgba(255,232,190,.5)";
+    g.fillRect(S * w[0], S * w[1], S * 0.11, S * 0.13);
+  }
+  for (let i = 0; i < 5; i++) {
+    g.fillStyle = "rgba(48,40,36,.7)";
+    g.fillRect(S * range(rnd, 0.05, 0.95), S * 0.56, S * 0.02, S * 0.44);
+  }
+  /* the rain has stopped */
+  grain(g, S, S, rnd, 0.03, 0);
+}
+
 /* the contact shadow every prop stands on. One texture, shared. */
 function paintBlob(g, S) {
   const gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
@@ -879,6 +1215,10 @@ function buildTextures() {
   TX.enamelCream = tex("enamelCream", (g,S,r) => paintEnamel(g,S,r,"#a89876"));
   TX.woodShelf   = tex("woodShelf",   (g,S,r) => paintWood(g,S,r,"#7d5b3c",{boards:3}));
   TX.woodDark    = tex("woodDark",    (g,S,r) => paintWood(g,S,r,"#4a3524",{boards:4}));
+  TX.oui         = tex("oui", paintOuissyPhoto, 256);
+  TX.oui.wrapS = TX.oui.wrapT = T.ClampToEdgeWrapping;
+  TX.us          = tex("us", paintUsPhoto, 256);
+  TX.us.wrapS = TX.us.wrapT = T.ClampToEdgeWrapping;
   TX.brass       = tex("brass",     (g,S,r) => paintBrass(g,S,r,"#b08c46"));
   TX.brassDark   = tex("brassDark", (g,S,r) => paintBrass(g,S,r,"#7a6236"));
   TX.pewter      = tex("pewter",    (g,S,r) => paintBrass(g,S,r,"#8a8f96"));
@@ -886,6 +1226,8 @@ function buildTextures() {
   TX.harlequin   = tex("harlequin", (g,S,r) => paintHarlequin(g,S,r,"#5b3f7a","#c9a03c"));
   TX.crt         = tex("crt", paintCRT, 256);
   TX.crt.wrapS = TX.crt.wrapT = T.ClampToEdgeWrapping;
+  TX.dawn        = tex("dawn", paintDawn, 256);
+  TX.dawn.wrapS = TX.dawn.wrapT = T.ClampToEdgeWrapping;
   TX.night       = tex("night", paintNight, 256);
   TX.night.wrapS = TX.night.wrapT = T.ClampToEdgeWrapping;
   TX.blob        = tex("blob", paintBlob, 128);
@@ -1480,7 +1822,7 @@ KIT.bulb = function (kind, tint) {
     b.userData.lamp = true;
     g.add(at(b, 0, 0.09, 0.11));
   } else {                                 /* a desk lamp with an arm */
-    const gm = mat("enamelGreen", 1, 1, "#5e7a6c");
+    const gm = mat("enamelGreen", 1, 1, "#43604f");
     const base = new T.Mesh(new T.CylinderGeometry(0.1, 0.125, 0.035, 16), gm);
     g.add(at(base, 0, 0.018, 0));
     g.add(at(new T.Mesh(new T.CylinderGeometry(0.055, 0.09, 0.03, 16), gm), 0, 0.05, 0));
@@ -1491,7 +1833,7 @@ KIT.bulb = function (kind, tint) {
     /* a shade with a real rim and a lit inside, tipped down over the desk */
     const shade = part(-0.14, 0.44, 0);
     shade.rotation.z = 0.42;
-    shade.add(at(new T.Mesh(new T.ConeGeometry(0.135, 0.17, 16, 1, true), mat("enamelGreen", 1, 1, "#5e7a6c", { side: T.DoubleSide })), 0, 0, 0));
+    shade.add(at(new T.Mesh(new T.ConeGeometry(0.135, 0.17, 16, 1, true), mat("enamelGreen", 1, 1, "#3e5a4e", { side: T.DoubleSide })), 0, 0, 0));
     shade.add(at(new T.Mesh(new T.ConeGeometry(0.126, 0.155, 16, 1, true), glow("#ffe2b4", 0.9)), 0, 0.006, 0));
     shade.add(at(new T.Mesh(new T.TorusGeometry(0.132, 0.011, 6, 18), gm), 0, -0.085, 0, Math.PI / 2));
     g.add(shade);
@@ -1753,6 +2095,9 @@ function useView(roomId, camName, opts) {
     if (src) {
       l.position.set(src.x + ox, src.y, src.z);
       l.color.set(src.color);
+      /* kept so the gallery and the dawn can warm a light up and hand it
+         back exactly as it was, without a room change to reset it */
+      l.userData.baseColor = src.color;
       l.userData.base = src.intensity * LUX;
       l.userData.tag = src.tag || "";
       l.intensity = l.userData.base;
@@ -1766,6 +2111,7 @@ function useView(roomId, camName, opts) {
     }
   }
   rigAmbient.color.set(rec.ambient.color);
+  rigAmbient.userData.baseColor = rec.ambient.color;
   rigAmbient.intensity = rec.ambient.intensity;
   rigAmbient.userData.base = rec.ambient.intensity;
   scene.fog.color.set(rec.fog.color);
@@ -1864,10 +2210,10 @@ function buildOffice(R) {
     const k = new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.02, 8), flat("#4a463c"));
     mon.add(at(k, -0.18 + i * 0.09, 0.05, 0.21, Math.PI / 2));
   }
-  R.place(freeze(mon), 1.1, 0.785, deskZ - 0.24, { ry: -0.55, s: 0.92, shadowOpacity: 0.5 });
+  R.place(freeze(mon), 1.04, 0.785, deskZ - 0.26, { ry: -0.55, s: 0.9, shadowOpacity: 0.5 });
 
   /* --- desk lamp, radio, fan, mug, paperwork ---------------------- */
-  R.place(freeze(KIT.bulb("desk")), -0.98, 0.785, deskZ - 0.26, { ry: 1.9, shadowOpacity: 0.45 });
+  R.place(freeze(KIT.bulb("desk")), -1.02, 0.785, deskZ - 0.3, { ry: 1.9, shadowOpacity: 0.45 });
 
   const radio = new T.Group();
   radio.add(sb(0.36, 0.2, 0.15, mat("woodDark", 1, 1, "#8a6742"), 0, 0.1, 0));
@@ -1879,7 +2225,7 @@ function buildOffice(R) {
     radio.add(at(k, 0.06 + i * 0.08, 0.055, 0.08, Math.PI / 2));
   }
   radio.add(sb(0.01, 0.26, 0.01, flat("#b0b4b8"), 0.16, 0.32, -0.04, 0, 0, 0.22));
-  R.place(freeze(radio), -0.78, 0.785, deskZ + 0.24, { ry: 0.5, shadowOpacity: 0.5 });
+  R.place(freeze(radio), -1.0, 0.785, deskZ + 0.16, { ry: 0.6, shadowOpacity: 0.5 });
 
   /* the fan turns, so it is the one thing on the desk that lives in the
      animated branch. Everything else here is frozen. */
@@ -1919,7 +2265,7 @@ function buildOffice(R) {
   mug.add(at(tea, 0, 0.082, 0));
   const hnd = new T.Mesh(new T.TorusGeometry(0.03, 0.008, 5, 12), flat("#c8d0c4"));
   mug.add(at(hnd, 0.05, 0.05, 0, 0, Math.PI / 2));
-  R.place(freeze(mug), 0.24, 0.785, deskZ + 0.28, { shadowOpacity: 0.55 });
+  R.place(freeze(mug), 0.06, 0.785, deskZ + 0.16, { shadowOpacity: 0.55 });
 
   const pot = new T.Group();
   const pc = new T.Mesh(new T.CylinderGeometry(0.042, 0.036, 0.1, 10), mat("enamelGreen", 1, 1, "#6a8878"));
@@ -1928,17 +2274,17 @@ function buildOffice(R) {
     const p = new T.Mesh(new T.CylinderGeometry(0.005, 0.005, 0.16, 5), flat(["#d05a5a", "#3f6fa0", "#e0b040", "#2e2e34"][i]));
     pot.add(at(p, range(rnd, -0.02, 0.02), 0.12, range(rnd, -0.02, 0.02), range(rnd, -0.16, 0.16), 0, range(rnd, -0.2, 0.2)));
   }
-  R.place(freeze(pot), 0.66, 0.785, deskZ - 0.2, { shadowOpacity: 0.5 });
+  R.place(freeze(pot), 0.92, 0.785, deskZ + 0.12, { shadowOpacity: 0.5 });
 
   const clip = new T.Group();
   clip.add(sb(0.22, 0.012, 0.3, flat("#8a6a44"), 0, 0.006, 0));
   clip.add(sb(0.2, 0.008, 0.27, flat("#d8cfb4"), 0, 0.016, 0.005));
   clip.add(sb(0.09, 0.02, 0.035, flat("#9aa0a6"), 0, 0.026, -0.13));
   for (let i = 0; i < 5; i++) clip.add(sb(0.13, 0.002, 0.006, flat("#6a6152"), -0.01, 0.021, -0.06 + i * 0.045));
-  R.place(freeze(clip), -0.2, 0.785, deskZ + 0.2, { ry: -0.22, shadowOpacity: 0.45 });
+  R.place(freeze(clip), -0.28, 0.785, deskZ + 0.22, { ry: -0.22, shadowOpacity: 0.45 });
 
   const toy = KIT.toy(4, rnd);
-  R.place(freeze(toy), 0.52, 0.785, deskZ + 0.24, { ry: -0.9, s: 1.1, shadowOpacity: 0.5 });
+  R.place(freeze(toy), 0.36, 0.785, deskZ + 0.18, { ry: -0.9, s: 1.1, shadowOpacity: 0.5 });
 
   /* --- the meter and the three lamps: the office's own instruments --
      Deliberately physical. The overlay HUD says the number; this says
@@ -1953,14 +2299,14 @@ function buildOffice(R) {
       flat(i < 2 ? "#a83c34" : "#3a352c"),
       Math.sin(a) * 0.115, 0.14 + Math.cos(a) * 0.115, 0.082, 0, 0, -a));
   }
-  R.place(freeze(gauge), -0.5, 0.785, deskZ - 0.24, { ry: 0.24, shadowOpacity: 0.55 });
+  R.place(freeze(gauge), -0.52, 0.785, deskZ - 0.32, { ry: 0.2, shadowOpacity: 0.55 });
   const needle = new T.Group();
   needle.add(at(sb(0.008, 0.12, 0.005, flat("#b03c30"), 0, 0.06, 0)));
   const nhub = new T.Mesh(new T.SphereGeometry(0.016, 8, 6), flat("#c8b070"));
   needle.add(at(nhub, 0, 0, 0.004));
   const needleHolder = new T.Group();
-  needleHolder.position.set(-0.5, 0.925, deskZ - 0.24);
-  needleHolder.rotation.y = 0.24;
+  needleHolder.position.set(-0.52, 0.925, deskZ - 0.32);
+  needleHolder.rotation.y = 0.2;
   needle.position.set(0, 0, 0.086);
   needleHolder.add(needle);
   needleHolder.userData.needle = needle;
@@ -1979,9 +2325,31 @@ function buildOffice(R) {
     lampMeshes.push(cap);
     lampStrip.add(cap);
   });
-  lampStrip.position.set(0.2, 0.785, deskZ - 0.26);
-  lampStrip.rotation.y = -0.1;
+  lampStrip.position.set(0.16, 0.785, deskZ - 0.32);
+  lampStrip.rotation.y = -0.08;
   R.live(lampStrip);
+
+  /* --- whose desk this is -----------------------------------------
+     A brass plate with her name on it, screwed to the front edge where
+     anyone coming through the door would read it. */
+  const plate = new T.Group();
+  plate.add(sb(0.42, 0.1, 0.02, mat("brass", 1, 1, "#c8a260"), 0, 0, 0));
+  plate.add(sb(0.38, 0.062, 0.008, flat("#3a2f22"), 0, 0, 0.014));
+  for (let i = 0; i < 6; i++) {
+    plate.add(sb(0.028, 0.03, 0.006, mat("brass", 1, 1, "#e0c078"), -0.13 + i * 0.052, 0, 0.02));
+  }
+  for (const sx of [-1, 1]) {
+    plate.add(at(new T.Mesh(new T.CylinderGeometry(0.008, 0.008, 0.016, 6), mat("brass", 1, 1, "#b8945a")), sx * 0.185, 0, 0.02, Math.PI / 2));
+  }
+  R.place(freeze(plate), 0, 0.7, deskZ + 0.4, { shadow: false });
+
+  /* and her own photograph, taped to the corkboard where the last one
+     put theirs */
+  const photo = new T.Group();
+  photo.add(sb(0.2, 0.24, 0.012, flat("#f2ead8"), 0, 0, 0));
+  photo.add(at(new T.Mesh(new T.PlaneGeometry(0.17, 0.19), new T.MeshBasicMaterial({ map: TX.oui, fog: true })), 0, 0.012, 0.008));
+  photo.add(sb(0.06, 0.03, 0.006, flat("#d8c9a4"), 0.03, 0.13, 0.01, 0, 0, 0.5));
+  R.place(freeze(photo), 1.44, 1.48, -D / 2 + 0.16, { ry: -0.06, shadow: false });
 
   /* --- the north wall: window, corkboard, filing cabinet, duct ----- */
   const win = new T.Group();
@@ -2090,6 +2458,53 @@ function buildOffice(R) {
   cable.add(at(new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.4, 5), cm2), -0.05, 0.2, -0.6, 0, 0, 0));
   R.place(freeze(cable), -0.4, 0, 0.7, { shadow: false });
 
+  /* --- the shelf that fills up -------------------------------------
+     Ten small things on a bracket shelf by the right-hand door, one for
+     each night cleared and each badge earned, and every one of them
+     built at boot and simply not shown yet. Progress you can see from
+     the chair beats progress on a statistics screen. */
+  const trophyShelf = new T.Group();
+  const tsm = mat("woodShelf", 1.2, 0.5, "#b08c60");
+  trophyShelf.add(sb(1.2, 0.04, 0.2, tsm, 0, 0, 0.09));
+  trophyShelf.add(sb(1.2, 0.05, 0.025, tsm, 0, -0.02, 0.18));
+  for (const sx of [-1, 1]) {
+    trophyShelf.add(sb(0.022, 0.14, 0.18, tsm, sx * 0.55, -0.08, 0.07));
+    trophyShelf.add(sb(0.022, 0.18, 0.022, tsm, sx * 0.55, -0.07, 0.15, 0, -0.72));
+  }
+  R.place(freeze(trophyShelf), 0.1, 1.36, -D / 2 + 0.1, { shadow: false });
+
+  const trophies = [];
+  for (let i = 0; i < 12; i++) {
+    const t = KIT.toy(i % 6, rngFor("trophy" + i));
+    at(t, 0.1 - 0.48 + i * 0.088, 1.4, -D / 2 + 0.19 + (i % 2) * 0.015, 0, (i * 1.7) % TAU, 0, 0.8);
+    t.visible = false;
+    freeze(t);
+    /* the pool each one will cast once it is standing there */
+    const sh = contactShadow(t, { y: 1.4, opacity: 0.4, spread: 0.9 });
+    if (sh) { sh.visible = false; R.live(sh); }
+    t.matrixWorldAutoUpdate = false;
+    R.live(t);
+    trophies.push({ mesh: t, shadow: sh });
+  }
+
+  /* --- the picture that only hangs in daylight ----------------------
+     The two of them, on the wall behind the desk. It is off during a
+     shift and on in the gallery: nothing in this game is allowed to
+     move it, shift it, or use it for a fright. */
+  const usFrame = new T.Group();
+  const fm2 = mat("woodDark", 1, 1, "#8a6a44");
+  usFrame.add(sb(0.42, 0.05, 0.05, fm2, 0, 0.19, 0));
+  usFrame.add(sb(0.42, 0.05, 0.05, fm2, 0, -0.19, 0));
+  usFrame.add(sb(0.05, 0.43, 0.05, fm2, -0.19, 0, 0));
+  usFrame.add(sb(0.05, 0.43, 0.05, fm2, 0.19, 0, 0));
+  usFrame.add(at(new T.Mesh(new T.PlaneGeometry(0.34, 0.34), new T.MeshBasicMaterial({ map: TX.us, fog: true })), 0, 0, 0.01));
+  usFrame.position.set(-2.4, 1.62, -D / 2 + 0.1);
+  usFrame.rotation.y = 0.04;
+  usFrame.visible = false;
+  freeze(usFrame);
+  usFrame.matrixWorldAutoUpdate = false;
+  R.live(usFrame);
+
   /* --- the overhead bulb, which is on its way out ----------------- */
   const pend = KIT.bulb("pendant", "#6a5a44");
   pend.position.set(-0.35, 2.38, -0.45);
@@ -2101,7 +2516,7 @@ function buildOffice(R) {
      monitor is cold, the ceiling bulb is failing, and each doorway has
      just enough light beyond it to make a silhouette out of anything
      standing there. */
-  R.light({ x: -0.72, y: 1.02, z: deskZ - 0.02, color: "#ffb765", intensity: 2.3, distance: 5.2, decay: 1.4, tag: "desk" });
+  R.light({ x: -0.9, y: 1.08, z: deskZ - 0.3, color: "#ffb765", intensity: 1.5, distance: 5.8, decay: 1.3, tag: "desk" });
   R.light({ x: 0.66, y: 1.12, z: deskZ + 0.2, color: "#79b6e2", intensity: 1.5, distance: 3.0, decay: 1.6, tag: "monitor" });
   R.light({ x: -0.35, y: 2.3, z: -0.45, color: "#ffd0a0", intensity: 1.5, distance: 7.4, decay: 1.35, tag: "pendant" });
   R.light({ x: -1.75, y: 1.5, z: -D / 2 + 0.75, color: "#7f9ad6", intensity: 0.8, distance: 4.8, decay: 1.6, tag: "window" });
@@ -2114,7 +2529,10 @@ function buildOffice(R) {
   });
 
   /* --- the seat ---------------------------------------------------- */
-  R.cam("main", [0, 1.62, 2.16], [0, 1.06, -2.7], 74);
+  /* The seat. Back far enough, and high enough, that her own forearms
+     are inside the bottom of the frame — a first-person guard whose
+     hands are off screen is a floating camera, not a person. */
+  R.cam("main", [0, 1.66, 2.36], [0, 1.0, -2.7], 74);
 
   /* where the cast stands when it gets here */
   R.anchor("s0",        -W / 2 - 0.62, 0, doorZ,  Math.PI / 2);
@@ -2125,7 +2543,7 @@ function buildOffice(R) {
   R.anchor("leftHall",  -W / 2 - 1.5, 0, doorZ,  Math.PI / 2);
   R.anchor("rightHall",  W / 2 + 1.5, 0, doorZ, -Math.PI / 2);
 
-  return { lampMeshes, needleHolder, blades, pend, face };
+  return { lampMeshes, needleHolder, blades, pend, face, trophies, usFrame, glass };
 }
 
 /* =========================================================
@@ -3239,6 +3657,156 @@ function fitFigure(g, targetH) {
   return g;
 }
 
+/* --- OUISSY -----------------------------------------------------------
+   The guard, and the only person in the building. She stands in the
+   office doorway on the title screen and nowhere else during a shift —
+   during a shift you are behind her eyes, and what you see of her is
+   her own hands on the desk.
+
+   Same palette as the racer, translated up: the long centre-parted
+   brown hair, the cream varsity jacket with coral sleeves, and the
+   goggles she never actually wears pushed up on her forehead. */
+MODELS.ouissy = function () {
+  const g = new T.Group();
+  const joints = {};
+  /* a step darker than her sheet colour: these are the closest things in
+     the room to the desk lamp, and at half a metre the sheet tone tone-maps
+     to flat white */
+  const skin = flat(OUI.handSkin);
+  const skinSh = flat(OUI.skinSh);
+  const jacket = mat("porcelain", 1, 1, OUI.jacket);
+  const sleeve = flat(OUI.sleeve);
+  const hair = flat(OUI.hair);
+  const hairMid = flat(OUI.hairMid);
+
+  /* jeans and boots */
+  [["legL", -1], ["legR", 1]].forEach(([k, sx]) => {
+    const hip = part(sx * 0.1, 0.86, 0);
+    hip.add(at(new T.Mesh(new T.CylinderGeometry(0.075, 0.062, 0.48, 10), flat(OUI.jeans)), 0, -0.24, 0));
+    hip.add(at(new T.Mesh(new T.CylinderGeometry(0.062, 0.055, 0.36, 10), flat(OUI.jeans)), 0, -0.62, 0));
+    hip.add(sb(0.11, 0.08, 0.22, flat(OUI.boot), 0, -0.83, 0.03));
+    hip.add(sb(0.115, 0.05, 0.1, flat("#4a3428"), 0, -0.86, -0.02));
+    g.add(hip);
+    joints[k] = hip;
+  });
+
+  /* the varsity jacket: a body, a coral band at the hem, two coral
+     sleeves and a collar */
+  const torso = part(0, 0, 0);
+  torso.add(at(new T.Mesh(new T.CylinderGeometry(0.19, 0.165, 0.46, 12), jacket), 0, 1.09, 0));
+  torso.add(at(new T.Mesh(new T.CylinderGeometry(0.168, 0.168, 0.07, 12), sleeve), 0, 0.89, 0));
+  torso.add(at(new T.Mesh(new T.SphereGeometry(0.2, 12, 9), jacket), 0, 1.3, 0, 0, 0, 0, 1.08, 0.62, 0.86));
+  /* the zip and a rose stripe down it */
+  torso.add(sb(0.022, 0.44, 0.02, flat(OUI.jacketSh), 0, 1.09, 0.168));
+  torso.add(sb(0.05, 0.1, 0.02, flat(OUI.accent), 0.075, 1.2, 0.166));
+  /* the collar */
+  torso.add(at(new T.Mesh(new T.CylinderGeometry(0.105, 0.135, 0.075, 12), sleeve), 0, 1.36, 0));
+  g.add(torso);
+  joints.torso = torso;
+
+  [["armL", -1], ["armR", 1]].forEach(([k, sx]) => {
+    const sh = part(sx * 0.21, 1.32, 0);
+    sh.add(at(new T.Mesh(new T.CylinderGeometry(0.062, 0.05, 0.3, 10), sleeve), sx * 0.02, -0.16, 0, 0, 0, -sx * 0.1));
+    sh.add(at(new T.Mesh(new T.CylinderGeometry(0.05, 0.044, 0.26, 10), sleeve), sx * 0.05, -0.42, 0.01, 0.08, 0, -sx * 0.06));
+    sh.add(at(new T.Mesh(new T.CylinderGeometry(0.047, 0.047, 0.045, 10), jacket), sx * 0.06, -0.55, 0.01));
+    sh.add(at(new T.Mesh(new T.SphereGeometry(0.05, 10, 8), skin), sx * 0.065, -0.62, 0.015, 0, 0, 0, 0.85, 1.15, 0.9));
+    g.add(sh);
+    joints[k] = sh;
+  });
+
+  /* the head: a face, then the hair over and behind it, then goggles */
+  const head = part(0, 1.44, 0);
+  head.add(at(new T.Mesh(new T.CylinderGeometry(0.05, 0.058, 0.07, 10), skinSh), 0, 0.02, 0));
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.125, 16, 12), skin), 0, 0.13, 0, 0, 0, 0, 0.93, 1.08, 0.95));
+  /* the hair: a crown, two long curtains at the sides and a mass down
+     the back — never a full sphere, which swallows the face whole */
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.132, 16, 12), hair), 0, 0.145, -0.022, 0, 0, 0, 1.02, 1.03, 0.86));
+  for (const sx of [-1, 1]) {
+    head.add(at(new T.Mesh(new T.CylinderGeometry(0.045, 0.055, 0.42, 9), hair), sx * 0.108, -0.03, -0.01, 0, 0, sx * 0.05));
+    head.add(at(new T.Mesh(new T.SphereGeometry(0.05, 10, 8), hairMid), sx * 0.112, -0.23, -0.01));
+  }
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.115, 12, 10), hair), 0, 0.06, -0.11, 0, 0, 0, 1.1, 1.5, 0.7));
+  head.add(sb(0.11, 0.05, 0.06, hairMid, 0, 0.225, 0.075));
+  head.add(sb(0.012, 0.05, 0.05, flat(OUI.hairHi), 0, 0.235, 0.088));   // the parting
+  /* the goggles, up on her forehead where she keeps them */
+  head.add(at(new T.Mesh(new T.TorusGeometry(0.125, 0.021, 6, 20, Math.PI * 1.2), flat(OUI.goggle)), 0, 0.2, 0.012, 0, 0, -0.6));
+  for (const sx of [-1, 1]) {
+    head.add(at(new T.Mesh(new T.CylinderGeometry(0.042, 0.042, 0.03, 12), flat(OUI.goggle)), sx * 0.055, 0.215, 0.088, Math.PI / 2 - 0.3));
+    const lens = new T.Mesh(new T.CylinderGeometry(0.032, 0.032, 0.014, 12), glow(OUI.lens, 0.9));
+    head.add(at(lens, sx * 0.055, 0.216, 0.1, Math.PI / 2 - 0.3));
+    /* eyes */
+    const eye = new T.Mesh(new T.SphereGeometry(0.017, 10, 8), flat(OUI.ink));
+    eye.userData.eye = true;
+    head.add(at(eye, sx * 0.045, 0.115, 0.105));
+    head.add(at(new T.Mesh(new T.SphereGeometry(0.006, 6, 5), flat("#ffffff")), sx * 0.052, 0.126, 0.116));
+    head.add(at(new T.Mesh(new T.SphereGeometry(0.028, 8, 6), flat(OUI.blush)), sx * 0.075, 0.078, 0.09, 0, 0, 0, 1, 0.5, 0.35));
+  }
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.014, 8, 6), skinSh), 0, 0.1, 0.118));
+  head.add(sb(0.03, 0.009, 0.012, flat("#b0576a"), 0, 0.068, 0.114));
+  g.add(head);
+  joints.head = head;
+
+  g.userData.joints = joints;
+  g.userData.eyeY = 1.555;
+  return fitFigure(g, 1.66);
+};
+
+/* --- her hands, from where she is sitting ----------------------------
+   The one part of her that is on screen during a shift. Two forearms in
+   coral sleeves coming in at the bottom corners with her hands flat on
+   the desk, and they answer to what she does: the hand on a door's side
+   lifts and presses when that door moves, and now and then the fingers
+   drum on their own.
+
+   Sized and placed against the seat's camera — the frame covers about
+   six degrees up from the eye line to forty-three down, so anything
+   meant to be visible from the chair has to be roughly a metre out and
+   eighty centimetres below it. Nearer than that and it is behind the
+   bottom edge of the picture. */
+function buildHands() {
+  const g = new T.Group();
+  const sleeve = flat(OUI.handSleeve);
+  const cuff = mat("porcelain", 1, 1, "#d8cbb8");
+  const skin = flat(OUI.skin);
+  const out = { group: g, hands: {} };
+
+  [["left", -1], ["right", 1]].forEach(([k, sx]) => {
+    const arm = part(sx * (sx < 0 ? 0.62 : 0.66), 0.792, sx < 0 ? 1.10 : 1.08);
+    arm.rotation.y = -sx * 0.22;
+    /* the forearm runs back out of shot; the cuff is the bit of coral
+       and cream you actually see, right on the bottom edge */
+    arm.add(at(new T.Mesh(new T.CylinderGeometry(0.07, 0.058, 0.5, 12), sleeve), 0, 0.014, 0.3, Math.PI / 2 + 0.05));
+    arm.add(at(new T.Mesh(new T.CylinderGeometry(0.062, 0.062, 0.055, 12), cuff), 0, 0.008, 0.07, Math.PI / 2));
+    arm.add(at(new T.Mesh(new T.TorusGeometry(0.06, 0.008, 5, 14), flat(OUI.accent)), 0, 0.008, 0.098, Math.PI / 2));
+    /* the hand: a palm arched over the desk, four fingers splayed a
+       little and reaching away, and a thumb tucked in at the side */
+    const hand = part(0, 0.004, -0.055);
+    hand.rotation.x = -0.06;
+    hand.add(at(new T.Mesh(new T.SphereGeometry(0.062, 12, 9), skin), 0, 0, 0, 0, 0, 0, 0.95, 0.52, 1.25));
+    for (let i = 0; i < 4; i++) {
+      const f = part(-0.039 + i * 0.026, -0.004, -0.075);
+      f.rotation.y = (i - 1.5) * 0.11;
+      f.rotation.x = 0.12;
+      f.add(at(new T.Mesh(new T.CylinderGeometry(0.0125, 0.0115, 0.075, 8), skin), 0, 0, -0.03, Math.PI / 2));
+      f.add(at(new T.Mesh(new T.SphereGeometry(0.0118, 8, 6), skin), 0, -0.002, -0.068));
+      /* a knuckle, so the back of the hand is not a slab */
+      f.add(at(new T.Mesh(new T.SphereGeometry(0.0145, 8, 6), skin), 0, 0.006, 0.005));
+      hand.add(f);
+    }
+    const thumb = part(sx * -0.058, -0.008, -0.012);
+    thumb.rotation.set(0.1, sx * 0.6, 0);
+    thumb.add(at(new T.Mesh(new T.CylinderGeometry(0.0145, 0.013, 0.062, 8), skin), 0, 0, -0.028, Math.PI / 2));
+    thumb.add(at(new T.Mesh(new T.SphereGeometry(0.0135, 8, 6), skin), 0, 0, -0.058));
+    hand.add(thumb);
+    arm.add(hand);
+    out.hands[k] = hand;
+    const sh = contactShadow(hand, { y: -0.006, opacity: 0.34, spread: 1.15 });
+    if (sh) arm.add(sh);
+    g.add(arm);
+  });
+  return out;
+}
+
 /* --- COGSWORTH: a tin soldier, a metre and nine, all right angles --- */
 MODELS.cogsworth = function () {
   const g = new T.Group();
@@ -3814,6 +4382,79 @@ function poseCast(dt, t) {
 }
 
 /* =========================================================
+   15e. THE SHOP NOT STAYING STILL
+
+   A handful of toys that are in one place, and then are in another.
+   Both places are built at boot, both are frozen, and the shift is one
+   `visible` flag going off and another going on — no transform is ever
+   recomputed, so this cannot become the drift bug it looks like.
+
+   The rule that makes it a fright rather than a magic trick: never move
+   one in the room she is looking at. It has to happen behind her back.
+   ========================================================= */
+const SHIFTIES = [
+  { room:"hall",     a:[-1.5, 0, -2.2], b:[ 1.5, 0, -3.4] },
+  { room:"hall",     a:[ 0.7, 0,  2.7], b:[-1.3, 0,  3.7] },
+  { room:"party",    a:[-2.7, 0, -1.3], b:[ 2.5, 0, -0.5] },
+  { room:"party",    a:[ 0.5, 0,  2.7], b:[-1.7, 0,  2.3] },
+  { room:"arcade",   a:[-0.7, 0, -2.9], b:[ 0.9, 0, -1.1] },
+  { room:"arcade",   a:[-1.0, 0,  2.5], b:[ 1.2, 0,  1.7] },
+  { room:"stage",    a:[-2.9, 0,  2.7], b:[ 2.7, 0,  3.3] },
+  { room:"stage",    a:[-1.0, 0.88, -2.95], b:[ 1.0, 0.88, -2.05] },
+  { room:"foyer",    a:[-2.5, 0,  1.9], b:[ 2.3, 0, -0.7] },
+  { room:"workshop", a:[-1.7, 0,  1.7], b:[ 1.4, 0,  1.2] },
+  { room:"closet",   a:[-1.0, 0,  1.5], b:[ 0.9, 0,  0.9] },
+];
+const shifties = [];
+
+function buildShifties() {
+  SHIFTIES.forEach((def, i) => {
+    const rec = rooms[def.room];
+    if (!rec) return;
+    const rnd = rngFor("shifty" + i);
+    const pair = { room: def.room, at: 0, poses: [] };
+    [def.a, def.b].forEach((pos, k) => {
+      const t = KIT.toy((i + k * 3) % 6, rnd);
+      const g = new T.Group();
+      g.add(t);
+      at(t, 0, 0, 0, 0, range(rnd, 0, TAU), 0);
+      g.position.set(pos[0], pos[1], pos[2]);
+      g.scale.setScalar(1.25);
+      g.updateMatrixWorld(true);
+      const sh = contactShadow(g, { y: pos[1], opacity: 0.55 });
+      const holder = new T.Group();
+      holder.add(g);
+      if (sh) holder.add(sh);
+      holder.visible = k === 0;
+      rec.live.add(holder);
+      freeze(holder);
+      holder.matrixWorldAutoUpdate = false;
+      pair.poses.push(holder);
+    });
+    shifties.push(pair);
+  });
+}
+
+/* move one, somewhere she is not looking */
+function shiftSomething() {
+  const pool = shifties.filter((p) => p.room !== shownRoom);
+  if (!pool.length) return;
+  const p = pick(Math.random, pool);
+  p.poses[p.at].visible = false;
+  p.at = 1 - p.at;
+  p.poses[p.at].visible = true;
+  G.stats.shifts++;
+}
+
+function resetShifties() {
+  shifties.forEach((p) => {
+    p.poses[0].visible = true;
+    p.poses[1].visible = false;
+    p.at = 0;
+  });
+}
+
+/* =========================================================
    16. BOOT
 
    One renderer, one scene, one camera, six lights. Rooms are built at
@@ -3833,7 +4474,7 @@ const BUILDERS = {
 };
 
 let built = false, noWebGL = false;
-let officeParts = null, officeDoors = null;
+let officeParts = null, officeDoors = null, officeHands = null, ouissy = null;
 let stageEl = null, canvasEl = null;
 let pixelCap = 1.5;
 
@@ -3894,6 +4535,21 @@ function buildWorld(cvs) {
   officeParts = rooms.office.parts;
   officeDoors = buildOfficeDoors(roomAPI(rooms.office));
   buildCast();
+
+  /* her hands on the desk, and her standing in the left-hand doorway on
+     the title screen — the one place in the whole chapter you see her
+     from the outside */
+  buildShifties();
+  findEgg();
+
+  officeHands = buildHands();
+  rooms.office.live.add(officeHands.group);
+  ouissy = MODELS.ouissy();
+  ouissy.position.set(-OFFICE.W / 2 - 0.55, 0, OFFICE.doorZ + 0.1);
+  ouissy.rotation.y = Math.PI / 2 - 0.35;
+  ouissy.visible = false;
+  scene.add(ouissy);
+  ouissy.updateMatrix();
 
   built = true;
 }
@@ -4008,6 +4664,24 @@ function audioDuck(v, ms) {
 }
 
 /* --- the two primitives everything else is made of ---------------- */
+/* Where a sound is coming from. Every cue carries the pan of the side
+   its owner attacks from, so on headphones the soldier is always in your
+   left ear and the ballerina always in your right, all the way down
+   their routes — which is most of the information the game gives you
+   when the hall lights are out. */
+function panned(o) {
+  const g = AC.createGain();
+  if (o.pan !== undefined && AC.createStereoPanner) {
+    const p = AC.createStereoPanner();
+    p.pan.value = clamp(o.pan, -1, 1);
+    g.connect(p);
+    p.connect(o.bus || cueGain);
+  } else {
+    g.connect(o.bus || cueGain);
+  }
+  return g;
+}
+
 function burst(o) {
   if (!ac() || muted) return;
   const t = now() + (o.at || 0);
@@ -4022,7 +4696,7 @@ function burst(o) {
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(Math.max(0.0002, o.gain || 0.2), t + (o.attack || 0.004));
   g.gain.exponentialRampToValueAtTime(0.0001, t + (o.dur || 0.2));
-  src.connect(f); f.connect(g); g.connect(o.bus || cueGain);
+  src.connect(f); f.connect(g); g.connect(panned(o));
   src.start(t); src.stop(t + (o.dur || 0.2) + 0.05);
 }
 function tone(o) {
@@ -4042,83 +4716,114 @@ function tone(o) {
     f.type = o.filter; f.frequency.value = o.ff || 1200; f.Q.value = o.q || 1;
     osc.connect(f); node = f;
   }
-  node.connect(g); g.connect(o.bus || cueGain);
+  node.connect(g); g.connect(panned(o));
   osc.start(t); osc.stop(t + (o.dur || 0.3) + 0.05);
 }
 
 /* --- the voices ---------------------------------------------------- */
 const SFX = {
   /* COGSWORTH — a boot on a board, and the metal in it ringing after */
-  step(gain) {
+  step(gain, pan) {
     const v = gain === undefined ? 0.5 : gain;
-    burst({ f0: 180, f1: 70, dur: 0.16, gain: 0.5 * v, q: 0.8, filter: "lowpass" });
-    tone({ type: "square", f0: 96, f1: 62, dur: 0.13, gain: 0.11 * v, filter: "lowpass", ff: 500 });
-    tone({ type: "triangle", f0: 1420, dur: 0.24, gain: 0.045 * v, at: 0.012 });
-    tone({ type: "triangle", f0: 2130, dur: 0.19, gain: 0.03 * v, at: 0.012 });
+    burst({ f0: 180, f1: 70, dur: 0.16, gain: 0.5 * v, q: 0.8, filter: "lowpass", pan });
+    tone({ type: "square", f0: 96, f1: 62, dur: 0.13, gain: 0.11 * v, filter: "lowpass", ff: 500, pan });
+    tone({ type: "triangle", f0: 1420, dur: 0.24, gain: 0.045 * v, at: 0.012, pan });
+    tone({ type: "triangle", f0: 2130, dur: 0.19, gain: 0.03 * v, at: 0.012, pan });
   },
-  tick(gain) {
+  tick(gain, pan) {
     const v = gain === undefined ? 0.4 : gain;
-    burst({ f0: 3200, dur: 0.03, gain: 0.16 * v, q: 3 });
-    tone({ type: "square", f0: 1800, dur: 0.02, gain: 0.03 * v });
+    burst({ f0: 3200, dur: 0.03, gain: 0.16 * v, q: 3, pan });
+    tone({ type: "square", f0: 1800, dur: 0.02, gain: 0.03 * v, pan });
   },
-  wind(gain) {                     // his key, turning
+  wind(gain, pan) {                     // his key, turning
     const v = gain === undefined ? 0.4 : gain;
-    for (let i = 0; i < 7; i++) burst({ f0: 1600 + i * 90, dur: 0.035, gain: 0.09 * v, q: 4, at: i * 0.062 });
+    for (let i = 0; i < 7; i++) burst({ f0: 1600 + i * 90, dur: 0.035, gain: 0.09 * v, q: 4, at: i * 0.062, pan });
   },
 
   /* CHIME — a hoot with a mechanical wobble in it, and feathers of tin */
-  hoot(gain) {
+  hoot(gain, pan) {
     const v = gain === undefined ? 0.5 : gain;
     [0, 0.34].forEach((d, k) => {
-      tone({ type: "sine", f0: k ? 300 : 340, f1: k ? 250 : 286, dur: 0.42, gain: 0.16 * v, at: d, attack: 0.05 });
-      tone({ type: "sine", f0: k ? 601 : 681, f1: k ? 500 : 572, dur: 0.34, gain: 0.05 * v, at: d, attack: 0.05 });
+      tone({ type: "sine", f0: k ? 300 : 340, f1: k ? 250 : 286, dur: 0.42, gain: 0.16 * v, at: d, attack: 0.05, pan });
+      tone({ type: "sine", f0: k ? 601 : 681, f1: k ? 500 : 572, dur: 0.34, gain: 0.05 * v, at: d, attack: 0.05, pan });
     });
-    for (let i = 0; i < 6; i++) burst({ f0: 2400, dur: 0.02, gain: 0.05 * v, q: 6, at: 0.02 + i * 0.052 });
+    for (let i = 0; i < 6; i++) burst({ f0: 2400, dur: 0.02, gain: 0.05 * v, q: 6, at: 0.02 + i * 0.052, pan });
   },
-  flutter(gain) {
+  flutter(gain, pan) {
     const v = gain === undefined ? 0.4 : gain;
     for (let i = 0; i < 5; i++) {
-      burst({ f0: 480 - i * 40, f1: 200, dur: 0.11, gain: 0.13 * v, q: 0.7, at: i * 0.1, filter: "bandpass" });
-      burst({ f0: 3000, dur: 0.02, gain: 0.04 * v, q: 8, at: i * 0.1 + 0.01 });
+      burst({ f0: 480 - i * 40, f1: 200, dur: 0.11, gain: 0.13 * v, q: 0.7, at: i * 0.1, filter: "bandpass", pan });
+      burst({ f0: 3000, dur: 0.02, gain: 0.04 * v, q: 8, at: i * 0.1 + 0.01, pan });
     }
   },
 
   /* MARABELLE — a music box. Her tune, eight notes, hers alone. */
-  boxNote(f, gain, at, dur) {
+  boxNote(f, gain, at, dur, pan) {
     const v = gain === undefined ? 0.4 : gain;
-    tone({ type: "sine", f0: f, dur: dur || 0.9, gain: 0.15 * v, at: at || 0, attack: 0.004 });
-    tone({ type: "sine", f0: f * 2, dur: (dur || 0.9) * 0.5, gain: 0.06 * v, at: at || 0, attack: 0.003 });
-    tone({ type: "sine", f0: f * 3.01, dur: (dur || 0.9) * 0.28, gain: 0.03 * v, at: at || 0, attack: 0.002 });
-    burst({ f0: 5200, dur: 0.012, gain: 0.03 * v, q: 8, at: at || 0 });
+    tone({ type: "sine", f0: f, dur: dur || 0.9, gain: 0.15 * v, at: at || 0, attack: 0.004, pan });
+    tone({ type: "sine", f0: f * 2, dur: (dur || 0.9) * 0.5, gain: 0.06 * v, at: at || 0, attack: 0.003, pan });
+    tone({ type: "sine", f0: f * 3.01, dur: (dur || 0.9) * 0.28, gain: 0.03 * v, at: at || 0, attack: 0.002, pan });
+    burst({ f0: 5200, dur: 0.012, gain: 0.03 * v, q: 8, at: at || 0, pan });
   },
   /* B, G#, E, F#, G#, E, B(low), E — a small turning phrase that does
      not resolve, which is the point of it */
-  tune(gain, speed) {
+  tune(gain, speed, pan) {
     const sp = speed || 1;
     const seq = [493.9, 415.3, 329.6, 370.0, 415.3, 329.6, 246.9, 329.6];
-    seq.forEach((f, i) => SFX.boxNote(f, gain, i * 0.34 * sp, 0.85 * sp));
+    seq.forEach((f, i) => SFX.boxNote(f, gain, i * 0.34 * sp, 0.85 * sp, pan));
+  },
+  /* the same phrase, but it goes on and lands. Only ever played once,
+     at the very end of the last night. */
+  tuneWhole(gain) {
+    const seq = [493.9, 415.3, 329.6, 370.0, 415.3, 329.6, 246.9, 329.6,
+                 293.7, 369.99, 440.0, 493.9, 415.3, 369.99, 329.6, 246.9, 164.8];
+    const hold = [1, 1, 1, 1, 1, 1, 1, 1.4, 1, 1, 1, 1, 1, 1, 1.2, 1.6, 3];
+    let at = 0;
+    seq.forEach((f, i) => { SFX.boxNote(f, gain, at, 0.9 * hold[i]); at += 0.4 * hold[i]; });
+    return at + 2.4;
   },
 
   /* JAX — a crank that will not stop, and something laughing under it */
-  crank(gain) {
+  crank(gain, pan) {
     const v = gain === undefined ? 0.5 : gain;
     const seq = [392, 440, 494, 523, 587, 494, 392];
     seq.forEach((f, i) => {
-      tone({ type: "triangle", f0: f, dur: 0.2, gain: 0.13 * v, at: i * 0.17, filter: "lowpass", ff: 1600 });
-      burst({ f0: 2600, dur: 0.02, gain: 0.05 * v, q: 7, at: i * 0.17 });
+      tone({ type: "triangle", f0: f, dur: 0.2, gain: 0.13 * v, at: i * 0.17, filter: "lowpass", ff: 1600, pan });
+      burst({ f0: 2600, dur: 0.02, gain: 0.05 * v, q: 7, at: i * 0.17, pan });
     });
   },
-  laugh(gain) {
+  laugh(gain, pan) {
     const v = gain === undefined ? 0.5 : gain;
     for (let i = 0; i < 6; i++) {
       const f = 210 - i * 12;
-      tone({ type: "sawtooth", f0: f, f1: f * 0.82, dur: 0.11, gain: 0.1 * v, at: i * 0.115, filter: "bandpass", ff: 900, q: 3 });
-      tone({ type: "square", f0: f * 2.51, f1: f * 2.1, dur: 0.09, gain: 0.035 * v, at: i * 0.115 });
+      tone({ type: "sawtooth", f0: f, f1: f * 0.82, dur: 0.11, gain: 0.1 * v, at: i * 0.115, filter: "bandpass", ff: 900, q: 3, pan });
+      tone({ type: "square", f0: f * 2.51, f1: f * 2.1, dur: 0.09, gain: 0.035 * v, at: i * 0.115, pan });
     }
   },
-  bells(gain) {
+  bells(gain, pan) {
     const v = gain === undefined ? 0.4 : gain;
-    [1180, 1560, 2040].forEach((f, i) => tone({ type: "triangle", f0: f, dur: 0.5, gain: 0.05 * v, at: i * 0.03 }));
+    [1180, 1560, 2040].forEach((f, i) => tone({ type: "triangle", f0: f, dur: 0.5, gain: 0.05 * v, at: i * 0.03, pan }));
+  },
+
+  /* --- the ones that are nothing ------------------------------------
+     A shut building settles. None of these is one of the four voices —
+     a player who has learned what the four sound like is never fooled
+     into a wrong move by them, only into looking. Which is the point. */
+  falseBang(pan) {
+    burst({ f0: 210, f1: 80, dur: 0.34, gain: 0.42, q: 0.7, filter: "lowpass", pan });
+    tone({ type: "sine", f0: 62, f1: 40, dur: 0.5, gain: 0.1, pan });
+  },
+  falseSettle(pan) {
+    const f = 140 + Math.random() * 260;
+    tone({ type: "sawtooth", f0: f, f1: f * 0.6, dur: 1.1, gain: 0.07, filter: "bandpass", ff: 500, q: 7, pan });
+    burst({ f0: 900, dur: 0.4, gain: 0.05, q: 2, pan });
+  },
+  falseSkitter(pan) {
+    for (let i = 0; i < 7; i++) burst({ f0: 1800 + Math.random() * 900, dur: 0.03, gain: 0.09, q: 5, at: i * 0.055, pan });
+  },
+  falseBurst(pan) {
+    burst({ f0: 3200, dur: 0.3, gain: 0.2, q: 0.4, filter: "highpass", pan });
+    tone({ type: "square", f0: 420, f1: 180, dur: 0.12, gain: 0.05, pan });
   },
 
   /* the room and the desk */
@@ -4149,6 +4854,11 @@ const SFX = {
     burst({ f0: 260, f1: 90, dur: 0.22, gain: 0.55, q: 0.7, filter: "lowpass" });
     tone({ type: "square", f0: 88, f1: 55, dur: 0.2, gain: 0.16, filter: "lowpass", ff: 300 });
   },
+  surge() {
+    tone({ type: "sawtooth", f0: 300, f1: 60, dur: 0.5, gain: 0.18, filter: "lowpass", ff: 1400 });
+    burst({ f0: 2200, f1: 300, dur: 0.4, gain: 0.24, q: 0.6 });
+    tone({ type: "square", f0: 120, f1: 70, dur: 0.3, gain: 0.09, filter: "lowpass", ff: 600 });
+  },
   powerDown() {
     tone({ type: "sawtooth", f0: 180, f1: 22, dur: 2.2, gain: 0.16, filter: "lowpass", ff: 900 });
     tone({ type: "sine", f0: 90, f1: 18, dur: 2.4, gain: 0.12 });
@@ -4167,8 +4877,21 @@ const SFX = {
 
   /* the four ways it ends. Sharp, loud, short — and different enough
      that you know which one got you before the screen tells you. */
-  scare(id) {
-    audioDuck(0.25, 40);
+  scare(id, soft) {
+    const k = soft === undefined ? 1 : soft;
+    audioDuck(0.25 + (1 - k) * 0.5, 40);
+    /* cozy mode still has a scare — it is just a short soft one, a thud
+       and the thing's own voice once, instead of the full stack */
+    if (k < 0.6) {
+      burst({ f0: 400, f1: 110, dur: 0.5, gain: 0.3, q: 0.6, filter: "lowpass" });
+      tone({ type: "sine", f0: 180, f1: 70, dur: 0.7, gain: 0.14 });
+      if (id === "cogsworth") SFX.step(0.6);
+      else if (id === "chime") SFX.hoot(0.55);
+      else if (id === "marabelle") SFX.boxNote(246.9, 0.6, 0, 1.2);
+      else SFX.bells(0.6);
+      setTimeout(() => audioDuck(1, 700), 900);
+      return;
+    }
     if (id === "cogsworth") {
       burst({ f0: 2600, f1: 300, dur: 0.9, gain: 0.85, q: 0.6, filter: "bandpass" });
       for (let i = 0; i < 5; i++) tone({ type: "square", f0: 180 + i * 37, f1: 60, dur: 0.7, gain: 0.14, at: i * 0.012, filter: "lowpass", ff: 2200 });
@@ -4195,6 +4918,106 @@ const SFX = {
   },
 };
 
+/* =========================================================
+   17b. THE ANNUNCIATOR
+
+   The building talks. It is not a person and it is not company: it is
+   the security system reading its own state out, in the flat way an
+   old lift or a station board does, and it never says anything that
+   is not a reading. No reassurance, no commentary, no name.
+
+   The voice is synthesised the same way everything else here is. A
+   formant pair — two bandpass filters over a buzzing sawtooth — makes
+   a vowel; the syllable count of the line drives how many of them get
+   played; a ring-modulated square underneath is what makes it read as
+   a machine rather than a person humming. The words themselves arrive
+   as a caption on the panel, because a vocoder cannot be understood
+   and is not supposed to be.
+   ========================================================= */
+const FORMANTS = [
+  [ 730, 1090],   // a
+  [ 530, 1840],   // e
+  [ 270, 2290],   // i
+  [ 570,  840],   // o
+  [ 300,  870],   // u
+];
+
+function syllablesOf(text) {
+  let n = 0;
+  text.toLowerCase().split(/[^a-z]+/).forEach((w) => {
+    if (!w) return;
+    const m = w.match(/[aeiouy]+/g);
+    n += m ? m.length : 1;
+  });
+  return clamp(n, 1, 22);
+}
+
+function annunciate(text, urgent) {
+  if (!ac() || muted) return;
+  const t0 = now();
+  const gain = urgent ? 0.85 : 0.6;
+  /* the two-tone attention chime every announcement opens with */
+  tone({ type: "square", f0: urgent ? 880 : 660, dur: 0.09, gain: 0.075 * gain, filter: "lowpass", ff: 2400 });
+  tone({ type: "square", f0: urgent ? 1170 : 880, dur: 0.11, gain: 0.075 * gain, at: 0.1, filter: "lowpass", ff: 2400 });
+
+  const n = syllablesOf(text);
+  const rnd = mulberry(seedOf(text));
+  const step = 0.108;
+  for (let i = 0; i < n; i++) {
+    const at = 0.26 + i * step;
+    const f = FORMANTS[(rnd() * FORMANTS.length) | 0];
+    /* the carrier: a low buzz, deliberately monotone apart from a
+       downward step at the end of the line */
+    const carrier = i === n - 1 ? 96 : 112;
+    [0, 1].forEach((k) => {
+      const osc = AC.createOscillator();
+      osc.type = k ? "square" : "sawtooth";
+      osc.frequency.setValueAtTime(carrier * (k ? 2 : 1), t0 + at);
+      const bp = AC.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = f[k];
+      bp.Q.value = k ? 9 : 6;
+      const g = AC.createGain();
+      g.gain.setValueAtTime(0.0001, t0 + at);
+      g.gain.exponentialRampToValueAtTime(0.055 * gain * (k ? 0.5 : 1), t0 + at + 0.012);
+      g.gain.setValueAtTime(0.055 * gain * (k ? 0.5 : 1), t0 + at + step * 0.6);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + step * 0.92);
+      osc.connect(bp); bp.connect(g); g.connect(cueGain);
+      osc.start(t0 + at); osc.stop(t0 + at + step);
+    });
+    /* the consonant edge between syllables */
+    burst({ f0: 2600, dur: 0.018, gain: 0.03 * gain, q: 5, at: at - 0.012 });
+  }
+  return 0.26 + n * step + 0.2;
+}
+
+/* one line at a time, and never over a jumpscare */
+let sayQueue = [], sayUntil = 0;
+function say(line, urgent) {
+  if (!line) return;
+  sayQueue.push({ line, urgent });
+  if (sayQueue.length > 3) sayQueue.shift();
+}
+function sayTick(dt) {
+  if (G.t < sayUntil || !sayQueue.length) return;
+  const it = sayQueue.shift();
+  const dur = annunciate(it.line, it.urgent) || 1.2;
+  sayUntil = G.t + dur + 0.25;
+  G.caption = it.line;
+  G.captionT = dur + 0.6;
+}
+function fmt(t, a) { return (t || "").replace("$1", a); }
+/* and the off switch. The system has nothing to say about a finished
+   shift, a daylight walk-through or a title screen, so it stops mid
+   sentence rather than trailing a status line over the ending. */
+function sayClear() {
+  sayQueue.length = 0;
+  sayUntil = 0;
+  G.caption = "";
+  G.captionT = 0;
+  if (EL["ns-say"]) { EL["ns-say"].hidden = true; EL["ns-say"].textContent = ""; }
+}
+
 /* the creaks that keep the bed from ever being flat */
 function audioTick(dt) {
   if (!audioOn || muted) return;
@@ -4217,9 +5040,11 @@ function audioMute(v) {
    during a shift changes here; the world does not change at all.
    ========================================================= */
 const G = {
-  phase: "idle",        // idle | title | howto | brief | play | pause | over | shift | finale
+  phase: "idle",        // idle | load | title | howto | brief | play | pause | over | shift | finale | custom | badges | gallery | arcade
+  mode:  "story",       // story | custom | gallery
   night: 1,
   cfg: NIGHTS[0],
+  cozy: false,
   hour: 0,              // 0 = 12 AM ... 6 = out
   hourT: 0,
   power: 100,
@@ -4233,6 +5058,7 @@ const G = {
   approaching: null,
   dead: null,
   deadT: 0,
+  cardT: 0,
   shake: 0,
   flick: 1,             // the failing ceiling bulb
   flickT: 0,
@@ -4241,14 +5067,72 @@ const G = {
   lostT: 12,
   t: 0,
   warned: 0,
-  best: {},
+  caption: "",
+  captionT: 0,
+
+  /* the things that are not the four of them */
+  alarmT: 0,
+  shiftT: 0,
+  surgeT: 0,
+  lampOut: 0,           // seconds the office bulb is dead for
+  lampT: 0,
+  monOut: 0,            // seconds the feed is down for
+  monT: 0,
+
+  /* everything the rating and the badges are worked out from. All of it
+     is counted anyway to run the night; none of it is a separate
+     tracking system bolted on for the summary screen. */
+  stats: { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, lowest: 100 },
+  rating: null,
 };
 
 /* --- the numbers a night actually runs on ------------------------- */
 function nightCfg(n) { return NIGHTS[clamp(n, 1, NIGHTS.length) - 1]; }
+
+/* Custom Night. The story is six fixed shapes; this is the same shop
+   with the dials handed over — one to twenty per performer, the way a
+   difficulty slider ought to work, and the shift is built out of them
+   rather than out of a table. It is the whole long-tail of the game and
+   it needs no new art at all. */
+const CUSTOM_KEY = "ns_custom";
+function customDials() {
+  const d = { cogsworth: 5, chime: 5, marabelle: 5, jax: 5 };
+  try {
+    const o = JSON.parse(localStorage.getItem(CUSTOM_KEY) || "null");
+    if (o) CAST.forEach((c) => { if (typeof o[c.id] === "number") d[c.id] = clamp(o[c.id] | 0, 0, 20); });
+  } catch (e) { /* private mode: the dials just start in the middle */ }
+  return d;
+}
+function saveDials(d) {
+  try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(d)); } catch (e) {}
+}
+function customCfg(d) {
+  const active = {};
+  CAST.forEach((c) => { if (d[c.id] > 0) active[c.id] = 0; });
+  const top = Math.max(d.cogsworth, d.chime, d.marabelle, d.jax);
+  const base = 0.4 + top * 0.1;
+  return {
+    n: 0,
+    name: "CUSTOM NIGHT",
+    blurb: "Your shop, your rules. " + CAST.map((c) => c.name.charAt(0) + d[c.id]).join(" · "),
+    power: 100,
+    active,
+    ramp: [base * 0.8, base * 0.88, base * 0.96, base, base * 1.08, base * 1.16],
+    hazards: top >= 12 ? ["signalLoss", "surges", "officeDark"] : top >= 7 ? ["signalLoss"] : [],
+    dials: d,
+  };
+}
+/* a dial of 10 is the story's own pace; 20 is twice it */
+function dialOf(id) {
+  const d = G.cfg.dials;
+  return d ? clamp(d[id] / 10, 0, 2) : 1;
+}
+
+function cozyK(k) { return G.cozy ? TUNE.cozy[k] : 1; }
+
 function ramp() {
   const r = G.cfg.ramp;
-  return r[clamp(G.hour, 0, r.length - 1)];
+  return r[clamp(G.hour, 0, r.length - 1)] * cozyK("aggression");
 }
 function hazard(name) { return G.cfg.hazards.indexOf(name) >= 0; }
 
@@ -4315,7 +5199,8 @@ function stepCast(ch, dt) {
         if (ch.knockT <= 0) {
           ch.knockT = 2.0;
           ch.knocks++;
-          spendPower(TUNE.power.knock);
+          G.stats.knocks++;
+          spendPower(TUNE.power.knock * cozyK("power"));
           SFX.knock();
           G.shake = Math.max(G.shake, 0.5);
           if (ch.knocks >= 3) retreat(ch);
@@ -4343,8 +5228,8 @@ function stepCast(ch, dt) {
 
   ch.cool -= dt;
   if (ch.cool > 0) return;
-  const agg = ramp();
-  ch.cool = tune.step / agg;
+  const agg = ramp() * dialOf(ch.def.id);
+  ch.cool = tune.step / Math.max(0.15, agg);
   if (Math.random() > tune.chance * agg) return;
 
   /* Jax skips, and occasionally doubles back, which is why he is the
@@ -4359,7 +5244,8 @@ function stepCast(ch, dt) {
   syncChar(ch);
   ch.pose = "walk";
   if (ch.atDoor) {
-    ch.doorT = tune.doorGrace / Math.max(0.8, agg * 0.85);
+    ch.doorT = (tune.doorGrace * cozyK("doorGrace")) / Math.max(0.8, agg * 0.85);
+    G.stats.arrivals++;
     ch.knocks = 0;
     ch.knockT = 0.7;
     arriveCue(ch);
@@ -4381,17 +5267,22 @@ function retreat(ch) {
 /* the sound a figure makes when it moves */
 function cue(ch, g) {
   const v = clamp(g, 0.08, 1);
-  if (ch.def.id === "cogsworth") { SFX.step(v); setTimeout(() => SFX.step(v * 0.85), 260); SFX.tick(v * 0.5); }
-  else if (ch.def.id === "chime") { SFX.flutter(v * 0.8); setTimeout(() => SFX.hoot(v), 220); }
-  else if (ch.def.id === "marabelle") { SFX.tune(v * 0.8, 1); }
-  else { SFX.crank(v * 0.7); setTimeout(() => SFX.bells(v), 300); }
+  const p = TUNE.pan[ch.def.door];
+  if (ch.def.id === "cogsworth") { SFX.step(v, p); setTimeout(() => SFX.step(v * 0.85, p), 260); SFX.tick(v * 0.5, p); }
+  else if (ch.def.id === "chime") { SFX.flutter(v * 0.8, p); setTimeout(() => SFX.hoot(v, p), 220); }
+  else if (ch.def.id === "marabelle") { SFX.tune(v * 0.8, 1, p); }
+  else { SFX.crank(v * 0.7, p); setTimeout(() => SFX.bells(v, p), 300); }
 }
 /* and the different, closer sound it makes when it is at the door */
 function arriveCue(ch) {
-  if (ch.def.id === "cogsworth") { SFX.step(1); SFX.wind(0.9); }
-  else if (ch.def.id === "chime") { SFX.hoot(1); SFX.flutter(0.9); }
-  else if (ch.def.id === "marabelle") { SFX.tune(1, 0.72); }
-  else { SFX.laugh(0.9); SFX.bells(0.9); }
+  const p = TUNE.pan[ch.def.door];
+  if (ch.def.id === "cogsworth") { SFX.step(1, p); SFX.wind(0.9, p); }
+  else if (ch.def.id === "chime") { SFX.hoot(1, p); SFX.flutter(0.9, p); }
+  else if (ch.def.id === "marabelle") { SFX.tune(1, 0.72, p); }
+  else { SFX.laugh(0.9, p); SFX.bells(0.9, p); }
+  /* the system notices it too, and says only that it noticed */
+  say(fmt(NS.sys.motion, ch.def.door === "hatch" ? "VENT" :
+        ch.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
 }
 
 /* --- power --------------------------------------------------------- */
@@ -4402,18 +5293,25 @@ function spendPower(v) {
 function powerRate() {
   const p = TUNE.power;
   let r = p.idle;
-  if (G.monitor) r += p.camera;
+  if (G.monitor && G.monOut <= 0) r += p.camera;
   if (G.doors.left) r += p.door;
-  if (G.doors.right) r += p.door;
+  /* the failing actuator on the right, from night five: that door is
+     slower to answer and it costs half again to hold */
+  if (G.doors.right) r += p.door * (hazard("stickyDoor") ? 1.5 : 1);
   if (G.doors.hatch) r += p.hatch;
   /* Jax leaning on a shut door costs extra for as long as he is there */
   const jax = cast.jax;
   if (jax && jax.awake && jax.atDoor && G.doors[jax.def.door]) r += p.jaxDoor;
-  return r * (0.92 + ramp() * 0.09);
+  /* later nights cost a little more per second, but only a little: the
+     late nights are hard because four of them are awake and the doors
+     are shut a third of the night, not because the meter was quietly
+     shrunk underneath you. */
+  return r * (0.94 + ramp() * 0.05) * cozyK("power");
 }
 
 function startBlackout() {
   G.blackout = true;
+  say(NS.sys.pwrOut, true);
   G.blackoutT = 0;
   G.blackoutLen = range(Math.random, TUNE.blackout.graceMin, TUNE.blackout.graceMax);
   G.approaching = null;
@@ -4446,10 +5344,12 @@ function stepBlackout(dt) {
 /* --- the end of it ------------------------------------------------- */
 function kill(ch) {
   if (G.phase !== "play") return;
+  sayClear();
   G.phase = "over";
   G.dead = ch.def.id;
   G.deadT = 0;
-  G.shake = 1;
+  G.cardT = 0;
+  G.shake = G.cozy ? 0.4 : 1;
   ch.pose = "scare";
   ch.awake = true;
   /* right in the lens, and lit by nothing but the office */
@@ -4464,8 +5364,7 @@ function kill(ch) {
   ch.group.visible = true;
   ch.group.updateMatrix();
   G.killChar = ch;
-  G.cardT = 0;
-  SFX.scare(ch.def.id);
+  SFX.scare(ch.def.id, cozyK("scare"));
   bedStop();
   showHud(false);
   noOverlay();
@@ -4474,14 +5373,42 @@ function kill(ch) {
 function winNight() {
   G.phase = "shift";
   G.deadT = 0;
+  G.cardT = 0;
   showHud(false);
-  SFX.sixAM();
-  try {
-    const done = JSON.parse(localStorage.getItem("wk_nights") || "{}");
-    done[G.night] = true;
-    localStorage.setItem("wk_nights", JSON.stringify(done));
-    if (G.night >= NIGHTS.length && window.markWickDone) window.markWickDone();
-  } catch (e) { /* private mode: the shift still counts, it just won't keep */ }
+  /* the strip goes now rather than on the next frame: uiTick does not
+     run once the shift is over, so anything left on screen would sit
+     under the card until the title */
+  sayClear();
+  const last = G.mode === "story" && G.night >= NIGHTS.length;
+  /* the night goes in the book before it is marked, so that the badge
+     for finishing every night can see the one just finished */
+  if (G.mode === "story") {
+    try {
+      const done = JSON.parse(localStorage.getItem("ns_nights") || "{}");
+      done[G.night] = true;
+      localStorage.setItem("ns_nights", JSON.stringify(done));
+      if (last && window.markNightShiftDone) window.markNightShiftDone();
+    } catch (e) { /* private mode: the shift still counts, it just won't keep */ }
+  }
+  G.rating = rateNight();
+  G.newBadges = awardBadges();
+  if (last) {
+    /* the finale is the only place the room changes character: the
+       window goes over to morning, the rig warms up, and the music box
+       is allowed to finish the tune it has been cutting short all week */
+    G.dawn = true;
+    if (officeParts && officeParts.glass && TX.dawn) {
+      officeParts.glass.material = new T.MeshBasicMaterial({ map: TX.dawn, fog: true });
+    }
+    SFX.sixAM();
+    setTimeout(() => { if (G.phase === "shift" || G.phase === "finale") SFX.tuneWhole(0.75); }, 2600);
+  } else {
+    SFX.sixAM();
+    /* straight to the annunciator: six o'clock is worth hearing, and the
+       caption strip is already gone */
+    annunciate(NS.sys.six, false);
+  }
+  syncTrophies();
   bumpUI();
 }
 
@@ -4493,6 +5420,7 @@ function stepClock(dt) {
     G.hour++;
     if (G.hour >= 6) { winNight(); return; }
     SFX.beep(false);
+    say(fmt(NS.sys.hour, ["ZERO ONE", "ZERO TWO", "ZERO THREE", "ZERO FOUR", "ZERO FIVE"][G.hour - 1] || ""));
     bumpUI();
   }
 }
@@ -4508,8 +5436,159 @@ function stepSignal(dt) {
     const r = pick(Math.random, pool);
     G.lost[r.id] = range(Math.random, 14, 22);
     if (G.monitor && G.cam === r.id) SFX.hiss(1.2);
+    say(fmt(NS.sys.camLost, "ZERO " + r.cam), true);
     bumpUI();
   }
+}
+
+/* =========================================================
+   18b. THE THINGS THAT ARE NOT THE FOUR OF THEM
+
+   A false alarm, a toy that moved, a spike off the meter, a bulb that
+   gives up, a door that has started to stick, a feed that drops in the
+   middle of a look. None of them can kill her; all of them cost her
+   the thing this game actually runs on, which is her attention.
+   ========================================================= */
+function nextIn(range2, k) {
+  return range(Math.random, range2[0], range2[1]) * (k || 1);
+}
+
+function stepAlarms(dt) {
+  G.alarmT -= dt;
+  if (G.alarmT > 0) return;
+  const shorten = 1 - clamp(G.hour * TUNE.alarm.perHour, 0, 0.55);
+  G.alarmT = nextIn(TUNE.alarm.every, shorten / Math.max(0.2, cozyK("alarms") > 0.9 ? 1 : 1 / cozyK("alarms")));
+  if (G.cozy && Math.random() > TUNE.cozy.alarms) return;
+  /* a side to come from, so it reads as a place rather than a noise */
+  const pan = pick(Math.random, [-0.8, -0.5, 0, 0.5, 0.8]);
+  const kind = (Math.random() * 4) | 0;
+  if (kind === 0) { SFX.falseBang(pan); G.shake = Math.max(G.shake, 0.26); }
+  else if (kind === 1) SFX.falseSettle(pan);
+  else if (kind === 2) SFX.falseSkitter(pan);
+  else { SFX.falseBurst(pan); G.flick = 0.2; G.flickT = 0.25; }
+}
+
+function stepShifts(dt) {
+  G.shiftT -= dt;
+  if (G.shiftT > 0) return;
+  G.shiftT = nextIn(TUNE.shift.every);
+  shiftSomething();
+}
+
+/* --- the hazards that belong to particular nights ------------------ */
+function stepHazards(dt) {
+  if (hazard("surges")) {
+    G.surgeT -= dt;
+    if (G.surgeT <= 0) {
+      G.surgeT = range(Math.random, 70, 130);
+      if (!G.blackout) {
+        spendPower(TUNE.power.surge * cozyK("power"));
+        G.stats.surges++;
+        SFX.surge();
+        G.shake = Math.max(G.shake, 0.3);
+        say(NS.sys.surge, true);
+      }
+    }
+  }
+  if (hazard("officeDark")) {
+    if (G.lampOut > 0) {
+      G.lampOut -= dt;
+      if (G.lampOut <= 0) G.lampT = range(Math.random, 30, 62);
+    } else {
+      G.lampT -= dt;
+      if (G.lampT <= 0) {
+        G.lampOut = range(Math.random, 3.5, 8);
+        SFX.hiss(0.5);
+        say(NS.sys.lampFail);
+      }
+    }
+  }
+  if (hazard("monitorDrop")) {
+    if (G.monOut > 0) {
+      G.monOut -= dt;
+      if (G.monOut <= 0) { G.monT = range(Math.random, 26, 54); bumpUI(); }
+    } else {
+      G.monT -= dt;
+      if (G.monT <= 0 && G.monitor) {
+        G.monOut = range(Math.random, 2.4, 5);
+        SFX.hiss(1.3);
+        say(NS.sys.monFault, true);
+        bumpUI();
+      }
+    }
+  }
+}
+
+/* --- how the shop itself gets worse as the clock runs -------------- */
+function decayK() { return G.hour * cozyK("decay"); }
+
+/* =========================================================
+   18c. HOW THE NIGHT IS SCORED
+
+   Everything here comes out of numbers the shift was already keeping.
+   No new tracking, no separate telemetry — just a sentence at the end
+   about how it actually went, and six lines she can collect.
+   ========================================================= */
+const BADGE_KEY = "ns_badges";
+function badgesGot() {
+  try { return JSON.parse(localStorage.getItem(BADGE_KEY) || "{}") || {}; }
+  catch (e) { return {}; }
+}
+function giveBadge(id) {
+  try {
+    const b = badgesGot();
+    if (b[id]) return false;
+    b[id] = true;
+    localStorage.setItem(BADGE_KEY, JSON.stringify(b));
+    return true;
+  } catch (e) { return false; }
+}
+
+function rateNight() {
+  const st = G.stats;
+  /* a clean night is one where nothing ever got as far as needing a
+     door in a hurry, and the meter never went near the floor */
+  let score = 0;
+  if (G.power >= 25) score += 2; else if (G.power >= 10) score += 1;
+  if (st.lowest >= 20) score += 2; else if (st.lowest >= 8) score += 1;
+  if (st.knocks === 0) score += 1;
+  if (!G.blackout) score += 2;
+  if (st.camSec >= 25) score += 1;          // she actually looked
+  const r = score >= 7 ? 0 : score >= 5 ? 1 : score >= 3 ? 2 : 3;
+  return NS.ratings[r];
+}
+
+function awardBadges() {
+  const got = [];
+  const st = G.stats;
+  if (giveBadge("first")) got.push("first");
+  /* CLOSING TIME says "finish every night", so it means every night —
+     not just the last one reached from the night-select list */
+  const done = nightsDone();
+  let all = G.mode === "story";
+  for (let i = 1; i <= NIGHTS.length && all; i++) if (!done[i]) all = false;
+  if (all && giveBadge("story")) got.push("story");
+  if (G.power <= 1.2 && giveBadge("onepc")) got.push("onepc");
+  if (st.closes === 0 && giveBadge("nodoor")) got.push("nodoor");
+  if (st.camSec < 20 && giveBadge("nocam")) got.push("nocam");
+  return got;
+}
+
+/* the shelf by the desk: one small thing for every night cleared and
+   every badge earned, and that is the whole progress screen */
+function syncTrophies() {
+  const parts = officeParts;
+  if (!parts || !parts.trophies) return;
+  const d = nightsDone();
+  let n = 0;
+  for (let i = 1; i <= NIGHTS.length; i++) if (d[i]) n++;
+  const b = badgesGot();
+  NS.badges.forEach((x) => { if (b[x.id]) n++; });
+  parts.trophies.forEach((t, i) => {
+    const on = i < n;
+    t.mesh.visible = on;
+    if (t.shadow) t.shadow.visible = on;
+  });
 }
 
 /* =========================================================
@@ -4526,19 +5605,48 @@ function applyLighting(dt) {
   /* the ceiling bulb in the office has been going for weeks */
   G.flickT -= dt;
   if (G.flickT <= 0) {
+    const p = clamp(0.45 + decayK() * TUNE.decay.flicker, 0, 0.9) * (G.mode === "gallery" ? 0 : 1);
     G.flickT = G.flick < 0.7 ? range(Math.random, 0.04, 0.12) : range(Math.random, 0.6, 3.4);
-    G.flick = G.flick < 0.7 ? range(Math.random, 0.85, 1.05) : (Math.random() < 0.45 ? range(Math.random, 0.15, 0.5) : 1);
+    G.flick = G.flick < 0.7 ? range(Math.random, 0.85, 1.05) : (Math.random() < p ? range(Math.random, 0.15, 0.5) : 1);
   }
   const low = G.blackout ? 0.06 : 1;
   const warn = G.power < TUNE.power.critical && !G.blackout ? 0.55 + 0.45 * Math.sin(G.t * 9) : 1;
+  /* the office bulb giving up on its own, from night four */
+  const lampGone = G.lampOut > 0 ? 0.05 : 1;
+  /* and the daylight gallery, which is the same rig turned up and warmed */
+  const day = G.mode === "gallery";
+  /* six o'clock on the last night: the office warms up and stops
+     flickering, once, and stays that way while the card is on screen */
+  const dawn = G.dawn ? 1 : 0;
   for (let i = 0; i < RIG_N; i++) {
     const l = rig[i];
     let k = low * warn;
-    if (l.userData.tag === "pendant") k *= G.flick;
+    if (!dawn && (l.userData.tag === "pendant" || l.userData.tag === "desk")) k *= G.flick * lampGone;
     if (G.hallDark && /^strip/.test(l.userData.tag || "")) k *= 0.12;
+    if (day) { k *= 3.4; l.color.set("#fff2dd"); }
+    if (dawn) {
+      k = 1.15;
+      if (l.userData.tag === "window") { k = 3.6; l.color.set("#ffd0a0"); }
+    }
+    if (!day && !dawn && l.userData.baseColor) l.color.set(l.userData.baseColor);
     l.intensity = l.userData.base * k;
   }
-  rigAmbient.intensity = rigAmbient.userData.base * (G.blackout ? 0.22 : 1);
+  rigAmbient.intensity = rigAmbient.userData.base *
+    (G.blackout ? 0.22 : day ? 11 : dawn ? 2.6 : 1 - clamp(decayK() * -TUNE.decay.ambient * 4, 0, 0.34));
+  if (dawn) rigAmbient.color.set("#e8cfae");
+  /* the gallery is the one time the shop is lit the way a shop is lit:
+     warm, flat and from everywhere, with the fog switched off entirely */
+  if (day) rigAmbient.color.set("#ffe7c6");
+  else if (!dawn && rigAmbient.userData.baseColor) rigAmbient.color.set(rigAmbient.userData.baseColor);
+  if (renderer) renderer.toneMappingExposure = day ? 1.5 : 1.05;
+  /* the fog closes in as the night goes on, and lifts entirely in the
+     gallery — the room itself is part of how frightening the room is */
+  if (scene.fog && shownRoom && rooms[shownRoom]) {
+    const f = rooms[shownRoom].fog;
+    const k = day ? 0 : decayK();
+    scene.fog.near = f.near * (1 + TUNE.decay.fogNear * clamp(k / 5, 0, 1)) * (day ? 3 : 1);
+    scene.fog.far = f.far * (1 + TUNE.decay.fogFar * clamp(k / 5, 0, 1)) * (day ? 3.2 : 1);
+  }
 }
 
 function animateOffice(dt) {
@@ -4547,7 +5655,8 @@ function animateOffice(dt) {
   ["left", "right"].forEach((k) => {
     const d = officeDoors[k];
     const target = G.doors[k] ? d.closedY : d.openY;
-    const sp = (G.doors[k] ? 3.4 : 2.6) * dt * 2.2;
+    const sticky = k === "right" && hazard("stickyDoor") ? 0.44 : 1;
+    const sp = (G.doors[k] ? 3.4 : 2.6) * dt * 2.2 * sticky;
     d.y += clamp(target - d.y, -sp, sp);
     d.mesh.position.y = d.y + (G.shake > 0 && Math.abs(d.y - d.closedY) < 0.05 ? Math.sin(G.t * 60) * G.shake * 0.012 : 0);
     d.mesh.updateMatrix();
@@ -4582,6 +5691,22 @@ function animateOffice(dt) {
       const c = G.blackout ? "#231a18" : on ? "#ff5a48" : "#2f6a3c";
       m.material = glow(c, 1);
     });
+  }
+  if (parts.usFrame) parts.usFrame.visible = G.mode === "gallery";
+  /* her hands are on the desk while she is sitting at it, and nowhere
+     else — not on the title card, not in the gallery */
+  if (officeHands) {
+    officeHands.group.visible = (G.phase === "play" || G.phase === "pause") && G.mode !== "gallery";
+    if (officeHands.group.visible) {
+      ["left", "right"].forEach((k) => {
+        const h = officeHands.hands[k];
+        if (!h) return;
+        const want = G.doors[k] ? 0.03 : 0;
+        h.userData.lift = (h.userData.lift || 0) + (want - (h.userData.lift || 0)) * Math.min(1, dt * 7);
+        h.position.y = 0.004 + h.userData.lift + Math.sin(G.t * 0.7 + (k === "left" ? 0 : 2)) * 0.0016;
+        h.rotation.x = -0.06 - h.userData.lift * 3.5;
+      });
+    }
   }
   /* the pendant's own bulb dims with the light it stands for */
   if (parts.pend) {
@@ -4629,18 +5754,28 @@ function frame(ts) {
   if (dt > 0.1) dt = 0.1;                 // a tab coming back must not skip a night
   G.t += dt;
 
+  if (ARC.on) { arcadeStep(dt); }
   if (G.phase === "play") {
+    stepEgg(dt);
     stepClock(dt);
     if (G.phase === "play") {
       G.drain = powerRate();
       spendPower(G.drain * dt);
+      G.stats.lowest = Math.min(G.stats.lowest, G.power);
+      if (G.monitor && G.monOut <= 0) G.stats.camSec += dt;
+      const shut = (G.doors.left ? 1 : 0) + (G.doors.right ? 1 : 0) + (G.doors.hatch ? 1 : 0);
+      G.stats.doorSec += shut * dt;
       if (G.blackout) stepBlackout(dt);
       CAST.forEach((d) => stepCast(cast[d.id], dt));
       stepSignal(dt);
-      /* the meter's own warnings */
-      if (G.power < TUNE.power.critical && G.warned < 2) { G.warned = 2; SFX.beep(true); }
-      else if (G.power < TUNE.power.warn && G.warned < 1) { G.warned = 1; SFX.beep(false); }
+      stepAlarms(dt);
+      stepShifts(dt);
+      stepHazards(dt);
+      /* the meter's own warnings, and the system reading them out */
+      if (G.power < TUNE.power.critical && G.warned < 2) { G.warned = 2; SFX.beep(true); say(NS.sys.pwr10, true); }
+      else if (G.power < TUNE.power.warn && G.warned < 1) { G.warned = 1; SFX.beep(false); say(NS.sys.pwr25); }
       audioTick(dt);
+      sayTick(dt);
       uiTick(dt);
     }
   } else if (G.phase === "over") {
@@ -4650,12 +5785,14 @@ function frame(ts) {
     if (G.deadT > 1.15 && !G.cardT) { G.cardT = 1; screenOver(); }
   }
 
+  if (G.phase === "gallery") { sayTick(dt); uiTick(dt); }
   G.shake = Math.max(0, G.shake - dt * 1.9);
   applyLighting(dt);
   animateOffice(dt);
 
   /* which room the one camera is looking at */
-  const room = (G.phase === "play" && G.monitor) ? G.cam : "office";
+  const room = G.mode === "gallery" ? G.cam
+             : (G.phase === "play" && G.monitor) ? G.cam : "office";
   const camName = "main";
   if (room !== shownRoom || useView.__last !== room + camName) {
     showRoom(room);
@@ -4703,23 +5840,24 @@ function el(id) { return document.getElementById(id); }
 
 function buildUI() {
   if (uiReady) return;
-  ["wick-stage", "wick-canvas", "wk-mon", "wk-static", "wk-camname", "wk-mon-lost",
-   "wk-map", "wk-hud", "wk-power", "wk-bar-f", "wk-usage", "wk-clock", "wk-nightlab",
-   "wk-warn", "wk-edge", "wk-pause-btn", "wk-pad", "wk-overlay", "wk-mon-time"].forEach((id) => {
+  ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
+   "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
+   "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
+   "ns-say", "ns-egg"].forEach((id) => {
     EL[id] = el(id);
   });
-  stageEl = EL["wick-stage"];
+  stageEl = EL["ns-stage"];
 
   /* the plan of the shop, built from the room list so adding a room
      adds a cell */
-  const map = EL["wk-map"];
+  const map = EL["ns-map"];
   if (map) {
     map.innerHTML = "";
     MAP_PLAN.forEach((m) => {
       const r = ROOM[m.id];
       if (!r) return;
       const b = document.createElement("button");
-      b.className = "wk-cell";
+      b.className = "ns-cell";
       b.dataset.room = m.id;
       b.style.left = m.x + "%"; b.style.top = m.y + "%";
       b.style.width = m.w + "%"; b.style.height = m.h + "%";
@@ -4729,22 +5867,22 @@ function buildUI() {
     });
     /* the office, marked but not selectable — it is where you are */
     const you = document.createElement("span");
-    you.className = "wk-you";
+    you.className = "ns-you";
     you.innerHTML = "<i>YOU</i>";
     map.appendChild(you);
   }
 
-  if (EL["wk-static"]) {
-    EL["wk-static"].width = 176; EL["wk-static"].height = 99;
-    staticCtx = EL["wk-static"].getContext("2d");
+  if (EL["ns-static"]) {
+    EL["ns-static"].width = 176; EL["ns-static"].height = 99;
+    staticCtx = EL["ns-static"].getContext("2d");
   }
 
   /* The buttons answer to pointerdown so a thumb gets the door moving on
      the way down rather than on the way up, and to click as well so a
      keyboard or an assistive device can work them. The guard is what
      stops the pair of them counting as two presses. */
-  if (EL["wk-pad"]) {
-    EL["wk-pad"].querySelectorAll("[data-k]").forEach((b) => {
+  if (EL["ns-pad"]) {
+    EL["ns-pad"].querySelectorAll("[data-k]").forEach((b) => {
       const k = b.dataset.k;
       const go = (e) => {
         e.preventDefault(); e.stopPropagation();
@@ -4757,16 +5895,19 @@ function buildUI() {
       b.addEventListener("click", go);
     });
   }
-  if (EL["wk-pause-btn"]) EL["wk-pause-btn"].addEventListener("click", () => togglePause());
+  if (EL["ns-pause-btn"]) EL["ns-pause-btn"].addEventListener("click", () => togglePause());
+  if (EL["ns-egg"]) {
+    EL["ns-egg"].addEventListener("click", (e) => { e.stopPropagation(); arcadeOpen(); });
+  }
 
   uiReady = true;
 }
 
 /* --- the overlay cards -------------------------------------------- */
 function overlay(html, cls) {
-  const o = EL["wk-overlay"];
+  const o = EL["ns-overlay"];
   if (!o) return;
-  o.className = "wk-overlay on " + (cls || "");
+  o.className = "ns-overlay on " + (cls || "");
   o.innerHTML = html;
   o.setAttribute("aria-hidden", "false");
   o.querySelectorAll("[data-go]").forEach((b) => {
@@ -4774,15 +5915,15 @@ function overlay(html, cls) {
   });
 }
 function noOverlay() {
-  const o = EL["wk-overlay"];
+  const o = EL["ns-overlay"];
   if (!o) return;
-  o.className = "wk-overlay";
+  o.className = "ns-overlay";
   o.innerHTML = "";
   o.setAttribute("aria-hidden", "true");
 }
 
 function nightsDone() {
-  try { return JSON.parse(localStorage.getItem("wk_nights") || "{}") || {}; }
+  try { return JSON.parse(localStorage.getItem("ns_nights") || "{}") || {}; }
   catch (e) { return {}; }
 }
 function maxUnlocked() {
@@ -4791,138 +5932,321 @@ function maxUnlocked() {
   for (let i = 1; i <= NIGHTS.length; i++) if (d[i]) n = Math.min(NIGHTS.length, i + 1);
   return n;
 }
+function storyDone() { return !!nightsDone()[NIGHTS.length]; }
+
+const COZY_KEY = "ns_cozy";
+function loadCozy() {
+  try { return localStorage.getItem(COZY_KEY) === "1"; } catch (e) { return false; }
+}
+function saveCozy(v) { try { localStorage.setItem(COZY_KEY, v ? "1" : "0"); } catch (e) {} }
 
 function screenTitle() {
   const un = maxUnlocked();
-  const sel = un > 1 ? NIGHTS.slice(0, un).map((n) =>
-    '<button class="wk-btn wk-btn-sm" data-go="night:' + n.n + '">' + n.n + '</button>').join("") : "";
+  const done = nightsDone();
+  const sel = NIGHTS.slice(0, un).map((n) =>
+    '<button class="ns-btn ns-btn-sm' + (done[n.n] ? " ns-done" : "") + '" data-go="night:' + n.n + '">' + n.n + '</button>').join("");
+  const extra = storyDone()
+    ? '<div class="ns-btns ns-btns-extra">' +
+        '<button class="ns-btn" data-go="custom">CUSTOM NIGHT</button>' +
+        '<button class="ns-btn" data-go="gallery">THE SHOP IN DAYLIGHT</button>' +
+      '</div>'
+    : "";
   overlay(
-    '<div class="wk-card wk-card-title">' +
-      '<p class="wk-sign"><span>' + WK.shop + '</span><b>' + WK.sub + '</b></p>' +
-      '<p class="wk-tag">' + WK.tag + '</p>' +
-      '<div class="wk-btns">' +
-        '<button class="wk-btn wk-btn-go" data-go="start">BEGIN THE SHIFT</button>' +
-        '<button class="wk-btn" data-go="howto">HOW IT WORKS</button>' +
-        '<button class="wk-btn" data-go="quit">LEAVE</button>' +
+    '<div class="ns-card ns-card-title">' +
+      '<p class="ns-sign"><span>' + NS.title + '</span><b>' + NS.title2 + '</b></p>' +
+      '<p class="ns-where">' + NS.shop + ' ' + NS.sub + '</p>' +
+      '<p class="ns-tag">' + NS.tag + '</p>' +
+      '<div class="ns-btns">' +
+        '<button class="ns-btn ns-btn-go" data-go="start">BEGIN THE SHIFT</button>' +
+        '<button class="ns-btn" data-go="howto">HOW IT WORKS</button>' +
+        '<button class="ns-btn" data-go="badges">RECORD</button>' +
+        '<button class="ns-btn" data-go="quit">LEAVE</button>' +
       '</div>' +
-      (sel ? '<p class="wk-pick">NIGHT ' + sel + '</p>' : "") +
-    '</div>', "wk-ov-title");
+      extra +
+      '<p class="ns-pick">NIGHT ' + sel + '</p>' +
+      '<button class="ns-cozy' + (G.cozy ? " on" : "") + '" data-go="cozy">' +
+        '<i></i><b>COZY MODE</b><span>' + (G.cozy ? "on — softer everything" : "off — the shop as it is") + '</span></button>' +
+    '</div>', "ns-ov-title");
 }
 
 function screenHowTo() {
-  const rows = WK.howTo.map((r) => '<li><b>' + r[0] + '</b><span>' + r[1] + '</span></li>').join("");
+  const rows = NS.howTo.map((r) => '<li><b>' + r[0] + '</b><span>' + r[1] + '</span></li>').join("");
   const who = CAST.map((c) =>
-    '<li class="wk-who"><span class="wk-swatch" style="--c:' + c.colour + '"></span>' +
+    '<li class="ns-who"><span class="ns-swatch" style="--c:' + c.colour + '"></span>' +
     '<b>' + c.name + '</b><i>' + c.what + '</i><span>' + c.threat + '</span></li>').join("");
   overlay(
-    '<div class="wk-card wk-card-wide">' +
+    '<div class="ns-card ns-card-wide">' +
       '<h3>HOW IT WORKS</h3>' +
-      '<ul class="wk-rules">' + rows + '</ul>' +
+      '<ul class="ns-rules">' + rows + '</ul>' +
       '<h3>WHO ELSE IS IN</h3>' +
-      '<ul class="wk-cast">' + who + '</ul>' +
-      '<p class="wk-keys">Keys: <b>A</b>/<b>&larr;</b> left door &middot; <b>D</b>/<b>&rarr;</b> right door &middot; ' +
+      '<ul class="ns-cast">' + who + '</ul>' +
+      '<p class="ns-keys">Keys: <b>A</b>/<b>&larr;</b> left door &middot; <b>D</b>/<b>&rarr;</b> right door &middot; ' +
       '<b>W</b>/<b>&uarr;</b> hatch &middot; <b>SPACE</b> cameras &middot; <b>1&ndash;8</b> pick a camera &middot; <b>ESC</b> pause</p>' +
-      '<div class="wk-btns"><button class="wk-btn wk-btn-go" data-go="title">BACK</button></div>' +
-    '</div>', "wk-ov-howto");
+      '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="title">BACK</button></div>' +
+    '</div>', "ns-ov-howto");
 }
 
+/* Night one is a card she finds on the desk; every night after it is
+   whatever paper turned up that day. Nobody says any of it out loud. */
 function screenBrief() {
   const cfg = G.cfg;
-  const beat = G.night === 1 ? null : WK.beats[G.night];
-  const voice = G.night === 1 ? WK.intro : null;
   let body = "";
-  if (voice) {
-    body = '<p class="wk-from">' + voice.from + '</p><div class="wk-lines">' +
-      voice.lines.map((l) => "<p>" + l + "</p>").join("") + "</div>";
-  } else if (beat) {
-    body = '<p class="wk-from">' + beat.title + '</p><div class="wk-lines">' +
-      beat.lines.map((l) => "<p>" + l + "</p>").join("") + "</div>";
+  if (G.night === 1) {
+    const c = NS.shiftCard;
+    body = '<p class="ns-from">' + c.title + '</p>' +
+      '<div class="ns-paper">' + c.lines.map((l, i) =>
+        '<p' + (i === 0 ? ' class="ns-paper-head"' : '') + '>' + l + '</p>').join("") + '</div>' +
+      '<p class="ns-pencil">' + c.pencil + '</p>';
+  } else {
+    const beat = NS.beats[G.night];
+    if (beat) {
+      body = '<p class="ns-from">' + beat.title + '</p><div class="ns-lines">' +
+        beat.lines.map((l) => "<p>" + l + "</p>").join("") + "</div>";
+    }
   }
+  const rule = cfg.hazards.length ? HAZARDS[cfg.hazards[cfg.hazards.length - 1]] : null;
   overlay(
-    '<div class="wk-card wk-card-brief">' +
-      '<p class="wk-nightno">' + cfg.name + '</p>' +
-      '<p class="wk-blurb">' + cfg.blurb + '</p>' +
+    '<div class="ns-card ns-card-brief">' +
+      '<p class="ns-nightno">' + cfg.name + '</p>' +
+      '<p class="ns-blurb">' + cfg.blurb + '</p>' +
       body +
-      '<div class="wk-btns"><button class="wk-btn wk-btn-go" data-go="go">12:00 AM</button>' +
-      '<button class="wk-btn" data-go="title">BACK</button></div>' +
-    '</div>', "wk-ov-brief");
+      (rule && G.night > 1 ? '<p class="ns-rule">' + rule + '</p>' : "") +
+      '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="go">12:00 AM</button>' +
+      '<button class="ns-btn" data-go="title">BACK</button></div>' +
+    '</div>', "ns-ov-brief");
 }
 
 function screenPause() {
   overlay(
-    '<div class="wk-card">' +
+    '<div class="ns-card">' +
       '<h3>PAUSED</h3>' +
-      '<p class="wk-blurb">The shop waits.</p>' +
-      '<div class="wk-btns">' +
-        '<button class="wk-btn wk-btn-go" data-go="resume">BACK TO IT</button>' +
-        '<button class="wk-btn" data-go="restart">RESTART NIGHT</button>' +
-        '<button class="wk-btn" data-go="title">TITLE</button>' +
-        '<button class="wk-btn" data-go="quit">LEAVE</button>' +
+      '<p class="ns-blurb">The shop waits.</p>' +
+      '<div class="ns-btns">' +
+        '<button class="ns-btn ns-btn-go" data-go="resume">BACK TO IT</button>' +
+        '<button class="ns-btn" data-go="restart">RESTART NIGHT</button>' +
+        '<button class="ns-btn" data-go="title">TITLE</button>' +
+        '<button class="ns-btn" data-go="quit">LEAVE</button>' +
       '</div>' +
-    '</div>', "wk-ov-pause");
+    '</div>', "ns-ov-pause");
 }
 
 function screenOver() {
   const c = BY_ID[G.dead] || CAST[0];
   overlay(
-    '<div class="wk-card wk-card-over">' +
-      '<p class="wk-got" style="--c:' + c.colour + '">' + c.name + '</p>' +
-      '<p class="wk-blurb">reached the office &middot; ' + G.cfg.name.toLowerCase() + ' &middot; ' + clockLabel() + '</p>' +
-      '<p class="wk-lines"><i>' + c.threat + '</i></p>' +
-      '<div class="wk-btns">' +
-        '<button class="wk-btn wk-btn-go" data-go="restart">TRY THE NIGHT AGAIN</button>' +
-        '<button class="wk-btn" data-go="title">TITLE</button>' +
+    '<div class="ns-card ns-card-over">' +
+      '<p class="ns-got" style="--c:' + c.colour + '">' + c.name + '</p>' +
+      '<p class="ns-blurb">reached the office &middot; ' + G.cfg.name.toLowerCase() + ' &middot; ' + clockLabel() + '</p>' +
+      '<p class="ns-lines"><i>' + c.threat + '</i></p>' +
+      '<div class="ns-btns">' +
+        '<button class="ns-btn ns-btn-go" data-go="restart">TRY THE NIGHT AGAIN</button>' +
+        '<button class="ns-btn" data-go="title">TITLE</button>' +
       '</div>' +
-    '</div>', "wk-ov-over");
+    '</div>', "ns-ov-over");
+}
+
+/* what the night was actually like, out of numbers it was keeping anyway */
+function ratingCard() {
+  const r = G.rating || NS.ratings[1];
+  const st = G.stats;
+  const rows = [
+    ["POWER LEFT", Math.max(0, Math.round(G.power)) + "%"],
+    ["LOWEST IT GOT", Math.max(0, Math.round(st.lowest)) + "%"],
+    ["AT THE DOOR", st.arrivals],
+    ["DOORS HELD", Math.round(st.doorSec) + "s"],
+    ["ON CAMERA", Math.round(st.camSec) + "s"],
+    ["KNOCKS PAID FOR", st.knocks],
+  ].map((x) => '<li><b>' + x[0] + '</b><i>' + x[1] + '</i></li>').join("");
+  const newB = (G.newBadges || []).map((id) => {
+    const b = NS.badges.filter((x) => x.id === id)[0];
+    return b ? '<li>' + b.name + '</li>' : "";
+  }).join("");
+  return '<p class="ns-rating ns-rating-' + r.key + '">' + r.name + '</p>' +
+         '<p class="ns-blurb">' + r.note + '</p>' +
+         '<ul class="ns-stats">' + rows + '</ul>' +
+         (newB ? '<p class="ns-from">NEW</p><ul class="ns-newbadge">' + newB + '</ul>' : "");
 }
 
 function screenShift() {
-  const last = G.night >= NIGHTS.length;
+  const last = G.mode === "story" && G.night >= NIGHTS.length;
   if (last) {
+    G.phase = "finale";
     overlay(
-      '<div class="wk-card wk-card-fin">' +
-        '<p class="wk-nightno">' + WK.finale.title + '</p>' +
-        '<div class="wk-lines">' + WK.finale.lines.map((l) => "<p>" + l + "</p>").join("") + '</div>' +
-        '<div class="wk-btns">' +
-          '<button class="wk-btn wk-btn-go" data-go="quit">CLOCK OFF</button>' +
-          '<button class="wk-btn" data-go="title">TITLE</button>' +
+      '<div class="ns-card ns-card-fin">' +
+        '<p class="ns-nightno">' + NS.finale.title + '</p>' +
+        '<div class="ns-lines">' + NS.finale.lines.map((l) => "<p>" + l + "</p>").join("") + '</div>' +
+        '<div class="ns-btns">' +
+          '<button class="ns-btn ns-btn-go" data-go="galleryOffer">THE SHOP IN DAYLIGHT</button>' +
+          '<button class="ns-btn" data-go="title">TITLE</button>' +
+          '<button class="ns-btn" data-go="quit">CLOCK OFF</button>' +
         '</div>' +
-      '</div>', "wk-ov-fin");
-  } else {
-    overlay(
-      '<div class="wk-card wk-card-win">' +
-        '<p class="wk-six">6:00 AM</p>' +
-        '<p class="wk-blurb">' + G.cfg.name.toLowerCase() + ', survived. The shutters are going up.</p>' +
-        '<div class="wk-btns">' +
-          '<button class="wk-btn wk-btn-go" data-go="next">NIGHT ' + (G.night + 1) + '</button>' +
-          '<button class="wk-btn" data-go="title">TITLE</button>' +
-        '</div>' +
-      '</div>', "wk-ov-win");
+      '</div>', "ns-ov-fin");
+    return;
   }
+  const next = G.mode === "custom"
+    ? '<button class="ns-btn ns-btn-go" data-go="custom">CHANGE THE DIALS</button>'
+    : '<button class="ns-btn ns-btn-go" data-go="next">NIGHT ' + (G.night + 1) + '</button>';
+  overlay(
+    '<div class="ns-card ns-card-win">' +
+      '<p class="ns-six">6:00 AM</p>' +
+      '<p class="ns-blurb">' + G.cfg.name.toLowerCase() + ', survived.</p>' +
+      ratingCard() +
+      '<div class="ns-btns">' + next +
+        '<button class="ns-btn" data-go="title">TITLE</button>' +
+      '</div>' +
+    '</div>', "ns-ov-win");
+}
+
+/* --- Custom Night ----------------------------------------------------
+   Four dials, nought to twenty. Ten is the pace the story runs at, so
+   twenty is twice it and nought is asleep. Everything else about the
+   shop is unchanged, which is the point: it is the whole of the rest of
+   the game's life for the cost of four numbers. */
+function screenCustom() {
+  const d = customDials();
+  const rows = CAST.map((c) =>
+    '<li class="ns-dial" data-id="' + c.id + '">' +
+      '<span class="ns-swatch" style="--c:' + c.colour + '"></span>' +
+      '<b>' + c.name + '</b>' +
+      '<button class="ns-step" data-dial="' + c.id + ':-1" aria-label="less">&#8722;</button>' +
+      '<input type="range" min="0" max="20" step="1" value="' + d[c.id] + '" data-dial-range="' + c.id + '" aria-label="' + c.name + ' aggression">' +
+      '<button class="ns-step" data-dial="' + c.id + ':1" aria-label="more">+</button>' +
+      '<i data-dial-val="' + c.id + '">' + d[c.id] + '</i>' +
+    '</li>').join("");
+  overlay(
+    '<div class="ns-card ns-card-wide">' +
+      '<h3>CUSTOM NIGHT</h3>' +
+      '<p class="ns-blurb">Ten is the pace the story runs at. Twenty is twice it. Nought is asleep.</p>' +
+      '<ul class="ns-dials">' + rows + '</ul>' +
+      '<div class="ns-btns">' +
+        '<button class="ns-btn ns-btn-go" data-go="customGo">RUN IT</button>' +
+        '<button class="ns-btn" data-go="preset:5">EVEN</button>' +
+        '<button class="ns-btn" data-go="preset:20">ALL TWENTY</button>' +
+        '<button class="ns-btn" data-go="title">BACK</button>' +
+      '</div>' +
+    '</div>', "ns-ov-custom");
+  wireDials();
+}
+
+function wireDials() {
+  const o = EL["ns-overlay"];
+  if (!o) return;
+  const set = (id, v) => {
+    const d = customDials();
+    d[id] = clamp(v | 0, 0, 20);
+    saveDials(d);
+    const r = o.querySelector('[data-dial-range="' + id + '"]');
+    const t = o.querySelector('[data-dial-val="' + id + '"]');
+    if (r) r.value = d[id];
+    if (t) t.textContent = d[id];
+    SFX.beep(d[id] > 10);
+  };
+  o.querySelectorAll("[data-dial]").forEach((b) => {
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const [id, dv] = b.dataset.dial.split(":");
+      set(id, customDials()[id] + parseInt(dv, 10));
+    });
+  });
+  o.querySelectorAll("[data-dial-range]").forEach((r) => {
+    r.addEventListener("input", (e) => { e.stopPropagation(); set(r.dataset.dialRange, +r.value); });
+  });
+}
+
+/* --- the record ------------------------------------------------------ */
+function screenBadges() {
+  const got = badgesGot();
+  const d = nightsDone();
+  const nights = NIGHTS.map((n) =>
+    '<li class="' + (d[n.n] ? "on" : "") + '"><b>' + n.n + '</b><span>' + n.name + '</span></li>').join("");
+  const rows = NS.badges.map((b) =>
+    '<li class="' + (got[b.id] ? "on" : "") + '"><b>' + b.name + '</b><span>' + b.note + '</span></li>').join("");
+  overlay(
+    '<div class="ns-card ns-card-wide">' +
+      '<h3>THE RECORD</h3>' +
+      '<ul class="ns-nights">' + nights + '</ul>' +
+      '<ul class="ns-badges">' + rows + '</ul>' +
+      '<p class="ns-keys">Every one of these puts something on the shelf by the desk.</p>' +
+      '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="title">BACK</button></div>' +
+    '</div>', "ns-ov-badges");
+}
+
+/* --- the shop in daylight -------------------------------------------- */
+function screenGallery() {
+  const rows = ROOMS.map((r) =>
+    '<button class="ns-groom' + (r.id === G.cam ? " on" : "") + '" data-room="' + r.id + '">' +
+      '<b>' + (r.cam ? (r.cam < 10 ? "0" + r.cam : r.cam) : "—") + '</b><span>' + r.name + '</span></button>').join("");
+  overlay(
+    '<div class="ns-gal">' +
+      '<p class="ns-gal-title">THE SHOP IN DAYLIGHT</p>' +
+      '<p class="ns-gal-note">Nothing is running. Nothing is going to move.</p>' +
+      '<div class="ns-grooms">' + rows + '</div>' +
+      '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="title">BACK</button></div>' +
+    '</div>', "ns-ov-gal");
+  const o = EL["ns-overlay"];
+  if (o) o.querySelectorAll("[data-room]").forEach((b) => {
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      G.cam = b.dataset.room;
+      SFX.camSwitch();
+      o.querySelectorAll("[data-room]").forEach((x) => x.classList.toggle("on", x === b));
+    });
+  });
 }
 
 /* --- where every button goes -------------------------------------- */
 function route(cmd) {
   audioInit();
   if (AC && AC.state === "suspended") AC.resume();
-  if (cmd === "start") { G.night = 1; G.cfg = nightCfg(1); G.phase = "brief"; screenBrief(); }
+  if (cmd === "start") { G.mode = "story"; G.night = maxUnlocked(); G.cfg = nightCfg(G.night); G.phase = "brief"; screenBrief(); }
   else if (cmd === "howto") { G.phase = "howto"; screenHowTo(); }
-  else if (cmd === "title") { G.phase = "title"; bedStop(); screenTitle(); showHud(false); }
+  else if (cmd === "badges") { G.phase = "badges"; screenBadges(); }
+  else if (cmd === "title") {
+    G.phase = "title"; G.mode = "story"; G.dawn = false;
+    CAST.forEach((d) => { cast[d.id].asleep = false; });
+    sayClear();
+    if (stageEl) delete stageEl.dataset.day;
+    bedStop(); screenTitle(); showHud(false);
+    if (officeParts && officeParts.glass && TX.night) {
+      officeParts.glass.material = new T.MeshBasicMaterial({ map: TX.night, fog: true });
+    }
+    syncTrophies();
+  }
   else if (cmd === "go") { beginNight(G.night); }
   else if (cmd === "resume") { G.phase = "play"; noOverlay(); showHud(true); bedStart(); }
-  else if (cmd === "restart") { beginNight(G.night); }
+  else if (cmd === "restart") { beginNight(G.night, { mode: G.mode }); }
   else if (cmd === "next") { beginNight(Math.min(NIGHTS.length, G.night + 1)); }
-  else if (cmd === "quit") { if (window.leaveWick) window.leaveWick(); }
+  else if (cmd === "quit") { if (window.leaveNightShift) window.leaveNightShift(); }
+  else if (cmd === "cozy") { G.cozy = !G.cozy; saveCozy(G.cozy); SFX.beep(!G.cozy); screenTitle(); }
+  else if (cmd === "custom") { G.phase = "custom"; screenCustom(); }
+  else if (cmd === "customGo") { beginNight(0, { mode: "custom" }); }
+  else if (cmd === "gallery" || cmd === "galleryOffer") { beginGallery(); }
+  else if (cmd === "arcadeOut") { arcadeClose(); }
+  else if (cmd.indexOf("preset:") === 0) {
+    const v = parseInt(cmd.slice(7), 10) || 0;
+    const d = {}; CAST.forEach((c) => { d[c.id] = v; });
+    saveDials(d); screenCustom();
+  }
   else if (cmd.indexOf("night:") === 0) {
+    G.mode = "story";
     G.night = clamp(parseInt(cmd.slice(6), 10) || 1, 1, NIGHTS.length);
     G.cfg = nightCfg(G.night);
     G.phase = "brief"; screenBrief();
   }
 }
 
-function beginNight(n) {
-  G.night = clamp(n, 1, NIGHTS.length);
-  G.cfg = nightCfg(G.night);
+function beginNight(n, opts) {
+  opts = opts || {};
+  G.mode = opts.mode || "story";
+  if (G.mode === "custom") {
+    G.cfg = customCfg(customDials());
+    G.night = 0;
+  } else {
+    G.night = clamp(n, 1, NIGHTS.length);
+    G.cfg = nightCfg(G.night);
+  }
+  G.dawn = false;
+  G.rating = null;
+  G.newBadges = [];
   G.hour = 0; G.hourT = 0;
   G.power = G.cfg.power;
   G.drain = 0;
@@ -4934,7 +6258,20 @@ function beginNight(n) {
   G.warned = 0; G.shake = 0;
   G.lost = {}; G.lostT = 20;
   G.hallDark = hazard("hallDark");
+  G.lampOut = 0; G.lampT = range(Math.random, 30, 60);
+  G.monOut = 0; G.monT = range(Math.random, 30, 60);
+  G.surgeT = range(Math.random, 40, 70);
+  G.alarmT = nextIn(TUNE.alarm.firstAt);
+  G.shiftT = nextIn(TUNE.shift.firstAt);
+  G.caption = ""; G.captionT = 0;
+  sayQueue = []; sayUntil = 0;
+  G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, lowest: 100 };
   resetCast();
+  resetShifties();
+  syncTrophies();
+  if (officeParts && officeParts.glass && TX.night) {
+    officeParts.glass.material = new T.MeshBasicMaterial({ map: TX.night, fog: true });
+  }
   if (officeDoors) {
     officeDoors.left.y = officeDoors.left.openY;
     officeDoors.right.y = officeDoors.right.openY;
@@ -4944,14 +6281,46 @@ function beginNight(n) {
   noOverlay();
   showHud(true);
   bedStart();
+  say(NS.sys.boot);
+  if (G.cozy) say(NS.sys.cozy);
+  if (hazard("stickyDoor")) say(NS.sys.doorFault);
+  bumpUI();
+}
+
+/* --- the shop in daylight -------------------------------------------
+   Unlocked once the story is done. Nothing is running: no clock, no
+   meter, no cast, no fog, and the rig turned up and warmed over. Same
+   nine rooms, walked at her own pace. It is also the only place the
+   photograph of the two of them hangs, because it is the one part of
+   this chapter where nothing is ever going to move. */
+function beginGallery() {
+  G.mode = "gallery";
+  G.phase = "gallery";
+  sayClear();
+  /* the vignette that keeps the corners of the office dark is the wrong
+     idea entirely in a shop at eleven in the morning */
+  if (stageEl) stageEl.dataset.day = "1";
+  G.dawn = false;
+  G.cam = "hall";
+  G.monitor = false;
+  G.doors.left = G.doors.right = G.doors.hatch = false;
+  G.blackout = false;
+  G.dead = null; G.killChar = null;
+  CAST.forEach((d) => { cast[d.id].awake = false; cast[d.id].asleep = true; });
+  resetShifties();
+  syncTrophies();
+  noOverlay();
+  showHud(false);
+  bedStop();
+  screenGallery();
   bumpUI();
 }
 
 function showHud(on) {
-  if (EL["wk-hud"]) EL["wk-hud"].hidden = !on;
-  if (EL["wk-pad"]) EL["wk-pad"].hidden = !on;
-  if (EL["wk-pause-btn"]) EL["wk-pause-btn"].hidden = !on;
-  if (!on && EL["wk-mon"]) EL["wk-mon"].hidden = true;
+  if (EL["ns-hud"]) EL["ns-hud"].hidden = !on;
+  if (EL["ns-pad"]) EL["ns-pad"].hidden = !on;
+  if (EL["ns-pause-btn"]) EL["ns-pause-btn"].hidden = !on;
+  if (!on && EL["ns-mon"]) EL["ns-mon"].hidden = true;
 }
 
 function clockLabel() {
@@ -4963,14 +6332,19 @@ function clockLabel() {
 /* --- what changes only when something happens --------------------- */
 function bumpUI() {
   if (!uiReady) return;
-  if (EL["wk-clock"]) EL["wk-clock"].textContent = clockLabel();
-  if (EL["wk-nightlab"]) EL["wk-nightlab"].textContent = "NIGHT " + G.night;
-  if (EL["wk-mon"]) EL["wk-mon"].hidden = !(G.phase === "play" && G.monitor);
+  if (EL["ns-clock"]) EL["ns-clock"].textContent = clockLabel();
+  if (EL["ns-nightlab"]) EL["ns-nightlab"].textContent = "NIGHT " + G.night;
+  if (EL["ns-mon"]) EL["ns-mon"].hidden = !(G.phase === "play" && G.monitor);
+  if (EL["ns-mon"]) EL["ns-mon"].dataset.drop = G.monOut > 0 ? "1" : "0";
   const r = ROOM[G.cam];
-  if (EL["wk-camname"] && r) EL["wk-camname"].textContent = "CAM " + (r.cam < 10 ? "0" + r.cam : r.cam) + " — " + r.name;
-  if (EL["wk-mon-lost"]) EL["wk-mon-lost"].hidden = !isLost(G.cam);
-  if (EL["wk-map"]) {
-    EL["wk-map"].querySelectorAll(".wk-cell").forEach((b) => {
+  if (EL["ns-camname"] && r) EL["ns-camname"].textContent = "CAM " + (r.cam < 10 ? "0" + r.cam : r.cam) + " — " + r.name;
+  if (EL["ns-mon-lost"]) {
+    const down = G.monOut > 0;
+    EL["ns-mon-lost"].hidden = !(isLost(G.cam) || down);
+    EL["ns-mon-lost"].textContent = down ? "FEED INTERRUPTED" : "SIGNAL LOST";
+  }
+  if (EL["ns-map"]) {
+    EL["ns-map"].querySelectorAll(".ns-cell").forEach((b) => {
       const id = b.dataset.room;
       b.classList.toggle("on", id === G.cam);
       b.classList.toggle("dead", isLost(id));
@@ -4982,9 +6356,9 @@ function bumpUI() {
   if (G.phase === "over") screenOver();
   else if (G.phase === "shift") screenShift();
   /* the touch buttons show their own state, so a thumb can read them */
-  if (EL["wk-pad"]) {
-    EL["wk-pad"].dataset.mon = G.monitor ? "1" : "0";
-    EL["wk-pad"].querySelectorAll("[data-k]").forEach((b) => {
+  if (EL["ns-pad"]) {
+    EL["ns-pad"].dataset.mon = G.monitor ? "1" : "0";
+    EL["ns-pad"].querySelectorAll("[data-k]").forEach((b) => {
       const k = b.dataset.k;
       if (k === "monitor") b.classList.toggle("on", G.monitor);
       else if (k === "prev" || k === "next") b.classList.remove("on");
@@ -4998,14 +6372,14 @@ function bumpUI() {
 function uiTick(dt) {
   if (!uiReady) return;
   const p = Math.max(0, Math.round(G.power));
-  if (EL["wk-power"]) EL["wk-power"].textContent = p + "%";
-  if (EL["wk-bar-f"]) {
-    EL["wk-bar-f"].style.width = clamp(G.power, 0, 100) + "%";
-    EL["wk-bar-f"].dataset.lvl = G.power < TUNE.power.critical ? "3" : G.power < TUNE.power.warn ? "2" : "1";
+  if (EL["ns-power"]) EL["ns-power"].textContent = p + "%";
+  if (EL["ns-bar-f"]) {
+    EL["ns-bar-f"].style.width = clamp(G.power, 0, 100) + "%";
+    EL["ns-bar-f"].dataset.lvl = G.power < TUNE.power.critical ? "3" : G.power < TUNE.power.warn ? "2" : "1";
   }
-  if (EL["wk-usage"]) {
+  if (EL["ns-usage"]) {
     const bars = clamp(Math.round(G.drain / 0.62), 1, 5);
-    EL["wk-usage"].textContent = "▉".repeat(bars) + "░".repeat(5 - bars);
+    EL["ns-usage"].textContent = "▉".repeat(bars) + "░".repeat(5 - bars);
   }
   /* the edge of the screen warms when something is next to the office */
   let near = null;
@@ -5013,19 +6387,32 @@ function uiTick(dt) {
     const ch = cast[k];
     if (ch.awake && ch.atDoor) { near = ch; break; }
   }
-  if (EL["wk-edge"]) {
-    EL["wk-edge"].dataset.side = near ? near.def.door : "";
-    EL["wk-edge"].style.setProperty("--c", near ? near.def.colour : "transparent");
-    EL["wk-edge"].style.opacity = near ? (0.5 + 0.5 * Math.sin(G.t * 5)) : 0;
+  if (EL["ns-edge"]) {
+    EL["ns-edge"].dataset.side = near ? near.def.door : "";
+    EL["ns-edge"].style.setProperty("--c", near ? near.def.colour : "transparent");
+    EL["ns-edge"].style.opacity = near ? (0.5 + 0.5 * Math.sin(G.t * 5)) : 0;
   }
-  if (EL["wk-warn"]) {
+  if (EL["ns-warn"]) {
     let msg = "";
     if (G.blackout) msg = G.approaching ? "" : "POWER OUT";
     else if (G.power < TUNE.power.critical) msg = "POWER CRITICAL";
-    EL["wk-warn"].textContent = msg;
-    EL["wk-warn"].hidden = !msg;
+    EL["ns-warn"].textContent = msg;
+    EL["ns-warn"].hidden = !msg;
   }
-  if (EL["wk-mon-time"]) EL["wk-mon-time"].textContent = clockLabel();
+  if (EL["ns-mon-time"]) EL["ns-mon-time"].textContent = clockLabel();
+  eggHotspot();
+
+  /* the annunciator's caption. A vocoder cannot be understood and is not
+     meant to be — the words are here. */
+  if (G.captionT > 0) G.captionT -= dt;
+  if (EL["ns-say"]) {
+    /* the system only talks during a shift. On any card — pause, over,
+       dawn, the gallery — the strip is gone, not fading. */
+    const on = G.captionT > 0 && !!G.caption &&
+               (G.phase === "play" || G.phase === "pause");
+    EL["ns-say"].hidden = !on;
+    if (on) EL["ns-say"].textContent = G.caption;
+  }
 
   /* the static: a real noise field, redrawn a few times a second, so a
      dead camera looks dead rather than grey */
@@ -5036,11 +6423,11 @@ function uiTick(dt) {
       const w = 176, h = 99;
       const img = staticCtx.createImageData(w, h);
       const d = img.data;
-      const heavy = isLost(G.cam);
+      const heavy = isLost(G.cam) || G.monOut > 0;
       /* a dead camera is nearly all noise; a live one has a little in it,
          because a live one on this system always has a little in it */
-      if (EL["wk-static"]) EL["wk-static"].style.opacity = heavy ? 0.94 : 0.5;
-      const amt = heavy ? 210 : 34;
+      if (EL["ns-static"]) EL["ns-static"].style.opacity = heavy ? 0.94 : 0.5;
+      const amt = heavy ? 210 : 34 + decayK() * TUNE.decay.static * 260;
       for (let i = 0; i < d.length; i += 4) {
         const v = (Math.random() * amt) | 0;
         d[i] = d[i + 1] = d[i + 2] = v;
@@ -5048,6 +6435,228 @@ function uiTick(dt) {
       }
       staticCtx.putImageData(img, 0, 0);
     }
+  }
+}
+
+/* =========================================================
+   20b. THE CABINET THAT IS STILL RUNNING
+
+   One machine in Arcade Row never got switched off. It shows up as a
+   marquee that blinks on camera three and nothing else — it is not on
+   the title screen, it is not in the how-to, and the only way to find
+   it is to be looking at that feed when it blinks and to touch it.
+
+   What is behind it is a small original game about a wind-up mouse on
+   a shelf: cogs to catch, things falling off the shelf above, and a
+   spring that runs down whatever you do.
+   ========================================================= */
+const EGG_AT = new T.Vector3();
+const _proj = new T.Vector3();
+let eggMesh = null, eggBlink = 0, eggSeen = 0;
+
+function findEgg() {
+  /* the second cabinet down the west side of the arcade — grab its
+     screen so the blink is the machine's own light, not an overlay */
+  const rec = rooms.arcade;
+  if (!rec) return;
+  let best = null, bestZ = 99;
+  rec.group.traverse((o) => {
+    if (o.userData && o.userData.screen && o.isMesh) {
+      const p = new T.Vector3();
+      o.getWorldPosition(p);
+      const d = Math.abs(p.z - (rec.index * 0 + -1.1));
+      if (p.x < rec.index * SPACING && d < bestZ) { bestZ = d; best = o; }
+    }
+  });
+  if (!best) return;
+  eggMesh = best;
+  eggMesh.getWorldPosition(EGG_AT);
+}
+
+function stepEgg(dt) {
+  if (!eggMesh) return;
+  eggBlink -= dt;
+  if (eggBlink <= 0) {
+    eggBlink = range(Math.random, 2.6, 6.5);
+    eggMesh.userData.lit = !eggMesh.userData.lit;
+    eggMesh.material = eggMesh.userData.lit ? glow("#eaf6ff") : glow("#2b4a6e");
+  }
+}
+
+/* where that cabinet is on the screen right now, as a percentage */
+function eggHotspot() {
+  const el = EL["ns-egg"];
+  if (!el) return;
+  const on = G.phase === "play" && G.monitor && G.cam === "arcade" && G.monOut <= 0 && !isLost("arcade");
+  el.hidden = !on;
+  if (!on) return;
+  _proj.copy(EGG_AT).project(view);
+  const x = (_proj.x * 0.5 + 0.5) * 100;
+  const y = (-_proj.y * 0.5 + 0.5) * 100;
+  if (_proj.z > 1 || x < 2 || x > 98 || y < 2 || y > 98) { el.hidden = true; return; }
+  el.style.left = x + "%";
+  el.style.top = y + "%";
+  el.classList.toggle("blinking", !!(eggMesh && eggMesh.userData.lit));
+}
+
+/* --- the machine itself ---------------------------------------------
+   KEYWIND. A wind-up mouse on a shop shelf. Cogs wind you back up,
+   everything else knocks you over, and the spring runs down on its own
+   however well you play, so a run always ends. */
+const ARC = {
+  W: 240, H: 180, best: 0, on: false, cvs: null, ctx: null,
+  t: 0, x: 120, vx: 0, spring: 1, score: 0, drops: [], spawn: 0, speed: 1, over: false,
+  keys: { left: false, right: false },
+};
+
+function arcadeOpen() {
+  if (ARC.on) return;
+  ARC.on = true;
+  G.phase = "arcade";
+  showHud(false);
+  try { ARC.best = parseInt(localStorage.getItem("ns_arcade") || "0", 10) || 0; } catch (e) { ARC.best = 0; }
+  if (giveBadge("arcade")) syncTrophies();
+  overlay(
+    '<div class="ns-card ns-card-arc">' +
+      '<p class="ns-arc-title">KEYWIND</p>' +
+      '<canvas class="ns-arc-cvs" id="ns-arc-cvs" width="240" height="180"></canvas>' +
+      '<p class="ns-arc-help">catch the cogs &middot; the spring runs down anyway</p>' +
+      '<div class="ns-arc-pad">' +
+        '<button class="ns-btn ns-btn-sm" data-arc="left">&#9664;</button>' +
+        '<button class="ns-btn ns-btn-sm" data-arc="right">&#9654;</button>' +
+      '</div>' +
+      '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="arcadeOut">BACK TO THE SHIFT</button></div>' +
+    '</div>', "ns-ov-arc");
+  ARC.cvs = el("ns-arc-cvs");
+  ARC.ctx = ARC.cvs ? ARC.cvs.getContext("2d") : null;
+  arcadeReset();
+  const o = EL["ns-overlay"];
+  if (o) o.querySelectorAll("[data-arc]").forEach((b) => {
+    const k = b.dataset.arc;
+    const down = (e) => { e.preventDefault(); e.stopPropagation(); ARC.keys[k] = true; };
+    const up = (e) => { e.preventDefault(); e.stopPropagation(); ARC.keys[k] = false; };
+    b.addEventListener("pointerdown", down);
+    b.addEventListener("pointerup", up);
+    b.addEventListener("pointerleave", up);
+    b.addEventListener("pointercancel", up);
+  });
+  SFX.crank(0.5);
+}
+
+function arcadeClose() {
+  ARC.on = false;
+  ARC.keys.left = ARC.keys.right = false;
+  G.phase = "play";
+  noOverlay();
+  showHud(true);
+}
+
+function arcadeReset() {
+  ARC.t = 0; ARC.x = ARC.W / 2; ARC.vx = 0;
+  ARC.spring = 1; ARC.score = 0; ARC.drops = []; ARC.spawn = 0; ARC.speed = 1; ARC.over = false;
+}
+
+function arcadeStep(dt) {
+  if (!ARC.ctx) return;
+  const c = ARC.ctx, W = ARC.W, H = ARC.H;
+  if (!ARC.over) {
+    ARC.t += dt;
+    ARC.speed = 1 + ARC.t * 0.055;
+    /* the spring runs down whatever you do */
+    ARC.spring -= dt * (0.052 + ARC.t * 0.0016);
+    const acc = (ARC.keys.right ? 1 : 0) - (ARC.keys.left ? 1 : 0);
+    ARC.vx = clamp(ARC.vx + acc * dt * 640, -128, 128) * (1 - dt * 3.4);
+    ARC.x = clamp(ARC.x + ARC.vx * dt, 14, W - 14);
+    ARC.spawn -= dt;
+    if (ARC.spawn <= 0) {
+      ARC.spawn = Math.max(0.2, 0.72 / ARC.speed);
+      const cog = Math.random() < 0.42;
+      ARC.drops.push({ x: range(Math.random, 14, W - 14), y: -8, cog, r: cog ? 6 : 7, spin: 0 });
+    }
+    for (let i = ARC.drops.length - 1; i >= 0; i--) {
+      const d = ARC.drops[i];
+      d.y += dt * (52 + ARC.speed * 26);
+      d.spin += dt * (d.cog ? 5 : 2);
+      if (d.y > H - 26 && Math.abs(d.x - ARC.x) < 15) {
+        ARC.drops.splice(i, 1);
+        if (d.cog) { ARC.spring = Math.min(1, ARC.spring + 0.19); ARC.score += 10; SFX.beep(true); }
+        else { ARC.spring -= 0.3; SFX.knock(); }
+      } else if (d.y > H + 12) {
+        ARC.drops.splice(i, 1);
+        if (!d.cog) ARC.score += 2;
+      }
+    }
+    if (ARC.spring <= 0) {
+      ARC.over = true;
+      ARC.spring = 0;
+      SFX.falseSettle(0);
+      if (ARC.score > ARC.best) {
+        ARC.best = ARC.score;
+        try { localStorage.setItem("ns_arcade", String(ARC.best)); } catch (e) {}
+      }
+    }
+  } else {
+    ARC.t += dt;
+    if (ARC.t > 1.6 && (ARC.keys.left || ARC.keys.right)) arcadeReset();
+  }
+
+  /* --- drawn, not sprited ------------------------------------------ */
+  c.fillStyle = "#121a1e"; c.fillRect(0, 0, W, H);
+  for (let y = 0; y < H; y += 3) { c.fillStyle = "rgba(0,0,0,.22)"; c.fillRect(0, y, W, 1); }
+  /* the shelf she is standing on */
+  c.fillStyle = "#5a4230"; c.fillRect(0, H - 18, W, 18);
+  c.fillStyle = "#7a5a40"; c.fillRect(0, H - 18, W, 3);
+  /* the spring gauge */
+  c.fillStyle = "#26323a"; c.fillRect(8, 8, W - 16, 7);
+  c.fillStyle = ARC.spring > 0.4 ? "#7fe4d0" : "#ffb347";
+  c.fillRect(9, 9, (W - 18) * clamp(ARC.spring, 0, 1), 5);
+  c.fillStyle = "#7fe4d0";
+  c.font = "bold 11px ui-monospace, monospace";
+  c.textAlign = "left"; c.fillText(String(ARC.score), 9, 30);
+  c.textAlign = "right"; c.fillText("BEST " + ARC.best, W - 9, 30);
+  /* the falling things */
+  ARC.drops.forEach((d) => {
+    c.save(); c.translate(d.x, d.y); c.rotate(d.spin);
+    if (d.cog) {
+      c.fillStyle = "#e0b34e";
+      for (let i = 0; i < 6; i++) {
+        c.save(); c.rotate((i / 6) * TAU);
+        c.fillRect(-1.8, -d.r - 2.4, 3.6, 4.4);
+        c.restore();
+      }
+      c.beginPath(); c.arc(0, 0, d.r, 0, TAU); c.fill();
+      c.fillStyle = "#121a1e"; c.beginPath(); c.arc(0, 0, d.r * 0.36, 0, TAU); c.fill();
+    } else {
+      c.fillStyle = "#b05a62";
+      c.fillRect(-d.r, -d.r, d.r * 2, d.r * 2);
+      c.fillStyle = "#d8848a";
+      c.fillRect(-d.r, -d.r, d.r * 2, 2.4);
+    }
+    c.restore();
+  });
+  /* the mouse */
+  const mx = ARC.x, my = H - 26;
+  c.save(); c.translate(mx, my);
+  c.fillStyle = "#c9c2b4"; c.fillRect(-9, -8, 18, 12);
+  c.fillStyle = "#e0dbcf"; c.fillRect(-9, -8, 18, 3);
+  c.fillStyle = "#c9c2b4"; c.beginPath(); c.arc(9, -3, 5, 0, TAU); c.fill();
+  c.fillStyle = "#2a2028"; c.beginPath(); c.arc(11, -4, 1.4, 0, TAU); c.fill();
+  c.fillStyle = "#c9c2b4"; c.beginPath(); c.arc(-4, -10, 3.4, 0, TAU); c.fill();
+  c.beginPath(); c.arc(3, -10, 3.4, 0, TAU); c.fill();
+  /* the key in its back, turning as it moves */
+  c.save(); c.translate(-10, -3); c.rotate(ARC.t * 3 + ARC.x * 0.05);
+  c.strokeStyle = "#e0b34e"; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(-4, 0); c.lineTo(4, 0); c.moveTo(0, -4); c.lineTo(0, 4); c.stroke();
+  c.restore();
+  c.restore();
+  if (ARC.over) {
+    c.fillStyle = "rgba(8,12,14,.78)"; c.fillRect(0, 0, W, H);
+    c.fillStyle = "#ffb347"; c.textAlign = "center";
+    c.font = "bold 15px ui-monospace, monospace";
+    c.fillText("WOUND DOWN", W / 2, H / 2 - 6);
+    c.font = "10px ui-monospace, monospace";
+    c.fillStyle = "#cfe6e0";
+    c.fillText(ARC.score + " — press either way to go again", W / 2, H / 2 + 14);
   }
 }
 
@@ -5065,9 +6674,13 @@ function toggleDoor(k) {
   if (G.phase !== "play") return;
   if (G.blackout) { SFX.beep(false); return; }
   G.doors[k] = !G.doors[k];
-  if (k === "hatch") SFX.hatch();
-  else if (G.doors[k]) { SFX.doorClose(); G.shake = Math.max(G.shake, 0.35); }
-  else SFX.doorOpen();
+  if (G.doors[k]) G.stats.closes++;
+  if (k === "hatch") { SFX.hatch(); say(G.doors.hatch ? NS.sys.hatchShut : NS.sys.hatchOpen); }
+  else {
+    const num = k === "left" ? "ONE" : "TWO";
+    if (G.doors[k]) { SFX.doorClose(); G.shake = Math.max(G.shake, 0.35); say(fmt(NS.sys.doorShut, num)); }
+    else { SFX.doorOpen(); say(fmt(NS.sys.doorOpen, num)); }
+  }
   /* opening a door on something standing behind it gives you a moment,
      and only a moment */
   if (!G.doors[k]) {
@@ -5080,6 +6693,7 @@ function toggleDoor(k) {
 }
 
 function toggleMonitor() {
+  if (G.phase === "gallery") return;
   if (G.phase !== "play") return;
   if (G.blackout) { SFX.beep(false); return; }
   G.monitor = !G.monitor;
@@ -5126,9 +6740,14 @@ function onKey(e) {
   if (k === "Escape") { e.preventDefault(); togglePause(); return; }
   if (G.phase !== "play") {
     if (k === "Enter" || k === " ") {
-      const b = EL["wk-overlay"] && EL["wk-overlay"].querySelector("[data-go].wk-btn-go");
+      const b = EL["ns-overlay"] && EL["ns-overlay"].querySelector("[data-go].ns-btn-go");
       if (b) { e.preventDefault(); b.click(); }
     }
+    return;
+  }
+  if (ARC.on) {
+    if (k === "a" || k === "A" || k === "ArrowLeft") { e.preventDefault(); ARC.keys.left = true; }
+    else if (k === "d" || k === "D" || k === "ArrowRight") { e.preventDefault(); ARC.keys.right = true; }
     return;
   }
   if (k === "a" || k === "A" || k === "ArrowLeft") { e.preventDefault(); toggleDoor("left"); }
@@ -5175,7 +6794,7 @@ let running = false, boundKeys = false, ro = null;
 function onResize() { sizeRenderer(); }
 
 function start() {
-  const cvs = el("wick-canvas");
+  const cvs = el("ns-canvas");
   if (!cvs) return;
   buildUI();
   /* a phone is not asked to draw four million pixels for a room lit by
@@ -5191,10 +6810,10 @@ function start() {
     G.phase = "load";
     showHud(false);
     overlay(
-      '<div class="wk-card wk-card-load">' +
-        '<p class="wk-sign"><span>' + WK.shop + '</span><b>' + WK.sub + '</b></p>' +
-        '<p class="wk-tag">unlocking the shop&hellip;</p>' +
-      '</div>', "wk-ov-title");
+      '<div class="ns-card ns-card-load">' +
+        '<p class="ns-sign"><span>' + NS.shop + '</span><b>' + NS.sub + '</b></p>' +
+        '<p class="ns-tag">unlocking the shop&hellip;</p>' +
+      '</div>', "ns-ov-title");
     requestAnimationFrame(() => requestAnimationFrame(() => finishStart(cvs)));
     return;
   }
@@ -5210,17 +6829,19 @@ function finishStart(cvs) {
     G.phase = "title";
     showHud(false);
     overlay(
-      '<div class="wk-card">' +
+      '<div class="ns-card">' +
         '<h3>THE SHOP IS DARK</h3>' +
-        '<p class="wk-blurb">This one needs 3D graphics, and this browser has them turned off. ' +
+        '<p class="ns-blurb">This one needs 3D graphics, and this browser has them turned off. ' +
         'Everything else on the site works without them.</p>' +
-        '<div class="wk-btns"><button class="wk-btn wk-btn-go" data-go="quit">BACK TO THE HUB</button></div>' +
-      '</div>', "wk-ov-title");
+        '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="quit">BACK TO THE HUB</button></div>' +
+      '</div>', "ns-ov-title");
     return;
   }
   sizeRenderer();
   useView.__last = null;
   running = true;
+  G.cozy = loadCozy();
+  G.mode = "story";
   G.phase = "title";
   G.night = maxUnlocked();
   G.cfg = nightCfg(G.night);
@@ -5228,6 +6849,7 @@ function finishStart(cvs) {
   showRoom("office");
   useView("office", "main");
   showHud(false);
+  syncTrophies();
   screenTitle();
   if (!boundKeys) {
     boundKeys = true;
@@ -5313,6 +6935,13 @@ const testHooks = {
       if (G.blackout) stepBlackout(dt);
       CAST.forEach((d) => stepCast(cast[d.id], dt));
       stepSignal(dt);
+      /* the same list the frame loop runs, so a pumped night costs what
+         a played one costs — the surges especially, which are the
+         difference between a night four that is hard and one that is
+         arithmetically impossible */
+      stepAlarms(dt);
+      stepShifts(dt);
+      stepHazards(dt);
     }
     return { phase: G.phase, hour: G.hour, power: G.power, dead: G.dead };
   },
@@ -5339,6 +6968,6 @@ const testHooks = {
   silence(v) { audioMute(v !== false); },
 };
 
-return { start, stop, preview, __wick: testHooks,
+return { start, stop, preview, __night: testHooks,
          __three: () => ({ renderer, scene, view }) };
 })();

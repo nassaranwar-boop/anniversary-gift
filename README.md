@@ -19,7 +19,7 @@ super-ouissy.js  the platformer — its own config block at the top
 rescue.js        the platformer's story scenes (Hard only) — self-contained
 apocalypse.js    the stealth chapter — its own config block at the top
 racing.js        the kart racer — a hand-written Mode 7 renderer, not Three.js
-wick.js          the night-shift horror — Three.js, on the bundled copy
+night-shift.js          the night-shift horror — Three.js, on the bundled copy
 assets/          images used by the 2D parts of the site
 tools/           offline checks (see tools/README.md); nothing here ships
 ```
@@ -42,7 +42,8 @@ tools/           offline checks (see tools/README.md); nothing here ships
 5d. **Ouissy at the Apocalypse** — a five-level top-down stealth story
     (`apocalypse.js`), ending on the same rooftop as the maze
 5e. **Super Ouissy Race** — the Mode 7 kart racer (`racing.js`)
-5f. **Wick & Cogs** — a three-night camera-and-doors horror (`wick.js`)
+5f. **Ouissy's Night Shift** — a six-night camera-and-doors horror
+    (`night-shift.js`), set in the Wick & Cogs Toy Emporium
 6. **Keepsake** — scrapbook recap, unlocked once the maze and the adventure
    are done. Super Ouissy is a bonus: finishing it adds a card to the
    keepsake but is deliberately **not** required to unlock it, so nothing
@@ -314,16 +315,26 @@ Best score and time are kept per difficulty in `localStorage`, and the
 difficulty can be changed mid-game from the pause menu.
 
 
-## Wick & Cogs
+## Ouissy's Night Shift
 
-A night-shift survival horror, reached from the hub. You are the new
-security guard at an old wind-up toy shop, alone from midnight to six,
-with two doors, a ceiling hatch, eight cameras and one charge of power
-between you and four automatons that were built to move.
+A night-shift survival horror, reached from the hub. Ouissy has taken
+the night job at the Wick & Cogs Toy Emporium — an old wind-up toy shop,
+alone from midnight to six, with two doors, a ceiling hatch, eight
+cameras and one charge of power between her and four automatons that
+were built to move.
 
 Original from the ground up — the shop, the four performers, the story,
 the sounds and every piece of art in it. Nothing is borrowed from any
 existing game.
+
+Nobody talks to her. There is no phone call, no radio voice, no guide.
+The only thing with a voice is the building's own security annunciator,
+a vocoder that reads out states and nothing else — *power at twenty
+percent*, *door two: open*, *motion detected: east vent* — with the
+words printed under it because a vocoder is not meant to be understood.
+Everything else the shop has to say is written down and found: a shift
+card taped inside the desk drawer, a page of the ledger, a workshop
+board, an inscription on the underside of a music box.
 
 **A/D or the arrow keys** shut the two doors, **W** the hatch,
 **space** raises the camera monitor, **1–8** jump straight to a camera,
@@ -349,23 +360,52 @@ Between them they close off every lazy strategy: watching one camera all
 night loses to Chime, never watching loses to Marabelle, and holding
 everything shut loses to Jax and the meter.
 
-Three nights. Each adds something rather than just going faster — night
-two wakes the owl and kills the workshop camera for good, night three
-drops cameras at random and puts the hall lights out, so Cogsworth has
-to be tracked by ear.
+Six nights, and each one changes a rule rather than just going faster:
+
+| | |
+|---|---|
+| **Two** | the owl wakes, and the workshop camera dies for good |
+| **Three** | cameras drop at random, and the hall lights go out — Cogsworth has to be tracked by ear |
+| **Four** | the bus surges and takes chunks off the meter, and the office bulb starts going out by itself |
+| **Five** | the right-hand actuator is failing: that door is slow to answer and costs half again to hold |
+| **Six** | the monitor cuts out mid-look |
+
+The budget is set against night six, not night one. An attentive shift
+on the last night — four of them awake, a door shut only while something
+is actually at it — comes down to the last ten percent, and is meant to.
+The same care on night one leaves a third of the meter in hand.
+
+Night six ends the story on dawn rather than on a scoreboard: the
+shutters go up, the shop is still for the first time, and the last found
+object finishes the toymaker's story.
+
+### Behind the story
+
+Finishing it opens four things on the title screen. **Custom Night** —
+a slider from 0 to 20 for each of the four, so any combination can be
+asked for. **The shop in daylight** — a calm walk-through of all nine
+rooms in the morning, nothing running, nothing going to move, which is
+where the one warm personal thing in the chapter lives. **The record** —
+which nights are cleared and six badges, each of which puts one more
+small object on the shelf beside the desk. And **Cozy Mode**, on the
+title screen from the start, which is not a lesser version: gentler
+jumpscares, a slower meter, fewer alarms and more time at a door.
+
+There is one thing not listed anywhere, in the arcade.
 
 ### Changing it
 
-The first three hundred lines of `wick.js`, in this order:
+The first three hundred lines of `night-shift.js`, in this order:
 
-- `WK` — every word in it: the voicemail that opens night one, the notes
-  between nights, the finale, the how-to card.
+- `NS` — every word in it: the shift card that opens night one, the
+  found pages between nights, the finale, the how-to card, the badges,
+  the ratings, and the whole vocabulary the annunciator is allowed.
 - `TUNE` — how the night feels. Seconds per hour, every power rate, and
   a step interval, a movement chance and a door grace per performer.
   Almost every complaint about a game like this is one of these numbers.
 - `NIGHTS` — one entry per night: who is awake and from which hour, the
   aggression multiplier for each of the six hours, and any hazards.
-  Adding a fourth night is adding an entry; nothing else counts them.
+  Adding a seventh night is adding an entry; nothing else counts them.
 - `ROOMS` — the nine rooms and how they join up, on the floor and in the
   ducts. `MAP_PLAN` is the plan drawn on the monitor.
 - `CAST` — the four performers and the route each walks to the office.

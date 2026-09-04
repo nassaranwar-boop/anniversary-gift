@@ -3,10 +3,10 @@
 </head><body>
 <div id="stage"><canvas id="cvs"></canvas></div>
 <script src="../vendor/three.bundle.js"></script>
-<script src="../wick.js"></script>
+<script src="../night-shift.js"></script>
 <script>
 window.__shoot = function(room, cam, who){
-  WickAndCogs.preview(document.getElementById('stage'), document.getElementById('cvs'), room, cam, who);
+  OuissysNightShift.preview(document.getElementById('stage'), document.getElementById('cvs'), room, cam, who);
   return document.getElementById('cvs').toDataURL('image/png');
 };
 </script>

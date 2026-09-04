@@ -17,9 +17,9 @@
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=92">
+<link rel="stylesheet" href="style.css?v=95">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=92"></script>
+<script src="vendor/three.bundle.js?v=95"></script>
 
 </head>
 <body>
@@ -686,10 +686,10 @@
           <span class="hub-name">Ouissy at the Apocalypse</span>
           <span class="hub-desc">The world ends. You come and find me anyway</span>
         </button>
-        <button class="hub-card" id="hub-card-wick" data-chapter="wick">
-          <span class="hub-badge" id="hub-badge-wick"><svg class="gl gl-tick" aria-hidden="true"><use href="#ic-px-tick"/></svg></span>
-          <span class="hub-art hub-art-wick" aria-hidden="true"></span>
-          <span class="hub-name">Wick &amp; Cogs</span>
+        <button class="hub-card" id="hub-card-nightshift" data-chapter="nightshift">
+          <span class="hub-badge" id="hub-badge-nightshift"><svg class="gl gl-tick" aria-hidden="true"><use href="#ic-px-tick"/></svg></span>
+          <span class="hub-art hub-art-nightshift" aria-hidden="true"></span>
+          <span class="hub-name">Ouissy&rsquo;s Night Shift</span>
           <span class="hub-desc">Six hours, two doors and one charge. Don't blink</span>
         </button>
         <button class="hub-card" id="hub-card-race" data-chapter="race">
@@ -1073,69 +1073,75 @@
     </div>
   </section>
 
-  <!-- SCREEN — WICK & COGS (the night-shift horror; all of it lives in
-       wick.js. The canvas is the shop, in Three.js on the copy already
+  <!-- SCREEN — OUISSY’S NIGHT SHIFT (the night-shift horror, set in the
+       Wick & Cogs Toy Emporium; all of it lives in night-shift.js. The canvas is the shop, in Three.js on the copy already
        bundled for the book intro; everything she reads is DOM over the
        top of it, styled as the shop's own equipment, because a number
        you have to read under pressure cannot be drawn into the world.) -->
-  <section id="screen-wick" class="screen">
-    <div class="wk-frame">
-      <p class="wk-titlebar" aria-hidden="true"><span>WICK &amp; COGS</span><b>NIGHT SHIFT</b></p>
+  <section id="screen-nightshift" class="screen">
+    <div class="ns-frame">
+      <p class="ns-titlebar" aria-hidden="true"><span>OUISSY&rsquo;S</span><b>NIGHT SHIFT</b></p>
 
-      <div class="wk-stage" id="wick-stage">
-        <canvas id="wick-canvas"></canvas>
+      <div class="ns-stage" id="ns-stage">
+        <canvas id="ns-canvas"></canvas>
 
         <!-- the monitor. It covers the office while it is up, which is
              the whole trade: you cannot watch the shop and the doors. -->
-        <div class="wk-mon" id="wk-mon" hidden>
-          <canvas class="wk-static" id="wk-static" aria-hidden="true"></canvas>
-          <div class="wk-mon-frame" aria-hidden="true"></div>
-          <div class="wk-mon-top">
-            <span class="wk-rec"><i></i>REC</span>
-            <span class="wk-camname" id="wk-camname">CAM 01</span>
-            <span class="wk-mon-time" id="wk-mon-time">12 AM</span>
+        <div class="ns-mon" id="ns-mon" hidden>
+          <canvas class="ns-static" id="ns-static" aria-hidden="true"></canvas>
+          <div class="ns-mon-frame" aria-hidden="true"></div>
+          <div class="ns-mon-top">
+            <span class="ns-rec"><i></i>REC</span>
+            <span class="ns-camname" id="ns-camname">CAM 01</span>
+            <span class="ns-mon-time" id="ns-mon-time">12 AM</span>
           </div>
-          <p class="wk-mon-lost" id="wk-mon-lost" hidden>SIGNAL LOST</p>
-          <div class="wk-map" id="wk-map"></div>
+          <p class="ns-mon-lost" id="ns-mon-lost" hidden>SIGNAL LOST</p>
+          <div class="ns-map" id="ns-map"></div>
+          <!-- one machine in the arcade never got switched off. This sits
+               over it on camera three and is not advertised anywhere. -->
+          <button class="ns-egg" id="ns-egg" aria-label="Something is still running" hidden></button>
         </div>
 
         <!-- the overlay HUD: the meter, the usage bars and the clock -->
-        <div class="wk-hud" id="wk-hud" hidden>
-          <div class="wk-hud-tl">
-            <span class="wk-chip"><b>POWER</b><i id="wk-power">100%</i></span>
-            <span class="wk-bar"><u id="wk-bar-f" data-lvl="1"></u></span>
-            <span class="wk-usage" id="wk-usage">▉░░░░</span>
+        <div class="ns-hud" id="ns-hud" hidden>
+          <div class="ns-hud-tl">
+            <span class="ns-chip"><b>POWER</b><i id="ns-power">100%</i></span>
+            <span class="ns-bar"><u id="ns-bar-f" data-lvl="1"></u></span>
+            <span class="ns-usage" id="ns-usage">▉░░░░</span>
           </div>
-          <div class="wk-hud-tr">
-            <span class="wk-clock" id="wk-clock">12 AM</span>
-            <span class="wk-night" id="wk-nightlab">NIGHT 1</span>
+          <div class="ns-hud-tr">
+            <span class="ns-clock" id="ns-clock">12 AM</span>
+            <span class="ns-night" id="ns-nightlab">NIGHT 1</span>
           </div>
         </div>
 
-        <p class="wk-warn" id="wk-warn" hidden></p>
-        <span class="wk-edge" id="wk-edge" aria-hidden="true"></span>
+        <p class="ns-warn" id="ns-warn" hidden></p>
+        <!-- what the building just announced, in words. The voice itself
+             is a vocoder and cannot be understood; this is the caption. -->
+        <p class="ns-say" id="ns-say" hidden></p>
+        <span class="ns-edge" id="ns-edge" aria-hidden="true"></span>
 
-        <button class="wk-pause-btn" id="wk-pause-btn" aria-label="Pause" hidden>
+        <button class="ns-pause-btn" id="ns-pause-btn" aria-label="Pause" hidden>
           <span class="gl-pause" aria-hidden="true"></span>
         </button>
 
         <!-- doors left and right because that is where the doors are,
              and both of them big enough for a thumb -->
-        <div class="wk-pad" id="wk-pad" hidden>
-          <button class="wk-key wk-key-l" data-k="left" aria-label="Left door"><b>LEFT</b><i>DOOR</i></button>
-          <div class="wk-pad-mid">
+        <div class="ns-pad" id="ns-pad" hidden>
+          <button class="ns-key ns-key-l" data-k="left" aria-label="Left door"><b>LEFT</b><i>DOOR</i></button>
+          <div class="ns-pad-mid">
             <!-- these two only appear while the monitor is up: on a phone
                  the plan is too small to be the only way to change camera -->
-            <button class="wk-key wk-key-step" data-k="prev" aria-label="Previous camera"><b>&#9664;</b></button>
-            <button class="wk-key wk-key-h" data-k="hatch" aria-label="Ceiling hatch"><b>HATCH</b></button>
-            <button class="wk-key wk-key-m" data-k="monitor" aria-label="Cameras"><b>CAMS</b></button>
-            <button class="wk-key wk-key-step" data-k="next" aria-label="Next camera"><b>&#9654;</b></button>
+            <button class="ns-key ns-key-step" data-k="prev" aria-label="Previous camera"><b>&#9664;</b></button>
+            <button class="ns-key ns-key-h" data-k="hatch" aria-label="Ceiling hatch"><b>HATCH</b></button>
+            <button class="ns-key ns-key-m" data-k="monitor" aria-label="Cameras"><b>CAMS</b></button>
+            <button class="ns-key ns-key-step" data-k="next" aria-label="Next camera"><b>&#9654;</b></button>
           </div>
-          <button class="wk-key wk-key-r" data-k="right" aria-label="Right door"><b>RIGHT</b><i>DOOR</i></button>
+          <button class="ns-key ns-key-r" data-k="right" aria-label="Right door"><b>RIGHT</b><i>DOOR</i></button>
         </div>
 
         <!-- every card, brief and ending mounts into this -->
-        <div class="wk-overlay" id="wk-overlay" aria-hidden="true"></div>
+        <div class="ns-overlay" id="ns-overlay" aria-hidden="true"></div>
       </div>
     </div>
   </section>
@@ -1182,13 +1188,13 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=92"></script>
-<script src="scrapbook.js?v=92"></script>
-<script src="script.js?v=92"></script>
-<script src="super-ouissy.js?v=92"></script>
-<script src="rescue.js?v=92"></script>
-<script src="apocalypse.js?v=92"></script>
-<script src="racing.js?v=92"></script>
-<script src="wick.js?v=92"></script>
+<script src="book-scene.js?v=95"></script>
+<script src="scrapbook.js?v=95"></script>
+<script src="script.js?v=95"></script>
+<script src="super-ouissy.js?v=95"></script>
+<script src="rescue.js?v=95"></script>
+<script src="apocalypse.js?v=95"></script>
+<script src="racing.js?v=95"></script>
+<script src="night-shift.js?v=95"></script>
 </body>
 </html>

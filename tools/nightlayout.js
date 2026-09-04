@@ -1,6 +1,6 @@
 /* The panel measured at real device sizes. Reports anything that
    overflows its stage, any control smaller than a thumb, and takes a
-   picture of each. node wicklayout.js <outdir> */
+   picture of each. node nightlayout.js <outdir> */
 const { chromium } = require('playwright-core');
 const fs = require('fs');
 const OUT = process.argv[2] || '/tmp/wklay';
@@ -31,23 +31,29 @@ let fails = 0;
       st.textContent = '.screen.anim-in{animation:none !important}';
       document.head.appendChild(st);
       try { localStorage.clear(); } catch (e) {}
-      showScreen('wick'); WickAndCogs.start(); WickAndCogs.__wick.silence(true);
-      WickAndCogs.__wick.route('start'); WickAndCogs.__wick.route('go');
-      WickAndCogs.__wick.press('monitor');
+      showScreen('nightshift'); OuissysNightShift.start(); OuissysNightShift.__night.silence(true);
+    });
+    /* start() shows a loading card and builds the shop a frame later, so
+       the shift cannot be routed in the same turn as the boot */
+    await p.waitForFunction(() => Object.keys(OuissysNightShift.__night.cast()).length === 4,
+                            { timeout: 20000, polling: 200 });
+    await p.evaluate(() => {
+      OuissysNightShift.__night.route('start'); OuissysNightShift.__night.route('go');
+      OuissysNightShift.__night.press('monitor');
     });
     await p.waitForTimeout(1400);
     const m = await p.evaluate(() => {
-      const st = document.getElementById('wick-stage').getBoundingClientRect();
+      const st = document.getElementById('ns-stage').getBoundingClientRect();
       /* held upright the controls sit under the stage, so the box they
          must stay inside is the frame, not the stage */
-      const fr = document.querySelector('.wk-frame').getBoundingClientRect();
+      const fr = document.querySelector('.ns-frame').getBoundingClientRect();
       const out = { stage: [Math.round(st.width), Math.round(st.height)], small: [], outside: [], hScroll: document.documentElement.scrollWidth > window.innerWidth + 1 };
       /* the plan on the tube is a display first: on a phone it is the
          arrows on the pad that change camera, so its cells are only
          held to a thumb target on a screen big enough for a pointer */
       const sel = window.innerWidth >= 900
-        ? '#wk-pad .wk-key:not([hidden]), #wk-map .wk-cell, .wk-pause-btn'
-        : '#wk-pad .wk-key, .wk-pause-btn';
+        ? '#ns-pad .ns-key:not([hidden]), #ns-map .ns-cell, .ns-pause-btn'
+        : '#ns-pad .ns-key, .ns-pause-btn';
       document.querySelectorAll(sel).forEach((el) => {
         if (getComputedStyle(el).display === 'none') return;
         const r = el.getBoundingClientRect();

@@ -1,9 +1,9 @@
 /* Wick & Cogs, played the way a person plays it: click through the
    title, look at what is on the canvas, drive the shift with the
-   __wick hooks, and assert the loop actually resolves.
+   __night hooks, and assert the loop actually resolves.
 
    requestAnimationFrame runs at about 3fps in this container, so the
-   shift is advanced with __wick.pump rather than by waiting — but the
+   shift is advanced with __night.pump rather than by waiting — but the
    clicking, the screens and the canvas are all real. */
 const { chromium } = require('playwright-core');
 const fs = require('fs');
@@ -71,71 +71,75 @@ function ok(name, cond, extra) {
   await page.waitForTimeout(400);
 
   console.log('\n— getting in —');
-  ok('hub card exists', await page.locator('#hub-card-wick').count() === 1);
-  await tap(page, { q: '#hub-card-wick' });
+  ok('hub card exists', await page.locator('#hub-card-nightshift').count() === 1);
+  await tap(page, { q: '#hub-card-nightshift' });
   await page.waitForTimeout(2600);
-  ok('screen is active', await page.locator('#screen-wick.active').count() === 1);
-  ok('title card is up', await page.locator('.wk-ov-title').count() === 1);
-  await page.evaluate(() => WickAndCogs.__wick.silence(true));
+  ok('screen is active', await page.locator('#screen-nightshift.active').count() === 1);
+  ok('title card is up', await page.locator('.ns-ov-title').count() === 1);
+  await page.evaluate(() => OuissysNightShift.__night.silence(true));
 
   const shot = async (name) => {
     const d = await page.evaluate(() => {
-      WickAndCogs.__wick.render();
-      return document.getElementById('wick-canvas').toDataURL('image/png');
+      OuissysNightShift.__night.render();
+      return document.getElementById('ns-canvas').toDataURL('image/png');
     });
     fs.writeFileSync(OUT + '-' + name + '.png', Buffer.from(d.split(',')[1], 'base64'));
   };
   await shot('title');
 
   console.log('\n— how it works —');
-  await tap(page, { q: '.wk-btn', text: 'HOW IT WORKS' });
+  await tap(page, { q: '.ns-btn', text: 'HOW IT WORKS' });
   await page.waitForTimeout(300);
-  ok('rules listed', await page.locator('.wk-rules li').count() === 6);
-  ok('cast listed', await page.locator('.wk-cast li').count() === 4);
-  await tap(page, { q: '.wk-btn', text: 'BACK' });
+  ok('rules listed', await page.locator('.ns-rules li').count() === 8);
+  ok('cast listed', await page.locator('.ns-cast li').count() === 4);
+  await tap(page, { q: '.ns-btn', text: 'BACK' });
   await page.waitForTimeout(250);
 
   console.log('\n— night one —');
-  await tap(page, { q: '.wk-btn', text: 'BEGIN THE SHIFT' });
+  await tap(page, { q: '.ns-btn', text: 'BEGIN THE SHIFT' });
   await page.waitForTimeout(300);
-  ok('brief shows the voicemail', (await page.locator('.wk-from').textContent()).indexOf('voicemail') >= 0);
-  await tap(page, { q: '.wk-btn', text: '12:00 AM' });
+  /* night one is onboarded by a card taped inside the desk drawer, in
+     her hands. Nobody phones her; nobody narrates. */
+  ok('night one briefs off a found card', (await page.locator('.ns-from').textContent()).indexOf('drawer') >= 0);
+  ok('and the card is a piece of paper', await page.locator('.ns-paper p').count() >= 3);
+  ok('with a pencil note on it', await page.locator('.ns-pencil').count() === 1);
+  await tap(page, { q: '.ns-btn', text: '12:00 AM' });
   await page.waitForTimeout(600);
-  let st = await page.evaluate(() => WickAndCogs.__wick.state().phase);
+  let st = await page.evaluate(() => OuissysNightShift.__night.state().phase);
   ok('shift running', st === 'play', st);
-  ok('HUD visible', await page.locator('#wk-hud:not([hidden])').count() === 1);
-  ok('pad visible', await page.locator('#wk-pad:not([hidden])').count() === 1);
+  ok('HUD visible', await page.locator('#ns-hud:not([hidden])').count() === 1);
+  ok('pad visible', await page.locator('#ns-pad:not([hidden])').count() === 1);
   await shot('office');
 
   console.log('\n— the doors and the meter —');
-  await tap(page, { q: '#wk-pad [data-k="left"]' });
+  await tap(page, { q: '#ns-pad [data-k="left"]' });
   await page.waitForTimeout(120);
-  let g = await page.evaluate(() => { const s = WickAndCogs.__wick.state(); return { l: s.doors.left, p: s.power }; });
+  let g = await page.evaluate(() => { const s = OuissysNightShift.__night.state(); return { l: s.doors.left, p: s.power }; });
   ok('left door shuts', g.l === true);
-  const drainShut = await page.evaluate(() => { const w = WickAndCogs.__wick; const a = w.state().power; w.pump(10); return a - w.state().power; });
-  await tap(page, { q: '#wk-pad [data-k="left"]' });
-  const drainOpen = await page.evaluate(() => { const w = WickAndCogs.__wick; const a = w.state().power; w.pump(10); return a - w.state().power; });
+  const drainShut = await page.evaluate(() => { const w = OuissysNightShift.__night; const a = w.state().power; w.pump(10); return a - w.state().power; });
+  await tap(page, { q: '#ns-pad [data-k="left"]' });
+  const drainOpen = await page.evaluate(() => { const w = OuissysNightShift.__night; const a = w.state().power; w.pump(10); return a - w.state().power; });
   ok('a shut door costs more', drainShut > drainOpen * 2.5, drainShut.toFixed(1) + ' vs ' + drainOpen.toFixed(1));
 
-  await tap(page, { q: '#wk-pad [data-k="monitor"]' });
+  await tap(page, { q: '#ns-pad [data-k="monitor"]' });
   await page.waitForTimeout(200);
-  ok('monitor up', await page.evaluate(() => WickAndCogs.__wick.state().monitor) === true);
-  ok('monitor covers the view', await page.locator('#wk-mon:not([hidden])').count() === 1);
-  ok('map has a cell per camera', await page.locator('.wk-cell').count() === 8);
+  ok('monitor up', await page.evaluate(() => OuissysNightShift.__night.state().monitor) === true);
+  ok('monitor covers the view', await page.locator('#ns-mon:not([hidden])').count() === 1);
+  ok('map has a cell per camera', await page.locator('.ns-cell').count() === 8);
   await shot('monitor');
-  const camDrain = await page.evaluate(() => { const w = WickAndCogs.__wick; const a = w.state().power; w.pump(10); return a - w.state().power; });
+  const camDrain = await page.evaluate(() => { const w = OuissysNightShift.__night; const a = w.state().power; w.pump(10); return a - w.state().power; });
   ok('the monitor costs power', camDrain > drainOpen * 2.5, camDrain.toFixed(1));
 
   console.log('\n— every camera renders —');
-  const cams = await page.evaluate(() => Object.keys(WickAndCogs.__wick.rooms()).filter(r => r !== 'office'));
+  const cams = await page.evaluate(() => Object.keys(OuissysNightShift.__night.rooms()).filter(r => r !== 'office'));
   for (const c of cams) {
-    await page.evaluate((id) => WickAndCogs.__wick.cam(id), c);
+    await page.evaluate((id) => OuissysNightShift.__night.cam(id), c);
     await page.waitForTimeout(420);
     const lit = await page.evaluate(() => {
       /* draw first: the context does not preserve its drawing buffer, so
          reading it in a later task gets a cleared canvas every time */
-      WickAndCogs.__wick.render();
-      const cv = document.getElementById('wick-canvas');
+      OuissysNightShift.__night.render();
+      const cv = document.getElementById('ns-canvas');
       const t = document.createElement('canvas'); t.width = 96; t.height = 54;
       t.getContext('2d').drawImage(cv, 0, 0, 96, 54);
       const d = t.getContext('2d').getImageData(0, 0, 96, 54).data;
@@ -146,31 +150,31 @@ function ok(name, cond, extra) {
     ok('cam ' + c + ' has a picture', lit > 8, 'mean=' + lit.toFixed(1));
     await shot('cam-' + c);
   }
-  await tap(page, { q: '#wk-pad [data-k="monitor"]' });
+  await tap(page, { q: '#ns-pad [data-k="monitor"]' });
   await page.waitForTimeout(200);
 
   console.log('\n— Cogsworth, end to end —');
   await page.evaluate(() => {
-    const w = WickAndCogs.__wick;
+    const w = OuissysNightShift.__night;
     w.state().power = 100; w.state().doors.left = false;
     w.only('cogsworth');
   });
-  let atDoor = await page.evaluate(() => WickAndCogs.__wick.cast().cogsworth.atDoor);
+  let atDoor = await page.evaluate(() => OuissysNightShift.__night.cast().cogsworth.atDoor);
   ok('he reaches the door', atDoor === true);
-  const window1 = await page.evaluate(() => WickAndCogs.__wick.cast().cogsworth.doorT);
+  const window1 = await page.evaluate(() => OuissysNightShift.__night.cast().cogsworth.doorT);
   ok('there is a reaction window', window1 > 2.5, window1.toFixed(1) + 's');
-  const died = await page.evaluate(() => { const w = WickAndCogs.__wick; w.pump(8); return w.state(); });
+  const died = await page.evaluate(() => { const w = OuissysNightShift.__night; w.pump(8); return w.state(); });
   ok('an open door is fatal', died.phase === 'over' && died.dead === 'cogsworth', died.phase + '/' + died.dead);
   /* the card is held back until the scare has landed */
   await page.waitForTimeout(2200);
-  ok('game over card names him', (await page.locator('.wk-got').textContent()).indexOf('COGSWORTH') >= 0);
+  ok('game over card names him', (await page.locator('.ns-got').textContent()).indexOf('COGSWORTH') >= 0);
   await shot('gameover');
 
   console.log('\n— and a shut door sends him away —');
-  await tap(page, { q: '.wk-btn', text: 'TRY THE NIGHT AGAIN' });
+  await tap(page, { q: '.ns-btn', text: 'TRY THE NIGHT AGAIN' });
   await page.waitForTimeout(500);
   const survived = await page.evaluate(() => {
-    const w = WickAndCogs.__wick;
+    const w = OuissysNightShift.__night;
     w.only('cogsworth');
     w.press('left');                      // shut it
     w.pump(8);
@@ -180,7 +184,7 @@ function ok(name, cond, extra) {
 
   console.log('\n— Marabelle freezes when watched —');
   const mara = await page.evaluate(() => {
-    const w = WickAndCogs.__wick, s = w.state();
+    const w = OuissysNightShift.__night, s = w.state();
     w.only('marabelle', 0);
     s.doors.left = false; s.doors.right = false;
     const m = w.cast().marabelle;
@@ -198,7 +202,7 @@ function ok(name, cond, extra) {
 
   console.log('\n— Chime ignores the doors —');
   const chime = await page.evaluate(() => {
-    const w = WickAndCogs.__wick, s = w.state();
+    const w = OuissysNightShift.__night, s = w.state();
     /* the owl is asleep on night one by design, so this is night two */
     w.route('night:2'); w.route('go');
     w.only('chime');
@@ -208,7 +212,7 @@ function ok(name, cond, extra) {
   });
   ok('shut doors do not stop the owl', chime.dead === 'chime', JSON.stringify(chime));
   const chimeHatch = await page.evaluate(() => {
-    const w = WickAndCogs.__wick, s = w.state();
+    const w = OuissysNightShift.__night, s = w.state();
     w.route('night:2'); w.route('go');
     w.only('chime');
     s.doors.hatch = true;
@@ -219,13 +223,17 @@ function ok(name, cond, extra) {
 
   console.log('\n— Jax bleeds a turtle dry —');
   const jax = await page.evaluate(() => {
-    const w = WickAndCogs.__wick, s = w.state();
+    const w = OuissysNightShift.__night, s = w.state();
+    /* one door held for fourteen seconds, with and without him behind
+       it. Same door cost either way — the difference is all Jax. */
     const shutFor = (withJax) => {
       w.route('night:2'); w.route('go');
       w.only(withJax ? 'jax' : 'cogsworth', withJax ? undefined : 0);
       if (!withJax) w.cast().cogsworth.asleep = true;
       s.power = 100; s.blackout = false;
-      s.doors.left = true; s.doors.right = true; s.doors.hatch = true;
+      const d = withJax ? w.cast().jax.def.door : 'left';
+      s.doors.left = s.doors.right = s.doors.hatch = false;
+      s.doors[d] = true;
       w.pump(14);
       return 100 - s.power;
     };
@@ -234,12 +242,12 @@ function ok(name, cond, extra) {
     return { quiet, loud };
   });
   ok('Jax at a shut door costs far more than the door does',
-     jax.loud > jax.quiet * 1.4,
+     jax.loud > jax.quiet * 1.7,
      jax.loud.toFixed(1) + '% vs ' + jax.quiet.toFixed(1) + '% over 14s');
 
   console.log('\n— the blackout, and six o clock —');
   const black = await page.evaluate(() => {
-    const w = WickAndCogs.__wick, s = w.state();
+    const w = OuissysNightShift.__night, s = w.state();
     w.route('night:2'); w.route('go');
     w.only('jax', 0);
     s.doors.left = true; s.doors.right = true;
@@ -248,14 +256,14 @@ function ok(name, cond, extra) {
     return { blackout: s.blackout, doors: JSON.stringify(s.doors), monitor: s.monitor };
   });
   ok('power out kills the doors', black.blackout === true && black.doors.indexOf('true') < 0, JSON.stringify(black));
-  const dark = await page.evaluate(() => { const w = WickAndCogs.__wick; w.pump(70); return w.state(); });
+  const dark = await page.evaluate(() => { const w = OuissysNightShift.__night; w.pump(70); return w.state(); });
   ok('the dark eventually gets you', dark.phase === 'over', dark.phase + '/' + dark.dead);
   await page.waitForTimeout(300);
   await shot('blackout');
 
   console.log('\n— the budget —');
   const idle = await page.evaluate(() => {
-    const w = WickAndCogs.__wick;
+    const w = OuissysNightShift.__night;
     w.route('night:1'); w.route('go');
     const s = w.state();
     Object.keys(w.cast()).forEach(k => { w.cast()[k].asleep = true; });
@@ -266,7 +274,7 @@ function ok(name, cond, extra) {
 
   console.log('\n— a whole night, played carefully —');
   const win = await page.evaluate(() => {
-    const w = WickAndCogs.__wick;
+    const w = OuissysNightShift.__night;
     w.route('night:1'); w.route('go');
     const s = w.state();
     /* an attentive guard: a look at the cameras every twenty seconds,
@@ -297,24 +305,151 @@ function ok(name, cond, extra) {
   await page.waitForTimeout(400);
   await shot('shiftdone');
 
-  console.log('\n— nights 2 and 3 exist and are harder —');
+  console.log('\n— six nights, each with a new rule —');
   const nights = await page.evaluate(() => {
-    const w = WickAndCogs.__wick;
+    const w = OuissysNightShift.__night;
     const out = [];
-    [2, 3].forEach((n) => {
+    for (let n = 1; n <= 6; n++) {
       w.route('night:' + n); w.route('go');
       const s = w.state();
-      out.push({ n: s.night, awake: Object.keys(s.cfg.active).length, haz: s.cfg.hazards.length, ramp: s.cfg.ramp[5] });
-    });
+      out.push({ n: s.night, awake: Object.keys(s.cfg.active).length,
+                 haz: s.cfg.hazards.slice(), ramp: s.cfg.ramp[5] });
+    }
     return out;
   });
-  ok('night 2 wakes more of them', nights[0].awake === 4, JSON.stringify(nights[0]));
-  ok('night 3 is the fastest', nights[1].ramp > nights[0].ramp, JSON.stringify(nights[1]));
+  ok('there are six story nights', nights.length === 6 && nights[5].n === 6);
+  ok('night 2 wakes all four', nights[1].awake === 4, JSON.stringify(nights[1].awake));
+  ok('the ramp only climbs',
+     nights.every((x, i) => i === 0 || x.ramp >= nights[i - 1].ramp),
+     nights.map(x => x.ramp).join(' '));
+  /* the point of the add-on: every night after the first brings a rule
+     the night before did not have, not just a bigger number */
+  const newRules = nights.map((x, i) => i === 0 ? [] : x.haz.filter(h => nights[i - 1].haz.indexOf(h) < 0));
+  ok('every night after the first adds a rule',
+     newRules.slice(1).every(r => r.length >= 1),
+     newRules.slice(1).map(r => r.join('+')).join(' | '));
+
+  console.log('\n— the shift the story ends on —');
+  const fin = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    w.route('night:6'); w.route('go');
+    s.hour = 5; s.power = 60;
+    ['cogsworth', 'chime', 'marabelle', 'jax'].forEach((k) => { w.cast()[k].asleep = true; });
+    w.pump(70);
+    return { phase: s.phase, hour: s.hour };
+  });
+  await page.waitForTimeout(500);
+  ok('night six ends in the finale, not a scoreboard', fin.phase === 'finale', JSON.stringify(fin));
+  const finTxt = (await page.locator('.ns-card').textContent()) || '';
+  ok('and dawn is what is on the card', /6:00 AM|dawn|light/i.test(finTxt), finTxt.slice(0, 60));
+  await shot('finale');
+
+  console.log('\n— what the record keeps —');
+  const rec = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    return { rating: s.rating, stats: s.stats,
+             badges: Object.keys(JSON.parse(localStorage.getItem('ns_badges') || '{}')),
+             done: Object.keys(JSON.parse(localStorage.getItem('ns_nights') || '{}')) };
+  });
+  ok('a night is rated', !!rec.rating, JSON.stringify(rec.rating));
+  ok('the rating is built out of what the night actually measured',
+     rec.stats && typeof rec.stats.camSec === 'number' && typeof rec.stats.knocks === 'number',
+     JSON.stringify(rec.stats));
+  ok('the nights survived are remembered', rec.done.length > 0, rec.done.join(','));
+  ok('badges are earned, not given', rec.badges.length > 0, rec.badges.join(','));
+
+  console.log('\n— everything the story unlocks —');
+  await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); });
+  await page.waitForTimeout(350);
+  ok('custom night is offered', await page.locator('[data-go="custom"]').count() === 1);
+  ok('the gallery is offered', await page.locator('[data-go="gallery"]').count() === 1);
+  ok('cozy mode is on the title', await page.locator('[data-go="cozy"]').count() === 1);
+  await page.evaluate(() => OuissysNightShift.__night.route('custom'));
+  await page.waitForTimeout(300);
+  ok('a dial for each of them', await page.locator('.ns-dial').count() === 4);
+  const dial = await page.evaluate(() => {
+    const w = OuissysNightShift.__night;
+    for (let i = 0; i < 30; i++) {
+      const up = document.querySelector('.ns-step[data-dial="cogsworth:1"]');
+      up.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+      up.click();
+    }
+    const d = JSON.parse(localStorage.getItem('ns_custom') || '{}');
+    w.route('customGo');
+    const s = w.state();
+    return { saved: d.cogsworth, mode: s.mode, night: s.night };
+  });
+  ok('dials cap at twenty', dial.saved === 20, String(dial.saved));
+  ok('and a custom night runs', dial.mode === 'custom', JSON.stringify(dial));
+  await shot('custom');
+  await page.evaluate(() => OuissysNightShift.__night.route('gallery'));
+  await page.waitForTimeout(600);
+  ok('the gallery walks the shop in daylight',
+     await page.evaluate(() => OuissysNightShift.__night.state().phase) === 'gallery');
+  await shot('gallery');
+
+  console.log('\n— cozy mode is gentler, not shorter —');
+  const cozy = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    const budget = () => {
+      w.route('night:6'); w.route('go');
+      s.power = 100; s.doors.left = true; s.doors.right = true;
+      const a = s.power; w.pump(20); return a - s.power;
+    };
+    w.route('title');
+    const hard = budget();
+    s.cozy = true;
+    const soft = budget();
+    s.cozy = false;
+    return { hard, soft };
+  });
+  ok('cozy mode drains slower', cozy.soft < cozy.hard * 0.85,
+     cozy.soft.toFixed(1) + ' vs ' + cozy.hard.toFixed(1) + ' over 20s');
+
+  console.log('\n— the cabinet nobody switched off —');
+  await page.evaluate(() => {
+    const w = OuissysNightShift.__night;
+    w.route('title'); w.route('night:1'); w.route('go');
+  });
+  await page.waitForTimeout(200);
+  /* the hotspot is placed by the frame loop, so this waits on real
+     frames rather than pumping — it is the one thing in the suite that
+     has to be looked at to exist */
+  const settle = async () => { await page.waitForTimeout(1400); };
+  await page.evaluate(() => {
+    const w = OuissysNightShift.__night;
+    if (!w.state().monitor) w.press('monitor');
+    w.cam('hall');
+  });
+  await settle();
+  ok('nothing to click in the main hall',
+     await page.evaluate(() => document.getElementById('ns-egg').hidden) === true);
+  await page.evaluate(() => OuissysNightShift.__night.cam('arcade'));
+  await settle();
+  const eggThere = await page.evaluate(() => {
+    const el = document.getElementById('ns-egg');
+    return { hidden: el.hidden, left: el.style.left, top: el.style.top };
+  });
+  ok('the cabinet answers on camera three', eggThere.hidden === false, JSON.stringify(eggThere));
+  const played = await page.evaluate(() => {
+    const el = document.getElementById('ns-egg');
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+    el.click();
+    return OuissysNightShift.__night.state().phase;
+  });
+  await page.waitForTimeout(250);
+  ok('and it plays', played === 'arcade', played);
+  ok('on its own screen', await page.locator('.ns-arc-cvs').count() === 1);
+  await shot('arcade');
+  await page.evaluate(() => OuissysNightShift.__night.route('arcadeOut'));
+  await page.waitForTimeout(200);
+  ok('and hands the shift straight back',
+     await page.evaluate(() => OuissysNightShift.__night.state().phase) === 'play');
 
   console.log('\n— the way out —');
-  await page.evaluate(() => { const w = WickAndCogs.__wick; w.route('title'); });
+  await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); });
   await page.waitForTimeout(300);
-  await tap(page, { q: '.wk-btn', text: 'LEAVE' });
+  await tap(page, { q: '.ns-btn', text: 'LEAVE' });
   await page.waitForTimeout(1200);
   ok('back at the hub', await page.locator('#screen-hub.active').count() === 1);
 
