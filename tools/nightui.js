@@ -47,6 +47,17 @@ const [OUT = '/tmp/wkui', W = 1280, H = 860] = process.argv.slice(2);
   await grab('over');
   await p.evaluate(() => { const w = OuissysNightShift.__night; w.route('restart'); w.state().hour = 5; w.state().hourT = 55.9; w.pump(0.3); });
   await grab('shift');
+  /* the orientation the very first night runs, and the page hidden in
+     the shop that night */
+  await p.evaluate(() => { const w = OuissysNightShift.__night;
+    try { localStorage.clear(); } catch (e) {}
+    w.route('title'); w.route('night:1'); w.route('go'); });
+  await p.waitForTimeout(900);                                          await grab('orientation');
+  await p.evaluate(async () => { const w = OuissysNightShift.__night, s = w.state();
+    w.press('monitor'); w.cam(w.finds().room); });
+  await p.waitForTimeout(1800);                                         await grab('hidden');
+  await p.evaluate(() => document.getElementById('ns-find').click());
+  await p.waitForTimeout(400);                                          await grab('page');
   /* the dawn the story ends on: night six, five o'clock, everything
      asleep so the last minute is the last minute and nothing else */
   await p.evaluate(() => {

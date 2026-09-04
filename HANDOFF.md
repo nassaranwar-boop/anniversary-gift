@@ -327,9 +327,36 @@ rebuilds before anyone thought to print the light positions. If
 something in that room looks bleached, print the rig before you touch
 the albedo.
 
+A fourth pass answered the real question — why would somebody who has
+never played one of these keep playing — with three things:
+
+- **Orientation.** Night one runs a scripted first ten minutes where
+  the shift *stops and waits* for her: `tutorStep` gates the entire
+  play branch of the frame loop, so the clock, the meter and the cast
+  are all still until she has done what it asked. It cannot be failed
+  and it runs exactly once (`ns_notutor`). `pump` turns it off, because
+  a suite driving a night by hand is not being oriented.
+- **Something to find.** One object a night, hidden on a camera. The
+  spot is not authored — `findSpot` walks candidate points along the
+  line that room's camera is looking down and raycasts each onto a
+  surface. Three things about that cost time and are worth knowing:
+  a ray dropped from the candidate point hits the **ceiling** in every
+  room (those points sit near a camera that is near the ceiling), so
+  it casts from above and filters the hit list by height instead;
+  `Raycaster` **skips invisible objects**, and at boot every room but
+  the office is switched off, so the group has to be switched on for
+  the cast; and the spot comes back in **room space**, because it is
+  parented under a group already parked sixty metres out and adding
+  the offset twice put every page in the next room along.
+  Also: nothing may hide in the workshop after night one — that camera
+  is dead from night two, and a page behind it is unfindable.
+- **A story she has to earn.** `NS.finds` is the whole arc and it is
+  the one block to edit if he wants different words. It walks from a
+  stranger's shop to their own — the places in it come from the
+  scrapbook (`SB.map.pins`), so if those change, these should too.
+
 Still open with him: whether the difficulty of nights five and six is
-where he wants it, and the closing lines of the finale, which are
-written but are mine and not his.
+where he wants it.
 
 ## 8. Testing
 

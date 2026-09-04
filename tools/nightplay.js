@@ -521,6 +521,116 @@ function ok(name, cond, extra) {
   ok('and hands the shift straight back',
      await page.evaluate(() => OuissysNightShift.__night.state().phase) === 'play');
 
+  console.log('\n— the shop has six things in it to find —');
+  const finds = await page.evaluate(async () => {
+    const w = OuissysNightShift.__night;
+    try { localStorage.removeItem('ns_found'); } catch (e) {}
+    const out = [];
+    for (let n = 1; n <= 6; n++) {
+      w.route('night:' + n); w.route('go');
+      const f = w.finds();
+      if (!f.armed) { out.push({ n, armed: null }); continue; }
+      const s = w.state();
+      if (!s.monitor) w.press('monitor');
+      w.cam(f.room);
+      await new Promise(r => setTimeout(r, 1500));   // the hotspot is placed by the frame loop
+      const el = document.getElementById('ns-find');
+      out.push({ n, armed: f.armed, room: f.room, shown: !el.hidden,
+                 x: parseFloat(el.style.left), y: parseFloat(el.style.top) });
+    }
+    return out;
+  });
+  ok('one for every night', finds.length === 6 && finds.every(f => f.armed), JSON.stringify(finds.map(f => f.armed)));
+  ok('and every one of them is actually on its camera',
+     finds.every(f => f.shown), JSON.stringify(finds.filter(f => !f.shown)));
+  ok('and none of them is on the lip of the picture',
+     finds.every(f => f.x > 8 && f.x < 92 && f.y > 8 && f.y < 92),
+     finds.map(f => Math.round(f.x) + ',' + Math.round(f.y)).join(' '));
+  /* night two kills the workshop feed for good, so nothing may hide in
+     there after night one — it would be unfindable and she would never
+     know why */
+  ok('nothing hides behind a dead camera',
+     finds.every(f => !(f.room === 'workshop' && f.n > 1)),
+     JSON.stringify(finds.map(f => f.n + ':' + f.room)));
+
+  const took = await page.evaluate(async () => {
+    const w = OuissysNightShift.__night;
+    w.route('night:1'); w.route('go');
+    const s = w.state();
+    if (!s.monitor) w.press('monitor');
+    w.cam(w.finds().room);
+    await new Promise(r => setTimeout(r, 1500));
+    document.getElementById('ns-find').click();
+    await new Promise(r => setTimeout(r, 300));
+    const card = (document.querySelector('.ns-card-find') || {}).textContent || '';
+    return { phase: s.phase, card: card.length, kept: w.finds().kept,
+             gone: !w.finds().armed };
+  });
+  ok('picking one up stops the shift and shows the page', took.phase === 'found' && took.card > 80, JSON.stringify(took.phase));
+  ok('and it is hers from then on', took.kept.length === 1 && took.gone, took.kept.join(','));
+  await shot('found');
+  await page.evaluate(() => OuissysNightShift.__night.route('findOut'));
+  await page.waitForTimeout(250);
+  ok('and the shift picks straight back up',
+     await page.evaluate(() => OuissysNightShift.__night.state().phase) === 'play');
+
+  console.log('\n— the first night teaches itself —');
+  const tut = await page.evaluate(async () => {
+    const w = OuissysNightShift.__night;
+    try { localStorage.clear(); } catch (e) {}
+    w.route('title'); w.route('night:1'); w.route('go');
+    const s = w.state();
+    const seen = [];
+    const act = {
+      "MONITOR: RAISE IT.": () => w.press('monitor'),
+      "MONITOR: LOWER IT. IT DRAWS WHILE IT IS UP.": () => w.press('monitor'),
+      "WEST DOOR: CLOSE IT.": () => w.press('left'),
+      "A SHUT DOOR HOLDS. IT ALSO DRAWS. OPEN IT.": () => w.press('left'),
+      "CEILING HITCH": null,
+      "CEILING HATCH: LATCH IT.": () => w.press('hatch'),
+      "GOOD. UNLATCH.": () => w.press('hatch'),
+    };
+    let last = null, guard = 0, rooms = ['hall','stage','party','foyer','closet'], ri = 0;
+    /* requestAnimationFrame runs at about 3fps in this container and
+       orientation advances on frames, so this needs a budget measured in
+       frames rather than in the wall-clock seconds a person would take */
+    while (guard++ < 220 && w.tutor().step >= 0 && w.tutor().step < w.tutor().of) {
+      const t = w.tutor();
+      if (t.line !== last) { seen.push(t.line); last = t.line; if (act[t.line]) act[t.line](); }
+      if (t.line === "GOOD. STEP THROUGH THE ROOMS." && ri < rooms.length) w.cam(rooms[ri++]);
+      await new Promise(r => setTimeout(r, 260));
+    }
+    return { steps: seen.length, hour: s.hour, power: +s.power.toFixed(1),
+             phase: s.phase, done: w.tutor().step < 0 };
+  });
+  ok('it walks her through every control', tut.steps >= 8, String(tut.steps));
+  ok('and nothing moves while it waits', tut.hour === 0 && tut.power === 100,
+     'hour ' + tut.hour + ', power ' + tut.power + '%');
+  ok('and she cannot lose it', tut.phase === 'play' && tut.done, JSON.stringify(tut.phase));
+  ok('and it never runs twice',
+     await page.evaluate(() => localStorage.getItem('ns_notutor')) === '1');
+
+  console.log('\n— and the story ends on something she decides —');
+  const ends = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    w.route('night:6'); w.route('go');
+    ['cogsworth','chime','marabelle','jax'].forEach(k => { w.cast()[k].asleep = true; });
+    s.hour = 5; s.power = 60; w.pump(70);
+    const asked = (document.querySelector('.ns-ask') || {}).textContent || '';
+    const btns = Array.from(document.querySelectorAll('.ns-ov-fin [data-go]')).map(b => b.dataset.go);
+    return { phase: s.phase, asked: asked.length, btns };
+  });
+  ok('the last night asks her something', ends.asked > 20 && ends.phase === 'finale', JSON.stringify(ends.phase));
+  ok('and there are two ways to answer',
+     ends.btns.indexOf('endWind') >= 0 && ends.btns.indexOf('endLeave') >= 0, ends.btns.join(','));
+  for (const [go, want] of [['endWind', 'WINDS'], ['endLeave', 'LEAVES']]) {
+    await page.evaluate((g) => OuissysNightShift.__night.route(g), go);
+    await page.waitForTimeout(300);
+    const txt = await page.locator('.ns-card-fin').textContent();
+    ok('  ' + go + ' has its own ending', txt.indexOf(want) >= 0, txt.slice(0, 40));
+  }
+  await shot('ending');
+
   console.log('\n— the way out —');
   await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); });
   await page.waitForTimeout(300);

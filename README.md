@@ -379,6 +379,44 @@ Night six ends the story on dawn rather than on a scoreboard: the
 shutters go up, the shop is still for the first time, and the last found
 object finishes the toymaker's story.
 
+### What she is actually doing
+
+Night one opens in the terminal's **orientation mode** — a real thing an
+old security system would have. One instruction at a time, and *the
+shift stops and waits*: the clock does not run, the meter does not
+drain, nothing walks. She raises the monitor, walks the cameras, shuts a
+door, opens it again, latches the hatch. She cannot fail it and she
+cannot fall behind it, and by the time it hands the night over she has
+done every control with her own hands. It runs once and never again.
+
+And every night there is **one thing hidden in the shop** — a brass tag,
+a card, a folded letter — sitting on a surface somewhere on the eight
+cameras, catching the light about as much as brass catches light. It is
+not on the map and the system never mentions it. She has to go looking,
+which is what turns the cameras from a threat detector into a search,
+and the waiting into exploring while something hunts her. Miss it and it
+stays missed; the night ends by telling her there was something she
+walked past.
+
+Where each one hides is derived rather than authored: a point along the
+line that room's camera is actually looking down, dropped onto whatever
+surface is under it. So it is guaranteed to be in shot and guaranteed to
+be resting on something, and moving a camera later cannot silently
+orphan a page.
+
+The four tags also happen to explain exactly what their toy does, which
+means **the story is the tutorial** — read them and you know the game.
+
+### The six pages
+
+They start as a stranger's. An old toymaker, four automatons, a woman
+who did not come back; and each tag carries a place, described rather
+than named. On the fourth, a second hand answers him in newer ink. By
+the fifth it is not his shop any more. The sixth is signed.
+
+The last night ends on the only choice in the chapter: **wind the music
+box, or leave it**. Two endings, both warm, one bittersweet.
+
 ### Behind the story
 
 Finishing it opens four things on the title screen. **Custom Night** —

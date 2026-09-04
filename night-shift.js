@@ -126,6 +126,124 @@ const NS = {
     },
   },
 
+  /* --- the six things hidden in the shop -----------------------------
+     One per night, small, somewhere on the eight cameras, catching the
+     light about as much as a brass tag catches light. She has to go
+     looking, and looking is the thing the cameras were always for.
+
+     They are the whole reason to keep playing. The first three are a
+     stranger's: an old toymaker, four automatons, a woman who did not
+     come back — and each one carries a place, described rather than
+     named, because a person who has been to Marrakech will know all
+     three without being told. On the fourth a second hand answers him
+     in newer ink. By the fifth it is not his shop any more. The sixth
+     is signed.
+
+     Each tag also happens to explain exactly what its toy does, which
+     means the story is the tutorial: read them and you know the game.
+
+     `room` is where it hides, `on` the night it can be found, `kind`
+     which small object gets built. Miss one and it stays missed — that
+     is what makes her go back in. --------------------------------- */
+  finds: [
+    {
+      id: "cogsworth", on: 1, room: "workshop", kind: "tag",
+      where: "on the workshop bench, wired to a plinth with nothing on it",
+      title: "No. 1 — COGSWORTH",
+      lines: [
+        "Wound daily. Keeps better time than I do. He will walk the length of a room and turn at the end of it, and he does not stop for anything but a shut door.",
+      ],
+      back: "She says the big square is best at dusk, when the drums start up. He marches to that.",
+    },
+    {
+      id: "chime", on: 2, room: "foyer", kind: "tag",
+      where: "on the ledge over the front door, where something roosts",
+      title: "No. 2 — CHIME",
+      lines: [
+        "For the rafters. Goes over the top of everything — doors, walls, the lot — so there is always something awake above you.",
+      ],
+      back: "She never liked how quiet it goes inside the walls in the afternoon. So: something moving up there while she works.",
+    },
+    {
+      id: "marabelle", on: 3, room: "party", kind: "card",
+      where: "slipped under the ballerina’s glass",
+      title: "No. 3 — MARABELLE",
+      lines: [
+        "Do not overwind. She stops the moment she is looked at — she only ever dances when she is sure nobody can see her.",
+      ],
+      back: "Like her in the back row of the picture house. Would not sing along until the lights went down.",
+    },
+    {
+      id: "jax", on: 4, room: "closet", kind: "tag",
+      where: "in the bottom of the jester’s box",
+      title: "No. 4 — JAX",
+      lines: [
+        "The last one. Made in an afternoon because she laughed at the first sketch. He does not knock politely and he does not go away when he is told.",
+      ],
+      /* and here the fiction cracks: the answer is in newer ink, and it
+         is not answering him */
+      back: "and underneath, in different ink, much newer — <i>she did come back. she just took the long way round.</i>",
+    },
+    {
+      id: "letter", on: 5, room: "party", kind: "letter",
+      where: "folded under a paper cup on the party table",
+      title: "a letter, and not an old one",
+      lines: [
+        "You have been in here five nights now and you have not once run.",
+        "Everybody who worked this shift before you sat and waited for six o’clock. You went looking instead. I knew you would.",
+      ],
+      back: "There is one more. It is where the tune ends.",
+    },
+    {
+      id: "last", on: 6, room: "stage", kind: "page",
+      where: "left on the lip of the stage, in the one bit of light",
+      title: "the last page",
+      lines: [
+        "He built four of them so the shop would never be empty when she came back, and then he waited in an empty shop for the rest of his life. That is the whole story and it is not ours.",
+        "Ours started in a corridor at AVS, in Daoudiate, on an ordinary day that I have never once managed to describe properly.",
+        "I have not had to build anything to keep you. You came back on your own, every time, and you are going to walk out of this shop at six and still be there.",
+      ],
+      back: "— Anwar",
+    },
+  ],
+
+  /* the one line at the end of a night, in place of a score. It is not
+     a summary; it is a door left open. */
+  hooks: {
+    1: "Something in the workshop has been moved. The dust says it was moved from the inside.",
+    2: "There is a page torn out of the ledger. The tear is fresh.",
+    3: "The ballerina is facing the door now. Nobody wound her.",
+    4: "The handwriting on the last tag is not the same handwriting.",
+    5: "One more. It is where the tune ends.",
+  },
+
+  /* the line she gets for a night she cleared without finding the thing
+     hidden in it — enough to make her want to go back in */
+  missed: "There was something in the shop tonight she did not find.",
+
+  /* Dawn on the last night, and the one thing she gets to decide. */
+  ending: {
+    ask: "The music box is on the counter, half wound. It is six o’clock and nobody is watching.",
+    wind: {
+      label: "WIND IT",
+      lines: [
+        "She winds it the rest of the way and sets it down.",
+        "It plays the whole tune — all of it, the part nobody in this shop has heard in sixty years — and then it runs down properly, the way a thing does when it is finished rather than interrupted.",
+        "Out on the floor the soldier is on his plinth, the owl is in the rafters, the ballerina is under her glass. Not one of them so much as ticking. The shop has been waiting for somebody to finish it, and somebody did.",
+        "She puts the last page in her pocket, and the morning comes in through the front windows the colour of weak tea, and she locks up and goes home.",
+      ],
+    },
+    leave: {
+      label: "LEAVE IT",
+      lines: [
+        "She leaves it half wound, the way she found it.",
+        "It is not hers to finish. He wound it every evening for a woman who was on her way back the whole time, and he never got to know that, and there is nothing in this shop that can be given to him now.",
+        "So she takes the last page instead, and puts it in her pocket, and turns off the desk lamp.",
+        "The morning comes in through the front windows the colour of weak tea. Somewhere behind her, once, very quietly, the music box starts on its own — and she does not turn around, because she already knows how it ends.",
+      ],
+    },
+  },
+
   /* Six o'clock on the last night. Dawn, a still shop, and the one
      object that finishes it. */
   finale: {
@@ -4628,6 +4746,7 @@ function buildWorld(cvs) {
      from the outside */
   buildShifties();
   findEgg();
+  buildFinds();
 
   officeHands = buildHands();
   rooms.office.live.add(officeHands.group);
@@ -4809,6 +4928,14 @@ function tone(o) {
 
 /* --- the voices ---------------------------------------------------- */
 const SFX = {
+  /* picking a piece of paper up off a shelf. Two short scrapes and a
+     fold, so it reads as paper rather than as a pickup chime */
+  paper() {
+    burst({ f0: 3200, f1: 1500, dur: 0.12, gain: 0.10, q: 0.6, filter: "highpass" });
+    burst({ f0: 2400, f1: 900, dur: 0.16, gain: 0.075, q: 0.5, filter: "highpass", at: 0.10 });
+    tone({ type: "triangle", f0: 720, f1: 540, dur: 0.16, gain: 0.035, at: 0.06 });
+  },
+
   /* COGSWORTH — a boot on a board, and the metal in it ringing after */
   step(gain, pan) {
     const v = gain === undefined ? 0.5 : gain;
@@ -5456,6 +5583,8 @@ const G = {
   lostT: 12,
   t: 0,
   warned: 0,
+  /* orientation: -1 is off/done, otherwise the step she is on */
+  tutor: -1, tutorT: 0,
   caption: "",
   captionT: 0,
 
@@ -5744,6 +5873,118 @@ function stepBlackout(dt) {
     G.approaching.doorT = (G.approaching.doorT || TUNE.blackout.approach) - dt;
     if (G.approaching.doorT <= 0) kill(G.approaching);
   }
+}
+
+/* =========================================================
+   18e. ORIENTATION
+
+   The first night of a game like this normally opens on a dark room
+   and a person who has never played one wondering what she is supposed
+   to be doing. A wall of text on a card before it does not fix that:
+   she skips it, and then she is in the dark room anyway.
+
+   So night one starts in the terminal's orientation mode, which is a
+   real thing an old security system would have. One instruction at a
+   time, and **the shift stops and waits** until she does it — the
+   clock does not run, the meter does not drain, nothing walks. She
+   cannot fail it and she cannot fall behind it. By the time it hands
+   the night over she has raised the monitor, walked the cameras, shut
+   a door, opened it again and latched the hatch, all with her own
+   hands. Nobody has explained anything.
+
+   It only ever happens once. After night one is in the book it never
+   runs again, and the switch on the title screen turns it off for
+   somebody who does not want it.
+   ========================================================= */
+const TUTOR = [
+  { line: "ORIENTATION. THE SHIFT WILL WAIT FOR YOU.", hold: 2.6 },
+  { line: "MONITOR: RAISE IT.",
+    hint: "SPACE, or the CAMS button",
+    done: () => G.monitor },
+  { line: "GOOD. STEP THROUGH THE ROOMS.",
+    hint: "the arrows, the plan, or 1 to 8",
+    done: () => tutorSeen() >= 4 },
+  { line: "LOOK AT WHAT IS IN THEM. SOMETHING IS ALWAYS OUT OF PLACE.",
+    hold: 3.4 },
+  { line: "MONITOR: LOWER IT. IT DRAWS WHILE IT IS UP.",
+    hint: "SPACE again",
+    done: () => !G.monitor },
+  { line: "WEST DOOR: CLOSE IT.",
+    hint: "A, or the LEFT DOOR button",
+    done: () => G.doors.left },
+  { line: "A SHUT DOOR HOLDS. IT ALSO DRAWS. OPEN IT.",
+    hint: "A again — never leave one shut",
+    done: () => !G.doors.left },
+  { line: "CEILING HATCH: LATCH IT.",
+    hint: "W, or the HATCH button",
+    done: () => G.doors.hatch },
+  { line: "GOOD. UNLATCH.",
+    hint: "W again",
+    done: () => !G.doors.hatch },
+  { line: "ORIENTATION COMPLETE. THE SHIFT IS YOURS.", hold: 3.0 },
+];
+
+let tutorRooms = {};
+function tutorSeen() { return Object.keys(tutorRooms).length; }
+
+function tutorStart() {
+  G.tutor = 0;
+  G.tutorT = 0;
+  tutorRooms = {};
+  tutorShow();
+}
+function tutorOff() {
+  G.tutor = -1;
+  if (EL["ns-tutor"]) EL["ns-tutor"].hidden = true;
+}
+function tutorOn() { return G.tutor >= 0 && G.tutor < TUTOR.length; }
+
+function tutorShow() {
+  const el = EL["ns-tutor"];
+  if (!el) return;
+  const step = TUTOR[G.tutor];
+  if (!step) { el.hidden = true; return; }
+  el.hidden = false;
+  el.innerHTML = '<b>' + step.line + '</b>' +
+                 (step.hint ? '<span>' + step.hint + '</span>' : "");
+  el.classList.remove("nudge");
+  /* the annunciator reads it out, but straight to the voice rather than
+     through say() — the words are already on screen in the box, and the
+     caption strip underneath saying the same thing twice reads as a bug */
+  annunciate(step.line, false);
+}
+
+/* Called from the frame loop before anything else in the night. While a
+   step is waiting on her, this returns false and the caller skips the
+   whole shift — which is what makes it impossible to lose and
+   impossible to rush. */
+function tutorStep(dt) {
+  if (!tutorOn()) return true;
+  const step = TUTOR[G.tutor];
+  G.tutorT += dt;
+  if (G.monitor) tutorRooms[G.cam] = 1;
+  const ready = step.done ? step.done() : G.tutorT >= (step.hold || 2);
+  if (ready) {
+    G.tutor++;
+    G.tutorT = 0;
+    SFX.beep(false);
+    if (!tutorOn()) {
+      tutorOff();
+      /* once through is enough. Replaying night one after a bad first
+         attempt should not mean sitting through it again. */
+      saveNoTutor(true);
+      /* the night proper starts here, with the clock still at midnight */
+      say(NS.sys.boot, false);
+      return true;
+    }
+    tutorShow();
+    return false;
+  }
+  /* a gentle nudge if she has been looking at it for a while */
+  if (step.done && G.tutorT > 9 && EL["ns-tutor"]) {
+    EL["ns-tutor"].classList.add("nudge");
+  }
+  return false;
 }
 
 /* --- the end of it ------------------------------------------------- */
@@ -6178,6 +6419,12 @@ function frame(ts) {
   if (ARC.on) { arcadeStep(dt); }
   if (G.phase === "play") {
     stepEgg(dt);
+    stepFind(dt);
+    /* orientation holds the whole night still until she has done the
+       thing it asked for: no clock, no drain, nobody walking. It is the
+       one place in the chapter where the shop waits for her. */
+    if (!tutorStep(dt)) { uiTick(dt); sayTick(dt); musicTick(dt); }
+    else {
     stepClock(dt);
     if (G.phase === "play") {
       G.drain = powerRate();
@@ -6198,6 +6445,7 @@ function frame(ts) {
       audioTick(dt);
       sayTick(dt);
       uiTick(dt);
+    }
     }
   } else if (G.phase === "over") {
     G.deadT += dt;
@@ -6265,7 +6513,7 @@ function buildUI() {
   ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
    "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
    "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
-   "ns-say", "ns-egg"].forEach((id) => {
+   "ns-say", "ns-egg", "ns-find", "ns-tutor"].forEach((id) => {
     EL[id] = el(id);
   });
   stageEl = EL["ns-stage"];
@@ -6321,6 +6569,9 @@ function buildUI() {
   if (EL["ns-egg"]) {
     EL["ns-egg"].addEventListener("click", (e) => { e.stopPropagation(); arcadeOpen(); });
   }
+  if (EL["ns-find"]) {
+    EL["ns-find"].addEventListener("click", (e) => { e.stopPropagation(); takeFind(); });
+  }
 
   uiReady = true;
 }
@@ -6355,6 +6606,12 @@ function maxUnlocked() {
   return n;
 }
 function storyDone() { return !!nightsDone()[NIGHTS.length]; }
+
+const NOTUTOR_KEY = "ns_notutor";
+function loadNoTutor() {
+  try { return localStorage.getItem(NOTUTOR_KEY) === "1"; } catch (e) { return false; }
+}
+function saveNoTutor(v) { try { localStorage.setItem(NOTUTOR_KEY, v ? "1" : "0"); } catch (e) {} }
 
 const COZY_KEY = "ns_cozy";
 function loadCozy() {
@@ -6492,15 +6749,18 @@ function ratingCard() {
 function screenShift() {
   const last = G.mode === "story" && G.night >= NIGHTS.length;
   if (last) {
+    /* six nights of reading somebody else's paper, and then one thing
+       that is hers to decide. It is the only choice in the chapter and
+       it is deliberately the last one. */
     G.phase = "finale";
     overlay(
       '<div class="ns-card ns-card-fin">' +
         '<p class="ns-nightno">' + NS.finale.title + '</p>' +
         '<div class="ns-lines">' + NS.finale.lines.map((l) => "<p>" + l + "</p>").join("") + '</div>' +
+        '<p class="ns-ask">' + NS.ending.ask + '</p>' +
         '<div class="ns-btns">' +
-          '<button class="ns-btn ns-btn-go" data-go="galleryOffer">THE SHOP IN DAYLIGHT</button>' +
-          '<button class="ns-btn" data-go="title">TITLE</button>' +
-          '<button class="ns-btn" data-go="quit">CLOCK OFF</button>' +
+          '<button class="ns-btn ns-btn-go" data-go="endWind">' + NS.ending.wind.label + '</button>' +
+          '<button class="ns-btn ns-btn-go" data-go="endLeave">' + NS.ending.leave.label + '</button>' +
         '</div>' +
       '</div>', "ns-ov-fin");
     return;
@@ -6508,15 +6768,46 @@ function screenShift() {
   const next = G.mode === "custom"
     ? '<button class="ns-btn ns-btn-go" data-go="custom">CHANGE THE DIALS</button>'
     : '<button class="ns-btn ns-btn-go" data-go="next">NIGHT ' + (G.night + 1) + '</button>';
+  /* the last line of a night is not a score. It is a door left open —
+     and if she walked past the thing hidden in the shop tonight, it says
+     so, because that is the sentence that makes her go back in. */
+  const missed = G.mode === "story" && tonightsFind() ? NS.missed : "";
+  const hook = G.mode === "story" ? (NS.hooks[G.night] || "") : "";
   overlay(
     '<div class="ns-card ns-card-win">' +
       '<p class="ns-six">6:00 AM</p>' +
       '<p class="ns-blurb">' + G.cfg.name.toLowerCase() + ', survived.</p>' +
       ratingCard() +
+      (missed ? '<p class="ns-missed">' + missed + '</p>' : "") +
+      (hook ? '<p class="ns-hook">' + hook + '</p>' : "") +
       '<div class="ns-btns">' + next +
         '<button class="ns-btn" data-go="title">TITLE</button>' +
       '</div>' +
     '</div>', "ns-ov-win");
+}
+
+/* is tonight's page still out there? (null once she has it) */
+function tonightsFind() {
+  const f = NS.finds.filter((x) => x.on === G.night)[0];
+  if (!f) return null;
+  return foundAll()[f.id] ? null : f;
+}
+
+/* and the two ways the story is allowed to end */
+function screenEnding(which) {
+  const e = NS.ending[which];
+  G.phase = "finale";
+  if (which === "wind") SFX.tuneWhole(0.8);
+  overlay(
+    '<div class="ns-card ns-card-fin">' +
+      '<p class="ns-nightno">' + (which === "wind" ? "SHE WINDS IT" : "SHE LEAVES IT") + '</p>' +
+      '<div class="ns-lines">' + e.lines.map((l) => "<p>" + l + "</p>").join("") + '</div>' +
+      '<div class="ns-btns">' +
+        '<button class="ns-btn ns-btn-go" data-go="galleryOffer">THE SHOP IN DAYLIGHT</button>' +
+        '<button class="ns-btn" data-go="title">TITLE</button>' +
+        '<button class="ns-btn" data-go="quit">CLOCK OFF</button>' +
+      '</div>' +
+    '</div>', "ns-ov-fin");
 }
 
 /* --- Custom Night ----------------------------------------------------
@@ -6644,6 +6935,9 @@ function route(cmd) {
   else if (cmd === "customGo") { beginNight(0, { mode: "custom" }); }
   else if (cmd === "gallery" || cmd === "galleryOffer") { beginGallery(); }
   else if (cmd === "arcadeOut") { arcadeClose(); }
+  else if (cmd === "findOut") { closeFind(); }
+  else if (cmd === "endWind") { screenEnding("wind"); }
+  else if (cmd === "endLeave") { screenEnding("leave"); }
   else if (cmd.indexOf("preset:") === 0) {
     const v = parseInt(cmd.slice(7), 10) || 0;
     const d = {}; CAST.forEach((c) => { d[c.id] = v; });
@@ -6688,10 +6982,15 @@ function beginNight(n, opts) {
   G.shiftT = nextIn(TUNE.shift.firstAt);
   G.caption = ""; G.captionT = 0;
   sayQueue = []; sayUntil = 0;
-  G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, alarms: 0, moves: 0, lowest: 100 };
+  G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, alarms: 0, moves: 0, finds: 0, lowest: 100 };
   resetCast();
   resetShifties();
+  armFind();
   syncTrophies();
+  /* orientation: only on night one, only in the story, and only while
+     night one is still unfinished */
+  if (G.mode === "story" && G.night === 1 && !nightsDone()[1] && !loadNoTutor()) tutorStart();
+  else tutorOff();
   if (officeParts && officeParts.glass && TX.night) {
     officeParts.glass.material = new T.MeshBasicMaterial({ map: TX.night, fog: true });
   }
@@ -6826,6 +7125,7 @@ function uiTick(dt) {
   }
   if (EL["ns-mon-time"]) EL["ns-mon-time"].textContent = clockLabel();
   eggHotspot();
+  findHotspot();
 
   /* the annunciator's caption. A vocoder cannot be understood and is not
      meant to be — the words are here. */
@@ -6833,7 +7133,9 @@ function uiTick(dt) {
   if (EL["ns-say"]) {
     /* the system only talks during a shift. On any card — pause, over,
        dawn, the gallery — the strip is gone, not fading. */
-    const on = G.captionT > 0 && !!G.caption &&
+    /* and never during orientation, which has its own box saying its own
+       words — the two of them stacked on top of each other read as a bug */
+    const on = G.captionT > 0 && !!G.caption && !tutorOn() &&
                (G.phase === "play" || G.phase === "pause");
     EL["ns-say"].hidden = !on;
     if (on) EL["ns-say"].textContent = G.caption;
@@ -6861,6 +7163,257 @@ function uiTick(dt) {
       staticCtx.putImageData(img, 0, 0);
     }
   }
+}
+
+/* =========================================================
+   20c. THE SIX THINGS HIDDEN IN THE SHOP
+
+   The cameras were always a threat detector. This is what turns them
+   into a search: one small object a night, sitting somewhere on the
+   eight feeds, catching about as much light as a brass tag catches. It
+   is not marked on the map and the system never mentions it. She finds
+   it by looking at rooms, which is the thing the game most wants her
+   to be doing anyway, and which is exactly what she will not do if the
+   only reason to raise the monitor is fear.
+
+   Built once at boot, all six, and shown one at a time. They live in
+   the room's `live` branch rather than its frozen body, because the
+   only thing about them that moves is whether they exist tonight.
+   ========================================================= */
+const FIND_AT = new T.Vector3();
+let findMesh = null, findRec = null, findGlint = 0, findLit = false;
+const findMeshes = {};
+
+/* the small objects themselves. None of them is bigger than a hand. */
+function buildFindProp(kind) {
+  const g = new T.Group();
+  if (kind === "tag") {
+    /* a brass maker's tag on a loop of wire */
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.11, 0.002, 0.07), mat("brass", 1, 1, "#c9a227")), 0, 0, 0));
+    g.add(at(new T.Mesh(new T.TorusGeometry(0.012, 0.0032, 4, 10), flat("#8d7a4a")), 0.045, 0.004, -0.028, Math.PI / 2));
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.075, 0.0012, 0.008), flat("#6b5a2e")), -0.004, 0.0022, -0.012));
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.06, 0.0012, 0.008), flat("#6b5a2e")), -0.012, 0.0022, 0.008));
+  } else if (kind === "card") {
+    /* a stiff printed card, gone cream */
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.13, 0.0022, 0.085), mat("paper", 1, 1, "#e8dcc0")), 0, 0, 0));
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.085, 0.0014, 0.007), flat("#8a7a62")), 0, 0.0022, -0.02));
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.1, 0.0014, 0.005), flat("#a5947a")), 0, 0.0022, 0.004));
+  } else if (kind === "letter") {
+    /* folded twice, so it stands a little proud of whatever it is on */
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.115, 0.004, 0.075), mat("paper", 1, 1, "#f2e9d6")), 0, 0, 0));
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.115, 0.004, 0.038), mat("paper", 1, 1, "#e6dcc6")), 0, 0.0038, 0.02, 0.16));
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.03, 0.0016, 0.03), flat("#b8434e")), 0.03, 0.0062, 0.006, 0, 0.5, 0));
+  } else {
+    /* a loose page, one corner curled */
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.125, 0.0022, 0.095), mat("paper", 1, 1, "#efe4cd")), 0, 0, 0));
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.04, 0.0022, 0.04), mat("paper", 1, 1, "#e2d5ba")), 0.045, 0.0018, 0.036, -0.22, 0, 0.3));
+    for (let i = 0; i < 4; i++) {
+      g.add(at(new T.Mesh(new T.BoxGeometry(0.085 - i * 0.008, 0.0012, 0.005), flat("#5a4a3a")),
+               -0.01, 0.0022, -0.028 + i * 0.019));
+    }
+  }
+  /* the glint: a tiny unlit plate that the frame loop turns on and off,
+     so the thing catches the light the way metal and paper do rather
+     than glowing like a pickup in a platformer */
+  const gl = at(new T.Mesh(new T.PlaneGeometry(0.17, 0.12), glow("#fff3d0", 0.0)), 0, 0.007, 0, -Math.PI / 2);
+  gl.userData.glint = true;
+  g.add(gl);
+  /* a shade over life size. At a camera's distance a real eleven
+     centimetre tag is four pixels of brown, and a search she cannot win
+     is not a search, it is a wall. */
+  g.scale.setScalar(1.55);
+  return g;
+}
+
+/* Where each one hides.
+
+   Hand-picked coordinates were the wrong idea: six guesses, and all six
+   landed outside their room's camera frustum, so the object existed and
+   was never once visible. Each spot is derived instead — a point along
+   the line that room's camera is actually looking down, pushed to one
+   side of the picture so it is not dead centre, then dropped straight
+   down onto whatever surface is under it. That gets both things at
+   once: it is in shot, and it is resting on something. Rule 2 holds,
+   and it holds without anyone having to measure a shelf.
+
+   Candidates are tried in order and the first that lands on a surface
+   at a sensible height, inside the middle of the frame, wins — so
+   moving a camera or a shelf later can never silently hide a page. */
+const FIND_TRY = [];
+for (let ti = 0; ti < 7; ti++) {
+  for (let si = 0; si < 7; si++) {
+    FIND_TRY.push({ t: 0.34 + ti * 0.075, side: (si - 3) * 0.28 });
+  }
+}
+const _ray = new T.Raycaster();
+const _down = new T.Vector3(0, -1, 0);
+const _cp = new T.Vector3(), _lk = new T.Vector3(), _pt = new T.Vector3(), _sd = new T.Vector3();
+const FIND_WHY = [];
+
+function findSpot(rec) {
+  const cam = rec.cams.main;
+  if (!cam) return null;
+  const ox = rec.index * SPACING;
+  _cp.set(cam.pos[0] + ox, cam.pos[1], cam.pos[2]);
+  _lk.set(cam.look[0] + ox, cam.look[1], cam.look[2]);
+  /* the camera's own right vector, flattened, so "to one side" means to
+     one side of the picture rather than of the world */
+  _sd.subVectors(_lk, _cp); _sd.y = 0; _sd.normalize();
+  _sd.set(-_sd.z, 0, _sd.x);
+
+  /* a probe camera matching the real one, to check the result is in shot */
+  const probe = new T.PerspectiveCamera(cam.fov || 60, 16 / 9, 0.1, 200);
+  probe.position.copy(_cp);
+  probe.lookAt(_lk);
+  probe.updateMatrixWorld(true);
+
+  /* Raycaster walks straight past anything invisible, and at boot every
+     room but the office is switched off — so without this the six casts
+     all found empty air and not one page was ever placed. */
+  const wasVisible = rec.group.visible;
+  rec.group.visible = true;
+  const found = [];
+  for (let i = 0; i < FIND_TRY.length && !found.length; i++) {
+    const c = FIND_TRY[i];
+    _pt.lerpVectors(_cp, _lk, c.t).addScaledVector(_sd, c.side);
+    /* Cast from above the tallest thing in any room and then pick the
+       first hit that is at a height something could sit on. Taking the
+       nearest hit instead meant the ceiling in five rooms and the floor
+       between two arcade cabinets in the sixth. */
+    _ray.set(new T.Vector3(_pt.x, 3.1, _pt.z), _down);
+    _ray.far = 3.1;
+    const hit = _ray.intersectObject(rec.group, true)
+      .filter((h) => !(h.object.userData && h.object.userData.shadow))
+      .filter((h) => h.point.y >= 0.30 && h.point.y <= 1.62)[0];
+    if (!hit) continue;
+    const y = hit.point.y;
+    const at = new T.Vector3(_pt.x, y + 0.004, _pt.z);
+    const pr = at.clone().project(probe);
+    const px = (pr.x * 0.5 + 0.5) * 100, py = (-pr.y * 0.5 + 0.5) * 100;
+    if (pr.z > 1 || px < 20 || px > 80 || py < 20 || py > 78) continue;
+    /* handed back in the room's own space, not the world's: it is about
+       to be parented under a group that is already parked sixty metres
+       out, and adding the offset twice put every page in the next room
+       along, off the side of the picture */
+    found.push({ at: new T.Vector3(at.x - ox, at.y, at.z),
+                 ry: Math.atan2(_sd.x, _sd.z) + 0.4 });
+  }
+  rec.group.visible = wasVisible;
+  return found[0] || null;
+}
+
+function buildFinds() {
+  NS.finds.forEach((f) => {
+    const rec = rooms[f.room];
+    if (!rec) return;
+    const spot = findSpot(rec);
+    if (!spot) { console.warn("night shift: nowhere to hide " + f.id + " in " + f.room); return; }
+    const g = buildFindProp(f.kind);
+    g.position.copy(spot.at);
+    g.rotation.y = spot.ry;
+    g.visible = false;
+    rec.live.add(g);
+    g.updateMatrixWorld(true);
+    /* it is sitting on something, so it gets a pool under it like
+       everything else in this chapter does */
+    const sh = contactShadow(g, { y: 0, opacity: 0.3, spread: 1.3 });
+    if (sh) { sh.position.set(0, -0.0025, 0); g.add(sh); }
+    findMeshes[f.id] = g;
+  });
+}
+
+/* the one that belongs to tonight, and only while it is still there */
+function armFind() {
+  findMesh = null; findRec = null; findLit = false;
+  NS.finds.forEach((f) => { if (findMeshes[f.id]) findMeshes[f.id].visible = false; });
+  if (G.mode !== "story") return;
+  const f = NS.finds.filter((x) => x.on === G.night)[0];
+  if (!f || !findMeshes[f.id]) return;
+  if (foundAll()[f.id]) return;            // already hers; it is not there again
+  findRec = f;
+  findMesh = findMeshes[f.id];
+  findMesh.visible = true;
+  findMesh.getWorldPosition(FIND_AT);
+}
+
+function stepFind(dt) {
+  if (!findMesh) return;
+  findGlint -= dt;
+  if (findGlint <= 0) {
+    findGlint = findLit ? range(Math.random, 0.9, 1.6) : range(Math.random, 1.3, 2.6);
+    findLit = !findLit;
+    findMesh.traverse((o) => {
+      if (o.userData && o.userData.glint && o.material) {
+        o.material = glow("#fff3d0", findLit ? 0.88 : 0.0);
+      }
+    });
+  }
+}
+
+function findHotspot() {
+  const el = EL["ns-find"];
+  if (!el) return;
+  const on = findRec && G.phase === "play" && G.monitor &&
+             G.cam === findRec.room && G.monOut <= 0 && !isLost(G.cam);
+  el.hidden = !on;
+  if (!on) return;
+  _proj.copy(FIND_AT).project(view);
+  const x = (_proj.x * 0.5 + 0.5) * 100;
+  const y = (-_proj.y * 0.5 + 0.5) * 100;
+  if (_proj.z > 1 || x < 3 || x > 97 || y < 3 || y > 97) { el.hidden = true; return; }
+  el.style.left = x + "%";
+  el.style.top = y + "%";
+  el.classList.toggle("glinting", findLit);
+}
+
+/* --- what she has picked up, across every run --------------------- */
+const FOUND_KEY = "ns_found";
+function foundAll() {
+  try { return JSON.parse(localStorage.getItem(FOUND_KEY) || "{}") || {}; }
+  catch (e) { return {}; }
+}
+function keepFind(id) {
+  const f = foundAll();
+  if (f[id]) return false;
+  f[id] = true;
+  try { localStorage.setItem(FOUND_KEY, JSON.stringify(f)); } catch (e) {}
+  return true;
+}
+function foundCount() {
+  const f = foundAll();
+  return NS.finds.filter((x) => f[x.id]).length;
+}
+
+/* picking it up. The shift keeps running underneath — she is reading a
+   piece of paper in a room with something walking towards her, which is
+   the entire point and is why the card can be dismissed in one tap. */
+function takeFind() {
+  if (!findRec || G.phase !== "play") return;
+  const f = findRec;
+  keepFind(f.id);
+  G.stats.finds++;
+  findMesh.visible = false;
+  findMesh = null; findRec = null;
+  if (EL["ns-find"]) EL["ns-find"].hidden = true;
+  SFX.paper();
+  G.phase = "found";
+  showHud(false);
+  overlay(
+    '<div class="ns-card ns-card-find">' +
+      '<p class="ns-from">' + f.where + '</p>' +
+      '<div class="ns-paper">' +
+        '<p class="ns-paper-head">' + f.title + '</p>' +
+        f.lines.map((l) => "<p>" + l + "</p>").join("") +
+      '</div>' +
+      '<p class="ns-pencil">' + f.back + '</p>' +
+      '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="findOut">POCKET IT</button></div>' +
+    '</div>', "ns-ov-find");
+}
+function closeFind() {
+  if (G.phase !== "found") return;
+  G.phase = "play";
+  noOverlay();
+  showHud(true);
 }
 
 /* =========================================================
@@ -7369,6 +7922,9 @@ const testHooks = {
   route,
   /* advance the shift by hand, in fixed slices, with no rendering */
   pump(seconds, slice) {
+    /* a suite driving a night by hand is not being oriented; orientation
+       is a thing that happens to a person at sixty frames a second */
+    if (tutorOn()) tutorOff();
     const st = slice || 1 / 30;
     let left = seconds;
     while (left > 0 && G.phase === "play") {
@@ -7421,6 +7977,19 @@ const testHooks = {
                     o[k] = MUS.lay[k] ? +MUS.lay[k].gain.value.toFixed(3) : null; return o;
                   }, {}) }),
   musicTick: (dt) => musicTick(dt),
+  tutor: () => ({ step: G.tutor, of: TUTOR.length,
+                  line: TUTOR[G.tutor] ? TUTOR[G.tutor].line : null,
+                  seen: tutorSeen() }),
+  /* the six things hidden in the shop: what got placed, what is armed
+     tonight, and where on the screen it currently is */
+  finds: () => ({
+    placed: Object.keys(findMeshes),
+    armed: findRec ? findRec.id : null,
+    room: findRec ? findRec.room : null,
+    at: findMesh ? FIND_AT.toArray().map((n) => +n.toFixed(2)) : null,
+    kept: Object.keys(foundAll()),
+    why: FIND_WHY,
+  }),
 };
 
 return { start, stop, preview, __night: testHooks,

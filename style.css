@@ -4824,6 +4824,76 @@ img{-webkit-user-drag:none; user-select:none;}
   content:""; position:absolute; inset:0; pointer-events:none; z-index:3;
   background:radial-gradient(ellipse at 50% 52%, rgba(0,0,0,0) 42%, rgba(0,0,0,.55) 100%);
 }
+/* orientation. Sits where the annunciator caption sits but higher and
+   louder, because unlike the caption this one is asking for something
+   and the shift is not moving until it gets it. */
+.ns-tutor{
+  position:absolute; left:50%; bottom:21cqh; transform:translateX(-50%);
+  z-index:9; margin:0; pointer-events:none;
+  display:flex; flex-direction:column; align-items:center; gap:.7cqh;
+  padding:1.5cqh 3cqw; max-width:74cqw; text-align:center;
+  background:rgba(10,12,16,.86);
+  border:.16cqw solid rgba(200,162,96,.5);
+  border-radius:.7cqw;
+  box-shadow:0 0 4cqh rgba(0,0,0,.7);
+  font-family:var(--ns-face);
+}
+.ns-tutor b{
+  font-size:max(2.1cqh, 14px); letter-spacing:.16em; font-weight:700;
+  color:var(--ns-amber); line-height:1.4;
+}
+.ns-tutor span{
+  font-size:max(1.5cqh, 11px); letter-spacing:.08em;
+  color:rgba(232,223,200,.62);
+}
+.ns-tutor.nudge{ animation:nsNudge 1.5s ease-in-out infinite; }
+@keyframes nsNudge{
+  0%,100%{ border-color:rgba(200,162,96,.5); }
+  50%    { border-color:rgba(255,206,140,.95); }
+}
+.ns-tutor[hidden]{ display:none !important; }
+
+/* the last line of a night: a door left open, not a summary. And the
+   one above it she only sees if she walked past tonight's page. */
+.ns-hook{
+  margin:1.8cqh auto 0; max-width:52cqw;
+  font-size:max(1.75cqh, 12px); line-height:1.6; font-style:italic;
+  color:var(--ns-amber); letter-spacing:.03em;
+}
+.ns-missed{
+  margin:1.6cqh auto 0; max-width:52cqw;
+  font-size:max(1.5cqh, 11px); line-height:1.55;
+  color:rgba(232,223,200,.55);
+}
+.ns-ask{
+  margin:2.2cqh auto 1.2cqh; max-width:56cqw;
+  font-size:max(1.8cqh, 13px); line-height:1.65; color:var(--ns-ink);
+}
+
+/* the thing hidden in the shop tonight. Deliberately not a marker: a
+   patch of light on a shelf that is a little brighter than it should
+   be, and only while it glints. If it read as a quest icon the search
+   would stop being a search. */
+.ns-find{
+  position:absolute; z-index:8; transform:translate(-50%,-50%);
+  width:max(5.4cqh, 34px); height:max(5.4cqh, 34px);
+  border:0; padding:0; background:transparent; cursor:pointer;
+  border-radius:50%;
+  -webkit-tap-highlight-color:transparent;
+}
+.ns-find::after{
+  content:""; position:absolute; inset:22%;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(255,243,208,.85), rgba(255,235,180,.18) 55%, transparent 72%);
+  opacity:0; transition:opacity .5s ease;
+}
+.ns-find.glinting::after{ opacity:.9; }
+.ns-find:hover::after, .ns-find:focus-visible::after{ opacity:1; inset:12%; }
+.ns-find[hidden]{ display:none !important; }
+
+.ns-card-find .ns-paper{ max-width:60cqw; }
+.ns-card-find .ns-from{ color:var(--ns-brass); }
+
 /* the line under each performer's rule: what she will actually notice
    when it is on its way, as opposed to what it does */
 .ns-who em{
