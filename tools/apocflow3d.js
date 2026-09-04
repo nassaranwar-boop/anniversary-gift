@@ -202,10 +202,26 @@ const need = (name, cond, extra) => {
   const pit = await p.evaluate(() => window.Apocalypse.game.world.firePitAt);
   await walkTo(pit.x, pit.y + 1, 8);
   await use();
-  /* lighting it, then the two long scenes, then the cut */
-  for (let i = 0; i < 6; i++) { await talk(); await pump(40); }
-  need('the campfire cut is playing', await waitFor(s => s.cine === true, 1800));
-  need('the Level 5 card comes up', await waitCard('Level 5: THE GATES', 4200));
+  /* Lighting it runs two long conversations before the cut, and the
+     number of lines in them is not this suite's business — keep pressing
+     until the scene it leads to is on screen. */
+  let burning = false;
+  for (let i = 0; i < 90 && !burning; i++) {
+    await talk(); await pump(14);
+    burning = (await S()).cine === true;
+  }
+  need('the campfire cut is playing', burning);
+  /* the campfire, the sunrise, the morning after and the last ride all
+     talk; press through the lot of them to the gates */
+  let card5 = false;
+  for (let i = 0; i < 260 && !card5; i++) {
+    await talk(); await pump(10);
+    card5 = await p.evaluate(() => {
+      const t = document.querySelector('.ap-card-kicker');
+      return !!t && /Level 5/i.test(t.textContent);
+    });
+  }
+  need('the Level 5 card comes up', card5);
   await click('.ap-card-go'); await pump(20);
   st = await S(); need('Level 5 is running', st.level === 'gates', st);
   log('level 4 done');

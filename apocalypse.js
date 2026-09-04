@@ -219,13 +219,13 @@
     "                                                ",
     "                                                ",
     "################################################",
-    "#,o,,,,,o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,o.CS..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,,.....,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,,.....,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,,.CS..,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,,.....,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,,.....,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+    "#,,.....,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
     "#,o..l..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
     "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
     "#,o..h..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
@@ -241,7 +241,7 @@
     "#,o.....o,,,,,,,,,,,,,,,,,,,...h..#.......#...,#",
     "#,o..l..o,,,,,,,,,,,,,,,,,,,......#.==..=.#...,#",
     "#,o.....o,,,,,,,,,,,,,,,,,,,......#...H...#h..,#",
-    "#,o..z..o,,,,,,,,,,,,,,,,,,,......#.......#...,#",
+    "#,o.....o,,,,,,,,,,,,,,,,,,,......#.......#...,#",
     "#,o.....o,,,,,,,,,,,,,,,,,,,......#########...,#",
     "#,o.....o,,,,,,,,,,,,,,,,,,,..h..z.........l..,#",
     "#,o,,,,,o,,,,,,,,,,,,,,,,,,,..................,#",
@@ -330,7 +330,11 @@
        it took the ward's lighting with it — a night road lit like a
        treatment room. Sodium off the bay canopy, cold sky above it. */
     bay:      { sky: 0x4e5e86, bounce: 0x1a1a1e, amb: 0.95,
-                fill: 0.24, fillCol: 0x7e8ea8, key: 0xffb070, keyAmt: 0.80 }
+                fill: 0.24, fillCol: 0x7e8ea8, key: 0xffb070, keyAmt: 0.80 },
+    /* a country lane at two in the morning: no lamps for a mile, so all
+       of it is moon and none of it is sodium */
+    lane:     { sky: 0x8ea6d8, bounce: 0x10141c, amb: 1.05,
+                fill: 0.18, fillCol: 0x6c7fa8, key: 0xd6e2ff, keyAmt: 0.72 }
   };
 
   var PAL = {
@@ -381,7 +385,7 @@
   var LEVELS = [
     {
       id: "home", name: "HOME", card: "Level 1: HOME",
-      blurb: "Tuesday they flew to Portugal. It is Friday and the news is still on.",
+      blurb: "Her mum and dad flew to Portugal on Tuesday. It is Friday, she is alone in the house, and the news is still on.",
       map: MAPS.home, theme: "house", base: ".", dark: 0.68, groundTex: "asphalt",
       /* [x0, y0, x1, y1, texture, tint] — the bathroom and the kitchen are
          tiled and the garage is a slab; the rest of it is boards */
@@ -464,9 +468,12 @@
 
   var SUB = {
     roadside: {
+      /* They drove out of the city at night and the car died at night.
+         It was landing them on a road in broad daylight, which threw the
+         whole night away — the morning belongs to the horse. */
       id: "roadside", name: "THE ROAD", map: MAPS.roadside, theme: "road",
-      base: ",", dark: 0.42, horizon: true,
-      grade: [246, 200, 128, 0.16], haze: [162, 168, 186, 0.18],
+      base: ",", dark: 0.70, horizon: true, light: "lane",
+      grade: [70, 88, 150, 0.20], haze: [40, 52, 86, 0.30],
       steps: [
         { task: "The tank is dry. There is a barn up the lane — the compass knows where.", clears: "horse" }
       ]
@@ -708,6 +715,52 @@
     SIL,
     [N, "She is asleep before he has counted to ten."],
     [N, "He sits by the fire and watches the dark, which is what it looks like when somebody loves you back."]
+  ];
+
+  /* ---- the morning after, at the camp ---- */
+  TALK.morningAfter = [
+    [N, "The fire is grey and warm and there is dew on everything that was not under them."],
+    ["ANWAR", "You slept."],
+    ["OUISSY", "I did not mean to."],
+    ["ANWAR", "You were out before the fire was."],
+    ["OUISSY", "Did you sleep at all?"],
+    ["ANWAR", "A bit. Later. When I was sure nothing was coming."],
+    SIL,
+    ["OUISSY", "My shoulder is dead."],
+    ["ANWAR", "That would be my fault."],
+    ["OUISSY", "It is entirely your fault."],
+    [N, "She stands up in stages, the way you do after a night on the ground, and looks at the light coming through the trees."],
+    ["OUISSY", "Reservoir, then north road. An hour, they said."],
+    ["ANWAR", "They said an hour on a horse. Nobody asked whether we could ride one."],
+    ["OUISSY", "We got this far."],
+    [N, "He puts the last of the wood on the embers and stands on it until it is out, because you do not leave a fire in a wood."]
+  ];
+
+  /* ---- coming up on Ashcombe ---- */
+  TALK.arrive = [
+    [N, "The reservoir is on their left for two miles, flat and grey and absolutely still, and neither of them says anything about how beautiful it is."],
+    [N, "Then the road lifts, and at the top of it there is a fence."],
+    ["ANWAR", "That is a lot of fence."],
+    ["OUISSY", "That is the point of it."],
+    [N, "Floodlights on poles. A gate made out of scaffolding and a lorry parked sideways behind it. Somebody on the roof of the lorry with binoculars, who has already seen them."],
+    ["ANWAR", "They have seen us."],
+    ["OUISSY", "Good."],
+    ["ANWAR", "Is it?"],
+    ["OUISSY", "It is better than the alternative."],
+    [N, "She walks the horse the last two hundred yards at a pace that says they are not in a hurry and they are not hiding anything."]
+  ];
+
+  /* ---- let in ---- */
+  TALK.settled = [
+    [N, "It takes the rest of the day. Somebody writes their names in a book. Somebody else finds them a room with two beds in it and a window that does not open."],
+    [N, "There is water that comes out of a tap. There is a queue for it, and the queue is the most ordinary thing either of them has seen in a week."],
+    ["ANWAR", "There are children here."],
+    ["OUISSY", "I know."],
+    ["ANWAR", "Playing."],
+    ["OUISSY", "I know."],
+    SIL,
+    [N, "By the time the light goes she has stopped listening for things behind her, which takes more out of her than the walking did."],
+    [N, "Somebody says there is a way up onto the roof, and that nobody minds."]
   ];
 
   TALK.roof = [
@@ -7100,6 +7153,22 @@
         l.castShadow = true; logs.add(l);
       }
       g.add(logs);
+      /* Two logs to sit on, at the distance the campfire cut seats them.
+         The only things to sit on in the clearing were the bedrolls, six
+         tiles away across the grass, so the place she lights a fire and
+         the place they end up sitting were nowhere near each other. */
+      [1.95, -1.95].forEach(function (zz) {
+        var seat = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.36, 2.7, 10), matBark);
+        seat.rotation.z = Math.PI / 2;
+        seat.position.set(0, 0.34, zz);
+        seat.castShadow = true; seat.receiveShadow = true;
+        g.add(seat);
+        [-0.9, 0.9].forEach(function (o) {
+          var st = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.34, 6), matBark);
+          st.position.set(o, 0.17, zz + 0.18);
+          g.add(st);
+        });
+      });
       G.add(g);
       var fire = makeFire();
       fire.position.set(cx(x), 0.1, cz(y));
@@ -9141,9 +9210,16 @@
          should not arrive in the same box: narration is a line of prose
          across the foot of the screen, and somebody speaking is a plate
          with their name on it, on their own side. */
+      /* the voice is who is speaking; the side is where they are standing
+         in this particular scene, which a cut can say for itself */
+      var voice = speaker === "OUISSY" ? " her" : speaker ? " them" : "";
+      var side = "";
+      if (speaker) {
+        var over = G && G.cine && G.cine.sides && G.cine.sides[speaker];
+        side = " side-" + (over || (speaker === "OUISSY" ? "l" : "r"));
+      }
       box.className = "ap-dlg" +
-        (quiet ? " quiet" : speaker ? " speech" : " narration") +
-        (speaker === "OUISSY" ? " her" : speaker ? " them" : "");
+        (quiet ? " quiet" : speaker ? " speech" : " narration") + voice + side;
       box.setAttribute("aria-hidden", "false");
     }
     if (!quiet && speaker) Audio_.beep();
@@ -10291,6 +10367,14 @@
   function lightTheFire() {
     if (G.__lighting) return;
     G.__lighting = true;
+    /* "He crouches on the other side of the pit and holds the cone
+       steady": so he does. He crosses to the far side and stays down
+       there for as long as the two of them are building it. */
+    var w0 = G.world;
+    if (G.anwar && w0.firePitAt) {
+      G.anwar.goto = { x: w0.cx(w0.firePitAt.x), z: w0.cz(w0.firePitAt.y) - TILE * 0.95,
+                       face: -Math.PI / 2, crouch: 0.85 };
+    }
     say(TALK.fire, function () {
       var f = G.world.fire;
       if (f) {
@@ -10304,6 +10388,12 @@
         };
       }
       Audio_.fire();
+      /* and when it catches he gets up off his heels and takes the log */
+      if (G.anwar && w0.firePitAt) {
+        G.anwar.goto = { x: w0.cx(w0.firePitAt.x) - TILE * 0.30,
+                         z: w0.cz(w0.firePitAt.y) - TILE * 0.98,
+                         face: -Math.PI / 2, crouch: 0 };
+      }
       clearStep("fire");
     });
   }
@@ -10350,7 +10440,10 @@
     if (id === "escape")    { fadeTo(function () { playDrive(); }); return; }
     if (id === "roadside")  { fadeTo(function () { playRide(); }); return; }
     if (id === "campsite")  { afterFire(); return; }
-    if (id === "gates")     { fadeTo(function () { playRooftop(); }); return; }
+    /* They are cleared in the middle of the afternoon and the next thing
+       was the roof at midnight, with nothing in between: no day, no
+       being let in, no reason for either of them to be up there. */
+    if (id === "gates")     { fadeTo(function () { playSettling(); }); return; }
   }
 
   function afterHospital() {
@@ -11146,7 +11239,10 @@
   }
 
   /* ---- THE RIDE ---- */
-  function playRide() {
+  /* The ride happens twice: out to the clearing on the first morning,
+     and again the next one, on the last leg to Ashcombe. Same road, same
+     horse, different light and different words. */
+  function playRide(second) {
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x3a3050, 0.0042);
     var cam = new THREE.PerspectiveCamera(38, Stage.camera.aspect, 0.4, 900);
@@ -11205,8 +11301,11 @@
 
     var hoofT = 0;
     runCine({
+      /* he is on the left of frame in this one, she is on the right */
+      sides: { ANWAR: "l", OUISSY: "r" },
       scene: scene, camera: cam,
-      caption: "It takes most of the morning, and neither of them minds.",
+      caption: second ? "The reservoir road, and a fence at the top of it."
+                      : "It takes most of the morning, and neither of them minds.",
       grade: { gradeCol: 0xd8a860, gradeAmt: 0.18, hazeCol: 0x8a7a96, hazeAmt: 0.26,
                vig: 0.6, sat: 1.1, fringe: 0.0015, redPulse: 0, exposure: 1.04 },
       update: function (dt, t) {
@@ -11233,12 +11332,22 @@
 
         hoofT -= dt;
         if (hoofT <= 0) { hoofT = 0.30; Audio_.hoof(); }
-        if (t > 5.4 && t < 5.6) caption("Twenty miles of hedges, and a lane that keeps going.");
-        if (t > 9.6 && t < 9.8) caption("She has one hand in the mane and one arm holding him on.");
+        if (!second) {
+          if (t > 5.4 && t < 5.6) caption("Twenty miles of hedges, and a lane that keeps going.");
+          if (t > 9.6 && t < 9.8) caption("She has one hand in the mane and one arm holding him on.");
+        }
       },
-      duration: 12.8,
-      done: function () { endCine(function () { enterSub("campsite"); }); }
+      /* the second time out it holds while they talk their way up to the
+         gate, rather than running a timer and cutting */
+      duration: second ? Infinity : 12.8,
+      done: second ? null : function () { endCine(function () { enterSub("campsite"); }); }
     });
+    if (second) {
+      G.state = "dialogue";
+      say(TALK.arrive, function () {
+        endCine(function () { levelCard(4); });
+      });
+    }
   }
 
   /* ---- THE CAMPFIRE ---- */
@@ -11430,6 +11539,8 @@
     }
 
     runCine({
+      /* he is on the left of frame in this one, she is on the right */
+      sides: { ANWAR: "l", OUISSY: "r" },
       scene: scene, camera: cam,
       caption: "",
       grade: { gradeCol: 0xd08a40, gradeAmt: 0.18, hazeCol: 0x2a2038, hazeAmt: 0.2,
@@ -11695,8 +11806,127 @@
         birdT -= dt;
         if (birdT <= 0 && t > 2.4) { birdT = rnd(0.5, 1.5); Audio_.bird(); }
       },
-      duration: 10.5,
-      done: function () { endCine(function () { levelCard(4); }); }
+      /* It ran for ten and a half seconds and then a menu about the safe
+         house appeared, which threw away the whole morning. It holds
+         now, they talk about the night, and only then does the day
+         start moving again. */
+      duration: Infinity,
+      done: null
+    });
+    G.state = "dialogue";
+    say(TALK.morningAfter, function () {
+      endCine(function () { playRide(true); });
+    });
+  }
+
+  /* ---- BEING LET IN ----
+     The afternoon they are cleared, held over the camp from above while
+     the light goes out of it: the queue for the tap, the children, the
+     hour in which neither of them has to do anything next. */
+  function playSettling() {
+    var scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x1a1c2c, 0.0075);
+    var cam = new THREE.PerspectiveCamera(42, Stage.camera.aspect, 0.3, 700);
+
+    var sky = makeSky();
+    sky.u.cLow.value.set(0xffc08a); sky.u.cMid.value.set(0x9a8ab0); sky.u.cHigh.value.set(0x3a4470);
+    sky.u.sunCol.value.set(0xffb070); sky.u.sunAmt.value = 0.7;
+    sky.u.sunDir.value.set(-0.85, 0.10, 0.3).normalize();
+    scene.add(sky.mesh);
+    var stars = makeStars(1400, 340); stars.u.amt.value = 0;
+    scene.add(stars.points);
+    if (stars.glow) { stars.glow.material.uniforms.amt.value = 0; scene.add(stars.glow); }
+
+    cineEnvironment(scene, sky, "road", 0.35);
+    landscape(scene, { far: 0x5a5070, mid: 0x463f5e, near: 0x38344c, tree: 0x1d1a2a,
+                       sky: 0x8a7fa4 });
+    groundMist(scene, { colour: 0xbfa8b4, amount: 0.7, skipNear: 1 });
+
+    var groundMat = surface("pave", { repeat: 1, rough: 0.98, tint: 0x6a6a70 });
+    groundMat.map = tex("pave", 256, 1); groundMat.map.repeat.set(40, 40);
+    var ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), groundMat);
+    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true;
+    scene.add(ground);
+
+    /* the camp: low huts in rows, a fence round it, and the lorry on the
+       gate they came through this morning */
+    var hutM = new THREE.MeshStandardMaterial({ color: 0x6e6a62, roughness: 0.95 });
+    var huts = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), hutM, 40);
+    var d = new THREE.Object3D();
+    for (var i = 0; i < 40; i++) {
+      var row = Math.floor(i / 8), col = i % 8;
+      d.position.set(-26 + col * 7.4 + rnd(-0.4, 0.4), 1.5, -6 - row * 9 + rnd(-0.5, 0.5));
+      d.scale.set(rnd(4.6, 6.2), 3.0, rnd(3.4, 4.4));
+      d.rotation.set(0, rnd(-0.04, 0.04), 0);
+      d.updateMatrix(); huts.setMatrixAt(i, d.matrix);
+    }
+    huts.castShadow = true; huts.receiveShadow = true;
+    scene.add(huts);
+    var fenceM = new THREE.MeshStandardMaterial({ color: 0x3a3c42, roughness: 0.9, metalness: 0.4 });
+    for (var f = 0; f < 26; f++) {
+      var post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 3.4, 0.16), fenceM);
+      post.position.set(-34 + f * 2.8, 1.7, 6.5);
+      scene.add(post);
+    }
+    var mesh2 = new THREE.Mesh(new THREE.BoxGeometry(72, 3.2, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0x4a4e56, roughness: 0.9, transparent: true, opacity: 0.5 }));
+    mesh2.position.set(-2, 1.7, 6.5); scene.add(mesh2);
+    /* the floodlights, coming on as it goes */
+    var flood = [];
+    [-24, -2, 20].forEach(function (fx) {
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.14, 8, 6), fenceM);
+      pole.position.set(fx, 4, 8.2); scene.add(pole);
+      var lamp = new THREE.Mesh(new THREE.SphereGeometry(0.30, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0x3a3830 }));
+      lamp.position.set(fx, 7.9, 8.2); scene.add(lamp);
+      var pl = new THREE.PointLight(0xffe0b0, 0, 26, 2);
+      pl.position.set(fx, 7.7, 8.0); scene.add(pl);
+      flood.push({ lamp: lamp, light: pl });
+    });
+
+    var hemi = new THREE.HemisphereLight(0xffb888, 0x201c26, 1.5);
+    scene.add(hemi);
+    var key = new THREE.DirectionalLight(0xffb070, 1.6);
+    key.position.set(-90, 26, 28); scene.add(key);
+    var flies = fireflies(50, 30, 2.2);
+    flies.points.position.set(-4, 0, -4);
+    scene.add(flies.points);
+
+    runCine({
+      scene: scene, camera: cam,
+      caption: "",
+      grade: { gradeCol: 0xffb070, gradeAmt: 0.14, hazeCol: 0x7a6a80, hazeAmt: 0.20,
+               vig: 0.52, sat: 1.12, fringe: 0.0012, redPulse: 0, exposure: 1.0 },
+      update: function (dt, t) {
+        /* the afternoon goes: the sky cools, the stars come up, and the
+           floodlights come on one at a time */
+        var k = clamp(t / 26, 0, 1), e = k * k * (3 - 2 * k);
+        sky.u.cLow.value.setRGB(lerp(1.00, 0.09, e), lerp(0.75, 0.12, e), lerp(0.54, 0.24, e));
+        sky.u.cMid.value.setRGB(lerp(0.60, 0.05, e), lerp(0.54, 0.07, e), lerp(0.69, 0.16, e));
+        sky.u.cHigh.value.setRGB(lerp(0.23, 0.02, e), lerp(0.27, 0.03, e), lerp(0.44, 0.09, e));
+        sky.u.sunAmt.value = 0.7 * (1 - e);
+        stars.u.amt.value = Math.max(0, e * 1.5 - 0.35);
+        stars.u.time.value = t;
+        if (stars.glow) stars.glow.material.uniforms.amt.value = stars.u.amt.value;
+        hemi.intensity = lerp(1.5, 0.42, e);
+        hemi.color.setRGB(lerp(1.0, 0.20, e), lerp(0.72, 0.24, e), lerp(0.53, 0.40, e));
+        key.intensity = 1.6 * (1 - e);
+        flies.u.time.value = t;
+        flies.u.amt.value = e;
+        for (var i2 = 0; i2 < flood.length; i2++) {
+          var on = clamp((e - 0.42 - i2 * 0.07) * 6, 0, 1);
+          flood[i2].light.intensity = on * 26;
+          flood[i2].lamp.material.color.setRGB(0.23 + on * 0.77, 0.22 + on * 0.66, 0.19 + on * 0.42);
+        }
+        cam.position.set(Math.sin(t * 0.05) * 5 - 2, 13 - e * 3.5, 34 - e * 6);
+        cam.lookAt(-2, 3.5, -14);
+      },
+      duration: Infinity,
+      done: null
+    });
+    G.state = "dialogue";
+    say(TALK.settled, function () {
+      endCine(function () { playRooftop(); });
     });
   }
 
@@ -11744,6 +11974,36 @@
       w.castShadow = true; w.receiveShadow = true;
       scene.add(w);
     });
+    /* ---- the camp underneath ----
+       The roof was floating in the dark with a skyline behind it and
+       nothing in between, so there was no sense of the place they had
+       spent the day getting into. These are the huts they were given a
+       room in, two floors down and going away into the trees. */
+    var campM = new THREE.MeshStandardMaterial({ color: 0x2a2c33, roughness: 0.96 });
+    var camp = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), campM, 34);
+    var cd = new THREE.Object3D();
+    for (var hh = 0; hh < 34; hh++) {
+      var hr = Math.floor(hh / 7), hc = hh % 7;
+      cd.position.set(-58 + hc * 19 + rnd(-2.5, 2.5), -17 + rnd(-0.8, 0.8),
+                      -62 - hr * 26 + rnd(-4, 4));
+      cd.scale.set(rnd(9, 14), rnd(4.5, 7), rnd(6, 10));
+      cd.rotation.set(0, rnd(-0.05, 0.05), 0);
+      cd.updateMatrix(); camp.setMatrixAt(hh, cd.matrix);
+    }
+    camp.receiveShadow = true;
+    scene.add(camp);
+    /* a few windows lit in it, because there are people down there */
+    var campWin = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.4, 0.9),
+      new THREE.MeshBasicMaterial({ color: 0xffcf88, fog: false }), 28);
+    for (var cw = 0; cw < 28; cw++) {
+      cd.position.set(-58 + (cw % 7) * 19 + rnd(-5, 5), -16 + rnd(-1.4, 1.4),
+                      -57 - Math.floor(cw / 7) * 26);
+      cd.scale.setScalar(rnd(0.7, 1.3));
+      cd.rotation.set(0, 0, 0);
+      cd.updateMatrix(); campWin.setMatrixAt(cw, cd.matrix);
+    }
+    scene.add(campWin);
+
     /* the water tower and the aerial */
     var tank = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 2.6, 12),
       surface("metal", { repeat: 1, rough: 0.8, metal: 0.5, tint: 0x4a4238 }));
@@ -11779,21 +12039,24 @@
        to show. Nothing goes near the roof, nothing stands in the corridor
        she is looking down, and the ones nearest the roof are the low ones
        so you see over them into the rest of it. */
+    /* ---- where the city is ----
+       Ashcombe is a fenced camp on a hill outside the town, so the town
+       is a long way off: a skyline on the horizon, not a wall at the end
+       of the roof. Nothing stands nearer than a couple of hundred metres
+       and the whole of it sits in one band across the far distance. */
     for (var i = 0; i < 96; i++) {
       var ang, rad, bx, bz, tries = 0;
       do {
         ang = rnd(0, 6.2832);
-        rad = 52 + Math.pow(Math.random(), 0.7) * 165;
-        bx = Math.cos(ang) * rad;
-        bz = Math.sin(ang) * rad - 52;
+        rad = 240 + Math.pow(Math.random(), 0.55) * 340;
+        bx = Math.cos(ang) * rad * 1.5;
+        bz = Math.sin(ang) * rad - 210;
         tries++;
-      } while (tries < 24 &&
-               (bz > -40 ||                                  /* level with the roof or behind it */
-                (bz > -95 && Math.abs(bx) < 34)));           /* straight down the sightline */
-      if (bz > -40) { bz = -40 - Math.random() * 30; }
-      var near = clamp((-bz - 40) / 130, 0, 1);
-      var bh = (7 + Math.random() * 50) * (0.34 + near * 0.9);
-      var bw = rnd(7, 20);
+      } while (tries < 24 && bz > -190);        /* never on this side of the valley */
+      if (bz > -190) { bz = -190 - Math.random() * 120; }
+      var near = clamp((-bz - 190) / 320, 0, 1);
+      var bh = (26 + Math.random() * 96) * (1.15 - near * 0.42);
+      var bw = rnd(18, 46);
       d.position.set(bx, bh / 2 - 22, bz);
       d.scale.set(bw, bh, bw * rnd(0.7, 1.3));
       d.rotation.set(0, rnd(0, 1.5), 0);
@@ -11812,6 +12075,33 @@
       }
     }
     for (; wi < 420; wi++) { d.position.set(0, -900, 0); d.updateMatrix(); windows.setMatrixAt(wi, d.matrix); }
+    /* ---- roofs ----
+       A skyline where every building is one box is a bar chart. A second
+       smaller box on top of most of them — a plant room, a tank, a lift
+       overrun — is the whole difference between a wall and a city. */
+    var tops = new THREE.InstancedMesh(cityG, cityM, 96);
+    tops.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(96 * 3), 3);
+    var topN = 0, tm = new THREE.Matrix4(), tp = new THREE.Vector3(),
+        tq = new THREE.Quaternion(), ts = new THREE.Vector3(), tc2 = new THREE.Color();
+    for (var ti = 0; ti < 96; ti++) {
+      city.getMatrixAt(ti, tm);
+      tm.decompose(tp, tq, ts);
+      if (Math.random() < 0.22) continue;
+      d.position.set(tp.x + (Math.random() - 0.5) * ts.x * 0.35,
+                     tp.y + ts.y * 0.5 + ts.y * 0.055,
+                     tp.z + (Math.random() - 0.5) * ts.z * 0.35);
+      d.scale.set(ts.x * rnd(0.24, 0.52), ts.y * rnd(0.05, 0.14), ts.z * rnd(0.24, 0.52));
+      d.quaternion.copy(tq);
+      d.updateMatrix();
+      tops.setMatrixAt(topN, d.matrix);
+      city.getColorAt(ti, tc2);
+      tops.setColorAt(topN, tc2.multiplyScalar(0.86));
+      topN++;
+    }
+    tops.count = topN;
+    tops.instanceMatrix.needsUpdate = true;
+    if (tops.instanceColor) tops.instanceColor.needsUpdate = true;
+    scene.add(tops);
     city.instanceMatrix.needsUpdate = true;
     if (city.instanceColor) city.instanceColor.needsUpdate = true;
     windows.instanceMatrix.needsUpdate = true;
@@ -11821,8 +12111,8 @@
     var fires = [];
     for (var f = 0; f < 3; f++) {
       var ff = makeFire();
-      ff.scale.setScalar(rnd(4, 8));
-      ff.position.set(rnd(-140, 140), rnd(-14, 6), rnd(-190, -90));
+      ff.scale.setScalar(rnd(14, 26));
+      ff.position.set(rnd(-320, 320), rnd(-6, 22), rnd(-460, -240));
       ff.userData.strength = 0.5;
       ff.userData.light.intensity = 0;
       scene.add(ff);
@@ -11883,6 +12173,8 @@
 
     var lean = 0, together = false;
     runCine({
+      /* he is on the left of frame in this one, she is on the right */
+      sides: { ANWAR: "l", OUISSY: "r" },
       scene: scene, camera: cam,
       caption: "",
       duration: Infinity,
@@ -12113,8 +12405,29 @@
     var a = G.anwar;
     if (!a) return;
     if (!a.following) {
-      /* he is still breathing when he is not walking, and if he is asleep
-         the wake animation owns him */
+      /* he can still be sent somewhere: the narration has him crouching
+         at the other side of the pit while she builds the fire, and it
+         used to say that while he stood ten metres away on the grass */
+      if (a.goto) {
+        var gx = a.goto.x - a.x, gz = a.goto.z - a.z;
+        var gd = Math.hypot(gx, gz);
+        if (gd > 0.18) {
+          var gs = Math.min(TUNE.walk * 0.9, gd * 3.0);
+          a.x += gx / gd * gs * dt;
+          a.z += gz / gd * gs * dt;
+          a.rig.root.rotation.y = dampAngle(a.rig.root.rotation.y,
+                                            -Math.atan2(gz, gx), 0.16, dt);
+          poseHuman(a.rig, G.time, clamp(gs / TUNE.walk, 0, 1), null, {});
+        } else {
+          if (a.goto.face != null)
+            a.rig.root.rotation.y = dampAngle(a.rig.root.rotation.y, a.goto.face, 0.14, dt);
+          poseHuman(a.rig, G.time + 0.8, 0, null, { crouch: a.goto.crouch || 0 });
+          if (a.goto.then) { var f = a.goto.then; a.goto.then = null; f(); }
+        }
+        a.groundY = damp(a.groundY || 0, groundAt(G.world, a.x, a.z), 0.16, dt);
+        a.rig.root.position.set(a.x, a.groundY, a.z);
+        return;
+      }
       if (!a.asleep && !G.anim) poseHuman(a.rig, G.time + 0.8, 0, null, {});
       return;
     }

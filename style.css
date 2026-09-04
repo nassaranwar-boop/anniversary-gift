@@ -3114,6 +3114,12 @@ img{-webkit-user-drag:none; user-select:none;}
 :root{
   --ap-sign: 'Silkscreen', 'Press Start 2P', ui-monospace, monospace;
   --ap-term: 'VT323', ui-monospace, 'Courier New', monospace;
+  /* The chapter has three voices and they should not all be the same
+     typewriter. Silkscreen is the system talking — labels, buttons, the
+     compass. VT323 is a screen she is reading. And this is the book:
+     the narration, and every title that is a sentence rather than a
+     heading. */
+  --ap-voice-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
 
   /* The chapter's surfaces. Everything the player reads sits on one of
      these, so the whole UI reads as salvaged equipment rather than as a
@@ -3372,7 +3378,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .ap-dlg.narration .ap-dlg-text, .ap-dlg.quiet .ap-dlg-text{
   max-width:62ch; text-align:center;
-  font:italic 400 2.5cqw/1.62 Georgia,"Times New Roman",serif;
+  font:italic 500 2.5cqw/1.62 var(--ap-voice-serif);
   color:#d5dcec; letter-spacing:.005em;
   text-shadow:0 2px 14px rgba(0,0,0,.9);
 }
@@ -3402,11 +3408,17 @@ img{-webkit-user-drag:none; user-select:none;}
   font:400 2.35cqw/1.5 var(--ap-term), ui-monospace, monospace;
   color:#eaeffb;
 }
-.ap-dlg.her  { left:4cqw;  --ap-voice:#ffc98a; }
-.ap-dlg.her::before  { left:0; }
-.ap-dlg.them { right:4cqw; --ap-voice:#8fd8c4; text-align:right; }
-.ap-dlg.them::before { right:0; }
-.ap-dlg.them .ap-dlg-name{ text-align:right; }
+/* Which voice it is and which side of the screen it sits on are two
+   different questions. They used to be one class, so in any scene where
+   the two of them were staged the other way round — the campfire, where
+   he is on the left — every line arrived on the wrong person's side. */
+.ap-dlg.her  { --ap-voice:#ffc98a; }
+.ap-dlg.them { --ap-voice:#8fd8c4; }
+.ap-dlg.side-l  { left:4cqw; }
+.ap-dlg.side-l::before  { left:0; }
+.ap-dlg.side-r { right:4cqw; text-align:right; }
+.ap-dlg.side-r::before { right:0; }
+.ap-dlg.side-r .ap-dlg-name{ text-align:right; }
 
 /* a chevron that breathes, so it is clear the line is waiting on you */
 .ap-dlg::after{
@@ -3467,6 +3479,19 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* ---- the overlay every card, panel and keypad mounts into ---- */
+/* ---- nothing in a game is text you highlight ----
+   Dragging a wire across the board, or just missing it, was starting a
+   text selection and turning the whole panel blue — the title, the hint,
+   the button, all of it. There is nothing on this screen anybody wants
+   to select, and a drag that begins a millimetre off the canvas should
+   not do something completely different from one that begins on it. */
+#screen-apoc, #screen-apoc *{
+  -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none;
+  user-select:none; -webkit-touch-callout:none;
+}
+#screen-apoc img, #screen-apoc canvas{-webkit-user-drag:none;}
+.ap-panel-canvas, .ap-keypad, .ap-pad, .ap-dpad{touch-action:none;}
+
 .ap-overlay{
   position:absolute; inset:0; z-index:9; display:none;
   align-items:center; justify-content:center;
@@ -3484,63 +3509,71 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .ap-overlay[aria-hidden="false"]{display:flex;}
 
-/* ---- the controls ----
-   Four rounded squares and a pink rectangle was a prototype. This is a
-   thumb pad: one ring with a lit face, four wedges that light under the
-   finger, and two round actions beside it. Nothing shouts, everything is
-   big enough to hit without looking. */
+/* ---- the controls, on a phone ----
+   The pad was four rounded squares in a bevelled dish with two glossy
+   circles beside it. This is the same language as everything else in
+   the chapter: hairline rings on dark glass, cold blue at rest, amber
+   under the thumb. Everything is bigger than a thumb needs to be so it
+   can be hit without looking down. */
 .ap-pad{display:none;}
 .ap-dpad{
-  position:relative; width:150px; height:150px; border-radius:50%;
-  background:radial-gradient(circle at 50% 42%, rgba(24,30,46,.72), rgba(8,11,18,.80));
-  box-shadow:0 8px 22px rgba(0,0,0,.5), inset 0 0 0 1px rgba(150,170,215,.22),
-             inset 0 2px 0 rgba(255,255,255,.05);
+  position:relative; width:168px; height:168px; border-radius:50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(150,180,240,.045) 0 62%, transparent 63%),
+    rgba(7,11,21,.42);
+  box-shadow:inset 0 0 0 1px rgba(168,192,240,.20);
+}
+/* the ring's own quarters, so the thumb can feel where the edges are */
+.ap-dpad::before{
+  content:""; position:absolute; inset:19px; border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(168,192,240,.10);
+  pointer-events:none;
 }
 .ap-key{
-  position:absolute; width:58px; height:58px; border:0; background:transparent;
+  position:absolute; width:66px; height:66px; border:0; background:transparent;
   cursor:pointer; -webkit-tap-highlight-color:transparent;
 }
 .ap-key::before{                                  /* the face that lights */
-  content:""; position:absolute; inset:6px; border-radius:14px;
-  background:rgba(148,168,214,.06);
-  transition:background .09s ease;
+  content:""; position:absolute; inset:5px; border-radius:50%;
+  background:transparent; transition:background .10s ease;
 }
 .ap-key::after{                                   /* the arrow */
   content:""; position:absolute; left:50%; top:50%; width:0; height:0;
-  border:9px solid transparent; border-bottom-color:rgba(206,218,246,.85);
-  transform:translate(-50%,-64%);
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));
+  border:10px solid transparent; border-bottom-color:rgba(196,214,246,.80);
+  transform:translate(-50%,-62%);
 }
-.ap-key-up{left:46px; top:2px;}
-.ap-key-down{left:46px; top:90px; transform:rotate(180deg);}
-.ap-key-left{left:2px; top:46px; transform:rotate(-90deg);}
-.ap-key-right{left:90px; top:46px; transform:rotate(90deg);}
-.ap-key:active::before{background:rgba(168,196,255,.26);}
-.ap-key:active::after{border-bottom-color:#fff;}
+.ap-key-up{left:51px; top:0;}
+.ap-key-down{left:51px; top:102px; transform:rotate(180deg);}
+.ap-key-left{left:0; top:51px; transform:rotate(-90deg);}
+.ap-key-right{left:102px; top:51px; transform:rotate(90deg);}
+.ap-key:active::before{background:rgba(240,181,103,.16);}
+.ap-key:active::after{border-bottom-color:#ffdcaa;}
 .ap-dpad-hub{
-  position:absolute; left:56px; top:56px; width:38px; height:38px; border-radius:50%;
-  background:radial-gradient(circle at 46% 40%, rgba(150,170,215,.20), rgba(10,14,22,.55));
-  box-shadow:inset 0 0 0 1px rgba(150,170,215,.20);
+  position:absolute; left:63px; top:63px; width:42px; height:42px; border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(168,192,240,.16);
+  pointer-events:none;
 }
-.ap-actions{display:flex; flex-direction:column-reverse; gap:16px; align-items:center;}
+
+.ap-actions{display:flex; align-items:center; gap:16px;}
 .ap-act{
-  width:78px; height:78px; border-radius:50%; cursor:pointer;
+  border-radius:50%; border:1px solid rgba(168,192,240,.24);
+  background:rgba(7,11,21,.42); color:#cfdcf6;
+  font-family:var(--ap-sign); letter-spacing:.14em;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
   display:flex; align-items:center; justify-content:center;
-  border:0; -webkit-tap-highlight-color:transparent;
-  font:700 11px/1 var(--ap-sign); letter-spacing:.16em;
-  color:#f2e2c6;
-  background:radial-gradient(circle at 44% 36%, rgba(58,44,32,.92), rgba(20,15,12,.94));
-  box-shadow:0 8px 20px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,201,138,.55),
-             inset 0 2px 0 rgba(255,255,255,.08);
-  transition:transform .07s ease, box-shadow .07s ease;
+  transition:color .12s ease, border-color .12s ease, background .12s ease,
+             transform .09s ease;
 }
-.ap-act-sneak{
-  width:66px; height:66px; color:#cfdcf6;
-  background:radial-gradient(circle at 44% 36%, rgba(28,36,54,.92), rgba(10,14,22,.94));
-  box-shadow:0 8px 20px rgba(0,0,0,.5), inset 0 0 0 2px rgba(150,178,232,.45),
-             inset 0 2px 0 rgba(255,255,255,.06);
+.ap-act-use{
+  width:92px; height:92px; font-size:12px;
+  color:#ffdcaa; border-color:rgba(240,181,103,.42);
+  background:rgba(240,181,103,.07);
 }
-.ap-act:active{transform:translateY(2px) scale(.97); box-shadow:0 3px 10px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.7);}
+.ap-act-sneak{width:72px; height:72px; font-size:10px;}
+.ap-act:active{
+  transform:scale(.95);
+  color:#0d1017; background:#f0b567; border-color:#f0b567;
+}
 
 /* the hub card art: a street at night, one lit window, the fence */
 .hub-art-apoc{
@@ -3562,8 +3595,9 @@ img{-webkit-user-drag:none; user-select:none;}
 @media (max-width: 900px), (orientation: portrait){
   .ap-titlebar{display:block;}
   .ap-pad{
-    display:flex; align-items:center; justify-content:space-between;
-    width:100%; max-width:420px; padding:18px 16px calc(14px + env(safe-area-inset-bottom));
+    display:flex; align-items:flex-end; justify-content:space-between;
+    width:100%; max-width:520px;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));
   }
   .ap-frame{justify-content:space-between; padding:4vh 0 0;}
   .ap-stage{width:min(100%, calc(var(--app-h) * 0.52 * var(--ap-arn, 1.7778)));}
@@ -3627,9 +3661,12 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .ap-card-title{
   position:relative; z-index:1; margin:0 3.4cqw 2.4cqw;
-  font-family:var(--ap-term); font-size:3.5cqw; line-height:1.14;
-  color:#eef3ff; font-weight:400; letter-spacing:.005em;
+  font-family:var(--ap-voice-serif); font-weight:600;
+  font-size:3.1cqw; line-height:1.24;
+  color:#eef3ff; letter-spacing:.004em;
 }
+/* a title that is a line of the story rather than a name for a screen */
+.ap-card-title.said{font-style:italic; font-weight:500; color:#dfe7f8;}
 /* a page that is mostly rows gives its heading less room */
 .ap-card-title.tight{font-size:2.7cqw; margin-bottom:1.4cqw;}
 .ap-card-rows{position:relative; z-index:1; display:flex; flex-direction:column; gap:.5cqw;
@@ -3637,7 +3674,13 @@ img{-webkit-user-drag:none; user-select:none;}
   flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain;}
 .ap-card-rows::-webkit-scrollbar{width:3px;}
 .ap-card-rows::-webkit-scrollbar-thumb{background:rgba(168,192,240,.22);}
-.ap-card-kicker, .ap-card-title{flex:0 0 auto;}
+.ap-card-kicker{flex:0 0 auto;}
+/* A card whose only content is a long line of prose has to be able to
+   give ground, or the title pushes the button off the bottom and there
+   is no way on from the screen at all. */
+.ap-card-title{flex:0 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain;}
+.ap-card-title::-webkit-scrollbar{width:3px;}
+.ap-card-title::-webkit-scrollbar-thumb{background:rgba(168,192,240,.22);}
 .ap-card-row{
   display:grid; grid-template-columns:26% 1fr; gap:2cqw; align-items:baseline;
   padding-bottom:.85cqw; border-bottom:1px solid rgba(150,170,210,.10);
@@ -3647,7 +3690,8 @@ img{-webkit-user-drag:none; user-select:none;}
   font-family:var(--ap-sign); font-size:1.05cqw; font-weight:400;
   color:#c69553; letter-spacing:.16em; text-transform:uppercase;
 }
-.ap-card-row span{font-family:var(--ap-term); font-size:2.25cqw; line-height:1.25; color:#c3cee6;}
+.ap-card-row span{font-family:var(--ap-voice-serif); font-weight:500;
+  font-size:1.95cqw; line-height:1.4; color:#c8d3ea;}
 
 /* ---- buttons ----
    Ghost buttons: a hairline, a letterspaced label and nothing else until
@@ -3736,7 +3780,8 @@ img{-webkit-user-drag:none; user-select:none;}
   color:#7d8db0; padding:0 .2cqw;
 }
 .ap-set-note{
-  font-family:var(--ap-term); font-size:1.75cqw;
+  font-family:var(--ap-voice-serif); font-weight:500; font-style:italic;
+  font-size:1.62cqw;
   color:#8fa0c2; line-height:1.2; margin-left:.8cqw;
 }
 .ap-set-head{
@@ -3763,7 +3808,8 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* the close call: no card, just a line held in the dark */
 .ap-close{text-align:center; padding:0 6cqw;}
-.ap-close-line{margin:0 0 1.6cqw; font-family:var(--ap-term); font-size:4.2cqw;
+.ap-close-line{margin:0 0 1.6cqw; font-family:var(--ap-voice-serif);
+  font-weight:600; font-style:italic; font-size:3.4cqw;
   line-height:1.3; color:#f2e6ec;}
 .ap-close-sub{
   margin:0; font-size:1.6cqw; letter-spacing:.2em; color:#ff9ec0;
