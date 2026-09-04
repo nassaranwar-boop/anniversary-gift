@@ -103,9 +103,43 @@ function ok(name, cond, extra) {
   await tap(page, { q: '.ns-btn', text: 'BACK' });
   await page.waitForTimeout(250);
 
-  console.log('\n— night one —');
+  console.log('\n— his statement —');
+  /* the very first BEGIN THE SHIFT plays the opening film, once ever */
   await tap(page, { q: '.ns-btn', text: 'BEGIN THE SHIFT' });
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(1200);
+  const cine = await page.evaluate(() => ({ ...OuissysNightShift.__night.cine(),
+    phase: OuissysNightShift.__night.state().phase,
+    head: (document.querySelector('.ns-cine-head') || {}).textContent || '',
+    skip: !!document.getElementById('ns-cine-skip') }));
+  ok('it opens on his statement, not on a menu', cine.on && cine.phase === 'intro', JSON.stringify(cine.phase));
+  ok('and says what it is', cine.head.indexOf('PROPRIETOR') >= 0, cine.head.slice(0, 40));
+  ok('and can be skipped', cine.skip);
+  /* the caption is timed to the syllable, not to the line: voxPlan hands
+     back when every word will be spoken and the caption lights up on it */
+  const vox = await page.evaluate(() => OuissysNightShift.__night.vox('I made toys. That part was true.'));
+  ok('every word knows when it is spoken',
+     vox.words.length === 7 && vox.dur > 2 && vox.dur < 4, vox.words.join(' '));
+  ok('and they are in order',
+     vox.words.every((w, i, a) => i === 0 || parseFloat(w.split('@')[1]) > parseFloat(a[i-1].split('@')[1])),
+     vox.words.join(' '));
+  const lit = await page.evaluate(async () => {
+    const n = () => document.querySelectorAll('#ns-cine-sub i.on').length;
+    const a = n();
+    await new Promise(r => setTimeout(r, 2600));
+    return { a, b: n(), all: document.querySelectorAll('#ns-cine-sub i').length };
+  });
+  ok('and the caption lights up as it speaks', lit.b > lit.a, JSON.stringify(lit));
+  await shot('statement');
+  await page.evaluate(() => OuissysNightShift.__night.route('introDone'));
+  await page.waitForTimeout(600);
+  ok('and it hands her straight into the first night',
+     await page.evaluate(() => OuissysNightShift.__night.state().night) === 1);
+  ok('and never plays itself again',
+     await page.evaluate(() => localStorage.getItem('ns_seenintro')) === '1');
+
+  console.log('\n— night one —');
+  await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); w.route('start'); });
+  await page.waitForTimeout(400);
   /* night one is onboarded by a card taped inside the desk drawer, in
      her hands. Nobody phones her; nobody narrates. */
   ok('night one briefs off a found card', (await page.locator('.ns-from').textContent()).indexOf('drawer') >= 0);

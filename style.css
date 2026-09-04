@@ -4824,6 +4824,68 @@ img{-webkit-user-drag:none; user-select:none;}
   content:""; position:absolute; inset:0; pointer-events:none; z-index:3;
   background:radial-gradient(ellipse at 50% 52%, rgba(0,0,0,0) 42%, rgba(0,0,0,.55) 100%);
 }
+/* THE OPENING ---------------------------------------------------------
+   Letterboxed, because it is a film and it should announce that it is
+   one; and the caption lights up a word at a time as the machine
+   reaches it, which is the whole reason voxPlan hands back timings. */
+.ns-stage[data-day="1"] .ns-cine{ display:none; }
+.ns-cine{ position:absolute; inset:0; z-index:12; pointer-events:none; }
+.ns-cine::before, .ns-cine::after{
+  content:""; position:absolute; left:0; right:0; height:11%;
+  background:#05060a; pointer-events:none;
+}
+.ns-cine::before{ top:0; } .ns-cine::after{ bottom:0; }
+.ns-cine[hidden]{ display:none !important; }
+
+.ns-cine-head{
+  position:absolute; top:13%; left:0; right:0; margin:0; text-align:center;
+  font-family:var(--ns-face); line-height:1.6;
+}
+.ns-cine-head b{
+  display:block; font-size:max(1.5cqh, 10px); letter-spacing:.34em;
+  color:rgba(255,120,110,.8); font-weight:700;
+}
+.ns-cine-head span{
+  display:block; font-size:max(1.3cqh, 9px); letter-spacing:.16em;
+  color:rgba(232,223,200,.42);
+}
+
+/* the transcript */
+.ns-cine-sub{
+  position:absolute; left:50%; bottom:14.5%; transform:translateX(-50%);
+  margin:0; width:78cqw; text-align:center;
+  font-family:var(--ns-face); line-height:1.75;
+  font-size:max(2.15cqh, 14px); letter-spacing:.055em;
+}
+.ns-cine-sub i{
+  font-style:normal;
+  color:rgba(232,223,200,.2);
+  transition:color .16s linear, text-shadow .16s linear;
+}
+/* the word the machine is on */
+.ns-cine-sub i.on{
+  color:#f4ead6;
+  text-shadow:0 0 1.6cqh rgba(255,206,140,.5);
+}
+
+.ns-cine-skip{
+  position:absolute; right:2.4cqw; bottom:3.4%; pointer-events:auto;
+  padding:.9cqh 2.2cqw; border-radius:.5cqw; cursor:pointer;
+  background:rgba(10,12,16,.7); border:.14cqw solid rgba(200,162,96,.4);
+  color:rgba(232,223,200,.6); font-family:var(--ns-face);
+  font-size:max(1.4cqh, 10px); letter-spacing:.22em;
+  opacity:0; animation:nsSkipIn .5s ease 2.2s forwards;
+}
+.ns-cine-skip:hover{ color:var(--ns-amber); border-color:rgba(200,162,96,.9); }
+@keyframes nsSkipIn{ to{ opacity:1; } }
+
+/* the page he left, and the line under it */
+.ns-cine-end{
+  margin:2.4cqh 0 0; font-size:max(1.6cqh, 11px);
+  letter-spacing:.3em; color:var(--ns-brass);
+}
+.ns-card-note .ns-paper p{ font-size:max(1.85cqh, 13px); line-height:1.85; }
+
 /* orientation. Sits where the annunciator caption sits but higher and
    louder, because unlike the caption this one is asking for something
    and the shift is not moving until it gets it. */

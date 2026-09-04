@@ -126,6 +126,89 @@ const NS = {
     },
   },
 
+  /* --- the opening ---------------------------------------------------
+     A machine reading a dead man's statement while the camera walks his
+     shop in the dark. The robotic voice is not a limitation dressed up
+     as a choice: he recorded this eleven days before he died, into the
+     only thing in the building that would still be listening, and what
+     she is hearing is a terminal doing its best with a transcript. That
+     is why he sounds like that. It is the saddest thing in the chapter
+     and it happens before she has pressed a single button.
+
+     Each beat is a camera move through a real room, a line or three of
+     his statement, and the caption that lights up word by word as the
+     machine gets to it. `room` and `from`/`to` are in that room's own
+     space; `secs` is how long the move takes, and the beat runs for as
+     long as the lines take or `secs`, whichever is longer.
+
+     Everything he says here is true and none of it is the whole truth.
+     He does not tell her the four are hers — he tells her to wind them
+     and not to open the door to anything else, which is exactly what a
+     man who cannot say the thing would say. She finds that out herself,
+     over six nights, which is the only way it would land. ---------- */
+  intro: {
+    head: "PLAYBACK — PROPRIETOR STATEMENT",
+    sub: "recorded eleven days before decease",
+    beats: [
+      { room: "foyer", secs: 9,
+        from: [2.7, 1.62, 3.1], to: [1.5, 1.5, 1.1], look: [-0.5, 1.2, -2.0], fov: 58,
+        lines: [
+          "Ouissy.",
+          "If you are listening to this, the shop is yours, and I am not there to explain it.",
+        ] },
+      { room: "hall", secs: 11,
+        from: [0.05, 2.2, 6.4], to: [0.05, 1.72, 1.8], look: [-0.05, 1.1, -5.2], fov: 62,
+        lines: [
+          "For fifteen years you asked me how my day had been.",
+          "For fifteen years I told you it was fine.",
+        ] },
+      { room: "workshop", secs: 10,
+        from: [-2.6, 1.9, 2.9], to: [-1.1, 1.42, 1.5], look: [0.4, 0.95, -1.7], fov: 56,
+        lines: [
+          "I made toys. That part was true.",
+          "I made them very well. That was the problem.",
+        ] },
+      { room: "stage", secs: 12,
+        from: [0.2, 2.5, 6.2], to: [0.2, 1.9, 2.6], look: [0, 1.3, -2.4], fov: 60,
+        lines: [
+          "The ones I sold did not stay sold.",
+          "They went into other people's houses, and they did what I had asked them to do, and nobody ever knew why.",
+        ] },
+      { room: "arcade", secs: 11,
+        from: [2.1, 2.2, 4.6], to: [1.1, 1.6, 2.2], look: [-0.4, 1.0, -3.0], fov: 58,
+        lines: [
+          "I was paid a great deal of money for that.",
+          "You have been living in it. The house. The car. All of it.",
+          "I am sorry.",
+        ] },
+      { room: "party", secs: 12,
+        from: [-3.4, 2.2, 3.6], to: [-1.9, 1.5, 1.4], look: [0.4, 1.0, -1.2], fov: 60,
+        lines: [
+          "There are four in the back room that I never sold. Cogsworth. Chime. Marabelle. Jax.",
+          "They are the only ones I ever made right.",
+        ] },
+      { room: "office", secs: 13,
+        from: [0, 2.0, 4.2], to: [0, 1.66, 2.36], look: [0, 1.0, -2.7], fov: 66,
+        lines: [
+          "Wind them. Every night, before six.",
+          "And whatever else comes to that door — and something will — do not open it.",
+          "I am sorry for the money. I am sorrier for the fifteen years.",
+        ] },
+    ],
+    /* the page itself, in his hand, after the machine stops talking */
+    note: {
+      head: "and folded under the key, in his handwriting",
+      lines: [
+        "There is a shop. It is yours now.",
+        "Wind the four in the back room every night.",
+        "Do not open the door to anything else.",
+        "I am sorry for what you are about to find out about me.",
+      ],
+      sign: "— Anwar",
+    },
+    end: "MIDNIGHT TO SIX. SIX NIGHTS.",
+  },
+
   /* --- the six things hidden in the shop -----------------------------
      One per night, small, somewhere on the eight cameras, catching the
      light about as much as a brass tag catches light. She has to go
@@ -5207,6 +5290,126 @@ function annunciate(text, urgent) {
 
 /* one line at a time, and never over a jumpscare */
 let sayQueue = [], sayUntil = 0;
+/* =========================================================
+   17d. THE VOICE THAT READS HIS STATEMENT
+
+   The annunciator above is a buzzer that says door and vent. This is a
+   different instrument doing a different job: a machine reading a dead
+   man's words aloud, badly, the way an old terminal with a speech card
+   would have. It has to be understandable enough that the subtitles
+   feel like a transcript rather than a translation.
+
+   Three things make it read as speech rather than as morse:
+
+     the vowels are real       — the formant pair for each syllable is
+                                 picked from the letters actually in it,
+                                 so "shop" and "she" do not sound alike
+     the pitch has a shape     — it drifts down across a sentence and
+                                 falls off a cliff on the last syllable
+                                 of a full stop, which is the single
+                                 biggest difference between a voice and
+                                 a tone generator
+     the consonants are edges  — s and f hiss, t and k click, m and n
+                                 barely interrupt at all
+
+   And every word comes back with the time it will be spoken at, which
+   is the whole point: the caption is not timed to the line, it is timed
+   to the syllable, so the word lights up as the machine says it.
+   ========================================================= */
+const VOWEL_OF = { a: 0, e: 1, i: 2, o: 3, u: 4, y: 2 };
+/* how long a syllable is held, and what goes between things */
+const VOX = {
+  syl: 0.148, gap: 0.055,
+  pause: { ",": 0.20, ";": 0.26, ":": 0.26, "—": 0.30, ".": 0.44, "!": 0.44, "?": 0.44 },
+  base: 104,
+};
+
+/* split a word into syllable-ish chunks, each with its vowel and its
+   opening consonant */
+function voxSyllables(word) {
+  const w = word.toLowerCase().replace(/[^a-z']/g, "");
+  if (!w) return [];
+  const out = [];
+  const re = /[^aeiouy]*[aeiouy]+(?:[^aeiouy]*$|[^aeiouy](?=[^aeiouy]))?/g;
+  let m;
+  while ((m = re.exec(w))) {
+    const chunk = m[0];
+    const v = chunk.match(/[aeiouy]/);
+    out.push({ on: chunk[0], v: v ? (VOWEL_OF[v[0]] === undefined ? 0 : VOWEL_OF[v[0]]) : 0 });
+    if (out.length > 5) break;
+  }
+  if (!out.length) out.push({ on: w[0], v: 0 });
+  return out;
+}
+
+/* Work out when every word is spoken, before a note of it is played.
+   Returns the words with their times, and how long the whole line is. */
+function voxPlan(text) {
+  const words = [];
+  let t = 0;
+  const raw = String(text).split(/\s+/).filter(Boolean);
+  raw.forEach((wRaw, i) => {
+    const tail = wRaw.slice(-1);
+    const syls = voxSyllables(wRaw);
+    const dur = Math.max(VOX.syl, syls.length * VOX.syl);
+    words.push({ text: wRaw, at: t, dur, syls, end: i === raw.length - 1 });
+    t += dur + VOX.gap + (VOX.pause[tail] || 0);
+  });
+  return { words, dur: t + 0.25 };
+}
+
+/* and say it. `plan` comes from voxPlan so the caller already knows the
+   timings it is about to hear. */
+function voxSpeak(plan, opts) {
+  if (!ac() || muted) return 0;
+  opts = opts || {};
+  const t0 = now() + (opts.at || 0);
+  const gain = opts.gain === undefined ? 1 : opts.gain;
+  const total = plan.dur;
+
+  plan.words.forEach((w) => {
+    w.syls.forEach((s, si) => {
+      const at = t0 + w.at + si * VOX.syl;
+      /* pitch: drifting down through the line, and dropping off the end
+         of the last syllable of it */
+      const through = clamp((w.at + si * VOX.syl) / Math.max(0.001, total), 0, 1);
+      let f = VOX.base * (1.07 - through * 0.14);
+      const tail = w.text.slice(-1);
+      if (w.end || tail === "." || tail === "!") {
+        if (si === w.syls.length - 1) f = VOX.base * 0.80;
+      } else if (tail === "?") {
+        if (si === w.syls.length - 1) f = VOX.base * 1.24;
+      }
+      const F = FORMANTS[s.v];
+      [0, 1].forEach((k) => {
+        const osc = AC.createOscillator();
+        osc.type = k ? "square" : "sawtooth";
+        osc.frequency.setValueAtTime(f * (k ? 2 : 1), at);
+        /* a hair of movement inside the syllable, or it reads as a beep */
+        osc.frequency.linearRampToValueAtTime(f * (k ? 2 : 1) * 0.985, at + VOX.syl);
+        const bp = AC.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.setValueAtTime(F[k], at);
+        bp.Q.value = k ? 8 : 5.5;
+        const g = AC.createGain();
+        const peak = 0.085 * gain * (k ? 0.45 : 1);
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(peak, at + 0.018);
+        g.gain.setValueAtTime(peak, at + VOX.syl * 0.62);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + VOX.syl * 0.98);
+        osc.connect(bp); bp.connect(g); g.connect(cueGain);
+        osc.start(at); osc.stop(at + VOX.syl + 0.02);
+      });
+      /* the consonant that opens the syllable */
+      const c = s.on;
+      if (/[szfhc]/.test(c))      burst({ f0: 5200, f1: 3400, dur: 0.055, gain: 0.028 * gain, q: 0.9, filter: "highpass", at: at - t0 + (opts.at || 0) });
+      else if (/[tdkgpb]/.test(c)) burst({ f0: 2000, f1: 900,  dur: 0.022, gain: 0.05 * gain,  q: 3,   at: at - t0 + (opts.at || 0) });
+      else if (/[rw]/.test(c))     burst({ f0: 700,  f1: 420,  dur: 0.03,  gain: 0.02 * gain,  q: 2,   at: at - t0 + (opts.at || 0) });
+    });
+  });
+  return total;
+}
+
 function say(line, urgent) {
   if (!line) return;
   sayQueue.push({ line, urgent });
@@ -6460,8 +6663,11 @@ function frame(ts) {
   applyLighting(dt);
   animateOffice(dt);
 
-  /* which room the one camera is looking at */
-  const room = G.mode === "gallery" ? G.cam
+  /* which room the one camera is looking at. During the opening the
+     room comes from the film and the camera is placed by cineTick, so
+     useView only ever sets its lights up. */
+  const room = G.phase === "intro" ? CINE.room
+             : G.mode === "gallery" ? G.cam
              : (G.phase === "play" && G.monitor) ? G.cam : "office";
   const camName = "main";
   if (room !== shownRoom || useView.__last !== room + camName) {
@@ -6470,6 +6676,9 @@ function frame(ts) {
     useView.__last = room + camName;
     panX = panY = panTX = panTY = 0;
   }
+  /* after the lights are set for the room, but before anything is drawn:
+     the film owns the camera while it is running */
+  if (G.phase === "intro") cineTick(dt);
   syncCastVisibility();
   if (G.phase === "over" && G.killChar) G.killChar.group.visible = true;
   poseCast(dt, G.t);
@@ -6513,7 +6722,7 @@ function buildUI() {
   ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
    "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
    "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
-   "ns-say", "ns-egg", "ns-find", "ns-tutor"].forEach((id) => {
+   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine"].forEach((id) => {
     EL[id] = el(id);
   });
   stageEl = EL["ns-stage"];
@@ -6638,6 +6847,8 @@ function screenTitle() {
       '<div class="ns-btns">' +
         '<button class="ns-btn ns-btn-go" data-go="start">BEGIN THE SHIFT</button>' +
         '<button class="ns-btn" data-go="howto">HOW IT WORKS</button>' +
+        /* his statement, once she has already heard it once */
+        (seenIntro() ? '<button class="ns-btn" data-go="intro">HIS STATEMENT</button>' : "") +
         '<button class="ns-btn" data-go="badges">RECORD</button>' +
         '<button class="ns-btn" data-go="quit">LEAVE</button>' +
       '</div>' +
@@ -6911,7 +7122,12 @@ function screenGallery() {
 function route(cmd) {
   audioInit();
   if (AC && AC.state === "suspended") AC.resume();
-  if (cmd === "start") { G.mode = "story"; G.night = maxUnlocked(); G.cfg = nightCfg(G.night); G.phase = "brief"; screenBrief(); }
+  if (cmd === "start") {
+    /* the very first time, the shop introduces itself before she is
+       ever asked to survive it */
+    if (!seenIntro() && !nightsDone()[1]) { cineStart(); return; }
+    G.mode = "story"; G.night = maxUnlocked(); G.cfg = nightCfg(G.night); G.phase = "brief"; screenBrief();
+  }
   else if (cmd === "howto") { G.phase = "howto"; screenHowTo(); }
   else if (cmd === "badges") { G.phase = "badges"; screenBadges(); }
   else if (cmd === "title") {
@@ -6936,6 +7152,8 @@ function route(cmd) {
   else if (cmd === "gallery" || cmd === "galleryOffer") { beginGallery(); }
   else if (cmd === "arcadeOut") { arcadeClose(); }
   else if (cmd === "findOut") { closeFind(); }
+  else if (cmd === "intro") { cineStart(); }
+  else if (cmd === "introDone") { cineStop(true); }
   else if (cmd === "endWind") { screenEnding("wind"); }
   else if (cmd === "endLeave") { screenEnding("leave"); }
   else if (cmd.indexOf("preset:") === 0) {
@@ -7164,6 +7382,193 @@ function uiTick(dt) {
     }
   }
 }
+
+/* =========================================================
+   20d. THE OPENING, AS A PIECE OF FILM
+
+   Seven camera moves through seven dark rooms while a terminal reads
+   his statement, and a caption that lights up word by word as the
+   machine reaches each one — voxPlan hands back the time every word
+   will be spoken at, so the caption is not timed to the line, it is
+   timed to the syllable.
+
+   It runs once, before the first night, and lives on the title screen
+   afterwards so it can be watched again. It is skippable from the
+   second second, because a gift that traps somebody in a cutscene is
+   not a gift.
+   ========================================================= */
+/* The film runs on a wall clock, never on frame time.
+   The frame loop clamps dt to 0.1s so a backgrounded tab cannot skip a
+   night — which means on a slow machine game time runs slower than real
+   time, while the speech is scheduled on the audio clock and does not.
+   Driving the captions off dt therefore desynchronises them from the
+   voice exactly when the machine is struggling, which is the one moment
+   it would be noticed. perf() is sampled at the instant voxSpeak is
+   called, so the word timings it handed back stay true to the second. */
+function perf() { return (window.performance ? performance.now() : Date.now()) / 1000; }
+const CINE = {
+  on: false, beat: -1, t: 0, t0: 0, lineT0: 0, plan: null, lineAt: 0, line: 0,
+  from: new T.Vector3(), to: new T.Vector3(), look: new T.Vector3(),
+  fov0: 60, fov1: 60, secs: 8, room: "office", spoke: false, endT: 0,
+};
+const _cf = new T.Vector3();
+
+function cineStart() {
+  if (!NS.intro) return;
+  audioInit();
+  if (AC && AC.state === "suspended") AC.resume();
+  CINE.on = true;
+  CINE.beat = -1;
+  CINE.t = 0;
+  CINE.t0 = perf();
+  CINE.lineT0 = perf();
+  CINE.endT = 0;
+  G.mode = "story";
+  G.phase = "intro";
+  G.monitor = false;
+  G.doors.left = G.doors.right = G.doors.hatch = false;
+  G.blackout = false;
+  G.dead = null; G.killChar = null;
+  CAST.forEach((d) => { cast[d.id].awake = false; cast[d.id].asleep = true; syncChar(cast[d.id]); });
+  sayClear();
+  tutorOff();
+  noOverlay();
+  showHud(false);
+  bedStart();
+  musicMode("menu");
+  if (stageEl) stageEl.dataset.cine = "1";
+  cineCard();
+  cineNext();
+}
+
+function cineStop(toNight) {
+  CINE.on = false;
+  CINE.plan = null;
+  if (stageEl) delete stageEl.dataset.cine;
+  const el = EL["ns-cine"];
+  if (el) { el.hidden = true; el.innerHTML = ""; }
+  saveSeenIntro(true);
+  if (toNight) { G.night = 1; G.cfg = nightCfg(1); beginNight(1); }
+  else { route("title"); }
+}
+
+/* the frame that carries the caption and the head/foot furniture */
+function cineCard() {
+  const el = EL["ns-cine"];
+  if (!el) return;
+  el.hidden = false;
+  el.innerHTML =
+    '<p class="ns-cine-head"><b>' + NS.intro.head + '</b><span>' + NS.intro.sub + '</span></p>' +
+    '<p class="ns-cine-sub" id="ns-cine-sub"></p>' +
+    '<button class="ns-cine-skip" id="ns-cine-skip">SKIP</button>';
+  const sk = el.querySelector("#ns-cine-skip");
+  if (sk) sk.addEventListener("click", (e) => { e.stopPropagation(); cineStop(true); });
+}
+
+/* move to the next beat, or to the note at the end */
+function cineNext() {
+  CINE.beat++;
+  CINE.t = 0;
+  CINE.t0 = perf();
+  CINE.line = 0;
+  CINE.lineAt = 0;
+  CINE.plan = null;
+  const b = NS.intro.beats[CINE.beat];
+  if (!b) { cineNote(); return; }
+  CINE.room = b.room;
+  CINE.from.set(b.from[0], b.from[1], b.from[2]);
+  CINE.to.set(b.to[0], b.to[1], b.to[2]);
+  CINE.look.set(b.look[0], b.look[1], b.look[2]);
+  CINE.fov0 = b.fov + 4;
+  CINE.fov1 = b.fov;
+  CINE.secs = b.secs;
+  cineSpeak();
+}
+
+/* speak the current line of the current beat and hand the caption its
+   word timings */
+function cineSpeak() {
+  const b = NS.intro.beats[CINE.beat];
+  if (!b) return;
+  const text = b.lines[CINE.line];
+  if (text === undefined) { CINE.plan = null; return; }
+  CINE.plan = voxPlan(text);
+  voxSpeak(CINE.plan, { gain: 1 });
+  CINE.lineT0 = perf();
+}
+
+function cineTick(dt) {
+  if (!CINE.on) return;
+  CINE.t = perf() - CINE.t0;
+
+  /* the camera: an ease over the whole beat, so it is still moving when
+     the line lands rather than arriving and sitting there */
+  const b = NS.intro.beats[CINE.beat];
+  if (b && view) {
+    const rec = rooms[CINE.room];
+    const ox = rec ? rec.index * SPACING : 0;
+    const k = clamp(CINE.t / CINE.secs, 0, 1);
+    const e = k * k * (3 - 2 * k);
+    _cf.lerpVectors(CINE.from, CINE.to, e);
+    view.position.set(_cf.x + ox, _cf.y, _cf.z);
+    view.lookAt(CINE.look.x + ox, CINE.look.y, CINE.look.z);
+    view.fov = lerp(CINE.fov0, CINE.fov1, e);
+    view.updateProjectionMatrix();
+  }
+
+  /* the caption, word by word, as the machine reaches each one. (Named
+     anything but `el`: there is a function called that, and shadowing it
+     with a const threw on every frame of the opening.) */
+  const sub = el("ns-cine-sub");
+  if (sub && CINE.plan) {
+    const at = perf() - CINE.lineT0;
+    let html = "";
+    CINE.plan.words.forEach((w) => {
+      html += '<i class="' + (at >= w.at ? "on" : "") + '">' + w.text + "</i> ";
+    });
+    if (sub.innerHTML !== html) sub.innerHTML = html;
+  }
+
+  /* the next line, then the next beat */
+  if (b) {
+    const spoken = CINE.plan ? CINE.plan.dur : 0;
+    const lineDone = perf() - CINE.lineT0 >= spoken + 0.35;
+    if (CINE.plan && lineDone) {
+      CINE.line++;
+      if (CINE.line < b.lines.length) cineSpeak();
+      else CINE.plan = null;
+    }
+    if (!CINE.plan && CINE.line >= b.lines.length && CINE.t >= CINE.secs) cineNext();
+  } else if (CINE.endT > 0) {
+    CINE.endT -= dt;
+  }
+}
+
+/* the page he actually left her, once the machine has stopped */
+function cineNote() {
+  const n = NS.intro.note;
+  CINE.plan = null;
+  const el = EL["ns-cine"];
+  if (el) { el.hidden = true; el.innerHTML = ""; }
+  if (stageEl) delete stageEl.dataset.cine;
+  SFX.paper();
+  overlay(
+    '<div class="ns-card ns-card-note">' +
+      '<p class="ns-from">' + n.head + '</p>' +
+      '<div class="ns-paper">' +
+        n.lines.map((l) => "<p>" + l + "</p>").join("") +
+      '</div>' +
+      '<p class="ns-pencil">' + n.sign + '</p>' +
+      '<p class="ns-cine-end">' + NS.intro.end + '</p>' +
+      '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="introDone">TAKE THE KEY</button></div>' +
+    '</div>', "ns-ov-note");
+}
+
+const SEEN_KEY = "ns_seenintro";
+function seenIntro() {
+  try { return localStorage.getItem(SEEN_KEY) === "1"; } catch (e) { return false; }
+}
+function saveSeenIntro(v) { try { localStorage.setItem(SEEN_KEY, v ? "1" : "0"); } catch (e) {} }
 
 /* =========================================================
    20c. THE SIX THINGS HIDDEN IN THE SHOP
@@ -7724,6 +8129,10 @@ function onKeyUp(e) {
 function onKey(e) {
   if (!running) return;
   const k = e.key;
+  if (CINE.on) {
+    if (k === "Escape" || k === "Enter" || k === " ") { e.preventDefault(); cineStop(true); }
+    return;
+  }
   if (k === "Escape") { e.preventDefault(); togglePause(); return; }
   /* the cabinet is checked before the phase, because playing it puts the
      chapter in its own phase — asking for "play" first made every key in
@@ -7977,6 +8386,11 @@ const testHooks = {
                     o[k] = MUS.lay[k] ? +MUS.lay[k].gain.value.toFixed(3) : null; return o;
                   }, {}) }),
   musicTick: (dt) => musicTick(dt),
+  vox: (t) => { const pl = voxPlan(t);
+    return { dur: +pl.dur.toFixed(2),
+             words: pl.words.map((w) => w.text + "@" + w.at.toFixed(2)) }; },
+  cine: () => ({ on: CINE.on, beat: CINE.beat, room: CINE.room,
+                 line: CINE.line, t: +CINE.t.toFixed(1) }),
   tutor: () => ({ step: G.tutor, of: TUTOR.length,
                   line: TUTOR[G.tutor] ? TUTOR[G.tutor].line : null,
                   seen: tutorSeen() }),
