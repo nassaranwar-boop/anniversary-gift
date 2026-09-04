@@ -283,6 +283,50 @@ are worth knowing before touching any of them:
   `cozyK()`, and it touches aggression, door grace, power, alarm
   frequency, decay and the force of a jumpscare.
 
+A third pass added the score and fixed four things that reading the
+code found and no suite had:
+
+- **`onKey` checked the phase before it checked the cabinet**, so every
+  key in KEYWIND was dead and the space bar hit BACK TO THE SHIFT. There
+  was no `keyup` listener in the file at all. Order matters there now.
+- **The custom night's four sliders were one slider.** The hour curve
+  was derived from the highest dial, so turning Jax to twenty made
+  Cogsworth two and a half times faster at his own unchanged five.
+- **`observed()` did not know a dropped monitor is not a monitor.**
+  `powerRate` always had; this did not, so night six's dropouts froze
+  Marabelle exactly as well as a working picture. If you touch one of
+  those two, touch both.
+- **The blackout ran its clock twice.** `stepBlackout` owns the
+  approach, but a blackout forces every door open, so `stepCast`'s
+  open-door branch decremented the same timer again every frame. Nine
+  seconds of grace was four and a half. `stepCast` now returns early in
+  the dark.
+
+And the pacing: `tools/nightpace.js` measures the longest stretch of a
+night with nothing audible in it, and found **night one's first hour
+running fifty-six seconds with nothing at all** — no arrival, no alarm,
+nothing moved. The first minute of the first thing she plays cannot be
+an empty room. False alarms now start twelve to twenty-six seconds in
+rather than up to ninety, and come roughly twice as often while nothing
+is on its way, which is what they were always for. The longest dead
+stretch anywhere is now about eighteen seconds.
+
+On the score (§17c in the file): it is layers, not tracks, and the
+thing to preserve if you touch it is that **`dread` reads the route,
+not the door**. That is the whole point — a performer's route position
+climbs while it is still three rooms away, so the music is ahead of the
+game rather than behind it. Everything is scheduled against the audio
+clock with a 0.65s lookahead, never on the frame, because the frame
+rate is the one thing not guaranteed on a phone.
+
+One thing worth knowing about the office lighting: **the monitor's glow
+lamp used to sit 0.35m from where a guard's right hand goes, rated the
+same as the ceiling of the whole room.** Everything near it tone-mapped
+to white, which is why the hands read as white gloves through three
+rebuilds before anyone thought to print the light positions. If
+something in that room looks bleached, print the rig before you touch
+the albedo.
+
 Still open with him: whether the difficulty of nights five and six is
 where he wants it, and the closing lines of the finale, which are
 written but are mine and not his.

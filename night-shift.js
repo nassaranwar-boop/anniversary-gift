@@ -140,15 +140,15 @@ const NS = {
     ],
   },
 
+  /* Six lines, and each one is the whole rule. She should be able to
+     skim this once and start, and never need it again. */
   howTo: [
-    ["THE SHIFT", "Midnight to six. Six hours, about six minutes. Survive them."],
-    ["THE MONITOR", "Pull it up to see the shop. It hides the office while it is up — and it costs power every second it is on."],
-    ["THE DOORS", "One on each side of you. Closed doors keep things out and drain the meter the whole time they are shut."],
-    ["THE HATCH", "The ceiling vent. One of them does not use doors at all."],
-    ["THE METER", "One charge for the whole night. Idle drain, cameras, doors. At zero the lights go and the doors will not answer."],
-    ["THE SYSTEM", "The building announces its own state and nothing else. It is not company."],
-    ["LISTEN", "Every one of them sounds like itself, and sounds like the side it is on. Headphones, if you have them."],
-    ["LOOK", "The shop is not always the same shop it was a minute ago. Watch the shelves."],
+    ["THE JOB", "Midnight to six. About six minutes. Do not leave the chair."],
+    ["THE DOORS", "A&nbsp;/&nbsp;D shut the two doors. W shuts the ceiling hatch."],
+    ["THE CAMERAS", "SPACE puts the monitor up. 1&ndash;8 pick a room."],
+    ["THE POWER", "One charge. Doors and cameras spend it. At zero, the doors stop working."],
+    ["THE TRICK", "Shut a door only while something is actually there. Open it again straight after."],
+    ["LISTEN", "Which ear a sound comes from is which side it is on. Headphones help."],
   ],
 
   /* Everything the security system is allowed to say. It reports and it
@@ -275,10 +275,15 @@ const TUNE = {
      that does not help, because you still have to look. False alarms
      are what keeps the quiet from becoming safe — but they are never
      one of the four voices, so a player who listens properly is never
-     punished for reading them right. */
+     punished for reading them right.
+
+     These used to start up to a minute and a half in, and night one's
+     opening hour measured fifty-six seconds with nothing in it at all
+     — no arrival, no alarm, nothing moved. The first minute of the
+     first thing she plays cannot be an empty room. */
   alarm: {
-    firstAt:  [40, 90],   // seconds into the night before the first one
-    every:    [34, 76],   // and the gap after that
+    firstAt:  [12, 26],   // seconds into the night before the first one
+    every:    [26, 58],   // and the gap after that
     perHour:  0.14,       // ...shortening as the night goes on
   },
 
@@ -287,8 +292,8 @@ const TUNE = {
      looking at — it has to happen behind her back or it is a magic
      trick rather than a fright. */
   shift: {
-    firstAt: [55, 110],
-    every:   [50, 105],
+    firstAt: [18, 38],
+    every:   [40, 85],
   },
 
   /* --- the building getting worse ------------------------------------
@@ -349,7 +354,7 @@ const NIGHTS = [
     power: 100,
     /* who is awake, and from which hour (0 = midnight) */
     active: { cogsworth: 0, marabelle: 2, jax: 4 },
-    ramp: [0.55, 0.7, 0.85, 1.0, 1.15, 1.3],
+    ramp: [0.80, 0.92, 1.02, 1.12, 1.22, 1.34],
     hazards: [],
   },
   {
@@ -358,7 +363,7 @@ const NIGHTS = [
     blurb: "Something in the ducts has started keeping time with you.",
     power: 100,
     active: { cogsworth: 0, chime: 0, marabelle: 1, jax: 2 },
-    ramp: [0.75, 0.9, 1.05, 1.2, 1.35, 1.5],
+    ramp: [0.90, 1.00, 1.10, 1.22, 1.36, 1.50],
     hazards: ["deadWorkshop"],
   },
   {
@@ -445,7 +450,8 @@ const CAST = [
   {
     id:"cogsworth", name:"COGSWORTH",
     what:"clockwork tin soldier",
-    threat:"Marches. You will hear him long before you see him — and the marching stops when he is at your door.",
+    threat:"Walks to your left door. Shut it, wait, he goes.",
+    tell:"You hear him marching. When the marching stops, he is there.",
     colour:"#c8564a",
     home:"stage",
     route:[["stage","s0"], ["stage","s1"], ["hall","far"], ["hall","mid"], ["hall","near"], ["office","leftDoor"]],
@@ -454,7 +460,8 @@ const CAST = [
   {
     id:"chime", name:"CHIME",
     what:"clockwork owl",
-    threat:"Lives above the ceiling. Doors mean nothing to it — watch the ducts, and latch the hatch.",
+    threat:"Comes through the ceiling. Doors do nothing. Latch the hatch.",
+    tell:"Wings, above you. Check the ducts on camera 07.",
     colour:"#8ea9c6",
     home:"workshop",
     route:[["workshop","s0"], ["workshop","s1"], ["ducts","s0"], ["ducts","s1"], ["ducts","s2"], ["office","hatch"]],
@@ -464,7 +471,8 @@ const CAST = [
   {
     id:"marabelle", name:"MARABELLE",
     what:"porcelain music-box ballerina",
-    threat:"Cannot move while she is being watched. Can move the entire time she is not.",
+    threat:"Frozen while she is on camera. Moves the moment you look away.",
+    tell:"A music box, getting louder. Put a camera on her.",
     colour:"#e6b7cd",
     home:"party",
     route:[["party","s0"], ["party","s1"], ["party","s2"], ["office","rightDoor"]],
@@ -473,7 +481,8 @@ const CAST = [
   {
     id:"jax", name:"JAX",
     what:"jack-in-the-box jester",
-    threat:"Fast, and he does not wait politely. A shut door only makes him knock, and every knock costs you.",
+    threat:"A shut door does not send him away. He knocks, and knocks cost power.",
+    tell:"Laughing, and little bells. Hold the door and eat the cost.",
     colour:"#b46fd0",
     home:"closet",
     route:[["closet","s0"], ["closet","s1"], ["arcade","s0"], ["party","s1"], ["party","s2"], ["office","rightDoor"]],
@@ -896,14 +905,20 @@ function paintCRT(g, S, rnd) {
   bg.addColorStop(0.6, "#12333d");
   bg.addColorStop(1, "#081b22");
   g.fillStyle = bg; g.fillRect(0, 0, S, S);
+  g.textAlign = "center";
+  /* the terminal boots into the name of the shift it is watching */
+  g.fillStyle = "#4fc3ae";
+  g.font = (S * 0.07) + "px ui-monospace, monospace";
+  g.fillText("O U I S S Y ’ S", S / 2, S * 0.33);
   g.fillStyle = "#7fe4d0";
   g.font = "bold " + (S * 0.115) + "px ui-monospace, monospace";
-  g.textAlign = "center";
-  g.fillText("WICK & COGS", S / 2, S * 0.38);
-  g.font = (S * 0.062) + "px ui-monospace, monospace";
+  g.fillText("NIGHT SHIFT", S / 2, S * 0.46);
+  g.font = (S * 0.05) + "px ui-monospace, monospace";
+  g.fillStyle = "#3f9e8d";
+  g.fillText("WICK & COGS TOY EMPORIUM", S / 2, S * 0.57);
   g.fillStyle = "#4fc3ae";
-  g.fillText("NIGHT SECURITY", S / 2, S * 0.5);
-  g.fillText("— STANDBY —", S / 2, S * 0.62);
+  g.font = (S * 0.058) + "px ui-monospace, monospace";
+  g.fillText("— STANDBY —", S / 2, S * 0.68);
   /* a frame drawn in the phosphor, corners only */
   g.strokeStyle = "rgba(127,228,208,.5)"; g.lineWidth = S * 0.012;
   const m = S * 0.1, c = S * 0.09;
@@ -1031,7 +1046,7 @@ const OUI = {
   blush:  "#ff8fae",
   /* what her hands and sleeves are painted in when they are the nearest
      thing to the desk lamp */
-  handSkin: "#c99f7c", handSleeve: "#b8434e",
+  handSkin: "#b78256", handSkinLo: "#93613c", handNail: "#d29d84", handSleeve: "#b8434e",
 };
 
 /* her face, painted — for the photograph on the board and the plate on
@@ -2517,7 +2532,7 @@ function buildOffice(R) {
      just enough light beyond it to make a silhouette out of anything
      standing there. */
   R.light({ x: -0.9, y: 1.08, z: deskZ - 0.3, color: "#ffb765", intensity: 1.5, distance: 5.8, decay: 1.3, tag: "desk" });
-  R.light({ x: 0.66, y: 1.12, z: deskZ + 0.2, color: "#79b6e2", intensity: 1.5, distance: 3.0, decay: 1.6, tag: "monitor" });
+  R.light({ x: 0.86, y: 1.22, z: deskZ - 0.06, color: "#79b6e2", intensity: 0.62, distance: 1.9, decay: 1.7, tag: "monitor" });
   R.light({ x: -0.35, y: 2.3, z: -0.45, color: "#ffd0a0", intensity: 1.5, distance: 7.4, decay: 1.35, tag: "pendant" });
   R.light({ x: -1.75, y: 1.5, z: -D / 2 + 0.75, color: "#7f9ad6", intensity: 0.8, distance: 4.8, decay: 1.6, tag: "window" });
   R.light({ x: -W / 2 - 0.7, y: 1.75, z: doorZ, color: "#ffc98a", intensity: 1.5, distance: 3.6, decay: 1.5, tag: "doorL" });
@@ -3766,38 +3781,110 @@ MODELS.ouissy = function () {
 function buildHands() {
   const g = new T.Group();
   const sleeve = flat(OUI.handSleeve);
-  const cuff = mat("porcelain", 1, 1, "#d8cbb8");
-  const skin = flat(OUI.skin);
+  const cuff = mat("porcelain", 1, 1, "#cfc3b0");
+  const skin = flat(OUI.handSkin);
+  const skinLo = flat(OUI.handSkinLo);
+  const nail = flat(OUI.handNail);
   const out = { group: g, hands: {} };
 
+  /* One finger, built the way a finger is built: three segments that
+     each taper and each bend a little further than the one before, so
+     the whole thing curls instead of pointing. `len` scales it — the
+     middle finger is the long one, the little finger is two thirds of
+     it — and `curl` is how far this particular finger has relaxed onto
+     the desk. The old version was one cylinder and a ball, and it read
+     as a fork. */
+  function finger(len, curl, thick) {
+    const root = new T.Group();
+    const r0 = 0.0132 * thick, r1 = 0.0118 * thick, r2 = 0.0102 * thick;
+    const L0 = 0.040 * len, L1 = 0.027 * len, L2 = 0.021 * len;
+
+    /* proximal — leaves the knuckle almost flat */
+    root.rotation.x = -0.085 * curl;
+    root.add(at(new T.Mesh(new T.CylinderGeometry(r0, r1, L0, 10), skin),
+                0, 0, -L0 / 2, Math.PI / 2));
+    /* the knuckle itself, sitting proud on the back of the hand */
+    root.add(at(new T.Mesh(new T.SphereGeometry(r0 * 1.16, 10, 8), skin),
+                0, 0.0016, 0.002, 0, 0, 0, 1, 0.92, 1));
+
+    const mid = part(0, 0, -L0);
+    mid.rotation.x = -0.20 * curl;
+    mid.add(at(new T.Mesh(new T.CylinderGeometry(r1, r2, L1, 10), skin),
+               0, 0, -L1 / 2, Math.PI / 2));
+    mid.add(at(new T.Mesh(new T.SphereGeometry(r1 * 1.04, 10, 8), skin), 0, 0, 0));
+
+    const tip = part(0, 0, -L1);
+    tip.rotation.x = -0.26 * curl;
+    tip.add(at(new T.Mesh(new T.CylinderGeometry(r2, r2 * 0.9, L2, 10), skin),
+               0, 0, -L2 / 2, Math.PI / 2));
+    /* the pad of the fingertip, rounded off, and a nail on the back of
+       it — small, but it is the thing that stops a finger reading as a
+       peg */
+    tip.add(at(new T.Mesh(new T.SphereGeometry(r2 * 0.98, 10, 8), skin),
+               0, 0, -L2, 0, 0, 0, 1, 0.86, 1.12));
+    tip.add(at(new T.Mesh(new T.SphereGeometry(r2 * 0.66, 8, 6), nail),
+               0, r2 * 0.56, -L2 * 0.80, 0.30, 0, 0, 1, 0.30, 1.45));
+    mid.add(tip);
+    root.add(mid);
+    return root;
+  }
+
   [["left", -1], ["right", 1]].forEach(([k, sx]) => {
-    const arm = part(sx * (sx < 0 ? 0.62 : 0.66), 0.792, sx < 0 ? 1.10 : 1.08);
-    arm.rotation.y = -sx * 0.22;
+    /* Sat where a person's hands actually are: on the near half of the
+       desk (which runs z 0.78 to 1.58), not up by the monitor, and a
+       little over life size so they still read at the bottom of a
+       seventy-four degree frame. */
+    const arm = part(sx * (sx < 0 ? 0.615 : 0.635), 0.818, sx < 0 ? 1.31 : 1.30);
+    arm.rotation.y = -sx * 0.30;
+    /* almost flat: a fifth of a radian of tilt was lifting the fingertips
+       a clear inch off the desk and the shadow underneath gave it away */
+    arm.rotation.x = -0.035;
+    arm.scale.setScalar(1.22);
     /* the forearm runs back out of shot; the cuff is the bit of coral
        and cream you actually see, right on the bottom edge */
-    arm.add(at(new T.Mesh(new T.CylinderGeometry(0.07, 0.058, 0.5, 12), sleeve), 0, 0.014, 0.3, Math.PI / 2 + 0.05));
-    arm.add(at(new T.Mesh(new T.CylinderGeometry(0.062, 0.062, 0.055, 12), cuff), 0, 0.008, 0.07, Math.PI / 2));
-    arm.add(at(new T.Mesh(new T.TorusGeometry(0.06, 0.008, 5, 14), flat(OUI.accent)), 0, 0.008, 0.098, Math.PI / 2));
-    /* the hand: a palm arched over the desk, four fingers splayed a
-       little and reaching away, and a thumb tucked in at the side */
+    arm.add(at(new T.Mesh(new T.CylinderGeometry(0.062, 0.052, 0.44, 12), sleeve), 0, 0.014, 0.28, Math.PI / 2 + 0.05));
+    arm.add(at(new T.Mesh(new T.CylinderGeometry(0.056, 0.056, 0.05, 12), cuff), 0, 0.008, 0.068, Math.PI / 2));
+    arm.add(at(new T.Mesh(new T.TorusGeometry(0.055, 0.0075, 5, 14), flat(OUI.accent)), 0, 0.008, 0.094, Math.PI / 2));
+
     const hand = part(0, 0.004, -0.055);
     hand.rotation.x = -0.06;
-    hand.add(at(new T.Mesh(new T.SphereGeometry(0.062, 12, 9), skin), 0, 0, 0, 0, 0, 0, 0.95, 0.52, 1.25));
+    /* the wrist, then the back of the hand as a wedge that is wider at
+       the knuckles than at the wrist — a hand is not a ball */
+    hand.add(at(new T.Mesh(new T.CylinderGeometry(0.044, 0.048, 0.05, 12), skin),
+                0, 0.001, 0.052, Math.PI / 2));
+    hand.add(at(new T.Mesh(new T.BoxGeometry(0.098, 0.030, 0.088), skin),
+                0, 0, 0.0, 0, 0, 0));
+    /* rounded off along both edges so the box never shows a corner */
+    hand.add(at(new T.Mesh(new T.CylinderGeometry(0.015, 0.015, 0.088, 10), skin),
+                -0.049, 0, 0, Math.PI / 2, 0, 0, 1, 1, 0.92));
+    hand.add(at(new T.Mesh(new T.CylinderGeometry(0.016, 0.016, 0.088, 10), skin),
+                0.049, 0, 0, Math.PI / 2, 0, 0, 1, 1, 0.92));
+    /* the heel of the palm, resting on the desk, in the shaded tone */
+    hand.add(at(new T.Mesh(new T.SphereGeometry(0.036, 12, 9), skinLo),
+                0, -0.008, 0.030, 0, 0, 0, 1.25, 0.62, 1));
+
+    /* index, middle, ring, little: real lengths, and each one a little
+       more relaxed than the last, which is what a resting hand does */
+    const spread = [-0.038, -0.013, 0.013, 0.037];
+    const lens   = [0.97, 1.06, 0.99, 0.80];
+    const curls  = [0.85, 0.78, 0.90, 1.05];
+    const thicks = [1.0, 1.02, 0.95, 0.85];
+    const fan    = [-0.13, -0.04, 0.05, 0.15];
     for (let i = 0; i < 4; i++) {
-      const f = part(-0.039 + i * 0.026, -0.004, -0.075);
-      f.rotation.y = (i - 1.5) * 0.11;
-      f.rotation.x = 0.12;
-      f.add(at(new T.Mesh(new T.CylinderGeometry(0.0125, 0.0115, 0.075, 8), skin), 0, 0, -0.03, Math.PI / 2));
-      f.add(at(new T.Mesh(new T.SphereGeometry(0.0118, 8, 6), skin), 0, -0.002, -0.068));
-      /* a knuckle, so the back of the hand is not a slab */
-      f.add(at(new T.Mesh(new T.SphereGeometry(0.0145, 8, 6), skin), 0, 0.006, 0.005));
+      const f = finger(lens[i], curls[i], thicks[i]);
+      f.position.set(spread[i] * (sx < 0 ? -1 : 1), 0.004, -0.043);
+      f.rotation.y = fan[i] * (sx < 0 ? -1 : 1);
       hand.add(f);
     }
-    const thumb = part(sx * -0.058, -0.008, -0.012);
-    thumb.rotation.set(0.1, sx * 0.6, 0);
-    thumb.add(at(new T.Mesh(new T.CylinderGeometry(0.0145, 0.013, 0.062, 8), skin), 0, 0, -0.028, Math.PI / 2));
-    thumb.add(at(new T.Mesh(new T.SphereGeometry(0.0135, 8, 6), skin), 0, 0, -0.058));
+
+    /* the thumb comes off the side of the palm, not the front, and it
+       is the one that faces the others */
+    const thumb = part(sx * -0.050, -0.006, 0.014);
+    thumb.rotation.set(0.16, sx * 0.92, sx * -0.30);
+    const tb = finger(0.86, 0.62, 1.28);
+    thumb.add(tb);
     hand.add(thumb);
+
     arm.add(hand);
     out.hands[k] = hand;
     const sh = contactShadow(hand, { y: -0.006, opacity: 0.34, spread: 1.15 });
@@ -5019,6 +5106,308 @@ function sayClear() {
 }
 
 /* the creaks that keep the bed from ever being flat */
+/* =========================================================
+   17c. THE SCORE
+
+   Not tracks — layers. There is one continuous piece of music all
+   night and it never restarts, never cuts and never loops audibly;
+   what changes is how many of its layers you can hear, and how fast
+   its pulse is. That is the whole trick, and it is the reason the
+   music can be ahead of the game instead of behind it.
+
+   `dread` is a number from zero to one built out of things the player
+   cannot see yet: how far along its route each awake performer is,
+   whether one is standing at a door, how much meter is left. Because
+   a performer's route position climbs while it is still three rooms
+   away, the pulse is already quickening before there is anything on
+   the camera to see. The scare is late. The music is early. That gap
+   is where the fear lives.
+
+   Six layers, in the order they arrive:
+
+     sub      a 41Hz floor you feel rather than hear.       always
+     pulse    a heartbeat. 46bpm at rest, 104 at the door.  0.10
+     box      a music box, playing the shop's own figure.   0.22
+     air      breath on the high end.                       0.30
+     grind    a minor second held against the root.         0.45
+     bow      the top string, bowed and shaking.            0.62
+
+   Everything is scheduled ahead of the clock, not on the frame, so a
+   dropped frame moves nothing — which matters, because on a phone
+   under a heavy room the frame rate is the one thing not guaranteed.
+   ========================================================= */
+const MUS = {
+  ready: false, mode: "none", want: "none",
+  bus: null, lay: {}, nodes: [],
+  dread: 0, target: 0, step: 0, next: 0, bar: 0,
+};
+const MUS_LOOK = 0.65;          // seconds scheduled ahead of the clock
+const MUS_LAYERS = ["sub", "pulse", "box", "air", "grind", "bow", "warm"];
+
+/* A natural minor on A, which is the key the music box is in, so the
+   score and the ballerina are the same instrument in the same room. */
+function hz(n) { return 220 * Math.pow(2, n / 12); }
+const SCALE = [0, 2, 3, 5, 7, 8, 10, 12];          // A B C D E F G A
+/* the shop's figure: the phrase the music box never gets to finish */
+const FIG   = [0, 7, 12, 7, 3, 10, 7, 3, 0, 7, 12, 15, 12, 10, 7, 3];
+const FIG_B = [0, 5, 12, 5, 3, 8, 5, 0, -2, 5, 10, 12, 10, 7, 3, 0];
+/* and the same phrase in the major it was written in, for the morning */
+const WARM  = [0, 4, 7, 12, 11, 7, 4, 7, 2, 5, 9, 14, 12, 9, 5, 4];
+
+function musicInit() {
+  if (!ac() || MUS.ready) return;
+  MUS.ready = true;
+  MUS.bus = AC.createGain(); MUS.bus.gain.value = 0; MUS.bus.connect(duckGain);
+  MUS_LAYERS.forEach((k) => {
+    const g = AC.createGain();
+    g.gain.value = 0;
+    g.connect(MUS.bus);
+    MUS.lay[k] = g;
+  });
+
+  /* --- the continuous layers ---------------------------------------
+     These three never stop for the life of the page. Starting and
+     stopping an oscillator is a click and a scheduling risk; a gain of
+     zero is neither. */
+
+  /* sub: the floor. Two sines a beat apart so it breathes on its own */
+  [41.2, 41.9].forEach((f) => {
+    const o = AC.createOscillator(); o.type = "sine"; o.frequency.value = f;
+    const g = AC.createGain(); g.gain.value = 0.5;
+    o.connect(g); g.connect(MUS.lay.sub); o.start();
+    MUS.nodes.push(o);
+  });
+
+  /* grind: the root, and a minor second sitting on top of it. This is
+     the layer that makes a room feel wrong without doing anything */
+  [110, 116.54, 164.81].forEach((f, i) => {
+    const o = AC.createOscillator();
+    o.type = i === 1 ? "sawtooth" : "triangle";
+    o.frequency.value = f;
+    const lp = AC.createBiquadFilter(); lp.type = "lowpass";
+    lp.frequency.value = 420; lp.Q.value = 0.9;
+    const g = AC.createGain(); g.gain.value = i === 1 ? 0.16 : 0.1;
+    o.connect(lp); lp.connect(g); g.connect(MUS.lay.grind); o.start();
+    /* a slow wobble on the dissonant one, so the beating is never even */
+    const lfo = AC.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 0.11 + i * 0.03;
+    const lg = AC.createGain(); lg.gain.value = 1.4;
+    lfo.connect(lg); lg.connect(o.frequency); lfo.start();
+    MUS.nodes.push(o, lfo);
+  });
+
+  /* air: breath. Filtered noise up where a room's silence lives */
+  const air = AC.createBufferSource(); air.buffer = NB; air.loop = true;
+  air.playbackRate.value = 1.9;
+  const bp = AC.createBiquadFilter(); bp.type = "bandpass";
+  bp.frequency.value = 2100; bp.Q.value = 0.8;
+  const ag = AC.createGain(); ag.gain.value = 0.5;
+  air.connect(bp); bp.connect(ag); ag.connect(MUS.lay.air); air.start();
+  const alfo = AC.createOscillator(); alfo.type = "sine"; alfo.frequency.value = 0.055;
+  const alg = AC.createGain(); alg.gain.value = 900;
+  alfo.connect(alg); alg.connect(bp.frequency); alfo.start();
+  MUS.nodes.push(air, alfo);
+
+  /* warm: the major chord the morning resolves onto. Silent all night */
+  [110, 138.59, 164.81, 220].forEach((f) => {
+    const o = AC.createOscillator(); o.type = "triangle"; o.frequency.value = f;
+    const g = AC.createGain(); g.gain.value = 0.09;
+    o.connect(g); g.connect(MUS.lay.warm); o.start();
+    MUS.nodes.push(o);
+  });
+}
+
+/* the two voices that play notes rather than hold them */
+function boxNote(t, f, gain, pan, dur) {
+  const o = AC.createOscillator(); o.type = "triangle"; o.frequency.value = f;
+  const o2 = AC.createOscillator(); o2.type = "sine"; o2.frequency.value = f * 2.01;
+  const bp = AC.createBiquadFilter(); bp.type = "lowpass";
+  bp.frequency.setValueAtTime(f * 7, t);
+  bp.frequency.exponentialRampToValueAtTime(f * 2.2, t + 0.25);
+  const g = AC.createGain();
+  const d = dur || 1.1;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0004, gain), t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  const g2 = AC.createGain(); g2.gain.value = 0.22;
+  o.connect(bp); o2.connect(g2); g2.connect(bp); bp.connect(g);
+  g.connect(pan === undefined ? MUS.lay.box : panned({ pan, bus: MUS.lay.box }));
+  o.start(t); o2.start(t); o.stop(t + d + 0.05); o2.stop(t + d + 0.05);
+}
+function heart(t, f, gain) {
+  const o = AC.createOscillator(); o.type = "sine";
+  o.frequency.setValueAtTime(f * 1.7, t);
+  o.frequency.exponentialRampToValueAtTime(f, t + 0.09);
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0004, gain), t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.30);
+  o.connect(g); g.connect(MUS.lay.pulse);
+  o.start(t); o.stop(t + 0.36);
+}
+function bowNote(t, f, gain, dur) {
+  const o = AC.createOscillator(); o.type = "sawtooth"; o.frequency.value = f;
+  const o2 = AC.createOscillator(); o2.type = "sawtooth"; o2.frequency.value = f * 1.007;
+  const bp = AC.createBiquadFilter(); bp.type = "bandpass";
+  bp.frequency.value = f * 2.6; bp.Q.value = 3.2;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(Math.max(0.0004, gain), t + dur * 0.45);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  o.connect(bp); o2.connect(bp); bp.connect(g); g.connect(MUS.lay.bow);
+  o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+}
+
+/* --- how frightened the music is ------------------------------------
+   Read from the route rather than from the door, so it is climbing
+   while the thing is still two rooms away and there is nothing to see
+   on any camera. */
+function dreadTarget() {
+  if (G.phase !== "play") return 0.12;
+  if (G.blackout) return 1;
+  let d = 0.06 + Math.min(0.16, G.hour * 0.028);
+  for (let i = 0; i < CAST.length; i++) {
+    const ch = cast[CAST[i].id];
+    if (!ch || !ch.awake) continue;
+    const total = routeOf(ch).length - 1;
+    const near = total ? clamp(ch.step / total, 0, 1) : 0;
+    /* squared, so the last two rooms are worth more than the first four */
+    let v = near * near * 0.70;
+    if (ch.atDoor) v = G.doors[ch.def.door] ? 0.74 : 0.99;
+    if (v > d) d = v;
+  }
+  d += (1 - clamp(G.power / TUNE.power.start, 0, 1)) * 0.20;
+  return clamp(d, 0, 1);
+}
+
+/* a layer's share of the mix: silent below `a`, full at `b` */
+function fadeIn(v, a, b) { return clamp((v - a) / (b - a), 0, 1); }
+
+function musicMode(m) {
+  if (!ac()) return;
+  musicInit();
+  MUS.want = m;
+  const t = now();
+  const to = m === "none" ? 0.0001 : 1;
+  MUS.bus.gain.cancelScheduledValues(t);
+  MUS.bus.gain.setValueAtTime(Math.max(0.0001, MUS.bus.gain.value), t);
+  MUS.bus.gain.linearRampToValueAtTime(to, t + (m === "none" ? 0.9 : 2.2));
+  if (m !== MUS.mode) {
+    /* a mode change never restarts the grid — the new material simply
+       starts landing on the beat the old one was already keeping */
+    MUS.mode = m;
+    if (m === "night") { MUS.dread = Math.min(MUS.dread, 0.25); }
+    if (m === "menu" || m === "dawn") MUS.dread = 0;
+  }
+}
+
+function musicTick(dt) {
+  if (!MUS.ready || !AC || muted) return;
+  const mode = MUS.mode;
+  if (mode === "none") return;
+
+  /* dread rises quickly and lets go slowly, which is what a person
+     does. Anything else and the room feels safe the instant a door
+     shuts, which it is not. */
+  MUS.target = mode === "night" ? dreadTarget() : 0;
+  const rate = MUS.target > MUS.dread ? 1.5 : 0.30;
+  MUS.dread += clamp(MUS.target - MUS.dread, -rate * dt, rate * dt);
+  const d = MUS.dread;
+
+  const set = (k, v) => {
+    const g = MUS.lay[k].gain, t = now();
+    if (Math.abs(g.value - v) < 0.002) return;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(v, t + 0.55);
+  };
+  if (mode === "night") {
+    set("sub",   0.34 + d * 0.5);
+    set("pulse", fadeIn(d, 0.10, 0.45) * 0.75);
+    set("box",   fadeIn(d, 0.20, 0.52) * 0.72);
+    set("air",   fadeIn(d, 0.28, 0.70) * 0.30);
+    set("grind", fadeIn(d, 0.44, 0.86) * 0.52);
+    set("bow",   fadeIn(d, 0.60, 0.95) * 0.34);
+    set("warm",  0);
+  } else if (mode === "dawn") {
+    set("sub", 0.16); set("pulse", 0); set("box", 0.5);
+    set("air", 0.12); set("grind", 0); set("bow", 0); set("warm", 0.75);
+  } else {                                   // menu
+    set("sub", 0.2); set("pulse", 0); set("box", 0.62);
+    set("air", 0.1); set("grind", 0); set("bow", 0); set("warm", 0.34);
+  }
+
+  /* --- the grid ---------------------------------------------------
+     One sixteenth-note clock for the whole chapter. At rest the night
+     runs at 46 beats a minute; with something at an open door it is
+     104, and every layer follows it because they are all on the same
+     grid. The menu keeps its own slower, steadier one. */
+  const spb = mode === "night" ? lerp(1.30, 0.575, d) : (mode === "dawn" ? 1.5 : 1.36);
+  const stepLen = spb / 4;
+  const t0 = now();
+  if (!MUS.next || MUS.next < t0 - 1) MUS.next = t0 + 0.06;
+  let guard = 0;
+  while (MUS.next < t0 + MUS_LOOK && guard++ < 64) {
+    const t = MUS.next, s = MUS.step & 15;
+    if (s === 0) MUS.bar++;
+    if (mode === "night") {
+      /* the heart. Two beats, close together, on one and three */
+      if (d > 0.08) {
+        if (s === 0 || s === 8) heart(t, 52, 0.42 + d * 0.5);
+        if (s === 2 || s === 10) heart(t, 44, 0.28 + d * 0.34);
+      }
+      /* the music box, one note a beat, the figure alternating so the
+         phrase never repeats twice running */
+      if (d > 0.18 && (s & 1) === 0) {
+        const fig = (MUS.bar & 1) ? FIG_B : FIG;
+        const n = fig[s];
+        boxNote(t, hz(n), 0.11 + d * 0.05, ((MUS.bar + s) % 3 - 1) * 0.5, 1.05);
+      }
+      /* the top string, once every two bars, and only when it is bad */
+      if (d > 0.58 && s === 4 && (MUS.bar & 1) === 0) {
+        bowNote(t, hz(12 + (MUS.bar % 3 === 0 ? 8 : 7)), 0.055 + d * 0.05, spb * 3.4);
+      }
+      /* the meter running out gets its own falling note, once a bar */
+      if (G.power < TUNE.power.critical && s === 12) {
+        boxNote(t, hz(-12), 0.10, 0, 1.8);
+      }
+    } else if (mode === "dawn") {
+      if ((s & 3) === 0) {
+        const n = WARM[s];
+        boxNote(t, hz(n), 0.10, ((s % 3) - 1) * 0.45, 2.4);
+      }
+    } else {
+      /* --- the menu ------------------------------------------------
+         The same music box, in the major it was written in, played
+         slowly and never quite the same way twice: the phrase moves a
+         step every fourth pass and picks up a second voice a fifth
+         above on every other one, so a long sit on the title screen
+         does not turn into a loop she can predict. */
+      const turn = MUS.bar >> 1;
+      /* every lift has to stay inside A major, because the warm pad is
+         holding an A major triad underneath the whole time. +3 put the
+         phrase in C and set a C natural against the pad's C sharp. */
+      const lift = [0, 0, 5, 0, -3, 0, 7, 0][turn & 7];
+      if ((s & 1) === 0) {
+        const n = WARM[(s + ((turn & 3) === 3 ? 2 : 0)) & 15] + lift;
+        boxNote(t, hz(n), 0.115, ((s % 4) - 1.5) * 0.36, 1.7);
+        /* the answering voice, a beat behind and quieter, like the
+           second comb in a music box */
+        if ((turn & 1) === 0 && (s & 3) === 0) {
+          boxNote(t + stepLen * 1.5, hz(n + 7), 0.052, -((s % 4) - 1.5) * 0.36, 1.5);
+        }
+      }
+      if (s === 0) boxNote(t, hz(-12 + lift), 0.085, 0, 3.0);
+    }
+    MUS.step++;
+    MUS.next += stepLen;
+  }
+}
+
+function musicStop() {
+  if (!MUS.ready) return;
+  musicMode("none");
+}
+
 function audioTick(dt) {
   if (!audioOn || muted) return;
   creakTimer -= dt;
@@ -5150,7 +5539,10 @@ function stepsLeft(ch) { return routeOf(ch).length - 1 - ch.step; }
    matters to, but the answer is the same question for all of them and
    the HUD wants it too. */
 function observed(ch) {
-  if (G.monitor) return G.cam === ch.room && !isLost(G.cam);
+  /* a monitor that has cut out is not a camera. powerRate has always
+     known that; this did not, which meant night six's dropouts froze
+     the ballerina exactly as well as a working picture did. */
+  if (G.monitor && G.monOut <= 0) return G.cam === ch.room && !isLost(G.cam);
   return ch.room === "office";
 }
 function isLost(roomId) {
@@ -5183,6 +5575,11 @@ function resetCast() {
 
 /* --- one figure's turn -------------------------------------------- */
 function stepCast(ch, dt) {
+  /* the dark belongs to stepBlackout. Leaving this running through it
+     decremented the approach timer a second time every frame — and,
+     because a blackout forces every door open, anyone already standing
+     at one killed on their own clock instead of on the grace. */
+  if (G.blackout) return;
   const tune = TUNE.cast[ch.def.id];
   const from = G.cfg.active[ch.def.id];
   if (from === undefined) return;                  // asleep all night
@@ -5250,6 +5647,7 @@ function stepCast(ch, dt) {
   ch.step = clamp(ch.step + adv, 0, routeOf(ch).length - 1);
   syncChar(ch);
   ch.pose = "walk";
+  G.stats.moves++;
   if (ch.atDoor) {
     ch.doorT = (tune.doorGrace * cozyK("doorGrace")) / Math.max(0.8, agg * 0.85);
     G.stats.arrivals++;
@@ -5352,6 +5750,9 @@ function stepBlackout(dt) {
 function kill(ch) {
   if (G.phase !== "play") return;
   sayClear();
+  /* the score cuts out from under the scare rather than fading through
+     it — the silence is half of what makes the noise land */
+  musicMode("none");
   G.phase = "over";
   G.dead = ch.def.id;
   G.deadT = 0;
@@ -5415,6 +5816,7 @@ function winNight() {
        caption strip is already gone */
     annunciate(NS.sys.six, false);
   }
+  musicMode("dawn");
   syncTrophies();
   bumpUI();
 }
@@ -5464,8 +5866,16 @@ function stepAlarms(dt) {
   G.alarmT -= dt;
   if (G.alarmT > 0) return;
   const shorten = 1 - clamp(G.hour * TUNE.alarm.perHour, 0, 0.55);
-  G.alarmT = nextIn(TUNE.alarm.every, shorten / Math.max(0.2, cozyK("alarms") > 0.9 ? 1 : 1 / cozyK("alarms")));
+  /* and they come roughly twice as often while nothing is actually on
+     its way. That is what they are for: the quiet is theirs to fill,
+     and the quietest stretch of the whole chapter — midnight on night
+     one, with one of them awake and barely moving — is exactly where
+     the gaps used to be longest. */
+  const lull = 1 - clamp(dreadTarget(), 0, 1);
+  G.alarmT = nextIn(TUNE.alarm.every, shorten * lerp(1, 0.5, lull) /
+                    Math.max(0.2, cozyK("alarms") > 0.9 ? 1 : 1 / cozyK("alarms")));
   if (G.cozy && Math.random() > TUNE.cozy.alarms) return;
+  G.stats.alarms++;
   /* a side to come from, so it reads as a place rather than a noise */
   const pan = pick(Math.random, [-0.8, -0.5, 0, 0.5, 0.8]);
   const kind = (Math.random() * 4) | 0;
@@ -5797,6 +6207,7 @@ function frame(ts) {
   }
 
   if (G.phase === "gallery") { sayTick(dt); uiTick(dt); }
+  musicTick(dt);
   G.shake = Math.max(0, G.shake - dt * 1.9);
   applyLighting(dt);
   animateOffice(dt);
@@ -5984,7 +6395,8 @@ function screenHowTo() {
   const rows = NS.howTo.map((r) => '<li><b>' + r[0] + '</b><span>' + r[1] + '</span></li>').join("");
   const who = CAST.map((c) =>
     '<li class="ns-who"><span class="ns-swatch" style="--c:' + c.colour + '"></span>' +
-    '<b>' + c.name + '</b><i>' + c.what + '</i><span>' + c.threat + '</span></li>').join("");
+    '<b>' + c.name + '</b><i>' + c.what + '</i><span>' + c.threat + '</span>' +
+    '<em>' + c.tell + '</em></li>').join("");
   overlay(
     '<div class="ns-card ns-card-wide">' +
       '<h3>HOW IT WORKS</h3>' +
@@ -6216,14 +6628,14 @@ function route(cmd) {
     CAST.forEach((d) => { cast[d.id].asleep = false; });
     sayClear();
     if (stageEl) delete stageEl.dataset.day;
-    bedStop(); screenTitle(); showHud(false);
+    bedStop(); musicMode("menu"); screenTitle(); showHud(false);
     if (officeParts && officeParts.glass && TX.night) {
       officeParts.glass.material = new T.MeshBasicMaterial({ map: TX.night, fog: true });
     }
     syncTrophies();
   }
   else if (cmd === "go") { beginNight(G.night); }
-  else if (cmd === "resume") { G.phase = "play"; noOverlay(); showHud(true); bedStart(); }
+  else if (cmd === "resume") { G.phase = "play"; noOverlay(); showHud(true); bedStart(); musicMode("night"); }
   else if (cmd === "restart") { beginNight(G.night, { mode: G.mode }); }
   else if (cmd === "next") { beginNight(Math.min(NIGHTS.length, G.night + 1)); }
   else if (cmd === "quit") { if (window.leaveNightShift) window.leaveNightShift(); }
@@ -6276,7 +6688,7 @@ function beginNight(n, opts) {
   G.shiftT = nextIn(TUNE.shift.firstAt);
   G.caption = ""; G.captionT = 0;
   sayQueue = []; sayUntil = 0;
-  G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, lowest: 100 };
+  G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, alarms: 0, moves: 0, lowest: 100 };
   resetCast();
   resetShifties();
   syncTrophies();
@@ -6292,6 +6704,7 @@ function beginNight(n, opts) {
   noOverlay();
   showHud(true);
   bedStart();
+  musicMode("night");
   say(NS.sys.boot);
   if (G.cozy) say(NS.sys.cozy);
   if (hazard("stickyDoor")) say(NS.sys.doorFault);
@@ -6323,6 +6736,7 @@ function beginGallery() {
   noOverlay();
   showHud(false);
   bedStop();
+  musicMode("menu");
   screenGallery();
   bumpUI();
 }
@@ -6873,6 +7287,7 @@ function finishStart(cvs) {
   useView("office", "main");
   showHud(false);
   syncTrophies();
+  musicMode("menu");
   screenTitle();
   if (!boundKeys) {
     boundKeys = true;
@@ -6906,6 +7321,7 @@ function stop() {
   ARC.keys.left = ARC.keys.right = false;
   sayClear();
   bedStop();
+  musicStop();
   audioDuck(1, 10);
   G.phase = "idle";
   noOverlay();
@@ -6997,6 +7413,14 @@ const testHooks = {
   },
   render() { if (renderer) renderer.render(scene, view); },
   silence(v) { audioMute(v !== false); },
+  /* the score, so a suite can assert that the music is ahead of the
+     game rather than behind it */
+  music: () => ({ mode: MUS.mode, dread: MUS.dread, target: MUS.target,
+                  bus: MUS.bus ? MUS.bus.gain.value : 0,
+                  lay: MUS_LAYERS.reduce((o, k) => {
+                    o[k] = MUS.lay[k] ? +MUS.lay[k].gain.value.toFixed(3) : null; return o;
+                  }, {}) }),
+  musicTick: (dt) => musicTick(dt),
 };
 
 return { start, stop, preview, __night: testHooks,

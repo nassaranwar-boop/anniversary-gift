@@ -442,3 +442,34 @@ galvanised duct, velvet, carpet, plaster, wallpaper, concrete, brass,
 porcelain, harlequin diamonds, the night outside the window, the standby
 screen on the desk monitor — is painted into a canvas at boot, and every
 sound is synthesised.
+
+### The score
+
+There is no soundtrack file and no loop. There is one continuous piece
+of music that never restarts, and six layers of it that fade in and out:
+
+| | arrives at | what it is |
+|---|---|---|
+| **sub** | always | a 41Hz floor you feel rather than hear |
+| **pulse** | dread 0.10 | a heartbeat — 46bpm at rest, 104 at a door |
+| **box** | 0.20 | a music box playing the shop's own unfinished figure |
+| **air** | 0.28 | breath, up where a room's silence lives |
+| **grind** | 0.44 | a minor second held against the root |
+| **bow** | 0.60 | the top string, bowed and shaking |
+
+`dread` is built from things the player cannot see yet — chiefly how far
+along its route each awake performer is, squared so the last two rooms
+count for more than the first four. Because that climbs while something
+is still three rooms away, **the pulse quickens before there is anything
+on any camera to look at**. It rises fast and lets go slowly, so a room
+does not feel safe the instant a door shuts. The whole grid — heartbeat,
+music box, strings — runs off one sixteenth-note clock whose tempo is
+`dread`, and everything is scheduled ahead of the audio clock rather
+than on the frame, so a dropped frame moves nothing.
+
+The menu has its own theme: the same music box in the major key it was
+written in, played slowly, transposing every fourth pass and picking up
+an answering voice a fifth above on every other one, so a long sit on
+the title screen never becomes a loop. Six o'clock switches to a third,
+warmer mode. A death cuts the music dead — the silence is half of what
+makes the scare land.

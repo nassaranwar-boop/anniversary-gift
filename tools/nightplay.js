@@ -90,8 +90,16 @@ function ok(name, cond, extra) {
   console.log('\n— how it works —');
   await tap(page, { q: '.ns-btn', text: 'HOW IT WORKS' });
   await page.waitForTimeout(300);
-  ok('rules listed', await page.locator('.ns-rules li').count() === 8);
+  ok('rules listed', await page.locator('.ns-rules li').count() === 6);
   ok('cast listed', await page.locator('.ns-cast li').count() === 4);
+  /* each performer carries the rule and, under it, what she will
+     actually notice on its way */
+  ok('and each one says what to do about it',
+     await page.locator('.ns-who em').count() === 4);
+  ok('and the rules fit on a card',
+     (await page.locator('.ns-rules li span').allTextContents())
+       .every(t => t.trim().length <= 90),
+     (await page.locator('.ns-rules li span').allTextContents()).map(t => t.length).join(','));
   await tap(page, { q: '.ns-btn', text: 'BACK' });
   await page.waitForTimeout(250);
 
@@ -244,6 +252,24 @@ function ok(name, cond, extra) {
   ok('Jax at a shut door costs far more than the door does',
      jax.loud > jax.quiet * 1.7,
      jax.loud.toFixed(1) + '% vs ' + jax.quiet.toFixed(1) + '% over 14s');
+
+  console.log('\n— a dropped monitor is not a camera —');
+  const drop = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    w.route('night:6'); w.route('go');
+    w.only('marabelle', 0);
+    s.monitor = true; w.cam(w.cast().marabelle.room); s.power = 100;
+    const watch = () => { const a = w.cast().marabelle.step; w.pump(26); return w.cast().marabelle.step - a; };
+    s.monOut = 0;  const seen = watch();
+    w.route('restart'); w.only('marabelle', 0);
+    s.monitor = true; w.cam(w.cast().marabelle.room); s.power = 100;
+    s.monOut = 999; const blind = watch();
+    s.monOut = 0;
+    return { seen, blind };
+  });
+  ok('she is still frozen on a working picture', drop.seen === 0, String(drop.seen));
+  ok('but a monitor that cut out does not hold her',
+     drop.blind > 0, 'moved ' + drop.blind + ' steps behind the static');
 
   console.log('\n— the blackout, and six o clock —');
   const black = await page.evaluate(() => {

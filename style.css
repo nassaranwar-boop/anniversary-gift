@@ -4824,6 +4824,15 @@ img{-webkit-user-drag:none; user-select:none;}
   content:""; position:absolute; inset:0; pointer-events:none; z-index:3;
   background:radial-gradient(ellipse at 50% 52%, rgba(0,0,0,0) 42%, rgba(0,0,0,.55) 100%);
 }
+/* the line under each performer's rule: what she will actually notice
+   when it is on its way, as opposed to what it does */
+.ns-who em{
+  grid-column:3 / -1; margin-top:.5cqh;
+  font-style:normal; font-size:max(1.5cqh, 11px); line-height:1.45;
+  color:var(--ns-dim); opacity:.85;
+  padding-left:.7cqw; border-left:.25cqw solid rgba(200,162,96,.35);
+}
+
 /* except in the daylight gallery, where there is nothing in the corners
    worth hiding */
 .ns-stage[data-day="1"]::after{
@@ -5115,7 +5124,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .ns-cast b{ font-size:1.7cqh; letter-spacing:.16em; color:var(--ns-ink); }
 .ns-cast i{ display:none; }
-.ns-cast span:last-child{ font-size:1.6cqh; line-height:1.5; color:rgba(232,223,200,.7); }
+.ns-cast li > span:not(.ns-swatch){ font-size:1.7cqh; line-height:1.5; color:rgba(232,223,200,.88); }
 .ns-swatch{ width:1.6cqh; height:1.6cqh; border-radius:50%; background:var(--c);
   box-shadow:0 0 1.2cqh var(--c); align-self:center; }
 .ns-keys{ margin:0; font-size:1.4cqh; letter-spacing:.08em; color:rgba(232,223,200,.5); line-height:1.9; }
