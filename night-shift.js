@@ -65,11 +65,12 @@ const NS = {
      Nobody talks to her.
 
      There is no voice on a phone explaining the job and no friend
-     checking in between nights. Everything she learns, she finds: a
-     laminated card taped inside the drawer, a page out of a ledger,
-     something scratched into the underside of a music box. The only
-     voice in the building is the security system's, and that one only
-     ever reports its own state — see ANNUNCIATOR further down.
+     checking in between nights. There is one recording, at the very
+     start, of a dead man reading a statement into his own shop — and
+     after that everything she learns she finds: a card taped inside
+     the drawer, a tin of tags, a delivery book, the shop's own log.
+     The only other voice in the building is the security system's, and
+     that one only ever reports its own state — see ANNUNCIATOR below.
      -------------------------------------------------------------- */
 
   /* Night one opens on the card that was already on the desk. The
@@ -83,45 +84,45 @@ const NS = {
       "The monitor shows the shop floor. It draws while it is up.",
       "Do not leave the office.",
     ],
-    pencil: "and underneath, in pencil, in a different hand — they wind down on their own. they always have. don’t go out to check.",
+    pencil: "and underneath, in his hand, in pencil — <i>wind the four in the back. do not open the door to anything else. it will not be one of mine.</i>",
   },
 
   /* Between nights: paper, and one object. Two sentences at a time.
      Nobody explains it and nobody says what it means. */
   beats: {
     2: {
-      title: "a page out of a ledger, in the back of the drawer",
+      title: "a tin of tags, tipped out of the workshop drawer",
       lines: [
-        "17 Nov — the soldier’s escapement true at last. He keeps better time than I do.",
-        "She says the shop is too quiet after closing. So: the owl next, for the rafters. Something awake up there while she locks up.",
+        "Hundreds of them. Every one reads SOLD, a date, and a family name.",
+        "Four of them read NOT FOR SALE. Those four are still wired to something.",
       ],
     },
     3: {
-      title: "a note pinned to the workshop board, gone brown at the edges",
+      title: "the delivery book, under the till",
       lines: [
-        "Four of them. One for each of the things she likes best.",
-        "They only have to keep going until she is back.",
+        "Addresses. Some of them crossed out, and the crossing-out is not tidy.",
+        "Beside one of them, in his hand: <i>came back on its own. do not sign for it.</i>",
       ],
     },
     4: {
-      title: "scratched into the underside of the music box",
+      title: "a note taped inside the workshop cupboard",
       lines: [
-        "FOR HER. WOUND EVERY EVENING.",
-        "and beneath it, later, in a shakier hand — she did not come back. wind it anyway.",
+        "Stopped taking orders. Told them the workshop was closed.",
+        "It has not made the slightest difference to the ones already out.",
       ],
     },
     5: {
-      title: "the last entry in the ledger",
+      title: "a page torn out and put back in the wrong place",
       lines: [
-        "They will not stop now. I have checked, and I do not think they can.",
-        "Leave the shutters. Leave the lights. Somebody should be here when she comes.",
+        "The four in the back are the only ones I did not make to order.",
+        "If anything ever comes through that front door that I did not build for her, they will be between it and her before I would have been.",
       ],
     },
     6: {
-      title: "a card in the till, never posted",
+      title: "the shop’s own log, printed the night he stopped coming in",
       lines: [
-        "The shop is doing well. You would like what it has become.",
-        "I keep the ballerina wound. She is the one you liked.",
+        "23:58 — PROPRIETOR ON PREMISES. 04:12 — STATEMENT RECORDED.",
+        "04:14 — PROPRIETOR OFF PREMISES. No further entries until she opened the door.",
       ],
     },
   },
@@ -214,16 +215,18 @@ const NS = {
      light about as much as a brass tag catches light. She has to go
      looking, and looking is the thing the cameras were always for.
 
-     They are the whole reason to keep playing. The first three are a
-     stranger's: an old toymaker, four automatons, a woman who did not
-     come back — and each one carries a place, described rather than
-     named, because a person who has been to Marrakech will know all
-     three without being told. On the fourth a second hand answers him
-     in newer ink. By the fifth it is not his shop any more. The sixth
-     is signed.
+     They are the whole reason to keep playing. The first four are the
+     maker's tags off the four he never sold, and each one says what
+     its toy does and then, on the back, why he built it that way —
+     and the why is always one thing about her. Her timekeeping. Her
+     roof. The dancing she will not do while anyone is looking. The
+     fact that she has never walked out of a room. The fifth is the
+     ledger and what four hundred of them were sold to do; the sixth
+     is him, finally, saying it.
 
-     Each tag also happens to explain exactly what its toy does, which
-     means the story is the tutorial: read them and you know the game.
+     Which means the four things that have been standing at her door
+     all week are a portrait of her, and the tags are also the tutorial:
+     read them and you know exactly how each one moves.
 
      `room` is where it hides, `on` the night it can be found, `kind`
      which small object gets built. Miss one and it stays missed — that
@@ -231,60 +234,58 @@ const NS = {
   finds: [
     {
       id: "cogsworth", on: 1, room: "workshop", kind: "tag",
-      where: "on the workshop bench, wired to a plinth with nothing on it",
+      where: "wired to an empty plinth on the workshop bench",
       title: "No. 1 — COGSWORTH",
       lines: [
-        "Wound daily. Keeps better time than I do. He will walk the length of a room and turn at the end of it, and he does not stop for anything but a shut door.",
+        "NOT FOR SALE. Wound daily. Walks the length of a room and turns at the end of it, and stops for nothing but a shut door.",
       ],
-      back: "She says the big square is best at dusk, when the drums start up. He marches to that.",
+      back: "She has never been late for anything in her life. I built one that keeps better time than she does, so there would be somebody for her to be early with.",
     },
     {
       id: "chime", on: 2, room: "foyer", kind: "tag",
       where: "on the ledge over the front door, where something roosts",
       title: "No. 2 — CHIME",
       lines: [
-        "For the rafters. Goes over the top of everything — doors, walls, the lot — so there is always something awake above you.",
+        "NOT FOR SALE. Goes over the top of everything — doors, walls, the lot. There is no ground floor as far as this one is concerned.",
       ],
-      back: "She never liked how quiet it goes inside the walls in the afternoon. So: something moving up there while she works.",
+      back: "She takes her book up to the roof and stays there until it is dark. I made something that would rather be up there too.",
     },
     {
       id: "marabelle", on: 3, room: "party", kind: "card",
       where: "slipped under the ballerina’s glass",
       title: "No. 3 — MARABELLE",
       lines: [
-        "Do not overwind. She stops the moment she is looked at — she only ever dances when she is sure nobody can see her.",
+        "NOT FOR SALE. Do not overwind. Stops dead the moment she is looked at, and will not start again until she is not.",
       ],
-      back: "Like her in the back row of the picture house. Would not sing along until the lights went down.",
+      back: "Fifteen years and she has never once danced while I was in the room. She thinks I do not know that she does it at all.",
     },
     {
       id: "jax", on: 4, room: "closet", kind: "tag",
       where: "in the bottom of the jester’s box",
       title: "No. 4 — JAX",
       lines: [
-        "The last one. Made in an afternoon because she laughed at the first sketch. He does not knock politely and he does not go away when he is told.",
+        "NOT FOR SALE. Does not knock politely and does not go away when he is told. Made in an afternoon, badly, and I have never improved him.",
       ],
-      /* and here the fiction cracks: the answer is in newer ink, and it
-         is not answering him */
-      back: "and underneath, in different ink, much newer — <i>she did come back. she just took the long way round.</i>",
+      back: "She stays. Whatever it is, whoever it is, she stays until it is finished. I wanted one thing in this building that would not leave a door either.",
     },
     {
-      id: "letter", on: 5, room: "party", kind: "letter",
-      where: "folded under a paper cup on the party table",
-      title: "a letter, and not an old one",
+      id: "ledger", on: 5, room: "party", kind: "letter",
+      where: "the ledger, open at the last page anyone wrote on",
+      title: "SOLD",
       lines: [
-        "You have been in here five nights now and you have not once run.",
-        "Everybody who worked this shift before you sat and waited for six o’clock. You went looking instead. I knew you would.",
+        "Four hundred and eleven of them, out of this shop, into houses with people asleep in them. Every one made to want something on somebody else’s behalf.",
+        "I stopped taking orders in the spring. It did not stop the ones already out there, and it will not stop them coming back here, because this is the only address any of them has.",
       ],
-      back: "There is one more. It is where the tune ends.",
+      back: "The four in the back are the only things I ever built that wanted something for themselves. Whatever else gets in, it is not mine and it is not hers.",
     },
     {
       id: "last", on: 6, room: "stage", kind: "page",
       where: "left on the lip of the stage, in the one bit of light",
       title: "the last page",
       lines: [
-        "He built four of them so the shop would never be empty when she came back, and then he waited in an empty shop for the rest of his life. That is the whole story and it is not ours.",
-        "Ours started in a corridor at AVS, in Daoudiate, on an ordinary day that I have never once managed to describe properly.",
-        "I have not had to build anything to keep you. You came back on your own, every time, and you are going to walk out of this shop at six and still be there.",
+        "I have been sitting here trying to write down what I am, and every version of it is a man asking to be forgiven, so here is the other thing instead.",
+        "I made four toys out of my wife. Her timekeeping, her roof, the dancing she does when she thinks nobody can see, and the fact that she has never once walked out of a room I was in.",
+        "They have been standing at your door all week trying to get to you. That is the whole of what they are for. I could not say it to your face in fifteen years and I have had to build it out of brass instead.",
       ],
       back: "— Anwar",
     },
@@ -293,11 +294,11 @@ const NS = {
   /* the one line at the end of a night, in place of a score. It is not
      a summary; it is a door left open. */
   hooks: {
-    1: "Something in the workshop has been moved. The dust says it was moved from the inside.",
-    2: "There is a page torn out of the ledger. The tear is fresh.",
-    3: "The ballerina is facing the door now. Nobody wound her.",
-    4: "The handwriting on the last tag is not the same handwriting.",
-    5: "One more. It is where the tune ends.",
+    1: "In the workshop bin there are four hundred tags that read SOLD, and four that do not.",
+    2: "One of the addresses in the delivery book has been crossed out very hard.",
+    3: "Something tried the front door at half past three. It did not knock.",
+    4: "He stopped taking orders in the spring. Nobody told the ones already out.",
+    5: "The four of them go back to their places at six. Every morning. On their own.",
   },
 
   /* the line she gets for a night she cleared without finding the thing
@@ -306,23 +307,25 @@ const NS = {
 
   /* Dawn on the last night, and the one thing she gets to decide. */
   ending: {
-    ask: "The music box is on the counter, half wound. It is six o’clock and nobody is watching.",
+    ask: "On the counter there is a winding key, and four things standing very still in a shop that is hers now.",
     wind: {
-      label: "WIND IT",
+      label: "WIND THEM",
       lines: [
-        "She winds it the rest of the way and sets it down.",
-        "It plays the whole tune — all of it, the part nobody in this shop has heard in sixty years — and then it runs down properly, the way a thing does when it is finished rather than interrupted.",
-        "Out on the floor the soldier is on his plinth, the owl is in the rafters, the ballerina is under her glass. Not one of them so much as ticking. The shop has been waiting for somebody to finish it, and somebody did.",
-        "She puts the last page in her pocket, and the morning comes in through the front windows the colour of weak tea, and she locks up and goes home.",
+        "She goes out onto the floor in the dark and winds all four of them, the way the note said, for the first time all week.",
+        "Nothing happens. Nothing was ever going to happen — they are toys, and it is six in the morning, and the man who made them has been dead for eleven days.",
+        "The soldier keeps better time than she does. The owl is up where she would be. The ballerina will not move while she is watching, and the jester in the box has never once left a door.",
+        "She stands in the middle of her husband's shop and understands, all at once and far too late, that she has been looking at a portrait of herself for six nights and calling it a haunting.",
+        "Then she opens the shutters, because it is morning, and there is a shop to run.",
       ],
     },
     leave: {
-      label: "LEAVE IT",
+      label: "LEAVE THEM",
       lines: [
-        "She leaves it half wound, the way she found it.",
-        "It is not hers to finish. He wound it every evening for a woman who was on her way back the whole time, and he never got to know that, and there is nothing in this shop that can be given to him now.",
-        "So she takes the last page instead, and puts it in her pocket, and turns off the desk lamp.",
-        "The morning comes in through the front windows the colour of weak tea. Somewhere behind her, once, very quietly, the music box starts on its own — and she does not turn around, because she already knows how it ends.",
+        "She puts the key down on the counter and leaves it there.",
+        "He was a man who could not say a thing out loud in fifteen years, and his answer was to build it out of brass and leave her to work it out on her own, in the dark, at four in the morning, with the doors shut.",
+        "That is not nothing. It is also not enough, and she is allowed to know both of those at the same time.",
+        "So she lets them wind down, and she takes the last page, and she opens the shutters — and by the time the light gets to the back room the soldier has stopped where he stands, facing the office, the way he has faced it every night this week.",
+        "She will wind them tomorrow. She already knows she will. But not because he told her to.",
       ],
     },
   },
@@ -333,11 +336,9 @@ const NS = {
     title: "6:00 AM",
     lines: [
       "The shutters go up on their own at six. They always have.",
-      "Out on the shop floor everything is exactly where it was at midnight — the soldier on his plinth, the owl in the rafters, the ballerina under her glass, the jester folded back into his box. Not one of them so much as ticking.",
-      "Under the shift card on the desk there is a photograph she has not seen before. A man outside a new shop with the paint still wet on the sign, and a woman half-turned away, laughing, caught in the middle of a word.",
-      "On the back, in the same hand as the music box: <i>she liked the ballerina best, so it plays last.</i>",
-      "And somewhere out on the dark floor, once, the music box starts — and this time it goes all the way to the end of the tune.",
-      "Then the shop is quiet, and the morning comes in through the front windows the colour of weak tea, and Ouissy locks up and goes home.",
+      "Out on the shop floor the four of them are walking back to their places. Not hurrying. The soldier to his plinth, the owl up into the rafters, the ballerina under her glass, the jester folding himself back into his box — and then, one after another, they stop, the way a thing stops when it is finished rather than interrupted.",
+      "They have done that every morning this week. She has watched it on a monitor five times without once understanding what she was looking at.",
+      "They were never coming for her. They were coming to her, and she has spent six nights getting very good at keeping them out.",
     ],
   },
 
@@ -373,6 +374,8 @@ const NS = {
     lampFail:  "OFFICE LIGHTING: FAULT.",
     doorFault: "DOOR TWO: ACTUATOR DEGRADED.",
     monFault:  "MONITOR FEED: INTERRUPTED.",
+    wound:      "$1: WOUND.",
+    slack:      "$1: RUN DOWN.",
     six:       "SIX HUNDRED HOURS. SHIFT ENDS.",
     cozy:      "SAFETY LIMITS ENGAGED.",
   },
@@ -5788,6 +5791,8 @@ const G = {
   warned: 0,
   /* orientation: -1 is off/done, otherwise the step she is on */
   tutor: -1, tutorT: 0,
+  /* winding: which one she is holding a key in, and for how long */
+  winding: null, windTarget: null, windT: 0, windT0: 0,
   caption: "",
   captionT: 0,
 
@@ -5956,7 +5961,10 @@ function stepCast(ch, dt) {
   /* Marabelle cannot move while she is watched, and her clock does not
      run either — keeping the camera on her is a real, and expensive,
      defence */
-  if (ch.def.id === "marabelle") {
+  /* Marabelle stops when she is looked at — but that is a description
+     of a wound Marabelle. Let her run down and the thing in the party
+     room stops being the one on the card. */
+  if (ch.def.id === "marabelle" && isWound(ch)) {
     const watched = observed(ch);
     ch.pose = watched ? "frozen" : "idle";
     if (watched) return;
@@ -5964,7 +5972,9 @@ function stepCast(ch, dt) {
 
   ch.cool -= dt;
   if (ch.cool > 0) return;
-  const agg = ramp() * dialOf(ch.def.id);
+  /* run down: faster, and without the manners its tag promises */
+  const slack = !isWound(ch) ? 1.35 : 1;
+  const agg = ramp() * dialOf(ch.def.id) * slack;
   ch.cool = tune.step / Math.max(0.15, agg);
   if (Math.random() > tune.chance * agg) return;
 
@@ -6642,6 +6652,7 @@ function frame(ts) {
       stepAlarms(dt);
       stepShifts(dt);
       stepHazards(dt);
+      stepWind(dt);
       /* the meter's own warnings, and the system reading them out */
       if (G.power < TUNE.power.critical && G.warned < 2) { G.warned = 2; SFX.beep(true); say(NS.sys.pwr10, true); }
       else if (G.power < TUNE.power.warn && G.warned < 1) { G.warned = 1; SFX.beep(false); say(NS.sys.pwr25); }
@@ -6722,7 +6733,7 @@ function buildUI() {
   ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
    "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
    "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
-   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine"].forEach((id) => {
+   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine", "ns-key"].forEach((id) => {
     EL[id] = el(id);
   });
   stageEl = EL["ns-stage"];
@@ -6780,6 +6791,14 @@ function buildUI() {
   }
   if (EL["ns-find"]) {
     EL["ns-find"].addEventListener("click", (e) => { e.stopPropagation(); takeFind(); });
+  }
+  /* the key is held rather than clicked — winding something is a thing
+     you do for a second and a bit, not a thing you tap */
+  if (EL["ns-key"]) {
+    const k = EL["ns-key"];
+    k.addEventListener("pointerdown", (e) => { e.stopPropagation(); e.preventDefault(); windStart(); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) =>
+      k.addEventListener(ev, (e) => { e.stopPropagation(); windEnd(); }));
   }
 
   uiReady = true;
@@ -7200,8 +7219,12 @@ function beginNight(n, opts) {
   G.shiftT = nextIn(TUNE.shift.firstAt);
   G.caption = ""; G.captionT = 0;
   sayQueue = []; sayUntil = 0;
-  G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, alarms: 0, moves: 0, finds: 0, lowest: 100 };
+  G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, alarms: 0, moves: 0, finds: 0, winds: 0, slack: 0, lowest: 100 };
   resetCast();
+  /* he wound them the night he stopped coming in. She inherits that,
+     and it runs out about two thirds of the way through her first. */
+  CAST.forEach((d) => { cast[d.id].wound = WIND.hours * 0.62; });
+  G.winding = null; G.windTarget = null; G.windT = 0;
   resetShifties();
   armFind();
   syncTrophies();
@@ -7344,6 +7367,7 @@ function uiTick(dt) {
   if (EL["ns-mon-time"]) EL["ns-mon-time"].textContent = clockLabel();
   eggHotspot();
   findHotspot();
+  windHotspot();
 
   /* the annunciator's caption. A vocoder cannot be understood and is not
      meant to be — the words are here. */
@@ -7381,6 +7405,112 @@ function uiTick(dt) {
       staticCtx.putImageData(img, 0, 0);
     }
   }
+}
+
+/* =========================================================
+   20e. WINDING
+
+   The note he left her says wind the four in the back room every
+   night, and for six nights that was flavour text. It is the mechanic
+   now, and it is the mechanic the whole story turns on.
+
+   Each of the four carries a key. Find it on a camera, hold it, and
+   that one is wound for the night: it keeps its own shape, it goes
+   back to its place at six, and it is hers.
+
+   Leave one unwound and it runs down. A run-down one does not stop
+   being dangerous — it stops being *his*. It goes quiet, it stops
+   answering to the rules its tag describes, and on the nights when
+   something is already coming in the front door, a slack toy is one
+   more thing in the building with nobody driving it.
+
+   So the instruction in his note is the difficulty setting, the
+   collectible and the theme at the same time: she is being asked,
+   every night, to look after the four things he made out of her.
+   ========================================================= */
+const WIND = {
+  /* seconds of holding to wind one, and what it costs */
+  hold: 1.15,
+  cost: 1.6,
+  /* how long a full wind lasts, in in-game hours. Six is the night. */
+  hours: 7,
+};
+
+function windState(id) {
+  const ch = cast[id];
+  return ch ? (ch.wound || 0) : 0;
+}
+/* is this one still running on the wind she gave it? */
+function isWound(ch) { return (ch.wound || 0) > 0; }
+
+/* the key on its back, found the same way the pages are: by looking */
+function windHotspot() {
+  const elk = EL["ns-key"];
+  if (!elk) return;
+  let target = null;
+  if (G.phase === "play" && G.monitor && G.monOut <= 0 && !isLost(G.cam)) {
+    for (let i = 0; i < CAST.length; i++) {
+      const ch = cast[CAST[i].id];
+      /* only in the room she is actually looking at, only while it is
+         standing still enough to get a key into, and only if it needs it */
+      if (ch && ch.awake && ch.room === G.cam && !ch.atDoor && windNeeded(ch)) { target = ch; break; }
+    }
+  }
+  elk.hidden = !target;
+  if (!target) { G.winding = null; G.windT = 0; return; }
+  G.windTarget = target.def.id;
+  _proj.setFromMatrixPosition(target.group.matrixWorld).project(view);
+  const x = (_proj.x * 0.5 + 0.5) * 100;
+  const y = (-_proj.y * 0.5 + 0.5) * 100;
+  if (_proj.z > 1 || x < 3 || x > 97 || y < 3 || y > 97) { elk.hidden = true; return; }
+  elk.style.left = x + "%";
+  elk.style.top = y + "%";
+  elk.style.setProperty("--k", Math.round(clamp(G.windT / WIND.hold, 0, 1) * 100) + "%");
+  elk.classList.toggle("winding", G.winding === target.def.id);
+  elk.dataset.who = target.def.name;
+}
+function windNeeded(ch) { return (ch.wound || 0) < WIND.hours * 0.55; }
+
+/* holding the key */
+function windStart() {
+  if (G.phase !== "play" || !G.windTarget) return;
+  G.winding = G.windTarget;
+  G.windT = 0;
+  /* on a wall clock: a hold is an input, and an input that takes longer
+     on a slow machine is a bug rather than a difficulty setting */
+  G.windT0 = perf();
+}
+function windEnd() { G.winding = null; G.windT = 0; }
+
+function stepWind(dt) {
+  /* everything runs down, all night, whether she is looking or not */
+  const perHour = 1 / Math.max(0.001, TUNE.hourSeconds);
+  CAST.forEach((d) => {
+    const ch = cast[d.id];
+    if (!ch) return;
+    if (ch.wound === undefined) ch.wound = 0;
+    if (ch.wound > 0) ch.wound = Math.max(0, ch.wound - dt * perHour);
+  });
+  if (!G.winding) return;
+  const ch = cast[G.winding];
+  if (!ch || ch.atDoor || ch.room !== G.cam || !G.monitor) { windEnd(); return; }
+  G.windT = perf() - (G.windT0 || perf());
+  spendPower(dt * (WIND.cost / WIND.hold) * cozyK("power"));
+  if (G.windT >= WIND.hold) {
+    ch.wound = WIND.hours;
+    G.stats.winds++;
+    windEnd();
+    SFX.crank(0.7);
+    say(fmt(NS.sys.wound, ch.def.name));
+    bumpUI();
+  }
+}
+
+/* how many of his four are still running on her wind */
+function woundCount() {
+  let n = 0;
+  CAST.forEach((d) => { if (isWound(cast[d.id])) n++; });
+  return n;
 }
 
 /* =========================================================
@@ -8354,6 +8484,7 @@ const testHooks = {
       stepAlarms(dt);
       stepShifts(dt);
       stepHazards(dt);
+      stepWind(dt);
     }
     return { phase: G.phase, hour: G.hour, power: G.power, dead: G.dead };
   },
@@ -8389,6 +8520,10 @@ const testHooks = {
   vox: (t) => { const pl = voxPlan(t);
     return { dur: +pl.dur.toFixed(2),
              words: pl.words.map((w) => w.text + "@" + w.at.toFixed(2)) }; },
+  wind: () => { const o = {}; CAST.forEach((d) => {
+      o[d.id] = +(cast[d.id].wound || 0).toFixed(2); });
+    return { wound: o, count: woundCount(), holding: G.winding,
+             target: G.windTarget, t: +G.windT.toFixed(2) }; },
   cine: () => ({ on: CINE.on, beat: CINE.beat, room: CINE.room,
                  line: CINE.line, t: +CINE.t.toFixed(1) }),
   tutor: () => ({ step: G.tutor, of: TUTOR.length,

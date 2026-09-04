@@ -555,6 +555,59 @@ function ok(name, cond, extra) {
   ok('and hands the shift straight back',
      await page.evaluate(() => OuissysNightShift.__night.state().phase) === 'play');
 
+  console.log('\n— winding the four he made for her —');
+  const wind = await page.evaluate(async () => {
+    const w = OuissysNightShift.__night, s = w.state();
+    w.route('night:2'); w.route('go');
+    const start = w.wind();
+    /* they run down over a night whether she looks or not */
+    w.pump(200, 0.25);
+    const later = w.wind();
+    /* the key only shows on the one she is actually looking at */
+    const c = w.cast().cogsworth;
+    c.wound = 0.2; c.awake = true;
+    w.put('cogsworth', 1);
+    if (!s.monitor) w.press('monitor');
+    w.cam('party');
+    await new Promise(r => setTimeout(r, 1200));
+    const elsewhere = document.getElementById('ns-key').hidden;
+    w.cam(c.room);
+    await new Promise(r => setTimeout(r, 1400));
+    const el = document.getElementById('ns-key');
+    const there = { hidden: el.hidden, who: el.dataset.who };
+    /* and holding it winds him */
+    const p0 = s.power;
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+    await new Promise(r => setTimeout(r, 1900));
+    el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    return { start: start.wound.cogsworth, later: later.wound.cogsworth,
+             elsewhere, there, after: w.wind().wound.cogsworth,
+             spent: +(p0 - s.power).toFixed(2) };
+  });
+  ok('they start the night on the wind he left them', wind.start > 3, String(wind.start));
+  ok('and they run down as it goes on', wind.later < wind.start, wind.later + ' from ' + wind.start);
+  ok('the key is only on the one she is looking at', wind.elsewhere === true);
+  ok('and it names him when she is', wind.there.hidden === false && wind.there.who === 'COGSWORTH',
+     JSON.stringify(wind.there));
+  ok('holding it winds him back up', wind.after > 6, String(wind.after));
+  ok('and it costs her something', wind.spent > 0.5 && wind.spent < 4, wind.spent + '%');
+  /* the tag describes a wound one. Let her run down and the rules on the
+     card stop being the rules in the room. */
+  const slack = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    const watch = (wound) => {
+      w.route('night:3'); w.route('go');
+      w.only('marabelle', 0);
+      const m = w.cast().marabelle;
+      m.wound = wound;
+      s.monitor = true; w.cam(m.room); s.power = 100;
+      const a = m.step; w.pump(24); return m.step - a;
+    };
+    return { wound: watch(6), slack: watch(0) };
+  });
+  ok('a wound ballerina still freezes when watched', slack.wound === 0, String(slack.wound));
+  ok('a run-down one does not', slack.slack > 0, 'moved ' + slack.slack + ' steps while watched');
+
   console.log('\n— the shop has six things in it to find —');
   const finds = await page.evaluate(async () => {
     const w = OuissysNightShift.__night;
