@@ -180,6 +180,60 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   ok('standing, the knees are not locked straight',
      joints.standKnee < -0.06 && joints.standKnee > -0.5, joints);
 
+
+  /* ---- one press, one thing ----
+     Space is next-line while somebody is talking and use-this while she
+     is not, and the two are a tap apart: tapping through the broadcast,
+     the tap that ended the conversation used to walk straight back into
+     the television and start it again, over and over. */
+  const loop = await p.evaluate(() => {
+    const G = window.Apocalypse.game;
+    window.__apEnter(0); window.__apSkipDialogue();
+    /* get her actually standing in the room first: entering a level puts
+       a card up, and a tap aimed at the television would go to that */
+    for (let n = 0; n < 40 && window.__apState().state !== 'play'; n++) {
+      const go = document.querySelector('.ap-card-go');
+      if (go) go.click();
+      window.__apSkipDialogue();
+      for (let i = 0; i < 6; i++) window.__apPump(1/60);
+    }
+    const W = G.world;
+    window.__apTeleport(W.tvAt.x, W.tvAt.y + 1);
+    for (let i = 0; i < 20; i++) window.__apPump(1/60);
+    /* a real key: down, up, down, up — the way a person taps */
+    function tap() {
+      window.__apKey('use', true);
+      for (let i = 0; i < 3; i++) window.__apPump(1/60);
+      window.__apKey('use', false);
+      for (let i = 0; i < 3; i++) window.__apPump(1/60);
+    }
+    /* the first tap after a conversation ends is deliberately swallowed,
+       so give it a few — what matters is that it opens at all */
+    let opened = false;
+    for (let i = 0; i < 6 && !opened; i++) { tap(); opened = !!document.querySelector('.ap-tv'); }
+    /* turn it off the way a person does */
+    const off = [...document.querySelectorAll('.ap-card-go')]
+      .find(b => /TURN IT OFF/i.test(b.textContent));
+    if (off) off.click();
+    for (let i = 0; i < 10; i++) window.__apPump(1/60);
+    /* now hammer the key through the whole conversation and past it */
+    let reopened = 0;
+    for (let i = 0; i < 120; i++) {
+      tap();
+      if (document.querySelector('.ap-tv')) reopened++;
+    }
+    return { opened: opened, reopened: reopened,
+             map: W.tvScreen ? !!W.tvScreen.material.map : null,
+             state: window.__apState().state };
+  });
+  ok('the broadcast opens when she uses the set', loop.opened, loop);
+  ok('and tapping through it never puts it back up', loop.reopened === 0, loop);
+  ok('the set stays off', loop.map === false, loop);
+  /* she may well be mid-line from having used something else by now;
+     what must not happen is being dropped back into a menu */
+  ok('and she is never dropped back into a menu',
+     loop.state === 'play' || loop.state === 'dialogue', loop);
+
   console.log('');
   console.log(pass + ' passed, ' + fail + ' failed');
   await b.close();

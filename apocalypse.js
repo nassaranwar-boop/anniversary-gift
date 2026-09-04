@@ -1107,155 +1107,375 @@
          in here worth knowing.
          ===================================================== */
       score: (function () {
-        var bus = null, voices = [], timer = 0, piece = null, beat = 0, nextAt = 0;
+        var bus = null, dry = null, wet = null, vib = null, vibGain = null;
+        var voices = [], timer = 0, piece = null, beat = 0, nextAt = 0;
 
-        /* the theme, in semitones from the root. The last note is a ninth:
-           it sits there wanting the next chord and never gets it. */
-        var THEME = [0, 7, 5, 3, 14];
-        var A = 55;                                     /* the root, low A */
-        function hz(semi, oct) { return A * Math.pow(2, (semi / 12) + (oct || 0)); }
+        /* ============================================================
+           THE TUNE
 
-        /* a note with a body: two detuned saws through a filter that opens
-           and shuts, which is as close to bowed as this gets */
-        function pad(freqs, at, len, vol, cut) {
-          var g = ctx.createGain();
-          g.gain.setValueAtTime(0.0001, at);
-          g.gain.exponentialRampToValueAtTime(vol, at + len * 0.34);
-          g.gain.setTargetAtTime(0.0001, at + len * 0.62, len * 0.30);
+           Eight bars in A minor, written out rather than generated:
+           it rises through the first four, lifts a step higher in the
+           sixth, reaches its top note in the seventh and falls back to
+           the fifth — which is not the root, so it never quite lands
+           and can go round again. Every cue in the chapter is this,
+           somewhere: buried an octave down and half speed where she is
+           frightened, on a piano by the fire, and all of it on the roof.
+
+           [beat within the eight bars, semitones above A, length]
+           ============================================================ */
+        var TUNE = [
+          [ 0,   7, 2.0], [ 2,  10, 1.0], [ 3,  12, 1.0],
+          [ 4,  14, 2.5], [ 6.5, 12, 1.5],
+          [ 8,  10, 2.0], [10,   7, 1.0], [11,   5, 1.0],
+          [12,   3, 3.5],
+          [16,   5, 2.0], [18,   7, 1.0], [19,  10, 1.0],
+          [20,  12, 2.5], [22.5, 14, 1.5],
+          [24,  15, 2.0], [26,  14, 1.0], [27,  12, 1.0],
+          [28,   7, 4.0]
+        ];
+        /* ============================================================
+           THE SECOND TUNE — the one that is about the two of them
+
+           The first tune is hers: it climbs, and it does not resolve,
+           because she is still walking. This one does not climb. It
+           steps down and then leans back up a note, twice, and settles
+           on the third of the chord rather than the root — which is the
+           sound of somebody sitting down next to somebody else. It is
+           the only music in the chapter that is allowed to be tender,
+           so it is kept back for the three scenes that have earned it:
+           the car, the fire, and the roof.
+           ============================================================ */
+        var WARM = [
+          [ 0,  12, 1.5], [ 1.5, 10, 0.5], [ 2,  8, 2.0],
+          [ 4,  10, 1.5], [ 5.5, 12, 0.5], [ 6,  7, 2.0],
+          [ 8,  15, 1.5], [ 9.5, 14, 0.5], [10, 12, 2.0],
+          [12,  12, 2.0], [14,  8, 2.0],
+          [16,  14, 1.5], [17.5, 12, 0.5], [18, 10, 2.0],
+          [20, 12, 3.0], [23, 14, 1.0],
+          [24, 15, 2.0], [26, 12, 2.0],
+          [28, 10, 2.0], [30,  3, 2.0]
+        ];
+        /* the line underneath it, moving against the tune rather than
+           with it, which is what stops a melody sounding like one finger */
+        var UNDER = [
+          [ 2,  0, 2], [ 6,  3, 2], [10,  0, 2], [14, -2, 2],
+          [18,  0, 2], [22,  5, 2], [26,  3, 2], [30,  2, 2]
+        ];
+        /* Am  Em  C  F  G  Am  F  Em — one to a bar.
+           Chosen to fit the tune rather than the other way round: the
+           note each bar lands on has to be in that bar's chord or the
+           harmony is arguing with the melody, and it ends on Em so the
+           eighth bar leans back into the first. */
+        var CHORDS = [[0, 3, 7], [-5, -2, 2], [3, 7, 10], [-4, 0, 3],
+                      [-2, 2, 5], [0, 3, 7], [-4, 0, 3], [-5, -2, 2]];
+        var ROOTS = [0, -5, 3, -4, -2, 0, -4, -5];
+
+        var A0 = 27.5;                       /* the A everything is measured from */
+        function hz(semi, oct) { return A0 * Math.pow(2, (semi / 12) + 4 + (oct || 0)); }
+
+        /* an integer-beat index of a written line, so the scheduler can
+           ask "what happens on beat 19" and get an answer */
+        function compile(notes) {
+          var m = {};
+          notes.forEach(function (n) {
+            var k = Math.floor(n[0]);
+            (m[k] = m[k] || []).push({ off: n[0] - k, n: n[1], d: n[2] });
+          });
+          return m;
+        }
+        var TUNE_AT = compile(TUNE), UNDER_AT = compile(UNDER), WARM_AT = compile(WARM);
+
+        /* ---- the instruments ---- */
+        function out(g, send) {
+          /* the score's own dry bus, not the engine's — writing to that
+             one would route every footstep in the game through the music
+             and take them all out with it when a cue ends */
+          g.connect(dry);
+          if (wet && send) { var w = ctx.createGain(); w.gain.value = send; g.connect(w); w.connect(wet); }
+        }
+        /* a struck string: three partials, each dying at its own rate,
+           which is the whole difference between a piano and a beep */
+        function piano(fr, at, v, len) {
+          len = len || 3.2;
+          var g = ctx.createGain(); g.gain.value = 1;
           var f = ctx.createBiquadFilter();
           f.type = "lowpass";
-          f.frequency.setValueAtTime(cut * 0.5, at);
-          f.frequency.linearRampToValueAtTime(cut, at + len * 0.45);
-          f.frequency.linearRampToValueAtTime(cut * 0.6, at + len);
-          f.Q.value = 1.2;
-          f.connect(g); g.connect(bus);
+          f.frequency.setValueAtTime(4200, at);
+          f.frequency.exponentialRampToValueAtTime(900, at + len * 0.7);
+          f.connect(g); out(g, 0.30);
+          [[1, 1.0, 1.00], [2, 0.34, 0.55], [3, 0.13, 0.34]].forEach(function (h) {
+            var o = ctx.createOscillator();
+            o.type = h[0] === 1 ? "triangle" : "sine";
+            /* real strings are a shade sharp in the upper partials */
+            o.frequency.value = fr * h[0] * (1 + h[0] * 0.0004);
+            var e = ctx.createGain();
+            e.gain.setValueAtTime(0.0001, at);
+            e.gain.exponentialRampToValueAtTime(v * h[1], at + 0.008);
+            e.gain.exponentialRampToValueAtTime(0.0001, at + len * h[2]);
+            o.connect(e); e.connect(f);
+            o.start(at); o.stop(at + len + 0.1); voices.push(o);
+          });
+        }
+        /* an ensemble: two per note, four cents apart, coming in slowly,
+           with the vibrato everything shares */
+        function strings(freqs, at, len, v, cut) {
+          var g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, at);
+          g.gain.linearRampToValueAtTime(v, at + Math.min(1.6, len * 0.35));
+          g.gain.setValueAtTime(v, at + len * 0.72);
+          g.gain.linearRampToValueAtTime(0.0001, at + len);
+          var f = ctx.createBiquadFilter();
+          f.type = "lowpass"; f.Q.value = 0.8;
+          f.frequency.setValueAtTime((cut || 1500) * 0.55, at);
+          f.frequency.linearRampToValueAtTime(cut || 1500, at + len * 0.5);
+          f.connect(g); out(g, 0.45);
           freqs.forEach(function (fr) {
-            [0, 1].forEach(function (d) {
+            [-4, 4].forEach(function (cents) {
               var o = ctx.createOscillator();
               o.type = "sawtooth";
-              o.frequency.value = fr * (d ? 1.004 : 0.997);
-              o.connect(f); o.start(at); o.stop(at + len + 0.4);
-              voices.push(o);
+              o.frequency.value = fr;
+              o.detune.value = cents;
+              if (vibGain) vibGain.connect(o.detune);
+              o.connect(f); o.start(at); o.stop(at + len + 0.3); voices.push(o);
             });
           });
         }
-        /* a struck note: a triangle with a hard decay, which reads as a
-           piano at this distance and costs one oscillator */
-        function pluck(fr, at, vol, len) {
-          len = len || 2.4;
+        /* the low line: one bowed note with a sub under it */
+        function cello(fr, at, len, v) {
           var g = ctx.createGain();
           g.gain.setValueAtTime(0.0001, at);
-          g.gain.exponentialRampToValueAtTime(vol, at + 0.012);
-          g.gain.exponentialRampToValueAtTime(0.0001, at + len);
-          var f = ctx.createBiquadFilter();
-          f.type = "lowpass"; f.frequency.value = 2600; f.Q.value = 0.6;
-          f.connect(g); g.connect(bus);
-          var o = ctx.createOscillator();
-          o.type = "triangle"; o.frequency.value = fr;
-          o.connect(f); o.start(at); o.stop(at + len + 0.1);
-          voices.push(o);
-          var o2 = ctx.createOscillator();       /* the hammer, an octave up */
-          o2.type = "sine"; o2.frequency.value = fr * 2;
-          var g2 = ctx.createGain();
-          g2.gain.setValueAtTime(vol * 0.34, at);
-          g2.gain.exponentialRampToValueAtTime(0.0001, at + 0.5);
-          o2.connect(g2); g2.connect(bus); o2.start(at); o2.stop(at + 0.6);
-          voices.push(o2);
-        }
-        /* the low swell: what a film does when something is coming */
-        function swell(fr, at, len, vol) {
-          var g = ctx.createGain();
-          g.gain.setValueAtTime(0.0001, at);
-          g.gain.linearRampToValueAtTime(vol, at + len * 0.7);
+          g.gain.linearRampToValueAtTime(v, at + Math.min(0.9, len * 0.3));
+          g.gain.setValueAtTime(v, at + len * 0.7);
           g.gain.linearRampToValueAtTime(0.0001, at + len);
           var f = ctx.createBiquadFilter();
-          f.type = "lowpass"; f.frequency.value = 220; f.Q.value = 0.7;
-          f.connect(g); g.connect(bus);
-          [1, 1.0031, 1.5].forEach(function (m) {
+          f.type = "lowpass"; f.frequency.value = 520; f.Q.value = 0.9;
+          f.connect(g); out(g, 0.28);
+          var o = ctx.createOscillator();
+          o.type = "sawtooth"; o.frequency.value = fr;
+          if (vibGain) vibGain.connect(o.detune);
+          o.connect(f); o.start(at); o.stop(at + len + 0.2); voices.push(o);
+          var sub = ctx.createOscillator();
+          sub.type = "sine"; sub.frequency.value = fr * 0.5;
+          var sg = ctx.createGain(); sg.gain.value = 0.5;
+          sub.connect(sg); sg.connect(f);
+          sub.start(at); sub.stop(at + len + 0.2); voices.push(sub);
+        }
+        /* a music box: a sine and an inharmonic partial, ringing a long
+           time, for the places that are too cold for a piano */
+        function bell(fr, at, v) {
+          [[1, 1, 4.5], [2.76, 0.30, 2.6]].forEach(function (h) {
             var o = ctx.createOscillator();
-            o.type = "sawtooth"; o.frequency.value = fr * m;
-            o.connect(f); o.start(at); o.stop(at + len + 0.2);
-            voices.push(o);
+            o.type = "sine"; o.frequency.value = fr * h[0];
+            var g = ctx.createGain();
+            g.gain.setValueAtTime(0.0001, at);
+            g.gain.exponentialRampToValueAtTime(v * h[1], at + 0.006);
+            g.gain.exponentialRampToValueAtTime(0.0001, at + h[2]);
+            o.connect(g); out(g, 0.55);
+            o.start(at); o.stop(at + h[2] + 0.1); voices.push(o);
           });
         }
-        function tick(at, vol) {
+        /* what a film does when something is coming */
+        function swell(fr, at, len, v) {
           var g = ctx.createGain();
-          g.gain.setValueAtTime(vol, at);
-          g.gain.exponentialRampToValueAtTime(0.0001, at + 0.10);
-          var o = ctx.createOscillator();
-          o.type = "square"; o.frequency.value = 1400;
+          g.gain.setValueAtTime(0.0001, at);
+          g.gain.linearRampToValueAtTime(v, at + len * 0.72);
+          g.gain.linearRampToValueAtTime(0.0001, at + len);
           var f = ctx.createBiquadFilter();
-          f.type = "bandpass"; f.frequency.value = 2200; f.Q.value = 4;
-          o.connect(f); f.connect(g); g.connect(bus);
-          o.start(at); o.stop(at + 0.12); voices.push(o);
+          f.type = "lowpass"; f.frequency.value = 190; f.Q.value = 0.7;
+          f.connect(g); out(g, 0.20);
+          [1, 1.0028, 1.5].forEach(function (m) {
+            var o = ctx.createOscillator();
+            o.type = "sawtooth"; o.frequency.value = fr * m;
+            o.connect(f); o.start(at); o.stop(at + len + 0.2); voices.push(o);
+          });
+        }
+        function pulse(fr, at, v, len) {
+          var g = ctx.createGain();
+          g.gain.setValueAtTime(0.0001, at);
+          g.gain.exponentialRampToValueAtTime(v, at + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, at + (len || 0.5));
+          var f = ctx.createBiquadFilter();
+          f.type = "lowpass"; f.frequency.value = 340;
+          f.connect(g); out(g, 0.10);
+          var o = ctx.createOscillator();
+          o.type = "sawtooth"; o.frequency.value = fr;
+          o.connect(f); o.start(at); o.stop(at + (len || 0.5) + 0.1); voices.push(o);
+        }
+        function tick(at, v) {
+          var g = ctx.createGain();
+          g.gain.setValueAtTime(v, at);
+          g.gain.exponentialRampToValueAtTime(0.0001, at + 0.09);
+          var f = ctx.createBiquadFilter();
+          f.type = "bandpass"; f.frequency.value = 2300; f.Q.value = 5;
+          f.connect(g); out(g, 0.25);
+          var o = ctx.createOscillator();
+          o.type = "square"; o.frequency.value = 1500;
+          o.connect(f); o.start(at); o.stop(at + 0.11); voices.push(o);
         }
 
-        /* ---- the pieces ---- */
+        /* play whatever the written line has on this beat */
+        function line(map, b, at, sp, oct, v, voice, mul) {
+          var es = map[b % 32];
+          if (!es) return;
+          for (var i = 0; i < es.length; i++) {
+            var e = es[i];
+            voice(hz(e.n, oct), at + e.off * sp, v, e.d * sp * (mul || 1));
+          }
+        }
+
+        /* ---- the six cues, all of them the same eight bars ---- */
         var PIECES = {
-          /* somewhere with something in it */
-          dread: { bpm: 46, bar: 8, play: function (b, at, sp) {
-            if (b % 8 === 0) swell(hz(0, -1), at, sp * 8, 0.16);
-            if (b % 2 === 0) tick(at, 0.020);
-            if (b % 8 === 4) pad([hz(0), hz(3), hz(7)], at, sp * 4, 0.030, 520);
-            /* the theme, underneath, too slow to hear as a tune */
-            if (b % 16 === 2) pluck(hz(THEME[(b / 16) % 5] - 12), at, 0.028, 5.0);
-          } },
-          /* a corridor with the power half on */
-          sterile: { bpm: 44, bar: 8, play: function (b, at, sp) {
-            if (b % 8 === 0) pad([hz(0, 1), hz(7, 1)], at, sp * 8, 0.024, 900);
-            if (b % 8 === 5) pluck(hz(14, 1), at, 0.020, 3.2);
-            if (b % 16 === 11) pluck(hz(15, 1), at, 0.016, 3.2);
-            if (b % 4 === 0) tick(at, 0.012);
-          } },
-          /* the car, going */
-          drive: { bpm: 92, bar: 8, play: function (b, at, sp) {
-            if (b % 2 === 0) pluck(hz(0, -1), at, 0.045, 0.7);
-            if (b % 8 === 0) pad([hz(0), hz(7), hz(10)], at, sp * 8, 0.026, 700);
-            if (b % 8 === 6) pluck(hz(THEME[(b / 8) % 5]), at, 0.024, 1.8);
-          } },
-          /* the morning, on a horse, on a road with nothing on it */
-          open: { bpm: 58, bar: 8, play: function (b, at, sp) {
-            var CH = [[0, 7, 16], [5, 12, 21], [3, 10, 19], [7, 14, 22]];
-            if (b % 8 === 0) {
-              var c = CH[(b / 8) % 4];
-              pad([hz(c[0] - 12), hz(c[1] - 12), hz(c[2] - 12)], at, sp * 8, 0.034, 1100);
+          /* HER HOUSE, AND THE STREETS.
+             No tune. The bass of it at a quarter speed, a tick, and once
+             every four times round, the first two notes an octave down
+             and slowed to nothing — you are meant to not quite hear it. */
+          dread: { bpm: 50, play: function (b, at, sp) {
+            var bar = Math.floor(b / 4) % 8;
+            if (b % 4 === 0) {
+              cello(hz(ROOTS[bar], -2), at, sp * 4.4, 0.075);
+              if (bar % 2 === 0) swell(hz(0, -3), at, sp * 8, 0.10);
             }
-            /* the theme, out in the open, one note a bar */
-            if (b % 2 === 0) pluck(hz(THEME[(b / 2) % 5] + 12), at, 0.040, 3.4);
+            if (b % 2 === 0) tick(at, 0.016);
+            if (b % 128 === 40) { piano(hz(7, -1), at, 0.030, 6.0); }
+            if (b % 128 === 52) { piano(hz(10, -1), at, 0.026, 6.0); }
+            if (b % 32 === 16) strings([hz(ROOTS[bar], -1), hz(ROOTS[bar] + 7, -1)],
+                                       at, sp * 12, 0.022, 420);
           } },
-          /* the fire, and the two of them on the log */
-          hearth: { bpm: 50, bar: 8, play: function (b, at, sp) {
-            var CH = [[0, 7, 15], [3, 10, 19], [5, 12, 19], [0, 7, 14]];
+
+          /* THE HOSPITAL. The same eight bars with the floor taken out:
+             no bass at all, two high voices holding a fifth, and the
+             first phrase on a music box, once, a long way off. */
+          sterile: { bpm: 46, play: function (b, at, sp) {
+            var bar = Math.floor(b / 4) % 8;
             if (b % 8 === 0) {
-              var c = CH[(b / 8) % 4];
-              pad([hz(c[0] - 12), hz(c[1] - 12), hz(c[2] - 12)], at, sp * 8, 0.030, 780);
+              var c = CHORDS[bar];
+              strings([hz(c[1], 1), hz(c[2], 1)], at, sp * 9, 0.026, 1500);
             }
-            if (b % 4 === 0) pluck(hz(THEME[(b / 4) % 5] + 12), at, 0.030, 4.2);
-            if (b % 16 === 9) pluck(hz(THEME[2] + 24), at, 0.014, 3.0);
+            if (b % 64 === 8)  bell(hz(7, 1), at, 0.026);
+            if (b % 64 === 12) bell(hz(10, 1), at, 0.022);
+            if (b % 64 === 14) bell(hz(12, 1), at, 0.020);
+            if (b % 16 === 0) tick(at, 0.010);
           } },
-          /* the roof: the theme, all of it, and the ninth left hanging */
-          home: { bpm: 52, bar: 8, play: function (b, at, sp) {
-            var CH = [[0, 7, 16], [5, 12, 19], [3, 10, 17], [7, 14, 21]];
-            if (b % 8 === 0) {
-              var c = CH[(b / 8) % 4];
-              pad([hz(c[0] - 12), hz(c[1] - 12), hz(c[2] - 12)], at, sp * 8, 0.038, 1400);
-              swell(hz(0, -1), at, sp * 8, 0.05);
+
+          /* THE CAR. The only part of the chapter that is moving, so it
+             is the only cue with a pulse in it. */
+          drive: { bpm: 100, play: function (b, at, sp) {
+            var bar = Math.floor(b / 4) % 8;
+            /* the pulse eases off as the conversation gets going: the
+               first time round it is a car going somewhere, and after
+               that it is two people talking in one */
+            var late = b >= 64;
+            pulse(hz(ROOTS[bar], -2), at,
+                  (b % 2 ? 0.030 : 0.052) * (late ? 0.45 : 1), sp * 0.8);
+            if (b % 4 === 2) {
+              var c = CHORDS[bar];
+              strings([hz(c[0], 0), hz(c[1], 0), hz(c[2], 0)],
+                      at, sp * 1.6, late ? 0.020 : 0.026, 1800);
             }
-            if (b % 2 === 0) pluck(hz(THEME[(b / 2) % 5] + 12), at, 0.044, 4.6);
-            if (b % 8 === 7) pluck(hz(THEME[4] + 24), at, 0.020, 5.0);
+            if (late && b % 8 === 0) {
+              var c2 = CHORDS[bar];
+              strings([hz(c2[0], -1), hz(c2[1], -1), hz(c2[2], -1)], at, sp * 8.6, 0.026, 900);
+            }
+            /* her tune, four notes of it, while they are still driving */
+            if ((b % 64) < 8 && !late) line(TUNE_AT, b % 64, at, sp, 0, 0.030, piano);
+            /* and then the other one, on a piano, once they start talking */
+            if (late) line(WARM_AT, b, at, sp, 0, 0.040, function (f, t2, v, d) {
+              piano(f, t2, v, Math.max(2.0, d * 1.2));
+            });
+          } },
+
+          /* THE MORNING, THE HORSE, THE ROAD UP TO THE GATE.
+             The first time it is allowed to be a tune. Strings carry it,
+             the piano doubles it an octave up on the way round again. */
+          open: { bpm: 66, play: function (b, at, sp) {
+            var bar = Math.floor(b / 4) % 8;
+            if (b % 4 === 0) {
+              var c = CHORDS[bar];
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.6, 0.030, 1300);
+              cello(hz(ROOTS[bar], -2), at, sp * 4.4, 0.055);
+            }
+            line(TUNE_AT, b, at, sp, 0, 0.034, function (f, t2, v, d) {
+              strings([f], t2, d + sp * 0.4, v, 2400);
+            });
+            if (b >= 32 && (b % 64) >= 32) line(TUNE_AT, b, at, sp, 1, 0.020, piano);
+            line(UNDER_AT, b, at, sp, -1, 0.026, cello);
+          } },
+
+          /* THE FIRE. One piano, close, and something warm underneath.
+             This is the cue the whole thing is written for. */
+          hearth: { bpm: 56, play: function (b, at, sp) {
+            var bar = Math.floor(b / 4) % 8;
+            if (b % 4 === 0) {
+              var c = CHORDS[bar];
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.6, 0.024, 900);
+            }
+            if (b % 8 === 0) cello(hz(ROOTS[bar], -2), at, sp * 8, 0.045);
+            /* Her tune first, alone, while she is still doing things —
+               and then the other one, which is the two of them. It comes
+               in the second time round and does not leave. */
+            var warmNow = (b % 128) >= 32;
+            if (!warmNow) {
+              line(TUNE_AT, b, at, sp, 0, 0.048, function (f, t2, v, d) {
+                piano(f, t2, v, Math.max(2.4, d * 1.3));
+              });
+            } else {
+              line(WARM_AT, b, at, sp, 0, 0.052, function (f, t2, v, d) {
+                piano(f, t2, v, Math.max(2.6, d * 1.35));
+              });
+              /* her tune underneath it now, on strings, very quiet: the
+                 two of them are the same piece of music by this point */
+              if ((b % 128) >= 64)
+                line(TUNE_AT, b, at, sp, -1, 0.014, function (f, t2, v, d) {
+                  strings([f], t2, d + sp * 0.5, v, 700);
+                });
+            }
+            if ((b % 64) >= 32) line(UNDER_AT, b, at, sp, -1, 0.030, cello);
+          } },
+
+          /* THE ROOF. All of it: the tune on the piano, the ensemble
+             under it, the low line, and the swell coming up through the
+             middle of each half. The last note of the eighth bar is the
+             fifth, not the root, so it goes round rather than finishing. */
+          home: { bpm: 54, play: function (b, at, sp) {
+            var bar = Math.floor(b / 4) % 8;
+            if (b % 4 === 0) {
+              var c = CHORDS[bar];
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.6, 0.034, 1700);
+              cello(hz(ROOTS[bar], -2), at, sp * 4.4, 0.060);
+            }
+            if (b % 32 === 0 || b % 32 === 16) swell(hz(0, -3), at, sp * 16, 0.055);
+            /* the last cue in the chapter, so it gets both tunes: hers
+               on the strings over the top, the one about the two of them
+               on the piano underneath, and the eight bars they have been
+               sharing all along holding them together */
+            line(WARM_AT, b, at, sp, 0, 0.054, function (f, t2, v, d) {
+              piano(f, t2, v, Math.max(2.8, d * 1.4));
+            });
+            line(TUNE_AT, b, at, sp, 1, 0.020, function (f, t2, v, d) {
+              strings([f], t2, d + sp * 0.5, v, 2600);
+            });
+            if ((b % 128) >= 64)
+              line(WARM_AT, b, at, sp, 1, 0.012, function (f, t2, v, d) {
+                strings([f], t2, d + sp * 0.5, v, 3000);
+              });
+            line(UNDER_AT, b, at, sp, -1, 0.034, cello);
           } }
         };
 
         function stopAll(fade) {
           if (timer) { clearTimeout(timer); timer = 0; }
           if (!bus) return;
-          var old = bus, dead = voices;
-          bus = null; voices = []; piece = null;
+          var old = bus, oldDry = dry, oldWet = wet, oldVib = vib, dead = voices;
+          bus = null; dry = null; wet = null; vib = null; vibGain = null;
+          voices = []; piece = null;
           try {
             old.gain.setTargetAtTime(0.0001, ctx.currentTime, fade || 0.8);
             setTimeout(function () {
               dead.forEach(function (v) { try { v.stop(); } catch (e) {} });
+              try { if (oldVib) oldVib.stop(); } catch (e) {}
               try { old.disconnect(); } catch (e) {}
+              try { if (oldDry) oldDry.disconnect(); } catch (e) {}
+              try { if (oldWet) oldWet.disconnect(); } catch (e) {}
             }, (fade || 0.8) * 4000);
           } catch (e) {}
         }
@@ -1263,15 +1483,13 @@
         function pump() {
           if (!piece || !ctx) return;
           var sp = 60 / piece.bpm;
-          /* schedule a second ahead, so a busy frame never drops a note */
-          while (nextAt < ctx.currentTime + 1.0) {
+          while (nextAt < ctx.currentTime + 1.2) {
             if (nextAt < ctx.currentTime) nextAt = ctx.currentTime + 0.05;
             try { piece.play(beat, nextAt, sp); } catch (e) {}
             beat++; nextAt += sp;
-            /* voices accumulate; the stopped ones are only references */
-            if (voices.length > 220) voices = voices.slice(-120);
+            if (voices.length > 260) voices = voices.slice(-140);
           }
-          timer = setTimeout(pump, 260);
+          timer = setTimeout(pump, 240);
         }
 
         var wanted = null, muted = false;
@@ -1279,19 +1497,27 @@
           wanted = name;
           if (!ac() || muted) { if (muted) stopAll(1.1); return; }
           if (piece && piece.name === name) return;
-          stopAll(1.1);
+          stopAll(1.4);
           if (!name || !PIECES[name]) return;
           bus = ctx.createGain();
           bus.gain.value = 0.0001;
           bus.connect(master);
-          bus.gain.setTargetAtTime(vol == null ? 0.85 : vol, ctx.currentTime, 2.2);
+          bus.gain.setTargetAtTime(vol == null ? 0.9 : vol, ctx.currentTime, 2.4);
+          /* everything the score plays goes through this pair, so the
+             whole cue fades as one thing */
+          dry = ctx.createGain(); dry.connect(bus);
+          wet = ctx.createGain(); wet.gain.value = 1;
+          wet.connect(busVerb);
+          /* one vibrato for the whole ensemble, or nothing plays together */
+          vib = ctx.createOscillator();
+          vib.type = "sine"; vib.frequency.value = 4.7;
+          vibGain = ctx.createGain(); vibGain.gain.value = 4.5;
+          vib.connect(vibGain); vib.start();
           piece = PIECES[name];
           piece.name = name;
-          beat = 0; nextAt = ctx.currentTime + 0.25;
+          beat = 0; nextAt = ctx.currentTime + 0.3;
           pump();
         }
-        /* the music can be turned off without turning the world off: the
-           footsteps, the doors and the fire are not the score */
         setPiece.mute = function (v) {
           muted = !!v;
           if (muted) stopAll(0.9);
@@ -8363,6 +8589,15 @@
     Space: "use", KeyE: "use", ShiftLeft: "sneak", ShiftRight: "sneak"
   };
   var usePressed = false, anyPressed = 0;
+  /* ---- one press, one thing ----
+     Space is next-line while somebody is talking and use-this while she
+     is standing about, and the two of them are a tap apart. Tapping
+     through the broadcast, the last tap ended the conversation and the
+     one after it walked straight back into the television — and the same
+     press-through was true of every door, note and item in the chapter.
+     After a conversation closes, USE does nothing until the key has
+     actually been let go of. */
+  var useLatched = false;
 
   function onKeyDown(e) {
     if (!running) return;
@@ -8374,9 +8609,10 @@
       return;
     }
     anyPressed++;
+    setTouchUI(false);
     var k = keyMap[e.code];
     if (!k) return;
-    if (k === "use" && !KEY.use) usePressed = true;
+    if (k === "use" && !KEY.use && !useLatched) usePressed = true;
     KEY[k] = 1;
     if (e.code === "Space" || e.code.indexOf("Arrow") === 0) e.preventDefault();
     Audio_.resume();
@@ -8384,22 +8620,149 @@
   function onKeyUp(e) {
     var k = keyMap[e.code];
     if (k) KEY[k] = 0;
+    if (k === "use") useLatched = false;
+  }
+
+  /* =========================================================
+     THE STICK
+     Four buttons is fine for a menu and wrong for a person
+     walking through a dark house: you cannot go north-north-
+     east on a d-pad, and you cannot creep slowly by pressing
+     harder. This is a thumbstick — put a thumb down anywhere
+     in the left of the picture and it appears there, and how
+     far it is pushed is how fast she walks.
+     ========================================================= */
+  var STICK = { on: false, id: null, ox: 0, oy: 0, x: 0, y: 0, r: 54 };
+  var touchUI = false;
+
+  /* the controls belong to whoever last touched something: a thumb puts
+     them on screen, a key takes them off again */
+  function setTouchUI(on) {
+    if (touchUI === on) return;
+    touchUI = on;
+    var t = $("ap-touch");
+    if (t) t.setAttribute("aria-hidden", on ? "false" : "true");
+    if (!on) {
+      STICK.on = false; STICK.id = null;
+      KEY.up = KEY.down = KEY.left = KEY.right = 0;
+      var k = $("ap-stick");
+      if (k) k.classList.remove("live");
+      var knob = k && k.querySelector(".ap-stick-knob");
+      if (knob) knob.style.transform = "translate(-50%,-50%)";
+    }
+  }
+
+  function bindStick() {
+    var zone = $("ap-stick");
+    var stage = $("ap-stage");
+    if (!zone || !stage || zone.__bound) return;
+    zone.__bound = true;
+    var knob = zone.querySelector(".ap-stick-knob");
+
+    function place(cx, cy) {
+      var r = stage.getBoundingClientRect();
+      zone.style.left = (cx - r.left) + "px";
+      zone.style.top = (cy - r.top) + "px";
+      STICK.ox = cx; STICK.oy = cy;
+      zone.classList.add("live");
+    }
+    function aim(cx, cy) {
+      var dx = cx - STICK.ox, dy = cy - STICK.oy;
+      var d = Math.hypot(dx, dy);
+      var lim = STICK.r;
+      if (d > lim) { dx *= lim / d; dy *= lim / d; d = lim; }
+      STICK.x = dx / lim; STICK.y = dy / lim;
+      if (knob) knob.style.transform = "translate(calc(-50% + " + dx + "px), calc(-50% + " + dy + "px))";
+      /* a dead zone, or she drifts while a thumb rests on the glass */
+      var dead = 0.22;
+      var m = Math.hypot(STICK.x, STICK.y);
+      if (m < dead) { KEY.up = KEY.down = KEY.left = KEY.right = 0; return; }
+      /* the four the rest of the game speaks, from the direction the
+         thumb is actually pointing — so eight ways, not four */
+      var a = Math.atan2(STICK.y, STICK.x);
+      KEY.right = Math.cos(a) >  0.383 ? 1 : 0;
+      KEY.left  = Math.cos(a) < -0.383 ? 1 : 0;
+      KEY.down  = Math.sin(a) >  0.383 ? 1 : 0;
+      KEY.up    = Math.sin(a) < -0.383 ? 1 : 0;
+      /* and how far it is pushed is how fast she goes */
+      G && (G.stickPush = clamp((m - dead) / (1 - dead), 0, 1));
+    }
+    function release() {
+      STICK.on = false; STICK.id = null;
+      STICK.x = STICK.y = 0;
+      KEY.up = KEY.down = KEY.left = KEY.right = 0;
+      if (G) G.stickPush = 0;
+      zone.classList.remove("live");
+      if (knob) knob.style.transform = "translate(-50%,-50%)";
+    }
+
+    function down(e) {
+      var r = stage.getBoundingClientRect();
+      var ts = e.changedTouches ? e.changedTouches : [e];
+      for (var i = 0; i < ts.length; i++) {
+        var t = ts[i];
+        /* the left half of the picture is the stick; the right half is
+           the buttons and belongs to them */
+        if (t.clientX - r.left > r.width * 0.48) continue;
+        if (t.clientY - r.top < r.height * 0.24) continue;   /* leave the HUD alone */
+        setTouchUI(true);
+        STICK.on = true;
+        STICK.id = t.identifier == null ? "mouse" : t.identifier;
+        place(t.clientX, t.clientY);
+        aim(t.clientX, t.clientY);
+        e.preventDefault();
+        Audio_.resume();
+        return;
+      }
+    }
+    function move(e) {
+      if (!STICK.on) return;
+      var ts = e.changedTouches ? e.changedTouches : [e];
+      for (var i = 0; i < ts.length; i++) {
+        var t = ts[i];
+        var id = t.identifier == null ? "mouse" : t.identifier;
+        if (id !== STICK.id) continue;
+        aim(t.clientX, t.clientY);
+        e.preventDefault();
+        return;
+      }
+    }
+    function up(e) {
+      if (!STICK.on) return;
+      var ts = e.changedTouches ? e.changedTouches : [e];
+      for (var i = 0; i < ts.length; i++) {
+        var id = ts[i].identifier == null ? "mouse" : ts[i].identifier;
+        if (id === STICK.id) { release(); e.preventDefault(); return; }
+      }
+    }
+    stage.addEventListener("touchstart", down, { passive: false });
+    stage.addEventListener("touchmove", move, { passive: false });
+    stage.addEventListener("touchend", up, { passive: false });
+    stage.addEventListener("touchcancel", up, { passive: false });
   }
 
   function bindPad() {
     var pad = $("ap-pad");
-    if (!pad) return;
-    pad.setAttribute("aria-hidden", "false");
-    pad.querySelectorAll("[data-ap-key]").forEach(function (b) {
+    if (pad) pad.setAttribute("aria-hidden", "false");
+    /* the action buttons live with the stick now, so bind by what a
+       thing says it is rather than by which box it sits in */
+    var stage = $("ap-stage");
+    if (!stage) return;
+    stage.querySelectorAll("[data-ap-key]").forEach(function (b) {
+      if (b.__bound) return;
       var k = b.getAttribute("data-ap-key");
       function down(e) {
         e.preventDefault();
         anyPressed++;
-        if (k === "use" && !KEY.use) usePressed = true;
+        setTouchUI(true);
+        if (k === "use" && !KEY.use && !useLatched) usePressed = true;
         KEY[k] = 1; b.classList.add("on");
         Audio_.resume();
       }
-      function up(e) { e.preventDefault(); KEY[k] = 0; b.classList.remove("on"); }
+      function up(e) {
+        e.preventDefault(); KEY[k] = 0; b.classList.remove("on");
+        if (k === "use") useLatched = false;
+      }
       b.addEventListener("touchstart", down, { passive: false });
       b.addEventListener("touchend", up, { passive: false });
       b.addEventListener("touchcancel", up, { passive: false });
@@ -8923,6 +9286,10 @@
     }
     p.__sneakWas = !!KEY.sneak;
     var maxS = p.creeping ? TUNE.creep : TUNE.walk;
+    /* on a stick, how far it is pushed is how fast she goes — which is
+       the whole reason to have one: you can ease up to a doorway without
+       having to hold a separate creep button down */
+    if (G.stickPush != null && G.stickPush > 0) maxS *= 0.34 + G.stickPush * 0.66;
 
     if (mag > 0) {
       p.vx += ix * TUNE.accel * dt;
@@ -9433,6 +9800,10 @@
     if (!d || d.i >= d.lines.length) {
       if (box) box.setAttribute("aria-hidden", "true");
       G.dlg = null;
+      /* the press that closed the conversation must not also be the press
+         that starts the next thing */
+      useLatched = true;
+      usePressed = false;
       if (G.state === "dialogue") G.state = "play";
       if (d && d.done) d.done();
       return;
@@ -10290,8 +10661,36 @@
     return out;
   }
 
+  /* ---- a word that goes away by itself ----
+     "Nothing here." used to arrive as a line of dialogue, which stops the
+     game and has to be dismissed — so pressing use at thin air cost two
+     presses and put her in a conversation with nobody. This says it and
+     then stops saying it. */
+  var hintT = 0;
+  function hint(text) {
+    var el2 = $("ap-hint");
+    if (!el2) {
+      var stage = $("ap-stage");
+      if (!stage) return;
+      el2 = el("p", "ap-hint");
+      el2.id = "ap-hint";
+      stage.appendChild(el2);
+    }
+    el2.textContent = text;
+    el2.classList.add("on");
+    hintT = 1.8;
+  }
+  function updateHint(dt) {
+    if (hintT <= 0) return;
+    hintT -= dt;
+    if (hintT <= 0) {
+      var el2 = $("ap-hint");
+      if (el2) el2.classList.remove("on");
+    }
+  }
+
   function tryUse() {
-    if (!G || G.state !== "play") return;
+    if (!G || G.state !== "play" || useLatched) return;
     var w = G.world, p = G.player;
     var list = nearThings(1);
 
@@ -10308,7 +10707,15 @@
     for (var i = 0; i < list.length; i++) {
       var it = list[i], c = it.c;
 
-      if (c === "T") { showTV(); return; }
+      if (c === "T") {
+        /* off is off: pressing USE at a dead set used to put the whole
+           broadcast back up and start the conversation again */
+        if (w.tvScreen && !w.tvScreen.material.map) {
+          say([[null, "The screen is dead. Whatever was on it is not on it any more."]]);
+          return;
+        }
+        showTV(); return;
+      }
       if (c === "W") {
         showPanel(function () {
           w.powered = true;
@@ -10355,7 +10762,7 @@
       var dp = Math.hypot(w.cx(w.firePitAt.x) - p.x, w.cz(w.firePitAt.y) - p.z);
       if (dp < TILE * 2.2 && step() && step().clears === "fire") { lightTheFire(); return; }
     }
-    say([[null, "Nothing here."]]);
+    hint("Nothing here.");
   }
 
   function takeTorch(it) {
@@ -12821,6 +13228,7 @@
       }
     }
 
+    updateHint(dt);
     if (G.world) {
       updateDoors(dt);
       updateLights(dt);
@@ -13029,6 +13437,7 @@
       if (e.code === "Space" || e.code === "KeyE" || e.code === "Enter") { advanceLine(); e.preventDefault(); }
     });
     bindPad();
+    bindStick();
   }
 
   var Api = {
@@ -13129,7 +13538,10 @@
     window.__apCampfire = function () { playCampfire(); return G; };
     window.__apSunrise = function () { playSunrise(); return G; };
     window.__apRoof = function () { playRooftop(); return G; };
-    window.__apUse = function () { tryUse(); return G && G.state; };
+    /* a whole press, down and up: without the release the use-latch
+       that stops the broadcast looping would block the next one for
+       ever, because nothing here ever lets go of a key */
+    window.__apUse = function () { useLatched = false; tryUse(); return G && G.state; };
     window.__apSay = function () { if (G && G.dlg) { nextLine(); return true; } return false; };
     window.__apAdvance = function () { advanceLine(); return G && !!G.dlg; };
     window.__apSkipDialogue = function () {
@@ -13318,7 +13730,14 @@
     window.__apScore = function () { return Audio_.score.playing(); };
     window.__apMusic = function (v) { SETTINGS.music = !!v; Audio_.score.mute(!v); return !!v; };
     window.__apAudio = function () { Audio_.begin(); return true; };
-    window.__apKey = function (k, v) { if (k in KEY) { KEY[k] = v ? 1 : 0; if (k === "use" && v) usePressed = true; } };
+    window.__apKey = function (k, v) {
+      if (!(k in KEY)) return;
+      KEY[k] = v ? 1 : 0;
+      if (k === "use") {
+        if (v) { if (!useLatched) usePressed = true; }
+        else useLatched = false;
+      }
+    };
   }
 
   window.Apocalypse = Api;

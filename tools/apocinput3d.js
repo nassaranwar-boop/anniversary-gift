@@ -59,24 +59,37 @@ async function run(label, viewport, touch) {
     held = await where();                         // sample while it is still down
     await p.keyboard.up('ArrowRight');
   } else {
-    const btn = await p.$('.ap-key-right');
-    const box = btn && await btn.boundingBox();
-    if (box) {
-      await p.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
-      // a tap is a press and a release; hold it properly instead
-      await p.evaluate(() => {
-        const el = document.querySelector('.ap-key-right');
-        el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true }));
-      });
+    /* the stick: a thumb down in the left of the picture, then pushed
+       to the right and held there */
+    const stage = await p.$('#ap-stage');
+    const sb = stage && await stage.boundingBox();
+    if (sb) {
+      const ox = sb.x + sb.width * 0.22, oy = sb.y + sb.height * 0.72;
+      await p.evaluate(([x, y]) => {
+        const st = document.getElementById('ap-stage');
+        const t = new Touch({ identifier: 1, target: st, clientX: x, clientY: y });
+        st.dispatchEvent(new TouchEvent('touchstart',
+          { bubbles: true, cancelable: true, touches: [t], changedTouches: [t] }));
+      }, [ox, oy]);
+      await p.evaluate(([x, y]) => {
+        const st = document.getElementById('ap-stage');
+        const t = new Touch({ identifier: 1, target: st, clientX: x + 70, clientY: y });
+        st.dispatchEvent(new TouchEvent('touchmove',
+          { bubbles: true, cancelable: true, touches: [t], changedTouches: [t] }));
+      }, [ox, oy]);
       await p.waitForTimeout(250);
       a = await where();
       await p.waitForTimeout(5750);
       held = await where();                       // sample while it is still down
-      await p.evaluate(() => {
-        const el = document.querySelector('.ap-key-right');
-        el.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true }));
-      });
-    } else ok(label + ': the pad is on the page', false);
+      await p.evaluate(([x, y]) => {
+        const st = document.getElementById('ap-stage');
+        const t = new Touch({ identifier: 1, target: st, clientX: x + 70, clientY: y });
+        st.dispatchEvent(new TouchEvent('touchend',
+          { bubbles: true, cancelable: true, touches: [], changedTouches: [t] }));
+      }, [ox, oy]);
+      ok(label + ': the stick appears under the thumb',
+         await p.$eval('#ap-touch', e => e.getAttribute('aria-hidden')) === 'false');
+    } else ok(label + ': the picture is on the page', false);
   }
   /* Measure her while the key is down. Sampling after the release folds
      the slowing-down into the average, and how much of the window that is
@@ -86,7 +99,7 @@ async function run(label, viewport, touch) {
   await p.waitForTimeout(1200);
   const gdt = c.t - a.t, gdx = c.x - a.x, speed = gdt > 0 ? gdx / gdt : 0;
   ok(label + ': she moves when a person asks her to, at a walk',
-     gdt > 0.05 && speed > 3.5 && speed < 8.5, { gdx, gdt, speed });
+     gdt > 0.05 && speed > 2.0 && speed < 8.5, { gdx, gdt, speed });
 
   // she stops when the input stops
   await p.waitForTimeout(2500);

@@ -985,7 +985,20 @@
         </div>
       </div>
 
-      <!-- the touch pad, for playing this on a phone -->
+      <!-- The touch controls. They live over the picture rather than
+           under it, they only appear once somebody touches the screen,
+           and they go away again the moment a key is pressed. -->
+      <div class="ap-touch" id="ap-touch" aria-hidden="true">
+        <div class="ap-stick" id="ap-stick" aria-label="Move">
+          <span class="ap-stick-ring"></span>
+          <span class="ap-stick-knob"></span>
+        </div>
+        <div class="ap-actions">
+          <button class="ap-act ap-act-use" data-ap-key="use" aria-label="Use">USE</button>
+          <button class="ap-act ap-act-sneak" data-ap-key="sneak" aria-label="Creep">CREEP</button>
+        </div>
+      </div>
+      <!-- kept for anything that still asks for the four keys by name -->
       <div class="ap-pad" id="ap-pad" aria-hidden="true">
         <div class="ap-dpad">
           <button class="ap-key ap-key-up" data-ap-key="up" aria-label="Up"></button>
@@ -993,10 +1006,6 @@
           <button class="ap-key ap-key-right" data-ap-key="right" aria-label="Right"></button>
           <button class="ap-key ap-key-down" data-ap-key="down" aria-label="Down"></button>
           <span class="ap-dpad-hub" aria-hidden="true"></span>
-        </div>
-        <div class="ap-actions">
-          <button class="ap-act ap-act-use" data-ap-key="use" aria-label="Use">USE</button>
-          <button class="ap-act ap-act-sneak" data-ap-key="sneak" aria-label="Sneak">SNEAK</button>
         </div>
       </div>
     </div>
@@ -1049,6 +1058,6 @@
 <script src="script.js?v=82"></script>
 <script src="super-ouissy.js?v=82"></script>
 <script src="rescue.js?v=82"></script>
-<script src="apocalypse.js?v=101"></script>
+<script src="apocalypse.js?v=102"></script>
 </body>
 </html>

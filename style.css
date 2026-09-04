@@ -3509,6 +3509,41 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .ap-overlay[aria-hidden="false"]{display:flex;}
 
+/* ---- the stick ----
+   A thumb goes down anywhere in the left of the picture and the stick
+   appears under it. How far it is pushed is how fast she walks, and it
+   is eight ways rather than four, because you cannot walk north-north-
+   east on a d-pad. */
+.ap-touch{
+  position:absolute; inset:0; z-index:5; pointer-events:none;
+  opacity:0; transition:opacity .28s ease;
+}
+.ap-touch[aria-hidden="false"]{opacity:1;}
+.ap-stick{
+  position:absolute; left:22%; top:70%;
+  width:116px; height:116px; margin:-58px 0 0 -58px;
+  pointer-events:none; opacity:0; transition:opacity .18s ease;
+}
+.ap-stick.live{opacity:1;}
+.ap-stick-ring{
+  position:absolute; inset:0; border-radius:50%;
+  border:1px solid rgba(168,192,240,.30);
+  background:radial-gradient(circle, rgba(150,180,240,.05) 0 66%, transparent 67%);
+}
+.ap-stick-knob{
+  position:absolute; left:50%; top:50%; width:52px; height:52px;
+  margin:0; border-radius:50%;
+  transform:translate(-50%,-50%);
+  border:1px solid rgba(240,181,103,.55);
+  background:rgba(240,181,103,.14);
+  box-shadow:0 0 20px rgba(240,181,103,.18);
+}
+.ap-touch .ap-actions{
+  position:absolute; right:4%; bottom:8%;
+  display:flex; align-items:center; gap:18px;
+  pointer-events:auto;
+}
+
 /* ---- the controls, on a phone ----
    The pad was four rounded squares in a bevelled dish with two glossy
    circles beside it. This is the same language as everything else in
@@ -3565,11 +3600,11 @@ img{-webkit-user-drag:none; user-select:none;}
              transform .09s ease;
 }
 .ap-act-use{
-  width:92px; height:92px; font-size:12px;
+  width:104px; height:104px; font-size:12px;
   color:#ffdcaa; border-color:rgba(240,181,103,.42);
   background:rgba(240,181,103,.07);
 }
-.ap-act-sneak{width:72px; height:72px; font-size:10px;}
+.ap-act-sneak{width:80px; height:80px; font-size:10px;}
 .ap-act:active{
   transform:scale(.95);
   color:#0d1017; background:#f0b567; border-color:#f0b567;
@@ -3594,10 +3629,12 @@ img{-webkit-user-drag:none; user-select:none;}
 
 @media (max-width: 900px), (orientation: portrait){
   .ap-titlebar{display:block;}
+  /* the four keys still exist for anything that asks for them by name,
+     but the stick over the picture is what a person uses */
   .ap-pad{
-    display:flex; align-items:flex-end; justify-content:space-between;
-    width:100%; max-width:520px;
-    padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    display:flex; align-items:flex-end; justify-content:center;
+    width:100%; max-width:520px; opacity:0; height:0; overflow:hidden;
+    padding:0;
   }
   .ap-frame{justify-content:space-between; padding:4vh 0 0;}
   .ap-stage{width:min(100%, calc(var(--app-h) * 0.52 * var(--ap-arn, 1.7778)));}
@@ -3805,6 +3842,18 @@ img{-webkit-user-drag:none; user-select:none;}
   color:#0d1017; background:#f0b567;
 }
 .ap-seg-btn:focus-visible{outline:none; box-shadow:inset 0 0 0 1px #f0b567;}
+
+/* a word that answers a press and then gets out of the way */
+.ap-hint{
+  position:absolute; left:50%; bottom:14cqw; transform:translateX(-50%) translateY(4px);
+  margin:0; padding:.9cqw 2.2cqw; pointer-events:none; z-index:7;
+  font-family:var(--ap-voice-serif); font-style:italic; font-weight:500;
+  font-size:1.9cqw; color:#c8d3ea; white-space:nowrap;
+  background:rgba(6,9,18,.62);
+  border-left:2px solid rgba(240,181,103,.55);
+  opacity:0; transition:opacity .25s ease, transform .25s ease;
+}
+.ap-hint.on{opacity:1; transform:translateX(-50%) translateY(0);}
 
 /* the close call: no card, just a line held in the dark */
 .ap-close{text-align:center; padding:0 6cqw;}
