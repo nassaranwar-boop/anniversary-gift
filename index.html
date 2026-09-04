@@ -17,9 +17,9 @@
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=82">
+<link rel="stylesheet" href="style.css?v=91">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=82"></script>
+<script src="vendor/three.bundle.js?v=91"></script>
 
 </head>
 <body>
@@ -686,6 +686,12 @@
           <span class="hub-name">Ouissy at the Apocalypse</span>
           <span class="hub-desc">The world ends. You come and find me anyway</span>
         </button>
+        <button class="hub-card" id="hub-card-race" data-chapter="race">
+          <span class="hub-badge" id="hub-badge-race"><svg class="gl gl-tick" aria-hidden="true"><use href="#ic-px-tick"/></svg></span>
+          <span class="hub-art hub-art-race" aria-hidden="true"></span>
+          <span class="hub-name">Super Ouissy Race</span>
+          <span class="hub-desc">Race to each other across memory lane</span>
+        </button>
       </div>
       <button id="hub-keepsake" class="btn-ancient hub-keepsake">Open the keepsake <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-star"/></svg></button>
     </div>
@@ -992,6 +998,75 @@
     </div>
   </section>
 
+  <!-- SCREEN — SUPER OUISSY RACE (the Mode 7 kart racer; all of it lives
+       in racing.js. The canvas holds the world; everything she reads is
+       DOM over the top of it, in the arcade face, for the same reason
+       the platformer's dialogue is DOM: pixel text drawn into a 400-wide
+       buffer and blown up cannot be read.) -->
+  <section id="screen-race" class="screen">
+    <div class="rc-frame">
+      <p class="rc-titlebar" aria-hidden="true"><span>SUPER OUISSY</span><b>RACE</b></p>
+
+      <div class="rc-stage" id="race-stage">
+        <canvas id="race-canvas"></canvas>
+
+        <!-- the racing HUD -->
+        <div class="rc-hud" id="rc-hud" hidden>
+          <div class="rc-hud-tl">
+            <span class="rc-chip"><b>LAP</b><i id="rc-lap">1/3</i></span>
+            <span class="rc-chip"><b>TIME</b><i id="rc-time">0:00.00</i></span>
+            <span class="rc-chip rc-chip-h" id="rc-hearts-chip"><b class="rc-hicon" aria-hidden="true"></b><i id="rc-hearts">0</i></span>
+          </div>
+          <div class="rc-item" id="rc-item" data-empty="1">
+            <canvas id="rc-item-cvs" width="48" height="48"></canvas>
+          </div>
+          <div class="rc-hud-tr">
+            <span class="rc-pos" id="rc-pos" data-p="1"><em id="rc-pos-n">1</em><u id="rc-pos-s">ST</u></span>
+          </div>
+          <canvas class="rc-map" id="rc-map" width="150" height="150"></canvas>
+          <div class="rc-boost" id="rc-boost" data-tier="1" hidden><i id="rc-boost-f"></i></div>
+        </div>
+
+        <!-- the tutorial's speech bubble -->
+        <div class="rc-tut" id="rc-tut" hidden></div>
+
+        <p class="rc-count" id="rc-count" data-go="0" hidden></p>
+        <p class="rc-banner" id="rc-banner" hidden></p>
+
+        <button class="rc-pause-btn" id="rc-pause-btn" aria-label="Pause" hidden>
+          <span class="gl-pause" aria-hidden="true"></span>
+        </button>
+
+        <!-- the touch controls sit over the track, low in both corners
+             so a thumb reaches them without covering the road -->
+        <!-- the whole picture is the steering wheel: put a thumb
+             down anywhere and slide. It sits under the buttons so a
+             thumb on DRIFT still hits DRIFT. -->
+        <div class="rc-steer" id="rc-steer" hidden>
+          <span class="rc-steer-ring" id="rc-steer-ring"><i></i></span>
+          <span class="rc-steer-hint" id="rc-steer-hint">slide to steer</span>
+        </div>
+
+        <div class="rc-pad" id="rc-pad" hidden>
+          <div class="rc-pad-cluster rc-pad-l">
+            <button class="rc-key rc-key-steer" data-k="left"  aria-label="Steer left"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+            <button class="rc-key rc-key-steer" data-k="right" aria-label="Steer right"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+          </div>
+          <div class="rc-pad-cluster rc-pad-r">
+            <button class="rc-key rc-key-sm" data-k="down"  aria-label="Brake"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+            <button class="rc-key rc-key-sm" data-k="item"  aria-label="Use item"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+            <button class="rc-key rc-key-big rc-key-drift" data-k="drift" aria-label="Drift"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+            <button class="rc-key rc-key-big rc-key-gas"   data-k="up"    aria-label="Accelerate"><canvas class="rc-ico" width="20" height="20"></canvas></button>
+          </div>
+        </div>
+
+        <!-- every menu, card and podium mounts into this -->
+        <div class="rc-overlay" id="rc-overlay" aria-hidden="true"></div>
+      </div>
+
+    </div>
+  </section>
+
   <!-- SCREEN 4 — NIGHT SKY ENDING -->
   <section id="screen-end" class="screen">
     <div class="night-sky scene-1" id="night-sky">
@@ -1034,11 +1109,12 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=82"></script>
-<script src="scrapbook.js?v=82"></script>
-<script src="script.js?v=82"></script>
-<script src="super-ouissy.js?v=82"></script>
-<script src="rescue.js?v=82"></script>
-<script src="apocalypse.js?v=82"></script>
+<script src="book-scene.js?v=91"></script>
+<script src="scrapbook.js?v=91"></script>
+<script src="script.js?v=91"></script>
+<script src="super-ouissy.js?v=91"></script>
+<script src="rescue.js?v=91"></script>
+<script src="apocalypse.js?v=91"></script>
+<script src="racing.js?v=91"></script>
 </body>
 </html>
