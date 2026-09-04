@@ -529,7 +529,7 @@
     ["OUISSY", "Okay. Okay, think."],
     [N, "The doors are locked. There is food. There is water while there is water. The television says stay where you are, and the television has been right about nothing else this week."],
     ["OUISSY", "They are in Azilal. Azilal is four hours up the mountain and nothing ever happens in Azilal."],
-    [N, "Her mother, her father, Salma, Ghita, and Ghita's husband Mehdi, in one house with one bathroom, since Tuesday."],
+    [N, "Her mother, her father, Bouchra, Amal, and Amal's husband Youssef, in one house with one bathroom, since Tuesday."],
     [N, "She tries the number anyway. It does not ring. It has not rung since Wednesday."],
     ["OUISSY", "So I stay. I stay, and I wait, and somebody comes."],
     SIL,
