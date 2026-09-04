@@ -531,6 +531,26 @@
      now — the two of them arguing on the roof and the third pretending
      to sleep through it — which says the same thing and also says that
      she is not there. */
+  /* THE FIRST SCENE, AND WHAT IT HAS TO DO.
+
+     She has to end it walking out of the door, and the audience has to
+     want her to. Everything in between is her getting there on her own.
+
+     The spine of it is the phone. She rings her family and it does not
+     connect, because Azilal is four hours up a mountain and there has
+     never been a signal there worth the name. She rings the ward and it
+     rings and rings and nobody picks it up. And then the battery goes,
+     because it has been on since Wednesday looking for a network it is
+     never going to find, and that is the moment the house stops being a
+     place where somebody might call her back.
+
+     The rule the rest of it is written to: the narrator only says what a
+     camera could see. Everything that happens inside her head she says
+     out loud to an empty room, because that is what people do when they
+     are frightened and alone in a house. And nothing she says is
+     something she could not possibly know — she has not spoken to
+     anybody in three days, so the family are a thing she PICTURES, not a
+     thing she reports. */
   TALK.tv = [
     [N, "The set has been on since before she woke up. Nobody in the studio is reading anything; the man at the desk is just sitting there while the captions run themselves."],
     [N, "STAY INDOORS. DO NOT TRAVEL. DO NOT ATTEMPT TO REACH RELATIVES."],
@@ -538,15 +558,16 @@
     SIL,
     [N, "She stands there for a while with the remote in her hand and does not turn it off."],
     ["OUISSY", "Okay. Okay, think."],
-    [N, "The door is locked. There is food. There is water while there is water. The television says stay where you are, and the television has been right about nothing else this week."],
+    [N, "The door is locked. There is bread and there is rice and there is water in the tap, and the tap is still running, which is the only good sentence in the house this morning."],
     SIL,
-    ["OUISSY", "Baba would have a plan by now. Baba would have a list, and the list would have numbers on it."],
-    [N, "She picks the phone up off the arm of the sofa without deciding to."],
-    ["OUISSY", "Pick up. Pick up, pick up, pick up—"],
-    [N, "It does not ring. It has not rung since Wednesday."],
+    [N, "She picks the phone up off the arm of the sofa without deciding to, and rings the house in Azilal."],
+    ["OUISSY", "Come on. Come on, pick up—"],
+    [N, "It does not ring. It has never rung properly up there — one bar on a good day, standing in the yard, holding it up like an offering."],
+    ["OUISSY", "...Of course. Of course there's no signal, there's never any signal."],
     SIL,
-    ["OUISSY", "...They're in Azilal. It is four hours up the mountain and nothing has ever happened in Azilal."],
-    ["OUISSY", "They're fine. Bouchra and Amal are on the roof arguing about something stupid and Youssef is pretending to be asleep through it, and they are fine."],
+    ["OUISSY", "They're fine. They have to be fine."],
+    ["OUISSY", "Bouchra and Amal will be on the roof arguing about something stupid and Youssef will be pretending to sleep through it, and Baba will be telling everybody to be quiet, and they are all completely fine."],
+    [N, "She says it the way you say a thing you have decided to believe."],
     SIL,
     ["OUISSY", "So I stay. I stay, and I wait, and somebody comes."],
     SIL,
@@ -562,10 +583,18 @@
     ["OUISSY", "He can't walk. Eight days since they opened him up, he can't get to the end of the ward on his own—"],
     ["OUISSY", "So who's there? Who is actually there?"],
     [N, "It takes her about a second and a half to get to the answer, and she does not say it out loud."],
-    ["OUISSY", "Come on. Come on, pick up—"],
-    [N, "The ward line rings for a long time and then it stops ringing, the way everything has all morning."],
     SIL,
-    ["OUISSY", "Okay."],
+    [N, "She finds the ward number on the fridge, where it has been since Sunday, and rings that instead."],
+    ["OUISSY", "Pick up. Pick up, pick up, pick up—"],
+    [N, "It rings for a long time. Nobody stops it ringing. She holds it against her ear until it gives up on its own."],
+    SIL,
+    [N, "And then the screen goes white for a second, and says four per cent, and then it says nothing at all."],
+    ["OUISSY", "No. No, no, no—"],
+    [N, "It has been awake since Wednesday looking for a network that is not there. She presses the button anyway, four or five times, the way everybody does."],
+    SIL,
+    [N, "Nothing. It is a piece of glass now."],
+    ["OUISSY", "...Okay."],
+    [N, "Which settles it, in a way nothing else this morning has: there is no longer anybody who can ring her back."],
     ["OUISSY", "Okay. I'm coming to get you."],
     [N, "She turns the television off. The house is very quiet after that."],
     SIL,
@@ -637,7 +666,7 @@
     ["OUISSY", "I know."],
     [N, "He laughs, once, and it comes out wrong, and then he stops."],
     ["ANWAR", "...Come here."],
-    [N, "They stay like that for a while. Neither of them says anything for a while."],
+    [N, "They stay like that. Neither of them says anything, and neither of them lets go."],
     ["ANWAR", "I kept thinking, if this is real, she's on her own in that house."],
     ["OUISSY", "I'm not on my own."],
     ["ANWAR", "No."],
@@ -653,13 +682,13 @@
 
   TALK.horse = [
     [N, "There is a field gate at the end of the lane with a name painted on it by hand, a long time ago, by somebody who was not in a hurry."],
-    [N, "They hear her before they see her: a shift of weight, and then hooves on a concrete floor."],
-    [N, "There is one animal left in the barn and she has heard them coming from the yard."],
-    [N, "She puts her whole head over the door before Ouissy has got near it."],
+    [N, "They hear it before they see it: a shift of weight, and then hooves on a concrete floor."],
+    [N, "One animal left in the barn, and she has heard them coming from the yard."],
+    [N, "The mare puts her whole head over the door before Ouissy has got near it."],
     ["OUISSY", "Oh — hello. Hello."],
     ["ANWAR", "She's enormous."],
     ["OUISSY", "She's lovely. Look at her."],
-    [N, "There is a headcollar on the hook and somebody's name painted over the stall. She is not going to be collected."],
+    [N, "There is a headcollar on the hook and a name painted over the stall in somebody's handwriting. Nobody is coming to collect her."],
     ["ANWAR", "Can you actually ride?"],
     ["OUISSY", "No."],
     ["ANWAR", "Right."],
@@ -668,12 +697,17 @@
 
   TALK.arrival = [
     [N, "The clearing is just off the lane, behind a wall that was a house once. The grass is flat enough and the trees cut the wind."],
-    [N, "She lets the horse stop on its own. It dips its head and doesn't move again."],
+    [N, "She lets the mare stop on her own. She dips her head straight into the grass and starts eating, which is as much of an opinion as they are going to get."],
     ["ANWAR", "...Here?"],
     ["OUISSY", "Hang on."],
     [N, "She stands still and listens. Wind in the branches. The stream somewhere below them. Nothing else."],
     ["OUISSY", "Yeah. Here."],
-    ["ANWAR", "You're sure? There's nothing — no walls, no—"],
+    SIL,
+    ["OUISSY", "Let me get her sorted first."],
+    [N, "She takes the rein and walks the mare across to the tree at the edge of the clearing, and ties her there where there is grass and something to stand under."],
+    ["OUISSY", "There. You've done more today than either of us."],
+    SIL,
+    ["ANWAR", "You're sure about here? There's nothing — no walls, no—"],
     ["OUISSY", "That's why here. Nothing to hide behind, nothing to come out of. If anything moves we'll see it a mile off."],
     [N, "He looks at the treeline and the open grass and the sky, which is starting to turn. He nods."],
     ["ANWAR", "Okay. What do we need?"],
@@ -740,7 +774,7 @@
     ["ANWAR", "...There are a lot of doors in that building."],
     ["OUISSY", "Yes."],
     SIL,
-    [N, "He doesn't push it. The fire pops, and something in the wood shifts, and neither of them says anything for a while."],
+    [N, "He doesn't push it. The fire pops, something in the wood shifts, and he lets it go."],
     SIL,
     ["ANWAR", "Were you frightened?"],
     ["OUISSY", "The whole time."],
@@ -758,7 +792,7 @@
     ["ANWAR", "Mm."],
     ["OUISSY", "I need to tell you something and I need you not to make it into a thing."],
     ["ANWAR", "...Okay."],
-    ["OUISSY", "When I got to the car park and the car actually started — that was the first time I thought I might actually get to you."],
+    ["OUISSY", "When we got out to the ambulance bay and that car actually started — that was the first time I thought I might actually get you out."],
     ["OUISSY", "Not before that. Not in the house, not on the street, not in the hospital. I was just doing the next thing because I didn't know how to stop."],
     ["OUISSY", "I wasn't being brave. I didn't have a plan. I was just — moving."],
     ["ANWAR", "That is brave."],
@@ -856,11 +890,11 @@
     ["OUISSY", "I didn't think past the hospital."],
     [N, "He laughs, short and real, and it is the first time in days it has sounded like him."],
     SIL,
-    ["ANWAR", "Have you tried the phone again?"],
-    ["OUISSY", "There's no signal. There's been nothing since the second day."],
-    ["ANWAR", "Mine too. Network's gone."],
+    ["ANWAR", "Is there anything on yours yet?"],
+    ["OUISSY", "Mine's been dead since Friday morning. It went while I was standing in the kitchen."],
+    ["ANWAR", "Mine has a bar sometimes. It has never once been a bar long enough to ring anybody."],
     SIL,
-    ["OUISSY", "They are in Azilal. All five of them, in my grandmother's house, and there is one road in and one road out."],
+    ["OUISSY", "They'll be in Azilal. All five of them, in my grandmother's house, and there is one road in and one road out."],
     ["ANWAR", "That is a good place to be."],
     ["OUISSY", "It is the best place to be. Nothing has ever happened in Azilal."],
     SIL,
@@ -878,7 +912,7 @@
     ["OUISSY", "I was scared for you too."],
     ["OUISSY", "That's why I walked."],
     SIL,
-    [N, "He reaches over and takes her hand, and neither of them lets go."],
+    [N, "He reaches over and takes her hand, and that is where it stays."],
     SIL,
     ["ANWAR", "What do we do now?"],
     ["OUISSY", "We wait until it's safe. Then we find our families."],
@@ -1026,6 +1060,18 @@
      ========================================================= */
   var Audio_ = (function () {
     var ctx = null, master = null, busVerb = null, verb = null, busDry = null;
+    /* THE TWO SLIDERS HAVE TO CONTROL TWO THINGS.
+
+       Everything used to hang off the master gain, so the sound slider
+       was really a master slider: pulling it to nothing took the music
+       with it, and the music switch was wired to turn off if the sound
+       was off. They are separate paths now — the doors and the footsteps
+       and the room tone go through one, the score goes through the
+       other, and each has its own reverb so a tail cannot leak from one
+       side to the other. The master is only the chapter's own fade in
+       and out. */
+    var sfxBus = null, musBus = null, musVerb = null, verbM = null;
+    var sfxLevel = 0.8;
     var noiseBuf = null, ambient = null, on = false, pendingBed = null;
     /* how loud the chapter is allowed to be, 0..1, from the settings */
     var level = 0.8;
@@ -1050,11 +1096,20 @@
       master.gain.value = 0.0;
       master.connect(ctx.destination);
 
-      busDry = ctx.createGain(); busDry.connect(master);
+      sfxBus = ctx.createGain(); sfxBus.gain.value = sfxLevel; sfxBus.connect(master);
+      musBus = ctx.createGain(); musBus.gain.value = 1; musBus.connect(master);
+
+      busDry = ctx.createGain(); busDry.connect(sfxBus);
       verb = ctx.createConvolver();
       verb.buffer = impulse(1.9, 2.6);
       busVerb = ctx.createGain(); busVerb.gain.value = 0.34;
-      busVerb.connect(verb); verb.connect(master);
+      busVerb.connect(verb); verb.connect(sfxBus);
+
+      /* the score's own room, on the score's own side of the fader */
+      verbM = ctx.createConvolver();
+      verbM.buffer = impulse(2.4, 2.2);
+      musVerb = ctx.createGain(); musVerb.gain.value = 0.30;
+      musVerb.connect(verbM); verbM.connect(musBus);
 
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       var d = noiseBuf.getChannelData(0);
@@ -1099,7 +1154,7 @@
       if (on && master) {
         try {
           master.gain.cancelScheduledValues(ctx.currentTime);
-          master.gain.setTargetAtTime(0.69 * level, ctx.currentTime, 0.25);
+          master.gain.setTargetAtTime(0.69, ctx.currentTime, 0.25);
         } catch (e) {}
       }
     }
@@ -1113,7 +1168,7 @@
         on = wasOn;
         if (wasOn) {
           master.gain.cancelScheduledValues(ctx.currentTime);
-          master.gain.setTargetAtTime(0.69 * level, ctx.currentTime, 0.3);
+          master.gain.setTargetAtTime(0.69, ctx.currentTime, 0.3);
         }
         if (bedBack) API.bed(bedBack);
         if (tune) API.score(tune);
@@ -1168,7 +1223,7 @@
     function live() { return ctx && ctx.state === "running"; }
 
     function noise(dur, gain, filt, q, type) {
-      if (!ac() || !live()) return null;
+      if (!ac() || !live() || sfxLevel <= 0) return null;
       var s = ctx.createBufferSource();
       s.buffer = noiseBuf; s.loop = true;
       var f = ctx.createBiquadFilter();
@@ -1184,7 +1239,7 @@
     }
 
     function tone(freq, dur, gain, type, slideTo, delay) {
-      if (!ac() || !live()) return null;
+      if (!ac() || !live() || sfxLevel <= 0) return null;
       var t0 = ctx.currentTime + (delay || 0);
       var o = ctx.createOscillator();
       o.type = type || "sine";
@@ -1205,19 +1260,25 @@
         if (stopped()) wake();
         on = true; everOn = true;
         master.gain.cancelScheduledValues(ctx.currentTime);
-        master.gain.setTargetAtTime(0.69 * level, ctx.currentTime, 0.4);
+        master.gain.setTargetAtTime(0.69, ctx.currentTime, 0.4);
       },
       /* the volume slider in the settings; 0 is silence, and it takes
          effect on the note that is already sounding */
       level: function (v) {
-        level = clamp(v == null ? 0.8 : v, 0, 1);
-        if (!ctx || !master || !on) return;
+        sfxLevel = clamp(v == null ? 0.8 : v, 0, 1);
+        if (!ctx || !sfxBus) return;
         try {
-          master.gain.cancelScheduledValues(ctx.currentTime);
-          master.gain.setTargetAtTime(0.69 * level, ctx.currentTime, 0.12);
+          sfxBus.gain.cancelScheduledValues(ctx.currentTime);
+          sfxBus.gain.setTargetAtTime(sfxLevel, ctx.currentTime, 0.12);
         } catch (e) {}
       },
-      levelOf: function () { return level; },
+      levelOf: function () { return sfxLevel; },
+      /* what each side of the fader is actually set to */
+      mix: function () {
+        return { sfx: sfxBus ? sfxBus.gain.value : -1,
+                 mus: musBus ? musBus.gain.value : -1,
+                 master: master ? master.gain.value : -1 };
+      },
       everStarted: function () { return everOn; },
       stateOf: function () { return ctx ? ctx.state : "none"; },
       /* the offline harness leaving the tab */
@@ -1252,7 +1313,7 @@
 
         var g = ctx.createGain();
         g.gain.value = 0.0001;
-        g.connect(master);
+        g.connect(sfxBus);
         var nodes = [];
 
         var spec = {
@@ -1346,6 +1407,117 @@
           [24, 15, 2.0], [26, 12, 2.0],
           [28, 10, 2.0], [30,  3, 2.0]
         ];
+        /* ============================================================
+           SIX MORE TUNES, SO THAT SIX MORE PLACES CAN HAVE ONE
+
+           Everything above is hers — the tune that climbs and does not
+           resolve, and the one about the two of them. Two melodies over
+           eleven cues is why the whole chapter sounded like one piece of
+           music in eleven hats: wherever you went, the same shape came
+           round again.
+
+           These are the places. Each one is its own eight bars, written
+           on the same harmony so that any of them can still follow any
+           other without the ground moving — that is what makes the joins
+           possible — but none of them is a variation of anything. They
+           are different tunes.
+
+           [beat within the eight bars, semitones above A, length]
+           ============================================================ */
+
+        /* THE CITY AT NIGHT. Two notes, a tone apart, going nowhere,
+           over and over, the way a thing you are frightened of stays in
+           your head. It opens out exactly once, in the seventh bar, and
+           then closes again. */
+        var STREET = [
+          [ 0,  0, 1.5], [ 1.5, 2, 0.5], [ 2,  0, 2.0],
+          [ 4, -5, 1.5], [ 5.5, -2, 0.5], [ 6, -5, 2.0],
+          [ 8,  3, 1.5], [ 9.5, 2, 0.5], [10,  0, 2.0],
+          [12,  0, 4.0],
+          [16,  2, 1.5], [17.5, 3, 0.5], [18,  2, 2.0],
+          [20,  0, 2.0], [22,  2, 2.0],
+          [24,  3, 2.0], [26,  5, 1.0], [27,  3, 1.0],
+          [28, -5, 4.0]
+        ];
+
+        /* THE HOSPITAL. A phrase that goes up and cannot stay up: every
+           time it reaches, it falls back a step further than it climbed.
+           Written for a music box, high up, with nothing underneath. */
+        var WARD = [
+          [ 0,  12, 2.0], [ 2, 14, 2.0],
+          [ 4,  14, 1.5], [ 5.5, 15, 0.5], [ 6, 12, 2.0],
+          [ 8,  15, 2.0], [10, 14, 2.0],
+          [12,  12, 2.0], [14, 10, 2.0],
+          [16,  14, 2.0], [18, 17, 2.0],
+          [20,  15, 3.0], [23, 14, 1.0],
+          [24,  15, 2.0], [26, 12, 2.0],
+          [28,  10, 2.0], [30,  7, 2.0]
+        ];
+
+        /* THE CAR. The one somebody loved. Four notes out, four notes
+           back, and then the same thing again a step lower — the sound
+           of a road going past at a constant speed with two people not
+           saying anything in it yet. */
+        var ROAD = [
+          [ 0,   7, 0.5], [ 0.5, 10, 0.5], [ 1, 12, 0.5], [ 1.5, 14, 1.5],
+          [ 3,  12, 0.5], [ 3.5, 10, 0.5],
+          [ 4,   7, 2.0], [ 6,  10, 2.0],
+          [ 8,   3, 0.5], [ 8.5,  7, 0.5], [ 9, 10, 0.5], [ 9.5, 12, 1.5],
+          [11,  10, 0.5], [11.5, 7, 0.5],
+          [12,   3, 4.0],
+          [16,   5, 0.5], [16.5, 10, 0.5], [17, 12, 0.5], [17.5, 14, 1.5],
+          [19,  12, 0.5], [19.5, 10, 0.5],
+          [20,   0, 2.0], [22,  5, 2.0],
+          [24,   3, 0.5], [24.5, 7, 0.5], [25, 12, 0.5], [25.5, 15, 1.5],
+          [27,  12, 1.0],
+          [28,   7, 4.0]
+        ];
+
+        /* THE MORNING, AND THE ROAD ON A HORSE. The only wide tune in
+           the chapter: it steps in fourths and fifths instead of seconds,
+           it takes its time, and it goes up at the end of the phrase
+           rather than down, which is the difference between somebody
+           walking away from a thing and somebody walking towards one. */
+        var MORN = [
+          [ 0,   0, 2.0], [ 2,  7, 2.0],
+          [ 4,   7, 2.5], [ 6.5, 5, 1.5],
+          [ 8,  10, 2.0], [10,  7, 2.0],
+          [12,   3, 4.0],
+          [16,   5, 2.0], [18, 12, 2.0],
+          [20,  15, 2.5], [22.5, 14, 1.5],
+          [24,  15, 2.0], [26, 12, 2.0],
+          [28,  14, 2.0], [30, 19, 2.0]
+        ];
+
+        /* A FENCE WITH PEOPLE BEHIND IT. Three notes, repeated at the
+           same place in every bar, like something being processed. It
+           only becomes a phrase in the last two bars, and even then it
+           does not go anywhere. */
+        var FENCE = [
+          [ 0,   0, 1.0], [ 1,  3, 1.0], [ 2,  0, 2.0],
+          [ 4,  -2, 1.0], [ 5,  2, 1.0], [ 6, -2, 2.0],
+          [ 8,   3, 1.0], [ 9,  7, 1.0], [10,  3, 2.0],
+          [12,   0, 1.0], [13, -4, 1.0], [14,  0, 2.0],
+          [16,  -2, 1.0], [17, 2, 1.0], [18, -2, 2.0],
+          [20,   0, 1.0], [21, 3, 1.0], [22,  0, 2.0],
+          [24,   3, 2.0], [26, 0, 2.0],
+          [28,  -2, 2.0], [30, -5, 2.0]
+        ];
+
+        /* THE LAST SCREEN. The only tune in the whole thing written to
+           end. Everything else leans back into its own first bar; this
+           one walks down to the root and stops on it. */
+        var REST = [
+          [ 0,  12, 2.0], [ 2, 10, 2.0],
+          [ 4,   7, 2.5], [ 6.5, 10, 1.5],
+          [ 8,  10, 2.0], [10, 12, 2.0],
+          [12,  12, 4.0],
+          [16,  10, 2.0], [18, 7, 2.0],
+          [20,  12, 2.0], [22, 8, 2.0],
+          [24,  12, 2.0], [26, 8, 2.0],
+          [28,   7, 2.0], [30, 0, 2.0]
+        ];
+
         /* the line underneath it, moving against the tune rather than
            with it, which is what stops a melody sounding like one finger */
         var UNDER = [
@@ -1383,9 +1555,16 @@
            difference between music that is playing and music that is
            going somewhere.
            ============================================================ */
-        var CHORDS_B = [[-4, 0, 3, 7], [-2, 2, 5], [0, 3, 7, 10], [-4, 0, 3, 5],
-                        [-5, -2, 2, 5], [-7, -4, 0], [3, 7, 10], [0, 3, 7, 10]];
-        var ROOTS_B = [-4, -2, 0, -7, -5, -7, 3, 0];
+        /* Fmaj7  G6  Am7  Dm7  Em7  F  Dm7  Cmaj7 — the same eight bars
+           seen from underneath. Every one of them is a seventh or a
+           sixth rather than a plain triad, which is what widens it: with
+           four notes in each chord instead of three there is room for
+           eight different melodies to land on a chord tone in the same
+           bar, and that is the only reason the places below can each
+           have a tune of their own. */
+        var CHORDS_B = [[-4, 0, 3, 7], [-2, 2, 5, 7], [0, 3, 7, 10], [-4, 0, 3, 5],
+                        [-5, -2, 2, 5], [-4, 0, 3], [-7, -4, 0, 3], [3, 7, 10, 2]];
+        var ROOTS_B = [-4, -2, 0, -7, -5, -4, -7, 3];
         var DYNS = [0.80, 1.00, 1.14, 0.88];
 
         function passOf(b) { return Math.floor(b / 32) % 4; }
@@ -1415,6 +1594,8 @@
           return m;
         }
         var TUNE_AT = compile(TUNE), UNDER_AT = compile(UNDER), WARM_AT = compile(WARM);
+        var STREET_AT = compile(STREET), WARD_AT = compile(WARD), ROAD_AT = compile(ROAD);
+        var MORN_AT = compile(MORN), FENCE_AT = compile(FENCE), REST_AT = compile(REST);
 
         /* ---- the instruments ---- */
         function out(g, send) {
@@ -1623,6 +1804,30 @@
             }
           } },
 
+          /* THE CITY, ON FOOT, AT NIGHT.
+             Its own tune, and the tune is two notes a tone apart going
+             nowhere — the shape a thing you are frightened of makes when
+             it will not leave your head. It opens out once, in the
+             seventh bar, and shuts again. Under it a bass that walks in
+             even steps, because she is walking. */
+          streets: { bpm: 62, play: function (b, at, sp) {
+            var d = DYN(b), pass = passOf(b), c = CH(b);
+            if (b % 2 === 0) pulse(hz(RT(b), -2), at, 0.028 * d, sp * 0.7);
+            if (b % 4 === 0) cello(hz(RT(b), -2), at, sp * 4.3, 0.052 * d);
+            if (b % 8 === 4)
+              strings([hz(c[0], -1), hz(c[2], -1)], at, sp * 8, 0.020 * d, 800);
+            line(STREET_AT, b, at, sp, 0, 0.034 * d, function (f, t2, v, dd) {
+              piano(f, t2, v, Math.max(1.8, dd * 1.2));
+            });
+            /* and further in, the same tune underneath itself, a bar
+               behind, which is the sound of not being able to stop */
+            if (pass >= 2)
+              line(STREET_AT, (b + 28) % 32, at, sp, -1, 0.014 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd + sp * 0.4, v, 600);
+              });
+            if (b % 16 === 8) tick(at, 0.012 * d);
+          } },
+
           /* THE HOSPITAL. The same eight bars with the floor taken out:
              no bass at all, two high voices holding a fifth, and the
              first phrase on a music box, once, a long way off. */
@@ -1636,9 +1841,15 @@
                  that hurt */
               if (pass >= 2) strings([hz(c[2] + 7, 0)], at, sp * 9, 0.012 * d, 1400);
             }
-            if (b % 64 === 8)  bell(hz(7, 0), at, 0.028 * d);
-            if (b % 64 === 12) bell(hz(10, 0), at, 0.024 * d);
-            if (b % 64 === 14) bell(hz(12, 0), at, 0.022 * d);
+            /* the ward's own tune: a phrase that reaches and falls back
+               a step further than it climbed, every time */
+            line(WARD_AT, b, at, sp, 0, 0.030 * d, function (f, t2, v) {
+              bell(f, t2, v);
+            });
+            if (pass >= 1)
+              line(WARD_AT, b, at, sp, -1, 0.016 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd + sp * 0.5, v, 700);
+              });
             if (b % 16 === 0) tick(at, 0.010 * d);
           } },
 
@@ -1666,12 +1877,19 @@
                       at, sp * 1.6, (late ? 0.020 : opening ? 0.012 : 0.026) * d, 1800);
             if (late && b % 8 === 0)
               strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 8.6, 0.026 * d, 900);
-            /* her tune, the whole first phrase of it, in the clear */
+            /* THE FIGURE AT THE TOP OF THIS CUE STAYS EXACTLY AS IT IS.
+               It is the first phrase of her tune on a piano with nothing
+               over it, and somebody loves it. Everything else in the cue
+               is the road's own tune, which is a different thing: four
+               notes out, four back, and then the same shape a step lower,
+               at the speed of a road going past. */
             if (opening) line(TUNE_AT, b, at, sp, 0, 0.046 * d, function (f, t2, v, dd) {
               piano(f, t2, v, Math.max(2.2, dd * 1.3));
             });
-            /* and once more, quieter, under the conversation */
-            else if ((b % 64) < 8 && !late) line(TUNE_AT, b % 64, at, sp, 0, 0.026 * d, piano);
+            else if (!late) line(ROAD_AT, b, at, sp, 0, 0.030 * d, piano);
+            else if (pass >= 1) line(ROAD_AT, b, at, sp, -1, 0.016 * d, function (f, t2, v, dd) {
+              strings([f], t2, dd + sp * 0.3, v, 900);
+            });
             /* and then the other one, on a piano, once they start talking */
             if (late) line(WARM_AT, b, at, sp, 0, 0.040 * d, function (f, t2, v, dd) {
               piano(f, t2, v, Math.max(2.0, dd * 1.2));
@@ -1691,10 +1909,10 @@
                it an octave up. Third: the low line comes in under it.
                Fourth: it thins out again and the piano is left holding it. */
             if (pass !== 3)
-              line(TUNE_AT, b, at, sp, 0, 0.034 * d, function (f, t2, v, dd) {
-                strings([f], t2, dd + sp * 0.4, v, 2400);
+              line(MORN_AT, b, at, sp, 0, 0.034 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd + sp * 0.4, v, 2000);
               });
-            if (pass >= 1) line(TUNE_AT, b, at, sp, 1, (pass === 3 ? 0.030 : 0.020) * d, piano);
+            if (pass >= 1) line(MORN_AT, b, at, sp, 0, (pass === 3 ? 0.034 : 0.022) * d, piano);
             if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.026 * d, cello);
           } },
 
@@ -1819,10 +2037,14 @@
               strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.4, 0.026 * d, 1100);
             if (b % 8 === 0) cello(hz(RT(b), -2), at, sp * 8, 0.050 * d);
             tick(at, (b % 4 === 0 ? 0.016 : 0.009) * d);
-            if ((b % 64) >= 32 && (b % 64) < 48)
-              line(TUNE_AT, b, at, sp, 0, 0.022 * d, function (f, t2, v, dd) {
-                strings([f], t2, dd + sp * 0.4, v, 1900);
-              });
+            /* the fence's own three notes, in the same place in every
+               bar, like something being processed */
+            line(FENCE_AT, b, at, sp, 0, 0.024 * d, function (f, t2, v, dd) {
+              strings([f], t2, dd + sp * 0.35, v, 1500);
+            });
+            /* and once, a long way in, four notes of hers underneath it */
+            if ((b % 128) >= 96)
+              line(TUNE_AT, b, at, sp, -1, 0.014 * d, cello);
           } },
 
           /* THE ROOF. All of it: the tune on the piano, the ensemble
@@ -1872,14 +2094,16 @@
               strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 8.6, 0.030 * d, 900);
               cello(hz(RT(b), -2), at, sp * 8.4, 0.055 * d);
             }
-            /* the warm one, halved, high up, one note at a time */
+            /* the tune written to end, halved, high up, one note at a
+               time — the only melody in the chapter that walks down to
+               the root and stops on it */
             if (b % 2 === 0)
-              line(WARM_AT, (b / 2) % 32, at, sp * 2, 1, 0.040 * d, function (f, t2, v) {
+              line(REST_AT, (b / 2) % 32, at, sp * 2, 1, 0.040 * d, function (f, t2, v) {
                 bell(f, t2, v);
               });
-            /* and hers under it, bowed, so that both of them are here */
+            /* and the two of them under it, bowed, so that both are here */
             if (pass >= 1 && b % 2 === 0)
-              line(TUNE_AT, (b / 2) % 32, at, sp * 2, -1, 0.030 * d, cello);
+              line(WARM_AT, (b / 2) % 32, at, sp * 2, -1, 0.028 * d, cello);
             /* the one place in the chapter that comes to rest */
             if (b % 64 === 56) {
               piano(hz(0, 0), at, 0.050 * d, 7.0);
@@ -1953,13 +2177,13 @@
           roof.type = "lowpass"; roof.frequency.value = 5200; roof.Q.value = 0.6;
           var tame = ctx.createBiquadFilter();
           tame.type = "highshelf"; tame.frequency.value = 3000; tame.gain.value = -7;
-          bus.connect(roof); roof.connect(tame); tame.connect(master);
-          bus.gain.setTargetAtTime(mvol, at, rise);
+          bus.connect(roof); roof.connect(tame); tame.connect(musBus);
+          bus.gain.setTargetAtTime(0.9, at, rise);
           /* everything a cue plays goes through this pair, so the whole
              thing rises and falls as one */
           dry = ctx.createGain(); dry.connect(bus);
           wet = ctx.createGain(); wet.gain.value = 1;
-          wet.connect(busVerb);
+          wet.connect(musVerb);
           /* one vibrato for the whole ensemble, or nothing plays together */
           vib = ctx.createOscillator();
           vib.type = "sine"; vib.frequency.value = 4.7;
@@ -1977,6 +2201,22 @@
         function pump() {
           if (!piece || !ctx) return;
           var sp = 60 / piece.bpm;
+          /* BUILDING A LEVEL BLOCKS THE MAIN THREAD FOR SECONDS.
+
+             When it lets go, the clock has moved on but the beat counter
+             has not, and this loop used to schedule every beat it had
+             missed — twenty or thirty of them, all at once, into the next
+             fraction of a second. That is the mess between the horse and
+             the safe house: not a stutter, a whole bar of music played in
+             one go. It skips instead, forward to the next bar line, and
+             carries on from there as if the bars had gone past, because
+             they have. */
+          if (nextAt < ctx.currentTime - 0.35) {
+            var missed = Math.ceil((ctx.currentTime - nextAt) / sp);
+            beat += missed;
+            beat += (4 - (beat % 4)) % 4;             /* land on a bar */
+            nextAt = ctx.currentTime + 0.08;
+          }
           while (nextAt < ctx.currentTime + 1.2) {
             if (nextAt < ctx.currentTime) nextAt = ctx.currentTime + 0.05;
             /* A CHANGE THAT IS COMING SHOULD SOUND LIKE ONE.
@@ -2098,9 +2338,12 @@
            somebody who wants to hear the footsteps in the dark may not
            want a piano over them */
         setPiece.volume = function (v) {
-          mvol = clamp(v == null ? 0.9 : v, 0, 1) ;
-          if (bus && ctx) {
-            try { bus.gain.setTargetAtTime(mvol, ctx.currentTime, 0.25); } catch (e) {}
+          mvol = clamp(v == null ? 0.9 : v, 0, 1);
+          /* the cue's own fader stays where the cue put it; the slider
+             moves the whole music side, which is the only thing that
+             makes it independent of the sound slider */
+          if (musBus && ctx) {
+            try { musBus.gain.setTargetAtTime(mvol / 0.9, ctx.currentTime, 0.2); } catch (e) {}
           }
         };
         setPiece.volumeOf = function () { return mvol; };
@@ -9740,6 +9983,7 @@
 
     Audio_.bed(def.theme);
     dangerHold = 0; dangerCue = null; moodCue = null; moodT = 0;
+    G.onLine = null;
     /* ---- what is playing ----
        The place sets the floor of it; from here on updateScore decides,
        every frame, from what is actually happening to her. */
@@ -10443,11 +10687,19 @@
        reaches here is a press on a button, which is the gesture a browser
        wants before it will make a sound, so turning it back on is allowed
        to be done from here. */
-    Audio_.level(SETTINGS.vol);
-    Audio_.score.volume(SETTINGS.musicVol);
-    if (!SETTINGS.sound) Audio_.end();
+    /* Two sliders, two things. The sound one moves the doors and the
+       footsteps and the room tone; the music one moves the score. Neither
+       can silence the other, which is what "each one has to serve its own
+       cause" means and what the old wiring got wrong: everything hung off
+       one gain, and the music switch was told to turn itself off if the
+       sound was off. */
+    Audio_.level(SETTINGS.sound ? SETTINGS.vol : 0);
+    Audio_.score.volume(SETTINGS.music ? SETTINGS.musicVol : 0);
+    Audio_.score.mute(!SETTINGS.music || SETTINGS.musicVol <= 0);
+    /* the master is only the chapter being on at all: it goes down when
+       BOTH of them are down, and not before */
+    if (!SETTINGS.sound && !SETTINGS.music) Audio_.end();
     else if (Audio_.everStarted()) { Audio_.begin(); Audio_.resume(); }
-    Audio_.score.mute(!SETTINGS.music || !SETTINGS.sound || SETTINGS.musicVol <= 0);
     /* quality: auto lets the ladder do its work, the other two pin it */
     if (Stage.renderer) {
       if (SETTINGS.quality === "crisp") { perfPin = 0; perfStep(0, 4); }
@@ -10575,6 +10827,27 @@
     /* if a cut is holding underneath this, its caption stands down */
     drawCaption();
     if (!quiet && speaker) Audio_.beep();
+    /* A SCENE CAN ASK TO BE TOLD WHEN A PARTICULAR LINE GOES BY.
+
+       Two things used to do this with a setInterval polling the
+       conversation a dozen times a second — the moment he says "come
+       here" on the roof, and the moment she goes to tie the mare up at
+       the camp. That works, and it is wrong: it hangs a story beat off
+       the wall clock, so it fires late on a slow frame, not at all if
+       the conversation is skipped in one go, and it cannot be tested
+       without waiting in real time for it. The line itself says when. */
+    if (G.onLine) { try { G.onLine(line, d.i - 1); } catch (e) {} }
+  }
+
+  /* say when this line goes past, and stop listening afterwards */
+  function whenLine(text, then) {
+    var prev = G.onLine;
+    G.onLine = function (line, i) {
+      if (prev) prev(line, i);
+      if (!line || line[1] !== text) return;
+      G.onLine = prev || null;
+      then();
+    };
   }
 
   /* ---- the close call ---- */
@@ -12154,7 +12427,7 @@
       "A bottle of water, still cold. She drinks half of it and puts the rest in her coat.",
       "Somebody's keys. She puts them down again.",
       "Batteries. She swaps them into the torch and the beam comes back up.",
-      "A phone with no signal and eleven percent left. She takes it anyway.",
+      "Somebody's phone, dead, on a windowsill. She looks at it for a second and puts it back.",
       "A packet of biscuits. She eats two of them standing up."
     ];
     say([[null, pick(lines)]]);
@@ -12673,19 +12946,36 @@
       { z:  -52, amp: 17, rough: 1.10, haze: 0.11, trees: 180, ts: 2.0 }
     ];
 
+    /* LAND THAT CAN BE TILED.
+
+       The four octaves used to be at 3.1, 7.7, 17.3 and 41 radians across
+       the span, which is half a cycle, one and a bit, two and three
+       quarters and six and a half — so the left-hand end of the ridge and
+       the right-hand end were nothing like each other and the whole thing
+       could only ever be looked at once. That is why the car ran off the
+       end of the world: the drive is as long as the conversation, and the
+       conversation got longer.
+
+       Whole numbers of cycles, and the profile at one end is the profile
+       at the other. The group can then be moved by exactly one span
+       whenever the car has travelled one, and there is no seam to see —
+       which is what makes the road infinite. */
+    var LAND_SPAN = 2600;
+    var group = new THREE.Group();
     var built = null;
     LAYERS.forEach(function (L, li) {
-      var span = 2600, N = 200;
+      var span = LAND_SPAN, N = 208;
       var seed = li * 37.1;
+      var TAU = Math.PI * 2;
       var pts = [];
       for (var i = 0; i <= N; i++) {
         var u = i / N, x = -span / 2 + u * span;
         /* four octaves: the shape of the land, then the shape of what is
-           on it */
-        var y = Math.sin(u * 3.1 + seed) * L.amp * 0.52
-              + Math.sin(u * 7.7 + seed * 1.7) * L.amp * 0.26
-              + Math.sin(u * 17.3 + seed * 2.3) * L.amp * 0.13 * L.rough
-              + Math.sin(u * 41.0 + seed * 3.1) * L.amp * 0.06 * L.rough;
+           on it — one, two, five and thirteen cycles across the span */
+        var y = Math.sin(u * TAU * 1 + seed) * L.amp * 0.52
+              + Math.sin(u * TAU * 2 + seed * 1.7) * L.amp * 0.26
+              + Math.sin(u * TAU * 5 + seed * 2.3) * L.amp * 0.13 * L.rough
+              + Math.sin(u * TAU * 13 + seed * 3.1) * L.amp * 0.06 * L.rough;
         pts.push(new THREE.Vector2(x, y - 6));
       }
 
@@ -12723,7 +13013,7 @@
         vertexColors: true, fog: false }));
       m.position.z = L.z;
       m.renderOrder = -600 + li;
-      scene.add(m);
+      group.add(m);
 
       /* what grows on it, at the scale that layer is at, in that layer's
          haze — a treeline four hundred metres off is not the same black as
@@ -12767,7 +13057,7 @@
       }
       im.renderOrder = -600 + li;
       im.frustumCulled = false;
-      scene.add(im);
+      group.add(im);
       built = im;
     });
 
@@ -12784,7 +13074,12 @@
     /* standing on the far ridge, not floating over it */
     mast.position.set(rnd(-260, 320), -26, -196);
     mast.renderOrder = -594;
-    scene.add(mast);
+    group.add(mast);
+    scene.add(group);
+    /* the cut moves this by exactly one span whenever the thing it is
+       following has travelled one, and nothing in it can run out */
+    group.userData.span = LAND_SPAN;
+    scene.userData.land = group;
 
     /* and cloud, in bands, because a gradient with nothing in it is a wall
        of paint however well graded it is */
@@ -13029,7 +13324,7 @@
     var poles = new THREE.InstancedMesh(poleG, poleM, 46);
     var arms = new THREE.InstancedMesh(new THREE.BoxGeometry(0.14, 0.14, 2.2), poleM, 46);
     for (var k = 0; k < 46; k++) {
-      d.position.set(-600 + k * 34, 0, 13.5); d.rotation.set(0, 0, 0); d.scale.setScalar(1);
+      d.position.set(-612 + k * 36, 0, 13.5); d.rotation.set(0, 0, 0); d.scale.setScalar(1);
       d.updateMatrix(); poles.setMatrixAt(k, d.matrix);
       d.position.y = 8.2; d.updateMatrix(); arms.setMatrixAt(k, d.matrix);
     }
@@ -13044,7 +13339,33 @@
     }
     g.add(fence);
     scene.add(g);
+    /* A ROAD THAT DOES NOT RUN OUT.
+
+       Everything repeated along this strip is now on a spacing that
+       divides three hundred and sixty: the dashes every nine, the marker
+       posts every twenty, the poles every thirty-six, the fence every
+       six. So the whole group can be picked up and put down three
+       hundred and sixty metres further on the moment the car has driven
+       that far, and every single thing in it lands exactly where an
+       identical one already was. There is nothing to see, and the road
+       is as long as the conversation needs it to be. */
+    g.userData.span = 360;
+    scene.userData.road = g;
     return g;
+  }
+
+  /* move the ground under a cut so the cut can last as long as it likes */
+  function keepRolling(scene, x) {
+    if (!scene || !scene.userData) return;
+    var land = scene.userData.land, road = scene.userData.road;
+    if (land) {
+      var ls = land.userData.span;
+      land.position.x = Math.round(x / ls) * ls;
+    }
+    if (road) {
+      var rs = road.userData.span;
+      road.position.x = Math.round(x / rs) * rs;
+    }
   }
 
   /* ---- THE DRIVE ---- */
@@ -13173,7 +13494,7 @@
         [6.2,  "ANWAR",  "You didn't tell anybody you were coming."],
         [9.6,  "OUISSY", "There wasn't anybody to tell."],
         [13.0, "ANWAR",  "Your mother and father—"],
-        [15.6, "OUISSY", "Azilal. Since Tuesday. The line rings and then it stops ringing."],
+        [15.6, "OUISSY", "Azilal, since Tuesday. I couldn't get through and then my phone died in my hand."],
         [20.4, "ANWAR",  "How bad was the walk."],
         [23.4, "OUISSY", "It was fine."],
         [25.8, "ANWAR",  "Ouissy."],
@@ -13193,6 +13514,7 @@
         else speed = Math.min(34, speed + dt * 4);
 
         car.group.position.x += speed * dt;
+        keepRolling(scene, car.group.position.x);
         car.spin(speed * dt);
         car.group.position.y = Math.sin(t * 9) * 0.012 * (speed / 30);
         car.group.rotation.z = Math.sin(t * 3.1) * 0.006;
@@ -13251,7 +13573,7 @@
         if (steam) steam.userData.update(t, dt);
 
       },
-      duration: 49.5,
+      duration: 52.0,
       done: function () {
         endCine(function () {
           enterSub("roadside");
@@ -13370,6 +13692,7 @@
       update: function (dt, t) {
         var speed = 7.2;
         horse.root.position.x += speed * dt;
+        keepRolling(scene, horse.root.position.x);
         poseHorse(horse, t, 1);
         /* both of them move with it, a beat apart */
         poseRide(her, t, Math.abs(Math.sin(t * 6.4)) * 0.05, true);
@@ -14295,14 +14618,7 @@
     var lines = TALK.roof.slice();
     say(lines, function () { endingCard(); });
     /* the moment he says "Come here" */
-    var watch = setInterval(function () {
-      if (!G || !G.dlg) { clearInterval(watch); return; }
-      var idx = G.dlg.i;
-      if (idx > 0 && G.dlg.lines[idx - 1] && G.dlg.lines[idx - 1][1] === "Come here.") {
-        together = true;
-        clearInterval(watch);
-      }
-    }, 120);
+    whenLine("Come here.", function () { together = true; });
   }
 
   /* =========================================================
@@ -14377,17 +14693,78 @@
     G.anwar.x = w.cx(9); G.anwar.z = w.cz(12);
     G.anwar.rig.root.position.set(G.anwar.x, 0, G.anwar.z);
     G.anwar.rig.root.rotation.y = -Math.PI / 2;
+    /* THEY ARRIVED ON THE HORSE, SO THE HORSE IS HERE.
+
+       It used to be parked fifteen tiles away across the clearing, which
+       is off the side of the screen: you got off something at the end of
+       the last scene and it was simply gone. It stands where they got
+       down off it now, a couple of paces from her, and part way through
+       the conversation she walks it over to the tree at the edge of the
+       clearing and ties it there — which is the thing anybody who has
+       just ridden forty kilometres does before they sit down. */
     var h = buildHorse();
     G.scene.add(h.root);
-    h.root.position.set(w.cx(20), 0, w.cz(6));
-    h.root.rotation.y = 2.2;
+    h.root.position.set(w.cx(7), 0, w.cz(13));
+    h.root.rotation.y = 1.1;
     G.horseRig = h;
+    G.horseTied = false;
     G.wood = 0;
     G.state = "dialogue";
+    tieUpTheHorse();
     say(TALK.arrival, function () {
+      /* If the player taps through the conversation faster than she can
+         walk, the walk is still running when the level hands control
+         back — and it goes on quietly moving her for another three
+         seconds, which drags her off whatever she is standing on. The
+         conversation ending means the beat is over. */
+      if (G.leadFinish) G.leadFinish();
       clearStep("arrival");
       G.anwar.sitting = true;
     });
+  }
+
+  /* ---- she walks it to the tree ----
+     Hung off the line she says rather than off a timer, so it happens
+     when the conversation says it happens however long the player takes
+     over the lines before it. The tree is the one at the western edge of
+     the clearing; she leads, it follows a length behind, and when they
+     get there it stops and stays stopped. */
+  function tieUpTheHorse() {
+    var w = G.world;
+    if (!w || !G.horseRig) return;
+    var TREE = { x: w.cx(2), z: w.cz(14) };
+    whenLine("Let me get her sorted first.", function () { leadHer(TREE); });
+  }
+
+  function leadHer(to) {
+    var h = G.horseRig, p = G.player;
+    if (!h || !p) return;
+    /* she walks; the horse comes with her a length behind; his standing
+       animation carries on doing whatever it was doing */
+    var from = { x: p.x, z: p.z };
+    var t = 0, LEN = 2.6;
+    G.leadFinish = function () { t = 1; if (G.anim) G.anim(0); G.leadFinish = null; };
+    G.anim = function (dt) {
+      t = Math.min(1, t + dt / 3.4);
+      var e = t * t * (3 - 2 * t);
+      p.x = lerp(from.x, to.x + 2.2, e);
+      p.z = lerp(from.z, to.z, e);
+      var a = Math.atan2(to.z - from.z, to.x - from.x);
+      p.turn = -a + Math.PI / 2;
+      p.gait = t < 1 ? 1 : 0;
+      p.stepPhase += dt * 6;
+      var back = Math.max(0, e - 0.10);
+      h.root.position.x = lerp(from.x, to.x + 2.2, back) - Math.cos(a) * LEN;
+      h.root.position.z = lerp(from.z, to.z, back) - Math.sin(a) * LEN;
+      h.root.rotation.y = -a + Math.PI / 2;
+      poseHorse(h, G.time, t < 1 ? 1 : 0);
+      if (t >= 1) {
+        G.anim = null;
+        G.horseTied = true;
+        /* facing the tree, head down, done for the night */
+        h.root.rotation.y = -a + Math.PI / 2 + 0.4;
+      }
+    };
   }
 
   function endingCard() {
@@ -14642,7 +15019,7 @@
      ========================================================= */
   var CUE_LEVEL = {
     home:     "dread",
-    streets:  "dread",
+    streets:  "streets",
     hospital: "sterile",
     escape:   "sterile",
     roadside: "open",
@@ -15264,6 +15641,15 @@
     window.__apCones = function () { updateCones(); return true; };
     window.__apConeRay = function (x, z, ang) { return coneRay(G.world, x, z, ang); };
     window.__apInYard = function () { return inTheYard(); };
+    /* the two sides of the mixer, so a test can prove they are two */
+    window.__apMix = function () { return Audio_.mix(); };
+    window.__apSet = function (k, v) {
+      SETTINGS[k] = v;
+      if (k === "vol") SETTINGS.sound = v > 0;
+      if (k === "musicVol") SETTINGS.music = v > 0;
+      applySettings();
+      return SETTINGS[k];
+    };
     window.__apCaption = function () {
       var c = document.querySelector(".ap-cut-cap");
       return c ? c.textContent : null;

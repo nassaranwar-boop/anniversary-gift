@@ -12,6 +12,9 @@ function grab(name) {
   return eval(src.slice(src.indexOf('[', i), j + 1).replace(/\/\*[\s\S]*?\*\//g, ''));
 }
 const TUNE = grab('TUNE'), UNDER = grab('UNDER'), WARM = grab('WARM');
+/* one tune per place, and every one of them held to the same standard */
+const PLACES = { STREET: grab('STREET'), WARD: grab('WARD'), ROAD: grab('ROAD'),
+                 MORN: grab('MORN'), FENCE: grab('FENCE'), REST: grab('REST') };
 const CHORDS = grab('CHORDS'), ROOTS = grab('ROOTS');
 const CHORDS_B = grab('CHORDS_B'), ROOTS_B = grab('ROOTS_B');
 const DYNS = grab('DYNS');
@@ -20,6 +23,7 @@ let pass = 0, fail = 0;
 const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
                           else { fail++; console.log('  FAIL ' + n + (x ? '  ' + JSON.stringify(x) : '')); } };
 
+const pc = n => ((n % 12) + 12) % 12;
 /* A natural minor: A B C D E F G */
 const SCALE = [0, 2, 3, 5, 7, 8, 10];
 const inScale = n => SCALE.indexOf(((n % 12) + 12) % 12) >= 0;
@@ -108,7 +112,6 @@ ok('and it settles where the first one does not',
    That is only true if every bar of it still contains the note each
    tune lands on, so it is checked exactly the way the first one is —
    and it has to actually be DIFFERENT, or it has bought nothing. */
-const pc = n => ((n % 12) + 12) % 12;
 ok('the second progression is eight bars too', CHORDS_B.length === 8, CHORDS_B.length);
 ok('and has a bass note for each of them', ROOTS_B.length === 8, ROOTS_B.length);
 const bOut = [];
@@ -143,6 +146,46 @@ ok('the four times round are four different weights',
 ok('and none of them is silent or twice as loud as the piece',
    DYNS.every(v => v > 0.5 && v <= 1.25), DYNS);
 
+/* ---- ONE TUNE PER PLACE ----
+   Two melodies over eleven cues is why the whole chapter sounded like
+   one piece of music in eleven hats. There are eight now, and every one
+   of the new ones has to survive exactly what the first two survive:
+   in the key, one note at a time, eight bars with something in each of
+   them, a singable range, and — the hard one — every downbeat landing
+   on a chord tone in BOTH progressions, because that is the only reason
+   any cue can follow any other without the ground moving. */
+const both = [];
+for (let i = 0; i < 8; i++) {
+  const a = new Set(CHORDS[i].map(pc)), b2 = new Set(CHORDS_B[i].map(pc));
+  both.push([...a].filter(n => b2.has(n)));
+}
+ok('every bar has somewhere for a melody to land in both progressions',
+   both.every(x => x.length >= 2), both.map(x => x.length));
+
+for (const [name, mel] of Object.entries(PLACES)) {
+  const outK = mel.filter(([, n]) => !inScale(n)).map(([b, n]) => ({ b, n }));
+  ok(name + ' is in the key', outK.length === 0, outK);
+  const srt = mel.slice().sort((a, b3) => a[0] - b3[0]);
+  let ov = null;
+  for (let i = 1; i < srt.length; i++)
+    if (srt[i][0] < srt[i - 1][0] + srt[i - 1][2] - 1e-9) ov = { a: srt[i - 1], b: srt[i] };
+  ok(name + ' is one note at a time', !ov, ov);
+  ok(name + ' is exactly eight bars',
+     Math.max(...mel.map(([b3, , d]) => b3 + d)) === 32, name);
+  ok(name + ' has something in every bar',
+     new Set(mel.map(([b3]) => Math.floor(b3 / 4))).size === 8, name);
+  const clash = mel.filter(([b3, n]) => b3 % 4 === 0 && both[b3 / 4].indexOf(pc(n)) < 0)
+                   .map(([b3, n]) => ({ beat: b3, note: n }));
+  ok(name + ' lands on a chord tone in both progressions', clash.length === 0, clash);
+  const lo = Math.min(...mel.map(([, n]) => n)), hi = Math.max(...mel.map(([, n]) => n));
+  ok(name + ' stays in a range one voice could sing', hi - lo <= 24, { lo, hi });
+}
+/* and they have to be eight DIFFERENT tunes, not one written out eight times */
+const shapes = Object.entries(PLACES).concat([['TUNE', TUNE], ['WARM', WARM]])
+  .map(([n, m]) => [n, JSON.stringify(m.map(x => x[1]))]);
+const dupes = shapes.filter(([n, sh], i) => shapes.findIndex(o => o[1] === sh) !== i);
+ok('all eight of them are different tunes', dupes.length === 0, dupes.map(d => d[0]));
+
 /* ---- THE CUES ----
    Eleven of them now, and the whole reason any one can follow any other
    without the harmony jumping is that they are all written on the same
@@ -153,12 +196,13 @@ const cueBlock = src.slice(src.indexOf('var PIECES = {'),
                            src.indexOf('function retireBus'));
 const cues = [...cueBlock.matchAll(/^          ([a-z]+): \{ bpm: (\d+)/gm)]
                 .map(m => ({ name: m[1], bpm: Number(m[2]) }));
-const want = ['dread','sterile','drive','open','hearth','hunt','held',
+const want = ['dread','streets','sterile','drive','open','hearth','hunt','held',
               'search','grief','gate','home','after'];
 ok('every cue the game asks for exists',
    want.every(n => cues.some(c => c.name === n)),
    { found: cues.map(c => c.name), want });
-ok('there are twelve of them, not six', cues.length === want.length, cues.length);
+ok('there are thirteen of them, not six', cues.length === want.length, cues.length);
+
 
 /* each one has to take its harmony from the shared progression */
 const bodies = {};
@@ -173,6 +217,12 @@ ok('one of them, and only one, lands on the root',
    /hz\(0, 0\)/.test(bodies.after) &&
    cues.filter(c => /piano\(hz\(0, 0\)/.test(bodies[c.name])).length === 1,
    cues.filter(c => /piano\(hz\(0, 0\)/.test(bodies[c.name])).map(c => c.name));
+
+/* and the places play their own tune rather than all sharing hers */
+const OWN = { streets: 'STREET_AT', sterile: 'WARD_AT', drive: 'ROAD_AT',
+              open: 'MORN_AT', gate: 'FENCE_AT', after: 'REST_AT' };
+const borrowed = Object.keys(OWN).filter(k => !bodies[k] || bodies[k].indexOf(OWN[k]) < 0);
+ok('and each place plays the tune written for it', borrowed.length === 0, borrowed);
 
 const rogue = cues.filter(c => !/RT\(b|CH\(b/.test(bodies[c.name]));
 ok('and every one of them sits on the shared eight bars',

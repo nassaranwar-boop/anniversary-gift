@@ -97,14 +97,14 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
     const afterMood = window.__apScoreWant();
     return { calm, chased, justAfter, settled, hiding, mood, afterMood };
   });
-  ok('a street with nothing on it plays the street', drive.calm === 'dread', drive);
+  ok('a street with nothing on it plays the street', drive.calm === 'streets', drive);
   ok('being seen changes the music', drive.chased === 'hunt', drive);
   ok('and it does not stop the instant they lose her',
      drive.justAfter === 'hunt', drive);
-  ok('but it does let go afterwards', drive.settled === 'dread', drive);
+  ok('but it does let go afterwards', drive.settled === 'streets', drive);
   ok('hiding while something looks is its own cue', drive.hiding === 'held', drive);
   ok('a scene with its own feeling gets it', drive.mood === 'grief', drive);
-  ok('and gives it back when it is over', drive.afterMood === 'dread', drive);
+  ok('and gives it back when it is over', drive.afterMood === 'streets', drive);
 
   /* the change itself: it lands on a bar line and the count carries */
   const joinInfo = await p.evaluate(async () => {
