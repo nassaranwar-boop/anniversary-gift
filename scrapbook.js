@@ -557,7 +557,18 @@ window.Scrapbook = (function () {
   function bandedHue(photoHue, heavy) {
     /* the photos are cleanly of two kinds -- amber, or club violet */
     var violet = (photoHue > 240 && photoHue < 340);
-    if (violet) return heavy ? 316 : 288;
+    if (violet) {
+      /* 288 is a blue-violet, and the page before these is a rose at 340 --
+         a fifty degree jump, which is why arriving at the last two pages
+         felt like walking into a different book. Orchid sits between the
+         two: still unmistakably the violet end, still true to the club
+         light in those photographs, but close enough to rose that the book
+         turns onto it rather than cutting to it. The two pages take
+         slightly different places in that band so they are not a flat
+         repeat -- the deeper one last. */
+      var v = Math.max(0, Math.min(1, (photoHue - 270) / 15));
+      return heavy ? (318 + v * 8) : (304 + v * 12);
+    }
     /* 6deg is the reddest of them, 30 the most golden */
     var warmth = Math.max(0, Math.min(1, (photoHue - 6) / 24));
     return heavy ? (358 - warmth * 20)      /* coral rose -> deeper rose */
@@ -1624,6 +1635,12 @@ window.Scrapbook = (function () {
       { k: "patch", paper: "blush", left: 50, top: 74, w: 50, h: 32, rot: 3 },
       { k: "sticker", art: "flowers", left: 62, top: 72, w: 34, rot: 4 },
       { k: "sticker", art: "starG", left: 52, top: 80, w: 10, rot: 20 },
+      /* the club night: a record, a kiss, and a scatter of small stars.
+         The grid ran empty down the left below the photobooth strip. */
+      { k: "sticker", art: "vinylLtd", left: -12, top: 62, w: 34, rot: 0 },
+      { k: "sticker", art: "lipInk",   left: 2,  top: 88, w: 22, rot: 12 },
+      { k: "sticker", art: "starD",    left: 30, top: 26, w: 13, rot: -18 },
+      { k: "sticker", art: "starS",    left: 92, top: 44, w: 14, rot: 10 },
     ]},
 
     /* ---- 10 · a video of us -------------------------------------- */
@@ -1635,6 +1652,11 @@ window.Scrapbook = (function () {
       { k: "sticker", art: "starG",   left: -5, top: 16, w: 20, rot: -10 },
       { k: "sticker", art: "starS",   left: 88, top: 76, w: 18, rot: 12 },
       { k: "sticker", art: "rose",    left: -8, top: 74, w: 26, rot: 6 },
+      /* the closing page. Flowers over the top corner and a last kiss under
+         the clip, so the book ends dressed rather than trailing off. */
+      { k: "sticker", art: "flowers", left: 66, top: -6, w: 30, rot: 8 },
+      { k: "sticker", art: "lipInk",  left: 74, top: 90, w: 22, rot: -10 },
+      { k: "sticker", art: "starD",   left: 6,  top: 4,  w: 14, rot: 16 },
     ]},
   ];
 
@@ -3599,7 +3621,18 @@ window.Scrapbook = (function () {
      leading edge and finish after it, and everything hanging over either
      side rides round with the sheet it is stuck to, which is what it does
      on a real page. */
-  var BLEED = 22;          /* % of the page width, each side */
+  var BLEED = 22;          /* % of the page width, left and right */
+
+  /* And the same again vertically, which I missed the first time. He found
+     it: "when turning page six, a sticker in the top corner slips."
+
+     Four pieces in the book sit above the top edge or below the bottom of
+     their page -- page six's newsprint patch is at top:-3 -- and the strips
+     were exactly the page's height, so the part above the edge was sliced
+     off the moment the turn started, exactly as the overhanging sides used
+     to be. Less of it shows than at the sides, which is why it reads as the
+     corner slipping rather than something disappearing. */
+  var VBLEED = 14;         /* % of the page height, top and bottom */
 
   function buildStripFragment(pageNode, hingeRight) {
     if (!pageNode) return null;
@@ -3610,6 +3643,10 @@ window.Scrapbook = (function () {
     for (var i = 0; i < STRIPS; i++) {
       var startPct = -BLEED + i * d;       /* where this strip begins */
       var strip = el("sb-strip");
+      /* taller than the page, so nothing hanging over the top or the
+         bottom edge is cut off as the sheet goes over */
+      strip.style.top = -VBLEED + "%";
+      strip.style.height = (100 + VBLEED * 2) + "%";
       /* The overlap has to cover the kink at every joint, and how big that
          kink is depends on how hard the sheet is bent. Without it the
          joins open into gaps you can see the page through and the sheet
@@ -3623,6 +3660,10 @@ window.Scrapbook = (function () {
          onto its own slice of it -- including the slices outside the page */
       inner.style.width = (100 / d * 100).toFixed(3) + "%";
       inner.style[hingeRight ? "right" : "left"] = (-startPct / d * 100).toFixed(3) + "%";
+      /* and put the page back in the middle of the now-taller strip */
+      var vspan = 100 + VBLEED * 2;
+      inner.style.top = (VBLEED / vspan * 100).toFixed(3) + "%";
+      inner.style.height = (100 / vspan * 100).toFixed(3) + "%";
 
       var clone = pageNode.cloneNode(true);
       clone.classList.add("in-leaf", "on");

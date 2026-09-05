@@ -13,9 +13,9 @@ const { chromium } = require('playwright-core'); const fs=require('fs');
   await p.evaluate(async()=>{ window.skipBookIntro&&window.skipBookIntro(); showScreen('scrapbook'); Scrapbook.start();
     await new Promise(r=>setTimeout(r,1200)); const i=document.querySelector('.sb-intro'); if(i) i.click();
     await new Promise(r=>setTimeout(r,2400)); });
-  for (let k=0;k<3;k++){ await p.evaluate(()=>Scrapbook.next()); await p.waitForTimeout(1400); }
+  for (let k=0;k<(Number(process.argv[3])||3);k++){ await p.evaluate(()=>Scrapbook.next()); await p.waitForTimeout(1400); }
   // hold the turn open at fixed progress values
-  const stops=[0.12,0.30,0.45,0.60,0.78,0.92];
+  const stops=[0.10,0.22,0.36,0.52];
   for (const v of stops) {
     await p.evaluate((v)=>{ Scrapbook.__holdTurn(1, v); }, v);
     await p.waitForTimeout(160);
