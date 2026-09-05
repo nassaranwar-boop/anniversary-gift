@@ -295,10 +295,33 @@ const need = (name, cond, extra) => {
   log('level 4 done');
 
   // ---- Level 5: the protocol --------------------------------------------
-  await walkTo(13, 13); await use();
+  /* Read the gate and the table off the grid rather than naming tiles:
+     the road up to the safe house was rebuilt and two hard-coded
+     coordinates walked her into a fence for four hundred seconds. */
+  const g5 = await p.evaluate(() => {
+    const w = window.Apocalypse.game.world, sp = w.spawn;
+    let gate = null, gd = 1e9, desk = null;
+    for (let y = 0; y < w.h; y++) for (let x = 0; x < w.w; x++) {
+      const c = w.at(x, y);
+      if (c === 'G') { const d = Math.hypot(x - sp.x, y - sp.y); if (d < gd) { gd = d; gate = { x, y }; } }
+      if (c === 'Q') desk = { x, y };
+    }
+    const spot = t => {
+      let best = null, bd = 1e9;
+      for (const d of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const x = t.x + d[0], y = t.y + d[1], c = w.at(x, y);
+        if (c === ' ' || window.__apSolid(c)) continue;
+        const q = Math.hypot(x - sp.x, y - sp.y);
+        if (q < bd) { bd = q; best = { x, y }; }
+      }
+      return best || t;
+    };
+    return { gate: spot(gate), desk: spot(desk) };
+  });
+  await walkTo(g5.gate.x, g5.gate.y, 26); await use();
   await talk();
   need('they let her hail them', await waitFor(s => s.step === 'check'));
-  await walkTo(20, 11); await use();
+  await walkTo(g5.desk.x, g5.desk.y, 26); await use();
   need('the intake sheet is up', await p.$('.ap-check-list') !== null);
   await p.evaluate(() => window.__apCheck()); await pump(30);
   need('the serum comes next', await waitSel('.ap-serum-canvas'));

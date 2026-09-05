@@ -18,7 +18,7 @@ const SOLID = constOf(/var SOLID\s*=\s*"([^"]*)"/).replace(/ /g, '');
 const OPAQUE = constOf(/var OPAQUE\s*=\s*"([^"]*)"/);
 const HIDE = constOf(/var HIDE\s*=\s*"([^"]*)"/);
 /* the game decides walkability by "not in SOLID", so this does too */
-const EXTRA = '.,y '; 
+const EXTRA = '.,y -'; /* "-" is the carriageway */
 
 const NAMES = ['home', 'streets', 'hospital', 'escape', 'roadside', 'campsite', 'gates'];
 let fails = 0, warns = 0;

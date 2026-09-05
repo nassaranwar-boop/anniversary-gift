@@ -77,6 +77,7 @@
        space  outside the map          l  floor lamp (walkable)
        .      floor                    L  lamp post (solid)
        ,      outdoor ground           G  gate
+       -      carriageway              +  wire fence
        #      wall                     Q  quarantine desk
        o      tall — blocks sight      v  window
        =      low — sight passes over  B  bed
@@ -214,38 +215,55 @@
     "####################################"
   ];
 
+  /* THE LANE THE CAR DIED ON.
+     It used to be a paved yard inside a ring of wall, which the level
+     builder turned into a four-storey terrace: the two of them had
+     driven eighty kilometres out of the city and arrived in a courtyard.
+     The camera in this game never turns: north is always away. So the
+     lane runs north, out of both ends of the map and away over the fall
+     of the ground with the poles going with it — you stand at the dead
+     car and the road they came up runs off into the dusk in front of
+     you. Hedgerows either side, broken every few metres, a farm gate
+     half way along, and the barn at the end of the track. */
   MAPS.roadside = [
-    "                                                ",
-    "                                                ",
-    "                                                ",
-    "################################################",
-    "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,,.....,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,,.....,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,,.CS..,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,,.....,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,,.....,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,,.....,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,o..l..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,o..h..o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-    "#,o.....oooooooooo..ooooooooooooooooooooo,,,,,,#",
-    "#,o.......l.h............z..h......l.....,,,,,,#",
-    "#,o............z....h.l...........h......,,,,,,#",
-    "#,o.....ooooooooooooooooooooo..oooooooo..,,,,,,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,..,,,,,,#",
-    "#,o...z.o,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,..,,,,,,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,..................,#",
-    "#,o..h..o,,,,,,,,,,,,,,,,,,,...l.........z..h.,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,......####d####...,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,...h..#.......#...,#",
-    "#,o..l..o,,,,,,,,,,,,,,,,,,,......#.==..=.#...,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,......#...H...#h..,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,......#.......#...,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,......#########...,#",
-    "#,o.....o,,,,,,,,,,,,,,,,,,,..h..z.........l..,#",
-    "#,o,,,,,o,,,,,,,,,,,,,,,,,,,..................,#",
-    "################################################"
+    "oooooooooooooooo---ooooooooooooooooo",
+    "o,,,,,,,,,,,,,,o---o,,,,,,,,,,,,,,,o",
+    "o,,,,,,,,,,,,,,o---,,,,,,,,,,,,,,,,o",
+    "o,,,,,,,o,,,,,,,-z-o,,,,,,,,,o,,,,,o",
+    "o,,,,,,,,,,,,,,o---o,,,,,,,,,,,,,,,o",
+    "o,,,,,,,,,,,,,,o---o,,o,,,,,,,,,,,,o",
+    "o,,,o,,,,,,,,,,o---o,,,,,,,,,,,,,,,o",
+    "o,,,,,,,,,,,,,,o-c-o,,,,,,,,,,,,,,,o",
+    "o,,,,,,,,,,,,o,o---,,,,,,,,,,,,,,o,o",
+    "o,,,,,#####,,,,o---o,,,,,,,,,,,,,,,o",
+    "o,,,,,#...#,,,,,---o,,,,#########,,o",
+    "o,,,,,#...#,,,,o--zo,,,,#.=.....#,,o",
+    "o,,,,,##.##,,,,o---o,,,,#.......#,,o",
+    "o,,,,,,,,,,,,,,o---o,,,,#...H...#,,o",
+    "o,,,,,,,,,,,,,,o---,,,,,#.......#,,o",
+    "o,,,,,,,,,,,,,,oz--o,,,,#.....=.#,,o",
+    "o,,,,,,,,,,,,,,o---o,,L,####d####L,o",
+    "o,,,,,,h,,,,,,,,---o,.............,o",
+    "o,,,,,,,,,,,,,,o---o,.............,o",
+    "o,,o,,,,,,,,,,,o---............h..,o",
+    "o,,,,z,,,,,,,,,o---........z......,o",
+    "o,,,,,,,,,,,,,,o---o,.............,o",
+    "o,,,,,,,,,,,,,,oh--o,..h..........,o",
+    "o,,,,,,,,,,,,,,o---o,.............,o",
+    "o,,,,,,,,,,,,,,,--co,.............,o",
+    "o,,,h,,,,,,o,,,o---o,,,,,,,,,,,,,,,o",
+    "o,,,,,,,,,,,,,,o--h,,,,,,,,,,,,,,,oo",
+    "o,,,,,,,,,,,,,,o-z-o,,,,,,,,,,,,,,,o",
+    "o,,,,,,,z,,,,,,o---o,,o,,,,,,,,,,,,o",
+    "o,o,,,,,,h,,,,,oc--o,,,,,h,,,,,,,,,o",
+    "o,,,,,,,,,,,,,,o---o,,,,,,,,,,o,,,,o",
+    "o,,,,o,,,,,,,,,,h--o,,,,,,,,,,,,,,,o",
+    "o,,,,,,,,,,h,,,o---,,,,,,,,,,,,,,,,o",
+    "o,,,,,o,,,,,,,,o-S-o,,,,,,,,,,,h,,,o",
+    "o,,,,,,,,,,,,,,o-C-o,,,,,,o,,,,,,,,o",
+    "o,,,,,,,,,,,o,,o---o,,,,,,,,,,,,,,,o",
+    "o,,,,,,,,,,,,,,o---o,,,,,,,,,,,,,,,o",
+    "oooooooooooooooo---ooooooooooooooooo"
   ];
 
   MAPS.campsite = [
@@ -270,30 +288,52 @@
     ",,,,,,,,,,,,,,,,,,,,,o,,,,,,,"
   ];
 
+  /* THE SAFE HOUSE, WHICH IS A FENCE WITH A CAMP BEHIND IT.
+     Same problem, worse: she used to arrive with her nose against a
+     blank six-storey wall, and the "fences" round the compound were
+     buildings too. The road comes up the hill out of the south now and
+     stops at the outer gate, with the camp behind the wire above it —
+     which is what the ride in says you can see: the road lifts, and at
+     the top of it there is a fence. */
   MAPS.gates = [
-    "                                    ",
-    "                                    ",
-    "                                    ",
-    "####################################",
-    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-    "#,,,,,,,,,,,,,#..........#....L....#",
-    "#,,,,,,,,,,,,,#.L......L.#.L####.L.#",
-    "#,,,,,,,,,,,,,#....===...#..####...#",
-    "#,,,h,,,,,,,,,#.....Q....#.........#",
-    "#.............#.L........#.........#",
-    "#S............G..........G......X..#",
-    "#.............#........L.#.........#",
-    "#,,,,,h,,h,,,,#..........#.........#",
-    "#,,,,,,,,,,,,,#..======..#..####...#",
-    "#,,,,,,,,,,,,,#.L......L.#.L####.L.#",
-    "#,,,,,,,,,,,,,#..........#.........#",
-    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-    "#,,,,,,,,,,,,,#,,,,,,,,,,#,,,,,,,,,#",
-    "####################################"
+    ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
+    ",,,,++++++++++++++++++++++++++,,,,",
+    ",,,,+........................+,,,,",
+    ",,,,+...........X............+,,,,",
+    ",,,,+..###..###....###..###..+,,,,",
+    ",o,,+..###..###....###..###..+,,,,",
+    ",,,,+..###..###....###..###..+,o,,",
+    ",,,,+........................+,,,,",
+    ",,,,+.L.........L..........L.+,,,,",
+    ",,,,+........................+,,,,",
+    ",,,,+++++++++++GGG++++++++++++,,,,",
+    ",,,,+........................+,,,,",
+    ",,,,+.L....................L.+,,,,",
+    ",,,,+...=====................+,,o,",
+    ",,o,+........Q...............+,,,,",
+    ",,,,+...............=====....+,,,,",
+    ",,,,+.L....................L.+,,,,",
+    ",,,,+...............c........+,,,,",
+    ",,,,+++++++++++GGG++++++++++++,,,,",
+    ",,,,,,,,,,,,,,,---,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,---,,,,,,,,,,,,,o,,",
+    ",,,,,,,,,,,,o,,---,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,---,,,,,,,,,,,,,,,,",
+    ",,,o,,,,,,,,,,,---,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,c,---,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,---,,,o,,,,,,,,o,,,",
+    ",,,,,,,,,,,h,,,-S-,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,H---,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,o,,,,,---,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,---,c,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,---,,,,h,,,,,o,,,,,",
+    ",,,,,,,,,,,,,,,---,,,,,,,,,,,,,,,,",
+    ",,o,,,,,,,,,,,,---,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,,---,,,,,,,,,,,,,,,,",
+    ",,,,,,,,,,,,,,c---,,,,,,,,,,,,,,,,",
+    ",,,,,,,o,,,,,,,---,,,,,,o,,,,,,,,,",
+    ",,,,,,,,,,,,,,,---,,,,,,,,,,,,,,,,"
   ];
 
   /* =========================================================
@@ -454,23 +494,26 @@
       id: "gates", name: "THE SAFE HOUSE", card: "Level 5: THE SAFE HOUSE",
       blurb: "Essaouira, and a fence round it. They only take you if you're clean.",
       map: MAPS.gates, theme: "road", base: ",", dark: 0.28, floorTex: "pave",
+      /* the road they rode up, running back down the hill behind her */
+      horizon: true, rise: 1,
+      approach: [{ side: "s", x0: 15, x1: 17 }],
       people: [
         /* the two on the outer gate, watching the road she comes up */
-        { kind: "guard", x: 15, y: 12, face: Math.PI },
-        { kind: "guard", x: 15, y: 14, face: Math.PI },
+        { kind: "guard", x: 14, y: 18, face: Math.PI / 2 },
+        { kind: "guard", x: 18, y: 18, face: Math.PI / 2 },
         /* the one at the table, who will look at both of them */
-        { kind: "guard", x: 20, y: 12, face: Math.PI / 2 },
+        { kind: "guard", x: 13, y: 16, face: -Math.PI / 2 },
         /* and the one on the inner gate, who opens it */
-        { kind: "guard", x: 24, y: 14, face: Math.PI },
+        { kind: "guard", x: 16, y: 12, face: Math.PI / 2 },
         /* everybody who got here first */
-        { kind: "civil", x: 17, y: 16, face: 0.6, pace: 1 },
-        { kind: "civil", x: 18, y: 17, face: -0.4 },
-        { kind: "civil", x: 22, y: 16, face: 2.4 },
-        { kind: "civil", x: 21, y: 9, face: 1.9, pace: 1 },
-        { kind: "civil", x: 17, y: 9, face: 0.2 },
-        { kind: "civil", x: 23, y: 10, face: 3.0 },
-        { kind: "civil", x: 28, y: 12, face: Math.PI },
-        { kind: "civil", x: 30, y: 15, face: 2.0, pace: 1 }
+        { kind: "civil", x: 8, y: 16, face: 0.6, pace: 1 },
+        { kind: "civil", x: 22, y: 13, face: -0.4 },
+        { kind: "civil", x: 25, y: 17, face: 2.4 },
+        { kind: "civil", x: 10, y: 9, face: 1.9, pace: 1 },
+        { kind: "civil", x: 16, y: 8, face: 0.2 },
+        { kind: "civil", x: 22, y: 9, face: 3.0 },
+        { kind: "civil", x: 26, y: 4, face: Math.PI },
+        { kind: "civil", x: 7, y: 4, face: 2.0, pace: 1 }
       ],
       grade: [255, 214, 150, 0.17], haze: [178, 186, 196, 0.14],
       steps: [
@@ -487,7 +530,10 @@
          It was landing them on a road in broad daylight, which threw the
          whole night away — the morning belongs to the horse. */
       id: "roadside", name: "THE ROAD", map: MAPS.roadside, theme: "road",
-      base: ",", dark: 0.70, horizon: true, light: "lane",
+      base: ",", dark: 0.70, horizon: true, light: "lane", rise: 1,
+      /* out of both ends of the map: they came up it, and it carries on
+         without them */
+      approach: [{ side: "n", x0: 16, x1: 18 }, { side: "s", x0: 16, x1: 18 }],
       grade: [70, 88, 150, 0.20], haze: [40, 52, 86, 0.30],
       steps: [
         { task: "The tank is dry. There is a barn up the lane — the compass knows where.", clears: "horse" }
@@ -898,8 +944,8 @@
     ["ANWAR", "That is a good place to be."],
     ["OUISSY", "It is the best place to be. Nothing has ever happened in Azilal."],
     SIL,
-    ["ANWAR", "Mine went up to Safi on the Sunday. That is two hours from here, along the water."],
-    ["OUISSY", "Then that is where we go first. Safi, then Azilal."],
+    ["ANWAR", "Mine went down to Agadir on the Sunday. That is three hours from here, straight down the coast."],
+    ["OUISSY", "Then that is where we go first. Agadir, then Azilal."],
     ["ANWAR", "Yours are further."],
     ["OUISSY", "Yours are closer. We go to the close one first. That is not a discussion."],
     SIL,
@@ -6498,7 +6544,9 @@
      ========================================================= */
   /* 1 is the torch on the worktop, and it sits directly beside the fridge
      so that the one errand leads your eye straight to the other */
-  var SOLID  = "#ovLKcYfB=FnuQwG~T C H W D d P V k E t e O s R Z m M J U p".replace(/ /g, "");
+  var SOLID  = "#ovLKcYfB=FnuQwG~T C H W D d P V k E t e O s R Z m M J U p +".replace(/ /g, "");
+  /* Wire is not a wall: you can see the camp through the fence, and the
+     fence is the whole reason the camp reads as a camp. */
   var OPAQUE = "#ovLcYfGH~kJMU";             /* stops sight as well as feet */
   var HIDE   = "hj";
 
@@ -6737,6 +6785,21 @@
       ? surface("asphalt", { size: 512, roughMap: "asphaltR", rough: 1.0,
                              metal: 0.05, bumpScale: 0.06, envInt: 1.6 })
       : surface(groundTex, { size: 512, rough: 0.97, bumpScale: 0.16, envInt: 0.5 });
+    /* A CARRIAGEWAY IS NOT A FIELD WITH LINES PAINTED ON IT.
+       The road markings used to be laid on any run of open ground two
+       tiles wide, and outside the city open ground is grass — so the
+       lane out of Marrakech and the hill up to the safe house both had
+       white dashes scattered across the fields and no road anywhere.
+       "-" is the carriageway now: its own surface, its own material,
+       and the only thing that gets painted. */
+    var hasRoad = false;
+    for (var rq = 0; rq < H && !hasRoad; rq++) {
+      if (cells[rq].indexOf("-") >= 0) hasRoad = true;
+    }
+    var matRoad = !hasRoad ? matGround
+                : groundTex === "asphalt" ? matGround
+                : surface("asphalt", { size: 512, roughMap: "asphaltR", rough: 1.0,
+                                       metal: 0.05, bumpScale: 0.06, envInt: 1.6 });
     var matWall   = surface(def.theme === "street" ? "brick"
                           : def.theme === "hospital" ? "block" : "plaster",
                             { size: 512, rough: 0.9, bumpScale: 0.26, envInt: 0.35 });
@@ -6765,6 +6828,31 @@
       color: 0xffd8a0, roughness: 0.4, metalness: 0,
       emissive: new THREE.Color(0xffb867), emissiveIntensity: 1.5, toneMapped: true });
     var winFrameMat = surface("metal", { size: 256, rough: 0.6, metal: 0.5, tint: 0x59524a, envInt: 1.0 });
+
+    /* CHAIN LINK, PAINTED ONCE.
+       Two sets of diagonals on a transparent ground, punched out with an
+       alpha test rather than blended, so it sorts against everything
+       behind it without a single transparency artefact. */
+    function wireTexture() {
+      if (TEX.__wire) return TEX.__wire;
+      var SW = 64, cw = canvas2d(SW), wx = cw.x;
+      wx.clearRect(0, 0, SW, SW);
+      wx.lineCap = "square";
+      for (var pass = 0; pass < 2; pass++) {
+        wx.strokeStyle = pass ? "rgba(232,236,240,0.98)" : "rgba(150,156,164,0.98)";
+        wx.lineWidth = pass ? 2.0 : 3.4;
+        for (var i = -SW; i < SW * 2; i += 16) {
+          wx.beginPath(); wx.moveTo(i, 0); wx.lineTo(i + SW, SW); wx.stroke();
+          wx.beginPath(); wx.moveTo(i, SW); wx.lineTo(i + SW, 0); wx.stroke();
+        }
+      }
+      var wt = new THREE.CanvasTexture(cw.c);
+      wt.wrapS = wt.wrapT = THREE.RepeatWrapping;
+      wt.repeat.set(2, 2);
+      wt.colorSpace = THREE.SRGBColorSpace;
+      TEX.__wire = wt;
+      return wt;
+    }
 
     /* a soot plume, painted once */
     function sootTexture() {
@@ -6843,6 +6931,12 @@
     var B = {
       floor:  new Batch(geo("tileF", function () { return new THREE.BoxGeometry(TILE, 0.30, TILE); }), matFloor, false, true),
       ground: new Batch(geo("tileG", function () { return new THREE.BoxGeometry(TILE, 0.30, TILE); }), matGround, false, true),
+      road:   new Batch(geo("tileR", function () { return new THREE.BoxGeometry(TILE, 0.30, TILE); }), matRoad, false, true),
+      /* chain link: a plane with the mesh punched out of it, so the camp
+         is a thing you can see into rather than a wall with a gate */
+      fence:  new Batch(geo("fenceP", function () {
+                var g = new THREE.PlaneGeometry(TILE, 1); g.translate(0, 0.5, 0); return g;
+              }), null, false, false),
       wall:   new Batch(geo("wallB", function () { return new THREE.BoxGeometry(TILE, TUNE.wallH, TILE); }), matWall, true, true),
       /* `false` in the third slot means "does not cast": everything small
          enough that its shadow is invisible stays out of the shadow pass,
@@ -6945,6 +7039,10 @@
     };
     /* the glass and the frames are declared with the batches but built
        from the materials below them, so they are filled in here */
+    B.fence.m = new THREE.MeshStandardMaterial({
+      map: wireTexture(), transparent: true, alphaTest: 0.34,
+      color: 0xb8bec6, roughness: 0.55, metalness: 0.45,
+      envMapIntensity: 1.1, side: THREE.DoubleSide });
     B.winDark.m = darkWinMat;
     B.winLit.m = litWinMat;
     B.winFrame.m = winFrameMat;
@@ -6979,6 +7077,11 @@
         /* a long boundary wall stays a wall; a block of them is a building */
         var t = hash2(id * 13 + 7, id * 29 + 3);
         regionH[id] = n < 7 ? 1.0 : 1.15 + Math.floor(t * 4) * 0.42;
+        /* A barn is not a tenement. Out of town every block of wall was
+           being flooded into a four-storey terrace with shopfronts in
+           it, so the lane the car died on had a street of Marrakech
+           standing along both sides of it. */
+        if (def.rise) regionH[id] = Math.min(regionH[id], def.rise);
       }
     })();
 
@@ -6992,23 +7095,30 @@
     /* h, o and c are a wardrobe indoors and a bush, a hedge and a parked
        car outdoors, so they take whatever their neighbours are standing on
        rather than dragging a slab of pavement into a field */
-    var ARCH = ".lLGQ=#vKBFnufYyjdDPWNT";
+    var ARCH = ".lLGQ=#v+KBFnufYyjdDPWNT";
       function surfaceOf(ch) {
+      if (ch === "-") return 2;                               /* carriageway */
       if (ch === "," || ch === "~" || ch === " ") return 0;   /* ground */
       if (ARCH.indexOf(ch) >= 0) return 1;                    /* made */
       return -1;                                              /* could be either */
     }
-    function madeSurface(x, y) {
+    /* 0 is ground, 1 is a made surface, 2 is road. A car, a bush or the
+       tile she starts on could be standing on any of the three, so it
+       takes whichever most of its neighbours are standing on — which is
+       what puts an abandoned car on the tarmac and not in a field. */
+    function surfaceKind(x, y) {
       var v = surfaceOf(at(x, y));
-      if (v >= 0) return v === 1;
-      var made = 0, open = 0;
+      if (v >= 0) return v;
+      var made = 0, open = 0, road = 0;
       for (var j = -1; j <= 1; j++) for (var i = -1; i <= 1; i++) {
         if (!i && !j) continue;
         var n = surfaceOf(at(x + i, y + j));
-        if (n === 1) made++; else if (n === 0) open++;
+        if (n === 2) road++; else if (n === 1) made++; else if (n === 0) open++;
       }
-      return made > open;
+      if (road && road >= made && road >= open) return 2;
+      return made > open ? 1 : 0;
     }
+    function madeSurface(x, y) { return surfaceKind(x, y) === 1; }
 
     /* On the streets the comma is the carriageway and the full stop is the
        footway, and there is a kerb between them: that single 10 cm step is
@@ -7038,6 +7148,59 @@
                        shade(0xffffff, (0.82 + at2 * 0.12) * (1 - edge * 0.34)));
         }
       }
+      /* ---- THE ROAD THEY CAME UP ----
+         A road that stops at the edge of the grid is a road nobody drove
+         down. Where a level says so, the carriageway carries on past the
+         boundary and away over the fall of the ground, with the poles
+         going with it — which is the whole difference between a car that
+         broke down on a road and a car that was put in a yard.
+
+         It is scenery: off the grid still reads as wall to her feet. */
+      var APP = def.approach || [];
+      var appTiles = {};
+      for (var ai = 0; ai < APP.length; ai++) {
+        var ap = APP[ai];
+        var horizA = ap.side === "w" || ap.side === "e";
+        var stepA = (ap.side === "w" || ap.side === "n") ? -1 : 1;
+        var startA = ap.side === "w" ? -1 : ap.side === "e" ? W : ap.side === "n" ? -1 : H;
+        var lo = horizA ? ap.y0 : ap.x0, hi = horizA ? ap.y1 : ap.x1;
+        for (var ak = 0; ak < MARG; ak++) {
+          var aa = startA + stepA * ak;
+          var af = (ak + 1) / MARG;
+          var adrop = -0.15 - af * af * 0.9;
+          var alit = 1 - af * 0.34;
+          for (var ab = lo - 1; ab <= hi + 1; ab++) {
+            var atx = horizA ? aa : ab, aty = horizA ? ab : aa;
+            appTiles[atx + "," + aty] = 1;
+            var verge = ab < lo || ab > hi;
+            if (verge) continue;
+            B.road.add(cx(atx), adrop + 0.012, cz(aty), 1, 1, 1, 0,
+                       shade(0xffffff, (0.88 + hash2(atx, aty) * 0.14) * alit));
+          }
+          /* the broken line down the middle of it, and the solid one
+             along both edges */
+          var mid = (lo + hi) / 2;
+          if (ak % 2 === 0) {
+            B.paint.add(horizA ? cx(aa) : cx(mid), adrop + 0.17, horizA ? cz(mid) : cz(aa),
+                        horizA ? TILE * 0.52 : 0.16, 1, horizA ? 0.16 : TILE * 0.52, 0,
+                        shade(0xffffff, alit));
+          }
+          [lo - 0.42, hi + 0.42].forEach(function (ed) {
+            B.paint.add(horizA ? cx(aa) : cx(ed), adrop + 0.17, horizA ? cz(ed) : cz(aa),
+                        horizA ? TILE : 0.10, 1, horizA ? 0.10 : TILE, 0,
+                        shade(0xffffff, 0.72 * alit));
+          });
+          /* a pole every third tile, getting smaller as it goes */
+          if (ak % 3 === 1) {
+            var pside = (ak % 6 === 1) ? lo - 1.6 : hi + 1.6;
+            var ppx = horizA ? cx(aa) : cx(pside), ppz = horizA ? cz(pside) : cz(aa);
+            B.thin.add(ppx, adrop + 2.6, ppz, 0.15, 5.4, 0.15, 0, shade(0xffffff, 0.5 * alit));
+            B.thin.add(ppx, adrop + 5.0, ppz, horizA ? 0.10 : 1.5, 0.10, horizA ? 1.5 : 0.10, 0,
+                       shade(0xffffff, 0.5 * alit));
+          }
+        }
+      }
+
       /* and a treeline round the whole of it */
       var ringR = Math.max(W, H) * 0.5 + MARG * 0.72;
       var ringN = Math.round(ringR * 2.6);
@@ -7045,6 +7208,13 @@
         var ra = ri / ringN * 6.2832;
         var rr = ringR + hash2(ri, 7) * 5.5;
         var rx = W / 2 + Math.cos(ra) * rr, rz = H / 2 + Math.sin(ra) * rr;
+        /* nothing grows in the middle of the road */
+        var near = false;
+        for (var nk in appTiles) {
+          var np = nk.split(",");
+          if (Math.abs(+np[0] - rx) < 3.2 && Math.abs(+np[1] - rz) < 3.2) { near = true; break; }
+        }
+        if (near) continue;
         var rs = 1.5 + hash2(ri, 13) * 1.9;
         B.trunk.add(cx(rx), -0.1, cz(rz), 1, 2.0 + hash2(ri, 3) * 1.6, 1, 0,
                     shade(0xffffff, 0.5 + hash2(ri, 5) * 0.2));
@@ -7064,7 +7234,11 @@
         if (ch === " ") continue;
         var t = hash2(xx, yy);
         var yTop = -0.15;
-        if (!madeSurface(xx, yy)) {
+        var kind = surfaceKind(xx, yy);
+        if (kind === 2) {
+          B.road.add(cx(xx), yTop - t * 0.015, cz(yy), 1, 1, 1,
+                     (Math.floor(t * 4) % 2) * Math.PI / 2, shade(0xffffff, 0.88 + t * 0.14));
+        } else if (kind === 0) {
           B.ground.add(cx(xx), yTop - t * 0.02, cz(yy), 1, 1, 1, 0, shade(0xffffff, 0.94 + t * 0.12));
         } else {
           B.floor.add(cx(xx), yTop + kerbRise - t * 0.015, cz(yy), 1, 1, 1,
@@ -8583,6 +8757,34 @@
     }
 
     /* ---------- the gates ---------- */
+    /* ---- the fence ----
+       A camp is a fence with people behind it. Built out of the grid the
+       same way a wall is: a post per tile, a rail along the top of it and
+       a panel of link between, turned to whichever way the run goes. */
+    function wireFence(x, y) {
+      var t = hash2(x * 7, y * 11);
+      var joins = function (dx, dy) {
+        var c = at(x + dx, y + dy);
+        return c === "+" || c === "G";
+      };
+      var horiz = joins(-1, 0) || joins(1, 0);
+      var vert  = joins(0, -1) || joins(0, 1);
+      if (!horiz && !vert) horiz = true;              /* a lone post gets a panel */
+      var hgt = 2.42 + t * 0.08;
+      var col = shade(0xffffff, 0.92 + t * 0.14);
+      if (horiz) B.fence.add(cx(x), -0.15, cz(y), 1, hgt, 1, 0, col);
+      if (vert)  B.fence.add(cx(x), -0.15, cz(y), 1, hgt, 1, Math.PI / 2, col);
+      /* the post, and the rail it is strained against */
+      B.thin.add(cx(x), hgt / 2 - 0.15, cz(y), 0.11, hgt, 0.11, 0, shade(0xffffff, 0.60));
+      if (horiz) B.thin.add(cx(x), hgt - 0.16, cz(y), TILE, 0.075, 0.075, 0, shade(0xffffff, 0.80));
+      if (vert)  B.thin.add(cx(x), hgt - 0.16, cz(y), 0.075, 0.075, TILE, 0, shade(0xffffff, 0.80));
+      /* and the coil along the top of it, every few metres */
+      if (t > 0.55) {
+        B.thin.add(cx(x), hgt + 0.14, cz(y), horiz ? TILE * 0.9 : 0.06, 0.06,
+                   horiz ? 0.06 : TILE * 0.9, 0.4, shade(0xffffff, 0.7));
+      }
+    }
+
     function gate(x, y) {
       var g = new THREE.Group();
       g.position.set(cx(x), 0, cz(y));
@@ -8681,7 +8883,10 @@
     })();
 
     /* ---------- lay the place out ---------- */
-    var treeChance = def.theme === "campsite" ? 1.0 : def.theme === "road" ? 0.34 : 0.16;
+    /* A third of a hedgerow being full-grown trees put a canopy over
+       every metre of the lane and you could not see the road for them.
+       One in seven is a hedge with trees in it. */
+    var treeChance = def.theme === "campsite" ? 1.0 : def.theme === "road" ? 0.14 : 0.16;
     for (var y2 = 0; y2 < H; y2++) {
       for (var x2 = 0; x2 < W; x2++) {
         var c = at(x2, y2);
@@ -8758,6 +8963,7 @@
           case "L": lampPost(x2, y2); break;
           case "d": case "D": case "P": door(x2, y2, c); break;
           case "G": gate(x2, y2); break;
+          case "+": wireFence(x2, y2); break;
           case "W": world.panelAt = { x: x2, y: y2 }; wirePanel(x2, y2); break;
           case "T": world.tvAt = { x: x2, y: y2 }; television(x2, y2); break;
           case "N": noteProp(x2, y2); break;
@@ -8781,23 +8987,42 @@
        a drain. Without them a road is a grey rectangle you happen to walk
        on. */
     if (outdoorLevel && (def.theme === "street" || def.theme === "road")) {
-      var isRoad = function (x, y) { return at(x, y) === ","; };
-      for (var ry = 1; ry < H - 1; ry++) {
-        for (var rx = 1; rx < W - 1; rx++) {
+      /* In the city the comma IS the carriageway and the full stop is the
+         footway. Out of it the comma is a field, and the road is drawn
+         where the map says there is a road. */
+      var isRoad = def.theme === "street"
+        ? function (x, y) { return at(x, y) === ","; }
+        : function (x, y) { return surfaceKind(x, y) === 2; };
+      /* how far the carriageway reaches in each direction from a tile */
+      function reach(x, y, dx, dy) {
+        var n = 0;
+        while (n < 64 && isRoad(x + dx * (n + 1), y + dy * (n + 1))) n++;
+        return n;
+      }
+      for (var ry = 0; ry < H; ry++) {
+        for (var rx = 0; rx < W; rx++) {
           if (!isRoad(rx, ry)) continue;
-          var vert = isRoad(rx, ry - 1) && isRoad(rx, ry + 1);
-          var horz = isRoad(rx - 1, ry) && isRoad(rx + 1, ry);
-          /* the centre line: down the middle of a run, dashed */
-          if (vert && !horz) {
-            var midV = !isRoad(rx - 1, ry) || !isRoad(rx + 1, ry);
-            if (!midV && (ry % 2 === 0) && isRoad(rx - 1, ry) !== isRoad(rx + 1, ry)) { /* keep */ }
-            if (isRoad(rx - 1, ry) && !isRoad(rx - 2, ry) && ry % 2 === 0) {
-              B.paint.add(cx(rx) - TILE * 0.5, 0.016, cz(ry), 0.16, 1, TILE * 0.52, 0, 0xffffff);
+          var up = reach(rx, ry, 0, -1), dn = reach(rx, ry, 0, 1);
+          var lf = reach(rx, ry, -1, 0), rt = reach(rx, ry, 1, 0);
+          var acrossV = up + dn + 1, acrossH = lf + rt + 1;
+          /* THE CENTRE OF THE CARRIAGEWAY.
+             The old rule only knew how to find the seam between two
+             lanes, so a road three tiles across — which is what a road
+             out of the city is — never got a centre line at all. It is
+             the middle of the middle tile on an odd carriageway and the
+             seam on an even one, whichever way the road runs. */
+          if (acrossH > acrossV && acrossV >= 2 && rx % 2 === 0) {
+            if (up === dn) {
+              B.paint.add(cx(rx), 0.016, cz(ry), TILE * 0.52, 1, 0.16, 0, 0xffffff);
+            } else if (up === dn + 1) {
+              B.paint.add(cx(rx), 0.016, cz(ry) - TILE * 0.5, TILE * 0.52, 1, 0.16, 0, 0xffffff);
             }
           }
-          if (horz && !vert) {
-            if (isRoad(rx, ry - 1) && !isRoad(rx, ry - 2) && rx % 2 === 0) {
-              B.paint.add(cx(rx), 0.016, cz(ry) - TILE * 0.5, TILE * 0.52, 1, 0.16, 0, 0xffffff);
+          if (acrossV > acrossH && acrossH >= 2 && ry % 2 === 0) {
+            if (lf === rt) {
+              B.paint.add(cx(rx), 0.016, cz(ry), 0.16, 1, TILE * 0.52, 0, 0xffffff);
+            } else if (lf === rt + 1) {
+              B.paint.add(cx(rx) - TILE * 0.5, 0.016, cz(ry), 0.16, 1, TILE * 0.52, 0, 0xffffff);
             }
           }
           /* the gutter line where the road meets the kerb */
@@ -9941,6 +10166,7 @@
     G.horse = horse;
     G.time = 0;
     G.state = "play";
+    G.onLine = null;             /* nothing from the last place is listening */
     G.stepIndex = 0;
     G.cleared = {};
     G.noises = [];
@@ -10251,11 +10477,31 @@
     for (var i = 0; i < G.zombies.length; i++) if (G.zombies[i].state === "chase") anyChase = true;
     if (!anyChase && speed < 0.2 && !isSolidChar(here)) { p.safe.x = p.x; p.safe.z = p.z; }
 
-    /* pose */
+    posePlayer(dt, true);
+  }
+
+  /* WHERE SHE IS, AND WHERE THE MODEL OF HER IS.
+
+     p.x and p.z are the player. The rig is a thing that has to be put on
+     top of them every frame — and the only code that did it lived inside
+     updatePlayer, which does not run while a conversation is on screen.
+     So for the whole of the arrival at the camp she stood at the origin
+     of the grid, which is the far corner of the clearing: the horse was
+     there, he was there, the camera was framed on her, and she was not
+     in the shot. It happens here instead, out of both branches.
+
+     `live` is the difference between the two: playing, her facing comes
+     off the keys and is damped into a turn; in a scripted beat something
+     else is writing p.turn directly and damping it would fight that. */
+  function posePlayer(dt, live) {
+    var p = G && G.player, w = G && G.world;
+    if (!p || !w) return;
     p.groundY = damp(p.groundY || 0, groundAt(w, p.x, p.z), 0.16, dt);
     p.rig.root.position.set(p.x, p.groundY, p.z);
-    p.turn = dampAngle(p.turn == null ? -p.facing : p.turn, -p.facing, 0.11, dt);
+    if (live) p.turn = dampAngle(p.turn == null ? -p.facing : p.turn, -p.facing, 0.11, dt);
+    else if (p.turn == null) p.turn = -p.facing;
     p.rig.root.rotation.y = p.turn;
+    if (!live) p.gait = damp(p.gait || 0, 0, 0.14, dt);
     p.crouch = damp(p.crouch || 0, p.creeping ? 1 : 0, 0.20, dt);
     var td = p.torch.userData;
     /* it is only in her hand while it is doing something */
@@ -10839,13 +11085,21 @@
     if (G.onLine) { try { G.onLine(line, d.i - 1); } catch (e) {} }
   }
 
-  /* say when this line goes past, and stop listening afterwards */
+  /* Say when this line goes past, once.
+
+     Two of these on one conversation used to cancel each other out. Each
+     one remembered the hook it replaced and, when it fired, put that
+     hook back — so the first beat to arrive threw away every listener
+     registered after it. On the roof that meant the moment he takes her
+     hand deleted the moment he puts his arm round her, and the hug never
+     happened. Nothing is unregistered now: a link that has fired simply
+     stops answering, and the chain stays whole. */
   function whenLine(text, then) {
-    var prev = G.onLine;
+    var prev = G.onLine, spent = false;
     G.onLine = function (line, i) {
       if (prev) prev(line, i);
-      if (!line || line[1] !== text) return;
-      G.onLine = prev || null;
+      if (spent || !line || line[1] !== text) return;
+      spent = true;
       then();
     };
   }
@@ -12698,9 +12952,20 @@
         [null, "“Right. Through, and sit at the table. Don't touch anything.”"]
       ], function () {
         clearStep("hail");
-        /* the outer gate rolls back */
-        G.world.doors.forEach(function (d) {
-          if (d.kind === "G" && d.x < G.world.w / 2) { d.locked = false; d.want = 1; }
+        /* THE OUTER GATE ROLLS BACK.
+           Which one that is used to be "the one in the left-hand half of
+           the map", which stopped being true the moment the road came up
+           from the south instead of in from the west. It is the one she
+           is standing at: the half of the gates nearer where she came
+           in, whichever way round the place is built. */
+        var w = G.world, sp = w.spawn, gs = [];
+        w.doors.forEach(function (d) { if (d.kind === "G") gs.push(d); });
+        var ds = gs.map(function (d) {
+          return sp ? Math.hypot(d.x - sp.x, d.y - sp.y) : 0;
+        });
+        var mid = (Math.min.apply(null, ds) + Math.max.apply(null, ds)) / 2;
+        gs.forEach(function (d, i) {
+          if (ds[i] <= mid) { d.locked = false; d.want = 1; }
         });
         Audio_.door();
       });
@@ -13981,20 +14246,27 @@
         if (leanCued && phase === "beside") leanK = clamp(leanK + dt / 2.6, 0, 1);
         if (leanK > 0) {
           var e2 = leanK * leanK * (3 - 2 * leanK);
-          /* The seated pose has already folded her the other way, so these
-             have to be big enough to cross it and then lean: her spine
-             lands near -0.22 rather than at it. Every number here was
-             picked off a render, not out of the air. */
-          her.spine.rotation.z += -0.48 * e2;       /* she tips toward him */
-          her.neck.rotation.z += -0.25 * e2;
-          her.head.rotation.z = -0.20 * e2;
+          /* HER HEAD FINDS HIS SHOULDER, WHICH IS SIDEWAYS.
+             A spine tips fore and aft about z and side to side about x,
+             and this used to tip her about z — so on the line that says
+             her head finds his shoulder she folded forward over her own
+             knees instead. He is on her +z, so she leans about x, and
+             the seated fold the pose has already put in her stays. */
+          her.spine.rotation.x += 0.44 * e2;
+          her.neck.rotation.x += 0.24 * e2;
+          her.head.rotation.x = 0.14 * e2;
           /* and shifts along the log until there is no gap left */
           her.root.position.x = lerp(SEAT.x, 0.24, e2);
           /* His arm comes round her — the near one. It is armR that sits
-             on her side of him; posing armL put it out over open ground. */
-          him.armR.upper.rotation.x = lerp(him.armR.upper.rotation.x, 0.95, e2);
-          him.armR.upper.rotation.z = lerp(him.armR.upper.rotation.z, -1.10, e2);
-          him.armR.elbow.rotation.z = lerp(him.armR.elbow.rotation.z, 1.45, e2);
+             on her side of him; posing armL put it out over open ground.
+             The reach across is x, not z: solved off the bone lengths so
+             the hand lands on her far shoulder rather than in the air a
+             foot behind him. */
+          him.armR.shoulder.rotation.x = lerp(0.10, -0.05, e2);
+          him.armR.upper.rotation.x = lerp(-0.20, 1.80, e2);
+          him.armR.upper.rotation.y = lerp(0, 0.80, e2);
+          him.armR.upper.rotation.z = lerp(-0.28, -0.90, e2);
+          him.armR.elbow.rotation.z = lerp(1.05, 1.45, e2);
         }
 
         /* the camera comes in slowly, and swings round to take them both
@@ -14557,7 +14829,7 @@
     motes.points.position.set(-30, -6, -14);
     scene.add(motes.points);
 
-    var lean = 0, together = false;
+    var lean = 0, together = false, hold = 0, holding = false;
     runCine({
       /* he is on the left of frame in this one, she is on the right */
       sides: { ANWAR: "l", OUISSY: "r" },
@@ -14590,16 +14862,49 @@
         poseHuman(him, t * 0.5 + 0.9, 0, null, {});
         sitEdge(her); sitEdge(him);
 
-        /* he puts his arm round her, when the line arrives */
+        /* ---- THE TWO THINGS THAT HAPPEN BETWEEN THEM ----
+           He takes her hand, and a page later he puts his arm round her.
+           The second used to be the only one, and it was aimed wrong in
+           both halves. Rotating a spine about x tips it toward the side
+           the bones named L are on; his are on her side, hers are on the
+           far side from him, so +0.34 tipped her away from him while he
+           reached for her. And rotation.z on an upper arm is fore and
+           aft — the reach across is rotation.x — so his arm went out
+           backwards over the roof rather than round her shoulders.
+           Every number here was picked off a render. */
+        if (holding) {
+          hold = clamp(hold + dt / 1.6, 0, 1);
+          var h1 = hold * hold * (3 - 2 * hold);
+          /* his near arm comes down and across into the gap between them */
+          him.armL.upper.rotation.z = lerp(-0.14, 0.26, h1);
+          him.armL.upper.rotation.x = lerp(0, -0.52, h1);
+          him.armL.elbow.rotation.z = lerp(0.42, 0.88, h1);
+          /* and hers goes to meet it */
+          her.armR.upper.rotation.z = lerp(-0.14, 0.24, h1);
+          her.armR.upper.rotation.x = lerp(-0.16, 0.46, h1);
+          her.armR.elbow.rotation.z = lerp(0.42, 0.82, h1);
+        }
         if (together) {
-          lean = clamp(lean + dt / 2.2, 0, 1);
+          lean = clamp(lean + dt / 2.4, 0, 1);
           var e = lean * lean * (3 - 2 * lean);
-          her.root.position.x = lerp(0.60, 0.16, e);
-          her.spine.rotation.x = lerp(0, 0.34, e);
-          her.neck.rotation.x = lerp(0, 0.22, e);
-          him.armL.upper.rotation.z = lerp(-0.1, -1.15, e);
-          him.armL.upper.rotation.x = lerp(0, -0.8, e);
-          him.armL.elbow.rotation.z = lerp(0.3, 1.0, e);
+          /* she comes along the parapet until their shoulders meet, and
+             tips onto his — which is toward her own -z */
+          her.root.position.x = lerp(0.60, 0.20, e);
+          him.root.position.x = lerp(-0.62, -0.46, e);
+          her.spine.rotation.x = lerp(0, -0.34, e);
+          her.neck.rotation.x = lerp(0, -0.22, e);
+          her.head.rotation.x = lerp(0, -0.12, e);
+          /* His arm goes round the back of her and his hand comes to
+             rest on her far shoulder. These five angles are the answer
+             to where that shoulder actually is: solved off the bone
+             lengths rather than guessed, then checked on a render. */
+          him.armL.shoulder.rotation.x = lerp(-0.10, 0.05, e);
+          him.armL.upper.rotation.x = lerp(0, -1.55, e);
+          him.armL.upper.rotation.y = lerp(0, -0.80, e);
+          him.armL.upper.rotation.z = lerp(-0.14, -0.85, e);
+          him.armL.elbow.rotation.z = lerp(0.42, 1.40, e);
+          /* and he tips a little toward her as he does it */
+          him.spine.rotation.x = lerp(0, 0.12, e);
         }
 
         /* the camera pulls back and up over the whole scene */
@@ -14617,7 +14922,9 @@
     G.state = "dialogue";
     var lines = TALK.roof.slice();
     say(lines, function () { endingCard(); });
-    /* the moment he says "Come here" */
+    /* the two moments, hung off the lines that say them */
+    whenLine("He reaches over and takes her hand, and that is where it stays.",
+             function () { holding = true; });
     whenLine("Come here.", function () { together = true; });
   }
 
@@ -14687,10 +14994,12 @@
     if (!G.anwar) {
       var ar = makeAnwar();
       G.scene.add(ar.root);
-      G.anwar = { rig: ar, x: w.cx(9), z: w.cz(12), found: true, following: false, sitting: false };
+      G.anwar = { rig: ar, x: w.cx(7), z: w.cz(11), found: true, following: false, sitting: false };
     }
     G.anwar.following = false;
-    G.anwar.x = w.cx(9); G.anwar.z = w.cz(12);
+    /* close enough to be in the same shot as her and the horse: he was
+       four tiles east, which is off the right-hand edge of the frame */
+    G.anwar.x = w.cx(7); G.anwar.z = w.cz(11);
     G.anwar.rig.root.position.set(G.anwar.x, 0, G.anwar.z);
     G.anwar.rig.root.rotation.y = -Math.PI / 2;
     /* THEY ARRIVED ON THE HORSE, SO THE HORSE IS HERE.
@@ -14743,6 +15052,10 @@
        animation carries on doing whatever it was doing */
     var from = { x: p.x, z: p.z };
     var t = 0, LEN = 2.6;
+    var aim = Math.atan2(to.z - from.z, to.x + 2.2 - from.x);
+    var hFrom = { x: h.root.position.x, z: h.root.position.z };
+    var hTo = { x: to.x + 2.2 - Math.cos(aim) * LEN, z: to.z - Math.sin(aim) * LEN };
+    var ha = Math.atan2(hTo.z - hFrom.z, hTo.x - hFrom.x);
     G.leadFinish = function () { t = 1; if (G.anim) G.anim(0); G.leadFinish = null; };
     G.anim = function (dt) {
       t = Math.min(1, t + dt / 3.4);
@@ -14750,19 +15063,27 @@
       p.x = lerp(from.x, to.x + 2.2, e);
       p.z = lerp(from.z, to.z, e);
       var a = Math.atan2(to.z - from.z, to.x - from.x);
-      p.turn = -a + Math.PI / 2;
+      /* a person and a horse do not face the same way at the same angle:
+         his forward is +x and hers is +z, so the horse's formula walked
+         her to the tree sideways */
+      p.facing = a;
+      p.turn = -a;
       p.gait = t < 1 ? 1 : 0;
       p.stepPhase += dt * 6;
-      var back = Math.max(0, e - 0.10);
-      h.root.position.x = lerp(from.x, to.x + 2.2, back) - Math.cos(a) * LEN;
-      h.root.position.z = lerp(from.z, to.z, back) - Math.sin(a) * LEN;
-      h.root.rotation.y = -a + Math.PI / 2;
+      /* The horse walks from where it is standing to a length behind
+         where she stops. Hanging it off her path start instead put it
+         wherever the geometry said on the first frame, which was a
+         seven-metre jump sideways before it took a step. */
+      var back = clamp((e - 0.10) / 0.90, 0, 1);
+      h.root.position.x = lerp(hFrom.x, hTo.x, back);
+      h.root.position.z = lerp(hFrom.z, hTo.z, back);
+      h.root.rotation.y = -ha + Math.PI / 2;
       poseHorse(h, G.time, t < 1 ? 1 : 0);
       if (t >= 1) {
         G.anim = null;
         G.horseTied = true;
         /* facing the tree, head down, done for the night */
-        h.root.rotation.y = -a + Math.PI / 2 + 0.4;
+        h.root.rotation.y = -ha + Math.PI / 2 + 0.4;
       }
     };
   }
@@ -15140,7 +15461,7 @@
       /* dialogue, overlays and pause: the world holds still but the
          lights, the fire and the dust keep going */
       usePressed = false;
-      if (G.player) poseHuman(G.player.rig, G.time, 0, null, { crouch: G.player.creeping ? 1 : 0 });
+      posePlayer(dt, false);
       for (var i = 0; G.zombies && i < G.zombies.length; i++) {
         poseHuman(G.zombies[i].rig, G.time + G.zombies[i].seed, 0, "z");
       }
