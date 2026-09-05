@@ -475,3 +475,64 @@ so anything that waits on wall-clock time runs in slow motion and proves
 nothing (drive the game with `window.__soPump` instead); and
 **`page.screenshot()` hangs** while a canvas loop is painting, so halt the
 loop and go through CDP, or pull the canvas out with `toDataURL`.
+
+## The pass that made it a story rather than a shift
+
+Four things, and the first two were bugs that had been there the whole
+time.
+
+**The winding key was sitting on top of the controls.** It is
+`<button class="ns-key" id="ns-key">`, and the six buttons along the
+bottom of the panel have been `class="ns-key"` since long before it
+existed — so every one of them picked up the hotspot's
+`position:absolute` and `transform:translate(-50%,-50%)`, left the flex
+row, and stacked on one point in the bottom left corner with half of
+each off the side of the screen. It is `.ns-wind` now. `nightlayout`
+fails on overlapping controls, which is the only thing that would have
+caught it: every button was its full size and inside the frame, they
+were simply all in the same place.
+
+**Every cue was scheduled at `currentTime`.** All of them are
+envelopes — nothing to peak in four milliseconds and back down — and
+all of them were scheduled at the start of the block the audio thread
+was already working on, so the attack was behind it before it began.
+Live, a door shutting came out thirty times quieter than the same cue
+rendered offline. An `OfflineAudioContext` starts at zero with the
+whole render ahead of it, so nothing scheduled "now" is ever late in
+one: every measurement of these cues ever taken here was of a sound
+nobody had heard. There is a 25ms lead on everything now. (Honest
+caveat, in the comment above `CUE_LEAD` too: the sweep that found it
+ran against a null audio device whose thread runs ahead in batches, so
+how much of the thirty-fold gap was the bug and how much was the
+container is not something this repository can answer. Scheduling an
+envelope at `currentTime` is a real mistake regardless.)
+
+**The score has a room for every scene.** It had three settings and
+everything else borrowed one: the film where a dead man introduces
+himself had the same music as the title screen. There are nine now —
+`film`, `brief`, `night`, `dark`, `gone`, `found`, `held`, `dawn`,
+`gallery`, `menu` — and they are the same seven layers, the same music
+box, the same key, and the same grid. Nothing restarts, the tempo eases
+rather than snapping, and `nightaudio` meters straight through five
+scene changes to prove it never cuts.
+
+**And he talks to her while she works.** `NS.tapes` and section 18g.
+Everything the chapter had to say used to be said before a night or
+after it, which left the five and a half minutes she actually plays
+with nothing in it but the job. Somebody who plays games will sit
+through that. Somebody who does not will put the phone down at four in
+the morning of night two. So: one line an hour in his own voice, plus
+six that wait for something she does. It never speaks over a scare,
+never over the annunciator, never twice, and never with something at a
+door.
+
+A note on the suite, because six checks were wrong in the same way and
+it is worth naming the shape. Several of them measured one rule through
+another rule's noise: the ballerina's freezing tested on the night the
+cameras drop out, the dropped-monitor control case tested on the night
+the monitor drops on its own, a parcel at a door tested with Jax awake
+at the other one. In each case the hazard doing its job read as the
+rule failing. And three more were counting on a dice roll — they retry
+now, because a window a thing sits out proves nothing while a window it
+moves in settles the question.
+

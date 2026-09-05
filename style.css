@@ -5191,6 +5191,45 @@ img{-webkit-user-drag:none; user-select:none;}
   background:linear-gradient(90deg, var(--ns-brass) 0 36%, transparent 36% 64%, var(--ns-brass) 64% 100%);
 }
 
+/* What tonight is for: one line, in his pencil rather than the
+   terminal's green, because it is his shop she is being asked to do
+   something about. */
+.ns-why{
+  margin:.6cqh 0 1.4cqh; font-size:max(1.75cqh, 11px); line-height:1.65;
+  letter-spacing:.05em; color:rgba(255,206,140,.86);
+  border-left:2px solid rgba(200,162,96,.5); padding-left:1.6cqw; text-align:left;
+}
+
+/* The tapes he left. Deliberately not the annunciator's caption: that
+   one is a machine reading out states, in the terminal's green, in
+   capitals, clipped. This is a man talking, so it is lower case, warm,
+   and it lights a word at a time as he reaches it. Two voices in a
+   shop should not look alike either. */
+.ns-tape{
+  position:absolute; left:0; right:0; bottom:9cqh; z-index:8;
+  padding:1.6cqh 8cqw 1.8cqh;
+  text-align:center; pointer-events:none;
+  font-family:var(--ns-face);
+  font-size:max(2.1cqh, 13px); line-height:1.7; letter-spacing:.04em;
+  text-shadow:0 1px 4px rgba(0,0,0,.95), 0 0 14px rgba(0,0,0,.8);
+  /* the desk is the brightest thing on the screen and his words land on
+     top of it, so they carry their own dark with them */
+  background:linear-gradient(180deg,
+    rgba(6,6,5,0) 0%, rgba(6,6,5,.72) 22%, rgba(6,6,5,.78) 78%, rgba(6,6,5,0) 100%);
+}
+.ns-tape[hidden]{ display:none; }
+.ns-tape i{
+  font-style:normal; color:rgba(232,223,200,.30);
+  transition:color .12s linear, text-shadow .12s linear;
+}
+.ns-tape i.on{
+  color:rgba(255,214,158,.97);
+  text-shadow:0 0 12px rgba(255,182,110,.35);
+}
+@media (max-width: 560px){
+  .ns-tape{ bottom:7cqh; padding:1.4cqh 4cqw 1.6cqh; font-size:max(2cqh, 11px); }
+}
+
 /* ---------- the controls ---------- */
 .ns-pad{
   position:absolute; left:0; right:0; bottom:0; z-index:7;

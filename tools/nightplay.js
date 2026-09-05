@@ -290,14 +290,31 @@ function ok(name, cond, extra) {
   console.log('\n— a dropped monitor is not a camera —');
   const drop = await page.evaluate(() => {
     const w = OuissysNightShift.__night, s = w.state();
-    w.route('night:6'); w.route('go');
+    /* Night two, and monOut set by hand. This used night six, which is
+       the night the monitor cuts out on its own — so the control case,
+       the one where she is supposed to be frozen on a working picture,
+       had the picture dropping out from under it. Same shape of mistake
+       as running the ballerina on the signal-loss night: the hazard
+       doing its job read as the rule failing. */
+    w.route('night:2'); w.route('go');
     w.only('marabelle', 0);
     s.monitor = true; w.cam(w.cast().marabelle.room); s.power = 100;
     const watch = () => { const a = w.cast().marabelle.step; w.pump(26); return w.cast().marabelle.step - a; };
-    s.monOut = 0;  const seen = watch();
-    w.route('restart'); w.only('marabelle', 0);
-    s.monitor = true; w.cam(w.cast().marabelle.room); s.power = 100;
-    s.monOut = 999; const blind = watch();
+    /* She moves on a roll. A window she sits out proves nothing about
+       the rule; a window she moves in proves it. So the frozen case has
+       to hold across every attempt and the moving case only has to
+       happen once. */
+    let seen = 0, blind = 0;
+    for (let i = 0; i < 4; i++) {
+      w.route('restart'); w.only('marabelle', 0);
+      s.monitor = true; w.cam(w.cast().marabelle.room); s.power = 100;
+      s.monOut = 0; seen = Math.max(seen, watch());
+      if (blind <= 0) {
+        w.route('restart'); w.only('marabelle', 0);
+        s.monitor = true; w.cam(w.cast().marabelle.room); s.power = 100;
+        s.monOut = 999; blind = watch();
+      }
+    }
     s.monOut = 0;
     return { seen, blind };
   });
@@ -560,6 +577,14 @@ function ok(name, cond, extra) {
     const w = OuissysNightShift.__night, s = w.state();
     const nightHas = (n) => {
       w.route('night:' + n); w.route('go');
+      /* his four asleep and the meter full, because pump() stops the
+         moment the phase stops being play — and on a live night four
+         with both doors open she is dead long before the third parcel
+         has let itself in, so this was counting how long she survived */
+      const cs0 = w.cast();
+      ['cogsworth','chime','marabelle','jax'].forEach(k => {
+        cs0[k].awake = false; cs0[k].asleep = true; });
+      s.power = 100;
       w.pump(340, 0.5);
       const cs = w.cast();
       return ['post1','post2','post3'].filter(k => cs[k] && cs[k].awake).length;
@@ -567,22 +592,44 @@ function ok(name, cond, extra) {
     const one = nightHas(1), four = nightHas(4);
     /* watching does nothing to them: they were not built for her */
     w.route('night:4'); w.route('go');
-    /* His four have to be asleep for this. They advance on a 34% roll
-       every 9.5 seconds, so the window has to be long enough that
-       coming up empty means something — and over a window that long,
-       on night four with all four awake and both doors open, one of
-       his reaches the office and ends the shift before the parcel has
-       had its chance. The check was measuring how fast Jax kills you. */
-    ['cogsworth','chime','marabelle','jax'].forEach(k => {
-      w.cast()[k].awake = false; w.cast()[k].asleep = true; });
+    /* This one has taken three goes to get right, and all three were
+       the test rather than the game.
+
+       A 70-second window came up empty about one run in twenty, because
+       they advance on a 34% roll every 9.5 seconds. Making the window
+       long enough to be sure meant that on a live night four one of his
+       reached the office and ended the shift first — it was measuring
+       how fast Jax kills you. Putting his four to sleep left them still
+       wound, so a wound one intercepted the parcel at the door and sent
+       it back to the start, and the thing came back having moved minus
+       one.
+
+       So: nobody else awake, nobody wound, and the claim itself is
+       "watching does not stop it" — which one observation of it moving
+       while watched settles. Four goes at it, stopping at the first. */
+    let watched = 0;
+    for (let attempt = 0; attempt < 4 && watched <= 0; attempt++) {
+      w.route('night:4'); w.route('go');
+      const cc = w.cast();
+      ['cogsworth','chime','marabelle','jax'].forEach(k => {
+        cc[k].awake = false; cc[k].asleep = true; cc[k].wound = 0; });
+      const c2 = cc.post1;
+      c2.awake = true; c2.cool = 0; c2.step = 0;
+      s.monitor = true; w.cam(c2.room); s.power = 100;
+      w.pump(90);
+      watched = c2.step;
+    }
+    w.route('night:4'); w.route('go');
     const c = w.cast().post1;
-    c.awake = true; c.cool = 0; c.step = 1;
-    s.monitor = true; w.cam(c.room); s.power = 100;
-    const a0 = c.step; w.pump(160); const watched = c.step - a0;
     /* an open door is fatal, a shut one holds them and then they go */
     const run = (shut) => {
       w.route('night:4'); w.route('go');
-      ['cogsworth','chime','marabelle','jax'].forEach(k => { w.cast()[k].wound = 0; });
+      /* unwound so nobody intercepts, and asleep so nobody else gets to
+         the office first — this is a check about what a parcel does at
+         a door, and twice now it has come back reporting how Jax got in
+         through the other one */
+      ['cogsworth','chime','marabelle','jax'].forEach(k => {
+        const ch = w.cast()[k]; ch.wound = 0; ch.awake = false; ch.asleep = true; });
       w.put('post1', w.cast().post1.def.route.length - 1);
       s.power = 100; s.blackout = false; s.doors.left = shut;
       w.pump(14);
@@ -677,14 +724,28 @@ function ok(name, cond, extra) {
   const slack = await page.evaluate(() => {
     const w = OuissysNightShift.__night, s = w.state();
     const watch = (wound) => {
-      w.route('night:3'); w.route('go');
+      /* night two, not night three. Three is the night the cameras
+         start dropping out at random, and a dropped camera is not a
+         camera — so a wound ballerina moving there is the signal-loss
+         rule working, not the freezing rule failing. One run in four
+         caught one and called it a bug in the game. */
+      w.route('night:2'); w.route('go');
       w.only('marabelle', 0);      // only() now silences the sold ones too
       const m = w.cast().marabelle;
       m.wound = wound;
       s.monitor = true; w.cam(m.room); s.power = 100;
       const a = m.step; w.pump(24); return m.step - a;
     };
-    return { wound: watch(6), slack: watch(0) };
+    /* She moves on a roll, so a window that comes up empty says nothing
+       about the rule — but one that comes up full settles it. The wound
+       one has to hold still through every attempt; the slack one only
+       has to move once. */
+    let wound = 0, slack = 0;
+    for (let i = 0; i < 4; i++) {
+      wound = Math.max(wound, watch(6));
+      if (slack <= 0) slack = watch(0);
+    }
+    return { wound, slack };
   });
   ok('a wound ballerina still freezes when watched', slack.wound === 0, String(slack.wound));
   ok('a run-down one does not', slack.slack > 0, 'moved ' + slack.slack + ' steps while watched');
@@ -831,6 +892,134 @@ function ok(name, cond, extra) {
   ok('the shelf has room for every night and every badge',
      shelf.slots >= shelf.most && shelf.most > 0,
      shelf.slots + ' slots for ' + shelf.most + ' things');
+
+  /* THE THING THIS WHOLE CHAPTER TURNS ON FOR SOMEBODY WHO IS NOT A
+     GAMER: is anything happening in the five and a half minutes she is
+     actually playing, or is the story all in the gaps between them? */
+  console.log('\n— and he talks to her while she works —');
+  const tape = await page.evaluate(async () => {
+    const w = OuissysNightShift.__night, s = w.state();
+    w.route('night:1'); w.route('go');
+    /* nothing awake, so this measures the tapes and not a scare */
+    const c = w.cast();
+    Object.keys(c).forEach(k => { c[k].awake = false; c[k].asleep = true; });
+    const heard = [];
+    /* the tapes run on the frame loop rather than on pump(), because a
+       man talking is not part of the simulation */
+    /* the frame loop's order exactly: the building drains its queue,
+       and only then does he get the room. pump() does neither, because
+       neither is part of the simulation. */
+    for (let i = 0; i < 900; i++) {
+      w.pump(0.4, 0.2);
+      w.sayTick(0.4);
+      w.tapeTick(0.4);
+      const t = w.tape();
+      if (t.line && heard.indexOf(t.line) < 0) heard.push(t.line);
+    }
+    return { heard, hour: s.hour, said: w.tape().said };
+  });
+  const why = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, out = [];
+    for (let n = 1; n <= 6; n++) {
+      w.route('night:' + n);
+      const el = document.querySelector('.ns-card-brief .ns-why');
+      out.push(el ? el.textContent.trim() : null);
+    }
+    return out;
+  });
+  ok('every night says what it is for before it starts',
+     why.length === 6 && why.every(x => x && x.length > 12),
+     JSON.stringify(why[0]));
+  ok('and no two nights are for the same thing',
+     new Set(why).size === 6);
+
+  ok('he says something in the first night at all', tape.heard.length > 0,
+     tape.heard.length + ' of his lines');
+  ok('and it is more than one thing, spread across the night',
+     tape.heard.length >= 4, tape.heard.length + ' by ' + tape.hour + " o'clock");
+  ok('and he never says the same thing twice',
+     new Set(tape.heard).size === tape.heard.length);
+  ok('and the first thing he says is to her by name',
+     /Ouissy/.test(tape.heard[0] || ''), JSON.stringify((tape.heard[0] || '').slice(0, 46)));
+
+  /* and the rules that keep it from being a radio playing over a scare */
+  const manners = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    w.route('night:4'); w.route('go');
+    const out = {};
+    /* the building has the right of way */
+    w.say('POWER AT TWENTY PERCENT');
+    out.underBuilding = w.tape().quiet;
+    w.pump(6);
+    /* and nothing speaks while something is at a door */
+    w.put('cogsworth', w.cast().cogsworth.def.route.length - 1);
+    out.atDoor = w.tape().quiet;
+    /* nor once she is dead */
+    s.doors.left = false; w.pump(9);
+    out.phase = s.phase;
+    out.afterDeath = w.tape().on;
+    return out;
+  });
+  ok('the building always gets to speak first', manners.underBuilding === false);
+  ok('and he says nothing with something at the door', manners.atDoor === false);
+  ok('and nothing at all once it has her',
+     manners.phase === 'over' && manners.afterDeath === false, manners.phase);
+
+  /* the four rooms the score has that only exist inside a shift */
+  console.log('\n— and the score follows her through the night —');
+  const rooms = await page.evaluate(async () => {
+    const w = OuissysNightShift.__night, s = w.state();
+    const out = {};
+    const M = () => w.music().mode;
+    w.route('night:4'); w.route('go'); w.pump(2);
+    out.play = M();
+    /* the meter goes: the heartbeat stops and everything else opens */
+    s.power = 0.2; w.pump(4);
+    out.dark = M();
+    /* a page in her hands, and back to the night after it */
+    w.route('night:2'); w.route('go'); w.pump(2);
+    w.takeFind();
+    out.found = M();
+    w.route('findOut');
+    out.afterFound = M();
+    /* one of his getting there first, and back again. pump() never
+       stops to tell a story, so the card is raised the way an
+       interception raises it rather than by running one. */
+    w.route('night:4'); w.route('go'); w.pump(2);
+    w.heldCard();
+    out.held = M();
+    w.route('heldOut');
+    out.afterHeld = M();
+    return out;
+  });
+  /* The death has to be watched rather than pumped: pump() runs only
+     while the phase is "play", and a kill ends that on the frame it
+     happens — so the card, which waits out the scare, only ever arrives
+     on a real frame. */
+  const death = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    w.route('night:1'); w.route('go');
+    w.put('cogsworth', w.cast().cogsworth.def.route.length - 1);
+    s.doors.left = false; w.pump(9);
+    return { phase: s.phase, during: w.music().mode };
+  });
+  await page.waitForFunction(() => OuissysNightShift.__night.state().cardT > 0,
+                             { timeout: 15000, polling: 100 });
+  await page.waitForTimeout(400);
+  death.after = await page.evaluate(() => OuissysNightShift.__night.music().mode);
+  rooms.duringScare = death.during;
+  rooms.overPhase = death.phase;
+  rooms.gone = death.after;
+  ok('a shift plays the night', rooms.play === 'night', rooms.play);
+  ok('the meter going out stops the heartbeat', rooms.dark === 'dark', rooms.dark);
+  ok('a page in her hands turns the phrase major', rooms.found === 'found', rooms.found);
+  ok('and putting it away hands the night back', rooms.afterFound === 'night', rooms.afterFound);
+  ok('one of his getting there first is the biggest sound in it',
+     rooms.held === 'held', rooms.held);
+  ok('and that hands the night back too', rooms.afterHeld === 'night', rooms.afterHeld);
+  ok('the score cuts out from under a scare', rooms.duringScare === 'none', rooms.duringScare);
+  ok('and comes back after it, not through it',
+     rooms.overPhase === 'over' && rooms.gone === 'gone', rooms.overPhase + '/' + rooms.gone);
 
   console.log('\n— and the story ends on something she decides —');
   const ends = await page.evaluate(() => {

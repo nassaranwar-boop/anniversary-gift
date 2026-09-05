@@ -307,6 +307,108 @@ const NS = {
 
   /* the one line at the end of a night, in place of a score. It is not
      a summary; it is a door left open. */
+  /* What tonight is FOR. The card told her which night it was and what
+     new thing would go wrong; it never told her what she was there to
+     do about it, which is the difference between a level and a scene.
+     One line, present tense, always something she can actually finish. */
+  why: {
+    1: "Learn the shop. Nothing has happened here yet.",
+    2: "Find out what the four in the back are, and why he kept them.",
+    3: "Four hundred and eleven went out of this door. Find out where.",
+    4: "He is about to tell you what they were for. Stay alive to hear it.",
+    5: "Keep all four of them wound. He asked you once, and he meant it.",
+    6: "Get to six o'clock. Then decide what to do with the key.",
+  },
+  /* =====================================================
+     THE TAPES — the story, told while she is playing it
+
+     The whole chapter's story used to live in the gaps: a film before
+     it, a card between nights, a page she might not find. Which leaves
+     the thing she actually spends her time doing — five and a half
+     minutes alone in an office — with nothing in it but survival. For
+     somebody who plays games that is a genre. For somebody who does
+     not, it is a long wait between the interesting parts, and she will
+     put it down.
+
+     So he talks to her. He left the tapes in the shop the way he left
+     the note and the shift card, and the terminal plays them back an
+     hour at a time. It is his voice, not the building's — that is what
+     the voice was rebuilt for — and it lands in the quiet, never over
+     a scare and never over the annunciator.
+
+     Six nights, and each one is a different man talking:
+
+       one    an ordinary husband being practical about a kettle
+       two    proud of what he made, and starting to explain it
+       three  the first thing he does not want to say out loud
+       four   what they were actually for
+       five   frightened, and not for himself
+       six    sorry, and asking her for something
+
+     Nothing here is a hint and nothing here is a rule. The game already
+     teaches itself. These are for the minutes in between, which is
+     where a story either has her or does not. */
+  tapes: {
+    1: [
+      { h: 0, t: "Ouissy. If you are hearing this, you found the drawer. Good." },
+      { h: 0, t: "The kettle is behind the till. It takes a while." },
+      { h: 1, t: "You will have noticed the four in the back. They are not stock. I never sold those." },
+      { h: 2, t: "They walk at night. It is not a fault. I built them to." },
+      { h: 3, t: "Nothing in this shop wants to hurt you. I want to say that first, while it is still true." },
+      { h: 4, t: "Shut the door if one gets close. It costs you a little. It costs you less than the alternative." },
+      { h: 5, t: "Six o'clock is soon. Go home and sleep. I mean it." },
+    ],
+    2: [
+      { h: 0, t: "You came back. I did not know if you would." },
+      { h: 1, t: "The soldier keeps time. He has never once been late, which is a thing I admired in somebody else first." },
+      { h: 2, t: "The owl goes through the ceiling because that is how a roof works. It is not being clever." },
+      { h: 3, t: "The ballerina stops when she is looked at. Everybody does." },
+      { h: 4, t: "And the box. The box does not leave a room while there is anybody in it." },
+      { h: 5, t: "I made four toys, Ouissy. I only ever had one idea." },
+    ],
+    3: [
+      { h: 0, t: "There is a book under the till. I would rather you did not, but you will." },
+      { h: 1, t: "Four hundred and eleven of them went out of here. Every one to a real address." },
+      { h: 2, t: "They were bought as presents. That part is true." },
+      { h: 3, t: "The tag on each one has this shop on it. So they know the way back." },
+      { h: 4, t: "If a parcel arrives that nobody sent, it is not a delivery. Do not open the door for it." },
+      { h: 5, t: "I am telling you this badly. I have started this tape four times." },
+    ],
+    4: [
+      { h: 0, t: "All right. The thing I have been walking around." },
+      { h: 1, t: "A toy in a house sees the house. Everything in it. Every night, for years." },
+      { h: 2, t: "And a toy that goes back to the shop it came from brings all of that with it." },
+      { h: 3, t: "That is what I did. Money came into our house and you never asked, and I let you not ask." },
+      { h: 4, t: "You are standing in the middle of it now. I am sorry. That is not enough and I know it." },
+      { h: 5, t: "The four in the back are the only ones I made for nothing." },
+    ],
+    5: [
+      { h: 0, t: "Something has changed and I do not think I have long." },
+      { h: 1, t: "They have started coming back on their own. I did not call them." },
+      { h: 2, t: "Keep the four of them wound. Every night. All four." },
+      { h: 3, t: "If one of them gets to the door before you do, let it." },
+      { h: 4, t: "They were never for the shop, Ouissy. They were for you, in case I was not there." },
+      { h: 5, t: "I built the whole four of them out of you and I never once said so out loud." },
+    ],
+    6: [
+      { h: 0, t: "This is the last one. I made it in the morning, which I never do." },
+      { h: 1, t: "You will have worked out by now what I was. I would like to say I was more than that." },
+      { h: 2, t: "I was not. But I was also a man who made four things that will stand at a door for you." },
+      { h: 3, t: "The shutters go up at six on their own. Every morning. They always have." },
+      { h: 4, t: "When it is light you can lock this place and never come back. That is a real choice and I want you to have it." },
+      { h: 5, t: "But if you wind her one more time, she will dance for you. And I would like somebody to see it." },
+    ],
+  },
+  /* and the ones that wait for her to do something rather than for a
+     clock, so the shop answers her instead of talking at her */
+  tapeWhen: {
+    firstDoor:   "That is the sound I built into it. You should be able to hear it from the desk.",
+    firstCam:    "The tube takes a moment. It always did.",
+    firstWind:   "There. That is all it is. A key and about a second.",
+    firstParcel: "That is not one of mine coming down the hall. Shut the door.",
+    firstHeld:   "I told you. Let them.",
+    lowPower:    "If the meter goes, sit still. Six o'clock has beaten the dark before now.",
+  },
   hooks: {
     1: "In the workshop bin there are four hundred tags that read SOLD, and four that do not.",
     2: "One of the addresses in the delivery book has been crossed out very hard.",
@@ -4768,6 +4870,7 @@ function stepSold(ch, dt) {
     ch.awake = true;
     ch.cool = range(Math.random, 5, 12);
     SFX.postDrag(TUNE.pan[ch.def.door]);
+    tapeTrigger("firstParcel");
     say(fmt(NS.sys.unknown, ch.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
     return;
   }
@@ -5191,7 +5294,7 @@ function audioInit() {
      thing you can only find out by putting a meter on it. */
   sideGain = AC.createGain(); sideGain.gain.value = 1; sideGain.connect(duckGain);
   bedGain = AC.createGain(); bedGain.gain.value = 0.0; bedGain.connect(sideGain);
-  cueGain = AC.createGain(); cueGain.gain.value = 1.15; cueGain.connect(duckGain);
+  cueGain = AC.createGain(); cueGain.gain.value = 1.0; cueGain.connect(duckGain);
   NB = noiseBuffer(3);
 
   /* The site keeps a watchdog for exactly this — see wakeAudio() in
@@ -5256,7 +5359,7 @@ function bedBuild() {
 
   bedGain.gain.cancelScheduledValues(t);
   bedGain.gain.setValueAtTime(0.0001, t);
-  bedGain.gain.linearRampToValueAtTime(0.34, t + 2.5);
+  bedGain.gain.linearRampToValueAtTime(0.32, t + 2.5);
   bedNodes = [src, hum, hum2, lfo];
 }
 function bedStop() {
@@ -5299,6 +5402,50 @@ function audioDuck(v, ms) {
    left ear and the ballerina always in your right, all the way down
    their routes — which is most of the information the game gives you
    when the hall lights are out. */
+/* HOW LONG EVERY CUE WAITS BEFORE IT STARTS, AND WHY IT HAS TO.
+
+   Every sound in this chapter is an envelope: a gain that goes from
+   nothing to its peak in four milliseconds and back down over the
+   length of the sound. All of them were scheduled at `now()`, meaning
+   AudioContext.currentTime, meaning the beginning of the block the
+   audio thread is working on this instant.
+
+   By the time that thread reaches the envelope, the four milliseconds
+   are already behind it. The attack never happens. The gain is picked
+   up somewhere down the far side of the curve and the whole cue plays
+   at a fraction of the level it was written at.
+
+   Measured, live, against the same cue rendered offline: a door
+   shutting came out at 0.0097 instead of 0.3077. Thirty times too
+   quiet. A bare noise buffer through the same bus was correct, and a
+   bare oscillator was correct, and putting an envelope on either of
+   them broke it — and the same burst scheduled a hundred and fifty
+   milliseconds ahead was twenty-four times louder than the one
+   scheduled now.
+
+   An OfflineAudioContext starts at zero with the whole render ahead of
+   it, so nothing scheduled "now" is ever late in one. Which is why
+   every measurement of these cues ever taken in this repository was of
+   a sound nobody had heard: the tools rendered offline, and the game
+   did not.
+
+   Twenty-five milliseconds. Longer than a render quantum, longer than
+   the base and output latency a browser reports, and short enough that
+   no one will ever know it is there.
+
+   One honest caveat, because it would be easy to overclaim this. The
+   sweep that found it was run in a headless container against a null
+   audio device, and there the level kept climbing all the way out to a
+   two hundred millisecond lead — far past any latency the context
+   reports. That gradual climb is this container's audio thread running
+   ahead in large batches, not something a phone does. So: scheduling
+   an envelope at currentTime is a real bug and this is the standard
+   fix for it, but how much of the thirty-fold gap was the bug and how
+   much was the container is not a thing this repository can answer.
+   The levels below are set from offline renders, where every cue is
+   measured on identical terms. */
+const CUE_LEAD = 0.025;
+
 function panned(o) {
   if (!o.bus) cueDuck(o.duck);
   const g = AC.createGain();
@@ -5315,7 +5462,7 @@ function panned(o) {
 
 function burst(o) {
   if (!ac() || muted) return;
-  const t = now() + (o.at || 0);
+  const t = now() + CUE_LEAD + (o.at || 0);
   const src = AC.createBufferSource(); src.buffer = NB;
   src.playbackRate.value = o.rate || 1;
   const f = AC.createBiquadFilter();
@@ -5332,7 +5479,7 @@ function burst(o) {
 }
 function tone(o) {
   if (!ac() || muted) return;
-  const t = now() + (o.at || 0);
+  const t = now() + CUE_LEAD + (o.at || 0);
   const osc = AC.createOscillator();
   osc.type = o.type || "sine";
   osc.frequency.setValueAtTime(o.f0 || 440, t);
@@ -5638,7 +5785,7 @@ function syllablesOf(text) {
 
 function annunciate(text, urgent) {
   if (!ac() || muted) return;
-  const t0 = now();
+  const t0 = now() + CUE_LEAD;
   const gain = urgent ? 0.85 : 0.6;
   /* the two-tone attention chime every announcement opens with */
   tone({ type: "square", f0: urgent ? 880 : 660, dur: 0.09, gain: 0.075 * gain, filter: "lowpass", ff: 2400 });
@@ -5895,7 +6042,7 @@ function voxSyl(bus, at, dur, f0, vowel, from, gain, stressed) {
 function voxSpeak(plan, opts) {
   if (!ac() || muted) return 0;
   opts = opts || {};
-  const t0 = now() + (opts.at || 0);
+  const t0 = now() + CUE_LEAD + (opts.at || 0);
   const gain = opts.gain === undefined ? 1 : opts.gain;
   const total = plan.dur;
   const bus = voxBus(1);
@@ -6003,10 +6150,67 @@ function sayClear() {
 const MUS = {
   ready: false, mode: "none", want: "none",
   bus: null, lay: {}, nodes: [],
-  dread: 0, target: 0, step: 0, next: 0, bar: 0,
+  dread: 0, target: 0, step: 0, next: 0, bar: 0, spb: 0,
 };
 const MUS_LOOK = 0.65;          // seconds scheduled ahead of the clock
-const MUS_LEVEL = 0.5;          // how loud the score sits under the game
+const MUS_LEVEL = 0.42;         // how loud the score sits under the game
+
+/* ONE PIECE OF MUSIC, NINE ROOMS TO PLAY IT IN.
+
+   The score had three settings — a menu, a night, a morning — and
+   everything else in the chapter either borrowed one or played nothing
+   at all. So the film where a dead man introduces himself had the same
+   music as the title screen; the moment one of his toys steps in front
+   of her had the same music as the ninety seconds before it; and a
+   death cut to silence and stayed there.
+
+   These are the same seven layers and the same music box in the same
+   key. Nothing here is a new track and nothing ever restarts — what
+   changes is which layers are audible, how fast the grid runs, and
+   whether the phrase is in the minor it ended up in or the major it
+   was written in. That is what lets one scene become the next one
+   without a cut anywhere.
+
+     film     he is talking. Almost nothing, and low, so that the
+              thing she is listening to is him.
+     brief    the minute before a night. A pulse and not much else:
+              the only layer here whose job is her stomach.
+     night    the one that watches the game. Six layers arriving in
+              order as dread climbs.
+     dark     the meter is gone. The heartbeat stops — that is the
+              effect. Everything else opens up underneath.
+     gone     after a death. A held low ring and the box running down.
+     found    she is reading something he wrote. The phrase turns
+              major for the first time each night.
+     held     one of his got to the door before she did. The biggest
+              sound in the chapter, and the only warm one that is loud.
+     dawn     six o'clock.
+     gallery  the shop in daylight, with nothing in it.
+     menu     the title. */
+const MODE_MIX = {
+  film:    { sub: 0.30, pulse: 0,    box: 0.28, air: 0.14, grind: 0.10, bow: 0,    warm: 0.10 },
+  brief:   { sub: 0.34, pulse: 0.32, box: 0.22, air: 0.10, grind: 0.06, bow: 0,    warm: 0 },
+  dark:    { sub: 0.70, pulse: 0,    box: 0,    air: 0.50, grind: 0.60, bow: 0.40, warm: 0 },
+  gone:    { sub: 0.50, pulse: 0,    box: 0.14, air: 0.30, grind: 0.34, bow: 0.12, warm: 0 },
+  found:   { sub: 0.20, pulse: 0,    box: 0.62, air: 0.14, grind: 0,    bow: 0,    warm: 0.55 },
+  held:    { sub: 0.44, pulse: 0.24, box: 0.72, air: 0.24, grind: 0,    bow: 0.20, warm: 0.72 },
+  dawn:    { sub: 0.16, pulse: 0,    box: 0.50, air: 0.12, grind: 0,    bow: 0,    warm: 0.75 },
+  gallery: { sub: 0.14, pulse: 0,    box: 0.55, air: 0.10, grind: 0,    bow: 0,    warm: 0.80 },
+  menu:    { sub: 0.20, pulse: 0,    box: 0.62, air: 0.10, grind: 0,    bow: 0,    warm: 0.34 },
+};
+/* how fast the grid runs, whether the phrase is the major one, and how
+   loud the whole thing sits. `night` works its own out of dread. */
+const MODE_FEEL = {
+  film:    { spb: 1.95, warm: false, level: 0.26 },
+  brief:   { spb: 1.55, warm: false, level: 0.40 },
+  dark:    { spb: 1.15, warm: false, level: 0.42 },
+  gone:    { spb: 2.40, warm: false, level: 0.38 },
+  found:   { spb: 1.70, warm: true,  level: 0.40 },
+  held:    { spb: 1.42, warm: true,  level: 0.54 },
+  dawn:    { spb: 1.50, warm: true,  level: 0.42 },
+  gallery: { spb: 1.62, warm: true,  level: 0.38 },
+  menu:    { spb: 1.36, warm: "menu", level: 0.42 },
+};
 const MUS_LAYERS = ["sub", "pulse", "box", "air", "grind", "bow", "warm"];
 
 /* A natural minor on A, which is the key the music box is in, so the
@@ -6164,7 +6368,8 @@ function musicSwap(m) {
      score was the loudest thing in the shop at every moment of every
      night and every sound that carries information was underneath it.
      A score you cannot play over is a wall. */
-  const to = m === "none" ? 0.0001 : MUS_LEVEL;
+  const feel = MODE_FEEL[m];
+  const to = m === "none" ? 0.0001 : (feel ? feel.level : MUS_LEVEL);
   MUS.bus.gain.cancelScheduledValues(t);
   MUS.bus.gain.setValueAtTime(Math.max(0.0001, MUS.bus.gain.value), t);
   MUS.bus.gain.linearRampToValueAtTime(to, t + (m === "none" ? 0.9 : 2.2));
@@ -6173,7 +6378,7 @@ function musicSwap(m) {
        starts landing on the beat the old one was already keeping */
     MUS.mode = m;
     if (m === "night") { MUS.dread = Math.min(MUS.dread, 0.25); }
-    if (m === "menu" || m === "dawn") MUS.dread = 0;
+    else if (m !== "dark") MUS.dread = 0;
   }
 }
 
@@ -6208,12 +6413,9 @@ function musicTick(dt) {
     set("grind", fadeIn(d, 0.44, 0.86) * 0.52);
     set("bow",   fadeIn(d, 0.60, 0.95) * 0.34);
     set("warm",  0);
-  } else if (mode === "dawn") {
-    set("sub", 0.16); set("pulse", 0); set("box", 0.5);
-    set("air", 0.12); set("grind", 0); set("bow", 0); set("warm", 0.75);
-  } else {                                   // menu
-    set("sub", 0.2); set("pulse", 0); set("box", 0.62);
-    set("air", 0.1); set("grind", 0); set("bow", 0); set("warm", 0.34);
+  } else {
+    const mix = MODE_MIX[mode] || MODE_MIX.menu;
+    MUS_LAYERS.forEach((k) => set(k, mix[k] || 0));
   }
 
   /* --- the grid ---------------------------------------------------
@@ -6221,7 +6423,16 @@ function musicTick(dt) {
      runs at 46 beats a minute; with something at an open door it is
      104, and every layer follows it because they are all on the same
      grid. The menu keeps its own slower, steadier one. */
-  const spb = mode === "night" ? lerp(1.30, 0.575, d) : (mode === "dawn" ? 1.5 : 1.36);
+  const feel = MODE_FEEL[mode] || MODE_FEEL.menu;
+  const wantSpb = mode === "night" ? lerp(1.30, 0.575, d) : feel.spb;
+  /* Eased, not snapped. Switching scene used to change the tempo
+     between one sixteenth and the next, which is a cut — and the whole
+     claim of this engine is that it never cuts. Half a second to get
+     there is slow enough to be a rallentando and fast enough that the
+     new room is the new room by the time she has read its first line. */
+  if (!MUS.spb) MUS.spb = wantSpb;
+  MUS.spb += clamp(wantSpb - MUS.spb, -1.4 * dt, 1.4 * dt);
+  const spb = MUS.spb;
   const stepLen = spb / 4;
   const t0 = now();
   if (!MUS.next || MUS.next < t0 - 1) MUS.next = t0 + 0.06;
@@ -6250,11 +6461,33 @@ function musicTick(dt) {
       if (G.power < TUNE.power.critical && s === 12) {
         boxNote(t, hz(-12), 0.10, 0, 1.8);
       }
-    } else if (mode === "dawn") {
+    } else if (feel.warm === true) {
+      /* the phrase in the major it was written in. `held` is the one
+         that gets a second voice a fifth above it, because it is the
+         moment the story turns and it should be the biggest thing she
+         has heard. */
       if ((s & 3) === 0) {
         const n = WARM[s];
-        boxNote(t, hz(n), 0.10, ((s % 3) - 1) * 0.45, 2.4);
+        boxNote(t, hz(n), mode === "held" ? 0.15 : 0.10, ((s % 3) - 1) * 0.45, 2.4);
+        if (mode === "held" && (s & 7) === 0) boxNote(t + stepLen, hz(n + 7), 0.075, -0.4, 2.0);
+        if (mode === "gallery" && s === 8) boxNote(t, hz(n - 12), 0.06, 0, 3.0);
       }
+    } else if (feel.warm === false) {
+      /* the cold rooms: the same minor phrase the night uses, thinned
+         right out. `film` gets one note every other bar and nothing
+         else, because the only thing she should be listening to while
+         it is playing is him. */
+      const every = mode === "film" ? 24 : mode === "gone" ? 16 : mode === "dark" ? 12 : 8;
+      if (MUS.step % every === 0) {
+        const fig = (MUS.bar & 1) ? FIG_B : FIG;
+        boxNote(t, hz(fig[s] - (mode === "gone" ? 12 : 0)),
+                mode === "film" ? 0.055 : 0.085, ((s % 3) - 1) * 0.4,
+                mode === "gone" ? 3.2 : 2.0);
+      }
+      /* the pulse the brief runs on, which is the only thing in it */
+      if (mode === "brief" && (s === 0 || s === 8)) heart(t, 50, 0.34);
+      /* and the dark: no heart at all, and a floor that leans on you */
+      if (mode === "dark" && s === 0) bowNote(t, hz(-5), 0.05, spb * 3.6);
     } else {
       /* --- the menu ------------------------------------------------
          The same music box, in the major it was written in, played
@@ -6612,6 +6845,9 @@ function powerRate() {
 
 function startBlackout() {
   G.blackout = true;
+  /* the heartbeat stops. That is the whole cue — six layers open up
+     underneath it and the one thing that was keeping time is gone. */
+  musicMode("dark");
   say(NS.sys.pwrOut, true);
   G.blackoutT = 0;
   G.blackoutLen = range(Math.random, TUNE.blackout.graceMin, TUNE.blackout.graceMax);
@@ -6841,24 +7077,31 @@ function intercept(threat, keeper) {
 
   /* the first time it happens she gets told what she just saw, once,
      and never again — after that it is simply how the shop works */
-  if (!seenSave() && !G.pumping) {
-    saveSeenSave(true);
-    G.phase = "held";
-    showHud(false);
-    overlay(
-      '<div class="ns-card ns-card-held">' +
-        '<p class="ns-from">' + NS.held.where + '</p>' +
-        '<div class="ns-lines">' +
-          NS.held.lines.map((l) => "<p>" + l + "</p>").join("") +
-        '</div>' +
-        '<p class="ns-pencil">' + fmt(NS.held.who, keeper.def.name) + '</p>' +
-        '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="heldOut">BACK TO IT</button></div>' +
-      '</div>', "ns-ov-held");
-  }
+  tapeTrigger("firstHeld");
+  if (!seenSave() && !G.pumping) heldCard(keeper);
+}
+
+/* the card, on its own, because pump() deliberately never stops to tell
+   a story and so nothing that only happens on a card could be checked */
+function heldCard(keeper) {
+  saveSeenSave(true);
+  G.phase = "held";
+  musicMode("held");
+  showHud(false);
+  overlay(
+    '<div class="ns-card ns-card-held">' +
+      '<p class="ns-from">' + NS.held.where + '</p>' +
+      '<div class="ns-lines">' +
+        NS.held.lines.map((l) => "<p>" + l + "</p>").join("") +
+      '</div>' +
+      '<p class="ns-pencil">' + fmt(NS.held.who, keeper.def.name) + '</p>' +
+      '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="heldOut">BACK TO IT</button></div>' +
+    '</div>', "ns-ov-held");
 }
 function closeHeld() {
   if (G.phase !== "held") return;
   G.phase = "play";
+  musicMode(G.blackout ? "dark" : "night");
   noOverlay();
   showHud(true);
 }
@@ -6900,6 +7143,7 @@ function walkHome() {
 function kill(ch) {
   if (G.phase !== "play") return;
   sayClear();
+  tapeOff();
   /* the score cuts out from under the scare rather than fading through
      it — the silence is half of what makes the noise land */
   musicMode("none");
@@ -6998,6 +7242,145 @@ function stepSignal(dt) {
     if (G.monitor && G.cam === r.id) SFX.hiss(1.2);
     say(fmt(NS.sys.camLost, "ZERO " + r.cam), true);
     bumpUI();
+  }
+}
+
+/* =========================================================
+   18g. THE TAPES HE LEFT IN THE SHOP
+
+   The one that answers "why is she still playing this".
+
+   Everything the chapter had to say was said before a night or after
+   it — the film, the shift card, a page she might never find. So the
+   five and a half minutes she actually spends in the office had no
+   story in them at all, only a job. Somebody who plays games will sit
+   through that because the job is good. Somebody who does not will put
+   the phone down at about four in the morning of night two, and she
+   would be right to.
+
+   So he talks to her while she works. One line an hour, plus a handful
+   that wait for her to do something rather than for a clock, so the
+   shop answers her instead of reciting at her.
+
+   The rules it plays by, all of which matter more than the writing:
+
+     never over a scare       nothing speaks unless the phase is play
+     never over the building  the annunciator has the right of way; his
+                              line waits for it and then goes
+     never twice              every line is fired once and marked
+     never in a crisis        it holds while something is at a door,
+                              because a man reminiscing over the top of
+                              a jack-in-the-box is a joke
+     it ducks                 the score steps back for him the way it
+                              steps back for a cue, so a voice is a
+                              voice and not a texture
+
+   And it is his voice, not the terminal's. That is the whole reason
+   the voice was rebuilt: two machines talking is a shop with a fault,
+   one machine and one man is a woman being spoken to by her husband.
+   ========================================================= */
+const TAPE = {
+  on: false, said: {}, wait: 0, speakT: 0, line: "", plan: null, t0: 0,
+  pending: null, opened: false,
+};
+const TAPE_GAP = 7.0;          // shortest quiet between two of his lines
+
+function tapeReset() {
+  TAPE.on = true;
+  TAPE.said = {};
+  TAPE.wait = 5.0;             // she gets a moment before he starts
+  TAPE.speakT = 0;
+  TAPE.line = "";
+  TAPE.plan = null;
+  TAPE.pending = null;
+  TAPE.opened = false;
+  if (EL["ns-tape"]) { EL["ns-tape"].hidden = true; EL["ns-tape"].innerHTML = ""; }
+}
+function tapeOff() {
+  TAPE.on = false;
+  TAPE.speakT = 0;
+  if (EL["ns-tape"]) { EL["ns-tape"].hidden = true; EL["ns-tape"].innerHTML = ""; }
+}
+
+/* is this a moment a man could speak into? */
+function tapeQuiet() {
+  if (G.phase !== "play") return false;
+  if (G.blackout) return false;
+  if (sayQueue.length || G.t < sayUntil) return false;   // the building first
+  if (tutorOn()) return false;
+  for (const id in cast) {
+    const ch = cast[id];
+    if (ch && ch.awake && ch.atDoor) return false;       // not now
+  }
+  return true;
+}
+
+function tapeSay(line) {
+  if (!line || TAPE.said[line]) return false;
+  TAPE.said[line] = 1;
+  TAPE.plan = voxPlan(line);
+  TAPE.line = line;
+  TAPE.t0 = perf();
+  TAPE.speakT = TAPE.plan.dur + 1.1;
+  voxSpeak(TAPE.plan, { gain: 0.9 });
+  /* he gets the room to himself, the way a cue does but for longer */
+  cueDuck(0.42);
+  const el = EL["ns-tape"];
+  if (el) {
+    el.hidden = false;
+    el.innerHTML = TAPE.plan.words
+      .map((w, i) => '<i data-w="' + i + '">' + w.text + "</i>")
+      .join(" ");
+  }
+  return true;
+}
+
+/* the ones that wait for her rather than for the clock */
+function tapeTrigger(key) {
+  if (!TAPE.on || !NS.tapeWhen) return;
+  const line = NS.tapeWhen[key];
+  if (!line || TAPE.said[line]) return;
+  TAPE.pending = line;
+}
+
+function tapeTick(dt) {
+  if (!TAPE.on) return;
+  const el = EL["ns-tape"];
+
+  /* light the word he is on, the same way the film does */
+  if (TAPE.speakT > 0) {
+    TAPE.speakT -= dt;
+    if (el && TAPE.plan) {
+      const t = perf() - TAPE.t0;
+      const kids = el.children;
+      for (let i = 0; i < kids.length; i++) {
+        const w = TAPE.plan.words[i];
+        kids[i].className = w && t >= w.at ? "on" : "";
+      }
+    }
+    if (TAPE.speakT <= 0 && el) { el.hidden = true; el.innerHTML = ""; }
+    return;
+  }
+  if (el && !el.hidden) { el.hidden = true; el.innerHTML = ""; }
+
+  TAPE.wait -= dt;
+  if (TAPE.wait > 0 || !tapeQuiet()) return;
+
+  /* Something she did comes before something the clock did — but not
+     before he has introduced himself. A man whose first words to his
+     wife are a remark about a doorknob has not said hello. */
+  if (TAPE.pending && TAPE.opened) {
+    const line = TAPE.pending;
+    TAPE.pending = null;
+    if (tapeSay(line)) { TAPE.wait = TAPE_GAP; return; }
+  }
+  const script = NS.tapes && NS.tapes[G.night];
+  if (!script) return;
+  for (let i = 0; i < script.length; i++) {
+    const it = script[i];
+    if (it.h > G.hour) break;
+    if (TAPE.said[it.t]) continue;
+    if (tapeSay(it.t)) { TAPE.opened = true; TAPE.wait = TAPE_GAP; return; }
   }
 }
 
@@ -7364,9 +7747,11 @@ function frame(ts) {
       stepWind(dt);
       /* the meter's own warnings, and the system reading them out */
       if (G.power < TUNE.power.critical && G.warned < 2) { G.warned = 2; SFX.beep(true); say(NS.sys.pwr10, true); }
-      else if (G.power < TUNE.power.warn && G.warned < 1) { G.warned = 1; SFX.beep(false); say(NS.sys.pwr25); }
+      else if (G.power < TUNE.power.warn && G.warned < 1) { G.warned = 1; SFX.beep(false); say(NS.sys.pwr25); tapeTrigger("lowPower"); }
       audioTick(dt);
       sayTick(dt);
+      /* after sayTick, so the building always has the right of way */
+      tapeTick(dt);
       uiTick(dt);
     }
     }
@@ -7442,7 +7827,8 @@ function buildUI() {
   ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
    "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
    "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
-   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine", "ns-key"].forEach((id) => {
+   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine", "ns-key",
+   "ns-tape"].forEach((id) => {
     EL[id] = el(id);
   });
   stageEl = EL["ns-stage"];
@@ -7608,6 +7994,7 @@ function screenHowTo() {
 /* Night one is a card she finds on the desk; every night after it is
    whatever paper turned up that day. Nobody says any of it out loud. */
 function screenBrief() {
+  musicMode("brief");
   const cfg = G.cfg;
   let body = "";
   if (G.night === 1) {
@@ -7628,6 +8015,7 @@ function screenBrief() {
     '<div class="ns-card ns-card-brief">' +
       '<p class="ns-nightno">' + cfg.name + '</p>' +
       '<p class="ns-blurb">' + cfg.blurb + '</p>' +
+      (NS.why[G.night] ? '<p class="ns-why">' + NS.why[G.night] + '</p>' : "") +
       body +
       (rule && G.night > 1 ? '<p class="ns-rule">' + rule + '</p>' : "") +
       '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="go">12:00 AM</button>' +
@@ -7650,6 +8038,9 @@ function screenPause() {
 }
 
 function screenOver() {
+  /* the score comes back after the scare, not through it: what is left
+     is a low ring and the box winding down two octaves under itself */
+  musicMode("gone");
   const c = BY_ID[G.dead] || CAST[0];
   overlay(
     '<div class="ns-card ns-card-over">' +
@@ -7955,6 +8346,7 @@ function beginNight(n, opts) {
   showHud(true);
   bedStart();
   musicMode("night");
+  tapeReset();
   say(NS.sys.boot);
   if (G.cozy) say(NS.sys.cozy);
   if (hazard("stickyDoor")) say(NS.sys.doorFault);
@@ -7968,6 +8360,7 @@ function beginNight(n, opts) {
    photograph of the two of them hangs, because it is the one part of
    this chapter where nothing is ever going to move. */
 function beginGallery() {
+  musicMode("gallery");
   G.mode = "gallery";
   G.phase = "gallery";
   sayClear();
@@ -7986,7 +8379,6 @@ function beginGallery() {
   noOverlay();
   showHud(false);
   bedStop();
-  musicMode("menu");
   screenGallery();
   bumpUI();
 }
@@ -8222,6 +8614,7 @@ function stepWind(dt) {
     spendPower(WIND.cost * cozyK("power"));
     ch.wound = WIND.hours;
     G.stats.winds++;
+    tapeTrigger("firstWind");
     windEnd();
     SFX.crank(0.7);
     say(fmt(NS.sys.wound, ch.def.name));
@@ -8287,7 +8680,9 @@ function cineStart() {
   noOverlay();
   showHud(false);
   bedStart();
-  musicMode("menu");
+  /* almost nothing, and low, so that the thing she is listening to
+     while it plays is him */
+  musicMode("film");
   if (stageEl) stageEl.dataset.cine = "1";
   cineCard();
   cineNext();
@@ -8654,6 +9049,7 @@ function takeFind() {
   if (EL["ns-find"]) EL["ns-find"].hidden = true;
   SFX.paper();
   G.phase = "found";
+  musicMode("found");
   showHud(false);
   overlay(
     '<div class="ns-card ns-card-find">' +
@@ -8669,6 +9065,7 @@ function takeFind() {
 function closeFind() {
   if (G.phase !== "found") return;
   G.phase = "play";
+  musicMode(G.blackout ? "dark" : "night");
   noOverlay();
   showHud(true);
 }
@@ -8913,7 +9310,7 @@ function toggleDoor(k) {
   if (k === "hatch") { SFX.hatch(); say(G.doors.hatch ? NS.sys.hatchShut : NS.sys.hatchOpen); }
   else {
     const num = k === "left" ? "ONE" : "TWO";
-    if (G.doors[k]) { SFX.doorClose(); G.shake = Math.max(G.shake, 0.35); say(fmt(NS.sys.doorShut, num)); }
+    if (G.doors[k]) { SFX.doorClose(); G.shake = Math.max(G.shake, 0.35); say(fmt(NS.sys.doorShut, num)); tapeTrigger("firstDoor"); }
     else { SFX.doorOpen(); say(fmt(NS.sys.doorOpen, num)); }
   }
   /* opening a door on something standing behind it gives you a moment,
@@ -8928,6 +9325,7 @@ function toggleDoor(k) {
 }
 
 function toggleMonitor() {
+  if (!G.monitor) tapeTrigger("firstCam");
   if (G.phase === "gallery") return;
   if (G.phase !== "play") return;
   if (G.blackout) { SFX.beep(false); return; }
@@ -9353,7 +9751,7 @@ const testHooks = {
        books, and the room tone's fade-in leaves a ramp behind it */
     const t = now();
     bedGain.gain.cancelScheduledValues(t);
-    bedGain.gain.setValueAtTime(on ? 0.34 : 0.0001, t);
+    bedGain.gain.setValueAtTime(on ? 0.32 : 0.0001, t);
   },
   /* take the audio session away, the way a phone call does */
   suspend: () => { if (AC && AC.suspend) AC.suspend(); },
@@ -9420,6 +9818,18 @@ const testHooks = {
     kept: Object.keys(foundAll()),
     why: FIND_WHY,
   }),
+  /* pick tonight's up without having to find it on a camera first */
+  takeFind: () => { takeFind(); return G.phase; },
+  heldCard: () => { heldCard(cast.cogsworth); return G.phase; },
+  /* the tapes: what he has said tonight, and what he is saying now */
+  tape: () => ({ on: TAPE.on, said: Object.keys(TAPE.said).length,
+                 line: TAPE.speakT > 0 ? TAPE.line : null,
+                 pending: TAPE.pending || null,
+                 quiet: tapeQuiet(),
+                 showing: EL["ns-tape"] ? !EL["ns-tape"].hidden : false }),
+  tapeTick: (dt) => { tapeTick(dt); return TAPE.line; },
+  say: (line, urgent) => say(line, urgent),
+  sayTick: (dt) => sayTick(dt),
 };
 
 return { start, stop, preview, __night: testHooks,
