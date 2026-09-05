@@ -385,9 +385,14 @@ Night one opens in the terminal's **orientation mode** — a real thing an
 old security system would have. One instruction at a time, and *the
 shift stops and waits*: the clock does not run, the meter does not
 drain, nothing walks. She raises the monitor, walks the cameras, shuts a
-door, opens it again, latches the hatch. She cannot fail it and she
-cannot fall behind it, and by the time it hands the night over she has
-done every control with her own hands. It runs once and never again.
+door, opens it again, latches the hatch — and then it runs one of his
+four down in front of her, makes her find him on a camera, and has her
+hold the key in his back until he is wound again. That last one is the
+control the whole story turns on, and for a while orientation did not
+teach it at all. She cannot fail any of it and she cannot fall behind
+it; the clock does not move and the only thing the whole lesson costs
+is the one percent that winding him costs. It runs once and never
+again.
 
 And every night there is **one thing hidden in the shop** — a brass tag,
 a card, a folded letter — sitting on a surface somewhere on the eight
@@ -466,7 +471,8 @@ a slider from 0 to 20 for each of the four, so any combination can be
 asked for. **The shop in daylight** — a calm walk-through of all nine
 rooms in the morning, nothing running, nothing going to move, which is
 where the one warm personal thing in the chapter lives. **The record** —
-which nights are cleared and six badges, each of which puts one more
+which nights are cleared and eight badges — two of them for looking
+after his four rather than for surviving — each of which puts one more
 small object on the shelf beside the desk. And **Cozy Mode**, on the
 title screen from the start, which is not a lesser version: gentler
 jumpscares, a slower meter, fewer alarms and more time at a door.

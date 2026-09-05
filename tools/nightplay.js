@@ -567,10 +567,18 @@ function ok(name, cond, extra) {
     const one = nightHas(1), four = nightHas(4);
     /* watching does nothing to them: they were not built for her */
     w.route('night:4'); w.route('go');
+    /* His four have to be asleep for this. They advance on a 34% roll
+       every 9.5 seconds, so the window has to be long enough that
+       coming up empty means something — and over a window that long,
+       on night four with all four awake and both doors open, one of
+       his reaches the office and ends the shift before the parcel has
+       had its chance. The check was measuring how fast Jax kills you. */
+    ['cogsworth','chime','marabelle','jax'].forEach(k => {
+      w.cast()[k].awake = false; w.cast()[k].asleep = true; });
     const c = w.cast().post1;
     c.awake = true; c.cool = 0; c.step = 1;
     s.monitor = true; w.cam(c.room); s.power = 100;
-    const a0 = c.step; w.pump(70); const watched = c.step - a0;
+    const a0 = c.step; w.pump(160); const watched = c.step - a0;
     /* an open door is fatal, a shut one holds them and then they go */
     const run = (shut) => {
       w.route('night:4'); w.route('go');
@@ -681,6 +689,28 @@ function ok(name, cond, extra) {
   ok('a wound ballerina still freezes when watched', slack.wound === 0, String(slack.wound));
   ok('a run-down one does not', slack.slack > 0, 'moved ' + slack.slack + ' steps while watched');
 
+  console.log('\n— and the record notices whether she looked after them —');
+  const rec2 = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    const finish = (wound) => {
+      try { localStorage.setItem('ns_badges', '{}'); } catch (e) {}
+      w.route('night:2'); w.route('go');
+      ['cogsworth','chime','marabelle','jax'].forEach(k => { w.cast()[k].asleep = true; w.cast()[k].wound = wound; });
+      s.hour = 5; s.power = 60; w.pump(70);
+      return { rating: s.rating && s.rating.key,
+               badges: Object.keys(JSON.parse(localStorage.getItem('ns_badges') || '{}')) };
+    };
+    const kept = finish(9);
+    const dropped = finish(0);
+    return { kept, dropped };
+  });
+  ok('a night with all four still wound rates better than one without',
+     rec2.kept.rating !== rec2.dropped.rating,
+     rec2.kept.rating + ' vs ' + rec2.dropped.rating);
+  ok('and keeping all four is worth a badge of its own',
+     rec2.kept.badges.indexOf('kept') >= 0 && rec2.dropped.badges.indexOf('kept') < 0,
+     rec2.kept.badges.join(',') + ' | ' + rec2.dropped.badges.join(','));
+
   console.log('\n— the shop has six things in it to find —');
   const finds = await page.evaluate(async () => {
     const w = OuissysNightShift.__night;
@@ -749,6 +779,20 @@ function ok(name, cond, extra) {
       "CEILING HITCH": null,
       "CEILING HATCH: LATCH IT.": () => w.press('hatch'),
       "GOOD. UNLATCH.": () => w.press('hatch'),
+      /* the newest and most important control, which orientation did
+         not teach at all for a whole pass */
+      "FIND HIM.": () => { if (!w.state().monitor) w.press('monitor');
+                           w.cam(w.cast().cogsworth.room); },
+      /* Once, and then let go of nothing: the hold is on a wall clock,
+         so pressing again every tick restarted it and the ring never
+         filled. It has to be retried until the key is on screen — the
+         frame loop places it — and then never pressed again. */
+      "THERE IS A KEY IN HIS BACK. HOLD IT.": () => {
+        const el = document.getElementById('ns-key');
+        if (!el || el.hidden || el.dataset.held) return;
+        el.dataset.held = '1';
+        el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+      },
     };
     let last = null, guard = 0, rooms = ['hall','stage','party','foyer','closet'], ri = 0;
     /* requestAnimationFrame runs at about 3fps in this container and
@@ -757,18 +801,36 @@ function ok(name, cond, extra) {
     while (guard++ < 220 && w.tutor().step >= 0 && w.tutor().step < w.tutor().of) {
       const t = w.tutor();
       if (t.line !== last) { seen.push(t.line); last = t.line; if (act[t.line]) act[t.line](); }
+      /* both of these have to be retried: the key is placed by the frame
+         loop, so on the tick a line first appears it may not be on
+         screen yet, and a single dispatch would stall the walkthrough */
+      else if (act[t.line] && /KEY IN HIS BACK|FIND HIM/.test(t.line)) act[t.line]();
       if (t.line === "GOOD. STEP THROUGH THE ROOMS." && ri < rooms.length) w.cam(rooms[ri++]);
       await new Promise(r => setTimeout(r, 260));
     }
-    return { steps: seen.length, hour: s.hour, power: +s.power.toFixed(1),
-             phase: s.phase, done: w.tutor().step < 0 };
+    return { steps: seen.length, seen, hour: s.hour, power: +s.power.toFixed(1),
+             phase: s.phase, done: w.tutor().step < 0,
+             wound: +w.wind().wound.cogsworth.toFixed(2) };
   });
-  ok('it walks her through every control', tut.steps >= 8, String(tut.steps));
-  ok('and nothing moves while it waits', tut.hour === 0 && tut.power === 100,
-     'hour ' + tut.hour + ', power ' + tut.power + '%');
+  ok('it walks her through every control', tut.steps >= 12, String(tut.steps));
+  ok('and that includes the key, which is the whole game',
+     tut.seen.some(l => /KEY IN HIS BACK/.test(l)), tut.steps + ' steps');
+  ok('and she actually winds one doing it', tut.wound > 5, 'wound ' + tut.wound);
+  /* the clock still does not move — but the meter does now, by the one
+     percent that winding him costs, which is the lesson */
+  ok('and the clock never moves while it waits', tut.hour === 0, 'hour ' + tut.hour);
+  ok('and the only thing it spends is the wind', tut.power > 97 && tut.power <= 100,
+     tut.power + '%');
   ok('and she cannot lose it', tut.phase === 'play' && tut.done, JSON.stringify(tut.phase));
   ok('and it never runs twice',
      await page.evaluate(() => localStorage.getItem('ns_notutor')) === '1');
+
+  /* the shelf is the only progress screen in the chapter, so it has to
+     have somewhere to put everything the chapter can give her */
+  const shelf = await page.evaluate(() => OuissysNightShift.__night.shelf());
+  ok('the shelf has room for every night and every badge',
+     shelf.slots >= shelf.most && shelf.most > 0,
+     shelf.slots + ' slots for ' + shelf.most + ' things');
 
   console.log('\n— and the story ends on something she decides —');
   const ends = await page.evaluate(() => {

@@ -410,6 +410,8 @@ const NS = {
     { id:"nodoor",  name:"HANDS OFF",        note:"clear a night without shutting a door" },
     { id:"nocam",   name:"EYES SHUT",        note:"clear a night with under twenty seconds of camera" },
     { id:"arcade",  name:"OUT OF ORDER",     note:"find whatever is still running in the arcade" },
+    { id:"kept",    name:"ALL FOUR",         note:"reach six with every one of them still wound" },
+    { id:"held",    name:"NOT ALONE",        note:"have one of his get to the door before you did" },
   ],
 };
 /* =========================================================
@@ -2709,9 +2711,15 @@ function buildOffice(R) {
   R.place(freeze(trophyShelf), 0.1, 1.36, -D / 2 + 0.1, { shadow: false });
 
   const trophies = [];
-  for (let i = 0; i < 12; i++) {
+  /* Counted, not guessed at: adding two badges quietly made this shelf
+     two short of what the game can award, and the two nobody would
+     ever see are the last two earned. */
+  const SLOTS = NIGHTS.length + NS.badges.length;
+  const gap = Math.min(0.088, 1.04 / SLOTS);
+  for (let i = 0; i < SLOTS; i++) {
     const t = KIT.toy(i % 6, rngFor("trophy" + i));
-    at(t, 0.1 - 0.48 + i * 0.088, 1.4, -D / 2 + 0.19 + (i % 2) * 0.015, 0, (i * 1.7) % TAU, 0, 0.8);
+    at(t, 0.1 - gap * (SLOTS - 1) / 2 + i * gap, 1.4,
+       -D / 2 + 0.19 + (i % 2) * 0.015, 0, (i * 1.7) % TAU, 0, 0.8);
     t.visible = false;
     freeze(t);
     /* the pool each one will cast once it is standing there */
@@ -4734,10 +4742,19 @@ function resetSold() {
    his four and nothing else, so that when one of these turns up on
    night two she already knows what the shop is supposed to sound like */
 function soldActive(def) {
-  if (G.mode !== "story") return G.night === 0 ? false : false;
-  const n = G.night;
-  if (n < 2) return false;
-  return n >= def.from + 1;
+  /* Custom Night is her shop and her rules, and a shop with none of the
+     four hundred he sold in it is a different game. They come with the
+     dials: turn everything down and it is quiet, turn it up and the
+     front door is busy. */
+  if (G.mode === "custom") {
+    const d = G.cfg && G.cfg.dials;
+    if (!d) return false;
+    const top = Math.max(d.cogsworth, d.chime, d.marabelle, d.jax);
+    return top >= (def.from + 1) * 5;
+  }
+  if (G.mode !== "story") return false;
+  if (G.night < 2) return false;
+  return G.night >= def.from + 1;
 }
 
 function stepSold(ch, dt) {
@@ -5269,23 +5286,31 @@ const SFX = {
   /* THE ONES HE SOLD — no melody, ever. His four have voices; these
      have the sound of something wrapped being moved by something that
      is not being careful. If you can hum it, it is one of his. */
+  /* Measured with tools/nightsound.js, which exists because telling
+     these from his four by ear is a rule of the game and nobody had
+     ever heard either. Measured honestly — as the cues are actually
+     played, rather than one synth function out of the two or three
+     that make up a cue — a tried doorknob sat at 1030Hz and
+     Cogsworth's boots at 940. The same sound. These are duller now,
+     and the ring in his foot is loud enough to be the thing she hears,
+     so the bands are disjoint on every roll of a noisy die. */
   postDrag(pan, gain) {
     const v = gain === undefined ? 1 : gain;
-    burst({ f0: 1900, f1: 620, dur: 0.42, gain: 0.16 * v, q: 0.5, filter: "bandpass", pan });
-    burst({ f0: 3400, f1: 2100, dur: 0.26, gain: 0.05 * v, q: 0.8, filter: "highpass", at: 0.08, pan });
-    tone({ type: "triangle", f0: 61, f1: 47, dur: 0.5, gain: 0.05 * v, filter: "lowpass", ff: 200, at: 0.05, pan });
+    burst({ f0: 620, f1: 230, dur: 0.46, gain: 0.20 * v, q: 0.5, filter: "lowpass", pan });
+    burst({ f0: 1400, f1: 820, dur: 0.20, gain: 0.006 * v, q: 0.8, filter: "highpass", at: 0.08, pan });
+    tone({ type: "triangle", f0: 58, f1: 44, dur: 0.55, gain: 0.075 * v, filter: "lowpass", ff: 180, at: 0.05, pan });
   },
   /* it has arrived, and it has put itself down */
   postSettle(pan) {
-    burst({ f0: 260, f1: 90, dur: 0.3, gain: 0.34, q: 0.7, filter: "lowpass", pan });
-    burst({ f0: 2600, f1: 1500, dur: 0.2, gain: 0.07, q: 0.7, filter: "highpass", at: 0.03, pan });
-    tone({ type: "triangle", f0: 44, f1: 33, dur: 0.66, gain: 0.075, filter: "lowpass", ff: 150, pan });
+    burst({ f0: 220, f1: 70, dur: 0.34, gain: 0.36, q: 0.7, filter: "lowpass", pan });
+    burst({ f0: 1800, f1: 900, dur: 0.18, gain: 0.022, q: 0.7, filter: "highpass", at: 0.03, pan });
+    tone({ type: "triangle", f0: 41, f1: 31, dur: 0.7, gain: 0.085, filter: "lowpass", ff: 140, pan });
   },
   /* and the handle, tried, and tried again */
   handle(pan) {
-    burst({ f0: 1500, f1: 780, dur: 0.07, gain: 0.2, q: 4, pan });
-    burst({ f0: 900, f1: 380, dur: 0.11, gain: 0.15, q: 3, at: 0.09, pan });
-    tone({ type: "square", f0: 140, f1: 108, dur: 0.1, gain: 0.05, filter: "lowpass", ff: 500, at: 0.04, pan });
+    burst({ f0: 340, f1: 150, dur: 0.10, gain: 0.26, q: 2.2, filter: "lowpass", pan });
+    burst({ f0: 240, f1: 120, dur: 0.14, gain: 0.19, q: 1.8, filter: "lowpass", at: 0.09, pan });
+    tone({ type: "square", f0: 112, f1: 84, dur: 0.13, gain: 0.07, filter: "lowpass", ff: 260, at: 0.04, pan });
   },
 
   /* picking a piece of paper up off a shelf. Two short scrapes and a
@@ -5301,8 +5326,12 @@ const SFX = {
     const v = gain === undefined ? 0.5 : gain;
     burst({ f0: 180, f1: 70, dur: 0.16, gain: 0.5 * v, q: 0.8, filter: "lowpass", pan });
     tone({ type: "square", f0: 96, f1: 62, dur: 0.13, gain: 0.11 * v, filter: "lowpass", ff: 500, pan });
-    tone({ type: "triangle", f0: 1420, dur: 0.24, gain: 0.045 * v, at: 0.012, pan });
-    tone({ type: "triangle", f0: 2130, dur: 0.19, gain: 0.03 * v, at: 0.012, pan });
+    /* the ring the foot leaves behind. He is a clock that walks, and at
+       the gain these two started on he was only ever a boot: the metal
+       in him is what tells her, in the dark, that the thing in the hall
+       is one of his and not a parcel. */
+    tone({ type: "triangle", f0: 1420, dur: 0.26, gain: 0.085 * v, at: 0.012, pan });
+    tone({ type: "triangle", f0: 2130, dur: 0.21, gain: 0.062 * v, at: 0.012, pan });
   },
   tick(gain, pan) {
     const v = gain === undefined ? 0.4 : gain;
@@ -6300,7 +6329,7 @@ function retreat(ch) {
 function cue(ch, g) {
   const v = clamp(g, 0.08, 1);
   const p = TUNE.pan[ch.def.door];
-  if (ch.def.id === "cogsworth") { SFX.step(v, p); setTimeout(() => SFX.step(v * 0.85, p), 260); SFX.tick(v * 0.5, p); }
+  if (ch.def.id === "cogsworth") { SFX.step(v, p); setTimeout(() => SFX.step(v * 0.85, p), 260); SFX.tick(v * 0.9, p); }
   else if (ch.def.id === "chime") { SFX.flutter(v * 0.8, p); setTimeout(() => SFX.hoot(v, p), 220); }
   else if (ch.def.id === "marabelle") { SFX.tune(v * 0.8, 1, p); }
   else { SFX.crank(v * 0.7, p); setTimeout(() => SFX.bells(v, p), 300); }
@@ -6419,6 +6448,35 @@ const TUTOR = [
   { line: "GOOD. UNLATCH.",
     hint: "W again",
     done: () => !G.doors.hatch },
+
+  /* And the one the whole rest of the game turns on. It was missing
+     for a whole pass: she was being taught doors and cameras and left
+     to find the most important control in the chapter in a note she
+     might skim. The step sets a performer running down on purpose,
+     because at midnight all four are still on the wind he left them
+     and there would be no key to find. */
+  { line: "ONE OF THEM IS RUNNING DOWN.",
+    hold: 2.8,
+    enter: () => {
+      const c = cast.cogsworth;
+      if (!c) return;
+      c.awake = true;
+      c.wound = 0.4;
+      c.step = 0;
+      c.atDoor = false;
+      c.cool = 999;                 // he stays put while she learns this
+      syncChar(c);
+    } },
+  { line: "FIND HIM.",
+    hint: "he is on one of the cameras",
+    done: () => G.monitor && cast.cogsworth && G.cam === cast.cogsworth.room },
+  { line: "THERE IS A KEY IN HIS BACK. HOLD IT.",
+    hint: "press and hold until the ring fills",
+    done: () => cast.cogsworth && (cast.cogsworth.wound || 0) > 5 },
+  { line: "THAT ONE IS YOURS UNTIL DAWN. THE NOTE SAYS ALL FOUR, EVERY NIGHT.",
+    hold: 4.0,
+    enter: () => { if (cast.cogsworth) cast.cogsworth.cool = 4; } },
+
   { line: "ORIENTATION COMPLETE. THE SHIFT IS YOURS.", hold: 3.0 },
 ];
 
@@ -6443,6 +6501,7 @@ function tutorShow() {
   const step = TUTOR[G.tutor];
   if (!step) { el.hidden = true; return; }
   el.hidden = false;
+  if (step.enter) step.enter();
   el.innerHTML = '<b>' + step.line + '</b>' +
                  (step.hint ? '<span>' + step.hint + '</span>' : "");
   el.classList.remove("nudge");
@@ -6823,7 +6882,11 @@ function rateNight() {
   if (st.knocks === 0) score += 1;
   if (!G.blackout) score += 2;
   if (st.camSec >= 25) score += 1;          // she actually looked
-  const r = score >= 7 ? 0 : score >= 5 ? 1 : score >= 3 ? 2 : 3;
+  /* and the thing the whole chapter is about: did she look after the
+     four he left her? A night scored without this was scoring the
+     wrong game. */
+  if (woundCount() === 4) score += 2; else if (woundCount() >= 2) score += 1;
+  const r = score >= 9 ? 0 : score >= 6 ? 1 : score >= 3 ? 2 : 3;
   return NS.ratings[r];
 }
 
@@ -6844,6 +6907,8 @@ function awardBadges() {
   if (G.power <= 1.2 && giveBadge("onepc")) got.push("onepc");
   if (st.closes === 0 && giveBadge("nodoor")) got.push("nodoor");
   if (st.camSec < 20 && giveBadge("nocam")) got.push("nocam");
+  if (woundCount() === 4 && giveBadge("kept")) got.push("kept");
+  if (st.saves > 0 && giveBadge("held")) got.push("held");
   return got;
 }
 
@@ -7034,7 +7099,12 @@ function frame(ts) {
     /* orientation holds the whole night still until she has done the
        thing it asked for: no clock, no drain, nobody walking. It is the
        one place in the chapter where the shop waits for her. */
-    if (!tutorStep(dt)) { uiTick(dt); sayTick(dt); musicTick(dt); }
+    if (!tutorStep(dt)) {
+      /* the shift is held, but the key still has to turn — orientation
+         cannot teach a control it has also switched off */
+      stepWind(dt);
+      uiTick(dt); sayTick(dt); musicTick(dt);
+    }
     else {
     stepClock(dt);
     if (G.phase === "play") {
@@ -8944,6 +9014,62 @@ const testHooks = {
                     o[k] = MUS.lay[k] ? +MUS.lay[k].gain.value.toFixed(3) : null; return o;
                   }, {}) }),
   musicTick: (dt) => musicTick(dt),
+  /* Render one cue into an offline context and hand the samples back,
+     so a suite can measure what nobody has been able to hear. The
+     chapter's synths all hang off the module's own AC and cueGain, so
+     this swaps both for offline ones, fires the cue, renders, and puts
+     the real ones back exactly as they were. */
+  offline(which, secs) {
+    const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OC) return Promise.resolve(null);
+    const ctx = new OC(2, Math.ceil(44100 * (secs || 1.5)), 44100);
+    const keep = { AC, master, duckGain, bedGain, cueGain, NB, muted };
+    AC = ctx;
+    master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination);
+    duckGain = ctx.createGain(); duckGain.connect(master);
+    bedGain = ctx.createGain(); bedGain.connect(duckGain);
+    cueGain = ctx.createGain(); cueGain.connect(duckGain);
+    NB = noiseBuffer(3);
+    muted = false;
+    try {
+      /* Named by what she actually hears, not by which synth function
+         it happens to live in. Measuring SFX.step on its own said
+         Cogsworth was a dull thump, because the tick that tells her it
+         is him was never in the sample. And a bare SFX[which](1, 0)
+         called the parcel cues — whose first argument is the pan —
+         hard right at a gain of zero, which burst() then quietly
+         replaced with its default. Both were measurement bugs, and
+         both flattered the wrong answer. */
+      const CUES = {
+        vox: () => voxSpeak(voxPlan("I made toys. That part was true."), { gain: 1 }),
+        stepLeft:  () => SFX.step(1, TUNE.pan.left),
+        stepRight: () => SFX.step(1, TUNE.pan.right),
+        /* his four, exactly as cue() plays them */
+        cogsworth: () => { SFX.step(1, 0); SFX.step(0.85, 0); SFX.tick(0.9, 0); },
+        chime:     () => { SFX.flutter(0.8, 0); SFX.hoot(1, 0); },
+        marabelle: () => SFX.tune(0.8, 1, 0),
+        jax:       () => { SFX.crank(0.7, 0); SFX.bells(1, 0); },
+        /* and the three the parcels make */
+        drag:   () => SFX.postDrag(0, 1),
+        settle: () => SFX.postSettle(0),
+        handle: () => SFX.handle(0),
+      };
+      if (CUES[which]) CUES[which]();
+      else if (typeof SFX[which] === "function") SFX[which](1, 0);
+    } catch (e) { /* put the real context back whatever happens */ }
+    const done = ctx.startRendering();
+    Object.assign(
+      { }, (function () {
+        AC = keep.AC; master = keep.master; duckGain = keep.duckGain;
+        bedGain = keep.bedGain; cueGain = keep.cueGain; NB = keep.NB; muted = keep.muted;
+        return {};
+      })());
+    return done.then((buf) => ({
+      rate: buf.sampleRate,
+      l: Array.from(buf.getChannelData(0)),
+      r: Array.from(buf.getChannelData(1)),
+    }));
+  },
   vox: (t) => { const pl = voxPlan(t);
     return { dur: +pl.dur.toFixed(2),
              words: pl.words.map((w) => w.text + "@" + w.at.toFixed(2)) }; },
@@ -8951,6 +9077,15 @@ const testHooks = {
       o[d.id] = +(cast[d.id].wound || 0).toFixed(2); });
     return { wound: o, count: woundCount(), holding: G.winding,
              target: G.windTarget, t: +G.windT.toFixed(2) }; },
+  /* the shelf by the desk has to have room for everything the game can
+     award, and it is the kind of thing that goes wrong silently */
+  shelf: () => ({ slots: officeParts && officeParts.trophies ? officeParts.trophies.length : 0,
+                  most: NIGHTS.length + NS.badges.length,
+                  showing: officeParts && officeParts.trophies
+                    ? officeParts.trophies.filter((t) => t.mesh.visible).length : 0 }),
+  arcade: () => ({ on: ARC.on, score: ARC.score, best: ARC.best,
+                   spring: +ARC.spring.toFixed(3), over: ARC.over,
+                   drops: ARC.drops.length }),
   cine: () => ({ on: CINE.on, beat: CINE.beat, room: CINE.room,
                  line: CINE.line, t: +CINE.t.toFixed(1) }),
   tutor: () => ({ step: G.tutor, of: TUTOR.length,

@@ -390,8 +390,49 @@ each across a night. A wound one also gives up on a shut door nearly
 twice as fast, so the mechanic pays for itself instead of taxing her on
 top of everything else.
 
-One trap: `cast` now holds seven, not four. Anything waiting on
-`Object.keys(cast).length === 4` hangs, and three tools did.
+Two things that only exist because somebody went looking for what had
+never been checked:
+
+- **`tools/nightsound.js` listens.** Every other suite here runs muted.
+  That was fine while sound was atmosphere; it stopped being fine when
+  telling his four from the parcels by ear became a rule. It renders
+  each cue offline and measures where the weight of it sits. Its first
+  answer was wrong in the game's favour, which is the worst kind: it
+  sampled `SFX.step` alone rather than the cue `cue()` actually plays,
+  so Cogsworth was measured as a boot with the tick that identifies him
+  left out, and it called the parcel cues as `SFX[name](1, 0)` when
+  their first argument is the pan — hard right, at a gain of zero that
+  `burst()` then silently replaced with its default. Measuring the cues
+  as heard put his boots at 940 Hz and a tried doorknob at 1030: the
+  same sound. The parcels are duller now, and the ring in his foot is
+  loud enough to be the thing she hears. Every cue here is filtered
+  noise, so it renders each three times and reports the spread. If you
+  retune any cue, run it.
+- **`tools/nighttouch.js` uses a finger.** The winding key is the only
+  hold-not-tap control in the chapter, which makes it the one a touch
+  pointer is most likely to break.
+
+And the thing that was missing for a whole pass: **orientation did not
+teach winding.** She was being walked through doors and cameras and
+left to discover the control the entire story turns on in a note she
+might skim. Tutorial steps can now run an `enter` hook, which the
+winding lesson uses to run one down on purpose — at midnight all four
+are still on the wind he left them and there would be no key to find.
+Orientation also has to keep `stepWind` running while it holds the rest
+of the shift still, or it would be teaching a control it had switched
+off.
+
+Two traps, both of the same shape — a number written down once and
+then outgrown:
+
+- `cast` now holds seven, not four. Anything waiting on
+  `Object.keys(cast).length === 4` hangs, and three tools did.
+- The trophy shelf by the desk was built with twelve slots for six
+  nights and six badges. Adding two badges made it two short, and the
+  two that would never appear are the last two earned — the quietest
+  possible failure. It is `NIGHTS.length + NS.badges.length` now, the
+  spacing is derived from that, and `nightplay` fails if the shelf ever
+  has fewer places than the game has things to put on it.
 
 Still open with him: whether the difficulty of nights five and six is
 where he wants it.
@@ -414,7 +455,7 @@ an iPhone and fails loudly. It had itself been broken for a long time —
 it drove a text field at the passcode gate, which has been a keypad for
 much longer than that — so if it fails on the second screen, suspect the
 suite before the site. For the night shift there is `tools/nightplay.js`, which plays the
-chapter from the hub card to the way out in 65 checks — every threat's
+chapter from the hub card to the way out in 119 checks — every threat's
 counter, the whole six-night ramp, the finale, the record, the custom
 night, the gallery, cozy mode and the arcade cabinet — and
 `tools/nightshot.js`, which photographs any room from any of its cameras
