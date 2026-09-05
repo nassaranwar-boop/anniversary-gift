@@ -949,9 +949,47 @@ function ok(name, cond, extra) {
      spoken.said[0] && spoken.said[0].text === 'I made toys. That part was true.',
      JSON.stringify(spoken.said[0] && spoken.said[0].text));
   ok('in English', /^en/i.test((spoken.said[0] || {}).lang || ''), (spoken.said[0] || {}).lang);
-  ok('pitched down and slowed, so it is him and not a screen reader',
-     spoken.said[0] && spoken.said[0].pitch < 0.8 && spoken.said[0].rate < 1,
+  /* Near natural pitch, a shade under natural pace. Pushing the pitch
+     down to make him sound like a man is what made him sound like a
+     monster: every engine is a real person cut into pieces, and the
+     further you shift it from where they actually spoke the more of
+     the stretching you hear. */
+  ok('read at a storyteller\'s pace, not a screen reader\'s',
+     spoken.said[0] && spoken.said[0].pitch > 0.85 && spoken.said[0].pitch <= 1 &&
+     spoken.said[0].rate > 0.78 && spoken.said[0].rate < 0.95,
      'pitch ' + (spoken.said[0] || {}).pitch + ' rate ' + (spoken.said[0] || {}).rate);
+  /* and the voice it is given is the best one on the device rather than
+     the first one with "male" in its name, which on a Mac is Fred */
+  const chosen = await page.evaluate(() => {
+    const real = Object.getOwnPropertyDescriptor(window, 'speechSynthesis');
+    const list = [
+      { name: 'Fred', lang: 'en-US', localService: true },
+      { name: 'Albert', lang: 'en-US', localService: true },
+      { name: 'Samantha (Compact)', lang: 'en-US', localService: true },
+      { name: 'Google UK English Male', lang: 'en-GB' },
+      { name: 'Daniel (Enhanced)', lang: 'en-GB', localService: true },
+      { name: 'Amelie', lang: 'fr-FR' },
+    ];
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true,
+      get: () => ({ getVoices: () => list, cancel() {}, speak() {}, addEventListener() {} }) });
+    const w = OuissysNightShift.__night;
+    w.speechReset();
+    w.speech();
+    const got = w.pickVoices();
+    if (real) Object.defineProperty(window, 'speechSynthesis', real);
+    w.speechReset();
+    return got;
+  });
+  ok('and it picks the best voice on the device, not the first one',
+     /Daniel \(Enhanced\)|Google UK English Male/.test(chosen.him || ''),
+     'him: ' + chosen.him);
+  ok('and never a 1984 novelty voice',
+     !/fred|albert|compact/i.test(chosen.him || '') &&
+     !/fred|albert|compact/i.test(chosen.sys || ''),
+     'him: ' + chosen.him + ', the building: ' + chosen.sys);
+  ok('and the building gets a different one from him',
+     chosen.sys && chosen.sys !== chosen.him, chosen.sys);
+
   ok('and the caption walks along behind it, word by word',
      spoken.marks.length === 7 && spoken.marks[0] === 0 &&
      spoken.marks[6] === 6 && spoken.marks.every((m, i) => m === i),

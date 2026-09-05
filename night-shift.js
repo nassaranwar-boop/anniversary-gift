@@ -6090,16 +6090,54 @@ function speechVoices() {
 }
 /* pick once: a real English voice for him, and a different one for the
    building if there is a second to be had */
+/* WHICH VOICE, AND WHY IT MATTERS MORE THAN THE SETTINGS.
+
+   The first go at this took the first name in the list containing
+   "male", which on a Mac means Fred — a 1984 novelty voice — and then
+   dropped the pitch to 0.65 to make it sound like a man. Both were
+   wrong in the same direction. Every speech engine is a recording of a
+   real person cut into pieces, and pitch-shifting it away from where
+   that person actually spoke is what produces the growl and the metal:
+   the further from 1.0 you push it, the more it sounds like a monster
+   and the less like anybody.
+
+   So: pick a good voice and then barely touch it. Modern platforms
+   ship neural voices that are genuinely somebody reading — those are
+   worth ten of any setting. The old formant ones (Fred, Albert,
+   Zarvox and the rest of the 1984 set, and anything marked "compact")
+   are worth avoiding at any price.
+
+   And he is narrating, not announcing: a shade under natural pace,
+   natural pitch, which is what a man telling you something in a film
+   sounds like. */
+const VOICE_GOOD = /natural|neural|enhanced|premium|siri|google (uk|us) english/i;
+const VOICE_JUNK = /compact|fred|albert|zarvox|trinoids|whisper|wobble|bahh|bells|boing|bubbles|cellos|deranged|jester|junior|organ|superstar|good news|bad news|pipe|eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley/i;
+const VOICE_MALE = /\bmale\b|daniel|arthur|oliver|george|james|david|guy|ryan|aaron|alex|christopher|brian|matthew|rishi|tom\b|liam|nathan/i;
+
+function voiceScore(v) {
+  const name = v.name || "", lang = v.lang || "";
+  if (VOICE_JUNK.test(name)) return -100;
+  let n = 0;
+  if (VOICE_GOOD.test(name)) n += 40;             // a real reading, not a stitch
+  if (/^en-GB/i.test(lang)) n += 12;              // the shop is English
+  else if (/^en/i.test(lang)) n += 8;
+  if (VOICE_MALE.test(name) && !/female/i.test(name)) n += 20;
+  if (v.localService) n += 4;                     // no round trip, no cut-off
+  if (v.default) n += 2;
+  return n;
+}
+
 function speechPick() {
   const all = speechVoices();
   if (!all.length) return false;
   const en = all.filter((v) => /^en(-|_|$)/i.test(v.lang || ""));
-  const pool = en.length ? en : all;
-  /* a male voice if the platform names one, otherwise whatever is first */
-  const male = pool.filter((v) => /male|daniel|alex|fred|george|arthur|rishi|david|james/i.test(v.name || ""))
-                   .filter((v) => !/female/i.test(v.name || ""));
-  SPEECH.voice = (male[0] || pool[0]);
-  SPEECH.sys = pool.find((v) => v !== SPEECH.voice) || SPEECH.voice;
+  const pool = (en.length ? en : all).slice();
+  pool.sort((a, b) => voiceScore(b) - voiceScore(a));
+  SPEECH.voice = pool[0];
+  /* the building wants a different one, and would rather have a plain
+     one than the best one — it is a public address, not a narrator */
+  const others = pool.filter((v) => v !== SPEECH.voice && !VOICE_JUNK.test(v.name || ""));
+  SPEECH.sys = others[others.length - 1] || others[0] || SPEECH.voice;
   return true;
 }
 function speechReady() {
@@ -6171,7 +6209,9 @@ function voxTape(dur, gain) {
   const hgn = AC.createGain(); hgn.gain.value = 0.0001;
   hiss.connect(hf); hf.connect(hgn); hgn.connect(cueGain);
   [hg, hgn].forEach((n, i) => {
-    const peak = (i ? 0.010 : 0.028) * g;
+    /* under him, not over him: this is the machine he is being
+       played on and it should be the last thing she notices */
+    const peak = (i ? 0.005 : 0.014) * g;
     n.gain.setValueAtTime(0.0001, t);
     n.gain.exponentialRampToValueAtTime(peak, t + 0.25);
     n.gain.setValueAtTime(peak, t + dur);
@@ -6179,8 +6219,8 @@ function voxTape(dur, gain) {
   });
   [hum, hum2, hiss].forEach((n) => { n.start(t); n.stop(t + dur + 0.6); });
   /* the click of the machine starting and the click of it stopping */
-  burst({ f0: 1500, f1: 600, dur: 0.05, gain: 0.05 * g, q: 2 });
-  burst({ f0: 1200, f1: 500, dur: 0.06, gain: 0.04 * g, q: 2, at: dur + 0.12 });
+  burst({ f0: 1500, f1: 600, dur: 0.05, gain: 0.035 * g, q: 2 });
+  burst({ f0: 1200, f1: 500, dur: 0.06, gain: 0.028 * g, q: 2, at: dur + 0.12 });
 }
 
 /* say it out loud, with the real words. Returns false if the platform
@@ -6192,10 +6232,16 @@ function speechSay(text, plan, opts) {
   try { u = new window.SpeechSynthesisUtterance(text); } catch (e) { return false; }
   u.voice = o.sys ? SPEECH.sys : SPEECH.voice;
   u.lang = (u.voice && u.voice.lang) || "en-GB";
-  /* him: a man on a tape, a little slow and a long way down.
-     the building: flat, fast and as close to no pitch as it goes. */
-  u.pitch = o.sys ? 0.1 : 0.65;
-  u.rate  = o.sys ? 1.12 : 0.92;
+  /* Him: a man telling you something, unhurried, at the pitch the
+     person in the recording actually spoke at. 0.65 was the mistake —
+     it is far enough from natural that the engine has to stretch the
+     samples, and stretched samples are the growl.
+
+     The building is allowed to be ugly. It is a machine and a flat,
+     slightly quick, slightly low read is what a station announcement
+     sounds like — but 0.1 was gargling rather than announcing. */
+  u.pitch = o.sys ? 0.55 : 0.96;
+  u.rate  = o.sys ? 1.08 : 0.86;
   u.volume = o.volume === undefined ? 1 : o.volume;
 
   /* the caption follows the synthesiser rather than a guess: charIndex
@@ -10066,6 +10112,9 @@ const testHooks = {
   speech: () => ({ ok: SPEECH.ok, primed: SPEECH.primed,
                    voice: SPEECH.voice ? SPEECH.voice.name : null,
                    live: SPEECH.live, mark: SPEECH.mark }),
+  pickVoices: () => { speechPick();
+                      return { him: SPEECH.voice ? SPEECH.voice.name : null,
+                               sys: SPEECH.sys ? SPEECH.sys.name : null }; },
   speechReset: () => { SPEECH.ok = null; SPEECH.voice = null; SPEECH.sys = null;
                        SPEECH.mark = -1; SPEECH.live = false; },
 };
