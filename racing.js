@@ -7593,6 +7593,11 @@ const Snd = (function () {
   function watchWake() {
     if (typeof document === "undefined" || watchWake.bound) return;
     watchWake.bound = true;
+    /* on the site's register, so leaving the page puts this to sleep
+       along with everything else that makes a noise */
+    if (window.registerAudio) {
+      try { window.registerAudio(function () { return ctx; }); } catch (e) {}
+    }
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) wake();
     });
@@ -7633,8 +7638,14 @@ const Snd = (function () {
     return w;
   }
 
+  /* A context that is not running never fires the stop() we schedule, so
+     every voice built into one stays alive for ever. Leaving the page
+     now puts the sound to sleep while the race is still on screen, so
+     nothing is built until the clock is actually turning. */
+  function awake() { return ready && ctx && ctx.state === "running"; }
+
   function tone(opt) {
-    if (!ready) return null;
+    if (!awake()) return null;
     const t0 = opt.at != null ? opt.at : ctx.currentTime;
     const o = ctx.createOscillator();
     const g = ctx.createGain();
@@ -7653,7 +7664,7 @@ const Snd = (function () {
   }
 
   function noise(opt) {
-    if (!ready) return null;
+    if (!awake()) return null;
     const t0 = opt.at != null ? opt.at : ctx.currentTime;
     const src = ctx.createBufferSource();
     src.buffer = noiseBuf;
@@ -8555,6 +8566,12 @@ function bindPad() {
    And during the countdown a thumb held down is the throttle, so the
    rocket start is still on the table for somebody playing on glass.
    --------------------------------------------------------- */
+/* the steering zone's own let-go, reachable from outside it: a thumb
+   that lifts while you are in another app never gets its touchend, and
+   the zone would hold that dead touch for ever — touchstart bails while
+   one is claimed, so steering would simply never work again */
+let steerRelease = null;
+
 function bindSteer() {
   const zone = el.steer;
   if (!zone || bindSteer.done) return;
@@ -8602,6 +8619,8 @@ function bindSteer() {
     setAxis(0);
     if (revving) { input.up = false; revving = false; }
   };
+
+  steerRelease = end;
 
   const find = (list) => {
     for (let i = 0; i < list.length; i++)
@@ -8667,8 +8686,23 @@ let wiredOnce = false;
 function watchVisibility() {
   if (visBound || typeof document === "undefined") return;
   visBound = true;
+  /* A KEY HELD WHEN THE PAGE GOES AWAY IS NEVER RELEASED: the keyup
+     goes to whatever you switched to. Come back and the kart is still
+     being told to turn right, and pressing left cancels rather than
+     steers. Everything held is let go of on the way out. */
+  function letGo() {
+    for (const k in input) if (typeof input[k] === "boolean") input[k] = false;
+    input.itemPressed = false;
+    input.axis = 0;                 /* a thumb sliding on the glass, too */
+    if (steerRelease) { try { steerRelease(); } catch (e) {} }
+    if (el.pad) {
+      Array.prototype.forEach.call(el.pad.querySelectorAll("[data-k].on"),
+        (b) => { b.classList.remove("on"); });
+    }
+  }
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
+      letGo();
       if (running && state === "race" && mode !== "tutorial") renderPause();
       else Snd.engineOff();
     } else {
@@ -8677,6 +8711,8 @@ function watchVisibility() {
       acc = 0;
     }
   });
+  window.addEventListener("blur", letGo);
+  window.addEventListener("pagehide", letGo);
 }
 
 function watchPointer() {

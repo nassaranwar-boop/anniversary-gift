@@ -2361,6 +2361,18 @@ const audioClients = [];
 /* a getter, not a context: the caller may rebuild theirs at any point */
 window.registerAudio = function (get) { audioClients.push(get); };
 
+/* WHETHER THE SITE HAS PUT THE SOUND DOWN ON PURPOSE.
+
+   hushAllAudio below suspends every context when you leave the page.
+   A chapter that makes a sound while you are away — a scene still
+   ticking in an unfocused window — used to resume the context to play
+   it, which undid the hush and started the music again in your pocket.
+   So every one of them asks this first. It is a flag we set ourselves,
+   not a guess at the platform's state, so it can never keep the sound
+   off on a page nobody has left. */
+let audioHushed = false;
+window.audioAsleep = function () { return audioHushed; };
+
 window.wakeAudio = function (ctx, then) {
   if (!ctx || ctx.state === "closed") return;
   if (ctx.state === "running") { if (then) then(); return; }
@@ -2380,15 +2392,44 @@ window.wakeAudio = function (ctx, then) {
      One delayed retry costs nothing and covers exactly that case. */
   setTimeout(() => {
     if (ctx.state === "running") fire();
-    else if (ctx.state !== "closed") tryResume();
+    /* unless we have since left the page on purpose */
+    else if (ctx.state !== "closed" && !audioHushed) tryResume();
   }, 350);
 };
 
 function pokeAllAudio() {
+  audioHushed = false;
   audioClients.forEach((get) => { try { window.wakeAudio(get()); } catch (e) {} });
 }
-/* The four moments an interrupted context can legally come back. */
-document.addEventListener("visibilitychange", () => { if (!document.hidden) pokeAllAudio(); });
+
+/* AND THE MOMENT IT SHOULD STOP.
+
+   A browser does not suspend an AudioContext when you switch tabs or
+   switch apps, and it is right not to: a music player should keep
+   playing. A game should not. Every one of these listeners was about
+   getting the sound back and not one of them was about letting it go,
+   so leaving the page left a chapter playing to an empty room until you
+   came back to it.
+
+   Both signals are handled because the platforms disagree: a phone or a
+   tablet sends the tab hidden, a desktop sends the window unfocused and
+   leaves the tab visible. */
+function hushAllAudio() {
+  audioHushed = true;
+  audioClients.forEach((get) => {
+    try {
+      const c = get();
+      if (c && c.state === "running" && c.suspend) c.suspend();
+    } catch (e) {}
+  });
+}
+/* The moments an interrupted context can legally come back, and the
+   ones on which it should go quiet. */
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) hushAllAudio(); else pokeAllAudio();
+});
+window.addEventListener("blur", hushAllAudio);
+window.addEventListener("pagehide", hushAllAudio);
 window.addEventListener("focus", pokeAllAudio);
 window.addEventListener("pageshow", pokeAllAudio);
 document.addEventListener("pointerdown", pokeAllAudio, true);
