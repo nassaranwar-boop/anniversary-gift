@@ -182,32 +182,126 @@ beside it so he can play both. Removing the maze is the last step and is
 he does say so, it is one commit: the maze screens, its CSS, its half of
 `script.js`, and the hub card, with the new chapter moving into its slot.
 
-Five levels, a top-down stealth story, all of it in `apocalypse.js`, which
-carries no files of its own the way `super-ouissy.js` does not. Everything
-worth editing is in the first two hundred lines: `AP` for the words,
-`TUNE` for how she feels to play, `LEVELS` for the maps as grids of
-characters. The reunion in Level 3 is `AP.reunion`, written underplayed at
-his direction — *"like a real conversation between two people in shock and
-relief, not a dramatic speech"* — and the lines written as `["", ""]` are
-beats of silence, held on screen like any other line. Keep them.
+Five levels, a stealth story, all of it in `apocalypse.js`.
 
-Still open with him: whether the level-by-level screenshots pass, and the
-wire panel's look (he wrote the art direction for it himself and has not
-seen it running yet).
+**It is a real 3D game now.** It was a 320x180 canvas with tiles painted on
+it; it is a third-person 3D game running on `vendor/three.bundle.js` —
+three.js r180 with the postprocessing addons, the same bundle `index.html`
+already loads for the book intro, so it costs the page nothing new.
+`apocalypse.js` will fetch it itself if that tag ever moves. Same story, same maps,
+same words, and still no files of its own: every surface is a texture
+painted into an offscreen canvas at load, every sound is an oscillator, and
+the sky is a fragment shader.
 
-Three things this build learned the hard way, all worth not repeating:
+Everything worth editing is in the first six hundred lines: `MAPS` for the
+maps as grids of characters, `LEVELS` and `SUB` for what each place is and
+what has to happen in it, `PAL` for the five palettes the world builder,
+the lighting and the post chain all read from, `TALK` for every word in the
+game, and `TUNE` for how she feels to play. The reunion in Level 3 is
+`TALK.wake` and `TALK.hide`, written underplayed at his direction — *"like a
+real conversation between two people in shock and relief, not a dramatic
+speech"* — and the lines written as `[null, null]` are beats of silence,
+held on screen like any other line. Keep them.
+
+Still open with him: whether the look is what he wanted, and the wire
+panel (he wrote the art direction for it himself and has not seen it
+running).
+
+**The polish pass.** He asked for "a polished modern release, not a rough
+prototype", and named the two halves: smoothness and a full visual upgrade.
+What that turned into:
+
+- **No grain, no dither, anywhere.** The composer renders into a
+  multisampled half-float target — the renderer's own `antialias` flag does
+  nothing once you draw through a composer — with SMAA on top at full
+  quality. Half-float is what removed the banding the grain had been
+  covering.
+- **Nothing snaps.** Every follower runs through `damp`/`dampAngle` (an
+  exponential ease expressed as a time, so it is identical at 30 fps and at
+  144) and the camera is on six critically damped `Spring1`s. The torch
+  lags her turn by about a tenth of a second and its cone has an
+  exponential falloff along the beam and a smooth radial one across it.
+- **An environment.** Each level renders its own sky into a cube at load
+  and PMREMs it. Without that, a PBR material is a flat colour with a
+  highlight on it — this is the single biggest thing in the pass.
+- **Roughness maps.** The road is wet: its roughness comes from its own
+  painted map, so the puddles are mirror-smooth and take the streetlights
+  while the aggregate stays matt.
+- **Textures painted with noise, not randomness.** `valueNoise`/`fbm` at
+  the scale of a stain looks like a stain; per-pixel randomness looks like
+  a fault. Every surface was repainted on that basis.
+- **Facades, not walls.** Plinth, string courses, reveals, sills, lintels,
+  mullioned frames, shopfronts, cornices, boarded and burnt-out windows,
+  and roofs with stair heads, tanks and aerials on them — all instanced.
+- **Everybody is a skinned mesh.** `buildHuman` makes a twenty-two bone
+  skeleton, one continuous body surface, and garments as separate skinned
+  shells, all out of `skinnedTube` — a stack of rings each carrying up to
+  three bone weights. Attachments (vests, guns, bags, hair, shoes) are
+  plain meshes parented to a bone. Watch the axes: the figure faces +x, so
+  front-to-back is x and shoulder-to-shoulder is z.
+
+  Three traps in that, all of which cost an hour:
+  - **A `Skeleton` computes its inverse bind matrices in its constructor,
+    from the bones' world matrices at that instant.** Build it before the
+    bones are in a scene graph and before anything has called
+    `updateMatrixWorld`, and every one of them is identity — so each vertex
+    gets a bone's whole world transform instead of the difference from
+    rest, and the model explodes. Attach, `updateMatrixWorld(true)`, *then*
+    `new THREE.Skeleton(...)`, then `mesh.bind(skeleton, mesh.matrixWorld)`.
+  - **A ring stack authored top-down is the mirror of one authored
+    bottom-up**, so half the tubes came out inside out and were culled to
+    nothing. `skinnedTube` now checks the stack direction against its own
+    frame and flips the winding when they disagree.
+  - **A garment is a bag.** Left open at the collar or the hips it is a
+    hole you can see the body through, and the body underneath has to be
+    narrower than the cloth over it at every height or it comes through at
+    the hip.
+- **`__apPortrait(who, seed)`** puts one figure on a lit turntable. There
+  is no way to judge a character model from a torch-lit shot of the back of
+  its head at twenty metres. **`__apRenderStats()`** returns the draw calls
+  and triangles for the current frame.
+
+Things this build learned the hard way, all worth not repeating:
 
 - **A second function declaration with the same name at the same scope
   wins.** The ending's cat routine was called `drawCat`, and the choice
   adventure already had one — so every call silently drew the wrong thing
   and the roof rendered a heart floating over nothing. It is `drawEndCat`.
   This is the third time this file has been bitten by exactly this.
-- **The light map's tint has to be mixed with the dark, not multiplied into
-  it**, or a level asking for daylight still comes out as night.
 - **A fixed number of clicks through a dialogue is a bug waiting to
   happen.** Drain the box until it is closed instead; one extra line in one
   beat put every later step out of phase and the suite reported a level
   that had never started.
+- **A suspended AudioContext never fires the `stop()` you schedule**, so
+  every node you build into one stays alive. Twenty minutes of footsteps
+  was tens of thousands of oscillators and a page that stopped responding.
+  Nothing is built now unless `ctx.state === "running"`.
+- **`openOverlay` claims the game's state for itself.** The close call set
+  its own state first and then put the beat up, so the hold ran forever and
+  the game never came back. Put the overlay up, then claim the state.
+- **A canvas hands out one WebGL context for its lifetime.** Disposing the
+  renderer on the way out and building another on the way back in gets a
+  dead one, so leaving the chapter keeps the renderer and only drops what
+  the scene was holding.
+- **The floor's top face is y = 0, not y = -0.15.** The tiles are 0.30
+  boxes sitting at -0.15. Every decal meant to lie on the floor — the
+  vision cones, the noise rings, the note, the rugs — was placed at a
+  negative y and was therefore inside the floor and invisible.
+- **Sorting interactions on distance alone lets a tie decide.** Standing
+  between the car she has to start and a dropped bottle, she reached for
+  the bottle. Story tiles are ranked ahead of scenery now.
+- **A vertex shader written as a threshold tears the mesh.** Moving every
+  vertex that passes a test — "if it is in front of the ear, pull it back"
+  — puts a visible step exactly where the test flips. Her hair had a square
+  notch cut out of the crown because of it. Ease the displacement instead.
+- **A sphere segment covers all the way round at a given angle**, so a hair
+  cap low enough to reach the nape also comes down over the face. Lift the
+  front of it to a hairline with a smooth function of how far forward each
+  vertex is.
+- **One boolean cannot both end an animation and gate the press that
+  follows it.** The serum screen used `done` for both, so the button that
+  said "THAT'S IT" did nothing and she stood at Ashcombe with her sleeve up
+  forever. Three states, not two.
 
 ## 8. Testing
 
@@ -226,8 +320,14 @@ There are scripts for all of this in `tools/` now, with a README. Run
 an iPhone and fails loudly. It had itself been broken for a long time —
 it drove a text field at the passcode gate, which has been a keypad for
 much longer than that — so if it fails on the second screen, suspect the
-suite before the site. For the apocalypse there is `tools/apocfull.js`,
-which plays the whole chapter from the hub card to the roof. Two traps are written up there and both cost an
+suite before the site. For the apocalypse there is
+`tools/apocflow3d.js`, which plays the whole chapter from the hub card to
+the roof, and `tools/apocmech3d.js`, which holds the stealth assertions.
+Both need a real GL context, so launch Chromium with `--use-gl=swiftshader
+--enable-unsafe-swiftshader` and **not** `--disable-gpu`. SwiftShader is
+software rendering: a full-resolution frame takes the best part of a second,
+so drive the game with `__apLoop(false)` and `__apPump` and drop the render
+scale with `__apQuality(2)` rather than waiting on the real loop. Two traps are written up there and both cost an
 hour to find: **requestAnimationFrame runs at about 3fps in this container**,
 so anything that waits on wall-clock time runs in slow motion and proves
 nothing (drive the game with `window.__soPump` instead); and

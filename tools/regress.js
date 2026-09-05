@@ -5,7 +5,10 @@ const out = [];
 const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x : ''));
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--no-sandbox','--no-proxy-server','--disable-gpu'] });
+    /* --disable-gpu takes WebGL with it, and two chapters are WebGL now;
+       SwiftShader is slow but it is a real GL context. */
+    args: ['--no-sandbox','--no-proxy-server','--use-gl=swiftshader',
+           '--enable-unsafe-swiftshader','--ignore-gpu-blocklist'] });
   for (const [label, w, h] of [['desktop', 1280, 800], ['iphone', 390, 844]]) {
     const page = await browser.newPage({ viewport: { width: w, height: h }, isMobile: w < 900, hasTouch: w < 900 });
     const errors = [];
@@ -40,8 +43,20 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     // straight to the hub, then each chapter in turn
     await page.evaluate(() => { stopDioramas(); showScreen('hub'); startHub(); });
     await page.waitForTimeout(500);
+    /* Counting them was a hostage to the next chapter somebody adds —
+       and somebody added one. What matters is that every card in the
+       hub is one the page knows how to open, and that the four this
+       suite goes on to play are all there. */
     const cards = await page.evaluate(() => Array.from(document.querySelectorAll('.hub-card')).map(c => c.id));
-    ok(label + ': the hub has every card', cards.length === 4, cards.join(','));
+    const MUST = ['hub-card-maze', 'hub-card-quest', 'hub-card-ouissy', 'hub-card-apoc'];
+    ok(label + ': the hub has every card this suite plays',
+       MUST.every(m => cards.indexOf(m) >= 0), cards.join(','));
+    const unwired = await page.evaluate(cs => cs.filter(id => {
+      const el = document.getElementById(id);
+      return !el || !el.getAttribute('data-chapter');
+    }), cards);
+    ok(label + ': and every card in it is wired to a chapter',
+       unwired.length === 0, unwired.join(','));
     ok(label + ': no horizontal scroll on the hub', (await hs()) === 0, 'overflow ' + (await hs()));
 
     await page.evaluate(() => { level = 1; showScreen('details'); });
@@ -79,12 +94,22 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     ok(label + ': the hub card opens the apocalypse',
        await page.evaluate(() => document.getElementById('screen-apoc').classList.contains('active')));
     ok(label + ': no horizontal scroll in it', (await hs()) === 0, 'overflow ' + (await hs()));
+    /* The chapter is WebGL now, so there is no 2D context to read and the
+       drawing buffer is not preserved — the pixels have to come off the
+       card in the same turn as the paint that made them. */
     const apoc = await page.evaluate(() => {
+      window.__apLoop(false);
       window.__apEnter(0);
+      for (let i = 0; i < 30; i++) window.__apPump(1 / 60);
       window.__apPaint();
       const cv = document.getElementById('ap-canvas');
-      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
-      let painted = 0; for (let i = 3; i < d.length; i += 4000) if (d[i] > 0) painted++;
+      const gl = cv.getContext('webgl2') || cv.getContext('webgl');
+      if (!gl) return { painted: 0, state: 'no gl' };
+      const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+      const px = new Uint8Array(w * h * 4);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      let painted = 0;
+      for (let i = 0; i < px.length; i += 4000) if (px[i] + px[i + 1] + px[i + 2] > 12) painted++;
       return { painted: painted, state: window.__apState().state };
     });
     ok(label + ': the apocalypse paints', apoc.painted > 5, 'samples=' + apoc.painted);

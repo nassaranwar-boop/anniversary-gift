@@ -240,6 +240,9 @@ document.getElementById("btn-start2").addEventListener("click", () => { pageTurn
 
 document.getElementById("btn-replay").addEventListener("click", () => {
   level = 1;
+  try {
+    if (window.Apocalypse && window.Apocalypse.afterTheme) window.Apocalypse.afterTheme(false);
+  } catch (e) {}
   if (bothChaptersDone()) pageTurn("keepsake", startKeepsake);
   else pageTurn("hub", startHub);
 });
@@ -1824,10 +1827,25 @@ function startNightScene() {
 function stopNightScene() {
   if (nightRaf) cancelAnimationFrame(nightRaf);
   nightRaf = null;
+  try {
+    if (window.Apocalypse && window.Apocalypse.afterTheme) window.Apocalypse.afterTheme(false);
+  } catch (e) {}
 }
 
 function activateEndingScene() {
   startNightScene();
+  /* THE LAST SCREEN GETS THE MUSIC IT EARNED.
+
+     It has been silent since the chapter ended, which is a strange place
+     to be quiet: this is the one screen where nothing is happening and
+     everything has already happened. The apocalypse chapter's score can
+     play one more piece — the same two tunes, at half speed on a music
+     box, and for the first time in the whole thing the bass goes to the
+     root and stays there. The button that got here was the gesture a
+     browser wants before it will make a sound. */
+  try {
+    if (window.Apocalypse && window.Apocalypse.afterTheme) window.Apocalypse.afterTheme(true);
+  } catch (e) {}
   spawnNightStars(); buildEndHearts();
   /* The camera used to push into one picture over eleven seconds. The
      scene cycles between four now and does its own timing, so there is

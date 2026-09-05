@@ -17,9 +17,9 @@
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=91">
+<link rel="stylesheet" href="style.css?v=113">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=91"></script>
+<script src="vendor/three.bundle.js?v=113"></script>
 
 </head>
 <body>
@@ -955,6 +955,16 @@
           </span>
         </div>
         <button class="ap-pause-btn" id="ap-pause-btn" aria-label="Pause"><span class="gl-pause" aria-hidden="true"></span></button>
+        <button class="ap-map-btn" id="ap-map-btn" aria-label="Map">MAP</button>
+
+        <!-- the card: north is up the screen, and the needle is the errand -->
+        <div class="ap-compass" id="ap-compass" aria-hidden="true">
+          <span class="ap-compass-ring" aria-hidden="true">
+            <i class="n">N</i><i class="e">E</i><i class="s">S</i><i class="w">W</i>
+          </span>
+          <span class="ap-compass-needle" id="ap-compass-needle" aria-hidden="true"></span>
+          <span class="ap-compass-dist" id="ap-compass-dist"></span>
+        </div>
 
         <!-- being taken hold of: the window to answer it -->
         <div class="ap-grab" id="ap-grab" aria-hidden="true">
@@ -981,7 +991,38 @@
         </div>
       </div>
 
-      <!-- the touch pad, for playing this on a phone -->
+      <!-- THE TOUCH CONTROLS, AND WHY THEY ARE NOT INSIDE THE STAGE.
+
+           They cover the whole picture. An element that size inside the
+           box the WebGL canvas lives in has to be composited over that
+           canvas on every single frame, and on a machine with no GPU
+           worth the name that costs more than the game does — the same
+           lesson this file already learned from backdrop-filter, and
+           again from a mask on a scrolling list. Measured here, moving
+           them inside took a frame from milliseconds to seconds.
+
+           Out here they cost nothing, and fitTouch() lays them exactly
+           over the picture whenever the picture changes size, so the
+           buttons are where they look like they are on any shape of
+           screen — rather than in the black band under a letterboxed
+           game, which is where they landed before it existed.
+
+           They still had to be FOUND, and that was the bug the player
+           hit: the code that wires up USE and CREEP searched inside the
+           stage while they sat one element outside it, so for as long as
+           they have existed neither of them was connected to anything at
+           all. It searches the whole chapter screen now. -->
+      <div class="ap-touch" id="ap-touch" aria-hidden="true">
+        <div class="ap-stick" id="ap-stick" aria-label="Move">
+          <span class="ap-stick-ring"></span>
+          <span class="ap-stick-knob"></span>
+        </div>
+        <div class="ap-actions">
+          <button class="ap-act ap-act-use" data-ap-key="use" aria-label="Use">USE</button>
+          <button class="ap-act ap-act-sneak" data-ap-key="sneak" aria-label="Creep">CREEP</button>
+        </div>
+      </div>
+      <!-- kept for anything that still asks for the four keys by name -->
       <div class="ap-pad" id="ap-pad" aria-hidden="true">
         <div class="ap-dpad">
           <button class="ap-key ap-key-up" data-ap-key="up" aria-label="Up"></button>
@@ -989,10 +1030,6 @@
           <button class="ap-key ap-key-right" data-ap-key="right" aria-label="Right"></button>
           <button class="ap-key ap-key-down" data-ap-key="down" aria-label="Down"></button>
           <span class="ap-dpad-hub" aria-hidden="true"></span>
-        </div>
-        <div class="ap-actions">
-          <button class="ap-act ap-act-use" data-ap-key="use" aria-label="Use">USE</button>
-          <button class="ap-act ap-act-sneak" data-ap-key="sneak" aria-label="Sneak">SNEAK</button>
         </div>
       </div>
     </div>
@@ -1109,12 +1146,12 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=91"></script>
-<script src="scrapbook.js?v=91"></script>
-<script src="script.js?v=91"></script>
-<script src="super-ouissy.js?v=91"></script>
-<script src="rescue.js?v=91"></script>
-<script src="apocalypse.js?v=91"></script>
-<script src="racing.js?v=91"></script>
+<script src="book-scene.js?v=113"></script>
+<script src="scrapbook.js?v=113"></script>
+<script src="script.js?v=113"></script>
+<script src="super-ouissy.js?v=113"></script>
+<script src="rescue.js?v=113"></script>
+<script src="apocalypse.js?v=113"></script>
+<script src="racing.js?v=113"></script>
 </body>
 </html>

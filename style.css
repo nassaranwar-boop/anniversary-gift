@@ -690,12 +690,53 @@ img{-webkit-user-drag:none; user-select:none;}
 .end-heading{position:absolute; top:6%; left:0; right:0; text-align:center; z-index:3;}
 .end-heading span{font-family:'Fredoka',sans-serif; font-weight:600; font-size:14.5px; color:#ffd6ec; letter-spacing:.5px; text-shadow:0 0 14px rgba(255,143,196,.6); opacity:.92;}
 
+/* ---- the way on from the roof ----
+   It was a line of bare text floating over a painted night, in a
+   different typeface from the heading above it and with nothing to say
+   it could be pressed. This is a lit window: a small pane of warm glass
+   on a dark rooftop, with a hairline round it and a glow under it, the
+   same pink the stars and the hearts are. It breathes very slowly, the
+   way the lights in the painting do, and it lifts towards you when you
+   reach for it. */
 .btn-replay{
-  position:absolute; bottom:4.5%; left:50%; transform:translateX(-50%); z-index:4; background:none; border:none;
-  color:#ffe3f2; font-family:'Poppins'; font-size:14px; font-weight:600; cursor:pointer; padding:8px 14px;
-  text-shadow:0 0 10px rgba(255,143,196,.5); transition:transform .15s ease, text-shadow .15s ease; letter-spacing:.3px;
+  position:absolute; bottom:5.5%; left:50%; transform:translateX(-50%); z-index:4;
+  display:inline-flex; align-items:center; gap:8px;
+  padding:11px 22px; cursor:pointer;
+  font-family:'Fredoka',sans-serif; font-weight:600; font-size:13.5px;
+  letter-spacing:.6px; color:#ffe6f4;
+  border:1px solid rgba(255,169,208,.42);
+  border-radius:999px;
+  background:
+    radial-gradient(120% 160% at 50% 118%, rgba(255,143,196,.26), rgba(255,143,196,0) 62%),
+    linear-gradient(180deg, rgba(58,30,72,.72), rgba(24,10,38,.80));
+  box-shadow:
+    0 0 20px rgba(255,143,196,.20),
+    0 10px 26px rgba(8,3,18,.55),
+    inset 0 1px 0 rgba(255,214,236,.16);
+  text-shadow:0 0 12px rgba(255,143,196,.45);
+  transition:transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s ease,
+             border-color .18s ease, color .18s ease;
+  animation:replayGlow 4.2s ease-in-out infinite;
 }
-.btn-replay:hover{transform:translateX(-50%) scale(1.08); text-shadow:0 0 18px rgba(255,143,196,.9);}
+@keyframes replayGlow{
+  0%,100%{box-shadow:0 0 18px rgba(255,143,196,.16), 0 10px 26px rgba(8,3,18,.55),
+                     inset 0 1px 0 rgba(255,214,236,.16);}
+  50%    {box-shadow:0 0 30px rgba(255,143,196,.34), 0 10px 26px rgba(8,3,18,.55),
+                     inset 0 1px 0 rgba(255,214,236,.22);}
+}
+.btn-replay .gl{opacity:.9;}
+.btn-replay:hover{
+  transform:translateX(-50%) translateY(-3px);
+  border-color:rgba(255,190,220,.75); color:#fff3fa;
+  box-shadow:0 0 36px rgba(255,143,196,.40), 0 14px 30px rgba(8,3,18,.6),
+             inset 0 1px 0 rgba(255,214,236,.26);
+}
+.btn-replay:active{transform:translateX(-50%) translateY(-1px) scale(.985);}
+.btn-replay:focus-visible{
+  outline:none; border-color:#ffd6ec;
+  box-shadow:0 0 0 2px rgba(255,214,236,.5), 0 0 30px rgba(255,143,196,.35);
+}
+@media (prefers-reduced-motion:reduce){ .btn-replay{animation:none;} }
 
 @media (max-width:420px){
   .hello-card h1{font-size:27px;} .hello-card h2{font-size:25px;} .mascot-img{width:118px;}
@@ -3114,6 +3155,12 @@ img{-webkit-user-drag:none; user-select:none;}
 :root{
   --ap-sign: 'Silkscreen', 'Press Start 2P', ui-monospace, monospace;
   --ap-term: 'VT323', ui-monospace, 'Courier New', monospace;
+  /* The chapter has three voices and they should not all be the same
+     typewriter. Silkscreen is the system talking — labels, buttons, the
+     compass. VT323 is a screen she is reading. And this is the book:
+     the narration, and every title that is a sentence rather than a
+     heading. */
+  --ap-voice-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
 
   /* The chapter's surfaces. Everything the player reads sits on one of
      these, so the whole UI reads as salvaged equipment rather than as a
@@ -3214,45 +3261,188 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-hud{
   position:absolute; left:0; right:0; top:0; z-index:5;
   display:flex; align-items:flex-start; justify-content:space-between;
-  gap:1cqw; padding:0; pointer-events:none;
+  gap:1cqw; padding:2.2cqw 2.4cqw 0; pointer-events:none;
   font-family:var(--ap-sign);
-  text-shadow:0 2px 0 rgba(4,6,12,.95);
 }
-/* The place and the objective sit on a torn strip stuck to the corner
-   rather than floating over the art, so they read as something written
-   down rather than as a caption printed on the world. */
+/* No torn strips, no stripes, no clipped corners. The place is a small
+   label with a rule under it and the errand is a line of text — the whole
+   thing sitting on a wash of dark that fades out, so it reads over
+   anything without drawing a box around itself. */
+.ap-hud::before{
+  content:""; position:absolute; left:0; right:0; top:0; height:16cqh;
+  background:linear-gradient(180deg, rgba(4,6,12,.78) 0%, rgba(4,6,12,.34) 55%, rgba(4,6,12,0) 100%);
+  pointer-events:none;
+}
 .ap-hud-item{
-  padding:1.4cqw 2.6cqw 1.5cqw 2.4cqw;
-  background:
-    repeating-linear-gradient(110deg, rgba(255,255,255,.03) 0 1px, transparent 1px 8px),
-    linear-gradient(180deg, rgba(14,18,26,.90), rgba(9,12,18,.80));
-  box-shadow:0 2px 0 rgba(0,0,0,.5), inset 0 1px 0 rgba(180,200,240,.14);
-  clip-path:polygon(0 0, 100% 0, calc(100% - 2.4cqw) 100%, 0 100%);
+  position:relative; display:flex; flex-direction:column; gap:.55cqw;
+  padding:0; background:none; box-shadow:none; clip-path:none;
 }
-.ap-hud-right{
-  padding:1.4cqw 2.4cqw 1.5cqw 3.4cqw;
-  clip-path:polygon(2.4cqw 0, 100% 0, 100% 100%, 0 100%);
+/* clear of the two round buttons now stacked in that corner — a margin
+   rather than padding, so the box itself gets out of their way and not
+   only the text inside it */
+.ap-hud-right{align-items:flex-end; text-align:right; margin-right:8.4cqw;}
+.ap-hud-item b{
+  position:relative; display:inline-block; padding-bottom:.6cqw;
+  font-size:1.6cqw; font-weight:700; letter-spacing:.30em; color:#93a6d6;
 }
-.ap-hud-item{display:flex; flex-direction:column; gap:.7cqw; line-height:1.35;}
-.ap-hud-right{align-items:flex-end; text-align:right;}
-.ap-hud-item b{font-size:2.1cqw; font-weight:400; letter-spacing:.14em; color:#8fa2d4;}
-.ap-hud-item i{font-family:var(--ap-term); font-size:2.2cqw; font-style:normal; color:#e7ecfb;
-  opacity:.95; max-width:44cqw; letter-spacing:.02em; line-height:1.15;}
-.ap-carry{font-family:var(--ap-term); font-size:2.3cqw; color:#ffd98a; letter-spacing:.06em;}
-.ap-state{font-size:1.7cqw; letter-spacing:.14em; color:#7bd8a0;}
-.ap-state.seen{color:#ff6b6b;}
-.ap-state.hidden-ok{color:#8fa2d4;}
+.ap-hud-item b::after{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:1px;
+  background:linear-gradient(90deg, rgba(147,166,214,.75), rgba(147,166,214,0));
+}
+.ap-hud-right b::after{background:linear-gradient(270deg, rgba(147,166,214,.75), rgba(147,166,214,0));}
+.ap-hud-item i{
+  font-family:var(--ap-term); font-size:2.05cqw; font-style:normal;
+  color:#e9eefb; max-width:46cqw; letter-spacing:.01em; line-height:1.34;
+  text-shadow:0 2px 10px rgba(0,0,0,.85);
+}
+.ap-carry{font-family:var(--ap-term); font-size:1.8cqw; color:#ffd98a; letter-spacing:.08em;}
+.ap-state{
+  font-size:1.45cqw; letter-spacing:.26em; color:#7bd8a0;
+  text-shadow:0 0 12px rgba(123,216,160,.4);
+}
+.ap-state.seen{color:#ff6b6b; text-shadow:0 0 14px rgba(255,107,107,.55); animation:apSeen .9s ease-in-out infinite;}
+.ap-state.hidden-ok{color:#8fa2d4; text-shadow:none;}
+@keyframes apSeen{0%,100%{opacity:1;} 50%{opacity:.45;}}
 
 .ap-dlg[aria-hidden="false"] ~ .ap-pause-btn,
 .ap-stage:has(.ap-dlg[aria-hidden="false"]) .ap-pause-btn{
   opacity:0; pointer-events:none; transition:opacity .2s ease;
 }
+/* ---- the two in the corner ----
+   Round, hairline, and the same cold blue as the compass above them, so
+   the three of them read as one instrument rather than three widgets. */
+/* They were both in the bottom-right corner, which is where the thumb
+   that presses USE and CREEP lives — the pause button was sitting on top
+   of CREEP. The whole right-hand bottom of the picture belongs to the
+   controls now, and these two stack in the top corner instead. */
 .ap-pause-btn{
-  position:absolute; right:2cqw; bottom:2cqw; z-index:6;
-  width:6.4cqw; height:6.4cqw; min-width:26px; min-height:26px;
-  border-radius:8px; border:2px solid rgba(140,160,210,.4);
-  background:rgba(10,14,26,.72); color:#c8d4f2; font-size:2cqw; line-height:1;
+  position:absolute; right:2cqw; top:2cqw; z-index:6;
+  width:6.4cqw; height:6.4cqw; min-width:30px; min-height:30px;
+  border-radius:50%; border:1px solid rgba(168,192,240,.26);
+  background:rgba(7,11,21,.62); color:#bccdf0; font-size:1.9cqw; line-height:1;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
+  transition:color .16s ease, border-color .16s ease, background .16s ease;
+}
+.ap-pause-btn:hover, .ap-map-btn:hover{
+  color:#ffdcaa; border-color:rgba(240,181,103,.62); background:rgba(240,181,103,.10);
+}
+.ap-pause-btn:active, .ap-map-btn:active{transform:scale(.94);}
+.ap-pause-btn:focus-visible, .ap-map-btn:focus-visible{
+  outline:none; border-color:#f0b567; box-shadow:0 0 0 1px rgba(240,181,103,.4);
+}
+
+.ap-dlg[aria-hidden="false"] ~ .ap-map-btn,
+.ap-stage:has(.ap-dlg[aria-hidden="false"]) .ap-map-btn{
+  opacity:0; pointer-events:none; transition:opacity .2s ease;
+}
+.ap-map-btn{
+  position:absolute; right:2cqw; top:9.6cqw; z-index:6;
+  width:6.4cqw; height:6.4cqw; min-width:30px; min-height:30px;
+  border-radius:50%; border:1px solid rgba(168,192,240,.26);
+  background:rgba(7,11,21,.62); color:#bccdf0;
+  font-family:var(--ap-sign); font-size:1.05cqw; letter-spacing:.14em;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  transition:color .16s ease, border-color .16s ease, background .16s ease;
+}
+.ap-hud.gone ~ .ap-map-btn{opacity:0; transition:opacity .3s ease;}
+
+/* ---- the atlas she took off the shelf ----
+   The chapter as five stops on a line, then the floor she is standing on,
+   drawn from the same grid the level was built from, with everywhere she
+   has not walked past left dark. */
+.ap-map{
+  position:absolute; inset:0; z-index:8;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:1.0cqw; overflow:auto; padding:1.6cqw 2.4cqw;
+  background:radial-gradient(120% 90% at 50% 40%, rgba(14,20,32,.97), rgba(5,7,12,.985));
+}
+.ap-map .ap-card-go{margin-top:.4cqw;}
+.ap-map-kicker{
+  margin:0; font-family:var(--ap-sign); font-size:1.28cqw;
+  letter-spacing:.32em; text-transform:uppercase; color:#f0b567;
+}
+.ap-map-title{
+  margin:0 0 .4cqw; font-family:var(--ap-voice-serif); font-weight:600;
+  font-size:2.5cqw; line-height:1.2; color:#eef3ff;
+}
+/* ---- the five stops ----
+   One line with a node on it per stop, the one she is standing in lit.
+   The rule runs behind the nodes rather than between the labels, so it
+   reads as a route rather than as a row of headings. */
+.ap-map-chain{
+  position:relative;
+  display:flex; flex-wrap:nowrap; align-items:flex-start; justify-content:center;
+  gap:0; width:100%; max-width:64cqw; margin:.4cqw 0 .2cqw;
+}
+.ap-map-stop{
+  position:relative; flex:1 1 0; min-width:0; text-align:center;
+  padding:1.4cqw .5cqw 0;
+}
+/* the line, drawn behind every node but the first */
+.ap-map-stop + .ap-map-stop::before{
+  content:""; position:absolute; left:-50%; top:.52cqw; width:100%; height:1px;
+  background:rgba(150,175,220,.20);
+}
+.ap-map-stop.past + .ap-map-stop::before,
+.ap-map-stop.here::before{background:rgba(240,181,103,.42);}
+.ap-map-node{
+  position:absolute; left:50%; top:0; width:1.05cqw; height:1.05cqw;
+  min-width:7px; min-height:7px; margin-left:-.52cqw;
+  border-radius:50%; border:1px solid rgba(150,175,220,.45);
+  background:#0a0e16; z-index:1;
+}
+.ap-map-stop.past .ap-map-node{border-color:rgba(240,181,103,.5); background:rgba(240,181,103,.35);}
+.ap-map-stop.here .ap-map-node{
+  border-color:#8affc8; background:#8affc8;
+  box-shadow:0 0 0 3px rgba(138,255,200,.16), 0 0 12px rgba(138,255,200,.5);
+}
+.ap-map-stop b{
+  position:relative; display:block;
+  font-family:var(--ap-sign); font-size:1.02cqw; font-weight:400;
+  letter-spacing:.16em; text-transform:uppercase;
+  color:rgba(200,212,242,.34);
+}
+.ap-map-when{
+  margin:.1cqw 0 .3cqw; text-align:center;
+  font-family:var(--ap-voice-serif); font-style:italic; font-weight:500;
+  font-size:1.5cqw; line-height:1.35; color:#9fb0d8;
+}
+.ap-map-stop.past b{color:rgba(200,212,242,.58);}
+.ap-map-stop.here b{color:#8affc8;}
+
+/* ---- the plan ----
+   Hairlines, so no smoothing and no pixel-doubling: it is drawn at the
+   screen's own density and must not be resampled on the way to it. */
+.ap-map-canvas{
+  image-rendering:auto; max-width:100%; max-height:40cqh;
+  border:1px solid rgba(150,175,220,.20);
+  background:#0a0e15;
+  box-shadow:0 18px 44px rgba(0,0,0,.55), inset 0 0 0 1px rgba(8,11,18,.9);
+}
+/* ---- the legend ---- */
+.ap-map-key{
+  display:flex; flex-wrap:wrap; justify-content:center; gap:1.6cqw;
+  font-family:var(--ap-sign); font-size:.95cqw; letter-spacing:.14em;
+  text-transform:uppercase; color:#8fa0c2;
+}
+.ap-map-key-item{display:inline-flex; align-items:center; gap:.55cqw;}
+.ap-map-key i{
+  width:1.1cqw; height:1.1cqw; min-width:8px; min-height:8px;
+  display:inline-block; font-style:normal;
+}
+.ap-map-key .k-you{border-radius:50%; background:#ffd88a;}
+.ap-map-key .k-goal{border-radius:50%; border:1px solid #8affc8;}
+.ap-map-key .k-route{
+  height:0; min-height:0; border-top:2px dashed rgba(255,214,150,.75);
+}
+.ap-map-key .k-door{height:0; min-height:0; border-top:2px solid rgba(240,181,103,.85);}
+.ap-map-key .k-hide{
+  height:0; min-height:0; border-top:2px solid rgba(120,226,214,.8);
+  transform:rotate(-45deg);
+}
+.ap-map-dir{
+  margin:0; font-family:var(--ap-voice-serif); font-weight:500; font-style:italic;
+  font-size:1.62cqw; color:#ffd88a; letter-spacing:.01em; text-align:center;
 }
 
 /* the pulse that shows how far a noise carried */
@@ -3263,112 +3453,280 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .ap-alarm.on{opacity:1; box-shadow:inset 0 0 0 4px rgba(255,80,80,.5), inset 0 0 40px rgba(255,60,60,.35);}
 
-/* ---- dialogue ----
-   Not a rounded box with text in it. A receiver panel: a plate with grain
-   and a lit lip, a torn strip of tape along the top carrying the speaker's
-   name, scanlines over the whole thing, and a slow flicker as though the
-   signal is being held rather than delivered. Narration drops the tape and
-   goes italic and quiet, so who is speaking is legible before a word is
-   read. */
+/* ---- who is speaking, and how it looks ----
+   The narrator and the people in the room are not the same voice, and they
+   were arriving in the same box. Narration is a line of prose laid across
+   the foot of the picture with no chrome at all — the way a subtitle sits
+   under a film. Somebody speaking is a plate with their name on it, on
+   their own side of the screen: her on the left, everybody else on the
+   right. You know who is talking before you have read a word. */
 .ap-dlg{
-  position:absolute; left:4cqw; right:4cqw; bottom:3.2cqw; z-index:8;
-  padding:4.4cqw 3.4cqw 2.8cqw;
-  background:var(--ap-plate);
-  box-shadow:var(--ap-shadow), inset 0 1px 0 var(--ap-lip),
-             inset 0 -2px 8px rgba(0,0,0,.6), inset 0 0 0 1px rgba(8,10,16,.9);
-  /* the top edge is torn, the bottom is cut square */
-  clip-path:polygon(0 6px, 4% 2px, 11% 7px, 19% 1px, 27% 6px, 36% 2px, 45% 7px,
-                    54% 1px, 63% 6px, 72% 2px, 81% 7px, 90% 1px, 96% 6px, 100% 2px,
-                    100% 100%, 0 100%);
-  opacity:0; transform:translateY(10px);
-  pointer-events:none;
-  transition:opacity .22s ease, transform .22s ease;
+  position:absolute; z-index:8; pointer-events:none;
+  opacity:0; transform:translateY(8px);
+  transition:opacity .18s ease, transform .18s ease;
 }
 .ap-dlg[aria-hidden="false"]{opacity:1; transform:none; pointer-events:auto;}
-.ap-dlg::before{                                   /* grain */
-  content:""; position:absolute; inset:0; pointer-events:none;
-  background-image:var(--ap-grain); opacity:.30; mix-blend-mode:soft-light;
-}
-.ap-dlg::after{                                    /* scanlines, and the flicker */
-  content:""; position:absolute; inset:0; pointer-events:none;
-  background:var(--ap-scan);
-  animation:apSignal 5.5s steps(1) infinite;
-}
-@keyframes apSignal{
-  0%,7%,9%,42%,44%,100%{opacity:.8;}
-  8%{opacity:.35;} 43%{opacity:1;}
-}
-/* the speaker's name, on a strip of tape stuck to the top edge */
-.ap-dlg-name{
-  position:absolute; top:1.1cqw; left:2.6cqw; z-index:2;
-  padding:.5cqw 1.8cqw;
-  font-family:var(--ap-sign); font-size:1.5cqw; letter-spacing:.2em;
-  color:#2a1c22;
-  background:
-    repeating-linear-gradient(96deg, rgba(255,255,255,.16) 0 1px, transparent 1px 5px),
-    linear-gradient(180deg, rgba(232,182,198,.94), rgba(198,140,166,.92));
-  box-shadow:0 2px 0 rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.35);
-  transform:rotate(-.8deg);
-  clip-path:polygon(2px 0, 100% 1px, calc(100% - 3px) 100%, 1px calc(100% - 2px));
-}
-.ap-dlg-text{
-  position:relative; z-index:1; margin:0;
-  font-family:var(--ap-term); font-size:3.4cqw; line-height:1.32;
-  color:#e9eefb; letter-spacing:.01em;
-  text-shadow:0 0 10px rgba(150,190,255,.16);
-}
-/* narration has nobody speaking it, so it loses the tape and steps back */
-/* with nobody speaking there is no tape, so the text comes back up */
-.ap-dlg.narration, .ap-dlg.quiet{padding-top:3.4cqw;}
-.ap-dlg.narration .ap-dlg-name{display:none;}
-.ap-dlg.narration .ap-dlg-text{color:#b9c6de; font-style:italic;}
-.ap-dlg.quiet .ap-dlg-name{display:none;}
-.ap-dlg.quiet .ap-dlg-text{color:#67718c; letter-spacing:.55em; text-align:center;}
+.ap-dlg-name{display:none;}
+.ap-dlg-text{margin:0;}
 
-.ap-dlg-next{
-  position:absolute; right:2.4cqw; bottom:2.2cqw; z-index:3;
-  width:5.4cqw; height:5.4cqw; min-width:26px; min-height:26px;
-  display:flex; align-items:center; justify-content:center;
-  border:0; border-radius:50%; cursor:pointer; color:#2a1018;
-  background:radial-gradient(circle at 38% 32%, #ffc2d8 0 30%, #ff6f9d 62%, #d9497a 100%);
-  box-shadow:0 3px 0 #8f2e51, 0 6px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.5);
-  transition:transform .08s ease, box-shadow .08s ease;
+/* --- the narrator --- */
+.ap-dlg.narration, .ap-dlg.quiet{
+  left:0; right:0; bottom:0; padding:0 8cqw 5.2cqw;
+  display:flex; justify-content:center;
+  background:linear-gradient(180deg, rgba(4,6,12,0) 0%, rgba(4,6,12,.62) 42%, rgba(4,6,12,.90) 100%);
 }
-.ap-dlg-next:active{transform:translateY(3px); box-shadow:0 0 0 #8f2e51, 0 2px 6px rgba(0,0,0,.5), inset 0 2px 4px rgba(0,0,0,.35);}
+.ap-dlg.narration .ap-dlg-text, .ap-dlg.quiet .ap-dlg-text{
+  max-width:62ch; text-align:center;
+  font:italic 500 2.5cqw/1.62 var(--ap-voice-serif);
+  color:#d5dcec; letter-spacing:.005em;
+  text-shadow:0 2px 14px rgba(0,0,0,.9);
+}
+.ap-dlg.quiet .ap-dlg-text{
+  color:#66708a; letter-spacing:.6em; font-style:normal;
+}
+
+/* --- somebody speaking --- */
+.ap-dlg.speech{
+  bottom:4.6cqw; max-width:52cqw;
+  padding:1.5cqw 2.4cqw 1.7cqw 2.6cqw;
+  border-radius:3px;
+  background:linear-gradient(180deg, rgba(15,19,29,.95), rgba(9,12,20,.96));
+  box-shadow:0 12px 34px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07);
+}
+.ap-dlg.speech::before{                       /* the accent, on the speaking side */
+  content:""; position:absolute; top:0; bottom:0; width:3px;
+  background:var(--ap-voice, #8fa2d4);
+  box-shadow:0 0 14px var(--ap-voice, #8fa2d4);
+}
+.ap-dlg.speech .ap-dlg-name{
+  display:block; margin:0 0 .55cqw;
+  font:700 1.45cqw/1 ui-monospace,monospace; letter-spacing:.24em;
+  color:var(--ap-voice, #8fa2d4);
+}
+.ap-dlg.speech .ap-dlg-text{
+  font:400 2.35cqw/1.5 var(--ap-term), ui-monospace, monospace;
+  color:#eaeffb;
+}
+/* Which voice it is and which side of the screen it sits on are two
+   different questions. They used to be one class, so in any scene where
+   the two of them were staged the other way round — the campfire, where
+   he is on the left — every line arrived on the wrong person's side. */
+.ap-dlg.her  { --ap-voice:#ffc98a; }
+.ap-dlg.them { --ap-voice:#8fd8c4; }
+.ap-dlg.side-l  { left:4cqw; }
+.ap-dlg.side-l::before  { left:0; }
+.ap-dlg.side-r { right:4cqw; text-align:right; }
+.ap-dlg.side-r::before { right:0; }
+.ap-dlg.side-r .ap-dlg-name{ text-align:right; }
+
+/* a chevron that breathes, so it is clear the line is waiting on you */
+.ap-dlg::after{
+  content:""; position:absolute; right:1.5cqw; bottom:.9cqw;
+  width:.9cqw; height:.9cqw; min-width:6px; min-height:6px;
+  border-right:2px solid rgba(200,214,244,.75);
+  border-bottom:2px solid rgba(200,214,244,.75);
+  transform:rotate(45deg);
+  animation:apChev 1.5s ease-in-out infinite;
+}
+.ap-dlg.narration::after, .ap-dlg.quiet::after{ right:50%; bottom:2.2cqw; margin-right:-.45cqw; }
+@keyframes apChev{ 0%,100%{opacity:.25; transform:rotate(45deg) translate(0,0);} 50%{opacity:.9; transform:rotate(45deg) translate(2px,2px);} }
+.ap-dlg-next{display:none;}
+
+/* ---- the card ----
+   The camera never turns, so north really is up the screen. This says so,
+   and points at whatever the current errand is. */
+.ap-compass{
+  position:absolute; right:2cqw; top:17.4cqw; z-index:6;
+  width:9.4cqw; height:9.4cqw; min-width:56px; min-height:56px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%;
+  background:radial-gradient(circle at 50% 45%, rgba(18,23,35,.88), rgba(6,9,15,.92));
+  box-shadow:0 6px 18px rgba(0,0,0,.5), inset 0 0 0 1px rgba(150,170,215,.30);
+  transition:opacity .25s ease;
+}
+.ap-compass[aria-hidden="true"]{opacity:0; pointer-events:none;}
+.ap-compass-ring{position:absolute; inset:0;}
+.ap-compass-ring i{
+  position:absolute; font:700 1.35cqw/1 ui-monospace,monospace; font-style:normal;
+  letter-spacing:.08em; color:rgba(176,192,226,.72);
+}
+.ap-compass-ring i.n{top:6%;  left:50%; transform:translateX(-50%); color:#ffd28a;}
+.ap-compass-ring i.s{bottom:6%; left:50%; transform:translateX(-50%);}
+.ap-compass-ring i.e{right:7%; top:50%; transform:translateY(-50%);}
+.ap-compass-ring i.w{left:7%;  top:50%; transform:translateY(-50%);}
+.ap-compass-needle{
+  position:absolute; left:50%; top:50%;
+  width:0; height:0; transform-origin:50% 50%;
+  transition:transform .18s ease-out, opacity .2s ease;
+}
+.ap-compass-needle::before{                   /* the half that points */
+  content:""; position:absolute; left:-.42cqw; bottom:0;
+  border-left:.42cqw solid transparent; border-right:.42cqw solid transparent;
+  border-bottom:3.0cqw solid #8affc8;
+  filter:drop-shadow(0 0 5px rgba(138,255,200,.55));
+}
+.ap-compass-needle::after{                    /* and the half that does not */
+  content:""; position:absolute; left:-.30cqw; top:0;
+  border-left:.30cqw solid transparent; border-right:.30cqw solid transparent;
+  border-top:2.2cqw solid rgba(140,158,196,.45);
+}
+.ap-compass-dist{
+  position:absolute; bottom:-2.4cqw; left:50%; transform:translateX(-50%);
+  font:700 1.35cqw/1 ui-monospace,monospace; letter-spacing:.10em;
+  color:#8affc8; white-space:nowrap;
+  text-shadow:0 1px 6px rgba(0,0,0,.8);
+}
 
 /* ---- the overlay every card, panel and keypad mounts into ---- */
+/* ---- nothing in a game is text you highlight ----
+   Dragging a wire across the board, or just missing it, was starting a
+   text selection and turning the whole panel blue — the title, the hint,
+   the button, all of it. There is nothing on this screen anybody wants
+   to select, and a drag that begins a millimetre off the canvas should
+   not do something completely different from one that begins on it. */
+#screen-apoc, #screen-apoc *{
+  -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none;
+  user-select:none; -webkit-touch-callout:none;
+}
+#screen-apoc img, #screen-apoc canvas{-webkit-user-drag:none;}
+.ap-panel-canvas, .ap-keypad, .ap-pad, .ap-dpad{touch-action:none;}
+
 .ap-overlay{
   position:absolute; inset:0; z-index:9; display:none;
   align-items:center; justify-content:center;
-  background:rgba(4,6,12,.82);
+  padding:3cqw;
+  /* A full-screen backdrop blur is one of the most expensive things a
+     phone can be asked to do every frame, and the dim alone reads the
+     same. Only the card blurs, and only over its own footprint. */
+  background:radial-gradient(120% 100% at 50% 45%,
+             rgba(6,9,18,.80) 0%, rgba(3,5,11,.93) 100%);
+  animation:apVeilIn .32s ease both;
+}
+@keyframes apVeilIn{from{opacity:0;} to{opacity:1;}}
+@media (prefers-reduced-motion: reduce){
+  .ap-overlay, .ap-card{animation:none;}
 }
 .ap-overlay[aria-hidden="false"]{display:flex;}
 
-/* ---- touch pad ---- */
+/* ---- the stick ----
+   A thumb goes down anywhere in the left of the picture and the stick
+   appears under it. How far it is pushed is how fast she walks, and it
+   is eight ways rather than four, because you cannot walk north-north-
+   east on a d-pad. */
+/* This box is laid over the picture by fitTouch(), from outside it —
+   see the note in index.html for why it is not inside. It never fades
+   and never moves of its own accord: everything that changes is the
+   size of a thumb. */
+.ap-touch{
+  position:absolute; left:0; top:0; width:100%; height:100%;
+  z-index:7; pointer-events:none;
+}
+.ap-touch .ap-actions{opacity:0; transition:opacity .28s ease;}
+.ap-touch[aria-hidden="false"] .ap-actions{opacity:1;}
+/* invisible is not the same as gone: buttons faded out were still
+   swallowing taps meant for the picture behind them */
+.ap-touch[aria-hidden="true"] .ap-actions{pointer-events:none;}
+.ap-stick{
+  position:absolute; left:22%; top:70%;
+  width:116px; height:116px; margin:-58px 0 0 -58px;
+  pointer-events:none; opacity:0; transition:opacity .18s ease;
+}
+.ap-touch[aria-hidden="false"] .ap-stick.live{opacity:1;}
+.ap-stick-ring{
+  position:absolute; inset:0; border-radius:50%;
+  border:1px solid rgba(168,192,240,.30);
+  background:radial-gradient(circle, rgba(150,180,240,.05) 0 66%, transparent 67%);
+}
+.ap-stick-knob{
+  position:absolute; left:50%; top:50%; width:52px; height:52px;
+  margin:0; border-radius:50%;
+  transform:translate(-50%,-50%);
+  border:1px solid rgba(240,181,103,.55);
+  background:rgba(240,181,103,.14);
+  box-shadow:0 0 20px rgba(240,181,103,.18);
+}
+.ap-touch .ap-actions{
+  position:absolute; right:3.5%; bottom:7%;
+  /* USE is the outer one, under where the thumb rests; CREEP sits inside
+     it and a touch lower, the way a thumb rolls off the main button onto
+     the modifier. Reversed rather than reordered in the markup, so the
+     tab order is still the order they matter in. */
+  display:flex; flex-direction:row-reverse; align-items:flex-end; gap:16px;
+  pointer-events:auto;
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+.ap-touch .ap-act-sneak{margin-bottom:6px;}
+/* held down, not just tapped: creeping is a hold, and it has to look it */
+.ap-act.on{
+  color:#0d1017; background:#f0b567; border-color:#f0b567;
+  transform:scale(.95);
+}
+
+/* ---- the controls, on a phone ----
+   The pad was four rounded squares in a bevelled dish with two glossy
+   circles beside it. This is the same language as everything else in
+   the chapter: hairline rings on dark glass, cold blue at rest, amber
+   under the thumb. Everything is bigger than a thumb needs to be so it
+   can be hit without looking down. */
 .ap-pad{display:none;}
-.ap-dpad{position:relative; width:132px; height:132px;}
+.ap-dpad{
+  position:relative; width:168px; height:168px; border-radius:50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(150,180,240,.045) 0 62%, transparent 63%),
+    rgba(7,11,21,.42);
+  box-shadow:inset 0 0 0 1px rgba(168,192,240,.20);
+}
+/* the ring's own quarters, so the thumb can feel where the edges are */
+.ap-dpad::before{
+  content:""; position:absolute; inset:19px; border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(168,192,240,.10);
+  pointer-events:none;
+}
 .ap-key{
-  position:absolute; width:44px; height:44px; border-radius:10px;
-  border:2px solid rgba(140,160,210,.4); background:rgba(18,22,38,.9);
-  cursor:pointer;
+  position:absolute; width:66px; height:66px; border:0; background:transparent;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
 }
-.ap-key::after{
+.ap-key::before{                                  /* the face that lights */
+  content:""; position:absolute; inset:5px; border-radius:50%;
+  background:transparent; transition:background .10s ease;
+}
+.ap-key::after{                                   /* the arrow */
   content:""; position:absolute; left:50%; top:50%; width:0; height:0;
-  border:8px solid transparent; border-bottom-color:#c8d4f2; transform:translate(-50%,-62%);
+  border:10px solid transparent; border-bottom-color:rgba(196,214,246,.80);
+  transform:translate(-50%,-62%);
 }
-.ap-key-up{left:44px; top:0;}
-.ap-key-down{left:44px; top:88px; transform:rotate(180deg);}
-.ap-key-left{left:0; top:44px; transform:rotate(-90deg);}
-.ap-key-right{left:88px; top:44px; transform:rotate(90deg);}
-.ap-dpad-hub{position:absolute; left:44px; top:44px; width:44px; height:44px; background:rgba(18,22,38,.5); border-radius:6px;}
-.ap-actions{display:flex; flex-direction:column; gap:12px;}
+.ap-key-up{left:51px; top:0;}
+.ap-key-down{left:51px; top:102px; transform:rotate(180deg);}
+.ap-key-left{left:0; top:51px; transform:rotate(-90deg);}
+.ap-key-right{left:102px; top:51px; transform:rotate(90deg);}
+.ap-key:active::before{background:rgba(240,181,103,.16);}
+.ap-key:active::after{border-bottom-color:#ffdcaa;}
+.ap-dpad-hub{
+  position:absolute; left:63px; top:63px; width:42px; height:42px; border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(168,192,240,.16);
+  pointer-events:none;
+}
+
+.ap-actions{display:flex; align-items:center; gap:16px;}
 .ap-act{
-  width:76px; height:56px; border-radius:12px; cursor:pointer;
-  border:2px solid rgba(255,95,149,.5); background:rgba(40,16,30,.9); color:#ffd6e6;
-  font-family:var(--ap-sign); font-size:10px; letter-spacing:.06em;
+  border-radius:50%; border:1px solid rgba(168,192,240,.24);
+  background:rgba(7,11,21,.42); color:#cfdcf6;
+  font-family:var(--ap-sign); letter-spacing:.14em;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  display:flex; align-items:center; justify-content:center;
+  transition:color .12s ease, border-color .12s ease, background .12s ease,
+             transform .09s ease;
 }
-.ap-act-sneak{border-color:rgba(140,160,210,.45); background:rgba(18,22,38,.9); color:#c8d4f2;}
-.ap-key:active, .ap-act:active{filter:brightness(1.4);}
+.ap-act-use{
+  width:104px; height:104px; font-size:12px;
+  color:#ffdcaa; border-color:rgba(240,181,103,.42);
+  background:rgba(240,181,103,.07);
+}
+.ap-act-sneak{width:80px; height:80px; font-size:10px;}
+.ap-act:active{
+  transform:scale(.95);
+  color:#0d1017; background:#f0b567; border-color:#f0b567;
+}
 
 /* the hub card art: a street at night, one lit window, the fence */
 .hub-art-apoc{
@@ -3389,9 +3747,12 @@ img{-webkit-user-drag:none; user-select:none;}
 
 @media (max-width: 900px), (orientation: portrait){
   .ap-titlebar{display:block;}
+  /* the four keys still exist for anything that asks for them by name,
+     but the stick over the picture is what a person uses */
   .ap-pad{
-    display:flex; align-items:center; justify-content:space-between;
-    width:100%; max-width:420px; padding:18px 16px calc(14px + env(safe-area-inset-bottom));
+    display:flex; align-items:flex-end; justify-content:center;
+    width:100%; max-width:520px; opacity:0; height:0; overflow:hidden;
+    padding:0;
   }
   .ap-frame{justify-content:space-between; padding:4vh 0 0;}
   .ap-stage{width:min(100%, calc(var(--app-h) * 0.52 * var(--ap-arn, 1.7778)));}
@@ -3404,99 +3765,293 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---- the cards, panels and scraps of paper that mount into ap-overlay ---- */
 .ap-overlay.thin{background:rgba(4,6,12,.58);}
 /* ---- cards ----
-   Level briefings, the how-to and the pause menu all mount on the same
-   plate as the dialogue does: a header band with a stencilled kicker, the
-   body under it, and a bolt in each corner. */
+   Level briefings, the how-to, the pause menu and every panel in the
+   chapter share one plate. It used to be a gold title bar over a
+   grey striped panel with bolts in the corners and a hot pink glossy
+   button on it — five different eras of interface on one screen, none of
+   them the game's. This is the game's: a pane of dark glass with the
+   scene still visible through it, one hairline round it, two corner
+   ticks like a viewfinder, and an amber rule for the one thing that
+   matters. Nothing here has a gradient, a bevel or a highlight on it. */
 .ap-card{
   position:relative;
-  width:min(86cqw, 600px); max-height:90%; overflow:auto;
+  /* A column, so a long briefing scrolls its rows and never pushes the
+     buttons off the bottom of the screen — which is what the pause menu
+     was doing on any level with four lines of help in it. */
+  display:flex; flex-direction:column;
+  width:min(84cqw, 620px); max-height:100%;
+  overflow:hidden;
   padding:0 0 3.4cqw; text-align:left;
-  background:var(--ap-plate);
-  box-shadow:var(--ap-shadow), inset 0 1px 0 var(--ap-lip),
-             inset 0 -2px 8px rgba(0,0,0,.6), inset 0 0 0 1px rgba(8,10,16,.92);
-}
-.ap-card::before{
-  content:""; position:absolute; inset:0; pointer-events:none;
-  background-image:var(--ap-grain); opacity:.28; mix-blend-mode:soft-light;
-}
-/* four bolts, because it is screwed to something */
-.ap-card::after{
-  content:""; position:absolute; inset:1.1cqw; pointer-events:none;
   background:
-    radial-gradient(circle, #8a94a4 0 34%, #3d434e 36%, transparent 60%) left top/1.5cqw 1.5cqw no-repeat,
-    radial-gradient(circle, #8a94a4 0 34%, #3d434e 36%, transparent 60%) right top/1.5cqw 1.5cqw no-repeat,
-    radial-gradient(circle, #8a94a4 0 34%, #3d434e 36%, transparent 60%) left bottom/1.5cqw 1.5cqw no-repeat,
-    radial-gradient(circle, #8a94a4 0 34%, #3d434e 36%, transparent 60%) right bottom/1.5cqw 1.5cqw no-repeat;
-  opacity:.75;
+    linear-gradient(180deg, rgba(12,17,30,.90) 0%, rgba(7,10,20,.95) 100%);
+  /* No backdrop-filter. Blurring what is behind a panel is recomposited
+     every frame and it is one of the slowest things a weak GPU does; at
+     this opacity there is nothing behind it to see anyway. */
+  border:1px solid rgba(168,192,240,.15);
+  box-shadow:0 30px 72px rgba(0,0,0,.70), inset 0 1px 0 rgba(190,214,255,.09);
+  animation:apCardIn .40s cubic-bezier(.18,.72,.22,1) both;
 }
+@keyframes apCardIn{
+  from{opacity:0; transform:translateY(9px) scale(.994); filter:blur(2px);}
+  to  {opacity:1; transform:none; filter:none;}
+}
+/* two corner ticks rather than four bolts: it is a frame, not a hatch */
+.ap-card::before, .ap-card::after{
+  content:""; position:absolute; width:2.1cqw; height:2.1cqw;
+  min-width:12px; min-height:12px; pointer-events:none; z-index:2;
+  border-color:rgba(240,181,103,.45); border-style:solid;
+}
+.ap-card::before{left:1.3cqw; top:1.3cqw; border-width:1px 0 0 1px;}
+.ap-card::after{right:1.3cqw; bottom:1.3cqw; border-width:0 1px 1px 0;}
+.ap-card::-webkit-scrollbar{width:3px;}
+.ap-card::-webkit-scrollbar-thumb{background:rgba(168,192,240,.22);}
+
 .ap-card-kicker{
   position:relative; z-index:1; margin:0 0 2.4cqw;
-  padding:1.3cqw 3.4cqw 1.1cqw;
-  font-family:var(--ap-sign); font-size:1.6cqw; letter-spacing:.24em; color:#0f1219;
-  background:
-    repeating-linear-gradient(90deg, rgba(0,0,0,.12) 0 1px, transparent 1px 6px),
-    linear-gradient(180deg, #c8a04c, #9a7630);
-  box-shadow:inset 0 -2px 0 rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.28);
+  padding:2.9cqw 3.4cqw 1.5cqw 3.4cqw;
+  font-family:var(--ap-sign); font-size:1.42cqw; line-height:1.2;
+  letter-spacing:.32em; text-transform:uppercase; color:#f0b567;
+  border-bottom:1px solid rgba(168,192,240,.13);
 }
+
 .ap-card-title{
-  position:relative; z-index:1; margin:0 3.4cqw 2.6cqw;
-  font-family:var(--ap-term); font-size:3.4cqw; line-height:1.18;
-  color:#f2f5ff; font-weight:400;
+  position:relative; z-index:1; margin:0 3.4cqw 2.4cqw;
+  font-family:var(--ap-voice-serif); font-weight:600;
+  font-size:3.1cqw; line-height:1.24;
+  color:#eef3ff; letter-spacing:.004em;
 }
-.ap-card-rows{position:relative; z-index:1; display:flex; flex-direction:column; gap:.75cqw;
-  margin:0 3.4cqw 2.6cqw;}
+/* a title that is a line of the story rather than a name for a screen */
+.ap-card-title.said{font-style:italic; font-weight:500; color:#dfe7f8;}
+/* a page that is mostly rows gives its heading less room */
+.ap-card-title.tight{font-size:2.7cqw; margin-bottom:1.4cqw;}
+.ap-card-rows{position:relative; z-index:1; display:flex; flex-direction:column; gap:.5cqw;
+  margin:0 3.4cqw 2.4cqw;
+  flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain;}
+.ap-card-rows::-webkit-scrollbar{width:3px;}
+.ap-card-rows::-webkit-scrollbar-thumb{background:rgba(168,192,240,.22);}
+/* THERE IS MORE BELOW THIS, AND IT HAS TO SAY SO.
+   The first version faded the bottom edge with a mask. A mask puts the
+   element on its own compositing layer, and this file already learned
+   once — with backdrop-filter — what a separate layer costs a weak GPU:
+   the whole plate stopped painting under software rendering. So it is a
+   chevron instead, the same one the dialogue box uses for "keep going",
+   which is a glyph and costs nothing. */
+.ap-card-more{
+  flex:0 0 auto; margin:.2cqw 3.4cqw 0; padding:0;
+  text-align:center; line-height:1; color:#7d8db0; font-size:2.1cqw;
+  pointer-events:none; opacity:0; transition:opacity .18s ease;
+  animation:apMoreNudge 1.9s ease-in-out infinite;
+}
+.ap-card-more.on{opacity:.75;}
+@keyframes apMoreNudge{
+  0%,100%{transform:translateY(0);} 50%{transform:translateY(2px);}
+}
+@media (prefers-reduced-motion:reduce){ .ap-card-more{animation:none;} }
+.ap-card-kicker{flex:0 0 auto;}
+/* A card whose only content is a long line of prose has to be able to
+   give ground, or the title pushes the button off the bottom and there
+   is no way on from the screen at all.
+
+   But it must only give ground when it is the ONLY thing that can. On
+   the how-to screen — a one-line heading over ten rows of help — the
+   card overflows, flexbox takes the overrun out of every shrinkable
+   child, and the heading gets squeezed to a couple of pixels: you see
+   the tops of the letters and nothing else, which is what "the text
+   above the controls does not show up completely" was. A card that has
+   rows keeps its heading whole and makes the rows do the scrolling;
+   only a card that is nothing but prose is allowed to scroll its own
+   title. */
+.ap-card-title{flex:0 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain;}
+.ap-card.has-rows > .ap-card-title{flex:0 0 auto; overflow:visible;}
+.ap-card-title::-webkit-scrollbar{width:3px;}
+.ap-card-title::-webkit-scrollbar-thumb{background:rgba(168,192,240,.22);}
 .ap-card-row{
-  display:grid; grid-template-columns:27% 1fr; gap:2cqw; align-items:baseline;
-  padding-bottom:.9cqw; border-bottom:1px solid rgba(150,170,210,.13);
+  display:grid; grid-template-columns:26% 1fr; gap:2cqw; align-items:baseline;
+  padding-bottom:.85cqw; border-bottom:1px solid rgba(150,170,210,.10);
 }
+.ap-card-row:last-child{border-bottom:0;}
 .ap-card-row b{
-  font-family:var(--ap-sign); font-size:1.15cqw; font-weight:400;
-  color:#e0b45c; letter-spacing:.05em;
+  font-family:var(--ap-sign); font-size:1.05cqw; font-weight:400;
+  color:#c69553; letter-spacing:.16em; text-transform:uppercase;
 }
-.ap-card-row span{font-family:var(--ap-term); font-size:2.3cqw; line-height:1.25; color:#c3cee6;}
+.ap-card-row span{font-family:var(--ap-voice-serif); font-weight:500;
+  font-size:1.95cqw; line-height:1.4; color:#c8d3ea;}
 
 /* ---- buttons ----
-   One button, everywhere: a stamped metal key with a bevel, a lit top edge,
-   a hard drop that disappears when it is pressed, and a plate of colour to
-   say what kind of thing it does. Nothing in this chapter is a flat
-   rectangle with a label on it any more. */
+   Ghost buttons: a hairline, a letterspaced label and nothing else until
+   you touch them. The one that carries the scene forward keeps an amber
+   edge down its left and an arrow on its right, so which one is the way
+   on is obvious without shouting. */
 .ap-card-go, .ap-note-ok, .ap-panel-leave, .ap-card-quit{
-  position:relative; z-index:1;
-  display:block; margin:0 3.4cqw; width:calc(100% - 6.8cqw);
-  padding:2cqw 2.4cqw; border:0; cursor:pointer;
-  font-family:var(--ap-sign); font-size:1.6cqw; letter-spacing:.1em;
-  color:#1a0f14;
-  background:
-    repeating-linear-gradient(112deg, rgba(255,255,255,.07) 0 1px, transparent 1px 7px),
-    linear-gradient(180deg, #ff8fb4 0%, #ef6d99 42%, #cf4d79 100%);
-  box-shadow:0 4px 0 #8f2e51, 0 8px 16px rgba(0,0,0,.5),
-             inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 4px rgba(0,0,0,.22);
-  transition:transform .07s ease, box-shadow .07s ease, filter .12s ease;
+  position:relative; z-index:1; flex:0 0 auto;
+  display:block; margin:1.1cqw 3.4cqw 0; width:calc(100% - 6.8cqw);
+  padding:1.85cqw 3.6cqw 1.75cqw 2.6cqw; cursor:pointer; text-align:left;
+  font-family:var(--ap-sign); font-size:1.42cqw; letter-spacing:.2em;
+  text-transform:uppercase; color:#cfdcf6;
+  background:rgba(150,180,240,.035);
+  border:1px solid rgba(168,192,240,.20);
+  border-radius:0;
+  transition:color .16s ease, border-color .16s ease,
+             background .16s ease, transform .10s ease;
 }
-.ap-card-go:hover, .ap-note-ok:hover, .ap-panel-leave:hover, .ap-card-quit:hover{filter:brightness(1.09);}
-.ap-card-go:active, .ap-note-ok:active, .ap-panel-leave:active, .ap-card-quit:active{
-  transform:translateY(4px);
-  box-shadow:0 0 0 #8f2e51, 0 3px 7px rgba(0,0,0,.45),
-             inset 0 2px 5px rgba(0,0,0,.4);
+.ap-card-go, .ap-note-ok{
+  color:#ffdcaa; border-color:rgba(240,181,103,.36);
+  background:rgba(240,181,103,.055);
 }
-.ap-card-go:disabled, .ap-note-ok:disabled{filter:grayscale(.7) brightness(.6); cursor:not-allowed;}
+/* the amber edge, and the arrow that says which way this goes */
+.ap-card-go::before, .ap-note-ok::before{
+  content:""; position:absolute; left:-1px; top:-1px; bottom:-1px; width:2px;
+  background:#f0b567;
+}
+.ap-card-go::after, .ap-note-ok::after{
+  content:"\2192"; position:absolute; right:2.2cqw; top:50%;
+  transform:translateY(-50%); font-size:1.7cqw; letter-spacing:0;
+  color:#f0b567; opacity:.65; transition:transform .18s ease, opacity .18s ease;
+}
+.ap-card-go:hover, .ap-note-ok:hover{
+  color:#fff1da; border-color:rgba(240,181,103,.85);
+  background:rgba(240,181,103,.13);
+}
+.ap-card-go:hover::after, .ap-note-ok:hover::after{
+  transform:translate(3px, -50%); opacity:1;
+}
+.ap-card-quit:hover, .ap-panel-leave:hover{
+  color:#eaf1ff; border-color:rgba(168,192,240,.46);
+  background:rgba(150,180,240,.09);
+}
+.ap-card-go:active, .ap-note-ok:active,
+.ap-panel-leave:active, .ap-card-quit:active{transform:translateY(1px);}
+.ap-card-go:focus-visible, .ap-note-ok:focus-visible,
+.ap-panel-leave:focus-visible, .ap-card-quit:focus-visible{
+  outline:none; border-color:#f0b567;
+  box-shadow:0 0 0 1px rgba(240,181,103,.45), 0 0 22px rgba(240,181,103,.16);
+}
+.ap-card-go:disabled, .ap-note-ok:disabled{
+  color:#6c789a; opacity:.42; cursor:not-allowed;
+}
+.ap-card-go:disabled::after, .ap-note-ok:disabled::after{opacity:.2;}
 
 /* the quieter one — stepping back, leaving, standing down */
 .ap-card-quit, .ap-panel-leave{
-  margin-top:1.4cqw; color:#c6d2e8;
-  background:
-    repeating-linear-gradient(112deg, rgba(255,255,255,.05) 0 1px, transparent 1px 7px),
-    linear-gradient(180deg, #3a4152 0%, #2b3140 42%, #1e232e 100%);
-  box-shadow:0 4px 0 #12151c, 0 8px 16px rgba(0,0,0,.5),
-             inset 0 1px 0 rgba(255,255,255,.16), inset 0 -2px 4px rgba(0,0,0,.35);
+  color:#9fb0d0; border-color:rgba(168,192,240,.14);
+  background:transparent;
 }
-.ap-card-quit:active, .ap-panel-leave:active{
-  box-shadow:0 0 0 #12151c, 0 3px 7px rgba(0,0,0,.45), inset 0 2px 5px rgba(0,0,0,.5);
+
+/* ---- controls and settings ----
+   The same plate, one page further in: what the keys do drawn as keys,
+   and four switches under a rule. */
+.ap-set .ap-set-row{
+  display:grid; grid-template-columns:26% 1fr; gap:2cqw;
+  align-items:center; padding:.75cqw 0;
+  border-bottom:1px solid rgba(150,170,210,.09);
 }
+.ap-set .ap-set-row b{
+  font-family:var(--ap-sign); font-size:1.05cqw; font-weight:400;
+  color:#c69553; letter-spacing:.16em; text-transform:uppercase;
+}
+.ap-set-keys{display:flex; align-items:center; gap:.6cqw; flex-wrap:wrap;}
+.ap-cap{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:3.1cqw; height:3.1cqw; padding:0 .8cqw;
+  font-family:var(--ap-sign); font-size:1.15cqw; letter-spacing:.06em;
+  color:#dbe6fb; background:rgba(150,180,240,.06);
+  border:1px solid rgba(168,192,240,.26);
+  box-shadow:inset 0 -2px 0 rgba(0,0,0,.30);
+}
+.ap-cap.wide{min-width:6.4cqw;}
+.ap-set-join{
+  font-family:var(--ap-term); font-style:normal; font-size:1.6cqw;
+  color:#7d8db0; padding:0 .2cqw;
+}
+.ap-set-note{
+  font-family:var(--ap-voice-serif); font-weight:500; font-style:italic;
+  font-size:1.62cqw;
+  color:#8fa0c2; line-height:1.2; margin-left:.8cqw;
+}
+.ap-set-head.first{margin-top:0; padding-top:0; border-top:0;}
+/* the heading brings its own rule, so the row above it does not need
+   one as well — two hairlines a few pixels apart read as a mistake */
+.ap-set .ap-set-row:has(+ .ap-set-head){border-bottom:0;}
+.ap-set-head{
+  margin:1.9cqw 0 .4cqw; padding-top:1.4cqw;
+  border-top:1px solid rgba(240,181,103,.22);
+  font-family:var(--ap-sign); font-size:1.15cqw; letter-spacing:.3em;
+  color:#f0b567; text-transform:uppercase;
+}
+/* ---- a level, rather than a switch ----
+   A volume is not two states, so it is not two buttons. One lane, an
+   amber fill up to where it is set, a square handle, and the number
+   beside it — reading OFF at nought, which is the only place a switch
+   was ever right. Drawn with the same hairline-and-amber grammar as
+   everything else on the plate, in both engines' pseudo-elements
+   because there is no one property that styles a range input. */
+/* the lane and its note share one line: a note that wraps under the
+   slider makes every sound row twice as tall as every other row */
+.ap-lvl{display:inline-flex; align-items:center; gap:.9cqw;
+        flex:0 0 auto; width:min(52%, 19cqw);}
+.ap-set-keys > .ap-set-note{flex:1 1 6cqw; min-width:0;}
+.ap-lvl-in{
+  appearance:none; -webkit-appearance:none; cursor:pointer;
+  flex:1 1 auto; min-width:7cqw; height:2.6cqw; margin:0;
+  background:transparent; border:0; outline:none;
+}
+.ap-lvl-in::-webkit-slider-runnable-track{
+  height:2px; background:rgba(168,192,240,.22); border:0;
+}
+.ap-lvl-in::-moz-range-track{height:2px; background:rgba(168,192,240,.22); border:0;}
+.ap-lvl-in::-moz-range-progress{height:2px; background:#f0b567;}
+.ap-lvl-in::-webkit-slider-thumb{
+  appearance:none; -webkit-appearance:none;
+  width:.95cqw; min-width:7px; height:1.7cqw; min-height:13px;
+  margin-top:calc(-0.85cqw + 1px);
+  background:#f0b567; border:0; border-radius:0;
+  box-shadow:0 0 0 1px rgba(10,14,24,.9), 0 2px 6px rgba(0,0,0,.5);
+}
+.ap-lvl-in::-moz-range-thumb{
+  width:.95cqw; min-width:7px; height:1.7cqw; min-height:13px;
+  background:#f0b567; border:0; border-radius:0;
+  box-shadow:0 0 0 1px rgba(10,14,24,.9), 0 2px 6px rgba(0,0,0,.5);
+}
+.ap-lvl-in:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 2px #eef3ff;}
+.ap-lvl-in:focus-visible::-moz-range-thumb{box-shadow:0 0 0 2px #eef3ff;}
+.ap-lvl-num{
+  font-family:var(--ap-sign); font-size:1.02cqw; letter-spacing:.14em;
+  color:#c8d3ea; min-width:3.4cqw; text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+
+/* the switches: one strip, the live one lit in amber */
+.ap-seg{display:inline-flex; border:1px solid rgba(168,192,240,.20);}
+.ap-seg-btn{
+  appearance:none; cursor:pointer;
+  padding:.85cqw 1.9cqw; border:0; border-right:1px solid rgba(168,192,240,.16);
+  background:transparent; color:#93a3c4;
+  font-family:var(--ap-sign); font-size:1.02cqw; letter-spacing:.16em;
+  transition:color .15s ease, background .15s ease;
+}
+.ap-seg-btn:last-child{border-right:0;}
+.ap-seg-btn:hover{color:#e6eeff; background:rgba(150,180,240,.08);}
+.ap-seg-btn.on{
+  color:#0d1017; background:#f0b567;
+}
+.ap-seg-btn:focus-visible{outline:none; box-shadow:inset 0 0 0 1px #f0b567;}
+
+/* a word that answers a press and then gets out of the way */
+.ap-hint{
+  position:absolute; left:50%; bottom:14cqw; transform:translateX(-50%) translateY(4px);
+  margin:0; padding:.9cqw 2.2cqw; pointer-events:none; z-index:7;
+  font-family:var(--ap-voice-serif); font-style:italic; font-weight:500;
+  font-size:1.9cqw; color:#c8d3ea; white-space:nowrap;
+  background:rgba(6,9,18,.62);
+  border-left:2px solid rgba(240,181,103,.55);
+  opacity:0; transition:opacity .25s ease, transform .25s ease;
+}
+.ap-hint.on{opacity:1; transform:translateX(-50%) translateY(0);}
 
 /* the close call: no card, just a line held in the dark */
 .ap-close{text-align:center; padding:0 6cqw;}
-.ap-close-line{margin:0 0 1.6cqw; font-family:var(--ap-term); font-size:4.2cqw;
+.ap-close-line{margin:0 0 1.6cqw; font-family:var(--ap-voice-serif);
+  font-weight:600; font-style:italic; font-size:3.4cqw;
   line-height:1.3; color:#f2e6ec;}
 .ap-close-sub{
   margin:0; font-size:1.6cqw; letter-spacing:.2em; color:#ff9ec0;
@@ -3504,6 +4059,28 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* the wire panel */
+/* ---- the fridge ----
+   Same plate as the distribution board: a title, the thing itself, a
+   line of prose under it, and a way out. It is wider than the board
+   because a fridge with both doors open is a wide thing. */
+.ap-fridge{display:flex; flex-direction:column; align-items:center;
+  gap:1.0cqw; width:min(94cqw, 700px); max-height:100%;}
+.ap-fridge .ap-panel-canvas{
+  /* both ways, so the plate fits the screen it is on: a canvas keeps its
+     own ratio when only one of the two is fixed, and this one has a
+     title over it and two buttons under it to leave room for */
+  width:auto; height:auto;
+  max-width:min(100%, 620px); max-height:42cqh;
+  /* a fridge is not pixel art: it has curves in it */
+  image-rendering:auto;
+  box-shadow:0 18px 46px rgba(0,0,0,.8), 0 0 0 2px rgba(120,140,170,.35);
+}
+.ap-fridge .ap-panel-hint{min-height:4.4cqw; text-align:center; font-size:2.1cqw;}
+.ap-fridge .ap-card-go, .ap-fridge .ap-panel-leave{margin-top:.3cqw;}
+/* the way on only looks like the way on once she has picked something up */
+.ap-fridge .ap-card-go{opacity:.55;}
+.ap-fridge .ap-card-go.ready{opacity:1;}
+
 .ap-panel{display:flex; flex-direction:column; align-items:center; gap:1.6cqw; width:min(92cqw, 620px);}
 .ap-panel-title{
   margin:0; font-family:var(--ap-sign);
@@ -3715,11 +4292,15 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* ---- a cutscene caption ---- */
 .ap-overlay.cut{background:transparent; align-items:flex-end; pointer-events:none;}
+/* a cut speaks in the same voice the narrator does in play: no box, a
+   line of prose over a wash of dark */
 .ap-cut-cap{
-  margin:0 0 1.1cqw; padding:1cqw 2.4cqw; border-radius:6px; max-width:72%;
-  background:rgba(6,8,14,.78); color:#e8eefc; font-family:var(--ap-term); font-size:2.4cqw;
-  line-height:1.25; text-align:center;
-  box-shadow:0 6px 20px rgba(0,0,0,.5);
+  margin:0 0 1.6cqw; padding:0 6cqw; max-width:66ch;
+  color:#dbe2f0; font:italic 400 2.5cqw/1.6 Georgia,"Times New Roman",serif;
+  text-align:center; text-shadow:0 2px 16px rgba(0,0,0,.95);
+}
+.ap-overlay.cut{
+  background:linear-gradient(180deg, rgba(4,6,12,0) 62%, rgba(4,6,12,.72) 100%) !important;
 }
 .ap-hud.gone, .ap-hud.gone + .ap-pause-btn{opacity:0; transition:opacity .3s ease;}
 
