@@ -558,16 +558,24 @@ window.Scrapbook = (function () {
     /* the photos are cleanly of two kinds -- amber, or club violet */
     var violet = (photoHue > 240 && photoHue < 340);
     if (violet) {
-      /* 288 is a blue-violet, and the page before these is a rose at 340 --
-         a fifty degree jump, which is why arriving at the last two pages
-         felt like walking into a different book. Orchid sits between the
-         two: still unmistakably the violet end, still true to the club
-         light in those photographs, but close enough to rose that the book
-         turns onto it rather than cutting to it. The two pages take
-         slightly different places in that band so they are not a flat
-         repeat -- the deeper one last. */
+      /* No purple. It was 288, a blue-violet; then orchid at 304-316, which
+         was closer but still the odd pair at the end of a rose book -- and
+         he was right both times.
+
+         The mistake was treating "the photographs are violet" as if it
+         settled what colour the paper has to be. It does not. Those two
+         pages are club light, magenta and violet, and the thing that
+         actually flatters club light is warm pink: the photographs stand
+         off it instead of sinking into something the same temperature as
+         they are. Rendered side by side against blush, sand, wine and
+         mauve, blush was not a compromise -- it was the best of the five to
+         look at.
+
+         So they come home into the book's own rose band, and the book ends
+         where it opened. The two still take slightly different places in
+         it so the ending is not a flat repeat. */
       var v = Math.max(0, Math.min(1, (photoHue - 270) / 15));
-      return heavy ? (318 + v * 8) : (304 + v * 12);
+      return heavy ? (344 + v * 6) : (348 + v * 6);
     }
     /* 6deg is the reddest of them, 30 the most golden */
     var warmth = Math.max(0, Math.min(1, (photoHue - 6) / 24));
