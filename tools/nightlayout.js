@@ -35,7 +35,7 @@ let fails = 0;
     });
     /* start() shows a loading card and builds the shop a frame later, so
        the shift cannot be routed in the same turn as the boot */
-    await p.waitForFunction(() => Object.keys(OuissysNightShift.__night.cast()).length === 4,
+    await p.waitForFunction(() => Object.keys(OuissysNightShift.__night.cast()).length >= 4,
                             { timeout: 20000, polling: 200 });
     await p.evaluate(() => {
       OuissysNightShift.__night.route('start'); OuissysNightShift.__night.route('go');

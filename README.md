@@ -407,6 +407,48 @@ orphan a page.
 The four tags also happen to explain exactly what their toy does, which
 means **the story is the tutorial** — read them and you know the game.
 
+### The two kinds of thing in the shop
+
+**His four** — Cogsworth, Chime, Marabelle and Jax — are the ones he
+never sold, and each is built around one thing about her. They walk to
+her door every night, and for most of the game she keeps them out
+because his note told her to.
+
+**The ones he sold** start coming back on night two. Four hundred and
+eleven went out of this shop into other people's houses, and the
+address on every one of them is here. They are not a faster
+animatronic, they are a different problem:
+
+- **They are never seen moving.** A parcel is simply one room closer
+  than it was the last time she looked.
+- **They do not knock.** A shut door is a handle being tried, over and
+  over, until they lose interest.
+- **Watching does nothing.** They were not built for her and they do
+  not care whether they are observed.
+- **Nobody ever sees one.** They came back the way they were sent —
+  wrapped, tied, labelled, with something pale showing through a tear
+  in the corner that never resolves.
+
+She tells them apart by ear. His four have voices: boots, wings, a
+music box, bells. These have paper, string and a weight settling.
+There is no melody anywhere in them.
+
+### Winding, and what the four are for
+
+His note says wind the four every night, and that is the mechanic. Each
+carries a key; find one on a camera and hold it for a second and a bit.
+Let one run down and **it stops obeying its own tag** — a wound
+Marabelle freezes when she is watched, a slack one does not, and every
+slack one moves faster and gives up on a shut door far more slowly.
+
+And then the thing the whole story turns on. When one of the ones he
+sold gets through an open door, **if any of his four is still wound,
+one of his gets there first.** The returner leaves. The one that
+stepped in is spent, and will not do it again until she winds it.
+
+His four are her lives. His instruction is what buys them. Nothing in
+the game says so until the first time it happens.
+
 ### The six pages
 
 They start as a stranger's. An old toymaker, four automatons, a woman

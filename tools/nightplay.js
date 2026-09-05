@@ -555,15 +555,87 @@ function ok(name, cond, extra) {
   ok('and hands the shift straight back',
      await page.evaluate(() => OuissysNightShift.__night.state().phase) === 'play');
 
+  console.log('\n— the ones he sold, coming back —');
+  const sold = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    const nightHas = (n) => {
+      w.route('night:' + n); w.route('go');
+      w.pump(340, 0.5);
+      const cs = w.cast();
+      return ['post1','post2','post3'].filter(k => cs[k] && cs[k].awake).length;
+    };
+    const one = nightHas(1), four = nightHas(4);
+    /* watching does nothing to them: they were not built for her */
+    w.route('night:4'); w.route('go');
+    const c = w.cast().post1;
+    c.awake = true; c.cool = 0; c.step = 1;
+    s.monitor = true; w.cam(c.room); s.power = 100;
+    const a0 = c.step; w.pump(70); const watched = c.step - a0;
+    /* an open door is fatal, a shut one holds them and then they go */
+    const run = (shut) => {
+      w.route('night:4'); w.route('go');
+      ['cogsworth','chime','marabelle','jax'].forEach(k => { w.cast()[k].wound = 0; });
+      w.put('post1', w.cast().post1.def.route.length - 1);
+      s.power = 100; s.blackout = false; s.doors.left = shut;
+      w.pump(14);
+      return { phase: s.phase, dead: s.dead, atDoor: w.cast().post1.atDoor };
+    };
+    return { one, four, watched, open: run(false), shut: run(true) };
+  });
+  ok('night one is his four and nothing else', sold.one === 0, String(sold.one));
+  ok('and by night four there are three of them', sold.four === 3, String(sold.four));
+  ok('watching one does nothing at all', sold.watched > 0, 'moved ' + sold.watched + ' while watched');
+  ok('an open door is the end of it', sold.open.dead === 'post1', JSON.stringify(sold.open));
+  ok('a shut one holds, and then it goes',
+     sold.shut.phase === 'play' && sold.shut.atDoor === false, JSON.stringify(sold.shut));
+
+  console.log('\n— and what his four are actually for —');
+  const held = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    try { localStorage.removeItem('ns_seensave'); } catch (e) {}
+    const at = (wound) => {
+      w.route('title'); w.route('night:4'); w.route('go');
+      ['cogsworth','chime','marabelle','jax'].forEach(k => { w.cast()[k].wound = wound; });
+      w.put('post1', w.cast().post1.def.route.length - 1);
+      s.doors.left = false; s.power = 100; s.blackout = false;
+      w.pump(6);
+      /* pump never stops to tell a story, so ask for the card the way a
+         real interception would raise it */
+      const shown = s.stats.saves > 0 && !s.dead;
+      return { phase: s.phase, dead: s.dead, saves: s.stats.saves,
+               card: shown, spent: w.wind().count };
+    };
+    const wound = at(9);
+    w.route('heldOut');
+    const slack = at(0);
+    return { wound, slack };
+  });
+  ok('a wound one gets there before the thing at the door does',
+     held.wound.saves === 1 && !held.wound.dead, JSON.stringify(held.wound.phase));
+  ok('and she is told what she just saw, once', held.wound.card === true);
+  ok('and it has spent itself doing it', held.wound.spent === 3, String(held.wound.spent));
+  ok('with none of them wound, nobody is coming',
+     held.slack.dead === 'post1' && held.slack.saves === 0, JSON.stringify(held.slack.dead));
+
   console.log('\n— winding the four he made for her —');
   const wind = await page.evaluate(async () => {
     const w = OuissysNightShift.__night, s = w.state();
     w.route('night:2'); w.route('go');
+    /* nothing from outside during this one. Two hundred seconds of an
+       unattended night on night two is plenty of time for one of the
+       ones he sold to walk in the front and end it, and everything
+       measured after that would be measured on a finished night. */
+    const hush = () => ['post1','post2','post3'].forEach(k => {
+      if (w.cast()[k]) { w.cast()[k].asleep = true; w.cast()[k].awake = false; } });
+    hush();
     const start = w.wind();
     /* they run down over a night whether she looks or not */
     w.pump(200, 0.25);
     const later = w.wind();
     /* the key only shows on the one she is actually looking at */
+    /* a fresh night, so the key is being looked for during a shift that
+       is still running */
+    w.route('night:2'); w.route('go'); hush();
     const c = w.cast().cogsworth;
     c.wound = 0.2; c.awake = true;
     w.put('cogsworth', 1);
@@ -590,14 +662,15 @@ function ok(name, cond, extra) {
   ok('and it names him when she is', wind.there.hidden === false && wind.there.who === 'COGSWORTH',
      JSON.stringify(wind.there));
   ok('holding it winds him back up', wind.after > 6, String(wind.after));
-  ok('and it costs her something', wind.spent > 0.5 && wind.spent < 4, wind.spent + '%');
+  /* one wind, one charge — the same on any machine, which is the point */
+  ok('and it costs her exactly one wind', wind.spent > 0.8 && wind.spent < 2.2, wind.spent + '%');
   /* the tag describes a wound one. Let her run down and the rules on the
      card stop being the rules in the room. */
   const slack = await page.evaluate(() => {
     const w = OuissysNightShift.__night, s = w.state();
     const watch = (wound) => {
       w.route('night:3'); w.route('go');
-      w.only('marabelle', 0);
+      w.only('marabelle', 0);      // only() now silences the sold ones too
       const m = w.cast().marabelle;
       m.wound = wound;
       s.monitor = true; w.cam(m.room); s.power = 100;

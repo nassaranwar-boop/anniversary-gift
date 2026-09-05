@@ -355,6 +355,44 @@ never played one of these keep playing — with three things:
   stranger's shop to their own — the places in it come from the
   scrapbook (`SB.map.pins`), so if those change, these should too.
 
+A fifth pass rebuilt the fiction around his own premise — he is her
+husband, a toymaker who sold possessed toys, dead eleven days — and
+turned the whole thing on one idea worth protecting:
+
+**each of his four is built around one thing about her**, and the thing
+it does in the game is that thing. Cogsworth keeps time because she is
+never late. Chime ignores doors because she reads on the roof.
+Marabelle stops when watched because she will not dance if anybody is
+looking. Jax will not leave a door because she stays. So the tags are
+the tutorial *and* the love letter, and the four things that have been
+frightening her for six nights are a portrait of her.
+
+Three systems carry it:
+
+- **Winding** (`WIND`, `stepWind`). His note is the mechanic. A slack
+  one stops obeying its own tag — that is the rule to preserve if you
+  touch it, because it is what makes the cards true.
+- **The ones he sold** (`SOLD`, `stepSold`). Never seen moving, do not
+  knock, immune to watching and to winding, and never unwrapped: they
+  are parcels with something showing through a tear. Do not be tempted
+  to model what is inside — the moment you show it, it is ordinary.
+- **Interception** (`guardFor`, `intercept`). A returner through an
+  open door kills her *unless* one of his four is wound. His four are
+  her lives; the note is what buys them. Nothing tells her until the
+  first time it happens.
+
+Balance notes, all measured with `tools/nightbudget.js` rather than
+guessed: the returners at nine seconds a hold cost about a quarter of a
+late night's meter and made five and six unwinnable, so they hold for
+four and a half; and winding at 1.5% a wind with a seven-hour life came
+to a tenth of the meter, so it is 1% and nine hours — about one wind
+each across a night. A wound one also gives up on a shut door nearly
+twice as fast, so the mechanic pays for itself instead of taxing her on
+top of everything else.
+
+One trap: `cast` now holds seven, not four. Anything waiting on
+`Object.keys(cast).length === 4` hangs, and three tools did.
+
 Still open with him: whether the difficulty of nights five and six is
 where he wants it.
 

@@ -291,6 +291,20 @@ const NS = {
     },
   ],
 
+  /* The first time one of his gets there before something else does.
+     She is shown this once, and after that it is simply how the shop
+     works. Nothing in the how-to mentions it and nothing before it
+     hints that it can happen. */
+  held: {
+    where: "on the west door, with its back to her",
+    lines: [
+      "The handle stopped turning.",
+      "There is something standing in the doorway that she has spent four nights keeping out of it, and it is not looking at her. It is looking at the thing in the corridor, and the thing in the corridor is going back the way it came.",
+      "When it is gone he stands there a moment longer, and then walks back to his place in the dark, and stops, run all the way down.",
+    ],
+    who: "$1 will not do that again until she winds him.",
+  },
+
   /* the one line at the end of a night, in place of a score. It is not
      a summary; it is a door left open. */
   hooks: {
@@ -374,6 +388,8 @@ const NS = {
     lampFail:  "OFFICE LIGHTING: FAULT.",
     doorFault: "DOOR TWO: ACTUATOR DEGRADED.",
     monFault:  "MONITOR FEED: INTERRUPTED.",
+    unknown:    "UNREGISTERED UNIT AT $1.",
+    held:       "$1: HELD.",
     wound:      "$1: WOUND.",
     slack:      "$1: RUN DOWN.",
     six:       "SIX HUNDRED HOURS. SHIFT ENDS.",
@@ -420,12 +436,12 @@ const TUNE = {
      knock politely. */
   power: {
     start:      100,
-    idle:       0.068,  // %/s just sitting there            -> ~23%/night
-    camera:     0.20,   // %/s extra while the monitor is up
-    door:       0.155,  // %/s extra per closed door
+    idle:       0.064,  // %/s just sitting there            -> ~21%/night
+    camera:     0.185,  // %/s extra while the monitor is up
+    door:       0.145,  // %/s extra per closed door
     hatch:      0.15,   // %/s extra while the hatch is latched
     jaxDoor:    0.26,   // Jax leaning on a shut door costs this much more
-    knock:      0.60,   // and each of his knocks takes this off outright
+    knock:      0.50,   // and each of his knocks takes this off outright
     surge:      2.2,    // a load spike off the meter, from night four
     warn:       25,     // the meter starts complaining here
     critical:   10,
@@ -4558,6 +4574,241 @@ MODELS.jax = function () {
    ========================================================= */
 const cast = {};
 
+/* =========================================================
+   15f. THE ONES HE SOLD
+
+   Four hundred and eleven of them went out of this shop into houses
+   with people asleep in them, and the address on every one of them is
+   here. From night two, some of them come back.
+
+   They are not a faster animatronic. They are a different problem:
+
+     they never walk      — a parcel is never seen moving. It is simply
+                            one room closer than it was the last time
+                            she looked, which is worse
+     they do not knock    — a shut door is a handle being tried, over
+                            and over, for as long as they feel like it
+     watching does nothing— they were not built for her and they do not
+                            care whether they are observed
+     winding does nothing — they are not his to wind
+
+   And nobody ever sees one. They came back the way they were sent:
+   wrapped, tied and labelled, with something showing through a tear in
+   the corner. Whatever is inside stays inside for the whole chapter.
+   That is deliberate — the thing she is frightened of on nights two to
+   six is a brown paper parcel that is closer than it was, and the
+   moment we show her a monster instead we have made it ordinary.
+
+   She tells them from his four by ear. His four have voices: boots,
+   wings, a music box, bells. These have paper and string and a weight
+   settling. There is no melody anywhere in them.
+   ========================================================= */
+const SOLD = [
+  {
+    id: "post1", name: "UNREGISTERED",
+    what: "a parcel that came back", colour: "#7b6a55",
+    variant: 0, door: "left", from: 1,
+    route: [["foyer","s0"], ["foyer","s2"], ["hall","far"], ["hall","mid"], ["hall","near"], ["office","leftDoor"]],
+  },
+  {
+    id: "post2", name: "UNREGISTERED",
+    what: "a parcel that came back", colour: "#6d6558",
+    variant: 1, door: "right", from: 2,
+    route: [["foyer","s1"], ["hall","far"], ["arcade","s1"], ["party","s1"], ["party","s2"], ["office","rightDoor"]],
+  },
+  {
+    id: "post3", name: "UNREGISTERED",
+    what: "a parcel that came back", colour: "#83705a",
+    variant: 2, door: "left", from: 3,
+    route: [["foyer","s2"], ["hall","near"], ["hall","mid"], ["office","leftDoor"]],
+  },
+];
+const SOLD_BY = {};
+SOLD.forEach((d) => { SOLD_BY[d.id] = d; });
+
+/* how they behave, and it is deliberately simple: relentless, and not
+   negotiable. A shut door holds one for a while and then it goes. */
+const SOLD_TUNE = {
+  /* Measured, not guessed. At nine seconds a hold and a move every
+     seven, three of these added a hundred door-seconds to a late night
+     — about a quarter of the meter — and nights five and six stopped
+     being winnable at all. They are supposed to be the reason a night
+     is frightening, not the reason it is arithmetic. */
+  step: 9.5,        // seconds between one look and the next being worse
+  chance: 0.34,
+  doorGrace: 3.0,   // seconds at an OPEN door before it is over
+  holdFor: 4.4,     // how long a shut door keeps one there, draining
+  retreat: 34,      // and how long it stays away afterwards
+  back: 99,         // all the way back to the front door
+};
+
+/* --- the model: still wrapped ------------------------------------- */
+MODELS.parcel = function (variant) {
+  const v = variant | 0;
+  const g = new T.Group();
+  const rnd = mulberry(seedOf("parcel" + v));
+  const paper = mat("paper", 1.4, 2.2, ["#8c7a61", "#948161", "#7f7057"][v] || "#8c7a61");
+  const paper2 = mat("paper", 1, 1, ["#7d6d55", "#867455", "#736550"][v] || "#7d6d55");
+  const string = flat("#d8cbb0");
+  const tape = flat("#c8b58e");
+
+  /* the body: three stacked slabs of different widths, so no two of
+     them are the same silhouette and none of them is a box */
+  const H = [1.62, 1.78, 1.44][v];
+  const W = [0.52, 0.44, 0.60][v];
+  const D = [0.40, 0.46, 0.36][v];
+  const segs = 3;
+  let y = 0;
+  for (let i = 0; i < segs; i++) {
+    const h = H / segs * (i === 1 ? 1.12 : 0.94);
+    const w = W * (1 - i * 0.09) * (1 + (rnd() - 0.5) * 0.1);
+    const d = D * (1 - i * 0.07);
+    const m = i === 1 ? paper2 : paper;
+    g.add(at(new T.Mesh(new T.BoxGeometry(w, h, d), m), (rnd() - 0.5) * 0.03, y + h / 2, (rnd() - 0.5) * 0.03,
+             0, (rnd() - 0.5) * 0.14, 0));
+    y += h;
+  }
+  /* string, twice round and knotted */
+  [0.34, 0.68].forEach((f) => {
+    g.add(at(new T.Mesh(new T.BoxGeometry(W * 1.06, 0.016, D * 1.08), string), 0, H * f, 0));
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.016, 0.016, D * 1.1), string), 0, H * f + 0.012, 0));
+  });
+  g.add(at(new T.Mesh(new T.BoxGeometry(0.05, 0.05, 0.05), string), W * 0.28, H * 0.68, D * 0.5));
+  /* the label, and the tear */
+  g.add(at(new T.Mesh(new T.BoxGeometry(0.2, 0.13, 0.006), tape), W * 0.1, H * 0.79, D / 2 + 0.004));
+  for (let i = 0; i < 3; i++) {
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.13 - i * 0.02, 0.008, 0.004), flat("#5b4a38")),
+             W * 0.08, H * 0.82 - i * 0.026, D / 2 + 0.009));
+  }
+  /* something pale through a torn corner, and it never resolves */
+  const tear = new T.Group();
+  tear.add(at(new T.Mesh(new T.BoxGeometry(0.11, 0.1, 0.02), flat("#1a1512")), 0, 0, 0));
+  tear.add(at(new T.Mesh(new T.SphereGeometry(0.032, 8, 6), flat("#d9cdb6")), -0.014, 0.008, 0.012));
+  tear.add(at(new T.Mesh(new T.SphereGeometry(0.022, 8, 6), flat("#efe6d2")), 0.02, -0.012, 0.014));
+  tear.position.set(-W * 0.34, H * 0.55, D / 2 + 0.006);
+  tear.rotation.z = 0.3;
+  g.add(tear);
+
+  g.userData.joints = { tear, body: g };
+  g.userData.eyeY = H * 0.62;
+  return g;
+};
+
+/* --- runtime ------------------------------------------------------- */
+function buildSold() {
+  SOLD.forEach((def) => {
+    const g = MODELS.parcel(def.variant);
+    g.visible = false;
+    scene.add(g);
+    cast[def.id] = {
+      def, group: g, joints: g.userData.joints || {},
+      room: def.route[0][0], anchor: def.route[0][1],
+      step: 0, phase: 0, pose: "idle", cool: 0,
+      atDoor: false, awake: false, seen: 0,
+      sold: true,          // the one flag everything else asks about
+      holdT: 0, doorT: 0, wound: 0,
+    };
+  });
+}
+function resetSold() {
+  SOLD.forEach((def) => {
+    const ch = cast[def.id];
+    if (!ch) return;
+    /* clear the test hold, exactly as resetCast does for his four.
+       Without this, the first suite section that called only() put all
+       three of these to sleep for the rest of the run and every later
+       assertion about them measured a shop they were not in. */
+    ch.asleep = false;
+    ch.step = 0;
+    ch.cool = range(Math.random, 16, 34);
+    ch.atDoor = false;
+    ch.awake = false;
+    ch.holdT = 0;
+    ch.doorT = 0;
+    ch.pose = "idle";
+    syncChar(ch);
+  });
+}
+
+/* which of them are in tonight. None on night one — the first night is
+   his four and nothing else, so that when one of these turns up on
+   night two she already knows what the shop is supposed to sound like */
+function soldActive(def) {
+  if (G.mode !== "story") return G.night === 0 ? false : false;
+  const n = G.night;
+  if (n < 2) return false;
+  return n >= def.from + 1;
+}
+
+function stepSold(ch, dt) {
+  if (!ch || G.blackout) return;
+  if (ch.asleep) return;                 // held asleep by a test
+  if (!soldActive(ch.def)) return;
+  if (!ch.awake) {
+    /* they let themselves in some time after midnight */
+    ch.cool -= dt;
+    if (ch.cool > 0) return;
+    ch.awake = true;
+    ch.cool = range(Math.random, 5, 12);
+    SFX.postDrag(TUNE.pan[ch.def.door]);
+    say(fmt(NS.sys.unknown, ch.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
+    return;
+  }
+
+  if (ch.atDoor) {
+    const shut = G.doors[ch.def.door] && !G.blackout;
+    if (shut) {
+      /* the handle, over and over. It costs her the door and nothing
+         else — they do not knock, and they do not bargain */
+      ch.holdT -= dt;
+      ch.knockT = (ch.knockT || 0) - dt;
+      if (ch.knockT <= 0) { ch.knockT = range(Math.random, 1.4, 2.6); SFX.handle(TUNE.pan[ch.def.door]); }
+      if (ch.holdT <= 0) soldRetreat(ch);
+      return;
+    }
+    ch.doorT -= dt;
+    if (ch.doorT <= 0) {
+      /* the whole story, in one branch: if any of his four is still
+         wound, one of them gets there first */
+      const keeper = guardFor(ch.def.door);
+      if (keeper) intercept(ch, keeper);
+      else kill(ch);
+      return;
+    }
+    return;
+  }
+
+  /* never seen moving: one room closer than it was, and only ever
+     between looks */
+  ch.cool -= dt;
+  if (ch.cool > 0) return;
+  const agg = ramp() * cozyK("aggression");
+  ch.cool = SOLD_TUNE.step / Math.max(0.35, agg);
+  if (Math.random() > SOLD_TUNE.chance * agg) return;
+  ch.step = clamp(ch.step + 1, 0, ch.def.route.length - 1);
+  syncChar(ch);
+  G.stats.moves++;
+  if (ch.atDoor) {
+    ch.doorT = SOLD_TUNE.doorGrace * cozyK("doorGrace");
+    ch.holdT = SOLD_TUNE.holdFor;
+    ch.knockT = 0.6;
+    G.stats.arrivals++;
+    G.stats.returns++;
+    SFX.postSettle(TUNE.pan[ch.def.door]);
+    say(fmt(NS.sys.unknown, ch.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
+  } else {
+    SFX.postDrag(TUNE.pan[ch.def.door], TUNE.cueGain[clamp(stepsLeft(ch), 0, 3)]);
+  }
+}
+function soldRetreat(ch) {
+  ch.step = 0;
+  ch.atDoor = false;
+  ch.cool = SOLD_TUNE.retreat;
+  ch.holdT = 0;
+  syncChar(ch);
+  SFX.postDrag(TUNE.pan[ch.def.door], 0.4);
+}
+
 function buildCast() {
   CAST.forEach((def) => {
     const g = MODELS[def.id]();
@@ -4826,6 +5077,7 @@ function buildWorld(cvs) {
   officeParts = rooms.office.parts;
   officeDoors = buildOfficeDoors(roomAPI(rooms.office));
   buildCast();
+  buildSold();
 
   /* her hands on the desk, and her standing in the left-hand doorway on
      the title screen — the one place in the whole chapter you see her
@@ -5014,6 +5266,28 @@ function tone(o) {
 
 /* --- the voices ---------------------------------------------------- */
 const SFX = {
+  /* THE ONES HE SOLD — no melody, ever. His four have voices; these
+     have the sound of something wrapped being moved by something that
+     is not being careful. If you can hum it, it is one of his. */
+  postDrag(pan, gain) {
+    const v = gain === undefined ? 1 : gain;
+    burst({ f0: 1900, f1: 620, dur: 0.42, gain: 0.16 * v, q: 0.5, filter: "bandpass", pan });
+    burst({ f0: 3400, f1: 2100, dur: 0.26, gain: 0.05 * v, q: 0.8, filter: "highpass", at: 0.08, pan });
+    tone({ type: "triangle", f0: 61, f1: 47, dur: 0.5, gain: 0.05 * v, filter: "lowpass", ff: 200, at: 0.05, pan });
+  },
+  /* it has arrived, and it has put itself down */
+  postSettle(pan) {
+    burst({ f0: 260, f1: 90, dur: 0.3, gain: 0.34, q: 0.7, filter: "lowpass", pan });
+    burst({ f0: 2600, f1: 1500, dur: 0.2, gain: 0.07, q: 0.7, filter: "highpass", at: 0.03, pan });
+    tone({ type: "triangle", f0: 44, f1: 33, dur: 0.66, gain: 0.075, filter: "lowpass", ff: 150, pan });
+  },
+  /* and the handle, tried, and tried again */
+  handle(pan) {
+    burst({ f0: 1500, f1: 780, dur: 0.07, gain: 0.2, q: 4, pan });
+    burst({ f0: 900, f1: 380, dur: 0.11, gain: 0.15, q: 3, at: 0.09, pan });
+    tone({ type: "square", f0: 140, f1: 108, dur: 0.1, gain: 0.05, filter: "lowpass", ff: 500, at: 0.04, pan });
+  },
+
   /* picking a piece of paper up off a shelf. Two short scrapes and a
      fold, so it reads as paper rather than as a pickup chime */
   paper() {
@@ -5598,14 +5872,18 @@ function dreadTarget() {
   if (G.phase !== "play") return 0.12;
   if (G.blackout) return 1;
   let d = 0.06 + Math.min(0.16, G.hour * 0.028);
-  for (let i = 0; i < CAST.length; i++) {
-    const ch = cast[CAST[i].id];
+  const all = CAST.map((c) => c.id).concat(SOLD.map((c) => c.id));
+  for (let i = 0; i < all.length; i++) {
+    const ch = cast[all[i]];
     if (!ch || !ch.awake) continue;
     const total = routeOf(ch).length - 1;
     const near = total ? clamp(ch.step / total, 0, 1) : 0;
     /* squared, so the last two rooms are worth more than the first four */
     let v = near * near * 0.70;
     if (ch.atDoor) v = G.doors[ch.def.door] ? 0.74 : 0.99;
+    /* one of his coming to the door is frightening. One of somebody
+       else's is worse, and the score should already know that. */
+    if (ch.sold) v = Math.min(1, v * 1.15 + 0.06);
     if (v > d) d = v;
   }
   d += (1 - clamp(G.power / TUNE.power.start, 0, 1)) * 0.20;
@@ -5793,6 +6071,7 @@ const G = {
   tutor: -1, tutorT: 0,
   /* winding: which one she is holding a key in, and for how long */
   winding: null, windTarget: null, windT: 0, windT0: 0,
+  pumping: false,
   caption: "",
   captionT: 0,
 
@@ -5932,6 +6211,12 @@ function stepCast(ch, dt) {
   if (ch.atDoor) {
     const shut = G.doors[ch.def.door] && !G.blackout;
     if (shut) {
+      /* A wound one takes no for an answer. It came to the door, the
+         door was shut, and it goes back to what it was doing — which
+         means keeping them wound literally costs her fewer door
+         seconds, and the mechanic pays for itself instead of being a
+         tax on top of one. A slack one has nobody telling it that. */
+      if (isWound(ch)) ch.doorT -= dt * 0.55;
       if (ch.def.id === "jax") {
         /* Jax does not go away politely. He knocks, and every knock is
            power you do not get back — which is the whole answer to
@@ -6200,6 +6485,118 @@ function tutorStep(dt) {
   return false;
 }
 
+/* =========================================================
+   18f. WHAT THE FOUR ARE ACTUALLY FOR
+
+   The whole story turns on one sentence he could not say out loud, so
+   the game has to say it in mechanics instead: his four are not the
+   threat, they are what is between her and the threat.
+
+   So: when one of the ones he sold gets through an open door, and any
+   of his four is still wound, one of his gets there first.
+
+   The returner leaves. The one that stepped in is spent — it goes back
+   to where it started and its wind is gone, and it will not do it
+   again until she winds it. Which makes the four of them her lives,
+   makes his instruction the thing that keeps her alive, and makes the
+   moment she works that out the moment the game stops being about
+   doors.
+
+   She is never told this will happen. The first time it does, on a
+   night she thought she had lost, a soldier she has spent four nights
+   shutting out is standing in her doorway with its back to her.
+   ========================================================= */
+function guardFor(door) {
+  /* whoever is nearest, and wound. Preference to the one that uses this
+     door, because that one was already on its way here. */
+  let best = null, bestScore = -1;
+  CAST.forEach((d) => {
+    const ch = cast[d.id];
+    if (!ch || !isWound(ch)) return;
+    let sc = 1 + ch.step * 0.4;
+    if (ch.def.door === door) sc += 3;
+    if (ch.awake) sc += 1;
+    if (sc > bestScore) { bestScore = sc; best = ch; }
+  });
+  return best;
+}
+
+/* called instead of kill() when one of his is able to get there */
+function intercept(threat, keeper) {
+  G.stats.saves++;
+  /* the returner goes, all the way back, and stays gone a while */
+  soldRetreat(threat);
+  threat.cool = SOLD_TUNE.retreat * 1.6;
+  /* and the one that stepped in has spent itself doing it */
+  keeper.wound = 0;
+  keeper.step = 0;
+  keeper.atDoor = false;
+  keeper.cool = 14;
+  keeper.awake = true;
+  syncChar(keeper);
+
+  SFX.postSettle(TUNE.pan[threat.def.door]);
+  cue(keeper, 1);
+  G.shake = Math.max(G.shake, 0.55);
+  say(fmt(NS.sys.held, threat.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
+
+  /* the first time it happens she gets told what she just saw, once,
+     and never again — after that it is simply how the shop works */
+  if (!seenSave() && !G.pumping) {
+    saveSeenSave(true);
+    G.phase = "held";
+    showHud(false);
+    overlay(
+      '<div class="ns-card ns-card-held">' +
+        '<p class="ns-from">' + NS.held.where + '</p>' +
+        '<div class="ns-lines">' +
+          NS.held.lines.map((l) => "<p>" + l + "</p>").join("") +
+        '</div>' +
+        '<p class="ns-pencil">' + fmt(NS.held.who, keeper.def.name) + '</p>' +
+        '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="heldOut">BACK TO IT</button></div>' +
+      '</div>', "ns-ov-held");
+  }
+}
+function closeHeld() {
+  if (G.phase !== "held") return;
+  G.phase = "play";
+  noOverlay();
+  showHud(true);
+}
+const SAVE_KEY = "ns_seensave";
+function seenSave() {
+  try { return localStorage.getItem(SAVE_KEY) === "1"; } catch (e) { return false; }
+}
+function saveSeenSave(v) { try { localStorage.setItem(SAVE_KEY, v ? "1" : "0"); } catch (e) {} }
+
+/* --- and what they do at six ---------------------------------------
+   Every morning the four of them walk back to their places on their
+   own. She has watched it happen five times on a monitor without once
+   understanding what she was looking at, and on the sixth she reads
+   the page that explains it. This is that, in sound: each one that is
+   awake goes home, in turn, and then the shop is quiet. */
+function walkHome() {
+  let n = 0;
+  CAST.forEach((d) => {
+    const ch = cast[d.id];
+    if (!ch || !ch.awake) return;
+    const at = 0.35 + n * 0.85;
+    n++;
+    setTimeout(() => {
+      if (G.phase !== "shift" && G.phase !== "finale") return;
+      ch.step = 0;
+      ch.atDoor = false;
+      ch.pose = "idle";
+      syncChar(ch);
+      cue(ch, 0.5);
+    }, at * 1000);
+  });
+  /* and then nothing at all, which is the point */
+  setTimeout(() => {
+    if (G.phase === "shift" || G.phase === "finale") SFX.hiss(0.25);
+  }, (0.35 + n * 0.85 + 0.9) * 1000);
+}
+
 /* --- the end of it ------------------------------------------------- */
 function kill(ch) {
   if (G.phase !== "play") return;
@@ -6254,6 +6651,7 @@ function winNight() {
   }
   G.rating = rateNight();
   G.newBadges = awardBadges();
+  walkHome();
   if (last) {
     /* the finale is the only place the room changes character: the
        window goes over to morning, the rig warms up, and the music box
@@ -6648,6 +7046,7 @@ function frame(ts) {
       G.stats.doorSec += shut * dt;
       if (G.blackout) stepBlackout(dt);
       CAST.forEach((d) => stepCast(cast[d.id], dt));
+      SOLD.forEach((d) => stepSold(cast[d.id], dt));
       stepSignal(dt);
       stepAlarms(dt);
       stepShifts(dt);
@@ -7171,6 +7570,7 @@ function route(cmd) {
   else if (cmd === "gallery" || cmd === "galleryOffer") { beginGallery(); }
   else if (cmd === "arcadeOut") { arcadeClose(); }
   else if (cmd === "findOut") { closeFind(); }
+  else if (cmd === "heldOut") { closeHeld(); }
   else if (cmd === "intro") { cineStart(); }
   else if (cmd === "introDone") { cineStop(true); }
   else if (cmd === "endWind") { screenEnding("wind"); }
@@ -7219,11 +7619,12 @@ function beginNight(n, opts) {
   G.shiftT = nextIn(TUNE.shift.firstAt);
   G.caption = ""; G.captionT = 0;
   sayQueue = []; sayUntil = 0;
-  G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, alarms: 0, moves: 0, finds: 0, winds: 0, slack: 0, lowest: 100 };
+  G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, alarms: 0, moves: 0, finds: 0, winds: 0, slack: 0, returns: 0, saves: 0, lowest: 100 };
   resetCast();
   /* he wound them the night he stopped coming in. She inherits that,
      and it runs out about two thirds of the way through her first. */
   CAST.forEach((d) => { cast[d.id].wound = WIND.hours * 0.62; });
+  resetSold();
   G.winding = null; G.windTarget = null; G.windT = 0;
   resetShifties();
   armFind();
@@ -7431,9 +7832,14 @@ function uiTick(dt) {
 const WIND = {
   /* seconds of holding to wind one, and what it costs */
   hold: 1.15,
-  cost: 1.6,
-  /* how long a full wind lasts, in in-game hours. Six is the night. */
-  hours: 7,
+  cost: 1.0,
+  /* How long a full wind lasts, in in-game hours. Nine, so that keeping
+     all four going costs about one wind each across a six-hour night —
+     four percent of the meter, which is a real cost she can feel and
+     not a second job. At seven hours and one-and-a-half percent it came
+     to a tenth of the night's power and nights five and six stopped
+     being winnable. */
+  hours: 9,
 };
 
 function windState(id) {
@@ -7495,8 +7901,13 @@ function stepWind(dt) {
   const ch = cast[G.winding];
   if (!ch || ch.atDoor || ch.room !== G.cam || !G.monitor) { windEnd(); return; }
   G.windT = perf() - (G.windT0 || perf());
-  spendPower(dt * (WIND.cost / WIND.hold) * cozyK("power"));
   if (G.windT >= WIND.hold) {
+    /* Charged once, on completion, not by the frame. Spending it per
+       frame made a wind cost less on a slower machine — the hold is on
+       a wall clock but the charge was on frame time, so a browser
+       running at a third of the rate paid a third of the price. A wind
+       costs a wind. */
+    spendPower(WIND.cost * cozyK("power"));
     ch.wound = WIND.hours;
     G.stats.winds++;
     windEnd();
@@ -8461,9 +8872,11 @@ const testHooks = {
   route,
   /* advance the shift by hand, in fixed slices, with no rendering */
   pump(seconds, slice) {
-    /* a suite driving a night by hand is not being oriented; orientation
-       is a thing that happens to a person at sixty frames a second */
+    /* a suite driving a night by hand is not being oriented, and it is
+       not being stopped to be told a story either — both of those wait
+       for a click that a pumped night will never make */
     if (tutorOn()) tutorOff();
+    G.pumping = true;
     const st = slice || 1 / 30;
     let left = seconds;
     while (left > 0 && G.phase === "play") {
@@ -8476,6 +8889,7 @@ const testHooks = {
       spendPower(G.drain * dt);
       if (G.blackout) stepBlackout(dt);
       CAST.forEach((d) => stepCast(cast[d.id], dt));
+      SOLD.forEach((d) => stepSold(cast[d.id], dt));
       stepSignal(dt);
       /* the same list the frame loop runs, so a pumped night costs what
          a played one costs — the surges especially, which are the
@@ -8486,6 +8900,7 @@ const testHooks = {
       stepHazards(dt);
       stepWind(dt);
     }
+    G.pumping = false;
     return { phase: G.phase, hour: G.hour, power: G.power, dead: G.dead };
   },
   put(id, step) {
@@ -8494,7 +8909,12 @@ const testHooks = {
     ch.awake = true;
     ch.step = clamp(step, 0, ch.def.route.length - 1);
     syncChar(ch);
-    if (ch.atDoor) ch.doorT = TUNE.cast[id].doorGrace;
+    /* the four have their own grace per performer; the ones he sold all
+       share one, and they get a hold timer instead of a knock count */
+    if (ch.atDoor) {
+      if (ch.sold) { ch.doorT = SOLD_TUNE.doorGrace; ch.holdT = SOLD_TUNE.holdFor; }
+      else ch.doorT = TUNE.cast[id].doorGrace;
+    }
   },
   /* put the whole cast back in its box and then stand one of them
      somewhere. Setting awake=false by hand is not enough — a figure
@@ -8502,6 +8922,13 @@ const testHooks = {
      is correct in a game and confusing in a test. */
   only(id, step) {
     resetCast();
+    /* only means only. The ones he sold are not in CAST, so before this
+       they carried on walking in through the front of the shop and
+       killed the subject of whatever was being measured — which showed
+       up as a ballerina that would not move behind a dropped monitor,
+       because the night had ended eleven seconds earlier. */
+    resetSold();
+    SOLD.forEach((d) => { cast[d.id].asleep = true; cast[d.id].awake = false; });
     G.phase = "play";
     G.dead = null; G.killChar = null;
     CAST.forEach((d) => { cast[d.id].asleep = d.id !== id; });

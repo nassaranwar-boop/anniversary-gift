@@ -16,7 +16,7 @@ const { chromium } = require('playwright-core');
   await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await p.waitForTimeout(600);
   await p.evaluate(() => { try{localStorage.clear();}catch(e){} showScreen('nightshift'); OuissysNightShift.start(); });
-  await p.waitForFunction(() => Object.keys(OuissysNightShift.__night.cast()).length === 4, { timeout: 20000, polling: 200 });
+  await p.waitForFunction(() => Object.keys(OuissysNightShift.__night.cast()).length >= 4, { timeout: 20000, polling: 200 });
   await p.evaluate(() => OuissysNightShift.__night.silence(true));
   for (const night of [1, 1, 2, 4, 6]) {
     const r = await p.evaluate((night) => {
