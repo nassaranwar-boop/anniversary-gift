@@ -5346,6 +5346,57 @@ function showRoom(id) {
 let AC = null, master = null, bedGain = null, cueGain = null, duckGain = null, sideGain = null;
 let bedNodes = [], creakTimer = 0, audioOn = false, muted = false;
 
+/* THE FIVE FADERS.
+
+   Every level in this chapter has been me guessing, through a
+   container with a null audio device, at how something sounds on
+   somebody else's phone in a room I cannot hear. Every one of those
+   guesses has been wrong at least once, and twice I have shipped a
+   fix that made it worse. So the levels are hers.
+
+   Five sliders, reachable from the title screen and from the pause
+   menu in the middle of a shift, and they persist. Nothing here is a
+   difficulty setting — it is all volume, and the game is exactly as
+   hard with the score off. */
+const MIX_KEYS = ["master", "music", "sfx", "voice", "room"];
+const MIX_DEF = { master: 1, music: 1, sfx: 1, voice: 1, room: 1 };
+const MIX = { master: 1, music: 1, sfx: 1, voice: 1, room: 1 };
+const MIX_LABEL = {
+  master: "EVERYTHING", music: "THE SCORE", sfx: "THE SHOP",
+  voice: "HIS VOICE", room: "THE ROOM TONE",
+};
+function loadMix() {
+  MIX_KEYS.forEach((k) => {
+    let v = MIX_DEF[k];
+    try {
+      const raw = localStorage.getItem("ns_mix_" + k);
+      if (raw !== null) v = parseFloat(raw);
+    } catch (e) {}
+    MIX[k] = isFinite(v) ? clamp(v, 0, 1.5) : MIX_DEF[k];
+  });
+}
+function saveMix(k, v) {
+  MIX[k] = clamp(v, 0, 1.5);
+  try { localStorage.setItem("ns_mix_" + k, String(MIX[k])); } catch (e) {}
+  applyMix();
+}
+function applyMix() {
+  if (!AC) return;
+  const t = now();
+  const set = (node, v) => {
+    if (!node) return;
+    node.gain.cancelScheduledValues(t);
+    node.gain.setValueAtTime(Math.max(0.0001, v), t);
+  };
+  set(master, 0.9 * MIX.master);
+  set(cueGain, 1.0 * MIX.sfx);
+  if (MUS.bus && MUS.mode !== "none") {
+    const feel = MODE_FEEL[MUS.mode];
+    set(MUS.bus, (feel ? feel.level : MUS_LEVEL) * MIX.music);
+  }
+  if (bedGain && audioOn) set(bedGain, 0.32 * MIX.room);
+}
+
 function noiseBuffer(sec) {
   const n = (AC.sampleRate * sec) | 0;
   const b = AC.createBuffer(1, n, AC.sampleRate);
@@ -5389,6 +5440,8 @@ function audioInit() {
   bedGain = AC.createGain(); bedGain.gain.value = 0.0; bedGain.connect(sideGain);
   cueGain = AC.createGain(); cueGain.gain.value = 1.0; cueGain.connect(duckGain);
   NB = noiseBuffer(3);
+  loadMix();
+  applyMix();
 
   /* The site keeps a watchdog for exactly this — see wakeAudio() in
      script.js — and this chapter was the one thing not using it, doing
@@ -5452,7 +5505,7 @@ function bedBuild() {
 
   bedGain.gain.cancelScheduledValues(t);
   bedGain.gain.setValueAtTime(0.0001, t);
-  bedGain.gain.linearRampToValueAtTime(0.32, t + 2.5);
+  bedGain.gain.linearRampToValueAtTime(0.32 * MIX.room, t + 2.5);
   bedNodes = [src, hum, hum2, lfo];
 }
 function bedStop() {
@@ -6185,6 +6238,7 @@ const SPEECH = {
   primed: false,
   voice: null, sys: null,
   mark: -1,          // the word he is on right now, -1 if not speaking
+  id: 0,             // which utterance is current; older ones stay quiet
   live: false,
   done: true,
 };
@@ -6413,7 +6467,7 @@ function speechSay(text, plan, opts) {
      sounds like — but 0.1 was gargling rather than announcing. */
   u.pitch = o.sys ? 0.55 : 0.96;
   u.rate  = o.sys ? 1.08 : 0.86;
-  u.volume = o.volume === undefined ? 1 : o.volume;
+  u.volume = clamp((o.volume === undefined ? 1 : o.volume) * MIX.voice * MIX.master, 0, 1);
 
   /* the caption follows the synthesiser rather than a guess: charIndex
      is where in the string it has got to, so the word is whichever one
@@ -6427,12 +6481,28 @@ function speechSay(text, plan, opts) {
   });
   SPEECH.mark = -1; SPEECH.live = true; SPEECH.done = false;
   u.onboundary = (e) => {
+    if (SPEECH.id !== myId) return;
     if (e.name && e.name !== "word") return;
     let k = 0;
     for (let i = 0; i < starts.length; i++) if (starts[i] <= e.charIndex) k = i;
     SPEECH.mark = k;
   };
+  /* EVERY UTTERANCE HAS TO OWN ITS OWN ENDING.
+
+     `finish` clears a flag the whole chapter reads, and the backstop
+     timer below fires on a delay — so the timer belonging to a line
+     that finished a second ago was clearing the flag for the line
+     currently being spoken. The film then decided that line was over,
+     started the next one, and cancel() chopped the previous one
+     wherever it happened to be. Measured against an engine that takes
+     real time to talk: two of the first seven sentences of the opening
+     were cut off a third of the way through.
+
+     So each utterance carries a number, and only the one that is still
+     current is allowed to say it has ended. */
+  const myId = ++SPEECH.id;
   const finish = () => {
+    if (SPEECH.id !== myId) return;
     SPEECH.live = false; SPEECH.done = true; SPEECH.mark = -1;
     /* and now the building may say its piece, if it is still worth
        saying. Anything older than two seconds has been overtaken by
@@ -6451,12 +6521,19 @@ function speechSay(text, plan, opts) {
     if (!o.sys) window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
   } catch (e) { finish(); return false; }
-  /* Some engines never fire onend on a short line. Without a backstop
+  /* Some engines never fire onend at all. Without a backstop
      SPEECH.live stays true for the rest of the visit and every scene
-     that waits for him to finish waits for ever — which is most of
-     them. Estimated length plus half again. */
-  const cap = Math.max(1.5, (plan ? plan.dur : 2) * 1.5 + 1.5);
-  setTimeout(() => { if (SPEECH.live) finish(); }, cap * 1000);
+     that waits for him to finish waits for ever.
+
+     It is measured off the words rather than off voxPlan, because
+     voxPlan times the fallback synth and a real voice is slower: a
+     narrator runs at about two and a half words a second, so this
+     allows one and a half, plus four seconds. Generous on purpose — it
+     is there to stop a hang, not to pace anything, and a backstop that
+     fires early is the thing that broke the opening. */
+  const words = String(text).trim().split(/\s+/).length;
+  const cap = words / 1.5 + 4;
+  setTimeout(finish, cap * 1000);
   return true;
 }
 
@@ -6473,7 +6550,7 @@ function voxSpeak(plan, opts) {
   const total = plan.dur;
   /* the real words first, if the platform has any */
   const text = plan.words.map((w) => w.text).join(" ");
-  if (!muted && speechSay(text, plan, opts)) {
+  if (!muted && MIX.voice > 0.02 && speechSay(text, plan, opts)) {
     voxTape(total, opts.gain === undefined ? 1 : opts.gain);
     return total;
   }
@@ -6600,7 +6677,7 @@ const MUS = {
   dread: 0, target: 0, step: 0, next: 0, bar: 0, spb: 0,
 };
 const MUS_LOOK = 0.65;          // seconds scheduled ahead of the clock
-const MUS_LEVEL = 0.42;         // how loud the score sits under the game
+const MUS_LEVEL = 0.56;         // how loud the score sits under the game
 
 /* ONE PIECE OF MUSIC, NINE ROOMS TO PLAY IT IN.
 
@@ -6672,17 +6749,17 @@ const MODE_MIX = {
 const MODE_FEEL = {
   /* the one she spends the whole game inside, so it sits a little
      louder than the scenes she passes through */
-  night:   { spb: null, warm: false, level: 0.52, theme: "shift" },
-  film:    { spb: 1.95, warm: false, level: 0.26, theme: "memory" },
-  locked:  { spb: 1.00, warm: false, level: 0.46, theme: "clock" },
-  brief:   { spb: 1.35, warm: false, level: 0.40, theme: "clock" },
-  dark:    { spb: 1.15, warm: false, level: 0.42, theme: "void" },
-  gone:    { spb: 2.40, warm: false, level: 0.38, theme: "memory" },
-  found:   { spb: 1.70, warm: true,  level: 0.40, theme: "letter" },
-  held:    { spb: 1.42, warm: true,  level: 0.56, theme: "turn" },
-  dawn:    { spb: 1.50, warm: true,  level: 0.42, theme: "morning" },
-  gallery: { spb: 1.62, warm: true,  level: 0.38, theme: "morning" },
-  menu:    { spb: 1.36, warm: "menu", level: 0.42, theme: "menu" },
+  night:   { spb: null, warm: false, level: 0.70, theme: "shift" },
+  film:    { spb: 1.95, warm: false, level: 0.34, theme: "memory" },
+  locked:  { spb: 1.00, warm: false, level: 0.61, theme: "clock" },
+  brief:   { spb: 1.35, warm: false, level: 0.53, theme: "clock" },
+  dark:    { spb: 1.15, warm: false, level: 0.55, theme: "void" },
+  gone:    { spb: 2.40, warm: false, level: 0.50, theme: "memory" },
+  found:   { spb: 1.70, warm: true,  level: 0.53, theme: "letter" },
+  held:    { spb: 1.42, warm: true,  level: 0.74, theme: "turn" },
+  dawn:    { spb: 1.50, warm: true,  level: 0.55, theme: "morning" },
+  gallery: { spb: 1.62, warm: true,  level: 0.50, theme: "morning" },
+  menu:    { spb: 1.36, warm: "menu", level: 0.55, theme: "menu" },
 };
 
 /* THE THEMES.
@@ -6982,7 +7059,7 @@ function musicSwap(m) {
      night and every sound that carries information was underneath it.
      A score you cannot play over is a wall. */
   const feel = MODE_FEEL[m];
-  const to = m === "none" ? 0.0001 : (feel ? feel.level : MUS_LEVEL);
+  const to = m === "none" ? 0.0001 : (feel ? feel.level : MUS_LEVEL) * MIX.music;
   MUS.bus.gain.cancelScheduledValues(t);
   MUS.bus.gain.setValueAtTime(Math.max(0.0001, MUS.bus.gain.value), t);
   MUS.bus.gain.linearRampToValueAtTime(to, t + (m === "none" ? 0.9 : 2.2));
@@ -7037,10 +7114,10 @@ function musicTick(dt) {
        and the six frightening layers still arrive in the order they
        always did, on top of something rather than instead of it. */
     set("sub",   0.30 + d * 0.42);
-    set("box",   0.34 + fadeIn(d, 0.12, 0.50) * 0.36);
+    set("box",   0.46 + fadeIn(d, 0.12, 0.50) * 0.34);
     set("tick",  0.20 - d * 0.12);
     /* the piano is company. It leaves when she stops being alone. */
-    set("piano", 0.30 * (1 - fadeIn(d, 0.10, 0.42)));
+    set("piano", 0.42 * (1 - fadeIn(d, 0.10, 0.42)));
     set("pulse", fadeIn(d, 0.05, 0.40) * 0.72);
     set("air",   fadeIn(d, 0.22, 0.66) * 0.30);
     set("brass", fadeIn(d, 0.38, 0.80) * 0.42);
@@ -8715,7 +8792,7 @@ function screenTitle() {
         '<button class="ns-btn" data-go="howto">HOW IT WORKS</button>' +
         /* his statement, once she has already heard it once */
         (seenIntro() ? '<button class="ns-btn" data-go="intro">HIS STATEMENT</button>' : "") +
-        (voiceMenu().length > 1 ? '<button class="ns-btn" data-go="voice">HIS VOICE</button>' : "") +
+        '<button class="ns-btn" data-go="sound">SOUND</button>' +
         '<button class="ns-btn" data-go="badges">RECORD</button>' +
         '<button class="ns-btn" data-go="quit">LEAVE</button>' +
       '</div>' +
@@ -8779,6 +8856,49 @@ function screenBrief() {
 /* Choosing him. Every row says the name the device gave it and reads
    the same line out loud, so it is picked by ear rather than by
    guessing what "en-GB Compact Enhanced 3" sounds like. */
+/* SOUND. Five faders and his voice, in one place, reachable from the
+   title and from the middle of a shift — because the moment she wants
+   to turn something down is the moment it is too loud, not four menus
+   later. Where it was opened from is where DONE goes back to. */
+let mixFrom = "title";
+function screenMix() {
+  const rows = MIX_KEYS.map((k) => {
+    const pct = Math.round(MIX[k] * 100);
+    return '<label class="ns-fader">' +
+      '<span>' + MIX_LABEL[k] + '<i>' + pct + '%</i></span>' +
+      '<input type="range" min="0" max="130" step="5" value="' + pct +
+        '" data-mix="' + k + '" aria-label="' + MIX_LABEL[k] + '">' +
+    '</label>';
+  }).join("");
+  const back = mixFrom === "play" ? "resume" : "title";
+  overlay(
+    '<div class="ns-card ns-card-wide">' +
+      '<p class="ns-nightno">SOUND</p>' +
+      '<p class="ns-blurb">whatever is too loud, and whatever is not loud enough</p>' +
+      '<div class="ns-faders">' + rows + '</div>' +
+      '<div class="ns-btns">' +
+        (voiceMenu().length > 1
+          ? '<button class="ns-btn" data-go="voice">HIS VOICE</button>' : "") +
+        '<button class="ns-btn" data-go="mixTest">SAY SOMETHING</button>' +
+        '<button class="ns-btn" data-go="mixReset">PUT IT BACK</button>' +
+        '<button class="ns-btn ns-btn-go" data-go="' + back + '">DONE</button>' +
+      '</div>' +
+    '</div>', "ns-ov-mix");
+  /* the sliders move the sound while she is holding them, not after */
+  const ov = EL["ns-overlay"];
+  if (!ov) return;
+  ov.querySelectorAll("[data-mix]").forEach((el) => {
+    const k = el.dataset.mix;
+    const live = () => {
+      saveMix(k, (parseInt(el.value, 10) || 0) / 100);
+      const lab = el.parentNode.querySelector("i");
+      if (lab) lab.textContent = Math.round(MIX[k] * 100) + "%";
+    };
+    el.addEventListener("input", live);
+    el.addEventListener("change", live);
+  });
+}
+
 function screenVoice() {
   const list = voiceMenu();
   const cur = savedVoice();
@@ -8796,7 +8916,7 @@ function screenVoice() {
       '<div class="ns-voices">' + rows + '</div>' +
       '<div class="ns-btns">' +
         '<button class="ns-btn" data-go="voice:auto">LET IT CHOOSE</button>' +
-        '<button class="ns-btn ns-btn-go" data-go="title">DONE</button>' +
+        '<button class="ns-btn ns-btn-go" data-go="sound">DONE</button>' +
       '</div>' +
     '</div>', "ns-ov-voice");
 }
@@ -8808,6 +8928,7 @@ function screenPause() {
       '<p class="ns-blurb">The shop waits.</p>' +
       '<div class="ns-btns">' +
         '<button class="ns-btn ns-btn-go" data-go="resume">BACK TO IT</button>' +
+        '<button class="ns-btn" data-go="sound">SOUND</button>' +
         '<button class="ns-btn" data-go="restart">RESTART NIGHT</button>' +
         '<button class="ns-btn" data-go="title">TITLE</button>' +
         '<button class="ns-btn" data-go="quit">LEAVE</button>' +
@@ -9102,6 +9223,11 @@ function route(cmd) {
   else if (cmd === "terms") { termsStart(); }
   else if (cmd === "termsDone") { termsDone(); }
   else if (cmd === "termsAgain") { clearHurt(); termsStart(); }
+  else if (cmd === "sound") { mixFrom = G.phase === "play" ? "play" : "title"; G.phase = "mix"; screenMix(); }
+  else if (cmd === "mixReset") { MIX_KEYS.forEach((k) => saveMix(k, MIX_DEF[k])); screenMix(); }
+  else if (cmd === "mixTest") {
+    voxSpeak(voxPlan("Ouissy. This is what I sound like from in here."), { gain: 1 });
+  }
   else if (cmd === "voice") { G.phase = "voice"; screenVoice(); }
   else if (cmd.indexOf("voice:") === 0) {
     const name = cmd.slice(6);
@@ -10803,6 +10929,7 @@ const testHooks = {
                       return { him: SPEECH.voice ? SPEECH.voice.name : null,
                                sys: SPEECH.sys ? SPEECH.sys.name : null }; },
   sysSay: (t) => speechSay(t, voxPlan(t), { sys: true }),
+  mix: () => { const o = {}; MIX_KEYS.forEach((k) => { o[k] = MIX[k]; }); return o; },
   /* how far apart his lines actually land across a night */
   tapeGaps: () => {
     const sc = (NS.tapes && NS.tapes[1]) || [];

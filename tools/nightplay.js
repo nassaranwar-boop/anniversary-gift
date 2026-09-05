@@ -1064,6 +1064,64 @@ function ok(name, cond, extra) {
      she touches one — so every one of those cut him off mid-word, and
      the only voice she heard through to the end was the one saying
      DOOR ONE: CLOSED. */
+  /* Every level in this chapter has been a guess made through a null
+     audio device about a phone in a room nobody here can hear, and
+     several of those guesses shipped wrong. So they are hers. */
+  console.log('\n— and she can turn any of it up or down —');
+  const mix = await page.evaluate(() => {
+    const w = OuissysNightShift.__night;
+    w.route('title');
+    w.route('sound');
+    const card = document.querySelector('.ns-ov-mix, [class*="ns-ov-mix"]') ||
+                 document.getElementById('ns-overlay');
+    const sliders = [].slice.call(document.querySelectorAll('[data-mix]'));
+    const before = w.mix();
+    /* drag one of them, the way a thumb does */
+    const music = sliders.filter(s => s.dataset.mix === 'music')[0];
+    if (music) {
+      music.value = '30';
+      music.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    const after = w.mix();
+    /* and it survives being put away and reopened */
+    w.route('title'); w.route('sound');
+    const kept = w.mix();
+    return { keys: sliders.map(s => s.dataset.mix), before, after, kept,
+             stored: (() => { try { return localStorage.getItem('ns_mix_music'); }
+                              catch (e) { return null; } })() };
+  });
+  ok('there is a fader for everything that makes a noise',
+     mix.keys.length === 5 && mix.keys.indexOf('music') >= 0 &&
+     mix.keys.indexOf('voice') >= 0, mix.keys.join(', '));
+  ok('and moving one changes it while she is holding it',
+     mix.after.music < mix.before.music && Math.abs(mix.after.music - 0.3) < 0.01,
+     mix.before.music + ' -> ' + mix.after.music);
+  ok('and it is still there when she comes back',
+     Math.abs(mix.kept.music - 0.3) < 0.01 && mix.stored === '0.3', mix.stored);
+
+  const reach = await page.evaluate(() => {
+    const w = OuissysNightShift.__night;
+    /* reachable from the middle of a shift, which is when she wants it */
+    w.route('night:1'); w.route('go');
+    const s = w.state();
+    s.phase = 'play';
+    w.route('sound');
+    const out = { phase: s.phase, faders: document.querySelectorAll('[data-mix]').length };
+    /* and DONE goes back to the shift, not out to the title */
+    const done = [].slice.call(document.querySelectorAll('[data-go]'))
+      .filter(b => /DONE/.test(b.textContent))[0];
+    out.back = done ? done.dataset.go : null;
+    w.route('mixReset');
+    out.reset = w.mix().music;
+    return out;
+  });
+  ok('she can reach it from the middle of a shift',
+     reach.faders === 5 && reach.phase === 'mix', reach.phase);
+  ok('and it puts her back in the shift rather than out to the title',
+     reach.back === 'resume', String(reach.back));
+  ok('and there is a way to undo whatever she did to it',
+     reach.reset === 1, String(reach.reset));
+
   console.log('\n— and only one of them talks at a time —');
   const mouth = await page.evaluate(async () => {
     const said = [], cancels = [];
@@ -1096,6 +1154,65 @@ function ok(name, cond, extra) {
      mouth.waiting === true, 'the door line is queued behind him');
   ok('and nothing cancels his queue but him',
      mouth.cancels <= 1, mouth.cancels + ' cancels');
+
+  /* AND HE HAS TO REACH THE END OF EVERY SENTENCE.
+
+     The stub the rest of this file uses answers instantly, which is
+     the one thing a real engine never does — so nothing here could see
+     the opening cutting itself off. This one takes real time to talk,
+     and cancel() chops whatever it is in the middle of, which is what
+     a browser does.
+
+     What it caught: every utterance's backstop timer cleared a flag
+     the whole chapter reads, so a timer belonging to a line that had
+     finished a second ago cleared it for the line currently being
+     spoken. The film decided that line was over, started the next one,
+     and cancelled the previous one a third of the way through. Two of
+     the first seven sentences of the opening. */
+  console.log('\n— and he reaches the end of every sentence —');
+  const whole = await page.evaluate(async () => {
+    const log = [];
+    let cur = null, t0 = 0;
+    const real = Object.getOwnPropertyDescriptor(window, 'speechSynthesis');
+    const stub = {
+      getVoices: () => [{ name: 'Test English', lang: 'en-GB', localService: true }],
+      get speaking() { return !!cur; }, get pending() { return false; },
+      cancel() {
+        if (!cur) return;
+        log.push({ ev: 'CUT', text: cur.text,
+                   at: (performance.now() - t0) / 1000, of: cur.__dur });
+        const c = cur; cur = null; if (c.onend) c.onend();
+      },
+      speak(u) {
+        /* about two and a half words a second, which is a narrator */
+        u.__dur = String(u.text).trim().split(/\s+/).length / 2.6;
+        log.push({ ev: 'SAY', text: u.text, of: u.__dur });
+        cur = u; t0 = performance.now();
+        setTimeout(() => { if (cur === u) { log.push({ ev: 'END', text: u.text });
+          cur = null; if (u.onend) u.onend(); } }, u.__dur * 1000);
+      },
+      addEventListener() {},
+    };
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, get: () => stub });
+    window.SpeechSynthesisUtterance = function (t) { this.text = t; };
+    const w = OuissysNightShift.__night;
+    w.silence(false); w.speechReset();
+    try { localStorage.removeItem('ns_seenintro'); } catch (e) {}
+    w.route('intro');
+    await new Promise(r => setTimeout(r, 24000));
+    w.route('introDone');
+    Object.defineProperty(window, 'speechSynthesis', real);
+    w.silence(true); w.speechReset();
+    /* the empty utterance that primes iOS is cancelled on purpose and
+       has no words in it */
+    return { said: log.filter(e => e.ev === 'SAY' && e.text.trim()).length,
+             cut: log.filter(e => e.ev === 'CUT' && e.text.trim()).map(e =>
+               e.text.slice(0, 30) + ' at ' + e.at.toFixed(1) + '/' + e.of.toFixed(1) + 's') };
+  });
+  ok('the opening actually says several sentences', whole.said >= 5,
+     whole.said + ' spoken');
+  ok('and not one of them is cut off part way through',
+     whole.cut.length === 0, whole.cut.join(' | ') || 'none cut');
 
   console.log('\n— and he does not leave dead air between sentences —');
   const gaps = await page.evaluate(() => OuissysNightShift.__night.tapeGaps());

@@ -628,3 +628,39 @@ identify and on most phones that is right, but "best" is a guess made
 by a regular expression about names it has never heard. HIS VOICE on
 the title screen reads a line in each one. The only test that was ever
 going to matter is her ear.
+
+## The opening was cutting itself off, and it was the backstop
+
+`speechSay` gives every utterance a `finish()` that clears `SPEECH.live`
+— a flag the whole chapter reads to know whether he is still talking —
+and a backstop timer that calls it if the engine never fires `onend`.
+The flag is global and the timer fires on a delay, so **the timer
+belonging to a line that ended a second ago was clearing the flag for
+the line currently being spoken.** The film then decided that line was
+over, started the next one, and `cancel()` chopped the previous one
+wherever it happened to be.
+
+Two of the first seven sentences of the opening, cut off about a third
+of the way through. Every utterance carries a number now and only the
+current one may say it has ended.
+
+Nothing here could have caught it, because the stub the suite used
+answers instantly and a real engine never does. `nightplay` now runs the
+opening against an engine that takes time to talk and whose `cancel()`
+chops mid-sentence, and fails if any line does not reach its end.
+
+The backstop is measured off word count rather than off `voxPlan` —
+`voxPlan` times the fallback synth, and a real narrator is slower, so
+the old estimate was firing early on exactly the long sentences that
+mattered most.
+
+## Five faders, because every level here has been a guess
+
+Every mix decision in this chapter was made through a container with a
+null audio device, about a phone in a room nobody working on it can
+hear. Several of those guesses shipped wrong, and two of the fixes made
+it worse. SOUND — on the title screen and in the pause menu, so it is
+reachable at the moment something is too loud rather than four menus
+later — has a fader for the score, the shop, his voice, the room tone
+and everything, plus the voice picker and a line to test it on. They
+persist, and DONE goes back to wherever she opened it from.
