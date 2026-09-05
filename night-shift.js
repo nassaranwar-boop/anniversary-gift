@@ -5168,12 +5168,50 @@ function audioInit() {
   if (AC) return;
   const C = window.AudioContext || window.webkitAudioContext;
   if (!C) return;
+
+  /* On an iPhone, Web Audio obeys the ring/silent switch unless the page
+     says what it is for. A game that goes silent because the switch on
+     the side of the phone is down is a game that "has no sound", and
+     nobody would ever guess why. iOS 16.4 and up take this; everything
+     else ignores it. */
+  try {
+    if (navigator.audioSession) navigator.audioSession.type = "playback";
+  } catch (e) {}
+
   AC = new C();
   master = AC.createGain(); master.gain.value = 0.9; master.connect(AC.destination);
   duckGain = AC.createGain(); duckGain.gain.value = 1; duckGain.connect(master);
   bedGain = AC.createGain(); bedGain.gain.value = 0.0; bedGain.connect(duckGain);
   cueGain = AC.createGain(); cueGain.gain.value = 1.0; cueGain.connect(duckGain);
   NB = noiseBuffer(3);
+
+  /* The site keeps a watchdog for exactly this — see wakeAudio() in
+     script.js — and this chapter was the one thing not using it, doing
+     its own `state === "suspended"` check in three places instead.
+
+     iOS does not use "suspended" when the system takes the audio
+     session away. A call, the lock screen, another app, the tab going
+     to the background: the state is "interrupted", which is not in the
+     spec, and a check for "suspended" reads it as healthy. So the sound
+     stopped the first time she looked at a message and never came back
+     for the rest of the night, with every node in the graph reporting
+     itself perfectly fine. */
+  if (window.registerAudio) window.registerAudio(() => AC);
+}
+/* resume, and only then do the thing that needs the clock: a context
+   that is not running has a frozen clock, so anything scheduled against
+   currentTime while it is asleep is scheduled against a time that is
+   not moving. */
+function audioWake(then) {
+  audioInit();
+  if (!AC) return;
+  if (AC.state === "running") { if (then) then(); return; }
+  if (window.wakeAudio) { window.wakeAudio(AC, then); return; }
+  try {
+    const pr = AC.resume();
+    if (pr && pr.then) pr.then(() => { if (then) then(); }, () => {});
+    else if (then) then();
+  } catch (e) {}
 }
 function ac() { audioInit(); return AC; }
 function now() { return AC ? AC.currentTime : 0; }
@@ -5183,6 +5221,13 @@ function now() { return AC ? AC.currentTime : 0; }
 function bedStart() {
   if (!ac() || audioOn) return;
   audioOn = true;
+  /* the fade-in is two and a half seconds of ramp against the audio
+     clock, and a context that is not running has a clock that is not
+     moving, so starting the room tone before the resume lands starts it
+     into a silence that never ends */
+  audioWake(() => { if (audioOn) bedBuild(); });
+}
+function bedBuild() {
   const t = now();
   const src = AC.createBufferSource(); src.buffer = NB; src.loop = true;
   const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 240; lp.Q.value = 0.7;
@@ -5924,8 +5969,11 @@ function fadeIn(v, a, b) { return clamp((v - a) / (b - a), 0, 1); }
 
 function musicMode(m) {
   if (!ac()) return;
-  musicInit();
   MUS.want = m;
+  audioWake(() => { if (MUS.want === m) musicSwap(m); });
+}
+function musicSwap(m) {
+  musicInit();
   const t = now();
   const to = m === "none" ? 0.0001 : 1;
   MUS.bus.gain.cancelScheduledValues(t);
@@ -5942,6 +5990,9 @@ function musicMode(m) {
 
 function musicTick(dt) {
   if (!MUS.ready || !AC || muted) return;
+  /* scheduling ahead of a clock that is not moving schedules everything
+     into the same instant, and it all arrives at once when it wakes */
+  if (AC.state !== "running") return;
   const mode = MUS.mode;
   if (mode === "none") return;
 
@@ -7608,8 +7659,7 @@ function screenGallery() {
 
 /* --- where every button goes -------------------------------------- */
 function route(cmd) {
-  audioInit();
-  if (AC && AC.state === "suspended") AC.resume();
+  audioWake();
   if (cmd === "start") {
     /* the very first time, the shop introduces itself before she is
        ever asked to survive it */
@@ -8029,8 +8079,7 @@ const _cf = new T.Vector3();
 
 function cineStart() {
   if (!NS.intro) return;
-  audioInit();
-  if (AC && AC.state === "suspended") AC.resume();
+  audioWake();
   CINE.on = true;
   CINE.beat = -1;
   CINE.t = 0;
@@ -8708,8 +8757,7 @@ function selectCam(id) {
 }
 
 function press(k) {
-  audioInit();
-  if (AC && AC.state === "suspended") AC.resume();
+  audioWake();
   if (k === "monitor") toggleMonitor();
   else if (k === "prev" || k === "next") stepCam(k === "next" ? 1 : -1);
   else toggleDoor(k);
@@ -9080,6 +9128,41 @@ const testHooks = {
       o[d.id] = +(cast[d.id].wound || 0).toFixed(2); });
     return { wound: o, count: woundCount(), holding: G.winding,
              target: G.windTarget, t: +G.windT.toFixed(2) }; },
+  /* What is actually coming out of the speakers, and why it is not.
+     Every other check here runs muted, so "the sound does not work"
+     was a report nothing in the repository could confirm or deny. */
+  audio: () => ({
+    ctx: AC ? AC.state : "none",
+    muted, bedRunning: audioOn,
+    master: master ? +master.gain.value.toFixed(3) : null,
+    bed: bedGain ? +bedGain.gain.value.toFixed(4) : null,
+    cue: cueGain ? +cueGain.gain.value.toFixed(3) : null,
+    duck: duckGain ? +duckGain.gain.value.toFixed(3) : null,
+    music: { ready: MUS.ready, mode: MUS.mode, want: MUS.want,
+             bus: MUS.bus ? +MUS.bus.gain.value.toFixed(4) : null,
+             dread: +MUS.dread.toFixed(3),
+             lay: MUS_LAYERS.reduce((o, k) => {
+               o[k] = MUS.lay[k] ? +MUS.lay[k].gain.value.toFixed(3) : null; return o; }, {}) },
+  }),
+  /* take the audio session away, the way a phone call does */
+  suspend: () => { if (AC && AC.suspend) AC.suspend(); },
+  /* a meter on the master bus, so a suite can say how loud it was */
+  meter: () => {
+    if (!AC) return null;
+    if (!G.__an) {
+      G.__an = AC.createAnalyser();
+      G.__an.fftSize = 2048;
+      master.connect(G.__an);
+      G.__buf = new Float32Array(G.__an.fftSize);
+      return { armed: true, rms: 0, peak: 0 };
+    }
+    G.__an.getFloatTimeDomainData(G.__buf);
+    let sum = 0, peak = 0;
+    for (let i = 0; i < G.__buf.length; i++) {
+      const v = G.__buf[i]; sum += v * v; if (Math.abs(v) > peak) peak = Math.abs(v);
+    }
+    return { armed: true, rms: +Math.sqrt(sum / G.__buf.length).toFixed(5), peak: +peak.toFixed(5) };
+  },
   /* the shelf by the desk has to have room for everything the game can
      award, and it is the kind of thing that goes wrong silently */
   shelf: () => ({ slots: officeParts && officeParts.trophies ? officeParts.trophies.length : 0,
