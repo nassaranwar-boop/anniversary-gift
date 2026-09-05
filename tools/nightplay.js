@@ -1057,6 +1057,55 @@ function ok(name, cond, extra) {
      spoken.marks[6] === 6 && spoken.marks.every((m, i) => m === i),
      JSON.stringify(spoken.marks));
 
+  /* THE FOUR THINGS THAT MADE HIM UNLISTENABLE.
+
+     There is one mouth. speechSynthesis has a single queue and
+     cancel() empties it, and the building announces a door every time
+     she touches one — so every one of those cut him off mid-word, and
+     the only voice she heard through to the end was the one saying
+     DOOR ONE: CLOSED. */
+  console.log('\n— and only one of them talks at a time —');
+  const mouth = await page.evaluate(async () => {
+    const said = [], cancels = [];
+    const real = Object.getOwnPropertyDescriptor(window, 'speechSynthesis');
+    let speaking = false;
+    const stub = {
+      getVoices: () => [{ name: 'Test A', lang: 'en-GB' }, { name: 'Test B', lang: 'en-GB' }],
+      get speaking() { return speaking; }, get pending() { return false; },
+      cancel() { cancels.push(said.length); },
+      speak(u) { said.push(u.text); speaking = true; u.__end = u.onend; },
+      addEventListener() {},
+    };
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, get: () => stub });
+    window.SpeechSynthesisUtterance = function (t) { this.text = t; };
+    const w = OuissysNightShift.__night;
+    w.silence(false); w.speechReset(); w.speech();
+    /* he starts a sentence */
+    w.speak('I made four toys out of my wife.');
+    const afterHim = said.length;
+    /* and the building tries to announce a door over the top of it */
+    w.sysSay('DOOR ONE: CLOSED');
+    const out = { him: said[0], count: said.length, afterHim, cancels: cancels.length,
+                  waiting: w.speech().waiting };
+    Object.defineProperty(window, 'speechSynthesis', real);
+    w.silence(true); w.speechReset();
+    return out;
+  });
+  ok('he gets to finish his sentence', mouth.count === 1, mouth.count + ' spoken at once');
+  ok('and the building waits rather than cutting him off',
+     mouth.waiting === true, 'the door line is queued behind him');
+  ok('and nothing cancels his queue but him',
+     mouth.cancels <= 1, mouth.cancels + ' cancels');
+
+  console.log('\n— and he does not leave dead air between sentences —');
+  const gaps = await page.evaluate(() => OuissysNightShift.__night.tapeGaps());
+  ok('the tapes are a conversation, not one line an hour',
+     gaps.lines >= 12, gaps.lines + ' lines on night one');
+  ok('and the longest silence between two of them is short',
+     gaps.longest <= 40, 'longest gap ' + gaps.longest.toFixed(0) + 's');
+  ok('and he starts talking soon after midnight',
+     gaps.first <= 8, 'first line at ' + gaps.first.toFixed(0) + 's');
+
   /* THE THING THIS WHOLE CHAPTER TURNS ON FOR SOMEBODY WHO IS NOT A
      GAMER: is anything happening in the five and a half minutes she is
      actually playing, or is the story all in the gaps between them? */
@@ -1117,7 +1166,10 @@ function ok(name, cond, extra) {
     const w = OuissysNightShift.__night, s = w.state();
     w.route('night:4'); w.route('go');
     const out = {};
-    /* the building has the right of way */
+    /* He has the right of way now — the other way round was the bug.
+       The building announces a door every time she touches one, so
+       "wait for the building" meant he never spoke on a night she was
+       actually playing. */
     w.say('POWER AT TWENTY PERCENT');
     out.underBuilding = w.tape().quiet;
     w.pump(6);
@@ -1130,7 +1182,8 @@ function ok(name, cond, extra) {
     out.afterDeath = w.tape().on;
     return out;
   });
-  ok('the building always gets to speak first', manners.underBuilding === false);
+  ok('he talks over the shop rather than waiting for it to finish',
+     manners.underBuilding === true);
   ok('and he says nothing with something at the door', manners.atDoor === false);
   ok('and nothing at all once it has her',
      manners.phase === 'over' && manners.afterDeath === false, manners.phase);

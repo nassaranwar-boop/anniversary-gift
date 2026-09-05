@@ -582,3 +582,49 @@ voices. This container has none, so the fallback is what the rest of
 the suite walks — the speech path is tested against a stub that reports
 a voice and fires boundaries, which is how we know the string handed to
 the browser is exactly the string on screen.
+
+## The pass where the score turned out not to exist
+
+Four things reported from a real phone, all four real.
+
+**The night had no floor, and the night is the game.** Every melodic
+layer was gated behind `dread` — the box at 0.20, the pulse at 0.10 —
+and dread sits at about 0.06 whenever nothing is walking towards her,
+which is most of most nights and nearly all of the first two. Measured
+with the shop quiet: `sub 0.37` and every other layer at zero. A
+forty-one hertz drone and no music whatsoever, for five and a half
+minutes at a time. She was not hearing a score that failed to arrive,
+she was hearing the absence of one.
+
+There is a piece of music playing in the shift now, always, and dread
+is what the piece *does* rather than whether it exists: the music box
+and a clock from midnight, a piano while she is still alone with it
+that steps back as she stops being, and the six frightening layers
+arriving on top of something rather than instead of it.
+
+**There is only one mouth and they were both using it.**
+`speechSynthesis` has a single queue and `cancel()` empties it. The
+building announces a door every time she touches one, and every one of
+those cancelled him mid-word — so the only voice she ever heard through
+to the end was the one saying DOOR ONE: CLOSED. He has right of way
+now, in the speech queue and in `tapeQuiet()`; the building waits, and
+gives up if it has been waiting more than two seconds, because a door
+announcement three seconds late is worse than none.
+
+**And a backstop on `onend`.** Some engines never fire it on a short
+line, and without one `SPEECH.live` stays true for the rest of the
+visit — every scene that waits for him to finish then waits for ever.
+
+**Dead air.** The film and the terms waited up to a second and a bit
+on top of a voice that had already stopped. A quarter of a second is a
+breath; more than that is where somebody decides the game is slow. And
+the tapes were one line an hour behind a rule that would not let him
+speak while the building was talking — fifty seconds between sentences,
+which is not a conversation. Eighty-two lines now, about one every
+twenty seconds, on fractional hours.
+
+**His voice is a setting.** The scorer picks the best voice it can
+identify and on most phones that is right, but "best" is a guess made
+by a regular expression about names it has never heard. HIS VOICE on
+the title screen reads a line in each one. The only test that was ever
+going to matter is her ear.

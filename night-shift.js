@@ -392,55 +392,104 @@ const NS = {
      teaches itself. These are for the minutes in between, which is
      where a story either has her or does not. */
   tapes: {
+    /* `h` is in hours, and it is allowed a fraction: 1.5 is half past
+       one. One line an hour left fifty seconds of silence between
+       sentences, which is not a conversation — it is a man being cut
+       off by his own tape machine. About one every twenty seconds is a
+       person talking to you while you work. */
     1: [
-      { h: 0, t: "One of six. You said yes, so here is the first thing." },
-      { h: 0, t: "The kettle is behind the till. It takes a while. Everything in here does." },
-      { h: 1, t: "The four in the back are not stock. I never sold those, and tonight that is all you need to know about them." },
-      { h: 2, t: "They walk. It is not a fault, I built them to, and by Thursday you will be glad of it." },
-      { h: 3, t: "Nothing in this shop wants to hurt you. I want to say that on the first night, while it is still true." },
-      { h: 4, t: "Shut the door if one gets close. It costs you a little. It costs you less than the other thing." },
-      { h: 5, t: "One down. Go home. Sleep. Come back tonight." },
+      { h: 0.00, t: "One of six. You said yes, so here is the first thing." },
+      { h: 0.12, t: "The kettle is behind the till. It takes a while. Everything in here does." },
+      { h: 0.34, t: "I want you to look at the shop tonight and nothing else. Learn where things are." },
+      { h: 0.60, t: "The four in the back are not stock. I never sold those." },
+      { h: 0.85, t: "Tonight that is all you need to know about them." },
+      { h: 1.15, t: "They walk. It is not a fault. I built them to, and by Thursday you will be glad of it." },
+      { h: 1.55, t: "The monitor draws power while it is up. So does a shut door. That is the whole of the job." },
+      { h: 1.95, t: "There is more meter than there is night. You will be fine." },
+      { h: 2.35, t: "I used to sit in that chair until four in the morning telling myself I was working." },
+      { h: 2.80, t: "Nothing in this shop wants to hurt you. I want to say that on the first night, while it is still true." },
+      { h: 3.30, t: "Shut the door if one gets close. It costs you a little. It costs you less than the other thing." },
+      { h: 3.90, t: "You are better at this than I was. I mean that." },
+      { h: 4.40, t: "There is something on a shelf in here with your name on it. Not tonight. Just know that there is." },
+      { h: 5.00, t: "Nearly six. Whatever you can hear out there, it stops at six." },
+      { h: 5.55, t: "One down. Go home. Sleep. Come back tonight." },
     ],
     2: [
-      { h: 0, t: "You came back. I did not know if you would, and I have been sitting here all day not knowing." },
-      { h: 1, t: "The soldier keeps time. He has never once been late, which is a thing I admired in somebody else first." },
-      { h: 2, t: "The owl goes through the ceiling because that is how a roof works. It is not being clever." },
-      { h: 3, t: "The ballerina stops when she is looked at. Everybody does." },
-      { h: 4, t: "And the box. The box does not leave a room while there is anybody in it." },
-      { h: 5, t: "I made four toys, Ouissy. I only ever had one idea, and it was you." },
+      { h: 0.00, t: "You came back. I have been sitting here all day not knowing whether you would." },
+      { h: 0.20, t: "Two of six. Tonight I tell you what the four of them are." },
+      { h: 0.55, t: "The soldier keeps time. He has never once been late." },
+      { h: 0.85, t: "I admired that in somebody else first." },
+      { h: 1.20, t: "The owl goes through the ceiling because that is how a roof works. It is not being clever. The hatch stops it and nothing else does." },
+      { h: 1.70, t: "The ballerina stops when she is looked at. Everybody does." },
+      { h: 2.10, t: "Do not look at her all night, though. You will lose the meter and she will still be there." },
+      { h: 2.55, t: "And the box. The box does not leave a room while there is anybody in it." },
+      { h: 3.00, t: "He knocks instead. Every knock is meter. He knows that." },
+      { h: 3.45, t: "You have probably worked out the pattern by now." },
+      { h: 3.95, t: "Timekeeping. A roof. Dancing when she thinks nobody can see. And never once walking out of a room I was in." },
+      { h: 4.50, t: "I made four toys, Ouissy. I only ever had one idea, and it was you." },
+      { h: 5.05, t: "Wind them if you get the chance. There is a key in the back of each one." },
+      { h: 5.55, t: "Two down. Four to go." },
     ],
     3: [
-      { h: 0, t: "Halfway. This is the night I have been dreading, so I am going to get it over with." },
-      { h: 0, t: "There is a book under the till. I would rather you did not, but you will, and you should." },
-      { h: 1, t: "Four hundred and eleven of them went out of here. Every one to a real address." },
-      { h: 2, t: "They were bought as presents. That part is true." },
-      { h: 3, t: "The tag on each one has this shop on it. So they know the way back." },
-      { h: 4, t: "If a parcel arrives that nobody sent, it is not a delivery. Do not open the door for it." },
-      { h: 5, t: "I am telling you this badly. I have started this tape four times. Three more nights." },
+      { h: 0.00, t: "Halfway. This is the night I have been dreading, so I am going to get it over with." },
+      { h: 0.25, t: "There is a book under the till. I would rather you did not. You will, and you should." },
+      { h: 0.60, t: "Four hundred and eleven of them went out of this shop." },
+      { h: 0.90, t: "Every one to a real address. Every one to somebody who was pleased to get it." },
+      { h: 1.30, t: "They were bought as presents. That part is true." },
+      { h: 1.70, t: "The tag on the bottom of each one has this shop on it." },
+      { h: 2.05, t: "So they know the way back. I did that on purpose and I am not going to pretend otherwise." },
+      { h: 2.50, t: "Some of them have started using it." },
+      { h: 2.90, t: "If a parcel arrives that nobody sent, that is not a delivery. Do not open the door for it." },
+      { h: 3.40, t: "Watching one does nothing. They were not built for you and they do not care whether you are there." },
+      { h: 3.90, t: "A shut door holds them. They try the handle for a while and then they go." },
+      { h: 4.40, t: "I am telling you this badly. I have started this tape four times." },
+      { h: 4.95, t: "You are still here. That is the part I keep not expecting." },
+      { h: 5.50, t: "Three down. Three more." },
     ],
     4: [
-      { h: 0, t: "All right. The thing I have been walking around." },
-      { h: 1, t: "A toy in a house sees the house. Everything in it. Every night, for years." },
-      { h: 2, t: "And a toy that goes back to the shop it came from brings all of that with it." },
-      { h: 3, t: "That is what I did. Money came into our house and you never asked, and I let you not ask." },
-      { h: 4, t: "You are standing in the middle of it now. I am sorry. That is not enough and I know it." },
-      { h: 5, t: "The four in the back are the only ones I made for nothing." },
+      { h: 0.00, t: "All right. The thing I have been walking around for three nights." },
+      { h: 0.30, t: "A toy in a house sees the house. All of it. Every night, for years." },
+      { h: 0.70, t: "It sees who comes. It sees what gets said when the door is shut." },
+      { h: 1.05, t: "And a toy that finds its own way back to the shop it came from brings all of that with it." },
+      { h: 1.55, t: "That is what I did. That is the whole of it." },
+      { h: 1.95, t: "Money came into our house and you never asked, and I let you not ask, every week, for fifteen years." },
+      { h: 2.50, t: "You are standing in the middle of it now." },
+      { h: 2.85, t: "I am sorry. That is not enough and I know it is not enough." },
+      { h: 3.30, t: "I am not going to ask you to forgive any of it. I would like you to understand it, which is different." },
+      { h: 3.90, t: "The four in the back are the only ones I ever made for nothing." },
+      { h: 4.40, t: "No tag. No address. Nothing on the bottom of them at all." },
+      { h: 4.95, t: "Keep them wound tonight. I will explain tomorrow." },
+      { h: 5.50, t: "Four down. Stay." },
     ],
     5: [
-      { h: 0, t: "Five. Tonight is the one I actually needed you to reach." },
-      { h: 1, t: "They have started coming back on their own. I did not call them. Nobody called them." },
-      { h: 2, t: "Keep the four of them wound tonight. All four. Do not ask me why yet, just do it." },
-      { h: 3, t: "And if one of them gets to the door before you do — let it. Do not shut it. Let it." },
-      { h: 4, t: "They were never for the shop, Ouissy. They were for you, in case I was not there." },
-      { h: 5, t: "I built the whole four of them out of you and I never once said so out loud." },
+      { h: 0.00, t: "Five. Tonight is the one I actually needed you to reach." },
+      { h: 0.30, t: "They have started coming back on their own. I did not call them. Nobody called them." },
+      { h: 0.75, t: "There is nothing left to send them anywhere, so they are doing the only thing they know." },
+      { h: 1.20, t: "Keep the four of them wound tonight. All four. Do not ask me why yet." },
+      { h: 1.70, t: "There is a key in the back of each one and it takes about a second." },
+      { h: 2.10, t: "And if one of them gets to the door before you do — let it. Do not shut it. Let it." },
+      { h: 2.65, t: "I know how that sounds. Let it." },
+      { h: 3.05, t: "They were never for the shop, Ouissy." },
+      { h: 3.45, t: "They were for you. In case I was not there." },
+      { h: 3.95, t: "I built the whole four of them out of you and I never once said so out loud." },
+      { h: 4.50, t: "Fifteen years of watching you and the best thing I ever made with it was four toys in a back room." },
+      { h: 5.05, t: "Wind them. Please." },
+      { h: 5.55, t: "Five down. One more, and then I stop asking you for anything." },
     ],
     6: [
-      { h: 0, t: "Six. Last one. I made this tape in the morning, which I never do." },
-      { h: 1, t: "You will have worked out by now what I was. I would like to say I was more than that." },
-      { h: 2, t: "I was not. But I was also a man who made four things that will stand at a door for you." },
-      { h: 3, t: "The shutters go up at six on their own. Every morning. They always have." },
-      { h: 4, t: "When it is light you can lock this place and never come back. That is a real choice and I want you to have it." },
-      { h: 5, t: "But if you wind her one more time, she will dance for you. And I would like somebody to see it." },
+      { h: 0.00, t: "Six. Last one. I made this tape in the morning, which I never do." },
+      { h: 0.30, t: "You will have worked out by now what I was. I would like to say I was more than that." },
+      { h: 0.80, t: "I was not. A man is the sum of what he actually did." },
+      { h: 1.20, t: "But I was also a man who made four things that will stand at a door for you, and that is on the list too." },
+      { h: 1.75, t: "The shutters go up at six on their own. Every morning. They always have." },
+      { h: 2.20, t: "You have done the six nights. You do not owe this shop anything else." },
+      { h: 2.70, t: "When it is light you can lock the place and never come back. That is a real choice and I want you to have it." },
+      { h: 3.25, t: "The book, the shelves, the four in the back. Sell it, burn it, leave it. Any of those is fine." },
+      { h: 3.80, t: "I am not going to be here to mind." },
+      { h: 4.25, t: "But if you wind her one more time before you go, she will dance." },
+      { h: 4.75, t: "She only ever did it when she thought nobody was watching. So did you." },
+      { h: 5.25, t: "And I would like somebody to see it." },
+      { h: 5.65, t: "Thank you for the six nights. Thank you for the fifteen years." },
     ],
   },
   /* and the ones that wait for her to do something rather than for a
@@ -6185,9 +6234,47 @@ function voiceScore(v) {
   return n;
 }
 
+/* WHICH VOICE HE IS, ON HER PHONE.
+
+   Every device ships a different set and they are not equally good.
+   The scoring below picks the best one it can identify, and on most
+   phones that is right — but "best" is a guess made by a regular
+   expression about names it has never heard, and if it guesses wrong
+   the man narrating this story sounds like a parking meter.
+
+   So it is a setting. She can hear each voice on the title screen and
+   keep the one that sounds like somebody, which is the only test that
+   was ever going to matter. */
+const VOICE_KEY = "ns_voice";
+function savedVoice() { try { return localStorage.getItem(VOICE_KEY) || ""; } catch (e) { return ""; } }
+function saveVoice(name) {
+  try { name ? localStorage.setItem(VOICE_KEY, name) : localStorage.removeItem(VOICE_KEY); } catch (e) {}
+  SPEECH.ok = null; SPEECH.voice = null;
+}
+/* the ones worth offering her, best first */
+function voiceMenu() {
+  const all = speechVoices();
+  const en = all.filter((v) => /^en(-|_|$)/i.test(v.lang || ""));
+  return (en.length ? en : all)
+    .filter((v) => !VOICE_JUNK.test(v.name || ""))
+    .slice()
+    .sort((a, b) => voiceScore(b) - voiceScore(a));
+}
+
 function speechPick() {
   const all = speechVoices();
   if (!all.length) return false;
+  /* hers, if she has chosen one */
+  const want = savedVoice();
+  if (want) {
+    const hit = all.filter((v) => v.name === want)[0];
+    if (hit) {
+      SPEECH.voice = hit;
+      const rest = all.filter((v) => v !== hit && !VOICE_JUNK.test(v.name || ""));
+      SPEECH.sys = rest[rest.length - 1] || hit;
+      return true;
+    }
+  }
   const en = all.filter((v) => /^en(-|_|$)/i.test(v.lang || ""));
   const pool = (en.length ? en : all).slice();
   pool.sort((a, b) => voiceScore(b) - voiceScore(a));
@@ -6283,9 +6370,35 @@ function voxTape(dur, gain) {
 
 /* say it out loud, with the real words. Returns false if the platform
    has nothing to say them with. */
+/* THERE IS ONLY ONE MOUTH, AND THEY WERE BOTH USING IT.
+
+   speechSynthesis has a single queue, and cancel() empties it. The
+   building announces a door every time she touches one, and every one
+   of those called cancel() — so a door shut in the middle of a
+   sentence cut Anwar off mid-word and the only voice she ever heard
+   through to the end was the one saying DOOR ONE: CLOSED. The most
+   important lines in the chapter were being talked over by a doorbell.
+
+   He has right of way. The building waits, and if it has been waiting
+   more than a couple of seconds by the time he stops it gives up —
+   "door one, closed" three seconds late is worse than not saying it,
+   because the caption on screen has already moved on. */
+let sysWaiting = null;
+
+function speechBusy() {
+  if (!window.speechSynthesis) return false;
+  try { return !!(window.speechSynthesis.speaking || window.speechSynthesis.pending); }
+  catch (e) { return false; }
+}
+
 function speechSay(text, plan, opts) {
   if (!speechReady()) return false;
   const o = opts || {};
+  /* the building never interrupts him */
+  if (o.sys && (SPEECH.live || speechBusy())) {
+    sysWaiting = { text: text, plan: plan, at: perf() };
+    return true;
+  }
   let u;
   try { u = new window.SpeechSynthesisUtterance(text); } catch (e) { return false; }
   u.voice = o.sys ? SPEECH.sys : SPEECH.voice;
@@ -6319,13 +6432,31 @@ function speechSay(text, plan, opts) {
     for (let i = 0; i < starts.length; i++) if (starts[i] <= e.charIndex) k = i;
     SPEECH.mark = k;
   };
-  const finish = () => { SPEECH.live = false; SPEECH.done = true; SPEECH.mark = -1; };
+  const finish = () => {
+    SPEECH.live = false; SPEECH.done = true; SPEECH.mark = -1;
+    /* and now the building may say its piece, if it is still worth
+       saying. Anything older than two seconds has been overtaken by
+       the shop and is dropped rather than delivered late. */
+    const w = sysWaiting;
+    sysWaiting = null;
+    if (w && perf() - w.at < 2.0 && !o.sys) {
+      setTimeout(() => { if (!SPEECH.live) speechSay(w.text, w.plan, { sys: true }); }, 90);
+    }
+  };
   u.onend = finish;
   u.onerror = finish;
   try {
-    window.speechSynthesis.cancel();
+    /* cancel() empties the whole queue, so it is only ever right when
+       he is the one about to speak */
+    if (!o.sys) window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
   } catch (e) { finish(); return false; }
+  /* Some engines never fire onend on a short line. Without a backstop
+     SPEECH.live stays true for the rest of the visit and every scene
+     that waits for him to finish waits for ever — which is most of
+     them. Estimated length plus half again. */
+  const cap = Math.max(1.5, (plan ? plan.dur : 2) * 1.5 + 1.5);
+  setTimeout(() => { if (SPEECH.live) finish(); }, cap * 1000);
   return true;
 }
 
@@ -6539,6 +6670,9 @@ const MODE_MIX = {
 /* how fast the grid runs, whether the phrase is the major one, and how
    loud the whole thing sits. `night` works its own out of dread. */
 const MODE_FEEL = {
+  /* the one she spends the whole game inside, so it sits a little
+     louder than the scenes she passes through */
+  night:   { spb: null, warm: false, level: 0.52, theme: "shift" },
   film:    { spb: 1.95, warm: false, level: 0.26, theme: "memory" },
   locked:  { spb: 1.00, warm: false, level: 0.46, theme: "clock" },
   brief:   { spb: 1.35, warm: false, level: 0.40, theme: "clock" },
@@ -6885,12 +7019,34 @@ function musicTick(dt) {
     g.linearRampToValueAtTime(v, t + 0.55);
   };
   if (mode === "night") {
-    set("sub",   0.34 + d * 0.5);
-    set("pulse", fadeIn(d, 0.10, 0.45) * 0.75);
-    set("box",   fadeIn(d, 0.20, 0.52) * 0.72);
-    set("air",   fadeIn(d, 0.28, 0.70) * 0.30);
+    /* THE NIGHT HAD NO FLOOR, AND THE NIGHT IS THE GAME.
+
+       Every melodic layer was gated behind dread — the box at 0.20,
+       the pulse at 0.10 — and dread sits at about 0.06 whenever
+       nothing is walking towards her, which is most of most nights and
+       nearly all of the first two. Measured with the shop quiet, the
+       whole score came out as sub 0.37 and every other layer at zero:
+       a forty-one hertz drone and no music whatsoever. She was not
+       hearing a score that failed to arrive, she was hearing the
+       absence of one, for five and a half minutes at a time.
+
+       So the shift has a piece of music playing in it now, always, and
+       dread is what the piece DOES rather than whether it exists. The
+       music box and a clock are there from midnight; the piano is
+       there while it is calm and steps back as it stops being calm;
+       and the six frightening layers still arrive in the order they
+       always did, on top of something rather than instead of it. */
+    set("sub",   0.30 + d * 0.42);
+    set("box",   0.34 + fadeIn(d, 0.12, 0.50) * 0.36);
+    set("tick",  0.20 - d * 0.12);
+    /* the piano is company. It leaves when she stops being alone. */
+    set("piano", 0.30 * (1 - fadeIn(d, 0.10, 0.42)));
+    set("pulse", fadeIn(d, 0.05, 0.40) * 0.72);
+    set("air",   fadeIn(d, 0.22, 0.66) * 0.30);
+    set("brass", fadeIn(d, 0.38, 0.80) * 0.42);
     set("grind", fadeIn(d, 0.44, 0.86) * 0.52);
     set("bow",   fadeIn(d, 0.60, 0.95) * 0.34);
+    set("choir", fadeIn(d, 0.74, 1.00) * 0.22);
     set("warm",  0);
   } else {
     const mix = MODE_MIX[mode] || MODE_MIX.menu;
@@ -6925,12 +7081,27 @@ function musicTick(dt) {
         if (s === 0 || s === 8) heart(t, 52, 0.42 + d * 0.5);
         if (s === 2 || s === 10) heart(t, 44, 0.28 + d * 0.34);
       }
-      /* the music box, one note a beat, the figure alternating so the
-         phrase never repeats twice running */
-      if (d > 0.18 && (s & 1) === 0) {
+      /* The music box, which now plays from midnight rather than from
+         the first time something frightens her. At rest it is one note
+         every other beat and slow; as dread climbs it fills in. */
+      const dense = d > 0.18 ? 1 : 3;             // every 2nd step, or every 4th
+      if ((s % (2 * dense)) === 0) {
         const fig = (MUS.bar & 1) ? FIG_B : FIG;
         const n = fig[s];
-        boxNote(t, hz(n), 0.11 + d * 0.05, ((MUS.bar + s) % 3 - 1) * 0.5, 1.05);
+        boxNote(t, hz(n), 0.10 + d * 0.06, ((MUS.bar + s) % 3 - 1) * 0.5,
+                d > 0.18 ? 1.05 : 2.2);
+      }
+      /* and the piano underneath it while she is still alone with it */
+      if (d < 0.45 && s === 0) {
+        pianoNote(t, hz(FIG[(MUS.bar * 5) % 16] - 12), 0.075, spb * 3.4,
+                  ((MUS.bar % 3) - 1) * 0.35);
+      }
+      /* a clock in the room, all night, which is his deadline ticking */
+      if ((s & 3) === 0 && d < 0.6) tickNote(t, 0.11 - d * 0.08, s === 0);
+      /* and the swell that says something is on its way, before there
+         is anything on a camera to see */
+      if (d > 0.42 && s === 0 && (MUS.bar & 1) === 0) {
+        brassNote(t, hz(-24), 0.06 + d * 0.05, spb * 5.5);
       }
       /* the top string, once every two bars, and only when it is bad */
       if (d > 0.58 && s === 4 && (MUS.bar & 1) === 0) {
@@ -7837,12 +8008,25 @@ const TAPE = {
   on: false, said: {}, wait: 0, speakT: 0, line: "", plan: null, t0: 0,
   pending: null, opened: false,
 };
-const TAPE_GAP = 7.0;          // shortest quiet between two of his lines
+/* HOW LONG HE WAITS BETWEEN SENTENCES.
+
+   Seven seconds of enforced quiet on top of a rule that would not let
+   him speak while the building was talking or anything was near a
+   door. On a live night that adds up to almost never: she got a line,
+   then most of a minute of nothing, then another line with no memory
+   of the first — which is why they stopped making sense. They are one
+   side of a conversation, and a conversation with a minute between
+   sentences is not one.
+
+   Two and a half seconds now, and the rule is only that nothing is
+   actually AT her door. He talks over the shop, which is what a man on
+   a tape in an empty building would do. */
+const TAPE_GAP = 2.5;
 
 function tapeReset() {
   TAPE.on = true;
   TAPE.said = {};
-  TAPE.wait = 5.0;             // she gets a moment before he starts
+  TAPE.wait = 2.0;             // a moment to look around, and then he starts
   TAPE.speakT = 0;
   TAPE.line = "";
   TAPE.plan = null;
@@ -7860,11 +8044,16 @@ function tapeOff() {
 function tapeQuiet() {
   if (G.phase !== "play") return false;
   if (G.blackout) return false;
-  if (sayQueue.length || G.t < sayUntil) return false;   // the building first
   if (tutorOn()) return false;
+  /* The building used to have the right of way here, and the building
+     says something every time she touches a door — so on any night she
+     was actually playing, he never got a word in. He has the right of
+     way now, in the speech queue and here: the only thing that stops
+     him is something standing at her door, because a man reminiscing
+     over the top of a jack-in-the-box is a joke. */
   for (const id in cast) {
     const ch = cast[id];
-    if (ch && ch.awake && ch.atDoor) return false;       // not now
+    if (ch && ch.awake && ch.atDoor) return false;
   }
   return true;
 }
@@ -7931,9 +8120,13 @@ function tapeTick(dt) {
   }
   const script = NS.tapes && NS.tapes[G.night];
   if (!script) return;
+  /* fractional hours, so he can speak at twenty past rather than only
+     on the hour — one line every fifty seconds is a man being cut off
+     by his own tape machine rather than a man talking to you */
+  const hourNow = G.hour + (G.hourT || 0) / Math.max(1, TUNE.hourSeconds);
   for (let i = 0; i < script.length; i++) {
     const it = script[i];
-    if (it.h > G.hour) break;
+    if (it.h > hourNow) break;
     if (TAPE.said[it.t]) continue;
     if (tapeSay(it.t)) { TAPE.opened = true; TAPE.wait = TAPE_GAP; return; }
   }
@@ -8522,6 +8715,7 @@ function screenTitle() {
         '<button class="ns-btn" data-go="howto">HOW IT WORKS</button>' +
         /* his statement, once she has already heard it once */
         (seenIntro() ? '<button class="ns-btn" data-go="intro">HIS STATEMENT</button>' : "") +
+        (voiceMenu().length > 1 ? '<button class="ns-btn" data-go="voice">HIS VOICE</button>' : "") +
         '<button class="ns-btn" data-go="badges">RECORD</button>' +
         '<button class="ns-btn" data-go="quit">LEAVE</button>' +
       '</div>' +
@@ -8580,6 +8774,31 @@ function screenBrief() {
       '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="go">12:00 AM</button>' +
       '<button class="ns-btn" data-go="title">BACK</button></div>' +
     '</div>', "ns-ov-brief");
+}
+
+/* Choosing him. Every row says the name the device gave it and reads
+   the same line out loud, so it is picked by ear rather than by
+   guessing what "en-GB Compact Enhanced 3" sounds like. */
+function screenVoice() {
+  const list = voiceMenu();
+  const cur = savedVoice();
+  const rows = list.slice(0, 10).map((v) => {
+    const on = cur ? v.name === cur : v === SPEECH.voice;
+    return '<button class="ns-btn ns-voice' + (on ? " on" : "") + '" data-go="voice:' +
+      v.name.replace(/"/g, "") + '">' + v.name +
+      '<i>' + (v.lang || "") + (v.localService ? "" : " · online") + '</i></button>';
+  }).join("");
+  overlay(
+    '<div class="ns-card ns-card-wide">' +
+      '<p class="ns-nightno">HIS VOICE</p>' +
+      '<p class="ns-blurb">whichever one of these sounds like a person</p>' +
+      '<p class="ns-keys">Tap one and he will read you a line in it. The one you keep is the one he uses for the whole chapter.</p>' +
+      '<div class="ns-voices">' + rows + '</div>' +
+      '<div class="ns-btns">' +
+        '<button class="ns-btn" data-go="voice:auto">LET IT CHOOSE</button>' +
+        '<button class="ns-btn ns-btn-go" data-go="title">DONE</button>' +
+      '</div>' +
+    '</div>', "ns-ov-voice");
 }
 
 function screenPause() {
@@ -8883,6 +9102,15 @@ function route(cmd) {
   else if (cmd === "terms") { termsStart(); }
   else if (cmd === "termsDone") { termsDone(); }
   else if (cmd === "termsAgain") { clearHurt(); termsStart(); }
+  else if (cmd === "voice") { G.phase = "voice"; screenVoice(); }
+  else if (cmd.indexOf("voice:") === 0) {
+    const name = cmd.slice(6);
+    saveVoice(name === "auto" ? "" : name);
+    speechReady();
+    /* say something in it, so the choice is made by ear */
+    voxSpeak(voxPlan("I made toys. That part was true. I am sorry about the rest."), { gain: 1 });
+    screenVoice();
+  }
   else if (cmd === "endWind") { screenEnding("wind"); }
   else if (cmd === "endLeave") { screenEnding("leave"); }
   else if (cmd.indexOf("preset:") === 0) {
@@ -9382,7 +9610,7 @@ function termsTick(dt) {
   if (TERMS.waitT > 0) { TERMS.waitT -= dt; return; }
   if (voxTalking()) return;
   const spoken = TERMS.plan ? TERMS.plan.dur : 0;
-  if (TERMS.plan && perf() - TERMS.t0 < (SPEECH.ok ? Math.min(spoken, 0.8) : spoken) + 0.5) return;
+  if (TERMS.plan && perf() - TERMS.t0 < (SPEECH.ok ? 0.10 : spoken) + 0.3) return;
 
   TERMS.line++;
   if (TERMS.line < NS.terms.lines.length) { termsSpeak(); return; }
@@ -9488,13 +9716,16 @@ function cineTick(dt) {
   /* the next line, then the next beat */
   if (b) {
     const spoken = CINE.plan ? CINE.plan.dur : 0;
-    /* a real voice takes as long as it takes, so the beat waits for it
-       to stop rather than for the estimate to run out — with the
-       estimate plus a wide margin as a backstop, because a synthesiser
-       that never fires onend would otherwise hang the whole opening */
+    /* A real voice takes as long as it takes, so the beat waits for it
+       to stop — and then goes almost straight into the next line.
+       There was a wait of up to a second and a bit on top of a voice
+       that had already finished, which is a long time to sit looking
+       at a caption that has stopped moving. A quarter of a second is a
+       breath; anything more is dead air, and dead air in an opening is
+       where somebody decides the game is slow. */
     const lineDone = voxTalking()
       ? false
-      : perf() - CINE.lineT0 >= (SPEECH.ok ? Math.min(spoken, 0.8) : spoken) + 0.35;
+      : perf() - CINE.lineT0 >= (SPEECH.ok ? 0.10 : spoken) + 0.25;
     if (CINE.plan && lineDone) {
       CINE.line++;
       if (CINE.line < b.lines.length) cineSpeak();
@@ -10565,12 +10796,22 @@ const testHooks = {
   /* the speech path, which this container has no voices for */
   speak: (text) => voxSpeak(voxPlan(text), { gain: 1 }),
   voxMark: () => voxMark(),
-  speech: () => ({ ok: SPEECH.ok, primed: SPEECH.primed,
+  speech: () => ({ ok: SPEECH.ok, primed: SPEECH.primed, waiting: !!sysWaiting,
                    voice: SPEECH.voice ? SPEECH.voice.name : null,
                    live: SPEECH.live, mark: SPEECH.mark }),
   pickVoices: () => { speechPick();
                       return { him: SPEECH.voice ? SPEECH.voice.name : null,
                                sys: SPEECH.sys ? SPEECH.sys.name : null }; },
+  sysSay: (t) => speechSay(t, voxPlan(t), { sys: true }),
+  /* how far apart his lines actually land across a night */
+  tapeGaps: () => {
+    const sc = (NS.tapes && NS.tapes[1]) || [];
+    const at = sc.map((x) => x.h * TUNE.hourSeconds);
+    let longest = 0;
+    for (let i = 1; i < at.length; i++) longest = Math.max(longest, at[i] - at[i - 1]);
+    return { lines: sc.length, first: at[0] || 0, longest: longest,
+             last: at[at.length - 1] || 0 };
+  },
   speechReset: () => { SPEECH.ok = null; SPEECH.voice = null; SPEECH.sys = null;
                        SPEECH.mark = -1; SPEECH.live = false; },
 };
