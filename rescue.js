@@ -576,6 +576,17 @@ window.Rescue = (function () {
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       var ac = window.__soAudio || (window.__soAudio = new AC());
+      /* on the site's register, or leaving the page cannot quieten it */
+      if (!sfx.registered && window.registerAudio) {
+        sfx.registered = true;
+        try { window.registerAudio(function () { return window.__soAudio; }); } catch (e) {}
+      }
+      /* LEAVING THE PAGE MEANS QUIET. The site puts every context to
+         sleep on the way out; this used to wake it straight back up on
+         the next sound the scene made, so a scene still ticking in a
+         window you had left started talking again. Away, we make
+         nothing and wake nothing — the site pokes it on the way back. */
+      if (window.audioAsleep && window.audioAsleep()) return;
       if (ac.state === "suspended") ac.resume();
       var spec = ({
         chill:  { type: "sine",     f: 240,  to: 55,   d: 2.2, v: .06 },

@@ -1161,6 +1161,14 @@
       var d = noiseBuf.getChannelData(0);
       for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       watchForWaking();
+      /* the site keeps a register of every context so it can put them
+         all to sleep on the way out and wake them on the way back; this
+         one minds itself as well, but a chapter that is not on the list
+         is a chapter the site cannot quieten */
+      if (window.registerAudio && !acRegistered) {
+        acRegistered = true;
+        try { window.registerAudio(function () { return ctx; }); } catch (e) {}
+      }
       return ctx;
     }
 
@@ -1187,6 +1195,10 @@
        re-anchored to now and picked up again on the beat.
        ============================================================ */
     var wakeBound = false, waking = false;
+    /* set when WE put the sound down on the way out of the page, so the
+       watchdogs below can tell "the platform took it away, get it back"
+       apart from "we let it go on purpose, leave it alone" */
+    var asleep = false;
     function stopped() {
       return !!ctx && ctx.state !== "running" && ctx.state !== "closed";
     }
@@ -1206,6 +1218,7 @@
     }
     function wake() {
       if (!ctx) return;
+      asleep = false;
       if (ctx.state === "closed") {
         var wasOn = on, bedBack = ambient ? ambient.kind : pendingBed;
         var tune = null;
@@ -1228,12 +1241,31 @@
       if (p && p.then) p.then(afterWake, function () { waking = false; });
       else afterWake();
     }
+    /* GOING AWAY SHOULD BE QUIET.
+
+       A browser does not suspend an AudioContext when you switch tabs or
+       switch apps — that is deliberate, because a music player should
+       keep playing. A game should not: you leave, and the chapter is
+       still going in your pocket. Nothing here ever asked it to stop; it
+       only ever asked it to start again. So it stops now, on either
+       signal the platform gives — the tab going hidden, which is what a
+       phone or a tablet sends, and the window losing focus, which is
+       what a desktop sends when you switch to something else. */
+    function sleep() {
+      asleep = true;
+      if (!ctx || ctx.state !== "running") return;
+      waking = false;
+      try { ctx.suspend(); } catch (e) {}
+    }
+    var acRegistered = false;
     function watchForWaking() {
       if (wakeBound || typeof document === "undefined") return;
       wakeBound = true;
       document.addEventListener("visibilitychange", function () {
-        if (!document.hidden) wake();
+        if (document.hidden) sleep(); else wake();
       });
+      window.addEventListener("blur", sleep);
+      window.addEventListener("pagehide", sleep);
       window.addEventListener("pageshow", wake);
       window.addEventListener("focus", wake);
       /* the belt and braces: a browser that will not resume without a
@@ -1244,6 +1276,11 @@
       });
       if ("onstatechange" in ctx) {
         ctx.onstatechange = function () {
+          /* the suspend WE just asked for also lands here, and on a
+             desktop the tab is still visible while the window is not
+             focused — so without knowing our own intent this watchdog
+             undid the hush the instant it happened */
+          if (asleep || (window.audioAsleep && window.audioAsleep())) return;
           if (stopped() && !document.hidden) wake();
         };
       }
@@ -10210,6 +10247,9 @@
     t.style.height = a.height + "px";
   }
 
+  /* the thumbstick's own let-go, reachable from outside it */
+  var stickRelease = null;
+
   function bindStick() {
     var zone = $("ap-stick");
     var stage = $("ap-stage");
@@ -10274,6 +10314,8 @@
       var el0 = t && t.target;
       return !!(el0 && el0.closest && el0.closest(OWNS_ITS_TOUCH));
     }
+    stickRelease = release;
+
     function down(e) {
       var r = stage.getBoundingClientRect();
       var ts = e.changedTouches ? e.changedTouches : [e];
@@ -16244,6 +16286,32 @@
     });
     bindPad();
     bindStick();
+    /* A KEY HELD WHEN THE PAGE GOES AWAY IS NEVER RELEASED.
+
+       The browser delivers keydown while you are here and keyup while
+       you are here; let go of the arrow in another window and the keyup
+       goes to that window. So the game came back still holding it — and
+       a held right cancels a pressed left exactly, which is why the
+       keyboard read as dead while the thumbstick, which writes all four
+       directions at once from where the thumb is, went on working.
+
+       Everything that can be held is let go of when the page loses
+       either the focus or the tab. */
+    function letGo() {
+      for (var k in KEY) KEY[k] = 0;
+      usePressed = false;
+      useLatched = false;
+      if (G) { G.stickPush = 0; if (G.player) G.player.__sneakWas = false; }
+      if (stickRelease) { try { stickRelease(); } catch (e) {} }
+      var pad = $("screen-apoc") || document;
+      Array.prototype.forEach.call(pad.querySelectorAll("[data-ap-key].on"),
+        function (b) { b.classList.remove("on"); });
+    }
+    window.addEventListener("blur", letGo);
+    window.addEventListener("pagehide", letGo);
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) letGo();
+    });
     fitTouch();
   }
 
