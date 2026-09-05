@@ -561,7 +561,7 @@ window.Scrapbook = (function () {
     /* 6deg is the reddest of them, 30 the most golden */
     var warmth = Math.max(0, Math.min(1, (photoHue - 6) / 24));
     return heavy ? (358 - warmth * 20)      /* coral rose -> deeper rose */
-                 : (45 - warmth * 12);      /* cream      -> honey      */
+                 : (38 - warmth * 11);      /* warm sand  -> honey      */
   }
   var HEAVY = { rose: 1, rose2: 1, mauve: 1 };
 
@@ -572,10 +572,18 @@ window.Scrapbook = (function () {
     rose:   { s: 46, l: 57, hi: [34, 94, .34], lo: [58, 17, .36] },
     rose2:  { s: 44, l: 52, hi: [30, 92, .30], lo: [56, 15, .38] },
     mauve:  { s: 38, l: 50, hi: [28, 91, .28], lo: [52, 13, .38] },
-    cream:  { s: 46, l: 85, hi: [40, 99, .60], lo: [42, 42, .26] },
-    ivory:  { s: 48, l: 89, hi: [40, 99, .66], lo: [40, 45, .20] },
-    blush:  { s: 52, l: 86, hi: [40, 99, .55], lo: [44, 40, .26] },
-    grid:   { s: 40, l: 92, hi: [30, 99, .50], lo: [38, 48, .18] },
+    /* The pale sheets used to sit at 85-92% lightness -- practically white
+       -- with rose pages at 57% on either side of them. That is a jump of
+       thirty points of value every time the book crosses from one to the
+       other, and it is most of what he meant by "it feels weird passing
+       from color to color". They are warm sand and blush now rather than
+       paper white: still clearly the light half of the book's rhythm, but
+       close enough in tone that turning onto one is a change of key rather
+       than a light being switched on. */
+    cream:  { s: 50, l: 81, hi: [40, 98, .55], lo: [44, 40, .28] },
+    ivory:  { s: 52, l: 84, hi: [40, 98, .58], lo: [42, 42, .24] },
+    blush:  { s: 56, l: 82, hi: [42, 98, .50], lo: [46, 38, .28] },
+    grid:   { s: 46, l: 87, hi: [32, 98, .46], lo: [40, 45, .22] },
   };
 
   /* the patch — the coloured rectangle laid on the page — sits a couple of
@@ -1505,6 +1513,9 @@ window.Scrapbook = (function () {
     { paper: "rose", pieces: [
       { k: "note", left: 4, top: 5, w: 56, rot: -1.5, text: W.p2note },
       { k: "letters", text: "MEMORIES", left: 84, top: 6 },
+      { k: "sticker", art: "lipInk",  left: -6, top: 62, w: 24, rot: -12 },
+      { k: "sticker", art: "starD",   left: 84, top: 44, w: 16, rot: 8 },
+      { k: "sticker", art: "rose",    left: 76, top: 72, w: 26, rot: -6 },
       { k: "photo", n: 4, style: "deckle",   left:  6, top: 30, w: 31, rot: -4, caption: W.p2small },
       { k: "sticker", art: "vinyl8", left: 44, top: 28, w: 22, rot: 0 },
       { k: "photo", n: 5, style: "polaroid", left: 48, top: 30, w: 32, rot:  3 },
@@ -1521,6 +1532,8 @@ window.Scrapbook = (function () {
       { k: "instantcam", n: 8, left: 20, top: 6, w: 68, rot: 1 },
       { k: "img", src: "assets/key.png", left: 26, top: 55, w: 9, rot: 12 },
       { k: "script", text: W.p3script, left: 50, top: 55, w: 44, rot: -7, size: 3.4 },
+      { k: "sticker", art: "flowers", left: 78, top: 36, w: 30, rot: 7 },
+      { k: "sticker", art: "starS",   left: 84, top: 88, w: 16, rot: -14 },
       { k: "idcard", n: 9, left: 5, top: 64, w: 72, rot: -2 },
     ]},
 
@@ -1532,6 +1545,9 @@ window.Scrapbook = (function () {
       { k: "letterpage", left: 12, top: 12, w: 82, rot: 0.6 },
       { k: "photo", n: 10, style: "corners", left: 6, top: 66, w: 27.9, rot: -5 },
       { k: "sticker", art: "vinylRose", left: 48, top: 72, w: 36, rot: 0 },
+      { k: "sticker", art: "flowers",   left: 80, top: 44, w: 30, rot: 9 },
+      { k: "sticker", art: "lipInk",    left: 86, top: 86, w: 22, rot: -14 },
+      { k: "sticker", art: "starS",     left: 88, top: 26, w: 15, rot: 16 },
       { k: "script", text: W.p4script, left: 12, top: 90, w: 40, rot: -4, size: 3.0, dark: true },
     ]},
 
@@ -1593,6 +1609,8 @@ window.Scrapbook = (function () {
       /* this page had no words on it at all, and two of the best portraits
          in the book sitting on it saying nothing */
       { k: "script", text: W.p8script, left: 7, top: 90, w: 50, rot: -2, size: 3.0 },
+      { k: "sticker", art: "flowers", left: -9, top: 30, w: 30, rot: -8 },
+      { k: "sticker", art: "starG",   left: 86, top: 60, w: 17, rot: 14 },
     ]},
 
     /* ---- 9 · these memories -------------------------------------- */
@@ -1614,6 +1632,9 @@ window.Scrapbook = (function () {
       { k: "photo", n: 30, style: "washed", left: 8, top: 2, w: 50.8, rot: 0.5, tape: "top" },
       { k: "script", text: W.p10script, left: 6, top: 34, w: 32, rot: -2, size: 3.2, dark: true },
       { k: "videocard", left: 10, top: 44, w: 80 },
+      { k: "sticker", art: "starG",   left: -5, top: 16, w: 20, rot: -10 },
+      { k: "sticker", art: "starS",   left: 88, top: 76, w: 18, rot: 12 },
+      { k: "sticker", art: "rose",    left: -8, top: 74, w: 26, rot: 6 },
     ]},
   ];
 
@@ -3537,14 +3558,21 @@ window.Scrapbook = (function () {
   function stripCount() {
     if (stripPref === null) {
       var small = window.matchMedia && window.matchMedia("(max-width: 760px)").matches;
-      stripPref = small ? 7 : 10;
+      /* Higher than it was, for two reasons. The strips now span 144% of
+         the page rather than 100%, so the same count would be a coarser
+         cut; and he said the turn still reads as sliding panels, which is
+         what too few strips looks like -- every joint is a visible kink,
+         and the fewer of them there are the more each one shows. The
+         tuner below still takes them away on a device that cannot afford
+         them. */
+      stripPref = small ? 13 : 18;
     }
     return stripPref;
   }
 
   function tuneStrips(avgFrameMs) {
-    if (avgFrameMs > 28 && stripPref > 5) stripPref -= 2;
-    else if (avgFrameMs < 15 && stripPref < 13) stripPref += 1;
+    if (avgFrameMs > 28 && stripPref > 7) stripPref -= 2;
+    else if (avgFrameMs < 15 && stripPref < 22) stripPref += 2;
   }
 
   /* Cut a page into strips, each one a window onto the same page.
@@ -3552,27 +3580,49 @@ window.Scrapbook = (function () {
      This is the expensive part of a turn — a page cloned once per strip —
      so it is done ahead of time, while she is looking at the spread, and
      the turn itself only has to adopt the result. */
+  /* THE BLEED, AND WHY THE STICKERS USED TO VANISH MID-TURN.
+
+     His words: "some parts of stickers or even photos have a bit of them
+     in common with the one next to it, so when turning the page, that part
+     starts lagging and disappears until the page returns to its state
+     form."
+
+     Fourteen pieces in this book are placed deliberately over the edge of
+     their page -- a disco ball at left:-9, the vinyl rose at -12 -- because
+     that overhang is what makes a scrapbook look stuck together by hand
+     rather than laid out on a grid. At rest you see them. But the strips
+     that carry the page through a turn were windows onto exactly 0..100%
+     of it, so anything outside that box had no strip to ride on: it
+     disappeared the instant the turn began and came back when it ended.
+
+     So the strips cover more than the page now. They start BEFORE its
+     leading edge and finish after it, and everything hanging over either
+     side rides round with the sheet it is stuck to, which is what it does
+     on a real page. */
+  var BLEED = 22;          /* % of the page width, each side */
+
   function buildStripFragment(pageNode, hingeRight) {
     if (!pageNode) return null;
     var frag = document.createDocumentFragment();
     STRIPS = stripCount();
-    var d = 100 / STRIPS;
+    var span = 100 + BLEED * 2;
+    var d = span / STRIPS;                 /* strip width, in page-% */
     for (var i = 0; i < STRIPS; i++) {
+      var startPct = -BLEED + i * d;       /* where this strip begins */
       var strip = el("sb-strip");
       /* The overlap has to cover the kink at every joint, and how big that
-         kink is depends on how hard the sheet is bent -- 0.16% was cut for
-         a gentler curve than this one now bends to, and at the deeper bend
-         the joins opened into gaps you could see the page through. The
-         sheet stopped reading as paper and started reading as a venetian
-         blind. Overlap scales with the strip count: fewer, wider strips
-         turn through a bigger angle at each joint and need more of it. */
-      strip.style.width = (d * 1.06 + 0.5) + "%";
+         kink is depends on how hard the sheet is bent. Without it the
+         joins open into gaps you can see the page through and the sheet
+         reads as a venetian blind instead of paper. */
+      strip.style.width = (d * 1.06 + 0.4) + "%";
       if (hingeRight) { strip.style.right = "0"; strip.style.transformOrigin = "right center"; }
       else            { strip.style.left  = "0"; strip.style.transformOrigin = "left center"; }
 
       var inner = el("sb-strip-inner");
-      inner.style.width = (100 * STRIPS) + "%";
-      inner.style[hingeRight ? "right" : "left"] = "-" + (i * 100) + "%";
+      /* the inner is the whole page, shifted so this strip is a window
+         onto its own slice of it -- including the slices outside the page */
+      inner.style.width = (100 / d * 100).toFixed(3) + "%";
+      inner.style[hingeRight ? "right" : "left"] = (-startPct / d * 100).toFixed(3) + "%";
 
       var clone = pageNode.cloneNode(true);
       clone.classList.add("in-leaf", "on");
@@ -3650,14 +3700,25 @@ window.Scrapbook = (function () {
     if (!leaf || leaf.dataset.empty) return;
     var strips = leaf.children, n = strips.length;
     if (!n) return;
-    var d = W / n;
+    var span = 1 + (BLEED * 2) / 100;
+    var d = (W * span) / n;
+    var s0 = -W * (BLEED / 100);
     var sign = hingeRight ? -1 : 1;
     for (var i = 0; i < n; i++) {
-      var s = i * d;
-      var aTan = A - kappa * s;
-      var x, z;
-      if (Math.abs(kappa) < 1e-6) { x = s * Math.cos(A); z = s * Math.sin(A); }
-      else {
+      var s = s0 + i * d;
+      var aTan, x, z;
+      if (s < 0) {
+        /* Behind the leading edge -- the part hanging over the gutter. The
+           sheet is not bent back there, it lies flat along the spine, so
+           these strips run straight off the first one's tangent. Curving
+           them backwards would fold the overhang the wrong way. */
+        aTan = A;
+        x = s * Math.cos(A);
+        z = s * Math.sin(A);
+      } else if (Math.abs(kappa) < 1e-6) {
+        aTan = A; x = s * Math.cos(A); z = s * Math.sin(A);
+      } else {
+        aTan = A - kappa * s;
         x = (Math.sin(A) - Math.sin(A - kappa * s)) / kappa;
         z = (Math.cos(A - kappa * s) - Math.cos(A)) / kappa;
       }
@@ -3670,7 +3731,8 @@ window.Scrapbook = (function () {
          flat would band the sheet, so every strip runs from its own angle
          to the next one's — the joins then match and the light reads as
          one continuous curve. */
-      var aEnd = A - kappa * (s + d);
+      var sEnd = s + d;
+      var aEnd = sEnd <= 0 ? A : A - kappa * sEnd;
       var st2 = st.style;
       st2.setProperty("--d0", shadeAt(aTan).toFixed(3));
       st2.setProperty("--d1", shadeAt(aEnd).toFixed(3));
