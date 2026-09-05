@@ -7943,6 +7943,9 @@ function windHotspot() {
   elk.style.top = y + "%";
   elk.style.setProperty("--k", Math.round(clamp(G.windT / WIND.hold, 0, 1) * 100) + "%");
   elk.classList.toggle("winding", G.winding === target.def.id);
+  /* say whose key it is. The name was being set and never shown. */
+  const lab = elk.firstElementChild;
+  if (lab && lab.textContent !== target.def.name) lab.textContent = target.def.name;
   elk.dataset.who = target.def.name;
 }
 function windNeeded(ch) { return (ch.wound || 0) < WIND.hours * 0.55; }

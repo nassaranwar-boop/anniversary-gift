@@ -31,6 +31,11 @@ let fails = 0;
       st.textContent = '.screen.anim-in{animation:none !important}';
       document.head.appendChild(st);
       try { localStorage.clear(); } catch (e) {}
+      /* the opening film plays on a clean slate, and route('start') hands
+         straight to it — so this measured a hidden pad with every control
+         collapsed at 0,0 and called all six of them "outside the frame"
+         at every size, including the desktop. Skip the film. */
+      try { localStorage.setItem('ns_seenintro', '1'); localStorage.setItem('ns_notutor', '1'); } catch (e) {}
       showScreen('nightshift'); OuissysNightShift.start(); OuissysNightShift.__night.silence(true);
     });
     /* start() shows a loading card and builds the shop a frame later, so
@@ -38,7 +43,7 @@ let fails = 0;
     await p.waitForFunction(() => Object.keys(OuissysNightShift.__night.cast()).length >= 4,
                             { timeout: 20000, polling: 200 });
     await p.evaluate(() => {
-      OuissysNightShift.__night.route('start'); OuissysNightShift.__night.route('go');
+      OuissysNightShift.__night.route('night:1'); OuissysNightShift.__night.route('go');
       OuissysNightShift.__night.press('monitor');
     });
     await p.waitForTimeout(1400);
@@ -47,7 +52,7 @@ let fails = 0;
       /* held upright the controls sit under the stage, so the box they
          must stay inside is the frame, not the stage */
       const fr = document.querySelector('.ns-frame').getBoundingClientRect();
-      const out = { stage: [Math.round(st.width), Math.round(st.height)], small: [], outside: [], hScroll: document.documentElement.scrollWidth > window.innerWidth + 1 };
+      const out = { stage: [Math.round(st.width), Math.round(st.height)], small: [], outside: [], overlap: [], hScroll: document.documentElement.scrollWidth > window.innerWidth + 1 };
       /* the plan on the tube is a display first: on a phone it is the
          arrows on the pad that change camera, so its cells are only
          held to a thumb target on a screen big enough for a pointer */
@@ -61,13 +66,31 @@ let fails = 0;
         if (r.width < 40 || r.height < 34) out.small.push(label + ' ' + Math.round(r.width) + 'x' + Math.round(r.height));
         if (r.left < fr.left - 1 || r.right > fr.right + 1 || r.top < fr.top - 1 || r.bottom > fr.bottom + 1) out.outside.push(label);
       });
+      /* Do any two controls sit on top of each other? Nothing else here
+         would have caught the winding key's class colliding with the
+         pad's: every button was still its full size and still inside
+         the frame, they were simply all in the same place. */
+      const boxes = [];
+      document.querySelectorAll('#ns-pad .ns-key').forEach((el) => {
+        if (getComputedStyle(el).display === 'none') return;
+        const r = el.getBoundingClientRect();
+        if (r.width && r.height) boxes.push([el.dataset.k || '?', r]);
+      });
+      for (let i = 0; i < boxes.length; i++)
+        for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i][1], c = boxes[j][1];
+          if (a.left < c.right - 1 && c.left < a.right - 1 &&
+              a.top < c.bottom - 1 && c.top < a.bottom - 1)
+            out.overlap.push(boxes[i][0] + '/' + boxes[j][0]);
+        }
       return out;
     });
     console.log(name + '  stage ' + m.stage.join('x'));
     if (m.hScroll) { console.log('  FAIL horizontal scroll'); fails++; }
     if (m.outside.length) { console.log('  FAIL outside the stage: ' + m.outside.join(', ')); fails++; }
     if (m.small.length) { console.log('  FAIL too small to hit: ' + m.small.join(', ')); fails++; }
-    if (!m.hScroll && !m.outside.length && !m.small.length) console.log('  ok');
+    if (m.overlap.length) { console.log('  FAIL controls on top of each other: ' + m.overlap.join(', ')); fails++; }
+    if (!m.hScroll && !m.outside.length && !m.small.length && !m.overlap.length) console.log('  ok');
     const cdp = await p.context().newCDPSession(p);
     const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
     fs.writeFileSync(OUT + '-' + name + '.png', Buffer.from(data, 'base64'));

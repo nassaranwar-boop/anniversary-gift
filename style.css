@@ -4833,14 +4833,22 @@ img{-webkit-user-drag:none; user-select:none;}
 /* the winding key. A ring that fills as she holds it, over whichever of
    his four she is looking at — the only control in the chapter that
    asks for a second and a bit rather than a tap, because winding
-   something is not a thing you do by tapping it. */
-.ns-key{
+   something is not a thing you do by tapping it.
+
+   It is `.ns-wind` and not `.ns-key` because the six buttons along the
+   bottom of the panel have been `.ns-key` since long before this
+   existed. Naming this one the same thing gave every one of them
+   `position:absolute` and `transform:translate(-50%,-50%)`: the pad
+   collapsed to eight pixels tall and both doors, the hatch, the camera
+   button and both arrows stacked on one point in the bottom left
+   corner, half of each of them off the side of the screen. */
+.ns-wind{
   position:absolute; z-index:9; transform:translate(-50%,-50%);
   width:max(7cqh, 44px); height:max(7cqh, 44px);
   border:0; padding:0; cursor:pointer; background:transparent;
   border-radius:50%; -webkit-tap-highlight-color:transparent;
 }
-.ns-key::before{
+.ns-wind::before{
   content:""; position:absolute; inset:14%;
   border-radius:50%;
   border:.28cqw solid rgba(200,162,96,.55);
@@ -4848,17 +4856,24 @@ img{-webkit-user-drag:none; user-select:none;}
   transition:border-color .2s ease;
 }
 /* the fill, drawn as a conic sweep from --k */
-.ns-key::after{
+.ns-wind::after{
   content:""; position:absolute; inset:14%;
   border-radius:50%;
   background:conic-gradient(rgba(255,206,140,.85) var(--k, 0%), transparent 0);
   -webkit-mask:radial-gradient(circle, transparent 58%, #000 60%);
   mask:radial-gradient(circle, transparent 58%, #000 60%);
 }
-.ns-key.winding::before{ border-color:rgba(255,206,140,.95); }
-.ns-key[hidden]{ display:none !important; }
-/* whose key it is */
-.ns-key[data-who]::first-line{ content:attr(data-who); }
+.ns-wind.winding::before{ border-color:rgba(255,206,140,.95); }
+.ns-wind[hidden]{ display:none !important; }
+/* whose key it is. This was `::first-line { content: attr(data-who) }`,
+   which does nothing at all — `content` does not apply to ::first-line —
+   so the game set the name and then never showed it to her. */
+.ns-wind i{
+  position:absolute; left:50%; top:104%; transform:translateX(-50%);
+  font-style:normal; font-size:max(1.3cqh, 9px); letter-spacing:.18em;
+  color:rgba(255,206,140,.9); white-space:nowrap;
+  text-shadow:0 1px 3px rgba(0,0,0,.9);
+}
 
 /* THE OPENING ---------------------------------------------------------
    Letterboxed, because it is a film and it should announce that it is
