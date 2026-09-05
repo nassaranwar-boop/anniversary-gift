@@ -189,6 +189,14 @@ summary,
 html,body{
   height:100%; font-family:'Poppins',sans-serif; overflow:hidden;
   overscroll-behavior:none; -webkit-tap-highlight-color:transparent;
+  /* Nothing on this site scrolls the document — every screen is its own
+     fixed box, and the two lists that do scroll (the hub, the keepsake)
+     scroll inside themselves. overflow:hidden alone is not enough on iOS:
+     an oversized descendant of a fixed box can still make the page draggable
+     there, which is the strip of nothing he could pull down into. A fixed
+     body has no scrollable content at all, so it cannot happen however wrong
+     anything inside it goes. */
+  position:fixed; inset:0; width:100%;
   /* The ground behind every screen. If a screen is ever a pixel short of
      the viewport — mid-rotation, mid-zoom — what shows through is the
      site's own blush rather than a band of white. */
@@ -584,6 +592,33 @@ img{-webkit-user-drag:none; user-select:none;}
 .dpad-3d{
   margin-top:16px; display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:4px; z-index:2; position:relative;
 }
+
+/* A PHONE ON ITS SIDE.
+
+   The board is sized from the width -- min(92vw,410px) with a 1:1 outer --
+   which is right in portrait and hopeless in landscape: 410px of board plus
+   the HUD plus a 158px pad came to about 630px stacked inside a 390px
+   screen. The stage was cut off at the top, and the whole D-pad sat below
+   the fold where it could not be reached at all, so the maze simply could
+   not be played with the phone turned.
+
+   In landscape the room is horizontal, so the board takes its size from the
+   height and the pad moves beside it. flex-wrap does the arranging: the HUD
+   claims a full row and pushes itself onto its own line, and the board and
+   the pad share the line under it. No markup moves. */
+@media (max-height:560px) and (min-width:600px){
+  #screen-maze{ flex-direction:row; flex-wrap:wrap; align-content:center; gap:0 18px; }
+  #screen-maze .hud-bar{ flex-basis:100%; margin-bottom:7px; gap:7px; }
+  #screen-maze .hud-pill{ padding:4px 9px; }
+  /* --app-h, not vh: vh is the large viewport, and sizing the board from
+     it put 13px of board under the fold the moment the URL bar showed. */
+  .book-spread{ width:auto; height:min(calc(var(--app-h) - 66px),410px); padding:8px; border-radius:18px; }
+  .maze-outer{ width:auto; height:100%; }
+  .dpad-3d{
+    margin-top:0;
+    grid-template-columns:46px 46px 46px; grid-template-rows:46px 46px 46px;
+  }
+}
 /* one chevron, rotated; cut into the key rather than printed on it */
 .mz-ico{width:46%; height:46%; display:block; pointer-events:none;}
 .mz-ico-cut{fill:#5a3412; opacity:.92;}
@@ -750,7 +785,14 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .book-loading.hidden{opacity:0; pointer-events:none;}
 
-.white-cut{position:fixed; inset:0; z-index:50; pointer-events:none; background:#fff6e2; opacity:0; transition:opacity .5s ease;}
+/* --app-h, not inset:0 alone. A fixed box takes its height from the LARGE
+   viewport — the page as it would be with the browser's own UI hidden —
+   so this flash was 88px taller than the screen it covers, for the same
+   reason .screen has to say its height out loud two hundred lines up. */
+.white-cut{
+  position:fixed; inset:0; height:var(--app-h); max-height:var(--app-h);
+  z-index:50; pointer-events:none; background:#fff6e2; opacity:0; transition:opacity .5s ease;
+}
 .white-cut.active{opacity:1;}
 
 /* ---- Gate (on real parchment art) ---- */
@@ -1006,7 +1048,9 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* ---- Letter (on real scroll art) ---- */
 .letter-scroll{
-  position:relative; height:min(72vh,500px); aspect-ratio:467/534; margin:0 auto;
+  /* measured against the part of the page you can see, not the taller
+     one the browser would have if it hid its own UI */
+  position:relative; height:min(calc(var(--app-h) * .72),500px); aspect-ratio:467/534; margin:0 auto;
   background-image:url("assets/scroll-symmetric.png"); background-size:100% 100%; background-repeat:no-repeat;
   display:flex; align-items:center; justify-content:center;
   filter:saturate(.7) brightness(1.12) hue-rotate(-8deg)
@@ -1111,6 +1155,29 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; top:0; height:100%; display:none;
   background-size:cover; background-position:center;
   container-type:inline-size;
+  /* a warm default, for any page the tint table has nothing to say about */
+  --pg-h:26; --pg-s:22%;
+}
+/* THE PAGE'S OWN LIGHT.
+   A wash in the colour of the photographs that page carries, laid over the
+   paper and under everything mounted on it. It is what stops two lamplit
+   amber prints from sitting on a purple sheet looking like they were cut
+   out of somebody else's album.
+
+   Under, not over: this is ::before, so every photo, patch and sticker
+   paints on top of it and no picture is tinted -- only the field around
+   it. Plain alpha, no blend mode and no filter: a page gets cloned into
+   ten strips on every turn, and a blended layer would be cloned with it. */
+.sb-page::before{
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(118% 76% at 50% 8%,
+      hsl(var(--pg-h) var(--pg-s) 88% / .52), transparent 70%),
+    radial-gradient(96% 62% at 14% 96%,
+      hsl(var(--pg-h) var(--pg-s) 72% / .38), transparent 74%),
+    linear-gradient(168deg,
+      hsl(var(--pg-h) var(--pg-s) 86% / .28) 0%,
+      hsl(var(--pg-h) var(--pg-s) 60% / .38) 100%);
 }
 .sb-page.on{display:block;}
 .sb-page.leftpage{left:0; width:50%;}
@@ -1302,10 +1369,22 @@ img{-webkit-user-drag:none; user-select:none;}
    is its own static child so its padding is a share of the card, and
    the mount's lip is drawn back over the print, so the photo reads as
    tucked behind the frame rather than laid on top of it. */
+/* the coloured paper rectangles are the largest flat areas on a page, so
+   they carry the page's colour as well or the wash reads as a haze over
+   something that disagrees with it */
+.sb-patch::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(166deg,
+    hsl(var(--pg-h) var(--pg-s) 76% / .38),
+    hsl(var(--pg-h) var(--pg-s) 54% / .34));
+}
+
 .sb-photo{
   transform:rotate(var(--rot,0deg)); cursor:pointer; z-index:3;
+  --ph-h:26; --ph-s:20%;
   transition:transform .3s var(--ease-out);
-  --mount:#fdfbf4;
+  /* the card, tinted a few percent towards its own photograph */
+  --mount:hsl(var(--ph-h) calc(var(--ph-s) * .55) 96.5%);
   --lip:2px;
 }
 .sb-photo:hover{transform:rotate(var(--rot,0deg)) scale(1.03) translateY(-2px); z-index:9;}
@@ -1345,7 +1424,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* — polaroid: a tall card, the print nearly filling the top — */
-.sb-photo-polaroid{--mount:#fdfcf6; --lip:3px;}
+.sb-photo-polaroid{--mount:hsl(var(--ph-h) calc(var(--ph-s) * .5) 97.5%); --lip:3px;}
 .sb-photo-polaroid .sb-photo-mount{
   padding:5.5% 5.5% 19%;
   background:linear-gradient(168deg,#fffefa 0%,#fbf7ee 58%,#f0eade 100%);
@@ -1362,7 +1441,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* — snapshot: a glossy print, thin white edge, corner date — */
-.sb-photo-snapshot{--mount:#fffdf8; --lip:2px;}
+.sb-photo-snapshot{--mount:hsl(var(--ph-h) calc(var(--ph-s) * .45) 98%); --lip:2px;}
 .sb-photo-snapshot .sb-photo-mount{
   padding:3%;
   background:linear-gradient(160deg,#fffdf8,#f5efe4);
@@ -1376,7 +1455,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* — matted: board with a gold rule, a generous window — */
-.sb-photo-matted{--mount:#f4ecdc; --lip:2px;}
+.sb-photo-matted{--mount:hsl(var(--ph-h) calc(var(--ph-s) * .8) 91%); --lip:2px;}
 .sb-photo-matted .sb-photo-mount{
   padding:7% 7% 11%;
   background:linear-gradient(155deg,#f8f1e3,#ebe1cd);
@@ -1403,7 +1482,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-corner-br{right:-1%; bottom:-1%; clip-path:polygon(100% 0,100% 100%,0 100%);}
 
 /* — deckle: a torn paper edge round the print — */
-.sb-photo-deckle{--mount:#fffdf6; --lip:2px; filter:drop-shadow(0 10px 20px rgba(24,16,6,.36));}
+.sb-photo-deckle{--mount:hsl(var(--ph-h) calc(var(--ph-s) * .45) 98%); --lip:2px; filter:drop-shadow(0 10px 20px rgba(24,16,6,.36));}
 .sb-photo-deckle .sb-photo-mount{
   padding:4.5%;
   background:#fffdf6;
@@ -1431,6 +1510,29 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:0 12px 24px rgba(48,18,28,.4), 0 0 0 1px rgba(150,100,112,.3);
 }
 .sb-photo-washed .sb-photo-inner{aspect-ratio:4/3;}
+
+/* ---- a tall gallery print --------------------------------------
+   For the long gap under the film strip. Everything else in the book is
+   square, 4:3 or 3:2, so a genuinely portrait frame was missing and that
+   corner of the page had nothing the right shape to fill it. A wide mat
+   and a thin gold rule inside it, so it reads as the one properly
+   mounted print in a book of snapshots. */
+.sb-photo-portrait{--mount:hsl(var(--ph-h) calc(var(--ph-s) * .7) 96%); --lip:2px;}
+.sb-photo-portrait .sb-photo-mount{
+  padding:6.5% 6.5% 13%;
+  background:linear-gradient(168deg,#fefaf1 0%,#f7efdd 62%,#efe4cd 100%);
+  border-radius:2px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.92) inset,
+    0 13px 27px rgba(24,16,6,.34),
+    0 2px 6px rgba(24,16,6,.22);
+}
+.sb-photo-portrait .sb-photo-inner{aspect-ratio:2/3;}
+.sb-photo-portrait .sb-photo-mount::before{
+  content:""; position:absolute; inset:3.4% 3.4% 9.4%;
+  border:1px solid rgba(196,156,92,.5); border-radius:1px;
+  pointer-events:none; z-index:1;
+}
 
 /* — a plain print, and the ones that live inside something else — */
 .sb-photo-plain{--mount:#fffdf8; --lip:2px;}
@@ -1873,34 +1975,97 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .sb-vid-artist{margin:1px 0 0; font-family:var(--font-body); font-size:10px; color:rgba(226,240,246,.68);}
 
-/* our own video: a film slate until the file is there */
+/* ---- our own video ------------------------------------------------
+   It used to be a black 16:9 rectangle with a film slate in it, sitting
+   on a page of cream paper and cut photographs and looking like a hole.
+   Now it is a strip of film taped into the book: the same mount every
+   photo here uses, sprocket edges down both sides, a real frame of the
+   two of them showing before anything is tapped, and a warm disc for the
+   play control rather than a cold white circle borrowed from a video
+   site. The slate is still underneath and still appears if the file ever
+   goes missing again. */
 .sb-w-ourvideo{padding:0;}
-.sb-w-ourvideo video{opacity:0; transition:opacity .4s ease;}
-.sb-w-ourvideo.ready video{opacity:1;}
+.sb-ov-mount{
+  position:relative; padding:9px 8px; border-radius:5px;
+  background:linear-gradient(168deg,#fdfbf4,#f4ecdb);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.9) inset,
+    0 10px 22px rgba(70,44,20,.30),
+    0 2px 5px rgba(70,44,20,.18);
+}
+/* the sprocket edges, the same idea as the film cells on the other pages */
+.sb-ov-holes{
+  position:absolute; left:9px; right:9px; height:7px; z-index:4;
+  display:flex; justify-content:space-around; align-items:center; pointer-events:none;
+}
+.sb-ov-holes.a{top:1px;} .sb-ov-holes.b{bottom:1px;}
+.sb-ov-holes i{
+  display:block; width:7px; height:5px; border-radius:1px;
+  background:#e7dcc4; box-shadow:0 0 0 1px rgba(120,90,50,.28) inset;
+}
+.sb-w-ourvideo .sb-vid-frame{
+  border-radius:2px; background:#171d21;
+  box-shadow:0 0 0 1px rgba(90,62,30,.30), 0 4px 12px rgba(40,26,10,.34) inset;
+}
+/* the still, held underneath the video the whole time */
+.sb-ov-poster{
+  position:absolute; inset:0; z-index:1;
+  background-size:cover; background-position:50% 42%;
+  transition:opacity .45s ease, transform 6s ease;
+}
+.sb-w-ourvideo.playing .sb-ov-poster{opacity:0;}
+/* a breath of warmth over the still so it belongs to the page */
+.sb-ov-veil{
+  position:absolute; inset:0; z-index:2; pointer-events:none;
+  background:
+    radial-gradient(ellipse at 44% 40%, rgba(255,226,180,.14), transparent 62%),
+    linear-gradient(180deg, rgba(28,16,8,.10) 0%, rgba(28,16,8,0) 40%, rgba(24,14,6,.46) 100%);
+  transition:opacity .4s ease;
+}
+.sb-w-ourvideo.playing .sb-ov-veil{opacity:0;}
+.sb-w-ourvideo video{opacity:0; transition:opacity .4s ease; z-index:1;}
+.sb-w-ourvideo.playing video{opacity:1; z-index:3;}
+/* the slate only while there is no picture at all */
+.sb-w-ourvideo.hasposter .sb-vid-empty,
 .sb-w-ourvideo.ready .sb-vid-empty{display:none;}
-.sb-vid-empty{
-  position:absolute; inset:0; z-index:2;
+
+/* the play control: an engraved disc, warm, the book's own palette */
+.sb-w-ourvideo .sb-vid-play{
+  width:auto; height:auto; padding:0; border-radius:0; z-index:5;
+  background:none; box-shadow:none;
+  flex-direction:column; gap:5px;
+}
+.sb-ov-disc{
   display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(160deg,#2b3238,#1b2126);
+  width:52px; height:52px; border-radius:50%;
+  color:#5a3411;
+  background:linear-gradient(168deg,#fdf3dc,#eed9ab);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.85) inset,
+    0 -2px 0 rgba(150,104,44,.32) inset,
+    0 0 0 1.5px rgba(214,176,110,.85),
+    0 5px 0 rgba(120,80,32,.34),
+    0 10px 20px rgba(40,24,8,.45);
+  transition:transform .18s var(--ease-out), box-shadow .18s var(--ease-out);
 }
-.sb-slate{
-  width:76%; padding:12px 14px; text-align:center; border-radius:4px;
-  background:linear-gradient(170deg,#333b41,#232a2f);
-  box-shadow:0 8px 18px rgba(0,0,0,.44), 0 0 0 1px rgba(255,255,255,.07) inset;
+.sb-ov-word{
+  font-family:var(--font-script); font-size:14px; line-height:1; color:#fdf6e8;
+  text-shadow:0 1px 4px rgba(20,10,4,.7); opacity:.92;
 }
-.sb-slate-bar{
-  height:9px; margin:-4px -6px 9px; border-radius:2px;
-  background:repeating-linear-gradient(115deg,#f2f2ee 0 12px,#20262a 12px 24px);
-  box-shadow:0 2px 5px rgba(0,0,0,.4);
+.sb-w-ourvideo .sb-vid-play:active .sb-ov-disc{
+  transform:translateY(3px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.7) inset,
+    0 0 0 1.5px rgba(214,176,110,.85),
+    0 2px 0 rgba(120,80,32,.34),
+    0 5px 12px rgba(40,24,8,.4);
 }
-.sb-slate-title{
-  margin:0; font-family:'Playfair Display',serif; font-style:italic; font-weight:700;
-  font-size:14px; color:#eef3f4;
-}
-.sb-slate-file{
-  margin:3px 0 0; font-family:var(--font-body); font-size:8.5px; letter-spacing:.08em;
-  color:rgba(214,228,232,.5);
-}
+.sb-w-ourvideo .sb-vid-play:active{transform:translate(-50%,-50%);}
+.sb-w-ourvideo .sb-ico-play{margin-left:3px;}
+/* while it plays, the control gets out of the way but stays reachable */
+.sb-w-ourvideo.playing .sb-vid-play{opacity:0;}
+.sb-w-ourvideo.playing .sb-vid-frame:hover .sb-vid-play{opacity:.85;}
+
 .sb-vid-cap{
   margin:7px 2px 0; text-align:center;
   font-family:var(--font-serif); font-style:italic; font-size:11px; color:#7a6a52;
@@ -2024,7 +2189,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .sb-lightbox.on{display:flex; animation:sbFade .3s ease;}
 .sb-lb-card{
-  width:min(88vw,340px); max-height:86vh; overflow-y:auto;
+  width:min(88vw,340px); max-height:calc(var(--app-h) * .86); overflow-y:auto;
   background:#fffdf7; border-radius:4px; padding:14px 14px 18px;
   box-shadow:0 26px 60px rgba(30,18,6,.5);
   transform:rotate(-1deg); animation:sbPop .42s var(--ease-pop);
@@ -2085,7 +2250,7 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---- phones: the drawer takes the screen, type stays legible ---- */
 @media (max-width:600px){
   .sb-drawer{width:100%; max-width:none; padding:16px 16px 96px;}
-  .sb-bq-stage{height:32vh; max-height:260px;}
+  .sb-bq-stage{height:calc(var(--app-h) * .32); max-height:260px;}
 }
 @media (prefers-reduced-motion: reduce){
   .sb-bq,.sb-map-pin,.sb-intro-hint,.sb-song-disc,.sb-curl,.sb-cover-hint-corner,
@@ -2284,9 +2449,29 @@ img{-webkit-user-drag:none; user-select:none;}
 /* =========================================================
    HUB — choose your adventure
    ========================================================= */
+/* Five cards do not fit a phone. The column came to 940px against a 745px
+   screen with the URL bar showing, and because it is centred in a flex
+   screen it overflowed at BOTH ends: The Maze was cut off above, Super
+   Ouissy Race below, and on the shorter phones neither could be tapped at
+   all — a chapter she could not reach. It got there quietly, one card at a
+   time, and nothing in the suite was measuring it.
+
+   So the column is bounded and scrolls inside itself, which is what
+   .ks-wrap next door has always done. The rhythm is tightened below as
+   well, so on most phones there is little or nothing left to scroll —
+   scrolling is the guarantee, not the plan. */
 .hub-wrap{
   width:min(94vw,620px); margin:0 auto; display:flex; flex-direction:column;
   align-items:center; justify-content:center; gap:8px; padding:16px 12px;
+  max-height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  /* without this the bounce at the end of the list drags the page with it,
+     which is the other way a strip of nothing appears under the site */
+  overscroll-behavior:contain;
+  scrollbar-width:none;
+}
+.hub-wrap::-webkit-scrollbar{ width:0; height:0; }
+
+
 }
 .hub-title{
   font-family:'Cinzel',serif; font-weight:700; font-size:clamp(19px,5.2vw,27px);
@@ -2333,12 +2518,45 @@ img{-webkit-user-drag:none; user-select:none;}
 .hub-keepsake{margin-top:14px; display:none;}
 .hub-keepsake.on{display:inline-block;}
 
+/* A short screen: give the cards back the pixels they do not need. Same
+   move as the Chapter Two card further up — tighten the rhythm rather than
+   let anything fall off the end. Scoped to narrow and to short separately:
+   a wide desktop window that happens to be 800px tall lays the cards out in
+   columns and has room to spare, so it keeps the full size. */
+@media (max-width:700px) and (max-height:880px){
+  .hub-wrap{padding:10px 12px; gap:5px;}
+  .hub-title{font-size:clamp(17px,4.8vw,23px);}
+  .hub-sub{font-size:12px; margin-bottom:5px;}
+  .hub-cards{gap:10px;}
+  .hub-card{padding:10px 12px 12px; gap:4px;}
+  .hub-art{height:58px;}
+  .hub-name{font-size:14.5px;}
+  .hub-desc{font-size:11px; line-height:1.35;}
+  .hub-keepsake{margin-top:9px;}
+}
+@media (max-width:700px) and (max-height:700px){
+  .hub-art{height:46px;}
+  .hub-card{padding:8px 11px 10px;}
+  .hub-sub{margin-bottom:2px;}
+}
+/* A phone on its side: wide, but barely taller than one card. */
+@media (max-height:520px){
+  .hub-wrap{padding:8px 12px; gap:4px;}
+  .hub-title{font-size:19px;}
+  .hub-sub{font-size:11.5px; margin-bottom:3px;}
+  .hub-art{height:46px;}
+  .hub-card{padding:8px 11px 10px; gap:3px;}
+  .hub-desc{font-size:11px; line-height:1.3;}
+}
+
+
 /* =========================================================
    KEEPSAKE — scrapbook recap
    ========================================================= */
 .ks-wrap{
   width:min(94vw,660px); margin:0 auto; display:flex; flex-direction:column;
   align-items:center; gap:8px; padding:16px 12px; max-height:100%; overflow-y:auto;
+  overscroll-behavior:contain;
 }
 .ks-title{
   font-family:'Great Vibes',cursive; font-size:clamp(28px,7.5vw,42px); color:#6b3d12;
@@ -3933,7 +4151,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-stage{
   position:relative; overflow:hidden;
   container-type:size; container-name:rcstage;
-  width:min(100%, calc(100vh * 1.7778));
+  width:min(100%, calc(var(--app-h) * 1.7778));
   aspect-ratio:16/9;
   border-radius:8px;
   background:#1a1226;

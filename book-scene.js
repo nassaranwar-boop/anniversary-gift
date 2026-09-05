@@ -1645,15 +1645,42 @@
       resizeRaf = requestAnimationFrame(onResize);
     }
     window.addEventListener("resize", queueResize);
-    window.addEventListener("orientationchange", queueResize);
-    /* Coming back to the tab is the other half of the bug he reported: the
-       browser can restore the page at a size it never told us about. Check
-       the box again on the way back in rather than trusting the last
-       number we were given. */
+
+    /* COMING BACK TO THE TAB IS ITS OWN PROBLEM, AND THIS IS WHY.
+
+       Frame-by-frame off his two recordings, the browser window does not
+       snap back when you return to Safari — it ANIMATES back, over about
+       three tenths of a second. Measuring where the page area started on
+       each frame of the restore:
+
+           t=6.05  0    t=6.07  411   t=6.08  346   t=6.10  277
+           t=6.12  208  t=6.13  195   t=6.15  165   t=6.17  143
+           t=6.18  127  t=6.20  112   t=6.22  101   t=6.24   97
+           t=6.25   88  t=6.27   85   t=6.29   81   t=6.32   75
+           t=6.35   72  ... settling at 93
+
+       Every one of those is a different viewport, and any of them will
+       happily answer a resize event. Whichever one the old code happened
+       to catch is the size it kept, because nothing came along afterwards
+       to correct it — which is exactly why he saw it land on the right
+       framing sometimes and the wrong one other times.
+
+       So a wake-up is not one measurement. It is a series of them across
+       the settle, and the last one wins. Cheap: onResize does nothing at
+       all when the numbers have not moved. */
+    var settleTimers = [];
+    function settle() {
+      settleTimers.forEach(clearTimeout);
+      settleTimers = [0, 60, 140, 260, 420, 650, 1000].map(function (ms) {
+        return setTimeout(queueResize, ms);
+      });
+    }
+    window.addEventListener("orientationchange", settle);
     document.addEventListener("visibilitychange", function () {
-      if (!document.hidden) queueResize();
+      if (!document.hidden) settle();
     });
-    window.addEventListener("pageshow", queueResize);
+    window.addEventListener("focus", settle);
+    window.addEventListener("pageshow", settle);
     /* The box itself is the thing that matters, so watch the box. Some
        mobile browsers change it without ever firing resize. */
     var ro = null;
@@ -1665,9 +1692,12 @@
       running = false;
       if (rafId) cancelAnimationFrame(rafId);
       if (resizeRaf) { cancelAnimationFrame(resizeRaf); resizeRaf = 0; }
+      settleTimers.forEach(clearTimeout);
+      settleTimers = [];
       window.removeEventListener("resize", queueResize);
-      window.removeEventListener("orientationchange", queueResize);
-      window.removeEventListener("pageshow", queueResize);
+      window.removeEventListener("orientationchange", settle);
+      window.removeEventListener("focus", settle);
+      window.removeEventListener("pageshow", settle);
       if (ro) { try { ro.disconnect(); } catch (e) {} ro = null; }
       disposables.forEach(function (d) { if (d && d.dispose) d.dispose(); });
       if (envRT) envRT.dispose();

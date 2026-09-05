@@ -86,13 +86,13 @@ window.Scrapbook = (function () {
        assets/our-video.jpg is used if it is there) ---- */
     ourVideo: {
       src:    "assets/our-video.mp4",
-      /* Left empty on purpose. A video element already shows its own first
-         frame once the metadata is in, so a separate poster file buys
-         nothing here and naming one that does not exist cost a 404 on every
-         build of the page. Put a filename back only if you want a frame
-         other than the first one. */
-      poster: "",
-      caption: "us",
+      /* A real frame of the two of you, lifted out of the video itself at
+         24.33s and warmed to sit in the book -- not the video's first
+         frame, which is a dark blur of somebody's sleeve. Written by
+         tools/img/poster.py, so it can be re-cut from a different second
+         without anybody having to open an editor. */
+      poster: "assets/our-video.jpg",
+      caption: "the long way home",
     },
 
     /* ---- the map. Pins are placed in % of the map card ---- */
@@ -1387,6 +1387,13 @@ window.Scrapbook = (function () {
       { k: "sticker", art: "clock", left: 30, top: 80, w: 22, rot: 0 },
       { k: "bouquet", left: 2, top: 38, w: 38, rot: -4 },
       { k: "filmstrip", cells: [20, 21, 22], left: 56, top: 4, w: 42 },
+      /* The long frame under the strip. The right half of this page below
+         the film was bare paper, which is the emptiest the book gets, and a
+         tall print is what the shape of that gap wants. It is slot "025",
+         not 25 -- 25 is already on the page after this one -- so the file
+         to drop in is assets/photo-025.jpg and nothing else has to change. */
+      { k: "photo", n: "025", style: "portrait", left: 55, top: 46.5, w: 38,
+        rot: 2, tape: "top" },
     ]},
 
     /* ---- 8 · the prints ------------------------------------------ */
@@ -1421,6 +1428,54 @@ window.Scrapbook = (function () {
       { k: "videocard", left: 10, top: 44, w: 80 },
     ]},
   ];
+
+  /* =======================================================================
+     THE COLOUR OF EACH PAGE
+
+     His note: "upgrade the book's pages so every page matches the vibe of
+     the photos in it so the colors difference between them wont look
+     weird."
+
+     He is right, and it was worst where a page of warm amber photographs
+     was mounted on pink or mauve paper -- page 8 especially, which is two
+     lamplit prints on a purple sheet. So each page now carries the colour
+     of the photographs on it, as a hue and a saturation, and the paper
+     wears a wash in that colour under everything else.
+
+     The numbers are measured, not guessed: tools/img/tints.py reads the
+     photos and writes them. Two rules make them usable as paper.
+
+     One, only two families of colour count -- the warm amber end and the
+     plum-to-rose end -- because those are the two this book is made of.
+     A green lawn or a teal shopfront in the corner of one photo gets no
+     vote. Averaging everything is what turned page 3 (one warm photo, one
+     teal one) into hue 66, a yellow-green that matched neither of them and
+     would have looked ill on paper.
+
+     Two, saturation is scaled well down and capped, so the page is tinted
+     rather than painted -- the crumpled paper texture underneath has to
+     stay visible or it stops being paper.
+
+     Rerun tools/img/tints.py after changing the photos. Page N is the Nth
+     entry in PAGES.
+     ======================================================================= */
+  var PAGE_TINT = {
+    1: [17, 40], 2: [11, 40], 3: [18, 30], 4: [20, 25],  5: [24, 40],
+    6: [19, 37], 7: [25, 40], 8: [26, 40], 9: [282, 40], 10: [279, 36],
+  };
+
+  /* And the same for each photo on its own, which tints only the mount it
+     is sitting in -- a warm print gets a warm cream card, a plum one gets
+     a cooler card, so a frame belongs to its picture instead of every
+     frame in the book being the same white. */
+  var PHOTO_TINT = {
+    1:[14,34], 2:[19,34], 3:[22,34], 4:[10,34], 5:[9,34], 6:[28,26],
+    7:[19,25], 8:[18,27], 9:[20,21], 10:[20,21], 11:[30,23], 12:[32,34],
+    13:[18,34], 14:[18,29], 15:[17,34], 16:[16,30], 17:[25,27], 18:[19,34],
+    19:[23,27], 20:[24,34], 21:[26,34], 22:[27,34], 23:[21,31], 24:[33,34],
+    25:[282,34], 26:[281,31], 27:[282,34], 28:[278,34], 29:[32,22], 30:[279,30],
+    32:[32,19], 33:[28,34], 34:[351,34],
+  };
 
   /* the back cover is its own thing, not a page of collage */
   var BACK = { title: "the end.", line1: "until next time,", line2: "— love, always •", line3: "xoxo" };
@@ -1459,7 +1514,12 @@ window.Scrapbook = (function () {
   })();
 
   function photoAt(n) {
-    var m = (typeof MEMORIES !== "undefined" && MEMORIES[n - 1]) ? MEMORIES[n - 1] : null;
+    /* A slot is usually a plain number and lines up with MEMORIES, but it
+       does not have to be: "025" names assets/photo-025.jpg and belongs to
+       no entry in that list. Only index MEMORIES for real slot numbers, or
+       "025" would quietly borrow slot 25's title and caption. */
+    var isSlot = (typeof n === "number") || /^[1-9][0-9]*$/.test(String(n));
+    var m = (isSlot && typeof MEMORIES !== "undefined" && MEMORIES[n - 1]) ? MEMORIES[n - 1] : null;
     return {
       n: n,
       src:   m && m.photo ? m.photo : null,
@@ -1521,6 +1581,12 @@ window.Scrapbook = (function () {
   function makePhoto(p) {
     var mem = photoAt(p.n);
     var wrap = place(el("sb-photo sb-photo-" + (p.style || "polaroid")), p);
+    /* the card this print is mounted on, tinted towards the print itself */
+    var pt = PHOTO_TINT[mem.n];
+    if (pt) {
+      wrap.style.setProperty("--ph-h", pt[0]);
+      wrap.style.setProperty("--ph-s", pt[1] + "%");
+    }
     var mount = el("sb-photo-mount");
     var inner = el("sb-photo-inner");
 
@@ -1811,6 +1877,12 @@ window.Scrapbook = (function () {
     var page = el("sb-page");
     page.dataset.index = i;
     page.style.backgroundImage = "url(" + PAPER[def.paper] + ")";
+    /* the wash that puts the page in the same light as its photographs */
+    var t = PAGE_TINT[i + 1];
+    if (t) {
+      page.style.setProperty("--pg-h", t[0]);
+      page.style.setProperty("--pg-s", t[1] + "%");
+    }
     def.pieces.forEach(function (p) {
       var make = MAKERS[p.k];
       if (make) page.appendChild(make(p));
@@ -2312,19 +2384,31 @@ window.Scrapbook = (function () {
   function buildOurVideoCard() {
     var V = SB.ourVideo;
     var c = el("sb-w sb-w-ourvideo");
+    /* A print in the book, not a player dropped on top of one. The same
+       cream mount every photo on these pages sits in, with the sprocket
+       edges the film cells use, so it reads as a strip of film someone
+       taped down rather than a black rectangle waiting for a video. */
     c.innerHTML =
-      '<div class="sb-vid-frame">' +
-        '<div class="sb-vid-empty">' +
-          '<div class="sb-slate">' +
-            '<div class="sb-slate-bar"></div>' +
-            '<p class="sb-slate-title">a video of us</p>' +
-            '<p class="sb-slate-file">assets/our-video.mp4</p>' +
+      '<div class="sb-ov-mount">' +
+        '<div class="sb-ov-holes a"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
+        '<div class="sb-vid-frame">' +
+          '<div class="sb-ov-poster"></div>' +
+          '<div class="sb-ov-veil"></div>' +
+          '<div class="sb-vid-empty">' +
+            '<div class="sb-slate">' +
+              '<div class="sb-slate-bar"></div>' +
+              '<p class="sb-slate-title">a video of us</p>' +
+              '<p class="sb-slate-file">assets/our-video.mp4</p>' +
+            "</div>" +
           "</div>" +
         "</div>" +
+        '<div class="sb-ov-holes b"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
       "</div>" +
       '<p class="sb-vid-cap">' + V.caption + "</p>";
 
     var frame = c.querySelector(".sb-vid-frame");
+    var poster = c.querySelector(".sb-ov-poster");
+
     var v = document.createElement("video");
     v.preload = "metadata";
     v.playsInline = true;
@@ -2336,12 +2420,13 @@ window.Scrapbook = (function () {
     /* The play button is built now, not inside a load handler.
        iOS in Low Power Mode downgrades preload="metadata" to "none",
        so `loadeddata` can never fire and the control that only existed
-       inside that handler never existed at all — the slate stayed up
+       inside that handler never existed at all -- the slate stayed up
        over a perfectly good file. The button is always here; the first
        tap is the gesture that loads the video if nothing else has. */
     var btn = el("sb-vid-play", "button");
     btn.setAttribute("aria-label", "Play our video");
-    btn.innerHTML = '<span class="sb-ico-play"></span>';
+    btn.innerHTML = '<span class="sb-ov-disc"><span class="sb-ico-play"></span></span>' +
+                    '<span class="sb-ov-word">play</span>';
     frame.appendChild(btn);
 
     var failed = false;
@@ -2349,8 +2434,8 @@ window.Scrapbook = (function () {
       if (failed) return;
       c.classList.add("ready");
     }
-    /* readyState 1 (metadata) is enough to show the frame. Listen wide:
-       whichever of these a browser sends first, we are ready. */
+    /* readyState 1 (metadata) is enough. Listen wide: whichever of these
+       a browser sends first, we are ready. */
     ["loadedmetadata", "loadeddata", "canplay", "canplaythrough", "playing"]
       .forEach(function (ev) { v.addEventListener(ev, ready); });
     if (v.readyState >= 1) ready();
@@ -2361,10 +2446,7 @@ window.Scrapbook = (function () {
         duckAmbient(); stopAllAudio("video");
         if (v.readyState === 0) { try { v.load(); } catch (err) {} }
         var pr = v.play();
-        /* A rejected play() is a real outcome, not a warning to swallow:
-           if it will not play we put the slate back rather than leaving
-           a dead black rectangle. */
-        if (pr && pr.catch) pr.catch(function () {});
+        if (pr && pr.catch) pr.catch(function () { c.classList.remove("playing"); });
       } else v.pause();
     }
     btn.addEventListener("click", toggle);
@@ -2373,6 +2455,8 @@ window.Scrapbook = (function () {
     v.addEventListener("pause", function () { c.classList.remove("playing"); });
     v.addEventListener("ended", function () {
       c.classList.remove("playing");
+      /* back to the poster, so the page is the picture again rather than
+         whatever black frame the clip happened to end on */
       try { v.currentTime = 0; } catch (err) {}
     });
     v.addEventListener("error", function () {
@@ -2381,13 +2465,24 @@ window.Scrapbook = (function () {
       btn.style.display = "none";
     });
 
-    /* The poster is optional and usually absent. Asking for it in the
-       attribute costs a 404 on every build and buys nothing, so it is
-       only attached once we know the file is really there. */
+    /* The poster is a background image rather than the video's own poster
+       attribute: that way the still stays put underneath while the clip
+       plays and fades back in when it ends, and a browser that decides
+       not to honour poster= cannot leave a black hole in the page. WebP
+       where it is taken, the JPEG beside it otherwise. */
     if (V.poster) {
-      var probe = new Image();
-      probe.onload = function () { if (!failed) v.poster = V.poster; };
-      probe.src = V.poster;
+      (function (src) {
+        var webp = src.replace(/\.jpg$/, ".webp");
+        var probe = new Image();
+        probe.onload = function () {
+          poster.style.backgroundImage = "url(" + probe.src + ")";
+          c.classList.add("hasposter");
+        };
+        probe.onerror = function () {
+          if (probe.src.indexOf(".webp") > -1) { probe.src = src; return; }
+        };
+        probe.src = (PHOTO_EXT[0] === "webp") ? webp : src;
+      })(V.poster);
     }
 
     frame.insertBefore(v, frame.firstChild);
