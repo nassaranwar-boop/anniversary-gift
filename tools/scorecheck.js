@@ -14,7 +14,9 @@ function grab(name) {
 const TUNE = grab('TUNE'), UNDER = grab('UNDER'), WARM = grab('WARM');
 /* one tune per place, and every one of them held to the same standard */
 const PLACES = { STREET: grab('STREET'), WARD: grab('WARD'), ROAD: grab('ROAD'),
-                 MORN: grab('MORN'), FENCE: grab('FENCE'), REST: grab('REST') };
+                 MORN: grab('MORN'), FENCE: grab('FENCE'), REST: grab('REST'),
+                 SIGNAL: grab('SIGNAL'), DUSK: grab('DUSK'), CAMP: grab('CAMP'),
+                 DAWN: grab('DAWN'), VIGIL: grab('VIGIL') };
 const CHORDS = grab('CHORDS'), ROOTS = grab('ROOTS');
 const CHORDS_B = grab('CHORDS_B'), ROOTS_B = grab('ROOTS_B');
 const DYNS = grab('DYNS');
@@ -184,7 +186,8 @@ for (const [name, mel] of Object.entries(PLACES)) {
 const shapes = Object.entries(PLACES).concat([['TUNE', TUNE], ['WARM', WARM]])
   .map(([n, m]) => [n, JSON.stringify(m.map(x => x[1]))]);
 const dupes = shapes.filter(([n, sh], i) => shapes.findIndex(o => o[1] === sh) !== i);
-ok('all eight of them are different tunes', dupes.length === 0, dupes.map(d => d[0]));
+ok('all thirteen of them are different tunes', dupes.length === 0, dupes.map(d => d[0]));
+ok('there are thirteen written tunes, not two', shapes.length === 13, shapes.length);
 
 /* ---- THE CUES ----
    Eleven of them now, and the whole reason any one can follow any other
@@ -197,11 +200,12 @@ const cueBlock = src.slice(src.indexOf('var PIECES = {'),
 const cues = [...cueBlock.matchAll(/^          ([a-z]+): \{ bpm: (\d+)/gm)]
                 .map(m => ({ name: m[1], bpm: Number(m[2]) }));
 const want = ['dread','streets','sterile','drive','open','hearth','hunt','held',
-              'search','grief','gate','home','after'];
+              'search','grief','gate','home','after',
+              'signal','dusk','camp','dawn','settled'];
 ok('every cue the game asks for exists',
    want.every(n => cues.some(c => c.name === n)),
    { found: cues.map(c => c.name), want });
-ok('there are thirteen of them, not six', cues.length === want.length, cues.length);
+ok('there are eighteen of them, not six', cues.length === want.length, cues.length);
 
 
 /* each one has to take its harmony from the shared progression */
@@ -220,7 +224,25 @@ ok('one of them, and only one, lands on the root',
 
 /* and the places play their own tune rather than all sharing hers */
 const OWN = { streets: 'STREET_AT', sterile: 'WARD_AT', drive: 'ROAD_AT',
-              open: 'MORN_AT', gate: 'FENCE_AT', after: 'REST_AT' };
+              open: 'MORN_AT', gate: 'FENCE_AT', after: 'REST_AT',
+              signal: 'SIGNAL_AT', dusk: 'DUSK_AT', camp: 'CAMP_AT',
+              dawn: 'DAWN_AT', settled: 'VIGIL_AT' };
+/* AND NO TWO SCENES IN A ROW MAY PLAY THE SAME ONE.
+   The ride out, the sunrise and the ride in the morning were all the
+   same cue, one after another with a level in between. */
+const SEQUENCE = [
+  ['the house', 'dread'], ['the city', 'streets'], ['the ward', 'sterile'],
+  ['the radio', 'signal'], ['the ambulance bay', 'sterile'], ['the drive', 'drive'],
+  ['the lane', 'streets'], ['the ride out', 'dusk'], ['the clearing', 'camp'],
+  ['the fire', 'hearth'], ['the sunrise', 'dawn'], ['the coast road', 'open'],
+  ['the gate', 'gate'], ['being let in', 'settled'], ['the roof', 'home'],
+  ['the last screen', 'after']
+];
+const runs = SEQUENCE.filter((s2, i) => i && s2[1] === SEQUENCE[i - 1][1]);
+ok('no two scenes running play the same cue', runs.length === 0, runs);
+const distinctCues = new Set(SEQUENCE.map(s2 => s2[1]));
+ok('sixteen scenes, fourteen different pieces of music',
+   distinctCues.size >= 14, distinctCues.size);
 const borrowed = Object.keys(OWN).filter(k => !bodies[k] || bodies[k].indexOf(OWN[k]) < 0);
 ok('and each place plays the tune written for it', borrowed.length === 0, borrowed);
 

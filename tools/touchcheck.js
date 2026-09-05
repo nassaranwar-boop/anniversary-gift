@@ -174,6 +174,155 @@ const hit = (a, b) => !(a.bottom <= b.top || b.bottom <= a.top ||
   });
   ok('controls that are not showing do not catch taps', !hidden.swallows, hidden);
 
+  /* ---- 5. a thumb on a line of dialogue turns the page ----
+     The joystick owned the whole left half of the picture and took the
+     touch with preventDefault, which cancels the click the dialogue box
+     was listening for. So on a tablet the line never advanced and the
+     stick jumped instead — under the very text you were trying to
+     read. */
+  await p.evaluate(() => { window.__apClear(); window.__apCampsite(); });
+  await p.waitForTimeout(400);
+  const dlgTap = await p.evaluate(() => {
+    const G = window.Apocalypse.game;
+    return { showing: !!G.dlg, at: G.dlg ? G.dlg.i : -1 };
+  });
+  ok('the house opens in a conversation', dlgTap.showing, dlgTap);
+  const box = await p.evaluate(() => {
+    const d = document.getElementById('ap-dlg').getBoundingClientRect();
+    return { x: d.left + d.width / 2, y: d.top + d.height / 2, w: d.width };
+  });
+  /* raw touch, with no synthetic click behind it: this is exactly what
+     the browser delivers once something has called preventDefault, and
+     it is the case the joystick was breaking */
+  await p.evaluate(pt => {
+    const d = document.getElementById('ap-dlg');
+    const mk = (type, x, y) => {
+      const t = new Touch({ identifier: 7, target: d, clientX: x, clientY: y });
+      return new TouchEvent(type, { touches: type === 'touchend' ? [] : [t],
+        changedTouches: [t], targetTouches: type === 'touchend' ? [] : [t],
+        bubbles: true, cancelable: true });
+    };
+    d.dispatchEvent(mk('touchstart', pt.x, pt.y));
+    d.dispatchEvent(mk('touchend', pt.x, pt.y));
+  }, box);
+  await p.waitForTimeout(120);
+  const after = await p.evaluate(() => {
+    const G = window.Apocalypse.game;
+    return { at: G.dlg ? G.dlg.i : 999,
+             stick: document.getElementById('ap-stick').classList.contains('live'),
+             keys: window.__apKeys ? window.__apKeys() : null };
+  });
+  ok('tapping the line turns the page', after.at > dlgTap.at, { before: dlgTap, after });
+  ok('and does not pick the joystick up under it', !after.stick, after);
+
+  /* ---- 6. the wire panel, under a finger ----
+     pos() read e.touches[0], and on a touchend that list is empty — the
+     finger it is telling you about is in changedTouches. So the drop
+     threw every time and the core sprang back: the panel could only be
+     solved with a mouse. */
+  const panel = await p.evaluate(() => {
+    window.__apClear();
+    window.__apEnter(2);                       /* the hospital has one */
+    return !!window.Apocalypse.game;
+  });
+  await p.evaluate(() => {
+    const w = window.Apocalypse.game.world;
+    window.__apTeleport(w.panelAt.x, w.panelAt.y + 1);
+  });
+  await p.evaluate(() => { for (let i = 0; i < 20; i++) window.__apPump(1 / 60); });
+  await p.evaluate(() => window.__apUse());
+  await p.waitForTimeout(300);
+  const geom = await p.evaluate(() => {
+    const cv = document.querySelector('.ap-panel-canvas');
+    if (!cv) return null;
+    const r = cv.getBoundingClientRect();
+    const s = r.width / cv.width;
+    return { r: { x: r.left, y: r.top }, s: s, w: cv.width, h: cv.height,
+             order: window.__apPanelOrder ? window.__apPanelOrder() : null };
+  });
+  ok('the distribution board is up', !!geom, geom);
+  if (geom && geom.order) {
+    /* drag every core across with touch events only */
+    for (let core = 0; core < 4; core++) {
+      const socket = geom.order.order.indexOf(core);
+      const from = { x: geom.r.x + geom.order.wx * geom.s, y: geom.r.y + geom.order.wy[core] * geom.s };
+      const to = { x: geom.r.x + geom.order.sx * geom.s, y: geom.r.y + geom.order.sy[socket] * geom.s };
+      await p.evaluate(pts => {
+        const cv = document.querySelector('.ap-panel-canvas');
+        const mk = (type, x, y, target) => {
+          const t = new Touch({ identifier: 1, target: target, clientX: x, clientY: y });
+          return new TouchEvent(type, { touches: type === 'touchend' ? [] : [t],
+            changedTouches: [t], targetTouches: type === 'touchend' ? [] : [t],
+            bubbles: true, cancelable: true });
+        };
+        cv.dispatchEvent(mk('touchstart', pts.from.x, pts.from.y, cv));
+        window.dispatchEvent(mk('touchmove', (pts.from.x + pts.to.x) / 2, (pts.from.y + pts.to.y) / 2, cv));
+        window.dispatchEvent(mk('touchmove', pts.to.x, pts.to.y, cv));
+        window.dispatchEvent(mk('touchend', pts.to.x, pts.to.y, cv));
+      }, { from, to });
+      await p.waitForTimeout(60);
+    }
+    const solved = await p.evaluate(() => window.__apPanelDone());
+    ok('every core can be dragged home with a finger', solved === 4, solved);
+  }
+
+  /* ---- 7. every button in the left half of the picture ----
+     The joystick's touchstart handler called preventDefault on anything
+     in the left half below the HUD, and preventing a touchstart is what
+     stops the browser synthesising a click. So on a tablet, half of
+     every card, every overlay button, the fridge, the keypad and the
+     intake sheet were simply dead: nothing wrong with the buttons, the
+     joystick was eating the tap on its way past. */
+  await p.waitForTimeout(900);            /* the solved panel closes itself first */
+  await p.evaluate(() => { window.__apClear(); window.__apEnter(2); });
+  await p.evaluate(() => {
+    const w = window.Apocalypse.game.world;
+    window.__apTeleport(w.panelAt.x, w.panelAt.y + 1);
+  });
+  await p.evaluate(() => { for (let i = 0; i < 20; i++) window.__apPump(1 / 60); });
+  await p.evaluate(() => window.__apUse());
+  await p.waitForTimeout(300);
+  const leftHalf = await p.evaluate(() => {
+    const stage = document.getElementById('ap-stage').getBoundingClientRect();
+    const b = document.querySelector('.ap-panel-leave');
+    if (!b) return null;
+    const r = b.getBoundingClientRect();
+    return { x: r.left + r.width * 0.18, y: r.top + r.height / 2,
+             inLeft: (r.left + r.width * 0.18 - stage.left) < stage.width * 0.48,
+             belowHud: (r.top - stage.top) > stage.height * 0.24,
+             r: { l: Math.round(r.left), t: Math.round(r.top), w: Math.round(r.width) },
+             stage: { l: Math.round(stage.left), t: Math.round(stage.top),
+                      w: Math.round(stage.width), h: Math.round(stage.height) } };
+  });
+  ok('the step-back button sits where the joystick used to swallow taps',
+     leftHalf && leftHalf.inLeft && leftHalf.belowHud, leftHalf);
+  /* Whether the browser will turn a tap into a click comes down to one
+     thing: did anybody call preventDefault on the touchstart. That is
+     the property to assert, rather than hoping the harness synthesises
+     a click the way a phone would. */
+  const prevented = await p.evaluate(() => {
+    function tapAt(sel) {
+      const el = document.querySelector(sel);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      const t = new Touch({ identifier: 3, target: el,
+                            clientX: r.left + r.width * 0.18, clientY: r.top + r.height / 2 });
+      const ev = new TouchEvent('touchstart', { touches: [t], changedTouches: [t],
+        targetTouches: [t], bubbles: true, cancelable: true });
+      el.dispatchEvent(ev);
+      const stuck = document.getElementById('ap-stick').classList.contains('live');
+      document.getElementById('ap-stick').classList.remove('live');
+      return { prevented: ev.defaultPrevented, stick: stuck };
+    }
+    return { leave: tapAt('.ap-panel-leave'), canvas: tapAt('.ap-panel-canvas') };
+  });
+  ok('a thumb on step-back is left alone by the joystick',
+     prevented.leave && !prevented.leave.prevented && !prevented.leave.stick, prevented.leave);
+  ok('and the panel itself is the panel\'s, not the joystick\'s',
+     prevented.canvas && !prevented.canvas.stick, prevented.canvas);
+  const beats = await p.evaluate(() => window.__apFaults());
+  ok('no story beat threw on its way past', beats.length === 0, beats.slice(0, 3));
+
   ok('no page errors from any of it', errs.length === 0, errs.slice(0, 3));
   console.log('');
   console.log(pass + ' passed, ' + fail + ' failed');

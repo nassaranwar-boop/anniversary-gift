@@ -123,6 +123,31 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
      joinInfo.b.beat > joinInfo.a.beat, joinInfo);
   ok('and the cue really did change', joinInfo.b.name !== joinInfo.a.name, joinInfo);
 
+  /* ---- EVERY CUE, PLAYED THROUGH ----
+     A cue is a function, and a function can throw. The pump catches it
+     so a bad beat cannot take the game down, which is right — and meant
+     that for weeks the drive cue threw on every beat from 64 onward
+     (an undeclared variable in a branch that only runs late) and the
+     whole second half of the car scene played with no piano in it. No
+     test could see that: nothing rendered differently and nothing was
+     logged. This runs every cue's own beats past it, four passes'
+     worth, with the output disconnected. */
+  const CUES = ['dread','streets','sterile','drive','open','hearth','hunt','held',
+                'search','grief','gate','home','after',
+                'signal','dusk','camp','dawn','settled'];
+  const faults = await p.evaluate(list => {
+    const out = {};
+    for (const c of list) {
+      const e = window.__apScorePlay(c, 136);
+      if (e && e.length) out[c] = e;
+    }
+    return out;
+  }, CUES);
+  ok('every cue exists and plays four passes without throwing',
+     Object.keys(faults).length === 0, faults);
+  const lived = await p.evaluate(() => window.__apScoreFaults());
+  ok('and nothing threw during the run itself', lived.length === 0, lived.slice(0, 4));
+
   ok('no page errors', errs.length === 0, errs.slice(0, 3));
   console.log('');
   console.log(pass + ' passed, ' + fail + ' failed');

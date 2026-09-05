@@ -109,7 +109,7 @@
     "#k....rr..l#..q.....#.rr......p..#",
     "#..p....q..#.......q#nBBnq......p#",
     "#####d###########d#########d######",
-    "#a...l......p........l......a....#",
+    "#a.l........p......l........a....#",
     "#.rrr......................rrr...#",
     "#................................#",
     "#######d########d#########d#######",
@@ -1564,6 +1564,99 @@
           [28,   7, 2.0], [30, 0, 2.0]
         ];
 
+        /* ============================================================
+           FIVE MORE, BECAUSE FIVE SCENES WERE SHARING TWO TUNES
+
+           Coming down off the road you got: the ride, the clearing, the
+           fire, the sunrise, the ride again, and being let in — six
+           scenes, and between them two pieces of music. The ride and the
+           sunrise and the morning were literally the same cue three
+           times in a row, which is the point at which a player stops
+           hearing it as music and starts hearing it as a loop.
+
+           These are those scenes. Same eight bars underneath, as always,
+           so any of them can still follow any other.
+           ============================================================ */
+
+        /* THE VOICE ON THE RADIO. A beacon: one note, then the fifth
+           above it, then the first one again — the shape of something
+           repeating into an empty room, going out to nobody in
+           particular. Twice it says the same thing. The fourth bar is
+           the one where nothing answers. And then, alone in the whole
+           chapter, it climbs at the end and stays up there, because
+           this is the moment somebody says there is somewhere to go. */
+        var SIGNAL = [
+          [ 0,   0, 1.0], [ 1,  7, 1.0], [ 2,  0, 2.0],
+          [ 4,   2, 1.0], [ 5,  7, 1.0], [ 6,  2, 2.0],
+          [ 8,   3, 1.0], [ 9, 10, 1.0], [10,  3, 2.0],
+          [12,   0, 4.0],
+          [16,   5, 1.0], [17, 10, 1.0], [18,  7, 2.0],
+          [20,   3, 2.0], [22,  7, 2.0],
+          [24,   8, 2.0], [26, 12, 2.0],
+          [28,  10, 2.0], [30, 14, 2.0]
+        ];
+
+        /* OUT OF THE LANE, ON A HORSE, AT DUSK. A rocking figure that
+           falls a little further each time: the gait of something tired
+           walking away from a thing. Nothing in it goes up. */
+        var DUSK = [
+          [ 0,   7, 1.5], [ 1.5, 5, 0.5], [ 2,  3, 2.0],
+          [ 4,   7, 1.5], [ 5.5, 5, 0.5], [ 6,  2, 2.0],
+          [ 8,  10, 1.5], [ 9.5, 8, 0.5], [10,  7, 2.0],
+          [12,   8, 2.0], [14,  5, 2.0],
+          [16,  10, 1.5], [17.5, 8, 0.5], [18,  7, 2.0],
+          [20,  12, 1.5], [21.5, 10, 0.5], [22, 7, 2.0],
+          [24,  12, 2.0], [26,  8, 2.0],
+          [28,  10, 2.0], [30,  7, 2.0]
+        ];
+
+        /* MAKING CAMP. Small, busy, close to the ground: a four-note
+           figure that keeps starting again, the way jobs do. It is the
+           only tune in the chapter with no note longer than half a bar
+           until the very end of it, and it opens by a fifth on the last
+           note, which is somebody straightening up. */
+        var CAMP = [
+          [ 0,   3, 1.0], [ 1,  5, 1.0], [ 2,  3, 1.0], [ 3,  2, 1.0],
+          [ 4,   2, 1.0], [ 5,  0, 1.0], [ 6,  2, 2.0],
+          [ 8,   3, 1.0], [ 9,  5, 1.0], [10,  7, 2.0],
+          [12,   8, 1.0], [13,  7, 1.0], [14,  5, 2.0],
+          [16,   5, 1.0], [17,  3, 1.0], [18,  2, 2.0],
+          [20,   3, 1.0], [21,  2, 1.0], [22,  0, 2.0],
+          [24,   0, 2.0], [26,  3, 2.0],
+          [28,   2, 2.0], [30,  7, 2.0]
+        ];
+
+        /* THE SUN COMING UP. Four long notes and then four more, each
+           one higher than the last, and nothing else at all — the only
+           tune here with no rhythm in it. It climbs an octave and a half
+           across the eight bars and never once turns round. */
+        var DAWN = [
+          [ 0,   0, 4.0],
+          [ 4,   2, 2.0], [ 6,  3, 2.0],
+          [ 8,   7, 4.0],
+          [12,   8, 2.0], [14, 10, 2.0],
+          [16,  10, 4.0],
+          [20,  12, 2.0], [22, 14, 2.0],
+          [24,  15, 4.0],
+          [28,  14, 2.0], [30, 19, 2.0]
+        ];
+
+        /* THE REST OF THE DAY, INSIDE THE WIRE. A lullaby that will not
+           settle: every phrase leans on the note above the one it wants
+           and comes down onto the fifth instead of the root, so it is
+           calm without being finished — which is what a first night
+           somewhere safe is actually like. */
+        var VIGIL = [
+          [ 0,   7, 2.0], [ 2,  3, 2.0],
+          [ 4,  10, 2.0], [ 6,  7, 2.0],
+          [ 8,   7, 1.5], [ 9.5, 10, 0.5], [10, 12, 2.0],
+          [12,   8, 2.0], [14, 12, 2.0],
+          [16,  10, 2.0], [18,  7, 2.0],
+          [20,  12, 1.5], [21.5, 10, 0.5], [22, 7, 2.0],
+          [24,  15, 2.0], [26, 12, 2.0],
+          [28,  10, 3.0], [31,  7, 1.0]
+        ];
+
         /* the line underneath it, moving against the tune rather than
            with it, which is what stops a melody sounding like one finger */
         var UNDER = [
@@ -1642,6 +1735,8 @@
         var TUNE_AT = compile(TUNE), UNDER_AT = compile(UNDER), WARM_AT = compile(WARM);
         var STREET_AT = compile(STREET), WARD_AT = compile(WARD), ROAD_AT = compile(ROAD);
         var MORN_AT = compile(MORN), FENCE_AT = compile(FENCE), REST_AT = compile(REST);
+        var SIGNAL_AT = compile(SIGNAL), DUSK_AT = compile(DUSK), CAMP_AT = compile(CAMP);
+        var DAWN_AT = compile(DAWN), VIGIL_AT = compile(VIGIL);
 
         /* ---- the instruments ---- */
         function out(g, send) {
@@ -1902,7 +1997,13 @@
           /* THE CAR. The only part of the chapter that is moving, so it
              is the only cue with a pulse in it. */
           drive: { bpm: 100, play: function (b, at, sp) {
-            var d = DYN(b), c = CH(b);
+            /* `pass` was never declared here, and the branch that reads
+               it is the one that runs from beat 64 on — so for the whole
+               second half of the drive this threw, the exception went
+               into the pump's catch, and everything below it, including
+               the piano the scene is written for, never played. It was
+               a car engine and a pad for forty seconds. */
+            var d = DYN(b), pass = passOf(b), c = CH(b);
             /* the pulse eases off as the conversation gets going: the
                first time round it is a car going somewhere, and after
                that it is two people talking in one */
@@ -1989,6 +2090,109 @@
                 });
             }
             if (pass % 2 === 1) line(UNDER_AT, b, at, sp, -1, 0.030 * d, cello);
+          } },
+
+          /* THE VOICE ON THE RADIO.
+             This scene used to borrow the ward's cue, which is a music
+             box with an inharmonic bell in it — the thing that hurt.
+             There is no bell anywhere in here. A low carrier that does
+             not change, a piano saying the same three notes into an
+             empty room, and, once it has been round once, something
+             agreeing with it. It is the first cue in the chapter that
+             ends higher than it started. */
+          signal: { bpm: 52, play: function (b, at, sp) {
+            var d = DYN(b), pass = passOf(b), c = CH(b);
+            /* the carrier: it does not care whether anybody is listening */
+            if (b % 8 === 0) {
+              swell(hz(RT(b), -3), at, sp * 8.4, 0.080 * d);
+              strings([hz(c[0], -1), hz(c[1], -1)], at, sp * 8.4, 0.026 * d, 700);
+            }
+            line(SIGNAL_AT, b, at, sp, 0, 0.042 * d, function (f, t2, v, dd) {
+              piano(f, t2, v, Math.max(2.2, dd * 1.4));
+            });
+            /* somebody on the other end of it */
+            if (pass >= 1)
+              line(SIGNAL_AT, b, at, sp, -1, 0.020 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd + sp * 0.6, v, 620);
+              });
+            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.022 * d, cello);
+            if (b % 16 === 8) tick(at, 0.012 * d);
+          } },
+
+          /* OUT OF THE LANE ON A HORSE, WITH THE LIGHT GOING.
+             A walking bass two beats to a step and a figure over it that
+             falls a little further every time. Nothing here is in a
+             hurry and nothing here goes up. */
+          dusk: { bpm: 60, play: function (b, at, sp) {
+            var d = DYN(b), pass = passOf(b), c = CH(b);
+            if (b % 2 === 0)
+              cello(hz(RT(b), -2), at, sp * (b % 4 === 0 ? 2.6 : 1.4),
+                    (b % 4 === 0 ? 0.060 : 0.032) * d);
+            if (b % 4 === 0)
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.4, 0.022 * d, 800);
+            line(DUSK_AT, b, at, sp, 0, 0.036 * d, piano);
+            if (pass >= 2)
+              line(DUSK_AT, b, at, sp, -1, 0.016 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd + sp * 0.4, v, 900);
+              });
+            if (pass === 3) line(UNDER_AT, b, at, sp, -1, 0.024 * d, cello);
+          } },
+
+          /* MAKING CAMP. The quickest thing in the chapter and the
+             smallest: a piano close enough that you can hear the felt,
+             a wood block on the offbeat, and no strings at all until it
+             has been round once. On the third time the same figure
+             plays a bar behind itself, which is two people doing two
+             jobs in the same clearing. */
+          camp: { bpm: 72, play: function (b, at, sp) {
+            var d = DYN(b), pass = passOf(b), c = CH(b);
+            if (b % 8 === 0) cello(hz(RT(b), -2), at, sp * 8, 0.038 * d);
+            if (b % 4 === 0 && pass >= 1)
+              strings([hz(c[0], -1), hz(c[1], -1)], at, sp * 4.2, 0.018 * d, 850);
+            line(CAMP_AT, b, at, sp, 0, 0.034 * d, function (f, t2, v, dd) {
+              piano(f, t2, v, Math.max(1.4, dd * 1.1));
+            });
+            if (pass === 2) line(CAMP_AT, b - 4, at, sp, -1, 0.018 * d, piano);
+            if (b % 4 === 2) tick(at, 0.013 * d);
+          } },
+
+          /* THE SUN COMING UP. The only cue with no rhythm in it at all:
+             eight long notes on strings that climb an octave and a half
+             and never turn round, and each time round one more voice is
+             holding them. */
+          dawn: { bpm: 44, play: function (b, at, sp) {
+            var d = DYN(b), pass = passOf(b), c = CH(b);
+            if (b % 8 === 0) {
+              swell(hz(RT(b), -3), at, sp * 8.6, 0.070 * d);
+              cello(hz(RT(b), -2), at, sp * 8.2, 0.046 * d);
+            }
+            if (b % 4 === 0)
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 4.6, 0.030 * d, 1000);
+            line(DAWN_AT, b, at, sp, 0, 0.032 * d, function (f, t2, v, dd) {
+              strings([f], t2, dd + sp * 0.8, v, 1500);
+            });
+            if (pass >= 1) line(DAWN_AT, b, at, sp, 0, 0.020 * d, function (f, t2, v, dd) {
+              piano(f, t2, v, Math.max(3.0, dd * 1.6));
+            });
+            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.024 * d, cello);
+          } },
+
+          /* THE REST OF THE DAY, INSIDE THE WIRE. A lullaby that will
+             not settle: it comes down onto the fifth every time instead
+             of the root, so it is calm without being finished. */
+          settled: { bpm: 50, play: function (b, at, sp) {
+            var d = DYN(b), pass = passOf(b), c = CH(b);
+            if (b % 8 === 0)
+              strings([hz(c[0], -1), hz(c[1], -1), hz(c[2], -1)], at, sp * 8.4, 0.026 * d, 850);
+            if (b % 8 === 4) cello(hz(RT(b), -2), at, sp * 4.4, 0.036 * d);
+            line(VIGIL_AT, b, at, sp, 0, 0.040 * d, function (f, t2, v, dd) {
+              piano(f, t2, v, Math.max(2.6, dd * 1.5));
+            });
+            if (pass >= 2)
+              line(VIGIL_AT, b, at, sp, -1, 0.018 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd + sp * 0.6, v, 700);
+              });
+            if (pass === 3) line(UNDER_AT, b, at, sp, -1, 0.020 * d, cello);
           } },
 
           /* ---- THE FIVE THAT ARE NOT PLACES BUT SITUATIONS ----
@@ -2244,6 +2448,7 @@
           retireBus(ctx.currentTime, fade || 0.8);
         }
 
+        var played = [];
         function pump() {
           if (!piece || !ctx) return;
           var sp = 60 / piece.bpm;
@@ -2287,7 +2492,16 @@
               pending = null; urgent = false;
               sp = 60 / piece.bpm;
             }
-            try { piece.play(beat, nextAt, sp); } catch (e) {}
+            /* A CUE THAT THROWS MUST NOT DO IT QUIETLY.
+               Swallowing it here is right — a bad beat should not take
+               the game down — but for as long as nothing counted them,
+               a cue could stop playing half its parts and there was no
+               way to find out except by listening for something that
+               was not there. The drive did exactly that for weeks. */
+            try { piece.play(beat, nextAt, sp); }
+            catch (e) {
+              if (played.length < 12) played.push((piece.name || "?") + ": " + (e && e.message));
+            }
             beat++; nextAt += sp;
             if (voices.length > 260) voices = voices.slice(-140);
           }
@@ -2375,6 +2589,29 @@
            whether to ask for something else needs to compare against —
            a queued change has not landed yet but is already decided */
         setPiece.wantedName = function () { return pending || wanted; };
+        /* every exception a cue has thrown since the chapter began */
+        setPiece.faults = function () { return played.slice(); };
+        /* Play a cue's beats past it without putting it on the bus: the
+           only way to find a branch that never runs until the third time
+           round other than sitting through the third time round. */
+        setPiece.rehearse = function (name, beats) {
+          if (!ac() || !PIECES[name]) return ["no cue " + name];
+          var errs = [], sp = 60 / PIECES[name].bpm;
+          /* everything an instrument plays goes out through dry and wet,
+             so pointing those at a closed gain makes the rehearsal silent
+             without touching a line of the cue */
+          var hush = ctx.createGain(); hush.gain.value = 0;
+          var kd = dry, kw = wet, kv = vibGain;
+          dry = hush; wet = hush;
+          if (!kv) { vibGain = ctx.createGain(); vibGain.gain.value = 0; }
+          for (var i = 0; i < (beats || 132); i++) {
+            try { PIECES[name].play(i, ctx.currentTime + 40 + i * 0.001, sp); }
+            catch (e) { if (errs.length < 6) errs.push(name + "@" + i + ": " + (e && e.message)); }
+          }
+          dry = kd; wet = kw; vibGain = kv;
+          try { hush.disconnect(); } catch (e) {}
+          return errs;
+        };
         /* where in the eight bars it is, and what is playing them */
         setPiece.where = function () {
           return { beat: beat, bar: Math.floor(beat / 4) % 8,
@@ -4032,6 +4269,9 @@
      ========================================================= */
   var GEO = {};
   function geo(key, make) { return GEO[key] || (GEO[key] = make()); }
+  /* the ground past the edge of the map: one material per kind of
+     ground for the whole session rather than one per level */
+  var FAR_GROUND = {};
 
   /* the bundle does not expose BufferGeometryUtils, and all that is
      needed here is concatenating a few boxes that share a material */
@@ -6672,7 +6912,11 @@
     var buckets = {}, order = [];
     /* below a certain size the split costs more in draw calls than it
        saves in triangles */
-    var split = this.items.length >= 48;
+    /* Scenery that is always either all on screen or all off it gains
+       nothing from being split and pays a draw call for every piece:
+       the treeline round the horizon was a hundred and twenty meshes of
+       trees thirty tiles outside the map. */
+    var split = this.items.length >= 48 && !this.whole;
     for (var i = 0; i < this.items.length; i++) {
       var it = this.items[i];
       var key = split
@@ -6957,6 +7201,15 @@
       hedge:  new Batch(geo("hedgeB",function () { return new THREE.BoxGeometry(TILE * 0.98, 2.1, TILE * 0.98); }), matLeaf, true, true),
       trunk:  new Batch(geo("trunkC",function () { var g = new THREE.CylinderGeometry(0.17, 0.26, 1, 8); g.translate(0, 0.5, 0); return g; }), matBark, true, true),
       canopy: new Batch(geo("canopyI",function () { return new THREE.IcosahedronGeometry(1, 1); }), matLeaf, true, false),
+      /* the treeline on the horizon: one mesh each, and neither of them
+         goes into the shadow pass — nothing thirty tiles outside the map
+         casts a shadow anybody will ever stand in */
+      farTrunk:  new Batch(geo("trunkC", function () {
+                   var g = new THREE.CylinderGeometry(0.17, 0.26, 1, 8); g.translate(0, 0.5, 0); return g; }),
+                 matBark, false, false),
+      farCanopy: new Batch(geo("canopyI", function () { return new THREE.IcosahedronGeometry(1, 1); }),
+                 matLeaf, false, false),
+      /* filled in below: both of these stay whole */
       cloth:  new Batch(geo("clothB", function () { return new THREE.BoxGeometry(1, 1, 1); }), matCloth, true, true),
       metal:  new Batch(geo("metalB", function () { return new THREE.BoxGeometry(1, 1, 1); }), matMetal, true, true),
       wood:   new Batch(geo("woodB",  function () { return new THREE.BoxGeometry(1, 1, 1); }), matWood, true, true),
@@ -7039,6 +7292,7 @@
     };
     /* the glass and the frames are declared with the batches but built
        from the materials below them, so they are filled in here */
+    B.farTrunk.whole = true; B.farCanopy.whole = true;
     B.fence.m = new THREE.MeshStandardMaterial({
       map: wireTexture(), transparent: true, alphaTest: 0.34,
       color: 0xb8bec6, roughness: 0.55, metalness: 0.45,
@@ -7137,17 +7391,66 @@
        is what was missing. */
     if (def.horizon) {
       var MARG = 16;
-      for (var ay = -MARG; ay < H + MARG; ay++) {
-        for (var ax = -MARG; ax < W + MARG; ax++) {
-          if (ax >= 0 && ay >= 0 && ax < W && ay < H && at(ax, ay) !== " ") continue;
-          var at2 = hash2(ax * 7 + 3, ay * 11 + 5);
-          /* unbroken, or the sky shows through the floor; it darkens and
-             falls away instead, which is what distance does */
+      /* THE GROUND PAST THE EDGE OF THE MAP IS SCENERY, NOT TILES.
+
+         It was one instanced box per tile — four and a half thousand of
+         them out here, forty thousand triangles of flat ground nobody
+         can walk on, and, because a batch is split into chunks so it can
+         be culled, thirty-odd draw calls of it. It is one mesh now: a
+         grid two triangles to a cell, its height and its shade read from
+         the same functions, and it costs one call. Sharing the corners
+         also means the fall-away rolls instead of stepping. */
+      (function () {
+        var gw = W + MARG * 2, gh = H + MARG * 2;
+        function surf(ax, ay) {
+          var at2 = hash2(Math.round(ax) * 7 + 3, Math.round(ay) * 11 + 5);
           var edge = Math.max(0, Math.max(-ax, ax - W, -ay, ay - H)) / MARG;
-          B.ground.add(cx(ax), -0.15 - at2 * 0.05 - edge * edge * 0.9, cz(ay), 1, 1, 1, 0,
-                       shade(0xffffff, (0.82 + at2 * 0.12) * (1 - edge * 0.34)));
+          return { y: -at2 * 0.05 - edge * edge * 0.9,
+                   c: (0.82 + at2 * 0.12) * (1 - edge * 0.34) };
         }
-      }
+        var vx = new Float32Array((gw + 1) * (gh + 1) * 3);
+        var vc = new Float32Array((gw + 1) * (gh + 1) * 3);
+        var vu = new Float32Array((gw + 1) * (gh + 1) * 2);
+        for (var j = 0; j <= gh; j++) {
+          for (var i = 0; i <= gw; i++) {
+            var ax2 = i - MARG, ay2 = j - MARG;
+            var sf = surf(ax2, ay2), k = (j * (gw + 1) + i);
+            vx[k * 3] = ax2 * TILE; vx[k * 3 + 1] = sf.y; vx[k * 3 + 2] = ay2 * TILE;
+            vc[k * 3] = vc[k * 3 + 1] = vc[k * 3 + 2] = sf.c;
+            vu[k * 2] = ax2 * 0.5; vu[k * 2 + 1] = ay2 * 0.5;
+          }
+        }
+        var ix = [];
+        for (var j2 = 0; j2 < gh; j2++) {
+          for (var i2 = 0; i2 < gw; i2++) {
+            var mx = i2 - MARG, my = j2 - MARG;
+            /* the map draws its own floor: only the country round it */
+            if (mx >= 0 && my >= 0 && mx < W && my < H && at(mx, my) !== " ") continue;
+            var a0 = j2 * (gw + 1) + i2, b0 = a0 + 1;
+            var c0 = a0 + gw + 1, d0 = c0 + 1;
+            ix.push(a0, c0, b0, b0, c0, d0);
+          }
+        }
+        if (!ix.length) return;
+        var hg = new THREE.BufferGeometry();
+        hg.setAttribute("position", new THREE.BufferAttribute(vx, 3));
+        hg.setAttribute("color", new THREE.BufferAttribute(vc, 3));
+        hg.setAttribute("uv", new THREE.BufferAttribute(vu, 2));
+        hg.setIndex(ix);
+        hg.computeVertexNormals();
+        /* one of these for the whole session, not one per level */
+        var hm = FAR_GROUND[groundTex];
+        if (!hm) {
+          hm = matGround.clone();
+          hm.vertexColors = true;
+          FAR_GROUND[groundTex] = hm;
+        }
+        var far = new THREE.Mesh(hg, hm);
+        far.receiveShadow = true;
+        far.castShadow = false;
+        far.matrixAutoUpdate = false;
+        G.add(far);
+      })();
       /* ---- THE ROAD THEY CAME UP ----
          A road that stops at the edge of the grid is a road nobody drove
          down. Where a level says so, the carriageway carries on past the
@@ -7216,10 +7519,10 @@
         }
         if (near) continue;
         var rs = 1.5 + hash2(ri, 13) * 1.9;
-        B.trunk.add(cx(rx), -0.1, cz(rz), 1, 2.0 + hash2(ri, 3) * 1.6, 1, 0,
+        B.farTrunk.add(cx(rx), -0.1, cz(rz), 1, 2.0 + hash2(ri, 3) * 1.6, 1, 0,
                     shade(0xffffff, 0.5 + hash2(ri, 5) * 0.2));
         for (var rl = 0; rl < 3; rl++) {
-          B.canopy.add(cx(rx) + (hash2(ri, rl) - 0.5) * 1.5,
+          B.farCanopy.add(cx(rx) + (hash2(ri, rl) - 0.5) * 1.5,
                        2.4 + rl * 0.8 + hash2(ri, rl * 3) * 0.6,
                        cz(rz) + (hash2(rl, ri) - 0.5) * 1.5,
                        rs, rs * 0.86, rs, hash2(ri, rl) * 3,
@@ -8797,17 +9100,24 @@
       });
       var slide = new THREE.Group();
       g.add(slide);
-      /* chain-link: a grid of thin bars reads as mesh at this distance */
-      for (var i = 0; i < 9; i++) {
-        var b = new THREE.Mesh(new THREE.BoxGeometry(0.045, 2.7, 0.045), frameM);
-        b.position.set(-TILE / 2 + 0.2 + i * (TILE - 0.4) / 8, 1.35, 0);
-        slide.add(b);
-      }
-      for (var j = 0; j < 5; j++) {
-        var h = new THREE.Mesh(new THREE.BoxGeometry(TILE - 0.3, 0.045, 0.045), frameM);
-        h.position.set(0, 0.3 + j * 0.62, 0);
-        slide.add(h);
-      }
+      /* Chain-link: a grid of thin bars reads as mesh at this distance.
+         Fourteen separate meshes each, and the road up to the safe house
+         has six gates in it — a hundred draw calls of gate. One merged
+         geometry, built once and shared by every gate in the chapter. */
+      slide.add(new THREE.Mesh(geo("gateLink", function () {
+        var parts = [];
+        for (var i = 0; i < 9; i++) {
+          var bg = new THREE.BoxGeometry(0.045, 2.7, 0.045);
+          bg.translate(-TILE / 2 + 0.2 + i * (TILE - 0.4) / 8, 1.35, 0);
+          parts.push(bg);
+        }
+        for (var j = 0; j < 5; j++) {
+          var hg2 = new THREE.BoxGeometry(TILE - 0.3, 0.045, 0.045);
+          hg2.translate(0, 0.3 + j * 0.62, 0);
+          parts.push(hg2);
+        }
+        return mergeGeoms(parts);
+      }), frameM));
       var razor = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.02, 5, 12), frameM);
       razor.position.set(0, 3.0, 0); razor.rotation.y = 0.4; g.add(razor);
       G.add(g);
@@ -9280,12 +9590,37 @@
     if (def.dark <= 0.45) {
       key.castShadow = true;
       key.shadow.mapSize.set(1024, 1024);
-      var span = Math.max(W, H) * TILE * 0.6;
+      /* A SHADOW MAP OVER THE WHOLE LEVEL IS A SHADOW MAP OVER NOTHING.
+
+         This used to cover ninety metres of ground on a thousand pixels,
+         which is eleven pixels to the metre — soft, crawling, and it put
+         every tree, hut and fence in the place into the shadow pass
+         whether or not it was anywhere near her. It follows her instead,
+         over a twenty-six metre box: four times the resolution, and the
+         only things drawn twice are the things close enough to cast onto
+         something she can see.
+
+         Moving a shadow camera makes the edges crawl unless it moves in
+         whole texels, so it is snapped to one. */
+      var span = 13;
       key.shadow.camera.left = -span; key.shadow.camera.right = span;
       key.shadow.camera.top = span; key.shadow.camera.bottom = -span;
-      key.shadow.camera.far = 140;
-      key.shadow.bias = -0.0016;
-      key.shadow.normalBias = 0.04;
+      key.shadow.camera.near = 1;
+      key.shadow.camera.far = 130;
+      key.shadow.bias = -0.0009;
+      key.shadow.normalBias = 0.03;
+      /* AN ORTHOGRAPHIC CAMERA DOES NOT NOTICE ITS OWN EDGES MOVING.
+         Setting left/right/top/bottom does nothing until the projection
+         is rebuilt, and nothing ever rebuilt it — so every span this
+         line has ever been given was ignored and the sun cast into the
+         ten-metre box three.js starts one with, centred on the middle
+         of the level. Which is why the gates had a shadow map and
+         almost nothing in it. */
+      key.shadow.camera.updateProjectionMatrix();
+      key.userData.follow = span * 2 / 1024;
+      key.userData.off = { x: key.position.x - key.target.position.x,
+                           y: key.position.y - key.target.position.y,
+                           z: key.position.z - key.target.position.z };
     }
     world.key = key;
 
@@ -9799,11 +10134,37 @@
       if (knob) knob.style.transform = "translate(-50%,-50%)";
     }
 
+    /* THE LEFT HALF OF THE PICTURE IS NOT ALWAYS THE JOYSTICK.
+
+       It used to be, unconditionally, and it took the touch with
+       preventDefault — which is what cancels the click a browser would
+       otherwise synthesise. So on a tablet: tapping a line of dialogue
+       to turn the page nudged the joystick and the page never turned,
+       and a finger on the wire panel drove her sideways while the drag
+       it was meant to be doing died. Anything that is its own control
+       gets the touch; a conversation turns the page wherever you tap;
+       and the stick only drives while there is something to drive. */
+    var OWNS_ITS_TOUCH = ".ap-dlg,.ap-overlay,.ap-card,.ap-panel,.ap-fridge," +
+                         ".ap-keypad,.ap-check,.ap-serum,.ap-note,.ap-radio," +
+                         "[data-ap-key],button,input,a";
+    function claimed(t) {
+      var el0 = t && t.target;
+      return !!(el0 && el0.closest && el0.closest(OWNS_ITS_TOUCH));
+    }
     function down(e) {
       var r = stage.getBoundingClientRect();
       var ts = e.changedTouches ? e.changedTouches : [e];
       for (var i = 0; i < ts.length; i++) {
         var t = ts[i];
+        /* a line of dialogue is turned by tapping anywhere on the
+           picture, which is what a thumb expects and what the joystick
+           was quietly stealing. It comes before the check below because
+           the thing you tap to turn the page is usually the page. */
+        var ov = $("ap-overlay");
+        var overlayUp = !!(ov && ov.getAttribute("aria-hidden") === "false");
+        if (G && G.dlg && !overlayUp) { advanceLine(); e.preventDefault(); return; }
+        if (claimed(t)) return;
+        if (G && G.state !== "play" && G.state !== "grab" && G.state !== "close") return;
         /* the left half of the picture is the stick; the right half is
            the buttons and belongs to them */
         if (t.clientX - r.left > r.width * 0.48) continue;
@@ -10542,6 +10903,19 @@
     td.pool.intensity = (p.creeping ? 1.5 : 2.2) * bal * (0.35 + night * 0.65);
   }
 
+  /* The sun's shadow box goes where she is, in whole texels so the
+     edges do not crawl as it moves. */
+  function followSun() {
+    var k = G.world && G.world.key;
+    if (!k || !k.castShadow || !G.player || !k.userData.follow) return;
+    var t = k.userData.follow, o = k.userData.off;
+    var tx = Math.round(G.player.x / t) * t, tz = Math.round(G.player.z / t) * t;
+    if (k.target.position.x === tx && k.target.position.z === tz) return;
+    k.target.position.set(tx, 0, tz);
+    k.position.set(tx + o.x, o.y, tz + o.z);
+    k.target.updateMatrixWorld();
+  }
+
   /* THE YARD IN FRONT OF THE BARN IS HERS.
 
      The horse is the end of that level and the beginning of the morning.
@@ -11082,7 +11456,14 @@
        the wall clock, so it fires late on a slow frame, not at all if
        the conversation is skipped in one go, and it cannot be tested
        without waiting in real time for it. The line itself says when. */
-    if (G.onLine) { try { G.onLine(line, d.i - 1); } catch (e) {} }
+    if (G.onLine) {
+      /* the beat is allowed to fail without taking the conversation
+         down, but not without leaving a mark: a story beat that quietly
+         stopped happening is exactly the kind of thing nothing else
+         here can see */
+      try { G.onLine(line, d.i - 1); }
+      catch (e) { (G.faults = G.faults || []).push("onLine: " + (e && e.message)); }
+    }
   }
 
   /* Say when this line goes past, once.
@@ -11658,6 +12039,10 @@
     });
     wrap.appendChild(b);
     openOverlay(wrap);
+    /* This scene used to play whatever the ward was playing, which is
+       the cue with the bell in it. It has one of its own, and it holds
+       for longer than anybody can read four lines. */
+    scoreMood("signal", 150);
     Audio_.tune();
   }
 
@@ -11844,9 +12229,18 @@
       x.fillText(left ? left + " CORE" + (left > 1 ? "S" : "") + " LOOSE" : "SUPPLY RESTORED", cv.width - 24, cv.height - 16);
     }
 
+    /* WHERE THE FINGER IS.
+
+       This used to read e.touches[0], and on a touchend e.touches is
+       empty — the finger it is telling you about has just left the
+       glass and lives in changedTouches. So the drop threw, every time,
+       and the core sprang back to where it started: the panel could
+       only ever be solved with a mouse. changedTouches is the one that
+       is right for all three of down, move and up. */
     function pos(e) {
       var r = cv.getBoundingClientRect();
-      var p = e.touches ? e.touches[0] : e;
+      var p = (e.changedTouches && e.changedTouches.length) ? e.changedTouches[0]
+            : (e.touches && e.touches.length) ? e.touches[0] : e;
       return { x: (p.clientX - r.left) / r.width * cv.width,
                y: (p.clientY - r.top) / r.height * cv.height };
     }
@@ -11889,16 +12283,36 @@
       drag = null;
     }
     cv.addEventListener("mousedown", down); cv.addEventListener("touchstart", down, { passive: false });
-    window.addEventListener("mousemove", move); cv.addEventListener("touchmove", move, { passive: false });
-    window.addEventListener("mouseup", up); cv.addEventListener("touchend", up, { passive: false });
+    /* A thumb does not stay inside a canvas while it drags. Both kinds
+       of move and both kinds of release listen on the window, or letting
+       go a pixel outside the panel leaves the core hanging in mid-air
+       for the rest of the level. */
+    window.addEventListener("mousemove", move);
+    window.addEventListener("touchmove", move, { passive: false });
+    window.addEventListener("mouseup", up);
+    window.addEventListener("touchend", up, { passive: false });
+    window.addEventListener("touchcancel", up, { passive: false });
     /* the panel is opened twice a chapter, and a drag needs the whole
-       window to follow the pointer off the canvas — so both of those come
+       window to follow the pointer off the canvas — so all of those come
        back off when it closes */
     G.__overlayCleanup = function () {
       window.removeEventListener("mousemove", move);
+      window.removeEventListener("touchmove", move);
       window.removeEventListener("mouseup", up);
+      window.removeEventListener("touchend", up);
+      window.removeEventListener("touchcancel", up);
     };
 
+    /* the harness has to be able to drag a core the way a thumb does,
+       which means knowing where the cores and the terminals are */
+    window.__apPanelOrder = function () {
+      return { order: order.slice(), wx: WX, sx: SX + 10,
+               wy: [wireY(0), wireY(1), wireY(2), wireY(3)],
+               sy: [sockY(0), sockY(1), sockY(2), sockY(3)] };
+    };
+    window.__apPanelDone = function () {
+      return done.filter(Boolean).length;
+    };
     G.__panel = {
       canvas: cv,
       tick: function (dt) { if (sparkT > 0) sparkT -= dt; draw(); },
@@ -13888,7 +14302,13 @@
      and again the next one, on the last leg to Essaouira. Same road, same
      horse, different light and different words. */
   function playRide(second) {
-    Audio_.score("open", null, false, true);
+    /* THE SAME CUE PLAYED THREE SCENES RUNNING.
+       The ride out, the sunrise and the morning ride were all "open",
+       one after another with a level in between, which is the point at
+       which a player stops hearing music and starts hearing a loop.
+       The evening ride has its own now; the morning one keeps the tune
+       that was written for a road at first light. */
+    Audio_.score(second ? "open" : "dusk", null, false, true);
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x3a3050, 0.0042);
     var cam = new THREE.PerspectiveCamera(38, Stage.camera.aspect, 0.4, 900);
@@ -13922,6 +14342,7 @@
     sunLight.shadow.mapSize.set(1024, 1024);
     sunLight.shadow.camera.left = -30; sunLight.shadow.camera.right = 30;
     sunLight.shadow.camera.top = 30; sunLight.shadow.camera.bottom = -30;
+    sunLight.shadow.camera.updateProjectionMatrix();
     sunLight.shadow.bias = -0.002;
     scene.add(sunLight);
 
@@ -14319,7 +14740,7 @@
   }
 
   function playSunrise() {
-    Audio_.score("open", null, false, true);
+    Audio_.score("dawn", null, false, true);
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x2a2440, 0.010);
     var cam = new THREE.PerspectiveCamera(46, Stage.camera.aspect, 0.3, 700);
@@ -14480,7 +14901,7 @@
      the light goes out of it: the queue for the tap, the children, the
      hour in which neither of them has to do anything next. */
   function playSettling() {
-    Audio_.score("open", null, false, true);
+    Audio_.score("settled", null, false, true);
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x1a1c2c, 0.0075);
     var cam = new THREE.PerspectiveCamera(42, Stage.camera.aspect, 0.3, 700);
@@ -14785,6 +15206,7 @@
     rim.shadow.mapSize.set(1024, 1024);
     rim.shadow.camera.left = -20; rim.shadow.camera.right = 20;
     rim.shadow.camera.top = 20; rim.shadow.camera.bottom = -20;
+    rim.shadow.camera.updateProjectionMatrix();
     rim.shadow.bias = -0.002;
     scene.add(rim);
     /* a couple of lights along the roof edge */
@@ -15343,8 +15765,15 @@
     streets:  "streets",
     hospital: "sterile",
     escape:   "sterile",
-    roadside: "open",
-    campsite: "hearth",
+    /* THE LANE IS NOT THE MORNING.
+       This was "open", which is the tune written for a road at first
+       light — playing at dusk, over creeping past things in a hedge,
+       and then again on the ride, and then again over the sunrise. The
+       lane gets the city's cue instead: two notes a tone apart going
+       nowhere, which is her music for moving through the dark past
+       them, and this is the last time she has to do it. */
+    roadside: "streets",
+    campsite: "camp",
     gates:    "gate"
   };
   var dangerHold = 0, dangerCue = null, moodCue = null, moodT = 0;
@@ -15470,6 +15899,7 @@
     updateHint(dt);
     updateScore(dt);
     if (G.world) {
+      followSun();
       updateDoors(dt);
       updateLights(dt);
       updateRings(dt);
@@ -15883,6 +16313,7 @@
       key.shadow.mapSize.set(2048, 2048);
       key.shadow.camera.left = -2; key.shadow.camera.right = 2;
       key.shadow.camera.top = 3; key.shadow.camera.bottom = -1;
+      key.shadow.camera.updateProjectionMatrix();
       key.shadow.bias = -0.0008; key.shadow.normalBias = 0.02;
       scene.add(key);
       var fill = new THREE.DirectionalLight(0x90b0e0, 2.0);
@@ -16016,6 +16447,19 @@
     /* what the music has been ASKED for, which is what the driver decides */
     window.__apScoreWant = function () { return Audio_.score.wantedName(); };
     window.__apScoreBeat = function () { return Audio_.score.where(); };
+    window.__apScoreFaults = function () { return Audio_.score.faults(); };
+    window.__apFaults = function () { return (G && G.faults) || []; };
+    window.__apRendererShadows = function () {
+      return Stage.renderer && Stage.renderer.shadowMap.enabled;
+    };
+    window.__apKeys = function () {
+      return { up: KEY.up, down: KEY.down, left: KEY.left, right: KEY.right };
+    };
+    /* run a cue's own beats past it, four passes' worth, so a branch that
+       only happens late in a piece is still exercised */
+    window.__apScorePlay = function (name, beats) {
+      return Audio_.score.rehearse(name, beats || 132);
+    };
     /* the harness standing in for something that has seen her */
     window.__apChase = function (on) {
       if (!G) return false;

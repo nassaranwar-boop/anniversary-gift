@@ -14,10 +14,12 @@ const { chromium } = require('playwright-core');
   await p.waitForFunction(() => !!window.__apEnter, { timeout: 40000 });
   await p.evaluate(() => { window.__apLoop(false); window.__apQuality(2); });
 
-  const names = ['home','streets','hospital','escape','gates'];
+  const names = ['home','streets','hospital','escape','gates','roadside','campsite'];
   console.log('level        calls   tris     lines  points  geoms  texs  lights');
   for (let i = 0; i < names.length; i++) {
-    await p.evaluate(n => window.__apEnter(n), i);
+    if (names[i] === 'roadside') await p.evaluate(() => { window.__apClear(); window.__apRoadside(); });
+    else if (names[i] === 'campsite') await p.evaluate(() => { window.__apClear(); window.__apCampsite(); });
+    else await p.evaluate(n => window.__apEnter(n), i);
     await p.evaluate(() => { for (let k=0;k<40;k++) window.__apPump(1/60); });
     const r = await p.evaluate(() => {
       const R = window.Apocalypse.game && window.THREE ? null : null;

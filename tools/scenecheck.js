@@ -214,6 +214,29 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   ok('his arm goes round her rather than backwards',
      roof.after.hands.some(h => h[0] > 0.05 && h[1] > 1.15), roof.after.hands);
 
+  /* ---- 7. no two scenes running sound the same ----
+     The ride out, the sunrise and the ride in the morning were one cue
+     played three times, with a level in between each — which is where a
+     player stops hearing music and starts hearing a loop. */
+  const heard = await p.evaluate(async () => {
+    const seen = [];
+    const note = name => seen.push([name, window.__apScoreWant()]);
+    window.__apEndCine(); window.__apClear();
+    window.__apRoadside(); note('the lane');
+    window.__apEndCine(); window.__apRide(false); note('the ride out');
+    window.__apEndCine(); window.__apCampsite(); note('the clearing');
+    window.__apEndCine(); window.__apCampfire(); note('the fire');
+    window.__apEndCine(); window.__apCut('sunrise'); note('the sunrise');
+    window.__apEndCine(); window.__apRide(true); note('the coast road');
+    window.__apEndCine(); window.__apClear(); window.__apEnter(4); note('the gate');
+    window.__apEndCine(); window.__apRoof(); note('the roof');
+    return seen;
+  });
+  const runs = heard.filter((h, i) => i && h[1] === heard[i - 1][1]);
+  ok('every scene down off the road has its own music', runs.length === 0, heard);
+  ok('and eight of them are eight different pieces',
+     new Set(heard.map(h => h[1])).size === heard.length, heard);
+
   ok('no page errors from any of it', errs.length === 0, errs.slice(0, 3));
   console.log('');
   console.log(pass + ' passed, ' + fail + ' failed');
