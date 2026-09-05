@@ -1158,26 +1158,27 @@ img{-webkit-user-drag:none; user-select:none;}
   /* a warm default, for any page the tint table has nothing to say about */
   --pg-h:26; --pg-s:22%;
 }
-/* THE PAGE'S OWN LIGHT.
-   A wash in the colour of the photographs that page carries, laid over the
-   paper and under everything mounted on it. It is what stops two lamplit
-   amber prints from sitting on a purple sheet looking like they were cut
-   out of somebody else's album.
+/* THE LIGHT ON THE PAGE, not its colour.
+   The colour now lives in the paper itself -- each page's sheet is drawn
+   in its own hue rather than having a tint laid over it, because a
+   translucent veil can only lower contrast and drain saturation, which is
+   exactly what he saw: "not vivid... steals a bit from the vibe the old
+   book had."
 
-   Under, not over: this is ::before, so every photo, patch and sticker
-   paints on top of it and no picture is tinted -- only the field around
-   it. Plain alpha, no blend mode and no filter: a page gets cloned into
-   ten strips on every turn, and a blended layer would be cloned with it. */
+   What is left here is only what a wash was always good for: a little
+   light falling from the top of the sheet and a little shade gathering at
+   the outer edge, so the page reads as a curved surface under a lamp
+   rather than a flat rectangle. It carries the page's hue so the shading
+   is warm on a warm page, but at this weight it shades -- it does not
+   colour. */
 .sb-page::before{
   content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
   background:
-    radial-gradient(118% 76% at 50% 8%,
-      hsl(var(--pg-h) var(--pg-s) 88% / .52), transparent 70%),
-    radial-gradient(96% 62% at 14% 96%,
-      hsl(var(--pg-h) var(--pg-s) 72% / .38), transparent 74%),
-    linear-gradient(168deg,
-      hsl(var(--pg-h) var(--pg-s) 86% / .28) 0%,
-      hsl(var(--pg-h) var(--pg-s) 60% / .38) 100%);
+    radial-gradient(120% 62% at 50% -6%,
+      hsl(var(--pg-h) 60% 96% / .30), transparent 62%),
+    radial-gradient(78% 96% at 104% 50%,
+      hsl(var(--pg-h) 45% 22% / .20), transparent 66%),
+    linear-gradient(174deg, transparent 55%, hsl(var(--pg-h) 45% 20% / .13) 100%);
 }
 .sb-page.on{display:block;}
 .sb-page.leftpage{left:0; width:50%;}
@@ -1298,6 +1299,18 @@ img{-webkit-user-drag:none; user-select:none;}
   backface-visibility:hidden; -webkit-backface-visibility:hidden;
 }
 .sb-strip-inner{position:absolute; top:0; height:100%;}
+/* the cut edge of the paper. A sheet is not infinitely thin, and the one
+   place you can see that is the free edge as it comes over -- a hairline
+   of lit paper along the outside of the leaf. */
+.sb-strip:last-child::after{
+  content:""; position:absolute; top:0; bottom:0; right:0; width:2px; z-index:41;
+  background:linear-gradient(90deg, rgba(255,248,236,0), rgba(255,250,240,.85));
+  opacity:var(--edge, 0); pointer-events:none;
+}
+.sb-book-outer.flip-back .sb-strip:last-child::after{
+  right:auto; left:0;
+  background:linear-gradient(270deg, rgba(255,248,236,0), rgba(255,250,240,.85));
+}
 /* the gradient is written once; only the four numbers in it change */
 .sb-strip-shade{
   position:absolute; inset:0; z-index:40; pointer-events:none;
@@ -1319,13 +1332,20 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* the shadow the raised sheet throws over the page underneath */
+/* the shadow the lifted leaf throws onto the page underneath. It does not
+   just get longer as the page comes over -- it also softens and weakens,
+   the way a real shadow does as its caster moves away from the surface,
+   which is what stops it reading as a hard painted band sliding across. */
 .sb-flip-shade{
   position:absolute; top:0; bottom:0; right:0; width:var(--page-w,50%);
   z-index:11; pointer-events:none; opacity:0;
+  --lift:var(--flip-lift,0);
   background:linear-gradient(90deg,
-    rgba(38,16,24,.55) 0%, rgba(38,16,24,.30) 26%,
-    rgba(38,16,24,.09) 58%, rgba(38,16,24,0) 88%);
-  transform:scaleX(calc(.28 + var(--flip-lift,0) * .72));
+    rgba(34,13,21,calc(.60 - var(--lift) * .26)) 0%,
+    rgba(34,13,21,calc(.34 - var(--lift) * .16)) calc(20% + var(--lift) * 14%),
+    rgba(34,13,21,calc(.11 - var(--lift) * .05)) calc(52% + var(--lift) * 16%),
+    rgba(34,13,21,0) 92%);
+  transform:scaleX(calc(.24 + var(--lift) * .82));
   transform-origin:left center;
 }
 .sb-book-outer.flipping .sb-flip-shade{opacity:calc(var(--flip-lift,0) * .85);}
@@ -1369,15 +1389,9 @@ img{-webkit-user-drag:none; user-select:none;}
    is its own static child so its padding is a share of the card, and
    the mount's lip is drawn back over the print, so the photo reads as
    tucked behind the frame rather than laid on top of it. */
-/* the coloured paper rectangles are the largest flat areas on a page, so
-   they carry the page's colour as well or the wash reads as a haze over
-   something that disagrees with it */
-.sb-patch::after{
-  content:""; position:absolute; inset:0; pointer-events:none;
-  background:linear-gradient(166deg,
-    hsl(var(--pg-h) var(--pg-s) 76% / .38),
-    hsl(var(--pg-h) var(--pg-s) 54% / .34));
-}
+/* The patch used to carry a tint overlay here. It is dyed in the canvas
+   now, same as the page, so there is nothing to lay over it. */
+
 
 .sb-photo{
   transform:rotate(var(--rot,0deg)); cursor:pointer; z-index:3;
