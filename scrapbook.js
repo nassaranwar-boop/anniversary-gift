@@ -1572,8 +1572,8 @@ window.Scrapbook = (function () {
          letter and made the whole page feel like it was waiting for
          something. It is the only photograph on this page -- it should
          carry it. */
-      { k: "photo", n: 10, style: "corners", left: 5, top: 63, w: 39, rot: -5 },
-      { k: "sticker", art: "vinylRose", left: 48, top: 72, w: 36, rot: 0 },
+      { k: "photo", n: 10, style: "corners", left: 4, top: 58, w: 48, rot: -5 },
+      { k: "sticker", art: "vinylRose", left: 58, top: 74, w: 34, rot: 0 },
       { k: "sticker", art: "flowers",   left: 80, top: 44, w: 30, rot: 9 },
       { k: "sticker", art: "lipInk",    left: 86, top: 86, w: 22, rot: -14 },
       { k: "sticker", art: "starS",     left: 88, top: 26, w: 15, rot: 16 },
@@ -3639,7 +3639,7 @@ window.Scrapbook = (function () {
      leading edge and finish after it, and everything hanging over either
      side rides round with the sheet it is stuck to, which is what it does
      on a real page. */
-  var BLEED = 22;          /* % of the page width, left and right */
+  var BLEED = 15;          /* % of the page width, left and right */
 
   /* And the same again vertically, which I missed the first time. He found
      it: "when turning page six, a sticker in the top corner slips."
@@ -3650,13 +3650,14 @@ window.Scrapbook = (function () {
      off the moment the turn started, exactly as the overhanging sides used
      to be. Less of it shows than at the sides, which is why it reads as the
      corner slipping rather than something disappearing. */
-  var VBLEED = 14;         /* % of the page height, top and bottom */
+  var VBLEED = 9;          /* % of the page height, top and bottom */
 
   function buildStripFragment(pageNode, hingeRight) {
     if (!pageNode) return null;
     var frag = document.createDocumentFragment();
     STRIPS = stripCount();
     var span = 100 + BLEED * 2;
+    var vspan = 100 + VBLEED * 2;
     var d = span / STRIPS;                 /* strip width, in page-% */
     for (var i = 0; i < STRIPS; i++) {
       var startPct = -BLEED + i * d;       /* where this strip begins */
@@ -3679,7 +3680,6 @@ window.Scrapbook = (function () {
       inner.style.width = (100 / d * 100).toFixed(3) + "%";
       inner.style[hingeRight ? "right" : "left"] = (-startPct / d * 100).toFixed(3) + "%";
       /* and put the page back in the middle of the now-taller strip */
-      var vspan = 100 + VBLEED * 2;
       inner.style.top = (VBLEED / vspan * 100).toFixed(3) + "%";
       inner.style.height = (100 / vspan * 100).toFixed(3) + "%";
 
@@ -3687,7 +3687,34 @@ window.Scrapbook = (function () {
       clone.classList.add("in-leaf", "on");
       inner.appendChild(clone);
       strip.appendChild(inner);
-      strip.appendChild(el("sb-strip-shade"));
+      /* THE SHADE HAS TO STOP AT THE PAGE.
+
+         inset:0 on this was the grey striped slab he photographed. The
+         strips are 130% of the page wide and 118% tall now so that the
+         overhanging pieces have something to ride on -- and the shading
+         layer was painting its light-and-dark gradient across every bit of
+         that, including the empty margin where there is no paper at all.
+         Thirteen strips of translucent grey, side by side, hanging off the
+         book in mid-turn: it stopped looking like a page and started
+         looking like a pane of glass.
+
+         So the shade is sized to where the paper actually is inside this
+         strip, and nowhere else. For the strips in the middle that is the
+         whole strip; for the two on the ends it is the part that overlaps
+         the page. */
+      var shade = el("sb-strip-shade");
+      var sL = Math.max(0, (0 - startPct) / d * 100);
+      var sR = Math.min(100, (100 - startPct) / d * 100);
+      shade.style.left = sL.toFixed(3) + "%";
+      shade.style.width = Math.max(0, sR - sL).toFixed(3) + "%";
+      shade.style.top = (VBLEED / vspan * 100).toFixed(3) + "%";
+      shade.style.height = (100 / vspan * 100).toFixed(3) + "%";
+      /* the lit cut edge is drawn from these too -- it was running the full
+         height of the strip, which put a bright hairline in the air above
+         and below the book */
+      strip.style.setProperty("--pt", (VBLEED / vspan * 100).toFixed(3) + "%");
+      strip.style.setProperty("--ph", (100 / vspan * 100).toFixed(3) + "%");
+      strip.appendChild(shade);
       frag.appendChild(strip);
     }
     return frag;
