@@ -1750,38 +1750,84 @@
            which is the whole difference between a piano and a beep */
         function piano(fr, at, v, len) {
           len = len || 3.2;
+          /* THE SECOND PARTIAL WAS THE TONE.
+
+             It sat nine decibels under the note, which sounds modest
+             until you work out where it lands: a melody note at 660Hz
+             puts it at 1320, and at 1320 the ear is about eight
+             decibels more sensitive than it is at 660. So on every high
+             note the harmonic arrived louder than the thing it was a
+             harmonic of — measured at 1319 and 1567Hz, within two
+             decibels of the whole body of the cue — and in a long quiet
+             scene played over headphones that is a ringing that will not
+             stop.
+
+             A real string does lose its upper partials as it goes up the
+             keyboard, so this is what the instrument should have been
+             doing anyway: full and bronze at the bottom, plain and round
+             at the top, with the lid coming down with the pitch. */
+          var bright = clamp(1 - (fr - 330) / 900, 0.30, 1);
           var g = ctx.createGain(); g.gain.value = 1;
           var f = ctx.createBiquadFilter();
           f.type = "lowpass";
-          f.frequency.setValueAtTime(4200, at);
+          f.frequency.setValueAtTime(Math.min(4200, Math.max(1300, fr * 2.4)), at);
           f.frequency.exponentialRampToValueAtTime(900, at + len * 0.7);
           f.connect(g); out(g, 0.30);
-          [[1, 1.0, 1.00], [2, 0.34, 0.55], [3, 0.13, 0.34]].forEach(function (h) {
+          [[1, 1.0, 1.00], [2, 0.34 * bright, 0.55], [3, 0.13 * bright * bright, 0.34]].forEach(function (h) {
             var o = ctx.createOscillator();
             o.type = h[0] === 1 ? "triangle" : "sine";
             /* real strings are a shade sharp in the upper partials */
             o.frequency.value = fr * h[0] * (1 + h[0] * 0.0004);
             var e = ctx.createGain();
             e.gain.setValueAtTime(0.0001, at);
-            e.gain.exponentialRampToValueAtTime(v * h[1], at + 0.008);
+            e.gain.exponentialRampToValueAtTime(Math.max(0.00002, v * h[1]), at + 0.008);
             e.gain.exponentialRampToValueAtTime(0.0001, at + len * h[2]);
             o.connect(e); e.connect(f);
             o.start(at); o.stop(at + len + 0.1); voices.push(o);
           });
         }
-        /* an ensemble: two per note, four cents apart, coming in slowly,
-           with the vibrato everything shares */
+        /* AN ENSEMBLE, AND THE ONE THING IN HERE THAT ACTUALLY HURT.
+
+           Two per note, four cents apart, coming in slowly, with the
+           vibrato everything shares. The wave is a sawtooth, which has
+           every harmonic in it at 1/n — and the chord under every cue in
+           the chapter is played at about 220Hz, which puts its sixth
+           harmonic at 1320Hz and its eighth at 1760. The ear is roughly
+           ten decibels more sensitive up there than it is at the note
+           itself, so those two harmonics arrive at the same loudness as
+           the thing they are harmonics of, held for a whole bar, under
+           everything, forever.
+
+           Measured: every cue in the game — including the one with no
+           melody in it at all — peaked at 1319, 1480 and 1572Hz, within
+           three decibels of each other. It was never a note anybody
+           wrote. It was the pad's own sixth harmonic, and over
+           headphones in a long quiet scene it is a needle.
+
+           So no string voice may now be brighter than its own fourth
+           harmonic, whatever brightness it asks for, and the roll-off
+           above that is two poles rather than one. A chord keeps its
+           body and loses its edge; a melody note, whose fundamental is
+           already high, is not darkened at all. */
         function strings(freqs, at, len, v, cut) {
           var g = ctx.createGain();
           g.gain.setValueAtTime(0.0001, at);
           g.gain.linearRampToValueAtTime(v, at + Math.min(1.6, len * 0.35));
           g.gain.setValueAtTime(v, at + len * 0.72);
           g.gain.linearRampToValueAtTime(0.0001, at + len);
+          if (!freqs.length) return;
+          var lowest = freqs[0];
+          for (var q = 1; q < freqs.length; q++) if (freqs[q] < lowest) lowest = freqs[q];
+          var top = Math.min(cut || 1500, lowest * 4);
           var f = ctx.createBiquadFilter();
-          f.type = "lowpass"; f.Q.value = 0.8;
-          f.frequency.setValueAtTime((cut || 1500) * 0.55, at);
-          f.frequency.linearRampToValueAtTime(cut || 1500, at + len * 0.5);
-          f.connect(g); out(g, 0.45);
+          f.type = "lowpass"; f.Q.value = 0.7;
+          f.frequency.setValueAtTime(top * 0.55, at);
+          f.frequency.linearRampToValueAtTime(top, at + len * 0.5);
+          var f2 = ctx.createBiquadFilter();
+          f2.type = "lowpass"; f2.Q.value = 0.5;
+          f2.frequency.setValueAtTime(top * 0.55, at);
+          f2.frequency.linearRampToValueAtTime(top, at + len * 0.5);
+          f.connect(f2); f2.connect(g); out(g, 0.45);
           freqs.forEach(function (fr) {
             [-4, 4].forEach(function (cents) {
               var o = ctx.createOscillator();
@@ -1820,14 +1866,28 @@
            which on a note up in the octave above the stave put a hard
            ring near five kilohertz. Closer in, and quieter. */
         function bell(fr, at, v) {
-          [[1, 1, 4.5], [2.31, 0.16, 2.4]].forEach(function (h) {
+          /* The second partial is what makes a bell a bell — and at 2.31
+             times the note it lands at four kilohertz as soon as the note
+             is above the stave, which is the middle of the band the ear
+             is most sensitive in. Measured at twenty-one decibels under
+             the note, which after the ear has weighted it is nine: a
+             clear, high, repeating ring over the top of the last scene
+             in the game. It comes off with pitch now — full on a low
+             bell, almost gone at the top — and there is a lid over the
+             whole voice either way. */
+          var shim = 0.16 * clamp(1 - (fr - 460) / 900, 0.12, 1);
+          var lid = ctx.createBiquadFilter();
+          lid.type = "lowpass"; lid.frequency.value = 2600; lid.Q.value = 0.5;
+          var bg = ctx.createGain(); bg.gain.value = 1;
+          lid.connect(bg); out(bg, 0.55);
+          [[1, 1, 4.5], [2.31, shim, 2.4]].forEach(function (h) {
             var o = ctx.createOscillator();
             o.type = "sine"; o.frequency.value = fr * h[0];
             var g = ctx.createGain();
             g.gain.setValueAtTime(0.0001, at);
-            g.gain.exponentialRampToValueAtTime(v * h[1], at + 0.006);
+            g.gain.exponentialRampToValueAtTime(Math.max(0.00002, v * h[1]), at + 0.006);
             g.gain.exponentialRampToValueAtTime(0.0001, at + h[2]);
-            o.connect(g); out(g, 0.55);
+            o.connect(g); g.connect(lid);
             o.start(at); o.stop(at + h[2] + 0.1); voices.push(o);
           });
         }
@@ -1980,7 +2040,7 @@
                  opening above the chord, not two octaves above it: that
                  was a sawtooth at two kilohertz and it was the sound
                  that hurt */
-              if (pass >= 2) strings([hz(c[2] + 7, 0)], at, sp * 9, 0.012 * d, 1400);
+              if (pass >= 2) strings([hz(c[2] + 7, -1)], at, sp * 9, 0.014 * d, 900);
             }
             /* the ward's own tune: a phrase that reaches and falls back
                a step further than it climbed, every time */
@@ -2056,8 +2116,11 @@
                it an octave up. Third: the low line comes in under it.
                Fourth: it thins out again and the piano is left holding it. */
             if (pass !== 3)
+              /* the tune reaches 1319Hz on its last note and is meant
+                 to; what it is not meant to do is bring its own second
+                 harmonic up there with it */
               line(MORN_AT, b, at, sp, 0, 0.034 * d, function (f, t2, v, dd) {
-                strings([f], t2, dd + sp * 0.4, v, 2000);
+                strings([f], t2, dd + sp * 0.4, v, 1500);
               });
             if (pass >= 1) line(MORN_AT, b, at, sp, 0, (pass === 3 ? 0.034 : 0.022) * d, piano);
             if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.026 * d, cello);
@@ -2271,8 +2334,8 @@
             /* and the second time through, one voice above it, so that
                she is not entirely on her own in it */
             if (pass >= 2 && b % 2 === 0)
-              line(TUNE_AT, (b / 2) % 32, at, sp * 2, 1, 0.010 * d, function (f, t2, v, dd) {
-                strings([f], t2, dd, v, 2400);
+              line(TUNE_AT, (b / 2) % 32, at, sp * 2, 0, 0.012 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd, v, 1300);
               });
           } },
 
@@ -2315,12 +2378,18 @@
             line(WARM_AT, b, at, sp, 0, 0.054 * d, function (f, t2, v, dd) {
               piano(f, t2, v, Math.max(2.8, dd * 1.4));
             });
-            line(TUNE_AT, b, at, sp, 1, 0.020 * d, function (f, t2, v, dd) {
-              strings([f], t2, dd + sp * 0.5, v, 2600);
+            /* These two used to be an octave higher on a sawtooth, so
+               the longest scene in the game had a two-kilohertz string
+               line over the top of it for four minutes. They sit in the
+               piano's own octave now — they are different tunes, so
+               they do not collide, and the piano's attack keeps it on
+               top without needing the register to do it. */
+            line(TUNE_AT, b, at, sp, 0, 0.020 * d, function (f, t2, v, dd) {
+              strings([f], t2, dd + sp * 0.5, v, 1200);
             });
             if (pass >= 2)
-              line(WARM_AT, b, at, sp, 1, 0.012 * d, function (f, t2, v, dd) {
-                strings([f], t2, dd + sp * 0.5, v, 3000);
+              line(WARM_AT, b, at, sp, -1, 0.014 * d, function (f, t2, v, dd) {
+                strings([f], t2, dd + sp * 0.5, v, 900);
               });
             line(UNDER_AT, b, at, sp, -1, 0.034 * d, cello);
           } },
@@ -2347,8 +2416,10 @@
             /* the tune written to end, halved, high up, one note at a
                time — the only melody in the chapter that walks down to
                the root and stops on it */
+            /* an octave lower than it was: at the old one the bell's
+               second partial sat at four kilohertz on every note */
             if (b % 2 === 0)
-              line(REST_AT, (b / 2) % 32, at, sp * 2, 1, 0.040 * d, function (f, t2, v) {
+              line(REST_AT, (b / 2) % 32, at, sp * 2, 0, 0.044 * d, function (f, t2, v) {
                 bell(f, t2, v);
               });
             /* and the two of them under it, bowed, so that both are here */
@@ -2423,11 +2494,29 @@
              roof on the way out. It takes nothing away that you would
              miss and it makes it impossible for any one voice, written
              now or later, to come out sharp. */
+          /* Five thousand two hundred is above everything the ear
+             complains about, so it was catching nothing. The band that
+             hurts is two to five kilohertz — the ear canal's own
+             resonance sits in the middle of it — and nothing in this
+             score has a note up there, only harmonics. So the lid comes
+             down to where it can actually do something, and the shelf
+             starts below it rather than above. Not one note changes;
+             what goes is the edge on them. */
           var roof = ctx.createBiquadFilter();
-          roof.type = "lowpass"; roof.frequency.value = 5200; roof.Q.value = 0.6;
+          roof.type = "lowpass"; roof.frequency.value = 4000; roof.Q.value = 0.5;
           var tame = ctx.createBiquadFilter();
-          tame.type = "highshelf"; tame.frequency.value = 3000; tame.gain.value = -7;
-          bus.connect(roof); roof.connect(tame); tame.connect(musBus);
+          tame.type = "highshelf"; tame.frequency.value = 2400; tame.gain.value = -8;
+          /* And one more, narrow, exactly where the measurements kept
+             landing: every cue in the game peaked between 1300 and 1800
+             hertz, because that is where the second harmonic of a melody
+             note and the sixth of the chord under it both arrive. Five
+             decibels out of that one band, with a Q wide enough that
+             nothing sounds notched — the notes themselves are all below
+             it and do not move. */
+          var edge = ctx.createBiquadFilter();
+          edge.type = "peaking"; edge.frequency.value = 1500;
+          edge.Q.value = 0.9; edge.gain.value = -5;
+          bus.connect(roof); roof.connect(edge); edge.connect(tame); tame.connect(musBus);
           bus.gain.setTargetAtTime(0.9, at, rise);
           /* everything a cue plays goes through this pair, so the whole
              thing rises and falls as one */
@@ -2591,6 +2680,36 @@
         setPiece.wantedName = function () { return pending || wanted; };
         /* every exception a cue has thrown since the chapter began */
         setPiece.faults = function () { return played.slice(); };
+        /* the music bus itself, so a harness can hang a spectrum
+           analyser on it and find out what the score is actually
+           putting out rather than what it was meant to */
+        setPiece.tap = function () { return { ctx: ctx, bus: musBus }; };
+        /* play one instrument, on its own, so a harness can find out
+           which of them is making a noise nobody wrote */
+        /* stop the music but keep its bus open, so probe() can put one
+           voice through the same chain with nothing else on it */
+        setPiece.solo = function () {
+          if (!ac()) return false;
+          wanted = null; pending = null; urgent = false;
+          if (timer) { clearTimeout(timer); timer = 0; }
+          piece = null;
+          if (!bus) startBus(ctx.currentTime, 0.05);
+          return true;
+        };
+        setPiece.probe = function (voice, fr, len, v, cut) {
+          if (!ac() || !bus) return false;
+          var at = ctx.currentTime + 0.02;
+          if (voice === "strings") strings([fr], at, len, v, cut);
+          else if (voice === "chord") strings([fr, fr * 1.19, fr * 1.5], at, len, v, cut);
+          else if (voice === "cello") cello(fr, at, len, v);
+          else if (voice === "piano") piano(fr, at, v, len);
+          else if (voice === "bell") bell(fr, at, v);
+          else if (voice === "swell") swell(fr, at, len, v);
+          else if (voice === "pulse") pulse(fr, at, v, len);
+          else if (voice === "tick") tick(at, v);
+          else return false;
+          return true;
+        };
         /* Play a cue's beats past it without putting it on the bus: the
            only way to find a branch that never runs until the third time
            round other than sitting through the third time round. */
@@ -2692,9 +2811,13 @@
         tone(660, 0.16, 0.07, "triangle");
         tone(990, 0.30, 0.05, "triangle", 1320, 0.09);
       },
-      keyOk: function () { if (on) { tone(520, 0.1, 0.06, "square"); tone(780, 0.22, 0.05, "square", 900, 0.08); } },
+      /* A square wave has every odd harmonic in it at 1/n, so a blip at
+         780Hz puts real energy at 2340 and 3900 — in the band the ear is
+         raw in, four times per panel. A triangle is the same blip with
+         its harmonics falling at 1/n² instead. */
+      keyOk: function () { if (on) { tone(520, 0.1, 0.06, "triangle"); tone(780, 0.22, 0.055, "triangle", 900, 0.08); } },
       keyBad: function () { if (on) { tone(150, 0.3, 0.09, "sawtooth", 70); } },
-      beep: function () { if (on) tone(1200, 0.045, 0.035, "square"); },
+      beep: function () { if (on) tone(1200, 0.045, 0.038, "triangle"); },
       static: function (dur, g) { if (on) noise(dur || 0.4, g || 0.05, 2600, 0.4, "highpass"); },
       /* the dial moving: a band of hiss sliding down, not a whistle.
          It used to sit at 1400 with the hospital's bells ringing on top
@@ -12135,6 +12258,20 @@
     var x = cv.getContext("2d");
     var done = [false, false, false, false];
     var drag = null, sparkT = 0, sparkAt = null, t0 = performance.now();
+    /* The panel closes itself six hundred milliseconds after the last
+       core goes home, and calls back into the level it belongs to. If
+       anything has moved on in the meantime — and a test can move on in
+       a tenth of that — the callback lands somewhere it was never meant
+       to. It carries the world it was opened in and checks. */
+    var mine = G.world;
+    function finish(ms) {
+      setTimeout(function () {
+        if (!G || G.world !== mine) return;
+        closeOverlay();
+        G.state = "play";
+        if (onDone) onDone();
+      }, ms);
+    }
 
     function wireY(i) { return 52 + i * 56; }
     function sockY(i) { return 52 + i * 56; }
@@ -12266,13 +12403,7 @@
         if (order[hit] === drag.wire) {
           done[drag.wire] = true;
           Audio_.keyOk();
-          if (done.every(Boolean)) {
-            setTimeout(function () {
-              closeOverlay();
-              G.state = "play";
-              if (onDone) onDone();
-            }, 620);
-          }
+          if (done.every(Boolean)) finish(620);
         } else {
           sparkT = 0.45; sparkAt = { x: SX + 10, y: sockY(hit) };
           Audio_.spark();
@@ -12319,7 +12450,7 @@
       solve: function () {
         done = [true, true, true, true];
         draw();
-        setTimeout(function () { closeOverlay(); G.state = "play"; if (onDone) onDone(); }, 200);
+        finish(200);
       }
     };
     draw();
@@ -16448,6 +16579,12 @@
     window.__apScoreWant = function () { return Audio_.score.wantedName(); };
     window.__apScoreBeat = function () { return Audio_.score.where(); };
     window.__apScoreFaults = function () { return Audio_.score.faults(); };
+    window.__apScoreTap = function () { return Audio_.score.tap(); };
+    window.__apScoreSolo = function () { return Audio_.score.solo(); };
+    window.__apScoreSet = function (n) { Audio_.score(n, null, false, true); return n; };
+    window.__apScoreProbe = function (v, fr, len, vol, cut) {
+      return Audio_.score.probe(v, fr, len, vol, cut);
+    };
     window.__apFaults = function () { return (G && G.faults) || []; };
     window.__apRendererShadows = function () {
       return Stage.renderer && Stage.renderer.shadowMap.enabled;

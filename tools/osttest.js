@@ -148,6 +148,59 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   const lived = await p.evaluate(() => window.__apScoreFaults());
   ok('and nothing threw during the run itself', lived.length === 0, lived.slice(0, 4));
 
+  /* ---- WHAT IT SOUNDS LIKE, NOT WHAT IT SAYS ----
+     The three longest and quietest scenes in the game — the radio, the
+     roof and the last screen — are where a harmonic nobody wrote gets
+     four minutes of headphones to itself. Every one of them measured
+     with its loudest thing between 1.2 and 5kHz sitting at or ABOVE the
+     whole body of the cue. This hangs a spectrum analyser on the music
+     bus and asks. */
+  /* The bar is absolute rather than relative to the cue: how loud the
+     rest of the music happens to be in the ten seconds you sampled
+     moves about, but a harmonic sitting in the ear's own resonance does
+     not. Measured before the fix, these four read -46, -49, -55 and -56;
+     they read -61 or quieter now. */
+  const QUIET = ['signal', 'home', 'after', 'sterile'], CEILING = -57;
+  const spec = {};
+  for (const cue of QUIET) {
+    spec[cue] = await p.evaluate(async name => {
+      const t = window.__apScoreTap();
+      const an = t.ctx.createAnalyser();
+      an.fftSize = 8192; an.smoothingTimeConstant = 0;
+      t.bus.connect(an);
+      window.__apMusic(true);
+      window.__apScoreSet(name);
+      await new Promise(r => setTimeout(r, 2800));
+      const bins = new Float32Array(an.frequencyBinCount);
+      const peak = new Float32Array(an.frequencyBinCount).fill(-200);
+      const hz = t.ctx.sampleRate / an.fftSize;
+      const t0 = Date.now();
+      while (Date.now() - t0 < 9000) {
+        an.getFloatFrequencyData(bins);
+        for (let i = 0; i < bins.length; i++) if (bins[i] > peak[i]) peak[i] = bins[i];
+        await new Promise(r => setTimeout(r, 35));
+      }
+      t.bus.disconnect(an);
+      const band = (lo, hi) => {
+        let sum = 0, n = 0;
+        for (let i = Math.round(lo / hz); i < Math.round(hi / hz) && i < peak.length; i++) {
+          sum += Math.pow(10, peak[i] / 10); n++;
+        }
+        return 10 * Math.log10(sum / Math.max(1, n));
+      };
+      let sharpest = -200, at = 0;
+      for (let i = Math.round(1200 / hz); i < Math.round(5000 / hz) && i < peak.length; i++)
+        if (peak[i] > sharpest) { sharpest = peak[i]; at = Math.round(i * hz); }
+      const body = band(100, 800);
+      return { body: Math.round(body), sharpest: Math.round(sharpest), at,
+               under: Math.round(body - sharpest) };
+    }, cue);
+  }
+  for (const cue of QUIET) {
+    ok(cue + ': nothing rings in the band the ear is raw in',
+       spec[cue].sharpest <= CEILING, { cue, ceiling: CEILING, got: spec[cue] });
+  }
+
   ok('no page errors', errs.length === 0, errs.slice(0, 3));
   console.log('');
   console.log(pass + ' passed, ' + fail + ' failed');

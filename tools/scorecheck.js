@@ -265,6 +265,45 @@ const ratio = Math.max(...bpms) / Math.min(...bpms);
 ok('the fastest and the slowest are within reach of each other',
    ratio <= 3.2, { fastest: Math.max(...bpms), slowest: Math.min(...bpms), ratio });
 
+/* ---- NOTHING IN THE SCORE MAY SIT IN THE BAND THAT HURTS ----
+
+   The ear's own canal resonates between two and five kilohertz and it is
+   roughly ten decibels more sensitive there than at the notes underneath.
+   Nothing in this chapter has a note up there — but three things were
+   putting harmonics into it, on a loop, in the longest and quietest
+   scenes in the game: a melody carried an octave up on a sawtooth, a
+   bell whose second partial is at 2.31 times the note, and the piano's
+   own second partial, which at nine decibels under a 660Hz note arrives
+   at 1320 louder than the note is. Measured; not guessed.
+
+   These are the three shapes, held statically so they cannot come back. */
+const octUp = [...cueBlock.matchAll(/line\(([A-Z_]+), [^;]*?, (-?\d), [\d.]+ \* d/g)]
+  .filter(m => m[2] === '1');
+ok('no melody is carried an octave above the stave', octUp.length === 0,
+   octUp.map(m => m[0].slice(0, 40)));
+const bright = [...cueBlock.matchAll(/strings\(\[f\][^;]*?, (\d+)\)/g)]
+  .map(m => Number(m[1])).filter(n => n > 1600);
+ok('and no single string line is brighter than 1600Hz', bright.length === 0, bright);
+/* the pad is capped against its own fundamental rather than by whatever
+   brightness the cue asked for */
+const strFn = src.slice(src.indexOf('function strings(freqs'), src.indexOf('function cello('));
+ok('the pad can never be brighter than its own fourth harmonic',
+   /lowest \* 4/.test(strFn) && /Math\.min\(cut/.test(strFn), 'strings');
+ok('and it rolls off on two poles, not one',
+   (strFn.match(/createBiquadFilter/g) || []).length >= 2, 'strings');
+const bellFn = src.slice(src.indexOf('function bell(fr'), src.indexOf('function swell('));
+ok("the bell's second partial comes off as the note goes up",
+   /shim/.test(bellFn) && /lowpass/.test(bellFn), 'bell');
+const pianoFn = src.slice(src.indexOf('function piano(fr'), src.indexOf('function strings(freqs'));
+ok("and so do the piano's", /bright/.test(pianoFn), 'piano');
+/* and one last lid over the whole score, low enough to reach the band */
+const busFn = src.slice(src.indexOf('function startBus('), src.indexOf('function stopAll('));
+const lid = /roof\.frequency\.value = (\d+)/.exec(busFn);
+ok('the lid over the score is low enough to catch it',
+   lid && Number(lid[1]) <= 4200, lid && lid[1]);
+ok('and there is a dip where every cue was measured to peak',
+   /peaking/.test(busFn) && /frequency\.value = 15\d\d/.test(busFn), 'edge');
+
 /* the frightened ones must not carry a tune, and the tender ones must */
 ok('being chased has no melody in it',
    !/line\(TUNE_AT|line\(WARM_AT/.test(bodies.hunt), 'hunt');
