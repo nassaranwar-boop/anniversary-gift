@@ -379,6 +379,25 @@ Night six ends the story on dawn rather than on a scoreboard: the
 shutters go up, the shop is still for the first time, and the last found
 object finishes the toymaker's story.
 
+### Why she is there
+
+The film tells her who he was. Then the shutters come down and he tells
+her what she is doing, which is the part that was missing for a long
+time: **six nights, and try not to let anything reach you.** Not because
+surviving is the game, but because he is not handing the worst thing he
+ever did to somebody who might not be there on Saturday. She agrees by
+pressing one button, and after that every night is a payment against a
+deal she made rather than a situation she is in.
+
+It is scored as a clock: a tick on every beat and a brass swell that
+never gets anywhere, because he is counting and she cannot stop him.
+
+The last night answers it. Six nights with nothing laying a hand on her
+reads one way; six nights with some of them getting through reads
+another, and both of them are warm — getting caught costs her the clean
+run and nothing else, and he says so himself the first time it happens,
+in his own voice, over the game-over card.
+
 ### What she is actually doing
 
 Night one opens in the terminal's **orientation mode** — a real thing an
@@ -453,6 +472,25 @@ stepped in is spent, and will not do it again until she winds it.
 
 His four are her lives. His instruction is what buys them. Nothing in
 the game says so until the first time it happens.
+
+### The score
+
+One piece of music, ten rooms to play it in, and it never cuts — the
+grid never restarts and the tempo eases rather than snapping, so a
+scene becomes the next one without a join anywhere. But they are cues
+rather than fader positions: eleven instruments, and each scene has
+material of its own.
+
+| | |
+|---|---|
+| **the terms** | a clock and a swell. Nothing resolves. |
+| **the minute before a night** | the same clock, and a heartbeat under it |
+| **the shift** | six layers arriving in order as dread climbs, ahead of anything visible |
+| **the meter going out** | the heartbeat *stops*. A choir on one note and no melody at all |
+| **after a death** | a piano, alone, remembering the phrase rather than playing it |
+| **a page in her hands** | the phrase in the major, in thirds — the first time two notes agree |
+| **one of his getting there first** | piano an octave up, choir underneath. The one place it is allowed to be enormous |
+| **six o'clock** | the major phrase finally resolved, with the last note left ringing |
 
 ### The six pages
 

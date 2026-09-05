@@ -307,6 +307,49 @@ const NS = {
 
   /* the one line at the end of a night, in place of a score. It is not
      a summary; it is a door left open. */
+  /* =====================================================
+     THE TERMS — why she is standing here at all
+
+     The complaint this exists to answer: you start playing and you are
+     lost. You survive a night, and another one, and nothing has told
+     you why you are doing it. Surviving is a thing that happens TO
+     her; it is not a thing she has decided.
+
+     So the shop tells her, in his voice, on the way in. The shutters
+     come down and he sets the terms: six nights, all six, and he is
+     asking her to get through them without being caught, because he is
+     not going to explain any of it to somebody who might not last long
+     enough to hear the end.
+
+     That does three things at once. She now has a goal she chose
+     rather than a situation she is in. Every night after it is a
+     payment against a debt she agreed to. And the last night is not
+     "you survived", it is "he kept his word". */
+  terms: {
+    head: "WICK &amp; COGS — INTERNAL ADDRESS",
+    sub: "the shutters come down at midnight, and they lock",
+    lines: [
+      "Ouissy. Stop. Before you touch anything, listen.",
+      "The shutters are down. They will not go up again until six. That is not me being dramatic, it is a timer, and I set it a long time ago.",
+      "Six nights. That is what I am asking for. Six, and then everything.",
+      "I have left the whole of it in here — on the tapes, on the shelves, in the book under the till. It is all yours. But I am not handing the worst thing I ever did to somebody who might not be here on Saturday.",
+      "So get through them. All six. And try very hard not to let anything reach you, because I would like you to hear the end of this from me and not work it out from the mess.",
+      "You have been braver than me for fifteen years. One more week.",
+    ],
+    /* the one button, which is the only choice she has here */
+    go: "STAY",
+  },
+  gave: "he had left it where you would have to trip over it",
+  /* he answers a bad night rather than letting the game score it */
+  caught: {
+    first: "That was my fault. I built the thing that did that. Go again — the tape will keep.",
+    later: "Again. I am still here at the end of it.",
+  },
+  /* and the last night knows whether she kept the terms */
+  kept: {
+    clean: "Six nights and nothing laid a hand on you. I asked for that because I wanted you to hear it from me, and you have earned every word of it.",
+    hurt:  "Six nights. Some of them got to you and I am not going to pretend they did not. You came back anyway, which is the part I would have bet on.",
+  },
   /* What tonight is FOR. The card told her which night it was and what
      new thing would go wrong; it never told her what she was there to
      do about it, which is the difference between a level and a scene.
@@ -350,29 +393,30 @@ const NS = {
      where a story either has her or does not. */
   tapes: {
     1: [
-      { h: 0, t: "Ouissy. If you are hearing this, you found the drawer. Good." },
-      { h: 0, t: "The kettle is behind the till. It takes a while." },
-      { h: 1, t: "You will have noticed the four in the back. They are not stock. I never sold those." },
-      { h: 2, t: "They walk at night. It is not a fault. I built them to." },
-      { h: 3, t: "Nothing in this shop wants to hurt you. I want to say that first, while it is still true." },
-      { h: 4, t: "Shut the door if one gets close. It costs you a little. It costs you less than the alternative." },
-      { h: 5, t: "Six o'clock is soon. Go home and sleep. I mean it." },
+      { h: 0, t: "One of six. You said yes, so here is the first thing." },
+      { h: 0, t: "The kettle is behind the till. It takes a while. Everything in here does." },
+      { h: 1, t: "The four in the back are not stock. I never sold those, and tonight that is all you need to know about them." },
+      { h: 2, t: "They walk. It is not a fault, I built them to, and by Thursday you will be glad of it." },
+      { h: 3, t: "Nothing in this shop wants to hurt you. I want to say that on the first night, while it is still true." },
+      { h: 4, t: "Shut the door if one gets close. It costs you a little. It costs you less than the other thing." },
+      { h: 5, t: "One down. Go home. Sleep. Come back tonight." },
     ],
     2: [
-      { h: 0, t: "You came back. I did not know if you would." },
+      { h: 0, t: "You came back. I did not know if you would, and I have been sitting here all day not knowing." },
       { h: 1, t: "The soldier keeps time. He has never once been late, which is a thing I admired in somebody else first." },
       { h: 2, t: "The owl goes through the ceiling because that is how a roof works. It is not being clever." },
       { h: 3, t: "The ballerina stops when she is looked at. Everybody does." },
       { h: 4, t: "And the box. The box does not leave a room while there is anybody in it." },
-      { h: 5, t: "I made four toys, Ouissy. I only ever had one idea." },
+      { h: 5, t: "I made four toys, Ouissy. I only ever had one idea, and it was you." },
     ],
     3: [
-      { h: 0, t: "There is a book under the till. I would rather you did not, but you will." },
+      { h: 0, t: "Halfway. This is the night I have been dreading, so I am going to get it over with." },
+      { h: 0, t: "There is a book under the till. I would rather you did not, but you will, and you should." },
       { h: 1, t: "Four hundred and eleven of them went out of here. Every one to a real address." },
       { h: 2, t: "They were bought as presents. That part is true." },
       { h: 3, t: "The tag on each one has this shop on it. So they know the way back." },
       { h: 4, t: "If a parcel arrives that nobody sent, it is not a delivery. Do not open the door for it." },
-      { h: 5, t: "I am telling you this badly. I have started this tape four times." },
+      { h: 5, t: "I am telling you this badly. I have started this tape four times. Three more nights." },
     ],
     4: [
       { h: 0, t: "All right. The thing I have been walking around." },
@@ -383,15 +427,15 @@ const NS = {
       { h: 5, t: "The four in the back are the only ones I made for nothing." },
     ],
     5: [
-      { h: 0, t: "Something has changed and I do not think I have long." },
-      { h: 1, t: "They have started coming back on their own. I did not call them." },
-      { h: 2, t: "Keep the four of them wound. Every night. All four." },
-      { h: 3, t: "If one of them gets to the door before you do, let it." },
+      { h: 0, t: "Five. Tonight is the one I actually needed you to reach." },
+      { h: 1, t: "They have started coming back on their own. I did not call them. Nobody called them." },
+      { h: 2, t: "Keep the four of them wound tonight. All four. Do not ask me why yet, just do it." },
+      { h: 3, t: "And if one of them gets to the door before you do — let it. Do not shut it. Let it." },
       { h: 4, t: "They were never for the shop, Ouissy. They were for you, in case I was not there." },
       { h: 5, t: "I built the whole four of them out of you and I never once said so out loud." },
     ],
     6: [
-      { h: 0, t: "This is the last one. I made it in the morning, which I never do." },
+      { h: 0, t: "Six. Last one. I made this tape in the morning, which I never do." },
       { h: 1, t: "You will have worked out by now what I was. I would like to say I was more than that." },
       { h: 2, t: "I was not. But I was also a man who made four things that will stand at a door for you." },
       { h: 3, t: "The shutters go up at six on their own. Every morning. They always have." },
@@ -5667,6 +5711,20 @@ const SFX = {
     tone({ type: "triangle", f0: 320, f1: 180, dur: 0.22, gain: 0.16, at: 0.01 });
     tone({ type: "triangle", f0: 88, f1: 62, dur: 0.30, gain: 0.13, filter: "lowpass", ff: 260, at: 0.02 });
   },
+  /* Steel coming down and hitting the floor, and the lock going in
+     after it. It is the sound of the terms, so it is the biggest thing
+     in the chapter. */
+  shutter() {
+    burst({ f0: 3200, f1: 900, dur: 0.10, gain: 0.30, q: 0.8, filter: "highpass" });
+    burst({ f0: 900, f1: 120, dur: 1.20, gain: 0.60, q: 0.5, filter: "lowpass" });
+    tone({ type: "sawtooth", f0: 128, f1: 44, dur: 1.10, gain: 0.24, filter: "lowpass", ff: 520 });
+    tone({ type: "triangle", f0: 47, f1: 33, dur: 1.60, gain: 0.26, filter: "lowpass", ff: 150 });
+    /* the floor, and then the bolt */
+    burst({ f0: 320, f1: 70, dur: 0.55, gain: 0.55, q: 0.6, filter: "lowpass", at: 0.95 });
+    burst({ f0: 2400, f1: 1100, dur: 0.07, gain: 0.22, q: 3, at: 1.45 });
+    tone({ type: "square", f0: 96, f1: 62, dur: 0.30, gain: 0.16, filter: "lowpass", ff: 400, at: 1.45 });
+  },
+
   /* the tube swinging down on its arm, and the picture striking */
   monitor(up) {
     burst({ f0: up ? 1200 : 700, f1: up ? 400 : 1400, dur: 0.18, gain: 0.46, q: 0.7,
@@ -6446,30 +6504,111 @@ const MUS_LEVEL = 0.42;         // how loud the score sits under the game
      gallery  the shop in daylight, with nothing in it.
      menu     the title. */
 const MODE_MIX = {
-  film:    { sub: 0.30, pulse: 0,    box: 0.28, air: 0.14, grind: 0.10, bow: 0,    warm: 0.10 },
-  brief:   { sub: 0.34, pulse: 0.32, box: 0.22, air: 0.10, grind: 0.06, bow: 0,    warm: 0 },
-  dark:    { sub: 0.70, pulse: 0,    box: 0,    air: 0.50, grind: 0.60, bow: 0.40, warm: 0 },
-  gone:    { sub: 0.50, pulse: 0,    box: 0.14, air: 0.30, grind: 0.34, bow: 0.12, warm: 0 },
-  found:   { sub: 0.20, pulse: 0,    box: 0.62, air: 0.14, grind: 0,    bow: 0,    warm: 0.55 },
-  held:    { sub: 0.44, pulse: 0.24, box: 0.72, air: 0.24, grind: 0,    bow: 0.20, warm: 0.72 },
-  dawn:    { sub: 0.16, pulse: 0,    box: 0.50, air: 0.12, grind: 0,    bow: 0,    warm: 0.75 },
-  gallery: { sub: 0.14, pulse: 0,    box: 0.55, air: 0.10, grind: 0,    bow: 0,    warm: 0.80 },
-  menu:    { sub: 0.20, pulse: 0,    box: 0.62, air: 0.10, grind: 0,    bow: 0,    warm: 0.34 },
+  /* he is talking, so almost nothing — but the piano is under him,
+     which is what tells her this is a memory and not a briefing */
+  film:    { sub: 0.30, pulse: 0,    box: 0.10, air: 0.14, grind: 0.08, bow: 0,    warm: 0.06,
+             piano: 0.34, choir: 0,    brass: 0.16, tick: 0 },
+  /* THE TERMS: a clock and a swell and nothing else. He is setting a
+     deadline, so the only two instruments are the one that counts and
+     the one that says something is coming. */
+  locked:  { sub: 0.62, pulse: 0,    box: 0,    air: 0.20, grind: 0.24, bow: 0,    warm: 0,
+             piano: 0.20, choir: 0,    brass: 0.55, tick: 0.62 },
+  /* the minute before a night: her stomach, and a clock she cannot stop */
+  brief:   { sub: 0.34, pulse: 0.30, box: 0.10, air: 0.10, grind: 0.06, bow: 0,    warm: 0,
+             piano: 0,    choir: 0,    brass: 0.22, tick: 0.50 },
+  /* the meter is gone. The heartbeat stops; everything else opens up */
+  dark:    { sub: 0.70, pulse: 0,    box: 0,    air: 0.50, grind: 0.60, bow: 0.40, warm: 0,
+             piano: 0,    choir: 0.30, brass: 0.62, tick: 0 },
+  /* after a death: one held ring, the box two octaves down, no pulse */
+  gone:    { sub: 0.50, pulse: 0,    box: 0.10, air: 0.30, grind: 0.30, bow: 0.12, warm: 0,
+             piano: 0.34, choir: 0,    brass: 0.20, tick: 0 },
+  /* she is reading something he wrote. Piano and the major phrase */
+  found:   { sub: 0.20, pulse: 0,    box: 0.40, air: 0.14, grind: 0,    bow: 0,    warm: 0.45,
+             piano: 0.55, choir: 0.16, brass: 0,    tick: 0 },
+  /* THE TURN. One of his got there first. Everything warm, and the
+     only place in the chapter the choir is loud. */
+  held:    { sub: 0.44, pulse: 0.18, box: 0.55, air: 0.22, grind: 0,    bow: 0.16, warm: 0.62,
+             piano: 0.60, choir: 0.72, brass: 0.34, tick: 0 },
+  dawn:    { sub: 0.16, pulse: 0,    box: 0.40, air: 0.12, grind: 0,    bow: 0,    warm: 0.62,
+             piano: 0.48, choir: 0.34, brass: 0,    tick: 0 },
+  gallery: { sub: 0.14, pulse: 0,    box: 0.45, air: 0.10, grind: 0,    bow: 0,    warm: 0.70,
+             piano: 0.34, choir: 0.10, brass: 0,    tick: 0 },
+  menu:    { sub: 0.20, pulse: 0,    box: 0.55, air: 0.10, grind: 0,    bow: 0,    warm: 0.34,
+             piano: 0.22, choir: 0,    brass: 0,    tick: 0 },
 };
 /* how fast the grid runs, whether the phrase is the major one, and how
    loud the whole thing sits. `night` works its own out of dread. */
 const MODE_FEEL = {
-  film:    { spb: 1.95, warm: false, level: 0.26 },
-  brief:   { spb: 1.55, warm: false, level: 0.40 },
-  dark:    { spb: 1.15, warm: false, level: 0.42 },
-  gone:    { spb: 2.40, warm: false, level: 0.38 },
-  found:   { spb: 1.70, warm: true,  level: 0.40 },
-  held:    { spb: 1.42, warm: true,  level: 0.54 },
-  dawn:    { spb: 1.50, warm: true,  level: 0.42 },
-  gallery: { spb: 1.62, warm: true,  level: 0.38 },
-  menu:    { spb: 1.36, warm: "menu", level: 0.42 },
+  film:    { spb: 1.95, warm: false, level: 0.26, theme: "memory" },
+  locked:  { spb: 1.00, warm: false, level: 0.46, theme: "clock" },
+  brief:   { spb: 1.35, warm: false, level: 0.40, theme: "clock" },
+  dark:    { spb: 1.15, warm: false, level: 0.42, theme: "void" },
+  gone:    { spb: 2.40, warm: false, level: 0.38, theme: "memory" },
+  found:   { spb: 1.70, warm: true,  level: 0.40, theme: "letter" },
+  held:    { spb: 1.42, warm: true,  level: 0.56, theme: "turn" },
+  dawn:    { spb: 1.50, warm: true,  level: 0.42, theme: "morning" },
+  gallery: { spb: 1.62, warm: true,  level: 0.38, theme: "morning" },
+  menu:    { spb: 1.36, warm: "menu", level: 0.42, theme: "menu" },
 };
-const MUS_LAYERS = ["sub", "pulse", "box", "air", "grind", "bow", "warm"];
+
+/* THE THEMES.
+
+   A mix is not a piece of music. Nine scenes sharing one melody with
+   the faders moved is one score, and what was asked for is scores that
+   are different from each other the way the cues in a film are — the
+   ticking one, the one where somebody reads a letter, the one where
+   the thing you were dreading turns out to be on your side.
+
+   So each scene has material of its own. They are all still built out
+   of the same phrase in the same key, because a chapter should sound
+   like one place — but a phrase played on a piano in thirds at half
+   speed is not the same music as the same phrase ticking underneath a
+   brass swell, and it is not supposed to be.
+
+     clock    THE TERMS and the minute before a night. A tick on every
+              beat, a brass swell every four bars that gets no higher,
+              and one piano note at the top of each bar. Nothing
+              resolves, because he is counting and she cannot stop him.
+     memory   the film, and the card after a death. Piano alone,
+              wide apart, the phrase slowed until it stops being a
+              tune and becomes somebody remembering one.
+     letter   a page in her hands. The phrase in the major, in thirds,
+              which is the first time in the chapter two notes agree.
+     turn     one of his got there first. The same major phrase with
+              the choir under it and the piano an octave up: the one
+              place the game is allowed to be enormous.
+     morning  six o'clock and the shop in daylight. The major phrase
+              resolved, finally, with the last note left ringing.
+     void     the meter is gone. No phrase at all — a choir on one
+              note and a brass swell that never arrives anywhere.
+     menu     the title, which keeps the wandering music box it had. */
+const THEME_NOTES = {
+  /* the phrase, in thirds, warm */
+  letter:  (s16, bar) => (s16 % 4 === 0 ? [WARM[s16], WARM[s16] + 4] : null),
+  turn:    (s16, bar) => (s16 % 4 === 0 ? [WARM[s16], WARM[s16] + 7, WARM[s16] + 12] : null),
+  morning: (s16, bar) => (s16 % 8 === 0 ? [WARM[s16], WARM[s16] + 4, WARM[s16] + 7] : null),
+  memory:  (s16, bar) => (s16 === 0 ? [FIG[(bar * 3) % 16]] :
+                          s16 === 8 ? [FIG[(bar * 3 + 7) % 16] - 12] : null),
+};
+/* FOUR MORE INSTRUMENTS, because seven layers of the same three ideas
+   is one piece of music with the faders moved and he asked for scores
+   that are actually different from each other.
+
+     piano   a struck string with a long tail. The thing that carries a
+             melody when the music box is too small to. Grief and love
+             both live here; the difference is the interval.
+     choir   voices, near enough: a stack of detuned saws through a
+             formant, swelling rather than starting. This is the layer
+             that does awe, and it is the reason the moment one of his
+             steps in front of her can be the biggest sound in the game.
+     brass   the low swell. Slow in, slow out, and it never plays a
+             melody — it plays the fact that something is coming.
+     tick    a clock, one hit per beat, dry and small. On its own it is
+             a pulse you can feel in the stomach without hearing any
+             music at all, which is what the minute before a night
+             wants. */
+const MUS_LAYERS = ["sub", "pulse", "box", "air", "grind", "bow", "warm",
+                    "piano", "choir", "brass", "tick"];
 
 /* A natural minor on A, which is the key the music box is in, so the
    score and the ballerina are the same instrument in the same room. */
@@ -6544,6 +6683,88 @@ function musicInit() {
 }
 
 /* the two voices that play notes rather than hold them */
+/* a struck string: two partials, a hard start and a long tail */
+function pianoNote(t, f, gain, dur, pan) {
+  const d = dur || 2.2;
+  const o = AC.createOscillator(); o.type = "triangle"; o.frequency.value = f;
+  const o2 = AC.createOscillator(); o2.type = "sine"; o2.frequency.value = f * 2.005;
+  const o3 = AC.createOscillator(); o3.type = "sine"; o3.frequency.value = f * 3.01;
+  const lp = AC.createBiquadFilter(); lp.type = "lowpass";
+  lp.frequency.setValueAtTime(Math.min(9000, f * 12), t);
+  lp.frequency.exponentialRampToValueAtTime(Math.max(200, f * 2.4), t + d * 0.5);
+  const g2 = AC.createGain(); g2.gain.value = 0.3;
+  const g3 = AC.createGain(); g3.gain.value = 0.09;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0004, gain), t + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(lp); o2.connect(g2); g2.connect(lp); o3.connect(g3); g3.connect(lp);
+  lp.connect(g);
+  g.connect(pan === undefined ? MUS.lay.piano : panned({ pan, bus: MUS.lay.piano }));
+  [o, o2, o3].forEach((n) => { n.start(t); n.stop(t + d + 0.05); });
+}
+/* voices, near enough: detuned saws through a vowel, swelling in */
+function choirNote(t, f, gain, dur) {
+  const d = dur || 3.4;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(Math.max(0.0004, gain), t + d * 0.42);
+  g.gain.linearRampToValueAtTime(0.0001, t + d);
+  const f1 = AC.createBiquadFilter(); f1.type = "bandpass"; f1.frequency.value = 620; f1.Q.value = 4.5;
+  const f2 = AC.createBiquadFilter(); f2.type = "bandpass"; f2.frequency.value = 1180; f2.Q.value = 6;
+  const m = AC.createGain(); m.gain.value = 0.5;
+  f1.connect(g); f2.connect(m); m.connect(g);
+  [-7, -3, 0, 4, 7].forEach((c, i) => {
+    const o = AC.createOscillator();
+    o.type = "sawtooth";
+    o.frequency.value = f * Math.pow(2, c / 12);
+    o.detune.value = (i - 2) * 6;
+    const og = AC.createGain(); og.gain.value = i === 2 ? 0.26 : 0.14;
+    /* a little movement, or five saws is an organ */
+    const lfo = AC.createOscillator(); lfo.type = "sine"; lfo.frequency.value = 4.1 + i * 0.4;
+    const lg = AC.createGain(); lg.gain.value = f * 0.004;
+    lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t + d + 0.1);
+    o.connect(og); og.connect(f1); og.connect(f2);
+    o.start(t); o.stop(t + d + 0.1);
+  });
+  g.connect(MUS.lay.choir);
+}
+/* the low swell. It does not play a tune, it plays the fact of a thing */
+function brassNote(t, f, gain, dur) {
+  const d = dur || 4.0;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(Math.max(0.0004, gain), t + d * 0.55);
+  g.gain.linearRampToValueAtTime(0.0001, t + d);
+  const lp = AC.createBiquadFilter(); lp.type = "lowpass";
+  lp.frequency.setValueAtTime(f * 3, t);
+  lp.frequency.linearRampToValueAtTime(f * 9, t + d * 0.55);
+  lp.frequency.linearRampToValueAtTime(f * 2.5, t + d);
+  lp.Q.value = 1.2;
+  [0, 0.5, 1].forEach((c, i) => {
+    const o = AC.createOscillator();
+    o.type = i === 1 ? "square" : "sawtooth";
+    o.frequency.value = f * (i === 2 ? 2 : 1);
+    o.detune.value = (i - 1) * 7;
+    const og = AC.createGain(); og.gain.value = i === 2 ? 0.12 : 0.3;
+    o.connect(og); og.connect(lp);
+    o.start(t); o.stop(t + d + 0.1);
+  });
+  lp.connect(g); g.connect(MUS.lay.brass);
+}
+/* a clock, dry and small, one hit and no tail */
+function tickNote(t, gain, hard) {
+  const src = AC.createBufferSource(); src.buffer = NB;
+  const bp = AC.createBiquadFilter(); bp.type = "bandpass";
+  bp.frequency.value = hard ? 2400 : 1700; bp.Q.value = 7;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0004, gain), t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+  src.connect(bp); bp.connect(g); g.connect(MUS.lay.tick);
+  src.start(t); src.stop(t + 0.09);
+}
+
 function boxNote(t, f, gain, pan, dur) {
   const o = AC.createOscillator(); o.type = "triangle"; o.frequency.value = f;
   const o2 = AC.createOscillator(); o2.type = "sine"; o2.frequency.value = f * 2.01;
@@ -6719,33 +6940,55 @@ function musicTick(dt) {
       if (G.power < TUNE.power.critical && s === 12) {
         boxNote(t, hz(-12), 0.10, 0, 1.8);
       }
-    } else if (feel.warm === true) {
-      /* the phrase in the major it was written in. `held` is the one
-         that gets a second voice a fifth above it, because it is the
-         moment the story turns and it should be the biggest thing she
-         has heard. */
-      if ((s & 3) === 0) {
-        const n = WARM[s];
-        boxNote(t, hz(n), mode === "held" ? 0.15 : 0.10, ((s % 3) - 1) * 0.45, 2.4);
-        if (mode === "held" && (s & 7) === 0) boxNote(t + stepLen, hz(n + 7), 0.075, -0.4, 2.0);
-        if (mode === "gallery" && s === 8) boxNote(t, hz(n - 12), 0.06, 0, 3.0);
+    } else if (feel.theme && feel.theme !== "menu") {
+      const th = feel.theme;
+
+      /* --- the two that count: THE TERMS, and the minute before a
+         night. A tick on every beat and a swell that never gets
+         anywhere, because he is counting and she cannot stop him. --- */
+      if (th === "clock") {
+        if ((s & 3) === 0) tickNote(t, mode === "locked" ? 0.30 : 0.22, s === 0);
+        if ((s & 1) === 0 && mode === "locked") tickNote(t, 0.07, false);
+        if (s === 0 && (MUS.bar & 3) === 0) {
+          brassNote(t, hz(-24 + ((MUS.bar >> 2) & 1 ? 3 : 0)), 0.085, spb * 6.5);
+        }
+        if (s === 0) pianoNote(t, hz(FIG[(MUS.bar * 5) % 16] - 12), 0.075, spb * 3.2, 0);
+        /* and on the last night of the deal, the clock is not alone */
+        if (mode === "brief" && (s === 0 || s === 8)) heart(t, 50, 0.30);
       }
-    } else if (feel.warm === false) {
-      /* the cold rooms: the same minor phrase the night uses, thinned
-         right out. `film` gets one note every other bar and nothing
-         else, because the only thing she should be listening to while
-         it is playing is him. */
-      const every = mode === "film" ? 24 : mode === "gone" ? 16 : mode === "dark" ? 12 : 8;
-      if (MUS.step % every === 0) {
-        const fig = (MUS.bar & 1) ? FIG_B : FIG;
-        boxNote(t, hz(fig[s] - (mode === "gone" ? 12 : 0)),
-                mode === "film" ? 0.055 : 0.085, ((s % 3) - 1) * 0.4,
-                mode === "gone" ? 3.2 : 2.0);
+
+      /* --- somebody remembering a tune rather than playing one ----- */
+      else if (th === "memory") {
+        const n = THEME_NOTES.memory(s, MUS.bar);
+        if (n) pianoNote(t, hz(n[0]), mode === "gone" ? 0.11 : 0.085, spb * 4.2,
+                         ((MUS.bar % 3) - 1) * 0.4);
+        if (s === 0 && (MUS.bar & 3) === 2) brassNote(t, hz(-24), 0.055, spb * 6);
       }
-      /* the pulse the brief runs on, which is the only thing in it */
-      if (mode === "brief" && (s === 0 || s === 8)) heart(t, 50, 0.34);
-      /* and the dark: no heart at all, and a floor that leans on you */
-      if (mode === "dark" && s === 0) bowNote(t, hz(-5), 0.05, spb * 3.6);
+
+      /* --- the void: no phrase at all. One voice, one swell -------- */
+      else if (th === "void") {
+        if (s === 0 && (MUS.bar & 1) === 0) choirNote(t, hz(-12), 0.075, spb * 7);
+        if (s === 8) brassNote(t, hz(-24 - (MUS.bar & 1 ? 0 : 5)), 0.10, spb * 5.5);
+        if (s === 0) bowNote(t, hz(-5), 0.05, spb * 3.6);
+      }
+
+      /* --- and the warm ones, which are the same phrase agreeing
+         with itself for the first time -------------------------------- */
+      else {
+        const n = THEME_NOTES[th] && THEME_NOTES[th](s, MUS.bar);
+        if (n) {
+          const lead = th === "turn" ? 0.115 : th === "morning" ? 0.085 : 0.10;
+          pianoNote(t, hz(n[0] + (th === "turn" ? 12 : 0)), lead, spb * 3.6,
+                    ((s % 3) - 1) * 0.35);
+          n.slice(1).forEach((x, i) => {
+            boxNote(t + stepLen * (i + 1) * 0.5, hz(x), 0.055, -((s % 3) - 1) * 0.35, 2.2);
+          });
+        }
+        if (th === "turn" && s === 0) choirNote(t, hz(WARM[0]), 0.10, spb * 6.5);
+        if (th === "turn" && s === 8 && (MUS.bar & 1) === 0) brassNote(t, hz(-24), 0.075, spb * 5);
+        if (th === "morning" && s === 0 && (MUS.bar & 1) === 0) choirNote(t, hz(0), 0.05, spb * 6);
+        if (th === "letter" && s === 12) boxNote(t, hz(WARM[12] - 12), 0.05, 0, 3.0);
+      }
     } else {
       /* --- the menu ------------------------------------------------
          The same music box, in the major it was written in, played
@@ -7299,6 +7542,47 @@ function tutorStep(dt) {
    night she thought she had lost, a soldier she has spent four nights
    shutting out is standing in her doorway with its back to her.
    ========================================================= */
+/* THE ONE BEAT THE WHOLE CHAPTER IS BUILT ON, AND IT WAS OPTIONAL.
+
+   The moment one of his four steps in front of her is the answer to
+   everything: he did not leave her four monsters, he left her four
+   guards made out of the four things he loved about her. And it could
+   only ever happen if a parcel reached an OPEN door while one of his
+   was still wound — which means a player doing well never saw it, and
+   a player doing badly saw it once by accident. The most important
+   thing in the story was gated behind playing it wrong.
+
+   So night five stages it. One parcel, at an hour she will be awake
+   for, walked to the door on rails; the nearest wound one takes it;
+   the card comes up. If she has let all four run down it does not
+   happen — that is still her call and it still costs her — but she is
+   told at the top of the night to keep them wound, and the tape for
+   night five is him asking for exactly that. */
+const STAGED = { night: 5, hour: 2, done: false, id: "post1" };
+
+function stageTheTurn(dt) {
+  if (G.mode !== "story" || G.night !== STAGED.night) return;
+  if (STAGED.done || seenSave()) return;
+  if (G.phase !== "play" || G.blackout) return;
+  if (G.hour < STAGED.hour) return;
+  const ch = cast[STAGED.id];
+  if (!ch) return;
+  /* it has to be somebody's turn to take it, or there is nothing to show */
+  if (!guardFor(ch.def.door)) return;
+  STAGED.done = true;
+  ch.asleep = false;
+  ch.awake = true;
+  ch.cool = 0;
+  /* put it at the door with the shortest grace it ever gets, so the
+     thing she sees is one of his arriving rather than a long wait */
+  ch.step = ch.def.route.length - 1;
+  ch.atDoor = true;
+  ch.doorT = 1.2;
+  syncChar(ch);
+  SFX.postSettle(TUNE.pan[ch.def.door]);
+  say(fmt(NS.sys.unknown, ch.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
+}
+
 function guardFor(door) {
   /* whoever is nearest, and wound. Preference to the one that uses this
      door, because that one was already on its way here. */
@@ -7363,6 +7647,16 @@ function closeHeld() {
   noOverlay();
   showHud(true);
 }
+/* HE ASKED HER FOR SIX NIGHTS WITHOUT BEING CAUGHT, so the game has to
+   know whether she managed it. Not as a score — as the thing he said he
+   wanted, which the last night then answers one way or the other. It is
+   never a fail state: getting caught costs her the clean run and
+   nothing else, and he says so himself the first time it happens. */
+const HURT_KEY = "ns_hurt";
+function wasHurt() { try { return localStorage.getItem(HURT_KEY) === "1"; } catch (e) { return false; } }
+function markHurt() { try { localStorage.setItem(HURT_KEY, "1"); } catch (e) {} }
+function clearHurt() { try { localStorage.removeItem(HURT_KEY); } catch (e) {} }
+
 const SAVE_KEY = "ns_seensave";
 function seenSave() {
   try { return localStorage.getItem(SAVE_KEY) === "1"; } catch (e) { return false; }
@@ -7402,6 +7696,8 @@ function kill(ch) {
   if (G.phase !== "play") return;
   sayClear();
   tapeOff();
+  /* the terms, broken. He asked for six clean nights; this was not one. */
+  if (G.mode === "story") { G.brokeNow = !wasHurt(); markHurt(); }
   /* the score cuts out from under the scare rather than fading through
      it — the silence is half of what makes the noise land */
   musicMode("none");
@@ -8004,6 +8300,7 @@ function frame(ts) {
       stepShifts(dt);
       stepHazards(dt);
       stepWind(dt);
+      stageTheTurn(dt);
       /* the meter's own warnings, and the system reading them out */
       if (G.power < TUNE.power.critical && G.warned < 2) { G.warned = 2; SFX.beep(true); say(NS.sys.pwr10, true); }
       else if (G.power < TUNE.power.warn && G.warned < 1) { G.warned = 1; SFX.beep(false); say(NS.sys.pwr25); tapeTrigger("lowPower"); }
@@ -8022,6 +8319,9 @@ function frame(ts) {
   }
 
   if (G.phase === "gallery") { sayTick(dt); uiTick(dt); }
+  /* the terms run on the wall clock, like the film, because they are a
+     scene rather than part of the simulation */
+  if (G.phase === "terms") termsTick(dt);
   musicTick(dt);
   G.shake = Math.max(0, G.shake - dt * 1.9);
   applyLighting(dt);
@@ -8301,11 +8601,18 @@ function screenOver() {
      is a low ring and the box winding down two octaves under itself */
   musicMode("gone");
   const c = BY_ID[G.dead] || CAST[0];
+  /* He asked for six nights without anything reaching her, so when
+     something does, he is the one who says so — a line from him beats
+     a scoreboard, and it keeps her going again rather than stopping. */
+  const his = G.mode === "story"
+    ? (G.brokeNow ? NS.caught.first : NS.caught.later) : "";
+  if (his) setTimeout(() => { if (G.phase === "over") voxSpeak(voxPlan(his), { gain: 0.95 }); }, 950);
   overlay(
     '<div class="ns-card ns-card-over">' +
       '<p class="ns-got" style="--c:' + c.colour + '">' + c.name + '</p>' +
       '<p class="ns-blurb">reached the office &middot; ' + G.cfg.name.toLowerCase() + ' &middot; ' + clockLabel() + '</p>' +
       '<p class="ns-lines"><i>' + c.threat + '</i></p>' +
+      (his ? '<p class="ns-kept">' + his + '</p>' : "") +
       '<div class="ns-btns">' +
         '<button class="ns-btn ns-btn-go" data-go="restart">TRY THE NIGHT AGAIN</button>' +
         '<button class="ns-btn" data-go="title">TITLE</button>' +
@@ -8342,9 +8649,23 @@ function screenShift() {
        that is hers to decide. It is the only choice in the chapter and
        it is deliberately the last one. */
     G.phase = "finale";
+    /* the last page is his signature and the ending is meaningless
+       without it, so night six hands it over before it asks her
+       anything. And the last night answers the terms he set on the
+       way in: six nights, and whether anything got to her. */
+    const lastPage = handOverMissed();
     overlay(
       '<div class="ns-card ns-card-fin">' +
         '<p class="ns-nightno">' + NS.finale.title + '</p>' +
+        '<p class="ns-kept">' + (wasHurt() ? NS.kept.hurt : NS.kept.clean) + '</p>' +
+        (lastPage ? '<div class="ns-gave">' +
+             '<p class="ns-from">' + NS.gave + '</p>' +
+             '<div class="ns-paper">' +
+               '<p class="ns-paper-head">' + lastPage.title + '</p>' +
+               lastPage.lines.map((l) => "<p>" + l + "</p>").join("") +
+             '</div>' +
+             '<p class="ns-pencil">' + lastPage.back + '</p>' +
+           '</div>' : "") +
         '<div class="ns-lines">' + NS.finale.lines.map((l) => "<p>" + l + "</p>").join("") + '</div>' +
         '<p class="ns-ask">' + NS.ending.ask + '</p>' +
         '<div class="ns-btns">' +
@@ -8360,19 +8681,46 @@ function screenShift() {
   /* the last line of a night is not a score. It is a door left open —
      and if she walked past the thing hidden in the shop tonight, it says
      so, because that is the sentence that makes her go back in. */
-  const missed = G.mode === "story" && tonightsFind() ? NS.missed : "";
+  /* the ones he needed her to read, handed over rather than lost */
+  const given = G.mode === "story" ? handOverMissed() : null;
+  const missed = !given && G.mode === "story" && tonightsFind() ? NS.missed : "";
   const hook = G.mode === "story" ? (NS.hooks[G.night] || "") : "";
   overlay(
     '<div class="ns-card ns-card-win">' +
       '<p class="ns-six">6:00 AM</p>' +
       '<p class="ns-blurb">' + G.cfg.name.toLowerCase() + ', survived.</p>' +
       ratingCard() +
+      (given ? '<div class="ns-gave">' +
+                 '<p class="ns-from">' + NS.gave + '</p>' +
+                 '<div class="ns-paper">' +
+                   '<p class="ns-paper-head">' + given.title + '</p>' +
+                   given.lines.map((l) => "<p>" + l + "</p>").join("") +
+                 '</div>' +
+                 '<p class="ns-pencil">' + given.back + '</p>' +
+               '</div>' : "") +
       (missed ? '<p class="ns-missed">' + missed + '</p>' : "") +
       (hook ? '<p class="ns-hook">' + hook + '</p>' : "") +
       '<div class="ns-btns">' + next +
         '<button class="ns-btn" data-go="title">TITLE</button>' +
       '</div>' +
     '</div>', "ns-ov-win");
+}
+
+/* THE TWO PAGES THAT ARE NOT ALLOWED TO BE MISSED.
+
+   Four of the six are a reward for looking, and missing one is a good
+   reason to go back in — that is what the "you walked past something"
+   line is for. But the ledger and the last page are not flavour: they
+   are the confession and the signature, and a story whose ending is
+   optional does not have an ending. If she gets to six without them,
+   the shop puts them in her hand. He wanted her to know. */
+const MUST_FIND = { ledger: 1, last: 1 };
+function handOverMissed() {
+  const f = tonightsFind();
+  if (!f || !MUST_FIND[f.id]) return null;
+  keepFind(f.id);
+  G.stats.finds++;
+  return f;
 }
 
 /* is tonight's page still out there? (null once she has it) */
@@ -8532,6 +8880,9 @@ function route(cmd) {
   else if (cmd === "heldOut") { closeHeld(); }
   else if (cmd === "intro") { cineStart(); }
   else if (cmd === "introDone") { cineStop(true); }
+  else if (cmd === "terms") { termsStart(); }
+  else if (cmd === "termsDone") { termsDone(); }
+  else if (cmd === "termsAgain") { clearHurt(); termsStart(); }
   else if (cmd === "endWind") { screenEnding("wind"); }
   else if (cmd === "endLeave") { screenEnding("leave"); }
   else if (cmd.indexOf("preset:") === 0) {
@@ -8558,6 +8909,8 @@ function beginNight(n, opts) {
     G.cfg = nightCfg(G.night);
   }
   G.dawn = false;
+  STAGED.done = false;
+  G.brokeNow = false;
   G.rating = null;
   G.newBadges = [];
   G.hour = 0; G.hourT = 0;
@@ -8954,8 +9307,100 @@ function cineStop(toNight) {
   const el = EL["ns-cine"];
   if (el) { el.hidden = true; el.innerHTML = ""; }
   saveSeenIntro(true);
-  if (toNight) { G.night = 1; G.cfg = nightCfg(1); beginNight(1); }
+  /* and it hands her to the terms rather than to a shift: being put
+     into an office with no explanation is the thing that made the
+     first nights feel like nothing */
+  if (toNight) { if (termsSeen()) { G.night = 1; G.cfg = nightCfg(1); beginNight(1); } else termsStart(); }
   else { route("title"); }
+}
+
+/* =========================================================
+   20f. THE TERMS
+
+   The film tells her who he was. This tells her what she is doing
+   here, which is the thing that was missing: the shutters come down,
+   he sets six nights against everything he knows, and she says yes by
+   pressing one button.
+
+   It is the same machinery as the film — his voice, the caption
+   lighting a word at a time — with none of the camera work, because
+   she is not being shown anything. She is being asked.
+   ========================================================= */
+const TERMS = { on: false, line: 0, plan: null, t0: 0, waitT: 0 };
+
+function termsSeen() {
+  try { return localStorage.getItem("ns_terms") === "1"; } catch (e) { return false; }
+}
+function termsSave() { try { localStorage.setItem("ns_terms", "1"); } catch (e) {} }
+
+function termsStart() {
+  TERMS.on = true;
+  TERMS.line = -1;
+  TERMS.plan = null;
+  TERMS.waitT = 0.6;
+  G.phase = "terms";
+  G.mode = "story";
+  sayClear();
+  tapeOff();
+  showHud(false);
+  bedStart();
+  musicMode("locked");
+  /* the shutters, once, and they are heavy */
+  SFX.shutter();
+  overlay(
+    '<div class="ns-card ns-card-terms">' +
+      '<p class="ns-cine-head"><b>' + NS.terms.head + '</b><span>' + NS.terms.sub + '</span></p>' +
+      '<p class="ns-terms-sub" id="ns-terms-sub"></p>' +
+      '<div class="ns-btns"><button class="ns-btn ns-btn-go" id="ns-terms-go" data-go="termsDone" hidden>' +
+        NS.terms.go + '</button></div>' +
+    '</div>', "ns-ov-terms");
+}
+
+function termsSpeak() {
+  const line = NS.terms.lines[TERMS.line];
+  if (!line) return;
+  TERMS.plan = voxPlan(line);
+  TERMS.t0 = perf();
+  voxSpeak(TERMS.plan, { gain: 1 });
+}
+
+function termsTick(dt) {
+  if (!TERMS.on) return;
+  const sub = el("ns-terms-sub");
+
+  /* the caption, on the synthesiser's own boundaries where it has them */
+  if (sub && TERMS.plan) {
+    const mark = voxMark();
+    const at = perf() - TERMS.t0;
+    let html = "";
+    TERMS.plan.words.forEach((w, i) => {
+      html += '<i class="' + ((mark >= 0 ? i <= mark : at >= w.at) ? "on" : "") + '">' + w.text + "</i> ";
+    });
+    if (sub.innerHTML !== html) sub.innerHTML = html;
+  }
+
+  if (TERMS.waitT > 0) { TERMS.waitT -= dt; return; }
+  if (voxTalking()) return;
+  const spoken = TERMS.plan ? TERMS.plan.dur : 0;
+  if (TERMS.plan && perf() - TERMS.t0 < (SPEECH.ok ? Math.min(spoken, 0.8) : spoken) + 0.5) return;
+
+  TERMS.line++;
+  if (TERMS.line < NS.terms.lines.length) { termsSpeak(); return; }
+
+  /* and then the one button */
+  TERMS.plan = null;
+  const go = el("ns-terms-go");
+  if (go && go.hidden) { go.hidden = false; SFX.beep(false); }
+}
+
+function termsDone() {
+  if (!TERMS.on) return;
+  TERMS.on = false;
+  TERMS.plan = null;
+  termsSave();
+  noOverlay();
+  G.night = 1; G.cfg = nightCfg(1);
+  beginNight(1);
 }
 
 /* the frame that carries the caption and the head/foot furniture */
@@ -9917,6 +10362,8 @@ const testHooks = {
   /* the score, so a suite can assert that the music is ahead of the
      game rather than behind it */
   music: () => ({ mode: MUS.mode, dread: MUS.dread, target: MUS.target,
+                  spb: MODE_FEEL[MUS.mode] ? MODE_FEEL[MUS.mode].spb : null,
+                  theme: MODE_FEEL[MUS.mode] ? MODE_FEEL[MUS.mode].theme : null,
                   bus: MUS.bus ? MUS.bus.gain.value : 0,
                   lay: MUS_LAYERS.reduce((o, k) => {
                     o[k] = MUS.lay[k] ? +MUS.lay[k].gain.value.toFixed(3) : null; return o;
@@ -9925,6 +10372,9 @@ const testHooks = {
   /* a setter, because `music` above is a getter and a probe that called
      it to switch the score off was quietly measuring the score */
   musicSet: (m) => musicMode(m),
+  /* what each scene is written as, rather than what its faders happen
+     to be part-way through a half-second ramp */
+  score: () => ({ mix: MODE_MIX, feel: MODE_FEEL, layers: MUS_LAYERS }),
   /* Render one cue into an offline context and hand the samples back,
      so a suite can measure what nobody has been able to hear. The
      chapter's synths all hang off the module's own AC and cueGain, so
@@ -10096,6 +10546,12 @@ const testHooks = {
   /* pick tonight's up without having to find it on a camera first */
   takeFind: () => { takeFind(); return G.phase; },
   heldCard: () => { heldCard(cast.cogsworth); return G.phase; },
+  /* the terms he sets on the way in */
+  terms: () => ({ on: TERMS.on, line: TERMS.line, of: NS.terms.lines.length,
+                  said: NS.terms.lines[TERMS.line] || null,
+                  ready: TERMS.on && TERMS.line >= NS.terms.lines.length }),
+  termsTick: (dt) => { termsTick(dt); return TERMS.line; },
+  termsText: () => NS.terms.lines.join(" "),
   /* the tapes: what he has said tonight, and what he is saying now */
   tape: () => ({ on: TAPE.on, said: Object.keys(TAPE.said).length,
                  line: TAPE.speakT > 0 ? TAPE.line : null,

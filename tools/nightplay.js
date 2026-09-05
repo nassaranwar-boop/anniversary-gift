@@ -137,6 +137,68 @@ function ok(name, cond, extra) {
   ok('and never plays itself again',
      await page.evaluate(() => localStorage.getItem('ns_seenintro')) === '1');
 
+  /* THE ANSWER TO "you just feel bored surviving the first nights
+     without logically having a reason to be there".
+
+     The film says who he was. This says what she is doing here: the
+     shutters come down, he sets six nights against everything he
+     knows, and she agrees to it by pressing one button. Every night
+     after it is a payment against a deal she made rather than a
+     situation she is in. */
+  console.log('\n— and then the shutters come down —');
+  const terms = await page.evaluate(async () => {
+    const w = OuissysNightShift.__night;
+    try { localStorage.removeItem('ns_terms'); localStorage.removeItem('ns_seenintro'); } catch (e) {}
+    w.route('intro');
+    w.route('introDone');
+    const s = w.state();
+    const card = document.querySelector('.ns-card-terms');
+    const out = { phase: s.phase, hasCard: !!card, mode: w.music().mode,
+                  lines: 0, spoken: [], btn: null };
+    if (card) {
+      const b = card.querySelector('#ns-terms-go');
+      out.btn = b ? b.hidden : null;
+    }
+    return out;
+  });
+  /* He reads it on a wall clock, the way the film does, so it cannot be
+     wound forward in a tight loop — the test has to sit through it. */
+  const heard = [];
+  for (let i = 0; i < 260; i++) {
+    const t = await page.evaluate(() => {
+      const w = OuissysNightShift.__night;
+      w.termsTick(0.25);
+      return w.terms();
+    });
+    if (t.said && heard.indexOf(t.said) < 0) heard.push(t.said);
+    if (t.ready || !t.on) break;
+    await page.waitForTimeout(140);
+  }
+  terms.lines = heard.length;
+  terms.ready = (await page.evaluate(() => OuissysNightShift.__night.terms())).ready;
+  ok('the film hands her to the shutters, not to a shift',
+     terms.phase === 'terms' && terms.hasCard, terms.phase);
+  ok('and it has music of its own, which is a clock', terms.mode === 'locked', terms.mode);
+  ok('he reads her the terms', terms.lines >= 6, terms.lines + ' lines');
+  ok('and there is no way out of the card until he has finished',
+     terms.ready === true, 'the button appears at the end');
+
+  const said = await page.evaluate(() => OuissysNightShift.__night.termsText());
+  ok('the terms are six nights', /[Ss]ix nights/.test(said), JSON.stringify(said.slice(0, 40)));
+  ok('and they are about being ready to hear the rest, not about winning',
+     /not handing|hear the end|everything/.test(said));
+
+  const into = await page.evaluate(() => {
+    const w = OuissysNightShift.__night;
+    w.route('termsDone');
+    const s = w.state();
+    return { phase: s.phase, night: s.night, seen: (() => {
+      try { return localStorage.getItem('ns_terms'); } catch (e) { return null; } })() };
+  });
+  ok('and saying yes puts her straight into night one',
+     into.night === 1 && (into.phase === 'play' || into.phase === 'brief'), into.phase);
+  ok('and she is never asked twice', into.seen === '1');
+
   console.log('\n— night one —');
   await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); w.route('start'); });
   await page.waitForTimeout(400);
@@ -1041,8 +1103,14 @@ function ok(name, cond, extra) {
      tape.heard.length >= 4, tape.heard.length + ' by ' + tape.hour + " o'clock");
   ok('and he never says the same thing twice',
      new Set(tape.heard).size === tape.heard.length);
-  ok('and the first thing he says is to her by name',
-     /Ouissy/.test(tape.heard[0] || ''), JSON.stringify((tape.heard[0] || '').slice(0, 46)));
+  /* He says her name in the terms now, which is where the introduction
+     moved to — so night one opens on the deal instead, and every night
+     after it counts down against the six he asked for. */
+  ok('and the first thing he says counts the night against the six',
+     /of six|Six|six/.test(tape.heard[0] || ''),
+     JSON.stringify((tape.heard[0] || '').slice(0, 46)));
+  ok('and it is the terms that say her name',
+     /Ouissy/.test(await page.evaluate(() => OuissysNightShift.__night.termsText())));
 
   /* and the rules that keep it from being a radio playing over a scare */
   const manners = await page.evaluate(() => {
@@ -1066,6 +1134,73 @@ function ok(name, cond, extra) {
   ok('and he says nothing with something at the door', manners.atDoor === false);
   ok('and nothing at all once it has her',
      manners.phase === 'over' && manners.afterDeath === false, manners.phase);
+
+  /* THE BEAT THE WHOLE CHAPTER IS BUILT ON, WHICH USED TO BE OPTIONAL.
+
+     One of his four stepping in front of her is the answer to
+     everything — and it could only happen if a parcel reached an OPEN
+     door while one of his was still wound, so a player doing well
+     never saw it. Night five stages it now. */
+  console.log('\n— and night five makes sure she sees it —');
+  const staged = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    try { localStorage.removeItem('ns_seensave'); } catch (e) {}
+    const run = (night, wound) => {
+      w.route('night:' + night); w.route('go');
+      /* His four asleep but still wound. guardFor asks only whether one
+         is wound, so this isolates the staged beat from the four of
+         them killing her first — which is what a live night five with
+         both doors open does in about forty seconds. */
+      ['cogsworth','chime','marabelle','jax'].forEach(k => {
+        const c = w.cast()[k]; c.wound = wound; c.awake = false; c.asleep = true; });
+      s.power = 100;
+      s.doors.left = false; s.doors.right = false;
+      w.pump(220, 0.25);
+      return { saves: s.stats.saves, dead: s.dead, phase: s.phase };
+    };
+    const five = run(5, 9);
+    try { localStorage.removeItem('ns_seensave'); } catch (e) {}
+    const four = run(4, 9);
+    try { localStorage.removeItem('ns_seensave'); } catch (e) {}
+    const slack = run(5, 0);
+    return { five, four, slack };
+  });
+  ok('night five shows her one of his getting there first',
+     staged.five.saves > 0, JSON.stringify(staged.five));
+  /* four hundred seconds of both doors standing open does eventually
+     end badly, and should — what matters is that the beat fired first
+     rather than never */
+  ok('and it is not left to the dice the way it was',
+     staged.five.saves > 0, staged.five.saves + ' on night five');
+  ok('with all four run down, nobody comes — it is still hers to lose',
+     staged.slack.saves === 0, JSON.stringify(staged.slack.saves));
+
+  /* and the confession is not allowed to be walked past */
+  /* the night has to actually END for this: the six o'clock card is
+     raised from the frame loop, and pump() stops the moment the phase
+     stops being play */
+  const given = {};
+  for (const id of ['ledger', 'last', 'cogsworth']) {
+    await page.evaluate((id) => {
+      const w = OuissysNightShift.__night, s = w.state();
+      try { localStorage.removeItem('ns_found'); } catch (e) {}
+      const night = id === 'ledger' ? 5 : id === 'last' ? 6 : 1;
+      w.route('night:' + night); w.route('go');
+      const c = w.cast();
+      Object.keys(c).forEach(k => { c[k].awake = false; c[k].asleep = true; });
+      s.hour = 5; s.power = 80; w.pump(70);
+    }, id);
+    await page.waitForFunction(() => {
+      const p = OuissysNightShift.__night.state().phase;
+      return p === 'shift' || p === 'finale';
+    }, { timeout: 15000, polling: 100 }).catch(() => {});
+    await page.waitForTimeout(500);
+    given[id] = await page.evaluate((id) =>
+      OuissysNightShift.__night.finds().kept.indexOf(id) >= 0, id);
+  }
+  ok('the ledger is handed to her if she never found it', given.ledger === true);
+  ok('and so is the last page', given.last === true);
+  ok('but an ordinary tag is still hers to find or miss', given.cogsworth === false);
 
   /* the four rooms the score has that only exist inside a shift */
   console.log('\n— and the score follows her through the night —');
@@ -1112,6 +1247,42 @@ function ok(name, cond, extra) {
   rooms.duringScare = death.during;
   rooms.overPhase = death.phase;
   rooms.gone = death.after;
+  /* NINE SCENES SHARING ONE MELODY WITH THE FADERS MOVED IS ONE SCORE.
+     What was asked for is cues that are different from each other the
+     way a film's are, so each scene has material of its own now — a
+     ticking one, one where somebody reads a letter, one where the
+     thing she was dreading turns out to be on her side. This checks
+     they are actually different rather than differently mixed. */
+  /* read what each scene is written as. The live gains are half a
+     second into a ramp at any given moment, so asking the mixer is
+     asking the wrong question. */
+  const score = await page.evaluate(() => OuissysNightShift.__night.score());
+  const cues = {};
+  Object.keys(score.mix).forEach((m) => {
+    cues[m] = { lay: score.mix[m], spb: score.feel[m].spb, theme: score.feel[m].theme };
+  });
+  const names = Object.keys(cues);
+  const sig = (m) => Object.keys(cues[m].lay).filter(k => cues[m].lay[k] > 0.05).sort().join(',');
+  ok('every scene has a different set of instruments in it',
+     new Set(names.map(sig)).size >= 8,
+     new Set(names.map(sig)).size + ' distinct instrumentations across ' + names.length + ' scenes');
+  ok('and they do not all run at the same tempo',
+     new Set(names.map(m => cues[m].spb)).size >= 6,
+     new Set(names.map(m => cues[m].spb)).size + ' tempos');
+  ok('the terms are a clock and a swell, and nothing else',
+     cues.locked.theme === 'clock' && cues.locked.lay.tick > 0.4 &&
+     cues.locked.lay.brass > 0.4 && cues.locked.lay.box === 0,
+     'tick ' + cues.locked.lay.tick + ' brass ' + cues.locked.lay.brass);
+  ok('the turn is the only place the choir is loud',
+     cues.held.lay.choir > 0.6 &&
+     names.every(m => m === 'held' || cues[m].lay.choir < cues.held.lay.choir),
+     'choir ' + cues.held.lay.choir);
+  ok('and the dark has no melody in it at all',
+     cues.dark.theme === 'void' && cues.dark.lay.box === 0 && cues.dark.lay.piano === 0,
+     cues.dark.theme);
+  ok('a page in her hands is a piano, which nothing else leads with',
+     cues.found.lay.piano > 0.5 && cues.found.lay.grind === 0, 'piano ' + cues.found.lay.piano);
+
   ok('a shift plays the night', rooms.play === 'night', rooms.play);
   ok('the meter going out stops the heartbeat', rooms.dark === 'dark', rooms.dark);
   ok('a page in her hands turns the phrase major', rooms.found === 'found', rooms.found);

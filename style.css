@@ -5206,6 +5206,42 @@ img{-webkit-user-drag:none; user-select:none;}
   background:linear-gradient(90deg, var(--ns-brass) 0 36%, transparent 36% 64%, var(--ns-brass) 64% 100%);
 }
 
+/* A page she did not find, handed to her at six because he needed her
+   to have read it. It sits on the night-done card looking like the
+   found card does, so it reads as the same object rather than as a
+   consolation prize. */
+.ns-gave{ margin:1.6cqh 0 .6cqh; }
+.ns-kept{
+  margin:1.2cqh 0; font-size:max(1.85cqh, 11px); line-height:1.7;
+  letter-spacing:.05em; color:rgba(255,206,140,.9);
+  border-left:2px solid rgba(200,162,96,.5); padding-left:1.6cqw; text-align:left;
+}
+
+/* THE TERMS. The film is letterboxed because it is a film; this is a
+   card, because she is being asked something and a card is what you
+   are asked things on. His words sit big and centred with everything
+   else stripped away, and the one button does not appear until he has
+   finished saying why. */
+.ns-card-terms{ max-width:64cqw; text-align:center; }
+.ns-terms-sub{
+  margin:2.4cqh 0 1.2cqh; min-height:9cqh;
+  font-family:var(--ns-face);
+  font-size:max(2.3cqh, 13px); line-height:1.85; letter-spacing:.045em;
+}
+.ns-terms-sub i{
+  font-style:normal; color:rgba(232,223,200,.26);
+  transition:color .14s linear, text-shadow .14s linear;
+}
+.ns-terms-sub i.on{
+  color:rgba(255,214,158,.98);
+  text-shadow:0 0 14px rgba(255,182,110,.32);
+}
+.ns-card-terms .ns-btn-go[hidden]{ display:none; }
+@media (max-width: 900px), (orientation: portrait){
+  .ns-card-terms{ max-width:92cqw; }
+  .ns-terms-sub{ font-size:max(2.1cqh, 12px); }
+}
+
 /* What tonight is for: one line, in his pencil rather than the
    terminal's green, because it is his shop she is being asked to do
    something about. */
