@@ -226,6 +226,51 @@ const { chromium, devices } = require('playwright-core');
        selected + ' characters');
   }
 
+  /* The phone things. This container has no voices, so none of these
+     can prove he is audible — what they can prove is that the three
+     ways a phone silences him for good are all handled, because each
+     one is a thing that would leave her with no voice for the rest of
+     the visit and no way to tell why. */
+  console.log('\n— and the three ways a phone kills a voice —');
+  const phone = await p.evaluate(() => {
+    /* iOS will not speak until speak() has run once inside a gesture */
+    const primed = OuissysNightShift.__night.speech().primed;
+    return { primed };
+  });
+  ok('a real touch has already primed the synthesiser', phone.primed === true,
+     'primed ' + phone.primed);
+
+  const paused = await p.evaluate(() => {
+    let resumed = 0;
+    const real = Object.getOwnPropertyDescriptor(window, 'speechSynthesis');
+    const stub = { paused: true, resume() { resumed++; this.paused = false; },
+                   getVoices: () => [], cancel() {}, speak() {}, addEventListener() {} };
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, get: () => stub });
+    /* the tab coming back, which is when iOS has stopped the queue */
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('focus'));
+    if (real) Object.defineProperty(window, 'speechSynthesis', real);
+    return resumed;
+  });
+  ok('and coming back to the tab restarts a paused one', paused > 0,
+     'resumed ' + paused + ' times');
+
+  /* and with no voice at all he does not fall back to word-shaped noise */
+  const noVoice = await p.evaluate(() => {
+    const w = OuissysNightShift.__night;
+    w.silence(false);
+    const before = w.audio().ctx;
+    /* this container genuinely has no voices, so this is the real path */
+    const said = w.speak('I made toys. That part was true.');
+    const spoke = w.speech();
+    w.silence(true);
+    return { ctx: before, dur: said, ok: spoke.ok, voice: spoke.voice };
+  });
+  ok('with no voice on the device he is a tape and a caption, not a buzz',
+     noVoice.ok === false && noVoice.dur > 0,
+     'voices ' + (noVoice.ok === false ? 'none' : 'some') + ', line still timed at ' +
+     Number(noVoice.dur).toFixed(1) + 's');
+
   console.log('\n' + (fails ? 'FAILED ' + fails + ' of ' + checks
                              : 'all ' + checks + ' checks passed'));
   await b.close();

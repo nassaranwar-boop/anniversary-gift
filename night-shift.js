@@ -6075,6 +6075,7 @@ function voxSyl(bus, at, dur, f0, vowel, from, gain, stressed) {
    still there and still does what it always did. */
 const SPEECH = {
   ok: null,          // null until asked, then true/false
+  primed: false,
   voice: null, sys: null,
   mark: -1,          // the word he is on right now, -1 if not speaking
   live: false,
@@ -6110,6 +6111,49 @@ if (window.speechSynthesis) {
   /* the list arrives late on most browsers, and empty before it does */
   try { window.speechSynthesis.addEventListener("voiceschanged", () => { SPEECH.ok = speechPick(); }); }
   catch (e) {}
+
+  /* THE THREE WAYS A PHONE BREAKS THIS, none of which a container can
+     be made to reproduce.
+
+     1. iOS will not speak at all until speak() has been called once
+        inside a real user gesture. The film's first line is inside one
+        — it comes off the tap that starts the chapter — but every line
+        after it comes off the frame loop, and the tapes come off a
+        clock. If the first one ever slips out of a gesture the whole
+        chapter is silent for the rest of the visit. So the very first
+        touch anywhere primes it with an empty utterance, before
+        anything has anything to say.
+
+     2. iOS pauses the speech queue when the tab goes away and does not
+        resume it on its own, so she looks at a message and he never
+        speaks again — the same failure the audio context had, in a
+        different subsystem, and it needs the same watchdog.
+
+     3. Chrome on Android drops the queue if an utterance runs long.
+        Nothing here is long, but resume() on the same events costs
+        nothing and covers it. */
+  const primeSpeech = () => {
+    try {
+      if (!window.SpeechSynthesisUtterance) return;
+      const u = new window.SpeechSynthesisUtterance(" ");
+      u.volume = 0;
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+    SPEECH.primed = true;
+    document.removeEventListener("pointerdown", primeSpeech, true);
+    document.removeEventListener("touchstart", primeSpeech, true);
+    document.removeEventListener("keydown", primeSpeech, true);
+  };
+  document.addEventListener("pointerdown", primeSpeech, true);
+  document.addEventListener("touchstart", primeSpeech, true);
+  document.addEventListener("keydown", primeSpeech, true);
+
+  const wakeSpeech = () => {
+    try { if (window.speechSynthesis.paused) window.speechSynthesis.resume(); } catch (e) {}
+  };
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) wakeSpeech(); });
+  window.addEventListener("focus", wakeSpeech);
+  window.addEventListener("pageshow", wakeSpeech);
 }
 
 /* the machine the tape is playing on, since the speech itself cannot be
@@ -6199,6 +6243,18 @@ function voxSpeak(plan, opts) {
     return total;
   }
   if (!ac() || muted) return 0;
+
+  /* And if there is no voice on this device, he does not fall back to
+     the formant synth. It says nothing you can understand, and a man
+     making word-shaped noise over the top of the words he is supposed
+     to be saying is worse than a man on a bad tape: the caption is
+     doing the talking either way, and the second one at least sounds
+     like a reason. The building keeps the synth — its lines are four
+     words long and it is a buzzer on purpose. */
+  if (!opts.sys && !opts.forceSynth && window.speechSynthesis) {
+    voxTape(total, (opts.gain === undefined ? 1 : opts.gain) * 1.25);
+    return total;
+  }
   const t0 = now() + CUE_LEAD + (opts.at || 0);
   const gain = opts.gain === undefined ? 1 : opts.gain;
   const bus = voxBus(1);
@@ -9854,6 +9910,11 @@ const testHooks = {
         vox: () => voxSpeak(voxPlan("I made toys. That part was true."), { gain: 1 }),
         /* the building, for comparison: he has to not sound like it */
         sys: () => annunciate("POWER AT TWENTY PERCENT", false),
+        /* the last-resort voice, for a browser with no speech synthesis
+           in it at all. Forced, because on anything that has one this
+           path is never taken. */
+        voxSynth: () => voxSpeak(voxPlan("I made toys. That part was true."),
+                                 { gain: 1, forceSynth: true }),
         stepLeft:  () => SFX.step(1, TUNE.pan.left),
         stepRight: () => SFX.step(1, TUNE.pan.right),
         /* his four, exactly as cue() plays them */
@@ -10002,6 +10063,9 @@ const testHooks = {
   /* the speech path, which this container has no voices for */
   speak: (text) => voxSpeak(voxPlan(text), { gain: 1 }),
   voxMark: () => voxMark(),
+  speech: () => ({ ok: SPEECH.ok, primed: SPEECH.primed,
+                   voice: SPEECH.voice ? SPEECH.voice.name : null,
+                   live: SPEECH.live, mark: SPEECH.mark }),
   speechReset: () => { SPEECH.ok = null; SPEECH.voice = null; SPEECH.sys = null;
                        SPEECH.mark = -1; SPEECH.live = false; },
 };

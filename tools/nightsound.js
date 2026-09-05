@@ -165,10 +165,16 @@ const { chromium } = require('playwright-core');
      'L ' + right.l + ' vs R ' + right.r);
 
   console.log('\n— and the voice that reads his statement —');
+  /* On a device with a speech synthesiser he is a real voice, and this
+     container has none, so nothing here can measure the thing she will
+     actually hear. What it can measure is the two paths that ship
+     underneath it: the tape the machine plays around him, and the
+     formant synth that is the last resort for a browser with no speech
+     in it at all. */
   const vox = await measure('vox', 3.0);
-  ok('it speaks', vox.peak > 0.01, 'peak ' + vox.peak);
-  ok('and it sits where a voice sits, not where a buzzer does',
-     vox.centroid > 300 && vox.centroid < 3000, vox.centroid + ' Hz');
+  ok('the tape he is on runs', vox.peak > 0.005, 'peak ' + vox.peak);
+  ok('and it sits under a voice rather than over one',
+     vox.centroid < 900, vox.centroid + ' Hz');
 
   /* He is a man and the building is a machine, and for a long time they
      were the same two-formant buzz at two pitches. */
@@ -180,7 +186,7 @@ const { chromium } = require('playwright-core');
      measurable: the pitch falls across a sentence, and the period is
      not the same twice running. */
   const v = await p.evaluate(async () => {
-    const buf = await OuissysNightShift.__night.offline('vox', 3.0);
+    const buf = await OuissysNightShift.__night.offline('voxSynth', 3.0);
     const rate = buf.rate, L = buf.l, R = buf.r;
     const mono = new Float32Array(L.length);
     for (let i = 0; i < L.length; i++) mono[i] = (L[i] + R[i]) / 2;
@@ -213,7 +219,7 @@ const { chromium } = require('playwright-core');
              last: +mean(pitches.slice(half)).toFixed(1),
              spread: +(Math.max(...pitches) - Math.min(...pitches)).toFixed(1) };
   });
-  ok('it is pitched where a man is pitched', v.n > 3 && v.first > 60 && v.first < 190,
+  ok('the last-resort voice is pitched where a man is pitched', v.n > 3 && v.first > 60 && v.first < 190,
      v.n + ' voiced windows around ' + v.first + ' Hz');
   ok('and the pitch falls across the sentence, the way a sentence does',
      v.last < v.first, v.first + ' Hz -> ' + v.last + ' Hz');
