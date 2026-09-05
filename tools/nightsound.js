@@ -134,6 +134,28 @@ const { chromium } = require('playwright-core');
   const spread = Math.max(...hisC) / Math.max(1, Math.min(...hisC));
   ok('his four do not all sound alike', spread > 1.5, 'spread ' + spread.toFixed(2) + 'x');
 
+  /* Nothing in the shop may be so much quieter than anything else that
+     it cannot be heard next to it. Measured, this was badly wrong: a
+     door shutting was five times a parcel and eight times Anwar, and
+     the room tone and score together were louder than any of them, so
+     several cues were being played and none of them heard. Peak is too
+     noisy to hold a line against — every one of these is filtered
+     noise — so this holds the line on RMS. */
+  console.log('\n— and can she hear all of it? —');
+  const every = {};
+  for (const name of ['doorClose', 'hatch', 'monitor', 'knock',
+                      'cogsworth', 'chime', 'marabelle', 'jax',
+                      'drag', 'settle', 'handle', 'vox']) {
+    every[name] = await avg(name, 1.6);
+  }
+  const rmss = Object.entries(every).map(([k, v]) => [k, v.l + v.r]);
+  rmss.sort((a, b) => a[1] - b[1]);
+  console.log('     quietest ' + rmss[0][0] + ' ' + rmss[0][1].toFixed(4) +
+              ', loudest ' + rmss[rmss.length - 1][0] + ' ' + rmss[rmss.length - 1][1].toFixed(4));
+  ok('nothing is drowned out by anything else',
+     rmss[rmss.length - 1][1] < rmss[0][1] * 4,
+     (rmss[rmss.length - 1][1] / rmss[0][1]).toFixed(2) + 'x between the loudest and the quietest');
+
   console.log('\n— and which side it is on —');
   const left = await measure('stepLeft', 1.2);
   const right = await measure('stepRight', 1.2);
@@ -147,6 +169,97 @@ const { chromium } = require('playwright-core');
   ok('it speaks', vox.peak > 0.01, 'peak ' + vox.peak);
   ok('and it sits where a voice sits, not where a buzzer does',
      vox.centroid > 300 && vox.centroid < 3000, vox.centroid + ' Hz');
+
+  /* He is a man and the building is a machine, and for a long time they
+     were the same two-formant buzz at two pitches. */
+  const sys = await measure('sys', 3.0);
+  ok('the building has a voice too', sys.peak > 0.005, 'peak ' + sys.peak);
+  console.log('     he sits at ' + vox.centroid + ' Hz, it sits at ' + sys.centroid + ' Hz');
+
+  /* Two things separate a voice from a tone generator, and both are
+     measurable: the pitch falls across a sentence, and the period is
+     not the same twice running. */
+  const v = await p.evaluate(async () => {
+    const buf = await OuissysNightShift.__night.offline('vox', 3.0);
+    const rate = buf.rate, L = buf.l, R = buf.r;
+    const mono = new Float32Array(L.length);
+    for (let i = 0; i < L.length; i++) mono[i] = (L[i] + R[i]) / 2;
+    /* autocorrelation pitch over one window, hunting a man's range */
+    const f0At = (start, len) => {
+      let best = 0, bestLag = 0;
+      const lo = Math.floor(rate / 220), hi = Math.floor(rate / 60);
+      for (let lag = lo; lag <= hi; lag++) {
+        let sum = 0;
+        for (let i = start; i < start + len - lag; i += 2) sum += mono[i] * mono[i + lag];
+        if (sum > best) { best = sum; bestLag = lag; }
+      }
+      return bestLag ? rate / bestLag : 0;
+    };
+    /* only measure where there is actually sound */
+    const win = Math.floor(rate * 0.18);
+    const loud = [];
+    for (let st = 0; st + win < mono.length; st += win) {
+      let e = 0;
+      for (let i = st; i < st + win; i++) e += mono[i] * mono[i];
+      loud.push([st, Math.sqrt(e / win)]);
+    }
+    const peak = Math.max(...loud.map(x => x[1]));
+    const voiced = loud.filter(x => x[1] > peak * 0.35);
+    const pitches = voiced.map(x => f0At(x[0], win)).filter(f => f > 55 && f < 220);
+    const half = Math.floor(pitches.length / 2);
+    const mean = (a) => a.reduce((s, x) => s + x, 0) / Math.max(1, a.length);
+    return { n: pitches.length,
+             first: +mean(pitches.slice(0, half)).toFixed(1),
+             last: +mean(pitches.slice(half)).toFixed(1),
+             spread: +(Math.max(...pitches) - Math.min(...pitches)).toFixed(1) };
+  });
+  ok('it is pitched where a man is pitched', v.n > 3 && v.first > 60 && v.first < 190,
+     v.n + ' voiced windows around ' + v.first + ' Hz');
+  ok('and the pitch falls across the sentence, the way a sentence does',
+     v.last < v.first, v.first + ' Hz -> ' + v.last + ' Hz');
+  ok('and it never holds one note, which is what a machine does',
+     v.spread > 6, 'moves over ' + v.spread + ' Hz');
+
+  /* Where the centroid is useless. A monotone buzz and a man's voice
+     average out to nearly the same brightness while sounding nothing
+     whatever alike, so the thing to measure is the thing that actually
+     differs: he moves and it does not. */
+  const sysV = await p.evaluate(async () => {
+    const buf = await OuissysNightShift.__night.offline('sys', 3.0);
+    const rate = buf.rate, L = buf.l, R = buf.r;
+    const mono = new Float32Array(L.length);
+    for (let i = 0; i < L.length; i++) mono[i] = (L[i] + R[i]) / 2;
+    const f0At = (start, len) => {
+      let best = 0, bestLag = 0;
+      const lo = Math.floor(rate / 220), hi = Math.floor(rate / 60);
+      for (let lag = lo; lag <= hi; lag++) {
+        let sum = 0;
+        for (let i = start; i < start + len - lag; i += 2) sum += mono[i] * mono[i + lag];
+        if (sum > best) { best = sum; bestLag = lag; }
+      }
+      return bestLag ? rate / bestLag : 0;
+    };
+    const win = Math.floor(rate * 0.18);
+    const loud = [];
+    for (let st = 0; st + win < mono.length; st += win) {
+      let e = 0;
+      for (let i = st; i < st + win; i++) e += mono[i] * mono[i];
+      loud.push([st, Math.sqrt(e / win)]);
+    }
+    const peak = Math.max(...loud.map(x => x[1]));
+    const pitches = loud.filter(x => x[1] > peak * 0.35).map(x => f0At(x[0], win)).filter(f => f > 55 && f < 220);
+    return { spread: pitches.length ? +(Math.max(...pitches) - Math.min(...pitches)).toFixed(1) : 0,
+             n: pitches.length };
+  });
+  /* The building came back with nothing here, and that is the finding
+     rather than a broken probe: its carrier is filtered out by its own
+     formant bands, so what is left has no fundamental in a human range
+     at all. He has one and it moves; it has none. That is a bigger
+     difference than any two numbers on the same axis, and it is why
+     the centroids being 1.1x apart said nothing. */
+  ok('and the building is not pitched like a person at any point',
+     v.n >= 4 && sysV.n <= v.n / 2,
+     'him ' + v.n + ' voiced windows moving over ' + v.spread + ' Hz, it ' + sysV.n);
 
   console.log('\n' + (fails ? 'FAILED ' + fails + ' of ' + checks
                              : 'all ' + checks + ' checks passed'));

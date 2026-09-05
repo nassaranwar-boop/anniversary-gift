@@ -5147,7 +5147,7 @@ function showRoom(id) {
    makes Cogsworth sound like Cogsworth and Chime sound like Chime is
    the shape of those three, not a sample.
    ========================================================= */
-let AC = null, master = null, bedGain = null, cueGain = null, duckGain = null;
+let AC = null, master = null, bedGain = null, cueGain = null, duckGain = null, sideGain = null;
 let bedNodes = [], creakTimer = 0, audioOn = false, muted = false;
 
 function noiseBuffer(sec) {
@@ -5181,8 +5181,17 @@ function audioInit() {
   AC = new C();
   master = AC.createGain(); master.gain.value = 0.9; master.connect(AC.destination);
   duckGain = AC.createGain(); duckGain.gain.value = 1; duckGain.connect(master);
-  bedGain = AC.createGain(); bedGain.gain.value = 0.0; bedGain.connect(duckGain);
-  cueGain = AC.createGain(); cueGain.gain.value = 1.0; cueGain.connect(duckGain);
+  /* Everything that is not a cue goes through here, and it steps out of
+     the way whenever a cue fires.
+
+     Without it the room tone and the score between them were already
+     sitting at the top of the master bus, and a door shutting on top of
+     that moved the meter by less than one percent — the effects were
+     all being played and none of them were being heard, which is a
+     thing you can only find out by putting a meter on it. */
+  sideGain = AC.createGain(); sideGain.gain.value = 1; sideGain.connect(duckGain);
+  bedGain = AC.createGain(); bedGain.gain.value = 0.0; bedGain.connect(sideGain);
+  cueGain = AC.createGain(); cueGain.gain.value = 1.15; cueGain.connect(duckGain);
   NB = noiseBuffer(3);
 
   /* The site keeps a watchdog for exactly this — see wakeAudio() in
@@ -5247,7 +5256,7 @@ function bedBuild() {
 
   bedGain.gain.cancelScheduledValues(t);
   bedGain.gain.setValueAtTime(0.0001, t);
-  bedGain.gain.linearRampToValueAtTime(0.5, t + 2.5);
+  bedGain.gain.linearRampToValueAtTime(0.34, t + 2.5);
   bedNodes = [src, hum, hum2, lfo];
 }
 function bedStop() {
@@ -5260,6 +5269,21 @@ function bedStop() {
   const dead = bedNodes.slice();
   bedNodes = [];
   setTimeout(() => dead.forEach((n) => { try { n.stop(); } catch (e) {} }), 700);
+}
+/* a cue just fired: get everything else out of its way for a moment.
+   Rate-limited, because one cue is three or four nodes and they must
+   not each take their own bite out of the room. */
+let sideT = 0;
+function cueDuck(depth) {
+  if (!AC || !sideGain) return;
+  const t = now();
+  if (t - sideT < 0.07) return;
+  sideT = t;
+  const d = depth === undefined ? 0.5 : depth;
+  sideGain.gain.cancelScheduledValues(t);
+  sideGain.gain.setValueAtTime(sideGain.gain.value, t);
+  sideGain.gain.linearRampToValueAtTime(d, t + 0.035);
+  sideGain.gain.linearRampToValueAtTime(1, t + 0.42);
 }
 function audioDuck(v, ms) {
   if (!AC) return;
@@ -5276,6 +5300,7 @@ function audioDuck(v, ms) {
    their routes — which is most of the information the game gives you
    when the hall lights are out. */
 function panned(o) {
+  if (!o.bus) cueDuck(o.duck);
   const g = AC.createGain();
   if (o.pan !== undefined && AC.createStereoPanner) {
     const p = AC.createStereoPanner();
@@ -5341,21 +5366,21 @@ const SFX = {
      so the bands are disjoint on every roll of a noisy die. */
   postDrag(pan, gain) {
     const v = gain === undefined ? 1 : gain;
-    burst({ f0: 620, f1: 230, dur: 0.46, gain: 0.20 * v, q: 0.5, filter: "lowpass", pan });
-    burst({ f0: 1400, f1: 820, dur: 0.20, gain: 0.006 * v, q: 0.8, filter: "highpass", at: 0.08, pan });
-    tone({ type: "triangle", f0: 58, f1: 44, dur: 0.55, gain: 0.075 * v, filter: "lowpass", ff: 180, at: 0.05, pan });
+    burst({ f0: 620, f1: 230, dur: 0.46, gain: 0.50 * v, q: 0.5, filter: "lowpass", pan });
+    burst({ f0: 1400, f1: 820, dur: 0.20, gain: 0.015 * v, q: 0.8, filter: "highpass", at: 0.08, pan });
+    tone({ type: "triangle", f0: 58, f1: 44, dur: 0.55, gain: 0.19 * v, filter: "lowpass", ff: 180, at: 0.05, pan });
   },
   /* it has arrived, and it has put itself down */
   postSettle(pan) {
-    burst({ f0: 220, f1: 70, dur: 0.34, gain: 0.36, q: 0.7, filter: "lowpass", pan });
+    burst({ f0: 220, f1: 70, dur: 0.34, gain: 0.52, q: 0.7, filter: "lowpass", pan });
     burst({ f0: 1800, f1: 900, dur: 0.18, gain: 0.022, q: 0.7, filter: "highpass", at: 0.03, pan });
-    tone({ type: "triangle", f0: 41, f1: 31, dur: 0.7, gain: 0.085, filter: "lowpass", ff: 140, pan });
+    tone({ type: "triangle", f0: 41, f1: 31, dur: 0.7, gain: 0.15, filter: "lowpass", ff: 140, pan });
   },
   /* and the handle, tried, and tried again */
   handle(pan) {
-    burst({ f0: 340, f1: 150, dur: 0.10, gain: 0.26, q: 2.2, filter: "lowpass", pan });
-    burst({ f0: 240, f1: 120, dur: 0.14, gain: 0.19, q: 1.8, filter: "lowpass", at: 0.09, pan });
-    tone({ type: "square", f0: 112, f1: 84, dur: 0.13, gain: 0.07, filter: "lowpass", ff: 260, at: 0.04, pan });
+    burst({ f0: 340, f1: 150, dur: 0.10, gain: 0.62, q: 2.2, filter: "lowpass", pan });
+    burst({ f0: 240, f1: 120, dur: 0.14, gain: 0.46, q: 1.8, filter: "lowpass", at: 0.09, pan });
+    tone({ type: "square", f0: 112, f1: 84, dur: 0.13, gain: 0.17, filter: "lowpass", ff: 260, at: 0.04, pan });
   },
 
   /* picking a piece of paper up off a shelf. Two short scrapes and a
@@ -5436,8 +5461,8 @@ const SFX = {
     const v = gain === undefined ? 0.5 : gain;
     const seq = [392, 440, 494, 523, 587, 494, 392];
     seq.forEach((f, i) => {
-      tone({ type: "triangle", f0: f, dur: 0.2, gain: 0.13 * v, at: i * 0.17, filter: "lowpass", ff: 1600, pan });
-      burst({ f0: 2600, dur: 0.02, gain: 0.05 * v, q: 7, at: i * 0.17, pan });
+      tone({ type: "triangle", f0: f, dur: 0.2, gain: 0.30 * v, at: i * 0.17, filter: "lowpass", ff: 1600, pan });
+      burst({ f0: 2600, dur: 0.02, gain: 0.11 * v, q: 7, at: i * 0.17, pan });
     });
   },
   laugh(gain, pan) {
@@ -5450,7 +5475,7 @@ const SFX = {
   },
   bells(gain, pan) {
     const v = gain === undefined ? 0.4 : gain;
-    [1180, 1560, 2040].forEach((f, i) => tone({ type: "triangle", f0: f, dur: 0.5, gain: 0.05 * v, at: i * 0.03, pan }));
+    [1180, 1560, 2040].forEach((f, i) => tone({ type: "triangle", f0: f, dur: 0.5, gain: 0.13 * v, at: i * 0.03, pan }));
   },
 
   /* --- the ones that are nothing ------------------------------------
@@ -5484,13 +5509,24 @@ const SFX = {
     burst({ f0: 500, f1: 1500, dur: 0.34, gain: 0.3, q: 0.8 });
     tone({ type: "square", f0: 70, f1: 120, dur: 0.3, gain: 0.09, filter: "lowpass", ff: 400 });
   },
+  /* A steel latch, which is three sounds: the clack, the body of the
+     plate it lands on, and the weight of the thing dropping into the
+     frame. It used to be one narrow bandpass, which threw away most of
+     the noise it was made of and left the control she uses more than
+     any other as the quietest thing in the shop. */
   hatch() {
-    burst({ f0: 1800, f1: 700, dur: 0.28, gain: 0.28, q: 2 });
-    tone({ type: "triangle", f0: 320, f1: 180, dur: 0.2, gain: 0.07 });
+    burst({ f0: 2600, f1: 1500, dur: 0.05, gain: 0.34, q: 0.9, filter: "highpass" });
+    burst({ f0: 1500, f1: 600, dur: 0.24, gain: 0.40, q: 0.8, filter: "lowpass", at: 0.008 });
+    tone({ type: "triangle", f0: 320, f1: 180, dur: 0.22, gain: 0.16, at: 0.01 });
+    tone({ type: "triangle", f0: 88, f1: 62, dur: 0.30, gain: 0.13, filter: "lowpass", ff: 260, at: 0.02 });
   },
+  /* the tube swinging down on its arm, and the picture striking */
   monitor(up) {
-    burst({ f0: up ? 1200 : 700, f1: up ? 400 : 1400, dur: 0.16, gain: 0.28, q: 1.4 });
-    tone({ type: "square", f0: up ? 140 : 110, dur: 0.09, gain: 0.07, filter: "lowpass", ff: 500 });
+    burst({ f0: up ? 1200 : 700, f1: up ? 400 : 1400, dur: 0.18, gain: 0.46, q: 0.7,
+            filter: up ? "lowpass" : "bandpass" });
+    tone({ type: "square", f0: up ? 140 : 110, dur: 0.10, gain: 0.17, filter: "lowpass", ff: 500 });
+    tone({ type: "triangle", f0: up ? 74 : 96, f1: up ? 55 : 70, dur: 0.22, gain: 0.12,
+           filter: "lowpass", ff: 300, at: 0.015 });
   },
   hiss(gain) { burst({ f0: 2600, dur: 0.22, gain: 0.16 * (gain || 1), q: 0.5, filter: "highpass" }); },
   camSwitch() {
@@ -5617,24 +5653,33 @@ function annunciate(text, urgent) {
     /* the carrier: a low buzz, deliberately monotone apart from a
        downward step at the end of the line */
     const carrier = i === n - 1 ? 96 : 112;
-    [0, 1].forEach((k) => {
+    /* Harder than it was, and deliberately. He has a voice now — folds
+       that wobble, a throat, breath, a sentence that falls — and this
+       is the thing he is not. So it goes the other way: a fixed
+       carrier, a third partial an octave and a fifth up, and no air in
+       it anywhere. Two voices in one shop that sound alike is one voice
+       and a waste of the better one. */
+    [0, 1, 2].forEach((k) => {
       const osc = AC.createOscillator();
-      osc.type = k ? "square" : "sawtooth";
-      osc.frequency.setValueAtTime(carrier * (k ? 2 : 1), t0 + at);
+      osc.type = k === 0 ? "sawtooth" : "square";
+      const mult = k === 0 ? 1 : k === 1 ? 2 : 3;
+      osc.frequency.setValueAtTime(carrier * mult, t0 + at);
       const bp = AC.createBiquadFilter();
       bp.type = "bandpass";
-      bp.frequency.value = f[k];
-      bp.Q.value = k ? 9 : 6;
+      bp.frequency.value = k === 2 ? 3200 : f[k];
+      bp.Q.value = k === 0 ? 6 : k === 1 ? 9 : 12;
+      const lvl = 0.055 * gain * (k === 0 ? 1 : k === 1 ? 0.5 : 0.34);
       const g = AC.createGain();
+      /* square corners: a machine does not fade in */
       g.gain.setValueAtTime(0.0001, t0 + at);
-      g.gain.exponentialRampToValueAtTime(0.055 * gain * (k ? 0.5 : 1), t0 + at + 0.012);
-      g.gain.setValueAtTime(0.055 * gain * (k ? 0.5 : 1), t0 + at + step * 0.6);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + step * 0.92);
+      g.gain.exponentialRampToValueAtTime(lvl, t0 + at + 0.004);
+      g.gain.setValueAtTime(lvl, t0 + at + step * 0.72);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + step * 0.88);
       osc.connect(bp); bp.connect(g); g.connect(cueGain);
       osc.start(t0 + at); osc.stop(t0 + at + step);
     });
     /* the consonant edge between syllables */
-    burst({ f0: 2600, dur: 0.018, gain: 0.03 * gain, q: 5, at: at - 0.012 });
+    burst({ f0: 3400, dur: 0.014, gain: 0.032 * gain, q: 7, at: at - 0.012 });
   }
   return 0.26 + n * step + 0.2;
 }
@@ -5668,12 +5713,65 @@ let sayQueue = [], sayUntil = 0;
    to the syllable, so the word lights up as the machine says it.
    ========================================================= */
 const VOWEL_OF = { a: 0, e: 1, i: 2, o: 3, u: 4, y: 2 };
-/* how long a syllable is held, and what goes between things */
+
+/* ANWAR'S VOICE, which is not the building's.
+
+   The annunciator up there is a machine reading out states and it is
+   meant to sound like one. This is a man, on a recording, and for a
+   long time it was the same two-formant buzz with a different pitch —
+   which is why he read as a second machine rather than as her husband.
+
+   Five things separate a voice from a tone generator, and it had none
+   of them:
+
+     a glottal source   Vocal folds are a pulse that opens fast and
+                        closes slowly, not a sawtooth. Two of them,
+                        very slightly apart, because one perfectly
+                        periodic oscillator is the sound of a synth.
+
+     jitter and shimmer Real folds are about one percent irregular in
+                        period. That irregularity is most of what the
+                        ear uses to decide something is alive. Take it
+                        away and you have a robot; that is the whole
+                        difference.
+
+     a third formant    Two formants are enough to tell an "ah" from an
+                        "ee". The third one is what says the sound came
+                        out of a throat.
+
+     transitions        We hear the glide between two vowels more than
+                        we hear either vowel. His formants move into
+                        each syllable rather than stepping to it.
+
+     breath             There is air in a person. A little noise under
+                        the tone, louder on the consonants that are
+                        made of air, and the last of it left hanging at
+                        the end of a sentence.
+
+   And then it is put through a preamp and a tape: bandlimited, a
+   little compressed at the top, with the faintest ring on it. He is a
+   recording — she is listening to a man who is not there any more, and
+   it should sound like a machine is doing the remembering. */
 const VOX = {
-  syl: 0.148, gap: 0.055,
-  pause: { ",": 0.20, ";": 0.26, ":": 0.26, "—": 0.30, ".": 0.44, "!": 0.44, "?": 0.44 },
-  base: 104,
+  syl: 0.152, gap: 0.058,
+  pause: { ",": 0.22, ";": 0.28, ":": 0.28, "—": 0.34, ".": 0.50, "!": 0.48, "?": 0.48 },
+  base: 96,            // a man's speaking pitch, not a buzzer's
+  jitter: 0.012,       // how irregular the folds are, period to period
+  vibRate: 4.6, vibDepth: 0.011,
+  decl: 0.17,          // how far the pitch falls across one sentence
+  accent: 0.085,       // how much a stressed syllable lifts
+  breath: 0.030,
 };
+/* F1 F2 F3 for each vowel, and how loud each one is relative to the
+   first. The third is the throat. */
+const FORMANT3 = [
+  [ 730, 1090, 2440],   // a
+  [ 530, 1840, 2480],   // e
+  [ 270, 2290, 3010],   // i
+  [ 570,  840, 2410],   // o
+  [ 300,  870, 2240],   // u
+];
+const FORMANT_GAIN = [1, 0.44, 0.14];
 
 /* split a word into syllable-ish chunks, each with its vowel and its
    opening consonant */
@@ -5709,6 +5807,89 @@ function voxPlan(text) {
   return { words, dur: t + 0.25 };
 }
 
+/* the tape he is on: bandlimited the way a small speaker in a desk is,
+   with a breath of ring on it so the machine doing the playing is
+   audible under the man doing the talking */
+function voxBus(gain) {
+  const out = AC.createGain(); out.gain.value = gain;
+  const hp = AC.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 118; hp.Q.value = 0.7;
+  const lp = AC.createBiquadFilter(); lp.type = "lowpass";  lp.frequency.value = 3600; lp.Q.value = 0.6;
+  out.connect(hp); hp.connect(lp); lp.connect(cueGain);
+  /* the ring: a 74Hz carrier at a level you notice only when it stops */
+  const ring = AC.createGain(); ring.gain.value = 0;
+  const rc = AC.createOscillator(); rc.type = "sine"; rc.frequency.value = 74;
+  const rg = AC.createGain(); rg.gain.value = 0.055;
+  rc.connect(rg); rg.connect(ring.gain); rc.start();
+  hp.connect(ring); ring.connect(lp);
+  return { input: out, stop: (at) => { try { rc.stop(at); } catch (e) {} } };
+}
+
+/* one syllable: a glottis, three formants, and some air.
+   `from` is the vowel before it, so the formants glide in rather than
+   jumping — which is the part the ear actually reads as speech. */
+function voxSyl(bus, at, dur, f0, vowel, from, gain, stressed) {
+  const F = FORMANT3[vowel] || FORMANT3[0];
+  const P = FORMANT3[from === undefined || from === null ? vowel : from] || F;
+  const glide = Math.min(0.055, dur * 0.42);
+
+  /* --- the glottis: two saws a hair apart, jittered ---------------- */
+  const src = AC.createGain(); src.gain.value = 1;
+  [0, 1].forEach((k) => {
+    const o = AC.createOscillator();
+    o.type = "sawtooth";
+    /* jitter: four small random steps across the syllable. A perfectly
+       steady period is the single loudest robot tell there is. */
+    const j = () => 1 + (Math.random() * 2 - 1) * VOX.jitter;
+    o.frequency.setValueAtTime(f0 * j() * (k ? 1.006 : 1), at);
+    for (let n = 1; n <= 4; n++) {
+      const tt = at + (dur * n) / 4;
+      /* the pitch also falls a little inside every syllable, the way a
+         held note does when nobody is trying to hold it */
+      o.frequency.linearRampToValueAtTime(f0 * j() * (k ? 1.006 : 1) * (1 - n * 0.006), tt);
+    }
+    /* vibrato, small enough to be felt rather than heard */
+    const lfo = AC.createOscillator(); lfo.type = "sine"; lfo.frequency.value = VOX.vibRate;
+    const lg = AC.createGain(); lg.gain.value = f0 * VOX.vibDepth;
+    lfo.connect(lg); lg.connect(o.frequency); lfo.start(at); lfo.stop(at + dur + 0.06);
+    const g = AC.createGain(); g.gain.value = k ? 0.42 : 1;
+    o.connect(g); g.connect(src);
+    o.start(at); o.stop(at + dur + 0.06);
+  });
+  /* the closing slope of the fold, which is why a voice is not a buzz */
+  const tilt = AC.createBiquadFilter();
+  tilt.type = "lowpass"; tilt.frequency.value = Math.min(5200, f0 * 34); tilt.Q.value = 0.4;
+  src.connect(tilt);
+
+  /* --- the throat: three formants, gliding out of the last vowel --- */
+  const sum = AC.createGain(); sum.gain.value = 1;
+  for (let k = 0; k < 3; k++) {
+    const bp = AC.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.setValueAtTime(P[k], at);
+    bp.frequency.linearRampToValueAtTime(F[k], at + glide);
+    bp.Q.value = k === 0 ? 6 : k === 1 ? 8 : 11;
+    const g = AC.createGain(); g.gain.value = FORMANT_GAIN[k];
+    tilt.connect(bp); bp.connect(g); g.connect(sum);
+  }
+
+  /* --- the air ----------------------------------------------------- */
+  const br = AC.createBufferSource(); br.buffer = NB; br.loop = true;
+  const bf = AC.createBiquadFilter(); bf.type = "bandpass";
+  bf.frequency.value = F[1] * 0.9; bf.Q.value = 0.8;
+  const bg = AC.createGain(); bg.gain.value = VOX.breath * (stressed ? 1.35 : 1);
+  br.connect(bf); bf.connect(bg); bg.connect(sum);
+  br.start(at); br.stop(at + dur + 0.06);
+
+  /* --- and the shape of it ----------------------------------------- */
+  const env = AC.createGain();
+  const peak = Math.max(0.0002, 0.27 * gain * (stressed ? 1.18 : 1));
+  env.gain.setValueAtTime(0.0001, at);
+  env.gain.exponentialRampToValueAtTime(peak, at + 0.016);
+  env.gain.setValueAtTime(peak, at + dur * 0.72);
+  env.gain.exponentialRampToValueAtTime(0.0001, at + dur * 1.02);
+  sum.connect(env); env.connect(bus.input);
+}
+
 /* and say it. `plan` comes from voxPlan so the caller already knows the
    timings it is about to hear. */
 function voxSpeak(plan, opts) {
@@ -5717,47 +5898,49 @@ function voxSpeak(plan, opts) {
   const t0 = now() + (opts.at || 0);
   const gain = opts.gain === undefined ? 1 : opts.gain;
   const total = plan.dur;
+  const bus = voxBus(1);
 
+  let prevVowel = null;
   plan.words.forEach((w) => {
     w.syls.forEach((s, si) => {
       const at = t0 + w.at + si * VOX.syl;
-      /* pitch: drifting down through the line, and dropping off the end
-         of the last syllable of it */
+      /* Declination: a sentence starts high and ends low, and it is
+         the fall rather than the pitch that makes it a sentence. On
+         top of that, one accent per word, on its first syllable. */
       const through = clamp((w.at + si * VOX.syl) / Math.max(0.001, total), 0, 1);
-      let f = VOX.base * (1.07 - through * 0.14);
+      const stressed = si === 0 && (w.syls.length > 1 || w.text.length > 3);
+      let f = VOX.base * (1 + VOX.decl * 0.5 - through * VOX.decl)
+                       * (stressed ? 1 + VOX.accent : 1);
       const tail = w.text.slice(-1);
+      /* and the last syllable of the sentence drops off the end of it */
       if (w.end || tail === "." || tail === "!") {
-        if (si === w.syls.length - 1) f = VOX.base * 0.80;
+        if (si === w.syls.length - 1) f = VOX.base * 0.78;
       } else if (tail === "?") {
-        if (si === w.syls.length - 1) f = VOX.base * 1.24;
+        if (si === w.syls.length - 1) f = VOX.base * 1.26;
+      } else if (tail === ",") {
+        if (si === w.syls.length - 1) f = VOX.base * 1.06;
       }
-      const F = FORMANTS[s.v];
-      [0, 1].forEach((k) => {
-        const osc = AC.createOscillator();
-        osc.type = k ? "square" : "sawtooth";
-        osc.frequency.setValueAtTime(f * (k ? 2 : 1), at);
-        /* a hair of movement inside the syllable, or it reads as a beep */
-        osc.frequency.linearRampToValueAtTime(f * (k ? 2 : 1) * 0.985, at + VOX.syl);
-        const bp = AC.createBiquadFilter();
-        bp.type = "bandpass";
-        bp.frequency.setValueAtTime(F[k], at);
-        bp.Q.value = k ? 8 : 5.5;
-        const g = AC.createGain();
-        const peak = 0.085 * gain * (k ? 0.45 : 1);
-        g.gain.setValueAtTime(0.0001, at);
-        g.gain.exponentialRampToValueAtTime(peak, at + 0.018);
-        g.gain.setValueAtTime(peak, at + VOX.syl * 0.62);
-        g.gain.exponentialRampToValueAtTime(0.0001, at + VOX.syl * 0.98);
-        osc.connect(bp); bp.connect(g); g.connect(cueGain);
-        osc.start(at); osc.stop(at + VOX.syl + 0.02);
-      });
-      /* the consonant that opens the syllable */
+      voxSyl(bus, at, VOX.syl * 0.96, f, s.v, prevVowel, gain, stressed);
+      prevVowel = s.v;
+
+      /* the consonant that opens the syllable, with the aspiration
+         after a plosive that a mouth actually makes */
       const c = s.on;
-      if (/[szfhc]/.test(c))      burst({ f0: 5200, f1: 3400, dur: 0.055, gain: 0.028 * gain, q: 0.9, filter: "highpass", at: at - t0 + (opts.at || 0) });
-      else if (/[tdkgpb]/.test(c)) burst({ f0: 2000, f1: 900,  dur: 0.022, gain: 0.05 * gain,  q: 3,   at: at - t0 + (opts.at || 0) });
-      else if (/[rw]/.test(c))     burst({ f0: 700,  f1: 420,  dur: 0.03,  gain: 0.02 * gain,  q: 2,   at: at - t0 + (opts.at || 0) });
+      const rel = at - t0 + (opts.at || 0);
+      if (/[szf]/.test(c))         burst({ f0: 3800, f1: 2400, dur: 0.075, gain: 0.020 * gain, q: 0.9, filter: "bandpass", at: rel - 0.045 });
+      else if (/[h]/.test(c))      burst({ f0: 1900, f1: 1100, dur: 0.075, gain: 0.022 * gain, q: 0.5, at: rel - 0.045 });
+      else if (/[tdk]/.test(c))  { burst({ f0: 2100, f1: 1000, dur: 0.016, gain: 0.045 * gain, q: 3, at: rel - 0.03 });
+                                   burst({ f0: 1700, f1: 900,  dur: 0.032, gain: 0.014 * gain, q: 0.7, at: rel - 0.016 }); }
+      else if (/[gpb]/.test(c))    burst({ f0: 1100, f1: 480,  dur: 0.020, gain: 0.045 * gain, q: 2.4, at: rel - 0.03 });
+      else if (/[c]/.test(c))      burst({ f0: 2600, f1: 1400, dur: 0.030, gain: 0.022 * gain, q: 1.4, at: rel - 0.035 });
+      else if (/[rwl]/.test(c))    burst({ f0: 640,  f1: 400,  dur: 0.036, gain: 0.017 * gain, q: 2, at: rel - 0.02 });
+      else if (/[mn]/.test(c))     burst({ f0: 260,  f1: 200,  dur: 0.040, gain: 0.020 * gain, q: 2.6, filter: "lowpass", at: rel - 0.02 });
     });
   });
+  /* the breath he lets out at the end of it */
+  burst({ f0: 900, f1: 420, dur: 0.30, gain: 0.020 * gain, q: 0.5,
+          filter: "lowpass", at: (opts.at || 0) + total - 0.1 });
+  bus.stop(t0 + total + 0.6);
   return total;
 }
 
@@ -5823,6 +6006,7 @@ const MUS = {
   dread: 0, target: 0, step: 0, next: 0, bar: 0,
 };
 const MUS_LOOK = 0.65;          // seconds scheduled ahead of the clock
+const MUS_LEVEL = 0.5;          // how loud the score sits under the game
 const MUS_LAYERS = ["sub", "pulse", "box", "air", "grind", "bow", "warm"];
 
 /* A natural minor on A, which is the key the music box is in, so the
@@ -5838,7 +6022,7 @@ const WARM  = [0, 4, 7, 12, 11, 7, 4, 7, 2, 5, 9, 14, 12, 9, 5, 4];
 function musicInit() {
   if (!ac() || MUS.ready) return;
   MUS.ready = true;
-  MUS.bus = AC.createGain(); MUS.bus.gain.value = 0; MUS.bus.connect(duckGain);
+  MUS.bus = AC.createGain(); MUS.bus.gain.value = 0; MUS.bus.connect(sideGain);
   MUS_LAYERS.forEach((k) => {
     const g = AC.createGain();
     g.gain.value = 0;
@@ -5975,7 +6159,12 @@ function musicMode(m) {
 function musicSwap(m) {
   musicInit();
   const t = now();
-  const to = m === "none" ? 0.0001 : 1;
+  /* Not 1. Measured on the master bus, the room tone and the score
+     together peaked higher than any cue in the game, which meant the
+     score was the loudest thing in the shop at every moment of every
+     night and every sound that carries information was underneath it.
+     A score you cannot play over is a wall. */
+  const to = m === "none" ? 0.0001 : MUS_LEVEL;
   MUS.bus.gain.cancelScheduledValues(t);
   MUS.bus.gain.setValueAtTime(Math.max(0.0001, MUS.bus.gain.value), t);
   MUS.bus.gain.linearRampToValueAtTime(to, t + (m === "none" ? 0.9 : 2.2));
@@ -9065,6 +9254,9 @@ const testHooks = {
                     o[k] = MUS.lay[k] ? +MUS.lay[k].gain.value.toFixed(3) : null; return o;
                   }, {}) }),
   musicTick: (dt) => musicTick(dt),
+  /* a setter, because `music` above is a getter and a probe that called
+     it to switch the score off was quietly measuring the score */
+  musicSet: (m) => musicMode(m),
   /* Render one cue into an offline context and hand the samples back,
      so a suite can measure what nobody has been able to hear. The
      chapter's synths all hang off the module's own AC and cueGain, so
@@ -9074,11 +9266,12 @@ const testHooks = {
     const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
     if (!OC) return Promise.resolve(null);
     const ctx = new OC(2, Math.ceil(44100 * (secs || 1.5)), 44100);
-    const keep = { AC, master, duckGain, bedGain, cueGain, NB, muted };
+    const keep = { AC, master, duckGain, sideGain, bedGain, cueGain, NB, muted };
     AC = ctx;
     master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination);
     duckGain = ctx.createGain(); duckGain.connect(master);
-    bedGain = ctx.createGain(); bedGain.connect(duckGain);
+    sideGain = ctx.createGain(); sideGain.connect(duckGain);
+    bedGain = ctx.createGain(); bedGain.connect(sideGain);
     cueGain = ctx.createGain(); cueGain.connect(duckGain);
     NB = noiseBuffer(3);
     muted = false;
@@ -9093,6 +9286,8 @@ const testHooks = {
          both flattered the wrong answer. */
       const CUES = {
         vox: () => voxSpeak(voxPlan("I made toys. That part was true."), { gain: 1 }),
+        /* the building, for comparison: he has to not sound like it */
+        sys: () => annunciate("POWER AT TWENTY PERCENT", false),
         stepLeft:  () => SFX.step(1, TUNE.pan.left),
         stepRight: () => SFX.step(1, TUNE.pan.right),
         /* his four, exactly as cue() plays them */
@@ -9104,6 +9299,10 @@ const testHooks = {
         drag:   () => SFX.postDrag(0, 1),
         settle: () => SFX.postSettle(0),
         handle: () => SFX.handle(0),
+        doorClose: () => SFX.doorClose(),
+        hatch: () => SFX.hatch(),
+        knock: () => SFX.knock(0),
+        monitor: () => SFX.monitor(true),
       };
       if (CUES[which]) CUES[which]();
       else if (typeof SFX[which] === "function") SFX[which](1, 0);
@@ -9112,6 +9311,7 @@ const testHooks = {
     Object.assign(
       { }, (function () {
         AC = keep.AC; master = keep.master; duckGain = keep.duckGain;
+        sideGain = keep.sideGain;
         bedGain = keep.bedGain; cueGain = keep.cueGain; NB = keep.NB; muted = keep.muted;
         return {};
       })());
@@ -9137,6 +9337,7 @@ const testHooks = {
     master: master ? +master.gain.value.toFixed(3) : null,
     bed: bedGain ? +bedGain.gain.value.toFixed(4) : null,
     cue: cueGain ? +cueGain.gain.value.toFixed(3) : null,
+    side: sideGain ? +sideGain.gain.value.toFixed(3) : null,
     duck: duckGain ? +duckGain.gain.value.toFixed(3) : null,
     music: { ready: MUS.ready, mode: MUS.mode, want: MUS.want,
              bus: MUS.bus ? +MUS.bus.gain.value.toFixed(4) : null,
@@ -9144,24 +9345,56 @@ const testHooks = {
              lay: MUS_LAYERS.reduce((o, k) => {
                o[k] = MUS.lay[k] ? +MUS.lay[k].gain.value.toFixed(3) : null; return o; }, {}) },
   }),
+  /* the room tone off, so a suite can measure what a cue has to be
+     heard over */
+  bed: (on) => {
+    if (!bedGain || !AC) return;
+    /* setting .value does not cancel automation that is already on the
+       books, and the room tone's fade-in leaves a ramp behind it */
+    const t = now();
+    bedGain.gain.cancelScheduledValues(t);
+    bedGain.gain.setValueAtTime(on ? 0.34 : 0.0001, t);
+  },
   /* take the audio session away, the way a phone call does */
   suspend: () => { if (AC && AC.suspend) AC.suspend(); },
-  /* a meter on the master bus, so a suite can say how loud it was */
+  /* A meter on the master bus that misses nothing.
+
+     It was an AnalyserNode being polled from the test, which reads
+     whatever 46ms happens to be in its buffer at the moment it is
+     asked — and a round trip out to the browser and back costs about
+     two hundred milliseconds, so it was sampling at five hertz and
+     stepping straight over the transients it existed to catch. A door
+     shutting simply never appeared. This keeps the running peak in the
+     page, so nothing gets between the sound and the measurement. */
   meter: () => {
     if (!AC) return null;
-    if (!G.__an) {
-      G.__an = AC.createAnalyser();
-      G.__an.fftSize = 2048;
-      master.connect(G.__an);
-      G.__buf = new Float32Array(G.__an.fftSize);
+    if (!G.__meter) {
+      const sp = AC.createScriptProcessor
+        ? AC.createScriptProcessor(1024, 1, 1)
+        : null;
+      if (!sp) return null;
+      G.__meter = { peak: 0, sum: 0, n: 0, node: sp };
+      sp.onaudioprocess = (e) => {
+        const d = e.inputBuffer.getChannelData(0);
+        const m = G.__meter;
+        for (let i = 0; i < d.length; i++) {
+          const v = Math.abs(d[i]);
+          if (v > m.peak) m.peak = v;
+          m.sum += d[i] * d[i];
+        }
+        m.n += d.length;
+      };
+      /* it has to reach a destination to be pulled, but it must not be
+         heard: a gain of nought on the way out */
+      const mute = AC.createGain(); mute.gain.value = 0;
+      master.connect(sp); sp.connect(mute); mute.connect(AC.destination);
       return { armed: true, rms: 0, peak: 0 };
     }
-    G.__an.getFloatTimeDomainData(G.__buf);
-    let sum = 0, peak = 0;
-    for (let i = 0; i < G.__buf.length; i++) {
-      const v = G.__buf[i]; sum += v * v; if (Math.abs(v) > peak) peak = Math.abs(v);
-    }
-    return { armed: true, rms: +Math.sqrt(sum / G.__buf.length).toFixed(5), peak: +peak.toFixed(5) };
+    const m = G.__meter;
+    const out = { armed: true, peak: +m.peak.toFixed(5),
+                  rms: +(m.n ? Math.sqrt(m.sum / m.n) : 0).toFixed(5) };
+    m.peak = 0; m.sum = 0; m.n = 0;
+    return out;
   },
   /* the shelf by the desk has to have room for everything the game can
      award, and it is the kind of thing that goes wrong silently */
