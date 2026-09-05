@@ -647,6 +647,12 @@ window.Scrapbook = (function () {
         var R = PAPER_RECIPE[kind];
         if (!R) { PAGE_PAPER[i] = PAPER[kind]; return; }
         var h = Math.round(bandedHue(t[0], HEAVY[kind])), sat = t[1];
+        /* Some pages come out louder than their neighbours even at the same
+           numbers: page 8 is the mauve recipe, which sits at 50% lightness,
+           and a mid-tone reads far more saturated than the 57% roses either
+           side of it. `tone` on the page def trims that back by hand where
+           the arithmetic is right but the eye disagrees. */
+        if (def.tone) sat = sat * def.tone;
         /* the photographs say how saturated, the recipe says how far it is
            allowed to go -- a page never gets louder than its weight allows */
         var s = Math.round(R.s * (0.55 + Math.min(1, sat / 40) * 0.55));
@@ -665,7 +671,7 @@ window.Scrapbook = (function () {
       });
       job(function () {
         var t = PAGE_TINT[i + 1] || [26, 30];
-        var c = patchColours(t[0], t[1], HEAVY[def.paper]);
+        var c = patchColours(t[0], t[1] * (def.tone || 1), HEAVY[def.paper]);
         PAGE_PATCH[i] = denimCloth(101 + i * 7, c.base, c.hi, c.lo);
       });
     });
@@ -1562,7 +1568,11 @@ window.Scrapbook = (function () {
       { k: "patch", paper: "rose", left: 58, top: -3, w: 50, h: 24, rot: -4 },
       { k: "sticker", art: "starD", left: 2, top: 14, w: 20, rot: -10 },
       { k: "letterpage", left: 12, top: 12, w: 82, rot: 0.6 },
-      { k: "photo", n: 10, style: "corners", left: 6, top: 66, w: 27.9, rot: -5 },
+      /* was w:27.9, which left a hand's width of bare paper under the
+         letter and made the whole page feel like it was waiting for
+         something. It is the only photograph on this page -- it should
+         carry it. */
+      { k: "photo", n: 10, style: "corners", left: 5, top: 63, w: 39, rot: -5 },
       { k: "sticker", art: "vinylRose", left: 48, top: 72, w: 36, rot: 0 },
       { k: "sticker", art: "flowers",   left: 80, top: 44, w: 30, rot: 9 },
       { k: "sticker", art: "lipInk",    left: 86, top: 86, w: 22, rot: -14 },
@@ -1617,7 +1627,7 @@ window.Scrapbook = (function () {
     ]},
 
     /* ---- 8 · the prints ------------------------------------------ */
-    { paper: "mauve", pieces: [
+    { paper: "mauve", tone: 0.72, pieces: [
       { k: "patch", paper: "mauveCloth", left: 52, top: -3, w: 56, h: 46, rot: 6 },
       { k: "patch", paper: "mauveCloth", left: -8, top: 58, w: 52, h: 50, rot: -5 },
       { k: "sticker", art: "vinylLtd", left: 62, top: 14, w: 44, rot: 0 },
