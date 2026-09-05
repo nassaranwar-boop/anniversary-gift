@@ -83,6 +83,9 @@ function showScreen(name) {
   el.classList.add("active");
   void el.offsetWidth;
   el.classList.add("anim-in");
+  /* the only place that knows which screen is up, so the only place that
+     should be deciding which ambient loops are allowed to run */
+  if (typeof syncParticles === "function") syncParticles();
 }
 /* premium dissolve transition used for all screen navigation */
 function pageTurn(name, callback) {
@@ -92,6 +95,69 @@ function pageTurn(name, callback) {
   setTimeout(() => { showScreen(name); if (callback) callback(); }, 420);
 }
 function openCover(name) { pageTurn(name); }
+
+/* ---------------------------------------------------------
+   THE CHAPTERS ARE FETCHED WHEN THERE IS NOTHING ELSE TO DO
+
+   The three games are the three biggest files in the site — a little
+   under 900 KB between them — and not one of them is needed to draw the
+   opening. She has the 3D book, the passcode and ten pages of the
+   scrapbook ahead of her before a chapter can even be chosen, which is
+   minutes; loading them with the page only meant the phone spent its
+   first second parsing a platformer instead of painting.
+
+   So they come down on the idle callback after the page has settled.
+   By the time the hub appears they have long since arrived, and if she
+   somehow beats them there, start() waits for the file rather than
+   silently doing nothing — which is what the old `if (window.X)` guard
+   did, and it would have been a dead card.
+
+   The ?v= is read off this script's own tag, so bumping the version in
+   index.html carries here without anyone having to remember to.
+   --------------------------------------------------------- */
+const ASSET_V = (() => {
+  const me = document.currentScript ||
+             document.querySelector('script[src*="script.js"]');
+  const m = me && me.src && me.src.match(/\?v=[\w.]+/);
+  return m ? m[0] : "";
+})();
+
+const _loaded = Object.create(null);
+function loadScript(src) {
+  if (_loaded[src]) return _loaded[src];
+  _loaded[src] = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    /* async=false keeps two files requested together running in the order
+       they were asked for — super-ouissy.js reads Rescue as it starts. */
+    s.async = false;
+    s.onload = resolve;
+    s.onerror = () => { delete _loaded[src]; reject(new Error("could not load " + src)); };
+    s.src = src + ASSET_V;
+    document.head.appendChild(s);
+  });
+  return _loaded[src];
+}
+
+/* rescue.js carries the platformer's story scenes, so the two travel
+   together and in that order. */
+const CHAPTER_FILES = {
+  ouissy: ["rescue.js", "super-ouissy.js"],
+  apoc:   ["apocalypse.js"],
+  race:   ["racing.js"],
+};
+function loadChapter(name) {
+  return Promise.all((CHAPTER_FILES[name] || []).map(loadScript));
+}
+function prefetchChapters() {
+  Object.keys(CHAPTER_FILES).forEach((k) => {
+    loadChapter(k).catch(() => {});   // a failed prefetch is retried on the click
+  });
+}
+if (typeof requestIdleCallback === "function") {
+  requestIdleCallback(prefetchChapters, { timeout: 4000 });
+} else {
+  addEventListener("load", () => setTimeout(prefetchChapters, 1200));
+}
 
 /* ---------------------------------------------------------
    THE REAL HEIGHT OF THE VIEWPORT
@@ -156,38 +222,74 @@ const PARTICLE_SHAPES = {
   leaf:  "M4.5 19.5C4.5 11 10 5.5 19.5 4.5c1 9.5-4.5 15-15 15z",
 };
 
+/* The floaters used to be three setInterval timers started at load and
+   never stopped. Each one woke up once or twice a second for the whole
+   session — through the book, through every game — and the first thing it
+   did was read el.offsetParent to find out whether its screen was showing.
+   Reading offsetParent forces the browser to flush style and layout, so
+   this was three synchronous layouts a second landing in the middle of
+   whatever frame happened to be rendering. It is a small cost repeated
+   forever, which is the kind that shows up as a stutter you cannot place.
+
+   The emitters are registered here instead and switched on and off by
+   showScreen, which already knows exactly which screen is up. Nothing
+   ticks for a screen you are not looking at, and nothing has to ask the
+   layout engine anything to find that out. */
+const EMITTERS = [];
+
 function startParticles(containerId, opts) {
   const el = document.getElementById(containerId);
-  if (!el || el.dataset.running) return;
-  el.dataset.running = "1";
-  const { shapes, tints, max = 10, interval = 700 } = opts;
-  let alive = 0;
-  setInterval(() => {
-    if (el.offsetParent === null) return;          // the screen is not showing
-    if (alive >= max) return;
-    const kind = shapes[Math.floor(Math.random() * shapes.length)];
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("class", "particle");
-    svg.setAttribute("viewBox", "0 0 24 24");
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", PARTICLE_SHAPES[kind]);
-    path.setAttribute("fill", tints[Math.floor(Math.random() * tints.length)]);
-    svg.appendChild(path);
-    const size = 11 + Math.random() * 13;
-    svg.style.left = Math.random() * 100 + "%";
-    svg.style.width = size + "px";
-    svg.style.height = size + "px";
-    svg.style.animationDuration = (6 + Math.random() * 5) + "s";
-    alive++;
-    svg.addEventListener("animationend", () => { svg.remove(); alive--; });
-    el.appendChild(svg);
-  }, interval);
+  if (!el) return;
+  EMITTERS.push({ el, opts, screen: el.closest(".screen"), timer: 0, alive: 0 });
 }
+
+function emitParticle(em) {
+  const { shapes, tints, max = 10 } = em.opts;
+  if (em.alive >= max) return;
+  const kind = shapes[Math.floor(Math.random() * shapes.length)];
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "particle");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("d", PARTICLE_SHAPES[kind]);
+  path.setAttribute("fill", tints[Math.floor(Math.random() * tints.length)]);
+  svg.appendChild(path);
+  const size = 11 + Math.random() * 13;
+  svg.style.left = Math.random() * 100 + "%";
+  svg.style.width = size + "px";
+  svg.style.height = size + "px";
+  svg.style.animationDuration = (6 + Math.random() * 5) + "s";
+  em.alive++;
+  svg.addEventListener("animationend", () => { svg.remove(); em.alive--; });
+  em.el.appendChild(svg);
+}
+
+function syncParticles() {
+  const awake = !document.hidden;
+  EMITTERS.forEach((em) => {
+    const on = awake && em.screen && em.screen.classList.contains("active");
+    if (on && !em.timer) {
+      em.timer = setInterval(() => emitParticle(em), em.opts.interval || 700);
+    } else if (!on && em.timer) {
+      clearInterval(em.timer);
+      em.timer = 0;
+      /* A CSS animation does not advance inside a display:none screen, so
+         animationend never arrives and these would sit frozen until she
+         came back — then all appear at once, mid-air. Clear them and let
+         the screen fill again the way it did the first time. */
+      em.el.textContent = "";
+      em.alive = 0;
+    }
+  });
+}
+document.addEventListener("visibilitychange", syncParticles);
+
 const TINT_WARM = ["rgba(255,150,190,.75)","rgba(255,190,150,.6)","rgba(255,220,180,.6)","rgba(240,130,170,.6)"];
 const TINT_NIGHT = ["rgba(255,169,216,.6)","rgba(255,214,168,.45)","rgba(214,150,220,.5)"];
 startParticles("pf-hello",   { shapes:["heart","spark","petal"], tints:TINT_WARM,  max:9, interval:750 });
 startParticles("pf-details", { shapes:["heart","bud","leaf"],    tints:TINT_WARM,  max:6, interval:900 });
 startParticles("pf-l2intro", { shapes:["heart","spark","bud"],   tints:TINT_NIGHT, max:5, interval:1000 });
+syncParticles();     /* whichever screen the page opened on*/
 
 /* ---------- maze ambient stars ---------- */
 (function scatterMazeStars(){
@@ -2121,7 +2223,7 @@ document.addEventListener("keydown", (e) => {
    already finished can re-lock itself.
    ========================================================= */
 function startSuperOuissy() {
-  if (window.SuperOuissy) SuperOuissy.start();
+  loadChapter("ouissy").then(() => { if (window.SuperOuissy) SuperOuissy.start(); });
 }
 function stopSuperOuissy() {
   if (window.SuperOuissy) SuperOuissy.stop();
@@ -2138,7 +2240,7 @@ window.markSuperOuissyDone = () => markChapterDone("ouissy");
    and out of it, exactly as the scrapbook and the platformer do.
    ========================================================= */
 function startApocalypse() {
-  if (window.Apocalypse) Apocalypse.start();
+  loadChapter("apoc").then(() => { if (window.Apocalypse) Apocalypse.start(); });
 }
 function stopApocalypse() {
   if (window.Apocalypse) Apocalypse.stop();
@@ -2155,7 +2257,7 @@ window.markApocalypseDone = () => markChapterDone("apoc");
    and out of it, exactly as the other games do.
    ========================================================= */
 function startSuperOuissyRace() {
-  if (window.SuperOuissyRace) SuperOuissyRace.start();
+  loadChapter("race").then(() => { if (window.SuperOuissyRace) SuperOuissyRace.start(); });
 }
 function stopSuperOuissyRace() {
   if (window.SuperOuissyRace) SuperOuissyRace.stop();

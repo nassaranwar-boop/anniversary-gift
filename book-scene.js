@@ -95,6 +95,43 @@
        This is the single biggest change from the old scene, which had no
        tone mapping at all: every highlight clipped flat to paper-white.
        -------------------------------------------------------------------- */
+    /* ------------------------------------------------------------------
+       THE SIZE OF THE FRAME — measured from the canvas, never from window
+
+       This used to be window.innerWidth / window.innerHeight, and that is
+       the whole of the "it opens slightly zoomed, and there is a strip of
+       nothing under the page" bug.
+
+       Two separate faults came out of it. First, renderer.setSize() writes
+       the numbers you hand it into canvas.style as pixels, and an inline
+       style beats the stylesheet — so `width:100%; height:100%` in the CSS
+       was being overruled by a hard pixel height every single frame the
+       renderer resized. Second, on a phone window.innerHeight is not the
+       height of this box: while the URL bar is on screen the two disagree
+       by the height of the bar. The canvas came out taller than the screen
+       it sits in, so the shot was composed for a frame taller than the one
+       you could see (that is the "zoomed"), and the excess hung below the
+       fold (that is the "void"). Leaving the tab and coming back fired a
+       resize at whichever of the two states the browser was in by then,
+       which is why it sometimes healed itself and sometimes got worse.
+
+       So: measure the element's own laid-out box, and pass updateStyle
+       false so three.js never writes a pixel size back into it. CSS owns
+       the box — one number, from 100dvh — and the renderer follows it.
+       ------------------------------------------------------------------ */
+    var _vw = 1, _vh = 1;
+    function measure() {
+      var w = canvas.clientWidth, h = canvas.clientHeight;
+      /* clientWidth is 0 while the screen is display:none. Fall back to the
+         window then rather than allocating a 1x1 buffer we would have to
+         throw away the moment it becomes visible. */
+      if (!w || !h) { w = window.innerWidth; h = window.innerHeight; }
+      _vw = Math.max(1, w); _vh = Math.max(1, h);
+    }
+    measure();
+    function viewW() { return _vw; }
+    function viewH() { return _vh; }
+
     var renderer = new THREE.WebGLRenderer({
       canvas: canvas,
       antialias: false,             // the composer handles AA (MSAA target / SMAA)
@@ -102,7 +139,7 @@
       stencil: false,
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.dpr));
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(viewW(), viewH(), false);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.96;
@@ -118,7 +155,7 @@
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0xf2d5c6, 0.045);
 
-    var camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.05, 40);
+    var camera = new THREE.PerspectiveCamera(30, viewW() / viewH(), 0.05, 40);
 
     /* The shot is composed for a wide frame. On a phone held upright the
        horizontal field of view collapses and the book runs off both edges,
@@ -129,7 +166,7 @@
     var fitFov = 30, fitDist = 1;
 
     function updateFraming() {
-      var aspect = window.innerWidth / Math.max(1, window.innerHeight);
+      var aspect = viewW() / Math.max(1, viewH());
       var needTanV = FIT_TAN_H / Math.max(0.01, aspect);
       var tanV = Math.min(needTanV, MAX_TAN_V);
       fitFov = (2 * Math.atan(tanV)) * 180 / Math.PI;
@@ -1247,7 +1284,7 @@
         samples: Q.msaa,            // real MSAA where we can afford it
       });
       composer = new THREE.EffectComposer(renderer, rt);
-      composer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(viewW(), viewH());
       composer.setPixelRatio(renderer.getPixelRatio());
 
       composer.addPass(new THREE.RenderPass(scene, camera));
@@ -1262,13 +1299,13 @@
 
       if (Q.bloom) {
         bloomPass = new THREE.UnrealBloomPass(
-          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          new THREE.Vector2(viewW(), viewH()),
           BLOOM_IDLE, 0.62, 0.72);   // strength, radius, threshold
         composer.addPass(bloomPass);
       }
 
       if (Q.msaa === 0 && TIER === "mid") {
-        composer.addPass(new THREE.SMAAPass(window.innerWidth, window.innerHeight));
+        composer.addPass(new THREE.SMAAPass(viewW(), viewH()));
       }
 
       composer.addPass(new THREE.OutputPass());
@@ -1509,10 +1546,10 @@
       var want = Math.min(window.devicePixelRatio || 1, cap);
       if (Math.abs(renderer.getPixelRatio() - want) > 0.01) {
         renderer.setPixelRatio(want);
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(viewW(), viewH(), false);
         if (composer) {
           composer.setPixelRatio(want);
-          composer.setSize(window.innerWidth, window.innerHeight);
+          composer.setSize(viewW(), viewH());
         }
       }
     }
@@ -1582,22 +1619,56 @@
     canvas.addEventListener("click", begin);
     canvas.addEventListener("touchstart", function (e) { e.preventDefault(); begin(); }, { passive: false });
 
+    /* A phone fires resize continuously while the URL bar slides away, and
+       every one of those used to reallocate the composer's two float render
+       targets — the stutter you saw the moment you touched the screen. The
+       size is compared first now, and nothing is rebuilt unless it really
+       changed. */
+    var lastW = 0, lastH = 0, resizeRaf = 0;
     function onResize() {
+      resizeRaf = 0;
+      measure();
+      if (_vw === lastW && _vh === lastH) return;
+      lastW = _vw; lastH = _vh;
       updateFraming();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(_vw, _vh, false);
       if (composer) {
-        composer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(_vw, _vh);
         composer.setPixelRatio(renderer.getPixelRatio());
       }
-      if (bloomPass) bloomPass.resolution.set(window.innerWidth, window.innerHeight);
+      if (bloomPass) bloomPass.resolution.set(_vw, _vh);
       applyQualityLevel();
     }
-    window.addEventListener("resize", onResize);
+    lastW = _vw; lastH = _vh;
+    function queueResize() {
+      if (resizeRaf) return;
+      resizeRaf = requestAnimationFrame(onResize);
+    }
+    window.addEventListener("resize", queueResize);
+    window.addEventListener("orientationchange", queueResize);
+    /* Coming back to the tab is the other half of the bug he reported: the
+       browser can restore the page at a size it never told us about. Check
+       the box again on the way back in rather than trusting the last
+       number we were given. */
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) queueResize();
+    });
+    window.addEventListener("pageshow", queueResize);
+    /* The box itself is the thing that matters, so watch the box. Some
+       mobile browsers change it without ever firing resize. */
+    var ro = null;
+    if (window.ResizeObserver) {
+      try { ro = new ResizeObserver(queueResize); ro.observe(canvas); } catch (e) { ro = null; }
+    }
 
     function dispose() {
       running = false;
       if (rafId) cancelAnimationFrame(rafId);
-      window.removeEventListener("resize", onResize);
+      if (resizeRaf) { cancelAnimationFrame(resizeRaf); resizeRaf = 0; }
+      window.removeEventListener("resize", queueResize);
+      window.removeEventListener("orientationchange", queueResize);
+      window.removeEventListener("pageshow", queueResize);
+      if (ro) { try { ro.disconnect(); } catch (e) {} ro = null; }
       disposables.forEach(function (d) { if (d && d.dispose) d.dispose(); });
       if (envRT) envRT.dispose();
       if (composer) {

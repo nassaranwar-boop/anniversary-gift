@@ -86,7 +86,12 @@ window.Scrapbook = (function () {
        assets/our-video.jpg is used if it is there) ---- */
     ourVideo: {
       src:    "assets/our-video.mp4",
-      poster: "assets/our-video.jpg",
+      /* Left empty on purpose. A video element already shows its own first
+         frame once the metadata is in, so a separate poster file buys
+         nothing here and naming one that does not exist cost a 404 on every
+         build of the page. Put a filename back only if you want a frame
+         other than the first one. */
+      poster: "",
       caption: "us",
     },
 
@@ -1433,7 +1438,25 @@ window.Scrapbook = (function () {
      frame marked "photo 7" — no config to edit. An entry in MEMORIES
      still wins if you would rather name the file something else, or add
      a caption to go with it. */
-  var PHOTO_EXT = ["jpg", "png"];   /* keep the probing cheap */
+  /* Every photo in assets/ is written twice: a WebP and a JPEG of the same
+     picture. WebP is roughly a third of the size at a quality difference no
+     eye resolves, so it is asked for first wherever the browser takes it —
+     which is everything since Safari 14. The JPEG stays as the fallback, so
+     a photo dropped into assets/ as a plain .jpg still works with nothing
+     else done to it; it just costs one failed request first.
+
+     The support test is the canvas one: a browser that cannot encode WebP
+     hands back a PNG data URL instead, and that is the whole check. It runs
+     once, here, rather than per photo. */
+  var PHOTO_EXT = (function () {
+    var ok = false;
+    try {
+      var c = document.createElement("canvas");
+      c.width = c.height = 1;
+      ok = c.toDataURL("image/webp").indexOf("data:image/webp") === 0;
+    } catch (e) { ok = false; }
+    return ok ? ["webp", "jpg", "png"] : ["jpg", "png"];
+  })();
 
   function photoAt(n) {
     var m = (typeof MEMORIES !== "undefined" && MEMORIES[n - 1]) ? MEMORIES[n - 1] : null;
@@ -2303,31 +2326,70 @@ window.Scrapbook = (function () {
 
     var frame = c.querySelector(".sb-vid-frame");
     var v = document.createElement("video");
-    v.src = V.src;
     v.preload = "metadata";
     v.playsInline = true;
     v.setAttribute("playsinline", "");
+    v.setAttribute("webkit-playsinline", "");
     v.controls = false;
-    if (V.poster) v.poster = V.poster;
+    v.src = V.src;
 
-    v.addEventListener("loadeddata", function () {
+    /* The play button is built now, not inside a load handler.
+       iOS in Low Power Mode downgrades preload="metadata" to "none",
+       so `loadeddata` can never fire and the control that only existed
+       inside that handler never existed at all — the slate stayed up
+       over a perfectly good file. The button is always here; the first
+       tap is the gesture that loads the video if nothing else has. */
+    var btn = el("sb-vid-play", "button");
+    btn.setAttribute("aria-label", "Play our video");
+    btn.innerHTML = '<span class="sb-ico-play"></span>';
+    frame.appendChild(btn);
+
+    var failed = false;
+    function ready() {
+      if (failed) return;
       c.classList.add("ready");
-      var btn = el("sb-vid-play", "button");
-      btn.setAttribute("aria-label", "Play our video");
-      btn.innerHTML = '<span class="sb-ico-play"></span>';
-      frame.appendChild(btn);
-      function toggle(e) {
-        e.stopPropagation();
-        if (v.paused) { duckAmbient(); stopAllAudio("video"); v.play(); }
-        else v.pause();
-      }
-      btn.addEventListener("click", toggle);
-      v.addEventListener("click", toggle);
-      v.addEventListener("play",  function () { c.classList.add("playing"); });
-      v.addEventListener("pause", function () { c.classList.remove("playing"); });
-      v.addEventListener("ended", function () { c.classList.remove("playing"); });
+    }
+    /* readyState 1 (metadata) is enough to show the frame. Listen wide:
+       whichever of these a browser sends first, we are ready. */
+    ["loadedmetadata", "loadeddata", "canplay", "canplaythrough", "playing"]
+      .forEach(function (ev) { v.addEventListener(ev, ready); });
+    if (v.readyState >= 1) ready();
+
+    function toggle(e) {
+      if (e) e.stopPropagation();
+      if (v.paused) {
+        duckAmbient(); stopAllAudio("video");
+        if (v.readyState === 0) { try { v.load(); } catch (err) {} }
+        var pr = v.play();
+        /* A rejected play() is a real outcome, not a warning to swallow:
+           if it will not play we put the slate back rather than leaving
+           a dead black rectangle. */
+        if (pr && pr.catch) pr.catch(function () {});
+      } else v.pause();
+    }
+    btn.addEventListener("click", toggle);
+    v.addEventListener("click", toggle);
+    v.addEventListener("play",  function () { ready(); c.classList.add("playing"); });
+    v.addEventListener("pause", function () { c.classList.remove("playing"); });
+    v.addEventListener("ended", function () {
+      c.classList.remove("playing");
+      try { v.currentTime = 0; } catch (err) {}
     });
-    v.addEventListener("error", function () { c.classList.remove("ready"); });
+    v.addEventListener("error", function () {
+      failed = true;
+      c.classList.remove("ready", "playing");
+      btn.style.display = "none";
+    });
+
+    /* The poster is optional and usually absent. Asking for it in the
+       attribute costs a 404 on every build and buys nothing, so it is
+       only attached once we know the file is really there. */
+    if (V.poster) {
+      var probe = new Image();
+      probe.onload = function () { if (!failed) v.poster = V.poster; };
+      probe.src = V.poster;
+    }
+
     frame.insertBefore(v, frame.firstChild);
     return c;
   }

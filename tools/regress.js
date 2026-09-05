@@ -41,7 +41,14 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     await page.evaluate(() => { stopDioramas(); showScreen('hub'); startHub(); });
     await page.waitForTimeout(500);
     const cards = await page.evaluate(() => Array.from(document.querySelectorAll('.hub-card')).map(c => c.id));
-    ok(label + ': the hub has every card', cards.length === 4, cards.join(','));
+    /* Named, not counted. This said `=== 4` and had been failing on every
+       run since the racing chapter became the fifth card — a suite that is
+       always red is a suite nobody reads. Listing them by name means adding
+       a chapter fails here once, on purpose, instead of silently. */
+    const WANT = ['hub-card-maze','hub-card-quest','hub-card-ouissy','hub-card-apoc','hub-card-race'];
+    ok(label + ': the hub has every card',
+       WANT.every(id => cards.includes(id)) && cards.length === WANT.length,
+       cards.join(','));
     ok(label + ': no horizontal scroll on the hub', (await hs()) === 0, 'overflow ' + (await hs()));
 
     await page.evaluate(() => { level = 1; showScreen('details'); });
