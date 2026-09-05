@@ -160,6 +160,72 @@ const { chromium, devices } = require('playwright-core');
   ok('and hands the shift back',
      await p.evaluate(() => OuissysNightShift.__night.state().phase) === 'play');
 
+  /* THE BLIND SPOT IN EVERY OTHER CHECK HERE.
+
+     All three of the monitor's hotspots — the winding key, a found
+     page, the arcade cabinet — live inside .ns-mon, which is
+     pointer-events:none so the tube does not eat the office behind it.
+     A child of that has to turn pointer events back on for itself, and
+     none of them did. Every one of them was painted, correct, and
+     completely unreachable by a finger.
+
+     Nothing caught it because the suites dispatch events onto the
+     element, and dispatching skips hit testing entirely: it proves the
+     handler works, not that anything can reach it. So this asks the
+     document what is actually under the middle of each one. */
+  console.log('\n— and can a finger actually reach them —');
+  const reach = await p.evaluate(() => {
+    const w = OuissysNightShift.__night, c = w.cast();
+    w.route('night:2'); w.route('go');
+    c.cogsworth.awake = true; c.cogsworth.wound = 0.4; c.cogsworth.cool = 999;
+    ['chime','marabelle','jax'].forEach(k => { c[k].awake = false; c[k].asleep = true; });
+    if (!w.state().monitor) w.press('monitor');
+    w.cam(c.cogsworth.room);
+    return true;
+  });
+  await p.waitForTimeout(1200);
+  const under = await p.evaluate(() => {
+    const out = {};
+    ['ns-key', 'ns-find', 'ns-egg'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) { out[id] = 'missing'; return; }
+      out[id] = getComputedStyle(el).pointerEvents;
+    });
+    const k = document.getElementById('ns-key');
+    if (k && !k.hidden) {
+      const r = k.getBoundingClientRect();
+      const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      out.underTheRing = at ? (at.id || at.className) : null;
+    }
+    return out;
+  });
+  ok('the winding key takes a pointer', under['ns-key'] === 'auto', under['ns-key']);
+  ok('so does a found page', under['ns-find'] === 'auto', under['ns-find']);
+  ok('and so does the cabinet', under['ns-egg'] === 'auto', under['ns-egg']);
+  ok('and the thing under the middle of the ring is the ring',
+     under.underTheRing === 'ns-key', String(under.underTheRing));
+
+  /* and a real finger on it, dragging a little the way a thumb does */
+  const ring = await p.$('#ns-key');
+  if (ring) {
+    const box = await ring.boundingBox();
+    await p.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+    await p.waitForTimeout(120);
+    const beforeHold = await p.evaluate(() => OuissysNightShift.__night.wind().wound.cogsworth);
+    await p.evaluate(([x, y]) => {
+      const el = document.getElementById('ns-key');
+      el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true,
+        clientX: x, clientY: y, pointerType: 'touch' }));
+    }, [box.x + box.width / 2, box.y + box.height / 2]);
+    await p.waitForTimeout(1800);
+    const wound = await p.evaluate(() => OuissysNightShift.__night.wind().wound.cogsworth);
+    const selected = await p.evaluate(() => String(window.getSelection()).length);
+    ok('and holding it really does wind him', wound > 5,
+       beforeHold.toFixed(2) + ' -> ' + wound.toFixed(2));
+    ok('and holding it selects nothing on the page', selected === 0,
+       selected + ' characters');
+  }
+
   console.log('\n' + (fails ? 'FAILED ' + fails + ' of ' + checks
                              : 'all ' + checks + ' checks passed'));
   await b.close();

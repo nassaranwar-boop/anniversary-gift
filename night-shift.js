@@ -5513,19 +5513,19 @@ const SFX = {
      so the bands are disjoint on every roll of a noisy die. */
   postDrag(pan, gain) {
     const v = gain === undefined ? 1 : gain;
-    burst({ f0: 620, f1: 230, dur: 0.46, gain: 0.50 * v, q: 0.5, filter: "lowpass", pan });
-    burst({ f0: 1400, f1: 820, dur: 0.20, gain: 0.015 * v, q: 0.8, filter: "highpass", at: 0.08, pan });
+    burst({ f0: 520, f1: 195, dur: 0.46, gain: 0.54 * v, q: 0.5, filter: "lowpass", pan });
+    burst({ f0: 1250, f1: 700, dur: 0.20, gain: 0.007 * v, q: 0.8, filter: "highpass", at: 0.08, pan });
     tone({ type: "triangle", f0: 58, f1: 44, dur: 0.55, gain: 0.19 * v, filter: "lowpass", ff: 180, at: 0.05, pan });
   },
   /* it has arrived, and it has put itself down */
   postSettle(pan) {
     burst({ f0: 220, f1: 70, dur: 0.34, gain: 0.52, q: 0.7, filter: "lowpass", pan });
-    burst({ f0: 1800, f1: 900, dur: 0.18, gain: 0.022, q: 0.7, filter: "highpass", at: 0.03, pan });
+    burst({ f0: 1350, f1: 680, dur: 0.18, gain: 0.011, q: 0.7, filter: "highpass", at: 0.03, pan });
     tone({ type: "triangle", f0: 41, f1: 31, dur: 0.7, gain: 0.15, filter: "lowpass", ff: 140, pan });
   },
   /* and the handle, tried, and tried again */
   handle(pan) {
-    burst({ f0: 340, f1: 150, dur: 0.10, gain: 0.62, q: 2.2, filter: "lowpass", pan });
+    burst({ f0: 300, f1: 135, dur: 0.10, gain: 0.68, q: 2.2, filter: "lowpass", pan });
     burst({ f0: 240, f1: 120, dur: 0.14, gain: 0.46, q: 1.8, filter: "lowpass", at: 0.09, pan });
     tone({ type: "square", f0: 112, f1: 84, dur: 0.13, gain: 0.17, filter: "lowpass", ff: 260, at: 0.04, pan });
   },
@@ -5791,6 +5791,12 @@ function annunciate(text, urgent) {
   tone({ type: "square", f0: urgent ? 880 : 660, dur: 0.09, gain: 0.075 * gain, filter: "lowpass", ff: 2400 });
   tone({ type: "square", f0: urgent ? 1170 : 880, dur: 0.11, gain: 0.075 * gain, at: 0.1, filter: "lowpass", ff: 2400 });
 
+  /* and the building says the words as well. It is a machine and it is
+     meant to sound like one, but a status line she cannot hear is a
+     status line she has to read, and the whole point of a public
+     address is that it reaches you while you are looking elsewhere.
+     Flat, fast, and as close to no pitch as the platform allows. */
+  const spoke = speechSay(text, voxPlan(text), { sys: true });
   const n = syllablesOf(text);
   const rnd = mulberry(seedOf(text));
   const step = 0.108;
@@ -5815,7 +5821,8 @@ function annunciate(text, urgent) {
       bp.type = "bandpass";
       bp.frequency.value = k === 2 ? 3200 : f[k];
       bp.Q.value = k === 0 ? 6 : k === 1 ? 9 : 12;
-      const lvl = 0.055 * gain * (k === 0 ? 1 : k === 1 ? 0.5 : 0.34);
+      const lvl = 0.055 * gain * (k === 0 ? 1 : k === 1 ? 0.5 : 0.34)
+                * (spoke ? 0.34 : 1);
       const g = AC.createGain();
       /* square corners: a machine does not fade in */
       g.gain.setValueAtTime(0.0001, t0 + at);
@@ -6037,14 +6044,163 @@ function voxSyl(bus, at, dur, f0, vowel, from, gain, stressed) {
   sum.connect(env); env.connect(bus.input);
 }
 
+/* =========================================================
+   HIM, ACTUALLY SAYING IT
+
+   The formant synth below is a good impression of a man's voice and a
+   bad impression of English. It has three formants, jitter, breath and
+   a falling sentence, and none of that adds up to a word: you can hear
+   that somebody is speaking and you cannot hear what. Which is fine for
+   a building reading out states, and no good at all for a husband
+   explaining what he did — the subtitles ended up doing all the work
+   and the sound underneath them was noise.
+
+   So the browser says it. Every phone and every desktop has a real
+   speech synthesiser in it, and it says the words that are on the
+   screen, because they are the same string.
+
+   Three things make it his rather than a screen reader's:
+
+     the voice     an English one, pitched down and slowed a little
+     the tape      a hum, a hiss and a little ring underneath it, in
+                   Web Audio, running for exactly as long as he talks.
+                   The speech cannot be routed through the graph, so
+                   the machine is played around it instead.
+     the sync      the caption lights on the synthesiser's own word
+                   boundaries, so it is the truth rather than an
+                   estimate. voxPlan's timings stay as the fallback.
+
+   And when there is no voice at all — a locked-down browser, a
+   container, an iOS that has not woken it yet — the formant synth is
+   still there and still does what it always did. */
+const SPEECH = {
+  ok: null,          // null until asked, then true/false
+  voice: null, sys: null,
+  mark: -1,          // the word he is on right now, -1 if not speaking
+  live: false,
+  done: true,
+};
+
+function speechVoices() {
+  if (!window.speechSynthesis) return [];
+  let v = [];
+  try { v = window.speechSynthesis.getVoices() || []; } catch (e) { return []; }
+  return v;
+}
+/* pick once: a real English voice for him, and a different one for the
+   building if there is a second to be had */
+function speechPick() {
+  const all = speechVoices();
+  if (!all.length) return false;
+  const en = all.filter((v) => /^en(-|_|$)/i.test(v.lang || ""));
+  const pool = en.length ? en : all;
+  /* a male voice if the platform names one, otherwise whatever is first */
+  const male = pool.filter((v) => /male|daniel|alex|fred|george|arthur|rishi|david|james/i.test(v.name || ""))
+                   .filter((v) => !/female/i.test(v.name || ""));
+  SPEECH.voice = (male[0] || pool[0]);
+  SPEECH.sys = pool.find((v) => v !== SPEECH.voice) || SPEECH.voice;
+  return true;
+}
+function speechReady() {
+  if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) { SPEECH.ok = false; return false; }
+  if (SPEECH.ok === null || !SPEECH.voice) SPEECH.ok = speechPick();
+  return !!SPEECH.ok;
+}
+if (window.speechSynthesis) {
+  /* the list arrives late on most browsers, and empty before it does */
+  try { window.speechSynthesis.addEventListener("voiceschanged", () => { SPEECH.ok = speechPick(); }); }
+  catch (e) {}
+}
+
+/* the machine the tape is playing on, since the speech itself cannot be
+   put through the audio graph */
+function voxTape(dur, gain) {
+  if (!ac() || muted) return;
+  const t = now() + CUE_LEAD;
+  const g = gain === undefined ? 1 : gain;
+  const hum = AC.createOscillator(); hum.type = "sine"; hum.frequency.value = 61;
+  const hum2 = AC.createOscillator(); hum2.type = "sine"; hum2.frequency.value = 122;
+  const hg = AC.createGain(); hg.gain.value = 0.0001;
+  hum.connect(hg); hum2.connect(hg); hg.connect(cueGain);
+  const hiss = AC.createBufferSource(); hiss.buffer = NB; hiss.loop = true;
+  const hf = AC.createBiquadFilter(); hf.type = "highpass"; hf.frequency.value = 2600; hf.Q.value = 0.5;
+  const hgn = AC.createGain(); hgn.gain.value = 0.0001;
+  hiss.connect(hf); hf.connect(hgn); hgn.connect(cueGain);
+  [hg, hgn].forEach((n, i) => {
+    const peak = (i ? 0.010 : 0.028) * g;
+    n.gain.setValueAtTime(0.0001, t);
+    n.gain.exponentialRampToValueAtTime(peak, t + 0.25);
+    n.gain.setValueAtTime(peak, t + dur);
+    n.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.5);
+  });
+  [hum, hum2, hiss].forEach((n) => { n.start(t); n.stop(t + dur + 0.6); });
+  /* the click of the machine starting and the click of it stopping */
+  burst({ f0: 1500, f1: 600, dur: 0.05, gain: 0.05 * g, q: 2 });
+  burst({ f0: 1200, f1: 500, dur: 0.06, gain: 0.04 * g, q: 2, at: dur + 0.12 });
+}
+
+/* say it out loud, with the real words. Returns false if the platform
+   has nothing to say them with. */
+function speechSay(text, plan, opts) {
+  if (!speechReady()) return false;
+  const o = opts || {};
+  let u;
+  try { u = new window.SpeechSynthesisUtterance(text); } catch (e) { return false; }
+  u.voice = o.sys ? SPEECH.sys : SPEECH.voice;
+  u.lang = (u.voice && u.voice.lang) || "en-GB";
+  /* him: a man on a tape, a little slow and a long way down.
+     the building: flat, fast and as close to no pitch as it goes. */
+  u.pitch = o.sys ? 0.1 : 0.65;
+  u.rate  = o.sys ? 1.12 : 0.92;
+  u.volume = o.volume === undefined ? 1 : o.volume;
+
+  /* the caption follows the synthesiser rather than a guess: charIndex
+     is where in the string it has got to, so the word is whichever one
+     that index lands in */
+  const starts = [];
+  let at = 0;
+  (plan ? plan.words : []).forEach((w) => {
+    const i = text.indexOf(w.text, at);
+    starts.push(i < 0 ? at : i);
+    at = (i < 0 ? at : i) + w.text.length;
+  });
+  SPEECH.mark = -1; SPEECH.live = true; SPEECH.done = false;
+  u.onboundary = (e) => {
+    if (e.name && e.name !== "word") return;
+    let k = 0;
+    for (let i = 0; i < starts.length; i++) if (starts[i] <= e.charIndex) k = i;
+    SPEECH.mark = k;
+  };
+  const finish = () => { SPEECH.live = false; SPEECH.done = true; SPEECH.mark = -1; };
+  u.onend = finish;
+  u.onerror = finish;
+  try {
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  } catch (e) { finish(); return false; }
+  return true;
+}
+
+/* how far through the line the voice has actually got, as a word index,
+   or -1 when nothing is being spoken aloud and the caller should fall
+   back to voxPlan's timings */
+function voxMark() { return SPEECH.live ? SPEECH.mark : -1; }
+function voxTalking() { return SPEECH.live; }
+
 /* and say it. `plan` comes from voxPlan so the caller already knows the
    timings it is about to hear. */
 function voxSpeak(plan, opts) {
-  if (!ac() || muted) return 0;
   opts = opts || {};
+  const total = plan.dur;
+  /* the real words first, if the platform has any */
+  const text = plan.words.map((w) => w.text).join(" ");
+  if (!muted && speechSay(text, plan, opts)) {
+    voxTape(total, opts.gain === undefined ? 1 : opts.gain);
+    return total;
+  }
+  if (!ac() || muted) return 0;
   const t0 = now() + CUE_LEAD + (opts.at || 0);
   const gain = opts.gain === undefined ? 1 : opts.gain;
-  const total = plan.dur;
   const bus = voxBus(1);
 
   let prevVowel = null;
@@ -7348,17 +7504,18 @@ function tapeTick(dt) {
   const el = EL["ns-tape"];
 
   /* light the word he is on, the same way the film does */
-  if (TAPE.speakT > 0) {
-    TAPE.speakT -= dt;
+  if (TAPE.speakT > 0 || voxTalking()) {
+    if (!voxTalking()) TAPE.speakT -= dt;
     if (el && TAPE.plan) {
+      const mark = voxMark();
       const t = perf() - TAPE.t0;
       const kids = el.children;
       for (let i = 0; i < kids.length; i++) {
         const w = TAPE.plan.words[i];
-        kids[i].className = w && t >= w.at ? "on" : "";
+        kids[i].className = (mark >= 0 ? i <= mark : (w && t >= w.at)) ? "on" : "";
       }
     }
-    if (TAPE.speakT <= 0 && el) { el.hidden = true; el.innerHTML = ""; }
+    if (TAPE.speakT <= 0 && !voxTalking() && el) { el.hidden = true; el.innerHTML = ""; }
     return;
   }
   if (el && !el.hidden) { el.hidden = true; el.innerHTML = ""; }
@@ -8768,10 +8925,15 @@ function cineTick(dt) {
      with a const threw on every frame of the opening.) */
   const sub = el("ns-cine-sub");
   if (sub && CINE.plan) {
+    /* the synthesiser's own word boundaries when it is speaking aloud,
+       and voxPlan's estimate when it is not — so the caption is the
+       truth rather than a guess wherever the truth is available */
+    const mark = voxMark();
     const at = perf() - CINE.lineT0;
     let html = "";
-    CINE.plan.words.forEach((w) => {
-      html += '<i class="' + (at >= w.at ? "on" : "") + '">' + w.text + "</i> ";
+    CINE.plan.words.forEach((w, i) => {
+      const on = mark >= 0 ? i <= mark : at >= w.at;
+      html += '<i class="' + (on ? "on" : "") + '">' + w.text + "</i> ";
     });
     if (sub.innerHTML !== html) sub.innerHTML = html;
   }
@@ -8779,7 +8941,13 @@ function cineTick(dt) {
   /* the next line, then the next beat */
   if (b) {
     const spoken = CINE.plan ? CINE.plan.dur : 0;
-    const lineDone = perf() - CINE.lineT0 >= spoken + 0.35;
+    /* a real voice takes as long as it takes, so the beat waits for it
+       to stop rather than for the estimate to run out — with the
+       estimate plus a wide margin as a backstop, because a synthesiser
+       that never fires onend would otherwise hang the whole opening */
+    const lineDone = voxTalking()
+      ? false
+      : perf() - CINE.lineT0 >= (SPEECH.ok ? Math.min(spoken, 0.8) : spoken) + 0.35;
     if (CINE.plan && lineDone) {
       CINE.line++;
       if (CINE.line < b.lines.length) cineSpeak();
@@ -9830,6 +9998,12 @@ const testHooks = {
   tapeTick: (dt) => { tapeTick(dt); return TAPE.line; },
   say: (line, urgent) => say(line, urgent),
   sayTick: (dt) => sayTick(dt),
+  sayClear: () => sayClear(),
+  /* the speech path, which this container has no voices for */
+  speak: (text) => voxSpeak(voxPlan(text), { gain: 1 }),
+  voxMark: () => voxMark(),
+  speechReset: () => { SPEECH.ok = null; SPEECH.voice = null; SPEECH.sys = null;
+                       SPEECH.mark = -1; SPEECH.live = false; },
 };
 
 return { start, stop, preview, __night: testHooks,

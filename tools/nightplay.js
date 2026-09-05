@@ -893,6 +893,70 @@ function ok(name, cond, extra) {
      shelf.slots >= shelf.most && shelf.most > 0,
      shelf.slots + ' slots for ' + shelf.most + ' things');
 
+  /* HE HAS TO SAY THE WORDS THAT ARE ON THE SCREEN.
+
+     The formant synth is a good impression of a man and a bad
+     impression of English — you can hear that somebody is talking and
+     you cannot hear what, which left the subtitles doing all the work.
+     So the browser's own synthesiser says it now, off the same string
+     the caption is built from.
+
+     This container has no voices, so the game falls back to the synth
+     here and that is the only path the rest of the suite ever walks.
+     A stub puts the other one under test: it reports one voice, fires
+     word boundaries the way a real one does, and this checks that the
+     caption follows the synthesiser rather than the estimate, and that
+     what it is asked to say is exactly what is written. */
+  console.log('\n— and he says the words that are on the screen —');
+  const spoken = await page.evaluate(async () => {
+    const said = [], marks = [];
+    /* window.speechSynthesis is a read-only accessor, so it has to be
+       redefined rather than assigned — and the game is muted for the
+       rest of this suite, which correctly stops it speaking at all. */
+    const real = Object.getOwnPropertyDescriptor(window, 'speechSynthesis');
+    const stub = {
+      getVoices: () => [{ name: 'Test English', lang: 'en-GB' }],
+      cancel() {},
+      speak(u) {
+        said.push({ text: u.text, pitch: u.pitch, rate: u.rate, lang: u.lang });
+        /* a boundary per word, then the end, the way a real one does */
+        let at = 0;
+        u.text.split(' ').forEach((w) => {
+          if (u.onboundary) u.onboundary({ name: 'word', charIndex: at });
+          marks.push(OuissysNightShift.__night.voxMark());
+          at += w.length + 1;
+        });
+        if (u.onend) u.onend();
+      },
+      addEventListener() {},
+    };
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, get: () => stub });
+    window.SpeechSynthesisUtterance = function (t) { this.text = t; };
+    const w = OuissysNightShift.__night;
+    w.silence(false);
+    w.speechReset();
+    const line = 'I made toys. That part was true.';
+    w.vox(line);
+    w.speak(line);
+    if (real) Object.defineProperty(window, 'speechSynthesis', real);
+    w.silence(true);
+    w.speechReset();
+    return { said, marks };
+  });
+  ok('it is handed to the browser to say out loud', spoken.said.length === 1,
+     spoken.said.length + ' utterances');
+  ok('and what it is asked to say is exactly what is written',
+     spoken.said[0] && spoken.said[0].text === 'I made toys. That part was true.',
+     JSON.stringify(spoken.said[0] && spoken.said[0].text));
+  ok('in English', /^en/i.test((spoken.said[0] || {}).lang || ''), (spoken.said[0] || {}).lang);
+  ok('pitched down and slowed, so it is him and not a screen reader',
+     spoken.said[0] && spoken.said[0].pitch < 0.8 && spoken.said[0].rate < 1,
+     'pitch ' + (spoken.said[0] || {}).pitch + ' rate ' + (spoken.said[0] || {}).rate);
+  ok('and the caption walks along behind it, word by word',
+     spoken.marks.length === 7 && spoken.marks[0] === 0 &&
+     spoken.marks[6] === 6 && spoken.marks.every((m, i) => m === i),
+     JSON.stringify(spoken.marks));
+
   /* THE THING THIS WHOLE CHAPTER TURNS ON FOR SOMEBODY WHO IS NOT A
      GAMER: is anything happening in the five and a half minutes she is
      actually playing, or is the story all in the gaps between them? */

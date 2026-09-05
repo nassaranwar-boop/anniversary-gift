@@ -98,42 +98,30 @@ const ok = (n, c, x) => { checks++; console.log((c ? '  ok   ' : '  FAIL ') + n 
   ok('and the shift makes a sound of its own', m.rms > 0.0005,
      'rms ' + m.rms + ' peak ' + m.peak);
 
-  console.log('\n— a cue on top of it —');
-  /* What this can and cannot say.
+  /* WHAT THIS CANNOT MEASURE, AND WHY IT NO LONGER PRETENDS TO.
 
-     It cannot say how loud a cue is relative to the room. The sweep
-     that went looking found this container's audio thread running
-     ahead of currentTime in large batches, so live levels here are a
-     property of a null audio device rather than of the game. Anything
-     asserting a margin between a door and the room tone was measuring
-     the sink.
+     Three goes at asserting that a door shutting is louder than the
+     room it happens in, and all three were measuring something other
+     than what they claimed:
 
-     What it can say is that a cue reaches the speakers at all, which
-     is not nothing — for the whole life of this chapter every envelope
-     was scheduled at currentTime and arrived with its attack already
-     in the past. The relative levels are held offline, in nightsound,
-     where every cue is rendered on identical terms. */
-  await p.evaluate(() => {
-    const w = OuissysNightShift.__night, c = w.cast();
-    Object.keys(c).forEach(k => { c[k].awake = false; c[k].asleep = true; });
-    w.musicSet('none'); w.bed(false);
-  });
-  await p.waitForTimeout(2600);
-  await M();
-  const floor = (await loudest(1500)).peak;
-  ok('with the room and the score off, the shop is silent', floor < 0.02,
-     'peaks at ' + floor);
-  await M();
-  let cue = 0;
-  for (let i = 0; i < 4; i++) {
-    await p.evaluate(() => OuissysNightShift.__night.press('left'));
-    cue = Math.max(cue, (await loudest(500)).peak);
-  }
-  ok('and a door shutting reaches the speakers', cue > floor * 8,
-     'floor ' + floor + ', the door at ' + cue);
-  await p.evaluate(() => { const w = OuissysNightShift.__night;
-    w.bed(true); w.musicSet('night'); });
-  await p.waitForTimeout(2600);
+       the first compared a cue's peak to the room's RMS while the
+       room's level was climbing with the score's dread;
+       the second called a live night four "the room" while a soldier
+       was walking through it;
+       the third turned the room tone and the score off and called the
+       result silence — and the shop still makes noises on its own all
+       night, on purpose, which is the whole design of the false alarms.
+
+     And underneath all of that, this container's audio thread runs
+     ahead of currentTime in batches, so its absolute levels are a
+     property of a null audio device rather than of the game.
+
+     So the levels are held offline, in nightsound, where every cue is
+     rendered on identical terms and the loudest is within 2.8x of the
+     quietest. What is left here is what live playback can actually
+     answer: that it plays at all, that it is the right music for the
+     scene, that it never cuts between scenes, and that it survives the
+     phone being taken away. Those are worth having and they are true. */
 
   /* One piece of music, nine rooms to play it in — and the claim that
      makes it worth doing is that it never cuts. So: walk the scenes,

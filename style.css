@@ -140,7 +140,13 @@ summary,
 #hv-canvas,
 #book-canvas,
 #sb-intro-canvas,
-.so-stage,
+#ns-canvas,
+.ns-stage,
+.ns-frame,
+.ns-mon,
+.ns-pad,
+.ns-tape,
+.ns-hud,
 .so-pad,
 .dpad-3d,
 .maze-viewport,
@@ -4844,6 +4850,7 @@ img{-webkit-user-drag:none; user-select:none;}
    corner, half of each of them off the side of the screen. */
 .ns-wind{
   position:absolute; z-index:9; transform:translate(-50%,-50%);
+  pointer-events:auto;
   width:max(7cqh, 44px); height:max(7cqh, 44px);
   border:0; padding:0; cursor:pointer; background:transparent;
   border-radius:50%; -webkit-tap-highlight-color:transparent;
@@ -4987,8 +4994,16 @@ img{-webkit-user-drag:none; user-select:none;}
    patch of light on a shelf that is a little brighter than it should
    be, and only while it glints. If it read as a quest icon the search
    would stop being a search. */
+/* Everything in this group lives inside .ns-mon, which is
+   pointer-events:none so the tube does not eat the office behind it.
+   A child of that has to switch pointer events back on for itself or a
+   finger goes straight through it into the canvas — which is what all
+   three of these were doing. The suite never saw it because it
+   dispatches events onto the element, and dispatching skips hit
+   testing altogether: the handlers were perfect and unreachable. */
 .ns-find{
   position:absolute; z-index:8; transform:translate(-50%,-50%);
+  pointer-events:auto;
   width:max(5.4cqh, 34px); height:max(5.4cqh, 34px);
   border:0; padding:0; background:transparent; cursor:pointer;
   border-radius:50%;
@@ -5490,6 +5505,7 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---------- the cabinet that is still running ---------- */
 .ns-egg{
   position:absolute; z-index:9; cursor:pointer; padding:0;
+  pointer-events:auto;
   width:max(9cqh, 44px); height:max(9cqh, 44px);
   transform:translate(-50%,-50%);
   border:none; border-radius:50%;

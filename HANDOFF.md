@@ -536,3 +536,49 @@ rule failing. And three more were counting on a dice roll — they retry
 now, because a window a thing sits out proves nothing while a window it
 moves in settles the question.
 
+## Two things a real finger found that nothing here had
+
+**Every hotspot on the monitor was unreachable.** The winding key, a
+found page and the arcade cabinet all live inside `.ns-mon`, which is
+`pointer-events:none` so the tube does not eat the office behind it. A
+child of that has to switch pointer events back on for itself, and none
+of them did. They were painted, correctly positioned, wired to working
+handlers, and a finger went straight through all three into the canvas.
+
+The winding key had been getting `pointer-events:auto` by accident, from
+the pad's `.ns-key` rule — so renaming it to `.ns-wind` to fix the
+layout collision is what finally exposed it. The other two had never
+worked.
+
+Nothing in the suite could have caught it, and the reason is worth
+keeping: **the suites dispatch events onto the element**, and
+dispatching skips hit testing entirely. It proves a handler runs, not
+that anything can reach it. `nighttouch` now asks the document what is
+actually under the middle of each hotspot, and drives the ring with a
+real press.
+
+**And the chapter was never in the no-select list.** Every other
+playfield on the site has `touch-action:none; user-select:none`; the
+night shift had neither, so a thumb held on the winding key, or dragged
+across the office to look around, turned the page blue instead. It is
+in the list now.
+
+## He says the actual words now
+
+The formant synth is a good impression of a man and a bad impression of
+English — you can hear that somebody is talking and you cannot hear
+what, which left the subtitles doing all the work and the sound under
+them doing none. So `speechSynthesis` says it, off the same string the
+caption is built from: an English voice, pitch 0.65, rate 0.92 for him;
+flat, fast and pitch 0.1 for the building. A hum, a hiss and two clicks
+run in Web Audio for exactly as long as he talks, because the speech
+cannot be routed through the graph and the machine has to be played
+around it instead.
+
+The caption lights on the synthesiser's own word boundaries now, which
+is the truth rather than an estimate; `voxPlan`'s timings stay as the
+fallback, and so does the whole formant synth for a platform with no
+voices. This container has none, so the fallback is what the rest of
+the suite walks — the speech path is tested against a stub that reports
+a voice and fires boundaries, which is how we know the string handed to
+the browser is exactly the string on screen.
