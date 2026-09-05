@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>What this device reports</title>
+<style>
+  :root{--app-h:100vh;}
+  @supports (height:100dvh){:root{--app-h:100dvh;}}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;overflow:hidden;background:#f7ddd4;
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#3d2a1c;}
+  /* the same box every screen of the site uses */
+  .screen{position:fixed;inset:0;height:var(--app-h);max-height:var(--app-h);
+    overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    padding:14px 12px;}
+  h1{font-size:15px;letter-spacing:.02em;margin-bottom:2px;}
+  p.sub{font-size:12px;color:#8a6a4a;margin-bottom:10px;text-align:center;}
+  table{border-collapse:collapse;width:100%;max-width:460px;font-variant-numeric:tabular-nums;}
+  td{padding:5px 7px;border-bottom:1px solid rgba(150,110,70,.22);}
+  td.k{color:#7a5327;}
+  td.v{text-align:right;font-weight:700;}
+  .verdict{margin-top:12px;max-width:460px;width:100%;padding:11px 13px;border-radius:9px;
+    font-weight:700;line-height:1.4;}
+  .ok{background:#dff2df;color:#1d5c25;border:1px solid #9dcb9d;}
+  .bad{background:#ffdede;color:#8c1616;border:1px solid #e39a9a;}
+  /* a marker pinned to the very bottom of the box: if you cannot see it,
+     the box is taller than the screen -- which is the whole bug */
+  .foot{position:absolute;left:0;right:0;bottom:0;height:26px;background:#8c1616;color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+</style>
+</head>
+<body>
+<div class="screen">
+  <h1>What this device reports</h1>
+  <p class="sub">Screenshot this whole page and send it back.</p>
+  <table id="t"></table>
+  <div class="verdict" id="v">measuring…</div>
+  <div class="foot">▼ if you can read this line, the page fits ▼</div>
+</div>
+<script>
+function render() {
+  var de = document.documentElement, vv = window.visualViewport;
+  var screenEl = document.querySelector('.screen');
+  var box = screenEl.getBoundingClientRect();
+  var dvh = getComputedStyle(de).getPropertyValue('--app-h').trim();
+  var rows = [
+    ['window.innerHeight', window.innerHeight],
+    ['visualViewport.height', vv ? Math.round(vv.height) : 'not supported'],
+    ['visualViewport.scale', vv ? (vv.scale || 1).toFixed(3) : '—'],
+    ['screen box height', Math.round(box.height)],
+    ['documentElement.clientHeight', de.clientHeight],
+    ['--app-h resolves to', dvh],
+    ['devicePixelRatio', window.devicePixelRatio],
+    ['page scrollable?', (de.scrollHeight > de.clientHeight + 1) ? 'YES — this is the void' : 'no'],
+    ['screen.height (device)', window.screen && window.screen.height],
+    ['orientation', (window.innerWidth > window.innerHeight) ? 'landscape' : 'portrait'],
+  ];
+  document.getElementById('t').innerHTML = rows.map(function (r) {
+    return '<tr><td class="k">' + r[0] + '</td><td class="v">' + r[1] + '</td></tr>';
+  }).join('');
+
+  var real = vv ? Math.round(vv.height) : window.innerHeight;
+  var diff = Math.round(box.height) - real;
+  var el = document.getElementById('v');
+  if (Math.abs(diff) <= 2) {
+    el.className = 'verdict ok';
+    el.textContent = 'GOOD — the screen box matches what you can actually see. No zoom.';
+  } else {
+    el.className = 'verdict bad';
+    el.textContent = 'THIS IS THE BUG — the screen box is ' + diff +
+      'px taller than what you can see. That is what crops the bottom and makes it look zoomed in.';
+  }
+}
+render();
+addEventListener('resize', render);
+addEventListener('orientationchange', function () { setTimeout(render, 300); });
+addEventListener('pageshow', render);
+addEventListener('focus', render);
+document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(render, 300); });
+if (window.visualViewport) {
+  visualViewport.addEventListener('resize', render);
+  visualViewport.addEventListener('scroll', render);
+}
+setInterval(render, 500);
+</script>
+</body>
+</html>

@@ -184,15 +184,55 @@ if (typeof requestIdleCallback === "function") {
 const HAS_DVH = typeof CSS !== "undefined" && CSS.supports &&
                 CSS.supports("height", "100dvh");
 
+/* visualViewport.height is the only number in the browser that means "the
+   part of the page you can actually see". dvh is supposed to mean the same
+   thing and usually does -- but it is the browser's opinion, and if that
+   opinion is ever wrong by the height of a toolbar then every screen is
+   wrong by the same amount and the 3D shot faithfully follows it, which is
+   the zoom all over again one level up.
+
+   So dvh is no longer trusted on its own. Where visualViewport exists its
+   height wins, and dvh is the fallback. Two guards, because that number
+   also moves for reasons that are not the toolbar:
+
+     - a pinch. scale is 1 unless she has zoomed with two fingers, and
+       while she has, the visible height is small on purpose. Leave it.
+     - the on-screen keyboard, which shrinks the visual viewport hard.
+       Re-laying the whole site out around a keyboard is worse than any
+       gap, so a focused field means hands off.
+
+   Anything absurd (under 200px, or wildly past the window) is ignored
+   rather than believed. */
+function measuredViewportHeight() {
+  const vv = window.visualViewport;
+  if (!vv) return 0;
+  if (vv.scale && Math.abs(vv.scale - 1) > 0.02) return 0;
+  const ae = document.activeElement;
+  if (ae && /^(input|textarea|select)$/i.test(ae.tagName)) return 0;
+  const h = Math.round(vv.height);
+  if (h < 200) return 0;
+  if (window.innerHeight && h > window.innerHeight + 4) return 0;
+  return h;
+}
+
 function fitViewport() {
-  if (HAS_DVH) return;                      // the stylesheet already has it right
   const ae = document.activeElement;
   if (ae && /^(input|textarea|select)$/i.test(ae.tagName)) return;
+  const measured = measuredViewportHeight();
+  if (measured) {
+    document.documentElement.style.setProperty("--app-h", measured + "px");
+    return;
+  }
+  if (HAS_DVH) {
+    /* nothing measurable and the stylesheet has dvh -- hand it back */
+    document.documentElement.style.removeProperty("--app-h");
+    return;
+  }
   const h = window.innerHeight;
   if (h > 0) document.documentElement.style.setProperty("--app-h", h + "px");
 }
 
-if (!HAS_DVH) {
+{
   fitViewport();
   /* A ResizeObserver on the root element, not just the resize event: some
      mobile browsers change the viewport as the URL bar slides away without
@@ -215,7 +255,10 @@ if (!HAS_DVH) {
   addEventListener("pageshow", settleViewport);
   addEventListener("focus", settleViewport);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) settleViewport(); });
-  if (window.visualViewport) window.visualViewport.addEventListener("resize", fitViewport);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", fitViewport);
+    window.visualViewport.addEventListener("scroll", fitViewport);
+  }
   addEventListener("scroll", () => requestAnimationFrame(fitViewport), { passive: true });
   document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
 }
