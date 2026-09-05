@@ -2029,15 +2029,23 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-w-ourvideo.hasposter .sb-vid-empty,
 .sb-w-ourvideo.ready .sb-vid-empty{display:none;}
 
-/* the play control: an engraved disc, warm, the book's own palette */
+/* the play control: an engraved disc, warm, the book's own palette.
+   Down in the corner rather than in the middle of the frame -- centred, it
+   sat squarely over his face, which is the one thing on this card you are
+   meant to be looking at. The veil already darkens that corner, so it
+   reads without needing a plate of its own. */
 .sb-w-ourvideo .sb-vid-play{
+  left:6%; top:auto; bottom:7%; right:auto; transform:none;
   width:auto; height:auto; padding:0; border-radius:0; z-index:5;
   background:none; box-shadow:none;
-  flex-direction:column; gap:5px;
+  flex-direction:row; align-items:center; gap:8px;
 }
 .sb-ov-disc{
   display:flex; align-items:center; justify-content:center;
-  width:52px; height:52px; border-radius:50%;
+  /* scales with the page it is on, and never squeezed by the flex row */
+  flex:0 0 auto;
+  width:clamp(32px, 11cqw, 48px); height:clamp(32px, 11cqw, 48px);
+  border-radius:50%;
   color:#5a3411;
   background:linear-gradient(168deg,#fdf3dc,#eed9ab);
   box-shadow:
@@ -2049,8 +2057,9 @@ img{-webkit-user-drag:none; user-select:none;}
   transition:transform .18s var(--ease-out), box-shadow .18s var(--ease-out);
 }
 .sb-ov-word{
-  font-family:var(--font-script); font-size:14px; line-height:1; color:#fdf6e8;
-  text-shadow:0 1px 4px rgba(20,10,4,.7); opacity:.92;
+  font-family:var(--font-script); font-size:clamp(12px, 3.6cqw, 17px);
+  line-height:1; color:#fdf6e8; white-space:nowrap;
+  text-shadow:0 1px 5px rgba(20,10,4,.85); opacity:.94; padding-bottom:2px;
 }
 .sb-w-ourvideo .sb-vid-play:active .sb-ov-disc{
   transform:translateY(3px);
@@ -2060,7 +2069,7 @@ img{-webkit-user-drag:none; user-select:none;}
     0 2px 0 rgba(120,80,32,.34),
     0 5px 12px rgba(40,24,8,.4);
 }
-.sb-w-ourvideo .sb-vid-play:active{transform:translate(-50%,-50%);}
+.sb-w-ourvideo .sb-vid-play:active{transform:none;}
 .sb-w-ourvideo .sb-ico-play{margin-left:3px;}
 /* while it plays, the control gets out of the way but stays reachable */
 .sb-w-ourvideo.playing .sb-vid-play{opacity:0;}
@@ -2081,7 +2090,12 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .sb-videoslot .sb-slate-title{font-size:4.4cqw;}
 .sb-videoslot .sb-slate-file{font-size:2.4cqw;}
-.sb-videoslot .sb-vid-play{width:16%; height:auto; aspect-ratio:1/1;}
+/* This said `width:16%; aspect-ratio:1/1`, sized for the round button that
+   used to sit in the middle of the frame. The control is a disc and a word
+   side by side now, and that width was crushing the pair into 44px -- the
+   disc came out 14px wide and 44 tall, a squashed oval. The button sizes
+   itself to its contents; the disc is what carries the size. */
+.sb-videoslot .sb-w-ourvideo .sb-vid-play{width:auto; height:auto; aspect-ratio:auto;}
 .sb-videoslot .sb-video-cap{display:none;}
 
 /* =========================================================

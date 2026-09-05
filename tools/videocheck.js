@@ -23,11 +23,20 @@ const { chromium } = require('playwright-core');
     const v = card.querySelector('video');
     // give the metadata a chance
     for (let i=0;i<40 && v.readyState<1;i++) await new Promise(r=>setTimeout(r,150));
+    const poster = card.querySelector('.sb-ov-poster');
+    for (let i=0;i<40 && !card.classList.contains('hasposter');i++) await new Promise(r=>setTimeout(r,120));
+    const btn = card.querySelector('.sb-vid-play');
+    const bb = btn && btn.getBoundingClientRect();
     return { found:true, src:v.getAttribute('src'), readyState:v.readyState,
-             duration:v.duration, w:v.videoWidth, h:v.videoHeight,
              hasReadyClass: card.classList.contains('ready'),
-             hasPlayButton: !!card.querySelector('.sb-vid-play'),
-             networkState: v.networkState, err: v.error && v.error.code };
+             hasPosterClass: card.classList.contains('hasposter'),
+             posterImage: poster && getComputedStyle(poster).backgroundImage.slice(0,60),
+             mountPresent: !!card.querySelector('.sb-ov-mount'),
+             sprockets: card.querySelectorAll('.sb-ov-holes i').length,
+             playButton: btn ? Math.round(bb.width)+'x'+Math.round(bb.height)+' visible='+(getComputedStyle(btn).display!=='none') : 'MISSING',
+             caption: (card.querySelector('.sb-vid-cap')||{}).textContent,
+             slateHidden: getComputedStyle(card.querySelector('.sb-vid-empty')).display === 'none',
+             err: v.error && v.error.code };
   });
   console.log('video card:', r);
   console.log('requests for the file:', reqs);

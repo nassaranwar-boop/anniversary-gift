@@ -2444,6 +2444,7 @@ window.Scrapbook = (function () {
       if (e) e.stopPropagation();
       if (v.paused) {
         duckAmbient(); stopAllAudio("video");
+        if (v.error) { retry(); return; }
         if (v.readyState === 0) { try { v.load(); } catch (err) {} }
         var pr = v.play();
         if (pr && pr.catch) pr.catch(function () { c.classList.remove("playing"); });
@@ -2459,11 +2460,28 @@ window.Scrapbook = (function () {
          whatever black frame the clip happened to end on */
       try { v.currentTime = 0; } catch (err) {}
     });
+    /* An error is not necessarily the end. A dropped connection mid-load
+       raises exactly the same event as a file that cannot be decoded at
+       all, and the first one is fixed by asking again -- so the control
+       stays put and a tap retries. Only after it has genuinely failed
+       twice does the card give up and put the slate back, which at least
+       names the file that is missing. */
+    var tries = 0;
     v.addEventListener("error", function () {
-      failed = true;
       c.classList.remove("ready", "playing");
-      btn.style.display = "none";
+      tries++;
+      if (tries >= 3) {
+        failed = true;
+        btn.style.display = "none";
+        c.classList.remove("hasposter");
+      }
     });
+    function retry() {
+      if (failed) return false;
+      if (!v.error) return false;
+      try { v.load(); } catch (e) {}
+      return true;
+    }
 
     /* The poster is a background image rather than the video's own poster
        attribute: that way the still stays put underneath while the clip
