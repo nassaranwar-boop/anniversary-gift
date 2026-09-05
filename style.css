@@ -4458,3 +4458,891 @@ img{-webkit-user-drag:none; user-select:none;}
   animation:apBreath 4.4s ease-in-out infinite;
 }
 @keyframes apBreath{0%,100%{opacity:.85;} 50%{opacity:1;}}
+
+
+/* =========================================================
+   SUPER OUISSY RACE
+
+   The canvas draws the world. Everything she reads sits over it in the
+   DOM, sized in cqw against the stage, so the HUD is the same shape on
+   a phone as it is on a desktop instead of being a fixed pixel size
+   that swamps one and vanishes on the other.
+   ========================================================= */
+:root{
+  --rc-face: 'Press Start 2P', ui-monospace, monospace;
+  --rc-ink:  #fff8e8;
+  --rc-rose: #ff5f95;
+  --rc-coral:#ff7f8a;
+  --rc-gold: #ffd166;
+  --rc-sky:  #7ec8e3;
+  --rc-mint: #7ddba3;
+  --rc-deep: #241a33;
+}
+
+.rc-frame{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  width:100%; height:100%; gap:1.4vh;
+}
+.rc-titlebar{
+  display:none; margin:0; text-align:center; line-height:1.5;
+  font-family:var(--rc-face); font-weight:400;
+  text-shadow:0 3px 0 rgba(20,8,26,.9), 0 0 18px rgba(255,127,138,.45);
+}
+.rc-titlebar span{display:block; font-size:clamp(9px,2.8vw,13px); color:var(--rc-gold); letter-spacing:.16em;}
+.rc-titlebar b{
+  display:block; font-weight:400; font-size:clamp(18px,6.6vw,30px);
+  color:var(--rc-coral); letter-spacing:.04em; margin-top:.4em;
+}
+
+/* the stage is the container everything inside measures against */
+.rc-stage{
+  position:relative; overflow:hidden;
+  container-type:size; container-name:rcstage;
+  width:min(100%, calc(100vh * 1.7778));
+  aspect-ratio:16/9;
+  border-radius:8px;
+  background:#1a1226;
+  box-shadow:
+    0 0 0 .5cqw rgba(255,127,138,.4),
+    0 0 0 1cqw rgba(36,26,51,.9),
+    0 1.2cqw 4cqw rgba(0,0,0,.55);
+}
+#race-canvas{
+  position:absolute; inset:0; width:100%; height:100%;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+}
+
+/* ---------- HUD ---------- */
+.rc-hud{
+  position:absolute; inset:0; pointer-events:none;
+  font-family:var(--rc-face); color:var(--rc-ink);
+}
+.rc-hud[hidden]{display:none;}
+.rc-hud-tl{
+  position:absolute; top:2cqh; left:2cqw;
+  display:flex; flex-direction:column; gap:1cqh; align-items:flex-start;
+}
+.rc-chip{
+  display:flex; align-items:baseline; gap:1cqw;
+  padding:.9cqh 1.4cqw; border-radius:.8cqw;
+  background:rgba(28,18,42,.72);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.22);
+}
+.rc-chip b{font-weight:400; font-size:1.7cqh; color:var(--rc-gold); letter-spacing:.1em;}
+.rc-chip i{font-style:normal; font-size:2.3cqh; color:var(--rc-ink);}
+
+/* The heart count. The pip is drawn out of two circles and a rotated
+   square rather than being a character or an image, so it stays sharp
+   at any size and matches everything else on the panel. */
+.rc-chip-h{ align-items:center; gap:.8cqw; }
+.rc-hicon{
+  position:relative; display:block;
+  width:1.9cqh; height:1.9cqh; flex:0 0 auto;
+  background:var(--rc-rose, #ff5f95);
+  transform:rotate(-45deg);
+  border-radius:.16cqh;
+  filter:drop-shadow(0 .22cqh 0 rgba(20,8,26,.55));
+}
+.rc-hicon::before,.rc-hicon::after{
+  content:""; position:absolute; width:100%; height:100%;
+  background:inherit; border-radius:50%;
+}
+.rc-hicon::before{ top:-50%; left:0; }
+.rc-hicon::after { top:0; right:-50%; }
+.rc-chip-h i{ min-width:2.6cqw; text-align:left; }
+/* it flares when the set is complete */
+.rc-chip-h[data-full="1"] .rc-hicon{ animation:rcHeartBeat .7s ease-in-out infinite; }
+.rc-chip-h[data-full="1"] i{ color:var(--rc-gold); }
+@keyframes rcHeartBeat{
+  0%,100%{ transform:rotate(-45deg) scale(1); }
+  50%    { transform:rotate(-45deg) scale(1.22); }
+}
+
+/* position, in the big arcade numeral */
+.rc-hud-tr{position:absolute; top:2cqh; right:2cqw;}
+.rc-pos{
+  display:flex; align-items:flex-start; gap:.3cqw;
+  padding:.8cqh 1.6cqw; border-radius:.8cqw;
+  background:rgba(28,18,42,.72);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.22);
+}
+.rc-pos em{
+  font-style:normal; font-size:6cqh; line-height:1;
+  text-shadow:0 .5cqh 0 rgba(20,8,26,.85);
+}
+.rc-pos u{text-decoration:none; font-size:2cqh; margin-top:.5cqh;}
+.rc-pos[data-p="1"] em{color:var(--rc-gold);}
+.rc-pos[data-p="2"] em{color:#dfe4ea;}
+.rc-pos[data-p="3"] em{color:#e2a06a;}
+.rc-pos[data-p="4"] em{color:var(--rc-ink);}
+.rc-pos[data-p="1"] u{color:var(--rc-gold);}
+
+/* the item slot */
+.rc-item{
+  position:absolute; top:2cqh; left:50%; transform:translateX(-50%);
+  width:9cqh; height:9cqh; border-radius:1cqw;
+  background:rgba(28,18,42,.72);
+  box-shadow:inset 0 0 0 .3cqw rgba(255,95,149,.55);
+  display:grid; place-items:center;
+  transition:box-shadow .2s ease, background .2s ease;
+}
+.rc-item canvas{width:78%; height:78%; image-rendering:pixelated;}
+/* empty, it should read as a slot waiting to be filled — a solid panel
+   just looks like a stray box parked on the sky */
+.rc-item[data-empty="1"]{
+  box-shadow:none; background:none;
+  border:.32cqw dashed rgba(255,248,232,.28);
+}
+.rc-item[data-empty="0"]{
+  animation:rcItemPop .32s ease;
+  box-shadow:inset 0 0 0 .3cqw rgba(255,95,149,.9), 0 0 2cqw rgba(255,95,149,.45);
+}
+@keyframes rcItemPop{
+  0%{transform:translateX(-50%) scale(.7);} 60%{transform:translateX(-50%) scale(1.12);}
+  100%{transform:translateX(-50%) scale(1);}
+}
+
+/* the course map */
+.rc-map{
+  position:absolute; right:2cqw; bottom:2cqh;
+  width:20cqh; height:20cqh;
+  filter:drop-shadow(0 .4cqh .8cqh rgba(0,0,0,.5));
+  opacity:.94;
+}
+
+/* the drift charge bar */
+.rc-boost{
+  position:absolute; left:50%; bottom:5cqh; transform:translateX(-50%);
+  width:28cqw; height:1.8cqh; border-radius:1cqh;
+  background:rgba(28,18,42,.7);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.25);
+  overflow:hidden;
+}
+.rc-boost[hidden]{display:none;}
+.rc-boost i{display:block; height:100%; width:0; transition:width .06s linear;}
+.rc-boost[data-tier="1"] i{background:var(--rc-sky);}
+.rc-boost[data-tier="2"] i{background:var(--rc-gold);}
+.rc-boost[data-tier="3"] i{background:var(--rc-rose); box-shadow:0 0 1.4cqw var(--rc-rose);}
+
+/* 3 — 2 — 1 — GO */
+.rc-count{
+  position:absolute; inset:0; margin:0;
+  display:grid; place-items:center; pointer-events:none;
+  font-family:var(--rc-face); font-size:18cqh; color:var(--rc-gold);
+  text-shadow:0 1cqh 0 rgba(20,8,26,.9), 0 0 4cqw rgba(255,209,102,.6);
+  animation:rcCount .9s ease-out;
+}
+.rc-count[hidden]{display:none;}
+.rc-count[data-go="1"]{color:var(--rc-mint); font-size:14cqh; text-shadow:0 1cqh 0 rgba(20,8,26,.9), 0 0 4cqw rgba(125,219,163,.7);}
+@keyframes rcCount{from{transform:scale(1.9); opacity:0;} 40%{opacity:1;} to{transform:scale(1); opacity:1;}}
+
+/* LAP 2 / BOOST! / OUCH! */
+.rc-banner{
+  position:absolute; left:50%; top:26cqh; transform:translateX(-50%); margin:0;
+  font-family:var(--rc-face); font-size:4cqh; color:var(--rc-ink);
+  text-shadow:0 .6cqh 0 rgba(20,8,26,.9);
+  animation:rcBan .5s ease-out; pointer-events:none; white-space:nowrap;
+}
+.rc-banner[hidden]{display:none;}
+@keyframes rcBan{from{transform:translateX(-50%) translateY(2cqh); opacity:0;} to{transform:translateX(-50%) translateY(0); opacity:1;}}
+
+/* bottom-left, well clear of the position numeral and the map */
+.rc-pause-btn{
+  position:absolute; left:2cqw; bottom:2cqh; z-index:6;
+  width:5.4cqh; height:5.4cqh; border-radius:.8cqw; border:0; cursor:pointer;
+  background:rgba(28,18,42,.72); display:grid; place-items:center;
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.24);
+}
+.rc-pause-btn[hidden]{display:none;}
+.rc-pause-btn .gl-pause{
+  width:1.8cqh; height:2.4cqh;
+  background:linear-gradient(90deg, var(--rc-ink) 0 34%, transparent 34% 66%, var(--rc-ink) 66%);
+}
+
+/* ---------- overlay: menus, cards, podium ---------- */
+.rc-overlay{
+  position:absolute; inset:0; display:none; z-index:8;
+  overflow-y:auto; overscroll-behavior:contain;
+  font-family:var(--rc-face); color:var(--rc-ink);
+  padding:3cqh 3cqw;
+}
+/* A panel taller than the stage has to scroll from its top. Plain
+   centring pushes the overhang off both ends and the heading, which is
+   the part that says what you are looking at, becomes unreachable;
+   `safe` centring falls back to start alignment the moment it would
+   overflow. */
+.rc-overlay.on{
+  display:grid; justify-items:center; align-items:center;
+  align-content:safe center; justify-content:safe center;
+}
+.rc-overlay.on::before{
+  content:""; position:absolute; inset:0; z-index:-1;
+  background:
+    radial-gradient(ellipse at 50% 24%, rgba(255,95,149,.20), transparent 62%),
+    linear-gradient(180deg, rgba(26,18,38,.94), rgba(16,10,26,.97));
+}
+
+/* the title card */
+.rc-title{display:flex; flex-direction:column; align-items:center; gap:2cqh; text-align:center;}
+.rc-logo{margin:0; line-height:1.15;}
+.rc-logo span{display:block; font-size:3.4cqh; color:var(--rc-gold); letter-spacing:.2em;}
+.rc-logo b{
+  display:block; font-weight:400; font-size:9cqh; color:var(--rc-coral);
+  letter-spacing:.02em; text-shadow:0 .9cqh 0 rgba(20,8,26,.9), 0 0 4cqw rgba(255,127,138,.45);
+}
+.rc-logo i{display:block; font-style:normal; font-size:5.4cqh; color:var(--rc-sky); letter-spacing:.22em;}
+.rc-tag{
+  margin:0; max-width:60cqw; font-size:1.8cqh; line-height:2;
+  color:#ffc4a3; text-shadow:0 .3cqh 0 rgba(20,8,26,.8);
+}
+.rc-menu{display:flex; flex-direction:column; gap:1.4cqh; align-items:center;}
+/* the three small ones share a line: with a cup to resume the menu is
+   eight items long, which on a 16:9 stage is taller than the stage */
+.rc-menu-row{ display:flex; flex-wrap:wrap; gap:1.4cqw; justify-content:center; }
+
+.rc-btn{
+  font-family:var(--rc-face); font-size:2.4cqh; color:var(--rc-ink); cursor:pointer;
+  padding:1.8cqh 5cqw; border-radius:1cqw; border:0;
+  background:linear-gradient(180deg, rgba(255,127,138,.28), rgba(155,93,229,.24));
+  box-shadow:inset 0 0 0 .28cqw rgba(255,248,232,.3), 0 .7cqh 0 rgba(20,8,26,.7);
+  transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.rc-btn:hover, .rc-btn:focus-visible{
+  background:linear-gradient(180deg, rgba(255,95,149,.5), rgba(155,93,229,.4));
+  box-shadow:inset 0 0 0 .28cqw rgba(255,248,232,.55), 0 .7cqh 0 rgba(20,8,26,.7);
+  outline:none;
+}
+.rc-btn:active{transform:translateY(.5cqh); box-shadow:inset 0 0 0 .28cqw rgba(255,248,232,.4), 0 .2cqh 0 rgba(20,8,26,.7);}
+.rc-btn-s{font-size:1.9cqh; padding:1.4cqh 3.4cqw; background:rgba(255,248,232,.1);}
+.rc-btn-go{
+  background:linear-gradient(180deg, var(--rc-rose), #c4407a);
+  box-shadow:inset 0 0 0 .28cqw rgba(255,248,232,.5), 0 .7cqh 0 rgba(20,8,26,.7);
+}
+
+.rc-diff{display:flex; flex-direction:column; align-items:center; gap:.9cqh;}
+.rc-diff-lab{font-size:1.5cqh; color:#c9b8d8; letter-spacing:.16em;}
+.rc-diff-row{display:flex; gap:1cqw;}
+.rc-dbtn{
+  font-family:var(--rc-face); font-size:1.6cqh; cursor:pointer;
+  padding:1.1cqh 2.4cqw; border-radius:.7cqw; border:0;
+  background:rgba(255,248,232,.08); color:#a99cbb;
+  box-shadow:inset 0 0 0 .2cqw rgba(255,248,232,.14);
+}
+.rc-dbtn.on{
+  background:rgba(255,209,102,.22); color:var(--rc-gold);
+  box-shadow:inset 0 0 0 .24cqw rgba(255,209,102,.75);
+}
+.rc-quit{
+  font-family:var(--rc-face); font-size:1.4cqh; cursor:pointer; border:0;
+  background:none; color:#a99cbb; padding:1cqh 2cqw; letter-spacing:.08em;
+}
+.rc-quit:hover{color:var(--rc-ink);}
+
+/* panels: character select, track select, results */
+.rc-panel{
+  display:flex; flex-direction:column; align-items:center; gap:2cqh;
+  width:100%; max-width:92cqw; text-align:center;
+}
+.rc-h{
+  margin:0; font-size:3cqh; font-weight:400; color:var(--rc-gold);
+  letter-spacing:.14em; text-shadow:0 .6cqh 0 rgba(20,8,26,.9);
+}
+.rc-cards{display:grid; gap:1.6cqw; width:100%; justify-content:center;}
+.rc-cards-2{grid-template-columns:repeat(2, minmax(0, 26cqw));}
+.rc-cards-4{grid-template-columns:repeat(4, minmax(0, 20cqw));}
+
+.rc-card{
+  display:flex; flex-direction:column; align-items:center; gap:.8cqh;
+  padding:1.4cqh 1cqw; border-radius:1.2cqw; border:0; cursor:pointer;
+  background:linear-gradient(180deg, rgba(255,248,232,.1), rgba(255,248,232,.04));
+  box-shadow:inset 0 0 0 .26cqw rgba(255,248,232,.2), 0 .6cqh 0 rgba(20,8,26,.6);
+  transition:transform .14s ease, box-shadow .14s ease;
+  font-family:var(--rc-face);
+}
+.rc-card:hover{transform:translateY(-.6cqh);}
+.rc-card.sel{
+  background:linear-gradient(180deg, rgba(255,95,149,.28), rgba(155,93,229,.2));
+  box-shadow:inset 0 0 0 .35cqw var(--rc-rose), 0 .6cqh 0 rgba(20,8,26,.6), 0 0 2.4cqw rgba(255,95,149,.5);
+}
+.rc-card-art{display:block; width:100%; border-radius:.8cqw; overflow:hidden; line-height:0;}
+.rc-card-art canvas{width:100%; height:auto; image-rendering:pixelated;}
+.rc-card-name{font-size:1.9cqh; color:var(--rc-ink);}
+.rc-card-sub{font-size:1.15cqh; color:#c9b8d8; line-height:1.6;}
+.rc-blurb{margin:0; max-width:70cqw; font-size:1.5cqh; line-height:2; color:#ffc4a3;}
+.rc-row{display:flex; gap:2cqw; align-items:center; justify-content:center;}
+
+/* the podium */
+.rc-podium{display:flex; align-items:flex-end; justify-content:center; gap:1.6cqw; width:100%;}
+.rc-pod{display:flex; flex-direction:column; align-items:center; gap:.6cqh;}
+.rc-pod-art{line-height:0;}
+.rc-pod-art canvas{width:14cqh; height:auto; image-rendering:pixelated;}
+.rc-pod-block{
+  display:grid; place-items:center; width:12cqw; border-radius:.6cqw .6cqw 0 0;
+  font-size:3cqh; color:#2a1a2e;
+}
+.rc-pod-block b{font-weight:400;}
+.rc-pod-1 .rc-pod-block{height:9cqh; background:linear-gradient(180deg,#ffe07a,#e0a83a);}
+.rc-pod-2 .rc-pod-block{height:6.4cqh; background:linear-gradient(180deg,#f0f2f6,#b9bfc9);}
+.rc-pod-3 .rc-pod-block{height:4.6cqh; background:linear-gradient(180deg,#f0b98a,#c07f4f);}
+.rc-pod-name{font-size:1.4cqh; color:var(--rc-ink);}
+
+.rc-rest{
+  list-style:none; margin:0; padding:0; width:100%; max-width:52cqw;
+  display:flex; flex-direction:column; gap:.5cqh;
+}
+.rc-rest li{
+  display:grid; grid-template-columns:4cqw 1fr auto; gap:1.4cqw; align-items:center;
+  padding:.8cqh 1.6cqw; border-radius:.6cqw; font-size:1.4cqh;
+  background:rgba(255,248,232,.06); color:#c9b8d8;
+}
+.rc-rest li.me{background:rgba(255,95,149,.22); color:var(--rc-ink);}
+.rc-rest li b{font-weight:400; color:var(--rc-gold);}
+.rc-rest li i{font-style:normal;}
+
+.rc-points{margin:0; font-size:1.7cqh; color:var(--rc-gold); letter-spacing:.1em;}
+.rc-msg{margin:0; max-width:62cqw; font-size:1.5cqh; line-height:2; color:#ffc4a3;}
+.rc-msg-big{font-size:1.7cqh; color:#ffd9c0;}
+.rc-fin-art{line-height:0;}
+.rc-fin-art canvas{width:min(70cqw, 60cqh); height:auto; image-rendering:pixelated; border-radius:.8cqw;}
+
+/* ---------- the tutorial's speech bubble ---------- */
+.rc-tut{
+  position:absolute; left:50%; top:4cqh; transform:translateX(-50%);
+  z-index:7; width:min(74cqw, 96%); pointer-events:auto;
+  font-family:var(--rc-face);
+}
+.rc-tut[hidden]{display:none;}
+.rc-bubble{
+  position:relative;
+  padding:2.2cqh 3cqw 2.6cqh;
+  border-radius:1.6cqw;
+  background:linear-gradient(180deg, rgba(28,18,42,.94), rgba(20,12,32,.94));
+  box-shadow:inset 0 0 0 .34cqw rgba(255,248,232,.55), 0 1cqh 3cqw rgba(0,0,0,.5);
+  text-align:center;
+  animation:rcBubbleIn .28s ease-out;
+}
+/* the tail, pointing down at the kart */
+.rc-bubble::after{
+  content:""; position:absolute; left:50%; bottom:-1.6cqh; width:0; height:0;
+  transform:translateX(-50%);
+  border-left:1.6cqw solid transparent; border-right:1.6cqw solid transparent;
+  border-top:1.8cqh solid rgba(20,12,32,.94);
+  filter:drop-shadow(0 .2cqh 0 rgba(255,248,232,.4));
+}
+@keyframes rcBubbleIn{ from{ transform:translateX(-50%) translateY(-1.4cqh); opacity:0; } }
+.rc-bubble-tag{
+  position:absolute; top:-1.2cqh; left:2cqw;
+  padding:.5cqh 1.2cqw; border-radius:.7cqw;
+  background:var(--rc-gold); color:#3a2412; font-size:1.2cqh;
+}
+.rc-bubble h4{
+  margin:0 0 1cqh; font-weight:400; font-size:2.1cqh;
+  color:var(--rc-gold); letter-spacing:.1em;
+}
+.rc-bubble p{ margin:0; font-size:1.5cqh; line-height:2; color:var(--rc-ink); }
+.rc-bubble p b{
+  font-weight:400; color:#2a1a2e; background:var(--rc-sky);
+  padding:.2cqh .7cqw; border-radius:.4cqw; white-space:nowrap;
+}
+.rc-bubble-goal{
+  display:inline-block; margin-top:1.4cqh;
+  padding:.7cqh 1.8cqw; border-radius:.7cqw; font-size:1.3cqh;
+  color:#c9b8d8; background:rgba(255,248,232,.08);
+  box-shadow:inset 0 0 0 .2cqw rgba(255,248,232,.2);
+}
+.rc-bubble-goal::before{ content:"› "; color:var(--rc-rose); }
+/* the tick when she has actually done it */
+.rc-tut.ok .rc-bubble-goal{
+  color:#1d3a26; background:var(--rc-mint);
+  box-shadow:inset 0 0 0 .2cqw rgba(255,255,255,.5);
+}
+.rc-tut.ok .rc-bubble-goal::before{ content:"✓ "; color:#1d3a26; }
+.rc-tut.ok .rc-bubble{ box-shadow:inset 0 0 0 .34cqw var(--rc-mint), 0 1cqh 3cqw rgba(0,0,0,.5); }
+.rc-bubble-btn{ margin-top:1.6cqh; }
+.rc-bubble-skip{
+  display:block; margin:1.2cqh auto 0; border:0; background:none; cursor:pointer;
+  font-family:var(--rc-face); font-size:1.1cqh; color:#8d7f9e; letter-spacing:.06em;
+}
+.rc-bubble-skip:hover{ color:var(--rc-ink); }
+
+/* in the practice loop there is no lap and no position to report */
+.rc-hud[data-mode="tutorial"] .rc-hud-tr,
+.rc-hud[data-mode="tutorial"] .rc-chip:first-child{ display:none; }
+
+/* what each course throws at you, under its blurb on the track picker */
+.rc-warn{
+  margin:.6cqh 0 0; font-size:1.25cqh; letter-spacing:.06em;
+  color:#ffb37f; text-align:center;
+}
+
+/* the postcard from the finish */
+.rc-card-shot{ margin:1cqh 0 .2cqh; display:flex; justify-content:center; }
+.rc-card-shot canvas{
+  /* small enough that it never pushes the buttons under the fold on a
+     short screen, big enough to see what the photograph is of */
+  width:min(42cqw, 100%); height:auto; image-rendering:pixelated;
+  border-radius:.8cqw;
+  box-shadow:0 1cqh 2.4cqw rgba(0,0,0,.5), inset 0 0 0 .2cqw rgba(255,248,232,.3);
+}
+
+/* the half-finished championship, offered back on the title screen */
+.rc-btn-cup{
+  background:linear-gradient(180deg, #ffd166, #e8a53c);
+  color:#2a1b10;
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.55), 0 0 2.6cqw rgba(255,209,102,.4);
+}
+
+/* the flipped and rain toggles on the track picker */
+.rc-vars{ gap:2cqw; margin-top:.6cqh; }
+.rc-vbtn{
+  font-family:inherit; cursor:pointer;
+  padding:.9cqh 2.4cqw; border:0; border-radius:.8cqw;
+  font-size:1.3cqh; letter-spacing:.14em;
+  color:#c9b8d8; background:rgba(28,18,42,.72);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.22);
+  transition:color .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.rc-vbtn:hover{ color:var(--rc-ink); }
+.rc-vbtn.on{
+  color:#1b1226; background:var(--rc-gold);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.5), 0 0 2.4cqw rgba(255,209,102,.45);
+}
+.rc-varnote{
+  margin:.5cqh 0 0; font-size:1.15cqh; letter-spacing:.05em; color:#a99cbb;
+}
+
+/* headings and notes inside the settings panel */
+.rc-setlab{
+  margin:1.4cqh 0 .2cqh; font-size:1.25cqh; letter-spacing:.16em;
+  color:var(--rc-gold);
+}
+.rc-setnote{
+  margin:.4cqh 0 0; max-width:56cqw; font-size:1.15cqh; line-height:1.8;
+  color:#c9b8d8; letter-spacing:.04em;
+}
+
+/* ---------- hot seat: two people, one phone ---------- */
+.rc-duo{ max-width:64cqw; }
+
+/* the handover screen: one time, big, and nothing else to read */
+.rc-duo-time{
+  margin:1.2cqh 0 .4cqh; font-size:3.4cqh; letter-spacing:.1em;
+  color:var(--rc-gold);
+  text-shadow:0 .35cqh 0 rgba(0,0,0,.45), 0 0 2.6cqw rgba(255,209,102,.35);
+}
+
+/* the verdict: both times stacked, the winner's row lit */
+.rc-duo-rows{
+  display:flex; flex-direction:column; gap:.9cqh;
+  width:min(46cqw, 100%); margin:1.4cqh auto .2cqh;
+}
+.rc-duo-row{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:2cqw; padding:1.1cqh 2.2cqw; border-radius:.8cqw;
+  background:rgba(28,18,42,.72);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.18);
+  font-size:1.5cqh; letter-spacing:.1em; color:#c9b8d8;
+}
+.rc-duo-row span{ text-transform:uppercase; }
+.rc-duo-row i{ font-style:normal; font-size:1.8cqh; color:var(--rc-ink); }
+.rc-duo-row.win{
+  color:#2a1b10; background:linear-gradient(180deg, #ffd166, #e8a53c);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.55), 0 0 2.6cqw rgba(255,209,102,.4);
+}
+.rc-duo-row.win i{ color:#2a1b10; }
+
+/* THE RESULTS, SIDE BY SIDE
+
+   A championship round has a podium, a table and a photograph to show,
+   and a stage that is 16:9 has plenty of width and none of the height
+   they need stacked. Above a wide enough stage the table and the
+   photograph sit next to each other, which is what keeps the buttons on
+   the screen without cutting anything out of the panel. */
+.rc-split{
+  display:grid; gap:2cqw; width:100%;
+  align-items:center; justify-items:center;
+}
+/* the results panel carries the most of any panel, so it packs tighter */
+.rc-res{ gap:1.5cqh; }
+
+/* On a phone the stage is about two hundred pixels tall, and a podium, a
+   table, a photograph and a badge will not fit in that however they are
+   arranged. Rather than cut any of it, the buttons stay on the screen
+   while the rest scrolls under them, so getting to the next race never
+   depends on finding the bottom of the panel first. */
+@container rcstage (max-height: 320px){
+  .rc-res > .rc-row,
+  .rc-fin > .rc-row,
+  .rc-duo > .rc-row{
+    position:sticky; bottom:0; z-index:2;
+    width:100%; margin-bottom:-1cqh;
+    padding:1.2cqh 0 1.4cqh;
+    background:linear-gradient(180deg, rgba(18,11,28,0), rgba(18,11,28,.94) 32%);
+  }
+}
+@container rcstage (min-width: 620px){
+  .rc-split-2{ grid-template-columns:1.05fr .95fr; align-items:start; }
+  .rc-split-2 .rc-card-shot{ margin-top:0; }
+  .rc-split-2 .rc-card-shot canvas{ width:100%; }
+}
+
+/* ---------- badges ---------- */
+
+/* the strip under a result: only what this race just earned */
+.rc-earned{
+  display:flex; flex-wrap:wrap; justify-content:center; gap:1.4cqw;
+  margin:.2cqh 0 0; width:min(60cqw, 100%);
+}
+.rc-badge{
+  display:flex; flex-direction:column; gap:.4cqh; text-align:left;
+  padding:.8cqh 1.8cqw; border-radius:.8cqw;
+  background:rgba(28,18,42,.72);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.18);
+}
+.rc-badge b{ font-size:1.25cqh; letter-spacing:.12em; color:#8d7f9e; }
+.rc-badge i{ font-style:normal; font-size:1.1cqh; line-height:1.7; color:#6f6480; }
+/* earned: gold, and lit */
+.rc-badge.on, .rc-badge-new{
+  background:linear-gradient(180deg, rgba(255,209,102,.16), rgba(232,165,60,.10));
+  box-shadow:inset 0 0 0 .22cqw rgba(255,209,102,.55), 0 0 2.4cqw rgba(255,209,102,.22);
+}
+.rc-badge.on b, .rc-badge-new b{ color:var(--rc-gold); }
+.rc-badge.on i, .rc-badge-new i{ color:#e6d8f0; }
+.rc-badge-new{ animation:rc-badge-pop .5s ease-out both; }
+@keyframes rc-badge-pop{
+  from{ opacity:0; transform:translateY(1.2cqh) scale(.94); }
+  to  { opacity:1; transform:none; }
+}
+
+/* the whole board, from the title screen */
+.rc-badges{ max-width:74cqw; }
+.rc-badge-list{
+  display:grid; gap:1.2cqw; width:100%; margin:1cqh 0 .4cqh;
+  /* two up while there is room for two, one up when there is not */
+  grid-template-columns:repeat(auto-fit, minmax(min(100%, 30cqw), 1fr));
+}
+
+/* the title button once every one of them is in */
+.rc-btn-gold{
+  background:linear-gradient(180deg, #ffd166, #e8a53c);
+  color:#2a1b10;
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.55), 0 0 2.6cqw rgba(255,209,102,.4);
+}
+
+/* ---------- the note ----------
+
+   Not a game element. It sits on the screen after the championship
+   like a piece of paper left on the table, and its lines arrive one
+   at a time rather than all at once. */
+.rc-note{
+  width:min(62cqw, 100%); margin:1.6cqh 0 .4cqh;
+  padding:2.2cqh 3cqw; border-radius:1cqw; text-align:left;
+  background:linear-gradient(180deg, rgba(255,248,232,.06), rgba(255,248,232,.02));
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.22);
+}
+.rc-note-line{
+  margin:0 0 1.2cqh; font-size:1.45cqh; line-height:2.1;
+  letter-spacing:.03em; color:#f2e8dc;
+  opacity:0; transform:translateY(.8cqh);
+  transition:opacity .8s ease, transform .8s ease;
+}
+.rc-note-line.in{ opacity:1; transform:none; }
+.rc-note-line:last-child{ margin-bottom:0; }
+.rc-fin-left{
+  display:flex; flex-direction:column; align-items:center; gap:1.4cqh;
+  width:100%;
+}
+.rc-note-sign{
+  margin:1.6cqh 0 0; text-align:right;
+  font-size:1.35cqh; letter-spacing:.14em; color:var(--rc-gold);
+  opacity:0; transition:opacity .9s ease;
+}
+.rc-note-sign.in{ opacity:1; }
+
+/* ---------- the sound sliders ---------- */
+.rc-sliders{ display:flex; flex-direction:column; gap:1.6cqh; width:min(54cqw, 100%); }
+.rc-slider{ display:grid; grid-template-columns:11cqw 1fr 5cqw; gap:1.4cqw; align-items:center; }
+.rc-slider-lab{ font-size:1.3cqh; color:#c9b8d8; letter-spacing:.08em; text-align:left; }
+.rc-slider output{ font-size:1.3cqh; color:var(--rc-gold); text-align:right; }
+.rc-slider input[type="range"]{
+  -webkit-appearance:none; appearance:none; width:100%; height:1.6cqh;
+  background:rgba(255,248,232,.12); border-radius:1cqh; outline:none; cursor:pointer;
+  box-shadow:inset 0 0 0 .2cqw rgba(255,248,232,.22);
+}
+.rc-slider input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none;
+  width:2.6cqh; height:2.6cqh; border-radius:.5cqw;
+  background:linear-gradient(180deg, var(--rc-rose), #c4407a);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.7), 0 .3cqh 0 rgba(20,8,26,.6);
+}
+.rc-slider input[type="range"]::-moz-range-thumb{
+  width:2.6cqh; height:2.6cqh; border:0; border-radius:.5cqw;
+  background:linear-gradient(180deg, var(--rc-rose), #c4407a);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.7), 0 .3cqh 0 rgba(20,8,26,.6);
+}
+
+/* ---------- the touch pad ----------
+   Two clusters low in the corners, over the track rather than under it.
+   The panel is pastel and see-through so the road still reads through
+   it, and every key breathes gently in the chosen racer's accent so the
+   controls feel like part of the game and not a browser widget. */
+.rc-pad{
+  position:absolute; inset:0; z-index:5;
+  display:none; pointer-events:none;
+  --rc-accent:#ff5f95; --rc-kart:#ff7f8a;
+}
+/* ---------- the steering surface ----------
+
+   It covers the whole picture and sits under the buttons, so a thumb
+   anywhere that is not a button is a steering thumb. There is nothing
+   to aim at, which is the point: on a phone the old left/right keys
+   were a target you had to find while also holding the throttle down
+   with your other hand. */
+.rc-steer{
+  position:absolute; inset:0; z-index:4;
+  pointer-events:none; touch-action:none;
+}
+.rc-steer[hidden]{display:none !important;}
+.rc-pad[data-want="1"] ~ .rc-steer,
+.rc-steer[data-live="1"]{ pointer-events:auto; }
+
+/* the ring follows the thumb, and the pip inside it shows the lock */
+.rc-steer-ring{
+  position:absolute; left:0; top:0;
+  width:26cqw; height:26cqw; margin:-13cqw 0 0 -13cqw;
+  border-radius:50%;
+  border:.5cqw solid rgba(255,248,232,.30);
+  background:radial-gradient(circle at 50% 50%,
+             rgba(255,248,232,.10), rgba(255,248,232,0) 70%);
+  opacity:0; transition:opacity .14s ease;
+  transform:translate(var(--rc-sx,0px), var(--rc-sy,0px));
+}
+.rc-steer[data-on="1"] .rc-steer-ring{ opacity:1; }
+.rc-steer-ring i{
+  position:absolute; left:50%; top:50%;
+  width:9cqw; height:9cqw; margin:-4.5cqw 0 0 -4.5cqw;
+  border-radius:50%;
+  background:radial-gradient(circle at 38% 34%,
+             var(--rc-accent,#ff5f95), rgba(20,10,26,.55));
+  box-shadow:0 0 2.4cqw rgba(255,95,149,.55), inset 0 0 0 .3cqw rgba(255,248,232,.5);
+  transform:translateX(var(--rc-tx,0px));
+  transition:transform .04s linear;
+}
+/* a one-time nudge for the first race, then it stays out of the way */
+.rc-steer-hint{
+  position:absolute; left:50%; bottom:16cqh; transform:translateX(-50%);
+  font-size:1.5cqh; letter-spacing:.14em; color:rgba(255,248,232,.72);
+  text-shadow:0 .3cqh 0 rgba(20,8,26,.8);
+  opacity:0; transition:opacity .4s ease; pointer-events:none;
+}
+.rc-steer[data-hint="1"] .rc-steer-hint{ opacity:1; }
+
+/* what the pad shows depends on how she is driving */
+.rc-pad[data-mode="slide"] .rc-pad-l{ display:none; }
+.rc-pad[data-mode="slide"][data-auto="1"] .rc-key-gas{ display:none; }
+.rc-pad[data-mode="slide"] .rc-pad-r{ right:2.5cqw; gap:1.2cqw; }
+/* With the throttle holding itself and the steering under the whole
+   picture, DRIFT is the one button a thumb hunts for at speed, so it is
+   the one that gets the room. */
+.rc-pad[data-mode="slide"] .rc-key-drift{ width:max(56px, 17cqh); height:max(56px, 17cqh); }
+.rc-pad[data-mode="slide"] .rc-key-sm{ width:max(42px, 8.5cqh); height:max(42px, 8.5cqh); }
+
+/* THE MAP MOVES OUT OF THE WAY OF THE THUMB.
+
+   On a keyboard the minimap sits bottom right, which is exactly where
+   the drift button has to be on glass. On touch the map goes over to
+   the other corner and the pause button goes up top, so nothing that
+   matters is under a hand. */
+.rc-stage[data-touch="1"] .rc-map{ right:auto; left:2cqw; bottom:2cqh;
+  width:15cqh; height:15cqh; opacity:.9; }
+.rc-stage[data-touch="1"] .rc-pause-btn{ bottom:auto; top:2cqh; left:auto; right:16cqw; }
+.rc-stage[data-touch="1"] .rc-boost{ bottom:24cqh; }
+
+.rc-pad[hidden]{display:none !important;}
+/* shown when the pointer is a finger, hidden the moment a key is used */
+.rc-pad[data-want="1"]{display:block;}
+
+.rc-pad-cluster{
+  position:absolute; bottom:4.5cqh; display:flex; gap:1.6cqw;
+  pointer-events:auto;
+  padding:1.4cqh 1.6cqw; border-radius:2cqw;
+  background:linear-gradient(180deg, rgba(255,248,232,.16), rgba(155,93,229,.14));
+  backdrop-filter:blur(2px);
+  box-shadow:inset 0 0 0 .3cqw rgba(255,248,232,.28);
+}
+.rc-pad-l{left:2.5cqw;}
+.rc-pad-r{right:2.5cqw; align-items:flex-end;}
+
+.rc-key{
+  position:relative; overflow:visible;
+  border:0; cursor:pointer; padding:0;
+  display:grid; place-items:center;
+  user-select:none; -webkit-user-select:none; touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+  border-radius:1.6cqw;
+  background:linear-gradient(180deg, rgba(255,248,232,.30), rgba(255,248,232,.12));
+  box-shadow:
+    inset 0 0 0 .32cqw rgba(255,248,232,.5),
+    inset 0 -0.6cqh 0 rgba(20,10,26,.22),
+    0 .7cqh 0 rgba(20,10,26,.45);
+  animation:rcBreath 2.6s ease-in-out infinite;
+  transition:transform .06s ease, filter .06s ease, box-shadow .06s ease;
+}
+.rc-ico{
+  width:70%; height:70%;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+  filter:drop-shadow(0 .25cqh 0 rgba(20,10,26,.5));
+}
+/* A FLOOR IN REAL PIXELS, NOT JUST CONTAINER UNITS.
+
+   These are sized off the height of the stage, which is right on a wide
+   screen and wrong on a phone held upright: there the stage is a short
+   letterboxed strip, and 8.5cqh of it comes out at nineteen physical
+   pixels. Measured on a 390-wide portrait phone the brake and item keys
+   were 19px across and drift was 37px — targets you cannot reliably hit
+   with a thumb, on the one device this is most likely to be played on.
+   The container units still win on anything roomy; the floor only
+   applies where the strip is too short to give a usable size. */
+.rc-key-steer{width:max(52px, 15cqh); height:max(52px, 15cqh);}
+.rc-key-big  {width:max(52px, 14cqh); height:max(52px, 14cqh);}
+.rc-key-sm   {width:max(42px, 9.5cqh); height:max(42px, 9.5cqh); align-self:flex-end;}
+
+/* the idle glow, in the racer's colour */
+@keyframes rcBreath{
+  0%,100%{ box-shadow:
+    inset 0 0 0 .32cqw rgba(255,248,232,.5),
+    inset 0 -0.6cqh 0 rgba(20,10,26,.22),
+    0 .7cqh 0 rgba(20,10,26,.45),
+    0 0 1.2cqw color-mix(in srgb, var(--rc-accent) 40%, transparent); }
+  50%{ box-shadow:
+    inset 0 0 0 .32cqw rgba(255,248,232,.62),
+    inset 0 -0.6cqh 0 rgba(20,10,26,.22),
+    0 .7cqh 0 rgba(20,10,26,.45),
+    0 0 3cqw color-mix(in srgb, var(--rc-accent) 72%, transparent); }
+}
+.rc-key-gas   { background:linear-gradient(180deg, rgba(125,219,163,.62), rgba(79,174,124,.5)); }
+.rc-key-drift { background:linear-gradient(180deg, rgba(126,200,227,.62), rgba(74,158,196,.5)); }
+.rc-key[data-k="item"]{ background:linear-gradient(180deg, rgba(255,95,149,.6), rgba(196,64,122,.5)); }
+
+/* pressed: it goes down onto its shadow and darkens */
+.rc-key.on{
+  transform:translateY(.7cqh);
+  filter:brightness(1.28) saturate(1.1);
+  animation:none;
+  box-shadow:
+    inset 0 0 0 .32cqw rgba(255,248,232,.75),
+    inset 0 .5cqh 1cqh rgba(20,10,26,.4),
+    0 0 0 rgba(20,10,26,.45),
+    0 0 2.4cqw color-mix(in srgb, var(--rc-accent) 80%, transparent);
+}
+
+/* the little burst a tap throws off */
+.rc-spark{
+  position:absolute; left:50%; top:50%;
+  width:.9cqh; height:.9cqh; margin:-.45cqh 0 0 -.45cqh;
+  background:var(--rc-accent); pointer-events:none;
+  animation:rcSpark .4s ease-out forwards;
+}
+.rc-spark.heart{
+  background:none; width:1.4cqh; height:1.4cqh; margin:-.7cqh 0 0 -.7cqh;
+  /* a four-block pixel heart, drawn with gradients rather than a glyph */
+  background-image:
+    radial-gradient(circle at 30% 30%, var(--rc-accent) 0 50%, transparent 51%),
+    radial-gradient(circle at 70% 30%, var(--rc-accent) 0 50%, transparent 51%),
+    linear-gradient(var(--rc-accent), var(--rc-accent));
+  background-size:70% 70%, 70% 70%, 74% 52%;
+  background-position:0 0, 100% 0, 50% 68%;
+  background-repeat:no-repeat;
+}
+@keyframes rcSpark{
+  from{ transform:translate(0,0) scale(1); opacity:1; }
+  to  { transform:translate(var(--dx), var(--dy)) scale(.3); opacity:0; }
+}
+
+/* ---------- the hub card: a pastel road running to a heart ---------- */
+.hub-art-race{
+  position:relative;
+  background:
+    radial-gradient(circle at 74% 22%, rgba(255,246,214,.9) 0 8%, transparent 9%),
+    linear-gradient(180deg,#ffb27a 0%,#ffd9a0 32%,#8fd0ea 32%,#bfe6d6 46%,#5f9e57 46%,#4a8348 100%);
+  box-shadow:inset 0 0 22px rgba(60,32,10,.32);
+}
+/* the road: a trapezium running to the vanishing point, with its
+   centre dashes and a rumble edge — the game's own view, in miniature */
+.hub-art-race::before{
+  content:""; position:absolute; left:0; right:0; top:46%; bottom:0;
+  background:
+    linear-gradient(180deg, transparent 0 4%, rgba(255,255,255,.85) 4% 7%, transparent 7% 16%,
+                            rgba(255,255,255,.85) 16% 21%, transparent 21% 36%,
+                            rgba(255,255,255,.85) 36% 44%, transparent 44% 66%,
+                            rgba(255,255,255,.85) 66% 78%, transparent 78%) 50% / 8% 100% no-repeat,
+    linear-gradient(90deg, transparent 0 6%, #ff7f8a 6% 11%, #fff8e8 11% 16%, #ff7f8a 16% 21%, transparent 21% 79%,
+                            #ff7f8a 79% 84%, #fff8e8 84% 89%, #ff7f8a 89% 94%, transparent 94%),
+    linear-gradient(180deg,#9c8a72,#8a7860);
+  clip-path:polygon(38% 0, 62% 0, 100% 100%, 0 100%);
+}
+.hub-art-race::after{
+  content:""; position:absolute; left:50%; top:16%; width:16%; aspect-ratio:1;
+  transform:translateX(-50%);
+  background:
+    radial-gradient(circle at 30% 32%, #ff5f95 0 50%, transparent 51%) 0 0/50% 50% no-repeat,
+    radial-gradient(circle at 70% 32%, #ff5f95 0 50%, transparent 51%) 100% 0/50% 50% no-repeat,
+    linear-gradient(#ff5f95,#ff5f95) 50% 62%/72% 46% no-repeat;
+  clip-path:polygon(50% 100%, 0 42%, 8% 8%, 30% 4%, 50% 24%, 70% 4%, 92% 8%, 100% 42%);
+  filter:drop-shadow(0 2px 0 rgba(120,30,60,.4));
+}
+
+/* ---------- phones ---------- */
+@media (max-width: 900px), (orientation: portrait){
+  .rc-titlebar{display:block;}
+  .rc-frame{justify-content:space-between; padding:3vh 0 0;}
+  .rc-stage{width:min(100%, calc(var(--app-h) * 0.52 * 1.7778));}
+
+  /* the HUD gets out of the way of a thumb-sized screen */
+  .rc-map{width:16cqh; height:16cqh;}
+  .rc-cards-4{grid-template-columns:repeat(2, minmax(0, 36cqw));}
+  .rc-cards-2{grid-template-columns:repeat(2, minmax(0, 34cqw));}
+  .rc-tag{max-width:80cqw;}
+  .rc-msg, .rc-blurb{max-width:82cqw;}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .rc-count, .rc-banner, .rc-item[data-empty="0"], .rc-key, .rc-spark, .rc-bubble{animation:none;}
+  .rc-card, .rc-btn{transition:none;}
+}
+
+/* the card that covers the world being baked */
+.rc-overlay.rc-ov-load{ display:grid; place-items:center; }
+.rc-loading{ text-align:center; font-family:var(--rc-face); }
+.rc-loading p{
+  margin:0 0 2.4cqh; font-size:3cqh; color:var(--rc-gold);
+  letter-spacing:.14em; text-shadow:0 .6cqh 0 rgba(20,8,26,.9);
+}
+.rc-loading span{
+  display:block; width:34cqw; height:1.4cqh; border-radius:1cqh; overflow:hidden;
+  background:rgba(255,248,232,.12);
+  box-shadow:inset 0 0 0 .2cqw rgba(255,248,232,.25);
+  position:relative;
+}
+.rc-loading span::after{
+  content:""; position:absolute; inset:0; width:38%;
+  border-radius:1cqh; background:linear-gradient(90deg,var(--rc-sky),var(--rc-rose));
+  animation:rcLoad 1s ease-in-out infinite;
+}
+@keyframes rcLoad{ 0%{transform:translateX(-110%);} 100%{transform:translateX(300%);} }
+
+/* the championship table on the results card */
+.rc-standings{ width:min(52cqw,100%); }
+.rc-standings h4{
+  margin:0 0 1cqh; font-weight:400; font-size:1.4cqh;
+  color:var(--rc-gold); letter-spacing:.12em;
+}
+.rc-standings ol{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.4cqh; }
+.rc-standings li{
+  display:grid; grid-template-columns:4cqw 1fr auto; gap:1.2cqw; align-items:center;
+  padding:.6cqh 1.4cqw; border-radius:.6cqw; font-size:1.3cqh;
+  background:rgba(255,248,232,.06); color:#c9b8d8;
+}
+.rc-standings li.me{ background:rgba(255,209,102,.22); color:var(--rc-ink); }
+.rc-standings li b{ font-weight:400; color:var(--rc-gold); }
+.rc-standings li i{ font-style:normal; color:var(--rc-ink); }

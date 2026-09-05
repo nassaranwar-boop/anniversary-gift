@@ -43,8 +43,20 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     // straight to the hub, then each chapter in turn
     await page.evaluate(() => { stopDioramas(); showScreen('hub'); startHub(); });
     await page.waitForTimeout(500);
+    /* Counting them was a hostage to the next chapter somebody adds —
+       and somebody added one. What matters is that every card in the
+       hub is one the page knows how to open, and that the four this
+       suite goes on to play are all there. */
     const cards = await page.evaluate(() => Array.from(document.querySelectorAll('.hub-card')).map(c => c.id));
-    ok(label + ': the hub has every card', cards.length === 4, cards.join(','));
+    const MUST = ['hub-card-maze', 'hub-card-quest', 'hub-card-ouissy', 'hub-card-apoc'];
+    ok(label + ': the hub has every card this suite plays',
+       MUST.every(m => cards.indexOf(m) >= 0), cards.join(','));
+    const unwired = await page.evaluate(cs => cs.filter(id => {
+      const el = document.getElementById(id);
+      return !el || !el.getAttribute('data-chapter');
+    }), cards);
+    ok(label + ': and every card in it is wired to a chapter',
+       unwired.length === 0, unwired.join(','));
     ok(label + ': no horizontal scroll on the hub', (await hs()) === 0, 'overflow ' + (await hs()));
 
     await page.evaluate(() => { level = 1; showScreen('details'); });

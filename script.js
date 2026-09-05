@@ -2167,6 +2167,23 @@ window.leaveApocalypse = () => {
 };
 window.markApocalypseDone = () => markChapterDone("apoc");
 
+/* =========================================================
+   SUPER OUISSY RACE
+   Lives entirely in racing.js. This half only owns getting in
+   and out of it, exactly as the other games do.
+   ========================================================= */
+function startSuperOuissyRace() {
+  if (window.SuperOuissyRace) SuperOuissyRace.start();
+}
+function stopSuperOuissyRace() {
+  if (window.SuperOuissyRace) SuperOuissyRace.stop();
+}
+window.leaveSuperOuissyRace = () => {
+  stopSuperOuissyRace();
+  pageTurn("hub", startHub);
+};
+window.markSuperOuissyRaceDone = () => markChapterDone("race");
+
 /* The apocalypse ends where the maze ended: on the roof, with the two
    cats. It is the same scene — it is just that the city behind it has
    had a week. */
@@ -2202,7 +2219,7 @@ function startHub() {
   const d = chaptersDone();
   const both = bothChaptersDone();
 
-  [["maze", d.maze], ["quest", d.quest], ["ouissy", d.ouissy], ["apoc", d.apoc]].forEach(([name, done]) => {
+  [["maze", d.maze], ["quest", d.quest], ["ouissy", d.ouissy], ["apoc", d.apoc], ["race", d.race]].forEach(([name, done]) => {
     const card = document.getElementById("hub-card-" + name);
     if (card) card.classList.toggle("done", !!done);
   });
@@ -2212,7 +2229,7 @@ function startHub() {
      keepsake itself is still gated on the two story chapters; that is
      deliberate and unchanged. */
   const sub = document.getElementById("hub-sub");
-  const count = (d.maze ? 1 : 0) + (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0) + (d.apoc ? 1 : 0);
+  const count = (d.maze ? 1 : 0) + (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0) + (d.apoc ? 1 : 0) + (d.race ? 1 : 0);
   const total = document.querySelectorAll(".hub-card").length;
   if (both && count === total) sub.textContent = "— every one of them done. the keepsake is yours —";
   else if (both) sub.textContent = "— both story chapters done. the keepsake is yours —";
@@ -2234,6 +2251,9 @@ document.getElementById("hub-card-ouissy").addEventListener("click", () => {
 });
 document.getElementById("hub-card-apoc").addEventListener("click", () => {
   pageTurn("apoc", startApocalypse);
+});
+document.getElementById("hub-card-race").addEventListener("click", () => {
+  pageTurn("race", startSuperOuissyRace);
 });
 document.getElementById("hub-keepsake").addEventListener("click", () => {
   pageTurn("keepsake", startKeepsake);
@@ -2274,6 +2294,7 @@ function startKeepsake() {
   ];
   if (chaptersDone().ouissy) badges.push({ icon: "px-crown", cap: "Super Ouissy" });
   if (chaptersDone().apoc) badges.push({ icon: "px-moon", cap: "Ouissy at the Apocalypse" });
+  if (chaptersDone().race) badges.push({ icon: "px-ribbon", cap: "Super Ouissy Race" });
   badges.forEach((b, i) => {
     const card = document.createElement("div");
     card.className = "ks-card";
