@@ -1802,15 +1802,27 @@
              A real string does lose its upper partials as it goes up the
              keyboard, so this is what the instrument should have been
              doing anyway: full and bronze at the bottom, plain and round
-             at the top, with the lid coming down with the pitch. */
-          var bright = clamp(1 - (fr - 330) / 900, 0.30, 1);
+             at the top, with the lid coming down with the pitch.
+
+             With the tune an octave lower the notes themselves are out of
+             the band, and the partials come down with them — but the top
+             of the piano's range still puts a second harmonic at 1300Hz,
+             so the curve is steeper than it was. The second partial is
+             full at the bottom of the range and all but gone by the top
+             of it; the third is gone by the middle; and the lid never
+             opens past 1900 whatever the note. */
+          var bright = clamp(1 - (fr - 290) / 335, 0, 1);
+          var top = clamp(1 - (fr - 200) / 215, 0, 1);
           var g = ctx.createGain(); g.gain.value = 1;
           var f = ctx.createBiquadFilter();
           f.type = "lowpass";
-          f.frequency.setValueAtTime(Math.min(4200, Math.max(1300, fr * 2.4)), at);
-          f.frequency.exponentialRampToValueAtTime(900, at + len * 0.7);
+          f.frequency.setValueAtTime(Math.min(1900, Math.max(950, fr * 2.0)), at);
+          f.frequency.exponentialRampToValueAtTime(760, at + len * 0.7);
           f.connect(g); out(g, 0.30);
-          [[1, 1.0, 1.00], [2, 0.34 * bright, 0.55], [3, 0.13 * bright * bright, 0.34]].forEach(function (h) {
+          [[1, 1.0, 1.00], [2, 0.34 * bright, 0.55], [3, 0.13 * top * top, 0.34]].forEach(function (h) {
+            /* a partial faded to nothing is still an oscillator, and a
+               gain floor means it is not quite nothing either */
+            if (v * h[1] < 0.00015) return;
             var o = ctx.createOscillator();
             o.type = h[0] === 1 ? "triangle" : "sine";
             /* real strings are a shade sharp in the upper partials */
@@ -1911,13 +1923,21 @@
              clear, high, repeating ring over the top of the last scene
              in the game. It comes off with pitch now — full on a low
              bell, almost gone at the top — and there is a lid over the
-             whole voice either way. */
-          var shim = 0.16 * clamp(1 - (fr - 460) / 900, 0.12, 1);
+             whole voice either way.
+
+             And with the tune an octave lower the bell is a music box
+             again rather than a tone: its note tops out at 588 instead
+             of 1175, so the partial that made it ring tops out at 1358
+             — and it is faded out entirely before it gets there. A low
+             bell keeps the shimmer that makes it a bell; a high one is
+             a plain sine with a lid on it. */
+          var shim = 0.16 * clamp(1 - (fr - 240) / 260, 0, 1);
           var lid = ctx.createBiquadFilter();
-          lid.type = "lowpass"; lid.frequency.value = 2600; lid.Q.value = 0.5;
+          lid.type = "lowpass"; lid.frequency.value = 1600; lid.Q.value = 0.5;
           var bg = ctx.createGain(); bg.gain.value = 1;
           lid.connect(bg); out(bg, 0.55);
           [[1, 1, 4.5], [2.31, shim, 2.4]].forEach(function (h) {
+            if (v * h[1] < 0.00015) return;
             var o = ctx.createOscillator();
             o.type = "sine"; o.frequency.value = fr * h[0];
             var g = ctx.createGain();
@@ -2001,12 +2021,41 @@
         }
 
         /* play whatever the written line has on this beat */
+        /* THE TUNE WAS WRITTEN AN OCTAVE TOO HIGH.
+
+           Every melody in this chapter is written between semitone 0 and
+           semitone 19, and at the octave they were played that is 440 to
+           1319Hz — the top of a soprano's range, for music that is meant
+           to be a piano in an empty house. One note up there, on its own,
+           every two seconds, over a pad that is doing nothing: that is
+           not a melody any more, it is a signal. Measured, cue by cue,
+           the thing that repeats in the radio scene, on the roof and over
+           the cats was always the melody note itself and the two partials
+           it drags with it into the two-to-three-kilohertz band, where
+           the ear is at its most sensitive.
+
+           Two earlier passes went after those partials — the filters, the
+           harmonic levels — and left the fundamental sitting in the same
+           place, which is why it was still there. The register was the
+           bug. Everything the tune layer plays now comes out an octave
+           lower: 220 to 660Hz, which is where a piano actually plays, and
+           where the third harmonic of the highest note lands under two
+           kilohertz instead of over three.
+
+           It is one subtraction in one place on purpose. Not a note is
+           rewritten, not an interval changes, and the melodies keep every
+           relationship they had with each other — the counter-lines stay
+           exactly one octave under the tunes they answer, because they
+           move with them. */
+        var TUNE_OCT = -1;
+
         function line(map, b, at, sp, oct, v, voice, mul) {
           var es = map[b % 32];
           if (!es) return;
           for (var i = 0; i < es.length; i++) {
             var e = es[i];
-            voice(hz(e.n, oct), at + e.off * sp, v, e.d * sp * (mul || 1));
+            voice(hz(e.n, (oct || 0) + TUNE_OCT), at + e.off * sp, v,
+                  e.d * sp * (mul || 1));
           }
         }
 
@@ -2314,8 +2363,14 @@
             if (b % 2 === 1) tick(at, 0.022 * d);
             if (b % 8 === 0) {
               cello(hz(RT(b), -2), at, sp * 8.2, 0.090 * d);
-              strings([hz(RT(b), pass >= 2 ? 1 : 0), hz(RT(b) + 6, pass >= 2 ? 1 : 0)],
-                      at, sp * 7.4, 0.022 * d, 2800);
+              /* This opened out an octave UP on the later passes: a pair
+                 of sawtooths at 1046 and 1480Hz behind a lid at 2800,
+                 held for most of two bars, over the top of being chased.
+                 It is the same interval opening at the same moment, an
+                 octave lower and with the lid brought down to match —
+                 the tritone still does the work, without the siren. */
+              strings([hz(RT(b), pass >= 2 ? 0 : -1), hz(RT(b) + 6, pass >= 2 ? 0 : -1)],
+                      at, sp * 7.4, 0.022 * d, 1400);
             }
             /* an off-beat that is not there at first and will not go away
                once it arrives */
@@ -2335,7 +2390,12 @@
               pulse(hz(0, -3), at, 0.060 * d, sp * 0.32);
               pulse(hz(0, -3), at + sp * 0.30, 0.040 * d, sp * 0.28);
             }
-            if (b % 32 === 24) bell(hz(12, 1), at, 0.014 * d);
+            /* "a bell a long way off" was a bare 1760Hz sine with
+               nothing else in the cue to sit against — the single most
+               exposed high tone in the game. Two octaves down it is
+               still a bell a long way off, and it is not a smoke
+               alarm. */
+            if (b % 32 === 24) bell(hz(12, -1), at, 0.014 * d);
           } },
 
           /* LOOKING FOR SOMETHING, WITH NOTHING LOOKING FOR HER. The chord
