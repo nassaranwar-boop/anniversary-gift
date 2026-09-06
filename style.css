@@ -1206,7 +1206,7 @@ img{-webkit-user-drag:none; user-select:none;}
   .gate-sub{display:none;}
   .gate-field{margin-top:2cqw; padding:2.4cqw 7cqw; border-radius:2.4cqw;}
   .gate-error{margin-top:1cqw; min-height:3cqw; font-size:2.8cqw;}
-  .gate-pad{width:78cqw; gap:2.2cqw; margin-top:1.6cqw;}
+  .gate-pad{width:72cqw; gap:2cqw; margin-top:1.2cqw;}
   .gate-unlock img{width:62cqw;}
 }
 

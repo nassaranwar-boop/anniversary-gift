@@ -131,7 +131,11 @@ const AUDIT = (scr) => {
     let total = 0;
     for (const scr of SCREENS) {
       await page.evaluate((s) => showScreen(s), scr);
-      await page.waitForTimeout(650);
+      /* Long enough for the entry animations to land. The gate's card comes
+         in over .95s from translateY(20px) scale(.97) — measured early it is
+         smaller and lower than it ends up, which is a good way to measure a
+         control as fitting when the settled one does not. */
+      await page.waitForTimeout(1400);
       const r = await page.evaluate(AUDIT, scr);
       if (r.missing) { off.push(scr + ': no such screen'); continue; }
       total += r.n;
