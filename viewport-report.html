@@ -61,7 +61,7 @@
 
 <div id="wrap">
   <h1>Viewport report</h1>
-  <div class="sub">Open this in Chrome, in Safari and in Brave, and screenshot each one.<br>build 116 &middot; if this page 404s you are on the old deployment.</div>
+  <div class="sub">Open this in Chrome, in Safari and in Brave, and screenshot each one.<br>build 117 &middot; if this page 404s you are on the old deployment.</div>
 
   <div id="verdict" class="verdict">measuring…</div>
 
@@ -86,6 +86,10 @@
 <div class="probe" id="p-svh" style="height:100svh"></div>
 <div class="probe" id="p-lvh" style="height:100lvh"></div>
 <div class="probe" id="p-dvh" style="height:100dvh"></div>
+<!-- the two that decide the bug: the box a fixed element gets, and what
+     html{height:100%} would resolve to. Both are the containing block, which
+     is the thing that can be taller than the window. -->
+<div id="p-fixed" style="position:fixed;top:0;bottom:0;left:-9999px;width:1px;pointer-events:none"></div>
 
 <script>
 (function () {
@@ -138,6 +142,16 @@
     var de = document.documentElement;
     var se = document.scrollingElement || de;
     var probe = function (id) { return document.getElementById(id).getBoundingClientRect().height.toFixed(1); };
+    /* what html{height:100%} resolves to — the initial containing block,
+       which is the box that can be taller than the window */
+    var pct = function () {
+      var d = document.createElement("div");
+      d.style.cssText = "position:absolute;top:0;left:-9999px;width:1px;height:100%;";
+      document.documentElement.appendChild(d);
+      var hh = d.getBoundingClientRect().height;
+      d.remove();
+      return Math.round(hh * 10) / 10;
+    };
 
     var overflow = se.scrollHeight - se.clientHeight;
     var vvh = VV ? VV.height : null;
@@ -175,6 +189,12 @@
     row(h, "100svh resolves to", probe("p-svh"));
     row(h, "100lvh resolves to", probe("p-lvh"));
     row(h, "100dvh resolves to", probe("p-dvh"));
+    var vhNum = parseFloat(probe("p-vh"));
+    row(h, "a fixed top:0;bottom:0 box is", probe("p-fixed"),
+        Math.abs(parseFloat(probe("p-fixed")) - window.innerHeight) > 1);
+    row(h, "html height:100% would be", pct(), Math.abs(pct() - window.innerHeight) > 1);
+    row(h, "100vh vs innerHeight", (vhNum - window.innerHeight).toFixed(1) + " px too tall",
+        Math.abs(vhNum - window.innerHeight) > 1);
     row(h, "--app-h now", getComputedStyle(de).getPropertyValue("--app-h").trim());
     row(h, "--app-top now", getComputedStyle(de).getPropertyValue("--app-top").trim());
 
@@ -196,7 +216,7 @@
     row(d, "screen", screen.width + " x " + screen.height);
     row(d, "window.inner", window.innerWidth + " x " + window.innerHeight);
     row(d, "devicePixelRatio", window.devicePixelRatio);
-    row(d, "orientation", (screen.width > screen.height ? "landscape" : "portrait"));
+    row(d, "orientation", (window.innerWidth > window.innerHeight ? "landscape" : "portrait"));
 
     document.getElementById("ua").textContent = navigator.userAgent;
 

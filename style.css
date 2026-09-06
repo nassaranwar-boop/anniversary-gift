@@ -203,6 +203,15 @@ summary,
    --------------------------------------------------------- */
 :root{--app-h:100vh; --app-top:0px;}
 @supports (height:100dvh){:root{--app-h:100dvh;}}
+/* svh last, so it wins wherever it exists. His iPad reports 100vh as 972
+   and 100svh as 892 in an 892 window — vh counts the part of Chrome's
+   toolbar that only goes away if the page scrolls, and this page never
+   scrolls, so that part never goes away. svh is the small viewport: the
+   height with all of the browser's furniture showing. For a site that
+   cannot scroll it is the only one of the four that can never be too
+   tall, which makes it the right value for the first frame, before JS
+   has measured anything. */
+@supports (height:100svh){:root{--app-h:100svh;}}
 
 /* The root element is the scroll box. Pin it to the height that is
    actually visible and there is no overflow left to drag into — which is
