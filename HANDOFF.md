@@ -629,6 +629,19 @@ written — the comment in scrapbook.js says the file is his to drop in — but
 it is the one gap in sixty-three photographs, and `assets/photo-32/33/34`
 exist and are placed nowhere.
 
+**And one that only looked like a wedge.** `mech.js` produced an empty log
+through four attempts of well over an hour each and looked stuck. It was
+not: Node buffers stdout when it is not a terminal, so `> file` and
+`| tail` both show nothing for the whole run and everything at the end —
+and killing a run that is "producing nothing" destroys the only evidence
+that would have said otherwise. Run bare and left alone it finishes **27
+passed, 0 failed, no page errors**: every mechanic, all three difficulty
+profiles, nine distinct worlds, the moat, and the whole boss fight down to
+the projectile cap and the length of every telegraph. Judge these suites by
+their output, not by the wall clock — on a loaded machine they run ten to
+twenty times slow and `timeout` does not reliably fire, because the
+container's own process clock is skewed.
+
 **The two that were not faults, and how to not re-find them:**
 
 *The 3D intro looked like it ran forever.* Profiling a page turn came back

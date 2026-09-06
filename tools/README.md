@@ -54,7 +54,7 @@ these runs; that is the harness, not the site.
 | `apocmech.js` | the stealth assertions: walls stop her, doors open, a wardrobe hides her, being caught is a close call and not a death, and hiding beside a zombie is safe. |
 | `apocflow.js`, `apocflow2.js`, `apocflow3.js`, `apocflow4.js`, `apocflow5.js` | one per level, start to finish, driving the real pointer over the wire panel and the keypad. |
 | `apoc.js`, `apocshots.js` | screenshot the game and every overlay it can put up. |
-| `mech.js` | eighteen assertions on the game itself: hearts, gift blocks, stomping, growing, breaking bricks, pits, the cloud that catches her on Easy, Hard's clock and extra spikes, the moat, the whole boss fight. |
+| `mech.js` | **twenty-seven** assertions on the game itself: hearts, the love meter banking a life and granting the sparkle, gift blocks, stomping, growing, breaking bricks, pits, the cloud that catches her on Easy, Hard's clock and extra spikes, nine distinct worlds across the three difficulties, the moat, and the whole boss fight down to the projectile cap, the length of every telegraph and the opening after every attack. Slow — it boots the chapter three times — so run it bare and let it finish. |
 | `flow.js` | plays all three worlds through to the ending and checks the results cards, the saved best time and the chapter being marked done. |
 | `layout.js` | measures the stage, the touch pad and the HUD at five real device sizes and reports anything that overflows. |
 | `screens.js` | screenshots the how-to, world card, pause menu, results and ending. |
@@ -75,7 +75,7 @@ run you interrupt tells you nothing at all, not even which assertion it had
 reached. That cost several hours in one sitting: mech.js looked wedged
 through four attempts and was in fact passing assertions the whole time,
 and the only reason anybody found out is that killing it flushed the buffer
-and fourteen PASS lines fell out.
+and fourteen PASS lines fell out. Run bare and left alone it finishes: 27 passed, 0 failed, no page errors.
 
 Run them bare and read the output as it comes. If you must capture it, kill
 the process rather than the pipeline when you give up, because the kill is
