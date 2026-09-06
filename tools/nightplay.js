@@ -229,7 +229,10 @@ function ok(name, cond, extra) {
   await page.waitForTimeout(200);
   ok('monitor up', await page.evaluate(() => OuissysNightShift.__night.state().monitor) === true);
   ok('monitor covers the view', await page.locator('#ns-mon:not([hidden])').count() === 1);
-  ok('map has a cell per camera', await page.locator('.ns-cell').count() === 8);
+  /* nine now: the eight rooms she watches, and camera zero, which is
+     the desk she is sitting at */
+  ok('map has a cell per camera', await page.locator('.ns-cell').count() === 9,
+     String(await page.locator('.ns-cell').count()));
   await shot('monitor');
   const camDrain = await page.evaluate(() => { const w = OuissysNightShift.__night; const a = w.state().power; w.pump(10); return a - w.state().power; });
   ok('the monitor costs power', camDrain > drainOpen * 2.5, camDrain.toFixed(1));
@@ -1304,6 +1307,86 @@ function ok(name, cond, extra) {
   ok('and he says nothing with something at the door', manners.atDoor === false);
   ok('and nothing at all once it has her',
      manners.phase === 'over' && manners.afterDeath === false, manners.phase);
+
+  /* SHE PLAYED FOUR NIGHTS AND FELT NOTHING, and most of the reason is
+     that every frightening thing in this chapter happened somewhere
+     else, to a figure walking a route, and reached her as a number
+     going down. The office was inert. Nothing was ever in the room
+     with her until the instant it killed her.
+
+     Camera zero is her own desk. */
+  console.log('\n— and the room she is sitting in is on camera too —');
+  const zero = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    const out = {};
+    out.onPlan = !!document.querySelector('#ns-map .ns-cell[data-room="office"]');
+    w.route('night:3'); w.route('go');
+    w.press('monitor'); w.cam('office');
+    out.selectable = s.cam === 'office';
+    s.hour = 3;
+    const look = (on) => { s.monitor = on; if (on) w.cam('office');
+                           for (let i = 0; i < 6; i++) w.deskStep(0.2); };
+    look(true);  out.first = w.desk();
+    look(false); out.second = w.desk();
+    look(true);  look(false); out.third = w.desk();
+    look(true);  look(false); out.gone = w.desk();
+    /* and it is never on the first two nights */
+    w.route('night:2'); w.route('go');
+    out.night2 = w.desk().armed;
+    return out;
+  });
+  ok('the desk is a camera on the plan', zero.onPlan === true);
+  ok('and she can actually look at it', zero.selectable === true);
+  ok('something is standing in her office',
+     zero.first.on === true && zero.first.at === 0, JSON.stringify(zero.first.where));
+  ok('and every time she looks away it is nearer',
+     zero.second.at === 1 && zero.third.at === 2,
+     zero.first.at + ' -> ' + zero.second.at + ' -> ' + zero.third.at);
+  ok('and it walks up the room toward her rather than away',
+     zero.third.where[1] > zero.first.where[1],
+     'z ' + zero.first.where[1] + ' -> ' + zero.third.where[1]);
+  ok('and then it is simply not there any more, once a night',
+     zero.gone.on === false && zero.gone.seen === true);
+  ok('and it never happens on the first two nights', zero.night2 === false);
+
+  /* one revelation a night, in the middle of the shift */
+  console.log('\n— and every night tells her something about him —');
+  const reveals = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state(), out = { nights: [], heads: [] };
+    for (let n = 1; n <= 6; n++) {
+      w.route('night:' + n); w.route('go');
+      const c = w.cast();
+      Object.keys(c).forEach(k => { c[k].awake = false; c[k].asleep = true; });
+      s.hour = 3; w.pump(2);
+      w.revealStep(0.2);
+      out.nights.push(s.phase);
+      const h = document.querySelector('.ns-paper-head');
+      out.heads.push(h ? h.textContent.trim() : null);
+      w.route('revealOut');
+    }
+    return out;
+  });
+  ok('every one of the six stops in the middle and tells her something',
+     reveals.nights.every(p => p === 'reveal'), reveals.nights.join(','));
+  ok('and no two nights tell her the same thing',
+     new Set(reveals.heads).size === 6, JSON.stringify(reveals.heads[0]));
+
+  /* and they do not look alike either */
+  const looks = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, out = { tones: [], titles: [] };
+    for (let n = 1; n <= 6; n++) {
+      w.route('night:' + n);
+      const t = document.querySelector('.ns-eptitle');
+      out.titles.push(t ? t.textContent.trim() : null);
+      w.route('go');
+      out.tones.push(document.getElementById('ns-stage').dataset.tone);
+    }
+    return out;
+  });
+  ok('every night has a name of its own', new Set(looks.titles).size === 6,
+     looks.titles.join(' / '));
+  ok('and the shop cools out from under her as they go on',
+     new Set(looks.tones).size >= 5, looks.tones.join(','));
 
   /* THE BEAT THE WHOLE CHAPTER IS BUILT ON, WHICH USED TO BE OPTIONAL.
 

@@ -5206,6 +5206,54 @@ img{-webkit-user-drag:none; user-select:none;}
   background:linear-gradient(90deg, var(--ns-brass) 0 36%, transparent 36% 64%, var(--ns-brass) 64% 100%);
 }
 
+/* The episode title. A night is a chapter of something, so it gets a
+   name the way a chapter does, above the line about what has gone
+   wrong in it. */
+.ns-eptitle{
+  margin:.2cqh 0 1cqh; font-family:var(--ns-face);
+  font-size:max(3.1cqh, 17px); font-weight:700; letter-spacing:.22em;
+  color:var(--ns-amber); text-shadow:0 0 18px rgba(255,150,60,.24);
+}
+
+/* SIX NIGHTS, SIX LOOKS.
+
+   Four nights of the same amber office is four nights of the same
+   night, whatever the numbers do underneath. The shop cools and loses
+   its colour as he runs out of things he can keep from her: night one
+   is warm and lit, and night six is nearly ash. It is a grade on the
+   canvas rather than a change to the lighting rig, so it costs nothing
+   and the geometry, the shadows and every measured level stay exactly
+   where they were. */
+.ns-stage[data-tone] #ns-canvas{ transition:filter 1.6s ease-out; }
+.ns-stage[data-tone="warm"]  #ns-canvas{ filter:saturate(1.06) contrast(1.02); }
+.ns-stage[data-tone="cool"]  #ns-canvas{ filter:saturate(0.92) contrast(1.06) brightness(0.96) hue-rotate(-6deg); }
+.ns-stage[data-tone="sick"]  #ns-canvas{ filter:saturate(0.80) contrast(1.10) brightness(0.92) hue-rotate(-12deg); }
+.ns-stage[data-tone="cold"]  #ns-canvas{ filter:saturate(0.66) contrast(1.14) brightness(0.88) hue-rotate(-18deg); }
+.ns-stage[data-tone="ash"]   #ns-canvas{ filter:saturate(0.42) contrast(1.20) brightness(0.84) hue-rotate(-22deg); }
+.ns-stage[data-tone="day"]   #ns-canvas{ filter:none; }
+
+/* and the dark closes in with them: the vignette that keeps the corners
+   of the office black tightens night by night */
+.ns-stage[data-tone="cool"]::after,
+.ns-stage[data-tone="sick"]::after,
+.ns-stage[data-tone="cold"]::after,
+.ns-stage[data-tone="ash"]::after{
+  content:""; position:absolute; inset:0; z-index:6; pointer-events:none;
+  transition:box-shadow 1.6s ease-out, background 1.6s ease-out;
+}
+.ns-stage[data-tone="cool"]::after{ box-shadow:inset 0 0 14cqw 6cqw rgba(0,0,0,.34); }
+.ns-stage[data-tone="sick"]::after{ box-shadow:inset 0 0 16cqw 8cqw rgba(0,0,0,.46); }
+.ns-stage[data-tone="cold"]::after{ box-shadow:inset 0 0 18cqw 10cqw rgba(2,2,4,.58); }
+.ns-stage[data-tone="ash"]::after{  box-shadow:inset 0 0 20cqw 12cqw rgba(2,2,4,.70); }
+
+/* Camera zero is the desk she is sitting at, so it is marked out from
+   the rooms she is only watching. */
+.ns-cell[data-room="office"]{
+  border-style:dashed;
+  border-color:rgba(200,162,96,.55);
+}
+.ns-cell[data-room="office"] b{ color:var(--ns-brass); }
+
 /* Five faders. The slider is a real range input so a thumb gets the
    platform's own drag behaviour, with a track and a knob big enough to
    find without looking. */

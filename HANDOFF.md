@@ -664,3 +664,31 @@ reachable at the moment something is too loud rather than four menus
 later — has a fader for the score, the shop, his voice, the room tone
 and everything, plus the voice picker and a line to test it on. They
 persist, and DONE goes back to wherever she opened it from.
+
+## "I tried the four nights and I didn't feel anything"
+
+The most useful note in this whole build, and three things were true.
+
+**Every night was the same night with one more thing switched off.**
+`HAZARDS` is a list of subtractions — a dead camera, a dark hall, a
+sticky door — so nights three and four were night two with more of them.
+That is a difficulty curve, not six experiences. Each night has a title,
+a grade and a revelation of its own now.
+
+**Nothing ever happened in the room she was sitting in.** All the threat
+was elsewhere, abstracted into a route index, and arrived as a number
+going down. The office was inert for thirty-three minutes and nothing
+was ever in it with her until the instant it killed her. Camera zero
+fixes that and it is the single biggest change in this pass: the ceiling
+behind her chair, looking the way she is looking. From night three
+something stands in it — never touching her, never costing her
+anything, not on anybody's route, one mark closer every time she looks
+away. `stepCast` had to learn to leave a `deskHeld` character alone, and
+the advance had to be latched on the look-away transition rather than
+run per frame (the first version walked all three marks in a fifth of a
+second, which nobody would ever see).
+
+**Nothing he had to say landed inside a night.** A film before, a card
+after, a page she might not find. `NS.reveal` is one thing a night, at
+three in the morning, in his voice, and it waits if anything is at a
+door.

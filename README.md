@@ -473,6 +473,36 @@ stepped in is spent, and will not do it again until she winds it.
 His four are her lives. His instruction is what buys them. Nothing in
 the game says so until the first time it happens.
 
+### Six nights, six experiences
+
+Each night has a name, a look and one thing it tells her about him, in
+the middle of the shift rather than either side of it.
+
+| | | |
+|---|---|---|
+| **One** | THE INVENTORY | a second key, taped under the drawer. He never gave her a key to anything in fifteen years. |
+| **Two** | THE FOUR HE KEPT | four names chalked on the bench, and one word under all of them. |
+| **Three** | FOUR HUNDRED AND ELEVEN | the delivery book. Eleven of the RETURNED boxes are ticked, in a pen that is not his. |
+| **Four** | WHAT THEY WERE FOR | a bank book behind a loose board. One payment a month, from the spring they married. |
+| **Five** | LET IT | a drawing on graph paper: four figures around a woman at a desk, all of them facing outward. |
+| **Six** | THE SHUTTERS GO UP AT SIX | the last thing he wrote, folded under the comb of the music box. |
+
+And the shop goes with them. Night one is warm and lit; by night six it
+is nearly ash, with the dark two-thirds of the way in from the corners.
+
+### Camera zero
+
+The one room in the shop that had no camera on it was the room she is
+sitting in. Everything frightening happened somewhere else, to a figure
+walking a route, and arrived as a number going down.
+
+There is a camera on the desk now — the ceiling directly behind her
+chair, looking the way she is looking. From the third night there is
+sometimes something standing in it. It never touches her, it cannot
+cost her anything, and it is not on anybody's route. It is simply one
+mark closer every time she looks away, walking up the room toward the
+back of her chair, and then it is not there at all.
+
 ### The score
 
 One piece of music, ten rooms to play it in, and it never cuts — the

@@ -350,6 +350,70 @@ const NS = {
     clean: "Six nights and nothing laid a hand on you. I asked for that because I wanted you to hear it from me, and you have earned every word of it.",
     hurt:  "Six nights. Some of them got to you and I am not going to pretend they did not. You came back anyway, which is the part I would have bet on.",
   },
+  /* WHAT SHE LEARNS ABOUT HIM, AND WHEN.
+
+     Everything he had to say used to be said either side of a night —
+     a film before, a card after, a page she might not find. So the
+     four nights she actually played had no revelation in them at all,
+     and a night with no revelation in it is a level.
+
+     One a night, at three in the morning, in the middle of the shift.
+     The shop stops, he says the thing, and she goes back to work
+     knowing something she did not know at midnight. That is the shape
+     of an episode: you do not leave one where you came in. */
+  reveal: {
+    1: { at: "the drawer under the till",
+         head: "A KEY, AND A NOTE IN HIS HAND",
+         lines: [
+           "There is a second key taped under this drawer. It opens the workshop.",
+           "I never gave you a key to anything in fifteen years. Not the shop, not the van, not the room at the back.",
+           "I told myself it was because you never asked.",
+         ],
+         say: "You never asked me for a key. I have thought about that a great deal since." },
+    2: { at: "chalked on the workshop bench, in his hand",
+         head: "FOUR NAMES, AND FOUR WORDS",
+         lines: [
+           "COGSWORTH — never late.",
+           "CHIME — always finds the way in.",
+           "MARABELLE — stops when you look.",
+           "JAX — will not leave the room.",
+           "Underneath all four, in the same chalk: HER.",
+         ],
+         say: "You will have worked out what they are by now. I made four toys and I only ever had one idea." },
+    3: { at: "the delivery book, under the till",
+         head: "FOUR HUNDRED AND ELEVEN ADDRESSES",
+         lines: [
+           "Every line is a name, a street and a date. None of them is a sale.",
+           "The last column is headed RETURNED, and eleven of the boxes are ticked.",
+           "The ticks are in a different pen. They are recent.",
+         ],
+         say: "Eleven of them have already found their way back. I did not tick those. I was not here." },
+    4: { at: "a bank book, behind the loose board",
+         head: "FIFTEEN YEARS OF PAYMENTS",
+         lines: [
+           "One payment a month, every month, from an account with no name on it.",
+           "The first is dated the spring you married him.",
+           "The amounts go up whenever a toy went out.",
+         ],
+         say: "That is our house. That is the car, and the doctor, and the holiday you liked. All of it is on that page." },
+    5: { at: "pinned inside the workshop door",
+         head: "A DRAWING, ON GRAPH PAPER",
+         lines: [
+           "Four figures, drawn carefully, with measurements down the side.",
+           "There is a fifth outline in pencil, in the middle, that has been rubbed out and drawn again.",
+           "It is a woman at a desk. The four of them are standing around her, facing outward.",
+         ],
+         say: "I drew that the week I was told. Four of them, and you in the middle, and all of them looking the other way." },
+    6: { at: "folded into the music box, under the comb",
+         head: "THE LAST THING HE WROTE",
+         lines: [
+           "Ouissy —",
+           "If you are reading this you did the six nights and you did not run, which is exactly what I would have bet on.",
+           "Everything in here is yours. So is the choice about what to do with it.",
+           "I am sorry I was not braver in the daylight.",
+         ],
+         say: "That is the last of it. There is nothing after this one. Thank you for staying." },
+  },
   /* What tonight is FOR. The card told her which night it was and what
      new thing would go wrong; it never told her what she was there to
      do about it, which is the difference between a level and a scene.
@@ -767,7 +831,9 @@ const NIGHTS = [
   {
     n: 1,
     name: "NIGHT ONE",
+    title: "THE INVENTORY",
     blurb: "Nothing has ever happened here.",
+    tone: "warm",
     power: 100,
     /* who is awake, and from which hour (0 = midnight) */
     active: { cogsworth: 0, marabelle: 2, jax: 4 },
@@ -777,7 +843,9 @@ const NIGHTS = [
   {
     n: 2,
     name: "NIGHT TWO",
+    title: "THE FOUR HE KEPT",
     blurb: "Something in the ducts has started keeping time with you.",
+    tone: "cool",
     power: 100,
     active: { cogsworth: 0, chime: 0, marabelle: 1, jax: 2 },
     ramp: [0.90, 1.00, 1.10, 1.22, 1.36, 1.50],
@@ -786,7 +854,9 @@ const NIGHTS = [
   {
     n: 3,
     name: "NIGHT THREE",
+    title: "FOUR HUNDRED AND ELEVEN",
     blurb: "The hall light has been going since ten. Nobody is coming to fix it.",
+    tone: "sick",
     power: 100,
     active: { cogsworth: 0, chime: 0, marabelle: 0, jax: 0 },
     ramp: [0.9, 1.0, 1.1, 1.25, 1.4, 1.55],
@@ -795,7 +865,9 @@ const NIGHTS = [
   {
     n: 4,
     name: "NIGHT FOUR",
+    title: "WHAT THEY WERE FOR",
     blurb: "The meter has started losing chunks of itself to nothing at all.",
+    tone: "cold",
     power: 100,
     active: { cogsworth: 0, chime: 0, marabelle: 0, jax: 0 },
     ramp: [1.0, 1.1, 1.2, 1.35, 1.5, 1.62],
@@ -804,7 +876,9 @@ const NIGHTS = [
   {
     n: 5,
     name: "NIGHT FIVE",
+    title: "LET IT",
     blurb: "The right-hand door takes its time now. So does everything else.",
+    tone: "cold",
     power: 100,
     active: { cogsworth: 0, chime: 0, marabelle: 0, jax: 0 },
     ramp: [1.05, 1.2, 1.3, 1.45, 1.55, 1.7],
@@ -813,7 +887,9 @@ const NIGHTS = [
   {
     n: 6,
     name: "NIGHT SIX",
+    title: "THE SHUTTERS GO UP AT SIX",
     blurb: "Last one. The shop knows it too.",
+    tone: "ash",
     power: 100,
     active: { cogsworth: 0, chime: 0, marabelle: 0, jax: 0 },
     ramp: [1.1, 1.25, 1.35, 1.5, 1.62, 1.75],
@@ -845,6 +921,8 @@ ROOMS.forEach((r) => { ROOM[r.id] = r; });
 
 /* the order the monitor lays them out in, as a little floor plan */
 const MAP_PLAN = [
+  /* the desk is on the plan now, and it is where she is */
+  { id:"office",   x:34,  y:76,  w:30, h:16 },
   { id:"workshop", x: 8,  y: 8,  w:22, h:20 },
   { id:"stage",    x:34,  y: 6,  w:30, h:24 },
   { id:"foyer",    x:68,  y: 8,  w:24, h:22 },
@@ -2971,6 +3049,46 @@ function buildOffice(R) {
      are inside the bottom of the frame — a first-person guard whose
      hands are off screen is a floating camera, not a person. */
   R.cam("main", [0, 1.66, 2.36], [0, 1.0, -2.7], 74);
+
+  /* CAMERA ZERO — THE DESK.
+
+     The one room in the shop with no camera on it was the room she is
+     sitting in. Everything that frightens her happened somewhere else,
+     to a figure on a route, and arrived as a number: the office itself
+     was inert for thirty-three minutes and there was nothing in it to
+     be afraid of.
+
+     So the shop watches the desk too. It is a ceiling corner behind
+     and above her chair, and what it shows is her own back and the two
+     doors past it — the safe place, from outside herself, which is the
+     oldest trick there is and the only one this chapter did not have.
+
+     From the third night there is sometimes something standing in it.
+     It never touches her. It is simply closer than it was the last
+     time she looked. */
+  /* The room is 6.6 by 5.0 and she sits at about z = 2.4, so this is
+     the far corner by the north wall looking BACK at her: the desk,
+     the chair with her in it, and the floor behind it. */
+  /* Over her shoulder. The back wall is at z = 2.5 and she sits at
+     about 2.4, so this is the ceiling directly behind her chair
+     looking the way she is looking: her own desk in the bottom of
+     frame, both doorways ahead, and the length of the room between.
+
+     It matters that it is behind her rather than across from her,
+     because the three marks below walk UP the room toward the lens —
+     so a thing that is one mark closer is also visibly bigger, and
+     "it has moved" is something she sees rather than something she has
+     to work out. */
+  R.cam("desk", [-1.35, 2.36, 2.40], [0.25, 0.90, -2.30], 74);
+
+  /* the three places something can stand in her own office, working
+     inward. Nothing on this list is on a route and nothing on it can
+     kill her; that is the whole point of it. */
+  /* up the room, toward the back of her chair, and kept left of centre
+     because the floor plan on the tube covers the right-hand third */
+  R.anchor("d0", -0.35, 0, -2.05, 0);
+  R.anchor("d1", -0.62, 0, -0.70, 0.15);
+  R.anchor("d2", -0.88, 0,  0.62, 0.25);
 
   /* where the cast stands when it gets here */
   R.anchor("s0",        -W / 2 - 0.62, 0, doorZ,  Math.PI / 2);
@@ -5827,6 +5945,21 @@ const SFX = {
     tone({ type: "square", f0: 96, f1: 62, dur: 0.30, gain: 0.16, filter: "lowpass", ff: 400, at: 1.45 });
   },
 
+  /* Camera zero. Neither of these is a jump — a bang would tell her
+     what to feel and the whole idea is that nothing is happening.
+     One is the picture flinching as something enters frame. The other
+     is the room being empty again, which should be a relief and is
+     not. */
+  deskHere() {
+    burst({ f0: 2100, f1: 900, dur: 0.14, gain: 0.16, q: 1.2, filter: "highpass" });
+    tone({ type: "sine", f0: 58, f1: 43, dur: 1.9, gain: 0.16, filter: "lowpass", ff: 130 });
+    tone({ type: "triangle", f0: 1170, f1: 1160, dur: 1.4, gain: 0.020, at: 0.1 });
+  },
+  deskGone() {
+    tone({ type: "sine", f0: 44, f1: 34, dur: 2.4, gain: 0.13, filter: "lowpass", ff: 110 });
+    burst({ f0: 1400, f1: 500, dur: 0.30, gain: 0.05, q: 0.7, filter: "lowpass", at: 0.06 });
+  },
+
   /* the tube swinging down on its arm, and the picture striking */
   monitor(up) {
     burst({ f0: up ? 1200 : 700, f1: up ? 400 : 1400, dur: 0.18, gain: 0.46, q: 0.7,
@@ -7442,6 +7575,9 @@ function resetCast() {
 
 /* --- one figure's turn -------------------------------------------- */
 function stepCast(ch, dt) {
+  /* whoever is standing in her office on camera zero is not walking a
+     route while it is there, and stepCast would put it back on one */
+  if (ch && ch.deskHeld) return;
   /* the dark belongs to stepBlackout. Leaving this running through it
      decremented the approach timer a second time every frame — and,
      because a blackout forces every door open, anyone already standing
@@ -7944,6 +8080,7 @@ function kill(ch) {
   if (G.phase !== "play") return;
   sayClear();
   tapeOff();
+  DESK.on = false; DESK.armed = false; deskHide();
   /* the terms, broken. He asked for six clean nights; this was not one. */
   if (G.mode === "story") { G.brokeNow = !wasHurt(); markHurt(); }
   /* the score cuts out from under the scare rather than fading through
@@ -8045,6 +8182,172 @@ function stepSignal(dt) {
     say(fmt(NS.sys.camLost, "ZERO " + r.cam), true);
     bumpUI();
   }
+}
+
+/* =========================================================
+   18i. THREE IN THE MORNING
+
+   One revelation a night, in the middle of the shift rather than
+   either side of it. The shop stops, he says the thing, she reads it,
+   and she goes back to work knowing something she did not know at
+   midnight — which is the difference between an episode and a level.
+
+   It never lands on a scare: if anything is at a door it waits, the
+   way his tapes do. And it never lands twice.
+   ========================================================= */
+const REVEAL = { done: false, at: 3 };
+
+function revealReset() { REVEAL.done = false; }
+
+function stepReveal(dt) {
+  if (REVEAL.done || G.mode !== "story" || G.phase !== "play") return;
+  if (G.hour < REVEAL.at || G.blackout) return;
+  const r = NS.reveal && NS.reveal[G.night];
+  if (!r) { REVEAL.done = true; return; }
+  /* not over the top of something at her door */
+  for (const id in cast) if (cast[id] && cast[id].awake && cast[id].atDoor) return;
+  REVEAL.done = true;
+  revealCard(r);
+}
+
+function revealCard(r) {
+  G.phase = "reveal";
+  showHud(false);
+  tapeOff();
+  musicMode("found");
+  SFX.paper();
+  if (r.say) setTimeout(() => {
+    if (G.phase === "reveal") voxSpeak(voxPlan(r.say), { gain: 1 });
+  }, 700);
+  overlay(
+    '<div class="ns-card ns-card-find">' +
+      '<p class="ns-from">' + r.at + '</p>' +
+      '<div class="ns-paper">' +
+        '<p class="ns-paper-head">' + r.head + '</p>' +
+        r.lines.map((l) => "<p>" + l + "</p>").join("") +
+      '</div>' +
+      '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="revealOut">BACK TO IT</button></div>' +
+    '</div>', "ns-ov-find");
+}
+
+function closeReveal() {
+  if (G.phase !== "reveal") return;
+  G.phase = "play";
+  musicMode(G.blackout ? "dark" : "night");
+  noOverlay();
+  showHud(true);
+}
+
+/* =========================================================
+   18h. THE THING ON CAMERA ZERO
+
+   She played four nights and felt nothing, and this is most of the
+   reason: every frightening thing in this chapter happened somewhere
+   else, to a figure walking a route, and reached her as a number going
+   down. The office was inert. Nothing was ever in the room with her
+   until the instant it killed her.
+
+   So from the third night something stands in her office, on camera,
+   behind her chair. The rules of it are the whole design:
+
+     it never touches her      it cannot kill, cannot cost meter, and
+                               is not on anybody's route. It is only
+                               ever a thing that is there.
+     it moves when she looks   three marks, working inward from the
+                               back wall to just behind the chair. Each
+                               separate look at camera zero finds it one
+                               mark closer than the last one did.
+     it is gone when she is    drop the monitor and the office is empty
+                               again, exactly as it was. There is never
+                               anything to find by turning round, and
+                               that is worse.
+     it does not repeat        once per night, and only after two in
+                               the morning, so it is never a mechanic
+                               she can farm — it happens to her.
+
+   The point is not a jump. The point is that the one place she was
+   allowed to feel safe has a camera on it now, and some nights there
+   is somebody in the picture. */
+const DESK = { on: false, at: -1, who: null, seen: false, armed: false, cool: 0, was: false };
+const DESK_FROM = 3;          // the night the office stops being empty
+const DESK_MARKS = ["d0", "d1", "d2"];
+
+function deskReset() {
+  DESK.on = false; DESK.at = -1; DESK.who = null;
+  DESK.seen = false; DESK.cool = 0; DESK.was = false;
+  DESK.armed = G.mode === "story" && G.night >= DESK_FROM;
+  deskHide();
+}
+function deskHide() {
+  if (!DESK.who) return;
+  const ch = cast[DESK.who];
+  if (ch) { ch.deskHeld = false; if (ch.group) syncChar(ch); }
+  DESK.who = null;
+}
+
+/* who is standing there. The one furthest from her door, because the
+   one at her door is busy being a threat and this is not a threat. */
+function deskPick() {
+  let best = null, far = -1;
+  CAST.forEach((d) => {
+    const ch = cast[d.id];
+    if (!ch || ch.atDoor) return;
+    const left = stepsLeft(ch);
+    if (left > far) { far = left; best = ch; }
+  });
+  return best;
+}
+
+function stepDesk(dt) {
+  if (!DESK.armed || G.phase !== "play") return;
+  const watching = G.monitor && G.monOut <= 0 && G.cam === "office";
+
+  if (!DESK.on) {
+    if (DESK.seen || G.hour < 2) return;
+    DESK.cool -= dt;
+    if (DESK.cool > 0) return;
+    /* it starts the moment she next looks at her own desk */
+    if (!watching) { DESK.cool = 0.5; return; }
+    const ch = deskPick();
+    if (!ch) { DESK.cool = 3; return; }
+    DESK.on = true;
+    DESK.who = ch.def.id;
+    DESK.at = 0;
+    ch.deskHeld = true;
+    putChar(ch, "office", DESK_MARKS[0]);
+    ch.atDoor = false;
+    SFX.deskHere();
+    return;
+  }
+
+  const ch = cast[DESK.who];
+  if (!ch) { DESK.on = false; return; }
+
+  if (watching) {
+    DESK.was = true;
+    /* it holds still while she is actually looking at it */
+    putChar(ch, "office", DESK_MARKS[clamp(DESK.at, 0, DESK_MARKS.length - 1)]);
+    ch.atDoor = false;
+    return;
+  }
+
+  /* She looked away. It is closer now — once per look, on the moment
+     she stops looking, and not once per frame after that: the first
+     version walked all three marks and vanished inside a fifth of a
+     second, which is not a thing anybody would ever see happen. */
+  if (!DESK.was) return;
+  DESK.was = false;
+  DESK.at++;
+  if (DESK.at >= DESK_MARKS.length) {
+    /* and then it is simply not there any more */
+    DESK.on = false;
+    DESK.seen = true;
+    deskHide();
+    SFX.deskGone();
+    return;
+  }
+  putChar(ch, "office", DESK_MARKS[DESK.at]);
+  ch.atDoor = false;
 }
 
 /* =========================================================
@@ -8570,6 +8873,8 @@ function frame(ts) {
       stepShifts(dt);
       stepHazards(dt);
       stepWind(dt);
+      stepDesk(dt);
+      stepReveal(dt);
       stageTheTurn(dt);
       /* the meter's own warnings, and the system reading them out */
       if (G.power < TUNE.power.critical && G.warned < 2) { G.warned = 2; SFX.beep(true); say(NS.sys.pwr10, true); }
@@ -8603,7 +8908,8 @@ function frame(ts) {
   const room = G.phase === "intro" ? CINE.room
              : G.mode === "gallery" ? G.cam
              : (G.phase === "play" && G.monitor) ? G.cam : "office";
-  const camName = "main";
+  /* the desk has its own angle, and only while she is watching it */
+  const camName = (room === "office" && G.phase === "play" && G.monitor) ? "desk" : "main";
   if (room !== shownRoom || useView.__last !== room + camName) {
     showRoom(room);
     useView(room, camName);
@@ -8679,11 +8985,8 @@ function buildUI() {
       b.addEventListener("click", (e) => { e.stopPropagation(); selectCam(m.id); });
       map.appendChild(b);
     });
-    /* the office, marked but not selectable — it is where you are */
-    const you = document.createElement("span");
-    you.className = "ns-you";
-    you.innerHTML = "<i>YOU</i>";
-    map.appendChild(you);
+    /* The office used to be a label reading YOU that could not be
+       selected. It is camera zero now, and it can. */
   }
 
   if (EL["ns-static"]) {
@@ -8844,6 +9147,7 @@ function screenBrief() {
   overlay(
     '<div class="ns-card ns-card-brief">' +
       '<p class="ns-nightno">' + cfg.name + '</p>' +
+      (cfg.title ? '<p class="ns-eptitle">' + cfg.title + '</p>' : "") +
       '<p class="ns-blurb">' + cfg.blurb + '</p>' +
       (NS.why[G.night] ? '<p class="ns-why">' + NS.why[G.night] + '</p>' : "") +
       body +
@@ -9217,6 +9521,7 @@ function route(cmd) {
   else if (cmd === "gallery" || cmd === "galleryOffer") { beginGallery(); }
   else if (cmd === "arcadeOut") { arcadeClose(); }
   else if (cmd === "findOut") { closeFind(); }
+  else if (cmd === "revealOut") { closeReveal(); }
   else if (cmd === "heldOut") { closeHeld(); }
   else if (cmd === "intro") { cineStart(); }
   else if (cmd === "introDone") { cineStop(true); }
@@ -9250,6 +9555,19 @@ function route(cmd) {
     G.cfg = nightCfg(G.night);
     G.phase = "brief"; screenBrief();
   }
+}
+
+/* Each night has a look of its own. Four nights of the same amber
+   office is four nights of the same night, however the numbers move
+   underneath it — so the shop cools, dims and loses its colour as he
+   runs out of things he can keep from her. Night one is warm and lit;
+   night six is nearly ash. */
+function nightTone() {
+  if (!stageEl) return;
+  const cfg = G.cfg;
+  if (G.mode === "gallery") { stageEl.dataset.tone = "day"; return; }
+  stageEl.dataset.tone = (cfg && cfg.tone) || "warm";
+  stageEl.dataset.night = String(G.night || 0);
 }
 
 function beginNight(n, opts) {
@@ -9312,7 +9630,10 @@ function beginNight(n, opts) {
   showHud(true);
   bedStart();
   musicMode("night");
+  nightTone();
   tapeReset();
+  deskReset();
+  revealReset();
   say(NS.sys.boot);
   if (G.cozy) say(NS.sys.cozy);
   if (hazard("stickyDoor")) say(NS.sys.doorFault);
@@ -10372,7 +10693,7 @@ function arcadeStep(dt) {
    where the doors are.
    ========================================================= */
 /* the camera list, in the order the numbers on the monitor run */
-const CAM_ORDER = ROOMS.filter((r) => r.cam > 0).sort((a, b) => a.cam - b.cam);
+const CAM_ORDER = ROOMS.filter((r) => r.cam >= 0).sort((a, b) => a.cam - b.cam);
 
 function toggleDoor(k) {
   if (G.phase !== "play") return;
@@ -10408,7 +10729,7 @@ function toggleMonitor() {
 }
 
 function selectCam(id) {
-  if (!ROOM[id] || id === "office") return;
+  if (!ROOM[id]) return;
   if (G.cam === id) return;
   G.cam = id;
   SFX.camSwitch();
@@ -10683,6 +11004,14 @@ const testHooks = {
     G.pumping = false;
     return { phase: G.phase, hour: G.hour, power: G.power, dead: G.dead };
   },
+  /* what is standing in her own office, and how near it has got */
+  desk: () => ({ armed: DESK.armed, on: DESK.on, at: DESK.at,
+                 who: DESK.who, seen: DESK.seen,
+                 where: DESK.who && cast[DESK.who]
+                   ? [+cast[DESK.who].group.position.x.toFixed(2),
+                      +cast[DESK.who].group.position.z.toFixed(2)] : null }),
+  deskStep: (dt) => { stepDesk(dt); return DESK.at; },
+  revealStep: (dt) => { stepReveal(dt); return G.phase; },
   put(id, step) {
     const ch = cast[id];
     if (!ch) return;
