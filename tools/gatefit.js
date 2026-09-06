@@ -30,7 +30,14 @@ const ok=(n,c,x)=>{ if(c){pass++;console.log('PASS  '+n+(x?'   '+x:''));} else {
     await p.waitForTimeout(120);
     let filled = await p.evaluate(()=>document.querySelectorAll('.gate-dot.filled').length);
     ok(l+': the keys fill the dots', filled===4, filled+'/4');
-    await p.waitForTimeout(1400);
+    /* A wrong code is deliberately NOT wiped out from under her: it shows
+       the error, flashes the dots red and shakes the card, and clears 620ms
+       later — 920ms after the fourth digit, counting the auto-check. Wait
+       for the dots to empty rather than for a number of milliseconds, or a
+       loaded machine reports the site as broken when it is only slow. */
+    await p.waitForFunction(
+      () => document.querySelectorAll('.gate-dot.filled').length === 0,
+      { timeout: 15000, polling: 200 }).catch(() => {});
     let err = await p.evaluate(()=>({msg:(document.getElementById('gate-error').textContent||'').trim(),
                                      dots:document.querySelectorAll('.gate-dot.filled').length}));
     ok(l+': a wrong code is refused and cleared', err.msg.length>0 && err.dots===0, JSON.stringify(err));
