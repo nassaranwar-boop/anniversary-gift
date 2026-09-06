@@ -705,7 +705,11 @@ window.Scrapbook = (function () {
           if (spark > 0.93) v = 248;
           else if (spark > 0.86) v += 34;
           v = Math.max(26, Math.min(255, v));
-          ctx.fillStyle = "rgb(" + (v | 0) + "," + Math.min(255, (v + 6) | 0) + "," + Math.min(255, (v + 16) | 0) + ")";
+          /* Warm, not chrome. Every tile used to be rgb(v, v+6, v+16) --
+             sixteen points more blue than red -- and two of these hang on
+             a rose page as the coldest thing in the book. The same mirror
+             lit by the same warm room: red leads, blue trails. */
+          ctx.fillStyle = "rgb(" + Math.min(255, (v + 14) | 0) + "," + Math.min(255, (v + 2) | 0) + "," + Math.max(0, (v - 12) | 0) + ")";
           ctx.fillRect(cx + x, cy + y, cell - 0.9, cell - 0.9);
         }
       }
@@ -882,9 +886,13 @@ window.Scrapbook = (function () {
             px - rr * 0.5, py - rr * 0.5, px + rr * 0.5, py + rr * 0.5);
           function ch(v) { return Math.max(20, Math.min(238, Math.round(v))); }
           var base = 74 + ring * 13;
-          g.addColorStop(0,    "rgb(" + ch(base + 96) + "," + ch(base + 104) + "," + ch(base + 112) + ")");
-          g.addColorStop(0.42, "rgb(" + ch(base + 8)  + "," + ch(base + 18)  + "," + ch(base + 30)  + ")");
-          g.addColorStop(1,    "rgb(" + ch(base - 56) + "," + ch(base - 44) + "," + ch(base - 28) + ")");
+          /* Warm pearl. Same fault as the disco ball and the pale star:
+             the petals ran cooler as they got lighter, so the highlight
+             was the bluest part of the flower and it sat on the page like
+             something borrowed from another book. */
+          g.addColorStop(0,    "rgb(" + ch(base + 116) + "," + ch(base + 100) + "," + ch(base + 88) + ")");
+          g.addColorStop(0.42, "rgb(" + ch(base + 30)  + "," + ch(base + 16)  + "," + ch(base + 8)  + ")");
+          g.addColorStop(1,    "rgb(" + ch(base - 24) + "," + ch(base - 44) + "," + ch(base - 58) + ")");
           ctx.fillStyle = g;
           ctx.save();
           ctx.translate(px, py);
@@ -902,7 +910,8 @@ window.Scrapbook = (function () {
       }
       /* the bud at the centre */
       var bg = ctx.createRadialGradient(cx - W * 0.03, cy - W * 0.035, 1, cx, cy, W * 0.10);
-      bg.addColorStop(0, "#fdfeff"); bg.addColorStop(0.55, "#aebecb"); bg.addColorStop(1, "#5d6f7d");
+      /* the bead at the centre: warm pearl, not a blue one */
+      bg.addColorStop(0, "#fffdfa"); bg.addColorStop(0.55, "#e0c3b6"); bg.addColorStop(1, "#8a6357");
       ctx.fillStyle = bg;
       ctx.beginPath(); ctx.arc(cx, cy, W * 0.095, 0, 6.29); ctx.fill();
       ctx.strokeStyle = "rgba(28,40,54,0.4)"; ctx.lineWidth = W * 0.008; ctx.stroke();
@@ -1185,8 +1194,13 @@ window.Scrapbook = (function () {
       } else if (kind === "rose") {
         g.addColorStop(0, "#c98fa0"); g.addColorStop(0.5, "#8d4a5e"); g.addColorStop(1, "#b87e90");
       } else {
-        g.addColorStop(0, "#ffffff"); g.addColorStop(0.4, "#c2d0da");
-        g.addColorStop(0.7, "#7b8b98"); g.addColorStop(1, "#e6eef4");
+        /* The pale star. It was silver -- #c2d0da into #7b8b98, a blue
+           steel -- and it turns up on five pages of a book whose every
+           other colour is rose, cream or gold. It is a pearl now: the
+           same job, the light one of the three stars, in the book's own
+           warmth. */
+        g.addColorStop(0, "#fffaf3"); g.addColorStop(0.4, "#f0dacf");
+        g.addColorStop(0.7, "#c0968e"); g.addColorStop(1, "#fdf0e6");
       }
       ctx.fillStyle = g; ctx.fill();
       if (kind === "rose") {
@@ -1308,7 +1322,11 @@ window.Scrapbook = (function () {
     var h = w * 0.72;
     return tex(w, h, function (ctx, W, H) {
       var g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, "#dfe7ea"); g.addColorStop(0.5, "#a9b8bf"); g.addColorStop(1, "#78888f");
+      /* The biggest cool object in the book, and it took most of a page.
+         Blue-grey #dfe7ea/#a9b8bf/#78888f becomes a warm pewter-rose --
+         still obviously a metal camera body, no longer the one thing on
+         the spread that belongs to a different palette. */
+      g.addColorStop(0, "#efe0d6"); g.addColorStop(0.5, "#bfa093"); g.addColorStop(1, "#8e6d63");
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.moveTo(W * 0.04, H * 0.30);
@@ -1323,9 +1341,9 @@ window.Scrapbook = (function () {
       ctx.strokeStyle = "rgba(40,55,62,0.45)"; ctx.lineWidth = 2; ctx.stroke();
 
       /* lens barrel */
-      ctx.fillStyle = "#5c6d75";
+      ctx.fillStyle = "#6d5a55";
       ctx.beginPath(); ctx.arc(W * 0.5, H * 0.60, W * 0.20, 0, 6.29); ctx.fill();
-      ctx.fillStyle = "#2b363b";
+      ctx.fillStyle = "#33262a";
       ctx.beginPath(); ctx.arc(W * 0.5, H * 0.60, W * 0.14, 0, 6.29); ctx.fill();
       var lg = ctx.createRadialGradient(W * 0.45, H * 0.53, 1, W * 0.5, H * 0.60, W * 0.14);
       lg.addColorStop(0, "rgba(180,230,240,0.55)"); lg.addColorStop(1, "rgba(20,40,50,0)");
@@ -1333,9 +1351,9 @@ window.Scrapbook = (function () {
       ctx.beginPath(); ctx.arc(W * 0.5, H * 0.60, W * 0.14, 0, 6.29); ctx.fill();
 
       /* shutter + dial */
-      ctx.fillStyle = "#8fa0a8";
+      ctx.fillStyle = "#a08d84";
       ctx.beginPath(); ctx.arc(W * 0.17, H * 0.24, W * 0.045, 0, 6.29); ctx.fill();
-      ctx.fillStyle = "#c8d4d9";
+      ctx.fillStyle = "#dccbc2";
       ctx.fillRect(W * 0.74, H * 0.18, W * 0.14, H * 0.10);
 
       ctx.fillStyle = "rgba(30,42,48,0.8)";
@@ -1523,34 +1541,50 @@ window.Scrapbook = (function () {
   var PAGES = [
     /* ---- 1 · disco ---------------------------------------------- */
     { paper: "rose", pieces: [
+      /* All four of these hung off the left edge, so the page weighed 13
+         points to that side and the right column below the title was bare
+         paper from a third of the way down to the foot. The chrome rose
+         crosses over to hold that side; the rest stay where they were. */
       { k: "sticker", art: "disco",   left: -9, top:  2, w: 34, rot: 0 },
-      { k: "sticker", art: "rose",    left: -4, top: 30, w: 26, rot: -8 },
-      { k: "sticker", art: "flowers", left: -7, top: 56, w: 32, rot: -6 },
+      { k: "sticker", art: "flowers", left: -7, top: 54, w: 32, rot: -6 },
       { k: "sticker", art: "disco",   left: -5, top: 78, w: 26, rot: 0 },
       { k: "bigtype", text: W.p1big, left: 68, top: 6, size: 16, vertical: true, colour: "rgba(255,255,255,.22)" },
       { k: "photo", n: 1, style: "polaroid", left: 26, top:  5, w: 36.1, rot: -6, tape: "top" },
       { k: "photo", n: 2, style: "snapshot", left: 14, top: 44, w: 37.7, rot:  4, tape: "corner" },
-      { k: "photo", n: 3, style: "corners",  left: 40, top: 68, w: 34.4, rot: -3 },
-      { k: "sticker", art: "lips",    left: 62, top: 48, w: 19, rot: 14 },
+      { k: "photo", n: 3, style: "corners",  left: 38, top: 66, w: 38, rot: -3 },
+      { k: "sticker", art: "rose",    left: 73, top: 54, w: 24, rot: -8 },
+      { k: "sticker", art: "lips",    left: 60, top: 44, w: 19, rot: 14 },
       { k: "sticker", art: "vinyl8",  left: 70, top: 82, w: 26, rot: 0 },
       { k: "burst", left: 72, top: 38, w: 9 },
+      { k: "sticker", art: "starG", left: 84, top: 18, w: 13, rot: -12 },
       /* the opening page carried a two-word bigtype and nothing else */
       { k: "script", text: W.p1script, left: 24, top: 92, w: 44, rot: -2, size: 3.1 },
     ]},
 
     /* ---- 2 · memories -------------------------------------------- */
     { paper: "rose", pieces: [
-      { k: "note", left: 4, top: 5, w: 56, rot: -1.5, text: W.p2note },
-      { k: "letters", text: "MEMORIES", left: 84, top: 6 },
-      { k: "sticker", art: "lipInk",  left: 36, top: 88, w: 24, rot: -12 },
-      { k: "sticker", art: "starD",   left: 84, top: 44, w: 16, rot: 8 },
-      { k: "sticker", art: "rose",    left: 76, top: 72, w: 26, rot: -6 },
-      { k: "photo", n: 4, style: "deckle",   left:  6, top: 30, w: 31, rot: -4, caption: W.p2small },
-      { k: "sticker", art: "vinyl8", left: 44, top: 28, w: 22, rot: 0 },
-      { k: "photo", n: 5, style: "polaroid", left: 48, top: 30, w: 32, rot:  3 },
-      { k: "photo", n: 6, style: "matted",   left:  6, top: 62, w: 29, rot:  2 },
-      { k: "photo", n: 7, style: "snapshot", left: 50, top: 74, w: 34, rot: -4 },
-      { k: "sticker", art: "flowers", left: 34, top: 60, w: 22, rot: 8 },
+      /* THE NOTE COULD NOT BE READ.
+
+         It sat at top:5 running to about 42% of the page, and photographs
+         4 and 5 both started at top:30 -- so the last three lines went
+         under them and the sentence stopped at "the way you looked at".
+         The note is the first thing on the page and the reason the rest of
+         it is here; it gets the top third to itself now, and the two rows
+         of photographs start below where it ends. */
+      { k: "note", left: 4, top: 3, w: 54, rot: -1.5, text: W.p2note },
+      { k: "letters", text: "MEMORIES", left: 84, top: 4 },
+      /* this was a second "8" record, directly across the gutter from the
+         one on the facing page and the same size -- the eye went straight
+         to the pair of them. A plain wine pressing instead. */
+      { k: "sticker", art: "vinylLtd", left: 62, top: 24, w: 24, rot: 0 },
+      { k: "sticker", art: "starD",   left: 85, top: 40, w: 15, rot: 8 },
+      { k: "photo", n: 4, style: "deckle",   left:  4, top: 45, w: 33, rot: -4, caption: W.p2small },
+      { k: "photo", n: 5, style: "polaroid", left: 48, top: 43, w: 34, rot:  3 },
+      { k: "photo", n: 6, style: "matted",   left:  5, top: 71, w: 31, rot:  2 },
+      { k: "photo", n: 7, style: "snapshot", left: 51, top: 73, w: 35, rot: -4 },
+      { k: "sticker", art: "flowers", left: 38, top: 62, w: 22, rot: 8 },
+      { k: "sticker", art: "rose",    left: 78, top: 70, w: 24, rot: -6 },
+      { k: "sticker", art: "lipInk",  left: 38, top: 90, w: 22, rot: -12 },
     ]},
 
     /* ---- 3 · the camera ------------------------------------------ */
@@ -1560,9 +1594,16 @@ window.Scrapbook = (function () {
       { k: "patch", paper: "grid", left: 10, top: 0, w: 48, h: 27, rot: -3 },
       { k: "instantcam", n: 8, left: 20, top: 6, w: 68, rot: 1 },
       { k: "img", src: "assets/key.png", left: 26, top: 55, w: 9, rot: 12 },
-      { k: "script", text: W.p3script, left: 50, top: 55, w: 44, rot: -7, size: 3.4 },
-      { k: "sticker", art: "flowers", left: 66, top: 32, w: 30, rot: 7 },
-      { k: "sticker", art: "starS",   left: 81.5, top: 88, w: 16, rot: -14 },
+      { k: "script", text: W.p3script, left: 48, top: 50, w: 44, rot: -7, size: 3.4 },
+      /* lifted clear of the caption it was sitting on */
+      { k: "sticker", art: "flowers", left: 70, top: 24, w: 28, rot: 7 },
+      /* The foot of this page was bare paper from the card's edge to the
+         corner. A record filled it, but page four has one in almost the
+         same place -- across an open spread that read as a matched pair
+         rather than a scrapbook. A kiss and the flowers do the same job
+         without the symmetry. */
+      { k: "sticker", art: "lipInk", left: 73, top: 66, w: 24, rot: -10 },
+      { k: "sticker", art: "starS",   left: 80, top: 90, w: 15, rot: -14 },
       { k: "idcard", n: 9, left: 5, top: 64, w: 72, rot: -2 },
     ]},
 
@@ -1587,35 +1628,54 @@ window.Scrapbook = (function () {
     /* ---- 5 · the record ------------------------------------------ */
     { paper: "rose", pieces: [
       { k: "typecol", text: "Th", left: -1, top: 3, w: 14 },
-      { k: "sticker", art: "vinylRose", left: -8, top: 10, w: 56, rot: 0 },
-      { k: "sticker", art: "clock", left: 0, top: 16, w: 26, rot: 0 },
-      { k: "curvetext", text: W.p5vinyl, left: -6, top: 12, w: 52 },
-      { k: "sticker", art: "lipInk", left: 66, top: 2, w: 22, rot: -8 },
-      { k: "photo", n: 11, style: "washed",   left: 30, top:  8, w: 50.8, rot: -5, tape: "top" },
-      { k: "photo", n: 12, style: "matted",   left: 10, top: 46, w: 36.1, rot:  3 },
-      { k: "photo", n: 13, style: "polaroid", left: 54, top: 52, w: 34.4, rot: -3 },
+      /* A 56-wide record hanging off the left edge with the clock on top of
+         it put this page's weight fifteen points to that side -- the most
+         lopsided page in the book by a factor of three. The record is the
+         size of the others now. */
+      { k: "sticker", art: "vinylRose", left: -6, top: 12, w: 46, rot: 0 },
+      { k: "sticker", art: "clock", left: 2, top: 18, w: 24, rot: 0 },
+      /* "i am a lucky girl" runs round the record, and a third of it was
+         under photograph 11 and another eighth under photograph 12. The
+         curve is shorter now and the big photograph starts to the right of
+         where it ends. */
+      { k: "curvetext", text: W.p5vinyl, left: -6, top: 12, w: 40 },
+      { k: "sticker", art: "lipInk", left: 68, top: 2, w: 20, rot: -8 },
+      { k: "photo", n: 11, style: "washed",   left: 36, top:  6, w: 48, rot: -5, tape: "top" },
+      { k: "photo", n: 12, style: "matted",   left:  8, top: 46, w: 38, rot:  3 },
+      { k: "photo", n: 13, style: "polaroid", left: 56, top: 48, w: 42, rot: -3 },
+      /* the page leaned hard left -- its weight sat 21 points off centre.
+         A star and a record's worth of ink on the right answer it. */
+      { k: "sticker", art: "starG", left: 83, top: 40, w: 14, rot: 12 },
       { k: "sticker", art: "flowers", left: -6, top: 78, w: 28, rot: -8 },
-      { k: "sticker", art: "lipInk", left: 34, top: 88, w: 18, rot: 12 },
+      { k: "sticker", art: "rose", left: 73, top: 78, w: 24, rot: 8 },
+      { k: "sticker", art: "lipInk", left: 34, top: 90, w: 18, rot: 12 },
     ]},
 
     /* ---- 6 · cold hands ------------------------------------------ */
     { paper: "ivory", pieces: [
       { k: "patch", paper: "news", left: 48, top: -3, w: 58, h: 28, rot: 4 },
       { k: "patch", paper: "rose", left: -8, top: 54, w: 34, h: 54, rot: -3 },
-      { k: "photo", n: 14, style: "polaroid", left:  4, top:  4, w: 32.8, rot: -4, tape: "corner" },
-      { k: "photo", n: 15, style: "snapshot", left: 52, top:  8, w: 36.1, rot:  4 },
-      { k: "script", text: W.p6note, left: 2, top: 40, w: 32, rot: -3, size: 3.4, dark: true },
-      { k: "photo", n: 16, style: "deckle",   left: 44, top: 40, w: 31.2, rot: -2 },
-      { k: "photobooth", cells: [17, 18, 19], left: 6, top: 54, w: 22, rot: 5 },
-      { k: "sticker", art: "starD", left: 84, top: 56, w: 16, rot: -14 },
-      { k: "label", text: W.p6label, left: 44, top: 80, w: 40, rot: -4 },
-      { k: "sticker", art: "flowers", left: 30, top: 82, w: 24, rot: 6 },
+      /* The emptiest page in the book at 51% covered, with the smallest
+         photographs in it -- four prints all under 38% of the page width
+         while the facing spread ran to 62%. They are the size of the rest
+         of the book now, and the label has the corner to itself instead
+         of a quarter of it under a spray of flowers. */
+      { k: "photo", n: 14, style: "polaroid", left:  3, top:  3, w: 38, rot: -4, tape: "corner" },
+      { k: "photo", n: 15, style: "snapshot", left: 50, top:  6, w: 41, rot:  4 },
+      { k: "script", text: W.p6note, left: 3, top: 42, w: 32, rot: -3, size: 3.4, dark: true },
+      { k: "photo", n: 16, style: "deckle",   left: 46, top: 40, w: 37, rot: -2 },
+      { k: "photobooth", cells: [17, 18, 19], left: 5, top: 56, w: 26, rot: 5 },
+      { k: "sticker", art: "starD", left: 86, top: 30, w: 15, rot: -14 },
+      { k: "sticker", art: "flowers", left: 34, top: 84, w: 22, rot: 6 },
+      { k: "sticker", art: "lipInk", left: 84, top: 62, w: 20, rot: 10 },
+      { k: "label", text: W.p6label, left: 56, top: 82, w: 40, rot: -4 },
     ]},
 
     /* ---- 7 · the film strip -------------------------------------- */
     { paper: "ivory", pieces: [
       { k: "script", text: W.p7script, left: 10, top: 2, w: 46, rot: 0, size: 3.4, faint: true },
-      { k: "sticker", art: "starS", left: 0, top: 8, w: 20, rot: 16 },
+      /* it was sitting on the last line of the caption above it */
+      { k: "sticker", art: "starS", left: -2, top: 24, w: 19, rot: 16 },
       { k: "filmcam", left: 2, top: 15, w: 52, rot: -8 },
       { k: "sticker", art: "vinylRose", left: -12, top: 50, w: 46, rot: 0 },
       { k: "sticker", art: "clock", left: 30, top: 80, w: 22, rot: 0 },
@@ -1635,10 +1695,16 @@ window.Scrapbook = (function () {
       { k: "patch", paper: "mauveCloth", left: 52, top: -3, w: 56, h: 46, rot: 6 },
       { k: "patch", paper: "mauveCloth", left: -8, top: 58, w: 52, h: 50, rot: -5 },
       { k: "sticker", art: "vinylLtd", left: 62, top: 14, w: 44, rot: 0 },
-      { k: "photo", n: 23, style: "washed", left: 3, top:  6, w: 57.4, rot: -7 },
-      { k: "photo", n: 24, style: "washed", left: 20, top: 46, w: 59, rot:  4 },
+      /* These two were 57 and 59 wide against a book that otherwise runs
+         31 to 45 -- big enough that turning onto this spread felt like a
+         change of scale rather than a change of page. They are still the
+         largest prints in the book, and now by a hand rather than by half
+         again. */
+      { k: "photo", n: 23, style: "washed", left: 4, top:  6, w: 50, rot: -7 },
+      { k: "photo", n: 24, style: "washed", left: 22, top: 46, w: 51, rot:  4 },
       { k: "sticker", art: "starD", left: 4, top: 78, w: 22, rot: -20 },
-      { k: "sticker", art: "lips", left: 72, top: 86, w: 20, rot: 12 },
+      { k: "sticker", art: "lips", left: 70, top: 84, w: 24, rot: 12 },
+      { k: "sticker", art: "flowers", left: 46, top: 84, w: 24, rot: 6 },
       /* this page had no words on it at all, and two of the best portraits
          in the book sitting on it saying nothing */
       { k: "script", text: W.p8script, left: 7, top: 90, w: 50, rot: -2, size: 3.0 },
@@ -1649,20 +1715,26 @@ window.Scrapbook = (function () {
     /* ---- 9 · these memories -------------------------------------- */
     { paper: "grid", pieces: [
       { k: "patch", paper: "rose", left: 40, top: 6, w: 38, h: 52, rot: 2 },
-      { k: "photo", n: 25, style: "washed", left: 6, top: -2, w: 42.6, rot: 1, tape: "top" },
-      { k: "label2", text: W.p9label, left: 58, top: 4, w: 36, rot: -3 },
-      { k: "sticker", art: "starG", left: 86.5, top: 1, w: 12, rot: 12 },
-      { k: "photobooth", cells: [26, 27, 28], left: 4, top: 34, w: 22, rot: -4 },
-      { k: "photo", n: 29, style: "corners", left: 34, top: 46, w: 36.1, rot: -3 },
+      { k: "photo", n: 25, style: "washed", left: 4, top: -2, w: 44, rot: 1, tape: "top" },
+      { k: "label2", text: W.p9label, left: 58, top: 2, w: 36, rot: -3 },
+      { k: "sticker", art: "starG", left: 85, top: 22, w: 12, rot: 12 },
+      /* The top right corner of this page was the emptiest quadrant in the
+         book -- 32% filled, a label and then bare grid down to the middle.
+         The print that was marooned in the centre moves up into it, and
+         the photobooth strip grows: at 22 it was the smallest thing in the
+         book by half. */
+      { k: "photo", n: 29, style: "corners", left: 54, top: 22, w: 42, rot: -3 },
+      { k: "photobooth", cells: [26, 27, 28], left: 4, top: 38, w: 28, rot: -4 },
       { k: "patch", paper: "blush", left: 50, top: 74, w: 50, h: 32, rot: 3 },
-      { k: "sticker", art: "flowers", left: 62, top: 72, w: 34, rot: 4 },
-      { k: "sticker", art: "starG", left: 52, top: 80, w: 10, rot: 20 },
+      { k: "sticker", art: "flowers", left: 60, top: 66, w: 36, rot: 4 },
+      { k: "sticker", art: "starG", left: 50, top: 82, w: 11, rot: 20 },
+      { k: "sticker", art: "lipInk", left: 77, top: 88, w: 20, rot: -12 },
       /* the club night: a record, a kiss, and a scatter of small stars.
          The grid ran empty down the left below the photobooth strip. */
       { k: "sticker", art: "vinylLtd", left: -12, top: 62, w: 34, rot: 0 },
       { k: "sticker", art: "lipInk",   left: 2,  top: 88, w: 22, rot: 12 },
       { k: "sticker", art: "starD",    left: 30, top: 26, w: 13, rot: -18 },
-      { k: "sticker", art: "starS",    left: 84, top: 44, w: 14, rot: 10 },
+      { k: "sticker", art: "starS",    left: 40, top: 62, w: 14, rot: 10 },
     ]},
 
     /* ---- 10 · a video of us -------------------------------------- */
@@ -1676,7 +1748,10 @@ window.Scrapbook = (function () {
       { k: "sticker", art: "rose",    left: 1, top: 74, w: 26, rot: 6 },
       /* the closing page. Flowers over the top corner and a last kiss under
          the clip, so the book ends dressed rather than trailing off. */
-      { k: "sticker", art: "flowers", left: 66, top: -6, w: 30, rot: 8 },
+      { k: "sticker", art: "flowers", left: 68, top: 2, w: 28, rot: 8 },
+      /* the band between the flowers and the video card was bare cloth --
+         a record for the song the clip is set to */
+      { k: "sticker", art: "vinylRose", left: 70, top: 22, w: 30, rot: 0 },
       { k: "sticker", art: "lipInk",  left: 74, top: 90, w: 22, rot: -10 },
       { k: "sticker", art: "starD",   left: 6,  top: 4,  w: 14, rot: 16 },
     ]},
@@ -4351,7 +4426,12 @@ window.Scrapbook = (function () {
     });
 
     job(function () { STICK.disco    = discoBall(140); });
-    job(function () { STICK.vinyl8   = vinyl(190, { text: "8" }); });
+    /* This one took the default #141414 -- a pure black disc, and the two
+       pages it sits on are rose. It was the heaviest, coldest thing left in
+       the book once the chrome had been warmed. The other two records are
+       already wine; this is the same family, kept darkest of the three so
+       the "8" still reads. */
+    job(function () { STICK.vinyl8   = vinyl(190, { body: "#2a1119", label: "#f6e7dc", text: "8" }); });
     job(function () { STICK.vinylRose= vinyl(230, { body: "#5b2434", label: "#f2ddd2", text: "" }); });
     job(function () { STICK.vinylLtd = vinyl(200, { body: "#3a1d28", label: "#f2e4d6", text: "" }); });
     job(function () { STICK.lipInk   = lipStamp(120, "#8e3b50"); });

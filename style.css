@@ -1801,8 +1801,12 @@ img{-webkit-user-drag:none; user-select:none;}
   font-size:6.2cqw; font-weight:700; transform:rotate(var(--r,0deg));
   box-shadow:0 2px 4px rgba(0,0,0,.28);
 }
-.sb-letter-0{font-family:var(--font-display); background:#f4ead6; color:#22303f;}
-.sb-letter-1{font-family:var(--font-body); background:#22303f; color:#f4ead6;}
+/* These were cream and #22303f -- a cold navy, and the only navy anywhere
+   in the book. MEMORIES ran down the edge of page two in it, next to rose
+   paper and gold rules. Wine instead: the same contrast, the book's own
+   dark. */
+.sb-letter-0{font-family:var(--font-display); background:#f4ead6; color:#5c2438;}
+.sb-letter-1{font-family:var(--font-body); background:#5c2438; color:#f7e8dc;}
 .sb-letter-2{font-family:var(--font-serif); background:#e0c9a8; color:#3d2a1c; font-style:italic;}
 .sb-letter-3{font-family:var(--font-display); background:transparent; color:#f4ead6; text-shadow:0 2px 0 rgba(0,0,0,.4);}
 
