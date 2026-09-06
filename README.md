@@ -532,7 +532,7 @@ the middle of the shift rather than either side of it.
 | **One** | THE INVENTORY | a second key, taped under the drawer. He never gave her a key to anything in fifteen years. |
 | **Two** | THE FOUR HE KEPT | four names chalked on the bench, and one word under all of them. |
 | **Three** | FOUR HUNDRED AND ELEVEN | the delivery book. Eleven of the RETURNED boxes are ticked, in a pen that is not his. |
-| **Four** | WHAT THEY WERE FOR | a bank book behind a loose board. One payment a month, from the spring they married. |
+| **Four** | WHAT THEY WERE FOR | a notebook behind a loose board. Fifteen years of one-line entries, every one of them about her. |
 | **Five** | LET IT | a drawing on graph paper: four figures around a woman at a desk, all of them facing outward. |
 | **Six** | THE SHUTTERS GO UP AT SIX | the last thing he wrote, folded under the comb of the music box. |
 
@@ -557,11 +557,29 @@ chapter that is taken away for good, and it is the right one: the
 monitor has been standing between her and the shop all week, and the
 last thing the story does is remove it.
 
+### The things the pages describe are in the rooms
+
+Two of the six hidden pages are about the pair of them rather than
+about the business, and both of them describe an object. **The other
+chair** is a folding chair in the supply closet, turned to the little
+bench at the angle somebody sits at when they are being talked to
+rather than working, with the chipped mug from their kitchen standing
+on the arm of it — she has never set foot in this shop, and he put that
+chair out the week he took the lease and never once folded it away.
+**The fifth one** is a shape under a dust sheet at the back of the
+stage, with one hand out from under the hem and a tag wired to the
+wrist that does not say NOT FOR SALE.
+
+Both of them are modelled. So is the brass plate on the front of her
+desk that his first-night tape points at. A page that describes a chair
+in a room with no chair in it is the shop lying to her.
+
 ### And in daylight
 
 The walk-through opens on the office, and the four of them are standing
 in it exactly as the night-five drawing has them: round the desk,
-facing outward, with nobody in the chair.
+facing outward, with nobody in the chair. The gallery names it when she
+gets there, because it is the one payoff she could walk straight past.
 
 ### Camera zero
 

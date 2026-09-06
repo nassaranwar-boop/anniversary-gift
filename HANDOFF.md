@@ -251,13 +251,19 @@ whoever picks it up:
 The second pass added the things that are easiest to get wrong, so they
 are worth knowing before touching any of them:
 
-- **There is deliberately no narrator.** He asked for this twice. The
-  only voice is the building's security annunciator — a formant-pair
-  vocoder over `NS.sys`, which is a closed list of status lines. It
-  reports states and stops: no reassurance, no story, no use of her
-  name, no mention of the performers except as a sensor reading. If a
-  line being added to `NS.sys` would sound like a person, it belongs on
-  a piece of paper instead.
+- **There are exactly two voices and they are not the same thing.**
+  This bullet used to read "there is deliberately no narrator", and for
+  four passes that was true. It is not any more — he asked for Anwar
+  afterwards — but the distinction it was protecting still holds and is
+  the thing to preserve. The building's annunciator is a closed list of
+  status lines (`NS.sys`): it reports states and stops, never uses her
+  name, never reassures, and never mentions a performer except as a
+  sensor reading. Anwar is a man on a tape and everything warm in the
+  chapter is his. If a line being added to `NS.sys` sounds like a
+  person, it belongs to Anwar or on a piece of paper instead. They
+  share one mouth (`speechSynthesis` has no mixer), so `sysWaiting`
+  holds the building back rather than letting it cut him off — that
+  queue is not decoration, it is the only reason both are audible.
 - **All the lore is found, never spoken.** Night one briefs off a card
   taped inside the desk drawer; nights two to six each open on one
   small found thing (`NS.beats`), a sentence or two at a time, and the
@@ -433,6 +439,60 @@ then outgrown:
   possible failure. It is `NIGHTS.length + NS.badges.length` now, the
   spacing is derived from that, and `nightplay` fails if the shelf ever
   has fewer places than the game has things to put on it.
+
+A sixth pass read the chapter as a story rather than as a program,
+which is a different job and needs a different tool: `tools/nightread.js`
+plays the whole thing from the film to the last morning and
+**transcribes everything she would actually receive, in order, with the
+clock beside it**. It asserts nothing. Reading it is the point, and
+reading it found what no suite could:
+
+- **The opening film gave away nights three and four**, so two of the
+  six revelations arrived as confirmations.
+- **Two of the six hidden pages said the same things as two of the
+  revelations** — the ledger repeated night three, the last page
+  repeated night six — so she read the same beat twice and the second
+  time was smaller. They are the two pages about the pair of them now
+  (`ledger` is the folding chair; `last` is the fifth one).
+- **`NS.beats` — the card before each night — was doing the wrong job.**
+  It restated the previous night's hook, so a tease was answered by an
+  echo instead of by a night, and two of them spoiled their own night's
+  three-o'clock find. All five are now *what has changed since last
+  night*, escalating and physical, with no plot in any of them.
+- **Two lines of narration contradicted the mechanics they described**
+  ("for the first time all week" against six nights of winding;
+  "watched it on a monitor five times" against the blind last hour).
+
+And the one rule that came out of it, which is worth more than any of
+the individual fixes: **an object the writing names must exist in the
+room.** Three did not. Night five's page describes a folding chair
+turned to a bench with her chipped mug on the arm of it, and the supply
+closet had no chair. Night six's page describes a half-made fifth one
+under a dust sheet at the back of the stage, and the stage had three
+plinths and nothing else. Night one's tape promised "something on a
+shelf with your name on it" and nothing in the shop ever answered it.
+All three are real now — the chair, the bench and the mug are modelled
+in `buildCloset`, the shrouded figure in `buildStage`, and the tape
+points at the brass nameplate that was always on her desk. A page that
+describes furniture that is not there is the shop lying to her, and
+this shop cannot afford to.
+
+Two placement notes from doing it: the fifth one sits **upstage and off
+the plinth line**, because camera 02 exists to show that the middle
+plinth is empty when Cogsworth is out and a shape on it destroys the
+read; and the folding chair sits clear of mark `s0`, because a
+performer standing there had his boots through the seat. If you add a
+prop to a room with anchors in it, photograph it with somebody standing
+on each of them (`nightshot.js` takes a cast list for exactly this).
+
+The daylight gallery now captions the room it is showing (`GAL_NOTE`),
+because the biggest payoff in the chapter was silent: night five's
+drawing is four figures round a woman at a desk facing outward, and in
+daylight the office *is* that drawing at full size with nobody in the
+chair — and she could walk in on it and not notice. The caption names
+it once and gets out of the way. If you move a prop, check the caption
+for that room still describes what is in it; the first draft of these
+claimed a glass case and six chairs that did not exist.
 
 Still open with him: whether the difficulty of nights five and six is
 where he wants it.

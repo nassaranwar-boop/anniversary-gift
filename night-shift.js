@@ -89,33 +89,50 @@ const NS = {
 
   /* Between nights: paper, and one object. Two sentences at a time.
      Nobody explains it and nobody says what it means. */
+  /* WHAT HAS CHANGED SINCE LAST NIGHT.
+
+     These are on the card she reads before a night starts, and they
+     used to be plot: the night-three card showed her the delivery
+     book, which is night three's own revelation at three in the
+     morning, so she read the same object twice in one night. The
+     night-five card told her the four would stand between her and
+     whatever came through the door — which is the entire revelation
+     night five is built to deliver, given away on the way in.
+
+     And every one of them restated the hook from the end of the night
+     before, so a tease was immediately answered by an echo instead of
+     by a night.
+
+     They are the shop itself now: five small physical things that are
+     different when she lets herself in, in order, getting worse. No
+     plot in any of them. Nobody explains any of them. */
   beats: {
     2: {
-      title: "a tin of tags, tipped out of the workshop drawer",
+      title: "the front door, letting herself in",
       lines: [
-        "Hundreds of them. Every one reads SOLD, a date, and a family name.",
-        "Four of them read NOT FOR SALE. Those four are still wired to something.",
+        "The bell over the door is gone.",
+        "Not broken — unscrewed. The two screws are on the mat, side by side, an inch apart, the way somebody puts things down when they mean to come back for them.",
       ],
     },
     3: {
-      title: "the delivery book, under the till",
+      title: "the workshop, on the way through",
       lines: [
-        "Addresses. Some of them crossed out, and the crossing-out is not tidy.",
-        "Beside one of them, in his hand: <i>came back on its own. do not sign for it.</i>",
+        "The second chair at the bench has moved. Not much.",
+        "Enough that she noticed, and then stood in the doorway a while working out how on earth she knew that.",
       ],
     },
     4: {
-      title: "a note taped inside the workshop cupboard",
+      title: "the step, before she has the key out",
       lines: [
-        "Stopped taking orders. Told them the workshop was closed.",
-        "It has not made the slightest difference to the ones already out.",
+        "There is a parcel on the step. No stamp. No name. No van came down this street tonight.",
+        "It is addressed to the shop in his handwriting, and the paper has been opened from the inside.",
       ],
     },
     5: {
-      title: "a page torn out and put back in the wrong place",
+      title: "the back room, eleven fifty",
       lines: [
-        "The four in the back are the only ones I did not make to order.",
-        "If anything ever comes through that front door that I did not build for her, they will be between it and her before I would have been.",
+        "Three of them are where she left them.",
+        "The soldier is facing the office door. She has not been in the office yet tonight.",
       ],
     },
     6: {
@@ -273,22 +290,25 @@ const NS = {
        second time was smaller. They are the two things in the shop
        that are about the pair of them instead. */
     {
-      id: "ledger", on: 5, room: "party", kind: "letter",
-      where: "a second chair at the workshop bench, with a mug on the arm of it",
+      /* the supply closet, because the workshop camera has been dead
+         since the second night and a thing she cannot look at is a
+         thing she cannot find */
+      id: "ledger", on: 5, room: "closet", kind: "letter",
+      where: "a second chair in the supply closet, with a mug on the arm of it",
       title: "THE OTHER CHAIR",
       lines: [
-        "There is a second chair pulled up to the bench, at the angle somebody sits at when they are being talked to rather than working.",
-        "The mug on the arm of it is not his. It is the one with the chip out of the handle that went missing from the kitchen four years ago and got blamed on the cleaner.",
-        "It has been washed. It is dry. It has been sitting there a long time.",
+        "There is a folding chair set up in here, facing the little bench, at the angle somebody sits at when they are being talked to rather than working.",
+        "The mug on the arm of it is not his. It is the one with the chip out of the handle that went missing from their kitchen four years ago and got blamed on the cleaner.",
+        "It has been washed. It is dry. It has been standing there a long time.",
       ],
-      back: "She has never set foot in this shop. I put the chair there the week I took the lease and I have never once moved it, and I could not tell you what I thought was going to happen.",
+      back: "She has never set foot in this shop. I put that chair out the week I took the lease and I have never once folded it up, and I could not tell you what I thought was going to happen.",
     },
     {
       id: "last", on: 6, room: "stage", kind: "page",
-      where: "on the bench under a cloth, half made",
+      where: "under a dust sheet at the back of the stage, half made",
       title: "THE FIFTH ONE",
       lines: [
-        "There is a fifth one on the bench under a dust sheet, and it is not finished.",
+        "There is a fifth one under the dust sheet at the back of the stage, and it is not finished.",
         "No mechanism in it yet. No key in the back. The face is done and nothing else is.",
         "There is a tag wired to the wrist the way he wires a tag to all of them, and it does not say NOT FOR SALE, and it does not have a number on it.",
         "It says: FOR HER TO WIND, WHEN SHE IS READY.",
@@ -556,7 +576,7 @@ const NS = {
       { h: 2.80, t: "Nothing in this shop wants to hurt you. I want to say that on the first night, while it is still true." },
       { h: 3.30, t: "Shut the door if one gets close. It costs you a little. It costs you less than the other thing." },
       { h: 3.90, t: "You are better at this than I was. I mean that." },
-      { h: 4.40, t: "There is something on a shelf in here with your name on it. Not tonight. Just know that there is." },
+      { h: 4.40, t: "The brass plate on the front of that desk. I had it made in March, and I never worked out how to tell you what it was for." },
       { h: 5.00, t: "Nearly six. Whatever you can hear out there, it stops at six." },
       { h: 5.55, t: "One down. Go home. Sleep. Come back tonight." },
     ],
@@ -3638,6 +3658,43 @@ function buildStage(R) {
   for (const sx of [-1, 1]) monkey.add(at(new T.Mesh(new T.CylinderGeometry(0.075, 0.075, 0.012, 12), mat("brass", 1, 1, "#d8b86e")), sx * 0.2, 0.4, 0.14, 0, 0, sx * 1.3));
   R.place(freeze(monkey), 2.0, 1.44, -2.6, { ry: -0.2, shadowOpacity: 0.5 });
 
+  /* --- THE FIFTH ONE ------------------------------------------------
+     Night six's hidden page says there is a fifth one at the back of
+     the stage under a dust sheet, half made, with a tag wired to the
+     wrist that reads FOR HER TO WIND, WHEN SHE IS READY. It said that
+     for a long time about a thing that was not in the room, which is
+     the one lie a shop like this must not tell. So here it is: a
+     figure on a stand, a sheet over it, and one hand out from under
+     the hem with a tag on it. Nothing about it moves, ever. */
+  const fifth = new T.Group();
+  /* the stand and the part of it he got as far as */
+  fifth.add(sb(0.44, 0.05, 0.44, mat("woodDark", 1, 1, "#5a4230"), 0, 0.025, 0));
+  fifth.add(at(new T.Mesh(new T.CylinderGeometry(0.035, 0.045, 0.62, 8), mat("metal", 1, 1, "#6e747c")), 0, 0.34, 0));
+  fifth.add(sb(0.3, 0.46, 0.2, flat("#7c6a52"), 0, 0.86, 0));
+  fifth.add(at(new T.Mesh(new T.SphereGeometry(0.135, 12, 10), flat("#c9ab88")), 0, 1.2, 0.01));
+  /* the face is the only finished part of it, so it is the only part
+     with any detail: two eyes and nothing else yet */
+  for (const sx of [-1, 1]) fifth.add(at(new T.Mesh(new T.SphereGeometry(0.019, 8, 6), flat("#141010")), sx * 0.045, 1.215, 0.115));
+  /* the dust sheet: a cone of cloth with a hem that does not sit flat,
+     built out of eight panels so it reads as fabric and not a tent */
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU;
+    const panel = new T.Mesh(
+      new T.CylinderGeometry(0.2, 0.46 + (i % 2) * 0.035, 1.16, 4, 1, true, a, TAU / 8 + 0.05),
+      mat("wallCream", 0.5, 0.5, i % 2 ? "#9a9382" : "#8d8676", { side: T.DoubleSide }));
+    fifth.add(at(panel, 0, 0.72, 0));
+  }
+  fifth.add(at(new T.Mesh(new T.SphereGeometry(0.21, 12, 8, 0, TAU, 0, Math.PI / 2), mat("wallCream", 0.5, 0.5, "#a29a88")), 0, 1.28, 0));
+  /* the one hand out from under the hem, and the tag wired to it */
+  const hand = new T.Group();
+  hand.add(at(new T.Mesh(new T.CylinderGeometry(0.028, 0.032, 0.22, 7), flat("#c9ab88")), 0, 0, 0, 0, 0, 1.25));
+  hand.add(at(new T.Mesh(new T.SphereGeometry(0.045, 9, 7), flat("#c9ab88")), 0.13, -0.02, 0));
+  hand.add(at(new T.Mesh(new T.TorusGeometry(0.02, 0.004, 4, 10), mat("brass", 1, 1, "#b8945a")), 0.16, -0.03, 0, 0, 0, 0.6));
+  hand.add(sb(0.09, 0.055, 0.004, flat("#e4dcc4"), 0.22, -0.07, 0, 0, 0, -0.35));
+  at(hand, 0.34, 0.5, 0.14, 0, -0.5, 0);
+  fifth.add(hand);
+  R.place(freeze(fifth), -1.05, 0.88, -3.72, { ry: -0.34, shadowOpacity: 0.62 });
+
   /* footlights along the front of the deck */
   for (let i = 0; i < 7; i++) {
     const f = new T.Group();
@@ -4024,7 +4081,7 @@ function buildCloset(R) {
   for (let i = 0; i < 9; i++) {
     bucket.add(at(new T.Mesh(new T.CylinderGeometry(0.008, 0.006, 0.2, 5), flat("#cfc4a8")), 0.05 + range(rnd, -0.05, 0.05), 0.14, -0.03 + range(rnd, -0.05, 0.05), range(rnd, -0.2, 0.2), 0, range(rnd, -0.2, 0.2)));
   }
-  R.place(freeze(bucket), -W / 2 + 0.5, 0, -0.3, { ry: 0.4, shadowOpacity: 0.72 });
+  R.place(freeze(bucket), -W / 2 + 0.42, 0, 0.72, { ry: 0.4, shadowOpacity: 0.72 });
 
   /* the fuse board — the reason this room exists */
   const board = new T.Group();
@@ -4040,6 +4097,63 @@ function buildCloset(R) {
     board.add(at(new T.Mesh(new T.CylinderGeometry(0.008, 0.008, 0.5, 5), flat("#2a2620")), -0.2 + i * 0.06, -0.55, 0.05));
   }
   R.place(freeze(board), W / 2 - 0.12, 1.5, -0.6, { ry: -Math.PI / 2, shadow: false });
+
+  /* --- THE OTHER CHAIR -----------------------------------------------
+     Night five's hidden page is about a folding chair set up in here
+     facing a little bench, at the angle somebody sits at when they are
+     being talked to rather than working — and the mug on the arm of it
+     is the chipped one that went missing from their kitchen four years
+     ago. She has never set foot in this shop. He put the chair out the
+     week he took the lease and never once folded it up.
+
+     It is the quietest thing in the building and it was, until now,
+     only ever a paragraph. A page that describes a chair in a room
+     with no chair in it is the shop lying to her. */
+  const bench = new T.Group();
+  bench.add(sb(1.15, 0.06, 0.5, mat("woodShelf", 1, 1, "#8a6a44"), 0, 0.74, 0));
+  bench.add(sb(1.05, 0.05, 0.06, mat("woodDark", 1, 1, "#5e4630"), 0, 0.4, -0.2));
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    bench.add(sb(0.07, 0.72, 0.07, mat("woodDark", 1, 1, "#63492f"), sx * 0.5, 0.37, sz * 0.19));
+  }
+  /* a few of his things still on it, left mid-job */
+  bench.add(sb(0.16, 0.04, 0.11, mat("metal", 1, 1, "#7e858c"), -0.3, 0.79, 0.04, 0.3));
+  bench.add(at(new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.19, 6), mat("metal", 1, 1, "#9aa2aa")), 0.1, 0.775, 0.1, 0, 0, Math.PI / 2));
+  bench.add(at(new T.Mesh(new T.CylinderGeometry(0.05, 0.055, 0.07, 12), mat("enamelCream", 1, 1, "#8f8a76")), 0.34, 0.805, -0.05));
+  R.place(freeze(bench), -W / 2 + 0.32, 0, -1.05, { ry: Math.PI / 2, shadowOpacity: 0.72 });
+
+  /* the chair itself: a wooden folding chair, open, turned to the
+     bench rather than square to anything */
+  const fold = new T.Group();
+  const fw = mat("woodShelf", 1, 1, "#9a7448");
+  fold.add(sb(0.42, 0.035, 0.38, fw, 0, 0.44, 0));                       /* seat */
+  fold.add(sb(0.4, 0.5, 0.03, fw, 0, 0.69, -0.17, 0, -0.14));               /* back, raked */
+  fold.add(sb(0.36, 0.05, 0.025, mat("woodDark", 1, 1, "#6e5232"), 0, 0.58, -0.155, 0, -0.14));
+  for (const sx of [-1, 1]) {
+    /* the two crossed frames that make it a folding chair */
+    fold.add(sb(0.035, 0.62, 0.035, fw, sx * 0.19, 0.3, -0.05, 0, 0.22));
+    fold.add(sb(0.035, 0.56, 0.035, fw, sx * 0.19, 0.25, 0.06, 0, -0.3));
+    fold.add(sb(0.035, 0.34, 0.035, fw, sx * 0.19, 0.62, -0.13, 0, -0.14));
+  }
+  fold.add(sb(0.42, 0.03, 0.03, mat("metal", 1, 1, "#8a9098"), 0, 0.22, 0.0));
+  /* the arm the mug stands on */
+  const arm = sb(0.035, 0.03, 0.34, fw, 0.2, 0.63, 0.0);
+  fold.add(arm);
+  fold.add(sb(0.035, 0.03, 0.34, fw, -0.2, 0.63, 0.0));
+
+  /* the mug. The chip is a wedge taken out of the handle, which is the
+     whole reason it is here rather than in their kitchen. */
+  const mug = new T.Group();
+  const china = mat("porcelain", 1, 1, "#ddd4c4");
+  mug.add(at(new T.Mesh(new T.CylinderGeometry(0.043, 0.038, 0.095, 14, 1, true), mat("porcelain", 1, 1, "#ddd4c4", { side: T.DoubleSide })), 0, 0.048, 0));
+  mug.add(at(new T.Mesh(new T.CylinderGeometry(0.038, 0.038, 0.008, 14), china), 0, 0.004, 0));
+  mug.add(at(new T.Mesh(new T.CylinderGeometry(0.036, 0.036, 0.004, 14), flat("#3a2c22")), 0, 0.012, 0));
+  /* the handle is a torus with a bite out of it — not a full ring */
+  mug.add(at(new T.Mesh(new T.TorusGeometry(0.032, 0.008, 6, 14, Math.PI * 1.15), china), 0.046, 0.05, 0, 0, Math.PI / 2, -0.5));
+  at(mug, 0.2, 0.645, 0.02);
+  fold.add(mug);
+  /* clear of mark s0, which a performer stands on — a jester with his
+     boots through the seat of it is not a mood */
+  R.place(freeze(fold), -0.9, 0, -1.22, { ry: -Math.PI / 2 + 0.34, shadowOpacity: 0.7 });
 
   R.place(freeze(KIT.crate(1, rnd)), -0.5, 0, 1.3, { ry: 0.5, shadowOpacity: 0.74 });
   R.place(freeze(KIT.crate(0, rnd)), -1.0, 0, 0.8, { ry: -0.3, shadowOpacity: 0.74 });
@@ -9764,14 +9878,28 @@ function screenBadges() {
 }
 
 /* --- the shop in daylight -------------------------------------------- */
+/* what the room in front of her is, said in one line.
+
+   The office one is the whole reason the gallery exists. Night five is
+   a sheet of graph paper with four figures round a woman at a desk,
+   facing outward; in daylight the office IS that drawing, at scale,
+   with nobody in the chair. She can walk in on it and not notice, so
+   the caption names it and then gets out of the way. */
+const GAL_NOTE = {
+  office: "Four of them round the desk, facing out at the doors. Nobody in the chair. It is the drawing, at full size, and it is the only thing in this shop that was ever built for her.",
+  stage:  "The middle plinth is bare, the way it has been all week. The shape under the sheet behind it is the one he did not finish.",
+  party:  "Eleven places laid and a cake nobody ever cut. It has been like that a lot longer than a week.",
+  closet: "The folding chair is still out, turned to the bench, with her mug on the arm of it. He never once put it away.",
+};
 function screenGallery() {
+  const note = (id) => GAL_NOTE[id] || "Nothing is running. Nothing is going to move.";
   const rows = ROOMS.map((r) =>
     '<button class="ns-groom' + (r.id === G.cam ? " on" : "") + '" data-room="' + r.id + '">' +
       '<b>' + (r.cam ? (r.cam < 10 ? "0" + r.cam : r.cam) : "—") + '</b><span>' + r.name + '</span></button>').join("");
   overlay(
     '<div class="ns-gal">' +
       '<p class="ns-gal-title">THE SHOP IN DAYLIGHT</p>' +
-      '<p class="ns-gal-note">Nothing is running. Nothing is going to move.</p>' +
+      '<p class="ns-gal-note" id="ns-gal-note">' + note(G.cam) + '</p>' +
       '<div class="ns-grooms">' + rows + '</div>' +
       '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="title">BACK</button></div>' +
     '</div>', "ns-ov-gal");
@@ -9781,6 +9909,8 @@ function screenGallery() {
       e.stopPropagation();
       G.cam = b.dataset.room;
       SFX.camSwitch();
+      const n = o.querySelector("#ns-gal-note");
+      if (n) n.textContent = note(G.cam);
       o.querySelectorAll("[data-room]").forEach((x) => x.classList.toggle("on", x === b));
     });
   });

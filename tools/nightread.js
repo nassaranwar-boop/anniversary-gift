@@ -55,6 +55,7 @@ const { chromium } = require('playwright-core');
       return {
         name: cfg.name, title: cfg.title, blurb: cfg.blurb, tone: cfg.tone,
         why: NS.why[n],
+        beat: NS.beats[n] || null,
         rule: (card && card.querySelector('.ns-rule')) ?
               card.querySelector('.ns-rule').textContent : null,
         tapes: (NS.tapes[n] || []).map(t => [t.h, t.t]),
@@ -70,6 +71,10 @@ const { chromium } = require('playwright-core');
     say('  card:   ' + night.blurb);
     say('  for:    ' + night.why);
     if (night.rule) say('  rule:   ' + night.rule);
+    if (night.beat) {
+      say('  she arrives — ' + night.beat.title);
+      night.beat.lines.forEach(l => say('        ' + l.replace(/<[^>]+>/g, '')));
+    }
     say('');
     let prev = 0, worst = 0, worstAt = 0;
     night.tapes.forEach(([h, t]) => {
