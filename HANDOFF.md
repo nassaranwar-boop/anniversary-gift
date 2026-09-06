@@ -336,6 +336,21 @@ and changed nothing, because **html is the scroller**. `html` kept
 `height:100%`, kept the too-tall box, and kept all 132 pixels of
 draggable overflow. Sizing the body is not sizing the page.
 
+**Two independent signals, because one is not enough.** He tested the
+visualViewport-only fix on a real preview build and it changed nothing,
+which is the evidence that Chrome for iOS misreports *that* API too. So
+there are now two:
+
+  1. `claimedHeight()` takes the **minimum** of every height on offer —
+     `visualViewport.height * scale`, `documentElement.clientHeight` and
+     `innerHeight` — rather than picking a favourite. They agree on a
+     browser being straight with the page; when they disagree the smaller
+     one cannot be hiding anything, because no browser under-reports the
+     space it gives you. One honest API is enough, whichever it is.
+  2. When they **all** lie — which is the case that beat three passes —
+     only the real scroll range is left, and that is what the probe below
+     measures.
+
 **The part that finally stopped the guessing.** Three passes were spent
 asking *which height API tells the truth*. That is the wrong question:
 the answer differs per browser and the page cannot tell from in here

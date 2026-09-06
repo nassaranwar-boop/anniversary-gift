@@ -141,12 +141,29 @@ function hiddenStrip() {
 }
 
 /* What the browser claims, before the strip is taken off it. */
+/* The smallest of everything on offer, not a favourite.
+
+   Every API here reports the same number on a browser that is being
+   straight with the page. On one that is not, they disagree, and the
+   smaller figure is the one that cannot be hiding anything: no browser
+   under-reports the space it gives you. Taking the minimum means one
+   honest API is enough, whichever one it turns out to be — which is the
+   part that could not be settled by reasoning from here.
+
+   documentElement.clientHeight is the viewport height by definition for
+   the root element, so pinning html does not feed our own answer back to
+   us. */
 function claimedHeight() {
+  const say = [];
   if (VV && VV.height > 0) {
     const scale = (VV.scale && VV.scale > 0) ? VV.scale : 1;
-    return Math.round(VV.height * scale);
+    say.push(Math.round(VV.height * scale));   // pinch-invariant
   }
-  return Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
+  const ch = document.documentElement.clientHeight;
+  if (ch > 0) say.push(ch);
+  if (window.innerHeight > 0) say.push(Math.round(window.innerHeight));
+  if (!say.length) return 0;
+  return Math.min.apply(null, say);
 }
 
 function claimedTop() {
