@@ -4290,10 +4290,30 @@ window.SuperOuissy = (function () {
     function releaseAll() {
       ["left", "right", "down", "jump"].forEach(releaseKey);
       G.keys.jumpPressed = false;
+      heldBy = {};
+      
       Array.prototype.forEach.call(document.querySelectorAll("[data-so-key]"),
         function (b) { b.classList.remove("held"); });
     }
     window.__soReleaseAll = releaseAll;
+    /* so a test can watch what the pad is actually holding — the jump
+       cancelling the run was invisible from outside without it */
+    window.__soKeys = function () { return G.keys; };
+
+    /* WHICH FINGER IS HOLDING WHICH KEY.
+
+       Without this, jumping cancelled running. She holds RIGHT with one
+       thumb, taps JUMP with the other, and the moment the jump thumb lifts
+       the window-level safety net below fired releaseAll() and cleared
+       every key — including the RIGHT her other thumb was still on. She
+       stopped dead in mid-air, every time.
+
+       The safety net is still needed (see the four ways a button gets
+       stuck, above), it just has to be told WHICH press ended. A pointerup
+       now releases only the key that pointer was holding; releaseAll stays
+       for the cases where every finger really is gone — blur, tab change,
+       pause, leaving the screen. */
+    var heldBy = {};      /* pointerId -> key */
 
     Array.prototype.forEach.call(document.querySelectorAll("[data-so-key]"), function (btn) {
       var k = btn.getAttribute("data-so-key");
@@ -4304,6 +4324,7 @@ window.SuperOuissy = (function () {
         btn.classList.add("held");
         if (k === "jump" && !G.keys.jump && canAct()) G.keys.jumpPressed = true;
         G.keys[k] = true;
+        if (e.pointerId != null) heldBy[e.pointerId] = k;
         /* capture so a finger that slides off the button still counts as
            held, which is how a real d-pad behaves */
         try { btn.setPointerCapture(e.pointerId); } catch (er) {}
@@ -4311,6 +4332,7 @@ window.SuperOuissy = (function () {
 
       var release = function (e) {
         if (e) e.preventDefault();
+        if (e && e.pointerId != null) delete heldBy[e.pointerId];
         releaseKey(k);
         /* drop focus, or the button stays "pressed" to the browser and can
            be re-fired by a keypress or a synthetic click */
@@ -4329,9 +4351,20 @@ window.SuperOuissy = (function () {
       btn.setAttribute("tabindex", "-1");
     });
 
-    /* the safety net: whatever the press landed on, the release clears it */
-    window.addEventListener("pointerup", releaseAll);
-    window.addEventListener("pointercancel", releaseAll);
+    /* The safety net, narrowed to one finger. If the button never heard its
+       own release — it was re-rendered, or the finger slid off and capture
+       did not hold — the window still hears it, and lets go of exactly the
+       key that pointer was on. A pointer we never saw go down releases
+       nothing, which is the whole point: another thumb may still be down. */
+    function releasePointer(e) {
+      var k = e && e.pointerId != null ? heldBy[e.pointerId] : null;
+      if (k == null) return;
+      delete heldBy[e.pointerId];
+      releaseKey(k);
+    }
+    window.addEventListener("pointerup", releasePointer);
+    window.addEventListener("pointercancel", releasePointer);
+    /* losing the window means losing every finger, so that one is still all */
     window.addEventListener("blur", releaseAll);
 
     var pb = $("so-pause-btn");
