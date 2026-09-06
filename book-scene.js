@@ -41,6 +41,21 @@
     if (!(probe.getContext("webgl2") || probe.getContext("webgl"))) { bail("no WebGL"); return; }
   } catch (e) { bail("no WebGL"); return; }
 
+  /* --------------------------------------------------------------------
+     THE SIZE TO RENDER AT
+
+     The canvas box, never the window. The two disagree on iPad — the
+     canvas fills a .screen laid out against --app-h, while innerWidth /
+     innerHeight report the layout viewport, which still counts the strip
+     behind the browser's own UI. Rendering at the window's size put a
+     taller picture inside a shorter box: the framing was computed for an
+     aspect nobody could see, and the part of it you got was cropped and
+     read as zoomed in. Asking the element removes the disagreement — it
+     is the same box the browser is about to paint into.
+     -------------------------------------------------------------------- */
+  function viewW() { return Math.max(1, canvas.clientWidth  || window.innerWidth); }
+  function viewH() { return Math.max(1, canvas.clientHeight || window.innerHeight); }
+
   try { runScene(); }
   catch (err) { console.error("Book scene failed:", err); bail(null); }
 
@@ -95,43 +110,6 @@
        This is the single biggest change from the old scene, which had no
        tone mapping at all: every highlight clipped flat to paper-white.
        -------------------------------------------------------------------- */
-    /* ------------------------------------------------------------------
-       THE SIZE OF THE FRAME — measured from the canvas, never from window
-
-       This used to be window.innerWidth / window.innerHeight, and that is
-       the whole of the "it opens slightly zoomed, and there is a strip of
-       nothing under the page" bug.
-
-       Two separate faults came out of it. First, renderer.setSize() writes
-       the numbers you hand it into canvas.style as pixels, and an inline
-       style beats the stylesheet — so `width:100%; height:100%` in the CSS
-       was being overruled by a hard pixel height every single frame the
-       renderer resized. Second, on a phone window.innerHeight is not the
-       height of this box: while the URL bar is on screen the two disagree
-       by the height of the bar. The canvas came out taller than the screen
-       it sits in, so the shot was composed for a frame taller than the one
-       you could see (that is the "zoomed"), and the excess hung below the
-       fold (that is the "void"). Leaving the tab and coming back fired a
-       resize at whichever of the two states the browser was in by then,
-       which is why it sometimes healed itself and sometimes got worse.
-
-       So: measure the element's own laid-out box, and pass updateStyle
-       false so three.js never writes a pixel size back into it. CSS owns
-       the box — one number, from 100dvh — and the renderer follows it.
-       ------------------------------------------------------------------ */
-    var _vw = 1, _vh = 1;
-    function measure() {
-      var w = canvas.clientWidth, h = canvas.clientHeight;
-      /* clientWidth is 0 while the screen is display:none. Fall back to the
-         window then rather than allocating a 1x1 buffer we would have to
-         throw away the moment it becomes visible. */
-      if (!w || !h) { w = window.innerWidth; h = window.innerHeight; }
-      _vw = Math.max(1, w); _vh = Math.max(1, h);
-    }
-    measure();
-    function viewW() { return _vw; }
-    function viewH() { return _vh; }
-
     var renderer = new THREE.WebGLRenderer({
       canvas: canvas,
       antialias: false,             // the composer handles AA (MSAA target / SMAA)
@@ -139,7 +117,7 @@
       stencil: false,
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.dpr));
-    renderer.setSize(viewW(), viewH(), false);
+    renderer.setSize(viewW(), viewH(), false);   // false: the stylesheet owns the CSS box
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.96;
@@ -166,7 +144,7 @@
     var fitFov = 30, fitDist = 1;
 
     function updateFraming() {
-      var aspect = viewW() / Math.max(1, viewH());
+      var aspect = viewW() / viewH();
       var needTanV = FIT_TAN_H / Math.max(0.01, aspect);
       var tanV = Math.min(needTanV, MAX_TAN_V);
       fitFov = (2 * Math.atan(tanV)) * 180 / Math.PI;
@@ -1619,86 +1597,38 @@
     canvas.addEventListener("click", begin);
     canvas.addEventListener("touchstart", function (e) { e.preventDefault(); begin(); }, { passive: false });
 
-    /* A phone fires resize continuously while the URL bar slides away, and
-       every one of those used to reallocate the composer's two float render
-       targets — the stutter you saw the moment you touched the screen. The
-       size is compared first now, and nothing is rebuilt unless it really
-       changed. */
-    var lastW = 0, lastH = 0, resizeRaf = 0;
+    var lastW = 0, lastH = 0;
     function onResize() {
-      resizeRaf = 0;
-      measure();
-      if (_vw === lastW && _vh === lastH) return;
-      lastW = _vw; lastH = _vh;
+      var w = viewW(), h = viewH();
+      if (w === lastW && h === lastH) return;
+      lastW = w; lastH = h;
       updateFraming();
-      renderer.setSize(_vw, _vh, false);
+      renderer.setSize(w, h, false);
       if (composer) {
-        composer.setSize(_vw, _vh);
+        composer.setSize(w, h);
         composer.setPixelRatio(renderer.getPixelRatio());
       }
-      if (bloomPass) bloomPass.resolution.set(_vw, _vh);
+      if (bloomPass) bloomPass.resolution.set(w, h);
       applyQualityLevel();
     }
-    lastW = _vw; lastH = _vh;
-    function queueResize() {
-      if (resizeRaf) return;
-      resizeRaf = requestAnimationFrame(onResize);
-    }
-    window.addEventListener("resize", queueResize);
-
-    /* COMING BACK TO THE TAB IS ITS OWN PROBLEM, AND THIS IS WHY.
-
-       Frame-by-frame off his two recordings, the browser window does not
-       snap back when you return to Safari — it ANIMATES back, over about
-       three tenths of a second. Measuring where the page area started on
-       each frame of the restore:
-
-           t=6.05  0    t=6.07  411   t=6.08  346   t=6.10  277
-           t=6.12  208  t=6.13  195   t=6.15  165   t=6.17  143
-           t=6.18  127  t=6.20  112   t=6.22  101   t=6.24   97
-           t=6.25   88  t=6.27   85   t=6.29   81   t=6.32   75
-           t=6.35   72  ... settling at 93
-
-       Every one of those is a different viewport, and any of them will
-       happily answer a resize event. Whichever one the old code happened
-       to catch is the size it kept, because nothing came along afterwards
-       to correct it — which is exactly why he saw it land on the right
-       framing sometimes and the wrong one other times.
-
-       So a wake-up is not one measurement. It is a series of them across
-       the settle, and the last one wins. Cheap: onResize does nothing at
-       all when the numbers have not moved. */
-    var settleTimers = [];
-    function settle() {
-      settleTimers.forEach(clearTimeout);
-      settleTimers = [0, 60, 140, 260, 420, 650, 1000].map(function (ms) {
-        return setTimeout(queueResize, ms);
-      });
-    }
-    window.addEventListener("orientationchange", settle);
-    document.addEventListener("visibilitychange", function () {
-      if (!document.hidden) settle();
-    });
-    window.addEventListener("focus", settle);
-    window.addEventListener("pageshow", settle);
-    /* The box itself is the thing that matters, so watch the box. Some
-       mobile browsers change it without ever firing resize. */
+    onResize();
+    window.addEventListener("resize", onResize);
+    /* --app-h changing is not a window resize, and on iPad a resume often
+       is not one either — script.js says so out loud instead. */
+    window.addEventListener("app-viewport", onResize);
+    /* And the observer is the backstop: whatever moves the canvas box,
+       for whatever reason, this sees it. */
     var ro = null;
     if (window.ResizeObserver) {
-      try { ro = new ResizeObserver(queueResize); ro.observe(canvas); } catch (e) { ro = null; }
+      try { ro = new ResizeObserver(onResize); ro.observe(canvas); } catch (e) { ro = null; }
     }
 
     function dispose() {
       running = false;
       if (rafId) cancelAnimationFrame(rafId);
-      if (resizeRaf) { cancelAnimationFrame(resizeRaf); resizeRaf = 0; }
-      settleTimers.forEach(clearTimeout);
-      settleTimers = [];
-      window.removeEventListener("resize", queueResize);
-      window.removeEventListener("orientationchange", settle);
-      window.removeEventListener("focus", settle);
-      window.removeEventListener("pageshow", settle);
-      if (ro) { try { ro.disconnect(); } catch (e) {} ro = null; }
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("app-viewport", onResize);
+      if (ro) { try { ro.disconnect(); } catch (e) {} }
       disposables.forEach(function (d) { if (d && d.dispose) d.dispose(); });
       if (envRT) envRT.dispose();
       if (composer) {

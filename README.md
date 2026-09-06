@@ -17,8 +17,10 @@ book-scene.js    the Three.js 3D intro scene — self-contained
 scrapbook.js     the memory book — its own config block at the top
 super-ouissy.js  the platformer — its own config block at the top
 rescue.js        the platformer's story scenes (Hard only) — self-contained
-apocalypse.js    the stealth chapter — its own config block at the top
+apocalypse.js    the stealth chapter, in 3D — its own config block at the top
 assets/          images used by the 2D parts of the site
+vendor/          three.js r180 + postprocessing, bundled; used by the
+                 book intro and the apocalypse, loaded on demand
 tools/           offline checks (see tools/README.md); nothing here ships
 ```
 
@@ -37,8 +39,8 @@ tools/           offline checks (see tools/README.md); nothing here ships
 5b. **The Long Way Round** — branching pixel-art choice adventure: two
     paths, two routes each, and an ending per path
 5c. **Super Ouissy** — a three-world platformer (`super-ouissy.js`)
-5d. **Ouissy at the Apocalypse** — a five-level top-down stealth story
-    (`apocalypse.js`), ending on the same rooftop as the maze
+5d. **Ouissy at the Apocalypse** — a five-level third-person 3D stealth
+    story (`apocalypse.js`), ending on the same rooftop as the maze
 6. **Keepsake** — scrapbook recap, unlocked once the maze and the adventure
    are done. Super Ouissy is a bonus: finishing it adds a card to the
    keepsake but is deliberately **not** required to unlock it, so nothing
@@ -143,18 +145,88 @@ each a list of pieces positioned in percentages of that page.
 
 ## Ouissy at the Apocalypse
 
-A top-down stealth story in five levels, reached from the hub. She is home
-alone when it starts; the game is her getting to Anwar, and then the two of
-them getting somewhere safe.
+A third-person 3D stealth story in five levels, reached from the hub. She is
+home alone when it starts; the game is her getting to Anwar, and then the two
+of them getting somewhere safe.
 
 Arrow keys or WASD to move, **shift** to creep, **E** or space to use
 whatever she is standing at, Esc to pause. On a phone there is a pad and two
 buttons.
 
-**It carries no files of its own**, the same rule Super Ouissy follows.
-Every tile, sprite and backdrop is drawn onto a 320x180 canvas when the
-level loads and every sound is synthesised, so the whole chapter adds
-nothing to the repo but the one script.
+### It is a real 3D game
+
+It runs on `vendor/three.bundle.js` — three.js r180 with the postprocessing
+addons, bundled for offline use, and the same one `index.html` already loads
+for the book intro. `apocalypse.js` will fetch it itself if it is not there,
+so the chapter keeps working if that tag ever moves.
+
+Everything you look at is geometry with lights on it, rendered clean —
+multisampled, half-float, analytically anti-aliased, and with no film grain
+or dither anywhere in the chain. Grain is a way of hiding a render; this one
+does not need hiding.
+
+Everything you look at is geometry with lights on it:
+
+- **The world is built from the grid at load time.** Walls, floors, kerbs,
+  roofs, facades, debris and furniture go into `InstancedMesh` batches, so a
+  street of forty buildings with two hundred windows in it is still a couple
+  of dozen draw calls. Outdoors the walls are flood-filled into buildings and
+  each one gets its own storey count and its own roofline — a parapet with a
+  coping on it, a stair head, a water tank on legs, plant, an aerial. The
+  facades are real: a plinth at the pavement, a string course at every floor,
+  windows set into a dark reveal with a sill, a lintel and a mullioned frame,
+  shopfronts at street level with fascias and half-down shutters, and a
+  cornice under the parapet. A week into this, some of them are boarded, some
+  have lost their glass, and one or two have soot up the wall above them.
+  Rubble banks up where a wall meets the pavement, litter blows about, and
+  somebody's bin is still out.
+- **Everybody is a skinned mesh on a real skeleton.** Twenty-two bones, one
+  continuous body surface, and garments as their own shells over it. An
+  elbow bends the mesh around it instead of hinging one cylinder past
+  another, and a figure costs seven draw calls rather than twenty-five.
+  Every limb, torso and garment comes out of one builder — a stack of rings
+  with bone weights on them — so an arm and the sleeve over it are the same
+  kind of object and deform together. A t-shirt hangs below the waist and
+  ends in a cuff that stands off the arm; joggers gather into an elastic at
+  the ankle; hands have thumbs; shoes have a sole, a toe box and a collar.
+  Ouissy has fair skin and long blonde wavy hair built as a cap, a fringe
+  and sixteen tapered locks each waved on its own phase. The ones that used
+  to be people come out of nine skin tones, six wardrobes, four builds, six
+  hairstyles and a set of things that can have gone wrong, so a corridor
+  with eight in it has eight different people in it. Ashcombe has staff on
+  the gate in hi-vis with rifles slung, and a dozen people waiting inside
+  who got there first. The walk cycle, the creep, the lurch, sitting on a
+  log and sitting astride a horse are all poses on the same skeleton.
+- **The dark is lit, not painted.** A hemisphere light for the sky, one
+  directional for the moon or the sun, a pool of eight point lights moved to
+  whichever lamps are nearest her, and her torch — a shadow-casting spotlight
+  with a soft-gradient cone that dust drifts through and that arrives where
+  she is pointing about a tenth of a second after she does. One streetlight
+  in six is on its way out and flickers like a failing tube. Every light in
+  a level is scaled by how bright that location's own materials are, so
+  "dark" means the same thing in the hospital as it does in the house.
+- **Materials have something to reflect.** Each level renders its own sky
+  into a cube at load and runs it through PMREM, so glass picks up the sky
+  and the building opposite, wet tarmac picks up the streetlights, and metal
+  stops looking like plastic. The road's roughness comes out of a painted map:
+  the standing water in it is mirror-smooth while the aggregate around it
+  stays matt.
+- **Nothing snaps.** Every follower in the game — her turn, her crouch, the
+  torch, the camera position, the camera's lead, its distance, its field of
+  view, the doors, the fades — runs through a frame-rate-independent ease,
+  and the camera itself is on critically damped springs, so it settles
+  without overshoot and behaves the same at 30 fps as at 144.
+- **Post**: bloom, then one pass that does the colour grade, the haze, the
+  vignette, the grain, a touch of lens fringing and the red pulse when
+  something has hold of her.
+- **It still carries no files.** Every surface is a texture painted into an
+  offscreen canvas at load, every sound is an oscillator, and the sky is a
+  fragment shader. The chapter adds one script to the repo and nothing
+  else — no images, no audio, and no library the site was not already
+  loading.
+
+If the machine cannot hold a frame rate the render scale drops on its own,
+measured over a second and a half so one long frame never triggers it.
 
 ### The levels
 
@@ -166,36 +238,41 @@ nothing to the repo but the one script.
 | 4 | **The Road** | out of the building, a car that might start, and a horse |
 | 5 | **The Gates** | the check, the serum, and somebody opening a gate |
 
+Between them: the drive, the ride, the campfire, the sunrise and the roof.
+All five are 3D scenes of their own with their own cameras, not slideshows.
+
 ### Changing it
 
-Everything you are likely to want is in the first two hundred lines of
+Everything you are likely to want is in the first six hundred lines of
 `apocalypse.js`:
 
-- `AP` — the words. Level names and briefings, the how-to card, and
-  **`AP.reunion`**, which is the scene in the supply room in Level 3. A line
-  written as `["", ""]` is a beat of silence and is held on screen like any
-  other line; those are doing as much work there as the spoken ones.
-- `TUNE` — how she feels to play. How fast she walks, how far her torch
-  reaches, how far a footstep carries, how far a zombie sees and how fast it
-  moves once it has seen her. Almost every complaint about a stealth game is
-  one of these numbers.
-- `LEVELS` — the maps, as grids of characters, one per 16px tile, with the
-  full legend written above them. Edit a string and the place changes.
+- `MAPS` — the maps, as grids of characters, one per tile, with the full
+  legend written above them. Edit a string and the place changes.
+- `LEVELS` / `SUB` — what each place is called, how dark it is, its colour
+  grade, and its list of steps.
+- `PAL` — five palettes. The world builder, the lighting and the post chain
+  all read from these, so changing one line changes the whole look of a
+  place.
+- `TALK` — the words. Every line in the game, verbatim. A line written as
+  `[null, null]` is a beat of silence and is held on screen like any other
+  line; those are doing as much work as the spoken ones.
+- `TUNE` — how she feels to play. Distances are still written in the design's
+  original pixels and converted once at the top, so the stealth reads the way
+  it was tuned. Almost every complaint about a stealth game is one of these
+  numbers.
 
 ### Three mechanics, built once
 
-- **The wire panel** — a salvaged plate under one bulb. Five shape-coded
-  plugs bolted to the left rail, their runs crossing in a tangle, loose ends
-  staged out of order, and sockets shuffled again on the right, so the end
-  nearest a socket is almost never the one that belongs in it. A wrong drop
-  sparks and drops the wire back; there is no other penalty. It is the
-  garage door, the ward doors and the car.
-- **The note and the keypad** — a torn scrap with a code on it, and a keypad
-  in the same spirit as the site's own passcode gate.
-- **The close call** — being caught is not a death. She is grabbed at, she
-  gets away, and she comes back to the last place she was safe. Hiding
-  places are checkpoints in their own right, so it costs seconds, never a
-  level.
+- **The wire panel** — a salvaged distribution board with the cover off:
+  four cores out of the loom on the left, four terminals on the right, no
+  labels. A wrong drop arcs, and an arc is the loudest thing she can do. It
+  is the garage door and it is Ward C.
+- **The note and the keypad** — a torn rota with a code biroed on it, and a
+  keypad screwed to a fire door.
+- **The close call** — being caught is not a death. She is taken hold of,
+  she has a second and a half to answer it, and if she does not she comes
+  back to the last place she was safe. Hiding places are checkpoints in
+  their own right, so it costs seconds, never a level.
 
 ### The ending
 

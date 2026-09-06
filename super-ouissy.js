@@ -4061,7 +4061,10 @@ window.SuperOuissy = (function () {
          sound never came back and the MUSIC toggle could not revive it
          either. wakeAudio in script.js handles both, plus the retry
          Safari needs. */
-      if (ac.state !== "running") {
+      /* ...but not while the site has deliberately put the sound down
+         on the way out of the page: a scene still ticking in a window
+         you have left would wake the whole thing up again. */
+      if (ac.state !== "running" && !(window.audioAsleep && window.audioAsleep())) {
         if (window.wakeAudio) window.wakeAudio(ac);
         else { try { ac.resume(); } catch (e) {} }
       }

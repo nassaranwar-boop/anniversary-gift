@@ -32,8 +32,8 @@ window.Scrapbook = (function () {
        begins, in seconds — set it to the moment of the line you want it
        to open on, and nudge it by a second or two until it lands. ---- */
     song: {
-      title:  "Mirage",
-      artist: "Bouss",
+      title:  "Nous deux",
+      artist: "SDM",
       src:    "assets/song.mp3",
       startAt: 0,           // ← seconds into the track to begin at
     },
@@ -467,9 +467,13 @@ window.Scrapbook = (function () {
         ctx.fillStyle = weft;
         ctx.fillRect(0, y, W, 1.5);
       }
-      /* slub — the odd thicker thread */
+      /* Slub — the odd thicker thread. Gold-cream rather than cool pink:
+         every light accent in here used to lean blue, which is what made
+         the cover the one surface in the whole book where blue outranked
+         green while the blush, the parchment and the gold all run warm.
+         Next to a cream page it read as dusty and slightly grey. */
       for (var i = 0; i < 260; i++) {
-        ctx.fillStyle = r() > 0.5 ? "rgba(255,232,238,0.10)" : "rgba(52,16,28,0.12)";
+        ctx.fillStyle = r() > 0.5 ? "rgba(255,235,205,0.11)" : "rgba(52,16,28,0.12)";
         if (r() > 0.5) ctx.fillRect(r() * W, r() * H, 1.6, 6 + r() * 26);
         else ctx.fillRect(r() * W, r() * H, 6 + r() * 26, 1.6);
       }
@@ -477,14 +481,14 @@ window.Scrapbook = (function () {
       for (var m = 0; m < 22; m++) {
         var mx = r() * W, my = r() * H, mr = 40 + r() * 130;
         var g = ctx.createRadialGradient(mx, my, 0, mx, my, mr);
-        g.addColorStop(0, r() > 0.5 ? "rgba(255,224,232,0.07)" : "rgba(58,18,32,0.09)");
+        g.addColorStop(0, r() > 0.5 ? "rgba(255,228,190,0.08)" : "rgba(58,18,32,0.09)");
         g.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = g; ctx.fillRect(mx - mr, my - mr, mr * 2, mr * 2);
       }
       /* worn a little at the edges, the way a used cover is */
       var v = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.22,
                                        W / 2, H / 2, Math.max(W, H) * 0.72);
-      v.addColorStop(0, "rgba(255,238,244,0.05)");
+      v.addColorStop(0, "rgba(255,240,214,0.06)");
       v.addColorStop(0.6, "rgba(0,0,0,0)");
       v.addColorStop(1, "rgba(40,10,22,0.30)");
       ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
@@ -2485,12 +2489,18 @@ window.Scrapbook = (function () {
   function buildSongCard() {
     var S = SB.song;
     var c = el("sb-w sb-w-song");
+    /* The extra elements here are decoration only — the halo behind the
+       record, the tonearm, the little caption. Every class the player
+       logic below queries is unchanged. */
     c.innerHTML =
+      '<span class="sb-song-halo" aria-hidden="true"></span>' +
       '<div class="sb-song-deck">' +
+        '<span class="sb-song-arm" aria-hidden="true"></span>' +
         '<img class="sb-song-disc" alt="" />' +
         '<span class="sb-song-spindle"></span>' +
       "</div>" +
       '<div class="sb-song-body">' +
+        '<p class="sb-song-kicker">our song</p>' +
         '<p class="sb-song-title">' + S.title + "</p>" +
         '<p class="sb-song-artist">' + S.artist + "</p>" +
         '<div class="sb-song-scrub" role="slider" tabindex="0" aria-label="Seek">' +
@@ -4326,7 +4336,14 @@ window.Scrapbook = (function () {
     job(function () { PAPER.mauveCloth = denimCloth(37); });
     /* and one dyed sheet per page, in that page's own colour */
     buildPagePapers(job);
-    job(function () { PAPER.cover = bookCloth(53, "#b06a7c", "rgba(255,226,234,0.10)", "rgba(70,22,38,0.12)"); });
+    /* The cover was #b06a7c: a dusty mid mauve that came out at 37%
+       saturation with a purple lean, and next to the cream pages and the
+       gold it read as the one dull thing in the book. This is the same
+       cloth dyed properly — a rose-wine that sits between --rose-deep and
+       the gate's wine, with gold-cream threads instead of pink ones. The
+       cover text is on its own paper label, so going deeper costs no
+       contrast and the label and the little stars gain some. */
+    job(function () { PAPER.cover = bookCloth(53, "#9c4750", "rgba(255,224,178,0.14)", "rgba(56,14,24,0.16)"); });
     job(function () {
       PAPER.endpaper = marbled(71);
       var ep = document.getElementById("sb-endpaper");

@@ -1,1 +1,4 @@
 node_modules
+
+# rendered page shots from tools/pageshots.js — working images, not the site
+.pageshots/
