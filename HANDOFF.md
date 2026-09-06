@@ -303,6 +303,48 @@ Things this build learned the hard way, all worth not repeating:
   said "THAT'S IT" did nothing and she stood at Ashcombe with her sleeve up
   forever. Three states, not two.
 
+## 7c. The height of the page — do not undo this
+
+This one came back three times and cost him days, so it is written down.
+
+The symptom he reports: the site loads at the right size, then a moment
+later sits differently in the frame; and after leaving Chrome on the iPad
+and coming back, it is either right again or it is too tall, with a band of
+empty space below that the page can be dragged up and down into.
+
+What it actually was, measured off his screen recordings frame by frame:
+nothing scales. The content *translates* — up to a hundred CSS pixels — and
+holds there. Every full-screen box is laid out against `--app-h`, and that
+one number was wrong. `100dvh` is meant to track the browser UI, and on the
+iPad it comes back from the app switcher holding whatever it held before.
+The pass before this one had handed the job to dvh entirely (`if (HAS_DVH)
+return;` at the top of `fitViewport`), so nothing ever recomputed it. It
+stayed wrong for the rest of the session.
+
+The contract now, in `script.js` and the top of `style.css`:
+
+- `100vh` / `100dvh` in the stylesheet are the **pre-JS fallback only**.
+- JS owns `--app-h`. It measures `visualViewport.height * visualViewport.scale`
+  — the visible area, multiplied back out so a pinch does not rewrite the
+  layout, which was the real objection to measuring at all.
+- It re-measures on resume: `pageshow`, `visibilitychange`, window `focus`,
+  `orientationchange`, in a short burst, because iOS reports the previous
+  size for a few frames after a resume.
+- It compares against the value **the document is carrying**, not a cached
+  one, so a height that drifted for any reason heals on the next event.
+- `body` is `position:fixed; inset:0`. iOS does not honour `overflow:hidden`
+  on the document for touch panning; a fixed body is not a scroll box at
+  all. This is what makes the void un-draggable even mid-rotation.
+- The 3D scenes size themselves from **their own canvas box**, never
+  `window.innerWidth/innerHeight`. Rendering at the window's size put a
+  taller picture inside a shorter box, and the crop of it you got read as
+  zoomed in. `book-scene.js` has `viewW()`/`viewH()` and a ResizeObserver on
+  the canvas for this; `renderer.setSize(w, h, false)` so the stylesheet
+  keeps the CSS box.
+
+`tools/vh.js` is the check. Note that the two hub overflow failures on the
+phone viewports are older than all of this and are hub layout, not height.
+
 ## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python

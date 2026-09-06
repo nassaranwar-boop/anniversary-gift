@@ -96,51 +96,103 @@ function openCover(name) { pageTurn(name); }
 /* ---------------------------------------------------------
    THE REAL HEIGHT OF THE VIEWPORT
 
-   dvh handles this on its own in a modern browser, but it is not
-   everywhere yet and it rounds; this measures the visible area and
-   writes it into --app-h, which the stylesheet uses for every
-   full-height box. That is what closes the blank strip you could swipe
-   down into.
+   One number, --app-h, and every full-screen box on the site is laid
+   out against it. Getting it wrong is what produced all three of the
+   faults that kept coming back:
 
-   innerHeight, not visualViewport.height: the visual viewport shrinks
-   when the on-screen keyboard opens, and re-laying the whole site out
-   around the keyboard is worse than the gap ever was. The focus guard
-   below is the belt to that braces.
+     too tall  — the screens run past the fold, the content sits low and
+                 clipped, and there is a band of void underneath that the
+                 page can be dragged up to reveal. That is the "taller
+                 version with empty space below, and it scrolls".
+     too short — the content is centred high, and the body shows through
+                 at the bottom.
+     stale     — right after the tab is resumed the number is whatever it
+                 was before, so the site comes back framed differently
+                 from how it went away.
+
+   The last one is the one that mattered. CSS dvh was supposed to handle
+   all of this, and the previous pass here handed the job over to it and
+   returned early — which means that when dvh comes back stale from the
+   app switcher on iPad, nothing recomputes it, ever. So JS measures, and
+   it measures on resume.
+
+   WHAT is measured: visualViewport, not innerHeight. innerHeight is the
+   layout viewport, which on iOS still counts the strip behind the
+   browser's own UI — the very pixels we are trying not to lay out into.
+   visualViewport.height is what is genuinely on screen.
+
+   Multiplied by .scale, because visualViewport shrinks when you pinch,
+   and it shrinks by exactly the zoom factor. Multiplying it back out
+   gives a figure that does not move under a two-finger zoom — which was
+   the real objection to measuring at all, and it is answered here rather
+   than avoided.
    --------------------------------------------------------- */
-/* dvh is the browser's own answer to this and it is correct at every zoom
-   level, which a measured pixel value is not: written too large the fixed
-   screens overflow and the content reads as cropped from the top; written
-   too small, or left stale after a zoom, the body shows through underneath
-   as a band of empty space. Both of those were the same stale number.
+const VV = window.visualViewport || null;
 
-   So where dvh exists, CSS owns the height and JS does not touch it. The
-   measurement below is only for browsers old enough to lack dvh. */
-const HAS_DVH = typeof CSS !== "undefined" && CSS.supports &&
-                CSS.supports("height", "100dvh");
-
-function fitViewport() {
-  if (HAS_DVH) return;                      // the stylesheet already has it right
-  const ae = document.activeElement;
-  if (ae && /^(input|textarea|select)$/i.test(ae.tagName)) return;
-  const h = window.innerHeight;
-  if (h > 0) document.documentElement.style.setProperty("--app-h", h + "px");
+function measuredHeight() {
+  if (VV && VV.height > 0) {
+    const s = (VV.scale && VV.scale > 0) ? VV.scale : 1;
+    return Math.round(VV.height * s);
+  }
+  return Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
 }
 
-if (!HAS_DVH) {
+let appH = 0;
+
+function fitViewport() {
+  /* The on-screen keyboard shrinks the visual viewport too, and it is not
+     the browser's UI — re-laying the whole site out around the keyboard
+     is worse than any gap. Hold the last good value while a field has
+     focus; focusout re-measures. */
+  const ae = document.activeElement;
+  if (ae && /^(input|textarea|select)$/i.test(ae.tagName)) return;
+
+  const h = measuredHeight();
+  if (h <= 0) return;
+  /* Compared against what the document is actually carrying, not against a
+     variable in here. A cached number can agree with the measurement while
+     the page has drifted to something else entirely — a stale dvh, an
+     interrupted write — and that is precisely the moment we would skip.
+
+     A pixel of slack, because a pinch reports a height that rounds a
+     little differently frame to frame, and re-laying the site out under
+     her fingers over one pixel is worse than the pixel. */
+  const root = document.documentElement;
+  const current = parseFloat(root.style.getPropertyValue("--app-h"));
+  if (current === current && Math.abs(current - h) <= 1) return;
+  appH = h;
+  root.style.setProperty("--app-h", h + "px");
+  /* Anything that renders into a box of its own — the 3D scenes — asks
+     for this rather than reading the window, so tell them the box moved.
+     A plain resize event is not enough: iPad does not always fire one. */
+  window.dispatchEvent(new CustomEvent("app-viewport"));
+}
+
+/* iOS reports the size it had a moment ago for a few frames after a
+   resume or a rotation, so one measurement at the moment of the event is
+   not enough — take a short burst and let the change guard above throw
+   away the ones that agree. */
+function fitViewportSoon() {
   fitViewport();
-  /* A ResizeObserver on the root element, not just the resize event: some
-     mobile browsers change the viewport as the URL bar slides away without
-     ever firing resize, and at least one scene here stops the event
-     reaching us at all. The observer watches the box itself. */
-  if (window.ResizeObserver) {
-    try { new ResizeObserver(fitViewport).observe(document.documentElement); } catch (e) {}
-  }
-  addEventListener("resize", fitViewport);
-  addEventListener("orientationchange", () => setTimeout(fitViewport, 120));
-  addEventListener("pageshow", fitViewport);
-  if (window.visualViewport) window.visualViewport.addEventListener("resize", fitViewport);
-  addEventListener("scroll", () => requestAnimationFrame(fitViewport), { passive: true });
-  document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
+  [60, 180, 400, 900].forEach((ms) => setTimeout(fitViewport, ms));
+}
+
+fitViewport();
+addEventListener("resize", fitViewport);
+addEventListener("orientationchange", fitViewportSoon);
+/* The three that cover coming back to the tab: pageshow fires on a
+   back-forward-cache restore, visibilitychange on the app switcher, focus
+   on returning to the window. Between them nothing gets in without a
+   fresh measurement. */
+addEventListener("pageshow", fitViewportSoon);
+addEventListener("focus", fitViewportSoon);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) fitViewportSoon();
+});
+document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
+if (VV) {
+  VV.addEventListener("resize", fitViewport);
+  VV.addEventListener("scroll", fitViewport);
 }
 
 /* ---------- ambient particles ---------- */
@@ -226,7 +278,7 @@ function dodge() {
   requestAnimationFrame(() => {
     const margin = 60;
     const x = margin + Math.random() * (window.innerWidth - margin*2 - 160);
-    const y = margin + Math.random() * (window.innerHeight - margin*2 - 40);
+    const y = margin + Math.random() * ((appH || window.innerHeight) - margin*2 - 40);
     btnNo.style.left = x + "px";
     btnNo.style.top = y + "px";
   });
