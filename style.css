@@ -5206,6 +5206,25 @@ img{-webkit-user-drag:none; user-select:none;}
   background:linear-gradient(90deg, var(--ns-brass) 0 36%, transparent 36% 64%, var(--ns-brass) 64% 100%);
 }
 
+/* The six nights of small decisions, answered on the last morning —
+   and then his final entry, which is the last thing the chapter says.
+   It is set apart from the ending above it because it is not narration
+   any more: it is his handwriting, and she is reading it over his
+   shoulder a week too late. */
+.ns-kept-ask{
+  margin:2.4cqh 0 .6cqh; font-size:max(1.6cqh, 10px); letter-spacing:.28em;
+  color:var(--ns-brass); text-align:center;
+}
+.ns-kept-out{
+  margin:0 0 1.4cqh; font-size:max(2cqh, 12px); line-height:1.85;
+  letter-spacing:.04em; color:rgba(255,214,158,.95); text-align:left;
+}
+.ns-lastpage{
+  margin:2.2cqh 0 .6cqh; padding-top:2cqh;
+  border-top:1px solid rgba(200,162,96,.28);
+}
+.ns-lastpage .ns-paper p{ font-style:italic; }
+
 /* The episode title. A night is a chapter of something, so it gets a
    name the way a chapter does, above the line about what has gone
    wrong in it. */

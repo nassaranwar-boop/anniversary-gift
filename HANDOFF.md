@@ -692,3 +692,28 @@ second, which nobody would ever see).
 after, a page she might not find. `NS.reveal` is one thing a night, at
 three in the morning, in his voice, and it waits if anything is at a
 door.
+
+## The story pass: she was passive, and that was the flaw
+
+Things were revealed TO her. She read pages, listened to tapes,
+survived, and answered one binary question at the very end. A coin with
+no history behind it is a menu, not an ending.
+
+`NS.reveal` is six decisions now — keep it or burn it — and `NS.kept`
+resolves them on the last morning. Nothing ever tells her they count.
+They also nudge the shift itself: `keepDrag()` slows the four running
+down (more of him in the shop to run on), `burnDrag()` slows the ones
+he sold coming back (less of him here for them to return to). Neither
+is worth optimising and neither is mentioned, which is the difference
+between a decision that felt like it mattered and one that scored.
+
+The knife is night four. He did not learn to build a thing that watches
+a person by practising on strangers — there is a notebook with fifteen
+years of dated observations of his own wife in it, and every trait in
+it is a mechanic in one of the four toys hunting her. Night five is the
+answer: a drawing dated the week he was told, four figures round a
+woman at a desk, all of them facing outward.
+
+`endingKind()` has five outcomes. The one that means the most is not
+"kept everything" — it is `four`: she burns the ledger and the
+notebook and keeps the things he made.

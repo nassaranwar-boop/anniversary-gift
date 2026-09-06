@@ -1371,6 +1371,84 @@ function ok(name, cond, extra) {
   ok('and no two nights tell her the same thing',
      new Set(reveals.heads).size === 6, JSON.stringify(reveals.heads[0]));
 
+  /* THE THING THAT MAKES IT A STORY SHE IS IN RATHER THAN ONE THAT
+     HAPPENS TO HER.
+
+     She was passive: things were revealed to her, she read them, she
+     survived, and then made one binary choice at the end. A coin at
+     the end of six hours is a menu, not an ending. So every night she
+     decides whether to keep the thing she found or burn it, nobody
+     ever tells her it counts, and the ending is worked out from the
+     six of them on the last morning. */
+  console.log('\n— and every night she decides what to do with it —');
+  const choice = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    const out = {};
+    try { localStorage.removeItem('ns_kept'); } catch (e) {}
+    const run = (n, keep) => {
+      w.route('night:' + n); w.route('go');
+      const c = w.cast();
+      Object.keys(c).forEach(k => { c[k].awake = false; c[k].asleep = true; });
+      s.hour = 3; w.pump(2); w.revealStep(0.2);
+      const btns = [].slice.call(document.querySelectorAll('.ns-ov-find [data-go]'))
+        .map(b => b.dataset.go);
+      w.route(keep ? 'keep' : 'burn');
+      return btns;
+    };
+    out.btns = run(1, true);
+    out.phaseAfter = s.phase;
+    out.afterOne = w.kept();
+    run(2, false); run(3, false); run(4, false); run(5, true); run(6, true);
+    out.ledger = w.kept();
+    out.ending = w.endingKind();
+    /* and a different set of six writes a different ending */
+    try { localStorage.removeItem('ns_kept'); } catch (e) {}
+    for (let n = 1; n <= 6; n++) run(n, true);
+    out.allKept = w.endingKind();
+    try { localStorage.removeItem('ns_kept'); } catch (e) {}
+    for (let n = 1; n <= 6; n++) run(n, false);
+    out.allBurned = w.endingKind();
+    /* burn the business, keep the things he made */
+    try { localStorage.removeItem('ns_kept'); } catch (e) {}
+    [[1,true],[2,true],[3,false],[4,false],[5,true],[6,true]].forEach(x => run(x[0], x[1]));
+    out.four = w.endingKind();
+    return out;
+  });
+  ok('the card asks her to keep it or burn it',
+     choice.btns.indexOf('keep') >= 0 && choice.btns.indexOf('burn') >= 0,
+     choice.btns.join(','));
+  ok('and it hands the night straight back either way',
+     choice.phaseAfter === 'play', choice.phaseAfter);
+  ok('and the shop remembers what she did with it',
+     choice.afterOne.kept === 1 && choice.afterOne.burned === 0,
+     JSON.stringify(choice.afterOne));
+  ok('six nights of it are remembered as six',
+     choice.ledger.kept + choice.ledger.burned === 6,
+     JSON.stringify(choice.ledger));
+  ok('and the six of them write the ending, not a button at the end',
+     choice.allKept === 'all' && choice.allBurned === 'none' &&
+     choice.allKept !== choice.ending,
+     'kept all -> ' + choice.allKept + ', burned all -> ' + choice.allBurned +
+     ', mixed -> ' + choice.ending);
+  ok('burning the business and keeping what he made is its own ending',
+     choice.four === 'four', choice.four);
+
+  const closing = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    w.route('night:6'); w.route('go');
+    ['cogsworth','chime','marabelle','jax'].forEach(k => { w.cast()[k].asleep = true; });
+    s.hour = 5; s.power = 60; w.pump(70);
+    w.route('endWind');
+    const card = document.querySelector('.ns-card-fin');
+    return { kept: !!document.querySelector('.ns-kept-out'),
+             last: !!document.querySelector('.ns-lastpage'),
+             text: card ? card.textContent : '' };
+  });
+  ok('the last morning answers the six nights', closing.kept === true);
+  ok('and the last thing the chapter says is his, not the narrator\'s',
+     closing.last === true && /counting on that/.test(closing.text),
+     closing.last ? 'his final entry is there' : 'missing');
+
   /* and they do not look alike either */
   const looks = await page.evaluate(() => {
     const w = OuissysNightShift.__night, out = { tones: [], titles: [] };

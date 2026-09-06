@@ -361,60 +361,136 @@ const NS = {
      The shop stops, he says the thing, and she goes back to work
      knowing something she did not know at midnight. That is the shape
      of an episode: you do not leave one where you came in. */
+  /* =====================================================
+     WHAT SHE FINDS, AND WHAT SHE DOES WITH IT
+
+     The story had one flaw that no amount of atmosphere was going to
+     cover: she was passive. Things were revealed TO her. She read
+     pages, she listened to tapes, she survived, and then at the very
+     end she made one binary choice. That is a game with a story
+     attached rather than a story she is inside.
+
+     So every night she finds one thing, and every night she decides
+     whether to KEEP it or BURN it. Six small decisions, no right
+     answer, nobody ever tells her they matter — and the ending is
+     computed out of them at six o'clock on the last morning. She has
+     been writing the end of it all week without being told she was.
+
+     The arc under the six:
+
+       one    grief. His handwriting, his kettle, a key he never gave
+              her. She misses him.
+       two    uncanny tenderness. The four are made of her habits.
+              Flattering, and very slightly wrong.
+       three  the floor goes. Four hundred and eleven addresses. He was
+              not a toymaker, he was in people's houses.
+       four   THE KNIFE. The notebook. Fifteen years of dated
+              observations of his own wife — because that is how you
+              learn to build a toy that watches somebody. The attention
+              she thought was love was also fieldwork.
+       five   the reversal. The drawing. Four figures round a woman at
+              a desk, facing outward. He stopped studying her and
+              started building her a guard.
+       six    the last thing he wrote, which is not a defence.
+     ===================================================== */
   reveal: {
-    1: { at: "the drawer under the till",
-         head: "A KEY, AND A NOTE IN HIS HAND",
+    1: { at: "taped under the drawer, where his hand would go",
+         head: "A SECOND KEY",
          lines: [
-           "There is a second key taped under this drawer. It opens the workshop.",
-           "I never gave you a key to anything in fifteen years. Not the shop, not the van, not the room at the back.",
-           "I told myself it was because you never asked.",
+           "A brass key on a loop of green thread, and a scrap of paper folded round it.",
+           "&ldquo;Workshop. It sticks. Lift and turn.&rdquo;",
+           "In fifteen years he never gave her a key to anything. Not the shop, not the van, not the room at the back.",
+           "She told herself it was because she never asked.",
          ],
-         say: "You never asked me for a key. I have thought about that a great deal since." },
-    2: { at: "chalked on the workshop bench, in his hand",
-         head: "FOUR NAMES, AND FOUR WORDS",
+         say: "You never once asked me for a key. I have thought about that a great deal, lately.",
+         keep: "SHE KEEPS THE KEY", burn: "SHE LEAVES IT WHERE IT IS" },
+
+    2: { at: "chalked on the workshop bench in his hand",
+         head: "FOUR NAMES AND FOUR WORDS",
          lines: [
            "COGSWORTH — never late.",
            "CHIME — always finds the way in.",
-           "MARABELLE — stops when you look.",
+           "MARABELLE — stops when she is looked at.",
            "JAX — will not leave the room.",
-           "Underneath all four, in the same chalk: HER.",
+           "And underneath all four, in the same chalk, pressed hard enough to break it: HER.",
          ],
-         say: "You will have worked out what they are by now. I made four toys and I only ever had one idea." },
+         say: "You will have worked out what they are. I made four toys and I only ever had the one idea.",
+         keep: "SHE WIPES IT OFF AND KEEPS THE CHALK", burn: "SHE WASHES THE BENCH DOWN" },
+
     3: { at: "the delivery book, under the till",
          head: "FOUR HUNDRED AND ELEVEN ADDRESSES",
          lines: [
-           "Every line is a name, a street and a date. None of them is a sale.",
-           "The last column is headed RETURNED, and eleven of the boxes are ticked.",
-           "The ticks are in a different pen. They are recent.",
+           "Every line is a name, a street and a date. Not one of them is a sale.",
+           "The last column is headed RETURNED. Eleven boxes are ticked.",
+           "The ticks are in a different pen and they are recent, and he has been dead for eleven days.",
+           "One tick a night.",
          ],
-         say: "Eleven of them have already found their way back. I did not tick those. I was not here." },
-    4: { at: "a bank book, behind the loose board",
-         head: "FIFTEEN YEARS OF PAYMENTS",
+         say: "I did not tick those. I was not here. Whatever is doing it is doing it on its own.",
+         keep: "SHE KEEPS THE BOOK", burn: "SHE BURNS THE BOOK" },
+
+    4: { at: "a notebook, behind the loose board, with fifteen years in it",
+         head: "OBSERVATIONS",
          lines: [
-           "One payment a month, every month, from an account with no name on it.",
-           "The first is dated the spring you married him.",
-           "The amounts go up whenever a toy went out.",
+           "It is his handwriting and it is dated, and every entry is one line about her.",
+           "&ldquo;Checks the door twice. Always the second time from the landing.&rdquo;",
+           "&ldquo;Hums when she thinks I am asleep. Same eight notes.&rdquo;",
+           "&ldquo;Will not leave a room I am in. Waits by the door instead. Fifteen minutes tonight.&rdquo;",
+           "&ldquo;Stops dancing the moment she is looked at.&rdquo;",
+           "It runs to the back cover. It is how you learn to build a thing that watches a person.",
+           "He did not study strangers to learn it. He studied his wife, for fifteen years, and she thought it was being loved.",
          ],
-         say: "That is our house. That is the car, and the doctor, and the holiday you liked. All of it is on that page." },
-    5: { at: "pinned inside the workshop door",
-         head: "A DRAWING, ON GRAPH PAPER",
+         say: "I know what that book is. I know exactly what it looks like from where you are standing. I am not going to tell you it was anything else.",
+         keep: "SHE KEEPS THE NOTEBOOK", burn: "SHE BURNS THE NOTEBOOK" },
+
+    5: { at: "pinned inside the workshop door, on graph paper",
+         head: "THE LAST DRAWING",
          lines: [
-           "Four figures, drawn carefully, with measurements down the side.",
-           "There is a fifth outline in pencil, in the middle, that has been rubbed out and drawn again.",
-           "It is a woman at a desk. The four of them are standing around her, facing outward.",
+           "Four figures, measured and squared off, drawn the way he drew everything.",
+           "In the middle, rubbed out and drawn again four or five times, a fifth outline that is not a toy.",
+           "It is a woman at a desk.",
+           "The four of them are standing around her, and every one of them is facing away from her — outward, at the doors.",
+           "It is dated the week he was told.",
          ],
-         say: "I drew that the week I was told. Four of them, and you in the middle, and all of them looking the other way." },
-    6: { at: "folded into the music box, under the comb",
+         say: "The first fifteen years I was learning you so I could sell what I learned. The last two I was learning you so I could leave something behind that knew how to stand in front of you.",
+         keep: "SHE TAKES IT DOWN AND KEEPS IT", burn: "SHE LEAVES IT ON THE DOOR" },
+
+    6: { at: "folded under the comb of the music box",
          head: "THE LAST THING HE WROTE",
          lines: [
-           "Ouissy —",
-           "If you are reading this you did the six nights and you did not run, which is exactly what I would have bet on.",
-           "Everything in here is yours. So is the choice about what to do with it.",
-           "I am sorry I was not braver in the daylight.",
+           "&ldquo;Ouissy —",
+           "You will have found all of it by now. You will have hated me for some of this week and you were right to, and I would rather you did that here than at a graveside where I could not answer.",
+           "I do not get to be forgiven for the first fifteen years. I would like the last two to work.",
+           "Everything in here is yours. So is the choice about what to do with it, and that is the only thing I ever left you that has no strings on it.",
+           "&mdash; A.&rdquo;",
          ],
-         say: "That is the last of it. There is nothing after this one. Thank you for staying." },
+         say: "That is the last of it. There is nothing after this one. Thank you for the six nights.",
+         keep: "SHE KEEPS THE LETTER", burn: "SHE BURNS THE LETTER" },
   },
-  /* What tonight is FOR. The card told her which night it was and what
+
+  /* The one line the whole chapter is built to earn. It is not on any
+     card she can reach — it is the last thing the game says, after the
+     ending, in his hand, dated the day he was told. */
+  lastPage: {
+    at: "the final entry, dated the day he was told",
+    lines: [
+      "&ldquo;She will find all of this.",
+      "She will hate me for a while, and she will be right.",
+      "Then she will do the thing she always does, which is stay anyway.",
+      "I am counting on that and I have no right to.&rdquo;",
+    ],
+  },
+
+  /* six nights of small decisions, answered at once on the last morning */
+  kept: {
+    ask: "SIX NIGHTS. SIX THINGS OF HIS.",
+    all:   "She keeps all of it — the key, the chalk, the book, the notebook, the drawing and the letter — and the shop opens on Monday with her name over the door. She will wind them every night for the rest of her life, and not one of those nights will be because he told her to.",
+    most:  "She keeps most of him and lets the rest go, which is what people actually do. The shop opens. Some of the drawers stay shut.",
+    some:  "She keeps the four of them and burns nearly everything else: the addresses, the book, the fifteen years of notes. What is left in the shop on Monday morning is four toys and a woman who knows exactly what they are.",
+    none:  "She burns all of it and walks out at six with nothing in her hands, and the four of them wind down where they stand, facing the door she left by. It is the only ending in which nobody is watching her, and she has earned it.",
+    four:  "She burns the business and keeps the toys. Four things he made out of her, and not one single thing he ever did with them.",
+  },
+
+  /* What tonight is FOR.  /* What tonight is FOR. The card told her which night it was and what
      new thing would go wrong; it never told her what she was there to
      do about it, which is the difference between a level and a scene.
      One line, present tense, always something she can actually finish. */
@@ -5079,7 +5155,7 @@ function stepSold(ch, dt) {
     ch.cool -= dt;
     if (ch.cool > 0) return;
     ch.awake = true;
-    ch.cool = range(Math.random, 5, 12);
+    ch.cool = range(Math.random, 5, 12) * burnDrag();
     SFX.postDrag(TUNE.pan[ch.def.door]);
     tapeTrigger("firstParcel");
     say(fmt(NS.sys.unknown, ch.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
@@ -5943,6 +6019,16 @@ const SFX = {
     burst({ f0: 320, f1: 70, dur: 0.55, gain: 0.55, q: 0.6, filter: "lowpass", at: 0.95 });
     burst({ f0: 2400, f1: 1100, dur: 0.07, gain: 0.22, q: 3, at: 1.45 });
     tone({ type: "square", f0: 96, f1: 62, dur: 0.30, gain: 0.16, filter: "lowpass", ff: 400, at: 1.45 });
+  },
+
+  /* paper catching, which is a small sound and should be */
+  burn() {
+    burst({ f0: 4200, f1: 1600, dur: 0.55, gain: 0.20, q: 0.5, filter: "highpass" });
+    burst({ f0: 1100, f1: 380, dur: 0.9, gain: 0.13, q: 0.4, filter: "lowpass", at: 0.06 });
+    tone({ type: "triangle", f0: 74, f1: 52, dur: 1.1, gain: 0.10, filter: "lowpass", ff: 200, at: 0.1 });
+    for (let i = 0; i < 5; i++) {
+      burst({ f0: 5200 - i * 200, dur: 0.05, gain: 0.03, q: 2, at: 0.2 + i * 0.14 });
+    }
   },
 
   /* Camera zero. Neither of these is a jump — a bang would tell her
@@ -8210,6 +8296,40 @@ function stepReveal(dt) {
   revealCard(r);
 }
 
+/* WHAT SHE DOES WITH IT.
+
+   Six nights, six things of his, and every one of them is a decision:
+   keep it or burn it. There is no right answer and nothing ever tells
+   her it matters — the ending is worked out from the six of them on
+   the last morning, so she has been writing it all week without being
+   asked to.
+
+   It is the whole difference between a story that happens to her and
+   one she is in. She cannot save him, she cannot undo any of it, and
+   the only power the game ever gives her is the power to decide what
+   she is taking out of that shop. Which is the only power anybody
+   actually gets. */
+const KEEP_KEY = "ns_kept";
+function keptAll() {
+  try { return JSON.parse(localStorage.getItem(KEEP_KEY) || "{}") || {}; }
+  catch (e) { return {}; }
+}
+function keepThing(n, kept) {
+  const all = keptAll();
+  all[n] = kept ? 1 : 0;
+  try { localStorage.setItem(KEEP_KEY, JSON.stringify(all)); } catch (e) {}
+}
+function keptCount() {
+  const all = keptAll();
+  let k = 0, b = 0;
+  for (let n = 1; n <= NIGHTS.length; n++) {
+    if (all[n] === 1) k++;
+    else if (all[n] === 0) b++;
+  }
+  return { kept: k, burned: b, all: all };
+}
+function clearKept() { try { localStorage.removeItem(KEEP_KEY); } catch (e) {} }
+
 function revealCard(r) {
   G.phase = "reveal";
   showHud(false);
@@ -8226,12 +8346,18 @@ function revealCard(r) {
         '<p class="ns-paper-head">' + r.head + '</p>' +
         r.lines.map((l) => "<p>" + l + "</p>").join("") +
       '</div>' +
-      '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="revealOut">BACK TO IT</button></div>' +
+      '<div class="ns-btns">' +
+        '<button class="ns-btn ns-btn-go" data-go="keep">' + (r.keep || "KEEP IT") + '</button>' +
+        '<button class="ns-btn" data-go="burn">' + (r.burn || "BURN IT") + '</button>' +
+      '</div>' +
     '</div>', "ns-ov-find");
 }
 
-function closeReveal() {
+function closeReveal(kept) {
   if (G.phase !== "reveal") return;
+  keepThing(G.night, kept);
+  if (kept) SFX.paper();
+  else SFX.burn();
   G.phase = "play";
   musicMode(G.blackout ? "dark" : "night");
   noOverlay();
@@ -9374,15 +9500,53 @@ function tonightsFind() {
   return foundAll()[f.id] ? null : f;
 }
 
+/* THE ENDING SHE HAS BEEN WRITING ALL WEEK.
+
+   It used to be one binary question at six o'clock on the last
+   morning: wind them, or leave them. A choice with no history behind
+   it is a coin, and a coin at the end of six hours of somebody's life
+   is not an ending — it is a menu.
+
+   So it is worked out from the six things instead. Nobody ever told
+   her the decisions counted. That is the point of them. */
+function endingKind() {
+  const c = keptCount();
+  const done = c.kept + c.burned;
+  if (!done) return "some";
+  if (c.kept === done) return "all";
+  if (c.burned === done) return "none";
+  /* the one that means the most: she burned the business — the book,
+     the addresses, the notebook — and kept the things he made */
+  const a = c.all;
+  if (a[3] === 0 && a[4] === 0 && (a[2] === 1 || a[5] === 1 || a[6] === 1)) return "four";
+  return c.kept > c.burned ? "most" : "some";
+}
+
+/* his last observation, which is not on any card she can reach until
+   the story is over */
+function lastPageCard() {
+  const p = NS.lastPage;
+  if (!p) return "";
+  return '<div class="ns-lastpage">' +
+    '<p class="ns-from">' + p.at + '</p>' +
+    '<div class="ns-paper">' + p.lines.map((l) => "<p>" + l + "</p>").join("") + '</div>' +
+  '</div>';
+}
+
 /* and the two ways the story is allowed to end */
 function screenEnding(which) {
   const e = NS.ending[which];
   G.phase = "finale";
+  musicMode("dawn");
   if (which === "wind") SFX.tuneWhole(0.8);
   overlay(
     '<div class="ns-card ns-card-fin">' +
       '<p class="ns-nightno">' + (which === "wind" ? "SHE WINDS IT" : "SHE LEAVES IT") + '</p>' +
       '<div class="ns-lines">' + e.lines.map((l) => "<p>" + l + "</p>").join("") + '</div>' +
+      /* and then the six nights of small decisions, answered */
+      '<p class="ns-kept-ask">' + NS.kept.ask + '</p>' +
+      '<p class="ns-kept-out">' + (NS.kept[endingKind()] || NS.kept.some) + '</p>' +
+      lastPageCard() +
       '<div class="ns-btns">' +
         '<button class="ns-btn ns-btn-go" data-go="galleryOffer">THE SHOP IN DAYLIGHT</button>' +
         '<button class="ns-btn" data-go="title">TITLE</button>' +
@@ -9521,13 +9685,14 @@ function route(cmd) {
   else if (cmd === "gallery" || cmd === "galleryOffer") { beginGallery(); }
   else if (cmd === "arcadeOut") { arcadeClose(); }
   else if (cmd === "findOut") { closeFind(); }
-  else if (cmd === "revealOut") { closeReveal(); }
+  else if (cmd === "keep") { closeReveal(true); }
+  else if (cmd === "burn") { closeReveal(false); }
   else if (cmd === "heldOut") { closeHeld(); }
   else if (cmd === "intro") { cineStart(); }
   else if (cmd === "introDone") { cineStop(true); }
   else if (cmd === "terms") { termsStart(); }
   else if (cmd === "termsDone") { termsDone(); }
-  else if (cmd === "termsAgain") { clearHurt(); termsStart(); }
+  else if (cmd === "termsAgain") { clearHurt(); clearKept(); termsStart(); }
   else if (cmd === "sound") { mixFrom = G.phase === "play" ? "play" : "title"; G.phase = "mix"; screenMix(); }
   else if (cmd === "mixReset") { MIX_KEYS.forEach((k) => saveMix(k, MIX_DEF[k])); screenMix(); }
   else if (cmd === "mixTest") {
@@ -9879,9 +10044,28 @@ function windStart() {
 }
 function windEnd() { G.winding = null; G.windT = 0; }
 
+/* WHAT THE SIX DECISIONS DO WHILE SHE IS STILL PLAYING.
+
+   They are not only an ending. Keeping a piece of him slows the four
+   of them down a little, because there is more of him in the shop to
+   run on. Burning one slows the ones he sold, because there is less of
+   him here for them to come back to.
+
+   Neither is an advantage worth optimising and neither is ever
+   mentioned — a nudge she can feel and not measure, which is what
+   makes a decision feel like it mattered rather than like it scored. */
+function keepDrag() {
+  const c = keptCount();
+  return 1 - Math.min(0.18, c.kept * 0.03);       // wound ones last longer
+}
+function burnDrag() {
+  const c = keptCount();
+  return 1 + Math.min(0.30, c.burned * 0.05);     // parcels take longer to arrive
+}
+
 function stepWind(dt) {
   /* everything runs down, all night, whether she is looking or not */
-  const perHour = 1 / Math.max(0.001, TUNE.hourSeconds);
+  const perHour = keepDrag() / Math.max(0.001, TUNE.hourSeconds);
   CAST.forEach((d) => {
     const ch = cast[d.id];
     if (!ch) return;
@@ -11012,6 +11196,8 @@ const testHooks = {
                       +cast[DESK.who].group.position.z.toFixed(2)] : null }),
   deskStep: (dt) => { stepDesk(dt); return DESK.at; },
   revealStep: (dt) => { stepReveal(dt); return G.phase; },
+  kept: () => keptCount(),
+  endingKind: () => endingKind(),
   put(id, step) {
     const ch = cast[id];
     if (!ch) return;

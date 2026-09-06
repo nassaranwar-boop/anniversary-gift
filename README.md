@@ -473,6 +473,55 @@ stepped in is spent, and will not do it again until she winds it.
 His four are her lives. His instruction is what buys them. Nothing in
 the game says so until the first time it happens.
 
+### The story, and why she is in it rather than watching it
+
+Anwar made toys that watched. Sold into four hundred and eleven houses,
+they saw everything, and what they saw came back to him and he sold it.
+That is where the money in their marriage came from, for fifteen years,
+and she never asked.
+
+The turn the whole thing rests on is not that he was a criminal. It is
+**how he learned to build a thing that watches a person.** He did not
+practise on strangers. There is a notebook behind a loose board with
+fifteen years of dated observations in it, and every line is about his
+wife — how she checks a door twice, how she hums when she thinks he is
+asleep, how she stops dancing the moment she is looked at, how she will
+not leave a room he is in.
+
+Every trait he wrote down is a mechanic in one of the four toys hunting
+her. The attention she thought was love was also fieldwork.
+
+And then the second turn, which is why it is a love story: the four are
+the **only** things he made and never sold. There is a drawing pinned
+inside the workshop door, dated the week he was told he was dying —
+four figures around a woman at a desk, and every one of them facing
+away from her, at the doors. He spent fifteen years learning her so he
+could sell it, and the last two learning her so he could leave
+something behind that knew how to stand in front of her.
+
+**She was passive, and that was the flaw.** Things were revealed to
+her; she read them and survived and then answered one binary question
+at the end. A coin at the end of six hours is a menu, not an ending.
+
+So every night she finds one thing of his and decides: **keep it, or
+burn it.** Six small decisions, no right answer, and nothing ever tells
+her they count. They nudge the shift while she plays — keeping slows
+the four running down, burning slows the ones he sold coming back — and
+on the last morning the ending is worked out from all six. She has been
+writing it all week without being asked to.
+
+Five endings, and the one that means the most is not the one where she
+keeps everything: it is the one where she **burns the business and
+keeps the toys** — the addresses, the ledger and the notebook gone, and
+four things he made out of her still standing in the back room.
+
+The last thing the chapter says is not narration. It is his final entry,
+dated the day he was told:
+
+> *"She will find all of this. She will hate me for a while, and she
+> will be right. Then she will do the thing she always does, which is
+> stay anyway. I am counting on that and I have no right to."*
+
 ### Six nights, six experiences
 
 Each night has a name, a look and one thing it tells her about him, in
