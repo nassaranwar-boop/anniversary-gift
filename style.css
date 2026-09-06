@@ -265,7 +265,15 @@ h1,h2{font-family:'Fredoka',sans-serif;}
 button{font-family:inherit;}
 img{-webkit-user-drag:none; user-select:none;}
 
-.screen{display:none; position:fixed; left:0; right:0; align-items:center; justify-content:center; flex-direction:column;}
+.screen{
+  display:none; position:fixed; left:0; right:0;
+  align-items:center; justify-content:center; flex-direction:column;
+  /* viewport-fit=cover lets the background reach the corners; these keep
+     the CONTENT out from under the camera and the home indicator. The box
+     stays full width (border-box), so only what is inside moves in. */
+  padding-left:env(safe-area-inset-left, 0px);
+  padding-right:env(safe-area-inset-right, 0px);
+}
 .screen.active{display:flex;}
 /* NO SCALE HERE, and none in screenExit below either. These two were the
    only rules in the stylesheet that scaled a whole screen, and between
@@ -3764,6 +3772,42 @@ img{-webkit-user-drag:none; user-select:none;}
   .so-pad{position:absolute; left:0; right:0; bottom:0; margin:0;}
 }
 
+/* A phone held sideways. The pad used to sit under the stage in the column,
+   so it ate a third of the height while the stage's width was still being
+   computed as if it had all of it — a 693x282 letterbox inside a 844x390
+   screen. Here the pad floats over the bottom of the game instead, small
+   and set into the two corners where her thumbs are, so the stage gets the
+   whole height and the middle of the picture stays clear. */
+@media (orientation: landscape) and (max-height: 560px){
+  .so-frame{justify-content:center; padding:0;}
+  #screen-ouissy .so-titlebar{display:none;}
+  .so-pad{
+    position:absolute; left:0; right:0; bottom:0; z-index:6;
+    max-width:none; margin:0; pointer-events:none;
+    padding:0 calc(10px + env(safe-area-inset-right))
+            calc(8px + env(safe-area-inset-bottom))
+            calc(10px + env(safe-area-inset-left));
+  }
+  .so-pad-side{pointer-events:auto; gap:9px;}
+  .so-key{
+    width:clamp(38px, calc(var(--app-h) * .135), 54px);
+    height:clamp(38px, calc(var(--app-h) * .135), 54px);
+    border-radius:14px; font-size:clamp(13px, calc(var(--app-h) * .046), 18px);
+    opacity:.84;
+  }
+  .so-key-jump{
+    width:clamp(48px, calc(var(--app-h) * .18), 72px);
+    height:clamp(48px, calc(var(--app-h) * .18), 72px);
+    font-size:clamp(15px, calc(var(--app-h) * .055), 22px);
+  }
+  .so-key-duck{
+    width:clamp(34px, calc(var(--app-h) * .112), 46px);
+    height:clamp(34px, calc(var(--app-h) * .112), 46px);
+    border-radius:12px; font-size:clamp(11px, calc(var(--app-h) * .038), 15px);
+  }
+  .so-key.held, .so-key:active{opacity:1;}
+}
+
 /* Short viewports — a phone held sideways — have no room for the menu at
    its full size, so the logo and the padding come down rather than the
    whole card turning into something she has to scroll. */
@@ -4297,6 +4341,14 @@ img{-webkit-user-drag:none; user-select:none;}
 /* invisible is not the same as gone: buttons faded out were still
    swallowing taps meant for the picture behind them */
 .ap-touch[aria-hidden="true"] .ap-actions{pointer-events:none;}
+/* THE CONTROLS ARE SIZED TO THE PICTURE, NOT IN FIXED PIXELS.
+
+   116px of stick and a 104px USE button are reasonable over a big stage
+   and enormous over a phone-sized one — on a landscape phone they covered
+   most of the room, which is what he meant by not being able to see
+   clearly. The stage is a container, so these are in cqw and shrink with
+   it. They are also quieter: a control you rest a thumb on does not need
+   to be as loud as the thing you are trying to look at. */
 .ap-stick{
   position:absolute; left:22%; top:70%;
   width:116px; height:116px; margin:-58px 0 0 -58px;
@@ -4305,16 +4357,17 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-touch[aria-hidden="false"] .ap-stick.live{opacity:1;}
 .ap-stick-ring{
   position:absolute; inset:0; border-radius:50%;
-  border:1px solid rgba(168,192,240,.30);
-  background:radial-gradient(circle, rgba(150,180,240,.05) 0 66%, transparent 67%);
+  border:1px solid rgba(168,192,240,.22);
+  background:radial-gradient(circle, rgba(150,180,240,.035) 0 66%, transparent 67%);
 }
 .ap-stick-knob{
-  position:absolute; left:50%; top:50%; width:52px; height:52px;
+  position:absolute; left:50%; top:50%;
+  width:52px; height:52px;
   margin:0; border-radius:50%;
   transform:translate(-50%,-50%);
-  border:1px solid rgba(240,181,103,.55);
-  background:rgba(240,181,103,.14);
-  box-shadow:0 0 20px rgba(240,181,103,.18);
+  border:1px solid rgba(240,181,103,.45);
+  background:rgba(240,181,103,.10);
+  box-shadow:0 0 16px rgba(240,181,103,.14);
 }
 .ap-touch .ap-actions{
   position:absolute; right:3.5%; bottom:7%;
@@ -4380,8 +4433,8 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .ap-actions{display:flex; align-items:center; gap:16px;}
 .ap-act{
-  border-radius:50%; border:1px solid rgba(168,192,240,.24);
-  background:rgba(7,11,21,.42); color:#cfdcf6;
+  border-radius:50%; border:1px solid rgba(168,192,240,.20);
+  background:rgba(7,11,21,.30); color:#cfdcf6;
   font-family:var(--ap-sign); letter-spacing:.14em;
   cursor:pointer; -webkit-tap-highlight-color:transparent;
   display:flex; align-items:center; justify-content:center;
@@ -4393,7 +4446,9 @@ img{-webkit-user-drag:none; user-select:none;}
   color:#ffdcaa; border-color:rgba(240,181,103,.42);
   background:rgba(240,181,103,.07);
 }
-.ap-act-sneak{width:80px; height:80px; font-size:10px;}
+.ap-act-sneak{
+  width:80px; height:80px; font-size:10px;
+}
 .ap-act:active{
   transform:scale(.95);
   color:#0d1017; background:#f0b567; border-color:#f0b567;
@@ -4452,6 +4507,37 @@ img{-webkit-user-drag:none; user-select:none;}
   .ap-titlebar{display:none;}
   .ap-frame{justify-content:center; padding:0;}
   .ap-stage{width:min(100%, calc(var(--app-h) * var(--ap-arn, 1.7778)));}
+
+  /* Upright, the picture is the top half and these sit in the empty room
+     below it, so their size costs nothing. Sideways the picture fills the
+     screen and they lie ON it — 116px of stick and a 104px USE over a
+     390px-tall frame is most of what you are trying to look at, which is
+     what he meant by not being able to see clearly. Sized off the measured
+     height instead, and quieter, so the room reads through them.
+     .ap-touch is a sibling of .ap-stage, not a child, so container units
+     have nothing to resolve against here — that is why this is in --app-h
+     and not cqw. */
+  .ap-stick{
+    left:15%; top:73%;
+    width:clamp(62px, calc(var(--app-h) * 0.20), 92px);
+    height:clamp(62px, calc(var(--app-h) * 0.20), 92px);
+    margin:0; transform:translate(-50%,-50%);
+  }
+  .ap-stick-knob{
+    width:clamp(28px, calc(var(--app-h) * 0.092), 42px);
+    height:clamp(28px, calc(var(--app-h) * 0.092), 42px);
+  }
+  .ap-act-use{
+    width:clamp(54px, calc(var(--app-h) * 0.175), 80px);
+    height:clamp(54px, calc(var(--app-h) * 0.175), 80px); font-size:10px;
+  }
+  .ap-act-sneak{
+    width:clamp(42px, calc(var(--app-h) * 0.135), 62px);
+    height:clamp(42px, calc(var(--app-h) * 0.135), 62px); font-size:9px;
+  }
+  .ap-touch .ap-actions{right:2.5%; bottom:5%; gap:10px;}
+  .ap-stick-ring{border-color:rgba(168,192,240,.18);}
+  .ap-act{background:rgba(7,11,21,.24);}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -5175,6 +5261,10 @@ img{-webkit-user-drag:none; user-select:none;}
   --rc-deep: #241a33;
 }
 
+/* The race is letterboxed on a wide screen like every other stage, and the
+   bars beside it should read as the cabinet around the screen, not as the
+   scrapbook's paper showing through. */
+#screen-race{padding:0; background:#120c1c; overflow:hidden;}
 .rc-frame{
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   width:100%; height:100%; gap:1.4vh;

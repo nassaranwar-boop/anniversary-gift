@@ -1362,10 +1362,26 @@ window.SuperOuissy = (function () {
      screen anyway. */
   var VIEW = { w: 320, h: 180 };
 
+  /* The widest view the backdrops are painted to cover. */
+  var VIEW_MAX_W = 448;
+
   function pickView() {
-    var portrait = window.innerHeight > window.innerWidth * 1.2;
-    var narrow = window.innerWidth < 620;
-    VIEW.w = (portrait && narrow) ? 240 : 320;
+    var vw = window.innerWidth || 320, vh = window.innerHeight || 180;
+    var portrait = vh > vw * 1.2;
+    var narrow = vw < 620;
+    if (portrait && narrow) {
+      VIEW.w = 240;
+    } else if (vw > vh * 1.25) {
+      /* A phone on its side is wider than 16:9, so a 16:9 view leaves a
+         black bar down each edge. Widening the view instead spends that
+         space on more world at exactly the same size — nothing shrinks,
+         she just sees further ahead. Even, because odd widths put the
+         player half a pixel off centre. */
+      VIEW.w = Math.max(320, Math.min(VIEW_MAX_W,
+        Math.round(VIEW.h * (vw / vh) / 2) * 2));
+    } else {
+      VIEW.w = 320;
+    }
     var cv = $("so-canvas");
     if (cv && cv.width !== VIEW.w) { cv.width = VIEW.w; cv.height = VIEW.h; }
     var st = $("so-stage");
@@ -1968,7 +1984,10 @@ window.SuperOuissy = (function () {
 
   function buildBackdrop(biome) {
     var P = BIOME[biome], def = BACKDROPS[biome] || BACKDROPS.meadow;
-    var VW = 320, VH = 180, farW = 480, midW = 480;
+    /* The sky is drawn once at x:0, not tiled, so it is painted at the
+       widest view any screen can ask for rather than at 16:9 — on a
+       sideways phone a 320-wide sky would end before the screen does. */
+    var VW = VIEW_MAX_W, VH = 180, farW = 480, midW = 480;
     var rnd = seeded("bg" + biome);
 
     var sky = spriteCanvas(VW, VH), far = spriteCanvas(farW, VH), mid = spriteCanvas(midW, VH);

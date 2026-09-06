@@ -100,13 +100,15 @@ const SCREENS = ['hello', 'details', 'level2intro', 'hub', 'keepsake', 'gate', '
        unreachable.length ? unreachable.slice(0, 3).join(' | ') : '');
 
     /* ---- the game stages should use the room they are given ---- */
-    for (const [scr, starter] of [['apoc', 'startApocalypse'], ['race', 'startSuperOuissyRace']]) {
+    for (const [scr, starter] of [['apoc', 'startApocalypse'], ['race', 'startSuperOuissyRace'],
+                                 ['ouissy', 'startSuperOuissy']]) {
       await page.evaluate(([n, s]) => { showScreen(n); if (window[s]) window[s](); }, [scr, starter]);
       await page.waitForTimeout(900);
       const r = await page.evaluate((n) => {
         /* scoped to the screen under test: a bare '.ap-stage,.rc-stage'
            picks up the other game's hidden stage and measures 0x0 */
-        const st = document.querySelector('#screen-' + n + ' .ap-stage, #screen-' + n + ' .rc-stage');
+        const st = document.querySelector('#screen-' + n + ' .ap-stage, #screen-' + n + ' .rc-stage, '
+                                       + '#screen-' + n + ' .so-stage');
         if (!st) return null;
         const b = st.getBoundingClientRect();
         return { share: Math.round(b.width * b.height / (innerWidth * innerHeight) * 100),
@@ -115,7 +117,9 @@ const SCREENS = ['hello', 'details', 'level2intro', 'hub', 'keepsake', 'gate', '
       if (!r) { ok(label + '/' + scr + ': a stage exists', false); continue; }
       /* upright the stage deliberately takes about half, leaving thumb room;
          sideways there is nothing to leave room for, so it should be most of it */
-      const floor = h > w ? 20 : 55;
+      /* ouissy widens the world it shows rather than letterboxing, so
+         sideways it should reach almost the whole screen, not just most. */
+      const floor = h > w ? 20 : (scr === 'ouissy' ? 92 : 55);
       ok(label + '/' + scr + ': the stage uses the screen', r.share >= floor,
          r.w + 'x' + r.h + ' = ' + r.share + '% (floor ' + floor + '%)');
     }

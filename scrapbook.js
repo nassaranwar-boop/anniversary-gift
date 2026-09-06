@@ -3524,8 +3524,20 @@ window.Scrapbook = (function () {
   var views = [];             /* each view is the page indexes it shows */
   var viewIndex = 0;
 
+  /* A spread needs a landscape-shaped hole to sit in, and `min-width:
+     760px` was the wrong way to ask. On a phone turned sideways the layout
+     viewport is inset away from the notch, so a 812pt phone reports about
+     712 — under the threshold, and she got one page with the rest of the
+     screen empty, which is exactly what he photographed.
+
+     Ask the shape instead. Each page is 3:4, so two side by side are one
+     and a half times as wide as a page is tall; anything meaningfully
+     wider than it is tall can hold them. 1.2 keeps the iPad's 1.44 and
+     every phone's 1.8-plus, and still leaves portrait and near-square
+     windows on a single page. */
   function pagesPerView() {
-    return (window.matchMedia && window.matchMedia("(min-width: 760px) and (orientation: landscape)").matches) ? 2 : 1;
+    var w = window.innerWidth || 0, h = window.innerHeight || 1;
+    return (w >= 600 && w / h >= 1.2) ? 2 : 1;
   }
 
   /* ---------------------------------------------------------------
@@ -4426,6 +4438,9 @@ window.Scrapbook = (function () {
     });
 
     window.addEventListener("resize", onResize);
+    /* iOS does not always follow a rotation with a resize the layout has
+       finished settling into, so ask again just after one */
+    window.addEventListener("orientationchange", function () { setTimeout(onResize, 180); });
 
     /* dragging a page. Pointer events cover mouse, pen and touch alike,
        so there is only one path to get right. */

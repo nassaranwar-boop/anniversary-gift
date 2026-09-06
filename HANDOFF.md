@@ -502,6 +502,92 @@ overflow into unreachable content. Any screen that can overflow needs its
 own scroller. `tools/landscape.js` asserts it, and is verified both ways —
 restore the old CSS and it reports 5 failures.
 
+### Then he sent five photographs of a real iPhone on its side
+
+Everything below came from those, and each one is a different fault:
+
+**Pale bands down both edges.** Without `viewport-fit=cover` iOS insets the
+layout viewport away from the notch in landscape and paints the leftover
+strips in the page background, so the scrapbook's paper showed beside every
+dark screen. Cover is the only way to reach those corners. The old note in
+`index.html` said cover must never come back, and it was right *then* —
+back when the height was measured from the layout viewport, cover made
+everything come out taller than the part you could see. The height now
+comes from `visualViewport` and takes the smallest of three claims (7c), so
+cover has nothing left to mislead. Content is kept off the camera by
+padding `.screen` with the safe-area insets — background to the edge,
+nothing to read or press underneath the notch.
+
+**The book showed one page.** `pagesPerView()` asked
+`(min-width: 760px) and (orientation: landscape)`. Sideways, with the
+viewport inset away from the notch, an 812pt phone reported about 712 — so
+it fell through to a single page with half the screen empty. It asks the
+shape now: `w >= 600 && w / h >= 1.2`. Two 3:4 pages side by side are 1.5x
+as wide as a page is tall, so any window meaningfully wider than it is tall
+can hold them. Keeps the iPad's 1.44 and every phone's 1.8-plus, and still
+gives one page to portrait and to a near-square window. Rotation on iOS
+does not reliably fire a `resize` the layout has settled into, so
+`orientationchange` asks again 180ms later.
+
+**The apocalypse controls covered the picture.** They were sized in `vw`,
+and sideways `vw` is the long edge — the stick and the two action buttons
+came out 116/104/80px on a 390px-tall screen. They are sized from
+`var(--app-h)` inside the landscape block now: 78/68/53. Note that `cqw`
+does *not* work here: `.ap-touch` is a **sibling** of `.ap-stage`, not a
+descendant, so there is no container for the units to resolve against.
+
+**Jumping cancelled the run.** See 7f.
+
+**The games did not fill the screen.** Three separate causes:
+
+- *Super Ouissy* kept its pad in the column flow, so the pad ate a third
+  of the height while the stage's width was still being computed as if it
+  had all of it — 693x282 in an 844x390 screen. Sideways the pad floats
+  over the bottom corners instead (small, set into the two corners where
+  her thumbs are, so the middle of the picture stays clear) and the stage
+  gets the whole height.
+- *Super Ouissy* was then still letterboxed, because a sideways phone is
+  wider than 16:9. `pickView()` now widens the view itself on a landscape
+  screen — up to 448 world pixels — so the extra space is spent on more
+  world at exactly the same size. Nothing shrinks; she just sees further
+  ahead. The one thing this needed elsewhere: `buildBackdrop` paints the
+  sky at `VIEW_MAX_W`, not 320, because the sky is drawn once at x:0
+  rather than tiled and a 320-wide sky would have ended before the screen
+  did. `far` and `mid` are 480 and tiled, so they were already fine.
+  It reaches 100% of the screen now.
+- *The race* is a fixed-16:9 renderer and stays letterboxed at 82%, but
+  `#screen-race` had no background of its own, so the bars beside it were
+  the scrapbook's pink paper. It is `#120c1c` now — the bars read as the
+  cabinet around the screen.
+
+`tools/landscape.js` covers all three games; the ouissy floor is 92%,
+which fails the moment the pad goes back into the flow or the view stops
+widening.
+
+## 7f. Jumping stopped her running
+
+Hold RIGHT with one thumb, tap JUMP with the other, lift the jump thumb —
+and she stopped dead in mid-air while the first thumb was still pressing.
+
+The pad had a window-level safety net, `window.addEventListener("pointerup",
+releaseAll)`, written against the four ways a touch button gets stuck down.
+It does prevent all four. But `releaseAll` clears **every** key, and a
+window-level pointerup fires for the *second* thumb too. So the jump's
+release let go of the direction as well.
+
+The net is still needed; it just has to know which press ended. Each
+pointerdown records `heldBy[e.pointerId] = key`, and a pointerup releases
+only that key; a pointer we never saw go down releases nothing, which is
+the whole point, because another thumb may still be down. `releaseAll`
+stays for when every finger really is gone — blur, tab change, pause,
+leaving the screen — and clears the map with it.
+
+`tools/padcheck.js` plays the gesture with two pointer ids and checks the
+direction survives the jump. It is the only test here that uses more than
+one finger, which is why nothing caught this for so long. Verified both
+ways: restore the old listener and it reports "jump cancelled the
+direction" in both orientations.
+
 ## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python
