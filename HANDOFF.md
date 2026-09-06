@@ -443,6 +443,33 @@ regression for it is: force `--app-h` to the full box and assert that
 `scrollHeight - clientHeight` goes to 132 and back to 0 once the
 measurement runs.
 
+## 7d. Nothing may change the size of a screen
+
+Separate from 7c and worth its own heading, because it wore the same
+clothes and that is why 7c kept looking unfixed.
+
+Two rules in the stylesheet scaled a whole screen. `screenIn` arrived
+from `scale(.97)` and `screenExit` left at `scale(1.06)`. As a transition
+that is polish. As the first thing you watch when the site opens, it is a
+screen appearing at the wrong size and then correcting itself — which is
+visually identical to the viewport bug, and is why he kept reporting "it
+appears then zooms in a bit" after each viewport fix landed. Measured:
+the gate's box swept **865 → 892px** during entry on his iPad.
+
+Both now fade and rise without ever changing size. `tools/nozoom.js`
+holds the line: it drives each animation through the Web Animations API,
+stepping `currentTime` across the whole timeline, and fails if any point
+is scaled or if the screen's height moves. **Do not sample animations
+with requestAnimationFrame in this container** — rAF runs at about 3fps
+here, so a .65s animation is finished before the second frame and every
+sample comes back at rest; the first draft of that test passed against
+the broken code for exactly that reason. It is verified both ways: put
+the `scale()`s back and it reports `worst scale 0.9700` and a sweeping
+height.
+
+If he ever says "zoom" again, run `tools/nozoom.js` before touching
+anything in 7c.
+
 ## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python

@@ -243,8 +243,16 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .screen{display:none; position:fixed; left:0; right:0; align-items:center; justify-content:center; flex-direction:column;}
 .screen.active{display:flex;}
+/* NO SCALE HERE, and none in screenExit below either. These two were the
+   only rules in the stylesheet that scaled a whole screen, and between
+   them every arrival zoomed in from 97% and every departure zoomed out to
+   106%. As a transition that reads as polish; as the thing you actually
+   watch when the site opens, it reads as the page settling into the wrong
+   size and then correcting itself — which is exactly the complaint. A
+   fade and a small rise give the same arrival without ever changing the
+   size of anything. */
 .screen.anim-in{animation:screenIn .65s cubic-bezier(.22,.85,.32,1);}
-@keyframes screenIn{from{opacity:0; transform:translateY(22px) scale(.97);} to{opacity:1; transform:translateY(0) scale(1);}}
+@keyframes screenIn{from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);}}
 
 .particle-field{position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:0;}
 /* the floaters are drawn now, so they need a box rather than a font size */
@@ -301,8 +309,8 @@ img{-webkit-user-drag:none; user-select:none;}
   animation:screenExit .42s cubic-bezier(.4,0,.2,1) forwards;
 }
 @keyframes screenExit{
-  0%{transform:scale(1); opacity:1; filter:blur(0px);}
-  100%{transform:scale(1.06); opacity:0; filter:blur(10px);}
+  0%{transform:translateY(0); opacity:1; filter:blur(0px);}
+  100%{transform:translateY(-10px); opacity:0; filter:blur(10px);}
 }
 .screen{transform-origin:center center;}
 
