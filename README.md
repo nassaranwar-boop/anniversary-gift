@@ -37,7 +37,8 @@ tools/           offline checks (see tools/README.md); nothing here ships
 4. **Hub** — "choose your adventure", now three chapters, any order
 5a. **The Maze** — level 1 -> level 2 -> divider -> cats night-sky ending
 5b. **The Long Way Round** — branching pixel-art choice adventure: two
-    paths, two routes each, and an ending per path
+    paths, two routes each, an ending per path, the two of them on the
+    path the whole way, and three things to do rather than read
 5c. **Super Ouissy** — a three-world platformer (`super-ouissy.js`)
 5d. **Ouissy at the Apocalypse** — a five-level third-person 3D stealth
     story (`apocalypse.js`), ending on the same rooftop as the maze
@@ -326,18 +327,110 @@ Three choice points, in this order, and not one of them can be got wrong:
 | **the way there** | the high meadow: wrong turns, a shape in the trees that turns out to be a deer, fog that lifts | the stream bank: down at the water, seven stones to get over, then follow the current |
 | **the way back** | the ridge: an hour of climbing, then a rope bridge crossed one section at a time | the orchard at dusk: a bear in the windfalls, and three ways to deal with it |
 
+### The two of them are in it
+
+Every line in this chapter is about the pair of you walking somewhere
+together, and for a long time the frame those lines were written over had
+nobody in it at all — a valley, and a cat in the corner. They are drawn now:
+from behind, on the ground of whatever place this is, holding hands. One
+character per pixel, fourteen to a row, the same way Super Ouissy builds
+her — `HV_HER_BODY`, `HV_HIM_BODY` and the four-frame leg cycles under them.
+Change a string, change a person.
+
+They are lit for where they are standing (`HV_LIGHT`): a wash the colour of
+the air in that scene, and a rim on the head and shoulders from whatever the
+one light source is. Without it they were two daylight sprites pasted onto a
+night. `HV_STAND` says where they stand in each place — the right-hand
+column, clear of the paper note, which owns the bottom third of the stage —
+and a node can override it with `stand`.
+
+### Three things to do
+
+The writing already contained four perfectly good mechanics and all four of
+them were paragraphs. Three of them are things you do now:
+
+| | where | what |
+|---|---|---|
+| **the stones** | `there_stones` | seven stones, tapped one at a time as each settles. All seven clean and you are across dry; catch one rocking and you go in, which is the warmer of the two beats that were already written |
+| **the bridge** | `back_bridge1`–`3` | the span sways; step when it is steady. Hurrying costs you the step and nothing else, which is the sentence the middle section was always trying to say |
+| **the orchard** | `back_bear` | creep down the row while the bear's head is down, stop when it comes up. Getting it wrong is the three trees backwards that were already there |
+
+The fourth, the fog on `there_fog`, is not a mechanic — it lifts, over about
+eight seconds of standing in it, which is the only thing that beat ever
+asked of her.
+
+Three rules hold across all of them, and they are not negotiable:
+
+1. **Nothing can be failed.** Wet feet are written and warm. A mistimed
+   plank costs a step. The bear is three trees, in the same scene.
+2. **Nothing can be stuck.** Every one of these nodes keeps the buttons it
+   always had, never hidden, greyed or delayed. Play it or press the
+   button; both go on. This is a gift for someone who may not play games.
+   `tools/hvplay.js` asserts the buttons are on screen for every frame of
+   every mechanic, so this cannot quietly stop being true.
+3. **One input.** Tap the canvas, or hold space.
+
+The paper note covers the ground these happen on, so on these three screens
+it lifts once the line has been read — or the moment she touches anything,
+whichever comes first. Only the paper moves; the buttons never do.
+
 **There is no fail state.** There used to be two — a jumpscare bear on the
 left-blue route and a getting-lost screen on right-blue, both of them
 full-screen overlays with a *Restart* button, both reached from an ordinary
 choice. Both are gone. The one place you can be sent backwards is the
-orchard: walk straight past the bear and it looks up, and you are three
-trees further back than you started, in the same scene, with the same
-buttons. That is the whole penalty.
+orchard, as above. That is the whole penalty.
+
+**And no choice is an illusion.** The two buttons at the rustle in the trees
+used to go to the same node — the last place in the game where it genuinely
+did not matter which you pressed. Holding still and backing away now get you
+two different deer. `tools/hvaudit.js` has been asserting this since the day
+it was written and had been red on it the whole time.
+
+### What the walk remembers
+
+Four routes, two endings and ten things to find, and none of it used to be
+written down anywhere: everything found evaporated on the next reload, and
+the game had no way of telling her the other three ways up the valley
+existed. `hv_walk` in `localStorage` now keeps what she found, which routes
+she has walked and which endings she has read; the ending says what is left,
+and the keepsake gets a card with the whole shelf on it.
+
+The things themselves are one per place rather than one per route, so a
+single walk passes four or five instead of exactly one — see `HV_TOKENS` for
+the list and `HV_HIDDEN` for where each one lies. They are drawn once, by
+`hvDrawToken`, and the strip at the top of the stage shows that same little
+canvas rather than a separate SVG that has to be kept looking like it.
+
+### The air
+
+Every scene used to be silent — five sounds fired on button presses, and
+that was the soundtrack of a walk through a valley. `HV_AIR` gives each
+place one loop of noise through one filter, moved slowly: wind on the ridge,
+water at the stream, and a bird every few seconds by day or a cricket after
+dark. It carries no files, like everything else here, and the speaker chip
+in the top bar turns it off. The preference is remembered.
+
+### Playing it without a mouse
+
+Arrow keys move between the choices on the screen, Enter takes one,
+Backspace is the back chip, Esc leaves, and space is the one button the
+three mechanics use. Every other chapter on this site could be played from
+the keyboard and this one could only ever be clicked.
+
+### Changing it
 
 Scenes live in `HV_SCENES` and the story in `HV`, both near the bottom of
 `script.js`. A node names a scene, what the cat says, and its choices; the
 flags on it (`bear`, `fog`, `lighting`, `envelope`, `butterflies`, `fox`,
-`plank`, `isAsk`, `cards`) are what `hvPaintFrame` draws on top.
+`plank`, `isAsk`, `cards`, `play`, `span`, `playTo`, `stand`, `pair`) are
+what `hvPaintFrame` draws on top.
+
+Two things a node can be told to share: `sceneOfAsk` means "whichever of the
+two closing questions she is standing in", and a choice going to `__ask`
+returns her to it. That is there because the nudge and the really-sure
+screens used to exist twice, once per path — the same four lines, duplicated
+on the one screen in the game where the words matter most and where having
+to change them in two places is exactly how they end up different.
 
 ## Super Ouissy
 

@@ -2473,6 +2473,38 @@ function startKeepsake() {
     board.appendChild(card);
   });
 
+  /* What the walk up the valley remembers, on the board with everything
+     else. Four routes, two endings and ten things to find, and until it
+     was written down there was no way for her to know any of that
+     existed — the chapter simply ticked itself off and said nothing. */
+  hvLoadProgress();
+  const walked = hvRouteCount(), read = hvEndingCount();
+  const kept = Object.keys(HV_TOKENS).filter((k) => hvFound[k]);
+  if (walked || kept.length) {
+    const card = document.createElement("div");
+    card.className = "ks-card ks-card-walk";
+    card.style.setProperty("--r", "-1.5deg");
+    const shelf = document.createElement("div");
+    shelf.className = "ks-walk-shelf";
+    kept.forEach((k) => {
+      const holder = document.createElement("span");
+      holder.title = HV_TOKENS[k].name;
+      holder.appendChild(hvDrawToken(k));
+      shelf.appendChild(holder);
+    });
+    const tape = document.createElement("span");
+    tape.className = "ks-tape";
+    card.appendChild(tape);
+    card.appendChild(shelf);
+    const cap = document.createElement("div");
+    cap.className = "ks-cap";
+    cap.textContent = walked === 4
+      ? "All four ways round · " + kept.length + " of " + Object.keys(HV_TOKENS).length
+      : walked + " of 4 ways round · " + read + " of 2 endings";
+    card.appendChild(cap);
+    board.appendChild(card);
+  }
+
   let best = "";
   try { best = localStorage.getItem("fal_best_time") || ""; } catch (e) {}
   document.getElementById("ks-sub").textContent =
@@ -3094,6 +3126,37 @@ function drawBearGrazing() {
   return c;
 }
 
+/* The same bear with its head up. Not reared, not roaring — a bear that
+   has stopped chewing and is looking down the row, which at four trees'
+   distance is quite enough. The body is identical to the grazing one on
+   purpose: what changes is the neck, and that is what the eye reads. */
+function drawBearAlert() {
+  const { c, ctx } = spriteCanvas(58, 38);
+  const T = ["#7a5232", "#5e3e26", "#452c1a", "#2f1d11"];
+  const M = "#8a6a48";
+
+  blob(ctx, 17, 19, 14, 11, T);
+  blob(ctx, 33, 16, 13, 11, T);
+  // the neck up rather than down, and the head at the top of it
+  blob(ctx, 44, 15, 8, 8, T);
+  blob(ctx, 50, 11, 7, 6, T);
+  px(ctx, 53, 12, 5, 3, M);                 // muzzle, level
+  px(ctx, 56, 12, 2, 2, "#241609");
+  blob(ctx, 46, 7, 3.5, 3, T);              // both ears up
+  blob(ctx, 53, 6, 3, 2.6, T);
+  px(ctx, 49, 11, 2, 2, "#241609"); px(ctx, 54, 10, 2, 2, "#241609");
+  px(ctx, 49, 11, 1, 1, "#ffd9a0"); px(ctx, 54, 10, 1, 1, "#ffd9a0");   // lantern in its eyes
+  px(ctx, 3, 15, 5, 3, T[1]);
+
+  px(ctx, 10, 27, 6, 11, T[2]); px(ctx, 36, 25, 6, 13, T[2]);
+  px(ctx, 18, 28, 7, 10, T[1]); px(ctx, 29, 26, 7, 12, T[1]);
+  px(ctx, 18, 35, 7, 3, T[3]);  px(ctx, 29, 35, 7, 3, T[3]);
+
+  px(ctx, 22, 9, 20, 1, "#8f6440");
+  px(ctx, 30, 8, 10, 1, "#a07a52");
+  return c;
+}
+
 /* The bear, flooded to one flat dark tone.
    Drawing the painted bear at low opacity gave a washed-out tan shape
    that read as a shed in the middle distance. A silhouette is the point:
@@ -3167,6 +3230,215 @@ function drawFoxAlive(t) {
   return c;
 }
 
+/* =========================================================
+   THE TWO OF THEM
+
+   The thing this chapter never had. Every line in it is about the pair
+   of you walking somewhere together, and the frame those lines were
+   written over had nobody in it at all — a valley, and a cat in the
+   corner. So: two people, drawn from behind, on the path, holding
+   hands, because that is the picture the writing keeps describing and
+   the one it could never show.
+
+   One character per pixel, fourteen to a row, the same way Super Ouissy
+   builds her — change a string and you change a person. Keep every row
+   fourteen long.
+
+     .  nothing     K  ink          S  her skin    s  her skin, shaded
+     H  hair dark   h  hair mid     i  hair shine
+     D  dress       d  dress shade  L  dress light
+     O  boot        o  boot shine
+     A  his skin    N  his hair     n  his hair lit
+     C  coat        c  coat shade   l  coat light   T  trousers
+   ========================================================= */
+const HVP = {
+  K: "#33283c",
+  S: "#ffe3cc", s: "#e9bda0",
+  H: "#a8762a", h: "#dfae4c", i: "#ffeaad",
+  D: "#ef7fa8", d: "#c85c85", L: "#ffb6cf",
+  O: "#5e3b50", o: "#8a5a72",
+  A: "#ffd9bd", N: "#3a2a22", n: "#54402f",
+  C: "#3f5480", c: "#2b3a5e", l: "#61799f", T: "#39415e",
+};
+
+/* Her: long blonde hair down her back — that is the whole silhouette
+   from behind — over a dress that flares at the hem. */
+const HV_HER_BODY = [
+  "....KKKKKK....",
+  "..KKhhhhhhKK..",
+  ".KhhiihhiihhK.",
+  ".KhhhhiihhhhK.",
+  ".Khhhhhhhhhhk.",
+  ".KhhhhhhhhhhK.",
+  "..KhhhhhhhhK..",
+  "..KhhhhhhhhK..",
+  ".KSKhhhhhhKSK.",
+  ".KSKhhhhhhKSK.",
+  ".KSKhHhhHhKSK.",
+  ".KSKhHhhHhKSK.",
+  ".KsKhhhhhhKsK.",
+  ".KsKDhhhhDKsK.",
+  "..KDDDDDDDDK..",
+  ".KDDDDDDDDDDK.",
+  ".KLDDDDDDDDdK.",
+  "KLDDDDDDDDDDdK",
+  "KDDDDDDDDDDDDK",
+];
+/* Him: shorter, darker hair, a coat that ends at the hip. Broader in
+   the shoulder so the two silhouettes are never mistaken for each
+   other at this size, which is the only thing that has to read. */
+const HV_HIM_BODY = [
+  ".....KKKK.....",
+  "...KKNNNNKK...",
+  "..KNNNNNNNNK..",
+  "..KNNnnnnNNK..",
+  "..KNNNNNNNNK..",
+  "..KAAAAAAAAK..",
+  ".KKAAAAAAAAKK.",
+  "KCCCCCCCCCCCCK",
+  "KClCCCCCCCCcCK",
+  "KAKCCCCCCCCKAK",
+  "KAKCCCCCCCCKAK",
+  "KAKCCCCCCCCKAK",
+  "KAKCCCCCCCCKAK",
+  "KAKCCCCCCCCKAK",
+  ".KKCCCCCCCCKK.",
+  "..KCCCCCCCCK..",
+  "..KCCCCCCCCK..",
+  "..KccccccccK..",
+  "..KTTTTTTTTK..",
+  "..KTTTTTTTTK..",
+];
+/* Four frames: contact, pass, the other contact, pass again. Two rows
+   of leg and two of boot is all there is room for, and it is enough —
+   at this size a walk is legs crossing, not anatomy. */
+const HV_HER_LEGS = [
+  ["..SS......SS..", "..SS......SS..", ".KOOK....KOOK."],
+  ["...SS....SS...", "...SS....SS...", "..KOOK..KOOK.."],
+  ["....SS..SS....", "....SS..SS....", "...KOOKKOOK..."],
+  ["...SS....SS...", "...SS....SS...", "..KOOK..KOOK.."],
+];
+const HV_HIM_LEGS = [
+  ["..TT......TT..", "..TT......TT..", ".KOOK....KOOK."],
+  ["...TT....TT...", "...TT....TT...", "..KOOK..KOOK.."],
+  ["....TT..TT....", "....TT..TT....", "...KOOKKOOK..."],
+  ["...TT....TT...", "...TT....TT...", "..KOOK..KOOK.."],
+];
+
+/* How the light in a place falls on a person standing in it. Without
+   this the pair are two daylight sprites pasted onto a night, which is
+   exactly what the bear used to look like. `wash` is the colour of the
+   air between you and them; `rim` is what the one light source in the
+   scene catches on the top of a head and a shoulder. */
+const HV_LIGHT = {
+  sakura:  null,
+  forest:  { wash: "rgba(90,130,70,0.14)",  rim: "#fff6d0" },
+  hollow:  { wash: "rgba(60,80,60,0.24)",   rim: "#ffe9a8" },
+  meadow:  null,
+  stream:  null,
+  sunset:  { wash: "rgba(80,60,120,0.36)",  rim: "#ffbb84" },
+  lantern: { wash: "rgba(50,45,105,0.42)",  rim: "#ffd08a" },
+  ridge:   { wash: "rgba(34,44,104,0.52)",  rim: "#b9c6ff" },
+  orchard: { wash: "rgba(46,38,80,0.44)",   rim: "#ffcf8a" },
+  bridge:  { wash: "rgba(30,38,92,0.50)",   rim: "#ffd08a" },
+  home:    { wash: "rgba(46,36,72,0.40)",   rim: "#ffd9a0" },
+};
+
+var hvFigCache = {};
+
+/* Builds one figure, lit for the place it is standing in, and keeps it.
+   Two people at four frames in eleven places is eighty-eight little
+   canvases at the very most, and only the ones actually walked past are
+   ever built. */
+function hvFigure(who, frame, scene) {
+  var key = who + frame + (scene || "-");
+  if (hvFigCache[key]) return hvFigCache[key];
+
+  var body = who === "her" ? HV_HER_BODY : HV_HIM_BODY;
+  var legs = (who === "her" ? HV_HER_LEGS : HV_HIM_LEGS)[frame & 3];
+  var rows = body.concat(legs);
+  var made = spriteCanvas(14, rows.length);
+  var ctx = made.ctx;
+
+  for (var y = 0; y < rows.length; y++) {
+    for (var x = 0; x < 14; x++) {
+      var ch = rows[y][x];
+      if (ch === "." || !HVP[ch]) continue;
+      px(ctx, x, y, 1, 1, HVP[ch]);
+    }
+  }
+
+  var light = HV_LIGHT[scene];
+  if (light) {
+    /* the wash goes only where there is already a person, so the
+       silhouette stays clean */
+    ctx.save();
+    ctx.globalCompositeOperation = "source-atop";
+    px(ctx, 0, 0, 14, rows.length, light.wash);
+    ctx.restore();
+    /* and one light down the left, which is where every lit thing in
+       these night scenes hangs */
+    ctx.save();
+    ctx.globalCompositeOperation = "source-atop";
+    ctx.globalAlpha = 0.3;
+    /* head and shoulders only, every other row. Lighting the whole side
+       drew an unbroken pale line down her that read as a walking stick,
+       and a lantern hung in a tree would not have reached her boots
+       anyway. */
+    for (var ry = 0; ry < Math.min(12, rows.length); ry += 2) {
+      for (var rx = 0; rx < 6; rx++) {
+        if (rows[ry][rx] === "." || rows[ry][rx] === "K") continue;
+        px(ctx, rx, ry, 1, 1, light.rim);
+        break;
+      }
+    }
+    ctx.restore();
+  }
+
+  hvFigCache[key] = made.c;
+  return made.c;
+}
+
+/* The pair on the ground, at a scale, walking or not.
+
+   `walk` is 0 while they are standing and climbs while they move, and
+   it drives everything: which leg frame, how much they bob, how far her
+   hair swings behind her. Standing still they breathe and she leans
+   fractionally toward him, which is the whole reason they read as two
+   people rather than two sprites parked side by side. */
+function hvDrawPair(ctx, x, groundY, s, t, walk, scene) {
+  var frame = walk > 0 ? (Math.floor(t * 7.5) & 3) : 1;
+  var bob = walk > 0 ? (Math.abs(Math.sin(t * 7.5)) * 1.4) : Math.sin(t * 1.1) * 0.5;
+  var her = hvFigure("her", frame, scene);
+  var him = hvFigure("him", walk > 0 ? ((frame + 2) & 3) : 1, scene);
+
+  var hw = 14 * s;
+  var hx = Math.round(x - hw * 0.96);              // her, on the left
+  var mx = Math.round(x + hw * 0.02);              // him, on the right
+  var hy = Math.round(groundY - her.height * s - bob);
+  var my = Math.round(groundY - him.height * s - (walk > 0 ? bob * 0.7 : -bob * 0.6));
+
+  /* one shadow under the pair, not two — they are standing together.
+     Flat, and sitting at their feet rather than around them: the first
+     version was a fat ellipse centred on the boots, which swallowed the
+     bottom two rows of both figures and took the walk with them. */
+  ctx.save();
+  ctx.globalAlpha = 0.26;
+  blob(ctx, x + hw * 0.02, groundY + 1, hw * 1.15, Math.max(1, s * 0.7), ["#1b1424"]);
+  ctx.restore();
+
+  ctx.drawImage(her, 0, 0, her.width, her.height,
+    hx, hy, Math.round(her.width * s), Math.round(her.height * s));
+  ctx.drawImage(him, 0, 0, him.width, him.height,
+    mx, my, Math.round(him.width * s), Math.round(him.height * s));
+
+  /* the held hand: the gap between her right arm and his left, closed.
+     It is two pixels wide and it is the point of the whole picture. */
+  var handY = hy + Math.round(11 * s);
+  px(ctx, hx + Math.round(12.5 * s), handY, Math.max(2, Math.round(s * 2.2)),
+     Math.max(1, Math.round(s * 1.4)), HVP.S);
+}
+
 function drawEnvelope(open) {
   const { c, ctx } = spriteCanvas(44, 32);
   const P = "#fffaf0", P2 = "#efe3cd", L = "#d8c9ad";
@@ -3230,27 +3502,56 @@ function drawNyan() {
 }
 
 /* ---------- the title logo, drawn as pixel letters ---------- */
+/* The title screen said HEARTVENTURE and the hub card said The Long Way
+   Round, and they are the same chapter. The card is the name she picks
+   it by, so the card wins and the alphabet grew the letters it needed
+   to say so. */
 const HV_FONT = {
   H: ["101", "101", "111", "101", "101"], E: ["111", "100", "111", "100", "111"],
   A: ["111", "101", "111", "101", "101"], R: ["111", "101", "111", "110", "101"],
   T: ["111", "010", "010", "010", "010"], V: ["101", "101", "101", "101", "010"],
-  N: ["101", "111", "111", "111", "101"], U: ["101", "101", "101", "101", "111"],
+  N: ["1001", "1101", "1011", "1001", "1001"], U: ["101", "101", "101", "101", "111"],
+  L: ["100", "100", "100", "100", "111"], O: ["111", "101", "101", "101", "111"],
+  D: ["110", "101", "101", "101", "110"],
+  /* G and N get four columns each for the same reason W gets five: at
+     three, G is an O with a nick out of it and N is a solid block. */
+  G: ["1111", "1000", "1011", "1001", "1111"],
+  Y: ["101", "101", "010", "010", "010"],
+  /* Five wide, because three is not enough room for a W: at three it
+     comes out as a K, and the title read THE LONG KAY ROUND. Glyphs
+     carry their own width now rather than all being three. */
+  W: ["10001", "10001", "10101", "11011", "10001"],
+  " ": ["00", "00", "00", "00", "00"],
 };
+/* A line of it, or two if the text carries a newline — "THE LONG WAY"
+   over "ROUND" fits a 320-wide frame where one line of eighteen
+   characters never could. */
 function drawLogo(text) {
-  const cw = 3, ch = 5, gap = 1, s = 3;
-  const { c, ctx } = spriteCanvas(text.length * (cw + gap) * s, ch * s + 2 * s);
-  text.split("").forEach((ch2, i) => {
-    const g = HV_FONT[ch2];
-    if (!g) return;
-    for (let y = 0; y < ch; y++) {
-      for (let x = 0; x < cw; x++) {
-        if (g[y][x] !== "1") continue;
-        const dx = i * (cw + gap) * s + x * s, dy = y * s + s;
-        px(ctx, dx, dy + s, s, s, "#b8365f");        // drop shadow
-        px(ctx, dx, dy, s, s, "#ff5f8d");            // face
-        px(ctx, dx, dy, s, Math.max(1, s / 3), "#ffa8c0");  // top light
+  /* two screen pixels a cell, drawn at 1:1 — about the width the old
+     one-line logo came out at, and every pixel on the grid */
+  const ch = 5, gap = 1, s = 2;
+  const lines = text.split("\n");
+  const widthOf = (line) => line.split("").reduce(
+    (w, c2) => w + ((HV_FONT[c2] || HV_FONT[" "])[0].length + gap), 0) - gap;
+  const widest = lines.reduce((m, l) => Math.max(m, widthOf(l)), 0);
+  const lineH = ch * s + 2 * s;
+  const { c, ctx } = spriteCanvas(widest * s, lineH * lines.length);
+  lines.forEach((line, li) => {
+    let cx = Math.round((widest - widthOf(line)) / 2) * s;   // centred on the widest
+    line.split("").forEach((ch2) => {
+      const g = HV_FONT[ch2] || HV_FONT[" "];
+      const gw = g[0].length;
+      for (let y = 0; y < ch; y++) {
+        for (let x = 0; x < gw; x++) {
+          if (g[y][x] !== "1") continue;
+          const dx = cx + x * s, dy = li * lineH + y * s + s;
+          px(ctx, dx, dy + s, s, s, "#b8365f");        // drop shadow
+          px(ctx, dx, dy, s, s, "#ff5f8d");            // face
+          px(ctx, dx, dy, s, Math.max(1, s / 3), "#ffa8c0");  // top light
+        }
       }
-    }
+      cx += (gw + gap) * s;
+    });
   });
   return c;
 }
@@ -4158,17 +4459,28 @@ const HV = {
     say: "Twice the track you pick turns out to be a sheep path that stops in the gorse. Twice you walk back to where the butterfly is waiting, which it is, both times, without making anything of it.",
     choices: [{ label: "TRY THE OTHER WAY", to: "there_rustle", pos: "centre" }],
   },
+  /* Both of these used to go to the same node — the only choice left in
+     the game where the two buttons did nothing at all, which the audit
+     suite has called an illusion since the day it was written. It is
+     still true that nothing here can hurt you; it is no longer true
+     that it does not matter which you pick. Holding still and backing
+     away get you two different deer. */
   there_rustle: {
     scene: "forest", cat: "shock", bear: "shadow",
     say: "Something big moves in the trees to the left of the path, and then does not move again.",
     choices: [
       { label: "HOLD VERY STILL", to: "there_nobear", pos: "left" },
-      { label: "BACK AWAY SLOWLY", to: "there_nobear", pos: "right" },
+      { label: "BACK AWAY SLOWLY", to: "there_deer", pos: "right" },
     ],
   },
   there_nobear: {
     scene: "forest", cat: "happy",
     say: "A deer. An enormous, appalled deer, gone before you have finished being frightened by it. You both laugh far too loudly for how quiet it was a second ago.",
+    choices: [{ label: "ON UP", to: "there_fog", pos: "centre" }],
+  },
+  there_deer: {
+    scene: "forest", cat: "happy",
+    say: "You get four steps back before it comes out onto the path instead — a deer, all legs, quite as startled as either of you. It looks at you a second longer than feels polite. Then it is gone, and you are laughing far too loudly for how quiet it was.",
     choices: [{ label: "ON UP", to: "there_fog", pos: "centre" }],
   },
   there_fog: {
@@ -4184,8 +4496,15 @@ const HV = {
     say: "The red one drops to the water instead and goes downstream, and a fox on the far bank works very hard at not having seen you.",
     choices: [{ label: "ALONG THE BANK", to: "there_stones", pos: "centre" }],
   },
+  /* The stones are the crossing rather than a sentence about one: the
+     seven the scene already draws, tapped one at a time as each settles.
+     Cross them all clean and you get across dry; catch one rocking and
+     you go in, which is the warmer of the two things that were already
+     written. The two buttons are still here and still work — the
+     mechanic is the longer way round, and this game is in favour of
+     those. */
   there_stones: {
-    scene: "stream", cat: "idle",
+    scene: "stream", cat: "idle", play: "stones",
     say: "The stream widens where the stones are. Seven of them, and not one is flat.",
     choices: [
       { label: "ONE AT A TIME", to: "there_dry", pos: "left" },
@@ -4193,16 +4512,19 @@ const HV = {
     ],
   },
   there_dry: {
+    stand: { x: 258, y: 106, s: 1.2 },
     scene: "stream", cat: "happy",
     say: "One at a time, then, testing each stone with a toe before you trust it. You get over with dry feet and slightly less dignity than you started with.",
     choices: [{ label: "DOWNSTREAM", to: "there_current", pos: "centre" }],
   },
   there_wet: {
+    stand: { x: 258, y: 106, s: 1.2 },
     scene: "stream", cat: "happy",
     say: "All in a rush, then — and the fourth stone rolls, and you go in to the ankle, and it is so cold that it is funny. You are laughing before you are out of it.",
     choices: [{ label: "DOWNSTREAM", to: "there_current", pos: "centre" }],
   },
   there_current: {
+    stand: { x: 258, y: 106, s: 1.2 },
     scene: "stream", cat: "idle",
     say: "After the stones you just follow the current. It knows where it is going and you do not have to, and that turns out to be its own kind of relief.",
     choices: [{ label: "WHERE IT COMES OUT", to: "there_petals", pos: "centre" }],
@@ -4246,18 +4568,23 @@ const HV = {
     say: "It is an hour of the same thing: put a foot down, put the other one down, do not think about how much is left. Nobody says much for a long stretch and nothing at all is wrong.",
     choices: [{ label: "OVER THE TOP", to: "back_bridge1", pos: "centre" }],
   },
+  /* Three sections of one span, and each of them is now the span rather
+     than a paragraph over a picture of it. The bridge sways; you step
+     when it is steady; hurrying it costs you the step and nothing else,
+     which is the sentence the middle section has always been trying to
+     say. */
   back_bridge1: {
-    scene: "bridge", cat: "idle", plank: 0,
+    scene: "bridge", cat: "idle", plank: 0, play: "bridge", span: [0.16, 0.42], playTo: "back_bridge2",
     say: "Then the rope bridge over the gorge, which holds one person and one plank at a time, and is honest with you about it.",
     choices: [{ label: "FIRST SECTION, SLOWLY", to: "back_bridge2", pos: "centre" }],
   },
   back_bridge2: {
-    scene: "bridge", cat: "shock", plank: 1,
+    scene: "bridge", cat: "shock", plank: 1, play: "bridge", span: [0.42, 0.72], playTo: "back_bridge3",
     say: "The middle, where the sag is deepest and the whole span moves with you. The trick, it turns out, is to stop trying to hurry.",
     choices: [{ label: "STEADY. KEEP GOING", to: "back_bridge3", pos: "centre" }],
   },
   back_bridge3: {
-    scene: "bridge", cat: "happy", plank: 2,
+    scene: "bridge", cat: "happy", plank: 2, play: "bridge", span: [0.72, 0.97], playTo: "back_join",
     say: "The last few planks, the far post, solid ground. You wait on the other side while he comes across, and you do not once tell him to hurry up.",
     choices: [{ label: "DOWN THE FAR SIDE", to: "back_join", pos: "centre" }],
   },
@@ -4271,8 +4598,17 @@ const HV = {
     say: "The red one takes the orchard, where the lanterns hang in the trees and the windfalls have been coming down for a week.",
     choices: [{ label: "DOWN THE ROW", to: "back_bear", pos: "centre" }],
   },
+  /* The one thing in the game with a wrong answer, and it is played
+     rather than picked: creep down the row while its head is down, stop
+     while it is up. Getting it wrong is the three trees backwards that
+     were already written — the same scene, the same buttons, no
+     overlay — and the three buttons are still there for anyone who
+     would rather just decide. */
   back_bear: {
-    scene: "orchard", cat: "shock", bear: "real",
+    scene: "orchard", cat: "shock", bear: "real", play: "orchard",
+    /* the near end of the row, and low enough in the frame that the
+       three buttons above them are never walked through */
+    stand: { x: 74, y: 170, s: 1.5 },
     say: "There is a bear in the orchard. It is four trees down, working through the windfalls, and it has not looked up yet.",
     choices: [
       { label: "WAIT FOR IT TO MOVE", to: "back_bear_wait", pos: "left" },
@@ -4351,22 +4687,6 @@ const HV = {
       { label: "No…", to: "nudge", pos: "right" },
     ],
   },
-  nudge: {
-    scene: "sunset", cat: "cry", bigCat: true,
-    say: QUEST_FINAL.nudge,
-    choices: [
-      { label: QUEST_FINAL.nudgeYes, to: "ask", pos: "left", style: "yes" },
-      { label: QUEST_FINAL.nudgeNo, to: "reallysure", pos: "right" },
-    ],
-  },
-  reallysure: {
-    scene: "sunset", cat: "cry", bigCat: true,
-    say: "…the cat is going to sit here until you change your mind.",
-    choices: [
-      { label: QUEST_FINAL.nudgeYes, to: "ask", pos: "left", style: "yes" },
-      { label: QUEST_FINAL.nudgeNo, to: "reallysure", pos: "right" },
-    ],
-  },
   yay: {
     scene: "sunset", cat: "love", bigCat: true, hearts: true, isEnd: true, big: true,
     say: "YAYYY, I LOVE YOU!", tally: true,
@@ -4403,23 +4723,33 @@ const HV = {
     say: "",
     choices: [
       { label: "YES!", to: "back_yay", pos: "left", style: "yes" },
-      { label: "No…", to: "back_nudge", pos: "right" },
+      { label: "No…", to: "nudge", pos: "right" },
     ],
   },
-  back_nudge: {
-    scene: "home", cat: "cry", bigCat: true,
+  /* One pair of these, not two. The two paths had a nudge and a
+     really-sure node each — four nodes, the same four lines twice, on
+     the one screen in the game where the words matter most and where
+     having to change them in two places is how they end up different.
+     `askedFrom` sends her back to whichever question she is standing
+     in, and `sceneOfAsk` keeps the sunset a sunset and the doorway a
+     doorway. */
+  nudge: {
+    sceneOfAsk: true, cat: "cry", bigCat: true, pair: false,
     say: QUEST_FINAL.nudge,
     choices: [
-      { label: QUEST_FINAL.nudgeYes, to: "back_ask", pos: "left", style: "yes" },
-      { label: QUEST_FINAL.nudgeNo, to: "back_reallysure", pos: "right" },
+      { label: QUEST_FINAL.nudgeYes, to: "__ask", pos: "left", style: "yes" },
+      { label: QUEST_FINAL.nudgeNo, to: "reallysure", pos: "right" },
     ],
   },
-  back_reallysure: {
-    scene: "home", cat: "cry", bigCat: true,
-    say: "…the cat is going to sit on this doorstep until you change your mind.",
+  reallysure: {
+    sceneOfAsk: true, cat: "cry", bigCat: true, pair: false,
+    sayOfAsk: {
+      there: "…the cat is going to sit here until you change your mind.",
+      back:  "…the cat is going to sit on this doorstep until you change your mind.",
+    },
     choices: [
-      { label: QUEST_FINAL.nudgeYes, to: "back_ask", pos: "left", style: "yes" },
-      { label: QUEST_FINAL.nudgeNo, to: "back_reallysure", pos: "right" },
+      { label: QUEST_FINAL.nudgeYes, to: "__ask", pos: "left", style: "yes" },
+      { label: QUEST_FINAL.nudgeNo, to: "reallysure", pos: "right" },
     ],
   },
   back_yay: {
@@ -4480,6 +4810,10 @@ const HV_VOICES = {
   page:    { type:"sine",     f:220,  to:180,  d:0.04, v:0.012, noise:0.05, nf:2700, nq:.8, nd:0.16 },
   /* the smallest tick, for a button taking focus */
   hover:   { type:"square",   f:1200, to:1400, d:0.04, v:0.018 },
+  /* something small in a hedge, by day */
+  bird:    { type:"sine",     f:2100, to:3000, d:0.09, v:0.020, harm:7,  hv:0.008 },
+  /* and the thing that replaces it after dark */
+  cricket: { type:"square",   f:2600, to:2500, d:0.03, v:0.012, noise:0.006, nf:4200, nq:3, nd:0.03 },
 };
 
 function hvSfx(kind) {
@@ -4545,15 +4879,211 @@ function hvSfx(kind) {
 
 
 /* ---------- the things you can find ---------- */
+/* Ten things, one per place rather than one per route.
+
+   There used to be four, one on each of the four routes, which meant a
+   single walk up the valley could find exactly one of them — and the
+   ending then said "you found the acorn along the way", which is not a
+   collection, it is a consolation. Four walks and a good memory were
+   the only way to see the sentence work. Now every walk passes four or
+   five, the ending has a list worth reading, and the whole set is still
+   only there for someone who goes round again. */
 const HV_TOKENS = {
-  shell:   { name: "a striped shell",   icon: "px-shell" },
-  feather: { name: "a soft feather",    icon: "px-feather" },
-  acorn:   { name: "a small acorn",     icon: "px-acorn" },
-  ribbon:  { name: "a lost ribbon",     icon: "px-ribbon" },
+  clover:   { name: "a four-leaf clover" },
+  harebell: { name: "a harebell" },
+  acorn:    { name: "a small acorn" },
+  petal:    { name: "a blossom petal" },
+  feather:  { name: "a soft feather" },
+  skimmer:  { name: "a stone for skimming" },
+  ribbon:   { name: "a lost ribbon" },
+  pinecone: { name: "a pine cone" },
+  shell:    { name: "a striped shell" },
+  key:      { name: "the spare key" },
 };
 let hvFound = {};
 let hvKeepsake = null;      // heart or flower, from the very first choice
 let hvBursts = [];          // little sparkle pops when something is collected
+let hvRoutes = {};          // which of the four ways through have been walked
+let hvEndings = {};         // and which of the two endings have been read
+
+/* =========================================================
+   WHAT THE WALK REMEMBERS
+
+   There are four routes and two endings and ten things to find, and a
+   single walk can see one route, one ending and about four of the
+   things. That is a good shape for something you come back to — except
+   that none of it was written down anywhere, so everything found
+   evaporated on the next reload and there was no way for the game to
+   know, or say, that there were three other ways up the valley.
+
+   Super Ouissy keeps a best time per difficulty and the race keeps
+   ghosts. This keeps the smallest thing that makes coming back mean
+   something: what you found, where you went, and how it ended.
+   ========================================================= */
+const HV_KEY = "hv_walk";
+const HV_ROUTE_OF = {
+  there_meadow: "there-blue", there_stream: "there-red",
+  back_ridge:   "back-blue",  back_orchard: "back-red",
+};
+const HV_ROUTE_NAME = {
+  "there-blue": "the high meadow", "there-red": "the stream bank",
+  "back-blue":  "the ridge",       "back-red":  "the orchard",
+};
+
+function hvLoadProgress() {
+  try {
+    const d = JSON.parse(localStorage.getItem(HV_KEY) || "{}") || {};
+    hvFound = d.found || {};
+    hvRoutes = d.routes || {};
+    hvEndings = d.endings || {};
+  } catch (e) { hvFound = {}; hvRoutes = {}; hvEndings = {}; }
+}
+
+function hvSaveProgress() {
+  try {
+    localStorage.setItem(HV_KEY, JSON.stringify(
+      { found: hvFound, routes: hvRoutes, endings: hvEndings }));
+  } catch (e) { /* a private window is still allowed to play */ }
+}
+
+function hvNoteRoute(id) {
+  let dirty = false;
+  const r = HV_ROUTE_OF[id];
+  if (r && !hvRoutes[r]) { hvRoutes[r] = 1; dirty = true; }
+  if (HV[id] && HV[id].isEnd && !hvEndings[id]) { hvEndings[id] = 1; dirty = true; }
+  if (dirty) hvSaveProgress();
+}
+
+function hvRouteCount() { return Object.keys(hvRoutes).length; }
+function hvEndingCount() { return Object.keys(hvEndings).length; }
+
+/* =========================================================
+   THE AIR IN EACH PLACE
+
+   Every scene in this chapter was silent. Five sounds fired on button
+   presses and that was the entire soundtrack of a walk through a
+   valley — no wind on the ridge, no water at the stream, nothing under
+   the orchard at night. Super Ouissy has a chiptune loop; this wants
+   the opposite of a tune.
+
+   So: one loop of noise through one filter, moved slowly, which is
+   wind; opened up and brightened, which is water; plus a bird every few
+   seconds by day and a cricket every few seconds after dark. It carries
+   no files, like everything else here, and it has an off switch.
+   ========================================================= */
+const HV_AIR = {
+  sakura:  { f: 620,  q: 0.7, g: 0.016, sway: 240, voice: "bird",    every: [3.5, 7] },
+  forest:  { f: 520,  q: 0.8, g: 0.018, sway: 200, voice: "bird",    every: [3, 6] },
+  hollow:  { f: 420,  q: 0.8, g: 0.016, sway: 160, voice: "bird",    every: [4, 8] },
+  meadow:  { f: 700,  q: 0.6, g: 0.017, sway: 300, voice: "bird",    every: [4, 8] },
+  stream:  { f: 1500, q: 0.5, g: 0.038, sway: 420, voice: "bird",    every: [5, 10] },
+  sunset:  { f: 480,  q: 0.7, g: 0.014, sway: 180, voice: "cricket", every: [2.5, 5] },
+  lantern: { f: 380,  q: 0.8, g: 0.013, sway: 140, voice: "cricket", every: [2, 4.5] },
+  ridge:   { f: 900,  q: 0.5, g: 0.026, sway: 520, voice: null,      every: null },
+  orchard: { f: 360,  q: 0.8, g: 0.013, sway: 130, voice: "cricket", every: [2, 4] },
+  bridge:  { f: 820,  q: 0.5, g: 0.024, sway: 460, voice: null,      every: null },
+  home:    { f: 300,  q: 0.9, g: 0.011, sway: 110, voice: "cricket", every: [3, 6] },
+};
+
+const HV_SOUND_KEY = "hv_air";
+let hvSoundOn = true;
+let hvAmb = null;            // { src, filt, gain, lfo, timer, scene }
+
+function hvSoundPreferred() {
+  try { return localStorage.getItem(HV_SOUND_KEY) !== "0"; } catch (e) { return true; }
+}
+
+function hvAmbience(scene) {
+  const air = scene && HV_AIR[scene];
+
+  if (!air || !hvSoundOn) { hvAmbienceStop(); return; }
+  if (hvAmb && hvAmb.scene === scene) return;
+
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (audioCtx && audioCtx.state === "closed") audioCtx = null;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state !== "running") {
+      if (window.wakeAudio) window.wakeAudio(audioCtx); else audioCtx.resume();
+    }
+    const c = audioCtx;
+
+    /* one two-second loop of noise is all the material there is; the
+       filter is what turns it into a place */
+    if (!hvAmb) {
+      const len = Math.floor(c.sampleRate * 2);
+      const buf = c.createBuffer(1, len, c.sampleRate);
+      const ch = buf.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < len; i++) {
+        /* softened toward brown noise, so it reads as air and not as
+           the hiss between radio stations */
+        last = (last + Math.random() * 2 - 1) * 0.5;
+        ch[i] = last;
+      }
+      const src = c.createBufferSource();
+      src.buffer = buf; src.loop = true;
+      const filt = c.createBiquadFilter();
+      filt.type = "bandpass"; filt.Q.value = 0.7;
+      const gain = c.createGain();
+      gain.gain.value = 0.0001;
+      const lfo = c.createOscillator();
+      lfo.frequency.value = 0.09;
+      const lg = c.createGain();
+      lfo.connect(lg); lg.connect(filt.frequency);
+      src.connect(filt); filt.connect(gain); gain.connect(c.destination);
+      src.start(); lfo.start();
+      hvAmb = { src, filt, gain, lfo, lg, timer: null, scene: null };
+    }
+
+    const t = c.currentTime;
+    hvAmb.filt.frequency.cancelScheduledValues(t);
+    hvAmb.filt.frequency.setTargetAtTime(air.f, t, 0.6);
+    hvAmb.filt.Q.value = air.q;
+    hvAmb.lg.gain.value = air.sway;
+    hvAmb.gain.gain.cancelScheduledValues(t);
+    hvAmb.gain.gain.setTargetAtTime(air.g, t, 0.8);
+    hvAmb.scene = scene;
+
+    if (hvAmb.timer) clearTimeout(hvAmb.timer);
+    hvAmb.timer = null;
+    if (air.voice && air.every) {
+      const again = () => {
+        hvAmb.timer = setTimeout(() => {
+          if (!hvAmb || !hvSoundOn) return;
+          const scr = document.getElementById("screen-quest");
+          if (scr && scr.classList.contains("active")) hvSfx(air.voice);
+          again();
+        }, (air.every[0] + Math.random() * (air.every[1] - air.every[0])) * 1000);
+      };
+      again();
+    }
+  } catch (e) { /* the air is a bonus, never a blocker */ }
+}
+
+function hvAmbienceStop() {
+  if (!hvAmb) return;
+  try {
+    if (hvAmb.timer) clearTimeout(hvAmb.timer);
+    hvAmb.timer = null;
+    hvAmb.gain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.25);
+  } catch (e) {}
+  hvAmb.scene = null;
+}
+
+function hvSetSound(on) {
+  hvSoundOn = on;
+  try { localStorage.setItem(HV_SOUND_KEY, on ? "1" : "0"); } catch (e) {}
+  const b = document.getElementById("hv-sound");
+  if (b) {
+    b.classList.toggle("off", !on);
+    b.setAttribute("aria-label", on ? "Sound on" : "Sound off");
+    b.title = on ? "Sound on" : "Sound off";
+  }
+  if (on) { const n = HV[hvNode]; hvAmbience(n && hvSceneOf(n)); }
+  else hvAmbienceStop();
+}
 
 function hvDrawToken(kind) {
   const { c, ctx } = spriteCanvas(14, 14);
@@ -4571,6 +5101,37 @@ function hvDrawToken(kind) {
     blob(ctx, 7, 9, 4, 4, ["#e0b070", "#c8904e", "#a87238", "#875828"]);
     px(ctx, 3, 3, 8, 4, "#7a5230");
     px(ctx, 6, 1, 2, 3, "#5e3f22");
+  } else if (kind === "clover") {
+    var G = ["#8fd06a", "#6fb44c", "#559234", "#3f7026"];
+    blob(ctx, 5, 5, 3, 2.6, G); blob(ctx, 9, 5, 3, 2.6, G);
+    blob(ctx, 5, 9, 3, 2.6, G); blob(ctx, 9, 9, 3, 2.6, G);
+    px(ctx, 7, 6, 1, 5, "#3f7026");
+    px(ctx, 4, 4, 1, 1, "#c8ee9c"); px(ctx, 8, 4, 1, 1, "#c8ee9c");
+  } else if (kind === "harebell") {
+    px(ctx, 8, 6, 1, 8, "#5c8440");                  // the stem it nods on
+    blob(ctx, 6, 5, 3.4, 3, ["#b9c2f2", "#8f9be0", "#6f79c4", "#535ca0"]);
+    px(ctx, 4, 7, 5, 1, "#535ca0");                  // the mouth of the bell
+    px(ctx, 5, 3, 2, 1, "#dfe4ff");
+  } else if (kind === "petal") {
+    blob(ctx, 7, 7, 5, 3.4, ["#ffe0ec", "#ffc2d8", "#f0a0be", "#d8849f"]);
+    px(ctx, 3, 7, 8, 1, "#ffd0e0");
+    px(ctx, 5, 5, 2, 1, "#fff4f8");
+  } else if (kind === "skimmer") {
+    blob(ctx, 7, 8, 6, 2.6, ["#d8dee2", "#b6bfc6", "#94a0a8", "#74808a"]);
+    px(ctx, 3, 7, 5, 1, "#e6ecef");                  // the flat face it goes in on
+  } else if (kind === "pinecone") {
+    blob(ctx, 7, 8, 3.6, 5, ["#a5793f", "#875f30", "#6b4a24", "#4f361a"]);
+    for (var pcr = 0; pcr < 4; pcr++) {
+      px(ctx, 5 + (pcr % 2), 4 + pcr * 2, 4, 1, "#4f361a");
+      px(ctx, 5 + (pcr % 2), 4 + pcr * 2, 2, 1, "#c08f52");
+    }
+    px(ctx, 7, 2, 1, 2, "#5c8440");
+  } else if (kind === "key") {
+    px(ctx, 4, 6, 7, 2, "#e0b24e");                  // the shaft
+    px(ctx, 4, 6, 7, 1, "#ffe09a");
+    blob(ctx, 3, 7, 2.6, 2.6, ["#ffe09a", "#e0b24e", "#b88a30", "#8f6a20"]);
+    px(ctx, 3, 7, 1, 1, "#6b4a12");                  // the hole in the bow
+    px(ctx, 9, 8, 1, 3, "#e0b24e"); px(ctx, 11, 8, 1, 2, "#e0b24e");
   } else { /* ribbon */
     px(ctx, 6, 5, 3, 3, "#e0567f");
     blob(ctx, 3, 6, 3.4, 2.6, ["#ffc2d8", "#f7a0bd", "#e0789c", "#c45d80"]);
@@ -4611,11 +5172,22 @@ function hvDrawBursts(ctx, dt) {
    name nodes that had never existed — so only the shell was ever findable.
    One per route now, so each of the four journeys has something of its
    own to spot and none of them can be picked up twice. */
+/* Where each one is. Everything here is kept clear of the paper note,
+   which owns the bottom third of the stage — the ribbon used to sit at
+   y=150, squarely behind it, where it could be collected but never
+   seen. */
 const HV_HIDDEN = {
-  there_nobear:    { id: "acorn",   x: 248, y: 112, r: 14 },   // left-blue
-  there_current:   { id: "feather", x: 262, y: 128, r: 14 },   // left-red
-  back_climb:      { id: "ribbon",  x: 74,  y: 150, r: 14 },   // right-blue
-  back_windfall:   { id: "shell",   x: 252, y: 106, r: 14 },   // right-red
+  ways:            { id: "clover",   x: 44,  y: 128, r: 14 },   // everyone
+  there_meadow:    { id: "harebell", x: 250, y: 120, r: 14 },   // left-blue
+  there_nobear:    { id: "acorn",    x: 248, y: 112, r: 14 },   // left-blue
+  there_deer:      { id: "acorn",    x: 248, y: 112, r: 14 },   // …either deer
+  there_petals:    { id: "petal",    x: 60,  y: 120, r: 14 },   // left-red
+  there_current:   { id: "feather",  x: 262, y: 128, r: 14 },   // left-red
+  sunset:          { id: "skimmer",  x: 232, y: 136, r: 14 },   // both left
+  back_climb:      { id: "ribbon",   x: 74,  y: 128, r: 14 },   // right-blue
+  back_join:       { id: "pinecone", x: 52,  y: 132, r: 14 },   // both right
+  back_windfall:   { id: "shell",    x: 252, y: 106, r: 14 },   // right-red
+  back_home:       { id: "key",      x: 58,  y: 134, r: 14 },   // both right
 };
 
 function hvHiddenHere() {
@@ -4637,11 +5209,15 @@ function hvCanvasTap(ev) {
   var spot = hvHiddenHere();
   if (spot && Math.abs(sx - spot.x) < spot.r && Math.abs(sy - spot.y) < spot.r) {
     hvFound[spot.id] = true;
+    hvSaveProgress();
     hvBurst(spot.x, spot.y, "#fff0b0");
     hvSfx("collect");
     hvUpdateFoundStrip();
     return;
   }
+
+  // a stone, a plank: whatever is being played here takes the tap next
+  if (hvPlay && hvPlayPress((performance.now() - hvT0) / 1000)) return;
 
   // poking the cat gets a reaction
   var n = HV[hvNode];
@@ -4653,23 +5229,63 @@ function hvCanvasTap(ev) {
 }
 let hvPoke = 0;
 
+/* Holding: the orchard is the only one that wants a held input, and it
+   wants it from a finger on a phone as much as from the space bar. */
+function hvHoldOn(ev) {
+  if (!hvPlay || hvPlay.kind !== "orchard") return;
+  hvHold = true;
+  if (ev && ev.cancelable) ev.preventDefault();
+}
+function hvHoldOff() { hvHold = false; }
+
 function hvUpdateFoundStrip() {
   var strip = document.getElementById("hv-found");
   if (!strip) return;
   var ids = Object.keys(HV_TOKENS).filter(function (k) { return hvFound[k]; });
-  strip.innerHTML = ids.map(function (k) {
-    return '<span class="hv-token" title="' + HV_TOKENS[k].name + '">' +
-           glyph(HV_TOKENS[k].icon, "gl-token") + "</span>";
-  }).join("");
+  /* The strip is drawn from the same function that draws the thing
+     lying in the grass, so there is one picture of a pine cone in this
+     game rather than a canvas one and an SVG one that have to be kept
+     looking like each other. */
+  strip.innerHTML = "";
+  ids.forEach(function (k) {
+    var wrap = document.createElement("span");
+    wrap.className = "hv-token";
+    wrap.title = HV_TOKENS[k].name;
+    wrap.appendChild(hvDrawToken(k));
+    strip.appendChild(wrap);
+  });
   strip.classList.toggle("on", ids.length > 0);
 }
 
 function hvFoundList() {
   var ids = Object.keys(HV_TOKENS).filter(function (k) { return hvFound[k]; });
-  if (!ids.length) return "";
-  if (ids.length === 1) return "You found " + HV_TOKENS[ids[0]].name + " along the way.";
-  var names = ids.map(function (k) { return HV_TOKENS[k].name; });
-  return "You found " + names.slice(0, -1).join(", ") + " and " + names[names.length - 1] + " along the way.";
+  var out = "";
+  if (ids.length === 1) {
+    out = "You found " + HV_TOKENS[ids[0]].name + " along the way.";
+  } else if (ids.length) {
+    var names = ids.map(function (k) { return HV_TOKENS[k].name; });
+    out = "You found " + names.slice(0, -1).join(", ") + " and " +
+          names[names.length - 1] + " along the way.";
+  }
+
+  /* And, once, what is left. Four ways up that valley and two ways it
+     can end, and until now the game had no way of telling her the other
+     three existed — which made every replay look like the same walk. */
+  var routes = hvRouteCount();
+  if (routes < 4) {
+    var left = [];
+    for (var k2 in HV_ROUTE_NAME) if (!hvRoutes[k2]) left.push(HV_ROUTE_NAME[k2]);
+    var howMany = ["", "one", "two", "three", "four"][left.length];
+    out += (out ? " " : "") + (left.length === 1
+      ? "There is one way up this valley you have not walked yet: " + left[0] + "."
+      : "There are " + howMany + " other ways up this valley — " +
+        left.slice(0, -1).join(", ") + " and " + left[left.length - 1] + ".");
+  } else if (ids.length < Object.keys(HV_TOKENS).length) {
+    out += (out ? " " : "") + "You have walked all four ways up now.";
+  } else {
+    out += (out ? " " : "") + "All four ways, and every last thing there was to find.";
+  }
+  return out;
 }
 
 /* ---------- painting ----------
@@ -4697,7 +5313,7 @@ function hvEnsureBuffers() {
    always starts the same way, but they drift with time. */
 function hvBuildActors(n, rnd) {
   var a = [];
-  var scene = n.scene;
+  var scene = hvSceneOf(n);
 
   if (scene === "sakura") {
     for (var i = 0; i < 34; i++) {
@@ -4807,18 +5423,363 @@ function hvPaintBase(n) {
   hvEnsureBuffers();
   var ctx = hvBaseCtx;
   ctx.clearRect(0, 0, PXW, PXH);
-  var rnd = hvSeed(n.scene + hvNode);
-  (HV_SCENES[n.scene] || HV_SCENES.sakura)(ctx, rnd);
+  /* Seeded by the place, not by the node. It used to be both, which
+     meant the meadow rearranged its own trees every time you took a
+     step through it — the same valley, reshuffled, on a path whose
+     whole point is that both ways come out at the same gate. A place
+     is now the same place every time you are standing in it. */
+  var scene = hvSceneOf(n);
+  var rnd = hvSeed(scene);
+  (HV_SCENES[scene] || HV_SCENES.sakura)(ctx, rnd);
   hvActors = hvBuildActors(n, hvSeed(n.scene + "actors"));
 }
 
+/* ---------- where the two of them are standing ----------
+   Every scene with a path puts them on it, at the point the path is
+   about three quarters of the way down — near enough to read as people,
+   far enough that the valley is still the subject. The scenes without a
+   path get a spot picked to leave the frame's own business alone: the
+   orchard puts them at the near end of the row so the bear is still
+   four trees away, the sunset puts them off to one side of the water so
+   the letter has the middle.
+
+   A node can override it with `stand`, which is how crossing the stream
+   moves them from one bank to the other. */
+const HV_STAND = {
+  sakura:  { x: 286, y: 152, s: 1.5 },
+  forest:  { x: 286, y: 150, s: 1.5 },
+  hollow:  { x: 286, y: 152, s: 1.5 },
+  meadow:  { x: 286, y: 154, s: 1.5 },
+  stream:  { x: 288, y: 158, s: 1.5 },
+  sunset:  { x: 286, y: 158, s: 1.5 },
+  lantern: { x: 286, y: 154, s: 1.5 },
+  ridge:   { x: 286, y: 150, s: 1.5 },
+  orchard: { x: 286, y: 152, s: 1.5 },
+  bridge:  { x: 26,  y: 146, s: 1.3 },
+  home:    { x: 286, y: 152, s: 1.5 },
+};
+
+/* Seconds since she arrived at this node. The whole chapter used raw
+   session time for anything that was supposed to happen on arrival,
+   which is why the lanterns never once came on in order: by the time
+   anybody reached that scene the clock was minutes past the last cue
+   and all five were simply already lit. */
+var hvArrive = -1;
+
+/* Which of the two closing questions she is standing in. The nudge and
+   the really-sure screen are shared between the two paths now, so they
+   have to be told which sunset — or doorway — they are happening in. */
+var hvAskFrom = "ask";
+
+function hvSceneOf(n) {
+  if (n && n.sceneOfAsk) {
+    var a = HV[hvAskFrom];
+    return (a && a.scene) || "sunset";
+  }
+  return n && n.scene;
+}
+
+/* =========================================================
+   THREE THINGS TO DO, BUILT ONCE
+
+   The writing here already contains four perfectly good mechanics —
+   seven stones and not one of them flat, a bridge that holds one plank
+   at a time, fog you have to wait out, a bear four trees down that has
+   not looked up yet — and all four of them were paragraphs. The picture
+   never did any of it.
+
+   So they are things you do now. Three rules held throughout:
+
+   1. **Nothing here can be failed.** Going in the stream is written,
+      and it is the warmer of the two endings to that beat. Mistiming
+      the bridge costs a step. The bear is the one that sends you
+      backwards, and backwards is three trees, in the same scene, with
+      the same buttons — which is what it already was.
+   2. **Nothing here can be stuck.** Every one of these nodes keeps the
+      buttons it always had. Play it or press the button; both go on,
+      and the button is never hidden, greyed or delayed. This is a gift
+      for someone who may not play games, not a skill check.
+   3. **One input.** Tap the canvas, or hold space. That is the whole
+      control scheme, and it is the same in all three.
+   ========================================================= */
+var hvPlay = null;         // whatever is being played on the canvas now
+var hvHold = false;        // is the finger (or the space bar) down
+var hvHint = "";           // the one line of instruction, drawn on canvas
+
+function hvEase(x) { return x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x); }
+
+/* the seven stones, at exactly the coordinates the scene painter uses,
+   so the ones you step on are the ones you can see */
+function hvStoneAt(k) {
+  return { x: 52 + k * 34 + Math.sin(k * 1.3) * 5, y: 143 - k * 5 };
+}
+
+/* The paper note is the cat talking, and it sits over the bottom third
+   of the stage. That is exactly where the stones and the orchard row
+   are, so once she starts doing one of these the note lifts away and
+   the frame is hers — and it comes straight back if she stops. The
+   buttons never move: they are the way out and must always be there. */
+function hvNoteAway(away) {
+  const note = document.getElementById("hv-note");
+  if (note) note.classList.toggle("hv-note-away", !!away);
+}
+
+function hvPlayBegin(n) {
+  hvPlay = null;
+  hvHint = "";
+  hvHold = false;
+  hvNoteAway(false);
+  if (!n || !n.play) return;
+
+  if (n.play === "stones") {
+    hvPlay = { kind: "stones", i: -1, wet: 0, hop: 1, fx: 62, fy: 174, done: 0 };
+    hvHint = "tap a stone when it steadies";
+  } else if (n.play === "bridge") {
+    hvPlay = { kind: "bridge", k: n.span[0], steps: 0, need: 4, wob: 0, done: 0 };
+    hvHint = "tap when the span is steady";
+  } else if (n.play === "orchard") {
+    hvPlay = { kind: "orchard", x: 74, look: 0, done: 0 };
+    hvHint = "hold to creep — stop when it looks up";
+  }
+
+  /* How long to leave the paper up before it lifts on its own. These
+     three screens are the only ones where the picture is the point, and
+     the note covers the ground they happen on — but the line still has
+     to be readable first, so it goes when it has been read rather than
+     on a fixed count. Touching anything lifts it early. */
+  if (hvPlay) hvPlay.readBy = 2.4 + Math.min(9, (n.say || "").length * 0.045);
+}
+
+/* how alert the bear is, 0 while it is feeding and 1 while its head is
+   up, with the half-second of stillness in between that is the only
+   warning you get. One function so the drawing and the rule agree. */
+function hvBearLook(st) {
+  var cycle = 5.2, p = st % cycle;
+  if (p < 2.9) return 0;                       // head down, working
+  if (p < 3.4) return (p - 2.9) / 0.5;         // it stops chewing
+  if (p < 4.7) return 1;                       // looking down the row
+  return 1 - (p - 4.7) / 0.5;                  // and back to the windfalls
+}
+
+/* the steadying meter both the stones and the bridge are timed against:
+   a value swinging through zero, where zero is the moment to move */
+function hvSway(t, seed) { return Math.sin(t * 3.1 + seed * 1.7); }
+
+function hvPlayWalking() {
+  if (!hvPlay) return 0;
+  if (hvPlay.kind === "stones") return hvPlay.hop < 1 ? 1 : 0;
+  if (hvPlay.kind === "bridge") return hvPlay.wob > 0.1 ? 1 : 0;
+  if (hvPlay.kind === "orchard") return hvHold && !hvPlay.done ? 1 : 0;
+  return 0;
+}
+
+function hvPlayPairX(stand) {
+  if (!hvPlay) return stand.x;
+  if (hvPlay.kind === "stones") {
+    var a = hvPlay.i < 0 ? { x: 62, y: 174 } : hvStoneAt(hvPlay.i);
+    var b = hvPlay.i + 1 > 6 ? { x: 268, y: 106 } : hvStoneAt(hvPlay.i + 1);
+    if (hvPlay.hop >= 1) return a.x;
+    return a.x + (b.x - a.x) * hvPlay.hop;
+  }
+  if (hvPlay.kind === "bridge") return 54 + (PXW - 112) * hvPlay.k;
+  if (hvPlay.kind === "orchard") return hvPlay.x;
+  return stand.x;
+}
+
+function hvPlayPairY(stand) {
+  if (!hvPlay) return stand.y;
+  if (hvPlay.kind === "stones") {
+    var a = hvPlay.i < 0 ? { x: 62, y: 174 } : hvStoneAt(hvPlay.i);
+    var b = hvPlay.i + 1 > 6 ? { x: 268, y: 106 } : hvStoneAt(hvPlay.i + 1);
+    if (hvPlay.hop >= 1) return a.y;
+    // a hop is a little arc, not a slide
+    var lin = a.y + (b.y - a.y) * hvPlay.hop;
+    return lin - Math.sin(hvPlay.hop * Math.PI) * 7;
+  }
+  if (hvPlay.kind === "bridge") {
+    return 106 + Math.sin(hvPlay.k * Math.PI) * 16 + 2 + hvPlay.wob * 2;
+  }
+  if (hvPlay.kind === "orchard") return stand.y;
+  return stand.y;
+}
+
+/* one press, wherever it came from */
+function hvPlayPress(t) {
+  if (!hvPlay || hvPlay.done) return false;
+  var p = hvPlay;
+
+  if (p.kind === "stones") {
+    if (p.hop < 1) return true;                       // mid-air, ignore
+    hvNoteAway(true);
+    var steady = Math.abs(hvSway(t, p.i + 1)) < 0.66;
+    p.hop = 0;
+    p.i++;
+    if (!steady) { p.wet++; hvSfx("locked"); hvBurst(hvStoneAt(p.i).x, hvStoneAt(p.i).y, "#a8d2e6"); }
+    else hvSfx("step");
+    if (p.i >= 6) { p.done = 1; p.finish = t + 0.9; }
+    return true;
+  }
+
+  if (p.kind === "bridge") {
+    hvNoteAway(true);
+    var ok = Math.abs(hvSway(t, p.steps)) < 0.62;
+    if (ok) {
+      p.steps++;
+      p.k += (HV[hvNode].span[1] - HV[hvNode].span[0]) / p.need;
+      p.wob = 0.5;
+      hvSfx("step");
+      if (p.steps >= p.need) { p.done = 1; p.finish = t + 0.7; }
+    } else {
+      p.wob = 1;                                      // the span moves, they wait
+      hvSfx("locked");
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/* per-frame advance for whichever one is running */
+function hvPlayStep(t, st, dt) {
+  if (!hvPlay) return;
+  var p = hvPlay;
+  if (p.readBy && st > p.readBy) hvNoteAway(true);
+
+  if (p.kind === "stones") {
+    if (p.hop < 1) p.hop = Math.min(1, p.hop + dt * 3.4);
+  } else if (p.kind === "bridge") {
+    if (p.wob > 0) p.wob = Math.max(0, p.wob - dt * 1.6);
+  } else if (p.kind === "orchard") {
+    p.look = hvBearLook(st);
+    if (!p.done) {
+      if (hvHold) {
+        if (p.x < 76) hvNoteAway(true);
+        p.x += dt * 26;
+        /* caught only while actually moving, and only once its head is
+           all the way up — a step taken during the half-second tell is
+           forgiven, because that half second is the warning */
+        if (p.look > 0.98) { p.done = 2; p.finish = t + 0.5; }
+        else if (p.x > 246) { p.done = 1; p.finish = t + 0.6; }
+      }
+    }
+  }
+
+  if (p.done && p.finish && t >= p.finish) hvPlayFinish();
+}
+
+/* where each of them comes out */
+function hvPlayFinish() {
+  var p = hvPlay, n = HV[hvNode];
+  if (!p || !n) return;
+  hvPlay = null;
+  if (p.kind === "stones") hvGo(p.wet ? "there_wet" : "there_dry");
+  else if (p.kind === "bridge") hvGo(n.playTo);
+  else if (p.kind === "orchard") hvGo(p.done === 2 ? "back_bear_seen" : "back_bear_quiet");
+}
+
+/* the mechanic's own furniture: the stone you are aiming at, the sway
+   on the span, the line of instruction. Drawn in the scene, in the
+   scene's palette, never as a panel over the top of it. */
+function hvPlayPaint(ctx, t, st) {
+  if (!hvPlay) return;
+  var p = hvPlay;
+
+  if (p.kind === "stones" && p.hop >= 1 && !p.done) {
+    var s = hvStoneAt(p.i + 1);
+    var sway = hvSway(t, p.i + 1);
+    var steady = Math.abs(sway) < 0.66;
+    // the stone rocks under the water, and settles as it comes level
+    px(ctx, s.x - 9 + sway * 3, s.y + 4, 18, 1, "rgba(255,255,255,0.4)");
+    // a ring that closes as it steadies, so the timing is visible
+    var r = 5 + Math.abs(sway) * 7;
+    ctx.save();
+    ctx.globalAlpha = 0.75;
+    blob(ctx, s.x, s.y - 1, r, r * 0.5, [steady ? "#fff2b0" : "#bfd8e4"]);
+    ctx.globalAlpha = 1;
+    blob(ctx, s.x, s.y, 8, 4, ["#e2d8bd", "#c8bba0", "#a89b83", "#877c68"]);
+    ctx.restore();
+  }
+
+  if (p.kind === "bridge" && !p.done) {
+    var bs = hvSway(t, p.steps);
+    var steady2 = Math.abs(bs) < 0.62;
+    var bx = 54 + (PXW - 112) * p.k;
+    var by = 106 + Math.sin(p.k * Math.PI) * 16;
+    // the next plank, and how much the span is moving under it
+    px(ctx, bx + 4 + bs * 4, by + 1, 8, 2, steady2 ? "#c8a878" : "#6b5540");
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    blob(ctx, bx + 8, by - 3, 4 + Math.abs(bs) * 6, 3, [steady2 ? "#ffe0a0" : "#7f6a90"]);
+    ctx.restore();
+  }
+
+  if (p.kind === "orchard") {
+    /* how far down the row they are, as grass trodden flat behind them
+       rather than a bar across the picture — a progress meter drawn as
+       a line was the one thing on this screen that looked like a games
+       console and not like an orchard */
+    ctx.save();
+    for (var tr = 74; tr < p.x - 3; tr += 7) {
+      ctx.globalAlpha = 0.34 + 0.24 * Math.sin(tr * 0.7);
+      px(ctx, tr, 175, 4, 1, "#6d7a58");
+      px(ctx, tr + 2, 177, 3, 1, "#5c6a4a");
+    }
+    /* and one mark ahead of them that stays lit while it is safe to
+       move, so the rule is visible without a word of interface */
+    ctx.globalAlpha = 0.7;
+    px(ctx, p.x + 6, 176, 5, 1, p.look > 0.5 ? "#c8705e" : "#9fd08a");
+    ctx.restore();
+  }
+
+  if (hvHint && st > 0.6 && st < 7 && !hvPlay.done) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (st - 0.6) * 2) * (st > 6 ? (7 - st) : 1);
+    hvTinyText(ctx, hvHint, PXW / 2, 30);
+    ctx.restore();
+  }
+}
+
+/* A three-pixel-tall alphabet, for the one line of instruction each of
+   these needs. The note under the stage is the cat talking and this is
+   not the cat, so it does not go there. */
+const HV_TINY = {
+  a:"010101111101101",b:"110101110101110",c:"011100100100011",d:"110101101101110",
+  e:"111100110100111",f:"111100110100100",g:"011100101101011",h:"101101111101101",
+  i:"111010010010111",j:"001001001101010",k:"101101110101101",l:"100100100100111",
+  m:"101111111101101",n:"101111111111101",o:"010101101101010",p:"110101110100100",
+  q:"010101101111011",r:"110101110101101",s:"011100010001110",t:"111010010010010",
+  u:"101101101101011",v:"101101101101010",w:"101101111111101",x:"101101010101101",
+  y:"101101010010010",z:"111001010100111"," ":"000000000000000","—":"000000111000000",
+  ".":"000000000000010",",":"000000000010100","'":"010010000000000",
+};
+function hvTinyText(ctx, text, cx, y) {
+  var s = text.toLowerCase().split("");
+  var w = s.length * 4 - 1;
+  var x0 = Math.round(cx - w / 2);
+  px(ctx, x0 - 3, y - 2, w + 6, 9, "rgba(24,18,30,0.42)");
+  for (var i = 0; i < s.length; i++) {
+    var g = HV_TINY[s[i]];
+    if (!g) continue;
+    for (var r = 0; r < 5; r++) {
+      for (var c2 = 0; c2 < 3; c2++) {
+        if (g[r * 3 + c2] === "1") px(ctx, x0 + i * 4 + c2, y + r, 1, 1, "#fff4dc");
+      }
+    }
+  }
+}
+
 /* the per-frame pass: background, moving cast, then characters */
-function hvPaintFrame(t) {
+function hvPaintFrame(t, dt) {
   var n = HV[hvNode];
   var canvas = document.getElementById("hv-canvas");
   if (!canvas || !n) return;
   var ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
+
+  if (hvArrive < 0) hvArrive = t;
+  var st = t - hvArrive;                 // time at this node, from zero
+  hvPlayStep(t, st, dt || 0.016);
+  n = HV[hvNode] || n;                   // a mechanic may have moved us on
 
   ctx.clearRect(0, 0, PXW, PXH);
   ctx.drawImage(hvBase, 0, 0);
@@ -4832,8 +5793,12 @@ function hvPaintFrame(t) {
 
   if (n.title) {
     put(drawNyan(), PXW - 66, 12 + Math.sin(t * 1.4) * 2, 1);
-    var logo = drawLogo("HEARTVENTURE");
-    put(logo, Math.round((PXW - logo.width * 0.62) / 2), 42 + Math.sin(t * 0.9) * 1.5, 0.62);
+    /* Drawn at 1:1. The old logo was built at three pixels a cell and
+       then put down at 0.62, so every cell landed on 1.86 screen pixels
+       and the letters mushed — which is most of why the G read as an O
+       whatever shape it was given. */
+    var logo = drawLogo("THE LONG WAY\nROUND");
+    put(logo, Math.round((PXW - logo.width) / 2), 32 + Math.sin(t * 0.9) * 1.5, 1);
   }
 
   if (n.butterflies) {
@@ -4888,12 +5853,14 @@ function hvPaintFrame(t) {
       }
     }
   } else if (n.bear === "real") {
-    var rb = drawBearGrazing();
     /* Four trees down, in the row, working through the windfalls: it
-       shoulders forward, dips to the grass, comes up chewing, and never
-       once looks over. Sized and placed to sit back in the row rather
-       than fill the frame — it is something to get past, not a scare. */
-    var dip = Math.max(0, Math.sin(t * 0.5)) * 3;
+       shoulders forward, dips to the grass, comes up chewing. While the
+       row is being crept it also lifts its head on its own rhythm, and
+       that rhythm is the thing being played against — the same function
+       decides what is drawn and what counts as having been seen. */
+    var look = hvPlay && hvPlay.kind === "orchard" ? hvPlay.look : 0;
+    var rb = look > 0.5 ? drawBearAlert() : drawBearGrazing();
+    var dip = look > 0.5 ? 0 : Math.max(0, Math.sin(t * 0.5)) * 3;
     var shove = Math.sin(t * 0.28) * 3;
     var bw2 = 64, bh2 = 42, bx2 = 198 + shove, by2 = 96 + dip;
     px(ctx, bx2 + 4, by2 + bh2 - 1, bw2 - 8, 3, "rgba(12,8,18,0.42)");
@@ -4912,43 +5879,64 @@ function hvPaintFrame(t) {
     grassTufts(ctx, PXW, by2 + bh2 + 2, 16, ["#2b3a2c", "#22301f", "#192518"], ornd);
   }
 
+  /* ---- the two of them, on the ground of wherever this is ----
+     Drawn after the scenery and the animals and before the weather, so
+     the fog closes over them and the bear stays behind them in the row.
+     They walk in from behind the frame on arrival and then stand, which
+     is what turns pressing a button into having gone somewhere. */
+  var stand = n.stand || HV_STAND[hvSceneOf(n)];
+  /* The bridge draws its own pair, out on the span, so it is not also
+     drawn standing on the bank behind them. */
+  if (stand && !n.title && !n.isAsk && n.pair !== false &&
+      (hvPlay || typeof n.plank !== "number")) {
+    var walkIn = Math.min(1, st / 1.25);
+    var px0 = stand.x - (n.from === "right" ? -52 : 52) * (1 - hvEase(walkIn));
+    var pairX = hvPlay ? hvPlayPairX(stand) : px0;
+    var pairY = hvPlay ? hvPlayPairY(stand) : stand.y;
+    hvDrawPair(ctx, pairX, pairY, stand.s,
+      t, hvPlay ? hvPlayWalking() : (walkIn < 1 ? 1 : 0), hvSceneOf(n));
+  }
+
+  hvPlayPaint(ctx, t, st);
+
   /* ---- the crossing, one section at a time ----
      The three bridge nodes are the same span from three places on it, so
-     the lantern she is carrying moves along it and the planks behind her
-     read as walked. Without this the careful-step beat is three
-     paragraphs over an identical picture. */
-  if (typeof n.plank === "number") {
+     the planks behind them read as walked. Without this the
+     careful-step beat is three paragraphs over an identical picture. */
+  if (typeof n.plank === "number" && !hvPlay) {
     var k0 = 0.16 + n.plank * 0.34;
     var bx0 = 54, bw0 = PXW - 112, sag0 = 16, by0 = 106;
     var cxp = bx0 + bw0 * k0;
     var cyp = by0 + Math.sin(k0 * Math.PI) * sag0;
-    // the planks already behind her, picked out warm
+    // the planks already behind them, picked out warm
     for (var pk = 0; pk < 30; pk++) {
       var kk = pk / 29;
       if (kk > k0) break;
       var pxx = bx0 + bw0 * kk;
       px(ctx, pxx - 1, by0 + Math.sin(kk * Math.PI) * sag0 + 1, 4, 2, "#8a6f4e");
     }
-    // her lantern, and the small pool it puts on the planks
-    blob(ctx, cxp, cyp + 1, 13, 5, ["rgba(255,206,130,0.20)"]);
-    blob(ctx, cxp, cyp - 5, 6, 5, ["rgba(255,226,160,0.34)"]);
-    lanternAt(ctx, cxp, cyp - 15 + Math.sin(t * 1.6) * 1);
-    // the span swinging a little more the further out she is
+    // the span swinging a little more the further out they are
     var swing = Math.sin(t * 1.1) * Math.sin(k0 * Math.PI) * 1.6;
-    px(ctx, cxp - 1, cyp + swing, 3, 2, "#a08256");
+    blob(ctx, cxp, cyp + 1, 13, 5, ["rgba(255,206,130,0.20)"]);
+    hvDrawPair(ctx, cxp, cyp + 2 + swing, 1.2, t, 0, "bridge");
+    lanternAt(ctx, cxp + 16, cyp - 16 + Math.sin(t * 1.6) * 1);
   }
 
   /* ---- the fog on the top of the hill ----
-     Three bands at different speeds and different heights. It never
-     clears completely while you are standing in it; the scene after this
-     one is the same hill without it, which is what "it lifted" means. */
+     Three bands at different speeds and different heights, and — the
+     part that was only ever written down — it lifts. Over about eight
+     seconds of standing in it the bands thin and drift up and off, and
+     the valley she was told was still there turns out to be still
+     there. Waiting is the only thing this beat ever asked of her, and
+     now waiting does something. */
   if (n.fog) {
+    var lift = hvEase(Math.min(1, Math.max(0, (st - 1.6) / 6.4)));
     for (var fb = 0; fb < 3; fb++) {
-      var fy = 74 + fb * 26;
+      var fy = 74 + fb * 26 - lift * (24 + fb * 16);
       var fh = 22 + fb * 7;
       var drift = ((t * (5 + fb * 3) + fb * 130) % (PXW + 200)) - 100;
       ctx.save();
-      ctx.globalAlpha = 0.3 + fb * 0.13 + 0.04 * Math.sin(t * 0.6 + fb);
+      ctx.globalAlpha = (0.3 + fb * 0.13 + 0.04 * Math.sin(t * 0.6 + fb)) * (1 - lift * 0.92);
       for (var fx2 = 0; fx2 < 5; fx2++) {
         blob(ctx, drift + fx2 * 74, fy + Math.sin(t * 0.4 + fx2 + fb) * 2, 52, fh * 0.5,
           ["#f2f4f6", "#e2e6ea", "#d0d6dc", "#bfc6ce"]);
@@ -4956,7 +5944,7 @@ function hvPaintFrame(t) {
       ctx.restore();
     }
     ctx.save();
-    ctx.globalAlpha = 0.22;
+    ctx.globalAlpha = 0.22 * (1 - lift);
     px(ctx, 0, 60, PXW, PXH - 60, "#e6eaee");
     ctx.restore();
   }
@@ -4968,8 +5956,8 @@ function hvPaintFrame(t) {
   if (n.lighting) {
     for (var Ln = 0; Ln < 5; Ln++) {
       var onAt = 0.5 + Ln * 0.85;
-      if (t < onAt) continue;
-      var age = Math.min(1, (t - onAt) / 0.5);
+      if (st < onAt) continue;
+      var age = Math.min(1, (st - onAt) / 0.5);
       var lx2 = 26 + Ln * 62 + (Ln * 7) % 11;
       var flick = 0.86 + 0.14 * Math.sin(t * 6 + Ln * 2);
       ctx.save();
@@ -5102,7 +6090,7 @@ function hvLoop(now) {
   var scr = document.getElementById("screen-quest");
   if (!scr || !scr.classList.contains("active")) return;
 
-  hvPaintFrame(t);
+  hvPaintFrame(t, dt);
   var canvas = document.getElementById("hv-canvas");
   if (canvas) hvDrawBursts(canvas.getContext("2d"), dt);
   if (canvas && hvTrans) hvDrawTransition(canvas.getContext("2d"), dt);
@@ -5126,17 +6114,24 @@ function hvRender(withTransition) {
   const n = HV[hvNode];
   if (!n) return;
 
+  if (n.isAsk) hvAskFrom = hvNode;
+
   if (withTransition) { hvStartTransition(); hvSfx("page"); }
   hvPaintBase(n);
+  hvArrive = -1;                       // everything on this node times from now
+  hvPlayBegin(n);
   hvStartLoop();
+  hvAmbience(hvSceneOf(n));
+  hvNoteRoute(hvNode);
   /* arriving somewhere new deserves a note of its own — until now every
      scene in this game opened in silence */
   if (hvNode !== hvLastSounded) { hvLastSounded = hvNode; setTimeout(function(){ hvSfx("arrive"); }, 140); }
 
   const note = document.getElementById("hv-note");
+  const askKind = (HV[hvAskFrom] && HV[hvAskFrom].ask) || "there";
   let say = n.isAsk
     ? (n.ask === "back" ? QUEST_FINAL.questionBack : QUEST_FINAL.question)
-    : n.say;
+    : (n.sayOfAsk ? n.sayOfAsk[askKind] : n.say);
   if (n.callback && hvKeepsake) {
     say += hvKeepsake === "flower"
       ? " …you are still carrying that flower, by the way."
@@ -5194,22 +6189,33 @@ function hvRender(withTransition) {
 
 let hvCompleted = false;
 
-function hvChoose(ch) {
-  if (ch.keepsake) hvKeepsake = ch.keepsake;      // heart or flower, remembered
-  const target = HV[ch.to];
+/* One way to move. Both the buttons and the three mechanics come
+   through here, so a stone crossed and a button pressed leave the game
+   in exactly the same state — which is the only reason it is safe to
+   offer both on the same screen. */
+function hvGo(to) {
+  if (to === "__ask") to = hvAskFrom;
+  const target = HV[to];
   /* The bear is the one place you can be sent backwards, and it gets the
      low note rather than the bright one. It is still an ordinary move to
      an ordinary scene — there is no fail state left in this game. */
   hvSfx(target && target.nudged ? "bad" : (target && target.isEnd ? "yay" : "pick"));
-  if (ch.to === "__exit") {
+  if (to === "__exit") {
     hvStopLoop();
+    hvAmbience(null);
     markChapterDone("quest");
+    hvSaveProgress();
     pageTurn("hub", startHub);
     return;
   }
   hvHistory.push(hvNode);
-  hvNode = ch.to;
+  hvNode = to;
   hvRender(true);
+}
+
+function hvChoose(ch) {
+  if (ch.keepsake) hvKeepsake = ch.keepsake;      // heart or flower, remembered
+  hvGo(ch.to);
 }
 
 function hvBack() {
@@ -5223,13 +6229,78 @@ function startQuest() {
   hvHistory = [];
   hvBursts = [];
   hvPoke = 0;
+  hvPlay = null;
+  hvHold = false;
+  hvLoadProgress();
+  hvSoundOn = hvSoundPreferred();
+  hvSetSound(hvSoundOn);
   hvUpdateFoundStrip();
   hvRender(false);
 }
 
+/* =========================================================
+   PLAYING IT WITHOUT A MOUSE
+
+   Every other chapter on this site can be played from the keyboard —
+   the maze, the platformer, the apocalypse, the race — and this one
+   could only ever be clicked. Arrow keys move between the choices on
+   the screen, Enter takes one, Backspace is the back chip, Esc leaves,
+   and space is the one button the three mechanics use.
+   ========================================================= */
+function hvChoiceButtons() {
+  return Array.prototype.slice.call(
+    document.querySelectorAll("#hv-left .hv-btn, #hv-centre .hv-btn, #hv-right .hv-btn, #hv-cards .hv-card"));
+}
+
+function hvMoveFocus(dir) {
+  const bs = hvChoiceButtons();
+  if (!bs.length) return;
+  const at = bs.indexOf(document.activeElement);
+  const next = at < 0 ? (dir > 0 ? 0 : bs.length - 1)
+                      : (at + dir + bs.length) % bs.length;
+  bs[next].focus();
+}
+
+document.addEventListener("keydown", (e) => {
+  const scr = document.getElementById("screen-quest");
+  if (!scr || !scr.classList.contains("active")) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+  if (e.key === " " || e.key === "Spacebar") {
+    if (hvPlay) {
+      if (hvPlay.kind === "orchard") hvHoldOn(e);
+      else { hvPlayPress((performance.now() - hvT0) / 1000); e.preventDefault(); }
+      return;
+    }
+  }
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") { hvMoveFocus(1); e.preventDefault(); }
+  else if (e.key === "ArrowLeft" || e.key === "ArrowUp") { hvMoveFocus(-1); e.preventDefault(); }
+  else if (e.key === "Enter") {
+    const bs = hvChoiceButtons();
+    if (bs.length && bs.indexOf(document.activeElement) < 0) { bs[0].click(); e.preventDefault(); }
+  } else if (e.key === "Backspace") {
+    hvBack(); e.preventDefault();
+  } else if (e.key === "Escape") {
+    hvStopLoop(); hvAmbience(null); pageTurn("hub", startHub); e.preventDefault();
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  if (e.key === " " || e.key === "Spacebar") hvHoldOff();
+});
+
 (function () {
   var c = document.getElementById("hv-canvas");
-  if (c) c.addEventListener("click", hvCanvasTap);
+  if (!c) return;
+  c.addEventListener("click", hvCanvasTap);
+  c.addEventListener("pointerdown", hvHoldOn);
+  c.addEventListener("pointerup", hvHoldOff);
+  c.addEventListener("pointercancel", hvHoldOff);
+  c.addEventListener("pointerleave", hvHoldOff);
+  var s = document.getElementById("hv-sound");
+  if (s) s.addEventListener("click", function () { hvSetSound(!hvSoundOn); });
 })();
 document.getElementById("hv-back").addEventListener("click", hvBack);
-document.getElementById("hv-quit").addEventListener("click", () => { hvStopLoop(); pageTurn("hub", startHub); });
+document.getElementById("hv-quit").addEventListener("click", () => {
+  hvStopLoop(); hvAmbience(null); pageTurn("hub", startHub);
+});

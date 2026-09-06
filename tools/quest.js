@@ -34,7 +34,13 @@ const ROUTES = {
 
   /* ---- the graph, walked without touching the DOM ---- */
   const g = await page.evaluate(() => {
-    const exits = n => (n.choices || []).concat(n.cards || []).map(c => c.to);
+    /* `__ask` is a sentinel, like `__exit`: the nudge and really-sure
+       screens are shared between the two paths and send her back to
+       whichever closing question she is standing in. It is resolved to
+       both real ask nodes here so the graph is still checked properly
+       rather than excused. */
+    const exits = n => (n.choices || []).concat(n.cards || []).map(c => c.to)
+      .reduce((out, t) => out.concat(t === '__ask' ? ['ask', 'back_ask'] : [t]), []);
     const seen = new Set(), stack = ['title'], dead = [], scenes = {};
     while (stack.length) {
       const id = stack.pop();
