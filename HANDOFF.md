@@ -336,6 +336,30 @@ and changed nothing, because **html is the scroller**. `html` kept
 `height:100%`, kept the too-tall box, and kept all 132 pixels of
 draggable overflow. Sizing the body is not sizing the page.
 
+**Read off his iPad, in the fault state, and this is the whole thing.**
+There is a state on Chrome for iOS where *every CSS viewport unit reports
+the full screen* — `vh`, `svh`, `lvh` and `dvh` all say 1024 in a window
+that is really 892 — and so does `documentElement.clientHeight`, and so
+does a `position:fixed; top:0; bottom:0` box, and so does
+`html{height:100%}`. Only `window.innerHeight` and `visualViewport.height`
+tell the truth. 1024 − 892 = 132, which is the 133px drag measured frame
+by frame in his recording. Same number from both directions.
+
+Two consequences, and both are load-bearing:
+
+  1. **There is no CSS fallback.** Not `dvh`, not `svh`. Any rule that
+     lays the site out against a CSS unit is 132px wrong in that state.
+     The height must come from JS.
+  2. **JS at the bottom of the body is too late.** The page paints once
+     against the CSS value — everything half a toolbar too low — and then
+     snaps when the measurement lands. That snap is the "it appears, then
+     it shifts" in every one of his recordings. So there is a small
+     inline script in the `<head>` of index.html that writes `--app-h`
+     and `--app-top` before anything is drawn. **Do not move it, do not
+     defer it, do not fold it into script.js.** It is verified by
+     blocking script.js outright and checking the first frame is still
+     892.
+
 **Two independent signals, because one is not enough.** He tested the
 visualViewport-only fix on a real preview build and it changed nothing,
 which is the evidence that Chrome for iOS misreports *that* API too. So

@@ -14,12 +14,46 @@
      larger than the part you could see. That is the "cropped from above,
      and zoomed" that followed. The height is 100dvh's job, not cover's. -->
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<!-- BEFORE THE FIRST PAINT. This has to be here, inline, in the head, and
+     not at the bottom with the rest of the scripts.
+
+     On his iPad in Chrome there is a state — measured off the device, not
+     guessed — where every CSS viewport unit reports the whole screen with
+     the toolbar included: vh, svh, lvh and dvh all say 1024 in a window
+     that is really 892, and so does documentElement.clientHeight, and so
+     does a fixed top:0;bottom:0 box. Only innerHeight and visualViewport
+     tell the truth. There is no CSS value left to fall back on.
+
+     So the stylesheet cannot get the first frame right on its own. If we
+     wait for script.js at the bottom of the body, the site paints once at
+     1024 — everything half a toolbar too low — and then snaps to 892 when
+     the measurement lands. That snap is the "it appears, then it shifts"
+     that has been in every one of his recordings.
+
+     Smallest of the honest numbers, written before anything is drawn.
+     script.js takes over from here with the probe and the re-measuring. -->
+<script>
+(function () {
+  try {
+    var de = document.documentElement, vv = window.visualViewport, say = [];
+    if (vv && vv.height > 0) say.push(Math.round(vv.height * (vv.scale > 0 ? vv.scale : 1)));
+    if (window.innerHeight > 0) say.push(Math.round(window.innerHeight));
+    if (de.clientHeight > 0) say.push(de.clientHeight);
+    if (!say.length) return;
+    de.style.setProperty("--app-h", Math.min.apply(null, say) + "px");
+    de.style.setProperty("--app-top",
+      (vv && !(vv.scale > 1.02) ? Math.round(vv.offsetTop || 0) : 0) + "px");
+  } catch (e) {}
+})();
+</script>
+
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=117">
+<link rel="stylesheet" href="style.css?v=118">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=117"></script>
+<script src="vendor/three.bundle.js?v=118"></script>
 
 </head>
 <body>
@@ -1146,12 +1180,12 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=117"></script>
-<script src="scrapbook.js?v=117"></script>
-<script src="script.js?v=117"></script>
-<script src="super-ouissy.js?v=117"></script>
-<script src="rescue.js?v=117"></script>
-<script src="apocalypse.js?v=117"></script>
-<script src="racing.js?v=117"></script>
+<script src="book-scene.js?v=118"></script>
+<script src="scrapbook.js?v=118"></script>
+<script src="script.js?v=118"></script>
+<script src="super-ouissy.js?v=118"></script>
+<script src="rescue.js?v=118"></script>
+<script src="apocalypse.js?v=118"></script>
+<script src="racing.js?v=118"></script>
 </body>
 </html>
