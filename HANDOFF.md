@@ -748,3 +748,35 @@ And one measurement lesson repeated: the night's mix could only be read
 with the sound on, and every suite here runs muted. `nightMix(feel, d)`
 is a plain function of the feeling and the dread with no audio in it,
 so what the shift is written as can be checked without hearing it.
+
+## Reading the six hours as a story
+
+`tools/nightread.js` transcribes the whole chapter in the order she
+receives it. It asserts nothing; it exists to be read. Doing that once
+found five things no assertion would have:
+
+- **The opening film gave away nights three and four.** Before she had
+  played a second it said the toys went into houses and did what he
+  asked, that he was paid a great deal for it, and that she had been
+  living on the money. So night three's ledger and night four's
+  notebook were confirming something the trailer had spoiled. The film
+  now says the shop is hers, that he lied for fifteen years, that the
+  ones he sold did not stay sold — and stops.
+- **Two of the six hidden pages repeated two of the revelations.** The
+  night-five find was the ledger (night three's revelation) and the
+  night-six find was the confession (night six's revelation), so she
+  read the same beat twice and the second time was smaller. They are
+  the two things in the shop that are about the pair of them instead:
+  a second chair at his bench with a mug of hers on the arm, and a
+  fifth toy under a dust sheet with no mechanism in it.
+- **The six `why` lines described the wrong nights.** Night four's said
+  "he is about to tell you what they were for", which is night five.
+- **Two lines of narration contradicted the mechanics.** The ending had
+  her winding them "for the first time all week" after six nights of
+  being taught to wind them nightly, and the finale had her watching
+  the morning on a monitor five times when the cameras die at five on
+  the last night.
+
+The four tags stayed exactly as they were. The chalk on night two names
+the four traits; the tags say why he chose them. That is a payoff, not
+a repeat.

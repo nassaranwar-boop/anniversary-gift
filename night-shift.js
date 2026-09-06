@@ -173,14 +173,13 @@ const NS = {
         from: [0.2, 2.5, 6.2], to: [0.2, 1.9, 2.6], look: [0, 1.3, -2.4], fov: 60,
         lines: [
           "The ones I sold did not stay sold.",
-          "They went into other people's houses, and they did what I had asked them to do, and nobody ever knew why.",
+          "That is all I am going to say about it tonight. You will find the rest yourself, and I would rather you did.",
         ] },
       { room: "arcade", secs: 11,
         from: [2.1, 2.2, 4.6], to: [1.1, 1.6, 2.2], look: [-0.4, 1.0, -3.0], fov: 58,
         lines: [
-          "I was paid a great deal of money for that.",
-          "You have been living in it. The house. The car. All of it.",
-          "I am sorry.",
+          "There is a book under the till. Do not open it on the first night.",
+          "Open it when you have had enough of me being careful.",
         ] },
       { room: "party", secs: 12,
         from: [-3.4, 2.2, 3.6], to: [-1.9, 1.5, 1.4], look: [0.4, 1.0, -1.2], fov: 60,
@@ -193,7 +192,7 @@ const NS = {
         lines: [
           "Wind them. Every night, before six.",
           "And whatever else comes to that door — and something will — do not open it.",
-          "I am sorry for the money. I am sorrier for the fifteen years.",
+          "I am sorry. You do not know what for yet, and that is the last easy night you get.",
         ] },
     ],
     /* the page itself, in his hand, after the machine stops talking */
@@ -268,26 +267,33 @@ const NS = {
       ],
       back: "She stays. Whatever it is, whoever it is, she stays until it is finished. I wanted one thing in this building that would not leave a door either.",
     },
+    /* These two used to say the same things as the revelations at three
+       in the morning — the ledger repeated night three and the last
+       page repeated night six, so she read the same beat twice and the
+       second time was smaller. They are the two things in the shop
+       that are about the pair of them instead. */
     {
       id: "ledger", on: 5, room: "party", kind: "letter",
-      where: "the ledger, open at the last page anyone wrote on",
-      title: "SOLD",
+      where: "a second chair at the workshop bench, with a mug on the arm of it",
+      title: "THE OTHER CHAIR",
       lines: [
-        "Four hundred and eleven of them, out of this shop, into houses with people asleep in them. Every one made to want something on somebody else’s behalf.",
-        "I stopped taking orders in the spring. It did not stop the ones already out there, and it will not stop them coming back here, because this is the only address any of them has.",
+        "There is a second chair pulled up to the bench, at the angle somebody sits at when they are being talked to rather than working.",
+        "The mug on the arm of it is not his. It is the one with the chip out of the handle that went missing from the kitchen four years ago and got blamed on the cleaner.",
+        "It has been washed. It is dry. It has been sitting there a long time.",
       ],
-      back: "The four in the back are the only things I ever built that wanted something for themselves. Whatever else gets in, it is not mine and it is not hers.",
+      back: "She has never set foot in this shop. I put the chair there the week I took the lease and I have never once moved it, and I could not tell you what I thought was going to happen.",
     },
     {
       id: "last", on: 6, room: "stage", kind: "page",
-      where: "left on the lip of the stage, in the one bit of light",
-      title: "the last page",
+      where: "on the bench under a cloth, half made",
+      title: "THE FIFTH ONE",
       lines: [
-        "I have been sitting here trying to write down what I am, and every version of it is a man asking to be forgiven, so here is the other thing instead.",
-        "I made four toys out of my wife. Her timekeeping, her roof, the dancing she does when she thinks nobody can see, and the fact that she has never once walked out of a room I was in.",
-        "They have been standing at your door all week trying to get to you. That is the whole of what they are for. I could not say it to your face in fifteen years and I have had to build it out of brass instead.",
+        "There is a fifth one on the bench under a dust sheet, and it is not finished.",
+        "No mechanism in it yet. No key in the back. The face is done and nothing else is.",
+        "There is a tag wired to the wrist the way he wires a tag to all of them, and it does not say NOT FOR SALE, and it does not have a number on it.",
+        "It says: FOR HER TO WIND, WHEN SHE IS READY.",
       ],
-      back: "— Anwar",
+      back: "I ran out of time on this one. That is all. There is no lesson in it and nothing clever about it — I simply thought I had longer, the way everybody does.",
     },
   ],
 
@@ -495,12 +501,12 @@ const NS = {
      do about it, which is the difference between a level and a scene.
      One line, present tense, always something she can actually finish. */
   why: {
-    1: "Learn the shop. Nothing has happened here yet.",
-    2: "Find out what the four in the back are, and why he kept them.",
-    3: "Four hundred and eleven went out of this door. Find out where.",
-    4: "He is about to tell you what they were for. Stay alive to hear it.",
-    5: "Keep all four of them wound. He asked you once, and he meant it.",
-    6: "Get to six o'clock. Then decide what to do with the key.",
+    1: "Get through one night in his shop. That is all he is asking tonight.",
+    2: "Find out what the four in the back room actually are.",
+    3: "Open the book under the till. He has been telling you not to all week.",
+    4: "Find out how a man learns to build a thing that watches somebody.",
+    5: "Keep all four of them wound, and when one gets to the door first — let it.",
+    6: "Get to six. Then decide what you are taking out of here.",
   },
   /* =====================================================
      THE TAPES — the story, told while she is playing it
@@ -656,11 +662,11 @@ const NS = {
 
   /* Dawn on the last night, and the one thing she gets to decide. */
   ending: {
-    ask: "On the counter there is a winding key, and four things standing very still in a shop that is hers now.",
+    ask: "There is a winding key on the counter, and four things standing very still in a shop that is hers now. One more thing to decide, and then nobody is asking her for anything ever again.",
     wind: {
       label: "WIND THEM",
       lines: [
-        "She goes out onto the floor in the dark and winds all four of them, the way the note said, for the first time all week.",
+        "She goes out onto the floor in the dark and winds all four of them — not on a monitor at arm's length this time, but standing in front of them with her hand on the key.",
         "Nothing happens. Nothing was ever going to happen — they are toys, and it is six in the morning, and the man who made them has been dead for eleven days.",
         "The soldier keeps better time than she does. The owl is up where she would be. The ballerina will not move while she is watching, and the jester in the box has never once left a door.",
         "She stands in the middle of her husband's shop and understands, all at once and far too late, that she has been looking at a portrait of herself for six nights and calling it a haunting.",
@@ -686,7 +692,7 @@ const NS = {
     lines: [
       "The shutters go up on their own at six. They always have.",
       "Out on the shop floor the four of them are walking back to their places. Not hurrying. The soldier to his plinth, the owl up into the rafters, the ballerina under her glass, the jester folding himself back into his box — and then, one after another, they stop, the way a thing stops when it is finished rather than interrupted.",
-      "They have done that every morning this week. She has watched it on a monitor five times without once understanding what she was looking at.",
+      "They have done that every morning this week. She watched it on a monitor for five of them without once understanding what she was looking at, and tonight the cameras went at five and she is watching it with her own eyes.",
       "They were never coming for her. They were coming to her, and she has spent six nights getting very good at keeping them out.",
     ],
   },
@@ -11425,6 +11431,8 @@ const testHooks = {
   /* what each scene is written as, rather than what its faders happen
      to be part-way through a half-second ramp */
   score: () => ({ mix: MODE_MIX, feel: MODE_FEEL, layers: MUS_LAYERS }),
+  words: () => NS,
+  nightCfg: (n) => nightCfg(n),
   /* what the shift is written as tonight, at a given level of dread —
      a plain function, so it can be read with the sound off */
   nightMix: (night, d) => { const was = G.night; G.night = night;
