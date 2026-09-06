@@ -11606,6 +11606,16 @@ const testHooks = {
          budget and pacing measurement an hour into the night. It has
          its own hook (`revealStep`) and its own checks. */
       stepDesk(dt);
+      stageTheTurn(dt);
+      /* His voice, the annunciator, and the thing hidden on a camera.
+         All three are frame-loop work that pump never did, so no
+         measurement in this repo could see whether Anwar actually
+         speaks across a night, whether the shop says anything, or
+         whether the hidden object is ever placed — three of the beats
+         the story is made of, invisible to every suite. */
+      tapeTick(dt);
+      sayTick(dt);
+      stepFind(dt);
     }
     G.pumping = false;
     return { phase: G.phase, hour: G.hour, power: G.power, dead: G.dead };
