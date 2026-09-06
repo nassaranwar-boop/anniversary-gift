@@ -13,6 +13,7 @@ index.html       page structure (all screens are <section class="screen">)
 vendor/          three.js r180 + post-processing, bundled for offline use
 style.css        all styling
 script.js        site logic + maze/adventure content config (EDIT CONTENT HERE)
+ost.js           the adventure's score — one tune, eleven ways of playing it
 book-scene.js    the Three.js 3D intro scene — self-contained
 scrapbook.js     the memory book — its own config block at the top
 super-ouissy.js  the platformer — its own config block at the top
@@ -400,6 +401,99 @@ single walk passes four or five instead of exactly one — see `HV_TOKENS` for
 the list and `HV_HIDDEN` for where each one lies. They are drawn once, by
 `hvDrawToken`, and the strip at the top of the stage shows that same little
 canvas rather than a separate SVG that has to be kept looking like it.
+
+### The score
+
+`ost.js`. Not a background loop — a piece of music, and the one thing in
+this chapter that does the most work per line of code.
+
+**There is one tune.** Eight notes:
+
+```
+5  6  8  7  |  5  4  3  2  |  1
+```
+
+It goes up to the octave, leans on the seventh, and walks all the way back
+down to where it started. That is the title of the chapter written as a
+melody, and it is the only melody in the game.
+
+Every place plays it in different clothes. The blossom gets it on a piano,
+alone, in C major. The high meadow gets it on strings, in F, wide open. The
+stream turns it into water — same notes, arpeggiated, high. The wood only
+plays the first four, because she does not know yet how the phrase ends.
+
+Three places refuse it, on purpose:
+
+- **the ridge** holds it back for a whole climb and then gives it to a choir
+- **the orchard** never plays it at all; it has a pulse and a held breath,
+  and the score ducks to almost nothing the moment the bear's head comes up
+- **the bridge** hands it back to her *one note per plank*, so getting over
+  the gorge is the tune assembling itself under her feet, and the far post
+  is the first time in the chapter anyone has heard the whole of it
+
+And the trick the whole thing is built on:
+
+> **the lantern path is the blossom park in the relative minor.**
+
+Same seven notes, same theme, a different note called home. *"Same place.
+Completely different light"* is a line that was already in the writing, and
+A minor is what that line sounds like. The way there and the way back are
+not two pieces of music. They are one piece heard from two different years.
+`tools/osttune.js` asserts that relationship as arithmetic so it cannot
+quietly drift.
+
+Made of: six instruments (an FM piano, three detuned saws for strings, a
+vibrato'd triangle choir, a driven saw stack for brass, a bass, a pluck), one
+convolution reverb whose impulse response is generated at load out of noise
+under an exponential decay, and a lookahead scheduler that posts notes onto
+the audio clock a quarter-second early because `setInterval` cannot keep
+musical time. No files, like everything else here.
+
+`CUES` at the top of `ost.js` is the whole score: a key, a mode, a tempo, a
+chord loop and which dress the theme is wearing. Change a line and a place
+changes what it sounds like.
+
+### They talk to each other
+
+Forty-seven nodes and not one line of dialogue: a cat narrated their entire
+relationship in the second person, and you were *told* "you both laugh far
+too loudly" without ever hearing either of them. A node can carry `voices`
+now — 45 lines across 15 scenes — and they arrive one at a time in a small
+pixel bubble above whoever is speaking, hers edged in pink and his in blue so
+you never have to be told which is which. They are short on purpose. Nobody
+in this valley makes speeches.
+
+### The two hard beats
+
+Every beat on this walk used to be warm, and a story where nothing ever costs
+anything is a story you watch rather than one you feel. There is one hard
+beat on each side now, and each one is the reason its ending works:
+
+- **`there_quiet`**, on the gate at the top of the meadow. She asks the real
+  question a year too early and he does not answer it — he asks her to ask
+  him again at the top. The letter at the sunset *is* her asking again, so
+  the ending stops being a nice surprise and becomes a promise he made here
+  and kept.
+- **`back_year`**, on the way down the lantern path. One of them says the
+  true thing about the middle of the year, the stretch that was work, and the
+  other does not say anything clever back. "Would you do it all again?" is not
+  a question if the year it asks about was easy.
+
+### The two endings are no longer the same five nodes
+
+They used to be identical in shape — envelope, open it, lean in, question,
+yes — with different scenery: two paths built for a year to separate them,
+arriving at the same place in the same way. The way back does something the
+way there cannot now. She brought one too. He is not surprising her any more;
+they had the same idea, separately, that morning, and said nothing about it
+all the way up the hill and all the way back down it.
+
+The five oldest lines in the chapter (`dark`, `sunset`, `youllsee`, `letter`,
+`closer`) were also rewritten. They were in a much jollier voice than the
+forty nodes that now lead into them — *"Oh look! A letter pops out of
+nowhere!"* — and you could hear the join. Same beats, same choices, same
+magic envelope, said the way the rest of the walk is said. **`QUEST_FINAL`
+and `KEEPSAKE_CLOSING` are untouched**; those are yours.
 
 ### The air
 

@@ -144,6 +144,43 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
   ok('what she found survives a reload', kept.raw && kept.ribbon);
   ok('and so does which way she went', kept.route);
 
+  /* ---- the score, in the live game rather than offline ---- */
+  const music = await page.evaluate(async () => {
+    hvSetSound(true);
+    hvNode = 'back_ridge'; hvHistory = []; hvRender(false);
+    await new Promise(r => setTimeout(r, 400));
+    const onRidge = window.OST.debug();
+    hvNode = 'back_home'; hvRender(false);
+    await new Promise(r => setTimeout(r, 400));
+    const moved = window.OST.debug();
+    hvSetSound(false);
+    await new Promise(r => setTimeout(r, 200));
+    const off = window.OST.debug();
+    return { onRidge, moved, off };
+  });
+  ok('the score starts when she walks into a place',
+     music.onRidge.cue === 'ridge' && music.onRidge.running, JSON.stringify(music.onRidge));
+  ok('and follows her to the next one',
+     music.moved.cue === 'home', music.moved.cue);
+  ok('the sound switch stops the music too',
+     !music.off.running && !music.off.cue, JSON.stringify(music.off));
+
+  /* ---- and they talk to each other ---- */
+  const talk = await page.evaluate(() => {
+    const withVoices = Object.keys(HV).filter(k => (HV[k].voices || []).length);
+    const lines = withVoices.reduce((n, k) => n + HV[k].voices.length, 0);
+    const bad = [];
+    withVoices.forEach(k => HV[k].voices.forEach(v => {
+      if (v[0] !== 'her' && v[0] !== 'him') bad.push(k + ':' + v[0]);
+      /* the bubble wraps at 26 and is two lines tall at most */
+      if (v[1].length > 58) bad.push(k + ': too long');
+    }));
+    return { nodes: withVoices.length, lines, bad };
+  });
+  ok('the two of them actually speak', talk.lines >= 20,
+     talk.lines + ' lines across ' + talk.nodes + ' scenes');
+  ok('every line is attributed and fits its bubble', talk.bad.length === 0, talk.bad.join(', '));
+
   ok('no page errors', errors.length === 0, errors.join(' | '));
   console.log(out.join('\n'));
   await browser.close();

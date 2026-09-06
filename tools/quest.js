@@ -14,10 +14,10 @@ const out = [];
 const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x : ''));
 
 const ROUTES = {
-  'left-blue':  ['BEGIN','#card0','THE WAY THERE','BLUE','KEEP UP','TRY THE OTHER WAY','HOLD VERY STILL','ON UP','GO ON','OVER THE GATE','already?','Mhm!','open it','lean in','YES!'],
-  'left-red':   ['BEGIN','#card1','THE WAY THERE','RED','ALONG THE BANK','ONE AT A TIME','DOWNSTREAM','WHERE IT COMES OUT','GO ON','OVER THE GATE','already?','Mhm!','open it','lean in','YES!'],
-  'right-blue': ['BEGIN','#card0','THE WAY BACK','GO ON','BLUE','KEEP CLIMBING','OVER THE TOP','FIRST SECTION, SLOWLY','STEADY. KEEP GOING','DOWN THE FAR SIDE','HOME','KEEP GOING','inside?','open it','lean in','YES!'],
-  'right-red':  ['BEGIN','#card1','THE WAY BACK','GO ON','RED','DOWN THE ROW','WAIT FOR IT TO MOVE','ON THROUGH','ON TO THE PATH','HOME','KEEP GOING','inside?','open it','lean in','YES!'],
+  'left-blue':  ['BEGIN','#card0','THE WAY THERE','BLUE','KEEP UP','TRY THE OTHER WAY','HOLD VERY STILL','ON UP','GO ON','SIT ON IT A WHILE','OVER THE GATE','already?','Mhm!','open it','lean in','YES!'],
+  'left-red':   ['BEGIN','#card1','THE WAY THERE','RED','ALONG THE BANK','ONE AT A TIME','DOWNSTREAM','WHERE IT COMES OUT','GO ON','SIT ON IT A WHILE','OVER THE GATE','already?','Mhm!','open it','lean in','YES!'],
+  'right-blue': ['BEGIN','#card0','THE WAY BACK','GO ON','BLUE','KEEP CLIMBING','OVER THE TOP','FIRST SECTION, SLOWLY','STEADY. KEEP GOING','DOWN THE FAR SIDE','HOME','KEEP WALKING','KEEP GOING','inside?','open it','read them together','YES!'],
+  'right-red':  ['BEGIN','#card1','THE WAY BACK','GO ON','RED','DOWN THE ROW','WAIT FOR IT TO MOVE','ON THROUGH','ON TO THE PATH','HOME','KEEP WALKING','KEEP GOING','inside?','open it','read them together','YES!'],
 };
 
 (async () => {

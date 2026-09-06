@@ -2528,6 +2528,18 @@ document.getElementById("ks-replay").addEventListener("click", () => {
 const MUSIC_KEY = "fal_music_on";
 let audioCtx = null, musicNodes = null, musicOn = false, bellTimer = null;
 
+/* The score in ost.js is a separate file and needs the same clock as
+   the ambience bed and the effects — one context, one wake-up, one
+   thing to resume when iOS takes the audio session away. Browsers cap
+   how many AudioContexts a page may have, so this is not just tidiness. */
+window.hvSharedCtx = function () {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  if (audioCtx && audioCtx.state === "closed") audioCtx = null;
+  if (!audioCtx) audioCtx = new AC();
+  return audioCtx;
+};
+
 /* ---------------------------------------------------------
    KEEPING AUDIO ALIVE
 
@@ -4439,6 +4451,8 @@ const HV = {
   there: {
     scene: "sakura", cat: "idle", butterflies: true,
     say: "Spring, and neither of us knows anything yet. A butterfly goes on ahead — which one do we follow?",
+    voices: [["him", "You are going to follow a butterfly."],
+             ["her", "I am going to follow a butterfly."]],
     choices: [
       { label: "BLUE", to: "there_meadow", pos: "left", style: "blue" },
       { label: "RED", to: "there_stream", pos: "right", style: "red" },
@@ -4457,6 +4471,9 @@ const HV = {
   there_wrong: {
     scene: "meadow", cat: "idle",
     say: "Twice the track you pick turns out to be a sheep path that stops in the gorse. Twice you walk back to where the butterfly is waiting, which it is, both times, without making anything of it.",
+    voices: [["her", "That is twice."],
+             ["him", "I was not counting."],
+             ["her", "You were counting."]],
     choices: [{ label: "TRY THE OTHER WAY", to: "there_rustle", pos: "centre" }],
   },
   /* Both of these used to go to the same node — the only choice left in
@@ -4476,6 +4493,9 @@ const HV = {
   there_nobear: {
     scene: "forest", cat: "happy",
     say: "A deer. An enormous, appalled deer, gone before you have finished being frightened by it. You both laugh far too loudly for how quiet it was a second ago.",
+    voices: [["her", "I genuinely thought that was it for us."],
+             ["him", "It was a deer."],
+             ["her", "It was an enormous deer."]],
     choices: [{ label: "ON UP", to: "there_fog", pos: "centre" }],
   },
   there_deer: {
@@ -4521,6 +4541,8 @@ const HV = {
     stand: { x: 258, y: 106, s: 1.2 },
     scene: "stream", cat: "happy",
     say: "All in a rush, then — and the fourth stone rolls, and you go in to the ankle, and it is so cold that it is funny. You are laughing before you are out of it.",
+    voices: [["him", "Do you want my socks?"],
+             ["her", "…yes."]],
     choices: [{ label: "DOWNSTREAM", to: "there_current", pos: "centre" }],
   },
   there_current: {
@@ -4532,12 +4554,38 @@ const HV = {
   there_petals: {
     scene: "sakura", cat: "love",
     say: "It comes out under the blossom, the slow way round, and something lands in your hair and you leave it there.",
+    voices: [["him", "You have got a whole tree in your hair."],
+             ["her", "Leave it."]],
     choices: [{ label: "GO ON", to: "there_join", pos: "centre" }],
   },
 
   there_join: {
     scene: "meadow", cat: "love", callback: true,
     say: "Both ways come out at the same gate at the top of the meadow. However you got here, here is where it was always going to be.",
+    voices: [["her", "I do not want to go back down yet."],
+             ["him", "Then we will not."]],
+    choices: [{ label: "SIT ON IT A WHILE", to: "there_quiet", pos: "centre" }],
+  },
+
+  /* The one hard beat on the spring side, and the reason the question
+     at the end of this path has any weight at all.
+
+     Everything on the way there is warm, and a story where nothing ever
+     costs anything is a story you watch rather than feel. So: she asks
+     the real question halfway up, a year too early, and he does not
+     answer it. He asks her to ask him again at the top. She does — that
+     is what the letter at the sunset IS — and the whole ending stops
+     being a nice surprise and starts being a promise he made here and
+     kept. */
+  there_quiet: {
+    scene: "meadow", cat: "idle",
+    say: "And then there is a stretch, sitting on the gate with the whole valley going gold underneath you, where neither of you says anything for a long time — and it is not the comfortable kind. You are both doing the same arithmetic. Neither of you wants to be the one who says it out loud.",
+    voices: [["her", "Can I ask you something stupid."],
+             ["him", "Always."],
+             ["her", "What if this is as good as it gets."],
+             ["him", "Then we had a very good year."],
+             ["her", "That is not an answer."],
+             ["him", "I know. Ask me again at the top."]],
     choices: [{ label: "OVER THE GATE", to: "dark", pos: "centre" }],
   },
 
@@ -4566,6 +4614,9 @@ const HV = {
   back_climb: {
     scene: "ridge", cat: "happy",
     say: "It is an hour of the same thing: put a foot down, put the other one down, do not think about how much is left. Nobody says much for a long stretch and nothing at all is wrong.",
+    voices: [["him", "Still with me?"],
+             ["her", "Ask me in an hour."],
+             ["him", "I will."]],
     choices: [{ label: "OVER THE TOP", to: "back_bridge1", pos: "centre" }],
   },
   /* Three sections of one span, and each of them is now the span rather
@@ -4581,6 +4632,9 @@ const HV = {
   back_bridge2: {
     scene: "bridge", cat: "shock", plank: 1, play: "bridge", span: [0.42, 0.72], playTo: "back_bridge3",
     say: "The middle, where the sag is deepest and the whole span moves with you. The trick, it turns out, is to stop trying to hurry.",
+    voices: [["him", "Do not look down."],
+             ["her", "I am looking at you."],
+             ["him", "That is worse."]],
     choices: [{ label: "STEADY. KEEP GOING", to: "back_bridge3", pos: "centre" }],
   },
   back_bridge3: {
@@ -4637,13 +4691,34 @@ const HV = {
   back_windfall: {
     scene: "orchard", cat: "happy", fox: true,
     say: "At the end of the rows the fox from last spring is asleep in the long grass, very much bigger now, and cannot be made to care about any of it.",
+    voices: [["her", "That is our fox."],
+             ["him", "It is not our fox."],
+             ["her", "It is our fox."]],
     choices: [{ label: "ON TO THE PATH", to: "back_join", pos: "centre" }],
   },
 
   back_join: {
     scene: "lantern", cat: "love", callback: true,
     say: "Both ways come back down to the bottom of the path, to the first lantern on it. Whichever way round you went, this is where it comes out.",
-    choices: [{ label: "HOME", to: "back_lanterns", pos: "centre" }],
+    choices: [{ label: "HOME", to: "back_year", pos: "centre" }],
+  },
+
+  /* And the hard beat on the autumn side. "Would you do it all again?"
+     is not a question if the year it is asking about was easy, and
+     until now the whole of the way back was lanterns and hand-holding.
+     One of them says the true thing about the middle of the year, the
+     other does not say anything clever back, and the closing question
+     suddenly has something to weigh. */
+  back_year: {
+    scene: "lantern", cat: "idle",
+    say: "Somewhere on the way down one of you brings up the middle of the year — the stretch that was work, the one neither of you writes on a card — and the other one does not say anything clever back, which is the right answer.",
+    voices: [["her", "There was a bit in the middle where I was not sure."],
+             ["him", "There was a bit in the middle where I was not either."],
+             ["her", "You never said."],
+             ["him", "You never asked. I would have said."],
+             ["her", "…I am asking now."],
+             ["him", "I know. Come on."]],
+    choices: [{ label: "KEEP WALKING", to: "back_lanterns", pos: "centre" }],
   },
 
   /* =========================================================
@@ -4651,14 +4726,24 @@ const HV = {
      in the open, with the light going and a letter that arrives from
      nowhere, because that year everything did.
      ========================================================= */
+  /* These five were the oldest lines in the chapter and they were
+     written in a much jollier voice than the forty nodes that now lead
+     into them — "It's getting dark!", "Oh look! A letter pops out of
+     nowhere!" — so you could hear the join. Same five beats, same
+     choices, same magic envelope; said the way the rest of the walk is
+     said. (If any of these were yours, they are the only lines in the
+     game I have rewritten: the two closing questions and the keepsake
+     line are untouched.) */
   dark: {
     scene: "sunset", cat: "shock",
-    say: "It's getting dark!",
+    say: "The light goes while you are still sitting there. It does that up here — about ten minutes' warning, and then the whole valley is a different colour.",
     choices: [{ label: "already?", to: "sunset", pos: "centre" }],
   },
   sunset: {
     scene: "sunset", cat: "love",
-    say: "What a beautiful sunset! Isn't it?",
+    say: "And then the water does the thing it does perhaps twice a year, and neither of you says anything at all for a while, which is the correct response to it.",
+    voices: [["her", "Where are you taking me?"],
+             ["him", "Nowhere. We are already here."]],
     choices: [
       { label: "Where am I?", to: "youllsee", pos: "left" },
       { label: "Mhm!", to: "letter", pos: "right" },
@@ -4666,17 +4751,17 @@ const HV = {
   },
   youllsee: {
     scene: "sunset", cat: "happy",
-    say: "You'll see…",
+    say: "\u201cYou will see,\u201d he says, which is what he says when he has already decided something and is enjoying himself about it.",
     choices: [{ label: "okay…", to: "letter", pos: "left" }],
   },
   letter: {
     scene: "sunset", cat: "shock", envelope: "closed",
-    say: "Oh look! A letter pops out of nowhere!",
+    say: "There is an envelope in your hands. Neither of you put it there, and neither of you seems inclined to ask about it — that sort of year.",
     choices: [{ label: "open it", to: "closer", pos: "left" }],
   },
   closer: {
     scene: "sunset", cat: "idle", envelope: "open",
-    say: "Hmmm… the text is too small. Let's take a closer look.",
+    say: "The writing is small and the light is nearly gone. He does not tell you what it says. He waits, the way he said he would, up at the gate.",
     choices: [{ label: "lean in", to: "ask", pos: "left" }],
   },
   ask: {
@@ -4706,17 +4791,33 @@ const HV = {
   back_home: {
     scene: "home", cat: "love",
     say: "And then the last one is the light over our own door, which was on before we got here, because one of us always leaves it on for the other.",
+    voices: [["her", "You left the light on."],
+             ["him", "You left it on. It was your turn."],
+             ["her", "…it was my turn."]],
     choices: [{ label: "inside?", to: "back_letter", pos: "centre" }],
   },
   back_letter: {
     scene: "home", cat: "idle", envelope: "closed",
     say: "Not yet. He takes an envelope out of his coat. It has been in there the whole walk. It has been in there since this morning.",
-    choices: [{ label: "open it", to: "back_closer", pos: "left" }],
+    voices: [["him", "Before we go in."]],
+    choices: [{ label: "open it", to: "back_hers", pos: "left" }],
   },
-  back_closer: {
-    scene: "home", cat: "idle", envelope: "open",
-    say: "Same paper as last year. Same red seal. Read it here, in the light of the doorway.",
-    choices: [{ label: "lean in", to: "back_ask", pos: "left" }],
+  /* The two endings used to be the same five nodes with different
+     scenery: envelope, open it, lean in, question, yes. Two paths built
+     for a year to separate them, arriving at an identical shape. So the
+     way back does something the way there cannot: on this side, she
+     brought one too. He is not surprising her any more. They had the
+     same idea, separately, this morning — which is the entire
+     difference between the year they were finding each other and the
+     year they decided to stay. */
+  back_hers: {
+    scene: "home", cat: "love", envelope: "open",
+    say: "And then — because you had one as well, because of course you did — you take yours out of your own coat. Same idea. Same morning. Neither of you said a word about it all the way up that hill and all the way back down it.",
+    voices: [["her", "You are joking."],
+             ["him", "I am not joking."],
+             ["her", "We are ridiculous."],
+             ["him", "We are consistent."]],
+    choices: [{ label: "read them together", to: "back_ask", pos: "left" }],
   },
   back_ask: {
     scene: "home", cat: "hide", isAsk: true, ask: "back",
@@ -5002,8 +5103,7 @@ function hvAmbience(scene) {
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
-    if (audioCtx && audioCtx.state === "closed") audioCtx = null;
-    if (!audioCtx) audioCtx = new AC();
+    if (!window.hvSharedCtx()) return;
     if (audioCtx.state !== "running") {
       if (window.wakeAudio) window.wakeAudio(audioCtx); else audioCtx.resume();
     }
@@ -5072,6 +5172,23 @@ function hvAmbienceStop() {
   hvAmb.scene = null;
 }
 
+/* =========================================================
+   WHICH PIECE OF MUSIC THIS PLACE GETS
+
+   The score lives in ost.js and is one tune played eleven different
+   ways; this decides which. Mostly it is just the scene, because a
+   place has a sound. The two exceptions are the ones that carry the
+   story rather than the scenery: the title, which gets the theme
+   stated once on a piano and nothing else, and the closing question,
+   which stays on whatever the ending's scene was already playing so
+   that the music does not change underneath the most important
+   sentence in the game.
+   ========================================================= */
+function hvScore(n) {
+  if (!window.OST || !n) return;
+  window.OST.play(n.title ? "sakura" : hvSceneOf(n));
+}
+
 function hvSetSound(on) {
   hvSoundOn = on;
   try { localStorage.setItem(HV_SOUND_KEY, on ? "1" : "0"); } catch (e) {}
@@ -5081,7 +5198,8 @@ function hvSetSound(on) {
     b.setAttribute("aria-label", on ? "Sound on" : "Sound off");
     b.title = on ? "Sound on" : "Sound off";
   }
-  if (on) { const n = HV[hvNode]; hvAmbience(n && hvSceneOf(n)); }
+  if (window.OST) window.OST.setOn(on);
+  if (on) { const n = HV[hvNode]; hvAmbience(n && hvSceneOf(n)); hvScore(n); }
   else hvAmbienceStop();
 }
 
@@ -5614,8 +5732,16 @@ function hvPlayPress(t) {
     var steady = Math.abs(hvSway(t, p.i + 1)) < 0.66;
     p.hop = 0;
     p.i++;
-    if (!steady) { p.wet++; hvSfx("locked"); hvBurst(hvStoneAt(p.i).x, hvStoneAt(p.i).y, "#a8d2e6"); }
-    else hvSfx("step");
+    if (!steady) {
+      p.wet++; hvSfx("locked");
+      if (window.OST) window.OST.hit("slip");
+      hvBurst(hvStoneAt(p.i).x, hvStoneAt(p.i).y, "#a8d2e6");
+    } else {
+      hvSfx("step");
+      /* seven stones, seven steps up the scale — crossing cleanly is a
+         rising line, and going in is the one note that is not in it */
+      if (window.OST) window.OST.hit("stone", p.i);
+    }
     if (p.i >= 6) { p.done = 1; p.finish = t + 0.9; }
     return true;
   }
@@ -5628,6 +5754,12 @@ function hvPlayPress(t) {
       p.k += (HV[hvNode].span[1] - HV[hvNode].span[0]) / p.need;
       p.wob = 0.5;
       hvSfx("step");
+      /* The bridge is the only place in the game that refuses to play
+         the tune. It gives it back one note per plank instead, so the
+         theme assembles under her feet as she crosses — and the far
+         post is the first time in the chapter she has heard the whole
+         of it. */
+      if (window.OST) window.OST.hit("step");
       if (p.steps >= p.need) { p.done = 1; p.finish = t + 0.7; }
     } else {
       p.wob = 1;                                      // the span moves, they wait
@@ -5650,7 +5782,15 @@ function hvPlayStep(t, st, dt) {
   } else if (p.kind === "bridge") {
     if (p.wob > 0) p.wob = Math.max(0, p.wob - dt * 1.6);
   } else if (p.kind === "orchard") {
+    var wasLook = p.look;
     p.look = hvBearLook(st);
+    /* the score pulls back to almost nothing the moment its head comes
+       up, and comes back when it goes down — the held breath is the
+       music leaving, not a sound effect arriving */
+    if (window.OST) {
+      if (p.look > 0.5) window.OST.duck(0.22, 0.4);
+      if (wasLook <= 0.5 && p.look > 0.5) window.OST.hit("heart");
+    }
     if (!p.done) {
       if (hvHold) {
         if (p.x < 76) hvNoteAway(true);
@@ -5658,7 +5798,10 @@ function hvPlayStep(t, st, dt) {
         /* caught only while actually moving, and only once its head is
            all the way up — a step taken during the half-second tell is
            forgiven, because that half second is the warning */
-        if (p.look > 0.98) { p.done = 2; p.finish = t + 0.5; }
+        if (p.look > 0.98) {
+          p.done = 2; p.finish = t + 0.5;
+          if (window.OST) window.OST.hit("seen");
+        }
         else if (p.x > 246) { p.done = 1; p.finish = t + 0.6; }
       }
     }
@@ -5752,20 +5895,96 @@ const HV_TINY = {
   y:"101101010010010",z:"111001010100111"," ":"000000000000000","—":"000000111000000",
   ".":"000000000000010",",":"000000000010100","'":"010010000000000",
 };
-function hvTinyText(ctx, text, cx, y) {
+function hvTinyWidth(text) { return text.length * 4 - 1; }
+
+/* draws from a left edge, in whatever colour it is handed */
+function hvTinyAt(ctx, text, x0, y, colour) {
   var s = text.toLowerCase().split("");
-  var w = s.length * 4 - 1;
-  var x0 = Math.round(cx - w / 2);
-  px(ctx, x0 - 3, y - 2, w + 6, 9, "rgba(24,18,30,0.42)");
   for (var i = 0; i < s.length; i++) {
     var g = HV_TINY[s[i]];
     if (!g) continue;
     for (var r = 0; r < 5; r++) {
       for (var c2 = 0; c2 < 3; c2++) {
-        if (g[r * 3 + c2] === "1") px(ctx, x0 + i * 4 + c2, y + r, 1, 1, "#fff4dc");
+        if (g[r * 3 + c2] === "1") px(ctx, x0 + i * 4 + c2, y + r, 1, 1, colour);
       }
     }
   }
+}
+
+/* centred, on its own dark scrim — for the one line of instruction */
+function hvTinyText(ctx, text, cx, y) {
+  var w = hvTinyWidth(text);
+  var x0 = Math.round(cx - w / 2);
+  px(ctx, x0 - 3, y - 2, w + 6, 9, "rgba(24,18,30,0.42)");
+  hvTinyAt(ctx, text, x0, y, "#fff4dc");
+}
+
+/* =========================================================
+   THEY SAY THINGS TO EACH OTHER
+
+   Forty-seven nodes and not one line of dialogue: a cat narrated their
+   entire relationship in the second person, and the player was told
+   "you both laugh far too loudly" without ever hearing either of them.
+   The most reliable way to make a reader feel something about two
+   people is to let the two people talk.
+
+   So a node can carry `voices`, and they arrive one at a time over the
+   scene, in a little pixel bubble above whoever is speaking — hers
+   edged in pink, his in blue, so you never have to be told which is
+   which. They are short on purpose. Nobody in this valley makes
+   speeches.
+   ========================================================= */
+var hvPairAt = null;          // where the two of them were last drawn
+
+function hvWrapTiny(text, maxChars) {
+  var words = text.split(" "), lines = [], cur = "";
+  for (var i = 0; i < words.length; i++) {
+    var t = cur ? cur + " " + words[i] : words[i];
+    if (t.length > maxChars && cur) { lines.push(cur); cur = words[i]; }
+    else cur = t;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function hvDrawVoices(ctx, n, st) {
+  if (!n.voices || !n.voices.length || !hvPairAt) return;
+
+  /* one line at a time, a beat after she arrives, so it reads as a
+     conversation and not as a wall of text */
+  var lead = 1.1, hold = 2.9;
+  var idx = Math.floor((st - lead) / hold);
+  if (idx < 0 || idx >= n.voices.length) return;
+  var age = (st - lead) - idx * hold;
+  var fade = Math.min(1, age * 3.5) * (age > hold - 0.4 ? (hold - age) / 0.4 : 1);
+  if (fade <= 0.02) return;
+
+  var who = n.voices[idx][0], text = n.voices[idx][1];
+  var lines = hvWrapTiny(text, 26);
+  var w = 0;
+  lines.forEach(function (l) { w = Math.max(w, hvTinyWidth(l)); });
+  var bw = w + 10, bh = lines.length * 7 + 7;
+
+  /* anchored to whoever is speaking and opening away from the frame
+     edge, so it never runs off the right-hand side */
+  var ax = hvPairAt.x + (who === "her" ? -12 : 6);
+  var bx = Math.max(4, Math.min(PXW - bw - 4, ax - bw + 8));
+  var by = Math.max(26, hvPairAt.y - hvPairAt.h - 10 - bh);
+
+  ctx.save();
+  ctx.globalAlpha = fade;
+  var edge = who === "her" ? "#e0789c" : "#5f78a8";
+  px(ctx, bx + 1, by + 2, bw, bh, "rgba(28,20,34,0.34)");     // its shadow
+  px(ctx, bx, by, bw, bh, "#fffaf0");
+  px(ctx, bx, by, bw, 2, edge);
+  px(ctx, bx, by + bh - 1, bw, 1, "#d8c9ad");
+  px(ctx, bx, by, 1, bh, "#d8c9ad"); px(ctx, bx + bw - 1, by, 1, bh, "#d8c9ad");
+  // the tail, stepping down toward the one who is talking
+  for (var k = 0; k < 4; k++) px(ctx, ax - 4 + k, by + bh - 1 + k, 4 - k, 1, "#fffaf0");
+  lines.forEach(function (l, i) {
+    hvTinyAt(ctx, l, bx + 5, by + 5 + i * 7, "#4a3a2e");
+  });
+  ctx.restore();
 }
 
 /* the per-frame pass: background, moving cast, then characters */
@@ -5895,9 +6114,13 @@ function hvPaintFrame(t, dt) {
     var pairY = hvPlay ? hvPlayPairY(stand) : stand.y;
     hvDrawPair(ctx, pairX, pairY, stand.s,
       t, hvPlay ? hvPlayWalking() : (walkIn < 1 ? 1 : 0), hvSceneOf(n));
+    hvPairAt = { x: pairX, y: pairY, h: 23 * stand.s };
+  } else {
+    hvPairAt = null;
   }
 
   hvPlayPaint(ctx, t, st);
+  hvDrawVoices(ctx, n, st);
 
   /* ---- the crossing, one section at a time ----
      The three bridge nodes are the same span from three places on it, so
@@ -6122,6 +6345,7 @@ function hvRender(withTransition) {
   hvPlayBegin(n);
   hvStartLoop();
   hvAmbience(hvSceneOf(n));
+  hvScore(n);
   hvNoteRoute(hvNode);
   /* arriving somewhere new deserves a note of its own — until now every
      scene in this game opened in silence */
@@ -6196,6 +6420,8 @@ let hvCompleted = false;
 function hvGo(to) {
   if (to === "__ask") to = hvAskFrom;
   const target = HV[to];
+  /* the one place the whole orchestra plays at once */
+  if (target && target.isEnd && window.OST) window.OST.hit("yes");
   /* The bear is the one place you can be sent backwards, and it gets the
      low note rather than the bright one. It is still an ordinary move to
      an ordinary scene — there is no fail state left in this game. */
@@ -6203,6 +6429,7 @@ function hvGo(to) {
   if (to === "__exit") {
     hvStopLoop();
     hvAmbience(null);
+    if (window.OST) window.OST.stop();
     markChapterDone("quest");
     hvSaveProgress();
     pageTurn("hub", startHub);
@@ -6281,7 +6508,9 @@ document.addEventListener("keydown", (e) => {
   } else if (e.key === "Backspace") {
     hvBack(); e.preventDefault();
   } else if (e.key === "Escape") {
-    hvStopLoop(); hvAmbience(null); pageTurn("hub", startHub); e.preventDefault();
+    hvStopLoop(); hvAmbience(null);
+    if (window.OST) window.OST.stop();
+    pageTurn("hub", startHub); e.preventDefault();
   }
 });
 
@@ -6302,5 +6531,7 @@ document.addEventListener("keyup", (e) => {
 })();
 document.getElementById("hv-back").addEventListener("click", hvBack);
 document.getElementById("hv-quit").addEventListener("click", () => {
-  hvStopLoop(); hvAmbience(null); pageTurn("hub", startHub);
+  hvStopLoop(); hvAmbience(null);
+  if (window.OST) window.OST.stop();
+  pageTurn("hub", startHub);
 });
