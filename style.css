@@ -5839,15 +5839,27 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---------- the shop in daylight ---------- */
 .ns-ov-gal.on::before{ background:linear-gradient(180deg, rgba(20,16,10,.5), rgba(10,8,6,.2) 40%, rgba(10,8,6,.72)); }
 .ns-gal{ position:relative; z-index:1; width:100%; height:100%; display:flex; flex-direction:column;
-  align-items:center; justify-content:flex-end; gap:1cqh; padding-bottom:1cqh; pointer-events:none; }
+  align-items:center; justify-content:space-between; gap:1cqh; padding:2cqh 0 1cqh; pointer-events:none;
+  overflow-y:auto; }
+/* nothing here may be squeezed below its own text: on a short phone the
+   caption, three rows of rooms and the back button together are taller
+   than the panel, and flex's default is to shrink them into each other */
+.ns-gal-head, .ns-gal .ns-grooms, .ns-gal .ns-btns{ flex:0 0 auto; }
 .ns-gal > *{ pointer-events:auto; }
-.ns-gal-title{ margin:0; position:absolute; top:2cqh; left:0; right:0; text-align:center;
+/* The title and the note used to be two absolutely-positioned lines at
+   fixed offsets (2cqh and 6cqh), which held only while the note was one
+   short line. The moment it captioned the room it was showing it wrapped
+   to four lines on a phone and landed on top of the heading. They are one
+   floating header now, so the note flows under the title however long it
+   gets. */
+.ns-gal-head{ display:flex; flex-direction:column; align-items:center; gap:.8cqh; pointer-events:none; }
+.ns-gal-title{ margin:0; text-align:center;
   font-family:var(--ns-face); font-size:max(2.4cqh, 14px); letter-spacing:.34em; color:#ffe0b0;
   text-shadow:0 .3cqh 1.4cqh rgba(0,0,0,.8); }
-.ns-gal-note{ margin:0; position:absolute; top:6cqh; left:0; right:0; text-align:center;
-  font-family:var(--ns-face); font-size:max(1.4cqh, 9px); letter-spacing:.18em; color:rgba(255,240,220,.65);
-  text-shadow:0 .3cqh 1cqh rgba(0,0,0,.8); }
-.ns-grooms{ display:flex; flex-wrap:wrap; gap:.8cqw; justify-content:center; max-width:92cqw; }
+.ns-gal-note{ margin:0; text-align:center; max-width:min(86cqw, 62ch); text-wrap:balance;
+  font-family:var(--ns-face); font-size:max(1.4cqh, 9px); line-height:1.6; letter-spacing:.14em;
+  color:rgba(255,240,220,.7); text-shadow:0 .3cqh 1cqh rgba(0,0,0,.85); }
+.ns-grooms{ display:flex; flex-wrap:wrap; gap:.8cqw; justify-content:center; max-width:92cqw; margin-top:auto; }
 .ns-groom{
   cursor:pointer; display:flex; align-items:baseline; gap:.6cqw;
   padding:.9cqh 1.4cqw; min-height:max(5cqh, 34px);
@@ -5859,6 +5871,18 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-groom b{ font-size:max(1.5cqh, 10px); color:#ffd0a0; }
 .ns-groom span{ font-size:max(1.3cqh, 9px); letter-spacing:.14em; }
 .ns-groom.on{ background:rgba(88,64,38,.86); box-shadow:inset 0 0 0 .18cqw rgba(255,208,150,.75); }
+/* On a 375-wide phone the eight rooms wrapped to four rows and pushed
+   BACK off the bottom of the panel — measured, not guessed. The panel is
+   a size container, so tighten the buttons where it is actually short
+   rather than at a viewport width, which is the wrong question. */
+@container (max-height: 260px) {
+  .ns-gal{ padding:1.2cqh 0 .8cqh; gap:.6cqh; }
+  .ns-gal-head{ gap:.4cqh; }
+  .ns-gal-note{ line-height:1.45; letter-spacing:.1em; }
+  .ns-gal .ns-grooms{ gap:.6cqw; }
+  .ns-gal .ns-groom{ min-height:28px; padding:.5cqh 1cqw; gap:.4cqw; border-radius:.4cqw; }
+  .ns-gal .ns-groom span{ letter-spacing:.08em; }
+}
 
 /* ---------- the cabinet's own game ---------- */
 .ns-card-arc{ text-align:center; }

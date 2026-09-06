@@ -5,6 +5,10 @@ const { chromium } = require('playwright-core');
 const fs = require('fs');
 const OUT = process.argv[2] || '/tmp/wklay';
 const SIZES = [
+  /* 375 is the narrowest phone still in use and it is the one that
+     breaks things: the gallery's eight rooms wrap to a fourth row here
+     and nowhere else, which pushed BACK off the bottom of the panel. */
+  ['iphone-se', 375, 667],
   ['iphone-portrait', 390, 844],
   ['iphone-landscape', 844, 390],
   ['ipad-portrait', 820, 1180],
@@ -85,12 +89,70 @@ let fails = 0;
         }
       return out;
     });
+    /* --- and the screens that are not the shift ---------------------
+       Everything above measures the play HUD. Nothing here had ever
+       looked at an overlay, so a caption that grew from one line to
+       three sat on top of its own heading on a phone and the suite
+       stayed green. An overlay that does not fit its panel is the same
+       class of bug as a control outside the frame. */
+    const overlays = await p.evaluate(() => {
+      const n = OuissysNightShift.__night;
+      const bad = [];
+      const fits = (where) => {
+        const panel = document.querySelector('.ns-ov, #ns-overlay');
+        if (!panel) return;
+        const inner = panel.firstElementChild;
+        if (!inner) return;
+        /* Overflow on its own is not a bug: `.ns-card` is deliberately
+           `overflow-y:auto`, because HOW TO PLAY, the badges and the
+           custom night's dials are long lists and scrolling them is the
+           design. The first draft of this check flagged all three and
+           would have had somebody "fixing" three screens that work.
+           What is a bug is content taller than a panel that cannot
+           scroll it — which is what the gallery was. */
+        const canScroll = ['auto', 'scroll', 'overlay'].indexOf(getComputedStyle(inner).overflowY) >= 0;
+        if (!canScroll && inner.scrollHeight > inner.clientHeight + 2)
+          bad.push(where + ': overflows a panel that cannot scroll, by ' + (inner.scrollHeight - inner.clientHeight) + 'px');
+        /* and do any two of its stacked blocks land on each other */
+        const rows = [...inner.children].filter((e) => {
+          const st = getComputedStyle(e);
+          return st.display !== 'none' && st.position !== 'absolute';
+        });
+        const boxes = rows.map((e) => [e.className.split(' ')[0] || e.tagName, e.getBoundingClientRect()]);
+        for (let i = 0; i < boxes.length - 1; i++) {
+          const a = boxes[i][1], c = boxes[i + 1][1];
+          if (a.height && c.height && a.bottom > c.top + 1)
+            bad.push(where + ': ' + boxes[i][0] + ' sits on ' + boxes[i + 1][0]);
+        }
+        /* and is the last control still inside the panel */
+        const last = boxes.length ? boxes[boxes.length - 1][1] : null;
+        const pr = panel.getBoundingClientRect();
+        if (!canScroll && last && last.bottom > pr.bottom + 1)
+          bad.push(where + ': last control is below the panel and it does not scroll');
+      };
+      const screens = ['title', 'howto', 'badges', 'drawer', 'mix', 'voice', 'custom'];
+      for (const scr of screens) { try { n.route(scr); fits(scr); } catch (e) {} }
+      /* the gallery, once per captioned room, because the caption is the
+         part that changes length */
+      try {
+        n.route('gallery');
+        for (const room of ['office', 'stage', 'party', 'closet', 'ducts']) {
+          const b = document.querySelector('.ns-groom[data-room="' + room + '"]');
+          if (b) b.click();
+          fits('gallery/' + room);
+        }
+      } catch (e) {}
+      try { n.route('title'); } catch (e) {}
+      return bad;
+    });
+    if (overlays.length) { overlays.forEach((x) => console.log('  FAIL ' + x)); fails += overlays.length; }
+
     console.log(name + '  stage ' + m.stage.join('x'));
     if (m.hScroll) { console.log('  FAIL horizontal scroll'); fails++; }
     if (m.outside.length) { console.log('  FAIL outside the stage: ' + m.outside.join(', ')); fails++; }
     if (m.small.length) { console.log('  FAIL too small to hit: ' + m.small.join(', ')); fails++; }
     if (m.overlap.length) { console.log('  FAIL controls on top of each other: ' + m.overlap.join(', ')); fails++; }
-    if (!m.hScroll && !m.outside.length && !m.small.length && !m.overlap.length) console.log('  ok');
+    if (!m.hScroll && !m.outside.length && !m.small.length && !m.overlap.length && !overlays.length) console.log('  ok');
     const cdp = await p.context().newCDPSession(p);
     const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
     fs.writeFileSync(OUT + '-' + name + '.png', Buffer.from(data, 'base64'));

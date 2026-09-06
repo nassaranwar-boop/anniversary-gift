@@ -9886,10 +9886,10 @@ function screenBadges() {
    with nobody in the chair. She can walk in on it and not notice, so
    the caption names it and then gets out of the way. */
 const GAL_NOTE = {
-  office: "Four of them round the desk, facing out at the doors. Nobody in the chair. It is the drawing, at full size, and it is the only thing in this shop that was ever built for her.",
-  stage:  "The middle plinth is bare, the way it has been all week. The shape under the sheet behind it is the one he did not finish.",
-  party:  "Eleven places laid and a cake nobody ever cut. It has been like that a lot longer than a week.",
-  closet: "The folding chair is still out, turned to the bench, with her mug on the arm of it. He never once put it away.",
+  office: "Four of them round the desk, facing out. It is the drawing, full size.",
+  stage:  "The middle plinth is bare. The sheeted one behind it is unfinished.",
+  party:  "Eleven places laid, and a cake nobody ever cut.",
+  closet: "The folding chair is still out, her mug on the arm of it.",
 };
 function screenGallery() {
   const note = (id) => GAL_NOTE[id] || "Nothing is running. Nothing is going to move.";
@@ -9898,8 +9898,10 @@ function screenGallery() {
       '<b>' + (r.cam ? (r.cam < 10 ? "0" + r.cam : r.cam) : "—") + '</b><span>' + r.name + '</span></button>').join("");
   overlay(
     '<div class="ns-gal">' +
-      '<p class="ns-gal-title">THE SHOP IN DAYLIGHT</p>' +
-      '<p class="ns-gal-note" id="ns-gal-note">' + note(G.cam) + '</p>' +
+      '<div class="ns-gal-head">' +
+        '<p class="ns-gal-title">THE SHOP IN DAYLIGHT</p>' +
+        '<p class="ns-gal-note" id="ns-gal-note">' + note(G.cam) + '</p>' +
+      '</div>' +
       '<div class="ns-grooms">' + rows + '</div>' +
       '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="title">BACK</button></div>' +
     '</div>', "ns-ov-gal");
@@ -10091,7 +10093,7 @@ function beginGallery() {
   G.doors.left = G.doors.right = G.doors.hatch = false;
   G.blackout = false;
   G.dead = null; G.killChar = null;
-  CAST.forEach((d) => { cast[d.id].awake = false; cast[d.id].asleep = true; });
+  CAST.forEach((d) => { const c = cast[d.id]; if (c) { c.awake = false; c.asleep = true; } });
   /* THE DRAWING, STANDING UP.
 
      Night five is a sheet of graph paper with four figures round a

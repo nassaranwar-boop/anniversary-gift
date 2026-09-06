@@ -494,6 +494,32 @@ it once and gets out of the way. If you move a prop, check the caption
 for that room still describes what is in it; the first draft of these
 claimed a glass case and six chairs that did not exist.
 
+He then asked the fair question — *is it actually all fine?* — and the
+answer was no, because of the caption added an hour earlier. It is
+worth writing down what that exposed, which is bigger than the caption:
+
+- **`nightlayout` only ever measured the play HUD.** Every overlay
+  screen in the chapter — the title, HOW TO PLAY, the badges, the
+  drawer, the faders, the voices, the custom night and the gallery —
+  had never been measured at any size by anything. A caption that grew
+  from one line to three landed on top of its own heading on a phone
+  and all six suites stayed green. It walks the overlays now.
+- **375x667 was not in the size list**, and it is the width that
+  breaks things: the gallery's eight room buttons wrap to a fourth row
+  at 375 and nowhere else, which pushed BACK off the bottom of a panel
+  that does not scroll. It is in the list now.
+- The gallery's title and note were two absolutely-positioned lines at
+  fixed offsets (`top:2cqh` and `top:6cqh`), which holds only while the
+  note is one short line. They are one flow header now.
+- And the check itself was wrong on its first run, in the direction
+  that costs the most: it flagged HOW TO PLAY, the badges and the
+  custom night, all three of which are long lists inside `.ns-card`,
+  which is `overflow-y:auto` **on purpose**. Somebody acting on that
+  would have "fixed" three screens that work. The assertion is content
+  taller than a panel that *cannot* scroll. This is the third time in
+  this chapter's history that a new measurement's first answer was
+  wrong rather than the game — check the suite before the site.
+
 Still open with him: whether the difficulty of nights five and six is
 where he wants it.
 
