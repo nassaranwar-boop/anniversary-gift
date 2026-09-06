@@ -303,6 +303,173 @@ Things this build learned the hard way, all worth not repeating:
   said "THAT'S IT" did nothing and she stood at Ashcombe with her sleeve up
   forever. Three states, not two.
 
+## 7c. The height of the page — do not undo this
+
+This one came back four times and cost him days, so the whole of it is
+written down, including the wrong turn.
+
+**The clue that settled it:** Safari is perfect. Chrome for iOS shows the
+fault. Brave is cut off at the bottom. All three are WebKit, so the fault
+is not in the rendering — it is in the box each app hands the page.
+
+Chrome for iOS puts its web view over the whole screen and lays its own
+toolbar on top, then pushes the page down with a content inset. So the
+initial containing block — what `height:100%`, `100vh` and even `100dvh`
+all resolve against — is the height of the entire screen, toolbar
+included, while only the part below the toolbar can be seen. On his iPad
+Pro 12.9 in landscape that is **1024 against 892**: the document ends up
+exactly **132 CSS pixels taller than the window**, and those 132 pixels
+can be dragged into view. That is the band of void, and the "it sits
+differently after I come back" is the page resting at either end of that
+132-pixel drag.
+
+The numbers are measured, not assumed. In his screen recording the page
+pans by **132.8 CSS px** and Chrome's toolbar measures **132.3 CSS px** —
+the page could be dragged by precisely the height of the browser's own
+toolbar. Nothing scales: the wax seal on the passcode card is 44x49 px in
+every frame, and the title glyphs measure 457 CSS px inside a 470 px
+image throughout. It was never a zoom. It is a translation.
+
+**The wrong turn, so nobody repeats it:** the pass before this one
+measured the height correctly and pinned `body` with `position:fixed` —
+and changed nothing, because **html is the scroller**. `html` kept
+`height:100%`, kept the too-tall box, and kept all 132 pixels of
+draggable overflow. Sizing the body is not sizing the page.
+
+**Read off his iPad, in the fault state, and this is the whole thing.**
+There is a state on Chrome for iOS where *every CSS viewport unit reports
+the full screen* — `vh`, `svh`, `lvh` and `dvh` all say 1024 in a window
+that is really 892 — and so does `documentElement.clientHeight`, and so
+does a `position:fixed; top:0; bottom:0` box, and so does
+`html{height:100%}`. Only `window.innerHeight` and `visualViewport.height`
+tell the truth. 1024 − 892 = 132, which is the 133px drag measured frame
+by frame in his recording. Same number from both directions.
+
+Two consequences, and both are load-bearing:
+
+  1. **There is no CSS fallback.** Not `dvh`, not `svh`. Any rule that
+     lays the site out against a CSS unit is 132px wrong in that state.
+     The height must come from JS.
+  2. **JS at the bottom of the body is too late.** The page paints once
+     against the CSS value — everything half a toolbar too low — and then
+     snaps when the measurement lands. That snap is the "it appears, then
+     it shifts" in every one of his recordings. So there is a small
+     inline script in the `<head>` of index.html that writes `--app-h`
+     and `--app-top` before anything is drawn. **Do not move it, do not
+     defer it, do not fold it into script.js.** It is verified by
+     blocking script.js outright and checking the first frame is still
+     892.
+
+**Two independent signals, because one is not enough.** He tested the
+visualViewport-only fix on a real preview build and it changed nothing,
+which is the evidence that Chrome for iOS misreports *that* API too. So
+there are now two:
+
+  1. `claimedHeight()` takes the **minimum** of every height on offer —
+     `visualViewport.height * scale`, `documentElement.clientHeight` and
+     `innerHeight` — rather than picking a favourite. They agree on a
+     browser being straight with the page; when they disagree the smaller
+     one cannot be hiding anything, because no browser under-reports the
+     space it gives you. One honest API is enough, whichever it is.
+  2. When they **all** lie — which is the case that beat three passes —
+     only the real scroll range is left, and that is what the probe below
+     measures.
+
+**The part that finally stopped the guessing.** Three passes were spent
+asking *which height API tells the truth*. That is the wrong question:
+the answer differs per browser and the page cannot tell from in here
+which one is lying. So `script.js` does not ask any more — it **measures
+the hidden strip directly**. It tries to scroll the document as far as it
+will go, inside one synchronous block so no frame is ever painted
+scrolled. On a browser that handed us the visible box there is nowhere to
+go and the answer is zero; on one that hid a strip behind its own
+toolbar, the distance it moves *is* that strip, in pixels, whatever the
+browser claims. Subtract it, put the scroll back.
+
+The probe **checks itself**, which is what makes it safe to act on. A
+strip that is browser furniture disappears once the document is shortened
+by it — the scroll range is `content + inset − window`, so taking the
+inset off the content takes the range to zero. A strip that is really
+just an over-tall element on the page does *not* disappear. So it applies
+the candidate, looks again next frame, and keeps it only if it is gone. A
+bad reading during load can shrink the site for one frame and never two.
+
+Verified both ways in `tools/`: with the browser stubbed to claim 1024 in
+a real 892 window it learns 132 on its own and lands on 892 with nothing
+draggable; with a genuine 2400px element on the page it refuses the bait
+and leaves the height alone.
+
+The rest of the contract, in `script.js` and the top of `style.css`:
+
+- `100vh` / `100dvh` in the stylesheet are the **pre-JS fallback only**.
+- JS owns two custom properties, both from `visualViewport`, the only API
+  that reports the region actually on screen rather than the box the app
+  handed the page:
+  - `--app-h` = `visualViewport.height * visualViewport.scale` — the
+    visible height, multiplied back out so a pinch does not rewrite the
+    layout.
+  - `--app-top` = `visualViewport.offsetTop`, and only while the page is
+    not zoomed; once she has pinched in, following the visual viewport
+    would glue the site to her fingers.
+- **`html` is pinned to `var(--app-h)`.** This is the line that actually
+  fixes it. With the root element the height of the visible area there is
+  no overflow left to drag into.
+- `body` and `.screen` are placed at `top:var(--app-top)` with
+  `height:var(--app-h)`. `.screen` deliberately does **not** use
+  `inset:0` — that resolves against the containing block, which is the
+  thing established above as untrustworthy.
+- Re-measured on resume (`pageshow`, `visibilitychange`, window `focus`,
+  `orientationchange`) in a short burst, because iOS reports the previous
+  size for a few frames after a resume; and on `visualViewport` `scroll`,
+  because that offset is what moves.
+- Compared against the value **the document is carrying**, not a cached
+  one, so a height that drifted for any reason heals on the next event.
+- The 3D scenes size themselves from **their own canvas box**, never
+  `window.innerWidth/innerHeight`. `book-scene.js` has `viewW()`/`viewH()`
+  and a ResizeObserver on the canvas; `renderer.setSize(w, h, false)` so
+  the stylesheet keeps the CSS box.
+
+**`viewport-report.html`** ships at the site root for exactly this. Open
+it on the device in each browser: it prints, live, what every height API
+claims, what `visualViewport` says, and the one number that matters —
+*document can scroll by*. On a healthy browser it reads 0 and the green
+frame hugs the screen. Do not debug this class of bug by reasoning about
+iOS again; open the report on the device and read it.
+
+`tools/vh.js` is the automated check. Note that the two hub overflow
+failures on the phone viewports are older than all of this and are hub
+layout, not height. Chromium cannot reproduce a content inset, so the
+regression for it is: force `--app-h` to the full box and assert that
+`scrollHeight - clientHeight` goes to 132 and back to 0 once the
+measurement runs.
+
+## 7d. Nothing may change the size of a screen
+
+Separate from 7c and worth its own heading, because it wore the same
+clothes and that is why 7c kept looking unfixed.
+
+Two rules in the stylesheet scaled a whole screen. `screenIn` arrived
+from `scale(.97)` and `screenExit` left at `scale(1.06)`. As a transition
+that is polish. As the first thing you watch when the site opens, it is a
+screen appearing at the wrong size and then correcting itself — which is
+visually identical to the viewport bug, and is why he kept reporting "it
+appears then zooms in a bit" after each viewport fix landed. Measured:
+the gate's box swept **865 → 892px** during entry on his iPad.
+
+Both now fade and rise without ever changing size. `tools/nozoom.js`
+holds the line: it drives each animation through the Web Animations API,
+stepping `currentTime` across the whole timeline, and fails if any point
+is scaled or if the screen's height moves. **Do not sample animations
+with requestAnimationFrame in this container** — rAF runs at about 3fps
+here, so a .65s animation is finished before the second frame and every
+sample comes back at rest; the first draft of that test passed against
+the broken code for exactly that reason. It is verified both ways: put
+the `scale()`s back and it reports `worst scale 0.9700` and a sweeping
+height.
+
+If he ever says "zoom" again, run `tools/nozoom.js` before touching
+anything in 7c.
+
 ## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python

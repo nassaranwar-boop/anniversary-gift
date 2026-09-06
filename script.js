@@ -96,52 +96,219 @@ function openCover(name) { pageTurn(name); }
 /* ---------------------------------------------------------
    THE REAL HEIGHT OF THE VIEWPORT
 
-   dvh handles this on its own in a modern browser, but it is not
-   everywhere yet and it rounds; this measures the visible area and
-   writes it into --app-h, which the stylesheet uses for every
-   full-height box. That is what closes the blank strip you could swipe
-   down into.
+   Safari is right, Chrome for iOS is wrong, Brave is wrong differently.
+   All three are WebKit, so the fault is not the rendering — it is the
+   box each app hands the page. Chrome lays its web view over the whole
+   screen, draws its toolbar on top and pushes the page down with a
+   content inset, so the page is handed a box taller than the part of it
+   anybody can see.
 
-   innerHeight, not visualViewport.height: the visual viewport shrinks
-   when the on-screen keyboard opens, and re-laying the whole site out
-   around the keyboard is worse than the gap ever was. The focus guard
-   below is the belt to that braces.
+   Three passes were spent asking which API reports the honest height.
+   That was the wrong question, because the answer differs per browser
+   and there is no way to know from in here which one is lying.
+
+   So this does not ask. It MEASURES THE HIDDEN STRIP DIRECTLY.
+
+   Try to scroll the document as far as it will go. On a browser that
+   handed us the visible box there is nowhere to go and the answer is
+   zero. On one that handed us a box with a strip hidden behind its own
+   furniture, the distance it moves IS that strip, in pixels, whatever
+   the browser says about it. Then subtract it and put the scroll back.
+   The whole probe is one synchronous block, so no frame is ever painted
+   with the page scrolled and there is nothing to see.
+
+   It is self-terminating: once the document is the height of the
+   visible area, the scroll range collapses to nothing and the next
+   probe reads zero. That is also the check — if the probe still reports
+   a strip after the height has been applied, the height is still wrong.
    --------------------------------------------------------- */
-/* dvh is the browser's own answer to this and it is correct at every zoom
-   level, which a measured pixel value is not: written too large the fixed
-   screens overflow and the content reads as cropped from the top; written
-   too small, or left stale after a zoom, the body shows through underneath
-   as a band of empty space. Both of those were the same stale number.
+const VV = window.visualViewport || null;
 
-   So where dvh exists, CSS owns the height and JS does not touch it. The
-   measurement below is only for browsers old enough to lack dvh. */
-const HAS_DVH = typeof CSS !== "undefined" && CSS.supports &&
-                CSS.supports("height", "100dvh");
+/* How far the document can be dragged — which is how much of the box we
+   were given is not on screen. Set and restore inside one task so the
+   scrolled state never reaches a frame. */
+function hiddenStrip() {
+  const el = document.scrollingElement || document.documentElement;
+  try {
+    const was = el.scrollTop;
+    el.scrollTop = 1e6;
+    const reach = Math.round(el.scrollTop);
+    el.scrollTop = was;
+    /* Guard against a page that is genuinely long for some other reason;
+       nothing here should ever need more than a browser toolbar's worth. */
+    return (reach > 0 && reach < 400) ? reach : 0;
+  } catch (e) { return 0; }
+}
 
-function fitViewport() {
-  if (HAS_DVH) return;                      // the stylesheet already has it right
+/* What the browser claims, before the strip is taken off it. */
+/* The smallest of everything on offer, not a favourite.
+
+   Every API here reports the same number on a browser that is being
+   straight with the page. On one that is not, they disagree, and the
+   smaller figure is the one that cannot be hiding anything: no browser
+   under-reports the space it gives you. Taking the minimum means one
+   honest API is enough, whichever one it turns out to be — which is the
+   part that could not be settled by reasoning from here.
+
+   documentElement.clientHeight is the viewport height by definition for
+   the root element, so pinning html does not feed our own answer back to
+   us. */
+function claimedHeight() {
+  const say = [];
+  if (VV && VV.height > 0) {
+    const scale = (VV.scale && VV.scale > 0) ? VV.scale : 1;
+    say.push(Math.round(VV.height * scale));   // pinch-invariant
+  }
+  const ch = document.documentElement.clientHeight;
+  if (ch > 0) say.push(ch);
+  if (window.innerHeight > 0) say.push(Math.round(window.innerHeight));
+  if (!say.length) return 0;
+  return Math.min.apply(null, say);
+}
+
+function claimedTop() {
+  if (!VV) return 0;
+  const scale = (VV.scale && VV.scale > 0) ? VV.scale : 1;
+  /* Once she has actually pinched in, following the visual viewport would
+     glue the site to her fingers and she could never pan to look at
+     anything. Only honour the offset at rest. */
+  return scale > 1.02 ? 0 : Math.round(VV.offsetTop || 0);
+}
+
+let appH = 0;
+/* Remembered between probes: a browser that insets keeps doing it, and a
+   probe taken mid-gesture can read zero when it should not. Reset on
+   rotation, because the furniture can be a different size sideways. */
+let knownStrip = 0;
+
+function writeVars() {
+  const claimed = claimedHeight();
+  if (claimed <= 0) return false;
+  const h = Math.max(240, claimed - knownStrip);
+  const top = claimedTop();
+
+  /* Compared against what the document is actually carrying, not against a
+     variable in here. A cached number can agree with the measurement while
+     the page has drifted to something else entirely — a stale dvh, an
+     interrupted write — and that is precisely the moment we would skip.
+
+     A pixel of slack, because a pinch reports a height that rounds a
+     little differently frame to frame, and re-laying the site out under
+     her fingers over one pixel is worse than the pixel. */
+  const root = document.documentElement;
+  const curH = parseFloat(root.style.getPropertyValue("--app-h"));
+  const curT = parseFloat(root.style.getPropertyValue("--app-top"));
+  if (curH === curH && Math.abs(curH - h) <= 1 &&
+      curT === curT && Math.abs(curT - top) <= 1) return false;
+
+  appH = h;
+  root.style.setProperty("--app-h", h + "px");
+  root.style.setProperty("--app-top", top + "px");
+  /* Anything that renders into a box of its own — the 3D scenes — asks
+     for this rather than reading the window, so tell them the box moved.
+     A plain resize event is not enough: iPad does not always fire one. */
+  window.dispatchEvent(new CustomEvent("app-viewport"));
+  return true;
+}
+
+/* THE PROBE CHECKS ITSELF, and this is what makes it safe to act on.
+
+   A strip that is the browser's own furniture disappears once the
+   document is shortened by it: the scroll range is content + inset −
+   window, so taking the inset off the content takes the range to zero.
+   A strip that is really just something on the page being too tall does
+   NOT disappear — shortening the shell does not shorten that element.
+
+   So: apply the candidate, look again next frame, and keep it only if it
+   is gone. A one-off bad reading during load can shrink the site for a
+   single frame and never for two. */
+let verifying = false;
+
+function learnStrip(candidate) {
+  if (candidate <= 2 || candidate >= 400 || candidate <= knownStrip) return;
+  const previous = knownStrip;
+  knownStrip = candidate;
+  writeVars();
+  if (verifying) return;
+  verifying = true;
+  requestAnimationFrame(function () {
+    verifying = false;
+    if (hiddenStrip() > 2) {      // shortening did not absorb it
+      knownStrip = previous;      // so it was never the browser's furniture
+      writeVars();
+    }
+  });
+}
+
+function fitViewport(reprobe) {
+  /* The on-screen keyboard shrinks the visual viewport too, and it is not
+     the browser's UI — re-laying the whole site out around the keyboard
+     is worse than any gap. Hold the last good value while a field has
+     focus; focusout re-measures. */
   const ae = document.activeElement;
   if (ae && /^(input|textarea|select)$/i.test(ae.tagName)) return;
-  const h = window.innerHeight;
-  if (h > 0) document.documentElement.style.setProperty("--app-h", h + "px");
+  if (reprobe !== false) learnStrip(hiddenStrip());
+  writeVars();
 }
 
-if (!HAS_DVH) {
+/* Exposed so viewport-report.html and tools/vh.js can read the same
+   numbers the site is using rather than a re-implementation of them. */
+window.__viewport = function () {
+  return { claimed: claimedHeight(), strip: hiddenStrip(), known: knownStrip,
+           top: claimedTop(), appH: appH };
+};
+
+/* iOS reports the size it had a moment ago for a few frames after a
+   resume or a rotation, so one measurement at the moment of the event is
+   not enough — take a short burst and let the change guard above throw
+   away the ones that agree. */
+function fitViewportSoon() {
   fitViewport();
-  /* A ResizeObserver on the root element, not just the resize event: some
-     mobile browsers change the viewport as the URL bar slides away without
-     ever firing resize, and at least one scene here stops the event
-     reaching us at all. The observer watches the box itself. */
-  if (window.ResizeObserver) {
-    try { new ResizeObserver(fitViewport).observe(document.documentElement); } catch (e) {}
-  }
-  addEventListener("resize", fitViewport);
-  addEventListener("orientationchange", () => setTimeout(fitViewport, 120));
-  addEventListener("pageshow", fitViewport);
-  if (window.visualViewport) window.visualViewport.addEventListener("resize", fitViewport);
-  addEventListener("scroll", () => requestAnimationFrame(fitViewport), { passive: true });
-  document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
+  [60, 180, 400, 900].forEach((ms) => setTimeout(fitViewport, ms));
 }
+
+fitViewport();
+/* and again after first layout, when the document finally has a height
+   for the probe to push against */
+requestAnimationFrame(fitViewport);
+addEventListener("load", fitViewportSoon);
+
+addEventListener("resize", fitViewport);
+addEventListener("orientationchange", () => {
+  knownStrip = 0;              // the furniture can be a different size sideways
+  fitViewportSoon();
+});
+/* The three that cover coming back to the tab: pageshow fires on a
+   back-forward-cache restore, visibilitychange on the app switcher, focus
+   on returning to the window. Between them nothing gets in without a
+   fresh measurement. */
+addEventListener("pageshow", fitViewportSoon);
+addEventListener("focus", fitViewportSoon);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) fitViewportSoon();
+});
+document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
+if (VV) {
+  /* scroll, not just resize: the offset between the visible area and the
+     box the browser handed us changes as the page is dragged, and on
+     Chrome for iOS that drag is the whole fault. */
+  VV.addEventListener("resize", fitViewport);
+  VV.addEventListener("scroll", () => fitViewport(false));
+}
+
+/* If anything does get the document scrolled, that distance is the strip
+   we have not accounted for yet. Learn from it, undo it, and re-lay out —
+   so the very first drag she makes teaches the page its own height even
+   if every probe before it came back empty. */
+addEventListener("scroll", function () {
+  const el = document.scrollingElement || document.documentElement;
+  const y = Math.round(window.scrollY || el.scrollTop || 0);
+  if (y > 0) {
+    learnStrip(y);
+    el.scrollTop = 0;
+  }
+  if (el.scrollLeft) el.scrollLeft = 0;
+}, { passive: true });
 
 /* ---------- ambient particles ---------- */
 /* The drifting decorations used to be emoji, which meant they were a
@@ -226,7 +393,7 @@ function dodge() {
   requestAnimationFrame(() => {
     const margin = 60;
     const x = margin + Math.random() * (window.innerWidth - margin*2 - 160);
-    const y = margin + Math.random() * (window.innerHeight - margin*2 - 40);
+    const y = margin + Math.random() * ((appH || window.innerHeight) - margin*2 - 40);
     btnNo.style.left = x + "px";
     btnNo.style.top = y + "px";
   });

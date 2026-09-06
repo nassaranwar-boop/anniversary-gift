@@ -152,60 +152,121 @@ summary,
 }
 
 /* Her own writing is still hers to select — a love letter is text, and
-   being unable to copy a line out of it would be a silly thing to ship. */
+   being unable to copy a line out of it would be a silly thing to ship.
+
+   The gate's line is NOT in this list, and must not go back into it. It
+   sits directly above a keypad, so every slightly-long press on a number
+   ran into it and iOS threw a blue selection over "forgotten" with a
+   caret sitting in the middle of the card. There is nothing on that
+   screen worth copying, and a passcode pad that highlights its own
+   instructions looks broken. */
 .letter-body,
 .note-text,
 .sb-lb-text,
 .hv-note,
-.ks-closing,
-.gate-sub{
+.ks-closing{
   user-select:text; -webkit-user-select:text;
 }
 
+/* And the gate as a whole is a control surface, not a document. Said on
+   the card rather than on the one paragraph, so a future line added
+   inside it cannot reintroduce the same thing. */
+.gate-card, .gate-card *{
+  user-select:none; -webkit-user-select:none;
+  -webkit-touch-callout:none;
+}
+
 /* ---------------------------------------------------------
-   THE HEIGHT OF THE PAGE
+   THE HEIGHT OF THE PAGE — read this before changing any of it
 
-   The blank space you could swipe down into was a mobile viewport
-   problem. Both 100vh and height:100% resolve against the LARGE
-   viewport — the size the page would be with the browser's own UI
-   hidden — so while the URL bar was showing, every full-screen element
-   was taller than the part you could actually see. The overflow had to
-   go somewhere, and it went below the fold as void.
+   Safari gets this right. Chrome on iOS does not, and Brave gets it
+   wrong differently. That is the whole shape of the bug, and it is the
+   clue that finally explained it: all three are WebKit, so the fault is
+   not in the rendering, it is in the box each app gives the page.
 
-   Three layers, weakest first, so something correct always applies:
-   100vh for very old browsers, 100dvh where it exists (it tracks the
-   browser UI as it hides and shows), and a measured pixel value set
-   from JS, which is the one that wins. overscroll-behavior stops the
-   rubber-band from revealing anything past the edge either.
+   Chrome for iOS puts its web view over the WHOLE screen and slides its
+   own toolbar on top, then pushes the page down with a content inset.
+   So the initial containing block — what height:100% and 100vh and even
+   100dvh all resolve against — is the height of the entire screen,
+   toolbar included, while only the part below the toolbar can be seen.
+   On his iPad that is 1024 against 892: the document ends up exactly
+   132 CSS pixels taller than the window.
+
+   That number is not a guess. Frame by frame, his recording pans by
+   132.8 CSS pixels, and Chrome's toolbar in the same recording measures
+   132.3. The page could be dragged up and down by precisely the height
+   of the browser's own toolbar. Safari has no such inset, its containing
+   block is the visible area, and the site was always fine there.
+
+   Two rules follow, and both matter:
+
+     1. HTML IS THE SCROLLER. Sizing body and leaving html at height:100%
+        fixes nothing — html keeps the too-tall box, and the 132 pixels of
+        overflow stay draggable. The root element has to be pinned to the
+        measured height. This is the line that was missing.
+
+     2. The visible area does not necessarily start at the top of the
+        containing block, so the shell is offset by --app-top as well as
+        sized by --app-h. Under Safari that offset is zero and nothing
+        moves; under a browser that insets from the top it is the inset.
+
+   Both numbers come from visualViewport in script.js, which is the only
+   API that reports the region actually on screen rather than the box the
+   app handed the page. The vh/dvh values below are the pre-JS fallback
+   and nothing more.
    --------------------------------------------------------- */
-:root{--app-h:100vh;}
+:root{--app-h:100vh; --app-top:0px;}
 @supports (height:100dvh){:root{--app-h:100dvh;}}
+/* svh last, so it wins wherever it exists. His iPad reports 100vh as 972
+   and 100svh as 892 in an 892 window — vh counts the part of Chrome's
+   toolbar that only goes away if the page scrolls, and this page never
+   scrolls, so that part never goes away. svh is the small viewport: the
+   height with all of the browser's furniture showing. For a site that
+   cannot scroll it is the only one of the four that can never be too
+   tall, which makes it the right value for the first frame, before JS
+   has measured anything. */
+@supports (height:100svh){:root{--app-h:100svh;}}
 
-/* The root deliberately keeps height:100% rather than --app-h. Pinning it
-   to the value we are measuring makes the box stop changing, and then the
-   ResizeObserver watching it has nothing to observe — it would never fire
-   again after the first measurement. overflow:hidden means the extra is
-   invisible and unreachable anyway. */
-html,body{
-  height:100%; font-family:'Poppins',sans-serif; overflow:hidden;
+/* The root element is the scroll box. Pin it to the height that is
+   actually visible and there is no overflow left to drag into — which is
+   what the void below the fold always was. */
+html{
+  height:var(--app-h); max-height:var(--app-h);
+  overflow:hidden; overscroll-behavior:none;
+  background:#f7ddd4;
+}
+
+body{
+  position:fixed; top:var(--app-top); left:0; width:100%;
+  height:var(--app-h); max-height:var(--app-h);
+  font-family:'Poppins',sans-serif; overflow:hidden;
   overscroll-behavior:none; -webkit-tap-highlight-color:transparent;
   /* The ground behind every screen. If a screen is ever a pixel short of
      the viewport — mid-rotation, mid-zoom — what shows through is the
      site's own blush rather than a band of white. */
   background:#f7ddd4;
 }
-/* Fixed elements take their box from the large viewport too, so the real
-   height has to be said out loud rather than implied by inset:0. This is
-   the line that closes the gap. */
-.screen{height:var(--app-h); max-height:var(--app-h);}
+/* Every full-screen box sits in the visible rectangle: offset to where it
+   starts, sized to how tall it really is. Deliberately not inset:0 — that
+   resolves against the containing block, which is the thing we have just
+   established cannot be trusted. */
+.screen{top:var(--app-top); height:var(--app-h); max-height:var(--app-h);}
 h1,h2{font-family:'Fredoka',sans-serif;}
 button{font-family:inherit;}
 img{-webkit-user-drag:none; user-select:none;}
 
-.screen{display:none; position:fixed; inset:0; align-items:center; justify-content:center; flex-direction:column;}
+.screen{display:none; position:fixed; left:0; right:0; align-items:center; justify-content:center; flex-direction:column;}
 .screen.active{display:flex;}
+/* NO SCALE HERE, and none in screenExit below either. These two were the
+   only rules in the stylesheet that scaled a whole screen, and between
+   them every arrival zoomed in from 97% and every departure zoomed out to
+   106%. As a transition that reads as polish; as the thing you actually
+   watch when the site opens, it reads as the page settling into the wrong
+   size and then correcting itself — which is exactly the complaint. A
+   fade and a small rise give the same arrival without ever changing the
+   size of anything. */
 .screen.anim-in{animation:screenIn .65s cubic-bezier(.22,.85,.32,1);}
-@keyframes screenIn{from{opacity:0; transform:translateY(22px) scale(.97);} to{opacity:1; transform:translateY(0) scale(1);}}
+@keyframes screenIn{from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);}}
 
 .particle-field{position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:0;}
 /* the floaters are drawn now, so they need a box rather than a font size */
@@ -262,8 +323,8 @@ img{-webkit-user-drag:none; user-select:none;}
   animation:screenExit .42s cubic-bezier(.4,0,.2,1) forwards;
 }
 @keyframes screenExit{
-  0%{transform:scale(1); opacity:1; filter:blur(0px);}
-  100%{transform:scale(1.06); opacity:0; filter:blur(10px);}
+  0%{transform:translateY(0); opacity:1; filter:blur(0px);}
+  100%{transform:translateY(-10px); opacity:0; filter:blur(10px);}
 }
 .screen{transform-origin:center center;}
 
@@ -913,12 +974,18 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .gate-wax-blob{animation:gateWaxBreathe 5.2s ease-in-out infinite;}
 @keyframes gateWaxBreathe{0%,100%{filter:brightness(1);} 50%{filter:brightness(1.09);}}
-/* the seal gives way when the code is right */
-.gate-seal.crack .gate-wax{animation:gateWaxBreak .9s cubic-bezier(.34,1.3,.5,1) forwards;}
-@keyframes gateWaxBreak{
-  0%  {transform:scale(1) rotate(0); opacity:1;}
-  35% {transform:scale(1.14) rotate(-3deg); opacity:1;}
-  100%{transform:scale(.5) rotate(16deg); opacity:0;}
+/* The seal gives way when the code is right — by fading where it stands.
+
+   It used to swell to 114%, tip three degrees, then shrink to half size
+   and spin sixteen degrees on the way out. That is a lot of travel for
+   the one moment the screen is asking to feel quiet, and next to the
+   gate's own arrival it read as the card lurching. No transform here at
+   all: the wax simply warms, gives up its shadow, and goes. */
+.gate-seal.crack .gate-wax{animation:gateWaxFade 1.05s cubic-bezier(.32,0,.24,1) forwards;}
+@keyframes gateWaxFade{
+  0%  {opacity:1;   filter:drop-shadow(0 .9cqw 1.2cqw rgba(64,14,26,.5)) brightness(1);}
+  32% {opacity:.94; filter:drop-shadow(0 .7cqw 1.0cqw rgba(64,14,26,.34)) brightness(1.16);}
+  100%{opacity:0;   filter:drop-shadow(0 0 0 rgba(64,14,26,0)) brightness(1.24);}
 }
 .gate-seal.crack .gate-seal-glow{animation:none; opacity:0;}
 
@@ -1019,6 +1086,8 @@ img{-webkit-user-drag:none; user-select:none;}
 
 @media (prefers-reduced-motion: reduce){
   .gate-title img,.gate-seal-glow,.gate-wax-blob,.gate-bloom{animation:none;}
+  .sb-flower,.sb-song-halo{animation:none !important;}
+  .sb-song-arm{transition:none;}
 }
 
 .btn-ancient{
@@ -1178,7 +1247,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-cover-sub{font-family:var(--font-serif); font-style:italic; font-size:2.6cqw; color:#9a7482; margin:.5em 0 0;}
 .sb-cover-sticker{position:absolute; z-index:2; transform:rotate(var(--rot,0deg)); pointer-events:none;}
 .sb-cover-sticker img{width:100%; height:auto; display:block; filter:drop-shadow(0 5px 10px rgba(8,18,24,.5));}
-.sb-cover-star{position:absolute; z-index:2; color:#f4f8f6; text-shadow:0 2px 6px rgba(0,0,0,.45); pointer-events:none;}
+.sb-cover-star{position:absolute; z-index:2; color:#fdf3e2; text-shadow:0 2px 6px rgba(0,0,0,.45); pointer-events:none;}
 .sb-cover-hint{
   position:absolute; left:0; right:0; bottom:2.2%; z-index:4; margin:0;
   display:flex; align-items:center; justify-content:center; gap:.6em;
@@ -1751,59 +1820,124 @@ img{-webkit-user-drag:none; user-select:none;}
   border-left:4px solid currentColor; border-right:4px solid currentColor;
 }
 
-/* ---- the song: a record that turns, and a scrubber ---- */
+/* ---- the song ------------------------------------------------------
+
+   This card used to be teal. Every other surface in the book is blush,
+   wine, cream and gold, and a slab of blue-green in the middle of the
+   drawer read as a widget someone had pasted in — which is exactly what
+   it looked like next to the bouquet card directly above it.
+
+   So it is the bouquet's plum now, with a gold hairline, a record that
+   sits under a real tonearm, and a warm halo that only breathes while
+   something is actually playing. The scrubber is gold rather than white,
+   and the play key is a cream disc with a wine glyph, so the one bright
+   thing on the card is the thing you press.
+   -------------------------------------------------------------------- */
 .sb-w-song{
-  display:flex; align-items:center; gap:12px; padding:12px 13px;
-  background:linear-gradient(158deg,#1e6d7c 0%,#155461 62%,#103f4b 100%);
-  box-shadow:0 14px 30px rgba(8,36,44,.44), 0 1px 0 rgba(255,255,255,.12) inset;
+  position:relative; overflow:hidden;
+  display:flex; align-items:center; gap:13px; padding:14px 15px;
+  background:
+    radial-gradient(130% 110% at 8% -10%, rgba(255,196,214,.16), transparent 62%),
+    linear-gradient(158deg,#4a1233 0%,#33101f 58%,#3f1229 100%);
+  box-shadow:0 16px 34px rgba(20,4,16,.5), 0 1px 0 rgba(255,214,226,.2) inset;
+  border:1px solid rgba(226,168,120,.26);
 }
-.sb-song-deck{position:relative; width:66px; height:66px; flex:none;}
+/* the warmth behind the record. Still while paused, breathing while it
+   plays — the card should look asleep until she starts it. */
+.sb-song-halo{
+  position:absolute; left:-26px; top:50%; width:150px; height:150px;
+  margin-top:-75px; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, rgba(244,190,138,.22), transparent 68%);
+  opacity:0; transition:opacity .6s ease;
+}
+.sb-w-song.playing .sb-song-halo{opacity:1; animation:sbSongHalo 5.4s ease-in-out infinite;}
+@keyframes sbSongHalo{0%,100%{transform:scale(1); opacity:.75;} 50%{transform:scale(1.09); opacity:1;}}
+
+.sb-song-deck{position:relative; width:68px; height:68px; flex:none;}
 .sb-song-disc{
   width:100%; height:100%; display:block; border-radius:50%;
-  box-shadow:0 6px 14px rgba(0,0,0,.45);
+  box-shadow:
+    0 6px 16px rgba(0,0,0,.5),
+    0 0 0 1px rgba(240,206,150,.5),
+    0 0 0 4px rgba(240,206,150,.13);
   animation:sbSpin 4.2s linear infinite; animation-play-state:paused;
 }
 .sb-w-song.playing .sb-song-disc{animation-play-state:running;}
 @keyframes sbSpin{to{transform:rotate(360deg);}}
 .sb-song-spindle{
   position:absolute; left:50%; top:50%; width:7px; height:7px; margin:-3.5px 0 0 -3.5px;
-  border-radius:50%; background:#0e3742; box-shadow:0 0 0 2px rgba(255,255,255,.35);
+  border-radius:50%; background:#f6e6cd; box-shadow:0 0 0 2px rgba(74,18,51,.7);
 }
+/* the tonearm: parked off the edge, and it swings down onto the record
+   when the song starts. It is the one bit of movement on the card. */
+.sb-song-arm{
+  position:absolute; right:-7px; top:-6px; width:38px; height:5px;
+  border-radius:3px; z-index:2; pointer-events:none;
+  background:linear-gradient(90deg,rgba(246,230,205,.35),#e8cfa6 42%,#c9a273);
+  box-shadow:0 1px 3px rgba(20,4,16,.5);
+  /* Parked at +14deg, which puts the tip clear above the record; playing
+     swings it to -28deg, which lands it between the spindle and the rim.
+     These two were the wrong way round at first — the arm lifted OFF when
+     the song started, which is the one thing a record player never does. */
+  transform-origin:right center; transform:rotate(14deg);
+  transition:transform .7s cubic-bezier(.34,1.2,.5,1);
+}
+.sb-w-song.playing .sb-song-arm{transform:rotate(-28deg);}
+
 .sb-song-body{flex:1; min-width:0;}
+.sb-song-kicker{
+  margin:0; font-family:var(--font-body); font-size:7px; letter-spacing:2.4px;
+  text-transform:uppercase; color:rgba(244,196,150,.62);
+}
 .sb-song-title{
-  margin:0; font-family:'Playfair Display',serif; font-weight:700; font-size:16px;
-  color:#f4fbfc; line-height:1.15;
+  margin:2px 0 0; font-family:'Playfair Display',serif; font-weight:700; font-size:16px;
+  color:#fdeef0; line-height:1.15;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .sb-song-artist{
   margin:1px 0 8px; font-family:var(--font-body); font-size:11px;
-  color:rgba(226,246,250,.66); letter-spacing:.02em;
+  color:rgba(244,196,150,.78); letter-spacing:.06em;
 }
 .sb-song-scrub{padding:7px 0; cursor:pointer; touch-action:none;}
 .sb-song-track{
   position:relative; height:3px; border-radius:2px;
-  background:rgba(255,255,255,.22);
+  background:rgba(255,226,208,.2);
 }
 .sb-song-fill{
   position:absolute; left:0; top:0; bottom:0; width:0; border-radius:2px;
-  background:linear-gradient(90deg,#9fe0ea,#eaf9fb);
+  background:linear-gradient(90deg,#c98f5e,#f4d3a2 70%,#fdeed6);
+  box-shadow:0 0 8px rgba(244,196,150,.45);
 }
 .sb-song-knob{
   position:absolute; top:50%; left:0; width:11px; height:11px; margin:-5.5px 0 0 -5.5px;
-  border-radius:50%; background:#f2fcfd; box-shadow:0 2px 5px rgba(0,0,0,.4);
+  border-radius:50%; background:linear-gradient(180deg,#fff6e6,#f0cfa2);
+  box-shadow:0 2px 5px rgba(20,4,16,.55), 0 0 0 1px rgba(120,74,40,.35);
   transition:transform .18s var(--ease-out);
 }
 .sb-song-scrub:hover .sb-song-knob{transform:scale(1.25);}
 .sb-song-times{
   display:flex; justify-content:space-between;
-  font-family:var(--font-body); font-size:9.5px; color:rgba(214,240,246,.6);
+  font-family:var(--font-body); font-size:9.5px; color:rgba(248,214,206,.55);
+  font-variant-numeric:tabular-nums;
 }
 .sb-song-play{
-  width:42px; height:42px; flex:none; border-radius:50%; cursor:pointer; border:none;
+  width:44px; height:44px; flex:none; border-radius:50%; cursor:pointer; border:none;
   display:flex; align-items:center; justify-content:center;
-  color:#0f3a44; background:linear-gradient(180deg,#fbfefe,#dff2f6);
-  box-shadow:0 5px 12px rgba(0,0,0,.34);
+  color:#4a1233; background:linear-gradient(180deg,#fff8ec,#f2d6ad);
+  box-shadow:
+    0 6px 14px rgba(20,4,16,.45),
+    0 0 0 1px rgba(240,206,150,.55),
+    0 1px 0 rgba(255,255,255,.7) inset;
+  transition:transform .16s var(--ease-pop), box-shadow .3s ease;
 }
 .sb-song-play:active{transform:scale(.94);}
+.sb-w-song.playing .sb-song-play{
+  box-shadow:
+    0 6px 16px rgba(20,4,16,.45),
+    0 0 0 1px rgba(244,206,150,.8),
+    0 0 16px rgba(244,196,150,.42),
+    0 1px 0 rgba(255,255,255,.7) inset;
+}
 .sb-w-song.missing::after{
   content:"add assets/song.mp3"; position:absolute; left:0; right:0; bottom:-15px;
   font-family:var(--font-body); font-size:8px; color:rgba(120,96,66,.8); text-align:center;
@@ -1947,20 +2081,69 @@ img{-webkit-user-drag:none; user-select:none;}
 /* =========================================================
    THE BUTTON, AND THE DRAWER IT OPENS
    ========================================================= */
+/* The bouquet key.
+
+   It was a flat disc with a pixel bloom on it, and the open state rotated
+   the whole button 135 degrees so the bloom turned into something that was
+   meant to read as a close. It never did — a flower is close to radially
+   symmetric, so turning it just made the flower crooked.
+
+   Now it is a drawn flower on a wine disc with a gold hairline, and the
+   open state cross-fades to a proper cross instead of spinning. The disc
+   itself never turns. */
 .sb-extras-btn{
   position:absolute; right:calc(16px + env(safe-area-inset-right));
   bottom:calc(16px + env(safe-area-inset-bottom)); z-index:22;
-  opacity:0; pointer-events:none; transition:opacity .5s ease, transform .3s var(--ease-pop), background .3s ease;
-  width:52px; height:52px; border-radius:50%; cursor:pointer; border:none;
-  display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(160deg,#a24f66,#71263f);
-  box-shadow:0 10px 22px rgba(60,16,32,.46), 0 1px 0 rgba(255,214,226,.3) inset;
+  opacity:0; pointer-events:none;
+  width:56px; height:56px; border-radius:50%; cursor:pointer; border:none; padding:0;
+  display:grid; place-items:center;
+  background:
+    radial-gradient(125% 125% at 30% 16%, rgba(255,198,214,.30), transparent 60%),
+    linear-gradient(162deg,#7d2745 0%,#5b1730 54%,#43101f 100%);
+  box-shadow:
+    0 12px 26px rgba(48,10,26,.5),
+    0 0 0 1px rgba(240,200,160,.42),
+    0 1px 0 rgba(255,214,226,.32) inset;
+  transition:opacity .5s ease, transform .3s var(--ease-pop),
+             background .35s ease, box-shadow .35s ease;
 }
 #screen-scrapbook.sb-open .sb-extras-btn{opacity:1; pointer-events:auto;}
 .sb-extras-btn:active{transform:scale(.93);}
-.sb-extras-btn.on{background:linear-gradient(160deg,#5d1a30,#3d0f20); transform:rotate(135deg);}
-.sb-extras-ico{font-size:22px; color:#eef6ef; line-height:1;}
-.sb-extras-btn.on .sb-extras-ico{font-size:20px;}
+
+/* both children share the one grid cell, so they can cross-fade in place */
+.sb-flower,
+.sb-extras-x{grid-area:1 / 1;}
+
+.sb-flower{
+  width:33px; height:33px; display:block; overflow:visible;
+  filter:drop-shadow(0 2px 4px rgba(40,8,22,.5));
+  transition:opacity .26s ease, transform .45s var(--ease-pop);
+}
+/* the barest breathing, so it reads as something living rather than a
+   control. Stopped for anyone who has asked for less motion. */
+#screen-scrapbook.sb-open .sb-flower{animation:sbFlowerBreathe 6s ease-in-out infinite;}
+@keyframes sbFlowerBreathe{0%,100%{transform:rotate(0) scale(1);} 50%{transform:rotate(7deg) scale(1.045);}}
+
+.sb-extras-x{
+  position:relative; width:18px; height:18px;
+  opacity:0; transform:rotate(0) scale(.7);
+  transition:opacity .26s ease, transform .45s var(--ease-pop);
+}
+.sb-extras-x::before,
+.sb-extras-x::after{
+  content:""; position:absolute; left:50%; top:50%;
+  width:18px; height:2px; margin:-1px 0 0 -9px;
+  border-radius:2px; background:#ffeede;
+}
+.sb-extras-x::after{transform:rotate(90deg);}
+
+.sb-extras-btn.on{
+  background:
+    radial-gradient(125% 125% at 30% 16%, rgba(255,198,214,.16), transparent 60%),
+    linear-gradient(162deg,#4e142c 0%,#360d1d 54%,#2a0916 100%);
+}
+.sb-extras-btn.on .sb-flower{opacity:0; transform:rotate(70deg) scale(.6); animation:none;}
+.sb-extras-btn.on .sb-extras-x{opacity:1; transform:rotate(45deg) scale(1);}
 
 .sb-drawer{
   position:absolute; left:0; top:0; bottom:0; z-index:20;
@@ -4498,7 +4681,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-stage{
   position:relative; overflow:hidden;
   container-type:size; container-name:rcstage;
-  width:min(100%, calc(100vh * 1.7778));
+  width:min(100%, calc(var(--app-h) * 1.7778));   /* the measured height, like every other stage */
   aspect-ratio:16/9;
   border-radius:8px;
   background:#1a1226;
