@@ -184,6 +184,17 @@ function hiddenStrip() {
    the root element, so pinning html does not feed our own answer back to
    us. */
 function claimedHeight() {
+  const say = claims();
+  if (!say.length) return 0;
+  return Math.min.apply(null, say);
+}
+/* and the biggest, which is what the page tries to grow back to */
+function claimedMost() {
+  const say = claims();
+  if (!say.length) return 0;
+  return Math.max.apply(null, say);
+}
+function claims() {
   const say = [];
   if (VV && VV.height > 0) {
     const scale = (VV.scale && VV.scale > 0) ? VV.scale : 1;
@@ -192,8 +203,7 @@ function claimedHeight() {
   const ch = document.documentElement.clientHeight;
   if (ch > 0) say.push(ch);
   if (window.innerHeight > 0) say.push(Math.round(window.innerHeight));
-  if (!say.length) return 0;
-  return Math.min.apply(null, say);
+  return say;
 }
 
 function claimedTop() {
@@ -202,7 +212,18 @@ function claimedTop() {
   /* Once she has actually pinched in, following the visual viewport would
      glue the site to her fingers and she could never pan to look at
      anything. Only honour the offset at rest. */
-  return scale > 1.02 ? 0 : Math.round(VV.offsetTop || 0);
+  if (scale > 1.02) return 0;
+  const top = Math.round(VV.offsetTop || 0);
+  /* AND ONLY IF IT DESCRIBES SOMETHING THAT COULD BE TRUE. An offset says
+     the visible area starts that far down the box we were handed — so the
+     offset plus the visible height has to fit inside that box. A viewport
+     claiming to be the full height of the window AND to start 38 pixels
+     down it is describing nothing; honouring it pushes the page down by
+     38 and hangs the last 38 off the bottom. It happens for a frame or
+     two after a pinch is let go of, and it is the one shape of this bug
+     that puts the empty strip at the top instead. */
+  if (top > 0 && Math.round(VV.height * scale) + top > claimedMost() + 1) return 0;
+  return top;
 }
 
 let appH = 0;
@@ -211,8 +232,14 @@ let appH = 0;
    rotation, because the furniture can be a different size sideways. */
 let knownStrip = 0;
 
+/* Which of the two claims we are laying out against. The smallest is
+   where every session starts, because a first frame that is too tall is
+   the fault this whole section exists for. tryTaller below is what earns
+   the right to use the largest. */
+let useMost = false;
+
 function writeVars() {
-  const claimed = claimedHeight();
+  const claimed = useMost ? claimedMost() : claimedHeight();
   if (claimed <= 0) return false;
   const h = Math.max(240, claimed - knownStrip);
   const top = claimedTop();
@@ -256,6 +283,9 @@ let verifying = false;
 
 function learnStrip(candidate) {
   if (candidate <= 2 || candidate >= 400 || candidate <= knownStrip) return;
+  /* already tried, already disproved: trying it again every probe is a
+     page that shrinks and springs back for as long as she has it open */
+  if (candidate === refusedStrip) return;
   const previous = knownStrip;
   knownStrip = candidate;
   writeVars();
@@ -264,7 +294,71 @@ function learnStrip(candidate) {
   requestAnimationFrame(function () {
     verifying = false;
     if (hiddenStrip() > 2) {      // shortening did not absorb it
-      knownStrip = previous;      // so it was never the browser's furniture
+      refusedStrip = candidate;   // so it was never the browser's furniture
+      knownStrip = previous;
+      writeVars();
+    }
+  });
+}
+
+/* GIVING THE HEIGHT BACK.
+
+   Everything above this point can only make the page shorter. It takes
+   the smallest height anybody claims, and then it takes off whatever the
+   probe finds hidden — and neither subtraction is ever undone. That is
+   safe against the fault it was written for and it is the whole of a
+   second one: any browser whose toolbar collapses after the page loads,
+   or that under-reports through one API and not the others, leaves the
+   site permanently short of the glass. What you see is a slice of bare
+   background along the bottom that never goes away.
+
+   The measurement that can settle it is the one already here. A box that
+   is too tall has somewhere to scroll to; a box that is exactly the
+   visible area has nowhere. So: when there is nothing hidden and there is
+   height on offer we are not using, take it, look again next frame, and
+   put it back if a hidden strip appears — the same trade learnStrip makes
+   in the other direction, on the same evidence.
+
+   A refusal is remembered, so a browser that really is insetting is asked
+   once rather than on every probe — but only until something happens that
+   could have moved the furniture. A resize IS a toolbar appearing or
+   collapsing; so is coming back to the tab, and so is turning the device
+   over. Each of those forgets the refusal and lets the page ask again.
+   Remembering for ever would be the same bug in a new place: a toolbar
+   that collapses after the first refusal would leave the site short for
+   the rest of the session. */
+let growVerifying = false;
+/* the height that was asked for and refused, and the strip that was tried
+   and turned out not to be furniture — both held only until something
+   happens that could have changed the answer */
+let refusedMost = 0;
+let refusedStrip = 0;
+
+function forgetRefusal() { refusedMost = 0; refusedStrip = 0; }
+
+function tryTaller() {
+  if (growVerifying || verifying) return;
+  const most = claimedMost();
+  if (most <= 0 || most === refusedMost) return;
+  if (!(most > appH + 1)) return;          /* already as tall as it gets */
+  if (hiddenStrip() > 2) return;           /* something IS hidden: not now */
+
+  const wasMost = useMost, wasKnown = knownStrip, wasH = appH;
+  useMost = true;
+  knownStrip = 0;
+  if (!writeVars()) { useMost = wasMost; knownStrip = wasKnown; return; }
+
+  growVerifying = true;
+  requestAnimationFrame(function () {
+    growVerifying = false;
+    const back = hiddenStrip();
+    if (back > 2) {
+      /* the room was never ours: give it straight back, and remember not
+         to ask again until the claim itself changes */
+      refusedMost = most;
+      useMost = wasMost;
+      knownStrip = wasKnown;
+      appH = wasH;
       writeVars();
     }
   });
@@ -279,12 +373,15 @@ function fitViewport(reprobe) {
   if (ae && /^(input|textarea|select)$/i.test(ae.tagName)) return;
   if (reprobe !== false) learnStrip(hiddenStrip());
   writeVars();
+  if (reprobe !== false) tryTaller();
 }
 
 /* Exposed so viewport-report.html and tools/vh.js can read the same
    numbers the site is using rather than a re-implementation of them. */
 window.__viewport = function () {
-  return { claimed: claimedHeight(), strip: hiddenStrip(), known: knownStrip,
+  return { claimed: claimedHeight(), most: claimedMost(), strip: hiddenStrip(),
+           known: knownStrip, using: useMost ? "most" : "least",
+           refused: refusedMost, refusedStrip: refusedStrip,
            top: claimedTop(), appH: appH };
 };
 
@@ -303,26 +400,28 @@ fitViewport();
 requestAnimationFrame(fitViewport);
 addEventListener("load", fitViewportSoon);
 
-addEventListener("resize", fitViewport);
+addEventListener("resize", () => { forgetRefusal(); fitViewport(); });
 addEventListener("orientationchange", () => {
   knownStrip = 0;              // the furniture can be a different size sideways
+  forgetRefusal();             // and so can the answer to "is there any more?"
+  useMost = false;
   fitViewportSoon();
 });
 /* The three that cover coming back to the tab: pageshow fires on a
    back-forward-cache restore, visibilitychange on the app switcher, focus
    on returning to the window. Between them nothing gets in without a
    fresh measurement. */
-addEventListener("pageshow", fitViewportSoon);
-addEventListener("focus", fitViewportSoon);
+addEventListener("pageshow", () => { forgetRefusal(); fitViewportSoon(); });
+addEventListener("focus", () => { forgetRefusal(); fitViewportSoon(); });
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) fitViewportSoon();
+  if (!document.hidden) { forgetRefusal(); fitViewportSoon(); }
 });
 document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
 if (VV) {
   /* scroll, not just resize: the offset between the visible area and the
      box the browser handed us changes as the page is dragged, and on
      Chrome for iOS that drag is the whole fault. */
-  VV.addEventListener("resize", fitViewport);
+  VV.addEventListener("resize", () => { forgetRefusal(); fitViewport(); });
   VV.addEventListener("scroll", () => fitViewport(false));
 }
 
