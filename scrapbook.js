@@ -1538,7 +1538,7 @@ window.Scrapbook = (function () {
     { paper: "rose", pieces: [
       { k: "note", left: 4, top: 5, w: 56, rot: -1.5, text: W.p2note },
       { k: "letters", text: "MEMORIES", left: 84, top: 6 },
-      { k: "sticker", art: "lipInk",  left: -6, top: 62, w: 24, rot: -12 },
+      { k: "sticker", art: "lipInk",  left: 36, top: 88, w: 24, rot: -12 },
       { k: "sticker", art: "starD",   left: 84, top: 44, w: 16, rot: 8 },
       { k: "sticker", art: "rose",    left: 76, top: 72, w: 26, rot: -6 },
       { k: "photo", n: 4, style: "deckle",   left:  6, top: 30, w: 31, rot: -4, caption: W.p2small },
@@ -1557,8 +1557,8 @@ window.Scrapbook = (function () {
       { k: "instantcam", n: 8, left: 20, top: 6, w: 68, rot: 1 },
       { k: "img", src: "assets/key.png", left: 26, top: 55, w: 9, rot: 12 },
       { k: "script", text: W.p3script, left: 50, top: 55, w: 44, rot: -7, size: 3.4 },
-      { k: "sticker", art: "flowers", left: 78, top: 36, w: 30, rot: 7 },
-      { k: "sticker", art: "starS",   left: 84, top: 88, w: 16, rot: -14 },
+      { k: "sticker", art: "flowers", left: 66, top: 32, w: 30, rot: 7 },
+      { k: "sticker", art: "starS",   left: 81.5, top: 88, w: 16, rot: -14 },
       { k: "idcard", n: 9, left: 5, top: 64, w: 72, rot: -2 },
     ]},
 
@@ -1631,14 +1631,14 @@ window.Scrapbook = (function () {
       { k: "patch", paper: "mauveCloth", left: 52, top: -3, w: 56, h: 46, rot: 6 },
       { k: "patch", paper: "mauveCloth", left: -8, top: 58, w: 52, h: 50, rot: -5 },
       { k: "sticker", art: "vinylLtd", left: 62, top: 14, w: 44, rot: 0 },
-      { k: "photo", n: 23, style: "washed", left: -2, top:  6, w: 57.4, rot: -7 },
+      { k: "photo", n: 23, style: "washed", left: 3, top:  6, w: 57.4, rot: -7 },
       { k: "photo", n: 24, style: "washed", left: 20, top: 46, w: 59, rot:  4 },
       { k: "sticker", art: "starD", left: 4, top: 78, w: 22, rot: -20 },
       { k: "sticker", art: "lips", left: 72, top: 86, w: 20, rot: 12 },
       /* this page had no words on it at all, and two of the best portraits
          in the book sitting on it saying nothing */
       { k: "script", text: W.p8script, left: 7, top: 90, w: 50, rot: -2, size: 3.0 },
-      { k: "sticker", art: "flowers", left: -9, top: 30, w: 30, rot: -8 },
+      { k: "sticker", art: "flowers", left: 1, top: 30, w: 30, rot: -8 },
       { k: "sticker", art: "starG",   left: 86, top: 60, w: 17, rot: 14 },
     ]},
 
@@ -1647,7 +1647,7 @@ window.Scrapbook = (function () {
       { k: "patch", paper: "rose", left: 40, top: 6, w: 38, h: 52, rot: 2 },
       { k: "photo", n: 25, style: "washed", left: 6, top: -2, w: 42.6, rot: 1, tape: "top" },
       { k: "label2", text: W.p9label, left: 58, top: 4, w: 36, rot: -3 },
-      { k: "sticker", art: "starG", left: 88, top: 1, w: 12, rot: 12 },
+      { k: "sticker", art: "starG", left: 86.5, top: 1, w: 12, rot: 12 },
       { k: "photobooth", cells: [26, 27, 28], left: 4, top: 34, w: 22, rot: -4 },
       { k: "photo", n: 29, style: "corners", left: 34, top: 46, w: 36.1, rot: -3 },
       { k: "patch", paper: "blush", left: 50, top: 74, w: 50, h: 32, rot: 3 },
@@ -1658,7 +1658,7 @@ window.Scrapbook = (function () {
       { k: "sticker", art: "vinylLtd", left: -12, top: 62, w: 34, rot: 0 },
       { k: "sticker", art: "lipInk",   left: 2,  top: 88, w: 22, rot: 12 },
       { k: "sticker", art: "starD",    left: 30, top: 26, w: 13, rot: -18 },
-      { k: "sticker", art: "starS",    left: 92, top: 44, w: 14, rot: 10 },
+      { k: "sticker", art: "starS",    left: 84, top: 44, w: 14, rot: 10 },
     ]},
 
     /* ---- 10 · a video of us -------------------------------------- */
@@ -1667,9 +1667,9 @@ window.Scrapbook = (function () {
       { k: "photo", n: 30, style: "washed", left: 8, top: 2, w: 50.8, rot: 0.5, tape: "top" },
       { k: "script", text: W.p10script, left: 6, top: 34, w: 32, rot: -2, size: 3.2, dark: true },
       { k: "videocard", left: 10, top: 44, w: 80 },
-      { k: "sticker", art: "starG",   left: -5, top: 16, w: 20, rot: -10 },
+      { k: "sticker", art: "starG",   left: 2.5, top: 16, w: 20, rot: -10 },
       { k: "sticker", art: "starS",   left: 88, top: 76, w: 18, rot: 12 },
-      { k: "sticker", art: "rose",    left: -8, top: 74, w: 26, rot: 6 },
+      { k: "sticker", art: "rose",    left: 1, top: 74, w: 26, rot: 6 },
       /* the closing page. Flowers over the top corner and a last kiss under
          the clip, so the book ends dressed rather than trailing off. */
       { k: "sticker", art: "flowers", left: 66, top: -6, w: 30, rot: 8 },
@@ -2679,9 +2679,130 @@ window.Scrapbook = (function () {
        tap is the gesture that loads the video if nothing else has. */
     var btn = el("sb-vid-play", "button");
     btn.setAttribute("aria-label", "Play our video");
-    btn.innerHTML = '<span class="sb-ov-disc"><span class="sb-ico-play"></span></span>' +
-                    '<span class="sb-ov-word">play</span>';
+    btn.innerHTML =
+      '<span class="sb-ov-ring" aria-hidden="true">' +
+        '<span class="sb-ov-pulse"></span>' +
+        '<span class="sb-ov-disc"><span class="sb-ico-play"></span></span>' +
+      "</span>" +
+      '<span class="sb-ov-word">play</span>';
     frame.appendChild(btn);
+
+    /* THE TRANSPORT.
+
+       A single play button and nothing else is not a player -- once the
+       clip was running there was no way to pause it, find a moment again,
+       or turn the sound off, and on a touch screen the control only came
+       back on hover, which a finger does not have. So there is a proper
+       set of controls, made of the same things the rest of the book is
+       made of: a brass disc, a strip of film for a scrubber, the serif the
+       captions use. It lies over the bottom of the frame while the clip
+       runs and gets out of the way when nothing is happening. */
+    var bar = el("sb-ov-bar");
+    bar.innerHTML =
+      '<button class="sb-ov-pp" type="button" aria-label="Pause">' +
+        '<span class="sb-ico-play"></span></button>' +
+      '<div class="sb-ov-track" role="slider" tabindex="0" aria-label="Seek"' +
+        ' aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
+        '<span class="sb-ov-buf"></span>' +
+        '<span class="sb-ov-fill"></span>' +
+        '<span class="sb-ov-knob"></span>' +
+      "</div>" +
+      '<span class="sb-ov-time"><b>0:00</b><i>/</i><s>0:00</s></span>' +
+      '<button class="sb-ov-mute" type="button" aria-label="Mute">' +
+        '<svg class="sb-ico-spk" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+          '<path class="cone" d="M3.5 9.2h3.9L12 5.2v13.6L7.4 14.8H3.5z"/>' +
+          '<path class="wave" d="M15.1 9.4a3.9 3.9 0 0 1 0 5.2"/>' +
+          '<path class="wave" d="M17.5 7.2a7.3 7.3 0 0 1 0 9.6"/>' +
+          '<path class="slash" d="M15.4 8.6l6 6.8"/>' +
+        "</svg></button>";
+    frame.appendChild(bar);
+
+    var pp    = bar.querySelector(".sb-ov-pp");
+    var track = bar.querySelector(".sb-ov-track");
+    var fill  = bar.querySelector(".sb-ov-fill");
+    var buf   = bar.querySelector(".sb-ov-buf");
+    var knob  = bar.querySelector(".sb-ov-knob");
+    var tNow  = bar.querySelector(".sb-ov-time b");
+    var tAll  = bar.querySelector(".sb-ov-time s");
+    var mute  = bar.querySelector(".sb-ov-mute");
+
+    function clock(t) {
+      if (!isFinite(t) || t < 0) t = 0;
+      var m = Math.floor(t / 60), sec = Math.floor(t % 60);
+      return m + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+    function paintTime() {
+      var d = v.duration;
+      var k = (isFinite(d) && d > 0) ? Math.max(0, Math.min(1, v.currentTime / d)) : 0;
+      fill.style.width = (k * 100).toFixed(2) + "%";
+      knob.style.left  = (k * 100).toFixed(2) + "%";
+      track.setAttribute("aria-valuenow", Math.round(k * 100));
+      tNow.textContent = clock(v.currentTime);
+      tAll.textContent = isFinite(d) ? clock(d) : "0:00";
+      try {
+        if (v.buffered && v.buffered.length && isFinite(d) && d > 0) {
+          buf.style.width = (v.buffered.end(v.buffered.length - 1) / d * 100).toFixed(2) + "%";
+        }
+      } catch (err) { /* buffered throws on some states; it is only a hint */ }
+    }
+    v.addEventListener("timeupdate", paintTime);
+    v.addEventListener("durationchange", paintTime);
+    v.addEventListener("progress", paintTime);
+    v.addEventListener("seeked", paintTime);
+
+    /* The controls fade out while the clip runs and nobody is doing
+       anything, and come back on any touch or movement over the frame --
+       not on hover, which is a thing only a mouse has. */
+    var idle = null;
+    function wake() {
+      c.classList.add("showing");
+      clearTimeout(idle);
+      idle = setTimeout(function () {
+        if (!v.paused) c.classList.remove("showing");
+      }, 2600);
+    }
+    frame.addEventListener("pointermove", wake);
+    frame.addEventListener("pointerdown", wake);
+
+    function seekAt(clientX) {
+      var r = track.getBoundingClientRect();
+      if (!r.width || !isFinite(v.duration)) return;
+      var k = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+      try { v.currentTime = k * v.duration; } catch (err) {}
+      paintTime();
+    }
+    var scrubbing = false;
+    /* Every one of these stops here. The book turns its pages on a
+       horizontal drag anywhere over it, and dragging a scrubber is exactly
+       that gesture -- without this, finding a moment in the clip flips the
+       page out from under it. */
+    track.addEventListener("pointerdown", function (e) {
+      scrubbing = true;
+      try { track.setPointerCapture(e.pointerId); } catch (err) {}
+      seekAt(e.clientX); wake(); e.stopPropagation(); e.preventDefault();
+    });
+    track.addEventListener("pointermove", function (e) {
+      if (!scrubbing) return;
+      seekAt(e.clientX); e.stopPropagation();
+    });
+    function endScrub(e) { scrubbing = false; if (e) e.stopPropagation(); wake(); }
+    track.addEventListener("pointerup", endScrub);
+    track.addEventListener("pointercancel", endScrub);
+    track.addEventListener("keydown", function (e) {
+      var step = e.shiftKey ? 10 : 5;
+      if (e.key === "ArrowRight") { v.currentTime = Math.min(v.duration || 0, v.currentTime + step); }
+      else if (e.key === "ArrowLeft") { v.currentTime = Math.max(0, v.currentTime - step); }
+      else return;
+      e.preventDefault(); e.stopPropagation(); paintTime(); wake();
+    });
+
+    mute.addEventListener("click", function (e) {
+      e.stopPropagation();
+      v.muted = !v.muted;
+      c.classList.toggle("muted", v.muted);
+      mute.setAttribute("aria-label", v.muted ? "Unmute" : "Mute");
+      wake();
+    });
 
     var failed = false;
     function ready() {
@@ -2705,11 +2826,23 @@ window.Scrapbook = (function () {
       } else v.pause();
     }
     btn.addEventListener("click", toggle);
+    pp.addEventListener("click", function (e) { e.stopPropagation(); toggle(); wake(); });
     v.addEventListener("click", toggle);
-    v.addEventListener("play",  function () { ready(); c.classList.add("playing"); });
-    v.addEventListener("pause", function () { c.classList.remove("playing"); });
+    v.addEventListener("play",  function () {
+      ready(); c.classList.add("playing", "started");
+      pp.setAttribute("aria-label", "Pause"); wake();
+    });
+    v.addEventListener("pause", function () {
+      c.classList.remove("playing"); c.classList.add("showing");
+      clearTimeout(idle);
+      pp.setAttribute("aria-label", "Play");
+    });
     v.addEventListener("ended", function () {
-      c.classList.remove("playing");
+      /* back to the photograph and the big control: the card is a picture
+         again, not a stopped player */
+      c.classList.remove("playing", "showing", "started");
+      clearTimeout(idle);
+      paintTime();
       /* back to the poster, so the page is the picture again rather than
          whatever black frame the clip happened to end on */
       try { v.currentTime = 0; } catch (err) {}
@@ -2727,6 +2860,7 @@ window.Scrapbook = (function () {
       if (tries >= 3) {
         failed = true;
         btn.style.display = "none";
+        bar.style.display = "none";
         c.classList.remove("hasposter");
       }
     });
@@ -3649,12 +3783,23 @@ window.Scrapbook = (function () {
      showing their original size when flipping rather than the cut off size
      that fits in the page."
 
-     So the strips are cut where the book cuts. Only the SPINE side bleeds:
-     a piece that crosses the gutter onto its neighbour is stuck to this
-     sheet and travels with it, which is what it does in a real book. The
-     fore edge and both long edges get nothing, because that is where the
-     book's own boards cut everything at rest. */
-  var BLEED = 15;          /* % of the page width, towards the spine only */
+     So the strips are cut where the book cuts -- on all four sides, which
+     means no bleed anywhere.
+
+     I kept fifteen percent of it on the spine side for a while, reasoning
+     that a piece crossing the gutter is stuck to this sheet and should
+     travel with it. It should, in a real book. In this one it cannot,
+     because nothing crosses the gutter at rest either: the pages are
+     siblings and the neighbouring one is opaque, so whatever the right
+     page spills past its left edge is simply covered by the left page.
+     Carrying that spill round on the turn does not restore something the
+     book lost -- it uncovers something the book never shows, and you get
+     pieces of the page behind appearing in the middle of the book the
+     moment a page starts to move. He photographed exactly that.
+
+     Nothing hangs over any edge of a page in this book. So the sheet is
+     the page, edge to edge, and nothing else. */
+  var BLEED = 0;           /* the page and nothing but the page */
 
   /* Vertically there is no bleed at all, and that is deliberate.
 

@@ -1,7 +1,8 @@
-// Does the turning sheet actually carry the parts of the page that hang
-// over its edges? Measured, not eyeballed: hold a turn open and compare
-// each strip's box against the leaf's, and check that a piece placed
-// outside the page (top:-3 on page six) is really inside a strip's window.
+// Is the turning sheet cut exactly where the resting page is cut?
+// Measured, not eyeballed: hold a turn open and compare each strip's box
+// and its window onto the page against the page lying still. Anything the
+// book trims at rest has to stay trimmed while the sheet goes over, and
+// nothing may reach past a page onto its neighbour.
 const { chromium } = require('playwright-core');
 let pass=0, fail=0;
 const ok=(n,c,d)=>{ (c?pass++:fail++); console.log((c?'PASS  ':'FAIL  ')+n+(d?'   '+d:'')); };
@@ -69,7 +70,11 @@ const ok=(n,c,d)=>{ (c?pass++:fail++); console.log((c?'PASS  ':'FAIL  ')+n+(d?' 
   ok('the page is not inset vertically', Math.abs(parseFloat(r.innerTop)) < 1.5,
      'inner top = ' + r.innerTop);
   ok('the sheet is cut fine', r.strips >= 13, r.strips + ' strips');
-  ok('the first strip reaches past the gutter', parseFloat(r.firstInnerLeft) > 0.5,
+  /* The sheet is the page and nothing else -- no bleed on any side, because
+     nothing in this book hangs over a page edge at rest either. See the
+     BLEED note in scrapbook.js. */
+  ok('the sheet starts at the gutter, not past it',
+     Math.abs(parseFloat(r.firstInnerLeft)) < 1.5,
      'first strip shows the page from ' + r.firstInnerLeft + ' in');
   /* The strips overlap each other by a few percent so the joints do not
      open into seams, so the outermost one reaches a little past the fore

@@ -1165,6 +1165,19 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-page{
   position:absolute; top:0; height:100%; display:none;
   background-size:cover; background-position:center;
+  /* A PAGE ENDS WHERE IT ENDS.
+
+     The two pages of a spread are siblings, so anything the right one
+     hangs over its left edge simply lands on top of the left one -- and
+     because the collage is placed by percentage, a few pieces do hang
+     over. You cannot see it while both pages are lying still, because the
+     pieces that overhang sit against the same paper on either side. Start
+     a turn and it is obvious: the page underneath changes, the overhanging
+     pieces stay, and you get a strip of another page's photographs and
+     flowers standing in the middle of the book.
+
+     A page is a sheet of paper. Nothing it carries is anywhere but on it. */
+  overflow:hidden;
   container-type:inline-size;
   /* a warm default, for any page the tint table has nothing to say about */
   --pg-h:26; --pg-s:22%;
@@ -1305,7 +1318,25 @@ img{-webkit-user-drag:none; user-select:none;}
    and a pink page appears out of nowhere" on the first and last turns. */
 .sb-page.in-leaf{
   left:0 !important; width:100% !important;
+}
+/* NOTHING ON A TURNING SHEET MOVES BY ITSELF.
+
+   The page is cut into a couple of dozen strips and each one holds a whole
+   copy of it, so one animated thing on the page becomes a couple of dozen
+   animated things the moment it lifts -- each in its own composited strip,
+   each invalidating it every frame. The play control's pulse alone put a
+   turn of that page up by half again.
+
+   It is wrong as well as expensive: a sheet caught mid-turn is a
+   photograph of the page, and a photograph does not blink. This used to
+   say `animation:none` on the page and stop there, which left every piece
+   on it still running. */
+.sb-page.in-leaf,
+.sb-page.in-leaf *,
+.sb-page.in-leaf *::before,
+.sb-page.in-leaf *::after{
   animation:none !important;
+  transition:none !important;
 }
 /* The depth stays on. Killing the shadows here was meant to save paint,
    and what it actually did was flatten the whole collage the instant a
@@ -2078,51 +2109,179 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-w-ourvideo.hasposter .sb-vid-empty,
 .sb-w-ourvideo.ready .sb-vid-empty{display:none;}
 
-/* the play control: an engraved disc, warm, the book's own palette.
+/* THE PLAY CONTROL, AND THE PLAYER BEHIND IT.
+
    Down in the corner rather than in the middle of the frame -- centred, it
    sat squarely over his face, which is the one thing on this card you are
-   meant to be looking at. The veil already darkens that corner, so it
-   reads without needing a plate of its own. */
+   meant to be looking at.
+
+   It is a brass shutter ring: a milled outer collar, a cream disc pressed
+   into it, the triangle engraved in plum, and a slow ring of light going
+   out from it to say it can be touched. Nothing here is borrowed from a
+   video site; it is the same brass and cream and plum as the rest of the
+   book. */
 .sb-w-ourvideo .sb-vid-play{
-  left:6%; top:auto; bottom:7%; right:auto; transform:none;
-  width:auto; height:auto; padding:0; border-radius:0; z-index:5;
+  left:6%; top:auto; bottom:9%; right:auto; transform:none;
+  width:auto; height:auto; padding:0; border-radius:0; z-index:6;
   background:none; box-shadow:none;
-  flex-direction:row; align-items:center; gap:8px;
+  flex-direction:row; align-items:center; gap:9px;
+  transition:opacity .3s ease;
 }
-.sb-ov-disc{
-  display:flex; align-items:center; justify-content:center;
-  /* scales with the page it is on, and never squeezed by the flex row */
-  flex:0 0 auto;
-  width:clamp(32px, 11cqw, 48px); height:clamp(32px, 11cqw, 48px);
+.sb-ov-ring{
+  position:relative; flex:0 0 auto; display:block;
+  width:clamp(38px, 13cqw, 58px); height:clamp(38px, 13cqw, 58px);
   border-radius:50%;
-  color:#5a3411;
-  background:linear-gradient(168deg,#fdf3dc,#eed9ab);
+  /* the milled collar */
+  background:
+    conic-gradient(from 20deg,
+      #f6e3b4 0deg, #c9a057 24deg, #f8ecc9 52deg, #b98f47 84deg,
+      #f4e1b0 116deg, #c39a52 152deg, #fbf0d2 190deg, #b88e46 226deg,
+      #f2dfae 262deg, #caa159 300deg, #f6e3b4 360deg);
   box-shadow:
-    0 1px 0 rgba(255,255,255,.85) inset,
-    0 -2px 0 rgba(150,104,44,.32) inset,
-    0 0 0 1.5px rgba(214,176,110,.85),
-    0 5px 0 rgba(120,80,32,.34),
-    0 10px 20px rgba(40,24,8,.45);
+    0 6px 16px rgba(48,26,10,.48),
+    0 1px 0 rgba(255,248,228,.7) inset;
   transition:transform .18s var(--ease-out), box-shadow .18s var(--ease-out);
 }
-.sb-ov-word{
-  font-family:var(--font-script); font-size:clamp(12px, 3.6cqw, 17px);
-  line-height:1; color:#fdf6e8; white-space:nowrap;
-  text-shadow:0 1px 5px rgba(20,10,4,.85); opacity:.94; padding-bottom:2px;
-}
-.sb-w-ourvideo .sb-vid-play:active .sb-ov-disc{
-  transform:translateY(3px);
+.sb-ov-disc{
+  position:absolute; inset:14%;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%; color:#5c2438;
+  background:radial-gradient(circle at 36% 28%, #fffaf0 0%, #f7e9cf 55%, #ecd7ad 100%);
   box-shadow:
-    0 1px 0 rgba(255,255,255,.7) inset,
-    0 0 0 1.5px rgba(214,176,110,.85),
-    0 2px 0 rgba(120,80,32,.34),
-    0 5px 12px rgba(40,24,8,.4);
+    0 1px 0 rgba(255,255,255,.95) inset,
+    0 -2px 4px rgba(150,104,44,.30) inset,
+    0 0 0 1px rgba(160,120,60,.45);
+}
+/* a slow ring of light going out, so it reads as something to touch */
+.sb-ov-pulse{
+  position:absolute; inset:-6%; border-radius:50%; pointer-events:none;
+  border:1.5px solid rgba(253,240,208,.85);
+  animation:sbOvPulse 2.8s var(--ease-out) infinite;
+}
+@keyframes sbOvPulse{
+  0%   {opacity:.85; transform:scale(1);}
+  70%  {opacity:0;   transform:scale(1.42);}
+  100% {opacity:0;   transform:scale(1.42);}
+}
+@media (prefers-reduced-motion:reduce){ .sb-ov-pulse{animation:none; opacity:.5;} }
+.sb-ov-word{
+  font-family:var(--font-script); font-size:clamp(13px, 4cqw, 19px);
+  line-height:1; color:#fdf6e8; white-space:nowrap;
+  text-shadow:0 1px 6px rgba(20,10,4,.9); opacity:.96; padding-bottom:3px;
+}
+.sb-w-ourvideo .sb-vid-play:active .sb-ov-ring{
+  transform:translateY(2px) scale(.96);
+  box-shadow:0 2px 7px rgba(48,26,10,.5), 0 1px 0 rgba(255,248,228,.6) inset;
 }
 .sb-w-ourvideo .sb-vid-play:active{transform:none;}
 .sb-w-ourvideo .sb-ico-play{margin-left:3px;}
-/* while it plays, the control gets out of the way but stays reachable */
-.sb-w-ourvideo.playing .sb-vid-play{opacity:0;}
-.sb-w-ourvideo.playing .sb-vid-frame:hover .sb-vid-play{opacity:.85;}
+/* The big control is the invitation on an untouched card, so it goes as
+   soon as the clip has been started -- not merely while it is running.
+   Paused half way through, the transport is the control; leaving both up
+   put the brass ring straight through the play stud. It comes back with
+   the photograph when the clip ends. */
+.sb-w-ourvideo.started .sb-vid-play{opacity:0; pointer-events:none;}
+
+/* ---- the transport ------------------------------------------------
+   A strip along the foot of the frame: a brass stud for play and pause, a
+   length of film for the scrubber, the running time in the caption serif,
+   and the sound. It is only there while the clip is. */
+.sb-ov-bar{
+  position:absolute; left:0; right:0; bottom:0; z-index:7;
+  display:flex; align-items:center; gap:clamp(6px, 2cqw, 11px);
+  padding:clamp(6px, 2cqw, 11px) clamp(8px, 2.6cqw, 14px);
+  background:linear-gradient(180deg,
+    rgba(38,16,26,0) 0%, rgba(38,16,26,.42) 38%, rgba(30,12,20,.80) 100%);
+  opacity:0; pointer-events:none;
+  transform:translateY(18%);
+  transition:opacity .28s ease, transform .28s var(--ease-out);
+}
+/* Only once it has been started: before that the card is a photograph
+   with a play control on it, and a scrubber reading 0:00 of 0:00 would be
+   furniture. Paused mid-clip the strip stays put, so there is a way back
+   in without hunting for it. */
+.sb-w-ourvideo.started.showing .sb-ov-bar{opacity:1; pointer-events:auto; transform:none;}
+
+.sb-ov-pp{
+  flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+  width:clamp(24px, 7.4cqw, 34px); height:clamp(24px, 7.4cqw, 34px);
+  border:none; border-radius:50%; cursor:pointer; padding:0;
+  color:#5c2438;
+  background:radial-gradient(circle at 36% 28%, #fffaf0 0%, #f4e5c6 60%, #e6cea1 100%);
+  box-shadow:0 0 0 1px rgba(160,120,60,.5), 0 3px 8px rgba(24,10,16,.5);
+  transition:transform .16s var(--ease-out);
+}
+.sb-ov-pp:active{transform:scale(.92);}
+.sb-ov-pp .sb-ico-play{
+  border-left-width:8px; border-top-width:5px; border-bottom-width:5px; margin-left:2px;
+}
+.sb-w-ourvideo.playing .sb-ov-pp .sb-ico-play{
+  width:8px; height:10px; margin-left:0; border-left-width:3px; border-right-width:3px;
+}
+
+/* the scrubber: a length of film, gold where it has been */
+.sb-ov-track{
+  position:relative; flex:1 1 auto; height:clamp(14px, 4cqw, 20px);
+  display:flex; align-items:center; cursor:pointer;
+  touch-action:none;   /* this drag belongs to the scrubber, not the page */
+}
+.sb-ov-track::before{
+  content:""; position:absolute; left:0; right:0; height:clamp(4px, 1.2cqw, 6px);
+  border-radius:3px;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(255,246,226,.10) 0 3px, rgba(255,246,226,.22) 3px 4px),
+    rgba(255,246,226,.20);
+  box-shadow:0 1px 0 rgba(0,0,0,.35) inset;
+}
+.sb-ov-buf,.sb-ov-fill{
+  position:absolute; left:0; height:clamp(4px, 1.2cqw, 6px); border-radius:3px;
+  pointer-events:none;
+}
+.sb-ov-buf{width:0; background:rgba(255,246,226,.30);}
+.sb-ov-fill{
+  width:0;
+  background:linear-gradient(90deg,#d9ab5c,#f6e3b4);
+  box-shadow:0 0 8px rgba(246,227,180,.55);
+}
+.sb-ov-knob{
+  position:absolute; left:0; top:50%; width:clamp(11px, 3.2cqw, 15px);
+  aspect-ratio:1/1; border-radius:50%; pointer-events:none;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 34% 30%, #fffaf0, #eed9ab 70%, #c9a057 100%);
+  box-shadow:0 0 0 1px rgba(120,84,36,.6), 0 2px 6px rgba(20,8,14,.6);
+}
+.sb-ov-track:focus-visible{outline:none;}
+.sb-ov-track:focus-visible .sb-ov-knob{box-shadow:0 0 0 2px #fdf0d0, 0 2px 6px rgba(20,8,14,.6);}
+
+.sb-ov-time{
+  flex:0 0 auto; display:flex; align-items:baseline; gap:.28em;
+  font-family:var(--font-serif); font-size:clamp(9px, 2.7cqw, 13px);
+  color:#f6e9d4; letter-spacing:.02em; font-variant-numeric:tabular-nums;
+  text-shadow:0 1px 3px rgba(16,6,10,.8);
+}
+.sb-ov-time i{font-style:normal; opacity:.5;}
+.sb-ov-time s{text-decoration:none; opacity:.68;}
+
+.sb-ov-mute{
+  flex:0 0 auto; width:clamp(20px, 6cqw, 28px); height:clamp(20px, 6cqw, 28px);
+  border:none; background:none; padding:0; cursor:pointer; color:#f6e9d4;
+  display:flex; align-items:center; justify-content:center;
+}
+/* a little speaker, drawn rather than fetched. It was built out of CSS
+   borders once and came out as a white block and a sliver: border widths
+   cannot be percentages, so nothing that had to scale with the card could
+   be drawn that way. Four paths, and it scales to anything. */
+.sb-ico-spk{
+  display:block; width:100%; height:100%; overflow:visible;
+  fill:none; stroke:currentColor; stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+.sb-ico-spk .cone{fill:currentColor; stroke:currentColor; stroke-width:1.2;}
+.sb-ico-spk .wave{opacity:.9; transition:opacity .18s ease;}
+.sb-ico-spk .slash{opacity:0; transition:opacity .18s ease;}
+.sb-w-ourvideo.muted .sb-ico-spk .wave{opacity:0;}
+.sb-w-ourvideo.muted .sb-ico-spk .slash{opacity:1;}
 
 .sb-vid-cap{
   margin:7px 2px 0; text-align:center;
