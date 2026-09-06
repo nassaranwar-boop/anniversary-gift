@@ -470,6 +470,38 @@ height.
 If he ever says "zoom" again, run `tools/nozoom.js` before touching
 anything in 7c.
 
+## 7e. A phone on its side
+
+Two faults, and the second one is a lesson about 7c.
+
+**The stages were sized by an OR.** `@media (max-width: 900px),
+(orientation: portrait)` — the comma is an OR, so a phone turned sideways
+is still under 900px wide and got the whole upright-phone layout,
+including a stage cut to **52%** of a height that is already short. The
+apocalypse came out 361x203 in an 844x390 window: 22% of the screen, the
+rest empty. Turning the phone gave the game more room and it used less.
+That block was doing two jobs at once — device rules (a touch screen
+wants the stick over the picture) and shape rules (upright, the picture
+takes the top half and leaves thumb room). They are separated now:
+device rules keep the OR, shape rules are `(orientation: portrait)` and
+`(orientation: landscape) and (max-height: 560px)`. Sideways the stage
+takes 82%.
+
+**And three buttons sat below the fold — because of 7c.** The cards are
+510 to 553px tall and were centred in a 390px screen, so they hung off
+both ends. That was always true. What changed is that pinning `html` and
+fixing `body` to kill the iPad's draggable void removed the last way to
+reach anything past the fold. `#btn-start` opens the maze, so that
+chapter was *shut* on a landscape phone. The fix is not to undo 7c — it
+is that content must fit: trimmed on short screens, and the card itself
+carries a scrollbar for the rest, aligned to the top so the scroll only
+goes one way.
+
+**The general lesson:** an unscrollable page turns every pre-existing
+overflow into unreachable content. Any screen that can overflow needs its
+own scroller. `tools/landscape.js` asserts it, and is verified both ways —
+restore the old CSS and it reports 5 failures.
+
 ## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python
