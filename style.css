@@ -1301,7 +1301,9 @@ img{-webkit-user-drag:none; user-select:none;}
   background-size:cover; box-shadow:0 8px 18px rgba(20,14,6,.3);
 }
 .sb-note-text{
-  margin:0; font-family:var(--font-script); font-size:4.6cqw; line-height:1.45; color:#2c3a44;
+  /* 4.6 was set when the note had the top third of the page to itself.
+     It is a note laid on a page now, not a column of it. */
+  margin:0; font-family:var(--font-script); font-size:4.15cqw; line-height:1.42; color:#2c3a44;
 }
 .sb-big{
   font-family:'Playfair Display',serif; font-style:italic; font-weight:700;
@@ -1410,7 +1412,8 @@ img{-webkit-user-drag:none; user-select:none;}
   border:2px dashed rgba(96,40,54,.5); border-radius:3px;
   box-shadow:0 8px 18px rgba(20,14,6,.34);
 }
-.sb-id-photo{width:34%; aspect-ratio:1/1.15; overflow:hidden; border:2px solid #f4fbfc; position:relative;}
+/* 34% put a face on this card at about a centimetre across */
+.sb-id-photo{width:42%; aspect-ratio:1/1.15; overflow:hidden; border:2px solid #f4fbfc; position:relative;}
 .sb-id-body{flex:1; min-width:0;}
 .sb-id-title{margin:0; font-family:var(--font-display); font-weight:700; font-size:3.4cqw; letter-spacing:.6px; color:#4d1c2a;}
 .sb-id-sub{margin:0 0 .5em; font-family:var(--font-serif); font-style:italic; font-size:1.9cqw; color:#7d4655;}
@@ -1447,7 +1450,22 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-lp-lead{margin:7% 0 3%; font-family:'Playfair Display',serif; font-size:3.2cqw; color:#33414a;}
 .sb-lp-body{
   margin:0; font-family:'Playfair Display',serif; font-size:2.9cqw; line-height:1.55; color:#3d4a52;
-  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  /* Clamped to three lines, which silently ended the letter at "the long
+     way home, y…". Six is the room the card actually has -- still a guard
+     against overflow, no longer a censor. */
+  display:-webkit-box; -webkit-line-clamp:6; -webkit-box-orient:vertical; overflow:hidden;
+}
+/* A letter nobody signed is a notice. The hand is the script face the
+   rest of the book writes in, and it sits to the right the way you sign
+   the bottom of a page rather than the middle of one. */
+.sb-lp-sign{
+  margin:4% 0 0; text-align:right;
+  font-family:var(--font-serif); font-style:italic; font-size:2.5cqw; color:#8a6b58;
+}
+.sb-lp-name{
+  display:block; margin-top:.15em;
+  font-family:var(--font-script); font-size:5.4cqw; font-style:normal;
+  color:#6d2438; line-height:1;
 }
 .sb-lp-btn{
   display:block; width:88%; margin:6% auto 0; cursor:pointer; padding:7px 10px;

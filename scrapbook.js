@@ -111,12 +111,25 @@ window.Scrapbook = (function () {
     },
 
     /* ---- the note behind "tap here to view more" ---- */
+    /* The letter used to describe the website: "I built this little world
+       for you — photos of us, a song, and flowers. Open every piece slowly.
+       I am in the intro, in the pages, in the music." It was about the
+       thing rather than about her, and it read like a label on a box.
+
+       A letter is the one place in here that should sound like a person
+       who was there. So it names what is actually in the book -- the red
+       room on page one, the ride home on the last page, her cold hands --
+       and says the plain thing rather than the clever one. */
     letter: {
       from: "You",
       to:   "My Love",
       lead: "My love,",
-      body: "I built this little world for you — photos of us, a song, and flowers. Open every piece slowly. I am in the intro, in the pages, in the music.",
-      signOff: "Always,",
+      body: "I am not good at saying this out loud, so I built it instead. " +
+            "Every photograph in here is one I could not stand to lose — " +
+            "the red room, the long way home, your cold hands in mine on a " +
+            "warm night. I would not trade a single one of those evenings. " +
+            "Take your time with it. I am on every page.",
+      signOff: "Yours, always —",
       signature: "Anwar",
     },
 
@@ -1265,9 +1278,11 @@ window.Scrapbook = (function () {
       round(W * 0.03, H * 0.05, W * 0.94, H * 0.9, W * 0.09); ctx.fill();
       ctx.strokeStyle = "rgba(110,62,72,0.4)"; ctx.lineWidth = 2; ctx.stroke();
 
-      /* the photo window — left empty, a slot sits over it */
-      ctx.fillStyle = "#2a3436";
-      round(W * 0.10, H * 0.18, W * 0.44, H * 0.55, W * 0.03); ctx.fill();
+      /* the photo window — left empty, a slot sits over it. It showed the
+         picture at 44% of the camera's width, which is what made the one
+         photograph on that page too small to look at. */
+      ctx.fillStyle = "#32262a";
+      round(W * 0.08, H * 0.15, W * 0.54, H * 0.64, W * 0.03); ctx.fill();
 
       /* lens */
       ctx.fillStyle = "#a9767f";
@@ -1571,18 +1586,23 @@ window.Scrapbook = (function () {
          The note is the first thing on the page and the reason the rest of
          it is here; it gets the top third to itself now, and the two rows
          of photographs start below where it ends. */
-      { k: "note", left: 4, top: 3, w: 54, rot: -1.5, text: W.p2note },
+      /* The note had the whole top third and the photographs were pushed to
+         the foot of the page to clear it, which read as a caption with a
+         pile underneath rather than a page. It is smaller and set on a
+         proper angle now -- a note laid on the page, not a column of it --
+         and the two rows come up to meet it. */
+      { k: "note", left: 5, top: 4, w: 52, rot: -4, text: W.p2note },
       { k: "letters", text: "MEMORIES", left: 84, top: 4 },
       /* this was a second "8" record, directly across the gutter from the
          one on the facing page and the same size -- the eye went straight
          to the pair of them. A plain wine pressing instead. */
-      { k: "sticker", art: "vinylLtd", left: 62, top: 24, w: 24, rot: 0 },
+      { k: "sticker", art: "vinylLtd", left: 60, top: 16, w: 24, rot: 0 },
       { k: "sticker", art: "starD",   left: 85, top: 40, w: 15, rot: 8 },
-      { k: "photo", n: 4, style: "deckle",   left:  4, top: 45, w: 33, rot: -4, caption: W.p2small },
-      { k: "photo", n: 5, style: "polaroid", left: 48, top: 43, w: 34, rot:  3 },
-      { k: "photo", n: 6, style: "matted",   left:  5, top: 71, w: 31, rot:  2 },
-      { k: "photo", n: 7, style: "snapshot", left: 51, top: 73, w: 35, rot: -4 },
-      { k: "sticker", art: "flowers", left: 38, top: 62, w: 22, rot: 8 },
+      { k: "photo", n: 4, style: "deckle",   left:  3, top: 41, w: 35, rot: -4, caption: W.p2small },
+      { k: "photo", n: 5, style: "polaroid", left: 47, top: 38, w: 36, rot:  3 },
+      { k: "photo", n: 6, style: "matted",   left:  5, top: 68, w: 33, rot:  2 },
+      { k: "photo", n: 7, style: "snapshot", left: 50, top: 70, w: 37, rot: -4 },
+      { k: "sticker", art: "flowers", left: 39, top: 56, w: 22, rot: 8 },
       { k: "sticker", art: "rose",    left: 78, top: 70, w: 24, rot: -6 },
       { k: "sticker", art: "lipInk",  left: 38, top: 90, w: 22, rot: -12 },
     ]},
@@ -1592,19 +1612,27 @@ window.Scrapbook = (function () {
       { k: "typecol", text: "The", left: -1, top: 2, w: 20 },
       { k: "bigtype", text: "C", left: 15, top: 1, size: 34, colour: "rgba(226,240,244,.26)" },
       { k: "patch", paper: "grid", left: 10, top: 0, w: 48, h: 27, rot: -3 },
-      { k: "instantcam", n: 8, left: 20, top: 6, w: 68, rot: 1 },
-      { k: "img", src: "assets/key.png", left: 26, top: 55, w: 9, rot: 12 },
-      { k: "script", text: W.p3script, left: 48, top: 50, w: 44, rot: -7, size: 3.4 },
+      { k: "instantcam", n: 8, left: 34, top: 3, w: 60, rot: 1 },
+      /* THIS PAGE HAD NO PHOTOGRAPH ON IT.
+
+         Both of its pictures were trapped inside props -- a window in the
+         camera and a stamp on the club card -- so the one page in the book
+         with nobody's face on it at any size was this one, and it read as
+         empty however much furniture stood on it. The windows are bigger
+         (see instantCam below and .sb-id-photo), and there is a print. */
+      { k: "photo", n: 32, style: "corners", left: 1, top: 9, w: 41, rot: -6 },
+      { k: "img", src: "assets/key.png", left: 36, top: 55, w: 9, rot: 12 },
+      { k: "script", text: W.p3script, left: 47, top: 49, w: 42, rot: -7, size: 3.4 },
       /* lifted clear of the caption it was sitting on */
-      { k: "sticker", art: "flowers", left: 70, top: 24, w: 28, rot: 7 },
+      { k: "sticker", art: "flowers", left: 2, top: 40, w: 27, rot: 7 },
       /* The foot of this page was bare paper from the card's edge to the
          corner. A record filled it, but page four has one in almost the
          same place -- across an open spread that read as a matched pair
          rather than a scrapbook. A kiss and the flowers do the same job
          without the symmetry. */
-      { k: "sticker", art: "lipInk", left: 73, top: 66, w: 24, rot: -10 },
+      { k: "sticker", art: "lipInk", left: 76, top: 60, w: 23, rot: -10 },
       { k: "sticker", art: "starS",   left: 80, top: 90, w: 15, rot: -14 },
-      { k: "idcard", n: 9, left: 5, top: 64, w: 72, rot: -2 },
+      { k: "idcard", n: 9, left: 5, top: 62, w: 74, rot: -2 },
     ]},
 
     /* ---- 4 · the letter ------------------------------------------ */
@@ -1612,17 +1640,20 @@ window.Scrapbook = (function () {
       { k: "patch", paper: "news", left: -6, top: 2, w: 34, h: 96, rot: 1.5 },
       { k: "patch", paper: "rose", left: 58, top: -3, w: 50, h: 24, rot: -4 },
       { k: "sticker", art: "starD", left: 2, top: 14, w: 20, rot: -10 },
-      { k: "letterpage", left: 12, top: 12, w: 82, rot: 0.6 },
+      { k: "letterpage", left: 13, top: 7, w: 76, rot: -2.6 },
       /* was w:27.9, which left a hand's width of bare paper under the
          letter and made the whole page feel like it was waiting for
          something. It is the only photograph on this page -- it should
          carry it. */
-      { k: "photo", n: 10, style: "corners", left: 4, top: 58, w: 48, rot: -5 },
-      { k: "sticker", art: "vinylRose", left: 58, top: 74, w: 34, rot: 0 },
-      { k: "sticker", art: "flowers",   left: 80, top: 44, w: 30, rot: 9 },
-      { k: "sticker", art: "lipInk",    left: 86, top: 86, w: 22, rot: -14 },
+      /* It sat below the letter with a band of bare paper between, so the
+         page read as two things stacked rather than one arrangement.
+         Bigger, and lifted so its top corner laps the letter's -- which is
+         how a photograph actually ends up on top of a letter. */
+      { k: "photo", n: 10, style: "corners", left: 2, top: 66, w: 58, rot: -5 },
+      { k: "sticker", art: "vinylRose", left: 66, top: 80, w: 30, rot: 0 },
+      { k: "sticker", art: "flowers",   left: 82, top: 40, w: 26, rot: 9 },
       { k: "sticker", art: "starS",     left: 88, top: 26, w: 15, rot: 16 },
-      { k: "script", text: W.p4script, left: 12, top: 90, w: 40, rot: -4, size: 3.0, dark: true },
+      { k: "script", text: W.p4script, left: 62, top: 72, w: 35, rot: -4, size: 2.9, dark: true },
     ]},
 
     /* ---- 5 · the record ------------------------------------------ */
@@ -2093,8 +2124,8 @@ window.Scrapbook = (function () {
     var img = el("", "img");
     img.src = STICK.instantCam; img.alt = "";
     e.appendChild(img);
-    var slot = makePhoto({ n: p.n, style: "window", left: 10, top: 18, w: 44 });
-    slot.style.height = "55%";
+    var slot = makePhoto({ n: p.n, style: "window", left: 8, top: 15, w: 54 });
+    slot.style.height = "64%";
     e.appendChild(slot);
     return e;
   }
@@ -2173,7 +2204,9 @@ window.Scrapbook = (function () {
       '<p class="sb-lp-from"><span>FROM</span> ' + L.from + '</p>' +
       '<p class="sb-lp-to"><span>FOR</span> ' + L.to + '</p>' +
       '<p class="sb-lp-lead">' + L.lead + '</p>' +
-      '<p class="sb-lp-body">' + L.body + '</p>';
+      '<p class="sb-lp-body">' + L.body + '</p>' +
+      '<p class="sb-lp-sign">' + L.signOff +
+        '<span class="sb-lp-name">' + L.signature + '</span></p>';
     var btn = el("sb-lp-btn", "button");
     btn.textContent = "Tap here to view more";
     btn.addEventListener("click", function (ev) { ev.stopPropagation(); openNote(); });
@@ -4418,7 +4451,19 @@ window.Scrapbook = (function () {
        the gate's wine, with gold-cream threads instead of pink ones. The
        cover text is on its own paper label, so going deeper costs no
        contrast and the label and the little stars gain some. */
-    job(function () { PAPER.cover = bookCloth(53, "#9c4750", "rgba(255,224,178,0.14)", "rgba(56,14,24,0.16)"); });
+    /* THE COVER WAS BRICK, AND THE PAGES ARE ROSE.
+
+       Measured rather than argued: every paper in the book renders between
+       hue 349 and 359 -- the pink side of red. The cover rendered at hue
+       1.7, the orange side, and that few degrees is the whole difference
+       between rose-wine and dusty brick. Two things put it there. The dye
+       #9c4750 is itself at hue 6, and the thread lit through it was a
+       gold-cream at hue 38, which dragged the whole cloth further round.
+
+       So: the dye moves to the rose side of red, and the thread is a warm
+       blush rather than a gold one. It is still a deep, rich cloth against
+       cream pages -- it is now the same red as the book it holds. */
+    job(function () { PAPER.cover = bookCloth(53, "#a3395a", "rgba(255,214,206,0.13)", "rgba(52,12,26,0.17)"); });
     job(function () {
       PAPER.endpaper = marbled(71);
       var ep = document.getElementById("sb-endpaper");
