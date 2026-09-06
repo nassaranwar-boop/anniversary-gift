@@ -2,7 +2,16 @@
 // works: no page errors, no horizontal scroll, the expected nodes present.
 const { chromium } = require('playwright-core');
 const out = [];
-const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x : ''));
+/* Printed as it goes as well as collected. This is the suite everyone runs
+   before a push, and it used to say nothing at all until it finished — so
+   on a slow machine, or interrupted, it told you nothing: not a pass, not a
+   failure, not which screen it had reached. mech.js had the same fault and
+   it cost hours of believing a working suite was wedged. */
+const ok = (n, c, x) => {
+  const line = (c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x : '');
+  out.push(line);
+  console.log(line);
+};
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     /* --disable-gpu takes WebGL with it, and two chapters are WebGL now;
@@ -17,6 +26,11 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     await page.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
     await page.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForTimeout(900);
+    /* The chapters are fetched on the idle callback now, not by a script
+       tag, so the global is not there the instant the document is. A tool
+       that drives a chapter directly has to wait for the file the same
+       way the hub card does. */
+    await page.waitForFunction(() => !!(window.Apocalypse), { timeout: 30000 });
 
     const hs = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(label + ': loads with no page errors', errors.length === 0, errors[0] || '');
@@ -52,7 +66,7 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
        run since the racing chapter became the fifth card -- a suite that is
        always red is a suite nobody reads. Listing them by name means adding
        a chapter fails here once, on purpose, instead of silently. */
-    const WANT = ['hub-card-maze','hub-card-quest','hub-card-ouissy','hub-card-apoc','hub-card-race'];
+    const WANT = ['hub-card-quest','hub-card-ouissy','hub-card-apoc','hub-card-race'];
     ok(label + ': the hub has every card',
        WANT.every(id => cards.includes(id)) && cards.length === WANT.length,
        cards.join(','));
@@ -65,18 +79,6 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     ok(label + ': and every card in it is wired to a chapter',
        unwired.length === 0, unwired.join(','));
     ok(label + ': no horizontal scroll on the hub', (await hs()) === 0, 'overflow ' + (await hs()));
-
-    await page.evaluate(() => { level = 1; showScreen('details'); });
-    await page.waitForTimeout(300);
-    await page.evaluate(() => { showScreen('maze'); initMaze(1); });
-    await page.waitForTimeout(900);
-    const maze = await page.evaluate(() => ({
-      tiles: document.querySelectorAll('#maze-grid .cell, #maze-grid > *').length,
-      player: !!document.getElementById('player-token'),
-      hud: (document.getElementById('hud-time') || {}).textContent,
-    }));
-    ok(label + ': the maze still builds', maze.tiles > 0 && maze.player, 'tiles=' + maze.tiles);
-    ok(label + ': no horizontal scroll in the maze', (await hs()) === 0);
 
     await page.evaluate(() => { showScreen('quest'); startQuest(); });
     await page.waitForTimeout(1100);
@@ -163,6 +165,5 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     ok(label + ': still no page errors after all of that', errors.length === 0, errors.slice(0,2).join(' | '));
     await page.close();
   }
-  console.log(out.join('\n'));
   await browser.close();
 })();

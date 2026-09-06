@@ -1,4 +1,4 @@
-# Anniversary gift site
+# Gift site
 
 A single-page interactive gift. Open `index.html` in a browser, or push this
 folder to a GitHub repo and enable GitHub Pages (Settings → Pages → deploy from

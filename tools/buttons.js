@@ -30,8 +30,7 @@ const SIZES = [
 /* every screen in index.html that a person can be standing on, minus the
    ones that are a canvas with its own controls (those have their own
    suites) and minus the video intro, which is a film */
-const SCREENS = ['gate', 'scrapbook', 'hub', 'keepsake', 'quest', 'hello',
-                 'details', 'level2intro', 'divider', 'end'];
+const SCREENS = ['gate', 'scrapbook', 'hub', 'keepsake', 'quest', 'end'];
 
 /* Collect the controls on one screen and say what is wrong with each. Runs
    in the page. */

@@ -8,7 +8,7 @@ const { chromium } = require('playwright-core');
       if (u.startsWith('http://127.0.0.1')||u.includes('fonts.g')) return r.continue(); return r.abort(); });
     await page.goto('http://127.0.0.1:8899/index.html', { waitUntil:'networkidle', timeout:60000 });
     await page.waitForTimeout(700);
-    for (const scr of ['gate','details','level2intro','hub','keepsake','ouissy']) {
+    for (const scr of ['gate','hub','keepsake','ouissy']) {
       await page.evaluate((s) => { try{localStorage.clear();}catch(e){} showScreen(s);
         if (s==='hub' && window.startHub) startHub(); }, scr);
       await page.waitForTimeout(450);

@@ -35,7 +35,11 @@ const SIZES = [
 ];
 
 /* screens whose controls must all be reachable, and how to open them */
-const SCREENS = ['hello', 'details', 'level2intro', 'hub', 'keepsake', 'gate', 'end'];
+/* hello, details and level2intro used to be here and were the whole
+   reason for this list — their cards were 510 to 553px tall in a 390px
+   screen. They were taken out of the site with the maze, so what is
+   left is what there is to check. */
+const SCREENS = ['gate', 'hub', 'keepsake', 'end'];
 
 (async () => {
   const browser = await chromium.launch({

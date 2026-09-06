@@ -1,26 +1,5 @@
 
 /* =========================================================
-   CUSTOMIZE ME
-   ========================================================= */
-const CONFIG = {
-  babyName: "My Baby!",
-  reward: "A sweet kiss",
-  mazeSize: 8,
-  heartCount: 6,
-  sender: { name: "Anwar" },
-  messages: [
-    "Muaaahhh! I love youuuu soooooooo muchhhhhhh!!!!!",
-    "Thank you for finding your way to me.",
-    "You're my favorite person in this whole world.",
-  ],
-  messagesFinal: [
-    "You made it through everything... for me.",
-    "Every monster, every close call — you still found me.",
-    "That's exactly how I feel loving you: worth every obstacle.",
-  ],
-};
-
-/* =========================================================
    ANCIENT BOOK — CUSTOMIZE ME
    ========================================================= */
 const GATE_CODE = "2207";
@@ -39,42 +18,25 @@ const MEMORIES = [
 ];
 /* ========================================================= */
 
+/* The two cats on the roof are the only sprites the site still loads as
+   files; everything else it draws. */
 const ASSETS = {
-  catGif:"assets/cat-hello.gif", bearGif:"assets/bear-hug.gif", girl:"assets/girl.png", guy:"assets/guy.png",
   blackBody:"assets/black_body.png", blackTail:"assets/black_tail.png",
   whiteBody:"assets/white_body.png", whiteTail:"assets/white_tail.png",
-  monster:"assets/monster.png", shooter:"assets/shooter.png", tree:"assets/tree.png", med:"assets/med.png",
-  heartFull:"assets/heart_full.png", heartHalf:"assets/heart_half.png", heartEmpty:"assets/heart_empty.png",
-  key:"assets/key.png",
 };
-const PLAYER_ASPECT = 395/220;
-
-document.getElementById("baby-name").textContent = CONFIG.babyName;
-document.getElementById("reward-text").textContent = CONFIG.reward;
-/* Every one of these now ships its src in the markup, so the sprite is on
-   screen from the first paint and stays there even if this script never
-   runs. This pass only keeps ASSETS as the one place a path is written: it
-   re-points each <img> at the same file, and a missing element is skipped
-   rather than throwing and taking the rest of the wiring down with it —
-   which is how the key, the two maze tokens and the note avatar all ended
-   up sourceless at once. */
-[["target-token", ASSETS.guy],
- ["player-token", ASSETS.girl],
- ["dialogue-avatar-img", ASSETS.guy],
- ["cat-black-body", ASSETS.blackBody],
+/* They ship their src in the markup too, so the cats are on the roof from
+   the first paint even if this script never runs. This only keeps ASSETS
+   as the one place a path is written: it re-points each <img> at the same
+   file, and a missing element is skipped rather than throwing and taking
+   the rest of the wiring down with it. */
+[["cat-black-body", ASSETS.blackBody],
  ["cat-black-tail", ASSETS.blackTail],
  ["cat-white-body", ASSETS.whiteBody],
- ["cat-white-tail", ASSETS.whiteTail],
- ["key-badge-img", ASSETS.key]].forEach(function (pair) {
+ ["cat-white-tail", ASSETS.whiteTail]].forEach(function (pair) {
   const el = document.getElementById(pair[0]);
   if (el && pair[1]) el.src = pair[1];
 });
 
-/* ---------- best time (localStorage) ---------- */
-try {
-  const best = localStorage.getItem("fal_best_time");
-  if (best) document.getElementById("best-time-line").textContent = "Best time — " + best;
-} catch (e) {}
 
 /* ---------- screen manager ---------- */
 function showScreen(name) {
@@ -83,9 +45,6 @@ function showScreen(name) {
   el.classList.add("active");
   void el.offsetWidth;
   el.classList.add("anim-in");
-  /* the only place that knows which screen is up, so the only place that
-     should be deciding which ambient loops are allowed to run */
-  if (typeof syncParticles === "function") syncParticles();
 }
 /* premium dissolve transition used for all screen navigation */
 function pageTurn(name, callback) {
@@ -94,7 +53,6 @@ function pageTurn(name, callback) {
   current.classList.add("page-turning");
   setTimeout(() => { showScreen(name); if (callback) callback(); }, 420);
 }
-function openCover(name) { pageTurn(name); }
 
 /* ---------------------------------------------------------
    THE CHAPTERS ARE FETCHED WHEN THERE IS NOTHING ELSE TO DO
@@ -226,6 +184,17 @@ function hiddenStrip() {
    the root element, so pinning html does not feed our own answer back to
    us. */
 function claimedHeight() {
+  const say = claims();
+  if (!say.length) return 0;
+  return Math.min.apply(null, say);
+}
+/* and the biggest, which is what the page tries to grow back to */
+function claimedMost() {
+  const say = claims();
+  if (!say.length) return 0;
+  return Math.max.apply(null, say);
+}
+function claims() {
   const say = [];
   if (VV && VV.height > 0) {
     const scale = (VV.scale && VV.scale > 0) ? VV.scale : 1;
@@ -234,8 +203,7 @@ function claimedHeight() {
   const ch = document.documentElement.clientHeight;
   if (ch > 0) say.push(ch);
   if (window.innerHeight > 0) say.push(Math.round(window.innerHeight));
-  if (!say.length) return 0;
-  return Math.min.apply(null, say);
+  return say;
 }
 
 function claimedTop() {
@@ -244,7 +212,18 @@ function claimedTop() {
   /* Once she has actually pinched in, following the visual viewport would
      glue the site to her fingers and she could never pan to look at
      anything. Only honour the offset at rest. */
-  return scale > 1.02 ? 0 : Math.round(VV.offsetTop || 0);
+  if (scale > 1.02) return 0;
+  const top = Math.round(VV.offsetTop || 0);
+  /* AND ONLY IF IT DESCRIBES SOMETHING THAT COULD BE TRUE. An offset says
+     the visible area starts that far down the box we were handed — so the
+     offset plus the visible height has to fit inside that box. A viewport
+     claiming to be the full height of the window AND to start 38 pixels
+     down it is describing nothing; honouring it pushes the page down by
+     38 and hangs the last 38 off the bottom. It happens for a frame or
+     two after a pinch is let go of, and it is the one shape of this bug
+     that puts the empty strip at the top instead. */
+  if (top > 0 && Math.round(VV.height * scale) + top > claimedMost() + 1) return 0;
+  return top;
 }
 
 let appH = 0;
@@ -253,8 +232,14 @@ let appH = 0;
    rotation, because the furniture can be a different size sideways. */
 let knownStrip = 0;
 
+/* Which of the two claims we are laying out against. The smallest is
+   where every session starts, because a first frame that is too tall is
+   the fault this whole section exists for. tryTaller below is what earns
+   the right to use the largest. */
+let useMost = false;
+
 function writeVars() {
-  const claimed = claimedHeight();
+  const claimed = useMost ? claimedMost() : claimedHeight();
   if (claimed <= 0) return false;
   const h = Math.max(240, claimed - knownStrip);
   const top = claimedTop();
@@ -298,6 +283,9 @@ let verifying = false;
 
 function learnStrip(candidate) {
   if (candidate <= 2 || candidate >= 400 || candidate <= knownStrip) return;
+  /* already tried, already disproved: trying it again every probe is a
+     page that shrinks and springs back for as long as she has it open */
+  if (candidate === refusedStrip) return;
   const previous = knownStrip;
   knownStrip = candidate;
   writeVars();
@@ -306,7 +294,71 @@ function learnStrip(candidate) {
   requestAnimationFrame(function () {
     verifying = false;
     if (hiddenStrip() > 2) {      // shortening did not absorb it
-      knownStrip = previous;      // so it was never the browser's furniture
+      refusedStrip = candidate;   // so it was never the browser's furniture
+      knownStrip = previous;
+      writeVars();
+    }
+  });
+}
+
+/* GIVING THE HEIGHT BACK.
+
+   Everything above this point can only make the page shorter. It takes
+   the smallest height anybody claims, and then it takes off whatever the
+   probe finds hidden — and neither subtraction is ever undone. That is
+   safe against the fault it was written for and it is the whole of a
+   second one: any browser whose toolbar collapses after the page loads,
+   or that under-reports through one API and not the others, leaves the
+   site permanently short of the glass. What you see is a slice of bare
+   background along the bottom that never goes away.
+
+   The measurement that can settle it is the one already here. A box that
+   is too tall has somewhere to scroll to; a box that is exactly the
+   visible area has nowhere. So: when there is nothing hidden and there is
+   height on offer we are not using, take it, look again next frame, and
+   put it back if a hidden strip appears — the same trade learnStrip makes
+   in the other direction, on the same evidence.
+
+   A refusal is remembered, so a browser that really is insetting is asked
+   once rather than on every probe — but only until something happens that
+   could have moved the furniture. A resize IS a toolbar appearing or
+   collapsing; so is coming back to the tab, and so is turning the device
+   over. Each of those forgets the refusal and lets the page ask again.
+   Remembering for ever would be the same bug in a new place: a toolbar
+   that collapses after the first refusal would leave the site short for
+   the rest of the session. */
+let growVerifying = false;
+/* the height that was asked for and refused, and the strip that was tried
+   and turned out not to be furniture — both held only until something
+   happens that could have changed the answer */
+let refusedMost = 0;
+let refusedStrip = 0;
+
+function forgetRefusal() { refusedMost = 0; refusedStrip = 0; }
+
+function tryTaller() {
+  if (growVerifying || verifying) return;
+  const most = claimedMost();
+  if (most <= 0 || most === refusedMost) return;
+  if (!(most > appH + 1)) return;          /* already as tall as it gets */
+  if (hiddenStrip() > 2) return;           /* something IS hidden: not now */
+
+  const wasMost = useMost, wasKnown = knownStrip, wasH = appH;
+  useMost = true;
+  knownStrip = 0;
+  if (!writeVars()) { useMost = wasMost; knownStrip = wasKnown; return; }
+
+  growVerifying = true;
+  requestAnimationFrame(function () {
+    growVerifying = false;
+    const back = hiddenStrip();
+    if (back > 2) {
+      /* the room was never ours: give it straight back, and remember not
+         to ask again until the claim itself changes */
+      refusedMost = most;
+      useMost = wasMost;
+      knownStrip = wasKnown;
+      appH = wasH;
       writeVars();
     }
   });
@@ -321,12 +373,15 @@ function fitViewport(reprobe) {
   if (ae && /^(input|textarea|select)$/i.test(ae.tagName)) return;
   if (reprobe !== false) learnStrip(hiddenStrip());
   writeVars();
+  if (reprobe !== false) tryTaller();
 }
 
 /* Exposed so viewport-report.html and tools/vh.js can read the same
    numbers the site is using rather than a re-implementation of them. */
 window.__viewport = function () {
-  return { claimed: claimedHeight(), strip: hiddenStrip(), known: knownStrip,
+  return { claimed: claimedHeight(), most: claimedMost(), strip: hiddenStrip(),
+           known: knownStrip, using: useMost ? "most" : "least",
+           refused: refusedMost, refusedStrip: refusedStrip,
            top: claimedTop(), appH: appH };
 };
 
@@ -345,26 +400,28 @@ fitViewport();
 requestAnimationFrame(fitViewport);
 addEventListener("load", fitViewportSoon);
 
-addEventListener("resize", fitViewport);
+addEventListener("resize", () => { forgetRefusal(); fitViewport(); });
 addEventListener("orientationchange", () => {
   knownStrip = 0;              // the furniture can be a different size sideways
+  forgetRefusal();             // and so can the answer to "is there any more?"
+  useMost = false;
   fitViewportSoon();
 });
 /* The three that cover coming back to the tab: pageshow fires on a
    back-forward-cache restore, visibilitychange on the app switcher, focus
    on returning to the window. Between them nothing gets in without a
    fresh measurement. */
-addEventListener("pageshow", fitViewportSoon);
-addEventListener("focus", fitViewportSoon);
+addEventListener("pageshow", () => { forgetRefusal(); fitViewportSoon(); });
+addEventListener("focus", () => { forgetRefusal(); fitViewportSoon(); });
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) fitViewportSoon();
+  if (!document.hidden) { forgetRefusal(); fitViewportSoon(); }
 });
 document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
 if (VV) {
   /* scroll, not just resize: the offset between the visible area and the
      box the browser handed us changes as the page is dragged, and on
      Chrome for iOS that drag is the whole fault. */
-  VV.addEventListener("resize", fitViewport);
+  VV.addEventListener("resize", () => { forgetRefusal(); fitViewport(); });
   VV.addEventListener("scroll", () => fitViewport(false));
 }
 
@@ -387,134 +444,8 @@ addEventListener("scroll", function () {
    different picture on every device, at a different weight, in colours
    that had nothing to do with the palette. These are drawn, and they take
    a tint, so a field of them reads as one thing. */
-const PARTICLE_SHAPES = {
-  heart: "M12 20.2C2.6 13.4 3.4 6.4 8.2 6.4c2 0 3.3 1.2 3.8 2.3.5-1.1 1.8-2.3 3.8-2.3 4.8 0 5.6 7-3.8 13.8z",
-  spark: "M12 2.4l2.1 6.3 6.3 2.1-6.3 2.1-2.1 6.3-2.1-6.3L3.6 10.8l6.3-2.1z",
-  petal: "M12 3.2c3.4 2.4 5.2 5.4 5.2 8.5a5.2 5.2 0 1 1-10.4 0c0-3.1 1.8-6.1 5.2-8.5z",
-  bud:   "M12 4c2.7 0 4.7 2.1 4.7 4.6 0 3.1-2.3 5.8-4.7 7.7-2.4-1.9-4.7-4.6-4.7-7.7C7.3 6.1 9.3 4 12 4z",
-  leaf:  "M4.5 19.5C4.5 11 10 5.5 19.5 4.5c1 9.5-4.5 15-15 15z",
-};
-
-/* The floaters used to be three setInterval timers started at load and
-   never stopped. Each one woke up once or twice a second for the whole
-   session — through the book, through every game — and the first thing it
-   did was read el.offsetParent to find out whether its screen was showing.
-   Reading offsetParent forces the browser to flush style and layout, so
-   this was three synchronous layouts a second landing in the middle of
-   whatever frame happened to be rendering. It is a small cost repeated
-   forever, which is the kind that shows up as a stutter you cannot place.
-
-   The emitters are registered here instead and switched on and off by
-   showScreen, which already knows exactly which screen is up. Nothing
-   ticks for a screen you are not looking at, and nothing has to ask the
-   layout engine anything to find that out. */
-const EMITTERS = [];
-
-function startParticles(containerId, opts) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  EMITTERS.push({ el, opts, screen: el.closest(".screen"), timer: 0, alive: 0 });
-}
-
-function emitParticle(em) {
-  const { shapes, tints, max = 10 } = em.opts;
-  if (em.alive >= max) return;
-  const kind = shapes[Math.floor(Math.random() * shapes.length)];
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("class", "particle");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  path.setAttribute("d", PARTICLE_SHAPES[kind]);
-  path.setAttribute("fill", tints[Math.floor(Math.random() * tints.length)]);
-  svg.appendChild(path);
-  const size = 11 + Math.random() * 13;
-  svg.style.left = Math.random() * 100 + "%";
-  svg.style.width = size + "px";
-  svg.style.height = size + "px";
-  svg.style.animationDuration = (6 + Math.random() * 5) + "s";
-  em.alive++;
-  svg.addEventListener("animationend", () => { svg.remove(); em.alive--; });
-  em.el.appendChild(svg);
-}
-
-function syncParticles() {
-  const awake = !document.hidden;
-  EMITTERS.forEach((em) => {
-    const on = awake && em.screen && em.screen.classList.contains("active");
-    if (on && !em.timer) {
-      em.timer = setInterval(() => emitParticle(em), em.opts.interval || 700);
-    } else if (!on && em.timer) {
-      clearInterval(em.timer);
-      em.timer = 0;
-      /* A CSS animation does not advance inside a display:none screen, so
-         animationend never arrives and these would sit frozen until she
-         came back — then all appear at once, mid-air. Clear them and let
-         the screen fill again the way it did the first time. */
-      em.el.textContent = "";
-      em.alive = 0;
-    }
-  });
-}
-document.addEventListener("visibilitychange", syncParticles);
-
-const TINT_WARM = ["rgba(255,150,190,.75)","rgba(255,190,150,.6)","rgba(255,220,180,.6)","rgba(240,130,170,.6)"];
-const TINT_NIGHT = ["rgba(255,169,216,.6)","rgba(255,214,168,.45)","rgba(214,150,220,.5)"];
-startParticles("pf-hello",   { shapes:["heart","spark","petal"], tints:TINT_WARM,  max:9, interval:750 });
-startParticles("pf-details", { shapes:["heart","bud","leaf"],    tints:TINT_WARM,  max:6, interval:900 });
-startParticles("pf-l2intro", { shapes:["heart","spark","bud"],   tints:TINT_NIGHT, max:5, interval:1000 });
-syncParticles();     /* whichever screen the page opened on*/
-
-/* ---------- maze ambient stars ---------- */
-(function scatterMazeStars(){
-  const field = document.getElementById("maze-stars");
-  for (let i=0;i<40;i++){
-    const s = document.createElement("span");
-    s.style.left = Math.random()*100+"%"; s.style.top = Math.random()*100+"%";
-    s.style.animationDelay = (Math.random()*3)+"s";
-    field.appendChild(s);
-  }
-})();
-
-/* ---------- toast ---------- */
-function showToast(text) {
-  const wrap = document.getElementById("toast-wrap");
-  const t = document.createElement("div");
-  t.className = "toast";
-  t.textContent = text;
-  wrap.appendChild(t);
-  t.addEventListener("animationend", () => t.remove());
-}
-
-/* ---------- Screen 1: the "No" button runs away ---------- */
-const btnNo = document.getElementById("btn-no");
-let dodgeActive = false;
-function dodge() {
-  if (!dodgeActive) {
-    const rect = btnNo.getBoundingClientRect();
-    btnNo.style.position = "fixed";
-    btnNo.style.margin = "0";
-    btnNo.style.left = rect.left + "px";
-    btnNo.style.top = rect.top + "px";
-    dodgeActive = true;
-    void btnNo.offsetWidth;
-  }
-  requestAnimationFrame(() => {
-    const margin = 60;
-    const x = margin + Math.random() * (window.innerWidth - margin*2 - 160);
-    const y = margin + Math.random() * ((appH || window.innerHeight) - margin*2 - 40);
-    btnNo.style.left = x + "px";
-    btnNo.style.top = y + "px";
-  });
-}
-btnNo.addEventListener("mouseenter", dodge);
-btnNo.addEventListener("touchstart", (e) => { e.preventDefault(); dodge(); }, { passive:false });
-
-document.getElementById("btn-yes").addEventListener("click", () => openCover("details"));
-document.getElementById("btn-start").addEventListener("click", () => { pageTurn("maze", () => initMaze(1)); });
-document.getElementById("btn-start2").addEventListener("click", () => { pageTurn("maze", () => initMaze(2)); });
 
 document.getElementById("btn-replay").addEventListener("click", () => {
-  level = 1;
   try {
     if (window.Apocalypse && window.Apocalypse.afterTheme) window.Apocalypse.afterTheme(false);
   } catch (e) {}
@@ -523,1042 +454,10 @@ document.getElementById("btn-replay").addEventListener("click", () => {
 });
 
 /* =========================================================
-   MAZE ART + JUICE
-
-   The maze was flat purple CSS gradients, which clashed with the warm
-   theme everywhere else and read as a spreadsheet with rounded corners.
-   Tiles are now drawn procedurally onto small canvases and handed to the
-   cells as background images, so they share the pixel language of the
-   adventure. On top of that: a trail of where she has been, dust when
-   she moves, sparkles when she picks something up, a torch-lit fog that
-   breathes, and sound.
-   ========================================================= */
-
-const MZ = {
-  wall1: "#6b4a2a", wall2: "#523618", wall3: "#3d2a17",
-  floor1: "#e6cfa0", floor2: "#d8bd88", floor3: "#c9aa74",
-  moss: "#7c9a45", mossDark: "#5d7a35",
-  glow: "#ffd98a",
-};
-
-const TILE = 32;
-
-function mzTile(draw) {
-  const c = document.createElement("canvas");
-  c.width = TILE; c.height = TILE;
-  const ctx = c.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
-  draw(ctx, TILE);
-  return c.toDataURL();
-}
-
-function mzRnd(seed) {
-  let x = Math.sin(seed * 3571 + 1013) * 65536;
-  return () => { x = Math.sin(x * 3571 + 1013) * 65536; return x - Math.floor(x); };
-}
-
-/* stone wall: a lit top face, a darker body, mortar lines, and moss */
-function mzWallTile(seed) {
-  return mzTile((ctx, S) => {
-    const rnd = mzRnd(seed);
-    ctx.fillStyle = MZ.wall3; ctx.fillRect(0, 0, S, S);
-    // body blocks
-    for (let row = 0; row < 4; row++) {
-      const off = (row % 2) * 8;
-      for (let col = -1; col < 4; col++) {
-        const x = col * 16 + off, y = row * 8;
-        const v = rnd();
-        ctx.fillStyle = v > 0.66 ? MZ.wall1 : v > 0.33 ? MZ.wall2 : "#5e4224";
-        ctx.fillRect(x + 1, y + 1, 14, 6);
-        ctx.fillStyle = "rgba(255,220,170,0.16)";
-        ctx.fillRect(x + 1, y + 1, 14, 1);
-        ctx.fillStyle = "rgba(0,0,0,0.22)";
-        ctx.fillRect(x + 1, y + 6, 14, 1);
-      }
-    }
-    // lit top edge — reads as height
-    ctx.fillStyle = "rgba(255,226,170,0.30)"; ctx.fillRect(0, 0, S, 2);
-    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(0, S - 3, S, 3);
-    // moss creeping over
-    for (let i = 0; i < 14; i++) {
-      const mx = rnd() * S, my = rnd() * S;
-      ctx.fillStyle = rnd() > 0.5 ? MZ.moss : MZ.mossDark;
-      ctx.fillRect(mx, my, 2, 2);
-    }
-  });
-}
-
-/* warm flagstones with grit and the odd tuft */
-function mzFloorTile(seed) {
-  return mzTile((ctx, S) => {
-    const rnd = mzRnd(seed);
-    ctx.fillStyle = MZ.floor2; ctx.fillRect(0, 0, S, S);
-    for (let i = 0; i < 3; i++) {
-      const x = rnd() * S, y = rnd() * S, w = 8 + rnd() * 12, h = 6 + rnd() * 8;
-      ctx.fillStyle = rnd() > 0.5 ? MZ.floor1 : MZ.floor3;
-      ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = "rgba(255,245,215,0.25)";
-      ctx.fillRect(x, y, w, 1);
-    }
-    for (let i = 0; i < 26; i++) {
-      ctx.fillStyle = rnd() > 0.5 ? "rgba(140,105,60,0.28)" : "rgba(255,240,205,0.22)";
-      ctx.fillRect(rnd() * S, rnd() * S, 1, 1);
-    }
-    if (rnd() > 0.55) {
-      const gx = rnd() * S, gy = rnd() * S;
-      ctx.fillStyle = MZ.moss;
-      for (let k = 0; k < 4; k++) ctx.fillRect(gx + k, gy - (k % 2), 1, 3);
-    }
-  });
-}
-
-let MZ_WALLS = [], MZ_FLOORS = [];
-function mzBuildTiles() {
-  if (MZ_WALLS.length) return;
-  for (let i = 0; i < 4; i++) MZ_WALLS.push(mzWallTile(i * 17 + 3));
-  for (let i = 0; i < 4; i++) MZ_FLOORS.push(mzFloorTile(i * 23 + 7));
-}
-
-/* ---------- particles over the maze ---------- */
-let mzFx = [];
-let mzFxCanvas = null, mzFxCtx = null, mzFxRaf = null, mzFxLast = 0;
-
-function mzEnsureFx() {
-  if (mzFxCanvas) return;
-  const stage = document.getElementById("maze-stage");
-  if (!stage) return;
-  mzFxCanvas = document.createElement("canvas");
-  mzFxCanvas.className = "maze-fx";
-  stage.appendChild(mzFxCanvas);
-  mzFxCtx = mzFxCanvas.getContext("2d");
-}
-
-function mzResizeFx() {
-  if (!mzFxCanvas) return;
-  const stage = document.getElementById("maze-stage");
-  mzFxCanvas.width = stage.clientWidth;
-  mzFxCanvas.height = stage.clientHeight;
-}
-
-function mzSpawn(x, y, n, colour, spread, up) {
-  for (let i = 0; i < n; i++) {
-    const a = Math.random() * Math.PI * 2;
-    mzFx.push({
-      x: x, y: y,
-      vx: Math.cos(a) * (spread || 40) * (0.4 + Math.random()),
-      vy: Math.sin(a) * (spread || 40) * (0.4 + Math.random()) - (up || 0),
-      life: 0, max: 0.45 + Math.random() * 0.4,
-      c: colour, s: 2 + Math.random() * 2,
-    });
-  }
-  mzStartFx();
-}
-
-function mzFxFrame(now) {
-  mzFxRaf = requestAnimationFrame(mzFxFrame);
-  const dt = Math.min(0.05, (now - (mzFxLast || now)) / 1000);
-  mzFxLast = now;
-  if (!mzFxCtx) return;
-  mzFxCtx.clearRect(0, 0, mzFxCanvas.width, mzFxCanvas.height);
-  for (let i = mzFx.length - 1; i >= 0; i--) {
-    const p = mzFx[i];
-    p.life += dt;
-    if (p.life >= p.max) { mzFx.splice(i, 1); continue; }
-    const t = p.life / p.max;
-    const x = p.x + p.vx * p.life;
-    const y = p.y + p.vy * p.life + 90 * p.life * p.life;
-    mzFxCtx.globalAlpha = 1 - t;
-    mzFxCtx.fillStyle = p.c;
-    const s = p.s * (1 - t * 0.5);
-    mzFxCtx.fillRect(x, y, s, s);
-  }
-  mzFxCtx.globalAlpha = 1;
-  if (!mzFx.length) { cancelAnimationFrame(mzFxRaf); mzFxRaf = null; }
-}
-function mzStartFx() { if (!mzFxRaf) { mzFxLast = 0; mzFxRaf = requestAnimationFrame(mzFxFrame); } }
-
-/* ---------- sound ---------- */
-function mzSfx(kind) {
-  if (typeof hvSfx === "function") {
-    hvSfx({ step: "step", heart: "collect", hurt: "bad", win: "yay", key: "key",
-            spot: "spot", shot: "shot", phial: "phial", locked: "locked",
-            respawn: "respawn" }[kind] || "pick");
-  }
-}
-
-/* =========================================================
-   MAZE CORE (shared grid/fog/movement for both levels)
-   ========================================================= */
-let level = 1;
-let mazeData, playerPos, targetPos, gridSize, dim, CS;
-let stepCount = 0, heartsTotal = 0, heartsCollected = 0;
-let timerInterval = null, elapsedSec = 0;
-let lastFacing = "right";
-let heartCells = [];
-let gameWon = false;
-let isHidden = false;
-
-function generateMaze(size) {
-  const H = size, W = size;
-  const maze = Array.from({ length: 2*H+1 }, () => Array(2*W+1).fill(0));
-  const visited = Array.from({ length: H }, () => Array(W).fill(false));
-  function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
-  function carve(r,c){
-    visited[r][c]=true; maze[2*r+1][2*c+1]=1;
-    const dirs = shuffle([[0,1],[0,-1],[1,0],[-1,0]]);
-    for (const [dr,dc] of dirs){
-      const nr=r+dr, nc=c+dc;
-      if (nr>=0 && nr<H && nc>=0 && nc<W && !visited[nr][nc]){
-        maze[2*r+1+dr][2*c+1+dc]=1;
-        carve(nr,nc);
-      }
-    }
-  }
-  carve(0,0);
-  return maze;
-}
-
-function cellOpen(r,c){ return mazeData[r] && mazeData[r][c] === 1; }
-function canStep(r,c,dr,dc){ return cellOpen(r+dr, c+dc) && cellOpen(r+2*dr, c+2*dc); }
-function shuffleArr(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
-
-function initMaze(lvl) {
-  level = lvl;
-  gridSize = lvl === 2 ? 8 : CONFIG.mazeSize;
-  dim = gridSize*2+1;
-  mazeData = generateMaze(gridSize);
-  playerPos = { r:1, c:1 };
-  targetPos = { r: dim-2, c: dim-2 };
-  stepCount = 0; elapsedSec = 0; gameWon = false; lastFacing = "right"; isHidden = false;
-
-  document.getElementById("hud-bar").classList.toggle("lvl2", lvl===2);
-  document.querySelector(".hud-hearts-l1").style.display = lvl===2 ? "none" : "flex";
-  document.querySelector(".hud-hearts-l2").style.display = lvl===2 ? "flex" : "none";
-  document.getElementById("hidden-badge").classList.remove("show");
-  document.getElementById("key-badge").classList.remove("show");
-  document.getElementById("player-token").classList.remove("hidden-state");
-  document.getElementById("hearts-layer").innerHTML = "";
-  document.getElementById("target-token").classList.remove("locked");
-  document.getElementById("beacon-glow").classList.remove("locked");
-
-  buildStaticGrid();
-
-  const pathCells = [];
-  for (let r=1;r<dim;r+=2) for (let c=1;c<dim;c+=2) {
-    if ((r===1&&c===1) || (r===targetPos.r&&c===targetPos.c)) continue;
-    pathCells.push({r,c});
-  }
-  shuffleArr(pathCells);
-
-  if (lvl === 1) {
-    heartsCollected = 0;
-    heartCells = pathCells.slice(0, Math.min(CONFIG.heartCount, pathCells.length));
-    heartsTotal = heartCells.length;
-    buildHearts();
-    updateHud();
-    stopLevel2Systems();
-  } else {
-    setupLevel2(pathCells);
-  }
-
-  layoutMaze();
-
-  markVisited(playerPos.r, playerPos.c);
-  startFogFlicker();
-
-  if (timerInterval) clearInterval(timerInterval);
-  timerInterval = setInterval(() => { if (!gameWon) { elapsedSec++; updateHud(); } }, 1000);
-}
-
-let mazeCells = [];
-function buildStaticGrid() {
-  mzBuildTiles();
-  const grid = document.getElementById("maze-grid");
-  grid.innerHTML = "";
-  grid.style.gridTemplateColumns = `repeat(${dim}, 1fr)`;
-  grid.style.gridTemplateRows = `repeat(${dim}, 1fr)`;
-  mazeCells = [];
-  for (let r=0;r<dim;r++) {
-    mazeCells[r] = [];
-    for (let c=0;c<dim;c++) {
-      const isPath = !!mazeData[r][c];
-      const cell = document.createElement("div");
-      cell.className = "cell " + (isPath ? "path" : "wall");
-      /* a stable variant per cell so the stonework never reshuffles */
-      const v = (r * 7 + c * 13) % 4;
-      cell.style.backgroundImage = "url(" + (isPath ? MZ_FLOORS[v] : MZ_WALLS[v]) + ")";
-      grid.appendChild(cell);
-      mazeCells[r][c] = cell;
-    }
-  }
-  mzEnsureFx();
-  mzResizeFx();
-}
-
-/* mark where she has already walked — in a fog maze, seeing your own
-   trail is the difference between exploring and going in circles */
-function markVisited(r, c) {
-  const cell = mazeCells[r] && mazeCells[r][c];
-  if (cell && !cell.classList.contains("visited")) cell.classList.add("visited");
-}
-
-function buildHearts() {
-  const layer = document.getElementById("hearts-layer");
-  layer.innerHTML = "";
-  heartCells.forEach((hc) => {
-    const el = document.createElement("div");
-    el.className = "heart-collect";
-    el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' +
-      PARTICLE_SHAPES.heart + '"/></svg>';
-    el.dataset.r = hc.r; el.dataset.c = hc.c;
-    layer.appendChild(el);
-  });
-}
-
-function layoutMaze() {
-  const stage = document.getElementById("maze-stage");
-  const rect = stage.getBoundingClientRect();
-  CS = rect.width / dim;
-
-  document.querySelectorAll(".heart-collect").forEach((el) => {
-    const r = +el.dataset.r, c = +el.dataset.c;
-    const size = CS*0.62;
-    el.style.width = size+"px"; el.style.height = size+"px";   // it holds an SVG, not a glyph
-    el.style.left = (c*CS + CS/2 - size/2) + "px";
-    el.style.top = (r*CS + CS/2 - size/2) + "px";
-  });
-
-  if (level === 2) layoutLevel2Entities();
-
-  placeToken(document.getElementById("player-token"), playerPos, false);
-  placeToken(document.getElementById("target-token"), targetPos, true);
-  positionBeacon();
-  updateFog();
-}
-
-function placeToken(el, pos, isTarget) {
-  const w = CS * (isTarget ? 1.9 : 1.85);
-  const h = w * PLAYER_ASPECT;
-  el.style.width = w+"px";
-  el.style.left = (pos.c*CS + CS/2 - w/2) + "px";
-  el.style.top = (pos.r*CS + CS - h*0.94) + "px";
-}
-
-function positionBeacon() {
-  const beacon = document.getElementById("beacon-glow");
-  const size = CS*2.4;
-  beacon.style.width = size+"px"; beacon.style.height = size+"px";
-  beacon.style.left = (targetPos.c*CS + CS/2 - size/2) + "px";
-  beacon.style.top = (targetPos.r*CS + CS/2 - size/2) + "px";
-}
-
-/* Soft, warm, multi-stop torch light instead of a hard circle. Constant
-   radius - fair and consistent, not an escalating timer squeeze. */
-let fogFlickerRaf = null;
-function updateFog(flick) {
-  const fog = document.getElementById("fog-layer");
-  if (!fog) return;
-  const cx = playerPos.c*CS + CS/2, cy = playerPos.r*CS + CS/2;
-  const f = flick === undefined ? 1 : flick;
-  const r1 = CS*1.35*f, r2 = CS*2.6*f, r3 = CS*4.0*f, r4 = CS*5.6*f;
-  /* warm lantern light instead of the old purple murk, so the maze
-     belongs to the same world as everything else */
-  fog.style.background = `radial-gradient(circle at ${cx}px ${cy}px,
-    rgba(255,238,196,.20) 0px,
-    rgba(255,206,140,.10) ${r1}px,
-    rgba(74,44,18,.46) ${r2}px,
-    rgba(40,22,10,.74) ${r3}px,
-    rgba(20,10,5,.94) ${r4}px)`;
-}
-
-/* the lantern breathes a little, which makes the dark feel alive */
-function startFogFlicker() {
-  if (fogFlickerRaf) return;
-  const tick = (now) => {
-    fogFlickerRaf = requestAnimationFrame(tick);
-    if (!document.getElementById("screen-maze").classList.contains("active")) return;
-    const t = now / 1000;
-    updateFog(1 + Math.sin(t * 2.3) * 0.02 + Math.sin(t * 5.7) * 0.012);
-  };
-  fogFlickerRaf = requestAnimationFrame(tick);
-}
-function stopFogFlicker() {
-  if (fogFlickerRaf) cancelAnimationFrame(fogFlickerRaf);
-  fogFlickerRaf = null;
-}
-
-function updateHud() {
-  document.getElementById("hud-hearts").textContent = `${heartsCollected}/${heartsTotal}`;
-  document.getElementById("hud-steps").textContent = stepCount;
-  const m = String(Math.floor(elapsedSec/60)).padStart(2,"0");
-  const s = String(elapsedSec%60).padStart(2,"0");
-  document.getElementById("hud-time").textContent = `${m}:${s}`;
-}
-
-function move(dir) {
-  if (gameWon) return;
-  if (!document.getElementById("dialogue-overlay").classList.contains("hidden")) return;
-  const deltas = { up:[-2,0], down:[2,0], left:[0,-2], right:[0,2] };
-  const midDeltas = { up:[-1,0], down:[1,0], left:[0,-1], right:[0,1] };
-  const [dr,dc] = deltas[dir];
-  const [mdr,mdc] = midDeltas[dir];
-  const midR = playerPos.r+mdr, midC = playerPos.c+mdc;
-  if (dir==="left") lastFacing="left";
-  if (dir==="right") lastFacing="right";
-  /* canStep, not just the wall between: the old test checked the gap and
-     took the destination on trust. The border happens to be solid so it
-     never bit, but it is one carve away from walking her off the grid. */
-  if (canStep(playerPos.r, playerPos.c, mdr, mdc)) {
-    const fromR = playerPos.r, fromC = playerPos.c;
-    playerPos = { r: playerPos.r+dr, c: playerPos.c+dc };
-    stepCount++;
-    const tok = document.getElementById("player-token");
-    tok.classList.toggle("face-left", lastFacing==="left");
-    placeToken(tok, playerPos, false);
-
-    /* a puff of dust off the trailing foot, and the trail behind her */
-    mzSpawn(fromC*CS + CS/2, fromR*CS + CS*0.85, 4, "rgba(226,200,150,0.9)", 26, 6);
-    markVisited(fromR, fromC);
-    markVisited(midR, midC);
-    markVisited(playerPos.r, playerPos.c);
-    tok.classList.remove("stepping"); void tok.offsetWidth; tok.classList.add("stepping");
-    mzSfx("step");
-
-    updateFog();
-    updateHud();
-    if (level === 1) { checkHeart(); }
-    else { onPlayerMovedLevel2(); }
-    checkWin();
-  }
-}
-
-function checkHeart() {
-  const el = document.querySelector(`.heart-collect[data-r="${playerPos.r}"][data-c="${playerPos.c}"]`);
-  if (el) {
-    heartsCollected++;
-    popText(el.style.left, el.style.top, "+1", "#ff5b98");
-    mzSpawn(playerPos.c*CS + CS/2, playerPos.r*CS + CS/2, 16, "#ff8fb8", 70, 30);
-    mzSpawn(playerPos.c*CS + CS/2, playerPos.r*CS + CS/2, 10, "#ffe08a", 50, 20);
-    mzSfx("heart");
-    const hud = document.querySelector(".hud-hearts-l1");
-    if (hud) { hud.classList.remove("pop"); void hud.offsetWidth; hud.classList.add("pop"); }
-    el.remove();
-    updateHud();
-  }
-}
-
-function popText(left, top, text, color) {
-  const pop = document.createElement("div");
-  pop.className = "heart-pop";
-  pop.textContent = text;
-  pop.style.left = left; pop.style.top = top; pop.style.color = color || "#ff5b98";
-  document.getElementById("hearts-layer").appendChild(pop);
-  pop.addEventListener("animationend", () => pop.remove());
-}
-
-function checkWin() {
-  if (playerPos.r === targetPos.r && playerPos.c === targetPos.c) {
-    if (level === 2 && !hasKey) {
-      showToast("The way through is locked — find the key");
-      mzSfx("locked");
-      const stage = document.getElementById("maze-stage");
-      stage.classList.remove("locked-shake"); void stage.offsetWidth; stage.classList.add("locked-shake");
-      return;
-    }
-    gameWon = true;
-    stopLevel2Systems();
-    mzSfx("win");
-    for (let b = 0; b < 4; b++) {
-      setTimeout(() => mzSpawn(targetPos.c*CS + CS/2, targetPos.r*CS + CS/2, 18,
-        b % 2 ? "#ff8fb8" : "#ffe08a", 110, 60), b * 110);
-    }
-    if (level === 1) saveBestTime();
-    startDialogue();
-  }
-}
-
-function saveBestTime() {
-  try {
-    const key = "fal_best_time";
-    const m = String(Math.floor(elapsedSec/60)).padStart(2,"0");
-    const s = String(elapsedSec%60).padStart(2,"0");
-    const cur = `${m}:${s}`;
-    const prev = localStorage.getItem(key);
-    if (!prev || elapsedSec < (parseInt(prev.split(":")[0])*60 + parseInt(prev.split(":")[1]))) {
-      localStorage.setItem(key, cur);
-    }
-  } catch (e) {}
-}
-
-/* ---------- controls ---------- */
-document.addEventListener("keydown", (e) => {
-  if (!document.getElementById("screen-maze").classList.contains("active")) return;
-  const map = { ArrowUp:"up", ArrowDown:"down", ArrowLeft:"left", ArrowRight:"right", w:"up", s:"down", a:"left", d:"right" };
-  if (map[e.key]) { e.preventDefault(); move(map[e.key]); }
-});
-document.querySelectorAll(".dpad3-btn").forEach((btn) => btn.addEventListener("click", () => move(btn.dataset.dir)));
-
-const mazeStageEl = document.getElementById("maze-stage");
-let touchStartX=0, touchStartY=0;
-mazeStageEl.addEventListener("touchstart", (e) => { touchStartX=e.touches[0].clientX; touchStartY=e.touches[0].clientY; }, { passive:true });
-mazeStageEl.addEventListener("touchend", (e) => {
-  const dx = e.changedTouches[0].clientX-touchStartX, dy = e.changedTouches[0].clientY-touchStartY;
-  if (Math.abs(dx)<20 && Math.abs(dy)<20) return;
-  if (Math.abs(dx)>Math.abs(dy)) move(dx>0?"right":"left"); else move(dy>0?"down":"up");
-}, { passive:true });
-
-let resizeTimer;
-window.addEventListener("resize", () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => { if (dim) layoutMaze(); }, 120);
-});
-
-/* =========================================================
-   LEVEL 2 — monsters, shooters, trees, meds, key, hearts
-   ========================================================= */
-const HP_START = 6, HP_MAX = 10;
-let hp = HP_START;
-let treeSet = new Set();
-let monsters = [], shooters = [], meds = [];
-let hasKey = false, keyPos = null;
-let level2Tick = null;
-let invulnUntil = 0;
-
-function setupLevel2(pathCells) {
-  hp = HP_START;
-  treeSet = new Set();
-  monsters = []; shooters = []; meds = [];
-  hasKey = false; keyPos = null;
-  isHidden = false;
-
-  let idx = 0;
-  const take = (n) => { const out = pathCells.slice(idx, idx+n); idx += n; return out; };
-
-  take(8).forEach(p => treeSet.add(p.r+","+p.c));
-  const monsterCells = take(2);
-  const shooterCells = take(2);
-  const medCells = take(5);
-  const keyCells = take(1);
-
-  monsters = monsterCells.map(p => ({ r:p.r, c:p.c, homeR:p.r, homeC:p.c }));
-  shooters = shooterCells.map(p => ({ r:p.r, c:p.c, alertUntil:0, alerting:false }));
-  meds = medCells.map(p => ({ r:p.r, c:p.c, taken:false }));
-  keyPos = keyCells[0] || null;
-
-  document.getElementById("target-token").classList.add("locked");
-  document.getElementById("beacon-glow").classList.add("locked");
-
-  buildLevel2Layers();
-  renderHeartsHud();
-
-  if (level2Tick) clearInterval(level2Tick);
-  level2Tick = setInterval(level2TickFn, 800);
-  /* The watchers run on their own, much faster clock: a bolt that only
-     moved every 800ms would be something you watch rather than dodge. */
-  startWatchers();
-}
-
-function stopLevel2Systems() {
-  if (level2Tick) { clearInterval(level2Tick); level2Tick = null; }
-  stopWatchers();
-}
-
-function buildLevel2Layers() {
-  const treesLayer = document.getElementById("trees-layer");
-  treesLayer.innerHTML = "";
-  treeSet.forEach((key) => {
-    const [r,c] = key.split(",").map(Number);
-    const img = document.createElement("img");
-    img.src = ASSETS.tree; img.className = "entity tree-entity"; img.dataset.r=r; img.dataset.c=c;
-    treesLayer.appendChild(img);
-  });
-
-  const medsLayer = document.getElementById("meds-layer");
-  medsLayer.innerHTML = "";
-  meds.forEach((m,i) => {
-    const img = document.createElement("img");
-    img.src = ASSETS.med; img.className = "entity med"; img.dataset.i = i;
-    medsLayer.appendChild(img);
-  });
-
-  const keyLayer = document.getElementById("key-layer");
-  keyLayer.innerHTML = "";
-  if (keyPos) {
-    const img = document.createElement("img");
-    img.src = ASSETS.key; img.className = "entity key-entity"; img.id = "the-key";
-    keyLayer.appendChild(img);
-  }
-
-  const monstersLayer = document.getElementById("monsters-layer");
-  monstersLayer.innerHTML = "";
-  monsters.forEach((m,i) => {
-    const img = document.createElement("img");
-    img.src = ASSETS.monster; img.className = "entity monster-entity"; img.dataset.i = i;
-    monstersLayer.appendChild(img);
-  });
-
-  const shootersLayer = document.getElementById("shooters-layer");
-  shootersLayer.innerHTML = "";
-  shooters.forEach((s,i) => {
-    const img = document.createElement("img");
-    img.src = ASSETS.shooter; img.className = "entity shooter-entity"; img.dataset.i = i;
-    shootersLayer.appendChild(img);
-    const alert = document.createElement("div");
-    alert.className = "shooter-alert"; alert.dataset.i = i;
-    alert.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-      '<path d="M12 2.6 22 20.4H2z"/>' +
-      '<path class="bang" d="M12 9v4.6"/><circle class="bang" cx="12" cy="16.8" r="1.1"/></svg>';
-    shootersLayer.appendChild(alert);
-  });
-}
-
-function layoutLevel2Entities() {
-  document.querySelectorAll(".tree-entity").forEach((el) => {
-    const r = +el.dataset.r, c = +el.dataset.c;
-    const size = CS*0.95;
-    el.style.width = size+"px";
-    el.style.left = (c*CS + CS/2 - size/2) + "px";
-    el.style.top = (r*CS + CS - size*0.92) + "px";
-  });
-  document.querySelectorAll(".med").forEach((el) => {
-    const i = +el.dataset.i, m = meds[i];
-    if (!m || m.taken) { el.style.display="none"; return; }
-    el.style.display="";
-    const size = CS*0.6;
-    el.style.width = size+"px";
-    el.style.left = (m.c*CS + CS/2 - size/2) + "px";
-    el.style.top = (m.r*CS + CS/2 - size/2) + "px";
-  });
-  const keyEl = document.getElementById("the-key");
-  if (keyEl) {
-    if (hasKey || !keyPos) { keyEl.style.display = "none"; }
-    else {
-      keyEl.style.display = "";
-      const size = CS*0.72;
-      keyEl.style.width = size+"px";
-      keyEl.style.left = (keyPos.c*CS + CS/2 - size/2) + "px";
-      keyEl.style.top = (keyPos.r*CS + CS/2 - size/2) + "px";
-    }
-  }
-  document.querySelectorAll(".monster-entity").forEach((el) => {
-    const i = +el.dataset.i, m = monsters[i];
-    const size = CS*1.15;
-    el.style.width = size+"px";
-    el.style.left = (m.c*CS + CS/2 - size/2) + "px";
-    el.style.top = (m.r*CS + CS - size*0.85) + "px";
-  });
-  document.querySelectorAll(".shooter-entity").forEach((el) => {
-    const i = +el.dataset.i, s = shooters[i];
-    const size = CS*1.0;
-    el.style.width = size+"px";
-    el.style.left = (s.c*CS + CS/2 - size/2) + "px";
-    el.style.top = (s.r*CS + CS - size*0.95) + "px";
-  });
-  document.querySelectorAll(".shooter-alert").forEach((el) => {
-    const i = +el.dataset.i, s = shooters[i];
-    el.style.left = (s.c*CS + CS/2 - 7) + "px";
-    el.style.top = (s.r*CS - CS*0.35) + "px";
-  });
-}
-
-function renderHeartsHud() {
-  const wrap = document.getElementById("hp-pips");
-  wrap.innerHTML = "";
-  for (let i=0;i<5;i++) {
-    const threshold = hp - i*2;
-    const img = document.createElement("img");
-    img.src = threshold >= 2 ? ASSETS.heartFull : threshold === 1 ? ASSETS.heartHalf : ASSETS.heartEmpty;
-    wrap.appendChild(img);
-  }
-}
-
-function onPlayerMovedLevel2() {
-  isHidden = treeSet.has(playerPos.r+","+playerPos.c);
-  document.getElementById("hidden-badge").classList.toggle("show", isHidden);
-  document.getElementById("player-token").classList.toggle("hidden-state", isHidden);
-
-  const med = meds.find(m => !m.taken && m.r===playerPos.r && m.c===playerPos.c);
-  if (med) {
-    med.taken = true;
-    hp = Math.min(HP_MAX, hp+1);
-    renderHeartsHud();
-    layoutLevel2Entities();
-    mzSfx("phial");
-    showToast("A phial — half a heart back");
-  }
-
-  if (keyPos && !hasKey && playerPos.r===keyPos.r && playerPos.c===keyPos.c) {
-    hasKey = true;
-    layoutLevel2Entities();
-    mzSfx("key");
-    document.getElementById("key-badge").classList.add("show");
-    document.getElementById("target-token").classList.remove("locked");
-    document.getElementById("beacon-glow").classList.remove("locked");
-    showToast("The key is yours");
-  }
-
-  checkMonsterContact();
-}
-
-function checkMonsterContact() {
-  if (isHidden) return;
-  if (Date.now() < invulnUntil) return;
-  const hit = monsters.some(m => m.r===playerPos.r && m.c===playerPos.c);
-  if (hit) applyDamage("A wisp caught you");
-}
-
-function applyDamage(msg) {
-  /* The invulnerability window used to be checked by the caller, and only
-     one of the two callers did it: a monster could not touch you twice in
-     a row but a watcher could, so bolts chewed through the i-frames a
-     monster respected. Whether a hit lands is decided here now, once, for
-     every source. */
-  if (Date.now() < invulnUntil) return;
-  hp = Math.max(0, hp-2);
-  invulnUntil = Date.now() + 1800;
-  renderHeartsHud();
-  if (hp > 0) showToast(msg);
-  const flash = document.getElementById("damage-flash");
-  flash.classList.remove("hit"); void flash.offsetWidth; flash.classList.add("hit");
-  const stage = document.getElementById("maze-stage");
-  stage.classList.remove("shake"); void stage.offsetWidth; stage.classList.add("shake");
-  mzSpawn(playerPos.c*CS + CS/2, playerPos.r*CS + CS/2, 14, "#ff6b6b", 80, 24);
-  mzSfx("hurt");
-  if (hp <= 0) respawnLevel2();
-}
-
-function respawnLevel2() {
-  showToast("Caught. Let's try that again.");
-  mzSfx("respawn");
-  /* anything already in the air belongs to the run that just ended */
-  clearBolts();
-  hideAllBeams();
-  shooters.forEach((s) => { s.state = "idle"; s.until = 0; });
-  document.querySelectorAll(".shooter-alert.show").forEach(el => el.classList.remove("show"));
-  playerPos = { r:1, c:1 };
-  hp = HP_START;
-  invulnUntil = Date.now() + 900;   // a breath to get your bearings
-  renderHeartsHud();
-  monsters.forEach(m => { m.r = m.homeR; m.c = m.homeC; });
-  layoutLevel2Entities();
-  placeToken(document.getElementById("player-token"), playerPos, false);
-  updateFog();
-  isHidden = false;
-  document.getElementById("hidden-badge").classList.remove("show");
-  document.getElementById("player-token").classList.remove("hidden-state");
-}
-
-function level2TickFn() {
-  if (level !== 2 || gameWon) return;
-  moveMonsters();
-  checkMonsterContact();
-}
-
-function moveMonsters() {
-  const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
-  monsters.forEach((m) => {
-    const distToPlayer = Math.abs(m.r-playerPos.r) + Math.abs(m.c-playerPos.c);
-    let candidates = [];
-    if (distToPlayer <= 5 && !isHidden && Math.random() < 0.7) {
-      const dr = Math.sign(playerPos.r-m.r), dc = Math.sign(playerPos.c-m.c);
-      if (dr !== 0 && canStep(m.r, m.c, dr, 0)) candidates.push([dr,0]);
-      if (dc !== 0 && canStep(m.r, m.c, 0, dc)) candidates.push([0,dc]);
-    }
-    if (!candidates.length) {
-      if (Math.random() > 0.5) return;
-      for (const [dr,dc] of dirs) if (canStep(m.r,m.c,dr,dc)) candidates.push([dr,dc]);
-    }
-    if (!candidates.length) return;
-    const [dr,dc] = candidates[Math.floor(Math.random()*candidates.length)];
-    m.r += dr*2; m.c += dc*2;
-  });
-  layoutLevel2Entities();
-}
-
-function hasClearLine(r1,c1,r2,c2) {
-  if (r1 === r2) {
-    const lo = Math.min(c1,c2), hi = Math.max(c1,c2);
-    for (let c=lo; c<=hi; c++) {
-      if (!cellOpen(r1,c)) return false;
-      if (c%2===1 && treeSet.has(r1+","+c) && !(c===c2)) return false;
-    }
-    return true;
-  }
-  if (c1 === c2) {
-    const lo = Math.min(r1,r2), hi = Math.max(r1,r2);
-    for (let r=lo; r<=hi; r++) {
-      if (!cellOpen(r,c1)) return false;
-      if (r%2===1 && treeSet.has(r+","+c1) && !(r===r2)) return false;
-    }
-    return true;
-  }
-  return false;
-}
-
-/* =========================================================
-   THE WATCHERS
-
-   These used to be called shooters and never shot anything: after a one
-   second warning they simply took a heart off you, from any distance,
-   with nothing travelling between the two of you. There was no way to
-   read it, no way to dodge it, and being hit from eleven cells away felt
-   arbitrary — which is exactly why it did not make sense.
-
-   Now a watcher does three things you can see. It spots you and takes a
-   moment to aim, drawing a beam down the corridor so you know which one
-   has you and from where. It fires a bolt that travels cell by cell, so
-   you can step out of the line, put a thicket between you, or simply be
-   quicker than it. Then it has to reload before it can do it again.
-
-   The bolt is independent once it leaves: it does not track you, and it
-   is stopped by a wall or a thicket. Everything is on its own clock, so
-   the aim never fires late because a slower tick was busy.
-   ========================================================= */
-const WATCH = {
-  range:    11,     // grid steps, so about five cells
-  aim:      850,    // the telegraph you get before it fires
-  cooldown: 2400,   // how long until that one can aim at you again
-  step:     120,    // ms per grid step the bolt travels
-};
-let bolts = [], watchTick = null;
-
-function startWatchers() {
-  stopWatchers();
-  watchTick = setInterval(watchTickFn, WATCH.step);
-}
-function stopWatchers() {
-  if (watchTick) { clearInterval(watchTick); watchTick = null; }
-  clearBolts();
-  shooters.forEach((s) => { s.state = "idle"; s.until = 0; });
-  document.querySelectorAll(".shooter-alert.show").forEach(el => el.classList.remove("show"));
-  hideAllBeams();
-}
-function clearBolts() {
-  bolts.forEach(b => b.el && b.el.remove());
-  bolts = [];
-}
-
-/* how far a shot can travel from here before something stops it */
-function beamEnd(r, c, dr, dc) {
-  let er = r, ec = c, n = 0;
-  while (n < WATCH.range) {
-    const nr = er + dr, nc = ec + dc;          // the wall between cells
-    const tr = er + dr * 2, tc = ec + dc * 2;  // the next cell
-    if (!cellOpen(nr, nc) || !cellOpen(tr, tc)) break;
-    er = tr; ec = tc; n += 2;
-    if (treeSet.has(er + "," + ec)) break;     // a thicket stops it
-  }
-  return { r: er, c: ec, steps: n };
-}
-
-function watchTickFn() {
-  if (level !== 2 || gameWon) return;
-  const now = Date.now();
-
-  shooters.forEach((s, i) => {
-    if (!s.state) s.state = "idle";
-    const alertEl = document.querySelector('.shooter-alert[data-i="' + i + '"]');
-
-    if (s.state === "cool") {
-      if (now >= s.until) s.state = "idle";
-      return;
-    }
-
-    if (s.state === "aim") {
-      /* Losing sight of it cancels the shot — ducking behind a corner in
-         time should actually save you, or the telegraph is a lie. */
-      if (!watcherSees(s)) {
-        s.state = "idle";
-        if (alertEl) alertEl.classList.remove("show");
-        hideBeam(i);
-        return;
-      }
-      if (now >= s.until) {
-        fireBolt(s);
-        s.state = "cool"; s.until = now + WATCH.cooldown;
-        if (alertEl) alertEl.classList.remove("show");
-        hideBeam(i);
-      }
-      return;
-    }
-
-    if (watcherSees(s)) {
-      s.dr = Math.sign(playerPos.r - s.r);
-      s.dc = Math.sign(playerPos.c - s.c);
-      s.state = "aim"; s.until = now + WATCH.aim;
-      if (alertEl) alertEl.classList.add("show");
-      showBeam(i, s);
-      mzSfx("spot");
-    }
-  });
-
-  stepBolts();
-}
-
-function watcherSees(s) {
-  if (isHidden) return false;
-  if (s.r !== playerPos.r && s.c !== playerPos.c) return false;
-  if (Math.abs(s.r - playerPos.r) + Math.abs(s.c - playerPos.c) > WATCH.range) return false;
-  return hasClearLine(s.r, s.c, playerPos.r, playerPos.c);
-}
-
-function fireBolt(s) {
-  const layer = document.getElementById("bolts-layer");
-  if (!layer) return;
-  const el = document.createElement("div");
-  el.className = "mz-bolt";
-  el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 18 12l-6 10.5L6 12z"/></svg>';
-  layer.appendChild(el);
-  /* fresh: skip the first step. fireBolt runs earlier in the same tick
-     than stepBolts, so without this the bolt is created and immediately
-     advanced — it never appears at the muzzle, and a watcher standing one
-     cell away hits you before anything is drawn, which is unduckable. */
-  const b = { r: s.r, c: s.c, dr: s.dr, dc: s.dc, dist: 0, el: el, fresh: true };
-  bolts.push(b);
-  placeBolt(b);
-  mzSfx("shot");
-}
-
-function stepBolts() {
-  for (let i = bolts.length - 1; i >= 0; i--) {
-    const b = bolts[i];
-    if (b.fresh) { b.fresh = false; continue; }      // it gets its muzzle frame
-    const wr = b.r + b.dr, wc = b.c + b.dc;          // the wall between
-    const nr = b.r + b.dr * 2, nc = b.c + b.dc * 2;  // the next cell
-    if (b.dist >= WATCH.range || !cellOpen(wr, wc) || !cellOpen(nr, nc)) { killBolt(i); continue; }
-    b.r = nr; b.c = nc; b.dist += 2;
-    placeBolt(b);
-    if (treeSet.has(b.r + "," + b.c)) { killBolt(i); continue; }   // stopped by a thicket
-    if (b.r === playerPos.r && b.c === playerPos.c) {
-      killBolt(i);
-      if (!isHidden) applyDamage("A watcher caught you");
-    }
-  }
-}
-
-function killBolt(i) {
-  const b = bolts[i];
-  if (b.el) {
-    b.el.classList.add("gone");
-    const el = b.el;
-    setTimeout(() => el.remove(), 180);
-  }
-  bolts.splice(i, 1);
-}
-
-function placeBolt(b) {
-  if (!b.el) return;
-  const size = CS * 0.46;
-  b.el.style.width = size + "px";
-  b.el.style.height = size + "px";
-  b.el.style.left = (b.c * CS + CS / 2 - size / 2) + "px";
-  b.el.style.top = (b.r * CS + CS / 2 - size / 2) + "px";
-}
-
-/* the corridor it is about to shoot down */
-function showBeam(i, s) {
-  const layer = document.getElementById("bolts-layer");
-  if (!layer) return;
-  let el = layer.querySelector('.mz-beam[data-i="' + i + '"]');
-  if (!el) {
-    el = document.createElement("div");
-    el.className = "mz-beam"; el.dataset.i = i;
-    layer.appendChild(el);
-  }
-  const end = beamEnd(s.r, s.c, s.dr, s.dc);
-  const x1 = s.c * CS + CS / 2, y1 = s.r * CS + CS / 2;
-  const x2 = end.c * CS + CS / 2, y2 = end.r * CS + CS / 2;
-  const thin = Math.max(3, CS * 0.16);
-  el.style.left = (Math.min(x1, x2) - (s.dc ? 0 : thin / 2)) + "px";
-  el.style.top  = (Math.min(y1, y2) - (s.dr ? 0 : thin / 2)) + "px";
-  el.style.width  = (s.dc ? Math.abs(x2 - x1) : thin) + "px";
-  el.style.height = (s.dr ? Math.abs(y2 - y1) : thin) + "px";
-  el.classList.add("on");
-}
-function hideBeam(i) {
-  const el = document.querySelector('.mz-beam[data-i="' + i + '"]');
-  if (el) el.classList.remove("on");
-}
-function hideAllBeams() {
-  document.querySelectorAll(".mz-beam").forEach(el => el.classList.remove("on"));
-}
-
-/* =========================================================
-   DIALOGUE (typewriter, cute love-note)
-   ========================================================= */
-let msgIndex = 0, typing = false, typeTimer = null;
-function startDialogue() {
-  msgIndex = 0;
-  document.getElementById("dialogue-name").textContent = CONFIG.sender.name;
-  showMessage();
-  const overlay = document.getElementById("dialogue-overlay");
-  overlay.classList.remove("hidden");
-  startParticles("pf-dialogue", { shapes:["heart","spark","petal"], tints:TINT_WARM, max:7, interval:600 });
-}
-function currentMessages() { return level === 2 ? CONFIG.messagesFinal : CONFIG.messages; }
-function buildDots() {
-  const dots = document.getElementById("dialogue-dots");
-  dots.innerHTML = "";
-  currentMessages().forEach((_, i) => {
-    const d = document.createElement("span");
-    if (i===msgIndex) d.classList.add("on");
-    dots.appendChild(d);
-  });
-}
-function showMessage() {
-  buildDots();
-  const textEl = document.getElementById("dialogue-text");
-  const full = currentMessages()[msgIndex];
-  textEl.textContent = "";
-  typing = true;
-  let i = 0;
-  clearInterval(typeTimer);
-  typeTimer = setInterval(() => {
-    i++;
-    textEl.textContent = full.slice(0, i);
-    if (i >= full.length) { clearInterval(typeTimer); typing = false; }
-  }, 26);
-  /* the glyph is markup, so this sets innerHTML and not textContent */
-  document.getElementById("btn-next").innerHTML =
-    msgIndex === currentMessages().length - 1
-      ? "Finish"
-      : 'Next <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-note"/></svg>';
-}
-function advanceDialogue() {
-  if (typing) {
-    clearInterval(typeTimer);
-    document.getElementById("dialogue-text").textContent = currentMessages()[msgIndex];
-    typing = false;
-    return;
-  }
-  msgIndex++;
-  if (msgIndex >= currentMessages().length) {
-    document.getElementById("dialogue-overlay").classList.add("hidden");
-    if (level === 1) {
-      pageTurn("level2intro");
-    } else {
-      pageTurn("divider", () => { setTimeout(goToEnding, 2600); });
-    }
-  } else {
-    showMessage();
-  }
-}
-document.getElementById("btn-next").addEventListener("click", advanceDialogue);
-document.querySelector(".note-text").addEventListener("click", advanceDialogue);
-
-/* =========================================================
    ENDING SCENE — cinematic cuts between shots (no zoom)
    ========================================================= */
 let endTimer1 = null, endTimer2 = null;
 
-function goToEnding() {
-  const heading = document.querySelector("#end-heading span");
-  heading.textContent = "You made it through everything for me";
-  markChapterDone("maze");
-  document.getElementById("btn-replay").textContent =
-    bothChaptersDone() ? "Open the keepsake" : "Choose another chapter";
-  pageTurn("end", () => activateEndingScene());
-}
 
 function setScene(n) {
   const sky = document.getElementById("night-sky");
@@ -1573,6 +472,14 @@ function cutToScene(n) {
     if (n >= 2) document.querySelectorAll(".cat-slot").forEach(s => s.classList.add("lean"));
     requestAnimationFrame(() => flash.classList.remove("active"));
   }, 380);
+}
+
+/* A seeded random, so a painted scene comes out the same every time it is
+   painted. It lived in the maze's tile art and outlived it: the rooftop
+   night is painted with it too. */
+function mzRnd(seed) {
+  let x = Math.sin(seed * 3571 + 1013) * 65536;
+  return () => { x = Math.sin(x * 3571 + 1013) * 65536; return x - Math.floor(x); };
 }
 
 /* =========================================================
@@ -2151,6 +1058,17 @@ function spawnNightStars() {
     field.appendChild(s);
   }
 }
+/* The four shapes the hearts over the roof are drawn from. They used to
+   feed a floating-particle system as well, whose only three emitters were
+   the maze's card screens; the shapes outlived it. */
+const PARTICLE_SHAPES = {
+  heart: "M12 20.2C2.6 13.4 3.4 6.4 8.2 6.4c2 0 3.3 1.2 3.8 2.3.5-1.1 1.8-2.3 3.8-2.3 4.8 0 5.6 7-3.8 13.8z",
+  spark: "M12 2.4l2.1 6.3 6.3 2.1-6.3 2.1-2.1 6.3-2.1-6.3L3.6 10.8l6.3-2.1z",
+  petal: "M12 3.2c3.4 2.4 5.2 5.4 5.2 8.5a5.2 5.2 0 1 1-10.4 0c0-3.1 1.8-6.1 5.2-8.5z",
+  bud:   "M12 4c2.7 0 4.7 2.1 4.7 4.6 0 3.1-2.3 5.8-4.7 7.7-2.4-1.9-4.7-4.6-4.7-7.7C7.3 6.1 9.3 4 12 4z",
+  leaf:  "M4.5 19.5C4.5 11 10 5.5 19.5 4.5c1 9.5-4.5 15-15 15z",
+};
+
 function buildEndHearts() {
   const field = document.getElementById("end-hearts");
   if (field.childElementCount) return;
@@ -2410,8 +1328,8 @@ document.addEventListener("keydown", (e) => {
    The platformer lives entirely in super-ouissy.js. This half only
    owns getting in and out of it, exactly as the scrapbook does.
    Finishing it is remembered, but it is a bonus chapter: the keepsake
-   still unlocks on the maze and the adventure alone, so nothing she has
-   already finished can re-lock itself.
+   unlocks on the adventure alone, so nothing she has already finished
+   can re-lock itself.
    ========================================================= */
 function startSuperOuissy() {
   loadChapter("ouissy").then(() => { if (window.SuperOuissy) SuperOuissy.start(); });
@@ -2459,9 +1377,8 @@ window.leaveSuperOuissyRace = () => {
 };
 window.markSuperOuissyRaceDone = () => markChapterDone("race");
 
-/* The apocalypse ends where the maze ended: on the roof, with the two
-   cats. It is the same scene — it is just that the city behind it has
-   had a week. */
+/* The apocalypse ends on the roof, with the two cats — the scene the
+   whole site has been walking towards. */
 window.startApocalypseEnding = () => {
   stopApocalypse();
   pageTurn("end", activateEndingScene);
@@ -2485,39 +1402,40 @@ function markChapterDone(name) {
     localStorage.setItem(CHAPTER_KEY, JSON.stringify(d));
   } catch (e) { /* private mode — the session still works, it just won't persist */ }
 }
+/* WHAT OPENS THE KEEPSAKE.
+
+   It used to take both story chapters — the maze and the adventure. With
+   the maze gone the adventure is the one that is left, and it stays the
+   one that counts: gating on anything else would re-lock the keepsake
+   for somebody who had already earned it, which is the one thing this
+   was always careful not to do. */
 function bothChaptersDone() {
-  const d = chaptersDone();
-  return !!(d.maze && d.quest);
+  return !!chaptersDone().quest;
 }
 
 function startHub() {
   const d = chaptersDone();
   const both = bothChaptersDone();
 
-  [["maze", d.maze], ["quest", d.quest], ["ouissy", d.ouissy], ["apoc", d.apoc], ["race", d.race]].forEach(([name, done]) => {
+  [["quest", d.quest], ["ouissy", d.ouissy], ["apoc", d.apoc], ["race", d.race]].forEach(([name, done]) => {
     const card = document.getElementById("hub-card-" + name);
     if (card) card.classList.toggle("done", !!done);
   });
 
-  /* Three cards, so the line has to count three — it still said "two
-     chapters" for as long as Super Ouissy has been on this board. The
-     keepsake itself is still gated on the two story chapters; that is
-     deliberate and unchanged. */
+  /* The line counts whatever is on the board, so a card coming or going
+     never leaves it lying. The keepsake is gated on the story chapter —
+     see bothChaptersDone above. */
   const sub = document.getElementById("hub-sub");
-  const count = (d.maze ? 1 : 0) + (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0) + (d.apoc ? 1 : 0) + (d.race ? 1 : 0);
+  const count = (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0) + (d.apoc ? 1 : 0) + (d.race ? 1 : 0);
   const total = document.querySelectorAll(".hub-card").length;
   if (both && count === total) sub.textContent = "— every one of them done. the keepsake is yours —";
-  else if (both) sub.textContent = "— both story chapters done. the keepsake is yours —";
+  else if (both) sub.textContent = "— the story is done. the keepsake is yours —";
   else if (count) sub.textContent = "— " + count + " of " + total + " done, any order —";
   else sub.textContent = "— " + total + " ways in, any order —";
 
   document.getElementById("hub-keepsake").classList.toggle("on", both);
 }
 
-document.getElementById("hub-card-maze").addEventListener("click", () => {
-  level = 1;
-  pageTurn("details");
-});
 document.getElementById("hub-card-quest").addEventListener("click", () => {
   pageTurn("quest", startQuest);
 });
@@ -2562,9 +1480,9 @@ function startKeepsake() {
     board.appendChild(card);
   });
 
-  /* the two chapters get a card each, so the board reflects the whole visit */
+  /* the story chapter gets a card, and every bonus one she has finished,
+     so the board reflects the whole visit */
   const badges = [
-    { icon: "px-key", cap: "The Maze" },
     { icon: "px-fox", cap: "The Long Way Round" },
   ];
   if (chaptersDone().ouissy) badges.push({ icon: "px-crown", cap: "Super Ouissy" });
@@ -2581,10 +1499,7 @@ function startKeepsake() {
     board.appendChild(card);
   });
 
-  let best = "";
-  try { best = localStorage.getItem("fal_best_time") || ""; } catch (e) {}
-  document.getElementById("ks-sub").textContent =
-    best ? "every page, start to finish · best maze time " + best : "every page, start to finish";
+  document.getElementById("ks-sub").textContent = "every page, start to finish";
   document.getElementById("ks-closing").textContent = KEEPSAKE_CLOSING;
 }
 

@@ -26,6 +26,11 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   });
   await p.goto('http://localhost:8899/index.html', { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(500);
+  /* The chapters are fetched on the idle callback now, not by a script
+     tag, so the global is not there the instant the document is. A tool
+     that drives a chapter directly has to wait for the file the same
+     way the hub card does. */
+  await p.waitForFunction(() => !!(window.SuperOuissyRace && window.SuperOuissy), { timeout: 30000 });
 
   for (const chap of ['race', 'super']) {
     /* The chapter scripts are fetched on idle now rather than sitting in

@@ -502,6 +502,12 @@ overflow into unreachable content. Any screen that can overflow needs its
 own scroller. `tools/landscape.js` asserts it, and is verified both ways —
 restore the old CSS and it reports 5 failures.
 
+*(Since written, `hello`, `details`, `level2intro`, `divider` and the maze
+itself were taken out of the site on main, so the short-screen rule those
+cards needed went with them and `#btn-start` no longer exists. The lesson
+above is the part that outlives them, and `landscape.js` now walks the
+screens that are left: the gate, the hub, the keepsake and the ending.)*
+
 ### Then he sent five photographs of a real iPhone on its side
 
 Everything below came from those, and each one is a different fault:
