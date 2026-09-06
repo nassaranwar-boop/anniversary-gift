@@ -588,6 +588,72 @@ one finger, which is why nothing caught this for so long. Verified both
 ways: restore the old listener and it reports "jump cancelled the
 direction" in both orientations.
 
+## 7g. The sweep for anything left
+
+He asked, after the landscape work, to make sure nothing was left — no bug,
+no lag, nothing wrong with a button or the book. Four things came out of it,
+and two things that looked like faults were not.
+
+**The front door did not work on a phone held sideways.** The gate card is a
+portrait 400:700 sheet whose width is derived from the height left over
+after the title plaque: `min(360px, 86vw, (app-h - 190px) * 400/700)`. On an
+844x390 screen that last term wins and comes out at **114px**, which made the
+twelve keys **15x15** and the Unlock plate 48x16. There was no way to type
+the passcode. The title now sits BESIDE the card instead of above it, which
+hands the sheet the whole height (211x370), and the proportions inside it are
+rebalanced for a hand rather than a page — the seal and the heading give up
+their share so the keypad can take most of the width. Keys are 52x52 and the
+plate 131x44. `tools/gatefit.js` drives the whole door with a finger at four
+shapes.
+
+**Four controls were under the 44px a thumb needs.** The adventure's back and
+quit chips were 50x22 and 33x22; `.btn-ancient` came to 38 tall and
+`.btn-replay` to 39. The chips keep the size they look and carry an invisible
+44px `::after` target (touch devices only, and they sit at opposite ends of
+the bar so the two targets cannot reach each other); the two buttons got a
+`min-height` rather than more padding, because the padding is what the design
+asked for. `tools/buttons.js` asserts all of it, and measures the HIT area
+rather than the painted box.
+
+**Two suites had been dead and nobody noticed.** `apocmech3d.js` and
+`tonecheck.js` both did `window.Apocalypse.start()` at domcontentloaded, and
+apocalypse.js stopped being a script tag when the chapters moved to a lazy
+fetch — so both threw `Cannot read properties of undefined` on their first
+line and had been reporting nothing since. They go through the site's own
+door now (`await window.loadChapter('apoc')`). Both are green: 14 and 40.
+
+**One photo frame in the book is empty on purpose.** Slot `"025"` on page 7
+has no file behind it, so it asks for `photo-025.webp`, then `.jpg`, then
+`.png`, gets three 404s and removes itself. That is the code working as
+written — the comment in scrapbook.js says the file is his to drop in — but
+it is the one gap in sixty-three photographs, and `assets/photo-32/33/34`
+exist and are placed nowhere.
+
+**The two that were not faults, and how to not re-find them:**
+
+*The 3D intro looked like it ran forever.* Profiling a page turn came back
+95% WebGL — `uniformMatrix4fv`, `drawElementsInstanced` — which reads as a
+Three.js scene left running behind the whole site. It is not: the intro
+**waits for a tap** (`begin()` on the canvas) and renders while it waits, and
+any harness that jumps past it with `showScreen` leaves it running behind
+every later measurement. Tapped and played through, it disposes itself and
+the draw count is **0** at the gate, in the book and at the hub. Drive the
+intro, don't skip it, or every number after it is fiction.
+
+*The page turn looked like a 500ms stall.* A "long task" counts paint as well
+as script. `turncost.js` splits it: over eight turns, 154ms of script, 756ms
+of style, 248ms of layout — and the rest of a 4.6s total is SwiftShader
+rasterising a curved page on the CPU. Per turn that is ~19ms of JavaScript.
+There is nothing to fix; `layoutLeaf` writes and never reads, so there is no
+forced synchronous layout in it either.
+
+Also checked and clean: no duplicate ids; every `getElementById` target
+exists (the three that do not are created in JS); every interactive id is
+wired to something; going back into the book and all four chapters three
+times binds no extra listeners — **collect the garbage before you read that
+counter**, or a chapter that rebuilds its buttons every visit looks like a
++12 leak when it is detached-but-collectable.
+
 ## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python

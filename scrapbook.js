@@ -2577,15 +2577,22 @@ window.Scrapbook = (function () {
       if (songAudio.duration) { songAudio.currentTime = k * songAudio.duration; paint(); }
     }
     scrub.addEventListener("pointerdown", function (e) {
-      scrubbing = true; scrub.setPointerCapture(e.pointerId); seekTo(e.clientX);
+      scrubbing = true;
+      /* capture can be refused if the pointer has already gone */
+      try { scrub.setPointerCapture(e.pointerId); } catch (err) {}
+      seekTo(e.clientX);
       e.stopPropagation();
     });
     scrub.addEventListener("pointermove", function (e) {
       if (scrubbing) { seekTo(e.clientX); e.stopPropagation(); }
     });
-    scrub.addEventListener("pointerup", function (e) {
-      scrubbing = false; e.stopPropagation();
-    });
+    /* pointercancel as well as pointerup, the way the film's scrubber does
+       it: iOS cancels a touch whenever the system takes the gesture over,
+       and a cancel that is not heard leaves `scrubbing` true — after which
+       merely moving a mouse across the bar seeks the song. */
+    function endScrub(e) { scrubbing = false; if (e) e.stopPropagation(); }
+    scrub.addEventListener("pointerup", endScrub);
+    scrub.addEventListener("pointercancel", endScrub);
     return c;
   }
 
@@ -2963,8 +2970,12 @@ window.Scrapbook = (function () {
     var screen = document.getElementById("screen-scrapbook");
     var d = document.getElementById("sb-drawer");
     if (!screen || !d) return;
-    buildDrawer();
     var open = force != null ? force : !screen.classList.contains("sb-drawer-on");
+    /* Build only on the way IN. This used to build unconditionally, which
+       meant leaving the book rebuilt the whole drawer — the map, the song
+       card, the film — a frame before the screen it belongs to went away.
+       stop() clears it and then closes it, so that path built it twice. */
+    if (open) buildDrawer();
     screen.classList.toggle("sb-drawer-on", open);
     d.setAttribute("aria-hidden", open ? "false" : "true");
     var btn = document.getElementById("sb-extras-btn");

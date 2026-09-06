@@ -61,7 +61,10 @@ const CUES = ['dread', 'streets', 'sterile', 'drive', 'open', 'hearth', 'signal'
       return S.apply(this, arguments);
     };
   });
-  await p.evaluate(() => {
+  /* apocalypse.js is fetched on the idle callback now, so Apocalypse does
+     not exist at domcontentloaded — go through the site's own door. */
+  await p.evaluate(async () => {
+    await window.loadChapter('apoc');
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-apoc').classList.add('active');
     window.Apocalypse.start();

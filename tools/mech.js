@@ -15,8 +15,17 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   await page.evaluate(() => { window.__soTestDrive = true; });
 
   const boot = async (diff) => {
-    await page.evaluate(() => { try{localStorage.clear();}catch(e){} showScreen('ouissy'); if (window.SuperOuissy) SuperOuissy.stop(); startSuperOuissy(); });
-    await page.waitForTimeout(250);
+    /* super-ouissy.js is fetched on demand now, so the title screen does
+       not exist 250ms after asking for it — wait for the thing to click
+       rather than for a number of milliseconds. */
+    await page.evaluate(async () => {
+      try { localStorage.clear(); } catch (e) {}
+      await window.loadChapter('ouissy');
+      showScreen('ouissy');
+      if (window.SuperOuissy) SuperOuissy.stop();
+      startSuperOuissy();
+    });
+    await page.waitForSelector('#so-play', { timeout: 30000 });
     await page.click(`[data-so-diff="${diff}"]`); await page.click('#so-play');
     await page.waitForTimeout(200);
     const how = await page.$('#so-how-ok'); if (how) await how.click();

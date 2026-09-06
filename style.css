@@ -836,8 +836,8 @@ img{-webkit-user-drag:none; user-select:none;}
    reach for it. */
 .btn-replay{
   position:absolute; bottom:5.5%; left:50%; transform:translateX(-50%); z-index:4;
-  display:inline-flex; align-items:center; gap:8px;
-  padding:11px 22px; cursor:pointer;
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:11px 22px; min-height:44px; cursor:pointer;
   font-family:'Fredoka',sans-serif; font-weight:600; font-size:13.5px;
   letter-spacing:.6px; color:#ffe6f4;
   border:1px solid rgba(255,169,208,.42);
@@ -1178,6 +1178,38 @@ img{-webkit-user-drag:none; user-select:none;}
 .gate-unlock:active,.gate-unlock.down{transform:translateY(.6cqw) scale(.97);}
 .gate-unlock:active img,.gate-unlock.down img{filter:drop-shadow(0 .3cqw .5cqw rgba(70,40,20,.5)) brightness(.95);}
 
+/* ---- the gate on a phone held sideways ----
+   The card is a portrait 400:700 sheet stacked UNDER the title plaque, and
+   its width is derived from the height left over: min(360px, 86vw,
+   (app-h - 190px) * 400/700). On an 844x390 screen that last term wins and
+   comes out at 114px, which made the twelve keys 15x15 — the front door of
+   the whole site, unusable, on the one shape nothing had measured.
+
+   The title moves beside the card rather than above it, which gives the
+   sheet the whole height (209px wide, 366 tall), and the proportions
+   INSIDE it are rebalanced for a hand rather than for a page: the seal and
+   the heading give up their share so the keypad can take most of the width
+   and come back to a real thumb target. Nothing is hidden that she needs;
+   the sub-line goes because the heading already says it. */
+@media (orientation: landscape) and (max-height: 560px){
+  .gate{
+    flex-direction:row; align-items:center; justify-content:center;
+    gap:clamp(16px, 4vw, 56px); padding:8px 3vw;
+  }
+  .gate-title{margin:0;}
+  .gate-title img{width:min(38vw, 300px);}
+  .gate-card{width:min(360px, 34vw, (var(--app-h) - 20px) * 400 / 700);}
+
+  .gate-body{padding:4cqw 7cqw 5cqw;}
+  .gate-seal-wrap{width:32cqw;}
+  .gate-heading{font-size:5.2cqw;}
+  .gate-sub{display:none;}
+  .gate-field{margin-top:2cqw; padding:2.4cqw 7cqw; border-radius:2.4cqw;}
+  .gate-error{margin-top:1cqw; min-height:3cqw; font-size:2.8cqw;}
+  .gate-pad{width:78cqw; gap:2.2cqw; margin-top:1.6cqw;}
+  .gate-unlock img{width:62cqw;}
+}
+
 @media (prefers-reduced-motion: reduce){
   .gate-title img,.gate-seal-glow,.gate-wax-blob,.gate-bloom{animation:none;}
   .sb-flower,.sb-song-halo{animation:none !important;}
@@ -1189,6 +1221,10 @@ img{-webkit-user-drag:none; user-select:none;}
   font-family:'Cinzel',serif; font-weight:600; font-size:13px; letter-spacing:.5px; cursor:pointer;
   box-shadow:0 4px 0 #5c3f10, 0 10px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.4);
   transition:transform .1s ease, box-shadow .1s ease;
+  /* 11px of padding around 13px of Cinzel comes to 38px tall, which is
+     under the 44 a thumb wants. The padding is what the design asked for,
+     so the floor is a minimum rather than more padding. */
+  min-height:44px;
 }
 .btn-ancient:active{transform:translateY(4px); box-shadow:0 1px 0 #5c3f10, 0 4px 10px rgba(0,0,0,.35);}
 
@@ -2779,6 +2815,18 @@ img{-webkit-user-drag:none; user-select:none;}
   border-radius:6px; padding:4px 10px; box-shadow:0 2px 0 rgba(90,52,17,.3);
 }
 .hv-chip:active{transform:translateY(2px); box-shadow:none;}
+/* On a touch screen these two are 50x22 and 33x22 — the size a mouse wants
+   and about half of what a thumb needs. The chip keeps the size it looks,
+   and carries an invisible 44px target around it, which is Apple's number
+   and the one his phone is judged by. They sit at opposite ends of the bar,
+   so the two targets cannot reach each other. */
+@media (hover:none){
+  .hv-chip{position:relative;}
+  .hv-chip::after{
+    content:""; position:absolute; left:50%; top:50%;
+    width:max(100%, 44px); height:44px; transform:translate(-50%, -50%);
+  }
+}
 .hv-chip[disabled]{opacity:.35; cursor:default;}
 
 /* ---- the things you have picked up along the way ---- */
