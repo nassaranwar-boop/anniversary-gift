@@ -3639,72 +3639,124 @@ window.Scrapbook = (function () {
      leading edge and finish after it, and everything hanging over either
      side rides round with the sheet it is stuck to, which is what it does
      on a real page. */
-  var BLEED = 15;          /* % of the page width, left and right */
+  /* WHERE THE TURNING PAGE GETS CUT.
 
-  /* And the same again vertically, which I missed the first time. He found
-     it: "when turning page six, a sticker in the top corner slips."
+     At rest the pages live inside .sb-spread, which is inset:5px 6px with
+     overflow:hidden -- so anything hanging over an edge is cut at the
+     book's own boundary. The leaves are siblings of that spread, outside
+     its clip entirely, which is why a sticker that is trimmed at rest came
+     back whole the moment the page began to turn. His words: "the stickers
+     showing their original size when flipping rather than the cut off size
+     that fits in the page."
 
-     Four pieces in the book sit above the top edge or below the bottom of
-     their page -- page six's newsprint patch is at top:-3 -- and the strips
-     were exactly the page's height, so the part above the edge was sliced
-     off the moment the turn started, exactly as the overhanging sides used
-     to be. Less of it shows than at the sides, which is why it reads as the
-     corner slipping rather than something disappearing. */
-  var VBLEED = 9;          /* % of the page height, top and bottom */
+     So the strips are cut where the book cuts. Only the SPINE side bleeds:
+     a piece that crosses the gutter onto its neighbour is stuck to this
+     sheet and travels with it, which is what it does in a real book. The
+     fore edge and both long edges get nothing, because that is where the
+     book's own boards cut everything at rest. */
+  var BLEED = 15;          /* % of the page width, towards the spine only */
+
+  /* Vertically there is no bleed at all, and that is deliberate.
+
+     I gave it nine percent once, to stop the corner sticker on page six
+     from being clipped as the sheet went over. It cured the wrong illness.
+     The book cuts that corner at rest too -- .sb-spread does it -- so
+     carrying it round on the turn did not restore something that had been
+     lost, it revealed something that is meant to be trimmed, and the
+     sticker grew a piece it does not have when the page is lying flat.
+
+     The rule is simply: the turning sheet is cut wherever the resting page
+     is cut. Top and bottom, that is the spread's own edge. */
+  var VBLEED = 0;        /* none: the spread's top and bottom cut at rest */
 
   function buildStripFragment(pageNode, hingeRight) {
     if (!pageNode) return null;
     var frag = document.createDocumentFragment();
     STRIPS = stripCount();
-    var span = 100 + BLEED * 2;
+    var span = 100 + BLEED;                /* the page, plus the gutter side */
     var vspan = 100 + VBLEED * 2;
     var d = span / STRIPS;                 /* strip width, in page-% */
+    /* The bleed goes past the hinge and nowhere else. Both the window
+       positions here and the arc in layoutLeaf are measured FROM the hinge
+       -- which side of the screen that is has already been dealt with, by
+       anchoring the strips to the right instead of the left and mirroring
+       the arc. So a hinge-side bleed is the same negative number either
+       way; making it conditional gave the two halves of one turn different
+       shapes, the sheet bleeding over the gutter on the way up and cut off
+       at it on the way down. */
+    var first = -BLEED;
+
+    /* THE PHOTOS WENT BLANK THE MOMENT A PAGE LIFTED.
+
+       The page's own images are lazy: they wait until they are in view.
+       That is right for a page lying in the book, and wrong for a copy of
+       it sitting inside a strip -- a strip is a small, clipped, 3D-
+       transformed box, and the browser is under no obligation to call
+       anything inside it visible. So the clones sat there undecided and
+       the sheet turned over with empty frames on it, filling back in only
+       once the page came to rest. That is the photos "disappearing" on the
+       turn. Every copy that rides on a turning sheet is eager, and decodes
+       there and then -- the bytes are already in the cache, the original
+       loaded them. */
+    var master = pageNode.cloneNode(true);
+    master.classList.add("in-leaf", "on");
+    var mImgs = master.getElementsByTagName("img");
+    for (var q = 0; q < mImgs.length; q++) {
+      mImgs[q].loading = "eager";
+      mImgs[q].decoding = "sync";
+    }
+
     for (var i = 0; i < STRIPS; i++) {
-      var startPct = -BLEED + i * d;       /* where this strip begins */
+      var startPct = first + i * d;        /* where this strip begins */
       var strip = el("sb-strip");
-      /* taller than the page, so nothing hanging over the top or the
-         bottom edge is cut off as the sheet goes over */
+      /* the page's own height (VBLEED is nought), so the sheet is trimmed
+         top and bottom exactly where the book trims it at rest */
       strip.style.top = -VBLEED + "%";
       strip.style.height = (100 + VBLEED * 2) + "%";
       /* The overlap has to cover the kink at every joint, and how big that
          kink is depends on how hard the sheet is bent. Without it the
          joins open into gaps you can see the page through and the sheet
          reads as a venetian blind instead of paper. */
-      strip.style.width = (d * 1.06 + 0.4) + "%";
+      var sw = d * 1.06 + 0.4;             /* what the strip is really wide */
+      strip.style.width = sw + "%";
       if (hingeRight) { strip.style.right = "0"; strip.style.transformOrigin = "right center"; }
       else            { strip.style.left  = "0"; strip.style.transformOrigin = "left center"; }
 
       var inner = el("sb-strip-inner");
-      /* the inner is the whole page, shifted so this strip is a window
-         onto its own slice of it -- including the slices outside the page */
-      inner.style.width = (100 / d * 100).toFixed(3) + "%";
-      inner.style[hingeRight ? "right" : "left"] = (-startPct / d * 100).toFixed(3) + "%";
-      /* and put the page back in the middle of the now-taller strip */
+      /* The inner is the whole page, shifted so this strip is a window onto
+         its own slice of it. Both numbers are percentages OF THE STRIP, so
+         they have to divide by the strip's real width -- dividing by d, the
+         width a strip would be without the overlap, drew every page in the
+         book 12% too wide and slid it sideways the moment it lifted. That
+         is what made a trimmed sticker jump back to its full size on the
+         turn: it was not the crop coming off, it was the whole page
+         changing size under it. */
+      inner.style.width = (100 / sw * 100).toFixed(3) + "%";
+      inner.style[hingeRight ? "right" : "left"] = (-startPct / sw * 100).toFixed(3) + "%";
+      /* and centre the page in the strip, for whatever vertical bleed
+         there is -- none, as it stands */
       inner.style.top = (VBLEED / vspan * 100).toFixed(3) + "%";
       inner.style.height = (100 / vspan * 100).toFixed(3) + "%";
 
-      var clone = pageNode.cloneNode(true);
-      clone.classList.add("in-leaf", "on");
-      inner.appendChild(clone);
+      inner.appendChild(master.cloneNode(true));
       strip.appendChild(inner);
       /* THE SHADE HAS TO STOP AT THE PAGE.
 
-         inset:0 on this was the grey striped slab he photographed. The
-         strips are 130% of the page wide and 118% tall now so that the
-         overhanging pieces have something to ride on -- and the shading
+         inset:0 on this was the grey striped slab he photographed. A strip
+         reaches past the page on the spine side, so the piece of a sticker
+         that crosses the gutter has something to ride on -- and the shading
          layer was painting its light-and-dark gradient across every bit of
          that, including the empty margin where there is no paper at all.
-         Thirteen strips of translucent grey, side by side, hanging off the
-         book in mid-turn: it stopped looking like a page and started
-         looking like a pane of glass.
+         A row of translucent grey panels hanging off the book in mid-turn:
+         it stopped looking like a page and started looking like glass.
 
          So the shade is sized to where the paper actually is inside this
          strip, and nowhere else. For the strips in the middle that is the
          whole strip; for the two on the ends it is the part that overlaps
          the page. */
       var shade = el("sb-strip-shade");
-      var sL = Math.max(0, (0 - startPct) / d * 100);
-      var sR = Math.min(100, (100 - startPct) / d * 100);
+      var sL = Math.max(0, (0 - startPct) / sw * 100);
+      var sR = Math.min(100, (100 - startPct) / sw * 100);
       shade.style.left = sL.toFixed(3) + "%";
       shade.style.width = Math.max(0, sR - sL).toFixed(3) + "%";
       shade.style.top = (VBLEED / vspan * 100).toFixed(3) + "%";
@@ -3715,6 +3767,13 @@ window.Scrapbook = (function () {
       strip.style.setProperty("--pt", (VBLEED / vspan * 100).toFixed(3) + "%");
       strip.style.setProperty("--ph", (100 / vspan * 100).toFixed(3) + "%");
       strip.appendChild(shade);
+      /* The light on this strip is written here, not on the strip. Custom
+         properties inherit, and a strip's subtree is an entire copy of the
+         page -- so setting the four light values on the strip, sixty times
+         a second, told the browser to restyle a couple of hundred nodes
+         per strip per frame for four numbers that only one childless
+         element ever reads. */
+      strip._shade = shade;
       frag.appendChild(strip);
     }
     return frag;
@@ -3739,11 +3798,44 @@ window.Scrapbook = (function () {
     return { lift: pageEls[from[0]], back: pageEls[to[to.length - 1]], aR: true, bR: false };
   }
 
+  /* THE PAGE THAT COMES OUT FROM UNDER THE SHEET.
+
+     Its photographs are lazy, and a lazy image starts loading when it
+     comes into view -- which is the exact moment the sheet lifts off it.
+     So the page it uncovered spent the turn showing empty frames and
+     filled in afterwards, which is the photos "disappearing" on the turn
+     seen from the other side. Waking them while the book is sitting still
+     costs nothing anybody can feel and the page is ready before it is
+     ever seen. */
+  function warmView(i) {
+    var v = views[i];
+    if (!v) return;
+    v.forEach(function (pi) {
+      var pg = pageEls[pi];
+      if (!pg || pg.dataset.warm) return;
+      pg.dataset.warm = "1";
+      var imgs = pg.getElementsByTagName("img");
+      for (var k = 0; k < imgs.length; k++) {
+        var im = imgs[k];
+        im.loading = "eager";
+        /* Loaded is not the same as ready to show. Decoding is asynchronous
+           by default, so an image can be fully downloaded and still take a
+           frame or two to turn into pixels -- which is long enough to see a
+           blank frame where a photograph should be. Decoding it now means
+           it is already a bitmap by the time the sheet lifts off it. */
+        if (im.decode) { try { im.decode().catch(function () {}); } catch (e) {} }
+      }
+    });
+  }
+
   function schedulePreTurn() {
     clearTimeout(preTimer);
     preTurn = null;
     preTimer = setTimeout(function () {
       if (flip.on || turning) return;
+      warmView(viewIndex);
+      warmView(viewIndex + 1);
+      warmView(viewIndex - 1);
       var w = pagesForTurn(1);
       if (!w) return;
       preTurn = {
@@ -3754,31 +3846,33 @@ window.Scrapbook = (function () {
     }, 260);
   }
 
-  /* How dark a bit of sheet at this angle is. Rebuilding a gradient
-     string every frame means the browser reparses it every frame, so the
-     gradient is written once in CSS and only these two numbers change. */
-  /* HOW THE LIGHT SITS ON THE TURNING SHEET.
+  /* HOW A TURNING SHEET IS LIT.
 
-     The shade is Lambert -- a surface turned away from the lamp loses
-     light in proportion to the cosine of its angle -- and that part was
-     already right.
+     (The gradients themselves live in the stylesheet and only these
+     numbers change per frame: building a gradient string in script would
+     have the browser reparse it sixty times a second.)
 
-     The sheen was one broad sin-cubed lobe, which is what a sheet of
-     rubber looks like. Paper has a hard, narrow crest where the curl
-     turns through the light and a faint sheen everywhere else, so it is
-     two terms now: a wide soft body, and a tight specular an eighth power
-     narrow that runs along the top of the bend as it goes over. That
-     narrow band is the whole difference between a sheet that is bending
-     and a shape that is rotating. */
+     Two layers ride on every strip: how much light it has lost by facing
+     away from us, and the highlight that slides along the curl. They used
+     to peak at the same place -- both hit their maximum at ninety degrees,
+     so the steepest part of the sheet took two thirds of a dark wash AND
+     half a white one on top of it, and came out a flat grey that read as
+     tracing paper rather than a page. Paper does not do that. It goes
+     darker as it turns away, and the highlight is a glancing thing that
+     happens on the way and is gone before the sheet is edge on. */
   function shadeAt(a) {
-    return Math.max(0, Math.min(0.86, 0.66 * (1 - Math.cos(a))));
+    return Math.max(0, Math.min(0.72, 0.58 * (1 - Math.cos(a))));
   }
   function sheenAt(a) {
     var sn = Math.max(0, Math.sin(a));
-    var s2 = sn * sn;
-    var body = 0.15 * s2 * sn;          /* the soft sheen over the whole curl */
-    var crest = 0.40 * s2 * s2 * s2 * s2; /* the hard line along the top of it */
-    return body + crest;
+    /* a narrow band around 62 degrees -- the angle at which a sheet of
+       paper actually catches the light and throws it back at you */
+    var t = (a - 1.08) / 0.34;
+    var crest = 0.15 * Math.exp(-t * t);
+    /* and a whisper of it over the rest of the curl, so the crest has
+       something to sit on rather than appearing out of flat shade */
+    var body = 0.05 * sn * sn * sn;
+    return crest + body;
   }
 
   /* place every strip on the cylinder, and light it by how it faces us */
@@ -3786,9 +3880,9 @@ window.Scrapbook = (function () {
     if (!leaf || leaf.dataset.empty) return;
     var strips = leaf.children, n = strips.length;
     if (!n) return;
-    var span = 1 + (BLEED * 2) / 100;
+    var span = 1 + BLEED / 100;
     var d = (W * span) / n;
-    var s0 = -W * (BLEED / 100);
+    var s0 = -W * (BLEED / 100);          /* measured from the hinge, both ways */
     var sign = hingeRight ? -1 : 1;
     for (var i = 0; i < n; i++) {
       var s = s0 + i * d;
@@ -3819,7 +3913,7 @@ window.Scrapbook = (function () {
          one continuous curve. */
       var sEnd = s + d;
       var aEnd = sEnd <= 0 ? A : A - kappa * sEnd;
-      var st2 = st.style;
+      var st2 = (st._shade || st).style;
       st2.setProperty("--d0", shadeAt(aTan).toFixed(3));
       st2.setProperty("--d1", shadeAt(aEnd).toFixed(3));
       st2.setProperty("--s0", sheenAt(aTan).toFixed(3));
@@ -3828,7 +3922,9 @@ window.Scrapbook = (function () {
          sheet is side-on to us, which is when you would really see it,
          and gone by the time the page is flat either way */
       if (i === n - 1) {
-        st2.setProperty("--edge", Math.max(0, Math.sin(aEnd)).toFixed(3));
+        /* this one is read by the strip's own ::after, so it does belong
+           on the strip -- and it is one strip, once a frame */
+        st.style.setProperty("--edge", Math.max(0, Math.sin(aEnd)).toFixed(3));
       }
     }
   }
@@ -3839,7 +3935,11 @@ window.Scrapbook = (function () {
     flip.p = p;
 
     var half = p < 0.5;
-    var W = pageW || 1;
+    /* The width of the sheet itself, not of the book's half. The boards
+       overhang the text block, so the leaf is narrower than pageW by that
+       overhang -- and the strips are placed in real pixels, so getting
+       this wrong slides the whole page sideways as it lifts. */
+    var W = flip.W || pageW || 1;
     /* The sheet is straight at either end and bent in between -- but not
        symmetrically. A page resists at first, held by the spine and its
        own stiffness, and then gives: the flop comes late, not halfway. So
@@ -3931,6 +4031,10 @@ window.Scrapbook = (function () {
        whole book sideways under the turning sheet. */
     var toWide = perView === 2 && views[flip.to].length === 2;
     flip.shift = spineOffset(flip.from) - spineOffset(flip.to);
+    /* the board overhang holds still for the whole turn -- renderView is
+       what changes it, and that runs once the turn is over */
+    flip.W = Math.max(1, pageW -
+      (parseFloat(getComputedStyle(e.outer).getPropertyValue("--board-x")) || 0));
     e.outer.style.setProperty("--page-w", pageW + "px");
     e.outer.style.width = (toWide ? pageW * 2 : pageW) + "px";
     e.outer.classList.toggle("single", perView === 1 || !toWide);

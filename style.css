@@ -1101,8 +1101,18 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 #screen-scrapbook.sb-open .sb-book{opacity:1; pointer-events:auto;}
 
+/* How far the boards overhang the text block. The resting spread and the
+   turning leaf both read these, so a sheet that lifts is exactly the page
+   that was lying there -- same box, same crop, to the pixel. Registering
+   them lets the pair ease together when the cover opens; a browser that
+   does not know @property simply snaps, which is still in step. */
+@property --board-x{ syntax:'<length>'; inherits:true; initial-value:6px; }
+@property --board-y{ syntax:'<length>'; inherits:true; initial-value:5px; }
+
 .sb-book-outer{
   position:relative;
+  --board-x:6px; --board-y:5px;
+  transition:--board-x .5s var(--ease-out), --board-y .5s var(--ease-out);
   border-radius:3px 5px 5px 3px;
   background:#8e4f60;
   perspective:2600px;
@@ -1140,11 +1150,12 @@ img{-webkit-user-drag:none; user-select:none;}
 /* the boards overhang the text block, the way a bound book does */
 .sb-endpaper,
 .sb-spread{
-  position:absolute; inset:5px 6px; overflow:hidden; border-radius:1px;
-  transition:inset .5s var(--ease-out);
+  position:absolute; inset:var(--board-y) var(--board-x);
+  overflow:hidden; border-radius:1px;
 }
+.sb-book-outer.closed{--board-x:0px; --board-y:0px;}
 .sb-book-outer.closed .sb-endpaper,
-.sb-book-outer.closed .sb-spread{inset:0; border-radius:3px 5px 5px 3px;}
+.sb-book-outer.closed .sb-spread{border-radius:3px 5px 5px 3px;}
 .sb-book-outer.single .sb-endpaper{opacity:0;}
 .sb-endpaper{
   z-index:0; transition:opacity .3s ease; background-size:cover; background-position:center;
@@ -1241,15 +1252,42 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* the gutter shadow, so the two pages read as one bound book */
+/* THE SPINE, WHICH IS NOT DRAWN -- IT IS ONLY FELT.
+
+   "I didnt mean it has to be shown, I meant only its effects on flipping
+   the pages, so all of the pages start reacting as belonging to the same
+   book."
+
+   This was already here, and it was already the right idea: a soft trough
+   of shadow down the gutter, where the paper curves into the binding. Two
+   things were wrong with it.
+
+   It sat at z-index 8, under the leaves at 12 -- so the moment a page began
+   to turn it passed OVER the gutter instead of down into it, and that is
+   most of why the sheet read as an independent object flipping in front of
+   a book rather than a leaf bound into one. It sits above them now, so
+   every page, resting or turning, darkens as it enters the binding. That
+   one change is what ties them together.
+
+   And it was static. A real gutter deepens as a leaf comes up off it,
+   because the trough opens and less light reaches the bottom of it. It
+   follows the turn now. Nothing here is a drawn spine -- there is no edge,
+   no object, only light not reaching the fold. */
 .sb-spine{
-  position:absolute; top:0; bottom:0; left:50%; width:9%; transform:translateX(-50%);
-  pointer-events:none; z-index:8;
+  position:absolute; top:0; bottom:0; left:50%;
+  width:calc(9% + var(--flip-lift,0) * 5%);
+  transform:translateX(-50%);
+  pointer-events:none; z-index:14;
   background:linear-gradient(90deg,
-    rgba(0,0,0,0) 0%, rgba(48,16,28,.26) 36%, rgba(48,16,28,.46) 50%,
-    rgba(48,16,28,.26) 64%, rgba(0,0,0,0) 100%);
+    rgba(0,0,0,0) 0%,
+    rgba(48,16,28,calc(.24 + var(--flip-lift,0) * .16)) 34%,
+    rgba(40,12,24,calc(.44 + var(--flip-lift,0) * .26)) 50%,
+    rgba(48,16,28,calc(.24 + var(--flip-lift,0) * .16)) 66%,
+    rgba(0,0,0,0) 100%);
 }
+/* one page on screen means one board, so there is no gutter to shade */
 .sb-book-outer.single .sb-spine{opacity:0;}
-/* =========================================================
+
 /* =========================================================
    TURNING A PAGE
 
@@ -1269,16 +1307,23 @@ img{-webkit-user-drag:none; user-select:none;}
   left:0 !important; width:100% !important;
   animation:none !important;
 }
-/* A turning sheet is drawn once per strip, so anything expensive to
-   paint is paid for many times over. Drop-shadows are the worst of it
-   and nobody can see them on a page that is moving — the box-shadows
-   that give the collage its depth stay. */
-.sb-page.in-leaf *,
-.sb-page.in-leaf{filter:none !important; box-shadow:none !important;}
+/* The depth stays on. Killing the shadows here was meant to save paint,
+   and what it actually did was flatten the whole collage the instant a
+   page lifted and pop it back when the page landed — every photo and
+   sticker losing the shadow that sits it on the paper. It reads exactly
+   like the page stops belonging to the book.
+
+   It buys nothing either. A strip's contents never change once the leaf
+   is built: only the strip's transform moves, so the shadows are painted
+   once at the start of the turn and composited from then on. */
 
 
 .sb-leaf{
-  position:absolute; top:0; height:100%; width:var(--page-w,50%);
+  /* the same box the page occupies at rest, inset by the boards -- see
+     --board-x / --board-y above */
+  position:absolute;
+  top:var(--board-y); height:calc(100% - var(--board-y) * 2);
+  width:calc(var(--page-w,50%) - var(--board-x));
   transform-style:preserve-3d;
   z-index:12; pointer-events:none;
   /* out of the render tree entirely when it is not the one on screen —
@@ -1286,11 +1331,11 @@ img{-webkit-user-drag:none; user-select:none;}
   display:none;
 }
 .sb-leaf.on{display:block;}
-.sb-leaf-a{right:0;}
-.sb-leaf-b{left:0;}
-.sb-book-outer.flip-back .sb-leaf-a{right:auto; left:0;}
-.sb-book-outer.flip-back .sb-leaf-b{left:auto; right:0;}
-.sb-book-outer.single .sb-leaf-a{right:0; left:auto;}
+.sb-leaf-a{right:var(--board-x);}
+.sb-leaf-b{left:var(--board-x);}
+.sb-book-outer.flip-back .sb-leaf-a{right:auto; left:var(--board-x);}
+.sb-book-outer.flip-back .sb-leaf-b{left:auto; right:var(--board-x);}
+.sb-book-outer.single .sb-leaf-a{right:var(--board-x); left:auto;}
 
 .sb-strip{
   position:absolute; top:0; height:100%;
@@ -1338,30 +1383,13 @@ img{-webkit-user-drag:none; user-select:none;}
   background:linear-gradient(90deg,rgba(120,80,92,.55),rgba(255,250,246,.35));
 }
 
-/* the shadow the raised sheet throws over the page underneath */
-/* the shadow the lifted leaf throws onto the page underneath. It does not
-   just get longer as the page comes over -- it also softens and weakens,
-   the way a real shadow does as its caster moves away from the surface,
-   which is what stops it reading as a hard painted band sliding across. */
-.sb-flip-shade{
-  position:absolute; top:0; bottom:0; right:0; width:var(--page-w,50%);
-  z-index:11; pointer-events:none; opacity:0;
-  --lift:var(--flip-lift,0);
-  background:linear-gradient(90deg,
-    rgba(34,13,21,calc(.60 - var(--lift) * .26)) 0%,
-    rgba(34,13,21,calc(.34 - var(--lift) * .16)) calc(20% + var(--lift) * 14%),
-    rgba(34,13,21,calc(.11 - var(--lift) * .05)) calc(52% + var(--lift) * 16%),
-    rgba(34,13,21,0) 92%);
-  transform:scaleX(calc(.24 + var(--lift) * .82));
-  transform-origin:left center;
-}
-.sb-book-outer.flipping .sb-flip-shade{opacity:calc(var(--flip-lift,0) * .85);}
-.sb-book-outer.flip-back .sb-flip-shade{
-  right:auto; left:0; transform-origin:right center;
-  background:linear-gradient(270deg,
-    rgba(38,16,24,.55) 0%, rgba(38,16,24,.30) 26%,
-    rgba(38,16,24,.09) 58%, rgba(38,16,24,0) 88%);
-}
+/* The shadow the lifted leaf used to throw across the page underneath is
+   gone at his request -- it read as a painted band sliding over the paper
+   rather than as light, not least because it was a flat gradient sliding
+   over a bent sheet. What tells you a page is up now is the gutter
+   deepening under it, which is what actually happens. The element stays in
+   the markup so nothing else has to change; it simply never paints. */
+.sb-flip-shade{ display:none !important; }
 
 /* the corner that lifts on its own, so the gesture is obvious */
 .sb-curl{
