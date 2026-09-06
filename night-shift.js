@@ -744,6 +744,10 @@ const NS = {
     hatchShut: "VENT HATCH: SEALED.",
     hatchOpen: "VENT HATCH: OPEN.",
     motion:    "MOTION: $1.",
+    /* the one line that exists to make her look somewhere. Camera zero
+       is the room she is sitting in, and if she never raises it the
+       thing standing behind her chair is a scene that does not happen. */
+    deskLook:  "MOTION: SECURITY OFFICE. CAMERA ZERO.",
     camLost:   "CAMERA $1: SIGNAL LOST.",
     camBack:   "CAMERA $1: RESTORED.",
     surge:     "LOAD SPIKE ON THE MAIN BUS.",
@@ -5683,6 +5687,11 @@ let bedNodes = [], creakTimer = 0, audioOn = false, muted = false;
    difficulty setting — it is all volume, and the game is exactly as
    hard with the score off. */
 const MIX_KEYS = ["master", "music", "sfx", "voice", "room"];
+/* The shop's own output level, before the limiter. It was 0.9 and the
+   whole chapter metered a peak of 0.25 against a browser voice at full
+   scale. */
+const MASTER_BASE = 2.6;
+let outComp = null;
 const MIX_DEF = { master: 1, music: 1, sfx: 1, voice: 1, room: 1 };
 const MIX = { master: 1, music: 1, sfx: 1, voice: 1, room: 1 };
 const MIX_LABEL = {
@@ -5712,7 +5721,7 @@ function applyMix() {
     node.gain.cancelScheduledValues(t);
     node.gain.setValueAtTime(Math.max(0.0001, v), t);
   };
-  set(master, 0.9 * MIX.master);
+  set(master, MASTER_BASE * MIX.master);
   set(cueGain, 1.0 * MIX.sfx);
   if (MUS.bus && MUS.mode !== "none") {
     const feel = MODE_FEEL[MUS.mode];
@@ -5750,7 +5759,29 @@ function audioInit() {
   } catch (e) {}
 
   AC = new C();
-  master = AC.createGain(); master.gain.value = 0.9; master.connect(AC.destination);
+  /* --- HOW LOUD THE SHOP IS, AGAINST A VOICE IT DOES NOT OWN --------
+
+     `speechSynthesis` does not go through this graph. It is the
+     browser's own voice at the browser's own level, and it is loud.
+     Everything else here — the score, every cue, the room tone — was
+     mixed politely under a master of 0.9 and metered a peak of 0.25,
+     which is four times quieter than it could be. So the report was
+     exactly right: he was deafening and the shop was a whisper, and no
+     amount of ducking would have fixed it, because nothing was ducking.
+
+     The answer is not to time one against the other — they are two
+     output paths that never meet — it is to stop leaving three
+     quarters of the shop's headroom unused. The bus runs hot now and a
+     limiter catches the peaks, so the average level comes up a long
+     way without a scare ever clipping. */
+  outComp = AC.createDynamicsCompressor();
+  outComp.threshold.value = -9;
+  outComp.knee.value = 6;
+  outComp.ratio.value = 12;
+  outComp.attack.value = 0.003;
+  outComp.release.value = 0.25;
+  outComp.connect(AC.destination);
+  master = AC.createGain(); master.gain.value = MASTER_BASE; master.connect(outComp);
   duckGain = AC.createGain(); duckGain.gain.value = 1; duckGain.connect(master);
   /* Everything that is not a cue goes through here, and it steps out of
      the way whenever a cue fires.
@@ -6816,7 +6847,11 @@ function speechSay(text, plan, opts) {
      sounds like — but 0.1 was gargling rather than announcing. */
   u.pitch = o.sys ? 0.55 : 0.96;
   u.rate  = o.sys ? 1.08 : 0.86;
-  u.volume = clamp((o.volume === undefined ? 1 : o.volume) * MIX.voice * MIX.master, 0, 1);
+  /* 0.78 rather than 1: the browser's voice is not in this graph and
+     was arriving a long way over everything that is. The building's
+     annunciator is quieter still — it is a speaker in a ceiling. */
+  const vBase = (o.volume === undefined ? (o.sys ? 0.62 : 0.78) : o.volume);
+  u.volume = clamp(vBase * MIX.voice * MIX.master, 0, 1);
 
   /* the caption follows the synthesiser rather than a guess: charIndex
      is where in the string it has got to, so the word is whichever one
@@ -7690,7 +7725,7 @@ function audioTick(dt) {
 }
 function audioMute(v) {
   muted = v;
-  if (master) master.gain.value = v ? 0 : 0.9;
+  if (master) master.gain.value = v ? 0 : MASTER_BASE * MIX.master;
 }
 
 /* =========================================================
@@ -7851,6 +7886,13 @@ function resetCast() {
        night started after a look round the shop in daylight had a cast
        that never moved for the rest of the visit. */
     ch.deskHeld = false;
+    /* how many times it has reached her door tonight. Every step any of
+       them takes is a dice roll, so on an early night a performer could
+       genuinely sit on its plinth from midnight to six and she would
+       never meet it — which is what happened, and it broke the night
+       whose whole subject is what the four of them are. This is what
+       the guarantee below counts. */
+    ch.arrivals = 0;
     ch.phase = Math.random() * 10;
     syncChar(ch);
   });
@@ -7931,7 +7973,26 @@ function stepCast(ch, dt) {
   const slack = !isWound(ch) ? 1.35 : 1;
   const agg = ramp() * dialOf(ch.def.id) * slack;
   ch.cool = tune.step / Math.max(0.15, agg);
-  if (Math.random() > tune.chance * agg) return;
+  /* --- THE GUARANTEE ------------------------------------------------
+     Everything above is a dice roll, and dice are the right texture for
+     WHEN one of them comes — but not for WHETHER. A performer that
+     never leaves its room is a character she is told about and never
+     meets, and on night two, whose entire subject is what the four of
+     them are, one of them simply not turning up empties the night.
+
+     So chance decides the whole first stretch, and after that the shop
+     stops asking. Once a performer is two in-game hours past waking and
+     still has not reached her door, it advances every tick until it
+     has. She cannot tell the difference — it looks like the night
+     tightening — and every one of them is certain to have been met by
+     six. This is not a difficulty change: they arrive in the same
+     window they always could have, they simply can no longer fail to.
+
+     Custom Night is left alone: the dials are hers, and setting one to
+     nothing has to mean nothing. */
+  const owed = G.mode !== "custom" && ch.arrivals === 0 && G.hour >= Math.min(4, from + 2);
+  if (owed) ch.cool = Math.min(ch.cool, tune.step * 0.45);
+  if (!owed && Math.random() > tune.chance * agg) return;
 
   /* Jax skips, and occasionally doubles back, which is why he is the
      one you cannot plan around */
@@ -7947,6 +8008,7 @@ function stepCast(ch, dt) {
   G.stats.moves++;
   if (ch.atDoor) {
     ch.doorT = (tune.doorGrace * cozyK("doorGrace")) / Math.max(0.8, agg * 0.85);
+    ch.arrivals++;
     G.stats.arrivals++;
     ch.knocks = 0;
     ch.knockT = 0.7;
@@ -8591,7 +8653,7 @@ function closeReveal(kept) {
    The point is not a jump. The point is that the one place she was
    allowed to feel safe has a camera on it now, and some nights there
    is somebody in the picture. */
-const DESK = { on: false, at: -1, who: null, seen: false, armed: false, cool: 0, was: false };
+const DESK = { on: false, at: -1, who: null, seen: false, armed: false, cool: 0, was: false, nag: 0 };
 const DESK_FROM = 3;          // the night the office stops being empty
 const DESK_MARKS = ["d0", "d1", "d2"];
 /* where the four of them stand in the daylight, which is where the
@@ -8600,7 +8662,7 @@ const GALLERY_MARKS = ["g0", "g1", "g2", "g3"];
 
 function deskReset() {
   DESK.on = false; DESK.at = -1; DESK.who = null;
-  DESK.seen = false; DESK.cool = 0; DESK.was = false;
+  DESK.seen = false; DESK.cool = 0; DESK.was = false; DESK.nag = 0;
   DESK.armed = G.mode === "story" && G.night >= DESK_FROM;
   deskHide();
 }
@@ -8632,8 +8694,27 @@ function stepDesk(dt) {
     if (DESK.seen || G.hour < 2) return;
     DESK.cool -= dt;
     if (DESK.cool > 0) return;
-    /* it starts the moment she next looks at her own desk */
-    if (!watching) { DESK.cool = 0.5; return; }
+    /* --- MAKING SURE SHE LOOKS ------------------------------------
+       This scene waits for her to raise camera zero, which is right,
+       because the whole point of it is that it is in the room she is
+       sitting in and she has to choose to look. But a scene that waits
+       for a choice she may never make is a scene that does not happen,
+       and from night three this one carries a revelation.
+
+       So the shop asks. From four o'clock, if she still has not looked,
+       the annunciator calls motion on camera zero — which is a thing it
+       does for every other room all night, so it costs the fiction
+       nothing — and it says it again every half minute until she does.
+       She still has to raise it herself. She simply cannot now go a
+       whole night without being told there is a reason to. */
+    if (!watching) {
+      DESK.cool = 0.5;
+      if (G.hour >= 4) {
+        DESK.nag = (DESK.nag || 0) - 0.5;
+        if (DESK.nag <= 0) { DESK.nag = 30; say(NS.sys.deskLook, true); }
+      }
+      return;
+    }
     const ch = deskPick();
     if (!ch) { DESK.cool = 3; return; }
     DESK.on = true;
@@ -11512,6 +11593,19 @@ const testHooks = {
       stepHazards(dt);
       stepWind(dt);
       stepBlind(dt);
+      /* stepDesk was missing from this list while the frame loop ran it,
+         so the thing that stands in her own office from night three had
+         never once been exercised by a measurement — the same fault the
+         blind hour had. If you add a step to the frame loop, ask whether
+         it belongs here.
+
+         stepReveal deliberately stays out. Three o'clock puts a card in
+         her hands and waits for a keep-or-burn that writes real, saved
+         story state; a headless clock must not answer that on her
+         behalf, and stopping the pump dead at three would end every
+         budget and pacing measurement an hour into the night. It has
+         its own hook (`revealStep`) and its own checks. */
+      stepDesk(dt);
     }
     G.pumping = false;
     return { phase: G.phase, hour: G.hour, power: G.power, dead: G.dead };
@@ -11717,7 +11811,9 @@ const testHooks = {
       /* it has to reach a destination to be pulled, but it must not be
          heard: a gain of nought on the way out */
       const mute = AC.createGain(); mute.gain.value = 0;
-      master.connect(sp); sp.connect(mute); mute.connect(AC.destination);
+      /* tap AFTER the limiter, or every reading is the level going in
+         rather than the level coming out */
+      (outComp || master).connect(sp); sp.connect(mute); mute.connect(AC.destination);
       return { armed: true, rms: 0, peak: 0 };
     }
     const m = G.__meter;
@@ -11767,6 +11863,9 @@ const testHooks = {
                  showing: EL["ns-tape"] ? !EL["ns-tape"].hidden : false }),
   tapeTick: (dt) => { tapeTick(dt); return TAPE.line; },
   say: (line, urgent) => say(line, urgent),
+  /* everything the annunciator is holding or has just said, so a test
+     can ask whether she was ever told a thing */
+  sayText: () => [G.caption || ""].concat(sayQueue.map((q) => q.line)).join(" | "),
   sayTick: (dt) => sayTick(dt),
   sayClear: () => sayClear(),
   /* the speech path, which this container has no voices for */
@@ -11780,6 +11879,9 @@ const testHooks = {
                                sys: SPEECH.sys ? SPEECH.sys.name : null }; },
   sysSay: (t) => speechSay(t, voxPlan(t), { sys: true }),
   mix: () => { const o = {}; MIX_KEYS.forEach((k) => { o[k] = MIX[k]; }); return o; },
+  /* fire any cue by name, so the level of the loudest thing in the game
+     can be measured rather than assumed */
+  cue: (name, a, b2) => { if (SFX[name]) SFX[name](a, b2); },
   /* how far apart his lines actually land across a night */
   tapeGaps: () => {
     const sc = (NS.tapes && NS.tapes[1]) || [];

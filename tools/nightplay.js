@@ -1333,6 +1333,30 @@ function ok(name, cond, extra) {
     /* and it is never on the first two nights */
     w.route('night:2'); w.route('go');
     out.night2 = w.desk().armed;
+
+    /* THE CASE THIS FILE USED TO MISS ENTIRELY.
+
+       Everything above forces the camera to her desk and then steps the
+       scene by hand, so it proves the scene works and says nothing at
+       all about whether a player ever reaches it. This one is the
+       report we actually got: a whole night played watching every other
+       room, never once thinking to look at her own desk. The shop has
+       to tell her. */
+    w.route('night:3'); w.route('go');
+    const others = ['hall','stage','arcade','party','foyer','ducts','closet'];
+    let t = 0; out.toldAboutZero = false;
+    while (s.phase === 'play' && t < 460) {
+      const cs = w.cast();
+      ['left','right','hatch'].forEach((d) => {
+        let want = false;
+        for (const k in cs) if (cs[k].awake && cs[k].atDoor && cs[k].def.door === d) want = true;
+        if (want !== s.doors[d]) w.press(d);
+      });
+      s.monitor = (t % 20) < 6;
+      if (s.monitor) s.cam = others[((t / 2) | 0) % others.length];
+      w.pump(0.5, 0.25); t += 0.5;
+      if (/CAMERA ZERO/.test(w.sayText() || '')) out.toldAboutZero = true;
+    }
     return out;
   });
   ok('the desk is a camera on the plan', zero.onPlan === true);
@@ -1348,6 +1372,9 @@ function ok(name, cond, extra) {
   ok('and then it is simply not there any more, once a night',
      zero.gone.on === false && zero.gone.seen === true);
   ok('and it never happens on the first two nights', zero.night2 === false);
+  ok('and a night spent looking at every other room still gets told about camera zero',
+     zero.toldAboutZero === true,
+     'she watched all eight rooms all night and was never pointed at her own desk');
 
   /* one revelation a night, in the middle of the shift */
   console.log('\n— and every night tells her something about him —');

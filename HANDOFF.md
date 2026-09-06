@@ -553,6 +553,50 @@ only ever sent two real key events in the entire suite, neither during
 a shift. A control nothing has ever actually pressed is a control
 nobody has tested.
 
+Two more reports, and both were right.
+
+**"One of the toys doesn't show up on night two or three. Make every
+step of the story certain to happen."** Every step any performer takes
+was a dice roll — `if (Math.random() > tune.chance * agg) return;` —
+with no floor under it. Dice are the right texture for *when* one of
+them comes and the wrong one for *whether*: on an early night, with the
+ramp low, a performer could sit in its room from midnight to six and
+never be met. That empties night two, whose entire subject is what the
+four of them are, and it is the difference between a character and a
+rumour.
+
+So chance now decides the first stretch and then the shop stops asking.
+Once a performer is two in-game hours past waking with no arrival, it
+advances every tick until it has reached her. It reads as the night
+tightening, it arrives inside the window it always could have, and it
+can no longer fail to. Custom Night is exempt — the dials are hers, and
+a dial at nothing has to mean nothing.
+
+The same fault in a different shape: **camera zero** waited for her to
+raise her own desk camera, which she may simply never do, and from
+night three that scene carries a revelation. It still waits for her —
+that is the point of it — but from four o'clock the annunciator calls
+motion on camera zero every half minute until she looks. The shop does
+that for every other room all night, so it costs the fiction nothing.
+
+**"The music and the sound effects are so low, and when his voice
+happens we can only hear him."** Exactly right, and not a ducking
+problem — nothing was ducking. `speechSynthesis` **does not go through
+this graph at all**. It is the browser's own voice at the browser's own
+level. Everything else was mixed under a master of 0.9 and metered a
+peak of 0.25, using a quarter of the available headroom, so he was at
+full scale and the shop was a whisper. No amount of timing one against
+the other would have helped: they are two output paths that never meet.
+
+The fix is to stop giving away three quarters of the shop's headroom.
+The bus runs hot now (`MASTER_BASE`) into a `DynamicsCompressor` acting
+as a limiter, so the average level comes up about four times without a
+scare ever clipping — measured, a shift went from 0.116 rms to 0.481,
+with peaks held at 0.77. And his voice comes down to 0.78 (the
+building's to 0.62), because it was the one thing in this chapter that
+had never been in the mix at all. If you retune any of this, tap the
+meter **after** the limiter — it reads the level going in otherwise.
+
 Still open with him: whether the difficulty of nights five and six is
 where he wants it.
 
