@@ -129,12 +129,27 @@ function openCover(name) { pageTurn(name); }
    --------------------------------------------------------- */
 const VV = window.visualViewport || null;
 
-function measuredHeight() {
+/* The visible rectangle, in the coordinates a fixed element is positioned
+   in. Two numbers, and the site is laid out into both of them.
+
+   height * scale, because visualViewport shrinks by exactly the zoom
+   factor when you pinch; multiplying it back out gives a layout that does
+   not move under a two-finger zoom.
+
+   offsetTop as it comes — it is already in layout pixels — and only while
+   the page is not zoomed. Once she has actually pinched in, following the
+   visual viewport would glue the site to her fingers and she could never
+   pan to look at anything, so the offset is dropped and the page pans the
+   way a page should. */
+function measure() {
   if (VV && VV.height > 0) {
-    const s = (VV.scale && VV.scale > 0) ? VV.scale : 1;
-    return Math.round(VV.height * s);
+    const scale = (VV.scale && VV.scale > 0) ? VV.scale : 1;
+    return {
+      h: Math.round(VV.height * scale),
+      top: scale > 1.02 ? 0 : Math.round(VV.offsetTop || 0),
+    };
   }
-  return Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
+  return { h: Math.round(window.innerHeight || document.documentElement.clientHeight || 0), top: 0 };
 }
 
 let appH = 0;
@@ -147,8 +162,9 @@ function fitViewport() {
   const ae = document.activeElement;
   if (ae && /^(input|textarea|select)$/i.test(ae.tagName)) return;
 
-  const h = measuredHeight();
-  if (h <= 0) return;
+  const m = measure();
+  if (m.h <= 0) return;
+
   /* Compared against what the document is actually carrying, not against a
      variable in here. A cached number can agree with the measurement while
      the page has drifted to something else entirely — a stale dvh, an
@@ -158,10 +174,15 @@ function fitViewport() {
      little differently frame to frame, and re-laying the site out under
      her fingers over one pixel is worse than the pixel. */
   const root = document.documentElement;
-  const current = parseFloat(root.style.getPropertyValue("--app-h"));
-  if (current === current && Math.abs(current - h) <= 1) return;
-  appH = h;
-  root.style.setProperty("--app-h", h + "px");
+  const curH = parseFloat(root.style.getPropertyValue("--app-h"));
+  const curT = parseFloat(root.style.getPropertyValue("--app-top"));
+  const sameH = curH === curH && Math.abs(curH - m.h) <= 1;
+  const sameT = curT === curT && Math.abs(curT - m.top) <= 1;
+  if (sameH && sameT) return;
+
+  appH = m.h;
+  root.style.setProperty("--app-h", m.h + "px");
+  root.style.setProperty("--app-top", m.top + "px");
   /* Anything that renders into a box of its own — the 3D scenes — asks
      for this rather than reading the window, so tell them the box moved.
      A plain resize event is not enough: iPad does not always fire one. */
@@ -191,9 +212,23 @@ document.addEventListener("visibilitychange", () => {
 });
 document.addEventListener("focusout", () => setTimeout(fitViewport, 60));
 if (VV) {
+  /* scroll, not just resize: the offset between the visible area and the
+     box the browser handed us changes as the page is dragged, and on
+     Chrome for iOS that drag is the whole fault. */
   VV.addEventListener("resize", fitViewport);
   VV.addEventListener("scroll", fitViewport);
 }
+
+/* Chrome for iOS gives the page a box taller than the screen and insets
+   it. If anything ever does get the document scrolled inside that box —
+   a focus jump, a rotation caught mid-gesture — put it back. With html
+   pinned to the measured height there is normally nothing to undo, so
+   this costs nothing and closes the last way the void could appear. */
+addEventListener("scroll", function () {
+  const el = document.scrollingElement || document.documentElement;
+  if (el.scrollTop) el.scrollTop = 0;
+  if (el.scrollLeft) el.scrollLeft = 0;
+}, { passive: true });
 
 /* ---------- ambient particles ---------- */
 /* The drifting decorations used to be emoji, which meant they were a

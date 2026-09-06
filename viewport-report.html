@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Viewport report</title>
+<style>
+  :root{ --app-h:100dvh; --app-top:0px; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ height:var(--app-h); max-height:var(--app-h); overflow:hidden; background:#12100f; }
+  body{
+    position:fixed; top:var(--app-top); left:0; width:100%;
+    height:var(--app-h); max-height:var(--app-h); overflow:hidden;
+    background:#12100f; color:#f3e8dd;
+    font:13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+    -webkit-text-size-adjust:100%;
+  }
+
+  /* The frame is the test. It is placed the way the site places every
+     screen; if the technique is right it hugs the visible area exactly,
+     and all four corner marks are on screen with nothing past them. */
+  #frame{
+    position:fixed; top:var(--app-top); left:0; right:0;
+    height:var(--app-h); max-height:var(--app-h);
+    border:3px solid #4ad07a; pointer-events:none; z-index:5;
+  }
+  #frame b{
+    position:absolute; width:26px; height:26px; border:3px solid #4ad07a;
+  }
+  #frame b:nth-child(1){ top:0; left:0; border-right:0; border-bottom:0; }
+  #frame b:nth-child(2){ top:0; right:0; border-left:0; border-bottom:0; }
+  #frame b:nth-child(3){ bottom:0; left:0; border-right:0; border-top:0; }
+  #frame b:nth-child(4){ bottom:0; right:0; border-left:0; border-top:0; }
+
+  #wrap{ position:absolute; inset:0; overflow:auto; -webkit-overflow-scrolling:touch; padding:22px 18px; }
+  h1{ font:600 17px/1.3 ui-monospace,monospace; margin:0 0 2px; color:#ffd9a0; }
+  .sub{ color:#9d8b7e; margin-bottom:14px; }
+
+  .verdict{ border-radius:8px; padding:12px 14px; margin:0 0 14px; font-size:14px; font-weight:600; }
+  .ok  { background:#12331f; color:#7ee6a1; border:1px solid #2c6b41; }
+  .bad { background:#3a1518; color:#ff9d9d; border:1px solid #7d2b31; }
+
+  table{ border-collapse:collapse; width:100%; max-width:560px; }
+  td{ padding:3px 10px 3px 0; vertical-align:top; }
+  td:first-child{ color:#9d8b7e; white-space:nowrap; }
+  td:last-child{ color:#f3e8dd; font-weight:600; }
+  tr.flag td:last-child{ color:#ff9d9d; }
+  h2{ font:600 12px/1 ui-monospace,monospace; color:#ffd9a0; margin:16px 0 6px;
+      text-transform:uppercase; letter-spacing:.08em; }
+  #ua{ color:#7d6e63; margin-top:14px; word-break:break-all; max-width:560px; }
+  button{
+    font:inherit; font-weight:600; margin-top:14px; padding:9px 16px; border-radius:7px;
+    border:1px solid #4a3f37; background:#241f1b; color:#ffd9a0;
+  }
+  .probe{ position:absolute; top:0; left:-9999px; width:1px; pointer-events:none; }
+</style>
+</head>
+<body>
+
+<div id="frame"><b></b><b></b><b></b><b></b></div>
+
+<div id="wrap">
+  <h1>Viewport report</h1>
+  <div class="sub">Open this in Chrome, in Safari and in Brave, and screenshot each one.</div>
+
+  <div id="verdict" class="verdict">measuring…</div>
+
+  <h2>The number that matters</h2>
+  <table id="t-main"></table>
+
+  <h2>What each API claims the height is</h2>
+  <table id="t-heights"></table>
+
+  <h2>The visible region</h2>
+  <table id="t-vv"></table>
+
+  <h2>Device</h2>
+  <table id="t-dev"></table>
+
+  <div id="ua"></div>
+  <button id="copy">Copy all of this as text</button>
+</div>
+
+<!-- unit probes: the only honest way to read what each keyword resolves to -->
+<div class="probe" id="p-vh"  style="height:100vh"></div>
+<div class="probe" id="p-svh" style="height:100svh"></div>
+<div class="probe" id="p-lvh" style="height:100lvh"></div>
+<div class="probe" id="p-dvh" style="height:100dvh"></div>
+
+<script>
+(function () {
+  var VV = window.visualViewport || null;
+
+  function measure() {
+    if (VV && VV.height > 0) {
+      var scale = (VV.scale && VV.scale > 0) ? VV.scale : 1;
+      return { h: Math.round(VV.height * scale),
+               top: scale > 1.02 ? 0 : Math.round(VV.offsetTop || 0) };
+    }
+    return { h: Math.round(window.innerHeight || document.documentElement.clientHeight || 0), top: 0 };
+  }
+
+  function apply() {
+    var m = measure(), root = document.documentElement;
+    root.style.setProperty("--app-h", m.h + "px");
+    root.style.setProperty("--app-top", m.top + "px");
+  }
+
+  function row(tb, k, v, flag) {
+    var tr = tb.insertRow();
+    if (flag) tr.className = "flag";
+    tr.insertCell().textContent = k;
+    tr.insertCell().textContent = v;
+  }
+
+  var lastText = "";
+
+  function read() {
+    apply();
+
+    var de = document.documentElement;
+    var se = document.scrollingElement || de;
+    var probe = function (id) { return document.getElementById(id).getBoundingClientRect().height.toFixed(1); };
+
+    var overflow = se.scrollHeight - se.clientHeight;
+    var vvh = VV ? VV.height : null;
+    var inset = (VV && de.clientHeight) ? Math.round(de.clientHeight - VV.height) : null;
+
+    var main = document.getElementById("t-main");
+    main.innerHTML = "";
+    row(main, "document can scroll by", overflow + " px", overflow > 1);
+    row(main, "scrollTop right now", se.scrollTop + " px", se.scrollTop > 1);
+    row(main, "containing block − visible", (inset === null ? "?" : inset + " px"), inset > 1);
+
+    var v = document.getElementById("verdict");
+    if (overflow > 1 || (inset !== null && inset > 1)) {
+      v.className = "verdict bad";
+      v.textContent = "PROBLEM — the page's box is " + (inset === null ? "?" : inset) +
+        "px taller than the screen, and " + overflow + "px of it can be dragged into view.";
+    } else {
+      v.className = "verdict ok";
+      v.textContent = "OK — the page's box is exactly the visible area. Nothing to scroll.";
+    }
+
+    var h = document.getElementById("t-heights");
+    h.innerHTML = "";
+    row(h, "window.innerHeight", window.innerHeight);
+    row(h, "documentElement.clientHeight", de.clientHeight);
+    row(h, "scrollingElement.scrollHeight", se.scrollHeight);
+    row(h, "100vh  resolves to", probe("p-vh"));
+    row(h, "100svh resolves to", probe("p-svh"));
+    row(h, "100lvh resolves to", probe("p-lvh"));
+    row(h, "100dvh resolves to", probe("p-dvh"));
+    row(h, "--app-h now", getComputedStyle(de).getPropertyValue("--app-h").trim());
+    row(h, "--app-top now", getComputedStyle(de).getPropertyValue("--app-top").trim());
+
+    var vv = document.getElementById("t-vv");
+    vv.innerHTML = "";
+    if (VV) {
+      row(vv, "visualViewport.height", VV.height);
+      row(vv, "visualViewport.width", VV.width);
+      row(vv, "visualViewport.offsetTop", VV.offsetTop);
+      row(vv, "visualViewport.offsetLeft", VV.offsetLeft);
+      row(vv, "visualViewport.pageTop", VV.pageTop);
+      row(vv, "visualViewport.scale", VV.scale);
+    } else {
+      row(vv, "visualViewport", "NOT SUPPORTED", true);
+    }
+
+    var d = document.getElementById("t-dev");
+    d.innerHTML = "";
+    row(d, "screen", screen.width + " x " + screen.height);
+    row(d, "window.inner", window.innerWidth + " x " + window.innerHeight);
+    row(d, "devicePixelRatio", window.devicePixelRatio);
+    row(d, "orientation", (screen.width > screen.height ? "landscape" : "portrait"));
+
+    document.getElementById("ua").textContent = navigator.userAgent;
+
+    var out = [];
+    ["t-main", "t-heights", "t-vv", "t-dev"].forEach(function (id) {
+      [].forEach.call(document.getElementById(id).rows, function (r) {
+        out.push(r.cells[0].textContent + ": " + r.cells[1].textContent);
+      });
+    });
+    out.push("UA: " + navigator.userAgent);
+    lastText = out.join("\n");
+  }
+
+  read();
+  setInterval(read, 400);
+  ["resize", "orientationchange", "pageshow", "focus", "scroll"].forEach(function (e) {
+    addEventListener(e, read, { passive: true });
+  });
+  document.addEventListener("visibilitychange", read);
+  if (VV) { VV.addEventListener("resize", read); VV.addEventListener("scroll", read); }
+
+  document.getElementById("copy").addEventListener("click", function () {
+    var btn = this;
+    function done() { btn.textContent = "Copied — paste it to me"; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(lastText).then(done, function () { btn.textContent = "Copy failed — screenshot instead"; });
+    } else {
+      btn.textContent = "Copy unavailable — screenshot instead";
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -163,43 +163,59 @@ summary,
 }
 
 /* ---------------------------------------------------------
-   THE HEIGHT OF THE PAGE
+   THE HEIGHT OF THE PAGE — read this before changing any of it
 
-   Every full-screen box on this site is laid out against --app-h, and
-   the whole class of bugs here — the strip of void below the fold, the
-   page that could be dragged up and down, the scene that came back
-   from the app switcher framed differently — was that one number being
-   wrong.
+   Safari gets this right. Chrome on iOS does not, and Brave gets it
+   wrong differently. That is the whole shape of the bug, and it is the
+   clue that finally explained it: all three are WebKit, so the fault is
+   not in the rendering, it is in the box each app gives the page.
 
-   100vh and height:100% resolve against the LARGE viewport: the size
-   the page would be with the browser's own UI hidden. 100dvh is meant
-   to track the UI as it comes and goes, and on a desktop it does. On
-   iPad it is not reliable: after the tab is backgrounded and resumed it
-   can come back holding the value from before, and nothing ever
-   recomputes it, so the layout stays that tall for the rest of the
-   session.
+   Chrome for iOS puts its web view over the WHOLE screen and slides its
+   own toolbar on top, then pushes the page down with a content inset.
+   So the initial containing block — what height:100% and 100vh and even
+   100dvh all resolve against — is the height of the entire screen,
+   toolbar included, while only the part below the toolbar can be seen.
+   On his iPad that is 1024 against 892: the document ends up exactly
+   132 CSS pixels taller than the window.
 
-   So these two are the pre-JS fallback and nothing more. The value that
-   is actually used is written into --app-h from script.js, measured
-   from visualViewport — the one API that reports what is genuinely on
-   screen — and re-measured every time the page is resumed.
+   That number is not a guess. Frame by frame, his recording pans by
+   132.8 CSS pixels, and Chrome's toolbar in the same recording measures
+   132.3. The page could be dragged up and down by precisely the height
+   of the browser's own toolbar. Safari has no such inset, its containing
+   block is the visible area, and the site was always fine there.
+
+   Two rules follow, and both matter:
+
+     1. HTML IS THE SCROLLER. Sizing body and leaving html at height:100%
+        fixes nothing — html keeps the too-tall box, and the 132 pixels of
+        overflow stay draggable. The root element has to be pinned to the
+        measured height. This is the line that was missing.
+
+     2. The visible area does not necessarily start at the top of the
+        containing block, so the shell is offset by --app-top as well as
+        sized by --app-h. Under Safari that offset is zero and nothing
+        moves; under a browser that insets from the top it is the inset.
+
+   Both numbers come from visualViewport in script.js, which is the only
+   API that reports the region actually on screen rather than the box the
+   app handed the page. The vh/dvh values below are the pre-JS fallback
+   and nothing more.
    --------------------------------------------------------- */
-:root{--app-h:100vh;}
+:root{--app-h:100vh; --app-top:0px;}
 @supports (height:100dvh){:root{--app-h:100dvh;}}
 
+/* The root element is the scroll box. Pin it to the height that is
+   actually visible and there is no overflow left to drag into — which is
+   what the void below the fold always was. */
 html{
-  height:100%; overflow:hidden; overscroll-behavior:none;
+  height:var(--app-h); max-height:var(--app-h);
+  overflow:hidden; overscroll-behavior:none;
   background:#f7ddd4;
 }
 
-/* The body is fixed on purpose, and this is the belt to the measurement's
-   braces. iOS does not honour overflow:hidden on the document for touch
-   panning: whatever sits past the fold can still be dragged into view,
-   which is exactly the scroll-up-and-back the site had. A fixed body is
-   not a scroll box at all, so there is nothing to drag even in the frame
-   or two after a rotation where the measured height is briefly stale. */
 body{
-  position:fixed; inset:0; width:100%;
+  position:fixed; top:var(--app-top); left:0; width:100%;
+  height:var(--app-h); max-height:var(--app-h);
   font-family:'Poppins',sans-serif; overflow:hidden;
   overscroll-behavior:none; -webkit-tap-highlight-color:transparent;
   /* The ground behind every screen. If a screen is ever a pixel short of
@@ -207,15 +223,16 @@ body{
      site's own blush rather than a band of white. */
   background:#f7ddd4;
 }
-/* Fixed elements take their box from the large viewport too, so the real
-   height has to be said out loud rather than implied by inset:0. This is
-   the line that closes the gap. */
-.screen{height:var(--app-h); max-height:var(--app-h);}
+/* Every full-screen box sits in the visible rectangle: offset to where it
+   starts, sized to how tall it really is. Deliberately not inset:0 — that
+   resolves against the containing block, which is the thing we have just
+   established cannot be trusted. */
+.screen{top:var(--app-top); height:var(--app-h); max-height:var(--app-h);}
 h1,h2{font-family:'Fredoka',sans-serif;}
 button{font-family:inherit;}
 img{-webkit-user-drag:none; user-select:none;}
 
-.screen{display:none; position:fixed; inset:0; align-items:center; justify-content:center; flex-direction:column;}
+.screen{display:none; position:fixed; left:0; right:0; align-items:center; justify-content:center; flex-direction:column;}
 .screen.active{display:flex;}
 .screen.anim-in{animation:screenIn .65s cubic-bezier(.22,.85,.32,1);}
 @keyframes screenIn{from{opacity:0; transform:translateY(22px) scale(.97);} to{opacity:1; transform:translateY(0) scale(1);}}
