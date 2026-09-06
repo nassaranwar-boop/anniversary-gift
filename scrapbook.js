@@ -1608,31 +1608,32 @@ window.Scrapbook = (function () {
     ]},
 
     /* ---- 3 · the camera ------------------------------------------ */
+    /* WHY THIS PAGE FELT EMPTY, AND WHAT IT IS NOT.
+
+       Both of its pictures live inside props -- a window in the camera and
+       a stamp on the club card -- and both were tiny: the window showed the
+       photograph at 44% of the camera's width, the card at 34% of its own.
+       That is the whole of it, and it is fixed where it was caused (see
+       instantCam and .sb-id-photo).
+
+       I had also put a spare photograph on this page. That was not mine to
+       decide: which photographs go in this book is his call, not a hole in
+       a layout for me to plug. The room it leaves is filled with things I
+       am allowed to make -- a record, flowers, a star. */
     { paper: "rose2", pieces: [
       { k: "typecol", text: "The", left: -1, top: 2, w: 20 },
       { k: "bigtype", text: "C", left: 15, top: 1, size: 34, colour: "rgba(226,240,244,.26)" },
       { k: "patch", paper: "grid", left: 10, top: 0, w: 48, h: 27, rot: -3 },
-      { k: "instantcam", n: 8, left: 34, top: 3, w: 60, rot: 1 },
-      /* THIS PAGE HAD NO PHOTOGRAPH ON IT.
-
-         Both of its pictures were trapped inside props -- a window in the
-         camera and a stamp on the club card -- so the one page in the book
-         with nobody's face on it at any size was this one, and it read as
-         empty however much furniture stood on it. The windows are bigger
-         (see instantCam below and .sb-id-photo), and there is a print. */
-      { k: "photo", n: 32, style: "corners", left: 1, top: 9, w: 41, rot: -6 },
-      { k: "img", src: "assets/key.png", left: 36, top: 55, w: 9, rot: 12 },
-      { k: "script", text: W.p3script, left: 47, top: 49, w: 42, rot: -7, size: 3.4 },
-      /* lifted clear of the caption it was sitting on */
-      { k: "sticker", art: "flowers", left: 2, top: 40, w: 27, rot: 7 },
-      /* The foot of this page was bare paper from the card's edge to the
-         corner. A record filled it, but page four has one in almost the
-         same place -- across an open spread that read as a matched pair
-         rather than a scrapbook. A kiss and the flowers do the same job
-         without the symmetry. */
-      { k: "sticker", art: "lipInk", left: 76, top: 60, w: 23, rot: -10 },
+      { k: "instantcam", n: 8, left: 24, top: 3, w: 64, rot: 1 },
+      { k: "sticker", art: "vinylRose", left: -4, top: 20, w: 32, rot: 0 },
+      { k: "sticker", art: "starG", left: 86, top: 13, w: 13, rot: 10 },
+      { k: "sticker", art: "starD", left: 85, top: 44, w: 12, rot: -16 },
+      { k: "sticker", art: "flowers", left: 1, top: 52, w: 27, rot: 7 },
+      { k: "img", src: "assets/key.png", left: 34, top: 56, w: 9, rot: 12 },
+      { k: "script", text: W.p3script, left: 46, top: 50, w: 42, rot: -7, size: 3.4 },
+      { k: "sticker", art: "lipInk", left: 74, top: 60, w: 23, rot: -10 },
       { k: "sticker", art: "starS",   left: 80, top: 90, w: 15, rot: -14 },
-      { k: "idcard", n: 9, left: 5, top: 62, w: 74, rot: -2 },
+      { k: "idcard", n: 9, left: 8, top: 64, w: 76, rot: -2 },
     ]},
 
     /* ---- 4 · the letter ------------------------------------------ */
@@ -1640,17 +1641,20 @@ window.Scrapbook = (function () {
       { k: "patch", paper: "news", left: -6, top: 2, w: 34, h: 96, rot: 1.5 },
       { k: "patch", paper: "rose", left: 58, top: -3, w: 50, h: 24, rot: -4 },
       { k: "sticker", art: "starD", left: 2, top: 14, w: 20, rot: -10 },
-      { k: "letterpage", left: 13, top: 7, w: 76, rot: -2.6 },
+      { k: "letterpage", left: 16, top: 5, w: 76, rot: -2.6 },
       /* was w:27.9, which left a hand's width of bare paper under the
          letter and made the whole page feel like it was waiting for
          something. It is the only photograph on this page -- it should
          carry it. */
-      /* It sat below the letter with a band of bare paper between, so the
-         page read as two things stacked rather than one arrangement.
-         Bigger, and lifted so its top corner laps the letter's -- which is
-         how a photograph actually ends up on top of a letter. */
-      { k: "photo", n: 10, style: "corners", left: 2, top: 66, w: 58, rot: -5 },
-      { k: "sticker", art: "vinylRose", left: 66, top: 80, w: 30, rot: 0 },
+      /* ON the letter, not under it and not beside it. It sat below with a
+         band of bare paper between, which read as two things stacked.
+         Now it lies across the letter's bottom-left corner the way a
+         photograph actually ends up on a letter -- and it clears the
+         signature and the button, both of which are set to the right for
+         exactly this reason. */
+      { k: "photo", n: 10, style: "corners", left: 3, top: 51, w: 49, rot: -6, z: 6 },
+      { k: "sticker", art: "vinylRose", left: 66, top: 78, w: 30, rot: 0 },
+      { k: "sticker", art: "flowers", left: 6, top: 84, w: 26, rot: -7 },
       { k: "sticker", art: "flowers",   left: 82, top: 40, w: 26, rot: 9 },
       { k: "sticker", art: "starS",     left: 88, top: 26, w: 15, rot: 16 },
       { k: "script", text: W.p4script, left: 62, top: 72, w: 35, rot: -4, size: 2.9, dark: true },
@@ -1928,6 +1932,11 @@ window.Scrapbook = (function () {
     if (p.w != null) e.style.width = p.w + "%";
     if (p.h != null) e.style.height = p.h + "%";
     if (p.rot) e.style.setProperty("--rot", p.rot + "deg");
+    /* Order in the list is not enough on its own: the kinds of piece carry
+       their own z-index (a photograph sits at 3, a letter at 5), so a
+       photograph listed after a letter still went under it. `z` lets one
+       piece say it lies on top of another. */
+    if (p.z != null) e.style.zIndex = p.z;
     return e;
   }
 

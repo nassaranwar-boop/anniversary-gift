@@ -1467,9 +1467,14 @@ img{-webkit-user-drag:none; user-select:none;}
   font-family:var(--font-script); font-size:5.4cqw; font-style:normal;
   color:#6d2438; line-height:1;
 }
+/* Narrower and set to the right, so the photograph can lie across the
+   letter's bottom-left corner without ever covering the one thing on this
+   card you have to be able to press. The signature above it is right-set
+   too, so the two of them share that side and the corner stays free. */
 .sb-lp-btn{
-  display:block; width:88%; margin:6% auto 0; cursor:pointer; padding:7px 10px;
-  font-family:var(--font-body); font-size:2.7cqw; font-weight:600; color:#fbeff2;
+  display:block; width:52%; margin:6% 0 0 auto; cursor:pointer; padding:6px 8px;
+  font-family:var(--font-body); font-size:2.4cqw; font-weight:600; color:#fbeff2;
+  white-space:nowrap;
   background:#6d1f39; border:none; border-radius:999px;
   box-shadow:0 4px 10px rgba(80,20,42,.4);
 }
