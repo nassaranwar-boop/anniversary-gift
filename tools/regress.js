@@ -153,6 +153,38 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     ok(label + ': leaving the night shift returns to the hub',
        await page.evaluate(() => document.getElementById('screen-hub').classList.contains('active')));
 
+    /* --- and OPEN IT AGAIN -------------------------------------------
+       Every suite in this repo entered each chapter exactly once, so the
+       commonest thing a player does — look at a chapter, go back, come
+       back to it — was the one path nothing walked. The night shift was
+       dead on the second visit for a long time: stop() leaves the phase
+       at "idle" and finishStart() bailed on exactly that, so there was
+       no score, no keyboard and no title screen, and the report that
+       reached us was "the OSTs aren't working and the keyboard isn't
+       working". A chapter that only works the first time is broken. */
+    await page.evaluate(() => { showScreen('hub'); startHub(); });
+    await page.waitForTimeout(300);
+    await page.evaluate(() => document.getElementById('hub-card-nightshift').click());
+    await page.waitForSelector('#screen-nightshift.active .ns-overlay.on', { timeout: 9000 }).catch(() => {});
+    const again = await page.evaluate(() => {
+      const n = window.OuissysNightShift && window.OuissysNightShift.__night;
+      return { card: !!document.querySelector('#ns-overlay.on'),
+               phase: n ? n.state().phase : null,
+               music: n && n.music() ? n.music().mode : null };
+    });
+    ok(label + ': the night shift is alive on the second visit too',
+       again.card && again.phase === 'title' && again.music === 'menu',
+       'phase ' + again.phase + ', music ' + again.music + ', title card ' + again.card);
+    /* and the keys still reach it */
+    await page.evaluate(() => { const n = OuissysNightShift.__night; n.route('night:1'); n.route('go'); });
+    await page.waitForTimeout(700);
+    await page.keyboard.press('a');
+    await page.waitForTimeout(250);
+    ok(label + ': and a real key still shuts a door on the second visit',
+       await page.evaluate(() => OuissysNightShift.__night.state().doors.left === true));
+    await page.evaluate(() => OuissysNightShift.__night.route('quit'));
+    await page.waitForTimeout(500);
+
     ok(label + ': still no page errors after all of that', errors.length === 0, errors.slice(0,2).join(' | '));
     await page.close();
   }

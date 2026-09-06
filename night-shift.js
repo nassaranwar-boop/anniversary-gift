@@ -11330,6 +11330,18 @@ function onPointerUp() { dragging = false; }
    so coming back in is instant.
    ========================================================= */
 let running = false, boundKeys = false, ro = null;
+/* Which start() is the current one. finishStart() used to bail on
+   `G.phase === "idle"`, meaning "she went back to the hub while we
+   waited a frame" — true on the FIRST visit, where start() parks the
+   phase at "load" before waiting. On every visit after that the shop is
+   already built, finishStart runs in the same turn, and the phase is
+   still "idle" because that is what stop() leaves behind — so it
+   returned immediately, before `running = true`, before musicMode() and
+   before the title screen. The chapter was dead from the second time
+   she opened it: no score, no keys, no picture. Nothing caught it
+   because every suite enters once. A sequence number says what the
+   phase cannot: whether THIS start is still the one that matters. */
+let startSeq = 0;
 
 function onResize() { sizeRenderer(); }
 
@@ -11346,6 +11358,7 @@ function start() {
      four performers and two dozen painted surfaces — and it is one
      synchronous block, so nothing paints while it runs. Put a card up
      and let it reach the screen before starting. */
+  const seq = ++startSeq;
   if (!built && !noWebGL) {
     G.phase = "load";
     showHud(false);
@@ -11354,15 +11367,13 @@ function start() {
         '<p class="ns-sign"><span>' + NS.shop + '</span><b>' + NS.sub + '</b></p>' +
         '<p class="ns-tag">unlocking the shop&hellip;</p>' +
       '</div>', "ns-ov-title");
-    requestAnimationFrame(() => requestAnimationFrame(() => finishStart(cvs)));
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (seq === startSeq) finishStart(cvs); }));
     return;
   }
   finishStart(cvs);
 }
 
 function finishStart(cvs) {
-  /* she may have gone back to the hub in the frame we waited */
-  if (G.phase === "idle") return;
   buildWorld(cvs);
   if (noWebGL) {
     running = true;
@@ -11415,6 +11426,7 @@ function finishStart(cvs) {
 
 function stop() {
   running = false;
+  startSeq++;              /* cancels a start still waiting on a frame */
   if (raf) { cancelAnimationFrame(raf); raf = 0; }
   /* leaving from the gallery used to keep the daylight vignette, and
      leaving with the cabinet open used to leave it open for good —

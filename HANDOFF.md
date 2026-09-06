@@ -520,6 +520,39 @@ worth writing down what that exposed, which is bigger than the caption:
   this chapter's history that a new measurement's first answer was
   wrong rather than the game — check the suite before the site.
 
+And then the report that mattered most: **"the OSTs aren't working at
+all and the keyboard isn't working to let me play."** Both were one
+bug, and it is the most instructive one in this chapter's history.
+
+`stop()` leaves `G.phase = "idle"`. `finishStart()` opened with
+`if (G.phase === "idle") return;`, whose comment said "she may have
+gone back to the hub in the frame we waited" — and that is a real
+hazard, but only on the FIRST visit, where `start()` parks the phase at
+"load" and waits two frames for the loading card to paint. On every
+visit after that the shop is already built, `finishStart` runs in the
+same turn, and the phase is still "idle" because that is what `stop()`
+left behind. So it returned immediately — before `running = true`,
+before `musicMode("menu")`, before `screenTitle()` and before the key
+bindings were confirmed. **The chapter was dead from the second time
+she opened it.** No score, no keyboard, no title screen.
+
+The phase cannot answer "is this start still the one that matters", so
+it does not have to any more: `start()` takes a sequence number,
+`stop()` bumps it, and the deferred branch checks it is still current.
+
+Why nothing caught it, which is the part worth keeping: **every suite
+in this repo entered each chapter exactly once.** 219 play checks, 22
+touch, 21 sound, 21 audio, 44 regress, six layout sizes — and not one
+of them had ever done the commonest thing a player does, which is look
+at a chapter, go back to the hub, and come back to it. `regress.js`
+opens the night shift a second time now, on desktop and on an iPhone,
+and checks it is alive: title card up, score on `menu`, and a **real**
+keypress still shutting a door. That last one matters too — the whole
+battery drove the game through `__night.press()` and DOM clicks, and
+only ever sent two real key events in the entire suite, neither during
+a shift. A control nothing has ever actually pressed is a control
+nobody has tested.
+
 Still open with him: whether the difficulty of nights five and six is
 where he wants it.
 
