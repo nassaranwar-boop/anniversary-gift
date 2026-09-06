@@ -123,6 +123,24 @@ If a change touches `style.css` or any `.js`, bump the `?v=` number on the
 asset links in `index.html`, or GitHub Pages will keep serving the old
 files.
 
+## Deploying
+
+The whole site is static — there is nothing to install and nothing to build,
+and `vercel.json` says exactly that (`installCommand` and `buildCommand` are
+both `null`, and the output directory is the repo root). They used to be
+`echo` commands, which is the same intent but leaves Vercel running a build
+that produces nothing; `null` skips the step outright, which is the
+documented way to serve a repo as-is.
+
+`.vercelignore` keeps `tools/` out of the deploy. That matters: `tools/`
+carries a `package.json` for playwright, and without it Vercel would find
+that, decide the repo is a Node project, and try to install it.
+
+To check what a deployment would actually serve — as opposed to what your
+working tree serves — run `tools/deploycheck.js`. It exports the *committed*
+tree, serves it cold, and loads it. That is the difference between "it works
+on my machine" and "it works from the repo".
+
 ## The memory book — where to edit
 
 Everything you are likely to change is in the `SB` block at the top of
