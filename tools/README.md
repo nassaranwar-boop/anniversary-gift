@@ -66,6 +66,25 @@ these runs; that is the harness, not the site.
 | `enemy_probe.js` | runs a level for forty seconds of game time and reports whether enemies fell in pits or juddered. |
 | `parallax_probe.js` | the same view at two camera heights, for checking scenery stays planted. |
 
+## Do not pipe these through `tail`, and do not redirect them to a file
+
+Node buffers its output when stdout is not a terminal, and every suite here
+is long. `node mech.js | tail -30` and `node mech.js > /tmp/x.log` both show
+you an empty file for the whole run and then everything at the end — so a
+run you interrupt tells you nothing at all, not even which assertion it had
+reached. That cost several hours in one sitting: mech.js looked wedged
+through four attempts and was in fact passing assertions the whole time,
+and the only reason anybody found out is that killing it flushed the buffer
+and fourteen PASS lines fell out.
+
+Run them bare and read the output as it comes. If you must capture it, kill
+the process rather than the pipeline when you give up, because the kill is
+what flushes it.
+
+Related: on a loaded machine these run ten to twenty times slower than
+normal, and `timeout` does not reliably fire, because the container's own
+process clock is skewed. Judge progress by output, not by the wall clock.
+
 ## Two things that will waste your afternoon otherwise
 
 **requestAnimationFrame runs at about 3fps in a headless container.** Any test
