@@ -1436,15 +1436,44 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-cam .sb-photo{position:absolute; z-index:5;}
 
 /* ---- film strip ---- */
+/* THE THREE FROM THAT EVENING — prints on card, not a negative.
+
+   This was a black slab, then a brown one, and both were wrong for the
+   same reason: page seven is pale ivory, and every other photograph on it
+   sits in a cream mount. A dark rectangle in the corner of that paper
+   reads as a hole punched in it.
+
+   There was a real bug underneath the ugliness as well. The frames were
+   set inside `padding:3% 11%`, and percentage padding on an absolutely
+   positioned box resolves against the PAGE, not against the box -- the
+   same fault already written up in makePhoto. Eleven percent of the page
+   is a quarter of this strip, twice over, so the pictures were squeezed
+   into a third of the width they had. They fill it now, and the margin is
+   in cqw, which is proportional and stays that way.
+
+   The card is the cream the polaroid below it uses, the frames have the
+   same hairline rule as the film cells on the video card, and the whole
+   thing sits at a slight angle so it reads as laid down rather than
+   printed on. */
 .sb-film{
-  background:#141414; padding:3% 11%; z-index:3;
-  box-shadow:0 10px 24px rgba(10,8,4,.5);
+  transform:rotate(var(--rot,0deg)); z-index:3;
+  padding:1.7cqw; border-radius:3px;
+  background:linear-gradient(168deg,#fdfbf4,#f2e8d4);
+  box-shadow:
+    0 10px 22px rgba(70,44,20,.28),
+    0 2px 5px rgba(70,44,20,.16),
+    0 1px 0 rgba(255,255,255,.9) inset,
+    0 0 0 1px rgba(152,112,70,.24);
 }
-.sb-film-holes{position:absolute; top:0; bottom:0; width:8%; display:flex; flex-direction:column; justify-content:space-around; align-items:center;}
-.sb-film-holes.a{left:1.5%;} .sb-film-holes.b{right:1.5%;}
-.sb-film-holes i{display:block; width:78%; aspect-ratio:1/.7; background:#efe9db; border-radius:1px; box-shadow:0 0 0 1px rgba(0,0,0,.5) inset;}
-.sb-film-cells{display:flex; flex-direction:column; gap:4px;}
-.sb-film-cell{aspect-ratio:4/3; overflow:hidden; background:#222;}
+/* the sprockets belonged to the negative, and never rendered anyway: they
+   were built with el("i"), which makes a <div class="i">, while the rule
+   selected the <i> ELEMENT. Nothing matched, on any version of this. */
+.sb-film-holes{display:none;}
+.sb-film-cells{display:flex; flex-direction:column; gap:1.5cqw;}
+.sb-film-cell{
+  aspect-ratio:4/3; overflow:hidden; background:#e9dcc6;
+  box-shadow:0 0 0 1px rgba(120,86,50,.30);
+}
 .sb-film.horiz{padding:9% 3%;}
 .sb-film.horiz .sb-film-holes{top:auto; left:0; right:0; width:auto; height:7%; flex-direction:row;}
 .sb-film.horiz .sb-film-holes.a{top:1.5%;} .sb-film.horiz .sb-film-holes.b{bottom:1.5%; right:0;}
