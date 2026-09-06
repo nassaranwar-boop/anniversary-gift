@@ -141,6 +141,35 @@ working tree serves — run `tools/deploycheck.js`. It exports the *committed*
 tree, serves it cold, and loads it. That is the difference between "it works
 on my machine" and "it works from the repo".
 
+### Two traps that are not the code
+
+**The free plan allows 100 deployments a day, per account.** Go over and every
+push fails with `Resource is limited — try again in 24 hours (code:
+"api-deployments-free-per-day")`, which looks exactly like a broken build and
+is not one. It clears on its own after 24 hours.
+
+**Check you have only one Vercel project pointed at this repo.** Two projects
+on the same repository both deploy on every push, so each push costs two of
+the hundred. If the PR shows two `vercel` bot comments naming two different
+projects (`anniversary-gift` and `anniversary-gift-xxxx`, say), that is what
+is happening — delete the spare in its project settings.
+
+### GitHub Pages works too
+
+Every asset in `index.html` is referenced *relatively* (`style.css?v=…`, not
+`/style.css`), so the site runs unchanged from a subpath — which is what Pages
+serves from. `deploycheck.js` takes an origin, so this is checkable:
+
+```
+git archive HEAD | tar -x -C /tmp/pagesroot/anniversary-gift
+(cd /tmp/pagesroot && python3 -m http.server 8902 &)
+node deploycheck.js http://127.0.0.1:8902/anniversary-gift
+```
+
+Settings → Pages → deploy from branch, pick the branch, `/root`. There is no
+daily deployment cap, and `.nojekyll` is already in the repo so Pages will not
+try to run Jekyll over it.
+
 ## The memory book — where to edit
 
 Everything you are likely to change is in the `SB` block at the top of
