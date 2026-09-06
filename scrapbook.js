@@ -1715,13 +1715,17 @@ window.Scrapbook = (function () {
       { k: "sticker", art: "vinylRose", left: -12, top: 50, w: 46, rot: 0 },
       { k: "sticker", art: "clock", left: 30, top: 80, w: 22, rot: 0 },
       { k: "bouquet", left: 2, top: 38, w: 38, rot: -4 },
-      { k: "filmstrip", cells: [20, 21, 22], left: 56, top: 4, w: 42 },
+      /* At 39 wide the three frames -- now that they actually fill the card
+         instead of a third of it -- ran two thirds of the way down the page
+         and the print below disappeared under them. This is the width that
+         puts all three on the paper with the polaroid clear beneath. */
+      { k: "filmstrip", cells: [20, 21, 22], left: 60, top: 3, w: 32, rot: 2 },
       /* The long frame under the strip. The right half of this page below
          the film was bare paper, which is the emptiest the book gets, and a
          tall print is what the shape of that gap wants. It is slot "025",
          not 25 -- 25 is already on the page after this one -- so the file
          to drop in is assets/photo-025.jpg and nothing else has to change. */
-      { k: "photo", n: "025", style: "portrait", left: 55, top: 46.5, w: 38,
+      { k: "photo", n: "025", style: "portrait", left: 55, top: 54, w: 40,
         rot: 2, tape: "top" },
     ]},
 
@@ -2158,9 +2162,6 @@ window.Scrapbook = (function () {
   /* 35mm film, vertical by default */
   function makeFilmStrip(p) {
     var e = place(el("sb-film" + (p.horizontal ? " horiz" : "")), p);
-    var holesA = el("sb-film-holes a"), holesB = el("sb-film-holes b");
-    for (var i = 0; i < 14; i++) { holesA.appendChild(el("i")); holesB.appendChild(el("i")); }
-    e.appendChild(holesA); e.appendChild(holesB);
     var cells = el("sb-film-cells");
     p.cells.forEach(function (n) {
       var c = el("sb-film-cell");
