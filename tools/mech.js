@@ -1,6 +1,13 @@
 const { chromium } = require('playwright-core');
 const R = [];
-const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name + (extra ? '   ' + extra : '')); };
+/* Printed as it goes, not collected and dumped at the end. A run that
+   never finishes — and on a loaded machine this one often does not — used
+   to tell you nothing at all, not even which assertion it reached. */
+const ok = (name, cond, extra) => {
+  const line = (cond ? 'PASS  ' : 'FAIL  ') + name + (extra ? '   ' + extra : '');
+  R.push(line);
+  console.log(line);
+};
 
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
@@ -218,7 +225,6 @@ const ok = (name, cond, extra) => { R.push((cond ? 'PASS  ' : 'FAIL  ') + name +
   ok('he can only attack out of a telegraph', watch.attackedFrom.length === 1 && watch.attackedFrom[0] === 'tell',
      'attacks entered from: ' + watch.attackedFrom.join(','));
 
-  console.log(R.join('\n'));
   console.log(errors.length ? 'ERRORS: ' + errors.join(' | ') : 'no page errors');
   await browser.close();
 })();
