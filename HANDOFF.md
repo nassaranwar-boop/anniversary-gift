@@ -336,7 +336,31 @@ and changed nothing, because **html is the scroller**. `html` kept
 `height:100%`, kept the too-tall box, and kept all 132 pixels of
 draggable overflow. Sizing the body is not sizing the page.
 
-The contract now, in `script.js` and the top of `style.css`:
+**The part that finally stopped the guessing.** Three passes were spent
+asking *which height API tells the truth*. That is the wrong question:
+the answer differs per browser and the page cannot tell from in here
+which one is lying. So `script.js` does not ask any more — it **measures
+the hidden strip directly**. It tries to scroll the document as far as it
+will go, inside one synchronous block so no frame is ever painted
+scrolled. On a browser that handed us the visible box there is nowhere to
+go and the answer is zero; on one that hid a strip behind its own
+toolbar, the distance it moves *is* that strip, in pixels, whatever the
+browser claims. Subtract it, put the scroll back.
+
+The probe **checks itself**, which is what makes it safe to act on. A
+strip that is browser furniture disappears once the document is shortened
+by it — the scroll range is `content + inset − window`, so taking the
+inset off the content takes the range to zero. A strip that is really
+just an over-tall element on the page does *not* disappear. So it applies
+the candidate, looks again next frame, and keeps it only if it is gone. A
+bad reading during load can shrink the site for one frame and never two.
+
+Verified both ways in `tools/`: with the browser stubbed to claim 1024 in
+a real 892 window it learns 132 on its own and lands on 892 with nothing
+draggable; with a genuine 2400px element on the page it refuses the bait
+and leaves the height alone.
+
+The rest of the contract, in `script.js` and the top of `style.css`:
 
 - `100vh` / `100dvh` in the stylesheet are the **pre-JS fallback only**.
 - JS owns two custom properties, both from `visualViewport`, the only API

@@ -61,7 +61,7 @@
 
 <div id="wrap">
   <h1>Viewport report</h1>
-  <div class="sub">Open this in Chrome, in Safari and in Brave, and screenshot each one.</div>
+  <div class="sub">Open this in Chrome, in Safari and in Brave, and screenshot each one.<br>build 116 &middot; if this page 404s you are on the old deployment.</div>
 
   <div id="verdict" class="verdict">measuring…</div>
 
@@ -91,13 +91,30 @@
 (function () {
   var VV = window.visualViewport || null;
 
+  /* The same probe the site uses: try to drag the document as far as it
+     goes. Whatever it moves is the part of the box that is not on screen,
+     regardless of what any API claims about it. */
+  function hiddenStrip() {
+    var el = document.scrollingElement || document.documentElement;
+    try {
+      var was = el.scrollTop;
+      el.scrollTop = 1e6;
+      var reach = Math.round(el.scrollTop);
+      el.scrollTop = was;
+      return (reach > 0 && reach < 400) ? reach : 0;
+    } catch (e) { return 0; }
+  }
+  var known = 0;
+
   function measure() {
+    var strip = hiddenStrip();
+    if (strip > known) known = strip;
     if (VV && VV.height > 0) {
       var scale = (VV.scale && VV.scale > 0) ? VV.scale : 1;
-      return { h: Math.round(VV.height * scale),
+      return { h: Math.max(240, Math.round(VV.height * scale) - known),
                top: scale > 1.02 ? 0 : Math.round(VV.offsetTop || 0) };
     }
-    return { h: Math.round(window.innerHeight || document.documentElement.clientHeight || 0), top: 0 };
+    return { h: Math.max(240, Math.round(window.innerHeight || document.documentElement.clientHeight || 0) - known), top: 0 };
   }
 
   function apply() {
@@ -128,15 +145,22 @@
 
     var main = document.getElementById("t-main");
     main.innerHTML = "";
+    var strip = hiddenStrip();
+    row(main, "hidden strip, measured by dragging", strip + " px", strip > 1);
+    row(main, "strip learned this session", known + " px", known > 1);
     row(main, "document can scroll by", overflow + " px", overflow > 1);
     row(main, "scrollTop right now", se.scrollTop + " px", se.scrollTop > 1);
     row(main, "containing block − visible", (inset === null ? "?" : inset + " px"), inset > 1);
 
     var v = document.getElementById("verdict");
-    if (overflow > 1 || (inset !== null && inset > 1)) {
+    if (strip > 1 || overflow > 1) {
       v.className = "verdict bad";
-      v.textContent = "PROBLEM — the page's box is " + (inset === null ? "?" : inset) +
-        "px taller than the screen, and " + overflow + "px of it can be dragged into view.";
+      v.textContent = "PROBLEM — " + Math.max(strip, overflow) +
+        "px of this page is hidden behind the browser's own furniture and can be dragged into view.";
+    } else if (known > 1) {
+      v.className = "verdict ok";
+      v.textContent = "OK — this browser hid " + known +
+        "px behind its toolbar, the page measured it and took it off. Nothing left to scroll.";
     } else {
       v.className = "verdict ok";
       v.textContent = "OK — the page's box is exactly the visible area. Nothing to scroll.";
