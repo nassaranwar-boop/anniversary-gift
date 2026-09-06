@@ -51,9 +51,9 @@
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=119">
+<link rel="stylesheet" href="style.css?v=120">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=119"></script>
+<script src="vendor/three.bundle.js?v=120"></script>
 
 </head>
 <body>
@@ -64,6 +64,31 @@
        rest of the site; these are one weight, one palette, and they scale. -->
   <svg class="ic-sprite" aria-hidden="true" width="0" height="0" style="position:absolute">
     <defs>
+      <!-- The bouquet button's flower. Drawn rather than pixelled, because
+           it sits alone on the page at 30px and every other pixel glyph
+           here is small and in a row where the style reads as deliberate.
+           One petal, used five times on 72-degree turns. -->
+      <radialGradient id="gFlowPetal" cx="50%" cy="30%" r="72%">
+        <stop offset="0%"   stop-color="#fffdf9"/>
+        <stop offset="55%"  stop-color="#fff1e4"/>
+        <stop offset="100%" stop-color="#f7ccd8"/>
+      </radialGradient>
+      <radialGradient id="gFlowCore" cx="40%" cy="34%" r="72%">
+        <stop offset="0%"   stop-color="#ffe9b8"/>
+        <stop offset="52%"  stop-color="#f2b075"/>
+        <stop offset="100%" stop-color="#cf6f88"/>
+      </radialGradient>
+      <symbol id="ic-flower" viewBox="0 0 40 40">
+        <g fill="url(#gFlowPetal)">
+          <ellipse cx="20" cy="9.8" rx="5.9" ry="7.7"/>
+          <ellipse cx="20" cy="9.8" rx="5.9" ry="7.7" transform="rotate(72 20 20)"/>
+          <ellipse cx="20" cy="9.8" rx="5.9" ry="7.7" transform="rotate(144 20 20)"/>
+          <ellipse cx="20" cy="9.8" rx="5.9" ry="7.7" transform="rotate(216 20 20)"/>
+          <ellipse cx="20" cy="9.8" rx="5.9" ry="7.7" transform="rotate(288 20 20)"/>
+        </g>
+        <circle cx="20" cy="20" r="4.9" fill="url(#gFlowCore)"/>
+        <circle cx="18.3" cy="18.3" r="1.5" fill="rgba(255,255,255,.5)"/>
+      </symbol>
       <symbol id="ic-px-heart" viewBox="0 0 10 8">
         <rect x="2" y="0" width="2" height="1" fill="#ff5f95"/>
         <rect x="6" y="0" width="2" height="1" fill="#ff5f95"/>
@@ -656,7 +681,8 @@
 
     <!-- 4. the little button bottom-right, and the drawer it opens -->
     <button id="sb-extras-btn" class="sb-extras-btn" aria-label="Open your bouquet">
-      <span class="sb-extras-ico"><svg class="gl gl-bloom" aria-hidden="true"><use href="#ic-px-bloom"/></svg></span>
+      <svg class="sb-flower" viewBox="0 0 40 40" aria-hidden="true"><use href="#ic-flower"/></svg>
+      <span class="sb-extras-x" aria-hidden="true"></span>
     </button>
     <div class="sb-drawer" id="sb-drawer" aria-hidden="true"></div>
 
@@ -1180,12 +1206,12 @@
     </div>
   </div>
 
-<script src="book-scene.js?v=119"></script>
-<script src="scrapbook.js?v=119"></script>
-<script src="script.js?v=119"></script>
-<script src="super-ouissy.js?v=119"></script>
-<script src="rescue.js?v=119"></script>
-<script src="apocalypse.js?v=119"></script>
-<script src="racing.js?v=119"></script>
+<script src="book-scene.js?v=120"></script>
+<script src="scrapbook.js?v=120"></script>
+<script src="script.js?v=120"></script>
+<script src="super-ouissy.js?v=120"></script>
+<script src="rescue.js?v=120"></script>
+<script src="apocalypse.js?v=120"></script>
+<script src="racing.js?v=120"></script>
 </body>
 </html>

@@ -32,8 +32,8 @@ window.Scrapbook = (function () {
        begins, in seconds — set it to the moment of the line you want it
        to open on, and nudge it by a second or two until it lands. ---- */
     song: {
-      title:  "Mirage",
-      artist: "Bouss",
+      title:  "Nous deux",
+      artist: "SDM",
       src:    "assets/song.mp3",
       startAt: 0,           // ← seconds into the track to begin at
     },
@@ -2136,12 +2136,18 @@ window.Scrapbook = (function () {
   function buildSongCard() {
     var S = SB.song;
     var c = el("sb-w sb-w-song");
+    /* The extra elements here are decoration only — the halo behind the
+       record, the tonearm, the little caption. Every class the player
+       logic below queries is unchanged. */
     c.innerHTML =
+      '<span class="sb-song-halo" aria-hidden="true"></span>' +
       '<div class="sb-song-deck">' +
+        '<span class="sb-song-arm" aria-hidden="true"></span>' +
         '<img class="sb-song-disc" alt="" />' +
         '<span class="sb-song-spindle"></span>' +
       "</div>" +
       '<div class="sb-song-body">' +
+        '<p class="sb-song-kicker">our song</p>' +
         '<p class="sb-song-title">' + S.title + "</p>" +
         '<p class="sb-song-artist">' + S.artist + "</p>" +
         '<div class="sb-song-scrub" role="slider" tabindex="0" aria-label="Seek">' +
