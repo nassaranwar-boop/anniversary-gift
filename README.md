@@ -325,8 +325,8 @@ Three choice points, in this order, and not one of them can be got wrong:
 
 | | blue | red |
 |---|---|---|
-| **the way there** | the high meadow: wrong turns, a shape in the trees that turns out to be a deer, fog that lifts | the stream bank: down at the water, seven stones to get over, then follow the current |
-| **the way back** | the ridge: an hour of climbing, then a rope bridge crossed one section at a time | the orchard at dusk: a bear in the windfalls, and three ways to deal with it |
+| **the way there** | the high meadow: wrong turns, a deer, a spring shower waited out under a beech, fog that lifts | the stream bank: seven stones to get over, skimming on the flat pool, then follow the current |
+| **the way back** | the ridge: an hour of climbing, the whole sky at the top, then a rope bridge one section at a time | the orchard at dusk: a bear in the windfalls, three ways past it, and a stolen apple |
 
 ### The two of them are in it
 
@@ -458,10 +458,69 @@ changes what it sounds like.
 Forty-seven nodes and not one line of dialogue: a cat narrated their entire
 relationship in the second person, and you were *told* "you both laugh far
 too loudly" without ever hearing either of them. A node can carry `voices`
-now — 45 lines across 15 scenes — and they arrive one at a time in a small
+now — **73 lines across 21 scenes** — and they arrive one at a time in a small
 pixel bubble above whoever is speaking, hers edged in pink and his in blue so
 you never have to be told which is which. They are short on purpose. Nobody
 in this valley makes speeches.
+
+**The choices wait for the conversation.** They used to appear the instant a
+scene opened, sitting there while the two of them were still talking — so the
+fastest way through the chapter was to press the button before anybody had
+said anything, and every line of dialogue was optional furniture. A scene
+with talking in it now holds its choices back until the talking is done. A
+tap on the picture (or space, or enter) hurries a line along, so nobody is
+ever made to wait; it just cannot be skipped without being seen. A small
+blinking chevron in the corner of the bubble says so.
+
+The three mechanic screens are exempt, deliberately: the rule that none of
+them can ever be stuck outranks this one. `tools/hvplay.js` asserts both — that
+an ordinary talking scene offers nothing to press until they have finished,
+and that a mechanic screen with dialogue on it is never gated at all.
+
+### Four more places, and one that was already painted
+
+Each of the four routes gained a scene, so they are five or six beats each
+rather than four:
+
+| route | new beat |
+|---|---|
+| the high meadow | **the shower** — spring rain out of a blue sky, nine minutes under a beech, badly counted out loud |
+| the stream bank | **skimming** — a pool as flat as a table, and an argument about whether that was three or four |
+| the ridge | **the top** — the clearest sky either of them has seen, and three constellations he is confidently wrong about |
+| the orchard | **the windfall** — he finds one with no bad side, and a short debate about whether this is stealing |
+
+The shower happens in `HV_SCENES.hollow`, which was **painted, finished, and
+then never once shown** — no node in the chapter used it. A whole place with
+light coming down through it, sitting in the file unreachable. It rains there
+now: three layers of streaks over the top of the finished art rather than a
+repaint, with a dry column under the canopy the two of them are standing
+beneath, because that is the entire point of standing there.
+
+### Things that were not true
+
+- **"The fox from last spring, very much bigger now"** was a lovely callback
+  on the orchard route, and it was simply false on three of the four ways up
+  the valley — take the meadow instead of the stream and she has never seen
+  that fox. Nodes can carry `sayIfMet` / `voicesIfMet` now, keyed on a route
+  or a whole path, and the game says the true one.
+- **"Same valley, a year on"** likewise only lands if she has walked the
+  spring side. It acknowledges the gate and the gorse if she has, and does
+  not if she has not.
+- **The fork greets a returning walker differently** (`sayAgain`).
+
+### The ending sends her round again
+
+It used to offer one button, and that button said **close the book** — a
+strange thing to be told at the end of a chapter whose whole point is that
+there are four ways up this valley and she has just walked one of them. The
+ending now leads with **GO ROUND AGAIN**, which drops her back at the fork
+with everything she has found and everywhere she has been still hers; closing
+the book is the quieter second option.
+
+Reaching an ending is also what marks the chapter done now, rather than
+leaving the screen — which used to mean that anyone who read the ending and
+then went round again had, as far as the hub was concerned, never finished
+it at all.
 
 ### The two hard beats
 
@@ -515,9 +574,16 @@ the keyboard and this one could only ever be clicked.
 
 Scenes live in `HV_SCENES` and the story in `HV`, both near the bottom of
 `script.js`. A node names a scene, what the cat says, and its choices; the
-flags on it (`bear`, `fog`, `lighting`, `envelope`, `butterflies`, `fox`,
-`plank`, `isAsk`, `cards`, `play`, `span`, `playTo`, `stand`, `pair`) are
-what `hvPaintFrame` draws on top.
+flags on it (`bear`, `fog`, `rain`, `drip`, `lighting`, `envelope`,
+`butterflies`, `fox`, `plank`, `isAsk`, `cards`, `play`, `span`, `playTo`,
+`stand`, `pair`) are what `hvPaintFrame` draws on top, and `voices` is what
+the two of them say while it does.
+
+Three sentinels can appear as a choice's `to`: `__exit` leaves the chapter,
+`__again` drops her back at the fork to walk another way up, and `__ask`
+returns her to whichever closing question she is standing in. Both audit
+suites resolve all three to the real nodes they reach rather than excusing
+them, so a sentinel that stopped going anywhere would still be caught.
 
 Two things a node can be told to share: `sceneOfAsk` means "whichever of the
 two closing questions she is standing in", and a choice going to `__ask`

@@ -72,9 +72,16 @@ const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
     if (!r.expect.length) continue;            // ridge/bridge/orchard withhold the tune on purpose
     const pcm = r.pcm, rate = r.rate;
     for (const e of r.expect) {
-      /* look just after the attack, where the fundamental has settled */
-      const from = Math.floor((e.at + 0.06) * rate);
-      const len = Math.floor(Math.min(e.dur * 0.55, 0.5) * rate);
+      /* Sample the SUSTAIN, not the onset.
+         This used to look 0.06s after the attack, which is inside the
+         strings' own 0.42s bow — and the previous theme note's 0.4s
+         release is still ringing there. The two candidates came out
+         near-tied and the winner flipped between runs, so the meadow
+         intermittently "played" an F where an E was written. A test
+         that fails one run in three is worse than one that fails every
+         time: it teaches you to re-run it. */
+      const from = Math.floor((e.at + Math.min(0.5, e.dur * 0.35)) * rate);
+      const len = Math.floor(Math.min(0.45, e.dur * 0.4) * rate);
       if (from + len > pcm.length) continue;
       let best = null, bestP = 0;
       for (let m = e.midi - 7; m <= e.midi + 7; m++) {

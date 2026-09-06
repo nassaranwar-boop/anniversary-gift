@@ -14,10 +14,10 @@ const out = [];
 const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x : ''));
 
 const ROUTES = {
-  'left-blue':  ['BEGIN','#card0','THE WAY THERE','BLUE','KEEP UP','TRY THE OTHER WAY','HOLD VERY STILL','ON UP','GO ON','SIT ON IT A WHILE','OVER THE GATE','already?','Mhm!','open it','lean in','YES!'],
-  'left-red':   ['BEGIN','#card1','THE WAY THERE','RED','ALONG THE BANK','ONE AT A TIME','DOWNSTREAM','WHERE IT COMES OUT','GO ON','SIT ON IT A WHILE','OVER THE GATE','already?','Mhm!','open it','lean in','YES!'],
-  'right-blue': ['BEGIN','#card0','THE WAY BACK','GO ON','BLUE','KEEP CLIMBING','OVER THE TOP','FIRST SECTION, SLOWLY','STEADY. KEEP GOING','DOWN THE FAR SIDE','HOME','KEEP WALKING','KEEP GOING','inside?','open it','read them together','YES!'],
-  'right-red':  ['BEGIN','#card1','THE WAY BACK','GO ON','RED','DOWN THE ROW','WAIT FOR IT TO MOVE','ON THROUGH','ON TO THE PATH','HOME','KEEP WALKING','KEEP GOING','inside?','open it','read them together','YES!'],
+  'left-blue':  ['BEGIN','#card0','THE WAY THERE','BLUE','KEEP UP','TRY THE OTHER WAY','HOLD VERY STILL','ON UP','WAIT IT OUT','OUT INTO IT','GO ON','SIT ON IT A WHILE','OVER THE GATE','already?','Mhm!','open it','lean in','YES!'],
+  'left-red':   ['BEGIN','#card1','THE WAY THERE','RED','ALONG THE BANK','ONE AT A TIME','DOWNSTREAM','WHERE IT COMES OUT','ONE MORE EACH','GO ON','SIT ON IT A WHILE','OVER THE GATE','already?','Mhm!','open it','lean in','YES!'],
+  'right-blue': ['BEGIN','#card0','THE WAY BACK','GO ON','BLUE','KEEP CLIMBING','OVER THE TOP','AND ON, BEFORE WE FREEZE','FIRST SECTION, SLOWLY','STEADY. KEEP GOING','DOWN THE FAR SIDE','HOME','KEEP WALKING','KEEP GOING','inside?','open it','read them together','YES!'],
+  'right-red':  ['BEGIN','#card1','THE WAY BACK','GO ON','RED','DOWN THE ROW','WAIT FOR IT TO MOVE','ON THROUGH','ON TO THE PATH','DOWN TO THE LANTERNS','HOME','KEEP WALKING','KEEP GOING','inside?','open it','read them together','YES!'],
 };
 
 (async () => {
@@ -39,8 +39,13 @@ const ROUTES = {
        whichever closing question she is standing in. It is resolved to
        both real ask nodes here so the graph is still checked properly
        rather than excused. */
+    /* Sentinels, resolved to the real nodes they reach rather than
+       excused: `__ask` sends her back to whichever closing question she
+       is standing in, and `__again` drops her back at the fork to walk
+       another way up the valley. Only `__exit` leaves the chapter. */
+    const SENTINEL = { __ask: ['ask', 'back_ask'], __again: ['ways'] };
     const exits = n => (n.choices || []).concat(n.cards || []).map(c => c.to)
-      .reduce((out, t) => out.concat(t === '__ask' ? ['ask', 'back_ask'] : [t]), []);
+      .reduce((out, t) => out.concat(SENTINEL[t] || [t]), []);
     const seen = new Set(), stack = ['title'], dead = [], scenes = {};
     while (stack.length) {
       const id = stack.pop();
@@ -84,6 +89,19 @@ const ROUTES = {
     let broke = null;
     for (const want of steps) {
       seen.push(await page.evaluate(() => hvNode));
+      /* The choices are held back until the two of them have finished
+         talking, so a player taps the picture to hurry the conversation
+         along before the buttons are there to press. This does the same
+         — which also means a scene whose dialogue never ended would be
+         caught here rather than silently waited out. */
+      await page.evaluate(() => {
+        for (let i = 0; i < 12; i++) {
+          const n = HV[hvNode];
+          if (!n || hvVoicesDone(n)) break;
+          hvVoiceSkip(n, 99);
+        }
+        hvRevealChoices(HV[hvNode]);
+      });
       const hit = await page.evaluate(w => {
         if (w.startsWith('#card')) {
           const el = document.querySelectorAll('#hv-cards .hv-card')[+w.slice(5)];

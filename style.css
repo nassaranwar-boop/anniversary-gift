@@ -2411,6 +2411,19 @@ img{-webkit-user-drag:none; user-select:none;}
   transition:opacity .45s ease, transform .45s ease;
 }
 
+/* While the two of them are talking, their choices are not on the
+   table yet. Only the look changes here — the buttons are also
+   genuinely `disabled` in script.js, so nothing can be clicked or
+   tabbed to early; this is not a visual trick over a live control. */
+.hv-hushed{
+  opacity:0; pointer-events:none;
+  transform:translateY(4px);
+  transition:opacity .1s ease, transform .1s ease;
+}
+#hv-left,#hv-right,#hv-centre,#hv-cards{
+  transition:opacity .45s ease .12s, transform .45s ease .12s;
+}
+
 /* the air in each place, and its off switch */
 .hv-chip-sound{ padding:4px 8px; line-height:0; }
 .hv-sound-on{

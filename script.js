@@ -4440,6 +4440,7 @@ const HV = {
 
   ways: {
     scene: "meadow", cat: "idle",
+    sayAgain: "Back at the bottom of the valley, then, with the whole of it still to walk. Which way this time?",
     say: "Two ways through the valley. Which one are we walking?",
     choices: [
       { label: "THE WAY THERE", to: "there", pos: "left" },
@@ -4490,18 +4491,45 @@ const HV = {
       { label: "BACK AWAY SLOWLY", to: "there_deer", pos: "right" },
     ],
   },
+  /* The hollow was painted, finished, and then never once shown: no
+     node in the chapter used it. A whole place, with light coming down
+     through it, sitting in the file unreachable. This is that place —
+     and it is the only shelter on the spring side, which is exactly
+     what a sudden shower wants. */
+  there_shower: {
+    scene: "hollow", cat: "shock", rain: true,
+    say: "It comes on the way spring rain does, which is all at once and out of a sky that was blue about ninety seconds ago. There is one beech at the edge of the clearing with a canopy like a roof, and you get under it with about a second to spare.",
+    voices: [["her", "It was sunny."],
+             ["him", "It was very sunny."],
+             ["her", "Move up."],
+             ["him", "There is nowhere to move up to."],
+             ["her", "Move up anyway."]],
+    choices: [{ label: "WAIT IT OUT", to: "there_after", pos: "centre" }],
+  },
+  there_after: {
+    scene: "hollow", cat: "love", drip: true,
+    say: "Nine minutes. You know it was nine because he counted them out loud, badly, and by the end you were both counting. Then it stops as suddenly as it started, and the whole wood is dripping and lit up and smells like the inside of a greenhouse.",
+    voices: [["him", "Nine minutes."],
+             ["her", "You cannot count."],
+             ["him", "I can count. I cannot count out loud."]],
+    choices: [{ label: "OUT INTO IT", to: "there_fog", pos: "centre" }],
+  },
+
   there_nobear: {
     scene: "forest", cat: "happy",
     say: "A deer. An enormous, appalled deer, gone before you have finished being frightened by it. You both laugh far too loudly for how quiet it was a second ago.",
     voices: [["her", "I genuinely thought that was it for us."],
              ["him", "It was a deer."],
              ["her", "It was an enormous deer."]],
-    choices: [{ label: "ON UP", to: "there_fog", pos: "centre" }],
+    choices: [{ label: "ON UP", to: "there_shower", pos: "centre" }],
   },
   there_deer: {
     scene: "forest", cat: "happy",
     say: "You get four steps back before it comes out onto the path instead — a deer, all legs, quite as startled as either of you. It looks at you a second longer than feels polite. Then it is gone, and you are laughing far too loudly for how quiet it was.",
-    choices: [{ label: "ON UP", to: "there_fog", pos: "centre" }],
+    voices: [["her", "It looked right at me."],
+             ["him", "It looked at both of us."],
+             ["her", "It looked at ME."]],
+    choices: [{ label: "ON UP", to: "there_shower", pos: "centre" }],
   },
   there_fog: {
     scene: "meadow", cat: "idle", fog: true,
@@ -4549,8 +4577,22 @@ const HV = {
     stand: { x: 258, y: 106, s: 1.2 },
     scene: "stream", cat: "idle",
     say: "After the stones you just follow the current. It knows where it is going and you do not have to, and that turns out to be its own kind of relief.",
-    choices: [{ label: "WHERE IT COMES OUT", to: "there_petals", pos: "centre" }],
+    choices: [{ label: "WHERE IT COMES OUT", to: "there_skim", pos: "centre" }],
   },
+  /* The stone for skimming is one of the ten things lying about in
+     this valley, and until now the only thing you could do with one was
+     put it in your pocket. */
+  there_skim: {
+    scene: "stream", stand: { x: 258, y: 106, s: 1.2 },
+    cat: "happy",
+    say: "Where the current slows there is a pool as flat as a table, and the bank is nothing but flat stones, which is a situation with only one possible outcome.",
+    voices: [["him", "Four."],
+             ["her", "Three, and one of those was a splash."],
+             ["him", "It touched down four times."],
+             ["her", "It touched down three times and then drowned."]],
+    choices: [{ label: "ONE MORE EACH", to: "there_petals", pos: "centre" }],
+  },
+
   there_petals: {
     scene: "sakura", cat: "love",
     say: "It comes out under the blossom, the slow way round, and something lands in your hair and you leave it there.",
@@ -4592,6 +4634,11 @@ const HV = {
   /* ---------------- RIGHT: the way back ---------------- */
   back_dusk: {
     scene: "lantern", cat: "idle",
+    sayIfMet: {
+      route: "there",
+      yes: "Same valley, a year on — the one you walked in the spring, the same gate and the same gorse and the same everything. Evening instead of morning, and somebody has been up here already and hung lanterns the whole way. Same place. Completely different light.",
+      no:  "Same valley, a year on. Evening instead of morning, and somebody has been up here already and hung lanterns the whole way. Same place. Completely different light.",
+    },
     say: "Same valley, a year on. Evening instead of morning, and somebody has been up here already and hung lanterns the whole way. Same place. Completely different light.",
     choices: [{ label: "GO ON", to: "back", pos: "centre" }],
   },
@@ -4617,13 +4664,27 @@ const HV = {
     voices: [["him", "Still with me?"],
              ["her", "Ask me in an hour."],
              ["him", "I will."]],
-    choices: [{ label: "OVER THE TOP", to: "back_bridge1", pos: "centre" }],
+    choices: [{ label: "OVER THE TOP", to: "back_stars", pos: "centre" }],
   },
   /* Three sections of one span, and each of them is now the span rather
      than a paragraph over a picture of it. The bridge sways; you step
      when it is steady; hurrying it costs you the step and nothing else,
      which is the sentence the middle section has always been trying to
      say. */
+  /* The ridge already has the best sky in the game painted into it —
+     a hundred and fifty stars and one bright one low over the ridge —
+     and the route walked straight past it on the way to the bridge. */
+  back_stars: {
+    scene: "ridge", cat: "love",
+    say: "At the top there is nothing to do but stand there getting cold, so you stand there getting cold. It is the clearest either of you has ever seen it. He points out three constellations and is wrong about all three, with total confidence.",
+    voices: [["him", "That is Orion."],
+             ["her", "That is an aeroplane."],
+             ["him", "That one, then. Definitely Orion."],
+             ["her", "It is July."],
+             ["him", "…that is a summer Orion."]],
+    choices: [{ label: "AND ON, BEFORE WE FREEZE", to: "back_bridge1", pos: "centre" }],
+  },
+
   back_bridge1: {
     scene: "bridge", cat: "idle", plank: 0, play: "bridge", span: [0.16, 0.42], playTo: "back_bridge2",
     say: "Then the rope bridge over the gorge, which holds one person and one plank at a time, and is honest with you about it.",
@@ -4688,13 +4749,44 @@ const HV = {
     say: "You take the far row instead, the one the lanterns do not reach, walking on grass rather than windfalls so that nothing cracks underfoot. It never knows you were there at all.",
     choices: [{ label: "ON THROUGH", to: "back_windfall", pos: "centre" }],
   },
+  /* This line called back to the fox on the stream bank — "the fox
+     from last spring, very much bigger now" — which is a lovely
+     callback and was simply untrue for three of the four ways through
+     the valley. If she took the meadow on the way there, or has never
+     walked the spring side at all, she has never seen that fox. The
+     game now knows which, and says the true one. */
   back_windfall: {
     scene: "orchard", cat: "happy", fox: true,
-    say: "At the end of the rows the fox from last spring is asleep in the long grass, very much bigger now, and cannot be made to care about any of it.",
-    voices: [["her", "That is our fox."],
-             ["him", "It is not our fox."],
-             ["her", "It is our fox."]],
-    choices: [{ label: "ON TO THE PATH", to: "back_join", pos: "centre" }],
+    sayIfMet: {
+      route: "there-red",
+      yes: "At the end of the rows the fox from last spring is asleep in the long grass, very much bigger now, and cannot be made to care about any of it.",
+      no:  "At the end of the rows there is a fox asleep in the long grass, fat on windfalls and completely beyond caring, and it does not so much as open an eye at either of you.",
+    },
+    say: "At the end of the rows there is a fox asleep in the long grass, fat on windfalls and completely beyond caring, and it does not so much as open an eye at either of you.",
+    voicesIfMet: {
+      route: "there-red",
+      yes: [["her", "That is our fox."],
+            ["him", "It is not our fox."],
+            ["her", "It is our fox."]],
+      no:  [["her", "It has not moved."],
+            ["him", "It is not going to move."],
+            ["her", "I respect it enormously."]],
+    },
+    choices: [{ label: "ON TO THE PATH", to: "back_apple", pos: "centre" }],
+  },
+
+  /* The orchard is full of fruit that has been on the ground for a
+     week and the route never once acknowledged it. The bear has been
+     eating all evening. It seemed rude not to. */
+  back_apple: {
+    scene: "orchard", cat: "happy",
+    say: "On the way out he picks up a windfall, turns it over twice looking for the bad side, fails to find one, and hands it to you. It is cold from the grass and far better than it has any business being.",
+    voices: [["her", "Is this stealing."],
+             ["him", "It was on the floor."],
+             ["her", "So it is stealing."],
+             ["him", "It is gleaning. Gleaning is a whole tradition."],
+             ["her", "You have no idea what you just said."]],
+    choices: [{ label: "DOWN TO THE LANTERNS", to: "back_join", pos: "centre" }],
   },
 
   back_join: {
@@ -4775,7 +4867,10 @@ const HV = {
   yay: {
     scene: "sunset", cat: "love", bigCat: true, hearts: true, isEnd: true, big: true,
     say: "YAYYY, I LOVE YOU!", tally: true,
-    choices: [{ label: "close the book 💛", to: "__exit", pos: "left", style: "yes" }],
+    choices: [
+      { label: "GO ROUND AGAIN 💛", to: "__again", pos: "left", style: "yes" },
+      { label: "close the book", to: "__exit", pos: "right" },
+    ],
   },
 
   /* =========================================================
@@ -4856,7 +4951,10 @@ const HV = {
   back_yay: {
     scene: "home", cat: "love", bigCat: true, hearts: true, isEnd: true, big: true,
     say: "YES. Again, and next year, and the year after that.", tally: true,
-    choices: [{ label: "close the book 💛", to: "__exit", pos: "left", style: "yes" }],
+    choices: [
+      { label: "GO ROUND AGAIN 💛", to: "__again", pos: "left", style: "yes" },
+      { label: "close the book", to: "__exit", pos: "right" },
+    ],
   },
 };
 
@@ -5056,6 +5154,14 @@ function hvNoteRoute(id) {
 }
 
 function hvRouteCount() { return Object.keys(hvRoutes).length; }
+
+/* Has she walked this route, or any route on this path? Takes either a
+   whole route name ("there-red") or a path prefix ("there"). */
+function hvHasWalked(which) {
+  if (!which) return false;
+  if (hvRoutes[which]) return true;
+  return Object.keys(hvRoutes).some(function (k) { return k.indexOf(which + "-") === 0; });
+}
 function hvEndingCount() { return Object.keys(hvEndings).length; }
 
 /* =========================================================
@@ -5323,6 +5429,11 @@ function hvCanvasTap(ev) {
   var r = canvas.getBoundingClientRect();
   var sx = ((ev.clientX - r.left) / r.width) * PXW;
   var sy = ((ev.clientY - r.top) / r.height) * PXH;
+
+  /* hurrying the conversation comes first: while they are talking, a
+     tap is "go on", not "pick that up" */
+  var nv = HV[hvNode];
+  if (nv && !hvVoicesDone(nv) && hvVoiceSkip(nv, (performance.now() - hvT0) / 1000 - hvArrive)) return;
 
   var spot = hvHiddenHere();
   if (spot && Math.abs(sx - spot.x) < spot.r && Math.abs(sy - spot.y) < spot.r) {
@@ -5642,6 +5753,37 @@ function hvNoteAway(away) {
   if (note) note.classList.toggle("hv-note-away", !!away);
 }
 
+/* =========================================================
+   THE BUTTONS WAIT FOR THE CONVERSATION
+
+   They used to appear the instant a scene opened, sitting there while
+   the two of them were still talking — so the fastest way through the
+   chapter was to press the button before anybody had said anything,
+   and every line of dialogue was optional furniture.
+
+   Now a scene with talking in it holds its choices back until the
+   talking is done. A tap hurries a line along, so nobody is ever made
+   to wait; it just cannot be skipped without being seen.
+
+   The three mechanic screens are exempt, and that is deliberate: the
+   rule that none of them can ever be stuck outranks this one, and
+   tools/hvplay.js asserts their buttons are on screen for every frame.
+   ========================================================= */
+function hvRevealChoices(n) {
+  var hush = !!hvVoicesOf(n).length && !n.play && !hvVoicesDone(n);
+  if (hvHushed === hush) return;
+  hvHushed = hush;
+  ["hv-left", "hv-right", "hv-centre", "hv-cards"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle("hv-hushed", hush);
+    Array.prototype.forEach.call(el.querySelectorAll("button"), function (b) {
+      b.disabled = hush;
+    });
+  });
+}
+var hvHushed = null;
+
 function hvPlayBegin(n) {
   hvPlay = null;
   hvHint = "";
@@ -5936,6 +6078,47 @@ function hvTinyText(ctx, text, cx, y) {
    ========================================================= */
 var hvPairAt = null;          // where the two of them were last drawn
 
+/* Which line is on screen and when it arrived, in node-time. It used to
+   be derived from the clock alone, which meant she could not hurry it
+   along — and a conversation you cannot skip is a cutscene. Now the
+   clock advances it, and so does a tap. */
+var hvVoiceI = -1, hvVoiceAt = 0;
+const HV_VOICE_LEAD = 1.0;    // a beat to look at the picture first
+const HV_VOICE_HOLD = 3.1;    // how long a line stays up on its own
+
+function hvVoicesOf(n) {
+  if (!n) return [];
+  if (n.voicesIfMet) {
+    return hvHasWalked(n.voicesIfMet.route) ? n.voicesIfMet.yes : n.voicesIfMet.no;
+  }
+  return n.voices || [];
+}
+
+function hvVoicesDone(n) { return hvVoiceI >= hvVoicesOf(n).length; }
+
+/* time and taps both move it on */
+function hvVoiceStep(n, st) {
+  var v = hvVoicesOf(n);
+  if (!v.length) { hvVoiceI = 0; return; }
+  if (hvVoiceI < 0) {
+    if (st >= HV_VOICE_LEAD) { hvVoiceI = 0; hvVoiceAt = st; }
+    return;
+  }
+  if (hvVoiceI < v.length && st - hvVoiceAt >= HV_VOICE_HOLD) {
+    hvVoiceI++; hvVoiceAt = st;
+  }
+}
+
+/* a tap anywhere on the picture hurries the conversation */
+function hvVoiceSkip(n, st) {
+  var v = hvVoicesOf(n);
+  if (!v.length || hvVoiceI >= v.length) return false;
+  hvVoiceI = hvVoiceI < 0 ? 0 : hvVoiceI + 1;
+  hvVoiceAt = st;
+  hvSfx("page");
+  return true;
+}
+
 function hvWrapTiny(text, maxChars) {
   var words = text.split(" "), lines = [], cur = "";
   for (var i = 0; i < words.length; i++) {
@@ -5948,18 +6131,15 @@ function hvWrapTiny(text, maxChars) {
 }
 
 function hvDrawVoices(ctx, n, st) {
-  if (!n.voices || !n.voices.length || !hvPairAt) return;
-
-  /* one line at a time, a beat after she arrives, so it reads as a
-     conversation and not as a wall of text */
-  var lead = 1.1, hold = 2.9;
-  var idx = Math.floor((st - lead) / hold);
-  if (idx < 0 || idx >= n.voices.length) return;
-  var age = (st - lead) - idx * hold;
-  var fade = Math.min(1, age * 3.5) * (age > hold - 0.4 ? (hold - age) / 0.4 : 1);
+  var v = hvVoicesOf(n);
+  if (!v.length || !hvPairAt) return;
+  var idx = hvVoiceI;
+  if (idx < 0 || idx >= v.length) return;
+  var age = st - hvVoiceAt;
+  var fade = Math.min(1, age * 4.5);
   if (fade <= 0.02) return;
 
-  var who = n.voices[idx][0], text = n.voices[idx][1];
+  var who = v[idx][0], text = v[idx][1];
   var lines = hvWrapTiny(text, 26);
   var w = 0;
   lines.forEach(function (l) { w = Math.max(w, hvTinyWidth(l)); });
@@ -5984,6 +6164,13 @@ function hvDrawVoices(ctx, n, st) {
   lines.forEach(function (l, i) {
     hvTinyAt(ctx, l, bx + 5, by + 5 + i * 7, "#4a3a2e");
   });
+  /* the nudge that says a tap will hurry this along, blinking so it
+     reads as a prompt and not as punctuation */
+  if (age > 0.8 && Math.sin(st * 3.4) > -0.2) {
+    px(ctx, bx + bw - 7, by + bh - 5, 3, 1, "#b08a6a");
+    px(ctx, bx + bw - 6, by + bh - 4, 2, 1, "#b08a6a");
+    px(ctx, bx + bw - 7, by + bh - 3, 3, 1, "#b08a6a");
+  }
   ctx.restore();
 }
 
@@ -6120,7 +6307,9 @@ function hvPaintFrame(t, dt) {
   }
 
   hvPlayPaint(ctx, t, st);
+  hvVoiceStep(n, st);
   hvDrawVoices(ctx, n, st);
+  hvRevealChoices(n);
 
   /* ---- the crossing, one section at a time ----
      The three bridge nodes are the same span from three places on it, so
@@ -6143,6 +6332,49 @@ function hvPaintFrame(t, dt) {
     blob(ctx, cxp, cyp + 1, 13, 5, ["rgba(255,206,130,0.20)"]);
     hvDrawPair(ctx, cxp, cyp + 2 + swing, 1.2, t, 0, "bridge");
     lanternAt(ctx, cxp + 16, cyp - 16 + Math.sin(t * 1.6) * 1);
+  }
+
+  /* ---- the shower ----
+     The hollow is painted as a bright birch wood with the sun coming
+     down through it, and the writing said it was pouring. One of the
+     two had to give, and repainting a finished scene to make it rain is
+     the wrong way round: the rain is drawn over it, and it stops.
+
+     Three layers of streaks at different speeds and lengths, a cool
+     wash over the whole frame, and splashes ticking on the ground —
+     lighter under the canopy the two of them are standing beneath,
+     because that is the entire point of standing there. */
+  if (n.rain || n.drip) {
+    var wet = n.drip ? Math.max(0, 1 - st / 3) * 0.25 : Math.min(1, st / 1.1);
+    if (wet > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = 0.3 * wet;
+      px(ctx, 0, 0, PXW, PXH, "#8296b4");
+      ctx.restore();
+      for (var rl = 0; rl < 3; rl++) {
+        var speed = 150 + rl * 90, len = 5 + rl * 4;
+        var count = (30 + rl * 22) * wet;
+        ctx.save();
+        for (var rp = 0; rp < count; rp++) {
+          var seedx = ((rp * 71 + rl * 313) % PXW);
+          var ry = ((t * speed + rp * 97 + rl * 41) % (PXH + 40)) - 20;
+          /* the canopy they are under keeps some of it off */
+          var shelter = hvPairAt && Math.abs(seedx - hvPairAt.x) < 26 ? 0.25 : 1;
+          if (shelter < 1 && ry > hvPairAt.y - 54) continue;
+          ctx.globalAlpha = (0.3 + rl * 0.16) * wet * shelter;
+          px(ctx, seedx + rl, ry, 1, len, "#cfe0f2");
+        }
+        ctx.restore();
+      }
+      // and it landing
+      ctx.save();
+      ctx.globalAlpha = 0.4 * wet;
+      for (var sp4 = 0; sp4 < 16; sp4++) {
+        var sx4 = (sp4 * 37 + Math.floor(t * 3) * 53) % PXW;
+        if (Math.sin(t * 9 + sp4) > 0.4) px(ctx, sx4, 150 + (sp4 % 5) * 6, 2, 1, "#dceaf6");
+      }
+      ctx.restore();
+    }
   }
 
   /* ---- the fog on the top of the hill ----
@@ -6342,6 +6574,8 @@ function hvRender(withTransition) {
   if (withTransition) { hvStartTransition(); hvSfx("page"); }
   hvPaintBase(n);
   hvArrive = -1;                       // everything on this node times from now
+  hvVoiceI = -1; hvVoiceAt = 0;
+  hvHushed = null;
   hvPlayBegin(n);
   hvStartLoop();
   hvAmbience(hvSceneOf(n));
@@ -6356,6 +6590,12 @@ function hvRender(withTransition) {
   let say = n.isAsk
     ? (n.ask === "back" ? QUEST_FINAL.questionBack : QUEST_FINAL.question)
     : (n.sayOfAsk ? n.sayOfAsk[askKind] : n.say);
+  /* a scene can greet a returning walker differently */
+  if (n.sayAgain && hvRouteCount() > 0) say = n.sayAgain;
+  /* and can tell the truth about something she may or may not have
+     seen — "route" is either one route or a prefix matching either of
+     a path's two */
+  if (n.sayIfMet) say = hvHasWalked(n.sayIfMet.route) ? n.sayIfMet.yes : n.sayIfMet.no;
   if (n.callback && hvKeepsake) {
     say += hvKeepsake === "flower"
       ? " …you are still carrying that flower, by the way."
@@ -6426,6 +6666,13 @@ function hvGo(to) {
      low note rather than the bright one. It is still an ordinary move to
      an ordinary scene — there is no fail state left in this game. */
   hvSfx(target && target.nudged ? "bad" : (target && target.isEnd ? "yay" : "pick"));
+
+  /* Reaching an ending is what finishes the chapter, not leaving the
+     screen. It used to be marked done on the way out, which meant
+     anyone who read the ending and then went round again had, as far as
+     the hub was concerned, never finished it at all. */
+  if (target && target.isEnd) { markChapterDone("quest"); hvSaveProgress(); }
+
   if (to === "__exit") {
     hvStopLoop();
     hvAmbience(null);
@@ -6435,6 +6682,19 @@ function hvGo(to) {
     pageTurn("hub", startHub);
     return;
   }
+
+  /* Back to the fork, with everything she has found and everywhere she
+     has been still hers. The ending used to offer one button and it
+     said "close the book" — a strange thing to be told at the end of a
+     chapter whose whole point is that there are four ways up this
+     valley and she has just walked one of them. */
+  if (to === "__again") {
+    hvHistory = [];
+    hvNode = "ways";
+    hvRender(true);
+    return;
+  }
+
   hvHistory.push(hvNode);
   hvNode = to;
   hvRender(true);
@@ -6476,7 +6736,8 @@ function startQuest() {
    ========================================================= */
 function hvChoiceButtons() {
   return Array.prototype.slice.call(
-    document.querySelectorAll("#hv-left .hv-btn, #hv-centre .hv-btn, #hv-right .hv-btn, #hv-cards .hv-card"));
+    document.querySelectorAll("#hv-left .hv-btn, #hv-centre .hv-btn, #hv-right .hv-btn, #hv-cards .hv-card"))
+    .filter(function (b) { return !b.disabled; });
 }
 
 function hvMoveFocus(dir) {
@@ -6493,6 +6754,13 @@ document.addEventListener("keydown", (e) => {
   if (!scr || !scr.classList.contains("active")) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
 
+  const nv = HV[hvNode];
+  if ((e.key === " " || e.key === "Spacebar" || e.key === "Enter") && !hvPlay &&
+      nv && !hvVoicesDone(nv)) {
+    hvVoiceSkip(nv, (performance.now() - hvT0) / 1000 - hvArrive);
+    e.preventDefault();
+    return;
+  }
   if (e.key === " " || e.key === "Spacebar") {
     if (hvPlay) {
       if (hvPlay.kind === "orchard") hvHoldOn(e);

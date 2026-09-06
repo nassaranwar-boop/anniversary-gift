@@ -165,6 +165,56 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
   ok('the sound switch stops the music too',
      !music.off.running && !music.off.cue, JSON.stringify(music.off));
 
+  /* ---- the buttons wait for the conversation ---- */
+  const gate = await page.evaluate(async () => {
+    const btns = () => [...document.querySelectorAll('#hv-left .hv-btn, #hv-centre .hv-btn, #hv-right .hv-btn')];
+    const live = () => btns().filter(b => !b.disabled).length;
+
+    /* an ordinary talking scene: nothing to press until they are done */
+    hvNode = 'there_quiet'; hvHistory = []; hvRender(false);
+    hvArrive = 0; hvPaintFrame(0.2, 0.016);
+    const atOpen = { total: btns().length, live: live() };
+    /* tapping hurries it along, the way a player would */
+    let taps = 0;
+    while (!hvVoicesDone(HV[hvNode]) && taps++ < 20) hvVoiceSkip(HV[hvNode], 1 + taps);
+    hvPaintFrame(30, 0.016);
+    const afterTalk = { total: btns().length, live: live() };
+
+    /* a mechanic screen with dialogue on it: never gated, ever */
+    hvNode = 'back_bridge2'; hvHistory = []; hvRender(false);
+    hvArrive = 0; hvPaintFrame(0.2, 0.016);
+    const onPlay = { total: btns().length, live: live(), voices: (HV.back_bridge2.voices || []).length };
+    return { atOpen, afterTalk, onPlay, taps };
+  });
+  ok('a talking scene offers nothing to press while they are talking',
+     gate.atOpen.total > 0 && gate.atOpen.live === 0,
+     gate.atOpen.live + ' of ' + gate.atOpen.total + ' live');
+  ok('and offers its choices the moment the talking is done',
+     gate.afterTalk.live === gate.afterTalk.total && gate.afterTalk.live > 0,
+     gate.afterTalk.live + ' of ' + gate.afterTalk.total + ' live after ' + gate.taps + ' taps');
+  ok('but a mechanic screen is never gated, even with dialogue on it',
+     gate.onPlay.voices > 0 && gate.onPlay.live === gate.onPlay.total && gate.onPlay.live > 0,
+     gate.onPlay.live + '/' + gate.onPlay.total + ' live, ' + gate.onPlay.voices + ' lines');
+
+  /* ---- and the ending sends her round again rather than shutting ---- */
+  const again = await page.evaluate(async () => {
+    try { localStorage.removeItem('fal_chapters'); } catch (e) {}
+    hvNode = 'ask'; hvHistory = []; hvRender(false);
+    hvGo('yay');
+    const doneAtEnding = !!(chaptersDone() || {}).quest;
+    const labels = (HV.yay.choices || []).map(c => c.label);
+    hvFound.acorn = true;
+    hvGo('__again');
+    return { doneAtEnding, labels, landed: hvNode, kept: !!hvFound.acorn,
+             history: hvHistory.length };
+  });
+  ok('reaching the ending is what marks the chapter done', again.doneAtEnding);
+  ok('the ending offers another way round, not just a way out',
+     /again/i.test(again.labels[0] || ''), again.labels.join(' / '));
+  ok('going round again lands back at the fork', again.landed === 'ways', again.landed);
+  ok('and keeps everything she found', again.kept && again.history === 0,
+     'history ' + again.history);
+
   /* ---- and they talk to each other ---- */
   const talk = await page.evaluate(() => {
     const withVoices = Object.keys(HV).filter(k => (HV[k].voices || []).length);
