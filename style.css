@@ -1247,7 +1247,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-cover-sub{font-family:var(--font-serif); font-style:italic; font-size:2.6cqw; color:#9a7482; margin:.5em 0 0;}
 .sb-cover-sticker{position:absolute; z-index:2; transform:rotate(var(--rot,0deg)); pointer-events:none;}
 .sb-cover-sticker img{width:100%; height:auto; display:block; filter:drop-shadow(0 5px 10px rgba(8,18,24,.5));}
-.sb-cover-star{position:absolute; z-index:2; color:#f4f8f6; text-shadow:0 2px 6px rgba(0,0,0,.45); pointer-events:none;}
+.sb-cover-star{position:absolute; z-index:2; color:#fdf3e2; text-shadow:0 2px 6px rgba(0,0,0,.45); pointer-events:none;}
 .sb-cover-hint{
   position:absolute; left:0; right:0; bottom:2.2%; z-index:4; margin:0;
   display:flex; align-items:center; justify-content:center; gap:.6em;
