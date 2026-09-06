@@ -217,15 +217,30 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
 
   /* ---- and they talk to each other ---- */
   const talk = await page.evaluate(() => {
-    const withVoices = Object.keys(HV).filter(k => (HV[k].voices || []).length);
-    const lines = withVoices.reduce((n, k) => n + HV[k].voices.length, 0);
+    /* Both kinds: plain `voices`, and `voicesIfMet`, whose two branches
+       say different things depending on whether she has walked the
+       route being called back to. The conditional ones were invisible
+       to this check when it only looked at `voices`, which is exactly
+       the half most likely to rot. */
+    const setsOf = (n) => n.voicesIfMet ? [n.voicesIfMet.yes, n.voicesIfMet.no] : (n.voices ? [n.voices] : []);
+    const keys = Object.keys(HV).filter(k => setsOf(HV[k]).length);
+    let lines = 0;
     const bad = [];
-    withVoices.forEach(k => HV[k].voices.forEach(v => {
-      if (v[0] !== 'her' && v[0] !== 'him') bad.push(k + ':' + v[0]);
-      /* the bubble wraps at 26 and is two lines tall at most */
-      if (v[1].length > 58) bad.push(k + ': too long');
+    keys.forEach(k => setsOf(HV[k]).forEach((set, si) => {
+      if (!set || !set.length) { bad.push(k + ': empty branch ' + si); return; }
+      set.forEach(v => {
+        lines++;
+        if (v[0] !== 'her' && v[0] !== 'him') bad.push(k + ':' + v[0]);
+        /* the bubble wraps at 26 and is two lines tall at most */
+        if (v[1].length > 58) bad.push(k + ': too long');
+      });
     }));
-    return { nodes: withVoices.length, lines, bad };
+    /* and every conditional one must name a route the game can answer */
+    Object.keys(HV).forEach(k => {
+      const c = HV[k].voicesIfMet || HV[k].sayIfMet;
+      if (c && typeof hvHasWalked(c.route) !== 'boolean') bad.push(k + ': bad route ' + c.route);
+    });
+    return { nodes: keys.length, lines, bad };
   });
   ok('the two of them actually speak', talk.lines >= 20,
      talk.lines + ' lines across ' + talk.nodes + ' scenes');

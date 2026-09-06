@@ -5524,19 +5524,10 @@ function hvFoundList() {
    cat's blink. Cheap, and it is what makes the scene feel alive rather
    than like a still image with buttons on top. */
 
-var hvBase = null, hvBaseCtx = null;
+var hvBase = null;          // whichever cached scene is currently behind everything
 var hvActors = [];
 var hvLoopId = null, hvT0 = 0;
 var hvTrans = null;          // pixel-dissolve state
-
-function hvEnsureBuffers() {
-  if (!hvBase) {
-    hvBase = document.createElement("canvas");
-    hvBase.width = PXW; hvBase.height = PXH;
-    hvBaseCtx = hvBase.getContext("2d");
-    hvBaseCtx.imageSmoothingEnabled = false;
-  }
-}
 
 /* Build the moving cast for a scene. Positions are seeded so a scene
    always starts the same way, but they drift with time. */
@@ -5648,19 +5639,35 @@ function hvDrawActors(ctx, t) {
   }
 }
 
+/* Painted backgrounds, kept.
+
+   Repainting a scene costs about 50ms — every tree, every dithered
+   band, every tuft of grass, one `fillRect` per pixel — and the chapter
+   was doing it on every single move, including the many moves that stay
+   in the same place. Two nodes in the meadow meant painting the meadow
+   twice.
+
+   Seeding by the place rather than the node (see below) is what makes
+   caching possible at all: the same scene now paints identically every
+   time, so the second visit can simply be the first one again. Eleven
+   scenes at 320x180 is about two and a half megabytes, and it turns
+   every revisit from 50ms into a blit. */
+var hvSceneCache = {};
+
 function hvPaintBase(n) {
-  hvEnsureBuffers();
-  var ctx = hvBaseCtx;
-  ctx.clearRect(0, 0, PXW, PXH);
   /* Seeded by the place, not by the node. It used to be both, which
      meant the meadow rearranged its own trees every time you took a
      step through it — the same valley, reshuffled, on a path whose
      whole point is that both ways come out at the same gate. A place
      is now the same place every time you are standing in it. */
   var scene = hvSceneOf(n);
-  var rnd = hvSeed(scene);
-  (HV_SCENES[scene] || HV_SCENES.sakura)(ctx, rnd);
-  hvActors = hvBuildActors(n, hvSeed(n.scene + "actors"));
+  if (!hvSceneCache[scene]) {
+    var made = spriteCanvas(PXW, PXH);
+    (HV_SCENES[scene] || HV_SCENES.sakura)(made.ctx, hvSeed(scene));
+    hvSceneCache[scene] = made.c;
+  }
+  hvBase = hvSceneCache[scene];
+  hvActors = hvBuildActors(n, hvSeed(scene + "actors"));
 }
 
 /* ---------- where the two of them are standing ----------
@@ -5687,6 +5694,33 @@ const HV_STAND = {
   bridge:  { x: 26,  y: 146, s: 1.3 },
   home:    { x: 286, y: 152, s: 1.5 },
 };
+
+/* =========================================================
+   THE FOG, DRAWN ONCE INSTEAD OF THIRTY-FOUR THOUSAND TIMES
+
+   `blob` sets a fill colour and fills a single pixel, per pixel — which
+   is fine for scenery painted once into a buffer, and ruinous for
+   something drawn every frame. The fog is three bands of five blobs
+   fifty-two pixels across, so it was making about thirty-four thousand
+   canvas calls a frame and costing 7.2ms of a 16.7ms budget. Measured,
+   not guessed: tools/hvperf.js.
+
+   Each band's puff is identical, so it is drawn once into its own tiny
+   canvas and then blitted five times. The output is pixel for pixel the
+   same — it is the same blob, from the same function, with the same
+   tones — and it costs fifteen drawImage calls instead.
+   ========================================================= */
+var hvFogCache = {};
+
+function hvFogPuff(band, fh) {
+  var key = band + ":" + fh;
+  if (hvFogCache[key]) return hvFogCache[key];
+  var rx = 52, ry = fh * 0.5;
+  var made = spriteCanvas(rx * 2 + 2, Math.ceil(ry * 2) + 2);
+  blob(made.ctx, rx, ry, rx, ry, ["#f2f4f6", "#e2e6ea", "#d0d6dc", "#bfc6ce"]);
+  hvFogCache[key] = made.c;
+  return made.c;
+}
 
 /* Seconds since she arrived at this node. The whole chapter used raw
    session time for anything that was supposed to happen on arrival,
@@ -6390,11 +6424,13 @@ function hvPaintFrame(t, dt) {
       var fy = 74 + fb * 26 - lift * (24 + fb * 16);
       var fh = 22 + fb * 7;
       var drift = ((t * (5 + fb * 3) + fb * 130) % (PXW + 200)) - 100;
+      var puff = hvFogPuff(fb, fh);
       ctx.save();
       ctx.globalAlpha = (0.3 + fb * 0.13 + 0.04 * Math.sin(t * 0.6 + fb)) * (1 - lift * 0.92);
       for (var fx2 = 0; fx2 < 5; fx2++) {
-        blob(ctx, drift + fx2 * 74, fy + Math.sin(t * 0.4 + fx2 + fb) * 2, 52, fh * 0.5,
-          ["#f2f4f6", "#e2e6ea", "#d0d6dc", "#bfc6ce"]);
+        ctx.drawImage(puff,
+          (drift + fx2 * 74 - 52) | 0,
+          (fy + Math.sin(t * 0.4 + fx2 + fb) * 2 - fh * 0.5) | 0);
       }
       ctx.restore();
     }

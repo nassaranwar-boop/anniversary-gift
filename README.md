@@ -601,6 +601,25 @@ nowhere!"* — and you could hear the join. Same beats, same choices, same
 magic envelope, said the way the rest of the walk is said. **`QUEST_FINAL`
 and `KEEPSAKE_CLOSING` are untouched**; those are yours.
 
+### It has to hold a frame
+
+`tools/hvperf.js` times `hvPaintFrame` on the heaviest scenes, because
+wall-clock frame rate in a test container measures the container. Two things
+it found:
+
+- **The fog cost 7.2ms a frame** — 43% of a 60fps budget and nineteen times
+  the next-heaviest scene. `blob` sets a fill colour and fills a single pixel,
+  per pixel, which is right for scenery painted once into a buffer and ruinous
+  every frame: three bands of five 52-pixel blobs is about 34,000 canvas calls
+  a frame. Each band's puff is drawn once into its own canvas now and blitted
+  five times — pixel for pixel identical, 0.25ms.
+- **A scene change cost 50ms.** The chapter repainted the background on every
+  move, including the many moves that stay in the same place: two nodes in the
+  meadow meant painting the meadow twice. Seeding by place rather than node is
+  what made caching possible, so painted scenes are kept — a revisit is a blit.
+
+Worst scene now: the orchard, at 1.5ms, or 9% of a frame.
+
 ### The air
 
 Every scene used to be silent — five sounds fired on button presses, and
