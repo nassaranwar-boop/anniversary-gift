@@ -1449,6 +1449,110 @@ function ok(name, cond, extra) {
      closing.last === true && /counting on that/.test(closing.text),
      closing.last ? 'his final entry is there' : 'missing');
 
+  /* "Verify each night she actually gets what she was supposed to get,
+     not just by the saying in the dialogue." A line of narration saying
+     she found a key is not her having a key. */
+  console.log('\n— and she can open the drawer and see what she has —');
+  const drawer = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    try { localStorage.removeItem('ns_kept'); } catch (e) {}
+    const take = (n, keep) => {
+      w.route('night:' + n); w.route('go');
+      const c = w.cast();
+      Object.keys(c).forEach(k => { c[k].awake = false; c[k].asleep = true; });
+      s.hour = 3; w.pump(2); w.revealStep(0.2); w.route(keep ? 'keep' : 'burn');
+    };
+    take(1, true); take(2, false);
+    w.route('title'); w.route('drawer');
+    const rows = [].slice.call(document.querySelectorAll('.ns-drawer-row'));
+    const out = {
+      rows: rows.length,
+      kept: rows.filter(r => r.classList.contains('kept')).length,
+      burned: rows.filter(r => r.classList.contains('burned')).length,
+      unknown: rows.filter(r => r.classList.contains('unknown')).length,
+      first: rows[0] ? rows[0].textContent : '',
+      third: rows[2] ? rows[2].textContent : '',
+    };
+    /* and from inside a shift, going back to the shift */
+    w.route('night:3'); w.route('go');
+    w.route('drawer');
+    out.inShift = document.querySelectorAll('.ns-drawer-row').length;
+    const done = [].slice.call(document.querySelectorAll('[data-go]'))
+      .filter(b => /DONE/.test(b.textContent))[0];
+    out.back = done ? done.dataset.go : null;
+    return out;
+  });
+  ok('the drawer has a row for every night', drawer.rows === 6, String(drawer.rows));
+  ok('and it says which she kept and which she burned',
+     drawer.kept === 1 && drawer.burned === 1, drawer.kept + ' kept, ' + drawer.burned + ' burned');
+  ok('and it names the thing rather than the night',
+     /SECOND KEY/.test(drawer.first), JSON.stringify(drawer.first.slice(0, 30)));
+  ok('and it does not spoil the ones she has not reached',
+     drawer.unknown === 4 && !/ADDRESSES/.test(drawer.third),
+     drawer.unknown + ' still unknown');
+  ok('she can open it in the middle of a shift', drawer.inShift === 6);
+  ok('and it puts her back in the shift', drawer.back === 'resume', String(drawer.back));
+
+  /* the last hour of the last night */
+  console.log('\n— and the last hour of the last night is by ear —');
+  const lastHour = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state(), out = {};
+    w.route('night:6'); w.route('go');
+    s.hour = 4; w.press('monitor');
+    out.beforeFive = s.monitor;
+    s.hour = 5; w.pump(1);
+    out.atFive = s.monitor;
+    w.press('monitor');
+    out.andItStaysOff = s.monitor;
+    /* and it is only the last night */
+    w.route('night:5'); w.route('go');
+    s.hour = 5; w.pump(1); w.press('monitor');
+    out.nightFive = s.monitor;
+    return out;
+  });
+  ok('the cameras work up to five', lastHour.beforeFive === true);
+  ok('and at five on the last night they go', lastHour.atFive === false);
+  ok('and they do not come back', lastHour.andItStaysOff === false);
+  ok('and only on the last night', lastHour.nightFive === true);
+
+  /* the drawing, standing up */
+  console.log('\n— and the drawing is a room she can walk into —');
+  const day = await page.evaluate(() => {
+    const w = OuissysNightShift.__night;
+    w.route('gallery');
+    const c = w.cast();
+    const at = ['cogsworth','chime','marabelle','jax'].map(k => ({
+      room: c[k].room,
+      x: +c[k].group.position.x.toFixed(2),
+      z: +c[k].group.position.z.toFixed(2),
+      ry: +c[k].group.rotation.y.toFixed(2),
+    }));
+    return { cam: w.state().cam, at: at };
+  });
+  ok('the daylight walk opens on the office', day.cam === 'office', day.cam);
+  ok('and all four of them are standing in it',
+     day.at.every(a => a.room === 'office'), JSON.stringify(day.at.map(a => a.room)));
+  ok('round the desk, the way the drawing has them',
+     new Set(day.at.map(a => a.x + ',' + a.z)).size === 4,
+     day.at.map(a => a.x + ',' + a.z).join(' | '));
+  ok('and every one of them facing out rather than at her',
+     new Set(day.at.map(a => a.ry)).size >= 3,
+     day.at.map(a => a.ry).join(', '));
+  /* the gallery pins all four in place, and a night started after it
+     used to inherit a cast that never moved again */
+  const unpinned = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    w.route('night:1'); w.route('go');
+    const c = w.cast();
+    const held = Object.keys(c).filter(k => c[k].deskHeld).length;
+    w.put('cogsworth', 1);
+    const a = c.cogsworth.step; w.pump(120, 0.5);
+    return { held: held, moved: c.cogsworth.step - a, phase: s.phase };
+  });
+  ok('and a night after the daylight walk still has a cast that moves',
+     unpinned.held === 0 && (unpinned.moved > 0 || unpinned.phase === 'over'),
+     unpinned.held + ' still pinned, moved ' + unpinned.moved);
+
   /* and they do not look alike either */
   const looks = await page.evaluate(() => {
     const w = OuissysNightShift.__night, out = { tones: [], titles: [] };
@@ -1613,6 +1717,37 @@ function ok(name, cond, extra) {
      cues.dark.theme);
   ok('a page in her hands is a piano, which nothing else leads with',
      cues.found.lay.piano > 0.5 && cues.found.lay.grind === 0, 'piano ' + cues.found.lay.piano);
+
+  /* six nights of the same score is six nights of the same feeling,
+     whatever is happening in front of it */
+  /* read as written rather than as mixed: every suite here runs muted,
+     musicTick returns on its first line when it is, and a mix you can
+     only measure with the sound on is a mix nobody can check */
+  const feelings = await page.evaluate(() => {
+    const w = OuissysNightShift.__night, out = [];
+    for (let n = 1; n <= 6; n++) {
+      const calm = w.nightMix(n, 0.08), bad = w.nightMix(n, 0.7);
+      out.push({ n: n, feel: calm.feel,
+                 piano: +calm.mix.piano.toFixed(3), warm: +calm.mix.warm.toFixed(3),
+                 tick: +calm.mix.tick.toFixed(3), grind: +bad.mix.grind.toFixed(3) });
+    }
+    return out;
+  });
+  ok('the first night aches rather than frightens',
+     feelings[0].feel === 'missing' && feelings[0].piano > feelings[3].piano,
+     'piano ' + feelings[0].piano + ' vs ' + feelings[3].piano + ' on night four');
+  ok('the second is warm under something walking towards her',
+     feelings[1].feel === 'loving' && feelings[1].warm > 0.05,
+     'warm ' + feelings[1].warm);
+  ok('the warmth is gone by the night of the notebook',
+     feelings[3].warm < 0.02 && feelings[3].feel === 'afraid', String(feelings[3].warm));
+  ok('and the last two have a clock in them and no piano at all',
+     feelings[4].piano < 0.02 && feelings[5].piano < 0.02 &&
+     feelings[5].tick > feelings[0].tick,
+     'piano ' + feelings[5].piano + ', tick ' + feelings[5].tick + ' vs ' + feelings[0].tick);
+  ok('and no two of the four feelings run at the same pace',
+     new Set(feelings.map(f => f.feel)).size === 4,
+     feelings.map(f => f.feel).join(','));
 
   ok('a shift plays the night', rooms.play === 'night', rooms.play);
   ok('the meter going out stops the heartbeat', rooms.dark === 'dark', rooms.dark);

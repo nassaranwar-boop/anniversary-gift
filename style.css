@@ -5044,7 +5044,11 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .ns-hud[hidden]{display:none;}
 .ns-hud-tl{ position:absolute; top:2.4cqh; left:2cqw; display:flex; flex-direction:column; gap:.9cqh; align-items:flex-start; }
-.ns-hud-tr{ position:absolute; top:2.4cqh; right:2cqw; display:flex; flex-direction:column; gap:.6cqh; align-items:flex-end; }
+/* the clock sits to the left of the pause button rather than under it */
+.ns-hud-tr{
+  position:absolute; top:2.4cqh; right:calc(2cqw + max(7cqh, 48px));
+  display:flex; flex-direction:column; gap:.6cqh; align-items:flex-end;
+}
 
 .ns-chip{
   display:flex; align-items:baseline; gap:1cqw;
@@ -5192,8 +5196,18 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-you i{ font-style:normal; }
 
 /* ---------- pause ---------- */
+/* PAUSE. It had two homes and both of them were somebody else's.
+
+   In landscape it sat bottom-right, which is where the right-hand door
+   key is — measured, the element under the middle of the pause button
+   on a desktop was `ns-key-r`, so pressing where it appears shut the
+   door instead of pausing. In portrait it moved to the top right and
+   landed directly on top of the clock.
+
+   It has a corner of its own now, above everything, and the clock
+   steps aside for it. */
 .ns-pause-btn{
-  position:absolute; right:2cqw; bottom:2.4cqh; z-index:7;
+  position:absolute; right:1.6cqw; top:1.6cqh; z-index:12;
   width:max(6cqh, 40px); height:max(6cqh, 40px); padding:0; cursor:pointer;
   display:grid; place-items:center;
   border:none; border-radius:50%;
@@ -5205,6 +5219,41 @@ img{-webkit-user-drag:none; user-select:none;}
   width:max(2.2cqh, 12px); height:max(2.6cqh, 15px);
   background:linear-gradient(90deg, var(--ns-brass) 0 36%, transparent 36% 64%, var(--ns-brass) 64% 100%);
 }
+
+/* THE DRAWER. Not an inventory screen — a list of what she is carrying
+   out of her husband's shop. Kept things are lit; burned things are
+   struck through and grey; the ones she has not reached yet say so
+   without saying what they are. */
+.ns-drawer{
+  list-style:none; margin:1.4cqh 0; padding:0;
+  display:flex; flex-direction:column; gap:.9cqh;
+  max-height:46cqh; overflow-y:auto;
+}
+.ns-drawer-row{
+  display:flex; flex-direction:column; gap:.15cqh;
+  padding:1cqh 1.6cqw; border-left:2px solid rgba(200,162,96,.3);
+  background:linear-gradient(90deg, rgba(30,26,20,.5), transparent 70%);
+}
+.ns-drawer-row b{
+  font-size:max(1.8cqh, 11px); letter-spacing:.16em; font-weight:700;
+  color:rgba(232,223,200,.9);
+}
+.ns-drawer-row i{
+  font-style:normal; font-size:max(1.35cqh, 9px); letter-spacing:.1em;
+  color:rgba(232,223,200,.45);
+}
+.ns-drawer-row span{
+  margin-top:.3cqh; font-size:max(1.5cqh, 10px); letter-spacing:.12em;
+}
+.ns-drawer-row.kept{ border-left-color:var(--ns-amber); }
+.ns-drawer-row.kept span{ color:rgba(255,206,140,.95); }
+.ns-drawer-row.burned{ border-left-color:rgba(120,60,40,.7); }
+.ns-drawer-row.burned b{ color:rgba(232,223,200,.42); text-decoration:line-through; }
+.ns-drawer-row.burned span{ color:rgba(200,120,90,.8); }
+.ns-drawer-row.unknown{ border-left-color:rgba(200,162,96,.16); }
+.ns-drawer-row.unknown b,
+.ns-drawer-row.unknown i,
+.ns-drawer-row.unknown span{ color:rgba(232,223,200,.3); }
 
 /* The six nights of small decisions, answered on the last morning —
    and then his final entry, which is the last thing the chapter says.
@@ -5590,7 +5639,7 @@ img{-webkit-user-drag:none; user-select:none;}
     align-items:stretch;
   }
   .ns-pad-mid{ align-items:stretch; }
-  .ns-pause-btn{ top:auto; bottom:2.4cqh; right:2cqw; }
+  .ns-pause-btn{ top:1.6cqh; bottom:auto; right:1.6cqw; }
   .ns-titlebar{ margin-bottom:2vh; }
 }
 @media (max-width: 900px), (orientation: portrait){
@@ -5611,8 +5660,7 @@ img{-webkit-user-drag:none; user-select:none;}
   .ns-key{ min-width:max(11cqw, 72px); min-height:max(11cqh, 54px); }
   .ns-key-h, .ns-key-m{ min-width:max(8cqw, 56px); min-height:max(9cqh, 48px); }
   .ns-key-step{ min-width:max(6cqw, 44px); min-height:max(9cqh, 46px); }
-  .ns-pause-btn{ bottom:auto; top:2.4cqh; right:2cqw; }
-  .ns-hud-tr{ top:2.4cqh; right:11cqw; }
+  .ns-pause-btn{ bottom:auto; top:1.6cqh; right:1.6cqw; }
 }
 
 /* A phone held upright is only 390 points across, and six controls with

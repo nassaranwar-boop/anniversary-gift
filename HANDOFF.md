@@ -717,3 +717,34 @@ woman at a desk, all of them facing outward.
 `endingKind()` has five outcomes. The one that means the most is not
 "kept everything" — it is `four`: she burns the ledger and the
 notebook and keeps the things he made.
+
+## The pass that hunted bugs rather than adding features
+
+Three real ones, and two of them were reachability again.
+
+**PAUSE was under the right-hand door key.** Measured with
+`elementFromPoint`: on a desktop the element under the middle of the
+pause button was `ns-key-r`, so pressing where it appears shut the door
+instead of pausing. In portrait it moved to the top right and landed on
+top of the clock. It has its own corner at z-index 12 now and the clock
+steps aside for it. This is the third control found unreachable by
+asking the document what is actually under it — that check is worth
+running on anything new.
+
+**The daylight walk froze the cast for the rest of the visit.** The
+gallery pins all four with `deskHeld` so they stand where the night-five
+drawing puts them, `stepCast` leaves a pinned figure alone, and
+`resetCast` did not clear it. Any night begun after a look round the
+shop in daylight had a cast that never moved again. Cleared in
+`resetCast` now, and checked.
+
+**The blind hour only existed on real frames.** It was a line in the
+frame loop, so `pump()` never ran it — and a pumped night is supposed
+to cost exactly what a played one costs, which is the only reason the
+budget numbers mean anything. It is `stepBlind` and it is in both
+lists.
+
+And one measurement lesson repeated: the night's mix could only be read
+with the sound on, and every suite here runs muted. `nightMix(feel, d)`
+is a plain function of the feeling and the dread with no audio in it,
+so what the shift is written as can be checked without hearing it.

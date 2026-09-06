@@ -708,6 +708,7 @@ const NS = {
      line between a system and a guide character is exactly here. */
   sys: {
     boot:      "SYSTEM ONLINE. NIGHT MODE.",
+    camsGone:  "CAMERA NETWORK OFFLINE. NO FURTHER PICTURE.",
     hour:      "HOUR $1.",
     pwr25:     "RESERVE AT TWENTY FIVE PERCENT.",
     pwr10:     "RESERVE AT TEN PERCENT.",
@@ -901,6 +902,7 @@ const HAZARDS = {
   officeDark:   "The office bulb has started going out by itself.",
   stickyDoor:   "The right-hand actuator is going. That door is slow now, and expensive.",
   monitorDrop:  "The monitor cuts out mid-look. It comes back.",
+  blindHour:    "At five the cameras go for good. The last hour is by ear.",
 };
 
 const NIGHTS = [
@@ -969,7 +971,7 @@ const NIGHTS = [
     power: 100,
     active: { cogsworth: 0, chime: 0, marabelle: 0, jax: 0 },
     ramp: [1.1, 1.25, 1.35, 1.5, 1.62, 1.75],
-    hazards: ["deadWorkshop", "signalLoss", "hallDark", "surges", "officeDark", "stickyDoor", "monitorDrop"],
+    hazards: ["deadWorkshop", "signalLoss", "hallDark", "surges", "officeDark", "stickyDoor", "monitorDrop", "blindHour"],
   },
 ];
 
@@ -3162,6 +3164,14 @@ function buildOffice(R) {
      kill her; that is the whole point of it. */
   /* up the room, toward the back of her chair, and kept left of centre
      because the floor plan on the tube covers the right-hand third */
+  /* the four corners of the drawing: two at the doors, one at the
+     hatch side, one facing the way she came in. Every rotation points
+     away from the chair. */
+  R.anchor("g0", -2.15, 0,  0.55, -1.55);
+  R.anchor("g1",  2.15, 0,  0.55,  1.55);
+  R.anchor("g2", -0.95, 0, -1.55,  3.14);
+  R.anchor("g3",  1.05, 0,  1.75,  0.0);
+
   R.anchor("d0", -0.35, 0, -2.05, 0);
   R.anchor("d1", -0.62, 0, -0.70, 0.15);
   R.anchor("d2", -0.88, 0,  0.62, 0.25);
@@ -6969,6 +6979,29 @@ const MODE_FEEL = {
   /* the one she spends the whole game inside, so it sits a little
      louder than the scenes she passes through */
   night:   { spb: null, warm: false, level: 0.70, theme: "shift" },
+  /* THE FOUR FEELINGS.
+
+     Six nights of the same score is six nights of the same feeling,
+     whatever is happening in front of it. So the shift's own music
+     shifts underneath her as the story does — the same phrase, the
+     same key, the same grid, four different rooms to hear it in:
+
+       missing  night one. He is dead and this is his shop and his
+                kettle. A piano and a music box and almost no dread at
+                all: the first night should ache rather than frighten.
+       loving   night two. The four are made of her. Warm underneath
+                something that is walking towards her, which is the
+                most uncomfortable pair of feelings in the chapter.
+       afraid   nights three and four. The warmth goes. This is where
+                the notebook is.
+       stressed nights five and six. Faster, tighter, the clock back
+                in it, and the piano gone entirely. */
+  n1:      { spb: null, warm: false, level: 0.72, theme: "shift", feel: "missing" },
+  n2:      { spb: null, warm: false, level: 0.70, theme: "shift", feel: "loving" },
+  n3:      { spb: null, warm: false, level: 0.70, theme: "shift", feel: "afraid" },
+  n4:      { spb: null, warm: false, level: 0.72, theme: "shift", feel: "afraid" },
+  n5:      { spb: null, warm: false, level: 0.74, theme: "shift", feel: "stressed" },
+  n6:      { spb: null, warm: false, level: 0.76, theme: "shift", feel: "stressed" },
   film:    { spb: 1.95, warm: false, level: 0.34, theme: "memory" },
   locked:  { spb: 1.00, warm: false, level: 0.61, theme: "clock" },
   brief:   { spb: 1.35, warm: false, level: 0.53, theme: "clock" },
@@ -7291,6 +7324,45 @@ function musicSwap(m) {
   }
 }
 
+/* WHAT THE SHIFT SOUNDS LIKE TONIGHT.
+
+   Pulled out of musicTick as a plain function of the feeling and the
+   dread, with no audio in it at all — partly because it is easier to
+   read, and mostly because every suite here runs muted, musicTick
+   returns on the first line when it is, and a mix that can only be
+   measured with the sound on is a mix nobody can check.
+
+     missing  grief. Mostly piano, hardly any clock, and the frightening
+              layers arrive late and quiet. Night one should ache.
+     loving   the four are made of her. A major pad and a little choir
+              under something that is walking towards her, which is the
+              most uncomfortable pair of feelings in the chapter.
+     afraid   the warmth goes. This is the notebook.
+     stressed no piano at all, the clock back and twice as loud, and
+              everything arriving sooner. */
+function nightFeel() { return (MODE_FEEL["n" + G.night] || {}).feel || "afraid"; }
+
+function nightMix(feel4, d) {
+  const grief = feel4 === "missing" ? 1 : 0;
+  const love  = feel4 === "loving" ? 1 : 0;
+  const rush  = feel4 === "stressed" ? 1 : 0;
+  return {
+    sub:   0.30 + d * 0.42,
+    box:   0.46 + fadeIn(d, 0.12, 0.50) * 0.34,
+    tick:  (0.20 - d * 0.12) * (rush ? 1.7 : grief ? 0.35 : 1),
+    /* the piano is company. It leaves as she stops being alone, and on
+       the last two nights it does not turn up at all. */
+    piano: rush ? 0 : (grief ? 0.60 : 0.42) * (1 - fadeIn(d, 0.10, 0.42)),
+    warm:  love ? 0.34 * (1 - fadeIn(d, 0.30, 0.70)) : 0,
+    choir: love ? 0.16 * (1 - fadeIn(d, 0.40, 0.80)) : fadeIn(d, 0.74, 1.00) * 0.22,
+    pulse: fadeIn(d, grief ? 0.18 : rush ? 0.02 : 0.05, 0.40) * (rush ? 0.85 : 0.72),
+    air:   fadeIn(d, 0.22, 0.66) * (grief ? 0.16 : 0.30),
+    brass: fadeIn(d, rush ? 0.28 : 0.38, 0.80) * (grief ? 0.20 : 0.42),
+    grind: fadeIn(d, 0.44, 0.86) * (grief ? 0.28 : 0.52),
+    bow:   fadeIn(d, 0.60, 0.95) * 0.34,
+  };
+}
+
 function musicTick(dt) {
   if (!MUS.ready || !AC || muted) return;
   /* scheduling ahead of a clock that is not moving schedules everything
@@ -7314,6 +7386,8 @@ function musicTick(dt) {
     g.setValueAtTime(g.value, t);
     g.linearRampToValueAtTime(v, t + 0.55);
   };
+  /* which of the four the shift is in tonight */
+  const feel4 = nightFeel();
   if (mode === "night") {
     /* THE NIGHT HAD NO FLOOR, AND THE NIGHT IS THE GAME.
 
@@ -7332,18 +7406,8 @@ function musicTick(dt) {
        there while it is calm and steps back as it stops being calm;
        and the six frightening layers still arrive in the order they
        always did, on top of something rather than instead of it. */
-    set("sub",   0.30 + d * 0.42);
-    set("box",   0.46 + fadeIn(d, 0.12, 0.50) * 0.34);
-    set("tick",  0.20 - d * 0.12);
-    /* the piano is company. It leaves when she stops being alone. */
-    set("piano", 0.42 * (1 - fadeIn(d, 0.10, 0.42)));
-    set("pulse", fadeIn(d, 0.05, 0.40) * 0.72);
-    set("air",   fadeIn(d, 0.22, 0.66) * 0.30);
-    set("brass", fadeIn(d, 0.38, 0.80) * 0.42);
-    set("grind", fadeIn(d, 0.44, 0.86) * 0.52);
-    set("bow",   fadeIn(d, 0.60, 0.95) * 0.34);
-    set("choir", fadeIn(d, 0.74, 1.00) * 0.22);
-    set("warm",  0);
+    const mix = nightMix(feel4, d);
+    MUS_LAYERS.forEach((k) => set(k, mix[k] || 0));
   } else {
     const mix = MODE_MIX[mode] || MODE_MIX.menu;
     MUS_LAYERS.forEach((k) => set(k, mix[k] || 0));
@@ -7355,7 +7419,14 @@ function musicTick(dt) {
      104, and every layer follows it because they are all on the same
      grid. The menu keeps its own slower, steadier one. */
   const feel = MODE_FEEL[mode] || MODE_FEEL.menu;
-  const wantSpb = mode === "night" ? lerp(1.30, 0.575, d) : feel.spb;
+  /* and the grid runs at the pace of the feeling: grief is slow at
+     rest and never gets fast, stress starts quicker and ends quicker */
+  const wantSpb = mode === "night"
+    ? (feel4 === "missing"  ? lerp(1.55, 0.72, d)
+     : feel4 === "loving"   ? lerp(1.42, 0.66, d)
+     : feel4 === "stressed" ? lerp(1.15, 0.50, d)
+     :                        lerp(1.30, 0.575, d))
+    : feel.spb;
   /* Eased, not snapped. Switching scene used to change the tempo
      between one sixteenth and the next, which is a cut — and the whole
      claim of this engine is that it never cuts. Half a second to get
@@ -7654,6 +7725,12 @@ function resetCast() {
     ch.knockT = 0;
     ch.awake = false;
     ch.asleep = false;
+    /* Camera zero and the daylight walk-through both pin a figure in
+       place with this, and stepCast leaves a pinned one alone. The
+       gallery pins all four and nothing here used to unpin them, so a
+       night started after a look round the shop in daylight had a cast
+       that never moved for the rest of the visit. */
+    ch.deskHeld = false;
     ch.phase = Math.random() * 10;
     syncChar(ch);
   });
@@ -8397,6 +8474,9 @@ function closeReveal(kept) {
 const DESK = { on: false, at: -1, who: null, seen: false, armed: false, cool: 0, was: false };
 const DESK_FROM = 3;          // the night the office stops being empty
 const DESK_MARKS = ["d0", "d1", "d2"];
+/* where the four of them stand in the daylight, which is where the
+   drawing on night five put them: round the desk, facing out */
+const GALLERY_MARKS = ["g0", "g1", "g2", "g3"];
 
 function deskReset() {
   DESK.on = false; DESK.at = -1; DESK.who = null;
@@ -8999,6 +9079,7 @@ function frame(ts) {
       stepShifts(dt);
       stepHazards(dt);
       stepWind(dt);
+      stepBlind(dt);
       stepDesk(dt);
       stepReveal(dt);
       stageTheTurn(dt);
@@ -9221,6 +9302,7 @@ function screenTitle() {
         '<button class="ns-btn" data-go="howto">HOW IT WORKS</button>' +
         /* his statement, once she has already heard it once */
         (seenIntro() ? '<button class="ns-btn" data-go="intro">HIS STATEMENT</button>' : "") +
+        '<button class="ns-btn" data-go="drawer">THE DRAWER</button>' +
         '<button class="ns-btn" data-go="sound">SOUND</button>' +
         '<button class="ns-btn" data-go="badges">RECORD</button>' +
         '<button class="ns-btn" data-go="quit">LEAVE</button>' +
@@ -9329,6 +9411,51 @@ function screenMix() {
   });
 }
 
+/* THE DRAWER.
+
+   "Verify that each night she gets what she was supposed to get, not
+   just by the saying in the dialogue but actually getting it."
+
+   Fair. A line of narration saying she found a key is not her having a
+   key. So the six things live in a drawer she can open — from the
+   title, and from the pause menu in the middle of a shift — and every
+   one of them is either in it or gone, in her own words, with the
+   night it came from and what she did with it. Nothing here is a
+   score and there is no completion bar: it is a list of what she is
+   carrying out of her husband's shop. */
+function screenDrawer() {
+  const all = keptAll();
+  const rows = [];
+  for (let n = 1; n <= NIGHTS.length; n++) {
+    const r = NS.reveal[n];
+    if (!r) continue;
+    const state = all[n];
+    const cls = state === 1 ? "kept" : state === 0 ? "burned" : "unknown";
+    const what = state === 1 ? (r.keep || "KEPT")
+               : state === 0 ? (r.burn || "BURNED")
+               : "&mdash; not found yet &mdash;";
+    rows.push(
+      '<li class="ns-drawer-row ' + cls + '">' +
+        '<b>' + (state === undefined ? "?" : r.head) + '</b>' +
+        '<i>' + (state === undefined ? "night " + n : r.at) + '</i>' +
+        '<span>' + what + '</span>' +
+      '</li>');
+  }
+  const c = keptCount();
+  const back = G.phase === "pause" || mixFrom === "play" ? "resume" : "title";
+  overlay(
+    '<div class="ns-card ns-card-wide">' +
+      '<p class="ns-nightno">THE DRAWER</p>' +
+      '<p class="ns-blurb">what she is taking out of this shop</p>' +
+      '<ul class="ns-drawer">' + rows.join("") + '</ul>' +
+      '<p class="ns-keys">' + c.kept + ' kept &middot; ' + c.burned + ' burned &middot; ' +
+        (NIGHTS.length - c.kept - c.burned) + ' still in there somewhere</p>' +
+      '<div class="ns-btns">' +
+        '<button class="ns-btn ns-btn-go" data-go="' + back + '">DONE</button>' +
+      '</div>' +
+    '</div>', "ns-ov-drawer");
+}
+
 function screenVoice() {
   const list = voiceMenu();
   const cur = savedVoice();
@@ -9358,6 +9485,7 @@ function screenPause() {
       '<p class="ns-blurb">The shop waits.</p>' +
       '<div class="ns-btns">' +
         '<button class="ns-btn ns-btn-go" data-go="resume">BACK TO IT</button>' +
+        '<button class="ns-btn" data-go="drawer">THE DRAWER</button>' +
         '<button class="ns-btn" data-go="sound">SOUND</button>' +
         '<button class="ns-btn" data-go="restart">RESTART NIGHT</button>' +
         '<button class="ns-btn" data-go="title">TITLE</button>' +
@@ -9665,7 +9793,7 @@ function route(cmd) {
   else if (cmd === "badges") { G.phase = "badges"; screenBadges(); }
   else if (cmd === "title") {
     G.phase = "title"; G.mode = "story"; G.dawn = false;
-    CAST.forEach((d) => { cast[d.id].asleep = false; });
+    CAST.forEach((d) => { cast[d.id].asleep = false; cast[d.id].deskHeld = false; });
     sayClear();
     if (stageEl) delete stageEl.dataset.day;
     bedStop(); musicMode("menu"); screenTitle(); showHud(false);
@@ -9693,6 +9821,8 @@ function route(cmd) {
   else if (cmd === "terms") { termsStart(); }
   else if (cmd === "termsDone") { termsDone(); }
   else if (cmd === "termsAgain") { clearHurt(); clearKept(); termsStart(); }
+  else if (cmd === "drawer") { mixFrom = G.phase === "play" || G.phase === "pause" ? "play" : "title";
+                               G.phase = "drawer"; screenDrawer(); }
   else if (cmd === "sound") { mixFrom = G.phase === "play" ? "play" : "title"; G.phase = "mix"; screenMix(); }
   else if (cmd === "mixReset") { MIX_KEYS.forEach((k) => saveMix(k, MIX_DEF[k])); screenMix(); }
   else if (cmd === "mixTest") {
@@ -9820,12 +9950,31 @@ function beginGallery() {
      idea entirely in a shop at eleven in the morning */
   if (stageEl) stageEl.dataset.day = "1";
   G.dawn = false;
-  G.cam = "hall";
+  G.cam = "office";
   G.monitor = false;
   G.doors.left = G.doors.right = G.doors.hatch = false;
   G.blackout = false;
   G.dead = null; G.killChar = null;
   CAST.forEach((d) => { cast[d.id].awake = false; cast[d.id].asleep = true; });
+  /* THE DRAWING, STANDING UP.
+
+     Night five is a sheet of graph paper with four figures round a
+     woman at a desk, every one of them facing away from her at the
+     doors. In daylight, that is where they are: the office is the
+     first room the walk-through opens on, and the four of them are
+     standing in it exactly as he drew them, facing outward, with
+     nobody in the chair.
+
+     It is the only thing in the chapter that answers a page with a
+     room rather than with another page. */
+  ["cogsworth", "chime", "marabelle", "jax"].forEach((id, i) => {
+    const ch = cast[id];
+    if (!ch) return;
+    ch.deskHeld = true;
+    putChar(ch, "office", GALLERY_MARKS[i]);
+    ch.atDoor = false;
+    ch.pose = "idle";
+  });
   resetShifties();
   syncTrophies();
   noOverlay();
@@ -10901,7 +11050,35 @@ function toggleDoor(k) {
   bumpUI();
 }
 
+/* THE LAST HOUR OF THE LAST NIGHT.
+
+   At five on night six the cameras go and do not come back. She has
+   spent six nights learning to tell them apart by ear — the boots, the
+   wings, the music box, the bells, and the paper and string that is
+   not one of his — and the final hour is the exam nobody set.
+
+   It is the only hazard in the chapter that takes something away for
+   good, and it is the right one to end on: the monitor is what has
+   been standing between her and the shop all week, and the last thing
+   the story does is remove it. */
+function blind() {
+  return hazard("blindHour") && G.hour >= 5 && G.phase === "play";
+}
+
+/* and at five on the last night the tube goes dark for good. It is a
+   step rather than a line in the frame loop because pump() runs the
+   same list, and a pumped night has to cost what a played one costs —
+   which is the whole reason the budget numbers can be trusted. */
+function stepBlind(dt) {
+  if (!blind() || !G.monitor) return;
+  G.monitor = false;
+  SFX.monitor(false);
+  say(NS.sys.camsGone, true);
+  bumpUI();
+}
+
 function toggleMonitor() {
+  if (blind()) { SFX.beep(false); say(NS.sys.camsGone, true); return; }
   if (!G.monitor) tapeTrigger("firstCam");
   if (G.phase === "gallery") return;
   if (G.phase !== "play") return;
@@ -11184,6 +11361,7 @@ const testHooks = {
       stepShifts(dt);
       stepHazards(dt);
       stepWind(dt);
+      stepBlind(dt);
     }
     G.pumping = false;
     return { phase: G.phase, hour: G.hour, power: G.power, dead: G.dead };
@@ -11247,6 +11425,11 @@ const testHooks = {
   /* what each scene is written as, rather than what its faders happen
      to be part-way through a half-second ramp */
   score: () => ({ mix: MODE_MIX, feel: MODE_FEEL, layers: MUS_LAYERS }),
+  /* what the shift is written as tonight, at a given level of dread —
+     a plain function, so it can be read with the sound off */
+  nightMix: (night, d) => { const was = G.night; G.night = night;
+    const out = { feel: nightFeel(), mix: nightMix(nightFeel(), d) };
+    G.night = was; return out; },
   /* Render one cue into an offline context and hand the samples back,
      so a suite can measure what nobody has been able to hear. The
      chapter's synths all hang off the module's own AC and cueGain, so

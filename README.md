@@ -539,6 +539,30 @@ the middle of the shift rather than either side of it.
 And the shop goes with them. Night one is warm and lit; by night six it
 is nearly ash, with the dark two-thirds of the way in from the corners.
 
+### The drawer
+
+Every night she finds one thing and decides. **THE DRAWER** — on the
+title screen and in the pause menu — is what she is carrying: each of
+the six named, where it came from, and whether she kept it or burned
+it, in her own words. The ones she has not reached yet say so without
+saying what they are.
+
+### The last hour
+
+At five on the sixth night the cameras go and do not come back. She has
+spent six nights learning to tell them apart by ear — boots, wings, a
+music box, bells, and the paper and string that is not one of his — and
+the last hour is the exam nobody set. It is the only thing in the
+chapter that is taken away for good, and it is the right one: the
+monitor has been standing between her and the shop all week, and the
+last thing the story does is remove it.
+
+### And in daylight
+
+The walk-through opens on the office, and the four of them are standing
+in it exactly as the night-five drawing has them: round the desk,
+facing outward, with nobody in the chair.
+
 ### Camera zero
 
 The one room in the shop that had no camera on it was the room she is
