@@ -45,10 +45,24 @@ const SIZES = [
     await page.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForTimeout(2200);
 
-    await page.evaluate(() => { showScreen('scrapbook'); });
+    /* showScreen alone does NOT start the book. startDioramas does, and it
+       is the only thing that ever calls Scrapbook.start() — which is the
+       only thing that ever sets perView from the window. Skip it and
+       perView keeps the module's initial 2, so a portrait phone builds a
+       two-page spread and the whole book comes out half the size. That
+       reads exactly like the bug he photographed, and it is the harness. */
+    await page.evaluate(() => { showScreen('scrapbook'); if (window.startDioramas) startDioramas(); });
     await page.waitForTimeout(1200);
     await page.evaluate(() => { if (window.Scrapbook) Scrapbook.skipIntro(); });
-    await page.waitForTimeout(1400);
+
+    /* The pages are built a few per frame, and rAF is ~3fps in here, so
+       wait for the count to stop growing rather than for a delay. */
+    let seen = -1, still = 0;
+    for (let i = 0; i < 60 && still < 4; i++) {
+      await page.waitForTimeout(700);
+      const n = await page.evaluate(() => document.querySelectorAll('#sb-spread .sb-page').length);
+      if (n === seen) still++; else { still = 0; seen = n; }
+    }
 
     /* Every page lives in the spread all the time; the one or two she is
        looking at are the ones wearing a slot class. Counting `.sb-page`
@@ -106,7 +120,12 @@ const SIZES = [
       r.slim.forEach(x => thin.push('view' + i + ': ' + x));
       await page.evaluate(() => Scrapbook.next());
       turns++;
-      await page.waitForTimeout(950);
+      /* the screen wears sb-turning for the whole turn — wait for it to
+         come off rather than guessing at the settle */
+      await page.waitForFunction(
+        () => !document.getElementById('screen-scrapbook').classList.contains('sb-turning'),
+        { timeout: 60000, polling: 150 }).catch(() => {});
+      await page.waitForTimeout(350);
       const atEnd = await page.evaluate(() =>
         !!document.querySelector('#screen-scrapbook .sb-final, #screen-scrapbook .sb-end') ||
         document.querySelector('.screen.active').id !== 'screen-scrapbook');

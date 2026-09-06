@@ -640,6 +640,17 @@ every later measurement. Tapped and played through, it disposes itself and
 the draw count is **0** at the gate, in the book and at the hub. Drive the
 intro, don't skip it, or every number after it is fiction.
 
+*The book looked like it showed two pages on a portrait phone.* It does not.
+`showScreen('scrapbook')` only reveals the screen — `startDioramas` is what
+calls `Scrapbook.start()`, and `Scrapbook.start()` is the only thing that
+ever sets `perView` from the window. A harness that jumps straight to the
+screen leaves `perView` at the module's initial **2**, so `buildViews()`
+pairs the pages and a 390px phone gets a 289px two-page spread instead of a
+335px single page. Through the real door it is one page in portrait and two
+in landscape, which is what he asked for. Third instance of the same trap in
+one sweep, after the 3D intro and the fixed-millisecond waits: go in the way
+she does, and wait for the state you want rather than for a clock.
+
 *The page turn looked like a 500ms stall.* A "long task" counts paint as well
 as script. `turncost.js` splits it: over eight turns, 154ms of script, 756ms
 of style, 248ms of layout — and the rest of a 4.6s total is SwiftShader
