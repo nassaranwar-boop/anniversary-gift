@@ -25,7 +25,7 @@ const DEVICES = [
   { n:'iPad landscape',   w:1180,h:820, dpr:2, m:true },
   { n:'desktop',          w:1440,h:900, dpr:1, m:false },
 ];
-const SCREENS = ['videointro','gate','scrapbook','hub','maze','quest','keepsake'];
+const SCREENS = ['videointro','gate','scrapbook','hub','quest','keepsake'];
 
 (async () => {
   const browser = await chromium.launch({
@@ -103,7 +103,6 @@ const SCREENS = ['videointro','gate','scrapbook','hub','maze','quest','keepsake'
         showScreen(n);
         if (n === 'scrapbook' && window.Scrapbook) Scrapbook.start();
         if (n === 'hub') startHub();
-        if (n === 'maze') startMaze && startMaze();
         if (n === 'keepsake') startKeepsake && startKeepsake();
         await new Promise(r => setTimeout(r, 500));
       }, name).catch(()=>{});

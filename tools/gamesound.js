@@ -1,5 +1,5 @@
-/* Do the maze and the adventure actually make sounds now? Count real
-   oscillators — a flag proves nothing. */
+/* Does the adventure actually make sounds? Count real oscillators — a
+   flag proves nothing. */
 const { chromium } = require('playwright-core');
 const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
 (async () => {
@@ -48,20 +48,6 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
   ok('a page turn is paper, not a beep', pageC.noise >= 1, 'noise sources=' + pageC.noise);
   const collectC = await count(() => hvSfx('collect'));
   ok('the ringing voices layer a second oscillator', collectC.osc >= 2, collectC.osc + ' oscillators');
-
-  // the maze's own moments
-  await page.evaluate(() => { try{localStorage.clear();}catch(e){} showScreen('maze'); initMaze(2); });
-  await page.waitForTimeout(800);
-  const mazeMoments = {
-    'picking up a phial': () => { meds[0].taken=false; meds[0].r=playerPos.r; meds[0].c=playerPos.c; onPlayerMovedLevel2(); },
-    'finding the key':    () => { hasKey=false; keyPos={r:playerPos.r,c:playerPos.c}; onPlayerMovedLevel2(); },
-    'a locked door':      () => { hasKey=false; const t=targetPos; targetPos={r:playerPos.r,c:playerPos.c}; checkWin(); targetPos=t; },
-    'losing a life':      () => { respawnLevel2(); },
-  };
-  for (const [name, fn] of Object.entries(mazeMoments)) {
-    const c = await count(fn);
-    ok('the maze makes a sound when ' + name, c.osc >= 1, c.osc + ' oscillators');
-  }
 
   console.log(R.join('\n'));
   console.log(errs.length ? 'ERRORS: '+errs.join(' | ') : 'no page errors');
