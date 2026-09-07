@@ -43,6 +43,11 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     hvNode = node; hvHistory = []; hvRender(false);
     const armed = !!hvPlay && hvPlay.kind === (HV[node].play);
     const buttonsAtStart = document.querySelectorAll('#hv-left .hv-btn, #hv-centre .hv-btn, #hv-right .hv-btn').length;
+    /* the way OUT of the screen, which must survive even though the way
+       PAST the mechanic deliberately does not */
+    const wayOut = () => ['hv-back', 'hv-restart', 'hv-quit']
+      .filter(id => { const e = document.getElementById(id); return e && e.offsetParent !== null; }).length;
+    let minWayOut = wayOut();
 
     /* find a time at which the meter is steady (or deliberately is not) */
     const timeFor = (seed, steady) => {
@@ -76,18 +81,20 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
         hvPlayStep(t + 1.2, t + 1.2, 0.05);
       }
       const now = document.querySelectorAll('#hv-left .hv-btn, #hv-centre .hv-btn, #hv-right .hv-btn').length;
-      if (hvPlay) minButtons = Math.min(minButtons, now);
+      if (hvPlay) { minButtons = Math.min(minButtons, now); minWayOut = Math.min(minWayOut, wayOut()); }
     }
     hvHold = false;
-    return { armed, landed: hvNode, buttonsAtStart, minButtons };
+    return { armed, landed: hvNode, buttonsAtStart, minButtons, minWayOut };
   }, { node, script });
 
   /* ---- the seven stones ---- */
   let r = await drive('there_stones', { well: true });
   ok('the stones arm when she gets to the water', r.armed);
   ok('crossing them cleanly gets across dry', r.landed === 'there_dry', r.landed);
-  ok('the two buttons are on screen the whole crossing',
-     r.buttonsAtStart === 2 && r.minButtons === 2, r.buttonsAtStart + '/' + r.minButtons);
+  ok('the crossing offers no button to walk past it',
+     r.buttonsAtStart === 0, r.buttonsAtStart + ' buttons');
+  ok('but back, start-again and leave are there for every step of it',
+     r.minWayOut === 3, r.minWayOut + '/3 chips');
 
   r = await drive('there_stones', { well: false });
   ok('catching one rocking puts you in the stream', r.landed === 'there_wet', r.landed);
@@ -96,8 +103,8 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
   r = await drive('back_bridge1', { well: true });
   ok('the bridge arms on the near post', r.armed);
   ok('the first section hands on to the second', r.landed === 'back_bridge2', r.landed);
-  ok('its button is on screen the whole span',
-     r.buttonsAtStart === 1 && r.minButtons === 1, r.buttonsAtStart + '/' + r.minButtons);
+  ok('the span offers no button to walk past it', r.buttonsAtStart === 0,
+     r.buttonsAtStart + ' buttons');
   r = await drive('back_bridge2', { well: true });
   ok('the middle hands on to the last few planks', r.landed === 'back_bridge3', r.landed);
   r = await drive('back_bridge3', { well: true });
@@ -107,12 +114,43 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
   r = await drive('back_bear', { recklessly: false });
   ok('the orchard arms in the row', r.armed);
   ok('creeping while its head is down gets you past', r.landed === 'back_bear_quiet', r.landed);
-  ok('all three buttons stay on screen while creeping',
-     r.buttonsAtStart === 3 && r.minButtons === 3, r.buttonsAtStart + '/' + r.minButtons);
+  ok('the row offers no button to walk past it', r.buttonsAtStart === 0,
+     r.buttonsAtStart + ' buttons');
+  ok('and the way out of the screen survives the whole creep',
+     r.minWayOut === 3, r.minWayOut + '/3 chips');
 
   r = await drive('back_bear', { recklessly: true });
   ok('walking on while it looks up is the three trees back',
      r.landed === 'back_bear_seen', r.landed);
+
+  /* The row had three buttons and each led to a different written
+     arrival. Taking the buttons away must not orphan any of them: the
+     mechanic has to be able to produce all three, or a scene quietly
+     stops existing. Waiting out two head-ups is "so you wait"; timing
+     it so you never once have to stop is "you do not stop once". */
+  const three = await page.evaluate(() => {
+    const run = (patient) => {
+      hvNode = 'back_bear'; hvHistory = []; hvRender(false);
+      let t = 0, st = 0, guard = 0;
+      while (hvPlay && hvNode === 'back_bear' && guard++ < 2000) {
+        st += 0.05;
+        /* patient: moves in short bursts and stands about between them,
+           banking the stopping she did not have to do. brisk: takes
+           every window she is given. Both stop when the head comes up —
+           the row cannot be crossed otherwise. */
+        const clear = hvBearLook(st) < 0.02;
+        hvHold = patient ? (clear && (st % 2) < 1) : clear;
+        hvPlayStep(t, st, 0.05); t += 0.05;
+      }
+      hvHold = false;
+      return hvNode;
+    };
+    return { patient: run(true), brisk: run(false) };
+  });
+  ok('dawdling gives the "so you wait" arrival that used to be a button',
+     three.patient === 'back_bear_wait', three.patient);
+  ok('and using every window gives the other one',
+     three.brisk === 'back_bear_quiet', three.brisk);
 
   const soft = await page.evaluate(() => !!(HV.back_bear_seen && !HV.back_bear_seen.isFail &&
     (HV.back_bear_seen.choices || []).length > 0 && !document.getElementById('hv-fail')));
@@ -189,7 +227,8 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     /* a mechanic screen with dialogue on it: never gated, ever */
     hvNode = 'back_bridge2'; hvHistory = []; hvRender(false);
     hvArrive = 0; hvPaintFrame(0.2, 0.016);
-    const onPlay = { total: btns().length, live: live(), voices: (HV.back_bridge2.voices || []).length };
+    const onPlay = { total: btns().length, live: live(),
+                     voices: (HV.back_bridge2.voices || []).length, armed: !!hvPlay };
     return { atOpen, afterTalk, onPlay, taps };
   });
   ok('a talking scene offers nothing to press while they are talking',
@@ -198,9 +237,9 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
   ok('and offers its choices the moment the talking is done',
      gate.afterTalk.live === gate.afterTalk.total && gate.afterTalk.live > 0,
      gate.afterTalk.live + ' of ' + gate.afterTalk.total + ' live after ' + gate.taps + ' taps');
-  ok('but a mechanic screen is never gated, even with dialogue on it',
-     gate.onPlay.voices > 0 && gate.onPlay.live === gate.onPlay.total && gate.onPlay.live > 0,
-     gate.onPlay.live + '/' + gate.onPlay.total + ' live, ' + gate.onPlay.voices + ' lines');
+  ok('a mechanic screen has no choices on it at all, dialogue or not',
+     gate.onPlay.total === 0 && gate.onPlay.armed && gate.onPlay.voices > 0,
+     gate.onPlay.total + ' buttons, ' + gate.onPlay.voices + ' lines, armed ' + gate.onPlay.armed);
 
   /* ---- and the ending sends her round again rather than shutting ---- */
   const again = await page.evaluate(async () => {

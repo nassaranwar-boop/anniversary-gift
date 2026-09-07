@@ -27,7 +27,11 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
          `__ask` is a sentinel like `__exit`: the shared nudge screens
          send her back to whichever closing question she is in, so it
          resolves to both real ones rather than being excused. */
-      const outs = (n.choices || []).concat(n.cards || []);
+      /* `outcomes` is how a mechanic screen leaves: it has no buttons,
+         so without this the stones, the bridge and the bear all read as
+         dead ends. */
+      const outs = (n.choices || []).concat(n.cards || [])
+        .concat((n.outcomes || []).map(t => ({ to: t })));
       const SENTINEL = { __ask: ['ask', 'back_ask'], __again: ['ways'], __yay: ['yay', 'back_yay'] };
       out[k] = {
         to: outs.map(c => c.to)
