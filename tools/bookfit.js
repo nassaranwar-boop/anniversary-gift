@@ -73,8 +73,17 @@ const SIZES = [
        so the spread is judged from the first view INSIDE the book. */
     const cover = await page.evaluate((sel) => document.querySelectorAll(sel).length, SHOWN);
     ok(label + ': the cover is one page', cover === 1, cover + '');
+    /* A flat delay here was a race, and it lost on whichever device the
+       build happened to be slowest on -- a turn takes longer than 1100ms in
+       this container, so the spread was sampled while the leaf was still in
+       the air and came back as the one page the cover had been. Wait for
+       the turn to be over, the same way the loop above waits for the page
+       count to stop growing rather than for a clock. */
     await page.evaluate(() => Scrapbook.next());
-    await page.waitForTimeout(1100);
+    await page.waitForFunction(
+      () => !document.getElementById('screen-scrapbook').classList.contains('sb-turning'),
+      { timeout: 30000, polling: 120 }).catch(() => {});
+    await page.waitForTimeout(500);
     const shape = await page.evaluate((sel) => document.querySelectorAll(sel).length, SHOWN);
     ok(label + ': inside, the spread shows the right number of pages', shape === want,
        shape + ' (wanted ' + want + ')');
