@@ -4624,6 +4624,21 @@ window.Scrapbook = (function () {
       mImgs[q].loading = "eager";
       mImgs[q].decoding = "sync";
     }
+    /* AND NOTHING THAT FETCHES RIDES ON A TURNING SHEET.
+
+       The page this copies carries a <video> pointing at an 8.4MB clip, and
+       a media element begins loading as soon as it is in the document. Every
+       strip is a copy of this master, thirteen of them per leaf, so a turn
+       was firing fresh requests for that file: measured, one request while
+       the book was being built, none at all while it sat still for twenty
+       seconds, and seventeen more across ten turns.
+
+       Nobody can watch a clip on a sheet halfway through bending, and the
+       poster frame is already painted underneath it, so the media comes out
+       of the master once rather than out of each of its thirteen copies.
+       The real element on the real page is untouched and still plays. */
+    var mLive = master.querySelectorAll("video, iframe, audio");
+    for (var mi = 0; mi < mLive.length; mi++) mLive[mi].remove();
 
     for (var i = 0; i < STRIPS; i++) {
       var startPct = first + i * d;        /* where this strip begins */

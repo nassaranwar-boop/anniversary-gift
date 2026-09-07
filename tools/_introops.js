@@ -19,7 +19,8 @@ const { chromium } = require('playwright-core');
   await p.goto('http://127.0.0.1:8899/index.html',{waitUntil:'domcontentloaded',timeout:60000});
   await p.waitForTimeout(2000);
   await p.evaluate(()=>{ showScreen('scrapbook'); if (window.startDioramas) startDioramas(); });
-  await p.waitForTimeout(4000);           // let the still layer + sprites be cut
+  await p.waitForTimeout(14000);          // the build is long now; wait it out so this
+                                          // measures the opening in steady state, not the build
   await p.evaluate(()=>{ window.__ops={}; window.__f0 = window.__introFrames||0; });
   await p.waitForTimeout(6000);
   const r = await p.evaluate(()=>({ops:window.__ops, frames:(window.__introFrames||0)-window.__f0}));
