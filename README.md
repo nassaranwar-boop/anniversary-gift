@@ -19,6 +19,8 @@ scrapbook.js     the memory book — its own config block at the top
 super-ouissy.js  the platformer — its own config block at the top
 rescue.js        the platformer's story scenes (Hard only) — self-contained
 apocalypse.js    the stealth chapter, in 3D — its own config block at the top
+racing.js        the kart racer — a hand-written Mode 7 renderer, not Three.js
+night-shift.js   the night-shift horror — Three.js, on the bundled copy
 assets/          images used by the 2D parts of the site
 vendor/          three.js r180 + postprocessing, bundled; used by the
                  book intro and the apocalypse, loaded on demand
@@ -43,6 +45,9 @@ tools/           offline checks (see tools/README.md); nothing here ships
 5c. **Super Ouissy** — a three-world platformer (`super-ouissy.js`)
 5d. **Ouissy at the Apocalypse** — a five-level third-person 3D stealth
     story (`apocalypse.js`), ending on the same rooftop as the maze
+5e. **Super Ouissy Race** — the Mode 7 kart racer (`racing.js`)
+5f. **Ouissy's Night Shift** — a six-night camera-and-doors horror
+    (`night-shift.js`), set in the Wick & Cogs Toy Emporium
 6. **Keepsake** — scrapbook recap, unlocked once the maze and the adventure
    are done. Super Ouissy is a bonus: finishing it adds a card to the
    keepsake but is deliberately **not** required to unlock it, so nothing
@@ -789,3 +794,408 @@ Every row must stay sixteen characters long.
 
 Best score and time are kept per difficulty in `localStorage`, and the
 difficulty can be changed mid-game from the pause menu.
+
+
+## Ouissy's Night Shift
+
+A night-shift survival horror, reached from the hub. Ouissy has taken
+the night job at the Wick & Cogs Toy Emporium — an old wind-up toy shop,
+alone from midnight to six, with two doors, a ceiling hatch, eight
+cameras and one charge of power between her and four automatons that
+were built to move.
+
+Original from the ground up — the shop, the four performers, the story,
+the sounds and every piece of art in it. Nothing is borrowed from any
+existing game.
+
+Nobody talks to her. There is no phone call, no radio voice, no guide.
+The only thing with a voice is the building's own security annunciator,
+a vocoder that reads out states and nothing else — *power at twenty
+percent*, *door two: open*, *motion detected: east vent* — with the
+words printed under it because a vocoder is not meant to be understood.
+Everything else the shop has to say is written down and found: a shift
+card taped inside the desk drawer, a page of the ledger, a workshop
+board, an inscription on the underside of a music box.
+
+**A/D or the arrow keys** shut the two doors, **W** the hatch,
+**space** raises the camera monitor, **1–8** jump straight to a camera,
+**Esc** pauses. On a phone the same five things are buttons along the
+bottom. Drag anywhere in the office to look around.
+
+### How a night works
+
+Six in-game hours, about five and a half real minutes. One power meter
+for the whole shift, drained by sitting there, by every second the
+monitor is up, and by every second a door is held shut. At zero the
+lights go out, the doors stop answering, and you wait — which you can
+survive, if you were not wasteful, because six o'clock might come first.
+
+| | | |
+|---|---|---|
+| **Cogsworth** | tin soldier | Marches down the main hall. You hear him coming; the marching stops when he is at your door. |
+| **Chime** | clockwork owl | Lives in the ducts. Doors mean nothing to it — the hatch is the only thing that does. |
+| **Marabelle** | music-box ballerina | Cannot move while she is on a camera. Can move the whole time she is not. |
+| **Jax** | jack-in-the-box | Fast, and he does not leave. A shut door only makes him knock, and each knock costs power. |
+
+Between them they close off every lazy strategy: watching one camera all
+night loses to Chime, never watching loses to Marabelle, and holding
+everything shut loses to Jax and the meter.
+
+Six nights, and each one changes a rule rather than just going faster:
+
+| | |
+|---|---|
+| **Two** | the owl wakes, and the workshop camera dies for good |
+| **Three** | cameras drop at random, and the hall lights go out — Cogsworth has to be tracked by ear |
+| **Four** | the bus surges and takes chunks off the meter, and the office bulb starts going out by itself |
+| **Five** | the right-hand actuator is failing: that door is slow to answer and costs half again to hold |
+| **Six** | the monitor cuts out mid-look |
+
+The budget is set against night six, not night one. An attentive shift
+on the last night — four of them awake, a door shut only while something
+is actually at it — comes down to the last ten percent, and is meant to.
+The same care on night one leaves a third of the meter in hand.
+
+Night six ends the story on dawn rather than on a scoreboard: the
+shutters go up, the shop is still for the first time, and the last found
+object finishes the toymaker's story.
+
+### Why she is there
+
+The film tells her who he was. Then the shutters come down and he tells
+her what she is doing, which is the part that was missing for a long
+time: **six nights, and try not to let anything reach you.** Not because
+surviving is the game, but because he is not handing the worst thing he
+ever did to somebody who might not be there on Saturday. She agrees by
+pressing one button, and after that every night is a payment against a
+deal she made rather than a situation she is in.
+
+It is scored as a clock: a tick on every beat and a brass swell that
+never gets anywhere, because he is counting and she cannot stop him.
+
+The last night answers it. Six nights with nothing laying a hand on her
+reads one way; six nights with some of them getting through reads
+another, and both of them are warm — getting caught costs her the clean
+run and nothing else, and he says so himself the first time it happens,
+in his own voice, over the game-over card.
+
+### What she is actually doing
+
+Night one opens in the terminal's **orientation mode** — a real thing an
+old security system would have. One instruction at a time, and *the
+shift stops and waits*: the clock does not run, the meter does not
+drain, nothing walks. She raises the monitor, walks the cameras, shuts a
+door, opens it again, latches the hatch — and then it runs one of his
+four down in front of her, makes her find him on a camera, and has her
+hold the key in his back until he is wound again. That last one is the
+control the whole story turns on, and for a while orientation did not
+teach it at all. She cannot fail any of it and she cannot fall behind
+it; the clock does not move and the only thing the whole lesson costs
+is the one percent that winding him costs. It runs once and never
+again.
+
+And every night there is **one thing hidden in the shop** — a brass tag,
+a card, a folded letter — sitting on a surface somewhere on the eight
+cameras, catching the light about as much as brass catches light. It is
+not on the map and the system never mentions it. She has to go looking,
+which is what turns the cameras from a threat detector into a search,
+and the waiting into exploring while something hunts her. Miss it and it
+stays missed; the night ends by telling her there was something she
+walked past.
+
+Where each one hides is derived rather than authored: a point along the
+line that room's camera is actually looking down, dropped onto whatever
+surface is under it. So it is guaranteed to be in shot and guaranteed to
+be resting on something, and moving a camera later cannot silently
+orphan a page.
+
+The four tags also happen to explain exactly what their toy does, which
+means **the story is the tutorial** — read them and you know the game.
+
+### The two kinds of thing in the shop
+
+**His four** — Cogsworth, Chime, Marabelle and Jax — are the ones he
+never sold, and each is built around one thing about her. They walk to
+her door every night, and for most of the game she keeps them out
+because his note told her to.
+
+**The ones he sold** start coming back on night two. Four hundred and
+eleven went out of this shop into other people's houses, and the
+address on every one of them is here. They are not a faster
+animatronic, they are a different problem:
+
+- **They are never seen moving.** A parcel is simply one room closer
+  than it was the last time she looked.
+- **They do not knock.** A shut door is a handle being tried, over and
+  over, until they lose interest.
+- **Watching does nothing.** They were not built for her and they do
+  not care whether they are observed.
+- **Nobody ever sees one.** They came back the way they were sent —
+  wrapped, tied, labelled, with something pale showing through a tear
+  in the corner that never resolves.
+
+She tells them apart by ear. His four have voices: boots, wings, a
+music box, bells. These have paper, string and a weight settling.
+There is no melody anywhere in them.
+
+### Winding, and what the four are for
+
+His note says wind the four every night, and that is the mechanic. Each
+carries a key; find one on a camera and hold it for a second and a bit.
+Let one run down and **it stops obeying its own tag** — a wound
+Marabelle freezes when she is watched, a slack one does not, and every
+slack one moves faster and gives up on a shut door far more slowly.
+
+And then the thing the whole story turns on. When one of the ones he
+sold gets through an open door, **if any of his four is still wound,
+one of his gets there first.** The returner leaves. The one that
+stepped in is spent, and will not do it again until she winds it.
+
+His four are her lives. His instruction is what buys them. Nothing in
+the game says so until the first time it happens.
+
+### The story, and why she is in it rather than watching it
+
+Anwar made toys that watched. Sold into four hundred and eleven houses,
+they saw everything, and what they saw came back to him and he sold it.
+That is where the money in their marriage came from, for fifteen years,
+and she never asked.
+
+The turn the whole thing rests on is not that he was a criminal. It is
+**how he learned to build a thing that watches a person.** He did not
+practise on strangers. There is a notebook behind a loose board with
+fifteen years of dated observations in it, and every line is about his
+wife — how she checks a door twice, how she hums when she thinks he is
+asleep, how she stops dancing the moment she is looked at, how she will
+not leave a room he is in.
+
+Every trait he wrote down is a mechanic in one of the four toys hunting
+her. The attention she thought was love was also fieldwork.
+
+And then the second turn, which is why it is a love story: the four are
+the **only** things he made and never sold. There is a drawing pinned
+inside the workshop door, dated the week he was told he was dying —
+four figures around a woman at a desk, and every one of them facing
+away from her, at the doors. He spent fifteen years learning her so he
+could sell it, and the last two learning her so he could leave
+something behind that knew how to stand in front of her.
+
+**She was passive, and that was the flaw.** Things were revealed to
+her; she read them and survived and then answered one binary question
+at the end. A coin at the end of six hours is a menu, not an ending.
+
+So every night she finds one thing of his and decides: **keep it, or
+burn it.** Six small decisions, no right answer, and nothing ever tells
+her they count. They nudge the shift while she plays — keeping slows
+the four running down, burning slows the ones he sold coming back — and
+on the last morning the ending is worked out from all six. She has been
+writing it all week without being asked to.
+
+Five endings, and the one that means the most is not the one where she
+keeps everything: it is the one where she **burns the business and
+keeps the toys** — the addresses, the ledger and the notebook gone, and
+four things he made out of her still standing in the back room.
+
+The last thing the chapter says is not narration. It is his final entry,
+dated the day he was told:
+
+> *"She will find all of this. She will hate me for a while, and she
+> will be right. Then she will do the thing she always does, which is
+> stay anyway. I am counting on that and I have no right to."*
+
+### Six nights, six experiences
+
+Each night has a name, a look and one thing it tells her about him, in
+the middle of the shift rather than either side of it.
+
+| | | |
+|---|---|---|
+| **One** | THE INVENTORY | a second key, taped under the drawer. He never gave her a key to anything in fifteen years. |
+| **Two** | THE FOUR HE KEPT | four names chalked on the bench, and one word under all of them. |
+| **Three** | FOUR HUNDRED AND ELEVEN | the delivery book. Eleven of the RETURNED boxes are ticked, in a pen that is not his. |
+| **Four** | WHAT THEY WERE FOR | a notebook behind a loose board. Fifteen years of one-line entries, every one of them about her. |
+| **Five** | LET IT | a drawing on graph paper: four figures around a woman at a desk, all of them facing outward. |
+| **Six** | THE SHUTTERS GO UP AT SIX | the last thing he wrote, folded under the comb of the music box. |
+
+And the shop goes with them. Night one is warm and lit; by night six it
+is nearly ash, with the dark two-thirds of the way in from the corners.
+
+### The drawer
+
+Every night she finds one thing and decides. **THE DRAWER** — on the
+title screen and in the pause menu — is what she is carrying: each of
+the six named, where it came from, and whether she kept it or burned
+it, in her own words. The ones she has not reached yet say so without
+saying what they are.
+
+### The last hour
+
+At five on the sixth night the cameras go and do not come back. She has
+spent six nights learning to tell them apart by ear — boots, wings, a
+music box, bells, and the paper and string that is not one of his — and
+the last hour is the exam nobody set. It is the only thing in the
+chapter that is taken away for good, and it is the right one: the
+monitor has been standing between her and the shop all week, and the
+last thing the story does is remove it.
+
+### The things the pages describe are in the rooms
+
+Two of the six hidden pages are about the pair of them rather than
+about the business, and both of them describe an object. **The other
+chair** is a folding chair in the supply closet, turned to the little
+bench at the angle somebody sits at when they are being talked to
+rather than working, with the chipped mug from their kitchen standing
+on the arm of it — she has never set foot in this shop, and he put that
+chair out the week he took the lease and never once folded it away.
+**The fifth one** is a shape under a dust sheet at the back of the
+stage, with one hand out from under the hem and a tag wired to the
+wrist that does not say NOT FOR SALE.
+
+Both of them are modelled. So is the brass plate on the front of her
+desk that his first-night tape points at. A page that describes a chair
+in a room with no chair in it is the shop lying to her.
+
+### And in daylight
+
+The walk-through opens on the office, and the four of them are standing
+in it exactly as the night-five drawing has them: round the desk,
+facing outward, with nobody in the chair. The gallery names it when she
+gets there, because it is the one payoff she could walk straight past.
+
+### Camera zero
+
+The one room in the shop that had no camera on it was the room she is
+sitting in. Everything frightening happened somewhere else, to a figure
+walking a route, and arrived as a number going down.
+
+There is a camera on the desk now — the ceiling directly behind her
+chair, looking the way she is looking. From the third night there is
+sometimes something standing in it. It never touches her, it cannot
+cost her anything, and it is not on anybody's route. It is simply one
+mark closer every time she looks away, walking up the room toward the
+back of her chair, and then it is not there at all.
+
+### The score
+
+One piece of music, ten rooms to play it in, and it never cuts — the
+grid never restarts and the tempo eases rather than snapping, so a
+scene becomes the next one without a join anywhere. But they are cues
+rather than fader positions: eleven instruments, and each scene has
+material of its own.
+
+| | |
+|---|---|
+| **the terms** | a clock and a swell. Nothing resolves. |
+| **the minute before a night** | the same clock, and a heartbeat under it |
+| **the shift** | six layers arriving in order as dread climbs, ahead of anything visible |
+| **the meter going out** | the heartbeat *stops*. A choir on one note and no melody at all |
+| **after a death** | a piano, alone, remembering the phrase rather than playing it |
+| **a page in her hands** | the phrase in the major, in thirds — the first time two notes agree |
+| **one of his getting there first** | piano an octave up, choir underneath. The one place it is allowed to be enormous |
+| **six o'clock** | the major phrase finally resolved, with the last note left ringing |
+
+### The six pages
+
+They start as a stranger's. An old toymaker, four automatons, a woman
+who did not come back; and each tag carries a place, described rather
+than named. On the fourth, a second hand answers him in newer ink. By
+the fifth it is not his shop any more. The sixth is signed.
+
+The last night ends on the only choice in the chapter: **wind the music
+box, or leave it**. Two endings, both warm, one bittersweet.
+
+### Behind the story
+
+Finishing it opens four things on the title screen. **Custom Night** —
+a slider from 0 to 20 for each of the four, so any combination can be
+asked for. **The shop in daylight** — a calm walk-through of all nine
+rooms in the morning, nothing running, nothing going to move, which is
+where the one warm personal thing in the chapter lives. **The record** —
+which nights are cleared and eight badges — two of them for looking
+after his four rather than for surviving — each of which puts one more
+small object on the shelf beside the desk. And **Cozy Mode**, on the
+title screen from the start, which is not a lesser version: gentler
+jumpscares, a slower meter, fewer alarms and more time at a door.
+
+There is one thing not listed anywhere, in the arcade.
+
+### Changing it
+
+The first three hundred lines of `night-shift.js`, in this order:
+
+- `NS` — every word in it: the shift card that opens night one, the
+  found pages between nights, the finale, the how-to card, the badges,
+  the ratings, and the whole vocabulary the annunciator is allowed.
+- `TUNE` — how the night feels. Seconds per hour, every power rate, and
+  a step interval, a movement chance and a door grace per performer.
+  Almost every complaint about a game like this is one of these numbers.
+- `NIGHTS` — one entry per night: who is awake and from which hour, the
+  aggression multiplier for each of the six hours, and any hazards.
+  Adding a seventh night is adding an entry; nothing else counts them.
+- `ROOMS` — the nine rooms and how they join up, on the floor and in the
+  ducts. `MAP_PLAN` is the plan drawn on the monitor.
+- `CAST` — the four performers and the route each walks to the office.
+
+### How the 3D is built
+
+Three.js, on the copy in `vendor/` that the book intro already uses. The
+racing chapter is **not** Three.js — it is a hand-written Mode 7 scanline
+renderer — so there was nothing there to share; this is a clean parallel
+setup, written generically (texture library, prop kit, light rig, contact
+shadows) so it is tooling rather than a one-off.
+
+Four rules are enforced in code rather than by care, because all four
+were problems on the racer:
+
+- `slab()` is the only box builder and it has a minimum thickness, so a
+  flat cutout cannot be built by accident.
+- `place()` is the only way a prop enters a room, and it lays a contact
+  shadow sized to that prop's own footprint. Nothing floats.
+- a room is composed once in its own space, parked at its own address
+  sixty metres from its neighbours, and then frozen — matrices off, world
+  matrices off. The frame loop has no handle on a static prop at all.
+- anything that appears twice has a variant kit (four shelves, four
+  arcade cabinets, three chairs, three crates, six toys, five wall
+  fittings, four grates) and `place()` varies rotation and scale on top.
+
+Nine rooms cost between 1 and 3 milliseconds of CPU a frame and between
+160 and 460 draw calls, and the whole shop builds in about six hundred
+milliseconds — which is long enough to notice, so entering the chapter
+puts a card up and waits a frame before it starts.
+
+It carries no files of its own. Every surface — planks, lino, brick,
+galvanised duct, velvet, carpet, plaster, wallpaper, concrete, brass,
+porcelain, harlequin diamonds, the night outside the window, the standby
+screen on the desk monitor — is painted into a canvas at boot, and every
+sound is synthesised.
+
+### The score
+
+There is no soundtrack file and no loop. There is one continuous piece
+of music that never restarts, and six layers of it that fade in and out:
+
+| | arrives at | what it is |
+|---|---|---|
+| **sub** | always | a 41Hz floor you feel rather than hear |
+| **pulse** | dread 0.10 | a heartbeat — 46bpm at rest, 104 at a door |
+| **box** | 0.20 | a music box playing the shop's own unfinished figure |
+| **air** | 0.28 | breath, up where a room's silence lives |
+| **grind** | 0.44 | a minor second held against the root |
+| **bow** | 0.60 | the top string, bowed and shaking |
+
+`dread` is built from things the player cannot see yet — chiefly how far
+along its route each awake performer is, squared so the last two rooms
+count for more than the first four. Because that climbs while something
+is still three rooms away, **the pulse quickens before there is anything
+on any camera to look at**. It rises fast and lets go slowly, so a room
+does not feel safe the instant a door shuts. The whole grid — heartbeat,
+music box, strings — runs off one sixteenth-note clock whose tempo is
+`dread`, and everything is scheduled ahead of the audio clock rather
+than on the frame, so a dropped frame moves nothing.
+
+The menu has its own theme: the same music box in the major key it was
+written in, played slowly, transposing every fourth pass and picking up
+an answering voice a fifth above on every other one, so a long sit on
+the title screen never becomes a loop. Six o'clock switches to a third,
+warmer mode. A death cuts the music dead — the silence is half of what
+makes the scare land.

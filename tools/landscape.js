@@ -105,14 +105,17 @@ const SCREENS = ['gate', 'hub', 'keepsake', 'end'];
 
     /* ---- the game stages should use the room they are given ---- */
     for (const [scr, starter] of [['apoc', 'startApocalypse'], ['race', 'startSuperOuissyRace'],
-                                 ['ouissy', 'startSuperOuissy']]) {
+                                 ['ouissy', 'startSuperOuissy'],
+                                 ['nightshift', 'startNightShift']]) {
       await page.evaluate(([n, s]) => { showScreen(n); if (window[s]) window[s](); }, [scr, starter]);
-      await page.waitForTimeout(900);
+      /* the night shift is fetched on demand and then builds nine rooms
+         before it sizes anything, so it needs longer than the others */
+      await page.waitForTimeout(scr === 'nightshift' ? 3500 : 900);
       const r = await page.evaluate((n) => {
         /* scoped to the screen under test: a bare '.ap-stage,.rc-stage'
            picks up the other game's hidden stage and measures 0x0 */
         const st = document.querySelector('#screen-' + n + ' .ap-stage, #screen-' + n + ' .rc-stage, '
-                                       + '#screen-' + n + ' .so-stage');
+                                       + '#screen-' + n + ' .so-stage, #screen-' + n + ' .ns-stage');
         if (!st) return null;
         const b = st.getBoundingClientRect();
         return { share: Math.round(b.width * b.height / (innerWidth * innerHeight) * 100),
