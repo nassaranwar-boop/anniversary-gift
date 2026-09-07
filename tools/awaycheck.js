@@ -26,8 +26,19 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   });
   await p.goto('http://localhost:8899/index.html', { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(500);
+  /* The chapters are fetched on the idle callback now, not by a script
+     tag, so the global is not there the instant the document is. A tool
+     that drives a chapter directly has to wait for the file the same
+     way the hub card does. */
+  await p.waitForFunction(() => !!(window.SuperOuissyRace && window.SuperOuissy), { timeout: 30000 });
 
   for (const chap of ['race', 'super']) {
+    /* The chapter scripts are fetched on idle now rather than sitting in
+       the head, so ask for this one and wait, the same way the card does.
+       Without this the harness reached for a global that had not arrived
+       yet and fell over before it tested anything. */
+    await p.evaluate((which) => window.loadChapter(which === 'race' ? 'race' : 'ouissy'),
+                     chap);
     await p.evaluate((which) => {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       if (which === 'race') {

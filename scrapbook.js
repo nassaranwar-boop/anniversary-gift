@@ -86,8 +86,13 @@ window.Scrapbook = (function () {
        assets/our-video.jpg is used if it is there) ---- */
     ourVideo: {
       src:    "assets/our-video.mp4",
+      /* A real frame of the two of you, lifted out of the video itself at
+         24.33s and warmed to sit in the book -- not the video's first
+         frame, which is a dark blur of somebody's sleeve. Written by
+         tools/img/poster.py, so it can be re-cut from a different second
+         without anybody having to open an editor. */
       poster: "assets/our-video.jpg",
-      caption: "us",
+      caption: "the long way home",
     },
 
     /* ---- the map. Pins are placed in % of the map card ---- */
@@ -106,21 +111,82 @@ window.Scrapbook = (function () {
     },
 
     /* ---- the note behind "tap here to view more" ---- */
+    /* The letter used to describe the website: "I built this little world
+       for you — photos of us, a song, and flowers. Open every piece slowly.
+       I am in the intro, in the pages, in the music." It was about the
+       thing rather than about her, and it read like a label on a box.
+
+       A letter is the one place in here that should sound like a person
+       who was there. So it names what is actually in the book -- the red
+       room on page one, the ride home on the last page, her cold hands --
+       and says the plain thing rather than the clever one. */
     letter: {
       from: "You",
       to:   "My Love",
       lead: "My love,",
-      body: "I built this little world for you — photos of us, a song, and flowers. Open every piece slowly. I am in the intro, in the pages, in the music.",
-      signOff: "Always,",
+      body: "I am not good at saying this out loud, so I built it instead. " +
+            "Every photograph in here is one I could not stand to lose — " +
+            "the red room, the long way home, your cold hands in mine on a " +
+            "warm night. I would not trade a single one of those evenings. " +
+            "Take your time with it. I am on every page.",
+      signOff: "Yours, always —",
       signature: "Anwar",
     },
 
     /* ---- small bits of handwriting scattered through the book ---- */
-    hand: {
-      s1note:  "From now on, let's feel light for the rest of the summer",
-      s1small: "can't stop remembering…",
-      s3note:  "I still have a lot of time to make you exactly what you want.",
-      vinyl:   "i am a lucky girl",
+    /* ===================================================================
+       EVERY WORD IN THE BOOK, IN ONE PLACE
+
+       These were scattered through the layout, which meant changing a line
+       meant hunting for it among coordinates. They are all here now, page
+       by page, with what is actually in the photographs written beside
+       them -- so a line can be rewritten in ten seconds without touching
+       anything else.
+
+       They were also generic. "From now on, let's feel light for the rest
+       of the summer" sat over a page of a red-lit bar at midnight, and
+       "the place where the confetti falls" over the two of you at home on
+       a sofa. They answer to their own photographs now.
+
+       Anything here is yours to overwrite -- these are a starting point,
+       not a decision.
+       =================================================================== */
+    words: {
+      /* p1 · her in a headscarf, a room lit entirely red */
+      p1big:    "love you",
+      p1script: "you, and a room full of red light",
+
+      /* p2 · him across a red table, the mirror selfie, that whole night */
+      p2note:   "Everything in that room was red — the walls, the light, " +
+                "the way you looked at me across the table. I would sit " +
+                "there again tonight.",
+      p2small:  "I never once looked away",
+
+      /* p3 · green sheets, you on your phone, an afternoon indoors */
+      p3script: "green sheets, no plans, all afternoon",
+
+      /* p4 · the two of you at home, you leaning into me */
+      p4script: "the quietest hour we ever spent, and my favourite one",
+
+      /* p5 · dancing badly, the mirror, the bar with the pink lights */
+      p5vinyl:  "i am a lucky girl",
+      p5script: "we danced badly, and stayed anyway",
+
+      /* p6 · the terrace with the bamboo and the lanterns, all evening */
+      p6label:  "COLD HANDS,\nWARM HEARTS",
+      p6note:   "I still have a lot of time to make you exactly what you want.",
+
+      /* p7 · you under the string lights, the neon sign behind you */
+      p7script: "lights strung over the whole evening, and you underneath them",
+
+      /* p8 · one close-up of you, one of me, the same night */
+      p8script: "one of you, one of me, one night",
+
+      /* p9 · the purple room, and the faces we were pulling in it */
+      p9label:  "THE FACES\nWE ONLY MAKE\nAT EACH OTHER",
+
+      /* p10 · the ride home, and the clip of it */
+      p10script: "and every one of them, again",
     },
   };
 
@@ -326,11 +392,11 @@ window.Scrapbook = (function () {
   }
 
   /* Faint grid / ledger paper. */
-  function gridPaper(seed) {
+  function gridPaper(seed, base, line) {
     return tex(300, 380, function (ctx, W, H) {
       var r = rnd(seed);
-      ctx.fillStyle = "#f6f3ea"; ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = "rgba(120,140,150,0.30)"; ctx.lineWidth = 1;
+      ctx.fillStyle = base || "#f6f3ea"; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = line || "rgba(120,140,150,0.30)"; ctx.lineWidth = 1;
       for (var x = 0; x < W; x += 15) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
       for (var y = 0; y < H; y += 15) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
       for (var s = 0; s < 900; s++) {
@@ -443,13 +509,13 @@ window.Scrapbook = (function () {
   }
 
   /* Denim: woven twill with a faint diagonal. */
-  function denimCloth(seed) {
+  function denimCloth(seed, base, hi, lo) {
     return tex(260, 320, function (ctx, W, H) {
       var r = rnd(seed);
-      ctx.fillStyle = "#8a6079"; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = base || "#8a6079"; ctx.fillRect(0, 0, W, H);
       for (var i = 0; i < 5200; i++) {
         var v = r();
-        ctx.fillStyle = v > 0.55 ? "rgba(252,232,244,0.16)" : "rgba(40,12,30,0.18)";
+        ctx.fillStyle = v > 0.55 ? (hi || "rgba(252,232,244,0.16)") : (lo || "rgba(40,12,30,0.18)");
         ctx.fillRect(r() * W, r() * H, 2, 1);
       }
       ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
@@ -460,6 +526,174 @@ window.Scrapbook = (function () {
   }
 
   var PAPER = {};
+
+  /* =======================================================================
+     THE COLOUR OF THE PAPER ITSELF
+
+     The first attempt at matching the pages to their photographs laid a
+     pale wash over a fixed sheet, and he was right about what that did:
+     "the new colors you done in the book are not vivid, which steals a bit
+     from the vibe the old book had." A translucent veil over a texture can
+     only ever mute it -- it lowers contrast and drains saturation, and the
+     old rose paper (#b9707f, a proper 34% saturated rose) had neither
+     problem.
+
+     So the paper is not washed any more, it is DYED: each page's sheet is
+     drawn from scratch in its own hue, at the full richness the original
+     papers had. The crumple, the pooling and the faceting all happen in
+     that colour, so the depth survives.
+
+     Each page keeps the WEIGHT of the paper it had -- a dark rose page
+     stays dark, an ivory page stays pale -- because that alternation is
+     the book's rhythm and losing it would flatten the whole thing. Only
+     the hue and the richness come from the photographs.
+     ======================================================================= */
+  function hsl(h, s, l, a) {
+    return a == null || a >= 1
+      ? "hsl(" + h + "," + s + "%," + l + "%)"
+      : "hsla(" + h + "," + s + "%," + l + "%," + a + ")";
+  }
+
+  /* WHICH COLOUR A PHOTOGRAPH IS ALLOWED TO MAKE THE PAPER.
+
+     Taking the photographs' hue literally turns the warm pages to
+     terracotta, because these photos are lamplight and lamplight is amber
+     -- 11 to 26 degrees. That is not this book. Look at what the original
+     papers actually were: the rich sheets are rose and mauve (347, 342,
+     313) and the pale ones are warm cream (39). The dark-rose-then-cream
+     alternation IS the book; losing it for a row of brown pages is exactly
+     the "steals the vibe" he was pointing at.
+
+     So a photograph does not choose the colour, it chooses where in the
+     book's own range that page sits. Warm photographs push a rich page
+     toward the coral end of the rose band and a pale page toward honey;
+     the violet ones push a rich page to mauve and a pale page to a soft
+     lavender. Nothing lands outside the two families the book is made of,
+     and no two pages come out identical because the hue still moves with
+     the photos on them. */
+  function bandedHue(photoHue, heavy) {
+    /* the photos are cleanly of two kinds -- amber, or club violet */
+    var violet = (photoHue > 240 && photoHue < 340);
+    if (violet) {
+      /* No purple. It was 288, a blue-violet; then orchid at 304-316, which
+         was closer but still the odd pair at the end of a rose book -- and
+         he was right both times.
+
+         The mistake was treating "the photographs are violet" as if it
+         settled what colour the paper has to be. It does not. Those two
+         pages are club light, magenta and violet, and the thing that
+         actually flatters club light is warm pink: the photographs stand
+         off it instead of sinking into something the same temperature as
+         they are. Rendered side by side against blush, sand, wine and
+         mauve, blush was not a compromise -- it was the best of the five to
+         look at.
+
+         So they come home into the book's own rose band, and the book ends
+         where it opened. The two still take slightly different places in
+         it so the ending is not a flat repeat. */
+      var v = Math.max(0, Math.min(1, (photoHue - 270) / 15));
+      return heavy ? (344 + v * 6) : (348 + v * 6);
+    }
+    /* 6deg is the reddest of them, 30 the most golden */
+    var warmth = Math.max(0, Math.min(1, (photoHue - 6) / 24));
+    return heavy ? (358 - warmth * 20)      /* coral rose -> deeper rose */
+                 : (38 - warmth * 11);      /* warm sand  -> honey      */
+  }
+  var HEAVY = { rose: 1, rose2: 1, mauve: 1 };
+
+  /* base saturation and lightness, then the highlight and shadow that get
+     pooled and faceted over it. Every one of them carries the page's hue,
+     so nothing greys out. */
+  var PAPER_RECIPE = {
+    rose:   { s: 46, l: 57, hi: [34, 94, .34], lo: [58, 17, .36] },
+    rose2:  { s: 44, l: 52, hi: [30, 92, .30], lo: [56, 15, .38] },
+    mauve:  { s: 38, l: 50, hi: [28, 91, .28], lo: [52, 13, .38] },
+    /* The pale sheets used to sit at 85-92% lightness -- practically white
+       -- with rose pages at 57% on either side of them. That is a jump of
+       thirty points of value every time the book crosses from one to the
+       other, and it is most of what he meant by "it feels weird passing
+       from color to color". They are warm sand and blush now rather than
+       paper white: still clearly the light half of the book's rhythm, but
+       close enough in tone that turning onto one is a change of key rather
+       than a light being switched on. */
+    cream:  { s: 50, l: 81, hi: [40, 98, .55], lo: [44, 40, .28] },
+    ivory:  { s: 52, l: 84, hi: [40, 98, .58], lo: [42, 42, .24] },
+    blush:  { s: 56, l: 82, hi: [42, 98, .50], lo: [46, 38, .28] },
+    grid:   { s: 46, l: 87, hi: [32, 98, .46], lo: [40, 45, .22] },
+  };
+
+  /* the patch — the coloured rectangle laid on the page — sits a couple of
+     steps darker and a little more saturated than its page, which is what
+     makes it read as a second sheet rather than a stain */
+  function patchColours(photoHue, s, heavyPage) {
+    /* A patch is the rich sheet laid on the page, so it takes the heavy
+       band whatever the page is -- but not at the same strength on both.
+
+       On a rich page it can be nearly as strong as the page, because there
+       is already colour all around it. On a PALE page it is the only
+       saturated thing in sight, and at full strength it reads as neon: the
+       violet page came out hot magenta against its lavender grid, shouting
+       over the very photographs it was there to frame. So a patch on a
+       pale page is a mid-tone, sat well back.
+
+       And violet is pulled down further again. It is a much louder colour
+       than rose at the same numbers -- the same 55% lightness that gives a
+       soft dusty rose gives a fluorescent pink at 316 degrees. */
+    var h = Math.round(bandedHue(photoHue, 1));
+    var violet = h > 240 && h < 340;
+    var sat = Math.min(56, Math.round(s * 0.9) + 12);
+    var lig = 55;
+    if (!heavyPage) { sat = Math.round(sat * 0.62); lig = 62; }
+    if (violet)     { sat = Math.round(sat * 0.72); lig -= 4; }
+    return {
+      h: h,
+      base: hsl(h, sat, lig),
+      hi:   hsl(h, 40, 93, 0.18),
+      lo:   hsl(h, 54, 16, 0.22),
+    };
+  }
+
+  var PAGE_PAPER = [];      /* one dyed sheet per page */
+  var PAGE_PATCH = [];      /* and one cloth to match it */
+
+  function buildPagePapers(job) {
+    PAGES.forEach(function (def, i) {
+      job(function () {
+        var t = PAGE_TINT[i + 1] || [26, 30];
+        var kind = def.paper;
+        var R = PAPER_RECIPE[kind];
+        if (!R) { PAGE_PAPER[i] = PAPER[kind]; return; }
+        var h = Math.round(bandedHue(t[0], HEAVY[kind])), sat = t[1];
+        /* Some pages come out louder than their neighbours even at the same
+           numbers: page 8 is the mauve recipe, which sits at 50% lightness,
+           and a mid-tone reads far more saturated than the 57% roses either
+           side of it. `tone` on the page def trims that back by hand where
+           the arithmetic is right but the eye disagrees. */
+        if (def.tone) sat = sat * def.tone;
+        /* the photographs say how saturated, the recipe says how far it is
+           allowed to go -- a page never gets louder than its weight allows */
+        var s = Math.round(R.s * (0.55 + Math.min(1, sat / 40) * 0.55));
+        var base = hsl(h, s, R.l);
+        var hi = hsl(h, R.hi[0], R.hi[1], R.hi[2]);
+        var lo = hsl(h, R.lo[0], R.lo[1], R.lo[2]);
+        var seed = 17 + i * 13;
+        if (kind === "grid") {
+          PAGE_PAPER[i] = gridPaper(seed, base, hsl(h, 30, 52, 0.26));
+        } else {
+          var opts = {};
+          if (kind === "cream") opts.print = ticking(hsl(h, 34, 44));
+          if (kind === "blush") opts.print = ditsyFloral(hsl(h, 44, 58));
+          PAGE_PAPER[i] = crumpled(base, hi, lo, seed, 0, 0, opts);
+        }
+      });
+      job(function () {
+        var t = PAGE_TINT[i + 1] || [26, 30];
+        var c = patchColours(t[0], t[1] * (def.tone || 1), HEAVY[def.paper]);
+        PAGE_PATCH[i] = denimCloth(101 + i * 7, c.base, c.hi, c.lo);
+      });
+    });
+  }
+
 
   /* =======================================================================
      STICKER ART — drawn once, reused everywhere
@@ -484,7 +718,11 @@ window.Scrapbook = (function () {
           if (spark > 0.93) v = 248;
           else if (spark > 0.86) v += 34;
           v = Math.max(26, Math.min(255, v));
-          ctx.fillStyle = "rgb(" + (v | 0) + "," + Math.min(255, (v + 6) | 0) + "," + Math.min(255, (v + 16) | 0) + ")";
+          /* Warm, not chrome. Every tile used to be rgb(v, v+6, v+16) --
+             sixteen points more blue than red -- and two of these hang on
+             a rose page as the coldest thing in the book. The same mirror
+             lit by the same warm room: red leads, blue trails. */
+          ctx.fillStyle = "rgb(" + Math.min(255, (v + 14) | 0) + "," + Math.min(255, (v + 2) | 0) + "," + Math.max(0, (v - 12) | 0) + ")";
           ctx.fillRect(cx + x, cy + y, cell - 0.9, cell - 0.9);
         }
       }
@@ -661,9 +899,13 @@ window.Scrapbook = (function () {
             px - rr * 0.5, py - rr * 0.5, px + rr * 0.5, py + rr * 0.5);
           function ch(v) { return Math.max(20, Math.min(238, Math.round(v))); }
           var base = 74 + ring * 13;
-          g.addColorStop(0,    "rgb(" + ch(base + 96) + "," + ch(base + 104) + "," + ch(base + 112) + ")");
-          g.addColorStop(0.42, "rgb(" + ch(base + 8)  + "," + ch(base + 18)  + "," + ch(base + 30)  + ")");
-          g.addColorStop(1,    "rgb(" + ch(base - 56) + "," + ch(base - 44) + "," + ch(base - 28) + ")");
+          /* Warm pearl. Same fault as the disco ball and the pale star:
+             the petals ran cooler as they got lighter, so the highlight
+             was the bluest part of the flower and it sat on the page like
+             something borrowed from another book. */
+          g.addColorStop(0,    "rgb(" + ch(base + 116) + "," + ch(base + 100) + "," + ch(base + 88) + ")");
+          g.addColorStop(0.42, "rgb(" + ch(base + 30)  + "," + ch(base + 16)  + "," + ch(base + 8)  + ")");
+          g.addColorStop(1,    "rgb(" + ch(base - 24) + "," + ch(base - 44) + "," + ch(base - 58) + ")");
           ctx.fillStyle = g;
           ctx.save();
           ctx.translate(px, py);
@@ -681,7 +923,8 @@ window.Scrapbook = (function () {
       }
       /* the bud at the centre */
       var bg = ctx.createRadialGradient(cx - W * 0.03, cy - W * 0.035, 1, cx, cy, W * 0.10);
-      bg.addColorStop(0, "#fdfeff"); bg.addColorStop(0.55, "#aebecb"); bg.addColorStop(1, "#5d6f7d");
+      /* the bead at the centre: warm pearl, not a blue one */
+      bg.addColorStop(0, "#fffdfa"); bg.addColorStop(0.55, "#e0c3b6"); bg.addColorStop(1, "#8a6357");
       ctx.fillStyle = bg;
       ctx.beginPath(); ctx.arc(cx, cy, W * 0.095, 0, 6.29); ctx.fill();
       ctx.strokeStyle = "rgba(28,40,54,0.4)"; ctx.lineWidth = W * 0.008; ctx.stroke();
@@ -964,8 +1207,13 @@ window.Scrapbook = (function () {
       } else if (kind === "rose") {
         g.addColorStop(0, "#c98fa0"); g.addColorStop(0.5, "#8d4a5e"); g.addColorStop(1, "#b87e90");
       } else {
-        g.addColorStop(0, "#ffffff"); g.addColorStop(0.4, "#c2d0da");
-        g.addColorStop(0.7, "#7b8b98"); g.addColorStop(1, "#e6eef4");
+        /* The pale star. It was silver -- #c2d0da into #7b8b98, a blue
+           steel -- and it turns up on five pages of a book whose every
+           other colour is rose, cream or gold. It is a pearl now: the
+           same job, the light one of the three stars, in the book's own
+           warmth. */
+        g.addColorStop(0, "#fffaf3"); g.addColorStop(0.4, "#f0dacf");
+        g.addColorStop(0.7, "#c0968e"); g.addColorStop(1, "#fdf0e6");
       }
       ctx.fillStyle = g; ctx.fill();
       if (kind === "rose") {
@@ -1030,9 +1278,11 @@ window.Scrapbook = (function () {
       round(W * 0.03, H * 0.05, W * 0.94, H * 0.9, W * 0.09); ctx.fill();
       ctx.strokeStyle = "rgba(110,62,72,0.4)"; ctx.lineWidth = 2; ctx.stroke();
 
-      /* the photo window — left empty, a slot sits over it */
-      ctx.fillStyle = "#2a3436";
-      round(W * 0.10, H * 0.18, W * 0.44, H * 0.55, W * 0.03); ctx.fill();
+      /* the photo window — left empty, a slot sits over it. It showed the
+         picture at 44% of the camera's width, which is what made the one
+         photograph on that page too small to look at. */
+      ctx.fillStyle = "#32262a";
+      round(W * 0.08, H * 0.15, W * 0.54, H * 0.64, W * 0.03); ctx.fill();
 
       /* lens */
       ctx.fillStyle = "#a9767f";
@@ -1087,7 +1337,11 @@ window.Scrapbook = (function () {
     var h = w * 0.72;
     return tex(w, h, function (ctx, W, H) {
       var g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, "#dfe7ea"); g.addColorStop(0.5, "#a9b8bf"); g.addColorStop(1, "#78888f");
+      /* The biggest cool object in the book, and it took most of a page.
+         Blue-grey #dfe7ea/#a9b8bf/#78888f becomes a warm pewter-rose --
+         still obviously a metal camera body, no longer the one thing on
+         the spread that belongs to a different palette. */
+      g.addColorStop(0, "#efe0d6"); g.addColorStop(0.5, "#bfa093"); g.addColorStop(1, "#8e6d63");
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.moveTo(W * 0.04, H * 0.30);
@@ -1102,9 +1356,9 @@ window.Scrapbook = (function () {
       ctx.strokeStyle = "rgba(40,55,62,0.45)"; ctx.lineWidth = 2; ctx.stroke();
 
       /* lens barrel */
-      ctx.fillStyle = "#5c6d75";
+      ctx.fillStyle = "#6d5a55";
       ctx.beginPath(); ctx.arc(W * 0.5, H * 0.60, W * 0.20, 0, 6.29); ctx.fill();
-      ctx.fillStyle = "#2b363b";
+      ctx.fillStyle = "#33262a";
       ctx.beginPath(); ctx.arc(W * 0.5, H * 0.60, W * 0.14, 0, 6.29); ctx.fill();
       var lg = ctx.createRadialGradient(W * 0.45, H * 0.53, 1, W * 0.5, H * 0.60, W * 0.14);
       lg.addColorStop(0, "rgba(180,230,240,0.55)"); lg.addColorStop(1, "rgba(20,40,50,0)");
@@ -1112,9 +1366,9 @@ window.Scrapbook = (function () {
       ctx.beginPath(); ctx.arc(W * 0.5, H * 0.60, W * 0.14, 0, 6.29); ctx.fill();
 
       /* shutter + dial */
-      ctx.fillStyle = "#8fa0a8";
+      ctx.fillStyle = "#a08d84";
       ctx.beginPath(); ctx.arc(W * 0.17, H * 0.24, W * 0.045, 0, 6.29); ctx.fill();
-      ctx.fillStyle = "#c8d4d9";
+      ctx.fillStyle = "#dccbc2";
       ctx.fillRect(W * 0.74, H * 0.18, W * 0.14, H * 0.10);
 
       ctx.fillStyle = "rgba(30,42,48,0.8)";
@@ -1297,45 +1551,89 @@ window.Scrapbook = (function () {
      phone screen. `n:` numbers a photo slot — those stay empty until
      real photos are added to MEMORIES in script.js.
      ======================================================================= */
-  var H = SB.hand;
+  var W = SB.words;
 
   var PAGES = [
     /* ---- 1 · disco ---------------------------------------------- */
     { paper: "rose", pieces: [
+      /* All four of these hung off the left edge, so the page weighed 13
+         points to that side and the right column below the title was bare
+         paper from a third of the way down to the foot. The chrome rose
+         crosses over to hold that side; the rest stay where they were. */
       { k: "sticker", art: "disco",   left: -9, top:  2, w: 34, rot: 0 },
-      { k: "sticker", art: "rose",    left: -4, top: 30, w: 26, rot: -8 },
-      { k: "sticker", art: "flowers", left: -7, top: 56, w: 32, rot: -6 },
+      { k: "sticker", art: "flowers", left: -7, top: 54, w: 32, rot: -6 },
       { k: "sticker", art: "disco",   left: -5, top: 78, w: 26, rot: 0 },
-      { k: "bigtype", text: "love you", left: 68, top: 6, size: 16, vertical: true, colour: "rgba(255,255,255,.22)" },
+      { k: "bigtype", text: W.p1big, left: 68, top: 6, size: 16, vertical: true, colour: "rgba(255,255,255,.22)" },
       { k: "photo", n: 1, style: "polaroid", left: 26, top:  5, w: 36.1, rot: -6, tape: "top" },
       { k: "photo", n: 2, style: "snapshot", left: 14, top: 44, w: 37.7, rot:  4, tape: "corner" },
-      { k: "photo", n: 3, style: "corners",  left: 40, top: 68, w: 34.4, rot: -3 },
-      { k: "sticker", art: "lips",    left: 62, top: 48, w: 19, rot: 14 },
+      { k: "photo", n: 3, style: "corners",  left: 38, top: 66, w: 38, rot: -3 },
+      { k: "sticker", art: "rose",    left: 73, top: 54, w: 24, rot: -8 },
+      { k: "sticker", art: "lips",    left: 60, top: 44, w: 19, rot: 14 },
       { k: "sticker", art: "vinyl8",  left: 70, top: 82, w: 26, rot: 0 },
       { k: "burst", left: 72, top: 38, w: 9 },
+      { k: "sticker", art: "starG", left: 84, top: 18, w: 13, rot: -12 },
+      /* the opening page carried a two-word bigtype and nothing else */
+      { k: "script", text: W.p1script, left: 24, top: 92, w: 44, rot: -2, size: 3.1 },
     ]},
 
     /* ---- 2 · memories -------------------------------------------- */
     { paper: "rose", pieces: [
-      { k: "note", left: 4, top: 5, w: 56, rot: -1.5, text: H.s1note },
-      { k: "letters", text: "MEMORIES", left: 84, top: 6 },
-      { k: "photo", n: 4, style: "deckle",   left:  6, top: 30, w: 31, rot: -4, caption: H.s1small },
-      { k: "sticker", art: "vinyl8", left: 44, top: 28, w: 22, rot: 0 },
-      { k: "photo", n: 5, style: "polaroid", left: 48, top: 30, w: 32, rot:  3 },
-      { k: "photo", n: 6, style: "matted",   left:  6, top: 62, w: 29, rot:  2 },
-      { k: "photo", n: 7, style: "snapshot", left: 50, top: 74, w: 34, rot: -4 },
-      { k: "sticker", art: "flowers", left: 34, top: 60, w: 22, rot: 8 },
+      /* THE NOTE COULD NOT BE READ.
+
+         It sat at top:5 running to about 42% of the page, and photographs
+         4 and 5 both started at top:30 -- so the last three lines went
+         under them and the sentence stopped at "the way you looked at".
+         The note is the first thing on the page and the reason the rest of
+         it is here; it gets the top third to itself now, and the two rows
+         of photographs start below where it ends. */
+      /* The note had the whole top third and the photographs were pushed to
+         the foot of the page to clear it, which read as a caption with a
+         pile underneath rather than a page. It is smaller and set on a
+         proper angle now -- a note laid on the page, not a column of it --
+         and the two rows come up to meet it. */
+      { k: "note", left: 5, top: 4, w: 52, rot: -4, text: W.p2note },
+      { k: "letters", text: "MEMORIES", left: 84, top: 4 },
+      /* this was a second "8" record, directly across the gutter from the
+         one on the facing page and the same size -- the eye went straight
+         to the pair of them. A plain wine pressing instead. */
+      { k: "sticker", art: "vinylLtd", left: 60, top: 16, w: 24, rot: 0 },
+      { k: "sticker", art: "starD",   left: 85, top: 40, w: 15, rot: 8 },
+      { k: "photo", n: 4, style: "deckle",   left:  3, top: 41, w: 35, rot: -4, caption: W.p2small },
+      { k: "photo", n: 5, style: "polaroid", left: 47, top: 38, w: 36, rot:  3 },
+      { k: "photo", n: 6, style: "matted",   left:  5, top: 68, w: 33, rot:  2 },
+      { k: "photo", n: 7, style: "snapshot", left: 50, top: 70, w: 37, rot: -4 },
+      { k: "sticker", art: "flowers", left: 39, top: 56, w: 22, rot: 8 },
+      { k: "sticker", art: "rose",    left: 78, top: 70, w: 24, rot: -6 },
+      { k: "sticker", art: "lipInk",  left: 38, top: 90, w: 22, rot: -12 },
     ]},
 
     /* ---- 3 · the camera ------------------------------------------ */
+    /* WHY THIS PAGE FELT EMPTY, AND WHAT IT IS NOT.
+
+       Both of its pictures live inside props -- a window in the camera and
+       a stamp on the club card -- and both were tiny: the window showed the
+       photograph at 44% of the camera's width, the card at 34% of its own.
+       That is the whole of it, and it is fixed where it was caused (see
+       instantCam and .sb-id-photo).
+
+       I had also put a spare photograph on this page. That was not mine to
+       decide: which photographs go in this book is his call, not a hole in
+       a layout for me to plug. The room it leaves is filled with things I
+       am allowed to make -- a record, flowers, a star. */
     { paper: "rose2", pieces: [
       { k: "typecol", text: "The", left: -1, top: 2, w: 20 },
       { k: "bigtype", text: "C", left: 15, top: 1, size: 34, colour: "rgba(226,240,244,.26)" },
       { k: "patch", paper: "grid", left: 10, top: 0, w: 48, h: 27, rot: -3 },
-      { k: "instantcam", n: 8, left: 20, top: 6, w: 68, rot: 1 },
-      { k: "img", src: "assets/key.png", left: 26, top: 55, w: 9, rot: 12 },
-      { k: "script", text: "from the midwest princess", left: 52, top: 55, w: 40, rot: -7, size: 3.6 },
-      { k: "idcard", n: 9, left: 5, top: 64, w: 72, rot: -2 },
+      { k: "instantcam", n: 8, left: 24, top: 3, w: 64, rot: 1 },
+      { k: "sticker", art: "vinylRose", left: -4, top: 20, w: 32, rot: 0 },
+      { k: "sticker", art: "starG", left: 86, top: 13, w: 13, rot: 10 },
+      { k: "sticker", art: "starD", left: 85, top: 44, w: 12, rot: -16 },
+      { k: "sticker", art: "flowers", left: 1, top: 52, w: 27, rot: 7 },
+      { k: "img", src: "assets/key.png", left: 34, top: 56, w: 9, rot: 12 },
+      { k: "script", text: W.p3script, left: 46, top: 50, w: 42, rot: -7, size: 3.4 },
+      { k: "sticker", art: "lipInk", left: 74, top: 60, w: 23, rot: -10 },
+      { k: "sticker", art: "starS",   left: 80, top: 90, w: 15, rot: -14 },
+      { k: "idcard", n: 9, left: 8, top: 64, w: 76, rot: -2 },
     ]},
 
     /* ---- 4 · the letter ------------------------------------------ */
@@ -1343,83 +1641,208 @@ window.Scrapbook = (function () {
       { k: "patch", paper: "news", left: -6, top: 2, w: 34, h: 96, rot: 1.5 },
       { k: "patch", paper: "rose", left: 58, top: -3, w: 50, h: 24, rot: -4 },
       { k: "sticker", art: "starD", left: 2, top: 14, w: 20, rot: -10 },
-      { k: "letterpage", left: 12, top: 12, w: 82, rot: 0.6 },
-      { k: "photo", n: 10, style: "corners", left: 6, top: 66, w: 27.9, rot: -5 },
-      { k: "sticker", art: "vinylRose", left: 48, top: 72, w: 36, rot: 0 },
-      { k: "script", text: "the place where the confetti falls", left: 12, top: 90, w: 40, rot: -4, size: 3.0, dark: true },
+      { k: "letterpage", left: 16, top: 5, w: 76, rot: -2.6 },
+      /* was w:27.9, which left a hand's width of bare paper under the
+         letter and made the whole page feel like it was waiting for
+         something. It is the only photograph on this page -- it should
+         carry it. */
+      /* ON the letter, not under it and not beside it. It sat below with a
+         band of bare paper between, which read as two things stacked.
+         Now it lies across the letter's bottom-left corner the way a
+         photograph actually ends up on a letter -- and it clears the
+         signature and the button, both of which are set to the right for
+         exactly this reason. */
+      { k: "photo", n: 10, style: "corners", left: 3, top: 51, w: 49, rot: -6, z: 6 },
+      { k: "sticker", art: "vinylRose", left: 66, top: 78, w: 30, rot: 0 },
+      { k: "sticker", art: "flowers", left: 6, top: 84, w: 26, rot: -7 },
+      { k: "sticker", art: "flowers",   left: 82, top: 40, w: 26, rot: 9 },
+      { k: "sticker", art: "starS",     left: 88, top: 26, w: 15, rot: 16 },
+      { k: "script", text: W.p4script, left: 62, top: 72, w: 35, rot: -4, size: 2.9, dark: true },
     ]},
 
     /* ---- 5 · the record ------------------------------------------ */
     { paper: "rose", pieces: [
       { k: "typecol", text: "Th", left: -1, top: 3, w: 14 },
-      { k: "sticker", art: "vinylRose", left: -8, top: 10, w: 56, rot: 0 },
-      { k: "sticker", art: "clock", left: 0, top: 16, w: 26, rot: 0 },
-      { k: "curvetext", text: H.vinyl, left: -6, top: 12, w: 52 },
-      { k: "sticker", art: "lipInk", left: 66, top: 2, w: 22, rot: -8 },
-      { k: "photo", n: 11, style: "washed",   left: 30, top:  8, w: 50.8, rot: -5, tape: "top" },
-      { k: "photo", n: 12, style: "matted",   left: 10, top: 46, w: 36.1, rot:  3 },
-      { k: "photo", n: 13, style: "polaroid", left: 54, top: 52, w: 34.4, rot: -3 },
+      /* A 56-wide record hanging off the left edge with the clock on top of
+         it put this page's weight fifteen points to that side -- the most
+         lopsided page in the book by a factor of three. The record is the
+         size of the others now. */
+      { k: "sticker", art: "vinylRose", left: -6, top: 12, w: 46, rot: 0 },
+      { k: "sticker", art: "clock", left: 2, top: 18, w: 24, rot: 0 },
+      /* "i am a lucky girl" runs round the record, and a third of it was
+         under photograph 11 and another eighth under photograph 12. The
+         curve is shorter now and the big photograph starts to the right of
+         where it ends. */
+      { k: "curvetext", text: W.p5vinyl, left: -6, top: 12, w: 40 },
+      { k: "sticker", art: "lipInk", left: 68, top: 2, w: 20, rot: -8 },
+      { k: "photo", n: 11, style: "washed",   left: 36, top:  6, w: 48, rot: -5, tape: "top" },
+      { k: "photo", n: 12, style: "matted",   left:  8, top: 46, w: 38, rot:  3 },
+      { k: "photo", n: 13, style: "polaroid", left: 56, top: 48, w: 42, rot: -3 },
+      /* the page leaned hard left -- its weight sat 21 points off centre.
+         A star and a record's worth of ink on the right answer it. */
+      { k: "sticker", art: "starG", left: 83, top: 40, w: 14, rot: 12 },
       { k: "sticker", art: "flowers", left: -6, top: 78, w: 28, rot: -8 },
-      { k: "sticker", art: "lipInk", left: 34, top: 88, w: 18, rot: 12 },
+      { k: "sticker", art: "rose", left: 73, top: 78, w: 24, rot: 8 },
+      { k: "sticker", art: "lipInk", left: 34, top: 90, w: 18, rot: 12 },
     ]},
 
     /* ---- 6 · cold hands ------------------------------------------ */
     { paper: "ivory", pieces: [
       { k: "patch", paper: "news", left: 48, top: -3, w: 58, h: 28, rot: 4 },
       { k: "patch", paper: "rose", left: -8, top: 54, w: 34, h: 54, rot: -3 },
-      { k: "photo", n: 14, style: "polaroid", left:  4, top:  4, w: 32.8, rot: -4, tape: "corner" },
-      { k: "photo", n: 15, style: "snapshot", left: 52, top:  8, w: 36.1, rot:  4 },
-      { k: "script", text: H.s3note, left: 2, top: 40, w: 32, rot: -3, size: 3.4, dark: true },
-      { k: "photo", n: 16, style: "deckle",   left: 44, top: 40, w: 31.2, rot: -2 },
-      { k: "photobooth", cells: [17, 18, 19], left: 6, top: 54, w: 22, rot: 5 },
-      { k: "sticker", art: "starD", left: 84, top: 56, w: 16, rot: -14 },
-      { k: "label", text: "COLD HANDS,\nWARM HEARTS", left: 44, top: 80, w: 40, rot: -4 },
-      { k: "sticker", art: "flowers", left: 30, top: 82, w: 24, rot: 6 },
+      /* The emptiest page in the book at 51% covered, with the smallest
+         photographs in it -- four prints all under 38% of the page width
+         while the facing spread ran to 62%. They are the size of the rest
+         of the book now, and the label has the corner to itself instead
+         of a quarter of it under a spray of flowers. */
+      { k: "photo", n: 14, style: "polaroid", left:  3, top:  3, w: 38, rot: -4, tape: "corner" },
+      { k: "photo", n: 15, style: "snapshot", left: 50, top:  6, w: 41, rot:  4 },
+      { k: "script", text: W.p6note, left: 3, top: 42, w: 32, rot: -3, size: 3.4, dark: true },
+      { k: "photo", n: 16, style: "deckle",   left: 46, top: 40, w: 37, rot: -2 },
+      { k: "photobooth", cells: [17, 18, 19], left: 5, top: 56, w: 26, rot: 5 },
+      { k: "sticker", art: "starD", left: 86, top: 30, w: 15, rot: -14 },
+      { k: "sticker", art: "flowers", left: 34, top: 84, w: 22, rot: 6 },
+      { k: "sticker", art: "lipInk", left: 84, top: 62, w: 20, rot: 10 },
+      { k: "label", text: W.p6label, left: 56, top: 82, w: 40, rot: -4 },
     ]},
 
     /* ---- 7 · the film strip -------------------------------------- */
     { paper: "ivory", pieces: [
-      { k: "script", text: "the time we spent, and every hour after", left: 10, top: 2, w: 46, rot: 0, size: 3.4, faint: true },
-      { k: "sticker", art: "starS", left: 0, top: 8, w: 20, rot: 16 },
+      { k: "script", text: W.p7script, left: 10, top: 2, w: 46, rot: 0, size: 3.4, faint: true },
+      /* it was sitting on the last line of the caption above it */
+      { k: "sticker", art: "starS", left: -2, top: 24, w: 19, rot: 16 },
       { k: "filmcam", left: 2, top: 15, w: 52, rot: -8 },
       { k: "sticker", art: "vinylRose", left: -12, top: 50, w: 46, rot: 0 },
       { k: "sticker", art: "clock", left: 30, top: 80, w: 22, rot: 0 },
       { k: "bouquet", left: 2, top: 38, w: 38, rot: -4 },
-      { k: "filmstrip", cells: [20, 21, 22], left: 56, top: 4, w: 42 },
+      /* At 39 wide the three frames -- now that they actually fill the card
+         instead of a third of it -- ran two thirds of the way down the page
+         and the print below disappeared under them. This is the width that
+         puts all three on the paper with the polaroid clear beneath. */
+      { k: "filmstrip", cells: [20, 21, 22], left: 60, top: 3, w: 32, rot: 2 },
+      /* The long frame under the strip. The right half of this page below
+         the film was bare paper, which is the emptiest the book gets, and a
+         tall print is what the shape of that gap wants. It is slot "025",
+         not 25 -- 25 is already on the page after this one -- so the file
+         to drop in is assets/photo-025.jpg and nothing else has to change. */
+      { k: "photo", n: "025", style: "portrait", left: 55, top: 54, w: 40,
+        rot: 2, tape: "top" },
     ]},
 
     /* ---- 8 · the prints ------------------------------------------ */
-    { paper: "mauve", pieces: [
+    { paper: "mauve", tone: 0.72, pieces: [
       { k: "patch", paper: "mauveCloth", left: 52, top: -3, w: 56, h: 46, rot: 6 },
       { k: "patch", paper: "mauveCloth", left: -8, top: 58, w: 52, h: 50, rot: -5 },
       { k: "sticker", art: "vinylLtd", left: 62, top: 14, w: 44, rot: 0 },
-      { k: "photo", n: 23, style: "washed", left: -2, top:  6, w: 57.4, rot: -7 },
-      { k: "photo", n: 24, style: "washed", left: 20, top: 46, w: 59, rot:  4 },
+      /* These two were 57 and 59 wide against a book that otherwise runs
+         31 to 45 -- big enough that turning onto this spread felt like a
+         change of scale rather than a change of page. They are still the
+         largest prints in the book, and now by a hand rather than by half
+         again. */
+      { k: "photo", n: 23, style: "washed", left: 4, top:  6, w: 50, rot: -7 },
+      { k: "photo", n: 24, style: "washed", left: 22, top: 46, w: 51, rot:  4 },
       { k: "sticker", art: "starD", left: 4, top: 78, w: 22, rot: -20 },
-      { k: "sticker", art: "lips", left: 72, top: 86, w: 20, rot: 12 },
+      { k: "sticker", art: "lips", left: 70, top: 84, w: 24, rot: 12 },
+      { k: "sticker", art: "flowers", left: 46, top: 84, w: 24, rot: 6 },
+      /* this page had no words on it at all, and two of the best portraits
+         in the book sitting on it saying nothing */
+      { k: "script", text: W.p8script, left: 7, top: 90, w: 50, rot: -2, size: 3.0 },
+      { k: "sticker", art: "flowers", left: 1, top: 30, w: 30, rot: -8 },
+      { k: "sticker", art: "starG",   left: 86, top: 60, w: 17, rot: 14 },
     ]},
 
     /* ---- 9 · these memories -------------------------------------- */
     { paper: "grid", pieces: [
       { k: "patch", paper: "rose", left: 40, top: 6, w: 38, h: 52, rot: 2 },
-      { k: "photo", n: 25, style: "washed", left: 6, top: -2, w: 42.6, rot: 1, tape: "top" },
-      { k: "label2", text: "THESE\nMEMORIES\nMAKE ME SMILE", left: 58, top: 4, w: 36, rot: -3 },
-      { k: "sticker", art: "starG", left: 88, top: 1, w: 12, rot: 12 },
-      { k: "photobooth", cells: [26, 27, 28], left: 4, top: 34, w: 22, rot: -4 },
-      { k: "photo", n: 29, style: "corners", left: 34, top: 46, w: 36.1, rot: -3 },
+      { k: "photo", n: 25, style: "washed", left: 4, top: -2, w: 44, rot: 1, tape: "top" },
+      { k: "label2", text: W.p9label, left: 58, top: 2, w: 36, rot: -3 },
+      { k: "sticker", art: "starG", left: 85, top: 22, w: 12, rot: 12 },
+      /* The top right corner of this page was the emptiest quadrant in the
+         book -- 32% filled, a label and then bare grid down to the middle.
+         The print that was marooned in the centre moves up into it, and
+         the photobooth strip grows: at 22 it was the smallest thing in the
+         book by half. */
+      { k: "photo", n: 29, style: "corners", left: 54, top: 22, w: 42, rot: -3 },
+      { k: "photobooth", cells: [26, 27, 28], left: 4, top: 38, w: 28, rot: -4 },
       { k: "patch", paper: "blush", left: 50, top: 74, w: 50, h: 32, rot: 3 },
-      { k: "sticker", art: "flowers", left: 62, top: 72, w: 34, rot: 4 },
-      { k: "sticker", art: "starG", left: 52, top: 80, w: 10, rot: 20 },
+      { k: "sticker", art: "flowers", left: 60, top: 66, w: 36, rot: 4 },
+      { k: "sticker", art: "starG", left: 50, top: 82, w: 11, rot: 20 },
+      { k: "sticker", art: "lipInk", left: 77, top: 88, w: 20, rot: -12 },
+      /* the club night: a record, a kiss, and a scatter of small stars.
+         The grid ran empty down the left below the photobooth strip. */
+      { k: "sticker", art: "vinylLtd", left: -12, top: 62, w: 34, rot: 0 },
+      { k: "sticker", art: "lipInk",   left: 2,  top: 88, w: 22, rot: 12 },
+      { k: "sticker", art: "starD",    left: 30, top: 26, w: 13, rot: -18 },
+      { k: "sticker", art: "starS",    left: 40, top: 62, w: 14, rot: 10 },
     ]},
 
     /* ---- 10 · a video of us -------------------------------------- */
     { paper: "ivory", pieces: [
       { k: "patch", paper: "mauveCloth", left: 72, top: 20, w: 36, h: 52, rot: -4 },
       { k: "photo", n: 30, style: "washed", left: 8, top: 2, w: 50.8, rot: 0.5, tape: "top" },
-      { k: "script", text: "and every one of them, again", left: 6, top: 34, w: 32, rot: -2, size: 3.2, dark: true },
+      { k: "script", text: W.p10script, left: 6, top: 34, w: 32, rot: -2, size: 3.2, dark: true },
       { k: "videocard", left: 10, top: 44, w: 80 },
+      { k: "sticker", art: "starG",   left: 2.5, top: 16, w: 20, rot: -10 },
+      { k: "sticker", art: "starS",   left: 88, top: 76, w: 18, rot: 12 },
+      { k: "sticker", art: "rose",    left: 1, top: 74, w: 26, rot: 6 },
+      /* the closing page. Flowers over the top corner and a last kiss under
+         the clip, so the book ends dressed rather than trailing off. */
+      { k: "sticker", art: "flowers", left: 68, top: 2, w: 28, rot: 8 },
+      /* the band between the flowers and the video card was bare cloth --
+         a record for the song the clip is set to */
+      { k: "sticker", art: "vinylRose", left: 70, top: 22, w: 30, rot: 0 },
+      { k: "sticker", art: "lipInk",  left: 74, top: 90, w: 22, rot: -10 },
+      { k: "sticker", art: "starD",   left: 6,  top: 4,  w: 14, rot: 16 },
     ]},
   ];
+
+  /* =======================================================================
+     THE COLOUR OF EACH PAGE
+
+     His note: "upgrade the book's pages so every page matches the vibe of
+     the photos in it so the colors difference between them wont look
+     weird."
+
+     He is right, and it was worst where a page of warm amber photographs
+     was mounted on pink or mauve paper -- page 8 especially, which is two
+     lamplit prints on a purple sheet. So each page now carries the colour
+     of the photographs on it, as a hue and a saturation, and the paper
+     wears a wash in that colour under everything else.
+
+     The numbers are measured, not guessed: tools/img/tints.py reads the
+     photos and writes them. Two rules make them usable as paper.
+
+     One, only two families of colour count -- the warm amber end and the
+     plum-to-rose end -- because those are the two this book is made of.
+     A green lawn or a teal shopfront in the corner of one photo gets no
+     vote. Averaging everything is what turned page 3 (one warm photo, one
+     teal one) into hue 66, a yellow-green that matched neither of them and
+     would have looked ill on paper.
+
+     Two, saturation is scaled well down and capped, so the page is tinted
+     rather than painted -- the crumpled paper texture underneath has to
+     stay visible or it stops being paper.
+
+     Rerun tools/img/tints.py after changing the photos. Page N is the Nth
+     entry in PAGES.
+     ======================================================================= */
+  var PAGE_TINT = {
+    1: [17, 40], 2: [11, 40], 3: [18, 30], 4: [20, 25],  5: [24, 40],
+    6: [19, 37], 7: [25, 40], 8: [26, 40], 9: [282, 40], 10: [279, 36],
+  };
+
+  /* And the same for each photo on its own, which tints only the mount it
+     is sitting in -- a warm print gets a warm cream card, a plum one gets
+     a cooler card, so a frame belongs to its picture instead of every
+     frame in the book being the same white. */
+  var PHOTO_TINT = {
+    1:[14,34], 2:[19,34], 3:[22,34], 4:[10,34], 5:[9,34], 6:[28,26],
+    7:[19,25], 8:[18,27], 9:[20,21], 10:[20,21], 11:[30,23], 12:[32,34],
+    13:[18,34], 14:[18,29], 15:[17,34], 16:[16,30], 17:[25,27], 18:[19,34],
+    19:[23,27], 20:[24,34], 21:[26,34], 22:[27,34], 23:[21,31], 24:[33,34],
+    25:[282,34], 26:[281,31], 27:[282,34], 28:[278,34], 29:[32,22], 30:[279,30],
+    32:[32,19], 33:[28,34], 34:[351,34],
+  };
 
   /* the back cover is its own thing, not a page of collage */
   var BACK = { title: "the end.", line1: "until next time,", line2: "— love, always •", line3: "xoxo" };
@@ -1437,10 +1860,33 @@ window.Scrapbook = (function () {
      frame marked "photo 7" — no config to edit. An entry in MEMORIES
      still wins if you would rather name the file something else, or add
      a caption to go with it. */
-  var PHOTO_EXT = ["jpg", "png"];   /* keep the probing cheap */
+  /* Every photo in assets/ is written twice: a WebP and a JPEG of the same
+     picture. WebP is roughly a third of the size at a quality difference no
+     eye resolves, so it is asked for first wherever the browser takes it —
+     which is everything since Safari 14. The JPEG stays as the fallback, so
+     a photo dropped into assets/ as a plain .jpg still works with nothing
+     else done to it; it just costs one failed request first.
+
+     The support test is the canvas one: a browser that cannot encode WebP
+     hands back a PNG data URL instead, and that is the whole check. It runs
+     once, here, rather than per photo. */
+  var PHOTO_EXT = (function () {
+    var ok = false;
+    try {
+      var c = document.createElement("canvas");
+      c.width = c.height = 1;
+      ok = c.toDataURL("image/webp").indexOf("data:image/webp") === 0;
+    } catch (e) { ok = false; }
+    return ok ? ["webp", "jpg", "png"] : ["jpg", "png"];
+  })();
 
   function photoAt(n) {
-    var m = (typeof MEMORIES !== "undefined" && MEMORIES[n - 1]) ? MEMORIES[n - 1] : null;
+    /* A slot is usually a plain number and lines up with MEMORIES, but it
+       does not have to be: "025" names assets/photo-025.jpg and belongs to
+       no entry in that list. Only index MEMORIES for real slot numbers, or
+       "025" would quietly borrow slot 25's title and caption. */
+    var isSlot = (typeof n === "number") || /^[1-9][0-9]*$/.test(String(n));
+    var m = (isSlot && typeof MEMORIES !== "undefined" && MEMORIES[n - 1]) ? MEMORIES[n - 1] : null;
     return {
       n: n,
       src:   m && m.photo ? m.photo : null,
@@ -1490,6 +1936,11 @@ window.Scrapbook = (function () {
     if (p.w != null) e.style.width = p.w + "%";
     if (p.h != null) e.style.height = p.h + "%";
     if (p.rot) e.style.setProperty("--rot", p.rot + "deg");
+    /* Order in the list is not enough on its own: the kinds of piece carry
+       their own z-index (a photograph sits at 3, a letter at 5), so a
+       photograph listed after a letter still went under it. `z` lets one
+       piece say it lies on top of another. */
+    if (p.z != null) e.style.zIndex = p.z;
     return e;
   }
 
@@ -1502,6 +1953,12 @@ window.Scrapbook = (function () {
   function makePhoto(p) {
     var mem = photoAt(p.n);
     var wrap = place(el("sb-photo sb-photo-" + (p.style || "polaroid")), p);
+    /* the card this print is mounted on, tinted towards the print itself */
+    var pt = PHOTO_TINT[mem.n];
+    if (pt) {
+      wrap.style.setProperty("--ph-h", pt[0]);
+      wrap.style.setProperty("--ph-s", pt[1] + "%");
+    }
     var mount = el("sb-photo-mount");
     var inner = el("sb-photo-inner");
 
@@ -1567,9 +2024,13 @@ window.Scrapbook = (function () {
     return e;
   }
 
-  function makePatch(p) {
+  function makePatch(p, pageIndex) {
     var e = place(el("sb-patch"), p);
-    e.style.backgroundImage = "url(" + PAPER[p.paper] + ")";
+    /* the cloth is dyed to the page it lies on, so the two coloured areas
+       agree instead of arguing -- two lamplit prints on a purple sheet was
+       the worst of it */
+    var dyed = (pageIndex != null) ? PAGE_PATCH[pageIndex] : null;
+    e.style.backgroundImage = "url(" + (dyed || PAPER[p.paper]) + ")";
     return e;
   }
 
@@ -1676,8 +2137,8 @@ window.Scrapbook = (function () {
     var img = el("", "img");
     img.src = STICK.instantCam; img.alt = "";
     e.appendChild(img);
-    var slot = makePhoto({ n: p.n, style: "window", left: 10, top: 18, w: 44 });
-    slot.style.height = "55%";
+    var slot = makePhoto({ n: p.n, style: "window", left: 8, top: 15, w: 54 });
+    slot.style.height = "64%";
     e.appendChild(slot);
     return e;
   }
@@ -1701,9 +2162,6 @@ window.Scrapbook = (function () {
   /* 35mm film, vertical by default */
   function makeFilmStrip(p) {
     var e = place(el("sb-film" + (p.horizontal ? " horiz" : "")), p);
-    var holesA = el("sb-film-holes a"), holesB = el("sb-film-holes b");
-    for (var i = 0; i < 14; i++) { holesA.appendChild(el("i")); holesB.appendChild(el("i")); }
-    e.appendChild(holesA); e.appendChild(holesB);
     var cells = el("sb-film-cells");
     p.cells.forEach(function (n) {
       var c = el("sb-film-cell");
@@ -1756,7 +2214,9 @@ window.Scrapbook = (function () {
       '<p class="sb-lp-from"><span>FROM</span> ' + L.from + '</p>' +
       '<p class="sb-lp-to"><span>FOR</span> ' + L.to + '</p>' +
       '<p class="sb-lp-lead">' + L.lead + '</p>' +
-      '<p class="sb-lp-body">' + L.body + '</p>';
+      '<p class="sb-lp-body">' + L.body + '</p>' +
+      '<p class="sb-lp-sign">' + L.signOff +
+        '<span class="sb-lp-name">' + L.signature + '</span></p>';
     var btn = el("sb-lp-btn", "button");
     btn.textContent = "Tap here to view more";
     btn.addEventListener("click", function (ev) { ev.stopPropagation(); openNote(); });
@@ -1791,10 +2251,17 @@ window.Scrapbook = (function () {
   function buildPage(def, i) {
     var page = el("sb-page");
     page.dataset.index = i;
-    page.style.backgroundImage = "url(" + PAPER[def.paper] + ")";
+    page.style.backgroundImage = "url(" + (PAGE_PAPER[i] || PAPER[def.paper]) + ")";
+    /* the hue is still published to CSS: the ink, the tapes and the shadows
+       on this page pick their colour from it so nothing is a stray grey */
+    var t = PAGE_TINT[i + 1];
+    if (t) {
+      page.style.setProperty("--pg-h", Math.round(bandedHue(t[0], HEAVY[def.paper])));
+      page.style.setProperty("--pg-s", t[1] + "%");
+    }
     def.pieces.forEach(function (p) {
       var make = MAKERS[p.k];
-      if (make) page.appendChild(make(p));
+      if (make) page.appendChild(make(p, i));
     });
     return page;
   }
@@ -2299,45 +2766,259 @@ window.Scrapbook = (function () {
   function buildOurVideoCard() {
     var V = SB.ourVideo;
     var c = el("sb-w sb-w-ourvideo");
+    /* A print in the book, not a player dropped on top of one. The same
+       cream mount every photo on these pages sits in, with the sprocket
+       edges the film cells use, so it reads as a strip of film someone
+       taped down rather than a black rectangle waiting for a video. */
     c.innerHTML =
-      '<div class="sb-vid-frame">' +
-        '<div class="sb-vid-empty">' +
-          '<div class="sb-slate">' +
-            '<div class="sb-slate-bar"></div>' +
-            '<p class="sb-slate-title">a video of us</p>' +
-            '<p class="sb-slate-file">assets/our-video.mp4</p>' +
+      '<div class="sb-ov-mount">' +
+        '<div class="sb-ov-holes a"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
+        '<div class="sb-vid-frame">' +
+          '<div class="sb-ov-poster"></div>' +
+          '<div class="sb-ov-veil"></div>' +
+          '<div class="sb-vid-empty">' +
+            '<div class="sb-slate">' +
+              '<div class="sb-slate-bar"></div>' +
+              '<p class="sb-slate-title">a video of us</p>' +
+              '<p class="sb-slate-file">assets/our-video.mp4</p>' +
+            "</div>" +
           "</div>" +
         "</div>" +
+        '<div class="sb-ov-holes b"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
       "</div>" +
       '<p class="sb-vid-cap">' + V.caption + "</p>";
 
     var frame = c.querySelector(".sb-vid-frame");
+    var poster = c.querySelector(".sb-ov-poster");
+
     var v = document.createElement("video");
-    v.src = V.src;
     v.preload = "metadata";
     v.playsInline = true;
     v.setAttribute("playsinline", "");
+    v.setAttribute("webkit-playsinline", "");
     v.controls = false;
-    if (V.poster) v.poster = V.poster;
+    v.src = V.src;
 
-    v.addEventListener("loadeddata", function () {
-      c.classList.add("ready");
-      var btn = el("sb-vid-play", "button");
-      btn.setAttribute("aria-label", "Play our video");
-      btn.innerHTML = '<span class="sb-ico-play"></span>';
-      frame.appendChild(btn);
-      function toggle(e) {
-        e.stopPropagation();
-        if (v.paused) { duckAmbient(); stopAllAudio("video"); v.play(); }
-        else v.pause();
-      }
-      btn.addEventListener("click", toggle);
-      v.addEventListener("click", toggle);
-      v.addEventListener("play",  function () { c.classList.add("playing"); });
-      v.addEventListener("pause", function () { c.classList.remove("playing"); });
-      v.addEventListener("ended", function () { c.classList.remove("playing"); });
+    /* The play button is built now, not inside a load handler.
+       iOS in Low Power Mode downgrades preload="metadata" to "none",
+       so `loadeddata` can never fire and the control that only existed
+       inside that handler never existed at all -- the slate stayed up
+       over a perfectly good file. The button is always here; the first
+       tap is the gesture that loads the video if nothing else has. */
+    var btn = el("sb-vid-play", "button");
+    btn.setAttribute("aria-label", "Play our video");
+    btn.innerHTML =
+      '<span class="sb-ov-ring" aria-hidden="true">' +
+        '<span class="sb-ov-pulse"></span>' +
+        '<span class="sb-ov-disc"><span class="sb-ico-play"></span></span>' +
+      "</span>" +
+      '<span class="sb-ov-word">play</span>';
+    frame.appendChild(btn);
+
+    /* THE TRANSPORT.
+
+       A single play button and nothing else is not a player -- once the
+       clip was running there was no way to pause it, find a moment again,
+       or turn the sound off, and on a touch screen the control only came
+       back on hover, which a finger does not have. So there is a proper
+       set of controls, made of the same things the rest of the book is
+       made of: a brass disc, a strip of film for a scrubber, the serif the
+       captions use. It lies over the bottom of the frame while the clip
+       runs and gets out of the way when nothing is happening. */
+    var bar = el("sb-ov-bar");
+    bar.innerHTML =
+      '<button class="sb-ov-pp" type="button" aria-label="Pause">' +
+        '<span class="sb-ico-play"></span></button>' +
+      '<div class="sb-ov-track" role="slider" tabindex="0" aria-label="Seek"' +
+        ' aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">' +
+        '<span class="sb-ov-buf"></span>' +
+        '<span class="sb-ov-fill"></span>' +
+        '<span class="sb-ov-knob"></span>' +
+      "</div>" +
+      '<span class="sb-ov-time"><b>0:00</b><i>/</i><s>0:00</s></span>' +
+      '<button class="sb-ov-mute" type="button" aria-label="Mute">' +
+        '<svg class="sb-ico-spk" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+          '<path class="cone" d="M3.5 9.2h3.9L12 5.2v13.6L7.4 14.8H3.5z"/>' +
+          '<path class="wave" d="M15.1 9.4a3.9 3.9 0 0 1 0 5.2"/>' +
+          '<path class="wave" d="M17.5 7.2a7.3 7.3 0 0 1 0 9.6"/>' +
+          '<path class="slash" d="M15.4 8.6l6 6.8"/>' +
+        "</svg></button>";
+    frame.appendChild(bar);
+
+    var pp    = bar.querySelector(".sb-ov-pp");
+    var track = bar.querySelector(".sb-ov-track");
+    var fill  = bar.querySelector(".sb-ov-fill");
+    var buf   = bar.querySelector(".sb-ov-buf");
+    var knob  = bar.querySelector(".sb-ov-knob");
+    var tNow  = bar.querySelector(".sb-ov-time b");
+    var tAll  = bar.querySelector(".sb-ov-time s");
+    var mute  = bar.querySelector(".sb-ov-mute");
+
+    function clock(t) {
+      if (!isFinite(t) || t < 0) t = 0;
+      var m = Math.floor(t / 60), sec = Math.floor(t % 60);
+      return m + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+    function paintTime() {
+      var d = v.duration;
+      var k = (isFinite(d) && d > 0) ? Math.max(0, Math.min(1, v.currentTime / d)) : 0;
+      fill.style.width = (k * 100).toFixed(2) + "%";
+      knob.style.left  = (k * 100).toFixed(2) + "%";
+      track.setAttribute("aria-valuenow", Math.round(k * 100));
+      tNow.textContent = clock(v.currentTime);
+      tAll.textContent = isFinite(d) ? clock(d) : "0:00";
+      try {
+        if (v.buffered && v.buffered.length && isFinite(d) && d > 0) {
+          buf.style.width = (v.buffered.end(v.buffered.length - 1) / d * 100).toFixed(2) + "%";
+        }
+      } catch (err) { /* buffered throws on some states; it is only a hint */ }
+    }
+    v.addEventListener("timeupdate", paintTime);
+    v.addEventListener("durationchange", paintTime);
+    v.addEventListener("progress", paintTime);
+    v.addEventListener("seeked", paintTime);
+
+    /* The controls fade out while the clip runs and nobody is doing
+       anything, and come back on any touch or movement over the frame --
+       not on hover, which is a thing only a mouse has. */
+    var idle = null;
+    function wake() {
+      c.classList.add("showing");
+      clearTimeout(idle);
+      idle = setTimeout(function () {
+        if (!v.paused) c.classList.remove("showing");
+      }, 2600);
+    }
+    frame.addEventListener("pointermove", wake);
+    frame.addEventListener("pointerdown", wake);
+
+    function seekAt(clientX) {
+      var r = track.getBoundingClientRect();
+      if (!r.width || !isFinite(v.duration)) return;
+      var k = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+      try { v.currentTime = k * v.duration; } catch (err) {}
+      paintTime();
+    }
+    var scrubbing = false;
+    /* Every one of these stops here. The book turns its pages on a
+       horizontal drag anywhere over it, and dragging a scrubber is exactly
+       that gesture -- without this, finding a moment in the clip flips the
+       page out from under it. */
+    track.addEventListener("pointerdown", function (e) {
+      scrubbing = true;
+      try { track.setPointerCapture(e.pointerId); } catch (err) {}
+      seekAt(e.clientX); wake(); e.stopPropagation(); e.preventDefault();
     });
-    v.addEventListener("error", function () { c.classList.remove("ready"); });
+    track.addEventListener("pointermove", function (e) {
+      if (!scrubbing) return;
+      seekAt(e.clientX); e.stopPropagation();
+    });
+    function endScrub(e) { scrubbing = false; if (e) e.stopPropagation(); wake(); }
+    track.addEventListener("pointerup", endScrub);
+    track.addEventListener("pointercancel", endScrub);
+    track.addEventListener("keydown", function (e) {
+      var step = e.shiftKey ? 10 : 5;
+      if (e.key === "ArrowRight") { v.currentTime = Math.min(v.duration || 0, v.currentTime + step); }
+      else if (e.key === "ArrowLeft") { v.currentTime = Math.max(0, v.currentTime - step); }
+      else return;
+      e.preventDefault(); e.stopPropagation(); paintTime(); wake();
+    });
+
+    mute.addEventListener("click", function (e) {
+      e.stopPropagation();
+      v.muted = !v.muted;
+      c.classList.toggle("muted", v.muted);
+      mute.setAttribute("aria-label", v.muted ? "Unmute" : "Mute");
+      wake();
+    });
+
+    var failed = false;
+    function ready() {
+      if (failed) return;
+      c.classList.add("ready");
+    }
+    /* readyState 1 (metadata) is enough. Listen wide: whichever of these
+       a browser sends first, we are ready. */
+    ["loadedmetadata", "loadeddata", "canplay", "canplaythrough", "playing"]
+      .forEach(function (ev) { v.addEventListener(ev, ready); });
+    if (v.readyState >= 1) ready();
+
+    function toggle(e) {
+      if (e) e.stopPropagation();
+      if (v.paused) {
+        duckAmbient(); stopAllAudio("video");
+        if (v.error) { retry(); return; }
+        if (v.readyState === 0) { try { v.load(); } catch (err) {} }
+        var pr = v.play();
+        if (pr && pr.catch) pr.catch(function () { c.classList.remove("playing"); });
+      } else v.pause();
+    }
+    btn.addEventListener("click", toggle);
+    pp.addEventListener("click", function (e) { e.stopPropagation(); toggle(); wake(); });
+    v.addEventListener("click", toggle);
+    v.addEventListener("play",  function () {
+      ready(); c.classList.add("playing", "started");
+      pp.setAttribute("aria-label", "Pause"); wake();
+    });
+    v.addEventListener("pause", function () {
+      c.classList.remove("playing"); c.classList.add("showing");
+      clearTimeout(idle);
+      pp.setAttribute("aria-label", "Play");
+    });
+    v.addEventListener("ended", function () {
+      /* back to the photograph and the big control: the card is a picture
+         again, not a stopped player */
+      c.classList.remove("playing", "showing", "started");
+      clearTimeout(idle);
+      paintTime();
+      /* back to the poster, so the page is the picture again rather than
+         whatever black frame the clip happened to end on */
+      try { v.currentTime = 0; } catch (err) {}
+    });
+    /* An error is not necessarily the end. A dropped connection mid-load
+       raises exactly the same event as a file that cannot be decoded at
+       all, and the first one is fixed by asking again -- so the control
+       stays put and a tap retries. Only after it has genuinely failed
+       twice does the card give up and put the slate back, which at least
+       names the file that is missing. */
+    var tries = 0;
+    v.addEventListener("error", function () {
+      c.classList.remove("ready", "playing");
+      tries++;
+      if (tries >= 3) {
+        failed = true;
+        btn.style.display = "none";
+        bar.style.display = "none";
+        c.classList.remove("hasposter");
+      }
+    });
+    function retry() {
+      if (failed) return false;
+      if (!v.error) return false;
+      try { v.load(); } catch (e) {}
+      return true;
+    }
+
+    /* The poster is a background image rather than the video's own poster
+       attribute: that way the still stays put underneath while the clip
+       plays and fades back in when it ends, and a browser that decides
+       not to honour poster= cannot leave a black hole in the page. WebP
+       where it is taken, the JPEG beside it otherwise. */
+    if (V.poster) {
+      (function (src) {
+        var webp = src.replace(/\.jpg$/, ".webp");
+        var probe = new Image();
+        probe.onload = function () {
+          poster.style.backgroundImage = "url(" + probe.src + ")";
+          c.classList.add("hasposter");
+        };
+        probe.onerror = function () {
+          if (probe.src.indexOf(".webp") > -1) { probe.src = src; return; }
+        };
+        probe.src = (PHOTO_EXT[0] === "webp") ? webp : src;
+      })(V.poster);
+    }
+
     frame.insertBefore(v, frame.firstChild);
     return c;
   }
@@ -3179,14 +3860,21 @@ window.Scrapbook = (function () {
   function stripCount() {
     if (stripPref === null) {
       var small = window.matchMedia && window.matchMedia("(max-width: 760px)").matches;
-      stripPref = small ? 7 : 10;
+      /* Higher than it was, for two reasons. The strips now span 144% of
+         the page rather than 100%, so the same count would be a coarser
+         cut; and he said the turn still reads as sliding panels, which is
+         what too few strips looks like -- every joint is a visible kink,
+         and the fewer of them there are the more each one shows. The
+         tuner below still takes them away on a device that cannot afford
+         them. */
+      stripPref = small ? 13 : 18;
     }
     return stripPref;
   }
 
   function tuneStrips(avgFrameMs) {
-    if (avgFrameMs > 28 && stripPref > 5) stripPref -= 2;
-    else if (avgFrameMs < 15 && stripPref < 13) stripPref += 1;
+    if (avgFrameMs > 28 && stripPref > 7) stripPref -= 2;
+    else if (avgFrameMs < 15 && stripPref < 22) stripPref += 2;
   }
 
   /* Cut a page into strips, each one a window onto the same page.
@@ -3194,26 +3882,171 @@ window.Scrapbook = (function () {
      This is the expensive part of a turn — a page cloned once per strip —
      so it is done ahead of time, while she is looking at the spread, and
      the turn itself only has to adopt the result. */
+  /* THE BLEED, AND WHY THE STICKERS USED TO VANISH MID-TURN.
+
+     His words: "some parts of stickers or even photos have a bit of them
+     in common with the one next to it, so when turning the page, that part
+     starts lagging and disappears until the page returns to its state
+     form."
+
+     Fourteen pieces in this book are placed deliberately over the edge of
+     their page -- a disco ball at left:-9, the vinyl rose at -12 -- because
+     that overhang is what makes a scrapbook look stuck together by hand
+     rather than laid out on a grid. At rest you see them. But the strips
+     that carry the page through a turn were windows onto exactly 0..100%
+     of it, so anything outside that box had no strip to ride on: it
+     disappeared the instant the turn began and came back when it ended.
+
+     So the strips cover more than the page now. They start BEFORE its
+     leading edge and finish after it, and everything hanging over either
+     side rides round with the sheet it is stuck to, which is what it does
+     on a real page. */
+  /* WHERE THE TURNING PAGE GETS CUT.
+
+     At rest the pages live inside .sb-spread, which is inset:5px 6px with
+     overflow:hidden -- so anything hanging over an edge is cut at the
+     book's own boundary. The leaves are siblings of that spread, outside
+     its clip entirely, which is why a sticker that is trimmed at rest came
+     back whole the moment the page began to turn. His words: "the stickers
+     showing their original size when flipping rather than the cut off size
+     that fits in the page."
+
+     So the strips are cut where the book cuts -- on all four sides, which
+     means no bleed anywhere.
+
+     I kept fifteen percent of it on the spine side for a while, reasoning
+     that a piece crossing the gutter is stuck to this sheet and should
+     travel with it. It should, in a real book. In this one it cannot,
+     because nothing crosses the gutter at rest either: the pages are
+     siblings and the neighbouring one is opaque, so whatever the right
+     page spills past its left edge is simply covered by the left page.
+     Carrying that spill round on the turn does not restore something the
+     book lost -- it uncovers something the book never shows, and you get
+     pieces of the page behind appearing in the middle of the book the
+     moment a page starts to move. He photographed exactly that.
+
+     Nothing hangs over any edge of a page in this book. So the sheet is
+     the page, edge to edge, and nothing else. */
+  var BLEED = 0;           /* the page and nothing but the page */
+
+  /* Vertically there is no bleed at all, and that is deliberate.
+
+     I gave it nine percent once, to stop the corner sticker on page six
+     from being clipped as the sheet went over. It cured the wrong illness.
+     The book cuts that corner at rest too -- .sb-spread does it -- so
+     carrying it round on the turn did not restore something that had been
+     lost, it revealed something that is meant to be trimmed, and the
+     sticker grew a piece it does not have when the page is lying flat.
+
+     The rule is simply: the turning sheet is cut wherever the resting page
+     is cut. Top and bottom, that is the spread's own edge. */
+  var VBLEED = 0;        /* none: the spread's top and bottom cut at rest */
+
   function buildStripFragment(pageNode, hingeRight) {
     if (!pageNode) return null;
     var frag = document.createDocumentFragment();
     STRIPS = stripCount();
-    var d = 100 / STRIPS;
+    var span = 100 + BLEED;                /* the page, plus the gutter side */
+    var vspan = 100 + VBLEED * 2;
+    var d = span / STRIPS;                 /* strip width, in page-% */
+    /* The bleed goes past the hinge and nowhere else. Both the window
+       positions here and the arc in layoutLeaf are measured FROM the hinge
+       -- which side of the screen that is has already been dealt with, by
+       anchoring the strips to the right instead of the left and mirroring
+       the arc. So a hinge-side bleed is the same negative number either
+       way; making it conditional gave the two halves of one turn different
+       shapes, the sheet bleeding over the gutter on the way up and cut off
+       at it on the way down. */
+    var first = -BLEED;
+
+    /* THE PHOTOS WENT BLANK THE MOMENT A PAGE LIFTED.
+
+       The page's own images are lazy: they wait until they are in view.
+       That is right for a page lying in the book, and wrong for a copy of
+       it sitting inside a strip -- a strip is a small, clipped, 3D-
+       transformed box, and the browser is under no obligation to call
+       anything inside it visible. So the clones sat there undecided and
+       the sheet turned over with empty frames on it, filling back in only
+       once the page came to rest. That is the photos "disappearing" on the
+       turn. Every copy that rides on a turning sheet is eager, and decodes
+       there and then -- the bytes are already in the cache, the original
+       loaded them. */
+    var master = pageNode.cloneNode(true);
+    master.classList.add("in-leaf", "on");
+    var mImgs = master.getElementsByTagName("img");
+    for (var q = 0; q < mImgs.length; q++) {
+      mImgs[q].loading = "eager";
+      mImgs[q].decoding = "sync";
+    }
+
     for (var i = 0; i < STRIPS; i++) {
+      var startPct = first + i * d;        /* where this strip begins */
       var strip = el("sb-strip");
-      strip.style.width = (d + 0.16) + "%";     /* a hair of overlap, so no seams */
+      /* the page's own height (VBLEED is nought), so the sheet is trimmed
+         top and bottom exactly where the book trims it at rest */
+      strip.style.top = -VBLEED + "%";
+      strip.style.height = (100 + VBLEED * 2) + "%";
+      /* The overlap has to cover the kink at every joint, and how big that
+         kink is depends on how hard the sheet is bent. Without it the
+         joins open into gaps you can see the page through and the sheet
+         reads as a venetian blind instead of paper. */
+      var sw = d * 1.06 + 0.4;             /* what the strip is really wide */
+      strip.style.width = sw + "%";
       if (hingeRight) { strip.style.right = "0"; strip.style.transformOrigin = "right center"; }
       else            { strip.style.left  = "0"; strip.style.transformOrigin = "left center"; }
 
       var inner = el("sb-strip-inner");
-      inner.style.width = (100 * STRIPS) + "%";
-      inner.style[hingeRight ? "right" : "left"] = "-" + (i * 100) + "%";
+      /* The inner is the whole page, shifted so this strip is a window onto
+         its own slice of it. Both numbers are percentages OF THE STRIP, so
+         they have to divide by the strip's real width -- dividing by d, the
+         width a strip would be without the overlap, drew every page in the
+         book 12% too wide and slid it sideways the moment it lifted. That
+         is what made a trimmed sticker jump back to its full size on the
+         turn: it was not the crop coming off, it was the whole page
+         changing size under it. */
+      inner.style.width = (100 / sw * 100).toFixed(3) + "%";
+      inner.style[hingeRight ? "right" : "left"] = (-startPct / sw * 100).toFixed(3) + "%";
+      /* and centre the page in the strip, for whatever vertical bleed
+         there is -- none, as it stands */
+      inner.style.top = (VBLEED / vspan * 100).toFixed(3) + "%";
+      inner.style.height = (100 / vspan * 100).toFixed(3) + "%";
 
-      var clone = pageNode.cloneNode(true);
-      clone.classList.add("in-leaf", "on");
-      inner.appendChild(clone);
+      inner.appendChild(master.cloneNode(true));
       strip.appendChild(inner);
-      strip.appendChild(el("sb-strip-shade"));
+      /* THE SHADE HAS TO STOP AT THE PAGE.
+
+         inset:0 on this was the grey striped slab he photographed. A strip
+         reaches past the page on the spine side, so the piece of a sticker
+         that crosses the gutter has something to ride on -- and the shading
+         layer was painting its light-and-dark gradient across every bit of
+         that, including the empty margin where there is no paper at all.
+         A row of translucent grey panels hanging off the book in mid-turn:
+         it stopped looking like a page and started looking like glass.
+
+         So the shade is sized to where the paper actually is inside this
+         strip, and nowhere else. For the strips in the middle that is the
+         whole strip; for the two on the ends it is the part that overlaps
+         the page. */
+      var shade = el("sb-strip-shade");
+      var sL = Math.max(0, (0 - startPct) / sw * 100);
+      var sR = Math.min(100, (100 - startPct) / sw * 100);
+      shade.style.left = sL.toFixed(3) + "%";
+      shade.style.width = Math.max(0, sR - sL).toFixed(3) + "%";
+      shade.style.top = (VBLEED / vspan * 100).toFixed(3) + "%";
+      shade.style.height = (100 / vspan * 100).toFixed(3) + "%";
+      /* the lit cut edge is drawn from these too -- it was running the full
+         height of the strip, which put a bright hairline in the air above
+         and below the book */
+      strip.style.setProperty("--pt", (VBLEED / vspan * 100).toFixed(3) + "%");
+      strip.style.setProperty("--ph", (100 / vspan * 100).toFixed(3) + "%");
+      strip.appendChild(shade);
+      /* The light on this strip is written here, not on the strip. Custom
+         properties inherit, and a strip's subtree is an entire copy of the
+         page -- so setting the four light values on the strip, sixty times
+         a second, told the browser to restyle a couple of hundred nodes
+         per strip per frame for four numbers that only one childless
+         element ever reads. */
+      strip._shade = shade;
       frag.appendChild(strip);
     }
     return frag;
@@ -3238,11 +4071,44 @@ window.Scrapbook = (function () {
     return { lift: pageEls[from[0]], back: pageEls[to[to.length - 1]], aR: true, bR: false };
   }
 
+  /* THE PAGE THAT COMES OUT FROM UNDER THE SHEET.
+
+     Its photographs are lazy, and a lazy image starts loading when it
+     comes into view -- which is the exact moment the sheet lifts off it.
+     So the page it uncovered spent the turn showing empty frames and
+     filled in afterwards, which is the photos "disappearing" on the turn
+     seen from the other side. Waking them while the book is sitting still
+     costs nothing anybody can feel and the page is ready before it is
+     ever seen. */
+  function warmView(i) {
+    var v = views[i];
+    if (!v) return;
+    v.forEach(function (pi) {
+      var pg = pageEls[pi];
+      if (!pg || pg.dataset.warm) return;
+      pg.dataset.warm = "1";
+      var imgs = pg.getElementsByTagName("img");
+      for (var k = 0; k < imgs.length; k++) {
+        var im = imgs[k];
+        im.loading = "eager";
+        /* Loaded is not the same as ready to show. Decoding is asynchronous
+           by default, so an image can be fully downloaded and still take a
+           frame or two to turn into pixels -- which is long enough to see a
+           blank frame where a photograph should be. Decoding it now means
+           it is already a bitmap by the time the sheet lifts off it. */
+        if (im.decode) { try { im.decode().catch(function () {}); } catch (e) {} }
+      }
+    });
+  }
+
   function schedulePreTurn() {
     clearTimeout(preTimer);
     preTurn = null;
     preTimer = setTimeout(function () {
       if (flip.on || turning) return;
+      warmView(viewIndex);
+      warmView(viewIndex + 1);
+      warmView(viewIndex - 1);
       var w = pagesForTurn(1);
       if (!w) return;
       preTurn = {
@@ -3253,15 +4119,33 @@ window.Scrapbook = (function () {
     }, 260);
   }
 
-  /* How dark a bit of sheet at this angle is. Rebuilding a gradient
-     string every frame means the browser reparses it every frame, so the
-     gradient is written once in CSS and only these two numbers change. */
+  /* HOW A TURNING SHEET IS LIT.
+
+     (The gradients themselves live in the stylesheet and only these
+     numbers change per frame: building a gradient string in script would
+     have the browser reparse it sixty times a second.)
+
+     Two layers ride on every strip: how much light it has lost by facing
+     away from us, and the highlight that slides along the curl. They used
+     to peak at the same place -- both hit their maximum at ninety degrees,
+     so the steepest part of the sheet took two thirds of a dark wash AND
+     half a white one on top of it, and came out a flat grey that read as
+     tracing paper rather than a page. Paper does not do that. It goes
+     darker as it turns away, and the highlight is a glancing thing that
+     happens on the way and is gone before the sheet is edge on. */
   function shadeAt(a) {
-    return Math.max(0, Math.min(0.82, 0.62 * (1 - Math.cos(a))));
+    return Math.max(0, Math.min(0.72, 0.58 * (1 - Math.cos(a))));
   }
   function sheenAt(a) {
-    var sn = Math.sin(a);
-    return Math.max(0, 0.30 * sn * sn * sn);
+    var sn = Math.max(0, Math.sin(a));
+    /* a narrow band around 62 degrees -- the angle at which a sheet of
+       paper actually catches the light and throws it back at you */
+    var t = (a - 1.08) / 0.34;
+    var crest = 0.15 * Math.exp(-t * t);
+    /* and a whisper of it over the rest of the curl, so the crest has
+       something to sit on rather than appearing out of flat shade */
+    var body = 0.05 * sn * sn * sn;
+    return crest + body;
   }
 
   /* place every strip on the cylinder, and light it by how it faces us */
@@ -3269,14 +4153,25 @@ window.Scrapbook = (function () {
     if (!leaf || leaf.dataset.empty) return;
     var strips = leaf.children, n = strips.length;
     if (!n) return;
-    var d = W / n;
+    var span = 1 + BLEED / 100;
+    var d = (W * span) / n;
+    var s0 = -W * (BLEED / 100);          /* measured from the hinge, both ways */
     var sign = hingeRight ? -1 : 1;
     for (var i = 0; i < n; i++) {
-      var s = i * d;
-      var aTan = A - kappa * s;
-      var x, z;
-      if (Math.abs(kappa) < 1e-6) { x = s * Math.cos(A); z = s * Math.sin(A); }
-      else {
+      var s = s0 + i * d;
+      var aTan, x, z;
+      if (s < 0) {
+        /* Behind the leading edge -- the part hanging over the gutter. The
+           sheet is not bent back there, it lies flat along the spine, so
+           these strips run straight off the first one's tangent. Curving
+           them backwards would fold the overhang the wrong way. */
+        aTan = A;
+        x = s * Math.cos(A);
+        z = s * Math.sin(A);
+      } else if (Math.abs(kappa) < 1e-6) {
+        aTan = A; x = s * Math.cos(A); z = s * Math.sin(A);
+      } else {
+        aTan = A - kappa * s;
         x = (Math.sin(A) - Math.sin(A - kappa * s)) / kappa;
         z = (Math.cos(A - kappa * s) - Math.cos(A)) / kappa;
       }
@@ -3289,12 +4184,21 @@ window.Scrapbook = (function () {
          flat would band the sheet, so every strip runs from its own angle
          to the next one's — the joins then match and the light reads as
          one continuous curve. */
-      var aEnd = A - kappa * (s + d);
-      var st2 = st.style;
+      var sEnd = s + d;
+      var aEnd = sEnd <= 0 ? A : A - kappa * sEnd;
+      var st2 = (st._shade || st).style;
       st2.setProperty("--d0", shadeAt(aTan).toFixed(3));
       st2.setProperty("--d1", shadeAt(aEnd).toFixed(3));
       st2.setProperty("--s0", sheenAt(aTan).toFixed(3));
       st2.setProperty("--s1", sheenAt(aEnd).toFixed(3));
+      /* the cut edge, on the outermost strip only: brightest when the
+         sheet is side-on to us, which is when you would really see it,
+         and gone by the time the page is flat either way */
+      if (i === n - 1) {
+        /* this one is read by the strip's own ::after, so it does belong
+           on the strip -- and it is one strip, once a frame */
+        st.style.setProperty("--edge", Math.max(0, Math.sin(aEnd)).toFixed(3));
+      }
     }
   }
 
@@ -3304,9 +4208,25 @@ window.Scrapbook = (function () {
     flip.p = p;
 
     var half = p < 0.5;
-    var W = pageW || 1;
-    /* the sheet is straight at either end and most bent in the middle */
-    var kappa = (0.95 / W) * Math.sin(Math.PI * p);
+    /* The width of the sheet itself, not of the book's half. The boards
+       overhang the text block, so the leaf is narrower than pageW by that
+       overhang -- and the strips are placed in real pixels, so getting
+       this wrong slides the whole page sideways as it lifts. */
+    var W = flip.W || pageW || 1;
+    /* The sheet is straight at either end and bent in between -- but not
+       symmetrically. A page resists at first, held by the spine and its
+       own stiffness, and then gives: the flop comes late, not halfway. So
+       the curvature peaks past the middle rather than at it, and it goes a
+       little deeper than it used to now that the crest highlight has
+       something to run along. */
+    var bend = Math.sin(Math.PI * Math.pow(p, 0.82));
+    /* 0.95 was the original depth and it is as far as this construction
+       goes cleanly: the sheet is cut into flat strips, so every joint is a
+       kink, and past about this curvature the kinks open into seams you
+       can see the page through however much the strips overlap. The flop
+       coming late (the power above) is what buys the paper feel here, not
+       bending it harder. */
+    var kappa = (0.97 / W) * bend;
 
     var hasB = !!(e.b && !e.b.dataset.empty);
     e.a.classList.toggle("on", half);
@@ -3384,6 +4304,10 @@ window.Scrapbook = (function () {
        whole book sideways under the turning sheet. */
     var toWide = perView === 2 && views[flip.to].length === 2;
     flip.shift = spineOffset(flip.from) - spineOffset(flip.to);
+    /* the board overhang holds still for the whole turn -- renderView is
+       what changes it, and that runs once the turn is over */
+    flip.W = Math.max(1, pageW -
+      (parseFloat(getComputedStyle(e.outer).getPropertyValue("--board-x")) || 0));
     e.outer.style.setProperty("--page-w", pageW + "px");
     e.outer.style.width = (toWide ? pageW * 2 : pageW) + "px";
     e.outer.classList.toggle("single", perView === 1 || !toWide);
@@ -3528,6 +4452,8 @@ window.Scrapbook = (function () {
     job(function () { PAPER.news   = newsprint(13); });
     job(function () { PAPER.grid   = gridPaper(29); });
     job(function () { PAPER.mauveCloth = denimCloth(37); });
+    /* and one dyed sheet per page, in that page's own colour */
+    buildPagePapers(job);
     /* The cover was #b06a7c: a dusty mid mauve that came out at 37%
        saturation with a purple lean, and next to the cream pages and the
        gold it read as the one dull thing in the book. This is the same
@@ -3535,7 +4461,19 @@ window.Scrapbook = (function () {
        the gate's wine, with gold-cream threads instead of pink ones. The
        cover text is on its own paper label, so going deeper costs no
        contrast and the label and the little stars gain some. */
-    job(function () { PAPER.cover = bookCloth(53, "#9c4750", "rgba(255,224,178,0.14)", "rgba(56,14,24,0.16)"); });
+    /* THE COVER WAS BRICK, AND THE PAGES ARE ROSE.
+
+       Measured rather than argued: every paper in the book renders between
+       hue 349 and 359 -- the pink side of red. The cover rendered at hue
+       1.7, the orange side, and that few degrees is the whole difference
+       between rose-wine and dusty brick. Two things put it there. The dye
+       #9c4750 is itself at hue 6, and the thread lit through it was a
+       gold-cream at hue 38, which dragged the whole cloth further round.
+
+       So: the dye moves to the rose side of red, and the thread is a warm
+       blush rather than a gold one. It is still a deep, rich cloth against
+       cream pages -- it is now the same red as the book it holds. */
+    job(function () { PAPER.cover = bookCloth(53, "#a3395a", "rgba(255,214,206,0.13)", "rgba(52,12,26,0.17)"); });
     job(function () {
       PAPER.endpaper = marbled(71);
       var ep = document.getElementById("sb-endpaper");
@@ -3543,7 +4481,12 @@ window.Scrapbook = (function () {
     });
 
     job(function () { STICK.disco    = discoBall(140); });
-    job(function () { STICK.vinyl8   = vinyl(190, { text: "8" }); });
+    /* This one took the default #141414 -- a pure black disc, and the two
+       pages it sits on are rose. It was the heaviest, coldest thing left in
+       the book once the chrome had been warmed. The other two records are
+       already wine; this is the same family, kept darkest of the three so
+       the "8" still reads. */
+    job(function () { STICK.vinyl8   = vinyl(190, { body: "#2a1119", label: "#f6e7dc", text: "8" }); });
     job(function () { STICK.vinylRose= vinyl(230, { body: "#5b2434", label: "#f2ddd2", text: "" }); });
     job(function () { STICK.vinylLtd = vinyl(200, { body: "#3a1d28", label: "#f2e4d6", text: "" }); });
     job(function () { STICK.lipInk   = lipStamp(120, "#8e3b50"); });
@@ -3669,5 +4612,14 @@ window.Scrapbook = (function () {
   api.prev = prev;
   api.closeLightbox = closeLightbox;
   api.skipIntro = function () { endIntro(false); };
+  /* a hatch for tools/turnshot.js: hold a turn open at a fixed progress so
+     the bend and the light on it can be looked at rather than guessed at.
+     Nothing in the page calls it. */
+  api.__holdTurn = function (dir, p) {
+    if (!flip.on && !beginTurn(dir)) return false;
+    setFlipProgress(p);
+    return true;
+  };
+  api.__releaseTurn = function () { if (flip.on) endTurn(false); };
   return api;
 })();

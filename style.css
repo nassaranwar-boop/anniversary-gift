@@ -122,7 +122,6 @@ summary,
 .sb-pin,
 .gate-key,
 .gate-unlock,
-.dpad3-btn,
 .so-key,
 .sb-extras-btn,
 .sb-lb-close,
@@ -142,9 +141,6 @@ summary,
 #sb-intro-canvas,
 .so-stage,
 .so-pad,
-.dpad-3d,
-.maze-viewport,
-#maze-stage,
 .gate-pad{
   touch-action:none;
   -webkit-touch-callout:none;
@@ -161,7 +157,6 @@ summary,
    screen worth copying, and a passcode pad that highlights its own
    instructions looks broken. */
 .letter-body,
-.note-text,
 .sb-lb-text,
 .hv-note,
 .ks-closing{
@@ -241,6 +236,16 @@ body{
   height:var(--app-h); max-height:var(--app-h);
   font-family:'Poppins',sans-serif; overflow:hidden;
   overscroll-behavior:none; -webkit-tap-highlight-color:transparent;
+  /* Nothing on this site scrolls the document — every screen is its own
+     fixed box, and the two lists that do scroll (the hub, the keepsake)
+     scroll inside themselves. overflow:hidden alone is not enough on iOS:
+     an oversized descendant of a fixed box can still make the page
+     draggable there, which is the strip of nothing he could pull down
+     into; a fixed body has no scrollable content at all, so it cannot
+     happen however wrong anything inside it goes. The box it is fixed to
+     is the measured one above — top/height, never inset:0, because inset
+     resolves against a containing block this whole fix exists to
+     distrust. */
   /* The ground behind every screen. If a screen is ever a pixel short of
      the viewport — mid-rotation, mid-zoom — what shows through is the
      site's own blush rather than a band of white. */
@@ -268,56 +273,6 @@ img{-webkit-user-drag:none; user-select:none;}
 .screen.anim-in{animation:screenIn .65s cubic-bezier(.22,.85,.32,1);}
 @keyframes screenIn{from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);}}
 
-.particle-field{position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:0;}
-/* the floaters are drawn now, so they need a box rather than a font size */
-.particle{
-  position:absolute; bottom:-10%; opacity:0; display:block; overflow:visible;
-  animation:floatUp linear forwards; will-change:transform,opacity;
-  filter:drop-shadow(0 1px 2px rgba(150,80,110,.25));
-}
-@keyframes floatUp{
-  0%{opacity:0; transform:translateY(0) scale(.5) rotate(0deg);}
-  12%{opacity:.9;} 85%{opacity:.75;}
-  100%{opacity:0; transform:translateY(-115vh) scale(1.15) rotate(30deg);}
-}
-
-/* ================= PAPER BACKGROUND SCREENS (pages of the book) ================= */
-.paper-bg{background-image:url("assets/paper.jpg"); background-size:480px 480px; background-repeat:repeat;}
-.paper-bg::before{content:""; position:absolute; inset:0; pointer-events:none;}
-#screen-details.paper-bg::before{background:radial-gradient(circle at 50% 30%, rgba(245,230,210,.15), rgba(180,140,100,.22));}
-#screen-level2intro.paper-bg::before{background:linear-gradient(160deg, rgba(35,15,20,.72), rgba(55,20,20,.68));}
-#screen-divider.paper-bg::before{background:radial-gradient(circle at 50% 45%, rgba(245,230,210,.2), rgba(150,110,70,.25));}
-
-/* dog-eared page corner */
-.dog-ear{
-  position:absolute; bottom:0; right:0; width:0; height:0; z-index:2;
-  border-style:solid; border-width:0 0 30px 30px; border-color:transparent transparent rgba(120,80,40,.16) transparent;
-  filter:drop-shadow(-2px -2px 3px rgba(0,0,0,.15));
-}
-.page-num{position:absolute; bottom:14px; left:0; right:0; text-align:center; font-family:'Playfair Display',serif; font-style:italic; font-size:12px; color:#8a5a3a; opacity:.7; z-index:2;}
-.chapter-label{
-  display:inline-block; border:2px solid #8a3a2a; color:#8a3a2a; font-family:'Cinzel',serif; font-weight:600;
-  font-size:10.5px; letter-spacing:2.5px; padding:5px 14px; border-radius:2px; transform:rotate(-2deg);
-  margin-bottom:12px; opacity:0; animation:stampIn .5s cubic-bezier(.2,1.6,.4,1) .25s forwards;
-}
-#screen-level2intro .chapter-label{border-color:#ff9fd1; color:#ff9fd1;}
-@keyframes stampIn{
-  0%{transform:scale(2.4) rotate(-10deg); opacity:0;}
-  60%{transform:scale(.92) rotate(3deg); opacity:1;}
-  100%{transform:scale(1) rotate(-2deg); opacity:1;}
-}
-/* NOT float:left. A floated first letter inside a centred heading is taken
-   out of the line box and pinned to the left edge, while the rest of the
-   words stay centred — which is why "G" sat marooned an inch away from
-   "ame Details". inline-block keeps it in the line where it belongs. */
-.drop-cap{
-  display:inline-block; font-family:'Playfair Display',serif;
-  font-size:1.55em; line-height:.8; font-weight:700; vertical-align:-.08em;
-  color:#a1237e; margin-right:.02em; text-shadow:1px 1px 0 rgba(255,255,255,.5);
-}
-#screen-level2intro .drop-cap{color:#ff9fd1; text-shadow:1px 1px 0 rgba(0,0,0,.3);}
-.flourish{text-align:center; color:#c48a4a; font-size:13px; opacity:.6; margin:2px 0 8px;}
-
 /* ---- page-turn transition (used between chapters) ---- */
 .screen.page-turning{
   animation:screenExit .42s cubic-bezier(.4,0,.2,1) forwards;
@@ -327,384 +282,6 @@ img{-webkit-user-drag:none; user-select:none;}
   100%{transform:translateY(-10px); opacity:0; filter:blur(10px);}
 }
 .screen{transform-origin:center center;}
-
-/* ================= 3D tactile shared elements ================= */
-.btn-primary{
-  position:relative; overflow:hidden; background:linear-gradient(160deg,#d43a92,#8e1968);
-  color:#fff; border:none; padding:16px 32px; border-radius:34px; font-size:15px; font-weight:600; cursor:pointer;
-  box-shadow:0 6px 0 #6c0f4e, 0 14px 26px rgba(145,26,110,.4), inset 0 1px 0 rgba(255,255,255,.3);
-  transition:transform .12s ease, box-shadow .12s ease;
-}
-.btn-primary::after{content:""; position:absolute; top:0; left:-60%; width:40%; height:100%; background:linear-gradient(120deg,transparent,rgba(255,255,255,.55),transparent); transform:skewX(-20deg); transition:left .55s ease;}
-.btn-primary:hover::after{left:130%;}
-.btn-primary:active{transform:translateY(4px); box-shadow:0 2px 0 #6c0f4e, 0 6px 14px rgba(145,26,110,.4), inset 0 1px 0 rgba(255,255,255,.3);}
-
-.btn-ghost{
-  background:rgba(255,255,255,.88); color:#555; border:1px solid rgba(0,0,0,.06); padding:12px 18px; border-radius:30px;
-  font-size:13px; font-weight:500; cursor:pointer; box-shadow:0 4px 0 rgba(0,0,0,.08), 0 8px 18px rgba(0,0,0,.14);
-  transition:left .18s ease, top .18s ease, transform .1s ease; z-index:5;
-}
-.btn-ghost:active{transform:translateY(3px);}
-
-/* ================= SCREEN 1 — COVER ================= */
-.mascot-img{width:148px; height:auto; display:block; margin:0 auto 4px; filter:drop-shadow(0 14px 18px rgba(90,40,70,.32)); animation:gentleFloat 3.4s ease-in-out infinite;}
-.mascot-img.small{width:128px;}
-@keyframes gentleFloat{0%,100%{transform:translateY(0) rotate(-1deg);} 50%{transform:translateY(-9px) rotate(1deg);}}
-
-#screen-hello{
-  background:
-    radial-gradient(circle at 82% 8%, rgba(255,224,160,.55), transparent 40%),
-    linear-gradient(180deg, #7fb8e8 0%, #9bb0e8 35%, #c79ce0 68%, #ef9cc8 100%);
-  background-size:220% 220%; animation:bgShiftToy 16s ease-in-out infinite;
-}
-@keyframes bgShiftToy{0%,100%{background-position:0% 30%;} 50%{background-position:100% 70%;}}
-#screen-hello::after{content:""; position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 100px rgba(60,20,70,.18); z-index:1;}
-
-.toy-cloud{position:absolute; background:rgba(255,255,255,.9); border-radius:50px; z-index:1;}
-.toy-cloud::before,.toy-cloud::after{content:""; position:absolute; background:inherit; border-radius:50%;}
-.tc1{width:110px; height:32px; top:10%; left:8%; animation:cloudDrift 26s ease-in-out infinite;}
-.tc1::before{width:44px; height:44px; top:-20px; left:10px;}
-.tc1::after{width:34px; height:34px; top:-14px; left:56px;}
-.tc2{width:84px; height:24px; top:20%; right:10%; opacity:.85; animation:cloudDrift 32s ease-in-out infinite reverse;}
-.tc2::before{width:32px; height:32px; top:-14px; left:8px;}
-.tc2::after{width:26px; height:26px; top:-10px; left:40px;}
-.tc3{width:70px; height:20px; top:6%; right:28%; opacity:.7; animation:cloudDrift 22s ease-in-out infinite 2s;}
-.tc3::before{width:26px; height:26px; top:-11px; left:8px;}
-.tc3::after{width:20px; height:20px; top:-8px; left:32px;}
-@keyframes cloudDrift{0%,100%{transform:translateX(0);} 50%{transform:translateX(18px);}}
-
-.cover-content{position:relative; z-index:2; text-align:center; padding:18px 30px; max-width:390px;}
-.cover-script{font-family:'Fredoka',sans-serif; font-weight:600; font-size:23px; color:#fff; text-shadow:0 2px 0 rgba(0,0,0,.12); opacity:.95; animation:bounceIn .6s cubic-bezier(.34,1.6,.4,1) both;}
-.cover-title{
-  font-family:'Fredoka',sans-serif; font-weight:700; font-size:46px; color:#fff; letter-spacing:.5px; margin:0 0 4px;
-  text-shadow:0 5px 0 #d9276f, 0 12px 24px rgba(90,10,50,.35);
-  animation:bounceIn .7s cubic-bezier(.34,1.6,.4,1) .1s both;
-}
-@keyframes bounceIn{
-  0%{transform:scale(.3) translateY(26px); opacity:0;}
-  60%{transform:scale(1.08) translateY(-6px); opacity:1;}
-  80%{transform:scale(.96) translateY(2px);}
-  100%{transform:scale(1) translateY(0);}
-}
-.cover-rule{display:none;}
-.cover-subtitle{font-family:'Poppins',sans-serif; font-weight:500; font-size:13px; color:#fff0f6; opacity:.85; margin-bottom:14px;}
-
-.cover-seal{width:150px; height:auto; margin:8px auto 14px; position:relative;}
-.cover-seal img{width:100%; height:auto; filter:drop-shadow(0 16px 18px rgba(60,10,40,.35)); animation:gentleFloat 3.2s ease-in-out infinite;}
-.cover-question{color:#fff; margin-bottom:22px; font-weight:600; font-size:15px; font-family:'Fredoka',sans-serif; text-shadow:0 2px 0 rgba(0,0,0,.1);}
-.hello-buttons{display:flex; flex-direction:column; gap:14px; align-items:center;}
-
-.btn-wax{
-  position:relative; overflow:hidden; background:linear-gradient(160deg,#ff6fa8,#d9276f);
-  color:#fff; border:none; padding:17px 34px; border-radius:40px; font-family:'Fredoka',sans-serif; font-size:16px; font-weight:600; cursor:pointer;
-  box-shadow:0 7px 0 #a01452, 0 16px 28px rgba(170,20,80,.4), inset 0 2px 0 rgba(255,255,255,.35);
-  transition:transform .12s ease, box-shadow .12s ease;
-}
-.btn-wax::after{content:""; position:absolute; top:0; left:-60%; width:40%; height:100%; background:linear-gradient(120deg,transparent,rgba(255,255,255,.6),transparent); transform:skewX(-20deg); transition:left .55s ease;}
-.btn-wax:hover::after{left:130%;}
-.btn-wax:active{transform:translateY(5px); box-shadow:0 2px 0 #a01452, 0 6px 14px rgba(170,20,80,.35), inset 0 2px 0 rgba(255,255,255,.3);}
-
-/* ================= SCREEN 2 — DETAILS ================= */
-.details-card{
-  position:relative; background:linear-gradient(165deg,#fffafd,#fdeef6); border-radius:14px; padding:30px 26px 26px;
-  max-width:380px; width:88vw; text-align:center;
-  box-shadow:0 10px 0 rgba(150,40,110,.18), 0 30px 60px rgba(120,20,90,.35), 0 0 0 7px rgba(255,255,255,.55), inset 0 0 0 1px rgba(120,60,40,.18), inset 0 0 0 8px rgba(255,255,255,.5);
-  outline:1px solid rgba(120,60,40,.15); outline-offset:-11px;
-  z-index:1;
-}
-.details-card::before{display:none;}
-
-.badge-pill{
-  display:inline-block; background:linear-gradient(160deg,#ffd166,#ff9fc9); color:#7a1145; font-weight:700; font-size:11.5px;
-  letter-spacing:.4px; padding:5px 14px; border-radius:20px; margin-bottom:10px; box-shadow:0 3px 0 rgba(150,70,40,.25), 0 4px 10px rgba(200,80,120,.3);
-}
-.details-card h2{color:#a1237e; margin:4px 0 16px; font-size:24px;}
-/* A short phone: the Chapter Two card carries six rows and came out a few
-   pixels taller than a 667px screen. A centred flex child that overflows
-   is clipped at BOTH ends and cannot be scrolled back to, so those pixels
-   are gone rather than merely off-screen — tighten the rhythm instead. */
-@media (max-height:700px){
-  .details-card{padding-top:16px; padding-bottom:16px;}
-  .details-card .info-row{margin:7px 0; padding:9px 12px;}
-  .details-card .card-rule{margin:7px auto 9px;}
-  .details-card .mascot-img.small{max-height:74px;}
-}
-
-/* ---- the chapter cards ----
-   The headings were built from a floated drop cap and an emoji; both are
-   gone. The icons are drawn from one sprite so they share a weight and a
-   palette instead of being whatever picture the device happens to ship. */
-.card-title{
-  font-family:'Fredoka',sans-serif; font-weight:600;
-  font-size:clamp(19px,5.2vw,25px); line-height:1.25;
-  color:#a1237e; margin:2px 0 0; text-align:center;
-}
-#screen-level2intro .info-row .ic-badge{color:#8c2358;}
-#screen-level2intro .card-title{color:#ffa9d8;}
-.card-rule{
-  display:block; width:64px; height:0; margin:9px auto 12px; position:relative;
-  border-top:1.5px solid rgba(196,138,74,.45);
-}
-.card-rule::after{
-  content:""; position:absolute; left:50%; top:0; width:5px; height:5px;
-  transform:translate(-50%,-50%) rotate(45deg);
-  background:rgba(196,138,74,.6);
-}
-#screen-level2intro .card-rule{border-top-color:rgba(255,169,216,.4);}
-#screen-level2intro .card-rule::after{background:rgba(255,169,216,.55);}
-
-.ic{
-  width:56%; height:56%; display:block;
-  fill:none; stroke:currentColor; stroke-width:1.7;
-  stroke-linecap:round; stroke-linejoin:round;
-}
-/* the heart and the wisp read better as solids at this size */
-.ic-badge .ic use[href="#ic-heart"],.ic-badge .ic use[href="#ic-spark"]{fill:currentColor;}
-
-.info-row{
-  display:flex; align-items:center; gap:12px; background:rgba(161,35,126,.06); border-radius:16px; padding:11px 14px; margin:10px 0; text-align:left;
-  box-shadow:inset 0 1px 2px rgba(255,255,255,.7), inset 0 -1px 3px rgba(150,50,110,.08);
-}
-.info-row .ic-badge{
-  width:36px; height:36px; flex-shrink:0; border-radius:50%; display:flex; align-items:center; justify-content:center;
-  color:#a1237e;   /* the icons draw with currentColor */
-  background:linear-gradient(160deg,#ffe1ef,#ffc4e0); box-shadow:0 2px 0 rgba(180,90,140,.25), inset 0 1px 0 rgba(255,255,255,.7);
-}
-.info-row .tx{font-size:13.5px; color:#5a4a63; line-height:1.4;}
-.info-row .tx b{color:#911a6e;}
-.details-card .note-sticker{position:absolute; width:18px; height:18px;}
-.note-sticker svg{width:100%; height:100%; display:block;}
-.details-card .s1{top:10px; right:16px; animation:twinkle 2.2s ease-in-out infinite;}
-.details-card .s2{bottom:64px; left:12px; animation:twinkle 2.6s ease-in-out infinite .4s;}
-.best-time{font-size:12px; color:#a1237e; opacity:.8; margin-top:10px;}
-
-/* ================= LEVEL 2 INTRO ================= */
-#screen-level2intro .details-card{background:linear-gradient(165deg,#241333,#2c1740); box-shadow:0 10px 0 rgba(0,0,0,.3), 0 30px 60px rgba(0,0,0,.45);}
-#screen-level2intro .details-card h2{color:#ff9fd1;}
-#screen-level2intro .info-row{background:rgba(255,143,196,.09); box-shadow:inset 0 1px 2px rgba(255,255,255,.08);}
-#screen-level2intro .info-row .tx{color:#e7d6ee;}
-#screen-level2intro .info-row .tx b{color:#ff9fd1;}
-#screen-level2intro .badge-pill{background:linear-gradient(160deg,#ff5b98,#a1237e); color:#fff;}
-
-/* ================= SCREEN 3 — MAZE (premium arcade look) ================= */
-#screen-maze{
-  position:fixed;
-  background:
-    radial-gradient(circle at 16% 14%, rgba(255,214,180,.24), transparent 48%),
-    radial-gradient(circle at 84% 24%, rgba(255,178,164,.20), transparent 48%),
-    radial-gradient(circle at 50% 92%, rgba(196,150,130,.18), transparent 54%),
-    linear-gradient(168deg,#3c2a24 0%,#4c352c 45%,#2a1c18 100%);
-  background-size:180% 180%, 180% 180%, 180% 180%, 100% 100%;
-  animation:mazeBgDrift 18s ease-in-out infinite;
-}
-@keyframes mazeBgDrift{0%,100%{background-position:0% 0%,100% 0%,50% 100%,0 0;} 50%{background-position:20% 30%,80% 20%,45% 90%,0 0;}}
-.maze-stars{position:absolute; inset:0; pointer-events:none;}
-.maze-stars span{position:absolute; width:2px; height:2px; background:#ffe9b8; opacity:.5; animation:twinkle 2.6s ease-in-out infinite;}
-@keyframes twinkle{0%,100%{opacity:.15;} 50%{opacity:1;}}
-
-.hud-bar{display:flex; gap:9px; margin-bottom:14px; z-index:2; position:relative; flex-wrap:wrap; justify-content:center; max-width:92vw;}
-/* the HUD labels are drawn now, not glyphs */
-.hud-ico-fill{fill:currentColor; stroke:none;}
-.hud-ico{
-  width:14px; height:14px; display:block;
-  fill:none; stroke:currentColor; stroke-width:1.8;
-  stroke-linecap:round; stroke-linejoin:round;
-}
-
-.hud-pill{
-  background:linear-gradient(160deg,rgba(255,226,170,.20),rgba(255,200,130,.06)); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-  border:1px solid rgba(255,222,160,.28); border-radius:14px; padding:7px 12px;
-  display:flex; align-items:center; gap:6px;
-  box-shadow:0 3px 0 rgba(0,0,0,.22), 0 8px 18px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.25);
-}
-.hud-pill .lab{font-size:13px;}
-.hud-pill .val{font-family:'Fredoka',sans-serif; font-weight:600; font-size:13px; color:#ffeecd; letter-spacing:.3px;}
-.hp-pips{display:flex; gap:2px;}
-.hp-pips img{width:15px; height:auto; image-rendering:pixelated;}
-.hud-hearts-l2{display:none;}
-.hud-hidden-badge{display:none; background:rgba(90,220,140,.2); border-color:rgba(150,255,180,.4);}
-.hud-hidden-badge.show{display:flex;}
-.hud-key-badge{display:none; background:rgba(255,209,102,.22); border-color:rgba(255,209,102,.5);}
-.hud-key-badge.show{display:flex;}
-.hud-key-badge img{width:14px; height:auto; image-rendering:pixelated;}
-
-.toast-wrap{position:absolute; top:78px; left:0; right:0; display:flex; justify-content:center; z-index:40; pointer-events:none;}
-.toast{
-  background:rgba(52,30,12,.94); color:#ffeecd; font-size:13px; font-weight:600; padding:8px 16px; border-radius:20px;
-  box-shadow:0 8px 20px rgba(0,0,0,.4); animation:toastPop 1.7s ease forwards;
-}
-@keyframes toastPop{0%{opacity:0; transform:translateY(-8px) scale(.9);} 15%{opacity:1; transform:translateY(0) scale(1);} 80%{opacity:1;} 100%{opacity:0; transform:translateY(-6px);}}
-
-.book-spread{
-  position:relative; width:min(92vw,410px); padding:11px; border-radius:24px;
-  background:linear-gradient(155deg,#8a5a2c,#6b3f1c 55%,#4a2a11);
-  box-shadow:0 8px 0 #3a2210, 0 0 0 3px rgba(255,222,160,.18), 0 26px 55px rgba(0,0,0,.5), 0 0 45px rgba(255,180,90,.20), inset 0 2px 4px rgba(255,226,170,.22);
-}
-.book-spread::before{display:none;}
-.maze-outer{position:relative; width:100%; aspect-ratio:1/1; padding:0; border-radius:16px; background:transparent;}
-.maze-stage{position:relative; width:100%; height:100%; border-radius:16px; overflow:hidden; background:#150c06; box-shadow:inset 0 3px 14px rgba(0,0,0,.6), 0 14px 34px rgba(60,32,10,.45);}
-.maze-grid{position:absolute; inset:0; display:grid;}
-.cell{background-size:100% 100%; image-rendering:pixelated;}
-.cell.wall{box-shadow:inset 0 0 0 1px rgba(0,0,0,.35), inset 0 2px 3px rgba(255,214,150,.10);}
-.cell.path{box-shadow:inset 0 -2px 5px rgba(120,80,30,.20);}
-/* where she has already walked, lit faintly so the way back is readable */
-.cell.path.visited{box-shadow:inset 0 0 0 1px rgba(255,214,150,.16), inset 0 -2px 5px rgba(120,80,30,.20);}
-.cell.path.visited::after{
-  content:""; position:absolute; inset:0;
-  background:radial-gradient(circle at 50% 50%, rgba(255,206,140,.18), transparent 72%);
-}
-.cell{position:relative;}
-
-/* particle layer over the maze */
-.maze-fx{position:absolute; inset:0; z-index:7; pointer-events:none;}
-
-.heart-collect{position:absolute; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:3; animation:heartPulse 1.4s ease-in-out infinite;}
-.heart-collect svg{width:100%; height:100%; display:block; fill:#ff8fb8;
-  filter:drop-shadow(0 0 5px rgba(255,120,170,.75));}
-@keyframes heartPulse{0%,100%{transform:scale(.85);} 50%{transform:scale(1.05);}}
-.heart-pop{position:absolute; pointer-events:none; z-index:8; font-weight:700; color:#ff5b98; font-size:14px; animation:popUp .7s ease-out forwards;}
-@keyframes popUp{0%{opacity:0; transform:translateY(0) scale(.6);} 25%{opacity:1;} 100%{opacity:0; transform:translateY(-30px) scale(1.2);}}
-
-.entity{position:absolute; pointer-events:none; z-index:3; image-rendering:pixelated;}
-.entity.med{animation:heartPulse 1.3s ease-in-out infinite;}
-.entity.key-entity{animation:heartPulse 1.1s ease-in-out infinite; filter:drop-shadow(0 0 6px rgba(255,209,102,.7));}
-.tree-entity{z-index:3;}
-.monster-entity{transition:left .5s ease, top .5s ease; filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));}
-.shooter-entity{filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));}
-/* ---- the watchers: what they are about to do, and what they fired ----
-   The old version showed an exclamation emoji and then took a heart with
-   nothing in between. These are the two things that make it legible: the
-   corridor it is aiming down, and the bolt actually travelling it. */
-#bolts-layer{position:absolute; inset:0; pointer-events:none; z-index:6;}
-.mz-beam{
-  position:absolute; opacity:0; border-radius:2px;
-  background:linear-gradient(90deg,rgba(255,120,120,.05),rgba(255,120,120,.42),rgba(255,120,120,.05));
-  box-shadow:0 0 10px rgba(255,90,90,.45);
-  transition:opacity .12s ease;
-}
-.mz-beam.on{opacity:1; animation:mzBeamPulse .42s ease-in-out infinite alternate;}
-@keyframes mzBeamPulse{from{opacity:.55;} to{opacity:1;}}
-
-.mz-bolt{
-  position:absolute; pointer-events:none;
-  transition:left .1s linear, top .1s linear, opacity .16s ease, transform .16s ease;
-  filter:drop-shadow(0 0 6px rgba(255,140,110,.9));
-}
-.mz-bolt svg{width:100%; height:100%; display:block; fill:#ffd9a0;}
-.mz-bolt.gone{opacity:0; transform:scale(1.9);}
-
-/* it holds an SVG now, so it needs a box rather than a font size */
-.shooter-alert{position:absolute; z-index:7; width:15px; height:15px; opacity:0; pointer-events:none; animation:alertPulse .7s ease-in-out infinite;}
-.shooter-alert svg{width:100%; height:100%; display:block; fill:#ffcf5a; stroke:#7a3a10; stroke-width:1.6; stroke-linejoin:round;}
-.shooter-alert svg .bang{fill:#7a3a10; stroke:#7a3a10; stroke-width:2.2; stroke-linecap:round;}
-.shooter-alert.show{opacity:1;}
-@keyframes alertPulse{0%,100%{transform:translateY(0) scale(1); opacity:.6;} 50%{transform:translateY(-4px) scale(1.2); opacity:1;}}
-
-.fog-layer{position:absolute; inset:0; z-index:5; pointer-events:none;}
-.damage-flash{position:absolute; inset:0; z-index:9; pointer-events:none; background:radial-gradient(circle,rgba(255,40,60,.05),rgba(160,10,20,.55)); opacity:0;}
-.damage-flash.hit{animation:dmgFlash .5s ease-out;}
-@keyframes dmgFlash{0%{opacity:1;} 100%{opacity:0;}}
-.maze-stage.shake{animation:shakeIt .4s ease;}
-@keyframes shakeIt{0%,100%{transform:translateX(0);} 20%{transform:translateX(-6px);} 40%{transform:translateX(5px);} 60%{transform:translateX(-4px);} 80%{transform:translateX(3px);}}
-.maze-stage.locked-shake{animation:shakeIt .35s ease;}
-
-.lock-badge{position:absolute; z-index:8; font-size:14px; pointer-events:none; filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));}
-
-.token{position:absolute; pointer-events:none;}
-.player-token{
-  z-index:8;
-  transition:left .15s cubic-bezier(.34,1.2,.5,1), top .15s cubic-bezier(.34,1.2,.5,1);
-  filter:drop-shadow(0 3px 6px rgba(0,0,0,.5)) drop-shadow(0 0 10px rgba(255,206,140,.35));
-}
-.player-token.stepping{animation:stepSquash .18s ease;}
-@keyframes stepSquash{
-  0%{transform:scaleX(var(--fx,1)) scale(1);}
-  45%{transform:scaleX(var(--fx,1)) scale(1.12,.9);}
-  100%{transform:scaleX(var(--fx,1)) scale(1);}
-}
-.player-token.face-left{--fx:-1;}
-.hud-pill.pop{animation:hudPop .34s var(--ease-pop);}
-@keyframes hudPop{0%{transform:scale(1);}40%{transform:scale(1.22);}100%{transform:scale(1);}}
-
-.player-token.hidden-state{opacity:.35;}
-.target-token{z-index:7; filter:drop-shadow(0 0 10px rgba(255,143,196,.85)) drop-shadow(0 3px 5px rgba(0,0,0,.4)); animation:idleBob 1.7s ease-in-out infinite;}
-.target-token.locked{filter:drop-shadow(0 0 8px rgba(150,150,160,.6)) drop-shadow(0 3px 5px rgba(0,0,0,.4)) grayscale(.6);}
-@keyframes idleBob{0%,100%{transform:translateY(0);} 50%{transform:translateY(-7%);}}
-.beacon-glow{position:absolute; z-index:6; border-radius:50%; background:radial-gradient(circle, rgba(255,180,220,.55), transparent 70%); pointer-events:none; animation:beaconPulse 1.7s ease-in-out infinite;}
-.beacon-glow.locked{background:radial-gradient(circle, rgba(160,160,180,.35), transparent 70%);}
-@keyframes beaconPulse{0%,100%{opacity:.55; transform:scale(1);} 50%{opacity:.9; transform:scale(1.15);}}
-
-/* ---- premium 3D D-pad ---- */
-.dpad-3d{
-  margin-top:16px; display:grid; grid-template-columns:50px 50px 50px; grid-template-rows:50px 50px 50px; gap:4px; z-index:2; position:relative;
-}
-/* one chevron, rotated; cut into the key rather than printed on it */
-.mz-ico{width:46%; height:46%; display:block; pointer-events:none;}
-.mz-ico-cut{fill:#5a3412; opacity:.92;}
-.mz-ico-lip{fill:rgba(255,244,214,.75);}
-.dpad3-up    .mz-ico{transform:rotate(0deg);}
-.dpad3-right .mz-ico{transform:rotate(90deg);}
-.dpad3-down  .mz-ico{transform:rotate(180deg);}
-.dpad3-left  .mz-ico{transform:rotate(270deg);}
-.dpad3-btn:active .mz-ico-cut,.dpad3-btn.held .mz-ico-cut{fill:#3f2209;}
-
-.dpad3-btn{
-  border:none; cursor:pointer; color:#4a2a10; font-size:16px; display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(160deg,#f0c274,#c8873a);
-  box-shadow:0 4px 0 #8a5a22, inset 0 1px 0 rgba(255,246,214,.6), inset 0 -3px 5px rgba(90,50,10,.25);
-  transition:transform .08s ease, box-shadow .08s ease;
-}
-.dpad3-btn:active{transform:translateY(3px); box-shadow:0 1px 0 #8a5a22, inset 0 1px 0 rgba(255,246,214,.45);}
-.dpad3-up{grid-column:2; grid-row:1; border-radius:16px 16px 6px 6px;}
-.dpad3-left{grid-column:1; grid-row:2; border-radius:16px 6px 6px 16px;}
-.dpad3-right{grid-column:3; grid-row:2; border-radius:6px 16px 16px 6px;}
-.dpad3-down{grid-column:2; grid-row:3; border-radius:6px 6px 16px 16px;}
-.dpad3-hub{
-  grid-column:2; grid-row:2; border-radius:50%;
-  background:radial-gradient(circle at 35% 30%, #ffd9a0, #e07a3c 75%);
-  box-shadow:0 3px 0 #a05420, inset 0 1px 3px rgba(255,246,214,.6);
-}
-
-/* ================= DIALOGUE — cute love-note ================= */
-.dialogue-overlay{position:fixed; inset:0; background:rgba(15,4,25,.6); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; z-index:50;}
-.dialogue-overlay.hidden{display:none;}
-.note-card{
-  position:relative; z-index:1; background:linear-gradient(160deg,#fff8fb,#ffe9f4); border-radius:20px; padding:28px 22px 20px;
-  max-width:340px; width:88vw; box-shadow:0 10px 0 rgba(150,40,90,.2), 0 28px 55px rgba(80,10,60,.4), inset 0 0 0 1px rgba(255,255,255,.7);
-  transform:rotate(-1deg); animation:notePop .5s cubic-bezier(.25,1.4,.4,1);
-}
-@keyframes notePop{0%{opacity:0; transform:rotate(-1deg) scale(.82) translateY(14px);} 100%{opacity:1; transform:rotate(-1deg) scale(1) translateY(0);}}
-.washi-tape{
-  position:absolute; top:-13px; left:50%; transform:translateX(-50%) rotate(-3deg); width:92px; height:24px;
-  background:repeating-linear-gradient(45deg,#ffb6d5,#ffb6d5 6px,#ff97c3 6px,#ff97c3 12px); opacity:.9; border-radius:2px; box-shadow:0 3px 8px rgba(0,0,0,.18);
-}
-.note-avatar{width:66px; height:66px; margin:8px auto 10px; border-radius:50% 50% 50% 6px; overflow:hidden; border:3px solid #fff; box-shadow:0 8px 16px rgba(217,55,91,.35);}
-.note-avatar img{width:100%; height:100%; object-fit:cover; object-position:top center;}
-.note-name{text-align:center; font-family:'Fredoka',sans-serif; color:#d9375b; font-weight:700; font-size:16px; margin-bottom:6px;}
-.note-text{font-family:'Caveat',cursive; font-weight:600; font-size:23px; line-height:1.35; color:#6a3350; text-align:center; min-height:64px; padding:0 4px;}
-.note-footer{display:flex; align-items:center; justify-content:space-between; margin-top:10px;}
-.dialogue-dots{display:flex; gap:5px;}
-.dialogue-dots span{width:6px; height:6px; border-radius:50%; background:rgba(160,60,110,.25); transition:background .2s ease, transform .2s ease;}
-.dialogue-dots span.on{background:#d9375b; transform:scale(1.3);}
-.btn-next-note{
-  background:linear-gradient(160deg,#ff9fd1,#d9375b); color:#fff; border:none; padding:9px 18px; border-radius:20px;
-  font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 4px 0 #8a1a45, 0 8px 18px rgba(217,55,91,.4); transition:transform .1s ease, box-shadow .1s ease;
-}
-.btn-next-note:active{transform:translateY(3px); box-shadow:0 1px 0 #8a1a45, 0 4px 10px rgba(217,55,91,.4);}
-/* the stickers hold drawn shapes now, so they need a box not a font size */
-.note-sticker{position:absolute; width:19px; height:19px; pointer-events:none;}
-.note-sticker svg{width:100%; height:100%; display:block;}
-.n-s1{top:-6px; right:10px; animation:twinkle 2s ease-in-out infinite;}
-.n-s2{bottom:-6px; left:6px; animation:twinkle 2.4s ease-in-out infinite .3s;}
-
-/* ================= DIVIDER PAGE (before the true ending) ================= */
-#screen-divider .divider-content{text-align:center; padding:0 30px;}
-.divider-ornament{font-size:20px; color:#c48a4a; opacity:.7; margin:8px 0;}
-.divider-text{
-  font-family:'Playfair Display',serif; font-style:italic; font-weight:600; font-size:26px; line-height:1.5;
-  color:#6a3a1a; opacity:0; animation:fadeInSoft 1.2s ease .3s forwards;
-}
-@keyframes fadeInSoft{to{opacity:1;}}
 
 /* ================= SCREEN 4 — NIGHT SKY ENDING (unchanged pixel style, new scene system) ================= */
 #screen-end{background:#100821;}
@@ -800,8 +377,6 @@ img{-webkit-user-drag:none; user-select:none;}
 @media (prefers-reduced-motion:reduce){ .btn-replay{animation:none;} }
 
 @media (max-width:420px){
-  .hello-card h1{font-size:27px;} .hello-card h2{font-size:25px;} .mascot-img{width:118px;}
-  .hud-pill .val{font-size:9px;} .hud-pill{padding:6px 9px;}
 }
 
 /* ============================================================
@@ -816,7 +391,16 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* ---- Three.js cinematic book intro ---- */
 #screen-videointro{background:var(--bg-sky-2); padding:0;}
-#book-canvas{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:pointer;}
+/* The size is stated with !important on purpose. three.js writes a pixel
+   width and height straight into canvas.style whenever the renderer is
+   resized, and an inline style outranks this rule — which is how the
+   canvas came to be a different height from the screen holding it. The
+   renderer is told not to do that any more (see measure() in
+   book-scene.js); this makes it impossible for it to matter again. */
+#book-canvas{
+  position:absolute; inset:0; display:block; cursor:pointer;
+  width:100% !important; height:100% !important;
+}
 #screen-videointro::after{
   content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
   background:radial-gradient(ellipse at 50% 48%, transparent 62%, rgba(150,92,76,.22) 100%);
@@ -836,7 +420,17 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .book-loading.hidden{opacity:0; pointer-events:none;}
 
-.white-cut{position:fixed; inset:0; z-index:50; pointer-events:none; background:#fff6e2; opacity:0; transition:opacity .5s ease;}
+/* --app-h and --app-top, not inset:0. A fixed box takes its height from
+   the LARGE viewport — the page as it would be with the browser's own UI
+   hidden — so this flash was 88px taller than the screen it covers, for
+   the same reason .screen has to say its box out loud two hundred lines
+   up. And it starts where the visible rectangle starts, not at nought:
+   on a browser that insets the page, nought is behind the furniture. */
+.white-cut{
+  position:fixed; top:var(--app-top); left:0; right:0;
+  height:var(--app-h); max-height:var(--app-h);
+  z-index:50; pointer-events:none; background:#fff6e2; opacity:0; transition:opacity .5s ease;
+}
 .white-cut.active{opacity:1;}
 
 /* ---- Gate (on real parchment art) ---- */
@@ -1100,7 +694,9 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* ---- Letter (on real scroll art) ---- */
 .letter-scroll{
-  position:relative; height:min(72vh,500px); aspect-ratio:467/534; margin:0 auto;
+  /* measured against the part of the page you can see, not the taller
+     one the browser would have if it hid its own UI */
+  position:relative; height:min(calc(var(--app-h) * .72),500px); aspect-ratio:467/534; margin:0 auto;
   background-image:url("assets/scroll-symmetric.png"); background-size:100% 100%; background-repeat:no-repeat;
   display:flex; align-items:center; justify-content:center;
   filter:saturate(.7) brightness(1.12) hue-rotate(-8deg)
@@ -1151,8 +747,18 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 #screen-scrapbook.sb-open .sb-book{opacity:1; pointer-events:auto;}
 
+/* How far the boards overhang the text block. The resting spread and the
+   turning leaf both read these, so a sheet that lifts is exactly the page
+   that was lying there -- same box, same crop, to the pixel. Registering
+   them lets the pair ease together when the cover opens; a browser that
+   does not know @property simply snaps, which is still in step. */
+@property --board-x{ syntax:'<length>'; inherits:true; initial-value:6px; }
+@property --board-y{ syntax:'<length>'; inherits:true; initial-value:5px; }
+
 .sb-book-outer{
   position:relative;
+  --board-x:6px; --board-y:5px;
+  transition:--board-x .5s var(--ease-out), --board-y .5s var(--ease-out);
   border-radius:3px 5px 5px 3px;
   background:#8e4f60;
   perspective:2600px;
@@ -1190,11 +796,12 @@ img{-webkit-user-drag:none; user-select:none;}
 /* the boards overhang the text block, the way a bound book does */
 .sb-endpaper,
 .sb-spread{
-  position:absolute; inset:5px 6px; overflow:hidden; border-radius:1px;
-  transition:inset .5s var(--ease-out);
+  position:absolute; inset:var(--board-y) var(--board-x);
+  overflow:hidden; border-radius:1px;
 }
+.sb-book-outer.closed{--board-x:0px; --board-y:0px;}
 .sb-book-outer.closed .sb-endpaper,
-.sb-book-outer.closed .sb-spread{inset:0; border-radius:3px 5px 5px 3px;}
+.sb-book-outer.closed .sb-spread{border-radius:3px 5px 5px 3px;}
 .sb-book-outer.single .sb-endpaper{opacity:0;}
 .sb-endpaper{
   z-index:0; transition:opacity .3s ease; background-size:cover; background-position:center;
@@ -1204,7 +811,44 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-page{
   position:absolute; top:0; height:100%; display:none;
   background-size:cover; background-position:center;
+  /* A PAGE ENDS WHERE IT ENDS.
+
+     The two pages of a spread are siblings, so anything the right one
+     hangs over its left edge simply lands on top of the left one -- and
+     because the collage is placed by percentage, a few pieces do hang
+     over. You cannot see it while both pages are lying still, because the
+     pieces that overhang sit against the same paper on either side. Start
+     a turn and it is obvious: the page underneath changes, the overhanging
+     pieces stay, and you get a strip of another page's photographs and
+     flowers standing in the middle of the book.
+
+     A page is a sheet of paper. Nothing it carries is anywhere but on it. */
+  overflow:hidden;
   container-type:inline-size;
+  /* a warm default, for any page the tint table has nothing to say about */
+  --pg-h:26; --pg-s:22%;
+}
+/* THE LIGHT ON THE PAGE, not its colour.
+   The colour now lives in the paper itself -- each page's sheet is drawn
+   in its own hue rather than having a tint laid over it, because a
+   translucent veil can only lower contrast and drain saturation, which is
+   exactly what he saw: "not vivid... steals a bit from the vibe the old
+   book had."
+
+   What is left here is only what a wash was always good for: a little
+   light falling from the top of the sheet and a little shade gathering at
+   the outer edge, so the page reads as a curved surface under a lamp
+   rather than a flat rectangle. It carries the page's hue so the shading
+   is warm on a warm page, but at this weight it shades -- it does not
+   colour. */
+.sb-page::before{
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(120% 62% at 50% -6%,
+      hsl(var(--pg-h) 60% 96% / .30), transparent 62%),
+    radial-gradient(78% 96% at 104% 50%,
+      hsl(var(--pg-h) 45% 22% / .20), transparent 66%),
+    linear-gradient(174deg, transparent 55%, hsl(var(--pg-h) 45% 20% / .13) 100%);
 }
 .sb-page.on{display:block;}
 .sb-page.leftpage{left:0; width:50%;}
@@ -1267,15 +911,42 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* the gutter shadow, so the two pages read as one bound book */
+/* THE SPINE, WHICH IS NOT DRAWN -- IT IS ONLY FELT.
+
+   "I didnt mean it has to be shown, I meant only its effects on flipping
+   the pages, so all of the pages start reacting as belonging to the same
+   book."
+
+   This was already here, and it was already the right idea: a soft trough
+   of shadow down the gutter, where the paper curves into the binding. Two
+   things were wrong with it.
+
+   It sat at z-index 8, under the leaves at 12 -- so the moment a page began
+   to turn it passed OVER the gutter instead of down into it, and that is
+   most of why the sheet read as an independent object flipping in front of
+   a book rather than a leaf bound into one. It sits above them now, so
+   every page, resting or turning, darkens as it enters the binding. That
+   one change is what ties them together.
+
+   And it was static. A real gutter deepens as a leaf comes up off it,
+   because the trough opens and less light reaches the bottom of it. It
+   follows the turn now. Nothing here is a drawn spine -- there is no edge,
+   no object, only light not reaching the fold. */
 .sb-spine{
-  position:absolute; top:0; bottom:0; left:50%; width:9%; transform:translateX(-50%);
-  pointer-events:none; z-index:8;
+  position:absolute; top:0; bottom:0; left:50%;
+  width:calc(9% + var(--flip-lift,0) * 5%);
+  transform:translateX(-50%);
+  pointer-events:none; z-index:14;
   background:linear-gradient(90deg,
-    rgba(0,0,0,0) 0%, rgba(48,16,28,.26) 36%, rgba(48,16,28,.46) 50%,
-    rgba(48,16,28,.26) 64%, rgba(0,0,0,0) 100%);
+    rgba(0,0,0,0) 0%,
+    rgba(48,16,28,calc(.24 + var(--flip-lift,0) * .16)) 34%,
+    rgba(40,12,24,calc(.44 + var(--flip-lift,0) * .26)) 50%,
+    rgba(48,16,28,calc(.24 + var(--flip-lift,0) * .16)) 66%,
+    rgba(0,0,0,0) 100%);
 }
+/* one page on screen means one board, so there is no gutter to shade */
 .sb-book-outer.single .sb-spine{opacity:0;}
-/* =========================================================
+
 /* =========================================================
    TURNING A PAGE
 
@@ -1293,18 +964,43 @@ img{-webkit-user-drag:none; user-select:none;}
    and a pink page appears out of nowhere" on the first and last turns. */
 .sb-page.in-leaf{
   left:0 !important; width:100% !important;
-  animation:none !important;
 }
-/* A turning sheet is drawn once per strip, so anything expensive to
-   paint is paid for many times over. Drop-shadows are the worst of it
-   and nobody can see them on a page that is moving — the box-shadows
-   that give the collage its depth stay. */
+/* NOTHING ON A TURNING SHEET MOVES BY ITSELF.
+
+   The page is cut into a couple of dozen strips and each one holds a whole
+   copy of it, so one animated thing on the page becomes a couple of dozen
+   animated things the moment it lifts -- each in its own composited strip,
+   each invalidating it every frame. The play control's pulse alone put a
+   turn of that page up by half again.
+
+   It is wrong as well as expensive: a sheet caught mid-turn is a
+   photograph of the page, and a photograph does not blink. This used to
+   say `animation:none` on the page and stop there, which left every piece
+   on it still running. */
+.sb-page.in-leaf,
 .sb-page.in-leaf *,
-.sb-page.in-leaf{filter:none !important; box-shadow:none !important;}
+.sb-page.in-leaf *::before,
+.sb-page.in-leaf *::after{
+  animation:none !important;
+  transition:none !important;
+}
+/* The depth stays on. Killing the shadows here was meant to save paint,
+   and what it actually did was flatten the whole collage the instant a
+   page lifted and pop it back when the page landed — every photo and
+   sticker losing the shadow that sits it on the paper. It reads exactly
+   like the page stops belonging to the book.
+
+   It buys nothing either. A strip's contents never change once the leaf
+   is built: only the strip's transform moves, so the shadows are painted
+   once at the start of the turn and composited from then on. */
 
 
 .sb-leaf{
-  position:absolute; top:0; height:100%; width:var(--page-w,50%);
+  /* the same box the page occupies at rest, inset by the boards -- see
+     --board-x / --board-y above */
+  position:absolute;
+  top:var(--board-y); height:calc(100% - var(--board-y) * 2);
+  width:calc(var(--page-w,50%) - var(--board-x));
   transform-style:preserve-3d;
   z-index:12; pointer-events:none;
   /* out of the render tree entirely when it is not the one on screen —
@@ -1312,11 +1008,11 @@ img{-webkit-user-drag:none; user-select:none;}
   display:none;
 }
 .sb-leaf.on{display:block;}
-.sb-leaf-a{right:0;}
-.sb-leaf-b{left:0;}
-.sb-book-outer.flip-back .sb-leaf-a{right:auto; left:0;}
-.sb-book-outer.flip-back .sb-leaf-b{left:auto; right:0;}
-.sb-book-outer.single .sb-leaf-a{right:0; left:auto;}
+.sb-leaf-a{right:var(--board-x);}
+.sb-leaf-b{left:var(--board-x);}
+.sb-book-outer.flip-back .sb-leaf-a{right:auto; left:var(--board-x);}
+.sb-book-outer.flip-back .sb-leaf-b{left:auto; right:var(--board-x);}
+.sb-book-outer.single .sb-leaf-a{right:var(--board-x); left:auto;}
 
 .sb-strip{
   position:absolute; top:0; height:100%;
@@ -1325,9 +1021,28 @@ img{-webkit-user-drag:none; user-select:none;}
   backface-visibility:hidden; -webkit-backface-visibility:hidden;
 }
 .sb-strip-inner{position:absolute; top:0; height:100%;}
+/* the cut edge of the paper. A sheet is not infinitely thin, and the one
+   place you can see that is the free edge as it comes over -- a hairline
+   of lit paper along the outside of the leaf. */
+.sb-strip:last-child::after{
+  content:""; position:absolute; right:0; width:2px; z-index:41;
+  /* only down the paper, not the whole strip: the strip is taller than the
+     page now and this was drawing a lit hairline in the air above the book */
+  top:var(--pt,0); height:var(--ph,100%);
+  background:linear-gradient(90deg, rgba(255,248,236,0), rgba(255,250,240,.85));
+  opacity:var(--edge, 0); pointer-events:none;
+}
+.sb-book-outer.flip-back .sb-strip:last-child::after{
+  right:auto; left:0;
+  background:linear-gradient(270deg, rgba(255,248,236,0), rgba(255,250,240,.85));
+}
 /* the gradient is written once; only the four numbers in it change */
+/* left/width/top/height are written per strip in buildStripFragment, so
+   this only ever covers the paper -- inset:0 painted it across the whole
+   bleed as well, which is thirteen slabs of translucent grey hanging off
+   the book mid-turn. */
 .sb-strip-shade{
-  position:absolute; inset:0; z-index:40; pointer-events:none;
+  position:absolute; z-index:40; pointer-events:none;
   transform:translateZ(0);
   background:
     linear-gradient(90deg, rgba(255,250,244,var(--s0,0)), rgba(255,250,244,var(--s1,0))),
@@ -1345,23 +1060,13 @@ img{-webkit-user-drag:none; user-select:none;}
   background:linear-gradient(90deg,rgba(120,80,92,.55),rgba(255,250,246,.35));
 }
 
-/* the shadow the raised sheet throws over the page underneath */
-.sb-flip-shade{
-  position:absolute; top:0; bottom:0; right:0; width:var(--page-w,50%);
-  z-index:11; pointer-events:none; opacity:0;
-  background:linear-gradient(90deg,
-    rgba(38,16,24,.55) 0%, rgba(38,16,24,.30) 26%,
-    rgba(38,16,24,.09) 58%, rgba(38,16,24,0) 88%);
-  transform:scaleX(calc(.28 + var(--flip-lift,0) * .72));
-  transform-origin:left center;
-}
-.sb-book-outer.flipping .sb-flip-shade{opacity:calc(var(--flip-lift,0) * .85);}
-.sb-book-outer.flip-back .sb-flip-shade{
-  right:auto; left:0; transform-origin:right center;
-  background:linear-gradient(270deg,
-    rgba(38,16,24,.55) 0%, rgba(38,16,24,.30) 26%,
-    rgba(38,16,24,.09) 58%, rgba(38,16,24,0) 88%);
-}
+/* The shadow the lifted leaf used to throw across the page underneath is
+   gone at his request -- it read as a painted band sliding over the paper
+   rather than as light, not least because it was a flat gradient sliding
+   over a bent sheet. What tells you a page is up now is the gutter
+   deepening under it, which is what actually happens. The element stays in
+   the markup so nothing else has to change; it simply never paints. */
+.sb-flip-shade{ display:none !important; }
 
 /* the corner that lifts on its own, so the gesture is obvious */
 .sb-curl{
@@ -1396,10 +1101,16 @@ img{-webkit-user-drag:none; user-select:none;}
    is its own static child so its padding is a share of the card, and
    the mount's lip is drawn back over the print, so the photo reads as
    tucked behind the frame rather than laid on top of it. */
+/* The patch used to carry a tint overlay here. It is dyed in the canvas
+   now, same as the page, so there is nothing to lay over it. */
+
+
 .sb-photo{
   transform:rotate(var(--rot,0deg)); cursor:pointer; z-index:3;
+  --ph-h:26; --ph-s:20%;
   transition:transform .3s var(--ease-out);
-  --mount:#fdfbf4;
+  /* the card, tinted a few percent towards its own photograph */
+  --mount:hsl(var(--ph-h) calc(var(--ph-s) * .55) 96.5%);
   --lip:2px;
 }
 .sb-photo:hover{transform:rotate(var(--rot,0deg)) scale(1.03) translateY(-2px); z-index:9;}
@@ -1439,7 +1150,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* — polaroid: a tall card, the print nearly filling the top — */
-.sb-photo-polaroid{--mount:#fdfcf6; --lip:3px;}
+.sb-photo-polaroid{--mount:hsl(var(--ph-h) calc(var(--ph-s) * .5) 97.5%); --lip:3px;}
 .sb-photo-polaroid .sb-photo-mount{
   padding:5.5% 5.5% 19%;
   background:linear-gradient(168deg,#fffefa 0%,#fbf7ee 58%,#f0eade 100%);
@@ -1456,7 +1167,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* — snapshot: a glossy print, thin white edge, corner date — */
-.sb-photo-snapshot{--mount:#fffdf8; --lip:2px;}
+.sb-photo-snapshot{--mount:hsl(var(--ph-h) calc(var(--ph-s) * .45) 98%); --lip:2px;}
 .sb-photo-snapshot .sb-photo-mount{
   padding:3%;
   background:linear-gradient(160deg,#fffdf8,#f5efe4);
@@ -1470,7 +1181,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* — matted: board with a gold rule, a generous window — */
-.sb-photo-matted{--mount:#f4ecdc; --lip:2px;}
+.sb-photo-matted{--mount:hsl(var(--ph-h) calc(var(--ph-s) * .8) 91%); --lip:2px;}
 .sb-photo-matted .sb-photo-mount{
   padding:7% 7% 11%;
   background:linear-gradient(155deg,#f8f1e3,#ebe1cd);
@@ -1497,7 +1208,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-corner-br{right:-1%; bottom:-1%; clip-path:polygon(100% 0,100% 100%,0 100%);}
 
 /* — deckle: a torn paper edge round the print — */
-.sb-photo-deckle{--mount:#fffdf6; --lip:2px; filter:drop-shadow(0 10px 20px rgba(24,16,6,.36));}
+.sb-photo-deckle{--mount:hsl(var(--ph-h) calc(var(--ph-s) * .45) 98%); --lip:2px; filter:drop-shadow(0 10px 20px rgba(24,16,6,.36));}
 .sb-photo-deckle .sb-photo-mount{
   padding:4.5%;
   background:#fffdf6;
@@ -1525,6 +1236,29 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:0 12px 24px rgba(48,18,28,.4), 0 0 0 1px rgba(150,100,112,.3);
 }
 .sb-photo-washed .sb-photo-inner{aspect-ratio:4/3;}
+
+/* ---- a tall gallery print --------------------------------------
+   For the long gap under the film strip. Everything else in the book is
+   square, 4:3 or 3:2, so a genuinely portrait frame was missing and that
+   corner of the page had nothing the right shape to fill it. A wide mat
+   and a thin gold rule inside it, so it reads as the one properly
+   mounted print in a book of snapshots. */
+.sb-photo-portrait{--mount:hsl(var(--ph-h) calc(var(--ph-s) * .7) 96%); --lip:2px;}
+.sb-photo-portrait .sb-photo-mount{
+  padding:6.5% 6.5% 13%;
+  background:linear-gradient(168deg,#fefaf1 0%,#f7efdd 62%,#efe4cd 100%);
+  border-radius:2px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.92) inset,
+    0 13px 27px rgba(24,16,6,.34),
+    0 2px 6px rgba(24,16,6,.22);
+}
+.sb-photo-portrait .sb-photo-inner{aspect-ratio:2/3;}
+.sb-photo-portrait .sb-photo-mount::before{
+  content:""; position:absolute; inset:3.4% 3.4% 9.4%;
+  border:1px solid rgba(196,156,92,.5); border-radius:1px;
+  pointer-events:none; z-index:1;
+}
 
 /* — a plain print, and the ones that live inside something else — */
 .sb-photo-plain{--mount:#fffdf8; --lip:2px;}
@@ -1567,7 +1301,9 @@ img{-webkit-user-drag:none; user-select:none;}
   background-size:cover; box-shadow:0 8px 18px rgba(20,14,6,.3);
 }
 .sb-note-text{
-  margin:0; font-family:var(--font-script); font-size:4.6cqw; line-height:1.45; color:#2c3a44;
+  /* 4.6 was set when the note had the top third of the page to itself.
+     It is a note laid on a page now, not a column of it. */
+  margin:0; font-family:var(--font-script); font-size:4.15cqw; line-height:1.42; color:#2c3a44;
 }
 .sb-big{
   font-family:'Playfair Display',serif; font-style:italic; font-weight:700;
@@ -1605,8 +1341,12 @@ img{-webkit-user-drag:none; user-select:none;}
   font-size:6.2cqw; font-weight:700; transform:rotate(var(--r,0deg));
   box-shadow:0 2px 4px rgba(0,0,0,.28);
 }
-.sb-letter-0{font-family:var(--font-display); background:#f4ead6; color:#22303f;}
-.sb-letter-1{font-family:var(--font-body); background:#22303f; color:#f4ead6;}
+/* These were cream and #22303f -- a cold navy, and the only navy anywhere
+   in the book. MEMORIES ran down the edge of page two in it, next to rose
+   paper and gold rules. Wine instead: the same contrast, the book's own
+   dark. */
+.sb-letter-0{font-family:var(--font-display); background:#f4ead6; color:#5c2438;}
+.sb-letter-1{font-family:var(--font-body); background:#5c2438; color:#f7e8dc;}
 .sb-letter-2{font-family:var(--font-serif); background:#e0c9a8; color:#3d2a1c; font-style:italic;}
 .sb-letter-3{font-family:var(--font-display); background:transparent; color:#f4ead6; text-shadow:0 2px 0 rgba(0,0,0,.4);}
 
@@ -1642,15 +1382,44 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-cam .sb-photo{position:absolute; z-index:5;}
 
 /* ---- film strip ---- */
+/* THE THREE FROM THAT EVENING — prints on card, not a negative.
+
+   This was a black slab, then a brown one, and both were wrong for the
+   same reason: page seven is pale ivory, and every other photograph on it
+   sits in a cream mount. A dark rectangle in the corner of that paper
+   reads as a hole punched in it.
+
+   There was a real bug underneath the ugliness as well. The frames were
+   set inside `padding:3% 11%`, and percentage padding on an absolutely
+   positioned box resolves against the PAGE, not against the box -- the
+   same fault already written up in makePhoto. Eleven percent of the page
+   is a quarter of this strip, twice over, so the pictures were squeezed
+   into a third of the width they had. They fill it now, and the margin is
+   in cqw, which is proportional and stays that way.
+
+   The card is the cream the polaroid below it uses, the frames have the
+   same hairline rule as the film cells on the video card, and the whole
+   thing sits at a slight angle so it reads as laid down rather than
+   printed on. */
 .sb-film{
-  background:#141414; padding:3% 11%; z-index:3;
-  box-shadow:0 10px 24px rgba(10,8,4,.5);
+  transform:rotate(var(--rot,0deg)); z-index:3;
+  padding:1.7cqw; border-radius:3px;
+  background:linear-gradient(168deg,#fdfbf4,#f2e8d4);
+  box-shadow:
+    0 10px 22px rgba(70,44,20,.28),
+    0 2px 5px rgba(70,44,20,.16),
+    0 1px 0 rgba(255,255,255,.9) inset,
+    0 0 0 1px rgba(152,112,70,.24);
 }
-.sb-film-holes{position:absolute; top:0; bottom:0; width:8%; display:flex; flex-direction:column; justify-content:space-around; align-items:center;}
-.sb-film-holes.a{left:1.5%;} .sb-film-holes.b{right:1.5%;}
-.sb-film-holes i{display:block; width:78%; aspect-ratio:1/.7; background:#efe9db; border-radius:1px; box-shadow:0 0 0 1px rgba(0,0,0,.5) inset;}
-.sb-film-cells{display:flex; flex-direction:column; gap:4px;}
-.sb-film-cell{aspect-ratio:4/3; overflow:hidden; background:#222;}
+/* the sprockets belonged to the negative, and never rendered anyway: they
+   were built with el("i"), which makes a <div class="i">, while the rule
+   selected the <i> ELEMENT. Nothing matched, on any version of this. */
+.sb-film-holes{display:none;}
+.sb-film-cells{display:flex; flex-direction:column; gap:1.5cqw;}
+.sb-film-cell{
+  aspect-ratio:4/3; overflow:hidden; background:#e9dcc6;
+  box-shadow:0 0 0 1px rgba(120,86,50,.30);
+}
 .sb-film.horiz{padding:9% 3%;}
 .sb-film.horiz .sb-film-holes{top:auto; left:0; right:0; width:auto; height:7%; flex-direction:row;}
 .sb-film.horiz .sb-film-holes.a{top:1.5%;} .sb-film.horiz .sb-film-holes.b{bottom:1.5%; right:0;}
@@ -1672,7 +1441,8 @@ img{-webkit-user-drag:none; user-select:none;}
   border:2px dashed rgba(96,40,54,.5); border-radius:3px;
   box-shadow:0 8px 18px rgba(20,14,6,.34);
 }
-.sb-id-photo{width:34%; aspect-ratio:1/1.15; overflow:hidden; border:2px solid #f4fbfc; position:relative;}
+/* 34% put a face on this card at about a centimetre across */
+.sb-id-photo{width:42%; aspect-ratio:1/1.15; overflow:hidden; border:2px solid #f4fbfc; position:relative;}
 .sb-id-body{flex:1; min-width:0;}
 .sb-id-title{margin:0; font-family:var(--font-display); font-weight:700; font-size:3.4cqw; letter-spacing:.6px; color:#4d1c2a;}
 .sb-id-sub{margin:0 0 .5em; font-family:var(--font-serif); font-style:italic; font-size:1.9cqw; color:#7d4655;}
@@ -1709,11 +1479,31 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-lp-lead{margin:7% 0 3%; font-family:'Playfair Display',serif; font-size:3.2cqw; color:#33414a;}
 .sb-lp-body{
   margin:0; font-family:'Playfair Display',serif; font-size:2.9cqw; line-height:1.55; color:#3d4a52;
-  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  /* Clamped to three lines, which silently ended the letter at "the long
+     way home, y…". Six is the room the card actually has -- still a guard
+     against overflow, no longer a censor. */
+  display:-webkit-box; -webkit-line-clamp:6; -webkit-box-orient:vertical; overflow:hidden;
 }
+/* A letter nobody signed is a notice. The hand is the script face the
+   rest of the book writes in, and it sits to the right the way you sign
+   the bottom of a page rather than the middle of one. */
+.sb-lp-sign{
+  margin:4% 0 0; text-align:right;
+  font-family:var(--font-serif); font-style:italic; font-size:2.5cqw; color:#8a6b58;
+}
+.sb-lp-name{
+  display:block; margin-top:.15em;
+  font-family:var(--font-script); font-size:5.4cqw; font-style:normal;
+  color:#6d2438; line-height:1;
+}
+/* Narrower and set to the right, so the photograph can lie across the
+   letter's bottom-left corner without ever covering the one thing on this
+   card you have to be able to press. The signature above it is right-set
+   too, so the two of them share that side and the corner stays free. */
 .sb-lp-btn{
-  display:block; width:88%; margin:6% auto 0; cursor:pointer; padding:7px 10px;
-  font-family:var(--font-body); font-size:2.7cqw; font-weight:600; color:#fbeff2;
+  display:block; width:52%; margin:6% 0 0 auto; cursor:pointer; padding:6px 8px;
+  font-family:var(--font-body); font-size:2.4cqw; font-weight:600; color:#fbeff2;
+  white-space:nowrap;
   background:#6d1f39; border:none; border-radius:999px;
   box-shadow:0 4px 10px rgba(80,20,42,.4);
 }
@@ -2032,34 +1822,234 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .sb-vid-artist{margin:1px 0 0; font-family:var(--font-body); font-size:10px; color:rgba(226,240,246,.68);}
 
-/* our own video: a film slate until the file is there */
+/* ---- our own video ------------------------------------------------
+   It used to be a black 16:9 rectangle with a film slate in it, sitting
+   on a page of cream paper and cut photographs and looking like a hole.
+   Now it is a strip of film taped into the book: the same mount every
+   photo here uses, sprocket edges down both sides, a real frame of the
+   two of them showing before anything is tapped, and a warm disc for the
+   play control rather than a cold white circle borrowed from a video
+   site. The slate is still underneath and still appears if the file ever
+   goes missing again. */
 .sb-w-ourvideo{padding:0;}
-.sb-w-ourvideo video{opacity:0; transition:opacity .4s ease;}
-.sb-w-ourvideo.ready video{opacity:1;}
+.sb-ov-mount{
+  position:relative; padding:9px 8px; border-radius:5px;
+  background:linear-gradient(168deg,#fdfbf4,#f4ecdb);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.9) inset,
+    0 10px 22px rgba(70,44,20,.30),
+    0 2px 5px rgba(70,44,20,.18);
+}
+/* the sprocket edges, the same idea as the film cells on the other pages */
+.sb-ov-holes{
+  position:absolute; left:9px; right:9px; height:7px; z-index:4;
+  display:flex; justify-content:space-around; align-items:center; pointer-events:none;
+}
+.sb-ov-holes.a{top:1px;} .sb-ov-holes.b{bottom:1px;}
+.sb-ov-holes i{
+  display:block; width:7px; height:5px; border-radius:1px;
+  background:#e7dcc4; box-shadow:0 0 0 1px rgba(120,90,50,.28) inset;
+}
+.sb-w-ourvideo .sb-vid-frame{
+  border-radius:2px; background:#171d21;
+  box-shadow:0 0 0 1px rgba(90,62,30,.30), 0 4px 12px rgba(40,26,10,.34) inset;
+}
+/* the still, held underneath the video the whole time */
+.sb-ov-poster{
+  position:absolute; inset:0; z-index:1;
+  background-size:cover; background-position:50% 42%;
+  transition:opacity .45s ease, transform 6s ease;
+}
+.sb-w-ourvideo.playing .sb-ov-poster{opacity:0;}
+/* a breath of warmth over the still so it belongs to the page */
+.sb-ov-veil{
+  position:absolute; inset:0; z-index:2; pointer-events:none;
+  background:
+    radial-gradient(ellipse at 44% 40%, rgba(255,226,180,.14), transparent 62%),
+    linear-gradient(180deg, rgba(28,16,8,.10) 0%, rgba(28,16,8,0) 40%, rgba(24,14,6,.46) 100%);
+  transition:opacity .4s ease;
+}
+.sb-w-ourvideo.playing .sb-ov-veil{opacity:0;}
+.sb-w-ourvideo video{opacity:0; transition:opacity .4s ease; z-index:1;}
+.sb-w-ourvideo.playing video{opacity:1; z-index:3;}
+/* the slate only while there is no picture at all */
+.sb-w-ourvideo.hasposter .sb-vid-empty,
 .sb-w-ourvideo.ready .sb-vid-empty{display:none;}
-.sb-vid-empty{
-  position:absolute; inset:0; z-index:2;
+
+/* THE PLAY CONTROL, AND THE PLAYER BEHIND IT.
+
+   Down in the corner rather than in the middle of the frame -- centred, it
+   sat squarely over his face, which is the one thing on this card you are
+   meant to be looking at.
+
+   It is a brass shutter ring: a milled outer collar, a cream disc pressed
+   into it, the triangle engraved in plum, and a slow ring of light going
+   out from it to say it can be touched. Nothing here is borrowed from a
+   video site; it is the same brass and cream and plum as the rest of the
+   book. */
+.sb-w-ourvideo .sb-vid-play{
+  left:6%; top:auto; bottom:9%; right:auto; transform:none;
+  width:auto; height:auto; padding:0; border-radius:0; z-index:6;
+  background:none; box-shadow:none;
+  flex-direction:row; align-items:center; gap:9px;
+  transition:opacity .3s ease;
+}
+.sb-ov-ring{
+  position:relative; flex:0 0 auto; display:block;
+  width:clamp(38px, 13cqw, 58px); height:clamp(38px, 13cqw, 58px);
+  border-radius:50%;
+  /* the milled collar */
+  background:
+    conic-gradient(from 20deg,
+      #f6e3b4 0deg, #c9a057 24deg, #f8ecc9 52deg, #b98f47 84deg,
+      #f4e1b0 116deg, #c39a52 152deg, #fbf0d2 190deg, #b88e46 226deg,
+      #f2dfae 262deg, #caa159 300deg, #f6e3b4 360deg);
+  box-shadow:
+    0 6px 16px rgba(48,26,10,.48),
+    0 1px 0 rgba(255,248,228,.7) inset;
+  transition:transform .18s var(--ease-out), box-shadow .18s var(--ease-out);
+}
+.sb-ov-disc{
+  position:absolute; inset:14%;
   display:flex; align-items:center; justify-content:center;
-  background:linear-gradient(160deg,#2b3238,#1b2126);
+  border-radius:50%; color:#5c2438;
+  background:radial-gradient(circle at 36% 28%, #fffaf0 0%, #f7e9cf 55%, #ecd7ad 100%);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.95) inset,
+    0 -2px 4px rgba(150,104,44,.30) inset,
+    0 0 0 1px rgba(160,120,60,.45);
 }
-.sb-slate{
-  width:76%; padding:12px 14px; text-align:center; border-radius:4px;
-  background:linear-gradient(170deg,#333b41,#232a2f);
-  box-shadow:0 8px 18px rgba(0,0,0,.44), 0 0 0 1px rgba(255,255,255,.07) inset;
+/* a slow ring of light going out, so it reads as something to touch */
+.sb-ov-pulse{
+  position:absolute; inset:-6%; border-radius:50%; pointer-events:none;
+  border:1.5px solid rgba(253,240,208,.85);
+  animation:sbOvPulse 2.8s var(--ease-out) infinite;
 }
-.sb-slate-bar{
-  height:9px; margin:-4px -6px 9px; border-radius:2px;
-  background:repeating-linear-gradient(115deg,#f2f2ee 0 12px,#20262a 12px 24px);
-  box-shadow:0 2px 5px rgba(0,0,0,.4);
+@keyframes sbOvPulse{
+  0%   {opacity:.85; transform:scale(1);}
+  70%  {opacity:0;   transform:scale(1.42);}
+  100% {opacity:0;   transform:scale(1.42);}
 }
-.sb-slate-title{
-  margin:0; font-family:'Playfair Display',serif; font-style:italic; font-weight:700;
-  font-size:14px; color:#eef3f4;
+@media (prefers-reduced-motion:reduce){ .sb-ov-pulse{animation:none; opacity:.5;} }
+.sb-ov-word{
+  font-family:var(--font-script); font-size:clamp(13px, 4cqw, 19px);
+  line-height:1; color:#fdf6e8; white-space:nowrap;
+  text-shadow:0 1px 6px rgba(20,10,4,.9); opacity:.96; padding-bottom:3px;
 }
-.sb-slate-file{
-  margin:3px 0 0; font-family:var(--font-body); font-size:8.5px; letter-spacing:.08em;
-  color:rgba(214,228,232,.5);
+.sb-w-ourvideo .sb-vid-play:active .sb-ov-ring{
+  transform:translateY(2px) scale(.96);
+  box-shadow:0 2px 7px rgba(48,26,10,.5), 0 1px 0 rgba(255,248,228,.6) inset;
 }
+.sb-w-ourvideo .sb-vid-play:active{transform:none;}
+.sb-w-ourvideo .sb-ico-play{margin-left:3px;}
+/* The big control is the invitation on an untouched card, so it goes as
+   soon as the clip has been started -- not merely while it is running.
+   Paused half way through, the transport is the control; leaving both up
+   put the brass ring straight through the play stud. It comes back with
+   the photograph when the clip ends. */
+.sb-w-ourvideo.started .sb-vid-play{opacity:0; pointer-events:none;}
+
+/* ---- the transport ------------------------------------------------
+   A strip along the foot of the frame: a brass stud for play and pause, a
+   length of film for the scrubber, the running time in the caption serif,
+   and the sound. It is only there while the clip is. */
+.sb-ov-bar{
+  position:absolute; left:0; right:0; bottom:0; z-index:7;
+  display:flex; align-items:center; gap:clamp(6px, 2cqw, 11px);
+  padding:clamp(6px, 2cqw, 11px) clamp(8px, 2.6cqw, 14px);
+  background:linear-gradient(180deg,
+    rgba(38,16,26,0) 0%, rgba(38,16,26,.42) 38%, rgba(30,12,20,.80) 100%);
+  opacity:0; pointer-events:none;
+  transform:translateY(18%);
+  transition:opacity .28s ease, transform .28s var(--ease-out);
+}
+/* Only once it has been started: before that the card is a photograph
+   with a play control on it, and a scrubber reading 0:00 of 0:00 would be
+   furniture. Paused mid-clip the strip stays put, so there is a way back
+   in without hunting for it. */
+.sb-w-ourvideo.started.showing .sb-ov-bar{opacity:1; pointer-events:auto; transform:none;}
+
+.sb-ov-pp{
+  flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+  width:clamp(24px, 7.4cqw, 34px); height:clamp(24px, 7.4cqw, 34px);
+  border:none; border-radius:50%; cursor:pointer; padding:0;
+  color:#5c2438;
+  background:radial-gradient(circle at 36% 28%, #fffaf0 0%, #f4e5c6 60%, #e6cea1 100%);
+  box-shadow:0 0 0 1px rgba(160,120,60,.5), 0 3px 8px rgba(24,10,16,.5);
+  transition:transform .16s var(--ease-out);
+}
+.sb-ov-pp:active{transform:scale(.92);}
+.sb-ov-pp .sb-ico-play{
+  border-left-width:8px; border-top-width:5px; border-bottom-width:5px; margin-left:2px;
+}
+.sb-w-ourvideo.playing .sb-ov-pp .sb-ico-play{
+  width:8px; height:10px; margin-left:0; border-left-width:3px; border-right-width:3px;
+}
+
+/* the scrubber: a length of film, gold where it has been */
+.sb-ov-track{
+  position:relative; flex:1 1 auto; height:clamp(14px, 4cqw, 20px);
+  display:flex; align-items:center; cursor:pointer;
+  touch-action:none;   /* this drag belongs to the scrubber, not the page */
+}
+.sb-ov-track::before{
+  content:""; position:absolute; left:0; right:0; height:clamp(4px, 1.2cqw, 6px);
+  border-radius:3px;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(255,246,226,.10) 0 3px, rgba(255,246,226,.22) 3px 4px),
+    rgba(255,246,226,.20);
+  box-shadow:0 1px 0 rgba(0,0,0,.35) inset;
+}
+.sb-ov-buf,.sb-ov-fill{
+  position:absolute; left:0; height:clamp(4px, 1.2cqw, 6px); border-radius:3px;
+  pointer-events:none;
+}
+.sb-ov-buf{width:0; background:rgba(255,246,226,.30);}
+.sb-ov-fill{
+  width:0;
+  background:linear-gradient(90deg,#d9ab5c,#f6e3b4);
+  box-shadow:0 0 8px rgba(246,227,180,.55);
+}
+.sb-ov-knob{
+  position:absolute; left:0; top:50%; width:clamp(11px, 3.2cqw, 15px);
+  aspect-ratio:1/1; border-radius:50%; pointer-events:none;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 34% 30%, #fffaf0, #eed9ab 70%, #c9a057 100%);
+  box-shadow:0 0 0 1px rgba(120,84,36,.6), 0 2px 6px rgba(20,8,14,.6);
+}
+.sb-ov-track:focus-visible{outline:none;}
+.sb-ov-track:focus-visible .sb-ov-knob{box-shadow:0 0 0 2px #fdf0d0, 0 2px 6px rgba(20,8,14,.6);}
+
+.sb-ov-time{
+  flex:0 0 auto; display:flex; align-items:baseline; gap:.28em;
+  font-family:var(--font-serif); font-size:clamp(9px, 2.7cqw, 13px);
+  color:#f6e9d4; letter-spacing:.02em; font-variant-numeric:tabular-nums;
+  text-shadow:0 1px 3px rgba(16,6,10,.8);
+}
+.sb-ov-time i{font-style:normal; opacity:.5;}
+.sb-ov-time s{text-decoration:none; opacity:.68;}
+
+.sb-ov-mute{
+  flex:0 0 auto; width:clamp(20px, 6cqw, 28px); height:clamp(20px, 6cqw, 28px);
+  border:none; background:none; padding:0; cursor:pointer; color:#f6e9d4;
+  display:flex; align-items:center; justify-content:center;
+}
+/* a little speaker, drawn rather than fetched. It was built out of CSS
+   borders once and came out as a white block and a sliver: border widths
+   cannot be percentages, so nothing that had to scale with the card could
+   be drawn that way. Four paths, and it scales to anything. */
+.sb-ico-spk{
+  display:block; width:100%; height:100%; overflow:visible;
+  fill:none; stroke:currentColor; stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+.sb-ico-spk .cone{fill:currentColor; stroke:currentColor; stroke-width:1.2;}
+.sb-ico-spk .wave{opacity:.9; transition:opacity .18s ease;}
+.sb-ico-spk .slash{opacity:0; transition:opacity .18s ease;}
+.sb-w-ourvideo.muted .sb-ico-spk .wave{opacity:0;}
+.sb-w-ourvideo.muted .sb-ico-spk .slash{opacity:1;}
+
 .sb-vid-cap{
   margin:7px 2px 0; text-align:center;
   font-family:var(--font-serif); font-style:italic; font-size:11px; color:#7a6a52;
@@ -2075,7 +2065,12 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .sb-videoslot .sb-slate-title{font-size:4.4cqw;}
 .sb-videoslot .sb-slate-file{font-size:2.4cqw;}
-.sb-videoslot .sb-vid-play{width:16%; height:auto; aspect-ratio:1/1;}
+/* This said `width:16%; aspect-ratio:1/1`, sized for the round button that
+   used to sit in the middle of the frame. The control is a disc and a word
+   side by side now, and that width was crushing the pair into 44px -- the
+   disc came out 14px wide and 44 tall, a squashed oval. The button sizes
+   itself to its contents; the disc is what carries the size. */
+.sb-videoslot .sb-w-ourvideo .sb-vid-play{width:auto; height:auto; aspect-ratio:auto;}
 .sb-videoslot .sb-video-cap{display:none;}
 
 /* =========================================================
@@ -2232,7 +2227,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .sb-lightbox.on{display:flex; animation:sbFade .3s ease;}
 .sb-lb-card{
-  width:min(88vw,340px); max-height:86vh; overflow-y:auto;
+  width:min(88vw,340px); max-height:calc(var(--app-h) * .86); overflow-y:auto;
   background:#fffdf7; border-radius:4px; padding:14px 14px 18px;
   box-shadow:0 26px 60px rgba(30,18,6,.5);
   transform:rotate(-1deg); animation:sbPop .42s var(--ease-pop);
@@ -2293,7 +2288,7 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---- phones: the drawer takes the screen, type stays legible ---- */
 @media (max-width:600px){
   .sb-drawer{width:100%; max-width:none; padding:16px 16px 96px;}
-  .sb-bq-stage{height:32vh; max-height:260px;}
+  .sb-bq-stage{height:calc(var(--app-h) * .32); max-height:260px;}
 }
 @media (prefers-reduced-motion: reduce){
   .sb-bq,.sb-map-pin,.sb-intro-hint,.sb-song-disc,.sb-curl,.sb-cover-hint-corner,
@@ -2541,10 +2536,28 @@ img{-webkit-user-drag:none; user-select:none;}
 /* =========================================================
    HUB — choose your adventure
    ========================================================= */
+/* Cards do not fit a phone once there are enough of them. The column came
+   to 940px against a 745px screen with the URL bar showing, and because it
+   is centred in a flex screen it overflowed at BOTH ends: the top card was
+   cut off above, the bottom one below, and on the shorter phones neither
+   could be tapped at all — a chapter she could not reach. It got there
+   quietly, one card at a time, and nothing in the suite was measuring it.
+
+   So the column is bounded and scrolls inside itself, which is what
+   .ks-wrap next door has always done. The rhythm is tightened below as
+   well, so on most phones there is little or nothing left to scroll —
+   scrolling is the guarantee, not the plan. */
 .hub-wrap{
   width:min(94vw,620px); margin:0 auto; display:flex; flex-direction:column;
   align-items:center; justify-content:center; gap:8px; padding:16px 12px;
+  max-height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  /* without this the bounce at the end of the list drags the page with it,
+     which is the other way a strip of nothing appears under the site */
+  overscroll-behavior:contain;
+  scrollbar-width:none;
 }
+.hub-wrap::-webkit-scrollbar{ width:0; height:0; }
+
 .hub-title{
   font-family:'Cinzel',serif; font-weight:700; font-size:clamp(19px,5.2vw,27px);
   color:#5a3411; letter-spacing:.8px; margin:0; text-align:center;
@@ -2573,13 +2586,6 @@ img{-webkit-user-drag:none; user-select:none;}
   display:block; width:100%; height:74px; border-radius:9px; overflow:hidden;
   image-rendering:pixelated;
 }
-.hub-art-maze{
-  background:
-    radial-gradient(circle at 50% 55%, rgba(255,214,160,.42) 0 22%, transparent 60%),
-    repeating-linear-gradient(90deg,#6b4a2a 0 10px,#3d2a17 10px 20px),
-    repeating-linear-gradient(0deg,#6b4a2a 0 10px,#3d2a17 10px 20px);
-  box-shadow:inset 0 0 22px rgba(60,32,10,.5);
-}
 .hub-art-quest{
   background:
     radial-gradient(circle at 74% 26%, #fffaf0 0 9px, transparent 10px),
@@ -2590,12 +2596,45 @@ img{-webkit-user-drag:none; user-select:none;}
 .hub-keepsake{margin-top:14px; display:none;}
 .hub-keepsake.on{display:inline-block;}
 
+/* A short screen: give the cards back the pixels they do not need. Same
+   move as the Chapter Two card further up — tighten the rhythm rather than
+   let anything fall off the end. Scoped to narrow and to short separately:
+   a wide desktop window that happens to be 800px tall lays the cards out in
+   columns and has room to spare, so it keeps the full size. */
+@media (max-width:700px) and (max-height:880px){
+  .hub-wrap{padding:10px 12px; gap:5px;}
+  .hub-title{font-size:clamp(17px,4.8vw,23px);}
+  .hub-sub{font-size:12px; margin-bottom:5px;}
+  .hub-cards{gap:10px;}
+  .hub-card{padding:10px 12px 12px; gap:4px;}
+  .hub-art{height:58px;}
+  .hub-name{font-size:14.5px;}
+  .hub-desc{font-size:11px; line-height:1.35;}
+  .hub-keepsake{margin-top:9px;}
+}
+@media (max-width:700px) and (max-height:700px){
+  .hub-art{height:46px;}
+  .hub-card{padding:8px 11px 10px;}
+  .hub-sub{margin-bottom:2px;}
+}
+/* A phone on its side: wide, but barely taller than one card. */
+@media (max-height:520px){
+  .hub-wrap{padding:8px 12px; gap:4px;}
+  .hub-title{font-size:19px;}
+  .hub-sub{font-size:11.5px; margin-bottom:3px;}
+  .hub-art{height:46px;}
+  .hub-card{padding:8px 11px 10px; gap:3px;}
+  .hub-desc{font-size:11px; line-height:1.3;}
+}
+
+
 /* =========================================================
    KEEPSAKE — scrapbook recap
    ========================================================= */
 .ks-wrap{
   width:min(94vw,660px); margin:0 auto; display:flex; flex-direction:column;
   align-items:center; gap:8px; padding:16px 12px; max-height:100%; overflow-y:auto;
+  overscroll-behavior:contain;
 }
 .ks-title{
   font-family:'Great Vibes',cursive; font-size:clamp(28px,7.5vw,42px); color:#6b3d12;

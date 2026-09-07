@@ -26,6 +26,11 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
   await page.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
   await page.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(1200);
+  /* ost.js is fetched with the chapter rather than sitting in the head,
+     and main exposes window.loadChapter so a harness can open that door
+     itself instead of guessing how long the idle prefetch takes. */
+  await page.evaluate(() => window.loadChapter && window.loadChapter('quest'));
+  await page.waitForTimeout(200);
   await page.evaluate(() => { try { localStorage.clear(); } catch (e) {} showScreen('quest'); startQuest(); });
   await page.waitForTimeout(300);
 
