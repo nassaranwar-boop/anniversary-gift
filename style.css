@@ -2421,8 +2421,14 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .hv-found.on{display:flex;}
 .hv-token{
-  font-size:clamp(11px,2.2vw,15px); line-height:1;
+  font-size:clamp(11px,2.2vw,15px); line-height:0;
   animation:hvTokenIn .45s var(--ease-pop) backwards;
+}
+/* the strip shows the same little canvas that is lying in the grass,
+   scaled up and kept on its own pixel grid */
+.hv-token canvas{
+  width:clamp(14px,2.8vw,20px); height:auto; display:block;
+  image-rendering:pixelated; image-rendering:crisp-edges;
 }
 @keyframes hvTokenIn{from{opacity:0; transform:scale(.3) rotate(-25deg);} to{opacity:1; transform:none;}}
 
@@ -2464,6 +2470,36 @@ img{-webkit-user-drag:none; user-select:none;}
   left:50%; bottom:auto; top:2.5%; transform:translateX(-50%) rotate(-1deg);
   text-align:center; max-width:74%; font-size:clamp(14px,3.1vw,24px); color:#c4487a;
 }
+/* The note covers the bottom third of the stage, which is where the
+   stones and the orchard row are. Once she starts crossing one, the
+   paper lifts out of the way — and it is only the paper that moves.
+   The buttons underneath it never do: they are the way out of every
+   one of these and they are never taken away, delayed or hidden. */
+.hv-note-away{
+  opacity:0; pointer-events:none;
+  transform:rotate(-2.4deg) translateY(18px) scale(.97);
+  animation:none;
+  transition:opacity .45s ease, transform .45s ease;
+}
+
+/* While the two of them are talking, their choices are not on the
+   table yet. Only the look changes here — the buttons are also
+   genuinely `disabled` in script.js, so nothing can be clicked or
+   tabbed to early; this is not a visual trick over a live control. */
+.hv-hushed{
+  opacity:0; pointer-events:none;
+  transform:translateY(4px);
+  transition:opacity .1s ease, transform .1s ease;
+}
+#hv-left,#hv-right,#hv-centre,#hv-cards{
+  transition:opacity .45s ease .12s, transform .45s ease .12s;
+}
+
+/* the air in each place, and its off switch. The icon itself is an SVG
+   symbol like every other chip's, and it swaps between a speaker with
+   waves and a speaker with a cross — the old one was two CSS borders
+   that came out as a plain triangle, which reads as "play". */
+#hv-sound.off{ opacity:.62; }
 
 /* ---- choice buttons pinned to the edges, like the original ---- */
 .hv-side{
@@ -2688,6 +2724,24 @@ img{-webkit-user-drag:none; user-select:none;}
 .ks-card .ks-img{
   width:100%; aspect-ratio:1/1; object-fit:cover; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(160deg,#f2ddb8,#e2cfa8); font-size:30px; color:#b98a4e;
+  overflow:hidden;
+}
+/* The painted scenes. 64x64 of real pixels blown up to fill the frame —
+   never smoothed, or they stop being pixel art and start being a blur. */
+.ks-card .ks-art{
+  width:100%; height:100%; display:block;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+}
+/* the things she picked up on the way, laid out on the card like a
+   shelf rather than shown as one photograph */
+.ks-card .ks-walk-shelf{
+  width:100%; aspect-ratio:1/1; display:flex; flex-wrap:wrap; gap:4px;
+  align-items:center; align-content:center; justify-content:center; padding:6px;
+  background:linear-gradient(160deg,#f2ddb8,#e2cfa8);
+}
+.ks-card .ks-walk-shelf canvas{
+  width:18px; height:auto; display:block;
+  image-rendering:pixelated; image-rendering:crisp-edges;
 }
 .ks-card .ks-cap{
   position:absolute; left:0; right:0; bottom:4px; text-align:center;
@@ -2815,14 +2869,22 @@ img{-webkit-user-drag:none; user-select:none;}
                     rgba(30,12,34,.85) calc(66.66% + .3cqw), transparent calc(66.66% + .3cqw));
 }
 
-/* ---- pause button ---- */
+/* ---- pause button ----
+   Bottom CENTRE, not the bottom right corner it used to sit in. With the
+   directions at the far left of the pad and the jump at the far right,
+   the corners of the screen are exactly where the two thumbs now live,
+   and a pause button directly above one of them is a pause button she
+   will hit while jumping. The middle is the one place on the picture that
+   no thumb reaches for any more, which is what the pad moving out to the
+   edges gave us. */
 .so-pause-btn{
-  position:absolute; right:2cqw; bottom:2cqw; z-index:6; cursor:pointer;
+  position:absolute; left:50%; transform:translateX(-50%);
+  bottom:2cqw; z-index:6; cursor:pointer;
   font-family:'Press Start 2P', monospace; font-size:2cqw; line-height:1;
   color:#fffaf5; background:rgba(61,35,64,.7); border:.4cqw solid rgba(255,158,196,.5);
   border-radius:.6cqw; padding:1cqw 1.4cqw;
 }
-.so-pause-btn:active{transform:translateY(1px);}
+.so-pause-btn:active{transform:translateX(-50%) translateY(1px);}
 
 /* =========================================================
    THE STORY PANEL
@@ -3295,10 +3357,20 @@ img{-webkit-user-drag:none; user-select:none;}
    ever taken edge to edge again. */
 .so-pad{
   display:flex; align-items:center; justify-content:space-between;
-  width:100%; max-width:640px; gap:12px; flex:0 0 auto;
-  padding:10px calc(14px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom))
-          calc(14px + env(safe-area-inset-left));
+  width:100%; gap:12px; flex:0 0 auto;
+  padding:10px calc(clamp(14px,3.5vw,64px) + env(safe-area-inset-right))
+          calc(14px + env(safe-area-inset-bottom))
+          calc(clamp(14px,3.5vw,64px) + env(safe-area-inset-left));
 }
+/* NO max-width HERE. It used to be capped at 640px and centred, which on a
+   phone is the whole width and fine, and on an iPad is two clusters of
+   buttons huddled in the middle of a screen twice that wide — both thumbs
+   dragged inwards to reach them, which is the opposite of how anybody
+   holds a tablet. The pad is the full width of the picture now, so the
+   directions sit under the left thumb and the jump under the right one,
+   where they already are on a phone. The pad is only ever on screen for a
+   touch device (see the pointer:fine rule below), so nothing widens for a
+   mouse. */
 .so-pad-side{display:flex; gap:12px; align-items:center;}
 /* on the title screen the pad controls nothing, so it steps back rather
    than sitting there looking live */
