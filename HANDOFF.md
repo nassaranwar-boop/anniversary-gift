@@ -684,6 +684,397 @@ times binds no extra listeners — **collect the garbage before you read that
 counter**, or a chapter that rebuilds its buttons every visit looks like a
 +12 leak when it is detached-but-collectable.
 
+## 7c. Ouissy's Night Shift — the night-shift chapter
+
+The fifth game, and the first one in this repo that is actually 3D in
+the way the racer never was. Written on a branch at his request
+(`claude/wick-cogs-horror-game-1i25wl`), added as a sixth hub card,
+nothing removed. It was built first as **Wick & Cogs** and then
+personalised in a second pass: the shop kept that name, the game took
+hers, and Ouissy became the guard rather than an unnamed one.
+
+Read `README.md` for what it is and how to change it. What matters for
+whoever picks it up:
+
+- **It is Three.js on the bundled copy, and the racer is not.** The
+  racer looked like a 3D game and is a hand-written Mode 7 scanline
+  renderer with no `THREE` in it at all. Do not go looking for shared
+  code between the two; there is none, and the tooling worth sharing
+  (the texture library, the prop kit, the light rig, `place()`) is in
+  `night-shift.js` for a future rebuild of the racer to use.
+- **Four rules are enforced in code**, all of them from complaints
+  about the racer: `slab()` has a minimum thickness so a flat cutout
+  cannot be built by accident; `place()` is the only way a prop enters
+  a room and it lays a contact shadow, so nothing floats; a room is
+  composed once and frozen, so the frame loop cannot drift it; and
+  anything appearing twice comes out of a variant kit.
+- **Two ordering traps cost an hour each and are written up in the
+  file.** Freezing a subtree *before* parenting it leaves every prop
+  stacked at the origin — one of them ended up across the camera lens.
+  And freezing before the room's own world matrix exists puts a whole
+  room in its neighbour's space, which looks exactly like a room that
+  failed to build.
+- **Light intensity is candela.** three.js has been on physical units
+  since r155, so the readable 0–3 numbers each room asks for are
+  multiplied by `LUX` in one place. The first build of the office was
+  black and it was this.
+- The light rig is a fixed eight point lights plus one ambient, always
+  in the scene, re-pointed when the view changes. That is deliberate:
+  adding or removing a light changes the shader and stalls, and a stall
+  when you flip to a camera is the worst possible moment for one.
+
+The second pass added the things that are easiest to get wrong, so they
+are worth knowing before touching any of them:
+
+- **There are exactly two voices and they are not the same thing.**
+  This bullet used to read "there is deliberately no narrator", and for
+  four passes that was true. It is not any more — he asked for Anwar
+  afterwards — but the distinction it was protecting still holds and is
+  the thing to preserve. The building's annunciator is a closed list of
+  status lines (`NS.sys`): it reports states and stops, never uses her
+  name, never reassures, and never mentions a performer except as a
+  sensor reading. Anwar is a man on a tape and everything warm in the
+  chapter is his. If a line being added to `NS.sys` sounds like a
+  person, it belongs to Anwar or on a piece of paper instead. They
+  share one mouth (`speechSynthesis` has no mixer), so `sysWaiting`
+  holds the building back rather than letting it cut him off — that
+  queue is not decoration, it is the only reason both are audible.
+- **All the lore is found, never spoken.** Night one briefs off a card
+  taped inside the desk drawer; nights two to six each open on one
+  small found thing (`NS.beats`), a sentence or two at a time, and the
+  toymaker's story resolves in `NS.finale`. Nobody in the chapter ever
+  states the theme.
+- **The one personal touch is walled off from the horror.** The framed
+  photo of the two of them is only ever visible in the daylight
+  gallery (`parts.usFrame.visible = G.mode === "gallery"`). It is not
+  in the office at night, and it is not in `SHIFTIES` — the pairs of
+  props that quietly swap between camera checks are all the shop's own
+  objects. Keep it that way; he asked for it explicitly.
+- **The power budget is tuned against night six, not night one.**
+  `TUNE.power` is a budget with a comment explaining it. The way to
+  retune it is not to guess: drive an attentive guard through every
+  night with `__night.pump` and look at where the meter lands. Night
+  one should finish around a third full and night six on fumes. Note
+  that `pump` runs the same step list as the frame loop — alarms,
+  shifties and hazards included — precisely so that measurement is
+  honest; an earlier version left the surges out and made night four
+  look winnable when it was not.
+- **Cozy Mode is a first-class difficulty, not an accessibility
+  afterthought.** It is one multiplier table (`TUNE.cozy`) read through
+  `cozyK()`, and it touches aggression, door grace, power, alarm
+  frequency, decay and the force of a jumpscare.
+
+A third pass added the score and fixed four things that reading the
+code found and no suite had:
+
+- **`onKey` checked the phase before it checked the cabinet**, so every
+  key in KEYWIND was dead and the space bar hit BACK TO THE SHIFT. There
+  was no `keyup` listener in the file at all. Order matters there now.
+- **The custom night's four sliders were one slider.** The hour curve
+  was derived from the highest dial, so turning Jax to twenty made
+  Cogsworth two and a half times faster at his own unchanged five.
+- **`observed()` did not know a dropped monitor is not a monitor.**
+  `powerRate` always had; this did not, so night six's dropouts froze
+  Marabelle exactly as well as a working picture. If you touch one of
+  those two, touch both.
+- **The blackout ran its clock twice.** `stepBlackout` owns the
+  approach, but a blackout forces every door open, so `stepCast`'s
+  open-door branch decremented the same timer again every frame. Nine
+  seconds of grace was four and a half. `stepCast` now returns early in
+  the dark.
+
+And the pacing: `tools/nightpace.js` measures the longest stretch of a
+night with nothing audible in it, and found **night one's first hour
+running fifty-six seconds with nothing at all** — no arrival, no alarm,
+nothing moved. The first minute of the first thing she plays cannot be
+an empty room. False alarms now start twelve to twenty-six seconds in
+rather than up to ninety, and come roughly twice as often while nothing
+is on its way, which is what they were always for. The longest dead
+stretch anywhere is now about eighteen seconds.
+
+On the score (§17c in the file): it is layers, not tracks, and the
+thing to preserve if you touch it is that **`dread` reads the route,
+not the door**. That is the whole point — a performer's route position
+climbs while it is still three rooms away, so the music is ahead of the
+game rather than behind it. Everything is scheduled against the audio
+clock with a 0.65s lookahead, never on the frame, because the frame
+rate is the one thing not guaranteed on a phone.
+
+One thing worth knowing about the office lighting: **the monitor's glow
+lamp used to sit 0.35m from where a guard's right hand goes, rated the
+same as the ceiling of the whole room.** Everything near it tone-mapped
+to white, which is why the hands read as white gloves through three
+rebuilds before anyone thought to print the light positions. If
+something in that room looks bleached, print the rig before you touch
+the albedo.
+
+A fourth pass answered the real question — why would somebody who has
+never played one of these keep playing — with three things:
+
+- **Orientation.** Night one runs a scripted first ten minutes where
+  the shift *stops and waits* for her: `tutorStep` gates the entire
+  play branch of the frame loop, so the clock, the meter and the cast
+  are all still until she has done what it asked. It cannot be failed
+  and it runs exactly once (`ns_notutor`). `pump` turns it off, because
+  a suite driving a night by hand is not being oriented.
+- **Something to find.** One object a night, hidden on a camera. The
+  spot is not authored — `findSpot` walks candidate points along the
+  line that room's camera is looking down and raycasts each onto a
+  surface. Three things about that cost time and are worth knowing:
+  a ray dropped from the candidate point hits the **ceiling** in every
+  room (those points sit near a camera that is near the ceiling), so
+  it casts from above and filters the hit list by height instead;
+  `Raycaster` **skips invisible objects**, and at boot every room but
+  the office is switched off, so the group has to be switched on for
+  the cast; and the spot comes back in **room space**, because it is
+  parented under a group already parked sixty metres out and adding
+  the offset twice put every page in the next room along.
+  Also: nothing may hide in the workshop after night one — that camera
+  is dead from night two, and a page behind it is unfindable.
+- **A story she has to earn.** `NS.finds` is the whole arc and it is
+  the one block to edit if he wants different words. It walks from a
+  stranger's shop to their own — the places in it come from the
+  scrapbook (`SB.map.pins`), so if those change, these should too.
+
+A fifth pass rebuilt the fiction around his own premise — he is her
+husband, a toymaker who sold possessed toys, dead eleven days — and
+turned the whole thing on one idea worth protecting:
+
+**each of his four is built around one thing about her**, and the thing
+it does in the game is that thing. Cogsworth keeps time because she is
+never late. Chime ignores doors because she reads on the roof.
+Marabelle stops when watched because she will not dance if anybody is
+looking. Jax will not leave a door because she stays. So the tags are
+the tutorial *and* the love letter, and the four things that have been
+frightening her for six nights are a portrait of her.
+
+Three systems carry it:
+
+- **Winding** (`WIND`, `stepWind`). His note is the mechanic. A slack
+  one stops obeying its own tag — that is the rule to preserve if you
+  touch it, because it is what makes the cards true.
+- **The ones he sold** (`SOLD`, `stepSold`). Never seen moving, do not
+  knock, immune to watching and to winding, and never unwrapped: they
+  are parcels with something showing through a tear. Do not be tempted
+  to model what is inside — the moment you show it, it is ordinary.
+- **Interception** (`guardFor`, `intercept`). A returner through an
+  open door kills her *unless* one of his four is wound. His four are
+  her lives; the note is what buys them. Nothing tells her until the
+  first time it happens.
+
+Balance notes, all measured with `tools/nightbudget.js` rather than
+guessed: the returners at nine seconds a hold cost about a quarter of a
+late night's meter and made five and six unwinnable, so they hold for
+four and a half; and winding at 1.5% a wind with a seven-hour life came
+to a tenth of the meter, so it is 1% and nine hours — about one wind
+each across a night. A wound one also gives up on a shut door nearly
+twice as fast, so the mechanic pays for itself instead of taxing her on
+top of everything else.
+
+Two things that only exist because somebody went looking for what had
+never been checked:
+
+- **`tools/nightsound.js` listens.** Every other suite here runs muted.
+  That was fine while sound was atmosphere; it stopped being fine when
+  telling his four from the parcels by ear became a rule. It renders
+  each cue offline and measures where the weight of it sits. Its first
+  answer was wrong in the game's favour, which is the worst kind: it
+  sampled `SFX.step` alone rather than the cue `cue()` actually plays,
+  so Cogsworth was measured as a boot with the tick that identifies him
+  left out, and it called the parcel cues as `SFX[name](1, 0)` when
+  their first argument is the pan — hard right, at a gain of zero that
+  `burst()` then silently replaced with its default. Measuring the cues
+  as heard put his boots at 940 Hz and a tried doorknob at 1030: the
+  same sound. The parcels are duller now, and the ring in his foot is
+  loud enough to be the thing she hears. Every cue here is filtered
+  noise, so it renders each three times and reports the spread. If you
+  retune any cue, run it.
+- **`tools/nighttouch.js` uses a finger.** The winding key is the only
+  hold-not-tap control in the chapter, which makes it the one a touch
+  pointer is most likely to break.
+
+And the thing that was missing for a whole pass: **orientation did not
+teach winding.** She was being walked through doors and cameras and
+left to discover the control the entire story turns on in a note she
+might skim. Tutorial steps can now run an `enter` hook, which the
+winding lesson uses to run one down on purpose — at midnight all four
+are still on the wind he left them and there would be no key to find.
+Orientation also has to keep `stepWind` running while it holds the rest
+of the shift still, or it would be teaching a control it had switched
+off.
+
+Two traps, both of the same shape — a number written down once and
+then outgrown:
+
+- `cast` now holds seven, not four. Anything waiting on
+  `Object.keys(cast).length === 4` hangs, and three tools did.
+- The trophy shelf by the desk was built with twelve slots for six
+  nights and six badges. Adding two badges made it two short, and the
+  two that would never appear are the last two earned — the quietest
+  possible failure. It is `NIGHTS.length + NS.badges.length` now, the
+  spacing is derived from that, and `nightplay` fails if the shelf ever
+  has fewer places than the game has things to put on it.
+
+A sixth pass read the chapter as a story rather than as a program,
+which is a different job and needs a different tool: `tools/nightread.js`
+plays the whole thing from the film to the last morning and
+**transcribes everything she would actually receive, in order, with the
+clock beside it**. It asserts nothing. Reading it is the point, and
+reading it found what no suite could:
+
+- **The opening film gave away nights three and four**, so two of the
+  six revelations arrived as confirmations.
+- **Two of the six hidden pages said the same things as two of the
+  revelations** — the ledger repeated night three, the last page
+  repeated night six — so she read the same beat twice and the second
+  time was smaller. They are the two pages about the pair of them now
+  (`ledger` is the folding chair; `last` is the fifth one).
+- **`NS.beats` — the card before each night — was doing the wrong job.**
+  It restated the previous night's hook, so a tease was answered by an
+  echo instead of by a night, and two of them spoiled their own night's
+  three-o'clock find. All five are now *what has changed since last
+  night*, escalating and physical, with no plot in any of them.
+- **Two lines of narration contradicted the mechanics they described**
+  ("for the first time all week" against six nights of winding;
+  "watched it on a monitor five times" against the blind last hour).
+
+And the one rule that came out of it, which is worth more than any of
+the individual fixes: **an object the writing names must exist in the
+room.** Three did not. Night five's page describes a folding chair
+turned to a bench with her chipped mug on the arm of it, and the supply
+closet had no chair. Night six's page describes a half-made fifth one
+under a dust sheet at the back of the stage, and the stage had three
+plinths and nothing else. Night one's tape promised "something on a
+shelf with your name on it" and nothing in the shop ever answered it.
+All three are real now — the chair, the bench and the mug are modelled
+in `buildCloset`, the shrouded figure in `buildStage`, and the tape
+points at the brass nameplate that was always on her desk. A page that
+describes furniture that is not there is the shop lying to her, and
+this shop cannot afford to.
+
+Two placement notes from doing it: the fifth one sits **upstage and off
+the plinth line**, because camera 02 exists to show that the middle
+plinth is empty when Cogsworth is out and a shape on it destroys the
+read; and the folding chair sits clear of mark `s0`, because a
+performer standing there had his boots through the seat. If you add a
+prop to a room with anchors in it, photograph it with somebody standing
+on each of them (`nightshot.js` takes a cast list for exactly this).
+
+The daylight gallery now captions the room it is showing (`GAL_NOTE`),
+because the biggest payoff in the chapter was silent: night five's
+drawing is four figures round a woman at a desk facing outward, and in
+daylight the office *is* that drawing at full size with nobody in the
+chair — and she could walk in on it and not notice. The caption names
+it once and gets out of the way. If you move a prop, check the caption
+for that room still describes what is in it; the first draft of these
+claimed a glass case and six chairs that did not exist.
+
+He then asked the fair question — *is it actually all fine?* — and the
+answer was no, because of the caption added an hour earlier. It is
+worth writing down what that exposed, which is bigger than the caption:
+
+- **`nightlayout` only ever measured the play HUD.** Every overlay
+  screen in the chapter — the title, HOW TO PLAY, the badges, the
+  drawer, the faders, the voices, the custom night and the gallery —
+  had never been measured at any size by anything. A caption that grew
+  from one line to three landed on top of its own heading on a phone
+  and all six suites stayed green. It walks the overlays now.
+- **375x667 was not in the size list**, and it is the width that
+  breaks things: the gallery's eight room buttons wrap to a fourth row
+  at 375 and nowhere else, which pushed BACK off the bottom of a panel
+  that does not scroll. It is in the list now.
+- The gallery's title and note were two absolutely-positioned lines at
+  fixed offsets (`top:2cqh` and `top:6cqh`), which holds only while the
+  note is one short line. They are one flow header now.
+- And the check itself was wrong on its first run, in the direction
+  that costs the most: it flagged HOW TO PLAY, the badges and the
+  custom night, all three of which are long lists inside `.ns-card`,
+  which is `overflow-y:auto` **on purpose**. Somebody acting on that
+  would have "fixed" three screens that work. The assertion is content
+  taller than a panel that *cannot* scroll. This is the third time in
+  this chapter's history that a new measurement's first answer was
+  wrong rather than the game — check the suite before the site.
+
+And then the report that mattered most: **"the OSTs aren't working at
+all and the keyboard isn't working to let me play."** Both were one
+bug, and it is the most instructive one in this chapter's history.
+
+`stop()` leaves `G.phase = "idle"`. `finishStart()` opened with
+`if (G.phase === "idle") return;`, whose comment said "she may have
+gone back to the hub in the frame we waited" — and that is a real
+hazard, but only on the FIRST visit, where `start()` parks the phase at
+"load" and waits two frames for the loading card to paint. On every
+visit after that the shop is already built, `finishStart` runs in the
+same turn, and the phase is still "idle" because that is what `stop()`
+left behind. So it returned immediately — before `running = true`,
+before `musicMode("menu")`, before `screenTitle()` and before the key
+bindings were confirmed. **The chapter was dead from the second time
+she opened it.** No score, no keyboard, no title screen.
+
+The phase cannot answer "is this start still the one that matters", so
+it does not have to any more: `start()` takes a sequence number,
+`stop()` bumps it, and the deferred branch checks it is still current.
+
+Why nothing caught it, which is the part worth keeping: **every suite
+in this repo entered each chapter exactly once.** 219 play checks, 22
+touch, 21 sound, 21 audio, 44 regress, six layout sizes — and not one
+of them had ever done the commonest thing a player does, which is look
+at a chapter, go back to the hub, and come back to it. `regress.js`
+opens the night shift a second time now, on desktop and on an iPhone,
+and checks it is alive: title card up, score on `menu`, and a **real**
+keypress still shutting a door. That last one matters too — the whole
+battery drove the game through `__night.press()` and DOM clicks, and
+only ever sent two real key events in the entire suite, neither during
+a shift. A control nothing has ever actually pressed is a control
+nobody has tested.
+
+Two more reports, and both were right.
+
+**"One of the toys doesn't show up on night two or three. Make every
+step of the story certain to happen."** Every step any performer takes
+was a dice roll — `if (Math.random() > tune.chance * agg) return;` —
+with no floor under it. Dice are the right texture for *when* one of
+them comes and the wrong one for *whether*: on an early night, with the
+ramp low, a performer could sit in its room from midnight to six and
+never be met. That empties night two, whose entire subject is what the
+four of them are, and it is the difference between a character and a
+rumour.
+
+So chance now decides the first stretch and then the shop stops asking.
+Once a performer is two in-game hours past waking with no arrival, it
+advances every tick until it has reached her. It reads as the night
+tightening, it arrives inside the window it always could have, and it
+can no longer fail to. Custom Night is exempt — the dials are hers, and
+a dial at nothing has to mean nothing.
+
+The same fault in a different shape: **camera zero** waited for her to
+raise her own desk camera, which she may simply never do, and from
+night three that scene carries a revelation. It still waits for her —
+that is the point of it — but from four o'clock the annunciator calls
+motion on camera zero every half minute until she looks. The shop does
+that for every other room all night, so it costs the fiction nothing.
+
+**"The music and the sound effects are so low, and when his voice
+happens we can only hear him."** Exactly right, and not a ducking
+problem — nothing was ducking. `speechSynthesis` **does not go through
+this graph at all**. It is the browser's own voice at the browser's own
+level. Everything else was mixed under a master of 0.9 and metered a
+peak of 0.25, using a quarter of the available headroom, so he was at
+full scale and the shop was a whisper. No amount of timing one against
+the other would have helped: they are two output paths that never meet.
+
+The fix is to stop giving away three quarters of the shop's headroom.
+The bus runs hot now (`MASTER_BASE`) into a `DynamicsCompressor` acting
+as a limiter, so the average level comes up about four times without a
+scare ever clipping — measured, a shift went from 0.116 rms to 0.481,
+with peaks held at 0.77. And his voice comes down to 0.78 (the
+building's to 0.62), because it was the one thing in this chapter that
+had never been in the mix at all. If you retune any of this, tap the
+meter **after** the limiter — it reads the level going in otherwise.
+
+Still open with him: whether the difficulty of nights five and six is
+where he wants it.
+
 ## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python
@@ -701,7 +1092,20 @@ There are scripts for all of this in `tools/` now, with a README. Run
 an iPhone and fails loudly. It had itself been broken for a long time —
 it drove a text field at the passcode gate, which has been a keypad for
 much longer than that — so if it fails on the second screen, suspect the
-suite before the site. For the apocalypse there is
+suite before the site. For the night shift there is `tools/nightplay.js`,
+which plays the chapter from the hub card to the way out in 220 checks,
+`tools/nightbeats.js`, which checks every beat the story promises
+actually reaches her, and `tools/nightshot.js`, which photographs any
+room from any of its cameras with any of the cast standing in it.
+`tools/nightui.js` composites every screen (DOM and canvas together),
+which is the only way to see a layout problem in a card. Two harness
+quirks are worth knowing there: playwright's `page.click` hangs on this
+site because the page never fires `load` (every non-localhost request is
+aborted), so the suite clicks through the DOM; and the site's 0.65s
+screen-entry animation does not finish inside playwright's actionability
+check under swiftshader, so the suite turns it off.
+
+For the apocalypse there is
 `tools/apocflow3d.js`, which plays the whole chapter from the hub card to
 the roof, and `tools/apocmech3d.js`, which holds the stealth assertions.
 Both need a real GL context, so launch Chromium with `--use-gl=swiftshader
@@ -714,3 +1118,308 @@ so anything that waits on wall-clock time runs in slow motion and proves
 nothing (drive the game with `window.__soPump` instead); and
 **`page.screenshot()` hangs** while a canvas loop is painting, so halt the
 loop and go through CDP, or pull the canvas out with `toDataURL`.
+
+## The pass that made it a story rather than a shift
+
+Four things, and the first two were bugs that had been there the whole
+time.
+
+**The winding key was sitting on top of the controls.** It is
+`<button class="ns-key" id="ns-key">`, and the six buttons along the
+bottom of the panel have been `class="ns-key"` since long before it
+existed — so every one of them picked up the hotspot's
+`position:absolute` and `transform:translate(-50%,-50%)`, left the flex
+row, and stacked on one point in the bottom left corner with half of
+each off the side of the screen. It is `.ns-wind` now. `nightlayout`
+fails on overlapping controls, which is the only thing that would have
+caught it: every button was its full size and inside the frame, they
+were simply all in the same place.
+
+**Every cue was scheduled at `currentTime`.** All of them are
+envelopes — nothing to peak in four milliseconds and back down — and
+all of them were scheduled at the start of the block the audio thread
+was already working on, so the attack was behind it before it began.
+Live, a door shutting came out thirty times quieter than the same cue
+rendered offline. An `OfflineAudioContext` starts at zero with the
+whole render ahead of it, so nothing scheduled "now" is ever late in
+one: every measurement of these cues ever taken here was of a sound
+nobody had heard. There is a 25ms lead on everything now. (Honest
+caveat, in the comment above `CUE_LEAD` too: the sweep that found it
+ran against a null audio device whose thread runs ahead in batches, so
+how much of the thirty-fold gap was the bug and how much was the
+container is not something this repository can answer. Scheduling an
+envelope at `currentTime` is a real mistake regardless.)
+
+**The score has a room for every scene.** It had three settings and
+everything else borrowed one: the film where a dead man introduces
+himself had the same music as the title screen. There are nine now —
+`film`, `brief`, `night`, `dark`, `gone`, `found`, `held`, `dawn`,
+`gallery`, `menu` — and they are the same seven layers, the same music
+box, the same key, and the same grid. Nothing restarts, the tempo eases
+rather than snapping, and `nightaudio` meters straight through five
+scene changes to prove it never cuts.
+
+**And he talks to her while she works.** `NS.tapes` and section 18g.
+Everything the chapter had to say used to be said before a night or
+after it, which left the five and a half minutes she actually plays
+with nothing in it but the job. Somebody who plays games will sit
+through that. Somebody who does not will put the phone down at four in
+the morning of night two. So: one line an hour in his own voice, plus
+six that wait for something she does. It never speaks over a scare,
+never over the annunciator, never twice, and never with something at a
+door.
+
+A note on the suite, because six checks were wrong in the same way and
+it is worth naming the shape. Several of them measured one rule through
+another rule's noise: the ballerina's freezing tested on the night the
+cameras drop out, the dropped-monitor control case tested on the night
+the monitor drops on its own, a parcel at a door tested with Jax awake
+at the other one. In each case the hazard doing its job read as the
+rule failing. And three more were counting on a dice roll — they retry
+now, because a window a thing sits out proves nothing while a window it
+moves in settles the question.
+
+## Two things a real finger found that nothing here had
+
+**Every hotspot on the monitor was unreachable.** The winding key, a
+found page and the arcade cabinet all live inside `.ns-mon`, which is
+`pointer-events:none` so the tube does not eat the office behind it. A
+child of that has to switch pointer events back on for itself, and none
+of them did. They were painted, correctly positioned, wired to working
+handlers, and a finger went straight through all three into the canvas.
+
+The winding key had been getting `pointer-events:auto` by accident, from
+the pad's `.ns-key` rule — so renaming it to `.ns-wind` to fix the
+layout collision is what finally exposed it. The other two had never
+worked.
+
+Nothing in the suite could have caught it, and the reason is worth
+keeping: **the suites dispatch events onto the element**, and
+dispatching skips hit testing entirely. It proves a handler runs, not
+that anything can reach it. `nighttouch` now asks the document what is
+actually under the middle of each hotspot, and drives the ring with a
+real press.
+
+**And the chapter was never in the no-select list.** Every other
+playfield on the site has `touch-action:none; user-select:none`; the
+night shift had neither, so a thumb held on the winding key, or dragged
+across the office to look around, turned the page blue instead. It is
+in the list now.
+
+## He says the actual words now
+
+The formant synth is a good impression of a man and a bad impression of
+English — you can hear that somebody is talking and you cannot hear
+what, which left the subtitles doing all the work and the sound under
+them doing none. So `speechSynthesis` says it, off the same string the
+caption is built from: an English voice, pitch 0.65, rate 0.92 for him;
+flat, fast and pitch 0.1 for the building. A hum, a hiss and two clicks
+run in Web Audio for exactly as long as he talks, because the speech
+cannot be routed through the graph and the machine has to be played
+around it instead.
+
+The caption lights on the synthesiser's own word boundaries now, which
+is the truth rather than an estimate; `voxPlan`'s timings stay as the
+fallback, and so does the whole formant synth for a platform with no
+voices. This container has none, so the fallback is what the rest of
+the suite walks — the speech path is tested against a stub that reports
+a voice and fires boundaries, which is how we know the string handed to
+the browser is exactly the string on screen.
+
+## The pass where the score turned out not to exist
+
+Four things reported from a real phone, all four real.
+
+**The night had no floor, and the night is the game.** Every melodic
+layer was gated behind `dread` — the box at 0.20, the pulse at 0.10 —
+and dread sits at about 0.06 whenever nothing is walking towards her,
+which is most of most nights and nearly all of the first two. Measured
+with the shop quiet: `sub 0.37` and every other layer at zero. A
+forty-one hertz drone and no music whatsoever, for five and a half
+minutes at a time. She was not hearing a score that failed to arrive,
+she was hearing the absence of one.
+
+There is a piece of music playing in the shift now, always, and dread
+is what the piece *does* rather than whether it exists: the music box
+and a clock from midnight, a piano while she is still alone with it
+that steps back as she stops being, and the six frightening layers
+arriving on top of something rather than instead of it.
+
+**There is only one mouth and they were both using it.**
+`speechSynthesis` has a single queue and `cancel()` empties it. The
+building announces a door every time she touches one, and every one of
+those cancelled him mid-word — so the only voice she ever heard through
+to the end was the one saying DOOR ONE: CLOSED. He has right of way
+now, in the speech queue and in `tapeQuiet()`; the building waits, and
+gives up if it has been waiting more than two seconds, because a door
+announcement three seconds late is worse than none.
+
+**And a backstop on `onend`.** Some engines never fire it on a short
+line, and without one `SPEECH.live` stays true for the rest of the
+visit — every scene that waits for him to finish then waits for ever.
+
+**Dead air.** The film and the terms waited up to a second and a bit
+on top of a voice that had already stopped. A quarter of a second is a
+breath; more than that is where somebody decides the game is slow. And
+the tapes were one line an hour behind a rule that would not let him
+speak while the building was talking — fifty seconds between sentences,
+which is not a conversation. Eighty-two lines now, about one every
+twenty seconds, on fractional hours.
+
+**His voice is a setting.** The scorer picks the best voice it can
+identify and on most phones that is right, but "best" is a guess made
+by a regular expression about names it has never heard. HIS VOICE on
+the title screen reads a line in each one. The only test that was ever
+going to matter is her ear.
+
+## The opening was cutting itself off, and it was the backstop
+
+`speechSay` gives every utterance a `finish()` that clears `SPEECH.live`
+— a flag the whole chapter reads to know whether he is still talking —
+and a backstop timer that calls it if the engine never fires `onend`.
+The flag is global and the timer fires on a delay, so **the timer
+belonging to a line that ended a second ago was clearing the flag for
+the line currently being spoken.** The film then decided that line was
+over, started the next one, and `cancel()` chopped the previous one
+wherever it happened to be.
+
+Two of the first seven sentences of the opening, cut off about a third
+of the way through. Every utterance carries a number now and only the
+current one may say it has ended.
+
+Nothing here could have caught it, because the stub the suite used
+answers instantly and a real engine never does. `nightplay` now runs the
+opening against an engine that takes time to talk and whose `cancel()`
+chops mid-sentence, and fails if any line does not reach its end.
+
+The backstop is measured off word count rather than off `voxPlan` —
+`voxPlan` times the fallback synth, and a real narrator is slower, so
+the old estimate was firing early on exactly the long sentences that
+mattered most.
+
+## Five faders, because every level here has been a guess
+
+Every mix decision in this chapter was made through a container with a
+null audio device, about a phone in a room nobody working on it can
+hear. Several of those guesses shipped wrong, and two of the fixes made
+it worse. SOUND — on the title screen and in the pause menu, so it is
+reachable at the moment something is too loud rather than four menus
+later — has a fader for the score, the shop, his voice, the room tone
+and everything, plus the voice picker and a line to test it on. They
+persist, and DONE goes back to wherever she opened it from.
+
+## "I tried the four nights and I didn't feel anything"
+
+The most useful note in this whole build, and three things were true.
+
+**Every night was the same night with one more thing switched off.**
+`HAZARDS` is a list of subtractions — a dead camera, a dark hall, a
+sticky door — so nights three and four were night two with more of them.
+That is a difficulty curve, not six experiences. Each night has a title,
+a grade and a revelation of its own now.
+
+**Nothing ever happened in the room she was sitting in.** All the threat
+was elsewhere, abstracted into a route index, and arrived as a number
+going down. The office was inert for thirty-three minutes and nothing
+was ever in it with her until the instant it killed her. Camera zero
+fixes that and it is the single biggest change in this pass: the ceiling
+behind her chair, looking the way she is looking. From night three
+something stands in it — never touching her, never costing her
+anything, not on anybody's route, one mark closer every time she looks
+away. `stepCast` had to learn to leave a `deskHeld` character alone, and
+the advance had to be latched on the look-away transition rather than
+run per frame (the first version walked all three marks in a fifth of a
+second, which nobody would ever see).
+
+**Nothing he had to say landed inside a night.** A film before, a card
+after, a page she might not find. `NS.reveal` is one thing a night, at
+three in the morning, in his voice, and it waits if anything is at a
+door.
+
+## The story pass: she was passive, and that was the flaw
+
+Things were revealed TO her. She read pages, listened to tapes,
+survived, and answered one binary question at the very end. A coin with
+no history behind it is a menu, not an ending.
+
+`NS.reveal` is six decisions now — keep it or burn it — and `NS.kept`
+resolves them on the last morning. Nothing ever tells her they count.
+They also nudge the shift itself: `keepDrag()` slows the four running
+down (more of him in the shop to run on), `burnDrag()` slows the ones
+he sold coming back (less of him here for them to return to). Neither
+is worth optimising and neither is mentioned, which is the difference
+between a decision that felt like it mattered and one that scored.
+
+The knife is night four. He did not learn to build a thing that watches
+a person by practising on strangers — there is a notebook with fifteen
+years of dated observations of his own wife in it, and every trait in
+it is a mechanic in one of the four toys hunting her. Night five is the
+answer: a drawing dated the week he was told, four figures round a
+woman at a desk, all of them facing outward.
+
+`endingKind()` has five outcomes. The one that means the most is not
+"kept everything" — it is `four`: she burns the ledger and the
+notebook and keeps the things he made.
+
+## The pass that hunted bugs rather than adding features
+
+Three real ones, and two of them were reachability again.
+
+**PAUSE was under the right-hand door key.** Measured with
+`elementFromPoint`: on a desktop the element under the middle of the
+pause button was `ns-key-r`, so pressing where it appears shut the door
+instead of pausing. In portrait it moved to the top right and landed on
+top of the clock. It has its own corner at z-index 12 now and the clock
+steps aside for it. This is the third control found unreachable by
+asking the document what is actually under it — that check is worth
+running on anything new.
+
+**The daylight walk froze the cast for the rest of the visit.** The
+gallery pins all four with `deskHeld` so they stand where the night-five
+drawing puts them, `stepCast` leaves a pinned figure alone, and
+`resetCast` did not clear it. Any night begun after a look round the
+shop in daylight had a cast that never moved again. Cleared in
+`resetCast` now, and checked.
+
+**The blind hour only existed on real frames.** It was a line in the
+frame loop, so `pump()` never ran it — and a pumped night is supposed
+to cost exactly what a played one costs, which is the only reason the
+budget numbers mean anything. It is `stepBlind` and it is in both
+lists.
+
+And one measurement lesson repeated: the night's mix could only be read
+with the sound on, and every suite here runs muted. `nightMix(feel, d)`
+is a plain function of the feeling and the dread with no audio in it,
+so what the shift is written as can be checked without hearing it.
+
+## Reading the six hours as a story
+
+`tools/nightread.js` transcribes the whole chapter in the order she
+receives it. It asserts nothing; it exists to be read. Doing that once
+found five things no assertion would have:
+
+- **The opening film gave away nights three and four.** Before she had
+  played a second it said the toys went into houses and did what he
+  asked, that he was paid a great deal for it, and that she had been
+  living on the money. So night three's ledger and night four's
+  notebook were confirming something the trailer had spoiled. The film
+  now says the shop is hers, that he lied for fifteen years, that the
+  ones he sold did not stay sold — and stops.
+- **Two of the six hidden pages repeated two of the revelations.** The
+  night-five find was the ledger (night three's revelation) and the
+  night-six find was the confession (night six's revelation), so she
+  read the same beat twice and the second time was smaller. They are
+  the two things in the shop that are about the pair of them instead:
+  a second chair at his bench with a mug of hers on the arm, and a
+  fifth toy under a dust sheet with no mechanism in it.
+- **The six `why` lines described the wrong nights.** Night four's said
+  "he is about to tell you what they were for", which is night five.
+- **Two lines of narration contradicted the mechanics.** The ending had
+  her winding them "for the first time all week" after six nights of
+  being taught to wind them nightly, and the finale had her watching
+  the morning on a monitor five times when the cameras die at five on
+  the last night.
+
+The four tags stayed exactly as they were. The chalk on night two names
+the four traits; the tags say why he chose them. That is a payoff, not
+a repeat.

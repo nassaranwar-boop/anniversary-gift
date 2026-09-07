@@ -65,14 +65,14 @@
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=214">
+<link rel="stylesheet" href="style.css?v=215">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
 <!-- defer, not a plain tag. three.js is the biggest single file here and
      in the head it blocked the parser for its whole download, so nothing
      was painted until it had arrived. defer fetches it just as early and
      runs it after the document is parsed — and deferred scripts still run
      in the order they are written, so book-scene.js below still finds it. -->
-<script defer src="vendor/three.bundle.js?v=214"></script>
+<script defer src="vendor/three.bundle.js?v=215"></script>
 
 </head>
 <body>
@@ -705,29 +705,6 @@
 
   <!-- SCREEN — CHOOSE YOUR ADVENTURE (hub) -->
   <section id="screen-hub" class="screen ancient-bg">
-    <!-- The wall behind the cards. Stickers and a drifting warm light, so
-         the two pages that are just a list of things to press stop looking
-         like a list of things to press. Nothing here is interactive and
-         nothing here is a file: the stickers are the same pixel glyphs the
-         sprite sheet already carries. -->
-    <div class="page-deco" aria-hidden="true">
-      <span class="deco-glow deco-glow-a"></span>
-      <span class="deco-glow deco-glow-b"></span>
-      <span class="deco-glow deco-glow-c"></span>
-      <span class="deco-sheen"></span>
-      <span class="deco-motes deco-motes-a"></span>
-      <span class="deco-motes deco-motes-b"></span>
-      <span class="deco-vig"></span>
-      <i class="deco-st deco-st1"><svg class="gl" aria-hidden="true"><use href="#ic-px-heart"/></svg></i>
-      <i class="deco-st deco-st2"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
-      <i class="deco-st deco-st3"><svg class="gl" aria-hidden="true"><use href="#ic-px-fox"/></svg></i>
-      <i class="deco-st deco-st4"><svg class="gl" aria-hidden="true"><use href="#ic-px-crown"/></svg></i>
-      <i class="deco-st deco-st5"><svg class="gl" aria-hidden="true"><use href="#ic-px-ribbon"/></svg></i>
-      <i class="deco-st deco-st6"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
-      <i class="deco-st deco-st7"><svg class="gl" aria-hidden="true"><use href="#ic-px-heart"/></svg></i>
-      <i class="deco-st deco-st8"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
-      <i class="deco-st deco-st9"><svg class="gl" aria-hidden="true"><use href="#ic-px-crown"/></svg></i>
-    </div>
     <div class="hub-wrap">
       <h2 class="hub-title">Choose your adventure</h2>
       <p class="hub-sub" id="hub-sub">— three ways in, any order —</p>
@@ -750,6 +727,12 @@
           <span class="hub-name">Ouissy at the Apocalypse</span>
           <span class="hub-desc">The world ends. You come and find me anyway</span>
         </button>
+        <button class="hub-card" id="hub-card-nightshift" data-chapter="nightshift">
+          <span class="hub-badge" id="hub-badge-nightshift"><svg class="gl gl-tick" aria-hidden="true"><use href="#ic-px-tick"/></svg></span>
+          <span class="hub-art hub-art-nightshift" aria-hidden="true"></span>
+          <span class="hub-name">Ouissy&rsquo;s Night Shift</span>
+          <span class="hub-desc">Six hours, two doors and one charge. Don't blink</span>
+        </button>
         <button class="hub-card" id="hub-card-race" data-chapter="race">
           <span class="hub-badge" id="hub-badge-race"><svg class="gl gl-tick" aria-hidden="true"><use href="#ic-px-tick"/></svg></span>
           <span class="hub-art hub-art-race" aria-hidden="true"><svg class="hub-scene" viewBox="0 0 96 32" preserveAspectRatio="xMidYMid slice" aria-hidden="true" shape-rendering="crispEdges"><rect x="0" y="0" width="96" height="1" fill="#f2836a"/><rect x="0" y="1" width="96" height="1" fill="#f2836a"/><rect x="0" y="2" width="96" height="1" fill="#f2836a"/><rect x="0" y="3" width="96" height="1" fill="#f2836a"/><rect x="0" y="4" width="96" height="1" fill="#ff9d72"/><rect x="0" y="5" width="96" height="1" fill="#ff9d72"/><rect x="0" y="6" width="96" height="1" fill="#ff9d72"/><rect x="0" y="7" width="72" height="1" fill="#ff9d72"/><rect x="72" y="7" width="1" height="1" fill="#fff2c6"/><rect x="73" y="7" width="23" height="1" fill="#ff9d72"/><rect x="0" y="8" width="69" height="1" fill="#ffc48c"/><rect x="69" y="8" width="7" height="1" fill="#fff2c6"/><rect x="76" y="8" width="20" height="1" fill="#ffc48c"/><rect x="0" y="9" width="68" height="1" fill="#ffc48c"/><rect x="68" y="9" width="9" height="1" fill="#fff2c6"/><rect x="77" y="9" width="19" height="1" fill="#ffc48c"/><rect x="0" y="10" width="68" height="1" fill="#ffc48c"/><rect x="68" y="10" width="9" height="1" fill="#fff2c6"/><rect x="77" y="10" width="19" height="1" fill="#ffc48c"/><rect x="0" y="11" width="10" height="1" fill="#ffc48c"/><rect x="10" y="11" width="1" height="1" fill="#3f7d5c"/><rect x="11" y="11" width="19" height="1" fill="#ffc48c"/><rect x="30" y="11" width="1" height="1" fill="#3f7d5c"/><rect x="31" y="11" width="37" height="1" fill="#ffc48c"/><rect x="68" y="11" width="9" height="1" fill="#fff2c6"/><rect x="77" y="11" width="11" height="1" fill="#ffc48c"/><rect x="88" y="11" width="1" height="1" fill="#3f7d5c"/><rect x="89" y="11" width="7" height="1" fill="#ffc48c"/><rect x="0" y="12" width="7" height="1" fill="#ffdcae"/><rect x="7" y="12" width="7" height="1" fill="#3f7d5c"/><rect x="14" y="12" width="14" height="1" fill="#ffdcae"/><rect x="28" y="12" width="5" height="1" fill="#3f7d5c"/><rect x="33" y="12" width="34" height="1" fill="#ffdcae"/><rect x="67" y="12" width="11" height="1" fill="#fff2c6"/><rect x="78" y="12" width="7" height="1" fill="#ffdcae"/><rect x="85" y="12" width="7" height="1" fill="#3f7d5c"/><rect x="92" y="12" width="4" height="1" fill="#ffdcae"/><rect x="0" y="13" width="6" height="1" fill="#ffdcae"/><rect x="6" y="13" width="9" height="1" fill="#3f7d5c"/><rect x="15" y="13" width="12" height="1" fill="#ffdcae"/><rect x="27" y="13" width="7" height="1" fill="#3f7d5c"/><rect x="34" y="13" width="34" height="1" fill="#ffdcae"/><rect x="68" y="13" width="9" height="1" fill="#fff2c6"/><rect x="77" y="13" width="7" height="1" fill="#ffdcae"/><rect x="84" y="13" width="9" height="1" fill="#3f7d5c"/><rect x="93" y="13" width="3" height="1" fill="#ffdcae"/><rect x="0" y="14" width="5" height="1" fill="#4f8f6a"/><rect x="5" y="14" width="11" height="1" fill="#3f7d5c"/><rect x="16" y="14" width="10" height="1" fill="#4f8f6a"/><rect x="26" y="14" width="9" height="1" fill="#3f7d5c"/><rect x="35" y="14" width="48" height="1" fill="#4f8f6a"/><rect x="83" y="14" width="11" height="1" fill="#3f7d5c"/><rect x="94" y="14" width="2" height="1" fill="#4f8f6a"/><rect x="0" y="15" width="6" height="1" fill="#4f8f6a"/><rect x="6" y="15" width="9" height="1" fill="#3f7d5c"/><rect x="15" y="15" width="12" height="1" fill="#4f8f6a"/><rect x="27" y="15" width="7" height="1" fill="#3f7d5c"/><rect x="34" y="15" width="50" height="1" fill="#4f8f6a"/><rect x="84" y="15" width="9" height="1" fill="#3f7d5c"/><rect x="93" y="15" width="3" height="1" fill="#4f8f6a"/><rect x="0" y="16" width="7" height="1" fill="#4f8f6a"/><rect x="7" y="16" width="7" height="1" fill="#3f7d5c"/><rect x="14" y="16" width="14" height="1" fill="#4f8f6a"/><rect x="28" y="16" width="5" height="1" fill="#3f7d5c"/><rect x="33" y="16" width="52" height="1" fill="#4f8f6a"/><rect x="85" y="16" width="7" height="1" fill="#3f7d5c"/><rect x="92" y="16" width="4" height="1" fill="#4f8f6a"/><rect x="0" y="17" width="44" height="1" fill="#5f9e57"/><rect x="44" y="17" width="1" height="1" fill="#e8556b"/><rect x="45" y="17" width="6" height="1" fill="#8e8172"/><rect x="51" y="17" width="1" height="1" fill="#e8556b"/><rect x="52" y="17" width="44" height="1" fill="#5f9e57"/><rect x="0" y="18" width="42" height="1" fill="#5f9e57"/><rect x="42" y="18" width="1" height="1" fill="#e8556b"/><rect x="43" y="18" width="4" height="1" fill="#8e8172"/><rect x="47" y="18" width="2" height="1" fill="#fff6e2"/><rect x="49" y="18" width="4" height="1" fill="#8e8172"/><rect x="53" y="18" width="1" height="1" fill="#e8556b"/><rect x="54" y="18" width="42" height="1" fill="#5f9e57"/><rect x="0" y="19" width="39" height="1" fill="#5f9e57"/><rect x="39" y="19" width="1" height="1" fill="#e8556b"/><rect x="40" y="19" width="7" height="1" fill="#8e8172"/><rect x="47" y="19" width="2" height="1" fill="#fff6e2"/><rect x="49" y="19" width="7" height="1" fill="#8e8172"/><rect x="56" y="19" width="1" height="1" fill="#e8556b"/><rect x="57" y="19" width="39" height="1" fill="#5f9e57"/><rect x="0" y="20" width="32" height="1" fill="#5f9e57"/><rect x="32" y="20" width="8" height="1" fill="#6b4326"/><rect x="40" y="20" width="19" height="1" fill="#8e8172"/><rect x="59" y="20" width="1" height="1" fill="#e8556b"/><rect x="60" y="20" width="36" height="1" fill="#5f9e57"/><rect x="0" y="21" width="32" height="1" fill="#5f9e57"/><rect x="32" y="21" width="8" height="1" fill="#6b4326"/><rect x="40" y="21" width="17" height="1" fill="#8e8172"/><rect x="57" y="21" width="6" height="1" fill="#33241c"/><rect x="63" y="21" width="33" height="1" fill="#5f9e57"/><rect x="0" y="22" width="30" height="1" fill="#4f8c49"/><rect x="30" y="22" width="2" height="1" fill="#e8556b"/><rect x="32" y="22" width="8" height="1" fill="#f6d8bc"/><rect x="40" y="22" width="6" height="1" fill="#8e8172"/><rect x="46" y="22" width="4" height="1" fill="#fff6e2"/><rect x="50" y="22" width="7" height="1" fill="#8e8172"/><rect x="57" y="22" width="6" height="1" fill="#33241c"/><rect x="63" y="22" width="1" height="1" fill="#8e8172"/><rect x="64" y="22" width="2" height="1" fill="#e8556b"/><rect x="66" y="22" width="30" height="1" fill="#4f8c49"/><rect x="0" y="23" width="27" height="1" fill="#4f8c49"/><rect x="27" y="23" width="2" height="1" fill="#e8556b"/><rect x="29" y="23" width="3" height="1" fill="#8e8172"/><rect x="32" y="23" width="8" height="1" fill="#f6d8bc"/><rect x="40" y="23" width="6" height="1" fill="#8e8172"/><rect x="46" y="23" width="4" height="1" fill="#fff6e2"/><rect x="50" y="23" width="7" height="1" fill="#8e8172"/><rect x="57" y="23" width="6" height="1" fill="#d8ab86"/><rect x="63" y="23" width="4" height="1" fill="#8e8172"/><rect x="67" y="23" width="2" height="1" fill="#e8556b"/><rect x="69" y="23" width="27" height="1" fill="#4f8c49"/><rect x="0" y="24" width="24" height="1" fill="#4f8c49"/><rect x="24" y="24" width="2" height="1" fill="#e8556b"/><rect x="26" y="24" width="4" height="1" fill="#8e8172"/><rect x="30" y="24" width="2" height="1" fill="#f27ba4"/><rect x="32" y="24" width="8" height="1" fill="#f6d8bc"/><rect x="40" y="24" width="2" height="1" fill="#f27ba4"/><rect x="42" y="24" width="4" height="1" fill="#8e8172"/><rect x="46" y="24" width="4" height="1" fill="#fff6e2"/><rect x="50" y="24" width="7" height="1" fill="#8e8172"/><rect x="57" y="24" width="6" height="1" fill="#d8ab86"/><rect x="63" y="24" width="7" height="1" fill="#8e8172"/><rect x="70" y="24" width="2" height="1" fill="#e8556b"/><rect x="72" y="24" width="24" height="1" fill="#4f8c49"/><rect x="0" y="25" width="22" height="1" fill="#4f8c49"/><rect x="22" y="25" width="2" height="1" fill="#e8556b"/><rect x="24" y="25" width="6" height="1" fill="#8e8172"/><rect x="30" y="25" width="12" height="1" fill="#f27ba4"/><rect x="42" y="25" width="13" height="1" fill="#8e8172"/><rect x="55" y="25" width="2" height="1" fill="#5fb0d6"/><rect x="57" y="25" width="6" height="1" fill="#d8ab86"/><rect x="63" y="25" width="2" height="1" fill="#5fb0d6"/><rect x="65" y="25" width="7" height="1" fill="#8e8172"/><rect x="72" y="25" width="2" height="1" fill="#e8556b"/><rect x="74" y="25" width="22" height="1" fill="#4f8c49"/><rect x="0" y="26" width="19" height="1" fill="#4f8c49"/><rect x="19" y="26" width="2" height="1" fill="#e8556b"/><rect x="21" y="26" width="9" height="1" fill="#8e8172"/><rect x="30" y="26" width="12" height="1" fill="#f27ba4"/><rect x="42" y="26" width="13" height="1" fill="#8e8172"/><rect x="55" y="26" width="10" height="1" fill="#5fb0d6"/><rect x="65" y="26" width="10" height="1" fill="#8e8172"/><rect x="75" y="26" width="2" height="1" fill="#e8556b"/><rect x="77" y="26" width="19" height="1" fill="#4f8c49"/><rect x="0" y="27" width="16" height="1" fill="#4f8c49"/><rect x="16" y="27" width="3" height="1" fill="#e8556b"/><rect x="19" y="27" width="11" height="1" fill="#8e8172"/><rect x="30" y="27" width="12" height="1" fill="#f27ba4"/><rect x="42" y="27" width="3" height="1" fill="#8e8172"/><rect x="45" y="27" width="6" height="1" fill="#fff6e2"/><rect x="51" y="27" width="4" height="1" fill="#8e8172"/><rect x="55" y="27" width="10" height="1" fill="#5fb0d6"/><rect x="65" y="27" width="12" height="1" fill="#8e8172"/><rect x="77" y="27" width="3" height="1" fill="#e8556b"/><rect x="80" y="27" width="16" height="1" fill="#4f8c49"/><rect x="0" y="28" width="13" height="1" fill="#4f8c49"/><rect x="13" y="28" width="3" height="1" fill="#e8556b"/><rect x="16" y="28" width="14" height="1" fill="#8e8172"/><rect x="30" y="28" width="12" height="1" fill="#f27ba4"/><rect x="42" y="28" width="3" height="1" fill="#8e8172"/><rect x="45" y="28" width="6" height="1" fill="#fff6e2"/><rect x="51" y="28" width="4" height="1" fill="#8e8172"/><rect x="55" y="28" width="10" height="1" fill="#5fb0d6"/><rect x="65" y="28" width="15" height="1" fill="#8e8172"/><rect x="80" y="28" width="3" height="1" fill="#e8556b"/><rect x="83" y="28" width="13" height="1" fill="#4f8c49"/><rect x="0" y="29" width="10" height="1" fill="#4f8c49"/><rect x="10" y="29" width="3" height="1" fill="#e8556b"/><rect x="13" y="29" width="16" height="1" fill="#8e8172"/><rect x="29" y="29" width="4" height="1" fill="#2a1c22"/><rect x="33" y="29" width="6" height="1" fill="#f27ba4"/><rect x="39" y="29" width="4" height="1" fill="#2a1c22"/><rect x="43" y="29" width="2" height="1" fill="#8e8172"/><rect x="45" y="29" width="6" height="1" fill="#fff6e2"/><rect x="51" y="29" width="3" height="1" fill="#8e8172"/><rect x="54" y="29" width="3" height="1" fill="#2a1c22"/><rect x="57" y="29" width="5" height="1" fill="#5fb0d6"/><rect x="62" y="29" width="4" height="1" fill="#2a1c22"/><rect x="66" y="29" width="17" height="1" fill="#8e8172"/><rect x="83" y="29" width="3" height="1" fill="#e8556b"/><rect x="86" y="29" width="10" height="1" fill="#4f8c49"/><rect x="0" y="30" width="7" height="1" fill="#4f8c49"/><rect x="7" y="30" width="3" height="1" fill="#e8556b"/><rect x="10" y="30" width="19" height="1" fill="#8e8172"/><rect x="29" y="30" width="4" height="1" fill="#2a1c22"/><rect x="33" y="30" width="6" height="1" fill="#8e8172"/><rect x="39" y="30" width="4" height="1" fill="#2a1c22"/><rect x="43" y="30" width="2" height="1" fill="#8e8172"/><rect x="45" y="30" width="6" height="1" fill="#fff6e2"/><rect x="51" y="30" width="3" height="1" fill="#8e8172"/><rect x="54" y="30" width="3" height="1" fill="#2a1c22"/><rect x="57" y="30" width="5" height="1" fill="#8e8172"/><rect x="62" y="30" width="4" height="1" fill="#2a1c22"/><rect x="66" y="30" width="20" height="1" fill="#8e8172"/><rect x="86" y="30" width="3" height="1" fill="#e8556b"/><rect x="89" y="30" width="7" height="1" fill="#4f8c49"/><rect x="0" y="31" width="4" height="1" fill="#4f8c49"/><rect x="4" y="31" width="4" height="1" fill="#e8556b"/><rect x="8" y="31" width="21" height="1" fill="#8e8172"/><rect x="29" y="31" width="4" height="1" fill="#2a1c22"/><rect x="33" y="31" width="6" height="1" fill="#8e8172"/><rect x="39" y="31" width="4" height="1" fill="#2a1c22"/><rect x="43" y="31" width="1" height="1" fill="#8e8172"/><rect x="44" y="31" width="8" height="1" fill="#fff6e2"/><rect x="52" y="31" width="2" height="1" fill="#8e8172"/><rect x="54" y="31" width="3" height="1" fill="#2a1c22"/><rect x="57" y="31" width="5" height="1" fill="#8e8172"/><rect x="62" y="31" width="4" height="1" fill="#2a1c22"/><rect x="66" y="31" width="22" height="1" fill="#8e8172"/><rect x="88" y="31" width="4" height="1" fill="#e8556b"/><rect x="92" y="31" width="4" height="1" fill="#4f8c49"/></svg></span>
@@ -763,29 +746,6 @@
 
   <!-- SCREEN — KEEPSAKE (scrapbook recap) -->
   <section id="screen-keepsake" class="screen ancient-bg">
-    <!-- The wall behind the cards. Stickers and a drifting warm light, so
-         the two pages that are just a list of things to press stop looking
-         like a list of things to press. Nothing here is interactive and
-         nothing here is a file: the stickers are the same pixel glyphs the
-         sprite sheet already carries. -->
-    <div class="page-deco" aria-hidden="true">
-      <span class="deco-glow deco-glow-a"></span>
-      <span class="deco-glow deco-glow-b"></span>
-      <span class="deco-glow deco-glow-c"></span>
-      <span class="deco-sheen"></span>
-      <span class="deco-motes deco-motes-a"></span>
-      <span class="deco-motes deco-motes-b"></span>
-      <span class="deco-vig"></span>
-      <i class="deco-st deco-st1"><svg class="gl" aria-hidden="true"><use href="#ic-px-camera"/></svg></i>
-      <i class="deco-st deco-st2"><svg class="gl" aria-hidden="true"><use href="#ic-px-heart"/></svg></i>
-      <i class="deco-st deco-st3"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
-      <i class="deco-st deco-st4"><svg class="gl" aria-hidden="true"><use href="#ic-px-ribbon"/></svg></i>
-      <i class="deco-st deco-st5"><svg class="gl" aria-hidden="true"><use href="#ic-px-crown"/></svg></i>
-      <i class="deco-st deco-st6"><svg class="gl" aria-hidden="true"><use href="#ic-px-fox"/></svg></i>
-      <i class="deco-st deco-st7"><svg class="gl" aria-hidden="true"><use href="#ic-px-heart"/></svg></i>
-      <i class="deco-st deco-st8"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
-      <i class="deco-st deco-st9"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
-    </div>
     <div class="ks-wrap">
       <h2 class="ks-title">Our little book</h2>
       <p class="ks-sub" id="ks-sub"></p>
@@ -1111,8 +1071,89 @@
      needed until a chapter is chosen. script.js now fetches each one on
      the idle callback and waits for it at the card, so they arrive long
      before she does without ever standing in front of the opening. -->
-<script defer src="book-scene.js?v=214"></script>
-<script defer src="scrapbook.js?v=214"></script>
-<script defer src="script.js?v=214"></script>
+  <!-- SCREEN — OUISSY’S NIGHT SHIFT (the night-shift horror, set in the
+       Wick & Cogs Toy Emporium; all of it lives in night-shift.js. The canvas is the shop, in Three.js on the copy already
+       bundled for the book intro; everything she reads is DOM over the
+       top of it, styled as the shop's own equipment, because a number
+       you have to read under pressure cannot be drawn into the world.) -->
+  <section id="screen-nightshift" class="screen">
+    <div class="ns-frame">
+      <p class="ns-titlebar" aria-hidden="true"><span>OUISSY&rsquo;S</span><b>NIGHT SHIFT</b></p>
+
+      <div class="ns-stage" id="ns-stage">
+        <canvas id="ns-canvas"></canvas>
+
+        <!-- the monitor. It covers the office while it is up, which is
+             the whole trade: you cannot watch the shop and the doors. -->
+        <div class="ns-mon" id="ns-mon" hidden>
+          <canvas class="ns-static" id="ns-static" aria-hidden="true"></canvas>
+          <div class="ns-mon-frame" aria-hidden="true"></div>
+          <div class="ns-mon-top">
+            <span class="ns-rec"><i></i>REC</span>
+            <span class="ns-camname" id="ns-camname">CAM 01</span>
+            <span class="ns-mon-time" id="ns-mon-time">12 AM</span>
+          </div>
+          <p class="ns-mon-lost" id="ns-mon-lost" hidden>SIGNAL LOST</p>
+          <div class="ns-map" id="ns-map"></div>
+          <!-- one machine in the arcade never got switched off. This sits
+               over it on camera three and is not advertised anywhere. -->
+          <button class="ns-egg" id="ns-egg" aria-label="Something is still running" hidden></button>
+        <button class="ns-find" id="ns-find" aria-label="Something is on that shelf" hidden></button>
+        <button class="ns-wind" id="ns-key" aria-label="Wind it" hidden><i></i></button>
+        </div>
+
+        <!-- the overlay HUD: the meter, the usage bars and the clock -->
+        <div class="ns-hud" id="ns-hud" hidden>
+          <div class="ns-hud-tl">
+            <span class="ns-chip"><b>POWER</b><i id="ns-power">100%</i></span>
+            <span class="ns-bar"><u id="ns-bar-f" data-lvl="1"></u></span>
+            <span class="ns-usage" id="ns-usage">▉░░░░</span>
+          </div>
+          <div class="ns-hud-tr">
+            <span class="ns-clock" id="ns-clock">12 AM</span>
+            <span class="ns-night" id="ns-nightlab">NIGHT 1</span>
+          </div>
+        </div>
+
+        <p class="ns-warn" id="ns-warn" hidden></p>
+        <!-- what the building just announced, in words. The voice itself
+             is a vocoder and cannot be understood; this is the caption. -->
+        <p class="ns-say" id="ns-say" hidden></p>
+        <p class="ns-tutor" id="ns-tutor" aria-live="polite" hidden></p>
+        <div class="ns-cine" id="ns-cine" hidden></div>
+        <span class="ns-edge" id="ns-edge" aria-hidden="true"></span>
+
+        <button class="ns-pause-btn" id="ns-pause-btn" aria-label="Pause" hidden>
+          <span class="gl-pause" aria-hidden="true"></span>
+        </button>
+
+        <!-- doors left and right because that is where the doors are,
+             and both of them big enough for a thumb -->
+        <!-- the tapes he left: his voice, lit a word at a time, and
+             deliberately not the same object as the annunciator's -->
+        <div class="ns-tape" id="ns-tape" hidden aria-live="polite"></div>
+
+        <div class="ns-pad" id="ns-pad" hidden>
+          <button class="ns-key ns-key-l" data-k="left" aria-label="Left door"><b>LEFT</b><i>DOOR</i></button>
+          <div class="ns-pad-mid">
+            <!-- these two only appear while the monitor is up: on a phone
+                 the plan is too small to be the only way to change camera -->
+            <button class="ns-key ns-key-step" data-k="prev" aria-label="Previous camera"><b>&#9664;</b></button>
+            <button class="ns-key ns-key-h" data-k="hatch" aria-label="Ceiling hatch"><b>HATCH</b></button>
+            <button class="ns-key ns-key-m" data-k="monitor" aria-label="Cameras"><b>CAMS</b></button>
+            <button class="ns-key ns-key-step" data-k="next" aria-label="Next camera"><b>&#9654;</b></button>
+          </div>
+          <button class="ns-key ns-key-r" data-k="right" aria-label="Right door"><b>RIGHT</b><i>DOOR</i></button>
+        </div>
+
+        <!-- every card, brief and ending mounts into this -->
+        <div class="ns-overlay" id="ns-overlay" aria-hidden="true"></div>
+      </div>
+    </div>
+  </section>
+
+<script defer src="book-scene.js?v=215"></script>
+<script defer src="scrapbook.js?v=215"></script>
+<script defer src="script.js?v=215"></script>
 </body>
 </html>

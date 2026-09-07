@@ -139,7 +139,17 @@ summary,
 #hv-canvas,
 #book-canvas,
 #sb-intro-canvas,
+/* .so-stage was in this list on main and this branch dropped it while
+   adding the night shift's surfaces — Super Ouissy's playfield would
+   have gone back to being pannable and selectable under a finger. */
 .so-stage,
+#ns-canvas,
+.ns-stage,
+.ns-frame,
+.ns-mon,
+.ns-pad,
+.ns-tape,
+.ns-hud,
 .so-pad,
 .gate-pad{
   touch-action:none;
@@ -2816,6 +2826,148 @@ img{-webkit-user-drag:none; user-select:none;}
   80%    {opacity:.66;}
 }
 
+/* THE PRINT. Old papers of this kind are almost never blank: there is a
+   pressed diamond lattice in them that you read as texture rather than
+   as a pattern. Two gratings at forty five degrees, at three percent —
+   any stronger and it is wallpaper competing with the cards. */
+.deco-lattice{
+  position:absolute; inset:0; opacity:.9;
+  background:
+    repeating-linear-gradient(45deg,  rgba(124,74,28,.033) 0 1px, rgba(255,255,255,0) 1px 34px),
+    repeating-linear-gradient(-45deg, rgba(124,74,28,.033) 0 1px, rgba(255,255,255,0) 1px 34px);
+}
+
+/* THE AGE SPOTS. Real old paper is not one colour; it has foxing —
+   faint warm blooms where the sheet has aged unevenly. Eight of them,
+   fixed, no animation: this is the layer that stops the parchment from
+   reading as a fill without anything appearing to move. */
+.deco-fox{
+  position:absolute; inset:0; opacity:.55;
+  background:
+    radial-gradient(ellipse 18vmin 12vmin at 12% 22%, rgba(176,124,58,.10), rgba(176,124,58,0) 70%),
+    radial-gradient(ellipse 10vmin 14vmin at 78% 12%, rgba(158,104,48,.09), rgba(158,104,48,0) 72%),
+    radial-gradient(ellipse 22vmin 10vmin at 62% 86%, rgba(176,124,58,.09), rgba(176,124,58,0) 70%),
+    radial-gradient(ellipse 9vmin 9vmin  at 24% 74%, rgba(150,98,44,.08),  rgba(150,98,44,0) 72%),
+    radial-gradient(ellipse 14vmin 8vmin at 92% 58%, rgba(176,124,58,.08), rgba(176,124,58,0) 70%),
+    radial-gradient(ellipse 8vmin 11vmin at 47% 40%, rgba(168,116,54,.06), rgba(168,116,54,0) 74%),
+    radial-gradient(ellipse 12vmin 7vmin at 6% 52%,  rgba(158,104,48,.08), rgba(158,104,48,0) 70%),
+    radial-gradient(ellipse 7vmin 9vmin  at 86% 34%, rgba(150,98,44,.07),  rgba(150,98,44,0) 74%);
+}
+
+/* THE RAYS. Light coming in from up and to the left, the way it does
+   through a window onto a table. Three soft wedges, hinged at a point
+   off the top corner and swinging perhaps two degrees over most of a
+   minute — far too little to watch, just enough that the room is never
+   lit from exactly the same angle twice. */
+.deco-rays{
+  position:absolute; left:-30%; top:-40%; width:160%; height:150%;
+  transform-origin:22% 0%;
+  animation:decoSwing 41s ease-in-out infinite;
+  background:
+    linear-gradient(101deg, rgba(255,246,220,0) 30%, rgba(255,246,220,.30) 36%, rgba(255,246,220,0) 43%),
+    linear-gradient(97deg,  rgba(255,238,206,0) 44%, rgba(255,238,206,.22) 50%, rgba(255,238,206,0) 58%),
+    linear-gradient(105deg, rgba(255,250,232,0) 60%, rgba(255,250,232,.16) 65%, rgba(255,250,232,0) 71%);
+  filter:blur(12px);
+}
+@keyframes decoSwing{
+  0%,100%{transform:rotate(-1.1deg);}
+  50%    {transform:rotate(1.3deg);}
+}
+
+/* THE STRING OF LIGHTS. Three swags across the top with nine bulbs
+   hanging under them, warm and rose and cream in turn, each breathing on
+   its own clock so the string glimmers instead of pulsing as one.
+
+   The wire is drawn in a 1000x96 box stretched to the width of the
+   screen — which would stretch the line with it, so the line is told not
+   to scale. The bulbs are placed on that same curve in percent, so they
+   hang FROM it at every width rather than near it. */
+/* strung between the two top corners of the ruled page rather than
+   across the window, so it reads as hung ON this page */
+.deco-string{
+  position:absolute; left:24px; right:24px; top:16px; height:96px;
+  animation:decoHang 17s ease-in-out infinite;
+}
+.deco-string svg{ position:absolute; inset:0; width:100%; height:96px; display:block; }
+.deco-wire{ fill:none; stroke:rgba(112,66,26,.34); stroke-width:1.1; }
+.deco-bulb{
+  position:absolute; width:9px; height:9px; margin-left:-4.5px; border-radius:50%;
+  animation:decoBulb 4.6s ease-in-out infinite;
+}
+/* the little wire down to the cap, so a bulb hangs rather than floats */
+.deco-bulb::before{
+  content:""; position:absolute; left:50%; top:-6px; width:1px; height:6px;
+  margin-left:-.5px; background:rgba(112,66,26,.34);
+}
+.deco-bulb-0{ background:#ffd071; box-shadow:0 0 16px 6px rgba(255,196,96,.6),  0 0 4px 1px rgba(255,232,176,.9); }
+.deco-bulb-1{ background:#ff9fbe; box-shadow:0 0 16px 6px rgba(255,140,180,.5), 0 0 4px 1px rgba(255,214,230,.85); }
+.deco-bulb-2{ background:#fff0c9; box-shadow:0 0 16px 6px rgba(255,230,180,.55), 0 0 4px 1px rgba(255,246,220,.9); }
+@keyframes decoBulb{
+  0%,100%{opacity:.55; transform:translateY(6px) scale(.92);}
+  50%    {opacity:1;   transform:translateY(6px) scale(1.08);}
+}
+/* the whole string breathes on its hooks */
+@keyframes decoHang{
+  0%,100%{transform:translateY(0) rotate(-.25deg);}
+  50%    {transform:translateY(3px) rotate(.25deg);}
+}
+
+/* THE DRIFT. Hearts and stars going up the page, swaying as they climb
+   and turning over slowly. Each one fades in a little after it starts
+   and out before it ends, so none of them is ever seen appearing at the
+   bottom edge or cut off at the top. */
+.deco-drift{ position:absolute; inset:0; overflow:hidden; }
+.deco-petal{
+  position:absolute; bottom:-6%; display:block; opacity:0;
+  animation-name:decoRise; animation-timing-function:linear;
+  animation-iteration-count:infinite;
+  /* a tight shadow: any softer and a 10px heart reads as a smudge on
+     the paper rather than as a heart */
+  filter:drop-shadow(0 1px 1px rgba(120,70,30,.22));
+}
+.deco-petal .gl{ width:100%; height:100%; display:block; }
+@keyframes decoRise{
+  0%  {transform:translate(0,0) rotate(0deg); opacity:0;}
+  12% {opacity:.42;}
+  50% {transform:translate(var(--sway,20px), -55vh) rotate(180deg); opacity:.34;}
+  88% {opacity:.3;}
+  100%{transform:translate(0, -112vh) rotate(360deg); opacity:0;}
+}
+
+/* THE CORNERS. Two arcs, a curl and two dots at each corner of the page,
+   inked on rather than switched on: the stroke starts fully dashed away
+   and is walked back over a second and a half every time the screen
+   opens. One flourish is drawn; the other three are it, turned. */
+.deco-frame{
+  position:absolute; inset:14px; border-radius:5px;
+  border:1px solid rgba(124,74,28,.15);
+  /* the sheet is laid ON the surface, not printed into it */
+  box-shadow:inset 0 0 70px rgba(120,70,26,.055);
+}
+.deco-frame::after{
+  content:""; position:absolute; inset:4px; border-radius:3px;
+  border:1px solid rgba(124,74,28,.08);
+}
+/* the ornament is placed at the frame's own inset, so its arcs start ON
+   the ruled line rather than floating just inside it */
+.deco-corner{ position:absolute; width:52px; height:52px; opacity:.7; }
+.deco-corner svg{ width:100%; height:100%; display:block; overflow:visible; }
+.deco-corner-tl{ left:14px;  top:14px; }
+.deco-corner-tr{ right:14px; top:14px;    transform:rotate(90deg); }
+.deco-corner-br{ right:14px; bottom:14px; transform:rotate(180deg); }
+.deco-corner-bl{ left:14px;  bottom:14px; transform:rotate(270deg); }
+.deco-ink{
+  fill:none; stroke:rgba(116,68,24,.5); stroke-linecap:round;
+  stroke-dasharray:90; stroke-dashoffset:90;
+  animation:decoInk 1.5s cubic-bezier(.32,.72,.3,1) forwards;
+}
+.deco-ink-1{ stroke-width:1.5; }
+.deco-ink-2{ stroke-width:1; stroke:rgba(116,68,24,.32); animation-delay:.25s; }
+.deco-ink-3{ stroke-width:1.1; animation-delay:.5s; stroke-dasharray:30; stroke-dashoffset:30; }
+.deco-dot{ fill:rgba(116,68,24,.4); opacity:0; animation:decoInkDot .7s ease 1.15s forwards; }
+@keyframes decoInk{ to{ stroke-dashoffset:0; } }
+@keyframes decoInkDot{ to{ opacity:1; } }
+
 /* THE PAPER AND THE CORNERS. Two things at once, and both of them are
    the reason the parchment stopped looking like a flat fill: a weave so
    faint you only see it when it is gone, and a vignette, which is what
@@ -2882,10 +3034,30 @@ img{-webkit-user-drag:none; user-select:none;}
   .deco-glow{ filter:blur(22px); opacity:.42; }
   .deco-glow-c{ opacity:.26; }
   .deco-motes-b{ display:none; }
+  /* a phone is mostly card, so the wall keeps only what reads at a
+     glance: fewer bulbs would look like a broken string, so the string
+     stays whole and small, and the drift thins out instead. */
+  .deco-string{ left:12px; right:12px; top:10px; height:76px; }
+  .deco-string svg{ height:76px; }
+  .deco-petal:nth-child(2n){ display:none; }
+  .deco-corner{ width:38px; height:38px; opacity:.5; }
+  .deco-corner-tl, .deco-corner-bl{ left:5px; }
+  .deco-corner-tr, .deco-corner-br{ right:5px; }
+  .deco-corner-tl, .deco-corner-tr{ top:5px; }
+  .deco-corner-bl, .deco-corner-br{ bottom:5px; }
+  .deco-rays{ opacity:.7; }
 }
 
 @media (prefers-reduced-motion: reduce){
-  .deco-glow, .deco-st, .deco-motes{ animation:none; }
+  .deco-glow, .deco-st, .deco-motes, .deco-rays, .deco-string,
+  .deco-bulb, .deco-petal{ animation:none; }
+  /* the drift has no still frame — a heart frozen halfway up the page is
+     a heart stuck to the page — so it goes, and the lights simply stay
+     lit rather than breathing */
+  .deco-drift{ display:none; }
+  .deco-bulb{ opacity:.85; transform:translateY(6px); }
+  .deco-ink{ stroke-dashoffset:0; animation:none; }
+  .deco-dot{ opacity:1; animation:none; }
   /* the sheen has no still frame worth keeping — it is only ever a
      moving highlight, so it leaves rather than freezing mid-page */
   .deco-sheen{ animation:none; opacity:0; }
@@ -6132,3 +6304,1145 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-standings li.me{ background:rgba(255,209,102,.22); color:var(--rc-ink); }
 .rc-standings li b{ font-weight:400; color:var(--rc-gold); }
 .rc-standings li i{ font-style:normal; color:var(--rc-ink); }
+
+/* =========================================================
+   WICK & COGS — the night shift
+
+   The whole panel is meant to read as the shop's own equipment:
+   brass, dark enamel, a phosphor screen and a meter with a needle.
+   Nothing here is the site's pastel set on purpose — this is the one
+   room in the house with the lights off.
+
+   Everything inside .ns-stage is sized in cqw/cqh against the stage,
+   so the panel is the same panel on a desk and on a phone.
+   ========================================================= */
+:root{
+  --ns-face: ui-monospace, 'SFMono-Regular', Menlo, 'Courier New', monospace;
+  --ns-ink:  #e8dfc8;
+  --ns-amber:#ffb347;
+  --ns-phos: #7fe4d0;
+  --ns-red:  #e2503f;
+  --ns-green:#4fae6a;
+  --ns-brass:#c8a260;
+  --ns-deep: #100e0c;
+  --ns-case: #1d211f;
+}
+
+.ns-frame{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  width:100%; height:100%; gap:1.4vh;
+  background:radial-gradient(ellipse at 50% 40%, #14120f 0%, #070605 70%);
+}
+.ns-titlebar{
+  display:none; margin:0; text-align:center; line-height:1.5;
+  font-family:var(--ns-face); font-weight:700; letter-spacing:.2em;
+}
+.ns-titlebar span{display:block; font-size:clamp(8px,2.6vw,12px); color:var(--ns-brass);}
+.ns-titlebar b{
+  display:block; font-weight:700; font-size:clamp(15px,5.4vw,24px);
+  color:var(--ns-amber); letter-spacing:.16em; margin-top:.35em;
+  text-shadow:0 0 14px rgba(255,179,71,.35);
+}
+
+.ns-stage{
+  position:relative; overflow:hidden;
+  container-type:size; container-name:wkstage;
+  width:min(100%, calc(100vh * 1.7778));
+  aspect-ratio:16/9;
+  border-radius:6px;
+  background:#05060a;
+  box-shadow:
+    0 0 0 .4cqw rgba(200,162,96,.35),
+    0 0 0 1cqw rgba(16,14,12,.95),
+    0 1.2cqw 4cqw rgba(0,0,0,.7);
+}
+#ns-canvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+
+/* the vignette that keeps the corners of the office dark */
+.ns-stage::after{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:3;
+  background:radial-gradient(ellipse at 50% 52%, rgba(0,0,0,0) 42%, rgba(0,0,0,.55) 100%);
+}
+/* the card she gets the one time one of his four steps in front of
+   something for her */
+.ns-card-held .ns-lines{ max-width:58cqw; }
+.ns-card-held .ns-from{ color:var(--ns-amber); letter-spacing:.2em; }
+.ns-card-held .ns-pencil{ color:rgba(232,223,200,.7); }
+
+/* the winding key. A ring that fills as she holds it, over whichever of
+   his four she is looking at — the only control in the chapter that
+   asks for a second and a bit rather than a tap, because winding
+   something is not a thing you do by tapping it.
+
+   It is `.ns-wind` and not `.ns-key` because the six buttons along the
+   bottom of the panel have been `.ns-key` since long before this
+   existed. Naming this one the same thing gave every one of them
+   `position:absolute` and `transform:translate(-50%,-50%)`: the pad
+   collapsed to eight pixels tall and both doors, the hatch, the camera
+   button and both arrows stacked on one point in the bottom left
+   corner, half of each of them off the side of the screen. */
+.ns-wind{
+  position:absolute; z-index:9; transform:translate(-50%,-50%);
+  pointer-events:auto;
+  width:max(7cqh, 44px); height:max(7cqh, 44px);
+  border:0; padding:0; cursor:pointer; background:transparent;
+  border-radius:50%; -webkit-tap-highlight-color:transparent;
+}
+.ns-wind::before{
+  content:""; position:absolute; inset:14%;
+  border-radius:50%;
+  border:.28cqw solid rgba(200,162,96,.55);
+  background:radial-gradient(circle, rgba(255,206,140,.14), transparent 68%);
+  transition:border-color .2s ease;
+}
+/* the fill, drawn as a conic sweep from --k */
+.ns-wind::after{
+  content:""; position:absolute; inset:14%;
+  border-radius:50%;
+  background:conic-gradient(rgba(255,206,140,.85) var(--k, 0%), transparent 0);
+  -webkit-mask:radial-gradient(circle, transparent 58%, #000 60%);
+  mask:radial-gradient(circle, transparent 58%, #000 60%);
+}
+.ns-wind.winding::before{ border-color:rgba(255,206,140,.95); }
+.ns-wind[hidden]{ display:none !important; }
+/* whose key it is. This was `::first-line { content: attr(data-who) }`,
+   which does nothing at all — `content` does not apply to ::first-line —
+   so the game set the name and then never showed it to her. */
+.ns-wind i{
+  position:absolute; left:50%; top:104%; transform:translateX(-50%);
+  font-style:normal; font-size:max(1.3cqh, 9px); letter-spacing:.18em;
+  color:rgba(255,206,140,.9); white-space:nowrap;
+  text-shadow:0 1px 3px rgba(0,0,0,.9);
+}
+
+/* THE OPENING ---------------------------------------------------------
+   Letterboxed, because it is a film and it should announce that it is
+   one; and the caption lights up a word at a time as the machine
+   reaches it, which is the whole reason voxPlan hands back timings. */
+.ns-stage[data-day="1"] .ns-cine{ display:none; }
+.ns-cine{ position:absolute; inset:0; z-index:12; pointer-events:none; }
+.ns-cine::before, .ns-cine::after{
+  content:""; position:absolute; left:0; right:0; height:11%;
+  background:#05060a; pointer-events:none;
+}
+.ns-cine::before{ top:0; } .ns-cine::after{ bottom:0; }
+.ns-cine[hidden]{ display:none !important; }
+
+.ns-cine-head{
+  position:absolute; top:13%; left:0; right:0; margin:0; text-align:center;
+  font-family:var(--ns-face); line-height:1.6;
+}
+.ns-cine-head b{
+  display:block; font-size:max(1.5cqh, 10px); letter-spacing:.34em;
+  color:rgba(255,120,110,.8); font-weight:700;
+}
+.ns-cine-head span{
+  display:block; font-size:max(1.3cqh, 9px); letter-spacing:.16em;
+  color:rgba(232,223,200,.42);
+}
+
+/* the transcript */
+.ns-cine-sub{
+  position:absolute; left:50%; bottom:14.5%; transform:translateX(-50%);
+  margin:0; width:78cqw; text-align:center;
+  font-family:var(--ns-face); line-height:1.75;
+  font-size:max(2.15cqh, 14px); letter-spacing:.055em;
+}
+.ns-cine-sub i{
+  font-style:normal;
+  color:rgba(232,223,200,.2);
+  transition:color .16s linear, text-shadow .16s linear;
+}
+/* the word the machine is on */
+.ns-cine-sub i.on{
+  color:#f4ead6;
+  text-shadow:0 0 1.6cqh rgba(255,206,140,.5);
+}
+
+.ns-cine-skip{
+  position:absolute; right:2.4cqw; bottom:3.4%; pointer-events:auto;
+  padding:.9cqh 2.2cqw; border-radius:.5cqw; cursor:pointer;
+  background:rgba(10,12,16,.7); border:.14cqw solid rgba(200,162,96,.4);
+  color:rgba(232,223,200,.6); font-family:var(--ns-face);
+  font-size:max(1.4cqh, 10px); letter-spacing:.22em;
+  opacity:0; animation:nsSkipIn .5s ease 2.2s forwards;
+}
+.ns-cine-skip:hover{ color:var(--ns-amber); border-color:rgba(200,162,96,.9); }
+@keyframes nsSkipIn{ to{ opacity:1; } }
+
+/* the page he left, and the line under it */
+.ns-cine-end{
+  margin:2.4cqh 0 0; font-size:max(1.6cqh, 11px);
+  letter-spacing:.3em; color:var(--ns-brass);
+}
+.ns-card-note .ns-paper p{ font-size:max(1.85cqh, 13px); line-height:1.85; }
+
+/* orientation. Sits where the annunciator caption sits but higher and
+   louder, because unlike the caption this one is asking for something
+   and the shift is not moving until it gets it. */
+.ns-tutor{
+  position:absolute; left:50%; bottom:21cqh; transform:translateX(-50%);
+  z-index:9; margin:0; pointer-events:none;
+  display:flex; flex-direction:column; align-items:center; gap:.7cqh;
+  padding:1.5cqh 3cqw; max-width:74cqw; text-align:center;
+  background:rgba(10,12,16,.86);
+  border:.16cqw solid rgba(200,162,96,.5);
+  border-radius:.7cqw;
+  box-shadow:0 0 4cqh rgba(0,0,0,.7);
+  font-family:var(--ns-face);
+}
+.ns-tutor b{
+  font-size:max(2.1cqh, 14px); letter-spacing:.16em; font-weight:700;
+  color:var(--ns-amber); line-height:1.4;
+}
+.ns-tutor span{
+  font-size:max(1.5cqh, 11px); letter-spacing:.08em;
+  color:rgba(232,223,200,.62);
+}
+.ns-tutor.nudge{ animation:nsNudge 1.5s ease-in-out infinite; }
+@keyframes nsNudge{
+  0%,100%{ border-color:rgba(200,162,96,.5); }
+  50%    { border-color:rgba(255,206,140,.95); }
+}
+.ns-tutor[hidden]{ display:none !important; }
+
+/* the last line of a night: a door left open, not a summary. And the
+   one above it she only sees if she walked past tonight's page. */
+.ns-hook{
+  margin:1.8cqh auto 0; max-width:52cqw;
+  font-size:max(1.75cqh, 12px); line-height:1.6; font-style:italic;
+  color:var(--ns-amber); letter-spacing:.03em;
+}
+.ns-missed{
+  margin:1.6cqh auto 0; max-width:52cqw;
+  font-size:max(1.5cqh, 11px); line-height:1.55;
+  color:rgba(232,223,200,.55);
+}
+.ns-ask{
+  margin:2.2cqh auto 1.2cqh; max-width:56cqw;
+  font-size:max(1.8cqh, 13px); line-height:1.65; color:var(--ns-ink);
+}
+
+/* the thing hidden in the shop tonight. Deliberately not a marker: a
+   patch of light on a shelf that is a little brighter than it should
+   be, and only while it glints. If it read as a quest icon the search
+   would stop being a search. */
+/* Everything in this group lives inside .ns-mon, which is
+   pointer-events:none so the tube does not eat the office behind it.
+   A child of that has to switch pointer events back on for itself or a
+   finger goes straight through it into the canvas — which is what all
+   three of these were doing. The suite never saw it because it
+   dispatches events onto the element, and dispatching skips hit
+   testing altogether: the handlers were perfect and unreachable. */
+.ns-find{
+  position:absolute; z-index:8; transform:translate(-50%,-50%);
+  pointer-events:auto;
+  width:max(5.4cqh, 34px); height:max(5.4cqh, 34px);
+  border:0; padding:0; background:transparent; cursor:pointer;
+  border-radius:50%;
+  -webkit-tap-highlight-color:transparent;
+}
+.ns-find::after{
+  content:""; position:absolute; inset:22%;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(255,243,208,.85), rgba(255,235,180,.18) 55%, transparent 72%);
+  opacity:0; transition:opacity .5s ease;
+}
+.ns-find.glinting::after{ opacity:.9; }
+.ns-find:hover::after, .ns-find:focus-visible::after{ opacity:1; inset:12%; }
+.ns-find[hidden]{ display:none !important; }
+
+.ns-card-find .ns-paper{ max-width:60cqw; }
+.ns-card-find .ns-from{ color:var(--ns-brass); }
+
+/* the line under each performer's rule: what she will actually notice
+   when it is on its way, as opposed to what it does */
+.ns-who em{
+  grid-column:3 / -1; margin-top:.5cqh;
+  font-style:normal; font-size:max(1.5cqh, 11px); line-height:1.45;
+  color:var(--ns-dim); opacity:.85;
+  padding-left:.7cqw; border-left:.25cqw solid rgba(200,162,96,.35);
+}
+
+/* except in the daylight gallery, where there is nothing in the corners
+   worth hiding */
+.ns-stage[data-day="1"]::after{
+  background:radial-gradient(ellipse at 50% 52%, rgba(0,0,0,0) 60%, rgba(40,26,10,.14) 100%);
+}
+
+/* ---------- the overlay HUD ---------- */
+.ns-hud{
+  position:absolute; inset:0; pointer-events:none; z-index:6;
+  font-family:var(--ns-face); color:var(--ns-ink);
+}
+.ns-hud[hidden]{display:none;}
+.ns-hud-tl{ position:absolute; top:2.4cqh; left:2cqw; display:flex; flex-direction:column; gap:.9cqh; align-items:flex-start; }
+/* the clock sits to the left of the pause button rather than under it */
+.ns-hud-tr{
+  position:absolute; top:2.4cqh; right:calc(2cqw + max(7cqh, 48px));
+  display:flex; flex-direction:column; gap:.6cqh; align-items:flex-end;
+}
+
+.ns-chip{
+  display:flex; align-items:baseline; gap:1cqw;
+  padding:.7cqh 1.2cqw; border-radius:.5cqw;
+  background:linear-gradient(180deg, rgba(30,34,32,.86), rgba(14,16,15,.88));
+  box-shadow:inset 0 0 0 .18cqw rgba(200,162,96,.4), 0 .3cqh .8cqh rgba(0,0,0,.5);
+}
+.ns-chip b{ font-weight:700; font-size:max(1.7cqh, 10px); color:var(--ns-brass); letter-spacing:.18em; }
+.ns-chip i{ font-style:normal; font-size:max(2.6cqh, 15px); color:var(--ns-ink); letter-spacing:.04em; }
+
+.ns-bar{
+  position:relative; display:block; width:max(22cqw, 120px); height:max(1.5cqh, 8px);
+  border-radius:.75cqh; overflow:hidden;
+  background:rgba(10,12,11,.9);
+  box-shadow:inset 0 0 0 .16cqw rgba(200,162,96,.4), inset 0 .3cqh .6cqh rgba(0,0,0,.6);
+}
+.ns-bar u{
+  position:absolute; inset:0 auto 0 0; display:block; width:100%;
+  background:linear-gradient(90deg,#4fae6a,#8fd07a);
+  transition:width .18s linear;
+}
+.ns-bar u[data-lvl="2"]{ background:linear-gradient(90deg,#c8952f,#e8c05a); }
+.ns-bar u[data-lvl="3"]{ background:linear-gradient(90deg,#a8352a,#e2503f); animation:nsPulse .7s ease-in-out infinite; }
+@keyframes nsPulse{ 50%{ filter:brightness(1.6); } }
+
+.ns-usage{
+  font-size:max(1.6cqh, 10px); letter-spacing:.35em; color:var(--ns-amber);
+  text-shadow:0 0 .6cqh rgba(255,179,71,.5);
+}
+.ns-clock{
+  font-size:max(3.4cqh, 19px); font-weight:700; letter-spacing:.1em; color:var(--ns-amber);
+  text-shadow:0 0 1.2cqh rgba(255,179,71,.45), 0 .3cqh 0 rgba(0,0,0,.8);
+}
+.ns-night{ font-size:max(1.6cqh, 9px); letter-spacing:.3em; color:rgba(232,223,200,.6); }
+
+/* the warm bloom at the edge when something is at a door */
+.ns-edge{
+  position:absolute; inset:0; z-index:5; pointer-events:none;
+  opacity:0; transition:opacity .2s linear;
+}
+.ns-edge[data-side="left"]{  background:linear-gradient(90deg, var(--c) 0%, transparent 26%); }
+.ns-edge[data-side="right"]{ background:linear-gradient(270deg, var(--c) 0%, transparent 26%); }
+.ns-edge[data-side="hatch"]{ background:linear-gradient(180deg, var(--c) 0%, transparent 24%); }
+
+.ns-warn{
+  position:absolute; left:50%; top:12cqh; transform:translateX(-50%);
+  margin:0; z-index:6; pointer-events:none;
+  font-family:var(--ns-face); font-size:2.6cqh; font-weight:700; letter-spacing:.3em;
+  color:var(--ns-red); text-shadow:0 0 1.4cqh rgba(226,80,63,.6);
+  animation:nsPulse .8s ease-in-out infinite;
+}
+.ns-warn[hidden]{display:none;}
+
+/* ---------- the monitor ---------- */
+.ns-mon{
+  position:absolute; inset:0; z-index:8;
+  pointer-events:none;
+}
+.ns-mon[hidden]{display:none;}
+.ns-static{
+  position:absolute; inset:0; width:100%; height:100%;
+  mix-blend-mode:screen; opacity:.5;
+  image-rendering:pixelated;
+}
+/* the tube: scan lines, a curve of glare and a heavy black bezel */
+.ns-mon-frame{
+  position:absolute; inset:0;
+  background:
+    repeating-linear-gradient(180deg, rgba(0,0,0,.28) 0 .28cqh, rgba(0,0,0,0) .28cqh .62cqh),
+    radial-gradient(ellipse at 32% 16%, rgba(190,240,230,.09) 0%, rgba(0,0,0,0) 46%),
+    radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 38%, rgba(0,0,0,.62) 100%);
+  box-shadow:inset 0 0 0 1.1cqw rgba(12,14,13,.96), inset 0 0 0 1.5cqw rgba(200,162,96,.22);
+  border-radius:2cqw;
+}
+/* the monitor's own strip sits between the two HUD clusters rather than
+   under them — the power reading has to stay legible while the cameras
+   are up, because that is exactly when it is being spent */
+.ns-mon-top{
+  position:absolute; top:2.8cqh; left:26cqw; right:26cqw;
+  display:flex; align-items:center; justify-content:space-between; gap:2cqw;
+  font-family:var(--ns-face); font-size:max(2.1cqh, 11px); letter-spacing:.18em;
+  color:var(--ns-phos); text-shadow:0 0 1cqh rgba(127,228,208,.5);
+}
+.ns-rec{ display:flex; align-items:center; gap:.8cqw; color:var(--ns-red); font-weight:700; }
+.ns-rec i{ width:1.4cqh; height:1.4cqh; border-radius:50%; background:var(--ns-red);
+  box-shadow:0 0 1cqh rgba(226,80,63,.9); animation:nsBlink 1.4s steps(1,end) infinite; }
+@keyframes nsBlink{ 50%{ opacity:.15; } }
+.ns-camname{ flex:1; text-align:center; }
+/* the clock lives in the HUD; a second one on the tube is clutter */
+.ns-mon-time{ display:none; }
+
+.ns-mon-lost{
+  position:absolute; left:50%; top:46%; transform:translate(-50%,-50%);
+  margin:0; font-family:var(--ns-face); font-size:5cqh; font-weight:700; letter-spacing:.34em;
+  color:rgba(232,223,200,.9); text-shadow:0 0 2cqh rgba(0,0,0,.9);
+  animation:nsBlink 1s steps(1,end) infinite;
+}
+.ns-mon-lost[hidden]{display:none;}
+
+/* the plan of the shop, bottom right of the tube */
+.ns-map{
+  position:absolute; right:2.6cqw; bottom:max(17cqh, 62px);
+  width:max(30cqw, 208px); aspect-ratio:1.15;
+  pointer-events:auto;
+  background:linear-gradient(180deg, rgba(14,20,18,.86), rgba(8,12,11,.9));
+  box-shadow:inset 0 0 0 .22cqw rgba(127,228,208,.35), 0 .6cqh 2cqh rgba(0,0,0,.6);
+  border-radius:.8cqw;
+}
+.ns-cell{
+  position:absolute; margin:0; padding:0; cursor:pointer;
+  display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
+  gap:.2cqh; overflow:hidden;
+  font-family:var(--ns-face); text-align:left;
+  background:rgba(127,228,208,.06);
+  border:.16cqw solid rgba(127,228,208,.3);
+  color:rgba(127,228,208,.75);
+  border-radius:.3cqw;
+  transition:background .12s linear, color .12s linear;
+}
+.ns-cell b{ font-size:max(1.7cqh, 11px); font-weight:700; letter-spacing:.06em; padding-left:.5cqw; }
+.ns-cell i{ font-style:normal; font-size:max(1.15cqh, 8px); letter-spacing:.06em; opacity:.72; padding-left:.5cqw;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+.ns-cell u{ display:none; }
+.ns-cell:hover{ background:rgba(127,228,208,.16); }
+.ns-cell.on{
+  background:rgba(127,228,208,.24); color:#dffaf3;
+  border-color:rgba(127,228,208,.9);
+  box-shadow:0 0 1.4cqh rgba(127,228,208,.4);
+}
+.ns-cell.dead{ border-style:dashed; color:rgba(226,80,63,.8); border-color:rgba(226,80,63,.55); }
+.ns-cell.busy u{
+  display:block; position:absolute; right:.5cqw; top:.5cqh;
+  width:1.1cqh; height:1.1cqh; border-radius:50%;
+  background:var(--ns-red); box-shadow:0 0 1cqh rgba(226,80,63,.9);
+  animation:nsBlink .8s steps(1,end) infinite;
+}
+.ns-you{
+  position:absolute; left:32%; bottom:4%; width:34%; height:12%;
+  display:grid; place-items:center;
+  font-family:var(--ns-face); font-size:1.3cqh; letter-spacing:.3em;
+  color:rgba(255,179,71,.85);
+  border:.16cqw dashed rgba(255,179,71,.5);
+  border-radius:.3cqw;
+}
+.ns-you i{ font-style:normal; }
+
+/* ---------- pause ---------- */
+/* PAUSE. It had two homes and both of them were somebody else's.
+
+   In landscape it sat bottom-right, which is where the right-hand door
+   key is — measured, the element under the middle of the pause button
+   on a desktop was `ns-key-r`, so pressing where it appears shut the
+   door instead of pausing. In portrait it moved to the top right and
+   landed directly on top of the clock.
+
+   It has a corner of its own now, above everything, and the clock
+   steps aside for it. */
+.ns-pause-btn{
+  position:absolute; right:1.6cqw; top:1.6cqh; z-index:12;
+  width:max(6cqh, 40px); height:max(6cqh, 40px); padding:0; cursor:pointer;
+  display:grid; place-items:center;
+  border:none; border-radius:50%;
+  background:linear-gradient(180deg, rgba(38,42,40,.92), rgba(16,18,17,.94));
+  box-shadow:inset 0 0 0 .2cqw rgba(200,162,96,.45), 0 .4cqh 1.2cqh rgba(0,0,0,.6);
+}
+.ns-pause-btn[hidden]{display:none;}
+.ns-pause-btn .gl-pause{
+  width:max(2.2cqh, 12px); height:max(2.6cqh, 15px);
+  background:linear-gradient(90deg, var(--ns-brass) 0 36%, transparent 36% 64%, var(--ns-brass) 64% 100%);
+}
+
+/* THE DRAWER. Not an inventory screen — a list of what she is carrying
+   out of her husband's shop. Kept things are lit; burned things are
+   struck through and grey; the ones she has not reached yet say so
+   without saying what they are. */
+.ns-drawer{
+  list-style:none; margin:1.4cqh 0; padding:0;
+  display:flex; flex-direction:column; gap:.9cqh;
+  max-height:46cqh; overflow-y:auto;
+}
+.ns-drawer-row{
+  display:flex; flex-direction:column; gap:.15cqh;
+  padding:1cqh 1.6cqw; border-left:2px solid rgba(200,162,96,.3);
+  background:linear-gradient(90deg, rgba(30,26,20,.5), transparent 70%);
+}
+.ns-drawer-row b{
+  font-size:max(1.8cqh, 11px); letter-spacing:.16em; font-weight:700;
+  color:rgba(232,223,200,.9);
+}
+.ns-drawer-row i{
+  font-style:normal; font-size:max(1.35cqh, 9px); letter-spacing:.1em;
+  color:rgba(232,223,200,.45);
+}
+.ns-drawer-row span{
+  margin-top:.3cqh; font-size:max(1.5cqh, 10px); letter-spacing:.12em;
+}
+.ns-drawer-row.kept{ border-left-color:var(--ns-amber); }
+.ns-drawer-row.kept span{ color:rgba(255,206,140,.95); }
+.ns-drawer-row.burned{ border-left-color:rgba(120,60,40,.7); }
+.ns-drawer-row.burned b{ color:rgba(232,223,200,.42); text-decoration:line-through; }
+.ns-drawer-row.burned span{ color:rgba(200,120,90,.8); }
+.ns-drawer-row.unknown{ border-left-color:rgba(200,162,96,.16); }
+.ns-drawer-row.unknown b,
+.ns-drawer-row.unknown i,
+.ns-drawer-row.unknown span{ color:rgba(232,223,200,.3); }
+
+/* The six nights of small decisions, answered on the last morning —
+   and then his final entry, which is the last thing the chapter says.
+   It is set apart from the ending above it because it is not narration
+   any more: it is his handwriting, and she is reading it over his
+   shoulder a week too late. */
+.ns-kept-ask{
+  margin:2.4cqh 0 .6cqh; font-size:max(1.6cqh, 10px); letter-spacing:.28em;
+  color:var(--ns-brass); text-align:center;
+}
+.ns-kept-out{
+  margin:0 0 1.4cqh; font-size:max(2cqh, 12px); line-height:1.85;
+  letter-spacing:.04em; color:rgba(255,214,158,.95); text-align:left;
+}
+.ns-lastpage{
+  margin:2.2cqh 0 .6cqh; padding-top:2cqh;
+  border-top:1px solid rgba(200,162,96,.28);
+}
+.ns-lastpage .ns-paper p{ font-style:italic; }
+
+/* The episode title. A night is a chapter of something, so it gets a
+   name the way a chapter does, above the line about what has gone
+   wrong in it. */
+.ns-eptitle{
+  margin:.2cqh 0 1cqh; font-family:var(--ns-face);
+  font-size:max(3.1cqh, 17px); font-weight:700; letter-spacing:.22em;
+  color:var(--ns-amber); text-shadow:0 0 18px rgba(255,150,60,.24);
+}
+
+/* SIX NIGHTS, SIX LOOKS.
+
+   Four nights of the same amber office is four nights of the same
+   night, whatever the numbers do underneath. The shop cools and loses
+   its colour as he runs out of things he can keep from her: night one
+   is warm and lit, and night six is nearly ash. It is a grade on the
+   canvas rather than a change to the lighting rig, so it costs nothing
+   and the geometry, the shadows and every measured level stay exactly
+   where they were. */
+.ns-stage[data-tone] #ns-canvas{ transition:filter 1.6s ease-out; }
+.ns-stage[data-tone="warm"]  #ns-canvas{ filter:saturate(1.06) contrast(1.02); }
+.ns-stage[data-tone="cool"]  #ns-canvas{ filter:saturate(0.92) contrast(1.06) brightness(0.96) hue-rotate(-6deg); }
+.ns-stage[data-tone="sick"]  #ns-canvas{ filter:saturate(0.80) contrast(1.10) brightness(0.92) hue-rotate(-12deg); }
+.ns-stage[data-tone="cold"]  #ns-canvas{ filter:saturate(0.66) contrast(1.14) brightness(0.88) hue-rotate(-18deg); }
+.ns-stage[data-tone="ash"]   #ns-canvas{ filter:saturate(0.42) contrast(1.20) brightness(0.84) hue-rotate(-22deg); }
+.ns-stage[data-tone="day"]   #ns-canvas{ filter:none; }
+
+/* and the dark closes in with them: the vignette that keeps the corners
+   of the office black tightens night by night */
+.ns-stage[data-tone="cool"]::after,
+.ns-stage[data-tone="sick"]::after,
+.ns-stage[data-tone="cold"]::after,
+.ns-stage[data-tone="ash"]::after{
+  content:""; position:absolute; inset:0; z-index:6; pointer-events:none;
+  transition:box-shadow 1.6s ease-out, background 1.6s ease-out;
+}
+.ns-stage[data-tone="cool"]::after{ box-shadow:inset 0 0 14cqw 6cqw rgba(0,0,0,.34); }
+.ns-stage[data-tone="sick"]::after{ box-shadow:inset 0 0 16cqw 8cqw rgba(0,0,0,.46); }
+.ns-stage[data-tone="cold"]::after{ box-shadow:inset 0 0 18cqw 10cqw rgba(2,2,4,.58); }
+.ns-stage[data-tone="ash"]::after{  box-shadow:inset 0 0 20cqw 12cqw rgba(2,2,4,.70); }
+
+/* Camera zero is the desk she is sitting at, so it is marked out from
+   the rooms she is only watching. */
+.ns-cell[data-room="office"]{
+  border-style:dashed;
+  border-color:rgba(200,162,96,.55);
+}
+.ns-cell[data-room="office"] b{ color:var(--ns-brass); }
+
+/* Five faders. The slider is a real range input so a thumb gets the
+   platform's own drag behaviour, with a track and a knob big enough to
+   find without looking. */
+.ns-faders{ display:flex; flex-direction:column; gap:1.4cqh; margin:1.6cqh 0; }
+.ns-fader{ display:flex; flex-direction:column; gap:.5cqh; }
+.ns-fader span{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:max(1.6cqh, 10px); letter-spacing:.2em; color:var(--ns-brass);
+}
+.ns-fader i{ font-style:normal; color:rgba(232,223,200,.6); letter-spacing:.1em; }
+.ns-fader input[type="range"]{
+  -webkit-appearance:none; appearance:none;
+  width:100%; height:max(3cqh, 22px); background:transparent;
+  touch-action:none; cursor:pointer;
+}
+.ns-fader input[type="range"]::-webkit-slider-runnable-track{
+  height:max(1.1cqh, 7px); border-radius:99px;
+  background:linear-gradient(90deg, rgba(200,162,96,.5), rgba(200,162,96,.18));
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.8);
+}
+.ns-fader input[type="range"]::-moz-range-track{
+  height:max(1.1cqh, 7px); border-radius:99px;
+  background:linear-gradient(90deg, rgba(200,162,96,.5), rgba(200,162,96,.18));
+}
+.ns-fader input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none;
+  width:max(3cqh, 22px); height:max(3cqh, 22px); border-radius:50%;
+  margin-top:calc(max(1.1cqh, 7px) / 2 - max(3cqh, 22px) / 2);
+  background:radial-gradient(circle at 38% 34%, #f0d7a4, #b58b4c 62%, #6b4f26);
+  box-shadow:0 .3cqh .8cqh rgba(0,0,0,.7);
+}
+.ns-fader input[type="range"]::-moz-range-thumb{
+  width:max(3cqh, 22px); height:max(3cqh, 22px); border:0; border-radius:50%;
+  background:radial-gradient(circle at 38% 34%, #f0d7a4, #b58b4c 62%, #6b4f26);
+}
+
+/* Choosing his voice, by ear, on the device she is actually holding. */
+.ns-voices{
+  display:flex; flex-direction:column; gap:.8cqh;
+  max-height:44cqh; overflow-y:auto; margin:1.4cqh 0;
+}
+.ns-voice{
+  display:flex; flex-direction:column; align-items:flex-start; gap:.2cqh;
+  text-align:left; width:100%; padding:1.2cqh 2cqw;
+}
+.ns-voice i{
+  font-style:normal; font-size:max(1.3cqh, 9px); letter-spacing:.16em;
+  opacity:.55; text-transform:uppercase;
+}
+.ns-voice.on{
+  color:#ffd9c8;
+  box-shadow:inset 0 0 0 .2cqw rgba(226,150,63,.8), 0 .4cqh 0 rgba(6,8,7,.9);
+}
+
+/* A page she did not find, handed to her at six because he needed her
+   to have read it. It sits on the night-done card looking like the
+   found card does, so it reads as the same object rather than as a
+   consolation prize. */
+.ns-gave{ margin:1.6cqh 0 .6cqh; }
+.ns-kept{
+  margin:1.2cqh 0; font-size:max(1.85cqh, 11px); line-height:1.7;
+  letter-spacing:.05em; color:rgba(255,206,140,.9);
+  border-left:2px solid rgba(200,162,96,.5); padding-left:1.6cqw; text-align:left;
+}
+
+/* THE TERMS. The film is letterboxed because it is a film; this is a
+   card, because she is being asked something and a card is what you
+   are asked things on. His words sit big and centred with everything
+   else stripped away, and the one button does not appear until he has
+   finished saying why. */
+.ns-card-terms{ max-width:64cqw; text-align:center; }
+.ns-terms-sub{
+  margin:2.4cqh 0 1.2cqh; min-height:9cqh;
+  font-family:var(--ns-face);
+  font-size:max(2.3cqh, 13px); line-height:1.85; letter-spacing:.045em;
+}
+.ns-terms-sub i{
+  font-style:normal; color:rgba(232,223,200,.26);
+  transition:color .14s linear, text-shadow .14s linear;
+}
+.ns-terms-sub i.on{
+  color:rgba(255,214,158,.98);
+  text-shadow:0 0 14px rgba(255,182,110,.32);
+}
+.ns-card-terms .ns-btn-go[hidden]{ display:none; }
+@media (max-width: 900px), (orientation: portrait){
+  .ns-card-terms{ max-width:92cqw; }
+  .ns-terms-sub{ font-size:max(2.1cqh, 12px); }
+}
+
+/* What tonight is for: one line, in his pencil rather than the
+   terminal's green, because it is his shop she is being asked to do
+   something about. */
+.ns-why{
+  margin:.6cqh 0 1.4cqh; font-size:max(1.75cqh, 11px); line-height:1.65;
+  letter-spacing:.05em; color:rgba(255,206,140,.86);
+  border-left:2px solid rgba(200,162,96,.5); padding-left:1.6cqw; text-align:left;
+}
+
+/* The tapes he left. Deliberately not the annunciator's caption: that
+   one is a machine reading out states, in the terminal's green, in
+   capitals, clipped. This is a man talking, so it is lower case, warm,
+   and it lights a word at a time as he reaches it. Two voices in a
+   shop should not look alike either. */
+.ns-tape{
+  position:absolute; left:0; right:0; bottom:9cqh; z-index:8;
+  padding:1.6cqh 8cqw 1.8cqh;
+  text-align:center; pointer-events:none;
+  font-family:var(--ns-face);
+  font-size:max(2.1cqh, 13px); line-height:1.7; letter-spacing:.04em;
+  text-shadow:0 1px 4px rgba(0,0,0,.95), 0 0 14px rgba(0,0,0,.8);
+  /* the desk is the brightest thing on the screen and his words land on
+     top of it, so they carry their own dark with them */
+  background:linear-gradient(180deg,
+    rgba(6,6,5,0) 0%, rgba(6,6,5,.72) 22%, rgba(6,6,5,.78) 78%, rgba(6,6,5,0) 100%);
+}
+.ns-tape[hidden]{ display:none; }
+.ns-tape i{
+  font-style:normal; color:rgba(232,223,200,.30);
+  transition:color .12s linear, text-shadow .12s linear;
+}
+.ns-tape i.on{
+  color:rgba(255,214,158,.97);
+  text-shadow:0 0 12px rgba(255,182,110,.35);
+}
+@media (max-width: 560px){
+  .ns-tape{ bottom:7cqh; padding:1.4cqh 4cqw 1.6cqh; font-size:max(2cqh, 11px); }
+}
+
+/* ---------- the controls ---------- */
+.ns-pad{
+  position:absolute; left:0; right:0; bottom:0; z-index:7;
+  display:flex; align-items:flex-end; justify-content:space-between;
+  padding:0 2cqw 2.4cqh; gap:2cqw; pointer-events:none;
+  /* a safety net: whatever the floors work out to, nothing leaves the stage */
+  flex-wrap:wrap;
+}
+.ns-pad[hidden]{display:none;}
+.ns-pad-mid{ display:flex; gap:1.6cqw; align-items:flex-end; }
+/* Sizes are in cq units so the panel scales with the stage, but every
+   control has a pixel floor under it. On a 390px phone the 16:9 stage
+   is only 219px tall, and 9cqh of that is a 20px button — small enough
+   that nobody could hit it and nothing in the layout would look wrong. */
+.ns-key{
+  pointer-events:auto; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.2cqh;
+  padding:1.4cqh 2cqw; min-width:max(9cqw, 72px); min-height:max(9cqh, 54px);
+  border:none; border-radius:.9cqw;
+  font-family:var(--ns-face); color:var(--ns-ink);
+  background:linear-gradient(180deg, #2b302d 0%, #1a1e1c 55%, #141715 100%);
+  box-shadow:
+    inset 0 .3cqh 0 rgba(255,255,255,.09),
+    inset 0 0 0 .2cqw rgba(200,162,96,.42),
+    0 .8cqh 0 rgba(6,8,7,.9), 0 1.2cqh 2cqh rgba(0,0,0,.6);
+  transition:transform .07s ease-out, box-shadow .07s ease-out, background .14s linear;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+}
+.ns-key b{ font-size:max(2cqh, 12px); font-weight:700; letter-spacing:.2em; }
+.ns-key i{ font-style:normal; font-size:max(1.3cqh, 9px); letter-spacing:.24em; opacity:.6; }
+.ns-key:active{ transform:translateY(.6cqh); box-shadow:inset 0 0 0 .2cqw rgba(200,162,96,.42), 0 .2cqh 0 rgba(6,8,7,.9); }
+.ns-key.on{
+  background:linear-gradient(180deg,#6d2a22 0%,#43170f 60%,#2c0f09 100%);
+  color:#ffd9c8;
+  box-shadow:inset 0 0 0 .2cqw rgba(226,80,63,.7), 0 .8cqh 0 rgba(6,8,7,.9), 0 0 2.4cqh rgba(226,80,63,.45);
+}
+.ns-key.ns-key-m.on{
+  background:linear-gradient(180deg,#1d4a44 0%,#0f2c28 60%,#0a1f1c 100%);
+  color:#cdf6ec;
+  box-shadow:inset 0 0 0 .2cqw rgba(127,228,208,.7), 0 .8cqh 0 rgba(6,8,7,.9), 0 0 2.4cqh rgba(127,228,208,.35);
+}
+.ns-key.dead{ opacity:.42; }
+.ns-key-h, .ns-key-m{ min-width:max(7cqw, 56px); min-height:max(7cqh, 46px); }
+/* the two camera arrows only exist while the monitor is up */
+.ns-key-step{ display:none; min-width:max(5cqw, 44px); min-height:max(7cqh, 46px); }
+.ns-pad[data-mon="1"] .ns-key-step{ display:flex; }
+.ns-key-step b{ font-size:max(2.2cqh, 15px); letter-spacing:0; }
+
+/* ---------- the cards ---------- */
+.ns-overlay{
+  position:absolute; inset:0; z-index:10; display:none;
+  align-items:center; justify-content:center;
+  padding:3cqh 3cqw;
+  font-family:var(--ns-face); color:var(--ns-ink);
+}
+.ns-overlay.on{ display:flex; }
+.ns-overlay.on::before{
+  content:""; position:absolute; inset:0;
+  background:radial-gradient(ellipse at 50% 45%, rgba(8,7,6,.82) 0%, rgba(4,4,3,.95) 70%);
+}
+.ns-card{
+  position:relative; z-index:1; max-width:74cqw; max-height:92cqh; overflow-y:auto;
+  padding:3.4cqh 4cqw; text-align:center;
+  background:linear-gradient(180deg, rgba(28,32,30,.96), rgba(14,16,15,.97));
+  border-radius:1.2cqw;
+  box-shadow:inset 0 0 0 .22cqw rgba(200,162,96,.45), 0 1.6cqh 4cqh rgba(0,0,0,.7);
+}
+.ns-card-wide{ max-width:88cqw; }
+.ns-card h3{
+  margin:0 0 1.6cqh; font-size:2.4cqh; font-weight:700; letter-spacing:.34em;
+  color:var(--ns-brass);
+}
+.ns-sign{ margin:0 0 1cqh; line-height:1.2; }
+.ns-sign span{
+  display:block; font-size:5.4cqh; font-weight:700; letter-spacing:.16em;
+  color:var(--ns-amber); text-shadow:0 0 2.4cqh rgba(255,179,71,.45);
+  animation:nsFlicker 5.5s steps(1,end) infinite;
+}
+.ns-sign b{ display:block; margin-top:.5cqh; font-size:2.2cqh; font-weight:700; letter-spacing:.44em; color:var(--ns-brass); }
+@keyframes nsFlicker{
+  0%,72%,100%{ opacity:1; }
+  73%{ opacity:.35; } 74%{ opacity:1; } 77%{ opacity:.5; } 78%{ opacity:1; }
+}
+.ns-tag{ margin:0 0 3cqh; font-size:max(1.6cqh, 10px); letter-spacing:.14em; color:rgba(232,223,200,.55); }
+/* the card that stands in front of the shop being built */
+.ns-card-load .ns-tag{ margin:0; animation:nsBreathe 1.6s ease-in-out infinite; }
+@keyframes nsBreathe{ 50%{ opacity:.35; } }
+.ns-btns{ display:flex; flex-wrap:wrap; gap:1.4cqw; justify-content:center; margin-top:2.4cqh; }
+.ns-btn{
+  cursor:pointer; padding:1.4cqh 2.6cqw;
+  font-family:var(--ns-face); font-size:1.9cqh; font-weight:700; letter-spacing:.22em;
+  color:var(--ns-ink); border:none; border-radius:.7cqw;
+  background:linear-gradient(180deg,#2b302d,#171a19);
+  box-shadow:inset 0 0 0 .2cqw rgba(200,162,96,.4), 0 .7cqh 0 rgba(6,8,7,.9);
+  transition:transform .08s ease-out, color .12s linear;
+}
+.ns-btn:hover{ color:var(--ns-amber); }
+.ns-btn:active{ transform:translateY(.5cqh); box-shadow:inset 0 0 0 .2cqw rgba(200,162,96,.4), 0 .2cqh 0 rgba(6,8,7,.9); }
+.ns-btn-go{ color:var(--ns-amber); box-shadow:inset 0 0 0 .22cqw rgba(255,179,71,.6), 0 .7cqh 0 rgba(6,8,7,.9); }
+.ns-btn-sm{ padding:.9cqh 1.6cqw; font-size:1.7cqh; letter-spacing:.1em; }
+.ns-pick{ margin:2.4cqh 0 0; font-size:1.5cqh; letter-spacing:.3em; color:rgba(232,223,200,.5);
+  display:flex; gap:.8cqw; align-items:center; justify-content:center; flex-wrap:wrap; }
+
+.ns-rules, .ns-cast{ list-style:none; margin:0 0 2.4cqh; padding:0; text-align:left; }
+.ns-rules li{
+  display:grid; grid-template-columns:16cqw 1fr; gap:1.4cqw; align-items:baseline;
+  padding:.7cqh 0; border-bottom:.1cqw solid rgba(200,162,96,.16);
+}
+.ns-rules b{ font-size:1.6cqh; letter-spacing:.18em; color:var(--ns-brass); }
+.ns-rules span{ font-size:1.7cqh; line-height:1.5; color:rgba(232,223,200,.85); }
+.ns-cast li{
+  display:grid; grid-template-columns:2.2cqh 15cqw 1fr; gap:1.2cqw; align-items:baseline;
+  padding:.7cqh 0; border-bottom:.1cqw solid rgba(200,162,96,.12);
+}
+.ns-cast b{ font-size:1.7cqh; letter-spacing:.16em; color:var(--ns-ink); }
+.ns-cast i{ display:none; }
+.ns-cast li > span:not(.ns-swatch){ font-size:1.7cqh; line-height:1.5; color:rgba(232,223,200,.88); }
+.ns-swatch{ width:1.6cqh; height:1.6cqh; border-radius:50%; background:var(--c);
+  box-shadow:0 0 1.2cqh var(--c); align-self:center; }
+.ns-keys{ margin:0; font-size:1.4cqh; letter-spacing:.08em; color:rgba(232,223,200,.5); line-height:1.9; }
+.ns-keys b{ color:var(--ns-brass); }
+
+.ns-nightno{ margin:0 0 .8cqh; font-size:3.4cqh; font-weight:700; letter-spacing:.34em; color:var(--ns-amber); }
+.ns-blurb{ margin:0 0 2.4cqh; font-size:1.8cqh; letter-spacing:.06em; color:rgba(232,223,200,.7); }
+.ns-from{ margin:0 0 1.4cqh; font-size:1.5cqh; letter-spacing:.24em; color:var(--ns-brass); }
+.ns-lines{ text-align:left; max-width:64cqw; margin:0 auto; }
+.ns-lines p{ margin:0 0 1.2cqh; font-size:1.75cqh; line-height:1.7; color:rgba(232,223,200,.88); }
+.ns-lines i{ color:rgba(232,223,200,.6); }
+
+.ns-got{
+  margin:0 0 1cqh; font-size:6cqh; font-weight:700; letter-spacing:.2em;
+  color:var(--c); text-shadow:0 0 3cqh var(--c);
+}
+.ns-six{ margin:0 0 1cqh; font-size:6cqh; font-weight:700; letter-spacing:.2em;
+  color:#ffd9a0; text-shadow:0 0 3cqh rgba(255,217,160,.5); }
+.ns-card-win{ box-shadow:inset 0 0 0 .22cqw rgba(255,217,160,.5), 0 1.6cqh 4cqh rgba(0,0,0,.7); }
+.ns-card-fin .ns-lines p{ font-size:1.7cqh; }
+.ns-ov-win.on::before{ background:radial-gradient(ellipse at 50% 40%, rgba(60,44,26,.7) 0%, rgba(6,5,4,.95) 72%); }
+.ns-ov-fin.on::before{ background:radial-gradient(ellipse at 50% 30%, rgba(84,64,38,.72) 0%, rgba(6,5,4,.96) 74%); }
+.ns-ov-over.on::before{ background:radial-gradient(ellipse at 50% 45%, rgba(40,8,6,.72) 0%, rgba(4,3,3,.97) 70%); }
+
+/* ---------- the hub card: a shutter, a bulb and two eyes ---------- */
+.hub-art-nightshift{
+  position:relative;
+  background:
+    radial-gradient(circle at 50% 14%, rgba(255,190,110,.55) 0 12%, transparent 46%),
+    linear-gradient(180deg,#171310 0%,#241c16 46%,#120f0d 100%);
+  box-shadow:inset 0 0 26px rgba(0,0,0,.7);
+}
+/* the shutter slats, and the gap under them */
+.hub-art-nightshift::before{
+  content:""; position:absolute; left:14%; right:14%; top:26%; height:44%;
+  background:
+    repeating-linear-gradient(180deg, #3a3f44 0 14%, #262b2f 14% 22%),
+    linear-gradient(#2a2f33,#2a2f33);
+  box-shadow:inset 0 0 0 2px #4a5158, 0 6px 10px rgba(0,0,0,.6);
+}
+/* two eyes in the dark underneath */
+.hub-art-nightshift::after{
+  content:""; position:absolute; left:34%; right:34%; top:76%; height:9%;
+  background:
+    radial-gradient(circle at 22% 50%, #ffb347 0 34%, transparent 36%),
+    radial-gradient(circle at 78% 50%, #ffb347 0 34%, transparent 36%);
+  filter:drop-shadow(0 0 6px rgba(255,179,71,.85));
+}
+
+/* ---------- phones and iPads ----------
+   A phone on its side gets as much stage as the height allows, because
+   the office is a wide picture. Held upright it gets a band at the top
+   with the titlebar over it, the way the racer does. */
+@media (max-width: 900px) and (orientation: landscape){
+  .ns-frame{ justify-content:center; padding:0; gap:0; }
+  .ns-stage{ width:min(100%, calc(var(--app-h) * 1.7778)); }
+  .ns-titlebar{ display:none; }
+}
+/* Held upright, the office is a band across the middle and the controls
+   sit under it rather than over it: there is a screen's worth of space
+   down there going spare, and a thumb on a button is a thumb that is
+   not covering the doorway it is meant to be watching. */
+@media (orientation: portrait){
+  .ns-frame{ justify-content:center; padding:2vh 0 0; gap:0; }
+  .ns-stage{ width:min(100%, calc(var(--app-h) * 0.52 * 1.7778)); overflow:visible; }
+  .ns-stage::after{ border-radius:6px; }
+  .ns-pad{
+    top:100%; bottom:auto; padding:2.4vh 3vw 0;
+    align-items:stretch;
+  }
+  .ns-pad-mid{ align-items:stretch; }
+  .ns-pause-btn{ top:1.6cqh; bottom:auto; right:1.6cqw; }
+  .ns-titlebar{ margin-bottom:2vh; }
+}
+@media (max-width: 900px), (orientation: portrait){
+  .ns-titlebar{display:block;}
+  /* the frame's own layout is set per orientation above; setting it
+     again here is what put the stage at the bottom of a portrait screen
+     and pushed the controls off the end of it */
+  .ns-map{ width:max(40cqw, 186px); bottom:max(8cqh, 24px); }
+  .ns-mon-top{ left:4cqw; right:4cqw; top:max(9cqh, 34px); }
+  .ns-pad{ padding:0 1.4cqw 1.6cqh; gap:1.2cqw; }
+  .ns-card{ max-width:92cqw; padding:2.6cqh 4cqw; }
+  .ns-card-wide{ max-width:94cqw; }
+  .ns-lines{ max-width:84cqw; }
+  .ns-rules li{ grid-template-columns:1fr; gap:.2cqh; }
+  .ns-cast li{ grid-template-columns:2.2cqh 1fr; }
+  .ns-cast b{ grid-column:2; }
+  .ns-cast span:last-child{ grid-column:2; }
+  .ns-key{ min-width:max(11cqw, 72px); min-height:max(11cqh, 54px); }
+  .ns-key-h, .ns-key-m{ min-width:max(8cqw, 56px); min-height:max(9cqh, 48px); }
+  .ns-key-step{ min-width:max(6cqw, 44px); min-height:max(9cqh, 46px); }
+  .ns-pause-btn{ bottom:auto; top:1.6cqh; right:1.6cqw; }
+}
+
+/* A phone held upright is only 390 points across, and six controls with
+   a 84px floor under them do not fit on one row of that. They shrink to
+   the accessibility minimum rather than wrapping, because a second row
+   would take a third of a stage that is already only 219 points tall. */
+@media (max-width: 560px){
+  .ns-pad{ gap:4px; padding:0 4px 8px; }
+  .ns-pad-mid{ gap:4px; }
+  .ns-key{ min-width:72px; min-height:52px; padding:.6cqh 1cqw; }
+  .ns-key-h, .ns-key-m{ min-width:56px; min-height:46px; }
+  .ns-key-step{ min-width:44px; min-height:46px; }
+  .ns-key b{ font-size:11px; letter-spacing:.12em; }
+  .ns-key i{ font-size:8px; letter-spacing:.14em; }
+  /* the pad is below the stage in portrait, so the plan does not have
+     to clear it — it has to fit inside a 219px tall tube instead */
+  .ns-map{ width:186px; bottom:6px; right:6px; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .ns-sign span, .ns-rec i, .ns-warn, .ns-bar u[data-lvl="3"], .ns-mon-lost, .ns-cell.busy u{ animation:none; }
+  .ns-btn, .ns-key{ transition:none; }
+}
+
+/* =========================================================
+   OUISSY'S NIGHT SHIFT — the second pass
+
+   The annunciator caption, the cozy switch, the custom night's dials,
+   the record, the daylight gallery, the rating card and the cabinet
+   nobody switched off.
+   ========================================================= */
+
+/* ---------- what the building just said ---------- */
+.ns-say{
+  position:absolute; left:50%; bottom:14cqh; transform:translateX(-50%);
+  margin:0; z-index:6; pointer-events:none; max-width:70cqw; text-align:center;
+  padding:.7cqh 1.6cqw; border-radius:.4cqw;
+  font-family:var(--ns-face); font-size:max(1.7cqh, 11px); letter-spacing:.22em;
+  color:#cfe6e0; background:rgba(8,14,13,.72);
+  box-shadow:inset 0 0 0 .14cqw rgba(127,228,208,.34);
+  text-shadow:0 0 1cqh rgba(127,228,208,.4);
+  animation:nsSayIn .16s ease-out;
+}
+.ns-say[hidden]{display:none;}
+@keyframes nsSayIn{ from{ opacity:0; transform:translate(-50%, .6cqh); } }
+
+/* ---------- the cabinet that is still running ---------- */
+.ns-egg{
+  position:absolute; z-index:9; cursor:pointer; padding:0;
+  pointer-events:auto;
+  width:max(9cqh, 44px); height:max(9cqh, 44px);
+  transform:translate(-50%,-50%);
+  border:none; border-radius:50%;
+  background:transparent;
+  -webkit-tap-highlight-color:transparent;
+}
+.ns-egg[hidden]{display:none;}
+/* it says nothing at all until the machine blinks */
+.ns-egg.blinking::after{
+  content:""; position:absolute; inset:22%;
+  border-radius:50%;
+  box-shadow:0 0 2.4cqh 1cqh rgba(210,238,255,.5);
+  background:rgba(226,244,255,.35);
+  animation:nsEgg 1.1s ease-in-out infinite;
+}
+@keyframes nsEgg{ 50%{ opacity:.25; transform:scale(.7); } }
+
+/* ---------- the cozy switch ---------- */
+.ns-cozy{
+  display:flex; align-items:center; gap:1.2cqw; cursor:pointer;
+  margin:2.4cqh auto 0; padding:1cqh 2cqw;
+  border:none; border-radius:.7cqw;
+  font-family:var(--ns-face); color:rgba(232,223,200,.7);
+  background:linear-gradient(180deg, rgba(30,34,32,.9), rgba(15,17,16,.92));
+  box-shadow:inset 0 0 0 .18cqw rgba(200,162,96,.32);
+}
+.ns-cozy i{
+  width:max(3.2cqh, 18px); height:max(1.8cqh, 10px); border-radius:1cqh;
+  background:#2a2e2c; box-shadow:inset 0 0 0 .14cqw rgba(200,162,96,.4);
+  position:relative; flex:0 0 auto; transition:background .16s linear;
+}
+.ns-cozy i::after{
+  content:""; position:absolute; top:12%; left:6%;
+  width:44%; height:76%; border-radius:50%;
+  background:var(--ns-brass); transition:transform .16s ease-out;
+}
+.ns-cozy.on i{ background:#3d5c48; }
+.ns-cozy.on i::after{ transform:translateX(105%); background:#9fd8b0; }
+.ns-cozy b{ font-size:max(1.6cqh, 10px); letter-spacing:.2em; color:var(--ns-brass); }
+.ns-cozy.on b{ color:#9fd8b0; }
+.ns-cozy span{ font-size:max(1.4cqh, 9px); letter-spacing:.1em; opacity:.62; }
+
+.ns-where{ margin:0 0 .6cqh; font-size:max(1.6cqh, 10px); letter-spacing:.36em; color:var(--ns-brass); }
+.ns-btns-extra{ margin-top:1.2cqh; }
+.ns-btn.ns-done{ color:#9fd8b0; box-shadow:inset 0 0 0 .2cqw rgba(159,216,176,.5), 0 .7cqh 0 rgba(6,8,7,.9); }
+
+/* ---------- the shift card and the paper between nights ---------- */
+.ns-paper{
+  max-width:60cqw; margin:0 auto 1.6cqh; padding:2cqh 2.6cqw; text-align:left;
+  background:linear-gradient(180deg,#e8dfc6,#d8ceb2);
+  color:#3a3225; border-radius:.3cqw;
+  box-shadow:0 1cqh 2.4cqh rgba(0,0,0,.5), inset 0 0 0 .12cqw rgba(120,104,80,.5);
+  transform:rotate(-.5deg);
+}
+.ns-paper p{ margin:0 0 .8cqh; font-size:max(1.6cqh, 10px); line-height:1.6; letter-spacing:.04em; }
+.ns-paper .ns-paper-head{ font-weight:700; letter-spacing:.2em; border-bottom:.12cqw solid rgba(90,76,54,.5); padding-bottom:.8cqh; }
+.ns-pencil{
+  max-width:62cqw; margin:0 auto; font-size:max(1.55cqh, 10px); line-height:1.7;
+  color:rgba(232,223,200,.62); font-style:italic; letter-spacing:.02em;
+}
+.ns-rule{
+  margin:1.8cqh auto 0; max-width:60cqw;
+  font-size:max(1.5cqh, 10px); letter-spacing:.06em; color:var(--ns-amber); opacity:.85;
+}
+
+/* ---------- the rating card ---------- */
+.ns-rating{
+  margin:1.8cqh 0 .4cqh; font-size:max(3.4cqh, 18px); font-weight:700; letter-spacing:.26em;
+  color:var(--ns-brass);
+}
+.ns-rating-flawless{ color:#9fd8b0; text-shadow:0 0 2cqh rgba(159,216,176,.45); }
+.ns-rating-steady{ color:#cfd8b0; }
+.ns-rating-rattled{ color:var(--ns-amber); }
+.ns-rating-skin{ color:var(--ns-red); }
+.ns-stats{
+  list-style:none; margin:1.6cqh auto; padding:0; max-width:56cqw;
+  display:grid; grid-template-columns:1fr 1fr; gap:.5cqh 2cqw;
+}
+.ns-stats li{ display:flex; justify-content:space-between; gap:1cqw;
+  border-bottom:.1cqw solid rgba(200,162,96,.16); padding:.4cqh 0; }
+.ns-stats b{ font-size:max(1.4cqh, 9px); letter-spacing:.14em; color:rgba(232,223,200,.55); font-weight:400; }
+.ns-stats i{ font-style:normal; font-size:max(1.6cqh, 10px); color:var(--ns-ink); }
+.ns-newbadge{ list-style:none; margin:0 0 1cqh; padding:0; }
+.ns-newbadge li{ font-size:max(1.7cqh, 11px); letter-spacing:.2em; color:#9fd8b0; }
+
+/* ---------- custom night ---------- */
+.ns-dials{ list-style:none; margin:0 0 1.6cqh; padding:0; }
+.ns-dial{
+  display:grid; grid-template-columns:2.2cqh 16cqw max(5cqh,30px) 1fr max(5cqh,30px) 5cqw;
+  align-items:center; gap:1.2cqw; padding:.9cqh 0;
+  border-bottom:.1cqw solid rgba(200,162,96,.14);
+}
+.ns-dial b{ font-size:max(1.6cqh, 10px); letter-spacing:.16em; }
+.ns-dial i{ font-style:normal; font-size:max(2cqh, 13px); color:var(--ns-amber); text-align:right; }
+.ns-dial input[type=range]{ width:100%; accent-color:var(--ns-amber); height:max(3cqh,18px); }
+.ns-step{
+  cursor:pointer; border:none; border-radius:.5cqw;
+  min-height:max(5cqh, 30px);
+  font-family:var(--ns-face); font-size:max(2cqh, 13px); color:var(--ns-ink);
+  background:linear-gradient(180deg,#2b302d,#171a19);
+  box-shadow:inset 0 0 0 .16cqw rgba(200,162,96,.4);
+}
+.ns-step:active{ transform:translateY(.3cqh); }
+
+/* ---------- the record ---------- */
+.ns-nights{ list-style:none; margin:0 0 1.6cqh; padding:0; display:flex; flex-wrap:wrap; gap:1cqw; justify-content:center; }
+.ns-nights li{
+  display:flex; align-items:baseline; gap:.6cqw; padding:.6cqh 1.2cqw; border-radius:.4cqw;
+  background:rgba(20,22,21,.7); box-shadow:inset 0 0 0 .12cqw rgba(200,162,96,.22);
+  color:rgba(232,223,200,.35);
+}
+.ns-nights li.on{ color:#9fd8b0; box-shadow:inset 0 0 0 .14cqw rgba(159,216,176,.5); }
+.ns-nights b{ font-size:max(1.8cqh, 11px); }
+.ns-nights span{ font-size:max(1.3cqh, 9px); letter-spacing:.14em; }
+.ns-badges{ list-style:none; margin:0 0 1.4cqh; padding:0; text-align:left; }
+.ns-badges li{
+  display:grid; grid-template-columns:20cqw 1fr; gap:1.4cqw; align-items:baseline;
+  padding:.6cqh 0; border-bottom:.1cqw solid rgba(200,162,96,.14);
+  color:rgba(232,223,200,.32);
+}
+.ns-badges li.on{ color:var(--ns-ink); }
+.ns-badges b{ font-size:max(1.6cqh, 10px); letter-spacing:.18em; color:inherit; }
+.ns-badges li.on b{ color:#9fd8b0; }
+.ns-badges span{ font-size:max(1.5cqh, 10px); opacity:.7; }
+
+/* ---------- the shop in daylight ---------- */
+.ns-ov-gal.on::before{ background:linear-gradient(180deg, rgba(20,16,10,.5), rgba(10,8,6,.2) 40%, rgba(10,8,6,.72)); }
+.ns-gal{ position:relative; z-index:1; width:100%; height:100%; display:flex; flex-direction:column;
+  align-items:center; justify-content:space-between; gap:1cqh; padding:2cqh 0 1cqh; pointer-events:none;
+  overflow-y:auto; }
+/* nothing here may be squeezed below its own text: on a short phone the
+   caption, three rows of rooms and the back button together are taller
+   than the panel, and flex's default is to shrink them into each other */
+.ns-gal-head, .ns-gal .ns-grooms, .ns-gal .ns-btns{ flex:0 0 auto; }
+.ns-gal > *{ pointer-events:auto; }
+/* The title and the note used to be two absolutely-positioned lines at
+   fixed offsets (2cqh and 6cqh), which held only while the note was one
+   short line. The moment it captioned the room it was showing it wrapped
+   to four lines on a phone and landed on top of the heading. They are one
+   floating header now, so the note flows under the title however long it
+   gets. */
+.ns-gal-head{ display:flex; flex-direction:column; align-items:center; gap:.8cqh; pointer-events:none; }
+.ns-gal-title{ margin:0; text-align:center;
+  font-family:var(--ns-face); font-size:max(2.4cqh, 14px); letter-spacing:.34em; color:#ffe0b0;
+  text-shadow:0 .3cqh 1.4cqh rgba(0,0,0,.8); }
+.ns-gal-note{ margin:0; text-align:center; max-width:min(86cqw, 62ch); text-wrap:balance;
+  font-family:var(--ns-face); font-size:max(1.4cqh, 9px); line-height:1.6; letter-spacing:.14em;
+  color:rgba(255,240,220,.7); text-shadow:0 .3cqh 1cqh rgba(0,0,0,.85); }
+.ns-grooms{ display:flex; flex-wrap:wrap; gap:.8cqw; justify-content:center; max-width:92cqw; margin-top:auto; }
+.ns-groom{
+  cursor:pointer; display:flex; align-items:baseline; gap:.6cqw;
+  padding:.9cqh 1.4cqw; min-height:max(5cqh, 34px);
+  border:none; border-radius:.5cqw;
+  font-family:var(--ns-face); color:rgba(255,244,228,.8);
+  background:rgba(28,22,16,.74);
+  box-shadow:inset 0 0 0 .14cqw rgba(255,208,150,.3);
+}
+.ns-groom b{ font-size:max(1.5cqh, 10px); color:#ffd0a0; }
+.ns-groom span{ font-size:max(1.3cqh, 9px); letter-spacing:.14em; }
+.ns-groom.on{ background:rgba(88,64,38,.86); box-shadow:inset 0 0 0 .18cqw rgba(255,208,150,.75); }
+/* On a 375-wide phone the eight rooms wrapped to four rows and pushed
+   BACK off the bottom of the panel — measured, not guessed. The panel is
+   a size container, so tighten the buttons where it is actually short
+   rather than at a viewport width, which is the wrong question. */
+@container (max-height: 260px) {
+  .ns-gal{ padding:1.2cqh 0 .8cqh; gap:.6cqh; }
+  .ns-gal-head{ gap:.4cqh; }
+  .ns-gal-note{ line-height:1.45; letter-spacing:.1em; }
+  .ns-gal .ns-grooms{ gap:.6cqw; }
+  .ns-gal .ns-groom{ min-height:28px; padding:.5cqh 1cqw; gap:.4cqw; border-radius:.4cqw; }
+  .ns-gal .ns-groom span{ letter-spacing:.08em; }
+}
+
+/* ---------- the cabinet's own game ---------- */
+.ns-card-arc{ text-align:center; }
+.ns-arc-title{ margin:0 0 1.2cqh; font-family:var(--ns-face); font-size:max(2.6cqh, 15px);
+  letter-spacing:.4em; color:#7fe4d0; text-shadow:0 0 2cqh rgba(127,228,208,.4); }
+.ns-arc-cvs{
+  display:block; margin:0 auto; width:min(62cqw, 74cqh); height:auto;
+  image-rendering:pixelated; border-radius:.6cqw;
+  box-shadow:0 0 0 .5cqw #10161a, 0 0 0 .9cqw rgba(200,162,96,.3), 0 1cqh 3cqh rgba(0,0,0,.6);
+}
+.ns-arc-help{ margin:1.2cqh 0 0; font-family:var(--ns-face); font-size:max(1.4cqh, 9px);
+  letter-spacing:.16em; color:rgba(232,223,200,.5); }
+.ns-arc-pad{ display:flex; gap:2cqw; justify-content:center; margin-top:1.4cqh; }
+.ns-arc-pad .ns-btn{ min-width:max(12cqw, 76px); min-height:max(7cqh, 46px); font-size:max(2.2cqh, 14px); }
+
+/* the feed going out entirely, from the last night */
+.ns-mon[data-drop="1"] .ns-static{ opacity:.95; }
+
+@media (max-width: 900px), (orientation: portrait){
+  .ns-stats{ grid-template-columns:1fr; max-width:80cqw; }
+  .ns-dial{ grid-template-columns:2.2cqh 1fr max(5cqh,34px) max(5cqh,34px) 5cqw;
+    grid-template-areas:"s n n n v" "s l r r v"; }
+  .ns-badges li{ grid-template-columns:1fr; gap:.2cqh; }
+  .ns-paper, .ns-pencil, .ns-rule{ max-width:84cqw; }
+  .ns-say{ bottom:auto; top:22cqh; max-width:84cqw; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .ns-say, .ns-egg.blinking::after{ animation:none; }
+}

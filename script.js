@@ -107,6 +107,10 @@ const CHAPTER_FILES = {
      valley, so it comes down the same road as the chapters rather than
      in the opening payload. */
   quest:  ["ost.js"],
+  /* the night shift is the biggest of the lot and needs THREE, which the
+     deferred bundle in the head has already run by the time anything
+     asks for this */
+  nightshift: ["night-shift.js"],
 };
 function loadChapter(name) {
   return Promise.all((CHAPTER_FILES[name] || []).map(loadScript));
@@ -117,10 +121,22 @@ function loadChapter(name) {
    need the same door rather than a guess at how long the idle prefetch
    takes. */
 window.loadChapter = loadChapter;
+/* The night shift is the largest file in the site by a distance, so the
+   three smaller chapters go down first and it follows once they are
+   done. It still arrives long before the hub, and the click waits for it
+   either way, so nothing is lost by not racing it against the passcode.
+
+   Honesty about why this is here: it was written to fix `gatefit.js`
+   failing to open the book on an iPad held sideways — and it did not,
+   because that failure turns out to be an intermittent flake on main
+   with no night shift in it at all. Running the suite once said the
+   merge had broken it; running it three times said otherwise. The
+   staggering stays because it is right on its own terms, not because it
+   fixed anything. */
 function prefetchChapters() {
-  Object.keys(CHAPTER_FILES).forEach((k) => {
-    loadChapter(k).catch(() => {});   // a failed prefetch is retried on the click
-  });
+  const first = Object.keys(CHAPTER_FILES).filter((k) => k !== "nightshift");
+  Promise.all(first.map((k) => loadChapter(k).catch(() => {})))
+    .then(() => loadChapter("nightshift").catch(() => {}));
 }
 if (typeof requestIdleCallback === "function") {
   requestIdleCallback(prefetchChapters, { timeout: 4000 });
@@ -1382,12 +1398,191 @@ window.leaveSuperOuissyRace = () => {
 };
 window.markSuperOuissyRaceDone = () => markChapterDone("race");
 
+/* =========================================================
+   OUISSY'S NIGHT SHIFT
+   The night-shift chapter. Same contract as the others: this half only
+   owns getting in and out of it, and the file itself now comes down on
+   the idle callback with the rest rather than in the head.
+   ========================================================= */
+function startNightShift() {
+  loadChapter("nightshift").then(() => { if (window.OuissysNightShift) OuissysNightShift.start(); });
+}
+function stopNightShift() {
+  if (window.OuissysNightShift) OuissysNightShift.stop();
+}
+window.leaveNightShift = () => {
+  stopNightShift();
+  pageTurn("hub", startHub);
+};
+window.markNightShiftDone = () => markChapterDone("nightshift");
+
 /* The apocalypse ends on the roof, with the two cats — the scene the
    whole site has been walking towards. */
 window.startApocalypseEnding = () => {
   stopApocalypse();
   pageTurn("end", activateEndingScene);
 };
+
+/* =========================================================
+   THE WALL — the painted half
+
+   The hub and the keepsake each carry a <div class="page-deco"> in the
+   markup with the stickers that belong to that screen, because those
+   differ. Everything else on the wall is the same on both and is built
+   here rather than written out twice: a hung string of lights, four
+   ink flourishes at the corners, and a drift of hearts.
+
+   All of it is inserted BEFORE the stickers, so it paints behind them,
+   and all of it is <span>/<svg> — the stickers are <i>, and they pick
+   which way they rock with :nth-of-type, so nothing added here can
+   disturb them.
+
+   None of it runs while a game does: an inactive .screen is display:none
+   and a display:none subtree animates nothing at all.
+   ========================================================= */
+(function paintWalls() {
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const svg = (tag, attrs) => {
+    const n = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  };
+  const box = (cls, css) => {
+    const n = document.createElement("span");
+    n.className = cls;
+    if (css) n.setAttribute("style", css);
+    return n;
+  };
+
+  /* THE STRING OF LIGHTS. Three swags of wire pinned across the top with
+     a bulb hanging under each dip. The wire is one path in a box 1000
+     wide by 96 tall stretched to the width of the screen — the stroke is
+     told not to stretch with it, or a wide window would draw it as a
+     smear — and the bulbs are placed on the very same curve in percent,
+     so they sit ON the wire at every width instead of near it. */
+  const WIRE_TOP = 7, SAG = 27;
+  /* One swag per 380 or so of width, never fewer than three: a fixed
+     count draws a pretty string on a phone and three enormous washing
+     lines on a laptop, with the bulbs a hand's width apart. */
+  const swagCount = () => Math.max(3, Math.round(window.innerWidth / 380));
+  function lights(swags) {
+    const wireY = (t) => WIRE_TOP + SAG * Math.sin(Math.PI * ((t * swags) % 1));
+    const wrap = box("deco-string");
+    wrap.dataset.swags = swags;
+    const s = svg("svg", { viewBox: "0 0 1000 96", preserveAspectRatio: "none" });
+    let d = "";
+    for (let i = 0; i <= 120; i++) {
+      const t = i / 120;
+      d += (i ? "L" : "M") + (t * 1000).toFixed(1) + " " + wireY(t).toFixed(2) + " ";
+    }
+    const wire = svg("path", { d: d.trim(), class: "deco-wire" });
+    wire.setAttribute("vector-effect", "non-scaling-stroke");
+    s.appendChild(wire);
+    wrap.appendChild(s);
+
+    /* three to a dip, so the light reads as a string rather than as a
+       row of lamps */
+    const N = swags * 3;
+    for (let i = 0; i < N; i++) {
+      const t = (i + 0.5) / N;
+      const b = box(
+        "deco-bulb deco-bulb-" + (i % 3),
+        "left:" + (t * 100).toFixed(2) + "%; top:" + wireY(t).toFixed(1) + "px;" +
+          "animation-delay:" + (-i * 0.73).toFixed(2) + "s"
+      );
+      wrap.appendChild(b);
+    }
+    return wrap;
+  }
+
+  /* THE CORNERS. Two arcs and two dots, drawn once each time the screen
+     opens: the stroke starts fully dashed off and is walked back on, so
+     the flourish appears to be inked in rather than to switch on. */
+  function corner(where) {
+    const wrap = box("deco-corner deco-corner-" + where);
+    const s = svg("svg", { viewBox: "0 0 52 52" });
+    /* the sweep, and a tighter one inside it */
+    s.appendChild(svg("path", { class: "deco-ink deco-ink-1", d: "M0 46 C0 20 20 0 46 0" }));
+    s.appendChild(svg("path", { class: "deco-ink deco-ink-2", d: "M0 32 C0 14 14 0 32 0" }));
+    /* a spiral finishing each end, one turned the other way */
+    s.appendChild(svg("path", {
+      class: "deco-ink deco-ink-3",
+      d: "M46 0 c7 0 10.2 4 8.6 8 c-1.2 3.4 -6 3.4 -6.6 0 c-.4 -2.2 1.6 -3.6 3.4 -2.6",
+    }));
+    s.appendChild(svg("path", {
+      class: "deco-ink deco-ink-3",
+      d: "M0 46 c0 7 4 10.2 8 8.6 c3.4 -1.2 3.4 -6 0 -6.6 c-2.2 -.4 -3.6 1.6 -2.6 3.4",
+    }));
+    /* and the little gem the two arcs are bent around */
+    s.appendChild(svg("path", { class: "deco-dot", d: "M9 4.4 L13.6 9 L9 13.6 L4.4 9 Z" }));
+    wrap.appendChild(s);
+    return wrap;
+  }
+
+  /* THE DRIFT. Hearts and stars, small and faint, rising the height of
+     the screen on their own clocks and swaying as they go. Every one
+     starts with a negative delay of its own, so on the very first frame
+     the air is already full of them rather than filling up over the
+     first minute. */
+  const DRIFT = [
+    /* x%, size, seconds, delay, glyph, sway px */
+    [8, 15, 34, -3, "heart", 26], [21, 11, 27, -14, "star", -18],
+    [33, 17, 41, -22, "heart", 32], [45, 12, 31, -7, "star", -24],
+    [57, 14, 37, -29, "heart", 20], [66, 11, 25, -17, "star", 28],
+    [77, 16, 44, -35, "heart", -30], [88, 12, 30, -11, "star", 22],
+    [95, 14, 39, -25, "heart", -20], [15, 10, 23, -19, "star", 16],
+    [39, 13, 46, -40, "heart", -26], [72, 10, 29, -5, "star", -14],
+  ];
+  function drift() {
+    const wrap = box("deco-drift");
+    for (const [x, size, dur, delay, glyph, sway] of DRIFT) {
+      const p = box(
+        "deco-petal",
+        "left:" + x + "%; width:" + size + "px; height:" + size + "px;" +
+          "animation-duration:" + dur + "s; animation-delay:" + delay + "s;" +
+          "--sway:" + sway + "px"
+      );
+      const s = svg("svg", { class: "gl" });
+      s.appendChild(svg("use", { href: "#ic-px-" + glyph }));
+      p.appendChild(s);
+      wrap.appendChild(p);
+    }
+    return wrap;
+  }
+
+  document.querySelectorAll(".page-deco").forEach((deco) => {
+    /* in front of the washes, behind the vignette and the stickers: the
+       corners of the page darken over the lights the way they darken
+       over everything else, and a sticker is a thing ON the wall. */
+    const at = deco.querySelector(".deco-vig") || null;
+    const parts = [
+      box("deco-lattice"), /* the printed diamonds under everything */
+      box("deco-fox"),     /* the age spots in the paper */
+      box("deco-rays"),
+      lights(swagCount()),
+      drift(),
+      box("deco-frame"),   /* the ruled edge of the page */
+      corner("tl"), corner("tr"), corner("br"), corner("bl"),
+    ];
+    for (const p of parts) deco.insertBefore(p, at);
+  });
+
+  /* Turning an iPad sideways halves the number of dips that fit, and a
+     string strung for a portrait screen looks stretched across a
+     landscape one. It is restrung only when the count actually changes,
+     so a keyboard opening or a toolbar collapsing rebuilds nothing. */
+  let rehangSoon = 0;
+  addEventListener("resize", () => {
+    clearTimeout(rehangSoon);
+    rehangSoon = setTimeout(() => {
+      const want = swagCount();
+      document.querySelectorAll(".deco-string").forEach((old) => {
+        if (+old.dataset.swags === want) return;
+        old.replaceWith(lights(want));
+      });
+    }, 260);
+  });
+})();
 
 /* =========================================================
    HUB — choose your adventure
@@ -1422,7 +1617,9 @@ function startHub() {
   const d = chaptersDone();
   const both = bothChaptersDone();
 
-  [["quest", d.quest], ["ouissy", d.ouissy], ["apoc", d.apoc], ["race", d.race]].forEach(([name, done]) => {
+  /* the maze is gone from main; the night shift is the sixth card */
+  [["quest", d.quest], ["ouissy", d.ouissy], ["apoc", d.apoc], ["race", d.race],
+   ["nightshift", d.nightshift]].forEach(([name, done]) => {
     const card = document.getElementById("hub-card-" + name);
     if (card) card.classList.toggle("done", !!done);
   });
@@ -1431,7 +1628,8 @@ function startHub() {
      never leaves it lying. The keepsake is gated on the story chapter —
      see bothChaptersDone above. */
   const sub = document.getElementById("hub-sub");
-  const count = (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0) + (d.apoc ? 1 : 0) + (d.race ? 1 : 0);
+  const count = (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0) + (d.apoc ? 1 : 0) + (d.race ? 1 : 0) +
+                (d.nightshift ? 1 : 0);
   const total = document.querySelectorAll(".hub-card").length;
   if (both && count === total) sub.textContent = "— every one of them done. the keepsake is yours —";
   else if (both) sub.textContent = "— the story is done. the keepsake is yours —";
@@ -1452,6 +1650,9 @@ document.getElementById("hub-card-apoc").addEventListener("click", () => {
 });
 document.getElementById("hub-card-race").addEventListener("click", () => {
   pageTurn("race", startSuperOuissyRace);
+});
+document.getElementById("hub-card-nightshift").addEventListener("click", () => {
+  pageTurn("nightshift", startNightShift);
 });
 document.getElementById("hub-keepsake").addEventListener("click", () => {
   pageTurn("keepsake", startKeepsake);
@@ -3996,11 +4197,8 @@ const HV = {
      those. */
   there_stones: {
     scene: "stream", cat: "idle", play: "stones",
+    outcomes: ["there_dry", "there_wet"],
     say: "The stream widens where the stones are. Seven of them, and not one is flat.",
-    choices: [
-      { label: "ONE AT A TIME", to: "there_dry", pos: "left" },
-      { label: "ALL IN A RUSH", to: "there_wet", pos: "right" },
-    ],
   },
   there_dry: {
     stand: { x: 258, y: 106, s: 1.2 },
@@ -4130,21 +4328,21 @@ const HV = {
 
   back_bridge1: {
     scene: "bridge", cat: "idle", plank: 0, play: "bridge", span: [0.16, 0.42], playTo: "back_bridge2",
+    outcomes: ["back_bridge2"],
     say: "Then the rope bridge over the gorge, which holds one person and one plank at a time, and is honest with you about it.",
-    choices: [{ label: "FIRST SECTION, SLOWLY", to: "back_bridge2", pos: "centre" }],
   },
   back_bridge2: {
     scene: "bridge", cat: "shock", plank: 1, play: "bridge", span: [0.42, 0.72], playTo: "back_bridge3",
+    outcomes: ["back_bridge3"],
     say: "The middle, where the sag is deepest and the whole span moves with you. The trick, it turns out, is to stop trying to hurry.",
     voices: [["him", "Do not look down."],
              ["her", "I am looking at you."],
              ["him", "That is worse."]],
-    choices: [{ label: "STEADY. KEEP GOING", to: "back_bridge3", pos: "centre" }],
   },
   back_bridge3: {
     scene: "bridge", cat: "happy", plank: 2, play: "bridge", span: [0.72, 0.97], playTo: "back_join",
+    outcomes: ["back_join"],
     say: "The last few planks, the far post, solid ground. You wait on the other side while he comes across, and you do not once tell him to hurry up.",
-    choices: [{ label: "DOWN THE FAR SIDE", to: "back_join", pos: "centre" }],
   },
 
   /* ---- red: the orchard at dusk, and the bear.
@@ -4164,15 +4362,11 @@ const HV = {
      would rather just decide. */
   back_bear: {
     scene: "orchard", cat: "shock", bear: "real", play: "orchard",
+    outcomes: ["back_bear_wait", "back_bear_quiet", "back_bear_seen"],
     /* the near end of the row, and low enough in the frame that the
        three buttons above them are never walked through */
     stand: { x: 74, y: 170, s: 1.5 },
     say: "There is a bear in the orchard. It is four trees down, working through the windfalls, and it has not looked up yet.",
-    choices: [
-      { label: "WAIT FOR IT TO MOVE", to: "back_bear_wait", pos: "left" },
-      { label: "TAKE THE QUIET ROW", to: "back_bear_quiet", pos: "right" },
-      { label: "STRAIGHT PAST IT", to: "back_bear_seen", pos: "centre" },
-    ],
   },
   /* The one soft landing in the game. It is a nudge backwards in the same
      scene, with the same furniture and the same buttons — no overlay, no
@@ -4189,7 +4383,7 @@ const HV = {
   },
   back_bear_quiet: {
     scene: "orchard", cat: "idle",
-    say: "You take the far row instead, the one the lanterns do not reach, walking on grass rather than windfalls so that nothing cracks underfoot. It never knows you were there at all.",
+    say: "You go the whole way on the grass at the edge of the row, where the lanterns do not reach and nothing cracks underfoot, and you do not stop once. It never knows you were there at all.",
     choices: [{ label: "ON THROUGH", to: "back_windfall", pos: "centre" }],
   },
   /* This line called back to the fox on the stream bank — "the fox
@@ -5239,10 +5433,14 @@ function hvSceneOf(n) {
       the bridge costs a step. The bear is the one that sends you
       backwards, and backwards is three trees, in the same scene, with
       the same buttons — which is what it already was.
-   2. **Nothing here can be stuck.** Every one of these nodes keeps the
-      buttons it always had. Play it or press the button; both go on,
-      and the button is never hidden, greyed or delayed. This is a gift
-      for someone who may not play games, not a skill check.
+   2. **Nothing here can be stuck.** These three used to keep a button
+      that walked past them, and it has been taken out: a mechanic you
+      can click past is decoration. What replaces that safety is that
+      none of them can be lost — the stones let you across wet or dry,
+      the bridge simply will not take a badly timed step, and the bear
+      costs you three trees. And the way OUT of the screen is never
+      taken away: back, back-to-the-start and leave sit in the top bar
+      on every frame of every one of them.
    3. **One input.** Tap the canvas, or hold space. That is the whole
       control scheme, and it is the same in all three.
    ========================================================= */
@@ -5313,7 +5511,7 @@ function hvPlayBegin(n) {
     hvPlay = { kind: "bridge", k: n.span[0], steps: 0, need: 4, wob: 0, done: 0 };
     hvHint = "tap when the span is steady";
   } else if (n.play === "orchard") {
-    hvPlay = { kind: "orchard", x: 74, look: 0, done: 0 };
+    hvPlay = { kind: "orchard", x: 74, look: 0, idle: 0, done: 0 };
     hvHint = "hold to creep — stop when it looks up";
   }
 
@@ -5382,6 +5580,7 @@ function hvPlayPairY(stand) {
 function hvPlayPress(t) {
   if (!hvPlay || hvPlay.done) return false;
   var p = hvPlay;
+  if (p.firstInput === undefined) p.firstInput = hvArrive >= 0 ? t - hvArrive : 0;
 
   if (p.kind === "stones") {
     if (p.hop < 1) return true;                       // mid-air, ignore
@@ -5441,6 +5640,17 @@ function hvPlayStep(t, st, dt) {
   } else if (p.kind === "orchard") {
     var wasLook = p.look;
     p.look = hvBearLook(st);
+    /* Which of the two written arrivals she gets, now that there is no
+       button to pick one with. The obvious rule — "did she ever stop?" —
+       turns out to be unavailable: the row is 172 pixels at 26 a second
+       and the safe window is 2.9 of every 5.2, so she MUST stop at least
+       twice. Nobody crosses this row without stopping.
+
+       So it counts the stopping she did not have to do: time stood still
+       while it was safe to move. Dawdle and it is "so you wait, ten
+       minutes of standing perfectly still"; take every window you are
+       given and it is the crossing where she does not waste a step. */
+    if (p.look < 0.5 && !hvHold && !p.done) p.idle += dt;
     /* the score pulls back to almost nothing the moment its head comes
        up, and comes back when it goes down — the held breath is the
        music leaving, not a sound effect arriving */
@@ -5450,6 +5660,7 @@ function hvPlayStep(t, st, dt) {
     }
     if (!p.done) {
       if (hvHold) {
+        if (p.firstInput === undefined) p.firstInput = st;
         if (p.x < 76) hvNoteAway(true);
         p.x += dt * 26;
         /* caught only while actually moving, and only once its head is
@@ -5459,7 +5670,7 @@ function hvPlayStep(t, st, dt) {
           p.done = 2; p.finish = t + 0.5;
           if (window.OST) window.OST.hit("seen");
         }
-        else if (p.x > 246) { p.done = 1; p.finish = t + 0.6; }
+        else if (p.x > 246) { p.done = p.idle > 2.5 ? 3 : 1; p.finish = t + 0.6; }
       }
     }
   }
@@ -5474,7 +5685,10 @@ function hvPlayFinish() {
   hvPlay = null;
   if (p.kind === "stones") hvGo(p.wet ? "there_wet" : "there_dry");
   else if (p.kind === "bridge") hvGo(n.playTo);
-  else if (p.kind === "orchard") hvGo(p.done === 2 ? "back_bear_seen" : "back_bear_quiet");
+  else if (p.kind === "orchard") {
+    hvGo(p.done === 2 ? "back_bear_seen"
+       : p.done === 3 ? "back_bear_wait" : "back_bear_quiet");
+  }
 }
 
 /* the mechanic's own furniture: the stone you are aiming at, the sway
@@ -5531,11 +5745,20 @@ function hvPlayPaint(ctx, t, st) {
     ctx.restore();
   }
 
-  if (hvHint && st > 0.6 && st < 7 && !hvPlay.done) {
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, (st - 0.6) * 2) * (st > 6 ? (7 - st) : 1);
-    hvTinyText(ctx, hvHint, PXW / 2, 30);
-    ctx.restore();
+  /* The line of instruction used to fade at seven seconds whether or not
+     she had worked out what to do. That was survivable while a button
+     sat underneath it; now that the button is gone this is the only
+     thing telling her how to play, so it stays until she has actually
+     done something, and then gets out of the way. */
+  if (hvHint && st > 0.6 && !p.done) {
+    var since = p.firstInput === undefined ? null : st - p.firstInput;
+    var vis = since === null ? 1 : Math.max(0, 1 - since / 1.2);
+    if (vis > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (st - 0.6) * 2) * vis;
+      hvTinyText(ctx, hvHint, PXW / 2, 30);
+      ctx.restore();
+    }
   }
 }
 
@@ -5991,7 +6214,13 @@ function hvPaintFrame(t, dt) {
     if (glint > 0.82) px(ctx, spot.x + 6, spot.y - 6, 1, 1, "#fff6d0");
   }
 
-  if (n.cat && n.cat !== "hide") {
+  /* The cat sits in the bottom-left corner and it is a narrator, not a
+     character in the scene. While one of the three mechanics is being
+     played the frame belongs to the two of them — and, concretely, the
+     stones begin on the near bank at x=62, which is squarely behind
+     where the cat sits, so she could not see the pair she was steering.
+     It comes back the moment they arrive somewhere. */
+  if (n.cat && n.cat !== "hide" && !hvPlay) {
     /* a blink every few seconds, and a slow breath */
     var blink = (t % 4.4) > 4.2;
     var mood = blink && (n.cat === "idle" || n.cat === "happy") ? "happy" : n.cat;
