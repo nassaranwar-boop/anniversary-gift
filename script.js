@@ -1550,12 +1550,44 @@ window.startApocalypseEnding = () => {
     return wrap;
   }
 
-  document.querySelectorAll(".page-deco").forEach((deco) => {
-    /* in front of the washes, behind the vignette and the stickers: the
-       corners of the page darken over the lights the way they darken
-       over everything else, and a sticker is a thing ON the wall. */
-    const at = deco.querySelector(".deco-vig") || null;
+  /* THE STICKERS, one mix per wall: the keepsake gets the camera because
+     it is a board of photographs, the hub gets the fox and the crowns
+     because it is a shelf of games.
+
+     Only warm glyphs are on this list. Every symbol in that sprite sheet
+     carries its own fill and a <use> will not let a stylesheet reach
+     inside and change it, so a sticker's colour is chosen by choosing
+     the sticker — and the moon, the feather, the shell and the bloom are
+     all but white, which on parchment reads as a smudge. */
+  const STICKERS = {
+    "screen-hub":      ["heart", "star", "fox", "crown", "ribbon", "star", "heart", "star", "crown"],
+    "screen-keepsake": ["camera", "heart", "star", "ribbon", "crown", "fox", "heart", "star", "star"],
+  };
+
+  /* The whole layer is built here rather than written into index.html.
+     It used to live in the markup, and a merge of that one very large
+     file quietly dropped both copies of it — the CSS and this function
+     survived and had nothing left to decorate, so the two screens went
+     back to flat parchment with no error anywhere to say why. Nothing
+     about the wall is in the markup now: there is no copy of it to
+     lose. */
+  for (const id in STICKERS) {
+    const screen = document.getElementById(id);
+    if (!screen || screen.querySelector(".page-deco")) continue;
+    const deco = document.createElement("div");
+    deco.className = "page-deco";
+    deco.setAttribute("aria-hidden", "true");
+
+    /* back to front: the colour wash, then the paper it is falling on,
+       then the things hung on it, then the vignette darkening the lot,
+       and the stickers on top because a sticker is a thing ON the wall */
     const parts = [
+      box("deco-glow deco-glow-a"),
+      box("deco-glow deco-glow-b"),
+      box("deco-glow deco-glow-c"),
+      box("deco-sheen"),
+      box("deco-motes deco-motes-a"),
+      box("deco-motes deco-motes-b"),
       box("deco-lattice"), /* the printed diamonds under everything */
       box("deco-fox"),     /* the age spots in the paper */
       box("deco-rays"),
@@ -1563,9 +1595,20 @@ window.startApocalypseEnding = () => {
       drift(),
       box("deco-frame"),   /* the ruled edge of the page */
       corner("tl"), corner("tr"), corner("br"), corner("bl"),
+      box("deco-vig"),
     ];
-    for (const p of parts) deco.insertBefore(p, at);
-  });
+    STICKERS[id].forEach((glyph, i) => {
+      const st = document.createElement("i");
+      st.className = "deco-st deco-st" + (i + 1);
+      const s = svg("svg", { class: "gl" });
+      s.appendChild(svg("use", { href: "#ic-px-" + glyph }));
+      st.appendChild(s);
+      parts.push(st);
+    });
+
+    for (const p of parts) deco.appendChild(p);
+    screen.insertBefore(deco, screen.firstChild);
+  }
 
   /* Turning an iPad sideways halves the number of dips that fit, and a
      string strung for a portrait screen looks stretched across a

@@ -2702,6 +2702,13 @@ img{-webkit-user-drag:none; user-select:none;}
    else has to share — these two screens are the only places it exists,
    and it lies behind the content with pointer-events off, so nothing
    here can ever be in the way of a card or a button.
+
+   The layer these rules dress is BUILT IN script.js (paintWalls), not
+   written into index.html. It was in the markup once and a merge of that
+   very large file quietly dropped both copies of it: these rules and
+   that function both survived with nothing left to decorate, and the two
+   screens went back to flat parchment with no error anywhere to say
+   why.
    ========================================================= */
 .page-deco{
   position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0;
