@@ -3142,20 +3142,25 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:0 3px 8px rgba(60,90,30,.45);
 }
 .hub-card.done .hub-badge{display:flex;}
-/* THE FOUR CARDS.
+/* THE FIVE CARDS.
 
    These used to be stacks of CSS gradients -- a green band with a white
    dot, a pink block, a grey smear. At 74 pixels tall that is a swatch, not
-   a picture, and four swatches in a row tell her nothing about what she is
+   a picture, and a row of swatches tells her nothing about what she is
    choosing between.
 
    Each card carries a small pixel scene now, painted on a 96x32 grid by
    tools/img/hubart.py and inlined as run-length SVG: the signpost and the
    two of them walking off up the path, the castle and the gift block, the
-   one lit window in a dead skyline, the road running to the sun. Pixels
-   because three of the four chapters are pixel games -- the card should
-   look like the thing behind it. Inline, so there is nothing to fetch, and
-   crispEdges so it stays a pixel scene at any card width. */
+   torch and the thing it finds in a dead city, the office with a door on
+   each side of her, the road running to the sun. Pixels because four of
+   the five chapters are pixel games -- the card should look like the thing
+   behind it. Inline, so there is nothing to fetch, and crispEdges so it
+   stays a pixel scene at any card width.
+
+   Every one of them has HER in it, which is the rule the cards are really
+   built on: it is her book, and she should be able to find herself on
+   every page of it. */
 .hub-art{
   display:block; position:relative; width:100%; height:74px;
   border-radius:9px; overflow:hidden;
@@ -7183,30 +7188,13 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-ov-fin.on::before{ background:radial-gradient(ellipse at 50% 30%, rgba(84,64,38,.72) 0%, rgba(6,5,4,.96) 74%); }
 .ns-ov-over.on::before{ background:radial-gradient(ellipse at 50% 45%, rgba(40,8,6,.72) 0%, rgba(4,3,3,.97) 70%); }
 
-/* ---------- the hub card: a shutter, a bulb and two eyes ---------- */
-.hub-art-nightshift{
-  position:relative;
-  background:
-    radial-gradient(circle at 50% 14%, rgba(255,190,110,.55) 0 12%, transparent 46%),
-    linear-gradient(180deg,#171310 0%,#241c16 46%,#120f0d 100%);
-  box-shadow:inset 0 0 26px rgba(0,0,0,.7);
-}
-/* the shutter slats, and the gap under them */
-.hub-art-nightshift::before{
-  content:""; position:absolute; left:14%; right:14%; top:26%; height:44%;
-  background:
-    repeating-linear-gradient(180deg, #3a3f44 0 14%, #262b2f 14% 22%),
-    linear-gradient(#2a2f33,#2a2f33);
-  box-shadow:inset 0 0 0 2px #4a5158, 0 6px 10px rgba(0,0,0,.6);
-}
-/* two eyes in the dark underneath */
-.hub-art-nightshift::after{
-  content:""; position:absolute; left:34%; right:34%; top:76%; height:9%;
-  background:
-    radial-gradient(circle at 22% 50%, #ffb347 0 34%, transparent 36%),
-    radial-gradient(circle at 78% 50%, #ffb347 0 34%, transparent 36%);
-  filter:drop-shadow(0 0 6px rgba(255,179,71,.85));
-}
+/* The night-shift card used to be built here out of gradients: a steel
+   shutter drawn with repeating-linear-gradient and two eyes glowing under
+   it out of a ::after. It was the only card whose picture lived in the
+   stylesheet, it was a mood rather than a place, and it could not show
+   the one thing the other four all show -- her. It is a pixel scene in
+   tools/img/hubart.py now, like the rest of them, and this card needs no
+   rules of its own at all. */
 
 /* ---------- phones and iPads ----------
    A phone on its side gets as much stage as the height allows, because
