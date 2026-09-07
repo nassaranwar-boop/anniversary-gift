@@ -87,6 +87,75 @@ const CLEAR = 44;                     /* a fingertip, in CSS pixels */
     }
     await p.close();
   }
+  /* AND NOTHING SITS ON TOP OF ANYTHING ELSE, IN ANY GAME, AT ANY SIZE.
+     Buttons only: a joystick zone or a steering surface is deliberately
+     large and lies UNDER the buttons, which is not the fault being looked
+     for. Two things you can press occupying the same pixels is. */
+  const SWEEP = [['iPad sideways', { width: 1180, height: 820 }],
+                 ['iPhone sideways', { width: 844, height: 390 }],
+                 ['laptop', { width: 1280, height: 800 }]];
+  for (const [label, vp] of SWEEP) {
+    const p = await b.newPage({ viewport: vp, deviceScaleFactor: 2,
+                                isMobile: vp.width < 1100, hasTouch: vp.width < 1100 });
+    p.on('pageerror', e => errs.push(label + ': ' + e.message));
+    await p.route('**', r => (r.request().url().startsWith('http://localhost') ? r.continue() : r.abort()));
+    await p.goto('http://localhost:8899/index.html', { waitUntil: 'domcontentloaded' });
+    await p.waitForFunction(() => !!(window.SuperOuissy && window.Apocalypse && window.SuperOuissyRace),
+                            { timeout: 40000 });
+    for (const [chapter, go] of [['Super Ouissy', () => { showScreen('ouissy'); SuperOuissy.start(); }],
+                                 ['the apocalypse', () => { showScreen('apoc'); Apocalypse.start(); }],
+                                 ['the race', () => { showScreen('race'); SuperOuissyRace.start(); }]]) {
+      await p.evaluate(go);
+      await p.waitForTimeout(1400);
+      for (let i = 0; i < 5; i++) {
+        const went = await p.evaluate(() => {
+          const q = document.querySelector('.screen.active .so-btn-go, .screen.active .ap-card-go, ' +
+                                           '.screen.active .rc-btn-go, .screen.active #so-play, ' +
+                                           '.screen.active #so-how-ok');
+          if (q) { q.click(); return true; }
+          return false;
+        });
+        await p.waitForTimeout(600);
+        if (!went) break;
+      }
+      const hits = await p.evaluate(() => {
+        const on = [];
+        document.querySelectorAll('.screen.active button').forEach(el => {
+          if (!el.offsetParent) return;
+          const st = getComputedStyle(el);
+          if (st.pointerEvents === 'none' || st.visibility === 'hidden' || +st.opacity === 0) return;
+          /* checkVisibility walks the ancestors, which is the only way to
+             notice the apocalypse's four keys: they are real buttons in a
+             container that is opacity:0 and height:0, because on a touch
+             screen the stick over the picture replaces them. They are not
+             on screen and stacking them is not a fault. */
+          if (el.checkVisibility && !el.checkVisibility({ opacityProperty: true,
+                                                          visibilityProperty: true })) return;
+          const r = el.getBoundingClientRect();
+          if (r.width < 4 || r.height < 4) return;
+          if (r.right < 0 || r.bottom < 0 || r.left > innerWidth || r.top > innerHeight) return;
+          /* and it has to be the thing you actually hit when you press it */
+          const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          if (!top || !(top === el || el.contains(top))) return;
+          on.push({ id: el.id || el.className.split(' ')[0] || el.tagName, r: r });
+        });
+        const bad = [];
+        for (let i = 0; i < on.length; i++)
+          for (let j = i + 1; j < on.length; j++) {
+            const a = on[i].r, c = on[j].r;
+            const w = Math.min(a.right, c.right) - Math.max(a.left, c.left);
+            const h = Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top);
+            if (w > 1 && h > 1) bad.push(on[i].id + ' over ' + on[j].id +
+                                         ' by ' + Math.round(w) + 'x' + Math.round(h));
+          }
+        return { count: on.length, bad: bad };
+      });
+      ok(label + ' / ' + chapter + ': no two buttons share the same pixels',
+         hits.bad.length === 0, hits.bad.length ? { of: hits.count, overlapping: hits.bad.slice(0, 4) } : null);
+    }
+    await p.close();
+  }
+
   ok('no page errors from any of it', errs.length === 0, errs.slice(0, 3));
   console.log('');
   console.log(pass + ' passed, ' + fail + ' failed');
