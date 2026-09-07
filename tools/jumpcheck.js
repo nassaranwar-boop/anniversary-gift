@@ -43,7 +43,20 @@ const SETS = {
 function makeLevel(rows) {
   const H = rows.length, W = rows[0].length;
   const at = (tx, ty) => (tx < 0 || tx >= W) ? '#' : (ty < 0 || ty >= H) ? '.' : rows[ty][tx];
-  const solid = (tx, ty) => SOLID.indexOf(at(tx, ty)) >= 0;
+  /* A POWER-UP LETTER RESTING ON SOMETHING IS NOT A WALL. buildLevel lifts
+     it out of the grid and stands it there as an item to be walked into;
+     only one hanging in the air stays a solid gift block. The letters are
+     in SOLID either way, so a solver that reads the grid raw finds a 1UP
+     sitting on the floor of a room and treats it as a brick dividing the
+     room in half — which is exactly what happened, and why every hidden
+     room read as unreachable when in the game it is not. */
+  const loose = (tx, ty) => {
+    const ch = at(tx, ty);
+    if ('MI1PF'.indexOf(ch) < 0) return false;
+    const below = at(tx, ty + 1);
+    return SOLID.indexOf(below) >= 0 || below === '-';
+  };
+  const solid = (tx, ty) => SOLID.indexOf(at(tx, ty)) >= 0 && !loose(tx, ty);
   const oneWay = (tx, ty) => at(tx, ty) === '-';
   /* the deadly rows: a pit or a moat is not a place she can be */
   const deadly = (tx, ty) => at(tx, ty) === '~' || at(tx, ty) === '^';
@@ -96,7 +109,15 @@ function inDeath(L, x, y) {
 
 /* One launch, simulated the way the game integrates it: separate axes,
    the same two gravities, the same air control. Returns where she lands. */
-function fly(L, x0, y0, vx0, vy0, hold, mul) {
+function mark(L, x, y) {
+  if (!L.seen) return;
+  const x0 = Math.floor(x / T), x1 = Math.floor((x + PW - 1) / T);
+  const y0 = Math.floor(y / T), y1 = Math.floor((y + PH - 1) / T);
+  for (let tx = x0; tx <= x1; tx++)
+    for (let ty = y0; ty <= y1; ty++) L.seen.add(tx + ':' + ty);
+}
+
+function fly(L, x0, y0, vx0, vy0, hold, mul, minTravel) {
   const gUp = GU * mul.gravityMul, gDn = GD * mul.gravityMul;
   let x = x0, y = y0, vx = vx0, vy = vy0;
   const dt = 1 / 60;
@@ -140,9 +161,16 @@ function fly(L, x0, y0, vx0, vy0, hold, mul) {
       }
     }
     y = ny;
+    mark(L, x, y);
     if (inDeath(L, x, y)) return null;
     if (y > L.H * T + 40) return null;                 /* fell out of the world */
-    if (landed && onGround(L, x, y)) return { x: x, y: y };
+    /* A WALK LANDS ON ITS FIRST FRAME, which is the whole difficulty: gravity
+       puts her back on the floor she is already standing on, so a walk that
+       stops there never travels and the flood only ever expands by jumping.
+       That is why a room whose entrance is a hole in the ground read as
+       unreachable — nobody ever walked into it. A walk keeps going until it
+       has covered some ground, or until the ground runs out. */
+    if (landed && onGround(L, x, y) && Math.abs(x - x0) >= (minTravel || 0)) return { x: x, y: y };
   }
   return null;
 }
@@ -158,6 +186,8 @@ function reachable(L, mul) {
       if (L.at(c, r) === 'S') { start = { x: c * T + 3, y: r * T + (T - PH) }; break; }
   if (!start) throw new Error('no S');
 
+  L.seen = new Set();
+  mark(L, start.x, start.y);
   const seen = new Set([key(start.x, start.y)]);
   const queue = [start];
   const spots = [start];
@@ -170,12 +200,21 @@ function reachable(L, mul) {
     const p = queue.pop();
     const tries = [];
     /* walking: a step at a time, so she can round a corner or drop off */
-    for (const d of [-1, 1]) tries.push({ vx: d * R, vy: 0.0001, hold: d });
+    /* walking, at a run and at a shuffle. The difference matters: a hole
+       one tile wide is 16px, and at full speed she crosses it in a tenth
+       of a second and skims straight over — so a room whose only entrance
+       is a single-tile shaft is only enterable by somebody edging in. A
+       player can do that, so the solver has to be able to as well, or it
+       will report a room as impossible when it is merely awkward. */
+    for (const d of [-1, 1]) {
+      tries.push({ vx: d * R, vy: 0.0001, hold: d, walk: T });
+      tries.push({ vx: d * 26, vy: 0.0001, hold: d * 0.2, walk: T });
+    }
     for (const rise of RISES)
       for (const vx of RUNS)
         tries.push({ vx: vx, vy: -JV * mul.jumpMul * rise, hold: Math.sign(vx) || 0 });
     for (const t of tries) {
-      const land = fly(L, p.x, p.y, t.vx, t.vy, t.hold, mul);
+      const land = fly(L, p.x, p.y, t.vx, t.vy, t.hold, mul, t.walk);
       if (!land) continue;
       /* riding one to either end of its travel is part of what it is for */
       const here = land.mover
@@ -201,7 +240,23 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
 for (const [diff, set] of Object.entries(SETS)) {
   set.worlds.forEach((name, i) => {
     const L = makeLevel(grid(name));
-    const spots = reachable(L, set);
+    /* BRICKS SHE CAN PUNCH ARE NOT WALLS EITHER. A B with a tile she can
+       stand under is a brick she breaks by jumping into it, and what is
+       behind it opens up — which is how the feather rooms are meant to be
+       got into. So the flood is run again each time a brick falls, until
+       nothing new can be broken. */
+    let spots = reachable(L, set);
+    for (let round = 0; round < 6; round++) {
+      let broke = false;
+      for (let r = 0; r < L.H; r++)
+        for (let c = 0; c < L.W; c++)
+          if (L.at(c, r) === 'B' && L.seen.has(c + ':' + (r + 1))) {
+            L.rows[r] = L.rows[r].slice(0, c) + '.' + L.rows[r].slice(c + 1);
+            broke = true;
+          }
+      if (!broke) break;
+      spots = reachable(L, set);
+    }
     /* the goal, and every checkpoint on the way to it */
     const want = [];
     for (let r = 0; r < L.H; r++)
@@ -211,6 +266,31 @@ for (const [diff, set] of Object.entries(SETS)) {
       Math.abs(s.x + PW / 2 - (c * T + T / 2)) < T * 1.1 && Math.abs(s.y + PH - (r * T + T)) < T * 1.1);
     const missed = want.filter(w => !near(w.c, w.r));
     const east = Math.max.apply(null, spots.map(s => Math.round(s.x / T)));
+
+    /* EVERY PRIZE HAS TO BE GETTABLE.
+       A heart she can see through the floor and cannot reach is not a
+       secret, it is a tease — and a 1UP she cannot reach while the counter
+       says nought is worse than that. A loose pickup counts as reached
+       when her body passes through its tile; a gift block counts when she
+       passes through the tile UNDER it, which is how you open one. */
+    const LOOSE = 'o', BLOCK = '?MI1PF';
+    const prizes = [];
+    for (let r = 0; r < L.H; r++)
+      for (let c = 0; c < L.W; c++) {
+        const ch = L.at(c, r);
+        if (LOOSE.indexOf(ch) >= 0) prizes.push({ c: c, r: r, ch: ch, hit: r });
+        else if (BLOCK.indexOf(ch) >= 0) {
+          /* on the ground it is the item itself; in the air it is a block */
+          const standing = L.solid(c, r + 1) || L.oneWay(c, r + 1) || L.at(c, r + 1) === '-';
+          prizes.push({ c: c, r: r, ch: ch, hit: standing ? r : r + 1 });
+        }
+      }
+    const got = prizes.filter(z => L.seen.has(z.c + ':' + z.hit));
+    const lost = prizes.filter(z => !L.seen.has(z.c + ':' + z.hit));
+    ok(diff + ' ' + (i + 1) + ': and every heart and every prize in it can be had',
+       lost.length === 0,
+       lost.length ? { 'out of reach': lost.slice(0, 8).map(z => z.ch + '@' + z.c + ',' + z.r),
+                       'of': prizes.length } : null);
     ok(diff + ' ' + (i + 1) + ' (' + name.slice(2).toLowerCase() + '): every checkpoint and the goal can be reached',
        missed.length === 0,
        missed.length ? { unreachable: missed.map(m => m.ch + '@col' + m.c), 'gets as far as col': east, 'level is': L.W + ' wide' } : null);
