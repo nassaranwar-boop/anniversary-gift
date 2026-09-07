@@ -3002,7 +3002,7 @@ window.Scrapbook = (function () {
     var c = el("sb-w sb-w-bouquet");
     c.innerHTML =
       '<p class="sb-w-title">My Love’s bouquet</p>' +
-      '<p class="sb-w-kicker">FROM YOU</p>' +
+      '<p class="sb-w-kicker">FROM HIM</p>' +
       '<div class="sb-bq-stage"></div>';
     c.querySelector(".sb-bq-stage").appendChild(buildBouquetSVG());
     return c;
@@ -3126,7 +3126,11 @@ window.Scrapbook = (function () {
   var MAP_TEX = null;
   /* half the pin's minimum width, and its full minimum height: the two
      distances a centred, bottom-anchored pin can hang outside its map */
-  var PIN_EDGE = 19, PIN_TOP = 40;
+  /* Half the pin's widest, and its full height plus its little tail: the
+     two distances a centred, bottom-anchored pin can hang outside its map.
+     They were 19 and 40, measured against a pin that has since grown a tail
+     and a shadow, and photographs were still crossing the frame. */
+  var PIN_EDGE = 26, PIN_TOP = 52;
 
   function buildMapCard(big) {
     if (!MAP_TEX) MAP_TEX = marrakechMap(800, 600);
@@ -3166,7 +3170,7 @@ window.Scrapbook = (function () {
     SB.map.pins.forEach(function (pin, i) {
       var b = el("sb-map-pin", "button");
       b.style.left = "clamp(" + PIN_EDGE + "px, " + pin.x + "%, calc(100% - " + PIN_EDGE + "px))";
-      b.style.top = "clamp(" + PIN_TOP + "px, " + pin.y + "%, 100%)";
+      b.style.top = "clamp(" + PIN_TOP + "px, " + pin.y + "%, calc(100% - 4px))";
       b.style.animationDelay = (i * 0.45) + "s";
       b.setAttribute("aria-label", pin.title);
       var mem = photoAt(MAP_SLOT + i);
