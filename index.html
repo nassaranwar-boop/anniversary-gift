@@ -7,19 +7,72 @@
      stopped properly with touch-action instead, which leaves a real
      two-finger pinch working.
 
-     And no viewport-fit=cover. I added it while chasing the blank strip
-     below the page, but cover extends the layout viewport underneath the
-     status bar and the notch — so the top of every screen sat behind the
-     clock, and everything measured against that taller viewport came out
-     larger than the part you could see. That is the "cropped from above,
-     and zoomed" that followed. The height is 100dvh's job, not cover's. -->
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+     viewport-fit=cover IS here now, and the note that used to sit here
+     saying it must never come back was right at the time. Cover extends
+     the layout viewport under the browser's furniture, and back then the
+     height was measured FROM the layout viewport — so everything came out
+     taller than the part you could see, which is the "cropped from above
+     and zoomed" that followed.
+
+     That is no longer how the height is found. It comes from
+     visualViewport, which reports the region genuinely on screen whatever
+     the layout viewport is doing, and the smallest of the three claims is
+     taken (see the script below and HANDOFF 7c). Cover cannot mislead a
+     measurement that never asks it anything.
+
+     And without cover, iOS shrinks the layout viewport away from the notch
+     in landscape and paints the leftover strips in the page background —
+     which is the pale band down each side of every screenshot he sent of
+     the phone on its side. Cover is the only way to reach the corners.
+     Content is kept clear of the notch by padding .screen with the
+     safe-area insets, so the background runs edge to edge while nothing
+     you need to read or press sits under the camera. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+<!-- BEFORE THE FIRST PAINT. This has to be here, inline, in the head, and
+     not at the bottom with the rest of the scripts.
+
+     On his iPad in Chrome there is a state — measured off the device, not
+     guessed — where every CSS viewport unit reports the whole screen with
+     the toolbar included: vh, svh, lvh and dvh all say 1024 in a window
+     that is really 892, and so does documentElement.clientHeight, and so
+     does a fixed top:0;bottom:0 box. Only innerHeight and visualViewport
+     tell the truth. There is no CSS value left to fall back on.
+
+     So the stylesheet cannot get the first frame right on its own. If we
+     wait for script.js at the bottom of the body, the site paints once at
+     1024 — everything half a toolbar too low — and then snaps to 892 when
+     the measurement lands. That snap is the "it appears, then it shifts"
+     that has been in every one of his recordings.
+
+     Smallest of the honest numbers, written before anything is drawn.
+     script.js takes over from here with the probe and the re-measuring. -->
+<script>
+(function () {
+  try {
+    var de = document.documentElement, vv = window.visualViewport, say = [];
+    if (vv && vv.height > 0) say.push(Math.round(vv.height * (vv.scale > 0 ? vv.scale : 1)));
+    if (window.innerHeight > 0) say.push(Math.round(window.innerHeight));
+    if (de.clientHeight > 0) say.push(de.clientHeight);
+    if (!say.length) return;
+    de.style.setProperty("--app-h", Math.min.apply(null, say) + "px");
+    de.style.setProperty("--app-top",
+      (vv && !(vv.scale > 1.02) ? Math.round(vv.offsetTop || 0) : 0) + "px");
+  } catch (e) {}
+})();
+</script>
+
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=126">
+<link rel="stylesheet" href="style.css?v=185">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-<script src="vendor/three.bundle.js?v=126"></script>
+<!-- defer, not a plain tag. three.js is the biggest single file here and
+     in the head it blocked the parser for its whole download, so nothing
+     was painted until it had arrived. defer fetches it just as early and
+     runs it after the document is parsed — and deferred scripts still run
+     in the order they are written, so book-scene.js below still finds it. -->
+<script defer src="vendor/three.bundle.js?v=185"></script>
 
 </head>
 <body>
@@ -30,6 +83,31 @@
        rest of the site; these are one weight, one palette, and they scale. -->
   <svg class="ic-sprite" aria-hidden="true" width="0" height="0" style="position:absolute">
     <defs>
+      <!-- The bouquet button's flower. Drawn rather than pixelled, because
+           it sits alone on the page at 30px and every other pixel glyph
+           here is small and in a row where the style reads as deliberate.
+           One petal, used five times on 72-degree turns. -->
+      <radialGradient id="gFlowPetal" cx="50%" cy="30%" r="72%">
+        <stop offset="0%"   stop-color="#fffdf9"/>
+        <stop offset="55%"  stop-color="#fff1e4"/>
+        <stop offset="100%" stop-color="#f7ccd8"/>
+      </radialGradient>
+      <radialGradient id="gFlowCore" cx="40%" cy="34%" r="72%">
+        <stop offset="0%"   stop-color="#ffe9b8"/>
+        <stop offset="52%"  stop-color="#f2b075"/>
+        <stop offset="100%" stop-color="#cf6f88"/>
+      </radialGradient>
+      <symbol id="ic-flower" viewBox="0 0 40 40">
+        <g fill="url(#gFlowPetal)">
+          <ellipse cx="20" cy="9.8" rx="5.9" ry="7.7"/>
+          <ellipse cx="20" cy="9.8" rx="5.9" ry="7.7" transform="rotate(72 20 20)"/>
+          <ellipse cx="20" cy="9.8" rx="5.9" ry="7.7" transform="rotate(144 20 20)"/>
+          <ellipse cx="20" cy="9.8" rx="5.9" ry="7.7" transform="rotate(216 20 20)"/>
+          <ellipse cx="20" cy="9.8" rx="5.9" ry="7.7" transform="rotate(288 20 20)"/>
+        </g>
+        <circle cx="20" cy="20" r="4.9" fill="url(#gFlowCore)"/>
+        <circle cx="18.3" cy="18.3" r="1.5" fill="rgba(255,255,255,.5)"/>
+      </symbol>
       <symbol id="ic-px-heart" viewBox="0 0 10 8">
         <rect x="2" y="0" width="2" height="1" fill="#ff5f95"/>
         <rect x="6" y="0" width="2" height="1" fill="#ff5f95"/>
@@ -120,19 +198,6 @@
         <rect x="3" y="6" width="4" height="1" fill="rgba(0,0,0,.42)"/>
         <rect x="9" y="6" width="1" height="1" fill="#c9b48a"/>
         <rect x="0" y="7" width="10" height="1" fill="#c9b48a"/>
-      </symbol>
-      <symbol id="ic-px-key" viewBox="0 0 10 7">
-        <rect x="1" y="0" width="3" height="1" fill="#e8c98a"/>
-        <rect x="0" y="1" width="1" height="1" fill="#e8c98a"/>
-        <rect x="4" y="1" width="1" height="1" fill="#e8c98a"/>
-        <rect x="0" y="2" width="1" height="1" fill="#e8c98a"/>
-        <rect x="4" y="2" width="1" height="1" fill="#e8c98a"/>
-        <rect x="1" y="3" width="3" height="1" fill="#e8c98a"/>
-        <rect x="2" y="4" width="7" height="1" fill="#e8c98a"/>
-        <rect x="2" y="5" width="1" height="1" fill="#e8c98a"/>
-        <rect x="7" y="5" width="1" height="1" fill="#e8c98a"/>
-        <rect x="9" y="5" width="1" height="1" fill="#e8c98a"/>
-        <rect x="7" y="6" width="3" height="1" fill="#e8c98a"/>
       </symbol>
       <symbol id="ic-px-crown" viewBox="0 0 10 6">
         <rect x="0" y="0" width="1" height="1" fill="#ffd166"/>
@@ -231,74 +296,11 @@
         <rect x="0" y="6" width="2" height="1" fill="#ff9ec4"/>
         <rect x="6" y="6" width="2" height="1" fill="#ff9ec4"/>
       </symbol>
-      <symbol id="ic-px-note" viewBox="0 0 8 7">
-        <rect x="0" y="0" width="8" height="1" fill="#e6d9b4"/>
-        <rect x="0" y="1" width="1" height="1" fill="#e6d9b4"/>
-        <rect x="7" y="1" width="1" height="1" fill="#e6d9b4"/>
-        <rect x="0" y="2" width="1" height="1" fill="#e6d9b4"/>
-        <rect x="2" y="2" width="4" height="1" fill="#e6d9b4"/>
-        <rect x="7" y="2" width="1" height="1" fill="#e6d9b4"/>
-        <rect x="0" y="3" width="1" height="1" fill="#e6d9b4"/>
-        <rect x="7" y="3" width="1" height="1" fill="#e6d9b4"/>
-        <rect x="0" y="4" width="1" height="1" fill="#e6d9b4"/>
-        <rect x="2" y="4" width="4" height="1" fill="#e6d9b4"/>
-        <rect x="7" y="4" width="1" height="1" fill="#e6d9b4"/>
-        <rect x="0" y="5" width="1" height="1" fill="#e6d9b4"/>
-        <rect x="7" y="5" width="1" height="1" fill="#e6d9b4"/>
-        <rect x="0" y="6" width="8" height="1" fill="#e6d9b4"/>
-      </symbol>
-      <symbol id="ic-trophy" viewBox="0 0 24 24">
-        <path d="M7.5 3.5h9v4.2a4.5 4.5 0 0 1-9 0z"/>
-        <path d="M7.5 4.8H5.2a2.6 2.6 0 0 0 2.6 3.4"/>
-        <path d="M16.5 4.8h2.3a2.6 2.6 0 0 1-2.6 3.4"/>
-        <path d="M12 12.2v3.1"/><path d="M9.6 15.3h4.8v3.1H9.6z"/><path d="M7.8 20.5h8.4"/>
-      </symbol>
       <!-- Four bold chevrons round a hub, not a plus and not an outlined
            box. At 20px the enclosing square swallowed the arrow heads and
            the whole thing read as a circle in a box. -->
-      <symbol id="ic-pad" viewBox="0 0 24 24">
-        <path d="M12 2.4l3.6 5.4H8.4z" fill="currentColor" stroke="none"/>
-        <path d="M12 21.6l-3.6-5.4h7.2z" fill="currentColor" stroke="none"/>
-        <path d="M2.4 12l5.4-3.6v7.2z" fill="currentColor" stroke="none"/>
-        <path d="M21.6 12l-5.4 3.6V8.4z" fill="currentColor" stroke="none"/>
-        <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>
-      </symbol>
       <symbol id="ic-heart" viewBox="0 0 24 24">
         <path d="M12 20.2C2.6 13.4 3.4 6.4 8.2 6.4c2 0 3.3 1.2 3.8 2.3.5-1.1 1.8-2.3 3.8-2.3 4.8 0 5.6 7-3.8 13.8z"/>
-      </symbol>
-      <symbol id="ic-moon" viewBox="0 0 24 24">
-        <path d="M20 14.4A8.6 8.6 0 0 1 9.6 4a8.8 8.8 0 1 0 10.4 10.4z"/>
-        <path d="M17.4 4.4l.7 1.7 1.7.7-1.7.7-.7 1.7-.7-1.7-1.7-.7 1.7-.7z"/>
-      </symbol>
-      <symbol id="ic-wisp" viewBox="0 0 24 24">
-        <path d="M5.2 20.4v-8.6a6.8 6.8 0 0 1 13.6 0v8.6l-2.3-1.9-2.3 1.9-2.2-1.9-2.3 1.9z"/>
-        <path d="M9.6 11.2v1.6M14.4 11.2v1.6"/>
-      </symbol>
-      <symbol id="ic-eye" viewBox="0 0 24 24">
-        <path d="M2.4 12S6.3 5.8 12 5.8 21.6 12 21.6 12 17.7 18.2 12 18.2 2.4 12 2.4 12z"/>
-        <circle cx="12" cy="12" r="2.9"/>
-      </symbol>
-      <symbol id="ic-tree" viewBox="0 0 24 24">
-        <path d="M12 2.6l4.2 5.3h-2.4l3.6 4.6h-2.4l4 5.1H5l4-5.1H6.6l3.6-4.6H7.8z"/>
-        <path d="M11 17.6h2v3.8h-2z"/>
-      </symbol>
-      <symbol id="ic-vial" viewBox="0 0 24 24">
-        <path d="M9.4 2.8h5.2v3.6l3.1 8.1a5.7 5.7 0 0 1-11.4 0l3.1-8.1z"/>
-        <path d="M8.2 13.6h7.6"/><path d="M8.6 2.8h6.8"/>
-      </symbol>
-      <symbol id="ic-key" viewBox="0 0 24 24">
-        <circle cx="8.4" cy="8.6" r="4.4"/>
-        <path d="M11.5 11.7l8.3 8.3"/><path d="M16.8 17l2 2M18.9 14.9l2 2"/>
-      </symbol>
-      <symbol id="ic-steps" viewBox="0 0 24 24">
-        <ellipse cx="8" cy="8.4" rx="3.1" ry="4.4" transform="rotate(-12 8 8.4)"/>
-        <ellipse cx="16" cy="15" rx="3.1" ry="4.4" transform="rotate(10 16 15)"/>
-        <path d="M5.6 13.4c1.6.7 3.2.7 4.8 0"/>
-        <path d="M13.6 20c1.6.7 3.2.7 4.8 0"/>
-      </symbol>
-      <symbol id="ic-clock" viewBox="0 0 24 24">
-        <circle cx="12" cy="12.6" r="8.4"/><path d="M12 7.8v4.8l3.2 2"/>
-        <path d="M9 2.4h6"/>
       </symbol>
       <symbol id="ic-spark" viewBox="0 0 24 24">
         <path d="M12 2.8l2.2 5.6 5.6 2.2-5.6 2.2L12 18.4l-2.2-5.6-5.6-2.2 5.6-2.2z"/>
@@ -622,7 +624,8 @@
 
     <!-- 4. the little button bottom-right, and the drawer it opens -->
     <button id="sb-extras-btn" class="sb-extras-btn" aria-label="Open your bouquet">
-      <span class="sb-extras-ico"><svg class="gl gl-bloom" aria-hidden="true"><use href="#ic-px-bloom"/></svg></span>
+      <svg class="sb-flower" viewBox="0 0 40 40" aria-hidden="true"><use href="#ic-flower"/></svg>
+      <span class="sb-extras-x" aria-hidden="true"></span>
     </button>
     <div class="sb-drawer" id="sb-drawer" aria-hidden="true"></div>
 
@@ -662,12 +665,6 @@
       <h2 class="hub-title">Choose your adventure</h2>
       <p class="hub-sub" id="hub-sub">— three ways in, any order —</p>
       <div class="hub-cards">
-        <button class="hub-card" id="hub-card-maze" data-chapter="maze">
-          <span class="hub-badge" id="hub-badge-maze"><svg class="gl gl-tick" aria-hidden="true"><use href="#ic-px-tick"/></svg></span>
-          <span class="hub-art hub-art-maze" aria-hidden="true"></span>
-          <span class="hub-name">The Maze</span>
-          <span class="hub-desc">Find your way through the dark to reach me</span>
-        </button>
         <button class="hub-card" id="hub-card-quest" data-chapter="quest">
           <span class="hub-badge" id="hub-badge-quest"><svg class="gl gl-tick" aria-hidden="true"><use href="#ic-px-tick"/></svg></span>
           <span class="hub-art hub-art-quest" aria-hidden="true"></span>
@@ -830,120 +827,6 @@
     </div>
   </section>
 
-  <!-- SCREEN 1 — "DO YOU WANT TO PLAY A GAME?" COVER -->
-  <section id="screen-hello" class="screen">
-    <div class="particle-field" id="pf-hello"></div>
-    <div class="toy-cloud tc1"></div>
-    <div class="toy-cloud tc2"></div>
-    <div class="toy-cloud tc3"></div>
-    <div class="cover-content">
-      <p class="cover-script">Hello,</p>
-      <h1 class="cover-title" id="baby-name">My Baby!</h1>
-      <div class="cover-rule"></div>
-      <p class="cover-subtitle">— a story just for you —</p>
-      <div class="cover-seal">
-        <img src="assets/cat-hello.gif" alt="cute cat" />
-      </div>
-      <p class="cover-question">Do you want to play a game?</p>
-      <div class="hello-buttons">
-        <button id="btn-yes" class="btn-wax">Yes! I want to play, baby</button>
-        <button id="btn-no" class="btn-ghost">No! I don't want to play</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- SCREEN 2 — GAME DETAILS -->
-  <section id="screen-details" class="screen paper-bg">
-    <div class="particle-field" id="pf-details"></div>
-    <div class="dog-ear"></div>
-    <div class="details-card">
-      <span class="chapter-label">CHAPTER ONE</span>
-      <img class="mascot-img small" src="assets/bear-hug.gif" alt="" />
-      <h2 class="card-title">Game Details</h2>
-      <span class="card-rule" aria-hidden="true"></span>
-      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-trophy"/></svg></span><span class="tx">Reward: <b id="reward-text"></b></span></div>
-      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-pad"/></svg></span><span class="tx">Arrow keys, a swipe, or the pad to move</span></div>
-      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-heart"/></svg></span><span class="tx">Collect the hidden hearts along the way for bonus points</span></div>
-      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-moon"/></svg></span><span class="tx">Find your way through the dark to reach me</span></div>
-      <button id="btn-start" class="btn-primary">Start the chapter</button>
-      <div class="best-time" id="best-time-line"></div>
-    </div>
-    <div class="page-num">— 1 —</div>
-  </section>
-
-  <!-- SCREEN: LEVEL 2 INTRO -->
-  <section id="screen-level2intro" class="screen paper-bg">
-    <div class="particle-field" id="pf-l2intro"></div>
-    <div class="dog-ear"></div>
-    <div class="details-card">
-      <span class="chapter-label">CHAPTER TWO</span>
-      <h2 class="card-title">It won't be so easy this time</h2>
-      <span class="card-rule" aria-hidden="true"></span>
-      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-wisp"/></svg></span><span class="tx">Little wisps drift through the maze — touch one and it costs you</span></div>
-      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-eye"/></svg></span><span class="tx">Watchers see straight down a corridor, and they take a moment to aim</span></div>
-      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-tree"/></svg></span><span class="tx">Step into a thicket to break their line of sight</span></div>
-      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-vial"/></svg></span><span class="tx">Phials are scattered about; each one gives you back half a heart</span></div>
-      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-key"/></svg></span><span class="tx">Find the key before you can reach me</span></div>
-      <div class="info-row"><span class="ic-badge"><svg class="ic" aria-hidden="true"><use href="#ic-heart"/></svg></span><span class="tx">You start with <b>3 hearts</b> — five is the most you can hold</span></div>
-      <button id="btn-start2" class="btn-primary">I'm ready</button>
-    </div>
-    <div class="page-num">— 2 —</div>
-  </section>
-
-  <!-- SCREEN: CHAPTER DIVIDER (before the true ending) -->
-  <section id="screen-divider" class="screen paper-bg">
-    <div class="divider-content">
-      <div class="divider-ornament"><svg class="gl gl-orn" aria-hidden="true"><use href="#ic-px-star"/></svg><svg class="gl gl-orn" aria-hidden="true"><use href="#ic-px-star"/></svg><svg class="gl gl-orn" aria-hidden="true"><use href="#ic-px-star"/></svg></div>
-      <p class="divider-text">The End...<br />or just the beginning</p>
-      <div class="divider-ornament"><svg class="gl gl-orn" aria-hidden="true"><use href="#ic-px-star"/></svg><svg class="gl gl-orn" aria-hidden="true"><use href="#ic-px-star"/></svg><svg class="gl gl-orn" aria-hidden="true"><use href="#ic-px-star"/></svg></div>
-    </div>
-  </section>
-
-  <!-- SCREEN 3 — MAZE (shared by both levels) -->
-  <section id="screen-maze" class="screen">
-    <div class="maze-stars" id="maze-stars"></div>
-    <div class="toast-wrap" id="toast-wrap"></div>
-    <div class="hud-bar" id="hud-bar">
-      <div class="hud-pill hud-hearts-l1"><span class="lab"><svg class="hud-ico hud-ico-fill" aria-hidden="true"><use href="#ic-heart"/></svg></span><span class="val" id="hud-hearts">0/0</span></div>
-      <div class="hud-pill hud-hearts-l2"><span class="lab"><svg class="gl gl-hp" aria-hidden="true"><use href="#ic-px-heart"/></svg></span><span class="hp-pips" id="hp-pips"></span></div>
-      <div class="hud-pill"><span class="lab"><svg class="hud-ico" aria-hidden="true"><use href="#ic-steps"/></svg></span><span class="val" id="hud-steps">0</span></div>
-      <div class="hud-pill"><span class="lab"><svg class="hud-ico" aria-hidden="true"><use href="#ic-clock"/></svg></span><span class="val" id="hud-time">00:00</span></div>
-      <div class="hud-pill hud-hidden-badge" id="hidden-badge"><span class="lab"><svg class="hud-ico" aria-hidden="true"><use href="#ic-tree"/></svg></span><span class="val">Hidden</span></div>
-      <div class="hud-pill hud-key-badge" id="key-badge"><img id="key-badge-img" src="assets/key.png" alt="key"/><span class="val">Key!</span></div>
-    </div>
-    <div class="book-spread">
-      <div class="maze-outer">
-        <div class="maze-stage" id="maze-stage">
-          <div class="maze-grid" id="maze-grid"></div>
-          <div id="hearts-layer"></div>
-          <div id="trees-layer"></div>
-          <div id="meds-layer"></div>
-          <div id="key-layer"></div>
-          <div id="monsters-layer"></div>
-          <div id="shooters-layer"></div>
-          <div id="bolts-layer"></div>
-          <div class="fog-layer" id="fog-layer"></div>
-          <div class="beacon-glow" id="beacon-glow"></div>
-          <img id="target-token" class="token target-token" src="assets/guy.png" alt="Anwar waiting" />
-          <img id="player-token" class="token player-token" src="assets/girl.png" alt="you" />
-          <div class="damage-flash" id="damage-flash"></div>
-        </div>
-      </div>
-    </div>
-    <!-- One chevron drawn once and rotated for the four directions, so the
-         arrows are identical instead of four glyphs at four optical weights,
-         whatever the device's font happens to ship. Cut into the key: a
-         light lip below the dark face, which is the opposite of a drop
-         shadow and is what reads as engraved. -->
-    <div class="dpad-3d">
-      <button class="dpad3-btn dpad3-up" data-dir="up" aria-label="Up"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
-      <button class="dpad3-btn dpad3-left" data-dir="left" aria-label="Left"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
-      <div class="dpad3-hub"></div>
-      <button class="dpad3-btn dpad3-right" data-dir="right" aria-label="Right"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
-      <button class="dpad3-btn dpad3-down" data-dir="down" aria-label="Down"><svg class="mz-ico" viewBox="0 0 24 24" aria-hidden="true"><path class="mz-ico-lip" d="M12 7.4 L19.2 17.6 L4.8 17.6 Z"/><path class="mz-ico-cut" d="M12 6.2 L19.2 16.4 L4.8 16.4 Z"/></svg></button>
-    </div>
-  </section>
-
   <!-- SCREEN — OUISSY AT THE APOCALYPSE -->
   <section id="screen-apoc" class="screen">
     <div class="ap-frame">
@@ -961,6 +844,16 @@
           </span>
         </div>
         <button class="ap-pause-btn" id="ap-pause-btn" aria-label="Pause"><span class="gl-pause" aria-hidden="true"></span></button>
+        <button class="ap-map-btn" id="ap-map-btn" aria-label="Map">MAP</button>
+
+        <!-- the card: north is up the screen, and the needle is the errand -->
+        <div class="ap-compass" id="ap-compass" aria-hidden="true">
+          <span class="ap-compass-ring" aria-hidden="true">
+            <i class="n">N</i><i class="e">E</i><i class="s">S</i><i class="w">W</i>
+          </span>
+          <span class="ap-compass-needle" id="ap-compass-needle" aria-hidden="true"></span>
+          <span class="ap-compass-dist" id="ap-compass-dist"></span>
+        </div>
 
         <!-- being taken hold of: the window to answer it -->
         <div class="ap-grab" id="ap-grab" aria-hidden="true">
@@ -987,7 +880,38 @@
         </div>
       </div>
 
-      <!-- the touch pad, for playing this on a phone -->
+      <!-- THE TOUCH CONTROLS, AND WHY THEY ARE NOT INSIDE THE STAGE.
+
+           They cover the whole picture. An element that size inside the
+           box the WebGL canvas lives in has to be composited over that
+           canvas on every single frame, and on a machine with no GPU
+           worth the name that costs more than the game does — the same
+           lesson this file already learned from backdrop-filter, and
+           again from a mask on a scrolling list. Measured here, moving
+           them inside took a frame from milliseconds to seconds.
+
+           Out here they cost nothing, and fitTouch() lays them exactly
+           over the picture whenever the picture changes size, so the
+           buttons are where they look like they are on any shape of
+           screen — rather than in the black band under a letterboxed
+           game, which is where they landed before it existed.
+
+           They still had to be FOUND, and that was the bug the player
+           hit: the code that wires up USE and CREEP searched inside the
+           stage while they sat one element outside it, so for as long as
+           they have existed neither of them was connected to anything at
+           all. It searches the whole chapter screen now. -->
+      <div class="ap-touch" id="ap-touch" aria-hidden="true">
+        <div class="ap-stick" id="ap-stick" aria-label="Move">
+          <span class="ap-stick-ring"></span>
+          <span class="ap-stick-knob"></span>
+        </div>
+        <div class="ap-actions">
+          <button class="ap-act ap-act-use" data-ap-key="use" aria-label="Use">USE</button>
+          <button class="ap-act ap-act-sneak" data-ap-key="sneak" aria-label="Creep">CREEP</button>
+        </div>
+      </div>
+      <!-- kept for anything that still asks for the four keys by name -->
       <div class="ap-pad" id="ap-pad" aria-hidden="true">
         <div class="ap-dpad">
           <button class="ap-key ap-key-up" data-ap-key="up" aria-label="Up"></button>
@@ -995,10 +919,6 @@
           <button class="ap-key ap-key-right" data-ap-key="right" aria-label="Right"></button>
           <button class="ap-key ap-key-down" data-ap-key="down" aria-label="Down"></button>
           <span class="ap-dpad-hub" aria-hidden="true"></span>
-        </div>
-        <div class="ap-actions">
-          <button class="ap-act ap-act-use" data-ap-key="use" aria-label="Use">USE</button>
-          <button class="ap-act ap-act-sneak" data-ap-key="sneak" aria-label="Sneak">SNEAK</button>
         </div>
       </div>
     </div>
@@ -1073,6 +993,38 @@
     </div>
   </section>
 
+  <!-- SCREEN 4 — NIGHT SKY ENDING -->
+  <section id="screen-end" class="screen">
+    <div class="night-sky scene-1" id="night-sky">
+      <div class="night-sky-inner" id="night-sky-inner">
+        <div class="end-heading" id="end-heading"><span><svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-heart"/></svg> You found each other <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-heart"/></svg></span></div>
+        <div class="night-stars" id="night-stars"></div>
+        <div class="shooting-star"></div>
+        <div class="cats-wrap">
+          <div class="cat-slot cat-black-slot" id="cat-black-slot">
+            <img class="cat-img cat-tail-img black-tail" id="cat-black-tail" src="assets/black_tail.png" alt="" />
+            <img class="cat-img cat-body-img" id="cat-black-body" src="assets/black_body.png" alt="black cat" />
+          </div>
+          <div class="cat-slot cat-white-slot" id="cat-white-slot">
+            <img class="cat-img cat-tail-img white-tail" id="cat-white-tail" src="assets/white_tail.png" alt="" />
+            <img class="cat-img cat-body-img" id="cat-white-body" src="assets/white_body.png" alt="white cat" />
+          </div>
+        </div>
+        <div class="end-hearts" id="end-hearts"></div>
+      </div>
+      <div class="scene-cut-flash" id="scene-cut-flash"></div>
+      <button id="btn-replay" class="btn-replay">Play Again <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-heart"/></svg></button>
+    </div>
+  </section>
+
+  <!-- ambient music toggle (persists across every screen) -->
+
+<!-- The opening, the book and the flow. super-ouissy.js, rescue.js,
+     apocalypse.js and racing.js used to be listed here too: nearly 900 KB
+     of games downloaded and parsed before the first frame, none of it
+     needed until a chapter is chosen. script.js now fetches each one on
+     the idle callback and waits for it at the card, so they arrive long
+     before she does without ever standing in front of the opening. -->
   <!-- SCREEN — OUISSY’S NIGHT SHIFT (the night-shift horror, set in the
        Wick & Cogs Toy Emporium; all of it lives in night-shift.js. The canvas is the shop, in Three.js on the copy already
        bundled for the book intro; everything she reads is DOM over the
@@ -1154,55 +1106,8 @@
     </div>
   </section>
 
-  <!-- SCREEN 4 — NIGHT SKY ENDING -->
-  <section id="screen-end" class="screen">
-    <div class="night-sky scene-1" id="night-sky">
-      <div class="night-sky-inner" id="night-sky-inner">
-        <div class="end-heading" id="end-heading"><span><svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-heart"/></svg> You found each other <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-heart"/></svg></span></div>
-        <div class="night-stars" id="night-stars"></div>
-        <div class="shooting-star"></div>
-        <div class="cats-wrap">
-          <div class="cat-slot cat-black-slot" id="cat-black-slot">
-            <img class="cat-img cat-tail-img black-tail" id="cat-black-tail" src="assets/black_tail.png" alt="" />
-            <img class="cat-img cat-body-img" id="cat-black-body" src="assets/black_body.png" alt="black cat" />
-          </div>
-          <div class="cat-slot cat-white-slot" id="cat-white-slot">
-            <img class="cat-img cat-tail-img white-tail" id="cat-white-tail" src="assets/white_tail.png" alt="" />
-            <img class="cat-img cat-body-img" id="cat-white-body" src="assets/white_body.png" alt="white cat" />
-          </div>
-        </div>
-        <div class="end-hearts" id="end-hearts"></div>
-      </div>
-      <div class="scene-cut-flash" id="scene-cut-flash"></div>
-      <button id="btn-replay" class="btn-replay">Play Again <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-heart"/></svg></button>
-    </div>
-  </section>
-
-  <!-- ambient music toggle (persists across every screen) -->
-
-  <!-- DIALOGUE — cute love note -->
-  <div id="dialogue-overlay" class="dialogue-overlay hidden">
-    <div class="particle-field" id="pf-dialogue"></div>
-    <div class="note-card">
-      <div class="washi-tape"></div>
-      <span class="note-sticker n-s1"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#ffd98a" d="M12 2.4l2.1 6.3 6.3 2.1-6.3 2.1-2.1 6.3-2.1-6.3L3.6 10.8l6.3-2.1z"/></svg></span><span class="note-sticker n-s2"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#ff9ac0" d="M12 20.2C2.6 13.4 3.4 6.4 8.2 6.4c2 0 3.3 1.2 3.8 2.3.5-1.1 1.8-2.3 3.8-2.3 4.8 0 5.6 7-3.8 13.8z"/></svg></span>
-      <div class="note-avatar"><img id="dialogue-avatar-img" src="assets/guy.png" alt="Anwar" /></div>
-      <p class="note-name" id="dialogue-name">Anwar 💗</p>
-      <p class="note-text" id="dialogue-text"></p>
-      <div class="note-footer">
-        <div class="dialogue-dots" id="dialogue-dots"></div>
-        <button id="btn-next" class="btn-next-note">Next <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-note"/></svg></button>
-      </div>
-    </div>
-  </div>
-
-<script src="book-scene.js?v=126"></script>
-<script src="scrapbook.js?v=126"></script>
-<script src="script.js?v=126"></script>
-<script src="super-ouissy.js?v=126"></script>
-<script src="rescue.js?v=126"></script>
-<script src="apocalypse.js?v=126"></script>
-<script src="racing.js?v=126"></script>
-<script src="night-shift.js?v=126"></script>
+<script defer src="book-scene.js?v=185"></script>
+<script defer src="scrapbook.js?v=185"></script>
+<script defer src="script.js?v=185"></script>
 </body>
 </html>

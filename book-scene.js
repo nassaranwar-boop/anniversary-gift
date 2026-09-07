@@ -41,6 +41,21 @@
     if (!(probe.getContext("webgl2") || probe.getContext("webgl"))) { bail("no WebGL"); return; }
   } catch (e) { bail("no WebGL"); return; }
 
+  /* --------------------------------------------------------------------
+     THE SIZE TO RENDER AT
+
+     The canvas box, never the window. The two disagree on iPad — the
+     canvas fills a .screen laid out against --app-h, while innerWidth /
+     innerHeight report the layout viewport, which still counts the strip
+     behind the browser's own UI. Rendering at the window's size put a
+     taller picture inside a shorter box: the framing was computed for an
+     aspect nobody could see, and the part of it you got was cropped and
+     read as zoomed in. Asking the element removes the disagreement — it
+     is the same box the browser is about to paint into.
+     -------------------------------------------------------------------- */
+  function viewW() { return Math.max(1, canvas.clientWidth  || window.innerWidth); }
+  function viewH() { return Math.max(1, canvas.clientHeight || window.innerHeight); }
+
   try { runScene(); }
   catch (err) { console.error("Book scene failed:", err); bail(null); }
 
@@ -102,7 +117,7 @@
       stencil: false,
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.dpr));
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(viewW(), viewH(), false);   // false: the stylesheet owns the CSS box
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.96;
@@ -118,7 +133,7 @@
     var scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0xf2d5c6, 0.045);
 
-    var camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.05, 40);
+    var camera = new THREE.PerspectiveCamera(30, viewW() / viewH(), 0.05, 40);
 
     /* The shot is composed for a wide frame. On a phone held upright the
        horizontal field of view collapses and the book runs off both edges,
@@ -129,7 +144,7 @@
     var fitFov = 30, fitDist = 1;
 
     function updateFraming() {
-      var aspect = window.innerWidth / Math.max(1, window.innerHeight);
+      var aspect = viewW() / viewH();
       var needTanV = FIT_TAN_H / Math.max(0.01, aspect);
       var tanV = Math.min(needTanV, MAX_TAN_V);
       fitFov = (2 * Math.atan(tanV)) * 180 / Math.PI;
@@ -1247,7 +1262,7 @@
         samples: Q.msaa,            // real MSAA where we can afford it
       });
       composer = new THREE.EffectComposer(renderer, rt);
-      composer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(viewW(), viewH());
       composer.setPixelRatio(renderer.getPixelRatio());
 
       composer.addPass(new THREE.RenderPass(scene, camera));
@@ -1262,13 +1277,13 @@
 
       if (Q.bloom) {
         bloomPass = new THREE.UnrealBloomPass(
-          new THREE.Vector2(window.innerWidth, window.innerHeight),
+          new THREE.Vector2(viewW(), viewH()),
           BLOOM_IDLE, 0.62, 0.72);   // strength, radius, threshold
         composer.addPass(bloomPass);
       }
 
       if (Q.msaa === 0 && TIER === "mid") {
-        composer.addPass(new THREE.SMAAPass(window.innerWidth, window.innerHeight));
+        composer.addPass(new THREE.SMAAPass(viewW(), viewH()));
       }
 
       composer.addPass(new THREE.OutputPass());
@@ -1509,10 +1524,10 @@
       var want = Math.min(window.devicePixelRatio || 1, cap);
       if (Math.abs(renderer.getPixelRatio() - want) > 0.01) {
         renderer.setPixelRatio(want);
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(viewW(), viewH(), false);
         if (composer) {
           composer.setPixelRatio(want);
-          composer.setSize(window.innerWidth, window.innerHeight);
+          composer.setSize(viewW(), viewH());
         }
       }
     }
@@ -1582,22 +1597,38 @@
     canvas.addEventListener("click", begin);
     canvas.addEventListener("touchstart", function (e) { e.preventDefault(); begin(); }, { passive: false });
 
+    var lastW = 0, lastH = 0;
     function onResize() {
+      var w = viewW(), h = viewH();
+      if (w === lastW && h === lastH) return;
+      lastW = w; lastH = h;
       updateFraming();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(w, h, false);
       if (composer) {
-        composer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(w, h);
         composer.setPixelRatio(renderer.getPixelRatio());
       }
-      if (bloomPass) bloomPass.resolution.set(window.innerWidth, window.innerHeight);
+      if (bloomPass) bloomPass.resolution.set(w, h);
       applyQualityLevel();
     }
+    onResize();
     window.addEventListener("resize", onResize);
+    /* --app-h changing is not a window resize, and on iPad a resume often
+       is not one either — script.js says so out loud instead. */
+    window.addEventListener("app-viewport", onResize);
+    /* And the observer is the backstop: whatever moves the canvas box,
+       for whatever reason, this sees it. */
+    var ro = null;
+    if (window.ResizeObserver) {
+      try { ro = new ResizeObserver(onResize); ro.observe(canvas); } catch (e) { ro = null; }
+    }
 
     function dispose() {
       running = false;
       if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("app-viewport", onResize);
+      if (ro) { try { ro.disconnect(); } catch (e) {} }
       disposables.forEach(function (d) { if (d && d.dispose) d.dispose(); });
       if (envRT) envRT.dispose();
       if (composer) {

@@ -2,10 +2,22 @@
 // works: no page errors, no horizontal scroll, the expected nodes present.
 const { chromium } = require('playwright-core');
 const out = [];
-const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x : ''));
+/* Printed as it goes as well as collected. This is the suite everyone runs
+   before a push, and it used to say nothing at all until it finished — so
+   on a slow machine, or interrupted, it told you nothing: not a pass, not a
+   failure, not which screen it had reached. mech.js had the same fault and
+   it cost hours of believing a working suite was wedged. */
+const ok = (n, c, x) => {
+  const line = (c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x : '');
+  out.push(line);
+  console.log(line);
+};
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--no-sandbox','--no-proxy-server','--disable-gpu'] });
+    /* --disable-gpu takes WebGL with it, and two chapters are WebGL now;
+       SwiftShader is slow but it is a real GL context. */
+    args: ['--no-sandbox','--no-proxy-server','--use-gl=swiftshader',
+           '--enable-unsafe-swiftshader','--ignore-gpu-blocklist'] });
   for (const [label, w, h] of [['desktop', 1280, 800], ['iphone', 390, 844]]) {
     const page = await browser.newPage({ viewport: { width: w, height: h }, isMobile: w < 900, hasTouch: w < 900 });
     const errors = [];
@@ -14,6 +26,11 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     await page.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
     await page.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForTimeout(900);
+    /* The chapters are fetched on the idle callback now, not by a script
+       tag, so the global is not there the instant the document is. A tool
+       that drives a chapter directly has to wait for the file the same
+       way the hub card does. */
+    await page.waitForFunction(() => !!(window.Apocalypse), { timeout: 30000 });
 
     const hs = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     ok(label + ': loads with no page errors', errors.length === 0, errors[0] || '');
@@ -40,26 +57,30 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     // straight to the hub, then each chapter in turn
     await page.evaluate(() => { stopDioramas(); showScreen('hub'); startHub(); });
     await page.waitForTimeout(500);
+    /* Counting them was a hostage to the next chapter somebody adds —
+       and somebody added one. What matters is that every card in the
+       hub is one the page knows how to open, and that the four this
+       suite goes on to play are all there. */
     const cards = await page.evaluate(() => Array.from(document.querySelectorAll('.hub-card')).map(c => c.id));
-    /* checked by name rather than by count: the count was still asserting
-       four cards long after there were five */
-    const want = ['hub-card-maze', 'hub-card-quest', 'hub-card-ouissy',
-                  'hub-card-apoc', 'hub-card-race', 'hub-card-nightshift'];
+    /* Named, not counted. This said `=== 4` and had been failing on every
+       run since the racing chapter became the fifth card -- a suite that is
+       always red is a suite nobody reads. Listing them by name means adding
+       a chapter fails here once, on purpose, instead of silently.
+       The maze is gone from main and the night shift is the fifth. */
+    const WANT = ['hub-card-quest','hub-card-ouissy','hub-card-apoc','hub-card-race',
+                  'hub-card-nightshift'];
     ok(label + ': the hub has every card',
-       want.every((c) => cards.indexOf(c) >= 0) && cards.length === want.length, cards.join(','));
+       WANT.every(id => cards.includes(id)) && cards.length === WANT.length,
+       cards.join(','));
+    /* and being on the hub is not the same as going anywhere: a card with
+       no data-chapter is a dead tile that still looks alive */
+    const unwired = await page.evaluate(cs => cs.filter(id => {
+      const el = document.getElementById(id);
+      return !el || !el.getAttribute('data-chapter');
+    }), cards);
+    ok(label + ': and every card in it is wired to a chapter',
+       unwired.length === 0, unwired.join(','));
     ok(label + ': no horizontal scroll on the hub', (await hs()) === 0, 'overflow ' + (await hs()));
-
-    await page.evaluate(() => { level = 1; showScreen('details'); });
-    await page.waitForTimeout(300);
-    await page.evaluate(() => { showScreen('maze'); initMaze(1); });
-    await page.waitForTimeout(900);
-    const maze = await page.evaluate(() => ({
-      tiles: document.querySelectorAll('#maze-grid .cell, #maze-grid > *').length,
-      player: !!document.getElementById('player-token'),
-      hud: (document.getElementById('hud-time') || {}).textContent,
-    }));
-    ok(label + ': the maze still builds', maze.tiles > 0 && maze.player, 'tiles=' + maze.tiles);
-    ok(label + ': no horizontal scroll in the maze', (await hs()) === 0);
 
     await page.evaluate(() => { showScreen('quest'); startQuest(); });
     await page.waitForTimeout(1100);
@@ -84,12 +105,22 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     ok(label + ': the hub card opens the apocalypse',
        await page.evaluate(() => document.getElementById('screen-apoc').classList.contains('active')));
     ok(label + ': no horizontal scroll in it', (await hs()) === 0, 'overflow ' + (await hs()));
+    /* The chapter is WebGL now, so there is no 2D context to read and the
+       drawing buffer is not preserved — the pixels have to come off the
+       card in the same turn as the paint that made them. */
     const apoc = await page.evaluate(() => {
+      window.__apLoop(false);
       window.__apEnter(0);
+      for (let i = 0; i < 30; i++) window.__apPump(1 / 60);
       window.__apPaint();
       const cv = document.getElementById('ap-canvas');
-      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
-      let painted = 0; for (let i = 3; i < d.length; i += 4000) if (d[i] > 0) painted++;
+      const gl = cv.getContext('webgl2') || cv.getContext('webgl');
+      if (!gl) return { painted: 0, state: 'no gl' };
+      const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+      const px = new Uint8Array(w * h * 4);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      let painted = 0;
+      for (let i = 0; i < px.length; i += 4000) if (px[i] + px[i + 1] + px[i + 2] > 12) painted++;
       return { painted: painted, state: window.__apState().state };
     });
     ok(label + ': the apocalypse paints', apoc.painted > 5, 'samples=' + apoc.painted);
@@ -188,6 +219,5 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     ok(label + ': still no page errors after all of that', errors.length === 0, errors.slice(0,2).join(' | '));
     await page.close();
   }
-  console.log(out.join('\n'));
   await browser.close();
 })();

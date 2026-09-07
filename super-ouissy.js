@@ -1362,10 +1362,26 @@ window.SuperOuissy = (function () {
      screen anyway. */
   var VIEW = { w: 320, h: 180 };
 
+  /* The widest view the backdrops are painted to cover. */
+  var VIEW_MAX_W = 448;
+
   function pickView() {
-    var portrait = window.innerHeight > window.innerWidth * 1.2;
-    var narrow = window.innerWidth < 620;
-    VIEW.w = (portrait && narrow) ? 240 : 320;
+    var vw = window.innerWidth || 320, vh = window.innerHeight || 180;
+    var portrait = vh > vw * 1.2;
+    var narrow = vw < 620;
+    if (portrait && narrow) {
+      VIEW.w = 240;
+    } else if (vw > vh * 1.25) {
+      /* A phone on its side is wider than 16:9, so a 16:9 view leaves a
+         black bar down each edge. Widening the view instead spends that
+         space on more world at exactly the same size — nothing shrinks,
+         she just sees further ahead. Even, because odd widths put the
+         player half a pixel off centre. */
+      VIEW.w = Math.max(320, Math.min(VIEW_MAX_W,
+        Math.round(VIEW.h * (vw / vh) / 2) * 2));
+    } else {
+      VIEW.w = 320;
+    }
     var cv = $("so-canvas");
     if (cv && cv.width !== VIEW.w) { cv.width = VIEW.w; cv.height = VIEW.h; }
     var st = $("so-stage");
@@ -1968,7 +1984,10 @@ window.SuperOuissy = (function () {
 
   function buildBackdrop(biome) {
     var P = BIOME[biome], def = BACKDROPS[biome] || BACKDROPS.meadow;
-    var VW = 320, VH = 180, farW = 480, midW = 480;
+    /* The sky is drawn once at x:0, not tiled, so it is painted at the
+       widest view any screen can ask for rather than at 16:9 — on a
+       sideways phone a 320-wide sky would end before the screen does. */
+    var VW = VIEW_MAX_W, VH = 180, farW = 480, midW = 480;
     var rnd = seeded("bg" + biome);
 
     var sky = spriteCanvas(VW, VH), far = spriteCanvas(farW, VH), mid = spriteCanvas(midW, VH);
@@ -4061,7 +4080,10 @@ window.SuperOuissy = (function () {
          sound never came back and the MUSIC toggle could not revive it
          either. wakeAudio in script.js handles both, plus the retry
          Safari needs. */
-      if (ac.state !== "running") {
+      /* ...but not while the site has deliberately put the sound down
+         on the way out of the page: a scene still ticking in a window
+         you have left would wake the whole thing up again. */
+      if (ac.state !== "running" && !(window.audioAsleep && window.audioAsleep())) {
         if (window.wakeAudio) window.wakeAudio(ac);
         else { try { ac.resume(); } catch (e) {} }
       }
@@ -4287,10 +4309,30 @@ window.SuperOuissy = (function () {
     function releaseAll() {
       ["left", "right", "down", "jump"].forEach(releaseKey);
       G.keys.jumpPressed = false;
+      heldBy = {};
+      
       Array.prototype.forEach.call(document.querySelectorAll("[data-so-key]"),
         function (b) { b.classList.remove("held"); });
     }
     window.__soReleaseAll = releaseAll;
+    /* so a test can watch what the pad is actually holding — the jump
+       cancelling the run was invisible from outside without it */
+    window.__soKeys = function () { return G.keys; };
+
+    /* WHICH FINGER IS HOLDING WHICH KEY.
+
+       Without this, jumping cancelled running. She holds RIGHT with one
+       thumb, taps JUMP with the other, and the moment the jump thumb lifts
+       the window-level safety net below fired releaseAll() and cleared
+       every key — including the RIGHT her other thumb was still on. She
+       stopped dead in mid-air, every time.
+
+       The safety net is still needed (see the four ways a button gets
+       stuck, above), it just has to be told WHICH press ended. A pointerup
+       now releases only the key that pointer was holding; releaseAll stays
+       for the cases where every finger really is gone — blur, tab change,
+       pause, leaving the screen. */
+    var heldBy = {};      /* pointerId -> key */
 
     Array.prototype.forEach.call(document.querySelectorAll("[data-so-key]"), function (btn) {
       var k = btn.getAttribute("data-so-key");
@@ -4301,6 +4343,7 @@ window.SuperOuissy = (function () {
         btn.classList.add("held");
         if (k === "jump" && !G.keys.jump && canAct()) G.keys.jumpPressed = true;
         G.keys[k] = true;
+        if (e.pointerId != null) heldBy[e.pointerId] = k;
         /* capture so a finger that slides off the button still counts as
            held, which is how a real d-pad behaves */
         try { btn.setPointerCapture(e.pointerId); } catch (er) {}
@@ -4308,6 +4351,7 @@ window.SuperOuissy = (function () {
 
       var release = function (e) {
         if (e) e.preventDefault();
+        if (e && e.pointerId != null) delete heldBy[e.pointerId];
         releaseKey(k);
         /* drop focus, or the button stays "pressed" to the browser and can
            be re-fired by a keypress or a synthetic click */
@@ -4326,9 +4370,20 @@ window.SuperOuissy = (function () {
       btn.setAttribute("tabindex", "-1");
     });
 
-    /* the safety net: whatever the press landed on, the release clears it */
-    window.addEventListener("pointerup", releaseAll);
-    window.addEventListener("pointercancel", releaseAll);
+    /* The safety net, narrowed to one finger. If the button never heard its
+       own release — it was re-rendered, or the finger slid off and capture
+       did not hold — the window still hears it, and lets go of exactly the
+       key that pointer was on. A pointer we never saw go down releases
+       nothing, which is the whole point: another thumb may still be down. */
+    function releasePointer(e) {
+      var k = e && e.pointerId != null ? heldBy[e.pointerId] : null;
+      if (k == null) return;
+      delete heldBy[e.pointerId];
+      releaseKey(k);
+    }
+    window.addEventListener("pointerup", releasePointer);
+    window.addEventListener("pointercancel", releasePointer);
+    /* losing the window means losing every finger, so that one is still all */
     window.addEventListener("blur", releaseAll);
 
     var pb = $("so-pause-btn");

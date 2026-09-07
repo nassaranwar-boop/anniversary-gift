@@ -28,7 +28,7 @@ const { chromium, devices } = require('playwright-core');
     st.textContent = '.screen.anim-in{animation:none !important}'; document.head.appendChild(st);
     try{localStorage.clear();}catch(e){} localStorage.setItem('ns_seenintro','1');
     localStorage.setItem('ns_notutor','1');
-    showScreen('nightshift'); OuissysNightShift.start(); });
+    showScreen('nightshift'); return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
   await p.waitForFunction(() => Object.keys(OuissysNightShift.__night.cast()).length >= 7,
                           { timeout: 25000, polling: 200 });
   await p.evaluate(() => { const w = OuissysNightShift.__night; w.silence(true);

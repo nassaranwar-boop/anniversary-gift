@@ -22,7 +22,7 @@ const [OUT = '/tmp/wkui', W = 1280, H = 860] = process.argv.slice(2);
     st.textContent = '.screen.anim-in{animation:none !important}';
     document.head.appendChild(st);
     try { localStorage.clear(); } catch (e) {}
-    showScreen('nightshift'); OuissysNightShift.start(); OuissysNightShift.__night.silence(true);
+    showScreen('nightshift'); return loadChapter('nightshift').then(() => { OuissysNightShift.start(); OuissysNightShift.__night.silence(true); });
   });
   await p.waitForTimeout(1800);
   const cdp = await p.context().newCDPSession(p);

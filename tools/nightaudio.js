@@ -66,7 +66,7 @@ const ok = (n, c, x) => { checks++; console.log((c ? '  ok   ' : '  FAIL ') + n 
   });
   /* a real click on the chapter's own card, which is the gesture the
      browser wants before it will let anything make a sound */
-  await p.evaluate(() => { showScreen('nightshift'); OuissysNightShift.start(); });
+  await p.evaluate(() => { showScreen('nightshift'); return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
   await p.waitForFunction(() => Object.keys(OuissysNightShift.__night.cast()).length >= 4,
                           { timeout: 20000, polling: 200 });
   await p.mouse.click(500, 350);

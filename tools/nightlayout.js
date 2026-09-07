@@ -40,7 +40,7 @@ let fails = 0;
          collapsed at 0,0 and called all six of them "outside the frame"
          at every size, including the desktop. Skip the film. */
       try { localStorage.setItem('ns_seenintro', '1'); localStorage.setItem('ns_notutor', '1'); } catch (e) {}
-      showScreen('nightshift'); OuissysNightShift.start(); OuissysNightShift.__night.silence(true);
+      showScreen('nightshift'); return loadChapter('nightshift').then(() => { OuissysNightShift.start(); OuissysNightShift.__night.silence(true); });
     });
     /* start() shows a loading card and builds the shop a frame later, so
        the shift cannot be routed in the same turn as the boot */
