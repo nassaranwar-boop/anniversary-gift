@@ -745,16 +745,39 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 .btn-ancient{
-  background:linear-gradient(160deg,#d9b062,#8a611f); color:#2b1608; border:none; padding:11px 26px; border-radius:24px;
+  /* a little more gold and a little less olive: the old pair went dark
+     enough at the bottom to read brown next to the parchment */
+  background:linear-gradient(160deg,#eccb84,#9a6b21); color:#2b1608; border:none; padding:11px 26px; border-radius:24px;
   font-family:'Cinzel',serif; font-weight:600; font-size:13px; letter-spacing:.5px; cursor:pointer;
-  box-shadow:0 4px 0 #5c3f10, 0 10px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.4);
+  /* THE SHADOW UNDER A GOLD BUTTON ON PARCHMENT.
+     It used to be a 4px slab of #5c3f10 with a black 35% cloud under it.
+     Two things were wrong with that. A hard lip that deep reads as a
+     block sitting on the page rather than as a button raised off it —
+     you see the lip before you see the button. And the cloud was
+     NEUTRAL BLACK: on a warm pink page every neutral shadow turns grey
+     and dirty, because nothing else in the picture is grey. The lip is
+     now thin and warm, and the ambient shadow is the colour of the ink
+     everything else on this page is drawn in. */
+  box-shadow:
+    0 2px 0 rgba(92,63,16,.5),
+    0 5px 12px rgba(122,72,26,.28),
+    inset 0 1px 0 rgba(255,255,255,.45),
+    inset 0 -2px 0 rgba(92,63,16,.16);
   transition:transform .1s ease, box-shadow .1s ease;
   /* 11px of padding around 13px of Cinzel comes to 38px tall, which is
      under the 44 a thumb wants. The padding is what the design asked for,
      so the floor is a minimum rather than more padding. */
   min-height:44px;
 }
-.btn-ancient:active{transform:translateY(4px); box-shadow:0 1px 0 #5c3f10, 0 4px 10px rgba(0,0,0,.35);}
+/* pressed: it travels the height of its own lip and no further, so the
+   button lands on the page instead of sinking into it */
+.btn-ancient:active{
+  transform:translateY(2px);
+  box-shadow:
+    0 0 0 rgba(92,63,16,.5),
+    0 2px 6px rgba(122,72,26,.24),
+    inset 0 2px 5px rgba(92,63,16,.22);
+}
 
 /* ---- Letter (on real scroll art) ---- */
 .letter-scroll{
@@ -6450,7 +6473,10 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* the transcript */
 .ns-cine-sub{
-  position:absolute; left:50%; bottom:14.5%; transform:translateX(-50%);
+  /* 14.5% of a 219px stage is 32px, and SKIP is a 44px button sitting 7px
+     off the same edge — so on a phone his last line ran underneath it.
+     The floor keeps the caption clear of the button at any stage height. */
+  position:absolute; left:50%; bottom:max(14.5%, 62px); transform:translateX(-50%);
   margin:0; width:78cqw; text-align:center;
   font-family:var(--ns-face); line-height:1.75;
   font-size:max(2.15cqh, 14px); letter-spacing:.055em;
@@ -6468,10 +6494,16 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .ns-cine-skip{
   position:absolute; right:2.4cqw; bottom:3.4%; pointer-events:auto;
-  padding:.9cqh 2.2cqw; border-radius:.5cqw; cursor:pointer;
+  /* It measured 52x17 on a phone, which is a third of a thumb. The panel
+     is a size container, so cqh at this stage height is about two pixels
+     — every one of these needs a pixel floor under it. 44px is the
+     target `buttons.js` holds every other control in the site to. */
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:44px; min-width:72px;
+  padding:max(1.1cqh, 10px) max(2.2cqw, 16px); border-radius:.5cqw; cursor:pointer;
   background:rgba(10,12,16,.7); border:.14cqw solid rgba(200,162,96,.4);
   color:rgba(232,223,200,.6); font-family:var(--ns-face);
-  font-size:max(1.4cqh, 10px); letter-spacing:.22em;
+  font-size:max(1.4cqh, 11px); letter-spacing:.22em;
   opacity:0; animation:nsSkipIn .5s ease 2.2s forwards;
 }
 .ns-cine-skip:hover{ color:var(--ns-amber); border-color:rgba(200,162,96,.9); }
@@ -6933,6 +6965,12 @@ img{-webkit-user-drag:none; user-select:none;}
    else stripped away, and the one button does not appear until he has
    finished saying why. */
 .ns-card-terms{ max-width:64cqw; text-align:center; }
+/* `.ns-cine-head` is `position:absolute; top:13%`, which is right for the
+   film — it sits over a whole screen. The terms card borrows the class
+   inside a small box, where 13% of the card lands straight on top of the
+   first line of what he is saying. In here it is a heading in the flow,
+   like any other. */
+.ns-card-terms .ns-cine-head{ position:static; margin:0 0 1.4cqh; }
 .ns-terms-sub{
   margin:2.4cqh 0 1.2cqh; min-height:9cqh;
   font-family:var(--ns-face);

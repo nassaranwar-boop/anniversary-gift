@@ -10580,7 +10580,14 @@ function termsStart() {
       '<p class="ns-terms-sub" id="ns-terms-sub"></p>' +
       '<div class="ns-btns"><button class="ns-btn ns-btn-go" id="ns-terms-go" data-go="termsDone" hidden>' +
         NS.terms.go + '</button></div>' +
-    '</div>', "ns-ov-terms");
+    '</div>' +
+    /* The film has had a SKIP since it was written; this did not, so
+       skipping the film still dropped her into six more lines she could
+       not get out of. It sits outside the card so it lands in the same
+       screen corner as the film's, and it goes where the button at the
+       end of the speech goes — the terms count as read either way. */
+    '<button class="ns-cine-skip" id="ns-terms-skip" data-go="termsDone">SKIP</button>',
+    "ns-ov-terms");
 }
 
 function termsSpeak() {
