@@ -1566,9 +1566,55 @@ window.hvSharedCtx = function () {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return null;
   if (audioCtx && audioCtx.state === "closed") audioCtx = null;
-  if (!audioCtx) audioCtx = new AC();
+  if (!audioCtx) {
+    audioCtx = new AC();
+    /* THE SOUND FOLLOWED YOU OUT OF THE BROWSER.
+
+       Every other chapter hands its context to registerAudio, and
+       hushAllAudio suspends the lot when the tab is hidden or the
+       window loses focus. This one never did — the only thing
+       registered here was the site's ambient pad, whose getter returns
+       null unless that pad has been built, and it is off by default. So
+       the adventure's air and its score played on a context nobody was
+       ever going to suspend, and went on playing to an empty room.
+
+       Registering the getter rather than the context because a closed
+       context is unrecoverable and this function rebuilds it. */
+    if (window.registerAudio) window.registerAudio(() => audioCtx);
+  }
   return audioCtx;
 };
+
+/* Suspending the context is necessary and not sufficient. The score's
+   scheduler and the ambience's bird-and-cricket chain are timers, and
+   timers keep running in a hidden tab: they would go on posting notes
+   onto a clock that had stopped and then hand the backlog over all at
+   once on the way back in. Both are stopped on the way out and started
+   again, re-anchored, on the way back. */
+function hvHushChapter() {
+  if (window.OST) window.OST.hush();
+  if (hvAmb && hvAmb.timer) { clearTimeout(hvAmb.timer); hvAmb.timer = null; }
+}
+
+function hvResumeChapter() {
+  const scr = document.getElementById("screen-quest");
+  if (!scr || !scr.classList.contains("active")) return;
+  if (!hvSoundOn) return;
+  const n = HV[hvNode];
+  /* the ambience rebuilds its own voice chain from the scene it is on */
+  const scene = n && hvSceneOf(n);
+  if (hvAmb) hvAmb.scene = null;         // force it to re-arm
+  hvAmbience(scene);
+  if (window.OST) window.OST.resume();
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) hvHushChapter(); else hvResumeChapter();
+});
+window.addEventListener("blur", hvHushChapter);
+window.addEventListener("pagehide", hvHushChapter);
+window.addEventListener("focus", hvResumeChapter);
+window.addEventListener("pageshow", hvResumeChapter);
 
 /* ---------------------------------------------------------
    KEEPING AUDIO ALIVE
@@ -2139,64 +2185,146 @@ function drawFox() {
    the line above it ("it has not looked up yet") in the same frame. This
    one is not looking at you and cannot be made to: it is an obstacle in a
    scene, and the whole beat is getting round it while it is busy. */
+/* ONE BEAR, TWO HEADS.
+
+   The grazing bear and the alert bear used to be two separate blocks of
+   drawing code that were supposed to look like the same animal, and did
+   not: the body was rebuilt line by line in each, and the orchard one
+   was painted in daylight tans that sat on a night scene like a cut-out.
+
+   So there is one body, and the head is the only thing that moves. The
+   palette is passed in, which is how it can be a warm brown animal under
+   lanterns instead of a beige one in the dark. */
+function bearBody(ctx, T, lit, headUp) {
+  /* Everything below is only judgeable magnified — tools/bearzoom.js
+     draws all three poses at 5x on the grounds they actually stand on.
+     Three faults were found that way and none of them were visible at
+     the size the game draws them:
+
+     1. The light along the back was a straight bar, so it read as a
+        plank lying on the animal. Then it was a computed curve, which
+        ran THROUGH the body because the blobs sit above the curve. It
+        is found by scanning for the topmost drawn pixel of each column
+        now, so it is on the edge by construction rather than by
+        arithmetic that has to agree with the drawing.
+     2. Two legs, not four — the pairs were wide enough to merge.
+     3. Long thin legs read as stilts. A bear is a heavy animal on short
+        legs; that silhouette is most of what says "bear". */
+
+  blob(ctx, 13, 26, 9, 9, T);              // rump, rounded off
+  blob(ctx, 23, 24, 11, 10, T);            // barrel
+  blob(ctx, 33, 20, 12, 11, T);            // the hump over the shoulders
+  blob(ctx, 45, headUp ? 22 : 26, 8, 7, T); // neck, overlapping both
+
+  if (headUp) {
+    blob(ctx, 54, 19, 6.5, 5.5, T);
+    px(ctx, 58, 19, 5, 3, T[1]);
+    px(ctx, 62, 19, 2, 2, T[3]);
+    blob(ctx, 49, 14, 2.8, 2.6, T);
+    blob(ctx, 57, 13, 2.6, 2.4, T);
+    px(ctx, 56, 18, 1, 1, "#ffe8c0"); px(ctx, 60, 19, 1, 1, "#ffe8c0");
+  } else {
+    blob(ctx, 51, 29, 6.5, 5.5, T);        // head, tucked into the neck
+    px(ctx, 55, 31, 5, 3, T[1]);
+    px(ctx, 59, 32, 2, 2, T[3]);
+    blob(ctx, 47, 25, 2.8, 2.6, T);
+    blob(ctx, 54, 25, 2.6, 2.4, T);
+    px(ctx, 53, 28, 1, 1, T[3]);
+  }
+
+  /* Four short, heavy legs. Far pair a tone back and set inboard. */
+  function leg(x, top, w, h, tone) {
+    px(ctx, x, top, w, h, tone);
+    px(ctx, x - 1, top + h, w + 2, 2, T[3]);       // paw
+  }
+  leg(15, 32, 5, 9, T[2]);                  // far hind
+  leg(34, 30, 5, 11, T[2]);                 // far fore
+  leg(21, 33, 6, 8, T[1]);                  // near hind
+  leg(40, 31, 6, 10, T[1]);                 // near fore
+
+  /* The light it stands under, laid on the topmost drawn pixel of each
+     column across the back only — so it hugs the outline whatever the
+     blobs underneath happen to do. */
+  if (lit) {
+    var w = ctx.canvas.width, h = ctx.canvas.height;
+    var d = ctx.getImageData(0, 0, w, h).data;
+    for (var x = 10; x <= 50; x++) {
+      for (var y = 0; y < h; y++) {
+        if (d[(y * w + x) * 4 + 3] > 8) {
+          if ((x & 1) === 0) px(ctx, x, y, 1, 1, lit);   // broken, not a wire
+          break;
+        }
+      }
+    }
+  }
+}
+
+/* Under the lanterns, working through the windfalls. Warm browns with
+   the lantern above it caught along its back — dark enough to belong to
+   the orchard at night, light enough to be an animal and not a hole. */
+const BEAR_NIGHT = ["#6b4a2e", "#523823", "#3c2819", "#2a1c11"];
+
 function drawBearGrazing() {
-  const { c, ctx } = spriteCanvas(58, 38);
-  const T = ["#7a5232", "#5e3e26", "#452c1a", "#2f1d11"];   // lit → shadow
-  const M = "#8a6a48";
-
-  // hind quarters, then the shoulder hump bears actually have
-  blob(ctx, 17, 19, 14, 11, T);
-  blob(ctx, 33, 16, 13, 11, T);
-  // the neck coming down off the hump, and the head at the bottom of it
-  blob(ctx, 43, 22, 8, 8, T);
-  blob(ctx, 48, 27, 7, 6, T);
-  px(ctx, 51, 27, 6, 4, M);                 // muzzle, down in the grass
-  px(ctx, 55, 28, 2, 2, "#241609");         // nose
-  blob(ctx, 45, 20, 3.5, 3, T);             // ear, on the head and not the hump
-  px(ctx, 47, 25, 2, 2, "#241609");         // the one eye you can see
-  px(ctx, 47, 25, 1, 1, "#8f6440");         // and the glint that makes it read
-  px(ctx, 3, 15, 5, 3, T[1]);               // tail
-
-  // four legs, the far pair a tone darker so the body reads as solid
-  px(ctx, 10, 27, 6, 11, T[2]); px(ctx, 36, 25, 6, 13, T[2]);
-  px(ctx, 18, 28, 7, 10, T[1]); px(ctx, 29, 26, 7, 12, T[1]);
-  px(ctx, 18, 35, 7, 3, T[3]);  px(ctx, 29, 35, 7, 3, T[3]);
-
-  // moonlight along the spine
-  px(ctx, 22, 9, 20, 1, "#8f6440");
-  px(ctx, 30, 8, 10, 1, "#a07a52");
+  const { c, ctx } = spriteCanvas(64, 46);
+  bearBody(ctx, BEAR_NIGHT, "#b98a52", false);
   return c;
 }
 
 /* The same bear with its head up. Not reared, not roaring — a bear that
    has stopped chewing and is looking down the row, which at four trees'
-   distance is quite enough. The body is identical to the grazing one on
-   purpose: what changes is the neck, and that is what the eye reads. */
+   distance is quite enough. Same body, different head, so the two poses
+   cannot drift apart. */
 function drawBearAlert() {
-  const { c, ctx } = spriteCanvas(58, 38);
-  const T = ["#7a5232", "#5e3e26", "#452c1a", "#2f1d11"];
-  const M = "#8a6a48";
-
-  blob(ctx, 17, 19, 14, 11, T);
-  blob(ctx, 33, 16, 13, 11, T);
-  // the neck up rather than down, and the head at the top of it
-  blob(ctx, 44, 15, 8, 8, T);
-  blob(ctx, 50, 11, 7, 6, T);
-  px(ctx, 53, 12, 5, 3, M);                 // muzzle, level
-  px(ctx, 56, 12, 2, 2, "#241609");
-  blob(ctx, 46, 7, 3.5, 3, T);              // both ears up
-  blob(ctx, 53, 6, 3, 2.6, T);
-  px(ctx, 49, 11, 2, 2, "#241609"); px(ctx, 54, 10, 2, 2, "#241609");
-  px(ctx, 49, 11, 1, 1, "#ffd9a0"); px(ctx, 54, 10, 1, 1, "#ffd9a0");   // lantern in its eyes
-  px(ctx, 3, 15, 5, 3, T[1]);
-
-  px(ctx, 10, 27, 6, 11, T[2]); px(ctx, 36, 25, 6, 13, T[2]);
-  px(ctx, 18, 28, 7, 10, T[1]); px(ctx, 29, 26, 7, 12, T[1]);
-  px(ctx, 18, 35, 7, 3, T[3]);  px(ctx, 29, 35, 7, 3, T[3]);
-
-  px(ctx, 22, 9, 20, 1, "#8f6440");
-  px(ctx, 30, 8, 10, 1, "#a07a52");
+  const { c, ctx } = spriteCanvas(64, 46);
+  bearBody(ctx, BEAR_NIGHT, "#d8a464", true);
   return c;
+}
+
+/* Something big, in the trees, that has stopped moving.
+
+   The old version took the full-colour jumpscare bear and flooded it to
+   one dark tone, then pasted two canopy puffs and a bush on top at
+   hard-coded coordinates. In this scene those coordinates land in open
+   grass between the path and the treeline, so what you actually got was
+   a dark green lump sitting on the lawn with two bushes stuck to it —
+   it read as a rendering fault, not as an animal.
+
+   This is drawn for the job instead: the shoulder hump higher than the
+   head, which is the one thing that says "bear" in silhouette at any
+   size; a low forward head with a snout; four heavy legs; and a thin
+   rim along the top where the light comes through the canopy behind it.
+   Two faint catchlights, because the whole beat is that it might be
+   looking at you. It is still deliberately hard to read — it turns out
+   to be a deer — but it is hard to read the way a big animal behind
+   leaves is hard to read. */
+function drawBearLurking() {
+  const { c, ctx } = spriteCanvas(64, 46);
+  /* The same body as the one in the orchard — it was a second, separate
+     drawing of the same animal, and the two had already drifted apart.
+     Darker and cooler for a wood in shade, with the sun through the
+     canopy on its back, and its head up because the line it illustrates
+     is "and then does not move again". */
+  bearBody(ctx, ["#4a4130", "#3a3325", "#2b261b", "#1f1b13"], "#8a7c58", true);
+  return c;
+}
+
+/* Where it stands, in scene coordinates, painted into the wood itself.
+
+   It is between the tree at 104 and the one at 252, on the same bank
+   they are rooted in — so their trunks and crowns come down in front of
+   it, and the ferns and grass the scene scatters afterwards cover its
+   feet. Nothing is invented to hide it: everything in front of it is
+   the wood's own. */
+function hvPaintLurker(ctx) {
+  var b = drawBearLurking();
+  /* Behind the tree at x=104 and at that tree's depth, which is the
+     part the first version got wrong: it was drawn nearly the height of
+     the trunk it was standing beside, so instead of a bear in a wood you
+     got something enormous and the tree read as a twig. He is up on the
+     same bank the mid-distance trees are rooted in — about a third of
+     that trunk — and their crowns and the scene's own ferns come down in
+     front of him. */
+  ctx.drawImage(b, 0, 0, b.width, b.height, 96, 90, 34, 24);
 }
 
 /* The bear, flooded to one flat dark tone.
@@ -2871,7 +2999,11 @@ const HV_SCENES = {
   },
 
   /* 2. deep forest — the secret path */
-  forest(ctx, rnd) {
+  /* `opts.lurker` is drawn after the ground and BEFORE the trees, so
+     the wood's own trunks and crowns are in front of whatever it is —
+     real occlusion by the real trees, rather than a cut-out with fresh
+     bushes invented around it to hide the joins. */
+  forest(ctx, rnd, opts) {
     ditherSky(ctx, 0, 0, PXW, PXH, [
       { p: 0.00, c: "#8fcfe4" }, { p: 0.22, c: "#b2dfe8" },
       { p: 0.44, c: "#d2ead9" }, { p: 1.00, c: "#bcd9a8" },
@@ -2898,6 +3030,8 @@ const HV_SCENES = {
 
     var bark = ["#a37a4c", "#836039", "#644727"];
     var leaf = ["#a3c96e", "#84ac52", "#65873b", "#4b6729"];
+
+    if (opts && opts.lurker) opts.lurker(ctx);
 
     /* Mid-distance trees: full crowns, grounded on the bank behind the path.
        Sized so the canopy is always wider than the trunk is tall-looking. */
@@ -3890,10 +4024,40 @@ const HV = {
     scene: "sunset", cat: "hide", isAsk: true, ask: "there",
     say: "",
     choices: [
-      { label: "YES!", to: "yay", pos: "left", style: "yes" },
+      { label: "YES!", to: "gift", pos: "left", style: "yes" },
       { label: "No…", to: "nudge", pos: "right" },
     ],
   },
+  /* THE FIRST THING SHE EVER CHOSE, GIVEN BACK.
+
+     The heart or the flower was the very first tap of the chapter and
+     for a long time it did almost nothing: it was remembered, mentioned
+     once at the gate, and listed at the end. It is a present now. He has
+     been carrying it since the beginning — which, since she picked it at
+     the beginning, is exactly true — and he gives it to her after she
+     says yes. Shared between the two paths, like the nudge, so the words
+     only exist once. */
+  gift: {
+    sceneOfAsk: true, cat: "love",
+    giveKeepsake: true,
+    say: "And then he holds something out to you, a little sheepishly, the way he does when he has been carrying a thing around all day waiting for the right minute.",
+    sayOfKeepsake: {
+      heart: "And then he holds something out to you, a little sheepishly, the way he does when he has been carrying a thing about all day waiting for the right minute. It is the small paper heart. The one you picked up at the very beginning of all this, before either of you knew which way you were walking.",
+      flower: "And then he holds something out to you, a little sheepishly, the way he does when he has been carrying a thing about all day waiting for the right minute. It is the flower. The one you picked at the very beginning of all this, before either of you knew which way you were walking.",
+    },
+    voicesOfKeepsake: {
+      heart: [["her", "You kept it."],
+              ["him", "Of course I kept it."],
+              ["her", "It is paper. It is a paper heart."],
+              ["him", "You gave it to me on the first day. I kept it."]],
+      flower: [["her", "You kept it."],
+               ["him", "Of course I kept it."],
+               ["her", "It is going to be a raisin by Tuesday."],
+               ["him", "Then it will be our raisin."]],
+    },
+    choices: [{ label: "take it", to: "__yay", pos: "centre", style: "yes" }],
+  },
+
   yay: {
     scene: "sunset", cat: "love", bigCat: true, hearts: true, isEnd: true, big: true,
     say: "YAYYY, I LOVE YOU!", tally: true,
@@ -3948,7 +4112,7 @@ const HV = {
     scene: "home", cat: "hide", isAsk: true, ask: "back",
     say: "",
     choices: [
-      { label: "YES!", to: "back_yay", pos: "left", style: "yes" },
+      { label: "YES!", to: "gift", pos: "left", style: "yes" },
       { label: "No…", to: "nudge", pos: "right" },
     ],
   },
@@ -4053,6 +4217,7 @@ function hvSfx(kind) {
     if (!audioCtx) audioCtx = new AC();
     /* not just "suspended" — see wakeAudio; iOS uses "interrupted", and
        the old check let these two games go silent for the whole visit */
+    if (window.audioAsleep && window.audioAsleep()) return;
     if (audioCtx.state !== "running") {
       if (window.wakeAudio) window.wakeAudio(audioCtx); else audioCtx.resume();
     }
@@ -4333,6 +4498,11 @@ function hvSetSound(on) {
     b.classList.toggle("off", !on);
     b.setAttribute("aria-label", on ? "Sound on" : "Sound off");
     b.title = on ? "Sound on" : "Sound off";
+    /* the icon changes, rather than the same shape going dim: a muted
+       speaker has a cross where its waves were, and you can tell which
+       state it is in without remembering what the other one looked like */
+    const use = document.getElementById("hv-sound-icon");
+    if (use) use.setAttribute("href", on ? "#ic-px-sound-on" : "#ic-px-sound-off");
   }
   if (window.OST) window.OST.setOn(on);
   if (on) { const n = HV[hvNode]; hvAmbience(n && hvSceneOf(n)); hvScore(n); }
@@ -4459,11 +4629,6 @@ function hvCanvasTap(ev) {
   var r = canvas.getBoundingClientRect();
   var sx = ((ev.clientX - r.left) / r.width) * PXW;
   var sy = ((ev.clientY - r.top) / r.height) * PXH;
-
-  /* hurrying the conversation comes first: while they are talking, a
-     tap is "go on", not "pick that up" */
-  var nv = HV[hvNode];
-  if (nv && !hvVoicesDone(nv) && hvVoiceSkip(nv, (performance.now() - hvT0) / 1000 - hvArrive)) return;
 
   var spot = hvHiddenHere();
   if (spot && Math.abs(sx - spot.x) < spot.r && Math.abs(sy - spot.y) < spot.r) {
@@ -4691,12 +4856,19 @@ function hvPaintBase(n) {
      whole point is that both ways come out at the same gate. A place
      is now the same place every time you are standing in it. */
   var scene = hvSceneOf(n);
-  if (!hvSceneCache[scene]) {
+  /* A node can ask for something to be painted INTO the scene rather
+     than over it — the thing in the trees is the only one, and it is
+     there because the writing says it stops moving. Painted in, it gets
+     the wood's own trees in front of it for free. Cached under its own
+     key so the other nodes in this scene do not inherit a bear. */
+  var extra = n.bear === "shadow" ? { lurker: hvPaintLurker } : null;
+  var key = scene + (extra ? ":lurker" : "");
+  if (!hvSceneCache[key]) {
     var made = spriteCanvas(PXW, PXH);
-    (HV_SCENES[scene] || HV_SCENES.sakura)(made.ctx, hvSeed(scene));
-    hvSceneCache[scene] = made.c;
+    (HV_SCENES[scene] || HV_SCENES.sakura)(made.ctx, hvSeed(scene), extra);
+    hvSceneCache[key] = made.c;
   }
-  hvBase = hvSceneCache[scene];
+  hvBase = hvSceneCache[key];
   hvActors = hvBuildActors(n, hvSeed(scene + "actors"));
 }
 
@@ -5148,10 +5320,11 @@ var hvPairAt = null;          // where the two of them were last drawn
    clock advances it, and so does a tap. */
 var hvVoiceI = -1, hvVoiceAt = 0;
 const HV_VOICE_LEAD = 1.0;    // a beat to look at the picture first
-const HV_VOICE_HOLD = 3.1;    // how long a line stays up on its own
+const HV_VOICE_HOLD = 2.9;    // how long a line stays up on its own
 
 function hvVoicesOf(n) {
   if (!n) return [];
+  if (n.voicesOfKeepsake) return n.voicesOfKeepsake[hvKeepsake || "heart"] || [];
   if (n.voicesIfMet) {
     return hvHasWalked(n.voicesIfMet.route) ? n.voicesIfMet.yes : n.voicesIfMet.no;
   }
@@ -5173,15 +5346,13 @@ function hvVoiceStep(n, st) {
   }
 }
 
-/* a tap anywhere on the picture hurries the conversation */
-function hvVoiceSkip(n, st) {
-  var v = hvVoicesOf(n);
-  if (!v.length || hvVoiceI >= v.length) return false;
-  hvVoiceI = hvVoiceI < 0 ? 0 : hvVoiceI + 1;
-  hvVoiceAt = st;
-  hvSfx("page");
-  return true;
-}
+/* There is no way to hurry them any more.
+
+   A tap used to jump to the next line, with a blinking chevron in the
+   bubble advertising it. Taken out on purpose: the two of them talking
+   is the chapter, not an obstacle in front of it, and a skip button
+   turns every line into something to get past. They say their piece at
+   their own pace and the choices arrive when they have finished. */
 
 function hvWrapTiny(text, maxChars) {
   var words = text.split(" "), lines = [], cur = "";
@@ -5228,13 +5399,6 @@ function hvDrawVoices(ctx, n, st) {
   lines.forEach(function (l, i) {
     hvTinyAt(ctx, l, bx + 5, by + 5 + i * 7, "#4a3a2e");
   });
-  /* the nudge that says a tap will hurry this along, blinking so it
-     reads as a prompt and not as punctuation */
-  if (age > 0.8 && Math.sin(st * 3.4) > -0.2) {
-    px(ctx, bx + bw - 7, by + bh - 5, 3, 1, "#b08a6a");
-    px(ctx, bx + bw - 6, by + bh - 4, 2, 1, "#b08a6a");
-    px(ctx, bx + bw - 7, by + bh - 3, 3, 1, "#b08a6a");
-  }
   ctx.restore();
 }
 
@@ -5295,34 +5459,7 @@ function hvPaintFrame(t, dt) {
      among the trees on the way there that turns out to be a deer, and a
      real one four trees down the orchard, chewing, which is a problem to
      get round rather than a way to lose. */
-  if (n.bear === "shadow") {
-    /* Standing in the treeline left of the path, feet on the same ground
-       as the trees, with foliage drawn back over its lower half so it is
-       partly behind the wood rather than pasted on top of it. */
-    var sb = drawBearShadow();
-    var swayS = Math.sin(t * 0.5) * 1.2;
-    var bw = 52, bh = 45, bx = 104 + swayS, by = 134 - bh;
-    ctx.save();
-    ctx.globalAlpha = 0.72;
-    ctx.drawImage(sb, 0, 0, sb.width, sb.height, bx | 0, by | 0, bw, bh);
-    ctx.restore();
-    /* leaves back over the top of it and undergrowth across its feet, so
-       what she gets is a piece of something big rather than a clean
-       cut-out of a bear. She is not supposed to be able to tell. */
-    var brnd = hvSeed("rustlefg");
-    var lf = ["#8bb057", "#739642", "#5c7c33", "#476226"];
-    canopy(ctx, bx + 14, by + 2, 21, lf, brnd, "#cbe89c");
-    canopy(ctx, bx + 44, by + 9, 16, lf, brnd, "#cbe89c");
-    bush(ctx, bx + 4, 140, 12, ["#5c7c33", "#4b6829", "#3b5220", "#2c3d18"], brnd);
-    bush(ctx, bx + 40, 138, 11, ["#5c7c33", "#4b6829", "#3b5220", "#2c3d18"], brnd);
-    // and leaves still coming down where it moved
-    for (var lv = 0; lv < 12; lv++) {
-      var la = t * 1.4 + lv;
-      if (Math.sin(la) > 0.1) {
-        px(ctx, bx + ((lv * 23) % 58), 84 + ((lv * 19) % 44) + Math.sin(la) * 4, 2, 1, "#5d7a3c");
-      }
-    }
-  } else if (n.bear === "real") {
+  if (n.bear === "real") {
     /* Four trees down, in the row, working through the windfalls: it
        shoulders forward, dips to the grass, comes up chewing. While the
        row is being crept it also lifts its head on its own rhythm, and
@@ -5332,14 +5469,28 @@ function hvPaintFrame(t, dt) {
     var rb = look > 0.5 ? drawBearAlert() : drawBearGrazing();
     var dip = look > 0.5 ? 0 : Math.max(0, Math.sin(t * 0.5)) * 3;
     var shove = Math.sin(t * 0.28) * 3;
-    var bw2 = 64, bh2 = 42, bx2 = 198 + shove, by2 = 96 + dip;
-    px(ctx, bx2 + 4, by2 + bh2 - 1, bw2 - 8, 3, "rgba(12,8,18,0.42)");
-    ctx.drawImage(rb, 0, 0, rb.width, rb.height, bx2 | 0, by2 | 0, bw2, bh2);
-    // the lantern above it just catching its back
+    /* Four trees down when she arrives, and nearer with every step she
+       takes: the bear is scaled by how far along the row she is, with
+       its feet pinned to its own ground line so it grows upward the way
+       a thing you are walking toward does. Standing still, it stays the
+       size something four trees away should be. */
+    var near = hvPlay && hvPlay.kind === "orchard"
+      ? Math.max(0, Math.min(1, (hvPlay.x - 74) / 172)) : 0;
+    var bs = 0.58 + near * 0.42;
+    var bw2 = Math.round(66 * bs), bh2 = Math.round(47 * bs);
+    var bx2 = 210 + shove, by2 = 139 - bh2 + dip;
+    /* a soft pool rather than a grey slab — the old one was a hard bar
+       under its feet that made it look propped up on a shelf */
     ctx.save();
-    ctx.globalAlpha = 0.16;
-    blob(ctx, bx2 + 34, by2 + 6, 22, 7, ["#ffd28a"]);
+    ctx.globalAlpha = 0.32;
+    blob(ctx, bx2 + bw2 / 2, by2 + bh2 - 1, bw2 * 0.42, 3, ["#140d1c"]);
     ctx.restore();
+    ctx.drawImage(rb, 0, 0, rb.width, rb.height, bx2 | 0, by2 | 0, bw2, bh2);
+    /* The lantern glow that used to be painted over its back is gone:
+       it was positioned against the old fixed height and, now that the
+       bear grows as she nears it, it detached into a grey disc floating
+       above the animal. The rim along its spine is the same light doing
+       the same job, and it is part of the sprite, so it cannot drift. */
     // windfalls in the grass, some of them already gone
     [[182, 150], [214, 156], [244, 148], [262, 158], [196, 162], [230, 166]].forEach(function (w3) {
       blob(ctx, w3[0], w3[1], 2.6, 2.2, ["#a4553a", "#82412c", "#63301f", "#4a2417"]);
@@ -5368,6 +5519,29 @@ function hvPaintFrame(t, dt) {
     hvPairAt = { x: pairX, y: pairY, h: 23 * stand.s };
   } else {
     hvPairAt = null;
+  }
+
+  /* the thing he has been carrying, held out. It lifts as it is offered
+     and then settles, and it is the same card she tapped at the very
+     start of the walk rather than a new picture of one. */
+  if (n.giveKeepsake && hvPairAt) {
+    var card = (hvKeepsake || "heart") === "flower" ? drawFlowerCard() : drawHeartCard();
+    var rise = hvEase(Math.min(1, st / 1.4));
+    var gx = hvPairAt.x - 4, gy = hvPairAt.y - hvPairAt.h - 4 - rise * 12 + Math.sin(t * 1.3) * 1.2;
+    var gs = 1.3;
+    ctx.save();
+    ctx.globalAlpha = rise;
+    blob(ctx, gx + card.width * gs / 2, gy + card.height * gs / 2, 15, 13,
+      ["rgba(255,228,180,0.16)"]);
+    ctx.drawImage(card, 0, 0, card.width, card.height,
+      gx | 0, gy | 0, Math.round(card.width * gs), Math.round(card.height * gs));
+    ctx.restore();
+    for (var gi = 0; gi < 8; gi++) {
+      var ga = t * 1.8 + gi;
+      if (Math.sin(ga) > 0.3) {
+        px(ctx, gx + ((gi * 11) % 26) - 2, gy + ((gi * 7) % 20) + Math.sin(ga) * 3, 1, 1, "#fff0b8");
+      }
+    }
   }
 
   hvPlayPaint(ctx, t, st);
@@ -5662,6 +5836,7 @@ function hvRender(withTransition) {
      seen — "route" is either one route or a prefix matching either of
      a path's two */
   if (n.sayIfMet) say = hvHasWalked(n.sayIfMet.route) ? n.sayIfMet.yes : n.sayIfMet.no;
+  if (n.sayOfKeepsake) say = n.sayOfKeepsake[hvKeepsake || "heart"] || say;
   if (n.callback && hvKeepsake) {
     say += hvKeepsake === "flower"
       ? " …you are still carrying that flower, by the way."
@@ -5725,6 +5900,9 @@ let hvCompleted = false;
    offer both on the same screen. */
 function hvGo(to) {
   if (to === "__ask") to = hvAskFrom;
+  /* the gift screen is shared between the two paths, so the ending it
+     hands on to is whichever one she is actually standing in */
+  if (to === "__yay") to = (HV[hvAskFrom] && HV[hvAskFrom].ask === "back") ? "back_yay" : "yay";
   const target = HV[to];
   /* the one place the whole orchestra plays at once */
   if (target && target.isEnd && window.OST) window.OST.hit("yes");
@@ -5828,13 +6006,6 @@ document.addEventListener("keydown", (e) => {
   if (!scr || !scr.classList.contains("active")) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-  const nv = HV[hvNode];
-  if ((e.key === " " || e.key === "Spacebar" || e.key === "Enter") && !hvPlay &&
-      nv && !hvVoicesDone(nv)) {
-    hvVoiceSkip(nv, (performance.now() - hvT0) / 1000 - hvArrive);
-    e.preventDefault();
-    return;
-  }
   if (e.key === " " || e.key === "Spacebar") {
     if (hvPlay) {
       if (hvPlay.kind === "orchard") hvHoldOn(e);
@@ -5872,6 +6043,18 @@ document.addEventListener("keyup", (e) => {
   if (s) s.addEventListener("click", function () { hvSetSound(!hvSoundOn); });
 })();
 document.getElementById("hv-back").addEventListener("click", hvBack);
+/* "back" is one step; this is all of them. Kept as its own chip rather
+   than folded into back, because a back button that sometimes goes back
+   one screen and sometimes throws away the whole walk is a trap. */
+(function () {
+  var r = document.getElementById("hv-restart");
+  if (r) r.addEventListener("click", function () {
+    hvHistory = [];
+    hvNode = "title";
+    hvSfx("page");
+    hvRender(true);
+  });
+})();
 document.getElementById("hv-quit").addEventListener("click", () => {
   hvStopLoop(); hvAmbience(null);
   if (window.OST) window.OST.stop();

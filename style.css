@@ -2485,24 +2485,11 @@ img{-webkit-user-drag:none; user-select:none;}
   transition:opacity .45s ease .12s, transform .45s ease .12s;
 }
 
-/* the air in each place, and its off switch */
-.hv-chip-sound{ padding:4px 8px; line-height:0; }
-.hv-sound-on{
-  display:inline-block; width:11px; height:11px; position:relative; vertical-align:middle;
-}
-/* a little speaker, drawn in borders so it carries no file either */
-.hv-sound-on::before{
-  content:""; position:absolute; left:0; top:3px; width:4px; height:5px;
-  background:currentColor;
-}
-.hv-sound-on::after{
-  content:""; position:absolute; left:4px; top:0; width:0; height:0;
-  border:5px solid transparent; border-left-color:currentColor; border-right:0;
-}
-.hv-chip-sound.off{ opacity:.55; }
-.hv-chip-sound.off .hv-sound-on{ position:relative; }
-.hv-chip-sound.off .hv-sound-on::before{ opacity:.5; }
-.hv-chip-sound.off .hv-sound-on::after{ opacity:.5; }
+/* the air in each place, and its off switch. The icon itself is an SVG
+   symbol like every other chip's, and it swaps between a speaker with
+   waves and a speaker with a cross — the old one was two CSS borders
+   that came out as a plain triangle, which reads as "play". */
+#hv-sound.off{ opacity:.62; }
 
 /* ---- choice buttons pinned to the edges, like the original ---- */
 .hv-side{

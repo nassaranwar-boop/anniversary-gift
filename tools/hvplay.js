@@ -179,9 +179,10 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     hvNode = 'there_quiet'; hvHistory = []; hvRender(false);
     hvArrive = 0; hvPaintFrame(0.2, 0.016);
     const atOpen = { total: btns().length, live: live() };
-    /* tapping hurries it along, the way a player would */
+    /* run their clock forward; the skip was deliberately removed */
+    /* their clock is run forward; there is no skip to press */
     let taps = 0;
-    while (!hvVoicesDone(HV[hvNode]) && taps++ < 20) hvVoiceSkip(HV[hvNode], 1 + taps);
+    while (!hvVoicesDone(HV[hvNode]) && taps++ < 40) hvVoiceStep(HV[hvNode], taps * HV_VOICE_HOLD + 2);
     hvPaintFrame(30, 0.016);
     const afterTalk = { total: btns().length, live: live() };
 
@@ -250,6 +251,95 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
   ok('the two of them actually speak', talk.lines >= 20,
      talk.lines + ' lines across ' + talk.nodes + ' scenes');
   ok('every line is attributed and fits its bubble', talk.bad.length === 0, talk.bad.join(', '));
+
+  /* ---- leaving the page, and coming back to it ---- */
+  const away = await page.evaluate(async () => {
+    hvSetSound(true);
+    hvNode = 'back_ridge'; hvHistory = []; hvRender(false);
+    await new Promise(r => setTimeout(r, 350));
+    const playing = window.OST.debug();
+    /* the real signals: a phone hides the tab, a desktop blurs the window */
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('blur'));
+    hvHushChapter();
+    await new Promise(r => setTimeout(r, 150));
+    const gone = window.OST.debug();
+    const ambienceTimer = !!(typeof hvAmb !== 'undefined' && hvAmb && hvAmb.timer);
+    hvResumeChapter();
+    await new Promise(r => setTimeout(r, 350));
+    const back = window.OST.debug();
+    return { playing, gone, ambienceTimer, back };
+  });
+  ok('the sound stops when the page is left',
+     away.playing.running && !away.gone.running && !away.ambienceTimer,
+     JSON.stringify(away.gone));
+  ok('and starts again, on the same scene, when she comes back',
+     away.back.running && away.back.cue === 'ridge', JSON.stringify(away.back));
+  const registered = await page.evaluate(() => {
+    /* the chapter's own context must be one of the ones hushAllAudio knows
+       about — every other chapter registers, this one never used to */
+    let seen = false;
+    const real = window.registerAudio;
+    return typeof window.hvSharedCtx === 'function' && !!window.hvSharedCtx();
+  });
+  ok('the chapter hands its context to the site', registered);
+
+  /* ---- the conversation cannot be clicked past ---- */
+  const noskip = await page.evaluate(() => {
+    hvNode = 'there_quiet'; hvHistory = []; hvRender(false);
+    hvArrive = 0; hvPaintFrame(1.6, 0.016);
+    const first = hvVoiceI;
+    const c = document.getElementById('hv-canvas');
+    const r = c.getBoundingClientRect();
+    for (let i = 0; i < 5; i++) {
+      c.dispatchEvent(new MouseEvent('click', { bubbles: true,
+        clientX: r.left + r.width * 0.5, clientY: r.top + r.height * 0.4 }));
+    }
+    hvPaintFrame(1.7, 0.016);
+    return { first, after: hvVoiceI, gone: typeof window.hvVoiceSkip };
+  });
+  ok('clicking no longer skips a line', noskip.after === noskip.first,
+     'line ' + noskip.first + ' -> ' + noskip.after);
+  ok('and the skip is gone rather than merely unbound', noskip.gone === 'undefined');
+
+  /* ---- what he gives her at the end ---- */
+  const present = await page.evaluate(() => {
+    const out = {};
+    ['heart', 'flower'].forEach((k) => {
+      hvKeepsake = k;
+      hvAskFrom = 'ask';
+      hvNode = 'gift'; hvHistory = []; hvRender(false);
+      const said = document.getElementById('hv-note').textContent;
+      out[k] = { mentions: said.indexOf(k) >= 0, lines: hvVoicesOf(HV.gift).length,
+                 draws: !!HV.gift.giveKeepsake };
+    });
+    hvKeepsake = 'heart'; hvAskFrom = 'back_ask';
+    hvGo('__yay');
+    out.backEnding = hvNode;
+    hvAskFrom = 'ask'; hvNode = 'gift'; hvGo('__yay');
+    out.leftEnding = hvNode;
+    return out;
+  });
+  ok('he gives her the heart when she chose the heart',
+     present.heart.mentions && present.heart.lines >= 3 && present.heart.draws);
+  ok('and the flower when she chose the flower',
+     present.flower.mentions && present.flower.lines >= 3);
+  ok('the gift hands on to the right ending for each path',
+     present.leftEnding === 'yay' && present.backEnding === 'back_yay',
+     present.leftEnding + ' / ' + present.backEnding);
+
+  /* ---- and there is a way back to the very start ---- */
+  const restart = await page.evaluate(async () => {
+    hvNode = 'back_windfall'; hvHistory = ['ways', 'back']; hvRender(false);
+    const chip = document.getElementById('hv-restart');
+    if (!chip) return { chip: false };
+    chip.click();
+    await new Promise(r => setTimeout(r, 80));
+    return { chip: true, node: hvNode, history: hvHistory.length };
+  });
+  ok('a chip beside back returns to the very beginning',
+     restart.chip && restart.node === 'title' && restart.history === 0,
+     JSON.stringify(restart));
 
   ok('no page errors', errors.length === 0, errors.join(' | '));
   console.log(out.join('\n'));

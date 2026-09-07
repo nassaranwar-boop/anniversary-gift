@@ -28,7 +28,7 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
          send her back to whichever closing question she is in, so it
          resolves to both real ones rather than being excused. */
       const outs = (n.choices || []).concat(n.cards || []);
-      const SENTINEL = { __ask: ['ask', 'back_ask'], __again: ['ways'] };
+      const SENTINEL = { __ask: ['ask', 'back_ask'], __again: ['ways'], __yay: ['yay', 'back_yay'] };
       out[k] = {
         to: outs.map(c => c.to)
           .reduce((a, t) => a.concat(SENTINEL[t] || [t]), []),

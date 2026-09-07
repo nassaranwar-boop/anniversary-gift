@@ -510,6 +510,11 @@ pixel bubble above whoever is speaking, hers edged in pink and his in blue so
 you never have to be told which is which. They are short on purpose. Nobody
 in this valley makes speeches.
 
+**The conversation cannot be skipped.** A tap used to jump to the next
+line, with a chevron in the bubble advertising it. Taken out on purpose:
+the two of them talking is the chapter, not an obstacle in front of it,
+and a skip button turns every line into something to get past.
+
 **The choices wait for the conversation.** They used to appear the instant a
 scene opened, sitting there while the two of them were still talking — so the
 fastest way through the chapter was to press the button before anybody had
@@ -619,6 +624,63 @@ it found:
   what made caching possible, so painted scenes are kept — a revisit is a blit.
 
 Worst scene now: the orchard, at 1.5ms, or 9% of a frame.
+
+### The gift
+
+The heart or the flower is the very first tap of the chapter, and for a
+long time it did almost nothing: remembered, mentioned once at the gate,
+listed at the end. It is a present now. After she says yes, he takes out
+the one she picked — he has been carrying it since the beginning, which,
+since she picked it at the beginning, is exactly true. The `gift` node is
+shared between the two paths like the nudge is, so the words exist once;
+`sayOfKeepsake` and `voicesOfKeepsake` choose which of them it is, and
+`__yay` hands on to whichever ending she is standing in.
+
+### The bears
+
+Two poses of one animal, from one `bearBody` — they were two separate
+blocks of drawing code that were meant to look like the same bear and had
+already drifted. Three faults, all of them only visible magnified, which
+is what `tools/bearzoom.js` is for:
+
+- **The light along the back was a straight bar**, so it read as a plank
+  lying on the animal. Then it was a computed curve, which ran *through*
+  the body because the blobs sit above the curve. It is found by scanning
+  for the topmost drawn pixel of each column now, so it is on the edge by
+  construction rather than by arithmetic that has to agree with the art.
+- **Two legs, not four** — the pairs were wide enough to merge into
+  columns. The gaps you can see through are what make it stand up.
+- **Do not fill the belly.** An ellipse slung between the legs closes
+  those gaps, and the moment they go it stops being an animal and becomes
+  a pile of rocks.
+
+Scale is the other half. The one in the wood was drawn nearly as tall as
+the trunk beside it, so the tree read as a twig; he is at that tree's
+depth now, about a third of it. And the one in the orchard **grows as she
+creeps up the row** — scaled by how far along she is, feet pinned to its
+own ground line, so it gets bigger the way a thing you are walking toward
+does.
+
+Neither is composited over the scene any more. The one in the wood is
+painted *into* it, before the trees, through `opts.lurker` — so the
+wood's own trunks and crowns are genuinely in front of him and nothing
+has to be invented to hide the joins. He is static because the writing
+says he stops moving, which is what makes that possible.
+
+### Leaving the page
+
+Every other chapter hands its AudioContext to `registerAudio`, and
+`hushAllAudio` suspends the lot when the tab is hidden or the window
+loses focus. This one never did — the only thing registered was the
+site's ambient pad, whose getter returns null unless that pad was built,
+and it is off by default. So the air and the score played on a context
+nobody was ever going to suspend.
+
+Suspending it is necessary and not sufficient: the score's scheduler and
+the ambience's bird-and-cricket chain are timers, and timers keep running
+in a hidden tab. They would go on posting notes onto a stopped clock and
+hand the backlog over at once on the way back. Both stop on the way out
+and are re-anchored on the way in.
 
 ### The air
 

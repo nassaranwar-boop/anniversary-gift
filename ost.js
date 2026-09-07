@@ -491,6 +491,7 @@
   var bar = 0, nextBarAt = 0, timer = null;
   var themeCursor = 0;          // for the bridge, which is handed the theme note by note
   var duckUntil = 0, duckAmt = 1;
+var wasPlaying = false;     // was there a cue running when the page was left
 
   function beatLen() { return 60 / cue.bpm; }
 
@@ -609,9 +610,39 @@
       } catch (e) { /* the score is a bonus, never a blocker */ }
     },
 
+    /* LEAVING THE PAGE, AND COMING BACK TO IT.
+
+       Suspending the AudioContext is not enough on its own. The
+       scheduler is a setInterval, and setInterval keeps running in a
+       hidden tab: it would go on posting bars onto a clock that has
+       stopped, and then hand the whole backlog to the speakers at once
+       the moment you came back. So the interval stops too, and the bar
+       clock is re-anchored to whatever the audio clock says on return
+       rather than to where it was when you left. */
+    hush: function () {
+      if (timer) { clearInterval(timer); timer = null; }
+      wasPlaying = !!cue;
+      if (master && ctx) {
+        try { master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.08); } catch (e) {}
+      }
+    },
+
+    resume: function () {
+      if (!on || !wasPlaying || !cue || !built) return;
+      try {
+        if (ctx.state !== "running") {
+          if (window.wakeAudio) window.wakeAudio(ctx); else ctx.resume();
+        }
+        bar = 0;                       // start the loop again from its top
+        nextBarAt = ctx.currentTime + 0.15;
+        master.gain.setTargetAtTime((cue.gain || 0.7) * 0.36, ctx.currentTime, 0.5);
+        if (!timer) timer = setInterval(tick, 60);
+      } catch (e) {}
+    },
+
     stop: function () {
       if (timer) { clearInterval(timer); timer = null; }
-      cue = null; cueName = null;
+      cue = null; cueName = null; wasPlaying = false;
       if (master && ctx) {
         try { master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.4); } catch (e) {}
       }
