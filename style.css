@@ -2587,6 +2587,102 @@ img{-webkit-user-drag:none; user-select:none;}
 @media (prefers-reduced-motion: reduce){ .hv-tagline{animation:none;} }
 
 /* =========================================================
+   THE WALL BEHIND THE CARDS
+
+   The hub and the keepsake are the two screens that are nothing but a
+   list of things to press, and they were sitting on flat parchment
+   looking like one. This gives them a room to be in: two slow warm
+   lights drifting behind everything, and a scatter of the site's own
+   pixel stickers bobbing at the edges like things taped to a wall.
+
+   It is all CSS. No canvas, no timer, no work per frame that anything
+   else has to share — these two screens are the only places it exists,
+   and it lies behind the content with pointer-events off, so nothing
+   here can ever be in the way of a card or a button.
+   ========================================================= */
+.page-deco{
+  position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0;
+}
+/* the content sits ON the wall, not under it */
+#screen-hub .hub-wrap, #screen-keepsake .ks-wrap{ position:relative; z-index:1; }
+
+/* two soft lights, drifting on their own long cycles so they never quite
+   repeat the same arrangement twice */
+.deco-glow{
+  position:absolute; width:62vmin; height:62vmin; border-radius:50%;
+  filter:blur(28px); opacity:.5;
+}
+.deco-glow-a{
+  left:-14vmin; top:-10vmin;
+  background:radial-gradient(circle, rgba(255,190,205,.85), rgba(255,190,205,0) 68%);
+  animation:decoDriftA 26s ease-in-out infinite;
+}
+.deco-glow-b{
+  right:-16vmin; bottom:-12vmin;
+  background:radial-gradient(circle, rgba(255,226,170,.8), rgba(255,226,170,0) 68%);
+  animation:decoDriftB 34s ease-in-out infinite;
+}
+@keyframes decoDriftA{
+  0%,100%{transform:translate(0,0) scale(1);}
+  50%    {transform:translate(7vmin,5vmin) scale(1.12);}
+}
+@keyframes decoDriftB{
+  0%,100%{transform:translate(0,0) scale(1.06);}
+  50%    {transform:translate(-6vmin,-6vmin) scale(.94);}
+}
+
+/* the stickers. Each one bobs and rocks on its own clock; the odd ones
+   turn the other way, so the wall never looks like a pattern. */
+.deco-st{
+  position:absolute; display:block; color:#c58a5e; opacity:.30;
+  animation:decoBob 7s ease-in-out infinite;
+  filter:drop-shadow(0 2px 3px rgba(120,70,30,.18));
+}
+/* EVERY GLYPH IN THAT SHEET CARRIES ITS OWN FILL, and a <use> will not let
+   a stylesheet reach inside and change it. So the colour is chosen by
+   picking the sticker, not by setting a property: the moon, the feather,
+   the shell and the bloom are all but white and read as smudges on
+   parchment, so none of them is on this wall. The heart, the star, the
+   crown, the fox, the ribbon, the acorn and the camera all have a warm
+   colour of their own already. */
+.deco-st .gl{ width:100%; height:100%; display:block; }
+.deco-st:nth-child(odd){ animation-name:decoBobBack; }
+
+@keyframes decoBob{
+  0%,100%{transform:translateY(0) rotate(-8deg);}
+  50%    {transform:translateY(-9px) rotate(6deg);}
+}
+@keyframes decoBobBack{
+  0%,100%{transform:translateY(-4px) rotate(9deg);}
+  50%    {transform:translateY(6px) rotate(-7deg);}
+}
+
+/* Placed by hand rather than by a loop: the corners want the big ones and
+   the middle of the edges wants the small ones, and the top strip has to
+   stay clear of the title. */
+.deco-st1{ left:5%;  top:16%;  width:34px; height:34px; animation-duration:8s; opacity:.42; }
+.deco-st2{ left:12%; top:62%;  width:22px; height:22px; animation-duration:6.4s; animation-delay:-2s; opacity:.40; }
+.deco-st3{ left:3%;  bottom:12%; width:38px; height:38px; animation-duration:9.5s; animation-delay:-4s; opacity:.34; }
+.deco-st4{ right:6%; top:14%;  width:30px; height:30px; animation-duration:7.6s; animation-delay:-1s; opacity:.40; }
+.deco-st5{ right:4%; top:48%;  width:26px; height:26px; animation-duration:8.8s; animation-delay:-5s; opacity:.36; }
+.deco-st6{ right:9%; bottom:10%; width:34px; height:34px; animation-duration:7s;  animation-delay:-3s; opacity:.40; }
+.deco-st7{ left:26%; bottom:6%; width:20px; height:20px; animation-duration:6s;   animation-delay:-2.5s; opacity:.32; }
+.deco-st8{ right:28%; top:8%;  width:20px; height:20px; animation-duration:6.8s; animation-delay:-4.5s; opacity:.32; }
+.deco-st9{ left:44%; bottom:4%; width:24px; height:24px; animation-duration:9s;   animation-delay:-1.5s; opacity:.28; }
+
+/* Narrow screens: the edges are where the cards are, so the stickers that
+   sit closest to the middle stand down rather than sit under a chapter. */
+@media (max-width: 620px){
+  .deco-st{ opacity:.22; }
+  .deco-st2, .deco-st5, .deco-st7, .deco-st8, .deco-st9{ display:none; }
+  .deco-glow{ filter:blur(22px); opacity:.42; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .deco-glow, .deco-st{ animation:none; }
+}
+
+/* =========================================================
    HUB — choose your adventure
    ========================================================= */
 /* Cards do not fit a phone once there are enough of them. The column came
@@ -2690,8 +2786,12 @@ img{-webkit-user-drag:none; user-select:none;}
 /* =========================================================
    KEEPSAKE — scrapbook recap
    ========================================================= */
+/* 660px fitted five cards and broke the sixth onto a row of its own, with
+   the whole right half of the board empty beside it. Six pages, one shelf,
+   wherever there is room for it; below that they wrap in pairs and threes
+   the way they always did. */
 .ks-wrap{
-  width:min(94vw,660px); margin:0 auto; display:flex; flex-direction:column;
+  width:min(94vw,840px); margin:0 auto; display:flex; flex-direction:column;
   align-items:center; gap:8px; padding:16px 12px; max-height:100%; overflow-y:auto;
   overscroll-behavior:contain;
 }
@@ -2733,10 +2833,16 @@ img{-webkit-user-drag:none; user-select:none;}
   width:18px; height:auto; display:block;
   image-rendering:pixelated; image-rendering:crisp-edges;
 }
+/* The titles WRAP rather than truncate. "Ouissy at the Ap…" under a
+   photograph of the chapter is a card that looks unfinished; two short
+   lines of handwriting under a polaroid is just how a polaroid is
+   labelled. The card grows a little to make room for the second line. */
+.ks-card{ padding-bottom:34px; }
 .ks-card .ks-cap{
-  position:absolute; left:0; right:0; bottom:4px; text-align:center;
-  font-family:'Caveat',cursive; font-size:13px; color:#6b4720;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 6px;
+  position:absolute; left:0; right:0; bottom:5px; text-align:center;
+  font-family:'Caveat',cursive; font-size:13px; line-height:1.12; color:#6b4720;
+  padding:0 5px; overflow:hidden;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
 }
 .ks-card .ks-tape{
   position:absolute; top:-7px; left:50%; transform:translateX(-50%) rotate(-3deg);
