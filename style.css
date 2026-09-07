@@ -745,16 +745,39 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 .btn-ancient{
-  background:linear-gradient(160deg,#d9b062,#8a611f); color:#2b1608; border:none; padding:11px 26px; border-radius:24px;
+  /* a little more gold and a little less olive: the old pair went dark
+     enough at the bottom to read brown next to the parchment */
+  background:linear-gradient(160deg,#eccb84,#9a6b21); color:#2b1608; border:none; padding:11px 26px; border-radius:24px;
   font-family:'Cinzel',serif; font-weight:600; font-size:13px; letter-spacing:.5px; cursor:pointer;
-  box-shadow:0 4px 0 #5c3f10, 0 10px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.4);
+  /* THE SHADOW UNDER A GOLD BUTTON ON PARCHMENT.
+     It used to be a 4px slab of #5c3f10 with a black 35% cloud under it.
+     Two things were wrong with that. A hard lip that deep reads as a
+     block sitting on the page rather than as a button raised off it —
+     you see the lip before you see the button. And the cloud was
+     NEUTRAL BLACK: on a warm pink page every neutral shadow turns grey
+     and dirty, because nothing else in the picture is grey. The lip is
+     now thin and warm, and the ambient shadow is the colour of the ink
+     everything else on this page is drawn in. */
+  box-shadow:
+    0 2px 0 rgba(92,63,16,.5),
+    0 5px 12px rgba(122,72,26,.28),
+    inset 0 1px 0 rgba(255,255,255,.45),
+    inset 0 -2px 0 rgba(92,63,16,.16);
   transition:transform .1s ease, box-shadow .1s ease;
   /* 11px of padding around 13px of Cinzel comes to 38px tall, which is
      under the 44 a thumb wants. The padding is what the design asked for,
      so the floor is a minimum rather than more padding. */
   min-height:44px;
 }
-.btn-ancient:active{transform:translateY(4px); box-shadow:0 1px 0 #5c3f10, 0 4px 10px rgba(0,0,0,.35);}
+/* pressed: it travels the height of its own lip and no further, so the
+   button lands on the page instead of sinking into it */
+.btn-ancient:active{
+  transform:translateY(2px);
+  box-shadow:
+    0 0 0 rgba(92,63,16,.5),
+    0 2px 6px rgba(122,72,26,.24),
+    inset 0 2px 5px rgba(92,63,16,.22);
+}
 
 /* ---- Letter (on real scroll art) ---- */
 .letter-scroll{
