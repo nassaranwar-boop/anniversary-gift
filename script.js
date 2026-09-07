@@ -1390,6 +1390,167 @@ window.startApocalypseEnding = () => {
 };
 
 /* =========================================================
+   THE WALL — the painted half
+
+   The hub and the keepsake each carry a <div class="page-deco"> in the
+   markup with the stickers that belong to that screen, because those
+   differ. Everything else on the wall is the same on both and is built
+   here rather than written out twice: a hung string of lights, four
+   ink flourishes at the corners, and a drift of hearts.
+
+   All of it is inserted BEFORE the stickers, so it paints behind them,
+   and all of it is <span>/<svg> — the stickers are <i>, and they pick
+   which way they rock with :nth-of-type, so nothing added here can
+   disturb them.
+
+   None of it runs while a game does: an inactive .screen is display:none
+   and a display:none subtree animates nothing at all.
+   ========================================================= */
+(function paintWalls() {
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const svg = (tag, attrs) => {
+    const n = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  };
+  const box = (cls, css) => {
+    const n = document.createElement("span");
+    n.className = cls;
+    if (css) n.setAttribute("style", css);
+    return n;
+  };
+
+  /* THE STRING OF LIGHTS. Three swags of wire pinned across the top with
+     a bulb hanging under each dip. The wire is one path in a box 1000
+     wide by 96 tall stretched to the width of the screen — the stroke is
+     told not to stretch with it, or a wide window would draw it as a
+     smear — and the bulbs are placed on the very same curve in percent,
+     so they sit ON the wire at every width instead of near it. */
+  const WIRE_TOP = 7, SAG = 27;
+  /* One swag per 380 or so of width, never fewer than three: a fixed
+     count draws a pretty string on a phone and three enormous washing
+     lines on a laptop, with the bulbs a hand's width apart. */
+  const swagCount = () => Math.max(3, Math.round(window.innerWidth / 380));
+  function lights(swags) {
+    const wireY = (t) => WIRE_TOP + SAG * Math.sin(Math.PI * ((t * swags) % 1));
+    const wrap = box("deco-string");
+    wrap.dataset.swags = swags;
+    const s = svg("svg", { viewBox: "0 0 1000 96", preserveAspectRatio: "none" });
+    let d = "";
+    for (let i = 0; i <= 120; i++) {
+      const t = i / 120;
+      d += (i ? "L" : "M") + (t * 1000).toFixed(1) + " " + wireY(t).toFixed(2) + " ";
+    }
+    const wire = svg("path", { d: d.trim(), class: "deco-wire" });
+    wire.setAttribute("vector-effect", "non-scaling-stroke");
+    s.appendChild(wire);
+    wrap.appendChild(s);
+
+    /* three to a dip, so the light reads as a string rather than as a
+       row of lamps */
+    const N = swags * 3;
+    for (let i = 0; i < N; i++) {
+      const t = (i + 0.5) / N;
+      const b = box(
+        "deco-bulb deco-bulb-" + (i % 3),
+        "left:" + (t * 100).toFixed(2) + "%; top:" + wireY(t).toFixed(1) + "px;" +
+          "animation-delay:" + (-i * 0.73).toFixed(2) + "s"
+      );
+      wrap.appendChild(b);
+    }
+    return wrap;
+  }
+
+  /* THE CORNERS. Two arcs and two dots, drawn once each time the screen
+     opens: the stroke starts fully dashed off and is walked back on, so
+     the flourish appears to be inked in rather than to switch on. */
+  function corner(where) {
+    const wrap = box("deco-corner deco-corner-" + where);
+    const s = svg("svg", { viewBox: "0 0 52 52" });
+    /* the sweep, and a tighter one inside it */
+    s.appendChild(svg("path", { class: "deco-ink deco-ink-1", d: "M0 46 C0 20 20 0 46 0" }));
+    s.appendChild(svg("path", { class: "deco-ink deco-ink-2", d: "M0 32 C0 14 14 0 32 0" }));
+    /* a spiral finishing each end, one turned the other way */
+    s.appendChild(svg("path", {
+      class: "deco-ink deco-ink-3",
+      d: "M46 0 c7 0 10.2 4 8.6 8 c-1.2 3.4 -6 3.4 -6.6 0 c-.4 -2.2 1.6 -3.6 3.4 -2.6",
+    }));
+    s.appendChild(svg("path", {
+      class: "deco-ink deco-ink-3",
+      d: "M0 46 c0 7 4 10.2 8 8.6 c3.4 -1.2 3.4 -6 0 -6.6 c-2.2 -.4 -3.6 1.6 -2.6 3.4",
+    }));
+    /* and the little gem the two arcs are bent around */
+    s.appendChild(svg("path", { class: "deco-dot", d: "M9 4.4 L13.6 9 L9 13.6 L4.4 9 Z" }));
+    wrap.appendChild(s);
+    return wrap;
+  }
+
+  /* THE DRIFT. Hearts and stars, small and faint, rising the height of
+     the screen on their own clocks and swaying as they go. Every one
+     starts with a negative delay of its own, so on the very first frame
+     the air is already full of them rather than filling up over the
+     first minute. */
+  const DRIFT = [
+    /* x%, size, seconds, delay, glyph, sway px */
+    [8, 15, 34, -3, "heart", 26], [21, 11, 27, -14, "star", -18],
+    [33, 17, 41, -22, "heart", 32], [45, 12, 31, -7, "star", -24],
+    [57, 14, 37, -29, "heart", 20], [66, 11, 25, -17, "star", 28],
+    [77, 16, 44, -35, "heart", -30], [88, 12, 30, -11, "star", 22],
+    [95, 14, 39, -25, "heart", -20], [15, 10, 23, -19, "star", 16],
+    [39, 13, 46, -40, "heart", -26], [72, 10, 29, -5, "star", -14],
+  ];
+  function drift() {
+    const wrap = box("deco-drift");
+    for (const [x, size, dur, delay, glyph, sway] of DRIFT) {
+      const p = box(
+        "deco-petal",
+        "left:" + x + "%; width:" + size + "px; height:" + size + "px;" +
+          "animation-duration:" + dur + "s; animation-delay:" + delay + "s;" +
+          "--sway:" + sway + "px"
+      );
+      const s = svg("svg", { class: "gl" });
+      s.appendChild(svg("use", { href: "#ic-px-" + glyph }));
+      p.appendChild(s);
+      wrap.appendChild(p);
+    }
+    return wrap;
+  }
+
+  document.querySelectorAll(".page-deco").forEach((deco) => {
+    /* in front of the washes, behind the vignette and the stickers: the
+       corners of the page darken over the lights the way they darken
+       over everything else, and a sticker is a thing ON the wall. */
+    const at = deco.querySelector(".deco-vig") || null;
+    const parts = [
+      box("deco-lattice"), /* the printed diamonds under everything */
+      box("deco-fox"),     /* the age spots in the paper */
+      box("deco-rays"),
+      lights(swagCount()),
+      drift(),
+      box("deco-frame"),   /* the ruled edge of the page */
+      corner("tl"), corner("tr"), corner("br"), corner("bl"),
+    ];
+    for (const p of parts) deco.insertBefore(p, at);
+  });
+
+  /* Turning an iPad sideways halves the number of dips that fit, and a
+     string strung for a portrait screen looks stretched across a
+     landscape one. It is restrung only when the count actually changes,
+     so a keyboard opening or a toolbar collapsing rebuilds nothing. */
+  let rehangSoon = 0;
+  addEventListener("resize", () => {
+    clearTimeout(rehangSoon);
+    rehangSoon = setTimeout(() => {
+      const want = swagCount();
+      document.querySelectorAll(".deco-string").forEach((old) => {
+        if (+old.dataset.swags === want) return;
+        old.replaceWith(lights(want));
+      });
+    }, 260);
+  });
+})();
+
+/* =========================================================
    HUB — choose your adventure
    Two chapters, either order. Completion is remembered so she can
    put the phone down and come back to it.
