@@ -1249,7 +1249,13 @@ img{-webkit-user-drag:none; user-select:none;}
   background:var(--mount);
 }
 .sb-photo-inner{position:relative; overflow:hidden; background:#ded7c6;}
-.sb-photo-inner img{width:100%; height:100%; object-fit:cover; display:block;}
+.sb-photo-inner img{
+  width:100%; height:100%; object-fit:cover; display:block;
+  /* the darkroom grade for prints that have to agree with the ones on the
+     facing page — see PHOTO_GRADE in scrapbook.js. Unset for every other
+     photograph in the book, which is how it should stay. */
+  filter:var(--ph-grade, none);
+}
 
 /* the mount's lip, over the print; and the print's own sheen */
 .sb-photo-inner::after{
