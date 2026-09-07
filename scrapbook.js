@@ -3126,7 +3126,7 @@ window.Scrapbook = (function () {
   var MAP_TEX = null;
   /* half the pin's minimum width, and its full minimum height: the two
      distances a centred, bottom-anchored pin can hang outside its map */
-  var PIN_EDGE = 23, PIN_TOP = 47;
+  var PIN_EDGE = 19, PIN_TOP = 40;
 
   function buildMapCard(big) {
     if (!MAP_TEX) MAP_TEX = marrakechMap(800, 600);
@@ -5414,45 +5414,18 @@ window.Scrapbook = (function () {
     screen.insertBefore(t, screen.firstChild);
   }
 
-  /* The props sit out at the margins, clear of where the book lands, and
-     they lie flat -- a table is seen from above, so nothing here bobs or
-     drifts the way the stickers on the wall do. That is the whole
-     difference between the two screens said in one rule.
+  /* NO THINGS ON THE TABLE.
 
-     Arranged, not sprinkled: seven things spaced evenly around a border
-     reads as a pattern, the same seven in three little groups reads as a
-     table somebody has been working at. Top left is where the last print
-     came out of its mounts, bottom left is where the pencil was put down,
-     and the right is what was cleared aside to make room for the book. */
-  function buildTableProps() {
-    var t = document.querySelector("#screen-scrapbook .sb-table");
-    if (!t || t.querySelector(".sb-prop")) return;
-    var edge = t.querySelector(".sb-table-edge");
+     There were seven -- a paperclip, two photo corners, a pencil, a paper
+     star, pressed flowers and the ring a cup left -- arranged in three
+     groups round the margins. He does not want them, and he is right: the
+     book is the thing on this screen, and a scattering of props round it is
+     a second thing competing with it. The cloth, the runner and the shadow
+     under the book are the table. That is enough of one.
 
-    var pencil = pencilArt(320), clip = clipArt(150), ring = cupRing(260),
-        corner = looseCorner(160);
-    /* An open spread runs from about 15% to about 85% of the screen, so
-       everything here lives in the fourteen per cent outside that. The
-       layer sits under the book, which is where things on a table go when
-       a book is laid over them -- but a prop half under the book reads as
-       arranged only if the half that shows is whole. Anything the edge of
-       the board would cut through the middle is moved out. */
-    [
-      /* top left -- a clip, and the corner a print was lifted out of */
-      ["sb-prop-clip",    clip,   { left: "2.4%",  top: "13%",  width: "4.2%", "--rot": "24deg" }],
-      ["sb-prop-corner1", corner, { left: "8.4%",  top: "24%",  width: "3.6%", "--rot": "14deg" }],
-      /* bottom left -- where the pencil was put down, and a paper star */
-      ["sb-prop-pencil",  pencil, { left: "0.4%",  top: "70%",  width: "13%",  "--rot": "-13deg" }],
-      ["sb-prop-star",    STICK.starS || "",   { left: "9%",    top: "85%", width: "3.2%", "--rot": "-8deg" }],
-      /* right -- what was cleared aside, and the cup that stood there */
-      ["sb-prop-petals",  STICK.flowers || "", { right: "1.4%", top: "43%", width: "10%",  "--rot": "12deg" }],
-      ["sb-prop-ring",    ring,   { right: "2.4%", top: "10%",  width: "8.5%", "--rot": "0deg" }],
-      ["sb-prop-corner2", corner, { right: "8%",   top: "70%",  width: "3.4%", "--rot": "-128deg" }],
-    ].forEach(function (p) {
-      if (!p[1]) return;
-      t.insertBefore(tableProp(p[0], p[1], p[2]), edge);
-    });
-  }
+     buildTableProps is kept as a no-op rather than deleted so the build job
+     that calls it does not have to know it went. */
+  function buildTableProps() {}
 
   var wired = false;
   function wire() {

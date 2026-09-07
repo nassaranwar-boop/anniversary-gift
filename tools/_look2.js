@@ -35,7 +35,7 @@ const fs = require('fs');
     await shot('spread-'+v);
   }
   await p.evaluate(()=>{const x=document.getElementById('sb-extras-btn'); if(x) x.click();});
-  await p.waitForTimeout(2600);
+  await p.waitForTimeout(6000);
   await shot('drawer');
   console.log('errors:', errs.length? errs.slice(0,3): 'none');
   await b.close();

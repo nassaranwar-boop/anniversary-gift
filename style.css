@@ -238,7 +238,22 @@ summary,
 html{
   height:var(--app-h); max-height:var(--app-h);
   overflow:hidden; overscroll-behavior:none;
-  background:#f7ddd4;
+  /* THE ONLY PLACE THIS COLOUR IS EVER SEEN IS BESIDE THE NOTCH.
+
+     Every screen on this site is position:fixed, left:0, right:0 and paints
+     its own background, so the page ground behind them is covered on a
+     laptop, on an iPad and on a phone held upright -- one hundred per cent
+     of the time. The one exception is a phone on its side, where iOS keeps
+     a strip down whichever edge the camera is on and paints it in this
+     colour. It was #f7ddd4, so those strips came out bright pink beside a
+     full-bleed game.
+
+     I first put the dark behind a landscape media query, and on his phone
+     it never matched -- the strips stayed pink. There is no need for the
+     query: a colour that is covered everywhere else can just be the right
+     colour for the one place it shows. Nothing on any other device changes,
+     because on any other device this is never visible. */
+  background:#150f13;
 }
 
 body{
@@ -2118,8 +2133,17 @@ img{-webkit-user-drag:none; user-select:none;}
   /* min-width alone left it at 40px: the aspect ratio was deriving the width
      back from a height the row had already decided, so the floor has to be
      stated on both axes. */
-  position:absolute; z-index:3; width:10%; aspect-ratio:1/1.12;
-  min-width:44px; min-height:46px;
+  /* A PIN IS A PHOTOGRAPH ON A MAP AND HAS TO LOOK LIKE ONE.
+
+     I gave them a 44px floor so a thumb could hit them, and on a map this
+     small that floor is a third of the picture -- they came out bigger than
+     the streets they mark and hung over the frame. The pin goes back to
+     being sized by the map, with a floor low enough to stay inside it, and
+     the thumb gets its target from an invisible box around the pin instead
+     -- the same way the chips in The Long Way Round do it. The picture
+     stays small; the thing you press does not. */
+  position:absolute; z-index:3; width:11%; aspect-ratio:1/1.12;
+  min-width:26px; min-height:28px; max-width:38px;
   transform:translate(-50%,-100%);
   padding:2px; cursor:pointer; border:none; border-radius:4px;
   background:#fdfdfa; box-shadow:0 4px 9px rgba(20,24,20,.45), 0 0 0 1px rgba(90,94,88,.25);
@@ -2143,6 +2167,13 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .sb-map-pin-note{font-size:9px; color:#ffe6ef; line-height:1;}
 .sb-map-pin.is-note::after{border-top-color:#7a2f48;}
+@media (hover:none){
+  .sb-map-pin::before{
+    content:""; position:absolute; left:50%; top:50%;
+    width:max(100%, 44px); height:max(100%, 44px);
+    transform:translate(-50%,-50%);
+  }
+}
 .sb-map-pin::after{
   content:""; position:absolute; left:50%; bottom:-4px; transform:translateX(-50%);
   border:4px solid transparent; border-top-color:#fdfdfa;
@@ -2575,11 +2606,6 @@ img{-webkit-user-drag:none; user-select:none;}
   .sb-map-hint{display:none;}
   .sb-map-zoom{gap:4px;}
   .sb-map-zoom button{width:34px; height:34px; font-size:15px;}
-  /* The pins carry a 44px floor so a thumb can hit them, and on a map this
-     small that floor is most of the picture -- they hung over the edges of
-     it in his screenshot. Here the map is the small one, so the pin comes
-     down with it and the clamp keeps the whole of it inside the frame. */
-  .sb-map-pin{min-width:30px; min-height:32px;}
 
   .sb-vid-title{font-size:12.5px;}
   .sb-vid-artist{font-size:9.5px;}
@@ -4301,6 +4327,41 @@ img{-webkit-user-drag:none; user-select:none;}
 @media (hover:hover) and (pointer:fine){
   .so-pad{display:none;}
   .so-stage{width:min(100%, calc(var(--app-h) * var(--so-arn, 1.7778)));}
+}
+
+/* AN IPAD IS HELD, NOT PUT DOWN.
+
+   On a tablet the pad sat in the flow under the stage, stretched to the two
+   far corners of a 1194px-wide screen with a band of empty dark between
+   them. That is a keyboard layout, not a held-device layout: her thumbs
+   reach a few centimetres in from each edge and nowhere near the bottom
+   corners, which is why she kept pressing the wrong thing.
+
+   The clusters come in from the edges and up off the floor, to where the
+   thumbs of two hands holding a tablet actually rest, and the keys grow --
+   a tablet has the room for a bigger target and a bigger target is a more
+   accurate one. It floats over the foot of the stage the way it already
+   does on a phone held sideways, so the game keeps its whole height. */
+@media (pointer:coarse) and (min-width:700px) and (min-height:561px){
+  .so-pad{
+    position:absolute; left:0; right:0; bottom:0; z-index:6;
+    max-width:none; margin:0; pointer-events:none;
+    padding:0 clamp(24px, 7vw, 90px) clamp(20px, 4.5vh, 56px);
+  }
+  .so-pad-side{pointer-events:auto; gap:16px;}
+  .so-key{
+    width:clamp(62px, 8.4vw, 86px); height:clamp(62px, 8.4vw, 86px);
+    border-radius:20px; font-size:clamp(20px, 2.6vw, 28px);
+    opacity:.94;
+  }
+  .so-key-jump{
+    width:clamp(78px, 10.6vw, 108px); height:clamp(78px, 10.6vw, 108px);
+    font-size:clamp(24px, 3.2vw, 34px);
+  }
+  .so-key-duck{
+    width:clamp(56px, 7.4vw, 76px); height:clamp(56px, 7.4vw, 76px);
+    font-size:clamp(18px, 2.3vw, 24px);
+  }
 }
 /* Portrait phones: a 16:9 game on a tall screen is letterboxed whatever you
    do, so the stage is centred in the space above the pad rather than left
@@ -6638,20 +6699,6 @@ img{-webkit-user-drag:none; user-select:none;}
    fixed 16:9 stage. The buttons keep their height and the space between
    them gives it up, which is the right way round: a gap is easier to lose
    than a target. */
-/* THE STRIPS DOWN THE SIDES ARE NOT PINK.
-
-   A phone held sideways keeps a safe-area inset down whichever edge the
-   camera is on, and the page shows through it. That page is #f7ddd4, the
-   pale pink the site is built on, so the inset read as two bright strips
-   beside a game -- worse than a black bar, because it looks like the page
-   is broken rather than like the screen is wide. Behind a full-bleed stage
-   the right colour for that strip is not a colour at all: it is the dark
-   the eye reads as "outside the picture". Upright, and on every laptop and
-   iPad, the page stays the pink it has always been. */
-@media (orientation:landscape) and (max-height:560px){
-  html, body{background:#150f13;}
-}
-
 /* =========================================================
    A PHONE HELD SIDEWAYS IS A SMALL IPAD, NOT A DIFFERENT DEVICE
 
