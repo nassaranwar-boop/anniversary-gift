@@ -2019,27 +2019,56 @@ window.Scrapbook = (function () {
 
   /* Try assets/photo-n.jpg, then the other extensions, then give up and
      leave the numbered frame showing. */
-  function loadPhotoInto(host, mem, onEmpty) {
+  /* A PRINT ON A PAGE AND A PHOTOGRAPH IN THE LIGHTBOX ARE NOT THE SAME FILE.
+
+     Measured on real devices (tools/_pxsize.js), the largest a print is ever
+     drawn in this book is 537 device pixels on its long edge -- an iPhone at
+     DPR 3, the biggest photograph on the widest spread. The files being sent
+     for that ran to 2000px and 723KB, 8.2MB across the whole book, and every
+     byte over what is actually drawn is time she spends looking at an empty
+     frame.
+
+     So tools/img/variants.py writes a second copy of each photograph at 760px
+     on the long edge, and that is what the pages load: 1.8MB instead of
+     8.2MB, at a size no screen here can tell apart from the original. The
+     full file is still there and still perfect, and the lightbox -- the one
+     place a photograph is shown large, one at a time, on demand -- is the
+     only thing that asks for it. */
+  function photoURL(n, ext, full) {
+    return "assets/photo-" + n + (full ? "" : ".page") + "." + ext;
+  }
+
+  function loadPhotoInto(host, mem, onEmpty, full, eager) {
     var img = document.createElement("img");
     img.alt = mem.title || ("photo " + mem.n);
-    img.loading = "lazy";
-    img.decoding = "async";
+    /* Lazy is right for a print on a spread four pages away and wrong for
+       the one thing on screen: the lightbox is a modal, nothing in it is
+       below the fold, and deferring it is a spinner she watches for no
+       reason. */
+    img.loading = (full || eager) ? "eager" : "lazy";
+    img.decoding = (full || eager) ? "sync" : "async";
 
     if (mem.src) {
       img.onerror = function () { img.remove(); onEmpty(); };
       img.src = mem.src;
       host.appendChild(img);
-      return;
+      return img;
     }
 
-    var i = 0;
+    /* Walk the encodings, and if every page-sized one is missing fall back
+       to the full file rather than showing an empty frame: a photograph
+       dropped into assets/ by hand has no page copy until the tool is run
+       over it, and it should still appear. */
+    var i = 0, onFull = !!full;
     img.onerror = function () {
       i++;
-      if (i < PHOTO_EXT.length) { img.src = "assets/photo-" + mem.n + "." + PHOTO_EXT[i]; }
-      else { img.remove(); onEmpty(); }
+      if (i < PHOTO_EXT.length) { img.src = photoURL(mem.n, PHOTO_EXT[i], onFull); return; }
+      if (!onFull) { onFull = true; i = 0; img.src = photoURL(mem.n, PHOTO_EXT[0], true); return; }
+      img.remove(); onEmpty();
     };
-    img.src = "assets/photo-" + mem.n + "." + PHOTO_EXT[0];
+    img.src = photoURL(mem.n, PHOTO_EXT[0], onFull);
     host.appendChild(img);
+    return img;
   }
 
   /* =======================================================================
@@ -3324,10 +3353,30 @@ window.Scrapbook = (function () {
     if (!box) return;
     var frame = box.querySelector(".sb-lb-frame");
     frame.innerHTML = "";
-    loadPhotoInto(frame, mem, function () {
+    /* THE ENLARGEMENT OPENS INSTANTLY AND THEN SHARPENS.
+
+       The page-sized copy is already in the cache -- she is looking at it,
+       that is what she tapped -- so it goes up first and the plate is never
+       empty. The full file is fetched behind it and swapped in the moment
+       it has decoded, which on a photograph she is already looking at is a
+       change in sharpness, not a load. If it never arrives, the small one
+       stays and nothing looks broken. */
+    var shown = loadPhotoInto(frame, mem, function () {
       frame.innerHTML = '<div class="sb-lb-empty"><span class="sb-slot-no">' +
         mem.n + '</span><span class="sb-slot-word">photo</span></div>';
-    });
+    }, false, true);
+    if (shown && !mem.src) {
+      var want = "assets/photo-" + mem.n + "." + PHOTO_EXT[0];
+      var big = new Image();
+      big.decoding = "async";
+      big.onload = function () {
+        /* she may have closed it, or opened another one, in the meantime */
+        if (shown.parentNode === frame && box.classList.contains("on")) {
+          shown.src = big.src;
+        }
+      };
+      big.src = want;
+    }
     /* NO HEADING UNLESS THERE IS SOMETHING TO HEAD IT WITH.
 
        It used to print "Photo 4" in the display face over every picture,
@@ -3388,7 +3437,12 @@ window.Scrapbook = (function () {
   function ensureLinen(cb) {
     if (linenImg) { cb(); return; }
     linenImg = new Image();
-    linenImg.onload = cb;
+    /* The still layer is baked from this. If the first frame lands before
+       the linen has decoded it bakes the flat fallback colour instead and,
+       because the layer is only cut once, keeps it for the whole intro --
+       so the bake is thrown away here and taken again with the cloth in
+       it. */
+    linenImg.onload = function () { introStill = null; cb(); };
     linenImg.onerror = cb;
     linenImg.src = linenTex();
   }
@@ -3397,7 +3451,7 @@ window.Scrapbook = (function () {
      mid-transform — or, if the box has not been laid out yet, at zero,
      which paints nothing at all. Re-measure whenever the size actually
      changes instead. */
-  var introW = 0, introH = 0;
+  var introW = 0, introH = 0, introDpr = 1;
 
   function introResize() {
     if (!introCv) return false;
@@ -3408,26 +3462,36 @@ window.Scrapbook = (function () {
       /* not laid out yet — fall back to the viewport so we always paint */
       w = window.innerWidth; h = window.innerHeight;
     }
-    if (w === introW && h === introH) return false;
-    introW = w; introH = h;
+    if (w === introW && h === introH && dpr === introDpr) return false;
+    introW = w; introH = h; introDpr = dpr;
     introCv.width = Math.max(1, Math.round(w * dpr));
     introCv.height = Math.max(1, Math.round(h * dpr));
     introCtx = introCv.getContext("2d");
     introCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    /* the still layer and the wing sprite are both cut to this size */
+    introStill = null; flyWing = null;
     return true;
   }
 
   /* One butterfly. The wings are scalloped rather than smooth, carry
      spots and veining, and sit over a soft shadow so they read as
      painted rather than cut out. */
-  function paintFly(ctx, x, y, s, flap, tilt, alpha) {
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(tilt);
-    ctx.globalAlpha = alpha;
-    var open = 0.34 + Math.abs(Math.sin(flap)) * 0.66;
+  /* ONE WING, PAINTED ONCE, DRAWN TWICE.
 
-    function wingPath(side) {
+     A butterfly here is two gradients, four bezier fills, six vein strokes,
+     four spots and two outlines -- per wing, per butterfly, per frame,
+     three butterflies circling. Around a hundred path operations a frame
+     for a shape that never changes: the flap is not a redraw, it is
+     literally ctx.scale(open, 1) on the same wing.
+
+     So the wing is rendered once into its own little canvas at the largest
+     size it is ever drawn, and each frame blits it twice with that same
+     scale. The body and the antennae stay as paths -- they are a handful
+     of ops and they do not flap. */
+  var flyWing = null;
+
+  function drawWing(ctx, s) {
+    function wingPath() {
       /* upper wing, with a scalloped outer edge */
       ctx.beginPath();
       ctx.moveTo(0, 0);
@@ -3448,55 +3512,100 @@ window.Scrapbook = (function () {
       ctx.closePath();
     }
 
+    var g = ctx.createLinearGradient(0, -s * 0.8, s * 1.1, s * 0.2);
+    g.addColorStop(0, "rgba(246,182,208,0.97)");
+    g.addColorStop(0.38, "rgba(228,140,180,0.95)");
+    g.addColorStop(0.72, "rgba(198,104,152,0.92)");
+    g.addColorStop(1, "rgba(162,78,124,0.88)");
+    ctx.fillStyle = g;
+    wingPath(); ctx.fill();
+
+    var g2 = ctx.createLinearGradient(0, 0, s * 0.8, s * 0.7);
+    g2.addColorStop(0, "rgba(232,150,186,0.92)");
+    g2.addColorStop(1, "rgba(184,92,140,0.86)");
+    ctx.fillStyle = g2;
+    lowerPath(); ctx.fill();
+
+    /* veins */
+    ctx.strokeStyle = "rgba(140,62,104,0.38)";
+    ctx.lineWidth = Math.max(0.5, s * 0.022);
+    for (var v = 0; v < 5; v++) {
+      ctx.beginPath();
+      ctx.moveTo(s * 0.05, -s * 0.01);
+      ctx.quadraticCurveTo(s * 0.52, -s * (0.66 - v * 0.17),
+                           s * (1.00 - v * 0.09), -s * (0.36 - v * 0.13));
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(s * 0.05, s * 0.02);
+    ctx.quadraticCurveTo(s * 0.42, s * 0.34, s * 0.70, s * 0.60);
+    ctx.stroke();
+
+    /* the pale band and the eye spots */
+    ctx.fillStyle = "rgba(255,232,242,0.55)";
+    ctx.beginPath();
+    ctx.ellipse(s * 0.74, -s * 0.42, s * 0.20, s * 0.09, -0.5, 0, 6.29);
+    ctx.fill();
+    ctx.fillStyle = "rgba(96,44,78,0.42)";
+    [[0.86, -0.30, 0.055], [0.62, -0.58, 0.045], [0.60, 0.44, 0.04]].forEach(function (d) {
+      ctx.beginPath();
+      ctx.arc(s * d[0], s * d[1], s * d[2], 0, 6.29);
+      ctx.fill();
+    });
+
+    ctx.strokeStyle = "rgba(120,52,92,0.3)";
+    ctx.lineWidth = Math.max(0.5, s * 0.018);
+    wingPath(); ctx.stroke();
+    lowerPath(); ctx.stroke();
+  }
+
+  var haloSprite = null;
+
+  function buildHalo() {
+    var R = 96;
+    var cv = document.createElement("canvas");
+    cv.width = cv.height = R * 2;
+    var c = cv.getContext("2d");
+    var g = c.createRadialGradient(R, R, 1, R, R, R);
+    g.addColorStop(0, "rgba(255,206,124,0.40)");
+    g.addColorStop(0.42, "rgba(255,168,84,0.14)");
+    g.addColorStop(1, "rgba(255,150,70,0)");
+    c.fillStyle = g;
+    c.beginPath(); c.arc(R, R, R, 0, 6.29); c.fill();
+    return cv;
+  }
+
+  function buildFlyWing(s, dpr) {
+    var PAD_L = 0.14, PAD_R = 1.30, PAD_T = 1.16, PAD_B = 1.02;   /* in units of s */
+    var w = (PAD_L + PAD_R) * s, h = (PAD_T + PAD_B) * s;
+    var cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.ceil(w * dpr));
+    cv.height = Math.max(1, Math.ceil(h * dpr));
+    var c = cv.getContext("2d");
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.translate(PAD_L * s, PAD_T * s);      /* (0,0) is now the wing root */
+    drawWing(c, s);
+    return { cv: cv, s: s, ox: PAD_L * s, oy: PAD_T * s, w: w, h: h };
+  }
+
+  function paintFly(ctx, x, y, s, flap, tilt, alpha) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(tilt);
+    ctx.globalAlpha = alpha;
+    var open = 0.34 + Math.abs(Math.sin(flap)) * 0.66;
+
+
     [-1, 1].forEach(function (side) {
       ctx.save();
       ctx.scale(side * open, 1);
-
-      var g = ctx.createLinearGradient(0, -s * 0.8, s * 1.1, s * 0.2);
-      g.addColorStop(0, "rgba(246,182,208,0.97)");
-      g.addColorStop(0.38, "rgba(228,140,180,0.95)");
-      g.addColorStop(0.72, "rgba(198,104,152,0.92)");
-      g.addColorStop(1, "rgba(162,78,124,0.88)");
-      ctx.fillStyle = g;
-      wingPath(side); ctx.fill();
-
-      var g2 = ctx.createLinearGradient(0, 0, s * 0.8, s * 0.7);
-      g2.addColorStop(0, "rgba(232,150,186,0.92)");
-      g2.addColorStop(1, "rgba(184,92,140,0.86)");
-      ctx.fillStyle = g2;
-      lowerPath(); ctx.fill();
-
-      /* veins */
-      ctx.strokeStyle = "rgba(140,62,104,0.38)";
-      ctx.lineWidth = Math.max(0.5, s * 0.022);
-      for (var v = 0; v < 5; v++) {
-        ctx.beginPath();
-        ctx.moveTo(s * 0.05, -s * 0.01);
-        ctx.quadraticCurveTo(s * 0.52, -s * (0.66 - v * 0.17),
-                             s * (1.00 - v * 0.09), -s * (0.36 - v * 0.13));
-        ctx.stroke();
+      if (flyWing) {
+        var k = s / flyWing.s;
+        ctx.drawImage(flyWing.cv, -flyWing.ox * k, -flyWing.oy * k,
+                      flyWing.w * k, flyWing.h * k);
+      } else {
+        drawWing(ctx, s);       /* the sprite is not cut yet */
       }
-      ctx.beginPath();
-      ctx.moveTo(s * 0.05, s * 0.02);
-      ctx.quadraticCurveTo(s * 0.42, s * 0.34, s * 0.70, s * 0.60);
-      ctx.stroke();
-
-      /* the pale band and the eye spots */
-      ctx.fillStyle = "rgba(255,232,242,0.55)";
-      ctx.beginPath();
-      ctx.ellipse(s * 0.74, -s * 0.42, s * 0.20, s * 0.09, -0.5, 0, 6.29);
-      ctx.fill();
-      ctx.fillStyle = "rgba(96,44,78,0.42)";
-      [[0.86, -0.30, 0.055], [0.62, -0.58, 0.045], [0.60, 0.44, 0.04]].forEach(function (d) {
-        ctx.beginPath();
-        ctx.arc(s * d[0], s * d[1], s * d[2], 0, 6.29);
-        ctx.fill();
-      });
-
-      ctx.strokeStyle = "rgba(120,52,92,0.3)";
-      ctx.lineWidth = Math.max(0.5, s * 0.018);
-      wingPath(side); ctx.stroke();
-      lowerPath(); ctx.stroke();
       ctx.restore();
     });
 
@@ -3532,6 +3641,165 @@ window.Scrapbook = (function () {
     ctx.restore();
   }
 
+  /* THE PARTS OF THIS PICTURE THAT NEVER MOVE ARE PAINTED ONCE.
+
+     The frame below used to paint the whole scene every time: the linen,
+     the plum oval and the hundred and eighteen wide bezier strokes brushed
+     inside it, the candle, the light thrown on the wax, eighteen streaks
+     down it, the melted rim and the drips -- and then the flame. Only the
+     flame, the smoke, the embers and the butterflies actually change from
+     one frame to the next. Everything above them is the same picture at
+     t = 0.4s as at t = 12s, repainted sixty times a second for nothing,
+     and on a phone that is the whole frame budget spent before the first
+     butterfly is drawn.
+
+     So the still half is painted once into an offscreen canvas and blitted
+     in a single drawImage, and the frame paints only what moves. It is
+     repainted when the size changes and at no other time. */
+  var introStill = null;
+
+  function introGeom(W, Hh) {
+    var cx = W / 2, cy = Hh * 0.5;
+    /* the oval keeps its own proportion rather than stretching with the
+       viewport, so it reads the same on a phone as on a laptop */
+    var oh = Math.min(Hh * 0.46, W * 0.62);
+    var ow = oh / 1.72;
+    return { cx: cx, cy: cy, ow: ow, oh: oh,
+             candleW: ow * 0.42, candleTop: cy + oh * 0.24 };
+  }
+
+  function paintIntroStill(W, Hh, dpr) {
+    var cv = document.createElement("canvas");
+    cv.width = Math.max(1, Math.round(W * dpr));
+    cv.height = Math.max(1, Math.round(Hh * dpr));
+    var ctx = cv.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var g = introGeom(W, Hh);
+    var cx = g.cx, cy = g.cy, ow = g.ow, oh = g.oh;
+    var candleW = g.candleW, candleTop = g.candleTop;
+    var br = rnd(17);
+    /* linen ground */
+      if (linenImg && linenImg.complete && linenImg.naturalWidth) {
+        var pat = ctx.createPattern(linenImg, "repeat");
+        ctx.fillStyle = pat;
+      } else {
+        ctx.fillStyle = "#f3e3d2";
+      }
+      ctx.fillRect(0, 0, W, Hh);
+
+      /* the plum oval, brushed. It is a tall, narrow ellipse with linen
+         showing either side of it, the way the reference painting sits. */
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, ow, oh, 0, 0, 6.29);
+      ctx.fillStyle = "#4d2140";
+      ctx.fill();
+      ctx.clip();
+      /* loose strokes inside, at a slight angle and never evenly spaced,
+         so the fill reads as paint rather than as banding */
+      for (var b = 0; b < 40; b++) {
+        var bt = br();
+        var y0 = cy - oh + br() * oh * 2;
+        var lean = (br() - 0.5) * oh * 0.10;
+        ctx.strokeStyle = "rgba(" + Math.round(96 + bt * 52) + "," +
+                          Math.round(36 + bt * 26) + "," +
+                          Math.round(76 + bt * 34) + "," + (0.09 + bt * 0.13) + ")";
+        ctx.lineWidth = 5 + bt * 16;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(cx - ow * 1.1, y0);
+        ctx.bezierCurveTo(cx - ow * 0.4, y0 + lean, cx + ow * 0.4, y0 - lean, cx + ow * 1.1, y0);
+        ctx.stroke();
+      }
+      /* a second pass, near-vertical, to break up the horizontal grain */
+      for (var b2 = 0; b2 < 78; b2++) {
+        var vt = br();
+        var x0 = cx - ow + br() * ow * 2;
+        ctx.strokeStyle = "rgba(" + Math.round(88 + vt * 46) + "," +
+                          Math.round(32 + vt * 22) + "," +
+                          Math.round(70 + vt * 30) + "," + (0.04 + vt * 0.07) + ")";
+        ctx.lineWidth = 8 + vt * 26;
+        ctx.beginPath();
+        ctx.moveTo(x0, cy - oh * 1.1);
+        ctx.bezierCurveTo(x0 + (br() - 0.5) * ow * 0.3, cy - oh * 0.3,
+                          x0 + (br() - 0.5) * ow * 0.3, cy + oh * 0.3,
+                          x0, cy + oh * 1.1);
+        ctx.stroke();
+      }
+
+      /* a warmer pool of light where the flame sits */
+      var lp = ctx.createRadialGradient(cx, cy + oh * 0.10, 2, cx, cy + oh * 0.10, oh * 0.62);
+      lp.addColorStop(0, "rgba(168,86,74,0.34)");
+      lp.addColorStop(1, "rgba(168,86,74,0)");
+      ctx.fillStyle = lp;
+      ctx.fillRect(cx - ow, cy - oh, ow * 2, oh * 2);
+      ctx.restore();
+      /* the painted edge: soft, and darker than the fill */
+      ctx.save();
+      ctx.strokeStyle = "rgba(52,18,42,0.45)";
+      ctx.lineWidth = Math.max(3, ow * 0.045);
+      ctx.beginPath(); ctx.ellipse(cx, cy, ow, oh, 0, 0, 6.29); ctx.stroke();
+      ctx.restore();
+
+      /* the candle — slim, with a melted rim and wax running down it */
+      var cg = ctx.createLinearGradient(cx - candleW / 2, 0, cx + candleW / 2, 0);
+      cg.addColorStop(0, "#b9a382"); cg.addColorStop(0.20, "#e6d6b8");
+      cg.addColorStop(0.46, "#fbf3e0"); cg.addColorStop(0.72, "#eadcbe");
+      cg.addColorStop(1, "#ad9673");
+      ctx.fillStyle = cg;
+      ctx.beginPath();
+      ctx.moveTo(cx - candleW / 2, candleTop);
+      ctx.lineTo(cx + candleW / 2, candleTop);
+      ctx.lineTo(cx + candleW / 2, Hh + 20);
+      ctx.lineTo(cx - candleW / 2, Hh + 20);
+      ctx.closePath(); ctx.fill();
+
+      /* light thrown onto the wax by the flame above it */
+      var lit = ctx.createRadialGradient(cx, candleTop, 1, cx, candleTop, candleW * 2.2);
+      lit.addColorStop(0, "rgba(255,196,110,0.42)");
+      lit.addColorStop(1, "rgba(255,180,90,0)");
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(cx - candleW / 2, candleTop, candleW, Hh);
+      ctx.clip();
+      ctx.fillStyle = lit; ctx.fillRect(cx - candleW * 2, candleTop, candleW * 4, Hh);
+
+      /* brushed streaks down the wax */
+      for (var k = 0; k < 18; k++) {
+        var kt = br();
+        ctx.strokeStyle = "rgba(" + (kt > 0.5 ? "255,250,236," : "160,136,104,") + (0.05 + kt * 0.12) + ")";
+        ctx.lineWidth = 1 + kt * 3;
+        var kx = cx - candleW / 2 + kt * candleW;
+        ctx.beginPath();
+        ctx.moveTo(kx, candleTop + candleW * 0.1);
+        ctx.lineTo(kx + (br() - 0.5) * 5, Hh);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      /* the melted rim, and drips over the edge */
+      ctx.fillStyle = "#fdf7e6";
+      ctx.beginPath();
+      ctx.ellipse(cx, candleTop, candleW / 2, candleW * 0.15, 0, 0, 6.29);
+      ctx.fill();
+      ctx.fillStyle = "rgba(196,168,120,0.5)";
+      ctx.beginPath();
+      ctx.ellipse(cx, candleTop + candleW * 0.02, candleW * 0.30, candleW * 0.075, 0, 0, 6.29);
+      ctx.fill();
+      ctx.fillStyle = "#f8efd9";
+      [[-0.30, 0.34], [0.24, 0.52], [0.38, 0.26]].forEach(function (d) {
+        var dx = cx + candleW * d[0], dy = candleTop + candleW * 0.06;
+        ctx.beginPath();
+        ctx.moveTo(dx - candleW * 0.07, dy);
+        ctx.quadraticCurveTo(dx - candleW * 0.09, dy + candleW * d[1] * 0.8,
+                             dx, dy + candleW * d[1]);
+        ctx.quadraticCurveTo(dx + candleW * 0.09, dy + candleW * d[1] * 0.8,
+                             dx + candleW * 0.07, dy);
+        ctx.closePath(); ctx.fill();
+      });
+    return cv;
+  }
+
   function introFrame(now) {
     if (introDone) return;
     introResize();
@@ -3541,132 +3809,19 @@ window.Scrapbook = (function () {
     var W = introW, Hh = introH;
     var ctx = introCtx;
 
-    /* linen ground */
-    if (linenImg && linenImg.complete && linenImg.naturalWidth) {
-      var pat = ctx.createPattern(linenImg, "repeat");
-      ctx.fillStyle = pat;
-    } else {
-      ctx.fillStyle = "#f3e3d2";
+    /* the still half of the picture, painted once and blitted */
+    if (!introStill) introStill = paintIntroStill(W, Hh, introDpr);
+    if (!flyWing) {
+      /* at the largest size any of them is ever drawn, so it only ever
+         scales down: sharp, and a couple of hundred kilobytes */
+      var wg = introGeom(W, Hh);
+      flyWing = buildFlyWing(Math.max(6, wg.ow * 0.40), introDpr);
     }
-    ctx.fillRect(0, 0, W, Hh);
+    ctx.drawImage(introStill, 0, 0, W, Hh);
 
-    /* the plum oval, brushed. It is a tall, narrow ellipse with linen
-       showing either side of it, the way the reference painting sits. */
-    var cx = W / 2, cy = Hh * 0.5;
-    /* the oval keeps its own proportion rather than stretching with the
-       viewport, so it reads the same on a phone as on a laptop */
-    var oh = Math.min(Hh * 0.46, W * 0.62);
-    var ow = oh / 1.72;
-    var br = rnd(17);
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, ow, oh, 0, 0, 6.29);
-    ctx.fillStyle = "#4d2140";
-    ctx.fill();
-    ctx.clip();
-    /* loose strokes inside, at a slight angle and never evenly spaced,
-       so the fill reads as paint rather than as banding */
-    for (var b = 0; b < 40; b++) {
-      var bt = br();
-      var y0 = cy - oh + br() * oh * 2;
-      var lean = (br() - 0.5) * oh * 0.10;
-      ctx.strokeStyle = "rgba(" + Math.round(96 + bt * 52) + "," +
-                        Math.round(36 + bt * 26) + "," +
-                        Math.round(76 + bt * 34) + "," + (0.09 + bt * 0.13) + ")";
-      ctx.lineWidth = 5 + bt * 16;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(cx - ow * 1.1, y0);
-      ctx.bezierCurveTo(cx - ow * 0.4, y0 + lean, cx + ow * 0.4, y0 - lean, cx + ow * 1.1, y0);
-      ctx.stroke();
-    }
-    /* a second pass, near-vertical, to break up the horizontal grain */
-    for (var b2 = 0; b2 < 78; b2++) {
-      var vt = br();
-      var x0 = cx - ow + br() * ow * 2;
-      ctx.strokeStyle = "rgba(" + Math.round(88 + vt * 46) + "," +
-                        Math.round(32 + vt * 22) + "," +
-                        Math.round(70 + vt * 30) + "," + (0.04 + vt * 0.07) + ")";
-      ctx.lineWidth = 8 + vt * 26;
-      ctx.beginPath();
-      ctx.moveTo(x0, cy - oh * 1.1);
-      ctx.bezierCurveTo(x0 + (br() - 0.5) * ow * 0.3, cy - oh * 0.3,
-                        x0 + (br() - 0.5) * ow * 0.3, cy + oh * 0.3,
-                        x0, cy + oh * 1.1);
-      ctx.stroke();
-    }
-
-    /* a warmer pool of light where the flame sits */
-    var lp = ctx.createRadialGradient(cx, cy + oh * 0.10, 2, cx, cy + oh * 0.10, oh * 0.62);
-    lp.addColorStop(0, "rgba(168,86,74,0.34)");
-    lp.addColorStop(1, "rgba(168,86,74,0)");
-    ctx.fillStyle = lp;
-    ctx.fillRect(cx - ow, cy - oh, ow * 2, oh * 2);
-    ctx.restore();
-    /* the painted edge: soft, and darker than the fill */
-    ctx.save();
-    ctx.strokeStyle = "rgba(52,18,42,0.45)";
-    ctx.lineWidth = Math.max(3, ow * 0.045);
-    ctx.beginPath(); ctx.ellipse(cx, cy, ow, oh, 0, 0, 6.29); ctx.stroke();
-    ctx.restore();
-
-    /* the candle — slim, with a melted rim and wax running down it */
-    var candleW = ow * 0.42, candleTop = cy + oh * 0.24;
-    var cg = ctx.createLinearGradient(cx - candleW / 2, 0, cx + candleW / 2, 0);
-    cg.addColorStop(0, "#b9a382"); cg.addColorStop(0.20, "#e6d6b8");
-    cg.addColorStop(0.46, "#fbf3e0"); cg.addColorStop(0.72, "#eadcbe");
-    cg.addColorStop(1, "#ad9673");
-    ctx.fillStyle = cg;
-    ctx.beginPath();
-    ctx.moveTo(cx - candleW / 2, candleTop);
-    ctx.lineTo(cx + candleW / 2, candleTop);
-    ctx.lineTo(cx + candleW / 2, Hh + 20);
-    ctx.lineTo(cx - candleW / 2, Hh + 20);
-    ctx.closePath(); ctx.fill();
-
-    /* light thrown onto the wax by the flame above it */
-    var lit = ctx.createRadialGradient(cx, candleTop, 1, cx, candleTop, candleW * 2.2);
-    lit.addColorStop(0, "rgba(255,196,110,0.42)");
-    lit.addColorStop(1, "rgba(255,180,90,0)");
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(cx - candleW / 2, candleTop, candleW, Hh);
-    ctx.clip();
-    ctx.fillStyle = lit; ctx.fillRect(cx - candleW * 2, candleTop, candleW * 4, Hh);
-
-    /* brushed streaks down the wax */
-    for (var k = 0; k < 18; k++) {
-      var kt = br();
-      ctx.strokeStyle = "rgba(" + (kt > 0.5 ? "255,250,236," : "160,136,104,") + (0.05 + kt * 0.12) + ")";
-      ctx.lineWidth = 1 + kt * 3;
-      var kx = cx - candleW / 2 + kt * candleW;
-      ctx.beginPath();
-      ctx.moveTo(kx, candleTop + candleW * 0.1);
-      ctx.lineTo(kx + (br() - 0.5) * 5, Hh);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    /* the melted rim, and drips over the edge */
-    ctx.fillStyle = "#fdf7e6";
-    ctx.beginPath();
-    ctx.ellipse(cx, candleTop, candleW / 2, candleW * 0.15, 0, 0, 6.29);
-    ctx.fill();
-    ctx.fillStyle = "rgba(196,168,120,0.5)";
-    ctx.beginPath();
-    ctx.ellipse(cx, candleTop + candleW * 0.02, candleW * 0.30, candleW * 0.075, 0, 0, 6.29);
-    ctx.fill();
-    ctx.fillStyle = "#f8efd9";
-    [[-0.30, 0.34], [0.24, 0.52], [0.38, 0.26]].forEach(function (d) {
-      var dx = cx + candleW * d[0], dy = candleTop + candleW * 0.06;
-      ctx.beginPath();
-      ctx.moveTo(dx - candleW * 0.07, dy);
-      ctx.quadraticCurveTo(dx - candleW * 0.09, dy + candleW * d[1] * 0.8,
-                           dx, dy + candleW * d[1]);
-      ctx.quadraticCurveTo(dx + candleW * 0.09, dy + candleW * d[1] * 0.8,
-                           dx + candleW * 0.07, dy);
-      ctx.closePath(); ctx.fill();
-    });
+    var _g = introGeom(W, Hh);
+    var cx = _g.cx, cy = _g.cy, ow = _g.ow, oh = _g.oh;
+    var candleW = _g.candleW, candleTop = _g.candleTop;
 
     /* wick, leaning with the flame */
     var drift = Math.sin(t * 2.1) * candleW * 0.07 + Math.sin(t * 5.3) * candleW * 0.02;
@@ -3685,12 +3840,14 @@ window.Scrapbook = (function () {
     var fw = candleW * 0.46;
     var fx = cx + drift, fy = candleTop - candleW * 0.28;
 
-    var halo = ctx.createRadialGradient(fx, fy - fh * 0.44, 1, fx, fy - fh * 0.44, fh * 2.9);
-    halo.addColorStop(0, "rgba(255,206,124,0.40)");
-    halo.addColorStop(0.42, "rgba(255,168,84,0.14)");
-    halo.addColorStop(1, "rgba(255,150,70,0)");
-    ctx.fillStyle = halo;
-    ctx.beginPath(); ctx.arc(fx, fy - fh * 0.44, fh * 2.9, 0, 6.29); ctx.fill();
+    /* The halo is a soft disc the width of a phone screen, and evaluating
+       a radial gradient across it every frame is the single most expensive
+       thing in this picture. It is the same disc every time, only wider or
+       narrower as the flame breathes, so it is drawn once at 192px and
+       blitted at whatever radius the frame wants. */
+    if (!haloSprite) haloSprite = buildHalo();
+    var hr = fh * 2.9;
+    ctx.drawImage(haloSprite, fx - hr, fy - fh * 0.44 - hr, hr * 2, hr * 2);
 
     function flameShape(sw, sh, oy) {
       ctx.beginPath();
@@ -3759,11 +3916,11 @@ window.Scrapbook = (function () {
       paintFly(ctx, x, y, s, t * f.flap + f.ph, Math.sin(a * 0.8) * 0.5, 0.92);
     });
 
-    /* a slow vignette so the frame feels lit by the candle */
-    var vg = ctx.createRadialGradient(cx, cy, Math.min(W, Hh) * 0.22, cx, cy, Math.max(W, Hh) * 0.75);
-    vg.addColorStop(0, "rgba(0,0,0,0)");
-    vg.addColorStop(1, "rgba(70,40,26,0.20)");
-    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, Hh);
+    /* The vignette used to be a full-screen radial gradient filled here,
+       every frame, over three million device pixels on a phone. It is the
+       same gradient every time and it sits on top of everything, so it is
+       a layer in the stylesheet now (.sb-intro::after) and costs this loop
+       nothing at all. */
 
     introRaf = requestAnimationFrame(introFrame);
   }
@@ -4309,15 +4466,62 @@ window.Scrapbook = (function () {
     });
   }
 
+  /* AND THEN THE WHOLE BOOK, QUIETLY, WHILE SHE IS READING PAGE ONE.
+
+     Warming two spreads either side is enough for turning a page at a time
+     and not enough for anything else: skip four spreads with a drag, or
+     open the book and go straight to the end, and the prints arrive after
+     she does. Now that a page-sized copy of every photograph is 1.8MB for
+     the entire book -- less than one of the old full files was for five of
+     them -- there is no reason to ration it.
+
+     So once she has been on a spread for a moment with nothing else
+     happening, this walks outwards from where she is, one spread at a
+     time, on an idle callback, and pulls the rest of the book into the
+     cache. Nearest first, so the spreads she is most likely to reach next
+     are the ones that arrive first. It stops the moment a turn starts and
+     picks up again when she settles, and each photograph is fetched once
+     ever -- warmView marks the page and never looks at it again. */
+  var sweepAt = null, sweepStep = 0, sweepTimer = null, sweepIdle = false;
+
+  function sweepLater(ms) {
+    stopSweep();
+    if (window.requestIdleCallback) {
+      sweepIdle = true;
+      sweepTimer = window.requestIdleCallback(sweepCache, { timeout: ms * 3 });
+    } else {
+      sweepIdle = false;
+      sweepTimer = setTimeout(sweepCache, ms);
+    }
+  }
+
+  function stopSweep() {
+    if (sweepTimer === null) return;
+    if (sweepIdle && window.cancelIdleCallback) window.cancelIdleCallback(sweepTimer);
+    else clearTimeout(sweepTimer);
+    sweepTimer = null;
+  }
+
+  function sweepCache() {
+    sweepTimer = null;
+    if (flip.on || turning) return;              /* never during a turn */
+    if (sweepAt !== viewIndex) { sweepAt = viewIndex; sweepStep = 1; }
+    if (sweepStep > views.length) return;         /* the whole book is in */
+    warmView(viewIndex + sweepStep);
+    warmView(viewIndex - sweepStep);
+    sweepStep++;
+    sweepLater(120);
+  }
+
   /* Cutting a page into strips is the expensive half of a turn, so it is
      done while she is reading rather than while she is turning -- and now
      for both directions. They are built in separate tasks on purpose: one
      timeout that cut four pages would be a single long block in the middle
      of her looking at a spread, which is the thing this is meant to avoid.
 
-     The photographs two spreads out are warmed as well. One was enough
-     when the only way through the book was forwards a page at a time; it
-     is not enough for a drag that crosses two. */
+     The photographs two spreads out are warmed first and at once, because
+     those are the ones a turn is about to need; the rest of the book
+     follows on the idle sweep above. */
   function schedulePreTurn() {
     clearTimeout(preTimer);
     clearTimeout(preTimer2);
@@ -4332,6 +4536,10 @@ window.Scrapbook = (function () {
                   fwd: { a: buildStripFragment(f.lift, f.aR),
                          b: buildStripFragment(f.back, f.bR) } };
     }, 240);
+
+    /* and start the sweep over the rest of the book behind all of that */
+    sweepStep = 0; sweepAt = null;
+    sweepLater(900);
 
     preTimer2 = setTimeout(function () {
       if (flip.on || turning) return;

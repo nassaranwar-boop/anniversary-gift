@@ -783,6 +783,16 @@ img{-webkit-user-drag:none; user-select:none;}
   transition:opacity .9s ease, transform .9s var(--ease-out);
 }
 .sb-intro-canvas{position:absolute; inset:0; width:100%; height:100%; display:block;}
+/* The candlelit vignette. It used to be a full-screen radial gradient
+   filled into the canvas on every frame of the opening -- three million
+   device pixels of gradient, sixty times a second, for a shape that never
+   changes. It is the same picture as a compositor layer and it costs the
+   animation nothing. */
+.sb-intro::after{
+  content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:radial-gradient(ellipse 78% 75% at 50% 50%,
+    rgba(0,0,0,0) 30%, rgba(70,40,26,.20) 100%);
+}
 .sb-intro-hint{
   position:absolute; left:0; right:0; bottom:7%; margin:0; text-align:center; z-index:2;
   font-family:var(--font-serif); font-style:italic; font-size:13px; color:#6b4433;
