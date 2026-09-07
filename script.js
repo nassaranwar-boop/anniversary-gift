@@ -1458,10 +1458,251 @@ document.getElementById("hub-keepsake").addEventListener("click", () => {
 });
 
 /* =========================================================
+   THE KEEPSAKE'S PICTURES
+
+   The board used to hold one flat glyph per chapter — a fox, a crown, a
+   moon — which is a label, not a memory. These are little painted scenes
+   instead, one for the book itself and one for each game, drawn on the
+   same pixel grid as everything else on this site and scaled up rather
+   than smoothed, so they sit next to the adventure's own art without
+   arguing with it.
+
+   Nothing here is a file. It is all rectangles.
+   ========================================================= */
+const KS_W = 64, KS_H = 64;
+
+/* Ouissy and Anwar, small enough to stand in a photograph. Built the way
+   The Long Way Round builds its animals: flat pixel runs, an ink line
+   where a shape needs an edge, and no anti-aliasing anywhere. */
+const KS_OUI = { hair: "#ffd97a", hair2: "#e7b545", skin: "#ffe0c8", dress: "#ff8fb8",
+                 dress2: "#e8628f", ink: "#3d2340", shoe: "#7a3f5c" };
+const KS_ANW = { hair: "#3a2b33", hair2: "#241a20", skin: "#f6cfae", shirt: "#6fc7c1",
+                 shirt2: "#3f9a97", ink: "#2b2030", trouser: "#3e4a6b" };
+
+/* arms: "peace" is a V held up, "hold" reaches up to carry something,
+   "wave" is one hand out. The body is the same either way. */
+function ksArms(ctx, x, y, pose, tone, ink) {
+  if (pose === "hold") {
+    px(ctx, x - 1, y + 1, 2, 4, tone); px(ctx, x - 1, y, 2, 1, ink);
+    px(ctx, x + 8, y + 1, 2, 4, tone); px(ctx, x + 8, y, 2, 1, ink);
+  } else if (pose === "peace") {
+    px(ctx, x + 8, y + 2, 2, 3, tone);            // forearm up
+    px(ctx, x + 8, y, 1, 2, tone); px(ctx, x + 10, y, 1, 2, tone);   // two fingers
+    px(ctx, x - 1, y + 4, 2, 3, tone);
+  } else if (pose === "wave") {
+    px(ctx, x + 8, y + 1, 2, 3, tone); px(ctx, x + 8, y - 1, 3, 2, tone);
+    px(ctx, x - 1, y + 4, 2, 3, tone);
+  } else {                                         // at her sides
+    px(ctx, x - 1, y + 3, 2, 4, tone);
+    px(ctx, x + 8, y + 3, 2, 4, tone);
+  }
+}
+
+/* she is 8 wide and 16 tall, standing on (x, y) as her top-left */
+function ksOuissy(ctx, x, y, pose) {
+  const P = KS_OUI;
+  px(ctx, x + 1, y, 6, 1, P.hair2);                // the crown of her head
+  px(ctx, x, y + 1, 8, 3, P.hair);
+  px(ctx, x + 1, y + 2, 6, 3, P.skin);             // face
+  px(ctx, x, y + 2, 1, 7, P.hair); px(ctx, x + 7, y + 2, 1, 7, P.hair);   // the long sides
+  px(ctx, x + 2, y + 3, 1, 1, P.ink); px(ctx, x + 5, y + 3, 1, 1, P.ink); // eyes
+  px(ctx, x + 3, y + 4, 2, 1, "#ff9ec2");          // a small mouth
+  ksArms(ctx, x, y + 6, pose, P.skin, P.ink);
+  px(ctx, x + 1, y + 6, 6, 4, P.dress);            // bodice
+  px(ctx, x, y + 10, 8, 3, P.dress2);              // the skirt flares
+  px(ctx, x + 2, y + 13, 2, 2, P.skin); px(ctx, x + 4, y + 13, 2, 2, P.skin);
+  px(ctx, x + 2, y + 15, 2, 1, P.shoe); px(ctx, x + 4, y + 15, 2, 1, P.shoe);
+}
+
+function ksAnwar(ctx, x, y, pose) {
+  const P = KS_ANW;
+  px(ctx, x + 1, y, 6, 2, P.hair2);
+  px(ctx, x, y + 1, 8, 2, P.hair);
+  px(ctx, x + 1, y + 3, 6, 3, P.skin);
+  px(ctx, x + 2, y + 4, 1, 1, P.ink); px(ctx, x + 5, y + 4, 1, 1, P.ink);
+  px(ctx, x + 3, y + 5, 2, 1, "#c8806a");
+  ksArms(ctx, x, y + 7, pose, P.skin, P.ink);
+  px(ctx, x + 1, y + 7, 6, 5, P.shirt);
+  px(ctx, x + 1, y + 9, 6, 1, P.shirt2);
+  px(ctx, x + 1, y + 12, 6, 3, P.trouser);
+  px(ctx, x + 1, y + 15, 2, 1, P.ink); px(ctx, x + 5, y + 15, 2, 1, P.ink);
+}
+
+/* a band of sky, dithered the way the adventure dithers its own */
+function ksSky(ctx, colours) {
+  /* ditherSky wants stops with a position on them, so an even spread of
+     whatever colours the scene names is enough */
+  const stops = colours.map((c, i) => ({ p: i / (colours.length - 1 || 1), c: c }));
+  ditherSky(ctx, 0, 0, KS_W, KS_H, stops);
+}
+
+function ksStars(ctx, n, seed, tone) {
+  let s = seed;
+  for (let i = 0; i < n; i++) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    px(ctx, s % KS_W, (s >> 8) % 30, 1, 1, tone || "#fff6e0");
+  }
+}
+
+const KS_SCENES = {
+  /* THE BOOK ITSELF, and the two of them holding it up. It is meant to be
+     bigger than they are: the whole thing is the book, and they are two
+     people inside it. */
+  book(ctx) {
+    ksSky(ctx, ["#fbe7d2", "#f6d6c6", "#efc3bd"]);
+    ksStars(ctx, 14, 77, "#fff3dc");
+    px(ctx, 14, 12, 36, 40, "#7a3524");            // the covers, stood upright
+    px(ctx, 15, 13, 34, 38, "#a8452c");
+    px(ctx, 17, 15, 30, 34, "#c05a38");
+    px(ctx, 31, 12, 2, 40, "#5e2419");             // the spine down the middle
+    px(ctx, 19, 18, 10, 2, "#f3d9a6"); px(ctx, 19, 22, 8, 1, "#e8c98f");
+    px(ctx, 35, 18, 10, 2, "#f3d9a6"); px(ctx, 35, 22, 8, 1, "#e8c98f");
+    drawHeartInto(ctx, 32, 33, 2, "#ffd3e0");      // the seal, the site's own heart
+    drawHeartInto(ctx, 32, 33, 1, "#ff6f9c");
+    px(ctx, 14, 51, 36, 2, "#5e2419");             // the shut edge
+    ksOuissy(ctx, 6, 34, "hold");
+    ksAnwar(ctx, 50, 34, "hold");
+    px(ctx, 13, 34, 3, 2, "#ffe0c8");              // her hands on the edge of it
+    px(ctx, 48, 34, 3, 2, "#f6cfae");              // and his on the other side
+    px(ctx, 0, 60, KS_W, 4, "#e0b79a");            // the table it rests on
+  },
+
+  /* THE LONG WAY ROUND — the valley at dusk, the path she chose, and the
+     fox that walks it with her. */
+  quest(ctx) {
+    ksSky(ctx, ["#3b2b5c", "#7b4a72", "#d98a72", "#f3c08a"]);
+    px(ctx, 46, 10, 7, 7, "#ffeec2");              // a low sun
+    for (let i = 0; i < 3; i++)                     // hills, back to front
+      for (let x = 0; x < KS_W; x++) {
+        const h = 34 + i * 6 + Math.round(Math.sin((x + i * 9) / 7) * 3);
+        px(ctx, x, h, 1, KS_H - h, ["#3f5a44", "#33513f", "#2b4436"][i]);
+      }
+    for (let x = 0; x < KS_W; x++) {                // the path, winding away
+      const w = Math.max(2, 10 - Math.round(x / 7));
+      px(ctx, 28 + Math.round(Math.sin(x / 9) * 6), 64 - Math.round(x / 3.2), w, 2, "#c9a77a");
+    }
+    px(ctx, 6, 44, 5, 3, "#d2703a"); px(ctx, 5, 46, 7, 4, "#d2703a");   // the fox
+    px(ctx, 6, 43, 1, 2, "#d2703a"); px(ctx, 10, 43, 1, 2, "#d2703a");
+    px(ctx, 7, 45, 1, 1, "#2b2030"); px(ctx, 9, 45, 1, 1, "#2b2030");
+    px(ctx, 11, 48, 4, 2, "#e08a4c");   /* the brush of a tail */
+    ksOuissy(ctx, 22, 40, "peace");
+    ksAnwar(ctx, 34, 40, "peace");
+  },
+
+  /* SUPER OUISSY — the meadow, a gift block, and the two of them under it. */
+  ouissy(ctx) {
+    ksSky(ctx, ["#8fd8f2", "#b9e8f6", "#dff4fb"]);
+    px(ctx, 8, 8, 12, 4, "#ffffff"); px(ctx, 12, 6, 6, 3, "#ffffff");    // a cloud
+    px(ctx, 40, 14, 10, 3, "#ffffff");
+    px(ctx, 0, 46, KS_W, 4, "#7fc35a");            // the grass line
+    px(ctx, 0, 50, KS_W, 14, "#b9834e");           // and the earth under it
+    for (let x = 0; x < KS_W; x += 8) px(ctx, x + 2, 52, 3, 2, "#a2703f");
+    px(ctx, 26, 18, 12, 12, "#f0b93c");            // the gift block
+    px(ctx, 27, 19, 10, 10, "#ffd166");
+    px(ctx, 26, 18, 12, 1, "#fff0c0"); px(ctx, 26, 29, 12, 1, "#c98f23");
+    drawHeartInto(ctx, 32, 24, 1, "#ff5f95");
+    ksOuissy(ctx, 18, 30, "peace");
+    ksAnwar(ctx, 38, 30, "wave");
+  },
+
+  /* OUISSY AT THE APOCALYPSE — the city after it, the torch, and the two
+     of them still walking through it together. */
+  apoc(ctx) {
+    ksSky(ctx, ["#0e1030", "#241a44", "#4a2b4e", "#7a3f52"]);
+    ksStars(ctx, 20, 411, "#e8e2ff");
+    px(ctx, 44, 8, 9, 9, "#efe6d0"); px(ctx, 46, 10, 4, 4, "#dcd0b4");   // the moon
+    const sky = [[2, 26, 8, 22], [11, 20, 7, 28], [19, 30, 6, 18], [50, 24, 9, 24], [58, 32, 6, 16]];
+    sky.forEach(([x, y, w, h], i) => {
+      px(ctx, x, y, w, h, i % 2 ? "#1b1330" : "#241a3c");
+      for (let ly = y + 3; ly < y + h - 2; ly += 5)
+        for (let lx = x + 1; lx < x + w - 1; lx += 3)
+          if ((lx + ly + i) % 4 === 0) px(ctx, lx, ly, 1, 2, "#ffcf7a");
+    });
+    px(ctx, 0, 52, KS_W, 12, "#2a2036");           // the road
+    px(ctx, 0, 52, KS_W, 1, "#4a3a52");
+    for (let x = 4; x < KS_W; x += 12) px(ctx, x, 57, 5, 1, "#6a5a70");
+    /* the torch beam: a widening wedge, dithered so it fades into the
+       street instead of sitting on it as a panel of grey */
+    for (let i = 0; i < 14; i++) {
+      const x = 42 + i, spread = Math.round(i / 3);
+      for (let dy = -spread; dy <= spread; dy++) {
+        if (((x * 3 + dy * 5 + i) & 7) > (i < 6 ? 2 : 1)) continue;
+        px(ctx, x, 45 + dy, 1, 1, i < 7 ? "#ffe6ae" : "#d8b784");
+      }
+    }
+    ksOuissy(ctx, 22, 36, "peace");
+    ksAnwar(ctx, 32, 36, "none");
+    px(ctx, 41, 42, 2, 2, "#ffe9b0");              // the torch itself
+  },
+
+  /* SUPER OUISSY RACE — memory lane, going away to a point, with the flag
+     at the end of it. */
+  race(ctx) {
+    ksSky(ctx, ["#f6a76a", "#f7c98a", "#fbe3b4"]);
+    px(ctx, 26, 10, 11, 11, "#fff1c4");            // the sun on the horizon
+    px(ctx, 0, 30, KS_W, 4, "#79b06a");
+    px(ctx, 0, 34, KS_W, 30, "#6b5f78");           // the road, widening at us
+    for (let y = 34; y < 64; y++) {
+      const w = Math.round((y - 34) * 1.5) + 6;
+      px(ctx, 32 - w / 2, y, w, 1, "#5a4f68");
+      if ((y >> 1) % 3 === 0) px(ctx, 31, y, 2, 1, "#f6e6c8");
+    }
+    for (let i = 0; i < 4; i++) {                  // the chequered flag
+      for (let j = 0; j < 3; j++)
+        px(ctx, 44 + i * 3, 12 + j * 3, 3, 3, (i + j) % 2 ? "#2b2030" : "#fdf6e6");
+    }
+    px(ctx, 43, 12, 1, 14, "#8a6a4a");
+    ksOuissy(ctx, 14, 40, "wave");
+    ksAnwar(ctx, 40, 40, "peace");
+  },
+
+  /* OUISSY'S NIGHT SHIFT — two doors, one charge, and six hours. Dark, but
+     the two of them are in it together, which is the whole joke. */
+  night(ctx) {
+    px(ctx, 0, 0, KS_W, KS_H, "#0b0a14");
+    px(ctx, 0, 0, KS_W, 20, "#141126");
+    px(ctx, 2, 8, 14, 34, "#241d38");              // the left door
+    px(ctx, 3, 9, 12, 32, "#0f0c1c");
+    px(ctx, 48, 8, 14, 34, "#241d38");             // and the right one
+    px(ctx, 49, 9, 12, 32, "#0f0c1c");
+    px(ctx, 13, 24, 2, 3, "#c8b06a"); px(ctx, 49, 24, 2, 3, "#c8b06a");
+    px(ctx, 22, 14, 20, 14, "#1d2b30");            // the monitor on the desk
+    px(ctx, 23, 15, 18, 12, "#2f6f66");
+    px(ctx, 24, 16, 16, 3, "#7fe0c8");
+    for (let x = 24; x < 40; x += 3) px(ctx, x, 21, 2, 1, "#4fbfa6");
+    px(ctx, 28, 28, 8, 2, "#1d2b30");
+    px(ctx, 18, 42, 28, 4, "#3a2c22");             // the desk
+    px(ctx, 18, 46, 28, 2, "#241a14");
+    px(ctx, 6, 50, 12, 3, "#2a2438");              // the charge meter, most of it gone
+    px(ctx, 6, 50, 4, 3, "#ffcf5a");
+    px(ctx, 46, 50, 12, 3, "#2a2438"); px(ctx, 46, 50, 3, 3, "#ff7a6a");
+    px(ctx, 0, 54, KS_W, 10, "#171327");
+    /* the monitor throws just enough light to find them by */
+    for (let y = 30; y < 62; y++)
+      for (let x = 16; x < 48; x++)
+        if (((x + y) & 3) === 0) px(ctx, x, y, 1, 1, "#2a3f47");
+    ksOuissy(ctx, 20, 44, "peace");
+    ksAnwar(ctx, 36, 44, "none");
+    px(ctx, 0, 0, KS_W, KS_H, "rgba(20,10,40,.10)");   // and the dark over all of it
+  },
+};
+
+/* Paints one and hands back a canvas sized to the card. The pixels are
+   never smoothed: this is the same rule the maze art and the adventure
+   both follow. */
+function ksArt(kind) {
+  const { c, ctx } = spriteCanvas(KS_W, KS_H);
+  (KS_SCENES[kind] || KS_SCENES.book)(ctx);
+  c.className = "ks-art";
+  return c;
+}
+
+/* =========================================================
    KEEPSAKE — scrapbook recap
    ========================================================= */
 const KEEPSAKE_CLOSING =
-  "[Replace this with your closing line — the last thing she reads.]";
+  "Every one of these was just a longer way of saying the same thing — " +
+  "that I would take the long way round, every time, if it ended with you.";
 
 /* Icons are names of pixel glyphs in the sprite sheet at the top of
    index.html now, not emoji. This turns a name into the thing. */
@@ -1473,6 +1714,21 @@ function glyph(name, cls) {
 function startKeepsake() {
   const board = document.getElementById("ks-board");
   board.innerHTML = "";
+
+  /* THE BOOK ITSELF, FIRST. Everything else on this board is a page of it,
+     so the book goes at the front holding them all up — with the two of
+     them holding IT up, which is the other way of reading the same
+     picture. */
+  const first = document.createElement("div");
+  first.className = "ks-card";
+  first.style.setProperty("--r", "-2.5deg");
+  const ftape = document.createElement("span"); ftape.className = "ks-tape";
+  const fimg = document.createElement("div"); fimg.className = "ks-img";
+  fimg.appendChild(ksArt("book"));
+  const fcap = document.createElement("div"); fcap.className = "ks-cap";
+  fcap.textContent = "Our little book";
+  first.appendChild(ftape); first.appendChild(fimg); first.appendChild(fcap);
+  board.appendChild(first);
 
   MEMORIES.forEach((m, i) => {
     const card = document.createElement("div");
@@ -1487,20 +1743,26 @@ function startKeepsake() {
 
   /* the story chapter gets a card, and every bonus one she has finished,
      so the board reflects the whole visit */
-  const badges = [
-    { icon: "px-fox", cap: "The Long Way Round" },
-  ];
-  if (chaptersDone().ouissy) badges.push({ icon: "px-crown", cap: "Super Ouissy" });
-  if (chaptersDone().apoc) badges.push({ icon: "px-moon", cap: "Ouissy at the Apocalypse" });
-  if (chaptersDone().race) badges.push({ icon: "px-ribbon", cap: "Super Ouissy Race" });
+  const d = chaptersDone();
+  const badges = [{ art: "quest", cap: "The Long Way Round" }];
+  if (d.ouissy) badges.push({ art: "ouissy", cap: "Super Ouissy" });
+  if (d.apoc) badges.push({ art: "apoc", cap: "Ouissy at the Apocalypse" });
+  /* Ouissy's Night Shift is not on main yet. The card and its picture are
+     ready for the day it lands — keyed on "nightshift", which is the name
+     that branch marks it done under — and until then nobody sees an empty
+     frame. */
+  if (d.nightshift) badges.push({ art: "night", cap: "Ouissy\u2019s Night Shift" });
+  if (d.race) badges.push({ art: "race", cap: "Super Ouissy Race" });
   badges.forEach((b, i) => {
     const card = document.createElement("div");
     card.className = "ks-card";
-    card.style.setProperty("--r", ((i ? -1 : 1) * 2.5) + "deg");
-    card.innerHTML = `
-      <span class="ks-tape"></span>
-      <div class="ks-img">${glyph(b.icon)}</div>
-      <div class="ks-cap">${b.cap}</div>`;
+    card.style.setProperty("--r", (((i % 2) ? -1 : 1) * (1.5 + (i % 3))) + "deg");
+    const tape = document.createElement("span"); tape.className = "ks-tape";
+    const img = document.createElement("div"); img.className = "ks-img";
+    img.appendChild(ksArt(b.art));
+    const cap = document.createElement("div"); cap.className = "ks-cap";
+    cap.textContent = b.cap;
+    card.appendChild(tape); card.appendChild(img); card.appendChild(cap);
     board.appendChild(card);
   });
 

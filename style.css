@@ -2714,6 +2714,13 @@ img{-webkit-user-drag:none; user-select:none;}
 .ks-card .ks-img{
   width:100%; aspect-ratio:1/1; object-fit:cover; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(160deg,#f2ddb8,#e2cfa8); font-size:30px; color:#b98a4e;
+  overflow:hidden;
+}
+/* The painted scenes. 64x64 of real pixels blown up to fill the frame —
+   never smoothed, or they stop being pixel art and start being a blur. */
+.ks-card .ks-art{
+  width:100%; height:100%; display:block;
+  image-rendering:pixelated; image-rendering:crisp-edges;
 }
 /* the things she picked up on the way, laid out on the card like a
    shelf rather than shown as one photograph */
