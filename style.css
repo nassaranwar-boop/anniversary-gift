@@ -803,11 +803,192 @@ img{-webkit-user-drag:none; user-select:none;}
    of collaged spreads. The drawer down the left carries the
    bouquet, the song, the map, the voice note and the video.
    ========================================================= */
+/* =========================================================
+   THE TABLE THE BOOK IS LYING ON
+
+   The games menu and the keepsake are a wall: a garland across the top,
+   scrollwork in the corners, a ruled border, stickers pinned to it and
+   drifting. Right for a menu you stand in front of, wrong here, because a
+   book is not on a wall -- it is lying open on a surface in front of you.
+   So this screen is a table, and that one decision is what keeps the two
+   in the same family without either borrowing from the other: the wall
+   hangs things, the table has things left lying on it; the wall's stickers
+   bob, the table's props lie flat, because a table is seen from above.
+
+   It is built out of the same materials as the book itself -- the same
+   tex() canvases, the same cream and rose. And it stays light: the cloth
+   is the brightest thing on the screen, the lamp only ever adds light, and
+   the single darkening anywhere is nine per cent in the outermost corners
+   plus what the book's own shadow casts. Nothing here is dark.
+   ========================================================= */
 #screen-scrapbook{
   padding:0; overflow:hidden;
+  background:linear-gradient(168deg,#ecc9c5 0%,#e7c1bd 54%,#e0b6b3 100%);
+}
+.sb-table{position:absolute; inset:0; z-index:1; overflow:hidden; pointer-events:none;}
+.sb-table > *{position:absolute;}
+
+/* the cloth: a woven linen, painted once by tableLinen() and tiled */
+.sb-table-cloth{
+  inset:0; background-repeat:repeat; background-size:124px 124px;
+  opacity:.9;
+}
+/* A runner laid across the table, a shade deeper than the cloth and only a
+   shade -- it gives the composition a horizon to sit the book on, which is
+   what a flat gradient could never do. The hems are two hairlines of thread
+   rather than a drawn border. */
+.sb-table-runner{
+  /* Centred on the book, not on the screen's lower half. It ran 11% to 93%,
+     which puts its middle at 52% while the book's is at 50% -- two per cent
+     is nothing to describe and plenty to see, because the eye reads the two
+     hems against the top and bottom edges of the board and finds them
+     uneven. Symmetrical now, so the board sits in the middle of the cloth. */
+  left:-4%; right:-4%; top:9%; bottom:9%;
+  background-repeat:repeat; background-size:139px 139px; background-color:#f2d3cf;
+  box-shadow:
+    0 14px 26px -14px rgba(158,110,104,.34),
+    0 -12px 24px -14px rgba(158,110,104,.26);
+}
+/* Its two hems. A dashed line at this scale reads as dust on a scan, so the
+   edge is what a hem actually is: a lit fold with its own thin shadow under
+   it, and the cloth a shade deeper for the width of the turn. */
+.sb-table-runner::before,
+.sb-table-runner::after{
+  content:""; position:absolute; left:0; right:0; height:9px;
+  background:linear-gradient(180deg,
+    rgba(255,250,247,.80) 0 1px,
+    rgba(214,160,157,.45) 1px 2px,
+    rgba(243,214,210,.26) 2px 100%);
+}
+.sb-table-runner::before{top:0;}
+.sb-table-runner::after{bottom:0; transform:scaleY(-1);}
+/* a hand's worth of shading across the weave, so the runner is not a flat
+   rectangle of cloth from one edge of the screen to the other */
+.sb-table-runner{
+  background-image:var(--weave);
+}
+
+/* One lamp, off to the left and a little above the book, the way the
+   candle in the opening stood. It only ever adds light. */
+.sb-table-lamp{
+  inset:0;
   background:
-    radial-gradient(ellipse at 50% 38%, rgba(255,248,244,.75), transparent 64%),
-    linear-gradient(170deg,#f6e9e4 0%,#efdcd7 52%,#e4cbc7 100%);
+    radial-gradient(ellipse 44% 40% at 38% 26%, rgba(255,251,242,.85), rgba(255,248,238,0) 70%),
+    radial-gradient(ellipse 62% 58% at 50% 46%, rgba(255,247,238,.55), rgba(255,245,236,0) 72%);
+}
+/* and the far corners fall away by nine per cent, which is enough to stop
+   the screen reading as a flat sheet and not enough to be called shading */
+.sb-table-edge{
+  inset:0;
+  background:radial-gradient(ellipse 86% 82% at 50% 46%,
+    rgba(150,104,104,0) 58%, rgba(150,104,104,.09) 100%);
+}
+
+/* the things left on the table. They lie flat and they do not move. */
+.sb-prop{
+  display:block; transform:rotate(var(--rot,0deg));
+  opacity:.62; filter:drop-shadow(0 2px 3px rgba(150,110,96,.20));
+}
+.sb-prop img{width:100%; height:auto; display:block;}
+.sb-prop-ring{opacity:.5; filter:none;}
+.sb-prop-petals{opacity:.42;}
+.sb-prop-star{opacity:.4;}
+.sb-prop-corner1,.sb-prop-corner2{opacity:.55;}
+
+/* A PHONE IS ALMOST ENTIRELY BOOK.
+
+   There is no fourteen per cent of margin left to arrange anything in, so
+   the table keeps the two layers that are the table -- the cloth and the
+   runner -- and drops the things lying on it rather than showing seven
+   slivers down each edge. The pencil was kept at first and it was fifteen
+   pixels of one end against the left edge, which is not a pencil, it is a
+   mark. The cloth, the runner and the shadow under the book are the table;
+   the things lying on it are what there is room for on a bigger screen. */
+@media (max-width:600px){
+  .sb-prop{display:none;}
+  .sb-table-runner{left:-10%; right:-10%;}
+}
+/* sideways, the book is wider than it is tall and takes the whole screen */
+@media (orientation:landscape) and (max-height:560px){
+  .sb-prop{display:none;}
+}
+
+/* THE BOOK'S OWN SHADOW ON THE CLOTH.
+
+   Two shadows, because that is what contact looks like: a tight one right
+   at the edge where no light reaches at all, and a wide soft one further
+   out. As a leaf comes up off the block the book is momentarily taller, so
+   the tight one gives way to the wide one -- which is a cross-fade between
+   two fixed layers, not one layer with a growing blur. A blur radius that
+   changes has to be rasterised again every frame; over eight turns that
+   cost 2.5 seconds of main thread on its own. Opacity does not.
+
+   It is warm rather than grey, because a shadow on cream linen under a
+   warm lamp has the linen's colour in it. */
+.sb-book-shade{
+  position:absolute; left:50%; top:50%; z-index:-1; pointer-events:none;
+  transform:translate(-50%,-50%) translateX(var(--book-shift,0px));
+}
+.sb-book-shade span{
+  position:absolute; display:block; border-radius:5px;
+  will-change:opacity;                     /* keep both layers promoted */
+}
+/* flat on the table: tight, close, and the darker of the two */
+.sb-shade-near{
+  inset:2% -1.5% -3%;
+  background:rgba(150,101,94,.30);
+  filter:blur(9px);
+  opacity:calc(1 - var(--flip-lift,0) * .55);
+}
+/* a leaf up off the block: wider, softer, and further out */
+.sb-shade-far{
+  inset:5% -6% -8%;
+  background:rgba(150,101,94,.24);
+  filter:blur(24px);
+  opacity:calc(.34 + var(--flip-lift,0) * .66);
+}
+
+/* A PHONE IS ALMOST ENTIRELY BOOK.
+
+   There is no fourteen per cent of margin left to arrange anything in, so
+   the table keeps the two layers that are the table -- the cloth and the
+   runner -- and drops the things lying on it rather than showing seven
+   slivers down each edge. The pencil was kept at first and it was fifteen
+   pixels of one end against the left edge, which is not a pencil, it is a
+   mark. The cloth, the runner and the shadow under the book are the table;
+   the things lying on it are what there is room for on a bigger screen. */
+@media (max-width:600px){
+  .sb-prop{display:none;}
+  .sb-table-runner{left:-10%; right:-10%;}
+}
+/* sideways, the book is wider than it is tall and takes the whole screen */
+@media (orientation:landscape) and (max-height:560px){
+  .sb-prop{display:none;}
+}
+
+/* THE BOOK'S OWN SHADOW ON THE CLOTH.
+
+   Two shadows, because that is what contact looks like: a tight one right
+   at the edge where no light reaches at all, and a wide soft one further
+   out. Both grow and soften with --flip-lift, so as a leaf comes up off the
+   block the book reads as momentarily taller and the shade under it opens.
+   It is warm rather than grey -- a shadow on cream linen under a warm lamp
+   has the linen's colour in it. */
+.sb-book-shade{
+  position:absolute; left:50%; top:50%; z-index:-1; pointer-events:none;
+  transform:translate(-50%,-50%) translateX(var(--book-shift,0px));
+  border-radius:4px;
+  background:rgba(154,104,96,calc(.22 + var(--flip-lift,0) * .05));
+  filter:blur(calc(9px + var(--flip-lift,0) * 9px));
+}
+.sb-book-shade::after{
+  content:""; position:absolute;
+  left:-7%; right:-7%; top:8%; bottom:-9%;
+  border-radius:50%;
+  background:radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(150,100,92,calc(.20 + var(--flip-lift,0) * .06)) 0,
+    rgba(150,100,92,0) 72%);
+  filter:blur(calc(16px + var(--flip-lift,0) * 14px));
 }
 
 /* ---- 1 · the painted opening ---- */

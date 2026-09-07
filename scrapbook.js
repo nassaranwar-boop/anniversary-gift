@@ -529,6 +529,206 @@ window.Scrapbook = (function () {
 
   /* Bookcloth. A fine linen weave with the slub and mottling of a real
      bound cover, so the book reads as an object rather than a colour. */
+  /* =======================================================================
+     THE TABLE THE BOOK IS LYING ON
+
+     The hub and the keepsake are a wall: a garland hung across the top,
+     scrollwork in the corners, a ruled border, things pinned to it. That is
+     right for a menu you stand in front of and wrong for this screen,
+     because a book is not on a wall. It is lying open on a surface in front
+     of you, and the whole room follows from that one fact.
+
+     So this screen gets a table rather than a wall, and it is built out of
+     the same materials the book itself is painted with -- the same tex()
+     canvases, the same warm cream and rose. Nothing here is dark: the
+     brightest thing on the screen is the cloth, the book sits on it, and
+     the only shading anywhere is the little the book's own shadow casts.
+     ===================================================================== */
+
+  /* The cloth. It tiles, so the pitch of the weave has to divide the tile
+     and no slub may cross an edge, or the seam draws a grid across the
+     whole screen at exactly the size of this canvas. */
+  function tableLinen(seed, base, warp, weft, slubHi, slubLo) {
+    return tex(240, 240, function (ctx, W, H) {
+      var r = rnd(seed);
+      ctx.fillStyle = base; ctx.fillRect(0, 0, W, H);
+      /* The contrast here is the whole difference between linen and scan
+         lines. At a tenth of an alpha the warp is a fabric you have to look
+         for; at a third it is a stripe across the screen, and both cloths
+         striping in step turns the whole table into a grid. Weft is drawn
+         at half the warp's strength, because a weave read from above is
+         never symmetrical. */
+      for (var x = 0; x < W; x += 4) {
+        ctx.fillStyle = warp.replace("$", (0.10 + r() * 0.13).toFixed(3));
+        ctx.fillRect(x, 0, 2, H);
+        ctx.fillStyle = weft.replace("$", (0.016 + r() * 0.022).toFixed(3));
+        ctx.fillRect(x + 2, 0, 2, H);
+      }
+      for (var y = 0; y < H; y += 4) {
+        ctx.fillStyle = warp.replace("$", (0.055 + r() * 0.085).toFixed(3));
+        ctx.fillRect(0, y, W, 2);
+        ctx.fillStyle = weft.replace("$", (0.012 + r() * 0.018).toFixed(3));
+        ctx.fillRect(0, y + 2, W, 2);
+      }
+      /* the odd thicker thread, kept a clear margin inside the tile */
+      for (var i = 0; i < 110; i++) {
+        ctx.fillStyle = r() > 0.5 ? slubHi : slubLo;
+        var sx = 8 + r() * (W - 34), sy = 8 + r() * (H - 34);
+        if (r() > 0.5) ctx.fillRect(sx, sy, 2, 6 + r() * 16);
+        else ctx.fillRect(sx, sy, 6 + r() * 16, 2);
+      }
+    });
+  }
+
+  /* The table itself, and the runner laid across it. The table was cream to
+     begin with and the cream fought the runner: two unrelated colours meeting
+     on a hard edge, with the book a third thing again on top. It is a pink
+     one step deeper than the runner now -- same family, same hue, a shade
+     down -- so the three surfaces read as one arrangement getting lighter
+     towards the book rather than as a stripe laid over a different cloth. */
+  function clothCream(seed) {
+    return tableLinen(seed, "#e7c1bd", "rgba(255,246,243,$)", "rgba(170,116,112,$)",
+                      "rgba(255,247,244,0.26)", "rgba(166,112,108,0.055)");
+  }
+  function clothRose(seed) {
+    return tableLinen(seed, "#f2d3cf", "rgba(255,246,242,$)", "rgba(186,124,124,$)",
+                      "rgba(255,247,244,0.24)", "rgba(178,116,116,0.06)");
+  }
+
+  /* A pencil, lying down. Drawn along the box so a CSS rotation is the only
+     thing that decides which way it points. */
+  function pencilArt(w) {
+    var h = Math.round(w * 0.17);
+    return tex(w, h, function (ctx, W, H) {
+      var body = W * 0.62, tipL = W * 0.17;
+      var y0 = H * 0.24, y1 = H * 0.76, mid = H * 0.5;
+      /* the barrel, with the two facets of a hexagonal pencil */
+      var g = ctx.createLinearGradient(0, y0, 0, y1);
+      g.addColorStop(0, "#f2cf86"); g.addColorStop(0.34, "#e8bf6c");
+      g.addColorStop(0.52, "#d8a94f"); g.addColorStop(1, "#bf8c3c");
+      ctx.fillStyle = g;
+      ctx.fillRect(tipL, y0, body, y1 - y0);
+      ctx.fillStyle = "rgba(255,246,214,0.5)";
+      ctx.fillRect(tipL, y0 + (y1 - y0) * 0.16, body, (y1 - y0) * 0.16);
+      /* the sharpened cone and the graphite */
+      ctx.fillStyle = "#f0e0c4";
+      ctx.beginPath();
+      ctx.moveTo(tipL, y0); ctx.lineTo(tipL, y1);
+      ctx.lineTo(W * 0.02, mid); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#5c5048";
+      ctx.beginPath();
+      ctx.moveTo(W * 0.06, y0 + (y1 - y0) * 0.30);
+      ctx.lineTo(W * 0.06, y1 - (y1 - y0) * 0.30);
+      ctx.lineTo(W * 0.02, mid); ctx.closePath(); ctx.fill();
+      /* ferrule and rubber */
+      ctx.fillStyle = "#cbb8a6";
+      ctx.fillRect(tipL + body, y0, W * 0.10, y1 - y0);
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.fillRect(tipL + body, y0, W * 0.10, (y1 - y0) * 0.22);
+      ctx.fillStyle = "#e79aa4";
+      ctx.beginPath();
+      ctx.moveTo(tipL + body + W * 0.10, y0);
+      ctx.lineTo(W - 1, y0 + (y1 - y0) * 0.14);
+      ctx.lineTo(W - 1, y1 - (y1 - y0) * 0.14);
+      ctx.lineTo(tipL + body + W * 0.10, y1);
+      ctx.closePath(); ctx.fill();
+    });
+  }
+
+  /* A paperclip, and it has to be one continuous piece of wire or it reads
+     as a hook with a line next to it. So the path is walked the way the
+     wire is actually bent: up the right rail, over the top, down the left
+     rail, round the bottom, and back up the short inner rail. Drawn
+     upright; whichever way it lies on the table is a rotation. */
+  function clipArt(w) {
+    var W = w, H = Math.round(w * 2.3);
+    return tex(W, H, function (ctx) {
+      var lw = W * 0.15;
+      var x0 = lw / 2 + 1, x1 = W - lw / 2 - 1;
+      var cx = (x0 + x1) / 2, r = (x1 - x0) / 2;
+      var yTop = lw / 2 + r + 1, yBot = H - lw / 2 - r - 1;
+      var xi = x0 + (x1 - x0) * 0.62;
+      var cx2 = (x0 + xi) / 2, r2 = (xi - x0) / 2;
+
+      function wire() {
+        ctx.beginPath();
+        ctx.moveTo(x1, yBot - r * 0.30);
+        ctx.lineTo(x1, yTop);
+        ctx.arc(cx, yTop, r, 0, Math.PI, true);      /* over the top */
+        ctx.lineTo(x0, yBot);
+        ctx.arc(cx2, yBot, r2, Math.PI, 0, false);   /* round the bottom */
+        ctx.lineTo(xi, yTop + r * 0.55);
+        ctx.stroke();
+      }
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      /* the shadow the wire drops on the cloth, then the wire, then the
+         light running along the top of it */
+      ctx.save(); ctx.translate(lw * 0.22, lw * 0.30);
+      ctx.strokeStyle = "rgba(150,116,102,0.26)"; ctx.lineWidth = lw; wire();
+      ctx.restore();
+      ctx.strokeStyle = "#c9b4a4"; ctx.lineWidth = lw; wire();
+      ctx.save(); ctx.translate(-lw * 0.16, -lw * 0.18);
+      ctx.strokeStyle = "rgba(255,252,246,0.62)"; ctx.lineWidth = lw * 0.34; wire();
+      ctx.restore();
+    });
+  }
+
+  /* The ring a warm cup leaves. Nothing but two soft bands of stain -- it
+     is the one mark on this table that says somebody has been sitting at
+     it for a while. */
+  function cupRing(w) {
+    return tex(w, w, function (ctx, W) {
+      var c = W / 2;
+      var g = ctx.createRadialGradient(c, c, W * 0.31, c, c, W * 0.47);
+      g.addColorStop(0, "rgba(176,132,96,0)");
+      g.addColorStop(0.42, "rgba(172,126,90,0.20)");
+      g.addColorStop(0.70, "rgba(164,118,84,0.13)");
+      g.addColorStop(1, "rgba(164,118,84,0)");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, W);
+      ctx.strokeStyle = "rgba(158,112,78,0.16)";
+      ctx.lineWidth = W * 0.018;
+      ctx.beginPath(); ctx.arc(c, c, W * 0.40, 0.3, 5.6); ctx.stroke();
+    });
+  }
+
+  /* A photo mount corner, off the page and lying loose on the cloth. Kraft
+     paper rather than the near-black the ones in the book are cut from:
+     these are meant to be found, not to hold anything down. */
+  /* A photo mount corner, off the page and lying loose on the cloth. A plain
+     triangle at this size reads as a triangle and nothing else, so it is
+     built the way the paper ones are: a square of kraft with two flaps
+     folded in over the front, which leaves the little diagonal pocket a
+     print slides into and a visible fold down each side. */
+  function looseCorner(w) {
+    return tex(w, w, function (ctx, W) {
+      function sheet(a, b, c, g0, g1) {
+        var g = ctx.createLinearGradient(0, 0, W, W);
+        g.addColorStop(0, g0); g.addColorStop(1, g1);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]);
+        ctx.closePath(); ctx.fill();
+      }
+      /* the back of the square, showing along the outer edges */
+      sheet([0, 0], [W, 0], [0, W], "#e9d6ba", "#cdb08b");
+      /* the two flaps folded forward, meeting on the diagonal */
+      sheet([0, 0], [W * 0.94, 0], [0, W * 0.10], "#f3e4c9", "#dcc7a2");
+      sheet([0, 0], [0, W * 0.94], [W * 0.10, 0], "#efdec1", "#d3bb95");
+      /* the fold down each side catches the light */
+      ctx.strokeStyle = "rgba(255,252,242,0.75)";
+      ctx.lineWidth = Math.max(1, W * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(W * 0.90, 0); ctx.lineTo(0, 0); ctx.lineTo(0, W * 0.90);
+      ctx.stroke();
+      /* and the pocket the print goes into is the shaded diagonal */
+      ctx.strokeStyle = "rgba(132,102,64,0.28)";
+      ctx.lineWidth = Math.max(1, W * 0.045);
+      ctx.beginPath();
+      ctx.moveTo(W * 0.90, 0.5); ctx.lineTo(0.5, W * 0.90);
+      ctx.stroke();
+    });
+  }
+
   function bookCloth(seed, base, warp, weft) {
     return tex(360, 460, function (ctx, W, H) {
       var r = rnd(seed);
@@ -4112,6 +4312,41 @@ window.Scrapbook = (function () {
     return idx === 0 ? -pageW / 2 : pageW / 2;
   }
 
+  /* THE BOOK HAS TO SIT ON THE TABLE, NOT FLOAT OVER IT.
+
+     A drop shadow under a rectangle is not the same thing as contact. What
+     reads as an object resting on a surface is two shadows at once: a tight
+     dark one right at the edge where no light gets in at all, and a wide
+     soft one further out. And when a leaf comes up off the block the book
+     is momentarily taller, so both of them should spread and soften -- which
+     is exactly what --flip-lift already measures, sixty times a second, for
+     free. It is a registered property with inherits:false, so writing it
+     here costs nothing: there is no subtree under this element to
+     invalidate, because there is nothing under it at all. */
+  function bookShade() {
+    var book = document.getElementById("sb-book");
+    if (!book) return null;
+    var sh = book.querySelector(".sb-book-shade");
+    if (!sh) {
+      sh = el("sb-book-shade");
+      sh.setAttribute("aria-hidden", "true");
+      /* TWO SHADOWS, AND ONLY THEIR OPACITY MOVES.
+
+         The first version had one shadow and grew its blur radius with the
+         lift, which is the expensive way to be right: a blur radius that
+         changes is a layer the compositor has to rasterise again on every
+         frame, and eight turns went from 1930ms of main thread to 4501ms.
+         So the two states are built as two layers with fixed blurs -- the
+         tight contact shadow and the wide soft one -- and the lift only
+         cross-fades between them. Opacity is a compositor property; it
+         costs nothing to animate. */
+      sh.appendChild(el("sb-shade-near", "span"));
+      sh.appendChild(el("sb-shade-far", "span"));
+      book.insertBefore(sh, book.firstChild);
+    }
+    return sh;
+  }
+
   function applySize() {
     var outer = document.getElementById("sb-book-outer");
     if (!outer) return;
@@ -4123,6 +4358,12 @@ window.Scrapbook = (function () {
     outer.style.setProperty("--page-w", pageW + "px");
     outer.style.setProperty("--book-shift", "0px");
     outer.classList.toggle("single", perView === 1 || !wide);
+
+    var sh = bookShade();
+    if (sh) {
+      sh.style.height = pageH + "px";
+      sh.style.width = (wide ? pageW * 2 : pageW) + "px";
+    }
   }
 
   function renderView() {
@@ -4173,6 +4414,8 @@ window.Scrapbook = (function () {
       b:     document.getElementById("sb-leaf-b"),
       spread: document.getElementById("sb-spread"),
       spine: document.querySelector("#screen-scrapbook .sb-spine"),
+      shadeNear: document.querySelector("#screen-scrapbook .sb-shade-near"),
+      shadeFar:  document.querySelector("#screen-scrapbook .sb-shade-far"),
     };
   }
 
@@ -4687,9 +4930,13 @@ window.Scrapbook = (function () {
        @property { inherits: false } in the stylesheet, which tells the
        engine there is no subtree to invalidate in the first place. Same
        for --book-shift, which is read by the very element it is set on. */
-    if (e.spine) {
-      e.spine.style.setProperty("--flip-lift", Math.sin(Math.PI * p).toFixed(4));
-    }
+    var lift = Math.sin(Math.PI * p).toFixed(4);
+    if (e.spine) e.spine.style.setProperty("--flip-lift", lift);
+    /* written on the two layers themselves, not on their parent: the
+       property is registered inherits:false, which is what makes it free,
+       and what makes it free is also what stops it reaching a child */
+    if (e.shadeNear) e.shadeNear.style.setProperty("--flip-lift", lift);
+    if (e.shadeFar) e.shadeFar.style.setProperty("--flip-lift", lift);
     if (flip.shift) {
       e.outer.style.setProperty("--book-shift",
         (flip.shift * (1 - p)).toFixed(2) + "px");
@@ -4782,6 +5029,8 @@ window.Scrapbook = (function () {
       e.outer.classList.remove("flipping", "flip-back");
       e.outer.style.removeProperty("--flip-p");
       if (e.spine) e.spine.style.removeProperty("--flip-lift");
+      if (e.shadeNear) e.shadeNear.style.removeProperty("--flip-lift");
+      if (e.shadeFar) e.shadeFar.style.removeProperty("--flip-lift");
     }
     var scr = document.getElementById("screen-scrapbook");
     if (scr) scr.classList.remove("sb-turning");
@@ -4901,6 +5150,9 @@ window.Scrapbook = (function () {
     var jobs = [];
     function job(fn) { jobs.push(fn); }
 
+    /* the table goes down before anything is laid on it */
+    job(buildTableSurface);
+
     job(function () { PAPER.rose   = crumpled("#b9707f", "rgba(255,226,232,0.32)", "rgba(76,20,36,0.34)", 3); });
     job(function () { PAPER.rose2  = crumpled("#a96274", "rgba(252,220,228,0.28)", "rgba(66,16,32,0.36)", 31); });
     job(function () { PAPER.mauve  = crumpled("#8d6480", "rgba(240,220,238,0.26)", "rgba(46,14,38,0.36)", 11); });
@@ -4989,6 +5241,9 @@ window.Scrapbook = (function () {
     job(function () { STICK.filmCam  = filmCam(300); });
 
     job(function () { buildBook(); built = true; renderView(); });
+    /* the props last, so the stickers they borrow already exist */
+    job(buildTableProps);
+
     return jobs;
   }
 
@@ -5021,6 +5276,97 @@ window.Scrapbook = (function () {
     if (!buildQueue) buildQueue = buildJobs();
     while (buildQueue.length) buildQueue.shift()();
     buildQueue = null;
+  }
+
+  /* ---- laying the table -------------------------------------------
+     Built here rather than written into index.html. That file is one very
+     large document every session edits, and main lost both of the wall's
+     <div class="page-deco"> blocks to a merge that resolved it in favour of
+     the other side -- no conflict, no error, no failing test, the work just
+     quietly not there any more. A layer that builds itself cannot be lost
+     that way, and it cannot half-exist either.
+
+     Back to front: the cloth, the runner it is laid on, the lamp, the
+     things left lying about, and a breath of shade in the far corners.
+     Everything above the cloth is transparent, so the screen stays as light
+     as the cloth is. */
+  var tabled = false;
+
+  function tableProp(cls, src, css) {
+    var i = el("sb-prop " + cls, "i");
+    var img = document.createElement("img");
+    img.alt = ""; img.decoding = "async"; img.src = src;
+    i.appendChild(img);
+    for (var k in css) if (css.hasOwnProperty(k)) i.style.setProperty(k, css[k]);
+    return i;
+  }
+
+  /* Two jobs, not one. The surface goes down first, before the book is
+     cut -- it is what is behind the book, so she should never see a bare
+     screen under it, and weaving two cloths and painting four props in one
+     frame is a long enough block to push the book's own build past the
+     point where a page can be asked to turn. */
+  function buildTableSurface() {
+    var screen = document.getElementById("screen-scrapbook");
+    if (!screen || tabled) return;
+    if (screen.querySelector(".sb-table")) { tabled = true; return; }
+    tabled = true;
+
+    var t = el("sb-table");
+    t.setAttribute("aria-hidden", "true");
+
+    var cloth = el("sb-table-cloth", "span");
+    cloth.style.backgroundImage = "url(" + clothCream(57) + ")";
+    t.appendChild(cloth);
+
+    /* the runner is woven too, or it reads as a painted stripe on a cloth
+       rather than as a second piece of cloth lying on the first */
+    var runner = el("sb-table-runner", "span");
+    runner.style.setProperty("--weave", "url(" + clothRose(83) + ")");
+    t.appendChild(runner);
+    t.appendChild(el("sb-table-lamp", "span"));
+    t.appendChild(el("sb-table-edge", "span"));
+    screen.insertBefore(t, screen.firstChild);
+  }
+
+  /* The props sit out at the margins, clear of where the book lands, and
+     they lie flat -- a table is seen from above, so nothing here bobs or
+     drifts the way the stickers on the wall do. That is the whole
+     difference between the two screens said in one rule.
+
+     Arranged, not sprinkled: seven things spaced evenly around a border
+     reads as a pattern, the same seven in three little groups reads as a
+     table somebody has been working at. Top left is where the last print
+     came out of its mounts, bottom left is where the pencil was put down,
+     and the right is what was cleared aside to make room for the book. */
+  function buildTableProps() {
+    var t = document.querySelector("#screen-scrapbook .sb-table");
+    if (!t || t.querySelector(".sb-prop")) return;
+    var edge = t.querySelector(".sb-table-edge");
+
+    var pencil = pencilArt(320), clip = clipArt(150), ring = cupRing(260),
+        corner = looseCorner(160);
+    /* An open spread runs from about 15% to about 85% of the screen, so
+       everything here lives in the fourteen per cent outside that. The
+       layer sits under the book, which is where things on a table go when
+       a book is laid over them -- but a prop half under the book reads as
+       arranged only if the half that shows is whole. Anything the edge of
+       the board would cut through the middle is moved out. */
+    [
+      /* top left -- a clip, and the corner a print was lifted out of */
+      ["sb-prop-clip",    clip,   { left: "2.4%",  top: "13%",  width: "4.2%", "--rot": "24deg" }],
+      ["sb-prop-corner1", corner, { left: "8.4%",  top: "24%",  width: "3.6%", "--rot": "14deg" }],
+      /* bottom left -- where the pencil was put down, and a paper star */
+      ["sb-prop-pencil",  pencil, { left: "0.4%",  top: "70%",  width: "13%",  "--rot": "-13deg" }],
+      ["sb-prop-star",    STICK.starS || "",   { left: "9%",    top: "85%", width: "3.2%", "--rot": "-8deg" }],
+      /* right -- what was cleared aside, and the cup that stood there */
+      ["sb-prop-petals",  STICK.flowers || "", { right: "1.4%", top: "43%", width: "10%",  "--rot": "12deg" }],
+      ["sb-prop-ring",    ring,   { right: "2.4%", top: "10%",  width: "8.5%", "--rot": "0deg" }],
+      ["sb-prop-corner2", corner, { right: "8%",   top: "70%",  width: "3.4%", "--rot": "-128deg" }],
+    ].forEach(function (p) {
+      if (!p[1]) return;
+      t.insertBefore(tableProp(p[0], p[1], p[2]), edge);
+    });
   }
 
   var wired = false;
