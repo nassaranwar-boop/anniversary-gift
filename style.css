@@ -2613,14 +2613,22 @@ img{-webkit-user-drag:none; user-select:none;}
   filter:blur(28px); opacity:.5;
 }
 .deco-glow-a{
-  left:-14vmin; top:-10vmin;
-  background:radial-gradient(circle, rgba(255,190,205,.85), rgba(255,190,205,0) 68%);
+  left:-16vmin; top:-12vmin; width:70vmin; height:70vmin;
+  background:radial-gradient(circle, rgba(255,176,198,.9), rgba(255,190,205,.34) 42%, rgba(255,190,205,0) 72%);
   animation:decoDriftA 26s ease-in-out infinite;
 }
 .deco-glow-b{
-  right:-16vmin; bottom:-12vmin;
-  background:radial-gradient(circle, rgba(255,226,170,.8), rgba(255,226,170,0) 68%);
+  right:-18vmin; bottom:-14vmin; width:74vmin; height:74vmin;
+  background:radial-gradient(circle, rgba(255,214,146,.88), rgba(255,226,170,.3) 44%, rgba(255,226,170,0) 72%);
   animation:decoDriftB 34s ease-in-out infinite;
+}
+/* the third one is the reason the other two never look like two lamps:
+   it crosses the middle on a cycle that shares no factor with either, so
+   the warm and the rose keep meeting in different places */
+.deco-glow-c{
+  left:34%; top:26%; width:52vmin; height:52vmin; opacity:.34;
+  background:radial-gradient(circle, rgba(214,178,255,.75), rgba(198,170,255,.22) 46%, rgba(198,170,255,0) 72%);
+  animation:decoDriftC 45s ease-in-out infinite;
 }
 @keyframes decoDriftA{
   0%,100%{transform:translate(0,0) scale(1);}
@@ -2630,6 +2638,106 @@ img{-webkit-user-drag:none; user-select:none;}
   0%,100%{transform:translate(0,0) scale(1.06);}
   50%    {transform:translate(-6vmin,-6vmin) scale(.94);}
 }
+@keyframes decoDriftC{
+  0%,100%{transform:translate(0,0) scale(.9);}
+  33%    {transform:translate(-9vmin,6vmin) scale(1.1);}
+  66%    {transform:translate(8vmin,-5vmin) scale(1);}
+}
+
+/* THE SHEEN. One wide, very soft band of light that crosses the page and
+   then stays away for most of a minute. It is what stops the wall from
+   being lit the same way every time she looks at it — and it is off
+   screen and invisible for two thirds of its cycle on purpose, because a
+   shine that comes round often enough to expect is a distraction. */
+.deco-sheen{
+  position:absolute; top:-30%; left:-70%; width:46%; height:170%;
+  background:linear-gradient(100deg,
+    rgba(255,255,255,0) 0%, rgba(255,251,232,.55) 48%, rgba(255,255,255,0) 100%);
+  filter:blur(30px); opacity:0;
+  animation:decoSheen 27s ease-in-out infinite;
+}
+@keyframes decoSheen{
+  0%   {transform:translateX(0) rotate(9deg); opacity:0;}
+  8%   {opacity:.5;}
+  38%  {opacity:.38;}
+  52%  {transform:translateX(330%) rotate(9deg); opacity:0;}
+  100% {transform:translateX(330%) rotate(9deg); opacity:0;}
+}
+
+/* THE MOTES. Warm dust hanging in that light. Two layers, each one a
+   single 3px element wearing a dozen box-shadows — no extra nodes, no
+   canvas, nothing per frame but two composited transforms.
+
+   They drift a little way and come back rather than rising off the top:
+   a field that travels a whole screen has to jump back to the bottom
+   sooner or later, and that jump is the one thing you would notice. */
+.deco-motes{
+  position:absolute; left:0; top:0; width:3px; height:3px; border-radius:50%;
+  background:transparent;
+}
+.deco-motes-a{
+  box-shadow:
+    9.3vw 17.7vh 1px 0 rgba(255,250,232,.95),
+    29.3vw 23.1vh 0px 0 rgba(255,231,184,.85),
+    45.6vw 16.9vh 2px 0 rgba(255,212,222,.8),
+    71.6vw 11.0vh 1px 0 rgba(255,250,232,.95),
+    87.2vw 9.3vh 2px 0 rgba(255,231,184,.85),
+    11.9vw 51.7vh 1px 0 rgba(255,212,222,.8),
+    36.5vw 52.8vh 2px 0 rgba(255,250,232,.95),
+    52.1vw 52.2vh 2px 0 rgba(255,231,184,.85),
+    63.9vw 41.6vh 0px 0 rgba(255,212,222,.8),
+    91.4vw 55.0vh 1px 0 rgba(255,250,232,.95),
+    9.2vw 89.5vh 2px 0 rgba(255,231,184,.85),
+    26.3vw 79.6vh 0px 0 rgba(255,212,222,.8),
+    52.3vw 82.6vh 1px 0 rgba(255,250,232,.95),
+    68.7vw 84.3vh 0px 0 rgba(255,231,184,.85),
+    92.9vw 80.0vh 0px 0 rgba(255,212,222,.8);
+  animation:decoFloatA 23s ease-in-out infinite;
+}
+.deco-motes-b{
+  box-shadow:
+    18.4vw 24.7vh 0px 0 rgba(255,247,224,.75),
+    30.7vw 13.2vh 1px 0 rgba(255,224,196,.65),
+    62.9vw 10.0vh 0px 0 rgba(255,247,224,.75),
+    84.2vw 7.9vh 2px 0 rgba(255,224,196,.65),
+    11.9vw 41.4vh 0px 0 rgba(255,247,224,.75),
+    44.2vw 50.0vh 0px 0 rgba(255,224,196,.65),
+    62.7vw 54.2vh 1px 0 rgba(255,247,224,.75),
+    91.3vw 44.7vh 0px 0 rgba(255,224,196,.65),
+    13.7vw 86.2vh 2px 0 rgba(255,247,224,.75),
+    33.5vw 87.6vh 2px 0 rgba(255,224,196,.65),
+    66.1vw 81.0vh 2px 0 rgba(255,247,224,.75),
+    84.4vw 91.9vh 2px 0 rgba(255,224,196,.65);
+  animation:decoFloatB 31s ease-in-out infinite;
+}
+@keyframes decoFloatA{
+  0%,100%{transform:translate(0,0); opacity:.35;}
+  30%    {opacity:.7;}
+  50%    {transform:translate(1.5vw,-5vh); opacity:.5;}
+  75%    {opacity:.72;}
+}
+@keyframes decoFloatB{
+  0%,100%{transform:translate(0,0); opacity:.6;}
+  40%    {opacity:.28;}
+  50%    {transform:translate(-2vw,4vh); opacity:.4;}
+  80%    {opacity:.66;}
+}
+
+/* THE PAPER AND THE CORNERS. Two things at once, and both of them are
+   the reason the parchment stopped looking like a flat fill: a weave so
+   faint you only see it when it is gone, and a vignette, which is what
+   makes a page look LIT rather than coloured in. It sits above the
+   lights and below the stickers, so it darkens the glow at the edges
+   the way a real corner would. */
+.deco-vig{
+  position:absolute; inset:0;
+  background:
+    repeating-linear-gradient(0deg,  rgba(126,74,28,.035) 0 1px, rgba(255,255,255,0) 1px 3px),
+    repeating-linear-gradient(90deg, rgba(126,74,28,.028) 0 1px, rgba(255,255,255,0) 1px 3px),
+    radial-gradient(ellipse at 50% 38%, rgba(255,250,232,.26) 0%, rgba(255,250,232,0) 52%),
+    radial-gradient(ellipse at 50% 50%, rgba(108,62,22,0) 54%, rgba(108,62,22,.11) 78%, rgba(92,50,16,.26) 100%);
+}
+
 
 /* the stickers. Each one bobs and rocks on its own clock; the odd ones
    turn the other way, so the wall never looks like a pattern. */
@@ -2646,7 +2754,10 @@ img{-webkit-user-drag:none; user-select:none;}
    crown, the fox, the ribbon, the acorn and the camera all have a warm
    colour of their own already. */
 .deco-st .gl{ width:100%; height:100%; display:block; }
-.deco-st:nth-child(odd){ animation-name:decoBobBack; }
+/* The <i> stickers are counted among themselves, not among their
+   siblings: the wash layers above are <span>s, so adding one can never
+   flip which way every other sticker rocks. */
+.deco-st:nth-of-type(odd){ animation-name:decoBobBack; }
 
 @keyframes decoBob{
   0%,100%{transform:translateY(0) rotate(-8deg);}
@@ -2676,10 +2787,15 @@ img{-webkit-user-drag:none; user-select:none;}
   .deco-st{ opacity:.22; }
   .deco-st2, .deco-st5, .deco-st7, .deco-st8, .deco-st9{ display:none; }
   .deco-glow{ filter:blur(22px); opacity:.42; }
+  .deco-glow-c{ opacity:.26; }
+  .deco-motes-b{ display:none; }
 }
 
 @media (prefers-reduced-motion: reduce){
-  .deco-glow, .deco-st{ animation:none; }
+  .deco-glow, .deco-st, .deco-motes{ animation:none; }
+  /* the sheen has no still frame worth keeping — it is only ever a
+     moving highlight, so it leaves rather than freezing mid-page */
+  .deco-sheen{ animation:none; opacity:0; }
 }
 
 /* =========================================================
