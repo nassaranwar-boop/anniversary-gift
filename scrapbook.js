@@ -182,8 +182,10 @@ window.Scrapbook = (function () {
        room on page one, the ride home on the last page, her cold hands --
        and says the plain thing rather than the clever one. */
     letter: {
-      from: "You",
-      to:   "My Love",
+      /* it read "FROM You / FOR My Love", which puts her name on the
+         sending end of a letter she is being given */
+      from: "Him",
+      to:   "Her",
       lead: "My love,",
       body: "I am not good at saying this out loud, so I built it instead. " +
             "Every photograph in here is one I could not stand to lose — " +
