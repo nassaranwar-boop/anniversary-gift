@@ -7222,6 +7222,7 @@ img{-webkit-user-drag:none; user-select:none;}
    down there going spare, and a thumb on a button is a thumb that is
    not covering the doorway it is meant to be watching. */
 @media (orientation: portrait){
+  .ns-titlebar{ display:block; }
   .ns-frame{ justify-content:center; padding:2vh 0 0; gap:0; }
   .ns-stage{ width:min(100%, calc(var(--app-h) * 0.52 * 1.7778)); overflow:visible; }
   .ns-stage::after{ border-radius:6px; }
@@ -7234,7 +7235,14 @@ img{-webkit-user-drag:none; user-select:none;}
   .ns-titlebar{ margin-bottom:2vh; }
 }
 @media (max-width: 900px), (orientation: portrait){
-  .ns-titlebar{display:block;}
+  /* The title bar used to be turned back on here, and this rule comes
+     after the landscape block that deliberately hides it — so on a phone
+     held sideways (844x390 matches `max-width:900px` through the comma,
+     which is an OR) it reappeared and ate 62px off the top. The stage is
+     `aspect-ratio:16/9` inside a column flex, so losing height did not
+     letterbox it, it squashed it: 693x328 where every other game in the
+     site gets 693x390. Sideways there is nothing to caption — she is
+     looking at the shop — so it belongs to portrait only. */
   /* the frame's own layout is set per orientation above; setting it
      again here is what put the stage at the bottom of a portrait screen
      and pushed the controls off the end of it */
