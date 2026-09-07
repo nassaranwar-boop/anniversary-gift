@@ -2538,75 +2538,53 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* THE DRAWER ON A PHONE HELD SIDEWAYS.
 
-   It was a 320px column of four stacked cards, and sideways that column is
-   taller than the screen by between 276 and 354 pixels on every phone
-   measured -- an iPhone SE through a 16 Pro Max, worse still once Safari's
-   bottom bar is up. The portrait rule further up never applied here, because
-   a phone on its side is 667 to 956px wide and reads as a desktop.
+   It stays what it is on a laptop and an iPad: a narrow column down the
+   left with the book still visible beside it. I tried it as two columns
+   filling most of the width and it was wrong -- it stopped looking like the
+   same site, and it pushed the book off to a sliver on the right.
 
-   A column is the wrong shape for this screen anyway. Sideways there is no
-   height and plenty of width, so the four cards go into two columns: the
-   bouquet and the map down one side, the song and the clip down the other.
-   Nothing is dropped and nothing has to be scrolled to.
-
-   The drawer covers the book while it is open, so it may take the width it
-   needs -- and it stops short of the right-hand edge so the flower button
-   that closes it is never underneath it. */
+   So the shape is the desktop shape and only the SIZE changes: the column
+   is a little narrower, and everything in it is a size down, in proportion,
+   the way the same drawer looks on an iPad. Four cards will not fit inside
+   390px of height at any sensible size, so the column scrolls -- which is
+   what it does on a phone held upright too, and it is a column of cards,
+   which is a thing you expect to scroll. */
 @media (orientation:landscape) and (max-height:560px){
   .sb-drawer{
-    width:min(94vw, 640px); max-width:none;
-    padding:10px 12px 10px calc(12px + env(safe-area-inset-left, 0px));
-    display:grid; gap:9px;
-    grid-template-columns:1fr 1fr;
-    /* Two rows that split whatever height there is, rather than two rows
-       sized by their contents and hoped to fit. minmax(0,1fr) is the whole
-       trick: without the zero minimum a grid row refuses to go below the
-       size of what is in it, which is how a column of cards overflows a
-       screen by four pixels on one phone and twenty-nine on another. With
-       it the rows divide the drawer exactly and the cards give instead. */
-    grid-template-rows:minmax(0,1fr) minmax(0,1fr);
-    align-content:stretch;
-    overflow:hidden;
+    width:min(42vw, 290px); max-width:none;
+    padding:9px 10px 9px calc(10px + env(safe-area-inset-left, 0px));
+    display:flex; flex-direction:column; gap:7px;
+    overflow-y:auto; overscroll-behavior:contain;
   }
-  .sb-drawer > *{min-height:0; overflow:hidden;}
-  /* the bouquet is the one card that can give, so it takes the leftover
-     height of its column rather than a fixed slab of it */
-  .sb-drawer > .sb-w-bouquet{grid-column:1; grid-row:1; min-height:0;}
-  .sb-drawer > .sb-w-map    {grid-column:1; grid-row:2; min-height:0;}
-  .sb-drawer > .sb-w-song   {grid-column:2; grid-row:1; min-height:0;}
-  .sb-drawer > .sb-w-video  {grid-column:2; grid-row:2; min-height:0;}
+  .sb-drawer > *{flex:none; min-height:0;}
 
-  .sb-bq-stage{height:auto; flex:1 1 auto; min-height:56px; max-height:none;}
-  .sb-w-bouquet{padding:8px 10px 4px;}
-  .sb-w-title{font-size:12px;}
-  .sb-w-kicker{font-size:9px; letter-spacing:1.5px;}
-
-  /* the map keeps its shape until the row is shorter than the shape, then
-     the row wins -- a map two thirds visible is worse than a shorter map */
-  .sb-map-body{aspect-ratio:16/9; min-height:0;}
-  .sb-w-map{padding:8px; display:flex; flex-direction:column;}
-  .sb-w-map .sb-map-body{flex:1 1 auto;}
-  .sb-w-video{display:flex; flex-direction:column;}
-  .sb-w-video .sb-vid-frame{flex:1 1 auto; min-height:0; aspect-ratio:auto;}
-  .sb-w-song{align-items:center;}
-  .sb-map-head{margin-bottom:4px;}
-  .sb-map-hint{display:none;}
-
-  .sb-w-song{padding:7px 10px; gap:9px;}
-  .sb-song-deck{width:44px; height:44px;}
-
-  .sb-w-video{padding:0;}
-}
-/* A short landscape phone -- an SE, or anything once Safari's bar is up --
-   has less than 380px of height for two rows of cards. The map's window is
-   the piece that can lose the most and still be a map. */
-@media (orientation:landscape) and (max-height:395px){
-  .sb-drawer{gap:7px; padding-top:8px; padding-bottom:8px;}
-  .sb-map-body{aspect-ratio:2/1;}
-  .sb-bq-stage{min-height:44px;}
+  .sb-w-bouquet{padding:7px 9px 3px;}
+  .sb-bq-stage{height:min(112px, 26vh); margin-top:3px;}
   .sb-w-title{font-size:11.5px;}
-  .sb-song-title{font-size:14px;}
-  .sb-vid-title{font-size:13px;}
+  .sb-w-kicker{font-size:9px; letter-spacing:1.4px;}
+
+  .sb-w-song{padding:6px 9px; gap:8px;}
+  .sb-song-deck{width:38px; height:38px;}
+  .sb-song-title{font-size:13px;}
+  .sb-song-artist{font-size:10.5px;}
+  .sb-song-play{width:38px; height:38px;}
+
+  .sb-w-map{padding:7px;}
+  .sb-map-name{font-size:12px;}
+  .sb-map-body{aspect-ratio:4/3;}
+  .sb-map-hint{display:none;}
+  .sb-map-zoom{gap:4px;}
+  .sb-map-zoom button{width:34px; height:34px; font-size:15px;}
+  /* The pins carry a 44px floor so a thumb can hit them, and on a map this
+     small that floor is most of the picture -- they hung over the edges of
+     it in his screenshot. Here the map is the small one, so the pin comes
+     down with it and the clamp keeps the whole of it inside the frame. */
+  .sb-map-pin{min-width:30px; min-height:32px;}
+
+  .sb-vid-title{font-size:12.5px;}
+  .sb-vid-artist{font-size:9.5px;}
+  .sb-vid-play{width:42px; height:42px;}
+  .sb-vid-meta{left:8px; right:8px; bottom:7px;}
 }
 
 /* =========================================================
@@ -6660,6 +6638,20 @@ img{-webkit-user-drag:none; user-select:none;}
    fixed 16:9 stage. The buttons keep their height and the space between
    them gives it up, which is the right way round: a gap is easier to lose
    than a target. */
+/* THE STRIPS DOWN THE SIDES ARE NOT PINK.
+
+   A phone held sideways keeps a safe-area inset down whichever edge the
+   camera is on, and the page shows through it. That page is #f7ddd4, the
+   pale pink the site is built on, so the inset read as two bright strips
+   beside a game -- worse than a black bar, because it looks like the page
+   is broken rather than like the screen is wide. Behind a full-bleed stage
+   the right colour for that strip is not a colour at all: it is the dark
+   the eye reads as "outside the picture". Upright, and on every laptop and
+   iPad, the page stays the pink it has always been. */
+@media (orientation:landscape) and (max-height:560px){
+  html, body{background:#150f13;}
+}
+
 /* =========================================================
    A PHONE HELD SIDEWAYS IS A SMALL IPAD, NOT A DIFFERENT DEVICE
 
@@ -6695,6 +6687,15 @@ img{-webkit-user-drag:none; user-select:none;}
     max-height:100% !important; aspect-ratio:auto !important;
     border-radius:0;
   }
+  /* THE BOOK SITS IN THE FRAME RATHER THAN FILLING IT.
+
+     measure() sizes the book from #sb-book's own box, so insetting that box
+     is how the book is asked to be smaller -- no transform, no scaling of
+     anything already drawn, just less room to fill. On a laptop and an iPad
+     the book already sits with air around it; this gives it the same air
+     sideways, which is what it was missing. */
+  .sb-book{inset:5% 9%;}
+
   /* the steering ring and its pip: a share of the height, so they are the
      same size on a phone as the same control is on an iPad */
   .rc-steer-ring{
