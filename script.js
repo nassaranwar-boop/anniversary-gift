@@ -3979,11 +3979,8 @@ const HV = {
      those. */
   there_stones: {
     scene: "stream", cat: "idle", play: "stones",
+    outcomes: ["there_dry", "there_wet"],
     say: "The stream widens where the stones are. Seven of them, and not one is flat.",
-    choices: [
-      { label: "ONE AT A TIME", to: "there_dry", pos: "left" },
-      { label: "ALL IN A RUSH", to: "there_wet", pos: "right" },
-    ],
   },
   there_dry: {
     stand: { x: 258, y: 106, s: 1.2 },
@@ -4113,21 +4110,21 @@ const HV = {
 
   back_bridge1: {
     scene: "bridge", cat: "idle", plank: 0, play: "bridge", span: [0.16, 0.42], playTo: "back_bridge2",
+    outcomes: ["back_bridge2"],
     say: "Then the rope bridge over the gorge, which holds one person and one plank at a time, and is honest with you about it.",
-    choices: [{ label: "FIRST SECTION, SLOWLY", to: "back_bridge2", pos: "centre" }],
   },
   back_bridge2: {
     scene: "bridge", cat: "shock", plank: 1, play: "bridge", span: [0.42, 0.72], playTo: "back_bridge3",
+    outcomes: ["back_bridge3"],
     say: "The middle, where the sag is deepest and the whole span moves with you. The trick, it turns out, is to stop trying to hurry.",
     voices: [["him", "Do not look down."],
              ["her", "I am looking at you."],
              ["him", "That is worse."]],
-    choices: [{ label: "STEADY. KEEP GOING", to: "back_bridge3", pos: "centre" }],
   },
   back_bridge3: {
     scene: "bridge", cat: "happy", plank: 2, play: "bridge", span: [0.72, 0.97], playTo: "back_join",
+    outcomes: ["back_join"],
     say: "The last few planks, the far post, solid ground. You wait on the other side while he comes across, and you do not once tell him to hurry up.",
-    choices: [{ label: "DOWN THE FAR SIDE", to: "back_join", pos: "centre" }],
   },
 
   /* ---- red: the orchard at dusk, and the bear.
@@ -4147,15 +4144,11 @@ const HV = {
      would rather just decide. */
   back_bear: {
     scene: "orchard", cat: "shock", bear: "real", play: "orchard",
+    outcomes: ["back_bear_wait", "back_bear_quiet", "back_bear_seen"],
     /* the near end of the row, and low enough in the frame that the
        three buttons above them are never walked through */
     stand: { x: 74, y: 170, s: 1.5 },
     say: "There is a bear in the orchard. It is four trees down, working through the windfalls, and it has not looked up yet.",
-    choices: [
-      { label: "WAIT FOR IT TO MOVE", to: "back_bear_wait", pos: "left" },
-      { label: "TAKE THE QUIET ROW", to: "back_bear_quiet", pos: "right" },
-      { label: "STRAIGHT PAST IT", to: "back_bear_seen", pos: "centre" },
-    ],
   },
   /* The one soft landing in the game. It is a nudge backwards in the same
      scene, with the same furniture and the same buttons — no overlay, no
@@ -4172,7 +4165,7 @@ const HV = {
   },
   back_bear_quiet: {
     scene: "orchard", cat: "idle",
-    say: "You take the far row instead, the one the lanterns do not reach, walking on grass rather than windfalls so that nothing cracks underfoot. It never knows you were there at all.",
+    say: "You go the whole way on the grass at the edge of the row, where the lanterns do not reach and nothing cracks underfoot, and you do not stop once. It never knows you were there at all.",
     choices: [{ label: "ON THROUGH", to: "back_windfall", pos: "centre" }],
   },
   /* This line called back to the fox on the stream bank — "the fox
@@ -5222,10 +5215,14 @@ function hvSceneOf(n) {
       the bridge costs a step. The bear is the one that sends you
       backwards, and backwards is three trees, in the same scene, with
       the same buttons — which is what it already was.
-   2. **Nothing here can be stuck.** Every one of these nodes keeps the
-      buttons it always had. Play it or press the button; both go on,
-      and the button is never hidden, greyed or delayed. This is a gift
-      for someone who may not play games, not a skill check.
+   2. **Nothing here can be stuck.** These three used to keep a button
+      that walked past them, and it has been taken out: a mechanic you
+      can click past is decoration. What replaces that safety is that
+      none of them can be lost — the stones let you across wet or dry,
+      the bridge simply will not take a badly timed step, and the bear
+      costs you three trees. And the way OUT of the screen is never
+      taken away: back, back-to-the-start and leave sit in the top bar
+      on every frame of every one of them.
    3. **One input.** Tap the canvas, or hold space. That is the whole
       control scheme, and it is the same in all three.
    ========================================================= */
@@ -5296,7 +5293,7 @@ function hvPlayBegin(n) {
     hvPlay = { kind: "bridge", k: n.span[0], steps: 0, need: 4, wob: 0, done: 0 };
     hvHint = "tap when the span is steady";
   } else if (n.play === "orchard") {
-    hvPlay = { kind: "orchard", x: 74, look: 0, done: 0 };
+    hvPlay = { kind: "orchard", x: 74, look: 0, idle: 0, done: 0 };
     hvHint = "hold to creep — stop when it looks up";
   }
 
@@ -5365,6 +5362,7 @@ function hvPlayPairY(stand) {
 function hvPlayPress(t) {
   if (!hvPlay || hvPlay.done) return false;
   var p = hvPlay;
+  if (p.firstInput === undefined) p.firstInput = hvArrive >= 0 ? t - hvArrive : 0;
 
   if (p.kind === "stones") {
     if (p.hop < 1) return true;                       // mid-air, ignore
@@ -5424,6 +5422,17 @@ function hvPlayStep(t, st, dt) {
   } else if (p.kind === "orchard") {
     var wasLook = p.look;
     p.look = hvBearLook(st);
+    /* Which of the two written arrivals she gets, now that there is no
+       button to pick one with. The obvious rule — "did she ever stop?" —
+       turns out to be unavailable: the row is 172 pixels at 26 a second
+       and the safe window is 2.9 of every 5.2, so she MUST stop at least
+       twice. Nobody crosses this row without stopping.
+
+       So it counts the stopping she did not have to do: time stood still
+       while it was safe to move. Dawdle and it is "so you wait, ten
+       minutes of standing perfectly still"; take every window you are
+       given and it is the crossing where she does not waste a step. */
+    if (p.look < 0.5 && !hvHold && !p.done) p.idle += dt;
     /* the score pulls back to almost nothing the moment its head comes
        up, and comes back when it goes down — the held breath is the
        music leaving, not a sound effect arriving */
@@ -5433,6 +5442,7 @@ function hvPlayStep(t, st, dt) {
     }
     if (!p.done) {
       if (hvHold) {
+        if (p.firstInput === undefined) p.firstInput = st;
         if (p.x < 76) hvNoteAway(true);
         p.x += dt * 26;
         /* caught only while actually moving, and only once its head is
@@ -5442,7 +5452,7 @@ function hvPlayStep(t, st, dt) {
           p.done = 2; p.finish = t + 0.5;
           if (window.OST) window.OST.hit("seen");
         }
-        else if (p.x > 246) { p.done = 1; p.finish = t + 0.6; }
+        else if (p.x > 246) { p.done = p.idle > 2.5 ? 3 : 1; p.finish = t + 0.6; }
       }
     }
   }
@@ -5457,7 +5467,10 @@ function hvPlayFinish() {
   hvPlay = null;
   if (p.kind === "stones") hvGo(p.wet ? "there_wet" : "there_dry");
   else if (p.kind === "bridge") hvGo(n.playTo);
-  else if (p.kind === "orchard") hvGo(p.done === 2 ? "back_bear_seen" : "back_bear_quiet");
+  else if (p.kind === "orchard") {
+    hvGo(p.done === 2 ? "back_bear_seen"
+       : p.done === 3 ? "back_bear_wait" : "back_bear_quiet");
+  }
 }
 
 /* the mechanic's own furniture: the stone you are aiming at, the sway
@@ -5514,11 +5527,20 @@ function hvPlayPaint(ctx, t, st) {
     ctx.restore();
   }
 
-  if (hvHint && st > 0.6 && st < 7 && !hvPlay.done) {
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, (st - 0.6) * 2) * (st > 6 ? (7 - st) : 1);
-    hvTinyText(ctx, hvHint, PXW / 2, 30);
-    ctx.restore();
+  /* The line of instruction used to fade at seven seconds whether or not
+     she had worked out what to do. That was survivable while a button
+     sat underneath it; now that the button is gone this is the only
+     thing telling her how to play, so it stays until she has actually
+     done something, and then gets out of the way. */
+  if (hvHint && st > 0.6 && !p.done) {
+    var since = p.firstInput === undefined ? null : st - p.firstInput;
+    var vis = since === null ? 1 : Math.max(0, 1 - since / 1.2);
+    if (vis > 0.02) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, (st - 0.6) * 2) * vis;
+      hvTinyText(ctx, hvHint, PXW / 2, 30);
+      ctx.restore();
+    }
   }
 }
 
@@ -5974,7 +5996,13 @@ function hvPaintFrame(t, dt) {
     if (glint > 0.82) px(ctx, spot.x + 6, spot.y - 6, 1, 1, "#fff6d0");
   }
 
-  if (n.cat && n.cat !== "hide") {
+  /* The cat sits in the bottom-left corner and it is a narrator, not a
+     character in the scene. While one of the three mechanics is being
+     played the frame belongs to the two of them — and, concretely, the
+     stones begin on the near bank at x=62, which is squarely behind
+     where the cat sits, so she could not see the pair she was steering.
+     It comes back the moment they arrive somewhere. */
+  if (n.cat && n.cat !== "hide" && !hvPlay) {
     /* a blink every few seconds, and a slow breath */
     var blink = (t % 4.4) > 4.2;
     var mood = blink && (n.cat === "idle" || n.cat === "happy") ? "happy" : n.cat;

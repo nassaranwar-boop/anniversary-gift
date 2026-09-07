@@ -407,16 +407,39 @@ The fourth, the fog on `there_fog`, is not a mechanic — it lifts, over about
 eight seconds of standing in it, which is the only thing that beat ever
 asked of her.
 
-Three rules hold across all of them, and they are not negotiable:
+**These are played, not skipped.** Each of the three used to keep the
+buttons it had before the mechanic existed, so you could click straight
+past it — which makes a mechanic decoration. They are gone. What replaces
+them as the safety net:
 
 1. **Nothing can be failed.** Wet feet are written and warm. A mistimed
-   plank costs a step. The bear is three trees, in the same scene.
-2. **Nothing can be stuck.** Every one of these nodes keeps the buttons it
-   always had, never hidden, greyed or delayed. Play it or press the
-   button; both go on. This is a gift for someone who may not play games.
-   `tools/hvplay.js` asserts the buttons are on screen for every frame of
-   every mechanic, so this cannot quietly stop being true.
+   plank simply is not taken. The bear costs three trees, in the same
+   scene, with the same screen around it.
+2. **The way *out* is never taken away.** Back, back-to-the-start and
+   leave sit in the top bar on every frame of every one of them, and
+   `tools/hvplay.js` asserts all three survive the whole of each mechanic.
+   What she cannot do is walk past one without playing it; what she can
+   always do is leave.
 3. **One input.** Tap the canvas, or hold space.
+4. **The instruction stays until she acts.** It used to fade after seven
+   seconds whether or not she had worked out what to do — survivable
+   while a button sat underneath it, not survivable now.
+
+Taking the buttons away nearly cost a scene. The orchard's three buttons
+led to three different pieces of writing, and a mechanic that only ever
+produced two of them would have orphaned the third. So the mechanic
+produces all three, and the rule it uses is one the mechanic itself
+forced: "did she ever stop?" is unavailable, because the row is 172
+pixels at 26 a second against a safe window of 2.9 in every 5.2 — nobody
+crosses it without stopping at least twice. It counts the stopping she
+did **not** have to do instead. Dawdle, and it is "so you wait, ten
+minutes of standing perfectly still"; take every window you are given,
+and it is the crossing where she does not waste a step. `hvplay.js` plays
+it both ways and checks both scenes come out.
+
+The cat stands aside for all three. It is a narrator in the corner, and
+the stones begin on the near bank at x=62 — squarely behind where it
+sits, so she could not see the pair she was steering.
 
 The paper note covers the ground these happen on, so on these three screens
 it lifts once the line has been read — or the moment she touches anything,
