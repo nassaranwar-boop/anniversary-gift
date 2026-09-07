@@ -2587,6 +2587,380 @@ img{-webkit-user-drag:none; user-select:none;}
 @media (prefers-reduced-motion: reduce){ .hv-tagline{animation:none;} }
 
 /* =========================================================
+   THE WALL BEHIND THE CARDS
+
+   The hub and the keepsake are the two screens that are nothing but a
+   list of things to press, and they were sitting on flat parchment
+   looking like one. This gives them a room to be in: two slow warm
+   lights drifting behind everything, and a scatter of the site's own
+   pixel stickers bobbing at the edges like things taped to a wall.
+
+   It is all CSS. No canvas, no timer, no work per frame that anything
+   else has to share — these two screens are the only places it exists,
+   and it lies behind the content with pointer-events off, so nothing
+   here can ever be in the way of a card or a button.
+   ========================================================= */
+.page-deco{
+  position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0;
+}
+/* the content sits ON the wall, not under it */
+#screen-hub .hub-wrap, #screen-keepsake .ks-wrap{ position:relative; z-index:1; }
+
+/* two soft lights, drifting on their own long cycles so they never quite
+   repeat the same arrangement twice */
+.deco-glow{
+  position:absolute; width:62vmin; height:62vmin; border-radius:50%;
+  filter:blur(28px); opacity:.5;
+}
+.deco-glow-a{
+  left:-16vmin; top:-12vmin; width:70vmin; height:70vmin;
+  background:radial-gradient(circle, rgba(255,176,198,.9), rgba(255,190,205,.34) 42%, rgba(255,190,205,0) 72%);
+  animation:decoDriftA 26s ease-in-out infinite;
+}
+.deco-glow-b{
+  right:-18vmin; bottom:-14vmin; width:74vmin; height:74vmin;
+  background:radial-gradient(circle, rgba(255,214,146,.88), rgba(255,226,170,.3) 44%, rgba(255,226,170,0) 72%);
+  animation:decoDriftB 34s ease-in-out infinite;
+}
+/* the third one is the reason the other two never look like two lamps:
+   it crosses the middle on a cycle that shares no factor with either, so
+   the warm and the rose keep meeting in different places */
+.deco-glow-c{
+  left:34%; top:26%; width:52vmin; height:52vmin; opacity:.34;
+  background:radial-gradient(circle, rgba(214,178,255,.75), rgba(198,170,255,.22) 46%, rgba(198,170,255,0) 72%);
+  animation:decoDriftC 45s ease-in-out infinite;
+}
+@keyframes decoDriftA{
+  0%,100%{transform:translate(0,0) scale(1);}
+  50%    {transform:translate(7vmin,5vmin) scale(1.12);}
+}
+@keyframes decoDriftB{
+  0%,100%{transform:translate(0,0) scale(1.06);}
+  50%    {transform:translate(-6vmin,-6vmin) scale(.94);}
+}
+@keyframes decoDriftC{
+  0%,100%{transform:translate(0,0) scale(.9);}
+  33%    {transform:translate(-9vmin,6vmin) scale(1.1);}
+  66%    {transform:translate(8vmin,-5vmin) scale(1);}
+}
+
+/* THE SHEEN. One wide, very soft band of light that crosses the page and
+   then stays away for most of a minute. It is what stops the wall from
+   being lit the same way every time she looks at it — and it is off
+   screen and invisible for two thirds of its cycle on purpose, because a
+   shine that comes round often enough to expect is a distraction. */
+.deco-sheen{
+  position:absolute; top:-30%; left:-70%; width:46%; height:170%;
+  background:linear-gradient(100deg,
+    rgba(255,255,255,0) 0%, rgba(255,251,232,.55) 48%, rgba(255,255,255,0) 100%);
+  filter:blur(30px); opacity:0;
+  animation:decoSheen 27s ease-in-out infinite;
+}
+@keyframes decoSheen{
+  0%   {transform:translateX(0) rotate(9deg); opacity:0;}
+  8%   {opacity:.5;}
+  38%  {opacity:.38;}
+  52%  {transform:translateX(330%) rotate(9deg); opacity:0;}
+  100% {transform:translateX(330%) rotate(9deg); opacity:0;}
+}
+
+/* THE MOTES. Warm dust hanging in that light. Two layers, each one a
+   single 3px element wearing a dozen box-shadows — no extra nodes, no
+   canvas, nothing per frame but two composited transforms.
+
+   They drift a little way and come back rather than rising off the top:
+   a field that travels a whole screen has to jump back to the bottom
+   sooner or later, and that jump is the one thing you would notice. */
+.deco-motes{
+  position:absolute; left:0; top:0; width:3px; height:3px; border-radius:50%;
+  background:transparent;
+}
+.deco-motes-a{
+  box-shadow:
+    9.3vw 17.7vh 1px 0 rgba(255,250,232,.95),
+    29.3vw 23.1vh 0px 0 rgba(255,231,184,.85),
+    45.6vw 16.9vh 2px 0 rgba(255,212,222,.8),
+    71.6vw 11.0vh 1px 0 rgba(255,250,232,.95),
+    87.2vw 9.3vh 2px 0 rgba(255,231,184,.85),
+    11.9vw 51.7vh 1px 0 rgba(255,212,222,.8),
+    36.5vw 52.8vh 2px 0 rgba(255,250,232,.95),
+    52.1vw 52.2vh 2px 0 rgba(255,231,184,.85),
+    63.9vw 41.6vh 0px 0 rgba(255,212,222,.8),
+    91.4vw 55.0vh 1px 0 rgba(255,250,232,.95),
+    9.2vw 89.5vh 2px 0 rgba(255,231,184,.85),
+    26.3vw 79.6vh 0px 0 rgba(255,212,222,.8),
+    52.3vw 82.6vh 1px 0 rgba(255,250,232,.95),
+    68.7vw 84.3vh 0px 0 rgba(255,231,184,.85),
+    92.9vw 80.0vh 0px 0 rgba(255,212,222,.8);
+  animation:decoFloatA 23s ease-in-out infinite;
+}
+.deco-motes-b{
+  box-shadow:
+    18.4vw 24.7vh 0px 0 rgba(255,247,224,.75),
+    30.7vw 13.2vh 1px 0 rgba(255,224,196,.65),
+    62.9vw 10.0vh 0px 0 rgba(255,247,224,.75),
+    84.2vw 7.9vh 2px 0 rgba(255,224,196,.65),
+    11.9vw 41.4vh 0px 0 rgba(255,247,224,.75),
+    44.2vw 50.0vh 0px 0 rgba(255,224,196,.65),
+    62.7vw 54.2vh 1px 0 rgba(255,247,224,.75),
+    91.3vw 44.7vh 0px 0 rgba(255,224,196,.65),
+    13.7vw 86.2vh 2px 0 rgba(255,247,224,.75),
+    33.5vw 87.6vh 2px 0 rgba(255,224,196,.65),
+    66.1vw 81.0vh 2px 0 rgba(255,247,224,.75),
+    84.4vw 91.9vh 2px 0 rgba(255,224,196,.65);
+  animation:decoFloatB 31s ease-in-out infinite;
+}
+@keyframes decoFloatA{
+  0%,100%{transform:translate(0,0); opacity:.35;}
+  30%    {opacity:.7;}
+  50%    {transform:translate(1.5vw,-5vh); opacity:.5;}
+  75%    {opacity:.72;}
+}
+@keyframes decoFloatB{
+  0%,100%{transform:translate(0,0); opacity:.6;}
+  40%    {opacity:.28;}
+  50%    {transform:translate(-2vw,4vh); opacity:.4;}
+  80%    {opacity:.66;}
+}
+
+/* THE PRINT. Old papers of this kind are almost never blank: there is a
+   pressed diamond lattice in them that you read as texture rather than
+   as a pattern. Two gratings at forty five degrees, at three percent —
+   any stronger and it is wallpaper competing with the cards. */
+.deco-lattice{
+  position:absolute; inset:0; opacity:.9;
+  background:
+    repeating-linear-gradient(45deg,  rgba(124,74,28,.033) 0 1px, rgba(255,255,255,0) 1px 34px),
+    repeating-linear-gradient(-45deg, rgba(124,74,28,.033) 0 1px, rgba(255,255,255,0) 1px 34px);
+}
+
+/* THE AGE SPOTS. Real old paper is not one colour; it has foxing —
+   faint warm blooms where the sheet has aged unevenly. Eight of them,
+   fixed, no animation: this is the layer that stops the parchment from
+   reading as a fill without anything appearing to move. */
+.deco-fox{
+  position:absolute; inset:0; opacity:.55;
+  background:
+    radial-gradient(ellipse 18vmin 12vmin at 12% 22%, rgba(176,124,58,.10), rgba(176,124,58,0) 70%),
+    radial-gradient(ellipse 10vmin 14vmin at 78% 12%, rgba(158,104,48,.09), rgba(158,104,48,0) 72%),
+    radial-gradient(ellipse 22vmin 10vmin at 62% 86%, rgba(176,124,58,.09), rgba(176,124,58,0) 70%),
+    radial-gradient(ellipse 9vmin 9vmin  at 24% 74%, rgba(150,98,44,.08),  rgba(150,98,44,0) 72%),
+    radial-gradient(ellipse 14vmin 8vmin at 92% 58%, rgba(176,124,58,.08), rgba(176,124,58,0) 70%),
+    radial-gradient(ellipse 8vmin 11vmin at 47% 40%, rgba(168,116,54,.06), rgba(168,116,54,0) 74%),
+    radial-gradient(ellipse 12vmin 7vmin at 6% 52%,  rgba(158,104,48,.08), rgba(158,104,48,0) 70%),
+    radial-gradient(ellipse 7vmin 9vmin  at 86% 34%, rgba(150,98,44,.07),  rgba(150,98,44,0) 74%);
+}
+
+/* THE RAYS. Light coming in from up and to the left, the way it does
+   through a window onto a table. Three soft wedges, hinged at a point
+   off the top corner and swinging perhaps two degrees over most of a
+   minute — far too little to watch, just enough that the room is never
+   lit from exactly the same angle twice. */
+.deco-rays{
+  position:absolute; left:-30%; top:-40%; width:160%; height:150%;
+  transform-origin:22% 0%;
+  animation:decoSwing 41s ease-in-out infinite;
+  background:
+    linear-gradient(101deg, rgba(255,246,220,0) 30%, rgba(255,246,220,.30) 36%, rgba(255,246,220,0) 43%),
+    linear-gradient(97deg,  rgba(255,238,206,0) 44%, rgba(255,238,206,.22) 50%, rgba(255,238,206,0) 58%),
+    linear-gradient(105deg, rgba(255,250,232,0) 60%, rgba(255,250,232,.16) 65%, rgba(255,250,232,0) 71%);
+  filter:blur(12px);
+}
+@keyframes decoSwing{
+  0%,100%{transform:rotate(-1.1deg);}
+  50%    {transform:rotate(1.3deg);}
+}
+
+/* THE STRING OF LIGHTS. Three swags across the top with nine bulbs
+   hanging under them, warm and rose and cream in turn, each breathing on
+   its own clock so the string glimmers instead of pulsing as one.
+
+   The wire is drawn in a 1000x96 box stretched to the width of the
+   screen — which would stretch the line with it, so the line is told not
+   to scale. The bulbs are placed on that same curve in percent, so they
+   hang FROM it at every width rather than near it. */
+/* strung between the two top corners of the ruled page rather than
+   across the window, so it reads as hung ON this page */
+.deco-string{
+  position:absolute; left:24px; right:24px; top:16px; height:96px;
+  animation:decoHang 17s ease-in-out infinite;
+}
+.deco-string svg{ position:absolute; inset:0; width:100%; height:96px; display:block; }
+.deco-wire{ fill:none; stroke:rgba(112,66,26,.34); stroke-width:1.1; }
+.deco-bulb{
+  position:absolute; width:9px; height:9px; margin-left:-4.5px; border-radius:50%;
+  animation:decoBulb 4.6s ease-in-out infinite;
+}
+/* the little wire down to the cap, so a bulb hangs rather than floats */
+.deco-bulb::before{
+  content:""; position:absolute; left:50%; top:-6px; width:1px; height:6px;
+  margin-left:-.5px; background:rgba(112,66,26,.34);
+}
+.deco-bulb-0{ background:#ffd071; box-shadow:0 0 16px 6px rgba(255,196,96,.6),  0 0 4px 1px rgba(255,232,176,.9); }
+.deco-bulb-1{ background:#ff9fbe; box-shadow:0 0 16px 6px rgba(255,140,180,.5), 0 0 4px 1px rgba(255,214,230,.85); }
+.deco-bulb-2{ background:#fff0c9; box-shadow:0 0 16px 6px rgba(255,230,180,.55), 0 0 4px 1px rgba(255,246,220,.9); }
+@keyframes decoBulb{
+  0%,100%{opacity:.55; transform:translateY(6px) scale(.92);}
+  50%    {opacity:1;   transform:translateY(6px) scale(1.08);}
+}
+/* the whole string breathes on its hooks */
+@keyframes decoHang{
+  0%,100%{transform:translateY(0) rotate(-.25deg);}
+  50%    {transform:translateY(3px) rotate(.25deg);}
+}
+
+/* THE DRIFT. Hearts and stars going up the page, swaying as they climb
+   and turning over slowly. Each one fades in a little after it starts
+   and out before it ends, so none of them is ever seen appearing at the
+   bottom edge or cut off at the top. */
+.deco-drift{ position:absolute; inset:0; overflow:hidden; }
+.deco-petal{
+  position:absolute; bottom:-6%; display:block; opacity:0;
+  animation-name:decoRise; animation-timing-function:linear;
+  animation-iteration-count:infinite;
+  /* a tight shadow: any softer and a 10px heart reads as a smudge on
+     the paper rather than as a heart */
+  filter:drop-shadow(0 1px 1px rgba(120,70,30,.22));
+}
+.deco-petal .gl{ width:100%; height:100%; display:block; }
+@keyframes decoRise{
+  0%  {transform:translate(0,0) rotate(0deg); opacity:0;}
+  12% {opacity:.42;}
+  50% {transform:translate(var(--sway,20px), -55vh) rotate(180deg); opacity:.34;}
+  88% {opacity:.3;}
+  100%{transform:translate(0, -112vh) rotate(360deg); opacity:0;}
+}
+
+/* THE CORNERS. Two arcs, a curl and two dots at each corner of the page,
+   inked on rather than switched on: the stroke starts fully dashed away
+   and is walked back over a second and a half every time the screen
+   opens. One flourish is drawn; the other three are it, turned. */
+.deco-frame{
+  position:absolute; inset:14px; border-radius:5px;
+  border:1px solid rgba(124,74,28,.15);
+  /* the sheet is laid ON the surface, not printed into it */
+  box-shadow:inset 0 0 70px rgba(120,70,26,.055);
+}
+.deco-frame::after{
+  content:""; position:absolute; inset:4px; border-radius:3px;
+  border:1px solid rgba(124,74,28,.08);
+}
+/* the ornament is placed at the frame's own inset, so its arcs start ON
+   the ruled line rather than floating just inside it */
+.deco-corner{ position:absolute; width:52px; height:52px; opacity:.7; }
+.deco-corner svg{ width:100%; height:100%; display:block; overflow:visible; }
+.deco-corner-tl{ left:14px;  top:14px; }
+.deco-corner-tr{ right:14px; top:14px;    transform:rotate(90deg); }
+.deco-corner-br{ right:14px; bottom:14px; transform:rotate(180deg); }
+.deco-corner-bl{ left:14px;  bottom:14px; transform:rotate(270deg); }
+.deco-ink{
+  fill:none; stroke:rgba(116,68,24,.5); stroke-linecap:round;
+  stroke-dasharray:90; stroke-dashoffset:90;
+  animation:decoInk 1.5s cubic-bezier(.32,.72,.3,1) forwards;
+}
+.deco-ink-1{ stroke-width:1.5; }
+.deco-ink-2{ stroke-width:1; stroke:rgba(116,68,24,.32); animation-delay:.25s; }
+.deco-ink-3{ stroke-width:1.1; animation-delay:.5s; stroke-dasharray:30; stroke-dashoffset:30; }
+.deco-dot{ fill:rgba(116,68,24,.4); opacity:0; animation:decoInkDot .7s ease 1.15s forwards; }
+@keyframes decoInk{ to{ stroke-dashoffset:0; } }
+@keyframes decoInkDot{ to{ opacity:1; } }
+
+/* THE PAPER AND THE CORNERS. Two things at once, and both of them are
+   the reason the parchment stopped looking like a flat fill: a weave so
+   faint you only see it when it is gone, and a vignette, which is what
+   makes a page look LIT rather than coloured in. It sits above the
+   lights and below the stickers, so it darkens the glow at the edges
+   the way a real corner would. */
+.deco-vig{
+  position:absolute; inset:0;
+  background:
+    repeating-linear-gradient(0deg,  rgba(126,74,28,.035) 0 1px, rgba(255,255,255,0) 1px 3px),
+    repeating-linear-gradient(90deg, rgba(126,74,28,.028) 0 1px, rgba(255,255,255,0) 1px 3px),
+    radial-gradient(ellipse at 50% 38%, rgba(255,250,232,.26) 0%, rgba(255,250,232,0) 52%),
+    radial-gradient(ellipse at 50% 50%, rgba(108,62,22,0) 54%, rgba(108,62,22,.11) 78%, rgba(92,50,16,.26) 100%);
+}
+
+
+/* the stickers. Each one bobs and rocks on its own clock; the odd ones
+   turn the other way, so the wall never looks like a pattern. */
+.deco-st{
+  position:absolute; display:block; color:#c58a5e; opacity:.30;
+  animation:decoBob 7s ease-in-out infinite;
+  filter:drop-shadow(0 2px 3px rgba(120,70,30,.18));
+}
+/* EVERY GLYPH IN THAT SHEET CARRIES ITS OWN FILL, and a <use> will not let
+   a stylesheet reach inside and change it. So the colour is chosen by
+   picking the sticker, not by setting a property: the moon, the feather,
+   the shell and the bloom are all but white and read as smudges on
+   parchment, so none of them is on this wall. The heart, the star, the
+   crown, the fox, the ribbon, the acorn and the camera all have a warm
+   colour of their own already. */
+.deco-st .gl{ width:100%; height:100%; display:block; }
+/* The <i> stickers are counted among themselves, not among their
+   siblings: the wash layers above are <span>s, so adding one can never
+   flip which way every other sticker rocks. */
+.deco-st:nth-of-type(odd){ animation-name:decoBobBack; }
+
+@keyframes decoBob{
+  0%,100%{transform:translateY(0) rotate(-8deg);}
+  50%    {transform:translateY(-9px) rotate(6deg);}
+}
+@keyframes decoBobBack{
+  0%,100%{transform:translateY(-4px) rotate(9deg);}
+  50%    {transform:translateY(6px) rotate(-7deg);}
+}
+
+/* Placed by hand rather than by a loop: the corners want the big ones and
+   the middle of the edges wants the small ones, and the top strip has to
+   stay clear of the title. */
+.deco-st1{ left:5%;  top:16%;  width:34px; height:34px; animation-duration:8s; opacity:.42; }
+.deco-st2{ left:12%; top:62%;  width:22px; height:22px; animation-duration:6.4s; animation-delay:-2s; opacity:.40; }
+.deco-st3{ left:3%;  bottom:12%; width:38px; height:38px; animation-duration:9.5s; animation-delay:-4s; opacity:.34; }
+.deco-st4{ right:6%; top:14%;  width:30px; height:30px; animation-duration:7.6s; animation-delay:-1s; opacity:.40; }
+.deco-st5{ right:4%; top:48%;  width:26px; height:26px; animation-duration:8.8s; animation-delay:-5s; opacity:.36; }
+.deco-st6{ right:9%; bottom:10%; width:34px; height:34px; animation-duration:7s;  animation-delay:-3s; opacity:.40; }
+.deco-st7{ left:26%; bottom:6%; width:20px; height:20px; animation-duration:6s;   animation-delay:-2.5s; opacity:.32; }
+.deco-st8{ right:28%; top:8%;  width:20px; height:20px; animation-duration:6.8s; animation-delay:-4.5s; opacity:.32; }
+.deco-st9{ left:44%; bottom:4%; width:24px; height:24px; animation-duration:9s;   animation-delay:-1.5s; opacity:.28; }
+
+/* Narrow screens: the edges are where the cards are, so the stickers that
+   sit closest to the middle stand down rather than sit under a chapter. */
+@media (max-width: 620px){
+  .deco-st{ opacity:.22; }
+  .deco-st2, .deco-st5, .deco-st7, .deco-st8, .deco-st9{ display:none; }
+  .deco-glow{ filter:blur(22px); opacity:.42; }
+  .deco-glow-c{ opacity:.26; }
+  .deco-motes-b{ display:none; }
+  /* a phone is mostly card, so the wall keeps only what reads at a
+     glance: fewer bulbs would look like a broken string, so the string
+     stays whole and small, and the drift thins out instead. */
+  .deco-string{ left:12px; right:12px; top:10px; height:76px; }
+  .deco-string svg{ height:76px; }
+  .deco-petal:nth-child(2n){ display:none; }
+  .deco-corner{ width:38px; height:38px; opacity:.5; }
+  .deco-corner-tl, .deco-corner-bl{ left:5px; }
+  .deco-corner-tr, .deco-corner-br{ right:5px; }
+  .deco-corner-tl, .deco-corner-tr{ top:5px; }
+  .deco-corner-bl, .deco-corner-br{ bottom:5px; }
+  .deco-rays{ opacity:.7; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .deco-glow, .deco-st, .deco-motes, .deco-rays, .deco-string,
+  .deco-bulb, .deco-petal{ animation:none; }
+  /* the drift has no still frame — a heart frozen halfway up the page is
+     a heart stuck to the page — so it goes, and the lights simply stay
+     lit rather than breathing */
+  .deco-drift{ display:none; }
+  .deco-bulb{ opacity:.85; transform:translateY(6px); }
+  .deco-ink{ stroke-dashoffset:0; animation:none; }
+  .deco-dot{ opacity:1; animation:none; }
+  /* the sheen has no still frame worth keeping — it is only ever a
+     moving highlight, so it leaves rather than freezing mid-page */
+  .deco-sheen{ animation:none; opacity:0; }
+}
+
+/* =========================================================
    HUB — choose your adventure
    ========================================================= */
 /* Cards do not fit a phone once there are enough of them. The column came
@@ -2690,8 +3064,12 @@ img{-webkit-user-drag:none; user-select:none;}
 /* =========================================================
    KEEPSAKE — scrapbook recap
    ========================================================= */
+/* 660px fitted five cards and broke the sixth onto a row of its own, with
+   the whole right half of the board empty beside it. Six pages, one shelf,
+   wherever there is room for it; below that they wrap in pairs and threes
+   the way they always did. */
 .ks-wrap{
-  width:min(94vw,660px); margin:0 auto; display:flex; flex-direction:column;
+  width:min(94vw,840px); margin:0 auto; display:flex; flex-direction:column;
   align-items:center; gap:8px; padding:16px 12px; max-height:100%; overflow-y:auto;
   overscroll-behavior:contain;
 }
@@ -2733,10 +3111,16 @@ img{-webkit-user-drag:none; user-select:none;}
   width:18px; height:auto; display:block;
   image-rendering:pixelated; image-rendering:crisp-edges;
 }
+/* The titles WRAP rather than truncate. "Ouissy at the Ap…" under a
+   photograph of the chapter is a card that looks unfinished; two short
+   lines of handwriting under a polaroid is just how a polaroid is
+   labelled. The card grows a little to make room for the second line. */
+.ks-card{ padding-bottom:34px; }
 .ks-card .ks-cap{
-  position:absolute; left:0; right:0; bottom:4px; text-align:center;
-  font-family:'Caveat',cursive; font-size:13px; color:#6b4720;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 6px;
+  position:absolute; left:0; right:0; bottom:5px; text-align:center;
+  font-family:'Caveat',cursive; font-size:13px; line-height:1.12; color:#6b4720;
+  padding:0 5px; overflow:hidden;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
 }
 .ks-card .ks-tape{
   position:absolute; top:-7px; left:50%; transform:translateX(-50%) rotate(-3deg);
