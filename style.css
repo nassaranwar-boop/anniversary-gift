@@ -6365,7 +6365,10 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* the transcript */
 .ns-cine-sub{
-  position:absolute; left:50%; bottom:14.5%; transform:translateX(-50%);
+  /* 14.5% of a 219px stage is 32px, and SKIP is a 44px button sitting 7px
+     off the same edge — so on a phone his last line ran underneath it.
+     The floor keeps the caption clear of the button at any stage height. */
+  position:absolute; left:50%; bottom:max(14.5%, 62px); transform:translateX(-50%);
   margin:0; width:78cqw; text-align:center;
   font-family:var(--ns-face); line-height:1.75;
   font-size:max(2.15cqh, 14px); letter-spacing:.055em;
@@ -6383,10 +6386,16 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .ns-cine-skip{
   position:absolute; right:2.4cqw; bottom:3.4%; pointer-events:auto;
-  padding:.9cqh 2.2cqw; border-radius:.5cqw; cursor:pointer;
+  /* It measured 52x17 on a phone, which is a third of a thumb. The panel
+     is a size container, so cqh at this stage height is about two pixels
+     — every one of these needs a pixel floor under it. 44px is the
+     target `buttons.js` holds every other control in the site to. */
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:44px; min-width:72px;
+  padding:max(1.1cqh, 10px) max(2.2cqw, 16px); border-radius:.5cqw; cursor:pointer;
   background:rgba(10,12,16,.7); border:.14cqw solid rgba(200,162,96,.4);
   color:rgba(232,223,200,.6); font-family:var(--ns-face);
-  font-size:max(1.4cqh, 10px); letter-spacing:.22em;
+  font-size:max(1.4cqh, 11px); letter-spacing:.22em;
   opacity:0; animation:nsSkipIn .5s ease 2.2s forwards;
 }
 .ns-cine-skip:hover{ color:var(--ns-amber); border-color:rgba(200,162,96,.9); }
@@ -6848,6 +6857,12 @@ img{-webkit-user-drag:none; user-select:none;}
    else stripped away, and the one button does not appear until he has
    finished saying why. */
 .ns-card-terms{ max-width:64cqw; text-align:center; }
+/* `.ns-cine-head` is `position:absolute; top:13%`, which is right for the
+   film — it sits over a whole screen. The terms card borrows the class
+   inside a small box, where 13% of the card lands straight on top of the
+   first line of what he is saying. In here it is a heading in the flow,
+   like any other. */
+.ns-card-terms .ns-cine-head{ position:static; margin:0 0 1.4cqh; }
 .ns-terms-sub{
   margin:2.4cqh 0 1.2cqh; min-height:9cqh;
   font-family:var(--ns-face);
