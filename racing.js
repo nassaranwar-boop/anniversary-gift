@@ -7595,8 +7595,11 @@ const Snd = (function () {
     watchWake.bound = true;
     /* on the site's register, so leaving the page puts this to sleep
        along with everything else that makes a noise */
+    /* wake() goes on the register too, so the site's own patience — it
+       keeps trying for half a minute, and again on the first touch —
+       works for this chapter as well as for its own listeners below */
     if (window.registerAudio) {
-      try { window.registerAudio(function () { return ctx; }); } catch (e) {}
+      try { window.registerAudio(function () { return ctx; }, wake); } catch (e) {}
     }
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden) wake();

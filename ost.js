@@ -491,7 +491,6 @@
   var bar = 0, nextBarAt = 0, timer = null;
   var themeCursor = 0;          // for the bridge, which is handed the theme note by note
   var duckUntil = 0, duckAmt = 1;
-var wasPlaying = false;     // was there a cue running when the page was left
 
   function beatLen() { return 60 / cue.bpm; }
 
@@ -621,28 +620,46 @@ var wasPlaying = false;     // was there a cue running when the page was left
        rather than to where it was when you left. */
     hush: function () {
       if (timer) { clearInterval(timer); timer = null; }
-      wasPlaying = !!cue;
       if (master && ctx) {
         try { master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.08); } catch (e) {}
       }
     },
 
+    /* The site calls this once it has seen the clock running again, so
+       there is no waiting for a resume to land here and no scheduling
+       onto a frozen clock.
+
+       There used to be a `wasPlaying` flag, set on the way out and
+       required on the way back, which is a memory of a fact that is
+       already written down: a cue is set by play() and cleared by
+       stop(), so "there is a cue" IS "it was playing". The flag could
+       only ever disagree with it, and a flag that disagrees with the
+       truth in the direction of false is a score that never comes back.
+
+       And the re-anchoring only happens if the scheduler really is
+       stopped. Coming back fires more than once — the tab, then the
+       window, then the first touch — and rewinding the bar clock under
+       bars an earlier call had already posted made the music stumble on
+       the way in. */
     resume: function () {
-      if (!on || !wasPlaying || !cue || !built) return;
+      if (!on || !cue || !built) return;
       try {
         if (ctx.state !== "running") {
           if (window.wakeAudio) window.wakeAudio(ctx); else ctx.resume();
         }
-        bar = 0;                       // start the loop again from its top
-        nextBarAt = ctx.currentTime + 0.15;
         master.gain.setTargetAtTime((cue.gain || 0.7) * 0.36, ctx.currentTime, 0.5);
-        if (!timer) timer = setInterval(tick, 60);
+        if (!timer) {
+          bar = 0;                     // start the loop again from its top
+          nextBarAt = ctx.currentTime + 0.15;
+          timer = setInterval(tick, 60);
+          tick();
+        }
       } catch (e) {}
     },
 
     stop: function () {
       if (timer) { clearInterval(timer); timer = null; }
-      cue = null; cueName = null; wasPlaying = false;
+      cue = null; cueName = null;
       if (master && ctx) {
         try { master.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.4); } catch (e) {}
       }
