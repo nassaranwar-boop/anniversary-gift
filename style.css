@@ -6454,9 +6454,18 @@ img{-webkit-user-drag:none; user-select:none;}
      off the same edge — so on a phone his last line ran underneath it.
      The floor keeps the caption clear of the button at any stage height. */
   position:absolute; left:50%; bottom:max(14.5%, 62px); transform:translateX(-50%);
-  margin:0; width:78cqw; text-align:center;
-  font-family:var(--ns-face); line-height:1.75;
-  font-size:max(2.15cqh, 14px); letter-spacing:.055em;
+  margin:0; width:88cqw; text-align:center;
+  font-family:var(--ns-face); line-height:1.6;
+  /* EVERY CAPTION IN HERE WAS SIZED `max(Ncqh, Npx)`, AND ON A PHONE THE
+     FLOOR ALWAYS WON. The stage is a 16:9 letterbox, so a 390px-wide
+     phone gets a panel only 219px tall and one cqh is barely two pixels
+     — the cq part never got near the floor, so the type stayed its
+     desktop size while the panel shrank around it. Measured: this
+     caption was 33.5% of the panel height on a phone against 3.8% on a
+     desktop, nine times as dominant, which is exactly what it looked
+     like. A clamp keeps the floor for legibility without letting it run
+     the layout, and the wider box costs it a line. */
+  font-size:clamp(11px, 2.15cqh, 19px); letter-spacing:.05em;
 }
 .ns-cine-sub i{
   font-style:normal;
@@ -6500,7 +6509,11 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; left:50%; bottom:21cqh; transform:translateX(-50%);
   z-index:9; margin:0; pointer-events:none;
   display:flex; flex-direction:column; align-items:center; gap:.7cqh;
-  padding:1.5cqh 3cqw; max-width:74cqw; text-align:center;
+  /* same defect as the captions: a px floor sized for a desktop panel,
+     pinned into a 219px phone one. Measured at 30.7% of the panel height
+     on a phone against 6.4% on a desktop — and this is the block she
+     reads through the whole of orientation. */
+  padding:1.5cqh 3cqw; max-width:82cqw; text-align:center;
   background:rgba(10,12,16,.86);
   border:.16cqw solid rgba(200,162,96,.5);
   border-radius:.7cqw;
@@ -6508,11 +6521,11 @@ img{-webkit-user-drag:none; user-select:none;}
   font-family:var(--ns-face);
 }
 .ns-tutor b{
-  font-size:max(2.1cqh, 14px); letter-spacing:.16em; font-weight:700;
-  color:var(--ns-amber); line-height:1.4;
+  font-size:clamp(11px, 2.1cqh, 17px); letter-spacing:.14em; font-weight:700;
+  color:var(--ns-amber); line-height:1.35;
 }
 .ns-tutor span{
-  font-size:max(1.5cqh, 11px); letter-spacing:.08em;
+  font-size:clamp(9.5px, 1.5cqh, 13px); letter-spacing:.07em; line-height:1.45;
   color:rgba(232,223,200,.62);
 }
 .ns-tutor.nudge{ animation:nsNudge 1.5s ease-in-out infinite; }
@@ -6951,7 +6964,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-terms-sub{
   margin:2.4cqh 0 1.2cqh; min-height:9cqh;
   font-family:var(--ns-face);
-  font-size:max(2.3cqh, 13px); line-height:1.85; letter-spacing:.045em;
+  font-size:clamp(11px, 2.3cqh, 18px); line-height:1.65; letter-spacing:.04em;
 }
 .ns-terms-sub i{
   font-style:normal; color:rgba(232,223,200,.26);
@@ -6964,7 +6977,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-card-terms .ns-btn-go[hidden]{ display:none; }
 @media (max-width: 900px), (orientation: portrait){
   .ns-card-terms{ max-width:92cqw; }
-  .ns-terms-sub{ font-size:max(2.1cqh, 12px); }
+  .ns-terms-sub{ font-size:clamp(11px, 2.1cqh, 16px); }
 }
 
 /* What tonight is for: one line, in his pencil rather than the
@@ -6983,10 +6996,10 @@ img{-webkit-user-drag:none; user-select:none;}
    shop should not look alike either. */
 .ns-tape{
   position:absolute; left:0; right:0; bottom:9cqh; z-index:8;
-  padding:1.6cqh 8cqw 1.8cqh;
+  padding:1.6cqh 5cqw 1.8cqh;
   text-align:center; pointer-events:none;
   font-family:var(--ns-face);
-  font-size:max(2.1cqh, 13px); line-height:1.7; letter-spacing:.04em;
+  font-size:clamp(10.5px, 2.1cqh, 18px); line-height:1.6; letter-spacing:.035em;
   text-shadow:0 1px 4px rgba(0,0,0,.95), 0 0 14px rgba(0,0,0,.8);
   /* the desk is the brightest thing on the screen and his words land on
      top of it, so they carry their own dark with them */
@@ -7253,7 +7266,7 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; left:50%; bottom:14cqh; transform:translateX(-50%);
   margin:0; z-index:6; pointer-events:none; max-width:70cqw; text-align:center;
   padding:.7cqh 1.6cqw; border-radius:.4cqw;
-  font-family:var(--ns-face); font-size:max(1.7cqh, 11px); letter-spacing:.22em;
+  font-family:var(--ns-face); font-size:clamp(9.5px, 1.7cqh, 15px); letter-spacing:.18em;
   color:#cfe6e0; background:rgba(8,14,13,.72);
   box-shadow:inset 0 0 0 .14cqw rgba(127,228,208,.34);
   text-shadow:0 0 1cqh rgba(127,228,208,.4);
