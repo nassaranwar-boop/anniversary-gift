@@ -913,20 +913,20 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-page-cover{
   display:none;
   align-items:center; justify-content:center;
-  box-shadow:0 0 70px rgba(58,18,34,.36) inset;
+  box-shadow:0 0 70px rgba(140,74,98,.24) inset;
 }
 /* a double rule, blocked in foil the way a bound cover is */
 .sb-cover-rule{
   position:absolute; inset:5.5%; z-index:1; pointer-events:none;
-  border:1px solid rgba(240,206,172,.42);
+  border:1px solid rgba(255,252,252,.62);
   box-shadow:
-    0 0 0 1px rgba(92,40,52,.30),
-    inset 0 0 0 3px rgba(58,20,34,.16),
-    inset 0 0 0 4px rgba(240,206,172,.30);
+    0 0 0 1px rgba(146,74,98,.28),
+    inset 0 0 0 3px rgba(146,74,98,.14),
+    inset 0 0 0 4px rgba(255,252,252,.44);
 }
 .sb-cover-rule::after{
   content:""; position:absolute; inset:9px;
-  border:1px solid rgba(240,206,172,.22);
+  border:1px solid rgba(255,252,252,.34);
 }
 .sb-page-cover.on{display:flex;}
 .sb-cover-label{
@@ -941,22 +941,22 @@ img{-webkit-user-drag:none; user-select:none;}
   transform:rotate(-1.2deg);
 }
 .sb-cover-kicker{font-family:var(--font-serif); font-style:italic; font-size:2.6cqw; color:#8a6270; letter-spacing:.06em; margin:0 0 .4em;}
-.sb-cover-title{font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:11.5cqw; color:#4a1c2c; margin:0; line-height:.98;}
+.sb-cover-title{font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:11.5cqw; color:#5c2438; margin:0; line-height:.98;}
 .sb-cover-sub{font-family:var(--font-serif); font-style:italic; font-size:2.6cqw; color:#9a7482; margin:.5em 0 0;}
 .sb-cover-sticker{position:absolute; z-index:2; transform:rotate(var(--rot,0deg)); pointer-events:none;}
 .sb-cover-sticker img{width:100%; height:auto; display:block; filter:drop-shadow(0 5px 10px rgba(8,18,24,.5));}
-.sb-cover-star{position:absolute; z-index:2; color:#fdf3e2; text-shadow:0 2px 6px rgba(0,0,0,.45); pointer-events:none;}
+.sb-cover-star{position:absolute; z-index:2; color:#fff6ef; text-shadow:0 2px 6px rgba(120,60,84,.5); pointer-events:none;}
 .sb-cover-hint{
   position:absolute; left:0; right:0; bottom:2.2%; z-index:4; margin:0;
   display:flex; align-items:center; justify-content:center; gap:.6em;
   font-family:var(--font-serif); font-style:italic; font-size:2.7cqw;
-  color:rgba(252,232,238,.78); pointer-events:none; z-index:4;
+  color:rgba(96,42,60,.82); pointer-events:none; z-index:4;
   opacity:0; animation:sbHintIn 1.2s var(--ease-out) 1.4s forwards;
 }
 @keyframes sbHintIn{to{opacity:1;}}
 .sb-cover-hint-corner{
   width:2.6cqw; height:2.6cqw; border-radius:1px;
-  background:linear-gradient(315deg,rgba(252,244,238,.92) 0 48%,rgba(0,0,0,0) 49%),rgba(226,198,206,.5);
+  background:linear-gradient(315deg,rgba(120,56,78,.85) 0 48%,rgba(0,0,0,0) 49%),rgba(150,96,116,.4);
   animation:sbHintCurl 2.8s var(--ease-out) infinite;
 }
 @keyframes sbHintCurl{
@@ -986,6 +986,17 @@ img{-webkit-user-drag:none; user-select:none;}
    because the trough opens and less light reaches the bottom of it. It
    follows the turn now. Nothing here is a drawn spine -- there is no edge,
    no object, only light not reaching the fold. */
+/* Declared, so the engine knows a change to it cannot reach any
+   descendant and has no subtree to invalidate. Without this a value
+   written here sixty times a second walks several thousand nodes each
+   time; with it the recalculation stops at this element. */
+@property --flip-lift{ syntax:"<number>"; inherits:false; initial-value:0; }
+@property --book-shift{ syntax:"<length>"; inherits:false; initial-value:0px; }
+@property --cut{ syntax:"<number>"; inherits:false; initial-value:0; }
+@property --d0{ syntax:"<number>"; inherits:false; initial-value:0; }
+@property --d1{ syntax:"<number>"; inherits:false; initial-value:0; }
+@property --s0{ syntax:"<number>"; inherits:false; initial-value:0; }
+@property --s1{ syntax:"<number>"; inherits:false; initial-value:0; }
 .sb-spine{
   position:absolute; top:0; bottom:0; left:50%;
   width:calc(9% + var(--flip-lift,0) * 5%);
@@ -1068,25 +1079,46 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-book-outer.flip-back .sb-leaf-b{left:auto; right:var(--board-x);}
 .sb-book-outer.single .sb-leaf-a{right:var(--board-x); left:auto;}
 
+/* EIGHTEEN COPIES OF A PAGE, TWICE OVER.
+
+   A turning sheet is the page cut into strips, and every strip holds its
+   own clone of the whole page clipped to a slice -- so mid-turn there are
+   thirty-six copies of a page of photographs live in the document. Paint is
+   fine, because each strip only rasterises its own slice. Style and layout
+   were not: an invalidation anywhere walked all of it.
+
+   `contain` draws a box round each one. Layout inside a strip cannot affect
+   anything outside it and style cannot escape it, which is true here by
+   construction -- a strip is a fixed-size window onto a page that is not
+   going to reflow -- so the browser is being told something it could not
+   work out for itself. Paint containment matches the overflow:hidden that
+   was already there. And will-change hands each strip to the compositor,
+   so turning it over is a transform on a texture rather than a re-raster
+   sixty times a second. */
 .sb-strip{
   position:absolute; top:0; height:100%;
   overflow:hidden;
   transform-style:flat;
   backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  contain:layout style paint;
+  will-change:transform;
 }
-.sb-strip-inner{position:absolute; top:0; height:100%;}
+.sb-strip-inner{position:absolute; top:0; height:100%; contain:layout style;}
 /* the cut edge of the paper. A sheet is not infinitely thin, and the one
    place you can see that is the free edge as it comes over -- a hairline
    of lit paper along the outside of the leaf. */
-.sb-strip:last-child::after{
-  content:""; position:absolute; right:0; width:2px; z-index:41;
-  /* only down the paper, not the whole strip: the strip is taller than the
-     page now and this was drawing a lit hairline in the air above the book */
-  top:var(--pt,0); height:var(--ph,100%);
+/* A real element rather than a ::after, because its brightness changes
+   every frame and a pseudo-element can only be reached through its
+   parent -- which here is a strip with a whole page cloned inside it.
+   Sized to the paper, not to the strip: the strip is taller than the page
+   and this was drawing a lit hairline in the air above the book. */
+.sb-strip-cut{
+  position:absolute; right:0; width:2px; z-index:41; display:block;
   background:linear-gradient(90deg, rgba(255,248,236,0), rgba(255,250,240,.85));
-  opacity:var(--edge, 0); pointer-events:none;
+  opacity:var(--cut, 0); pointer-events:none;
 }
-.sb-book-outer.flip-back .sb-strip:last-child::after{
+.sb-strip:not(:last-child) .sb-strip-cut{display:none;}
+.sb-book-outer.flip-back .sb-strip-cut{
   right:auto; left:0;
   background:linear-gradient(270deg, rgba(255,248,236,0), rgba(255,250,240,.85));
 }
@@ -1330,12 +1362,6 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-photo-cell .sb-photo-inner,.sb-photo-window .sb-photo-inner{width:100%; height:100%;}
 .sb-photo-window .sb-photo-inner{background:#222b2d;}
 
-.sb-photo-hand{
-  position:absolute; left:-2%; bottom:-19%; width:110%;
-  font-family:var(--font-script); font-size:3.2cqw; color:#fdf6e8;
-  text-shadow:0 1px 3px rgba(0,0,0,.5); transform:rotate(-4deg);
-}
-
 /* ---- tape: matte, slightly translucent, torn at the ends ---- */
 .sb-tape{
   position:absolute; z-index:6; pointer-events:none;
@@ -1455,15 +1481,23 @@ img{-webkit-user-drag:none; user-select:none;}
    same hairline rule as the film cells on the video card, and the whole
    thing sits at a slight angle so it reads as laid down rather than
    printed on. */
+/* IN BLACK, NOT CREAM.
+
+   On a cream page, under a cream-mounted polaroid, a cream card holding
+   three small frames read as a pale slab with pictures on it -- there was
+   nothing to tell you where the strip ended and the paper began. Black is
+   what a strip of frames is anyway, it is what the photobooth strip two
+   pages on already uses, and on this page it is the one dark mass, which
+   is exactly the job that corner needed doing. */
 .sb-film{
   transform:rotate(var(--rot,0deg)); z-index:3;
-  padding:1.7cqw; border-radius:3px;
-  background:linear-gradient(168deg,#fdfbf4,#f2e8d4);
+  padding:2.1cqw; border-radius:2px;
+  background:linear-gradient(168deg,#232122 0%,#151314 55%,#1d1a1b 100%);
   box-shadow:
-    0 10px 22px rgba(70,44,20,.28),
-    0 2px 5px rgba(70,44,20,.16),
-    0 1px 0 rgba(255,255,255,.9) inset,
-    0 0 0 1px rgba(152,112,70,.24);
+    0 12px 26px rgba(24,12,6,.42),
+    0 3px 7px rgba(24,12,6,.30),
+    0 1px 0 rgba(255,246,232,.14) inset,
+    0 0 0 1px rgba(255,240,220,.10);
 }
 /* the sprockets belonged to the negative, and never rendered anyway: they
    were built with el("i"), which makes a <div class="i">, while the rule
@@ -1471,8 +1505,10 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-film-holes{display:none;}
 .sb-film-cells{display:flex; flex-direction:column; gap:1.5cqw;}
 .sb-film-cell{
-  aspect-ratio:4/3; overflow:hidden; background:#e9dcc6;
-  box-shadow:0 0 0 1px rgba(120,86,50,.30);
+  aspect-ratio:4/3; overflow:hidden; background:#0f0d0e;
+  /* a warm hairline, so each frame is cut out of the strip rather than
+     floating in it */
+  box-shadow:0 0 0 1px rgba(255,238,214,.16), 0 1px 3px rgba(0,0,0,.5) inset;
 }
 .sb-film.horiz{padding:9% 3%;}
 .sb-film.horiz .sb-film-holes{top:auto; left:0; right:0; width:auto; height:7%; flex-direction:row;}
@@ -1570,6 +1606,9 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* bouquet */
 .sb-w-bouquet{
+  /* a column, so the stage below can be handed a real height to fill
+     rather than an auto one -- the drawing is sized in percent of it */
+  display:flex; flex-direction:column;
   padding:12px 12px 4px; text-align:center; overflow:hidden;
   background:linear-gradient(165deg,#3d1030,#2a0a22 60%,#39102c);
   box-shadow:0 16px 34px rgba(20,4,16,.5);
@@ -1578,10 +1617,12 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-w-kicker{margin:2px 0 0; font-family:var(--font-body); font-size:7px; letter-spacing:2.4px; color:rgba(250,210,232,.5);}
 .sb-bq-stage{
   display:flex; align-items:flex-end; justify-content:center;
-  height:250px; margin-top:8px;
+  /* gives way on a short window rather than pushing the clip off the end */
+  height:min(250px, 22vh); margin-top:6px;
+  min-height:0; overflow:hidden;
 }
 .sb-bq{
-  height:100%; width:auto; max-width:92%; display:block; overflow:visible;
+  height:100%; max-height:100%; width:auto; max-width:92%; display:block; overflow:visible;
   transform-origin:bottom center;
   filter:drop-shadow(0 14px 24px rgba(20,4,14,.55));
   animation:sbBqIn 1.5s var(--ease-out) both;
@@ -1677,9 +1718,13 @@ img{-webkit-user-drag:none; user-select:none;}
    and the play key is a cream disc with a wine glyph, so the one bright
    thing on the card is the thing you press.
    -------------------------------------------------------------------- */
+/* Shorter than it was. The drawer holds four cards and the last of them --
+   the clip -- was hanging off the bottom edge, so the whole column had to
+   be scrolled to see a thing that should simply be there. The record loses
+   ten pixels and the padding three; nothing else in here had any give. */
 .sb-w-song{
   position:relative; overflow:hidden;
-  display:flex; align-items:center; gap:13px; padding:14px 15px;
+  display:flex; align-items:center; gap:11px; padding:9px 12px;
   background:
     radial-gradient(130% 110% at 8% -10%, rgba(255,196,214,.16), transparent 62%),
     linear-gradient(158deg,#4a1233 0%,#33101f 58%,#3f1229 100%);
@@ -1697,7 +1742,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-w-song.playing .sb-song-halo{opacity:1; animation:sbSongHalo 5.4s ease-in-out infinite;}
 @keyframes sbSongHalo{0%,100%{transform:scale(1); opacity:.75;} 50%{transform:scale(1.09); opacity:1;}}
 
-.sb-song-deck{position:relative; width:68px; height:68px; flex:none;}
+.sb-song-deck{position:relative; width:52px; height:52px; flex:none;}
 .sb-song-disc{
   width:100%; height:100%; display:block; border-radius:50%;
   box-shadow:
@@ -1788,17 +1833,31 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* map */
+/* THE CARD, NOT THE MAP.
+
+   Every other card in the drawer is a deep plum or a dark slate; this one
+   was a bright cream board, which made it the one thing in there your eye
+   went to first and the reason the column looked unfinished. The frame
+   takes the song card's dye so the four of them read as one set. The map
+   inside it is untouched -- it is a drawn map of Marrakech and it is meant
+   to look like paper. */
 .sb-w-map{
-  padding:11px; background:linear-gradient(180deg,#f6f4ec,#e9e6da);
-  box-shadow:0 13px 28px rgba(30,26,14,.3), 0 0 0 1px rgba(150,146,130,.28);
+  padding:11px;
+  background:
+    radial-gradient(130% 110% at 8% -10%, rgba(255,196,214,.14), transparent 62%),
+    linear-gradient(158deg,#4a1233 0%,#33101f 58%,#3f1229 100%);
+  box-shadow:0 13px 28px rgba(20,4,16,.44), 0 1px 0 rgba(255,214,226,.16) inset;
+  border:1px solid rgba(226,168,120,.24);
 }
-.sb-map-head{display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:8px;}
-.sb-map-kicker{margin:0; font-family:var(--font-body); font-size:6.5px; letter-spacing:.2em; color:#8a8574;}
-.sb-map-name{margin:0; font-family:'Playfair Display',serif; font-weight:700; font-size:14px; color:#2f2e26;}
+.sb-map-head{display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:6px;}
+.sb-map-kicker{margin:0; font-family:var(--font-body); font-size:6.5px; letter-spacing:.2em; color:rgba(238,196,206,.72);}
+.sb-map-name{margin:0; font-family:'Playfair Display',serif; font-weight:700; font-size:14px; color:#f7e4ea;}
 .sb-map-zoom{display:flex; gap:5px;}
 .sb-map-zoom button{
   width:23px; height:23px; border-radius:50%; border:none; cursor:pointer;
-  font-size:14px; line-height:1; color:#fbeef1; background:#8e4257; box-shadow:0 2px 5px rgba(0,0,0,.24);
+  font-size:14px; line-height:1; color:#f8e2e9;
+  background:rgba(240,196,206,.16);
+  box-shadow:0 0 0 1px rgba(255,214,226,.26), 0 2px 5px rgba(0,0,0,.3);
 }
 .sb-map-body{position:relative; aspect-ratio:4/3; border-radius:10px; overflow:hidden; background:#efe7d6;}
 .sb-map-inner{position:absolute; inset:0; transition:transform .35s var(--ease-out); transform-origin:center;}
@@ -1860,9 +1919,22 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; inset:0; z-index:1;
   background:linear-gradient(180deg,rgba(10,14,18,.10) 0%,rgba(10,14,18,.24) 46%,rgba(8,12,16,.86) 100%);
 }
+/* If every thumbnail host is unreachable the card must still look made
+   rather than broken: a record turning behind falling rain, in the same
+   cool dark as the frame itself. The grooves are a repeating radial ring,
+   the rain two slanted repeating gradients at different pitches so it does
+   not read as a flat texture. This is the fallback only -- the real frame
+   off the video is what normally shows here. */
 .sb-w-video.nothumb .sb-vid-frame{
   background:
-    radial-gradient(circle at 50% 44%, #2b4a52 0%, #16292f 60%, #0e1c21 100%);
+    repeating-linear-gradient(74deg,
+      rgba(226,240,248,.07) 0 1px, rgba(226,240,248,0) 1px 10px),
+    repeating-linear-gradient(78deg,
+      rgba(236,246,252,.07) 0 1px, rgba(236,246,252,0) 1px 17px),
+    repeating-radial-gradient(circle at 50% 44%,
+      rgba(214,232,242,.03) 0 2px, rgba(0,0,0,0) 2px 6px),
+    radial-gradient(circle at 50% 44%, rgba(224,240,248,.14) 0 8%, rgba(0,0,0,0) 9%),
+    radial-gradient(circle at 50% 42%, #2b4a52 0%, #16292f 58%, #0e1c21 100%);
 }
 .sb-w-video.nothumb .sb-vid-thumb{display:none;}
 .sb-vid-meta{position:absolute; left:12px; right:12px; bottom:10px; z-index:2; pointer-events:none;}
@@ -1948,35 +2020,25 @@ img{-webkit-user-drag:none; user-select:none;}
   flex-direction:row; align-items:center; gap:9px;
   transition:opacity .3s ease;
 }
+/* The record, stuck down on the frame. It is painted in scrapbook.js by
+   playRecord() -- the same wine and cream as the three records already on
+   these pages -- so the control is a sticker from this book rather than a
+   piece of camera hardware borrowed from somewhere else. */
 .sb-ov-ring{
   position:relative; flex:0 0 auto; display:block;
-  width:clamp(38px, 13cqw, 58px); height:clamp(38px, 13cqw, 58px);
+  width:clamp(40px, 13.5cqw, 60px); height:clamp(40px, 13.5cqw, 60px);
   border-radius:50%;
-  /* the milled collar */
-  background:
-    conic-gradient(from 20deg,
-      #f6e3b4 0deg, #c9a057 24deg, #f8ecc9 52deg, #b98f47 84deg,
-      #f4e1b0 116deg, #c39a52 152deg, #fbf0d2 190deg, #b88e46 226deg,
-      #f2dfae 262deg, #caa159 300deg, #f6e3b4 360deg);
-  box-shadow:
-    0 6px 16px rgba(48,26,10,.48),
-    0 1px 0 rgba(255,248,228,.7) inset;
-  transition:transform .18s var(--ease-out), box-shadow .18s var(--ease-out);
+  filter:drop-shadow(0 6px 14px rgba(34,8,20,.55));
+  transition:transform .18s var(--ease-out), filter .18s var(--ease-out);
 }
-.sb-ov-disc{
-  position:absolute; inset:14%;
-  display:flex; align-items:center; justify-content:center;
-  border-radius:50%; color:#5c2438;
-  background:radial-gradient(circle at 36% 28%, #fffaf0 0%, #f7e9cf 55%, #ecd7ad 100%);
-  box-shadow:
-    0 1px 0 rgba(255,255,255,.95) inset,
-    0 -2px 4px rgba(150,104,44,.30) inset,
-    0 0 0 1px rgba(160,120,60,.45);
+.sb-ov-disc-img{
+  position:absolute; inset:0; width:100%; height:100%;
+  border-radius:50%; display:block;
 }
 /* a slow ring of light going out, so it reads as something to touch */
 .sb-ov-pulse{
   position:absolute; inset:-6%; border-radius:50%; pointer-events:none;
-  border:1.5px solid rgba(253,240,208,.85);
+  border:1.5px solid rgba(255,206,216,.8);
   animation:sbOvPulse 2.8s var(--ease-out) infinite;
 }
 @keyframes sbOvPulse{
@@ -1991,8 +2053,8 @@ img{-webkit-user-drag:none; user-select:none;}
   text-shadow:0 1px 6px rgba(20,10,4,.9); opacity:.96; padding-bottom:3px;
 }
 .sb-w-ourvideo .sb-vid-play:active .sb-ov-ring{
-  transform:translateY(2px) scale(.96);
-  box-shadow:0 2px 7px rgba(48,26,10,.5), 0 1px 0 rgba(255,248,228,.6) inset;
+  transform:translateY(2px) scale(.955);
+  filter:drop-shadow(0 2px 6px rgba(34,8,20,.6));
 }
 .sb-w-ourvideo .sb-vid-play:active{transform:none;}
 .sb-w-ourvideo .sb-ico-play{margin-left:3px;}
@@ -2028,8 +2090,8 @@ img{-webkit-user-drag:none; user-select:none;}
   width:clamp(24px, 7.4cqw, 34px); height:clamp(24px, 7.4cqw, 34px);
   border:none; border-radius:50%; cursor:pointer; padding:0;
   color:#5c2438;
-  background:radial-gradient(circle at 36% 28%, #fffaf0 0%, #f4e5c6 60%, #e6cea1 100%);
-  box-shadow:0 0 0 1px rgba(160,120,60,.5), 0 3px 8px rgba(24,10,16,.5);
+  background:radial-gradient(circle at 36% 28%, #fffaf7 0%, #f6e2e6 60%, #e6c8cf 100%);
+  box-shadow:0 0 0 1px rgba(146,80,100,.5), 0 3px 8px rgba(24,10,16,.5);
   transition:transform .16s var(--ease-out);
 }
 .sb-ov-pp:active{transform:scale(.92);}
@@ -2062,18 +2124,18 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-ov-buf{width:0; background:rgba(255,246,226,.30);}
 .sb-ov-fill{
   width:0;
-  background:linear-gradient(90deg,#d9ab5c,#f6e3b4);
-  box-shadow:0 0 8px rgba(246,227,180,.55);
+  background:linear-gradient(90deg,#a8455f,#f0c0cc);
+  box-shadow:0 0 8px rgba(240,192,204,.5);
 }
 .sb-ov-knob{
   position:absolute; left:0; top:50%; width:clamp(11px, 3.2cqw, 15px);
   aspect-ratio:1/1; border-radius:50%; pointer-events:none;
   transform:translate(-50%,-50%);
-  background:radial-gradient(circle at 34% 30%, #fffaf0, #eed9ab 70%, #c9a057 100%);
-  box-shadow:0 0 0 1px rgba(120,84,36,.6), 0 2px 6px rgba(20,8,14,.6);
+  background:radial-gradient(circle at 34% 30%, #fffaf7, #efd2d9 70%, #b9748a 100%);
+  box-shadow:0 0 0 1px rgba(108,52,70,.6), 0 2px 6px rgba(20,8,14,.6);
 }
 .sb-ov-track:focus-visible{outline:none;}
-.sb-ov-track:focus-visible .sb-ov-knob{box-shadow:0 0 0 2px #fdf0d0, 0 2px 6px rgba(20,8,14,.6);}
+.sb-ov-track:focus-visible .sb-ov-knob{box-shadow:0 0 0 2px #fbdde5, 0 2px 6px rgba(20,8,14,.6);}
 
 .sb-ov-time{
   flex:0 0 auto; display:flex; align-items:baseline; gap:.28em;
@@ -2196,8 +2258,14 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .sb-drawer{
   position:absolute; left:0; top:0; bottom:0; z-index:20;
-  width:min(86vw,320px); padding:14px 14px 90px;
-  display:flex; flex-direction:column; gap:12px; overflow-y:auto;
+  /* Ninety pixels of bottom padding was the whole reason this column
+     scrolled. It is there to clear the flower button -- but the button is
+     in the bottom-right of the SCREEN, and this drawer is 320px wide down
+     the left, so on anything but a phone the two never meet. The
+     full-width phone rule further down keeps its clearance; here the
+     drawer gets its four cards on screen at once, which is what it is for. */
+  width:min(86vw,320px); padding:12px 14px 16px;
+  display:flex; flex-direction:column; gap:10px; overflow-y:auto;
   -webkit-overflow-scrolling:touch;
   background:linear-gradient(180deg,rgba(38,26,18,.9),rgba(28,18,12,.94));
   backdrop-filter:blur(8px);
@@ -2339,10 +2407,25 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-back-go:active{transform:translateY(1px);}
 .sb-back-go-arrow{font-size:1.25em; line-height:0; transform:translateY(-.04em);}
 
-/* ---- phones: the drawer takes the screen, type stays legible ---- */
+/* ---- phones: the drawer takes the screen, type stays legible ----
+
+   And it fits in one screen. On a phone the four cards at their desktop
+   proportions came to about 1050px against an 844px window, so the whole
+   drawer scrolled and the music video sat off the bottom edge. The three
+   lower cards are sized by what is in them and cannot give much; the
+   bouquet is the one that can, because it is a stage with a drawing on it
+   and the drawing scales. So it stops being a fixed height here and takes
+   whatever the column has left, down to a floor of 140px. Everything else
+   is trimmed by a few pixels apiece: the flower button needs clearance,
+   not ninety-six pixels of it, and the map reads fine a little wider than
+   4:3. The drawer can still scroll -- on a very short window it has to --
+   but on an ordinary phone it no longer needs to. */
 @media (max-width:600px){
-  .sb-drawer{width:100%; max-width:none; padding:16px 16px 96px;}
-  .sb-bq-stage{height:calc(var(--app-h) * .32); max-height:260px;}
+  .sb-drawer{width:100%; max-width:none; padding:14px 14px 74px; gap:9px;}
+  .sb-drawer > .sb-w-bouquet{flex:1 1 auto; min-height:140px;}
+  .sb-bq-stage{height:0; flex:1 1 auto; min-height:104px; max-height:260px;}
+  .sb-map-body{aspect-ratio:16/10;}
+  .sb-w-map{padding:10px;}
 }
 @media (prefers-reduced-motion: reduce){
   .sb-bq,.sb-map-pin,.sb-intro-hint,.sb-song-disc,.sb-curl,.sb-cover-hint-corner,
@@ -2599,14 +2682,32 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:0 3px 8px rgba(60,90,30,.45);
 }
 .hub-card.done .hub-badge{display:flex;}
+/* THE FOUR CARDS.
+
+   These used to be stacks of CSS gradients -- a green band with a white
+   dot, a pink block, a grey smear. At 74 pixels tall that is a swatch, not
+   a picture, and four swatches in a row tell her nothing about what she is
+   choosing between.
+
+   Each card carries a small pixel scene now, painted on a 96x32 grid by
+   tools/img/hubart.py and inlined as run-length SVG: the signpost and the
+   two of them walking off up the path, the castle and the gift block, the
+   one lit window in a dead skyline, the road running to the sun. Pixels
+   because three of the four chapters are pixel games -- the card should
+   look like the thing behind it. Inline, so there is nothing to fetch, and
+   crispEdges so it stays a pixel scene at any card width. */
 .hub-art{
-  display:block; width:100%; height:74px; border-radius:9px; overflow:hidden;
-  image-rendering:pixelated;
+  display:block; position:relative; width:100%; height:74px;
+  border-radius:9px; overflow:hidden;
+  background:#2a1a24;
+  box-shadow:0 1px 0 rgba(255,246,230,.35) inset, 0 0 0 1px rgba(96,64,28,.22);
 }
-.hub-art-quest{
-  background:
-    radial-gradient(circle at 74% 26%, #fffaf0 0 9px, transparent 10px),
-    linear-gradient(180deg,#bfe4f2 0%,#f6e6ee 46%,#93c065 46%,#79a851 100%);
+.hub-scene{display:block; width:100%; height:100%;}
+/* a breath of the parchment over the top, so the scene sits IN the card
+   rather than on it */
+.hub-art::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(180deg, rgba(255,244,214,.14), rgba(60,34,10,.16));
 }
 .hub-name{font-family:'Cinzel',serif; font-weight:700; font-size:15.5px; color:#4e2d0d;}
 .hub-desc{font-family:'Poppins',sans-serif; font-size:11.5px; line-height:1.4; color:#7a5327;}
@@ -3451,19 +3552,6 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* ---- the hub card art for it ---- */
-.hub-art-ouissy{
-  background:
-    radial-gradient(circle at 78% 24%, #fff6c0 0 7px, transparent 8px),
-    linear-gradient(180deg,#8fe3ff 0%,#bdf0ff 40%,#8ff0a8 40%,#5fd684 62%,#d69a5c 62%,#b0783f 100%);
-  position:relative;
-}
-.hub-art-ouissy::after{
-  content:""; position:absolute; left:14%; right:14%; bottom:26%; height:22%;
-  background:
-    radial-gradient(circle at 18% 50%, #ff5f95 0 22%, transparent 24%),
-    radial-gradient(circle at 50% 50%, #ff5f95 0 22%, transparent 24%),
-    radial-gradient(circle at 82% 50%, #ff5f95 0 22%, transparent 24%);
-}
 
 @media (prefers-reduced-motion: reduce){
   .so-overlay.on, .so-logo canvas, .so-diff-card, .so-btn, .so-btn-go,
@@ -4070,21 +4158,6 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* the hub card art: a street at night, one lit window, the fence */
-.hub-art-apoc{
-  background:
-    radial-gradient(circle at 74% 22%, rgba(226,236,255,.9) 0 5px, transparent 6px),
-    radial-gradient(circle at 22% 62%, rgba(255,190,120,.5) 0 9%, transparent 40%),
-    linear-gradient(180deg,#131a2e 0%,#1b2340 42%,#2a2033 42%,#241a2a 66%,#1a1622 66%,#120f19 100%);
-  position:relative;
-  box-shadow:inset 0 0 22px rgba(0,0,0,.6);
-}
-.hub-art-apoc::after{
-  content:""; position:absolute; left:0; right:0; bottom:30%; height:26%;
-  background:
-    linear-gradient(90deg, transparent 0 6%, #0d1018 6% 15%, transparent 15% 24%, #0d1018 24% 30%, transparent 30% 52%, #0d1018 52% 63%, transparent 63% 74%, #0d1018 74% 82%, transparent 82%),
-    radial-gradient(circle at 27% 30%, #ffcf7a 0 8%, transparent 9%),
-    radial-gradient(circle at 58% 44%, #ffcf7a 0 7%, transparent 8%);
-}
 
 /* This block used to do two different jobs at once and fired on
    `(max-width: 900px), (orientation: portrait)`. The comma is an OR, so a
@@ -5661,37 +5734,8 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* ---------- the hub card: a pastel road running to a heart ---------- */
-.hub-art-race{
-  position:relative;
-  background:
-    radial-gradient(circle at 74% 22%, rgba(255,246,214,.9) 0 8%, transparent 9%),
-    linear-gradient(180deg,#ffb27a 0%,#ffd9a0 32%,#8fd0ea 32%,#bfe6d6 46%,#5f9e57 46%,#4a8348 100%);
-  box-shadow:inset 0 0 22px rgba(60,32,10,.32);
-}
 /* the road: a trapezium running to the vanishing point, with its
    centre dashes and a rumble edge — the game's own view, in miniature */
-.hub-art-race::before{
-  content:""; position:absolute; left:0; right:0; top:46%; bottom:0;
-  background:
-    linear-gradient(180deg, transparent 0 4%, rgba(255,255,255,.85) 4% 7%, transparent 7% 16%,
-                            rgba(255,255,255,.85) 16% 21%, transparent 21% 36%,
-                            rgba(255,255,255,.85) 36% 44%, transparent 44% 66%,
-                            rgba(255,255,255,.85) 66% 78%, transparent 78%) 50% / 8% 100% no-repeat,
-    linear-gradient(90deg, transparent 0 6%, #ff7f8a 6% 11%, #fff8e8 11% 16%, #ff7f8a 16% 21%, transparent 21% 79%,
-                            #ff7f8a 79% 84%, #fff8e8 84% 89%, #ff7f8a 89% 94%, transparent 94%),
-    linear-gradient(180deg,#9c8a72,#8a7860);
-  clip-path:polygon(38% 0, 62% 0, 100% 100%, 0 100%);
-}
-.hub-art-race::after{
-  content:""; position:absolute; left:50%; top:16%; width:16%; aspect-ratio:1;
-  transform:translateX(-50%);
-  background:
-    radial-gradient(circle at 30% 32%, #ff5f95 0 50%, transparent 51%) 0 0/50% 50% no-repeat,
-    radial-gradient(circle at 70% 32%, #ff5f95 0 50%, transparent 51%) 100% 0/50% 50% no-repeat,
-    linear-gradient(#ff5f95,#ff5f95) 50% 62%/72% 46% no-repeat;
-  clip-path:polygon(50% 100%, 0 42%, 8% 8%, 30% 4%, 50% 24%, 70% 4%, 92% 8%, 100% 42%);
-  filter:drop-shadow(0 2px 0 rgba(120,30,60,.4));
-}
 
 /* ---------- phones ----------
    Split for the same reason as .ap-stage above: the comma in
