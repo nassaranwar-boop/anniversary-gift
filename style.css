@@ -1876,7 +1876,10 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-bq-stage{
   display:flex; align-items:flex-end; justify-content:center;
   /* gives way on a short window rather than pushing the clip off the end */
-  height:min(250px, 22vh); margin-top:6px;
+  /* 21.5, not 22: the map's header grew by a few pixels when its zoom studs
+     did, and this is the card that can give them back without anything in it
+     getting harder to see. */
+  height:min(250px, 21.5vh); margin-top:5px;
   min-height:0; overflow:hidden;
 }
 .sb-bq{
@@ -2112,12 +2115,19 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-map-name{margin:0; font-family:'Playfair Display',serif; font-weight:700; font-size:14px; color:#f7e4ea;}
 .sb-map-zoom{display:flex; gap:5px;}
 .sb-map-zoom button{
-  /* 23px was a target for a mouse. A thumb needs forty, and the two of them
-     sit in the card's header where there is room for it. */
-  width:40px; height:40px; border-radius:50%; border:none; cursor:pointer;
-  font-size:17px; line-height:1; color:#f8e2e9;
+  /* 23px was too small even for a mouse; 40px is what a thumb needs. Giving
+     forty to everything made the map card's header fifteen pixels taller and
+     that pushed the whole drawer past the bottom of a 1280x800 window -- a
+     fault on a laptop, caused by a fix for a phone. So the floor follows the
+     pointer: coarse gets the thumb's forty, fine gets a size a cursor hits
+     easily and the column keeps its fit. */
+  width:29px; height:29px; border-radius:50%; border:none; cursor:pointer;
+  font-size:16px; line-height:1; color:#f8e2e9;
   background:rgba(240,196,206,.16);
   box-shadow:0 0 0 1px rgba(255,214,226,.26), 0 2px 5px rgba(0,0,0,.3);
+}
+@media (hover:none){
+  .sb-map-zoom button{width:40px; height:40px; font-size:17px;}
 }
 .sb-map-body{position:relative; aspect-ratio:4/3; border-radius:10px; overflow:hidden; background:#efe7d6;}
 .sb-map-inner{position:absolute; inset:0; transition:transform .35s var(--ease-out); transform-origin:center;}
