@@ -65,14 +65,14 @@
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=212">
+<link rel="stylesheet" href="style.css?v=214">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
 <!-- defer, not a plain tag. three.js is the biggest single file here and
      in the head it blocked the parser for its whole download, so nothing
      was painted until it had arrived. defer fetches it just as early and
      runs it after the document is parsed — and deferred scripts still run
      in the order they are written, so book-scene.js below still finds it. -->
-<script defer src="vendor/three.bundle.js?v=212"></script>
+<script defer src="vendor/three.bundle.js?v=214"></script>
 
 </head>
 <body>
@@ -130,6 +130,50 @@
         <rect x="5" y="4" width="2" height="1" fill="#eaf7e2"/>
         <rect x="2" y="5" width="4" height="1" fill="#eaf7e2"/>
         <rect x="3" y="6" width="2" height="1" fill="#eaf7e2"/>
+      </symbol>
+      <!-- A speaker with two waves coming off it, and the same speaker
+           with a cross where the waves were. The old one was drawn in CSS
+           borders and came out as a plain triangle — it read as a play
+           arrow, which is close to the opposite of what it does. -->
+      <symbol id="ic-px-sound-on" viewBox="0 0 12 10">
+        <rect x="1" y="4" width="2" height="2" fill="#e8dcc4"/>
+        <rect x="3" y="3" width="1" height="4" fill="#e8dcc4"/>
+        <rect x="4" y="2" width="1" height="6" fill="#e8dcc4"/>
+        <rect x="5" y="1" width="1" height="8" fill="#e8dcc4"/>
+        <rect x="7" y="3" width="1" height="1" fill="#e8dcc4"/>
+        <rect x="8" y="4" width="1" height="2" fill="#e8dcc4"/>
+        <rect x="7" y="6" width="1" height="1" fill="#e8dcc4"/>
+        <rect x="9" y="1" width="1" height="1" fill="#e8dcc4"/>
+        <rect x="10" y="2" width="1" height="2" fill="#e8dcc4"/>
+        <rect x="11" y="4" width="1" height="2" fill="#e8dcc4"/>
+        <rect x="10" y="6" width="1" height="2" fill="#e8dcc4"/>
+        <rect x="9" y="8" width="1" height="1" fill="#e8dcc4"/>
+      </symbol>
+      <symbol id="ic-px-sound-off" viewBox="0 0 12 10">
+        <rect x="1" y="4" width="2" height="2" fill="#e8dcc4"/>
+        <rect x="3" y="3" width="1" height="4" fill="#e8dcc4"/>
+        <rect x="4" y="2" width="1" height="6" fill="#e8dcc4"/>
+        <rect x="5" y="1" width="1" height="8" fill="#e8dcc4"/>
+        <rect x="7" y="2" width="1" height="1" fill="#d88a8a"/>
+        <rect x="11" y="2" width="1" height="1" fill="#d88a8a"/>
+        <rect x="8" y="3" width="1" height="1" fill="#d88a8a"/>
+        <rect x="10" y="3" width="1" height="1" fill="#d88a8a"/>
+        <rect x="9" y="4" width="1" height="2" fill="#d88a8a"/>
+        <rect x="8" y="6" width="1" height="1" fill="#d88a8a"/>
+        <rect x="10" y="6" width="1" height="1" fill="#d88a8a"/>
+        <rect x="7" y="7" width="1" height="1" fill="#d88a8a"/>
+        <rect x="11" y="7" width="1" height="1" fill="#d88a8a"/>
+      </symbol>
+      <!-- back to the very start: an arrow curling round to a stop bar -->
+      <symbol id="ic-px-restart" viewBox="0 0 11 9">
+        <rect x="0" y="4" width="1" height="1" fill="#e8dcc4"/>
+        <rect x="1" y="3" width="1" height="1" fill="#e8dcc4"/>
+        <rect x="1" y="5" width="1" height="1" fill="#e8dcc4"/>
+        <rect x="2" y="2" width="1" height="1" fill="#e8dcc4"/>
+        <rect x="2" y="6" width="1" height="1" fill="#e8dcc4"/>
+        <rect x="2" y="4" width="6" height="1" fill="#e8dcc4"/>
+        <rect x="8" y="1" width="1" height="7" fill="#e8dcc4"/>
+        <rect x="9" y="1" width="1" height="7" fill="#e8dcc4"/>
       </symbol>
       <symbol id="ic-px-close" viewBox="0 0 10 9">
         <rect x="0" y="0" width="2" height="1" fill="#e8dcc4"/>
@@ -661,6 +705,29 @@
 
   <!-- SCREEN — CHOOSE YOUR ADVENTURE (hub) -->
   <section id="screen-hub" class="screen ancient-bg">
+    <!-- The wall behind the cards. Stickers and a drifting warm light, so
+         the two pages that are just a list of things to press stop looking
+         like a list of things to press. Nothing here is interactive and
+         nothing here is a file: the stickers are the same pixel glyphs the
+         sprite sheet already carries. -->
+    <div class="page-deco" aria-hidden="true">
+      <span class="deco-glow deco-glow-a"></span>
+      <span class="deco-glow deco-glow-b"></span>
+      <span class="deco-glow deco-glow-c"></span>
+      <span class="deco-sheen"></span>
+      <span class="deco-motes deco-motes-a"></span>
+      <span class="deco-motes deco-motes-b"></span>
+      <span class="deco-vig"></span>
+      <i class="deco-st deco-st1"><svg class="gl" aria-hidden="true"><use href="#ic-px-heart"/></svg></i>
+      <i class="deco-st deco-st2"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
+      <i class="deco-st deco-st3"><svg class="gl" aria-hidden="true"><use href="#ic-px-fox"/></svg></i>
+      <i class="deco-st deco-st4"><svg class="gl" aria-hidden="true"><use href="#ic-px-crown"/></svg></i>
+      <i class="deco-st deco-st5"><svg class="gl" aria-hidden="true"><use href="#ic-px-ribbon"/></svg></i>
+      <i class="deco-st deco-st6"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
+      <i class="deco-st deco-st7"><svg class="gl" aria-hidden="true"><use href="#ic-px-heart"/></svg></i>
+      <i class="deco-st deco-st8"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
+      <i class="deco-st deco-st9"><svg class="gl" aria-hidden="true"><use href="#ic-px-crown"/></svg></i>
+    </div>
     <div class="hub-wrap">
       <h2 class="hub-title">Choose your adventure</h2>
       <p class="hub-sub" id="hub-sub">— three ways in, any order —</p>
@@ -696,6 +763,29 @@
 
   <!-- SCREEN — KEEPSAKE (scrapbook recap) -->
   <section id="screen-keepsake" class="screen ancient-bg">
+    <!-- The wall behind the cards. Stickers and a drifting warm light, so
+         the two pages that are just a list of things to press stop looking
+         like a list of things to press. Nothing here is interactive and
+         nothing here is a file: the stickers are the same pixel glyphs the
+         sprite sheet already carries. -->
+    <div class="page-deco" aria-hidden="true">
+      <span class="deco-glow deco-glow-a"></span>
+      <span class="deco-glow deco-glow-b"></span>
+      <span class="deco-glow deco-glow-c"></span>
+      <span class="deco-sheen"></span>
+      <span class="deco-motes deco-motes-a"></span>
+      <span class="deco-motes deco-motes-b"></span>
+      <span class="deco-vig"></span>
+      <i class="deco-st deco-st1"><svg class="gl" aria-hidden="true"><use href="#ic-px-camera"/></svg></i>
+      <i class="deco-st deco-st2"><svg class="gl" aria-hidden="true"><use href="#ic-px-heart"/></svg></i>
+      <i class="deco-st deco-st3"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
+      <i class="deco-st deco-st4"><svg class="gl" aria-hidden="true"><use href="#ic-px-ribbon"/></svg></i>
+      <i class="deco-st deco-st5"><svg class="gl" aria-hidden="true"><use href="#ic-px-crown"/></svg></i>
+      <i class="deco-st deco-st6"><svg class="gl" aria-hidden="true"><use href="#ic-px-fox"/></svg></i>
+      <i class="deco-st deco-st7"><svg class="gl" aria-hidden="true"><use href="#ic-px-heart"/></svg></i>
+      <i class="deco-st deco-st8"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
+      <i class="deco-st deco-st9"><svg class="gl" aria-hidden="true"><use href="#ic-px-star"/></svg></i>
+    </div>
     <div class="ks-wrap">
       <h2 class="ks-title">Our little book</h2>
       <p class="ks-sub" id="ks-sub"></p>
@@ -716,7 +806,9 @@
 
         <div class="hv-top">
           <button id="hv-back" class="hv-chip">‹ back</button>
+          <button id="hv-restart" class="hv-chip" aria-label="Back to the start" title="Back to the start"><svg class="gl" aria-hidden="true"><use href="#ic-px-restart"/></svg></button>
           <div id="hv-found" class="hv-found" aria-label="Things you have found"></div>
+          <button id="hv-sound" class="hv-chip" aria-label="Sound on" title="Sound on"><svg class="gl" aria-hidden="true"><use id="hv-sound-icon" href="#ic-px-sound-on"/></svg></button>
           <button id="hv-quit" class="hv-chip" aria-label="Leave"><svg class="gl" aria-hidden="true"><use href="#ic-px-close"/></svg></button>
         </div>
 
@@ -1019,8 +1111,8 @@
      needed until a chapter is chosen. script.js now fetches each one on
      the idle callback and waits for it at the card, so they arrive long
      before she does without ever standing in front of the opening. -->
-<script defer src="book-scene.js?v=212"></script>
-<script defer src="scrapbook.js?v=212"></script>
-<script defer src="script.js?v=212"></script>
+<script defer src="book-scene.js?v=214"></script>
+<script defer src="scrapbook.js?v=214"></script>
+<script defer src="script.js?v=214"></script>
 </body>
 </html>

@@ -2504,8 +2504,14 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .hv-found.on{display:flex;}
 .hv-token{
-  font-size:clamp(11px,2.2vw,15px); line-height:1;
+  font-size:clamp(11px,2.2vw,15px); line-height:0;
   animation:hvTokenIn .45s var(--ease-pop) backwards;
+}
+/* the strip shows the same little canvas that is lying in the grass,
+   scaled up and kept on its own pixel grid */
+.hv-token canvas{
+  width:clamp(14px,2.8vw,20px); height:auto; display:block;
+  image-rendering:pixelated; image-rendering:crisp-edges;
 }
 @keyframes hvTokenIn{from{opacity:0; transform:scale(.3) rotate(-25deg);} to{opacity:1; transform:none;}}
 
@@ -2547,6 +2553,36 @@ img{-webkit-user-drag:none; user-select:none;}
   left:50%; bottom:auto; top:2.5%; transform:translateX(-50%) rotate(-1deg);
   text-align:center; max-width:74%; font-size:clamp(14px,3.1vw,24px); color:#c4487a;
 }
+/* The note covers the bottom third of the stage, which is where the
+   stones and the orchard row are. Once she starts crossing one, the
+   paper lifts out of the way — and it is only the paper that moves.
+   The buttons underneath it never do: they are the way out of every
+   one of these and they are never taken away, delayed or hidden. */
+.hv-note-away{
+  opacity:0; pointer-events:none;
+  transform:rotate(-2.4deg) translateY(18px) scale(.97);
+  animation:none;
+  transition:opacity .45s ease, transform .45s ease;
+}
+
+/* While the two of them are talking, their choices are not on the
+   table yet. Only the look changes here — the buttons are also
+   genuinely `disabled` in script.js, so nothing can be clicked or
+   tabbed to early; this is not a visual trick over a live control. */
+.hv-hushed{
+  opacity:0; pointer-events:none;
+  transform:translateY(4px);
+  transition:opacity .1s ease, transform .1s ease;
+}
+#hv-left,#hv-right,#hv-centre,#hv-cards{
+  transition:opacity .45s ease .12s, transform .45s ease .12s;
+}
+
+/* the air in each place, and its off switch. The icon itself is an SVG
+   symbol like every other chip's, and it swaps between a speaker with
+   waves and a speaker with a cross — the old one was two CSS borders
+   that came out as a plain triangle, which reads as "play". */
+#hv-sound.off{ opacity:.62; }
 
 /* ---- choice buttons pinned to the edges, like the original ---- */
 .hv-side{
@@ -2642,6 +2678,218 @@ img{-webkit-user-drag:none; user-select:none;}
 .hv-tagline.hidden{display:none;}
 @keyframes hvTagBob{0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(-2px);}}
 @media (prefers-reduced-motion: reduce){ .hv-tagline{animation:none;} }
+
+/* =========================================================
+   THE WALL BEHIND THE CARDS
+
+   The hub and the keepsake are the two screens that are nothing but a
+   list of things to press, and they were sitting on flat parchment
+   looking like one. This gives them a room to be in: two slow warm
+   lights drifting behind everything, and a scatter of the site's own
+   pixel stickers bobbing at the edges like things taped to a wall.
+
+   It is all CSS. No canvas, no timer, no work per frame that anything
+   else has to share — these two screens are the only places it exists,
+   and it lies behind the content with pointer-events off, so nothing
+   here can ever be in the way of a card or a button.
+   ========================================================= */
+.page-deco{
+  position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0;
+}
+/* the content sits ON the wall, not under it */
+#screen-hub .hub-wrap, #screen-keepsake .ks-wrap{ position:relative; z-index:1; }
+
+/* two soft lights, drifting on their own long cycles so they never quite
+   repeat the same arrangement twice */
+.deco-glow{
+  position:absolute; width:62vmin; height:62vmin; border-radius:50%;
+  filter:blur(28px); opacity:.5;
+}
+.deco-glow-a{
+  left:-16vmin; top:-12vmin; width:70vmin; height:70vmin;
+  background:radial-gradient(circle, rgba(255,176,198,.9), rgba(255,190,205,.34) 42%, rgba(255,190,205,0) 72%);
+  animation:decoDriftA 26s ease-in-out infinite;
+}
+.deco-glow-b{
+  right:-18vmin; bottom:-14vmin; width:74vmin; height:74vmin;
+  background:radial-gradient(circle, rgba(255,214,146,.88), rgba(255,226,170,.3) 44%, rgba(255,226,170,0) 72%);
+  animation:decoDriftB 34s ease-in-out infinite;
+}
+/* the third one is the reason the other two never look like two lamps:
+   it crosses the middle on a cycle that shares no factor with either, so
+   the warm and the rose keep meeting in different places */
+.deco-glow-c{
+  left:34%; top:26%; width:52vmin; height:52vmin; opacity:.34;
+  background:radial-gradient(circle, rgba(214,178,255,.75), rgba(198,170,255,.22) 46%, rgba(198,170,255,0) 72%);
+  animation:decoDriftC 45s ease-in-out infinite;
+}
+@keyframes decoDriftA{
+  0%,100%{transform:translate(0,0) scale(1);}
+  50%    {transform:translate(7vmin,5vmin) scale(1.12);}
+}
+@keyframes decoDriftB{
+  0%,100%{transform:translate(0,0) scale(1.06);}
+  50%    {transform:translate(-6vmin,-6vmin) scale(.94);}
+}
+@keyframes decoDriftC{
+  0%,100%{transform:translate(0,0) scale(.9);}
+  33%    {transform:translate(-9vmin,6vmin) scale(1.1);}
+  66%    {transform:translate(8vmin,-5vmin) scale(1);}
+}
+
+/* THE SHEEN. One wide, very soft band of light that crosses the page and
+   then stays away for most of a minute. It is what stops the wall from
+   being lit the same way every time she looks at it — and it is off
+   screen and invisible for two thirds of its cycle on purpose, because a
+   shine that comes round often enough to expect is a distraction. */
+.deco-sheen{
+  position:absolute; top:-30%; left:-70%; width:46%; height:170%;
+  background:linear-gradient(100deg,
+    rgba(255,255,255,0) 0%, rgba(255,251,232,.55) 48%, rgba(255,255,255,0) 100%);
+  filter:blur(30px); opacity:0;
+  animation:decoSheen 27s ease-in-out infinite;
+}
+@keyframes decoSheen{
+  0%   {transform:translateX(0) rotate(9deg); opacity:0;}
+  8%   {opacity:.5;}
+  38%  {opacity:.38;}
+  52%  {transform:translateX(330%) rotate(9deg); opacity:0;}
+  100% {transform:translateX(330%) rotate(9deg); opacity:0;}
+}
+
+/* THE MOTES. Warm dust hanging in that light. Two layers, each one a
+   single 3px element wearing a dozen box-shadows — no extra nodes, no
+   canvas, nothing per frame but two composited transforms.
+
+   They drift a little way and come back rather than rising off the top:
+   a field that travels a whole screen has to jump back to the bottom
+   sooner or later, and that jump is the one thing you would notice. */
+.deco-motes{
+  position:absolute; left:0; top:0; width:3px; height:3px; border-radius:50%;
+  background:transparent;
+}
+.deco-motes-a{
+  box-shadow:
+    9.3vw 17.7vh 1px 0 rgba(255,250,232,.95),
+    29.3vw 23.1vh 0px 0 rgba(255,231,184,.85),
+    45.6vw 16.9vh 2px 0 rgba(255,212,222,.8),
+    71.6vw 11.0vh 1px 0 rgba(255,250,232,.95),
+    87.2vw 9.3vh 2px 0 rgba(255,231,184,.85),
+    11.9vw 51.7vh 1px 0 rgba(255,212,222,.8),
+    36.5vw 52.8vh 2px 0 rgba(255,250,232,.95),
+    52.1vw 52.2vh 2px 0 rgba(255,231,184,.85),
+    63.9vw 41.6vh 0px 0 rgba(255,212,222,.8),
+    91.4vw 55.0vh 1px 0 rgba(255,250,232,.95),
+    9.2vw 89.5vh 2px 0 rgba(255,231,184,.85),
+    26.3vw 79.6vh 0px 0 rgba(255,212,222,.8),
+    52.3vw 82.6vh 1px 0 rgba(255,250,232,.95),
+    68.7vw 84.3vh 0px 0 rgba(255,231,184,.85),
+    92.9vw 80.0vh 0px 0 rgba(255,212,222,.8);
+  animation:decoFloatA 23s ease-in-out infinite;
+}
+.deco-motes-b{
+  box-shadow:
+    18.4vw 24.7vh 0px 0 rgba(255,247,224,.75),
+    30.7vw 13.2vh 1px 0 rgba(255,224,196,.65),
+    62.9vw 10.0vh 0px 0 rgba(255,247,224,.75),
+    84.2vw 7.9vh 2px 0 rgba(255,224,196,.65),
+    11.9vw 41.4vh 0px 0 rgba(255,247,224,.75),
+    44.2vw 50.0vh 0px 0 rgba(255,224,196,.65),
+    62.7vw 54.2vh 1px 0 rgba(255,247,224,.75),
+    91.3vw 44.7vh 0px 0 rgba(255,224,196,.65),
+    13.7vw 86.2vh 2px 0 rgba(255,247,224,.75),
+    33.5vw 87.6vh 2px 0 rgba(255,224,196,.65),
+    66.1vw 81.0vh 2px 0 rgba(255,247,224,.75),
+    84.4vw 91.9vh 2px 0 rgba(255,224,196,.65);
+  animation:decoFloatB 31s ease-in-out infinite;
+}
+@keyframes decoFloatA{
+  0%,100%{transform:translate(0,0); opacity:.35;}
+  30%    {opacity:.7;}
+  50%    {transform:translate(1.5vw,-5vh); opacity:.5;}
+  75%    {opacity:.72;}
+}
+@keyframes decoFloatB{
+  0%,100%{transform:translate(0,0); opacity:.6;}
+  40%    {opacity:.28;}
+  50%    {transform:translate(-2vw,4vh); opacity:.4;}
+  80%    {opacity:.66;}
+}
+
+/* THE PAPER AND THE CORNERS. Two things at once, and both of them are
+   the reason the parchment stopped looking like a flat fill: a weave so
+   faint you only see it when it is gone, and a vignette, which is what
+   makes a page look LIT rather than coloured in. It sits above the
+   lights and below the stickers, so it darkens the glow at the edges
+   the way a real corner would. */
+.deco-vig{
+  position:absolute; inset:0;
+  background:
+    repeating-linear-gradient(0deg,  rgba(126,74,28,.035) 0 1px, rgba(255,255,255,0) 1px 3px),
+    repeating-linear-gradient(90deg, rgba(126,74,28,.028) 0 1px, rgba(255,255,255,0) 1px 3px),
+    radial-gradient(ellipse at 50% 38%, rgba(255,250,232,.26) 0%, rgba(255,250,232,0) 52%),
+    radial-gradient(ellipse at 50% 50%, rgba(108,62,22,0) 54%, rgba(108,62,22,.11) 78%, rgba(92,50,16,.26) 100%);
+}
+
+
+/* the stickers. Each one bobs and rocks on its own clock; the odd ones
+   turn the other way, so the wall never looks like a pattern. */
+.deco-st{
+  position:absolute; display:block; color:#c58a5e; opacity:.30;
+  animation:decoBob 7s ease-in-out infinite;
+  filter:drop-shadow(0 2px 3px rgba(120,70,30,.18));
+}
+/* EVERY GLYPH IN THAT SHEET CARRIES ITS OWN FILL, and a <use> will not let
+   a stylesheet reach inside and change it. So the colour is chosen by
+   picking the sticker, not by setting a property: the moon, the feather,
+   the shell and the bloom are all but white and read as smudges on
+   parchment, so none of them is on this wall. The heart, the star, the
+   crown, the fox, the ribbon, the acorn and the camera all have a warm
+   colour of their own already. */
+.deco-st .gl{ width:100%; height:100%; display:block; }
+/* The <i> stickers are counted among themselves, not among their
+   siblings: the wash layers above are <span>s, so adding one can never
+   flip which way every other sticker rocks. */
+.deco-st:nth-of-type(odd){ animation-name:decoBobBack; }
+
+@keyframes decoBob{
+  0%,100%{transform:translateY(0) rotate(-8deg);}
+  50%    {transform:translateY(-9px) rotate(6deg);}
+}
+@keyframes decoBobBack{
+  0%,100%{transform:translateY(-4px) rotate(9deg);}
+  50%    {transform:translateY(6px) rotate(-7deg);}
+}
+
+/* Placed by hand rather than by a loop: the corners want the big ones and
+   the middle of the edges wants the small ones, and the top strip has to
+   stay clear of the title. */
+.deco-st1{ left:5%;  top:16%;  width:34px; height:34px; animation-duration:8s; opacity:.42; }
+.deco-st2{ left:12%; top:62%;  width:22px; height:22px; animation-duration:6.4s; animation-delay:-2s; opacity:.40; }
+.deco-st3{ left:3%;  bottom:12%; width:38px; height:38px; animation-duration:9.5s; animation-delay:-4s; opacity:.34; }
+.deco-st4{ right:6%; top:14%;  width:30px; height:30px; animation-duration:7.6s; animation-delay:-1s; opacity:.40; }
+.deco-st5{ right:4%; top:48%;  width:26px; height:26px; animation-duration:8.8s; animation-delay:-5s; opacity:.36; }
+.deco-st6{ right:9%; bottom:10%; width:34px; height:34px; animation-duration:7s;  animation-delay:-3s; opacity:.40; }
+.deco-st7{ left:26%; bottom:6%; width:20px; height:20px; animation-duration:6s;   animation-delay:-2.5s; opacity:.32; }
+.deco-st8{ right:28%; top:8%;  width:20px; height:20px; animation-duration:6.8s; animation-delay:-4.5s; opacity:.32; }
+.deco-st9{ left:44%; bottom:4%; width:24px; height:24px; animation-duration:9s;   animation-delay:-1.5s; opacity:.28; }
+
+/* Narrow screens: the edges are where the cards are, so the stickers that
+   sit closest to the middle stand down rather than sit under a chapter. */
+@media (max-width: 620px){
+  .deco-st{ opacity:.22; }
+  .deco-st2, .deco-st5, .deco-st7, .deco-st8, .deco-st9{ display:none; }
+  .deco-glow{ filter:blur(22px); opacity:.42; }
+  .deco-glow-c{ opacity:.26; }
+  .deco-motes-b{ display:none; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .deco-glow, .deco-st, .deco-motes{ animation:none; }
+  /* the sheen has no still frame worth keeping — it is only ever a
+     moving highlight, so it leaves rather than freezing mid-page */
+  .deco-sheen{ animation:none; opacity:0; }
+}
 
 /* =========================================================
    HUB — choose your adventure
@@ -2765,8 +3013,12 @@ img{-webkit-user-drag:none; user-select:none;}
 /* =========================================================
    KEEPSAKE — scrapbook recap
    ========================================================= */
+/* 660px fitted five cards and broke the sixth onto a row of its own, with
+   the whole right half of the board empty beside it. Six pages, one shelf,
+   wherever there is room for it; below that they wrap in pairs and threes
+   the way they always did. */
 .ks-wrap{
-  width:min(94vw,660px); margin:0 auto; display:flex; flex-direction:column;
+  width:min(94vw,840px); margin:0 auto; display:flex; flex-direction:column;
   align-items:center; gap:8px; padding:16px 12px; max-height:100%; overflow-y:auto;
   overscroll-behavior:contain;
 }
@@ -2789,11 +3041,35 @@ img{-webkit-user-drag:none; user-select:none;}
 .ks-card .ks-img{
   width:100%; aspect-ratio:1/1; object-fit:cover; display:flex; align-items:center; justify-content:center;
   background:linear-gradient(160deg,#f2ddb8,#e2cfa8); font-size:30px; color:#b98a4e;
+  overflow:hidden;
 }
+/* The painted scenes. 64x64 of real pixels blown up to fill the frame —
+   never smoothed, or they stop being pixel art and start being a blur. */
+.ks-card .ks-art{
+  width:100%; height:100%; display:block;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+}
+/* the things she picked up on the way, laid out on the card like a
+   shelf rather than shown as one photograph */
+.ks-card .ks-walk-shelf{
+  width:100%; aspect-ratio:1/1; display:flex; flex-wrap:wrap; gap:4px;
+  align-items:center; align-content:center; justify-content:center; padding:6px;
+  background:linear-gradient(160deg,#f2ddb8,#e2cfa8);
+}
+.ks-card .ks-walk-shelf canvas{
+  width:18px; height:auto; display:block;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+}
+/* The titles WRAP rather than truncate. "Ouissy at the Ap…" under a
+   photograph of the chapter is a card that looks unfinished; two short
+   lines of handwriting under a polaroid is just how a polaroid is
+   labelled. The card grows a little to make room for the second line. */
+.ks-card{ padding-bottom:34px; }
 .ks-card .ks-cap{
-  position:absolute; left:0; right:0; bottom:4px; text-align:center;
-  font-family:'Caveat',cursive; font-size:13px; color:#6b4720;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 6px;
+  position:absolute; left:0; right:0; bottom:5px; text-align:center;
+  font-family:'Caveat',cursive; font-size:13px; line-height:1.12; color:#6b4720;
+  padding:0 5px; overflow:hidden;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2;
 }
 .ks-card .ks-tape{
   position:absolute; top:-7px; left:50%; transform:translateX(-50%) rotate(-3deg);
@@ -2805,6 +3081,30 @@ img{-webkit-user-drag:none; user-select:none;}
   color:#5c3d1a; text-align:center; max-width:520px; line-height:1.6; margin:8px auto 2px;
 }
 .ks-actions{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:6px;}
+
+/* THE KEEPSAKE ON A PHONE HELD SIDEWAYS.
+
+   Once the board started carrying real pictures the column came to 434px
+   inside a 390px window, and the two buttons under it -- "Relive a memory"
+   and "Play again", the only way out of this screen -- sat 28px below the
+   fold. .ks-wrap does scroll, so they were reachable, but nothing on the
+   screen says so and there is no reason to make her find out.
+
+   Nothing is removed; everything is a size smaller. The title comes down
+   from 42px, the wrap and the cards lose a few pixels of padding each, and
+   the six prints go from 112px wide to 92. That is 65px, and the column
+   fits with room to spare on the shortest phone this runs on. */
+@media (orientation: landscape) and (max-height: 460px){
+  .ks-wrap{gap:5px; padding:8px 12px;}
+  .ks-title{font-size:clamp(21px,4.4vw,29px); line-height:1.05;}
+  .ks-sub{font-size:11.5px; margin:0 0 2px;}
+  .ks-board{gap:8px; padding:8px;}
+  .ks-card{width:92px; padding:5px 5px 17px;}
+  .ks-card .ks-cap{font-size:9px;}
+  .ks-closing{font-size:11.5px; line-height:1.35;}
+  .ks-actions{gap:8px; margin-top:2px;}
+  .ks-actions .btn-ancient{padding-top:8px; padding-bottom:8px; font-size:12px;}
+}
 
 /* =========================================================
    SUPER OUISSY — the platformer
@@ -2916,14 +3216,22 @@ img{-webkit-user-drag:none; user-select:none;}
                     rgba(30,12,34,.85) calc(66.66% + .3cqw), transparent calc(66.66% + .3cqw));
 }
 
-/* ---- pause button ---- */
+/* ---- pause button ----
+   Bottom CENTRE, not the bottom right corner it used to sit in. With the
+   directions at the far left of the pad and the jump at the far right,
+   the corners of the screen are exactly where the two thumbs now live,
+   and a pause button directly above one of them is a pause button she
+   will hit while jumping. The middle is the one place on the picture that
+   no thumb reaches for any more, which is what the pad moving out to the
+   edges gave us. */
 .so-pause-btn{
-  position:absolute; right:2cqw; bottom:2cqw; z-index:6; cursor:pointer;
+  position:absolute; left:50%; transform:translateX(-50%);
+  bottom:2cqw; z-index:6; cursor:pointer;
   font-family:'Press Start 2P', monospace; font-size:2cqw; line-height:1;
   color:#fffaf5; background:rgba(61,35,64,.7); border:.4cqw solid rgba(255,158,196,.5);
   border-radius:.6cqw; padding:1cqw 1.4cqw;
 }
-.so-pause-btn:active{transform:translateY(1px);}
+.so-pause-btn:active{transform:translateX(-50%) translateY(1px);}
 
 /* =========================================================
    THE STORY PANEL
@@ -3396,10 +3704,20 @@ img{-webkit-user-drag:none; user-select:none;}
    ever taken edge to edge again. */
 .so-pad{
   display:flex; align-items:center; justify-content:space-between;
-  width:100%; max-width:640px; gap:12px; flex:0 0 auto;
-  padding:10px calc(14px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom))
-          calc(14px + env(safe-area-inset-left));
+  width:100%; gap:12px; flex:0 0 auto;
+  padding:10px calc(clamp(14px,3.5vw,64px) + env(safe-area-inset-right))
+          calc(14px + env(safe-area-inset-bottom))
+          calc(clamp(14px,3.5vw,64px) + env(safe-area-inset-left));
 }
+/* NO max-width HERE. It used to be capped at 640px and centred, which on a
+   phone is the whole width and fine, and on an iPad is two clusters of
+   buttons huddled in the middle of a screen twice that wide — both thumbs
+   dragged inwards to reach them, which is the opposite of how anybody
+   holds a tablet. The pad is the full width of the picture now, so the
+   directions sit under the left thumb and the jump under the right one,
+   where they already are on a phone. The pad is only ever on screen for a
+   touch device (see the pointer:fine rule below), so nothing widens for a
+   mouse. */
 .so-pad-side{display:flex; gap:12px; align-items:center;}
 /* on the title screen the pad controls nothing, so it steps back rather
    than sitting there looking live */

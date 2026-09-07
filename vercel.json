@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "echo 'nothing to install'",
-  "buildCommand": "echo 'nothing to build'",
+  "installCommand": null,
+  "buildCommand": null,
   "outputDirectory": ".",
   "trailingSlash": false,
   "headers": [
