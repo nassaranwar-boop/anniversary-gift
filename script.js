@@ -1701,8 +1701,9 @@ function ksArt(kind) {
    KEEPSAKE — scrapbook recap
    ========================================================= */
 const KEEPSAKE_CLOSING =
-  "Every one of these was just a longer way of saying the same thing — " +
-  "that I would take the long way round, every time, if it ended with you.";
+  "I built you worlds just to say it properly \u2014 that there is nowhere I " +
+  "wouldn\u2019t go and nothing I wouldn\u2019t build to end up beside you. " +
+  "This is only the part of it that fit on a screen.";
 
 /* Icons are names of pixel glyphs in the sprite sheet at the top of
    index.html now, not emoji. This turns a name into the thing. */
@@ -1730,7 +1731,11 @@ function startKeepsake() {
   first.appendChild(ftape); first.appendChild(fimg); first.appendChild(fcap);
   board.appendChild(first);
 
-  MEMORIES.forEach((m, i) => {
+  /* A memory with no photograph in it yet is a placeholder, and a
+     placeholder on this board is an empty frame with "[Memory title
+     here]" written under it. The mechanism stays — the day a photo is
+     added the card appears — but nothing empty goes on the wall. */
+  MEMORIES.filter((m) => m.photo).forEach((m, i) => {
     const card = document.createElement("div");
     card.className = "ks-card";
     card.style.setProperty("--r", ((i % 2 ? 1 : -1) * (1.5 + (i % 3))) + "deg");
@@ -1743,16 +1748,26 @@ function startKeepsake() {
 
   /* the story chapter gets a card, and every bonus one she has finished,
      so the board reflects the whole visit */
-  const d = chaptersDone();
-  const badges = [{ art: "quest", cap: "The Long Way Round" }];
-  if (d.ouissy) badges.push({ art: "ouissy", cap: "Super Ouissy" });
-  if (d.apoc) badges.push({ art: "apoc", cap: "Ouissy at the Apocalypse" });
-  /* Ouissy's Night Shift is not on main yet. The card and its picture are
-     ready for the day it lands — keyed on "nightshift", which is the name
-     that branch marks it done under — and until then nobody sees an empty
-     frame. */
-  if (d.nightshift) badges.push({ art: "night", cap: "Ouissy\u2019s Night Shift" });
-  if (d.race) badges.push({ art: "race", cap: "Super Ouissy Race" });
+  /* EVERY PAGE OF THE BOOK, NOT ONLY THE ONES SHE FINISHED.
+
+     These used to appear one at a time as each chapter was completed, so
+     the board she was shown depended on which device she happened to be
+     on and how far she had got — half the games simply missing, with no
+     way to tell they had ever existed. The keepsake is the book, and the
+     book has all of its pages whether or not she has read them all.
+
+     Ouissy's Night Shift is not on main yet: it goes on the board the day
+     that chapter lands, and its picture is already drawn and waiting. */
+  const badges = [
+    { art: "quest",  cap: "The Long Way Round" },
+    { art: "ouissy", cap: "Super Ouissy" },
+    { art: "apoc",   cap: "Ouissy at the Apocalypse" },
+    { art: "race",   cap: "Super Ouissy Race" },
+  ];
+  /* Ouissy's Night Shift is a page of this book whether or not the chapter
+     itself has landed on main yet — the board is what the book contains,
+     not what is currently playable. */
+  badges.splice(3, 0, { art: "night", cap: "Ouissy\u2019s Night Shift" });
   badges.forEach((b, i) => {
     const card = document.createElement("div");
     card.className = "ks-card";
@@ -1773,7 +1788,9 @@ function startKeepsake() {
   hvLoadProgress();
   const walked = hvRouteCount(), read = hvEndingCount();
   const kept = Object.keys(HV_TOKENS).filter((k) => hvFound[k]);
-  if (walked || kept.length) {
+  /* and only when she has actually brought something back from the walk —
+     the shelf with nothing on it was the other empty frame */
+  if (kept.length) {
     const card = document.createElement("div");
     card.className = "ks-card ks-card-walk";
     card.style.setProperty("--r", "-1.5deg");
