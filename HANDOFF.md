@@ -470,6 +470,220 @@ height.
 If he ever says "zoom" again, run `tools/nozoom.js` before touching
 anything in 7c.
 
+## 7e. A phone on its side
+
+Two faults, and the second one is a lesson about 7c.
+
+**The stages were sized by an OR.** `@media (max-width: 900px),
+(orientation: portrait)` — the comma is an OR, so a phone turned sideways
+is still under 900px wide and got the whole upright-phone layout,
+including a stage cut to **52%** of a height that is already short. The
+apocalypse came out 361x203 in an 844x390 window: 22% of the screen, the
+rest empty. Turning the phone gave the game more room and it used less.
+That block was doing two jobs at once — device rules (a touch screen
+wants the stick over the picture) and shape rules (upright, the picture
+takes the top half and leaves thumb room). They are separated now:
+device rules keep the OR, shape rules are `(orientation: portrait)` and
+`(orientation: landscape) and (max-height: 560px)`. Sideways the stage
+takes 82%.
+
+**And three buttons sat below the fold — because of 7c.** The cards are
+510 to 553px tall and were centred in a 390px screen, so they hung off
+both ends. That was always true. What changed is that pinning `html` and
+fixing `body` to kill the iPad's draggable void removed the last way to
+reach anything past the fold. `#btn-start` opens the maze, so that
+chapter was *shut* on a landscape phone. The fix is not to undo 7c — it
+is that content must fit: trimmed on short screens, and the card itself
+carries a scrollbar for the rest, aligned to the top so the scroll only
+goes one way.
+
+**The general lesson:** an unscrollable page turns every pre-existing
+overflow into unreachable content. Any screen that can overflow needs its
+own scroller. `tools/landscape.js` asserts it, and is verified both ways —
+restore the old CSS and it reports 5 failures.
+
+*(Since written, `hello`, `details`, `level2intro`, `divider` and the maze
+itself were taken out of the site on main, so the short-screen rule those
+cards needed went with them and `#btn-start` no longer exists. The lesson
+above is the part that outlives them, and `landscape.js` now walks the
+screens that are left: the gate, the hub, the keepsake and the ending.)*
+
+### Then he sent five photographs of a real iPhone on its side
+
+Everything below came from those, and each one is a different fault:
+
+**Pale bands down both edges.** Without `viewport-fit=cover` iOS insets the
+layout viewport away from the notch in landscape and paints the leftover
+strips in the page background, so the scrapbook's paper showed beside every
+dark screen. Cover is the only way to reach those corners. The old note in
+`index.html` said cover must never come back, and it was right *then* —
+back when the height was measured from the layout viewport, cover made
+everything come out taller than the part you could see. The height now
+comes from `visualViewport` and takes the smallest of three claims (7c), so
+cover has nothing left to mislead. Content is kept off the camera by
+padding `.screen` with the safe-area insets — background to the edge,
+nothing to read or press underneath the notch.
+
+**The book showed one page.** `pagesPerView()` asked
+`(min-width: 760px) and (orientation: landscape)`. Sideways, with the
+viewport inset away from the notch, an 812pt phone reported about 712 — so
+it fell through to a single page with half the screen empty. It asks the
+shape now: `w >= 600 && w / h >= 1.2`. Two 3:4 pages side by side are 1.5x
+as wide as a page is tall, so any window meaningfully wider than it is tall
+can hold them. Keeps the iPad's 1.44 and every phone's 1.8-plus, and still
+gives one page to portrait and to a near-square window. Rotation on iOS
+does not reliably fire a `resize` the layout has settled into, so
+`orientationchange` asks again 180ms later.
+
+**The apocalypse controls covered the picture.** They were sized in `vw`,
+and sideways `vw` is the long edge — the stick and the two action buttons
+came out 116/104/80px on a 390px-tall screen. They are sized from
+`var(--app-h)` inside the landscape block now: 78/68/53. Note that `cqw`
+does *not* work here: `.ap-touch` is a **sibling** of `.ap-stage`, not a
+descendant, so there is no container for the units to resolve against.
+
+**Jumping cancelled the run.** See 7f.
+
+**The games did not fill the screen.** Three separate causes:
+
+- *Super Ouissy* kept its pad in the column flow, so the pad ate a third
+  of the height while the stage's width was still being computed as if it
+  had all of it — 693x282 in an 844x390 screen. Sideways the pad floats
+  over the bottom corners instead (small, set into the two corners where
+  her thumbs are, so the middle of the picture stays clear) and the stage
+  gets the whole height.
+- *Super Ouissy* was then still letterboxed, because a sideways phone is
+  wider than 16:9. `pickView()` now widens the view itself on a landscape
+  screen — up to 448 world pixels — so the extra space is spent on more
+  world at exactly the same size. Nothing shrinks; she just sees further
+  ahead. The one thing this needed elsewhere: `buildBackdrop` paints the
+  sky at `VIEW_MAX_W`, not 320, because the sky is drawn once at x:0
+  rather than tiled and a 320-wide sky would have ended before the screen
+  did. `far` and `mid` are 480 and tiled, so they were already fine.
+  It reaches 100% of the screen now.
+- *The race* is a fixed-16:9 renderer and stays letterboxed at 82%, but
+  `#screen-race` had no background of its own, so the bars beside it were
+  the scrapbook's pink paper. It is `#120c1c` now — the bars read as the
+  cabinet around the screen.
+
+`tools/landscape.js` covers all three games; the ouissy floor is 92%,
+which fails the moment the pad goes back into the flow or the view stops
+widening.
+
+## 7f. Jumping stopped her running
+
+Hold RIGHT with one thumb, tap JUMP with the other, lift the jump thumb —
+and she stopped dead in mid-air while the first thumb was still pressing.
+
+The pad had a window-level safety net, `window.addEventListener("pointerup",
+releaseAll)`, written against the four ways a touch button gets stuck down.
+It does prevent all four. But `releaseAll` clears **every** key, and a
+window-level pointerup fires for the *second* thumb too. So the jump's
+release let go of the direction as well.
+
+The net is still needed; it just has to know which press ended. Each
+pointerdown records `heldBy[e.pointerId] = key`, and a pointerup releases
+only that key; a pointer we never saw go down releases nothing, which is
+the whole point, because another thumb may still be down. `releaseAll`
+stays for when every finger really is gone — blur, tab change, pause,
+leaving the screen — and clears the map with it.
+
+`tools/padcheck.js` plays the gesture with two pointer ids and checks the
+direction survives the jump. It is the only test here that uses more than
+one finger, which is why nothing caught this for so long. Verified both
+ways: restore the old listener and it reports "jump cancelled the
+direction" in both orientations.
+
+## 7g. The sweep for anything left
+
+He asked, after the landscape work, to make sure nothing was left — no bug,
+no lag, nothing wrong with a button or the book. Four things came out of it,
+and two things that looked like faults were not.
+
+**The front door did not work on a phone held sideways.** The gate card is a
+portrait 400:700 sheet whose width is derived from the height left over
+after the title plaque: `min(360px, 86vw, (app-h - 190px) * 400/700)`. On an
+844x390 screen that last term wins and comes out at **114px**, which made the
+twelve keys **15x15** and the Unlock plate 48x16. There was no way to type
+the passcode. The title now sits BESIDE the card instead of above it, which
+hands the sheet the whole height (211x370), and the proportions inside it are
+rebalanced for a hand rather than a page — the seal and the heading give up
+their share so the keypad can take most of the width. Keys are 52x52 and the
+plate 131x44. `tools/gatefit.js` drives the whole door with a finger at four
+shapes.
+
+**Four controls were under the 44px a thumb needs.** The adventure's back and
+quit chips were 50x22 and 33x22; `.btn-ancient` came to 38 tall and
+`.btn-replay` to 39. The chips keep the size they look and carry an invisible
+44px `::after` target (touch devices only, and they sit at opposite ends of
+the bar so the two targets cannot reach each other); the two buttons got a
+`min-height` rather than more padding, because the padding is what the design
+asked for. `tools/buttons.js` asserts all of it, and measures the HIT area
+rather than the painted box.
+
+**Two suites had been dead and nobody noticed.** `apocmech3d.js` and
+`tonecheck.js` both did `window.Apocalypse.start()` at domcontentloaded, and
+apocalypse.js stopped being a script tag when the chapters moved to a lazy
+fetch — so both threw `Cannot read properties of undefined` on their first
+line and had been reporting nothing since. They go through the site's own
+door now (`await window.loadChapter('apoc')`). Both are green: 14 and 40.
+
+**One photo frame in the book is empty on purpose.** Slot `"025"` on page 7
+has no file behind it, so it asks for `photo-025.webp`, then `.jpg`, then
+`.png`, gets three 404s and removes itself. That is the code working as
+written — the comment in scrapbook.js says the file is his to drop in — but
+it is the one gap in sixty-three photographs, and `assets/photo-32/33/34`
+exist and are placed nowhere.
+
+**And one that only looked like a wedge.** `mech.js` produced an empty log
+through four attempts of well over an hour each and looked stuck. It was
+not: Node buffers stdout when it is not a terminal, so `> file` and
+`| tail` both show nothing for the whole run and everything at the end —
+and killing a run that is "producing nothing" destroys the only evidence
+that would have said otherwise. Run bare and left alone it finishes **27
+passed, 0 failed, no page errors**: every mechanic, all three difficulty
+profiles, nine distinct worlds, the moat, and the whole boss fight down to
+the projectile cap and the length of every telegraph. Judge these suites by
+their output, not by the wall clock — on a loaded machine they run ten to
+twenty times slow and `timeout` does not reliably fire, because the
+container's own process clock is skewed.
+
+**The two that were not faults, and how to not re-find them:**
+
+*The 3D intro looked like it ran forever.* Profiling a page turn came back
+95% WebGL — `uniformMatrix4fv`, `drawElementsInstanced` — which reads as a
+Three.js scene left running behind the whole site. It is not: the intro
+**waits for a tap** (`begin()` on the canvas) and renders while it waits, and
+any harness that jumps past it with `showScreen` leaves it running behind
+every later measurement. Tapped and played through, it disposes itself and
+the draw count is **0** at the gate, in the book and at the hub. Drive the
+intro, don't skip it, or every number after it is fiction.
+
+*The book looked like it showed two pages on a portrait phone.* It does not.
+`showScreen('scrapbook')` only reveals the screen — `startDioramas` is what
+calls `Scrapbook.start()`, and `Scrapbook.start()` is the only thing that
+ever sets `perView` from the window. A harness that jumps straight to the
+screen leaves `perView` at the module's initial **2**, so `buildViews()`
+pairs the pages and a 390px phone gets a 289px two-page spread instead of a
+335px single page. Through the real door it is one page in portrait and two
+in landscape, which is what he asked for. Third instance of the same trap in
+one sweep, after the 3D intro and the fixed-millisecond waits: go in the way
+she does, and wait for the state you want rather than for a clock.
+
+*The page turn looked like a 500ms stall.* A "long task" counts paint as well
+as script. `turncost.js` splits it: over eight turns, 154ms of script, 756ms
+of style, 248ms of layout — and the rest of a 4.6s total is SwiftShader
+rasterising a curved page on the CPU. Per turn that is ~19ms of JavaScript.
+There is nothing to fix; `layoutLeaf` writes and never reads, so there is no
+forced synchronous layout in it either.
+
+Also checked and clean: no duplicate ids; every `getElementById` target
+exists (the three that do not are created in JS); every interactive id is
+wired to something; going back into the book and all four chapters three
+times binds no extra listeners — **collect the garbage before you read that
+counter**, or a chapter that rebuilds its buttons every visit looks like a
++12 leak when it is detached-but-collectable.
+
 ## 8. Testing
 
 Chromium is at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`; python

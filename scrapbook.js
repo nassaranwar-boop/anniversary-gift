@@ -2695,15 +2695,22 @@ window.Scrapbook = (function () {
       if (songAudio.duration) { songAudio.currentTime = k * songAudio.duration; paint(); }
     }
     scrub.addEventListener("pointerdown", function (e) {
-      scrubbing = true; scrub.setPointerCapture(e.pointerId); seekTo(e.clientX);
+      scrubbing = true;
+      /* capture can be refused if the pointer has already gone */
+      try { scrub.setPointerCapture(e.pointerId); } catch (err) {}
+      seekTo(e.clientX);
       e.stopPropagation();
     });
     scrub.addEventListener("pointermove", function (e) {
       if (scrubbing) { seekTo(e.clientX); e.stopPropagation(); }
     });
-    scrub.addEventListener("pointerup", function (e) {
-      scrubbing = false; e.stopPropagation();
-    });
+    /* pointercancel as well as pointerup, the way the film's scrubber does
+       it: iOS cancels a touch whenever the system takes the gesture over,
+       and a cancel that is not heard leaves `scrubbing` true — after which
+       merely moving a mouse across the bar seeks the song. */
+    function endScrub(e) { scrubbing = false; if (e) e.stopPropagation(); }
+    scrub.addEventListener("pointerup", endScrub);
+    scrub.addEventListener("pointercancel", endScrub);
     return c;
   }
 
@@ -3081,8 +3088,12 @@ window.Scrapbook = (function () {
     var screen = document.getElementById("screen-scrapbook");
     var d = document.getElementById("sb-drawer");
     if (!screen || !d) return;
-    buildDrawer();
     var open = force != null ? force : !screen.classList.contains("sb-drawer-on");
+    /* Build only on the way IN. This used to build unconditionally, which
+       meant leaving the book rebuilt the whole drawer — the map, the song
+       card, the film — a frame before the screen it belongs to went away.
+       stop() clears it and then closes it, so that path built it twice. */
+    if (open) buildDrawer();
     screen.classList.toggle("sb-drawer-on", open);
     d.setAttribute("aria-hidden", open ? "false" : "true");
     var btn = document.getElementById("sb-extras-btn");
@@ -3642,8 +3653,20 @@ window.Scrapbook = (function () {
   var views = [];             /* each view is the page indexes it shows */
   var viewIndex = 0;
 
+  /* A spread needs a landscape-shaped hole to sit in, and `min-width:
+     760px` was the wrong way to ask. On a phone turned sideways the layout
+     viewport is inset away from the notch, so a 812pt phone reports about
+     712 — under the threshold, and she got one page with the rest of the
+     screen empty, which is exactly what he photographed.
+
+     Ask the shape instead. Each page is 3:4, so two side by side are one
+     and a half times as wide as a page is tall; anything meaningfully
+     wider than it is tall can hold them. 1.2 keeps the iPad's 1.44 and
+     every phone's 1.8-plus, and still leaves portrait and near-square
+     windows on a single page. */
   function pagesPerView() {
-    return (window.matchMedia && window.matchMedia("(min-width: 760px) and (orientation: landscape)").matches) ? 2 : 1;
+    var w = window.innerWidth || 0, h = window.innerHeight || 1;
+    return (w >= 600 && w / h >= 1.2) ? 2 : 1;
   }
 
   /* ---------------------------------------------------------------
@@ -4561,6 +4584,9 @@ window.Scrapbook = (function () {
     });
 
     window.addEventListener("resize", onResize);
+    /* iOS does not always follow a rotation with a resize the layout has
+       finished settling into, so ask again just after one */
+    window.addEventListener("orientationchange", function () { setTimeout(onResize, 180); });
 
     /* dragging a page. Pointer events cover mouse, pen and touch alike,
        so there is only one path to get right. */

@@ -7,13 +7,27 @@
      stopped properly with touch-action instead, which leaves a real
      two-finger pinch working.
 
-     And no viewport-fit=cover. I added it while chasing the blank strip
-     below the page, but cover extends the layout viewport underneath the
-     status bar and the notch — so the top of every screen sat behind the
-     clock, and everything measured against that taller viewport came out
-     larger than the part you could see. That is the "cropped from above,
-     and zoomed" that followed. The height is 100dvh's job, not cover's. -->
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+     viewport-fit=cover IS here now, and the note that used to sit here
+     saying it must never come back was right at the time. Cover extends
+     the layout viewport under the browser's furniture, and back then the
+     height was measured FROM the layout viewport — so everything came out
+     taller than the part you could see, which is the "cropped from above
+     and zoomed" that followed.
+
+     That is no longer how the height is found. It comes from
+     visualViewport, which reports the region genuinely on screen whatever
+     the layout viewport is doing, and the smallest of the three claims is
+     taken (see the script below and HANDOFF 7c). Cover cannot mislead a
+     measurement that never asks it anything.
+
+     And without cover, iOS shrinks the layout viewport away from the notch
+     in landscape and paints the leftover strips in the page background —
+     which is the pale band down each side of every screenshot he sent of
+     the phone on its side. Cover is the only way to reach the corners.
+     Content is kept clear of the notch by padding .screen with the
+     safe-area insets, so the background runs edge to edge while nothing
+     you need to read or press sits under the camera. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
 <!-- BEFORE THE FIRST PAINT. This has to be here, inline, in the head, and
      not at the bottom with the rest of the scripts.

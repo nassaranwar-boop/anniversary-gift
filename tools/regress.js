@@ -2,7 +2,16 @@
 // works: no page errors, no horizontal scroll, the expected nodes present.
 const { chromium } = require('playwright-core');
 const out = [];
-const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x : ''));
+/* Printed as it goes as well as collected. This is the suite everyone runs
+   before a push, and it used to say nothing at all until it finished — so
+   on a slow machine, or interrupted, it told you nothing: not a pass, not a
+   failure, not which screen it had reached. mech.js had the same fault and
+   it cost hours of believing a working suite was wedged. */
+const ok = (n, c, x) => {
+  const line = (c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x : '');
+  out.push(line);
+  console.log(line);
+};
 (async () => {
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     /* --disable-gpu takes WebGL with it, and two chapters are WebGL now;
@@ -156,6 +165,5 @@ const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x 
     ok(label + ': still no page errors after all of that', errors.length === 0, errors.slice(0,2).join(' | '));
     await page.close();
   }
-  console.log(out.join('\n'));
   await browser.close();
 })();
