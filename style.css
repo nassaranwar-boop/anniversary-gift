@@ -694,6 +694,11 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* ---- unlock: the supplied plate ---- */
 .gate-unlock{
+  /* Its size comes from the card it sits in (42cqw), which on the shortest
+     landscape window puts it at 113x38 -- two pixels under a thumb. The
+     picture may scale with the card; the box it is in may not go below the
+     floor, so the shortfall is taken as padding around the plate. */
+  min-height:44px; display:flex; align-items:center; justify-content:center;
   margin-top:auto; border:none; background:none; padding:0; cursor:pointer; line-height:0;
   transition:transform .09s var(--ease-pop), filter .15s ease;
   -webkit-tap-highlight-color:transparent; touch-action:manipulation;
@@ -736,6 +741,28 @@ img{-webkit-user-drag:none; user-select:none;}
   .gate-error{margin-top:1cqw; min-height:3cqw; font-size:2.8cqw;}
   .gate-pad{width:72cqw; gap:2cqw; margin-top:1.2cqw;}
   .gate-unlock img{width:62cqw;}
+}
+/* On the shortest window there is one thing left to give: the unlock plate
+   now has a 44px floor under it, and on a 340px screen those two extra
+   pixels put its bottom edge off the end of the card. The keypad carries
+   the trim, as it did the last time this had to fit. */
+@media (orientation: landscape) and (max-height: 400px){
+  /* The keypad is NOT where this trim comes from. Narrowing it to 68cqw put
+     the ten keys at 39.6px, which rounds to forty and is under a thumb --
+     trading one control that does not fit for ten that are too small. The
+     card's own padding and the gaps between its parts carry it instead. */
+  .gate-card{width:min(340px, 33vw, (var(--app-h) - 14px) * 400 / 700);}
+  .gate-body{padding:2.4cqw 6cqw 1.8cqw;}
+  /* 4.6cqw of a 186px card is 8.6px, which is not a heading any more. The
+     container query sizes it on a big card and the floor holds on a small
+     one. */
+  .gate-heading{font-size:max(10.5px, 4.6cqw);}
+  .gate-pad{width:73cqw; gap:2cqw; margin-top:.2cqw;}
+  .gate-field{margin-top:.8cqw; padding:2cqw 6cqw;}
+  .gate-error{margin-top:.4cqw; min-height:1.2cqw; font-size:2.6cqw;}
+  /* the plate is drawn to fill the 44px box its floor already reserves,
+     rather than sitting small inside it with the difference as padding */
+  .gate-unlock img{width:66cqw;}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -913,6 +940,7 @@ img{-webkit-user-drag:none; user-select:none;}
   .sb-prop{display:none;}
 }
 
+
 /* THE BOOK'S OWN SHADOW ON THE CLOTH.
 
    Two shadows, because that is what contact looks like: a tight one right
@@ -948,23 +976,8 @@ img{-webkit-user-drag:none; user-select:none;}
   opacity:calc(.34 + var(--flip-lift,0) * .66);
 }
 
-/* A PHONE IS ALMOST ENTIRELY BOOK.
 
-   There is no fourteen per cent of margin left to arrange anything in, so
-   the table keeps the two layers that are the table -- the cloth and the
-   runner -- and drops the things lying on it rather than showing seven
-   slivers down each edge. The pencil was kept at first and it was fifteen
-   pixels of one end against the left edge, which is not a pencil, it is a
-   mark. The cloth, the runner and the shadow under the book are the table;
-   the things lying on it are what there is room for on a bigger screen. */
-@media (max-width:600px){
-  .sb-prop{display:none;}
-  .sb-table-runner{left:-10%; right:-10%;}
-}
-/* sideways, the book is wider than it is tall and takes the whole screen */
-@media (orientation:landscape) and (max-height:560px){
-  .sb-prop{display:none;}
-}
+
 
 /* THE BOOK'S OWN SHADOW ON THE CLOTH.
 
@@ -1844,7 +1857,7 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:0 16px 34px rgba(20,4,16,.5);
 }
 .sb-w-title{margin:0; font-family:'Playfair Display',serif; font-weight:700; font-size:13px; color:#fdeef6;}
-.sb-w-kicker{margin:2px 0 0; font-family:var(--font-body); font-size:7px; letter-spacing:2.4px; color:rgba(250,210,232,.5);}
+.sb-w-kicker{margin:2px 0 0; font-family:var(--font-body); font-size:9px; letter-spacing:1.9px; color:rgba(250,210,232,.62);}
 .sb-bq-stage{
   display:flex; align-items:flex-end; justify-content:center;
   /* gives way on a short window rather than pushing the clip off the end */
@@ -2005,8 +2018,8 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .sb-song-body{flex:1; min-width:0;}
 .sb-song-kicker{
-  margin:0; font-family:var(--font-body); font-size:7px; letter-spacing:2.4px;
-  text-transform:uppercase; color:rgba(244,196,150,.62);
+  margin:0; font-family:var(--font-body); font-size:9px; letter-spacing:1.9px;
+  text-transform:uppercase; color:rgba(244,196,150,.72);
 }
 .sb-song-title{
   margin:2px 0 0; font-family:'Playfair Display',serif; font-weight:700; font-size:16px;
@@ -2080,12 +2093,14 @@ img{-webkit-user-drag:none; user-select:none;}
   border:1px solid rgba(226,168,120,.24);
 }
 .sb-map-head{display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:6px;}
-.sb-map-kicker{margin:0; font-family:var(--font-body); font-size:6.5px; letter-spacing:.2em; color:rgba(238,196,206,.72);}
+.sb-map-kicker{margin:0; font-family:var(--font-body); font-size:9px; letter-spacing:.16em; color:rgba(240,202,212,.8);}
 .sb-map-name{margin:0; font-family:'Playfair Display',serif; font-weight:700; font-size:14px; color:#f7e4ea;}
 .sb-map-zoom{display:flex; gap:5px;}
 .sb-map-zoom button{
-  width:23px; height:23px; border-radius:50%; border:none; cursor:pointer;
-  font-size:14px; line-height:1; color:#f8e2e9;
+  /* 23px was a target for a mouse. A thumb needs forty, and the two of them
+     sit in the card's header where there is room for it. */
+  width:40px; height:40px; border-radius:50%; border:none; cursor:pointer;
+  font-size:17px; line-height:1; color:#f8e2e9;
   background:rgba(240,196,206,.16);
   box-shadow:0 0 0 1px rgba(255,214,226,.26), 0 2px 5px rgba(0,0,0,.3);
 }
@@ -2094,10 +2109,18 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-map-img{width:100%; height:100%; object-fit:cover; display:block;}
 .sb-map-hint{
   position:absolute; left:0; right:0; bottom:5px; margin:0; text-align:center; pointer-events:none;
-  font-family:var(--font-body); font-size:7.5px; color:rgba(70,72,66,.55);
+  font-family:var(--font-body); font-size:9px; color:rgba(64,66,60,.68);
 }
 .sb-map-pin{
-  position:absolute; z-index:3; width:10%; aspect-ratio:1/1.12; transform:translate(-50%,-100%);
+  /* Ten per cent of a small map is a twenty-seven pixel pin, which is a
+     photograph you can see and cannot reliably hit. The floor is the thumb,
+     not the fraction. */
+  /* min-width alone left it at 40px: the aspect ratio was deriving the width
+     back from a height the row had already decided, so the floor has to be
+     stated on both axes. */
+  position:absolute; z-index:3; width:10%; aspect-ratio:1/1.12;
+  min-width:44px; min-height:46px;
+  transform:translate(-50%,-100%);
   padding:2px; cursor:pointer; border:none; border-radius:4px;
   background:#fdfdfa; box-shadow:0 4px 9px rgba(20,24,20,.45), 0 0 0 1px rgba(90,94,88,.25);
   animation:sbPinPop .5s var(--ease-pop) both;
@@ -2169,8 +2192,8 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-w-video.nothumb .sb-vid-thumb{display:none;}
 .sb-vid-meta{position:absolute; left:12px; right:12px; bottom:10px; z-index:2; pointer-events:none;}
 .sb-vid-kicker{
-  margin:0 0 2px; font-family:var(--font-body); font-size:7.5px; letter-spacing:.24em;
-  color:rgba(232,244,248,.6);
+  margin:0 0 2px; font-family:var(--font-body); font-size:9px; letter-spacing:.2em;
+  color:rgba(232,244,248,.7);
 }
 .sb-vid-title{
   margin:0; font-family:'Playfair Display',serif; font-weight:700; font-size:15px;
@@ -2494,7 +2517,7 @@ img{-webkit-user-drag:none; user-select:none;}
      the left, so on anything but a phone the two never meet. The
      full-width phone rule further down keeps its clearance; here the
      drawer gets its four cards on screen at once, which is what it is for. */
-  width:min(86vw,320px); padding:12px 14px 16px;
+  width:min(86vw,320px); padding:12px 14px 12px;
   display:flex; flex-direction:column; gap:10px; overflow-y:auto;
   -webkit-overflow-scrolling:touch;
   background:linear-gradient(180deg,rgba(38,26,18,.9),rgba(28,18,12,.94));
@@ -2512,6 +2535,79 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-drawer > *:nth-child(4){animation-delay:.22s;}
 .sb-drawer > *:nth-child(5){animation-delay:.28s;}
 @keyframes sbSlideIn{from{opacity:0; transform:translateX(-24px);} to{opacity:1; transform:none;}}
+
+/* THE DRAWER ON A PHONE HELD SIDEWAYS.
+
+   It was a 320px column of four stacked cards, and sideways that column is
+   taller than the screen by between 276 and 354 pixels on every phone
+   measured -- an iPhone SE through a 16 Pro Max, worse still once Safari's
+   bottom bar is up. The portrait rule further up never applied here, because
+   a phone on its side is 667 to 956px wide and reads as a desktop.
+
+   A column is the wrong shape for this screen anyway. Sideways there is no
+   height and plenty of width, so the four cards go into two columns: the
+   bouquet and the map down one side, the song and the clip down the other.
+   Nothing is dropped and nothing has to be scrolled to.
+
+   The drawer covers the book while it is open, so it may take the width it
+   needs -- and it stops short of the right-hand edge so the flower button
+   that closes it is never underneath it. */
+@media (orientation:landscape) and (max-height:560px){
+  .sb-drawer{
+    width:min(94vw, 640px); max-width:none;
+    padding:10px 12px 10px calc(12px + env(safe-area-inset-left, 0px));
+    display:grid; gap:9px;
+    grid-template-columns:1fr 1fr;
+    /* Two rows that split whatever height there is, rather than two rows
+       sized by their contents and hoped to fit. minmax(0,1fr) is the whole
+       trick: without the zero minimum a grid row refuses to go below the
+       size of what is in it, which is how a column of cards overflows a
+       screen by four pixels on one phone and twenty-nine on another. With
+       it the rows divide the drawer exactly and the cards give instead. */
+    grid-template-rows:minmax(0,1fr) minmax(0,1fr);
+    align-content:stretch;
+    overflow:hidden;
+  }
+  .sb-drawer > *{min-height:0; overflow:hidden;}
+  /* the bouquet is the one card that can give, so it takes the leftover
+     height of its column rather than a fixed slab of it */
+  .sb-drawer > .sb-w-bouquet{grid-column:1; grid-row:1; min-height:0;}
+  .sb-drawer > .sb-w-map    {grid-column:1; grid-row:2; min-height:0;}
+  .sb-drawer > .sb-w-song   {grid-column:2; grid-row:1; min-height:0;}
+  .sb-drawer > .sb-w-video  {grid-column:2; grid-row:2; min-height:0;}
+
+  .sb-bq-stage{height:auto; flex:1 1 auto; min-height:56px; max-height:none;}
+  .sb-w-bouquet{padding:8px 10px 4px;}
+  .sb-w-title{font-size:12px;}
+  .sb-w-kicker{font-size:9px; letter-spacing:1.5px;}
+
+  /* the map keeps its shape until the row is shorter than the shape, then
+     the row wins -- a map two thirds visible is worse than a shorter map */
+  .sb-map-body{aspect-ratio:16/9; min-height:0;}
+  .sb-w-map{padding:8px; display:flex; flex-direction:column;}
+  .sb-w-map .sb-map-body{flex:1 1 auto;}
+  .sb-w-video{display:flex; flex-direction:column;}
+  .sb-w-video .sb-vid-frame{flex:1 1 auto; min-height:0; aspect-ratio:auto;}
+  .sb-w-song{align-items:center;}
+  .sb-map-head{margin-bottom:4px;}
+  .sb-map-hint{display:none;}
+
+  .sb-w-song{padding:7px 10px; gap:9px;}
+  .sb-song-deck{width:44px; height:44px;}
+
+  .sb-w-video{padding:0;}
+}
+/* A short landscape phone -- an SE, or anything once Safari's bar is up --
+   has less than 380px of height for two rows of cards. The map's window is
+   the piece that can lose the most and still be a map. */
+@media (orientation:landscape) and (max-height:395px){
+  .sb-drawer{gap:7px; padding-top:8px; padding-bottom:8px;}
+  .sb-map-body{aspect-ratio:2/1;}
+  .sb-bq-stage{min-height:44px;}
+  .sb-w-title{font-size:11.5px;}
+  .sb-song-title{font-size:14px;}
+  .sb-vid-title{font-size:13px;}
+}
 
 /* =========================================================
    OVERLAYS
@@ -2715,6 +2811,15 @@ img{-webkit-user-drag:none; user-select:none;}
   }
 }
 .hv-chip[disabled]{opacity:.35; cursor:default;}
+/* the same treatment for the choice buttons: they are 122x38 on the
+   smallest screen, which looks right and is two pixels under a thumb */
+@media (hover:none){
+  .hv-btn{position:relative;}
+  .hv-btn::after{
+    content:""; position:absolute; left:50%; top:50%;
+    width:max(100%, 44px); height:44px; transform:translate(-50%, -50%);
+  }
+}
 
 /* ---- the things you have picked up along the way ---- */
 .hv-found{
@@ -3401,6 +3506,29 @@ img{-webkit-user-drag:none; user-select:none;}
   .hub-cards{gap:9px;}
   .hub-card{padding:7px 11px 9px; gap:3px;}
   .hub-desc{font-size:11px; line-height:1.3;}
+}
+
+/* AND SIDEWAYS, THE CARDS GO WIDE RATHER THAN DEEP.
+
+   The wrap is 620px, which on a phone held upright is the whole screen and
+   on a phone held sideways is a narrow column down the middle of a screen
+   twice that wide. Five cards then stack three rows deep -- 397px of them
+   in a 340px window once Safari's bar is up, so Super Ouissy Race sat below
+   the fold, and a card you cannot reach is a chapter that is shut.
+
+   Sideways there is width and no height, so the wrap takes the width and
+   the cards get narrower: four to a row instead of two, five cards in two
+   rows, and the whole hub back inside the shortest screen she might hold. */
+@media (orientation:landscape) and (max-height:460px){
+  .hub-wrap{width:min(96vw,900px); padding:6px 10px; gap:3px;}
+  .hub-title{font-size:17px;}
+  .hub-sub{font-size:11px; margin:0 0 2px;}
+  .hub-cards{gap:8px;}
+  .hub-card{flex:1 1 168px; max-width:214px; padding:6px 9px 8px; gap:2px;}
+  .hub-art{height:34px;}
+  .hub-name{font-size:13px;}
+  .hub-desc{font-size:10.5px; line-height:1.28;}
+  .hub-keepsake{margin-top:6px;}
 }
 
 
@@ -4228,8 +4356,10 @@ img{-webkit-user-drag:none; user-select:none;}
   }
   .so-pad-side{pointer-events:auto; gap:9px;}
   .so-key{
-    width:clamp(38px, calc(var(--app-h) * .135), 54px);
-    height:clamp(38px, calc(var(--app-h) * .135), 54px);
+    /* 38px was the floor and on a 340px window it is what she gets, which
+       is two pixels under a thumb on the control she uses most. Forty. */
+    width:clamp(40px, calc(var(--app-h) * .135), 54px);
+    height:clamp(40px, calc(var(--app-h) * .135), 54px);
     border-radius:14px; font-size:clamp(13px, calc(var(--app-h) * .046), 18px);
     opacity:.84;
   }
@@ -4237,6 +4367,18 @@ img{-webkit-user-drag:none; user-select:none;}
     width:clamp(48px, calc(var(--app-h) * .18), 72px);
     height:clamp(48px, calc(var(--app-h) * .18), 72px);
     font-size:clamp(15px, calc(var(--app-h) * .055), 22px);
+  }
+  /* On the shortest screens the stage is taller than the window, so the pad
+     sitting at the stage's bottom edge puts the jump key five pixels below
+     the glass. The key comes down a size -- still sixty pixels, still the
+     biggest thing on the pad -- and the pad tucks closer to the edge. */
+  @media (max-height: 385px){
+    .so-pad{padding-bottom:calc(4px + env(safe-area-inset-bottom));}
+    .so-key-jump{
+      width:clamp(46px, calc(var(--app-h) * .155), 64px);
+      height:clamp(46px, calc(var(--app-h) * .155), 64px);
+      font-size:clamp(14px, calc(var(--app-h) * .05), 20px);
+    }
   }
   .so-key-duck{
     width:clamp(34px, calc(var(--app-h) * .112), 46px);
@@ -4257,6 +4399,22 @@ img{-webkit-user-drag:none; user-select:none;}
   .so-diff-blurb{font-size:1.6cqw;}
   .so-btn{padding:1.1cqw 2cqw;}
   .so-card{padding:2cqw 2.4cqw; gap:1cqw;}
+}
+
+/* THE TITLE MENU ON THE SHORTEST SIDEWAYS SCREEN.
+
+   The overlay scrolls, so play / how to / quit were always reachable -- but
+   reachable by scrolling a title screen is not the same as being on it, and
+   on a 340px window that is exactly what they were. The card gives up the
+   space instead. */
+@media (orientation:landscape) and (max-height:400px){
+  .so-overlay.on{padding:1.6cqw; align-items:center;}
+  .so-ov-menu .so-tag{font-size:1.7cqw; line-height:1.5;}
+  .so-menu{gap:.7cqw;}
+  .so-card{padding:1.4cqw 2cqw; gap:.7cqw;}
+  .so-diff-card{padding:.8cqw 1cqw; gap:.3cqw;}
+  .so-diff-blurb{font-size:max(9px, 1.4cqw);}
+  .so-btn{padding:max(11px,.9cqw) max(12px,1.8cqw); font-size:max(9.5px, 1.7cqw);}
 }
 
 /* ---- the title above the stage, portrait phones only ---- */
@@ -4457,7 +4615,7 @@ img{-webkit-user-drag:none; user-select:none;}
    controls now, and these two stack in the top corner instead. */
 .ap-pause-btn{
   position:absolute; right:2cqw; top:2cqw; z-index:6;
-  width:6.4cqw; height:6.4cqw; min-width:30px; min-height:30px;
+  width:6.4cqw; height:6.4cqw; min-width:40px; min-height:40px;
   border-radius:50%; border:1px solid rgba(168,192,240,.26);
   background:rgba(7,11,21,.62); color:#bccdf0; font-size:1.9cqw; line-height:1;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
@@ -4480,7 +4638,7 @@ img{-webkit-user-drag:none; user-select:none;}
   width:6.4cqw; height:6.4cqw; min-width:30px; min-height:30px;
   border-radius:50%; border:1px solid rgba(168,192,240,.26);
   background:rgba(7,11,21,.62); color:#bccdf0;
-  font-family:var(--ap-sign); font-size:1.05cqw; letter-spacing:.14em;
+  font-family:var(--ap-sign); font-size:max(9px, 1.05cqw); letter-spacing:.12em;
   display:flex; align-items:center; justify-content:center; cursor:pointer;
   transition:color .16s ease, border-color .16s ease, background .16s ease;
 }
@@ -5001,8 +5159,8 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-card-kicker{
   position:relative; z-index:1; margin:0 0 2.4cqw;
   padding:2.9cqw 3.4cqw 1.5cqw 3.4cqw;
-  font-family:var(--ap-sign); font-size:1.42cqw; line-height:1.2;
-  letter-spacing:.32em; text-transform:uppercase; color:#f0b567;
+  font-family:var(--ap-sign); font-size:max(9.5px, 1.42cqw); line-height:1.2;
+  letter-spacing:.28em; text-transform:uppercase; color:#f0b567;
   border-bottom:1px solid rgba(168,192,240,.13);
 }
 
@@ -5078,7 +5236,7 @@ img{-webkit-user-drag:none; user-select:none;}
   position:relative; z-index:1; flex:0 0 auto;
   display:block; margin:1.1cqw 3.4cqw 0; width:calc(100% - 6.8cqw);
   padding:1.85cqw 3.6cqw 1.75cqw 2.6cqw; cursor:pointer; text-align:left;
-  font-family:var(--ap-sign); font-size:1.42cqw; letter-spacing:.2em;
+  font-family:var(--ap-sign); font-size:max(9.5px, 1.42cqw); letter-spacing:.18em;
   text-transform:uppercase; color:#cfdcf6;
   background:rgba(150,180,240,.035);
   border:1px solid rgba(168,192,240,.20);
@@ -5888,7 +6046,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .rc-logo i{display:block; font-style:normal; font-size:5.4cqh; color:var(--rc-sky); letter-spacing:.22em;}
 .rc-tag{
-  margin:0; max-width:60cqw; font-size:1.8cqh; line-height:2;
+  margin:0; max-width:60cqw; font-size:max(9.5px, 1.8cqh); line-height:1.9;
   color:#ffc4a3; text-shadow:0 .3cqh 0 rgba(20,8,26,.8);
 }
 .rc-menu{display:flex; flex-direction:column; gap:1.4cqh; align-items:center;}
@@ -5897,8 +6055,15 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-menu-row{ display:flex; flex-wrap:wrap; gap:1.4cqw; justify-content:center; }
 
 .rc-btn{
-  font-family:var(--rc-face); font-size:2.4cqh; color:var(--rc-ink); cursor:pointer;
-  padding:1.8cqh 5cqw; border-radius:1cqw; border:0;
+  font-family:var(--rc-face); font-size:max(11px, 2.4cqh); color:var(--rc-ink); cursor:pointer;
+  /* the padding carries the 44px floor rather than a min-height, so the
+     button keeps its shape and simply stops shrinking past a thumb */
+  /* NO min-height HERE. This menu sits inside a stage of fixed aspect, so
+     a floor on the buttons does not make them easier to hit -- it makes the
+     bottom row leave the stage entirely, which is what it did. The padding
+     floor keeps them comfortably above a thumb at every size measured
+     (44-53px tall) without changing how the column stacks. */
+  padding:max(14px, 1.8cqh) max(14px, 5cqw); border-radius:1cqw; border:0;
   background:linear-gradient(180deg, rgba(255,127,138,.28), rgba(155,93,229,.24));
   box-shadow:inset 0 0 0 .28cqw rgba(255,248,232,.3), 0 .7cqh 0 rgba(20,8,26,.7);
   transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
@@ -5909,18 +6074,18 @@ img{-webkit-user-drag:none; user-select:none;}
   outline:none;
 }
 .rc-btn:active{transform:translateY(.5cqh); box-shadow:inset 0 0 0 .28cqw rgba(255,248,232,.4), 0 .2cqh 0 rgba(20,8,26,.7);}
-.rc-btn-s{font-size:1.9cqh; padding:1.4cqh 3.4cqw; background:rgba(255,248,232,.1);}
+.rc-btn-s{font-size:max(10px, 1.9cqh); padding:max(15px, 1.4cqh) max(11px, 3.4cqw); background:rgba(255,248,232,.1);}
 .rc-btn-go{
   background:linear-gradient(180deg, var(--rc-rose), #c4407a);
   box-shadow:inset 0 0 0 .28cqw rgba(255,248,232,.5), 0 .7cqh 0 rgba(20,8,26,.7);
 }
 
 .rc-diff{display:flex; flex-direction:column; align-items:center; gap:.9cqh;}
-.rc-diff-lab{font-size:1.5cqh; color:#c9b8d8; letter-spacing:.16em;}
+.rc-diff-lab{font-size:max(9.5px, 1.5cqh); color:#c9b8d8; letter-spacing:.14em;}
 .rc-diff-row{display:flex; gap:1cqw;}
 .rc-dbtn{
-  font-family:var(--rc-face); font-size:1.6cqh; cursor:pointer;
-  padding:1.1cqh 2.4cqw; border-radius:.7cqw; border:0;
+  font-family:var(--rc-face); font-size:max(10px, 1.6cqh); cursor:pointer;
+  padding:max(15px, 1.1cqh) max(12px, 2.4cqw); border-radius:.7cqw; border:0;
   background:rgba(255,248,232,.08); color:#a99cbb;
   box-shadow:inset 0 0 0 .2cqw rgba(255,248,232,.14);
 }
@@ -5929,8 +6094,9 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:inset 0 0 0 .24cqw rgba(255,209,102,.75);
 }
 .rc-quit{
-  font-family:var(--rc-face); font-size:1.4cqh; cursor:pointer; border:0;
-  background:none; color:#a99cbb; padding:1cqh 2cqw; letter-spacing:.08em;
+  font-family:var(--rc-face); font-size:max(10px, 1.4cqh); cursor:pointer; border:0;
+  background:none; color:#a99cbb; padding:max(15px, 1cqh) max(12px, 2cqw);
+  letter-spacing:.08em;
 }
 .rc-quit:hover{color:var(--rc-ink);}
 
@@ -6484,6 +6650,82 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-titlebar{display:none;}
   .rc-frame{justify-content:center; padding:0;}
   .rc-stage{width:min(100%, calc(var(--app-h) * 1.7778));}
+}
+
+/* THE RACER'S MENU ON THE SHORTEST SIDEWAYS SCREEN.
+
+   Its buttons were 27px tall, which is not a thumb, and giving them one
+   made the column taller than a 340px stage -- the bottom row left the
+   screen. Both are the same problem seen from two ends: six items and a
+   fixed 16:9 stage. The buttons keep their height and the space between
+   them gives it up, which is the right way round: a gap is easier to lose
+   than a target. */
+/* =========================================================
+   A PHONE HELD SIDEWAYS IS A SMALL IPAD, NOT A DIFFERENT DEVICE
+
+   Every stage here is sized from the measured height and locked to the
+   game's aspect: width:min(100%, app-h * 16/9). On a laptop and on an iPad
+   that fills the width, because both are narrower than 16:9. A modern phone
+   held sideways is not -- an iPhone 16 Pro Max is 956x440, which is 2.17:1 --
+   so the stage came out 782px wide in a 956px screen and the missing 174
+   were two black bars down the sides. The wider the phone, the worse it got,
+   which is the opposite of what a bigger phone should buy her.
+
+   So on a landscape phone the stage takes the whole screen. The games all
+   read their own canvas size (racing.js measures stage.clientWidth, and the
+   others set --so-arn / --ap-arn from the view they picked), so a wider
+   stage means more of the world on screen rather than a stretched picture.
+
+   The touch controls then have to stop growing with it. They are sized in
+   cqw -- a share of the stage's WIDTH -- so widening the stage by a fifth
+   made the steering ring a fifth bigger, which is the giant pink circle in
+   his screenshot. Sized against the height instead they hold the same
+   proportion they have on an iPad, which is what he asked for.
+
+   None of this touches a laptop or an iPad: it is all inside a query that
+   needs both landscape and a short viewport. */
+@media (orientation:landscape) and (max-height:560px){
+  .rc-stage,
+  .hv-stage,
+  #screen-ouissy.so-landscape .so-stage,
+  .so-stage,
+  .ap-stage,
+  .ns-stage{
+    width:100% !important; height:100% !important;
+    max-height:100% !important; aspect-ratio:auto !important;
+    border-radius:0;
+  }
+  /* the steering ring and its pip: a share of the height, so they are the
+     same size on a phone as the same control is on an iPad */
+  .rc-steer-ring{
+    width:min(26cqw, 34cqh); height:min(26cqw, 34cqh);
+    margin:calc(min(26cqw, 34cqh) / -2) 0 0 calc(min(26cqw, 34cqh) / -2);
+  }
+  .rc-steer-ring i{
+    width:min(9cqw, 12cqh); height:min(9cqw, 12cqh);
+    margin:calc(min(9cqw, 12cqh) / -2) 0 0 calc(min(9cqw, 12cqh) / -2);
+  }
+  /* and the buttons, which were 75px slabs on a 440px-tall screen */
+  .rc-key-steer{width:max(48px, 13cqh); height:max(48px, 13cqh);}
+  .rc-key-big  {width:max(48px, 12.5cqh); height:max(48px, 12.5cqh);}
+  .rc-key-sm   {width:max(44px, 9cqh); height:max(44px, 9cqh);}
+  .rc-pad[data-mode="slide"] .rc-key-drift{width:max(52px, 14cqh); height:max(52px, 14cqh);}
+  .rc-pad[data-mode="slide"] .rc-key-sm{width:max(44px, 8cqh); height:max(44px, 8cqh);}
+  .rc-pad-cluster{gap:min(1.6cqw, 2.6cqh); padding:min(1.4cqh,1.4cqh) min(1.6cqw,2.2cqh);}
+}
+
+/* 360, not 400: at 375px and up the full-size buttons fit the stage with
+   room to spare, and pulling their padding down there traded a fault on one
+   screen for a smaller target on four. */
+@media (orientation: landscape) and (max-height: 360px){
+  .rc-menu{gap:.5cqh;}
+  .rc-menu-row{gap:1cqw;}
+  .rc-diff{gap:.3cqh;}
+  .rc-tag{line-height:1.5; margin-bottom:.3cqh;}
+  .rc-btn{padding:max(12px, 1.4cqh) max(12px, 4cqw);}
+  .rc-btn-s{padding:max(12px, 1.1cqh) max(10px, 3cqw);}
+  .rc-dbtn{padding:max(12px, 1cqh) max(10px, 2.2cqw);}
+  .rc-quit{padding:max(11px, .9cqh) max(10px, 2cqw);}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -7285,7 +7527,13 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---------- the cards ---------- */
 .ns-overlay{
   position:absolute; inset:0; z-index:10; display:none;
-  align-items:center; justify-content:center;
+  /* It centres when there is room and scrolls when there is not. Without
+     this a card taller than a sideways phone has its top clipped with no way
+     to get back to it -- the same fault the racer's and Ouissy's overlays
+     were already built to avoid, and the reason the buttons in here could
+     not be given a thumb's height safely. */
+  align-items:safe center; justify-content:safe center;
+  overflow-y:auto; overscroll-behavior:contain;
   padding:3cqh 3cqw;
   font-family:var(--ns-face); color:var(--ns-ink);
 }
@@ -7323,8 +7571,8 @@ img{-webkit-user-drag:none; user-select:none;}
 @keyframes nsBreathe{ 50%{ opacity:.35; } }
 .ns-btns{ display:flex; flex-wrap:wrap; gap:1.4cqw; justify-content:center; margin-top:2.4cqh; }
 .ns-btn{
-  cursor:pointer; padding:1.4cqh 2.6cqw;
-  font-family:var(--ns-face); font-size:1.9cqh; font-weight:700; letter-spacing:.22em;
+  cursor:pointer; padding:max(14px, 1.4cqh) max(13px, 2.6cqw); min-width:44px;
+  font-family:var(--ns-face); font-size:max(10.5px, 1.9cqh); font-weight:700; letter-spacing:.2em;
   color:var(--ns-ink); border:none; border-radius:.7cqw;
   background:linear-gradient(180deg,#2b302d,#171a19);
   box-shadow:inset 0 0 0 .2cqw rgba(200,162,96,.4), 0 .7cqh 0 rgba(6,8,7,.9);
@@ -7333,8 +7581,8 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-btn:hover{ color:var(--ns-amber); }
 .ns-btn:active{ transform:translateY(.5cqh); box-shadow:inset 0 0 0 .2cqw rgba(200,162,96,.4), 0 .2cqh 0 rgba(6,8,7,.9); }
 .ns-btn-go{ color:var(--ns-amber); box-shadow:inset 0 0 0 .22cqw rgba(255,179,71,.6), 0 .7cqh 0 rgba(6,8,7,.9); }
-.ns-btn-sm{ padding:.9cqh 1.6cqw; font-size:1.7cqh; letter-spacing:.1em; }
-.ns-pick{ margin:2.4cqh 0 0; font-size:1.5cqh; letter-spacing:.3em; color:rgba(232,223,200,.5);
+.ns-btn-sm{ padding:max(15px,.9cqh) max(12px,1.6cqw); font-size:max(10px, 1.7cqh); letter-spacing:.1em; }
+.ns-pick{ margin:2.4cqh 0 0; font-size:max(9.5px, 1.5cqh); letter-spacing:.24em; color:rgba(232,223,200,.6);
   display:flex; gap:.8cqw; align-items:center; justify-content:center; flex-wrap:wrap; }
 
 .ns-rules, .ns-cast{ list-style:none; margin:0 0 2.4cqh; padding:0; text-align:left; }
@@ -7505,7 +7753,8 @@ img{-webkit-user-drag:none; user-select:none;}
 /* ---------- the cozy switch ---------- */
 .ns-cozy{
   display:flex; align-items:center; gap:1.2cqw; cursor:pointer;
-  margin:2.4cqh auto 0; padding:1cqh 2cqw;
+  /* a nineteen pixel tall toggle is a line of text you are meant to hit */
+  margin:2.4cqh auto 0; padding:max(9px, 1cqh) max(12px, 2cqw); min-height:40px;
   border:none; border-radius:.7cqw;
   font-family:var(--ns-face); color:rgba(232,223,200,.7);
   background:linear-gradient(180deg, rgba(30,34,32,.9), rgba(15,17,16,.92));

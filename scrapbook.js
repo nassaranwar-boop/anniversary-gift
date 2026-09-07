@@ -3124,6 +3124,10 @@ window.Scrapbook = (function () {
   /* ---- the memory map ---- */
   var MAP_SLOT = 31;          /* the map pins use slots 31..34 */
   var MAP_TEX = null;
+  /* half the pin's minimum width, and its full minimum height: the two
+     distances a centred, bottom-anchored pin can hang outside its map */
+  var PIN_EDGE = 23, PIN_TOP = 47;
+
   function buildMapCard(big) {
     if (!MAP_TEX) MAP_TEX = marrakechMap(800, 600);
     var c = el("sb-w sb-w-map" + (big ? " big" : ""));
@@ -3147,10 +3151,22 @@ window.Scrapbook = (function () {
       e.stopPropagation(); zoom = Math.max(1, zoom - 0.25); applyZoom();
     });
 
+    /* THE PIN HAS TO STAY ON THE MAP.
+
+       A pin is placed by percentage and centred on its point, so half of it
+       hangs to the left of that point. That was fine while a pin was ten per
+       cent of the map; it is not fine now that it has a 44px floor under it
+       so a thumb can hit it, because on a small map 22px is a long way and a
+       pin at x=2% ends up off the left-hand edge of the screen entirely.
+
+       So the anchor is clamped to the span the pin can occupy without
+       leaving the map. It moves a pin near an edge by a few pixels, which
+       nobody will ever notice, and it keeps every one of them tappable,
+       which they will. */
     SB.map.pins.forEach(function (pin, i) {
       var b = el("sb-map-pin", "button");
-      b.style.left = pin.x + "%";
-      b.style.top = pin.y + "%";
+      b.style.left = "clamp(" + PIN_EDGE + "px, " + pin.x + "%, calc(100% - " + PIN_EDGE + "px))";
+      b.style.top = "clamp(" + PIN_TOP + "px, " + pin.y + "%, 100%)";
       b.style.animationDelay = (i * 0.45) + "s";
       b.setAttribute("aria-label", pin.title);
       var mem = photoAt(MAP_SLOT + i);
