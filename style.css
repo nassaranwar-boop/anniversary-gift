@@ -2865,14 +2865,22 @@ img{-webkit-user-drag:none; user-select:none;}
                     rgba(30,12,34,.85) calc(66.66% + .3cqw), transparent calc(66.66% + .3cqw));
 }
 
-/* ---- pause button ---- */
+/* ---- pause button ----
+   Bottom CENTRE, not the bottom right corner it used to sit in. With the
+   directions at the far left of the pad and the jump at the far right,
+   the corners of the screen are exactly where the two thumbs now live,
+   and a pause button directly above one of them is a pause button she
+   will hit while jumping. The middle is the one place on the picture that
+   no thumb reaches for any more, which is what the pad moving out to the
+   edges gave us. */
 .so-pause-btn{
-  position:absolute; right:2cqw; bottom:2cqw; z-index:6; cursor:pointer;
+  position:absolute; left:50%; transform:translateX(-50%);
+  bottom:2cqw; z-index:6; cursor:pointer;
   font-family:'Press Start 2P', monospace; font-size:2cqw; line-height:1;
   color:#fffaf5; background:rgba(61,35,64,.7); border:.4cqw solid rgba(255,158,196,.5);
   border-radius:.6cqw; padding:1cqw 1.4cqw;
 }
-.so-pause-btn:active{transform:translateY(1px);}
+.so-pause-btn:active{transform:translateX(-50%) translateY(1px);}
 
 /* =========================================================
    THE STORY PANEL
@@ -3345,10 +3353,20 @@ img{-webkit-user-drag:none; user-select:none;}
    ever taken edge to edge again. */
 .so-pad{
   display:flex; align-items:center; justify-content:space-between;
-  width:100%; max-width:640px; gap:12px; flex:0 0 auto;
-  padding:10px calc(14px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom))
-          calc(14px + env(safe-area-inset-left));
+  width:100%; gap:12px; flex:0 0 auto;
+  padding:10px calc(clamp(14px,3.5vw,64px) + env(safe-area-inset-right))
+          calc(14px + env(safe-area-inset-bottom))
+          calc(clamp(14px,3.5vw,64px) + env(safe-area-inset-left));
 }
+/* NO max-width HERE. It used to be capped at 640px and centred, which on a
+   phone is the whole width and fine, and on an iPad is two clusters of
+   buttons huddled in the middle of a screen twice that wide — both thumbs
+   dragged inwards to reach them, which is the opposite of how anybody
+   holds a tablet. The pad is the full width of the picture now, so the
+   directions sit under the left thumb and the jump under the right one,
+   where they already are on a phone. The pad is only ever on screen for a
+   touch device (see the pointer:fine rule below), so nothing widens for a
+   mouse. */
 .so-pad-side{display:flex; gap:12px; align-items:center;}
 /* on the title screen the pad controls nothing, so it steps back rather
    than sitting there looking live */
