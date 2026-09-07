@@ -139,6 +139,10 @@ summary,
 #hv-canvas,
 #book-canvas,
 #sb-intro-canvas,
+/* .so-stage was in this list on main and this branch dropped it while
+   adding the night shift's surfaces — Super Ouissy's playfield would
+   have gone back to being pannable and selectable under a finger. */
+.so-stage,
 #ns-canvas,
 .ns-stage,
 .ns-frame,
