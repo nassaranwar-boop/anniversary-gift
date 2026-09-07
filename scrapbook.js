@@ -1887,7 +1887,14 @@ window.Scrapbook = (function () {
       { k: "bigtype", text: W.p1big, left: 68, top: 6, size: 16, vertical: true, colour: "rgba(255,255,255,.22)" },
       { k: "photo", n: 1, style: "polaroid", left: 26, top:  5, w: 36.1, rot: -6, tape: "top" },
       { k: "photo", n: 2, style: "snapshot", left: 14, top: 44, w: 37.7, rot:  4, tape: "corner" },
-      { k: "photo", n: 3, style: "corners",  left: 38, top: 66, w: 38, rot: -3 },
+      /* This was the one bare print in the whole spread — held by four
+         black corners, straight onto the paper, while every other
+         photograph across both pages sits on a card. It was the first
+         thing the eye found and the reason the left page read as
+         unfinished. `washed` is the same 4/3 as `corners`, so nothing
+         moves; it simply has a mount now, and a warmer one than the two
+         above it so the three are not the same card three times. */
+      { k: "photo", n: 3, style: "washed",   left: 38, top: 66, w: 38, rot: -3 },
       { k: "sticker", art: "rose",    left: 73, top: 54, w: 24, rot: -8 },
       { k: "sticker", art: "lips",    left: 60, top: 44, w: 19, rot: 14 },
       { k: "sticker", art: "vinyl8",  left: 70, top: 82, w: 26, rot: 0 },
@@ -2165,6 +2172,48 @@ window.Scrapbook = (function () {
     32:[32,19], 33:[28,34], 34:[351,34],
   };
 
+  /* =====================================================================
+     THE GRADE ON A PRINT
+
+     PHOTO_TINT above colours the CARD a print is mounted on. This colours
+     the PRINT, and it exists because of page 8.
+
+     That spread is one night in one red room, and the right-hand page
+     reads as it: four prints, all of them deep in the light of the place.
+     The three of her on the left were the same night and did not match —
+     flatter, greyer, a stop cooler — so the two pages looked like two
+     different evenings with a gutter between them.
+
+     Nothing here retouches a photograph. It is the grade a print gets in
+     a darkroom: a little more of the colour that was already in the room,
+     a little more separation between the lit side of a face and the dark
+     one. Anything not named here is left exactly as it was shot, which is
+     the default and should stay the default — this is for a page whose
+     photographs have to agree with each other, not a look for the book.
+     ===================================================================== */
+  var PHOTO_GRADE = {
+    /* Page 8 was shot in a room lit entirely red, and the camera did what
+       a camera does: it gave back three photographs drowned in it. Skin
+       came out orange and a cream jumper came out orange, which is not
+       what the room looked like to anybody standing in it.
+
+       The first attempt at this went the wrong way — it pushed the red
+       further to "match the page", and made them worse. This pulls the
+       cast back out instead: less of the colour the sensor over-read, a
+       little more light, a little more contrast to put the shadows back.
+       It is white balance, which is the correction these were always
+       going to need, not a look.
+
+       Photo 1 barely gets any. Its red is a red curtain that was really
+       there, behind a face that was already lit properly — correcting it
+       as hard as the other two only made it grey. */
+    1: "saturate(.90) brightness(1.03) contrast(1.02)",
+    /* 2 and 3 are the two the light drowned: an orange wall, an orange
+       sofa and an orange jumper that is actually cream */
+    2: "saturate(.64) brightness(1.09) contrast(1.04) hue-rotate(9deg)",
+    3: "saturate(.60) brightness(1.10) contrast(1.05) hue-rotate(10deg)",
+  };
+
   /* the back cover is its own thing, not a page of collage */
   var BACK = { title: "the end.", line1: "until next time,", line2: "— love, always •", line3: "xoxo" };
 
@@ -2309,6 +2358,9 @@ window.Scrapbook = (function () {
       wrap.style.setProperty("--ph-h", pt[0]);
       wrap.style.setProperty("--ph-s", pt[1] + "%");
     }
+    /* and the print's own grade, where one is set */
+    var pg = PHOTO_GRADE[mem.n];
+    if (pg) wrap.style.setProperty("--ph-grade", pg);
     var mount = el("sb-photo-mount");
     var inner = el("sb-photo-inner");
 

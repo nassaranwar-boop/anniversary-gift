@@ -2080,6 +2080,7 @@ document.getElementById("ks-replay").addEventListener("click", () => {
    ========================================================= */
 const MUSIC_KEY = "fal_music_on";
 let audioCtx = null, musicNodes = null, musicOn = false, bellTimer = null;
+let hvRegistered = false;    // the shared context is on the site's register
 
 /* The score in ost.js is a separate file and needs the same clock as
    the ambience bed and the effects — one context, one wake-up, one
@@ -2091,19 +2092,37 @@ window.hvSharedCtx = function () {
   if (audioCtx && audioCtx.state === "closed") audioCtx = null;
   if (!audioCtx) {
     audioCtx = new AC();
-    /* THE SOUND FOLLOWED YOU OUT OF THE BROWSER.
+    /* THE SOUND FOLLOWED YOU OUT OF THE BROWSER — AND THEN WOULD NOT
+       COME BACK IN.
 
-       Every other chapter hands its context to registerAudio, and
-       hushAllAudio suspends the lot when the tab is hidden or the
-       window loses focus. This one never did — the only thing
-       registered here was the site's ambient pad, whose getter returns
-       null unless that pad has been built, and it is off by default. So
-       the adventure's air and its score played on a context nobody was
-       ever going to suspend, and went on playing to an empty room.
+       Every chapter hands its context to registerAudio, and hushAllAudio
+       suspends the lot when the tab is hidden or the window loses focus.
+       This one never did, so the adventure's air and its score played on
+       a context nobody was ever going to suspend.
+
+       Fixing that half exposed the other half. Stopping is easy: the
+       page tells you the moment you leave, and it is always true. Coming
+       BACK is a negotiation. The events that announce a return —
+       visibilitychange, focus, pageshow — all fire before the audio
+       hardware is necessarily willing to have you, and on a phone it
+       will not be willing until the next real touch, which is minutes of
+       events later. A chapter that restarts itself on those events has
+       spent its one attempt on a clock that was still stopped: the score
+       reports a running scheduler, the context reports itself healthy,
+       and there is silence.
+
+       So this chapter no longer listens for anything. It hands the site
+       two callbacks — what to stop, and what to start — and the site
+       calls the second one only once the clock is really running again,
+       retrying for as long as it takes. One place decides, and every
+       chapter gets the same answer.
 
        Registering the getter rather than the context because a closed
        context is unrecoverable and this function rebuilds it. */
-    if (window.registerAudio) window.registerAudio(() => audioCtx);
+    if (window.registerAudio && !hvRegistered) {
+      hvRegistered = true;
+      window.registerAudio(() => audioCtx, hvResumeChapter, hvHushChapter);
+    }
   }
   return audioCtx;
 };
@@ -2119,6 +2138,7 @@ function hvHushChapter() {
   if (hvAmb && hvAmb.timer) { clearTimeout(hvAmb.timer); hvAmb.timer = null; }
 }
 
+/* Called by the site, on a clock it has already seen running. */
 function hvResumeChapter() {
   const scr = document.getElementById("screen-quest");
   if (!scr || !scr.classList.contains("active")) return;
@@ -2130,14 +2150,6 @@ function hvResumeChapter() {
   hvAmbience(scene);
   if (window.OST) window.OST.resume();
 }
-
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) hvHushChapter(); else hvResumeChapter();
-});
-window.addEventListener("blur", hvHushChapter);
-window.addEventListener("pagehide", hvHushChapter);
-window.addEventListener("focus", hvResumeChapter);
-window.addEventListener("pageshow", hvResumeChapter);
 
 /* ---------------------------------------------------------
    KEEPING AUDIO ALIVE
@@ -2168,8 +2180,14 @@ window.addEventListener("pageshow", hvResumeChapter);
    --------------------------------------------------------- */
 const audioClients = [];
 
-/* a getter, not a context: the caller may rebuild theirs at any point */
-window.registerAudio = function (get) { audioClients.push(get); };
+/* A getter, not a context: the caller may rebuild theirs at any point.
+   The two optional callbacks are what a chapter has to STOP on the way
+   out and START on the way back — its scheduler, its ambience loop, the
+   things a suspended context does not cover. They are optional because
+   a chapter that only makes one-off effects has nothing to re-arm. */
+window.registerAudio = function (get, onWake, onSleep) {
+  audioClients.push({ get: get, wake: onWake || null, sleep: onSleep || null, woke: 0 });
+};
 
 /* WHETHER THE SITE HAS PUT THE SOUND DOWN ON PURPOSE.
 
@@ -2207,9 +2225,64 @@ window.wakeAudio = function (ctx, then) {
   }, 350);
 };
 
+/* COMING BACK IS NOT AN EVENT, IT IS A NEGOTIATION.
+
+   This used to be one line: clear the flag, ask every context to
+   resume, done. It is right about what to do and wrong about when, and
+   the report was exactly the shape of that mistake — the sound stopped
+   on the way out, which is the easy half, and did not come back.
+
+   Leaving is instantaneous and always granted. Returning is neither.
+   The events that announce it fire while the audio hardware is still
+   busy handing itself back, and on a phone the session is not returned
+   at all until the next real touch, which can be a long way after every
+   one of those events has come and gone. A single attempt, made at the
+   moment the tab reappears, is therefore an attempt made too early —
+   and there was nothing to make a second one.
+
+   So: try, and keep trying, on a widening interval, until every
+   registered context is actually running; and only once a context is
+   really running tell that chapter to restart what it stopped. Each
+   chapter is told exactly once per return — `woke` carries the cycle
+   number — because these callbacks re-arm ambience and re-anchor
+   schedulers, and doing that on a loop would be its own kind of broken.
+
+   The whole thing stops the moment everything is running, and cancels
+   itself if she leaves again while it is still trying. */
+let wakeCycle = 0;
+
 function pokeAllAudio() {
   audioHushed = false;
-  audioClients.forEach((get) => { try { window.wakeAudio(get()); } catch (e) {} });
+  const cycle = ++wakeCycle;
+
+  const rouse = (client, ctx) => {
+    if (client.woke === cycle || audioHushed || cycle !== wakeCycle) return;
+    client.woke = cycle;
+    if (client.wake) { try { client.wake(ctx); } catch (e) {} }
+  };
+
+  const sweep = (attempt) => {
+    if (audioHushed || cycle !== wakeCycle) return;   // she left again
+    let waiting = 0;
+    audioClients.forEach((client) => {
+      let ctx = null;
+      try { ctx = client.get(); } catch (e) {}
+      if (!ctx || ctx.state === "closed") return;     // nothing here to wake
+      if (ctx.state === "running") { rouse(client, ctx); return; }
+      waiting++;
+      /* wakeAudio fires its callback when resume() RESOLVES, and Safari
+         resolves it while the context is still interrupted — which is
+         the very case this is here for. So the chapter is only told once
+         the state agrees; if the promise was optimistic, the next sweep
+         catches it. */
+      window.wakeAudio(ctx, () => { if (ctx.state === "running") rouse(client, ctx); });
+    });
+    /* 0.3s, then 0.7, 1.4, 2.4, 3.7 … about half a minute of patience,
+       which is roughly how long a phone can take to hand the audio
+       session back if she comes back to it and then does not touch it */
+    if (waiting && attempt < 8) setTimeout(() => sweep(attempt + 1), 300 + attempt * 400);
+  };
+  sweep(0);
 }
 
 /* AND THE MOMENT IT SHOULD STOP.
@@ -2226,23 +2299,54 @@ function pokeAllAudio() {
    leaves the tab visible. */
 function hushAllAudio() {
   audioHushed = true;
-  audioClients.forEach((get) => {
+  wakeCycle++;                         // abandon any wake still in progress
+  audioClients.forEach((client) => {
+    /* the chapter's own timers first: a suspended context does not stop
+       a setInterval, it only stops the clock the setInterval writes to */
+    if (client.sleep) { try { client.sleep(); } catch (e) {} }
     try {
-      const c = get();
+      const c = client.get();
       if (c && c.state === "running" && c.suspend) c.suspend();
     } catch (e) {}
   });
 }
 /* The moments an interrupted context can legally come back, and the
-   ones on which it should go quiet. */
+   ones on which it should go quiet.
+
+   `freeze` and `resume` are the pair the others miss: a tab left alone
+   long enough is frozen outright by the browser, and the page it thaws
+   into gets neither a visibilitychange nor a focus — just `resume`.
+   That is a long absence, which is the kind she actually takes. */
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) hushAllAudio(); else pokeAllAudio();
 });
 window.addEventListener("blur", hushAllAudio);
 window.addEventListener("pagehide", hushAllAudio);
+document.addEventListener("freeze", hushAllAudio);
 window.addEventListener("focus", pokeAllAudio);
 window.addEventListener("pageshow", pokeAllAudio);
-document.addEventListener("pointerdown", pokeAllAudio, true);
+document.addEventListener("resume", pokeAllAudio);
+/* And the gesture, which on a phone is the only moment the audio
+   session is ever really handed back. Every kind of it, because a
+   keyboard is a gesture too and the chapter can be played from one.
+
+   Guarded, and not out of thrift: a wake tells each chapter to re-arm
+   its ambience and re-anchor its scheduler, and doing that on every
+   click of an ordinary game would be a worse bug than the one being
+   fixed. Only when something really is down. */
+function audioNeedsWaking() {
+  if (audioHushed) return true;
+  return audioClients.some((client) => {
+    let c = null;
+    try { c = client.get(); } catch (e) {}
+    return !!c && c.state !== "running" && c.state !== "closed";
+  });
+}
+["pointerdown", "touchstart", "keydown", "mousedown"].forEach((n) => {
+  document.addEventListener(n, () => {
+    if (!document.hidden && audioNeedsWaking()) pokeAllAudio();
+  }, { capture: true, passive: true });
+});
 
 /* Off unless something explicitly asks for it. This pad is a continuous
    drone, and when the floating toggle was removed as a dead control I
@@ -2379,7 +2483,15 @@ window.__audioProbe = () => ({
 window.__audioSuspend = () => { if (musicNodes) musicNodes.ctx.suspend(); };
 
 (function initMusic() {
-  window.registerAudio(() => (musicNodes ? musicNodes.ctx : null));
+  /* The pad's own bell chain is a setTimeout, and a suspended context
+     does not stop one: left alone it kept posting bells onto a stopped
+     clock, which all arrive together the moment the clock starts. So it
+     goes down with the sound and comes back with it, like everything
+     else the site puts to sleep. */
+  window.registerAudio(
+    () => (musicNodes ? musicNodes.ctx : null),
+    () => { if (musicOn && musicNodes) { rampMaster(0.24, 1.2); startBells(); } },
+    () => { clearTimeout(bellTimer); bellTimer = null; });
 
   /* Nothing starts on its own. setMusic(true) still works and everything
      below it is intact, so a real control can switch the pad back on the

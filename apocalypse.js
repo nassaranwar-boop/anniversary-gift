@@ -1167,7 +1167,10 @@
          is a chapter the site cannot quieten */
       if (window.registerAudio && !acRegistered) {
         acRegistered = true;
-        try { window.registerAudio(function () { return ctx; }); } catch (e) {}
+        /* wake and sleep go on the register as well: the site retries a
+           return for half a minute and again on the first touch, which
+           is longer than any single one of the listeners below waits */
+        try { window.registerAudio(function () { return ctx; }, wake, sleep); } catch (e) {}
       }
       return ctx;
     }

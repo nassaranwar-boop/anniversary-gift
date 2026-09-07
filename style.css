@@ -1430,7 +1430,13 @@ img{-webkit-user-drag:none; user-select:none;}
   background:var(--mount);
 }
 .sb-photo-inner{position:relative; overflow:hidden; background:#ded7c6;}
-.sb-photo-inner img{width:100%; height:100%; object-fit:cover; display:block;}
+.sb-photo-inner img{
+  width:100%; height:100%; object-fit:cover; display:block;
+  /* the darkroom grade for prints that have to agree with the ones on the
+     facing page — see PHOTO_GRADE in scrapbook.js. Unset for every other
+     photograph in the book, which is how it should stay. */
+  filter:var(--ph-grade, none);
+}
 
 /* the mount's lip, over the print; and the print's own sheen */
 .sb-photo-inner::after{
@@ -3323,20 +3329,25 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:0 3px 8px rgba(60,90,30,.45);
 }
 .hub-card.done .hub-badge{display:flex;}
-/* THE FOUR CARDS.
+/* THE FIVE CARDS.
 
    These used to be stacks of CSS gradients -- a green band with a white
    dot, a pink block, a grey smear. At 74 pixels tall that is a swatch, not
-   a picture, and four swatches in a row tell her nothing about what she is
+   a picture, and a row of swatches tells her nothing about what she is
    choosing between.
 
    Each card carries a small pixel scene now, painted on a 96x32 grid by
    tools/img/hubart.py and inlined as run-length SVG: the signpost and the
    two of them walking off up the path, the castle and the gift block, the
-   one lit window in a dead skyline, the road running to the sun. Pixels
-   because three of the four chapters are pixel games -- the card should
-   look like the thing behind it. Inline, so there is nothing to fetch, and
-   crispEdges so it stays a pixel scene at any card width. */
+   torch and the thing it finds in a dead city, the office with a door on
+   each side of her, the road running to the sun. Pixels because four of
+   the five chapters are pixel games -- the card should look like the thing
+   behind it. Inline, so there is nothing to fetch, and crispEdges so it
+   stays a pixel scene at any card width.
+
+   Every one of them has HER in it, which is the rule the cards are really
+   built on: it is her book, and she should be able to find herself on
+   every page of it. */
 .hub-art{
   display:block; position:relative; width:100%; height:74px;
   border-radius:9px; overflow:hidden;
@@ -6658,9 +6669,18 @@ img{-webkit-user-drag:none; user-select:none;}
      off the same edge — so on a phone his last line ran underneath it.
      The floor keeps the caption clear of the button at any stage height. */
   position:absolute; left:50%; bottom:max(14.5%, 62px); transform:translateX(-50%);
-  margin:0; width:78cqw; text-align:center;
-  font-family:var(--ns-face); line-height:1.75;
-  font-size:max(2.15cqh, 14px); letter-spacing:.055em;
+  margin:0; width:88cqw; text-align:center;
+  font-family:var(--ns-face); line-height:1.6;
+  /* EVERY CAPTION IN HERE WAS SIZED `max(Ncqh, Npx)`, AND ON A PHONE THE
+     FLOOR ALWAYS WON. The stage is a 16:9 letterbox, so a 390px-wide
+     phone gets a panel only 219px tall and one cqh is barely two pixels
+     — the cq part never got near the floor, so the type stayed its
+     desktop size while the panel shrank around it. Measured: this
+     caption was 33.5% of the panel height on a phone against 3.8% on a
+     desktop, nine times as dominant, which is exactly what it looked
+     like. A clamp keeps the floor for legibility without letting it run
+     the layout, and the wider box costs it a line. */
+  font-size:clamp(11px, 2.15cqh, 19px); letter-spacing:.05em;
 }
 .ns-cine-sub i{
   font-style:normal;
@@ -6704,7 +6724,11 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; left:50%; bottom:21cqh; transform:translateX(-50%);
   z-index:9; margin:0; pointer-events:none;
   display:flex; flex-direction:column; align-items:center; gap:.7cqh;
-  padding:1.5cqh 3cqw; max-width:74cqw; text-align:center;
+  /* same defect as the captions: a px floor sized for a desktop panel,
+     pinned into a 219px phone one. Measured at 30.7% of the panel height
+     on a phone against 6.4% on a desktop — and this is the block she
+     reads through the whole of orientation. */
+  padding:1.5cqh 3cqw; max-width:82cqw; text-align:center;
   background:rgba(10,12,16,.86);
   border:.16cqw solid rgba(200,162,96,.5);
   border-radius:.7cqw;
@@ -6712,11 +6736,11 @@ img{-webkit-user-drag:none; user-select:none;}
   font-family:var(--ns-face);
 }
 .ns-tutor b{
-  font-size:max(2.1cqh, 14px); letter-spacing:.16em; font-weight:700;
-  color:var(--ns-amber); line-height:1.4;
+  font-size:clamp(11px, 2.1cqh, 17px); letter-spacing:.14em; font-weight:700;
+  color:var(--ns-amber); line-height:1.35;
 }
 .ns-tutor span{
-  font-size:max(1.5cqh, 11px); letter-spacing:.08em;
+  font-size:clamp(9.5px, 1.5cqh, 13px); letter-spacing:.07em; line-height:1.45;
   color:rgba(232,223,200,.62);
 }
 .ns-tutor.nudge{ animation:nsNudge 1.5s ease-in-out infinite; }
@@ -7155,7 +7179,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-terms-sub{
   margin:2.4cqh 0 1.2cqh; min-height:9cqh;
   font-family:var(--ns-face);
-  font-size:max(2.3cqh, 13px); line-height:1.85; letter-spacing:.045em;
+  font-size:clamp(11px, 2.3cqh, 18px); line-height:1.65; letter-spacing:.04em;
 }
 .ns-terms-sub i{
   font-style:normal; color:rgba(232,223,200,.26);
@@ -7168,7 +7192,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-card-terms .ns-btn-go[hidden]{ display:none; }
 @media (max-width: 900px), (orientation: portrait){
   .ns-card-terms{ max-width:92cqw; }
-  .ns-terms-sub{ font-size:max(2.1cqh, 12px); }
+  .ns-terms-sub{ font-size:clamp(11px, 2.1cqh, 16px); }
 }
 
 /* What tonight is for: one line, in his pencil rather than the
@@ -7187,10 +7211,10 @@ img{-webkit-user-drag:none; user-select:none;}
    shop should not look alike either. */
 .ns-tape{
   position:absolute; left:0; right:0; bottom:9cqh; z-index:8;
-  padding:1.6cqh 8cqw 1.8cqh;
+  padding:1.6cqh 5cqw 1.8cqh;
   text-align:center; pointer-events:none;
   font-family:var(--ns-face);
-  font-size:max(2.1cqh, 13px); line-height:1.7; letter-spacing:.04em;
+  font-size:clamp(10.5px, 2.1cqh, 18px); line-height:1.6; letter-spacing:.035em;
   text-shadow:0 1px 4px rgba(0,0,0,.95), 0 0 14px rgba(0,0,0,.8);
   /* the desk is the brightest thing on the screen and his words land on
      top of it, so they carry their own dark with them */
@@ -7351,30 +7375,13 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-ov-fin.on::before{ background:radial-gradient(ellipse at 50% 30%, rgba(84,64,38,.72) 0%, rgba(6,5,4,.96) 74%); }
 .ns-ov-over.on::before{ background:radial-gradient(ellipse at 50% 45%, rgba(40,8,6,.72) 0%, rgba(4,3,3,.97) 70%); }
 
-/* ---------- the hub card: a shutter, a bulb and two eyes ---------- */
-.hub-art-nightshift{
-  position:relative;
-  background:
-    radial-gradient(circle at 50% 14%, rgba(255,190,110,.55) 0 12%, transparent 46%),
-    linear-gradient(180deg,#171310 0%,#241c16 46%,#120f0d 100%);
-  box-shadow:inset 0 0 26px rgba(0,0,0,.7);
-}
-/* the shutter slats, and the gap under them */
-.hub-art-nightshift::before{
-  content:""; position:absolute; left:14%; right:14%; top:26%; height:44%;
-  background:
-    repeating-linear-gradient(180deg, #3a3f44 0 14%, #262b2f 14% 22%),
-    linear-gradient(#2a2f33,#2a2f33);
-  box-shadow:inset 0 0 0 2px #4a5158, 0 6px 10px rgba(0,0,0,.6);
-}
-/* two eyes in the dark underneath */
-.hub-art-nightshift::after{
-  content:""; position:absolute; left:34%; right:34%; top:76%; height:9%;
-  background:
-    radial-gradient(circle at 22% 50%, #ffb347 0 34%, transparent 36%),
-    radial-gradient(circle at 78% 50%, #ffb347 0 34%, transparent 36%);
-  filter:drop-shadow(0 0 6px rgba(255,179,71,.85));
-}
+/* The night-shift card used to be built here out of gradients: a steel
+   shutter drawn with repeating-linear-gradient and two eyes glowing under
+   it out of a ::after. It was the only card whose picture lived in the
+   stylesheet, it was a mood rather than a place, and it could not show
+   the one thing the other four all show -- her. It is a pixel scene in
+   tools/img/hubart.py now, like the rest of them, and this card needs no
+   rules of its own at all. */
 
 /* ---------- phones and iPads ----------
    A phone on its side gets as much stage as the height allows, because
@@ -7390,6 +7397,7 @@ img{-webkit-user-drag:none; user-select:none;}
    down there going spare, and a thumb on a button is a thumb that is
    not covering the doorway it is meant to be watching. */
 @media (orientation: portrait){
+  .ns-titlebar{ display:block; }
   .ns-frame{ justify-content:center; padding:2vh 0 0; gap:0; }
   .ns-stage{ width:min(100%, calc(var(--app-h) * 0.52 * 1.7778)); overflow:visible; }
   .ns-stage::after{ border-radius:6px; }
@@ -7402,7 +7410,14 @@ img{-webkit-user-drag:none; user-select:none;}
   .ns-titlebar{ margin-bottom:2vh; }
 }
 @media (max-width: 900px), (orientation: portrait){
-  .ns-titlebar{display:block;}
+  /* The title bar used to be turned back on here, and this rule comes
+     after the landscape block that deliberately hides it — so on a phone
+     held sideways (844x390 matches `max-width:900px` through the comma,
+     which is an OR) it reappeared and ate 62px off the top. The stage is
+     `aspect-ratio:16/9` inside a column flex, so losing height did not
+     letterbox it, it squashed it: 693x328 where every other game in the
+     site gets 693x390. Sideways there is nothing to caption — she is
+     looking at the shop — so it belongs to portrait only. */
   /* the frame's own layout is set per orientation above; setting it
      again here is what put the stage at the bottom of a portrait screen
      and pushed the controls off the end of it */
@@ -7457,7 +7472,7 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; left:50%; bottom:14cqh; transform:translateX(-50%);
   margin:0; z-index:6; pointer-events:none; max-width:70cqw; text-align:center;
   padding:.7cqh 1.6cqw; border-radius:.4cqw;
-  font-family:var(--ns-face); font-size:max(1.7cqh, 11px); letter-spacing:.22em;
+  font-family:var(--ns-face); font-size:clamp(9.5px, 1.7cqh, 15px); letter-spacing:.18em;
   color:#cfe6e0; background:rgba(8,14,13,.72);
   box-shadow:inset 0 0 0 .14cqw rgba(127,228,208,.34);
   text-shadow:0 0 1cqh rgba(127,228,208,.4);
