@@ -3587,7 +3587,18 @@ img{-webkit-user-drag:none; user-select:none;}
   .hub-title{font-size:17px;}
   .hub-sub{font-size:11px; margin:0 0 2px;}
   .hub-cards{gap:8px;}
-  .hub-card{flex:1 1 168px; max-width:214px; padding:6px 9px 8px; gap:2px;}
+  /* THREE AND TWO, NOT FOUR AND ONE.
+
+     Letting the cards find their own width put four on the first row and
+     left Super Ouissy Race alone under them, hanging off-centre against a
+     full row -- which reads as a card that did not fit rather than a row
+     of its own. Fixed thirds give three and two, both rows centred on the
+     same middle, and the odd one out sits under the gap between the two
+     above it. */
+  .hub-card{
+    flex:0 1 calc(33.333% - 6px); max-width:calc(33.333% - 6px);
+    padding:6px 9px 8px; gap:2px;
+  }
   .hub-art{height:34px;}
   .hub-name{font-size:13px;}
   .hub-desc{font-size:10.5px; line-height:1.28;}
