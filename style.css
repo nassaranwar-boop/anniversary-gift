@@ -166,11 +166,28 @@ summary,
    caret sitting in the middle of the card. There is nothing on that
    screen worth copying, and a passcode pad that highlights its own
    instructions looks broken. */
-.letter-body,
-.sb-lb-text,
-.hv-note,
-.ks-closing{
+.letter-body{
   user-select:text; -webkit-user-select:text;
+}
+
+/* NOTHING ON THE BOOK, THE MENU OR THE KEEPSAKE IS SELECTABLE.
+
+   .sb-lb-text, .hv-note and .ks-closing used to be, on the reasoning that a
+   love letter is text and ought to be copyable. In use it is the opposite of
+   a kindness: every one of those lines sits on a surface you tap and drag --
+   a photograph you open, a story you press through, a board of cards -- and
+   a press that runs a little long puts a blue selection and a caret across
+   the middle of it. The lines are hers either way; she does not need to be
+   able to highlight them, and she does need to be able to hold her thumb on
+   a page without the page arguing.
+
+   Said on the three screens rather than on the paragraphs, so a line added
+   inside any of them later cannot bring the behaviour back. */
+#screen-scrapbook, #screen-scrapbook *,
+#screen-hub, #screen-hub *,
+#screen-keepsake, #screen-keepsake *{
+  user-select:none; -webkit-user-select:none;
+  -webkit-touch-callout:none;
 }
 
 /* And the gate as a whole is a control surface, not a document. Said on
@@ -1876,7 +1893,10 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-bq-stage{
   display:flex; align-items:flex-end; justify-content:center;
   /* gives way on a short window rather than pushing the clip off the end */
-  height:min(250px, 22vh); margin-top:6px;
+  /* 21.5, not 22: the map's header grew by a few pixels when its zoom studs
+     did, and this is the card that can give them back without anything in it
+     getting harder to see. */
+  height:min(250px, 21.5vh); margin-top:5px;
   min-height:0; overflow:hidden;
 }
 .sb-bq{
@@ -2112,12 +2132,26 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-map-name{margin:0; font-family:'Playfair Display',serif; font-weight:700; font-size:14px; color:#f7e4ea;}
 .sb-map-zoom{display:flex; gap:5px;}
 .sb-map-zoom button{
-  /* 23px was a target for a mouse. A thumb needs forty, and the two of them
-     sit in the card's header where there is room for it. */
-  width:40px; height:40px; border-radius:50%; border:none; cursor:pointer;
-  font-size:17px; line-height:1; color:#f8e2e9;
+  /* 23px was too small even for a mouse; 40px is what a thumb needs. Giving
+     forty to everything made the map card's header fifteen pixels taller and
+     that pushed the whole drawer past the bottom of a 1280x800 window -- a
+     fault on a laptop, caused by a fix for a phone. So the floor follows the
+     pointer: coarse gets the thumb's forty, fine gets a size a cursor hits
+     easily and the column keeps its fit. */
+  /* Small, because that is what they looked right at. A stud you can barely
+     see is not a stud you can barely press: the target is an invisible 44px
+     box around it, the same trick the chips in The Long Way Round use. */
+  position:relative;
+  width:23px; height:23px; border-radius:50%; border:none; cursor:pointer;
+  font-size:14px; line-height:1; color:#f8e2e9;
   background:rgba(240,196,206,.16);
   box-shadow:0 0 0 1px rgba(255,214,226,.26), 0 2px 5px rgba(0,0,0,.3);
+}
+@media (hover:none){
+  .sb-map-zoom button::before{
+    content:""; position:absolute; left:50%; top:50%;
+    width:44px; height:44px; transform:translate(-50%,-50%);
+  }
 }
 .sb-map-body{position:relative; aspect-ratio:4/3; border-radius:10px; overflow:hidden; background:#efe7d6;}
 .sb-map-inner{position:absolute; inset:0; transition:transform .35s var(--ease-out); transform-origin:center;}
@@ -2143,7 +2177,7 @@ img{-webkit-user-drag:none; user-select:none;}
      -- the same way the chips in The Long Way Round do it. The picture
      stays small; the thing you press does not. */
   position:absolute; z-index:3; width:11%; aspect-ratio:1/1.12;
-  min-width:26px; min-height:28px; max-width:38px;
+  min-width:24px; min-height:26px; max-width:34px;
   transform:translate(-50%,-100%);
   padding:2px; cursor:pointer; border:none; border-radius:4px;
   background:#fdfdfa; box-shadow:0 4px 9px rgba(20,24,20,.45), 0 0 0 1px rgba(90,94,88,.25);
@@ -2605,7 +2639,7 @@ img{-webkit-user-drag:none; user-select:none;}
   .sb-map-body{aspect-ratio:4/3;}
   .sb-map-hint{display:none;}
   .sb-map-zoom{gap:4px;}
-  .sb-map-zoom button{width:34px; height:34px; font-size:15px;}
+  .sb-map-zoom button{width:21px; height:21px; font-size:13px;}
 
   .sb-vid-title{font-size:12.5px;}
   .sb-vid-artist{font-size:9.5px;}
@@ -6727,6 +6761,42 @@ img{-webkit-user-drag:none; user-select:none;}
    fixed 16:9 stage. The buttons keep their height and the space between
    them gives it up, which is the right way round: a gap is easier to lose
    than a target. */
+/* EVERY PROP IN A CHAPTER IS CAPPED BY THE HEIGHT AS WELL AS THE WIDTH.
+
+   These are all written width:min(N cqw, M px) -- a share of the stage, with
+   an absolute ceiling so they do not become absurd on a big screen. On a
+   laptop and an iPad the stage is tall and the pixel ceiling is the one that
+   binds, which is right. On a phone held sideways the stage is 440px tall,
+   the ceiling still binds, and a 540px-wide television is then taller than
+   the screen it is on: it covered the skip control entirely, which is the
+   television he could not get past.
+
+   A width has no idea how tall the thing it sizes will end up. So each one
+   gets a third term in cqh -- a share of the stage's HEIGHT -- which is
+   larger than the pixel ceiling on any tall stage and therefore changes
+   nothing there, and smaller than it on a short one, where it is the only
+   term that knows the screen is short. Same props, same proportions to each
+   other, all of them a size down together.
+
+   Nothing outside this query moves. An iPad's stage is 672px tall, so every
+   cqh figure below lands well above the pixel ceiling it sits beside. */
+@media (orientation:landscape) and (max-height:560px){
+  .ap-tv     {width:min(84cqw, 540px, 84cqh);}
+  .ap-radio  {width:min(72cqw, 440px, 76cqh);}
+  .ap-serum  {width:min(64cqw, 400px, 70cqh);}
+  .ap-panel  {width:min(92cqw, 620px, 108cqh);}
+  .ap-note   {width:min(70cqw, 430px, 82cqh);}
+  .ap-keypad {width:min(46cqw, 268px, 62cqh);}
+  .ap-check  {width:min(64cqw, 400px, 74cqh);}
+  .ap-fridge {width:min(94cqw, 700px, 104cqh);}
+  .ap-dlg    {width:min(84cqw, 620px, 100cqh);}
+  .so-letter-paper{width:min(80cqw, 700px, 104cqh);}
+
+  /* and the type inside them comes down with the box it is in, or a card
+     that is now three quarters the size carries lines meant for the whole */
+  .ap-tv-line{font-size:min(3.2cqw, 3.6cqh);}
+}
+
 /* =========================================================
    A PHONE HELD SIDEWAYS IS A SMALL IPAD, NOT A DIFFERENT DEVICE
 
