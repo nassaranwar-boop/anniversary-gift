@@ -2532,6 +2532,10 @@ window.SuperOuissy = (function () {
     }
     if (!fatal && p.invuln > 0) return;
 
+    /* where she actually fell, caught before the death animation throws
+       her up and off — by the time afterDeath() runs, p.x/p.y are wherever
+       the body landed, which is not the same place at all */
+    G.deathAt = { x: p.x, y: p.y };
     p.dead = 0.001; p.vy = -230; p.vx = 0; p.pose = "hurt";
     G.deaths++;
     burst(p.x + p.w / 2, p.y + p.h / 2, 20, ["#ff5f95", "#ffffff"], 100, { max: .8 });
@@ -2577,8 +2581,13 @@ window.SuperOuissy = (function () {
     if (G.lives <= 0) {
       /* THE one death that leads somewhere else: the last life, taken by
          the last boss, on Hard. Anything else is an ordinary game over. */
-      if (rescuesOn() && G.lastHurtBy === "boss" && G.level.boss &&
-          G.levelIndex === worldSet().length - 1) {
+      /* It used to require the Queen to have landed the killing blow.
+         But she can just as easily be knocked into the spikes on the last
+         life, and that is still the fight ending — it just gave her a
+         plain GAME OVER instead of the scene. The condition is "she ran
+         out inside the Queen's fight" now, which is the same rule the
+         revive offer reads. */
+      if (rescuesOn() && inQueenFight()) {
         var pp = G.player;
         playCutscene("death", {
           herX: clamp(pp.x - G.cam.x, 26, VIEW.w - 90),
@@ -2588,6 +2597,20 @@ window.SuperOuissy = (function () {
       }
       endRun(false); return;
     }
+
+    /* THE QUEEN DOES NOT SEND YOU BACK TO THE GATE.
+
+       An ordinary death puts her at the start of the castle, which for a
+       boss fight means walking the whole level again to get back to a
+       fight she was in the middle of. So on Hard, with the Queen still
+       standing, he can put her back exactly where she fell instead — and
+       the fight carries on from where it was, the Queen still carrying
+       every hit she has taken.
+
+       It costs two lives, so it is not something that happens to her: she
+       is asked. And it needs more than two to begin with, because paying
+       two out of two would leave her with nothing to be revived into. */
+    if (canBossRevive()) { offerBossRevive(); return; }
 
     /* Hard, and she still has a life: he comes and gets her first */
     if (rescuesOn()) {
@@ -2617,6 +2640,124 @@ window.SuperOuissy = (function () {
     }
     G.state = "menu";
     endRun(false);
+  }
+
+  /* --- being pulled back into the fight -------------------------------
+     Every number here is the one he asked for: more than two lives to be
+     offered it at all, two spent to take it, and the fight resumed rather
+     than restarted. One of those two is the life the death itself already
+     took, so this only ever spends one more. */
+  /* She is in the Queen's fight: last world, the Queen awake and still
+     standing. Both the offer and the scene that ends the run read this,
+     so "revived until there is nothing left to spend, and then the scene"
+     is one rule rather than two that can drift apart. */
+  function inQueenFight() {
+    var b = G.level && G.level.boss;
+    return !!b && b.hp > 0 && !b.dead && b.awake &&
+           G.levelIndex === worldSet().length - 1;
+  }
+
+  function canBossRevive() {
+    var b = G.level && G.level.boss;
+    /* Hard, not `rescuesOn()`: that also demands rescue.js be loaded, and
+       the offer is a rule of the game rather than a piece of the cutscene.
+       playCutscene already runs `then` straight away when the module is
+       missing, so the mechanic survives the file failing to arrive. */
+    void b;
+    return G.diff === "hard" && inQueenFight() &&
+           G.lives >= 2;          /* post-decrement: she had three or more */
+  }
+
+  /* Is this a place she can be stood up in — inside the level, not in a
+     wall, not on a hazard, and with something under her to land on? */
+  function reviveSpotOK(x, y, w, h) {
+    if (x < 2 || y < -8) return false;
+    if (boxHitsHazard(x, y, w, h)) return false;
+    var tx, ty;
+    for (tx = Math.floor(x / T); tx <= Math.floor((x + w - 1) / T); tx++)
+      for (ty = Math.floor(y / T); ty <= Math.floor((y + h - 1) / T); ty++)
+        if (solidAt(tx, ty)) return false;
+    /* and floor within a short drop, or she is being revived over the pit
+       that just killed her */
+    var footTx0 = Math.floor(x / T), footTx1 = Math.floor((x + w - 1) / T);
+    for (var d = 0; d <= 5; d++) {
+      var fy = Math.floor((y + h) / T) + d;
+      for (tx = footTx0; tx <= footTx1; tx++) if (solidAt(tx, fy)) return true;
+    }
+    return false;
+  }
+
+  /* where she fell, if that will hold her; otherwise either side of the
+     Queen; otherwise the start, which always works */
+  function reviveSpot() {
+    var b = G.level.boss, p = G.player, w = p.w, h = p.h, i;
+    var cands = [];
+    if (G.deathAt) cands.push({ x: G.deathAt.x, y: G.deathAt.y });
+    if (b) {
+      cands.push({ x: b.x - 52, y: b.y });
+      cands.push({ x: b.x + b.w + 18, y: b.y });
+      cands.push({ x: b.x - 52, y: b.y - 16 });
+      cands.push({ x: b.x + b.w + 18, y: b.y - 16 });
+    }
+    for (i = 0; i < cands.length; i++)
+      if (reviveSpotOK(cands[i].x, cands[i].y, w, h)) return cands[i];
+    return { x: G.level.start.x + 2, y: G.level.start.y - 2 };
+  }
+
+  function offerBossRevive() {
+    G.state = "revive";
+    bgmDuck(true);
+    if (window.__soReleaseAll) window.__soReleaseAll();
+    var left = G.lives, after = G.lives - 1;
+    overlay(
+      '<div class="so-card so-card-revive">' +
+        '<p class="so-card-kicker">SHE IS STILL STANDING</p>' +
+        '<h3>He can put you back</h3>' +
+        '<p class="so-card-note">Right where you fell, with her exactly as ' +
+          'hurt as you left her. Or start the castle again from the gate.</p>' +
+        '<p class="so-revive-cost"><span>LIVES</span><b>' + left + '</b>' +
+          '<i>&rarr;</i><b>' + after + '</b></p>' +
+        '<button class="so-btn so-btn-go" id="so-revive-yes">TAKE HIS HAND</button>' +
+        '<button class="so-btn so-btn-quiet" id="so-revive-no">START AGAIN</button>' +
+      "</div>", "so-ov-card");
+    $("so-revive-yes").addEventListener("click", function () {
+      closeOverlay();
+      G.lives--;                       /* the second of the two */
+      G.state = "play";
+      bgmDuck(false);
+      playCutscene("rescue", herePos(), reviveAtSpot);
+    });
+    $("so-revive-no").addEventListener("click", function () {
+      closeOverlay();
+      G.state = "play";
+      bgmDuck(false);
+      if (rescuesOn()) playCutscene("rescue", herePos(), respawn);
+      else respawn();
+    });
+  }
+
+  function herePos() {
+    var p = G.player;
+    return { herX: clamp(p.x - G.cam.x, 30, VIEW.w - 60),
+             herY: clamp(p.y - G.cam.y, 62, 96) };
+  }
+
+  /* Like respawn(), except it does not put the fight back to the
+     beginning: the Queen keeps her damage and her phase, and the enemies
+     that were already down stay down. */
+  function reviveAtSpot() {
+    var at = reviveSpot(), d = DIFF[G.diff];
+    G.player = mkPlayer(at.x, at.y);
+    /* longer than an ordinary respawn, because she is being stood up
+       inside arm's reach of the thing that just killed her */
+    G.player.invuln = 2.2;
+    G.keys.jumpPressed = false;
+    G.camSnap = true;
+    /* the clock has to come back too, or a death by timeout revives into
+       a timer that is still on zero and kills her again on the next frame */
+    if (d.timeLimit) G.timeLeft = d.timeLimit[G.levelIndex];
+    G.state = "play";
+    popText(G.player.x, G.player.y - 14, "back on your feet", "#ffd9a0");
   }
 
   function respawn() {
@@ -4496,7 +4637,7 @@ window.SuperOuissy = (function () {
     G = {
       diff: "medium", state: "menu", level: null, levelIndex: 0,
       lives: 3, score: 0, hearts: 0, deaths: 0, elapsed: 0,
-      meter: 0, meterFlash: 0, lastHurtBy: null,
+      meter: 0, meterFlash: 0, lastHurtBy: null, deathAt: null,
       levelStartT: 0, levelStartHearts: 0, levelStartDeaths: 0,
       timeLeft: 0, warned: false, poleBonus: 0, levelStats: [],
       player: mkPlayer(0, 0), parts: [], floats: [], bumps: [],
@@ -4638,7 +4779,8 @@ window.SuperOuissy = (function () {
     if (patch) for (var k in patch) G.player[k] = patch[k];
     var p = G.player;
     return { x: p.x, y: p.y, vy: p.vy, big: p.big, star: p.star, wing: p.wing,
-             jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead };
+             jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead,
+             invuln: p.invuln };
   };
   window.__soSetTime = function (t) { G.timeLeft = t; };
   window.__soBossSet = function (patch) { var b = G.level.boss; if (b) { for (var k in patch) b[k] = patch[k]; b.phase = bossPhase(b); } };
@@ -4705,6 +4847,11 @@ window.SuperOuissy = (function () {
   window.G_keys = function () { return G.keys; };
   window.OUISSY_FRAMES = function (pose, size) { return OUISSY[pose][size]; };
   window.G_setLives = function (n) { G.lives = n; };
+  /* G.diff is only ever set by picking a card on the title screen, so a
+     harness that calls __soGoLevel directly was quietly always on Medium
+     — and every Hard-only rule it thought it was testing was switched
+     off. Set it before starting the level. */
+  window.G_setDiff = function (d) { if (DIFF[d]) { G.diff = d; G.lives = DIFF[d].lives; } };
   /* end her the way the boss would, without having to lose the fight */
   window.__soDieToBoss = function () {
     G.lives = 0;

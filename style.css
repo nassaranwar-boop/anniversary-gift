@@ -4139,6 +4139,34 @@ img{-webkit-user-drag:none; user-select:none;}
   font-family:var(--font-serif); font-style:italic; font-size:2cqw;
   color:#ffc8de; margin:0; line-height:1.5;
 }
+/* ---- the Queen's offer: he can put her back where she fell ---- */
+.so-card-revive{max-width:60cqw;}
+.so-card-revive h3{
+  margin:0; font-size:2.6cqw; color:#ffd166; letter-spacing:.03em; line-height:1.4;
+}
+.so-card-kicker{
+  margin:0; font-size:1.4cqw; letter-spacing:.22em; color:rgba(255,158,196,.85);
+}
+/* the price, said in the one unit she is spending */
+.so-revive-cost{
+  display:flex; align-items:center; justify-content:center; gap:1.2cqw;
+  margin:.4cqw 0 .2cqw; font-size:2.4cqw; color:#fff;
+}
+.so-revive-cost span{font-size:1.4cqw; letter-spacing:.2em; color:rgba(255,200,222,.8);}
+.so-revive-cost b{
+  min-width:3.4cqw; padding:.3cqw .8cqw; border-radius:.6cqw;
+  background:rgba(255,95,149,.22); box-shadow:inset 0 0 0 .2cqw rgba(255,158,196,.5);
+}
+.so-revive-cost i{font-style:normal; color:rgba(255,200,222,.75);}
+/* Held upright the stage is 390x219, so everything sized in cq units comes
+   out tiny: these measured 83x25, well under the 44px a thumb needs. Only
+   this card's buttons get the floor — .so-btn is shared with every menu in
+   the game and widening it there would move layouts that are already right. */
+.so-card-revive .so-btn{
+  min-height:44px; display:inline-flex; align-items:center; justify-content:center;
+  padding-left:max(2.4cqw, 18px); padding-right:max(2.4cqw, 18px);
+}
+
 /* ---- how to play ---- */
 .so-card-how{max-width:76cqw; padding:2.4cqw 3cqw; gap:1.2cqw;}
 .so-how{display:flex; flex-direction:column; gap:1.5cqw; width:100%; text-align:left;}
