@@ -808,21 +808,25 @@ img{-webkit-user-drag:none; user-select:none;}
    Above 400px of height there is room to keep the iPad's arrangement:
    the plaque over the card, both on the middle of the page. The card is
    sized from what the title leaves behind, so it takes the rest of the
-   height, and at 430px that still puts the keys at 45px -- over the
-   thumb floor. Below 400 the row above stays, because there the stack
-   would shrink the keys under it. */
-@media (orientation: landscape) and (min-height: 401px) and (max-height: 560px){
+   height, so it takes the rest of what is left.
+
+   It applies to EVERY landscape phone, not the tall ones only. It was
+   gated at 401px first, on the reasoning that a shorter screen would
+   squeeze the keys under the thumb floor -- but that left the phone it
+   was written for still showing the row, and the fix for short screens
+   is a smaller plaque, not a different composition. */
+@media (orientation: landscape) and (max-height: 560px){
   .gate{
     flex-direction:column; align-items:center; justify-content:center;
     gap:0; padding:6px 3vw;
   }
   .gate-title{margin:0 0 6px;}
-  .gate-title img{width:min(38vw, 205px);}
-  .gate-card{width:min(360px, 46vw, (var(--app-h) - 88px) * 400 / 700, (100svh - 88px) * 400 / 700);}
+  .gate-title img{width:min(30vw, 168px);}
+  .gate-card{width:min(360px, 52vw, (var(--app-h) - 84px) * 400 / 700, (100svh - 84px) * 400 / 700);}
   .gate-seal-wrap{width:30cqw;}
   .gate-heading{font-size:max(10.5px, 5cqw);}
-  .gate-pad{width:74cqw; gap:2cqw; margin-top:1.2cqw;}
-  .gate-unlock img{width:64cqw;}
+  .gate-pad{width:76cqw; gap:2cqw; margin-top:1.2cqw;}
+  .gate-unlock img{width:66cqw;}
 }
 
 @media (prefers-reduced-motion: reduce){
