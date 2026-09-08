@@ -6733,6 +6733,42 @@ img{-webkit-user-drag:none; user-select:none;}
    fixed 16:9 stage. The buttons keep their height and the space between
    them gives it up, which is the right way round: a gap is easier to lose
    than a target. */
+/* EVERY PROP IN A CHAPTER IS CAPPED BY THE HEIGHT AS WELL AS THE WIDTH.
+
+   These are all written width:min(N cqw, M px) -- a share of the stage, with
+   an absolute ceiling so they do not become absurd on a big screen. On a
+   laptop and an iPad the stage is tall and the pixel ceiling is the one that
+   binds, which is right. On a phone held sideways the stage is 440px tall,
+   the ceiling still binds, and a 540px-wide television is then taller than
+   the screen it is on: it covered the skip control entirely, which is the
+   television he could not get past.
+
+   A width has no idea how tall the thing it sizes will end up. So each one
+   gets a third term in cqh -- a share of the stage's HEIGHT -- which is
+   larger than the pixel ceiling on any tall stage and therefore changes
+   nothing there, and smaller than it on a short one, where it is the only
+   term that knows the screen is short. Same props, same proportions to each
+   other, all of them a size down together.
+
+   Nothing outside this query moves. An iPad's stage is 672px tall, so every
+   cqh figure below lands well above the pixel ceiling it sits beside. */
+@media (orientation:landscape) and (max-height:560px){
+  .ap-tv     {width:min(84cqw, 540px, 84cqh);}
+  .ap-radio  {width:min(72cqw, 440px, 76cqh);}
+  .ap-serum  {width:min(64cqw, 400px, 70cqh);}
+  .ap-panel  {width:min(92cqw, 620px, 108cqh);}
+  .ap-note   {width:min(70cqw, 430px, 82cqh);}
+  .ap-keypad {width:min(46cqw, 268px, 62cqh);}
+  .ap-check  {width:min(64cqw, 400px, 74cqh);}
+  .ap-fridge {width:min(94cqw, 700px, 104cqh);}
+  .ap-dlg    {width:min(84cqw, 620px, 100cqh);}
+  .so-letter-paper{width:min(80cqw, 700px, 104cqh);}
+
+  /* and the type inside them comes down with the box it is in, or a card
+     that is now three quarters the size carries lines meant for the whole */
+  .ap-tv-line{font-size:min(3.2cqw, 3.6cqh);}
+}
+
 /* =========================================================
    A PHONE HELD SIDEWAYS IS A SMALL IPAD, NOT A DIFFERENT DEVICE
 
