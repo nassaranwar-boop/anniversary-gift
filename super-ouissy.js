@@ -2598,18 +2598,18 @@ window.SuperOuissy = (function () {
       endRun(false); return;
     }
 
-    /* THE QUEEN DOES NOT SEND YOU BACK TO THE GATE.
+    /* SHE IS ASKED WHETHER TO BUY HER WAY BACK.
 
-       An ordinary death puts her at the start of the castle, which for a
-       boss fight means walking the whole level again to get back to a
-       fight she was in the middle of. So on Hard, with the Queen still
-       standing, he can put her back exactly where she fell instead — and
-       the fight carries on from where it was, the Queen still carrying
-       every hit she has taken.
+       An ordinary death puts her at the start of the level, which after a
+       long climb — or in the middle of a boss fight — means walking all
+       of it again. So on any death, anywhere in the game, she can spend
+       lives to stand back up exactly where she fell instead, with the
+       level and the boss carrying every hit they have taken.
 
-       It costs two lives, so it is not something that happens to her: she
-       is asked. And it needs more than two to begin with, because paying
-       two out of two would leave her with nothing to be revived into. */
+       It is a choice, never something that happens to her, and it costs
+       more than it gives: five lives on Easy, three on Medium, two on
+       Hard. She has to hold more than the price for the offer to appear,
+       because paying all of it would leave nothing to be revived into. */
     if (canBossRevive()) { offerBossRevive(); return; }
 
     /* Hard, and she still has a life: he comes and gets her first */
@@ -2657,20 +2657,19 @@ window.SuperOuissy = (function () {
            G.levelIndex === worldSet().length - 1;
   }
 
-  function canBossRevive() {
-    var b = G.level && G.level.boss;
-    /* EVERY DIFFICULTY, not just Hard. This was written as a Hard-only
-       rule and that was wrong twice over: it is a rule of the game, and
-       on Hard it is the one difficulty that starts with two lives, so it
-       was the one place the offer could almost never appear. Easy starts
-       with five and Medium with three, which is where it actually lives.
+  /* WHAT BEING PUT BACK COSTS, PER DIFFICULTY.
 
-       Not gated on `rescuesOn()` either — that also demands rescue.js
-       have loaded, and playCutscene runs `then` straight away when the
-       module is missing, so the mechanic survives the file not arriving. */
-    void b;
-    return inQueenFight() &&
-           G.lives >= 2;          /* post-decrement: she had three or more */
+     This is a rule of the whole game, not of the Queen's room: any death,
+     any world. She is asked whether to spend it, and she can only be
+     asked if spending it still leaves her something to be revived into —
+     so it takes more lives than the price, never exactly the price. */
+  var REVIVE_COST = { easy: 5, medium: 3, hard: 2 };
+  function reviveCost() { return REVIVE_COST[G.diff] || 3; }
+
+  function canBossRevive() {
+    /* G.lives has already had the death taken off it, so `>= cost` here
+       means she had more than the cost when she died. */
+    return G.lives >= reviveCost();
   }
 
   /* Is this a place she can be stood up in — inside the level, not in a
@@ -2713,28 +2712,34 @@ window.SuperOuissy = (function () {
     G.state = "revive";
     bgmDuck(true);
     if (window.__soReleaseAll) window.__soReleaseAll();
-    var left = G.lives, after = G.lives - 1;
+    var left = G.lives, after = G.lives - (reviveCost() - 1);
+    /* HE ONLY EXISTS ON HARD. The rescue is the Hard story and nowhere
+       else — putting "take his hand" in front of her on Easy names a
+       character that difficulty has never introduced. Easy and Medium get
+       the same mechanic in plain words. */
+    var his = rescuesOn();
     overlay(
       '<div class="so-card so-card-revive">' +
-        '<p class="so-card-kicker">SHE IS STILL STANDING</p>' +
-        '<h3>He can put you back</h3>' +
-        '<p class="so-card-note">Right where you fell, with her exactly as ' +
-          'hurt as you left her. Or start the castle again from the gate.</p>' +
+        '<p class="so-card-kicker">' + (his ? "SHE IS NOT LEFT TO FALL" : "GET BACK UP") + '</p>' +
+        '<h3>' + (his ? "He can put you back" : "Be revived") + '</h3>' +
+        '<p class="so-card-note">' +
+          "Right where you fell, with everything exactly as you left it. " +
+          "Or start over from the beginning." + '</p>' +
         '<p class="so-revive-cost"><span>LIVES</span><b>' + left + '</b>' +
           '<i>&rarr;</i><b>' + after + '</b></p>' +
-        '<button class="so-btn so-btn-go" id="so-revive-yes">TAKE HIS HAND</button>' +
-        '<button class="so-btn so-btn-quiet" id="so-revive-no">START AGAIN</button>' +
+        '<button class="so-btn so-btn-go" id="so-revive-yes">' +
+          (his ? "TAKE HIS HAND" : "BE REVIVED") + '</button>' +
+        '<button class="so-btn so-btn-quiet" id="so-revive-no">START OVER</button>' +
       "</div>", "so-ov-card");
     $("so-revive-yes").addEventListener("click", function () {
       closeOverlay();
-      G.lives--;                       /* the second of the two */
+      G.lives -= (reviveCost() - 1);   /* the death took the first one */
       G.state = "play";
       bgmDuck(false);
-      /* He comes for her on every difficulty here. The Hard-only rescue
-         is about ORDINARY deaths — mech2 pins that down and it still
-         holds — but this one she has paid two lives for, and him arriving
-         is the thing she paid for. */
-      playCutscene("rescue", herePos(), reviveAtSpot);
+      /* and he only comes on Hard, because that is the only difficulty he
+         is part of */
+      if (rescuesOn()) playCutscene("rescue", herePos(), reviveAtSpot);
+      else reviveAtSpot();
     });
     $("so-revive-no").addEventListener("click", function () {
       closeOverlay();
