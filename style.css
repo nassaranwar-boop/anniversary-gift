@@ -783,7 +783,7 @@ img{-webkit-user-drag:none; user-select:none;}
      the ten keys at 39.6px, which rounds to forty and is under a thumb --
      trading one control that does not fit for ten that are too small. The
      card's own padding and the gaps between its parts carry it instead. */
-  .gate-card{width:min(340px, 33vw, (var(--app-h) - 14px) * 400 / 700);}
+  .gate-card{width:min(340px, 33vw, (var(--app-h) - 14px) * 400 / 700, (100svh - 14px) * 400 / 700);}
   .gate-body{padding:2.4cqw 6cqw 1.8cqw;}
   /* 4.6cqw of a 186px card is 8.6px, which is not a heading any more. The
      container query sizes it on a big card and the floor holds on a small
@@ -795,6 +795,34 @@ img{-webkit-user-drag:none; user-select:none;}
   /* the plate is drawn to fill the 44px box its floor already reserves,
      rather than sitting small inside it with the difference as padding */
   .gate-unlock img{width:66cqw;}
+}
+
+/* THE STACK, NOT THE ROW, WHEREVER THERE IS HEIGHT FOR IT.
+
+   Sideways the gate was laid out as two columns: the plaque on the left,
+   the card on the right. It fits, but it does not look like the same
+   screen as the iPad -- the plaque ends up alone in a wide field of
+   nothing with the card off to one side, which reads as two things that
+   happened to land on the same page rather than one composition.
+
+   Above 400px of height there is room to keep the iPad's arrangement:
+   the plaque over the card, both on the middle of the page. The card is
+   sized from what the title leaves behind, so it takes the rest of the
+   height, and at 430px that still puts the keys at 45px -- over the
+   thumb floor. Below 400 the row above stays, because there the stack
+   would shrink the keys under it. */
+@media (orientation: landscape) and (min-height: 401px) and (max-height: 560px){
+  .gate{
+    flex-direction:column; align-items:center; justify-content:center;
+    gap:0; padding:6px 3vw;
+  }
+  .gate-title{margin:0 0 6px;}
+  .gate-title img{width:min(38vw, 205px);}
+  .gate-card{width:min(360px, 46vw, (var(--app-h) - 88px) * 400 / 700, (100svh - 88px) * 400 / 700);}
+  .gate-seal-wrap{width:30cqw;}
+  .gate-heading{font-size:max(10.5px, 5cqw);}
+  .gate-pad{width:74cqw; gap:2cqw; margin-top:1.2cqw;}
+  .gate-unlock img{width:64cqw;}
 }
 
 @media (prefers-reduced-motion: reduce){
