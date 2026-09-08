@@ -3583,7 +3583,7 @@ img{-webkit-user-drag:none; user-select:none;}
    the cards get narrower: four to a row instead of two, five cards in two
    rows, and the whole hub back inside the shortest screen she might hold. */
 @media (orientation:landscape) and (max-height:460px){
-  .hub-wrap{width:min(96vw,900px); padding:6px 10px; gap:3px;}
+  .hub-wrap{width:min(92vw,720px); padding:6px 10px; gap:3px;}
   .hub-title{font-size:17px;}
   .hub-sub{font-size:11px; margin:0 0 2px;}
   .hub-cards{gap:8px;}
@@ -3599,7 +3599,7 @@ img{-webkit-user-drag:none; user-select:none;}
     flex:0 1 calc(33.333% - 6px); max-width:calc(33.333% - 6px);
     padding:6px 9px 8px; gap:2px;
   }
-  .hub-art{height:34px;}
+  .hub-art{height:58px;}
   .hub-name{font-size:13px;}
   .hub-desc{font-size:10.5px; line-height:1.28;}
   .hub-keepsake{margin-top:6px;}
