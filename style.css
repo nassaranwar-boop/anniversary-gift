@@ -829,6 +829,22 @@ img{-webkit-user-drag:none; user-select:none;}
   .gate-unlock img{width:66cqw;}
 }
 
+/* THE SHORTEST SIDEWAYS SCREENS BUY THE KEYS BACK.
+
+   Stacking costs the card height, and the card's height is what sets the
+   width of the keys: at 360px the ten of them came out at 38px, under
+   the thumb. The composition is not what gives way -- the plaque is,
+   along with the space around the seal, and the keypad takes a wider
+   share of the sheet it is drawn on. */
+@media (orientation: landscape) and (max-height: 400px){
+  .gate-title{margin:0 0 3px;}
+  .gate-title img{width:min(24vw, 124px);}
+  .gate-card{width:min(360px, 52vw, (var(--app-h) - 70px) * 400 / 700, (100svh - 70px) * 400 / 700);}
+  .gate-seal-wrap{width:24cqw;}
+  .gate-pad{width:85cqw; gap:1.4cqw; margin-top:.6cqw;}
+  .gate-unlock img{width:72cqw;}
+}
+
 @media (prefers-reduced-motion: reduce){
   .gate-title img,.gate-seal-glow,.gate-wax-blob,.gate-bloom{animation:none;}
   .sb-flower,.sb-song-halo{animation:none !important;}
