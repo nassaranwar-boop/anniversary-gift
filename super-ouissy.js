@@ -2659,12 +2659,17 @@ window.SuperOuissy = (function () {
 
   function canBossRevive() {
     var b = G.level && G.level.boss;
-    /* Hard, not `rescuesOn()`: that also demands rescue.js be loaded, and
-       the offer is a rule of the game rather than a piece of the cutscene.
-       playCutscene already runs `then` straight away when the module is
-       missing, so the mechanic survives the file failing to arrive. */
+    /* EVERY DIFFICULTY, not just Hard. This was written as a Hard-only
+       rule and that was wrong twice over: it is a rule of the game, and
+       on Hard it is the one difficulty that starts with two lives, so it
+       was the one place the offer could almost never appear. Easy starts
+       with five and Medium with three, which is where it actually lives.
+
+       Not gated on `rescuesOn()` either — that also demands rescue.js
+       have loaded, and playCutscene runs `then` straight away when the
+       module is missing, so the mechanic survives the file not arriving. */
     void b;
-    return G.diff === "hard" && inQueenFight() &&
+    return inQueenFight() &&
            G.lives >= 2;          /* post-decrement: she had three or more */
   }
 
@@ -2725,6 +2730,10 @@ window.SuperOuissy = (function () {
       G.lives--;                       /* the second of the two */
       G.state = "play";
       bgmDuck(false);
+      /* He comes for her on every difficulty here. The Hard-only rescue
+         is about ORDINARY deaths — mech2 pins that down and it still
+         holds — but this one she has paid two lives for, and him arriving
+         is the thing she paid for. */
       playCutscene("rescue", herePos(), reviveAtSpot);
     });
     $("so-revive-no").addEventListener("click", function () {
@@ -4797,6 +4806,11 @@ window.SuperOuissy = (function () {
   window.__soCam = function () { return { x: Math.round(G.cam.x), y: Math.round(G.cam.y) }; };
   window.__soDiffFlag = function (k) { return DIFF[G.diff][k]; };
   window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
+  /* Kill her outright, whatever the difficulty. Dropping her down a pit
+     only works where pits are lethal — Easy has `pitSafety` and catches
+     her — so a harness testing a rule that spans all three needs a door
+     that does not care which one it is on. */
+  window.__soKill = function () { G.lastHurtBy = "boss"; hurtPlayer(true); };
   window.__soKillBoss = function () {
     if (G.level.boss) { G.level.boss.hp = 0; G.level.boss.dead = 0.001; G.level.goal.open = true; }
   };

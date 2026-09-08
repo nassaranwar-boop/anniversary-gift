@@ -57,7 +57,9 @@ const ok=(n,c,x)=>{ if(c){pass++;console.log('  PASS  '+n+(x?'   '+x:''));}
     }, lives);
   };
   const die = async () => {
-    await p.evaluate(()=>{ window.__soPlayer({ y: 99999 }); });
+    /* not down a pit: Easy catches her there, so the same test would have
+       been silently measuring nothing on one of the three difficulties */
+    await p.evaluate(()=>{ window.__soKill(); });
     for (let i=0;i<120;i++){
       const s = await p.evaluate(()=>{ window.__soPump(1/60); return window.__soInfo().state; });
       if (s !== 'play') return s;
@@ -157,14 +159,38 @@ const ok=(n,c,x)=>{ if(c){pass++;console.log('  PASS  '+n+(x?'   '+x:''));}
   ok('and costs the one life it always did',
      (await p.evaluate(()=>window.__soInfo().lives)) === 3);
 
-  /* and the other difficulties do not get it at all */
+  console.log('\n— and it is the same rule on every difficulty —');
+  for (const [diff, start] of [['easy', 5], ['medium', 3]]) {
+    await p.evaluate((d)=>{ window.G_setDiff(d); window.__soGoLevel(2); }, diff);
+    await p.waitForFunction(()=>window.__soInfo().state === 'play', null, {timeout:15000});
+    await p.evaluate(()=>{ window.__soTele(Math.round(window.G_bossTile()) - 3);
+                           for (let i=0;i<120;i++) window.__soPump(1/60); });
+    /* the difficulty's own starting lives, untouched */
+    const lives0 = await p.evaluate(()=>window.__soInfo().lives);
+    ok(diff + ' starts with ' + start, lives0 === start, 'lives ' + lives0);
+    st = await die();
+    if (start > 2) {
+      ok(diff + ': she is asked too', st === 'revive', 'state ' + st);
+      await p.evaluate(()=>document.getElementById('so-revive-yes').click());
+      for (let i=0;i<900;i++){ const t=await p.evaluate(()=>{window.__soPump(1/60);return window.__soInfo().state;}); if(t==='play')break; }
+      const after = await p.evaluate(()=>window.__soInfo());
+      ok(diff + ': two lives, same as everywhere else', after.lives === start - 2,
+         start + ' -> ' + after.lives);
+      const d2 = await p.evaluate(()=>{
+        const sx=window.__soState().x, bx=Math.round(window.G_bossTile());
+        return Math.abs(sx-bx); });
+      ok(diff + ': and back in the fight', d2 <= 8, d2 + ' tiles from the Queen');
+    }
+  }
+
+  /* two is still two, whatever difficulty it is */
   await p.evaluate(()=>{ window.G_setDiff('medium'); window.__soGoLevel(2); });
   await p.waitForFunction(()=>window.__soInfo().state === 'play', null, {timeout:15000});
   await p.evaluate(()=>{ window.__soTele(Math.round(window.G_bossTile()) - 3);
-                         window.G_setLives(5);
+                         window.G_setLives(2);
                          for (let i=0;i<120;i++) window.__soPump(1/60); });
   st = await die();
-  ok('Medium never sees the offer', st !== 'revive', 'state ' + st);
+  ok('Medium at two lives is not offered it either', st !== 'revive', 'state ' + st);
 
   await b.close();
   console.log('\n'+pass+' passed, '+fail+' failed');
