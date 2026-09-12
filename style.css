@@ -3982,6 +3982,85 @@ img{-webkit-user-drag:none; user-select:none;}
    around it looks like. Sized in cqw so it stays in proportion with the
    art, and coloured per speaker.
    ========================================================= */
+/* ---- THE THREE BUTTONS ----
+
+   The fight is played by naming the answer, so the controls say the
+   names. They live in the column under the stage — the same place the
+   platformer's own pad lives — because the stage is a 16:9 letterbox and
+   on a phone held upright a pad laid over the bottom of it covers the two
+   people fighting.
+
+   Each one carries its verdict for a moment after the round: green on the
+   one she hit when it was right, red on the one she hit when it was
+   wrong, and a pulse on the one she should have hit. And while they are
+   up, the platformer's d-pad stands down: two sets of controls on one
+   screen is two things to think about inside a window of two thirds of a
+   second. */
+.rs-pad{
+  position:relative; z-index:11; width:100%; flex:0 0 auto;
+  display:flex; gap:clamp(8px,2vw,16px); justify-content:center; align-items:stretch;
+  padding:10px calc(clamp(14px,3.5vw,64px) + env(safe-area-inset-right))
+          calc(12px + env(safe-area-inset-bottom))
+          calc(clamp(14px,3.5vw,64px) + env(safe-area-inset-left));
+  opacity:0; pointer-events:none; transition:opacity .18s ease;
+}
+.rs-pad.on{ pointer-events:auto; opacity:1; }
+.rs-key{
+  flex:1 1 0; max-width:230px; min-height:clamp(52px,9vh,68px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  border:0; border-radius:12px; cursor:pointer;
+  font-family:'Press Start 2P',monospace; color:#fff3e2;
+  background:linear-gradient(180deg, rgba(52,40,70,.96), rgba(26,18,38,.96));
+  touch-action:manipulation; user-select:none; -webkit-user-select:none;
+  transition:transform .07s ease, box-shadow .07s ease, background .12s ease;
+}
+.rs-key b{ font-size:clamp(11px,2.6vw,15px); letter-spacing:.12em; }
+.rs-key i{ font-style:normal; font-size:clamp(8px,1.7vw,10px); opacity:.6; letter-spacing:.08em; }
+.rs-key:active{ transform:translateY(2px); }
+.rs-key-block{  box-shadow:inset 0 0 0 2px rgba(159,228,255,.5), inset 0 2px 0 rgba(255,255,255,.16), 0 5px 12px rgba(0,0,0,.5); }
+.rs-key-dodge{  box-shadow:inset 0 0 0 2px rgba(201,160,255,.5), inset 0 2px 0 rgba(255,255,255,.16), 0 5px 12px rgba(0,0,0,.5); }
+.rs-key-strike{ box-shadow:inset 0 0 0 2px rgba(255,209,102,.55), inset 0 2px 0 rgba(255,255,255,.16), 0 5px 12px rgba(0,0,0,.5); }
+.rs-key-up{     box-shadow:inset 0 0 0 2px rgba(255,176,110,.6), inset 0 2px 0 rgba(255,255,255,.18), 0 5px 12px rgba(0,0,0,.5); }
+.rs-key.good{ background:linear-gradient(180deg,#2f7a52,#17452e); color:#d6ffe6; }
+.rs-key.bad{  background:linear-gradient(180deg,#8a2c3c,#4a1421); color:#ffd9de; }
+.rs-key.want{ animation:rsWant .5s ease-in-out 2; }
+@keyframes rsWant{ 50%{ background:linear-gradient(180deg,#6b5a2a,#3a3016); } }
+/* the one-button state, when he is down and she is getting him up */
+.rs-pad .rs-key-up{ display:none; }
+.rs-pad-getup .rs-key-block,
+.rs-pad-getup .rs-key-dodge,
+.rs-pad-getup .rs-key-strike{ display:none; }
+.rs-pad-getup .rs-key-up{
+  display:flex; flex:1 1 auto; max-width:420px;
+  background:linear-gradient(180deg,#8a5a2c,#4a2a14); color:#ffe9c8;
+  animation:rsUp .42s ease-in-out infinite;
+}
+@keyframes rsUp{ 50%{ transform:scale(1.03); } }
+/* the game's own pad stands down while the fight's is up */
+#screen-ouissy.so-fighting .so-pad{ display:none !important; }
+/* Upright phone: pinned to the bottom, exactly where the game's pad is —
+   the stage keeps the band it had and nobody is standing behind a button. */
+@media (max-aspect-ratio: 3/4){
+  .rs-pad{ position:absolute; left:0; right:0; bottom:0; margin:0; }
+}
+/* Sideways phone: the stage has the whole screen, so this floats over the
+   bottom of it like the game's pad does — shorter, and out of the middle. */
+@media (orientation: landscape) and (max-height: 560px){
+  .rs-pad{
+    position:absolute; left:0; right:0; bottom:0; z-index:6; margin:0;
+    padding:0 calc(10px + env(safe-area-inset-right))
+            calc(8px + env(safe-area-inset-bottom))
+            calc(10px + env(safe-area-inset-left));
+    gap:8px;
+  }
+  .rs-key{ min-height:42px; max-width:150px; border-radius:10px; opacity:.94; }
+  .rs-key b{ font-size:10px; }
+  .rs-key i{ display:none; }
+}
+@media (prefers-reduced-motion: reduce){
+  .rs-key.want, .rs-pad-getup .rs-key-up{ animation:none; }
+}
+
 /* ---- the fight's cue, and the letter ----
    Both are DOM for the same reason the dialogue is: six-pixel text on a
    320-wide canvas, blown up five times, is unreadable however good the
