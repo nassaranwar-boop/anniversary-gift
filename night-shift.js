@@ -5915,10 +5915,27 @@ function cueDuck(depth) {
   if (t - sideT < 0.07) return;
   sideT = t;
   const d = depth === undefined ? 0.5 : depth;
+  /* WHILE HE IS TALKING, A DOOR DOES NOT GET TO TURN THE MUSIC BACK UP.
+
+     This function ends every duck by ramping the bed to 1, which is
+     correct for a bang in a quiet shop and catastrophic in the middle
+     of a line: she shuts a door, and the score -- which was sitting
+     politely under him -- is handed back its full level for the rest
+     of the sentence. So during a held voice duck the cue ducks from
+     the voice's floor and returns to the voice's floor. The door still
+     punches; it punches a hole in something quieter. */
+  const talking = t < voxHold;
+  const floor = talking ? VOICE_BED : 1;
   sideGain.gain.cancelScheduledValues(t);
   sideGain.gain.setValueAtTime(sideGain.gain.value, t);
-  sideGain.gain.linearRampToValueAtTime(d, t + 0.035);
-  sideGain.gain.linearRampToValueAtTime(1, t + 0.42);
+  sideGain.gain.linearRampToValueAtTime(Math.min(d, floor), t + 0.035);
+  sideGain.gain.linearRampToValueAtTime(floor, t + 0.42);
+  /* and the hold is re-armed behind it, because the ramp above just
+     overwrote the schedule that was keeping it down */
+  if (talking) {
+    sideGain.gain.setValueAtTime(VOICE_BED, Math.max(t + 0.43, voxHold - 0.15));
+    sideGain.gain.linearRampToValueAtTime(1, voxHold + 0.75);
+  }
 }
 function audioDuck(v, ms) {
   if (!AC) return;
@@ -6357,7 +6374,10 @@ function syllablesOf(text) {
 function annunciate(text, urgent) {
   if (!ac() || muted) return;
   const t0 = now() + CUE_LEAD;
-  const gain = urgent ? 0.85 : 0.6;
+  /* the whole announcement -- chime, buzz and words alike -- drops
+     behind him rather than being held back until he stops */
+  const under = voiceBusy() ? 0.42 : 1;
+  const gain = (urgent ? 0.85 : 0.6) * under;
   /* the two-tone attention chime every announcement opens with */
   tone({ type: "square", f0: urgent ? 880 : 660, dur: 0.09, gain: 0.075 * gain, filter: "lowpass", ff: 2400 });
   tone({ type: "square", f0: urgent ? 1170 : 880, dur: 0.11, gain: 0.075 * gain, at: 0.1, filter: "lowpass", ff: 2400 });
@@ -6875,8 +6895,25 @@ function speechBusy() {
 function speechSay(text, plan, opts) {
   if (!speechReady()) return false;
   const o = opts || {};
-  /* the building never interrupts him */
-  if (o.sys && (SPEECH.live || speechBusy())) {
+  /* THE BUILDING NEVER INTERRUPTS HIM -- BUT IT NO LONGER HAS TO WAIT.
+
+     There is one speech queue on a browser and cancel() empties it, so
+     while he was being SPOKEN the building had to hold its door
+     announcements back and drop the stale ones. That was the least bad
+     answer to a real constraint.
+
+     A recording is not in that queue. So when he is on tape -- which
+     is now the normal case -- both can happen at once, and they
+     should: she shuts a door in the middle of one of his sentences and
+     the shop tells her the door is shut, underneath him, the way a
+     station announcement carries on under a conversation. He is not
+     interrupted, she is not left reading a status line she never
+     heard, and nothing is dropped for being three seconds late.
+
+     It only steps aside when he is being spoken rather than played,
+     because then there is genuinely only the one mouth. */
+  const onTape = !!VOX_FILE.src && now() < VOX_FILE.until;
+  if (o.sys && !onTape && (SPEECH.live || speechBusy())) {
     sysWaiting = { text: text, plan: plan, at: perf() };
     return true;
   }
@@ -6903,7 +6940,11 @@ function speechSay(text, plan, opts) {
   /* 0.78 rather than 1: the browser's voice is not in this graph and
      was arriving a long way over everything that is. The building's
      annunciator is quieter still — it is a speaker in a ceiling. */
-  const vBase = (o.volume === undefined ? (o.sys ? 0.62 : 0.78) : o.volume);
+  /* and when it is talking underneath him it is a speaker in a ceiling
+     two rooms away, not a second narrator */
+  const vBase = (o.volume !== undefined ? o.volume
+                 : o.sys ? (onTape ? 0.26 : 0.62)
+                 : 0.78);
   u.volume = clamp(vBase * MIX.voice * MIX.master, 0, 1);
 
   /* the caption follows the synthesiser rather than a guess: charIndex
@@ -6978,7 +7019,7 @@ function speechSay(text, plan, opts) {
    or -1 when nothing is being spoken aloud and the caller should fall
    back to voxPlan's timings */
 function voxMark() { return SPEECH.live ? SPEECH.mark : -1; }
-function voxTalking() { return SPEECH.live; }
+function voxTalking() { return voiceBusy(); }
 
 /* and say it. `plan` comes from voxPlan so the caller already knows the
    timings it is about to hear. */
@@ -7022,7 +7063,45 @@ function voxTalking() { return SPEECH.live; }
    word-by-word timing, and with a real file we know the true duration,
    so the guess gets scaled onto it and is closer than it has ever
    been. --------------------------------------------------------- */
-const VOX_FILE = { on: null, map: null, buf: Object.create(null), dur: Object.create(null) };
+const VOX_FILE = { on: null, map: null, buf: Object.create(null), dur: Object.create(null),
+                   src: null, gain: null, until: 0 };
+
+/* HOW LOUD THE SHOP IS WHILE HE IS TALKING.
+
+   Not a dip. A held level.
+
+   cueDuck was the only ducking in the chapter and it is built for a
+   door: it drops the bed for thirty-five milliseconds and lets it back
+   up over four-tenths of a second, which is right for a bang and wrong
+   for a man saying four sentences. Measured against a tape line, the
+   score was back at full a third of a second in and stayed there for
+   the rest of the line, so he was competing with his own soundtrack
+   for twenty seconds at a stretch.
+
+   So a spoken line now holds the bed down for its whole length and
+   lets go afterwards, which is what every film that has ever put a
+   voice over music does. 0.42 rather than something smaller because
+   the point is that the music KEEPS PLAYING -- she should be able to
+   hear the eight bars turn underneath him, and hear the chord change
+   at the end of a sentence. It is the difference between a score with
+   narration over it and a score that stops to let somebody speak. */
+const VOICE_BED = 0.42;
+let voxHold = 0;                        // audio time the hold runs until
+
+function voiceDuck(dur) {
+  if (!AC || !sideGain) return;
+  const t = now();
+  voxHold = Math.max(voxHold, t + dur + 0.15);
+  sideGain.gain.cancelScheduledValues(t);
+  sideGain.gain.setValueAtTime(sideGain.gain.value, t);
+  /* a quarter of a second to get down there: fast enough to be under
+     his first word, slow enough that it is a fade and not a gate */
+  sideGain.gain.linearRampToValueAtTime(VOICE_BED, t + 0.25);
+  sideGain.gain.setValueAtTime(VOICE_BED, voxHold - 0.15);
+  /* and nearly a second to come back, so the score arrives rather than
+     reappears */
+  sideGain.gain.linearRampToValueAtTime(1, voxHold + 0.75);
+}
 
 function voiceLoad() {
   if (VOX_FILE.on !== null) return;
@@ -7134,10 +7213,49 @@ function voicePlay(buf, gain) {
   g.gain.linearRampToValueAtTime(gain, t + 0.03);
   src.connect(hp); hp.connect(pk); pk.connect(sat); sat.connect(lp); lp.connect(g);
   g.connect(cueGain);
+
+  /* ONE MOUTH, HERE TOO.
+
+     Two recordings playing at once is two men talking over each other,
+     and it is easy to cause: a tape line landing on the same frame as
+     a reveal. Whatever was speaking is faded out over eighty
+     milliseconds rather than cut -- long enough not to click, short
+     enough that she never hears the overlap as two voices. */
+  voiceStop(0.08);
+  VOX_FILE.src = src; VOX_FILE.gain = g;
+  VOX_FILE.until = t + buf.duration;
+  src.onended = function () { if (VOX_FILE.src === src) { VOX_FILE.src = null; VOX_FILE.gain = null; } };
+
   src.start(t); wow.start(t); flut.start(t);
   const d = buf.duration + 0.4;
   wow.stop(t + d); flut.stop(t + d);
+  /* and the shop plays on underneath him at a level that does not move */
+  voiceDuck(buf.duration);
   return buf.duration;
+}
+
+/* stop whatever recording is running, without a click */
+function voiceStop(fade) {
+  const src = VOX_FILE.src, g = VOX_FILE.gain;
+  VOX_FILE.src = null; VOX_FILE.gain = null; VOX_FILE.until = 0;
+  if (!src || !AC) return;
+  const t = now(), f = fade === undefined ? 0.08 : fade;
+  try {
+    if (g) {
+      g.gain.cancelScheduledValues(t);
+      g.gain.setValueAtTime(g.gain.value, t);
+      g.gain.linearRampToValueAtTime(0.0001, t + f);
+    }
+    src.stop(t + f + 0.02);
+  } catch (e) {}
+}
+
+/* he is talking if the speech engine is mid-sentence OR a recording of
+   him is still running. Everything in the chapter that waits for him to
+   finish reads this, and before the recordings existed it only knew
+   about the first of those. */
+function voiceBusy() {
+  return SPEECH.live || (!!VOX_FILE.src && now() < VOX_FILE.until);
 }
 
 function voxSpeak(plan, opts) {
@@ -7171,6 +7289,11 @@ function voxSpeak(plan, opts) {
   }
   if (!muted && MIX.voice > 0.02 && speechSay(text, plan, opts)) {
     voxTape(total, opts.gain === undefined ? 1 : opts.gain);
+    /* the same held bed whichever voice is doing the talking, so the
+       shop does not behave differently on a device that has no
+       recordings on it yet -- but not for the building, which is four
+       words long and does not get the score moved out of its way */
+    if (!opts.sys) voiceDuck(total);
     return total;
   }
   if (!ac() || muted) return 0;
@@ -7184,6 +7307,7 @@ function voxSpeak(plan, opts) {
      words long and it is a buzzer on purpose. */
   if (!opts.sys && !opts.forceSynth && window.speechSynthesis) {
     voxTape(total, (opts.gain === undefined ? 1 : opts.gain) * 1.25);
+    voiceDuck(total);
     return total;
   }
   const t0 = now() + CUE_LEAD + (opts.at || 0);
@@ -9677,8 +9801,10 @@ function tapeSay(line) {
   TAPE.t0 = perf();
   TAPE.speakT = TAPE.plan.dur + 1.1;
   voxSpeak(TAPE.plan, { gain: 0.9 });
-  /* he gets the room to himself, the way a cue does but for longer */
-  cueDuck(0.42);
+  /* the room-to-himself is voxSpeak's job now: it holds the bed at
+     VOICE_BED for the whole line instead of dipping for a third of a
+     second and handing the score back its full level over the rest of
+     what he is saying */
   const el = EL["ns-tape"];
   if (el) {
     el.hidden = false;
@@ -12920,6 +13046,19 @@ const testHooks = {
     failed: Object.keys(VOX_FILE.buf).filter((k) => VOX_FILE.buf[k] === false),
   }),
   voiceWant: (text) => { voiceHas(text); return voiceBuf(text) ? true : false; },
+  /* what the shop is doing while he talks: the level the score is
+     actually sitting at, whether he is still going, and whether the
+     building is being made to wait */
+  bed: () => ({
+    level: sideGain ? sideGain.gain.value : null,
+    talking: voiceBusy(),
+    onTape: !!VOX_FILE.src,
+    deferred: !!sysWaiting,
+    target: VOICE_BED,
+  }),
+  door: () => cueDuck(0.5),
+  bedMode: (m) => musicMode(m),
+  announce: (t) => annunciate(t || "DOOR ONE: CLOSED", false),
   voxMark: () => voxMark(),
   speech: () => ({ ok: SPEECH.ok, primed: SPEECH.primed, waiting: !!sysWaiting,
                    voice: SPEECH.voice ? SPEECH.voice.name : null,

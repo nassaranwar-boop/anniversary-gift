@@ -1,24 +1,27 @@
-sample
+sample en_GB-alan-medium 1.16 0.74 1.0
 
-# One line at the top: <mode> <voice> <pace> <variation>
+# One line at the top: <mode> <voice> <pace> <variation> <depth>
 #
-#   sample                              four lines in all five voices,
-#                                       committed to voice/_samples for
-#                                       listening to. Nothing wired up.
-#   full en_GB-alan-medium 1.14 0.72    all 117 lines, committed, live
+#   sample                                  four lines in all five
+#                                           voices, committed to
+#                                           voice/_samples for listening
+#   full en_GB-alan-medium 1.16 0.74 1.0    all 117, committed, live
 #
 # Change the top line and push, and the workflow runs. Anything it does
-# not recognise falls back to the defaults above, so a typo costs you a
-# sample run rather than a failed one.
+# not recognise falls back to the defaults, so a typo costs you a sample
+# run rather than a failed one.
 #
-# Voices worth trying:
+# Voices:
 #   en_GB-alan-medium                 the documentary narrator
 #   en_GB-northern_english_male-medium
 #   en_US-ryan-high                   warmer, American
 #   en_GB-semaine-medium
 #   en_US-lessac-high
 #
-# pace: bigger is slower. 1.0 is a newsreader, 1.14 a narrator, 1.25 a drawl.
-# variation: 0.4 is flat, 0.72 is a man talking, 0.9 is theatrical.
+# pace       bigger is slower. 1.0 newsreader, 1.16 narrator, 1.25 drawl
+# variation  0.4 flat, 0.74 a man talking, 0.9 theatrical
+# depth      semitones down. 0 the model's own voice, 1.0 a narrator,
+#            1.5 a film trailer. Past 2 the formants go with it and he
+#            stops sounding large and starts sounding slowed.
 #
-# run 2 — samples come back through git this time
+# run 3 — the narrator chain: deeper, chest, edge, and a compressor

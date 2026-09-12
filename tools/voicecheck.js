@@ -98,6 +98,68 @@ function cleanup() {
   const stale = await p.evaluate(() => OuissysNightShift.__night.voiceWant('I made toys. That part was mostly true.'));
   ok('a take of words that have changed is ignored', stale === false, stale);
 
+  /* --- AND WHAT THE SHOP DOES WHILE HE IS TALKING ------------------
+     Three things that are easy to claim and were all wrong before
+     they were measured: that the score keeps playing under him at a
+     level that does not move, that a door cannot hand it back its full
+     level halfway through a sentence, and that the building says its
+     piece underneath him instead of being held back until he stops. */
+  const sample = async (ms, every) => {
+    const out = [];
+    for (let i = 0; i < ms; i += every) {
+      out.push(await p.evaluate(() => OuissysNightShift.__night.bed()));
+      await p.waitForTimeout(every);
+    }
+    return out;
+  };
+
+  /* the score has to actually be running, or "it keeps playing" is a
+     claim about silence */
+  await p.evaluate(() => OuissysNightShift.__night.bedMode('night'));
+  await p.waitForTimeout(900);
+  await p.evaluate((l) => OuissysNightShift.__night.speak(l), LINE);
+  const during = await sample(1400, 200);
+  const lvls = during.map((x) => x.level).filter((x) => x !== null);
+  ok('the score keeps playing while he talks',
+     lvls.every((v) => v > 0.2), lvls.map((v) => v.toFixed(2)));
+  ok('and it sits at the level it is supposed to, not full',
+     lvls.every((v) => v < 0.75), lvls.map((v) => v.toFixed(2)));
+  ok('and he is still going', during[during.length - 1].talking === true);
+
+  /* a door, mid-sentence */
+  await p.evaluate(() => OuissysNightShift.__night.door());
+  await p.waitForTimeout(700);
+  const after = await sample(900, 150);
+  const al = after.map((x) => x.level).filter((x) => x !== null);
+  ok('a door does not hand the score back its full level mid-line',
+     al.every((v) => v < 0.75), al.map((v) => v.toFixed(2)));
+
+  /* THE BUILDING, GENUINELY MID-SENTENCE.
+     The first version of this fired the announcement after the take
+     had already run out, so it was asserting things about silence:
+     "not deferred" is trivially true when nobody is speaking. The line
+     is restarted here so the clock is known, and every assertion below
+     is made inside its first second. */
+  await p.evaluate((l) => OuissysNightShift.__night.speak(l), LINE);
+  await p.waitForTimeout(400);
+  const before = await p.evaluate(() => OuissysNightShift.__night.bed());
+  ok('he is on tape when the door goes', before.onTape === true && before.talking === true, before);
+
+  await p.evaluate(() => OuissysNightShift.__night.announce('DOOR ONE: CLOSED'));
+  await p.waitForTimeout(300);
+  const st3 = await p.evaluate(() => OuissysNightShift.__night.bed());
+  ok('the building speaks under him rather than waiting for him',
+     st3.deferred === false, st3);
+  ok('and he is still talking through it', st3.talking === true, st3);
+  ok('and the score is still held down, not restored by the chime',
+     st3.level < 0.75, st3.level);
+
+  /* and once he stops, the shop comes back */
+  await p.waitForTimeout(4200);
+  const restNow = await p.evaluate(() => OuissysNightShift.__night.bed());
+  ok('the score comes back up when he finishes',
+     restNow.level > 0.85 && restNow.talking === false, restNow);
+
   ok('no page errors from any of it', errs === 0, errs);
   await b.close();
   cleanup();
