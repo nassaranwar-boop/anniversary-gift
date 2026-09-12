@@ -4379,11 +4379,18 @@ window.Scrapbook = (function () {
     pageW = pageH * 0.75;
   }
 
-  /* where the spine sits, relative to the middle of the book */
-  function spineOffset(idx) {
-    if (perView === 1 || !views[idx]) return 0;
-    if (views[idx].length === 2) return 0;
-    return idx === 0 ? -pageW / 2 : pageW / 2;
+  /* WHERE THE FOLD IS INSIDE THE BOOK'S OWN BOX.
+
+     0.5 is the middle -- an open spread, hinged down the centre. A single
+     page is a cover: the front cover's fold is its right-hand edge, the
+     back cover's is its left, exactly as they are in a real book. This is
+     a fraction of the box rather than a number of pixels because the box
+     changes width the instant a turn starts, and the fold has to be found
+     again in the new one. */
+  function spineFrac(idx) {
+    if (perView === 1 || !views[idx]) return 0.5;
+    if (views[idx].length === 2) return 0.5;
+    return idx === 0 ? 1 : 0;
   }
 
   /* THE BOOK HAS TO SIT ON THE TABLE, NOT FLOAT OVER IT.
@@ -4914,10 +4921,26 @@ window.Scrapbook = (function () {
   }
 
   /* place every strip on the cylinder, and light it by how it faces us */
+  /* How the bend is shared out along the sheet, as a multiple of the
+     average. High at the binding, trailing away to a fore-edge that is
+     nearly flat -- and normalised so the average over the sheet is 1,
+     which is what keeps the total turn the same as the plain arc's.
+
+       integral of (0.40 + 1.55 * e^-2.5u) du over 0..1
+         = 0.40 + 1.55 * (1 - e^-2.5) / 2.5 = 0.40 + 0.5691 = 0.9691
+     so dividing by that leaves a mean of exactly 1. */
+  var CURVE_NORM = 0.40 + 1.55 * (1 - Math.exp(-2.5)) / 2.5;
+  function curveProfile(u) {
+    if (u < 0) u = 0; else if (u > 1) u = 1;
+    return (0.40 + 1.55 * Math.exp(-2.5 * u)) / CURVE_NORM;
+  }
+
   function layoutLeaf(leaf, A, kappa, W, hingeRight) {
     if (!leaf || leaf.dataset.empty) return;
     var strips = leaf.children, n = strips.length;
     if (!n) return;
+    /* the walk along the bent part of the sheet, carried strip to strip */
+    var wa = A, wx = 0, wz = 0, ws = 0;
     var span = 1 + BLEED / 100;
     var d = (W * span) / n;
     var s0 = -W * (BLEED / 100);          /* measured from the hinge, both ways */
@@ -4933,12 +4956,43 @@ window.Scrapbook = (function () {
         aTan = A;
         x = s * Math.cos(A);
         z = s * Math.sin(A);
+        /* and the walk along the bent part starts from the hinge itself */
+        wa = A; wx = 0; wz = 0; ws = 0;
       } else if (Math.abs(kappa) < 1e-6) {
         aTan = A; x = s * Math.cos(A); z = s * Math.sin(A);
       } else {
-        aTan = A - kappa * s;
-        x = (Math.sin(A) - Math.sin(A - kappa * s)) / kappa;
-        z = (Math.cos(A - kappa * s) - Math.cos(A)) / kappa;
+        /* PAPER IS NOT BENT THE SAME ALL THE WAY ALONG. THAT IS THE WHOLE
+           DIFFERENCE BETWEEN PAPER AND SHEET METAL.
+
+           This used to be a circular arc -- one curvature, constant from
+           the spine to the fore-edge, with a closed form for x and z. A
+           constant curvature is exactly what a bent strip of thin metal
+           does, and it is why the turn read as metal however carefully it
+           was shaded.
+
+           A sheet held at one edge does something else. It is stiff, so
+           the curvature is not free to be uniform: it piles up near the
+           binding, where the sheet is held and cannot go anywhere, and
+           runs out towards the fore-edge, which is nearly straight and
+           just trails. CURVE below is that profile, and it is normalised
+           so the sheet still turns through the same total angle as before
+           -- the silhouette is the same size, the bend inside it is not.
+
+           There is no closed form for a varying curvature, so the shape
+           is walked: each strip adds its own little arc to the one
+           before. The loop already runs in order, so this costs one
+           multiply and two trig calls more than the closed form did. */
+        while (ws < s - 1e-9) {
+          var stepLen = Math.min(d, s - ws);
+          var u = (ws + stepLen * 0.5) / W;          /* midpoint of this step */
+          var kHere = kappa * curveProfile(u);
+          var aMid = wa - kHere * stepLen * 0.5;     /* midpoint tangent */
+          wx += stepLen * Math.cos(aMid);
+          wz += stepLen * Math.sin(aMid);
+          wa -= kHere * stepLen;
+          ws += stepLen;
+        }
+        aTan = wa; x = wx; z = wz;
       }
       var st = strips[i];
       st.style.transform =
@@ -4950,7 +5004,16 @@ window.Scrapbook = (function () {
          to the next one's — the joins then match and the light reads as
          one continuous curve. */
       var sEnd = s + d;
-      var aEnd = sEnd <= 0 ? A : A - kappa * sEnd;
+      /* the tangent at this strip's far end, on the same varying curve --
+         this is what makes the shading joins line up along the sheet */
+      var aEnd;
+      if (sEnd <= 0) aEnd = A;
+      else if (Math.abs(kappa) < 1e-6) aEnd = A;
+      else {
+        var s2 = Math.max(0, s), a2 = (s <= 0 ? A : aTan);
+        var mid = ((s2 + sEnd) * 0.5) / W;
+        aEnd = a2 - kappa * curveProfile(mid) * (sEnd - s2);
+      }
       var st2 = (st._shade || st).style;
       st2.setProperty("--d0", shadeAt(aTan).toFixed(3));
       st2.setProperty("--d1", shadeAt(aEnd).toFixed(3));
@@ -4982,7 +5045,17 @@ window.Scrapbook = (function () {
        the curvature peaks past the middle rather than at it, and it goes a
        little deeper than it used to now that the crest highlight has
        something to run along. */
-    var bend = Math.sin(Math.PI * Math.pow(p, 0.82));
+    /* The sheet is straight at either end and bent in between -- but it
+       does not go perfectly flat the instant it arrives, and it is not
+       perfectly flat the instant it leaves. A sheet lifted off a block
+       starts curling before it has turned at all, and it is still
+       carrying a little bend when it lands, which then relaxes out. So
+       the envelope never quite reaches zero at the ends: there is a
+       floor under it that a flat arc does not have, and that floor is
+       most of what stops the page reading as a rigid plate that happens
+       to be rotating. */
+    var bend = 0.10 + 0.90 * Math.sin(Math.PI * Math.pow(p, 0.82));
+    if (p <= 0.001 || p >= 0.999) bend = 0;
     /* 0.95 was the original depth and it is as far as this construction
        goes cleanly: the sheet is cut into flat strips, so every joint is a
        kink, and past about this curvature the kinks open into seams you
@@ -5026,10 +5099,10 @@ window.Scrapbook = (function () {
        and what makes it free is also what stops it reaching a child */
     if (e.shadeNear) e.shadeNear.style.setProperty("--flip-lift", lift);
     if (e.shadeFar) e.shadeFar.style.setProperty("--flip-lift", lift);
-    if (flip.shift) {
-      e.outer.style.setProperty("--book-shift",
-        (flip.shift * (1 - p)).toFixed(2) + "px");
-    }
+    /* written every frame, not only when there is one: a turn that needs
+       no slide still has to clear the slide the last one left behind */
+    e.outer.style.setProperty("--book-shift",
+      (flip.shift * (1 - p)).toFixed(2) + "px");
   }
 
   function beginTurn(dir) {
@@ -5097,7 +5170,26 @@ window.Scrapbook = (function () {
        stays exactly where it was — otherwise opening the cover drags the
        whole book sideways under the turning sheet. */
     var toWide = perView === 2 && views[flip.to].length === 2;
-    flip.shift = spineOffset(flip.from) - spineOffset(flip.to);
+    /* THE COVER WENT THE WRONG WAY FIRST, THEN CAUGHT ITSELF.
+
+       The book takes its new width the instant a turn begins, and slides
+       so the fold stays exactly where it was -- otherwise closing the
+       cover drags the whole book sideways under the turning sheet. That
+       slide was worked out from a signed offset per view, and the sign
+       was inverted on both covers: the book jumped a half page the wrong
+       way at p=0 and then slid back through the turn, which is precisely
+       the lurch you could see.
+
+       It is measured now instead of derived. Where the fold is on screen
+       before the width changes, where it is after, and the difference is
+       the slide -- there is no sign to get wrong. It costs one forced
+       layout per turn, once, not per frame. */
+    var fracFrom = spineFrac(flip.from), fracTo = spineFrac(flip.to);
+    var r0 = e.outer.getBoundingClientRect();
+    var shift0 = parseFloat(e.outer.style.getPropertyValue("--book-shift")) || 0;
+    /* r0 already carries whatever shift was left on it, so take it off */
+    var foldBefore = (r0.left - shift0) + r0.width * fracFrom;
+    e.outer.style.setProperty("--book-shift", "0px");
     /* the board overhang holds still for the whole turn -- renderView is
        what changes it, and that runs once the turn is over */
     flip.W = Math.max(1, pageW -
@@ -5105,6 +5197,9 @@ window.Scrapbook = (function () {
     e.outer.style.setProperty("--page-w", pageW + "px");
     e.outer.style.width = (toWide ? pageW * 2 : pageW) + "px";
     e.outer.classList.toggle("single", perView === 1 || !toWide);
+    var r1 = e.outer.getBoundingClientRect();          /* the one forced layout */
+    flip.shift = foldBefore - (r1.left + r1.width * fracTo);
+    if (Math.abs(flip.shift) < 0.5) flip.shift = 0;
     setFlipProgress(0);
     return true;
   }
@@ -5117,6 +5212,7 @@ window.Scrapbook = (function () {
     if (e.outer) {
       e.outer.classList.remove("flipping", "flip-back");
       e.outer.style.removeProperty("--flip-p");
+      e.outer.style.removeProperty("--book-shift");
       if (e.spine) e.spine.style.removeProperty("--flip-lift");
       if (e.shadeNear) e.shadeNear.style.removeProperty("--flip-lift");
       if (e.shadeFar) e.shadeFar.style.removeProperty("--flip-lift");
@@ -5128,20 +5224,47 @@ window.Scrapbook = (function () {
     renderView();
   }
 
+  /* HOW LONG A SHEET TAKES TO LIE DOWN.
+
+     The turn used to run on a symmetric ease -- the same cubic in as out
+     -- over at most 640ms. Symmetric is the tell: it means the sheet
+     takes as long to get going as it takes to stop, and nothing with
+     weight does that. A page you let go of picks up quickly, goes over,
+     and then takes a long time to settle, because the last part of the
+     movement is air and the sheet's own stiffness rather than the hand.
+
+     This is that curve -- cubic-bezier(.28,.72,.18,1), solved for x by
+     bisection because there is no closed form -- over a duration long
+     enough to read as paper and short enough not to be a wait. */
+  function bezEase(x1, y1, x2, y2) {
+    function cx(t, a, b) {
+      var mt = 1 - t;
+      return 3 * mt * mt * t * a + 3 * mt * t * t * b + t * t * t;
+    }
+    return function (x) {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      var lo = 0, hi = 1, t = x;
+      for (var i = 0; i < 18; i++) {
+        t = (lo + hi) * 0.5;
+        if (cx(t, x1, x2) < x) lo = t; else hi = t;
+      }
+      return cx(t, y1, y2);
+    };
+  }
+  var PAPER_EASE = bezEase(0.28, 0.72, 0.18, 1);
+
   function settle(to, done) {
     var from = flip.p;
     var dist = Math.abs(to - from);
-    var dur = Math.max(280, Math.min(640, dist * 620));
+    var dur = Math.max(420, Math.min(940, dist * 880));
     var t0 = null, frames = 0;
     turning = true;
     (function step(now) {
       if (t0 === null) t0 = now;
       frames++;
       var k = Math.min(1, (now - t0) / dur);
-      /* paper does not snap — it decelerates long and settles */
-      var eased = k < 0.5
-        ? 4 * k * k * k
-        : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      var eased = PAPER_EASE(k);
       setFlipProgress(from + (to - from) * eased);
       if (k < 1) requestAnimationFrame(step);
       else {
