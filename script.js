@@ -3866,56 +3866,126 @@ const HV_SCENES = {
   },
 
   /* 5. sunset lake — the ask */
-  sunset(ctx, rnd) {
+  /* THE SUN ACTUALLY GOES DOWN.
+
+     Ten beats are spent here and every one of them used to be the same
+     painting. It is a sunset: the one thing everybody knows about a
+     sunset is that it does not hold still. `k` runs 0 to 1 across the
+     four phases, and over that the sky darkens and loses its orange,
+     the clouds cool and stop being lit from below, the sun drops into
+     the pines and goes out, the road of light on the lake shortens and
+     dims, and the stars come up. Same place, same trees, same water --
+     and if she stands here reading, it is evening by the time she goes. */
+  sunset(ctx, rnd, extra, step) {
+    var k = (step || 0) / 3;                       /* 0 = still up, 1 = gone */
+    function mix(a, b, u) {                        /* two "#rrggbb" and a ratio */
+      var pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+      var r = Math.round((pa >> 16) + (((pb >> 16) - (pa >> 16)) * u));
+      var g = Math.round(((pa >> 8) & 255) + ((((pb >> 8) & 255) - ((pa >> 8) & 255)) * u));
+      var bl = Math.round((pa & 255) + (((pb & 255) - (pa & 255)) * u));
+      return "#" + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
+    }
     ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#33306a" }, { p: 0.16, c: "#514585" },
-      { p: 0.32, c: "#7d5798" }, { p: 0.46, c: "#bf7290" },
-      { p: 0.58, c: "#ee9a72" }, { p: 0.66, c: "#f5b982" },
-      { p: 0.74, c: "#7fa8d8" }, { p: 1.00, c: "#42639c" },
+      { p: 0.00, c: mix("#33306a", "#14132e", k) },
+      { p: 0.16, c: mix("#514585", "#221d44", k) },
+      { p: 0.32, c: mix("#7d5798", "#332a55", k) },
+      { p: 0.46, c: mix("#bf7290", "#4a3560", k) },
+      { p: 0.58, c: mix("#ee9a72", "#6b4160", k) },
+      { p: 0.66, c: mix("#f5b982", "#84525f", k) },
+      { p: 0.74, c: mix("#7fa8d8", "#3d4a72", k) },
+      { p: 1.00, c: mix("#42639c", "#242f52", k) },
     ]);
-    for (var i = 0; i < 90; i++) {
-      var sy = rnd() * 34;
-      px(ctx, rnd() * PXW, sy, 1, 1, sy < 16 ? "#fff8e0" : "#ffe9c0");
+    /* the stars come out as it goes: ninety at the top all along, and
+       more of them further down the sky the darker it gets */
+    for (var i = 0; i < 90 + Math.round(k * 90); i++) {
+      var sy = rnd() * (34 + k * 52);
+      px(ctx, rnd() * PXW, sy, 1, 1,
+         sy < 16 ? "#fff8e0" : (k > 0.5 ? "#e6ecff" : "#ffe9c0"));
     }
 
-    /* the banded clouds, lit underneath */
-    var cl = ["#ffd8a0", "#f7a278", "#e07a62", "#b45a5c"];
+    /* the banded clouds. Lit from underneath while there is something
+       to light them, cooling to the colour of the sky as that goes. */
+    var cl = [mix("#ffd8a0", "#5a4a68", k), mix("#f7a278", "#4c3d5c", k),
+              mix("#e07a62", "#3e3350", k), mix("#b45a5c", "#332b45", k)];
+    var rim = mix("#ffe3b0", "#6b5a74", k);
     for (var b = 0; b < 6; b++) {
       var y = 24 + b * 11 + rnd() * 4;
-      var n = 2 + Math.floor(rnd() * 3);
-      for (var k = 0; k < n; k++) {
+      var n2 = 2 + Math.floor(rnd() * 3);
+      for (var kk = 0; kk < n2; kk++) {
         var cx = rnd() * PXW, w = 26 + rnd() * 34, h = 3 + rnd() * 3;
         blob(ctx, cx, y, w, h, cl);
-        px(ctx, cx - w, y + h - 1, w * 2, 1, "#ffe3b0");
+        px(ctx, cx - w, y + h - 1, w * 2, 1, rim);
       }
     }
 
-    hillBand(ctx, PXW, 84, 13, 0.015, ["#5f74a8", "#4c5f8e", "#3e5078"], rnd, 2);
-    hillBand(ctx, PXW, 96, 9, 0.024, ["#42588a", "#364a70", "#2c3d5e"], rnd, 5);
-    hillBand(ctx, PXW, 108, 6, 0.033, ["#33475e", "#293a4e", "#20303f"], rnd, 8);
-
-    pineRow(ctx, PXW, 124, 52, ["#2d4c54", "#203a42", "#172a30"], rnd, 1.05);
-
-    /* the lake, with a sun road down the middle */
-    ditherSky(ctx, 0, 124, PXW, 22, [
-      { p: 0.00, c: "#7fa2ce" }, { p: 0.45, c: "#5b81a8" }, { p: 1.00, c: "#43608a" },
-    ]);
-    for (var w2 = 0; w2 < 54; w2++) px(ctx, rnd() * PXW, 125 + rnd() * 20, 2 + rnd() * 5, 1, "#a4c2e4");
-    for (var g = 0; g < 26; g++) {
-      px(ctx, PXW * 0.44 + rnd() * 44, 125 + rnd() * 19, 1 + rnd() * 4, 1, rnd() > 0.5 ? "#ffdca8" : "#ffc482");
+    /* THE SUN ITSELF, sinking into the pines and going out with them */
+    if (k < 0.95) {
+      /* it starts well clear of the hill line and sinks INTO it, rather
+         than starting behind it and never being seen at all */
+      var sunY = 58 + k * 38, sunR = 9 - k * 2;
+      var glow = 0.22 * (1 - k);
+      blob(ctx, PXW * 0.62, sunY, sunR * 3.2, sunR * 2.4,
+           ["rgba(255,206,140," + glow.toFixed(3) + ")"]);
+      blob(ctx, PXW * 0.62, sunY, sunR, sunR * 0.86,
+           [mix("#fff3c8", "#d8724e", k), mix("#ffd489", "#b8543e", k)]);
     }
 
-    px(ctx, 0, 144, PXW, 6, "#31402f");
+    hillBand(ctx, PXW, 84, 13, 0.015,
+      [mix("#5f74a8", "#2e3554", k), mix("#4c5f8e", "#252c46", k), mix("#3e5078", "#1e2438", k)], rnd, 2);
+    hillBand(ctx, PXW, 96, 9, 0.024,
+      [mix("#42588a", "#222a46", k), mix("#364a70", "#1c2338", k), mix("#2c3d5e", "#171d2e", k)], rnd, 5);
+    hillBand(ctx, PXW, 108, 6, 0.033,
+      [mix("#33475e", "#1b2532", k), mix("#293a4e", "#161e29", k), mix("#20303f", "#111822", k)], rnd, 8);
+
+    pineRow(ctx, PXW, 124, 52,
+      [mix("#2d4c54", "#14232a", k), mix("#203a42", "#0e1a20", k), mix("#172a30", "#091116", k)], rnd, 1.05);
+
+    /* the lake, with a sun road down the middle that shortens as the sun
+       drops and is gone by the time it is */
+    ditherSky(ctx, 0, 124, PXW, 22, [
+      { p: 0.00, c: mix("#7fa2ce", "#2f3a58", k) },
+      { p: 0.45, c: mix("#5b81a8", "#26304a", k) },
+      { p: 1.00, c: mix("#43608a", "#1e263c", k) },
+    ]);
+    var ripple = mix("#a4c2e4", "#46557a", k);
+    for (var w2 = 0; w2 < 54; w2++) px(ctx, rnd() * PXW, 125 + rnd() * 20, 2 + rnd() * 5, 1, ripple);
+    var road = Math.round(26 * (1 - k));
+    for (var g = 0; g < road; g++) {
+      px(ctx, PXW * 0.44 + rnd() * 44, 125 + rnd() * 19, 1 + rnd() * 4, 1,
+         rnd() > 0.5 ? mix("#ffdca8", "#7a6a70", k) : mix("#ffc482", "#6a5560", k));
+    }
+
+    /* THE GROUND GOES WITH THE SKY. Left bright, the bank stayed a
+       midday green under a night sky, which is worse than not darkening
+       the sky at all -- it reads as a mistake rather than as evening. */
+    px(ctx, 0, 144, PXW, 6, mix("#31402f", "#161d16", k));
     ditherSky(ctx, 0, 149, PXW, PXH - 149, [
-      { p: 0.00, c: "#4c5f46" }, { p: 0.45, c: "#3d4f3a" }, { p: 1.00, c: "#2c3a2b" },
+      { p: 0.00, c: mix("#4c5f46", "#232c20", k) },
+      { p: 0.45, c: mix("#3d4f3a", "#1c241a", k) },
+      { p: 1.00, c: mix("#2c3a2b", "#141a13", k) },
     ]);
     // reeds along the bank
+    var reed = mix("#54684a", "#27301f", k);
     for (var r3 = 0; r3 < 30; r3++) {
       var rx = rnd() * PXW, rh = 5 + rnd() * 9;
-      for (var y2 = 0; y2 < rh; y2++) px(ctx, rx + (y2 > rh / 2 ? 1 : 0), 149 - y2, 1, 1, "#54684a");
+      for (var y2 = 0; y2 < rh; y2++) px(ctx, rx + (y2 > rh / 2 ? 1 : 0), 149 - y2, 1, 1, reed);
     }
-    grassTufts(ctx, PXW, 158, 150, ["#5c7050", "#4a5c42", "#6b8159"], rnd);
-    flowerDots(ctx, PXW, 154, 30, 54, ["#ff9ec4", "#ffd166", "#c9a0ff", "#ffffff"], rnd);
+    grassTufts(ctx, PXW, 158, 150,
+      [mix("#5c7050", "#2b3524", k), mix("#4a5c42", "#222b1d", k), mix("#6b8159", "#333e2a", k)], rnd);
+    /* the flowers keep a little of their colour -- they are the last
+       thing you can still pick out in a meadow at dusk */
+    flowerDots(ctx, PXW, 154, 30, 54,
+      [mix("#ff9ec4", "#b06f8a", k), mix("#ffd166", "#b8955a", k),
+       mix("#c9a0ff", "#8a72b0", k), mix("#ffffff", "#c8c8d8", k)], rnd);
+    /* and fireflies, once it is dark enough for them */
+    if (k > 0.45) {
+      var ff = Math.round((k - 0.45) * 60);
+      for (var f2 = 0; f2 < ff; f2++) {
+        var fx2 = rnd() * PXW, fy2 = 146 + rnd() * 32;
+        px(ctx, fx2, fy2, 1, 1, rnd() > 0.5 ? "#ffe9a0" : "#ffd06a");
+        px(ctx, fx2 - 1, fy2, 3, 1, "rgba(255,220,140,0.18)");
+      }
+    }
   },
   /* ===================================================================
      THE WAY BACK — the right-hand path.
@@ -5620,6 +5690,34 @@ function hvDrawActors(ctx, t) {
    every revisit from 50ms into a blit. */
 var hvSceneCache = {};
 
+/* HOW LONG SHE HAS BEEN STANDING HERE.
+
+   Two thirds of the links in this chapter land on the picture she is
+   already looking at -- 34 of 52, measured -- and the sunset is the
+   worst of them: ten beats, ten links, every one of them staying put.
+   So pressing the button did not change anything she could see, ten
+   times in a row, and that is what makes a place start to feel like
+   wallpaper however well it is painted.
+
+   The answer is not fewer beats. Standing somewhere for a while is the
+   point of this walk. The answer is that standing somewhere for a while
+   should LOOK like time passing -- so a scene is told which beat it is
+   on, and the ones that can move move: the sun goes down, the sky goes
+   over, the light on the water goes out. The step is part of the cache
+   key, so each one is painted once and then reused, exactly like the
+   single version was. */
+var hvSceneStep = 0, hvStepScene = null, hvStepNode = null;
+var HV_STEPS = 4;                      /* four phases is plenty, and cheap */
+
+function hvStepOf(n, scene) {
+  if (n !== hvStepNode) {
+    hvStepNode = n;
+    if (scene === hvStepScene) hvSceneStep = Math.min(HV_STEPS - 1, hvSceneStep + 1);
+    else { hvSceneStep = 0; hvStepScene = scene; }
+  }
+  return hvSceneStep;
+}
+
 function hvPaintBase(n) {
   /* Seeded by the place, not by the node. It used to be both, which
      meant the meadow rearranged its own trees every time you took a
@@ -5633,10 +5731,11 @@ function hvPaintBase(n) {
      the wood's own trees in front of it for free. Cached under its own
      key so the other nodes in this scene do not inherit a bear. */
   var extra = n.bear === "shadow" ? { lurker: hvPaintLurker } : null;
-  var key = scene + (extra ? ":lurker" : "");
+  var step = hvStepOf(n, scene);
+  var key = scene + (extra ? ":lurker" : "") + ":" + step;
   if (!hvSceneCache[key]) {
     var made = spriteCanvas(PXW, PXH);
-    (HV_SCENES[scene] || HV_SCENES.sakura)(made.ctx, hvSeed(scene), extra);
+    (HV_SCENES[scene] || HV_SCENES.sakura)(made.ctx, hvSeed(scene), extra, step);
     hvSceneCache[key] = made.c;
   }
   hvBase = hvSceneCache[key];
