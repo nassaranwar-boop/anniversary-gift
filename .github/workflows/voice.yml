@@ -152,14 +152,36 @@ jobs:
           cat > /tmp/chain.py <<'CHAIN'
           import subprocess
 
+          def source_rate(src):
+              """THE ONE NUMBER THAT CANNOT BE ASSUMED.
+
+              asetrate works by relabelling the samples with a new rate,
+              so it is only a pitch shift relative to the rate they were
+              actually recorded at. The first version of this chain
+              hardcoded 24000 -- and Piper's medium voices are 22050, so
+              asking for a semitone DOWN relabelled a 22050 file as
+              22654 and shifted it half a semitone UP, which is exactly
+              what a pitch measurement of the result showed: 96.8Hz
+              became 99.6Hz on every line. The tempo correction then ran
+              the wrong way on top of it and the read came out six per
+              cent quick as well."""
+              out = subprocess.run(
+                  ['ffprobe', '-v', 'error', '-select_streams', 'a:0',
+                   '-show_entries', 'stream=sample_rate', '-of', 'csv=p=0', src],
+                  capture_output=True)
+              try: return int(out.stdout.decode().strip())
+              except Exception: return 22050
+
           def narrate(src, dst, depth, rate=24000):
               """the four things, in the order a desk would do them"""
               ratio = 2 ** (-float(depth) / 12.0)     # semitones -> playback ratio
               af = []
               if abs(1 - ratio) > 0.001:
-                  # resample to move the pitch, then put the duration back.
+                  # relabel against the rate the file really has, resample
+                  # back to the output rate, then put the duration back.
                   # atempo is capped at 2.0 per stage; nothing here is near it.
-                  af.append("asetrate=%d" % int(rate * ratio))
+                  src_rate = source_rate(src)
+                  af.append("asetrate=%d" % int(round(src_rate * ratio)))
                   af.append("aresample=%d" % rate)
                   af.append("atempo=%.6f" % (1.0 / ratio))
               af += [
