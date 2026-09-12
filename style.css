@@ -848,6 +848,35 @@ img{-webkit-user-drag:none; user-select:none;}
   .gate-unlock img{width:64cqw;}
 }
 
+/* ...AND THE SHORTEST OF THOSE NEEDS ONE MORE TURN OF IT.
+
+   The block above was measured at 740x360, 812x375, 844x390 and 932x430 --
+   a phone sideways with Safari's bar hidden. With the bar showing, an
+   iPhone 13 Pro is 844x340, and there the card lands at 153 wide and the
+   ten keys at 37: under a thumb, on the one screen she has to get right
+   before she can see anything at all.
+
+   The card cannot grow into it. Its width is its height over a fixed
+   400:700 sheet, and 320px of sheet does not fit in 340 points of phone.
+   What can grow is the keypad's share: at 76cqw the keys use 116 of the
+   card's 153 and the body's 6cqw margins keep another 18 as blank paper.
+   Half that margin and 93cqw of pad puts the keys at 45. Nothing else in
+   the composition moves and the sheet's drawn border is untouched.
+
+   385, not 360: an iPhone 13 mini sideways is 812x375 and its keys came out
+   at 42, which is also under a thumb. The cutoff sits just under the 390 the
+   block above reaches 44 on its own at. */
+@media (orientation: landscape) and (max-height: 385px){
+  .gate-body{padding:2.4cqw 3.5cqw 1.8cqw;}
+  /* The pad is asked for the width its keys need, not for all the width
+     there is. Widening it to a flat 93cqw did give 46px keys at 340 -- and
+     54px keys at 384, where 44 was already fine, so the keypad jumped a
+     size as the address bar slid away. Three keys of 46 and the two gaps
+     between them is what it asks for; 93cqw is only the ceiling, for the
+     narrowest card where that is all there is. */
+  .gate-pad{width:min(93cqw, calc(3 * 46px + 2 * 1.6cqw));}
+}
+
 @media (prefers-reduced-motion: reduce){
   .gate-title img,.gate-seal-glow,.gate-wax-blob,.gate-bloom{animation:none;}
   .sb-flower,.sb-song-halo{animation:none !important;}
