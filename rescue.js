@@ -441,6 +441,22 @@ window.Rescue = (function () {
       s.connect(bf); bf.connect(ng); ng.connect(bus(ac));
       s.start(t); s.stop(t + 0.1);
     }
+    /* A HEART. The taiko with the stick taken off it: the body of the
+       drum and none of the snap, which is the difference between
+       something being struck and something beating. */
+    function heart(ac, t, vol) {
+      var o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
+      o.type = "sine";
+      o.frequency.setValueAtTime(88, t);
+      o.frequency.exponentialRampToValueAtTime(34, t + 0.3);
+      f.type = "lowpass"; f.frequency.value = 220;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+      o.connect(f); f.connect(g); g.connect(bus(ac));
+      o.start(t); o.stop(t + 0.5);
+    }
+
     /* the clock: a click with no pitch to speak of */
     function tick(ac, t, vol, hi) {
       var s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
@@ -521,13 +537,17 @@ window.Rescue = (function () {
 
     /* ---- the movements ---------------------------------------------- */
     var SECT = {
-      /* the temperature drops */
+      /* THE TEMPERATURE DROPS. A heart, and nothing else — and it is a
+         heart rather than a drum: low, soft, two beats and a long gap,
+         with no click on it at all. The tick was taken out of here on
+         purpose; a clock belongs to a room where somebody is waiting,
+         not to one where something is arriving. */
       cold: { bpm: 56, drone: A - 12, droneVol: 0.05, vol: 0.75, emit: function (ac, i, t) {
         var s = i & 15, bar = (i >> 4) & 3;
-        if (s === 0) taiko(ac, t, 0.10);
-        if (s === 3) taiko(ac, t, 0.05);
-        if (bar >= 1 && s % 4 === 0) tick(ac, t, 0.02);
-        if (bar === 3 && s === 12) riser(ac, t, 1.6, 0.045);
+        if (s === 0) heart(ac, t, 0.075);
+        if (s === 3) heart(ac, t, 0.042);
+        if (bar === 1 && s === 8) choir(ac, t, A + 12, 3.2, 0.018);
+        if (bar === 3 && s === 12) riser(ac, t, 1.6, 0.04);
       } },
       /* and it walks in */
       enter: { bpm: 56, drone: A - 24, droneVol: 0.06, vol: 0.95, emit: function (ac, i, t) {
@@ -537,13 +557,34 @@ window.Rescue = (function () {
         if (i === 44) brass(ac, t, A - 24 + DEATHMOTIF[2], 3.4, 0.08, 3);
         if (i % 16 === 0 && i > 44) sub(ac, t, A - 24, 1.8, 0.05);
       } },
-      /* the conversation: a clock, and something breathing under it */
-      meet: { bpm: 72, drone: A - 12, droneVol: 0.035, vol: 0.8, emit: function (ac, i, t) {
-        var s = i & 15, bar = (i >> 4) & 7;
-        if (s % 4 === 0) tick(ac, t, 0.022, s === 0);
-        if (s === 0) sub(ac, t, A - 12 + chordOf(bar), 1.6, 0.045);
-        if (s === 0 && bar % 2 === 0) choir(ac, t, A + 12 + chordOf(bar), 2.6, 0.022);
-        if (bar === 7 && s === 8) lead(ac, t, A + HIS[0], 0.5, 0.016, "triangle");
+      /* THE CONVERSATION.
+
+         There is no percussion in this movement at all. It had a clock in
+         it and a drum under the clock, and the two of them together are
+         the sound of a menu rather than the sound of two people deciding
+         what happens to her: it ticked along politely while Death was
+         explaining that he had come to take her.
+
+         What is here instead is weather. A chord that changes under the
+         talking and takes four bars to do it, a breath of choir over the
+         top of it, one low brass note at the head of every phrase, and a
+         single cold bell at the end of it — five voices, none of them
+         hit, none of them in a hurry. It is the same key the fight is in,
+         so when the fight starts it is the room getting louder rather
+         than a different piece of music beginning. */
+      meet: { bpm: 60, drone: A - 12, droneVol: 0.04, vol: 0.85, emit: function (ac, i, t) {
+        var s = i & 15, bar = (i >> 4) & 7, ch = chordOf(bar >> 1);
+        /* the chord, changing every two bars and swelling as it comes */
+        if (s === 0 && bar % 2 === 0) {
+          choir(ac, t, A + 12 + ch, 6.2, 0.03);
+          choir(ac, t, A + 12 + ch + (ch === 0 || ch === 5 ? 3 : 4), 6.2, 0.018);
+          sub(ac, t, A - 12 + ch, 5.6, 0.05);
+        }
+        /* one low brass note at the head of each phrase — a long way off */
+        if (s === 0 && bar % 4 === 0) brass(ac, t, A - 24 + ch, 4.2, 0.035, 2.2);
+        /* and a bell at the end of it, cold and alone */
+        if (bar === 3 && s === 8) lead(ac, t, A + 36, 2.4, 0.012, "triangle");
+        if (bar === 7 && s === 8) lead(ac, t, A + 31, 2.8, 0.012, "triangle");
       } },
       /* the fight, and it grows a layer with every band of his health */
       f1: { bpm: 122, vol: 0.95, emit: function (ac, i, t) {
@@ -583,8 +624,8 @@ window.Rescue = (function () {
       /* on one knee, and everything else gone */
       down: { bpm: 50, drone: A - 24, droneVol: 0.03, vol: 0.85, emit: function (ac, i, t) {
         var s = i & 15, bar = (i >> 4) & 3;
-        if (s === 0) taiko(ac, t, 0.11);
-        if (s === 4) taiko(ac, t, 0.05);
+        if (s === 0) heart(ac, t, 0.10);
+        if (s === 4) heart(ac, t, 0.05);
         /* her tune, alone, played slowly by the little square wave that
            has been with her since the first world */
         if (s % 8 === 0) lead(ac, t, A + 12 + HERS[((i >> 3) + bar) & 7], 0.7, 0.02, "triangle");
@@ -1037,9 +1078,17 @@ window.Rescue = (function () {
     if (!pad) return;
     pad.hidden = !mode;
     setClass(pad, "rs-pad" + (mode ? " on rs-pad-" + mode : ""));
-    var screen = document.getElementById("screen-ouissy");
-    if (screen) screen.classList.toggle("so-fighting", !!mode);
     if (!mode) padClear();
+  }
+
+  /* THE PLATFORMER'S PAD IS GONE FOR THE WHOLE SCENE, not only for the
+     fight. It used to stand down when the three buttons came up, which
+     left a d-pad and a jump button sitting under the conversation —
+     controls for a game that is not running, in a scene where the only
+     thing to press is the arrow on the dialogue panel itself. */
+  function hideGamePad(on) {
+    var screen = document.getElementById("screen-ouissy");
+    if (screen) screen.classList.toggle("so-fighting", !!on);
   }
   /* the verdict, on the buttons themselves: the one she should have hit
      goes green, the one she did hit goes red */
@@ -1307,6 +1356,7 @@ window.Rescue = (function () {
       showPad(null);
       MUS.play("cold");
     }
+    hideGamePad(true);
     return S;
   }
 
@@ -1856,7 +1906,13 @@ window.Rescue = (function () {
       S.guard = need === "block" ? 1 : 0;
       S.dact = "stagger"; S.dactT = 0;
       S.shake = need === "block" ? 9 : 4;
-      S.flash = need === "block" ? 0.5 : 0.18;
+      /* a SMALL white frame on a block. The flash does not decay during
+         the hit stop — that is the whole point of a hit stop — so a big
+         one here sat at full strength over the arm, the shield and the
+         star for a tenth of a second and washed out the very thing it was
+         meant to punctuate. The parry keeps its big one: there is nothing
+         to read on a parry except that it was magnificent. */
+      S.flash = need === "block" ? 0.26 : 0.14;
       S.camPunch = 0.5;
       sfx(need === "block" ? "clang" : "whoosh");
     } else if (M.unblockable) {
@@ -2042,8 +2098,11 @@ window.Rescue = (function () {
     var p = { dx: 0, dy: 0, rot: 0, sy: 1, ghost: 0 };
     var k = S.act, u = S.actT;
     if (k === "block") {
-      var b = arc1(u / 0.42);
-      p.dy = 2 * b; p.rot = 0.05 * b; p.dx = -1 * b;
+      /* he PLANTS: down into his knees, turned side-on, and shoved back
+         by what he has just taken on his arm. Two pixels of nod was not a
+         man stopping a scythe. */
+      var b = arc1(u / 0.5);
+      p.dy = 4 * b; p.rot = 0.12 * b; p.dx = -4 * b; p.sy = 1 - 0.06 * b;
     } else if (k === "dodge") {
       var d = clamp(u / 0.40, 0, 1);
       p.dy = -13 * arc1(d); p.dx = -7 * arc1(d); p.rot = -0.22 * arc1(d);
@@ -2196,10 +2255,20 @@ window.Rescue = (function () {
     c.restore();
   }
 
-  /* THE BLOW ITSELF — the same path, travelled */
+  /* THE BLOW ITSELF — the same path, travelled.
+
+     And it STOPS when it is stopped. It used to complete its arc whatever
+     she did, so a blocked chop and a chop that took a heart drew the same
+     picture and the only difference between them was a number in the
+     corner. The blade now arrives at the guard and comes off it. */
   function paintBlow(c, g) {
-    if (S.phase !== PH.blow && !(S.phase === PH.beat && S.pt < 0.2)) return;
-    var u = S.phase === PH.blow ? clamp(S.winT / Math.max(0.1, S.winLen), 0, 1) : 1;
+    var beat = S.phase === PH.beat;
+    if (S.phase !== PH.blow && !(beat && S.pt < 0.34)) return;
+    var stopped = beat && S.ans === "good";
+    var u;
+    if (S.phase === PH.blow) u = clamp(S.winT / Math.max(0.1, S.winLen), 0, 1);
+    else if (stopped) u = 0.78 - Math.min(0.12, S.pt * 0.5);   /* on the guard, and off it */
+    else u = 1;
     c.save();
     if (S.move === "chop") {
       var A = chopArc(g);
@@ -2212,10 +2281,12 @@ window.Rescue = (function () {
            i ? 2 : 4, i ? 2 : 4, i ? "#9fe4ff" : "#ffffff");
       }
     } else {
-      var bx = (g.dx - 10) - u * (g.dx - g.ax - 2);
+      var reach = stopped ? 0.72 : u;
+      var bx = (g.dx - 10) - reach * (g.dx - g.ax - 2);
       for (var j = 0; j < 7; j++) {
         c.globalAlpha = j ? 0.7 - j * 0.08 : 1;
-        px(c, bx + j * 6, g.waist - (j % 2), 6, j ? 2 : 3, j ? "#c9a0ff" : "#ffffff");
+        px(c, bx + j * 6, g.waist - (j % 2), 6, j ? 2 : 3,
+           j ? (S.move === "grab" ? "#ff6b6b" : "#c9a0ff") : "#ffffff");
       }
     }
     c.restore();
@@ -2262,25 +2333,95 @@ window.Rescue = (function () {
     }
   }
 
-  /* the warm arc he takes it on, and the sparks off it */
-  function paintGuard(c, g) {
+  /* HE PUTS HIS ARM IN THE WAY, and that is the whole picture: an arm,
+     the blade stopped on it, and the light of the two of them meeting.
+
+     This was a thin white curve and a scatter of dots before, which reads
+     as "something happened here" and not as "he blocked it". A block has
+     to be legible at a glance, from the other side of a room, to somebody
+     who has never played it — so it is now four things drawn in order:
+     the arm, the shield the arm makes, the star where the edge lands, and
+     a ring going out from the contact.
+
+     A parry is the same picture, larger and gold, because it is the same
+     move done better and it should look like the same move done better. */
+  function paintGuard(c, g, ap, ax, ay, ah) {
     if (S.guard <= 0) return;
-    var k = S.guard;
+    /* THROUGH HIS POSE. The arm belongs to him, so it has to lean when he
+       leans — drawn in the frame he is standing in rather than in the one
+       he would be standing in if he had not braced. (This is the same
+       mistake that left Death's eyes hanging beside his hood.) */
     c.save();
-    c.globalAlpha = 0.85 * k;
-    c.strokeStyle = "#ffd9a0"; c.lineWidth = 2;
+    if (ap) {
+      var apx = ax + 13, apy = ay + ah;
+      if (ap.rot || ap.sy !== 1) {
+        c.translate(apx, apy); c.rotate(ap.rot); c.scale(1, ap.sy); c.translate(-apx, -apy);
+      }
+      c.translate(ap.dx, ap.dy);
+    }
+    var parry = S.parried;
+    var k = clamp(S.guard / (parry ? 1.4 : 1), 0, 1);   /* 1 -> 0 */
+    var out = 1 - k;                                     /* 0 -> 1 */
+    var cx = g.ax + 20, cy = g.head + 6;
+    var warm = parry ? "#fff3c0" : "#ffd9a0";
+
+    /* 1. THE ARM. Up, across his face, ink-edged so it reads against him. */
+    c.save();
+    c.globalAlpha = Math.min(1, 0.35 + k);
+    px(c, g.ax + 13, g.head + 12, 8, 5, ANWAR_PAL.J);
+    px(c, g.ax + 13, g.head + 12, 8, 1, ANWAR_PAL.j);
+    px(c, g.ax + 18, g.head + 3, 5, 11, ANWAR_PAL.J);
+    px(c, g.ax + 18, g.head + 3, 1, 11, ANWAR_PAL.j);
+    px(c, g.ax + 17, g.head + 1, 7, 5, ANWAR_PAL.S);      /* the fist */
+    px(c, g.ax + 17, g.head + 1, 7, 1, "#f4d0aa");
+    px(c, g.ax + 16, g.head, 9, 1, ANWAR_PAL.K);
+    px(c, g.ax + 16, g.head + 6, 9, 1, ANWAR_PAL.K);
+    c.restore();
+
+    /* 2. THE SHIELD the arm makes: a thick bright arc, and a soft one
+       behind it so it has weight in the dark. */
+    c.save();
+    c.lineCap = "round";
+    for (var p = 0; p < 2; p++) {
+      c.globalAlpha = (p ? 0.95 : 0.32) * (0.45 + 0.55 * k);
+      c.strokeStyle = p ? "#fff6e0" : warm;
+      c.lineWidth = p ? 2 : (parry ? 7 : 5);
+      c.beginPath();
+      c.arc(cx, cy, (parry ? 16 : 13) + out * 2, -Math.PI * 0.78, Math.PI * 0.42);
+      c.stroke();
+    }
+    c.restore();
+
+    /* 3. THE STAR where the edge lands on it. */
+    var sx = cx + 2, sy = cy - (parry ? 9 : 7);
+    c.save();
+    c.globalAlpha = k;
+    px(c, sx - 1, sy - 7, 3, 15, "#ffffff");
+    px(c, sx - 7, sy - 1, 15, 3, "#ffffff");
+    px(c, sx - 4, sy - 4, 9, 9, parry ? "#fff3c0" : "#ffe9c0");
+    px(c, sx - 2, sy - 2, 5, 5, "#ffffff");
+    c.restore();
+
+    /* 4. THE RING going out from it, which is the part the eye follows. */
+    c.save();
+    c.globalAlpha = k * 0.8;
+    c.strokeStyle = warm;
+    c.lineWidth = parry ? 2 : 1.4;
     c.beginPath();
-    c.arc(g.ax + 12, g.head + 4, 15 + (1 - k) * 4, -Math.PI * 0.85, Math.PI * 0.25);
+    c.arc(sx, sy, 4 + out * (parry ? 26 : 18), 0, 6.283);
     c.stroke();
     c.restore();
-    for (var i = 0; i < 8; i++) {
-      var an = -1.3 + i * 0.3, len = 6 + ((i * 7) % 11);
+
+    /* and the sparks off the contact, thrown along the edge */
+    for (var i = 0; i < (parry ? 12 : 8); i++) {
+      var an = -1.5 + i * (parry ? 0.26 : 0.32), len = (6 + ((i * 7) % 11)) * (0.5 + out * 1.6);
       c.save();
-      c.globalAlpha = k * (0.4 + 0.6 * Math.random());
-      px(c, g.ax + 14 + Math.cos(an) * len * (2 - k), g.head + 2 + Math.sin(an) * len * (2 - k), 2, 2,
-         i % 2 ? "#fff3d0" : "#9fe4ff");
+      c.globalAlpha = k * (0.45 + 0.55 * ((i * 13) % 7) / 7);
+      px(c, sx + Math.cos(an) * len, sy + Math.sin(an) * len, 2, 2,
+         i % 2 ? "#fff3d0" : (parry ? "#ffd166" : "#9fe4ff"));
       c.restore();
     }
+    c.restore();                       /* and out of his pose */
   }
 
   /* HIS HEALTH, AND HIS. Four warm hearts and six cold pips, because a
@@ -2449,14 +2590,19 @@ window.Rescue = (function () {
         c.fillRect(S.death.x - 4, dy - 4, d.width + 8, d.height + 8);
         c.restore();
       }
-      c.restore();
+      /* NOT RESTORED YET, and that is the fix: his eyes, his aura and the
+         wisps coming off him are drawn inside the same transform as the
+         rest of him. They used to be drawn after it, in the place he
+         would have been standing if he had not moved — so the moment he
+         leaned into a swing, his eyes stayed behind, hanging in the air
+         beside his hood. */
 
       /* THE OPENING. He is off balance and there is a pale place in the
          middle of him for a moment. It is the only time anything about
          him is bright, and it is the whole invitation. */
       if (S.phase === PH.open) {
         var ok = 1 - clamp(S.openT / Math.max(0.1, S.openLen), 0, 1);
-        var ocx = S.death.x + 14 + (deathPose().dx || 0), ocy = dy + 26;
+        var ocx = S.death.x + 14, ocy = dy + 26;
         c.save();
         c.globalAlpha = 0.30 + 0.45 * Math.abs(Math.sin(t * 12));
         var og = c.createRadialGradient(ocx, ocy, 1, ocx, ocy, 16 + 6 * ok);
@@ -2530,13 +2676,15 @@ window.Rescue = (function () {
         px(c, epx, ey, 2, 2, dim < 1 ? "#2a4a5a" : (flick > 0.5 ? "#eaf9ff" : "#8fd8ff"));
       }
 
-      /* a shadow, so something that big is standing on the floor rather
-         than hanging in front of it */
+      c.restore();                     /* and out of HIS transform */
+
+      /* the shadow is the one thing that does not move with him: it lies
+         on the floor, it does not lean, and it only slides when he does */
       c.save();
       c.globalAlpha = 0.55 * ar;
       c.fillStyle = "#05040a";
       c.beginPath();
-      c.ellipse(dcx, groundY + 2, 24, 4.5, 0, 0, 6.283);
+      c.ellipse(dcx + dp.dx, groundY + 2, 24, 4.5, 0, 0, 6.283);
       c.fill();
       c.restore();
     }
@@ -2594,7 +2742,7 @@ window.Rescue = (function () {
 
     /* the blade on its way, the arc he took it on, and the score */
     paintBlow(c, geo);
-    paintGuard(c, geo);
+    paintGuard(c, geo, ap, ax, ay, a.height);
     paintHeld(c, geo, groundY);
     paintBlade(c, groundY);
 
@@ -2790,7 +2938,8 @@ window.Rescue = (function () {
 
   function done() {
     var d = !S || S.done;
-    if (d) { hideLine(); hideChoice(); hideCue(); hideLetter(); showPad(null); MUS.stop(); }
+    if (d) { hideLine(); hideChoice(); hideCue(); hideLetter(); hideBark();
+             showPad(null); hideGamePad(false); MUS.stop(); }
     return d;
   }
   function outcome() { return S ? S.outcome : null; }
