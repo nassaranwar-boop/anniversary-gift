@@ -1,0 +1,228 @@
+# GIVE ANWAR A VOICE.
+#
+# The chapter can play a real recording for any line he says, and falls
+# back to the browser's own speech engine for any line that has not got
+# one. This renders all of them, with a neural text-to-speech voice, and
+# commits the result — so the game stops sounding like a phone assistant
+# reading out a calendar and starts sounding like somebody narrating.
+#
+# Run it from the Actions tab: "Anwar's voice" -> Run workflow.
+# It takes about four minutes and needs nothing from you but the click.
+#
+# It has to run here rather than on a developer's machine because the
+# voice model is a 60MB file fetched from the open internet, and the
+# sandbox this repo is usually worked on from cannot reach it.
+name: Anwar's voice
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "sample listens to all five voices first. full renders the whole chapter and commits it."
+        default: sample
+        type: choice
+        options: [sample, full]
+      voice:
+        description: "Which voice. en_GB-alan-medium is the documentary-narrator one."
+        default: en_GB-alan-medium
+        type: choice
+        options:
+          - en_GB-alan-medium
+          - en_GB-northern_english_male-medium
+          - en_US-ryan-high
+          - en_GB-semaine-medium
+          - en_US-lessac-high
+      pace:
+        description: "Bigger is slower. 1.0 is the model's own pace; a narrator is slower than that."
+        default: "1.14"
+        type: string
+      variation:
+        description: "How much the delivery moves about. 0.4 is flat, 0.9 is theatrical."
+        default: "0.72"
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  speak:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+
+      - name: The things that turn text into a person
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet piper-tts
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      # --- PICK ONE BY EAR ------------------------------------------
+      # Five voices, four lines each: his first words to her, a line
+      # from the middle of a night, the one with the knife in it, and
+      # six o'clock. Nothing is committed — the result comes back as a
+      # download at the bottom of the run. Listen, then run this again
+      # with mode=full and the one you want.
+      - name: Fetch all five
+        if: inputs.mode == 'sample'
+        run: |
+          for v in en_GB-alan-medium en_GB-northern_english_male-medium \
+                   en_US-ryan-high en_GB-semaine-medium en_US-lessac-high; do
+            python -m piper.download_voices "$v" --data-dir voices || echo "could not get $v"
+          done
+          ls -la voices
+
+      - name: Let each of them try
+        if: inputs.mode == 'sample'
+        env:
+          PACE: ${{ inputs.pace }}
+          VARIATION: ${{ inputs.variation }}
+        run: |
+          mkdir -p samples
+          node tools/voicesheet.js --json > /tmp/lines.json
+          python - <<'PY'
+          import json, os, subprocess, sys, glob
+          lines = json.load(open('/tmp/lines.json'))
+          # the four that decide whether a voice can carry this chapter
+          want = ['intro-1-2', 'tape1-10', 'reveal-4', 'tape6-13']
+          for model in sorted(glob.glob('voices/*.onnx')):
+              name = os.path.basename(model)[:-5]
+              for lid in want:
+                  if lid not in lines: continue
+                  raw = '/tmp/s.wav'
+                  p = subprocess.run(
+                      [sys.executable, '-m', 'piper', '-m', model, '-f', raw,
+                       '--length-scale', os.environ['PACE'],
+                       '--noise-scale', os.environ['VARIATION'],
+                       '--noise-w', '0.85', '--sentence-silence', '0.55'],
+                      input=lines[lid].encode('utf-8'), capture_output=True)
+                  if p.returncode: print('failed', name, lid); continue
+                  subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', raw,
+                      '-af', 'loudnorm=I=-18:TP=-2:LRA=9', '-ac', '1', '-ar', '24000',
+                      '-b:a', '96k', 'samples/%s__%s.mp3' % (name, lid)], check=True)
+              print('sampled', name)
+          PY
+          ls samples
+
+      - uses: actions/upload-artifact@v4
+        if: inputs.mode == 'sample'
+        with:
+          name: voice-samples
+          path: samples
+
+      # --- OR RENDER THE LOT ----------------------------------------
+      - name: Fetch the voice
+        if: inputs.mode == 'full'
+        run: |
+          python -m piper.download_voices "${{ inputs.voice }}" --data-dir voices
+          ls -la voices
+
+      - name: Work out what he has to say
+        if: inputs.mode == 'full'
+        run: |
+          node tools/voicesheet.js --json > /tmp/lines.json
+          python - <<'PY'
+          import json
+          d = json.load(open('/tmp/lines.json'))
+          print(len(d), 'lines,', sum(len(v.split()) for v in d.values()), 'words')
+          PY
+
+      - name: Say all of it
+        if: inputs.mode == 'full'
+        env:
+          VOICE: ${{ inputs.voice }}
+          PACE: ${{ inputs.pace }}
+          VARIATION: ${{ inputs.variation }}
+        run: |
+          mkdir -p voice
+          python - <<'PY'
+          import json, os, subprocess, wave, struct, math, sys
+
+          lines = json.load(open('/tmp/lines.json'))
+          model = os.path.join('voices', os.environ['VOICE'] + '.onnx')
+          pace  = os.environ['PACE']
+          var   = os.environ['VARIATION']
+
+          # THE THREE KNOBS, AND WHY THESE VALUES.
+          #
+          #   length_scale  how fast he talks. The models are trained on
+          #                 read speech at about 165 words a minute; a
+          #                 narrator in a film is nearer 140. 1.14 gets
+          #                 there without the drawl you get past 1.25.
+          #   noise_scale   how much the delivery varies from the mean.
+          #                 At 0 every sentence has the same contour,
+          #                 which is the flat news-reader sound. Too high
+          #                 and he sounds unwell.
+          #   noise_w       variation in how long each phoneme is held.
+          #                 This is the one that stops it sounding metered.
+          ok = 0
+          for i, (lid, text) in enumerate(sorted(lines.items())):
+              raw = os.path.join('/tmp', lid + '.wav')
+              p = subprocess.run(
+                  [sys.executable, '-m', 'piper', '-m', model, '-f', raw,
+                   '--length-scale', pace, '--noise-scale', var, '--noise-w', '0.85',
+                   # he pauses between sentences like a man choosing the
+                   # next one, not like a list being read out
+                   '--sentence-silence', '0.55'],
+                  input=text.encode('utf-8'), capture_output=True)
+              if p.returncode or not os.path.exists(raw):
+                  print('FAILED', lid, p.stderr.decode()[-300:]); continue
+
+              # A LITTLE ROOM AT EACH END, then normalise so no line is
+              # noticeably louder than the one before it, then down to a
+              # mono mp3 because this is speech and it has to live in a
+              # git repository. The game puts it through the tape itself,
+              # so nothing here should try to add character — this stage
+              # only has to be clean and even.
+              out = os.path.join('voice', lid + '.mp3')
+              subprocess.run([
+                  'ffmpeg', '-y', '-loglevel', 'error', '-i', raw,
+                  '-af', 'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.1,'
+                         'areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.1,areverse,'
+                         'adelay=180:all=1,apad=pad_dur=0.35,'
+                         'loudnorm=I=-18:TP=-2:LRA=9',
+                  '-ac', '1', '-ar', '24000', '-b:a', '64k', out], check=True)
+              ok += 1
+              if ok % 20 == 0: print(ok, 'done')
+          print('rendered', ok, 'of', len(lines))
+          if ok < len(lines) * 0.95:
+              raise SystemExit('too many failures to be worth committing')
+          PY
+
+      - name: Write the manifest
+        if: inputs.mode == 'full'
+        run: |
+          # the manifest stores the WORDS, so a line that gets rewritten
+          # later falls back to the synthesiser instead of playing a take
+          # of the old words under a caption of the new ones
+          node tools/voicesheet.js --json > voice/manifest.json
+          rm -f voice/manifest.example.json
+          du -sh voice
+          ls voice | head -5
+
+      - name: Hand it back
+        if: inputs.mode == 'full'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add voice
+          git diff --cached --quiet && { echo "nothing changed"; exit 0; }
+          git commit -m "Anwar has a voice: ${{ inputs.voice }} at ${{ inputs.pace }}
+
+          Rendered by .github/workflows/voice.yml. Every line he says out
+          loud, as audio, so the chapter stops handing its most personal
+          writing to whatever assistant voice the player's phone happens
+          to ship with.
+
+          The game plays these through its own audio graph — ducked for a
+          door, under the score, and through the tape — which is the part
+          the browser's speech engine could never do."
+          git push origin HEAD:${{ github.ref_name }}

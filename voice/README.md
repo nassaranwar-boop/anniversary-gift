@@ -1,69 +1,88 @@
 # His voice
 
-Everything in here is optional. The chapter works without it — the
-browser's own text-to-speech reads his lines, as it always has.
+The chapter can play a real recording for every line Anwar says, and
+falls back to the browser's own speech engine for any line that has not
+got one. This folder is where the recordings go.
 
-It is also the single biggest thing that can still be done to this
-game. The lines are the most personal writing in the gift and they are
-currently being read out by whatever engine happens to be installed on
-the phone it is running on, which on a modern handset is a bright,
-clean assistant voice built to read out a calendar. It is not a bad
-voice. It is the wrong voice, and there is no setting that fixes that:
-every speech engine is a real person cut into pieces, and the further
-you push its pitch and rate away from where that person actually
-spoke, the more it growls and the less it sounds like anybody. We are
-already at the ceiling.
+## Why this exists
 
-A recording beats it. Any recording.
+His lines are the most personal writing in the whole gift, and without
+recordings they are read out by whatever speech engine happens to be
+installed on the phone the game is running on — which on a modern
+handset is a bright, clean assistant voice built to read out a
+calendar. It is not a bad voice. It is the wrong voice, and there is no
+setting that fixes it: every speech engine is a real person cut into
+pieces, and the further you push its pitch and rate away from where
+that person actually spoke, the more it growls and the less it sounds
+like anybody. We were already at the ceiling.
 
-## How to add one
+## How to get them (one click)
 
-1. `node tools/voicesheet.js` prints every line he says out loud, in
-   order, with its id. There are about 117 of them and roughly twelve
-   minutes of speech.
+Go to the repository's **Actions** tab, pick **Anwar's voice**, and
+press **Run workflow**.
 
-2. Record each line as its own file, named by its id:
+Leave `mode` on **sample** the first time. It renders four lines — his
+first words to her, one from the middle of a night, the one with the
+knife in it, and six o'clock — in all five candidate voices, and hands
+them back as a download at the bottom of the run. Nothing is committed.
+Listen to them and decide which one is him.
 
-       voice/intro-1-1.mp3
-       voice/tape3-07.mp3
-       voice/reveal-4.mp3
+Then run it again with `mode` set to **full** and `voice` set to the
+one you picked. It renders all 117 lines, about twelve minutes of
+speech, and commits them here. That takes about four minutes.
 
-   A phone held a hand's width away, indoors, with the door shut, is
-   the right microphone. Leave half a second of room at each end and
-   do not trim it tight — the game fades each line in and needs the
-   air. Do not perform it. He is a man telling his wife something he
-   has been working up to for eleven days, not an actor.
+Two other knobs, both worth leaving alone unless something bothers you:
 
-3. `node tools/voicesheet.js --json > voice/manifest.json`
+- `pace` — bigger is slower. 1.14 is a narrator; 1.0 is the model's own
+  read, which is closer to a newsreader. Past 1.25 it drawls.
+- `variation` — how much the delivery moves about. 0.4 is flat and
+  even, 0.9 is theatrical. 0.72 is a man talking.
 
-   The manifest maps each id to the exact words recorded for it, and
-   the game looks a line up by its words rather than its id. So if a
-   line is later rewritten it stops matching and quietly goes back to
-   the synthesiser, instead of playing a take of the old words under a
-   caption of the new ones. Re-record it and re-run this and it comes
-   back.
+It has to run there rather than on the machine this repo is usually
+worked on from, because the voice model is a 60MB file fetched from the
+open internet and that machine's network policy blocks it.
 
-You do not have to do all 117 at once. Every line that has a file is
-played as a recording; every line that does not is spoken by the
-engine, in the same shift, and nothing has to be switched over. The
-seven lines of the opening statement are the ones worth doing first —
-they are the first thing she hears and they set what the whole chapter
-sounds like.
+`bash tools/makevoice.sh` does exactly the same thing on any computer
+with `node`, `python3` and `ffmpeg` on it, if you would rather.
 
-## What the game does with it
+## What the game does with them
 
-A recording goes through the chapter's own audio graph, which the
-browser's speech engine cannot: it ducks when a door shuts, it sits
-under the score properly, and it goes through the tape — a band-limit
-at both ends, a little saturation, and the wow and flutter of a machine
-that has been in a drawer for eleven days.
+A recording is played through the chapter's own audio graph, which the
+browser's speech engine can never be, because it will not hand you its
+output as a signal. That means it ducks when a door shuts, it sits
+under the score properly, and it goes through a light treatment that
+places it in the room: a gentle band, a small presence lift at the
+frequency where intelligibility lives, a saturation that only bites on
+the loudest syllables, and a drift of about two-tenths of a percent so
+that no two seconds run at exactly the same speed. That last one is too
+small to hear as pitch and is the whole reason it sounds like a
+recording rather than a file. A human ear forgives almost anything
+except perfect stability.
 
-That last part matters more than it sounds. A dry, full-range recording
-of somebody in a quiet room contradicts the fiction in its first
-syllable. Put the same take through the tape and it stops sounding like
-a man in a booth and starts sounding like something she has found.
+It is deliberately *light*. An earlier version was a full tape
+emulation — banded at 5.2kHz, saturated hard, with an audible capstan
+wow — which suited the fiction and ruined the voice: rolling a narrator
+off that low takes the top off every S and T, and a narrator with no
+consonants does not sound like an old recording, he sounds like a bad
+one. One number controls all of it, `VOX_ROOM` in `night-shift.js`. 0
+is the file exactly as rendered; 1 is the old tape machine; it is
+currently 0.34.
 
-The captions also get better: with a real file the game knows the true
-length of the line, so the word-by-word highlight is stretched onto the
-recording instead of onto an estimate of how long it ought to have
-taken.
+The captions get better too: with a real file the game knows the true
+length of each line, so the word-by-word highlight is stretched onto
+the recording instead of onto an estimate.
+
+## Mixing and matching
+
+You do not have to do all of them. Every line with a file is played as
+a recording; every line without one is spoken by the engine, in the
+same shift, with nothing to switch over.
+
+The manifest maps each id to the **exact words** recorded for it, and
+the game looks a line up by its words rather than its id. So a line
+that gets rewritten later stops matching and quietly falls back, rather
+than playing a take of the old words under a caption of the new ones.
+Re-run the workflow and it comes back.
+
+`node tools/voicesheet.js` prints the whole script if you ever want to
+read it.

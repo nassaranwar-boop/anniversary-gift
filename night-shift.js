@@ -7060,44 +7060,73 @@ function voiceBuf(text) {
   return null;
 }
 
-/* THE TAPE THE RECORDING IS ON.
+/* THE ROOM THE RECORDING IS IN.
 
-   Not an effect for the sake of one. The fiction is that he spoke into
-   the only machine in the building that was still listening, eleven
-   days before he died, and she is hearing a terminal play it back. A
-   dry, full-range recording of somebody in a quiet room contradicts
-   that in the first syllable.
+   A CLEAN VOICE, LIGHTLY PLACED -- and the emphasis is on clean.
 
-   So: a band-limit at both ends, because a tape head has never
-   reproduced a 12kHz sibilant or a 60Hz chest note; a gentle
-   saturation curve, which is what makes a level feel like it is being
-   pushed into something rather than turned up; and a slow, uneven
-   detune -- the wow of a capstan and the flutter above it -- so that
-   no two seconds of it run at exactly the same speed. That last one is
-   the whole trick. A human ear will forgive almost anything except
-   perfect stability. */
+   The first version of this was a full tape emulation: banded at 155
+   and 5200, saturated hard, with a capstan wow you could hear. It was
+   the right idea for the fiction -- he spoke into the only machine in
+   the building that was still listening -- and the wrong idea for the
+   brief, which is a narrator you would hear in a film. Rolling a voice
+   off at 5.2kHz takes the whole top of every S and T with it, and a
+   narrator with no consonants does not sound like an old recording, he
+   sounds like a bad one.
+
+   So this is now the lightest version of the same idea. It exists to
+   stop a dry studio-clean file sitting ON TOP of the shop rather than
+   inside it, and to do nothing else:
+
+     the band     7800 and 120, which keeps every sibilant a voice
+                  actually makes and only removes what no speaker in a
+                  1950s toyshop would have reproduced anyway
+     the presence a 2.5dB lift at 1.9kHz, where intelligibility lives.
+                  This makes him CLEARER than the raw file, not dirtier
+     the warmth   a saturation so gentle it is doing almost nothing at
+                  speech levels -- it only bites on the loudest
+                  syllables, which is what stops a level feeling
+                  turned up rather than pushed
+     the drift    a wow and flutter of about a tenth of what it was:
+                  two-tenths of a percent, too small to hear as pitch
+                  and just enough that no two seconds run at exactly
+                  the same speed. A human ear forgives almost anything
+                  except perfect stability, and this is the only part
+                  of the old chain that was doing more good than harm.
+
+   VOX_ROOM is the one number. 0 is the file exactly as recorded; 1 is
+   the old tape machine. Everything above is described at 1 and scaled
+   by it. */
+const VOX_ROOM = 0.34;
 function voicePlay(buf, gain) {
   const t = now() + CUE_LEAD;
+  const r = clamp(VOX_ROOM, 0, 1);
   const src = AC.createBufferSource(); src.buffer = buf;
   /* wow and flutter: two slow oscillators on the playback rate, at
-     speeds that do not divide into each other */
+     speeds that do not divide into each other, so the unevenness never
+     settles into a pattern */
   const wow = AC.createOscillator(); wow.type = "sine"; wow.frequency.value = 0.47;
-  const wg = AC.createGain(); wg.gain.value = 0.0022;
+  const wg = AC.createGain(); wg.gain.value = 0.0022 * r;
   const flut = AC.createOscillator(); flut.type = "sine"; flut.frequency.value = 6.3;
-  const fg = AC.createGain(); fg.gain.value = 0.0009;
+  const fg = AC.createGain(); fg.gain.value = 0.0009 * r;
   wow.connect(wg); wg.connect(src.playbackRate);
   flut.connect(fg); fg.connect(src.playbackRate);
-  const hp = AC.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 155; hp.Q.value = 0.6;
-  const lp = AC.createBiquadFilter(); lp.type = "lowpass";  lp.frequency.value = 5200; lp.Q.value = 0.7;
-  /* a small presence lift where a voice lives, because taking the top
-     off makes everything sound like it is behind a door */
+  /* the band closes in as the room is dialled up, and at r = 0 it is
+     wide open on both ends */
+  const hp = AC.createBiquadFilter(); hp.type = "highpass";
+  hp.frequency.value = 40 + 115 * r; hp.Q.value = 0.6;
+  const lp = AC.createBiquadFilter(); lp.type = "lowpass";
+  lp.frequency.value = 16000 - 10800 * r; lp.Q.value = 0.7;
+  /* the presence lift is NOT scaled down with the rest: it is the one
+     thing here that makes him easier to understand rather than harder,
+     and a narrator should be easy to understand at every setting */
   const pk = AC.createBiquadFilter(); pk.type = "peaking";
-  pk.frequency.value = 1900; pk.Q.value = 0.9; pk.gain.value = 3.5;
+  pk.frequency.value = 1900; pk.Q.value = 0.9; pk.gain.value = 2.5;
   const sat = AC.createWaveShaper();
   const curve = new Float32Array(1024);
+  const drive = 1 + 0.8 * r;
   for (let i = 0; i < 1024; i++) {
     const x = (i / 1023) * 2 - 1;
-    curve[i] = Math.tanh(x * 1.8) / Math.tanh(1.8);
+    curve[i] = Math.tanh(x * drive) / Math.tanh(drive);
   }
   sat.curve = curve; sat.oversample = "2x";
   const g = AC.createGain();
@@ -7131,7 +7160,10 @@ function voxSpeak(plan, opts) {
       plan.words.forEach((w) => { w.at *= k; });
       plan.dur = total;
       plan.real = true;
-      voxTape(total, (opts.gain === undefined ? 1 : opts.gain) * 0.55);
+      /* and less of the machine under a clean take than under the
+         synthesiser: the hiss was covering for the voice, and a voice
+         that does not need covering for should not be buried */
+      voxTape(total, (opts.gain === undefined ? 1 : opts.gain) * 0.34);
       return total;
     }
     /* the file is still arriving; say it the old way this once rather
