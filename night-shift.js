@@ -7151,7 +7151,7 @@ const VOX_FILE = { on: null, map: null, buf: Object.create(null), dur: Object.cr
                    /* which path the last line actually took, and how
                       many lines were lost to a take that had not
                       finished arriving */
-                   took: null, late: 0, warmed: 0,
+                   asked: false, took: null, late: 0, warmed: 0,
                    /* cumulative, because a line that waits for its take
                       finishes after the caller has moved on, and a
                       check that samples "what happened just now" reads
@@ -7265,13 +7265,27 @@ function voiceDuck(dur, level) {
 
 
 function voiceLoad() {
-  if (VOX_FILE.on !== null) return;
-  VOX_FILE.on = false;
+  /* "HAVE WE ASKED" AND "IS THERE ANYTHING" ARE DIFFERENT QUESTIONS.
+
+     This used to set `on = false` on its first line, as a guard against
+     asking twice -- and everything downstream reads `on === false` as
+     "this build has no recordings, do not wait for any". So for the few
+     hundred milliseconds between the page starting and the manifest
+     arriving, every line was told there were no recordings at all and
+     went straight to the synthesiser without waiting.
+
+     Which line that hit depended entirely on whether the fetch happened
+     to land first, so the opening statement came out in his voice on
+     two runs out of three and in the robot's on the third, with nothing
+     different between them. One flag for "asked", one for "found". */
+  if (VOX_FILE.asked) return;
+  VOX_FILE.asked = true;
   let f;
-  try { f = fetch("voice/manifest.json", { cache: "force-cache" }); } catch (e) { return; }
+  try { f = fetch("voice/manifest.json", { cache: "force-cache" }); }
+  catch (e) { VOX_FILE.on = false; return; }
   f.then((r) => (r.ok ? r.json() : null))
    .then((j) => {
-     if (!j) return;
+     if (!j) { VOX_FILE.on = false; return; }
      /* text -> id, so a line looks itself up by what it says. A line
         that has been rewritten since the take simply is not in here. */
      const m = Object.create(null);
@@ -7280,7 +7294,7 @@ function voiceLoad() {
      VOX_FILE.map = m; VOX_FILE.on = n > 0;
      if (VOX_FILE.on) voiceWarm();
    })
-   .catch(() => {});
+   .catch(() => { VOX_FILE.on = false; });
 }
 
 function voiceHas(text) {
@@ -7551,7 +7565,7 @@ function voxSpeak(plan, opts) {
     for (const k in opts) again[k] = opts[k];
     again.waited = true;
     VOX_FILE.late++;
-    voiceWait(text, 1800, () => voxSpeak(plan, again));
+    voiceWait(text, 3500, () => voxSpeak(plan, again));
     return total;
   }
   if (!opts.sys && ac() && !muted && MIX.voice > 0.02 && voiceHas(text)) {
@@ -7595,7 +7609,7 @@ function voxSpeak(plan, opts) {
       const again = {};
       for (const k in opts) again[k] = opts[k];
       again.waited = true;
-      voiceWait(text, 1200, () => voxSpeak(plan, again));
+      voiceWait(text, 2600, () => voxSpeak(plan, again));
       return total;
     }
   }
@@ -7621,6 +7635,13 @@ function voxSpeak(plan, opts) {
   if (!opts.sys && !opts.forceSynth && window.speechSynthesis) {
     voxTape(total, (opts.gain === undefined ? 1 : opts.gain) * 1.25);
     voiceDuck(total);
+    /* COUNT THIS. It is the path where the caption does the talking and
+       nobody says anything at all, and because it incremented neither
+       counter, a check that asked "how many lines were his" got back
+       "none, and none were spoken either" and reported nothing wrong
+       with the one number that mattered. A silent line is not a
+       neutral outcome. */
+    VOX_FILE.took = "caption"; VOX_FILE.plays.speech++;
     return total;
   }
   const t0 = now() + CUE_LEAD + (opts.at || 0);
@@ -13659,6 +13680,14 @@ const testHooks = {
   }),
   bedMode: (m) => musicMode(m),
   taskFor: (n, h) => taskFor(n, h),
+  /* why a particular line did or did not come out in his voice */
+  voiceWhy: (text) => ({
+    on: VOX_FILE.on,
+    has: voiceHas(text),
+    ready: voiceReadyFor(text),
+    id: VOX_FILE.map ? VOX_FILE.map[String(text).trim()] || null : null,
+    muted: muted, mix: MIX.voice, ctx: AC ? AC.state : null,
+  }),
   reveal: (n) => { const r = NS.reveal[n]; if (r) revealCard(r); return !!r; },
   taskState: () => ({ phase: G.phase, tutor: tutorOn(), cine: CINE.on,
                       hour: G.hour, night: G.night, task: G.task,

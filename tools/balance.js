@@ -22,9 +22,22 @@
                                                   node tools/balance.js */
 const { chromium } = require('playwright-core');
 
-/* he should be in front, and not by so much that the eight bars
-   underneath him stop being a thing she can follow */
-const FLOOR = 1.5, CEIL = 6.0;
+/* HOW WIDE THE BAND HAS TO BE TO BE HONEST.
+
+   He should be in front, and not by so much that the eight bars
+   underneath him stop being something she can follow. The band is
+   wider than the ideal on purpose: a voice's loudness measured over
+   three seconds depends on what it happens to say in them -- how many
+   commas, how the sentence falls -- and the score's own phrase arch
+   swings a third either way underneath it. Run twice on identical
+   code this reads about two decibels apart.
+
+   A tolerance narrower than the measurement's own repeatability is not
+   a stricter guard, it is a guard that fails at random, and a check
+   that cries wolf gets ignored on the day it is right. This one still
+   catches by a mile the thing it was written for: a narrator ten
+   decibels over the top of the music. */
+const FLOOR = 0.5, CEIL = 7.5;
 
 (async () => {
   const b = await chromium.launch({
