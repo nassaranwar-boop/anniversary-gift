@@ -3843,39 +3843,70 @@ const HV_SCENES = {
   },
 
   /* 4. golden meadow — "it's getting dark" */
-  meadow(ctx, rnd) {
-    ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#7fb8dc" }, { p: 0.20, c: "#b0d4e4" },
-      { p: 0.40, c: "#ecdcae" }, { p: 0.58, c: "#f8cf8c" },
-      { p: 0.76, c: "#f0b878" }, { p: 1.00, c: "#dda668" },
-    ]);
-    cloudRow(ctx, PXW, 30, 4, ["#fff3d6", "#f7dcae", "#e8c088", "#d0a068"], rnd, 1.2);
-    sunDisc(ctx, Math.round(PXW * 0.66), 60, 14, "#fffdf0", "#ffeeb8");
-    sunRays(ctx, PXW * 0.66, 60, PXW, PXH, "#fff3c8", rnd, 8);
+  /* IT IS NOT ALWAYS SIX IN THE EVENING HERE.
 
-    hillBand(ctx, PXW, 92, 6, 0.018, ["#d6cf86", "#b6ae66", "#968f4f"], rnd, 0.5);
-    hillBand(ctx, PXW, 104, 5, 0.026, ["#c6bd72", "#a49b56", "#867e43"], rnd, 2.6);
-    hillBand(ctx, PXW, 118, 4, 0.034, ["#b8ae64", "#98904c", "#7a733a"], rnd, 4.8);
+     This was a golden-hour painting -- a low fourteen-pixel sun, backlit
+     trees, amber grass -- and she walks through it at the bottom of the
+     valley, two beats after a bright spring morning. `h` is how far up
+     the walk she is, and the meadow is lit by it: morning at the gate,
+     with a high small sun in a blue sky over green grass, and the gold
+     arriving as she climbs, so that by the time she comes back down
+     through it the light has earned its colour. */
+  meadow(ctx, rnd, extra, step, hour) {
+    var h = hour === undefined ? 1 : hour;          /* 0 morning, 1 evening */
+    var M = hvMix;
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: M("#6aa8dc", "#7fb8dc", h) },
+      { p: 0.20, c: M("#9ccbe8", "#b0d4e4", h) },
+      { p: 0.40, c: M("#c8e2ee", "#ecdcae", h) },
+      { p: 0.58, c: M("#dceee8", "#f8cf8c", h) },
+      { p: 0.76, c: M("#e6f2dc", "#f0b878", h) },
+      { p: 1.00, c: M("#dceac6", "#dda668", h) },
+    ]);
+    cloudRow(ctx, PXW, 30, 4,
+      [M("#ffffff", "#fff3d6", h), M("#f2f8fc", "#f7dcae", h),
+       M("#dfe9f2", "#e8c088", h), M("#c6d4e2", "#d0a068", h)], rnd, 1.2);
+    /* high and small in the morning, low and wide by the evening */
+    var sx = Math.round(PXW * (0.40 + h * 0.26)), sy = 30 + h * 30, sr = 9 + h * 5;
+    sunDisc(ctx, sx, sy, sr, "#fffdf0", M("#fff8dc", "#ffeeb8", h));
+    sunRays(ctx, sx, sy, PXW, PXH, M("#ffffe8", "#fff3c8", h), rnd, 5 + Math.round(h * 3));
+
+    hillBand(ctx, PXW, 92, 6, 0.018,
+      [M("#9ccb78", "#d6cf86", h), M("#82ae5e", "#b6ae66", h), M("#6b9249", "#968f4f", h)], rnd, 0.5);
+    hillBand(ctx, PXW, 104, 5, 0.026,
+      [M("#8cbc68", "#c6bd72", h), M("#74a052", "#a49b56", h), M("#5e853f", "#867e43", h)], rnd, 2.6);
+    hillBand(ctx, PXW, 118, 4, 0.034,
+      [M("#7fae5c", "#b8ae64", h), M("#689248", "#98904c", h), M("#537836", "#7a733a", h)], rnd, 4.8);
 
     ditherSky(ctx, 0, 130, PXW, PXH - 130, [
-      { p: 0.00, c: "#c6b85e" }, { p: 0.5, c: "#aa9c4a" }, { p: 1.00, c: "#8b7f39" },
+      { p: 0.00, c: M("#8cbe5a", "#c6b85e", h) },
+      { p: 0.5,  c: M("#74a349", "#aa9c4a", h) },
+      { p: 1.00, c: M("#5d8738", "#8b7f39", h) },
     ]);
-    pathTo(ctx, PXW, 134, PXH, 1.0, 10, 60, "#e0cd8e", "#cbb87b", "#b4a268");
+    pathTo(ctx, PXW, 134, PXH, 1.0, 10, 60,
+      M("#e6dcb0", "#e0cd8e", h), M("#d2c89c", "#cbb87b", h), M("#bcb285", "#b4a268", h));
 
-    /* backlit trees — dark shapes with a hot rim on the sun side */
+    /* the trees are only backlit once there is a low sun to backlight
+       them -- in the morning they are just trees in the sun */
     [[42, 1.05], [PXW - 56, 0.9], [136, 0.62], [212, 0.5]].forEach(function (t) {
-      trunk(ctx, t[0], 136, Math.round(48 * t[1]), Math.round(6 * t[1]), ["#7a6a3c", "#5e5230", "#463c22"]);
+      trunk(ctx, t[0], 136, Math.round(48 * t[1]), Math.round(6 * t[1]),
+        [M("#8a7450", "#7a6a3c", h), M("#6b5a3e", "#5e5230", h), M("#4e412c", "#463c22", h)]);
       canopy(ctx, t[0], 136 - 48 * t[1], 21 * t[1],
-        ["#d6cf86", "#9c9a52", "#73723a", "#56562c"], rnd, "#fff0b8");
+        [M("#a8d078", "#d6cf86", h), M("#84ae56", "#9c9a52", h),
+         M("#63883c", "#73723a", h), M("#48642a", "#56562c", h)],
+        rnd, M("#e2f6b4", "#fff0b8", h));
     });
     // fence posts leading off toward the light
+    var post = M("#9c8a5e", "#8a7a48", h);
     for (var f = 0; f < 8; f++) {
       var fx = 30 + f * 36, fy = 142 + f * 2;
-      px(ctx, fx, fy - 12, 2, 12, "#8a7a48");
-      if (f) px(ctx, fx - 34, fy - 9, 34, 1, "#8a7a48");
+      px(ctx, fx, fy - 12, 2, 12, post);
+      if (f) px(ctx, fx - 34, fy - 9, 34, 1, post);
     }
-    grassTufts(ctx, PXW, 142, 190, ["#d2c46a", "#b8ab58", "#e0d27c"], rnd);
-    flowerDots(ctx, PXW, 146, 30, 22, ["#fff3c4", "#ffd166", "#ffffff"], rnd);
+    grassTufts(ctx, PXW, 142, 190,
+      [M("#9ac862", "#d2c46a", h), M("#82ae50", "#b8ab58", h), M("#aed878", "#e0d27c", h)], rnd);
+    flowerDots(ctx, PXW, 146, 30, 22,
+      [M("#ffffff", "#fff3c4", h), M("#ffe9a0", "#ffd166", h), "#ffffff"], rnd);
   },
 
   /* 5. sunset lake — the ask */
@@ -5611,22 +5642,23 @@ function hvHoldOff() { hvHold = false; }
 function hvUpdateFoundStrip() {
   var strip = document.getElementById("hv-found");
   if (!strip) return;
-  var ids = Object.keys(HV_TOKENS).filter(function (k) { return hvFound[k]; });
-  /* The strip is drawn from the same function that draws the thing
-     lying in the grass, so there is one picture of a pine cone in this
-     game rather than a canvas one and an SVG one that have to be kept
-     looking like each other. */
+
+  /* THE ONE THING IN THE CORNER IS HERS.
+
+     This used to be a shelf of everything she has ever picked up -- and
+     `hvFound` is loaded from storage, so on a second visit it was
+     showing things found on a previous walk before she had chosen
+     anything or taken a step. That is why there was a small golden acorn
+     sitting up there on the very first screen of a brand new walk, which
+     is the thing he kept pointing at.
+
+     It holds the keepsake instead: the heart or the flower she picked at
+     the gate, which is the one object in this valley that is hers and
+     the one the ending turns on. Nothing is lost by it -- everything she
+     finds is still counted, still saved, and still read back to her at
+     the end by hvFoundList. It simply stops being a scoreboard she has
+     to look at while she is trying to read. */
   strip.innerHTML = "";
-
-  /* HER OWN THING FIRST, AND ALWAYS.
-
-     This strip only ever held what she had picked up along the way, so
-     the first thing in it was whatever she happened to find -- usually
-     the acorn. The one object in this whole walk that is HERS is the
-     heart or the flower she chose at the very start, and it is the one
-     the ending turns on, and it was the only thing not shown anywhere.
-     It leads the row now, kept a little apart from the found things,
-     from the moment she picks it up to the moment it is spoken of. */
   if (hvKeepsake) {
     var kw = document.createElement("span");
     kw.className = "hv-token hv-token-keepsake";
@@ -5634,15 +5666,7 @@ function hvUpdateFoundStrip() {
     kw.appendChild(hvDrawToken(hvKeepsake));
     strip.appendChild(kw);
   }
-
-  ids.forEach(function (k) {
-    var wrap = document.createElement("span");
-    wrap.className = "hv-token";
-    wrap.title = HV_TOKENS[k].name;
-    wrap.appendChild(hvDrawToken(k));
-    strip.appendChild(wrap);
-  });
-  strip.classList.toggle("on", ids.length > 0 || !!hvKeepsake);
+  strip.classList.toggle("on", !!hvKeepsake);
 }
 
 function hvFoundList() {
@@ -5829,6 +5853,71 @@ var hvSceneCache = {};
    over, the light on the water goes out. The step is part of the cache
    key, so each one is painted once and then reused, exactly like the
    single version was. */
+/* THE WALK IS ONE DAY, AND IT HAS TO READ LIKE ONE.
+
+   Every scene was painted at whatever hour suited it on its own. The
+   meadow is a golden-hour picture -- a low sun, backlit trees, amber
+   grass -- and it is the third thing she sees, right after a bright
+   spring morning under the cherry trees, and then the wood after it is
+   broad daylight again. Evening, morning, evening, morning. Each frame
+   is fine and the sequence is nonsense, which is worse than any one of
+   them being wrong, because it tells her the places are not a place.
+
+   So the chapter gets a clock. Every node knows how far along the walk
+   it is -- measured once, by walking the links out from the start -- and
+   the daylight scenes are lit from that instead of from their own taste.
+   The way there is a day: it opens in the morning at the bottom of the
+   valley, warms as she climbs, and arrives at the sunset that was always
+   waiting at the top. The way back is a year later and after dark, so it
+   is night from its first frame and stays there. */
+var HV_HOUR = null;
+
+/* The three fields that are actually links, and only those. Guessing at
+   this was the first thing I got wrong here: `choices` carries 48 of
+   them and `cards` the fork at the gate, which I had missed, so the walk
+   stopped dead at the second node and every scene after it fell back to
+   the middle of the day. And two fields look like links and are not --
+   `scene: "sunset"` and `ask: "back"` both happen to name a node, and
+   following either of them wires the end of the story to the beginning. */
+function hvLinksOf(N) {
+  var out = [];
+  if (!N) return out;
+  ["choices", "cards"].forEach(function (f) {
+    (N[f] || []).forEach(function (c) { if (c && typeof c.to === "string") out.push(c.to); });
+  });
+  if (typeof N.playTo === "string") out.push(N.playTo);
+  return out;
+}
+
+function hvBuildHours() {
+  HV_HOUR = {};
+  var start = HV.title ? "title" : Object.keys(HV)[0];
+  var depth = {}, q = [start];
+  depth[start] = 0;
+  while (q.length) {
+    var id = q.shift();
+    hvLinksOf(HV[id]).forEach(function (t) {
+      if (!HV[t] || depth[t] !== undefined) return;
+      depth[t] = depth[id] + 1;
+      q.push(t);
+    });
+  }
+  /* the longest daylight walk is the scale: the way there is a day, and
+     the deepest node on it is the end of that day */
+  var far = 1;
+  Object.keys(depth).forEach(function (k) { if (depth[k] > far) far = depth[k]; });
+  Object.keys(HV).forEach(function (k) {
+    HV_HOUR[k] = depth[k] === undefined ? 0.5 : Math.min(1, depth[k] / far);
+  });
+}
+
+function hvHourOf(n) {
+  if (!HV_HOUR) hvBuildHours();
+  var id = null;
+  for (var k in HV) { if (HV[k] === n) { id = k; break; } }
+  return id === null ? 0.5 : HV_HOUR[id];
+}
+
 var hvSceneStep = 0, hvStepScene = null, hvStepNode = null;
 var HV_STEPS = 4;                      /* four phases is plenty, and cheap */
 
@@ -5855,10 +5944,13 @@ function hvPaintBase(n) {
      key so the other nodes in this scene do not inherit a bear. */
   var extra = n.bear === "shadow" ? { lurker: hvPaintLurker } : null;
   var step = hvStepOf(n, scene);
-  var key = scene + (extra ? ":lurker" : "") + ":" + step;
+  /* three hours is enough to tell morning from afternoon and cheap
+     enough to cache: a scene is painted at most a dozen times all told */
+  var hour = Math.round(hvHourOf(n) * 2) / 2;
+  var key = scene + (extra ? ":lurker" : "") + ":" + step + ":" + hour;
   if (!hvSceneCache[key]) {
     var made = spriteCanvas(PXW, PXH);
-    (HV_SCENES[scene] || HV_SCENES.sakura)(made.ctx, hvSeed(scene), extra, step);
+    (HV_SCENES[scene] || HV_SCENES.sakura)(made.ctx, hvSeed(scene), extra, step, hour);
     hvSceneCache[key] = made.c;
   }
   hvBase = hvSceneCache[key];

@@ -3033,13 +3033,9 @@ img{-webkit-user-drag:none; user-select:none;}
    The keepsake leads the row and is the only thing in it she did not
    find lying about, so it is given a little air and a warm ring -- it
    reads as the one she is carrying rather than the first of a list. */
-.hv-token-keepsake{
-  position:relative; margin-right:7px; padding-right:7px;
-}
-.hv-token-keepsake::after{
-  content:""; position:absolute; right:0; top:50%; transform:translateY(-50%);
-  width:1px; height:64%; background:rgba(120,80,40,.35);
-}
+/* it stands alone up there now, so it needs no rule beside it to
+   separate it from a list that is no longer there */
+.hv-token-keepsake{ position:relative; }
 .hv-token-keepsake canvas{
   filter:drop-shadow(0 0 3px rgba(255,190,120,.55));
 }
