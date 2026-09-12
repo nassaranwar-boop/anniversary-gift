@@ -8242,6 +8242,118 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-card-load .ns-tag{ margin:0; animation:nsBreathe 1.6s ease-in-out infinite; }
 @keyframes nsBreathe{ 50%{ opacity:.35; } }
 .ns-btns{ display:flex; flex-wrap:wrap; gap:1.4cqw; justify-content:center; margin-top:2.4cqh; }
+
+/* =====================================================================
+   THE DOOR.
+
+   One way in, at a size nothing else on the screen uses, so the eye
+   lands on it before it starts reading. The old menu gave BEGIN THE
+   SHIFT and LEAVE the same button, which is a list; this is a door
+   with a list underneath it. */
+.ns-door{
+  display:block; width:min(30cqw, 340px); margin:3cqh auto 0;
+  padding:1.9cqh 2cqw 1.7cqh;
+  border:0; border-radius:.7cqw; cursor:pointer;
+  font-family:inherit; text-align:center;
+  background:linear-gradient(180deg, rgba(196,148,74,.22), rgba(120,84,38,.16));
+  box-shadow:inset 0 0 0 .18cqw rgba(224,182,110,.72),
+             inset 0 .2cqh 1.4cqh rgba(255,214,150,.10),
+             0 .5cqh 1.6cqh rgba(0,0,0,.5);
+  transition:box-shadow .22s ease, background .22s ease, transform .12s ease;
+}
+.ns-door b{
+  display:block; font-size:max(13px, 2.5cqh); letter-spacing:.2em;
+  color:#f2dcb0; text-shadow:0 0 1.6cqh rgba(236,186,110,.45);
+}
+.ns-door span{
+  display:block; margin-top:.7cqh; font-size:max(9px, 1.45cqh);
+  letter-spacing:.18em; color:rgba(226,206,172,.56);
+}
+.ns-door:hover, .ns-door:focus-visible{
+  background:linear-gradient(180deg, rgba(210,160,82,.30), rgba(132,92,42,.20));
+  box-shadow:inset 0 0 0 .18cqw rgba(240,200,126,.95),
+             inset 0 .2cqh 1.8cqh rgba(255,220,160,.16),
+             0 .6cqh 2cqh rgba(0,0,0,.55);
+}
+.ns-door:active{ transform:translateY(.2cqh); }
+
+/* the rows underneath it: grouped by what they are for, and all
+   smaller than the door, because none of them is the door */
+.ns-btns-row{ margin-top:1.2cqh; gap:1.1cqw; }
+.ns-btns-foot{ margin-top:2cqh; gap:1.1cqw; }
+.ns-btn-sm2{ font-size:max(9.5px, 1.55cqh); padding:1cqh 1.6cqw; letter-spacing:.16em; }
+.ns-btn-quiet{
+  font-size:max(9px, 1.4cqh); padding:.85cqh 1.4cqw; letter-spacing:.16em;
+  opacity:.66;
+}
+.ns-btn-quiet:hover, .ns-btn-quiet:focus-visible{ opacity:1; }
+
+/* =====================================================================
+   THE WEEK.
+
+   All six, including the ones she cannot reach. A stepper that counts
+   up from one tells her where she is; a row of six with four of them
+   shut tells her what she agreed to. That is the whole point of the
+   terms, and the menu was the one place it was not visible. */
+.ns-roster{ margin-top:2.6cqh; }
+.ns-roster-lab{
+  margin:0 0 1cqh; font-size:max(8.5px, 1.3cqh); letter-spacing:.3em;
+  color:rgba(226,206,172,.42);
+}
+.ns-nites{ display:flex; gap:.9cqw; justify-content:center; }
+.ns-nite{
+  width:max(30px, 4.2cqh); height:max(30px, 4.2cqh);
+  border:0; border-radius:.45cqw; cursor:pointer;
+  font-family:inherit; display:grid; place-items:center;
+  background:rgba(22,25,23,.8);
+  box-shadow:inset 0 0 0 .16cqw rgba(200,162,96,.3);
+  transition:box-shadow .18s ease, background .18s ease;
+}
+.ns-nite b{ font-size:max(11px, 1.7cqh); color:rgba(232,223,200,.8); font-weight:600; }
+.ns-nite.ns-open{ box-shadow:inset 0 0 0 .16cqw rgba(232,190,114,.85); }
+.ns-nite.ns-open b{ color:#f2dcb0; }
+.ns-nite.ns-done{
+  background:linear-gradient(180deg, rgba(150,120,62,.5), rgba(80,62,30,.45));
+  box-shadow:inset 0 0 0 .16cqw rgba(236,196,120,.75);
+}
+.ns-nite.ns-done b{ color:#fbecc8; }
+/* shut, not broken: it is a night she has not got to yet */
+.ns-nite.ns-shut{ cursor:default; background:rgba(16,18,17,.7); }
+.ns-nite.ns-shut b{ color:rgba(200,186,160,.22); }
+.ns-nite:not(.ns-shut):hover{ background:rgba(40,44,40,.9); }
+.ns-roster-sub{
+  margin:1.1cqh 0 0; font-size:max(9px, 1.4cqh); letter-spacing:.1em;
+  color:rgba(226,206,172,.5);
+}
+
+@media (max-width:820px){
+  .ns-door{ width:min(62cqw, 300px); }
+  .ns-nite{ width:max(26px, 5cqh); height:max(26px, 5cqh); }
+}
+/* A LANDSCAPE PHONE IS SHORT, NOT NARROW.
+
+   The menu grew a door, two grouped rows and a six-night roster, and
+   on a 420px-tall screen -- which is a phone held sideways, the way
+   this whole chapter is meant to be played -- that stacked up until
+   SOUND and LEAVE were sitting on the card's bottom edge. Nothing
+   overflowed, which is exactly why a measurement of overflow did not
+   catch it: a control touching the frame is not clipped, it is just
+   uncomfortable.
+
+   So the vertical rhythm compresses where there is no height to spend.
+   Nothing is removed -- she gets the same menu, closer together. */
+@media (max-height:560px){
+  .ns-card-title{ padding-block:2.2cqh; }
+  .ns-door{ margin-top:2cqh; padding:1.4cqh 2cqw 1.2cqh; }
+  .ns-door span{ margin-top:.4cqh; }
+  .ns-btns-row{ margin-top:.8cqh; }
+  .ns-roster{ margin-top:1.6cqh; }
+  .ns-roster-lab{ margin-bottom:.7cqh; }
+  .ns-roster-sub{ margin-top:.7cqh; }
+  .ns-btns-foot{ margin-top:1.4cqh; }
+  .ns-cozy{ margin-top:1.6cqh; }
+}
+
 .ns-btn{
   cursor:pointer; padding:max(14px, 1.4cqh) max(13px, 2.6cqw); min-width:44px;
   font-family:var(--ns-face); font-size:max(10.5px, 1.9cqh); font-weight:700; letter-spacing:.2em;

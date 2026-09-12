@@ -10874,36 +10874,93 @@ function loadCozy() {
 }
 function saveCozy(v) { try { localStorage.setItem(COZY_KEY, v ? "1" : "0"); } catch (e) {} }
 
+/* THE DOOR, NOT A SETTINGS PAGE.
+
+   It was seven identical buttons in a grid and a number stepper. Every
+   one of them looked equally important, which means none of them did,
+   and the one that matters -- the door into the shop -- was the same
+   size as LEAVE. A menu with no hierarchy makes a player read all of
+   it every time, and reading a list is not how you walk into a
+   building at midnight.
+
+   Four things, in order of how much they change it:
+
+     one way in    BEGIN THE SHIFT is now the only thing at that size.
+                   Everything else is smaller and grouped by what it is
+                   FOR: the two that teach her, the two that hold what
+                   she has found, and the two that are housekeeping.
+     the week      all six nights are shown, not only the unlocked
+                   ones. Seeing four of them locked is the shape of
+                   what she has agreed to -- six nights, and this is
+                   where she is in them. A stepper that counts up from
+                   one hides the size of the thing.
+     where she is  "two of six" under the roster, because a player who
+                   can see progress has a reason to come back tomorrow.
+     his line      the shift card's own words on the door, so the first
+                   thing the screen says is his and not an interface's. */
 function screenTitle() {
   const un = maxUnlocked();
   const done = nightsDone();
-  const sel = NIGHTS.slice(0, un).map((n) =>
-    '<button class="ns-btn ns-btn-sm' + (done[n.n] ? " ns-done" : "") + '" data-go="night:' + n.n + '">' + n.n + '</button>').join("");
+  const got = NIGHTS.filter((n) => done[n.n]).length;
+
+  /* the whole week, so the locked ones say how much is left */
+  const roster = NIGHTS.map((n) => {
+    const state = done[n.n] ? " ns-done" : (n.n <= un ? " ns-open" : " ns-shut");
+    const tag = n.n <= un ? ' data-go="night:' + n.n + '"' : ' disabled aria-disabled="true"';
+    return '<button class="ns-nite' + state + '"' + tag +
+           ' title="' + (n.n <= un ? n.name : "not yet") + '">' +
+           '<b>' + n.n + '</b></button>';
+  }).join("");
+
   const extra = storyDone()
     ? '<div class="ns-btns ns-btns-extra">' +
-        '<button class="ns-btn" data-go="custom">CUSTOM NIGHT</button>' +
-        '<button class="ns-btn" data-go="gallery">THE SHOP IN DAYLIGHT</button>' +
+        '<button class="ns-btn ns-btn-sm2" data-go="custom">CUSTOM NIGHT</button>' +
+        '<button class="ns-btn ns-btn-sm2" data-go="gallery">THE SHOP IN DAYLIGHT</button>' +
       '</div>'
     : "";
+
   overlay(
     '<div class="ns-card ns-card-title">' +
       '<p class="ns-sign"><span>' + NS.title + '</span><b>' + NS.title2 + '</b></p>' +
       '<p class="ns-where">' + NS.shop + ' ' + NS.sub + '</p>' +
       '<p class="ns-tag">' + NS.tag + '</p>' +
-      '<div class="ns-btns">' +
-        '<button class="ns-btn ns-btn-go" data-go="start">BEGIN THE SHIFT</button>' +
-        '<button class="ns-btn" data-go="howto">HOW IT WORKS</button>' +
-        /* his statement, once she has already heard it once */
-        (seenIntro() ? '<button class="ns-btn" data-go="intro">HIS STATEMENT</button>' : "") +
-        '<button class="ns-btn" data-go="drawer">THE DRAWER</button>' +
-        '<button class="ns-btn" data-go="sound">SOUND</button>' +
-        '<button class="ns-btn" data-go="badges">RECORD</button>' +
-        '<button class="ns-btn" data-go="quit">LEAVE</button>' +
+
+      /* keeps ns-btn-go: Enter and Space on any overlay press whichever
+         button carries that class, and the door is now that button */
+      '<button class="ns-door ns-btn-go" data-go="start">' +
+        '<b>BEGIN THE SHIFT</b>' +
+        '<span>' + (got ? "night " + Math.min(un, NIGHTS.length) + " of " + NIGHTS.length
+                        : "midnight to six") + '</span>' +
+      '</button>' +
+
+      /* the two that teach her */
+      '<div class="ns-btns ns-btns-row">' +
+        '<button class="ns-btn ns-btn-sm2" data-go="howto">HOW IT WORKS</button>' +
+        (seenIntro() ? '<button class="ns-btn ns-btn-sm2" data-go="intro">HIS STATEMENT</button>' : "") +
+      '</div>' +
+      /* the two that hold what she has found */
+      '<div class="ns-btns ns-btns-row">' +
+        '<button class="ns-btn ns-btn-sm2" data-go="drawer">THE DRAWER</button>' +
+        '<button class="ns-btn ns-btn-sm2" data-go="badges">RECORD</button>' +
       '</div>' +
       extra +
-      '<p class="ns-pick">NIGHT ' + sel + '</p>' +
+
+      '<div class="ns-roster">' +
+        '<p class="ns-roster-lab">THE WEEK</p>' +
+        '<div class="ns-nites">' + roster + '</div>' +
+        '<p class="ns-roster-sub">' +
+          (got >= NIGHTS.length ? "all six. he kept his word."
+           : got ? got + " of " + NIGHTS.length + " behind you"
+                 : "six nights, and then everything") + '</p>' +
+      '</div>' +
+
       '<button class="ns-cozy' + (G.cozy ? " on" : "") + '" data-go="cozy">' +
         '<i></i><b>COZY MODE</b><span>' + (G.cozy ? "on — softer everything" : "off — the shop as it is") + '</span></button>' +
+
+      '<div class="ns-btns ns-btns-foot">' +
+        '<button class="ns-btn ns-btn-quiet" data-go="sound">SOUND</button>' +
+        '<button class="ns-btn ns-btn-quiet" data-go="quit">LEAVE</button>' +
+      '</div>' +
     '</div>', "ns-ov-title");
 }
 
