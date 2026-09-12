@@ -879,6 +879,10 @@ img{-webkit-user-drag:none; user-select:none;}
 
 @media (prefers-reduced-motion: reduce){
   .gate-title img,.gate-seal-glow,.gate-wax-blob,.gate-bloom{animation:none;}
+  /* the flower's turn is a transition, not an animation, so it is not
+     caught by the line below -- it is shortened here instead, because
+     the open and shut positions still have to differ */
+  .sb-flower{transition-duration:.01s !important;}
   .sb-flower,.sb-song-halo{animation:none !important;}
   .sb-song-arm{transition:none;}
 }
@@ -2264,7 +2268,25 @@ img{-webkit-user-drag:none; user-select:none;}
   animation:sbPinPop .5s var(--ease-pop) both;
 }
 @keyframes sbPinPop{from{opacity:0; transform:translate(-50%,-70%) scale(.5);} to{opacity:1;}}
-.sb-map-pin img{width:100%; height:100%; object-fit:cover; display:block; border-radius:2px;}
+/* THE PHOTOGRAPH SITS INSIDE THE WHITE, NOT OVER IT.
+
+   The print was sized at 100% of the pin and left to find its own place
+   in it, so anything that moved the box -- the pop-in transform, a
+   zoom, a min-height winning over the aspect ratio -- slid the picture
+   off its mount and over the frame on two sides. It is placed against
+   the pin's own edges now, two pixels in on every side, which is the
+   white border, and the pin clips whatever is left. */
+.sb-map-pin{ box-sizing:border-box; overflow:hidden; }
+.sb-map-pin img{
+  /* left/top plus an explicit size, NOT `inset` with auto: an <img> is a
+     replaced element, and auto sizing on one means its intrinsic size --
+     it ignores the other two insets entirely and lays out at whatever
+     the file happens to be. Against a 900px photograph that is 434px of
+     overflow, which is the fault this was meant to fix. */
+  position:absolute; left:2px; top:2px;
+  width:calc(100% - 4px); height:calc(100% - 4px);
+  object-fit:cover; display:block; border-radius:2px;
+}
 .sb-map-pin-empty{
   display:flex; align-items:center; justify-content:center; width:100%; height:100%; border-radius:2px;
   font-family:'Playfair Display',serif; font-size:9px; color:rgba(110,96,72,.6);
@@ -2626,12 +2648,41 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-flower{
   width:33px; height:33px; display:block; overflow:visible;
   filter:drop-shadow(0 2px 4px rgba(40,8,22,.5));
-  transition:opacity .26s ease, transform .45s var(--ease-pop);
+  transition:opacity .26s ease, transform .52s var(--ease-pop);
+  /* ITS OWN LAYER, SO THE TURN SURVIVES THE WORK THE PRESS STARTS.
+
+     The press does two things at once: it turns the flower and it builds
+     the drawer -- the map, the song, the film. That build is synchronous
+     and on a phone it is easily longer than the turn, so the animation
+     was running the whole time and never got a frame to paint in. It
+     looked like nothing happened, because nothing was drawn.
+
+     A transform animation on its own compositor layer does not need the
+     main thread. This puts the flower on one, so the turn plays through
+     that build rather than behind it. */
+  will-change:transform;
 }
-/* the barest breathing, so it reads as something living rather than a
-   control. Stopped for anyone who has asked for less motion. */
-#screen-scrapbook.sb-open .sb-flower{animation:sbFlowerBreathe 6s ease-in-out infinite;}
-@keyframes sbFlowerBreathe{0%,100%{transform:rotate(0) scale(1);} 50%{transform:rotate(7deg) scale(1.045);}}
+/* IT IS STILL UNTIL IT IS PRESSED, AND THE PRESS TURNS IT SOMEWHERE.
+
+   The flower used to breathe on a six-second loop -- a slow rotate and
+   swell, the whole time the book was open. Something moving in the
+   corner of the screen forever is not charm, it is a thing your eye
+   keeps going back to while you are trying to read. So it sits still.
+
+   The press was a keyframe wobble first: out twenty-six degrees and
+   straight back, over half a second. Measured, it ran correctly on every
+   single press -- and you could still miss it, because a transient that
+   ends where it started leaves nothing behind, and it was competing for
+   frames with the drawer sliding in beside it. On a phone that is a lot
+   to ask of five hundred milliseconds.
+
+   So it turns to somewhere instead of turning and returning. Shut, it is
+   upright; open, it has gone half way round. That plays as a rotation
+   both ways -- press to open and it turns, press to close and it turns
+   back -- and because the two ends are different, a phone that drops
+   every frame in between still shows a flower that has moved. */
+.sb-flower{ transform:rotate(0deg); }
+.sb-extras-btn.on .sb-flower{ transform:rotate(180deg); }
 
 .sb-extras-x{
   position:relative; width:18px; height:18px;
@@ -2651,8 +2702,22 @@ img{-webkit-user-drag:none; user-select:none;}
     radial-gradient(125% 125% at 30% 16%, rgba(255,198,214,.16), transparent 60%),
     linear-gradient(162deg,#4e142c 0%,#360d1d 54%,#2a0916 100%);
 }
-.sb-extras-btn.on .sb-flower{opacity:0; transform:rotate(70deg) scale(.6); animation:none;}
-.sb-extras-btn.on .sb-extras-x{opacity:1; transform:rotate(45deg) scale(1);}
+/* THE FLOWER DOES NOT TURN INTO A CROSS.
+
+   Open, the button swapped the flower for two crossed bars. A cross is
+   the right sign for a dialog you want gone; this is a drawer of small
+   kept things, and the flower IS the drawer -- trading it for an X made
+   the one warm control on the screen read like an error message. So the
+   flower stays, and says it is open the way a flower would: it turns a
+   little and sits back, brighter, on a darker ground. The cross is not
+   drawn at all any more. */
+/* Open, the flower does not become anything else -- it is the same
+   flower, a shade brighter on a darker ground. The cross is not drawn. */
+.sb-extras-x{display:none;}
+.sb-extras-btn.on .sb-flower{
+  opacity:1;
+  filter:drop-shadow(0 2px 5px rgba(40,8,22,.6)) brightness(1.1);
+}
 
 .sb-drawer{
   position:absolute; left:0; top:0; bottom:0; z-index:20;
@@ -2962,6 +3027,21 @@ img{-webkit-user-drag:none; user-select:none;}
 .hv-token{
   font-size:clamp(11px,2.2vw,15px); line-height:0;
   animation:hvTokenIn .45s var(--ease-pop) backwards;
+}
+/* HERS, set apart from what she picked up.
+
+   The keepsake leads the row and is the only thing in it she did not
+   find lying about, so it is given a little air and a warm ring -- it
+   reads as the one she is carrying rather than the first of a list. */
+.hv-token-keepsake{
+  position:relative; margin-right:7px; padding-right:7px;
+}
+.hv-token-keepsake::after{
+  content:""; position:absolute; right:0; top:50%; transform:translateY(-50%);
+  width:1px; height:64%; background:rgba(120,80,40,.35);
+}
+.hv-token-keepsake canvas{
+  filter:drop-shadow(0 0 3px rgba(255,190,120,.55));
 }
 /* the strip shows the same little canvas that is lying in the grass,
    scaled up and kept on its own pixel grid */
@@ -3624,6 +3704,10 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .hub-name{font-family:'Cinzel',serif; font-weight:700; font-size:15.5px; color:#4e2d0d;}
 .hub-desc{font-family:'Poppins',sans-serif; font-size:11.5px; line-height:1.4; color:#7a5327;}
+/* the two ways out of the hub, side by side rather than stacked */
+.hub-foot{
+  display:flex; flex-wrap:wrap; gap:9px; justify-content:center; width:100%;
+}
 .hub-keepsake{margin-top:14px; display:none;}
 .hub-keepsake.on{display:inline-block;}
 
