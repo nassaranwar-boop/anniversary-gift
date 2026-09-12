@@ -18,7 +18,28 @@ const { chromium } = require('playwright-core');
     document.getElementById('screen-scrapbook').classList.add('active');
     Scrapbook.start();
     await new Promise(r=>setTimeout(r,3000));
-    const card = document.querySelector('.sb-w-ourvideo');
+    /* and turn to the spread the clip is actually on, or there is no shown
+       page carrying it and every measurement below is taken off a hidden
+       one. Scrapbook.goTo walks there in one step. */
+    var onShown = function () {
+      return document.querySelector(['leftpage','rightpage','solo']
+        .map(function (c) { return '#sb-spread .sb-page.' + c + ' .sb-w-ourvideo'; })
+        .join(', '));
+    };
+    for (var i = 0; i < 40 && !onShown(); i++) {
+      Scrapbook.next();
+      await new Promise(r=>setTimeout(r,420));
+    }
+    await new Promise(r=>setTimeout(r,1400));
+    /* Every page lives in the spread all the time; only the one or two she
+       is looking at wear a slot class and have a layout box at all. Taking
+       the first .sb-w-ourvideo in the document takes the one on a hidden
+       page, and everything measured off it comes back 0x0 -- which is what
+       having no box means, not a button that has collapsed. Prefer the card
+       on the spread that is actually shown. */
+    const SHOWN = ['leftpage','rightpage','solo']
+      .map(c => '#sb-spread .sb-page.' + c + ' .sb-w-ourvideo').join(', ');
+    const card = document.querySelector(SHOWN) || document.querySelector('.sb-w-ourvideo');
     if (!card) return { found:false };
     const v = card.querySelector('video');
     // give the metadata a chance

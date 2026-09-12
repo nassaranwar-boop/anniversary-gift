@@ -18,9 +18,25 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
     const out = {};
     for (const k in HV) {
       const n = HV[k];
+      /* Cards are exits too. Leaving them out meant the walk from the
+         title stopped dead at `pick` — whose only exits are two cards —
+         and this suite then reported all forty-odd nodes after it as
+         unreachable, on every run, on main. A reachability check that
+         is always red is not a check.
+
+         `__ask` is a sentinel like `__exit`: the shared nudge screens
+         send her back to whichever closing question she is in, so it
+         resolves to both real ones rather than being excused. */
+      /* `outcomes` is how a mechanic screen leaves: it has no buttons,
+         so without this the stones, the bridge and the bear all read as
+         dead ends. */
+      const outs = (n.choices || []).concat(n.cards || [])
+        .concat((n.outcomes || []).map(t => ({ to: t })));
+      const SENTINEL = { __ask: ['ask', 'back_ask'], __again: ['ways'], __yay: ['yay', 'back_yay'] };
       out[k] = {
-        to: (n.choices || []).map(c => c.to),
-        keep: (n.choices || []).map(c => c.keepsake || null),
+        to: outs.map(c => c.to)
+          .reduce((a, t) => a.concat(SENTINEL[t] || [t]), []),
+        keep: outs.map(c => c.keepsake || null),
         scene: n.scene || null, fail: !!n.isFail, end: !!n.isEnd, back: n.back || null,
       };
     }

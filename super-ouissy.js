@@ -290,7 +290,7 @@ window.SuperOuissy = (function () {
       "...S....^...w.......................................w..^.........................^..w.............................w.....................#...............................C.........G.....",
       "########################################.........#######################################....##....##.#####.###############################################################....##########",
       "########################################.........#######################################....##....##.......B....##########################################################....##########",
-      "########################################.........#######################################....##....##.ooooo.B.F.o##########################################################....##########",
+      "########################################.........#######################################....##....##.ooooo...F1o##########################################################....##########",
       "########################################.........#######################################....##....########################################################################....##########",
     ],
   };
@@ -303,16 +303,16 @@ window.SuperOuissy = (function () {
       ".........................................................................................................................o...o..............................................................................",
       "..........................................................................................................................o.o...................................................#.....................#.....",
       "...........................................................................................................................o....................o.o.............................#.....................#.....",
-      "...................................................o..o.....................o..o............o.o..................................................o.f............................#.....................#.....",
-      "........................o..o........................oo.......................oo.......o.o....o...........o.o....o.o..........V..................................................#.....................#.....",
+      "......................................................o.....................................o.o..................................................o.f............................#.....................#.....",
+      "........................o..o.......................ooo................................o.o....o...........o.o....o.o..........V..................................................#.....................#.....",
       ".........................oo...................................................f........o..................o......o...............................--..................oo.........#.....................#.....",
-      "..............o..o.?......................................BIB...............----.................................................M..................................---.........#...--............--..#.....",
-      "...............oo........--.............---.......H.........................................TT............--....---.....H....................--......--...H.....................#.....................#.....",
-      "......................................................................................TT..............................................................................................................#.....",
+      "..............o..o.?......................................BIB.............oo----oo...............................................M..................................---.........#...--............--..#.....",
+      "...............oo........--.............---.................................................TT............--....---..........................--......--...H.....................#.....................#.....",
+      "..................................................H...................................TT................................H.............................................................................#.....",
       "...S......g.....................^^...^.......g............................g.......^...............C....^^....^^..g..^.................g.^.g.....................w.........C...............X.......G...#.....",
       "########################~~~~######################~~~~~~########.#####.###############~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
       "########################~~~~######################~~~~~~########.......B...###########~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
-      "########################~~~~######################~~~~~~########.ooooo.B.1.###########~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
+      "########################~~~~######################~~~~~~########.ooooo...1.###########~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
       "########################~~~~######################~~~~~~##############################~~~###~~~#########################~~~~~~~~##########################~~~~##############################################",
     ],
   };
@@ -354,7 +354,7 @@ window.SuperOuissy = (function () {
       "...S..................g...............................w.........................g.............................w......C..............X......G...#..",
       "##########################################################...#####.######.###############################..#######################################",
       "##########################################################...#####........B...###########################..#######################################",
-      "##########################################################...#####.ooo.oo.B.F.###########################..#######################################",
+      "##########################################################...#####.ooo.oo...F1###########################..#######################################",
       "##########################################################...############################################..#######################################",
     ],
   };
@@ -398,7 +398,7 @@ window.SuperOuissy = (function () {
       "...S..................w.................................................w...........................................................................w...............C.......G.....",
       "###############################################################.....###############.######.######..........................##############################....#####################",
       "###############################################################.....###############........B...##..........................##############################....#####################",
-      "###############################################################.....###############.ooo.oo.B.F.##..........................##############################....#####################",
+      "###############################################################.....###############.ooo.oo...F1##..........................##############################....#####################",
       "###############################################################.....#############################..........................##############################....#####################",
     ],
   };
@@ -429,22 +429,22 @@ window.SuperOuissy = (function () {
     biome: "ruins",
     rows: [
       "......................................................................................................#...................#...............................................................",
-      "......................................................................................................#..oooo..........f..#....----....o..o...............................................",
-      "......................................................................................................#..----.............#.............oo................................................",
+      "......................................................................................................#................f..#....----....o..o...............................................",
+      "......................................................................................................#..----oo...........#.............oo................................................",
       "......................................................................................................#...................#..............M................................................",
-      "............................................o..o.....o...o............................................#..............V....#............----...............................................",
+      "............................................o..o.....o...o............................................#.oo...........V....#............----...............................................",
       ".............................................oo.......o.o.............................................#...................#...............................................................",
-      ".......................................................o..............................................#.........---.......#...............................................................",
-      ".............................................f........................................................#...................#....................----............o..o.......................",
-      ".............................o..o..........####.........V.................................o.o.........#..TT...............#.....................................oo........................",
-      "...........o...o..............oo...........#...............................................o..........#.......f...........#...............................................................",
-      "............o.o.?..................---.....#.................BIB......................................#.........---.......#............................----.................o..o..........",
-      ".............o.............................#........H.....................................---.........#...................#...................................H..............oo...........",
-      ".............................TT............#..........................................................#..TT...............#...............................................................",
-      "...S.................w...^.............g...#....^.................................g...^^......g..^....#...................#...........................................^..g.....C.....G....",
+      "......................................................................................................#.........---.......#...............................................................",
+      ".............................................f.........o..............................................#...................#....................----............o..........................",
+      ".............................o..o..........####.........V.................................o.o.........#..TT...............#.....................................ooo.......................",
+      "..............................oo...........#...............................................o..........#.......f...........#...............................................................",
+      "...........oo.oo?..................---..--.#.................BIB......................................#.........---.......#............................----.................o..o..........",
+      ".............o.............................#........H.....................................---.........#...................#..................................................oo...........",
+      ".............................TT.........--.#.............................................................TT...................................................H...........................",
+      "...S.................w...^.............g...#....^.................................g...^^......g..^....................................................................^..g.....C.....G....",
       "#############################~~~~###################~~~~~~~#########.######.##################################################################################~~~~~#######################",
       "#############################~~~~###################~~~~~~~#########........B...##############################################################################~~~~~#######################",
-      "#############################~~~~###################~~~~~~~#########.ooo.oo.B.1.##############################################################################~~~~~#######################",
+      "#############################~~~~###################~~~~~~~#########.ooo.oo...1.##############################################################################~~~~~#######################",
       "#############################~~~~###################~~~~~~~###################################################################################################~~~~~#######################",
     ],
   };
@@ -1362,10 +1362,26 @@ window.SuperOuissy = (function () {
      screen anyway. */
   var VIEW = { w: 320, h: 180 };
 
+  /* The widest view the backdrops are painted to cover. */
+  var VIEW_MAX_W = 448;
+
   function pickView() {
-    var portrait = window.innerHeight > window.innerWidth * 1.2;
-    var narrow = window.innerWidth < 620;
-    VIEW.w = (portrait && narrow) ? 240 : 320;
+    var vw = window.innerWidth || 320, vh = window.innerHeight || 180;
+    var portrait = vh > vw * 1.2;
+    var narrow = vw < 620;
+    if (portrait && narrow) {
+      VIEW.w = 240;
+    } else if (vw > vh * 1.25) {
+      /* A phone on its side is wider than 16:9, so a 16:9 view leaves a
+         black bar down each edge. Widening the view instead spends that
+         space on more world at exactly the same size — nothing shrinks,
+         she just sees further ahead. Even, because odd widths put the
+         player half a pixel off centre. */
+      VIEW.w = Math.max(320, Math.min(VIEW_MAX_W,
+        Math.round(VIEW.h * (vw / vh) / 2) * 2));
+    } else {
+      VIEW.w = 320;
+    }
     var cv = $("so-canvas");
     if (cv && cv.width !== VIEW.w) { cv.width = VIEW.w; cv.height = VIEW.h; }
     var st = $("so-stage");
@@ -1968,7 +1984,10 @@ window.SuperOuissy = (function () {
 
   function buildBackdrop(biome) {
     var P = BIOME[biome], def = BACKDROPS[biome] || BACKDROPS.meadow;
-    var VW = 320, VH = 180, farW = 480, midW = 480;
+    /* The sky is drawn once at x:0, not tiled, so it is painted at the
+       widest view any screen can ask for rather than at 16:9 — on a
+       sideways phone a 320-wide sky would end before the screen does. */
+    var VW = VIEW_MAX_W, VH = 180, farW = 480, midW = 480;
     var rnd = seeded("bg" + biome);
 
     var sky = spriteCanvas(VW, VH), far = spriteCanvas(farW, VH), mid = spriteCanvas(midW, VH);
@@ -2513,6 +2532,10 @@ window.SuperOuissy = (function () {
     }
     if (!fatal && p.invuln > 0) return;
 
+    /* where she actually fell, caught before the death animation throws
+       her up and off — by the time afterDeath() runs, p.x/p.y are wherever
+       the body landed, which is not the same place at all */
+    G.deathAt = { x: p.x, y: p.y };
     p.dead = 0.001; p.vy = -230; p.vx = 0; p.pose = "hurt";
     G.deaths++;
     burst(p.x + p.w / 2, p.y + p.h / 2, 20, ["#ff5f95", "#ffffff"], 100, { max: .8 });
@@ -2558,8 +2581,13 @@ window.SuperOuissy = (function () {
     if (G.lives <= 0) {
       /* THE one death that leads somewhere else: the last life, taken by
          the last boss, on Hard. Anything else is an ordinary game over. */
-      if (rescuesOn() && G.lastHurtBy === "boss" && G.level.boss &&
-          G.levelIndex === worldSet().length - 1) {
+      /* It used to require the Queen to have landed the killing blow.
+         But she can just as easily be knocked into the spikes on the last
+         life, and that is still the fight ending — it just gave her a
+         plain GAME OVER instead of the scene. The condition is "she ran
+         out inside the Queen's fight" now, which is the same rule the
+         revive offer reads. */
+      if (rescuesOn() && inQueenFight()) {
         var pp = G.player;
         playCutscene("death", {
           herX: clamp(pp.x - G.cam.x, 26, VIEW.w - 90),
@@ -2569,6 +2597,20 @@ window.SuperOuissy = (function () {
       }
       endRun(false); return;
     }
+
+    /* SHE IS ASKED WHETHER TO BUY HER WAY BACK.
+
+       An ordinary death puts her at the start of the level, which after a
+       long climb — or in the middle of a boss fight — means walking all
+       of it again. So on any death, anywhere in the game, she can spend
+       lives to stand back up exactly where she fell instead, with the
+       level and the boss carrying every hit they have taken.
+
+       It is a choice, never something that happens to her, and it costs
+       more than it gives: five lives on Easy, three on Medium, two on
+       Hard. She has to hold more than the price for the offer to appear,
+       because paying all of it would leave nothing to be revived into. */
+    if (canBossRevive()) { offerBossRevive(); return; }
 
     /* Hard, and she still has a life: he comes and gets her first */
     if (rescuesOn()) {
@@ -2598,6 +2640,138 @@ window.SuperOuissy = (function () {
     }
     G.state = "menu";
     endRun(false);
+  }
+
+  /* --- being pulled back into the fight -------------------------------
+     Every number here is the one he asked for: more than two lives to be
+     offered it at all, two spent to take it, and the fight resumed rather
+     than restarted. One of those two is the life the death itself already
+     took, so this only ever spends one more. */
+  /* She is in the Queen's fight: last world, the Queen awake and still
+     standing. Both the offer and the scene that ends the run read this,
+     so "revived until there is nothing left to spend, and then the scene"
+     is one rule rather than two that can drift apart. */
+  function inQueenFight() {
+    var b = G.level && G.level.boss;
+    return !!b && b.hp > 0 && !b.dead && b.awake &&
+           G.levelIndex === worldSet().length - 1;
+  }
+
+  /* WHAT BEING PUT BACK COSTS, PER DIFFICULTY.
+
+     This is a rule of the whole game, not of the Queen's room: any death,
+     any world. She is asked whether to spend it, and she can only be
+     asked if spending it still leaves her something to be revived into —
+     so it takes more lives than the price, never exactly the price. */
+  var REVIVE_COST = { easy: 5, medium: 3, hard: 2 };
+  function reviveCost() { return REVIVE_COST[G.diff] || 3; }
+
+  function canBossRevive() {
+    /* G.lives has already had the death taken off it, so `>= cost` here
+       means she had more than the cost when she died. */
+    return G.lives >= reviveCost();
+  }
+
+  /* Is this a place she can be stood up in — inside the level, not in a
+     wall, not on a hazard, and with something under her to land on? */
+  function reviveSpotOK(x, y, w, h) {
+    if (x < 2 || y < -8) return false;
+    if (boxHitsHazard(x, y, w, h)) return false;
+    var tx, ty;
+    for (tx = Math.floor(x / T); tx <= Math.floor((x + w - 1) / T); tx++)
+      for (ty = Math.floor(y / T); ty <= Math.floor((y + h - 1) / T); ty++)
+        if (solidAt(tx, ty)) return false;
+    /* and floor within a short drop, or she is being revived over the pit
+       that just killed her */
+    var footTx0 = Math.floor(x / T), footTx1 = Math.floor((x + w - 1) / T);
+    for (var d = 0; d <= 5; d++) {
+      var fy = Math.floor((y + h) / T) + d;
+      for (tx = footTx0; tx <= footTx1; tx++) if (solidAt(tx, fy)) return true;
+    }
+    return false;
+  }
+
+  /* where she fell, if that will hold her; otherwise either side of the
+     Queen; otherwise the start, which always works */
+  function reviveSpot() {
+    var b = G.level.boss, p = G.player, w = p.w, h = p.h, i;
+    var cands = [];
+    if (G.deathAt) cands.push({ x: G.deathAt.x, y: G.deathAt.y });
+    if (b) {
+      cands.push({ x: b.x - 52, y: b.y });
+      cands.push({ x: b.x + b.w + 18, y: b.y });
+      cands.push({ x: b.x - 52, y: b.y - 16 });
+      cands.push({ x: b.x + b.w + 18, y: b.y - 16 });
+    }
+    for (i = 0; i < cands.length; i++)
+      if (reviveSpotOK(cands[i].x, cands[i].y, w, h)) return cands[i];
+    return { x: G.level.start.x + 2, y: G.level.start.y - 2 };
+  }
+
+  function offerBossRevive() {
+    G.state = "revive";
+    bgmDuck(true);
+    if (window.__soReleaseAll) window.__soReleaseAll();
+    var left = G.lives, after = G.lives - (reviveCost() - 1);
+    /* HE ONLY EXISTS ON HARD. The rescue is the Hard story and nowhere
+       else — putting "take his hand" in front of her on Easy names a
+       character that difficulty has never introduced. Easy and Medium get
+       the same mechanic in plain words. */
+    var his = rescuesOn();
+    overlay(
+      '<div class="so-card so-card-revive">' +
+        '<p class="so-card-kicker">' + (his ? "SHE IS NOT LEFT TO FALL" : "GET BACK UP") + '</p>' +
+        '<h3>' + (his ? "He can put you back" : "Be revived") + '</h3>' +
+        '<p class="so-card-note">' +
+          "Right where you fell, with everything exactly as you left it. " +
+          "Or start over from the beginning." + '</p>' +
+        '<p class="so-revive-cost"><span>LIVES</span><b>' + left + '</b>' +
+          '<i>&rarr;</i><b>' + after + '</b></p>' +
+        '<button class="so-btn so-btn-go" id="so-revive-yes">' +
+          (his ? "TAKE HIS HAND" : "BE REVIVED") + '</button>' +
+        '<button class="so-btn so-btn-quiet" id="so-revive-no">START OVER</button>' +
+      "</div>", "so-ov-card");
+    $("so-revive-yes").addEventListener("click", function () {
+      closeOverlay();
+      G.lives -= (reviveCost() - 1);   /* the death took the first one */
+      G.state = "play";
+      bgmDuck(false);
+      /* and he only comes on Hard, because that is the only difficulty he
+         is part of */
+      if (rescuesOn()) playCutscene("rescue", herePos(), reviveAtSpot);
+      else reviveAtSpot();
+    });
+    $("so-revive-no").addEventListener("click", function () {
+      closeOverlay();
+      G.state = "play";
+      bgmDuck(false);
+      if (rescuesOn()) playCutscene("rescue", herePos(), respawn);
+      else respawn();
+    });
+  }
+
+  function herePos() {
+    var p = G.player;
+    return { herX: clamp(p.x - G.cam.x, 30, VIEW.w - 60),
+             herY: clamp(p.y - G.cam.y, 62, 96) };
+  }
+
+  /* Like respawn(), except it does not put the fight back to the
+     beginning: the Queen keeps her damage and her phase, and the enemies
+     that were already down stay down. */
+  function reviveAtSpot() {
+    var at = reviveSpot(), d = DIFF[G.diff];
+    G.player = mkPlayer(at.x, at.y);
+    /* longer than an ordinary respawn, because she is being stood up
+       inside arm's reach of the thing that just killed her */
+    G.player.invuln = 2.2;
+    G.keys.jumpPressed = false;
+    G.camSnap = true;
+    /* the clock has to come back too, or a death by timeout revives into
+       a timer that is still on zero and kills her again on the next frame */
+    if (d.timeLimit) G.timeLeft = d.timeLimit[G.levelIndex];
+    G.state = "play";
+    popText(G.player.x, G.player.y - 14, "back on your feet", "#ffd9a0");
   }
 
   function respawn() {
@@ -4290,10 +4464,30 @@ window.SuperOuissy = (function () {
     function releaseAll() {
       ["left", "right", "down", "jump"].forEach(releaseKey);
       G.keys.jumpPressed = false;
+      heldBy = {};
+      
       Array.prototype.forEach.call(document.querySelectorAll("[data-so-key]"),
         function (b) { b.classList.remove("held"); });
     }
     window.__soReleaseAll = releaseAll;
+    /* so a test can watch what the pad is actually holding — the jump
+       cancelling the run was invisible from outside without it */
+    window.__soKeys = function () { return G.keys; };
+
+    /* WHICH FINGER IS HOLDING WHICH KEY.
+
+       Without this, jumping cancelled running. She holds RIGHT with one
+       thumb, taps JUMP with the other, and the moment the jump thumb lifts
+       the window-level safety net below fired releaseAll() and cleared
+       every key — including the RIGHT her other thumb was still on. She
+       stopped dead in mid-air, every time.
+
+       The safety net is still needed (see the four ways a button gets
+       stuck, above), it just has to be told WHICH press ended. A pointerup
+       now releases only the key that pointer was holding; releaseAll stays
+       for the cases where every finger really is gone — blur, tab change,
+       pause, leaving the screen. */
+    var heldBy = {};      /* pointerId -> key */
 
     Array.prototype.forEach.call(document.querySelectorAll("[data-so-key]"), function (btn) {
       var k = btn.getAttribute("data-so-key");
@@ -4304,6 +4498,7 @@ window.SuperOuissy = (function () {
         btn.classList.add("held");
         if (k === "jump" && !G.keys.jump && canAct()) G.keys.jumpPressed = true;
         G.keys[k] = true;
+        if (e.pointerId != null) heldBy[e.pointerId] = k;
         /* capture so a finger that slides off the button still counts as
            held, which is how a real d-pad behaves */
         try { btn.setPointerCapture(e.pointerId); } catch (er) {}
@@ -4311,6 +4506,7 @@ window.SuperOuissy = (function () {
 
       var release = function (e) {
         if (e) e.preventDefault();
+        if (e && e.pointerId != null) delete heldBy[e.pointerId];
         releaseKey(k);
         /* drop focus, or the button stays "pressed" to the browser and can
            be re-fired by a keypress or a synthetic click */
@@ -4329,9 +4525,20 @@ window.SuperOuissy = (function () {
       btn.setAttribute("tabindex", "-1");
     });
 
-    /* the safety net: whatever the press landed on, the release clears it */
-    window.addEventListener("pointerup", releaseAll);
-    window.addEventListener("pointercancel", releaseAll);
+    /* The safety net, narrowed to one finger. If the button never heard its
+       own release — it was re-rendered, or the finger slid off and capture
+       did not hold — the window still hears it, and lets go of exactly the
+       key that pointer was on. A pointer we never saw go down releases
+       nothing, which is the whole point: another thumb may still be down. */
+    function releasePointer(e) {
+      var k = e && e.pointerId != null ? heldBy[e.pointerId] : null;
+      if (k == null) return;
+      delete heldBy[e.pointerId];
+      releaseKey(k);
+    }
+    window.addEventListener("pointerup", releasePointer);
+    window.addEventListener("pointercancel", releasePointer);
+    /* losing the window means losing every finger, so that one is still all */
     window.addEventListener("blur", releaseAll);
 
     var pb = $("so-pause-btn");
@@ -4444,7 +4651,7 @@ window.SuperOuissy = (function () {
     G = {
       diff: "medium", state: "menu", level: null, levelIndex: 0,
       lives: 3, score: 0, hearts: 0, deaths: 0, elapsed: 0,
-      meter: 0, meterFlash: 0, lastHurtBy: null,
+      meter: 0, meterFlash: 0, lastHurtBy: null, deathAt: null,
       levelStartT: 0, levelStartHearts: 0, levelStartDeaths: 0,
       timeLeft: 0, warned: false, poleBonus: 0, levelStats: [],
       player: mkPlayer(0, 0), parts: [], floats: [], bumps: [],
@@ -4586,7 +4793,8 @@ window.SuperOuissy = (function () {
     if (patch) for (var k in patch) G.player[k] = patch[k];
     var p = G.player;
     return { x: p.x, y: p.y, vy: p.vy, big: p.big, star: p.star, wing: p.wing,
-             jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead };
+             jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead,
+             invuln: p.invuln };
   };
   window.__soSetTime = function (t) { G.timeLeft = t; };
   window.__soBossSet = function (patch) { var b = G.level.boss; if (b) { for (var k in patch) b[k] = patch[k]; b.phase = bossPhase(b); } };
@@ -4603,6 +4811,11 @@ window.SuperOuissy = (function () {
   window.__soCam = function () { return { x: Math.round(G.cam.x), y: Math.round(G.cam.y) }; };
   window.__soDiffFlag = function (k) { return DIFF[G.diff][k]; };
   window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
+  /* Kill her outright, whatever the difficulty. Dropping her down a pit
+     only works where pits are lethal — Easy has `pitSafety` and catches
+     her — so a harness testing a rule that spans all three needs a door
+     that does not care which one it is on. */
+  window.__soKill = function () { G.lastHurtBy = "boss"; hurtPlayer(true); };
   window.__soKillBoss = function () {
     if (G.level.boss) { G.level.boss.hp = 0; G.level.boss.dead = 0.001; G.level.goal.open = true; }
   };
@@ -4653,6 +4866,11 @@ window.SuperOuissy = (function () {
   window.G_keys = function () { return G.keys; };
   window.OUISSY_FRAMES = function (pose, size) { return OUISSY[pose][size]; };
   window.G_setLives = function (n) { G.lives = n; };
+  /* G.diff is only ever set by picking a card on the title screen, so a
+     harness that calls __soGoLevel directly was quietly always on Medium
+     — and every Hard-only rule it thought it was testing was switched
+     off. Set it before starting the level. */
+  window.G_setDiff = function (d) { if (DIFF[d]) { G.diff = d; G.lives = DIFF[d].lives; } };
   /* end her the way the boss would, without having to lose the fight */
   window.__soDieToBoss = function () {
     G.lives = 0;

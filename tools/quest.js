@@ -13,11 +13,15 @@ const { chromium } = require('playwright-core');
 const out = [];
 const ok = (n, c, x) => out.push((c ? 'PASS  ' : 'FAIL  ') + n + (x ? '   ' + x : ''));
 
+/* A mechanic screen is played, not clicked: `#play` in a route means
+   "complete whatever is armed here". The routes are shorter than they
+   were by exactly the buttons that used to walk past the stones, the
+   bridge and the bear. */
 const ROUTES = {
-  'left-blue':  ['BEGIN','#card0','THE WAY THERE','BLUE','KEEP UP','TRY THE OTHER WAY','HOLD VERY STILL','ON UP','GO ON','OVER THE GATE','already?','Mhm!','open it','lean in','YES!'],
-  'left-red':   ['BEGIN','#card1','THE WAY THERE','RED','ALONG THE BANK','ONE AT A TIME','DOWNSTREAM','WHERE IT COMES OUT','GO ON','OVER THE GATE','already?','Mhm!','open it','lean in','YES!'],
-  'right-blue': ['BEGIN','#card0','THE WAY BACK','GO ON','BLUE','KEEP CLIMBING','OVER THE TOP','FIRST SECTION, SLOWLY','STEADY. KEEP GOING','DOWN THE FAR SIDE','HOME','KEEP GOING','inside?','open it','lean in','YES!'],
-  'right-red':  ['BEGIN','#card1','THE WAY BACK','GO ON','RED','DOWN THE ROW','WAIT FOR IT TO MOVE','ON THROUGH','ON TO THE PATH','HOME','KEEP GOING','inside?','open it','lean in','YES!'],
+  'left-blue':  ['BEGIN','#card0','THE WAY THERE','BLUE','KEEP UP','TRY THE OTHER WAY','HOLD VERY STILL','ON UP','WAIT IT OUT','OUT INTO IT','GO ON','SIT ON IT A WHILE','OVER THE GATE','already?','Mhm!','open it','lean in','YES!','take it'],
+  'left-red':   ['BEGIN','#card1','THE WAY THERE','RED','ALONG THE BANK','#play','DOWNSTREAM','WHERE IT COMES OUT','ONE MORE EACH','GO ON','SIT ON IT A WHILE','OVER THE GATE','already?','Mhm!','open it','lean in','YES!','take it'],
+  'right-blue': ['BEGIN','#card0','THE WAY BACK','GO ON','BLUE','KEEP CLIMBING','OVER THE TOP','AND ON, BEFORE WE FREEZE','#play','#play','#play','HOME','KEEP WALKING','KEEP GOING','inside?','open it','read them together','YES!','take it'],
+  'right-red':  ['BEGIN','#card1','THE WAY BACK','GO ON','RED','DOWN THE ROW','#play','ON THROUGH','ON TO THE PATH','DOWN TO THE LANTERNS','HOME','KEEP WALKING','KEEP GOING','inside?','open it','read them together','YES!','take it'],
 };
 
 (async () => {
@@ -34,7 +38,24 @@ const ROUTES = {
 
   /* ---- the graph, walked without touching the DOM ---- */
   const g = await page.evaluate(() => {
-    const exits = n => (n.choices || []).concat(n.cards || []).map(c => c.to);
+    /* `__ask` is a sentinel, like `__exit`: the nudge and really-sure
+       screens are shared between the two paths and send her back to
+       whichever closing question she is standing in. It is resolved to
+       both real ask nodes here so the graph is still checked properly
+       rather than excused. */
+    /* Sentinels, resolved to the real nodes they reach rather than
+       excused: `__ask` sends her back to whichever closing question she
+       is standing in, and `__again` drops her back at the fork to walk
+       another way up the valley. Only `__exit` leaves the chapter. */
+    const SENTINEL = { __ask: ['ask', 'back_ask'], __again: ['ways'], __yay: ['yay', 'back_yay'] };
+    /* A mechanic screen has no buttons any more — being able to click
+       past one made it decoration — so its way onward is `outcomes`,
+       the nodes its mechanic can actually reach. Following that keeps
+       the graph fully checked instead of quietly exempting three
+       nodes that would otherwise look like dead ends. */
+    const exits = n => (n.choices || []).concat(n.cards || []).map(c => c.to)
+      .concat(n.outcomes || [])
+      .reduce((out, t) => out.concat(SENTINEL[t] || [t]), []);
     const seen = new Set(), stack = ['title'], dead = [], scenes = {};
     while (stack.length) {
       const id = stack.pop();
@@ -78,7 +99,49 @@ const ROUTES = {
     let broke = null;
     for (const want of steps) {
       seen.push(await page.evaluate(() => hvNode));
+      /* The choices are held back until the two of them have finished
+         talking, so a player taps the picture to hurry the conversation
+         along before the buttons are there to press. This does the same
+         — which also means a scene whose dialogue never ended would be
+         caught here rather than silently waited out. */
+      /* The two of them cannot be hurried any more — the skip is gone on
+         purpose — so a harness runs their clock forward instead of
+         tapping through them. This still fails if the gating breaks:
+         the choices only appear once hvVoicesDone is true. */
+      await page.evaluate(() => {
+        const n = HV[hvNode];
+        if (n) { hvVoiceI = hvVoicesOf(n).length; hvRevealChoices(n); }
+      });
       const hit = await page.evaluate(w => {
+        if (w === '#play') {
+          /* Drive the armed mechanic to completion on a synthetic clock —
+             requestAnimationFrame is ~3fps in here, far too coarse to hit
+             a timing window through the real loop. This is the same
+             hvPlayPress/hvPlayStep/hvHold the real input calls. */
+          if (!hvPlay) return 'nothing to play at ' + hvNode;
+          const started = hvNode;
+          const steady = (seed) => {
+            for (let t = 0; t < 40; t += 0.017)
+              if (Math.abs(Math.sin(t * 3.1 + seed * 1.7)) < 0.30) return t;
+            return 0;
+          };
+          let t = 0, st = 0, guard = 0;
+          while (hvPlay && hvNode === started && guard++ < 1200) {
+            const p = hvPlay;
+            if (p.kind === 'orchard') {
+              st += 0.05;
+              hvHold = hvBearLook(st) < 0.02;      // creep only while its head is down
+              hvPlayStep(t, st, 0.05); t += 0.05;
+            } else {
+              t = steady(p.kind === 'stones' ? p.i + 1 : p.steps) + guard * 1e-6;
+              hvPlayPress(t);
+              for (let k = 0; k < 40 && hvPlay && hvPlay.hop < 1; k++) hvPlayStep(t, t, 0.05);
+              hvPlayStep(t + 1.2, t + 1.2, 0.05);
+            }
+          }
+          hvHold = false;
+          return hvNode !== started ? true : 'mechanic at ' + started + ' never finished';
+        }
         if (w.startsWith('#card')) {
           const el = document.querySelectorAll('#hv-cards .hv-card')[+w.slice(5)];
           if (!el) return 'no cards on screen'; el.click(); return true;

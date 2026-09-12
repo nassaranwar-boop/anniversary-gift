@@ -143,9 +143,24 @@
     var MAX_TAN_V = Math.tan((46 * Math.PI / 180) / 2);
     var fitFov = 30, fitDist = 1;
 
+    /* AND A FLOOR UNDER THE VERTICAL COVERAGE.
+
+       Matching horizontal coverage is right up to the point where the frame
+       is wider than the shot was composed for. A phone held sideways is
+       2.17:1 against the 16:9 this was framed at, so matching the width left
+       less height than the reference had -- and the book, which is a wide
+       flat object seen from above, had its near and far edges cut off. Half
+       a book.
+
+       So the vertical coverage never goes below what a 16:9 frame gets. On
+       anything narrower than 16:9 -- every laptop, every iPad, a phone held
+       upright -- needTanV is already larger than this floor and nothing
+       changes at all. */
+    var MIN_TAN_V = FIT_TAN_H / (16 / 9);
+
     function updateFraming() {
       var aspect = viewW() / viewH();
-      var needTanV = FIT_TAN_H / Math.max(0.01, aspect);
+      var needTanV = Math.max(FIT_TAN_H / Math.max(0.01, aspect), MIN_TAN_V);
       var tanV = Math.min(needTanV, MAX_TAN_V);
       fitFov = (2 * Math.atan(tanV)) * 180 / Math.PI;
       fitDist = needTanV / tanV;          // > 1 means "pull the camera back"

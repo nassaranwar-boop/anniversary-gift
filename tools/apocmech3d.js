@@ -21,10 +21,14 @@ function ok(name, cond, extra) {
   p.on('console', m => { if (m.type()==='error' && !/ERR_FAILED/.test(m.text())) errs.push('CONSOLE: '+m.text()); });
   await p.route('**', r => (r.request().url().startsWith('http://localhost') ? r.continue() : r.abort()));
   await p.goto('http://localhost:8899/index.html', { waitUntil: 'domcontentloaded' });
-  /* The chapters are fetched on the idle callback now, not by a script
-     tag, so the global is not there the instant the document is. A tool
-     that drives a chapter directly has to wait for the file the same
-     way the hub card does. */
+  /* The chapters are fetched on the idle callback now, not by a script tag,
+     so the global is not there the instant the document is. Both sides of
+     this merge had fixed it: one waited for window.Apocalypse to turn up,
+     the other asked for it. Asking is the deterministic half — loadChapter
+     is the same door the hub card uses and it triggers the fetch rather
+     than waiting on a prefetch — and the wait is kept as the belt to its
+     braces. */
+  await p.evaluate(async () => { await window.loadChapter('apoc'); });
   await p.waitForFunction(() => !!(window.Apocalypse), { timeout: 30000 });
   await p.evaluate(() => {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
