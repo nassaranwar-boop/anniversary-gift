@@ -2264,7 +2264,25 @@ img{-webkit-user-drag:none; user-select:none;}
   animation:sbPinPop .5s var(--ease-pop) both;
 }
 @keyframes sbPinPop{from{opacity:0; transform:translate(-50%,-70%) scale(.5);} to{opacity:1;}}
-.sb-map-pin img{width:100%; height:100%; object-fit:cover; display:block; border-radius:2px;}
+/* THE PHOTOGRAPH SITS INSIDE THE WHITE, NOT OVER IT.
+
+   The print was sized at 100% of the pin and left to find its own place
+   in it, so anything that moved the box -- the pop-in transform, a
+   zoom, a min-height winning over the aspect ratio -- slid the picture
+   off its mount and over the frame on two sides. It is placed against
+   the pin's own edges now, two pixels in on every side, which is the
+   white border, and the pin clips whatever is left. */
+.sb-map-pin{ box-sizing:border-box; overflow:hidden; }
+.sb-map-pin img{
+  /* left/top plus an explicit size, NOT `inset` with auto: an <img> is a
+     replaced element, and auto sizing on one means its intrinsic size --
+     it ignores the other two insets entirely and lays out at whatever
+     the file happens to be. Against a 900px photograph that is 434px of
+     overflow, which is the fault this was meant to fix. */
+  position:absolute; left:2px; top:2px;
+  width:calc(100% - 4px); height:calc(100% - 4px);
+  object-fit:cover; display:block; border-radius:2px;
+}
 .sb-map-pin-empty{
   display:flex; align-items:center; justify-content:center; width:100%; height:100%; border-radius:2px;
   font-family:'Playfair Display',serif; font-size:9px; color:rgba(110,96,72,.6);
@@ -2651,8 +2669,24 @@ img{-webkit-user-drag:none; user-select:none;}
     radial-gradient(125% 125% at 30% 16%, rgba(255,198,214,.16), transparent 60%),
     linear-gradient(162deg,#4e142c 0%,#360d1d 54%,#2a0916 100%);
 }
-.sb-extras-btn.on .sb-flower{opacity:0; transform:rotate(70deg) scale(.6); animation:none;}
-.sb-extras-btn.on .sb-extras-x{opacity:1; transform:rotate(45deg) scale(1);}
+/* THE FLOWER DOES NOT TURN INTO A CROSS.
+
+   Open, the button swapped the flower for two crossed bars. A cross is
+   the right sign for a dialog you want gone; this is a drawer of small
+   kept things, and the flower IS the drawer -- trading it for an X made
+   the one warm control on the screen read like an error message. So the
+   flower stays, and says it is open the way a flower would: it turns a
+   little and sits back, brighter, on a darker ground. The cross is not
+   drawn at all any more. */
+.sb-extras-x{display:none;}
+.sb-extras-btn.on .sb-flower{
+  opacity:1; transform:rotate(135deg) scale(.94); animation:none;
+  filter:drop-shadow(0 2px 5px rgba(40,8,22,.6)) brightness(1.08);
+}
+/* and a quarter-turn under the finger itself, on the way in and the way
+   out, so the press has a sound of its own */
+.sb-extras-btn:active .sb-flower{ transform:rotate(-18deg) scale(.88); transition-duration:.12s; }
+.sb-extras-btn.on:active .sb-flower{ transform:rotate(153deg) scale(.84); }
 
 .sb-drawer{
   position:absolute; left:0; top:0; bottom:0; z-index:20;
