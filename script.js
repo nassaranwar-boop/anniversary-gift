@@ -5853,32 +5853,29 @@ var hvSceneCache = {};
    over, the light on the water goes out. The step is part of the cache
    key, so each one is painted once and then reused, exactly like the
    single version was. */
-/* THE WALK IS ONE DAY, AND IT HAS TO READ LIKE ONE.
+/* THE WALK IS ONE DAY, AND THE DAY MOVES WHILE SHE WALKS.
 
-   Every scene was painted at whatever hour suited it on its own. The
-   meadow is a golden-hour picture -- a low sun, backlit trees, amber
-   grass -- and it is the third thing she sees, right after a bright
-   spring morning under the cherry trees, and then the wood after it is
-   broad daylight again. Evening, morning, evening, morning. Each frame
-   is fine and the sequence is nonsense, which is worse than any one of
-   them being wrong, because it tells her the places are not a place.
+   First attempt at this gave every node a fixed hour, worked out once
+   from how deep it sits in the graph. That is wrong, and he caught it:
+   `ways` is not a place she passes once. It is the fork at the bottom of
+   the valley, and she comes back to it -- "Back at the bottom of the
+   valley, then, with the whole of it still to walk" is its own line for
+   exactly that. A fixed hour showed her the same morning after she had
+   spent a whole day walking, and it put a golden meadow in front of the
+   bear and the rain, which come later in the day than it does.
 
-   So the chapter gets a clock. Every node knows how far along the walk
-   it is -- measured once, by walking the links out from the start -- and
-   the daylight scenes are lit from that instead of from their own taste.
-   The way there is a day: it opens in the morning at the bottom of the
-   valley, warms as she climbs, and arrives at the sunset that was always
-   waiting at the top. The way back is a year later and after dark, so it
-   is night from its first frame and stays there. */
-var HV_HOUR = null;
+   No table of hours can be right about a graph you can loop in. The
+   clock has to be a clock: it starts at first light when the walk
+   starts, and it moves on every step she takes, and it never goes
+   backwards, because that is what time does. Walk the valley twice and
+   the second time is later in the day than the first -- which is true,
+   and which is the whole point.
 
-/* The three fields that are actually links, and only those. Guessing at
-   this was the first thing I got wrong here: `choices` carries 48 of
-   them and `cards` the fork at the gate, which I had missed, so the walk
-   stopped dead at the second node and every scene after it fell back to
-   the middle of the day. And two fields look like links and are not --
-   `scene: "sunset"` and `ask: "back"` both happen to name a node, and
-   following either of them wires the end of the story to the beginning. */
+   The way back is a different day and it is after dark from the start,
+   so nodes on that side are pinned to night and the clock does not
+   apply to them. */
+var HV_NIGHT = null;
+
 function hvLinksOf(N) {
   var out = [];
   if (!N) return out;
@@ -5887,62 +5884,59 @@ function hvLinksOf(N) {
   });
   /* `outcomes` is a plain array of node names -- the two ways a mini-game
      can go. Scanning only for objects with a `to` missed it, which left
-     eight nodes with no depth at all: the far half of the stream, the
-     windfalls in the orchard and both endings. They fell back to the
-     middle of the day, which is precisely the "random scene" look. */
+     eight nodes unreachable and stuck at midday. */
   (N.outcomes || []).forEach(function (t) { if (typeof t === "string") out.push(t); });
   if (typeof N.playTo === "string") out.push(N.playTo);
   return out;
 }
 
-/* THE TWO WALKS ARE NOT THE SAME DAY.
-
-   The way there is a spring morning that climbs into a sunset. The way
-   back is a year later and starts after dark -- `back_dusk` says so in
-   its name. They share their first three nodes, so one global clock
-   cannot serve both: the meadow at the gate has to be morning for one
-   and evening for the other.
-
-   So the depth is measured separately down each side, and only the
-   daylight side is given an hour that moves. The night side is night
-   from its first frame, which is what it is meant to be. */
-function hvBuildHours() {
-  HV_HOUR = {};
+/* Which side of the fork a node lives on: anything you cannot reach
+   without stepping through back_dusk belongs to the night. */
+function hvBuildNight() {
+  HV_NIGHT = {};
   var start = HV.title ? "title" : Object.keys(HV)[0];
-
-  function depthsFrom(root, blocked) {
-    var d = {}, q = [root];
-    d[root] = 0;
-    while (q.length) {
-      var id = q.shift();
-      hvLinksOf(HV[id]).forEach(function (t) {
-        if (!HV[t] || d[t] !== undefined || t === blocked) return;
-        d[t] = d[id] + 1;
-        q.push(t);
-      });
-    }
-    return d;
+  var seen = {}, q = [start];
+  seen[start] = 1;
+  while (q.length) {
+    var id = q.shift();
+    hvLinksOf(HV[id]).forEach(function (t) {
+      if (!HV[t] || seen[t] || t === "back_dusk") return;
+      seen[t] = 1; q.push(t);
+    });
   }
-
-  /* everything reachable without ever stepping onto the night path */
-  var day = depthsFrom(start, "back_dusk");
-  var far = 1;
-  Object.keys(day).forEach(function (k) { if (day[k] > far) far = day[k]; });
-
-  Object.keys(HV).forEach(function (k) {
-    HV_HOUR[k] = day[k] === undefined
-      ? 1              /* on the night side, or shared with it: late */
-      : Math.min(1, day[k] / far);
-  });
-  hvHourHoles = Object.keys(HV).filter(function (k) { return day[k] === undefined; });
+  Object.keys(HV).forEach(function (k) { HV_NIGHT[k] = !seen[k]; });
 }
-var hvHourHoles = [];
+
+var hvClock = 0;                 /* 0 first light, 1 last light */
+var HV_DAY_STEPS = 15;           /* about how many beats a walk up the valley is */
+var hvClockAt = null;            /* the node the clock last moved for */
+
+function hvClockReset() { hvClock = 0; hvClockAt = null; }
 
 function hvHourOf(n) {
-  if (!HV_HOUR) hvBuildHours();
-  var id = null;
-  for (var k in HV) { if (HV[k] === n) { id = k; break; } }
-  return id === null ? 0.5 : HV_HOUR[id];
+  if (!HV_NIGHT) hvBuildNight();
+  /* the node being painted is always the current one -- hvRender hands
+     hvPaintBase exactly HV[hvNode] -- so there is no need to hunt for
+     its name by comparing objects */
+  var id = hvNode;
+  if (HV_NIGHT[id]) return 1;
+  if (id !== hvClockAt) {
+    hvClockAt = id;
+    /* THE FORK IS WHERE A WALK BEGINS, SO IT IS WHERE THE DAY BEGINS.
+
+       `ways` is the bottom of the valley and its own line says so --
+       "with the whole of it still to walk". Letting the clock run
+       straight through it meant a second time round started in the
+       evening and stuck there, so a third walk would be dusk from the
+       first frame forever. Each way up the valley is one day: first
+       light at the fork, last light at the top. Walk it again and it is
+       another day, which is exactly how the chapter talks about
+       itself. */
+    if (id === "title") hvClock = 0;
+    else if (id === "ways") hvClock = 1 / HV_DAY_STEPS;
+    else hvClock = Math.min(1, hvClock + 1 / HV_DAY_STEPS);
+  }
+  return hvClock;
 }
 
 /* THE LIGHT OF THE HOUR, LAID OVER THE SCENES THAT DO NOT PAINT IT.
@@ -6014,9 +6008,12 @@ function hvPaintBase(n) {
      key so the other nodes in this scene do not inherit a bear. */
   var extra = n.bear === "shadow" ? { lurker: hvPaintLurker } : null;
   var step = hvStepOf(n, scene);
-  /* three hours is enough to tell morning from afternoon and cheap
-     enough to cache: a scene is painted at most a dozen times all told */
-  var hour = Math.round(hvHourOf(n) * 2) / 2;
+  /* Six steps across the day. Three was enough while the hour was a
+     fixed property of a node; with a clock that moves every beat it
+     would show the day changing in three jumps. Each scene is only ever
+     painted at the few hours it is actually walked through, so this
+     stays a handful of buffers, not thirty. */
+  var hour = Math.round(hvHourOf(n) * 5) / 5;
   var key = scene + (extra ? ":lurker" : "") + ":" + step + ":" + hour;
   if (!hvSceneCache[key]) {
     var made = spriteCanvas(PXW, PXH);
@@ -7217,6 +7214,7 @@ function startQuest() {
   }).catch(function () {});
 
   hvNode = "title";
+  hvClockReset();                 /* a new walk starts at first light */
   hvHistory = [];
   hvBursts = [];
   hvPoke = 0;
