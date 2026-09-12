@@ -528,6 +528,64 @@ const NS = {
     5: "Keep all four of them wound, and when one gets to the door first — let it.",
     6: "Get to six. Then decide what you are taking out of here.",
   },
+
+  /* =====================================================================
+     WHAT SHE IS DOING RIGHT NOW.
+
+     The complaint this exists to answer, in his words: she plays
+     without knowing what to do. And she did -- the night's purpose was
+     printed once on a card before midnight and then the screen showed
+     her a power meter and a clock for five and a half minutes. A goal
+     you are told once and never reminded of is a goal you had; a line
+     on the desk that CHANGES as the night moves is a night that is
+     going somewhere.
+
+     So there is one line, small, under the clock, and it is different
+     at midnight, at three, and in the last hour. It is not an
+     objective marker. It is written the way he writes -- because the
+     shop is the one telling her, and a thing that says SURVIVE: 40%
+     belongs to a different game than this one.
+
+     `h` is the hour it appears at. The last one that has come round is
+     the one showing. --------------------------------------------- */
+  tonight: {
+    1: [
+      { h: 0, t: "Learn where things are. Nothing in here wants to hurt you yet." },
+      { h: 2, t: "The four in the back are not stock. Look at them on the cameras." },
+      { h: 3, t: "Something of his is taped where his hand would go." },
+      { h: 5, t: "One hour. Whatever you can hear out there, it stops at six." },
+    ],
+    2: [
+      { h: 0, t: "Watch the four of them move. He built them to, and it is not a fault." },
+      { h: 2, t: "A shut door holds anything. It costs meter. It costs less than the other thing." },
+      { h: 3, t: "He chalked four names on the workshop bench. Find out what the fourth word is." },
+      { h: 5, t: "One hour. Two down after this." },
+    ],
+    3: [
+      { h: 0, t: "There is a book under the till. He has spent two nights asking you not to." },
+      { h: 2, t: "If a parcel comes down the hall, it is not a delivery. Shut the door." },
+      { h: 3, t: "Four hundred and eleven addresses. Eleven of them ticked, in a pen he cannot hold." },
+      { h: 5, t: "One hour, and then the worst of it is behind you." },
+    ],
+    4: [
+      { h: 0, t: "He is going to tell you what they were for. Stay at the desk when he does." },
+      { h: 2, t: "Behind the loose board in the office. Fifteen years of his handwriting." },
+      { h: 3, t: "Read it, and then decide whether you keep it. Nobody is going to ask you twice." },
+      { h: 5, t: "One hour. He has one night left to explain himself." },
+    ],
+    5: [
+      { h: 0, t: "Wind all four of them tonight. A key in the back, about a second each." },
+      { h: 2, t: "And if one of his gets to a door before you do — let it. Do not shut it." },
+      { h: 3, t: "Pinned inside the workshop door, on graph paper. It is dated the week he was told." },
+      { h: 5, t: "One hour. Keep them wound and let them work." },
+    ],
+    6: [
+      { h: 0, t: "Last one. Get to six, and then decide what you are taking out of here." },
+      { h: 2, t: "Under the dust sheet at the back of the stage there is a fifth one, unfinished." },
+      { h: 3, t: "Folded under the comb of the music box. The last thing he wrote." },
+      { h: 5, t: "One hour. The shutters go up on their own, the way they always have." },
+    ],
+  },
   /* =====================================================
      THE TAPES — the story, told while she is playing it
 
@@ -9764,6 +9822,49 @@ function winNight() {
   bumpUI();
 }
 
+/* WHAT SHE IS DOING RIGHT NOW, ON THE DESK.
+
+   One line under the clock that answers "what am I here for" without
+   her having to remember a card she read before midnight. It changes
+   three or four times a night, which is the point: a goal you are told
+   once is a goal you had, and a line that moves is a night that is
+   going somewhere.
+
+   It fades rather than cuts, because it sits in the corner of her eye
+   the whole shift and a corner of the eye notices a hard change as a
+   glitch. And it is never shown during the tutorial or a cut scene --
+   those are already telling her what to do, and two voices saying it
+   at once is neither. */
+function taskFor(night, hour) {
+  const list = (NS.tonight && NS.tonight[night]) || null;
+  if (!list) return null;
+  let best = null;
+  for (const it of list) if (hour >= it.h) best = it;
+  return best && best.t;
+}
+
+function taskShow() {
+  const el = EL["ns-task"];
+  if (!el) return;
+  const want = (G.phase === "play" && !tutorOn() && !CINE.on)
+    ? taskFor(G.night, G.hour) : null;
+  if (want === G.task) return;
+  G.task = want;
+  if (!want) { el.hidden = true; el.textContent = ""; return; }
+  /* out, swap, back in -- so a change reads as the shop turning a page
+     rather than as the text being replaced */
+  if (el.textContent) {
+    el.classList.add("fading");
+    setTimeout(() => {
+      if (G.task !== want) return;
+      el.textContent = want; el.hidden = false;
+      el.classList.remove("fading");
+    }, 480);
+  } else {
+    el.textContent = want; el.hidden = false; el.classList.remove("fading");
+  }
+}
+
 /* --- the clock ------------------------------------------------------ */
 function stepClock(dt) {
   G.hourT += dt;
@@ -9773,6 +9874,7 @@ function stepClock(dt) {
     if (G.hour >= 6) { winNight(); return; }
     SFX.beep(false);
     say(fmt(NS.sys.hour, ["ZERO ONE", "ZERO TWO", "ZERO THREE", "ZERO FOUR", "ZERO FIVE"][G.hour - 1] || ""));
+    taskShow();
     bumpUI();
   }
 }
@@ -10660,7 +10762,7 @@ function buildUI() {
   ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
    "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
    "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
-   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine", "ns-key",
+   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine", "ns-key", "ns-task",
    "ns-tape"].forEach((id) => {
     EL[id] = el(id);
   });
@@ -11407,6 +11509,8 @@ function beginNight(n, opts) {
   G.shiftT = nextIn(TUNE.shift.firstAt);
   G.figmentT = nextIn(TUNE.figment.firstAt);
   G.caption = ""; G.captionT = 0;
+  G.task = null;
+  if (EL["ns-task"]) { EL["ns-task"].hidden = true; EL["ns-task"].textContent = ""; }
   sayQueue = []; sayUntil = 0;
   G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0,
               alarms: 0, moves: 0, figments: 0, finds: 0, winds: 0, slack: 0, returns: 0,
@@ -11587,6 +11691,7 @@ function uiTick(dt) {
   /* the annunciator's caption. A vocoder cannot be understood and is not
      meant to be — the words are here. */
   if (G.captionT > 0) G.captionT -= dt;
+  taskShow();
   if (EL["ns-say"]) {
     /* the system only talks during a shift. On any card — pause, over,
        dawn, the gallery — the strip is gone, not fading. */
@@ -13397,6 +13502,20 @@ const testHooks = {
     tick();
   }),
   bedMode: (m) => musicMode(m),
+  taskFor: (n, h) => taskFor(n, h),
+  taskState: () => ({ phase: G.phase, tutor: tutorOn(), cine: CINE.on,
+                      hour: G.hour, night: G.night, task: G.task,
+                      shown: EL["ns-task"] ? !EL["ns-task"].hidden : null,
+                      hud: EL["ns-hud"] ? !EL["ns-hud"].hidden : null }),
+  taskPoke: () => { taskShow(); return G.task; },
+  /* drop straight into a shift at a given hour, so a check can look at
+     what she actually sees rather than at the title screen */
+  begin: (night, hour) => {
+    G.night = night || 1;
+    beginNight(G.night);
+    if (hour) { G.hour = hour; taskShow(); }
+    return { phase: G.phase, night: G.night, hour: G.hour };
+  },
   /* WHAT THE BALANCE ACTUALLY IS, IN DECIBELS.
 
      Every level in this chapter was set by reading a number and

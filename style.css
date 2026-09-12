@@ -7720,6 +7720,27 @@ img{-webkit-user-drag:none; user-select:none;}
   display:flex; flex-direction:column; gap:.6cqh; align-items:flex-end;
 }
 
+/* WHAT TONIGHT IS FOR.
+
+   Under the clock, quiet enough to ignore and present enough to answer
+   the question. Not a quest marker: no icon, no progress, no colour
+   that says "game". It reads like something written on the desk pad,
+   because the shop is the thing telling her. */
+.ns-task{
+  max-width:min(34ch, 30cqw);
+  margin-top:.4cqh;
+  text-align:right;
+  font-size:max(1.35cqh, 10px);
+  line-height:1.42;
+  letter-spacing:.02em;
+  color:rgba(214,196,164,.62);
+  text-shadow:0 .1cqh .3cqh rgba(0,0,0,.85);
+  transition:opacity .5s ease;
+}
+.ns-task[hidden]{display:none}
+.ns-task.fading{opacity:0}
+@media (max-width:820px){ .ns-task{ max-width:min(28ch, 44cqw); font-size:max(1.25cqh, 9px); } }
+
 .ns-chip{
   display:flex; align-items:baseline; gap:1cqw;
   padding:.7cqh 1.2cqw; border-radius:.5cqw;
