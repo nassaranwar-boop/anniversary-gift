@@ -197,24 +197,24 @@ window.SuperOuissy = (function () {
       lives: 5, enemyMul: 0.72, gravityMul: 0.92, jumpMul: 1.06,
       coyoteMul: 1.7, bufferMul: 1.6, invulnMul: 1.5,
       pitSafety: true, checkpoints: true,
-      timeLimit: 0, timedPlatform: 1.6, bossSpeedMul: 0.78, bossCooldownMul: 1.35, bossExtraShot: 0,
-      bossSkin: "cloud", bossHitsPerPhase: 1, bossOpenMul: 1.4,
+      timeLimit: 0, timedPlatform: 1.6, bossSpeedMul: 0.86, bossCooldownMul: 1.2, bossExtraShot: 0,
+      bossSkin: "cloud", bossPhaseHits: [1, 1, 2], bossOpenMul: 1.28, bossRage: 0,
     },
     medium: {
       label: "Medium", blurb: "3 lives, real pits, the way it is meant to play",
       lives: 3, enemyMul: 1, gravityMul: 1, jumpMul: 1,
       coyoteMul: 1, bufferMul: 1, invulnMul: 1,
       pitSafety: false, checkpoints: true,
-      timeLimit: 0, timedPlatform: 1.1, bossSpeedMul: 1, bossCooldownMul: 1, bossExtraShot: 0,
-      bossSkin: "clock", bossHitsPerPhase: 2, bossOpenMul: 1.15,
+      timeLimit: 0, timedPlatform: 1.1, bossSpeedMul: 1.1, bossCooldownMul: 0.9, bossExtraShot: 0,
+      bossSkin: "clock", bossPhaseHits: [2, 2, 3], bossOpenMul: 1.02, bossRage: 1,
     },
     hard: {
       label: "Hard", blurb: "2 lives, a clock, more of everything sharp",
       lives: 2, enemyMul: 1.35, gravityMul: 1.08, jumpMul: 0.98,
       coyoteMul: 0.5, bufferMul: 0.5, invulnMul: 0.7,
       pitSafety: false, checkpoints: false,
-      timeLimit: [150, 170, 190], timedPlatform: 0.75, bossSpeedMul: 1.3, bossCooldownMul: 0.72, bossExtraShot: 1,
-      bossSkin: "heart", bossHitsPerPhase: 2, bossOpenMul: 1,
+      timeLimit: [150, 170, 190], timedPlatform: 0.75, bossSpeedMul: 1.42, bossCooldownMul: 0.64, bossExtraShot: 1,
+      bossSkin: "heart", bossPhaseHits: [2, 3, 3], bossOpenMul: 0.88, bossRage: 2,
     },
   };
 
@@ -2277,25 +2277,69 @@ window.SuperOuissy = (function () {
   }
 
   function mkBoss(x, y) {
-    var B = TUNE.boss, dd = DIFF[G.diff];
+    var B = TUNE.boss;
     /* how many stomps he takes is a per-set thing: the raincloud on Easy
        goes down in three, the Heartbreaker takes six */
-    var total = (dd.bossHitsPerPhase || B.hitsPerPhase) * B.phases.length;
+    var hits = bossPhaseHits(), total = 0, i;
+    for (i = 0; i < hits.length; i++) total += hits[i];
     return {
       kind: "boss", x: x - 12, y: y - 18, w: 34, h: 30, vx: 0, vy: 0,
       hp: total, hpMax: total,
       phase: 0, mode: "wait", modeT: B.phases[0].wait,
       hurt: 0, anim: 0, awake: false, onGround: true, dead: 0,
-      shots: [], face: -1, hopsLeft: 0, flash: 0,
+      shots: [], face: -1, hopsLeft: 0, flash: 0, swept2: false,
     };
   }
 
   /* Which phase his health puts him in: 0 while the top third is intact,
      then 1, then 2. Written off hp so changing hitsPerPhase just works. */
+  /* HOW LONG EACH PHASE LASTS, per difficulty and per phase.
+
+     It used to be one number for all three, which meant the only way to
+     make a fight longer was to make every phase longer — the first one
+     included, which is the gentlest and the least interesting. Written as
+     a band per phase, the extra hits can be put where the fight is worth
+     having: the last one. */
+  function bossPhaseHits() {
+    var d = DIFF[G.diff], n = TUNE.boss.phases.length;
+    if (d.bossPhaseHits) return d.bossPhaseHits;
+    var per = TUNE.boss.hitsPerPhase, out = [];
+    while (out.length < n) out.push(per);
+    return out;
+  }
+  /* Which band her damage puts him in, counted from the END: the last
+     phase is the one he is in when only that many hits are left. */
   function bossPhase(b) {
-    var per = DIFF[G.diff].bossHitsPerPhase || TUNE.boss.hitsPerPhase;
-    return clamp(TUNE.boss.phases.length - 1 - Math.floor((b.hp - 1) / per),
-                 0, TUNE.boss.phases.length - 1);
+    var hits = bossPhaseHits(), i, j, tail;
+    for (i = hits.length - 1; i > 0; i--) {
+      tail = 0;
+      for (j = i; j < hits.length; j++) tail += hits[j];
+      if (b.hp <= tail) return i;
+    }
+    return 0;
+  }
+
+  /* WHAT HE DOES IN HIS LAST PHASE, and it is the only place he does
+     anything extra at all — a boss should be at his worst when he is
+     nearly beaten, not from the first second.
+
+       0  (Easy)    nothing. He is quicker than he was and that is all.
+       1  (Medium)  one more heart in every attack of the last phase.
+       2  (Hard)    that, and the sweep comes back for her a second time.
+
+     Rage is read off the CURRENT phase, so it arrives with the last band
+     and never applies to the first two. */
+  function bossRage(b) {
+    return b.phase === TUNE.boss.phases.length - 1 ? (DIFF[G.diff].bossRage || 0) : 0;
+  }
+  /* One place decides how many hearts an attack throws and one decides how
+     many may exist at once. They have to agree, or the extra one is
+     spawned and then silently dropped by the cap. */
+  function bossShotsFor(b, sp) {
+    return sp.shots + DIFF[G.diff].bossExtraShot + (bossRage(b) >= 1 ? 1 : 0);
+  }
+  function bossShotCap(b) {
+    return TUNE.boss.maxShots + DIFF[G.diff].bossExtraShot + (bossRage(b) >= 1 ? 1 : 0);
   }
   function bossSpec(b) { return TUNE.boss.phases[b.phase]; }
 
@@ -2439,7 +2483,6 @@ window.SuperOuissy = (function () {
       p.squash = 1; p.jumpsLeft = p.wing ? 1 : 0;
       if (p.vy > 200 || true) burst(p.x + p.w / 2, p.y + p.h, 4, ["#ffffff"], 30, { lift: -6, g: 260, max: .22, size: 1 });
     }
-    if (p.onGround) p.lastSafe = { x: p.x, y: p.y };
 
     /* ---- timers -------------------------------------------------------- */
     if (p.invuln > 0) p.invuln -= dt;
@@ -2460,6 +2503,14 @@ window.SuperOuissy = (function () {
     /* ---- what she is standing in --------------------------------------- */
     var hz = boxHitsHazard(p.x, p.y + 2, p.w, p.h - 2);
     if (hz && p.star <= 0) { G.lastHurtBy = "hazard"; hurtPlayer(true); }
+
+    /* THE LAST GROUND SHE STOOD ON, and the word that matters is STOOD:
+       the cloud on Easy puts her back here, and so does the revive, so a
+       spot with spikes in it is not one to remember. It is recorded after
+       the hazard test rather than before it for exactly that reason — a
+       foot on a spike used to be written down as safe ground one frame
+       before it killed her, which put both rescues back on the spikes. */
+    if (p.onGround && !hz && !p.dead) p.lastSafe = { x: p.x, y: p.y };
 
     /* ---- out of the world ---------------------------------------------- */
     if (p.y > G.level.pxH + 24) {
@@ -2556,6 +2607,12 @@ window.SuperOuissy = (function () {
     cutsceneThen = then || null;
     G.state = "cutscene";
     if (window.__soReleaseAll) window.__soReleaseAll();
+    /* The score, the clock and the lives belong to the game, not to the
+       story, and they are hidden for the length of a scene. That used to
+       happen by itself because the only way into a scene was from play,
+       where the HUD is redrawn constantly — watching one from the ending
+       left SCORE 000000 and TIME 150 sitting on top of Death. */
+    updateHud();
     Rescue.begin(kind, opts);
   }
 
@@ -2563,6 +2620,7 @@ window.SuperOuissy = (function () {
     var then = cutsceneThen;
     cutsceneThen = null;
     G.state = "play";
+    updateHud();
     if (then) then();
   }
 
@@ -2634,7 +2692,16 @@ window.SuperOuissy = (function () {
     if (chose === "fight") {
       G.lives = 1;
       G.state = "play";
-      respawn();
+      /* WHERE HE PUTS HER DOWN.
+
+         It used to be respawn(), which is the start of the level on a
+         difficulty with no ribbons — and this scene only happens on Hard,
+         which is exactly that difficulty. So the one time the story says
+         he took her out of Death's hands, the game answered by marching
+         her back through the whole castle to the Queen, who was still
+         standing where she left her. He stands her up where she fell,
+         like every other way back into this fight. */
+      reviveAtSpot();
       popText(G.player.x, G.player.y - 14, "he bought you one more", "#ffd9a0");
       return;
     }
@@ -2697,6 +2764,20 @@ window.SuperOuissy = (function () {
     var b = G.level.boss, p = G.player, w = p.w, h = p.h, i;
     var cands = [];
     if (G.deathAt) cands.push({ x: G.deathAt.x, y: G.deathAt.y });
+    /* AND THE LAST GROUND SHE STOOD ON, which is the one that was missing.
+
+       "Right where you fell" is only a place if the fall left her
+       somewhere that can hold her. A pit does not: by the time the death
+       fires she is below the floor of the world, so the spot fails every
+       test and the search fell through to the start of the level — which
+       is exactly what a revive is supposed to save her from, and it is
+       what she paid lives for. Spikes do not either: that spot is a
+       hazard, so it fails too.
+
+       Those are the two commonest deaths in the game. The ledge she
+       jumped from is a real place, it is within a step of where she was
+       playing, and it is already tracked for the cloud on Easy. */
+    if (p.lastSafe) cands.push({ x: p.lastSafe.x, y: p.lastSafe.y - 2 });
     if (b) {
       cands.push({ x: b.x - 52, y: b.y });
       cands.push({ x: b.x + b.w + 18, y: b.y });
@@ -2718,18 +2799,28 @@ window.SuperOuissy = (function () {
        character that difficulty has never introduced. Easy and Medium get
        the same mechanic in plain words. */
     var his = rescuesOn();
+    /* WHAT THE OTHER BUTTON ACTUALLY DOES. It says START OVER, and on a
+       difficulty with ribbons that is only true until she has taken one —
+       after that it is the ribbon, not the beginning. Promising the wrong
+       one either undersells the free option or oversells the paid one,
+       and both of those are the card lying to her about a choice she is
+       spending lives on. */
+    var ribbon = null;
+    if (DIFF[G.diff].checkpoints && G.level && G.level.checks)
+      G.level.checks.forEach(function (c) { if (c.taken) ribbon = c; });
     overlay(
       '<div class="so-card so-card-revive">' +
         '<p class="so-card-kicker">' + (his ? "SHE IS NOT LEFT TO FALL" : "GET BACK UP") + '</p>' +
         '<h3>' + (his ? "He can put you back" : "Be revived") + '</h3>' +
         '<p class="so-card-note">' +
           "Right where you fell, with everything exactly as you left it. " +
-          "Or start over from the beginning." + '</p>' +
+          (ribbon ? "Or go back to the last ribbon." : "Or start over from the beginning.") + '</p>' +
         '<p class="so-revive-cost"><span>LIVES</span><b>' + left + '</b>' +
           '<i>&rarr;</i><b>' + after + '</b></p>' +
         '<button class="so-btn so-btn-go" id="so-revive-yes">' +
           (his ? "TAKE HIS HAND" : "BE REVIVED") + '</button>' +
-        '<button class="so-btn so-btn-quiet" id="so-revive-no">START OVER</button>' +
+        '<button class="so-btn so-btn-quiet" id="so-revive-no">' +
+          (ribbon ? "LAST RIBBON" : "START OVER") + '</button>' +
       "</div>", "so-ov-card");
     $("so-revive-yes").addEventListener("click", function () {
       closeOverlay();
@@ -3084,12 +3175,28 @@ window.SuperOuissy = (function () {
          cracks after a hop never fires for it. It leaves them where it
          stops instead, which is also the fairer place for them. */
       if (sp.name === "sweep") {
-        var n = sp.shots + DIFF[G.diff].bossExtraShot;
+        var n = bossShotsFor(b, sp);
         for (var i = 0; i < n; i++)
           bossShoot(b, b.x + b.w / 2, b.y + b.h - 7,
                     (i % 2 ? 1 : -1) * TUNE.boss.shotSpeed * DIFF[G.diff].bossSpeedMul, 0, false);
         sfx("bossLand"); shake(5);
         burst(b.x + b.w / 2, b.y + b.h, 14, ["#ffd166", "#ffffff"], 100, { max: .5 });
+      }
+      /* HE COMES BACK FOR HER. On Hard, and only in his last phase, the
+         sweep is two passes rather than one: he stops, turns to wherever
+         she landed, and runs it again.
+
+         It is the same wind-up at the same length before the second pass —
+         never a shortened one — so it stays a thing she reads and jumps
+         rather than a thing that happens to her. Once per sweep, and the
+         flag clears when the loop comes back round, so it cannot chain. */
+      if (sp.name === "sweep" && bossRage(b) >= 2 && !b.swept2) {
+        b.swept2 = true;
+        b.mode = "tell"; b.modeT = sp.tell;
+        b.vx = 0;
+        sfx("bossHop"); shake(3);
+        burst(b.x + b.w / 2, b.y + b.h, 12, ["#ffffff", "#ff9ec4"], 50, { g: 120, max: .5, lift: 6 });
+        return;
       }
       /* the opening never shrinks with difficulty; a gentler set may
          lengthen it, which is how Easy's boss is made kinder */
@@ -3097,6 +3204,7 @@ window.SuperOuissy = (function () {
       b.vx = 0;
     } else {
       b.mode = "wait"; b.modeT = sp.wait * cd;
+      b.swept2 = false;
     }
   }
 
@@ -3108,7 +3216,7 @@ window.SuperOuissy = (function () {
     } else if (sp.name === "rain") {
       /* he rears and throws a fixed spread — the same three arcs every time,
          so the way through them is something she can learn */
-      var n = sp.shots + DIFF[G.diff].bossExtraShot;
+      var n = bossShotsFor(b, sp);
       for (var i = 0; i < n; i++) {
         bossShoot(b, b.x + b.w / 2, b.y + 4,
                   (-1 + (2 * i) / Math.max(1, n - 1)) * 70 * mul, -190, true);
@@ -3137,7 +3245,7 @@ window.SuperOuissy = (function () {
     shake(7); sfx("bossLand");
     burst(b.x + b.w / 2, b.y + b.h, 18, ["#ffffff", "#ff9ec4"], 120, { max: .5 });
     if (b.mode === "attack" && (sp.name === "hop" || sp.name === "sweep") && b.hopsLeft >= 0) {
-      var n = sp.shots + DIFF[G.diff].bossExtraShot;
+      var n = bossShotsFor(b, sp);
       for (var i = 0; i < n; i++) {
         var dir = i % 2 ? 1 : -1;
         bossShoot(b, b.x + b.w / 2, b.y + b.h - 7, dir * TUNE.boss.shotSpeed * DIFF[G.diff].bossSpeedMul, 0, false);
@@ -3151,7 +3259,7 @@ window.SuperOuissy = (function () {
   /* One place where a projectile can come into existence, so the cap can
      never be worked around by adding another attack later. */
   function bossShoot(b, x, y, vx, vy, arc) {
-    if (b.shots.length >= TUNE.boss.maxShots + DIFF[G.diff].bossExtraShot) return;
+    if (b.shots.length >= bossShotCap(b)) return;
     b.shots.push({ x: x, y: y, vx: vx, vy: vy, arc: !!arc, life: 0 });
   }
 
@@ -3210,6 +3318,7 @@ window.SuperOuissy = (function () {
         b.shots.length = 0;
         b.flash = 1;
         b.mode = "open"; b.modeT = 1;
+        b.swept2 = false;
         b.vx = 0;
         shake(10); sfx("bossWake");
         popText(b.x, b.y - 18, "!", "#fff6a8");
@@ -3327,7 +3436,14 @@ window.SuperOuissy = (function () {
     var c = cv.getContext("2d");
     c.imageSmoothingEnabled = false;
     var L = G.level;
-    if (!L) { paintMenuScene(c, t); return; }
+    if (!L) {
+      paintMenuScene(c, t);
+      /* A story scene can be watched from the menus, where there is no
+         level to draw it over. Without this it stepped, and spoke, and
+         was never painted. */
+      if (G.state === "cutscene" && window.Rescue && Rescue.active()) Rescue.paint(c, t);
+      return;
+    }
 
     /* the shake is applied to the camera only for drawing, never to physics */
     var sh = G.shake;
@@ -3979,7 +4095,12 @@ window.SuperOuissy = (function () {
   }
 
   /* ---- 7. the ending: the castle, and him in it -------------------------- */
-  function showEnding() {
+  /* `again` is the ending coming BACK — after watching a scene from it,
+     say. The run has already been saved and the fanfare has already
+     played; doing either a second time would overwrite a better score
+     with this same one and blare at her for walking back into a room she
+     never left. */
+  function showEnding(again) {
     G.state = "ending";
     setBgm(false);
     /* remember the run */
@@ -4011,7 +4132,7 @@ window.SuperOuissy = (function () {
         "</div>" +
       "</div>", "so-ov-end");
     startEndingArt($("so-end-art"));
-    sfx("victory");
+    if (!again) sfx("victory");
     wireEndActions();
   }
 
@@ -4046,9 +4167,31 @@ window.SuperOuissy = (function () {
     }
     html += '<button class="so-btn' + (nxt ? "" : " so-btn-go") + '" id="so-end-again">' +
             "PLAY " + DIFF[G.diff].label.toUpperCase() + " AGAIN</button>";
+    /* THE SCENE ALMOST NOBODY SEES.
+
+       Anwar and Death only meet if the Queen takes her last life on Hard,
+       inside the Queen's own room — which means the one piece of the game
+       with the most story in it is the piece least likely to ever be
+       watched. From the ending it can simply be watched, and watching it
+       costs nothing and changes nothing: no run, no lives, no save. */
+    html += '<button class="so-btn so-btn-quiet" id="so-end-scene">ANWAR vs DEATH</button>';
     html += '<button class="so-btn so-btn-quiet" id="so-end-title">TITLE SCREEN</button>';
     html += '<button class="so-btn so-btn-quiet" id="so-end-quit">BACK TO THE GAMES</button>';
     return html;
+  }
+
+  /* Watching it, rather than losing your way into it. The scene is handed
+     the canvas exactly as it is in a real run — same module, same script,
+     same decision at the end of it — and when it finishes, the ending
+     comes back. The one difference is that its outcome is thrown away
+     here: nothing is spent and nothing is won by watching. */
+  function watchDeathScene() {
+    if (!window.Rescue) { showEnding(true); return; }
+    stopEndingArt();
+    playCutscene("death", { herX: 120, herY: 118 }, function () {
+      G.state = "ending";
+      showEnding(true);
+    });
   }
 
   function wireEndActions() {
@@ -4063,6 +4206,11 @@ window.SuperOuissy = (function () {
     if (again) again.addEventListener("click", function () {
       closeOverlay();
       playDifficulty(G.diff);
+    });
+    var scene = $("so-end-scene");
+    if (scene) scene.addEventListener("click", function () {
+      closeOverlay();
+      watchDeathScene();
     });
     var title = $("so-end-title");
     if (title) title.addEventListener("click", function () { showDifficulty(); });
@@ -4797,11 +4945,18 @@ window.SuperOuissy = (function () {
              invuln: p.invuln };
   };
   window.__soSetTime = function (t) { G.timeLeft = t; };
+  /* A harness testing the revive offer has to arrive at the death holding
+     more lives than the offer costs, and playing well enough to have
+     collected them is not something a test can do. */
+  window.__soLives = function (n) { if (n !== undefined) G.lives = n; return G.lives; };
   window.__soBossSet = function (patch) { var b = G.level.boss; if (b) { for (var k in patch) b[k] = patch[k]; b.phase = bossPhase(b); } };
+  /* what his last phase is doing that the first two are not */
+  window.__soRage = function () { var b = G.level.boss; return b ? bossRage(b) : 0; };
   window.__soBoss = function () {
     var b = G.level.boss; if (!b) return null;
     return { hp: b.hp, hpMax: b.hpMax, phase: b.phase, mode: b.mode,
-             modeT: +b.modeT.toFixed(2), shots: b.shots.length, awake: b.awake, dead: b.dead };
+             modeT: +b.modeT.toFixed(2), shots: b.shots.length, awake: b.awake, dead: b.dead,
+             hurt: b.hurt, swept2: !!b.swept2 };
   };
   window.__soEnemies = function () {
     return G.level.ents.filter(function (e) { return e.kind === "enemy"; })
@@ -4809,6 +4964,12 @@ window.SuperOuissy = (function () {
                                    vx: Math.round(e.vx), alive: e.alive }; });
   };
   window.__soCam = function () { return { x: Math.round(G.cam.x), y: Math.round(G.cam.y) }; };
+  /* the shape of the level under her: a test that wants "somewhere in the
+     middle of this world" should not have to hard-code a tile. */
+  window.__soLevelBox = function () {
+    var L = G.level;
+    return { w: L.w, h: L.h, startX: L.start.x, startY: L.start.y };
+  };
   window.__soDiffFlag = function (k) { return DIFF[G.diff][k]; };
   window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
   /* Kill her outright, whatever the difficulty. Dropping her down a pit
