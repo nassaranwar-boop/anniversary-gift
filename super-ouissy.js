@@ -4278,7 +4278,7 @@ window.SuperOuissy = (function () {
     if (window.markSuperOuissyDone) window.markSuperOuissyDone();
 
     overlay(
-      '<div class="so-end">' +
+      '<div class="so-end' + (again ? "" : " playing") + '">' +
         '<div class="so-end-art" id="so-end-art"></div>' +
         '<p class="so-end-kicker">' + SO.ending.kicker + "</p>" +
         '<div class="so-end-lines">' + endingLines().map(function (l) { return "<p>" + l + "</p>"; }).join("") + "</div>" +
@@ -4295,7 +4295,18 @@ window.SuperOuissy = (function () {
           '<div class="so-menu-actions">' + endActions() + "</div>" +
         "</div>" +
       "</div>", "so-ov-end");
-    startEndingArt($("so-end-art"));
+    startEndingArt($("so-end-art"), !!again);
+    /* the scene is skippable from its first frame: anywhere on the overlay,
+       any key. she has just finished the game — nothing here gets to hold
+       her hostage for nine seconds. */
+    if (!again) {
+      var ov = document.querySelector(".so-ov-end");
+      if (ov) {
+        var go = function () { if (endSkip) endSkip(); };
+        ov.addEventListener("pointerdown", go);
+        ov.addEventListener("keydown", go);
+      }
+    }
     if (!again) sfx("victory");
     wireEndActions();
   }
@@ -4395,76 +4406,221 @@ window.SuperOuissy = (function () {
 
   /* The last picture: a lit castle doorway, Ouissy, and him waiting. */
   var endRaf = null;
-  function startEndingArt(host) {
+  /* =======================================================================
+     THE ENDING, AS A SCENE
+
+     It used to be a picture. A 240x120 loop that started with her already
+     most of the way across the courtyard and him already standing in the
+     doorway, both of them drawn at the same instant the wall of text they
+     belong to appeared underneath. Three worlds, a boss, and the last
+     thing the game says to her arrives as a background image.
+
+     It is directed now. Nine seconds, on a timeline, with the text held
+     back until they have actually met. She walks in out of the dark. The
+     sun comes up because she is crossing, not because a clock said so.
+     He comes out to meet her rather than waiting to be arrived at. The
+     camera pushes in on the two of them and the letterbox opens, and only
+     then does anything ask her to read.
+
+     And it is skippable from the first frame, because the one thing worse
+     than no scene is a scene you cannot get out of.
+     ======================================================================= */
+  var END_BEAT = { dawn: 1.0, walk: 4.6, pause: 5.8, meet: 7.4, bloom: 9.2 };
+  var endSkip = null;
+
+  function hex(s) { return [parseInt(s.substr(1, 2), 16), parseInt(s.substr(3, 2), 16), parseInt(s.substr(5, 2), 16)]; }
+  function mixHex(a, b, k) {
+    var A = hex(a), B = hex(b), o = "#";
+    for (var i = 0; i < 3; i++) {
+      var v = Math.round(A[i] + (B[i] - A[i]) * k).toString(16);
+      o += v.length < 2 ? "0" + v : v;
+    }
+    return o;
+  }
+  var END_NIGHT = [{ p: 0, c: "#0b0718" }, { p: .42, c: "#160d28" }, { p: .78, c: "#241338" }, { p: 1, c: "#3a1c40" }];
+  var END_DAWN  = [{ p: 0, c: "#2a1a4e" }, { p: .42, c: "#6a2a63" }, { p: .78, c: "#c8536f" }, { p: 1, c: "#ffb07a" }];
+  function endSky(c, k) {
+    var stops = [];
+    for (var i = 0; i < END_NIGHT.length; i++)
+      stops.push({ p: END_NIGHT[i].p, c: mixHex(END_NIGHT[i].c, END_DAWN[i].c, k) });
+    ditherSky(c, 0, 0, 240, 120, stops);
+  }
+  function ease(k) { return k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k); }
+  function seg(t, a, b) { return ease((t - a) / (b - a)); }
+
+  /* him: eight pixels of coat, a face, and hair that has never once been
+     tidy. Drawn from the feet up so both of them stand on the same line. */
+  function paintHim(c, x, foot, lean) {
+    var y = foot - 14;
+    px(c, x, y, 8, 14, "#3d5a8a");
+    px(c, x, y, 8, 2, "#5a7ab0");
+    px(c, x + (lean > 0 ? 8 : -1), y + 5, 1, 5, "#3d5a8a");   /* the arm he is reaching with */
+    blob(c, x + 4, y - 4, 5, 5, ["#ffd9c4", "#f0b096", "#d8967c", "#c07f66"]);
+    px(c, x, y - 9, 9, 3, "#3a2a22");
+    px(c, x + 2, y - 4, 1, 1, "#3d2340"); px(c, x + 6, y - 4, 1, 1, "#3d2340");
+    px(c, x + 3, y - 1, 3, 1, "#3d2340");
+  }
+
+  function startEndingArt(host, instant) {
     if (!host) return;
     var s = spriteCanvas(240, 120), c = s.ctx;
     host.innerHTML = ""; host.appendChild(s.c);
-    var t0 = 0;
+    var t0 = 0, skipped = !!instant, shown = !!instant;
+    var GROUND = 108;
+
+    /* tapping anywhere gets her out of it. it does not cut to black — it
+       runs the timeline forward to the moment they are together, which is
+       the only frame of this anybody would be sad to miss. */
+    endSkip = function () {
+      if (skipped) return;
+      skipped = true;
+      if (t0) t0 = performance.now() - END_BEAT.bloom * 1000;
+    };
+
+    function reveal() {
+      if (shown) return;
+      shown = true;
+      var card = host.parentNode;
+      if (card && card.classList) card.classList.remove("playing");
+    }
+
     function frame(now) {
       endRaf = requestAnimationFrame(frame);
-      if (!t0) t0 = now;
+      if (!t0) t0 = now - (instant ? END_BEAT.bloom * 1000 : 0);
       var t = (now - t0) / 1000;
-      var P = BIOME.castle;
-      ditherSky(c, 0, 0, 240, 120, P.sky);
+      if (t >= END_BEAT.meet) reveal();
+
+      /* ---- where everybody is, this frame ---------------------------- */
+      var dawn = seg(t, END_BEAT.dawn, END_BEAT.bloom * 0.92);
+      var wk = seg(t, END_BEAT.dawn, END_BEAT.walk);
+      var her = -18 + wk * 96;                                  /* -18 -> 78 */
+      var moving = wk > 0 && wk < 1;
+      var himOut = seg(t, END_BEAT.pause, END_BEAT.meet);
+      var him = 118 - himOut * 12;                              /* 118 -> 106 */
+      if (himOut > 0) her = 78 + himOut * 10;                   /* 78 -> 88 */
+      var together = t >= END_BEAT.meet;
+      var doorLit = ease((t - 2.2) / 1.2);
+
+      /* ---- the camera -------------------------------------------------
+         One number does all of it. k goes nought to one as the push comes
+         in and settles back to a half once they are together, and the zoom
+         and the point the frame is held on both ride it — so the camera
+         cannot end up magnifying a corner of the sky, which is exactly
+         what a separately-driven zoom and focus did on the first try. */
+      var k = seg(t, END_BEAT.pause - 1.2, END_BEAT.meet) - seg(t, END_BEAT.meet, END_BEAT.bloom) * 0.5;
+      var zoom = 1 + k * 1.1;
+      var fx = 120 + (100 - 120) * k + (together ? Math.sin(t * 0.4) * 1.5 : 0);
+      var fy = 60 + (94 - 60) * k;
+
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      endSky(c, dawn);
+      c.save();
+      c.translate(120, 60);
+      c.scale(zoom, zoom);
+      c.translate(-fx, -fy);
+
+      /* stars, going out as the sun comes up */
       var rnd = seeded("endsky");
       for (var i = 0; i < 50; i++) {
         var sx = rnd() * 240, sy = rnd() * 60;
-        if (Math.sin(t * 2 + sx) > -0.4) px(c, sx, sy, 1, 1, "#ffe9c8");
+        if (Math.sin(t * 2 + sx) > -0.4 + dawn * 1.4) px(c, sx, sy, 1, 1, "#ffe9c8");
       }
-      /* the castle */
-      px(c, 40, 34, 160, 76, "#6b4f80");
-      px(c, 40, 34, 160, 2, "#8a68a4");
+      /* the sun itself, coming up over the battlements in the gap between
+         two towers. it is drawn before the castle so the wall hides its
+         bottom half — which is the whole point of a sunrise. */
+      if (dawn > 0.08) {
+        var sunY = 32 - dawn * 16;
+        c.save(); c.globalAlpha = Math.min(1, dawn * 2.2);
+        blob(c, 166, sunY, 11, 11, ["#fff3c0", "#ffd980", "#ffb45f", "#ff8f52"]);
+        c.restore();
+      }
+
+      /* ---- the castle -------------------------------------------------
+         The wall runs wider than the frame does at rest, because the camera
+         pushes in on the doorway and a close-up that finds the edge of the
+         building and a band of dithered sky behind it reads as a mistake. */
+      var stone = mixHex("#3a2450", "#6b4f80", dawn), lit = mixHex("#4a3060", "#8a68a4", dawn);
+      px(c, 20, 34, 200, 76, stone);
+      px(c, 20, 34, 200, 2, lit);
       for (var tw = 0; tw < 3; tw++) {
         var tx = 44 + tw * 74;
-        px(c, tx, 18, 26, 92, "#7d5590");
-        px(c, tx, 18, 2, 92, "#a97fbe");
-        px(c, tx - 3, 12, 32, 6, "#a97fbe");
-        for (var cr = 0; cr < 32; cr += 7) px(c, tx - 3 + cr, 6, 4, 6, "#a97fbe");
+        px(c, tx, 18, 26, 92, mixHex("#3f2856", "#7d5590", dawn));
+        px(c, tx, 18, 2, 92, lit);
+        px(c, tx - 3, 12, 32, 6, lit);
+        for (var cr = 0; cr < 32; cr += 7) px(c, tx - 3 + cr, 6, 4, 6, lit);
+        /* a ribbon on every tower, because she put them there */
+        if (dawn > 0.4) px(c, tx + 11, 12 - Math.abs(Math.sin(t * 2 + tw)) * 2, 4, 5, "#ff5f95");
       }
-      /* windows, warm */
-      for (var wx = 56; wx < 190; wx += 22)
+      /* windows waking up one at a time, left to right, as she crosses.
+         the count is measured rather than assumed, so the wall can get
+         wider without the last few never lighting. */
+      var wxs = [];
+      for (var wx = 34; wx < 206; wx += 22) if (wx < 104 || wx > 136) wxs.push(wx);
+      var wi = 0, wn = wxs.length * 2;
+      for (var wq = 0; wq < wxs.length; wq++)
         for (var wy = 46; wy < 86; wy += 24) {
-          var lit = Math.sin(t * 1.4 + wx * 0.3 + wy) > -0.5;
-          px(c, wx, wy, 6, 9, lit ? "#ffcf6a" : "#4d375e");
-          if (lit) px(c, wx, wy, 6, 2, "#fff0b0");
+          var on = wk * wn > wi++;
+          px(c, wxs[wq], wy, 6, 9, on ? "#ffcf6a" : "#3a2748");
+          if (on) px(c, wxs[wq], wy, 6, 2, "#fff0b0");
         }
-      /* the doorway, wide open */
-      px(c, 108, 74, 26, 36, "#3d2340");
-      px(c, 110, 76, 22, 34, "#ffd8a0");
-      for (var a2 = 0; a2 < 12; a2++) px(c, 110 + a2, 74 - Math.round(Math.sqrt(144 - (a2 - 11) * (a2 - 11))), 24 - a2 * 2, 3, "#ffd8a0");
 
-      /* him, waiting in the light */
-      var pb = Math.sin(t * 2) > 0 ? 0 : 1;
-      px(c, 116, 88 + pb, 8, 14, "#3d5a8a");           // his coat
-      px(c, 116, 88 + pb, 8, 2, "#5a7ab0");
-      blob(c, 120, 84 + pb, 5, 5, ["#ffd9c4", "#f0b096", "#d8967c", "#c07f66"]);
-      px(c, 116, 79 + pb, 9, 3, "#3a2a22");             // his hair
-      px(c, 118, 84 + pb, 1, 1, "#3d2340"); px(c, 122, 84 + pb, 1, 1, "#3d2340");
-      px(c, 119, 87 + pb, 3, 1, "#3d2340");
+      /* ---- the doorway ----------------------------------------------- */
+      px(c, 108, 74, 26, 36, "#2a1730");
+      if (doorLit > 0) {
+        px(c, 110, 76, 22, 34, mixHex("#2a1730", "#ffd8a0", doorLit));
+        for (var a2 = 0; a2 < 12; a2++)
+          px(c, 110 + a2, 74 - Math.round(Math.sqrt(144 - (a2 - 11) * (a2 - 11))), 24 - a2 * 2, 3,
+             mixHex("#2a1730", "#ffd8a0", doorLit));
+        /* the light he is standing in, spilling out onto the stones */
+        c.save(); c.globalAlpha = 0.18 * doorLit;
+        px(c, 100, 104, 42, 6, "#ffd8a0");
+        c.restore();
+      }
 
-      /* her, arriving */
-      var walk = Math.min(1, t / 3.2);
-      var ox2 = 20 + walk * 76;
-      var img = walk < 1 ? OUISSY.run.small[Math.floor(t * 8) % 4] : OUISSY.win.small[0];
-      c.drawImage(img, Math.round(ox2), 88 - (walk < 1 ? 0 : Math.abs(Math.sin(t * 3)) * 3));
+      /* ---- the courtyard they are standing on ------------------------- */
+      var floor = mixHex("#241636", "#4e3356", dawn);
+      px(c, 0, GROUND, 240, 120 - GROUND, floor);
+      px(c, 0, GROUND, 240, 1, mixHex("#32204a", "#6b4a6e", dawn));
+      for (var fs = 0; fs < 240; fs += 16) px(c, fs, GROUND + 3, 1, 120 - GROUND - 3, mixHex("#1d1230", "#3f2a48", dawn));
 
-      /* hearts rising between them once she is there */
-      if (walk >= 1) {
+      /* ---- the two of them ------------------------------------------- */
+      c.save(); c.globalAlpha = 0.25;
+      px(c, Math.round(her) + 3, GROUND - 1, 10, 2, "#1d1230");
+      if (doorLit > 0.25) px(c, Math.round(him), GROUND - 1, 8, 2, "#1d1230");
+      c.restore();
+      if (doorLit > 0.25) paintHim(c, Math.round(him), GROUND, himOut > 0 ? -1 : 0);
+      var img = moving || himOut > 0 && !together
+        ? OUISSY.run.small[Math.floor(t * 8) % 4]
+        : together ? OUISSY.win.small[0] : OUISSY.idle.small[Math.floor(t * 3) % 4];
+      var bounce = together ? Math.abs(Math.sin(t * 3)) * 3 : 0;
+      c.drawImage(img, Math.round(her), GROUND - 18 - bounce);
+
+      /* hearts, once there is a reason for them */
+      if (together) {
         for (var h2 = 0; h2 < 7; h2++) {
-          var hp = (t * 0.5 + h2 / 7) % 1;
-          heart(c, 104 + Math.sin(hp * 7 + h2) * 8, 100 - hp * 60, 3 - hp * 1.6,
+          var hp = ((t - END_BEAT.meet) * 0.5 + h2 / 7) % 1;
+          heart(c, 99 + Math.sin(hp * 7 + h2) * 8, GROUND - 8 - hp * 54, 3 - hp * 1.6,
                 ["#ff5f95", "#ffd166", "#ffffff"][h2 % 3]);
         }
       }
-      /* falling sparkles over the whole scene */
-      for (var k2 = 0; k2 < 30; k2++) {
-        var kx = (k2 * 53) % 240, ky = ((t * (14 + k2 % 7) + k2 * 31) % 130);
-        px(c, kx, ky, 1, 1, Math.sin(t * 6 + k2) > 0 ? "#fff6a8" : "#ffd6e6");
+      /* sparkles over everything, once the sun is up enough to catch them */
+      if (dawn > 0.3) {
+        for (var k2 = 0; k2 < 30; k2++) {
+          var kx = (k2 * 53) % 240, ky = ((t * (14 + k2 % 7) + k2 * 31) % 130);
+          px(c, kx, ky, 1, 1, Math.sin(t * 6 + k2) > 0 ? "#fff6a8" : "#ffd6e6");
+        }
       }
+      c.restore();
+
+      /* ---- the letterbox, and the dark she walks out of --------------- */
+      var bars = Math.round(14 * (1 - seg(t, END_BEAT.meet, END_BEAT.bloom)));
+      if (bars > 0) { px(c, 0, 0, 240, bars, "#000"); px(c, 0, 120 - bars, 240, bars, "#000"); }
+      var fade = 1 - ease(t / END_BEAT.dawn);
+      if (fade > 0.01) { c.save(); c.globalAlpha = fade; px(c, 0, 0, 240, 120, "#000"); c.restore(); }
     }
     endRaf = requestAnimationFrame(frame);
   }
-  function stopEndingArt() { if (endRaf) cancelAnimationFrame(endRaf); endRaf = null; }
+  function stopEndingArt() { if (endRaf) cancelAnimationFrame(endRaf); endRaf = null; endSkip = null; }
 
   /* =======================================================================
      THE HUD
@@ -5317,7 +5473,7 @@ window.SuperOuissy = (function () {
 
   /* --- putting her somewhere --- */
   window.__soGoLevel = function (i) { startLevel(i); };
-  window.__soShowEnding = function () { showEnding(); };
+  window.__soShowEnding = function (again) { showEnding(!!again); };
   window.__soTele = function (tx, ty) {
     if (!G || !G.level) return;
     G.player.x = tx * T;

@@ -4710,6 +4710,19 @@ img{-webkit-user-drag:none; user-select:none;}
   border:.5cqw solid rgba(255,209,102,.4); border-radius:.8cqw;
   box-shadow:0 1cqw 3cqw rgba(0,0,0,.55);
 }
+/* While the scene runs, the card it belongs to is not there yet. Everything
+   below the picture holds its place in the layout (so nothing jumps when it
+   arrives) and fades in once they have actually met. */
+.so-end > *{transition:opacity .9s ease;}
+.so-end.playing > :not(.so-end-art){opacity:0; pointer-events:none;}
+.so-end-art{position:relative;}
+.so-end.playing .so-end-art::after{
+  content:"TAP TO SKIP"; position:absolute; right:1cqw; bottom:1.2cqw;
+  font-family:var(--font-pixel); font-size:1.1cqw; letter-spacing:.16em;
+  color:rgba(255,246,225,.62); pointer-events:none;
+  animation:soSkipHint 2.4s ease-in-out infinite;
+}
+@keyframes soSkipHint{0%,100%{opacity:.25}50%{opacity:.8}}
 .so-end-kicker{font-size:1.7cqw; color:#ffb0cd; margin:.6cqw 0 0; letter-spacing:.16em;}
 .so-end-lines{display:flex; flex-direction:column; gap:1cqw;}
 .so-end-lines p{
