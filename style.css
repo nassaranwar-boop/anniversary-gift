@@ -2646,10 +2646,20 @@ img{-webkit-user-drag:none; user-select:none;}
   filter:drop-shadow(0 2px 4px rgba(40,8,22,.5));
   transition:opacity .26s ease, transform .45s var(--ease-pop);
 }
-/* the barest breathing, so it reads as something living rather than a
-   control. Stopped for anyone who has asked for less motion. */
-#screen-scrapbook.sb-open .sb-flower{animation:sbFlowerBreathe 6s ease-in-out infinite;}
-@keyframes sbFlowerBreathe{0%,100%{transform:rotate(0) scale(1);} 50%{transform:rotate(7deg) scale(1.045);}}
+/* IT IS STILL UNTIL IT IS PRESSED.
+
+   The flower used to breathe on a six-second loop -- a slow rotate and
+   swell, running the whole time the book was open. Something moving in
+   the corner of the screen forever is not charm, it is a thing your eye
+   keeps going back to while you are trying to read. So it sits still,
+   and the press is the only thing that moves it: one small turn, there
+   and back, whichever way the drawer happens to be going. */
+.sb-flower.turn{animation:sbFlowerTurn .52s var(--ease-pop) 1;}
+@keyframes sbFlowerTurn{
+  0%  {transform:rotate(0) scale(1);}
+  38% {transform:rotate(26deg) scale(1.07);}
+  100%{transform:rotate(0) scale(1);}
+}
 
 .sb-extras-x{
   position:relative; width:18px; height:18px;
@@ -2678,15 +2688,13 @@ img{-webkit-user-drag:none; user-select:none;}
    flower stays, and says it is open the way a flower would: it turns a
    little and sits back, brighter, on a darker ground. The cross is not
    drawn at all any more. */
+/* Open, the flower does not become anything else -- it is the same
+   flower, a shade brighter on a darker ground. The cross is not drawn. */
 .sb-extras-x{display:none;}
 .sb-extras-btn.on .sb-flower{
-  opacity:1; transform:rotate(135deg) scale(.94); animation:none;
-  filter:drop-shadow(0 2px 5px rgba(40,8,22,.6)) brightness(1.08);
+  opacity:1;
+  filter:drop-shadow(0 2px 5px rgba(40,8,22,.6)) brightness(1.1);
 }
-/* and a quarter-turn under the finger itself, on the way in and the way
-   out, so the press has a sound of its own */
-.sb-extras-btn:active .sb-flower{ transform:rotate(-18deg) scale(.88); transition-duration:.12s; }
-.sb-extras-btn.on:active .sb-flower{ transform:rotate(153deg) scale(.84); }
 
 .sb-drawer{
   position:absolute; left:0; top:0; bottom:0; z-index:20;

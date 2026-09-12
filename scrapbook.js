@@ -4390,7 +4390,13 @@ window.Scrapbook = (function () {
   function spineFrac(idx) {
     if (perView === 1 || !views[idx]) return 0.5;
     if (views[idx].length === 2) return 0.5;
-    return idx === 0 ? 1 : 0;
+    /* Which edge is the hinge, read off the leaf the turn actually uses:
+       opening the front cover, leaf A is hinged LEFT (aHingeRight is false
+       for a forward turn), so the closed front cover's spine is its left
+       edge. Closing the back cover, leaf B is hinged RIGHT, so the back
+       cover's spine is its right edge. I had these the other way round at
+       first, which made the book slide half a page too far. */
+    return idx === 0 ? 0 : 1;
   }
 
   /* THE BOOK HAS TO SIT ON THE TABLE, NOT FLOAT OVER IT.
@@ -5033,6 +5039,18 @@ window.Scrapbook = (function () {
     if (!e.a || !e.outer) return;
     flip.p = p;
 
+    /* THE SWAP, on the frame the sheet is standing on its edge -- the one
+       instant in a turn when it is side-on over the gutter and the book
+       can change width without it being seen. The leaves change over here
+       anyway. By now the slide below has already carried the hinge to
+       where the wider book wants it, so the swap is exact and there is
+       nothing to see. */
+    if (!flip.swapped && p >= 0.5) {
+      flip.swapped = true;
+      e.outer.style.width = flip.w1 + "px";
+      e.outer.classList.toggle("single", flip.singleTo);
+    }
+
     var half = p < 0.5;
     /* The width of the sheet itself, not of the book's half. The boards
        overhang the text block, so the leaf is narrower than pageW by that
@@ -5099,10 +5117,15 @@ window.Scrapbook = (function () {
        and what makes it free is also what stops it reaching a child */
     if (e.shadeNear) e.shadeNear.style.setProperty("--flip-lift", lift);
     if (e.shadeFar) e.shadeFar.style.setProperty("--flip-lift", lift);
-    /* written every frame, not only when there is one: a turn that needs
-       no slide still has to clear the slide the last one left behind */
-    e.outer.style.setProperty("--book-shift",
-      (flip.shift * (1 - p)).toFixed(2) + "px");
+    /* The hinge walks to its new place over the FIRST half, while the
+       book is still narrow. Once the width has swapped it is already
+       there, so the shift is zero for the rest of the turn. Written every
+       frame, not only when there is a slide, so a turn that needs none
+       still clears the one the turn before it left behind. */
+    var slide = flip.swapped || flip.foldTo === undefined
+      ? 0
+      : (flip.foldTo - flip.foldFrom) * Math.min(1, p * 2);
+    e.outer.style.setProperty("--book-shift", slide.toFixed(2) + "px");
   }
 
   function beginTurn(dir) {
@@ -5166,40 +5189,67 @@ window.Scrapbook = (function () {
     if (scr) scr.classList.add("sb-turning");
     e.outer.classList.add("flipping");
     e.outer.classList.toggle("flip-back", dir < 0);
-    /* The book takes its new width at once, and slides so the spine
-       stays exactly where it was — otherwise opening the cover drags the
-       whole book sideways under the turning sheet. */
     var toWide = perView === 2 && views[flip.to].length === 2;
-    /* THE COVER WENT THE WRONG WAY FIRST, THEN CAUGHT ITSELF.
+    /* THE BOOK MUST NOT CHANGE WIDTH WHILE YOU CAN SEE IT HAPPEN.
 
-       The book takes its new width the instant a turn begins, and slides
-       so the fold stays exactly where it was -- otherwise closing the
-       cover drags the whole book sideways under the turning sheet. That
-       slide was worked out from a signed offset per view, and the sign
-       was inverted on both covers: the book jumped a half page the wrong
-       way at p=0 and then slid back through the turn, which is precisely
-       the lurch you could see.
+       This is what the lurch on the covers actually was, and pinning the
+       fold -- which is what I tried first -- does not touch it.
 
-       It is measured now instead of derived. Where the fold is on screen
-       before the width changes, where it is after, and the difference is
-       the slide -- there is no sign to get wrong. It costs one forced
-       layout per turn, once, not per frame. */
-    var fracFrom = spineFrac(flip.from), fracTo = spineFrac(flip.to);
-    var r0 = e.outer.getBoundingClientRect();
-    var shift0 = parseFloat(e.outer.style.getPropertyValue("--book-shift")) || 0;
-    /* r0 already carries whatever shift was left on it, so take it off */
-    var foldBefore = (r0.left - shift0) + r0.width * fracFrom;
+       The book took its new width on the FIRST frame of the turn. Touch a
+       closed cover and it doubled instantly: at a thousand pixels wide,
+       from 315..685 to 315..1055, which is fifty-five pixels off the side
+       of the screen, and then it slid back in over the rest of the turn.
+       The half it had just grown into was bare board, because the page
+       that belongs there rides on the second leaf and does not appear
+       until halfway. So you saw the book jump out the wrong way, show a
+       slab of nothing, and gather itself up. It was never the slide that
+       was wrong; it was when the width changed.
+
+       The sheet is already swapped at halfway -- leaf A carries the front
+       of the page up to p=0.5, leaf B carries its back down from there.
+       That is the one instant in a turn when the sheet stands edge-on
+       over the gutter, and so the only instant the book can change width
+       without it being seen. The width, the gutter's class and the slide
+       all move there together, with the fold held still across the swap
+       so nothing jumps: the first half of the turn is the book exactly as
+       it was, and the second half carries it to where it is going while
+       the cover comes down over it.
+
+       None of this is per frame. One width write and one forced layout,
+       at one point in the turn. */
     e.outer.style.setProperty("--book-shift", "0px");
     /* the board overhang holds still for the whole turn -- renderView is
        what changes it, and that runs once the turn is over */
     flip.W = Math.max(1, pageW -
       (parseFloat(getComputedStyle(e.outer).getPropertyValue("--board-x")) || 0));
     e.outer.style.setProperty("--page-w", pageW + "px");
-    e.outer.style.width = (toWide ? pageW * 2 : pageW) + "px";
-    e.outer.classList.toggle("single", perView === 1 || !toWide);
-    var r1 = e.outer.getBoundingClientRect();          /* the one forced layout */
-    flip.shift = foldBefore - (r1.left + r1.width * fracTo);
-    if (Math.abs(flip.shift) < 0.5) flip.shift = 0;
+    /* everything the halfway swap will need, measured while the book is
+       still standing in the shape it started in */
+    flip.w1 = (toWide ? pageW * 2 : pageW);
+    flip.singleTo = (perView === 1 || !toWide);
+    flip.fracFrom = spineFrac(flip.from);
+    flip.fracTo = spineFrac(flip.to);
+    /* WHERE THE HINGE IS NOW, AND WHERE IT IS GOING.
+
+       The spine has to move: closed, it is at one edge of a centred book;
+       open, it is the middle of a wider one. Half a page, whatever we do.
+       What matters is WHEN. Sliding it after the width change means
+       sliding a book that is now twice as wide, and it hangs off the side
+       of the screen for the whole second half of the turn.
+
+       So the slide happens FIRST, while the book is still narrow and has
+       room to move -- it walks across during the first half of the turn,
+       arriving exactly as the sheet reaches its edge and the width swaps.
+       After that the shift is zero and the book is already home. It never
+       leaves the screen and there is nothing left to catch up. */
+    var r0 = e.outer.getBoundingClientRect();          /* shift is 0 here */
+    var mid = r0.left + r0.width / 2;                  /* the layout's centre */
+    flip.foldFrom = r0.left + r0.width * flip.fracFrom;
+    flip.foldTo = (mid - flip.w1 / 2) + flip.w1 * flip.fracTo;
+    flip.shift = 0;
+    /* a turn between two views of the same shape has nothing to swap */
+    flip.swapped = Math.abs(r0.width - flip.w1) < 0.5 &&
+                   flip.singleTo === e.outer.classList.contains("single");
     setFlipProgress(0);
     return true;
   }
@@ -5563,7 +5613,18 @@ window.Scrapbook = (function () {
     if (intro) intro.addEventListener("click", function () { endIntro(false); });
 
     var extras = document.getElementById("sb-extras-btn");
-    if (extras) extras.addEventListener("click", function () { toggleDrawer(); });
+    if (extras) extras.addEventListener("click", function () {
+      /* the flower is still before it is pressed; the press is what turns
+         it. Restarting the class on every click means a second press
+         plays it again rather than doing nothing. */
+      var fl = extras.querySelector(".sb-flower");
+      if (fl) {
+        fl.classList.remove("turn");
+        void fl.offsetWidth;                 /* let the removal take */
+        fl.classList.add("turn");
+      }
+      toggleDrawer();
+    });
 
     var noteDone = document.getElementById("sb-note-done");
     if (noteDone) noteDone.addEventListener("click", closeNote);
