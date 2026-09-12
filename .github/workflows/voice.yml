@@ -15,6 +15,9 @@
 name: Anwar's voice
 
 on:
+  # THE BUTTON, once this file is on the default branch. GitHub only
+  # offers "Run workflow" for a workflow it can see on main, so until
+  # this is merged there the push trigger below is how it runs.
   workflow_dispatch:
     inputs:
       mode:
@@ -41,6 +44,24 @@ on:
         default: "0.72"
         type: string
 
+  # AND THE WAY TO RUN IT FROM A BRANCH.
+  #
+  # A workflow_dispatch workflow has to exist on the default branch
+  # before GitHub will show it a button -- but a push-triggered one
+  # runs from whatever branch it is on. So touching the marker file
+  # runs this, from here, without anything having to reach main.
+  #
+  # Whatever is in voice/RENDER is read as the settings, which is also
+  # how to change voice without editing this file:
+  #
+  #   echo "full en_US-ryan-high 1.10 0.80" > voice/RENDER
+  #
+  # An empty or unreadable marker just means: sample, the narrator
+  # voice, a narrator's pace.
+  push:
+    paths:
+      - voice/RENDER
+
 permissions:
   contents: write
 
@@ -51,6 +72,27 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
+
+      # One place where the button's inputs and the marker file's
+      # contents become the same four settings, so that nothing below
+      # has to care which way the run was started.
+      - name: What was asked for
+        run: |
+          MODE="${{ inputs.mode }}"; VOICE="${{ inputs.voice }}"
+          PACE="${{ inputs.pace }}"; VAR="${{ inputs.variation }}"
+          if [ -z "$MODE" ] && [ -f voice/RENDER ]; then
+            read -r a b c d < voice/RENDER || true
+            MODE="$a"; VOICE="$b"; PACE="$c"; VAR="$d"
+          fi
+          # anything unrecognised falls back rather than failing a run
+          # that somebody is sitting waiting for
+          case "$MODE"  in sample|full) ;; *) MODE=sample ;; esac
+          case "$VOICE" in en_*) ;; *) VOICE=en_GB-alan-medium ;; esac
+          case "$PACE"  in [0-9].[0-9][0-9]|[0-9].[0-9]) ;; *) PACE=1.14 ;; esac
+          case "$VAR"   in [0-9].[0-9][0-9]|[0-9].[0-9]) ;; *) VAR=0.72 ;; esac
+          { echo "MODE=$MODE"; echo "VOICE=$VOICE";
+            echo "PACE=$PACE"; echo "VARIATION=$VAR"; } >> "$GITHUB_ENV"
+          echo "mode=$MODE  voice=$VOICE  pace=$PACE  variation=$VAR"
 
       - uses: actions/setup-node@v4
         with: { node-version: "20" }
@@ -72,7 +114,7 @@ jobs:
       # download at the bottom of the run. Listen, then run this again
       # with mode=full and the one you want.
       - name: Fetch all five
-        if: inputs.mode == 'sample'
+        if: env.MODE == 'sample'
         run: |
           for v in en_GB-alan-medium en_GB-northern_english_male-medium \
                    en_US-ryan-high en_GB-semaine-medium en_US-lessac-high; do
@@ -81,10 +123,7 @@ jobs:
           ls -la voices
 
       - name: Let each of them try
-        if: inputs.mode == 'sample'
-        env:
-          PACE: ${{ inputs.pace }}
-          VARIATION: ${{ inputs.variation }}
+        if: env.MODE == 'sample'
         run: |
           mkdir -p samples
           node tools/voicesheet.js --json > /tmp/lines.json
@@ -113,20 +152,20 @@ jobs:
           ls samples
 
       - uses: actions/upload-artifact@v4
-        if: inputs.mode == 'sample'
+        if: env.MODE == 'sample'
         with:
           name: voice-samples
           path: samples
 
       # --- OR RENDER THE LOT ----------------------------------------
       - name: Fetch the voice
-        if: inputs.mode == 'full'
+        if: env.MODE == 'full'
         run: |
-          python -m piper.download_voices "${{ inputs.voice }}" --data-dir voices
+          python -m piper.download_voices "$VOICE" --data-dir voices
           ls -la voices
 
       - name: Work out what he has to say
-        if: inputs.mode == 'full'
+        if: env.MODE == 'full'
         run: |
           node tools/voicesheet.js --json > /tmp/lines.json
           python - <<'PY'
@@ -136,11 +175,7 @@ jobs:
           PY
 
       - name: Say all of it
-        if: inputs.mode == 'full'
-        env:
-          VOICE: ${{ inputs.voice }}
-          PACE: ${{ inputs.pace }}
-          VARIATION: ${{ inputs.variation }}
+        if: env.MODE == 'full'
         run: |
           mkdir -p voice
           python - <<'PY'
@@ -198,7 +233,7 @@ jobs:
           PY
 
       - name: Write the manifest
-        if: inputs.mode == 'full'
+        if: env.MODE == 'full'
         run: |
           # the manifest stores the WORDS, so a line that gets rewritten
           # later falls back to the synthesiser instead of playing a take
@@ -209,13 +244,13 @@ jobs:
           ls voice | head -5
 
       - name: Hand it back
-        if: inputs.mode == 'full'
+        if: env.MODE == 'full'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add voice
           git diff --cached --quiet && { echo "nothing changed"; exit 0; }
-          git commit -m "Anwar has a voice: ${{ inputs.voice }} at ${{ inputs.pace }}
+          git commit -m "Anwar has a voice: $VOICE at $PACE
 
           Rendered by .github/workflows/voice.yml. Every line he says out
           loud, as audio, so the chapter stops handing its most personal

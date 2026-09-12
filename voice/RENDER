@@ -1,0 +1,9 @@
+sample
+# One line: <mode> <voice> <pace> <variation>
+#
+#   sample                            four lines in all five voices,
+#                                     handed back as a download
+#   full en_GB-alan-medium 1.14 0.72  all 117, committed
+#
+# Change the first line and push, and the workflow runs. Anything it
+# does not recognise falls back to the line above.
