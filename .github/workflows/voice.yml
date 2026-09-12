@@ -48,7 +48,18 @@ on:
         default: "1.0"
         type: string
 
-  # AND THE WAY TO RUN IT FROM A BRANCH.
+  # AND THE WAY TO RUN IT FROM A WORKING BRANCH -- AND ONLY FROM ONE.
+  #
+  # The branch filter is not tidiness. Without it, merging a working
+  # branch into main carries voice/RENDER along with everything else,
+  # which is a push that touches the trigger path, so the whole thing
+  # re-rendered 117 takes ON MAIN and pushed them straight back to it.
+  # Nothing broke -- Piper is slightly stochastic, so it was 117 files
+  # of very slightly different audio saying exactly the same words --
+  # but it spent four minutes and six megabytes of history saying so,
+  # and a workflow that pushes to main on its own because somebody
+  # merged is not a thing anybody asked for.
+  #
   #
   # A workflow_dispatch workflow has to exist on the default branch
   # before GitHub will show it a button -- but a push-triggered one
@@ -63,6 +74,8 @@ on:
   # An empty or unreadable marker just means: sample, the narrator
   # voice, a narrator's pace.
   push:
+    branches:
+      - 'claude/**'
     paths:
       - voice/RENDER
 
