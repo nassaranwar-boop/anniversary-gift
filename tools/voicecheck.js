@@ -134,13 +134,40 @@ function cleanup() {
      lvls.every((v) => v < 0.75), lvls.map((v) => v.toFixed(2)));
   ok('and he is still going', during[during.length - 1].talking === true);
 
-  /* a door, mid-sentence */
+  /* THE SHAPE OF THE DUCK, NOT JUST ITS DEPTH.
+     "It sits below 0.75" was also true of the version that slammed the
+     bed down in thirty-five milliseconds and sounded like a gate. What
+     makes it sound like music making room is how fast it moves, so
+     that is what is measured -- as a rate, per 20ms of real time,
+     sampled on the page's own frame clock. Sampling it over a round
+     trip cannot tell a fast fader from a slow harness. */
+  const rate = (trace) => {
+    let w = 0;
+    for (let i = 1; i < trace.length; i++) {
+      const dt = trace[i][0] - trace[i - 1][0];
+      if (dt <= 0) continue;
+      w = Math.max(w, Math.abs(trace[i][1] - trace[i - 1][1]) / dt * 20);
+    }
+    return w;
+  };
+  await p.evaluate((l) => OuissysNightShift.__night.speak(l), LINE);
+  const tr1 = await p.evaluate(() => OuissysNightShift.__night.bedTrace(1500));
+  ok('and it moves smoothly rather than snapping',
+     rate(tr1) < 0.14, 'fastest ' + rate(tr1).toFixed(3) + ' per 20ms');
+
+  /* A DOOR IN THE MIDDLE OF A SENTENCE.
+     The line is restarted first so the clock is known: the previous
+     version of this measured after the take had already run out, and
+     reported the bed at 1.00 as a failure when nobody was speaking. */
+  await p.evaluate((l) => OuissysNightShift.__night.speak(l), LINE);
+  await p.waitForTimeout(350);
   await p.evaluate(() => OuissysNightShift.__night.door());
-  await p.waitForTimeout(700);
-  const after = await sample(900, 150);
-  const al = after.map((x) => x.level).filter((x) => x !== null);
+  const tr2 = await p.evaluate(() => OuissysNightShift.__night.bedTrace(1200));
+  const lv = tr2.map((x) => x[1]);
   ok('a door does not hand the score back its full level mid-line',
-     al.every((v) => v < 0.75), al.map((v) => v.toFixed(2)));
+     Math.max.apply(null, lv) < 0.80, Math.max.apply(null, lv).toFixed(3));
+  ok('and a door ducks the score smoothly too',
+     rate(tr2) < 0.16, 'fastest ' + rate(tr2).toFixed(3) + ' per 20ms');
 
   /* THE BUILDING, GENUINELY MID-SENTENCE.
      The first version of this fired the announcement after the take

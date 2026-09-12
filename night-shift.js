@@ -5926,32 +5926,28 @@ function bedStop() {
 let sideT = 0;
 function cueDuck(depth) {
   if (!AC || !sideGain) return;
-  const t = now();
-  if (t - sideT < 0.07) return;
-  sideT = t;
-  const d = depth === undefined ? 0.5 : depth;
-  /* WHILE HE IS TALKING, A DOOR DOES NOT GET TO TURN THE MUSIC BACK UP.
+  /* A REQUEST, NOT A SCHEDULE.
 
-     This function ends every duck by ramping the bed to 1, which is
-     correct for a bang in a quiet shop and catastrophic in the middle
-     of a line: she shuts a door, and the score -- which was sitting
-     politely under him -- is handed back its full level for the rest
-     of the sentence. So during a held voice duck the cue ducks from
-     the voice's floor and returns to the voice's floor. The door still
-     punches; it punches a hole in something quieter. */
-  const talking = t < voxHold;
-  const floor = talking ? VOICE_BED : 1;
-  sideGain.gain.cancelScheduledValues(t);
-  sideGain.gain.setValueAtTime(sideGain.gain.value, t);
-  sideGain.gain.linearRampToValueAtTime(Math.min(d, floor), t + 0.035);
-  sideGain.gain.linearRampToValueAtTime(floor, t + 0.42);
-  /* and the hold is re-armed behind it, because the ramp above just
-     overwrote the schedule that was keeping it down */
-  if (talking) {
-    sideGain.gain.setValueAtTime(VOICE_BED, Math.max(t + 0.43, voxHold - 0.15));
-    sideGain.gain.linearRampToValueAtTime(1, voxHold + 0.75);
+     This used to write its own envelope onto the fader and end it by
+     ramping back to 1 -- which, in the middle of one of his sentences,
+     handed the score its full level for the rest of the line. It then
+     had to re-arm the voice hold behind itself to undo that, and the
+     two of them wrote over each other every time a door moved.
+
+     Now it only says how far down it would like the bed and for how
+     long. bedTick works out the rest, and because the bed takes the
+     LOWEST of the outstanding requests, a cue underneath a voice
+     simply ducks a little further and comes back to where the voice
+     had it. There is nothing to re-arm and nothing to fight. */
+  const d = depth === undefined ? 0.58 : depth;
+  const until = now() + 0.24;
+  if (until > BED.cueUntil || d < BED.cueTo) {
+    BED.cueTo = now() < BED.cueUntil ? Math.min(BED.cueTo, d) : d;
+    BED.cueUntil = Math.max(BED.cueUntil, until);
   }
+  bedTick();
 }
+
 function audioDuck(v, ms) {
   if (!AC) return;
   const t = now();
@@ -6441,7 +6437,21 @@ function annunciate(text, urgent) {
     /* the consonant edge between syllables */
     burst({ f0: 3400, dur: 0.014, gain: 0.032 * gain, q: 7, at: at - 0.012 });
   }
-  return 0.26 + n * step + 0.2;
+  const dur = 0.26 + n * step + 0.2;
+  /* AND THE ANNOUNCEMENT SITS IN THE MIX LIKE SPEECH.
+
+     It used to move the score only through the cue ducks its own chime
+     and buzz happened to fire -- a handful of thirty-five millisecond
+     stabs scattered across a sentence, which reads as the music
+     glitching rather than as something making room. It is a voice, so
+     it gets a voice's treatment: one shallow hold for its whole
+     length. Shallow because it IS short and because it is a speaker in
+     a ceiling; the score should lean back for it, not get out of the
+     way. And while he is talking it asks for nothing at all -- his
+     hold is deeper and already running, and a second request would
+     only end early and lift the bed out from under him. */
+  if (!voiceBusy()) voiceDuck(dur, SYS_BED);
+  return dur;
 }
 
 /* one line at a time, and never over a jumpscare */
@@ -7109,23 +7119,77 @@ const VOX_FILE = { on: null, map: null, buf: Object.create(null), dur: Object.cr
    hear the eight bars turn underneath him, and hear the chord change
    at the end of a sentence. It is the difference between a score with
    narration over it and a score that stops to let somebody speak. */
-const VOICE_BED = 0.42;
-let voxHold = 0;                        // audio time the hold runs until
+/* =====================================================================
+   ONE OWNER FOR THE SHOP'S LEVEL.
 
-function voiceDuck(dur) {
-  if (!AC || !sideGain) return;
+   Two things were moving this fader and they were fighting. voiceDuck
+   held it down for the length of a line; cueDuck, which fires on every
+   single sound in the chapter, dropped it in THIRTY-FIVE MILLISECONDS
+   and pulled it back over four-tenths of a second, and then re-armed
+   the voice hold behind itself. Thirty-five milliseconds is not a duck.
+   It is a gate slamming, and it is why the music sounded like it was
+   being shoved aside rather than making room.
+
+   They are one thing now, and it works the way a mixing desk does
+   rather than the way a scheduler does:
+
+     a target      every request says how far down it wants the bed and
+                   until when. The bed goes to whichever is lowest, and
+                   nothing has to know about anything else, so there is
+                   nothing left to fight over.
+     a time        it moves by setTargetAtTime -- an exponential
+                   approach, which is what every compressor in the world
+                   does -- instead of a straight line. A linear ramp on
+                   a gain starts abruptly and finishes slowly, which is
+                   exactly backwards from how a level sounds like it is
+                   moving.
+     two speeds    down quickly, up slowly, and slower still while
+                   somebody is talking. A bed that recovers in the gap
+                   between two sentences is a bed that pumps.
+
+   The numbers are time constants, not durations: the level covers
+   about 95% of the distance in three of them. */
+const VOICE_BED = 0.48;            // where the score sits under him
+const SYS_BED   = 0.66;            // and under the building, which is shorter
+const BED = { at: 1, voiceTo: 1, voiceUntil: 0, cueTo: 1, cueUntil: 0 };
+
+function bedWant() {
   const t = now();
-  voxHold = Math.max(voxHold, t + dur + 0.15);
-  sideGain.gain.cancelScheduledValues(t);
-  sideGain.gain.setValueAtTime(sideGain.gain.value, t);
-  /* a quarter of a second to get down there: fast enough to be under
-     his first word, slow enough that it is a fade and not a gate */
-  sideGain.gain.linearRampToValueAtTime(VOICE_BED, t + 0.25);
-  sideGain.gain.setValueAtTime(VOICE_BED, voxHold - 0.15);
-  /* and nearly a second to come back, so the score arrives rather than
-     reappears */
-  sideGain.gain.linearRampToValueAtTime(1, voxHold + 0.75);
+  let v = 1;
+  if (t < BED.voiceUntil) v = Math.min(v, BED.voiceTo);
+  if (t < BED.cueUntil) v = Math.min(v, BED.cueTo);
+  return v;
 }
+
+function bedTick() {
+  if (!AC || !sideGain || AC.state !== "running") return;
+  const want = bedWant();
+  if (Math.abs(want - BED.at) < 0.004) return;
+  const t = now(), talking = t < BED.voiceUntil, down = want < BED.at;
+  /* down in about a sixth of a second under a voice, quicker under a
+     bang; back up over most of a second under a voice, and briskly
+     otherwise so the room does not feel like it is breathing */
+  const tau = down ? (talking ? 0.055 : 0.022)
+                   : (talking ? 0.30  : 0.14);
+  const cur = sideGain.gain.value;
+  sideGain.gain.cancelScheduledValues(t);
+  sideGain.gain.setValueAtTime(cur, t);
+  sideGain.gain.setTargetAtTime(want, t, tau);
+  BED.at = want;
+}
+
+/* a line of speech: hold the bed down for as long as it lasts */
+function voiceDuck(dur, level) {
+  if (!AC || !sideGain) return;
+  const to = level === undefined ? VOICE_BED : level;
+  const until = now() + dur + 0.12;
+  /* the deeper request wins, and the longer one sets the clock, so a
+     door alert underneath him cannot cut his hold short */
+  if (until > BED.voiceUntil) BED.voiceUntil = until;
+  BED.voiceTo = Math.min(BED.voiceTo < 1 && now() < BED.voiceUntil ? BED.voiceTo : 1, to);
+  bedTick();
+}
+
 
 function voiceLoad() {
   if (VOX_FILE.on !== null) return;
@@ -8493,6 +8557,9 @@ function nightMix(feel4, d) {
 }
 
 function musicTick(dt) {
+  /* the bed is driven every frame whatever the score is doing, because
+     a voice can be talking over a scene that has no music in it */
+  bedTick();
   if (!MUS.ready || !AC || muted) return;
   /* scheduling ahead of a clock that is not moving schedules everything
      into the same instant, and it all arrives at once when it wakes */
@@ -13201,6 +13268,18 @@ const testHooks = {
     target: VOICE_BED,
   }),
   door: () => cueDuck(0.5),
+  /* sample the bed from inside the page, on the frame clock, because
+     a check that samples it over a round trip cannot tell a fader
+     moving fast from a harness answering slowly -- and will report the
+     smoothest duck in the world as a snap */
+  bedTrace: (ms) => new Promise((done) => {
+    const out = [], t0 = perf();
+    const tick = () => {
+      out.push([+(perf() - t0).toFixed(1), +sideGain.gain.value.toFixed(4)]);
+      if (perf() - t0 < (ms || 1500)) requestAnimationFrame(tick); else done(out);
+    };
+    tick();
+  }),
   bedMode: (m) => musicMode(m),
   /* which path the last line took, and how many went out as speech
      because their take had not arrived yet */
