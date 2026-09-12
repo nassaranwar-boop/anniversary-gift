@@ -16,8 +16,20 @@ const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
 const DIR  = path.join(ROOT, 'voice');
 const MAN  = path.join(DIR, 'manifest.json');
-const LINE = 'I made toys. That part was true.';
-const ID   = 'intro-3-1';
+/* A LINE AND AN ID THAT ARE NOT IN THE CHAPTER.
+
+   This used to borrow a real one -- intro-3-1, "I made toys. That part
+   was true." -- and write a test tone over his recording of it. It put
+   the take back afterwards, which is fine right up until a run is
+   killed part way through: the corrupted beep is then what the NEXT
+   run reads as its backup, and faithfully restores. One interrupted
+   run and the sentence is gone for good, restored over and over by the
+   very code meant to protect it.
+
+   So the whole exercise happens on an id no render will ever produce
+   and a line nobody ever says. There is nothing of his to lose. */
+const LINE = 'This line exists only so a test has something to play.';
+const ID   = '__selftest';
 const TAKE = path.join(DIR, ID + '.mp3');
 const SECS = 3.7;                       // nothing would guess this by accident
 
@@ -99,11 +111,11 @@ function cleanup() {
      Math.abs(dur - 3.7) < 0.12, dur);
 
   /* a line with no take must still be spoken the old way */
-  const other = await p.evaluate(() => OuissysNightShift.__night.speak('For fifteen years I told you it was fine.'));
+  const other = await p.evaluate(() => OuissysNightShift.__night.speak('A line with no recording behind it at all.'));
   ok('a line with no take still gets said', other > 0.3 && Math.abs(other - 3.7) > 0.2, other);
 
   /* and a take whose words have since been rewritten must NOT play */
-  const stale = await p.evaluate(() => OuissysNightShift.__night.voiceWant('I made toys. That part was mostly true.'));
+  const stale = await p.evaluate(() => OuissysNightShift.__night.voiceWant('This line exists only so a test has something else to play.'));
   ok('a take of words that have changed is ignored', stale === false, stale);
 
   /* --- AND WHAT THE SHOP DOES WHILE HE IS TALKING ------------------

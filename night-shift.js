@@ -7269,7 +7269,13 @@ function voiceWarm() {
    falling back, because it is the first thing she ever hears and there
    is no second chance at it. */
 function voiceWait(text, ms, then) {
-  const cap = ms || 2500, t0 = perf();
+  /* seconds, because perf() is seconds. This read `ms || 2500` and so
+     every cap was a thousand times too long: a line whose take never
+     arrives at all -- a 404, a failed decode -- would have waited forty
+     minutes rather than giving up and speaking. It never showed,
+     because a take almost always arrives and the other exits fire
+     first, but it was a real way for a line to go silent for good. */
+  const cap = (ms || 2500) / 1000, t0 = perf();
   const tick = () => {
     /* THE MANIFEST MAY NOT HAVE ARRIVED EITHER.
 
@@ -13273,10 +13279,15 @@ const testHooks = {
      moving fast from a harness answering slowly -- and will report the
      smoothest duck in the world as a snap */
   bedTrace: (ms) => new Promise((done) => {
-    const out = [], t0 = perf();
+    /* TWO THINGS THIS GOT WRONG, BOTH OF WHICH LOOKED LIKE A HANG.
+       perf() in this file is in SECONDS -- it divides performance.now()
+       by a thousand -- so comparing it against a millisecond budget ran
+       the trace for 1500 seconds. And requestAnimationFrame never fires
+       in a headless page, because nothing ever paints. */
+    const out = [], t0 = perf(), cap = (ms || 1500) / 1000;
     const tick = () => {
-      out.push([+(perf() - t0).toFixed(1), +sideGain.gain.value.toFixed(4)]);
-      if (perf() - t0 < (ms || 1500)) requestAnimationFrame(tick); else done(out);
+      out.push([+((perf() - t0) * 1000).toFixed(1), +sideGain.gain.value.toFixed(4)]);
+      if (perf() - t0 < cap) setTimeout(tick, 16); else done(out);
     };
     tick();
   }),
