@@ -5761,13 +5761,28 @@ function applyMix() {
   if (bedGain && audioOn) set(bedGain, 0.32 * MIX.room);
 }
 
+/* THE SAME NOISE EVERY TIME, AND WHY THAT MATTERS.
+
+   This used to be Math.random(). Audibly that is fine -- brown noise is
+   brown noise and nobody can tell one second of it from another. It is
+   not fine for the six tools in here that measure spectra, because it
+   made every render of the same cue slightly different, and a spectral
+   check that is looking for a wrong note can occasionally find one in a
+   hiss. The seam check came back 12 of 13 on one run and 13 of 13 on
+   the next with no code between them.
+
+   A flaky guard is worse than no guard: the next time it reports a real
+   fault, the fault gets dismissed as the flake it has trained everybody
+   to expect. So the noise is seeded, every render is reproducible, and
+   a failure now means something changed. */
 function noiseBuffer(sec) {
   const n = (AC.sampleRate * sec) | 0;
   const b = AC.createBuffer(1, n, AC.sampleRate);
   const d = b.getChannelData(0);
+  const rnd = mulberry(0x51ee9);
   let last = 0;
   for (let i = 0; i < n; i++) {
-    const w = Math.random() * 2 - 1;
+    const w = rnd() * 2 - 1;
     last = (last + 0.02 * w) / 1.02;      // brown-ish, not white: it sits under
     d[i] = last * 3.2;
   }
