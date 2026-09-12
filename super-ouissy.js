@@ -2613,6 +2613,12 @@ window.SuperOuissy = (function () {
        where the HUD is redrawn constantly — watching one from the ending
        left SCORE 000000 and TIME 150 sitting on top of Death. */
     updateHud();
+    /* THE GAME'S MUSIC STANDS DOWN. A story scene brings its own — the
+       Death scene has a whole score of its own now — and the castle's
+       cheerful little march playing underneath it was the single most
+       wrong thing about that scene. Ducked, not switched off: her own
+       preference is hers and is not touched. */
+    bgmSilence(true);
     Rescue.begin(kind, opts);
   }
 
@@ -2621,6 +2627,7 @@ window.SuperOuissy = (function () {
     cutsceneThen = null;
     G.state = "play";
     updateHud();
+    bgmSilence(false);
     if (then) then();
   }
 
@@ -4013,6 +4020,12 @@ window.SuperOuissy = (function () {
           '<button class="so-btn so-btn-go" id="so-resume">RESUME</button>' +
           '<button class="so-btn" id="so-restart">RESTART WORLD</button>' +
           '<button class="so-btn" id="so-bgm">MUSIC: ' + (G.bgmOn ? "ON" : "OFF") + "</button>" +
+          /* The ending's door is behind three worlds and a boss. This is
+             the same door, in the one place she can always reach — and
+             on Hard only, for the same reason. */
+          (G.diff === "hard"
+            ? '<button class="so-btn so-btn-quiet" id="so-pause-scene">ANWAR vs DEATH</button>'
+            : "") +
           '<button class="so-btn so-btn-quiet" id="so-quit">QUIT TO HUB</button>' +
         "</div>", "so-ov-card");
       $("so-resume").addEventListener("click", function () { togglePause(false); });
@@ -4021,6 +4034,15 @@ window.SuperOuissy = (function () {
         setBgm(!G.bgmOn); $("so-bgm").textContent = "MUSIC: " + (G.bgmOn ? "ON" : "OFF");
       });
       $("so-quit").addEventListener("click", quitToHub);
+      var pscene = $("so-pause-scene");
+      if (pscene) pscene.addEventListener("click", function () {
+        closeOverlay();
+        /* out of the pause and into the scene, and back into the pause
+           when it ends — the run underneath is untouched either way */
+        G.state = "play";
+        bgmDuck(false);
+        watchDeathScene(function () { togglePause(true); });
+      });
       Array.prototype.forEach.call(document.querySelectorAll("[data-so-setdiff]"), function (b) {
         b.addEventListener("click", function () {
           var k = b.getAttribute("data-so-setdiff");
@@ -4172,9 +4194,15 @@ window.SuperOuissy = (function () {
        Anwar and Death only meet if the Queen takes her last life on Hard,
        inside the Queen's own room — which means the one piece of the game
        with the most story in it is the piece least likely to ever be
-       watched. From the ending it can simply be watched, and watching it
-       costs nothing and changes nothing: no run, no lives, no save. */
-    html += '<button class="so-btn so-btn-quiet" id="so-end-scene">ANWAR vs DEATH</button>';
+       watched. It can simply be watched instead, and watching it costs
+       nothing and changes nothing: no run, no lives, no save.
+
+       HARD ONLY, wherever the door appears. He is the Hard story — the
+       rescue, the last stand, all of it — and offering his name to
+       someone on Easy names a character that difficulty has never
+       introduced and spoils a scene she has no way to have reached. */
+    if (G.diff === "hard")
+      html += '<button class="so-btn so-btn-quiet" id="so-end-scene">ANWAR vs DEATH</button>';
     html += '<button class="so-btn so-btn-quiet" id="so-end-title">TITLE SCREEN</button>';
     html += '<button class="so-btn so-btn-quiet" id="so-end-quit">BACK TO THE GAMES</button>';
     return html;
@@ -4185,13 +4213,11 @@ window.SuperOuissy = (function () {
      same decision at the end of it — and when it finishes, the ending
      comes back. The one difference is that its outcome is thrown away
      here: nothing is spent and nothing is won by watching. */
-  function watchDeathScene() {
-    if (!window.Rescue) { showEnding(true); return; }
+  function watchDeathScene(back) {
+    back = back || function () { G.state = "ending"; showEnding(true); };
+    if (!window.Rescue) { back(); return; }
     stopEndingArt();
-    playCutscene("death", { herX: 120, herY: 118 }, function () {
-      G.state = "ending";
-      showEnding(true);
-    });
+    playCutscene("death", { herX: 120, herY: 118 }, back);
   }
 
   function wireEndActions() {
@@ -4498,7 +4524,13 @@ window.SuperOuissy = (function () {
     bgmTimer = setInterval(tickBgm, BGM.tempo * 1000);
   }
   function stopBgm() { if (bgmTimer) clearInterval(bgmTimer); bgmTimer = null; }
-  function bgmDuck(on) { if (bgmGain) bgmGain.gain.value = on ? 0.014 : 0.055; }
+  function bgmDuck(on) { if (bgmGain) bgmGain.gain.value = bgmHushed ? 0 : (on ? 0.014 : 0.055); }
+  /* All the way down, for as long as something else owns the sound. */
+  var bgmHushed = false;
+  function bgmSilence(on) {
+    bgmHushed = !!on;
+    if (bgmGain) bgmGain.gain.value = on ? 0 : 0.055;
+  }
 
   function tickBgm() {
     var c = actx(); if (!c || !bgmGain) return;
@@ -4872,6 +4904,9 @@ window.SuperOuissy = (function () {
   /* Drive the music by hand. setInterval is throttled hard in a background
      or headless tab, so counting notes off the wall clock measures the
      browser rather than the tune. */
+  /* how loud the game's own music is right now — a story scene is meant
+     to take it all the way down and give it back afterwards */
+  window.__soBgmLevel = function () { return bgmGain ? bgmGain.gain.value : null; };
   window.__soBgmSteps = function (n) { for (var i = 0; i < n; i++) tickBgm(); };
   window.__soBgmBar = function () {
     return { steps: BGM.lead.length,
@@ -4945,6 +4980,9 @@ window.SuperOuissy = (function () {
              invuln: p.invuln };
   };
   window.__soSetTime = function (t) { G.timeLeft = t; };
+  /* the pause menu is a real menu with real doors in it, so a harness
+     needs to be able to open it */
+  window.__soPause = function (force) { togglePause(force); };
   /* A harness testing the revive offer has to arrive at the death holding
      more lives than the offer costs, and playing well enough to have
      collected them is not something a test can do. */
