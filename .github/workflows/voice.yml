@@ -277,7 +277,27 @@ jobs:
           Nothing is wired up yet. These are here to be listened to.
           Put the winner in voice/RENDER and push, and the whole
           chapter gets rendered in it."
-          git push origin HEAD:${{ github.ref_name }}
+          # PUSHING INTO A BRANCH SOMEBODY ELSE IS ALSO WORKING ON.
+          #
+          # This takes four minutes, and four minutes is plenty of time
+          # for a commit to land on the branch it checked out from. The
+          # first full render produced all 117 takes, committed them,
+          # and then had the push rejected because a tool had been
+          # pushed to the same branch while it worked -- so the audio
+          # existed for about a second and then went in the bin with
+          # the runner.
+          #
+          # Rebase onto whatever arrived, then push; and if something
+          # lands in the gap between those two, do it again. Rebase
+          # rather than merge because these commits are only ever new
+          # files and there is nothing for them to conflict with.
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin "${{ github.ref_name }}" || true
+            git push origin HEAD:"${{ github.ref_name }}" && break
+            echo "push rejected, attempt $attempt; someone got in first"
+            sleep 5
+          done
+
 
       # --- OR RENDER THE LOT ----------------------------------------
       - name: Fetch the voice
@@ -377,4 +397,24 @@ jobs:
           The game plays these through its own audio graph — ducked for a
           door, under the score, and through the tape — which is the part
           the browser's speech engine could never do."
-          git push origin HEAD:${{ github.ref_name }}
+          # PUSHING INTO A BRANCH SOMEBODY ELSE IS ALSO WORKING ON.
+          #
+          # This takes four minutes, and four minutes is plenty of time
+          # for a commit to land on the branch it checked out from. The
+          # first full render produced all 117 takes, committed them,
+          # and then had the push rejected because a tool had been
+          # pushed to the same branch while it worked -- so the audio
+          # existed for about a second and then went in the bin with
+          # the runner.
+          #
+          # Rebase onto whatever arrived, then push; and if something
+          # lands in the gap between those two, do it again. Rebase
+          # rather than merge because these commits are only ever new
+          # files and there is nothing for them to conflict with.
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin "${{ github.ref_name }}" || true
+            git push origin HEAD:"${{ github.ref_name }}" && break
+            echo "push rejected, attempt $attempt; someone got in first"
+            sleep 5
+          done
+
