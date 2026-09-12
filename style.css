@@ -3028,6 +3028,21 @@ img{-webkit-user-drag:none; user-select:none;}
   font-size:clamp(11px,2.2vw,15px); line-height:0;
   animation:hvTokenIn .45s var(--ease-pop) backwards;
 }
+/* HERS, set apart from what she picked up.
+
+   The keepsake leads the row and is the only thing in it she did not
+   find lying about, so it is given a little air and a warm ring -- it
+   reads as the one she is carrying rather than the first of a list. */
+.hv-token-keepsake{
+  position:relative; margin-right:7px; padding-right:7px;
+}
+.hv-token-keepsake::after{
+  content:""; position:absolute; right:0; top:50%; transform:translateY(-50%);
+  width:1px; height:64%; background:rgba(120,80,40,.35);
+}
+.hv-token-keepsake canvas{
+  filter:drop-shadow(0 0 3px rgba(255,190,120,.55));
+}
 /* the strip shows the same little canvas that is lying in the grass,
    scaled up and kept on its own pixel grid */
 .hv-token canvas{
@@ -3689,6 +3704,10 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .hub-name{font-family:'Cinzel',serif; font-weight:700; font-size:15.5px; color:#4e2d0d;}
 .hub-desc{font-family:'Poppins',sans-serif; font-size:11.5px; line-height:1.4; color:#7a5327;}
+/* the two ways out of the hub, side by side rather than stacked */
+.hub-foot{
+  display:flex; flex-wrap:wrap; gap:9px; justify-content:center; width:100%;
+}
 .hub-keepsake{margin-top:14px; display:none;}
 .hub-keepsake.on{display:inline-block;}
 

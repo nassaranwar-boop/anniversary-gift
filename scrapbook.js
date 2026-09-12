@@ -4538,7 +4538,18 @@ window.Scrapbook = (function () {
 
   function stripCount() {
     if (stripPref === null) {
-      var small = window.matchMedia && window.matchMedia("(max-width: 760px)").matches;
+      /* A PHONE ON ITS SIDE IS STILL A PHONE.
+
+         This asked one question -- is the window narrower than 760px --
+         and a phone held sideways is 844 wide and 390 tall, so it
+         answered no and took the full eighteen strips. On a screen that
+         also runs at three device pixels to the CSS pixel, which is the
+         most expensive combination there is, and the one this book is
+         most likely to be read on. Height is asked as well now, which is
+         what actually distinguishes a phone lying down from an iPad. */
+      var mq = window.matchMedia;
+      var small = !!mq && (mq("(max-width: 760px)").matches ||
+                           mq("(max-height: 560px)").matches);
       /* Higher than it was, for two reasons. The strips now span 144% of
          the page rather than 100%, so the same count would be a coarser
          cut; and he said the turn still reads as sliding panels, which is

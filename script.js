@@ -2137,6 +2137,17 @@ function startKeepsake() {
   document.getElementById("ks-closing").textContent = KEEPSAKE_CLOSING;
 }
 
+/* THE WAY BACK TO THE BOOK, FROM THE GAMES.
+
+   The book leads into the games and there was no door the other way:
+   once she was on the hub, the only things on it were five chapters and
+   the keepsake, and getting back to the pages meant the keepsake screen
+   and then "relive a memory". It is one press from here now. */
+const hubBookBtn = document.getElementById("hub-book");
+if (hubBookBtn) hubBookBtn.addEventListener("click", () => {
+  pageTurn("scrapbook", startDioramas);
+});
+
 document.getElementById("ks-memories").addEventListener("click", () => {
   pageTurn("scrapbook", startDioramas);
 });
@@ -3943,10 +3954,36 @@ const HV_SCENES = {
     grassTufts(ctx, PXW, 126, 40, ["#2f3a2e", "#26301f", "#1d2618"], rnd);
     stones(ctx, PXW, 150, 9, ["#4a4650", "#3a3742", "#2c2a33"], rnd);
 
-    /* the lanterns themselves, strung along the path */
+    /* THE LANTERNS ARE HUNG ON A LINE, NOT NAILED TO THE SKY.
+
+       Each one used to carry a one-pixel black wire running from its
+       hook straight up to y=0 -- five hard vertical scratches through
+       the stars to the top edge of the frame. Nothing hangs like that.
+       Somebody came up here and strung a line between the trees, so
+       there is a line: it sags between its ends the way a slack rope
+       does, it is the colour of a rope at night rather than pure black,
+       and each lantern hangs off it on a short drop of its own. */
+    var lanX = [], lanY = [];
     for (var L = 0; L < 5; L++) {
-      var lx = 26 + L * 62 + rnd() * 10, ly = 74 + rnd() * 8;
-      px(ctx, lx, 0, 1, ly - 6, "#171a2c");           // the wire up into the dark
+      lanX.push(26 + L * 62 + rnd() * 10);
+      lanY.push(74 + rnd() * 8);
+    }
+    var wireL = 0, wireR = PXW, wireTop = 40, sag = 26;
+    for (var wx2 = wireL; wx2 < wireR; wx2++) {
+      var u = (wx2 - wireL) / (wireR - wireL);
+      /* a catenary is near enough a parabola over this span */
+      var wy2 = wireTop + sag * 4 * u * (1 - u);
+      px(ctx, wx2, wy2, 1, 1, "rgba(36,30,52,0.85)");
+      px(ctx, wx2, wy2 + 1, 1, 1, "rgba(58,50,78,0.35)");   // the light on top of it
+    }
+    for (var L2 = 0; L2 < 5; L2++) {
+      var lx = lanX[L2], ly = lanY[L2];
+      var uu = (lx - wireL) / (wireR - wireL);
+      var hangFrom = wireTop + sag * 4 * uu * (1 - uu);
+      /* the short drop from the line down to the hook */
+      for (var dy2 = hangFrom; dy2 < ly - 5; dy2++) {
+        px(ctx, lx, dy2, 1, 1, "rgba(44,36,60,0.8)");
+      }
       /* the pool it throws on the path below it */
       blob(ctx, lx, 138 + rnd() * 8, 22, 5, ["rgba(255,198,120,0.10)"]);
       blob(ctx, lx, 138 + rnd() * 8, 13, 3, ["rgba(255,208,140,0.13)"]);
@@ -4244,7 +4281,9 @@ const HV_SCENES = {
    ========================================================= */
 const QUEST_FINAL = {
   question:     "Do you wanna be mine forever?",                        // the way there
-  questionBack: "Same valley, a year on. Would you do it all again?",   // the way back
+  /* the way back asks the real one. A year on, the same valley, and
+     the question is no longer whether she would walk it again. */
+  questionBack: "Would you love to continue this journey with me until death do us apart?",
   nudge: "You sure about that?",
   nudgeYes: "I changed my mind",
   nudgeNo: "Yup",
@@ -5221,6 +5260,20 @@ function hvDrawToken(kind) {
       px(ctx, 7 - w, 3 + k, w, 1, "#f2e6cf");
       px(ctx, 8, 3 + k, w, 1, "#e2d2b4");
     }
+  } else if (kind === "heart") {
+    /* her keepsake, at the size the other found things are drawn */
+    blob(ctx, 5, 6, 3.2, 3, ["#ffb3cf", "#f582ab", "#d65b88", "#ad3f66"]);
+    blob(ctx, 9, 6, 3.2, 3, ["#ffb3cf", "#f582ab", "#d65b88", "#ad3f66"]);
+    blob(ctx, 7, 9, 4.4, 3.6, ["#ff9fc0", "#f06a99", "#cf4b79", "#a63a5e"]);
+    px(ctx, 4, 4, 1, 1, "#ffe1ec");
+  } else if (kind === "flower") {
+    var P = ["#fff2b8", "#ffd978", "#e8b551", "#c08f33"];
+    px(ctx, 7, 8, 1, 5, "#5c8440");                  // the stem
+    px(ctx, 5, 10, 2, 1, "#6f9a4c");                 // one leaf
+    blob(ctx, 7, 3, 2.4, 2.2, P); blob(ctx, 4, 5, 2.4, 2.2, P);
+    blob(ctx, 10, 5, 2.4, 2.2, P); blob(ctx, 5, 8, 2.2, 2, P);
+    blob(ctx, 9, 8, 2.2, 2, P);
+    blob(ctx, 7, 6, 1.8, 1.7, ["#fff6d6", "#ffe9a0", "#f0cf70"]);
   } else if (kind === "acorn") {
     blob(ctx, 7, 9, 4, 4, ["#e0b070", "#c8904e", "#a87238", "#875828"]);
     px(ctx, 3, 3, 8, 4, "#7a5230");
@@ -5371,6 +5424,24 @@ function hvUpdateFoundStrip() {
      game rather than a canvas one and an SVG one that have to be kept
      looking like each other. */
   strip.innerHTML = "";
+
+  /* HER OWN THING FIRST, AND ALWAYS.
+
+     This strip only ever held what she had picked up along the way, so
+     the first thing in it was whatever she happened to find -- usually
+     the acorn. The one object in this whole walk that is HERS is the
+     heart or the flower she chose at the very start, and it is the one
+     the ending turns on, and it was the only thing not shown anywhere.
+     It leads the row now, kept a little apart from the found things,
+     from the moment she picks it up to the moment it is spoken of. */
+  if (hvKeepsake) {
+    var kw = document.createElement("span");
+    kw.className = "hv-token hv-token-keepsake";
+    kw.title = hvKeepsake === "flower" ? "the flower you chose" : "the heart you chose";
+    kw.appendChild(hvDrawToken(hvKeepsake));
+    strip.appendChild(kw);
+  }
+
   ids.forEach(function (k) {
     var wrap = document.createElement("span");
     wrap.className = "hv-token";
@@ -5378,7 +5449,7 @@ function hvUpdateFoundStrip() {
     wrap.appendChild(hvDrawToken(k));
     strip.appendChild(wrap);
   });
-  strip.classList.toggle("on", ids.length > 0);
+  strip.classList.toggle("on", ids.length > 0 || !!hvKeepsake);
 }
 
 function hvFoundList() {
@@ -5594,7 +5665,17 @@ const HV_STAND = {
   ridge:   { x: 286, y: 150, s: 1.5 },
   orchard: { x: 286, y: 152, s: 1.5 },
   bridge:  { x: 26,  y: 146, s: 1.3 },
-  home:    { x: 286, y: 152, s: 1.5 },
+  /* THEY WERE STANDING INSIDE THE HOUSE.
+
+     Every other scene puts them at x=286, near the right edge, because
+     every other scene is open ground over there. This one is not: the
+     house fills the frame from x=176 rightwards, so at 286 the two of
+     them were drawn thirty pixels deep into the clapboard, standing on
+     the wall like a pair of stickers. They stand on the path now, left
+     of the pot by the step, with the doorlight falling across them --
+     which is also where you would actually stand, looking at a light
+     somebody left on for you. */
+  home:    { x: 138, y: 158, s: 1.5 },
 };
 
 /* =========================================================
@@ -6314,31 +6395,69 @@ function hvPaintFrame(t, dt) {
   if (n.rain || n.drip) {
     var wet = n.drip ? Math.max(0, 1 - st / 3) * 0.25 : Math.min(1, st / 1.1);
     if (wet > 0.01) {
+      /* THE SKY HAS TO AGREE WITH IT.
+
+         The old shower was thirty to seventy-four one-pixel streaks,
+         bolt upright, five to thirteen pixels long, over a wash at a
+         flat 0.3. Upright and sparse and long is not rain, it is
+         scratches on the print -- and under them the sky stayed the
+         bright blue of the painted scene, so the frame said sunshine
+         while the writing said downpour.
+
+         So: the top of the frame goes grey and heavy first, because a
+         shower arrives as weather and not as streaks. */
       ctx.save();
-      ctx.globalAlpha = 0.3 * wet;
-      px(ctx, 0, 0, PXW, PXH, "#8296b4");
+      ctx.globalAlpha = 0.40 * wet;
+      px(ctx, 0, 0, PXW, PXH, "#6c7f9c");
       ctx.restore();
-      for (var rl = 0; rl < 3; rl++) {
-        var speed = 150 + rl * 90, len = 5 + rl * 4;
-        var count = (30 + rl * 22) * wet;
+      ctx.save();
+      ctx.globalAlpha = 0.34 * wet;
+      ditherSky(ctx, 0, 0, PXW, 96, [
+        { p: 0.00, c: "#4d5a74" }, { p: 1.00, c: "rgba(77,90,116,0)" },
+      ]);
+      ctx.restore();
+
+      /* Four layers, and every one of them SLANTED -- rain has somewhere
+         to be. The near layers are short, bright and fast; the far ones
+         are long, faint and slow, which is what gives a shower depth
+         instead of a single flat curtain. There are a lot more of them,
+         because the gaps were most of what made it read as scratches. */
+      var LAY = [
+        { n: 150, len: 3, sp: 460, a: 0.16, dx: 0.9, w: 1, c: "#b9cde2" },
+        { n: 110, len: 5, sp: 620, a: 0.26, dx: 1.1, w: 1, c: "#cfe0f2" },
+        { n:  64, len: 8, sp: 820, a: 0.36, dx: 1.3, w: 1, c: "#e2eefb" },
+        { n:  26, len: 12, sp: 1040, a: 0.5, dx: 1.5, w: 1, c: "#f2f8ff" },
+      ];
+      for (var rl = 0; rl < LAY.length; rl++) {
+        var Ly = LAY[rl], count = Ly.n * wet;
         ctx.save();
         for (var rp = 0; rp < count; rp++) {
           var seedx = ((rp * 71 + rl * 313) % PXW);
-          var ry = ((t * speed + rp * 97 + rl * 41) % (PXH + 40)) - 20;
-          /* the canopy they are under keeps some of it off */
-          var shelter = hvPairAt && Math.abs(seedx - hvPairAt.x) < 26 ? 0.25 : 1;
-          if (shelter < 1 && ry > hvPairAt.y - 54) continue;
-          ctx.globalAlpha = (0.3 + rl * 0.16) * wet * shelter;
-          px(ctx, seedx + rl, ry, 1, len, "#cfe0f2");
+          var ry = ((t * Ly.sp + rp * 97 + rl * 41) % (PXH + 60)) - 30;
+          /* the canopy they are under keeps it off them */
+          var shelter = hvPairAt && Math.abs(seedx - hvPairAt.x) < 30 ? 0 : 1;
+          if (!shelter && ry > hvPairAt.y - 58) continue;
+          ctx.globalAlpha = Ly.a * wet;
+          /* the slant, drawn as a short stepped line so it stays pixel art */
+          for (var q = 0; q < Ly.len; q++) {
+            px(ctx, seedx + q * Ly.dx, ry + q, Ly.w, 1, Ly.c);
+          }
         }
         ctx.restore();
       }
-      // and it landing
+
+      /* and it landing -- a tick and a bounce, not a dash, and scattered
+         over the whole of the ground rather than on five fixed rows */
       ctx.save();
-      ctx.globalAlpha = 0.4 * wet;
-      for (var sp4 = 0; sp4 < 16; sp4++) {
-        var sx4 = (sp4 * 37 + Math.floor(t * 3) * 53) % PXW;
-        if (Math.sin(t * 9 + sp4) > 0.4) px(ctx, sx4, 150 + (sp4 % 5) * 6, 2, 1, "#dceaf6");
+      for (var sp4 = 0; sp4 < 42; sp4++) {
+        var ph = (t * 2.2 + sp4 * 0.37) % 1;
+        if (ph > 0.42) continue;
+        var sx4 = (sp4 * 53 + Math.floor((t * 2.2 + sp4 * 0.37)) * 89) % PXW;
+        var sy4 = 132 + ((sp4 * 29) % 44);
+        ctx.globalAlpha = (1 - ph / 0.42) * 0.55 * wet;
+        px(ctx, sx4, sy4, 2, 1, "#dceaf6");
+        px(ctx, sx4 - 2, sy4 - 1, 1, 1, "#eaf4ff");
+        px(ctx, sx4 + 3, sy4 - 1, 1, 1, "#eaf4ff");
       }
       ctx.restore();
     }
