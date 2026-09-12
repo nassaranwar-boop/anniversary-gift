@@ -875,6 +875,37 @@ const TUNE = {
     perHour:  0.14,       // ...shortening as the night goes on
   },
 
+  /* --- the shop remembering ------------------------------------------
+     THE QUIET NEEDED SOMETHING TO NOTICE, NOT MORE BANGS.
+
+     Measured: night one's first two hours run 1-3 moves, no arrivals,
+     no knocks, and stretches of fourteen to twenty-three seconds with
+     nothing in them. That is her first impression of the chapter. The
+     false alarms already double their rate in a lull, and leaning on
+     them harder only makes the opening noisy -- four bangs a minute is
+     not atmosphere, it is a fire drill.
+
+     So the lull gets its own event, and it is the opposite of a scare:
+     somewhere out in the dark, one of his toys plays three notes of the
+     shop's tune and winds down. It cannot hurt her and it never comes
+     from a door. What it does is teach her the melody in the room it
+     belongs to, so that when the score plays the same phrase at her
+     later she has heard it before and knows where from.
+
+     Only while nothing is on its way -- it must never mask a real cue,
+     which is the one thing this game's sound cannot afford. */
+  figment: {
+    /* Measured: at [14,26] these arrived about three times an hour and
+       left thirteen-second holes still standing. A box running down in
+       a far room every ten seconds or so is what a shut building at
+       night actually sounds like -- it is quiet, it is panned away, and
+       it is the opposite of a jumpscare, so it can be frequent without
+       ever becoming a nuisance. */
+    firstAt: [6, 12],
+    every:   [8, 15],
+    lull:    0.42,        // only below this much dread
+  },
+
   /* --- the shop not staying still -----------------------------------
      A toy that is not where it was. Never on a camera she is currently
      looking at — it has to happen behind her back or it is a magic
@@ -7202,9 +7233,9 @@ const MODE_FEEL = {
      menu     the title, which keeps the wandering music box it had. */
 const THEME_NOTES = {
   /* the phrase, in thirds, warm */
-  letter:  (s16, bar) => (s16 % 4 === 0 ? [WARM[s16], WARM[s16] + 4] : null),
+  letter:  (s16, bar) => (s16 % 4 === 0 ? [WARM[s16], WARM3[s16]] : null),
   turn:    (s16, bar) => (s16 % 4 === 0 ? [WARM[s16], WARM[s16] + 7, WARM[s16] + 12] : null),
-  morning: (s16, bar) => (s16 % 8 === 0 ? [WARM[s16], WARM[s16] + 4, WARM[s16] + 7] : null),
+  morning: (s16, bar) => (s16 % 8 === 0 ? [WARM[s16], WARM3[s16], WARM[s16] + 7] : null),
   memory:  (s16, bar) => (s16 === 0 ? [FIG[(bar * 3) % 16]] :
                           s16 === 8 ? [FIG[(bar * 3 + 7) % 16] - 12] : null),
 };
@@ -7232,11 +7263,67 @@ const MUS_LAYERS = ["sub", "pulse", "box", "air", "grind", "bow", "warm",
    score and the ballerina are the same instrument in the same room. */
 function hz(n) { return 220 * Math.pow(2, n / 12); }
 const SCALE = [0, 2, 3, 5, 7, 8, 10, 12];          // A B C D E F G A
-/* the shop's figure: the phrase the music box never gets to finish */
-const FIG   = [0, 7, 12, 7, 3, 10, 7, 3, 0, 7, 12, 15, 12, 10, 7, 3];
-const FIG_B = [0, 5, 12, 5, 3, 8, 5, 0, -2, 5, 10, 12, 10, 7, 3, 0];
-/* and the same phrase in the major it was written in, for the morning */
-const WARM  = [0, 4, 7, 12, 11, 7, 4, 7, 2, 5, 9, 14, 12, 9, 5, 4];
+
+/* =====================================================================
+   THE SHOP'S FIGURE — the tune the whole chapter is made of.
+
+   WHAT WAS WRONG WITH THE OLD ONE, measured rather than felt: of the
+   seven intervals in it, six were leaps of a third or more. A line that
+   is 86% leaps is not a melody, it is a broken chord — and at the slow
+   density, where the box plays only the four strong beats, the old
+   phrase came out A–C–A–A. Three of its four notes were the same note.
+   That is why it sounded like wallpaper: there was no line to follow,
+   nothing to sing back, and nothing that ever went anywhere.
+
+   This one is written the way a tune that stays with you is written:
+
+   - It MOVES BY STEP. Three leaps in twenty-eight intervals, and each
+     one is the same leap -- the reach up to the flat sixth -- so the
+     ear learns it and waits for it.
+   - It HAS AN ARCH. Four bars: it climbs, falls back, climbs higher,
+     falls back, tries once more, and then walks all the way home. That
+     shape is the thing you hum afterwards.
+   - IT ACHES ON PURPOSE. The note it keeps reaching for is F, the flat
+     sixth, and every time it arrives there it falls to E by step. A
+     dissonance landing on a strong beat and resolving downwards is the
+     oldest device there is for making a phrase hurt, and it is the
+     reason this one does.
+   - IT HOLDS A NOTE BACK. The octave A does not appear until the second
+     bar, and the full descent from it does not happen until the fourth.
+     Nothing is spent early.
+   - IT IS FOUR BARS, NOT TWO. The old figure turned over every two bars
+     all night, which is what made it furniture. Four bars is a period:
+     a question, an answer, the question pushed further, and a reply
+     that finally comes home.
+
+   Read at the slow density (the four strong beats) and at the fast one
+   (every other step) it has to be a tune BOTH times, because the game
+   moves between them as she gets more frightened. It is laid out with
+   the melody on the even steps and each note held across the odd one,
+   so it reads correctly however densely the box is playing it.
+
+           bar 1   A  B  C  D  |  F  E  E  D     the question
+           bar 2   C  D  E  G  |  A' G  F  E     the answer, reaching
+           bar 3   A  B  C  D  |  F  E  F  G     asked again, further
+           bar 4   A' G  F  E  |  D  C  B  A     all the way home
+   ===================================================================== */
+const FIG   = [0, 0, 2, 2, 3, 3, 5, 5, 8, 8, 7, 7, 7, 7, 5, 5];
+const FIG_B = [3, 3, 5, 5, 7, 7, 10, 10, 12, 12, 10, 10, 8, 8, 7, 7];
+const FIG_C = [0, 0, 2, 2, 3, 3, 5, 5, 8, 8, 7, 7, 8, 8, 10, 10];
+const FIG_D = [12, 12, 10, 10, 8, 8, 7, 7, 5, 5, 3, 3, 2, 2, 0, 0];
+const FIG_BARS = [FIG, FIG_B, FIG_C, FIG_D];
+
+/* and the same tune in the major it was written in, for the letters and
+   the morning: the identical shape walked up a brighter ladder, so that
+   the thing she hears at six o'clock is recognisably the thing that has
+   been frightening her all night. */
+const WARM  = [0, 0, 2, 2, 4, 4, 7, 7, 9, 9, 11, 11, 12, 12, 9, 9];
+/* The third above each note, taken FROM THE SCALE rather than by adding
+   a fixed four semitones. Adding four to every note is what put a D# in
+   the letter cue and an A# in the morning chord -- notes that are in
+   neither key, in the two quietest and most exposed pieces of music in
+   the chapter, where a wrong note is the only thing you can hear. */
+const WARM3 = [4, 4, 5, 5, 7, 7, 11, 11, 12, 12, 14, 14, 16, 16, 12, 12];
 
 function musicInit() {
   if (!ac() || MUS.ready) return;
@@ -7608,7 +7695,7 @@ function musicTick(dt) {
          every other beat and slow; as dread climbs it fills in. */
       const dense = d > 0.18 ? 1 : 3;             // every 2nd step, or every 4th
       if ((s % (2 * dense)) === 0) {
-        const fig = (MUS.bar & 1) ? FIG_B : FIG;
+        const fig = FIG_BARS[MUS.bar & 3];
         const n = fig[s];
         boxNote(t, hz(n), 0.10 + d * 0.06, ((MUS.bar + s) % 3 - 1) * 0.5,
                 d > 0.18 ? 1.05 : 2.2);
@@ -7783,7 +7870,8 @@ const G = {
   /* everything the rating and the badges are worked out from. All of it
      is counted anyway to run the night; none of it is a separate
      tracking system bolted on for the summary screen. */
-  stats: { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, lowest: 100 },
+  stats: { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0,
+           figments: 0, lowest: 100 },
   rating: null,
 };
 
@@ -8954,6 +9042,29 @@ function stepAlarms(dt) {
   else { SFX.falseBurst(pan); G.flick = 0.2; G.flickT = 0.25; }
 }
 
+/* three notes of the tune, from a room, going nowhere. See TUNE.figment */
+function stepFigments(dt) {
+  G.figmentT -= dt;
+  if (G.figmentT > 0) return;
+  G.figmentT = nextIn(TUNE.figment.every);
+  /* never while something is actually coming: this is for the quiet */
+  if (dreadTarget() > TUNE.figment.lull) return;
+  if (!MUS.ready || !MUS.lay.box) return;
+  G.stats.figments++;
+  /* somewhere off to one side, and never straight ahead, so it reads as
+     a room she is not in rather than a thing behind her */
+  const pan = pick(Math.random, [-0.8, -0.62, 0.62, 0.8]);
+  const bar = FIG_BARS[(Math.random() * 4) | 0];
+  const from = ((Math.random() * 5) | 0) * 2;      // start anywhere in it
+  const t0 = now() + 0.03;
+  /* slower than the score plays it, and falling away -- a box running
+     down, not a box being played */
+  for (let i = 0; i < 3; i++) {
+    const n = bar[(from + i * 2) & 15];
+    boxNote(t0 + i * 0.42 + i * i * 0.03, hz(n - 12), 0.085 - i * 0.018, pan, 1.9);
+  }
+}
+
 function stepShifts(dt) {
   G.shiftT -= dt;
   if (G.shiftT > 0) return;
@@ -9278,6 +9389,7 @@ function frame(ts) {
       stepSignal(dt);
       stepAlarms(dt);
       stepShifts(dt);
+      stepFigments(dt);
       stepHazards(dt);
       stepWind(dt);
       stepBlind(dt);
@@ -10115,9 +10227,12 @@ function beginNight(n, opts) {
   G.surgeT = range(Math.random, 40, 70);
   G.alarmT = nextIn(TUNE.alarm.firstAt);
   G.shiftT = nextIn(TUNE.shift.firstAt);
+  G.figmentT = nextIn(TUNE.figment.firstAt);
   G.caption = ""; G.captionT = 0;
   sayQueue = []; sayUntil = 0;
-  G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0, alarms: 0, moves: 0, finds: 0, winds: 0, slack: 0, returns: 0, saves: 0, lowest: 100 };
+  G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0,
+              alarms: 0, moves: 0, figments: 0, finds: 0, winds: 0, slack: 0, returns: 0,
+              saves: 0, lowest: 100 };
   resetCast();
   /* he wound them the night he stopped coming in. She inherits that,
      and it runs out about two thirds of the way through her first. */
@@ -11597,6 +11712,7 @@ const testHooks = {
          arithmetically impossible */
       stepAlarms(dt);
       stepShifts(dt);
+      stepFigments(dt);
       stepHazards(dt);
       stepWind(dt);
       stepBlind(dt);
@@ -11744,6 +11860,51 @@ const testHooks = {
         hatch: () => SFX.hatch(),
         knock: () => SFX.knock(0),
         monitor: () => SFX.monitor(true),
+        /* THE TUNE ITSELF, so that it can be listened to rather than
+           argued about. Plays the four-bar figure straight through on
+           the music box at the speed the shop plays it, which is the
+           one thing in this chapter a suite could never check and a
+           person could never hear without playing a whole night. */
+        theme: () => {
+          /* The score's layers hang off the LIVE context and sit at a
+             gain of zero until a night opens them, so scheduling into
+             them here renders silence. Build the graph again on
+             whichever context is current, play into it, and hand the
+             real one back before returning. */
+          const keepBus = MUS.bus, keepLay = MUS.lay;
+          MUS.bus = AC.createGain(); MUS.bus.gain.value = 1; MUS.bus.connect(cueGain);
+          MUS.lay = {};
+          MUS_LAYERS.forEach((k) => {
+            const g = AC.createGain(); g.gain.value = 1; g.connect(MUS.bus); MUS.lay[k] = g;
+          });
+          const spb = 1.30, step = spb / 4;
+          for (let bar = 0; bar < 4; bar++) {
+            const fig = FIG_BARS[bar];
+            for (let s = 0; s < 16; s += 2) {
+              boxNote(bar * 16 * step + s * step, hz(fig[s]), 0.18, 0, 1.15);
+            }
+          }
+          MUS.bus = keepBus; MUS.lay = keepLay;
+        },
+        /* and the same phrase in the major, which is what six o'clock
+           and his letters are */
+        themeWarm: () => {
+          const keepBus = MUS.bus, keepLay = MUS.lay;
+          MUS.bus = AC.createGain(); MUS.bus.gain.value = 1; MUS.bus.connect(cueGain);
+          MUS.lay = {};
+          MUS_LAYERS.forEach((k) => {
+            const g = AC.createGain(); g.gain.value = 1; g.connect(MUS.bus); MUS.lay[k] = g;
+          });
+          const spb = 1.45, step = spb / 4;
+          for (let bar = 0; bar < 2; bar++) {
+            for (let s = 0; s < 16; s += 2) {
+              const at = bar * 16 * step + s * step;
+              boxNote(at, hz(WARM[s] + (bar ? 12 : 0)), 0.18, 0, 1.3);
+              if (s % 4 === 0) pianoNote(at, hz(WARM3[s] - 12), 0.10, 2.0, 0);
+            }
+          }
+          MUS.bus = keepBus; MUS.lay = keepLay;
+        },
       };
       if (CUES[which]) CUES[which]();
       else if (typeof SFX[which] === "function") SFX[which](1, 0);
