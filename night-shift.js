@@ -7149,8 +7149,23 @@ const VOX_FILE = { on: null, map: null, buf: Object.create(null), dur: Object.cr
 
    The numbers are time constants, not durations: the level covers
    about 95% of the distance in three of them. */
-const VOICE_BED = 0.48;            // where the score sits under him
-const SYS_BED   = 0.66;            // and under the building, which is shorter
+/* HOW FAR UNDER HIM THE SCORE SITS, AND WHY IT IS NOT FURTHER.
+
+   Measured on the master with a meter on each bus rather than guessed:
+   he was arriving about TEN DECIBELS above the score. Three separate
+   reasonable-looking decisions multiplying into one that is not -- the
+   takes are normalised to -18 LUFS, which is loud; they play at 0.92;
+   and the bed was pushed another 6.4dB down underneath them.
+
+   Ten decibels is a documentary. It is correct when the words are the
+   content and the music is behind them. Here the music IS the content
+   -- it is the thing that is supposed to make her cry, the words are
+   on screen as captions anyway, and a score she cannot hear is a score
+   that did not need writing. Four decibels is the target: he is still
+   plainly in front, and the eight bars still turn underneath him where
+   she can follow them. */
+const VOICE_BED = 0.76;            // -2.4dB, was 0.48 and far too deep
+const SYS_BED   = 0.80;            // and the building barely moves it at all
 const BED = { at: 1, voiceTo: 1, voiceUntil: 0, cueTo: 1, cueUntil: 0 };
 
 function bedWant() {
@@ -7262,6 +7277,35 @@ function voiceWarm() {
     }
   };
   pump();
+}
+
+/* SET HIM AGAINST THE MUSIC, NOT AGAINST A NUMBER.
+
+   One fixed voice level cannot be right across ten cues that are not
+   equally loud. Measured with a meter on each bus, the same setting
+   put him about 6dB above a shift, 1.5dB above the turn and 8dB above
+   six o'clock -- a spread of nearly seven decibels, which is the
+   difference between a narrator and a man shouting over a record. And
+   it was worst exactly where it matters most, because the cues that
+   are about him are the thin, quiet ones.
+
+   So the score is metered and he is placed relative to what is
+   actually playing. Every take is normalised to the same loudness by
+   the renderer, so the only variable left is the music; dividing it
+   out leaves one relationship that holds everywhere, including in any
+   cue somebody remixes next month, which a table of per-scene numbers
+   would not.
+
+   Clamped at both ends: a near-silent scene must not send him to the
+   moon, and a loud one must not bury him. */
+const VOX_REF = 0.09;              // the score's RMS during a shift
+
+function voiceTrim() {
+  if (!MUS.rms) return 1;
+  /* one to one in decibels, which is what holding a constant gap
+     means. The floor is low enough to cover the thinnest cue in the
+     chapter -- six o'clock, which is five decibels under a shift. */
+  return clamp(MUS.rms / VOX_REF, 0.45, 1.5);
 }
 
 /* wait for one line, briefly, and never for long enough to be a hang.
@@ -7456,7 +7500,10 @@ function voxSpeak(plan, opts) {
     const b = voiceBuf(text);
     if (b) {
       const was = plan.dur || 1;
-      total = voicePlay(b, (opts.gain === undefined ? 1 : opts.gain) * 0.92 * MIX.voice);
+      /* 0.62 rather than 0.92: the other half of the same measurement.
+         Pulling the bed up alone would have meant a louder shop under
+         an equally loud man; the fix has to come off both. */
+      total = voicePlay(b, (opts.gain === undefined ? 1 : opts.gain) * 0.62 * voiceTrim() * MIX.voice);
       const k = total / was;
       plan.words.forEach((w) => { w.at *= k; });
       plan.dur = total;
@@ -7742,10 +7789,23 @@ const MODE_FEEL = {
   brief:   { spb: 1.35, warm: false, level: 0.53, theme: "clock" },
   dark:    { spb: 1.15, warm: false, level: 0.55, theme: "void" },
   gone:    { spb: 2.40, warm: false, level: 0.50, theme: "memory" },
-  found:   { spb: 1.70, warm: true,  level: 0.53, theme: "letter" },
-  held:    { spb: 1.42, warm: true,  level: 0.74, theme: "turn" },
-  dawn:    { spb: 1.50, warm: true,  level: 0.55, theme: "morning" },
-  gallery: { spb: 1.62, warm: true,  level: 0.50, theme: "morning" },
+  /* THE QUIET ONES WERE TOO QUIET TO SURVIVE A VOICE.
+
+     Measured with a meter on each bus: a shift and the turn put him
+     about 4dB above the score, which is right. Six o'clock put him
+     TWELVE above it, because dawn is simply a thinner cue -- fewer
+     layers, lower faders -- and the same voice level towers over it.
+     Twelve decibels in the scene the whole chapter has been walking
+     towards, where the music is the entire point and he is only
+     saying goodbye over the top of it.
+
+     These are the four cues about him rather than about the thing at
+     the door, and they are the ones she is supposed to feel. They come
+     up to meet him. */
+  found:   { spb: 1.70, warm: true,  level: 0.74, theme: "letter" },
+  held:    { spb: 1.42, warm: true,  level: 0.80, theme: "turn" },
+  dawn:    { spb: 1.50, warm: true,  level: 0.82, theme: "morning" },
+  gallery: { spb: 1.62, warm: true,  level: 0.70, theme: "morning" },
   menu:    { spb: 1.36, warm: "menu", level: 0.55, theme: "menu" },
 };
 
@@ -8073,6 +8133,11 @@ function musicInit() {
   if (!ac() || MUS.ready) return;
   MUS.ready = true;
   MUS.bus = AC.createGain(); MUS.bus.gain.value = 0; MUS.bus.connect(sideGain);
+  /* a meter on the score, so the voice can be set against what is
+     actually playing rather than against a number -- see voiceTrim */
+  MUS.meter = AC.createAnalyser(); MUS.meter.fftSize = 1024;
+  MUS.bus.connect(MUS.meter);
+  MUS.mbuf = new Float32Array(1024);
   MUS_LAYERS.forEach((k) => {
     const g = AC.createGain();
     g.gain.value = 0;
@@ -8503,6 +8568,8 @@ function musicSwap(m) {
     }
     MUS.mode = m;
     MUS.barOff = MUS.bar + 1;
+    /* a change of scene re-acquires rather than creeping */
+    MUS.rmsAge = 0;
     if (m === "night") { MUS.dread = Math.min(MUS.dread, 0.25); }
     else if (m !== "dark") MUS.dread = 0;
   }
@@ -8589,6 +8656,44 @@ function musicTick(dt) {
     g.linearRampToValueAtTime(v, t + 0.55);
   };
   /* which of the four the shift is in tonight */
+  /* a slow reading of how loud the score is. Slow on purpose: it is
+     asked for at the instant a line starts, and a reading that jumped
+     with every bar would set a different level for two sentences in
+     the same scene. */
+  if (MUS.meter) {
+    MUS.meter.getFloatTimeDomainData(MUS.mbuf);
+    let e = 0;
+    for (let i = 0; i < MUS.mbuf.length; i++) e += MUS.mbuf[i] * MUS.mbuf[i];
+    const r = Math.sqrt(e / MUS.mbuf.length);
+    /* SLOW, BECAUSE A PHRASE IS SLOW.
+       The score's arch swings its level by about a third across eight
+       bars, which at a shift's tempo is the better part of forty
+       seconds. A one-second average therefore reports whichever bar it
+       was asked on, and two sentences in the same scene got voice
+       levels two and a half decibels apart depending on where in the
+       phrase they landed. This tracks the scene instead. */
+    /* TWO SPEEDS, BECAUSE THE TWO JOBS ARE DIFFERENT.
+
+       Slow is right WITHIN a scene: the score's arch swings its level
+       by about a third across eight bars, which at a shift's tempo is
+       the better part of forty seconds, so a one-second average
+       reports whichever bar it was asked on and two sentences in the
+       same scene got voice levels two and a half decibels apart.
+
+       Slow is wrong ACROSS one. Forgetting the old reading on a scene
+       change and then creeping towards the new one over four seconds
+       means every line spoken in the first few seconds of a cue is set
+       against a level that is not playing -- which is most of them,
+       since a scene usually opens by saying something. That is what
+       made six o'clock read eight decibels hot while a shift read one:
+       not the rule, the acquisition.
+
+       So it grabs the new scene in about half a second and then
+       settles down to tracking it. */
+    MUS.rmsAge = (MUS.rmsAge || 0) + dt;
+    const k = MUS.rmsAge < 1.2 ? Math.min(1, dt * 5) : Math.min(1, dt * 0.22);
+    MUS.rms = MUS.rms === undefined ? r : MUS.rms + (r - MUS.rms) * k;
+  }
   const feel4 = nightFeel();
   /* AND THE DRONES BREATHE WITH IT.
 
@@ -13292,6 +13397,65 @@ const testHooks = {
     tick();
   }),
   bedMode: (m) => musicMode(m),
+  /* WHAT THE BALANCE ACTUALLY IS, IN DECIBELS.
+
+     Every level in this chapter was set by reading a number and
+     thinking it looked about right. That is how the narrator ended up
+     on top of the score: -18 LUFS speech is loud, the music bus peaks
+     around a third of full scale, and the bed was ducked another 6dB
+     underneath it on top of that. Three reasonable-looking decisions
+     multiplying into one that is not.
+
+     This puts a meter on each bus and reports the difference, so the
+     balance is a measurement rather than an opinion. */
+  balance: (ms) => new Promise((done) => {
+    if (!AC || !MUS.bus) return done(null);
+    const mk = (src) => {
+      const a = AC.createAnalyser(); a.fftSize = 2048; src.connect(a); return a;
+    };
+    const aMus = mk(MUS.bus), aVox = mk(cueGain);
+    const buf = new Float32Array(2048);
+    let mus = 0, vox = 0, n = 0, nv = 0;
+    const t0 = perf(), cap = (ms || 1200) / 1000;
+    const tick = () => {
+      aMus.getFloatTimeDomainData(buf);
+      let e = 0; for (let i = 0; i < buf.length; i++) e += buf[i] * buf[i];
+      mus += e / buf.length;
+      aVox.getFloatTimeDomainData(buf);
+      e = 0; for (let i = 0; i < buf.length; i++) e += buf[i] * buf[i];
+      /* GATED, the way a loudness meter is.
+         Speech is mostly gaps -- between words, between sentences, and
+         the lead-in and tail every take carries. Averaging those in
+         measures the silence as if it were the man, and the answer
+         moves with how many commas the line had. Only frames with
+         something in them count. */
+      const fr = e / buf.length;
+      if (fr > 1e-6) { vox += fr; nv++; }
+      n++;
+      if (perf() - t0 < cap) setTimeout(tick, 20);
+      else {
+        /* METER THE MUSIC WHERE IT LEAVES, NOT WHERE IT STARTS.
+           MUS.bus feeds sideGain and sideGain is what the duck moves,
+           so a meter on the bus is reading the score at full level no
+           matter how far under the voice it has been pushed. The first
+           run of this reported a 0.9dB dip during a line that was
+           actually ducking by six and a half, and a 3.4dB gap that was
+           really closer to ten. */
+        const bed = sideGain.gain.value;
+        const m = (mus / n + 1e-12) * bed * bed;
+        const v = (nv ? vox / nv : 0) + 1e-12;
+        done({
+          music: +(10 * Math.log10(m)).toFixed(1),
+          voice: +(10 * Math.log10(v)).toFixed(1),
+          gap:   +(10 * Math.log10(v / m)).toFixed(1),
+          bed:   +bed.toFixed(3),
+          rms:   +(MUS.rms || 0).toFixed(4),
+          trim:  +voiceTrim().toFixed(3),
+        });
+      }
+    };
+    tick();
+  }),
   /* which path the last line took, and how many went out as speech
      because their take had not arrived yet */
   said: () => ({ took: VOX_FILE.took, late: VOX_FILE.late,
