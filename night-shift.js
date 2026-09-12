@@ -5857,7 +5857,7 @@ function audioWake(then) {
     else if (then) then();
   } catch (e) {}
 }
-function ac() { audioInit(); return AC; }
+function ac() { audioInit(); voiceLoad(); return AC; }
 function now() { return AC ? AC.currentTime : 0; }
 
 /* the room tone: a filtered rumble, a mains hum, and a very slow
@@ -6682,6 +6682,21 @@ function speechVoices() {
    And he is narrating, not announcing: a shade under natural pace,
    natural pitch, which is what a man telling you something in a film
    sounds like. */
+/* THE ONES THAT READ, AND THE ONES THAT ANNOUNCE.
+
+   Two tiers rather than one. Every modern platform ships a handful of
+   voices built for long-form reading -- the ones the audiobook and
+   news-narration features use -- and they are a different class of
+   thing from the assistant voice that reads out a timer: longer
+   breath groups, real sentence intonation, and they do not put a
+   bright upward lilt on the end of every clause. Those are the only
+   ones with any chance of carrying a line like "I am sorry. That is
+   not enough and I know it is not enough."
+
+   On the platforms that name them, they are worth more than anything
+   else the scorer can see, which is why this tier is weighted above
+   the merely-neural one. */
+const VOICE_READER = /narrat|storytell|audiobook|news|reading|serif|studio|journey|wavenet|polyglot/i;
 const VOICE_GOOD = /natural|neural|enhanced|premium|siri|google (uk|us) english/i;
 const VOICE_JUNK = /compact|fred|albert|zarvox|trinoids|whisper|wobble|bahh|bells|boing|bubbles|cellos|deranged|jester|junior|organ|superstar|good news|bad news|pipe|eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley/i;
 const VOICE_MALE = /\bmale\b|daniel|arthur|oliver|george|james|david|guy|ryan|aaron|alex|christopher|brian|matthew|rishi|tom\b|liam|nathan/i;
@@ -6690,6 +6705,7 @@ function voiceScore(v) {
   const name = v.name || "", lang = v.lang || "";
   if (VOICE_JUNK.test(name)) return -100;
   let n = 0;
+  if (VOICE_READER.test(name)) n += 55;           // built to read a book aloud
   if (VOICE_GOOD.test(name)) n += 40;             // a real reading, not a stitch
   if (/^en-GB/i.test(lang)) n += 12;              // the shop is English
   else if (/^en/i.test(lang)) n += 8;
@@ -6877,7 +6893,13 @@ function speechSay(text, plan, opts) {
      slightly quick, slightly low read is what a station announcement
      sounds like — but 0.1 was gargling rather than announcing. */
   u.pitch = o.sys ? 0.55 : 0.96;
-  u.rate  = o.sys ? 1.08 : 0.86;
+  /* 0.82 rather than 0.86. Measured against the thing it is imitating
+     rather than against "slow": an audiobook is read at about 150
+     words a minute and a phone assistant reads at nearer 190, and the
+     engines are calibrated so that 1.0 is the assistant. He is telling
+     her something he has been working up to for eleven days. He is
+     not reading her a notification. */
+  u.rate  = o.sys ? 1.08 : 0.82;
   /* 0.78 rather than 1: the browser's voice is not in this graph and
      was arriving a long way over everything that is. The building's
      annunciator is quieter still — it is a speaker in a ceiling. */
@@ -6960,11 +6982,161 @@ function voxTalking() { return SPEECH.live; }
 
 /* and say it. `plan` comes from voxPlan so the caller already knows the
    timings it is about to hear. */
+/* =====================================================================
+   HIS ACTUAL VOICE, IF THERE IS ONE.
+
+   Everything below this comment exists because of the one thing in
+   this chapter that no amount of code was going to fix. The lines are
+   his. They are the most personal writing in the whole gift, and they
+   are being read out by whatever text-to-speech engine happens to be
+   installed on her phone -- which on a modern handset is a bright,
+   clean, friendly assistant voice designed to read out a calendar.
+   That voice is not bad at its job. It is the wrong voice, and the
+   further you push its pitch and rate to make it sound like a man in a
+   toyshop the worse it gets, because every speech engine is a real
+   person cut into pieces and stretching those pieces is where the
+   metal comes from. There is a ceiling here and we are already at it.
+
+   So: a recording wins. Any recording. This looks for one.
+
+     voice/manifest.json   { "intro-01": "Ouissy.", ... }
+     voice/intro-01.mp3    a person saying that line
+
+   If the manifest is there, every line that has a file is played as
+   AUDIO, through this chapter's own graph -- which means it ducks for
+   a door the way everything else does, it sits under the score
+   properly, and it can be put through the tape: a band-limit, a little
+   saturation, and the wow and flutter of a machine that has been in a
+   drawer. speechSynthesis can do none of that, because the browser
+   will not give you its output as a signal. A recording that goes
+   through the tape does not sound like a man in a booth. It sounds
+   like something she has found.
+
+   If the manifest is missing, or a line has no file, or the text has
+   been edited since it was recorded -- the manifest stores the words,
+   so a rewritten line falls back rather than playing the old take --
+   nothing happens at all and the synthesiser reads it exactly as
+   before. It costs one 404 on a device that has no recordings.
+
+   The captions keep working either way: voxPlan already produces a
+   word-by-word timing, and with a real file we know the true duration,
+   so the guess gets scaled onto it and is closer than it has ever
+   been. --------------------------------------------------------- */
+const VOX_FILE = { on: null, map: null, buf: Object.create(null), dur: Object.create(null) };
+
+function voiceLoad() {
+  if (VOX_FILE.on !== null) return;
+  VOX_FILE.on = false;
+  let f;
+  try { f = fetch("voice/manifest.json", { cache: "force-cache" }); } catch (e) { return; }
+  f.then((r) => (r.ok ? r.json() : null))
+   .then((j) => {
+     if (!j) return;
+     /* text -> id, so a line looks itself up by what it says. A line
+        that has been rewritten since the take simply is not in here. */
+     const m = Object.create(null);
+     let n = 0;
+     for (const id in j) { m[String(j[id]).trim()] = id; n++; }
+     VOX_FILE.map = m; VOX_FILE.on = n > 0;
+   })
+   .catch(() => {});
+}
+
+function voiceHas(text) {
+  return !!(VOX_FILE.on && VOX_FILE.map && VOX_FILE.map[String(text).trim()]);
+}
+
+/* fetch and decode once, then keep it */
+function voiceBuf(text) {
+  const id = VOX_FILE.map && VOX_FILE.map[String(text).trim()];
+  if (!id) return null;
+  if (VOX_FILE.buf[id] !== undefined) return VOX_FILE.buf[id];
+  VOX_FILE.buf[id] = null;                 // in flight; do not ask twice
+  fetch("voice/" + id + ".mp3")
+    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+    .then((a) => new Promise((ok, no) => { AC.decodeAudioData(a, ok, no); }))
+    .then((b) => { VOX_FILE.buf[id] = b; VOX_FILE.dur[id] = b.duration; })
+    .catch(() => { VOX_FILE.buf[id] = false; });
+  return null;
+}
+
+/* THE TAPE THE RECORDING IS ON.
+
+   Not an effect for the sake of one. The fiction is that he spoke into
+   the only machine in the building that was still listening, eleven
+   days before he died, and she is hearing a terminal play it back. A
+   dry, full-range recording of somebody in a quiet room contradicts
+   that in the first syllable.
+
+   So: a band-limit at both ends, because a tape head has never
+   reproduced a 12kHz sibilant or a 60Hz chest note; a gentle
+   saturation curve, which is what makes a level feel like it is being
+   pushed into something rather than turned up; and a slow, uneven
+   detune -- the wow of a capstan and the flutter above it -- so that
+   no two seconds of it run at exactly the same speed. That last one is
+   the whole trick. A human ear will forgive almost anything except
+   perfect stability. */
+function voicePlay(buf, gain) {
+  const t = now() + CUE_LEAD;
+  const src = AC.createBufferSource(); src.buffer = buf;
+  /* wow and flutter: two slow oscillators on the playback rate, at
+     speeds that do not divide into each other */
+  const wow = AC.createOscillator(); wow.type = "sine"; wow.frequency.value = 0.47;
+  const wg = AC.createGain(); wg.gain.value = 0.0022;
+  const flut = AC.createOscillator(); flut.type = "sine"; flut.frequency.value = 6.3;
+  const fg = AC.createGain(); fg.gain.value = 0.0009;
+  wow.connect(wg); wg.connect(src.playbackRate);
+  flut.connect(fg); fg.connect(src.playbackRate);
+  const hp = AC.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 155; hp.Q.value = 0.6;
+  const lp = AC.createBiquadFilter(); lp.type = "lowpass";  lp.frequency.value = 5200; lp.Q.value = 0.7;
+  /* a small presence lift where a voice lives, because taking the top
+     off makes everything sound like it is behind a door */
+  const pk = AC.createBiquadFilter(); pk.type = "peaking";
+  pk.frequency.value = 1900; pk.Q.value = 0.9; pk.gain.value = 3.5;
+  const sat = AC.createWaveShaper();
+  const curve = new Float32Array(1024);
+  for (let i = 0; i < 1024; i++) {
+    const x = (i / 1023) * 2 - 1;
+    curve[i] = Math.tanh(x * 1.8) / Math.tanh(1.8);
+  }
+  sat.curve = curve; sat.oversample = "2x";
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.03);
+  src.connect(hp); hp.connect(pk); pk.connect(sat); sat.connect(lp); lp.connect(g);
+  g.connect(cueGain);
+  src.start(t); wow.start(t); flut.start(t);
+  const d = buf.duration + 0.4;
+  wow.stop(t + d); flut.stop(t + d);
+  return buf.duration;
+}
+
 function voxSpeak(plan, opts) {
   opts = opts || {};
-  const total = plan.dur;
+  let total = plan.dur;
   /* the real words first, if the platform has any */
   const text = plan.words.map((w) => w.text).join(" ");
+
+  /* A REAL RECORDING BEATS EVERYTHING ELSE IN THIS FUNCTION.
+
+     If there is one for this line, it is what she hears, and the
+     caption's guessed timings are stretched onto the take's real
+     length so the words light up with him instead of near him. */
+  if (!opts.sys && ac() && !muted && MIX.voice > 0.02 && voiceHas(text)) {
+    const b = voiceBuf(text);
+    if (b) {
+      const was = plan.dur || 1;
+      total = voicePlay(b, (opts.gain === undefined ? 1 : opts.gain) * 0.92 * MIX.voice);
+      const k = total / was;
+      plan.words.forEach((w) => { w.at *= k; });
+      plan.dur = total;
+      plan.real = true;
+      voxTape(total, (opts.gain === undefined ? 1 : opts.gain) * 0.55);
+      return total;
+    }
+    /* the file is still arriving; say it the old way this once rather
+       than leaving a silence where a sentence should be */
+  }
   if (!muted && MIX.voice > 0.02 && speechSay(text, plan, opts)) {
     voxTape(total, opts.gain === undefined ? 1 : opts.gain);
     return total;
@@ -7090,6 +7262,7 @@ const MUS = {
   ready: false, mode: "none", want: "none",
   bus: null, lay: {}, nodes: [],
   dread: 0, target: 0, step: 0, next: 0, bar: 0, barOff: 0, spb: 0,
+  pivot: false, duck: 0,
 };
 const MUS_LOOK = 0.65;          // seconds scheduled ahead of the clock
 const MUS_LEVEL = 0.56;         // how loud the score sits under the game
@@ -7273,6 +7446,9 @@ const MUS_LAYERS = ["sub", "pulse", "box", "air", "grind", "bow", "warm",
 /* the ones that hold a value rather than play notes, and so have to be
    ridden by the phrase from outside instead of note by note */
 const MUS_HOLDS = { sub: 1, air: 1, grind: 1, bow: 1, warm: 1 };
+/* and the ones that hold a note belonging to a particular key, which
+   are the ones that have to be let go of when the key changes */
+const MUS_PITCHED = ["pad", "bass", "box", "lead", "piano", "choir"];
 
 /* A natural minor on A, which is the key the music box is in, so the
    score and the ballerina are the same instrument in the same room. */
@@ -7638,8 +7814,14 @@ function harmonyBar(t, bar, spb, opts) {
   const a  = arch(i);                   // where in the phrase this bar is
   if (o.pad) {
     /* the root a little louder than the two above it, so the chord has
-       a bottom to it instead of being three equal voices */
-    ch[i].forEach((n, k) => padNote(t, hz(n + key), o.pad * a * (k === 0 ? 0.9 : 0.62), d));
+       a bottom to it instead of being three equal voices.
+
+       Every voicing in both tables puts the third last, which is what
+       lets `open` drop it: root and fifth only, a chord that belongs
+       to the major and the minor equally and is therefore the only one
+       that can stand in a doorway between them. */
+    const v = o.open ? ch[i].slice(0, 2) : ch[i];
+    v.forEach((n, k) => padNote(t, hz(n + key), o.pad * a * (k === 0 ? 0.9 : 0.62), d));
   }
   if (o.bass) bassNote(t, hz(bs[i] + key), o.bass * (0.55 + a * 0.45), d);
   if (o.hymn) {
@@ -7674,9 +7856,14 @@ function harmonyBar(t, bar, spb, opts) {
    So there is one voice here that is bowed rather than hit, and three
    things in it are doing all the work:
 
-     the scoop     it arrives at the pitch from about half a semitone
-                   under, over a tenth of a second. Nobody hears a slide.
-                   Everybody hears a player rather than a trigger.
+     the scoop     it arrives at the pitch from about a third of a
+                   semitone under, over a tenth of a second. Nobody
+                   hears a slide. Everybody hears a player rather than
+                   a trigger. The first version of this came in from 96
+                   cents below, which is not an inflection -- it is a
+                   portamento from the wrong note, and a spectrum of
+                   the seam test read the start of every sung note as a
+                   semitone flat because it WAS one.
      the vibrato   which is NOT there at the start. It fades in across
                    the first half of the note and eases off at the end,
                    the way a singer holding something steadies it first
@@ -7696,8 +7883,8 @@ function leadNote(t, f, gain, dur) {
   const o2 = AC.createOscillator(); o2.type = "triangle";
   o2.detune.value = 7;
   [o, o2].forEach((n) => {
-    n.frequency.setValueAtTime(f * 0.968, t);
-    n.frequency.exponentialRampToValueAtTime(f, t + 0.11);
+    n.frequency.setValueAtTime(f * 0.9814, t);        // ~32 cents under
+    n.frequency.exponentialRampToValueAtTime(f, t + 0.10);
   });
   const lfo = AC.createOscillator(); lfo.type = "sine";
   lfo.frequency.setValueAtTime(4.6, t);
@@ -7904,6 +8091,52 @@ function musicSwap(m) {
        COUNTER rewinds to the next bar line while the clock underneath
        it keeps running: no cut, and the chords still start at the
        beginning. */
+    /* AND IF IT IS CHANGING KEY, IT NEEDS A DOOR TO GO THROUGH.
+
+       Measured across three handovers with a tool written for it: a
+       minor cue giving way to a major one put a C and a C sharp in the
+       air together -- both thirds of A at once -- and the loudest jump
+       in a forty-second render landed exactly on the seam. The cause
+       is a thing that is otherwise right: a pad note is deliberately
+       longer than its bar, so it is still sounding when the next cue's
+       first chord arrives, and now that the two cues are in different
+       keys that overlap is a wrong note instead of a blur.
+
+       Two things fix it, and neither of them is a cut.
+
+       Everything that is holding a note IN THE OLD KEY is let go of
+       first: the chord, the bass, the music box, the sung line, the
+       piano and the voices, all released over 0.28s while the rest
+       carries straight on. It is not only the pad -- the title screen
+       failed this check on its music box alone, which decays for the
+       better part of two seconds and was still playing D major into
+       the opening statement's A minor.
+
+       What does not get released is the floor: sub, air, grind and the
+       warm pedal. Those are an open fifth and a hiss and a rumble,
+       they belong to both keys equally, and they are what makes this a
+       fade rather than a gap. She hears the room the whole way
+       through. The things that left are the things that would have
+       argued.
+
+       And the new cue's first bar is voiced with no third in it. A
+       minor and A major share their root and their fifth and disagree
+       about exactly one note, so a bar of open fifths belongs to both
+       keys at once and is the only chord that can be in the doorway.
+       The third arrives on the second bar, which is a better place for
+       it anyway: that is the moment the light comes on. */
+    const wasWarm = (MODE_FEEL[MUS.mode] || {}).warm === true;
+    const nowWarm = (MODE_FEEL[m] || {}).warm === true;
+    if (wasWarm !== nowWarm && MUS.lay.pad) {
+      MUS.pivot = true;
+      MUS.duck = t + 0.32;
+      MUS_PITCHED.forEach((k) => {
+        const g = MUS.lay[k].gain;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(g.value, t);
+        g.linearRampToValueAtTime(0.0001, t + 0.28);
+      });
+    }
     MUS.mode = m;
     MUS.barOff = MUS.bar + 1;
     if (m === "night") { MUS.dread = Math.min(MUS.dread, 0.25); }
@@ -8007,7 +8240,13 @@ function musicTick(dt) {
   const heard = (MUS.bar - MUS.barOff) + (MUS.step & 15) / 16
                 - Math.max(0, MUS.next - now()) / Math.max(0.2, MUS.spb * 4);
   const swell = 0.25 + archAt(heard) * 0.75;
-  const breathe = (k, v) => set(k, v * (MUS_HOLDS[k] ? swell : 1));
+  /* while the harmony is being let go of, the mixer keeps its hands
+     off the two layers doing the letting go */
+  const quiet = now() < MUS.duck;
+  const breathe = (k, v) => {
+    if (quiet && MUS_PITCHED.indexOf(k) >= 0) return;
+    set(k, v * (MUS_HOLDS[k] ? swell : 1));
+  };
   if (mode === "night") {
     /* THE NIGHT HAD NO FLOOR, AND THE NIGHT IS THE GAME.
 
@@ -8065,7 +8304,8 @@ function musicTick(dt) {
     /* everything below counts bars from where the current piece of
        music started, not from where the page loaded */
     const bar = Math.max(0, MUS.bar - MUS.barOff);
-    musicStep(t, s, bar, spb, stepLen, mode, feel, feel4, d);
+    musicStep(t, s, bar, spb, stepLen, mode, feel, feel4, d, MUS.pivot);
+    if (MUS.pivot && s === 15 && bar === 0) MUS.pivot = false;
     MUS.step++;
     MUS.next += stepLen;
   }
@@ -8079,11 +8319,15 @@ function musicTick(dt) {
    line on a rendering one, which is the only reason anybody can hear
    this music without playing a whole night to get to it. There is one
    score in this chapter and both of them are looking at it. */
-function musicStep(t, s, bar, spb, stepLen, mode, feel, feel4, d) {
+function musicStep(t, s, bar, spb, stepLen, mode, feel, feel4, d, pivot) {
   /* the whole phrase breathes together, or the chords swell under a
      music box that plays every bar at exactly the same weight and the
      two of them sound like two pieces of music */
   const a = arch(bar);
+  /* the doorway bar: the first one after a change of key, voiced with
+     no third so it belongs to the key that is ending and the one that
+     is starting at the same time */
+  const open = !!pivot && bar === 0;
   if (mode === "night") {
     /* the heart. Two beats, close together, on one and three */
     if (d > 0.08) {
@@ -8119,6 +8363,7 @@ function musicStep(t, s, bar, spb, stepLen, mode, feel, feel4, d) {
         bass: 0.085 + d * 0.075,
         hymn: d < 0.52 ? 0.080 * (1 - fadeIn(d, 0.34, 0.52)) : 0,
         lead: true,
+        open: open,
         oct:  -1,
         pan:  ((bar % 3) - 1) * 0.35,
       });
@@ -8161,6 +8406,7 @@ function musicStep(t, s, bar, spb, stepLen, mode, feel, feel4, d) {
         bass:  0.105,
         hymn:  big ? (th === "turn" ? 0.125 : th === "letter" ? 0.088 : 0.080) : 0,
         lead:  true,
+        open:  open,
         choir: th === "turn" || th === "morning",
       });
     }
@@ -8235,7 +8481,7 @@ function musicStep(t, s, bar, spb, stepLen, mode, feel, feel4, d) {
     const key = [0, 0, 5, 0][(bar >> 3) & 3];
     if (s === 0) {
       harmonyBar(t, bar, spb, {
-        major: true, lift: key, pad: 0.080, bass: 0.10, lead: true,
+        major: true, lift: key, pad: 0.080, bass: 0.10, lead: true, open: open,
         /* and once every four passes the long line comes in over the
            box, so the title is the tune the morning ends on */
         hymn: ((bar >> 3) & 3) === 3 ? 0.065 : 0,
@@ -12424,6 +12670,73 @@ const testHooks = {
         }
         MUS.bus = keepBus; MUS.lay = keepLay; MUS.nodes = keepNodes;
       }
+      /* AND THE SEAMS BETWEEN THEM.
+
+         The whole claim of this engine is that it never cuts, and
+         every mechanism for that -- the eased tempo, the 0.55s faders,
+         the 2.2s level ramp, the grid that keeps running through a
+         mode change -- was written before the score had a KEY. A cue
+         handing over to one in the other mode now changes chord and
+         mode on a bar line while the outgoing pad is still sounding,
+         because a pad note is deliberately longer than its bar. That
+         is a new way for this to go wrong and it needs hearing.
+
+           cross:menu>held    the title screen into the turn      */
+      if (which.slice(0, 6) === "cross:") {
+        const arg = which.slice(6).split(">");
+        const A = arg[0], B = arg[1] || "held";
+        const keepBus = MUS.bus, keepLay = MUS.lay, keepNodes = MUS.nodes;
+        MUS.bus = AC.createGain(); MUS.bus.gain.value = 1; MUS.bus.connect(cueGain);
+        MUS.lay = {}; MUS.nodes = [];
+        MUS_LAYERS.forEach((k) => {
+          const g = AC.createGain(); g.gain.value = 0;
+          g.connect(MUS.bus); MUS.lay[k] = g;
+        });
+        droneLayers();
+        const fA = MODE_FEEL[A] || MODE_FEEL.menu, fB = MODE_FEEL[B] || MODE_FEEL.menu;
+        const mA = MODE_MIX[A] || MODE_MIX.menu,  mB = MODE_MIX[B] || MODE_MIX.menu;
+        const spbA = fA.spb || 1.3, spbB = fB.spb || 1.3;
+        const half = (secs || 12) * 0.5;
+        /* the level ramp musicSwap does, 2.2 seconds of it */
+        MUS.bus.gain.setValueAtTime(fA.level, 0);
+        MUS.bus.gain.setValueAtTime(fA.level, half);
+        MUS.bus.gain.linearRampToValueAtTime(fB.level, half + 2.2);
+        let t = 0.02, spb = spbA, bar = 0, step = 0, swapped = false, off = 0;
+        while (t < (secs || 12)) {
+          const s = step & 15;
+          if (s === 0 && step) bar++;
+          if (!swapped && t >= half) {
+            swapped = true;
+            /* exactly what musicSwap does: rewind the progression to
+               the next bar line, leave the grid alone, ease the tempo,
+               and where the key turns, let go of the old chord first */
+            off = bar + 1;
+            const turn = (fA.warm === true) !== (fB.warm === true);
+            MUS_LAYERS.forEach((k) => {
+              const g = MUS.lay[k].gain;
+              const harm = MUS_PITCHED.indexOf(k) >= 0;
+              g.setValueAtTime(g.value, t);
+              if (turn && harm) {
+                g.linearRampToValueAtTime(0.0001, t + 0.28);
+                g.setValueAtTime(0.0001, t + 0.32);
+                g.linearRampToValueAtTime(mB[k] || 0, t + 0.87);
+              } else {
+                g.linearRampToValueAtTime(mB[k] || 0, t + 0.55);
+              }
+            });
+          }
+          if (!swapped && !step) {
+            MUS_LAYERS.forEach((k) => { MUS.lay[k].gain.setValueAtTime(mA[k] || 0, 0); });
+          }
+          const want = swapped ? spbB : spbA;
+          spb += Math.max(-1.4 * (spb / 4), Math.min(1.4 * (spb / 4), want - spb));
+          const m = swapped ? B : A, f = swapped ? fB : fA;
+          const pv = swapped && (fA.warm === true) !== (fB.warm === true);
+          musicStep(t, s, Math.max(0, bar - off), spb, spb / 4, m, f, "afraid", 0.18, pv);
+          t += spb / 4; step++;
+        }
+        MUS.bus = keepBus; MUS.lay = keepLay; MUS.nodes = keepNodes;
+      }
       else if (CUES[which]) CUES[which]();
       else if (typeof SFX[which] === "function") SFX[which](1, 0);
     } catch (e) { /* put the real context back whatever happens */ }
@@ -12566,6 +12879,15 @@ const testHooks = {
   sayClear: () => sayClear(),
   /* the speech path, which this container has no voices for */
   speak: (text) => voxSpeak(voxPlan(text), { gain: 1 }),
+  /* whether there are recordings on this build, and which of them
+     have actually been fetched and decoded */
+  voiceState: () => ({
+    on: VOX_FILE.on,
+    lines: VOX_FILE.map ? Object.keys(VOX_FILE.map).length : 0,
+    ready: Object.keys(VOX_FILE.buf).filter((k) => VOX_FILE.buf[k]),
+    failed: Object.keys(VOX_FILE.buf).filter((k) => VOX_FILE.buf[k] === false),
+  }),
+  voiceWant: (text) => { voiceHas(text); return voiceBuf(text) ? true : false; },
   voxMark: () => voxMark(),
   speech: () => ({ ok: SPEECH.ok, primed: SPEECH.primed, waiting: !!sysWaiting,
                    voice: SPEECH.voice ? SPEECH.voice.name : null,
