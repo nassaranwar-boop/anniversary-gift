@@ -5042,13 +5042,22 @@ window.Scrapbook = (function () {
     /* THE SWAP, on the frame the sheet is standing on its edge -- the one
        instant in a turn when it is side-on over the gutter and the book
        can change width without it being seen. The leaves change over here
-       anyway. By now the slide below has already carried the hinge to
-       where the wider book wants it, so the swap is exact and there is
-       nothing to see. */
-    if (!flip.swapped && p >= 0.5) {
-      flip.swapped = true;
-      e.outer.style.width = flip.w1 + "px";
-      e.outer.classList.toggle("single", flip.singleTo);
+       anyway, and by now the slide below has carried the hinge to where
+       the wider book wants it, so the swap is exact.
+
+       IT GOES BOTH WAYS. A turn is not a one-way trip: she can drag the
+       cover half open, change her mind, and push it back. This used to
+       latch -- once past halfway the book kept the shape it was heading
+       for, so dragging back closed left the cover flattening down onto a
+       book that was still standing open, and letting go snapped it. The
+       shape follows the sheet wherever the sheet goes. */
+    if (!flip.sameShape) {
+      var want = p >= 0.5;
+      if (want !== flip.swapped) {
+        flip.swapped = want;
+        e.outer.style.width = (want ? flip.w1 : flip.w0) + "px";
+        e.outer.classList.toggle("single", want ? flip.singleTo : flip.singleFrom);
+      }
     }
 
     var half = p < 0.5;
@@ -5122,7 +5131,7 @@ window.Scrapbook = (function () {
        there, so the shift is zero for the rest of the turn. Written every
        frame, not only when there is a slide, so a turn that needs none
        still clears the one the turn before it left behind. */
-    var slide = flip.swapped || flip.foldTo === undefined
+    var slide = (flip.swapped || flip.sameShape || flip.foldTo === undefined)
       ? 0
       : (flip.foldTo - flip.foldFrom) * Math.min(1, p * 2);
     e.outer.style.setProperty("--book-shift", slide.toFixed(2) + "px");
@@ -5227,6 +5236,8 @@ window.Scrapbook = (function () {
        still standing in the shape it started in */
     flip.w1 = (toWide ? pageW * 2 : pageW);
     flip.singleTo = (perView === 1 || !toWide);
+    flip.w0 = e.outer.getBoundingClientRect().width;
+    flip.singleFrom = e.outer.classList.contains("single");
     flip.fracFrom = spineFrac(flip.from);
     flip.fracTo = spineFrac(flip.to);
     /* WHERE THE HINGE IS NOW, AND WHERE IT IS GOING.
@@ -5248,8 +5259,9 @@ window.Scrapbook = (function () {
     flip.foldTo = (mid - flip.w1 / 2) + flip.w1 * flip.fracTo;
     flip.shift = 0;
     /* a turn between two views of the same shape has nothing to swap */
-    flip.swapped = Math.abs(r0.width - flip.w1) < 0.5 &&
-                   flip.singleTo === e.outer.classList.contains("single");
+    flip.sameShape = Math.abs(flip.w0 - flip.w1) < 0.5 &&
+                     flip.singleTo === flip.singleFrom;
+    flip.swapped = false;
     setFlipProgress(0);
     return true;
   }
@@ -5614,16 +5626,12 @@ window.Scrapbook = (function () {
 
     var extras = document.getElementById("sb-extras-btn");
     if (extras) extras.addEventListener("click", function () {
-      /* the flower is still before it is pressed; the press is what turns
-         it. Restarting the class on every click means a second press
-         plays it again rather than doing nothing. */
-      var fl = extras.querySelector(".sb-flower");
-      if (fl) {
-        fl.classList.remove("turn");
-        void fl.offsetWidth;                 /* let the removal take */
-        fl.classList.add("turn");
-      }
-      toggleDrawer();
+      /* The turn is the button's open/shut state now, in the stylesheet,
+         so there is no class to restart here -- toggleDrawer sets `on`
+         and the flower goes round. It is still deferred a frame: the
+         first press builds the drawer, and that build is synchronous and
+         long enough to eat the start of the turn if it runs first. */
+      requestAnimationFrame(function () { toggleDrawer(); });
     });
 
     var noteDone = document.getElementById("sb-note-done");
