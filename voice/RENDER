@@ -1,4 +1,4 @@
-sample en_GB-alan-medium 1.16 0.74 1.2
+full en_GB-alan-medium 1.16 0.74 1.2
 
 # One line at the top: <mode> <voice> <pace> <variation> <depth>
 #
@@ -24,5 +24,5 @@ sample en_GB-alan-medium 1.16 0.74 1.2
 #            1.5 a film trailer. Past 2 the formants go with it and he
 #            stops sounding large and starts sounding slowed.
 #
-# run 4 — asetrate was reading a 22050 file as 24000, so "a semitone
-#         down" came out half a semitone up. Probed now, and 1.2 deep.
+# run 5 — the real one: all 117 lines, Alan, 1.2 semitones down.
+#         This is what the game actually plays.
