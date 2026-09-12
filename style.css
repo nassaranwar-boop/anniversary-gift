@@ -4108,6 +4108,33 @@ img{-webkit-user-drag:none; user-select:none;}
    around it looks like. Sized in cqw so it stays in proportion with the
    art, and coloured per speaker.
    ========================================================= */
+/* ---- THE QUEEN'S VOICE ----
+   One line, high on the stage, out of the way of the HUD and of the two
+   of them fighting under it. It fades itself out and it is never a thing
+   to press: the fight does not stop for it. Each face gets its own
+   colour, because they are three different characters. */
+.so-boss-say{
+  position:absolute; left:50%; top:11cqh; transform:translateX(-50%) translateY(-4px);
+  z-index:6; pointer-events:none; opacity:0; white-space:nowrap;
+  padding:1.1cqw 2.6cqw; border-radius:.8cqw;
+  font-family:'Press Start 2P',monospace; font-size:2.1cqw; letter-spacing:.05em;
+  background:rgba(22,10,26,.8); color:#fff3e2;
+  box-shadow:inset 0 0 0 .25cqw rgba(255,255,255,.14);
+}
+.so-boss-say.on{ animation:soSay 2.6s ease forwards; }
+@keyframes soSay{
+  0%{ opacity:0; transform:translateX(-50%) translateY(0) scale(.94); }
+  7%{ opacity:1; transform:translateX(-50%) translateY(-4px) scale(1); }
+  82%{ opacity:1; }
+  100%{ opacity:0; transform:translateX(-50%) translateY(-8px); }
+}
+.so-boss-cloud{ color:#dff0ff; box-shadow:inset 0 0 0 .25cqw rgba(150,200,240,.55); }
+.so-boss-clock{ color:#ffe9c8; box-shadow:inset 0 0 0 .25cqw rgba(255,209,102,.55); }
+.so-boss-heart{ color:#ffd9e6; box-shadow:inset 0 0 0 .25cqw rgba(255,95,149,.6); }
+@media (prefers-reduced-motion: reduce){
+  .so-boss-say.on{ animation:none; opacity:1; }
+}
+
 /* ---- THE THREE BUTTONS ----
 
    The fight is played by naming the answer, so the controls say the
