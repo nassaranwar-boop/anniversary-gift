@@ -4156,6 +4156,28 @@ const HV_SCENES = {
       }
       lanternAt(ctx, L[0], L[1]);
     });
+    /* WHAT CHANGES BETWEEN ONE BEAT AND THE NEXT HAS TO HAVE A SHAPE.
+
+       The light going out of the orchard is right, and it is not enough
+       on its own -- a colour she has to remember across a paragraph is a
+       colour she will not notice moved. These do have a shape: apples
+       come down off the trees while she stands here, one or two more
+       each time, and the mist that always gathers in an orchard after
+       dark comes up between the trunks as it cools. */
+    for (var wf = 0; wf < Math.round(step * 3.5); wf++) {
+      var ax = 24 + ((wf * 47) % (PXW - 48)), ay = 132 + ((wf * 23) % 30);
+      blob(ctx, ax, ay, 2.6, 2.2,
+           [hvMix("#a4553a", "#4a2a20", k), hvMix("#82412c", "#3a2018", k),
+            hvMix("#63301f", "#2c1812", k), hvMix("#4a2417", "#221310", k)]);
+      px(ctx, ax - 3, ay + 2, 7, 1, "rgba(0,0,0,0.18)");      // the grass under it
+    }
+    if (step >= 2) {
+      var mAlpha = (step - 1) * 0.05;
+      for (var mb = 0; mb < 5; mb++) {
+        blob(ctx, 20 + mb * 70, 128 + (mb % 2) * 5, 44, 5 + step,
+             ["rgba(206,214,226," + mAlpha.toFixed(3) + ")"]);
+      }
+    }
     grassTufts(ctx, PXW, 124, 34,
       [hvMix("#2b3a2c", "#18211a", k), hvMix("#22301f", "#131b12", k), hvMix("#192518", "#0e150d", k)], rnd);
     flowerDots(ctx, PXW, 138, 26, 22,
@@ -4287,6 +4309,45 @@ const HV_SCENES = {
     px(ctx, 196, wTop + 4, 74, 1, "#a1794f");
     for (var kn = 0; kn < 8; kn++) px(ctx, 202 + kn * 9, wTop + 1, 1, 3, "#6b4a2c");
     px(ctx, 196, wTop + 8, 74, 1, "rgba(160,200,220,0.4)");   // its reflection
+
+    /* SOMETHING HAS TO ACTUALLY HAPPEN.
+
+       Changing the colour of the light is true to an afternoon and, on
+       its own, useless: between one beat and the next she reads a
+       paragraph, and nobody remembers a hue well enough to notice it
+       shifted ten per cent. What the eye does notice is a shape that was
+       not there before.
+
+       So a heron works its way down the shallows while she stands here.
+       Beat one the river is empty. Beat two it is standing in the far
+       shallows. Beat three it has moved closer and put its head down.
+       Beat four it has gone, and there is a ring on the water where it
+       lifted off. */
+    if (step === 1 || step === 2) {
+      var hx = step === 1 ? 96 : 148, hy = wTop + (step === 1 ? 7 : 13);
+      px(ctx, hx, hy - 10, 2, 11, "#e8eef2");                 // neck
+      px(ctx, hx - 1, hy - 12, 4, 3, "#e8eef2");              // head
+      px(ctx, hx + 3, hy - 11, 3, 1, "#e8c46a");              // bill
+      px(ctx, hx + 3, hy - 13, 1, 1, "#2a2a2a");              // eye
+      blob(ctx, hx + 1, hy - 2, 5, 3.4, ["#f2f6f8", "#d6dee4", "#b4bec6"]);
+      px(ctx, hx - 1, hy + 2, 1, 4, "#c8a24e");               // legs
+      px(ctx, hx + 3, hy + 2, 1, 4, "#c8a24e");
+      if (step === 2) px(ctx, hx - 2, hy - 9, 2, 6, "#cfd8de"); // head dipped, wing out
+      px(ctx, hx - 2, hy + 7, 8, 1, "rgba(210,225,235,0.35)");  // its reflection
+    }
+    if (step === 3) {
+      /* the ring it left, and the bird already most of the way out of frame */
+      for (var rg = 0; rg < 3; rg++) {
+        var rr = 5 + rg * 5;
+        for (var a3 = 0; a3 < 26; a3++) {
+          var an = (a3 / 26) * Math.PI * 2;
+          px(ctx, 148 + Math.cos(an) * rr, wTop + 13 + Math.sin(an) * rr * 0.36, 1, 1,
+             "rgba(226,240,246," + (0.30 - rg * 0.08).toFixed(2) + ")");
+        }
+      }
+      px(ctx, 262, 46, 5, 1, "#e8eef2"); px(ctx, 267, 45, 4, 1, "#e8eef2");
+      px(ctx, 258, 44, 4, 1, "#d4dde4");
+    }
 
     /* the near bank: gravel first, then the grass you are standing on */
     ditherSky(ctx, 0, wBot - 2, PXW, 16, [
