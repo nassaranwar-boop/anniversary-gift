@@ -783,7 +783,7 @@ img{-webkit-user-drag:none; user-select:none;}
      the ten keys at 39.6px, which rounds to forty and is under a thumb --
      trading one control that does not fit for ten that are too small. The
      card's own padding and the gaps between its parts carry it instead. */
-  .gate-card{width:min(340px, 33vw, (var(--app-h) - 14px) * 400 / 700);}
+  .gate-card{width:min(340px, 33vw, (var(--app-h) - 14px) * 400 / 700, (100svh - 14px) * 400 / 700);}
   .gate-body{padding:2.4cqw 6cqw 1.8cqw;}
   /* 4.6cqw of a 186px card is 8.6px, which is not a heading any more. The
      container query sizes it on a big card and the floor holds on a small
@@ -795,6 +795,57 @@ img{-webkit-user-drag:none; user-select:none;}
   /* the plate is drawn to fill the 44px box its floor already reserves,
      rather than sitting small inside it with the difference as padding */
   .gate-unlock img{width:66cqw;}
+}
+
+/* THE STACK, NOT THE ROW, WHEREVER THERE IS HEIGHT FOR IT.
+
+   Sideways the gate was laid out as two columns: the plaque on the left,
+   the card on the right. It fits, but it does not look like the same
+   screen as the iPad -- the plaque ends up alone in a wide field of
+   nothing with the card off to one side, which reads as two things that
+   happened to land on the same page rather than one composition.
+
+   Above 400px of height there is room to keep the iPad's arrangement:
+   the plaque over the card, both on the middle of the page. The card is
+   sized from what the title leaves behind, so it takes the rest of the
+   height, so it takes the rest of what is left.
+
+   It applies to EVERY landscape phone, not the tall ones only. It was
+   gated at 401px first, on the reasoning that a shorter screen would
+   squeeze the keys under the thumb floor -- but that left the phone it
+   was written for still showing the row, and the fix for short screens
+   is a smaller plaque, not a different composition. */
+@media (orientation: landscape) and (max-height: 560px){
+  .gate{
+    flex-direction:column; align-items:center; justify-content:center;
+    gap:0; padding:6px 3vw;
+  }
+  .gate-title{margin:0 0 6px;}
+  .gate-title img{width:min(30vw, 168px);}
+  .gate-card{width:min(360px, 52vw, (var(--app-h) - 84px) * 400 / 700, (100svh - 84px) * 400 / 700);}
+  .gate-seal-wrap{width:30cqw;}
+  .gate-heading{font-size:max(10.5px, 5cqw);}
+  .gate-pad{width:76cqw; gap:2cqw; margin-top:1.2cqw;}
+  .gate-unlock img{width:66cqw;}
+}
+
+/* THE SHORTEST SIDEWAYS SCREENS BUY THE KEYS BACK.
+
+   Stacking costs the card height, and the card's height is what sets the
+   width of the keys: at 360px the ten of them came out at 38px, under
+   the thumb. The plaque gives way, and the space around the seal, so
+   the card itself can be bigger -- but NOT the keypad's share of the
+   sheet. Eighty-five was tried and it put the keys and the Unlock plate
+   on top of the drawn frame and over its right edge, because the sheet's
+   border is inset about seven of those units from the card's own box.
+   The width the parent sets is the width that fits inside the drawing. */
+@media (orientation: landscape) and (max-height: 400px){
+  .gate-title{margin:0 0 3px;}
+  .gate-title img{width:min(24vw, 124px);}
+  .gate-card{width:min(360px, 52vw, (var(--app-h) - 70px) * 400 / 700, (100svh - 70px) * 400 / 700);}
+  .gate-seal-wrap{width:26cqw;}
+  .gate-pad{width:76cqw; gap:1.6cqw; margin-top:.6cqw;}
+  .gate-unlock img{width:64cqw;}
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -3013,6 +3064,31 @@ img{-webkit-user-drag:none; user-select:none;}
 /* START sits centred under the logo */
 #hv-centre .hv-btn-start{position:relative;}
 
+/* A PHONE ON ITS SIDE IS NOT A SMALL IPAD HERE.
+
+   The note is `clamp(13px, 2.7vw, 21px)`, and 2.7vw is over the cap on
+   both an iPad and a phone held sideways — so both got 21px type. But the
+   iPad's stage is 664px tall and the phone's is 390, so the same note ate
+   nearly twice the height and grew up over `#hv-centre` at bottom:26%,
+   which is where the answers are. She could read the line and not reach
+   the buttons.
+
+   So on a short landscape screen it is sized against the stage rather
+   than the window: smaller type, tighter leading, a narrower sheet, and
+   the answers lifted clear of it. */
+@media (orientation: landscape) and (max-height: 500px){
+  .hv-note{
+    font-size:clamp(10px, 1.45vw, 13px); line-height:1.3;
+    max-width:52%; left:25%; bottom:5%; padding:1.4% 2.4%;
+  }
+  .hv-note::before,.hv-note::after{ height:30%; top:-10%; }
+  #hv-centre{ bottom:30%; }
+  .hv-side{ top:34%; }
+  #screen-quest.hv-pair #hv-left,
+  #screen-quest.hv-pair #hv-right{ top:30%; }
+  .hv-btn:not(.hv-btn-start){ font-size:clamp(9px, 1.3vw, 12px); padding:4px 9px; }
+}
+
 /* ---- the two picture cards ---- */
 #hv-cards{
   position:absolute; z-index:6; left:50%; top:40%; transform:translate(-50%,-50%);
@@ -3571,12 +3647,23 @@ img{-webkit-user-drag:none; user-select:none;}
    the cards get narrower: four to a row instead of two, five cards in two
    rows, and the whole hub back inside the shortest screen she might hold. */
 @media (orientation:landscape) and (max-height:460px){
-  .hub-wrap{width:min(96vw,900px); padding:6px 10px; gap:3px;}
+  .hub-wrap{width:min(92vw,720px); padding:6px 10px; gap:3px;}
   .hub-title{font-size:17px;}
   .hub-sub{font-size:11px; margin:0 0 2px;}
   .hub-cards{gap:8px;}
-  .hub-card{flex:1 1 168px; max-width:214px; padding:6px 9px 8px; gap:2px;}
-  .hub-art{height:34px;}
+  /* THREE AND TWO, NOT FOUR AND ONE.
+
+     Letting the cards find their own width put four on the first row and
+     left Super Ouissy Race alone under them, hanging off-centre against a
+     full row -- which reads as a card that did not fit rather than a row
+     of its own. Fixed thirds give three and two, both rows centred on the
+     same middle, and the odd one out sits under the gap between the two
+     above it. */
+  .hub-card{
+    flex:0 1 calc(33.333% - 6px); max-width:calc(33.333% - 6px);
+    padding:6px 9px 8px; gap:2px;
+  }
+  .hub-art{height:58px;}
   .hub-name{font-size:13px;}
   .hub-desc{font-size:10.5px; line-height:1.28;}
   .hub-keepsake{margin-top:6px;}
@@ -3649,6 +3736,99 @@ img{-webkit-user-drag:none; user-select:none;}
   width:44px; height:14px; background:rgba(255,226,160,.75); border-radius:1px;
   box-shadow:0 1px 3px rgba(120,80,30,.25);
 }
+/* A PHOTOGRAPH YOU CAN PICK UP.
+
+   The board reads as a wall of polaroids, so the card behaves like one:
+   it lifts a little under a finger and straightens as it comes up, the
+   way a photograph does when you take it off the wall to look at it
+   properly. */
+.ks-card.ks-open{
+  cursor:pointer;
+  transition:transform .2s var(--ease-out, ease), box-shadow .2s ease;
+}
+.ks-card.ks-open:hover,
+.ks-card.ks-open:focus-visible{
+  transform:rotate(0deg) translateY(-4px) scale(1.04);
+  box-shadow:0 12px 26px rgba(90,52,17,.42);
+  outline:none;
+}
+.ks-card.ks-open:focus-visible{ box-shadow:0 12px 26px rgba(90,52,17,.42), 0 0 0 3px rgba(196,140,60,.65); }
+.ks-card.ks-open:active{ transform:rotate(0deg) translateY(-1px) scale(1.01); }
+
+/* ---- the enlargement: the same polaroid, held up, with its back read ---- */
+.ks-lb{
+  position:absolute; inset:0; z-index:40; display:flex;
+  align-items:center; justify-content:center; padding:16px;
+  background:rgba(58,34,14,.58); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+  opacity:0; pointer-events:none; transition:opacity .28s ease;
+}
+.ks-lb.open{ opacity:1; pointer-events:auto; }
+.ks-lb-card{
+  position:relative; width:min(92vw, 380px); max-height:92%; overflow-y:auto;
+  background:#fffaf0; border-radius:3px; padding:14px 14px 18px;
+  box-shadow:0 22px 48px rgba(50,28,8,.5);
+  transform:translateY(14px) scale(.94) rotate(-1.2deg);
+  transition:transform .34s var(--ease-pop, cubic-bezier(.2,.9,.3,1.3));
+  scrollbar-width:none;
+}
+.ks-lb-card::-webkit-scrollbar{ width:0; }
+.ks-lb.open .ks-lb-card{ transform:none; }
+.ks-lb-card .ks-tape{
+  position:absolute; top:-9px; left:50%; transform:translateX(-50%) rotate(-2deg);
+  width:76px; height:18px; background:rgba(255,226,160,.8); border-radius:1px;
+  box-shadow:0 1px 4px rgba(120,80,30,.28);
+}
+.ks-lb-img{
+  width:100%; aspect-ratio:1/1; overflow:hidden;
+  background:linear-gradient(160deg,#f2ddb8,#e2cfa8);
+}
+.ks-lb-img canvas{
+  width:100%; height:100%; display:block;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+}
+.ks-lb-t{
+  font-family:'Caveat',cursive; font-size:clamp(19px,5.4vw,25px); color:#5c3d1a;
+  text-align:center; margin:9px 0 7px; line-height:1.1;
+}
+/* the true thing about the game, then the thing it was really for. The
+   second is set apart and in the hand the letters are written in, so the
+   turn is visible before it is read. */
+.ks-lb-l{
+  font-family:'Poppins',sans-serif; font-size:clamp(11.5px,3.1vw,13px); line-height:1.6;
+  color:#6b4b26; text-align:center; margin:0 2px 9px;
+}
+.ks-lb-k{
+  font-family:'Caveat',cursive; font-size:clamp(15px,4.3vw,19px); line-height:1.34;
+  color:#8a3f52; text-align:center; margin:0 2px 12px;
+  padding-top:9px; border-top:1px dashed rgba(150,98,38,.42);
+}
+.ks-lb-x{
+  display:block; margin:0 auto; min-height:40px; padding:8px 20px; cursor:pointer;
+  font-family:'Playfair Display',serif; font-style:italic; font-size:13.5px; color:#5c3d1a;
+  background:rgba(240,214,168,.55); border:1.5px solid rgba(150,98,38,.45); border-radius:20px;
+}
+.ks-lb-x:hover{ background:rgba(240,214,168,.85); }
+
+/* sideways on a phone the sheet is wide and shallow, so the photograph
+   sits beside what is written on it rather than above it */
+@media (orientation: landscape) and (max-height: 560px){
+  .ks-lb-card{
+    width:min(94vw, 560px);
+    display:grid; grid-template-columns:minmax(0,34%) minmax(0,1fr);
+    column-gap:14px; align-items:center; padding:12px 14px 14px;
+  }
+  .ks-lb-card .ks-tape{ display:none; }
+  .ks-lb-img{ grid-row:1 / span 4; }
+  .ks-lb-t{ margin:0 0 5px; text-align:left; font-size:clamp(17px,3.4vw,22px); }
+  .ks-lb-l{ text-align:left; margin:0 0 7px; font-size:clamp(10.5px,1.9vw,12.5px); }
+  .ks-lb-k{ text-align:left; margin:0 0 9px; font-size:clamp(13px,2.5vw,17px); padding-top:7px; }
+  .ks-lb-x{ margin:0; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .ks-card.ks-open, .ks-lb, .ks-lb-card{ transition:none; }
+}
+
 .ks-closing{
   font-family:'Playfair Display',serif; font-style:italic; font-size:clamp(13px,3.6vw,15.5px);
   color:#5c3d1a; text-align:center; max-width:520px; line-height:1.6; margin:8px auto 2px;
@@ -3815,6 +3995,85 @@ img{-webkit-user-drag:none; user-select:none;}
    around it looks like. Sized in cqw so it stays in proportion with the
    art, and coloured per speaker.
    ========================================================= */
+/* ---- THE THREE BUTTONS ----
+
+   The fight is played by naming the answer, so the controls say the
+   names. They live in the column under the stage — the same place the
+   platformer's own pad lives — because the stage is a 16:9 letterbox and
+   on a phone held upright a pad laid over the bottom of it covers the two
+   people fighting.
+
+   Each one carries its verdict for a moment after the round: green on the
+   one she hit when it was right, red on the one she hit when it was
+   wrong, and a pulse on the one she should have hit. And while they are
+   up, the platformer's d-pad stands down: two sets of controls on one
+   screen is two things to think about inside a window of two thirds of a
+   second. */
+.rs-pad{
+  position:relative; z-index:11; width:100%; flex:0 0 auto;
+  display:flex; gap:clamp(8px,2vw,16px); justify-content:center; align-items:stretch;
+  padding:10px calc(clamp(14px,3.5vw,64px) + env(safe-area-inset-right))
+          calc(12px + env(safe-area-inset-bottom))
+          calc(clamp(14px,3.5vw,64px) + env(safe-area-inset-left));
+  opacity:0; pointer-events:none; transition:opacity .18s ease;
+}
+.rs-pad.on{ pointer-events:auto; opacity:1; }
+.rs-key{
+  flex:1 1 0; max-width:230px; min-height:clamp(52px,9vh,68px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  border:0; border-radius:12px; cursor:pointer;
+  font-family:'Press Start 2P',monospace; color:#fff3e2;
+  background:linear-gradient(180deg, rgba(52,40,70,.96), rgba(26,18,38,.96));
+  touch-action:manipulation; user-select:none; -webkit-user-select:none;
+  transition:transform .07s ease, box-shadow .07s ease, background .12s ease;
+}
+.rs-key b{ font-size:clamp(11px,2.6vw,15px); letter-spacing:.12em; }
+.rs-key i{ font-style:normal; font-size:clamp(8px,1.7vw,10px); opacity:.6; letter-spacing:.08em; }
+.rs-key:active{ transform:translateY(2px); }
+.rs-key-block{  box-shadow:inset 0 0 0 2px rgba(159,228,255,.5), inset 0 2px 0 rgba(255,255,255,.16), 0 5px 12px rgba(0,0,0,.5); }
+.rs-key-dodge{  box-shadow:inset 0 0 0 2px rgba(201,160,255,.5), inset 0 2px 0 rgba(255,255,255,.16), 0 5px 12px rgba(0,0,0,.5); }
+.rs-key-strike{ box-shadow:inset 0 0 0 2px rgba(255,209,102,.55), inset 0 2px 0 rgba(255,255,255,.16), 0 5px 12px rgba(0,0,0,.5); }
+.rs-key-up{     box-shadow:inset 0 0 0 2px rgba(255,176,110,.6), inset 0 2px 0 rgba(255,255,255,.18), 0 5px 12px rgba(0,0,0,.5); }
+.rs-key.good{ background:linear-gradient(180deg,#2f7a52,#17452e); color:#d6ffe6; }
+.rs-key.bad{  background:linear-gradient(180deg,#8a2c3c,#4a1421); color:#ffd9de; }
+.rs-key.want{ animation:rsWant .5s ease-in-out 2; }
+@keyframes rsWant{ 50%{ background:linear-gradient(180deg,#6b5a2a,#3a3016); } }
+/* the one-button state, when he is down and she is getting him up */
+.rs-pad .rs-key-up{ display:none; }
+.rs-pad-getup .rs-key-block,
+.rs-pad-getup .rs-key-dodge,
+.rs-pad-getup .rs-key-strike{ display:none; }
+.rs-pad-getup .rs-key-up{
+  display:flex; flex:1 1 auto; max-width:420px;
+  background:linear-gradient(180deg,#8a5a2c,#4a2a14); color:#ffe9c8;
+  animation:rsUp .42s ease-in-out infinite;
+}
+@keyframes rsUp{ 50%{ transform:scale(1.03); } }
+/* the game's own pad stands down while the fight's is up */
+#screen-ouissy.so-fighting .so-pad{ display:none !important; }
+/* Upright phone: pinned to the bottom, exactly where the game's pad is —
+   the stage keeps the band it had and nobody is standing behind a button. */
+@media (max-aspect-ratio: 3/4){
+  .rs-pad{ position:absolute; left:0; right:0; bottom:0; margin:0; }
+}
+/* Sideways phone: the stage has the whole screen, so this floats over the
+   bottom of it like the game's pad does — shorter, and out of the middle. */
+@media (orientation: landscape) and (max-height: 560px){
+  .rs-pad{
+    position:absolute; left:0; right:0; bottom:0; z-index:6; margin:0;
+    padding:0 calc(10px + env(safe-area-inset-right))
+            calc(8px + env(safe-area-inset-bottom))
+            calc(10px + env(safe-area-inset-left));
+    gap:8px;
+  }
+  .rs-key{ min-height:42px; max-width:150px; border-radius:10px; opacity:.94; }
+  .rs-key b{ font-size:10px; }
+  .rs-key i{ display:none; }
+}
+@media (prefers-reduced-motion: reduce){
+  .rs-key.want, .rs-pad-getup .rs-key-up{ animation:none; }
+}
+
 /* ---- the fight's cue, and the letter ----
    Both are DOM for the same reason the dialogue is: six-pixel text on a
    320-wide canvas, blown up five times, is unreadable however good the
@@ -4186,6 +4445,34 @@ img{-webkit-user-drag:none; user-select:none;}
   font-family:var(--font-serif); font-style:italic; font-size:2cqw;
   color:#ffc8de; margin:0; line-height:1.5;
 }
+/* ---- the Queen's offer: he can put her back where she fell ---- */
+.so-card-revive{max-width:60cqw;}
+.so-card-revive h3{
+  margin:0; font-size:2.6cqw; color:#ffd166; letter-spacing:.03em; line-height:1.4;
+}
+.so-card-kicker{
+  margin:0; font-size:1.4cqw; letter-spacing:.22em; color:rgba(255,158,196,.85);
+}
+/* the price, said in the one unit she is spending */
+.so-revive-cost{
+  display:flex; align-items:center; justify-content:center; gap:1.2cqw;
+  margin:.4cqw 0 .2cqw; font-size:2.4cqw; color:#fff;
+}
+.so-revive-cost span{font-size:1.4cqw; letter-spacing:.2em; color:rgba(255,200,222,.8);}
+.so-revive-cost b{
+  min-width:3.4cqw; padding:.3cqw .8cqw; border-radius:.6cqw;
+  background:rgba(255,95,149,.22); box-shadow:inset 0 0 0 .2cqw rgba(255,158,196,.5);
+}
+.so-revive-cost i{font-style:normal; color:rgba(255,200,222,.75);}
+/* Held upright the stage is 390x219, so everything sized in cq units comes
+   out tiny: these measured 83x25, well under the 44px a thumb needs. Only
+   this card's buttons get the floor — .so-btn is shared with every menu in
+   the game and widening it there would move layouts that are already right. */
+.so-card-revive .so-btn{
+  min-height:44px; display:inline-flex; align-items:center; justify-content:center;
+  padding-left:max(2.4cqw, 18px); padding-right:max(2.4cqw, 18px);
+}
+
 /* ---- how to play ---- */
 .so-card-how{max-width:76cqw; padding:2.4cqw 3cqw; gap:1.2cqw;}
 .so-how{display:flex; flex-direction:column; gap:1.5cqw; width:100%; text-align:left;}

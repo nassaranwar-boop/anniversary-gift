@@ -1956,6 +1956,103 @@ function glyph(name, cls) {
          name + '"/></svg>';
 }
 
+/* WHAT IS WRITTEN ON THE BACK OF EACH PHOTOGRAPH.
+
+   People write on the back of photographs. Not a caption -- a caption is
+   for a stranger who needs to be told what they are looking at. What goes
+   on the back is for the one person who was there.
+
+   So each of these says a true thing about the game it belongs to -- the
+   number of ways up the valley, what the winding key is actually for, why
+   the last life is the one that matters -- and then turns it over, because
+   the detail was never the reason any of it was built. */
+const KS_NOTE = {
+  book: {
+    t: "Our little book",
+    l: "Every page of this was drawn one pixel at a time, and there are no photographs in it anywhere \u2014 I could not buy a single piece of it, so I made all of it.",
+    k: "I wanted there to be a thing that exists only because you do.",
+  },
+  quest: {
+    t: "The Long Way Round",
+    l: "There are four ways up that valley and I built every one of them. Whichever you take, the road is longer than it needed to be.",
+    k: "I have never once minded the long way, as long as it was the way to you.",
+  },
+  ouissy: {
+    t: "Super Ouissy",
+    l: "The castle is the easy part. The part I spent the longest on is what happens after you fall \u2014 a hand, and your place kept, and the fight carrying on exactly where it was.",
+    k: "You have never had to start me over. I would just like you to know I can do the same.",
+  },
+  apoc: {
+    t: "Ouissy at the Apocalypse",
+    l: "I wrote a world with nothing left standing in it, gave you no map and no light worth the name, and put me at the far end of it.",
+    k: "I wanted to see what the ending looked like if you came anyway. You always do.",
+  },
+  night: {
+    t: "Ouissy\u2019s Night Shift",
+    l: "Six hours, two doors, one charge. The toys in it are not hunting you \u2014 they are running down, and the whole job is winding them before they stop.",
+    k: "That is the only thing I have ever been frightened of. Not losing you. Letting something wind down while I was busy.",
+  },
+  race: {
+    t: "Super Ouissy Race",
+    l: "This one is the only game here that needs two people. It cannot be played alone \u2014 there is no version of it with one of us in it.",
+    k: "That is not a limitation. That is the whole point of it.",
+  },
+};
+
+/* the enlargement: one polaroid, held up, with the back of it read out */
+function ksOpen(kind) {
+  const n = KS_NOTE[kind];
+  if (!n) return;
+  let lb = document.getElementById("ks-lb");
+  if (!lb) {
+    lb = document.createElement("div");
+    lb.id = "ks-lb"; lb.className = "ks-lb";
+    lb.innerHTML =
+      '<div class="ks-lb-card" role="dialog" aria-modal="true" aria-labelledby="ks-lb-t">' +
+        '<span class="ks-tape"></span>' +
+        '<div class="ks-lb-img" id="ks-lb-img"></div>' +
+        '<h3 class="ks-lb-t" id="ks-lb-t"></h3>' +
+        '<p class="ks-lb-l" id="ks-lb-l"></p>' +
+        '<p class="ks-lb-k" id="ks-lb-k"></p>' +
+        '<button class="ks-lb-x" id="ks-lb-x" aria-label="Close">Put it back</button>' +
+      "</div>";
+    document.getElementById("screen-keepsake").appendChild(lb);
+    /* the whole sheet closes it, but not a click that lands on the card */
+    lb.addEventListener("click", (e) => { if (e.target === lb) ksClose(); });
+    document.getElementById("ks-lb-x").addEventListener("click", ksClose);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && lb.classList.contains("open")) ksClose();
+    });
+  }
+  const holder = document.getElementById("ks-lb-img");
+  holder.innerHTML = "";
+  holder.appendChild(ksArt(kind));
+  document.getElementById("ks-lb-t").textContent = n.t;
+  document.getElementById("ks-lb-l").textContent = n.l;
+  document.getElementById("ks-lb-k").textContent = n.k;
+  lb.classList.add("open");
+  /* the sheet takes the focus so the keyboard is inside the dialog */
+  setTimeout(() => { const x = document.getElementById("ks-lb-x"); if (x) x.focus(); }, 40);
+}
+function ksClose() {
+  const lb = document.getElementById("ks-lb");
+  if (lb) lb.classList.remove("open");
+}
+
+/* a photograph you can pick up is a button, and has to answer a keyboard
+   and a screen reader like one */
+function ksMakeOpenable(card, kind) {
+  if (!KS_NOTE[kind]) return;
+  card.classList.add("ks-open");
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-label", KS_NOTE[kind].t + " \u2014 read the back");
+  card.addEventListener("click", () => ksOpen(kind));
+  card.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ksOpen(kind); }
+  });
+}
+
 function startKeepsake() {
   const board = document.getElementById("ks-board");
   board.innerHTML = "";
@@ -1973,6 +2070,7 @@ function startKeepsake() {
   const fcap = document.createElement("div"); fcap.className = "ks-cap";
   fcap.textContent = "Our little book";
   first.appendChild(ftape); first.appendChild(fimg); first.appendChild(fcap);
+  ksMakeOpenable(first, "book");
   board.appendChild(first);
 
   /* A memory with no photograph in it yet is a placeholder, and a
@@ -2022,42 +2120,16 @@ function startKeepsake() {
     const cap = document.createElement("div"); cap.className = "ks-cap";
     cap.textContent = b.cap;
     card.appendChild(tape); card.appendChild(img); card.appendChild(cap);
+    ksMakeOpenable(card, b.art);
     board.appendChild(card);
   });
 
-  /* What the walk up the valley remembers, on the board with everything
-     else. Four routes, two endings and ten things to find, and until it
-     was written down there was no way for her to know any of that
-     existed — the chapter simply ticked itself off and said nothing. */
-  hvLoadProgress();
-  const walked = hvRouteCount(), read = hvEndingCount();
-  const kept = Object.keys(HV_TOKENS).filter((k) => hvFound[k]);
-  /* and only when she has actually brought something back from the walk —
-     the shelf with nothing on it was the other empty frame */
-  if (kept.length) {
-    const card = document.createElement("div");
-    card.className = "ks-card ks-card-walk";
-    card.style.setProperty("--r", "-1.5deg");
-    const shelf = document.createElement("div");
-    shelf.className = "ks-walk-shelf";
-    kept.forEach((k) => {
-      const holder = document.createElement("span");
-      holder.title = HV_TOKENS[k].name;
-      holder.appendChild(hvDrawToken(k));
-      shelf.appendChild(holder);
-    });
-    const tape = document.createElement("span");
-    tape.className = "ks-tape";
-    card.appendChild(tape);
-    card.appendChild(shelf);
-    const cap = document.createElement("div");
-    cap.className = "ks-cap";
-    cap.textContent = walked === 4
-      ? "All four ways round · " + kept.length + " of " + Object.keys(HV_TOKENS).length
-      : walked + " of 4 ways round · " + read + " of 2 endings";
-    card.appendChild(cap);
-    board.appendChild(card);
-  }
+  /* The walk's tally used to have a card here -- "All four ways round,
+     1 of 10". It was the one thing on this wall that scored her. Every
+     other card is a page of the book; that one was a receipt, and a
+     receipt on a wall of photographs is the thing your eye goes to and
+     the thing you wish was not there. It is gone, and it does not come
+     back. */
 
   /* main dropped the "best maze time" suffix from this line; keeping
      that, and keeping the walk's own card above it. */

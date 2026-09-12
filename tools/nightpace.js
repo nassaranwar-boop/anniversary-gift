@@ -25,10 +25,10 @@ const { chromium } = require('playwright-core');
       const s = w.state();
       const hours = [];
       for (let h = 0; h < 6; h++) {
-        const a0 = s.stats.arrivals, s0 = s.stats.shifts, k0 = s.stats.knocks, al0 = s.stats.alarms, m0 = s.stats.moves;
+        const a0 = s.stats.arrivals, s0 = s.stats.shifts, k0 = s.stats.knocks, al0 = s.stats.alarms, m0 = s.stats.moves, f0 = s.stats.figments;
         let t = 0, quiet = 0, longestQuiet = 0;
         while (t < 56 && s.phase === 'play') {
-          const before = s.stats.arrivals + s.stats.shifts + s.stats.knocks + s.stats.surges + s.stats.alarms + s.stats.moves;
+          const before = s.stats.arrivals + s.stats.shifts + s.stats.knocks + s.stats.surges + s.stats.alarms + s.stats.moves + s.stats.figments;
           // an attentive guard: door only when something is there
           const cs = w.cast();
           ['left','right','hatch'].forEach(d => {
@@ -38,7 +38,7 @@ const { chromium } = require('playwright-core');
           });
           w.pump(1, 0.25);
           t += 1;
-          const after = s.stats.arrivals + s.stats.shifts + s.stats.knocks + s.stats.surges + s.stats.alarms + s.stats.moves;
+          const after = s.stats.arrivals + s.stats.shifts + s.stats.knocks + s.stats.surges + s.stats.alarms + s.stats.moves + s.stats.figments;
           const anyClose = Object.keys(cs).some(k => cs[k].awake &&
             cs[k].step >= cs[k].def.route.length - 2);
           if (after === before && !anyClose) { quiet++; longestQuiet = Math.max(longestQuiet, quiet); }
@@ -46,7 +46,7 @@ const { chromium } = require('playwright-core');
         }
         hours.push({ h, arr: s.stats.arrivals - a0, shifts: s.stats.shifts - s0,
                      knocks: s.stats.knocks - k0, alarms: s.stats.alarms - al0,
-                     moves: s.stats.moves - m0, longestQuiet });
+                     moves: s.stats.moves - m0, figments: s.stats.figments - f0, longestQuiet });
         if (s.phase !== 'play') break;
       }
       return { night, phase: s.phase, hours };
@@ -54,7 +54,7 @@ const { chromium } = require('playwright-core');
     console.log('night', r.night, r.phase);
     r.hours.forEach(h => console.log('   hour', h.h, '| moves', h.moves, 'arrivals', h.arr,
       'alarms', h.alarms, 'shifts', h.shifts, 'knocks', h.knocks,
-      '| longest dead stretch', h.longestQuiet + 's'));
+      'tune', h.figments, '| longest dead stretch', h.longestQuiet + 's'));
   }
   console.log('errors:', errs.length);
   await b.close();
