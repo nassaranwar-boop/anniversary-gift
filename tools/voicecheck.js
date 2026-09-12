@@ -36,11 +36,19 @@ function tone(secs) {
   return b;
 }
 
+/* PUT BACK EVERYTHING IT TOUCHES, INCLUDING THE AUDIO.
+
+   This writes a tone over voice/intro-3-1.mp3 so it has something of a
+   known length to play. The first version restored the manifest and
+   not the take, so once the chapter had real recordings in it, running
+   this check quietly replaced one of his sentences with a 180Hz beep
+   and left it there -- a test that corrupts the thing it is testing.
+   Both are held and both go back now, whatever happens. */
 const hadMan = fs.existsSync(MAN), oldMan = hadMan ? fs.readFileSync(MAN) : null;
-const hadTake = fs.existsSync(TAKE);
+const hadTake = fs.existsSync(TAKE), oldTake = hadTake ? fs.readFileSync(TAKE) : null;
 function cleanup() {
   try { hadMan ? fs.writeFileSync(MAN, oldMan) : fs.unlinkSync(MAN); } catch (e) {}
-  if (!hadTake) { try { fs.unlinkSync(TAKE); } catch (e) {} }
+  try { hadTake ? fs.writeFileSync(TAKE, oldTake) : fs.unlinkSync(TAKE); } catch (e) {}
 }
 
 (async () => {

@@ -7079,7 +7079,16 @@ function voxTalking() { return voiceBusy(); }
    so the guess gets scaled onto it and is closer than it has ever
    been. --------------------------------------------------------- */
 const VOX_FILE = { on: null, map: null, buf: Object.create(null), dur: Object.create(null),
-                   src: null, gain: null, until: 0 };
+                   src: null, gain: null, until: 0,
+                   /* which path the last line actually took, and how
+                      many lines were lost to a take that had not
+                      finished arriving */
+                   took: null, late: 0, warmed: 0,
+                   /* cumulative, because a line that waits for its take
+                      finishes after the caller has moved on, and a
+                      check that samples "what happened just now" reads
+                      the wrong answer and says everything is fine */
+                   plays: { tape: 0, speech: 0 } };
 
 /* HOW LOUD THE SHOP IS WHILE HE IS TALKING.
 
@@ -7132,12 +7141,89 @@ function voiceLoad() {
      let n = 0;
      for (const id in j) { m[String(j[id]).trim()] = id; n++; }
      VOX_FILE.map = m; VOX_FILE.on = n > 0;
+     if (VOX_FILE.on) voiceWarm();
    })
    .catch(() => {});
 }
 
 function voiceHas(text) {
   return !!(VOX_FILE.on && VOX_FILE.map && VOX_FILE.map[String(text).trim()]);
+}
+/* has the take for this line finished arriving AND decoding */
+function voiceReadyFor(text) {
+  const id = VOX_FILE.map && VOX_FILE.map[String(text).trim()];
+  return !!(id && VOX_FILE.buf[id]);
+}
+
+/* FETCH THEM BEFORE SHE NEEDS THEM, IN THE ORDER SHE NEEDS THEM.
+
+   The whole recorded-voice path was written, tested and shipped
+   without this, and the result was that not one line ever played.
+   voiceBuf starts a fetch and returns null, because the buffer cannot
+   exist yet; the caller then falls back to the synthesiser. And every
+   line in this chapter is said exactly ONCE, so "fall back this once"
+   was every time, for all 117 of them. Measured cold, the way a player
+   arrives: fifteen lines of the opening statement, fifteen robots, six
+   megabytes of a man's voice sitting unplayed on the server.
+
+   So they are fetched up front, four at a time so the connection is
+   not stampeded, in the order the chapter plays them: the statement
+   she hears before she has pressed anything, then the terms, then the
+   small reactive lines, then the six nights in order. By the time any
+   of it is needed it has been in memory for minutes. */
+const VOX_ORDER = ["intro-", "terms-", "when-", "reveal-", "caught-", "kept-",
+                   "tape1-", "tape2-", "tape3-", "tape4-", "tape5-", "tape6-"];
+
+function voiceWarm() {
+  if (!VOX_FILE.map || !AC) return;
+  const ids = Object.keys(VOX_FILE.map).map((t) => VOX_FILE.map[t]);
+  const rank = (id) => {
+    for (let i = 0; i < VOX_ORDER.length; i++) if (id.indexOf(VOX_ORDER[i]) === 0) return i;
+    return VOX_ORDER.length;
+  };
+  const queue = ids.slice().sort((a, b) => (rank(a) - rank(b)) || (a < b ? -1 : 1));
+  let live = 0, i = 0;
+  const pump = () => {
+    while (live < 4 && i < queue.length) {
+      const id = queue[i++];
+      if (VOX_FILE.buf[id] !== undefined) continue;
+      live++;
+      VOX_FILE.buf[id] = null;
+      fetch("voice/" + id + ".mp3")
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+        .then((a) => new Promise((ok, no) => { AC.decodeAudioData(a, ok, no); }))
+        .then((b) => { VOX_FILE.buf[id] = b; VOX_FILE.dur[id] = b.duration; VOX_FILE.warmed++; })
+        .catch(() => { VOX_FILE.buf[id] = false; })
+        .then(() => { live--; pump(); });
+    }
+  };
+  pump();
+}
+
+/* wait for one line, briefly, and never for long enough to be a hang.
+   The opening statement is the one place where waiting is better than
+   falling back, because it is the first thing she ever hears and there
+   is no second chance at it. */
+function voiceWait(text, ms, then) {
+  const cap = ms || 2500, t0 = perf();
+  const tick = () => {
+    /* THE MANIFEST MAY NOT HAVE ARRIVED EITHER.
+
+       On a cold start the first line can be asked for before the page
+       knows there are ANY recordings, and then "is there a take for
+       this line" answers no for the wrong reason and the line goes out
+       as speech. That is not a slow connection failing gracefully, it
+       is the whole feature failing on the one line it matters most on:
+       the first thing she ever hears. So a manifest still in the air
+       is a reason to wait, exactly like a take still in the air. */
+    if (VOX_FILE.on === false) return then();          // no recordings on this build
+    if (VOX_FILE.on === true && !voiceHas(text)) return then();   // none for this line
+    if (voiceReadyFor(text)) return then();
+    if (VOX_FILE.on === true) voiceBuf(text);          // make sure it is in flight
+    if (perf() - t0 > cap) return then();
+    setTimeout(tick, 60);
+  };
+  tick();
 }
 
 /* fetch and decode once, then keep it */
@@ -7284,6 +7370,18 @@ function voxSpeak(plan, opts) {
      If there is one for this line, it is what she hears, and the
      caption's guessed timings are stretched onto the take's real
      length so the words light up with him instead of near him. */
+  /* and if the page does not yet know whether there are recordings at
+     all, that is a reason to hold the line rather than to assume there
+     are none -- see voiceWait */
+  if (!opts.sys && ac() && !muted && MIX.voice > 0.02
+      && VOX_FILE.on === null && !opts.waited) {
+    const again = {};
+    for (const k in opts) again[k] = opts[k];
+    again.waited = true;
+    VOX_FILE.late++;
+    voiceWait(text, 1800, () => voxSpeak(plan, again));
+    return total;
+  }
   if (!opts.sys && ac() && !muted && MIX.voice > 0.02 && voiceHas(text)) {
     const b = voiceBuf(text);
     if (b) {
@@ -7297,10 +7395,34 @@ function voxSpeak(plan, opts) {
          synthesiser: the hiss was covering for the voice, and a voice
          that does not need covering for should not be buried */
       voxTape(total, (opts.gain === undefined ? 1 : opts.gain) * 0.34);
+      VOX_FILE.took = "tape"; VOX_FILE.plays.tape++;
       return total;
     }
-    /* the file is still arriving; say it the old way this once rather
-       than leaving a silence where a sentence should be */
+    /* THE TAKE IS KNOWN AND STILL ARRIVING.
+
+       The original code handed the line to the synthesiser here and
+       called it "this once". Every line in this chapter is said
+       exactly once, so this once was every time.
+
+       Waiting is better. A line that starts a beat late is a line she
+       hears in his voice; a line that does not wait is a robot reading
+       his last words to her. So the sentence is held for up to a
+       second and a bit and then tried again -- and the retry cannot
+       loop, because it is flagged, so if the take still has not landed
+       by then it goes out as speech and that is the end of it.
+
+       In practice this almost never fires: voiceWarm has the whole
+       chapter in memory within seconds of the manifest arriving. It is
+       here for the first few seconds after a cold load, when it is the
+       difference between his voice and a machine's. */
+    VOX_FILE.late++;
+    if (!opts.waited) {
+      const again = {};
+      for (const k in opts) again[k] = opts[k];
+      again.waited = true;
+      voiceWait(text, 1200, () => voxSpeak(plan, again));
+      return total;
+    }
   }
   if (!muted && MIX.voice > 0.02 && speechSay(text, plan, opts)) {
     voxTape(total, opts.gain === undefined ? 1 : opts.gain);
@@ -7309,6 +7431,7 @@ function voxSpeak(plan, opts) {
        recordings on it yet -- but not for the building, which is four
        words long and does not get the score moved out of its way */
     if (!opts.sys) voiceDuck(total);
+    if (!opts.sys) { VOX_FILE.took = "speech"; VOX_FILE.plays.speech++; }
     return total;
   }
   if (!ac() || muted) return 0;
@@ -11516,7 +11639,13 @@ function cineStart() {
   musicMode("film");
   if (stageEl) stageEl.dataset.cine = "1";
   cineCard();
-  cineNext();
+  /* The card is up and the camera is already moving, so this is dead
+     time she is going to spend reading anyway -- which makes it the
+     right place to make sure his first sentence is his. Capped, so a
+     slow connection delays the opening by a moment rather than
+     stopping it. */
+  const first = NS.intro.beats[0] && NS.intro.beats[0].lines[0];
+  voiceWait(first, 2500, () => { if (CINE.on) cineNext(); });
 }
 
 function cineStop(toNight) {
@@ -13073,6 +13202,11 @@ const testHooks = {
   }),
   door: () => cueDuck(0.5),
   bedMode: (m) => musicMode(m),
+  /* which path the last line took, and how many went out as speech
+     because their take had not arrived yet */
+  said: () => ({ took: VOX_FILE.took, late: VOX_FILE.late,
+                 warmed: VOX_FILE.warmed, plays: VOX_FILE.plays,
+                 ready: Object.keys(VOX_FILE.buf).filter((k) => VOX_FILE.buf[k]).length }),
   announce: (t) => annunciate(t || "DOOR ONE: CLOSED", false),
   voxMark: () => voxMark(),
   speech: () => ({ ok: SPEECH.ok, primed: SPEECH.primed, waiting: !!sysWaiting,
