@@ -118,6 +118,19 @@ window.Rescue = (function () {
         { who: "anwar", text: "And listen \u2014 I can take four of those. Not five." },
         { who: "anwar", text: "So don't let him land five." },
       ],
+      /* WHAT THEY SAY WHILE IT IS HAPPENING. Four words, over their
+         heads, gone before she has finished reading them — this is where
+         the scene's temper lives, and none of it stops the fight. Each
+         one lands once. */
+      barks: {
+        parried:  ["Still fast.", "...hm.", "You remember this."],
+        landed:   ["Stay down.", "You are slower.", "It is only time."],
+        nearly:   ["Anwar—", "Please—", "Get UP!"],
+        lastband: ["Enough of this.", "No more talking.", "Then I stop being careful."],
+        grabbed:  ["ANWAR!", "No—", "Let him GO!"],
+        down:     ["ANWAR!!", "No no no—", "Get up. Get UP."],
+        up:       ["Not yet.", "I'm not done.", "Still here."],
+      },
       /* and if she cannot get him back on his feet */
       lost: [
         { who: "death", text: "..." },
@@ -225,34 +238,43 @@ window.Rescue = (function () {
   var PH = {
     arrive: 0, chill: 1, enter: 2, meet: 3, swing: 4, caught: 5, choice: 6,
     tut: 7, rest: 8, tell: 9, blow: 10, beat: 11, open: 12, close: 13,
-    down: 14, win: 15, warm: 16,
+    down: 14, win: 15, warm: 16, held: 17, final: 18,
     lgSay: 20, lgWarm: 21, letter: 22,
   };
 
   var FIGHT = {
     anwarHp: 4,
-    deathHp: 6,                      // how many times he has to be hit
-    /* by how much of Death is left. `chain` is the most attacks he will
-       run together before the opening. */
+    deathHp: 8,                      // how many times he has to be hit
+    parry: 0.20,                     // answering inside this is a parry
+    resolve: 3,                      // clean answers in a row for a big one
+    /* by how much of him is left. `chain` is the most attacks he will run
+       together before the opening, `grab` how often he reaches instead. */
     bands: [
-      { at: 6, tell: 0.70, window: 0.95, open: 1.15, rest: 0.85, chain: 1 },
-      { at: 4, tell: 0.58, window: 0.82, open: 0.95, rest: 0.62, chain: 2 },
-      { at: 2, tell: 0.48, window: 0.70, open: 0.82, rest: 0.46, chain: 3 },
+      { above: 6, tell: 0.70, window: 0.95, open: 1.15, rest: 0.85, chain: 1, grab: 0 },
+      { above: 3, tell: 0.58, window: 0.82, open: 0.95, rest: 0.62, chain: 2, grab: 0.22 },
+      { above: 0, tell: 0.48, window: 0.70, open: 0.82, rest: 0.46, chain: 3, grab: 0.30 },
     ],
     hitStop: 0.09,                   // the frame everything stops on an impact
     getUp: { presses: 6, time: 3.4 },
+    grab:  { presses: 7, time: 2.6 },
   };
 
-  /* The two attacks, and the answer to each. The colour is the colour its
-     telegraph is drawn in, so the shape and the colour say the same thing
-     twice — which is what makes a fast tell readable. */
+  /* The three attacks, and the answer to each. The colour is the colour
+     its telegraph is drawn in, so the shape and the colour say the same
+     thing twice — which is what makes a fast tell readable.
+
+     The grab is red and it cannot be blocked. That is the only rule in
+     the fight with an exception in it, and it earns the exception: two
+     attacks is a fight learned in twenty seconds, and a third that
+     punishes the safe answer is what stops BLOCK being a shrug. */
   var MOVES = {
     chop:  { need: "block", label: "BLOCK", colour: "#9fe4ff", say: "over his head" },
     sweep: { need: "dodge", label: "DODGE", colour: "#c9a0ff", say: "back at his hip" },
+    grab:  { need: "dodge", label: "DODGE!", colour: "#ff6b6b", unblockable: true, say: "both hands open" },
   };
   function band() {
     var B = FIGHT.bands, i;
-    for (i = 0; i < B.length; i++) if (S.dhp > B[i].at - 2) return B[i];
+    for (i = 0; i < B.length; i++) if (S.dhp > B[i].above) return B[i];
     return B[B.length - 1];
   }
   /* Which attack next. A bag rather than a die, so she never gets the same
@@ -260,6 +282,9 @@ window.Rescue = (function () {
      always one of each, because the first two are where she learns them. */
   function nextMove() {
     if (S.moveSeen < 2) return S.moveSeen === 0 ? "chop" : "sweep";
+    /* the grab only once she has met both of the others, and only from
+       the band where he stops being careful */
+    if (S.moveSeen >= 4 && Math.random() < (band().grab || 0)) return "grab";
     if (!S.moveBag || !S.moveBag.length) {
       S.moveBag = ["chop", "sweep", "chop", "sweep"];
       for (var i = S.moveBag.length - 1; i > 0; i--) {
@@ -273,40 +298,41 @@ window.Rescue = (function () {
   /* =======================================================================
      THE SCORE
 
-     The scene had no music of its own. The game's own tune kept playing
-     under it, which is a cheerful little march, under Death.
+     Written for this scene and nothing else, out of the same Web Audio
+     context the rest of the site uses: no file, nothing to load, nothing
+     to wait for.
 
-     This is written for the scene and nothing else, out of the same Web
-     Audio context everything else here uses — no file, nothing to load.
-     It is one sequencer at sixteenth notes with a handful of voices, and
-     it is driven from step(), not from a timer of its own: a timer in a
-     background tab is throttled to nothing and the tune would scatter.
+     WHAT IT IS TRYING TO SOUND LIKE. Two things at once. The shape is the
+     big cinematic one — an ostinato that will not stop, low brass that
+     arrives like weather, taiko under the turns, a clock ticking through
+     the talking. And the voice on top of it is still this game's: the
+     same square-wave lead that has been playing since the first world.
 
-     Five movements, and they follow the scene rather than loop under it:
+     AND THE THEME IS HERS. The game's own tune opens on a major arpeggio
+     — root, third, fifth. The fight plays that exact figure with the
+     third flattened, which is the same melody with the light taken out of
+     it, and nobody has to be told that to feel it. When he gets up off
+     the floor it comes back with the third put back, and that is the
+     whole score in one move.
 
-       cold    a drone and a heartbeat, for the cold coming in
-       meet    the same, with a bell — the conversation
-       f1..f3  the fight, and each band of his health adds to it: a pulse
-               and a bass, then a counter-line, then the toms. The key
-               never changes. It just gets closer.
-       down    everything falls away but the heartbeat, slowing
-       win     the one place it goes major, and it takes its time
-       letter  warm, slow, and nothing in it is afraid
-
-     Everything obeys the site's audio rules: one shared context, on the
-     register so leaving the page quietens it, and silent while away.
+     HOW IT RUNS. One sequencer at sixteenths, driven from step() rather
+     than a timer of its own — a timer in a background tab is throttled to
+     nothing and the tune would scatter. Notes are scheduled a fifth of a
+     second ahead of the clock and never behind it. Thirteen movements,
+     and the scene changes them; none of them loops under a beat it has
+     already finished.
      ======================================================================= */
   var MUS = (function () {
     var on = false, name = "", step = 0, nextT = 0, bpm = 120, noiseBuf = null;
-    var droneOsc = null, droneGain = null, master = null;
+    var droneOsc = null, droneGain = null, master = null, REG = false;
 
     function ctx() {
       try {
         var AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return null;
         var ac = window.__soAudio || (window.__soAudio = new AC());
-        if (!MUS_REG && window.registerAudio) {
-          MUS_REG = true;
+        if (!REG && window.registerAudio) {
+          REG = true;
           try { window.registerAudio(function () { return window.__soAudio; }); } catch (e) {}
         }
         if (window.audioAsleep && window.audioAsleep()) return null;
@@ -314,8 +340,6 @@ window.Rescue = (function () {
         return ac;
       } catch (e) { return null; }
     }
-    var MUS_REG = false;
-
     function bus(ac) {
       if (master && master.ac === ac) return master.g;
       var g = ac.createGain();
@@ -325,57 +349,141 @@ window.Rescue = (function () {
       return g;
     }
     function fade(ac, to, secs) {
-      var g = bus(ac);
-      g.gain.cancelScheduledValues(ac.currentTime);
-      g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), ac.currentTime);
-      g.gain.exponentialRampToValueAtTime(Math.max(0.0001, to), ac.currentTime + (secs || 0.4));
+      var g = bus(ac), t = ac.currentTime;
+      g.gain.cancelScheduledValues(t);
+      g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0001, to), t + (secs || 0.4));
+    }
+    function hz(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+    function noise(ac) {
+      if (!noiseBuf || noiseBuf.sampleRate !== ac.sampleRate) {
+        noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+        var d = noiseBuf.getChannelData(0);
+        for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      return noiseBuf;
     }
 
-    function hz(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+    /* ---- the instruments -------------------------------------------- */
 
-    function tone(ac, t, note, type, dur, vol, slide) {
+    /* the floor of the whole thing: a sine low enough to be felt rather
+       than heard, which is what every one of these scores is built on */
+    function sub(ac, t, note, dur, vol) {
       var o = ac.createOscillator(), g = ac.createGain();
-      o.type = type || "triangle";
-      o.frequency.setValueAtTime(hz(note), t);
-      if (slide !== undefined) o.frequency.exponentialRampToValueAtTime(Math.max(20, hz(slide)), t + dur);
+      o.type = "sine"; o.frequency.setValueAtTime(hz(note), t);
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(bus(ac));
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+    /* BRASS. Three saws a hair apart through a filter that opens as the
+       note lands — the swell is the filter, not the volume, which is why
+       it reads as brass rather than as a synth getting louder. */
+    function brass(ac, t, note, dur, vol, bite) {
+      var f = ac.createBiquadFilter(), g = ac.createGain(), i, o;
+      f.type = "lowpass";
+      f.frequency.setValueAtTime(180, t);
+      f.frequency.linearRampToValueAtTime(hz(note) * (bite || 6), t + Math.min(0.5, dur * 0.5));
+      f.frequency.linearRampToValueAtTime(240, t + dur);
+      f.Q.value = 3;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.06);
+      g.gain.setValueAtTime(vol, t + dur * 0.6);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      for (i = 0; i < 3; i++) {
+        o = ac.createOscillator();
+        o.type = "sawtooth";
+        o.frequency.value = hz(note) * (1 + (i - 1) * 0.006);
+        o.connect(f);
+        o.start(t); o.stop(t + dur + 0.05);
+      }
+      f.connect(g); g.connect(bus(ac));
+    }
+    /* CHOIR. Detuned triangles, slow on, slow off, with a little movement
+       in them so they are not a pad sitting still. */
+    function choir(ac, t, note, dur, vol) {
+      var g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain(), i, o;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.7, dur * 0.4));
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      lfo.type = "sine"; lfo.frequency.value = 4.6;
+      lg.gain.value = 1.6;
+      lfo.connect(lg);
+      for (i = 0; i < 2; i++) {
+        o = ac.createOscillator();
+        o.type = "triangle";
+        o.frequency.value = hz(note) * (i ? 1.004 : 0.997);
+        lg.connect(o.frequency);
+        o.connect(g);
+        o.start(t); o.stop(t + dur + 0.06);
+      }
+      lfo.start(t); lfo.stop(t + dur + 0.06);
+      g.connect(bus(ac));
+    }
+    /* TAIKO. A pitched thump with a skin on it: sine for the body, a
+       short burst of noise for the stick. */
+    function taiko(ac, t, vol, big) {
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(big ? 132 : 104, t);
+      o.frequency.exponentialRampToValueAtTime(big ? 30 : 42, t + (big ? 0.34 : 0.18));
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + (big ? 0.5 : 0.24));
+      o.connect(g); g.connect(bus(ac));
+      o.start(t); o.stop(t + (big ? 0.55 : 0.3));
+      var s = ac.createBufferSource(), bf = ac.createBiquadFilter(), ng = ac.createGain();
+      s.buffer = noise(ac);
+      bf.type = "bandpass"; bf.frequency.value = big ? 900 : 1500; bf.Q.value = 0.8;
+      ng.gain.setValueAtTime(vol * 0.5, t);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+      s.connect(bf); bf.connect(ng); ng.connect(bus(ac));
+      s.start(t); s.stop(t + 0.1);
+    }
+    /* the clock: a click with no pitch to speak of */
+    function tick(ac, t, vol, hi) {
+      var s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      s.buffer = noise(ac);
+      f.type = "highpass"; f.frequency.value = hi ? 7000 : 3400;
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+      s.connect(f); f.connect(g); g.connect(bus(ac));
+      s.start(t); s.stop(t + 0.05);
+    }
+    /* THE GAME'S OWN VOICE. Square, plain, no filter — this is the sound
+       the first world was written in and it is the reason the scene still
+       belongs to the same game. */
+    function lead(ac, t, note, dur, vol, type) {
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || "square"; o.frequency.setValueAtTime(hz(note), t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       o.connect(g); g.connect(bus(ac));
       o.start(t); o.stop(t + dur + 0.03);
     }
-    function kick(ac, t, vol) {
-      var o = ac.createOscillator(), g = ac.createGain();
-      o.type = "sine";
-      o.frequency.setValueAtTime(150, t);
-      o.frequency.exponentialRampToValueAtTime(38, t + 0.14);
+    /* a riser: noise through a filter climbing, which is the oldest
+       tension trick there is and still the best one */
+    function riser(ac, t, dur, vol) {
+      var s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      s.buffer = noise(ac);
+      f.type = "bandpass"; f.Q.value = 6;
+      f.frequency.setValueAtTime(300, t);
+      f.frequency.exponentialRampToValueAtTime(5200, t + dur);
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(vol, t + 0.006);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
-      o.connect(g); g.connect(bus(ac));
-      o.start(t); o.stop(t + 0.2);
-    }
-    function hiss(ac, t, dur, vol, freq) {
-      if (!noiseBuf || noiseBuf.sampleRate !== ac.sampleRate) {
-        noiseBuf = ac.createBuffer(1, ac.sampleRate * 0.5, ac.sampleRate);
-        var d = noiseBuf.getChannelData(0);
-        for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-      }
-      var src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
-      src.buffer = noiseBuf;
-      f.type = "highpass"; f.frequency.value = freq || 4200;
-      g.gain.setValueAtTime(vol, t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      src.connect(f); f.connect(g); g.connect(bus(ac));
-      src.start(t); src.stop(t + dur + 0.02);
+      g.gain.exponentialRampToValueAtTime(vol, t + dur * 0.85);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.12);
+      s.connect(f); f.connect(g); g.connect(bus(ac));
+      s.start(t); s.stop(t + dur + 0.2);
     }
     function drone(ac, note, vol) {
       stopDrone();
       var o = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain();
       o.type = "sine"; o.frequency.value = hz(note);
-      o2.type = "sine"; o2.frequency.value = hz(note) * 1.005;   // a slow beat between them
+      o2.type = "sine"; o2.frequency.value = hz(note) * 1.004;
       g.gain.setValueAtTime(0.0001, ac.currentTime);
-      g.gain.exponentialRampToValueAtTime(vol, ac.currentTime + 1.2);
+      g.gain.exponentialRampToValueAtTime(vol, ac.currentTime + 1.4);
       o.connect(g); o2.connect(g); g.connect(bus(ac));
       o.start(); o2.start();
       droneOsc = [o, o2]; droneGain = g;
@@ -383,97 +491,181 @@ window.Rescue = (function () {
     function stopDrone() {
       try {
         if (droneGain && master) {
-          var ac = master.ac, t = ac.currentTime;
+          var ac = master.ac, t = ac.currentTime, oscs = droneOsc;
           droneGain.gain.cancelScheduledValues(t);
           droneGain.gain.setValueAtTime(Math.max(0.0001, droneGain.gain.value), t);
-          droneGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
-          var oscs = droneOsc;
-          setTimeout(function () { try { oscs.forEach(function (o) { o.stop(); }); } catch (e) {} }, 900);
+          droneGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+          setTimeout(function () { try { oscs.forEach(function (o) { o.stop(); }); } catch (e) {} }, 1000);
         }
       } catch (e) {}
       droneOsc = null; droneGain = null;
     }
 
-    /* A natural minor on A. Everything in the scene is in it, so the
-       movements can hand over to each other without a seam. */
-    var A = 45;                        // A2
-    var BASS = {
-      f1: [A, A, A + 7, A + 5],
-      f2: [A, A + 3, A + 5, A + 2],
-      f3: [A, A - 2, A + 3, A + 5],
-    };
-    var LEAD = [A + 24, A + 27, A + 31, A + 27, A + 29, A + 27, A + 24, A + 22];
+    /* ---- the themes -------------------------------------------------
+       A is the root of everything here. HERS is the game's own opening
+       figure — root, third, fifth, third — and HIS is the same four notes
+       with the third flattened. They are the same melody. That is the
+       point of them. */
+    var A = 45;                                   // A2
+    var HERS = [12, 16, 19, 16, 12, 19, 24, 19];  // major
+    var HIS  = [12, 15, 19, 15, 12, 19, 22, 19];  // and the light taken out
+    /* what the bass walks under it, by bar */
+    var WALK = [0, 0, 5, 7, 0, 3, 5, 7];
+    /* three notes falling, low and slow: the thing that arrives */
+    var DEATHMOTIF = [0, -1, -6];
 
-    function emit(ac, i, t) {
-      var bar = (i >> 4) & 3, s16 = i & 15;
-      if (name === "cold" || name === "meet") {
-        /* a heart, not a drum */
-        if (s16 === 0) kick(ac, t, 0.09);
-        if (s16 === 3) kick(ac, t, 0.05);
-        if (name === "meet" && s16 === 8 && bar % 2 === 1) tone(ac, t, A + 36, "sine", 1.6, 0.025);
-        return;
-      }
-      if (name === "down") {
-        if (s16 === 0) kick(ac, t, 0.10);
-        if (s16 === 4) kick(ac, t, 0.045);
-        return;
-      }
-      if (name === "win") {
-        /* it lands on the major third and stays there */
-        if (i === 0)  { tone(ac, t, A, "triangle", 2.4, 0.05); tone(ac, t, A + 16, "triangle", 2.4, 0.03); }
-        if (i === 16) { tone(ac, t, A + 5, "triangle", 2.4, 0.05); tone(ac, t, A + 21, "triangle", 2.4, 0.03); }
-        if (i === 32) { tone(ac, t, A + 7, "triangle", 2.6, 0.05); tone(ac, t, A + 23, "triangle", 2.6, 0.03); }
-        if (i === 48) { tone(ac, t, A + 4, "triangle", 3.4, 0.055); tone(ac, t, A + 28, "sine", 3.4, 0.03); }
-        return;
-      }
-      if (name === "letter") {
-        var arp = [A + 12, A + 16, A + 19, A + 23];
-        if (s16 % 4 === 0) tone(ac, t, arp[(i >> 2) % 4], "sine", 1.1, 0.028);
-        if (s16 === 0 && bar % 2 === 0) tone(ac, t, A, "sine", 3.0, 0.035);
-        return;
-      }
-      /* ---- the fight ---- */
-      var lvl = name === "f3" ? 3 : name === "f2" ? 2 : 1;
-      var pat = BASS[name] || BASS.f1;
-      var root = pat[bar];
-      if (s16 % 4 === 0) kick(ac, t, 0.11);
-      if (lvl >= 2 && s16 % 4 === 2) hiss(ac, t, 0.05, 0.035, 6000);
-      if (s16 % 2 === 0) tone(ac, t, root - 12, "sawtooth", 0.13, 0.036);
-      if (lvl >= 2 && s16 % 2 === 1) tone(ac, t, root - 12, "sawtooth", 0.08, 0.018);
-      if (lvl >= 2 && s16 % 8 === 0) tone(ac, t, LEAD[(i >> 3) % LEAD.length], "square", 0.22, 0.022);
-      if (lvl >= 3) {
-        if (s16 % 4 === 3) tone(ac, t, root + 12, "square", 0.09, 0.02);
-        if (s16 === 14 && bar === 3) { kick(ac, t, 0.12); kick(ac, t + 0.08, 0.12); }
-        if (s16 === 6) hiss(ac, t, 0.03, 0.02, 8000);
-      }
+    function chordOf(bar) {
+      var roots = [0, 5, 7, 3];
+      return roots[bar % roots.length];
     }
+
+    /* ---- the movements ---------------------------------------------- */
+    var SECT = {
+      /* the temperature drops */
+      cold: { bpm: 56, drone: A - 12, droneVol: 0.05, vol: 0.75, emit: function (ac, i, t) {
+        var s = i & 15, bar = (i >> 4) & 3;
+        if (s === 0) taiko(ac, t, 0.10);
+        if (s === 3) taiko(ac, t, 0.05);
+        if (bar >= 1 && s % 4 === 0) tick(ac, t, 0.02);
+        if (bar === 3 && s === 12) riser(ac, t, 1.6, 0.045);
+      } },
+      /* and it walks in */
+      enter: { bpm: 56, drone: A - 24, droneVol: 0.06, vol: 0.95, emit: function (ac, i, t) {
+        if (i === 0 || i === 12) taiko(ac, t, 0.16, true);
+        if (i === 24) { taiko(ac, t, 0.2, true); brass(ac, t, A - 12 + DEATHMOTIF[0], 2.6, 0.075, 5); }
+        if (i === 32) brass(ac, t, A - 12 + DEATHMOTIF[1], 2.2, 0.06, 4);
+        if (i === 44) brass(ac, t, A - 24 + DEATHMOTIF[2], 3.4, 0.08, 3);
+        if (i % 16 === 0 && i > 44) sub(ac, t, A - 24, 1.8, 0.05);
+      } },
+      /* the conversation: a clock, and something breathing under it */
+      meet: { bpm: 72, drone: A - 12, droneVol: 0.035, vol: 0.8, emit: function (ac, i, t) {
+        var s = i & 15, bar = (i >> 4) & 7;
+        if (s % 4 === 0) tick(ac, t, 0.022, s === 0);
+        if (s === 0) sub(ac, t, A - 12 + chordOf(bar), 1.6, 0.045);
+        if (s === 0 && bar % 2 === 0) choir(ac, t, A + 12 + chordOf(bar), 2.6, 0.022);
+        if (bar === 7 && s === 8) lead(ac, t, A + HIS[0], 0.5, 0.016, "triangle");
+      } },
+      /* the fight, and it grows a layer with every band of his health */
+      f1: { bpm: 122, vol: 0.95, emit: function (ac, i, t) {
+        var s = i & 15, bar = (i >> 4) & 7, root = A + WALK[bar];
+        if (s % 4 === 0) taiko(ac, t, s === 0 ? 0.12 : 0.075);
+        if (s % 2 === 0) sub(ac, t, root - 12, 0.16, 0.05);
+        if (s % 4 === 2) tick(ac, t, 0.016, true);
+        if (bar % 2 === 1 && s % 2 === 0) lead(ac, t, A + HIS[(s >> 1) & 7], 0.18, 0.018);
+      } },
+      f2: { bpm: 136, vol: 1, emit: function (ac, i, t) {
+        var s = i & 15, bar = (i >> 4) & 7, root = A + WALK[bar];
+        if (s % 4 === 0) taiko(ac, t, s === 0 ? 0.13 : 0.085);
+        if (s % 2 === 0) sub(ac, t, root - 12, 0.15, 0.055);
+        if (s % 2 === 1) tick(ac, t, 0.013, true);
+        if (s === 6 || s === 14) brass(ac, t, root - 12, 0.3, 0.045, 5);
+        if (s % 2 === 0) lead(ac, t, A + HIS[(s >> 1) & 7], 0.16, 0.02);
+        if (bar % 4 === 3 && s === 14) riser(ac, t, 0.7, 0.04);
+      } },
+      f3: { bpm: 150, vol: 1.05, emit: function (ac, i, t) {
+        var s = i & 15, bar = (i >> 4) & 7, root = A + WALK[bar];
+        if (s % 2 === 0) taiko(ac, t, s === 0 ? 0.14 : 0.08, s === 0);
+        if (s % 2 === 0) sub(ac, t, root - 12, 0.13, 0.06);
+        tick(ac, t, 0.01, true);
+        if (s % 4 === 0) brass(ac, t, root - 12, 0.26, 0.05, 6);
+        if (s % 2 === 0) lead(ac, t, A + HIS[(s >> 1) & 7], 0.15, 0.024);
+        if (s === 0 && bar % 2 === 0) choir(ac, t, A + 12 + HIS[bar & 7], 1.4, 0.026);
+        if (s === 13) riser(ac, t, 0.4, 0.03);
+      } },
+      /* held. No downbeat at all — nothing to hold on to, which is the
+         point of it. */
+      grabbed: { bpm: 168, vol: 1, emit: function (ac, i, t) {
+        var s = i & 15;
+        tick(ac, t, 0.02, true);
+        if (s % 2 === 0) brass(ac, t, A - 12 + (s % 4 ? 1 : 0), 0.12, 0.04, 7);
+        if (s % 8 === 0) sub(ac, t, A - 24, 0.5, 0.07);
+      } },
+      /* on one knee, and everything else gone */
+      down: { bpm: 50, drone: A - 24, droneVol: 0.03, vol: 0.85, emit: function (ac, i, t) {
+        var s = i & 15, bar = (i >> 4) & 3;
+        if (s === 0) taiko(ac, t, 0.11);
+        if (s === 4) taiko(ac, t, 0.05);
+        /* her tune, alone, played slowly by the little square wave that
+           has been with her since the first world */
+        if (s % 8 === 0) lead(ac, t, A + 12 + HERS[((i >> 3) + bar) & 7], 0.7, 0.02, "triangle");
+      } },
+      /* he gets up. The third goes back in. */
+      rise: { bpm: 132, vol: 1.1, emit: function (ac, i, t) {
+        var s = i & 15, bar = (i >> 4) & 3;
+        if (i < 8) { taiko(ac, t, 0.06 + i * 0.012, false); return; }   // the roll in
+        if (s % 4 === 0) taiko(ac, t, s === 0 ? 0.15 : 0.09, s === 0);
+        if (s % 2 === 0) sub(ac, t, A - 12, 0.16, 0.06);
+        if (s % 2 === 0) lead(ac, t, A + 12 + HERS[(s >> 1) & 7], 0.18, 0.028);
+        if (s === 0) { brass(ac, t, A - 12 + chordOf(bar), 1.1, 0.07, 6); choir(ac, t, A + 12 + chordOf(bar), 1.6, 0.03); }
+      } },
+      /* the last blow: one enormous thing, and then the room */
+      final: { bpm: 60, vol: 1.15, emit: function (ac, i, t) {
+        if (i === 0) { taiko(ac, t, 0.24, true); brass(ac, t, A - 24, 3.2, 0.09, 3); sub(ac, t, A - 24, 3.4, 0.08); }
+        if (i === 8) choir(ac, t, A + 12, 3.0, 0.03);
+      } },
+      /* he wins, and it is allowed to be warm */
+      win: { bpm: 66, vol: 0.9, emit: function (ac, i, t) {
+        var s = i & 15, bar = (i >> 4) & 3;
+        if (s === 0) { choir(ac, t, A + chordOf(bar), 2.6, 0.03); sub(ac, t, A - 12 + chordOf(bar), 2.2, 0.05); }
+        if (s === 0) brass(ac, t, A + 12 + chordOf(bar), 1.6, 0.035, 4);
+        if (s % 4 === 0) lead(ac, t, A + 24 + HERS[((i >> 2) + bar) & 7], 0.5, 0.022, "triangle");
+      } },
+      /* and if he does not */
+      lost: { bpm: 52, drone: A - 24, droneVol: 0.035, vol: 0.8, emit: function (ac, i, t) {
+        var s = i & 15, bar = (i >> 4) & 3;
+        if (s === 0) brass(ac, t, A - 12 - bar, 2.6, 0.045, 3);
+        if (s === 8) tick(ac, t, 0.015);
+        if (s === 0 && bar === 3) choir(ac, t, A + 3, 3.0, 0.022);
+      } },
+      /* the letter */
+      letter: { bpm: 62, vol: 0.8, emit: function (ac, i, t) {
+        var s = i & 15, bar = (i >> 4) & 3;
+        if (s === 0) choir(ac, t, A + 12 + chordOf(bar), 3.0, 0.026);
+        if (s % 4 === 0) lead(ac, t, A + 24 + HERS[(i >> 2) & 7], 0.6, 0.016, "triangle");
+        if (s === 0) sub(ac, t, A - 12 + chordOf(bar), 2.4, 0.04);
+      } },
+    };
+
+    /* one-off accents the fight fires by hand, over whatever is playing */
+    var STING = {
+      parry: function (ac, t) {
+        lead(ac, t, A + 36, 0.09, 0.05, "square");
+        lead(ac, t + 0.06, A + 40, 0.12, 0.045, "square");
+        tick(ac, t, 0.05, true);
+      },
+      hit: function (ac, t) { taiko(ac, t, 0.16, true); brass(ac, t, A - 24, 0.5, 0.05, 4); },
+      taken: function (ac, t) { taiko(ac, t, 0.14, true); brass(ac, t, A - 25, 0.7, 0.055, 2); },
+      full: function (ac, t) {
+        lead(ac, t, A + 24, 0.1, 0.04); lead(ac, t + 0.07, A + 28, 0.1, 0.04);
+        lead(ac, t + 0.14, A + 31, 0.22, 0.045);
+      },
+    };
 
     return {
       play: function (which) {
         if (name === which && on) return;
+        var S2 = SECT[which]; if (!S2) return;
         var ac = ctx();
-        name = which; on = true; step = 0; nextT = 0;
-        bpm = which === "cold" || which === "meet" ? 60
-            : which === "down" ? 52
-            : which === "win" ? 60
-            : which === "letter" ? 62
-            : which === "f3" ? 152 : which === "f2" ? 138 : 126;
+        name = which; on = true; step = 0; nextT = 0; bpm = S2.bpm;
         if (!ac) return;
-        fade(ac, which.charAt(0) === "f" ? 0.9 : 0.75, 0.5);
-        if (which === "cold" || which === "meet") drone(ac, A - 12, 0.05);
-        else if (which === "down") drone(ac, A - 12, 0.035);
+        fade(ac, S2.vol || 0.9, 0.45);
+        if (S2.drone) drone(ac, S2.drone, S2.droneVol || 0.04);
         else stopDrone();
       },
-      /* scheduled a fraction ahead of the clock, and only ever forward:
-         a scene that is paused simply stops asking for notes */
+      /* an accent, now, without disturbing the movement underneath */
+      sting: function (which) {
+        var f = STING[which]; if (!f) return;
+        var ac = ctx(); if (!ac) return;
+        try { f(ac, ac.currentTime + 0.01); } catch (e) {}
+      },
       tick: function () {
         if (!on) return;
+        var S2 = SECT[name]; if (!S2) return;
         var ac = ctx(); if (!ac) return;
-        var now = ac.currentTime, spb = 60 / bpm / 4;
+        var now = ac.currentTime, spb = 60 / bpm / 4, guard = 0;
         if (!nextT || nextT < now - 0.4) nextT = now + 0.05;
-        var guard = 0;
-        while (nextT < now + 0.2 && guard++ < 32) {
-          emit(ac, step, nextT);
+        while (nextT < now + 0.2 && guard++ < 40) {
+          try { S2.emit(ac, step, nextT); } catch (e) {}
           step++; nextT += spb;
         }
       },
@@ -481,7 +673,7 @@ window.Rescue = (function () {
         if (!on) return;
         on = false; name = "";
         stopDrone();
-        try { var ac = window.__soAudio; if (ac && master && master.ac === ac) fade(ac, 0.0001, 0.35); } catch (e) {}
+        try { var ac = window.__soAudio; if (ac && master && master.ac === ac) fade(ac, 0.0001, 0.4); } catch (e) {}
       },
       playing: function () { return on ? name : ""; },
     };
@@ -668,12 +860,17 @@ window.Rescue = (function () {
   }
 
   /* Death does not breathe. The cloak stirs anyway. */
-  function paintDeath(k) {
+  function paintDeath(k, noBlade) {
     var map = DEATH_MAP.slice();
     if (k === 1) {
       /* the hem stirs, one row, one pixel */
       map[map.length - 8] = map[map.length - 8].replace("ccccc", "cccc.");
     }
+    /* WITHOUT IT. On the last blow the scythe leaves his hands and is
+       drawn flying — and he was still holding one while it did, because
+       the blade is part of his sprite. This is the same sprite with the
+       shaft and the edge taken out of it. */
+    if (noBlade) map = map.map(function (row) { return row.replace(/[sSh]/g, "."); });
     return paintMap(map, DEATH_PAL, 40);
   }
 
@@ -683,6 +880,7 @@ window.Rescue = (function () {
     CAST = {
       anwar: [paintAnwar(0), paintAnwar(1)],
       death: [paintDeath(0), paintDeath(1)],
+      deathBare: [paintDeath(0, true), paintDeath(1, true)],
     };
   }
 
@@ -812,6 +1010,7 @@ window.Rescue = (function () {
               "</button>";
     }
     html += '<button type="button" class="rs-key rs-key-up" data-rs="up"><b>GET UP</b><i>hit it</i></button>';
+    html += '<button type="button" class="rs-key rs-key-break" data-rs="break"><b>BREAK FREE</b><i>hit it</i></button>';
     pad.innerHTML = html;
     stage.appendChild(pad);
     Array.prototype.forEach.call(pad.querySelectorAll("[data-rs]"), function (b) {
@@ -820,7 +1019,9 @@ window.Rescue = (function () {
          wait for a click to settle */
       b.addEventListener("pointerdown", function (e) {
         e.preventDefault(); e.stopPropagation();
-        if (k === "up") getUpPress(); else action(k);
+        if (k === "up") getUpPress();
+        else if (k === "break") breakPress();
+        else action(k);
         b.blur();
       });
       b.addEventListener("contextmenu", function (e) { e.preventDefault(); });
@@ -838,9 +1039,7 @@ window.Rescue = (function () {
     setClass(pad, "rs-pad" + (mode ? " on rs-pad-" + mode : ""));
     var screen = document.getElementById("screen-ouissy");
     if (screen) screen.classList.toggle("so-fighting", !!mode);
-    if (!mode) Array.prototype.forEach.call(pad.querySelectorAll(".rs-key"), function (b) {
-      b.classList.remove("good", "bad", "want");
-    });
+    if (!mode) padClear();
   }
   /* the verdict, on the buttons themselves: the one she should have hit
      goes green, the one she did hit goes red */
@@ -859,6 +1058,38 @@ window.Rescue = (function () {
     Array.prototype.forEach.call(pad.querySelectorAll(".rs-key"), function (b) {
       b.classList.remove("good", "bad", "want");
     });
+  }
+
+  /* A BARK is not a line of dialogue and must never be built like one: it
+     does not wait, it cannot be answered, and it is over before she has
+     finished reading it. Its own small panel, in the speaker's colour,
+     which fades itself out. */
+  function barkBox() {
+    var el = $d("rs-bark");
+    if (el) return el;
+    var stage = document.getElementById("so-stage");
+    if (!stage) return null;
+    el = document.createElement("div");
+    el.id = "rs-bark"; el.className = "rs-bark"; el.hidden = true;
+    stage.appendChild(el);
+    return el;
+  }
+  function showBark(who, text) {
+    var el = barkBox(); if (!el) return;
+    el.hidden = false;
+    el.textContent = text;
+    /* restart the fade: a class alone would not, because the class is
+       already on it */
+    el.className = "rs-bark";
+    void el.offsetWidth;
+    el.className = "rs-bark on rs-bark-" + (SPEAKER[who] ? who : "anwar");
+    clearTimeout(showBark.t);
+    showBark.t = setTimeout(function () { hideBark(); }, 1700);
+  }
+  function hideBark() {
+    var el = $d("rs-bark"); if (!el) return;
+    el.className = "rs-bark"; el.hidden = true;
+    clearTimeout(showBark.t);
   }
 
   /* ---- the cue, and the letter ---- */
@@ -1014,6 +1245,16 @@ window.Rescue = (function () {
         hurt:   { type: "square",   f: 260,  to: 60,   d: .34, v: .09 },
         land:   { type: "square",   f: 190,  to: 48,   d: .30, v: .10 },
         up:     { type: "triangle", f: 300,  to: 900,  d: .30, v: .07 },
+        /* the three wind-ups, so the attack can be answered by ear: a
+           scrape up for the one that comes down, a drag along the floor
+           for the one that comes across, and a held breath for the one
+           that cannot be blocked */
+        windHigh:{type: "sawtooth", f: 300,  to: 1100, d: .30, v: .045 },
+        windLow: {type: "sawtooth", f: 260,  to: 90,   d: .34, v: .05 },
+        windGrab:{type: "sine",     f: 70,   to: 190,  d: .40, v: .07 },
+        parry:  { type: "square",   f: 2400, to: 900,  d: .26, v: .09 },
+        grab:   { type: "sawtooth", f: 160,  to: 40,   d: .40, v: .09 },
+        final:  { type: "square",   f: 160,  to: 34,   d: .9,  v: .11 },
       })[kind];
       if (!spec) return;
       var t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
@@ -1056,6 +1297,9 @@ window.Rescue = (function () {
       act: null, actT: 0, dact: null, dactT: 0,
       freeze: 0, hurtFlash: 0, guard: 0, lost: false,
       getUpT: 0, getUpN: 0, downUsed: false, taken: 0, anwarTo: null,
+      heldT: 0, heldN: 0, resolve: 0, parries: 0, parried: false, said: {},
+      slow: 0, finT: 0, realDt: 0, camPunch: 0, camZ: 1, camX: 0, riseT: null,
+      bladeFly: null,
     };
     if (kind === "rescue") {
       say(SCRIPT.rescueAlt[nextRescueLine()]);
@@ -1381,6 +1625,17 @@ window.Rescue = (function () {
 
     } else if (S.phase === PH.rest) {             /* squared up */
       S.dact = "ready";
+      /* HE DOES NOT WAIT POLITELY. He drifts in and sways while she gets
+         her breath — dead air between attacks is where a fight stops
+         being one. */
+      if (S.anwarTo === null || S.anwarTo === undefined)
+        S.death.x -= dt * 3 * (S.death.x - (S.anwar.x + 46) > 0 ? 1 : -1);
+      /* and when he has just been stood back up, her tune plays over the
+         top of the fight for as long as the moment lasts */
+      if (S.riseT !== undefined && S.riseT !== null) {
+        S.riseT += dt;
+        if (S.riseT > 7.2) { S.riseT = null; MUS.play(fightTune()); }
+      }
       if (S.pt > S.restLen) armAttack();
 
     } else if (S.phase === PH.tell) {             /* the wind-up */
@@ -1425,6 +1680,41 @@ window.Rescue = (function () {
         if (!S.closeAfterSaid) { S.closeAfterSaid = true; say(SCRIPT.death.closeCallAfter); return; }
         padClear(); showPad("fight");
         S.restLen = band().rest; phase(PH.rest);
+      }
+
+    } else if (S.phase === PH.held) {             /* in his hand */
+      S.heldT += dt;
+      showCue("BREAK FREE", 1 - S.heldT / FIGHT.grab.time);
+      if (S.heldT > FIGHT.grab.time) {
+        /* he does not get loose. Thrown, and it costs the same as any
+           other blow that lands — but it is the one that looks like it
+           cost something. */
+        hideCue(); showPad("fight");
+        MUS.play(fightTune());
+        S.dact = "throw"; S.dactT = 0;
+        hurtAnwar();
+        S.shake = 20; S.camPunch = -1.3;
+        if (S.ahp <= 0) { goDown(); return; }
+        S.restLen = band().rest; phase(PH.rest);
+      }
+
+    } else if (S.phase === PH.final) {            /* the last blow */
+      /* real seconds, not slowed ones: the slow motion is what this beat
+         IS, so a clock made of slowed time would never reach the end of
+         it */
+      S.finT += (S.realDt || dt);
+      S.slow = Math.max(0, 1 - S.finT / 2.6);
+      if (S.bladeFly) {
+        var bf = S.bladeFly;
+        bf.x += bf.vx * dt; bf.y += bf.vy * dt; bf.vy += 240 * dt; bf.r += dt * 7;
+        if (bf.y > S.her.y + 16) { bf.y = S.her.y + 16; bf.vy = 0; bf.vx = 0; bf.stuck = 1; }
+      }
+      S.chill = Math.max(0, S.chill - dt * 0.3);
+      if (S.finT > 3.4) {
+        S.slow = 0;
+        MUS.play("win");
+        say(SCRIPT.death.win);
+        phase(PH.win);
       }
 
     } else if (S.phase === PH.down) {             /* on one knee */
@@ -1477,6 +1767,7 @@ window.Rescue = (function () {
     S.closeCalled = false; S.downUsed = false; S.lost = false;
     S.act = null; S.actT = 0; S.dact = "ready"; S.dactT = 0;
     S.hits = 0; S.taken = 0; S.hurtFlash = 0; S.guard = 0;
+    S.resolve = 0; S.parries = 0; S.said = {};
     S.restLen = 0.9;
     /* he closes the distance. They were a conversation apart; a fight is
        fought at arm's length, and every swing has to look like it could
@@ -1489,9 +1780,25 @@ window.Rescue = (function () {
   /* The rounds themselves. The close call sits in the middle of the fight
      but it is a conversation, so it is deliberately NOT in here: inside a
      round a press is an answer, and in the close call a press is "go on". */
-  var FIGHTING = [PH.rest, PH.tell, PH.blow, PH.beat, PH.open, PH.down];
+  var FIGHTING = [PH.rest, PH.tell, PH.blow, PH.beat, PH.open, PH.down, PH.held];
   function inFight() {
     return !!S && S.kind === "death" && FIGHTING.indexOf(S.phase) >= 0;
+  }
+  /* which movement of the score belongs to the state he is in */
+  function fightTune() {
+    var b = band();
+    return b === FIGHT.bands[2] ? "f3" : b === FIGHT.bands[1] ? "f2" : "f1";
+  }
+
+  /* A BARK. Four words over somebody's head, gone in a second and a half,
+     and it never stops the fight to be read — which is the whole
+     difference between a bark and a line of dialogue. They land on the
+     beats that earn them and each one is said once. */
+  function bark(who, key) {
+    var pool = SCRIPT.death.barks[key];
+    if (!pool || S.said[key]) return;
+    S.said[key] = true;
+    showBark(who, pool[(Math.random() * pool.length) | 0]);
   }
 
   function armAttack() {
@@ -1507,70 +1814,140 @@ window.Rescue = (function () {
       S.chainLeft = most > 0 ? (Math.random() * (most + 1)) | 0 : 0;
     }
     S.dact = "windup"; S.dactT = 0;
-    sfx("windup");
+    /* EACH ATTACK SOUNDS LIKE ITSELF. A scrape up for the one that comes
+       down, a drag along the floor for the one that comes across, and a
+       held breath for the one that cannot be blocked at all — so it can
+       be answered by ear, which is how a real fight is answered. */
+    sfx(S.move === "chop" ? "windHigh" : S.move === "sweep" ? "windLow" : "windGrab");
     phase(PH.tell);
   }
 
   /* her answer, or the lack of one */
   function answer(kind) {
     if (S.phase !== PH.blow || S.ans) return;
-    var need = MOVES[S.move].need;
+    var M = MOVES[S.move], need = M.need;
     var good = kind === need;
+    /* THE PARRY. The same answer, given inside the first fifth of a
+       second of the blade actually moving. Every fighting game worth
+       playing pays for the late nerve rather than the early guess, and
+       this is that: it is not a different button, it is the same button
+       held until the last moment. */
+    var parried = good && S.winT <= FIGHT.parry && !M.unblockable;
     S.ans = good ? "good" : "bad";
+    S.parried = parried;
     S.cueResult = good ? "hit" : "miss";
-    showCue(MOVES[S.move].label, 0);
+    showCue(parried ? "PARRY!" : M.label, 0);
     padVerdict(need, kind, good);
-    S.freeze = FIGHT.hitStop;
+    S.freeze = parried ? FIGHT.hitStop * 2 : FIGHT.hitStop;
 
-    if (good) {
+    if (parried) {
+      S.parries++;
+      S.resolve = Math.min(FIGHT.resolve, S.resolve + 2);
+      S.act = need; S.actT = 0;
+      S.guard = 1.4;
+      S.dact = "reel"; S.dactT = 0;         /* knocked wide, not just off balance */
+      S.shake = 13; S.flash = 0.85;
+      S.camPunch = 1;
+      sfx("parry"); MUS.sting("parry");
+      bark("death", "parried");
+    } else if (good) {
+      S.resolve = Math.min(FIGHT.resolve, S.resolve + 1);
       S.act = need; S.actT = 0;
       S.guard = need === "block" ? 1 : 0;
       S.dact = "stagger"; S.dactT = 0;
       S.shake = need === "block" ? 9 : 4;
       S.flash = need === "block" ? 0.5 : 0.18;
+      S.camPunch = 0.5;
       sfx(need === "block" ? "clang" : "whoosh");
+    } else if (M.unblockable) {
+      /* THE GRAB. It does not take a heart. It takes HIM — and the only
+         way out is her, hammering it until he is loose. */
+      goHeld();
+      return;
     } else {
-      S.ahp--; S.taken++;
-      S.act = "hurt"; S.actT = 0;
-      S.dact = "through"; S.dactT = 0;
-      S.shake = 14; S.hurtFlash = 1;
-      sfx("hurt");
+      hurtAnwar();
     }
     phase(PH.beat);
+  }
+
+  function hurtAnwar() {
+    S.ahp--; S.taken++;
+    S.resolve = 0;
+    S.act = "hurt"; S.actT = 0;
+    S.dact = "through"; S.dactT = 0;
+    S.shake = 16; S.hurtFlash = 1; S.camPunch = -1;
+    S.her.flinch = 14;
+    sfx("hurt"); MUS.sting("taken");
+    bark(S.ahp <= 1 ? "ouissy" : "death", S.ahp <= 1 ? "nearly" : "landed");
+  }
+
+  /* held: the one place the fight stops being about timing */
+  function goHeld() {
+    S.act = "held"; S.actT = 0;
+    S.dact = "holding"; S.dactT = 0;
+    S.heldT = 0; S.heldN = 0;
+    S.shake = 10; S.camPunch = 0.7;
+    S.resolve = 0;
+    hideCue(); showPad("break");
+    sfx("grab"); MUS.play("grabbed");
+    bark("ouissy", "grabbed");
+    phase(PH.held);
+  }
+  function breakPress() {
+    if (S.phase !== PH.held) return;
+    S.heldN++;
+    S.actT = 0;
+    sfx("pick");
+    if (S.heldN >= FIGHT.grab.presses) {
+      S.act = "strike"; S.actT = 0;
+      S.dact = "reel"; S.dactT = 0;
+      S.shake = 12; S.flash = 0.6; S.camPunch = 1;
+      sfx("clang"); MUS.sting("parry");
+      MUS.play(fightTune());
+      showPad("fight"); hideCue();
+      /* out of his hands and straight into the opening — she earned it */
+      padClear(); S.cueResult = null;
+      S.openT = 0; S.openLen = band().open * 1.2; S.struck = false;
+      phase(PH.open);
+    }
   }
 
   /* the opening: she takes it, or she does not */
   function strikeNow() {
     if (S.phase !== PH.open || S.struck) return;
     S.struck = true;
-    S.dhp--; S.hits++;
+    /* A FULL METER IS A BIGGER BLOW. Three clean answers in a row and the
+       next one lands for two — which is why holding the streak is worth
+       something, and why a single hit taken costs more than a heart. */
+    var big = S.resolve >= FIGHT.resolve;
+    S.dhp -= big ? 2 : 1;
+    if (S.dhp < 0) S.dhp = 0;
+    S.hits++;
+    if (big) { S.resolve = 0; MUS.sting("full"); }
     S.act = "strike"; S.actT = 0;
     S.dact = "hurt"; S.dactT = 0;
-    S.shake = 12; S.flash = 0.75; S.freeze = FIGHT.hitStop * 1.4;
-    sfx("land");
+    S.shake = big ? 18 : 12;
+    S.flash = big ? 1 : 0.75;
+    S.freeze = FIGHT.hitStop * (big ? 2.2 : 1.4);
+    S.camPunch = big ? 1.4 : 0.9;
+    sfx("land"); MUS.sting("hit");
     hideCue();
     afterOpening(true);
   }
 
   function afterOpening(landed) {
-    if (S.dhp <= 0) {
-      showPad(null); hideCue();
-      MUS.play("win");
-      S.dact = "beaten"; S.dactT = 0;
-      say(SCRIPT.death.win);
-      phase(PH.win);
-      return;
-    }
+    if (S.dhp <= 0) { finishHim(); return; }
     /* his health decides the music and the pace, so both of them change
        at the same moment she sees him change */
     var b = band();
-    MUS.play(b === FIGHT.bands[2] ? "f3" : b === FIGHT.bands[1] ? "f2" : "f1");
+    MUS.play(fightTune());
+    if (b === FIGHT.bands[2]) bark("death", "lastband");
     /* the close call is a story beat and lands once, when he first gets
        properly angry — never as a punishment for missing */
-    if (landed && !S.closeCalled && S.dhp <= FIGHT.deathHp - 3) {
+    if (landed && !S.closeCalled && S.dhp <= FIGHT.deathHp - 4) {
       S.closeCalled = true;
       S.shake = 12; S.flash = 1; S.dim = Math.min(1, S.dim + 0.25);
-      showPad(null); hideCue();
+      showPad(null); hideCue(); hideBark();
       sfx("catch");
       say(SCRIPT.death.closeCall);
       phase(PH.close);
@@ -1580,16 +1957,33 @@ window.Rescue = (function () {
     phase(PH.rest);
   }
 
+  /* THE LAST BLOW. It is not another hit with a smaller number after it:
+     the world slows almost to a stop, the colour goes out of everything,
+     the blade leaves his hands, and nothing is asked of her for three
+     seconds. Then he speaks. */
+  function finishHim() {
+    showPad(null); hideCue(); hideBark();
+    S.dact = "beaten"; S.dactT = 0;
+    S.slow = 1;
+    S.finT = 0;
+    S.shake = 22; S.flash = 0.8; S.freeze = 0.22; S.camPunch = 2;
+    S.bladeFly = { x: S.death.x + 14, y: S.her.y - 14, vx: -150, vy: -170, r: 0 };
+    sfx("final"); MUS.play("final");
+    phase(PH.final);
+  }
+
   /* he goes down, and there is exactly one way back up */
   function goDown() {
-    hideCue();
+    hideCue(); hideBark();
     S.act = "down"; S.actT = 0;
     S.dact = "ready"; S.dactT = 0;
     S.getUpT = 0; S.getUpN = 0;
-    S.shake = 16; S.hurtFlash = 1;
+    S.shake = 16; S.hurtFlash = 1; S.camPunch = -1.4;
+    S.resolve = 0;
     MUS.play("down");
     showPad("getup");
     sfx("thumpBig");
+    bark("ouissy", "down");
     phase(PH.down);
   }
   function getUpPress() {
@@ -1601,12 +1995,17 @@ window.Rescue = (function () {
       /* two back, not four: he is up, and he is not what he was */
       S.ahp = 2;
       S.downUsed = true;
-      S.act = null; S.shake = 8; S.flash = 0.5;
+      S.act = null; S.shake = 8; S.flash = 0.5; S.camPunch = 1;
       sfx("up");
       hideCue(); showPad("fight");
-      var b = band();
-      MUS.play(b === FIGHT.bands[2] ? "f3" : b === FIGHT.bands[1] ? "f2" : "f1");
-      S.restLen = 1.1;                 /* a breath before he comes again */
+      /* THE TURN. The tune that has been the fight's, with the third put
+         back in it — her theme, in the major, at full height. It plays
+         over the top of the band he is in for as long as it takes him to
+         stand up, and then the fight takes its music back. */
+      MUS.play("rise");
+      S.riseT = 0;
+      bark("anwar", "up");
+      S.restLen = 1.4;                 /* a breath before he comes again */
       phase(PH.rest);
     }
   }
@@ -1656,6 +2055,12 @@ window.Rescue = (function () {
     } else if (k === "hurt") {
       var h = clamp(u / 0.55, 0, 1);
       p.dx = -16 * (1 - ease3(h)); p.rot = -0.30 * (1 - h); p.dy = -3 * arc1(h);
+    } else if (k === "held") {
+      /* off the floor, and shaking harder the longer it goes on */
+      var hk = clamp(S.heldT / FIGHT.grab.time, 0, 1);
+      p.dy = -9 - 2 * hk;
+      p.rot = 0.14 + Math.sin(S.t * 26) * 0.05 * (0.4 + hk);
+      p.dx = 4;
     } else if (k === "down") {
       p.dy = 9; p.sy = 0.68; p.rot = -0.18;
     } else if (k === "rising") {
@@ -1685,8 +2090,42 @@ window.Rescue = (function () {
     } else if (k === "hurt") {
       var hh = clamp(u / 0.45, 0, 1);
       p.dx = 16 * (1 - ease3(hh)); p.rot = -0.26 * (1 - hh);
+    } else if (k === "reel") {
+      /* a parry does not nudge him. It throws his arm wide and turns him
+         half away, and that is why the opening after it is worth more. */
+      var rr = clamp(u / 0.8, 0, 1);
+      p.dx = 22 * (1 - ease3(rr)); p.rot = -0.34 * (1 - rr) * (1 - rr * 0.4);
+    } else if (k === "holding") {
+      p.dx = -8; p.rot = 0.06 + Math.sin(S.t * 9) * 0.02;
+    } else if (k === "throw") {
+      var tw = clamp(u / 0.45, 0, 1);
+      p.dx = -14 * (1 - tw); p.rot = 0.16 * (1 - tw);
+    } else if (k === "beaten") {
+      /* he does not fall over. He gives way — half a step back, leaning,
+         and lower than he was. */
+      var bw = clamp(u / 1.6, 0, 1);
+      p.dx = 12 * ease3(bw); p.dy = 5 * ease3(bw); p.rot = -0.14 * ease3(bw);
     }
     return p;
+  }
+
+  /* WHERE THE CAMERA IS. It lives between the two of them, it leans
+     toward whoever is about to do something, and it is pushed by exactly
+     one number — see step(). Nothing here is animated on its own: every
+     move it makes is something that happened in the fight. */
+  function camApply(c, groundY) {
+    if (!S || S.kind !== "death") return;
+    var z = 1, fx = (S.anwar.x + S.death.x + 20) / 2, fy = groundY - 14;
+    if (S.phase === PH.tell) z += 0.06 * clamp(S.pt / Math.max(0.12, S.tellLen), 0, 1);
+    if (S.phase === PH.blow) z += 0.06;
+    if (S.phase === PH.held) z += 0.10;
+    if (S.phase === PH.down) z += 0.05;
+    if (S.phase === PH.final) z += 0.26 * S.slow;
+    z += (S.camPunch > 0 ? 0.10 : 0.05) * S.camPunch;
+    if (z < 0.94) z = 0.94;
+    c.translate(fx, fy);
+    c.scale(z, z);
+    c.translate(-fx, -fy);
   }
 
   /* the two anchors the fight is drawn between */
@@ -1733,6 +2172,13 @@ window.Rescue = (function () {
         var A = chopArc(g);
         /* straight up, round and down to his head */
         c.arc(A.cx, A.cy, A.r, -Math.PI * 0.5, -Math.PI * (0.5 + 0.5 * (live ? 1 : k)), true);
+      } else if (S.move === "grab") {
+        /* NOT AN ARC. Two hands, straight at him, closing — the shape
+           says "this is not a swing" before the colour says "and you
+           cannot block it". */
+        var gy = g.head + 6, gx0 = g.dx - 6, gx1 = g.ax + 14 + (1 - (live ? 1 : k)) * 18;
+        c.moveTo(gx0, gy - 5); c.lineTo(gx1, gy - 2);
+        c.moveTo(gx0, gy + 5); c.lineTo(gx1, gy + 2);
       } else {
         var x0 = g.dx - 10, x1 = g.ax - 8 + (1 - (live ? 1 : k)) * 22;
         c.moveTo(x0, g.waist); c.lineTo(x1, g.waist);
@@ -1775,6 +2221,47 @@ window.Rescue = (function () {
     c.restore();
   }
 
+  /* HELD. He is off the floor in one of Death's hands, and the only thing
+     on the screen that is moving is him trying to get out of it. */
+  function paintHeld(c, g, groundY) {
+    if (S.phase !== PH.held) return;
+    var k = clamp(S.heldT / FIGHT.grab.time, 0, 1);
+    /* the arm, from Death to him */
+    c.save();
+    c.globalAlpha = 0.9;
+    px(c, g.ax + 14, g.head + 2, Math.max(4, g.dx - g.ax - 14), 4, "#1b1622");
+    px(c, g.ax + 14, g.head + 2, Math.max(4, g.dx - g.ax - 14), 1, "#3a3352");
+    c.restore();
+    /* the grip tightening, drawn as a ring closing on him */
+    c.save();
+    c.globalAlpha = 0.55 + 0.35 * Math.abs(Math.sin(S.t * 14));
+    c.strokeStyle = "#ff6b6b"; c.lineWidth = 1.4;
+    c.beginPath();
+    c.arc(g.ax + 12, g.head + 4, 13 - k * 5, 0, 6.283);
+    c.stroke();
+    c.restore();
+  }
+
+  /* THE BLADE, WHEN IT IS NOT HIS ANY MORE. It leaves his hands on the
+     last hit, turns over twice in the air, and sticks in the ground. */
+  function paintBlade(c, groundY) {
+    var bf = S.bladeFly; if (!bf) return;
+    c.save();
+    c.translate(bf.x, bf.y);
+    c.rotate(bf.stuck ? -0.35 : bf.r);
+    c.globalAlpha = 0.95;
+    px(c, -1, -14, 2, 20, "#3a2f28");            // the shaft
+    px(c, -1, -16, 9, 2, "#e8eef6");             // the blade
+    px(c, 5, -15, 3, 4, "#e8eef6");
+    px(c, -1, -16, 9, 1, "#ffffff");
+    c.restore();
+    if (bf.stuck) {
+      c.save(); c.globalAlpha = 0.5;
+      px(c, bf.x - 5, bf.y + 5, 11, 1, "#05040a");
+      c.restore();
+    }
+  }
+
   /* the warm arc he takes it on, and the sparks off it */
   function paintGuard(c, g) {
     if (S.guard <= 0) return;
@@ -1799,7 +2286,7 @@ window.Rescue = (function () {
   /* HIS HEALTH, AND HIS. Four warm hearts and six cold pips, because a
      number is a thing you read and a row of hearts is a thing you feel. */
   function paintHp(c) {
-    if (!inFight() && S.phase !== PH.close) return;
+    if (!inFight() && S.phase !== PH.close && S.phase !== PH.final) return;
     var i;
     for (i = 0; i < FIGHT.anwarHp; i++) {
       var hx = 8 + i * 9, hy = 8, on = i < S.ahp;
@@ -1813,6 +2300,19 @@ window.Rescue = (function () {
       if (on) px(c, hx + 1, hy + 1, 2, 1, "#ffc2d6");
       c.restore();
     }
+    /* RESOLVE. Three clean answers in a row and the next blow lands for
+       two. It is drawn as three notches under her hearts and it fills
+       with every answer she gets right, which is what makes a run of them
+       worth holding on to. */
+    for (i = 0; i < FIGHT.resolve; i++) {
+      var rx = 8 + i * 7, ry = 16, got = i < S.resolve;
+      c.save();
+      c.globalAlpha = got ? 1 : 0.3;
+      px(c, rx, ry, 5, 2, got ? "#ffd166" : "#3a3040");
+      if (got && S.resolve >= FIGHT.resolve) px(c, rx, ry, 5, 1, "#fff6d8");
+      c.restore();
+    }
+
     var bw = 5, gap = 2, total = FIGHT.deathHp * (bw + gap) - gap;
     for (i = 0; i < FIGHT.deathHp; i++) {
       var bx = VW - 8 - total + i * (bw + gap), lit = i < S.dhp;
@@ -1892,9 +2392,21 @@ window.Rescue = (function () {
 
     var groundY = S.her.y + 18;
 
+    /* THE CAMERA.
+
+       Everything from here to the end of the fighters is drawn through
+       it: a slow push in while he winds up, a punch on every blow, a
+       shove back on one she takes, and on the last hit it comes all the
+       way in and stays. The screen-space things — the cold, the vignette,
+       her health, the white frame — are drawn outside it on purpose. A
+       vignette that zooms is not a vignette, it is a hole. */
+    c.save();
+    camApply(c, groundY);
+
     /* Death, drawn before them so they read as standing against him */
     if (S.phase >= 2 && S.leaving < 1) {
-      var d = CAST.death[S.death.k] || CAST.death[CAST.death.length - 1];
+      var cast = S.bladeFly ? CAST.deathBare : CAST.death;
+      var d = cast[S.death.k] || cast[cast.length - 1];
       var dy = groundY - d.height + 4;
       c.save();
       if (S.leaving > 0) c.globalAlpha *= 1 - S.leaving;   // he goes, he does not vanish
@@ -1915,6 +2427,20 @@ window.Rescue = (function () {
         c.translate(-pvx, -pvy);
       }
       c.drawImage(d, Math.round(S.death.x), Math.round(dy));
+      /* HE COMES APART. In the last band the cloak is torn through in
+         four places and the hem is bitten out — at six health and at one
+         he used to be the same drawing, which is the whole fight saying
+         nothing about how it is going. */
+      if (inFight() && S.dhp <= 3) {
+        var tear = [[6, 26, 3, 5], [22, 34, 4, 3], [11, 44, 5, 4], [26, 18, 2, 6]];
+        c.save();
+        c.globalAlpha = 0.92;
+        for (var tt = 0; tt < tear.length; tt++)
+          px(c, S.death.x + tear[tt][0], dy + tear[tt][1], tear[tt][2], tear[tt][3], "#07060d");
+        for (var hb = 0; hb < 5; hb++)
+          px(c, S.death.x + 4 + hb * 7, dy + d.height - 2 - (hb % 2) * 2, 4, 4, "#07060d");
+        c.restore();
+      }
       if (S.dact === "hurt" && S.dactT < 0.14) {
         c.save();
         c.globalCompositeOperation = "source-atop";
@@ -1990,8 +2516,10 @@ window.Rescue = (function () {
       var flick = 0.55 + 0.45 * Math.sin(t * 11 + Math.sin(t * 3.7) * 2.4);
       for (var e = 0; e < 2; e++) {
         var epx = ex + e * 6;
+        /* the left one goes out first, and stays out */
+        var dim = inFight() && S.dhp <= 3 && e === 0 ? 0.28 : 1;
         c.save();
-        c.globalAlpha = (0.30 + 0.5 * flick) * ar;
+        c.globalAlpha = (0.30 + 0.5 * flick) * ar * dim;
         var eg = c.createRadialGradient(epx + 1, ey + 1, 0, epx + 1, ey + 1, 7);
         eg.addColorStop(0, "rgba(190,240,255,0.95)");
         eg.addColorStop(0.4, "rgba(110,210,255,0.55)");
@@ -1999,7 +2527,7 @@ window.Rescue = (function () {
         c.fillStyle = eg;
         c.fillRect(epx - 6, ey - 6, 15, 15);
         c.restore();
-        px(c, epx, ey, 2, 2, flick > 0.5 ? "#eaf9ff" : "#8fd8ff");
+        px(c, epx, ey, 2, 2, dim < 1 ? "#2a4a5a" : (flick > 0.5 ? "#eaf9ff" : "#8fd8ff"));
       }
 
       /* a shadow, so something that big is standing on the floor rather
@@ -2013,9 +2541,14 @@ window.Rescue = (function () {
       c.restore();
     }
 
-    /* her, backing away */
-    var her = ouissy(S.phase >= 1 ? "hurt" : "hurt", 0);
-    if (her) c.drawImage(her, Math.round(S.her.x - S.her.flinch), Math.round(S.her.y));
+    /* HER. She backs away from the cold, she flinches every time he takes
+       one, and when he goes down she comes forward — which is the only
+       thing she can do from where she is standing, and she does it. */
+    var her = ouissy("hurt", 0);
+    if (S.her.flinch > 0) S.her.flinch = Math.max(0, S.her.flinch - 0.35);
+    var herX = S.her.x - S.her.flinch;
+    if (S.phase === PH.down || S.phase === PH.held) herX += 10 + Math.sin(S.t * 6) * 1.5;
+    if (her) c.drawImage(her, Math.round(herX), Math.round(S.her.y));
 
     /* him, between the two of them, with a warm light of his own — the
        whole point of it is that it is the opposite colour to Death's */
@@ -2062,13 +2595,8 @@ window.Rescue = (function () {
     /* the blade on its way, the arc he took it on, and the score */
     paintBlow(c, geo);
     paintGuard(c, geo);
-    paintHp(c);
-    /* one red frame across the whole scene when it is HER four that just
-       went down by one */
-    if (S.hurtFlash > 0) {
-      c.save(); c.globalAlpha = 0.34 * S.hurtFlash;
-      px(c, 0, 0, VW, VH, "#c31f3f"); c.restore();
-    }
+    paintHeld(c, geo, groundY);
+    paintBlade(c, groundY);
 
     /* THE CATCH. The blade stops in his hand, and everything about the
        frame says so: a white flash, sparks off the contact, and a hard
@@ -2084,6 +2612,43 @@ window.Rescue = (function () {
       /* his arm, up and holding it there */
       px(c, S.anwar.x + 14, cy + 2, 9, 3, ANWAR_PAL.S);
       px(c, S.anwar.x + 14, cy + 2, 9, 1, "#f4d0aa");
+    }
+
+    c.restore();                       /* and out of the camera */
+
+    /* THE COLOUR GOING OUT. Only the last blow does this, and it does it
+       all the way: the picture is drained to grey and let back in over
+       three seconds. */
+    if (S.slow > 0) {
+      c.save();
+      c.globalCompositeOperation = "saturation";
+      c.globalAlpha = S.slow * 0.85;
+      px(c, 0, 0, VW, VH, "#808080");
+      c.restore();
+      /* and the light with it. Colour alone came out as fog — the frost
+         and the mist in this scene are pale, and a pale picture with the
+         colour taken out is a white sheet. It has to go DOWN as well as
+         grey, or the last blow lands in a snowstorm. */
+      c.save();
+      c.globalAlpha = S.slow * 0.42;
+      px(c, 0, 0, VW, VH, "#05040a");
+      c.restore();
+      c.save();
+      c.globalAlpha = S.slow * 0.5;
+      var fv = c.createRadialGradient(VW * 0.5, VH * 0.55, VH * 0.2, VW * 0.5, VH * 0.55, VH * 0.75);
+      fv.addColorStop(0, "rgba(0,0,0,0)");
+      fv.addColorStop(1, "rgba(0,0,0,0.95)");
+      c.fillStyle = fv;
+      c.fillRect(0, 0, VW, VH);
+      c.restore();
+    }
+
+    paintHp(c);
+    /* one red frame across the whole scene when it is HER four that just
+       went down by one */
+    if (S.hurtFlash > 0) {
+      c.save(); c.globalAlpha = 0.34 * S.hurtFlash;
+      px(c, 0, 0, VW, VH, "#c31f3f"); c.restore();
     }
     if (S.flash > 0) {
       c.save(); c.globalAlpha = S.flash * 0.85;
@@ -2116,15 +2681,31 @@ window.Rescue = (function () {
        scene holds for a few hundredths of a second, still drawing, doing
        nothing. Take it out and the same animation reads as a slide. */
     if (S.freeze > 0) { S.freeze -= dt; if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 8); return; }
+    S.realDt = dt;
+    /* SLOW MOTION. Only the last blow uses it, and it uses it all the way
+       down to a fifth of the speed — which is the difference between a
+       sixth hit and an ending. */
+    if (S.slow > 0) dt *= 1 - 0.8 * S.slow;
+    /* THE CAMERA. One number: a punch, positive for a blow she landed and
+       negative for one she took, easing back to nothing. Everything the
+       scene draws is scaled around the two of them by it. */
+    if (S.camPunch) {
+      S.camPunch -= S.camPunch * Math.min(1, dt * 6);
+      if (Math.abs(S.camPunch) < 0.01) S.camPunch = 0;
+    }
     S.t += dt;
     if (S.actT !== undefined) S.actT += dt;
     if (S.dactT !== undefined) S.dactT += dt;
-    if (S.hurtFlash > 0) S.hurtFlash = Math.max(0, S.hurtFlash - dt * 2.2);
-    /* THE WHITE FRAME FADES BY ITSELF. It used to be wound down inside the
-       two phases that raised it, which was fine while they were the only
-       two — and the moment a third raised it, the scene stayed white for
-       the rest of the fight with everything behind it washed out. */
-    if (S.flash > 0) S.flash = Math.max(0, S.flash - dt * 3);
+    /* THE WHITE FRAME FADES BY ITSELF, and it fades in REAL seconds.
+       It used to be wound down inside the two phases that raised it,
+       which was fine while they were the only two — the moment a third
+       raised it, the scene stayed white for the rest of the fight. And
+       once slow motion existed, a flash fading on slowed time took five
+       times as long to go: the last blow, which sets the brightest one in
+       the scene AND the slowest time in it, landed in a white-out. */
+    var rdt = S.realDt || dt;
+    if (S.hurtFlash > 0) S.hurtFlash = Math.max(0, S.hurtFlash - rdt * 2.2);
+    if (S.flash > 0) S.flash = Math.max(0, S.flash - rdt * 3);
     if (S.anwarTo !== null && S.anwarTo !== undefined) {
       var gap = S.anwarTo - S.anwar.x;
       if (Math.abs(gap) < 0.6) { S.anwar.x = S.anwarTo; S.anwarTo = null; }
@@ -2183,6 +2764,7 @@ window.Rescue = (function () {
          buttons on the screen say the same thing in words. */
       if (inFight()) {
         if (S.phase === PH.down) { getUpPress(); return; }
+        if (S.phase === PH.held) { breakPress(); return; }
         if (name === "down") return action("block");
         if (name === "left" || name === "right") return action("dodge");
         if (name === "jump" || name === "confirm") return action("strike");
@@ -2203,6 +2785,7 @@ window.Rescue = (function () {
     if (S.phase === PH.blow) { answer(kind); return; }
     if (S.phase === PH.open) { if (kind === "strike") strikeNow(); else padVerdict("strike", kind, false); return; }
     if (S.phase === PH.down) { getUpPress(); return; }
+    if (S.phase === PH.held) { breakPress(); return; }
   }
 
   function done() {
