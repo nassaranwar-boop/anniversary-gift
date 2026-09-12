@@ -9955,27 +9955,126 @@ function keptCount() {
 }
 function clearKept() { try { localStorage.removeItem(KEEP_KEY); } catch (e) {} }
 
+/* =====================================================================
+   THREE O'CLOCK, STAGED.
+
+   The writing in these was never the problem. The staging was: every
+   line appeared at once, as a block, with his voice starting
+   seven-tenths of a second in -- over the top of her reading -- and
+   both choice buttons already live, so the whole revelation could be
+   dismissed before a word of it had been taken in. A wall of text with
+   an exit is information. It is not a moment.
+
+   Nothing here changes a single word. It changes when the words
+   arrive:
+
+     one at a time   each line fades up on its own, about a second
+                     apart, at the speed somebody reads a page they
+                     have just found rather than the speed a screen can
+                     paint one.
+     the last one    waits. Every one of these revelations is built so
+                     the last line is the knife -- HER, pressed hard
+                     enough to break the chalk; one tick a night; it is
+                     how you learn to build a thing that watches a
+                     person -- and a knife that arrives with everything
+                     else is a sentence. It gets a beat of silence to
+                     itself, and the score swells under it.
+     then he speaks  after the last line has landed, not across her
+                     reading of it.
+     then the choice The buttons are not there until she has seen all
+                     of it. She cannot decide whether to keep a thing
+                     she has not read.
+
+   And a tap puts the rest up at once, because the second time through
+   this is a wait rather than a reveal. ------------------------------ */
 function revealCard(r) {
   G.phase = "reveal";
   showHud(false);
   tapeOff();
   musicMode("found");
   SFX.paper();
-  if (r.say) setTimeout(() => {
-    if (G.phase === "reveal") voxSpeak(voxPlan(r.say), { gain: 1 });
-  }, 700);
+
+  const body = r.lines.map((l, i) =>
+    '<p class="ns-rv" data-i="' + i + '">' + l + '</p>').join("");
   overlay(
-    '<div class="ns-card ns-card-find">' +
+    '<div class="ns-card ns-card-find ns-staged">' +
       '<p class="ns-from">' + r.at + '</p>' +
       '<div class="ns-paper">' +
         '<p class="ns-paper-head">' + r.head + '</p>' +
-        r.lines.map((l) => "<p>" + l + "</p>").join("") +
+        body +
       '</div>' +
-      '<div class="ns-btns">' +
+      '<div class="ns-btns ns-rv-choice">' +
         '<button class="ns-btn ns-btn-go" data-go="keep">' + (r.keep || "KEEP IT") + '</button>' +
         '<button class="ns-btn" data-go="burn">' + (r.burn || "BURN IT") + '</button>' +
       '</div>' +
     '</div>', "ns-ov-find");
+
+  const card = EL["ns-overlay"] && EL["ns-overlay"].querySelector(".ns-card-find");
+  const lines = card ? [].slice.call(card.querySelectorAll(".ns-rv")) : [];
+  const choice = card && card.querySelector(".ns-rv-choice");
+  const last = lines.length - 1;
+  let at = 0, timers = [];
+
+  const finish = () => {
+    timers.forEach(clearTimeout); timers = [];
+    lines.forEach((el) => el.classList.add("in"));
+    at = lines.length;
+    if (choice) choice.classList.add("in");
+    if (card) card.classList.remove("ns-staged");
+  };
+
+  const step = () => {
+    if (G.phase !== "reveal") return;
+    if (at >= lines.length) {
+      if (choice) choice.classList.add("in");
+      /* he speaks once she has read it, not over the top of it */
+      if (r.say) timers.push(setTimeout(() => {
+        if (G.phase === "reveal") voxSpeak(voxPlan(r.say), { gain: 1 });
+      }, 620));
+      return;
+    }
+    const i = at++;
+    lines[i].classList.add("in");
+    /* the last line lands on its own, with the score underneath it */
+    if (i === last && lines.length > 1) {
+      SFX.paper();
+      cueDuck(0.9);
+      musicSwell();
+    }
+    /* a beat before the knife, and a reader's pace before anything else */
+    const wait = (i === last - 1) ? 1550 : 1000;
+    timers.push(setTimeout(step, wait));
+  };
+
+  if (choice) choice.classList.remove("in");
+  timers.push(setTimeout(step, 520));
+  /* a tap anywhere puts the rest up: the second time through, this is a
+     wait rather than a reveal */
+  if (card) card.addEventListener("click", (e) => {
+    if (e.target.closest("[data-go]")) return;
+    if (at < lines.length) { e.stopPropagation(); finish(); }
+  });
+}
+
+/* ONE BAR OF THE SCORE, LEANT ON.
+
+   Used where a line has to land: the harmony is already an eight-bar
+   phrase with its arrival in the seventh, and this simply puts one of
+   those arrivals under the moment instead of wherever the bar count
+   happened to be. It is the difference between music playing during a
+   revelation and music that is part of it. */
+function musicSwell() {
+  if (!MUS.ready || !AC || muted) return;
+  /* jump the progression to the bar the whole phrase is built to reach */
+  MUS.barOff = MUS.bar - 6;
+  const t = now();
+  if (MUS.bus) {
+    const g = MUS.bus.gain, to = Math.min(1, g.value * 1.5);
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(to, t + 0.9);
+    g.linearRampToValueAtTime(g.value, t + 4.5);
+  }
 }
 
 function closeReveal(kept) {
@@ -13560,6 +13659,7 @@ const testHooks = {
   }),
   bedMode: (m) => musicMode(m),
   taskFor: (n, h) => taskFor(n, h),
+  reveal: (n) => { const r = NS.reveal[n]; if (r) revealCard(r); return !!r; },
   taskState: () => ({ phase: G.phase, tutor: tutorOn(), cine: CINE.on,
                       hour: G.hour, night: G.night, task: G.task,
                       shown: EL["ns-task"] ? !EL["ns-task"].hidden : null,

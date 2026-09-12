@@ -8295,6 +8295,41 @@ img{-webkit-user-drag:none; user-select:none;}
    up from one tells her where she is; a row of six with four of them
    shut tells her what she agreed to. That is the whole point of the
    terms, and the menu was the one place it was not visible. */
+/* =====================================================================
+   A REVELATION ARRIVES, IT DOES NOT APPEAR.
+
+   Each line starts a little low and comes up into place, because a
+   line that fades straight in reads as a loading state and a line that
+   rises reads as being set down. Slow enough to be deliberate, and
+   nowhere near slow enough to be a transition somebody sits through.
+
+   Nothing is hidden from a reader who cannot see the animation:
+   prefers-reduced-motion puts the whole thing up at once, which is
+   what that setting is asking for. */
+.ns-card-find .ns-rv{
+  opacity:0; transform:translateY(.9cqh);
+  transition:opacity .75s ease, transform .75s cubic-bezier(.2,.7,.3,1);
+}
+.ns-card-find .ns-rv.in{ opacity:1; transform:none; }
+/* the last line of every one of these is the knife, and it is allowed
+   to arrive a shade brighter than the ones that set it up */
+.ns-card-find .ns-rv:last-of-type.in{
+  color:rgba(246,236,214,.96);
+  text-shadow:0 0 1.4cqh rgba(236,196,120,.16);
+}
+.ns-card-find .ns-rv-choice{
+  opacity:0; pointer-events:none;
+  transition:opacity .6s ease;
+}
+.ns-card-find .ns-rv-choice.in{ opacity:1; pointer-events:auto; }
+/* while it is still arriving, the card says so by being tappable */
+.ns-card-find.ns-staged{ cursor:pointer; }
+
+@media (prefers-reduced-motion:reduce){
+  .ns-card-find .ns-rv{ opacity:1; transform:none; transition:none; }
+  .ns-card-find .ns-rv-choice{ opacity:1; pointer-events:auto; transition:none; }
+}
+
 .ns-roster{ margin-top:2.6cqh; }
 .ns-roster-lab{
   margin:0 0 1cqh; font-size:max(8.5px, 1.3cqh); letter-spacing:.3em;
