@@ -833,16 +833,19 @@ img{-webkit-user-drag:none; user-select:none;}
 
    Stacking costs the card height, and the card's height is what sets the
    width of the keys: at 360px the ten of them came out at 38px, under
-   the thumb. The composition is not what gives way -- the plaque is,
-   along with the space around the seal, and the keypad takes a wider
-   share of the sheet it is drawn on. */
+   the thumb. The plaque gives way, and the space around the seal, so
+   the card itself can be bigger -- but NOT the keypad's share of the
+   sheet. Eighty-five was tried and it put the keys and the Unlock plate
+   on top of the drawn frame and over its right edge, because the sheet's
+   border is inset about seven of those units from the card's own box.
+   The width the parent sets is the width that fits inside the drawing. */
 @media (orientation: landscape) and (max-height: 400px){
   .gate-title{margin:0 0 3px;}
   .gate-title img{width:min(24vw, 124px);}
   .gate-card{width:min(360px, 52vw, (var(--app-h) - 70px) * 400 / 700, (100svh - 70px) * 400 / 700);}
-  .gate-seal-wrap{width:24cqw;}
-  .gate-pad{width:85cqw; gap:1.4cqw; margin-top:.6cqw;}
-  .gate-unlock img{width:72cqw;}
+  .gate-seal-wrap{width:26cqw;}
+  .gate-pad{width:76cqw; gap:1.6cqw; margin-top:.6cqw;}
+  .gate-unlock img{width:64cqw;}
 }
 
 @media (prefers-reduced-motion: reduce){
