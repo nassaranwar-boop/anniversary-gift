@@ -5885,37 +5885,107 @@ function hvLinksOf(N) {
   ["choices", "cards"].forEach(function (f) {
     (N[f] || []).forEach(function (c) { if (c && typeof c.to === "string") out.push(c.to); });
   });
+  /* `outcomes` is a plain array of node names -- the two ways a mini-game
+     can go. Scanning only for objects with a `to` missed it, which left
+     eight nodes with no depth at all: the far half of the stream, the
+     windfalls in the orchard and both endings. They fell back to the
+     middle of the day, which is precisely the "random scene" look. */
+  (N.outcomes || []).forEach(function (t) { if (typeof t === "string") out.push(t); });
   if (typeof N.playTo === "string") out.push(N.playTo);
   return out;
 }
 
+/* THE TWO WALKS ARE NOT THE SAME DAY.
+
+   The way there is a spring morning that climbs into a sunset. The way
+   back is a year later and starts after dark -- `back_dusk` says so in
+   its name. They share their first three nodes, so one global clock
+   cannot serve both: the meadow at the gate has to be morning for one
+   and evening for the other.
+
+   So the depth is measured separately down each side, and only the
+   daylight side is given an hour that moves. The night side is night
+   from its first frame, which is what it is meant to be. */
 function hvBuildHours() {
   HV_HOUR = {};
   var start = HV.title ? "title" : Object.keys(HV)[0];
-  var depth = {}, q = [start];
-  depth[start] = 0;
-  while (q.length) {
-    var id = q.shift();
-    hvLinksOf(HV[id]).forEach(function (t) {
-      if (!HV[t] || depth[t] !== undefined) return;
-      depth[t] = depth[id] + 1;
-      q.push(t);
-    });
+
+  function depthsFrom(root, blocked) {
+    var d = {}, q = [root];
+    d[root] = 0;
+    while (q.length) {
+      var id = q.shift();
+      hvLinksOf(HV[id]).forEach(function (t) {
+        if (!HV[t] || d[t] !== undefined || t === blocked) return;
+        d[t] = d[id] + 1;
+        q.push(t);
+      });
+    }
+    return d;
   }
-  /* the longest daylight walk is the scale: the way there is a day, and
-     the deepest node on it is the end of that day */
+
+  /* everything reachable without ever stepping onto the night path */
+  var day = depthsFrom(start, "back_dusk");
   var far = 1;
-  Object.keys(depth).forEach(function (k) { if (depth[k] > far) far = depth[k]; });
+  Object.keys(day).forEach(function (k) { if (day[k] > far) far = day[k]; });
+
   Object.keys(HV).forEach(function (k) {
-    HV_HOUR[k] = depth[k] === undefined ? 0.5 : Math.min(1, depth[k] / far);
+    HV_HOUR[k] = day[k] === undefined
+      ? 1              /* on the night side, or shared with it: late */
+      : Math.min(1, day[k] / far);
   });
+  hvHourHoles = Object.keys(HV).filter(function (k) { return day[k] === undefined; });
 }
+var hvHourHoles = [];
 
 function hvHourOf(n) {
   if (!HV_HOUR) hvBuildHours();
   var id = null;
   for (var k in HV) { if (HV[k] === n) { id = k; break; } }
   return id === null ? 0.5 : HV_HOUR[id];
+}
+
+/* THE LIGHT OF THE HOUR, LAID OVER THE SCENES THAT DO NOT PAINT IT.
+
+   The meadow and the sunset handle their own hour, because for those
+   two the light IS the subject and a wash would not do. The rest of the
+   daylight valley -- the cherry trees, the wood, the hollow, the river
+   -- were painted at one fixed hour each and left there. Mostly they sit
+   at an hour that suits them, but not always: the blossom beat on the
+   red route falls at half past the day and was still crisp nine in the
+   morning.
+
+   This is what an hour actually does to a landscape: early it is cool
+   and slightly blue, strongest overhead; late it is warm and amber,
+   strongest low down where the sun is; at midday it is barely anything.
+   Drawn as one-pixel bands so it stays on the same grid as everything
+   under it, and baked into the cached buffer, so it costs nothing per
+   frame. */
+var HV_GRADED = { sakura: 1, forest: 1, hollow: 1, stream: 1 };
+
+function hvDayGrade(ctx, hour) {
+  var u = hour === undefined ? 0.5 : hour;
+  /* how far from the flat middle of the day, and which way */
+  var warm = u > 0.45;
+  var amt = warm ? (u - 0.45) / 0.55 : (0.45 - u) / 0.45;
+  amt = Math.max(0, Math.min(1, amt));
+  if (amt < 0.02) return;
+  var peak = (warm ? 0.26 : 0.16) * amt;
+  for (var y = 0; y < PXH; y++) {
+    var f = y / (PXH - 1);
+    /* the warm light gathers low, the cool light sits high */
+    var w = warm ? (0.35 + f * 0.65) : (1 - f * 0.55);
+    var a = peak * w;
+    if (a < 0.004) continue;
+    px(ctx, 0, y, PXW, 1,
+       (warm ? "rgba(255,178,96," : "rgba(150,186,232,") + a.toFixed(3) + ")");
+  }
+  /* and the evening takes a little light out of everything */
+  if (warm) {
+    for (var y2 = 0; y2 < PXH; y2++) {
+      px(ctx, 0, y2, PXW, 1, "rgba(48,34,58," + (0.10 * amt).toFixed(3) + ")");
+    }
+  }
 }
 
 var hvSceneStep = 0, hvStepScene = null, hvStepNode = null;
@@ -5951,6 +6021,8 @@ function hvPaintBase(n) {
   if (!hvSceneCache[key]) {
     var made = spriteCanvas(PXW, PXH);
     (HV_SCENES[scene] || HV_SCENES.sakura)(made.ctx, hvSeed(scene), extra, step, hour);
+    /* the scenes that do not light themselves get the hour laid over them */
+    if (HV_GRADED[scene]) hvDayGrade(made.ctx, hour);
     hvSceneCache[key] = made.c;
   }
   hvBase = hvSceneCache[key];
