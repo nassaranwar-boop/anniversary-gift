@@ -35,7 +35,8 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
 
   /* talk through to the fight, then play it the way we are told to */
   const runFight = (how, tapPad) => page.evaluate(({ how, tapPad }) => {
-    const PH = { choice: 6, tut: 7, rest: 8, tell: 9, blow: 10, beat: 11, open: 12, close: 13, down: 14, win: 15, warm: 16, letter: 22 };
+    const PH = { choice: 6, tut: 7, rest: 8, tell: 9, blow: 10, beat: 11, open: 12, close: 13,
+                 down: 14, win: 15, warm: 16, held: 17, final: 18, letter: 22 };
     const M = window.Rescue._moves();
     const seen = { phases: {}, answered: 0, missed: 0, struck: 0, moves: [], music: [],
                    tells: [], windows: [], minHp: 99, downs: 0, getUps: 0 };
@@ -51,6 +52,10 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
       seen.phases[S.phase] = (seen.phases[S.phase] || 0) + 1;
       const mus = window.Rescue._mus();
       if (mus !== lastMusic) { seen.music.push(mus); lastMusic = mus; }
+      if (S.phase === PH.final) { seen.final = true; }
+      if (S.resolve >= 3) seen.full = true;
+      if (S.parried) seen.parried = (seen.parried || 0) + 1;
+      if (document.getElementById('rs-bark') && !document.getElementById('rs-bark').hidden) seen.barked = true;
       if (S.phase === PH.choice) {
         if (S.sel !== 0) window.Rescue.press('left'); else window.Rescue.press('confirm');
       } else if (S.phase === PH.blow) {
@@ -58,7 +63,13 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
         if (!S.ans) {
           if (seen.tells.indexOf(S.tellLen) < 0) seen.tells.push(S.tellLen);
           if (seen.windows.indexOf(S.winLen) < 0) seen.windows.push(S.winLen);
-          if (how === 'perfect' || (how === 'saved' && S.downUsed)) {
+          if (S.move === 'grab') seen.grabs = (seen.grabs || 0) + 1;
+          if (how === 'grabfail') {
+            /* she plays it well, and treats the one that cannot be
+               blocked as if it could be */
+            seen.moves.push(S.move); seen.answered++;
+            tap(S.move === 'grab' ? 'block' : M[S.move].need);
+          } else if (how === 'perfect' || (how === 'saved' && S.downUsed)) {
             seen.moves.push(S.move); seen.answered++;
             tap(M[S.move].need);
           } else if (how === 'wrong') {
@@ -67,10 +78,16 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
           } else seen.missed++;                       /* never touch it */
         }
       } else if (S.phase === PH.open) {
-        if (!S.struck && (how === 'perfect' || (how === 'saved' && S.downUsed))) { seen.struck++; tap('strike'); }
+        if (!S.struck && (how === 'perfect' || how === 'grabfail' || (how === 'saved' && S.downUsed))) { seen.struck++; tap('strike'); }
       } else if (S.phase === PH.down) {
         if (!seen.downs) seen.downs++;
         if (how === 'saved' || how === 'perfect') { seen.getUps++; tap('strike'); }
+      } else if (S.phase === PH.held) {
+        seen.helds = (seen.helds || 0) + 1;
+        if (how !== 'none') { if (!tapPad) window.Rescue.press('jump'); else {
+          const b = document.querySelector('#rs-pad [data-rs="break"]');
+          if (b) b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+        } }
       } else if (S.phase === PH.letter) {
         window.Rescue.press('confirm');
       } else if (S.lines && S.waiting) {
@@ -79,6 +96,7 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
       window.__soPump(1/60);
     }
     const S2 = window.Rescue._state();
+    if (S2) { seen.parries = S2.parries; seen.taken = S2.taken; }
     return { seen, done: !S2 || S2.done, outcome: window.Rescue.outcome(),
              lost: !!(S2 && S2.lost), dhp: S2 ? S2.dhp : null, ahp: S2 ? S2.ahp : null,
              phases: Object.keys(seen.phases).map(Number).sort((a, b) => a - b),
@@ -91,7 +109,8 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   let r = await runFight('perfect', false);
   ok('answering every attack beats him', r.done && r.outcome === 'fight' && r.dhp <= 0,
      `outcome=${r.outcome} hisHp=${r.dhp}`);
-  ok('and it takes six hits to do it', r.seen.struck === 6, `strikes=${r.seen.struck}`);
+  ok('and it takes fewer openings than he has health, because a full meter hits for two',
+     r.seen.struck >= 4 && r.seen.struck <= 8, `openings taken=${r.seen.struck} hisHp=${r.dhp}`);
   ok('played perfectly, she never takes one', r.ahp === 4, `hers=${r.ahp}`);
   ok('both attacks are used', r.seen.moves.indexOf('chop') >= 0 && r.seen.moves.indexOf('sweep') >= 0,
      r.seen.moves.join(','));
@@ -106,6 +125,12 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   ok('it tightens as he loses', r.seen.windows.length > 1 && Math.max.apply(null, r.seen.windows) > Math.min.apply(null, r.seen.windows),
      r.seen.windows.map(n=>n.toFixed(2)).join(','));
   ok('the close call still lands, once', r.phases.indexOf(13) >= 0, `phases=${r.phases.join(' ')}`);
+  ok('answering at the last moment is a parry, and it is worth more',
+     r.seen.parries > 0, `parries=${r.seen.parries}`);
+  ok('the meter fills', !!r.seen.full, '');
+  ok('he reaches for her too', (r.seen.grabs || 0) > 0, `grabs=${r.seen.grabs || 0}`);
+  ok('the last blow is its own thing', !!r.seen.final, '');
+  ok('they say things while it happens', !!r.seen.barked, '');
 
   /* ---------- and the fight can be lost ---------- */
   st = await openScene();
@@ -119,6 +144,14 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
     return b ? b.textContent.slice(0, 60) : '';
   });
   ok('the letter knows which evening she had', /went down/.test(lostLetter) || lostLetter === '', lostLetter);
+
+  /* ---------- blocking the thing that cannot be blocked ---------- */
+  st = await openScene();
+  r = await runFight('grabfail', false);
+  ok('blocking the one that cannot be blocked gets him picked up',
+     (r.seen.helds || 0) > 0, `times held=${r.seen.helds || 0}`);
+  ok('and hammering it gets him out of the hand',
+     r.done && r.outcome === 'fight', `outcome=${r.outcome} hisHp=${r.dhp} hers=${r.ahp}`);
 
   /* ---------- down, and up again ---------- */
   st = await openScene();

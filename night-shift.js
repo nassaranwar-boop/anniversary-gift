@@ -5761,13 +5761,28 @@ function applyMix() {
   if (bedGain && audioOn) set(bedGain, 0.32 * MIX.room);
 }
 
+/* THE SAME NOISE EVERY TIME, AND WHY THAT MATTERS.
+
+   This used to be Math.random(). Audibly that is fine -- brown noise is
+   brown noise and nobody can tell one second of it from another. It is
+   not fine for the six tools in here that measure spectra, because it
+   made every render of the same cue slightly different, and a spectral
+   check that is looking for a wrong note can occasionally find one in a
+   hiss. The seam check came back 12 of 13 on one run and 13 of 13 on
+   the next with no code between them.
+
+   A flaky guard is worse than no guard: the next time it reports a real
+   fault, the fault gets dismissed as the flake it has trained everybody
+   to expect. So the noise is seeded, every render is reproducible, and
+   a failure now means something changed. */
 function noiseBuffer(sec) {
   const n = (AC.sampleRate * sec) | 0;
   const b = AC.createBuffer(1, n, AC.sampleRate);
   const d = b.getChannelData(0);
+  const rnd = mulberry(0x51ee9);
   let last = 0;
   for (let i = 0; i < n; i++) {
-    const w = Math.random() * 2 - 1;
+    const w = rnd() * 2 - 1;
     last = (last + 0.02 * w) / 1.02;      // brown-ish, not white: it sits under
     d[i] = last * 3.2;
   }
@@ -5857,7 +5872,7 @@ function audioWake(then) {
     else if (then) then();
   } catch (e) {}
 }
-function ac() { audioInit(); return AC; }
+function ac() { audioInit(); voiceLoad(); return AC; }
 function now() { return AC ? AC.currentTime : 0; }
 
 /* the room tone: a filtered rumble, a mains hum, and a very slow
@@ -5915,10 +5930,27 @@ function cueDuck(depth) {
   if (t - sideT < 0.07) return;
   sideT = t;
   const d = depth === undefined ? 0.5 : depth;
+  /* WHILE HE IS TALKING, A DOOR DOES NOT GET TO TURN THE MUSIC BACK UP.
+
+     This function ends every duck by ramping the bed to 1, which is
+     correct for a bang in a quiet shop and catastrophic in the middle
+     of a line: she shuts a door, and the score -- which was sitting
+     politely under him -- is handed back its full level for the rest
+     of the sentence. So during a held voice duck the cue ducks from
+     the voice's floor and returns to the voice's floor. The door still
+     punches; it punches a hole in something quieter. */
+  const talking = t < voxHold;
+  const floor = talking ? VOICE_BED : 1;
   sideGain.gain.cancelScheduledValues(t);
   sideGain.gain.setValueAtTime(sideGain.gain.value, t);
-  sideGain.gain.linearRampToValueAtTime(d, t + 0.035);
-  sideGain.gain.linearRampToValueAtTime(1, t + 0.42);
+  sideGain.gain.linearRampToValueAtTime(Math.min(d, floor), t + 0.035);
+  sideGain.gain.linearRampToValueAtTime(floor, t + 0.42);
+  /* and the hold is re-armed behind it, because the ramp above just
+     overwrote the schedule that was keeping it down */
+  if (talking) {
+    sideGain.gain.setValueAtTime(VOICE_BED, Math.max(t + 0.43, voxHold - 0.15));
+    sideGain.gain.linearRampToValueAtTime(1, voxHold + 0.75);
+  }
 }
 function audioDuck(v, ms) {
   if (!AC) return;
@@ -6357,7 +6389,10 @@ function syllablesOf(text) {
 function annunciate(text, urgent) {
   if (!ac() || muted) return;
   const t0 = now() + CUE_LEAD;
-  const gain = urgent ? 0.85 : 0.6;
+  /* the whole announcement -- chime, buzz and words alike -- drops
+     behind him rather than being held back until he stops */
+  const under = voiceBusy() ? 0.42 : 1;
+  const gain = (urgent ? 0.85 : 0.6) * under;
   /* the two-tone attention chime every announcement opens with */
   tone({ type: "square", f0: urgent ? 880 : 660, dur: 0.09, gain: 0.075 * gain, filter: "lowpass", ff: 2400 });
   tone({ type: "square", f0: urgent ? 1170 : 880, dur: 0.11, gain: 0.075 * gain, at: 0.1, filter: "lowpass", ff: 2400 });
@@ -6682,6 +6717,21 @@ function speechVoices() {
    And he is narrating, not announcing: a shade under natural pace,
    natural pitch, which is what a man telling you something in a film
    sounds like. */
+/* THE ONES THAT READ, AND THE ONES THAT ANNOUNCE.
+
+   Two tiers rather than one. Every modern platform ships a handful of
+   voices built for long-form reading -- the ones the audiobook and
+   news-narration features use -- and they are a different class of
+   thing from the assistant voice that reads out a timer: longer
+   breath groups, real sentence intonation, and they do not put a
+   bright upward lilt on the end of every clause. Those are the only
+   ones with any chance of carrying a line like "I am sorry. That is
+   not enough and I know it is not enough."
+
+   On the platforms that name them, they are worth more than anything
+   else the scorer can see, which is why this tier is weighted above
+   the merely-neural one. */
+const VOICE_READER = /narrat|storytell|audiobook|news|reading|serif|studio|journey|wavenet|polyglot/i;
 const VOICE_GOOD = /natural|neural|enhanced|premium|siri|google (uk|us) english/i;
 const VOICE_JUNK = /compact|fred|albert|zarvox|trinoids|whisper|wobble|bahh|bells|boing|bubbles|cellos|deranged|jester|junior|organ|superstar|good news|bad news|pipe|eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley/i;
 const VOICE_MALE = /\bmale\b|daniel|arthur|oliver|george|james|david|guy|ryan|aaron|alex|christopher|brian|matthew|rishi|tom\b|liam|nathan/i;
@@ -6690,6 +6740,7 @@ function voiceScore(v) {
   const name = v.name || "", lang = v.lang || "";
   if (VOICE_JUNK.test(name)) return -100;
   let n = 0;
+  if (VOICE_READER.test(name)) n += 55;           // built to read a book aloud
   if (VOICE_GOOD.test(name)) n += 40;             // a real reading, not a stitch
   if (/^en-GB/i.test(lang)) n += 12;              // the shop is English
   else if (/^en/i.test(lang)) n += 8;
@@ -6859,8 +6910,25 @@ function speechBusy() {
 function speechSay(text, plan, opts) {
   if (!speechReady()) return false;
   const o = opts || {};
-  /* the building never interrupts him */
-  if (o.sys && (SPEECH.live || speechBusy())) {
+  /* THE BUILDING NEVER INTERRUPTS HIM -- BUT IT NO LONGER HAS TO WAIT.
+
+     There is one speech queue on a browser and cancel() empties it, so
+     while he was being SPOKEN the building had to hold its door
+     announcements back and drop the stale ones. That was the least bad
+     answer to a real constraint.
+
+     A recording is not in that queue. So when he is on tape -- which
+     is now the normal case -- both can happen at once, and they
+     should: she shuts a door in the middle of one of his sentences and
+     the shop tells her the door is shut, underneath him, the way a
+     station announcement carries on under a conversation. He is not
+     interrupted, she is not left reading a status line she never
+     heard, and nothing is dropped for being three seconds late.
+
+     It only steps aside when he is being spoken rather than played,
+     because then there is genuinely only the one mouth. */
+  const onTape = !!VOX_FILE.src && now() < VOX_FILE.until;
+  if (o.sys && !onTape && (SPEECH.live || speechBusy())) {
     sysWaiting = { text: text, plan: plan, at: perf() };
     return true;
   }
@@ -6877,11 +6945,21 @@ function speechSay(text, plan, opts) {
      slightly quick, slightly low read is what a station announcement
      sounds like — but 0.1 was gargling rather than announcing. */
   u.pitch = o.sys ? 0.55 : 0.96;
-  u.rate  = o.sys ? 1.08 : 0.86;
+  /* 0.82 rather than 0.86. Measured against the thing it is imitating
+     rather than against "slow": an audiobook is read at about 150
+     words a minute and a phone assistant reads at nearer 190, and the
+     engines are calibrated so that 1.0 is the assistant. He is telling
+     her something he has been working up to for eleven days. He is
+     not reading her a notification. */
+  u.rate  = o.sys ? 1.08 : 0.82;
   /* 0.78 rather than 1: the browser's voice is not in this graph and
      was arriving a long way over everything that is. The building's
      annunciator is quieter still — it is a speaker in a ceiling. */
-  const vBase = (o.volume === undefined ? (o.sys ? 0.62 : 0.78) : o.volume);
+  /* and when it is talking underneath him it is a speaker in a ceiling
+     two rooms away, not a second narrator */
+  const vBase = (o.volume !== undefined ? o.volume
+                 : o.sys ? (onTape ? 0.26 : 0.62)
+                 : 0.78);
   u.volume = clamp(vBase * MIX.voice * MIX.master, 0, 1);
 
   /* the caption follows the synthesiser rather than a guess: charIndex
@@ -6956,17 +7034,404 @@ function speechSay(text, plan, opts) {
    or -1 when nothing is being spoken aloud and the caller should fall
    back to voxPlan's timings */
 function voxMark() { return SPEECH.live ? SPEECH.mark : -1; }
-function voxTalking() { return SPEECH.live; }
+function voxTalking() { return voiceBusy(); }
 
 /* and say it. `plan` comes from voxPlan so the caller already knows the
    timings it is about to hear. */
+/* =====================================================================
+   HIS ACTUAL VOICE, IF THERE IS ONE.
+
+   Everything below this comment exists because of the one thing in
+   this chapter that no amount of code was going to fix. The lines are
+   his. They are the most personal writing in the whole gift, and they
+   are being read out by whatever text-to-speech engine happens to be
+   installed on her phone -- which on a modern handset is a bright,
+   clean, friendly assistant voice designed to read out a calendar.
+   That voice is not bad at its job. It is the wrong voice, and the
+   further you push its pitch and rate to make it sound like a man in a
+   toyshop the worse it gets, because every speech engine is a real
+   person cut into pieces and stretching those pieces is where the
+   metal comes from. There is a ceiling here and we are already at it.
+
+   So: a recording wins. Any recording. This looks for one.
+
+     voice/manifest.json   { "intro-01": "Ouissy.", ... }
+     voice/intro-01.mp3    a person saying that line
+
+   If the manifest is there, every line that has a file is played as
+   AUDIO, through this chapter's own graph -- which means it ducks for
+   a door the way everything else does, it sits under the score
+   properly, and it can be put through the tape: a band-limit, a little
+   saturation, and the wow and flutter of a machine that has been in a
+   drawer. speechSynthesis can do none of that, because the browser
+   will not give you its output as a signal. A recording that goes
+   through the tape does not sound like a man in a booth. It sounds
+   like something she has found.
+
+   If the manifest is missing, or a line has no file, or the text has
+   been edited since it was recorded -- the manifest stores the words,
+   so a rewritten line falls back rather than playing the old take --
+   nothing happens at all and the synthesiser reads it exactly as
+   before. It costs one 404 on a device that has no recordings.
+
+   The captions keep working either way: voxPlan already produces a
+   word-by-word timing, and with a real file we know the true duration,
+   so the guess gets scaled onto it and is closer than it has ever
+   been. --------------------------------------------------------- */
+const VOX_FILE = { on: null, map: null, buf: Object.create(null), dur: Object.create(null),
+                   src: null, gain: null, until: 0,
+                   /* which path the last line actually took, and how
+                      many lines were lost to a take that had not
+                      finished arriving */
+                   took: null, late: 0, warmed: 0,
+                   /* cumulative, because a line that waits for its take
+                      finishes after the caller has moved on, and a
+                      check that samples "what happened just now" reads
+                      the wrong answer and says everything is fine */
+                   plays: { tape: 0, speech: 0 } };
+
+/* HOW LOUD THE SHOP IS WHILE HE IS TALKING.
+
+   Not a dip. A held level.
+
+   cueDuck was the only ducking in the chapter and it is built for a
+   door: it drops the bed for thirty-five milliseconds and lets it back
+   up over four-tenths of a second, which is right for a bang and wrong
+   for a man saying four sentences. Measured against a tape line, the
+   score was back at full a third of a second in and stayed there for
+   the rest of the line, so he was competing with his own soundtrack
+   for twenty seconds at a stretch.
+
+   So a spoken line now holds the bed down for its whole length and
+   lets go afterwards, which is what every film that has ever put a
+   voice over music does. 0.42 rather than something smaller because
+   the point is that the music KEEPS PLAYING -- she should be able to
+   hear the eight bars turn underneath him, and hear the chord change
+   at the end of a sentence. It is the difference between a score with
+   narration over it and a score that stops to let somebody speak. */
+const VOICE_BED = 0.42;
+let voxHold = 0;                        // audio time the hold runs until
+
+function voiceDuck(dur) {
+  if (!AC || !sideGain) return;
+  const t = now();
+  voxHold = Math.max(voxHold, t + dur + 0.15);
+  sideGain.gain.cancelScheduledValues(t);
+  sideGain.gain.setValueAtTime(sideGain.gain.value, t);
+  /* a quarter of a second to get down there: fast enough to be under
+     his first word, slow enough that it is a fade and not a gate */
+  sideGain.gain.linearRampToValueAtTime(VOICE_BED, t + 0.25);
+  sideGain.gain.setValueAtTime(VOICE_BED, voxHold - 0.15);
+  /* and nearly a second to come back, so the score arrives rather than
+     reappears */
+  sideGain.gain.linearRampToValueAtTime(1, voxHold + 0.75);
+}
+
+function voiceLoad() {
+  if (VOX_FILE.on !== null) return;
+  VOX_FILE.on = false;
+  let f;
+  try { f = fetch("voice/manifest.json", { cache: "force-cache" }); } catch (e) { return; }
+  f.then((r) => (r.ok ? r.json() : null))
+   .then((j) => {
+     if (!j) return;
+     /* text -> id, so a line looks itself up by what it says. A line
+        that has been rewritten since the take simply is not in here. */
+     const m = Object.create(null);
+     let n = 0;
+     for (const id in j) { m[String(j[id]).trim()] = id; n++; }
+     VOX_FILE.map = m; VOX_FILE.on = n > 0;
+     if (VOX_FILE.on) voiceWarm();
+   })
+   .catch(() => {});
+}
+
+function voiceHas(text) {
+  return !!(VOX_FILE.on && VOX_FILE.map && VOX_FILE.map[String(text).trim()]);
+}
+/* has the take for this line finished arriving AND decoding */
+function voiceReadyFor(text) {
+  const id = VOX_FILE.map && VOX_FILE.map[String(text).trim()];
+  return !!(id && VOX_FILE.buf[id]);
+}
+
+/* FETCH THEM BEFORE SHE NEEDS THEM, IN THE ORDER SHE NEEDS THEM.
+
+   The whole recorded-voice path was written, tested and shipped
+   without this, and the result was that not one line ever played.
+   voiceBuf starts a fetch and returns null, because the buffer cannot
+   exist yet; the caller then falls back to the synthesiser. And every
+   line in this chapter is said exactly ONCE, so "fall back this once"
+   was every time, for all 117 of them. Measured cold, the way a player
+   arrives: fifteen lines of the opening statement, fifteen robots, six
+   megabytes of a man's voice sitting unplayed on the server.
+
+   So they are fetched up front, four at a time so the connection is
+   not stampeded, in the order the chapter plays them: the statement
+   she hears before she has pressed anything, then the terms, then the
+   small reactive lines, then the six nights in order. By the time any
+   of it is needed it has been in memory for minutes. */
+const VOX_ORDER = ["intro-", "terms-", "when-", "reveal-", "caught-", "kept-",
+                   "tape1-", "tape2-", "tape3-", "tape4-", "tape5-", "tape6-"];
+
+function voiceWarm() {
+  if (!VOX_FILE.map || !AC) return;
+  const ids = Object.keys(VOX_FILE.map).map((t) => VOX_FILE.map[t]);
+  const rank = (id) => {
+    for (let i = 0; i < VOX_ORDER.length; i++) if (id.indexOf(VOX_ORDER[i]) === 0) return i;
+    return VOX_ORDER.length;
+  };
+  const queue = ids.slice().sort((a, b) => (rank(a) - rank(b)) || (a < b ? -1 : 1));
+  let live = 0, i = 0;
+  const pump = () => {
+    while (live < 4 && i < queue.length) {
+      const id = queue[i++];
+      if (VOX_FILE.buf[id] !== undefined) continue;
+      live++;
+      VOX_FILE.buf[id] = null;
+      fetch("voice/" + id + ".mp3")
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+        .then((a) => new Promise((ok, no) => { AC.decodeAudioData(a, ok, no); }))
+        .then((b) => { VOX_FILE.buf[id] = b; VOX_FILE.dur[id] = b.duration; VOX_FILE.warmed++; })
+        .catch(() => { VOX_FILE.buf[id] = false; })
+        .then(() => { live--; pump(); });
+    }
+  };
+  pump();
+}
+
+/* wait for one line, briefly, and never for long enough to be a hang.
+   The opening statement is the one place where waiting is better than
+   falling back, because it is the first thing she ever hears and there
+   is no second chance at it. */
+function voiceWait(text, ms, then) {
+  const cap = ms || 2500, t0 = perf();
+  const tick = () => {
+    /* THE MANIFEST MAY NOT HAVE ARRIVED EITHER.
+
+       On a cold start the first line can be asked for before the page
+       knows there are ANY recordings, and then "is there a take for
+       this line" answers no for the wrong reason and the line goes out
+       as speech. That is not a slow connection failing gracefully, it
+       is the whole feature failing on the one line it matters most on:
+       the first thing she ever hears. So a manifest still in the air
+       is a reason to wait, exactly like a take still in the air. */
+    if (VOX_FILE.on === false) return then();          // no recordings on this build
+    if (VOX_FILE.on === true && !voiceHas(text)) return then();   // none for this line
+    if (voiceReadyFor(text)) return then();
+    if (VOX_FILE.on === true) voiceBuf(text);          // make sure it is in flight
+    if (perf() - t0 > cap) return then();
+    setTimeout(tick, 60);
+  };
+  tick();
+}
+
+/* fetch and decode once, then keep it */
+function voiceBuf(text) {
+  const id = VOX_FILE.map && VOX_FILE.map[String(text).trim()];
+  if (!id) return null;
+  if (VOX_FILE.buf[id] !== undefined) return VOX_FILE.buf[id];
+  VOX_FILE.buf[id] = null;                 // in flight; do not ask twice
+  fetch("voice/" + id + ".mp3")
+    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+    .then((a) => new Promise((ok, no) => { AC.decodeAudioData(a, ok, no); }))
+    .then((b) => { VOX_FILE.buf[id] = b; VOX_FILE.dur[id] = b.duration; })
+    .catch(() => { VOX_FILE.buf[id] = false; });
+  return null;
+}
+
+/* THE ROOM THE RECORDING IS IN.
+
+   A CLEAN VOICE, LIGHTLY PLACED -- and the emphasis is on clean.
+
+   The first version of this was a full tape emulation: banded at 155
+   and 5200, saturated hard, with a capstan wow you could hear. It was
+   the right idea for the fiction -- he spoke into the only machine in
+   the building that was still listening -- and the wrong idea for the
+   brief, which is a narrator you would hear in a film. Rolling a voice
+   off at 5.2kHz takes the whole top of every S and T with it, and a
+   narrator with no consonants does not sound like an old recording, he
+   sounds like a bad one.
+
+   So this is now the lightest version of the same idea. It exists to
+   stop a dry studio-clean file sitting ON TOP of the shop rather than
+   inside it, and to do nothing else:
+
+     the band     7800 and 120, which keeps every sibilant a voice
+                  actually makes and only removes what no speaker in a
+                  1950s toyshop would have reproduced anyway
+     the presence a 2.5dB lift at 1.9kHz, where intelligibility lives.
+                  This makes him CLEARER than the raw file, not dirtier
+     the warmth   a saturation so gentle it is doing almost nothing at
+                  speech levels -- it only bites on the loudest
+                  syllables, which is what stops a level feeling
+                  turned up rather than pushed
+     the drift    a wow and flutter of about a tenth of what it was:
+                  two-tenths of a percent, too small to hear as pitch
+                  and just enough that no two seconds run at exactly
+                  the same speed. A human ear forgives almost anything
+                  except perfect stability, and this is the only part
+                  of the old chain that was doing more good than harm.
+
+   VOX_ROOM is the one number. 0 is the file exactly as recorded; 1 is
+   the old tape machine. Everything above is described at 1 and scaled
+   by it. */
+const VOX_ROOM = 0.34;
+function voicePlay(buf, gain) {
+  const t = now() + CUE_LEAD;
+  const r = clamp(VOX_ROOM, 0, 1);
+  const src = AC.createBufferSource(); src.buffer = buf;
+  /* wow and flutter: two slow oscillators on the playback rate, at
+     speeds that do not divide into each other, so the unevenness never
+     settles into a pattern */
+  const wow = AC.createOscillator(); wow.type = "sine"; wow.frequency.value = 0.47;
+  const wg = AC.createGain(); wg.gain.value = 0.0022 * r;
+  const flut = AC.createOscillator(); flut.type = "sine"; flut.frequency.value = 6.3;
+  const fg = AC.createGain(); fg.gain.value = 0.0009 * r;
+  wow.connect(wg); wg.connect(src.playbackRate);
+  flut.connect(fg); fg.connect(src.playbackRate);
+  /* the band closes in as the room is dialled up, and at r = 0 it is
+     wide open on both ends */
+  const hp = AC.createBiquadFilter(); hp.type = "highpass";
+  hp.frequency.value = 40 + 115 * r; hp.Q.value = 0.6;
+  const lp = AC.createBiquadFilter(); lp.type = "lowpass";
+  lp.frequency.value = 16000 - 10800 * r; lp.Q.value = 0.7;
+  /* the presence lift is NOT scaled down with the rest: it is the one
+     thing here that makes him easier to understand rather than harder,
+     and a narrator should be easy to understand at every setting */
+  const pk = AC.createBiquadFilter(); pk.type = "peaking";
+  pk.frequency.value = 1900; pk.Q.value = 0.9; pk.gain.value = 2.5;
+  const sat = AC.createWaveShaper();
+  const curve = new Float32Array(1024);
+  const drive = 1 + 0.8 * r;
+  for (let i = 0; i < 1024; i++) {
+    const x = (i / 1023) * 2 - 1;
+    curve[i] = Math.tanh(x * drive) / Math.tanh(drive);
+  }
+  sat.curve = curve; sat.oversample = "2x";
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.03);
+  src.connect(hp); hp.connect(pk); pk.connect(sat); sat.connect(lp); lp.connect(g);
+  g.connect(cueGain);
+
+  /* ONE MOUTH, HERE TOO.
+
+     Two recordings playing at once is two men talking over each other,
+     and it is easy to cause: a tape line landing on the same frame as
+     a reveal. Whatever was speaking is faded out over eighty
+     milliseconds rather than cut -- long enough not to click, short
+     enough that she never hears the overlap as two voices. */
+  voiceStop(0.08);
+  VOX_FILE.src = src; VOX_FILE.gain = g;
+  VOX_FILE.until = t + buf.duration;
+  src.onended = function () { if (VOX_FILE.src === src) { VOX_FILE.src = null; VOX_FILE.gain = null; } };
+
+  src.start(t); wow.start(t); flut.start(t);
+  const d = buf.duration + 0.4;
+  wow.stop(t + d); flut.stop(t + d);
+  /* and the shop plays on underneath him at a level that does not move */
+  voiceDuck(buf.duration);
+  return buf.duration;
+}
+
+/* stop whatever recording is running, without a click */
+function voiceStop(fade) {
+  const src = VOX_FILE.src, g = VOX_FILE.gain;
+  VOX_FILE.src = null; VOX_FILE.gain = null; VOX_FILE.until = 0;
+  if (!src || !AC) return;
+  const t = now(), f = fade === undefined ? 0.08 : fade;
+  try {
+    if (g) {
+      g.gain.cancelScheduledValues(t);
+      g.gain.setValueAtTime(g.gain.value, t);
+      g.gain.linearRampToValueAtTime(0.0001, t + f);
+    }
+    src.stop(t + f + 0.02);
+  } catch (e) {}
+}
+
+/* he is talking if the speech engine is mid-sentence OR a recording of
+   him is still running. Everything in the chapter that waits for him to
+   finish reads this, and before the recordings existed it only knew
+   about the first of those. */
+function voiceBusy() {
+  return SPEECH.live || (!!VOX_FILE.src && now() < VOX_FILE.until);
+}
+
 function voxSpeak(plan, opts) {
   opts = opts || {};
-  const total = plan.dur;
+  let total = plan.dur;
   /* the real words first, if the platform has any */
   const text = plan.words.map((w) => w.text).join(" ");
+
+  /* A REAL RECORDING BEATS EVERYTHING ELSE IN THIS FUNCTION.
+
+     If there is one for this line, it is what she hears, and the
+     caption's guessed timings are stretched onto the take's real
+     length so the words light up with him instead of near him. */
+  /* and if the page does not yet know whether there are recordings at
+     all, that is a reason to hold the line rather than to assume there
+     are none -- see voiceWait */
+  if (!opts.sys && ac() && !muted && MIX.voice > 0.02
+      && VOX_FILE.on === null && !opts.waited) {
+    const again = {};
+    for (const k in opts) again[k] = opts[k];
+    again.waited = true;
+    VOX_FILE.late++;
+    voiceWait(text, 1800, () => voxSpeak(plan, again));
+    return total;
+  }
+  if (!opts.sys && ac() && !muted && MIX.voice > 0.02 && voiceHas(text)) {
+    const b = voiceBuf(text);
+    if (b) {
+      const was = plan.dur || 1;
+      total = voicePlay(b, (opts.gain === undefined ? 1 : opts.gain) * 0.92 * MIX.voice);
+      const k = total / was;
+      plan.words.forEach((w) => { w.at *= k; });
+      plan.dur = total;
+      plan.real = true;
+      /* and less of the machine under a clean take than under the
+         synthesiser: the hiss was covering for the voice, and a voice
+         that does not need covering for should not be buried */
+      voxTape(total, (opts.gain === undefined ? 1 : opts.gain) * 0.34);
+      VOX_FILE.took = "tape"; VOX_FILE.plays.tape++;
+      return total;
+    }
+    /* THE TAKE IS KNOWN AND STILL ARRIVING.
+
+       The original code handed the line to the synthesiser here and
+       called it "this once". Every line in this chapter is said
+       exactly once, so this once was every time.
+
+       Waiting is better. A line that starts a beat late is a line she
+       hears in his voice; a line that does not wait is a robot reading
+       his last words to her. So the sentence is held for up to a
+       second and a bit and then tried again -- and the retry cannot
+       loop, because it is flagged, so if the take still has not landed
+       by then it goes out as speech and that is the end of it.
+
+       In practice this almost never fires: voiceWarm has the whole
+       chapter in memory within seconds of the manifest arriving. It is
+       here for the first few seconds after a cold load, when it is the
+       difference between his voice and a machine's. */
+    VOX_FILE.late++;
+    if (!opts.waited) {
+      const again = {};
+      for (const k in opts) again[k] = opts[k];
+      again.waited = true;
+      voiceWait(text, 1200, () => voxSpeak(plan, again));
+      return total;
+    }
+  }
   if (!muted && MIX.voice > 0.02 && speechSay(text, plan, opts)) {
     voxTape(total, opts.gain === undefined ? 1 : opts.gain);
+    /* the same held bed whichever voice is doing the talking, so the
+       shop does not behave differently on a device that has no
+       recordings on it yet -- but not for the building, which is four
+       words long and does not get the score moved out of its way */
+    if (!opts.sys) voiceDuck(total);
+    if (!opts.sys) { VOX_FILE.took = "speech"; VOX_FILE.plays.speech++; }
     return total;
   }
   if (!ac() || muted) return 0;
@@ -6980,6 +7445,7 @@ function voxSpeak(plan, opts) {
      words long and it is a buzzer on purpose. */
   if (!opts.sys && !opts.forceSynth && window.speechSynthesis) {
     voxTape(total, (opts.gain === undefined ? 1 : opts.gain) * 1.25);
+    voiceDuck(total);
     return total;
   }
   const t0 = now() + CUE_LEAD + (opts.at || 0);
@@ -7089,7 +7555,8 @@ function sayClear() {
 const MUS = {
   ready: false, mode: "none", want: "none",
   bus: null, lay: {}, nodes: [],
-  dread: 0, target: 0, step: 0, next: 0, bar: 0, spb: 0,
+  dread: 0, target: 0, step: 0, next: 0, bar: 0, barOff: 0, spb: 0,
+  pivot: false, duck: 0,
 };
 const MUS_LOOK = 0.65;          // seconds scheduled ahead of the clock
 const MUS_LEVEL = 0.56;         // how loud the score sits under the game
@@ -7130,34 +7597,46 @@ const MODE_MIX = {
   /* he is talking, so almost nothing — but the piano is under him,
      which is what tells her this is a memory and not a briefing */
   film:    { sub: 0.30, pulse: 0,    box: 0.10, air: 0.14, grind: 0.08, bow: 0,    warm: 0.06,
-             piano: 0.34, choir: 0,    brass: 0.16, tick: 0 },
+             piano: 0.34, choir: 0,    brass: 0.16, tick: 0,
+             pad: 0.30, bass: 0.18, lead: 0.00   },
   /* THE TERMS: a clock and a swell and nothing else. He is setting a
      deadline, so the only two instruments are the one that counts and
      the one that says something is coming. */
   locked:  { sub: 0.62, pulse: 0,    box: 0,    air: 0.20, grind: 0.24, bow: 0,    warm: 0,
-             piano: 0.20, choir: 0,    brass: 0.55, tick: 0.62 },
+             piano: 0.20, choir: 0,    brass: 0.55, tick: 0.62,
+             pad: 0.40, bass: 0.46, lead: 0.00   },
   /* the minute before a night: her stomach, and a clock she cannot stop */
   brief:   { sub: 0.34, pulse: 0.30, box: 0.10, air: 0.10, grind: 0.06, bow: 0,    warm: 0,
-             piano: 0,    choir: 0,    brass: 0.22, tick: 0.50 },
+             piano: 0,    choir: 0,    brass: 0.22, tick: 0.50,
+             pad: 0.22, bass: 0.34, lead: 0.00   },
   /* the meter is gone. The heartbeat stops; everything else opens up */
-  dark:    { sub: 0.70, pulse: 0,    box: 0,    air: 0.50, grind: 0.60, bow: 0.40, warm: 0,
-             piano: 0,    choir: 0.30, brass: 0.62, tick: 0 },
+  dark:    { sub: 0.70, pulse: 0,    box: 0,    air: 0.50, grind: 0.52, bow: 0.40, warm: 0,
+             piano: 0,    choir: 0.30, brass: 0.62, tick: 0,
+             pad: 0.55, bass: 0.64, lead: 0.00   },
   /* after a death: one held ring, the box two octaves down, no pulse */
   gone:    { sub: 0.50, pulse: 0,    box: 0.10, air: 0.30, grind: 0.30, bow: 0.12, warm: 0,
-             piano: 0.34, choir: 0,    brass: 0.20, tick: 0 },
+             piano: 0.34, choir: 0,    brass: 0.20, tick: 0,
+             pad: 0.44, bass: 0.30, lead: 0.20   },
   /* she is reading something he wrote. Piano and the major phrase */
-  found:   { sub: 0.20, pulse: 0,    box: 0.40, air: 0.14, grind: 0,    bow: 0,    warm: 0.45,
-             piano: 0.55, choir: 0.16, brass: 0,    tick: 0 },
+  found:   { sub: 0.20, pulse: 0,    box: 0.40, air: 0.14, grind: 0,    bow: 0,    warm: 0.26,
+             piano: 0.55, choir: 0.16, brass: 0,    tick: 0,
+             pad: 0.40, bass: 0.32, lead: 0.54   },
   /* THE TURN. One of his got there first. Everything warm, and the
      only place in the chapter the choir is loud. */
-  held:    { sub: 0.44, pulse: 0.18, box: 0.55, air: 0.22, grind: 0,    bow: 0.16, warm: 0.62,
-             piano: 0.60, choir: 0.72, brass: 0.34, tick: 0 },
-  dawn:    { sub: 0.16, pulse: 0,    box: 0.40, air: 0.12, grind: 0,    bow: 0,    warm: 0.62,
-             piano: 0.48, choir: 0.34, brass: 0,    tick: 0 },
-  gallery: { sub: 0.14, pulse: 0,    box: 0.45, air: 0.10, grind: 0,    bow: 0,    warm: 0.70,
-             piano: 0.34, choir: 0.10, brass: 0,    tick: 0 },
-  menu:    { sub: 0.20, pulse: 0,    box: 0.55, air: 0.10, grind: 0,    bow: 0,    warm: 0.34,
-             piano: 0.22, choir: 0,    brass: 0,    tick: 0 },
+  held:    { sub: 0.44, pulse: 0.18, box: 0.55, air: 0.22, grind: 0,    bow: 0.16, warm: 0.32,
+             piano: 0.60, choir: 0.72, brass: 0.34, tick: 0,
+             pad: 0.66, bass: 0.48, lead: 0.64   },
+  dawn:    { sub: 0.16, pulse: 0,    box: 0.40, air: 0.12, grind: 0,    bow: 0,    warm: 0.34,
+             piano: 0.48, choir: 0.34, brass: 0,    tick: 0,
+             pad: 0.50, bass: 0.30, lead: 0.58   },
+  gallery: { sub: 0.14, pulse: 0,    box: 0.45, air: 0.10, grind: 0,    bow: 0,    warm: 0.38,
+             piano: 0.34, choir: 0.10, brass: 0,    tick: 0,
+             pad: 0.42, bass: 0.38, lead: 0.32   },
+  /* warm is nearly out: it is a fixed A major triad and the title
+     screen changes key now, so the moving pad is the bed instead */
+  menu:    { sub: 0.20, pulse: 0,    box: 0.55, air: 0.10, grind: 0,    bow: 0,    warm: 0.10,
+             piano: 0.22, choir: 0,    brass: 0,    tick: 0,
+             pad: 0.46, bass: 0.24, lead: 0.16   },
 };
 /* how fast the grid runs, whether the phrase is the major one, and how
    loud the whole thing sits. `night` works its own out of dread. */
@@ -7257,7 +7736,13 @@ const THEME_NOTES = {
              music at all, which is what the minute before a night
              wants. */
 const MUS_LAYERS = ["sub", "pulse", "box", "air", "grind", "bow", "warm",
-                    "piano", "choir", "brass", "tick"];
+                    "piano", "choir", "brass", "tick", "pad", "bass", "lead"];
+/* the ones that hold a value rather than play notes, and so have to be
+   ridden by the phrase from outside instead of note by note */
+const MUS_HOLDS = { sub: 1, air: 1, grind: 1, bow: 1, warm: 1 };
+/* and the ones that hold a note belonging to a particular key, which
+   are the ones that have to be let go of when the key changes */
+const MUS_PITCHED = ["pad", "bass", "box", "lead", "piano", "choir"];
 
 /* A natural minor on A, which is the key the music box is in, so the
    score and the ballerina are the same instrument in the same room. */
@@ -7325,17 +7810,129 @@ const WARM  = [0, 0, 2, 2, 4, 4, 7, 7, 9, 9, 11, 11, 12, 12, 9, 9];
    the chapter, where a wrong note is the only thing you can hear. */
 const WARM3 = [4, 4, 5, 5, 7, 7, 11, 11, 12, 12, 14, 14, 16, 16, 12, 12];
 
-function musicInit() {
-  if (!ac() || MUS.ready) return;
-  MUS.ready = true;
-  MUS.bus = AC.createGain(); MUS.bus.gain.value = 0; MUS.bus.connect(sideGain);
-  MUS_LAYERS.forEach((k) => {
-    const g = AC.createGain();
-    g.gain.value = 0;
-    g.connect(MUS.bus);
-    MUS.lay[k] = g;
-  });
+/* =====================================================================
+   THE HARMONY — the thing that was actually missing.
 
+   Everything above this line is melody, and until now melody was ALL
+   there was. The three sustaining layers held a fixed A, a fixed minor
+   second and a fixed major chord from the moment the page loaded to the
+   moment it closed: oscillators with a frequency set once and never
+   touched. So the score had exactly one chord in it, all night, every
+   night. A tune over an unchanging drone cannot swell, cannot arrive
+   anywhere and cannot break your heart, however good the tune is --
+   there is nothing underneath it to move.
+
+   That is the whole difference between what was here and the kind of
+   score he is asking for. In both of the traditions he named the
+   emotion does not come from the melody at all. It comes from a short
+   cell repeating while the chords underneath it change, so that the
+   same handful of notes means something different the fourth time you
+   hear it than it did the first. The tune is the constant. The harmony
+   is what moves, and the movement is the feeling.
+
+   So: eight bars, one chord a bar, and the four-bar tune now plays
+   twice through them -- heard once over one set of chords and again
+   over another. Nothing about the melody changes. Everything about
+   what it means does.
+
+       | Am | F  | C  | G  | Am | F  | Dm | E  |
+         i   bVI bIII bVII  i   bVI  iv   V
+
+   The first half is open and rising. The second half turns: the iv is
+   the darkening, the minor subdominant that arrives where the ear was
+   promised something brighter, and the dominant after it is the pull
+   home that never quite gets there because the loop starts again.
+
+   The last chord is voiced E-B-D rather than E-G#-B. No third, so the
+   G natural the tune is still descending through does not fight the
+   G sharp a full dominant would want -- and an open fifth with a
+   seventh on top is the enormous, unresolved sound both those
+   traditions lean on anyway.
+   ===================================================================== */
+const CHORDS = [
+  [0, 7, 15],      // Am    A  E  C
+  [-4, 3, 12],     // F     F  C  A
+  [3, 10, 19],     // C     C  G  E
+  [-2, 5, 14],     // G     G  D  B
+  [0, 7, 15],      // Am
+  [-4, 3, 12],     // F
+  [5, 12, 20],     // Dm    D  A  F   <- the turn
+  [-5, 2, 17],     // E7    E  B  D   <- no third, see above
+];
+const BASS = [-12, -16, -9, -14, -12, -16, -7, -17];
+
+/* THE BIG TUNE, for the places the chapter is allowed to be enormous.
+
+   The four-bar figure is a music box: small, turning, anxious. It is
+   the right shape for a shop at night and the wrong shape entirely for
+   six o'clock in the morning, or for the moment one of his toys turns
+   out to be on her side. Those need a line that can be held.
+
+   One note a bar, over the eight chords above. It starts on the fifth,
+   climbs, falls back, and then in the seventh bar leaps a fourth to the
+   highest note in the chapter and HOLDS it -- over the iv, which is the
+   saddest chord in the loop. That is the moment. Everything before it
+   is the run-up and everything after it is two steps down and home.
+
+   A leap up to a long note over a minor subdominant is not subtle and
+   is not supposed to be. It is the oldest way there is to make a room
+   go quiet.  */
+/* THE LINE OVER THE TOP. One note a bar, and the only voice in the
+   chapter with nothing to hide behind, so every note of it is a tone of
+   the chord underneath it -- checked as one by tools/shiftscore.js.
+
+           E   F   G   G   A   A   D   B
+           Am  F   C   G   Am  F   Dm  E
+
+   Six bars of it climb by a step or stay exactly where they are while
+   the chord moves out from under them, which is the cheapest trick in
+   this kind of writing and the one that works: the same note means
+   something different four times running. Then the seventh bar leaps a
+   fourth, to the highest note in the chapter, over the one chord that
+   has not been in the room all night. The eighth comes back down,
+   because an arrival she is still sitting on is not an arrival.
+
+   The first version of this line leapt four times in seven moves and
+   was a broken chord pretending to be a melody -- which is the exact
+   fault the shop's own figure was rewritten to fix, made again, one
+   octave up, by the same hand. */
+const HYMN = [7, 8, 10, 10, 12, 12, 17, 14];
+
+/* And the same eight bars in the major, for the letters, the turn and
+   six o'clock -- because the warm cues play the tune in A major, and a
+   C sharp over an A minor chord is a wrong note, not a brighter one.
+
+       | A | F#m | D | E | A | F#m | Bm | E |
+         I   vi    IV  V   I   vi    ii   V
+
+   Same shape, same leap in the seventh bar, one ladder up. It is the
+   same eight bars she has been frightened by all night, which is the
+   entire point: the morning is not new music, it is the night's music
+   with the light on. */
+const CHORDS_W = [
+  [0, 7, 16],      // A     A  E  C#
+  [-3, 4, 12],     // F#m   F# C# A
+  [5, 12, 21],     // D     D  A  F#
+  [-5, 2, 11],     // E     E  B  G#
+  [0, 7, 16],      // A
+  [-3, 4, 12],     // F#m
+  [2, 9, 17],      // Bm    B  F# D
+  [-5, 2, 11],     // E
+];
+const BASS_W = [-12, -15, -7, -17, -12, -15, -10, -17];
+/* and the same shape one ladder up -- same climb, same leap in the same
+   bar, same letting go -- because six o'clock has to be recognisably
+   the thing she was frightened by at three */
+const HYMN_W = [7, 9, 9, 11, 12, 12, 17, 14];
+
+/* THE LAYERS THAT NEVER STOP.
+
+   Four voices that run for the life of the page, because starting and
+   stopping an oscillator is a click and a scheduling risk and a gain of
+   zero is neither. Pulled out of musicInit so an offline render can
+   build the same floor under itself -- without it every check of this
+   score was listening to a mix with its bottom missing. */
+function droneLayers() {
   /* --- the continuous layers ---------------------------------------
      These three never stop for the life of the page. Starting and
      stopping an oscillator is a click and a scheduling risk; a gain of
@@ -7378,13 +7975,233 @@ function musicInit() {
   alfo.connect(alg); alg.connect(bp.frequency); alfo.start();
   MUS.nodes.push(air, alfo);
 
-  /* warm: the major chord the morning resolves onto. Silent all night */
-  [110, 138.59, 164.81, 220].forEach((f) => {
+  /* warm: an open fifth on A, and NOT the triad it used to be.
+
+     THE PEDAL CANNOT HOLD A THIRD. This layer was A–C#–E–A, a whole
+     major chord nailed down, from a time when it was the only harmony
+     in the chapter and nothing underneath it ever moved. Now the pad
+     plays a progression and a fixed C sharp fights every bar of it:
+     rendered and measured, the warm cues came out reading A2 in every
+     single bar, because a 0.62 triad sitting on the root simply
+     drowned an F sharp bass two octaves down. The chord change was
+     being played and could not be heard.
+
+     Dropping the third leaves A and E — the two notes that belong to
+     A, F#m, D and E alike, and to A minor, F, C, G and D minor too. So
+     the same drone is now consonant under both progressions, and it
+     does what a pedal is for: it holds the room still while the
+     harmony moves through it. */
+  [110, 164.81, 220, 329.63].forEach((f) => {
     const o = AC.createOscillator(); o.type = "triangle"; o.frequency.value = f;
     const g = AC.createGain(); g.gain.value = 0.09;
     o.connect(g); g.connect(MUS.lay.warm); o.start();
     MUS.nodes.push(o);
   });
+}
+
+function musicInit() {
+  if (!ac() || MUS.ready) return;
+  MUS.ready = true;
+  MUS.bus = AC.createGain(); MUS.bus.gain.value = 0; MUS.bus.connect(sideGain);
+  MUS_LAYERS.forEach((k) => {
+    const g = AC.createGain();
+    g.gain.value = 0;
+    g.connect(MUS.bus);
+    MUS.lay[k] = g;
+  });
+
+  droneLayers();
+}
+
+/* --- the two voices the harmony is played on ----------------------
+
+   A string section, near enough: three saws a few cents apart through a
+   lowpass, with a slow bow on the way in and a long tail on the way
+   out. Detuning is doing the work -- three oscillators at very slightly
+   different speeds beat against each other, and that beating is most of
+   what separates "a section" from "an organ". The attack is deliberately
+   far too slow for a note that is only one bar long, so each chord is
+   still arriving when the next one starts. Nothing ever articulates,
+   and the harmony changes underneath the tune like weather. */
+function padNote(t, f, gain, dur) {
+  const d = dur || 3.0;
+  const lp = AC.createBiquadFilter(); lp.type = "lowpass";
+  lp.frequency.setValueAtTime(Math.min(2600, f * 5.5), t);
+  lp.frequency.linearRampToValueAtTime(Math.min(4200, f * 8), t + d * 0.55);
+  lp.Q.value = 0.6;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(Math.max(0.0004, gain), t + d * 0.42);
+  g.gain.linearRampToValueAtTime(Math.max(0.0003, gain * 0.72), t + d * 0.78);
+  g.gain.linearRampToValueAtTime(0.0001, t + d);
+  [-7, 0.5, 6].forEach((cents, i) => {
+    const o = AC.createOscillator();
+    o.type = i === 1 ? "triangle" : "sawtooth";
+    o.frequency.value = f * Math.pow(2, cents / 1200);
+    const og = AC.createGain(); og.gain.value = i === 1 ? 0.5 : 0.3;
+    o.connect(og); og.connect(lp);
+    o.start(t); o.stop(t + d + 0.08);
+  });
+  lp.connect(g); g.connect(MUS.lay.pad);
+}
+
+/* the root, low and slow, with one octave above it so it has a shape on
+   a phone speaker that cannot reproduce the fundamental at all */
+function bassNote(t, f, gain, dur) {
+  const d = dur || 3.0;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(Math.max(0.0004, gain), t + 0.18);
+  g.gain.linearRampToValueAtTime(Math.max(0.0003, gain * 0.6), t + d * 0.7);
+  g.gain.linearRampToValueAtTime(0.0001, t + d);
+  const lp = AC.createBiquadFilter(); lp.type = "lowpass";
+  lp.frequency.value = 340;
+  [[1, "sine", 1], [2, "triangle", 0.22]].forEach(([mult, type, lvl]) => {
+    const o = AC.createOscillator(); o.type = type; o.frequency.value = f * mult;
+    const og = AC.createGain(); og.gain.value = lvl;
+    o.connect(og); og.connect(lp);
+    o.start(t); o.stop(t + d + 0.08);
+  });
+  lp.connect(g); g.connect(MUS.lay.bass);
+}
+
+/* THE SHAPE OF EIGHT BARS.
+
+   Measured on a rendered minute of the biggest cue in the chapter, the
+   per-bar loudness came out 0.246, 0.247, 0.247, 0.247, 0.244, 0.248,
+   0.248, 0.248. Eight bars of moving harmony, and not one of them was
+   louder than any other. That is a progression you can analyse and not
+   one you can feel: the chords were arriving and nothing was arriving
+   AT anything, which is the difference between music that is correct
+   and music that makes somebody put their hand over their mouth.
+
+   So the phrase has a shape now. It climbs across the first four bars,
+   drops back on the fifth because a second time through should start
+   lower than the first ended, climbs again, and the seventh bar --
+   the one with the leap in the tune and the chord that has not been in
+   the room before -- is a quarter louder than anything around it. The
+   eighth backs off, because the point of an arrival is that it ends.
+
+   Nothing here is fast enough to hear as a change in volume. It is
+   heard as the music meaning it. */
+const ARCH = [0.78, 0.85, 0.93, 1.00, 0.86, 0.95, 1.25, 1.06];
+function arch(bar) { return ARCH[((bar % 8) + 8) % 8]; }
+/* the same shape read at a fractional bar, so the layers that hold
+   rather than play can ride it without stepping at each bar line */
+function archAt(x) {
+  const p = ((x % 8) + 8) % 8;
+  const i = Math.floor(p), f = p - i;
+  return ARCH[i] * (1 - f) + ARCH[(i + 1) & 7] * f;
+}
+
+/* One bar of the progression: the chord, its root, and -- where a cue
+   wants the big line rather than the music box -- one note of the hymn
+   held right across it. */
+function harmonyBar(t, bar, spb, opts) {
+  const o = opts || {};
+  const i = ((bar % 8) + 8) % 8;
+  const d = spb * 4 * 1.14;             // overlaps the next bar on purpose
+  const key = o.lift || 0;              // transposes the whole bar at once
+  const ch = o.major ? CHORDS_W : CHORDS;
+  const bs = o.major ? BASS_W : BASS;
+  const hy = o.major ? HYMN_W : HYMN;
+  const a  = arch(i);                   // where in the phrase this bar is
+  if (o.pad) {
+    /* the root a little louder than the two above it, so the chord has
+       a bottom to it instead of being three equal voices.
+
+       Every voicing in both tables puts the third last, which is what
+       lets `open` drop it: root and fifth only, a chord that belongs
+       to the major and the minor equally and is therefore the only one
+       that can stand in a doorway between them. */
+    const v = o.open ? ch[i].slice(0, 2) : ch[i];
+    v.forEach((n, k) => padNote(t, hz(n + key), o.pad * a * (k === 0 ? 0.9 : 0.62), d));
+  }
+  if (o.bass) bassNote(t, hz(bs[i] + key), o.bass * (0.55 + a * 0.45), d);
+  if (o.hymn) {
+    /* THE SEVENTH BAR.
+
+       Everything in these eight bars is built so that one of them is
+       the one she remembers. Seven of them move by a step; the seventh
+       leaps a fourth to the highest note in the chapter and sits on it
+       while the chord underneath goes somewhere it has not been all
+       night. It is allowed to be louder than the bars around it,
+       because the whole shape exists to arrive there. */
+    const peak = (i === 6 ? 1.35 : 1) * a;
+    const n = hy[i] + key + (o.oct || 0) * 12;
+    if (o.choir) choirNote(t, hz(n), o.hymn * 0.8 * peak, spb * 5.0);
+    /* sung and struck together: the piano puts the note somewhere and
+       the voice stays on it after the piano has stopped being able to */
+    if (o.lead) leadNote(t, hz(n), o.hymn * 1.5 * peak, spb * 4.2);
+    pianoNote(t, hz(n), o.hymn * peak, spb * 4.4, o.pan === undefined ? 0 : o.pan);
+  }
+}
+
+/* THE VOICE THAT SINGS IT.
+
+   Everything in this chapter that carries a melody is struck: the music
+   box is a comb, the piano is a hammer, and both of them are loudest at
+   the instant the note begins and quieter every moment after. That is a
+   whole score of decaying notes, and a decaying note cannot lean on
+   anything. It is why the letters and the morning could be correct and
+   still not move: nothing in them was ever SUSTAINING a note and
+   meaning it.
+
+   So there is one voice here that is bowed rather than hit, and three
+   things in it are doing all the work:
+
+     the scoop     it arrives at the pitch from about a third of a
+                   semitone under, over a tenth of a second. Nobody
+                   hears a slide. Everybody hears a player rather than
+                   a trigger. The first version of this came in from 96
+                   cents below, which is not an inflection -- it is a
+                   portamento from the wrong note, and a spectrum of
+                   the seam test read the start of every sung note as a
+                   semitone flat because it WAS one.
+     the vibrato   which is NOT there at the start. It fades in across
+                   the first half of the note and eases off at the end,
+                   the way a singer holding something steadies it first
+                   and only then lets it move. A vibrato present from
+                   the first sample is an effect; one that arrives is a
+                   person deciding to lean on the note.
+     the throat    a resonant lowpass that opens as the note swells and
+                   closes as it goes, so the note gets BRIGHTER as it
+                   gets louder, which is what happens when anybody with
+                   lungs or a bow pushes harder.
+
+   It only ever plays the hymn -- one note a bar, no runs, nothing
+   clever. The line was written to be sung by one voice and this is it. */
+function leadNote(t, f, gain, dur) {
+  const d = dur || 3.0;
+  const o  = AC.createOscillator(); o.type = "sawtooth";
+  const o2 = AC.createOscillator(); o2.type = "triangle";
+  o2.detune.value = 7;
+  [o, o2].forEach((n) => {
+    n.frequency.setValueAtTime(f * 0.9814, t);        // ~32 cents under
+    n.frequency.exponentialRampToValueAtTime(f, t + 0.10);
+  });
+  const lfo = AC.createOscillator(); lfo.type = "sine";
+  lfo.frequency.setValueAtTime(4.6, t);
+  lfo.frequency.linearRampToValueAtTime(5.6, t + d * 0.6);
+  const lg = AC.createGain();
+  lg.gain.setValueAtTime(0.0001, t);
+  lg.gain.linearRampToValueAtTime(f * 0.0075, t + Math.min(1.1, d * 0.5));
+  lg.gain.linearRampToValueAtTime(f * 0.0032, t + d);
+  lfo.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency);
+  const lp = AC.createBiquadFilter(); lp.type = "lowpass";
+  lp.frequency.setValueAtTime(Math.max(180, f * 2.0), t);
+  lp.frequency.linearRampToValueAtTime(Math.min(6000, f * 5.6), t + d * 0.38);
+  lp.frequency.linearRampToValueAtTime(Math.max(180, f * 1.9), t + d);
+  lp.Q.value = 3.4;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(Math.max(0.0004, gain), t + d * 0.20);
+  g.gain.linearRampToValueAtTime(Math.max(0.0003, gain * 0.84), t + d * 0.72);
+  g.gain.linearRampToValueAtTime(0.0001, t + d);
+  const og = AC.createGain(); og.gain.value = 0.44;
+  o.connect(og); o2.connect(og); og.connect(lp); lp.connect(g);
+  g.connect(MUS.lay.lead);
+  [o, o2, lfo].forEach((n) => { n.start(t); n.stop(t + d + 0.12); });
 }
 
 /* the two voices that play notes rather than hold them */
@@ -7559,8 +8376,63 @@ function musicSwap(m) {
   MUS.bus.gain.linearRampToValueAtTime(to, t + (m === "none" ? 0.9 : 2.2));
   if (m !== MUS.mode) {
     /* a mode change never restarts the grid — the new material simply
-       starts landing on the beat the old one was already keeping */
+       starts landing on the beat the old one was already keeping.
+
+       It does restart the PROGRESSION, though, and those are not the
+       same thing. The grid is where the beat is; the progression is
+       where the piece is, and a cue that walks in on bar six has
+       already missed the leap it was written to arrive at. So the bar
+       COUNTER rewinds to the next bar line while the clock underneath
+       it keeps running: no cut, and the chords still start at the
+       beginning. */
+    /* AND IF IT IS CHANGING KEY, IT NEEDS A DOOR TO GO THROUGH.
+
+       Measured across three handovers with a tool written for it: a
+       minor cue giving way to a major one put a C and a C sharp in the
+       air together -- both thirds of A at once -- and the loudest jump
+       in a forty-second render landed exactly on the seam. The cause
+       is a thing that is otherwise right: a pad note is deliberately
+       longer than its bar, so it is still sounding when the next cue's
+       first chord arrives, and now that the two cues are in different
+       keys that overlap is a wrong note instead of a blur.
+
+       Two things fix it, and neither of them is a cut.
+
+       Everything that is holding a note IN THE OLD KEY is let go of
+       first: the chord, the bass, the music box, the sung line, the
+       piano and the voices, all released over 0.28s while the rest
+       carries straight on. It is not only the pad -- the title screen
+       failed this check on its music box alone, which decays for the
+       better part of two seconds and was still playing D major into
+       the opening statement's A minor.
+
+       What does not get released is the floor: sub, air, grind and the
+       warm pedal. Those are an open fifth and a hiss and a rumble,
+       they belong to both keys equally, and they are what makes this a
+       fade rather than a gap. She hears the room the whole way
+       through. The things that left are the things that would have
+       argued.
+
+       And the new cue's first bar is voiced with no third in it. A
+       minor and A major share their root and their fifth and disagree
+       about exactly one note, so a bar of open fifths belongs to both
+       keys at once and is the only chord that can be in the doorway.
+       The third arrives on the second bar, which is a better place for
+       it anyway: that is the moment the light comes on. */
+    const wasWarm = (MODE_FEEL[MUS.mode] || {}).warm === true;
+    const nowWarm = (MODE_FEEL[m] || {}).warm === true;
+    if (wasWarm !== nowWarm && MUS.lay.pad) {
+      MUS.pivot = true;
+      MUS.duck = t + 0.32;
+      MUS_PITCHED.forEach((k) => {
+        const g = MUS.lay[k].gain;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(g.value, t);
+        g.linearRampToValueAtTime(0.0001, t + 0.28);
+      });
+    }
     MUS.mode = m;
+    MUS.barOff = MUS.bar + 1;
     if (m === "night") { MUS.dread = Math.min(MUS.dread, 0.25); }
     else if (m !== "dark") MUS.dread = 0;
   }
@@ -7602,6 +8474,21 @@ function nightMix(feel4, d) {
     brass: fadeIn(d, rush ? 0.28 : 0.38, 0.80) * (grief ? 0.20 : 0.42),
     grind: fadeIn(d, 0.44, 0.86) * (grief ? 0.28 : 0.52),
     bow:   fadeIn(d, 0.60, 0.95) * 0.34,
+    /* THE GROUND MOVES.
+
+       These two are the only layers that are already loud at rest, and
+       that is deliberate: what carries a quiet hour is not a texture,
+       it is a chord changing underneath one. Dread makes them bigger;
+       it does not make them arrive. */
+    /* the sung line. It is the most human thing in the chapter, so it
+       is loudest on the night she is most alone with him and it leaves
+       entirely once something is close enough to matter -- a voice
+       that keeps singing while a thing is at the door is not comfort,
+       it is a soundtrack. */
+    lead:  (rush ? 0.16 : grief ? 0.40 : love ? 0.34 : 0.24)
+             * (1 - fadeIn(d, 0.26, 0.58)),
+    pad:   (grief ? 0.46 : love ? 0.44 : 0.38) + fadeIn(d, 0.20, 0.85) * 0.34,
+    bass:  (rush ? 0.50 : 0.42) + fadeIn(d, 0.15, 0.80) * 0.32,
   };
 }
 
@@ -7630,6 +8517,30 @@ function musicTick(dt) {
   };
   /* which of the four the shift is in tonight */
   const feel4 = nightFeel();
+  /* AND THE DRONES BREATHE WITH IT.
+
+     The phrase arch was put on every note in the score and then
+     measured, and the whole eight bars moved by two per cent. The
+     reason is that most of what she is hearing at any moment is not
+     notes at all — it is sub and air and grind and the warm pedal,
+     four layers that hold a value and never move — so an arch on the
+     melody alone is an arch on a tenth of the sound.
+
+     They ride the phrase too now, on a smooth read of the same curve
+     rather than a step at each bar line, and read at the point in it
+     she is actually HEARING: the scheduler runs most of a second ahead
+     of the speakers, and a swell that arrives before the note it is
+     swelling for is just a fader moving. */
+  const heard = (MUS.bar - MUS.barOff) + (MUS.step & 15) / 16
+                - Math.max(0, MUS.next - now()) / Math.max(0.2, MUS.spb * 4);
+  const swell = 0.25 + archAt(heard) * 0.75;
+  /* while the harmony is being let go of, the mixer keeps its hands
+     off the two layers doing the letting go */
+  const quiet = now() < MUS.duck;
+  const breathe = (k, v) => {
+    if (quiet && MUS_PITCHED.indexOf(k) >= 0) return;
+    set(k, v * (MUS_HOLDS[k] ? swell : 1));
+  };
   if (mode === "night") {
     /* THE NIGHT HAD NO FLOOR, AND THE NIGHT IS THE GAME.
 
@@ -7649,10 +8560,10 @@ function musicTick(dt) {
        and the six frightening layers still arrive in the order they
        always did, on top of something rather than instead of it. */
     const mix = nightMix(feel4, d);
-    MUS_LAYERS.forEach((k) => set(k, mix[k] || 0));
+    MUS_LAYERS.forEach((k) => breathe(k, mix[k] || 0));
   } else {
     const mix = MODE_MIX[mode] || MODE_MIX.menu;
-    MUS_LAYERS.forEach((k) => set(k, mix[k] || 0));
+    MUS_LAYERS.forEach((k) => breathe(k, mix[k] || 0));
   }
 
   /* --- the grid ---------------------------------------------------
@@ -7684,118 +8595,205 @@ function musicTick(dt) {
   while (MUS.next < t0 + MUS_LOOK && guard++ < 64) {
     const t = MUS.next, s = MUS.step & 15;
     if (s === 0) MUS.bar++;
-    if (mode === "night") {
-      /* the heart. Two beats, close together, on one and three */
-      if (d > 0.08) {
-        if (s === 0 || s === 8) heart(t, 52, 0.42 + d * 0.5);
-        if (s === 2 || s === 10) heart(t, 44, 0.28 + d * 0.34);
-      }
-      /* The music box, which now plays from midnight rather than from
-         the first time something frightens her. At rest it is one note
-         every other beat and slow; as dread climbs it fills in. */
-      const dense = d > 0.18 ? 1 : 3;             // every 2nd step, or every 4th
-      if ((s % (2 * dense)) === 0) {
-        const fig = FIG_BARS[MUS.bar & 3];
-        const n = fig[s];
-        boxNote(t, hz(n), 0.10 + d * 0.06, ((MUS.bar + s) % 3 - 1) * 0.5,
-                d > 0.18 ? 1.05 : 2.2);
-      }
-      /* and the piano underneath it while she is still alone with it */
-      if (d < 0.45 && s === 0) {
-        pianoNote(t, hz(FIG[(MUS.bar * 5) % 16] - 12), 0.075, spb * 3.4,
-                  ((MUS.bar % 3) - 1) * 0.35);
-      }
-      /* a clock in the room, all night, which is his deadline ticking */
-      if ((s & 3) === 0 && d < 0.6) tickNote(t, 0.11 - d * 0.08, s === 0);
-      /* and the swell that says something is on its way, before there
-         is anything on a camera to see */
-      if (d > 0.42 && s === 0 && (MUS.bar & 1) === 0) {
-        brassNote(t, hz(-24), 0.06 + d * 0.05, spb * 5.5);
-      }
-      /* the top string, once every two bars, and only when it is bad */
-      if (d > 0.58 && s === 4 && (MUS.bar & 1) === 0) {
-        bowNote(t, hz(12 + (MUS.bar % 3 === 0 ? 8 : 7)), 0.055 + d * 0.05, spb * 3.4);
-      }
-      /* the meter running out gets its own falling note, once a bar */
-      if (G.power < TUNE.power.critical && s === 12) {
-        boxNote(t, hz(-12), 0.10, 0, 1.8);
-      }
-    } else if (feel.theme && feel.theme !== "menu") {
-      const th = feel.theme;
-
-      /* --- the two that count: THE TERMS, and the minute before a
-         night. A tick on every beat and a swell that never gets
-         anywhere, because he is counting and she cannot stop him. --- */
-      if (th === "clock") {
-        if ((s & 3) === 0) tickNote(t, mode === "locked" ? 0.30 : 0.22, s === 0);
-        if ((s & 1) === 0 && mode === "locked") tickNote(t, 0.07, false);
-        if (s === 0 && (MUS.bar & 3) === 0) {
-          brassNote(t, hz(-24 + ((MUS.bar >> 2) & 1 ? 3 : 0)), 0.085, spb * 6.5);
-        }
-        if (s === 0) pianoNote(t, hz(FIG[(MUS.bar * 5) % 16] - 12), 0.075, spb * 3.2, 0);
-        /* and on the last night of the deal, the clock is not alone */
-        if (mode === "brief" && (s === 0 || s === 8)) heart(t, 50, 0.30);
-      }
-
-      /* --- somebody remembering a tune rather than playing one ----- */
-      else if (th === "memory") {
-        const n = THEME_NOTES.memory(s, MUS.bar);
-        if (n) pianoNote(t, hz(n[0]), mode === "gone" ? 0.11 : 0.085, spb * 4.2,
-                         ((MUS.bar % 3) - 1) * 0.4);
-        if (s === 0 && (MUS.bar & 3) === 2) brassNote(t, hz(-24), 0.055, spb * 6);
-      }
-
-      /* --- the void: no phrase at all. One voice, one swell -------- */
-      else if (th === "void") {
-        if (s === 0 && (MUS.bar & 1) === 0) choirNote(t, hz(-12), 0.075, spb * 7);
-        if (s === 8) brassNote(t, hz(-24 - (MUS.bar & 1 ? 0 : 5)), 0.10, spb * 5.5);
-        if (s === 0) bowNote(t, hz(-5), 0.05, spb * 3.6);
-      }
-
-      /* --- and the warm ones, which are the same phrase agreeing
-         with itself for the first time -------------------------------- */
-      else {
-        const n = THEME_NOTES[th] && THEME_NOTES[th](s, MUS.bar);
-        if (n) {
-          const lead = th === "turn" ? 0.115 : th === "morning" ? 0.085 : 0.10;
-          pianoNote(t, hz(n[0] + (th === "turn" ? 12 : 0)), lead, spb * 3.6,
-                    ((s % 3) - 1) * 0.35);
-          n.slice(1).forEach((x, i) => {
-            boxNote(t + stepLen * (i + 1) * 0.5, hz(x), 0.055, -((s % 3) - 1) * 0.35, 2.2);
-          });
-        }
-        if (th === "turn" && s === 0) choirNote(t, hz(WARM[0]), 0.10, spb * 6.5);
-        if (th === "turn" && s === 8 && (MUS.bar & 1) === 0) brassNote(t, hz(-24), 0.075, spb * 5);
-        if (th === "morning" && s === 0 && (MUS.bar & 1) === 0) choirNote(t, hz(0), 0.05, spb * 6);
-        if (th === "letter" && s === 12) boxNote(t, hz(WARM[12] - 12), 0.05, 0, 3.0);
-      }
-    } else {
-      /* --- the menu ------------------------------------------------
-         The same music box, in the major it was written in, played
-         slowly and never quite the same way twice: the phrase moves a
-         step every fourth pass and picks up a second voice a fifth
-         above on every other one, so a long sit on the title screen
-         does not turn into a loop she can predict. */
-      const turn = MUS.bar >> 1;
-      /* every lift has to stay inside A major, because the warm pad is
-         holding an A major triad underneath the whole time. +3 put the
-         phrase in C and set a C natural against the pad's C sharp. */
-      const lift = [0, 0, 5, 0, -3, 0, 7, 0][turn & 7];
-      if ((s & 1) === 0) {
-        const n = WARM[(s + ((turn & 3) === 3 ? 2 : 0)) & 15] + lift;
-        boxNote(t, hz(n), 0.115, ((s % 4) - 1.5) * 0.36, 1.7);
-        /* the answering voice, a beat behind and quieter, like the
-           second comb in a music box */
-        if ((turn & 1) === 0 && (s & 3) === 0) {
-          boxNote(t + stepLen * 1.5, hz(n + 7), 0.052, -((s % 4) - 1.5) * 0.36, 1.5);
-        }
-      }
-      if (s === 0) boxNote(t, hz(-12 + lift), 0.085, 0, 3.0);
-    }
+    /* everything below counts bars from where the current piece of
+       music started, not from where the page loaded */
+    const bar = Math.max(0, MUS.bar - MUS.barOff);
+    musicStep(t, s, bar, spb, stepLen, mode, feel, feel4, d, MUS.pivot);
+    if (MUS.pivot && s === 15 && bar === 0) MUS.pivot = false;
     MUS.step++;
     MUS.next += stepLen;
   }
 }
+
+/* ONE SIXTEENTH OF THE SCORE, AND NOTHING ELSE.
+
+   Pulled out of musicTick so that it is a plain function of the beat it
+   is on rather than of the clock. The game calls it from a lookahead
+   loop on the live context; the offline checks call it in a straight
+   line on a rendering one, which is the only reason anybody can hear
+   this music without playing a whole night to get to it. There is one
+   score in this chapter and both of them are looking at it. */
+function musicStep(t, s, bar, spb, stepLen, mode, feel, feel4, d, pivot) {
+  /* the whole phrase breathes together, or the chords swell under a
+     music box that plays every bar at exactly the same weight and the
+     two of them sound like two pieces of music */
+  const a = arch(bar);
+  /* the doorway bar: the first one after a change of key, voiced with
+     no third so it belongs to the key that is ending and the one that
+     is starting at the same time */
+  const open = !!pivot && bar === 0;
+  if (mode === "night") {
+    /* the heart. Two beats, close together, on one and three */
+    if (d > 0.08) {
+      if (s === 0 || s === 8) heart(t, 52, 0.42 + d * 0.5);
+      if (s === 2 || s === 10) heart(t, 44, 0.28 + d * 0.34);
+    }
+    /* The music box, which now plays from midnight rather than from
+       the first time something frightens her. At rest it is one note
+       every other beat and slow; as dread climbs it fills in. */
+    const dense = d > 0.18 ? 1 : 3;             // every 2nd step, or every 4th
+    if ((s % (2 * dense)) === 0) {
+      const fig = FIG_BARS[bar & 3];
+      const n = fig[s];
+      boxNote(t, hz(n), (0.10 + d * 0.06) * a, ((bar + s) % 3 - 1) * 0.5,
+              d > 0.18 ? 1.05 : 2.2);
+    }
+    /* THE EIGHT BARS, every bar of every hour of every night.
+
+       The music box has been playing a four-bar tune. The chords
+       under it run eight, so the same four bars are heard twice --
+       once over A minor going to F, and again over the same four
+       going somewhere else entirely and landing on a D minor that
+       has not been in the room before. Nothing about the tune
+       changes. Everything about what it means does.
+
+       And the piano, which used to pick a note out of the figure
+       more or less at random, plays the line across the top of the
+       progression instead: one note a bar, seven steps and a leap.
+       That is the thing she will still be humming in the morning. */
+    if (s === 0) {
+      harmonyBar(t, bar, spb, {
+        pad:  0.050 + d * 0.055,
+        bass: 0.085 + d * 0.075,
+        hymn: d < 0.52 ? 0.080 * (1 - fadeIn(d, 0.34, 0.52)) : 0,
+        lead: true,
+        open: open,
+        oct:  -1,
+        pan:  ((bar % 3) - 1) * 0.35,
+      });
+    }
+    /* a clock in the room, all night, which is his deadline ticking */
+    if ((s & 3) === 0 && d < 0.6) tickNote(t, 0.11 - d * 0.08, s === 0);
+    /* and the swell that says something is on its way, before there
+       is anything on a camera to see */
+    if (d > 0.42 && s === 0 && (bar & 1) === 0) {
+      brassNote(t, hz(-24), 0.06 + d * 0.05, spb * 5.5);
+    }
+    /* the top string, once every two bars, and only when it is bad */
+    if (d > 0.58 && s === 4 && (bar & 1) === 0) {
+      bowNote(t, hz(12 + (bar % 3 === 0 ? 8 : 7)), 0.055 + d * 0.05, spb * 3.4);
+    }
+    /* the meter running out gets its own falling note, once a bar */
+    if (G.power < TUNE.power.critical && s === 12) {
+      boxNote(t, hz(-12), 0.10, 0, 1.8);
+    }
+  } else if (feel.theme && feel.theme !== "menu") {
+    const th = feel.theme;
+
+    /* ONE PIECE OF MUSIC, TEN ROOMS.
+
+       Every cue in the chapter now sits on the same eight bars the
+       night sits on — the warm ones in the major, the rest in the
+       minor. That is the whole trick of the score: the morning is
+       not new music, it is the night's music with the light on, and
+       she should half-recognise it before she works out why.
+
+       The hymn — the long line over the top, one note a bar with the
+       leap in the seventh — is saved for the three cues that have
+       earned it: something he wrote, something that got to the door
+       before she did, and six o'clock. */
+    if (s === 0) {
+      const big = th === "letter" || th === "turn" || th === "morning";
+      harmonyBar(t, bar, spb, {
+        major: feel.warm === true,
+        pad:   th === "void" ? 0.095 : 0.072,
+        bass:  0.105,
+        hymn:  big ? (th === "turn" ? 0.125 : th === "letter" ? 0.088 : 0.080) : 0,
+        lead:  true,
+        open:  open,
+        choir: th === "turn" || th === "morning",
+      });
+    }
+
+    /* --- the two that count: THE TERMS, and the minute before a
+       night. A tick on every beat and a swell that never gets
+       anywhere, because he is counting and she cannot stop him. --- */
+    if (th === "clock") {
+      if ((s & 3) === 0) tickNote(t, mode === "locked" ? 0.30 : 0.22, s === 0);
+      if ((s & 1) === 0 && mode === "locked") tickNote(t, 0.07, false);
+      if (s === 0 && (bar & 3) === 0) {
+        brassNote(t, hz(-24 + ((bar >> 2) & 1 ? 3 : 0)), 0.085, spb * 6.5);
+      }
+      if (s === 0) pianoNote(t, hz(FIG[(bar * 5) % 16] - 12), 0.075 * a, spb * 3.2, 0);
+      /* and on the last night of the deal, the clock is not alone */
+      if (mode === "brief" && (s === 0 || s === 8)) heart(t, 50, 0.30);
+    }
+
+    /* --- somebody remembering a tune rather than playing one ----- */
+    else if (th === "memory") {
+      const n = THEME_NOTES.memory(s, bar);
+      if (n) pianoNote(t, hz(n[0]), (mode === "gone" ? 0.11 : 0.085) * a, spb * 4.2,
+                       ((bar % 3) - 1) * 0.4);
+      if (s === 0 && (bar & 3) === 2) brassNote(t, hz(-24), 0.055, spb * 6);
+    }
+
+    /* --- the void: no phrase at all. One voice, one swell -------- */
+    else if (th === "void") {
+      if (s === 0 && (bar & 1) === 0) choirNote(t, hz(-12), 0.075, spb * 7);
+      if (s === 8) brassNote(t, hz(-24 - (bar & 1 ? 0 : 5)), 0.10, spb * 5.5);
+      if (s === 0) bowNote(t, hz(-5), 0.05, spb * 3.6);
+    }
+
+    /* --- and the warm ones, which are the same phrase agreeing
+       with itself for the first time -------------------------------- */
+    else {
+      const n = THEME_NOTES[th] && THEME_NOTES[th](s, bar);
+      if (n) {
+        const lead = th === "turn" ? 0.115 : th === "morning" ? 0.085 : 0.10;
+        pianoNote(t, hz(n[0] + (th === "turn" ? 12 : 0)), lead * a, spb * 3.6,
+                  ((s % 3) - 1) * 0.35);
+        n.slice(1).forEach((x, i) => {
+          boxNote(t + stepLen * (i + 1) * 0.5, hz(x), 0.055 * a, -((s % 3) - 1) * 0.35, 2.2);
+        });
+      }
+      /* the pedal underneath the hymn, every other bar so the two
+         choirs are a chord and not a crowd */
+      if (th === "turn" && s === 0 && (bar & 1) === 0) {
+        choirNote(t, hz(WARM[0] - 12), 0.085, spb * 6.5);
+      }
+      if (th === "turn" && s === 8 && (bar & 1) === 0) brassNote(t, hz(-24), 0.075, spb * 5);
+      if (th === "morning" && s === 0 && (bar & 3) === 0) choirNote(t, hz(-12), 0.05, spb * 6);
+      if (th === "letter" && s === 12) boxNote(t, hz(WARM[12] - 12), 0.05, 0, 3.0);
+    }
+  } else {
+    /* --- the menu ------------------------------------------------
+       The same music box, in the major it was written in, played
+       slowly and never quite the same way twice: the phrase moves a
+       step every fourth pass and picks up a second voice a fifth
+       above on every other one, so a long sit on the title screen
+       does not turn into a loop she can predict.
+
+       THE TITLE SCREEN MODULATES. The lift used to change every two
+       bars against a pad that could not move, so it had to stay
+       inside A major and it landed in the middle of nothing. Now the
+       chords move with it and the key changes on the bar line: two
+       passes of the eight in A, one in D, one back in A. Melody and
+       harmony always agree, because they lift together — thirty-two
+       bars, near enough three minutes, before anything she has
+       already heard comes round again. */
+    const turn = bar >> 1;
+    const key = [0, 0, 5, 0][(bar >> 3) & 3];
+    if (s === 0) {
+      harmonyBar(t, bar, spb, {
+        major: true, lift: key, pad: 0.080, bass: 0.10, lead: true, open: open,
+        /* and once every four passes the long line comes in over the
+           box, so the title is the tune the morning ends on */
+        hymn: ((bar >> 3) & 3) === 3 ? 0.065 : 0,
+      });
+    }
+    if ((s & 1) === 0) {
+      const n = WARM[(s + ((turn & 3) === 3 ? 2 : 0)) & 15] + key;
+      boxNote(t, hz(n), 0.115 * a, ((s % 4) - 1.5) * 0.36, 1.7);
+      /* the answering voice, a beat behind and quieter, like the
+         second comb in a music box */
+      if ((turn & 1) === 0 && (s & 3) === 0) {
+        boxNote(t + stepLen * 1.5, hz(n + 7), 0.052, -((s % 4) - 1.5) * 0.36, 1.5);
+      }
+    }
+    if (s === 0) boxNote(t, hz(-12 + key), 0.085, 0, 3.0);
+  }
+}
+
 
 function musicStop() {
   if (!MUS.ready) return;
@@ -8941,8 +9939,10 @@ function tapeSay(line) {
   TAPE.t0 = perf();
   TAPE.speakT = TAPE.plan.dur + 1.1;
   voxSpeak(TAPE.plan, { gain: 0.9 });
-  /* he gets the room to himself, the way a cue does but for longer */
-  cueDuck(0.42);
+  /* the room-to-himself is voxSpeak's job now: it holds the bed at
+     VOICE_BED for the whole line instead of dipping for a third of a
+     second and handing the score back its full level over the rest of
+     what he is saying */
   const el = EL["ns-tape"];
   if (el) {
     el.hidden = false;
@@ -10639,7 +11639,13 @@ function cineStart() {
   musicMode("film");
   if (stageEl) stageEl.dataset.cine = "1";
   cineCard();
-  cineNext();
+  /* The card is up and the camera is already moving, so this is dead
+     time she is going to spend reading anyway -- which makes it the
+     right place to make sure his first sentence is his. Capped, so a
+     slow connection delays the opening by a moment rather than
+     stopping it. */
+  const first = NS.intro.beats[0] && NS.intro.beats[0].lines[0];
+  voiceWait(first, 2500, () => { if (CINE.on) cineNext(); });
 }
 
 function cineStop(toNight) {
@@ -11906,7 +12912,134 @@ const testHooks = {
           MUS.bus = keepBus; MUS.lay = keepLay;
         },
       };
-      if (CUES[which]) CUES[which]();
+      /* AND THE SCORE ITSELF, PLAYED THE WAY THE GAME PLAYS IT.
+
+         `theme` above renders the tune on one instrument, which
+         answers "is the melody any good" and nothing else. These
+         render the actual cue -- every layer, at that scene's fader
+         positions, through the same musicStep the night runs on -- so
+         "does the chord change land" is a question that can be
+         answered by listening rather than by reading the source.
+
+           score:held      one of his got to the door first
+           score:night@0.8 a shift with something two rooms away
+           score:menu      the title screen                      */
+      if (which.slice(0, 6) === "score:") {
+        const arg  = which.slice(6).split("@");
+        const mode = arg[0];
+        const dr   = arg[1] === undefined ? 0.18 : Number(arg[1]);
+        const keepBus = MUS.bus, keepLay = MUS.lay, keepNodes = MUS.nodes;
+        MUS.bus = AC.createGain(); MUS.bus.gain.value = 1; MUS.bus.connect(cueGain);
+        MUS.lay = {};
+        MUS.nodes = [];
+        const feel4 = mode === "night" ? nightFeel() : "afraid";
+        const mix = mode === "night" ? nightMix(feel4, dr)
+                                     : (MODE_MIX[mode] || MODE_MIX.menu);
+        MUS_LAYERS.forEach((k) => {
+          const g = AC.createGain();
+          g.gain.value = mix[k] || 0;
+          g.connect(MUS.bus); MUS.lay[k] = g;
+        });
+        /* the live mixer rides the held layers on the phrase every
+           frame; offline there are no frames, so write the same curve
+           onto the faders as automation or the render is a flat mix
+           of a score that is not flat */
+        const rideSpb = mode === "night"
+          ? (nightFeel() === "stressed" ? lerp(1.15, 0.50, dr) : lerp(1.30, 0.575, dr))
+          : (MODE_FEEL[mode] || MODE_FEEL.menu).spb;
+        Object.keys(MUS_HOLDS).forEach((k) => {
+          const base = mix[k] || 0;
+          if (!base) return;
+          const g = MUS.lay[k].gain;
+          g.setValueAtTime(base * (0.25 + archAt(0) * 0.75), 0);
+          for (let q = 1; q * rideSpb < (secs || 1.5) + rideSpb; q++) {
+            g.linearRampToValueAtTime(base * (0.25 + archAt(q / 4) * 0.75),
+                                      q * rideSpb);
+          }
+        });
+        /* the drones are started by musicInit on the live context, so
+           the offline graph needs its own copies or the floor is gone */
+        droneLayers();
+        const feel = MODE_FEEL[mode] || MODE_FEEL.menu;
+        const spb = mode === "night"
+          ? (feel4 === "stressed" ? lerp(1.15, 0.50, dr) : lerp(1.30, 0.575, dr))
+          : feel.spb;
+        const stepLen = spb / 4;
+        for (let i = 0; i * stepLen < (secs || 1.5); i++) {
+          const st = i & 15;
+          musicStep(i * stepLen + 0.02, st, i >> 4, spb, stepLen,
+                    mode, feel, feel4, dr);
+        }
+        MUS.bus = keepBus; MUS.lay = keepLay; MUS.nodes = keepNodes;
+      }
+      /* AND THE SEAMS BETWEEN THEM.
+
+         The whole claim of this engine is that it never cuts, and
+         every mechanism for that -- the eased tempo, the 0.55s faders,
+         the 2.2s level ramp, the grid that keeps running through a
+         mode change -- was written before the score had a KEY. A cue
+         handing over to one in the other mode now changes chord and
+         mode on a bar line while the outgoing pad is still sounding,
+         because a pad note is deliberately longer than its bar. That
+         is a new way for this to go wrong and it needs hearing.
+
+           cross:menu>held    the title screen into the turn      */
+      if (which.slice(0, 6) === "cross:") {
+        const arg = which.slice(6).split(">");
+        const A = arg[0], B = arg[1] || "held";
+        const keepBus = MUS.bus, keepLay = MUS.lay, keepNodes = MUS.nodes;
+        MUS.bus = AC.createGain(); MUS.bus.gain.value = 1; MUS.bus.connect(cueGain);
+        MUS.lay = {}; MUS.nodes = [];
+        MUS_LAYERS.forEach((k) => {
+          const g = AC.createGain(); g.gain.value = 0;
+          g.connect(MUS.bus); MUS.lay[k] = g;
+        });
+        droneLayers();
+        const fA = MODE_FEEL[A] || MODE_FEEL.menu, fB = MODE_FEEL[B] || MODE_FEEL.menu;
+        const mA = MODE_MIX[A] || MODE_MIX.menu,  mB = MODE_MIX[B] || MODE_MIX.menu;
+        const spbA = fA.spb || 1.3, spbB = fB.spb || 1.3;
+        const half = (secs || 12) * 0.5;
+        /* the level ramp musicSwap does, 2.2 seconds of it */
+        MUS.bus.gain.setValueAtTime(fA.level, 0);
+        MUS.bus.gain.setValueAtTime(fA.level, half);
+        MUS.bus.gain.linearRampToValueAtTime(fB.level, half + 2.2);
+        let t = 0.02, spb = spbA, bar = 0, step = 0, swapped = false, off = 0;
+        while (t < (secs || 12)) {
+          const s = step & 15;
+          if (s === 0 && step) bar++;
+          if (!swapped && t >= half) {
+            swapped = true;
+            /* exactly what musicSwap does: rewind the progression to
+               the next bar line, leave the grid alone, ease the tempo,
+               and where the key turns, let go of the old chord first */
+            off = bar + 1;
+            const turn = (fA.warm === true) !== (fB.warm === true);
+            MUS_LAYERS.forEach((k) => {
+              const g = MUS.lay[k].gain;
+              const harm = MUS_PITCHED.indexOf(k) >= 0;
+              g.setValueAtTime(g.value, t);
+              if (turn && harm) {
+                g.linearRampToValueAtTime(0.0001, t + 0.28);
+                g.setValueAtTime(0.0001, t + 0.32);
+                g.linearRampToValueAtTime(mB[k] || 0, t + 0.87);
+              } else {
+                g.linearRampToValueAtTime(mB[k] || 0, t + 0.55);
+              }
+            });
+          }
+          if (!swapped && !step) {
+            MUS_LAYERS.forEach((k) => { MUS.lay[k].gain.setValueAtTime(mA[k] || 0, 0); });
+          }
+          const want = swapped ? spbB : spbA;
+          spb += Math.max(-1.4 * (spb / 4), Math.min(1.4 * (spb / 4), want - spb));
+          const m = swapped ? B : A, f = swapped ? fB : fA;
+          const pv = swapped && (fA.warm === true) !== (fB.warm === true);
+          musicStep(t, s, Math.max(0, bar - off), spb, spb / 4, m, f, "afraid", 0.18, pv);
+          t += spb / 4; step++;
+        }
+        MUS.bus = keepBus; MUS.lay = keepLay; MUS.nodes = keepNodes;
+      }
+      else if (CUES[which]) CUES[which]();
       else if (typeof SFX[which] === "function") SFX[which](1, 0);
     } catch (e) { /* put the real context back whatever happens */ }
     const done = ctx.startRendering();
@@ -12048,6 +13181,33 @@ const testHooks = {
   sayClear: () => sayClear(),
   /* the speech path, which this container has no voices for */
   speak: (text) => voxSpeak(voxPlan(text), { gain: 1 }),
+  /* whether there are recordings on this build, and which of them
+     have actually been fetched and decoded */
+  voiceState: () => ({
+    on: VOX_FILE.on,
+    lines: VOX_FILE.map ? Object.keys(VOX_FILE.map).length : 0,
+    ready: Object.keys(VOX_FILE.buf).filter((k) => VOX_FILE.buf[k]),
+    failed: Object.keys(VOX_FILE.buf).filter((k) => VOX_FILE.buf[k] === false),
+  }),
+  voiceWant: (text) => { voiceHas(text); return voiceBuf(text) ? true : false; },
+  /* what the shop is doing while he talks: the level the score is
+     actually sitting at, whether he is still going, and whether the
+     building is being made to wait */
+  bed: () => ({
+    level: sideGain ? sideGain.gain.value : null,
+    talking: voiceBusy(),
+    onTape: !!VOX_FILE.src,
+    deferred: !!sysWaiting,
+    target: VOICE_BED,
+  }),
+  door: () => cueDuck(0.5),
+  bedMode: (m) => musicMode(m),
+  /* which path the last line took, and how many went out as speech
+     because their take had not arrived yet */
+  said: () => ({ took: VOX_FILE.took, late: VOX_FILE.late,
+                 warmed: VOX_FILE.warmed, plays: VOX_FILE.plays,
+                 ready: Object.keys(VOX_FILE.buf).filter((k) => VOX_FILE.buf[k]).length }),
+  announce: (t) => annunciate(t || "DOOR ONE: CLOSED", false),
   voxMark: () => voxMark(),
   speech: () => ({ ok: SPEECH.ok, primed: SPEECH.primed, waiting: !!sysWaiting,
                    voice: SPEECH.voice ? SPEECH.voice.name : null,

@@ -1,0 +1,433 @@
+# GIVE ANWAR A VOICE.
+#
+# The chapter can play a real recording for any line he says, and falls
+# back to the browser's own speech engine for any line that has not got
+# one. This renders all of them, with a neural text-to-speech voice, and
+# commits the result — so the game stops sounding like a phone assistant
+# reading out a calendar and starts sounding like somebody narrating.
+#
+# Run it from the Actions tab: "Anwar's voice" -> Run workflow.
+# It takes about four minutes and needs nothing from you but the click.
+#
+# It has to run here rather than on a developer's machine because the
+# voice model is a 60MB file fetched from the open internet, and the
+# sandbox this repo is usually worked on from cannot reach it.
+name: Anwar's voice
+
+on:
+  # THE BUTTON, once this file is on the default branch. GitHub only
+  # offers "Run workflow" for a workflow it can see on main, so until
+  # this is merged there the push trigger below is how it runs.
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "sample listens to all five voices first. full renders the whole chapter and commits it."
+        default: sample
+        type: choice
+        options: [sample, full]
+      voice:
+        description: "Which voice. en_GB-alan-medium is the documentary-narrator one."
+        default: en_GB-alan-medium
+        type: choice
+        options:
+          - en_GB-alan-medium
+          - en_GB-northern_english_male-medium
+          - en_US-ryan-high
+          - en_GB-semaine-medium
+          - en_US-lessac-high
+      pace:
+        description: "Bigger is slower. 1.0 is the model's own pace; a narrator is slower than that."
+        default: "1.14"
+        type: string
+      variation:
+        description: "How much the delivery moves about. 0.4 is flat, 0.9 is theatrical."
+        default: "0.72"
+        type: string
+      depth:
+        description: "Semitones to drop him by. 0 is the model's own voice, 1.5 is a film trailer."
+        default: "1.0"
+        type: string
+
+  # AND THE WAY TO RUN IT FROM A WORKING BRANCH -- AND ONLY FROM ONE.
+  #
+  # The branch filter is not tidiness. Without it, merging a working
+  # branch into main carries voice/RENDER along with everything else,
+  # which is a push that touches the trigger path, so the whole thing
+  # re-rendered 117 takes ON MAIN and pushed them straight back to it.
+  # Nothing broke -- Piper is slightly stochastic, so it was 117 files
+  # of very slightly different audio saying exactly the same words --
+  # but it spent four minutes and six megabytes of history saying so,
+  # and a workflow that pushes to main on its own because somebody
+  # merged is not a thing anybody asked for.
+  #
+  #
+  # A workflow_dispatch workflow has to exist on the default branch
+  # before GitHub will show it a button -- but a push-triggered one
+  # runs from whatever branch it is on. So touching the marker file
+  # runs this, from here, without anything having to reach main.
+  #
+  # Whatever is in voice/RENDER is read as the settings, which is also
+  # how to change voice without editing this file:
+  #
+  #   echo "full en_US-ryan-high 1.10 0.80" > voice/RENDER
+  #
+  # An empty or unreadable marker just means: sample, the narrator
+  # voice, a narrator's pace.
+  push:
+    branches:
+      - 'claude/**'
+    paths:
+      - voice/RENDER
+
+permissions:
+  contents: write
+
+jobs:
+  speak:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      # One place where the button's inputs and the marker file's
+      # contents become the same four settings, so that nothing below
+      # has to care which way the run was started.
+      - name: What was asked for
+        run: |
+          MODE="${{ inputs.mode }}"; VOICE="${{ inputs.voice }}"
+          PACE="${{ inputs.pace }}"; VAR="${{ inputs.variation }}"
+          if [ -z "$MODE" ] && [ -f voice/RENDER ]; then
+            read -r a b c d e < voice/RENDER || true
+            MODE="$a"; VOICE="$b"; PACE="$c"; VAR="$d"; DEPTH="$e"
+          fi
+          [ -n "$DEPTH" ] || DEPTH="${{ inputs.depth }}"
+          # anything unrecognised falls back rather than failing a run
+          # that somebody is sitting waiting for
+          case "$MODE"  in sample|full) ;; *) MODE=sample ;; esac
+          case "$VOICE" in en_*) ;; *) VOICE=en_GB-alan-medium ;; esac
+          case "$PACE"  in [0-9].[0-9][0-9]|[0-9].[0-9]) ;; *) PACE=1.14 ;; esac
+          case "$VAR"   in [0-9].[0-9][0-9]|[0-9].[0-9]) ;; *) VAR=0.72 ;; esac
+          case "$DEPTH" in [0-9].[0-9]|[0-9]) ;; *) DEPTH=1.0 ;; esac
+          { echo "MODE=$MODE"; echo "VOICE=$VOICE"; echo "PACE=$PACE";
+            echo "VARIATION=$VAR"; echo "DEPTH=$DEPTH"; } >> "$GITHUB_ENV"
+          echo "mode=$MODE  voice=$VOICE  pace=$PACE  variation=$VAR  depth=$DEPTH"
+
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+
+      - name: The things that turn text into a person
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet piper-tts
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      # THE NARRATOR CHAIN.
+      #
+      # Piper gives you a clean, correct read and nothing else. What
+      # separates that from a voice in a film is not the engine, it is
+      # the four things every broadcast chain does to a man in front of
+      # a microphone, and none of them are "turn it down and add
+      # reverb":
+      #
+      #   the drop      DEPTH semitones lower, by resampling and then
+      #                 putting the tempo back. A semitone is about as
+      #                 far as you can take a neural voice before the
+      #                 formants go with it and he stops sounding like
+      #                 a large man and starts sounding like a slowed
+      #                 tape -- which is exactly the mistake this
+      #                 chapter already made once, in the other
+      #                 direction, by dropping the browser voice's
+      #                 pitch to 0.65.
+      #   the chest     +3.5dB below 130Hz, where the size of a person
+      #                 is, and a 2dB scoop at 380 where the boxiness
+      #                 of a small room is. Together those are most of
+      #                 what "deep" actually means: it is as much about
+      #                 what is taken out as what is added.
+      #   the edge      +2.5dB at 3.2kHz so that the consonants survive
+      #                 being under a music cue. A deep voice with no
+      #                 top is a mumble.
+      #   the hold      a slow compressor, 3:1, so the quiet ends of
+      #                 his sentences come up to meet the loud
+      #                 beginnings. This is the one people hear as
+      #                 "professional" without being able to name it --
+      #                 an untreated read has a 20dB range and a
+      #                 narrator has about 8.
+      #
+      # Then loudnorm, so no line is louder than the one before it.
+      # The game adds its own room on top; none of this tries to.
+      - name: Write the narrator chain
+        run: |
+          cat > /tmp/chain.py <<'CHAIN'
+          import subprocess
+
+          def source_rate(src):
+              """THE ONE NUMBER THAT CANNOT BE ASSUMED.
+
+              asetrate works by relabelling the samples with a new rate,
+              so it is only a pitch shift relative to the rate they were
+              actually recorded at. The first version of this chain
+              hardcoded 24000 -- and Piper's medium voices are 22050, so
+              asking for a semitone DOWN relabelled a 22050 file as
+              22654 and shifted it half a semitone UP, which is exactly
+              what a pitch measurement of the result showed: 96.8Hz
+              became 99.6Hz on every line. The tempo correction then ran
+              the wrong way on top of it and the read came out six per
+              cent quick as well."""
+              out = subprocess.run(
+                  ['ffprobe', '-v', 'error', '-select_streams', 'a:0',
+                   '-show_entries', 'stream=sample_rate', '-of', 'csv=p=0', src],
+                  capture_output=True)
+              try: return int(out.stdout.decode().strip())
+              except Exception: return 22050
+
+          def narrate(src, dst, depth, rate=24000):
+              """the four things, in the order a desk would do them"""
+              ratio = 2 ** (-float(depth) / 12.0)     # semitones -> playback ratio
+              af = []
+              if abs(1 - ratio) > 0.001:
+                  # relabel against the rate the file really has, resample
+                  # back to the output rate, then put the duration back.
+                  # atempo is capped at 2.0 per stage; nothing here is near it.
+                  src_rate = source_rate(src)
+                  af.append("asetrate=%d" % int(round(src_rate * ratio)))
+                  af.append("aresample=%d" % rate)
+                  af.append("atempo=%.6f" % (1.0 / ratio))
+              af += [
+                  "equalizer=f=130:t=q:w=0.9:g=3.5",      # chest
+                  "equalizer=f=380:t=q:w=1.1:g=-2.0",     # box out of the room
+                  "equalizer=f=3200:t=q:w=1.2:g=2.5",     # consonants
+                  "acompressor=threshold=-21dB:ratio=3:attack=12:release=260:makeup=2",
+                  # trim the silence Piper leaves, then give it back a
+                  # measured amount so every line starts the same way
+                  "silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.1",
+                  "areverse",
+                  "silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.1",
+                  "areverse",
+                  "adelay=180:all=1",
+                  "apad=pad_dur=0.35",
+                  "loudnorm=I=-18:TP=-2:LRA=9",
+              ]
+              subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", src,
+                              "-af", ",".join(af), "-ac", "1", "-ar", str(rate),
+                              "-b:a", "64k", dst], check=True)
+          CHAIN
+          python -c "import ast,sys; ast.parse(open('/tmp/chain.py').read())" && echo "chain ok"
+
+      # --- PICK ONE BY EAR ------------------------------------------
+      # Five voices, four lines each: his first words to her, a line
+      # from the middle of a night, the one with the knife in it, and
+      # six o'clock. Nothing is committed — the result comes back as a
+      # download at the bottom of the run. Listen, then run this again
+      # with mode=full and the one you want.
+      - name: Fetch all five
+        if: env.MODE == 'sample'
+        run: |
+          for v in en_GB-alan-medium en_GB-northern_english_male-medium \
+                   en_US-ryan-high en_GB-semaine-medium en_US-lessac-high; do
+            python -m piper.download_voices "$v" --data-dir voices || echo "could not get $v"
+          done
+          ls -la voices
+
+      - name: Let each of them try
+        if: env.MODE == 'sample'
+        run: |
+          mkdir -p samples
+          node tools/voicesheet.js --json > /tmp/lines.json
+          python - <<'PY'
+          import json, os, subprocess, sys, glob
+          exec(open('/tmp/chain.py').read())
+          lines = json.load(open('/tmp/lines.json'))
+          # the four that decide whether a voice can carry this chapter
+          want = ['intro-1-2', 'tape1-10', 'reveal-4', 'tape6-13']
+          for model in sorted(glob.glob('voices/*.onnx')):
+              name = os.path.basename(model)[:-5]
+              for lid in want:
+                  if lid not in lines: continue
+                  raw = '/tmp/s.wav'
+                  p = subprocess.run(
+                      [sys.executable, '-m', 'piper', '-m', model, '-f', raw,
+                       '--length-scale', os.environ['PACE'],
+                       '--noise-scale', os.environ['VARIATION'],
+                       '--noise-w', '0.85', '--sentence-silence', '0.55'],
+                      input=lines[lid].encode('utf-8'), capture_output=True)
+                  if p.returncode: print('failed', name, lid); continue
+                  narrate(raw, 'samples/%s__%s.mp3' % (name, lid), os.environ['DEPTH'])
+              print('sampled', name)
+          PY
+          ls samples
+
+      # BOTH WAYS BACK.
+      #
+      # The artifact is the convenient one if you are looking at this
+      # in a browser. It is also served from a storage host that some
+      # networks cannot reach -- including the one this repo is worked
+      # on from, which could not fetch its own samples -- so they are
+      # committed as well. They are small, they live under voice/ where
+      # the game ignores them, and the next full render deletes them.
+      - uses: actions/upload-artifact@v4
+        if: env.MODE == 'sample'
+        with:
+          name: voice-samples
+          path: samples
+
+      - name: Leave them where anybody can reach them
+        if: env.MODE == 'sample'
+        run: |
+          rm -rf voice/_samples
+          mkdir -p voice/_samples
+          cp samples/*.mp3 voice/_samples/
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add voice/_samples
+          git diff --cached --quiet && { echo "same samples as last time"; exit 0; }
+          git commit -m "Five voices, four lines each, for picking by ear
+
+          Nothing is wired up yet. These are here to be listened to.
+          Put the winner in voice/RENDER and push, and the whole
+          chapter gets rendered in it."
+          # PUSHING INTO A BRANCH SOMEBODY ELSE IS ALSO WORKING ON.
+          #
+          # This takes four minutes, and four minutes is plenty of time
+          # for a commit to land on the branch it checked out from. The
+          # first full render produced all 117 takes, committed them,
+          # and then had the push rejected because a tool had been
+          # pushed to the same branch while it worked -- so the audio
+          # existed for about a second and then went in the bin with
+          # the runner.
+          #
+          # Rebase onto whatever arrived, then push; and if something
+          # lands in the gap between those two, do it again. Rebase
+          # rather than merge because these commits are only ever new
+          # files and there is nothing for them to conflict with.
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin "${{ github.ref_name }}" || true
+            git push origin HEAD:"${{ github.ref_name }}" && break
+            echo "push rejected, attempt $attempt; someone got in first"
+            sleep 5
+          done
+
+
+      # --- OR RENDER THE LOT ----------------------------------------
+      - name: Fetch the voice
+        if: env.MODE == 'full'
+        run: |
+          python -m piper.download_voices "$VOICE" --data-dir voices
+          ls -la voices
+
+      - name: Work out what he has to say
+        if: env.MODE == 'full'
+        run: |
+          node tools/voicesheet.js --json > /tmp/lines.json
+          python - <<'PY'
+          import json
+          d = json.load(open('/tmp/lines.json'))
+          print(len(d), 'lines,', sum(len(v.split()) for v in d.values()), 'words')
+          PY
+
+      - name: Say all of it
+        if: env.MODE == 'full'
+        run: |
+          mkdir -p voice
+          python - <<'PY'
+          import json, os, subprocess, sys
+
+          exec(open('/tmp/chain.py').read())
+          lines = json.load(open('/tmp/lines.json'))
+          model = os.path.join('voices', os.environ['VOICE'] + '.onnx')
+          pace  = os.environ['PACE']
+          var   = os.environ['VARIATION']
+
+          # THE THREE KNOBS, AND WHY THESE VALUES.
+          #
+          #   length_scale  how fast he talks. The models are trained on
+          #                 read speech at about 165 words a minute; a
+          #                 narrator in a film is nearer 140. 1.14 gets
+          #                 there without the drawl you get past 1.25.
+          #   noise_scale   how much the delivery varies from the mean.
+          #                 At 0 every sentence has the same contour,
+          #                 which is the flat news-reader sound. Too high
+          #                 and he sounds unwell.
+          #   noise_w       variation in how long each phoneme is held.
+          #                 This is the one that stops it sounding metered.
+          ok = 0
+          for i, (lid, text) in enumerate(sorted(lines.items())):
+              raw = os.path.join('/tmp', lid + '.wav')
+              p = subprocess.run(
+                  [sys.executable, '-m', 'piper', '-m', model, '-f', raw,
+                   '--length-scale', pace, '--noise-scale', var, '--noise-w', '0.85',
+                   # he pauses between sentences like a man choosing the
+                   # next one, not like a list being read out
+                   '--sentence-silence', '0.55'],
+                  input=text.encode('utf-8'), capture_output=True)
+              if p.returncode or not os.path.exists(raw):
+                  print('FAILED', lid, p.stderr.decode()[-300:]); continue
+
+              # A LITTLE ROOM AT EACH END, then normalise so no line is
+              # noticeably louder than the one before it, then down to a
+              # mono mp3 because this is speech and it has to live in a
+              # git repository. The game puts it through the tape itself,
+              # so nothing here should try to add character — this stage
+              # only has to be clean and even.
+              narrate(raw, os.path.join('voice', lid + '.mp3'), os.environ['DEPTH'])
+              ok += 1
+              if ok % 20 == 0: print(ok, 'done')
+          print('rendered', ok, 'of', len(lines))
+          if ok < len(lines) * 0.95:
+              raise SystemExit('too many failures to be worth committing')
+          PY
+
+      - name: Write the manifest
+        if: env.MODE == 'full'
+        run: |
+          # the manifest stores the WORDS, so a line that gets rewritten
+          # later falls back to the synthesiser instead of playing a take
+          # of the old words under a caption of the new ones
+          node tools/voicesheet.js --json > voice/manifest.json
+          rm -f voice/manifest.example.json
+          rm -rf voice/_samples
+          du -sh voice
+          ls voice | head -5
+
+      - name: Hand it back
+        if: env.MODE == 'full'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add voice
+          git diff --cached --quiet && { echo "nothing changed"; exit 0; }
+          git commit -m "Anwar has a voice: $VOICE at $PACE
+
+          Rendered by .github/workflows/voice.yml. Every line he says out
+          loud, as audio, so the chapter stops handing its most personal
+          writing to whatever assistant voice the player's phone happens
+          to ship with.
+
+          The game plays these through its own audio graph — ducked for a
+          door, under the score, and through the tape — which is the part
+          the browser's speech engine could never do."
+          # PUSHING INTO A BRANCH SOMEBODY ELSE IS ALSO WORKING ON.
+          #
+          # This takes four minutes, and four minutes is plenty of time
+          # for a commit to land on the branch it checked out from. The
+          # first full render produced all 117 takes, committed them,
+          # and then had the push rejected because a tool had been
+          # pushed to the same branch while it worked -- so the audio
+          # existed for about a second and then went in the bin with
+          # the runner.
+          #
+          # Rebase onto whatever arrived, then push; and if something
+          # lands in the gap between those two, do it again. Rebase
+          # rather than merge because these commits are only ever new
+          # files and there is nothing for them to conflict with.
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin "${{ github.ref_name }}" || true
+            git push origin HEAD:"${{ github.ref_name }}" && break
+            echo "push rejected, attempt $attempt; someone got in first"
+            sleep 5
+          done
+

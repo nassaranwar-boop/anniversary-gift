@@ -4078,6 +4078,46 @@ img{-webkit-user-drag:none; user-select:none;}
   animation:rsUp .42s ease-in-out infinite;
 }
 @keyframes rsUp{ 50%{ transform:scale(1.03); } }
+/* the break-free face, for when Death has him off the floor */
+.rs-pad .rs-key-break{ display:none; }
+.rs-pad-break .rs-key-block,
+.rs-pad-break .rs-key-dodge,
+.rs-pad-break .rs-key-strike,
+.rs-pad-break .rs-key-up{ display:none; }
+.rs-pad-break .rs-key-break{
+  display:flex; flex:1 1 auto; max-width:420px;
+  background:linear-gradient(180deg,#8a2c3c,#4a1421); color:#ffd9de;
+  box-shadow:inset 0 0 0 2px rgba(255,107,107,.6), inset 0 2px 0 rgba(255,255,255,.18), 0 5px 12px rgba(0,0,0,.5);
+  animation:rsUp .3s ease-in-out infinite;
+}
+
+/* ---- A BARK ----
+   Four words over somebody's head. It is not the dialogue panel and it
+   must not look like one: no name, no arrow, nothing to press, and it
+   takes itself away. It sits high in the stage so it never lands on the
+   two of them or on the cue. */
+.rs-bark{
+  position:absolute; left:50%; top:6cqh; transform:translateX(-50%) translateY(-6px);
+  z-index:10; pointer-events:none; opacity:0;
+  padding:1.1cqw 2.6cqw; border-radius:.8cqw; white-space:nowrap;
+  font-family:'Press Start 2P',monospace; font-size:2.1cqw; letter-spacing:.06em;
+  background:rgba(12,8,18,.82); color:#fff3e2;
+  box-shadow:inset 0 0 0 .25cqw rgba(255,255,255,.14);
+}
+.rs-bark.on{ animation:rsBark 1.7s ease forwards; }
+@keyframes rsBark{
+  0%{ opacity:0; transform:translateX(-50%) translateY(-2px) scale(.9); }
+  9%{ opacity:1; transform:translateX(-50%) translateY(-6px) scale(1); }
+  78%{ opacity:1; }
+  100%{ opacity:0; transform:translateX(-50%) translateY(-10px); }
+}
+.rs-bark-death{  color:#cfe0f0; box-shadow:inset 0 0 0 .25cqw rgba(95,127,160,.55); }
+.rs-bark-anwar{  color:#ffeccd; box-shadow:inset 0 0 0 .25cqw rgba(200,160,106,.55); }
+.rs-bark-ouissy{ color:#ffe6f0; box-shadow:inset 0 0 0 .25cqw rgba(255,158,196,.6); }
+@media (prefers-reduced-motion: reduce){
+  .rs-bark.on{ animation:none; opacity:1; }
+}
+
 /* the game's own pad stands down while the fight's is up */
 #screen-ouissy.so-fighting .so-pad{ display:none !important; }
 /* Upright phone: pinned to the bottom, exactly where the game's pad is —
