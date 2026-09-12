@@ -2645,6 +2645,19 @@ img{-webkit-user-drag:none; user-select:none;}
   .sb-vid-artist{font-size:9.5px;}
   .sb-vid-play{width:42px; height:42px;}
   .sb-vid-meta{left:8px; right:8px; bottom:7px;}
+
+  /* The column is narrow, so these two came down to 38 and 42 -- which looks
+     right in it and is under a thumb. They keep the size they look and carry
+     the target a thumb needs, the same trick the map's studs use. Neither has
+     a neighbour within 44px, so the two targets cannot reach each other. */
+  @media (hover:none){
+    .sb-song-play, .sb-vid-play{position:relative;}
+    .sb-song-play::after, .sb-vid-play::after{
+      content:""; position:absolute; left:50%; top:50%;
+      width:max(100%, 44px); height:max(100%, 44px);
+      transform:translate(-50%, -50%);
+    }
+  }
 }
 
 /* =========================================================
@@ -4454,9 +4467,19 @@ img{-webkit-user-drag:none; user-select:none;}
     }
   }
   .so-key-duck{
+    position:relative;
     width:clamp(34px, calc(var(--app-h) * .112), 46px);
     height:clamp(34px, calc(var(--app-h) * .112), 46px);
     border-radius:12px; font-size:clamp(11px, calc(var(--app-h) * .038), 15px);
+  }
+  /* duck is the key she presses least, so it stays the smallest thing on the
+     pad -- 38px on a 340px window. The thumb gets 44 anyway. It sits 9px from
+     the key beside it, so the slop is three pixels and the nearer centre
+     still wins. */
+  .so-key-duck::after{
+    content:""; position:absolute; left:50%; top:50%;
+    width:max(100%, 44px); height:max(100%, 44px);
+    transform:translate(-50%, -50%);
   }
   .so-key.held, .so-key:active{opacity:1;}
 }
@@ -5006,8 +5029,10 @@ img{-webkit-user-drag:none; user-select:none;}
    it. They are also quieter: a control you rest a thumb on does not need
    to be as loud as the thing you are trying to look at. */
 .ap-stick{
+  --stick:116px;
   position:absolute; left:22%; top:70%;
-  width:116px; height:116px; margin:-58px 0 0 -58px;
+  width:var(--stick); height:var(--stick);
+  margin:calc(var(--stick) / -2) 0 0 calc(var(--stick) / -2);
   pointer-events:none; opacity:0; transition:opacity .18s ease;
 }
 .ap-touch[aria-hidden="false"] .ap-stick.live{opacity:1;}
@@ -5018,7 +5043,7 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .ap-stick-knob{
   position:absolute; left:50%; top:50%;
-  width:52px; height:52px;
+  width:calc(var(--stick) * .4483); height:calc(var(--stick) * .4483);
   margin:0; border-radius:50%;
   transform:translate(-50%,-50%);
   border:1px solid rgba(240,181,103,.45);
@@ -5031,7 +5056,8 @@ img{-webkit-user-drag:none; user-select:none;}
      it and a touch lower, the way a thumb rolls off the main button onto
      the modifier. Reversed rather than reordered in the markup, so the
      tab order is still the order they matter in. */
-  display:flex; flex-direction:row-reverse; align-items:flex-end; gap:16px;
+  display:flex; flex-direction:row-reverse; align-items:flex-end;
+  gap:var(--act-gap, 16px);
   pointer-events:auto;
   padding-bottom:env(safe-area-inset-bottom, 0px);
 }
@@ -5050,7 +5076,8 @@ img{-webkit-user-drag:none; user-select:none;}
    can be hit without looking down. */
 .ap-pad{display:none;}
 .ap-dpad{
-  position:relative; width:168px; height:168px; border-radius:50%;
+  --pad:168px;
+  position:relative; width:var(--pad); height:var(--pad); border-radius:50%;
   background:
     radial-gradient(circle at 50% 50%, rgba(150,180,240,.045) 0 62%, transparent 63%),
     rgba(7,11,21,.42);
@@ -5058,36 +5085,42 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 /* the ring's own quarters, so the thumb can feel where the edges are */
 .ap-dpad::before{
-  content:""; position:absolute; inset:19px; border-radius:50%;
+  content:""; position:absolute; inset:calc(var(--pad) * .1131); border-radius:50%;
   box-shadow:inset 0 0 0 1px rgba(168,192,240,.10);
   pointer-events:none;
 }
 .ap-key{
-  position:absolute; width:66px; height:66px; border:0; background:transparent;
+  position:absolute;
+  width:calc(var(--pad) * .3929); height:calc(var(--pad) * .3929);
+  border:0; background:transparent;
   cursor:pointer; -webkit-tap-highlight-color:transparent;
 }
 .ap-key::before{                                  /* the face that lights */
-  content:""; position:absolute; inset:5px; border-radius:50%;
+  content:""; position:absolute; inset:calc(var(--pad) * .0758); border-radius:50%;
   background:transparent; transition:background .10s ease;
 }
 .ap-key::after{                                   /* the arrow */
   content:""; position:absolute; left:50%; top:50%; width:0; height:0;
-  border:10px solid transparent; border-bottom-color:rgba(196,214,246,.80);
+  border:calc(var(--pad) * .0595) solid transparent;
+  border-bottom-color:rgba(196,214,246,.80);
   transform:translate(-50%,-62%);
 }
-.ap-key-up{left:51px; top:0;}
-.ap-key-down{left:51px; top:102px; transform:rotate(180deg);}
-.ap-key-left{left:0; top:51px; transform:rotate(-90deg);}
-.ap-key-right{left:102px; top:51px; transform:rotate(90deg);}
+.ap-key-up{left:calc(var(--pad) * .3036); top:0;}
+.ap-key-down{left:calc(var(--pad) * .3036); top:calc(var(--pad) * .6071); transform:rotate(180deg);}
+.ap-key-left{left:0; top:calc(var(--pad) * .3036); transform:rotate(-90deg);}
+.ap-key-right{left:calc(var(--pad) * .6071); top:calc(var(--pad) * .3036); transform:rotate(90deg);}
 .ap-key:active::before{background:rgba(240,181,103,.16);}
 .ap-key:active::after{border-bottom-color:#ffdcaa;}
 .ap-dpad-hub{
-  position:absolute; left:63px; top:63px; width:42px; height:42px; border-radius:50%;
+  position:absolute;
+  left:calc(var(--pad) * .375); top:calc(var(--pad) * .375);
+  width:calc(var(--pad) * .25); height:calc(var(--pad) * .25);
+  border-radius:50%;
   box-shadow:inset 0 0 0 1px rgba(168,192,240,.16);
   pointer-events:none;
 }
 
-.ap-actions{display:flex; align-items:center; gap:16px;}
+.ap-actions{display:flex; align-items:center; gap:var(--act-gap, 16px);}
 .ap-act{
   border-radius:50%; border:1px solid rgba(168,192,240,.20);
   background:rgba(7,11,21,.30); color:#cfdcf6;
@@ -5098,12 +5131,14 @@ img{-webkit-user-drag:none; user-select:none;}
              transform .09s ease;
 }
 .ap-act-use{
-  width:104px; height:104px; font-size:12px;
+  width:var(--act-use, 104px); height:var(--act-use, 104px);
+  font-size:calc(var(--act-use, 104px) * .1154);
   color:#ffdcaa; border-color:rgba(240,181,103,.42);
   background:rgba(240,181,103,.07);
 }
 .ap-act-sneak{
-  width:80px; height:80px; font-size:10px;
+  width:var(--act-sneak, 80px); height:var(--act-sneak, 80px);
+  font-size:calc(var(--act-sneak, 80px) * .125);
 }
 .ap-act:active{
   transform:scale(.95);
@@ -6830,6 +6865,61 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-pad[data-mode="slide"] .rc-key-drift{width:max(52px, 14cqh); height:max(52px, 14cqh);}
   .rc-pad[data-mode="slide"] .rc-key-sm{width:max(44px, 8cqh); height:max(44px, 8cqh);}
   .rc-pad-cluster{gap:min(1.6cqw, 2.6cqh); padding:min(1.4cqh,1.4cqh) min(1.6cqw,2.2cqh);}
+
+  /* THE MENU HAD TO END ABOVE THE GLASS AND DID NOT.
+
+     Its buttons carry a 14px padding floor so they clear a thumb without a
+     min-height, and on a laptop that is right. On a phone held sideways the
+     stage is the whole screen, five rows of that floor come to 227 points of
+     a 390 point screen, and the difficulty picker under them started at 360
+     and ran to 415 -- twenty-five points below the bottom of the phone, with
+     no scroll to reach it because the stage is overflow:hidden. She could
+     not pick a difficulty at all.
+
+     So here the floor comes off the painted box and moves to an invisible
+     target: the button is 31px of pink and 44px of thumb, the column loses
+     58 points, and everything in the menu ends on screen. The target is
+     centred, and the gap between rows is wider than the 6px of slop it adds,
+     so no two targets meet. */
+  .rc-menu{gap:.9cqh;}
+  .rc-btn{padding:max(9px, 1.8cqh) max(14px, 5cqw);}
+  .rc-btn-s{padding:max(9px, 1.4cqh) max(11px, 3.4cqw);}
+  .rc-dbtn{padding:max(8px, 1cqh) max(10px, 2.2cqw);}
+  .rc-quit{padding:max(8px, .9cqh) max(10px, 2cqw);}
+  @media (hover:none){
+    .rc-btn, .rc-btn-s, .rc-dbtn, .rc-quit{position:relative;}
+    .rc-btn::after, .rc-btn-s::after, .rc-dbtn::after, .rc-quit::after{
+      content:""; position:absolute; left:50%; top:50%;
+      width:max(100%, 44px); height:max(100%, 44px);
+      transform:translate(-50%, -50%);
+    }
+  }
+
+  /* THE APOCALYPSE PAD WAS THE LAST ONE STILL IN FIXED PIXELS.
+
+     A 168px ring of arrows, a 116px stick and a 104px USE button are a
+     quarter of a 440px-tall screen each -- the same numbers that look
+     right over an iPad's 672. Every part of them now comes off one
+     length, so asking for a smaller pad here moves the arrows, the
+     hub, the arrowheads and the knob with it. The shares are the ones
+     they hold on an iPad, so the phone gets the same control, smaller.
+     Nothing drops under a thumb: the arrow keys land at 45px and USE
+     at 77px, both over Apple's 44. */
+  .ap-dpad{--pad:min(168px, 26cqh);}
+  .ap-stick{--stick:min(116px, 18cqh);}
+  .ap-touch{--act-use:min(104px, 16cqh); --act-sneak:min(80px, 12cqh); --act-gap:min(16px, 2.6cqh);}
+  .ap-touch .ap-act-sneak{margin-bottom:min(6px, 1cqh);}
+
+  /* the hunt's top bar took 74 of 440 -- a sixth of the picture -- because
+     its padding is a share of the WIDTH, and the width is the one thing a
+     landscape phone has plenty of.
+
+     The 12px is not slack. Its chips are 26px tall and carry an invisible
+     44px target centred on them, so a chip whose middle sits less than 22px
+     from the top of the screen has half that target off the screen -- which
+     is what taking the padding all the way down did, and what buttons.js
+     failed on. Twelve keeps the whole target on the glass. */
+  .hv-top{padding:max(12px, min(2.5%, 1.5cqh)) 2.5%;}
 }
 
 /* 360, not 400: at 375px and up the full-size buttons fit the stage with
@@ -6840,10 +6930,13 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-menu-row{gap:1cqw;}
   .rc-diff{gap:.3cqh;}
   .rc-tag{line-height:1.5; margin-bottom:.3cqh;}
-  .rc-btn{padding:max(12px, 1.4cqh) max(12px, 4cqw);}
-  .rc-btn-s{padding:max(12px, 1.1cqh) max(10px, 3cqw);}
-  .rc-dbtn{padding:max(12px, 1cqh) max(10px, 2.2cqw);}
-  .rc-quit{padding:max(11px, .9cqh) max(10px, 2cqw);}
+  /* 340 points is the tightest screen she can hold, and the column above
+     still has to end above the glass. Eight, with the same 44px target the
+     wider landscape block hands every one of these. */
+  .rc-btn{padding:max(8px, 1.4cqh) max(12px, 4cqw);}
+  .rc-btn-s{padding:max(8px, 1.1cqh) max(10px, 3cqw);}
+  .rc-dbtn{padding:max(7px, 1cqh) max(10px, 2.2cqw);}
+  .rc-quit{padding:max(7px, .9cqh) max(10px, 2cqw);}
 }
 
 @media (prefers-reduced-motion: reduce){

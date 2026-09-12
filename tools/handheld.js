@@ -205,7 +205,18 @@ const TINY = () => {
         const d=document.getElementById('sb-drawer'); if(!d) return null;
         return { over: d.scrollHeight - d.clientHeight };
       });
-      ok(`${tag} / drawer: it fits without scrolling`, dr && dr.over <= 2, dr ? dr.over+'px over' : '-');
+      /* A LANDSCAPE PHONE'S DRAWER SCROLLS ON PURPOSE.
+         It is a narrow column down the left of the screen -- five keepsakes
+         one under another -- because that is the shape he asked for and the
+         shape it has on an iPad. Five of them do not fit in 375 points of
+         height and nothing sensible makes them, so it scrolls, and check()
+         below still has to reach every control inside it. What is worth
+         guarding is that it never grows past a screenful of scroll, which is
+         where a column stops feeling like a column. Everywhere else -- a tall
+         phone, an iPad -- it still has to fit outright. */
+      const slack = (h < 561 && w > h) ? h : 2;
+      ok(`${tag} / drawer: it scrolls no more than a screen`,
+         dr && dr.over <= slack, dr ? dr.over+'px over (allowed '+slack+')' : '-');
       await check('drawer');
       await p.evaluate(()=>{
         const s = document.getElementById('screen-scrapbook');
