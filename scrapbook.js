@@ -4557,7 +4557,17 @@ window.Scrapbook = (function () {
          and the fewer of them there are the more each one shows. The
          tuner below still takes them away on a device that cannot afford
          them. */
-      stripPref = small ? 13 : 18;
+      /* START LOW ON A PHONE AND LET IT CLIMB.
+
+         The tuner below moves in both directions -- it takes strips away
+         when a settle runs slow and adds them back when one runs fast --
+         but it can only do that AFTER a turn has been measured. Starting
+         at thirteen meant the first turns on a slow phone were the worst
+         ones she would ever see, which are also the ones that decide
+         whether the book feels good. Starting at eleven costs almost
+         nothing to look at, and a phone that can afford more is handed
+         more within a couple of turns. */
+      stripPref = small ? 11 : 18;
     }
     return stripPref;
   }

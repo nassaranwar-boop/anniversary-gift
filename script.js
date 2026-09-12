@@ -3643,6 +3643,19 @@ function stones(ctx, W, y, count, tones, rnd) {
 
 /* A paper lantern on a wire: the light source the whole right-hand path
    is lit by, so it is one function rather than eight copies. */
+/* TWO COLOURS AND A RATIO.
+
+   Used by every scene that has to move through its own evening. Kept
+   here rather than inside one of them because three copies of a colour
+   mixer is how three scenes end up drifting apart. */
+function hvMix(a, b, u) {
+  var pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  var r = Math.round((pa >> 16) + (((pb >> 16) - (pa >> 16)) * u));
+  var g = Math.round(((pa >> 8) & 255) + ((((pb >> 8) & 255) - ((pa >> 8) & 255)) * u));
+  var bl = Math.round((pa & 255) + (((pb & 255) - (pa & 255)) * u));
+  return "#" + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
+}
+
 function lanternAt(ctx, x, y) {
   /* The glow first, in rings, so the light falls off instead of being a
      flat rectangle over the paper — this is the only light source on the
@@ -3878,13 +3891,7 @@ const HV_SCENES = {
      and if she stands here reading, it is evening by the time she goes. */
   sunset(ctx, rnd, extra, step) {
     var k = (step || 0) / 3;                       /* 0 = still up, 1 = gone */
-    function mix(a, b, u) {                        /* two "#rrggbb" and a ratio */
-      var pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
-      var r = Math.round((pa >> 16) + (((pb >> 16) - (pa >> 16)) * u));
-      var g = Math.round(((pa >> 8) & 255) + ((((pb >> 8) & 255) - ((pa >> 8) & 255)) * u));
-      var bl = Math.round((pa & 255) + (((pb & 255) - (pa & 255)) * u));
-      return "#" + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
-    }
+    var mix = hvMix;
     ditherSky(ctx, 0, 0, PXW, PXH, [
       { p: 0.00, c: mix("#33306a", "#14132e", k) },
       { p: 0.16, c: mix("#514585", "#221d44", k) },
@@ -4097,31 +4104,62 @@ const HV_SCENES = {
   },
 
   /* 7. the night orchard — the red butterfly's way, low and close and warm */
-  orchard(ctx, rnd) {
+  /* THE LAST OF THE LIGHT GOES OUT OF IT.
+
+     Seven beats are spent in this orchard and five of the six ways out
+     of it stay here, so it had to move too. It starts at the very end of
+     dusk -- there is still a wash of red low in the west -- and over its
+     phases that goes, the moon climbs and brightens, the stars fill in,
+     and the lanterns in the trees stop being decoration and become the
+     only thing lighting the place. */
+  orchard(ctx, rnd, extra, step) {
+    var k = (step || 0) / 3;
     ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#1a1636" }, { p: 0.36, c: "#2a2048" },
-      { p: 0.68, c: "#452a4e" }, { p: 1.00, c: "#6b3a48" },
+      { p: 0.00, c: hvMix("#1a1636", "#0c0a1e", k) },
+      { p: 0.36, c: hvMix("#2a2048", "#140f2a", k) },
+      { p: 0.68, c: hvMix("#452a4e", "#1e1533", k) },
+      { p: 1.00, c: hvMix("#6b3a48", "#2a1b33", k) },
     ]);
-    for (var i = 0; i < 60; i++) px(ctx, rnd() * PXW, rnd() * 54, 1, 1, "#efe4c4");
-    sunDisc(ctx, 42, 28, 7, "#f6ecc8", "rgba(246,236,200,0.13)");
+    for (var i = 0; i < 60 + Math.round(k * 70); i++) {
+      px(ctx, rnd() * PXW, rnd() * (54 + k * 40), 1, 1, k > 0.5 ? "#f4f0dc" : "#efe4c4");
+    }
+    /* the moon climbing out of the trees as the evening goes on */
+    sunDisc(ctx, 42 + k * 10, 28 - k * 12, 7 + k, "#f6ecc8",
+            "rgba(246,236,200," + (0.13 + k * 0.1).toFixed(3) + ")");
 
-    hillBand(ctx, PXW, 98, 8, 0.026, ["#33254a", "#291d3b", "#20172e"], rnd, 4);
+    hillBand(ctx, PXW, 98, 8, 0.026,
+      [hvMix("#33254a", "#1b1330", k), hvMix("#291d3b", "#150f26", k), hvMix("#20172e", "#100b1c", k)], rnd, 4);
 
-    px(ctx, 0, 116, PXW, PXH - 116, "#2c2733");
+    px(ctx, 0, 116, PXW, PXH - 116, hvMix("#2c2733", "#17141f", k));
     ditherSky(ctx, 0, 116, PXW, PXH - 116, [
-      { p: 0.00, c: "#37303c", }, { p: 1.00, c: "#241f2b" },
+      { p: 0.00, c: hvMix("#37303c", "#1d1926", k) },
+      { p: 1.00, c: hvMix("#241f2b", "#121019", k) },
     ]);
 
     /* rows of fruit trees, each with a lantern hung in it */
-    var bark = ["#4a3428", "#3a2820", "#2b1e18"];
-    var leaf = ["#2f4436", "#26382c", "#1c2a21"];
+    var bark = [hvMix("#4a3428", "#2c1f18", k), hvMix("#3a2820", "#221812", k), hvMix("#2b1e18", "#19110e", k)];
+    var leaf = [hvMix("#2f4436", "#1a2720", k), hvMix("#26382c", "#15211a", k), hvMix("#1c2a21", "#101913", k)];
+    var lanPos = [];
     for (var r = 0; r < 5; r++) {
       var tx = 18 + r * 66 + rnd() * 12;
       treeFull(ctx, tx, 120 + (r % 2) * 4, 44 + rnd() * 10, bark, leaf, rnd, { speckle: 10 });
-      if (r % 2 === 0) lanternAt(ctx, tx + 12, 84 + rnd() * 6);
+      if (r % 2 === 0) lanPos.push([tx + 12, 84 + rnd() * 6]);
     }
-    grassTufts(ctx, PXW, 124, 34, ["#2b3a2c", "#22301f", "#192518"], rnd);
-    flowerDots(ctx, PXW, 138, 26, 22, ["#c88aa0", "#a86e8a", "#e0a8b8"], rnd);
+    /* the lanterns take over as everything else goes: an extra pool of
+       warmth under each one, growing as the light it is replacing fades */
+    lanPos.forEach(function (L) {
+      if (k > 0) {
+        blob(ctx, L[0], L[1] + 3, 22 + k * 12, (22 + k * 12) * 0.9,
+             ["rgba(255,204,128," + (0.05 * k).toFixed(3) + ")"]);
+        blob(ctx, L[0], 132, 26 + k * 10, 5,
+             ["rgba(255,198,120," + (0.09 * k).toFixed(3) + ")"]);
+      }
+      lanternAt(ctx, L[0], L[1]);
+    });
+    grassTufts(ctx, PXW, 124, 34,
+      [hvMix("#2b3a2c", "#18211a", k), hvMix("#22301f", "#131b12", k), hvMix("#192518", "#0e150d", k)], rnd);
+    flowerDots(ctx, PXW, 138, 26, 22,
+      [hvMix("#c88aa0", "#6e4c58", k), hvMix("#a86e8a", "#5c3c4b", k), hvMix("#e0a8b8", "#7a5c66", k)], rnd);
   },
 
   /* 8. the rope bridge — one at a time, or not at all */
@@ -4171,17 +4209,37 @@ const HV_SCENES = {
      ground: down at the water instead of up in the open. The stream runs
      across the frame rather than toward you, so the seven stones read as
      a crossing you can see all of, and everything sits above the note. */
-  stream(ctx, rnd) {
-    ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#8ecdea" }, { p: 0.22, c: "#b4e0f0" },
-      { p: 0.44, c: "#d6ecea" }, { p: 1.00, c: "#cfe6c2" },
-    ]);
-    cloudRow(ctx, PXW, 16, 4, ["#ffffff", "#f4f9fd", "#e2ebf4", "#cfdae8"], rnd, 1.1);
-    cloudRow(ctx, PXW, 36, 3, ["#fdfeff", "#eef5fb", "#dbe6f0", "#c8d5e4"], rnd, 0.7);
-    sunRays(ctx, PXW * 0.22, -14, PXW, PXH, "#fffbdc", rnd, 6);
+  /* THE AFTERNOON GOES ON WHILE SHE STANDS IN IT.
 
-    hillBand(ctx, PXW, 72, 7, 0.018, ["#c2dcb8", "#aec9a4", "#9ab490"], rnd, 1.4);
-    hillBand(ctx, PXW, 84, 5, 0.027, ["#a8cc96", "#93b781", "#7fa16e"], rnd, 3.8);
+     Six beats here and four of the five ways out stay put, so this one
+     moves as well -- but it is broad daylight, so it cannot do what the
+     sunset does. What changes in an afternoon by a river is the colour
+     of the light: it starts clean and blue-white and goes gold, the
+     clouds pick up warmth on their undersides, the sun swings round so
+     the rays come in at a different angle, and the water goes from
+     glittering to glowing. */
+  stream(ctx, rnd, extra, step) {
+    var k = (step || 0) / 3;
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: hvMix("#8ecdea", "#7fb6d8", k) },
+      { p: 0.22, c: hvMix("#b4e0f0", "#c3d8e2", k) },
+      { p: 0.44, c: hvMix("#d6ecea", "#f0e2c8", k) },
+      { p: 1.00, c: hvMix("#cfe6c2", "#f4dcb0", k) },
+    ]);
+    cloudRow(ctx, PXW, 16, 4,
+      [hvMix("#ffffff", "#fff4e0", k), hvMix("#f4f9fd", "#fbe9cc", k),
+       hvMix("#e2ebf4", "#efd8b8", k), hvMix("#cfdae8", "#dcc2a2", k)], rnd, 1.1);
+    cloudRow(ctx, PXW, 36, 3,
+      [hvMix("#fdfeff", "#fff6e6", k), hvMix("#eef5fb", "#f6e4c8", k),
+       hvMix("#dbe6f0", "#e6d0ae", k), hvMix("#c8d5e4", "#d0b596", k)], rnd, 0.7);
+    /* the sun swings across as the afternoon goes */
+    sunRays(ctx, PXW * (0.22 + k * 0.5), -14, PXW, PXH,
+            hvMix("#fffbdc", "#ffe9b4", k), rnd, 6 + Math.round(k * 3));
+
+    hillBand(ctx, PXW, 72, 7, 0.018,
+      [hvMix("#c2dcb8", "#cdd6a2", k), hvMix("#aec9a4", "#b8c290", k), hvMix("#9ab490", "#a3ad7e", k)], rnd, 1.4);
+    hillBand(ctx, PXW, 84, 5, 0.027,
+      [hvMix("#a8cc96", "#b4c486", k), hvMix("#93b781", "#9eae74", k), hvMix("#7fa16e", "#8a9862", k)], rnd, 3.8);
 
     /* the far bank, sloping down to the water, and the wood standing on it */
     ditherSky(ctx, 0, 88, PXW, 22, [
@@ -4199,8 +4257,10 @@ const HV_SCENES = {
        which is what stopped the first version reading as a pond. */
     var wTop = 108, wBot = 148;
     ditherSky(ctx, 0, wTop, PXW, wBot - wTop, [
-      { p: 0.00, c: "#6f9e8e" }, { p: 0.18, c: "#4f86a8" },
-      { p: 0.58, c: "#3f76a0" }, { p: 1.00, c: "#5d8f9a" },
+      { p: 0.00, c: hvMix("#6f9e8e", "#87a288", k) },
+      { p: 0.18, c: hvMix("#4f86a8", "#6e8ea0", k) },
+      { p: 0.58, c: hvMix("#3f76a0", "#5c7d96", k) },
+      { p: 1.00, c: hvMix("#5d8f9a", "#7e9490", k) },
     ]);
     // the shallow lip where it meets each bank
     for (var e = 0; e < PXW; e++) {
@@ -4213,7 +4273,9 @@ const HV_SCENES = {
       var wy = wTop + 3 + rnd() * (wBot - wTop - 6);
       var mid = 1 - Math.abs((wy - (wTop + wBot) / 2) / ((wBot - wTop) / 2));
       px(ctx, rnd() * PXW, wy, 2 + rnd() * (3 + mid * 5), 1,
-        rnd() > 0.62 ? "#a8d2e6" : rnd() > 0.4 ? "#6fa0c0" : "#37698e");
+        rnd() > 0.62 ? hvMix("#a8d2e6", "#ffe4b0", k)
+        : rnd() > 0.4 ? hvMix("#6fa0c0", "#c0a684", k)
+        : hvMix("#37698e", "#6a6a62", k));
     }
     // reeds standing out of the far edge
     for (var r3 = 0; r3 < 34; r3++) {
@@ -6790,10 +6852,22 @@ function hvRender(withTransition) {
      a path's two */
   if (n.sayIfMet) say = hvHasWalked(n.sayIfMet.route) ? n.sayIfMet.yes : n.sayIfMet.no;
   if (n.sayOfKeepsake) say = n.sayOfKeepsake[hvKeepsake || "heart"] || say;
+  /* THE THING SHE HAS BEEN CARRYING ALL THE WAY UP.
+
+     "…by the way" was the right size for a line about something she had
+     not seen since the first screen. It is the wrong size now: the
+     keepsake sits at the top of the frame from the moment she picks it
+     up, so by the time this lands she has had it in the corner of her
+     eye for the whole walk. A callback to something visible can afford
+     to say what it means. */
   if (n.callback && hvKeepsake) {
     say += hvKeepsake === "flower"
-      ? " …you are still carrying that flower, by the way."
-      : " …you are still holding that little heart, by the way.";
+      ? " And you have still got that flower. You picked it up before you " +
+        "knew where any of this went, and you carried it the whole way up " +
+        "without once putting it down."
+      : " And you have still got that little heart. You picked it up before " +
+        "you knew where any of this went, and you carried it the whole way " +
+        "up without once putting it down.";
   }
   if (n.tally) {
     const found = hvFoundList();
