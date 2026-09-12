@@ -4058,6 +4058,11 @@ const HV_SCENES = {
     ditherSky(ctx, 0, 120, PXW, PXH - 120, [
       { p: 0.00, c: "#33323f" }, { p: 1.00, c: "#22222c" },
     ]);
+    /* the same seam this scene's treeline had -- see the note in `home` */
+    for (var sh2 = 0; sh2 < 11; sh2++) {
+      px(ctx, 0, 120 + sh2, PXW, 1,
+         "rgba(10,10,18," + (0.5 * (1 - sh2 / 11)).toFixed(3) + ")");
+    }
     pathTo(ctx, PXW, 122, PXH, 0.04, 12, 62, "#6b5a48", "#54473a", "#3d342c");
     grassTufts(ctx, PXW, 126, 40, ["#2f3a2e", "#26301f", "#1d2618"], rnd);
     stones(ctx, PXW, 150, 9, ["#4a4650", "#3a3742", "#2c2a33"], rnd);
@@ -4431,6 +4436,19 @@ const HV_SCENES = {
     ditherSky(ctx, 0, 112, PXW, PXH - 112, [
       { p: 0.00, c: "#2b2632" }, { p: 1.00, c: "#1a1720" },
     ]);
+    /* THE LINE ACROSS THE MIDDLE OF THE PICTURE.
+
+       The ground begins lighter than the trees standing on it, so the
+       two met in a hard bright row straight across the frame -- one
+       pixel tall, full width, and unmistakably a seam rather than a
+       horizon. Nothing is that colour in a wood at night: the ground
+       under a treeline is the darkest part of the picture and lightens
+       as it comes forward. This is that shadow, and it takes the edge
+       out by making it the darkest thing instead of the brightest. */
+    for (var sh = 0; sh < 11; sh++) {
+      px(ctx, 0, 112 + sh, PXW, 1,
+         "rgba(10,8,16," + (0.55 * (1 - sh / 11)).toFixed(3) + ")");
+    }
     pathTo(ctx, PXW, 114, PXH, -0.6, 10, 46, "#5e4d3c", "#4a3d30", "#372e24");
 
     /* the house, filling the right of the frame. It gets a real corner —
@@ -4480,6 +4498,28 @@ const HV_SCENES = {
       var spread = (gy - 138) * 2.6;
       px(ctx, dx - spread * rnd(), gy, 2 + rnd() * 6, 1, "rgba(255,198,120,0.13)");
     }
+    /* A HOUSE NEEDS SOMETHING TO STAND ON IN FRONT OF IT.
+
+       The wall ran from the eaves all the way to the bottom of the
+       frame, so the whole right-hand side of the picture was clapboard
+       with no ground under it. That is why the two of them ended up
+       drawn ON the wall, and why moving them off it put them at x=138,
+       squarely behind the note -- there was nowhere else to put them.
+
+       There is a porch now: boards across the front of the house with a
+       lit edge where the doorlight catches them. They stand on that, at
+       the same place they stand in every other scene, which is well
+       clear of where the note sits. */
+    var porchY = 150;
+    px(ctx, wallX - 16, porchY, PXW - wallX + 16, PXH - porchY, "#231b28");
+    ditherSky(ctx, wallX - 16, porchY, PXW - wallX + 16, PXH - porchY, [
+      { p: 0.00, c: "#2e2433" }, { p: 1.00, c: "#1d1622" },
+    ]);
+    for (var bd = 0; bd < 5; bd++) {
+      px(ctx, wallX - 16, porchY + 4 + bd * 6, PXW - wallX + 16, 1, "#191320");
+    }
+    px(ctx, wallX - 16, porchY, PXW - wallX + 16, 1, "#4a3a4c");    // the front lip
+    px(ctx, wallX - 16, porchY + 1, 46, 1, "#6b5470");              // doorlight on it
     px(ctx, dx - 4, PXH - 10, dw + 12, 4, "#5a4756");     // the step
     px(ctx, dx - 4, PXH - 10, dw + 12, 1, "#7a6274");
     // the lamp over the door
@@ -6058,7 +6098,9 @@ const HV_STAND = {
      of the pot by the step, with the doorlight falling across them --
      which is also where you would actually stand, looking at a light
      somebody left on for you. */
-  home:    { x: 138, y: 158, s: 1.5 },
+  /* back on the porch, where every other scene puts them and where the
+     note does not reach -- see the porch note in the `home` scene */
+  home:    { x: 282, y: 170, s: 1.5 },
 };
 
 /* =========================================================
@@ -6629,7 +6671,16 @@ function hvPaintFrame(t, dt) {
   }
 
   if (n.butterflies) {
-    put(drawFlowerCard(), PXW / 2 - 30, 78 + Math.sin(t * 0.8) * 1.5, 2.2);
+    /* IT IS WHICHEVER ONE SHE PICKED.
+
+       This was hardcoded to the flower, so a walk where she chose the
+       heart put a giant flower in the middle of the frame anyway -- in
+       the one scene that is explicitly about the thing she is carrying.
+       Every other place that draws the keepsake already asks which it
+       is; this one did not. */
+    var keepCard = (hvKeepsake || "heart") === "flower"
+      ? drawFlowerCard() : drawHeartCard();
+    put(keepCard, PXW / 2 - 30, 78 + Math.sin(t * 0.8) * 1.5, 2.2);
     /* Real flight: a looping figure-of-eight around a home point, wings
        beating fast, and the beat easing off at the top of each rise the
        way a butterfly glides. */
@@ -7047,6 +7098,13 @@ function hvRender(withTransition) {
   if (!n) return;
 
   if (n.isAsk) hvAskFrom = hvNode;
+
+  /* The keepsake in the corner is set by hvChoose and was only ever
+     drawn at the start of the chapter and when something was found --
+     so choosing the heart at the gate set it and nothing redrew it, and
+     the corner stayed empty for the whole walk. It is one span; drawing
+     it on every node costs nothing and cannot go stale. */
+  hvUpdateFoundStrip();
 
   if (withTransition) { hvStartTransition(); hvSfx("page"); }
   hvPaintBase(n);
