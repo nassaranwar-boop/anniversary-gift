@@ -200,6 +200,15 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   ok('an upright phone shows a narrower world', framed.w === 240, `canvas=${framed.w}`);
   ok('and Death is inside it, all of him', framed.deathRight <= framed.w, `his right edge=${framed.deathRight} of ${framed.w}`);
   ok('and she is inside it too', framed.herLeft >= 0, `her left edge=${framed.herLeft}`);
+
+  /* ---------- the scene owns the screen while it is up ---------- */
+  const pad = await phone.evaluate(() => {
+    const scr = document.getElementById('screen-ouissy');
+    return { hidden: scr.classList.contains('so-fighting'),
+             padUp: !!document.getElementById('rs-pad') && !document.getElementById('rs-pad').hidden };
+  });
+  ok('the platformer\'s own pad is gone for the whole scene, not only the fight',
+     pad.hidden, JSON.stringify(pad));
   await phone.close();
 
   ok('no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
