@@ -151,11 +151,36 @@ jobs:
           PY
           ls samples
 
+      # BOTH WAYS BACK.
+      #
+      # The artifact is the convenient one if you are looking at this
+      # in a browser. It is also served from a storage host that some
+      # networks cannot reach -- including the one this repo is worked
+      # on from, which could not fetch its own samples -- so they are
+      # committed as well. They are small, they live under voice/ where
+      # the game ignores them, and the next full render deletes them.
       - uses: actions/upload-artifact@v4
         if: env.MODE == 'sample'
         with:
           name: voice-samples
           path: samples
+
+      - name: Leave them where anybody can reach them
+        if: env.MODE == 'sample'
+        run: |
+          rm -rf voice/_samples
+          mkdir -p voice/_samples
+          cp samples/*.mp3 voice/_samples/
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add voice/_samples
+          git diff --cached --quiet && { echo "same samples as last time"; exit 0; }
+          git commit -m "Five voices, four lines each, for picking by ear
+
+          Nothing is wired up yet. These are here to be listened to.
+          Put the winner in voice/RENDER and push, and the whole
+          chapter gets rendered in it."
+          git push origin HEAD:${{ github.ref_name }}
 
       # --- OR RENDER THE LOT ----------------------------------------
       - name: Fetch the voice
@@ -240,6 +265,7 @@ jobs:
           # of the old words under a caption of the new ones
           node tools/voicesheet.js --json > voice/manifest.json
           rm -f voice/manifest.example.json
+          rm -rf voice/_samples
           du -sh voice
           ls voice | head -5
 
