@@ -10989,7 +10989,12 @@
          step. It is the same work either way. The difference is entirely
          where it lands. */
       Stage.render(built.scene, Stage.camera);
-    } catch (e) {}
+      window.__apWarmErr = null;
+    } catch (e) {
+      /* kept, not swallowed: a warm frame that silently fails looks
+         exactly like one that worked, and that cost two wrong diagnoses */
+      window.__apWarmErr = String(e && e.message ? e.message : e).slice(0, 200);
+    }
 
     return G;
   }
