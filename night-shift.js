@@ -760,12 +760,18 @@ const NS = {
       { room: "office", secs: 5.0, fov0: 38, fov1: 33, lux: 0.16,
         from: [-1.66, 0.21, 1.29], to: [-1.64, 0.20, 1.26], look: [-1.14, 1.50, 0.30],
         line: { nar: 1, t: "There is one more thing in the back of each of them, next to the key, and he never wrote it down anywhere. A man does not write down the thing he is hoping nobody ever has to use." } },
-      { room: "office", secs: 3.4, fov0: 33, fov1: 29, gone: "jax", lux: 0.14,
-        from: [-1.64, 0.20, 1.26], to: [-1.62, 0.19, 1.24], look: [-1.14, 1.54, 0.30],
+      /* he is still standing there while he says it. `gone` removes
+         somebody at the TOP of the shot it is written on, so putting it
+         here would have taken him out of the world one frame before his
+         own last line -- which is how the first cut of this played: an
+         empty ceiling saying "put your hands over your ears". It goes
+         on the detonation, where it belongs. */
+      { room: "office", secs: 3.6, fov0: 36, fov1: 32, lux: 0.2,
+        from: [-1.64, 0.22, 1.28], to: [-1.62, 0.20, 1.25], look: [-1.16, 1.46, 0.30],
         line: { who: "jax", t: "Put your hands over your ears, Ouissy." } },
 
       /* --- the thing that is not a line ---------------------------- */
-      { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08,
+      { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08, gone: "jax",
         from: [-1.66, 0.20, 1.28], to: [-1.70, 0.25, 1.38], look: [-1.14, 1.40, 0.30] },
 
       /* --- six o'clock --------------------------------------------- */

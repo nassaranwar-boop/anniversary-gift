@@ -86,6 +86,11 @@ ok('everybody a shot moves or removes is one of the four',
 const dead = {}; const ghosts = [];
 SHOTS.forEach((s, i) => {
   if (s.line && s.line.who && dead[s.line.who]) ghosts.push([i, s.line.who]);
+  /* including their own shot: `gone` fires at the top of it, so a
+     character removed on the shot they speak on is removed one frame
+     before their line. That is exactly how the last words in the
+     chapter played the first time. */
+  if (s.gone && s.line && s.line.who === s.gone) ghosts.push([i, s.gone, 'gone on their own line']);
   if (s.gone) dead[s.gone] = i;
 });
 ok('nobody speaks after the film has taken them out of it', !ghosts.length, ghosts);

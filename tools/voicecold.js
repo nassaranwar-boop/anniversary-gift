@@ -69,8 +69,12 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
      chapter ends up in memory on its own, so that nothing later in the
      night is ever waiting on a download */
   const total = await p.evaluate(() => OuissysNightShift.__night.voiceState().lines);
+  /* thirty seconds was right for a hundred and seventeen takes. The
+     last hour added twenty-two more and the tail of the prefetch --
+     four at a time, decoded on the main thread -- got longer with it,
+     so a run would report 123 of 139 and look like a stall. */
   await p.waitForFunction((n) => OuissysNightShift.__night.said().ready >= n,
-                          total, { timeout: 30000, polling: 250 }).catch(() => {});
+                          total, { timeout: 60000, polling: 250 }).catch(() => {});
   const st9 = await p.evaluate(() => OuissysNightShift.__night.said());
   ok('and the whole chapter loads itself into memory unprompted',
      st9.ready >= total, st9.ready + '/' + total + ' takes in memory');
