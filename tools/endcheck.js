@@ -228,8 +228,12 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
       if (st2.eyes) {
         const e = st2.eyes;
         const off = Math.abs(e.x) > 0.92 || Math.abs(e.y) > 0.92 || e.z > 1 || e.z < -1;
-        if (!eyes[i]) eyes[i] = { who: e.who, on: 0, off: 0 };
+        if (!eyes[i]) eyes[i] = { who: e.who, on: 0, off: 0, tall: 0, away: 99 };
         eyes[i][off ? 'off' : 'on']++;
+        if (!off) {
+          eyes[i].tall = Math.max(eyes[i].tall, e.tall);
+          eyes[i].away = Math.min(eyes[i].away, e.away);
+        }
       }
       if (last && last[4] === i) {
         const d = Math.hypot(st[0] - last[0], st[1] - last[1], st[2] - last[2]) +
@@ -265,6 +269,40 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
     .map((i) => [Number(i), run.eyes[i].who,
                  +(run.eyes[i].on / (run.eyes[i].on + run.eyes[i].off)).toFixed(2)]);
   ok('whoever is speaking is in the frame while they speak', !blind.length, blind);
+
+  /* AND AT A SIZE SOMEBODY CAN READ.
+
+     On-screen is not a shot size. When the four moved from the back of
+     the office to the three doorways, every close-up written for the
+     old marks stayed put and ended up about forty centimetres from a
+     face: "He made you last" played as two painted eyes filling the
+     whole frame, and the check above said yes to it very happily.
+
+     A figure taller than the frame is an eyeball. A figure under a
+     twelfth of the frame is a dot with a subtitle under it. Both are
+     failures and neither is visible to a test that only asks whether
+     something is inside the rectangle. */
+  const sized = Object.keys(run.eyes).filter((i) => run.eyes[i].on > 0);
+  /* DISTANCE, NOT SCREEN HEIGHT.
+
+     Screen height was the obvious measure and it is the wrong one: a
+     figure standing below the middle of the frame stretches hard under
+     the perspective divide, so a perfectly good medium shot of
+     somebody two metres away measures taller than the screen and a
+     threshold set on it fails eighteen shots that are fine.
+
+     How far the lens is from the person talking is unambiguous and is
+     what actually went wrong. Under eighty-five centimetres is inside
+     their face -- the shots this check was written for sat at about
+     forty. Past five and a half metres they are a dot with a subtitle
+     under them. A metre is a tight close-up and four of the last
+     lines in the chapter are deliberately shot at one. */
+  const close = sized.filter((i) => run.eyes[i].away < 0.85)
+                     .map((i) => [Number(i), run.eyes[i].who, run.eyes[i].away]);
+  ok('and the lens is not inside the face of whoever is talking', !close.length, close);
+  const far = sized.filter((i) => run.eyes[i].away > 5.5)
+                   .map((i) => [Number(i), run.eyes[i].who, run.eyes[i].away]);
+  ok('and they are near enough to be the subject of their own shot', !far.length, far);
   ok('all four of them are drawn at some point in it', run.seen.length === 4, run.seen);
 
   /* WHAT THE BUSIEST SHOT COSTS.

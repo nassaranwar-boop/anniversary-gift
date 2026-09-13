@@ -698,15 +698,15 @@ const NS = {
 
       /* the west door */
       { room: "office", secs: 3.8, fov: 44,
-        from: [-1.95, 1.48, -0.15], to: [-2.25, 1.45, -0.45], look: [-3.05, 1.38, -0.90],
+        from: [-1.25, 1.52, 0.52], to: [-1.55, 1.48, 0.18], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "Twelve minutes past five. I have the west door. I have had it since Monday." } },
       /* the grate */
       { room: "office", secs: 3.6, fov: 42,
-        from: [1.24, 0.94, -1.00], to: [1.38, 0.98, -1.28], look: [1.90, 0.66, -2.05],
+        from: [0.95, 1.00, -0.45], to: [1.14, 0.96, -0.72], look: [1.90, 0.64, -1.95],
         line: { who: "chime", t: "There is no roof left worth going over. They are already in the duct." } },
       /* the east door */
       { room: "office", secs: 3.8, fov: 44,
-        from: [1.95, 1.36, -0.15], to: [2.25, 1.33, -0.45], look: [3.05, 1.11, -0.90],
+        from: [1.25, 1.42, 0.52], to: [1.55, 1.38, 0.18], look: [2.85, 1.10, -0.90],
         line: { who: "marabelle", t: "East door. Nobody is watching me do this. Good." } },
       /* and the one standing by her chair */
       { room: "office", secs: 4.0, fov: 44,
@@ -715,29 +715,29 @@ const NS = {
 
       /* --- a minute and a half of them being people ---------------- */
       { room: "office", secs: 4.4, fov: 40, lux: 0.74,
-        from: [-2.25, 1.45, -0.45], to: [-2.38, 1.43, -0.62], look: [-3.05, 1.38, -0.90],
+        from: [-1.55, 1.48, 0.18], to: [-1.68, 1.46, 0.02], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "He wound me every night for nine years. He never once told me why." } },
       { room: "office", secs: 5.0, fov: 40,
-        from: [2.25, 1.33, -0.45], to: [2.38, 1.31, -0.62], look: [3.05, 1.11, -0.90],
+        from: [1.55, 1.38, 0.18], to: [1.68, 1.36, 0.02], look: [2.85, 1.10, -0.90],
         line: { who: "marabelle", t: "He told me. He said: one day she will need somebody in the room who is not afraid of her seeing them." } },
       { room: "office", secs: 4.6, fov: 38,
-        from: [1.38, 0.98, -1.28], to: [1.46, 0.96, -1.48], look: [1.90, 0.66, -2.05],
+        from: [1.14, 0.96, -0.72], to: [1.26, 0.94, -0.90], look: [1.90, 0.64, -1.95],
         line: { who: "chime", t: "He said that to all of us. He said it badly, four times, the way he said everything." } },
       { room: "office", secs: 3.6, fov: 44,
         from: [-0.62, 1.44, 1.98], to: [-0.70, 1.42, 1.86], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "He made me in an afternoon. Badly, I think on purpose." } },
       { room: "office", secs: 3.4, fov0: 39, fov1: 36, lux: 0.55,
-        from: [-2.38, 1.43, -0.62], to: [-2.44, 1.42, -0.76], look: [-3.05, 1.38, -0.90],
+        from: [-1.68, 1.46, 0.02], to: [-1.80, 1.45, -0.12], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "He made you last." } },
 
       /* --- AND THEN IT STARTS, AT THE WEST DOOR -------------------- */
       { room: "office", secs: 3.2, fov: 58, cue: "night", shake: 1, lux: 0.34,
-        from: [-1.10, 1.55, 0.60], to: [-1.40, 1.50, 0.20], look: [-3.30, 1.20, -0.90],
+        from: [-0.95, 1.56, 0.85], to: [-1.25, 1.52, 0.50], look: [-2.95, 1.28, -0.90],
         swarm: ["office", 16, 1.6, -5.6, 0.5, "x+"], advance: 1,
         sfx: [["knock", 0.9], ["postDrag", 0.7]],
         line: { nar: 1, t: "The first of them comes up the hall and puts its weight on the west doorway, and the doorway holds because there is something standing in it." } },
       { room: "office", secs: 3.0, fov: 62, shake: 1.2,
-        from: [-1.40, 1.50, 0.20], to: [-1.00, 1.46, 0.55], look: [-3.20, 1.25, -0.90],
+        from: [-1.25, 1.52, 0.50], to: [-1.48, 1.49, 0.22], look: [-2.85, 1.34, -0.90],
         swarm: ["office", 20, 1.7, -4.9, 0.48, "x+"], advance: -1.4,
         sfx: [["falseBang", 0.85], ["step", 0.8, -0.6]],
         line: { who: "cogsworth", t: "Ouissy. Shut it. I am on the wrong side of it and that is exactly where I mean to be." } },
@@ -764,22 +764,22 @@ const NS = {
          cheapest and largest thing still available to the ending -- a
          woman folded under a desk she has sat at every night this
          week, small, in the corner of a shot that is mostly floor. */
-      { room: "office", secs: 3.8, fov: 62, cue: "dark", shake: 1, lux: 0.26,
-        from: [1.05, 1.26, 1.60], to: [0.62, 1.02, 1.38], look: [-0.58, 0.55, 1.05],
-        oui: [-0.62, 0, 1.02, 0.78, 1.9],
+      { room: "office", secs: 3.8, fov: 52, cue: "dark", shake: 1, lux: 0.26,
+        from: [0.40, 0.66, 2.20], to: [0.06, 0.54, 1.94], look: [-0.08, 0.34, 1.14],
+        oui: [-0.06, 0, 1.14, 0.62, 0.30],
         sfx: [["falseSkitter", 0.8]],
         line: { nar: 1, t: "She gets under her own desk, in a room she has sat in every night this week. She does not stay there." } },
 
       /* --- THE GRATE GOES FIRST ------------------------------------ */
       { room: "office", secs: 3.6, fov: 52, shake: 1.1,
-        from: [1.10, 1.20, -0.70], to: [1.30, 1.55, -1.00],
-        look: [1.90, 0.70, -2.05], look2: [1.90, 2.30, -2.60],
+        from: [1.02, 1.06, -0.40], to: [1.20, 1.46, -0.70],
+        look: [1.90, 0.66, -1.95], look2: [1.90, 2.30, -2.55],
         swarm: ["office", 10, 1.2, -5.6, 0.5, "x+"],
         sfx: [["hatch", 0.9], ["falseBurst", 0.7]],
         line: { who: "chime", t: "They are through the grate. Somebody shut the&mdash;" } },
       { room: "office", secs: 3.0, fov: 50, gone: "chime", shake: 1.3, lux: 0.5, hush: "air",
-        from: [1.30, 1.55, -1.00], to: [1.05, 1.28, -0.62],
-        look: [1.90, 2.20, -2.55], look2: [1.90, 0.40, -2.05],
+        from: [1.20, 1.46, -0.70], to: [0.98, 1.16, -0.35],
+        look: [1.90, 2.20, -2.50], look2: [1.90, 0.36, -1.95],
         sfx: [["scare", 0.55]],
         line: { nar: 1, t: "Something small and brass goes up into the ceiling with six of them holding on to it, and the grate does not open again." } },
 
@@ -812,24 +812,24 @@ const NS = {
 
       /* --- THE EAST DOOR, AND THE SECOND PLACE THEY PUT HER -------- */
       { room: "office", secs: 3.4, fov: 46, cue: "found", shake: 1,
-        from: [1.60, 1.36, 0.10], to: [2.00, 1.33, -0.30], look: [3.10, 1.11, -0.90],
+        from: [1.15, 1.44, 0.62], to: [1.48, 1.40, 0.26], look: [2.85, 1.10, -0.90],
         swarm: ["office", 20, 1.7, 5.2, 0.48, "x-"], advance: 1,
         sfx: [["postDrag", 0.8]],
         line: { who: "marabelle", t: "Ouissy. The corner behind the cabinet. Go now, and do not look at this." } },
       { room: "office", secs: 4.4, fov: 46,
-        from: [2.00, 1.33, -0.30], to: [2.20, 1.31, -0.55], look: [3.10, 1.11, -0.90],
+        from: [1.48, 1.40, 0.26], to: [1.66, 1.38, 0.06], look: [2.85, 1.10, -0.90],
         swarm: ["office", 20, 1.7, 4.6, 0.48, "x-"], advance: -1.6,
         sfx: [["falseBang", 0.8]],
         line: { who: "marabelle", t: "Fifteen years on that plinth and he never once saw the whole of it. Watch, then." } },
       { room: "office", secs: 4.4, fov: 52, gone: "marabelle", hush: "box", shake: 1.2,
-        from: [2.20, 1.31, -0.55], to: [1.40, 1.40, 0.05], look: [3.00, 1.15, -0.90],
+        from: [1.66, 1.38, 0.06], to: [1.05, 1.48, 0.62], look: [2.85, 1.12, -0.90],
         swarm: ["office", 22, 1.8, 3.6, 0.46, "x-"], advance: 1,
         sfx: [["scare", 0.5]],
         line: { nar: 1, t: "She dances. And every single thing in that doorway stops to watch her, because every one of them was made in this shop to stand very still and look at something exactly like her. It buys eleven seconds. At the end of the eleventh they remember what they came for, and there is a great deal of them and only one of her." } },
 
       /* --- THE WEST DOOR, AND THE LENGTH OF THE ROOM --------------- */
       { room: "office", secs: 3.4, fov: 44, cue: "night", shake: 0.9,
-        from: [-1.90, 1.45, -0.20], to: [-2.10, 1.43, -0.40], look: [-3.05, 1.38, -0.90],
+        from: [-1.45, 1.49, 0.14], to: [-1.64, 1.47, -0.06], look: [-2.85, 1.36, -0.90],
         swarm: ["office", 22, 1.8, -3.8, 0.46, "x+"], advance: 1,
         line: { who: "cogsworth", t: "Eleven seconds. I will take it." } },
       { room: "office", secs: 5.0, fov: 62, gone: "cogsworth", shake: 1.4, hush: "tick",
@@ -904,7 +904,7 @@ const NS = {
          of. */
       { room: "office", secs: 5.0, fov: 54, shake: 0.7, down: 1, lux: 0.3,
         from: [-1.70, 0.80, 1.62], to: [-1.76, 0.34, 1.46], look: [-1.20, 1.40, 0.30],
-        oui: [-1.02, 0, 0.86, 0.55, 2.4],
+        oui: [-1.38, 0, 0.68, 0.58, 1.20],
         line: { nar: 1, t: "He puts her under the floor anyway, and he is far stronger than a jack-in-the-box has any business being." } },
 
       /* --- what the winding was, said from above her --------------- */
@@ -15567,9 +15567,26 @@ const testHooks = {
         view.updateMatrixWorld(true);
         const p = new T.Vector3();
         p.setFromMatrixPosition(ch.group.matrixWorld);
+        const foot = p.clone(), top = p.clone();
         p.y += (ch.group.userData.eyeY || 1.2);
-        p.project(view);
-        return { who: w, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2) };
+        top.y += (ch.group.userData.height || 1.6);
+        p.project(view); foot.project(view); top.project(view);
+        /* HOW BIG THEY ARE, not just whether they are there.
+
+           On-screen is not a shot size. When the four moved from the
+           back of the room to the three doorways, every close-up
+           written for the old marks stayed where it was and ended up
+           about forty centimetres from a face -- so "He made you
+           last", the best line in the chapter, played as two painted
+           eyes filling the entire frame, and a check that only asks
+           "are the eyes on screen" says yes to that very happily.
+
+           `tall` is how much of the frame height the figure occupies,
+           in normalised device units where the whole screen is 2. */
+        return { who: w, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2),
+                 tall: +Math.abs(top.y - foot.y).toFixed(2),
+                 away: +view.position.distanceTo(
+                   new T.Vector3().setFromMatrixPosition(ch.group.matrixWorld)).toFixed(2) };
       })(),
       line: s.line ? (s.line.t || "").slice(0, 60) : "",
     };
