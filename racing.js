@@ -7538,11 +7538,23 @@ function wireScroll() {
     if (span <= 4) { rail.dataset.on = "0"; el.overlay.dataset.more = "0"; return; }
     rail.dataset.on = "1";
 
-    /* the rail is laid over the panel's own edge, measured rather than
-       assumed: a panel that is not at its cap is not where the cap is */
+    /* THE RAIL IS PUT WHERE THE PANEL IS, measured rather than assumed --
+       both ends of it and the side. A fixed inset from the stage looks
+       right on one screen and on no others: the panel is centred and
+       capped, so on a wide stage it left the bar a good forty points out
+       in the dark down the edge of the picture, which reads as a light
+       rather than as this panel's scrollbar. Sat against the panel's own
+       edge it is obviously part of it. */
     const pr = panel.getBoundingClientRect(), ov = el.overlay.getBoundingClientRect();
     rail.style.top    = (pr.top - ov.top) + "px";
     rail.style.height = pr.height + "px";
+    const gap = Math.max(4, Math.round(ov.width * 0.006));
+    const w   = rail.getBoundingClientRect().width || 6;
+    /* outside the panel where there is room for it, tucked just inside
+       where there is not */
+    const out = pr.right - ov.left + gap;
+    rail.style.left = (out + w <= ov.width - 2 ? out
+                                              : pr.right - ov.left - w - gap) + "px";
 
     const frac = sc.clientHeight / sc.scrollHeight;
     const at   = sc.scrollTop / span;
