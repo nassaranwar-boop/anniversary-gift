@@ -764,9 +764,8 @@ const NS = {
          cheapest and largest thing still available to the ending -- a
          woman folded under a desk she has sat at every night this
          week, small, in the corner of a shot that is mostly floor. */
-      { room: "office", secs: 3.8, fov: 52, cue: "dark", shake: 1, lux: 0.26,
-        from: [0.40, 0.66, 2.20], to: [0.06, 0.54, 1.94], look: [-0.08, 0.34, 1.14],
-        oui: [-0.06, 0, 1.14, 0.62, 0.30],
+      { room: "office", secs: 3.6, fov: 58, cue: "dark", shake: 1, lux: 0.26,
+        from: [0.55, 1.30, 2.10], to: [0.20, 1.06, 1.86], look: [-0.30, 0.62, 1.10],
         sfx: [["falseSkitter", 0.8]],
         line: { nar: 1, t: "She gets under her own desk, in a room she has sat in every night this week. She does not stay there." } },
 
@@ -816,16 +815,29 @@ const NS = {
         swarm: ["office", 20, 1.7, 5.2, 0.48, "x-"], advance: 1,
         sfx: [["postDrag", 0.8]],
         line: { who: "marabelle", t: "Ouissy. The corner behind the cabinet. Go now, and do not look at this." } },
-      { room: "office", secs: 4.4, fov: 46,
+      { room: "office", secs: 4.4, fov: 46, lux: 0.52,
         from: [1.48, 1.40, 0.26], to: [1.66, 1.38, 0.06], look: [2.85, 1.10, -0.90],
         swarm: ["office", 20, 1.7, 4.6, 0.48, "x-"], advance: -1.6,
         sfx: [["falseBang", 0.8]],
         line: { who: "marabelle", t: "Fifteen years on that plinth and he never once saw the whole of it. Watch, then." } },
-      { room: "office", secs: 4.4, fov: 52, gone: "marabelle", hush: "box", shake: 1.2,
+      { room: "office", secs: 4.8, fov: 52, gone: "marabelle", hush: "box", shake: 1.2, lux: 0.62,
         from: [1.66, 1.38, 0.06], to: [1.05, 1.48, 0.62], look: [2.85, 1.12, -0.90],
         swarm: ["office", 22, 1.8, 3.6, 0.46, "x-"], advance: 1,
         sfx: [["scare", 0.5]],
         line: { nar: 1, t: "She dances. And every single thing in that doorway stops to watch her, because every one of them was made in this shop to stand very still and look at something exactly like her. It buys eleven seconds. At the end of the eleventh they remember what they came for, and there is a great deal of them and only one of her." } },
+
+      /* AND WE WATCH HER RATHER THAN IT.
+
+         Marabelle told her not to look at this, so the shot that
+         covers the end of it is the corner behind the filing cabinet,
+         with a woman standing in it with her back to the room, hearing
+         all of it. It is also the only way to end that fight without
+         staging a thing the chapter is better off not showing. */
+      { room: "office", secs: 4.2, fov: 46, lux: 0.22,
+        from: [-0.85, 1.52, 0.34], to: [-1.20, 1.47, 0.02], look: [-2.55, 1.22, -1.55],
+        oui: [-2.55, 0, -1.55, 0, 0.55],
+        sfx: [["falseBang", 0.7]],
+        line: { nar: 1, t: "From the corner behind the cabinet she hears every part of it and sees none of it, which turns out not to be the mercy it was meant to be." } },
 
       /* --- THE WEST DOOR, AND THE LENGTH OF THE ROOM --------------- */
       { room: "office", secs: 3.4, fov: 44, cue: "night", shake: 0.9,
@@ -890,8 +902,9 @@ const NS = {
       { room: "office", secs: 3.0, fov: 40,
         from: [-1.62, 1.02, 1.74], to: [-1.70, 0.78, 1.58], look: [-1.22, 1.30, 0.42],
         line: { who: "jax", t: "Get in it." } },
-      { room: "office", secs: 3.0, fov: 44,
-        from: [-1.70, 0.78, 1.58], to: [-1.64, 0.92, 1.70], look: [-1.18, 1.50, 0.30],
+      { room: "office", secs: 3.4, fov: 44,
+        from: [-1.02, 1.58, 2.02], to: [-1.20, 1.55, 1.82], look: [-1.72, 1.42, 0.62],
+        oui: [-1.72, 0, 0.62, 0, -0.75],
         line: { nar: 1, t: "She says no." } },
       { room: "office", secs: 4.4, fov: 42,
         from: [-1.64, 0.92, 1.70], to: [-1.70, 0.80, 1.62], look: [-1.18, 1.48, 0.30],
@@ -904,7 +917,6 @@ const NS = {
          of. */
       { room: "office", secs: 5.0, fov: 54, shake: 0.7, down: 1, lux: 0.3,
         from: [-1.70, 0.80, 1.62], to: [-1.76, 0.34, 1.46], look: [-1.20, 1.40, 0.30],
-        oui: [-1.38, 0, 0.68, 0.58, 1.20],
         line: { nar: 1, t: "He puts her under the floor anyway, and he is far stronger than a jack-in-the-box has any business being." } },
 
       /* --- what the winding was, said from above her --------------- */
@@ -11200,20 +11212,21 @@ function finaleNext(skipped) {
      going down through the floor, and standing on his stage at six
      o'clock in the morning with nothing left to guard.
 
-     `pose` is a single number: 0 is standing, 1 is crouched right
-     down, and everything between is her getting lower. It scales her
-     rather than animating her, which at these distances and in this
-     light is the difference between a figure kneeling and a figure
-     sinking into the floorboards -- and the second one is the shot. */
+     She is always standing in them, because her legs are two cylinders
+     on one hip joint with no knee in them: there is no pose in this
+     model that is kneeling, and scaling her down the Y axis to fake
+     one produced a woman standing bolt upright and compressed, which
+     reads as a rendering fault rather than as fear. So the three
+     places she is seen are three places where standing is what she
+     would actually be doing, and the beat where she gets under a desk
+     is covered on the desk. */
   if (s.oui) {
     const rec = rooms[s.room || FIN.room];
     const ox = rec ? rec.index * SPACING : 0;
     if (ouissy) {
-      const k = s.oui[3] === undefined ? 0 : clamp(s.oui[3], 0, 1);
       ouissy.visible = true;
       ouissy.position.set(ox + s.oui[0], s.oui[1] || 0, s.oui[2]);
       ouissy.rotation.set(0, s.oui[4] === undefined ? 0 : s.oui[4], 0);
-      ouissy.scale.set(1, 1 - k * 0.62, 1);
       ouissy.matrixAutoUpdate = true;
       ouissy.updateMatrix();
     }
