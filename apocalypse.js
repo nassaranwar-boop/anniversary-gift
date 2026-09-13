@@ -10262,8 +10262,26 @@
      in the left of the picture and it appears there, and how
      far it is pushed is how fast she walks.
      ========================================================= */
-  var STICK = { on: false, id: null, ox: 0, oy: 0, x: 0, y: 0, r: 54 };
+  var STICK = { on: false, id: null, ox: 0, oy: 0, x: 0, y: 0, r: 54,
+                /* THE THUMB REPORTS FASTER THAN THE GAME DRAWS.
+
+                   A phone samples a moving touch at 120Hz and some at 240,
+                   and every one of those used to run the whole stick
+                   update: the maths, the four direction flags, AND a write
+                   to the knob's transform, which invalidates style and
+                   forces the browser to recompute layout. Four of those
+                   per drawn frame, on top of a 3D frame that is already
+                   the whole budget, and the main thread never catches up
+                   — so it stalls while the thumb is moving and unsticks a
+                   moment after it stops, which is exactly what it felt
+                   like.
+
+                   The handler now only writes down WHERE the thumb is.
+                   The work happens once per frame, from the game loop. */
+                pending: null };
   var touchUI = false;
+  /* set by bindStick; drained once a frame by tick() */
+  var stickFrame = null;
 
   /* the controls belong to whoever last touched something: a thumb puts
      them on screen, a key takes them off again */
@@ -10330,6 +10348,13 @@
       STICK.ox = cx; STICK.oy = cy;
       zone.classList.add("live");
     }
+    /* called once a frame by the game loop: whatever the thumb last said */
+    stickFrame = function () {
+      if (!STICK.on || !STICK.pending) return;
+      var p = STICK.pending;
+      STICK.pending = null;
+      aim(p.x, p.y);
+    };
     function aim(cx, cy) {
       var dx = cx - STICK.ox, dy = cy - STICK.oy;
       var d = Math.hypot(dx, dy);
@@ -10414,7 +10439,8 @@
         var t = ts[i];
         var id = t.identifier == null ? "mouse" : t.identifier;
         if (id !== STICK.id) continue;
-        aim(t.clientX, t.clientY);
+        /* remembered, not acted on — see STICK.pending */
+        STICK.pending = { x: t.clientX, y: t.clientY };
         e.preventDefault();
         return;
       }
@@ -15713,6 +15739,17 @@
       function () { if (used) return; used = true; levelCard(0); }));
   }
 
+  /* two frames, because one only guarantees the browser has been ASKED to
+     draw; the second guarantees the first one went out */
+  function afterPaint(fn) {
+    requestAnimationFrame(function () { requestAnimationFrame(fn); });
+  }
+  /* the card, with its button replaced by the reason it is still here */
+  function loadingCard() {
+    var b = document.querySelector("#ap-overlay .ap-card-go");
+    if (b) { b.textContent = "LOADING\u2026"; b.disabled = true; }
+  }
+
   function levelCard(i) {
     var def = LEVELS[i];
     G = G || {};
@@ -15721,9 +15758,26 @@
     openOverlay(card(def.card, def.blurb, null, "GO", function () {
       if (used) return;
       used = true;
-      closeOverlay();
-      enterLevel(def);
-      G.levelIndex = i;
+      /* BUILDING A LEVEL TAKES A SECOND AND A HALF, AND IT USED TO TAKE IT
+         WITH NOTHING ON THE SCREEN.
+
+         The card closed and the build ran in the same breath, inside the
+         button's own click handler — so the browser never got to draw the
+         frame in between. The press did nothing, the picture sat there,
+         and a second and a half later the level appeared. That is not a
+         slow build, it is a frozen one, and they feel completely
+         different.
+
+         The card stays up and says it is loading, TWO frames are allowed
+         through so that actually reaches the glass, and only then does the
+         build run. The wait is the same length and no longer looks like a
+         crash. */
+      loadingCard();
+      afterPaint(function () {
+        closeOverlay();
+        enterLevel(def);
+        G.levelIndex = i;
+      });
     }));
   }
 
@@ -16139,6 +16193,8 @@
 
   function tick(dt) {
     if (!G) return;
+    /* the thumb, once — see STICK.pending */
+    if (stickFrame) stickFrame();
     G.time += dt;
 
     /* the board over reception, read once, a beat after the card clears —
