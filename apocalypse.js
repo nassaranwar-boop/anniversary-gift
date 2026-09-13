@@ -16967,6 +16967,26 @@
       return true;
     };
     window.__apScale = function () { return { dpr: Stage.dpr, scale: Stage.scale, rung: Stage.rung, w: Stage.w, h: Stage.h }; };
+    /* FEED THE QUALITY LADDER A MACHINE.
+
+       The ladder is the only thing standing between an old phone and a
+       slideshow, and nothing has ever tested it -- it cannot be tested
+       by playing, because the frame rate in a test container is the
+       container's, not the game's. This hands watchPerformance a run of
+       frames of a chosen length, which is exactly what a machine of a
+       chosen speed would hand it, and the rung it settles on is the
+       answer. `ms` is how long each frame took; `n` is how many. */
+    window.__apFeedFrames = function (ms, n) {
+      var dt = ms / 1000;
+      for (var i = 0; i < (n || 1); i++) watchPerformance(dt);
+      return { rung: Stage.rung, scale: Stage.scale, quality: Stage.quality };
+    };
+    /* and put it back at the top of the ladder between runs */
+    window.__apPerfReset = function () {
+      perfBuf.length = 0; perfHold = 0; perfSince = 0;
+      perfStep(0, 0);
+      return Stage.rung;
+    };
     window.__apShadows = function (on) {
       if (Stage.renderer) { Stage.renderer.shadowMap.enabled = !!on; Stage.renderer.shadowMap.needsUpdate = true; }
       return !!on;
