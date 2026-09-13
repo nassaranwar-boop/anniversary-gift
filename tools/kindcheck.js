@@ -40,6 +40,25 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   const flat = seen.flat();
   ok('the three worlds do not say the same things', new Set(flat).size === flat.length, `${flat.length}`);
 
+  /* AND NEITHER DO THE THREE DIFFICULTIES. A difficulty is its own three
+     worlds, its own boss and its own score; the letters were the only
+     thing that repeated, so going back for Hard was going back over the
+     same post. */
+  const piles = await page.evaluate(() => {
+    const out = {};
+    for (const d of ['easy', 'medium', 'hard']) { window.__soPeekDiff(d); out[d] = window.__soMoments(); }
+    return out;
+  });
+  const texts = ['easy', 'medium', 'hard'].map(d => piles[d].all);
+  ok('every difficulty has a full pile of letters',
+     texts.every(t => t.length >= 8), texts.map(t => t.length).join('/'));
+  ok('and no letter appears in two of them',
+     new Set(texts.flat()).size === texts.flat().length, `${texts.flat().length} in all`);
+  ok('each pile is remembered under its own name',
+     new Set(['easy','medium','hard'].map(d => piles[d].key)).size === 3,
+     ['easy','medium','hard'].map(d => piles[d].key).join(' '));
+  await page.evaluate(() => window.__soPeekDiff('medium'));
+
   /* A LINE SHE CANNOT READ IS NOT A LINE. Every board has to stand on the
      floor she actually walks along, on every difficulty — the first pass of
      this put four of the twenty-seven on ledges and one thirteen rows up
@@ -246,7 +265,7 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   const readAll = await page.evaluate(() => {
     const M = window.__soMoments();
     const all = []; for (let i = 0; i < M.total; i++) all.push(i);
-    localStorage.setItem('so-moments-v1', JSON.stringify(all));
+    localStorage.setItem(M.key, JSON.stringify(all));
     window.__soSetHearts(3);            /* nowhere near the price */
     window.__soFinish();
     const b = document.getElementById('so-moment');
@@ -265,8 +284,61 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   });
   ok('re-reading costs her nothing', reread.after === reread.before, `${reread.before} -> ${reread.after}`);
   ok('and still gives her a real one', reread.text.length > 30, reread.text.slice(0, 40) + '...');
-  await page.evaluate(() => { localStorage.removeItem('so-moments-v1'); });
+  await page.evaluate(() => { localStorage.removeItem(window.__soMoments().key); });
 
+
+  /* ---- THE LIFT ------------------------------------------------------
+     A card taller than the stage used to say so with a dark gradient that,
+     because the overlay is the scroller, scrolled INTO the middle of the
+     card as a hard-edged band. There is a drawn groove and handle on the
+     left instead, and it is not only a readout — it drags. */
+  await page.evaluate(() => { window.__soSetHearts(30); window.__soFinish(); });
+  await page.waitForTimeout(500);
+  const L0 = await page.evaluate(() => {
+    const ov = document.querySelector('.so-overlay.on'), el = document.getElementById('so-lift');
+    const bar = document.getElementById('so-lift-bar');
+    return { room: ov.scrollHeight - ov.clientHeight, on: el && el.classList.contains('on'),
+             h: bar && parseFloat(bar.style.height), top: bar && parseFloat(bar.style.top),
+             band: getComputedStyle(ov, '::before').content };
+  });
+  ok('a card taller than the stage shows the lift', L0.on === true, `room=${L0.room}`);
+  ok('the handle is sized to how much there is to read',
+     L0.h > 10 && L0.h < 96, `height=${L0.h}%`);
+  ok('and it starts at the top', L0.top < 2, `top=${L0.top}%`);
+  ok('the old dark band is gone', L0.band === 'none', L0.band);
+
+  const L1 = await page.evaluate(() => {
+    const ov = document.querySelector('.so-overlay.on');
+    ov.scrollTop = ov.scrollHeight;
+    ov.dispatchEvent(new Event('scroll'));
+    const bar = document.getElementById('so-lift-bar');
+    return { top: parseFloat(bar.style.top) };
+  });
+  /* the bottom of its TRAVEL, which is 100% less the handle's own height —
+     a short card has a nearly-full handle that only moves a few percent */
+  ok('reading to the end sends the handle to the bottom of its travel',
+     Math.abs(L1.top - (100 - L0.h)) < 1.5 && L1.top > L0.top,
+     `top=${L1.top}% of a possible ${(100 - L0.h).toFixed(1)}%`);
+
+  /* dragging it back up actually scrolls the card */
+  const L2 = await page.evaluate(() => {
+    const el = document.getElementById('so-lift'), ov = document.querySelector('.so-overlay.on');
+    const r = el.getBoundingClientRect();
+    const ev = (t, y) => el.dispatchEvent(new PointerEvent(t, { clientY: y, clientX: r.left + 4, bubbles: true, pointerId: 1 }));
+    ev('pointerdown', r.top + r.height * 0.9);
+    ev('pointermove', r.top + 2);
+    ev('pointerup', r.top + 2);
+    return { scrollTop: ov.scrollTop, top: parseFloat(document.getElementById('so-lift-bar').style.top) };
+  });
+  ok('and dragging the handle takes her back up', L2.scrollTop < 8, `scrollTop=${L2.scrollTop}`);
+
+  /* a card that fits has no lift at all */
+  await page.evaluate(() => { window.__soGoLevel(0); window.__soSkipCard(); });
+  const L3 = await page.evaluate(() => {
+    const el = document.getElementById('so-lift');
+    return el ? el.classList.contains('on') : false;
+  });
+  ok('and a closed overlay leaves no lift behind', L3 === false);
 
   ok('no page errors', errs.length === 0, errs.join(' | '));
   await browser.close();
