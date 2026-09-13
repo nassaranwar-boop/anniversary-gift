@@ -4575,12 +4575,6 @@ window.SuperOuissy = (function () {
           '<button class="so-btn so-btn-go" id="so-resume">RESUME</button>' +
           '<button class="so-btn" id="so-restart">RESTART WORLD</button>' +
           '<button class="so-btn" id="so-bgm">MUSIC: ' + (G.bgmOn ? "ON" : "OFF") + "</button>" +
-          /* The ending's door is behind three worlds and a boss. This is
-             the same door, in the one place she can always reach — and
-             on Hard only, for the same reason. */
-          (G.diff === "hard"
-            ? '<button class="so-btn so-btn-quiet" id="so-pause-scene">ANWAR vs DEATH</button>'
-            : "") +
           '<button class="so-btn so-btn-quiet" id="so-quit">QUIT TO HUB</button>' +
         "</div>", "so-ov-card");
       $("so-resume").addEventListener("click", function () { togglePause(false); });
@@ -4589,15 +4583,6 @@ window.SuperOuissy = (function () {
         setBgm(!G.bgmOn); $("so-bgm").textContent = "MUSIC: " + (G.bgmOn ? "ON" : "OFF");
       });
       $("so-quit").addEventListener("click", quitToHub);
-      var pscene = $("so-pause-scene");
-      if (pscene) pscene.addEventListener("click", function () {
-        closeOverlay();
-        /* out of the pause and into the scene, and back into the pause
-           when it ends — the run underneath is untouched either way */
-        G.state = "play";
-        bgmDuck(false);
-        watchDeathScene(function () { togglePause(true); });
-      });
       Array.prototype.forEach.call(document.querySelectorAll("[data-so-setdiff]"), function (b) {
         b.addEventListener("click", function () {
           var k = b.getAttribute("data-so-setdiff");
@@ -4808,35 +4793,22 @@ window.SuperOuissy = (function () {
     }
     html += '<button class="so-btn' + (nxt ? "" : " so-btn-go") + '" id="so-end-again">' +
             "PLAY " + DIFF[G.diff].label.toUpperCase() + " AGAIN</button>";
-    /* THE SCENE ALMOST NOBODY SEES.
+    /* NO DOOR STRAIGHT TO THE SCENE ANY MORE.
 
-       Anwar and Death only meet if the Queen takes her last life on Hard,
-       inside the Queen's own room — which means the one piece of the game
-       with the most story in it is the piece least likely to ever be
-       watched. It can simply be watched instead, and watching it costs
-       nothing and changes nothing: no run, no lives, no save.
+       There used to be an ANWAR vs DEATH button here, and another in the
+       pause menu. They were scaffolding: the scene only happens if the
+       Queen takes her last life on Hard, which made it the hardest thing
+       in the game to ever see, and a way in was needed to check that it
+       worked at all. It works.
 
-       HARD ONLY, wherever the door appears. He is the Hard story — the
-       rescue, the last stand, all of it — and offering his name to
-       someone on Easy names a character that difficulty has never
-       introduced and spoils a scene she has no way to have reached. */
-    if (G.diff === "hard")
-      html += '<button class="so-btn so-btn-quiet" id="so-end-scene">ANWAR vs DEATH</button>';
+       What a shortcut costs is the thing itself. That scene is the
+       reward for having lost the whole run to her, in the last room, on
+       the hardest difficulty — and a button that hands it over on request
+       turns the worst moment in the game into a menu item. It is reached
+       by getting there now, which is the only way it ever meant anything. */
     html += '<button class="so-btn so-btn-quiet" id="so-end-title">TITLE SCREEN</button>';
     html += '<button class="so-btn so-btn-quiet" id="so-end-quit">BACK TO THE GAMES</button>';
     return html;
-  }
-
-  /* Watching it, rather than losing your way into it. The scene is handed
-     the canvas exactly as it is in a real run — same module, same script,
-     same decision at the end of it — and when it finishes, the ending
-     comes back. The one difference is that its outcome is thrown away
-     here: nothing is spent and nothing is won by watching. */
-  function watchDeathScene(back) {
-    back = back || function () { G.state = "ending"; showEnding(true); };
-    if (!window.Rescue) { back(); return; }
-    stopEndingArt();
-    playCutscene("death", { herX: 120, herY: 118 }, back);
   }
 
   function wireEndActions() {
@@ -4851,11 +4823,6 @@ window.SuperOuissy = (function () {
     if (again) again.addEventListener("click", function () {
       closeOverlay();
       playDifficulty(G.diff);
-    });
-    var scene = $("so-end-scene");
-    if (scene) scene.addEventListener("click", function () {
-      closeOverlay();
-      watchDeathScene();
     });
     var title = $("so-end-title");
     if (title) title.addEventListener("click", function () { showDifficulty(); });
