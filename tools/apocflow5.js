@@ -1,6 +1,12 @@
 /* Level 5: up to the gate, through the check, the serum, and inside. */
 const { chromium } = require('playwright-core');
-const clicks = async (p,n) => { for(let i=0;i<n;i++){ await p.evaluate(()=>{const b=document.getElementById('ap-dlg-next'); if(b&&document.getElementById('ap-dlg').getAttribute('aria-hidden')==='false') b.click();}); await p.waitForTimeout(50);} };
+const clicks = async (p,n) => { for(let i=0;i<n;i++){ await p.evaluate(()=>{const b=document.getElementById('ap-dlg-next'); if(b&&document.getElementById('ap-dlg').getAttribute('aria-hidden')==='false') b.click();}); await p.waitForTimeout(50);
+  /* The chapter is fetched on demand now -- index.html no longer
+     carries apocalypse.js, so `Apocalypse` does not exist until the
+     site has been asked for it. Every suite in this folder was
+     written before that and died on `Apocalypse is not defined`. */
+  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
+  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });} };
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--no-sandbox','--no-proxy-server','--disable-gpu'] });

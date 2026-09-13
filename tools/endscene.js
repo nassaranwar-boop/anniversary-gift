@@ -45,10 +45,22 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   });
 
   /* ---- the scene, played straight through ------------------------- */
+  /* THE SCENE'S CLOCK IS DRIVEN, NOT WAITED ON. This browser stalls its
+     frame clock for a second at a time and then catches up, so "open it
+     and look a moment later" lands anywhere between the first frame and
+     two seconds in. The scene is put at the second being tested instead. */
   await page.evaluate(() => window.__soShowEnding());
   await page.waitForSelector('#so-end-art canvas', { timeout: 5000 });
-  await page.waitForTimeout(150);
-  const t0 = await look(), s0 = await playing();
+  let t0 = null, s0 = null, seeked = 9;
+  for (let attempt = 0; attempt < 8 && t0 === null; attempt++) {
+    await page.evaluate(() => window.__soEndSeek(0.12));
+    await page.waitForTimeout(120);
+    seeked = await page.evaluate(() => window.__soEndT());
+    if (seeked < 0.9) { t0 = await look(); s0 = await playing(); }
+  }
+  ok('the scene can be held at its opening second', t0 !== null, `t=${seeked.toFixed(2)}`);
+  if (!t0) { t0 = await look(); s0 = await playing(); }
+
   ok('the scene starts on its own frame', !!t0 && t0.w === 240, t0 && `${t0.w}x${t0.h}`);
   ok('it opens in the dark', t0.bright < 40, `brightness=${t0.bright.toFixed(1)}`);
   ok('the reading is held back while it plays', s0.playing === true && s0.signOpacity === 0,
@@ -110,7 +122,12 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   /* ---- coming back to the card is not the scene again -------------- */
   await page.evaluate(() => window.__soShowEnding(true));
   await page.waitForTimeout(350);
-  const ag = await playing(), agl = await look();
+  /* the same stall the other way round: the canvas exists before the
+     first frame has been painted into it, and an unpainted canvas is
+     black — which is not the same finding as "the scene is black" */
+  let agl = await look();
+  for (let i = 0; i < 20 && agl.bright < 1; i++) { await page.waitForTimeout(150); agl = await look(); }
+  const ag = await playing();
   ok('coming back from a sub-screen does not replay it', ag.playing === false);
   ok('and lands on the two of them, lit', agl.bright > 40, `brightness=${agl.bright.toFixed(1)}`);
   ok('the card is readable straight away', ag.signOpacity > 0.9, `opacity=${ag.signOpacity}`);

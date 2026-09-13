@@ -54,16 +54,16 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   ok('and the board remembers it has spoken', said.flagged === true);
 
   /* ---- stuck in the same PLACE -------------------------------------- */
-  await page.evaluate(() => { window.__soLives(9); window.__soStuck(1); window.__soKill(); });
+  await page.evaluate(() => { window.__soLives(9); window.__soStuck(3); window.__soKill(); });
   await page.evaluate(() => window.__soPump(1.8, {}));
-  ok('two falls is a world doing its job — no offer',
+  ok('four falls in the same spot is still the level being difficult — no offer',
      await page.evaluate(() => !document.getElementById('so-hand')));
   ok('the ordinary revive card is what she gets',
      await page.evaluate(() => !!document.getElementById('so-revive-yes')));
   await page.evaluate(() => document.getElementById('so-revive-no').click());
   await play();
 
-  await page.evaluate(() => { window.__soStuck(2); window.__soKill(); });
+  await page.evaluate(() => { window.__soStuck(4); window.__soKill(); });
   await page.evaluate(() => window.__soPump(1.8, {}));
   const three = await page.evaluate(() => {
     const b = document.getElementById('so-hand');
@@ -71,8 +71,11 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
              note: (document.querySelector('.so-card-note') || {}).textContent || '',
              kicker: (document.querySelector('.so-card-kicker') || {}).textContent || '' };
   });
-  ok('three falls in the same spot and the offer appears', three.hand === true, three.label);
-  ok('it says how many, truthfully', /3 times/.test(three.note), three.note.slice(0, 52) + '...');
+  ok('five falls in the same spot and the offer appears', three.hand === true, three.label);
+  ok('it says how many, truthfully', /5 times/.test(three.note), three.note.slice(0, 52) + '...');
+  ok('and it promises the jump is still the jump', /still the jump/.test(three.note));
+  ok('it does not promise a glow, a shield or an easier anything',
+     !/glow|shield|easier|slower/i.test(three.note), three.note.slice(0, 90));
   ok('and it leads with the bit being mean, not with her', /MEAN/.test(three.kicker), three.kicker);
   ok('the paid way is still there beside it',
      await page.evaluate(() => !!document.getElementById('so-revive-yes')));
@@ -83,6 +86,7 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   const no = await page.evaluate(() => window.__soStuck());
   ok('saying no clears the count', no.n === 0);
   ok('and raises the bar so it does not nag', no.gate > gate0, `${gate0} -> ${no.gate}`);
+  ok('the bar started at five, not three', gate0 === 5, `${gate0}`);
 
   /* dying somewhere ELSE is not the same stretch */
   await page.evaluate(() => { window.__soStuck(4); const p = window.__soPlayer(); window.__soPlayer({ x: p.x + 400 }); window.__soKill(); });
@@ -104,13 +108,51 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   ok('a ribbon is tied where she last stood safely', !!got.st.check, JSON.stringify(got.st.check));
   ok('she comes back at it, not at the start of the world',
      Math.abs(got.p.x - got.st.check.x) < 40, `player ${got.p.x | 0} vs ribbon ${got.st.check.x | 0}`);
-  ok('and with the glow on, so the stretch gets one free mistake', got.p.big === true);
+  ok('and WITHOUT a glow-up: the jump that has been killing her is unchanged',
+     got.p.big !== true, `big=${got.p.big}`);
+  ok('and without lingering invulnerability either', got.p.invuln <= 1.5, `invuln=${got.p.invuln}`);
   ok('taking it clears the count', got.st.n === 0);
 
   await page.evaluate(() => window.__soGoLevel(1)); await play();
   const fresh = await page.evaluate(() => window.__soStuck());
   ok('a new world starts her at nought again',
-     fresh.n === 0 && fresh.gate === 3 && !fresh.check, JSON.stringify(fresh));
+     fresh.n === 0 && fresh.gate === 5 && !fresh.check, JSON.stringify(fresh));
+
+  /* ---- and the two places it must never appear --------------------- */
+  /* the Queen's room: the last fight is the point of the run */
+  await page.evaluate(() => window.__soGoLevel(2)); await play();
+  await page.evaluate(() => { window.__soLives(9); window.__soBossSet({ awake: true }); window.__soStuck(9); window.__soKill(); });
+  await page.evaluate(() => window.__soPump(1.8, {}));
+  ok('never in the Queen\'s room, however many times she falls',
+     await page.evaluate(() => !document.getElementById('so-hand')));
+  const inRoom = await page.evaluate(() => !!document.getElementById('so-revive-no'));
+  if (inRoom) { await page.evaluate(() => document.getElementById('so-revive-no').click()); await play(); }
+
+  /* HARD: the mode whose whole definition is "no ribbons" */
+  await page.evaluate(() => { window.__soTestDrive = true;
+    SuperOuissy.stop(); showScreen('ouissy'); startSuperOuissy(); });
+  await page.waitForSelector('.so-diff-card', { timeout:6000 });
+  await page.click('[data-so-diff="hard"]'); await page.click('#so-play');
+  await page.waitForTimeout(250);
+  const how2 = await page.$('#so-how-ok'); if (how2) await how2.click();
+  await play();
+  await page.evaluate(() => { window.__soLives(9); window.__soStuck(20); window.__soKill(); });
+  await page.evaluate(() => window.__soPump(1.8, {}));
+  ok('never on hard: she chose the mode with no ribbons',
+     await page.evaluate(() => !document.getElementById('so-hand')));
+  ok('hard still gets its own ordinary revive card',
+     await page.evaluate(() => !!document.getElementById('so-revive-yes')));
+  await page.evaluate(() => { const b = document.getElementById('so-revive-no'); if (b) b.click(); });
+  await page.waitForTimeout(400);
+
+  /* back to medium for the rest */
+  await page.evaluate(() => { window.__soTestDrive = true;
+    SuperOuissy.stop(); showScreen('ouissy'); startSuperOuissy(); });
+  await page.waitForSelector('.so-diff-card', { timeout:6000 });
+  await page.click('[data-so-diff="medium"]'); await page.click('#so-play');
+  await page.waitForTimeout(250);
+  const how3 = await page.$('#so-how-ok'); if (how3) await how3.click();
+  await play();
 
   /* ---- hearts that buy moments -------------------------------------- */
   await page.evaluate(() => { window.__soSetHearts(25); window.__soFinish(); });

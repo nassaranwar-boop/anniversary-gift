@@ -17,6 +17,12 @@ const log = (...a) => console.log(`[${((Date.now()-t0)/1000).toFixed(1)}s]`, ...
   await p.route('**', r => (r.request().url().startsWith('http://localhost') ? r.continue() : r.abort()));
   await p.goto('http://localhost:8899/index.html', { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(400);
+  /* The chapter is fetched on demand now -- index.html no longer
+     carries apocalypse.js, so `Apocalypse` does not exist until the
+     site has been asked for it. Every suite in this folder was
+     written before that and died on `Apocalypse is not defined`. */
+  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
+  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });
 
   await p.evaluate(() => {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
