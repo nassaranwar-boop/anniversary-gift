@@ -226,8 +226,18 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
 
   /* ---- hearts that buy moments -------------------------------------- */
   await page.evaluate(() => { window.__soSetHearts(25); window.__soFinish(); });
-  await page.waitForSelector('#so-moment', { timeout: 6000 });
-  ok('twenty-five hearts and the card offers a moment', true);
+  /* POLLED, NOT waitForSelector. The card fades in, and a fade makes
+     Playwright's visibility check a coin toss on a software-rendered
+     browser whose frame clock stalls for whole seconds — it reports the
+     button visible and then times out waiting for it to stay that way.
+     The button's presence is the thing being tested; whether the fade has
+     finished is not. */
+  let hasMoment = false;
+  for (let i = 0; i < 40 && !hasMoment; i++) {
+    hasMoment = await page.evaluate(() => !!document.getElementById('so-moment'));
+    if (!hasMoment) await page.waitForTimeout(150);
+  }
+  ok('twenty-five hearts and the card offers a moment', hasMoment);
   ok('nothing has been read yet',
      await page.evaluate(() => window.__soMoments().read.length === 0));
   await page.click('#so-moment');
