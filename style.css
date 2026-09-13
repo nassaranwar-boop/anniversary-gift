@@ -3033,13 +3033,9 @@ img{-webkit-user-drag:none; user-select:none;}
    The keepsake leads the row and is the only thing in it she did not
    find lying about, so it is given a little air and a warm ring -- it
    reads as the one she is carrying rather than the first of a list. */
-.hv-token-keepsake{
-  position:relative; margin-right:7px; padding-right:7px;
-}
-.hv-token-keepsake::after{
-  content:""; position:absolute; right:0; top:50%; transform:translateY(-50%);
-  width:1px; height:64%; background:rgba(120,80,40,.35);
-}
+/* it stands alone up there now, so it needs no rule beside it to
+   separate it from a list that is no longer there */
+.hv-token-keepsake{ position:relative; }
 .hv-token-keepsake canvas{
   filter:drop-shadow(0 0 3px rgba(255,190,120,.55));
 }
@@ -4128,6 +4124,46 @@ img{-webkit-user-drag:none; user-select:none;}
   82%{ opacity:1; }
   100%{ opacity:0; transform:translateX(-50%) translateY(-8px); }
 }
+/* ---- his voice, off a board in the level ----
+   Same fade as hers, at the foot of the stage instead of the top, so a
+   line from a signpost can never be mistaken for something the thing in
+   front of her just said. */
+.so-sign-say{
+  position:absolute; left:50%; bottom:13%; transform:translateX(-50%) translateY(4px);
+  z-index:6; pointer-events:none; opacity:0; max-width:80%;
+  padding:1cqw 2.2cqw; border-radius:.8cqw; text-align:center;
+  font-family:var(--font-hand); font-size:3.1cqw; line-height:1.15;
+  background:rgba(22,10,26,.78); color:#ffe9c8;
+  box-shadow:inset 0 0 0 .25cqw rgba(255,209,102,.45);
+}
+.so-sign-say.on{ animation:soSign 3.4s ease forwards; }
+@keyframes soSign{
+  0%{ opacity:0; transform:translateX(-50%) translateY(6px); }
+  8%{ opacity:1; transform:translateX(-50%) translateY(0); }
+  85%{ opacity:1; }
+  100%{ opacity:0; transform:translateX(-50%) translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce){
+  .so-sign-say.on{ animation:none; opacity:1; }
+}
+
+/* ---- ten hearts, spent on something that is not an advantage ---- */
+.so-moment-slot{ width:100%; max-width:56cqw; }
+.so-moment-slot.on .so-moment-text{ animation:soMoment .9s ease forwards; }
+.so-moment-text{
+  margin:.4cqw 0 0; padding:1cqw 1.5cqw; border-radius:.8cqw;
+  font-family:var(--font-script); font-size:2cqw; line-height:1.3; color:#fffaf5;
+  background:rgba(255,158,196,.10);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,158,196,.3);
+}
+@keyframes soMoment{ from{opacity:0; transform:translateY(.8cqw);} to{opacity:1; transform:none;} }
+.so-moment-buy{ display:flex; flex-direction:column; align-items:center; gap:.3cqw; }
+.so-moment-btn .gl-life{ width:1.5cqw; height:1.5cqw; vertical-align:-.15cqw; }
+.so-moment-none{ margin:0; font-size:1.4cqw; letter-spacing:.12em; color:rgba(255,214,230,.6); }
+@media (prefers-reduced-motion: reduce){
+  .so-moment-slot.on .so-moment-text{ animation:none; }
+}
+
 .so-boss-cloud{ color:#dff0ff; box-shadow:inset 0 0 0 .25cqw rgba(150,200,240,.55); }
 .so-boss-clock{ color:#ffe9c8; box-shadow:inset 0 0 0 .25cqw rgba(255,209,102,.55); }
 .so-boss-heart{ color:#ffd9e6; box-shadow:inset 0 0 0 .25cqw rgba(255,95,149,.6); }
@@ -4456,23 +4492,53 @@ img{-webkit-user-drag:none; user-select:none;}
   left:8cqw; right:8cqw; bottom:4cqw;
   animation:soDlgIn .24s var(--ease-pop);
 }
+/* it sits over the scene, so it carries its own dark rather than trusting
+   whatever happens to be behind it — she was standing in front of the
+   first three words of it */
 .so-choice-prompt{
-  margin:0 0 .4cqw; text-align:center;
-  font-family:var(--font-serif); font-style:italic; font-size:2cqw; color:#d8d2e8;
+  margin:0 auto .4cqw; text-align:center; width:fit-content; max-width:100%;
+  padding:.5cqw 1.6cqw; border-radius:1.4cqw;
+  font-family:var(--font-serif); font-style:italic; font-size:2cqw; color:#efe9f8;
+  background:rgba(12,7,20,.66);
+  box-shadow:0 0 1.4cqw rgba(12,7,20,.66);
   text-shadow:0 .2cqw .5cqw rgba(4,3,8,.9);
 }
+/* BOTH OF THESE ARE CHOOSABLE, AND BOTH HAVE TO LOOK IT.
+
+   The gold on one of them is a CURSOR — where the arrow keys are standing
+   — and either can simply be tapped. But the other one was muted grey on
+   near-black with a dead border, which does not read as "not selected", it
+   reads as "not available": the game appearing to offer a choice and then
+   only allow one answer, at the single most important decision in it.
+
+   So the resting state is a real button now — lit type, a warm border, its
+   own drop — and the gold is a marker with a caret beside it rather than
+   the only thing on screen that looks pressable. */
 .so-choice-opt{
+  position:relative;
   cursor:pointer; font-family:'Press Start 2P', ui-monospace, monospace;
-  font-size:1.9cqw; line-height:1.5; padding:1.8cqw 2cqw;
-  color:#cfc8dc; background:linear-gradient(180deg,#241c30,#161020);
-  border:.4cqw solid #3a3448; border-radius:.9cqw;
-  box-shadow:0 .5cqw 0 rgba(6,4,10,.6);
+  font-size:1.9cqw; line-height:1.5; padding:1.8cqw 2cqw 1.8cqw 4.4cqw;
+  color:#f3ecff; background:linear-gradient(180deg,#3a2c4c,#221835);
+  border:.4cqw solid #6e5b86; border-radius:.9cqw;
+  box-shadow:0 .5cqw 0 rgba(6,4,10,.6), inset 0 .25cqw 0 rgba(255,255,255,.09);
   transition:transform .12s ease, box-shadow .12s ease, color .12s ease, border-color .12s ease;
 }
+/* the caret sits in the gutter both options keep, so picking one does not
+   shove the words sideways */
+.so-choice-opt::before{
+  content:"\25B8"; position:absolute; left:1.8cqw; top:50%;
+  transform:translateY(-50%) scale(.6); opacity:0; color:#ffd166;
+  transition:opacity .12s ease, transform .12s ease;
+}
+.so-choice-opt.sel::before{opacity:1; transform:translateY(-50%) scale(1);}
 .so-choice-opt.sel{
   color:#fff0b0; border-color:#ffd166;
-  background:linear-gradient(180deg,#3f2a4e,#241830);
-  box-shadow:0 .5cqw 0 rgba(6,4,10,.6), 0 0 2cqw rgba(255,209,102,.45);
+  background:linear-gradient(180deg,#563a6c,#2c1c3e);
+  box-shadow:0 .5cqw 0 rgba(6,4,10,.6), 0 0 2cqw rgba(255,209,102,.45),
+             inset 0 .25cqw 0 rgba(255,255,255,.16);
+}
+@media (hover:hover){
+  .so-choice-opt:hover{border-color:#c79ad6; color:#fff;}
 }
 .so-choice-opt:active{transform:translateY(.4cqw); box-shadow:0 .1cqw 0 rgba(6,4,10,.6);}
 
@@ -4484,13 +4550,54 @@ img{-webkit-user-drag:none; user-select:none;}
    Menus, cards and the ending — one overlay, many faces
    ========================================================= */
 .so-overlay{display:none;}
-.so-overlay.on::before{
-  /* a soft fade at the foot, so a card taller than the stage looks like it
-     continues rather than like it was cut off */
-  content:""; position:absolute; left:0; right:0; bottom:0; height:6cqh;
-  background:linear-gradient(180deg, transparent, rgba(20,10,28,.55));
-  pointer-events:none; z-index:2;
+/* THE DARK BAR IS GONE AND THERE IS A LIFT INSTEAD.
+
+   There used to be a gradient pinned to the "bottom" of the overlay to
+   hint that a tall card carried on below. But the overlay is the thing
+   that SCROLLS, so the gradient scrolled with the content instead of
+   staying at the foot of the window — it landed in the middle of the card
+   as a dark band with a hard edge, which reads as damage rather than as a
+   hint.
+
+   A lift says the same thing honestly: how much there is, and where in it
+   you are. It is drawn rather than borrowed from the browser, because a
+   native scroll bar is invisible until you touch it on a phone — which is
+   exactly the moment it was needed — and looks like a browser part rather
+   than part of this game. It sits on the left, clear of the buttons, and
+   it is not only a readout: you can drag it, or press anywhere on the
+   groove to go there. */
+.so-overlay.on{scrollbar-width:none;}
+.so-overlay.on::-webkit-scrollbar{width:0; height:0;}
+.so-lift{
+  position:absolute; left:1.4cqw; top:8cqh; bottom:8cqh; width:1.9cqw;
+  z-index:12; display:none; touch-action:none; cursor:pointer;
+  border-radius:1cqw;
+  background:linear-gradient(180deg, rgba(24,10,30,.62), rgba(38,16,44,.62));
+  box-shadow:inset 0 0 0 .18cqw rgba(255,209,102,.26),
+             inset 0 .2cqw .5cqw rgba(0,0,0,.45);
 }
+.so-lift.on{display:block; animation:soLiftIn .3s var(--ease-out);}
+@keyframes soLiftIn{from{opacity:0; transform:translateX(-.6cqw);} to{opacity:1; transform:none;}}
+.so-lift-bar{
+  position:absolute; left:.22cqw; right:.22cqw; top:0; height:20%;
+  border-radius:1cqw;
+  background:linear-gradient(180deg, #ffe9b0, #ffd166 42%, #dda136);
+  box-shadow:inset 0 .22cqw 0 rgba(255,255,255,.55),
+             0 0 .9cqw rgba(255,209,102,.5);
+  transition:background .15s linear;
+}
+.so-lift.grabbed .so-lift-bar,
+.so-lift:hover .so-lift-bar{background:linear-gradient(180deg,#fff6d6,#ffdd8e 42%,#e8ae44);}
+/* a heart on the handle, so it belongs to this game and not to a browser */
+.so-lift-bar::after{
+  content:""; position:absolute; left:50%; top:50%;
+  width:.7cqw; height:.7cqw; transform:translate(-50%,-50%) rotate(45deg);
+  background:rgba(120,48,70,.55);
+  box-shadow:-.35cqw 0 0 rgba(120,48,70,.55), 0 -.35cqw 0 rgba(120,48,70,.55);
+  border-radius:.1cqw;
+}
+@media (prefers-reduced-motion: reduce){ .so-lift.on{animation:none;} }
+
 .so-overlay.on{
   display:flex; position:absolute; inset:0; z-index:10;
   /* flex-start plus auto block margins, not align-items:center. Centred
@@ -4710,6 +4817,19 @@ img{-webkit-user-drag:none; user-select:none;}
   border:.5cqw solid rgba(255,209,102,.4); border-radius:.8cqw;
   box-shadow:0 1cqw 3cqw rgba(0,0,0,.55);
 }
+/* While the scene runs, the card it belongs to is not there yet. Everything
+   below the picture holds its place in the layout (so nothing jumps when it
+   arrives) and fades in once they have actually met. */
+.so-end > *{transition:opacity .9s ease;}
+.so-end.playing > :not(.so-end-art){opacity:0; pointer-events:none;}
+.so-end-art{position:relative;}
+.so-end.playing .so-end-art::after{
+  content:"TAP TO SKIP"; position:absolute; right:1cqw; bottom:1.2cqw;
+  font-family:var(--font-pixel); font-size:1.1cqw; letter-spacing:.16em;
+  color:rgba(255,246,225,.62); pointer-events:none;
+  animation:soSkipHint 2.4s ease-in-out infinite;
+}
+@keyframes soSkipHint{0%,100%{opacity:.25}50%{opacity:.8}}
 .so-end-kicker{font-size:1.7cqw; color:#ffb0cd; margin:.6cqw 0 0; letter-spacing:.16em;}
 .so-end-lines{display:flex; flex-direction:column; gap:1cqw;}
 .so-end-lines p{
@@ -6679,6 +6799,16 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-panel{
   display:flex; flex-direction:column; align-items:center; gap:2cqh;
   width:100%; max-width:92cqw; text-align:center;
+  /* NOTHING ON A PANEL MAY BE SOMEWHERE SHE CANNOT GET TO.
+     The caps below keep each panel inside the stage on every screen
+     measured, and this is the floor under that: if content ever does grow
+     past the picture -- a longer roster, a longer keepsake, a language
+     that sets wider -- it scrolls rather than putting the buttons under
+     the fold. The panel at the end of a race was 512 points of a 440-point
+     stage, with MENU, KEEP THE PHOTO and NEXT TRACK below the glass, and
+     nothing caught it because nothing had ever walked to a results
+     screen. */
+  max-height:94cqh; overflow-y:auto; overscroll-behavior:contain;
 }
 .rc-h{
   margin:0; font-size:3cqh; font-weight:400; color:var(--rc-gold);
@@ -6686,7 +6816,14 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .rc-cards{display:grid; gap:1.6cqw; width:100%; justify-content:center;}
 .rc-cards-2{grid-template-columns:repeat(2, minmax(0, 26cqw));}
-.rc-cards-4{grid-template-columns:repeat(4, minmax(0, 20cqw));}
+/* Four cards were four columns of 20cqw. There are six courses now, and a
+   sixth column does not fit a 16:9 stage, so they wrap to three and three.
+   Two rows of the old size came to 444 points of card on a laptop and put
+   BACK and START past the bottom of the picture -- a card is its art plus
+   two lines and the art is sized off the width, so the way to shorten a
+   row is to narrow it. 16cqw gives three across with room for the gaps,
+   and two rows that leave the buttons on screen. */
+.rc-cards-4{grid-template-columns:repeat(auto-fit, minmax(0, 16cqw)); max-width:54cqw; margin:0 auto;}
 
 .rc-card{
   display:flex; flex-direction:column; align-items:center; gap:.8cqh;
@@ -6898,7 +7035,15 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-split{
   display:grid; gap:2cqw; width:100%;
   align-items:center; justify-items:center;
+  /* the standings beside the postcard were half the height of the panel
+     they sit in -- 256 points of the 512 that put the buttons under the
+     fold on every screen there is */
+  max-height:40cqh;
 }
+.rc-standings ol{max-height:30cqh; overflow-y:auto; overscroll-behavior:contain;}
+/* a keepsake is a sentence, not a badge, so the strip under a result can be
+   a great deal taller than it used to be */
+.rc-earned{max-height:20cqh; overflow-y:auto; overscroll-behavior:contain;}
 /* the results panel carries the most of any panel, so it packs tighter */
 .rc-res{ gap:1.5cqh; }
 
@@ -6957,6 +7102,79 @@ img{-webkit-user-drag:none; user-select:none;}
   display:grid; gap:1.2cqw; width:100%; margin:1cqh 0 .4cqh;
   /* two up while there is room for two, one up when there is not */
   grid-template-columns:repeat(auto-fit, minmax(min(100%, 30cqw), 1fr));
+}
+
+/* ---- THE GLOVEBOX ----
+   A badge is a rule you satisfied and reads like one: small caps, gold,
+   two to a row. A keepsake is a sentence somebody wrote to her, so it is
+   set as writing -- one to a row, serif, italic, in the pink the hearts
+   themselves are drawn in, so the two collections are never mistaken for
+   each other at a glance. */
+.rc-keep{
+  display:flex; flex-direction:column; gap:.5cqh; text-align:left;
+  padding:1cqh 2cqw; border-radius:.8cqw;
+  background:rgba(34,18,34,.72);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,158,196,.16);
+}
+.rc-keep b{
+  font-size:1.25cqh; letter-spacing:.12em; color:#8d7f9e;
+}
+.rc-keep i{
+  font-family:'Playfair Display', Georgia, serif;
+  font-style:italic; font-size:1.45cqh; line-height:1.65; color:#6f6480;
+}
+.rc-keep.on, .rc-keep-new{
+  background:rgba(58,22,44,.8);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,158,196,.42);
+}
+.rc-keep.on b, .rc-keep-new b{ color:#ff9ec4; }
+.rc-keep.on i, .rc-keep-new i{ color:#ffeaf2; }
+.rc-keep-new{ animation:rc-keep-pop .6s var(--ease-out, ease-out) both; }
+@keyframes rc-keep-pop{
+  from{ opacity:0; transform:translateY(1.4cqh) scale(.96); }
+  to  { opacity:1; transform:none; }
+}
+.rc-keeps{ max-width:74cqw; }
+.rc-keep-list{
+  display:grid; gap:1.2cqw; width:100%; margin:1cqh 0 .4cqh;
+  /* one to a row: these are sentences, and a sentence in a 30cqw column
+     on a landscape phone is four words a line */
+  grid-template-columns:1fr;
+  max-height:44cqh; overflow-y:auto; overscroll-behavior:contain;
+}
+/* in a results strip it sits alone above the badges rather than beside
+   them, so the thing she just opened is the thing she reads first */
+.rc-earned .rc-keep{ width:min(56cqw, 100%); }
+
+/* ---- A BUTTON THAT SAYS WHAT IT DOES ----
+   Four mode buttons with four names and no way to tell what any of them
+   would do until you pressed it. The name keeps the size it had; the line
+   under it is small, quiet, and sentence case, so the button still reads as
+   a button at a glance and explains itself on a second look. */
+.rc-btn-mode{
+  display:flex; flex-direction:column; align-items:center; gap:.35cqh;
+  line-height:1.15;
+}
+.rc-btn-mode b{ font-weight:400; }
+.rc-btn-mode i{
+  font-style:normal; font-size:max(9px, 1.5cqh);
+  letter-spacing:.04em; opacity:.62;
+}
+
+/* the same thing said in full on the screen after it -- and for the Grand
+   Prix this is the only place it is ever said, because a championship picks
+   its own courses and never shows the track menu */
+.rc-mode{
+  margin:0; max-width:62cqw;
+  display:flex; flex-direction:column; gap:.5cqh;
+}
+.rc-mode b{
+  font-size:max(10px, 1.7cqh); letter-spacing:.16em; color:var(--rc-gold);
+  font-weight:400;
+}
+.rc-mode i{
+  font-style:normal; font-size:max(9.5px, 1.5cqh); line-height:1.7;
+  color:#ffc4a3;
 }
 
 /* the title button once every one of them is in */
@@ -7333,6 +7551,60 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-pad[data-mode="slide"] .rc-key-sm{width:max(44px, 8cqh); height:max(44px, 8cqh);}
   .rc-pad-cluster{gap:min(1.6cqw, 2.6cqh); padding:min(1.4cqh,1.4cqh) min(1.6cqw,2.2cqh);}
 
+  /* SIX COURSES MEANS TWO ROWS OF CARDS, AND TWO ROWS DID NOT FIT.
+
+     Four tracks were one row and the panel came to 380 of a 440-point
+     stage. Six wrap to two rows of three, which took it to 476 -- so the
+     cards were all on screen, the blurb was on screen, and BACK and START
+     were 50 points below the bottom of the glass. She could look at every
+     course and not start one.
+
+     The cards come in (a card is art plus two lines, and the art is sized
+     off the width, so narrowing them is what shortens the rows) and the
+     panel's own rhythm tightens. 400 of 440, with the buttons on it. A
+     laptop and an iPad are both far outside this query and keep the
+     roomier layout they had. */
+  /* three explicit columns, not auto-fit: shrinking the container alone
+     let the grid decide three 20cqw columns no longer fitted and wrap to
+     TWO, which is three rows and taller than what it replaced */
+  .rc-cards-4{grid-template-columns:repeat(3, minmax(0, 15cqw)); max-width:none; gap:1.1cqw;}
+  .rc-panel{gap:1.1cqh;}
+  .rc-h{font-size:2.4cqh;}
+  .rc-blurb{font-size:1.35cqh; line-height:1.5;}
+  .rc-warn{line-height:1.4;}
+  .rc-varnote{line-height:1.4;}
+  .rc-card{padding:.8cqh .7cqw; gap:.4cqh;}
+
+  /* the line under each mode's name costs four rows of height, and on the
+     shortest screens that is the difficulty row and the way back to the hub */
+  .rc-btn-mode{gap:.15cqh;}
+  .rc-btn-mode i{font-size:max(8.5px, 1.3cqh);}
+  .rc-mode{gap:.3cqh;}
+  .rc-mode i{line-height:1.5;}
+
+  /* AND THE PANEL AT THE END OF A RACE, WHICH NEVER FITTED.
+
+     This one predates the six courses -- the championship table is one row
+     per racer, not one per round, so it is the same height it always was.
+     It came to 512 of a 440-point stage, and what was under the fold was
+     MENU, KEEP THE PHOTO and NEXT TRACK: she could finish a Grand Prix
+     round and have no way to start the next one. Nothing caught it because
+     landscape.js, buttons.js and handheld.js all walk the gate, the hub,
+     the book and the games, and none of them has ever been to a results
+     screen.
+
+     The half of it that is the standings beside the postcard was 256 of
+     those 512. Both halves come in, the list scrolls if the field is long,
+     and the strip of things the race just won scrolls too. 398 of 440,
+     buttons included. */
+  .rc-split{max-height:34cqh;}
+  .rc-card-shot{margin:.2cqh 0 0;}
+  .rc-card-shot canvas{width:min(34cqw, 100%); max-height:32cqh;}
+  .rc-standings ol{max-height:26cqh; overflow-y:auto; overscroll-behavior:contain;}
+  .rc-earned{max-height:13cqh; overflow-y:auto; overscroll-behavior:contain;}
+  .rc-pod-art canvas{width:9cqh;}
+  .rc-podium{gap:1.2cqw;}
+
   /* THE MENU HAD TO END ABOVE THE GLASS AND DID NOT.
 
      Its buttons carry a 14px padding floor so they clear a thumb without a
@@ -7387,6 +7659,18 @@ img{-webkit-user-drag:none; user-select:none;}
      is what taking the padding all the way down did, and what buttons.js
      failed on. Twelve keeps the whole target on the glass. */
   .hv-top{padding:max(12px, min(2.5%, 1.5cqh)) 2.5%;}
+}
+
+
+/* Below about 400 points there is no room for both the name and the line
+   under it, and the name is the half that has to survive -- the same line
+   is said in full on the very next screen, which is where the Grand Prix
+   has always had to say it anyway. */
+@media (orientation: landscape) and (max-height: 420px){
+  .rc-btn-mode i{display:none;}
+  .rc-btn-mode{gap:0;}
+  .rc-mode i{font-size:max(8.5px, 1.3cqh); line-height:1.45;}
+  .rc-cards-2{grid-template-columns:repeat(2, minmax(0, 22cqw));}
 }
 
 /* 360, not 400: at 375px and up the full-size buttons fit the stage with
@@ -8341,6 +8625,21 @@ img{-webkit-user-drag:none; user-select:none;}
              0 .6cqh 2cqh rgba(0,0,0,.55);
 }
 .ns-door:active{ transform:translateY(.2cqh); }
+/* A THUMB, ON BOTH OF THESE.
+   handheld.js walks ten real phones and found the night's door at 253x37
+   and its three little night buttons at 30x30 -- both under the 44 a finger
+   is judged by. The door gets the height outright, because it is a wide
+   slab with room above and below it; the small ones keep the size they look
+   and get an invisible target, because making them 44 square would be three
+   chunky tiles where there was a neat row. */
+@media (hover:none){
+  .ns-nite::after{
+    content:""; position:absolute; left:50%; top:50%;
+    width:max(100%, 44px); height:max(100%, 44px);
+    transform:translate(-50%, -50%);
+  }
+}
+.ns-door{min-height:44px;}
 
 /* the rows underneath it: grouped by what they are for, and all
    smaller than the door, because none of them is the door */
@@ -8579,11 +8878,21 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .ns-roster{ margin-top:2.6cqh; }
 .ns-roster-lab{
-  margin:0 0 1cqh; font-size:max(8.5px, 1.3cqh); letter-spacing:.3em;
+  /* 10, not 8.5: on every phone in handheld.js the container query resolves
+     to about five pixels and the floor is what she actually gets, and 8.5px
+     of 0.3em-tracked capitals at 42% opacity is not a label, it is a
+     texture. Ten is the readable floor the rest of the site is held to. */
+  margin:0 0 1cqh; font-size:max(10px, 1.3cqh); letter-spacing:.3em;
   color:rgba(226,206,172,.42);
 }
 .ns-nites{ display:flex; gap:.9cqw; justify-content:center; }
 .ns-nite{
+  /* 30px is the size it looks and 44 is the size a thumb needs, so it keeps
+     the first and carries the second: an invisible target centred on it,
+     the same trick the map's zoom studs and the hunt's chips use. They sit
+     in a row with a gap wider than the six points of slop this adds, so no
+     two targets can reach each other. */
+  position:relative;
   width:max(30px, 4.2cqh); height:max(30px, 4.2cqh);
   border:0; border-radius:.45cqw; cursor:pointer;
   font-family:inherit; display:grid; place-items:center;

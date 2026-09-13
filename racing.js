@@ -48,6 +48,15 @@ const RH       = 270;    // internal render height
 const HORIZON  = 108;    // screen row the ground vanishes at
 const FOCAL    = 360;    // lens; bigger = narrower field of view
 const CAM_H    = 33;     // camera height above the road
+/* ...and how far it is ABOVE that right now, because she is in the air.
+   This is the one honest way to get height into a Mode 7 picture: the
+   ground stays the flat plane the renderer needs it to be, and the eye
+   goes up. A flat plane seen from higher up is still exactly a flat
+   plane, so every row, every billboard and every solid stays correct --
+   which is not true of a height field, where a screen row is one distance
+   all the way across and the ground under a prop at the edge of the
+   picture ends up sampled at the height of the middle of it. */
+let camLift = 0;
 const CAM_DIST = 122;    // how far the camera trails the kart
 const MAX_Z    = 2600;   // beyond this the ground is just haze
 
@@ -110,7 +119,7 @@ function packRgb(c) { return (255 << 24) | (c[2] << 16) | (c[1] << 8) | c[0]; }
    --------------------------------------------------------- */
 const TRACKS = [
   {
-    id:"woods", name:"Cabin Woods", laps:3,
+    id:"woods", name:"Cabin Woods", laps:4,
     blurb:"Out past the pines, over the log bridge, and round the little cabin where it all began.",
     grass:"#4f8f52", grassAlt:"#478248", shoulder:"#8a6b45",
     road:"#8f7a5e", roadAlt:"#877257", rumbleA:"#ff7f8a", rumbleB:"#fff8e8",
@@ -119,30 +128,48 @@ const TRACKS = [
     scenery:["pine","pine","pine","pine","tree","bush","bush","rock","cabin","shed","signpost","flowerbox"],
     /* opening straight, sweep, forest esses, cabin detour, river wiggle,
        and a run home down the right-hand side */
-    pts:[[0.54,0.93],[0.42,0.94],[0.30,0.93],
-         [0.19,0.89],[0.11,0.81],[0.08,0.71],
-         [0.14,0.63],[0.24,0.60],[0.30,0.53],[0.24,0.46],[0.13,0.44],
-         [0.07,0.36],[0.08,0.26],[0.14,0.18],
-         [0.24,0.12],[0.35,0.11],
-         [0.42,0.17],[0.47,0.25],[0.55,0.28],[0.62,0.22],
-         [0.68,0.14],[0.78,0.11],[0.87,0.16],
-         [0.92,0.25],[0.90,0.35],[0.83,0.41],[0.86,0.50],[0.93,0.57],
-         [0.92,0.68],[0.87,0.78],[0.79,0.86],[0.68,0.92]],
+    pts:[[0.5705,0.9000],[0.5385,0.9000],[0.5065,0.9000],[0.4745,0.9000],
+         [0.4425,0.9000],[0.4104,0.9000],[0.3784,0.9000],[0.3464,0.9000],
+         [0.3144,0.9000],[0.2824,0.8992],[0.2512,0.8931],[0.2219,0.8810],
+         [0.1957,0.8635],[0.1735,0.8415],[0.1563,0.8158],[0.1415,0.7877],
+         [0.1267,0.7594],[0.1120,0.7310],[0.0973,0.7027],[0.0843,0.6723],
+         [0.0767,0.6396],[0.0750,0.6059],[0.0750,0.5720],[0.0750,0.5381],
+         [0.0750,0.5042],[0.0750,0.4703],[0.0750,0.4364],[0.0750,0.4025],
+         [0.0774,0.3696],[0.0859,0.3364],[0.1010,0.3047],[0.1199,0.2769],
+         [0.1390,0.2500],[0.1582,0.2231],[0.1773,0.1962],[0.1965,0.1693],
+         [0.2158,0.1426],[0.2382,0.1185],[0.2651,0.0995],[0.2962,0.0862],
+         [0.3284,0.0798],[0.3614,0.0787],[0.3944,0.0783],[0.4274,0.0779],
+         [0.4604,0.0775],[0.4934,0.0771],[0.5264,0.0767],[0.5594,0.0763],
+         [0.5924,0.0758],[0.6254,0.0761],[0.6598,0.0828],[0.6923,0.0977],
+         [0.7203,0.1165],[0.7479,0.1354],[0.7754,0.1543],[0.8023,0.1741],
+         [0.8241,0.1994],[0.8382,0.2286],[0.8443,0.2589],[0.8428,0.2900],
+         [0.8327,0.3219],[0.8146,0.3505],[0.7940,0.3773],[0.7774,0.4064],
+         [0.7685,0.4385],[0.7681,0.4694],[0.7751,0.5000],[0.7898,0.5291],
+         [0.8101,0.5542],[0.8309,0.5787],[0.8517,0.6032],[0.8718,0.6282],
+         [0.8866,0.6571],[0.8946,0.6902],[0.8948,0.7220],[0.8922,0.7534],
+         [0.8896,0.7848],[0.8829,0.8157],[0.8686,0.8443],[0.8487,0.8675],
+         [0.8241,0.8847],[0.7944,0.8962],[0.7626,0.9000],[0.7306,0.9000],
+         [0.6986,0.9000],[0.6666,0.9000],[0.6346,0.9000],[0.6025,0.9000]],
     /* the log bridge: straight over the top, skipping the cabin loop */
-    cut:{ name:"log bridge", pts:[[0.37,0.12],[0.47,0.075],[0.58,0.07],[0.68,0.115]] },
+    cut:{ name:"log bridge", pts:[[0.4425,0.9000],[0.4094,0.8757],[0.3765,0.8512],[0.3439,0.8262],
+                [0.3118,0.8008],[0.2802,0.7746],[0.2493,0.7477],[0.2190,0.7199],
+                [0.1893,0.6914],[0.1602,0.6622],[0.1315,0.6325],[0.1032,0.6023],
+                [0.0750,0.5720]] },
     /* It runs down out of the hills, under the log bridge, and pools in
        the middle of the circuit. Placed to clear the racing surface
        everywhere — and where the road does cross it, the tarmac is
        painted afterwards, so it reads as a culvert. */
-    river:{ w:30, pts:[[0.58,-0.08],[0.555,-0.01],[0.53,0.06],[0.515,0.13],
-                       [0.505,0.20],[0.50,0.27],[0.505,0.34],[0.515,0.41],[0.53,0.47]] },
+    river:{ w:30, pts:[[0.8500,-0.0800],[0.8746,-0.0111],[0.8963,0.0578],[0.9129,0.1267],
+                       [0.9231,0.1956],[0.9272,0.2644],[0.9267,0.3333],[0.9240,0.4022],
+                       [0.9222,0.4711],[0.9239,0.5400]] },
     /* the thing the blurb promises: logs down off the hill, lying half
        across the road. Always one side at a time, so there is a line
        through — an obstacle you cannot avoid is just a tax. */
+    ramps:3,   /* down through the forest, where the road runs long and straight */
     hazard:{ kind:"log", n:7, warn:"WATCH OUT · fallen logs across the road" },
   },
   {
-    id:"town", name:"Hometown Streets", laps:3,
+    id:"town", name:"Hometown Streets", laps:4,
     blurb:"Corner stores, porch lights, the sprinklers that never got the memo, and the alley you always cut through.",
     grass:"#6fae5c", grassAlt:"#64a153", shoulder:"#b9a684",
     road:"#8e8e96", roadAlt:"#87878f", rumbleA:"#ffc4a3", rumbleB:"#fff8e8",
@@ -150,16 +177,28 @@ const TRACKS = [
     light:-0.5,
     scenery:["house","house","house","tree","bush","lamp","store","hydrant","postbox",
              "flowerbox","mailbox","bike","hoop","car","bench"],
-    pts:[[0.55,0.93],[0.40,0.94],[0.26,0.92],
-         [0.15,0.87],[0.09,0.78],[0.10,0.67],
-         [0.18,0.60],[0.29,0.58],[0.35,0.50],
-         [0.29,0.42],[0.17,0.40],[0.09,0.32],
-         [0.11,0.21],[0.20,0.14],[0.32,0.11],
-         [0.44,0.14],[0.50,0.22],[0.58,0.26],[0.66,0.21],
-         [0.71,0.13],[0.82,0.12],[0.90,0.19],
-         [0.92,0.30],[0.85,0.37],[0.79,0.45],
-         [0.85,0.53],[0.93,0.61],[0.92,0.72],
-         [0.86,0.81],[0.76,0.88],[0.66,0.92]],
+    pts:[[0.5346,0.8409],[0.5055,0.8457],[0.4765,0.8506],[0.4474,0.8554],
+         [0.4184,0.8603],[0.3894,0.8651],[0.3601,0.8679],[0.3310,0.8649],
+         [0.3032,0.8560],[0.2779,0.8415],[0.2562,0.8220],[0.2378,0.7992],
+         [0.2199,0.7759],[0.2020,0.7526],[0.1841,0.7294],[0.1663,0.7061],
+         [0.1504,0.6815],[0.1398,0.6541],[0.1352,0.6255],[0.1364,0.5978],
+         [0.1437,0.5692],[0.1571,0.5423],[0.1746,0.5174],[0.1925,0.4928],
+         [0.2099,0.4677],[0.2225,0.4397],[0.2287,0.4096],[0.2283,0.3804],
+         [0.2215,0.3506],[0.2082,0.3226],[0.1912,0.2968],[0.1743,0.2710],
+         [0.1628,0.2428],[0.1602,0.2133],[0.1657,0.1862],[0.1785,0.1617],
+         [0.1978,0.1412],[0.2235,0.1263],[0.2522,0.1177],[0.2810,0.1097],
+         [0.3098,0.1017],[0.3386,0.0937],[0.3674,0.0857],[0.3962,0.0777],
+         [0.4251,0.0698],[0.4567,0.0652],[0.4891,0.0681],[0.5200,0.0758],
+         [0.5505,0.0838],[0.5810,0.0919],[0.6115,0.0999],[0.6421,0.1079],
+         [0.6726,0.1159],[0.7029,0.1241],[0.7307,0.1363],[0.7549,0.1549],
+         [0.7730,0.1775],[0.7854,0.2031],[0.7918,0.2309],[0.7914,0.2613],
+         [0.7835,0.2913],[0.7715,0.3199],[0.7593,0.3484],[0.7493,0.3776],
+         [0.7462,0.4081],[0.7503,0.4374],[0.7605,0.4646],[0.7774,0.4899],
+         [0.7990,0.5111],[0.8215,0.5314],[0.8438,0.5519],[0.8620,0.5758],
+         [0.8732,0.6031],[0.8773,0.6304],[0.8750,0.6578],[0.8658,0.6855],
+         [0.8498,0.7102],[0.8317,0.7335],[0.8136,0.7568],[0.7931,0.7781],
+         [0.7669,0.7954],[0.7378,0.8064],[0.7088,0.8119],[0.6798,0.8167],
+         [0.6507,0.8215],[0.6217,0.8264],[0.5926,0.8312],[0.5636,0.8361]],
     /* THE ENDPOINTS HAVE TO LAND ON THE MAIN LOOP.
 
        This one used to run from (0.335,0.495) to (0.655,0.475) — and
@@ -173,35 +212,53 @@ const TRACKS = [
        racing line, and each saves the three or four per cent of a lap
        the log bridge always did. */
     cut:{ name:"the back alley",
-          pts:[[0.410,0.126],[0.485,0.116],[0.560,0.113],[0.635,0.118],[0.710,0.130]] },
+          pts:[[0.2215,0.3506],[0.2324,0.3264],[0.2436,0.3023],[0.2553,0.2784],
+                [0.2677,0.2548],[0.2808,0.2315],[0.2949,0.2085],[0.3100,0.1860],
+                [0.3259,0.1638],[0.3427,0.1420],[0.3602,0.1204],[0.3781,0.0990],
+                [0.3962,0.0777]] },
     /* "the sprinklers that never got the memo" — they pulse, so a lap
        learned is a lap you can time your way through */
     hazard:{ kind:"sprinkler", n:9, warn:"WATCH OUT · sprinklers, and the wet patch they leave" },
   },
   {
-    id:"ward", name:"Hospital Dash", laps:3,
+    id:"ward", name:"Hospital Dash", laps:4,
     blurb:"Sunlit halls, a slalom of IV poles, and the gift-cart run everybody pretends not to take.",
     grass:"#b9c8de", grassAlt:"#adbdd6", shoulder:"#93a8c6",
     road:"#e9edf5", roadAlt:"#dde4ef", rumbleA:"#7ec8e3", rumbleB:"#fff8e8",
     sky:["#cfe4f4","#eef5fb"], haze:"#d6e6f2", accent:"#7ec8e3", tiles:true,
     light:-1.1,
     scenery:["pole","pole","plant","plant","cart","chair","vending","sign","bench"],
-    pts:[[0.52,0.93],[0.38,0.94],[0.25,0.91],
-         [0.14,0.85],[0.09,0.75],[0.12,0.65],
-         [0.21,0.59],[0.32,0.61],[0.38,0.54],
-         [0.33,0.46],[0.22,0.45],[0.13,0.38],
-         [0.10,0.27],[0.18,0.17],[0.30,0.12],
-         [0.41,0.15],[0.46,0.24],[0.54,0.29],[0.63,0.25],
-         [0.69,0.16],[0.80,0.13],[0.89,0.20],
-         [0.91,0.31],[0.84,0.39],[0.80,0.48],
-         [0.87,0.56],[0.92,0.65],[0.88,0.76],
-         [0.79,0.85],[0.66,0.91]],
+    pts:[[0.5625,0.8800],[0.5338,0.8800],[0.5051,0.8800],[0.4764,0.8800],
+         [0.4477,0.8800],[0.4190,0.8800],[0.3903,0.8800],[0.3616,0.8800],
+         [0.3329,0.8800],[0.3042,0.8800],[0.2755,0.8800],[0.2468,0.8794],
+         [0.2186,0.8741],[0.1918,0.8630],[0.1680,0.8467],[0.1482,0.8260],
+         [0.1325,0.8024],[0.1178,0.7782],[0.1030,0.7540],[0.0884,0.7296],
+         [0.0765,0.7021],[0.0707,0.6725],[0.0700,0.6431],[0.0700,0.6143],
+         [0.0700,0.5854],[0.0700,0.5566],[0.0700,0.5277],[0.0709,0.4995],
+         [0.0769,0.4717],[0.0893,0.4440],[0.1065,0.4208],[0.1259,0.3998],
+         [0.1457,0.3794],[0.1698,0.3637],[0.1966,0.3551],[0.2235,0.3537],
+         [0.2514,0.3597],[0.2773,0.3732],[0.3015,0.3898],[0.3257,0.4064],
+         [0.3499,0.4230],[0.3741,0.4397],[0.3982,0.4563],[0.4224,0.4729],
+         [0.4469,0.4891],[0.4739,0.5007],[0.5026,0.5058],[0.5301,0.5047],
+         [0.5573,0.4976],[0.5833,0.4843],[0.6060,0.4663],[0.6280,0.4474],
+         [0.6500,0.4285],[0.6721,0.4097],[0.6941,0.3908],[0.7161,0.3719],
+         [0.7396,0.3554],[0.7665,0.3467],[0.7928,0.3462],[0.8179,0.3533],
+         [0.8410,0.3678],[0.8590,0.3885],[0.8741,0.4111],[0.8892,0.4338],
+         [0.9039,0.4570],[0.9149,0.4839],[0.9196,0.5128],[0.9200,0.5422],
+         [0.9200,0.5716],[0.9200,0.6010],[0.9200,0.6305],[0.9200,0.6599],
+         [0.9188,0.6894],[0.9114,0.7185],[0.8993,0.7466],[0.8868,0.7747],
+         [0.8743,0.8028],[0.8596,0.8278],[0.8402,0.8485],[0.8174,0.8642],
+         [0.7915,0.8748],[0.7634,0.8796],[0.7347,0.8800],[0.7060,0.8800],
+         [0.6773,0.8800],[0.6486,0.8800],[0.6199,0.8800],[0.5912,0.8800]],
     cut:{ name:"the gift-cart run",
-          pts:[[0.410,0.150],[0.480,0.143],[0.550,0.141],[0.620,0.148],[0.690,0.160]] },
+          pts:[[0.9200,0.5716],[0.8976,0.6002],[0.8749,0.6286],[0.8520,0.6567],
+                [0.8286,0.6842],[0.8045,0.7110],[0.7799,0.7371],[0.7545,0.7624],
+                [0.7285,0.7870],[0.7019,0.8109],[0.6749,0.8342],[0.6475,0.8572],
+                [0.6199,0.8800]] },
     hazard:{ kind:"ivpole", n:10, warn:"WATCH OUT · a slalom of IV poles" },
   },
   {
-    id:"roof", name:"Rooftop Sunset", laps:3,
+    id:"roof", name:"Rooftop Sunset", laps:4,
     blurb:"String lights, laundry lines, a plank across the gap, and every cat in the city out to watch the finish.",
     grass:"#4a3a63", grassAlt:"#433457", shoulder:"#6d5a49",
     road:"#8a7a68", roadAlt:"#82735f", rumbleA:"#ffd166", rumbleB:"#ff7f8a",
@@ -209,19 +266,113 @@ const TRACKS = [
     light:-2.2,                       // low sun, long shadows the other way
     scenery:["stringpole","cat","laundry","vent","cat","watertank","acunit","skylight",
              "dish","planter","shelter","trafficlight","car","lamp"],
-    pts:[[0.53,0.93],[0.40,0.93],[0.27,0.90],
-         [0.16,0.84],[0.10,0.74],[0.13,0.63],
-         [0.23,0.57],[0.33,0.59],[0.39,0.51],
-         [0.32,0.44],[0.20,0.42],[0.12,0.34],
-         [0.13,0.23],[0.22,0.15],[0.34,0.12],
-         [0.43,0.16],[0.48,0.25],[0.57,0.27],[0.64,0.20],
-         [0.70,0.12],[0.81,0.12],[0.90,0.21],
-         [0.90,0.32],[0.83,0.40],[0.81,0.49],
-         [0.88,0.58],[0.92,0.68],[0.86,0.79],
-         [0.76,0.87],[0.65,0.92]],
+    pts:[[0.3516,0.5827],[0.3706,0.5619],[0.3895,0.5412],[0.4085,0.5204],
+         [0.4275,0.4996],[0.4465,0.4789],[0.4654,0.4581],[0.4844,0.4373],
+         [0.5034,0.4166],[0.5224,0.3958],[0.5413,0.3750],[0.5603,0.3543],
+         [0.5793,0.3335],[0.5983,0.3127],[0.6172,0.2919],[0.6362,0.2712],
+         [0.6552,0.2504],[0.6742,0.2296],[0.6931,0.2089],[0.7121,0.1881],
+         [0.7325,0.1689],[0.7572,0.1561],[0.7829,0.1504],[0.8086,0.1517],
+         [0.8331,0.1594],[0.8550,0.1733],[0.8735,0.1936],[0.8863,0.2180],
+         [0.8976,0.2431],[0.9089,0.2682],[0.9184,0.2939],[0.9232,0.3207],
+         [0.9228,0.3479],[0.9171,0.3735],[0.9064,0.3985],[0.8909,0.4213],
+         [0.8720,0.4417],[0.8528,0.4618],[0.8336,0.4819],[0.8153,0.5028],
+         [0.8009,0.5268],[0.7915,0.5532],[0.7878,0.5793],[0.7890,0.6051],
+         [0.7952,0.6315],[0.8070,0.6573],[0.8237,0.6805],[0.8421,0.7025],
+         [0.8578,0.7266],[0.8665,0.7539],[0.8676,0.7806],[0.8620,0.8062],
+         [0.8501,0.8296],[0.8323,0.8497],[0.8087,0.8653],[0.7821,0.8753],
+         [0.7552,0.8847],[0.7283,0.8941],[0.7015,0.9035],[0.6746,0.9129],
+         [0.6478,0.9223],[0.6209,0.9317],[0.5940,0.9411],[0.5663,0.9499],
+         [0.5359,0.9544],[0.5052,0.9535],[0.4756,0.9488],[0.4465,0.9437],
+         [0.4173,0.9387],[0.3882,0.9336],[0.3591,0.9285],[0.3299,0.9235],
+         [0.3008,0.9184],[0.2737,0.9102],[0.2491,0.8962],[0.2292,0.8779],
+         [0.2142,0.8564],[0.2041,0.8322],[0.1994,0.8064],[0.2003,0.7802],
+         [0.2070,0.7542],[0.2199,0.7291],[0.2378,0.7073],[0.2567,0.6865],
+         [0.2757,0.6658],[0.2947,0.6450],[0.3137,0.6242],[0.3326,0.6035]],
     cut:{ name:"the plank",
-          pts:[[0.396,0.136],[0.472,0.132],[0.548,0.128],[0.624,0.124],[0.700,0.120]] },
+          pts:[[0.7890,0.6051],[0.7785,0.6338],[0.7679,0.6625],[0.7567,0.6909],
+                [0.7449,0.7190],[0.7323,0.7468],[0.7187,0.7742],[0.7043,0.8012],
+                [0.6889,0.8279],[0.6727,0.8542],[0.6558,0.8802],[0.6385,0.9060],
+                [0.6209,0.9317]] },
+    ramps:2,   /* across the gaps between the roofs */
     hazard:{ kind:"washline", n:8, warn:"WATCH OUT · laundry lines hung too low" },
+  },
+  {
+    id:"pier", name:"Harbour Lights", laps:4,
+    blurb:"Down the front where the lamps come on early, past the shuttered huts, and back along the water.",
+    grass:"#9db0a6", grassAlt:"#92a59b", shoulder:"#bbae90",
+    road:"#7d8a92", roadAlt:"#76838b", rumbleA:"#5ec8d8", rumbleB:"#fff8e8",
+    sky:["#7fc4e8","#ffd9b0"], haze:"#cfd8de", accent:"#5ec8d8",
+    light:-0.9,
+    scenery:["lamp","bench","pole","bush","sign","car","bike","postbox",
+             "planter","shelter","hydrant","rock"],
+    pts:[[0.6134,0.8748],[0.5853,0.8821],[0.5572,0.8894],[0.5291,0.8968],
+         [0.5009,0.9035],[0.4720,0.9064],[0.4423,0.9044],[0.4124,0.8965],
+         [0.3857,0.8843],[0.3608,0.8688],[0.3362,0.8528],[0.3115,0.8369],
+         [0.2869,0.8209],[0.2622,0.8050],[0.2376,0.7890],[0.2129,0.7731],
+         [0.1883,0.7571],[0.1652,0.7389],[0.1454,0.7171],[0.1295,0.6921],
+         [0.1186,0.6657],[0.1123,0.6370],[0.1109,0.6077],[0.1135,0.5787],
+         [0.1167,0.5498],[0.1199,0.5210],[0.1231,0.4921],[0.1263,0.4632],
+         [0.1295,0.4343],[0.1327,0.4055],[0.1382,0.3772],[0.1488,0.3495],
+         [0.1650,0.3233],[0.1847,0.3020],[0.2062,0.2833],[0.2278,0.2648],
+         [0.2494,0.2462],[0.2710,0.2277],[0.2926,0.2092],[0.3142,0.1907],
+         [0.3358,0.1722],[0.3574,0.1536],[0.3795,0.1356],[0.4042,0.1214],
+         [0.4325,0.1117],[0.4622,0.1078],[0.4910,0.1095],[0.5198,0.1133],
+         [0.5485,0.1171],[0.5773,0.1210],[0.6054,0.1282],[0.6315,0.1413],
+         [0.6536,0.1591],[0.6709,0.1800],[0.6838,0.2039],[0.6917,0.2309],
+         [0.6939,0.2606],[0.6900,0.2900],[0.6842,0.3191],[0.6807,0.3485],
+         [0.6835,0.3777],[0.6925,0.4048],[0.7061,0.4277],[0.7245,0.4478],
+         [0.7485,0.4645],[0.7757,0.4756],[0.8039,0.4843],[0.8316,0.4944],
+         [0.8569,0.5096],[0.8782,0.5296],[0.8940,0.5520],[0.9053,0.5773],
+         [0.9114,0.6056],[0.9118,0.6347],[0.9097,0.6637],[0.9077,0.6927],
+         [0.9027,0.7213],[0.8924,0.7484],[0.8773,0.7727],[0.8588,0.7928],
+         [0.8360,0.8100],[0.8100,0.8227],[0.7821,0.8308],[0.7540,0.8381],
+         [0.7258,0.8454],[0.6977,0.8528],[0.6696,0.8601],[0.6415,0.8674]],
+    cut:{ name:"behind the huts",
+          pts:[[0.5485,0.1171],[0.5729,0.1454],[0.5970,0.1737],[0.6208,0.2024],
+                [0.6439,0.2316],[0.6664,0.2612],[0.6881,0.2915],[0.7089,0.3224],
+                [0.7290,0.3539],[0.7484,0.3860],[0.7673,0.4185],[0.7857,0.4513],
+                [0.8039,0.4843]] },
+    ramps:2,   /* the boards, where they ride up over the pilings */
+    hazard:{ kind:"washline", n:8, warn:"WATCH OUT \u00b7 nets hung out across the boards" },
+  },
+  {
+    id:"lane", name:"The Long Way Home", laps:4,
+    blurb:"The last stretch, in the dark, with every window lit and nobody else on the road.",
+    grass:"#314c3a", grassAlt:"#2b4434", shoulder:"#5c4c39",
+    road:"#4c4c58", roadAlt:"#454551", rumbleA:"#ffb347", rumbleB:"#fff2d6",
+    sky:["#1b2340","#59406a"], haze:"#3c3752", accent:"#ffb347",
+    light:-2.6,
+    scenery:["tree","house","lamp","mailbox","postbox","bush","pine",
+             "signpost","hydrant","car","flowerbox","bench"],
+    pts:[[0.4593,0.9316],[0.4290,0.9327],[0.3988,0.9339],[0.3685,0.9351],
+         [0.3382,0.9358],[0.3081,0.9333],[0.2789,0.9252],[0.2513,0.9128],
+         [0.2263,0.8957],[0.2044,0.8746],[0.1861,0.8500],[0.1701,0.8236],
+         [0.1543,0.7971],[0.1384,0.7706],[0.1225,0.7441],[0.1066,0.7176],
+         [0.0928,0.6898],[0.0838,0.6600],[0.0799,0.6280],[0.0819,0.5960],
+         [0.0893,0.5660],[0.1000,0.5373],[0.1111,0.5087],[0.1222,0.4802],
+         [0.1333,0.4516],[0.1444,0.4231],[0.1555,0.3945],[0.1666,0.3660],
+         [0.1777,0.3375],[0.1895,0.3088],[0.2069,0.2812],[0.2300,0.2579],
+         [0.2551,0.2387],[0.2803,0.2198],[0.3054,0.2009],[0.3306,0.1820],
+         [0.3562,0.1650],[0.3851,0.1546],[0.4149,0.1522],[0.4433,0.1571],
+         [0.4700,0.1692],[0.4947,0.1895],[0.5138,0.2159],[0.5362,0.2394],
+         [0.5637,0.2537],[0.5922,0.2583],[0.6209,0.2542],[0.6489,0.2403],
+         [0.6721,0.2176],[0.6964,0.1959],[0.7256,0.1821],[0.7550,0.1773],
+         [0.7843,0.1805],[0.8123,0.1919],[0.8370,0.2111],[0.8572,0.2343],
+         [0.8771,0.2578],[0.8970,0.2812],[0.9147,0.3066],[0.9271,0.3369],
+         [0.9320,0.3686],[0.9333,0.3991],[0.9346,0.4297],[0.9358,0.4602],
+         [0.9371,0.4908],[0.9384,0.5213],[0.9361,0.5538],[0.9265,0.5859],
+         [0.9123,0.6154],[0.8979,0.6443],[0.8834,0.6732],[0.8690,0.7021],
+         [0.8545,0.7309],[0.8401,0.7598],[0.8256,0.7887],[0.8112,0.8176],
+         [0.7962,0.8454],[0.7773,0.8695],[0.7547,0.8899],[0.7291,0.9060],
+         [0.7008,0.9169],[0.6712,0.9228],[0.6410,0.9246],[0.6107,0.9257],
+         [0.5804,0.9269],[0.5501,0.9281],[0.5199,0.9292],[0.4896,0.9304]],
+    cut:{ name:"the farm track",
+          pts:[[0.1777,0.3375],[0.2066,0.3255],[0.2356,0.3138],[0.2647,0.3027],
+                [0.2940,0.2922],[0.3236,0.2825],[0.3533,0.2739],[0.3833,0.2662],
+                [0.4136,0.2595],[0.4440,0.2536],[0.4746,0.2485],[0.5054,0.2438],
+                [0.5362,0.2394]] },
+    ramps:3,   /* the humpbacks on the way home */
+    hazard:{ kind:"log", n:7, warn:"WATCH OUT \u00b7 branches down across the lane" },
   },
 ];
 
@@ -309,9 +460,73 @@ const BADGES = [
     test:(f) => f.cup },
 ];
 
+/* ---------------------------------------------------------
+   5b. WHAT THE HEARTS ARE FOR
+
+   They were coins. Ten of them bought six per cent of top speed, which is
+   real but is not something a person can feel, and at the flag they were
+   thrown away and counted again from zero next race. So the one thing on
+   the course she was actively choosing to go and get was also the one
+   thing that meant nothing an hour later.
+
+   Now they are kept. Whatever she carries over the line is added to a
+   running total that survives the tab being closed, and the total opens
+   these, one at a time -- the things he would have said if the game had
+   somewhere to say them. It changes what a bad race is worth: you can come
+   fifth, and still come home with something.
+
+   The speed bonus stays exactly as it was. This is what the hearts are
+   FOR; that is what they DO.
+
+   The costs rise, and the last one lands at 158 -- about twenty races at
+   the eight-ish a good lap yields. Far enough to be worth driving for, near
+   enough that the last one is not theoretical. */
+const KEEPSAKES = [
+  { id:"first", at:5,   name:"THE FIRST LAP",
+    text:"You did not lift once on the first corner you ever saw. I should have known then." },
+  { id:"alley", at:14,  name:"THE LONG WAY",
+    text:"You always took the alley. I always said it was not faster. It was never about faster." },
+  { id:"porch", at:28,  name:"PORCH LIGHT",
+    text:"Your street at the hour when every window is on and nobody has drawn the curtains yet." },
+  { id:"halls", at:46,  name:"SUNLIT HALLS",
+    text:"I counted the doors on the way in and could not tell you one number on the way out. You were fine. That is all I kept." },
+  { id:"lights", at:68, name:"STRING LIGHTS",
+    text:"The roof, the bad chairs, the lights we hung crooked and never straightened. You said leave them. They are still crooked." },
+  { id:"pines", at:94,  name:"PAST THE PINES",
+    text:"There is a cabin out past the pines, and if you had not wanted to walk that far, none of the rest of this happens." },
+  { id:"cats", at:124,  name:"EVERY CAT IN THE CITY",
+    text:"They all came out to watch the finish. I was watching you watch them." },
+  { id:"kept", at:158,  name:"WHAT YOU CARRIED",
+    text:"Every heart in here is a lap you finished still holding something. That is the whole of it, really." },
+];
+
+/* ---- WHAT THE FOUR MODES ACTUALLY ARE ----
+
+   Four buttons with four names on them, and no way to know what any of them
+   would do until you pressed it. Grand Prix and Single Race sound like the
+   same thing; Time Trial sounds like it might be either; Two Players sounds
+   like a split screen it does not have. So each one says what it is, on the
+   button and again on the screen after it -- and the Grand Prix says it
+   there or nowhere, because a championship picks its own courses and never
+   shows her the track menu at all. */
+const MODES = {
+  single: { name: "SINGLE RACE",
+            one:  "One course, eight karts",
+            blurb:"Pick any of the six courses and race it once, against seven others. Flip it, or make it rain, if you want it harder." },
+  gp:     { name: "GRAND PRIX",
+            one:  "All six courses, points after each",
+            blurb:"Every course in turn. Points for where you finish each one, added up, and the cup at the end. It is written down between rounds, so you can stop after any of them and pick it up later." },
+  trial:  { name: "TIME TRIAL",
+            one:  "Alone, against the clock",
+            blurb:"No opponents. Your best lap on each course is kept, and next time you drive it the ghost of that lap drives alongside you." },
+  duo:    { name: "TWO PLAYERS \u00b7 TAKE TURNS",
+            one:  "One phone, two of you",
+            blurb:"One of you drives the course alone. Then the other drives the same course with the first one's ghost beside them \u2014 so you are racing each other even though only one of you is holding the phone." },
+};
+
 /* the line under the logo changes as they come in */
 const TAGLINES = [
-  "Two racers. Four memories. One finish line \u2014 and we cross it together.",
+  "Two racers. Six memories. One finish line \u2014 and we cross it together.",
   "Four badges in. You are getting good at this, and it shows.",
   "Every badge earned. There is nothing left to prove and one more lap anyway.",
 ];
@@ -359,6 +574,14 @@ const ITEMS = {
   arrow:   { name:"Cupid's Arrow",weight:18, tint:"#ff5f95" },
   heart:   { name:"Paper Heart",  weight:18, tint:"#ff7f8a" },
   rose:    { name:"Rose Thorns",  weight:16, tint:"#e8556f" },
+  /* THE ONE THING IN HERE THAT IS NOT A WEAPON.
+     Every other item is something you throw, drop or burn; there was
+     nothing at all to DO while you were winning except wait to be hit from
+     behind, which is the least interesting position in a kart race to be
+     in. His jacket takes one hit for her. It is weighted the opposite way
+     to the ring and the bouquet -- towards the front of the field rather
+     than the back -- because it is the leader who has something to lose. */
+  jacket:  { name:"His Jacket",   weight:15, tint:"#7ec8e3" },
   bouquet: { name:"Bouquet",      weight:12, tint:"#ff9ec4" },
   ring:    { name:"Gold Ring",    weight:6,  tint:"#ffd166" },
 };
@@ -374,6 +597,7 @@ function rollItem(place, total) {
     if (k === "bouquet") x *= 0.4 + back * 1.6;
     if (k === "arrow")   x *= 0.5 + back * 1.4;
     if (k === "letter")  x *= 1.4 - back * 0.5;
+    if (k === "jacket")  x *= 1.75 - back * 1.45;
     return x;
   });
   let t = w.reduce((a, b) => a + b, 0) * Math.random();
@@ -448,6 +672,10 @@ function buildPath(def) {
       fromIdx: a.idx, toIdx: b.idx, name: def.cut.name,
     };
   }
+
+  /* the road exists now, so the ramps can be put on it -- and the bake,
+     which runs next, can paint them where they are */
+  buildRamps(def);
 }
 
 function tangentAt(i) {
@@ -937,6 +1165,39 @@ function bakeTrack(def) {
       if (i === 0) g.moveTo(p.x + nx, p.y + ny); else g.lineTo(p.x + nx, p.y + ny);
     }
     g.closePath(); g.stroke();
+  }
+
+  /* --- ramps, painted where they were placed ---
+     A wedge of boards across the road with chevrons up it, so it reads as
+     something to hit squarely from a long way back. Painted after the road
+     and before the start line, like every other marking. */
+  for (const rp of ramps) {
+    g.save();
+    g.translate(rp.x, rp.y);
+    g.rotate(rp.a);
+    const L = 54, HW = ROAD_HALF - 3;
+    /* the boards, darkening towards the lip so it reads as rising */
+    const gr = g.createLinearGradient(-L / 2, 0, L / 2, 0);
+    gr.addColorStop(0, "rgba(62,40,26,.55)");
+    gr.addColorStop(1, "rgba(28,18,12,.85)");
+    g.fillStyle = gr;
+    g.fillRect(-L / 2, -HW, L, HW * 2);
+    /* the lip, bright, so you can see exactly where it ends */
+    g.fillStyle = "#ffd166";
+    g.fillRect(L / 2 - 6, -HW, 6, HW * 2);
+    /* chevrons pointing the way you are meant to be going */
+    g.fillStyle = "rgba(255,248,232,.72)";
+    for (let c = -3; c <= 3; c++) {
+      const cy = c * (HW / 3.4);
+      g.beginPath();
+      g.moveTo(-L / 2 + 6, cy - 5);
+      g.lineTo(-L / 2 + 22, cy);
+      g.lineTo(-L / 2 + 6, cy + 5);
+      g.lineTo(-L / 2 + 11, cy);
+      g.closePath();
+      g.fill();
+    }
+    g.restore();
   }
 
   /* --- start / finish, in checkers --- */
@@ -2898,7 +3159,7 @@ function drawSolid(g, o, camX, camY, camA, fade) {
     if (z < ZNEAR_G) z = ZNEAR_G;
     const x = -dx * sinA + dy * cosA;
     const sc = camFocal / z;
-    return { sx: RW / 2 + x * sc, sy: HORIZON + CAM_H * sc - lv * hv * sc, z, sc };
+    return { sx: RW / 2 + x * sc, sy: HORIZON + (CAM_H + camLift) * sc - lv * hv * sc, z, sc };
   };
 
   /* How bright a face is, from where it points relative to the sun.
@@ -3032,7 +3293,7 @@ function solidShadow(g, o, camX, camY, camA, fade) {
       if (z < ZNEAR_G) z = ZNEAR_G;
       const x = -dx * sinA + dy * cosA;
       const sc = camFocal / z;
-      pts.push({ x: RW / 2 + x * sc, y: HORIZON + CAM_H * sc });
+      pts.push({ x: RW / 2 + x * sc, y: HORIZON + (CAM_H + camLift) * sc });
     }
   }
   /* convex hull of the eight, so the shadow is one shape and not two */
@@ -3847,7 +4108,7 @@ function renderGround(camX, camY, camA, focal) {
        already being drawn, so they carry the real ground colour and
        join it without a step. The haze laid over the horizon afterwards
        is what says "far away" — that is its job, not this one. */
-    let z = (CAM_H * focal) / (dy < 1 ? 1 : dy);
+    let z = ((CAM_H + camLift) * focal) / (dy < 1 ? 1 : dy);
     if (z > MAX_Z) z = MAX_Z;
     let o = py * RW;
 
@@ -3977,7 +4238,7 @@ function projectSprite(wx, wy, camX, camY, camA) {
   return {
     z,
     sx: RW / 2 + (x / z) * camFocal,
-    sy: HORIZON + (CAM_H / z) * camFocal,
+    sy: HORIZON + ((CAM_H + camLift) / z) * camFocal,
     scale: camFocal / z,
     fade: z < 102 ? (z - 78) / 24 : 1,
   };
@@ -4032,6 +4293,25 @@ const WET_BRAKE = 0.84;
 
 const OFFROAD_SP= 0.56;   // top speed multiplier off the tarmac
 const OFFROAD_DR= 0.55;   // and how much steering authority you keep there
+/* A JUMP, IN THE UNITS EVERYTHING ELSE IS IN.
+
+   GRAVITY is world units per second per second and LAUNCH is the upward
+   speed a ramp gives at full pelt, so the peak is LAUNCH squared over twice
+   GRAVITY and the flight is twice LAUNCH over GRAVITY: 23 units up, 1.2
+   seconds long. A kart is 21 units tall, so it clears its own height, and
+   at full speed it covers about 270 units of road while it is up there --
+   three per cent of a lap, which is why buildRamps insists on that much
+   straight either side before it puts one down.
+
+   The first numbers gave 7 units and 0.7s. That is a bump; the shadow
+   barely leaves the kart and nothing about it reads as flight.
+
+   Steering in the air is deliberately poor: wheels that are not on
+   anything do not steer, and having to commit to a line before you leave
+   the ground is most of what makes a jump a jump. */
+const GRAVITY  = 130;
+const LAUNCH   = 78;
+const AIR_STEER= 0.22;
 
 class Racer {
   constructor(def, isPlayer, lane, back) {
@@ -4081,6 +4361,19 @@ class Racer {
     this.squash = 0;     // and the compression on landing a hop
     this.draft = 0;      // how long we have been sitting in clean air
     this.hop = 0;        // the little jump that starts a drift
+    /* ---- AND THE ONE THAT IS NOT COSMETIC ----
+       `air` is real height above the road in world units, with a real
+       velocity under it. Mode 7 draws a flat plane, so ELEVATION cannot be
+       done in it honestly -- a screen row is one distance all the way
+       across, and a height field makes the ground under a prop at the edge
+       of the picture sample the height at the middle of it instead, which
+       had the scenery floating by fifteen pixels. But a flat plane seen
+       from higher up is still exactly a flat plane seen from higher up.
+       So the ground stays where it is and the KART leaves it, which is
+       what a jump is anyway. */
+    this.air = 0;
+    this.vair = 0;
+    this.rampCool = 0;   // so one ramp is one launch
     this.ammo = 0;       // how many of a multi-shot item are left
     this.offroad = false;
     this.aiTarget = (startIdx + 8) % path.length;
@@ -4171,6 +4464,20 @@ class Racer {
       Snd.hop();
     }
     this.dkeyWas = dkey;
+    /* ---- in the air ---- */
+    if (this.rampCool > 0) this.rampCool -= dt;
+    if (this.air > 0 || this.vair > 0) {
+      this.vair -= GRAVITY * dt;
+      this.air += this.vair * dt;
+      if (this.air <= 0) {
+        /* down, with weight in it */
+        this.air = 0; this.vair = 0;
+        this.squash = 0.30;
+        this.jolt = Math.max(this.jolt || 0, 0.5);
+        if (this.isPlayer) { shake = 2; Snd.hop(); }
+      }
+    }
+
     if (this.hop > 0) {
       const was = this.hop;
       this.hop -= dt;
@@ -4218,6 +4525,7 @@ class Racer {
     let rate = TURN * (1.35 - 0.55 * speedFrac);
     if (this.drifting) rate *= 1.45;
     if (this.offroad)  rate *= OFFROAD_DR;
+    if (this.air > 0)  rate *= AIR_STEER;
     /* Authority falls off as you slow, but never to nothing. Letting it
        reach zero meant a kart that nosed into the verge and stopped
        could not steer out of it, because steering needed speed and
@@ -4327,7 +4635,20 @@ class Racer {
     const stepLen = Math.max(1, line === path
       ? pathLen / n
       : cut.len / Math.max(1, cut.pts.length - 1));
-    const look = Math.max(3, Math.round((95 + 85 * sf0) / stepLen));
+    let look = Math.max(3, Math.round((95 + 85 * sf0) / stepLen));
+    /* OFF THE TARMAC, AIM FOR THE ROAD -- NOT FOR THE CORNER AFTER IT.
+
+       The aim point sits a fixed distance up the road, which is right while
+       the kart is on it. Knocked wide, it is still aiming a hundred and
+       fifty units ahead, so the angle to that point barely changes and the
+       kart drives along the grass PARALLEL to the tarmac -- where it is
+       slower, and so can never get back on. Three karts spent an entire
+       race doing this: 113-second laps against a 36-second leader, every
+       lap, on the same corner.
+
+       So when it is off, it looks only as far as the edge of the road it
+       fell off, which turns the aim point sideways and brings it back. */
+    if (this.offroad) look = Math.max(2, Math.round(38 / stepLen));
     const tIdx = line === path ? (here + look) % n
                                : Math.min(here + look, tIdxMax - 1);
     const nIdx = line === path ? (tIdx + 1) % n : Math.min(tIdx + 1, tIdxMax - 1);
@@ -4343,6 +4664,8 @@ class Racer {
     this.aiJitter += dt * 0.7;
     let lane = (line === path ? this.lane * 0.75 : this.lane * 0.3)
              + Math.sin(this.aiJitter) * 10;
+    /* and it stops picking a side of a road it is not on */
+    if (this.offroad) lane = 0;
 
     /* Look up the road and move off the line if something is parked on
        it. Without this the field simply drives into the logs, which
@@ -4376,8 +4699,20 @@ class Racer {
     /* ease off through the tight stuff, and rubber-band gently so the
        race stays alive without feeling rigged */
     let want = this.maxSpeed * (1 - Math.min(0.42, Math.abs(diff) * 0.85));
-    const p = racers.find((r) => r.isPlayer);
-    if (p && !p.finished) {
+    /* THE ELASTIC NEEDS SOMETHING TO PULL AGAINST.
+
+       It used to pull against her, and against nothing at all once she was
+       home -- so the moment she crossed the line the pack she had spent
+       four laps in the middle of came apart, and the order on the results
+       screen was decided by half a lap of nobody racing anybody. Whoever is
+       leading stands in for her after that, which keeps it a race to the
+       last car and costs her nothing while she is still in it. */
+    let p = racers.find((r) => r.isPlayer && !r.finished);
+    if (!p) {
+      for (const r of racers)
+        if (!r.finished && r !== this && (!p || r.progress > p.progress)) p = r;
+    }
+    if (p && p !== this) {
       const gap = p.progress - this.progress;
       if (this.rival) {
         /* THE RIVAL
@@ -4437,6 +4772,14 @@ class Racer {
       /* spend the speed where there is road to use it */
       go = Math.abs(this.steer) < TURN * 5 && !this.offroad
         && Math.abs(this.speed) > TOP_SPEED * 0.5;
+    } else if (it === "jacket") {
+      /* put it on when somebody is close enough behind to use whatever
+         they are carrying, or when it is nearly the flag and being hit
+         now would actually cost the place */
+      go = racers.some((o) => o !== this && !o.finished
+            && o.progress < this.progress
+            && (o.x - this.x) ** 2 + (o.y - this.y) ** 2 < 620 * 620)
+        || this.progress > trackDef.laps - 0.35;
     } else if (it === "rose") {
       /* drop it in front of whoever is close behind */
       go = racers.some((o) => o !== this && !o.finished
@@ -4482,7 +4825,27 @@ class Racer {
        is narrower, which is the price of taking it */
     const rumble = pr.half + (RUMBLE_HALF - ROAD_HALF);
     const bound  = pr.half + (SHOULDER - ROAD_HALF);
-    this.offroad = pr.dist > rumble;
+    /* nothing under the wheels is under the wheels */
+    this.offroad = this.air <= 0 && pr.dist > rumble;
+
+    /* ---- ramps ----
+       Crossing one with the speed to carry it puts the kart in the air.
+       Below half speed it is a bump, which is the right lesson: you have
+       to arrive at it properly. */
+    if (this.air <= 0 && this.rampCool <= 0 && ramps.length) {
+      for (let ri = 0; ri < ramps.length; ri++) {
+        const rp = ramps[ri];
+        const ddx = this.x - rp.x, ddy = this.y - rp.y;
+        if (ddx * ddx + ddy * ddy > rp.r * rp.r) continue;
+        const sp = Math.abs(this.speed) / TOP_SPEED;
+        if (sp < 0.5) { this.jolt = Math.max(this.jolt || 0, 0.6); break; }
+        this.vair = LAUNCH * (0.62 + 0.38 * sp);
+        this.air = 0.01;
+        this.rampCool = 0.9;
+        if (this.isPlayer) Snd.hop();
+        break;
+      }
+    }
 
     /* SUSPENSION
 
@@ -4490,7 +4853,7 @@ class Racer {
        up over the rumble strip and unloads again on the way off it, and
        the drawing reads that number — so a wheel dropping off the edge
        of the road makes the whole kart shudder. */
-    const onKerb = pr.dist > pr.half && pr.dist <= rumble;
+    const onKerb = this.air <= 0 && pr.dist > pr.half && pr.dist <= rumble;
     const load = onKerb ? Math.min(1, Math.abs(this.speed) / (TOP_SPEED * 0.55)) : 0;
     this.jolt += (load - this.jolt) * (onKerb ? 0.35 : 0.10) * k;
     if (onKerb && this.isPlayer && Math.abs(this.speed) > TOP_SPEED * 0.4)
@@ -4498,7 +4861,7 @@ class Racer {
 
     /* the wall is soft: past the shoulder you get pushed back and lose
        most of your speed, rather than stopping dead */
-    if (pr.dist > bound) {
+    if (pr.dist > bound && this.air <= 0) {
       const push = pr.dist - bound;
       const s = Math.sign(pr.side) || 1;
       this.x -= pr.nx * s * push;
@@ -4620,6 +4983,11 @@ class Racer {
       if (this.ammo > 0) this.item = "bouqshot";
       if (this.isPlayer) paintItem();
       return;
+    } else if (it === "jacket") {
+      /* long enough to cover the stretch you were worried about, and it
+         goes when it is used rather than when it runs out */
+      this.shield = 13;
+      if (this.isPlayer) flashBanner("JACKET ON!");
     } else if (it === "rose") {
       hazards.push({
         x: this.x - Math.cos(this.angle) * 44,
@@ -4720,7 +5088,7 @@ function stepFx(dt) {
    13. RACE STATE
    ========================================================= */
 let racers = [], boxes = [], shots = [], hazards = [], props = [];
-let obstacles = [], coins = [];
+let obstacles = [], coins = [], ramps = [];
 let trackDef = TRACKS[0];
 let raceTime = 0, countdown = 0, shake = 0;
 let mode = "single";           // single | gp | trial
@@ -4744,6 +5112,7 @@ let duoChars = [0, 1];
 
 let raceBeatGhost = false;   // the trial run came in under the ghost's
 let justEarned = [];         // badges won by the race just finished
+let justOpened = [];         // ...and keepsakes the hearts just opened
 let raceClean = true;    // no barrier touched this race
 let raceDrift = 0;       // the longest drift held this race
 
@@ -4944,6 +5313,46 @@ function placeBoxes() {
    two thirds of the half-width, so there is always a line through for
    somebody who is paying attention. An obstacle you cannot avoid is
    not a hazard, it is a toll. */
+/* ---- RAMPS ----
+
+   Placed on the racing line, and only where the road is straight enough
+   either side that you arrive at one square and land pointing where you
+   were already going. A ramp on the exit of a corner is not a jump, it is
+   an ambush. The same seeded generator as everything else places them, so
+   a course is the same course every time she opens it. */
+function buildRamps(def) {
+  ramps = [];
+  const n = def && def.ramps;
+  if (!n) return;
+  const rnd = mulberry(seedOf(def.base || def.id, 5531));
+  const len = path.length;
+  /* how straight the road is at i, over the run a kart covers in the air */
+  const straightness = (i) => {
+    let worst = 0;
+    const a0 = tangentAt(i);
+    for (let d = -18; d <= 44; d += 4) {
+      let t = tangentAt((i + d + len * 2) % len) - a0;
+      while (t >  Math.PI) t -= TWO_PI;
+      while (t < -Math.PI) t += TWO_PI;
+      worst = Math.max(worst, Math.abs(t));
+    }
+    return worst;
+  };
+  for (let k = 0; k < n; k++) {
+    /* spread round the loop, clear of the start-finish stretch */
+    const want = Math.floor((0.14 + ((k + 0.5) / n) * 0.78) * len) % len;
+    let best = want, bestS = Infinity;
+    for (let d = -46; d <= 46; d += 2) {
+      const i = (want + d + len * 2) % len;
+      const sc = straightness(i) + Math.abs(d) * 0.0016;
+      if (sc < bestS) { bestS = sc; best = i; }
+    }
+    if (bestS > 0.34) continue;           // nowhere straight enough here
+    ramps.push({ x: path[best].x, y: path[best].y, i: best,
+                 a: tangentAt(best), r: ROAD_HALF + 16 });
+  }
+}
+
 function placeObstacles(def) {
   obstacles = [];
   const spec = def.hazard;
@@ -5087,7 +5496,7 @@ function buildRace() {
   Snd.setRain(!!trackDef.wet);
   boltCyc = -1;
   raceClean = true; raceDrift = 0; raceBeatGhost = false;
-  justEarned = []; finishCam = 0; finishHold = 0; finishShot = null;
+  justEarned = []; justOpened = []; finishCam = 0; finishHold = 0; finishShot = null;
   buildPath(trackDef);
   /* props are placed before the bake so their shadows can be painted
      into the ground texture along with everything else */
@@ -5202,6 +5611,7 @@ function finishRace() {
     saveCup();
   }
   /* the badges are settled here, where the places finally are */
+  justOpened = addHearts((racers.find((r) => r.isPlayer) || {}).coins || 0);
   justEarned = awardBadges(raceFacts(racers.find((r) => r.isPlayer),
                                      { beatGhost: raceBeatGhost }));
   state = "results";
@@ -5368,6 +5778,33 @@ function awardBadges(facts) {
   return won;
 }
 function badgeCount() { return loadBadges().length; }
+
+/* ---- the glovebox ----
+
+   One number, written down the moment the flag drops, so a closed tab
+   never costs her a heart she actually carried. Which keepsakes are open
+   is derived from the number rather than stored beside it: two facts that
+   can disagree eventually do, and there is nothing here worth the risk of
+   a total that says one thing and a list that says another. */
+let heartTotal = null;
+function loadHearts() {
+  if (heartTotal != null) return heartTotal;
+  try {
+    const v = parseInt(localStorage.getItem("sor_hearts") || "0", 10);
+    heartTotal = isFinite(v) && v > 0 ? v : 0;
+  } catch (e) { heartTotal = 0; }
+  return heartTotal;
+}
+function addHearts(n) {
+  if (!(n > 0)) return [];
+  const before = loadHearts();
+  heartTotal = before + n;
+  try { localStorage.setItem("sor_hearts", String(heartTotal)); } catch (e) {}
+  /* the ones this race opened, so the finish can read them out */
+  return KEEPSAKES.filter((k) => k.at > before && k.at <= heartTotal);
+}
+function keepsOpen() { return KEEPSAKES.filter((k) => k.at <= loadHearts()).length; }
+function nextKeep() { return KEEPSAKES.find((k) => k.at > loadHearts()) || null; }
 
 /* what the race that just ended actually was, in the few terms the
    badges are written in */
@@ -5773,6 +6210,20 @@ function draw() {
   const camX = me.x - Math.cos(camA) * dist;
   const camY = me.y - Math.sin(camA) * dist;
   camFocal = FOCAL * (1 - camLag * 0.10) * (1 + fc * 0.26);
+
+  /* UP WITH HER, BUT NOT ALL THE WAY AND NOT AT ONCE.
+
+     Following the kart's height exactly would keep it pinned to the same
+     row of the screen for the whole flight, which reads as the WORLD
+     dropping away and the kart standing still -- technically what is
+     happening, and no fun at all. At four fifths, and chased rather than
+     snapped, the kart visibly rises in the frame while the camera also
+     climbs enough to open the road out ahead of her, which is what a jump
+     looks like from behind. It settles back on landing by the same lag,
+     so the picture drops with the suspension. */
+  const wantLift = (me.air || 0) * 0.8;
+  camLift += (wantLift - camLift) * Math.min(1, 9 * camStep);
+  if (camLift < 0.01 && !me.air) camLift = 0;
 
   sunRel = (trackDef.light != null ? trackDef.light : -0.7) - camA;
   renderGround(camX, camY, camA, camFocal);
@@ -6409,11 +6860,17 @@ function drawKartInner(g, b, camA, isGhost) {
      kart rides the road instead of sliding along a sheet of glass */
   const bobA = Math.min(1, Math.abs(o.speed || 0) / TOP_SPEED);
   const hopY = o.hop > 0 ? Math.sin((1 - o.hop / 0.34) * Math.PI) * h * 0.16 : 0;
+  /* REAL height, in world units, turned into pixels by the same scale
+     everything else at this distance uses. The shadow is drawn separately,
+     at the ground point, and deliberately stays there -- a shadow that
+     follows the kart up is a sticker, and the gap between the two is how
+     you read how high you are. */
+  const airY = (o.air || 0) * s.scale;
   const bob = Math.sin((raceTime * 13 + (o.lane || 0)) ) * bobA * h * 0.018
             + (o.offroad ? Math.sin(raceTime * 27) * bobA * h * 0.028 : 0)
             /* the kerb, going through the springs */
             + Math.sin(raceTime * 41 + (o.lane || 0)) * (o.jolt || 0) * h * 0.030
-            - hopY;
+            - hopY - airY;
   /* squash and stretch. The chassis is compressed on landing and again
      over a big jolt; conserving area — wider by as much as it is
      shorter — is what stops it reading as the sprite being resized. */
@@ -6424,7 +6881,29 @@ function drawKartInner(g, b, camA, isGhost) {
   g.restore();
 
   /* the bouquet orbits whoever is holding it */
-  const orbit = o.item === "bouqshot" ? (o.ammo || 0) : (o.shield > 0 ? 3 : 0);
+  /* THE JACKET IS NOT THE BOUQUET AND MUST NOT LOOK LIKE IT.
+     Three hearts going round you already means "I am carrying three hearts
+     and about to throw one". A shield reusing that told the person behind
+     the wrong thing about what was coming. It gets a warm ring round the
+     wheels instead, which fades as it runs down, so both players can see
+     how long is left on it. */
+  if (!isGhost && o.shield > 0 && o.item !== "bouqshot") {
+    const k = Math.min(1, o.shield / 13);
+    const rr = w * 0.62, ry = rr * 0.34;
+    g.save();
+    g.globalAlpha = 0.28 + 0.34 * k + Math.sin(raceTime * 7) * 0.06;
+    g.strokeStyle = "#7ec8e3";
+    g.lineWidth = Math.max(1, w * 0.055);
+    g.beginPath();
+    g.ellipse(s.sx, s.sy - h * 0.18, rr, ry, 0, 0, TWO_PI);
+    g.stroke();
+    g.globalAlpha *= 0.5;
+    g.beginPath();
+    g.ellipse(s.sx, s.sy - h * 0.46, rr * 0.82, ry * 0.82, 0, 0, TWO_PI);
+    g.stroke();
+    g.restore();
+  }
+  const orbit = o.item === "bouqshot" ? (o.ammo || 0) : 0;
   if (!isGhost && orbit > 0) {
     for (let i = 0; i < orbit; i++) {
       const t = raceTime * 3 + (i / Math.max(1, orbit)) * TWO_PI;
@@ -6871,6 +7350,18 @@ function drawItemIcon(g, kind, S) {
       g.save(); g.translate(Math.cos(t) * 9, Math.sin(t) * 9 + 2); heart(6, "#ff9ec4"); g.restore();
     }
     g.fillStyle = "#3f7a3f"; g.fillRect(-2, 6, 4, 12);
+  } else if (kind === "jacket") {
+    /* a little bomber jacket, collar open, one heart on the chest */
+    g.fillStyle = "#3f7f96";
+    g.beginPath();
+    g.moveTo(-11, -8); g.lineTo(11, -8); g.lineTo(13, 12);
+    g.lineTo(-13, 12); g.closePath(); g.fill();
+    g.fillStyle = "#7ec8e3";                       // sleeves, lighter
+    g.fillRect(-15, -7, 5, 14); g.fillRect(10, -7, 5, 14);
+    g.fillStyle = "#fff1e0";                       // the open collar
+    g.beginPath();
+    g.moveTo(-6, -8); g.lineTo(0, 1); g.lineTo(6, -8); g.closePath(); g.fill();
+    g.save(); g.translate(0, 5); heart(3.6, "#ff5f95"); g.restore();
   } else if (kind === "ring") {
     g.strokeStyle = "#ffd166"; g.lineWidth = 4;
     g.beginPath(); g.arc(0, 4, 10, 0, TWO_PI); g.stroke();
@@ -6980,18 +7471,20 @@ function renderTitle() {
       <p class="rc-logo"><span>SUPER</span><b>OUISSY</b><i>RACE</i></p>
       <p class="rc-tag">${TAGLINES[badgeCount() >= BADGES.length ? 2 : badgeCount() >= 4 ? 1 : 0]}</p>
       <div class="rc-menu">
-        <button class="rc-btn" data-go="single">SINGLE RACE</button>
-        <button class="rc-btn" data-go="gp">GRAND PRIX</button>
+        <button class="rc-btn rc-btn-mode" data-go="single"><b>${MODES.single.name}</b><i>${MODES.single.one}</i></button>
+        <button class="rc-btn rc-btn-mode" data-go="gp"><b>${MODES.gp.name}</b><i>${MODES.gp.one}</i></button>
         ${(() => { const c = loadCup(); return c
           ? `<button class="rc-btn rc-btn-cup" data-cup="1">RESUME CUP &middot; ROUND ${c.round + 2}</button>`
           : ""; })()}
-        <button class="rc-btn" data-go="trial">TIME TRIAL</button>
-        <button class="rc-btn" data-go="duo">TWO PLAYERS &middot; TAKE TURNS</button>
+        <button class="rc-btn rc-btn-mode" data-go="trial"><b>${MODES.trial.name}</b><i>${MODES.trial.one}</i></button>
+        <button class="rc-btn rc-btn-mode" data-go="duo"><b>${MODES.duo.name}</b><i>${MODES.duo.one}</i></button>
         <div class="rc-menu-row">
           <button class="rc-btn rc-btn-s" data-tut="1">HOW TO RACE</button>
           <button class="rc-btn rc-btn-s${badgeCount() >= BADGES.length ? " rc-btn-gold" : ""}"
             data-badges="1">BADGES &middot; ${badgeCount()}/${BADGES.length}</button>
-          <button class="rc-btn rc-btn-s" data-settings="title">SOUND</button>
+          <button class="rc-btn rc-btn-s${keepsOpen() >= KEEPSAKES.length ? " rc-btn-gold" : ""}"
+            data-keeps="1">GLOVEBOX &middot; ${keepsOpen()}/${KEEPSAKES.length}</button>
+          <button class="rc-btn rc-btn-s" data-settings="title">SETTINGS</button>
         </div>
       </div>
       <div class="rc-diff">
@@ -7011,6 +7504,30 @@ function renderTitle() {
    Everything on it is visible from the start, earned or not, because a
    list of things you might do is a reason to play and a list of blanks
    is a puzzle. */
+function renderKeeps() {
+  state = "keeps";
+  const have = loadHearts(), got = keepsOpen(), all = KEEPSAKES.length;
+  const rows = KEEPSAKES.map((k) => {
+    const on = k.at <= have;
+    return `<div class="rc-keep${on ? " on" : ""}">
+      <b>${on ? k.name : "\u2014"}</b>
+      <i>${on ? k.text : `${k.at - have} more heart${k.at - have === 1 ? "" : "s"}`}</i>
+    </div>`;
+  }).join("");
+  setOverlay(`
+    <div class="rc-panel rc-keeps">
+      <h3 class="rc-h">THE GLOVEBOX</h3>
+      <p class="rc-msg"><b>${have}</b> heart${have === 1 ? "" : "s"} carried home so far${
+        got >= all ? " \u2014 every one of these is open, and the road is still there."
+        : got === 0 ? " \u2014 the hearts on the road are not just speed. Bring some back."
+        : " \u2014 keep bringing them back."}</p>
+      <div class="rc-keep-list">${rows}</div>
+      <div class="rc-row">
+        <button class="rc-btn rc-btn-go" data-back="title">\u2039 BACK</button>
+      </div>
+    </div>`, "rc-ov-panel");
+}
+
 function renderBadges() {
   state = "badges";
   const got = badgeCount(), all = BADGES.length;
@@ -7052,7 +7569,10 @@ function renderChars() {
   setOverlay(`
     <div class="rc-panel">
       <h3 class="rc-h">CHOOSE YOUR RACER</h3>
+      ${(() => { const m = MODES[mode]; return m
+        ? `<p class="rc-mode"><b>${m.name}</b><i>${m.blurb}</i></p>` : ""; })()}
       <div class="rc-cards rc-cards-2">${cards}</div>
+      <p class="rc-varnote">They drive exactly the same. Pick whoever you want to be.</p>
       <div class="rc-row">
         <button class="rc-btn rc-btn-s" data-back="title">‹ BACK</button>
         <button class="rc-btn rc-btn-go" data-next="chars">GO ›</button>
@@ -7075,6 +7595,8 @@ function renderTracks() {
   setOverlay(`
     <div class="rc-panel">
       <h3 class="rc-h">CHOOSE YOUR TRACK</h3>
+      ${(() => { const m = MODES[mode]; return m && mode !== "single"
+        ? `<p class="rc-mode"><b>${m.name}</b><i>${m.blurb}</i></p>` : ""; })()}
       <div class="rc-cards rc-cards-4">${cards}</div>
       <p class="rc-blurb" id="rc-blurb">${TRACKS[trackIdx].blurb}</p>
       ${TRACKS[trackIdx].hazard && TRACKS[trackIdx].hazard.warn
@@ -7097,6 +7619,201 @@ function renderTracks() {
 }
 
 /* the little pictures on the cards are drawn, like everything else */
+/* ---- WHAT A TRACK CARD SHOWS ----
+
+   It used to be the loop drawn as a neon outline over a two-stop gradient.
+   That is the same picture six times in six colours: it tells you the shape
+   and nothing else, and the shape is the least of what makes Harbour Lights
+   different from The Long Way Home.
+
+   This is a little map of the place instead, drawn from the course's own
+   table -- its grass, its shoulder, its tarmac, its rumble strip, its sky --
+   with the road built the way the real one is baked (casing, shoulder,
+   tarmac, kerbing, a broken white line), the shortcut dashed in beside it,
+   the start line in checkers, and the ground around it dotted with the
+   things that particular chapter is actually made of. Pines and cabins in
+   the woods, houses and postboxes in town, water tanks and cats on the
+   roofs. Nothing is invented: the scenery list is the one the chapter
+   builds itself from, and the seed is the course id, so a card is the same
+   card every time she opens the menu. */
+
+/* the furniture, at map size: chunky, because these are eight pixels tall
+   on a 120x84 plate that is then blown up unsmoothed */
+function cardGlyph(g, kind, x, y, s, ink, hi) {
+  g.fillStyle = ink;
+  const box = (w, h) => g.fillRect(x - w / 2, y - h, w, h);
+  const blob = (r) => { g.beginPath(); g.arc(x, y - r, r, 0, TWO_PI); g.fill(); };
+  const conifer = () => {
+    g.fillRect(x - 0.6, y - s * 0.3, 1.2, s * 0.3);
+    for (let k = 0; k < 2; k++) {
+      const w = s * (0.9 - k * 0.28), yy = y - s * (0.25 + k * 0.42);
+      g.beginPath(); g.moveTo(x, yy - s * 0.55);
+      g.lineTo(x - w / 2, yy); g.lineTo(x + w / 2, yy); g.closePath(); g.fill();
+    }
+  };
+  const roofed = (w) => {
+    g.fillRect(x - w / 2, y - s * 0.62, w, s * 0.62);
+    g.fillStyle = hi;
+    g.beginPath(); g.moveTo(x - w / 2 - 1, y - s * 0.6);
+    g.lineTo(x, y - s); g.lineTo(x + w / 2 + 1, y - s * 0.6); g.closePath(); g.fill();
+  };
+  switch (kind) {
+    case "pine":                          conifer(); break;
+    case "tree":   g.fillRect(x - 0.6, y - s * 0.35, 1.2, s * 0.35); blob(s * 0.36); break;
+    case "house": case "cabin": case "store": case "shed": case "shelter":
+                                          roofed(s * 0.9); break;
+    case "lamp": case "pole": case "signpost": case "stringpole": case "trafficlight":
+      g.fillRect(x - 0.5, y - s, 1, s); g.fillStyle = hi;
+      g.fillRect(x - 1.6, y - s - 0.5, 3.2, 2); break;
+    case "rock": case "bush": case "planter": case "flowerbox":
+                                          blob(s * 0.34); break;
+    case "car": case "bench": case "cart": case "chair": case "bike":
+      g.fillRect(x - s * 0.45, y - s * 0.34, s * 0.9, s * 0.34); break;
+    case "cat":
+      blob(s * 0.26);
+      g.beginPath(); g.moveTo(x - s * 0.24, y - s * 0.4);
+      g.lineTo(x - s * 0.1, y - s * 0.66); g.lineTo(x + s * 0.02, y - s * 0.4);
+      g.closePath(); g.fill(); break;
+    case "watertank": case "acunit": case "vent": case "dish": case "skylight":
+    case "vending": case "postbox": case "mailbox": case "hydrant":
+      box(s * 0.5, s * 0.55);
+      g.fillStyle = hi; g.fillRect(x - s * 0.25, y - s * 0.55, s * 0.5, 1.4); break;
+    case "plant":
+      box(s * 0.3, s * 0.22); blob(s * 0.24); break;
+    case "sign": case "signpost":
+      g.fillRect(x - 0.5, y - s * 0.9, 1, s * 0.9);
+      g.fillStyle = hi; g.fillRect(x - s * 0.3, y - s, s * 0.6, s * 0.32); break;
+    case "laundry": case "washline":
+      g.fillRect(x - s * 0.5, y - s * 0.8, s, 1);
+      g.fillStyle = hi;
+      g.fillRect(x - s * 0.3, y - s * 0.78, s * 0.2, s * 0.34);
+      g.fillRect(x + s * 0.08, y - s * 0.78, s * 0.18, s * 0.3); break;
+    case "hoop":
+      g.fillRect(x - 0.5, y - s * 0.8, 1, s * 0.8);
+      g.strokeStyle = hi; g.lineWidth = 1.2;
+      g.beginPath(); g.arc(x, y - s * 0.82, s * 0.2, 0, TWO_PI); g.stroke(); break;
+    default:
+      /* a crate, which is at least a thing somebody put down */
+      box(s * 0.44, s * 0.38);
+      g.fillStyle = hi; g.fillRect(x - s * 0.22, y - s * 0.22, s * 0.44, 1.2);
+  }
+}
+
+function paintTrackCard(g, t) {
+  const W = 120, H = 84;
+
+  /* the ground it is all drawn on, lit from the sky down */
+  const sky = g.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, mix(t.grass, t.sky[1], 0.34));
+  sky.addColorStop(1, mix(t.grass, "#1a1020", 0.30));
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+
+  const rnd = mulberry(seedOf(t.id, 4801));
+
+  /* soft patches of the second grass tone, so the ground is not a flat
+     rectangle of one colour */
+  g.globalAlpha = 0.5;
+  g.fillStyle = t.grassAlt;
+  for (let k = 0; k < 9; k++) {
+    const px = rnd() * W, py = rnd() * H, pr = 7 + rnd() * 13;
+    g.beginPath(); g.ellipse(px, py, pr, pr * 0.66, rnd() * 3, 0, TWO_PI); g.fill();
+  }
+  g.globalAlpha = 1;
+
+  /* where the loop goes on the plate */
+  const pts = t.pts;
+  let mnx = 1, mny = 1, mxx = 0, mxy = 0;
+  pts.forEach((p) => {
+    mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]);
+    mny = Math.min(mny, p[1]); mxy = Math.max(mxy, p[1]);
+  });
+  const sc = Math.min(94 / (mxx - mnx), 58 / (mxy - mny));
+  const ox = (W - (mxx - mnx) * sc) / 2, oy = (H - (mxy - mny) * sc) / 2;
+  const M = (p) => [ox + (p[0] - mnx) * sc, oy + (p[1] - mny) * sc];
+  const XY = pts.map(M);
+
+  /* the furniture goes down before the road, and never on it */
+  const off = (x, y) => {
+    let best = 1e9;
+    for (const q of XY) {
+      const d = (q[0] - x) ** 2 + (q[1] - y) ** 2;
+      if (d < best) best = d;
+    }
+    return Math.sqrt(best);
+  };
+  const kinds = (t.scenery || ["bush"]).filter((k, n, a) => a.indexOf(k) === n);
+  /* how dark the furniture has to be is a question about the ground it is
+     standing on: Hospital Dash's floor is a pale blue-grey and everything on
+     it vanished at the mix that suited the forest */
+  const lum = (() => { const c = hexToRgb(t.grass);
+    return (c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114) / 255; })();
+  const ink = mix(t.grass, "#12101c", 0.52 + lum * 0.28);
+  const hi  = mix(t.shoulder, "#12101c", 0.30 + lum * 0.26);
+  let placed = 0, tries = 0;
+  while (placed < 16 && tries < 400) {
+    tries++;
+    const x = 5 + rnd() * (W - 10), y = 10 + rnd() * (H - 12);
+    const d = off(x, y);
+    if (d < 9 || d > 30) continue;          // clear of the road, not marooned
+    cardGlyph(g, kinds[(placed * 5 + 1) % kinds.length], x, y, 8 + rnd() * 4.5, ink, hi);
+    placed++;
+  }
+
+  /* the road, in the order the world itself is baked */
+  const ribbon = (w, col, dash) => {
+    g.lineJoin = g.lineCap = dash ? "butt" : "round";
+    g.setLineDash(dash || []);
+    g.strokeStyle = col; g.lineWidth = w;
+    g.beginPath();
+    XY.forEach((m, k) => (k ? g.lineTo(m[0], m[1]) : g.moveTo(m[0], m[1])));
+    g.closePath(); g.stroke();
+    g.setLineDash([]);
+  };
+  ribbon(11, "rgba(16,8,22,.40)");          // the shadow it sits in
+  ribbon(9.5, t.shoulder);                  // graded shoulder
+  ribbon(8, t.rumbleA);                     // kerbing
+  ribbon(6.4, t.road);                      // tarmac
+  ribbon(1, "rgba(255,248,232,.62)", [3, 4]); // and the line down the middle
+
+  /* the shortcut, narrower and dashed, the way it is on the map in the
+     corner of the screen while she is driving */
+  if (t.cut && t.cut.pts && t.cut.pts.length > 1) {
+    const C = t.cut.pts.map(M);
+    const slip = (w, col) => {
+      g.lineCap = "round"; g.lineJoin = "round";
+      g.strokeStyle = col; g.lineWidth = w;
+      g.beginPath();
+      C.forEach((m, k) => (k ? g.lineTo(m[0], m[1]) : g.moveTo(m[0], m[1])));
+      g.stroke();
+    };
+    /* Drawn as a road, narrower than the main one, rather than as a dashed
+       line. Dashed, it read as a stray mark ruled across the middle of the
+       loop; built the same way the tarmac is, it reads as what it is -- a
+       rougher, tighter way round that leaves the road and rejoins it. */
+    slip(7, "rgba(16,8,22,.34)");
+    slip(5.4, mix(t.shoulder, "#12101c", 0.18));
+    slip(3.6, mix(t.road, "#2a1e2c", 0.22));
+  }
+
+  /* the start line, square across the road where the grid actually sits */
+  const a = XY[0], b2 = XY[1] || XY[0];
+  const ta = Math.atan2(b2[1] - a[1], b2[0] - a[0]);
+  g.save();
+  g.translate(a[0], a[1]); g.rotate(ta);
+  for (let r = 0; r < 2; r++)
+    for (let cix = 0; cix < 4; cix++) {
+      g.fillStyle = (r + cix) % 2 ? "#1b1420" : "#fff8e8";
+      g.fillRect(-1.6 + r * 1.6, -3.2 + cix * 1.6, 1.6, 1.6);
+    }
+  g.restore();
+
+  /* a soft edge, so the plate reads as a card rather than a screenshot */
+  const vig = g.createRadialGradient(W / 2, H / 2, 22, W / 2, H / 2, 72);
+  vig.addColorStop(0, "rgba(0,0,0,0)");
+  vig.addColorStop(1, "rgba(12,6,18,.40)");
+  g.fillStyle = vig; g.fillRect(0, 0, W, H);
+}
+
 function paintCardArt() {
   if (!el.overlay) return;
   el.overlay.querySelectorAll("[data-art]").forEach((span) => {
@@ -7116,32 +7833,7 @@ function paintCardArt() {
       const h = 74, w = h * (spr.width / spr.height);
       g.drawImage(spr, 60 - w / 2, 82 - h, w, h);
     } else {
-      const t = TRACKS[i];
-      const grad = g.createLinearGradient(0, 0, 0, 84);
-      grad.addColorStop(0, t.sky[0]);
-      grad.addColorStop(1, t.grass);
-      g.fillStyle = grad; g.fillRect(0, 0, 120, 84);
-
-      /* a thumbnail of the actual loop, not a stand-in */
-      const pts = t.pts;
-      let mnx = 1, mny = 1, mxx = 0, mxy = 0;
-      pts.forEach((p) => {
-        mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]);
-        mny = Math.min(mny, p[1]); mxy = Math.max(mxy, p[1]);
-      });
-      const sc = Math.min(96 / (mxx - mnx), 60 / (mxy - mny));
-      const ox = (120 - (mxx - mnx) * sc) / 2, oy = (84 - (mxy - mny) * sc) / 2;
-      const M = (p) => [ox + (p[0] - mnx) * sc, oy + (p[1] - mny) * sc];
-      g.lineJoin = g.lineCap = "round";
-      g.strokeStyle = "rgba(20,10,26,.45)"; g.lineWidth = 9;
-      g.beginPath(); pts.forEach((p, k) => { const m = M(p); k ? g.lineTo(m[0], m[1]) : g.moveTo(m[0], m[1]); });
-      g.closePath(); g.stroke();
-      g.strokeStyle = t.rumbleA; g.lineWidth = 7;
-      g.beginPath(); pts.forEach((p, k) => { const m = M(p); k ? g.lineTo(m[0], m[1]) : g.moveTo(m[0], m[1]); });
-      g.closePath(); g.stroke();
-      g.strokeStyle = "#fff8e8"; g.lineWidth = 4;
-      g.beginPath(); pts.forEach((p, k) => { const m = M(p); k ? g.lineTo(m[0], m[1]) : g.moveTo(m[0], m[1]); });
-      g.closePath(); g.stroke();
+      paintTrackCard(g, TRACKS[i]);
     }
     span.appendChild(c);
   });
@@ -7149,9 +7841,15 @@ function paintCardArt() {
 
 /* the strip under a result that says what the race just earned */
 function earnedStrip() {
-  if (!justEarned.length) return "";
-  return `<div class="rc-earned">${justEarned.map((b) => `
-    <span class="rc-badge rc-badge-new"><b>${b.name}</b><i>${b.text}</i></span>`).join("")}</div>`;
+  const badges = justEarned.map((b) => `
+    <span class="rc-badge rc-badge-new"><b>${b.name}</b><i>${b.text}</i></span>`).join("");
+  /* A keepsake is the reason the hearts were worth going and getting, so it
+     is read out in full here rather than filed away for her to go and find
+     -- the whole point is that it arrives at the flag. */
+  const keeps = justOpened.map((k) => `
+    <span class="rc-keep rc-keep-new"><b>${k.name}</b><i>${k.text}</i></span>`).join("");
+  if (!badges && !keeps) return "";
+  return `<div class="rc-earned">${keeps}${badges}</div>`;
 }
 
 function renderResults() {
@@ -7193,10 +7891,15 @@ function renderResults() {
     msg = "Every lap was worth it. Same time tomorrow?";
   }
 
-  /* the hearts get counted at the end, because a thing you collect and
-     nobody mentions afterwards stops feeling worth collecting */
-  if (me.coins > 0)
-    msg += ` <b>${me.coins}</b> heart${me.coins === 1 ? "" : "s"} in hand at the flag.`;
+  /* The hearts get counted at the end, because a thing you collect and
+     nobody mentions afterwards stops feeling worth collecting -- and now
+     what is said about them is where they went, not just how many. */
+  if (me.coins > 0) {
+    const nx = nextKeep();
+    msg += ` <b>${me.coins}</b> heart${me.coins === 1 ? "" : "s"} carried over the line`;
+    msg += nx ? ` \u2014 ${nx.at - loadHearts()} more and the glovebox opens again.`
+              : ` \u2014 and the glovebox is full.`;
+  }
 
   const isGP = mode === "gp";
   const more = isGP && gpRound < TRACKS.length - 1;
@@ -7444,7 +8147,7 @@ function renderPause() {
       <div class="rc-menu">
         <button class="rc-btn" data-resume="1">RESUME</button>
         <button class="rc-btn" data-restart="1">RESTART</button>
-        <button class="rc-btn" data-settings="pause">SOUND</button>
+        <button class="rc-btn" data-settings="pause">SETTINGS</button>
         <button class="rc-btn" data-tut="1">HOW TO RACE</button>
         <button class="rc-btn" data-back="title">QUIT TO MENU</button>
       </div>
@@ -7463,7 +8166,7 @@ function renderSettings(from) {
     </label>`;
   setOverlay(`
     <div class="rc-panel">
-      <h3 class="rc-h">SOUND &amp; CONTROLS</h3>
+      <h3 class="rc-h">SETTINGS</h3>
       <div class="rc-sliders">
         ${row("master", "MASTER")}
         ${row("music",  "MUSIC")}
@@ -7941,6 +8644,10 @@ const Snd = (function () {
       else if (kind === "rose")   noise({ f: 700, f2: 240, dur: 0.2, gain: 0.16, at: t });
       else if (kind === "bouquet"){ [660,830,990].forEach((f,i)=>tone({f,dur:0.14,gain:0.13,duty:0.35,at:t+i*0.04})); }
       else if (kind === "ring")   { [523,659,784,1047,1319].forEach((f,i)=>tone({f,dur:0.3,gain:0.15,duty:0.5,at:t+i*0.06})); }
+      /* the jacket: two soft notes going DOWN, which is the one sound in
+         here that is not trying to be exciting -- it is the sound of
+         something being put round your shoulders */
+      else if (kind === "jacket") { [587,440].forEach((f,i)=>tone({f,dur:0.26,gain:0.14,duty:0.5,at:t+i*0.09})); }
     },
     hit() {
       const t = ctx ? ctx.currentTime : 0;
@@ -8087,16 +8794,22 @@ const TUT_STEPS = [
     body:"Let {DRIFT} go while the sparks are lit and the slide pays you back a boost.",
     goal:"release for a boost" },
   { id:"item",   title:"HEART BOXES",
-    body:"Drive through a heart box to pick something up.",
+    body:"Drive through a heart box to pick something up. The loose hearts "
+       + "lying on the road are a different thing \u2014 those are yours to keep.",
     goal:"collect an item" },
   { id:"use",    title:"USING IT",
-    body:"{ITEM} sends it. A Love Letter shoves you forward; an arrow goes hunting.",
+    body:"{ITEM} sends it. A Love Letter shoves you forward, an arrow goes "
+       + "hunting, and his jacket takes one hit for you.",
     goal:"use the item" },
   { id:"grass",  title:"OFF THE TARMAC",
     body:"The grass drags — you lose your top end and the steering goes vague. Stay on the road.",
     goal:"feel the grass" },
   { id:"done",   title:"THAT'S EVERYTHING",
-    body:"That's the whole game. The rest is just which road we're on.",
+    body:"Two last things. The hearts you carry over the line are kept \u2014 "
+       + "they add up, and they open the glovebox, which is where I left you "
+       + "some things to read. And if you see a ramp, hit it fast and "
+       + "straight; you cannot steer in the air.<br><br>"
+       + "That's the whole game. The rest is just which road we're on.",
     goal:null },
 ];
 
@@ -8351,8 +9064,9 @@ function onKey(e) {
   if (state === "tracks" && m) {
     if (m === "left")  trackIdx = (trackIdx + TRACKS.length - 1) % TRACKS.length;
     if (m === "right") trackIdx = (trackIdx + 1) % TRACKS.length;
-    if (m === "up")    trackIdx = (trackIdx + TRACKS.length - 2) % TRACKS.length;
-    if (m === "down")  trackIdx = (trackIdx + 2) % TRACKS.length;
+    /* three to a row now that there are six, so up and down step three */
+    if (m === "up")    trackIdx = (trackIdx + TRACKS.length - 3) % TRACKS.length;
+    if (m === "down")  trackIdx = (trackIdx + 3) % TRACKS.length;
     renderTracks();
   }
 }
@@ -8410,6 +9124,7 @@ function onOverlayClick(e) {
   if (d.mirror) { mirror = !mirror; renderTracks(); return; }
   if (d.wet)    { wet = !wet;       renderTracks(); return; }
   if (d.badges) { renderBadges(); return; }
+  if (d.keeps)  { renderKeeps();  return; }
   if (d.back === "title") { setOverlay(""); showHud(false); renderTitle(); return; }
   if (d.back === "chars") { renderChars(); return; }
   if (d.settings) { renderSettings(d.settings); return; }
@@ -8870,6 +9585,19 @@ function stop() {
 /* a hatch for the test harness — nothing in the page uses it */
 if (typeof window !== "undefined")
   window.__RACE_DEBUG = () => ({ obstacles, coins, racers, props, trackDef, state, mode, path, cut, raceTime, buildScenery, SCENERY, HAZ, ghost,
+     /* A race ends when the clock says so, and under a headless browser the
+        clock barely moves -- the countdown sat at three for fourteen real
+        seconds. So the harness is handed the finish itself: the same
+        function the last lap calls, doing the same work in the same order,
+        rather than a test-only imitation of it that could agree with the
+        test while disagreeing with the game. */
+     ramps, rollItem, hit,
+     finishRace,
+     /* ...and the simulation tick, for the same reason. Stepping it by hand
+        runs a whole four-lap race in a few hundred milliseconds of wall
+        clock, which is how a new course gets its lap times measured and its
+        corners proved drivable before anybody is asked to drive one. */
+     step,
      audioState: Snd.state(), audioCtx: Snd.ctx() });
 
 return { start, stop };

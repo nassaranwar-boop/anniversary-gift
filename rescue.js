@@ -1331,7 +1331,20 @@ window.Rescue = (function () {
       lines: null, li: 0, shown: 0, waiting: false,
       done: false, outcome: null,
       dim: 0, chill: 0, shake: 0,
-      her: { x: opts.herX === undefined ? 120 : opts.herX, y: opts.herY === undefined ? 120 : opts.herY,
+      /* WHERE SHE FELL, BUT NOT FURTHER RIGHT THAN THE SCENE CAN HOLD.
+
+         Three people have to stand here: her, him beside her, and the
+         thing that walks in from the right. Only her spot came from the
+         game — wherever she happened to die — and the other two were
+         placed from it and from the frame's edge independently, so a death
+         near the right-hand wall (which is exactly where the Queen's fight
+         ends up the second time, because a revive stands her back where
+         she fell) put Anwar's shoulder through Death's ribs.
+
+         Her spot is kept, because it is the one that means something, but
+         only as far right as leaves room for the other two. */
+      her: { x: clamp(opts.herX === undefined ? 120 : opts.herX, 12, VW - 150),
+             y: opts.herY === undefined ? 120 : opts.herY,
              pose: "hurt", flinch: 0 },
       anwar: { x: VW + 30, y: 0, k: 0 },
       death: { x: VW + 60, y: 0, k: 0, arrive: 0 },
@@ -1632,7 +1645,10 @@ window.Rescue = (function () {
       /* he does not slide on: he comes out of the dark. The fade runs
          ahead of the walk so he is half there before he is anywhere. */
       var k2 = ease(clamp(S.pt / 3.0, 0, 1));
-      S.death.x = VW + 26 + (VW - 96 - (VW + 26)) * k2;
+      /* he stops where the frame wants him OR clear of Anwar, whichever is
+         further out — his mark is not allowed to be inside another person */
+      var dTo = Math.min(VW - 40, Math.max(VW - 96, S.anwar.x + 52));
+      S.death.x = VW + 26 + (dTo - (VW + 26)) * k2;
       S.death.k = (S.pt * 2 | 0) % 2;
       S.death.arrive = clamp(S.pt / 1.6, 0, 1);
       if (S.pt > 3.0 && !S.landed) {

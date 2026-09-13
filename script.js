@@ -3643,6 +3643,19 @@ function stones(ctx, W, y, count, tones, rnd) {
 
 /* A paper lantern on a wire: the light source the whole right-hand path
    is lit by, so it is one function rather than eight copies. */
+/* TWO COLOURS AND A RATIO.
+
+   Used by every scene that has to move through its own evening. Kept
+   here rather than inside one of them because three copies of a colour
+   mixer is how three scenes end up drifting apart. */
+function hvMix(a, b, u) {
+  var pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  var r = Math.round((pa >> 16) + (((pb >> 16) - (pa >> 16)) * u));
+  var g = Math.round(((pa >> 8) & 255) + ((((pb >> 8) & 255) - ((pa >> 8) & 255)) * u));
+  var bl = Math.round((pa & 255) + (((pb & 255) - (pa & 255)) * u));
+  return "#" + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
+}
+
 function lanternAt(ctx, x, y) {
   /* The glow first, in rings, so the light falls off instead of being a
      flat rectangle over the paper — this is the only light source on the
@@ -3830,39 +3843,70 @@ const HV_SCENES = {
   },
 
   /* 4. golden meadow — "it's getting dark" */
-  meadow(ctx, rnd) {
-    ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#7fb8dc" }, { p: 0.20, c: "#b0d4e4" },
-      { p: 0.40, c: "#ecdcae" }, { p: 0.58, c: "#f8cf8c" },
-      { p: 0.76, c: "#f0b878" }, { p: 1.00, c: "#dda668" },
-    ]);
-    cloudRow(ctx, PXW, 30, 4, ["#fff3d6", "#f7dcae", "#e8c088", "#d0a068"], rnd, 1.2);
-    sunDisc(ctx, Math.round(PXW * 0.66), 60, 14, "#fffdf0", "#ffeeb8");
-    sunRays(ctx, PXW * 0.66, 60, PXW, PXH, "#fff3c8", rnd, 8);
+  /* IT IS NOT ALWAYS SIX IN THE EVENING HERE.
 
-    hillBand(ctx, PXW, 92, 6, 0.018, ["#d6cf86", "#b6ae66", "#968f4f"], rnd, 0.5);
-    hillBand(ctx, PXW, 104, 5, 0.026, ["#c6bd72", "#a49b56", "#867e43"], rnd, 2.6);
-    hillBand(ctx, PXW, 118, 4, 0.034, ["#b8ae64", "#98904c", "#7a733a"], rnd, 4.8);
+     This was a golden-hour painting -- a low fourteen-pixel sun, backlit
+     trees, amber grass -- and she walks through it at the bottom of the
+     valley, two beats after a bright spring morning. `h` is how far up
+     the walk she is, and the meadow is lit by it: morning at the gate,
+     with a high small sun in a blue sky over green grass, and the gold
+     arriving as she climbs, so that by the time she comes back down
+     through it the light has earned its colour. */
+  meadow(ctx, rnd, extra, step, hour) {
+    var h = hour === undefined ? 1 : hour;          /* 0 morning, 1 evening */
+    var M = hvMix;
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: M("#6aa8dc", "#7fb8dc", h) },
+      { p: 0.20, c: M("#9ccbe8", "#b0d4e4", h) },
+      { p: 0.40, c: M("#c8e2ee", "#ecdcae", h) },
+      { p: 0.58, c: M("#dceee8", "#f8cf8c", h) },
+      { p: 0.76, c: M("#e6f2dc", "#f0b878", h) },
+      { p: 1.00, c: M("#dceac6", "#dda668", h) },
+    ]);
+    cloudRow(ctx, PXW, 30, 4,
+      [M("#ffffff", "#fff3d6", h), M("#f2f8fc", "#f7dcae", h),
+       M("#dfe9f2", "#e8c088", h), M("#c6d4e2", "#d0a068", h)], rnd, 1.2);
+    /* high and small in the morning, low and wide by the evening */
+    var sx = Math.round(PXW * (0.40 + h * 0.26)), sy = 30 + h * 30, sr = 9 + h * 5;
+    sunDisc(ctx, sx, sy, sr, "#fffdf0", M("#fff8dc", "#ffeeb8", h));
+    sunRays(ctx, sx, sy, PXW, PXH, M("#ffffe8", "#fff3c8", h), rnd, 5 + Math.round(h * 3));
+
+    hillBand(ctx, PXW, 92, 6, 0.018,
+      [M("#9ccb78", "#d6cf86", h), M("#82ae5e", "#b6ae66", h), M("#6b9249", "#968f4f", h)], rnd, 0.5);
+    hillBand(ctx, PXW, 104, 5, 0.026,
+      [M("#8cbc68", "#c6bd72", h), M("#74a052", "#a49b56", h), M("#5e853f", "#867e43", h)], rnd, 2.6);
+    hillBand(ctx, PXW, 118, 4, 0.034,
+      [M("#7fae5c", "#b8ae64", h), M("#689248", "#98904c", h), M("#537836", "#7a733a", h)], rnd, 4.8);
 
     ditherSky(ctx, 0, 130, PXW, PXH - 130, [
-      { p: 0.00, c: "#c6b85e" }, { p: 0.5, c: "#aa9c4a" }, { p: 1.00, c: "#8b7f39" },
+      { p: 0.00, c: M("#8cbe5a", "#c6b85e", h) },
+      { p: 0.5,  c: M("#74a349", "#aa9c4a", h) },
+      { p: 1.00, c: M("#5d8738", "#8b7f39", h) },
     ]);
-    pathTo(ctx, PXW, 134, PXH, 1.0, 10, 60, "#e0cd8e", "#cbb87b", "#b4a268");
+    pathTo(ctx, PXW, 134, PXH, 1.0, 10, 60,
+      M("#e6dcb0", "#e0cd8e", h), M("#d2c89c", "#cbb87b", h), M("#bcb285", "#b4a268", h));
 
-    /* backlit trees — dark shapes with a hot rim on the sun side */
+    /* the trees are only backlit once there is a low sun to backlight
+       them -- in the morning they are just trees in the sun */
     [[42, 1.05], [PXW - 56, 0.9], [136, 0.62], [212, 0.5]].forEach(function (t) {
-      trunk(ctx, t[0], 136, Math.round(48 * t[1]), Math.round(6 * t[1]), ["#7a6a3c", "#5e5230", "#463c22"]);
+      trunk(ctx, t[0], 136, Math.round(48 * t[1]), Math.round(6 * t[1]),
+        [M("#8a7450", "#7a6a3c", h), M("#6b5a3e", "#5e5230", h), M("#4e412c", "#463c22", h)]);
       canopy(ctx, t[0], 136 - 48 * t[1], 21 * t[1],
-        ["#d6cf86", "#9c9a52", "#73723a", "#56562c"], rnd, "#fff0b8");
+        [M("#a8d078", "#d6cf86", h), M("#84ae56", "#9c9a52", h),
+         M("#63883c", "#73723a", h), M("#48642a", "#56562c", h)],
+        rnd, M("#e2f6b4", "#fff0b8", h));
     });
     // fence posts leading off toward the light
+    var post = M("#9c8a5e", "#8a7a48", h);
     for (var f = 0; f < 8; f++) {
       var fx = 30 + f * 36, fy = 142 + f * 2;
-      px(ctx, fx, fy - 12, 2, 12, "#8a7a48");
-      if (f) px(ctx, fx - 34, fy - 9, 34, 1, "#8a7a48");
+      px(ctx, fx, fy - 12, 2, 12, post);
+      if (f) px(ctx, fx - 34, fy - 9, 34, 1, post);
     }
-    grassTufts(ctx, PXW, 142, 190, ["#d2c46a", "#b8ab58", "#e0d27c"], rnd);
-    flowerDots(ctx, PXW, 146, 30, 22, ["#fff3c4", "#ffd166", "#ffffff"], rnd);
+    grassTufts(ctx, PXW, 142, 190,
+      [M("#9ac862", "#d2c46a", h), M("#82ae50", "#b8ab58", h), M("#aed878", "#e0d27c", h)], rnd);
+    flowerDots(ctx, PXW, 146, 30, 22,
+      [M("#ffffff", "#fff3c4", h), M("#ffe9a0", "#ffd166", h), "#ffffff"], rnd);
   },
 
   /* 5. sunset lake — the ask */
@@ -3878,13 +3922,7 @@ const HV_SCENES = {
      and if she stands here reading, it is evening by the time she goes. */
   sunset(ctx, rnd, extra, step) {
     var k = (step || 0) / 3;                       /* 0 = still up, 1 = gone */
-    function mix(a, b, u) {                        /* two "#rrggbb" and a ratio */
-      var pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
-      var r = Math.round((pa >> 16) + (((pb >> 16) - (pa >> 16)) * u));
-      var g = Math.round(((pa >> 8) & 255) + ((((pb >> 8) & 255) - ((pa >> 8) & 255)) * u));
-      var bl = Math.round((pa & 255) + (((pb & 255) - (pa & 255)) * u));
-      return "#" + ((1 << 24) + (r << 16) + (g << 8) + bl).toString(16).slice(1);
-    }
+    var mix = hvMix;
     ditherSky(ctx, 0, 0, PXW, PXH, [
       { p: 0.00, c: mix("#33306a", "#14132e", k) },
       { p: 0.16, c: mix("#514585", "#221d44", k) },
@@ -4020,6 +4058,11 @@ const HV_SCENES = {
     ditherSky(ctx, 0, 120, PXW, PXH - 120, [
       { p: 0.00, c: "#33323f" }, { p: 1.00, c: "#22222c" },
     ]);
+    /* the same seam this scene's treeline had -- see the note in `home` */
+    for (var sh2 = 0; sh2 < 11; sh2++) {
+      px(ctx, 0, 120 + sh2, PXW, 1,
+         "rgba(10,10,18," + (0.5 * (1 - sh2 / 11)).toFixed(3) + ")");
+    }
     pathTo(ctx, PXW, 122, PXH, 0.04, 12, 62, "#6b5a48", "#54473a", "#3d342c");
     grassTufts(ctx, PXW, 126, 40, ["#2f3a2e", "#26301f", "#1d2618"], rnd);
     stones(ctx, PXW, 150, 9, ["#4a4650", "#3a3742", "#2c2a33"], rnd);
@@ -4097,31 +4140,84 @@ const HV_SCENES = {
   },
 
   /* 7. the night orchard — the red butterfly's way, low and close and warm */
-  orchard(ctx, rnd) {
+  /* THE LAST OF THE LIGHT GOES OUT OF IT.
+
+     Seven beats are spent in this orchard and five of the six ways out
+     of it stay here, so it had to move too. It starts at the very end of
+     dusk -- there is still a wash of red low in the west -- and over its
+     phases that goes, the moon climbs and brightens, the stars fill in,
+     and the lanterns in the trees stop being decoration and become the
+     only thing lighting the place. */
+  orchard(ctx, rnd, extra, step) {
+    var k = (step || 0) / 3;
     ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#1a1636" }, { p: 0.36, c: "#2a2048" },
-      { p: 0.68, c: "#452a4e" }, { p: 1.00, c: "#6b3a48" },
+      { p: 0.00, c: hvMix("#1a1636", "#0c0a1e", k) },
+      { p: 0.36, c: hvMix("#2a2048", "#140f2a", k) },
+      { p: 0.68, c: hvMix("#452a4e", "#1e1533", k) },
+      { p: 1.00, c: hvMix("#6b3a48", "#2a1b33", k) },
     ]);
-    for (var i = 0; i < 60; i++) px(ctx, rnd() * PXW, rnd() * 54, 1, 1, "#efe4c4");
-    sunDisc(ctx, 42, 28, 7, "#f6ecc8", "rgba(246,236,200,0.13)");
+    for (var i = 0; i < 60 + Math.round(k * 70); i++) {
+      px(ctx, rnd() * PXW, rnd() * (54 + k * 40), 1, 1, k > 0.5 ? "#f4f0dc" : "#efe4c4");
+    }
+    /* the moon climbing out of the trees as the evening goes on */
+    sunDisc(ctx, 42 + k * 10, 28 - k * 12, 7 + k, "#f6ecc8",
+            "rgba(246,236,200," + (0.13 + k * 0.1).toFixed(3) + ")");
 
-    hillBand(ctx, PXW, 98, 8, 0.026, ["#33254a", "#291d3b", "#20172e"], rnd, 4);
+    hillBand(ctx, PXW, 98, 8, 0.026,
+      [hvMix("#33254a", "#1b1330", k), hvMix("#291d3b", "#150f26", k), hvMix("#20172e", "#100b1c", k)], rnd, 4);
 
-    px(ctx, 0, 116, PXW, PXH - 116, "#2c2733");
+    px(ctx, 0, 116, PXW, PXH - 116, hvMix("#2c2733", "#17141f", k));
     ditherSky(ctx, 0, 116, PXW, PXH - 116, [
-      { p: 0.00, c: "#37303c", }, { p: 1.00, c: "#241f2b" },
+      { p: 0.00, c: hvMix("#37303c", "#1d1926", k) },
+      { p: 1.00, c: hvMix("#241f2b", "#121019", k) },
     ]);
 
     /* rows of fruit trees, each with a lantern hung in it */
-    var bark = ["#4a3428", "#3a2820", "#2b1e18"];
-    var leaf = ["#2f4436", "#26382c", "#1c2a21"];
+    var bark = [hvMix("#4a3428", "#2c1f18", k), hvMix("#3a2820", "#221812", k), hvMix("#2b1e18", "#19110e", k)];
+    var leaf = [hvMix("#2f4436", "#1a2720", k), hvMix("#26382c", "#15211a", k), hvMix("#1c2a21", "#101913", k)];
+    var lanPos = [];
     for (var r = 0; r < 5; r++) {
       var tx = 18 + r * 66 + rnd() * 12;
       treeFull(ctx, tx, 120 + (r % 2) * 4, 44 + rnd() * 10, bark, leaf, rnd, { speckle: 10 });
-      if (r % 2 === 0) lanternAt(ctx, tx + 12, 84 + rnd() * 6);
+      if (r % 2 === 0) lanPos.push([tx + 12, 84 + rnd() * 6]);
     }
-    grassTufts(ctx, PXW, 124, 34, ["#2b3a2c", "#22301f", "#192518"], rnd);
-    flowerDots(ctx, PXW, 138, 26, 22, ["#c88aa0", "#a86e8a", "#e0a8b8"], rnd);
+    /* the lanterns take over as everything else goes: an extra pool of
+       warmth under each one, growing as the light it is replacing fades */
+    lanPos.forEach(function (L) {
+      if (k > 0) {
+        blob(ctx, L[0], L[1] + 3, 22 + k * 12, (22 + k * 12) * 0.9,
+             ["rgba(255,204,128," + (0.05 * k).toFixed(3) + ")"]);
+        blob(ctx, L[0], 132, 26 + k * 10, 5,
+             ["rgba(255,198,120," + (0.09 * k).toFixed(3) + ")"]);
+      }
+      lanternAt(ctx, L[0], L[1]);
+    });
+    /* WHAT CHANGES BETWEEN ONE BEAT AND THE NEXT HAS TO HAVE A SHAPE.
+
+       The light going out of the orchard is right, and it is not enough
+       on its own -- a colour she has to remember across a paragraph is a
+       colour she will not notice moved. These do have a shape: apples
+       come down off the trees while she stands here, one or two more
+       each time, and the mist that always gathers in an orchard after
+       dark comes up between the trunks as it cools. */
+    for (var wf = 0; wf < Math.round(step * 3.5); wf++) {
+      var ax = 24 + ((wf * 47) % (PXW - 48)), ay = 132 + ((wf * 23) % 30);
+      blob(ctx, ax, ay, 2.6, 2.2,
+           [hvMix("#a4553a", "#4a2a20", k), hvMix("#82412c", "#3a2018", k),
+            hvMix("#63301f", "#2c1812", k), hvMix("#4a2417", "#221310", k)]);
+      px(ctx, ax - 3, ay + 2, 7, 1, "rgba(0,0,0,0.18)");      // the grass under it
+    }
+    if (step >= 2) {
+      var mAlpha = (step - 1) * 0.05;
+      for (var mb = 0; mb < 5; mb++) {
+        blob(ctx, 20 + mb * 70, 128 + (mb % 2) * 5, 44, 5 + step,
+             ["rgba(206,214,226," + mAlpha.toFixed(3) + ")"]);
+      }
+    }
+    grassTufts(ctx, PXW, 124, 34,
+      [hvMix("#2b3a2c", "#18211a", k), hvMix("#22301f", "#131b12", k), hvMix("#192518", "#0e150d", k)], rnd);
+    flowerDots(ctx, PXW, 138, 26, 22,
+      [hvMix("#c88aa0", "#6e4c58", k), hvMix("#a86e8a", "#5c3c4b", k), hvMix("#e0a8b8", "#7a5c66", k)], rnd);
   },
 
   /* 8. the rope bridge — one at a time, or not at all */
@@ -4171,17 +4267,37 @@ const HV_SCENES = {
      ground: down at the water instead of up in the open. The stream runs
      across the frame rather than toward you, so the seven stones read as
      a crossing you can see all of, and everything sits above the note. */
-  stream(ctx, rnd) {
-    ditherSky(ctx, 0, 0, PXW, PXH, [
-      { p: 0.00, c: "#8ecdea" }, { p: 0.22, c: "#b4e0f0" },
-      { p: 0.44, c: "#d6ecea" }, { p: 1.00, c: "#cfe6c2" },
-    ]);
-    cloudRow(ctx, PXW, 16, 4, ["#ffffff", "#f4f9fd", "#e2ebf4", "#cfdae8"], rnd, 1.1);
-    cloudRow(ctx, PXW, 36, 3, ["#fdfeff", "#eef5fb", "#dbe6f0", "#c8d5e4"], rnd, 0.7);
-    sunRays(ctx, PXW * 0.22, -14, PXW, PXH, "#fffbdc", rnd, 6);
+  /* THE AFTERNOON GOES ON WHILE SHE STANDS IN IT.
 
-    hillBand(ctx, PXW, 72, 7, 0.018, ["#c2dcb8", "#aec9a4", "#9ab490"], rnd, 1.4);
-    hillBand(ctx, PXW, 84, 5, 0.027, ["#a8cc96", "#93b781", "#7fa16e"], rnd, 3.8);
+     Six beats here and four of the five ways out stay put, so this one
+     moves as well -- but it is broad daylight, so it cannot do what the
+     sunset does. What changes in an afternoon by a river is the colour
+     of the light: it starts clean and blue-white and goes gold, the
+     clouds pick up warmth on their undersides, the sun swings round so
+     the rays come in at a different angle, and the water goes from
+     glittering to glowing. */
+  stream(ctx, rnd, extra, step) {
+    var k = (step || 0) / 3;
+    ditherSky(ctx, 0, 0, PXW, PXH, [
+      { p: 0.00, c: hvMix("#8ecdea", "#7fb6d8", k) },
+      { p: 0.22, c: hvMix("#b4e0f0", "#c3d8e2", k) },
+      { p: 0.44, c: hvMix("#d6ecea", "#f0e2c8", k) },
+      { p: 1.00, c: hvMix("#cfe6c2", "#f4dcb0", k) },
+    ]);
+    cloudRow(ctx, PXW, 16, 4,
+      [hvMix("#ffffff", "#fff4e0", k), hvMix("#f4f9fd", "#fbe9cc", k),
+       hvMix("#e2ebf4", "#efd8b8", k), hvMix("#cfdae8", "#dcc2a2", k)], rnd, 1.1);
+    cloudRow(ctx, PXW, 36, 3,
+      [hvMix("#fdfeff", "#fff6e6", k), hvMix("#eef5fb", "#f6e4c8", k),
+       hvMix("#dbe6f0", "#e6d0ae", k), hvMix("#c8d5e4", "#d0b596", k)], rnd, 0.7);
+    /* the sun swings across as the afternoon goes */
+    sunRays(ctx, PXW * (0.22 + k * 0.5), -14, PXW, PXH,
+            hvMix("#fffbdc", "#ffe9b4", k), rnd, 6 + Math.round(k * 3));
+
+    hillBand(ctx, PXW, 72, 7, 0.018,
+      [hvMix("#c2dcb8", "#cdd6a2", k), hvMix("#aec9a4", "#b8c290", k), hvMix("#9ab490", "#a3ad7e", k)], rnd, 1.4);
+    hillBand(ctx, PXW, 84, 5, 0.027,
+      [hvMix("#a8cc96", "#b4c486", k), hvMix("#93b781", "#9eae74", k), hvMix("#7fa16e", "#8a9862", k)], rnd, 3.8);
 
     /* the far bank, sloping down to the water, and the wood standing on it */
     ditherSky(ctx, 0, 88, PXW, 22, [
@@ -4199,8 +4315,10 @@ const HV_SCENES = {
        which is what stopped the first version reading as a pond. */
     var wTop = 108, wBot = 148;
     ditherSky(ctx, 0, wTop, PXW, wBot - wTop, [
-      { p: 0.00, c: "#6f9e8e" }, { p: 0.18, c: "#4f86a8" },
-      { p: 0.58, c: "#3f76a0" }, { p: 1.00, c: "#5d8f9a" },
+      { p: 0.00, c: hvMix("#6f9e8e", "#87a288", k) },
+      { p: 0.18, c: hvMix("#4f86a8", "#6e8ea0", k) },
+      { p: 0.58, c: hvMix("#3f76a0", "#5c7d96", k) },
+      { p: 1.00, c: hvMix("#5d8f9a", "#7e9490", k) },
     ]);
     // the shallow lip where it meets each bank
     for (var e = 0; e < PXW; e++) {
@@ -4213,7 +4331,9 @@ const HV_SCENES = {
       var wy = wTop + 3 + rnd() * (wBot - wTop - 6);
       var mid = 1 - Math.abs((wy - (wTop + wBot) / 2) / ((wBot - wTop) / 2));
       px(ctx, rnd() * PXW, wy, 2 + rnd() * (3 + mid * 5), 1,
-        rnd() > 0.62 ? "#a8d2e6" : rnd() > 0.4 ? "#6fa0c0" : "#37698e");
+        rnd() > 0.62 ? hvMix("#a8d2e6", "#ffe4b0", k)
+        : rnd() > 0.4 ? hvMix("#6fa0c0", "#c0a684", k)
+        : hvMix("#37698e", "#6a6a62", k));
     }
     // reeds standing out of the far edge
     for (var r3 = 0; r3 < 34; r3++) {
@@ -4225,6 +4345,45 @@ const HV_SCENES = {
     px(ctx, 196, wTop + 4, 74, 1, "#a1794f");
     for (var kn = 0; kn < 8; kn++) px(ctx, 202 + kn * 9, wTop + 1, 1, 3, "#6b4a2c");
     px(ctx, 196, wTop + 8, 74, 1, "rgba(160,200,220,0.4)");   // its reflection
+
+    /* SOMETHING HAS TO ACTUALLY HAPPEN.
+
+       Changing the colour of the light is true to an afternoon and, on
+       its own, useless: between one beat and the next she reads a
+       paragraph, and nobody remembers a hue well enough to notice it
+       shifted ten per cent. What the eye does notice is a shape that was
+       not there before.
+
+       So a heron works its way down the shallows while she stands here.
+       Beat one the river is empty. Beat two it is standing in the far
+       shallows. Beat three it has moved closer and put its head down.
+       Beat four it has gone, and there is a ring on the water where it
+       lifted off. */
+    if (step === 1 || step === 2) {
+      var hx = step === 1 ? 96 : 148, hy = wTop + (step === 1 ? 7 : 13);
+      px(ctx, hx, hy - 10, 2, 11, "#e8eef2");                 // neck
+      px(ctx, hx - 1, hy - 12, 4, 3, "#e8eef2");              // head
+      px(ctx, hx + 3, hy - 11, 3, 1, "#e8c46a");              // bill
+      px(ctx, hx + 3, hy - 13, 1, 1, "#2a2a2a");              // eye
+      blob(ctx, hx + 1, hy - 2, 5, 3.4, ["#f2f6f8", "#d6dee4", "#b4bec6"]);
+      px(ctx, hx - 1, hy + 2, 1, 4, "#c8a24e");               // legs
+      px(ctx, hx + 3, hy + 2, 1, 4, "#c8a24e");
+      if (step === 2) px(ctx, hx - 2, hy - 9, 2, 6, "#cfd8de"); // head dipped, wing out
+      px(ctx, hx - 2, hy + 7, 8, 1, "rgba(210,225,235,0.35)");  // its reflection
+    }
+    if (step === 3) {
+      /* the ring it left, and the bird already most of the way out of frame */
+      for (var rg = 0; rg < 3; rg++) {
+        var rr = 5 + rg * 5;
+        for (var a3 = 0; a3 < 26; a3++) {
+          var an = (a3 / 26) * Math.PI * 2;
+          px(ctx, 148 + Math.cos(an) * rr, wTop + 13 + Math.sin(an) * rr * 0.36, 1, 1,
+             "rgba(226,240,246," + (0.30 - rg * 0.08).toFixed(2) + ")");
+        }
+      }
+      px(ctx, 262, 46, 5, 1, "#e8eef2"); px(ctx, 267, 45, 4, 1, "#e8eef2");
+      px(ctx, 258, 44, 4, 1, "#d4dde4");
+    }
 
     /* the near bank: gravel first, then the grass you are standing on */
     ditherSky(ctx, 0, wBot - 2, PXW, 16, [
@@ -4277,6 +4436,19 @@ const HV_SCENES = {
     ditherSky(ctx, 0, 112, PXW, PXH - 112, [
       { p: 0.00, c: "#2b2632" }, { p: 1.00, c: "#1a1720" },
     ]);
+    /* THE LINE ACROSS THE MIDDLE OF THE PICTURE.
+
+       The ground begins lighter than the trees standing on it, so the
+       two met in a hard bright row straight across the frame -- one
+       pixel tall, full width, and unmistakably a seam rather than a
+       horizon. Nothing is that colour in a wood at night: the ground
+       under a treeline is the darkest part of the picture and lightens
+       as it comes forward. This is that shadow, and it takes the edge
+       out by making it the darkest thing instead of the brightest. */
+    for (var sh = 0; sh < 11; sh++) {
+      px(ctx, 0, 112 + sh, PXW, 1,
+         "rgba(10,8,16," + (0.55 * (1 - sh / 11)).toFixed(3) + ")");
+    }
     pathTo(ctx, PXW, 114, PXH, -0.6, 10, 46, "#5e4d3c", "#4a3d30", "#372e24");
 
     /* the house, filling the right of the frame. It gets a real corner —
@@ -4326,6 +4498,28 @@ const HV_SCENES = {
       var spread = (gy - 138) * 2.6;
       px(ctx, dx - spread * rnd(), gy, 2 + rnd() * 6, 1, "rgba(255,198,120,0.13)");
     }
+    /* A HOUSE NEEDS SOMETHING TO STAND ON IN FRONT OF IT.
+
+       The wall ran from the eaves all the way to the bottom of the
+       frame, so the whole right-hand side of the picture was clapboard
+       with no ground under it. That is why the two of them ended up
+       drawn ON the wall, and why moving them off it put them at x=138,
+       squarely behind the note -- there was nowhere else to put them.
+
+       There is a porch now: boards across the front of the house with a
+       lit edge where the doorlight catches them. They stand on that, at
+       the same place they stand in every other scene, which is well
+       clear of where the note sits. */
+    var porchY = 150;
+    px(ctx, wallX - 16, porchY, PXW - wallX + 16, PXH - porchY, "#231b28");
+    ditherSky(ctx, wallX - 16, porchY, PXW - wallX + 16, PXH - porchY, [
+      { p: 0.00, c: "#2e2433" }, { p: 1.00, c: "#1d1622" },
+    ]);
+    for (var bd = 0; bd < 5; bd++) {
+      px(ctx, wallX - 16, porchY + 4 + bd * 6, PXW - wallX + 16, 1, "#191320");
+    }
+    px(ctx, wallX - 16, porchY, PXW - wallX + 16, 1, "#4a3a4c");    // the front lip
+    px(ctx, wallX - 16, porchY + 1, 46, 1, "#6b5470");              // doorlight on it
     px(ctx, dx - 4, PXH - 10, dw + 12, 4, "#5a4756");     // the step
     px(ctx, dx - 4, PXH - 10, dw + 12, 1, "#7a6274");
     // the lamp over the door
@@ -5488,22 +5682,23 @@ function hvHoldOff() { hvHold = false; }
 function hvUpdateFoundStrip() {
   var strip = document.getElementById("hv-found");
   if (!strip) return;
-  var ids = Object.keys(HV_TOKENS).filter(function (k) { return hvFound[k]; });
-  /* The strip is drawn from the same function that draws the thing
-     lying in the grass, so there is one picture of a pine cone in this
-     game rather than a canvas one and an SVG one that have to be kept
-     looking like each other. */
+
+  /* THE ONE THING IN THE CORNER IS HERS.
+
+     This used to be a shelf of everything she has ever picked up -- and
+     `hvFound` is loaded from storage, so on a second visit it was
+     showing things found on a previous walk before she had chosen
+     anything or taken a step. That is why there was a small golden acorn
+     sitting up there on the very first screen of a brand new walk, which
+     is the thing he kept pointing at.
+
+     It holds the keepsake instead: the heart or the flower she picked at
+     the gate, which is the one object in this valley that is hers and
+     the one the ending turns on. Nothing is lost by it -- everything she
+     finds is still counted, still saved, and still read back to her at
+     the end by hvFoundList. It simply stops being a scoreboard she has
+     to look at while she is trying to read. */
   strip.innerHTML = "";
-
-  /* HER OWN THING FIRST, AND ALWAYS.
-
-     This strip only ever held what she had picked up along the way, so
-     the first thing in it was whatever she happened to find -- usually
-     the acorn. The one object in this whole walk that is HERS is the
-     heart or the flower she chose at the very start, and it is the one
-     the ending turns on, and it was the only thing not shown anywhere.
-     It leads the row now, kept a little apart from the found things,
-     from the moment she picks it up to the moment it is spoken of. */
   if (hvKeepsake) {
     var kw = document.createElement("span");
     kw.className = "hv-token hv-token-keepsake";
@@ -5511,15 +5706,7 @@ function hvUpdateFoundStrip() {
     kw.appendChild(hvDrawToken(hvKeepsake));
     strip.appendChild(kw);
   }
-
-  ids.forEach(function (k) {
-    var wrap = document.createElement("span");
-    wrap.className = "hv-token";
-    wrap.title = HV_TOKENS[k].name;
-    wrap.appendChild(hvDrawToken(k));
-    strip.appendChild(wrap);
-  });
-  strip.classList.toggle("on", ids.length > 0 || !!hvKeepsake);
+  strip.classList.toggle("on", !!hvKeepsake);
 }
 
 function hvFoundList() {
@@ -5706,6 +5893,135 @@ var hvSceneCache = {};
    over, the light on the water goes out. The step is part of the cache
    key, so each one is painted once and then reused, exactly like the
    single version was. */
+/* THE WALK IS ONE DAY, AND THE DAY MOVES WHILE SHE WALKS.
+
+   First attempt at this gave every node a fixed hour, worked out once
+   from how deep it sits in the graph. That is wrong, and he caught it:
+   `ways` is not a place she passes once. It is the fork at the bottom of
+   the valley, and she comes back to it -- "Back at the bottom of the
+   valley, then, with the whole of it still to walk" is its own line for
+   exactly that. A fixed hour showed her the same morning after she had
+   spent a whole day walking, and it put a golden meadow in front of the
+   bear and the rain, which come later in the day than it does.
+
+   No table of hours can be right about a graph you can loop in. The
+   clock has to be a clock: it starts at first light when the walk
+   starts, and it moves on every step she takes, and it never goes
+   backwards, because that is what time does. Walk the valley twice and
+   the second time is later in the day than the first -- which is true,
+   and which is the whole point.
+
+   The way back is a different day and it is after dark from the start,
+   so nodes on that side are pinned to night and the clock does not
+   apply to them. */
+var HV_NIGHT = null;
+
+function hvLinksOf(N) {
+  var out = [];
+  if (!N) return out;
+  ["choices", "cards"].forEach(function (f) {
+    (N[f] || []).forEach(function (c) { if (c && typeof c.to === "string") out.push(c.to); });
+  });
+  /* `outcomes` is a plain array of node names -- the two ways a mini-game
+     can go. Scanning only for objects with a `to` missed it, which left
+     eight nodes unreachable and stuck at midday. */
+  (N.outcomes || []).forEach(function (t) { if (typeof t === "string") out.push(t); });
+  if (typeof N.playTo === "string") out.push(N.playTo);
+  return out;
+}
+
+/* Which side of the fork a node lives on: anything you cannot reach
+   without stepping through back_dusk belongs to the night. */
+function hvBuildNight() {
+  HV_NIGHT = {};
+  var start = HV.title ? "title" : Object.keys(HV)[0];
+  var seen = {}, q = [start];
+  seen[start] = 1;
+  while (q.length) {
+    var id = q.shift();
+    hvLinksOf(HV[id]).forEach(function (t) {
+      if (!HV[t] || seen[t] || t === "back_dusk") return;
+      seen[t] = 1; q.push(t);
+    });
+  }
+  Object.keys(HV).forEach(function (k) { HV_NIGHT[k] = !seen[k]; });
+}
+
+var hvClock = 0;                 /* 0 first light, 1 last light */
+var HV_DAY_STEPS = 15;           /* about how many beats a walk up the valley is */
+var hvClockAt = null;            /* the node the clock last moved for */
+
+function hvClockReset() { hvClock = 0; hvClockAt = null; }
+
+function hvHourOf(n) {
+  if (!HV_NIGHT) hvBuildNight();
+  /* the node being painted is always the current one -- hvRender hands
+     hvPaintBase exactly HV[hvNode] -- so there is no need to hunt for
+     its name by comparing objects */
+  var id = hvNode;
+  if (HV_NIGHT[id]) return 1;
+  if (id !== hvClockAt) {
+    hvClockAt = id;
+    /* THE FORK IS WHERE A WALK BEGINS, SO IT IS WHERE THE DAY BEGINS.
+
+       `ways` is the bottom of the valley and its own line says so --
+       "with the whole of it still to walk". Letting the clock run
+       straight through it meant a second time round started in the
+       evening and stuck there, so a third walk would be dusk from the
+       first frame forever. Each way up the valley is one day: first
+       light at the fork, last light at the top. Walk it again and it is
+       another day, which is exactly how the chapter talks about
+       itself. */
+    if (id === "title") hvClock = 0;
+    else if (id === "ways") hvClock = 1 / HV_DAY_STEPS;
+    else hvClock = Math.min(1, hvClock + 1 / HV_DAY_STEPS);
+  }
+  return hvClock;
+}
+
+/* THE LIGHT OF THE HOUR, LAID OVER THE SCENES THAT DO NOT PAINT IT.
+
+   The meadow and the sunset handle their own hour, because for those
+   two the light IS the subject and a wash would not do. The rest of the
+   daylight valley -- the cherry trees, the wood, the hollow, the river
+   -- were painted at one fixed hour each and left there. Mostly they sit
+   at an hour that suits them, but not always: the blossom beat on the
+   red route falls at half past the day and was still crisp nine in the
+   morning.
+
+   This is what an hour actually does to a landscape: early it is cool
+   and slightly blue, strongest overhead; late it is warm and amber,
+   strongest low down where the sun is; at midday it is barely anything.
+   Drawn as one-pixel bands so it stays on the same grid as everything
+   under it, and baked into the cached buffer, so it costs nothing per
+   frame. */
+var HV_GRADED = { sakura: 1, forest: 1, hollow: 1, stream: 1 };
+
+function hvDayGrade(ctx, hour) {
+  var u = hour === undefined ? 0.5 : hour;
+  /* how far from the flat middle of the day, and which way */
+  var warm = u > 0.45;
+  var amt = warm ? (u - 0.45) / 0.55 : (0.45 - u) / 0.45;
+  amt = Math.max(0, Math.min(1, amt));
+  if (amt < 0.02) return;
+  var peak = (warm ? 0.26 : 0.16) * amt;
+  for (var y = 0; y < PXH; y++) {
+    var f = y / (PXH - 1);
+    /* the warm light gathers low, the cool light sits high */
+    var w = warm ? (0.35 + f * 0.65) : (1 - f * 0.55);
+    var a = peak * w;
+    if (a < 0.004) continue;
+    px(ctx, 0, y, PXW, 1,
+       (warm ? "rgba(255,178,96," : "rgba(150,186,232,") + a.toFixed(3) + ")");
+  }
+  /* and the evening takes a little light out of everything */
+  if (warm) {
+    for (var y2 = 0; y2 < PXH; y2++) {
+      px(ctx, 0, y2, PXW, 1, "rgba(48,34,58," + (0.10 * amt).toFixed(3) + ")");
+    }
+  }
+}
+
 var hvSceneStep = 0, hvStepScene = null, hvStepNode = null;
 var HV_STEPS = 4;                      /* four phases is plenty, and cheap */
 
@@ -5732,10 +6048,18 @@ function hvPaintBase(n) {
      key so the other nodes in this scene do not inherit a bear. */
   var extra = n.bear === "shadow" ? { lurker: hvPaintLurker } : null;
   var step = hvStepOf(n, scene);
-  var key = scene + (extra ? ":lurker" : "") + ":" + step;
+  /* Six steps across the day. Three was enough while the hour was a
+     fixed property of a node; with a clock that moves every beat it
+     would show the day changing in three jumps. Each scene is only ever
+     painted at the few hours it is actually walked through, so this
+     stays a handful of buffers, not thirty. */
+  var hour = Math.round(hvHourOf(n) * 5) / 5;
+  var key = scene + (extra ? ":lurker" : "") + ":" + step + ":" + hour;
   if (!hvSceneCache[key]) {
     var made = spriteCanvas(PXW, PXH);
-    (HV_SCENES[scene] || HV_SCENES.sakura)(made.ctx, hvSeed(scene), extra, step);
+    (HV_SCENES[scene] || HV_SCENES.sakura)(made.ctx, hvSeed(scene), extra, step, hour);
+    /* the scenes that do not light themselves get the hour laid over them */
+    if (HV_GRADED[scene]) hvDayGrade(made.ctx, hour);
     hvSceneCache[key] = made.c;
   }
   hvBase = hvSceneCache[key];
@@ -5774,7 +6098,9 @@ const HV_STAND = {
      of the pot by the step, with the doorlight falling across them --
      which is also where you would actually stand, looking at a light
      somebody left on for you. */
-  home:    { x: 138, y: 158, s: 1.5 },
+  /* back on the porch, where every other scene puts them and where the
+     note does not reach -- see the porch note in the `home` scene */
+  home:    { x: 282, y: 170, s: 1.5 },
 };
 
 /* =========================================================
@@ -6345,7 +6671,16 @@ function hvPaintFrame(t, dt) {
   }
 
   if (n.butterflies) {
-    put(drawFlowerCard(), PXW / 2 - 30, 78 + Math.sin(t * 0.8) * 1.5, 2.2);
+    /* IT IS WHICHEVER ONE SHE PICKED.
+
+       This was hardcoded to the flower, so a walk where she chose the
+       heart put a giant flower in the middle of the frame anyway -- in
+       the one scene that is explicitly about the thing she is carrying.
+       Every other place that draws the keepsake already asks which it
+       is; this one did not. */
+    var keepCard = (hvKeepsake || "heart") === "flower"
+      ? drawFlowerCard() : drawHeartCard();
+    put(keepCard, PXW / 2 - 30, 78 + Math.sin(t * 0.8) * 1.5, 2.2);
     /* Real flight: a looping figure-of-eight around a home point, wings
        beating fast, and the beat easing off at the top of each rise the
        way a butterfly glides. */
@@ -6764,6 +7099,13 @@ function hvRender(withTransition) {
 
   if (n.isAsk) hvAskFrom = hvNode;
 
+  /* The keepsake in the corner is set by hvChoose and was only ever
+     drawn at the start of the chapter and when something was found --
+     so choosing the heart at the gate set it and nothing redrew it, and
+     the corner stayed empty for the whole walk. It is one span; drawing
+     it on every node costs nothing and cannot go stale. */
+  hvUpdateFoundStrip();
+
   if (withTransition) { hvStartTransition(); hvSfx("page"); }
   hvPaintBase(n);
   hvArrive = -1;                       // everything on this node times from now
@@ -6790,10 +7132,22 @@ function hvRender(withTransition) {
      a path's two */
   if (n.sayIfMet) say = hvHasWalked(n.sayIfMet.route) ? n.sayIfMet.yes : n.sayIfMet.no;
   if (n.sayOfKeepsake) say = n.sayOfKeepsake[hvKeepsake || "heart"] || say;
+  /* THE THING SHE HAS BEEN CARRYING ALL THE WAY UP.
+
+     "…by the way" was the right size for a line about something she had
+     not seen since the first screen. It is the wrong size now: the
+     keepsake sits at the top of the frame from the moment she picks it
+     up, so by the time this lands she has had it in the corner of her
+     eye for the whole walk. A callback to something visible can afford
+     to say what it means. */
   if (n.callback && hvKeepsake) {
     say += hvKeepsake === "flower"
-      ? " …you are still carrying that flower, by the way."
-      : " …you are still holding that little heart, by the way.";
+      ? " And you have still got that flower. You picked it up before you " +
+        "knew where any of this went, and you carried it the whole way up " +
+        "without once putting it down."
+      : " And you have still got that little heart. You picked it up before " +
+        "you knew where any of this went, and you carried it the whole way " +
+        "up without once putting it down.";
   }
   if (n.tally) {
     const found = hvFoundList();
@@ -6918,6 +7272,7 @@ function startQuest() {
   }).catch(function () {});
 
   hvNode = "title";
+  hvClockReset();                 /* a new walk starts at first light */
   hvHistory = [];
   hvBursts = [];
   hvPoke = 0;

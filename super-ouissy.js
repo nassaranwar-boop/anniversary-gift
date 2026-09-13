@@ -2098,6 +2098,7 @@ window.SuperOuissy = (function () {
       groundY: findGroundY(grid, w, h),
       ents: ents, items: items, start: start, goal: goal,
       checks: checks, boss: boss, biome: def.biome,
+      signs: mkSigns(grid, w, h, start, goal, index),
       /* pristine copies, so the offline harness can put a level back the
          way it found it between assertions (see __soReset) */
       grid0: grid.map(function (r) { return r.slice(); }),
@@ -2108,6 +2109,131 @@ window.SuperOuissy = (function () {
   }
 
   function isSolidChar(ch) { return !!ch && SOLID.indexOf(ch) >= 0; }
+
+  /* =======================================================================
+     THE LEVEL TALKS BACK
+
+     The game has always been written in his voice — the world cards, the
+     revive cards, the whole letter at the end — but the part she spends
+     the most time in, the LEVEL, said nothing at all. Three little boards
+     on posts per world, planted on the way through, and walking past one
+     puts a line up.
+
+     Where they go is worked out rather than written down: a fraction of
+     the way from her start to the goal, then the nearest column with
+     ground under it and two tiles of air above, so editing a level's
+     layout can never leave a signpost buried in a wall or hanging over a
+     pit. They are decoration — nothing about them collides — so the worst
+     a badly-placed one can do is look silly.
+     ======================================================================= */
+  /* Nine lines, and the rule they were written to.
+
+     A sign is read at a run, in the two seconds she is standing next to
+     it, so nothing here is longer than a breath. None of them is advice
+     and none of them is a compliment — advice in a platformer is a tip,
+     and a compliment from a signpost is embarrassing. What they are is
+     things one specific person knows about one specific person, said
+     plainly, with the level underneath doing the second half of the work:
+     "the ground stops being kind about here" is about world two and it is
+     also about the year.
+
+     The three worlds are an arc. The meadow is the beginning of them. The
+     middle one is what it is actually like. The castle is the promise. */
+  var SIGN_LINES = {
+    /* EASY — the meadow, the orchard and the garden. The gentlest set, and
+       the boards know it: nothing here is chasing her. */
+    easy: [
+      ["nothing here means it. go and look at things.",
+       "you don't have to be good at this. you only have to be here.",
+       "i can see you from the next one."],
+      ["the orchard was your idea. i only built it.",
+       "take the long way round. nothing here is chasing you.",
+       "you are further in than you think you are."],
+      ["the last garden, and i planted the whole thing facing the door.",
+       "whatever you are by the time you get there is the right thing to be.",
+       "one more, and then it is just us."],
+    ],
+    /* MEDIUM — the riverside, the windmill and the hill town. The middle
+       of everything, which is what this difficulty is. */
+    medium: [
+      ["everything here is soft on purpose. one of them should be.",
+       "you start things over without making it a tragedy. i never learned how.",
+       "three of these, and then me."],
+      ["the ground stops being kind about here. that isn't a punishment, it's just further in.",
+       "i'm not worried about you. i've seen what you do with a bad week.",
+       "you're allowed to stop and look at it. it's yours."],
+      ["whatever is at the top of this, i'm on your side of it.",
+       "she isn't difficult because i wanted you to lose.",
+       "one more room, then the door, then me."],
+    ],
+    /* HARD — the forest, the ruins and the castle. She chose the worst of
+       it on purpose, and these are written to somebody who did. */
+    hard: [
+      ["you picked the hard one. i am not surprised and i am not arguing.",
+       "everything after this gets worse. going anyway is the whole skill.",
+       "the forest ends. they all do."],
+      ["somebody lived here once and then didn't. that happens. it is not the end of anything.",
+       "if you need to stop, stop. the ruins will wait. so will i.",
+       "you have done harder than this with less, and I was there."],
+      ["what is at the top of this is the worst thing i could think of. that was deliberate.",
+       "if she takes everything, i am still coming.",
+       "last door. i am behind it."],
+    ],
+  };
+  function mkSigns(grid, w, h, start, goal, index) {
+    /* his voice, but not the same nine boards on every difficulty: each one
+       is its own three places, walked by somebody who chose them */
+    var set = SIGN_LINES[(G && G.diff) || "medium"] || SIGN_LINES.medium;
+    var lines = set[Math.min(set.length - 1, index)] || [];
+    var x0 = Math.floor(start.x / T), x1 = goal ? Math.floor(goal.x / T) : w - 2;
+    var out = [];
+    if (x1 - x0 < 12) return out;
+    /* THE ROW SHE ACTUALLY WALKS ALONG.
+
+       The first version took the first standable tile scanning DOWN from
+       the sky, which is the highest perch in the column rather than the
+       floor — and it put four of the twenty-seven boards somewhere she
+       never goes: one on a ledge three rows up, one down a cellar BELOW
+       the ground, and one thirteen rows up in the open sky in Hard world
+       one. A line she cannot read is not a line.
+
+       Every column is searched for the standable row NEAREST the main
+       ground surface, and a column is only accepted if that row is the
+       ground (or within one of it). A perch is kept as a fallback, so a
+       world with no ground anywhere near the wanted spot still gets its
+       board rather than losing it. */
+    var gy = Math.round(findGroundY(grid, w, h) / T);
+    function standRow(tx) {
+      var best = -1, bestD = 1e9;
+      for (var ty = 2; ty < h; ty++) {
+        if (!isSolidChar(grid[ty][tx])) continue;
+        if (grid[ty - 1][tx] !== "." || grid[ty - 2][tx] !== ".") continue;
+        var d = Math.abs(ty - gy);
+        if (d < bestD) { bestD = d; best = ty; }
+      }
+      return best;
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var want = Math.round(x0 + (x1 - x0) * (0.24 + i * 0.26));
+      var at = null, perch = null;
+      for (var dd = 0; dd < 16 && !at; dd++)
+        for (var sg = -1; sg <= 1 && !at; sg += 2) {
+          var tx = want + dd * sg;
+          if (tx <= x0 + 2 || tx >= x1 - 2) continue;
+          var ty = standRow(tx);
+          if (ty < 0) continue;
+          var cand = { x: tx * T, y: (ty - 1) * T, text: lines[i], said: false };
+          if (Math.abs(ty - gy) <= 1) at = cand;
+          else if (!perch) perch = cand;
+        }
+      at = at || perch;
+      if (!at) continue;
+      var clash = false;
+      for (var q = 0; q < out.length; q++) if (Math.abs(out[q].x - at.x) < T * 5) clash = true;
+      if (!clash) out.push(at);
+    }
+    return out;
+  }
 
   /* The row the main ground surface sits on: the one with the most tiles
      that are solid with air directly above. Worked out rather than written
@@ -2462,6 +2588,35 @@ window.SuperOuissy = (function () {
     if (e) e.className = "so-boss-say";
   }
 
+  /* His voice, on a board, rather than hers: same fade as the Queen's
+     lines but at the foot of the stage, where it cannot be mistaken for
+     something the thing in front of her just said. */
+  var signSayT = null;
+  function signSay(text) {
+    var el = $("so-sign-say");
+    if (!el) {
+      var stage = $("so-stage");
+      if (!stage) return;
+      el = document.createElement("div");
+      el.id = "so-sign-say";
+      stage.appendChild(el);
+    }
+    el.textContent = text;
+    el.className = "so-sign-say";
+    void el.offsetWidth;
+    el.className = "so-sign-say on";
+    clearTimeout(signSayT);
+    signSayT = setTimeout(function () {
+      var e = $("so-sign-say");
+      if (e) e.className = "so-sign-say";
+    }, 3400);
+  }
+  function signHush() {
+    clearTimeout(signSayT);
+    var e = $("so-sign-say");
+    if (e) e.className = "so-sign-say";
+  }
+
   function popText(x, y, text, colour) {
     G.floats.push({ x: x, y: y, t: text, c: colour || "#fff6c0", life: 0 });
   }
@@ -2723,8 +2878,44 @@ window.SuperOuissy = (function () {
     return G.diff === "hard" && !!window.Rescue;
   }
 
+  /* HOW MANY TIMES IN THE SAME PLACE.
+
+     Not deaths in the level — deaths within a screen of each other. Dying
+     three times spread across a world is a world doing its job; dying
+     three times on one jump is the game being mean to her, and those are
+     the only ones worth offering anything about. */
+  function noteStuck() {
+    var dx = G.deathAt ? G.deathAt.x : (G.player ? G.player.x : 0);
+    if (Math.abs(dx - G.stuckAt) < 56) G.stuckN++;
+    else { G.stuckN = 1; G.stuckAt = dx; }
+  }
+  /* WHERE THE OFFER IS ALLOWED TO EXIST AT ALL.
+
+     The first version of this was too generous and it cost the game
+     something. Two rules put back what it took:
+
+     NOT ON HARD. Hard's definition IS "no ribbons" — that is the whole
+     difference between it and Medium. Handing one back after a few falls
+     quietly undoes the mode she chose, which is not kindness, it is
+     deciding on her behalf that she did not mean it. Easy and Medium have
+     ribbons already; there, moving one is a convenience the mode already
+     agrees with.
+
+     NOT IN THE QUEEN'S ROOM. The last fight is the point of the run and
+     there is nothing there to walk back through anyway.
+
+     And it takes FIVE falls in the same place, not three. Three is a
+     stretch being difficult. Five is a stretch being unfair. */
+  function stuckNow() {
+    if (!G.level || !G.player || !G.player.lastSafe) return false;
+    if (!DIFF[G.diff].checkpoints) return false;       /* hard keeps its word */
+    if (G.level.boss && G.level.boss.awake && !G.level.boss.dead) return false;
+    return G.stuckN >= G.handGate;
+  }
+
   function afterDeath() {
     G.lives--;
+    noteStuck();
 
     /* <= 0, not < 0. Lives counts the attempts she has left, so when it
        reaches zero there are none — but the test was < 0, which gave her
@@ -2763,7 +2954,10 @@ window.SuperOuissy = (function () {
        more than it gives: five lives on Easy, three on Medium, two on
        Hard. She has to hold more than the price for the offer to appear,
        because paying all of it would leave nothing to be revived into. */
-    if (canBossRevive()) { offerBossRevive(); return; }
+    /* ...and if she has fallen in the same place three times, the offer
+       appears whether or not she can afford anything, because the thing
+       being offered costs nothing. */
+    if (canBossRevive() || stuckNow()) { offerBossRevive(); return; }
 
     /* Hard, and she still has a life: he comes and gets her first */
     if (rescuesOn()) {
@@ -2903,21 +3097,58 @@ window.SuperOuissy = (function () {
     var ribbon = null;
     if (DIFF[G.diff].checkpoints && G.level && G.level.checks)
       G.level.checks.forEach(function (c) { if (c.taken) ribbon = c; });
+    if (G.handCheck && (!ribbon || G.handCheck.x > ribbon.x)) ribbon = G.handCheck;
+
+    /* THE GENTLER WAY, OFFERED RATHER THAN APPLIED.
+
+       Three falls in the same spot and the card changes what it leads
+       with. It does not drop the difficulty and it does not skip the bit
+       — either of those would take the thing she is about to do away from
+       her. It moves the ribbon: a checkpoint tied on the last ground she
+       stood on safely, honoured on every difficulty including the one
+       with no checkpoints, plus the glow-up so the next go has a hit in
+       hand. It costs nothing, and saying no is a real answer — the offer
+       then holds off for another two falls rather than asking again the
+       moment she fails. */
+    var paid = canBossRevive(), hand = stuckNow();
+    var btns = "";
+    if (hand)
+      btns += '<button class="so-btn so-btn-go" id="so-hand">MOVE THE RIBBON</button>';
+    if (paid)
+      btns += '<button class="so-btn ' + (hand ? "so-btn-quiet" : "so-btn-go") + '" id="so-revive-yes">' +
+              (his ? "TAKE HIS HAND" : "BE REVIVED") + '</button>';
+    btns += '<button class="so-btn so-btn-quiet" id="so-revive-no">' +
+            (hand ? "I'VE GOT THIS" : ribbon ? "LAST RIBBON" : "START OVER") + '</button>';
+
     overlay(
       '<div class="so-card so-card-revive">' +
-        '<p class="so-card-kicker">' + (his ? "SHE IS NOT LEFT TO FALL" : "GET BACK UP") + '</p>' +
-        '<h3>' + (his ? "He can put you back" : "Be revived") + '</h3>' +
+        '<p class="so-card-kicker">' +
+          (hand ? "THIS BIT IS MEAN" : his ? "SHE IS NOT LEFT TO FALL" : "GET BACK UP") + '</p>' +
+        '<h3>' + (hand ? "Let me move the ribbon" : his ? "He can put you back" : "Be revived") + '</h3>' +
         '<p class="so-card-note">' +
-          "Right where you fell, with everything exactly as you left it. " +
-          (ribbon ? "Or go back to the last ribbon." : "Or start over from the beginning.") + '</p>' +
-        '<p class="so-revive-cost"><span>LIVES</span><b>' + left + '</b>' +
-          '<i>&rarr;</i><b>' + after + '</b></p>' +
-        '<button class="so-btn so-btn-go" id="so-revive-yes">' +
-          (his ? "TAKE HIS HAND" : "BE REVIVED") + '</button>' +
-        '<button class="so-btn so-btn-quiet" id="so-revive-no">' +
-          (ribbon ? "LAST RIBBON" : "START OVER") + '</button>' +
+          (hand
+            ? "Same spot, " + G.stuckN + " times now. I'll move the ribbon to the last " +
+              "safe ground you stood on, so you stop walking the easy part. " +
+              "The jump is still the jump." +
+              (paid ? " Or spend lives and stand up right where you fell." : "")
+            : "Right where you fell, with everything exactly as you left it. " +
+              (ribbon ? "Or go back to the last ribbon." : "Or start over from the beginning.")) + '</p>' +
+        (paid ? '<p class="so-revive-cost"><span>LIVES</span><b>' + left + '</b>' +
+                '<i>&rarr;</i><b>' + after + '</b></p>' : "") +
+        btns +
       "</div>", "so-ov-card");
-    $("so-revive-yes").addEventListener("click", function () {
+
+    if ($("so-hand")) $("so-hand").addEventListener("click", function () {
+      closeOverlay();
+      var sp = G.player && G.player.lastSafe;
+      if (sp) G.handCheck = { x: sp.x, y: sp.y };
+      G.stuckN = 0;
+      G.state = "play";
+      bgmDuck(false);
+      if (rescuesOn()) playCutscene("rescue", herePos(), handRespawn);
+      else handRespawn();
+    });
+    if ($("so-revive-yes")) $("so-revive-yes").addEventListener("click", function () {
       closeOverlay();
       G.lives -= (reviveCost() - 1);   /* the death took the first one */
       G.state = "play";
@@ -2929,11 +3160,32 @@ window.SuperOuissy = (function () {
     });
     $("so-revive-no").addEventListener("click", function () {
       closeOverlay();
+      /* she said she has got it. the offer stops asking for a while — a
+         card that reappears the second she fails again is not an offer,
+         it is nagging. */
+      if (hand) { G.stuckN = 0; G.handGate += 2; }
       G.state = "play";
       bgmDuck(false);
       if (rescuesOn()) playCutscene("rescue", herePos(), respawn);
       else respawn();
     });
+  }
+
+  /* THE WAY BACK WHEN SHE TAKES IT — and everything this deliberately
+     does NOT do.
+
+     It does not hand her a glow-up. The first version did, and a free hit
+     on the stretch that has been killing her is the game doing the jump
+     for her: the stake is the whole reason the jump is worth landing.
+     It does not slow anything down, weaken anything, or lengthen the
+     clock either.
+
+     All it does is stop her re-walking five screens she has already
+     beaten to get back to the one she hasn't. The hard bit is still
+     exactly as hard, and she still has to do it. */
+  function handRespawn() {
+    respawn();
+    popText(G.player.x, G.player.y - 14, "ribbon moved. same jump.", "#ffd9a0");
   }
 
   function herePos() {
@@ -2964,6 +3216,9 @@ window.SuperOuissy = (function () {
     var L = G.level, d = DIFF[G.diff];
     var at = L.start, cp = null;
     if (d.checkpoints) L.checks.forEach(function (c) { if (c.taken) cp = c; });
+    /* the one she was GIVEN counts on every difficulty, including the one
+       that has no checkpoints of its own — that is the whole offer */
+    if (G.handCheck && (!cp || G.handCheck.x > cp.x)) cp = G.handCheck;
     if (cp) at = cp;
     G.player = mkPlayer(at.x + 2, at.y - 2);
     G.player.invuln = 1.4;
@@ -3099,6 +3354,7 @@ window.SuperOuissy = (function () {
      ======================================================================= */
   function collectHeart(x, y) {
     G.hearts++;
+    G.heartsEver++;
     G.meter++;
     addScore(TUNE.scores.heart);
     burst(x, y, 8, ["#ff5f95", "#ffd6e6", "#ffffff"], 70, { max: .45, size: 1 });
@@ -3446,6 +3702,15 @@ window.SuperOuissy = (function () {
     var L = G.level, p = G.player;
     if (p.dead || p.winT) return;
 
+    if (L.signs) L.signs.forEach(function (sn) {
+      if (sn.said) return;
+      if (p.x + p.w > sn.x - 6 && p.x < sn.x + T + 6 &&
+          p.y + p.h > sn.y - 6 && p.y < sn.y + T + 12) {
+        sn.said = true;
+        signSay(sn.text);
+      }
+    });
+
     L.checks.forEach(function (c) {
       if (c.taken) return;
       if (p.x + p.w > c.x && p.x < c.x + T && p.y + p.h > c.y - 8 && p.y < c.y + T) {
@@ -3624,6 +3889,7 @@ window.SuperOuissy = (function () {
     /* ---- 3. everything in the world ------------------------------------- */
     drawGoal(c, ox, oy, t);
     L.checks.forEach(function (ck) { drawCheck(c, ck, ox, oy, t); });
+    if (L.signs) L.signs.forEach(function (sn) { drawSign(c, sn, ox, oy, t); });
     L.items.forEach(function (it) { drawItem(c, it, ox, oy); });
     L.ents.forEach(function (e) { e.kind === "mover" ? drawMover(c, e, ox, oy) : drawEnemy(c, e, ox, oy); });
     drawBoss(c, ox, oy, t);
@@ -3852,6 +4118,21 @@ window.SuperOuissy = (function () {
     else c.drawImage(ART.power[it.type][k % 2], dx - 1, dy - 1 + bobY);
   }
 
+  /* a board on a post, with a heart on it. it goes dull once it has said
+     its line, so she can see at a glance which ones she has read. */
+  function drawSign(c, sn, ox, oy, t) {
+    var dx = Math.round(sn.x - ox), dy = Math.round(sn.y - oy);
+    if (dx < -24 || dx > VIEW.w + 24) return;
+    var done = sn.said;
+    px(c, dx + 7, dy + 7, 2, 9, "#5c3f28");
+    px(c, dx + 5, dy + 15, 6, 1, "#4a3220");
+    px(c, dx + 1, dy + 1, 14, 8, done ? "#a8865a" : "#e8c98d");
+    px(c, dx + 1, dy + 1, 14, 1, done ? "#c2a274" : "#fff0cf");
+    px(c, dx + 1, dy + 8, 14, 1, "#6d5031");
+    heart(c, dx + 8, dy + 5, 2, done ? "#b07d8e" : "#ff5f95");
+    if (!done) px(c, dx + 7, dy - 2 - (Math.sin(t * 3) > 0 ? 1 : 0), 2, 2, "#fff6a8");
+  }
+
   function drawCheck(c, ck, ox, oy, t) {
     var dx = Math.round(ck.x - ox), dy = Math.round(ck.y - oy);
     if (dx < -30 || dx > VIEW.w + 30) return;
@@ -3977,6 +4258,79 @@ window.SuperOuissy = (function () {
      ======================================================================= */
   function $(id) { return document.getElementById(id); }
 
+  /* =======================================================================
+     THE LIFT
+
+     Any card taller than the stage has to be scrolled, and nothing said
+     so. The browser's own scroll bar is no help: on a phone it is
+     invisible until you are already scrolling, which is exactly the
+     moment it stopped being needed, and it looks like a piece of the
+     browser rather than a piece of this.
+
+     So it is drawn. A groove down the left, clear of the buttons, with a
+     gold handle on it that shows how much there is and where she is in
+     it — and it can be dragged, or the groove pressed, to go there.
+     ======================================================================= */
+  var liftDrag = null;
+  function ensureLift() {
+    var st = $("so-stage");
+    if (!st) return null;
+    var el = $("so-lift");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "so-lift"; el.className = "so-lift";
+    el.innerHTML = '<div class="so-lift-bar" id="so-lift-bar"></div>';
+    st.appendChild(el);
+
+    /* dragging the handle, and pressing the groove to jump there */
+    var grab = function (e) {
+      var ov = $("so-overlay");
+      if (!ov) return;
+      var r = el.getBoundingClientRect(), bar = $("so-lift-bar");
+      var br = bar.getBoundingClientRect();
+      /* pressing the groove above or below the handle moves it under the
+         finger first, so a drag can start from anywhere on it */
+      var off = (e.clientY >= br.top && e.clientY <= br.bottom) ? e.clientY - br.top : br.height / 2;
+      liftDrag = { r: r, h: br.height, off: off };
+      el.classList.add("grabbed");
+      if (el.setPointerCapture && e.pointerId != null) el.setPointerCapture(e.pointerId);
+      move(e);
+      e.preventDefault();
+    };
+    var move = function (e) {
+      if (!liftDrag) return;
+      var ov = $("so-overlay");
+      if (!ov) return;
+      var span = liftDrag.r.height - liftDrag.h;
+      var k = span > 0 ? clamp((e.clientY - liftDrag.r.top - liftDrag.off) / span, 0, 1) : 0;
+      ov.scrollTop = k * (ov.scrollHeight - ov.clientHeight);
+      updateLift();
+    };
+    var drop = function () { liftDrag = null; el.classList.remove("grabbed"); };
+    el.addEventListener("pointerdown", grab);
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", drop);
+    el.addEventListener("pointercancel", drop);
+    /* a turn of the phone changes how much there is to read */
+    window.addEventListener("resize", updateLift);
+    return el;
+  }
+  function updateLift() {
+    var el = ensureLift(), ov = $("so-overlay");
+    if (!el || !ov) return;
+    var room = ov.scrollHeight - ov.clientHeight;
+    /* a couple of pixels of overflow is rounding, not a page of reading */
+    var need = ov.classList.contains("on") && room > 6;
+    el.classList.toggle("on", need);
+    if (!need) return;
+    var bar = $("so-lift-bar");
+    var frac = ov.clientHeight / ov.scrollHeight;
+    var hPct = Math.max(14, Math.min(92, frac * 100));
+    var tPct = (room > 0 ? ov.scrollTop / room : 0) * (100 - hPct);
+    bar.style.height = hPct + "%";
+    bar.style.top = tPct + "%";
+  }
+
   function overlay(html, cls) {
     var ov = $("so-overlay");
     if (!ov) return;
@@ -3993,8 +4347,17 @@ window.SuperOuissy = (function () {
        last overlay happened to be scrolled to */
     ov.scrollTop = 0;
     ov.setAttribute("aria-hidden", "false");
+    /* the card is measured after the browser has laid it out, not while it
+       is still a string */
+    if (!ov._lift) { ov.addEventListener("scroll", updateLift); ov._lift = true; }
+    updateLift();
+    requestAnimationFrame(updateLift);
+    setTimeout(updateLift, 90);
   }
   function closeOverlay() {
+    stopEndingArt();
+    var lf = $("so-lift");
+    if (lf) lf.classList.remove("on");
     var ov = $("so-overlay");
     if (!ov) return;
     var st = $("so-stage"), scr = $("screen-ouissy");
@@ -4011,6 +4374,94 @@ window.SuperOuissy = (function () {
     try { return JSON.parse(localStorage.getItem(BEST_KEY) || "{}") || {}; } catch (e) { return {}; }
   }
   function saveBest(b) { try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (e) {} }
+
+  /* =======================================================================
+     HEARTS THAT BUY MOMENTS
+
+     Hearts have only ever been score. You collect them for six worlds and
+     the number goes up and that is the end of their story — and in a game
+     about the two of them, a heart being worth 200 points is a strange
+     thing for a heart to be worth.
+
+     So they buy something now, and deliberately not an advantage: ten of
+     them buy a MOMENT, which is a real one, written down. They are kept
+     between runs, so the pile is hers and grows whatever difficulty she
+     plays, and once they have all been read they can be read again for
+     free rather than the button turning into a locked door.
+     ======================================================================= */
+  var MOMENT_COST = 10;
+  var MOM_KEY = "so-moments-v1";
+  /* THREE PILES, NOT ONE.
+
+     A difficulty is its own three worlds, its own boss and now its own
+     score; the letters were the only thing that repeated. Twenty-four of
+     them instead of eight, and which pile she is reading depends on where
+     she is reading it — so going back for Hard is not going back over the
+     same post.
+
+     They are not three sets of the same thing either. Easy is the small
+     domestic stuff, the noticing. Medium is the year, and what it took.
+     Hard is the ones that cost something to say. */
+  var MOMENTS = {
+    easy: [
+      "you hum when you're concentrating. you have no idea that you do it.",
+      "the first time you laughed at something I said, I went back over it all evening trying to work out which part did it, so I could do it again.",
+      "you fall asleep mid-sentence and wake up finishing it. I have never told you this. I'm telling you now.",
+      "you always take the seat facing the door. I always take the one facing you.",
+      "somebody asked me what you're like and I started with the way you say my name and had to stop.",
+      "you say \"five minutes\" the way other people say \"no\".",
+      "I have a list of your small faces. the one just before you say something you know is funny is my favourite.",
+      "you make ordinary days feel worth remembering, which is a thing I did not know a person could do to a Tuesday.",
+    ],
+    medium: [
+      "you do the thing where you're tired and you have gone quiet and you still ask how my day was.",
+      "the day everything went wrong, you were the only part of it that didn't.",
+      "I keep the voice notes. all of them. even the ones that are four seconds of you saying you'll call back.",
+      "we have had entire conversations across a room without saying anything and both been right.",
+      "you apologise for taking up space in rooms you are holding together.",
+      "there is a week I only got through because you kept texting like nothing was wrong.",
+      "you remember what I said I wanted months after I had forgotten saying it.",
+      "I have stopped being surprised by you and started being proud of you. it is the better feeling.",
+    ],
+    hard: [
+      "I was not going to be the sort of person who needed anyone. you did not argue with that. you just stayed.",
+      "there was a night I did not want to talk to anybody and I still wanted to talk to you. that was when I knew.",
+      "I have been loved carefully before. you are the first person who was not careful about it.",
+      "if you ever wonder whether you are too much — you are exactly enough, and I have done the measuring.",
+      "I am not a brave person. you are the one thing I have never once hesitated about.",
+      "the worst thing I have ever imagined is an ordinary Tuesday with you not in it.",
+      "you did not fix me. you sat with me until I stopped needing fixing. those are not the same and I know which one is harder.",
+      "whatever I turn out to be, the good half of it has your fingerprints on it.",
+    ],
+  };
+  function moments() { return MOMENTS[G && G.diff] || MOMENTS.medium; }
+  /* the pile she has read is per-difficulty too, or finishing Easy would
+     quietly mark Hard's letters as already seen */
+  function momKey() { return MOM_KEY + "-" + ((G && G.diff) || "medium"); }
+
+  function loadMoments() {
+    try { return JSON.parse(localStorage.getItem(momKey()) || "[]") || []; } catch (e) { return []; }
+  }
+  function saveMoments(a) { try { localStorage.setItem(momKey(), JSON.stringify(a)); } catch (e) {} }
+  /* the next one she has not read, or — once she has read them all — one
+     at random, because a pile of letters you are allowed to reopen is
+     nicer than a pile you are finished with */
+  function nextMoment() {
+    var read = loadMoments(), M = moments();
+    for (var i = 0; i < M.length; i++) if (read.indexOf(i) < 0) return i;
+    return Math.floor(Math.random() * M.length);
+  }
+  /* ONCE SHE HAS READ THEM ALL, READING IS FREE.
+
+     Ten hearts buy a letter she has not seen. Charging her ten again for a
+     random repeat of one she already owns is not a purchase, it is a slot
+     machine — she pays the same price for strictly less. When the pile is
+     complete it is hers: the button stays, says so, and costs nothing. */
+  function allRead() {
+    var read = loadMoments(), M = moments();
+    for (var i = 0; i < M.length; i++) if (read.indexOf(i) < 0) return false;
+    return true;
+  }
   function bestFor(diff) {
     var b = loadBest()[diff];
     return b || { score: 0, time: 0, hearts: 0, cleared: false };
@@ -4019,6 +4470,11 @@ window.SuperOuissy = (function () {
   /* ---- 1. the difficulty select ---------------------------------------- */
   function showDifficulty() {
     G.state = "menu";
+    /* the old tune, under the title screen — her preference is hers and is
+       not overridden, it is only honoured somewhere it never used to be */
+    var mw = true;
+    try { mw = localStorage.getItem("so_bgm") !== "0"; } catch (e) {}
+    if (mw) { setBgm(true); bgmFollow(); } else stopBgm();
     var saved = "medium";
     try { saved = localStorage.getItem(DIFF_KEY) || "medium"; } catch (e) {}
     var cards = ["easy", "medium", "hard"].map(function (k) {
@@ -4157,12 +4613,6 @@ window.SuperOuissy = (function () {
           '<button class="so-btn so-btn-go" id="so-resume">RESUME</button>' +
           '<button class="so-btn" id="so-restart">RESTART WORLD</button>' +
           '<button class="so-btn" id="so-bgm">MUSIC: ' + (G.bgmOn ? "ON" : "OFF") + "</button>" +
-          /* The ending's door is behind three worlds and a boss. This is
-             the same door, in the one place she can always reach — and
-             on Hard only, for the same reason. */
-          (G.diff === "hard"
-            ? '<button class="so-btn so-btn-quiet" id="so-pause-scene">ANWAR vs DEATH</button>'
-            : "") +
           '<button class="so-btn so-btn-quiet" id="so-quit">QUIT TO HUB</button>' +
         "</div>", "so-ov-card");
       $("so-resume").addEventListener("click", function () { togglePause(false); });
@@ -4171,15 +4621,6 @@ window.SuperOuissy = (function () {
         setBgm(!G.bgmOn); $("so-bgm").textContent = "MUSIC: " + (G.bgmOn ? "ON" : "OFF");
       });
       $("so-quit").addEventListener("click", quitToHub);
-      var pscene = $("so-pause-scene");
-      if (pscene) pscene.addEventListener("click", function () {
-        closeOverlay();
-        /* out of the pause and into the scene, and back into the pause
-           when it ends — the run underneath is untouched either way */
-        G.state = "play";
-        bgmDuck(false);
-        watchDeathScene(function () { togglePause(true); });
-      });
       Array.prototype.forEach.call(document.querySelectorAll("[data-so-setdiff]"), function (b) {
         b.addEventListener("click", function () {
           var k = b.getAttribute("data-so-setdiff");
@@ -4219,13 +4660,53 @@ window.SuperOuissy = (function () {
           (timeBonus ? row("TIME BONUS", "+" + timeBonus) : "") +
           row("SCORE", pad(G.score, 6)) +
         "</div>" +
+        '<div class="so-moment-slot" id="so-moment-slot"></div>' +
+        '<div class="so-moment-buy" id="so-moment-buy"></div>' +
         '<button class="so-btn so-btn-go" id="so-next">' + (last ? "TO THE CASTLE" : "NEXT WORLD") + "</button>" +
       "</div>", "so-ov-card");
     function row(a, b) { return '<div class="so-res-row"><span>' + a + "</span><b>" + b + "</b></div>"; }
+    renderMomentBuy();
     $("so-next").addEventListener("click", function () {
       closeOverlay();
       if (last) showEnding();
       else { G.levelIndex++; startLevel(G.levelIndex); }
+    });
+  }
+
+  /* the buy button, redrawn every time she spends, so the count on it is
+     never the count from before the last one */
+  function renderMomentBuy() {
+    var host = $("so-moment-buy");
+    if (!host) return;
+    var free = allRead();
+    if (!free && G.hearts < MOMENT_COST) {
+      host.innerHTML = '<p class="so-moment-none">' +
+        (G.hearts ? G.hearts + " hearts. " + MOMENT_COST + " buys a moment." : "") + "</p>";
+      return;
+    }
+    host.innerHTML = '<button class="so-btn so-btn-quiet so-moment-btn" id="so-moment">' +
+      (free ? "READ ONE AGAIN"
+            : "A MOMENT &middot; " + MOMENT_COST +
+              ' <svg class="gl gl-life" aria-hidden="true"><use href="#ic-px-heart"/></svg>') +
+      "</button><p class=\"so-moment-none\">" +
+      (free ? "you have all of them" : "you have " + G.hearts) + "</p>";
+    $("so-moment").addEventListener("click", function () {
+      if (!free) {
+        if (G.hearts < MOMENT_COST) return;
+        G.hearts -= MOMENT_COST;
+      }
+      var i = nextMoment(), read = loadMoments();
+      if (read.indexOf(i) < 0) { read.push(i); saveMoments(read); }
+      var slot = $("so-moment-slot");
+      if (slot) {
+        slot.innerHTML = '<p class="so-moment-text">' + moments()[i] + "</p>";
+        slot.className = "so-moment-slot";
+        void slot.offsetWidth;
+        slot.className = "so-moment-slot on";
+      }
+      sfx("heart");
+      updateHud();
+      renderMomentBuy();
     });
   }
 
@@ -4240,7 +4721,7 @@ window.SuperOuissy = (function () {
         '<p class="so-card-note">she is not giving up. she just needs a run-up.</p>' +
         '<div class="so-res">' +
           '<div class="so-res-row"><span>SCORE</span><b>' + pad(G.score, 6) + "</b></div>" +
-          '<div class="so-res-row"><span>HEARTS</span><b>' + G.hearts + "</b></div>" +
+          '<div class="so-res-row"><span>HEARTS</span><b>' + G.heartsEver + "</b></div>" +
         "</div>" +
         '<button class="so-btn so-btn-go" id="so-again">TRY THIS WORLD AGAIN</button>' +
         '<button class="so-btn" id="so-easier">CHANGE DIFFICULTY</button>' +
@@ -4272,13 +4753,13 @@ window.SuperOuissy = (function () {
     var total = G.elapsed;
     if (G.score > b.score) b.score = G.score;
     if (!b.time || total < b.time) b.time = total;
-    if (G.hearts > b.hearts) b.hearts = G.hearts;
+    if (G.heartsEver > b.hearts) b.hearts = G.heartsEver;
     b.cleared = true;
     all[G.diff] = b; saveBest(all);
     if (window.markSuperOuissyDone) window.markSuperOuissyDone();
 
     overlay(
-      '<div class="so-end">' +
+      '<div class="so-end' + (again ? "" : " playing") + '">' +
         '<div class="so-end-art" id="so-end-art"></div>' +
         '<p class="so-end-kicker">' + SO.ending.kicker + "</p>" +
         '<div class="so-end-lines">' + endingLines().map(function (l) { return "<p>" + l + "</p>"; }).join("") + "</div>" +
@@ -4286,7 +4767,7 @@ window.SuperOuissy = (function () {
         '<p class="so-end-sign">' + SO.ending.signOff + "</p>" +
         '<div class="so-res so-end-res">' +
           '<div class="so-res-row"><span>FINAL SCORE</span><b>' + pad(G.score, 6) + "</b></div>" +
-          '<div class="so-res-row"><span>HEARTS</span><b>' + G.hearts + "</b></div>" +
+          '<div class="so-res-row"><span>HEARTS</span><b>' + G.heartsEver + "</b></div>" +
           '<div class="so-res-row"><span>TOTAL TIME</span><b>' + fmtTime(total) + "</b></div>" +
           '<div class="so-res-row"><span>DIFFICULTY</span><b>' + DIFF[G.diff].label + "</b></div>" +
         "</div>" +
@@ -4295,7 +4776,26 @@ window.SuperOuissy = (function () {
           '<div class="so-menu-actions">' + endActions() + "</div>" +
         "</div>" +
       "</div>", "so-ov-end");
-    startEndingArt($("so-end-art"));
+    startEndingArt($("so-end-art"), !!again);
+    /* the scene is skippable from its first frame: anywhere on the overlay,
+       any key. she has just finished the game — nothing here gets to hold
+       her hostage for nine seconds. */
+    if (!again) {
+      /* "anywhere, any key" — and the key half of that was a lie. A keydown
+         listener on a DIV only ever fires if that div has focus, and an
+         overlay nobody has clicked never does, so the keyboard did nothing
+         at all. The key listener goes on the document, and takes itself off
+         again the moment the scene is over so it cannot swallow anything
+         later. */
+      var ov = document.querySelector(".so-ov-end");
+      var go = function () { if (endSkip) endSkip(); };
+      if (ov) ov.addEventListener("pointerdown", go);
+      endKeySkip = function (e) {
+        if (e && (e.metaKey || e.ctrlKey || e.altKey)) return;
+        go();
+      };
+      document.addEventListener("keydown", endKeySkip);
+    }
     if (!again) sfx("victory");
     wireEndActions();
   }
@@ -4331,35 +4831,22 @@ window.SuperOuissy = (function () {
     }
     html += '<button class="so-btn' + (nxt ? "" : " so-btn-go") + '" id="so-end-again">' +
             "PLAY " + DIFF[G.diff].label.toUpperCase() + " AGAIN</button>";
-    /* THE SCENE ALMOST NOBODY SEES.
+    /* NO DOOR STRAIGHT TO THE SCENE ANY MORE.
 
-       Anwar and Death only meet if the Queen takes her last life on Hard,
-       inside the Queen's own room — which means the one piece of the game
-       with the most story in it is the piece least likely to ever be
-       watched. It can simply be watched instead, and watching it costs
-       nothing and changes nothing: no run, no lives, no save.
+       There used to be an ANWAR vs DEATH button here, and another in the
+       pause menu. They were scaffolding: the scene only happens if the
+       Queen takes her last life on Hard, which made it the hardest thing
+       in the game to ever see, and a way in was needed to check that it
+       worked at all. It works.
 
-       HARD ONLY, wherever the door appears. He is the Hard story — the
-       rescue, the last stand, all of it — and offering his name to
-       someone on Easy names a character that difficulty has never
-       introduced and spoils a scene she has no way to have reached. */
-    if (G.diff === "hard")
-      html += '<button class="so-btn so-btn-quiet" id="so-end-scene">ANWAR vs DEATH</button>';
+       What a shortcut costs is the thing itself. That scene is the
+       reward for having lost the whole run to her, in the last room, on
+       the hardest difficulty — and a button that hands it over on request
+       turns the worst moment in the game into a menu item. It is reached
+       by getting there now, which is the only way it ever meant anything. */
     html += '<button class="so-btn so-btn-quiet" id="so-end-title">TITLE SCREEN</button>';
     html += '<button class="so-btn so-btn-quiet" id="so-end-quit">BACK TO THE GAMES</button>';
     return html;
-  }
-
-  /* Watching it, rather than losing your way into it. The scene is handed
-     the canvas exactly as it is in a real run — same module, same script,
-     same decision at the end of it — and when it finishes, the ending
-     comes back. The one difference is that its outcome is thrown away
-     here: nothing is spent and nothing is won by watching. */
-  function watchDeathScene(back) {
-    back = back || function () { G.state = "ending"; showEnding(true); };
-    if (!window.Rescue) { back(); return; }
-    stopEndingArt();
-    playCutscene("death", { herX: 120, herY: 118 }, back);
   }
 
   function wireEndActions() {
@@ -4374,11 +4861,6 @@ window.SuperOuissy = (function () {
     if (again) again.addEventListener("click", function () {
       closeOverlay();
       playDifficulty(G.diff);
-    });
-    var scene = $("so-end-scene");
-    if (scene) scene.addEventListener("click", function () {
-      closeOverlay();
-      watchDeathScene();
     });
     var title = $("so-end-title");
     if (title) title.addEventListener("click", function () { showDifficulty(); });
@@ -4395,76 +4877,265 @@ window.SuperOuissy = (function () {
 
   /* The last picture: a lit castle doorway, Ouissy, and him waiting. */
   var endRaf = null;
-  function startEndingArt(host) {
+  /* =======================================================================
+     THE ENDING, AS A SCENE
+
+     It used to be a picture. A 240x120 loop that started with her already
+     most of the way across the courtyard and him already standing in the
+     doorway, both of them drawn at the same instant the wall of text they
+     belong to appeared underneath. Three worlds, a boss, and the last
+     thing the game says to her arrives as a background image.
+
+     It is directed now. Nine seconds, on a timeline, with the text held
+     back until they have actually met. She walks in out of the dark. The
+     sun comes up because she is crossing, not because a clock said so.
+     He comes out to meet her rather than waiting to be arrived at. The
+     camera pushes in on the two of them and the letterbox opens, and only
+     then does anything ask her to read.
+
+     And it is skippable from the first frame, because the one thing worse
+     than no scene is a scene you cannot get out of.
+     ======================================================================= */
+  var END_BEAT = { dawn: 1.0, walk: 4.6, pause: 5.8, meet: 7.4, bloom: 9.2 };
+  var endSkip = null, endSeek = null, endKeySkip = null, endT = 0;
+  /* WHICH SCENE IS THE LIVE ONE.
+
+     showEnding can be reached over and over — PLAY AGAIN, TITLE SCREEN and
+     back, going off to watch the Death scene and returning — and each one
+     called startEndingArt, which started ANOTHER requestAnimationFrame
+     loop without stopping the last. Nothing cancelled them, so they all
+     kept running for the rest of the session, painting into canvases that
+     had been thrown away and fighting over the scene's clock. Every loop
+     stamps itself with a run number and the moment a newer one exists it
+     stops asking for frames. */
+  var endRunId = 0, endLive = 0, endHold = null;
+
+  function hex(s) { return [parseInt(s.substr(1, 2), 16), parseInt(s.substr(3, 2), 16), parseInt(s.substr(5, 2), 16)]; }
+  function mixHex(a, b, k) {
+    var A = hex(a), B = hex(b), o = "#";
+    for (var i = 0; i < 3; i++) {
+      var v = Math.round(A[i] + (B[i] - A[i]) * k).toString(16);
+      o += v.length < 2 ? "0" + v : v;
+    }
+    return o;
+  }
+  var END_NIGHT = [{ p: 0, c: "#0b0718" }, { p: .42, c: "#160d28" }, { p: .78, c: "#241338" }, { p: 1, c: "#3a1c40" }];
+  var END_DAWN  = [{ p: 0, c: "#2a1a4e" }, { p: .42, c: "#6a2a63" }, { p: .78, c: "#c8536f" }, { p: 1, c: "#ffb07a" }];
+  function endSky(c, k) {
+    var stops = [];
+    for (var i = 0; i < END_NIGHT.length; i++)
+      stops.push({ p: END_NIGHT[i].p, c: mixHex(END_NIGHT[i].c, END_DAWN[i].c, k) });
+    ditherSky(c, 0, 0, 240, 120, stops);
+  }
+  function ease(k) { return k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k); }
+  function seg(t, a, b) { return ease((t - a) / (b - a)); }
+
+  /* him: eight pixels of coat, a face, and hair that has never once been
+     tidy. Drawn from the feet up so both of them stand on the same line. */
+  function paintHim(c, x, foot, lean) {
+    var y = foot - 14;
+    px(c, x, y, 8, 14, "#3d5a8a");
+    px(c, x, y, 8, 2, "#5a7ab0");
+    px(c, x + (lean > 0 ? 8 : -1), y + 5, 1, 5, "#3d5a8a");   /* the arm he is reaching with */
+    blob(c, x + 4, y - 4, 5, 5, ["#ffd9c4", "#f0b096", "#d8967c", "#c07f66"]);
+    px(c, x, y - 9, 9, 3, "#3a2a22");
+    px(c, x + 2, y - 4, 1, 1, "#3d2340"); px(c, x + 6, y - 4, 1, 1, "#3d2340");
+    px(c, x + 3, y - 1, 3, 1, "#3d2340");
+  }
+
+  function startEndingArt(host, instant) {
     if (!host) return;
+    stopEndingArt();
+    endHold = null;                  /* a new scene never inherits a pin */
+    var myRun = ++endRunId;
+    endLive++;
     var s = spriteCanvas(240, 120), c = s.ctx;
     host.innerHTML = ""; host.appendChild(s.c);
-    var t0 = 0;
+    var t0 = 0, skipped = !!instant, shown = !!instant;
+    var GROUND = 108;
+
+    /* tapping anywhere gets her out of it. it does not cut to black — it
+       runs the timeline forward to the moment they are together, which is
+       the only frame of this anybody would be sad to miss. */
+    endSkip = function () {
+      /* NOT "if (skipped) return" any more. The old guard marked the skip
+         used even when it could not act — before the first frame t0 is
+         still zero, so a tap in that instant did nothing AND turned the
+         skip off for good. Skipping twice is harmless; being unable to
+         skip is not. */
+      endHold = null;
+      t0 = performance.now() - END_BEAT.bloom * 1000;
+      skipped = true;
+      reveal();
+    };
+    /* harness only: put the scene at a given second and let it carry on
+       from there. A directed nine seconds cannot be checked by opening it
+       and looking a moment later — this browser stalls its frame clock and
+       then catches up, so "a moment later" is sometimes two seconds in. */
+    endSeek = function (secs) { t0 = performance.now() - secs * 1000; endT = secs; };
+
+    function reveal() {
+      if (shown) return;
+      shown = true;
+      dropKeySkip();
+      var card = host.parentNode;
+      if (card && card.classList) card.classList.remove("playing");
+    }
+
     function frame(now) {
+      if (myRun !== endRunId) { endLive--; return; }   /* a newer scene has it */
       endRaf = requestAnimationFrame(frame);
-      if (!t0) t0 = now;
-      var t = (now - t0) / 1000;
-      var P = BIOME.castle;
-      ditherSky(c, 0, 0, 240, 120, P.sky);
+      if (!t0) t0 = now - (instant ? END_BEAT.bloom * 1000 : 0);
+      /* endHold is the harness pinning the scene at one instant. This
+         browser's frame clock jumps whole seconds at a time, so "seek to
+         half a second and look" can land three seconds later and read a
+         frame the test was not asking about. */
+      var t = endT = endHold != null ? endHold : (now - t0) / 1000;
+      if (t >= END_BEAT.meet) reveal();
+
+      /* ---- where everybody is, this frame ---------------------------- */
+      var dawn = seg(t, END_BEAT.dawn, END_BEAT.bloom * 0.92);
+      var wk = seg(t, END_BEAT.dawn, END_BEAT.walk);
+      var her = -18 + wk * 96;                                  /* -18 -> 78 */
+      var moving = wk > 0 && wk < 1;
+      var himOut = seg(t, END_BEAT.pause, END_BEAT.meet);
+      var him = 118 - himOut * 12;                              /* 118 -> 106 */
+      if (himOut > 0) her = 78 + himOut * 10;                   /* 78 -> 88 */
+      var together = t >= END_BEAT.meet;
+      var doorLit = ease((t - 2.2) / 1.2);
+
+      /* ---- the camera -------------------------------------------------
+         One number does all of it. k goes nought to one as the push comes
+         in and settles back to a half once they are together, and the zoom
+         and the point the frame is held on both ride it — so the camera
+         cannot end up magnifying a corner of the sky, which is exactly
+         what a separately-driven zoom and focus did on the first try. */
+      var k = seg(t, END_BEAT.pause - 1.2, END_BEAT.meet) - seg(t, END_BEAT.meet, END_BEAT.bloom) * 0.5;
+      var zoom = 1 + k * 1.1;
+      var fx = 120 + (100 - 120) * k + (together ? Math.sin(t * 0.4) * 1.5 : 0);
+      var fy = 60 + (94 - 60) * k;
+
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      endSky(c, dawn);
+      c.save();
+      c.translate(120, 60);
+      c.scale(zoom, zoom);
+      c.translate(-fx, -fy);
+
+      /* stars, going out as the sun comes up */
       var rnd = seeded("endsky");
       for (var i = 0; i < 50; i++) {
         var sx = rnd() * 240, sy = rnd() * 60;
-        if (Math.sin(t * 2 + sx) > -0.4) px(c, sx, sy, 1, 1, "#ffe9c8");
+        if (Math.sin(t * 2 + sx) > -0.4 + dawn * 1.4) px(c, sx, sy, 1, 1, "#ffe9c8");
       }
-      /* the castle */
-      px(c, 40, 34, 160, 76, "#6b4f80");
-      px(c, 40, 34, 160, 2, "#8a68a4");
+      /* the sun itself, coming up over the battlements in the gap between
+         two towers. it is drawn before the castle so the wall hides its
+         bottom half — which is the whole point of a sunrise. */
+      if (dawn > 0.08) {
+        var sunY = 32 - dawn * 16;
+        c.save(); c.globalAlpha = Math.min(1, dawn * 2.2);
+        blob(c, 166, sunY, 11, 11, ["#fff3c0", "#ffd980", "#ffb45f", "#ff8f52"]);
+        c.restore();
+      }
+
+      /* ---- the castle -------------------------------------------------
+         The wall runs wider than the frame does at rest, because the camera
+         pushes in on the doorway and a close-up that finds the edge of the
+         building and a band of dithered sky behind it reads as a mistake. */
+      var stone = mixHex("#3a2450", "#6b4f80", dawn), lit = mixHex("#4a3060", "#8a68a4", dawn);
+      px(c, 20, 34, 200, 76, stone);
+      px(c, 20, 34, 200, 2, lit);
       for (var tw = 0; tw < 3; tw++) {
         var tx = 44 + tw * 74;
-        px(c, tx, 18, 26, 92, "#7d5590");
-        px(c, tx, 18, 2, 92, "#a97fbe");
-        px(c, tx - 3, 12, 32, 6, "#a97fbe");
-        for (var cr = 0; cr < 32; cr += 7) px(c, tx - 3 + cr, 6, 4, 6, "#a97fbe");
+        px(c, tx, 18, 26, 92, mixHex("#3f2856", "#7d5590", dawn));
+        px(c, tx, 18, 2, 92, lit);
+        px(c, tx - 3, 12, 32, 6, lit);
+        for (var cr = 0; cr < 32; cr += 7) px(c, tx - 3 + cr, 6, 4, 6, lit);
+        /* a ribbon on every tower, because she put them there */
+        if (dawn > 0.4) px(c, tx + 11, 12 - Math.abs(Math.sin(t * 2 + tw)) * 2, 4, 5, "#ff5f95");
       }
-      /* windows, warm */
-      for (var wx = 56; wx < 190; wx += 22)
+      /* windows waking up one at a time, left to right, as she crosses.
+         the count is measured rather than assumed, so the wall can get
+         wider without the last few never lighting. */
+      var wxs = [];
+      for (var wx = 34; wx < 206; wx += 22) if (wx < 104 || wx > 136) wxs.push(wx);
+      var wi = 0, wn = wxs.length * 2;
+      for (var wq = 0; wq < wxs.length; wq++)
         for (var wy = 46; wy < 86; wy += 24) {
-          var lit = Math.sin(t * 1.4 + wx * 0.3 + wy) > -0.5;
-          px(c, wx, wy, 6, 9, lit ? "#ffcf6a" : "#4d375e");
-          if (lit) px(c, wx, wy, 6, 2, "#fff0b0");
+          var on = wk * wn > wi++;
+          px(c, wxs[wq], wy, 6, 9, on ? "#ffcf6a" : "#3a2748");
+          if (on) px(c, wxs[wq], wy, 6, 2, "#fff0b0");
         }
-      /* the doorway, wide open */
-      px(c, 108, 74, 26, 36, "#3d2340");
-      px(c, 110, 76, 22, 34, "#ffd8a0");
-      for (var a2 = 0; a2 < 12; a2++) px(c, 110 + a2, 74 - Math.round(Math.sqrt(144 - (a2 - 11) * (a2 - 11))), 24 - a2 * 2, 3, "#ffd8a0");
 
-      /* him, waiting in the light */
-      var pb = Math.sin(t * 2) > 0 ? 0 : 1;
-      px(c, 116, 88 + pb, 8, 14, "#3d5a8a");           // his coat
-      px(c, 116, 88 + pb, 8, 2, "#5a7ab0");
-      blob(c, 120, 84 + pb, 5, 5, ["#ffd9c4", "#f0b096", "#d8967c", "#c07f66"]);
-      px(c, 116, 79 + pb, 9, 3, "#3a2a22");             // his hair
-      px(c, 118, 84 + pb, 1, 1, "#3d2340"); px(c, 122, 84 + pb, 1, 1, "#3d2340");
-      px(c, 119, 87 + pb, 3, 1, "#3d2340");
+      /* ---- the doorway ----------------------------------------------- */
+      px(c, 108, 74, 26, 36, "#2a1730");
+      if (doorLit > 0) {
+        px(c, 110, 76, 22, 34, mixHex("#2a1730", "#ffd8a0", doorLit));
+        for (var a2 = 0; a2 < 12; a2++)
+          px(c, 110 + a2, 74 - Math.round(Math.sqrt(144 - (a2 - 11) * (a2 - 11))), 24 - a2 * 2, 3,
+             mixHex("#2a1730", "#ffd8a0", doorLit));
+        /* the light he is standing in, spilling out onto the stones */
+        c.save(); c.globalAlpha = 0.18 * doorLit;
+        px(c, 100, 104, 42, 6, "#ffd8a0");
+        c.restore();
+      }
 
-      /* her, arriving */
-      var walk = Math.min(1, t / 3.2);
-      var ox2 = 20 + walk * 76;
-      var img = walk < 1 ? OUISSY.run.small[Math.floor(t * 8) % 4] : OUISSY.win.small[0];
-      c.drawImage(img, Math.round(ox2), 88 - (walk < 1 ? 0 : Math.abs(Math.sin(t * 3)) * 3));
+      /* ---- the courtyard they are standing on ------------------------- */
+      var floor = mixHex("#241636", "#4e3356", dawn);
+      px(c, 0, GROUND, 240, 120 - GROUND, floor);
+      px(c, 0, GROUND, 240, 1, mixHex("#32204a", "#6b4a6e", dawn));
+      for (var fs = 0; fs < 240; fs += 16) px(c, fs, GROUND + 3, 1, 120 - GROUND - 3, mixHex("#1d1230", "#3f2a48", dawn));
 
-      /* hearts rising between them once she is there */
-      if (walk >= 1) {
+      /* ---- the two of them ------------------------------------------- */
+      c.save(); c.globalAlpha = 0.25;
+      px(c, Math.round(her) + 3, GROUND - 1, 10, 2, "#1d1230");
+      if (doorLit > 0.25) px(c, Math.round(him), GROUND - 1, 8, 2, "#1d1230");
+      c.restore();
+      if (doorLit > 0.25) paintHim(c, Math.round(him), GROUND, himOut > 0 ? -1 : 0);
+      var img = moving || himOut > 0 && !together
+        ? OUISSY.run.small[Math.floor(t * 8) % 4]
+        : together ? OUISSY.win.small[0] : OUISSY.idle.small[Math.floor(t * 3) % 4];
+      var bounce = together ? Math.abs(Math.sin(t * 3)) * 3 : 0;
+      c.drawImage(img, Math.round(her), GROUND - 18 - bounce);
+
+      /* hearts, once there is a reason for them */
+      if (together) {
         for (var h2 = 0; h2 < 7; h2++) {
-          var hp = (t * 0.5 + h2 / 7) % 1;
-          heart(c, 104 + Math.sin(hp * 7 + h2) * 8, 100 - hp * 60, 3 - hp * 1.6,
+          var hp = ((t - END_BEAT.meet) * 0.5 + h2 / 7) % 1;
+          heart(c, 99 + Math.sin(hp * 7 + h2) * 8, GROUND - 8 - hp * 54, 3 - hp * 1.6,
                 ["#ff5f95", "#ffd166", "#ffffff"][h2 % 3]);
         }
       }
-      /* falling sparkles over the whole scene */
-      for (var k2 = 0; k2 < 30; k2++) {
-        var kx = (k2 * 53) % 240, ky = ((t * (14 + k2 % 7) + k2 * 31) % 130);
-        px(c, kx, ky, 1, 1, Math.sin(t * 6 + k2) > 0 ? "#fff6a8" : "#ffd6e6");
+      /* sparkles over everything, once the sun is up enough to catch them */
+      if (dawn > 0.3) {
+        for (var k2 = 0; k2 < 30; k2++) {
+          var kx = (k2 * 53) % 240, ky = ((t * (14 + k2 % 7) + k2 * 31) % 130);
+          px(c, kx, ky, 1, 1, Math.sin(t * 6 + k2) > 0 ? "#fff6a8" : "#ffd6e6");
+        }
       }
+      c.restore();
+
+      /* ---- the letterbox, and the dark she walks out of --------------- */
+      var bars = Math.round(14 * (1 - seg(t, END_BEAT.meet, END_BEAT.bloom)));
+      if (bars > 0) { px(c, 0, 0, 240, bars, "#000"); px(c, 0, 120 - bars, 240, bars, "#000"); }
+      var fade = 1 - ease(t / END_BEAT.dawn);
+      if (fade > 0.01) { c.save(); c.globalAlpha = fade; px(c, 0, 0, 240, 120, "#000"); c.restore(); }
     }
     endRaf = requestAnimationFrame(frame);
   }
-  function stopEndingArt() { if (endRaf) cancelAnimationFrame(endRaf); endRaf = null; }
+  function dropKeySkip() {
+    if (!endKeySkip) return;
+    document.removeEventListener("keydown", endKeySkip);
+    endKeySkip = null;
+  }
+  function stopEndingArt() {
+    /* the cancelled loop never gets another frame, so it can never count
+       itself out — it is counted out here instead */
+    if (endRaf) { cancelAnimationFrame(endRaf); if (endLive > 0) endLive--; }
+    endRaf = null; endSkip = null; endSeek = null;
+    endRunId++;                       /* every loop still out there is stale */
+    dropKeySkip();
+  }
 
   /* =======================================================================
      THE HUD
@@ -4669,7 +5340,21 @@ window.SuperOuissy = (function () {
     return s.split("|").join(" ").trim().split(/\s+/);
   }
 
-  var SCORE = {
+  /* THREE SCORES, NOT ONE.
+
+     Every difficulty is its own three worlds with its own boss, and the
+     music was the only thing about them that was identical — play Easy and
+     then go back for Hard and you hear the same five tunes twice.
+
+     They are three arrangements of the same four notes, because the motif
+     is the point, but they are not the same piece of music. EASY is slower
+     and wider, major, with a lilt, sixths over the top and a drum that
+     mostly stays out of the way — a morning. MEDIUM is the one the game
+     has always had: square, brisk, four to the floor. HARD is faster,
+     minor, with a sixteenth-note bass that never stops and a chromatic
+     line falling through it. */
+  var SCORES = {};
+  SCORES.medium = {
     /* WORLD ONE — morning. The theme, plain, with room around it. */
     w1: {
       tempo: 0.088,
@@ -4801,6 +5486,272 @@ window.SuperOuissy = (function () {
     },
   };
 
+  /* ---- EASY: morning, unhurried. Longer notes, a lilt, sixths over the
+     top, and a drum that mostly stays out of the way. ------------------- */
+  SCORES.easy = {
+    w1: {
+      tempo: 0.105,
+      lead: pat(
+        "12  .  . 16  .  . 19  .  . 16  .  . 19  .  .  . |" +
+        "14  .  . 17  .  . 21  .  . 17  .  . 14  .  .  . |" +
+        "12  .  . 16  .  . 19  .  . 24  .  . 21  .  .  . |" +
+        "19  .  . 16  .  . 14  .  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 26  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 28  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  .  .  7  .  .  .  .  .  0  .  .  . |" +
+        " 2  .  .  .  .  .  9  .  .  .  .  .  2  .  .  . |" +
+        " 5  .  .  .  .  . 12  .  .  .  .  .  5  .  .  . |" +
+        " 7  .  .  .  .  .  7  .  .  .  .  .  0  .  .  ."),
+      drum: dpat(
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . S . . . h . h ."),
+    },
+    w2: {
+      tempo: 0.095,
+      lead: pat(
+        "12  . 14 16  . 17 19  . 17 16  .  . 14  .  .  . |" +
+        "14  . 16 17  . 19 21  . 19 17  .  . 16  .  .  . |" +
+        "16  . 19 21  . 24 21  . 19 16  .  . 19  .  .  . |" +
+        "17  . 16 14  . 12 11  . 12  .  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  7  .  .  .  .  . 12  .  .  .  .  .  . |" +
+        " .  .  .  9  .  .  .  .  . 14  .  .  .  .  .  . |" +
+        " .  .  . 12  .  .  .  .  . 16  .  .  .  .  .  . |" +
+        " .  .  .  7  .  .  .  .  .  7  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  7  .  .  .  0  .  .  .  7  .  .  . |" +
+        " 2  .  .  .  9  .  .  .  2  .  .  .  9  .  .  . |" +
+        " 5  .  .  . 12  .  .  .  5  .  .  . 12  .  .  . |" +
+        " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: dpat(
+        "K . . h S . . h K . . h S . . h |" +
+        "K . . h S . . h K . . h S . . h |" +
+        "K . . h S . . h K . . h S . . h |" +
+        "K . . h S . . h K . . h S . h h"),
+    },
+    w3: {
+      tempo: 0.088,
+      lead: pat(
+        "12  .  . 19  .  . 16  .  . 21  .  . 19  .  .  . |" +
+        "14  .  . 21  .  . 17  .  . 24  .  . 21  .  .  . |" +
+        "16  .  . 24  .  . 19  .  . 26  .  . 24  .  .  . |" +
+        "21  .  . 19  .  . 16  .  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  . 12  .  .  .  .  .  . 16  .  .  .  . |" +
+        " .  .  .  . 14  .  .  .  .  .  . 17  .  .  .  . |" +
+        " .  .  .  . 16  .  .  .  .  .  . 19  .  .  .  . |" +
+        " .  .  .  . 12  .  .  .  .  .  . 12  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  7  .  .  . 12  .  .  .  7  .  .  . |" +
+        " 2  .  .  .  9  .  .  . 14  .  .  .  9  .  .  . |" +
+        " 5  .  .  . 12  .  .  . 17  .  .  . 12  .  .  . |" +
+        " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: dpat(
+        "K . . h S . . . K . . h S . . h |" +
+        "K . . h S . . . K . . h S . . h |" +
+        "K . . h S . . . K . . h S . . h |" +
+        "K . . h S . . . K . . h S . t t"),
+    },
+    /* the raincloud: cross, not frightening */
+    boss: {
+      tempo: 0.080,
+      lead: pat(
+        "12  . 12  . 15  . 12  .  . 17  . 15  . 12  .  . |" +
+        "10  . 10  . 14  . 10  .  . 15  . 14  . 10  .  . |" +
+        "12  . 12  . 15  . 19  .  . 17  . 15  . 12  .  . |" +
+        "17  . 15  . 14  . 12  .  . 10  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  . 19  .  .  .  .  .  . 19  .  .  .  . |" +
+        " .  .  .  . 17  .  .  .  .  .  . 17  .  .  .  . |" +
+        " .  .  .  . 19  .  .  .  .  .  . 22  .  .  .  . |" +
+        " .  .  .  . 17  .  .  .  .  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  . 12  .  0  .  7  .  0  . 12  .  0  .  7  . |" +
+        "-2  . 10  . -2  .  5  . -2  . 10  . -2  .  5  . |" +
+        " 0  . 12  .  0  .  7  .  5  . 17  .  5  . 12  . |" +
+        " 7  . 19  .  7  . 14  .  0  . 12  .  0  .  0  ."),
+      drum: dpat(
+        "K . h . S . h . K . h . S . h . |" +
+        "K . h . S . h . K . h . S . h . |" +
+        "K . h . S . h . K . h . S . h . |" +
+        "K . h . S . h . K . t t t . S ."),
+    },
+    win: {
+      tempo: 0.19,
+      lead: pat(
+        "12  .  .  . 16  .  .  . 19  .  .  . 16  .  .  . |" +
+        "17  .  .  . 21  .  .  . 24  .  .  . 21  .  .  . |" +
+        "19  .  .  . 16  .  .  . 12  .  .  . 14  .  .  . |" +
+        "16  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
+      harm: pat(
+        "19  .  .  . 24  .  .  . 28  .  .  . 24  .  .  . |" +
+        "24  .  .  . 28  .  .  . 31  .  .  . 28  .  .  . |" +
+        "28  .  .  . 24  .  .  . 19  .  .  . 21  .  .  . |" +
+        "24  .  .  .  .  .  .  . 19  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  .  .  .  .  7  .  .  .  .  .  .  . |" +
+        " 5  .  .  .  .  .  .  .  0  .  .  .  .  .  .  . |" +
+        " 7  .  .  .  .  .  .  .  5  .  .  .  .  .  .  . |" +
+        " 7  .  .  .  .  .  .  .  0  .  .  .  .  .  .  ."),
+      drum: dpat(
+        "K . . . . . . . h . . . . . . . |" +
+        "K . . . . . . . h . . . . . . . |" +
+        "K . . . . . . . h . . . . . . . |" +
+        "K . . . . . . . h . . . . . . ."),
+    },
+  };
+
+  /* ---- HARD: faster, minor, and the bass never stops. ----------------- */
+  SCORES.hard = {
+    w1: {
+      tempo: 0.074,
+      lead: pat(
+        "12  . 12 15  . 19  . 15 12  . 19  . 22  . 19  . |" +
+        "10  . 10 14  . 17  . 14 10  . 17  . 20  . 17  . |" +
+        "12  . 12 15  . 19  . 22 24  . 22  . 19  . 15  . |" +
+        "17  . 15 14  . 12  . 11 12  .  .  . 12  .  .  ."),
+      harm: pat(
+        " .  . 24  .  .  . 24  .  .  . 24  .  .  . 24  . |" +
+        " .  . 22  .  .  . 22  .  .  . 22  .  .  . 22  . |" +
+        " .  . 24  .  .  . 24  .  .  . 27  .  .  . 27  . |" +
+        " .  . 19  .  .  . 19  .  .  . 19  .  .  . 19  ."),
+      bass: pat(
+        " 0  0 12  0  0  0 12  0  7  7 19  7  7  7 19  7 |" +
+        "-2 -2 10 -2 -2 -2 10 -2  5  5 17  5  5  5 17  5 |" +
+        " 0  0 12  0  0  0 12  0  5  5 17  5  5  5 17  5 |" +
+        " 7  7 19  7  7  7 19  7  0  0 12  0  0  0  0  0"),
+      drum: dpat(
+        "K . h K . h S . K . h K . h S h |" +
+        "K . h K . h S . K . h K . h S h |" +
+        "K . h K . h S . K . h K . h S h |" +
+        "K . h K . h S . K . t t t t S ."),
+    },
+    w2: {
+      tempo: 0.068,
+      lead: pat(
+        "12 15  . 19 15  . 12 19  . 22 19  . 15 12  .  . |" +
+        "10 14  . 17 14  . 10 17  . 20 17  . 14 10  .  . |" +
+        "12 15  . 19 22  . 24 22  . 19 15  . 12 15  .  . |" +
+        "19 17  . 15 14  . 12 11  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        "27  . 27  .  . 27  . 27  . 27  .  . 27  .  .  . |" +
+        "26  . 26  .  . 26  . 26  . 26  .  . 26  .  .  . |" +
+        "27  . 27  .  . 31  . 31  . 27  .  . 27  .  .  . |" +
+        "24  . 24  .  . 24  . 24  . 24  .  .  .  .  .  ."),
+      bass: pat(
+        " 0 12  0 12  0 12  0 12  7 19  7 19  7 19  7 19 |" +
+        "-2 10 -2 10 -2 10 -2 10  5 17  5 17  5 17  5 17 |" +
+        " 0 12  0 12  0 12  0 12  5 17  5 17  5 17  5 17 |" +
+        " 7 19  7 19  7 19  7 19  0 12  0 12  0  0  0  0"),
+      drum: dpat(
+        "K h h K h h S h K h h K h h S h |" +
+        "K h h K h h S h K h h K h h S h |" +
+        "K h h K h h S h K h h K h h S h |" +
+        "K h h K h h S h t t t t t t S ."),
+    },
+    w3: {
+      tempo: 0.062,
+      lead: pat(
+        " 9 12  . 16 12  .  9 16  . 19 16  . 12  9  .  . |" +
+        " 8 11  . 15 11  .  8 15  . 18 15  . 11  8  .  . |" +
+        " 9 12  . 16 19  . 21 20  . 19 18  . 16 15  .  . |" +
+        "14 13  . 12 11  . 10  9  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        "24  . 24  . 24  . 24  . 24  . 24  . 24  .  .  . |" +
+        "23  . 23  . 23  . 23  . 23  . 23  . 23  .  .  . |" +
+        "24  . 24  . 24  . 27  . 27  . 27  . 27  .  .  . |" +
+        "21  . 21  . 21  . 21  . 24  .  .  .  .  .  .  ."),
+      bass: pat(
+        "-3 -3  9 -3 -3  9 -3  9  4  4 16  4  4 16  4 16 |" +
+        "-4 -4  8 -4 -4  8 -4  8  3  3 15  3  3 15  3 15 |" +
+        "-3 -3  9 -3 -3  9 -3  9 -5 -5  7 -5 -5  7 -5  7 |" +
+        "-7 -7  5 -7 -7  5 -7  5  0  0 12  0  0  0  0  0"),
+      drum: dpat(
+        "K h K h S h K h K h K h S h t t |" +
+        "K h K h S h K h K h K h S h t t |" +
+        "K h K h S h K h K h K h S h t t |" +
+        "K h K h S h K h t t t t t t S ."),
+    },
+    /* the Heartbreaker: minor, fast, and falling the whole way down */
+    boss: {
+      tempo: 0.056,
+      lead: pat(
+        " 9  9  . 12 16  . 12  9  . 16 12  .  9 16  .  . |" +
+        " 8  8  . 11 15  . 11  8  . 15 11  .  8 15  .  . |" +
+        " 9  9  . 12 16  . 21 20  . 19 18  . 17 16  .  . |" +
+        "15 14  . 13 12  . 11 10  .  9  8  .  7  .  .  ."),
+      harm: pat(
+        "21  . 21  . 21  . 21  . 21  . 21  . 21  .  .  . |" +
+        "20  . 20  . 20  . 20  . 20  . 20  . 20  .  .  . |" +
+        "21  . 21  . 24  . 24  . 24  . 24  . 24  .  .  . |" +
+        " .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  ."),
+      bass: pat(
+        "-3 -3 -3 -3  9 -3 -3 -3 -3 -3  9 -3 -3 -3 -3 -3 |" +
+        "-4 -4 -4 -4  8 -4 -4 -4 -4 -4  8 -4 -4 -4 -4 -4 |" +
+        "-3 -3 -3 -3  9 -3 -3 -3 -5 -5  7 -5 -5 -5 -5 -5 |" +
+        "-7 -7 -7 -7  5 -7 -7 -7 -8 -8 -8 -8 -8 -8 -8 -8"),
+      drum: dpat(
+        "K h K h S h K h K h K h S h K h |" +
+        "K h K h S h K h K h K h S h K h |" +
+        "K h K h S h K h K h K h S h K h |" +
+        "t t t t S . K . t t t t t t t t"),
+    },
+    win: {
+      tempo: 0.15,
+      lead: pat(
+        "12  .  .  . 16  .  .  . 19  .  .  . 16  .  .  . |" +
+        "17  .  .  . 21  .  .  . 24  .  .  . 21  .  .  . |" +
+        "19  .  .  . 16  .  .  . 12  .  .  . 14  .  .  . |" +
+        "16  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
+      harm: pat(
+        " 0  .  .  .  4  .  .  .  7  .  .  .  4  .  .  . |" +
+        " 5  .  .  .  9  .  .  . 12  .  .  .  9  .  .  . |" +
+        " 7  .  .  .  4  .  .  .  0  .  .  .  2  .  .  . |" +
+        " 4  .  .  .  .  .  .  .  0  .  .  .  .  .  .  ."),
+      bass: pat(
+        "-12  .  .  .  0  .  .  . -5  .  .  .  7  .  .  . |" +
+        " -7  .  .  .  5  .  .  . -12  .  .  .  0  .  .  . |" +
+        " -5  .  .  .  7  .  .  . -7  .  .  .  5  .  .  . |" +
+        " -5  .  .  .  .  .  .  . -12  .  .  .  .  .  .  ."),
+      drum: dpat(
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . t t t t . . . ."),
+    },
+  };
+
+  /* ---- AND THE MENU KEEPS THE OLD ONE. -------------------------------
+
+     This is the tune the whole game used to be: thirty-two steps, a square
+     lead and a triangle bass, no harmony and no drums at all. It is thin,
+     and that is the point — it is what the game sounded like before any of
+     this, so the title screen is the plainest thing in it and every world
+     she starts is an arrival somewhere better. It is the same on all three
+     difficulties, because a menu is a menu. */
+  var MENU_TUNE = {
+    tempo: 0.14,
+    lead: pat("12 . 16 . 19 . 16 . 14 . 17 . 21 . 17 . |" +
+              "12 . 16 . 19 12 24  . 21 19 16  . 14 . 12 ."),
+    harm: pat(" . . .  . .  . .  .  .  .  .  .  . .  . . |" +
+              " . . .  . .  . .  .  .  .  .  .  . .  . ."),
+    bass: pat(" 0 . 7  . 0  . 7  .  2  .  9  .  2 .  9 . |" +
+              " 0 . 7  . 0  . 7  .  5  .  0  .  7 .  7 ."),
+    drum: dpat(". . . . . . . . . . . . . . . . |" +
+               ". . . . . . . . . . . . . . . ."),
+  };
+  ["easy", "medium", "hard"].forEach(function (d) { SCORES[d].menu = MENU_TUNE; });
+
+  /* the set she is actually playing. Medium is the fallback, because a
+     missing tune must never be an exception inside an audio callback. */
+  function score() { return SCORES[G && G.diff] || SCORES.medium; }
+
   /* The clock running out does not get a tune of its own: it gets THIS
      tune, faster, with the hat on every step. A different piece of music
      under thirty seconds would be a different level; the same one, hurried,
@@ -4809,13 +5760,14 @@ window.SuperOuissy = (function () {
 
   /* `BGM` is whatever is playing. It is kept as a name because the audio
      harness reads BGM.lead and BGM.bass to count the tune. */
-  var BGM = SCORE.w1;
-  var bgmTimer = null, bgmStep = 0, bgmGain = null, bgmName = "w1", bgmRush = false;
+  var BGM = SCORES.medium.w1;
+  var bgmTimer = null, bgmStep = 0, bgmGain = null, bgmName = "w1", bgmRush = false, bgmSet = null;
   var bgmNoise = null;
 
   /* which tune belongs to where she is standing */
   function bgmFor() {
-    if (!G || !G.level) return "w1";
+    /* no level means a menu, and the menu has its own plain little loop */
+    if (!G || !G.level || G.state === "menu") return "menu";
     var b = G.level.boss;
     if (b && b.awake && !b.dead) return "boss";
     return "w" + Math.min(3, (G.levelIndex || 0) + 1);
@@ -4823,11 +5775,16 @@ window.SuperOuissy = (function () {
   /* switch tunes without stopping the music: the step resets so the new
      one starts at its own downbeat rather than halfway through a bar */
   function bgmPlay(name, rush) {
-    if (SCORE[name] === undefined) return;
+    var S = score();
+    if (S[name] === undefined) return;
     rush = !!rush;
-    if (bgmName === name && bgmRush === rush) return;
-    bgmName = name; bgmRush = rush;
-    BGM = SCORE[name];
+    /* THE SET COUNTS, NOT JUST THE NAME. "w1" means a different piece of
+       music on each difficulty now, so comparing names alone made this
+       return early when she quit an Easy run and started a Hard one — the
+       tune is still called w1, so it kept playing Easy's. */
+    if (bgmName === name && bgmRush === rush && bgmSet === S) return;
+    bgmName = name; bgmRush = rush; bgmSet = S;
+    BGM = S[name];
     bgmStep = 0;
     if (bgmTimer) {
       clearInterval(bgmTimer);
@@ -5126,7 +6083,7 @@ window.SuperOuissy = (function () {
   function beginRun() {
     closeOverlay();
     G.lives = DIFF[G.diff].lives;
-    G.score = 0; G.hearts = 0; G.deaths = 0; G.elapsed = 0;
+    G.score = 0; G.hearts = 0; G.heartsEver = 0; G.deaths = 0; G.elapsed = 0;
     G.meter = 0; G.meterFlash = 0;
     G.levelIndex = 0; G.levelStats = [];
     var want = true;
@@ -5137,7 +6094,11 @@ window.SuperOuissy = (function () {
 
   function startLevel(i) {
     if (window.__soReleaseAll) window.__soReleaseAll();
-    bossHush();
+    bossHush(); signHush();
+    /* being stuck is a property of a stretch, not of a run: a new world
+       starts her at nought deaths in the same place and at the first
+       offer again */
+    G.stuckAt = -999; G.stuckN = 0; G.handGate = 5; G.handCheck = null;
     G.levelIndex = i;
     G.level = buildLevel(i);
     G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
@@ -5152,6 +6113,13 @@ window.SuperOuissy = (function () {
     G.keys = freshKeys();
     moveCamera(1);
     updateHud();
+    /* OUT OF THE MENU FIRST. bgmFollow asks where she is, and "the menu"
+       is one of the answers now — so calling it while the state still says
+       menu (which it does, because the title screen is what she came from)
+       picked the title's thin little loop and then played it through the
+       whole world. The card sets this a line later anyway; it is set here
+       so the question is asked about the right place. */
+    G.state = "card";
     bgmFollow();                      /* each world has its own arrangement */
     showLevelCard();
   }
@@ -5221,6 +6189,13 @@ window.SuperOuissy = (function () {
     G = {
       diff: "medium", state: "menu", level: null, levelIndex: 0,
       lives: 3, score: 0, hearts: 0, deaths: 0, elapsed: 0,
+      stuckAt: -999, stuckN: 0, handGate: 5, handCheck: null,
+      /* two different numbers that both used to be one. G.hearts is the
+         PURSE — what she can spend on a moment. heartsEver is what she
+         COLLECTED, which is what the results, the ending and the saved
+         best are actually about: reading a letter should not quietly
+         reduce the record of how many hearts she found. */
+      heartsEver: 0,
       meter: 0, meterFlash: 0, lastHurtBy: null, deathAt: null,
       freeze: 0, punch: 0,
       levelStartT: 0, levelStartHearts: 0, levelStartDeaths: 0,
@@ -5302,7 +6277,7 @@ window.SuperOuissy = (function () {
   window.__soBgmName = function () { return bgmName + (bgmRush ? "+rush" : ""); };
   window.__soBgmPlay = function (n, r) { bgmPlay(n, r); };
   window.__soBgmBar = function () {
-    return { steps: BGM.lead.length,
+    return { steps: BGM.lead.length, tempo: BGM.tempo,
              leadNotes: BGM.lead.filter(function (v) { return v !== null; }).length,
              bassNotes: BGM.bass.filter(function (v) { return v !== null; }).length,
              bassRoots: BGM.bass.filter(function (v) { return v === 0; }).length };
@@ -5317,7 +6292,46 @@ window.SuperOuissy = (function () {
 
   /* --- putting her somewhere --- */
   window.__soGoLevel = function (i) { startLevel(i); };
-  window.__soShowEnding = function () { showEnding(); };
+  /* The world card holds the game on a REAL timer, so a harness that calls
+     __soGoLevel and then pumps is pumping nothing at all — every assertion
+     after it passes or fails for the wrong reason. This is the card's own
+     ending, called early. */
+  window.__soSkipCard = function () {
+    if (G.state !== "card") return G.state;
+    closeOverlay(); G.state = "play"; G.camSnap = true;
+    return G.state;
+  };
+  window.__soShowEnding = function (again) { showEnding(!!again); };
+  window.__soEndT = function () { return endT; };
+  window.__soEndLive = function () { return endLive; };
+  window.__soEndCan = function () { return !!endSkip; };
+  /* harness only: pin the scene at one second, or pass nothing to let it
+     run on from wherever it was pinned */
+  window.__soEndHold = function (secs) {
+    if (secs == null) { if (endHold != null && endSeek) endSeek(endHold); endHold = null; }
+    else endHold = secs;
+    return endHold;
+  };
+  window.__soEndSeek = function (secs) { if (endSeek) endSeek(secs); return endT; };
+  window.__soSigns = function () { return (G && G.level && G.level.signs) || []; };
+  window.__soFinish = function () { finishLevel(); };
+  window.__soStuck = function (n) {
+    if (n != null) { G.stuckN = n; G.stuckAt = G.player ? G.player.x : 0; }
+    return { n: G.stuckN, gate: G.handGate, check: G.handCheck };
+  };
+  /* "give her n hearts" — the purse AND the tally, the way collecting
+     them would, so a harness can tell spending apart from never having had
+     them */
+  window.__soSetHearts = function (n) {
+    G.hearts = n;
+    G.heartsEver = Math.max(G.heartsEver, n);
+    updateHud();
+  };
+  window.__soHeartsEver = function () { return G.heartsEver; };
+  window.__soMoments = function () {
+    return { read: loadMoments(), total: moments().length, cost: MOMENT_COST,
+             key: momKey(), all: moments() };
+  };
   window.__soTele = function (tx, ty) {
     if (!G || !G.level) return;
     G.player.x = tx * T;
@@ -5338,10 +6352,10 @@ window.SuperOuissy = (function () {
      between assertions, so one that had wandered across the map would be
      standing on the spot the next test teleported her to. */
   window.__soReset = function () {
-    var keep = { score: G.score, hearts: G.hearts, deaths: G.deaths };
+    var keep = { score: G.score, hearts: G.hearts, heartsEver: G.heartsEver, deaths: G.deaths };
     G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
     G.lives = DIFF[G.diff].lives;
-    G.score = keep.score; G.hearts = keep.hearts; G.deaths = keep.deaths;
+    G.score = keep.score; G.hearts = keep.hearts; G.heartsEver = keep.heartsEver; G.deaths = keep.deaths;
     G.state = "play";
     G.keys = freshKeys();
     /* pickups she took and blocks she opened stay taken and opened
@@ -5350,6 +6364,8 @@ window.SuperOuissy = (function () {
     L.grid = L.grid0.map(function (r) { return r.slice(); });
     L.items = L.items0.map(function (o) { return Object.assign({}, o); });
     L.checks.forEach(function (c) { c.taken = false; });
+    if (L.signs) L.signs.forEach(function (sn) { sn.said = false; });
+    G.stuckAt = -999; G.stuckN = 0; G.handGate = 5; G.handCheck = null;
     if (L.goal) L.goal.open = false;
     G.bumps.length = 0;
     G.level.ents.forEach(function (e) {
@@ -5369,8 +6385,8 @@ window.SuperOuissy = (function () {
     if (patch) for (var k in patch) G.player[k] = patch[k];
     var p = G.player;
     return { x: p.x, y: p.y, vy: p.vy, big: p.big, star: p.star, wing: p.wing,
-             jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead,
-             invuln: p.invuln };
+             boost: p.boost, jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead,
+             invuln: p.invuln, riding: !!p.riding };
   };
   window.__soSetTime = function (t) { G.timeLeft = t; };
   /* the pause menu is a real menu with real doors in it, so a harness
@@ -5394,6 +6410,27 @@ window.SuperOuissy = (function () {
       .map(function (e) { return { type: e.type, x: Math.round(e.x), y: Math.round(e.y),
                                    vx: Math.round(e.vx), alive: e.alive }; });
   };
+  /* everything that moves and is not an enemy: the three kinds of platform */
+  window.__soMovers = function () {
+    return G.level.ents.filter(function (e) { return e.kind === "mover"; })
+      .map(function (e, i) {
+        return { i: i, type: e.type, x: e.x, y: e.y, dx: e.dx, dy: e.dy,
+                 homeX: e.homeX, homeY: e.homeY, span: e.span, w: e.w, h: e.h,
+                 on: e.on, fade: e.fade, timer: e.timer, hold: e.hold,
+                 riding: G.player.riding === e };
+      });
+  };
+  /* stand her on top of one, the way landing on it would */
+  window.__soRide = function (i) {
+    var ms = G.level.ents.filter(function (e) { return e.kind === "mover"; });
+    var m = ms[i];
+    if (!m) return null;
+    G.player.x = m.x + m.w / 2 - G.player.w / 2;
+    G.player.y = m.y - G.player.h;
+    G.player.vx = 0; G.player.vy = 0;
+    G.camSnap = true;
+    return { x: m.x, y: m.y };
+  };
   window.__soCam = function () { return { x: Math.round(G.cam.x), y: Math.round(G.cam.y) }; };
   /* the shape of the level under her: a test that wants "somewhere in the
      middle of this world" should not have to hard-code a tile. */
@@ -5402,6 +6439,9 @@ window.SuperOuissy = (function () {
     return { w: L.w, h: L.h, startX: L.start.x, startY: L.start.y };
   };
   window.__soDiffFlag = function (k) { return DIFF[G.diff][k]; };
+  /* harness only: look at another difficulty's score and letters without
+     starting a whole run on it */
+  window.__soPeekDiff = function (d) { var was = G.diff; G.diff = d; return was; };
   window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
   /* Kill her outright, whatever the difficulty. Dropping her down a pit
      only works where pits are lethal — Easy has `pitSafety` and catches
@@ -5413,9 +6453,18 @@ window.SuperOuissy = (function () {
   };
   /* stand her on the nearest live enemy, or on the boss, so a stomp can be
      tested without simulating a person's timing */
-  window.__soAboveEnemy = function () {
-    var e = G.level.ents.filter(function (x) { return x.kind === "enemy" && x.alive; })
-      .sort(function (a, b) { return Math.abs(a.x - G.player.x) - Math.abs(b.x - G.player.x); })[0];
+  /* with no argument: the nearest one, which is what every existing caller
+     wants. with one: that index into __soEnemies(), so a harness can name
+     the kind it is testing rather than hoping the nearest is the right one. */
+  window.__soAboveEnemy = function (idx) {
+    var e;
+    if (idx != null) {
+      e = G.level.ents.filter(function (x) { return x.kind === "enemy"; })[idx];
+      if (e && !e.alive) e = null;
+    } else {
+      e = G.level.ents.filter(function (x) { return x.kind === "enemy" && x.alive; })
+        .sort(function (a, b) { return Math.abs(a.x - G.player.x) - Math.abs(b.x - G.player.x); })[0];
+    }
     if (!e) return null;
     G.player.x = e.x + e.w / 2 - G.player.w / 2;
     G.player.y = e.y - G.player.h - 10;
@@ -5435,6 +6484,13 @@ window.SuperOuissy = (function () {
      were when a test was written. Nine world maps exist now and they will
      keep being edited; a suite that hard-codes tile 21 is a suite that
      breaks every time a level moves. */
+  window.__soGroundY = function () { return G.level.groundY / T; };
+  window.__soSolid = function (tx, ty) { return solidAt(tx, ty); };
+  /* the raw character, so a harness can tell a wall from a one-way ledge —
+     "is there anything to stand on under this block" is a question only
+     the grid can answer, and solidAt alone answers it wrongly */
+  window.__soTile = function (tx, ty) { return tileAt(tx, ty); };
+  window.__soStand = function (tx, ty) { return solidAt(tx, ty) || oneWayAt(tx, ty); };
   window.__soFindTile = function (ch) {
     var L = G.level, hits = [];
     for (var y = 0; y < L.h; y++)
@@ -5514,7 +6570,7 @@ window.SuperOuissy = (function () {
     if (!G) return null;
     return {
       state: G.state, world: G.levelIndex + 1, diff: G.diff, lives: G.lives,
-      score: G.score, hearts: G.hearts, deaths: G.deaths,
+      score: G.score, hearts: G.hearts, heartsEver: G.heartsEver, deaths: G.deaths,
       x: Math.round(G.player.x / T), y: Math.round(G.player.y / T),
       onGround: G.player.onGround, big: G.player.big,
       bgmOn: G.bgmOn, bgmRunning: bgmTimer !== null,

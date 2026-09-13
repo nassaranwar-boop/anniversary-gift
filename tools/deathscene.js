@@ -117,8 +117,18 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   await page.evaluate(() => window.__soPump(0.2));
   ok('the keyboard reaches the scene', typeof before === 'number', '');
 
-  /* ---------- the door in the pause menu, on Hard ---------- */
-  const pauseDoor = async (d) => {
+  /* ---------- AND NO DOOR STRAIGHT INTO IT ----------
+     There used to be an ANWAR vs DEATH button on the ending card and
+     another in the pause menu. They were scaffolding — the scene only
+     happens if the Queen takes the last life on Hard, so a way in was
+     needed to check it worked at all. A shortcut to it costs the thing
+     itself: it is the reward for having lost the whole run to her, in the
+     last room, on the hardest difficulty, and a button that hands it over
+     on request turns the worst moment in the game into a menu item.
+
+     These assertions are the opposite way round on purpose: the doors are
+     gone and have to STAY gone, on every difficulty, in both places. */
+  const noDoor = async (d) => {
     await page.evaluate(() => { window.__soTestDrive = true; try{localStorage.clear();}catch(e){}
       SuperOuissy.stop(); showScreen('ouissy'); startSuperOuissy(); });
     await page.waitForSelector('.so-diff-card', { timeout:6000 });
@@ -126,88 +136,33 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
     await page.waitForTimeout(250);
     const h = await page.$('#so-how-ok'); if (h) await h.click();
     await page.waitForFunction(() => window.__soInfo().state === 'play', { timeout:8000 });
-    return page.evaluate(() => {
+    const pause = await page.evaluate(() => {
       window.__soPause();
-      return { paused: window.__soInfo().state === 'paused', door: !!document.getElementById('so-pause-scene') };
+      return { paused: window.__soInfo().state === 'paused',
+               door: !!document.getElementById('so-pause-scene'),
+               resume: !!document.getElementById('so-resume'),
+               quit: !!document.getElementById('so-quit') };
     });
+    await page.evaluate(() => window.__soPause());
+    const end = await page.evaluate(() => {
+      window.__soShowEnding();
+      return { door: !!document.getElementById('so-end-scene'),
+               again: !!document.getElementById('so-end-again'),
+               title: !!document.getElementById('so-end-title'),
+               quit: !!document.getElementById('so-end-quit'),
+               text: (document.querySelector('.so-end') || {}).textContent || '' };
+    });
+    return { pause, end };
   };
-  for (const d of ['easy','medium']) {
-    const p2 = await pauseDoor(d);
-    ok(`${d}: the pause menu does not name a scene that difficulty never has`, p2.paused && !p2.door, JSON.stringify(p2));
-  }
-  const ph = await pauseDoor('hard');
-  ok('hard: the pause menu has the door', ph.paused && ph.door, JSON.stringify(ph));
-  if (ph.door) {
-    const ran = await page.evaluate(() => {
-      const before = window.__soInfo().lives;
-      document.getElementById('so-pause-scene').click();
-      for (let i = 0; i < 120 && window.__soInfo().state !== 'cutscene'; i++) window.__soPump(1/60);
-      const S = window.Rescue._state();
-      return { state: window.__soInfo().state, kind: S && S.kind, before: before };
-    });
-    ok('hard: the pause door plays the scene', ran.state === 'cutscene' && ran.kind === 'death', JSON.stringify(ran));
-    const done2 = await play('letgo', true);
-    const back2 = await page.evaluate(() => {
-      for (let i = 0; i < 300 && window.__soInfo().state !== 'paused'; i++) window.__soPump(1/60);
-      return { state: window.__soInfo().state, lives: window.__soInfo().lives,
-               menu: !!document.getElementById('so-resume') };
-    });
-    ok('hard: and it comes back to the pause menu with the run untouched',
-       back2.state === 'paused' && back2.menu && back2.lives === ran.before,
-       JSON.stringify(back2));
-    ok('hard: the scene played properly from the pause menu', done2.done, `outcome=${done2.outcome}`);
-  }
-
-  /* ---------- and the door on the ending screen ---------- */
-  await page.evaluate(() => {
-    window.__soTestDrive = true;
-    SuperOuissy.stop(); showScreen('ouissy'); startSuperOuissy();
-  });
-  await page.waitForSelector('.so-diff-card', { timeout:6000 });
-  await page.click('[data-so-diff="hard"]'); await page.click('#so-play');
-  await page.waitForTimeout(250);
-  const how2 = await page.$('#so-how-ok'); if (how2) await how2.click();
-  await page.waitForFunction(() => window.__soInfo().state === 'play', { timeout:8000 });
-  await page.evaluate(() => { window.__soLives(4); window.__soShowEnding(); });
-  const btn = await page.$('#so-end-scene');
-  const bgmBefore = await page.evaluate(() => window.__soBgmLevel());
-  ok('the Hard ending offers the scene', !!btn, '');
-  if (btn) {
-    const before = await page.evaluate(() => ({ lives: window.__soInfo().lives, diff: window.__soState().diff }));
-    await page.evaluate(() => document.getElementById('so-end-scene').click());
-    const started = await page.evaluate(() => {
-      for (let i = 0; i < 120 && window.__soInfo().state !== 'cutscene'; i++) window.__soPump(1/60);
-      const S = window.Rescue._state();
-      return { state: window.__soInfo().state, kind: S && S.kind };
-    });
-    ok('it plays the same scene, from the ending', started.state === 'cutscene' && started.kind === 'death', JSON.stringify(started));
-    /* and the game's own cheerful little march is not playing under it */
-    const during = await page.evaluate(() => window.__soBgmLevel());
-    ok('the game goes quiet under the scene', during === 0 || during === null,
-       `level ${bgmBefore} -> ${during}`);
-    const done = await play('letgo', true);
-    const back = await page.evaluate(() => {
-      for (let i = 0; i < 300; i++) window.__soPump(1/60);
-      return { state: window.__soInfo().state, lives: window.__soInfo().lives,
-               overlay: !!document.getElementById('so-end-scene') };
-    });
-    ok('watching it ends back on the ending screen', back.state === 'ending' && back.overlay, JSON.stringify(back));
-    ok('and it costs her nothing', back.lives === before.lives, `${before.lives} -> ${back.lives}`);
-    ok('the scene still finished properly when watched', done.done, `outcome=${done.outcome}`);
-  }
-
-  /* and the endings that are not Hard's do not name him at all */
-  for (const d of ['easy','medium']) {
-    await page.evaluate(() => { window.__soTestDrive = true;
-      SuperOuissy.stop(); showScreen('ouissy'); startSuperOuissy(); });
-    await page.waitForSelector('.so-diff-card', { timeout:6000 });
-    await page.click(`[data-so-diff="${d}"]`); await page.click('#so-play');
-    await page.waitForTimeout(250);
-    const h3 = await page.$('#so-how-ok'); if (h3) await h3.click();
-    await page.waitForFunction(() => window.__soInfo().state === 'play', { timeout:8000 });
-    await page.evaluate(() => window.__soShowEnding());
-    const gone = await page.$('#so-end-scene');
-    ok(`${d}: its ending does not offer a scene that difficulty never has`, !gone, '');
+  for (const d of ['easy', 'medium', 'hard']) {
+    const n2 = await noDoor(d);
+    ok(`${d}: the pause menu has no way into the scene`, n2.pause.paused && !n2.pause.door,
+       JSON.stringify(n2.pause));
+    ok(`${d}: and the pause menu still works`, n2.pause.resume && n2.pause.quit);
+    ok(`${d}: the ending has no way into the scene either`, !n2.end.door, JSON.stringify(n2.end.door));
+    ok(`${d}: and the ending still offers the ways out it should`,
+       n2.end.again && n2.end.title && n2.end.quit, JSON.stringify(n2.end));
+    ok(`${d}: and nothing on the ending names it`, !/ANWAR vs DEATH/i.test(n2.end.text));
   }
 
   ok('no page errors', errs.length === 0, errs.slice(0,3).join(' | '));
