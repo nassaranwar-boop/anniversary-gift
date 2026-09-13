@@ -63,7 +63,7 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
      floor she actually walks along, on every difficulty — the first pass of
      this put four of the twenty-seven on ledges and one thirteen rows up
      in the open sky. */
-  const stranded = [];
+  const stranded = [], boards = {};
   for (const d of ['easy', 'medium', 'hard']) {
     await page.evaluate(() => { window.__soTestDrive = true;
       SuperOuissy.stop(); showScreen('ouissy'); startSuperOuissy(); });
@@ -81,13 +81,22 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
           const tx = Math.round(s.x / 16), ty = Math.round(s.y / 16);
           let floor = ty + 1;
           while (floor < box.h && !window.__soStand(tx, floor)) floor++;
-          out.push({ where: `${diff} w${w + 1} @${tx}`, off: floor - gy });
+          out.push({ where: `${diff} w${w + 1} @${tx}`, off: floor - gy, text: s.text });
         });
       }
       return out;
     }, d);
     rows.forEach(r => { if (Math.abs(r.off) > 1) stranded.push(`${r.where} is ${r.off} rows off the floor`); });
+    boards[d] = rows.map(r => r.text);
   }
+  /* AND THE BOARDS ARE NOT THE SAME NINE ON EVERY DIFFICULTY EITHER. The
+     letters were made per-difficulty and these were not, so all three ran
+     past the same posts. */
+  const allBoards = ['easy', 'medium', 'hard'].map(d => boards[d]);
+  ok('every difficulty has its own nine boards',
+     allBoards.every(b => b.length === 9), allBoards.map(b => b.length).join('/'));
+  ok('and no board says the same thing on two of them',
+     new Set(allBoards.flat()).size === allBoards.flat().length, `${allBoards.flat().length} in all`);
   ok('every board stands on the floor she walks along, on all three difficulties',
      stranded.length === 0, stranded.slice(0, 4).join('; '));
 
