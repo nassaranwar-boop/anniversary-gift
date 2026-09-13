@@ -7208,7 +7208,15 @@ img{-webkit-user-drag:none; user-select:none;}
    arranged. Rather than cut any of it, the buttons stay on the screen
    while the rest scrolls under them, so getting to the next race never
    depends on finding the bottom of the panel first. */
-@container rcstage (max-height: 320px){
+/* 320 was too low a bar. It was set for the shortest screen there is, but
+   a landscape phone at 440 is short too, and after a race the panel there
+   runs past the glass -- so MENU, KEEP THE PHOTO and RACE AGAIN sat below
+   the fold, reachable only by scrolling to them first. panels.js calls
+   that reachable and it is, technically; it is still the whole complaint
+   that started this, which is being shown a screen that appears to end
+   before it does. On any short screen the buttons stay on the glass and
+   the rest moves under them. */
+@container rcstage (max-height: 560px){
   .rc-res > .rc-row,
   .rc-fin > .rc-row,
   .rc-duo > .rc-row{
@@ -7761,6 +7769,15 @@ img{-webkit-user-drag:none; user-select:none;}
      those 512. Both halves come in, the list scrolls if the field is long,
      and the strip of things the race just won scrolls too. 398 of 440,
      buttons included. */
+  /* the reading face is set larger than the display face it replaced, which
+     is the point of it -- but on a screen this short that has to come back
+     a little or there is more below the fold than above it */
+  .rc-msg{font-size:1.75cqh; max-width:62cqw;}
+  .rc-blurb{font-size:1.75cqh; max-width:66cqw;}
+  .rc-rest li{font-size:1.7cqh;}
+  .rc-rest{max-width:46cqw;}
+  .rc-pod-name{font-size:1.6cqh;}
+  .rc-sub{font-size:1.6cqh; margin-top:-.6cqh;}
   .rc-split{max-height:34cqh;}
   .rc-card-shot{margin:.2cqh 0 0;}
   /* the same height bound, and for the same reason; the max-height that
