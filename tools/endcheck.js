@@ -169,7 +169,7 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
     const N = OuissysNightShift.__night;
     const out = [], moved = {}, rooms = {}, seen = {}, eyes = {};
     let last = null;
-    for (let k = 0; k < 4200 && N.finaleState().on; k++) {
+    for (let k = 0; k < 9000 && N.finaleState().on; k++) {
       const st = N.filmTick(0.05);
       if (!st) break;
       const i = st[4];

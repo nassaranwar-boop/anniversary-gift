@@ -7756,7 +7756,10 @@ function voiceReadyFor(text) {
    small reactive lines, then the six nights in order. By the time any
    of it is needed it has been in memory for minutes. */
 const VOX_ORDER = ["intro-", "terms-", "when-", "reveal-", "caught-", "kept-",
-                   "tape1-", "tape2-", "tape3-", "tape4-", "tape5-", "tape6-"];
+                   "tape1-", "tape2-", "tape3-", "tape4-", "tape5-", "tape6-",
+                   /* last, because it is last: nobody reaches the final
+                      hour before the first night has finished warming */
+                   "last-"];
 
 function voiceWarm() {
   if (!VOX_FILE.map || !AC) return;
@@ -10294,6 +10297,7 @@ function kill(ch) {
 const FIN = {
   on: false, i: -1, t: 0, secs: 1, hold: 0, el: null, head: null,
   gone: {}, room: "office", skip: false, adv: 0, shot: null, lux: 1,
+  plan: null, said: 0, dur: 0,
   from: new T.Vector3(), to: new T.Vector3(), look: new T.Vector3(),
   look2: new T.Vector3(), pan: 0,
   fov0: 58, fov1: 58,
@@ -10367,6 +10371,8 @@ function finaleNext(skipped) {
   FIN.t = 0;
   FIN.secs = s.secs || 3;
   FIN.hold = skipped ? 0.2 : FIN.secs;
+  /* once she has asked to get past it, nothing waits for a voice */
+  if (skipped) { FIN.skip = 1; voiceStop(); }
 
   /* --- the camera ------------------------------------------------- */
   FIN.room = s.room || FIN.room;
@@ -10409,6 +10415,9 @@ function finaleNext(skipped) {
 /* the subtitle. One line at a time, under the picture, because two
    lines of text stacked over a shot is a transcript again. */
 function finaleSay(line) {
+  FIN.plan = null;
+  FIN.said = 0;
+  FIN.dur = 0;
   if (!FIN.el) return;
   if (!line) { FIN.el.innerHTML = ""; return; }
   let html;
@@ -10422,6 +10431,32 @@ function finaleSay(line) {
     if (SFX.tick) SFX.tick(0.5, 0);
   } else {
     html = '<p class="ns-fin-nar">' + line.t + '</p>';
+    /* AND HE READS IT -- IF IT IS HIM.
+
+       The narration in the rest of the chapter is his, and an ending
+       that went silent at the exact moment it matters most would be
+       the one place in the game where the voice she has listened to
+       all week is missing. So the narrator lines go through the same
+       path the tapes do, and the shot below waits for him rather than
+       cutting him off.
+
+       But ONLY where a real take exists. Everywhere else in the
+       chapter a missing take falls back to the synthesiser, which is
+       the right trade for a line of guidance and the wrong one here:
+       the robot reading the last five minutes would undo the whole
+       ending. No take, no voice -- the subtitle and the score carry
+       it, exactly as they did before this existed. */
+    const have = VOX_FILE.on && VOX_FILE.map && VOX_FILE.map[String(line.t).trim()];
+    if (have) {
+      FIN.plan = voxPlan(line.t);
+      voxSpeak(FIN.plan, { gain: 0.95 });
+    /* counted in the film's own time rather than off the wall clock:
+       the shot and the voice then run on one clock, which is also the
+       only way the ending can be played faster than real time by
+       anything checking it */
+      FIN.said = 0;
+      FIN.dur = FIN.plan.dur || 0;
+    }
   }
   const d = document.createElement("div");
   d.className = "ns-fin-row";
@@ -10475,9 +10510,23 @@ function finaleStep(dt) {
   FIN.t += dt;
   /* the lights walk to where the shot wants them rather than snapping,
      so a cut is a cut and a dimmer is a dimmer */
+  FIN.said += dt;
   G.filmLux += (FIN.lux - G.filmLux) * Math.min(1, dt * 1.6);
   if (RET.live) returnersStep(dt, G.t, FIN.adv);
-  if (FIN.t >= FIN.hold) finaleNext();
+  /* A SHOT IS AS LONG AS IT IS WRITTEN, OR AS LONG AS HE TAKES.
+
+     Whichever is longer, capped -- a take that never arrives, or a
+     synthesiser having a bad day, must not be able to stop the ending.
+     A quarter of a second after he stops, so the cut is a breath
+     rather than a snatch. */
+  if (FIN.t < FIN.hold) return;
+  if (FIN.plan && !FIN.skip && FIN.t < FIN.secs * 2.4) {
+    /* voxTalking is the truth while a take is playing; the plan's own
+       estimate covers the synthesiser, which on some platforms reports
+       nothing at all */
+    if (voxTalking() || FIN.said < FIN.dur + 0.25) return;
+  }
+  finaleNext();
 }
 
 /* and the camera, run late, after the lights are set for the room and

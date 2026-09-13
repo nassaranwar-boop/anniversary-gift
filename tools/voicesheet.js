@@ -60,6 +60,19 @@ for (const k in (NS.tapeWhen || {})) add('when-' + k, NS.tapeWhen[k], 'when she 
 for (const n in (NS.reveal || {})) add('reveal-' + n, NS.reveal[n].say, 'three in the morning, night ' + n);
 add('caught-first', NS.caught && NS.caught.first, 'the first time something reaches her');
 add('caught-later', NS.caught && NS.caught.later, 'every time after that');
+/* AND THE LAST HOUR.
+
+   The narration in the ending is his, the same as the narration
+   everywhere else, and an ending that went quiet at the exact moment
+   it matters most would be the one place in the chapter where the
+   voice she has listened to all week is missing. Only the narrator
+   lines: the four of them speak for themselves, and the building's
+   lines belong to the annunciator. */
+(NS.lastHour && NS.lastHour.shots || []).forEach((sh, k) => {
+  if (!sh.line || sh.line.sys || sh.line.who) return;
+  add('last-' + String(k + 1).padStart(2, '0'), sh.line.t, 'the last hour, shot ' + (k + 1));
+});
+
 add('kept-clean', NS.kept && NS.kept.clean, 'six nights, untouched');
 add('kept-hurt',  NS.kept && NS.kept.hurt,  'six nights, not untouched');
 
