@@ -500,9 +500,33 @@ const KEEPSAKES = [
     text:"Every heart in here is a lap you finished still holding something. That is the whole of it, really." },
 ];
 
+/* ---- WHAT THE FOUR MODES ACTUALLY ARE ----
+
+   Four buttons with four names on them, and no way to know what any of them
+   would do until you pressed it. Grand Prix and Single Race sound like the
+   same thing; Time Trial sounds like it might be either; Two Players sounds
+   like a split screen it does not have. So each one says what it is, on the
+   button and again on the screen after it -- and the Grand Prix says it
+   there or nowhere, because a championship picks its own courses and never
+   shows her the track menu at all. */
+const MODES = {
+  single: { name: "SINGLE RACE",
+            one:  "One course, eight karts",
+            blurb:"Pick any of the six courses and race it once, against seven others. Flip it, or make it rain, if you want it harder." },
+  gp:     { name: "GRAND PRIX",
+            one:  "All six courses, points after each",
+            blurb:"Every course in turn. Points for where you finish each one, added up, and the cup at the end. It is written down between rounds, so you can stop after any of them and pick it up later." },
+  trial:  { name: "TIME TRIAL",
+            one:  "Alone, against the clock",
+            blurb:"No opponents. Your best lap on each course is kept, and next time you drive it the ghost of that lap drives alongside you." },
+  duo:    { name: "TWO PLAYERS \u00b7 TAKE TURNS",
+            one:  "One phone, two of you",
+            blurb:"One of you drives the course alone. Then the other drives the same course with the first one's ghost beside them \u2014 so you are racing each other even though only one of you is holding the phone." },
+};
+
 /* the line under the logo changes as they come in */
 const TAGLINES = [
-  "Two racers. Four memories. One finish line \u2014 and we cross it together.",
+  "Two racers. Six memories. One finish line \u2014 and we cross it together.",
   "Four badges in. You are getting good at this, and it shows.",
   "Every badge earned. There is nothing left to prove and one more lap anyway.",
 ];
@@ -7447,20 +7471,20 @@ function renderTitle() {
       <p class="rc-logo"><span>SUPER</span><b>OUISSY</b><i>RACE</i></p>
       <p class="rc-tag">${TAGLINES[badgeCount() >= BADGES.length ? 2 : badgeCount() >= 4 ? 1 : 0]}</p>
       <div class="rc-menu">
-        <button class="rc-btn" data-go="single">SINGLE RACE</button>
-        <button class="rc-btn" data-go="gp">GRAND PRIX</button>
+        <button class="rc-btn rc-btn-mode" data-go="single"><b>${MODES.single.name}</b><i>${MODES.single.one}</i></button>
+        <button class="rc-btn rc-btn-mode" data-go="gp"><b>${MODES.gp.name}</b><i>${MODES.gp.one}</i></button>
         ${(() => { const c = loadCup(); return c
           ? `<button class="rc-btn rc-btn-cup" data-cup="1">RESUME CUP &middot; ROUND ${c.round + 2}</button>`
           : ""; })()}
-        <button class="rc-btn" data-go="trial">TIME TRIAL</button>
-        <button class="rc-btn" data-go="duo">TWO PLAYERS &middot; TAKE TURNS</button>
+        <button class="rc-btn rc-btn-mode" data-go="trial"><b>${MODES.trial.name}</b><i>${MODES.trial.one}</i></button>
+        <button class="rc-btn rc-btn-mode" data-go="duo"><b>${MODES.duo.name}</b><i>${MODES.duo.one}</i></button>
         <div class="rc-menu-row">
           <button class="rc-btn rc-btn-s" data-tut="1">HOW TO RACE</button>
           <button class="rc-btn rc-btn-s${badgeCount() >= BADGES.length ? " rc-btn-gold" : ""}"
             data-badges="1">BADGES &middot; ${badgeCount()}/${BADGES.length}</button>
           <button class="rc-btn rc-btn-s${keepsOpen() >= KEEPSAKES.length ? " rc-btn-gold" : ""}"
             data-keeps="1">GLOVEBOX &middot; ${keepsOpen()}/${KEEPSAKES.length}</button>
-          <button class="rc-btn rc-btn-s" data-settings="title">SOUND</button>
+          <button class="rc-btn rc-btn-s" data-settings="title">SETTINGS</button>
         </div>
       </div>
       <div class="rc-diff">
@@ -7545,7 +7569,10 @@ function renderChars() {
   setOverlay(`
     <div class="rc-panel">
       <h3 class="rc-h">CHOOSE YOUR RACER</h3>
+      ${(() => { const m = MODES[mode]; return m
+        ? `<p class="rc-mode"><b>${m.name}</b><i>${m.blurb}</i></p>` : ""; })()}
       <div class="rc-cards rc-cards-2">${cards}</div>
+      <p class="rc-varnote">They drive exactly the same. Pick whoever you want to be.</p>
       <div class="rc-row">
         <button class="rc-btn rc-btn-s" data-back="title">‹ BACK</button>
         <button class="rc-btn rc-btn-go" data-next="chars">GO ›</button>
@@ -7568,6 +7595,8 @@ function renderTracks() {
   setOverlay(`
     <div class="rc-panel">
       <h3 class="rc-h">CHOOSE YOUR TRACK</h3>
+      ${(() => { const m = MODES[mode]; return m && mode !== "single"
+        ? `<p class="rc-mode"><b>${m.name}</b><i>${m.blurb}</i></p>` : ""; })()}
       <div class="rc-cards rc-cards-4">${cards}</div>
       <p class="rc-blurb" id="rc-blurb">${TRACKS[trackIdx].blurb}</p>
       ${TRACKS[trackIdx].hazard && TRACKS[trackIdx].hazard.warn
@@ -8118,7 +8147,7 @@ function renderPause() {
       <div class="rc-menu">
         <button class="rc-btn" data-resume="1">RESUME</button>
         <button class="rc-btn" data-restart="1">RESTART</button>
-        <button class="rc-btn" data-settings="pause">SOUND</button>
+        <button class="rc-btn" data-settings="pause">SETTINGS</button>
         <button class="rc-btn" data-tut="1">HOW TO RACE</button>
         <button class="rc-btn" data-back="title">QUIT TO MENU</button>
       </div>
@@ -8137,7 +8166,7 @@ function renderSettings(from) {
     </label>`;
   setOverlay(`
     <div class="rc-panel">
-      <h3 class="rc-h">SOUND &amp; CONTROLS</h3>
+      <h3 class="rc-h">SETTINGS</h3>
       <div class="rc-sliders">
         ${row("master", "MASTER")}
         ${row("music",  "MUSIC")}
@@ -8765,16 +8794,22 @@ const TUT_STEPS = [
     body:"Let {DRIFT} go while the sparks are lit and the slide pays you back a boost.",
     goal:"release for a boost" },
   { id:"item",   title:"HEART BOXES",
-    body:"Drive through a heart box to pick something up.",
+    body:"Drive through a heart box to pick something up. The loose hearts "
+       + "lying on the road are a different thing \u2014 those are yours to keep.",
     goal:"collect an item" },
   { id:"use",    title:"USING IT",
-    body:"{ITEM} sends it. A Love Letter shoves you forward; an arrow goes hunting.",
+    body:"{ITEM} sends it. A Love Letter shoves you forward, an arrow goes "
+       + "hunting, and his jacket takes one hit for you.",
     goal:"use the item" },
   { id:"grass",  title:"OFF THE TARMAC",
     body:"The grass drags — you lose your top end and the steering goes vague. Stay on the road.",
     goal:"feel the grass" },
   { id:"done",   title:"THAT'S EVERYTHING",
-    body:"That's the whole game. The rest is just which road we're on.",
+    body:"Two last things. The hearts you carry over the line are kept \u2014 "
+       + "they add up, and they open the glovebox, which is where I left you "
+       + "some things to read. And if you see a ramp, hit it fast and "
+       + "straight; you cannot steer in the air.<br><br>"
+       + "That's the whole game. The rest is just which road we're on.",
     goal:null },
 ];
 

@@ -7075,6 +7075,37 @@ img{-webkit-user-drag:none; user-select:none;}
    them, so the thing she just opened is the thing she reads first */
 .rc-earned .rc-keep{ width:min(56cqw, 100%); }
 
+/* ---- A BUTTON THAT SAYS WHAT IT DOES ----
+   Four mode buttons with four names and no way to tell what any of them
+   would do until you pressed it. The name keeps the size it had; the line
+   under it is small, quiet, and sentence case, so the button still reads as
+   a button at a glance and explains itself on a second look. */
+.rc-btn-mode{
+  display:flex; flex-direction:column; align-items:center; gap:.35cqh;
+  line-height:1.15;
+}
+.rc-btn-mode b{ font-weight:400; }
+.rc-btn-mode i{
+  font-style:normal; font-size:max(9px, 1.5cqh);
+  letter-spacing:.04em; opacity:.62;
+}
+
+/* the same thing said in full on the screen after it -- and for the Grand
+   Prix this is the only place it is ever said, because a championship picks
+   its own courses and never shows the track menu */
+.rc-mode{
+  margin:0; max-width:62cqw;
+  display:flex; flex-direction:column; gap:.5cqh;
+}
+.rc-mode b{
+  font-size:max(10px, 1.7cqh); letter-spacing:.16em; color:var(--rc-gold);
+  font-weight:400;
+}
+.rc-mode i{
+  font-style:normal; font-size:max(9.5px, 1.5cqh); line-height:1.7;
+  color:#ffc4a3;
+}
+
 /* the title button once every one of them is in */
 .rc-btn-gold{
   background:linear-gradient(180deg, #ffd166, #e8a53c);
@@ -7473,6 +7504,13 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-varnote{line-height:1.4;}
   .rc-card{padding:.8cqh .7cqw; gap:.4cqh;}
 
+  /* the line under each mode's name costs four rows of height, and on the
+     shortest screens that is the difficulty row and the way back to the hub */
+  .rc-btn-mode{gap:.15cqh;}
+  .rc-btn-mode i{font-size:max(8.5px, 1.3cqh);}
+  .rc-mode{gap:.3cqh;}
+  .rc-mode i{line-height:1.5;}
+
   /* AND THE PANEL AT THE END OF A RACE, WHICH NEVER FITTED.
 
      This one predates the six courses -- the championship table is one row
@@ -7550,6 +7588,18 @@ img{-webkit-user-drag:none; user-select:none;}
      is what taking the padding all the way down did, and what buttons.js
      failed on. Twelve keeps the whole target on the glass. */
   .hv-top{padding:max(12px, min(2.5%, 1.5cqh)) 2.5%;}
+}
+
+
+/* Below about 400 points there is no room for both the name and the line
+   under it, and the name is the half that has to survive -- the same line
+   is said in full on the very next screen, which is where the Grand Prix
+   has always had to say it anyway. */
+@media (orientation: landscape) and (max-height: 420px){
+  .rc-btn-mode i{display:none;}
+  .rc-btn-mode{gap:0;}
+  .rc-mode i{font-size:max(8.5px, 1.3cqh); line-height:1.45;}
+  .rc-cards-2{grid-template-columns:repeat(2, minmax(0, 22cqw));}
 }
 
 /* 360, not 400: at 375px and up the full-size buttons fit the stage with
