@@ -11,12 +11,18 @@ const { chromium } = require('playwright-core');
   await p.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
   await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(900);
-  /* The chapter is fetched on demand now -- index.html no longer
-     carries apocalypse.js, so `Apocalypse` does not exist until the
-     site has been asked for it. Every suite in this folder was
-     written before that and died on `Apocalypse is not defined`. */
+  /* THE CHAPTER IS FETCHED ON DEMAND.
+
+     index.html no longer carries apocalypse.js, and the hooks arrive
+     later still -- start() builds the scene behind a promise and only
+     installs them when it resolves. A suite that calls start() and
+     __apEnter in one synchronous block cannot work, which is what every
+     file in this folder did, and why the chapter has had nothing
+     checking it for a long time. */
   await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
   await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });
+  await p.evaluate(() => { showScreen('apoc'); if (!window.__apEnter) Apocalypse.start(); });
+  await p.waitForFunction(() => typeof window.__apEnter === 'function', null, { timeout: 40000 });
   const report = await p.evaluate(() => { showScreen('apoc'); Apocalypse.start(); return window.__apAudit(); });
   let bad = 0, checks = 0;
   for (const r of report) {

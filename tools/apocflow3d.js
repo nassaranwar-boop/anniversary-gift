@@ -21,6 +21,18 @@ const need = (name, cond, extra) => {
   p.on('console', m => { if (m.type()==='error' && !/ERR_FAILED/.test(m.text())) errs.push('CONSOLE: '+m.text()); });
   await p.route('**', r => (r.request().url().startsWith('http://localhost') ? r.continue() : r.abort()));
   await p.goto('http://localhost:8899/index.html', { waitUntil: 'domcontentloaded' });
+  /* THE CHAPTER IS FETCHED ON DEMAND.
+
+     index.html no longer carries apocalypse.js, and the hooks arrive
+     later still -- start() builds the scene behind a promise and only
+     installs them when it resolves. A suite that calls start() and
+     __apEnter in one synchronous block cannot work, which is what every
+     file in this folder did, and why the chapter has had nothing
+     checking it for a long time. */
+  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
+  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });
+  await p.evaluate(() => { showScreen('apoc'); if (!window.__apEnter) Apocalypse.start(); });
+  await p.waitForFunction(() => typeof window.__apEnter === 'function', null, { timeout: 40000 });
   /* The chapters are fetched on the idle callback now, not by a script
      tag, so the global is not there the instant the document is. A tool
      that drives a chapter directly has to wait for the file the same
@@ -175,10 +187,6 @@ const need = (name, cond, extra) => {
   await walkTo(pan1.x, pan1.y + 1); await use();
   need('the wire panel is up', await p.$('.ap-panel-canvas') !== null);
   await p.evaluate(() => window.__apSolvePanel()); await p.waitForTimeout(400);
-  /* The chapter is fetched on demand now -- index.html no longer
-     carries apocalypse.js, so `Apocalypse` does not exist until the
-     site has been asked for it. Every suite in this folder was
-     written before that and died on `Apocalypse is not defined`. */
   await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
   await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 }); await pump(20);
   need('the garage is empty', await waitFor(s => s.dialogue === true, 600));

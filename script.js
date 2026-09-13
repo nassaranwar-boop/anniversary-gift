@@ -1126,6 +1126,11 @@ window.finishBookIntro = function finishBookIntro() {
   setTimeout(() => {
     showScreen("gate");
     setTimeout(() => cut.classList.remove("active"), 200);
+    /* and start making the book's paper while she types: see
+       Scrapbook.warm. The gate is several seconds of a still screen,
+       and the alternative is doing all of it in the half second the
+       cover is swinging open. */
+    if (window.Scrapbook && Scrapbook.warm) Scrapbook.warm();
   }, 480);
 };
 

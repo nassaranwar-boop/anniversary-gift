@@ -1,53 +1,73 @@
-/* Level 2: find the note, use the code on the staff gate, reach the hospital. */
-const { chromium } = require('playwright-core');
+/* LEVEL TWO: EIGHT KILOMETRES OF MARRAKECH, ON FOOT.
+
+   The one thing the level asks is that she gets across it, and the one
+   thing standing in the way is the staff gate with a number on it. Find
+   the note, use the number, come out the far side.
+
+   The old file was a list of console.logs with no assertion in it, and
+   every coordinate in it was a tile from a map that has since been
+   redrawn -- it teleported to 31,20 for a gate that is at 32,23 and to
+   11,21 for a note that is at 11,24, so it printed empty strings and
+   nulls and reported nothing wrong. */
+const { boot, reporter, driver } = require('./_aplib');
+
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--no-sandbox','--no-proxy-server','--disable-gpu'] });
-  const p = await b.newPage({ viewport: { width: 1180, height: 820 } });
-  p.on('pageerror', e => console.log('PAGEERROR', e.message));
-  await p.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
-  await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded' });
-  await p.waitForTimeout(900);
-  /* The chapter is fetched on demand now -- index.html no longer
-     carries apocalypse.js, so `Apocalypse` does not exist until the
-     site has been asked for it. Every suite in this folder was
-     written before that and died on `Apocalypse is not defined`. */
-  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
-  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });
-  await p.evaluate(() => { showScreen('apoc'); Apocalypse.start(); window.__apEnter(1); });
+  const { browser, page, errs } = await boot();
+  const R = reporter(), ok = R.ok, D = driver(page);
+  await D.enter(1);
+  await D.talk(2);
 
-  // the gate, before she has the code
-  await p.evaluate(() => { window.__apTeleport(31, 20); window.__apUse(); });
-  await p.waitForTimeout(250);
-  console.log('gate without a code says:', await p.evaluate(() => document.getElementById('ap-dlg-text').textContent));
-  await p.evaluate(() => { const n = document.getElementById('ap-dlg-next'); if (n) n.click(); });
+  const st = await D.state();
+  ok('level two is the city', st.level === 'streets', st.level);
+  ok('and the only thing asked is the way out', st.step === 'exit', st.step);
+  ok('it has people in it', st.zombies > 0, st.zombies + ' of them');
 
-  // the note, in the shop
-  await p.evaluate(() => { window.__apTeleport(11, 21); window.__apUse(); });
-  await p.waitForTimeout(250);
-  console.log('note shown:', await p.evaluate(() => { const n = document.querySelector('.ap-note-code'); return n && n.textContent; }));
-  await p.click('.ap-note-ok');
-  await p.waitForTimeout(200);
-  for (let i = 0; i < 3; i++) { await p.evaluate(() => { const n = document.getElementById('ap-dlg-next'); if (n) n.click(); }); await p.waitForTimeout(100); }
-  console.log('carrying code:', await p.evaluate(() => window.__apState().code));
+  /* the gate, before she has the number */
+  await D.at('D');
+  ok('the staff gate turns her away without the code',
+     /keypad|number/i.test(await D.line()), (await D.line()).slice(0, 60));
+  await D.talk(2);
+  ok('and it stays shut',
+     (await D.state()).doors.some(d => d.kind === 'D' && d.locked));
 
-  // now the gate takes it
-  await p.evaluate(() => { window.__apTeleport(31, 20); window.__apUse(); });
-  await p.waitForTimeout(250);
-  console.log('keypad up:', await p.evaluate(() => !!document.querySelector('.ap-keypad')));
-  for (const d of '4180') await p.click(`.ap-keypad-pad .ap-key-btn:nth-child(${d === '0' ? 11 : +d})`);
-  await p.click('.ap-key-btn.go');
-  await p.waitForTimeout(300);
-  console.log('gate open:', await p.evaluate(() => window.__apState().doors.filter(d => d.includes('locked')).join()));
+  /* the note, in the shop */
+  await D.at('N');
+  ok('the note is on the wall of the shop', await D.has('.ap-note-code'));
+  const code = await D.text('.ap-note-code');
+  ok('and it has four figures on it', /^\d{4}$/.test((code || '').trim()), code);
+  await D.click('.ap-note-ok');
+  await D.talk(2);
+  ok('she is carrying the number now', (await D.state()).code === code, (await D.state()).code);
 
-  // and out through the car park to the hospital
-  const r = await p.evaluate(() => {
-    window.__apTeleport(35, 25);
-    window.__apPump(2.5, { down: true });
-    window.__apTeleport(44, 28);
-    window.__apPump(0.3, {});
-    return window.__apState();
+  /* the gate again */
+  await D.at('D');
+  ok('and now the gate puts a keypad up', await D.has('.ap-keypad-pad'));
+  await page.evaluate(() => window.__apKeypadType('0000'));
+  await page.waitForTimeout(250);
+  ok('a wrong number does not open it',
+     (await D.state()).doors.some(d => d.kind === 'D' && d.locked));
+  const stillUp = await D.has('.ap-keypad-pad');
+  ok('and it leaves the pad up to try again', stillUp);
+  if (stillUp) {
+    await page.evaluate(c => window.__apKeypadType(c), (code || '').trim());
+    await page.waitForTimeout(300);
+    ok('the right one unlocks it',
+       (await D.state()).doors.every(d => d.kind !== 'D' || !d.locked));
+    ok('and the pad goes away', !(await D.has('.ap-keypad-pad')));
+  }
+
+  /* and out the far side */
+  await page.evaluate(() => {
+    const x = window.__apFind('X');
+    window.__apClear();
+    window.__apTeleport(x[0].x, x[0].y);
+    window.__apPump(1 / 60, 30);
   });
-  console.log('after reaching X:', r.state);
-  await b.close();
+  await page.waitForTimeout(600);
+  const end = await D.state();
+  ok('reaching the far side ends the level',
+     end.state !== 'play' || end.level !== 'streets',
+     'state=' + end.state + ' level=' + end.level);
+
+  await R.done(browser, errs);
 })();
