@@ -2139,19 +2139,52 @@ window.SuperOuissy = (function () {
 
      The three worlds are an arc. The meadow is the beginning of them. The
      middle one is what it is actually like. The castle is the promise. */
-  var SIGN_LINES = [
-    ["everything here is soft on purpose. one of them should be.",
-     "you start things over without making it a tragedy. i never learned how.",
-     "three of these, and then me."],
-    ["the ground stops being kind about here. that isn't a punishment, it's just further in.",
-     "i'm not worried about you. i've seen what you do with a bad week.",
-     "you're allowed to stop and look at it. it's yours."],
-    ["whatever is at the top of this, i'm on your side of it.",
-     "she isn't difficult because i wanted you to lose.",
-     "one more room, then the door, then me."],
-  ];
+  var SIGN_LINES = {
+    /* EASY — the meadow, the orchard and the garden. The gentlest set, and
+       the boards know it: nothing here is chasing her. */
+    easy: [
+      ["nothing here means it. go and look at things.",
+       "you don't have to be good at this. you only have to be here.",
+       "i can see you from the next one."],
+      ["the orchard was your idea. i only built it.",
+       "take the long way round. nothing here is chasing you.",
+       "you are further in than you think you are."],
+      ["the last garden, and i planted the whole thing facing the door.",
+       "whatever you are by the time you get there is the right thing to be.",
+       "one more, and then it is just us."],
+    ],
+    /* MEDIUM — the riverside, the windmill and the hill town. The middle
+       of everything, which is what this difficulty is. */
+    medium: [
+      ["everything here is soft on purpose. one of them should be.",
+       "you start things over without making it a tragedy. i never learned how.",
+       "three of these, and then me."],
+      ["the ground stops being kind about here. that isn't a punishment, it's just further in.",
+       "i'm not worried about you. i've seen what you do with a bad week.",
+       "you're allowed to stop and look at it. it's yours."],
+      ["whatever is at the top of this, i'm on your side of it.",
+       "she isn't difficult because i wanted you to lose.",
+       "one more room, then the door, then me."],
+    ],
+    /* HARD — the forest, the ruins and the castle. She chose the worst of
+       it on purpose, and these are written to somebody who did. */
+    hard: [
+      ["you picked the hard one. i am not surprised and i am not arguing.",
+       "everything after this gets worse. going anyway is the whole skill.",
+       "the forest ends. they all do."],
+      ["somebody lived here once and then didn't. that happens. it is not the end of anything.",
+       "if you need to stop, stop. the ruins will wait. so will i.",
+       "you have done harder than this with less, and I was there."],
+      ["what is at the top of this is the worst thing i could think of. that was deliberate.",
+       "if she takes everything, i am still coming.",
+       "last door. i am behind it."],
+    ],
+  };
   function mkSigns(grid, w, h, start, goal, index) {
-    var lines = SIGN_LINES[Math.min(SIGN_LINES.length - 1, index)] || [];
+    /* his voice, but not the same nine boards on every difficulty: each one
+       is its own three places, walked by somebody who chose them */
+    var set = SIGN_LINES[(G && G.diff) || "medium"] || SIGN_LINES.medium;
+    var lines = set[Math.min(set.length - 1, index)] || [];
     var x0 = Math.floor(start.x / T), x1 = goal ? Math.floor(goal.x / T) : w - 2;
     var out = [];
     if (x1 - x0 < 12) return out;
@@ -4437,6 +4470,11 @@ window.SuperOuissy = (function () {
   /* ---- 1. the difficulty select ---------------------------------------- */
   function showDifficulty() {
     G.state = "menu";
+    /* the old tune, under the title screen — her preference is hers and is
+       not overridden, it is only honoured somewhere it never used to be */
+    var mw = true;
+    try { mw = localStorage.getItem("so_bgm") !== "0"; } catch (e) {}
+    if (mw) { setBgm(true); bgmFollow(); } else stopBgm();
     var saved = "medium";
     try { saved = localStorage.getItem(DIFF_KEY) || "medium"; } catch (e) {}
     var cards = ["easy", "medium", "hard"].map(function (k) {
@@ -5689,6 +5727,27 @@ window.SuperOuissy = (function () {
     },
   };
 
+  /* ---- AND THE MENU KEEPS THE OLD ONE. -------------------------------
+
+     This is the tune the whole game used to be: thirty-two steps, a square
+     lead and a triangle bass, no harmony and no drums at all. It is thin,
+     and that is the point — it is what the game sounded like before any of
+     this, so the title screen is the plainest thing in it and every world
+     she starts is an arrival somewhere better. It is the same on all three
+     difficulties, because a menu is a menu. */
+  var MENU_TUNE = {
+    tempo: 0.14,
+    lead: pat("12 . 16 . 19 . 16 . 14 . 17 . 21 . 17 . |" +
+              "12 . 16 . 19 12 24  . 21 19 16  . 14 . 12 ."),
+    harm: pat(" . . .  . .  . .  .  .  .  .  .  . .  . . |" +
+              " . . .  . .  . .  .  .  .  .  .  . .  . ."),
+    bass: pat(" 0 . 7  . 0  . 7  .  2  .  9  .  2 .  9 . |" +
+              " 0 . 7  . 0  . 7  .  5  .  0  .  7 .  7 ."),
+    drum: dpat(". . . . . . . . . . . . . . . . |" +
+               ". . . . . . . . . . . . . . . ."),
+  };
+  ["easy", "medium", "hard"].forEach(function (d) { SCORES[d].menu = MENU_TUNE; });
+
   /* the set she is actually playing. Medium is the fallback, because a
      missing tune must never be an exception inside an audio callback. */
   function score() { return SCORES[G && G.diff] || SCORES.medium; }
@@ -5707,7 +5766,8 @@ window.SuperOuissy = (function () {
 
   /* which tune belongs to where she is standing */
   function bgmFor() {
-    if (!G || !G.level) return "w1";
+    /* no level means a menu, and the menu has its own plain little loop */
+    if (!G || !G.level || G.state === "menu") return "menu";
     var b = G.level.boss;
     if (b && b.awake && !b.dead) return "boss";
     return "w" + Math.min(3, (G.levelIndex || 0) + 1);
@@ -6053,6 +6113,13 @@ window.SuperOuissy = (function () {
     G.keys = freshKeys();
     moveCamera(1);
     updateHud();
+    /* OUT OF THE MENU FIRST. bgmFollow asks where she is, and "the menu"
+       is one of the answers now — so calling it while the state still says
+       menu (which it does, because the title screen is what she came from)
+       picked the title's thin little loop and then played it through the
+       whole world. The card sets this a line later anyway; it is set here
+       so the question is asked about the right place. */
+    G.state = "card";
     bgmFollow();                      /* each world has its own arrangement */
     showLevelCard();
   }
