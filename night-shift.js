@@ -617,7 +617,7 @@ const NS = {
          opens on the bench they were made at, quietly, before anything
          happens. Everything after this is easier to feel if you have
          seen the room he worked in first. */
-      { room: "workshop", secs: 5.4, fov: 62, cue: "film", lux: 0.55,
+      { room: "workshop", secs: 5.4, fov: 62, cue: "bench", lux: 0.55,
         from: [-1.7, 2.1, 2.2], to: [-1.0, 1.7, 1.4], look: [0.4, 1.05, -1.6],
         line: { nar: 1, t: "He had a bench at the back of this shop and one rule about it. Nothing left half-made overnight." } },
       { room: "workshop", secs: 4.6, fov: 50, lux: 0.5,
@@ -628,7 +628,7 @@ const NS = {
         line: { nar: 1, t: "It is four minutes past five on the sixth night, and all four of them are about to be worth it." } },
 
       /* --- the shop stops pretending ------------------------------ */
-      { room: "office", secs: 4.0, fov: 58, cue: "dark", lux: 0.78,
+      { room: "office", secs: 4.0, fov: 58, cue: "stops", lux: 0.78,
         from: [0, 1.66, 2.35], to: [0, 1.62, 1.90], look: [0, 1.05, -2.5],
         line: { sys: 1, t: "MOTION ON CAMERA ONE. MOTION ON CAMERA TWO. MOTION ON CAMERA THREE. MOTION ON CAMERA&mdash;" } },
       { room: "office", secs: 3.0, fov: 52, lux: 0.6,
@@ -651,7 +651,7 @@ const NS = {
         line: { nar: 1, t: "Nobody ever put a shutter on the windows above it." } },
 
       /* --- the hall, filling up ----------------------------------- */
-      { room: "hall", secs: 5.0, fov: 74, cue: "night", shake: 0.5, lux: 0.5,
+      { room: "hall", secs: 5.0, fov: 74, cue: "tide", shake: 0.5, lux: 0.5,
         from: [0.05, 2.50, 5.40], to: [0.05, 2.00, 3.60], look: [0, 1.10, -4.4],
         swarm: ["hall", 18, 3.2, -5.2, 0.62], advance: 1,
         line: { nar: 1, t: "Four hundred and eleven went out of this shop. Some never came home. The rest are in the hall." } },
@@ -676,7 +676,7 @@ const NS = {
          answer on screen rather than a sentence somewhere. They are on
          his stage, over it, all of it, and the shop she has been
          guarding one room of is already gone. */
-      { room: "stage", secs: 4.4, fov: 70, lux: 0.36, shake: 0.9, clear: 1,
+      { room: "stage", secs: 4.4, fov: 70, lux: 0.36, shake: 0.9, clear: 1, cue: "wreck",
         from: [0.20, 2.70, 3.90], to: [0.20, 2.05, 2.40], look: [0, 1.15, -2.40],
         swarm: ["stage", 22, 3.8, -3.6, 0.52], advance: 1,
         sfx: [["falseBang", 0.85], ["falseSkitter", 0.7]],
@@ -688,7 +688,7 @@ const NS = {
          they come in they take one each, which is the only staging of
          this scene that makes those six nights mean anything. Jax does
          not take one, and says so. */
-      { room: "office", secs: 4.2, fov: 56, cue: "held", clear: 1, lux: 0.5,
+      { room: "office", secs: 4.2, fov: 56, cue: "post", clear: 1, lux: 0.5,
         from: [0.50, 1.60, 1.60], to: [0.20, 1.52, 1.20], look: [-3.4, 1.05, -0.9],
         line: { nar: 1, t: "Something puts its hand on the office door. Something else takes it off." } },
       { room: "office", secs: 4.4, fov: 74, lux: 0.62,
@@ -714,7 +714,7 @@ const NS = {
         line: { who: "jax", t: "I am not taking a door. I am not leaving this room. You all know I am not leaving the room." } },
 
       /* --- a minute and a half of them being people ---------------- */
-      { room: "office", secs: 4.4, fov: 40, lux: 0.74,
+      { room: "office", secs: 4.4, fov: 40, lux: 0.74, cue: "keep",
         from: [-1.55, 1.48, 0.18], to: [-1.68, 1.46, 0.02], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "He wound me every night for nine years. He never once told me why." } },
       { room: "office", secs: 5.0, fov: 40,
@@ -731,7 +731,7 @@ const NS = {
         line: { who: "cogsworth", t: "He made you last." } },
 
       /* --- AND THEN IT STARTS, AT THE WEST DOOR -------------------- */
-      { room: "office", secs: 3.2, fov: 58, cue: "night", shake: 1, lux: 0.34,
+      { room: "office", secs: 3.2, fov: 58, cue: "siege", shake: 1, lux: 0.34,
         from: [-0.95, 1.56, 0.85], to: [-1.25, 1.52, 0.50], look: [-2.95, 1.28, -0.90],
         swarm: ["office", 16, 1.6, -5.6, 0.5, "x+"], advance: 1,
         sfx: [["knock", 0.9], ["postDrag", 0.7]],
@@ -764,7 +764,7 @@ const NS = {
          cheapest and largest thing still available to the ending -- a
          woman folded under a desk she has sat at every night this
          week, small, in the corner of a shot that is mostly floor. */
-      { room: "office", secs: 3.6, fov: 58, cue: "dark", shake: 1, lux: 0.26,
+      { room: "office", secs: 3.6, fov: 58, shake: 1, lux: 0.26,
         from: [0.55, 1.30, 2.10], to: [0.20, 1.06, 1.86], look: [-0.30, 0.62, 1.10],
         sfx: [["falseSkitter", 0.8]],
         line: { nar: 1, t: "She gets under her own desk, in a room she has sat in every night this week. She does not stay there." } },
@@ -810,17 +810,17 @@ const NS = {
         line: { nar: 1, t: "Both shutters go back up. They are not doors any more. They are two gaps with a toy standing in each of them." } },
 
       /* --- THE EAST DOOR, AND THE SECOND PLACE THEY PUT HER -------- */
-      { room: "office", secs: 3.4, fov: 46, cue: "found", shake: 1,
+      { room: "office", secs: 3.4, fov: 46, shake: 1,
         from: [1.15, 1.44, 0.62], to: [1.48, 1.40, 0.26], look: [2.85, 1.10, -0.90],
         swarm: ["office", 20, 1.7, 5.2, 0.48, "x-"], advance: 1,
         sfx: [["postDrag", 0.8]],
         line: { who: "marabelle", t: "Ouissy. The corner behind the cabinet. Go now, and do not look at this." } },
-      { room: "office", secs: 4.4, fov: 46, lux: 0.52,
+      { room: "office", secs: 4.4, fov: 46, lux: 0.52, cue: "charge",
         from: [1.48, 1.40, 0.26], to: [1.66, 1.38, 0.06], look: [2.85, 1.10, -0.90],
         swarm: ["office", 20, 1.7, 4.6, 0.48, "x-"], advance: -1.6,
         sfx: [["falseBang", 0.8]],
         line: { who: "marabelle", t: "Fifteen years on that plinth and he never once saw the whole of it. Watch, then." } },
-      { room: "office", secs: 4.8, fov: 52, gone: "marabelle", hush: "box", shake: 1.2, lux: 0.62,
+      { room: "office", secs: 4.8, fov: 52, gone: "marabelle", hush: "box", shake: 1.2, lux: 0.62, cue: "siege",
         from: [1.66, 1.38, 0.06], to: [1.05, 1.48, 0.62], look: [2.85, 1.12, -0.90],
         swarm: ["office", 22, 1.8, 3.6, 0.46, "x-"], advance: 1,
         sfx: [["scare", 0.5]],
@@ -840,7 +840,7 @@ const NS = {
         line: { nar: 1, t: "From the corner behind the cabinet she hears every part of it and sees none of it, which turns out not to be the mercy it was meant to be." } },
 
       /* --- THE WEST DOOR, AND THE LENGTH OF THE ROOM --------------- */
-      { room: "office", secs: 3.4, fov: 44, cue: "night", shake: 0.9,
+      { room: "office", secs: 3.4, fov: 44, cue: "siege", shake: 0.9,
         from: [-1.45, 1.49, 0.14], to: [-1.64, 1.47, -0.06], look: [-2.85, 1.36, -0.90],
         swarm: ["office", 22, 1.8, -3.8, 0.46, "x+"], advance: 1,
         line: { who: "cogsworth", t: "Eleven seconds. I will take it." } },
@@ -867,7 +867,7 @@ const NS = {
          rather than in the middle of their last conversation, which is
          where it was: interrupting the quietest two minutes in the
          chapter with a monster. */
-      { room: "office", secs: 4.4, fov: 52, lux: 0.26, shake: 0.5, cue: "gone", clear: 1,
+      { room: "office", secs: 4.4, fov: 52, lux: 0.26, shake: 0.5, cue: "alone", clear: 1,
         from: [-0.60, 1.55, 1.50], to: [-0.30, 1.50, 1.20], look: [-2.60, 1.50, -0.90],
         boss: ["office", -2.60, -0.90, 1.5],
         sfx: [["postSettle", 0.7]],
@@ -922,7 +922,7 @@ const NS = {
         line: { nar: 1, t: "He puts her under the floor anyway, and he is far stronger than a jack-in-the-box has any business being." } },
 
       /* --- what the winding was, said from above her --------------- */
-      { room: "office", secs: 4.4, fov0: 44, fov1: 40, cue: "held", lux: 0.26,
+      { room: "office", secs: 4.4, fov0: 44, fov1: 40, cue: "alone", lux: 0.26,
         from: [-1.74, 0.30, 1.44], to: [-1.72, 0.27, 1.38], look: [-1.14, 1.46, 0.30],
         line: { who: "jax", t: "There is a key in the back of each of us. You have been turning them all week." } },
       { room: "office", secs: 3.4, fov0: 40, fov1: 37,
@@ -967,7 +967,7 @@ const NS = {
          on, it is the reason the thing in his back has enough in it to
          work at all, and it is exactly what he asked her for in a note
          six nights ago without ever saying why. */
-      { room: "office", secs: 4.2, fov: 40, lux: 0.24,
+      { room: "office", secs: 4.2, fov: 40, lux: 0.24, cue: "charge",
         from: [-1.64, 0.24, 1.30], to: [-1.59, 0.31, 1.25], look: [-1.16, 1.28, 0.30],
         sfx: [["wind", 0.85]],
         line: { nar: 1, t: "He is slowing down. She can hear him doing it. So she reaches up out of the hole in her own floor, and she finds the key in his back, and she winds him one last time." } },
@@ -975,7 +975,7 @@ const NS = {
         from: [-1.59, 0.31, 1.25], to: [-1.62, 0.26, 1.28], look: [-1.16, 1.42, 0.30],
         sfx: [["tuneWhole", 0.5]],
         line: { who: "jax", t: "Thank you. That is the last one. That is enough." } },
-      { room: "office", secs: 4.2, fov0: 38, fov1: 34, lux: 0.22,
+      { room: "office", secs: 4.2, fov0: 38, fov1: 34, lux: 0.22, cue: "alone",
         from: [-1.64, 0.22, 1.28], to: [-1.63, 0.21, 1.27], look: [-1.16, 1.48, 0.30],
         line: { nar: 1, t: "None of them has looked at her all night. He looks at her." } },
       { room: "office", secs: 3.6, fov0: 34, fov1: 31, lux: 0.2,
@@ -1004,7 +1004,7 @@ const NS = {
       /* --- AND WHAT IS LEFT OF THE ROOM ----------------------------
          Five seconds of nothing moving. It is the longest gap between
          two lines in the chapter and it is doing the most work in it. */
-      { room: "office", secs: 5.6, fov: 56, lux: 0.06, clear: 1,
+      { room: "office", secs: 5.6, fov: 56, lux: 0.06, clear: 1, cue: "after",
         from: [-1.60, 0.30, 1.40], to: [-1.20, 0.80, 1.80], look: [-0.30, 1.60, -0.60] },
 
       /* --- six o'clock --------------------------------------------- */
@@ -9049,6 +9049,72 @@ const MODE_MIX = {
   dawn:    { sub: 0.16, pulse: 0,    box: 0.40, air: 0.12, grind: 0,    bow: 0,    warm: 0.34,
              piano: 0.48, choir: 0.34, brass: 0,    tick: 0,
              pad: 0.50, bass: 0.30, lead: 0.58   },
+
+  /* =====================================================================
+     THE LAST HOUR HAS ITS OWN SCORE.
+
+     It had been borrowing: the card music for a death, the terms music
+     for an attack, the found-a-page music for a ballerina dancing at a
+     crowd. Borrowed music is most of the reason a climax can be well
+     shot and still feel like an episode of the thing before it.
+
+     Ten cues, in the order they are heard, on the same grid and in the
+     same key as everything else -- so every handover is the seam the
+     score already knows how to make, and nothing ever cuts.
+     ===================================================================== */
+
+  /* HIS BENCH. Nobody in the room, nothing frightening, the warmest
+     thing in the chapter outside the gallery. It is where they were
+     made and the film opens on it on purpose. */
+  bench:   { sub: 0.22, pulse: 0,    box: 0.46, air: 0.10, grind: 0,    bow: 0.08, warm: 0.32,
+             piano: 0.54, choir: 0.10, brass: 0,    tick: 0.08,
+             pad: 0.34, bass: 0.22, lead: 0.28   },
+  /* THE BUILDING STOPS TALKING. A hole where a score was: the sub, the
+     air and one bow. Everything that was carrying a tune lets go. */
+  stops:   { sub: 0.58, pulse: 0,    box: 0,    air: 0.48, grind: 0.16, bow: 0.26, warm: 0,
+             piano: 0,    choir: 0,    brass: 0.10, tick: 0,
+             pad: 0.22, bass: 0.18, lead: 0.00   },
+  /* FOUR HUNDRED AND ELEVEN OF THEM IN THE HALL. A swell that never
+     arrives anywhere, over a pulse you feel before you hear. */
+  tide:    { sub: 0.70, pulse: 0.24, box: 0,    air: 0.36, grind: 0.42, bow: 0.54, warm: 0,
+             piano: 0,    choir: 0.24, brass: 0.60, tick: 0.16,
+             pad: 0.52, bass: 0.62, lead: 0.00   },
+  /* HIS STAGE, COMING APART. The ugliest thirty seconds in the game. */
+  wreck:   { sub: 0.72, pulse: 0.50, box: 0,    air: 0.26, grind: 0.80, bow: 0.28, warm: 0,
+             piano: 0,    choir: 0,    brass: 0.66, tick: 0.38,
+             pad: 0.38, bass: 0.72, lead: 0.00   },
+  /* THEY TAKE THE THREE DOORS. Held, open, unhurried: the fifths, the
+     choir every other bar, and no rhythm at all. Nobody in this cue is
+     frightened. */
+  post:    { sub: 0.40, pulse: 0,    box: 0.18, air: 0.24, grind: 0.10, bow: 0.36, warm: 0.22,
+             piano: 0.34, choir: 0.56, brass: 0.42, tick: 0,
+             pad: 0.62, bass: 0.40, lead: 0.26   },
+  /* AND NINETY SECONDS OF THEM TALKING ABOUT HIM. The same fifths with
+     the warmth turned up and the brass gone. The most human cue here. */
+  keep:    { sub: 0.24, pulse: 0,    box: 0.38, air: 0.14, grind: 0,    bow: 0.12, warm: 0.36,
+             piano: 0.62, choir: 0.38, brass: 0,    tick: 0.06,
+             pad: 0.46, bass: 0.28, lead: 0.44   },
+  /* THE ATTACK. Four minutes of something being done to a building. */
+  siege:   { sub: 0.74, pulse: 0.58, box: 0,    air: 0.30, grind: 0.64, bow: 0.24, warm: 0,
+             piano: 0.30, choir: 0.20, brass: 0.72, tick: 0.60,
+             pad: 0.44, bass: 0.74, lead: 0.00   },
+  /* WHICH LEAVES THE ONE HE MADE IN AN AFTERNOON. The sparsest cue in
+     the chapter: a piano, a sub, and the room. Everything that was
+     hammering is gone, and the silence where it was is the point. */
+  alone:   { sub: 0.34, pulse: 0,    box: 0.12, air: 0.20, grind: 0,    bow: 0,    warm: 0.16,
+             piano: 0.66, choir: 0.14, brass: 0,    tick: 0,
+             pad: 0.28, bass: 0.18, lead: 0.20   },
+  /* SHE WINDS HIM. The music box comes back -- it has not been heard
+     since the bench, seventy shots ago -- and the phrase agrees with
+     itself for the only time in the last hour. */
+  charge:  { sub: 0.28, pulse: 0,    box: 0.60, air: 0.12, grind: 0,    bow: 0,    warm: 0.42,
+             piano: 0.58, choir: 0.36, brass: 0.10, tick: 0.16,
+             pad: 0.50, bass: 0.34, lead: 0.64   },
+  /* AND AFTER. Room tone and one voice, at the bottom of the level
+     range, for five and a half seconds of nothing moving. */
+  after:   { sub: 0.44, pulse: 0,    box: 0,    air: 0.42, grind: 0.06, bow: 0.32, warm: 0,
+             piano: 0.14, choir: 0.22, brass: 0,    tick: 0,
+             pad: 0.32, bass: 0.16, lead: 0.00   },
   gallery: { sub: 0.14, pulse: 0,    box: 0.45, air: 0.10, grind: 0,    bow: 0,    warm: 0.38,
              piano: 0.34, choir: 0.10, brass: 0,    tick: 0,
              pad: 0.42, bass: 0.38, lead: 0.32   },
@@ -9088,6 +9154,36 @@ const MODE_FEEL = {
   n5:      { spb: null, warm: false, level: 0.74, theme: "shift", feel: "stressed" },
   n6:      { spb: null, warm: false, level: 0.76, theme: "shift", feel: "stressed" },
   film:    { spb: 1.95, warm: false, level: 0.34, theme: "memory" },
+
+  /* THE LAST HOUR, AS TEMPO AND WEIGHT.
+
+     The film runs from 2.4 seconds a bar down to 0.88 and back out to
+     2.6: it opens slower than anything else in the chapter, tightens
+     for four minutes, and ends slower still. Most handovers move the
+     tempo by a sixth or less. The two that do not are the two that
+     should -- the attack starting, and the moment the fight ends and
+     there is only the one of them left -- and both of those are the
+     floor going out from under the music on purpose.
+
+     AND THE KEY IS THE ARGUMENT. warm is the major progression, and
+     in the last hour it means exactly one thing: him, and the four of
+     them being people. bench is major because it is his bench. keep
+     is major because it is ninety seconds of them talking about him.
+     charge is major twice -- once when a ballerina dances at a crowd
+     and once when she winds a jack-in-the-box through a hole in her
+     own floor -- and those are the only two moments of grace in the
+     middle of it. Everything else is the night, and the night is in
+     the minor. */
+  bench:   { spb: 2.40, warm: true,  level: 0.42, theme: "memory" },
+  stops:   { spb: 2.10, warm: false, level: 0.40, theme: "void"   },
+  tide:    { spb: 1.55, warm: false, level: 0.58, theme: "void"   },
+  wreck:   { spb: 1.05, warm: false, level: 0.62, theme: "hammer" },
+  post:    { spb: 1.80, warm: false, level: 0.54, theme: "vigil"  },
+  keep:    { spb: 2.05, warm: true,  level: 0.50, theme: "vigil"  },
+  siege:   { spb: 0.88, warm: false, level: 0.64, theme: "hammer" },
+  alone:   { spb: 2.25, warm: false, level: 0.46, theme: "memory" },
+  charge:  { spb: 1.70, warm: true,  level: 0.56, theme: "letter" },
+  after:   { spb: 2.60, warm: false, level: 0.38, theme: "void"   },
   locked:  { spb: 1.00, warm: false, level: 0.61, theme: "clock" },
   brief:   { spb: 1.35, warm: false, level: 0.53, theme: "clock" },
   dark:    { spb: 1.15, warm: false, level: 0.55, theme: "void" },
@@ -9151,6 +9247,31 @@ const THEME_NOTES = {
   memory:  (s16, bar) => (s16 === 0 ? [FIG[(bar * 3) % 16]] :
                           s16 === 8 ? [FIG[(bar * 3 + 7) % 16] - 12] : null),
 };
+
+/* TWO MORE, WRITTEN FOR THE LAST HOUR.
+
+   The ending had been borrowing cues from the rest of the chapter --
+   the card music for a death, the terms music for an attack -- and
+   borrowed music is the reason a climax can be well shot and still
+   feel like an episode of the thing before it. These two are only
+   ever heard in the last hour.
+
+     vigil   four objects standing in three doorways, waiting. The
+             phrase in OPEN FIFTHS, one interval a bar, held almost
+             into the next one. Fifths rather than thirds because a
+             third takes a side -- major is relieved, minor is sad --
+             and this music is neither of those. It is steady. It is
+             the sound of somebody who has decided something and is
+             not going to discuss it.
+
+     hammer  the attack. No phrase at all: the tonic on the beat and
+             the flat sixth on the off-beats, low enough to be felt
+             rather than heard, and the brass arrives a bar early
+             every third bar so the ear never quite learns where the
+             next one is coming from. It is the only cue in the
+             chapter that is actively unpleasant and it is four
+             minutes long by design. */
+const FIN_THEMES = { vigil: 1, hammer: 1 };
 /* FOUR MORE INSTRUMENTS, because seven layers of the same three ideas
    is one piece of music with the faders moved and he asked for scores
    that are actually different from each other.
@@ -10206,6 +10327,31 @@ function musicStep(t, s, bar, spb, stepLen, mode, feel, feel4, d, pivot) {
       if (n) pianoNote(t, hz(n[0]), (mode === "gone" ? 0.11 : 0.085) * a, spb * 4.2,
                        ((bar % 3) - 1) * 0.4);
       if (s === 0 && (bar & 3) === 2) brassNote(t, hz(-24), 0.055, spb * 6);
+    }
+
+    /* --- the vigil: fifths, held, unhurried ---------------------- */
+    else if (th === "vigil") {
+      if (s === 0) {
+        const n = FIG_BARS[bar & 3][0];
+        pianoNote(t, hz(n - 12), 0.095 * a, spb * 5.2, 0);
+        pianoNote(t, hz(n - 5), 0.068 * a, spb * 5.0, 0.28);
+      }
+      if (s === 8 && (bar & 1) === 0) choirNote(t, hz(-12), 0.072, spb * 6.5);
+      if (s === 12) boxNote(t, hz(FIG_BARS[bar & 3][12]), 0.042, -0.3, 2.6);
+      if (s === 0 && (bar & 3) === 2) bowNote(t, hz(-17), 0.048, spb * 5);
+    }
+
+    /* --- the hammer: not a tune, a thing being done to a building - */
+    else if (th === "hammer") {
+      if (s % 4 === 0) pianoNote(t, hz(-24), 0.052 * a, spb * 0.85, 0);
+      if (s === 6 || s === 14) {
+        pianoNote(t, hz(-16), 0.044 * a, spb * 0.7, s === 6 ? -0.32 : 0.32);
+      }
+      /* a bar early every third bar, so it never becomes a pattern
+         anybody can settle into */
+      if (s === 0 && (bar % 3) === 0) brassNote(t, hz(-16), 0.105, spb * 3.4);
+      if (s === 8) brassNote(t, hz(-24), 0.078, spb * 2.6);
+      if (s === 0 && (bar & 1)) choirNote(t, hz(-4), 0.048, spb * 3);
     }
 
     /* --- the void: no phrase at all. One voice, one swell -------- */

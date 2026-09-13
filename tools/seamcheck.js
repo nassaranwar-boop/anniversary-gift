@@ -46,6 +46,28 @@ const SEAMS = [
   ['night', 'dawn'],      // six o'clock
   ['dawn',  'gallery'],   // the shop in daylight
   ['gallery', 'menu'],    // and home
+
+  /* AND THE LAST HOUR, WHICH IS TEN CUES IN FIVE MINUTES.
+
+     Every one of these is a handover the film actually performs, in
+     the order it performs it, and six of them change key -- the major
+     in the last hour means him and the four of them being people, so
+     it arrives and leaves six times in four and a half minutes. That
+     is by far the densest run of key changes in the chapter and it is
+     the one most likely to put both thirds of A in the air at once. */
+  ['bench',  'stops'],    // his bench into the building going quiet
+  ['stops',  'tide'],     // into four hundred of them in the hall
+  ['tide',   'wreck'],    // into his stage coming apart
+  ['wreck',  'post'],     // into the four taking the three doors
+  ['post',   'keep'],     // into ninety seconds of them talking
+  ['keep',   'siege'],    // and then it starts
+  ['siege',  'charge'],   // a ballerina dances and everything stops
+  ['charge', 'siege'],    // and it closes over her again
+  ['siege',  'alone'],    // the fight ends; one of them is left
+  ['alone',  'charge'],   // she winds him
+  ['charge', 'alone'],    // and his last four lines
+  ['alone',  'after'],    // the room with nothing in it
+  ['after',  'dawn'],     // six o'clock
 ];
 const NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const name = (f) => {
