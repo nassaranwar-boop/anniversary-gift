@@ -10890,6 +10890,13 @@
        need, up front. It is the same total work; the difference is that
        it happens now, while the level is still faded to black and nobody
        is waiting on a step, rather than under her thumb. */
+    /* TWO JOBS, TWO GUARDS. These were inside one try, so anything the
+       compile threw on the way -- and the two biggest levels threw --
+       skipped the frame below it as well, which is the half that actually
+       matters. Streets and the gates kept their ten-second first frame
+       for exactly that reason while the other five dropped to single
+       milliseconds. A guard that can swallow the thing it is not
+       guarding is worse than none. */
     try {
       if (Stage.renderer.compile) {
         /* EVERYTHING, INCLUDING WHAT IS NOT SHOWING YET.
@@ -10960,6 +10967,9 @@
         }
       }
 
+    } catch (e) {}
+
+    try {
       /* ---- AND ONE WHOLE FRAME, WHICH IS THE REST OF IT ----
 
          Compiling the shaders and handing over the textures both left the
