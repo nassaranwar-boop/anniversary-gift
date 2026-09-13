@@ -528,6 +528,64 @@ const NS = {
     5: "Keep all four of them wound, and when one gets to the door first — let it.",
     6: "Get to six. Then decide what you are taking out of here.",
   },
+
+  /* =====================================================================
+     WHAT SHE IS DOING RIGHT NOW.
+
+     The complaint this exists to answer, in his words: she plays
+     without knowing what to do. And she did -- the night's purpose was
+     printed once on a card before midnight and then the screen showed
+     her a power meter and a clock for five and a half minutes. A goal
+     you are told once and never reminded of is a goal you had; a line
+     on the desk that CHANGES as the night moves is a night that is
+     going somewhere.
+
+     So there is one line, small, under the clock, and it is different
+     at midnight, at three, and in the last hour. It is not an
+     objective marker. It is written the way he writes -- because the
+     shop is the one telling her, and a thing that says SURVIVE: 40%
+     belongs to a different game than this one.
+
+     `h` is the hour it appears at. The last one that has come round is
+     the one showing. --------------------------------------------- */
+  tonight: {
+    1: [
+      { h: 0, t: "Learn where things are. Nothing in here wants to hurt you yet." },
+      { h: 2, t: "The four in the back are not stock. Look at them on the cameras." },
+      { h: 3, t: "Something of his is taped where his hand would go." },
+      { h: 5, t: "One hour. Whatever you can hear out there, it stops at six." },
+    ],
+    2: [
+      { h: 0, t: "Watch the four of them move. He built them to, and it is not a fault." },
+      { h: 2, t: "A shut door holds anything. It costs meter. It costs less than the other thing." },
+      { h: 3, t: "He chalked four names on the workshop bench. Find out what the fourth word is." },
+      { h: 5, t: "One hour. Two down after this." },
+    ],
+    3: [
+      { h: 0, t: "There is a book under the till. He has spent two nights asking you not to." },
+      { h: 2, t: "If a parcel comes down the hall, it is not a delivery. Shut the door." },
+      { h: 3, t: "Four hundred and eleven addresses. Eleven of them ticked, in a pen he cannot hold." },
+      { h: 5, t: "One hour, and then the worst of it is behind you." },
+    ],
+    4: [
+      { h: 0, t: "He is going to tell you what they were for. Stay at the desk when he does." },
+      { h: 2, t: "Behind the loose board in the office. Fifteen years of his handwriting." },
+      { h: 3, t: "Read it, and then decide whether you keep it. Nobody is going to ask you twice." },
+      { h: 5, t: "One hour. He has one night left to explain himself." },
+    ],
+    5: [
+      { h: 0, t: "Wind all four of them tonight. A key in the back, about a second each." },
+      { h: 2, t: "And if one of his gets to a door before you do — let it. Do not shut it." },
+      { h: 3, t: "Pinned inside the workshop door, on graph paper. It is dated the week he was told." },
+      { h: 5, t: "One hour. Keep them wound and let them work." },
+    ],
+    6: [
+      { h: 0, t: "Last one. Get to six, and then decide what you are taking out of here." },
+      { h: 2, t: "Under the dust sheet at the back of the stage there is a fifth one, unfinished." },
+      { h: 3, t: "Folded under the comb of the music box. The last thing he wrote." },
+      { h: 5, t: "One hour. The shutters go up on their own, the way they always have." },
+    ],
+  },
   /* =====================================================
      THE TAPES — the story, told while she is playing it
 
@@ -5926,32 +5984,28 @@ function bedStop() {
 let sideT = 0;
 function cueDuck(depth) {
   if (!AC || !sideGain) return;
-  const t = now();
-  if (t - sideT < 0.07) return;
-  sideT = t;
-  const d = depth === undefined ? 0.5 : depth;
-  /* WHILE HE IS TALKING, A DOOR DOES NOT GET TO TURN THE MUSIC BACK UP.
+  /* A REQUEST, NOT A SCHEDULE.
 
-     This function ends every duck by ramping the bed to 1, which is
-     correct for a bang in a quiet shop and catastrophic in the middle
-     of a line: she shuts a door, and the score -- which was sitting
-     politely under him -- is handed back its full level for the rest
-     of the sentence. So during a held voice duck the cue ducks from
-     the voice's floor and returns to the voice's floor. The door still
-     punches; it punches a hole in something quieter. */
-  const talking = t < voxHold;
-  const floor = talking ? VOICE_BED : 1;
-  sideGain.gain.cancelScheduledValues(t);
-  sideGain.gain.setValueAtTime(sideGain.gain.value, t);
-  sideGain.gain.linearRampToValueAtTime(Math.min(d, floor), t + 0.035);
-  sideGain.gain.linearRampToValueAtTime(floor, t + 0.42);
-  /* and the hold is re-armed behind it, because the ramp above just
-     overwrote the schedule that was keeping it down */
-  if (talking) {
-    sideGain.gain.setValueAtTime(VOICE_BED, Math.max(t + 0.43, voxHold - 0.15));
-    sideGain.gain.linearRampToValueAtTime(1, voxHold + 0.75);
+     This used to write its own envelope onto the fader and end it by
+     ramping back to 1 -- which, in the middle of one of his sentences,
+     handed the score its full level for the rest of the line. It then
+     had to re-arm the voice hold behind itself to undo that, and the
+     two of them wrote over each other every time a door moved.
+
+     Now it only says how far down it would like the bed and for how
+     long. bedTick works out the rest, and because the bed takes the
+     LOWEST of the outstanding requests, a cue underneath a voice
+     simply ducks a little further and comes back to where the voice
+     had it. There is nothing to re-arm and nothing to fight. */
+  const d = depth === undefined ? 0.58 : depth;
+  const until = now() + 0.24;
+  if (until > BED.cueUntil || d < BED.cueTo) {
+    BED.cueTo = now() < BED.cueUntil ? Math.min(BED.cueTo, d) : d;
+    BED.cueUntil = Math.max(BED.cueUntil, until);
   }
+  bedTick();
 }
+
 function audioDuck(v, ms) {
   if (!AC) return;
   const t = now();
@@ -6441,7 +6495,21 @@ function annunciate(text, urgent) {
     /* the consonant edge between syllables */
     burst({ f0: 3400, dur: 0.014, gain: 0.032 * gain, q: 7, at: at - 0.012 });
   }
-  return 0.26 + n * step + 0.2;
+  const dur = 0.26 + n * step + 0.2;
+  /* AND THE ANNOUNCEMENT SITS IN THE MIX LIKE SPEECH.
+
+     It used to move the score only through the cue ducks its own chime
+     and buzz happened to fire -- a handful of thirty-five millisecond
+     stabs scattered across a sentence, which reads as the music
+     glitching rather than as something making room. It is a voice, so
+     it gets a voice's treatment: one shallow hold for its whole
+     length. Shallow because it IS short and because it is a speaker in
+     a ceiling; the score should lean back for it, not get out of the
+     way. And while he is talking it asks for nothing at all -- his
+     hold is deeper and already running, and a second request would
+     only end early and lift the bed out from under him. */
+  if (!voiceBusy()) voiceDuck(dur, SYS_BED);
+  return dur;
 }
 
 /* one line at a time, and never over a jumpscare */
@@ -7083,7 +7151,7 @@ const VOX_FILE = { on: null, map: null, buf: Object.create(null), dur: Object.cr
                    /* which path the last line actually took, and how
                       many lines were lost to a take that had not
                       finished arriving */
-                   took: null, late: 0, warmed: 0,
+                   asked: false, took: null, late: 0, warmed: 0,
                    /* cumulative, because a line that waits for its take
                       finishes after the caller has moved on, and a
                       check that samples "what happened just now" reads
@@ -7109,32 +7177,115 @@ const VOX_FILE = { on: null, map: null, buf: Object.create(null), dur: Object.cr
    hear the eight bars turn underneath him, and hear the chord change
    at the end of a sentence. It is the difference between a score with
    narration over it and a score that stops to let somebody speak. */
-const VOICE_BED = 0.42;
-let voxHold = 0;                        // audio time the hold runs until
+/* =====================================================================
+   ONE OWNER FOR THE SHOP'S LEVEL.
 
-function voiceDuck(dur) {
-  if (!AC || !sideGain) return;
+   Two things were moving this fader and they were fighting. voiceDuck
+   held it down for the length of a line; cueDuck, which fires on every
+   single sound in the chapter, dropped it in THIRTY-FIVE MILLISECONDS
+   and pulled it back over four-tenths of a second, and then re-armed
+   the voice hold behind itself. Thirty-five milliseconds is not a duck.
+   It is a gate slamming, and it is why the music sounded like it was
+   being shoved aside rather than making room.
+
+   They are one thing now, and it works the way a mixing desk does
+   rather than the way a scheduler does:
+
+     a target      every request says how far down it wants the bed and
+                   until when. The bed goes to whichever is lowest, and
+                   nothing has to know about anything else, so there is
+                   nothing left to fight over.
+     a time        it moves by setTargetAtTime -- an exponential
+                   approach, which is what every compressor in the world
+                   does -- instead of a straight line. A linear ramp on
+                   a gain starts abruptly and finishes slowly, which is
+                   exactly backwards from how a level sounds like it is
+                   moving.
+     two speeds    down quickly, up slowly, and slower still while
+                   somebody is talking. A bed that recovers in the gap
+                   between two sentences is a bed that pumps.
+
+   The numbers are time constants, not durations: the level covers
+   about 95% of the distance in three of them. */
+/* HOW FAR UNDER HIM THE SCORE SITS, AND WHY IT IS NOT FURTHER.
+
+   Measured on the master with a meter on each bus rather than guessed:
+   he was arriving about TEN DECIBELS above the score. Three separate
+   reasonable-looking decisions multiplying into one that is not -- the
+   takes are normalised to -18 LUFS, which is loud; they play at 0.92;
+   and the bed was pushed another 6.4dB down underneath them.
+
+   Ten decibels is a documentary. It is correct when the words are the
+   content and the music is behind them. Here the music IS the content
+   -- it is the thing that is supposed to make her cry, the words are
+   on screen as captions anyway, and a score she cannot hear is a score
+   that did not need writing. Four decibels is the target: he is still
+   plainly in front, and the eight bars still turn underneath him where
+   she can follow them. */
+const VOICE_BED = 0.76;            // -2.4dB, was 0.48 and far too deep
+const SYS_BED   = 0.80;            // and the building barely moves it at all
+const BED = { at: 1, voiceTo: 1, voiceUntil: 0, cueTo: 1, cueUntil: 0 };
+
+function bedWant() {
   const t = now();
-  voxHold = Math.max(voxHold, t + dur + 0.15);
-  sideGain.gain.cancelScheduledValues(t);
-  sideGain.gain.setValueAtTime(sideGain.gain.value, t);
-  /* a quarter of a second to get down there: fast enough to be under
-     his first word, slow enough that it is a fade and not a gate */
-  sideGain.gain.linearRampToValueAtTime(VOICE_BED, t + 0.25);
-  sideGain.gain.setValueAtTime(VOICE_BED, voxHold - 0.15);
-  /* and nearly a second to come back, so the score arrives rather than
-     reappears */
-  sideGain.gain.linearRampToValueAtTime(1, voxHold + 0.75);
+  let v = 1;
+  if (t < BED.voiceUntil) v = Math.min(v, BED.voiceTo);
+  if (t < BED.cueUntil) v = Math.min(v, BED.cueTo);
+  return v;
 }
 
+function bedTick() {
+  if (!AC || !sideGain || AC.state !== "running") return;
+  const want = bedWant();
+  if (Math.abs(want - BED.at) < 0.004) return;
+  const t = now(), talking = t < BED.voiceUntil, down = want < BED.at;
+  /* down in about a sixth of a second under a voice, quicker under a
+     bang; back up over most of a second under a voice, and briskly
+     otherwise so the room does not feel like it is breathing */
+  const tau = down ? (talking ? 0.055 : 0.022)
+                   : (talking ? 0.30  : 0.14);
+  const cur = sideGain.gain.value;
+  sideGain.gain.cancelScheduledValues(t);
+  sideGain.gain.setValueAtTime(cur, t);
+  sideGain.gain.setTargetAtTime(want, t, tau);
+  BED.at = want;
+}
+
+/* a line of speech: hold the bed down for as long as it lasts */
+function voiceDuck(dur, level) {
+  if (!AC || !sideGain) return;
+  const to = level === undefined ? VOICE_BED : level;
+  const until = now() + dur + 0.12;
+  /* the deeper request wins, and the longer one sets the clock, so a
+     door alert underneath him cannot cut his hold short */
+  if (until > BED.voiceUntil) BED.voiceUntil = until;
+  BED.voiceTo = Math.min(BED.voiceTo < 1 && now() < BED.voiceUntil ? BED.voiceTo : 1, to);
+  bedTick();
+}
+
+
 function voiceLoad() {
-  if (VOX_FILE.on !== null) return;
-  VOX_FILE.on = false;
+  /* "HAVE WE ASKED" AND "IS THERE ANYTHING" ARE DIFFERENT QUESTIONS.
+
+     This used to set `on = false` on its first line, as a guard against
+     asking twice -- and everything downstream reads `on === false` as
+     "this build has no recordings, do not wait for any". So for the few
+     hundred milliseconds between the page starting and the manifest
+     arriving, every line was told there were no recordings at all and
+     went straight to the synthesiser without waiting.
+
+     Which line that hit depended entirely on whether the fetch happened
+     to land first, so the opening statement came out in his voice on
+     two runs out of three and in the robot's on the third, with nothing
+     different between them. One flag for "asked", one for "found". */
+  if (VOX_FILE.asked) return;
+  VOX_FILE.asked = true;
   let f;
-  try { f = fetch("voice/manifest.json", { cache: "force-cache" }); } catch (e) { return; }
+  try { f = fetch("voice/manifest.json", { cache: "force-cache" }); }
+  catch (e) { VOX_FILE.on = false; return; }
   f.then((r) => (r.ok ? r.json() : null))
    .then((j) => {
-     if (!j) return;
+     if (!j) { VOX_FILE.on = false; return; }
      /* text -> id, so a line looks itself up by what it says. A line
         that has been rewritten since the take simply is not in here. */
      const m = Object.create(null);
@@ -7143,7 +7294,7 @@ function voiceLoad() {
      VOX_FILE.map = m; VOX_FILE.on = n > 0;
      if (VOX_FILE.on) voiceWarm();
    })
-   .catch(() => {});
+   .catch(() => { VOX_FILE.on = false; });
 }
 
 function voiceHas(text) {
@@ -7200,12 +7351,47 @@ function voiceWarm() {
   pump();
 }
 
+/* SET HIM AGAINST THE MUSIC, NOT AGAINST A NUMBER.
+
+   One fixed voice level cannot be right across ten cues that are not
+   equally loud. Measured with a meter on each bus, the same setting
+   put him about 6dB above a shift, 1.5dB above the turn and 8dB above
+   six o'clock -- a spread of nearly seven decibels, which is the
+   difference between a narrator and a man shouting over a record. And
+   it was worst exactly where it matters most, because the cues that
+   are about him are the thin, quiet ones.
+
+   So the score is metered and he is placed relative to what is
+   actually playing. Every take is normalised to the same loudness by
+   the renderer, so the only variable left is the music; dividing it
+   out leaves one relationship that holds everywhere, including in any
+   cue somebody remixes next month, which a table of per-scene numbers
+   would not.
+
+   Clamped at both ends: a near-silent scene must not send him to the
+   moon, and a loud one must not bury him. */
+const VOX_REF = 0.09;              // the score's RMS during a shift
+
+function voiceTrim() {
+  if (!MUS.rms) return 1;
+  /* one to one in decibels, which is what holding a constant gap
+     means. The floor is low enough to cover the thinnest cue in the
+     chapter -- six o'clock, which is five decibels under a shift. */
+  return clamp(MUS.rms / VOX_REF, 0.45, 1.5);
+}
+
 /* wait for one line, briefly, and never for long enough to be a hang.
    The opening statement is the one place where waiting is better than
    falling back, because it is the first thing she ever hears and there
    is no second chance at it. */
 function voiceWait(text, ms, then) {
-  const cap = ms || 2500, t0 = perf();
+  /* seconds, because perf() is seconds. This read `ms || 2500` and so
+     every cap was a thousand times too long: a line whose take never
+     arrives at all -- a 404, a failed decode -- would have waited forty
+     minutes rather than giving up and speaking. It never showed,
+     because a take almost always arrives and the other exits fire
+     first, but it was a real way for a line to go silent for good. */
+  const cap = (ms || 2500) / 1000, t0 = perf();
   const tick = () => {
     /* THE MANIFEST MAY NOT HAVE ARRIVED EITHER.
 
@@ -7379,14 +7565,17 @@ function voxSpeak(plan, opts) {
     for (const k in opts) again[k] = opts[k];
     again.waited = true;
     VOX_FILE.late++;
-    voiceWait(text, 1800, () => voxSpeak(plan, again));
+    voiceWait(text, 3500, () => voxSpeak(plan, again));
     return total;
   }
   if (!opts.sys && ac() && !muted && MIX.voice > 0.02 && voiceHas(text)) {
     const b = voiceBuf(text);
     if (b) {
       const was = plan.dur || 1;
-      total = voicePlay(b, (opts.gain === undefined ? 1 : opts.gain) * 0.92 * MIX.voice);
+      /* 0.62 rather than 0.92: the other half of the same measurement.
+         Pulling the bed up alone would have meant a louder shop under
+         an equally loud man; the fix has to come off both. */
+      total = voicePlay(b, (opts.gain === undefined ? 1 : opts.gain) * 0.62 * voiceTrim() * MIX.voice);
       const k = total / was;
       plan.words.forEach((w) => { w.at *= k; });
       plan.dur = total;
@@ -7420,7 +7609,7 @@ function voxSpeak(plan, opts) {
       const again = {};
       for (const k in opts) again[k] = opts[k];
       again.waited = true;
-      voiceWait(text, 1200, () => voxSpeak(plan, again));
+      voiceWait(text, 2600, () => voxSpeak(plan, again));
       return total;
     }
   }
@@ -7446,6 +7635,13 @@ function voxSpeak(plan, opts) {
   if (!opts.sys && !opts.forceSynth && window.speechSynthesis) {
     voxTape(total, (opts.gain === undefined ? 1 : opts.gain) * 1.25);
     voiceDuck(total);
+    /* COUNT THIS. It is the path where the caption does the talking and
+       nobody says anything at all, and because it incremented neither
+       counter, a check that asked "how many lines were his" got back
+       "none, and none were spoken either" and reported nothing wrong
+       with the one number that mattered. A silent line is not a
+       neutral outcome. */
+    VOX_FILE.took = "caption"; VOX_FILE.plays.speech++;
     return total;
   }
   const t0 = now() + CUE_LEAD + (opts.at || 0);
@@ -7672,10 +7868,23 @@ const MODE_FEEL = {
   brief:   { spb: 1.35, warm: false, level: 0.53, theme: "clock" },
   dark:    { spb: 1.15, warm: false, level: 0.55, theme: "void" },
   gone:    { spb: 2.40, warm: false, level: 0.50, theme: "memory" },
-  found:   { spb: 1.70, warm: true,  level: 0.53, theme: "letter" },
-  held:    { spb: 1.42, warm: true,  level: 0.74, theme: "turn" },
-  dawn:    { spb: 1.50, warm: true,  level: 0.55, theme: "morning" },
-  gallery: { spb: 1.62, warm: true,  level: 0.50, theme: "morning" },
+  /* THE QUIET ONES WERE TOO QUIET TO SURVIVE A VOICE.
+
+     Measured with a meter on each bus: a shift and the turn put him
+     about 4dB above the score, which is right. Six o'clock put him
+     TWELVE above it, because dawn is simply a thinner cue -- fewer
+     layers, lower faders -- and the same voice level towers over it.
+     Twelve decibels in the scene the whole chapter has been walking
+     towards, where the music is the entire point and he is only
+     saying goodbye over the top of it.
+
+     These are the four cues about him rather than about the thing at
+     the door, and they are the ones she is supposed to feel. They come
+     up to meet him. */
+  found:   { spb: 1.70, warm: true,  level: 0.74, theme: "letter" },
+  held:    { spb: 1.42, warm: true,  level: 0.80, theme: "turn" },
+  dawn:    { spb: 1.50, warm: true,  level: 0.82, theme: "morning" },
+  gallery: { spb: 1.62, warm: true,  level: 0.70, theme: "morning" },
   menu:    { spb: 1.36, warm: "menu", level: 0.55, theme: "menu" },
 };
 
@@ -8003,6 +8212,11 @@ function musicInit() {
   if (!ac() || MUS.ready) return;
   MUS.ready = true;
   MUS.bus = AC.createGain(); MUS.bus.gain.value = 0; MUS.bus.connect(sideGain);
+  /* a meter on the score, so the voice can be set against what is
+     actually playing rather than against a number -- see voiceTrim */
+  MUS.meter = AC.createAnalyser(); MUS.meter.fftSize = 1024;
+  MUS.bus.connect(MUS.meter);
+  MUS.mbuf = new Float32Array(1024);
   MUS_LAYERS.forEach((k) => {
     const g = AC.createGain();
     g.gain.value = 0;
@@ -8433,6 +8647,8 @@ function musicSwap(m) {
     }
     MUS.mode = m;
     MUS.barOff = MUS.bar + 1;
+    /* a change of scene re-acquires rather than creeping */
+    MUS.rmsAge = 0;
     if (m === "night") { MUS.dread = Math.min(MUS.dread, 0.25); }
     else if (m !== "dark") MUS.dread = 0;
   }
@@ -8493,6 +8709,9 @@ function nightMix(feel4, d) {
 }
 
 function musicTick(dt) {
+  /* the bed is driven every frame whatever the score is doing, because
+     a voice can be talking over a scene that has no music in it */
+  bedTick();
   if (!MUS.ready || !AC || muted) return;
   /* scheduling ahead of a clock that is not moving schedules everything
      into the same instant, and it all arrives at once when it wakes */
@@ -8516,6 +8735,44 @@ function musicTick(dt) {
     g.linearRampToValueAtTime(v, t + 0.55);
   };
   /* which of the four the shift is in tonight */
+  /* a slow reading of how loud the score is. Slow on purpose: it is
+     asked for at the instant a line starts, and a reading that jumped
+     with every bar would set a different level for two sentences in
+     the same scene. */
+  if (MUS.meter) {
+    MUS.meter.getFloatTimeDomainData(MUS.mbuf);
+    let e = 0;
+    for (let i = 0; i < MUS.mbuf.length; i++) e += MUS.mbuf[i] * MUS.mbuf[i];
+    const r = Math.sqrt(e / MUS.mbuf.length);
+    /* SLOW, BECAUSE A PHRASE IS SLOW.
+       The score's arch swings its level by about a third across eight
+       bars, which at a shift's tempo is the better part of forty
+       seconds. A one-second average therefore reports whichever bar it
+       was asked on, and two sentences in the same scene got voice
+       levels two and a half decibels apart depending on where in the
+       phrase they landed. This tracks the scene instead. */
+    /* TWO SPEEDS, BECAUSE THE TWO JOBS ARE DIFFERENT.
+
+       Slow is right WITHIN a scene: the score's arch swings its level
+       by about a third across eight bars, which at a shift's tempo is
+       the better part of forty seconds, so a one-second average
+       reports whichever bar it was asked on and two sentences in the
+       same scene got voice levels two and a half decibels apart.
+
+       Slow is wrong ACROSS one. Forgetting the old reading on a scene
+       change and then creeping towards the new one over four seconds
+       means every line spoken in the first few seconds of a cue is set
+       against a level that is not playing -- which is most of them,
+       since a scene usually opens by saying something. That is what
+       made six o'clock read eight decibels hot while a shift read one:
+       not the rule, the acquisition.
+
+       So it grabs the new scene in about half a second and then
+       settles down to tracking it. */
+    MUS.rmsAge = (MUS.rmsAge || 0) + dt;
+    const k = MUS.rmsAge < 1.2 ? Math.min(1, dt * 5) : Math.min(1, dt * 0.22);
+    MUS.rms = MUS.rms === undefined ? r : MUS.rms + (r - MUS.rms) * k;
+  }
   const feel4 = nightFeel();
   /* AND THE DRONES BREATHE WITH IT.
 
@@ -9586,6 +9843,49 @@ function winNight() {
   bumpUI();
 }
 
+/* WHAT SHE IS DOING RIGHT NOW, ON THE DESK.
+
+   One line under the clock that answers "what am I here for" without
+   her having to remember a card she read before midnight. It changes
+   three or four times a night, which is the point: a goal you are told
+   once is a goal you had, and a line that moves is a night that is
+   going somewhere.
+
+   It fades rather than cuts, because it sits in the corner of her eye
+   the whole shift and a corner of the eye notices a hard change as a
+   glitch. And it is never shown during the tutorial or a cut scene --
+   those are already telling her what to do, and two voices saying it
+   at once is neither. */
+function taskFor(night, hour) {
+  const list = (NS.tonight && NS.tonight[night]) || null;
+  if (!list) return null;
+  let best = null;
+  for (const it of list) if (hour >= it.h) best = it;
+  return best && best.t;
+}
+
+function taskShow() {
+  const el = EL["ns-task"];
+  if (!el) return;
+  const want = (G.phase === "play" && !tutorOn() && !CINE.on)
+    ? taskFor(G.night, G.hour) : null;
+  if (want === G.task) return;
+  G.task = want;
+  if (!want) { el.hidden = true; el.textContent = ""; return; }
+  /* out, swap, back in -- so a change reads as the shop turning a page
+     rather than as the text being replaced */
+  if (el.textContent) {
+    el.classList.add("fading");
+    setTimeout(() => {
+      if (G.task !== want) return;
+      el.textContent = want; el.hidden = false;
+      el.classList.remove("fading");
+    }, 480);
+  } else {
+    el.textContent = want; el.hidden = false; el.classList.remove("fading");
+  }
+}
+
 /* --- the clock ------------------------------------------------------ */
 function stepClock(dt) {
   G.hourT += dt;
@@ -9595,6 +9895,7 @@ function stepClock(dt) {
     if (G.hour >= 6) { winNight(); return; }
     SFX.beep(false);
     say(fmt(NS.sys.hour, ["ZERO ONE", "ZERO TWO", "ZERO THREE", "ZERO FOUR", "ZERO FIVE"][G.hour - 1] || ""));
+    taskShow();
     bumpUI();
   }
 }
@@ -9675,27 +9976,126 @@ function keptCount() {
 }
 function clearKept() { try { localStorage.removeItem(KEEP_KEY); } catch (e) {} }
 
+/* =====================================================================
+   THREE O'CLOCK, STAGED.
+
+   The writing in these was never the problem. The staging was: every
+   line appeared at once, as a block, with his voice starting
+   seven-tenths of a second in -- over the top of her reading -- and
+   both choice buttons already live, so the whole revelation could be
+   dismissed before a word of it had been taken in. A wall of text with
+   an exit is information. It is not a moment.
+
+   Nothing here changes a single word. It changes when the words
+   arrive:
+
+     one at a time   each line fades up on its own, about a second
+                     apart, at the speed somebody reads a page they
+                     have just found rather than the speed a screen can
+                     paint one.
+     the last one    waits. Every one of these revelations is built so
+                     the last line is the knife -- HER, pressed hard
+                     enough to break the chalk; one tick a night; it is
+                     how you learn to build a thing that watches a
+                     person -- and a knife that arrives with everything
+                     else is a sentence. It gets a beat of silence to
+                     itself, and the score swells under it.
+     then he speaks  after the last line has landed, not across her
+                     reading of it.
+     then the choice The buttons are not there until she has seen all
+                     of it. She cannot decide whether to keep a thing
+                     she has not read.
+
+   And a tap puts the rest up at once, because the second time through
+   this is a wait rather than a reveal. ------------------------------ */
 function revealCard(r) {
   G.phase = "reveal";
   showHud(false);
   tapeOff();
   musicMode("found");
   SFX.paper();
-  if (r.say) setTimeout(() => {
-    if (G.phase === "reveal") voxSpeak(voxPlan(r.say), { gain: 1 });
-  }, 700);
+
+  const body = r.lines.map((l, i) =>
+    '<p class="ns-rv" data-i="' + i + '">' + l + '</p>').join("");
   overlay(
-    '<div class="ns-card ns-card-find">' +
+    '<div class="ns-card ns-card-find ns-staged">' +
       '<p class="ns-from">' + r.at + '</p>' +
       '<div class="ns-paper">' +
         '<p class="ns-paper-head">' + r.head + '</p>' +
-        r.lines.map((l) => "<p>" + l + "</p>").join("") +
+        body +
       '</div>' +
-      '<div class="ns-btns">' +
+      '<div class="ns-btns ns-rv-choice">' +
         '<button class="ns-btn ns-btn-go" data-go="keep">' + (r.keep || "KEEP IT") + '</button>' +
         '<button class="ns-btn" data-go="burn">' + (r.burn || "BURN IT") + '</button>' +
       '</div>' +
     '</div>', "ns-ov-find");
+
+  const card = EL["ns-overlay"] && EL["ns-overlay"].querySelector(".ns-card-find");
+  const lines = card ? [].slice.call(card.querySelectorAll(".ns-rv")) : [];
+  const choice = card && card.querySelector(".ns-rv-choice");
+  const last = lines.length - 1;
+  let at = 0, timers = [];
+
+  const finish = () => {
+    timers.forEach(clearTimeout); timers = [];
+    lines.forEach((el) => el.classList.add("in"));
+    at = lines.length;
+    if (choice) choice.classList.add("in");
+    if (card) card.classList.remove("ns-staged");
+  };
+
+  const step = () => {
+    if (G.phase !== "reveal") return;
+    if (at >= lines.length) {
+      if (choice) choice.classList.add("in");
+      /* he speaks once she has read it, not over the top of it */
+      if (r.say) timers.push(setTimeout(() => {
+        if (G.phase === "reveal") voxSpeak(voxPlan(r.say), { gain: 1 });
+      }, 620));
+      return;
+    }
+    const i = at++;
+    lines[i].classList.add("in");
+    /* the last line lands on its own, with the score underneath it */
+    if (i === last && lines.length > 1) {
+      SFX.paper();
+      cueDuck(0.9);
+      musicSwell();
+    }
+    /* a beat before the knife, and a reader's pace before anything else */
+    const wait = (i === last - 1) ? 1550 : 1000;
+    timers.push(setTimeout(step, wait));
+  };
+
+  if (choice) choice.classList.remove("in");
+  timers.push(setTimeout(step, 520));
+  /* a tap anywhere puts the rest up: the second time through, this is a
+     wait rather than a reveal */
+  if (card) card.addEventListener("click", (e) => {
+    if (e.target.closest("[data-go]")) return;
+    if (at < lines.length) { e.stopPropagation(); finish(); }
+  });
+}
+
+/* ONE BAR OF THE SCORE, LEANT ON.
+
+   Used where a line has to land: the harmony is already an eight-bar
+   phrase with its arrival in the seventh, and this simply puts one of
+   those arrivals under the moment instead of wherever the bar count
+   happened to be. It is the difference between music playing during a
+   revelation and music that is part of it. */
+function musicSwell() {
+  if (!MUS.ready || !AC || muted) return;
+  /* jump the progression to the bar the whole phrase is built to reach */
+  MUS.barOff = MUS.bar - 6;
+  const t = now();
+  if (MUS.bus) {
+    const g = MUS.bus.gain, to = Math.min(1, g.value * 1.5);
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(to, t + 0.9);
+    g.linearRampToValueAtTime(g.value, t + 4.5);
+  }
 }
 
 function closeReveal(kept) {
@@ -10482,7 +10882,7 @@ function buildUI() {
   ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
    "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
    "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
-   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine", "ns-key",
+   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine", "ns-key", "ns-task",
    "ns-tape"].forEach((id) => {
     EL[id] = el(id);
   });
@@ -10594,36 +10994,93 @@ function loadCozy() {
 }
 function saveCozy(v) { try { localStorage.setItem(COZY_KEY, v ? "1" : "0"); } catch (e) {} }
 
+/* THE DOOR, NOT A SETTINGS PAGE.
+
+   It was seven identical buttons in a grid and a number stepper. Every
+   one of them looked equally important, which means none of them did,
+   and the one that matters -- the door into the shop -- was the same
+   size as LEAVE. A menu with no hierarchy makes a player read all of
+   it every time, and reading a list is not how you walk into a
+   building at midnight.
+
+   Four things, in order of how much they change it:
+
+     one way in    BEGIN THE SHIFT is now the only thing at that size.
+                   Everything else is smaller and grouped by what it is
+                   FOR: the two that teach her, the two that hold what
+                   she has found, and the two that are housekeeping.
+     the week      all six nights are shown, not only the unlocked
+                   ones. Seeing four of them locked is the shape of
+                   what she has agreed to -- six nights, and this is
+                   where she is in them. A stepper that counts up from
+                   one hides the size of the thing.
+     where she is  "two of six" under the roster, because a player who
+                   can see progress has a reason to come back tomorrow.
+     his line      the shift card's own words on the door, so the first
+                   thing the screen says is his and not an interface's. */
 function screenTitle() {
   const un = maxUnlocked();
   const done = nightsDone();
-  const sel = NIGHTS.slice(0, un).map((n) =>
-    '<button class="ns-btn ns-btn-sm' + (done[n.n] ? " ns-done" : "") + '" data-go="night:' + n.n + '">' + n.n + '</button>').join("");
+  const got = NIGHTS.filter((n) => done[n.n]).length;
+
+  /* the whole week, so the locked ones say how much is left */
+  const roster = NIGHTS.map((n) => {
+    const state = done[n.n] ? " ns-done" : (n.n <= un ? " ns-open" : " ns-shut");
+    const tag = n.n <= un ? ' data-go="night:' + n.n + '"' : ' disabled aria-disabled="true"';
+    return '<button class="ns-nite' + state + '"' + tag +
+           ' title="' + (n.n <= un ? n.name : "not yet") + '">' +
+           '<b>' + n.n + '</b></button>';
+  }).join("");
+
   const extra = storyDone()
     ? '<div class="ns-btns ns-btns-extra">' +
-        '<button class="ns-btn" data-go="custom">CUSTOM NIGHT</button>' +
-        '<button class="ns-btn" data-go="gallery">THE SHOP IN DAYLIGHT</button>' +
+        '<button class="ns-btn ns-btn-sm2" data-go="custom">CUSTOM NIGHT</button>' +
+        '<button class="ns-btn ns-btn-sm2" data-go="gallery">THE SHOP IN DAYLIGHT</button>' +
       '</div>'
     : "";
+
   overlay(
     '<div class="ns-card ns-card-title">' +
       '<p class="ns-sign"><span>' + NS.title + '</span><b>' + NS.title2 + '</b></p>' +
       '<p class="ns-where">' + NS.shop + ' ' + NS.sub + '</p>' +
       '<p class="ns-tag">' + NS.tag + '</p>' +
-      '<div class="ns-btns">' +
-        '<button class="ns-btn ns-btn-go" data-go="start">BEGIN THE SHIFT</button>' +
-        '<button class="ns-btn" data-go="howto">HOW IT WORKS</button>' +
-        /* his statement, once she has already heard it once */
-        (seenIntro() ? '<button class="ns-btn" data-go="intro">HIS STATEMENT</button>' : "") +
-        '<button class="ns-btn" data-go="drawer">THE DRAWER</button>' +
-        '<button class="ns-btn" data-go="sound">SOUND</button>' +
-        '<button class="ns-btn" data-go="badges">RECORD</button>' +
-        '<button class="ns-btn" data-go="quit">LEAVE</button>' +
+
+      /* keeps ns-btn-go: Enter and Space on any overlay press whichever
+         button carries that class, and the door is now that button */
+      '<button class="ns-door ns-btn-go" data-go="start">' +
+        '<b>BEGIN THE SHIFT</b>' +
+        '<span>' + (got ? "night " + Math.min(un, NIGHTS.length) + " of " + NIGHTS.length
+                        : "midnight to six") + '</span>' +
+      '</button>' +
+
+      /* the two that teach her */
+      '<div class="ns-btns ns-btns-row">' +
+        '<button class="ns-btn ns-btn-sm2" data-go="howto">HOW IT WORKS</button>' +
+        (seenIntro() ? '<button class="ns-btn ns-btn-sm2" data-go="intro">HIS STATEMENT</button>' : "") +
+      '</div>' +
+      /* the two that hold what she has found */
+      '<div class="ns-btns ns-btns-row">' +
+        '<button class="ns-btn ns-btn-sm2" data-go="drawer">THE DRAWER</button>' +
+        '<button class="ns-btn ns-btn-sm2" data-go="badges">RECORD</button>' +
       '</div>' +
       extra +
-      '<p class="ns-pick">NIGHT ' + sel + '</p>' +
+
+      '<div class="ns-roster">' +
+        '<p class="ns-roster-lab">THE WEEK</p>' +
+        '<div class="ns-nites">' + roster + '</div>' +
+        '<p class="ns-roster-sub">' +
+          (got >= NIGHTS.length ? "all six. he kept his word."
+           : got ? got + " of " + NIGHTS.length + " behind you"
+                 : "six nights, and then everything") + '</p>' +
+      '</div>' +
+
       '<button class="ns-cozy' + (G.cozy ? " on" : "") + '" data-go="cozy">' +
         '<i></i><b>COZY MODE</b><span>' + (G.cozy ? "on — softer everything" : "off — the shop as it is") + '</span></button>' +
+
+      '<div class="ns-btns ns-btns-foot">' +
+        '<button class="ns-btn ns-btn-quiet" data-go="sound">SOUND</button>' +
+        '<button class="ns-btn ns-btn-quiet" data-go="quit">LEAVE</button>' +
+      '</div>' +
     '</div>', "ns-ov-title");
 }
 
@@ -11229,6 +11686,8 @@ function beginNight(n, opts) {
   G.shiftT = nextIn(TUNE.shift.firstAt);
   G.figmentT = nextIn(TUNE.figment.firstAt);
   G.caption = ""; G.captionT = 0;
+  G.task = null;
+  if (EL["ns-task"]) { EL["ns-task"].hidden = true; EL["ns-task"].textContent = ""; }
   sayQueue = []; sayUntil = 0;
   G.stats = { doorSec: 0, camSec: 0, knocks: 0, arrivals: 0, closes: 0, surges: 0, shifts: 0,
               alarms: 0, moves: 0, figments: 0, finds: 0, winds: 0, slack: 0, returns: 0,
@@ -11409,6 +11868,7 @@ function uiTick(dt) {
   /* the annunciator's caption. A vocoder cannot be understood and is not
      meant to be — the words are here. */
   if (G.captionT > 0) G.captionT -= dt;
+  taskShow();
   if (EL["ns-say"]) {
     /* the system only talks during a shift. On any card — pause, over,
        dawn, the gallery — the strip is gone, not fading. */
@@ -13201,7 +13661,106 @@ const testHooks = {
     target: VOICE_BED,
   }),
   door: () => cueDuck(0.5),
+  /* sample the bed from inside the page, on the frame clock, because
+     a check that samples it over a round trip cannot tell a fader
+     moving fast from a harness answering slowly -- and will report the
+     smoothest duck in the world as a snap */
+  bedTrace: (ms) => new Promise((done) => {
+    /* TWO THINGS THIS GOT WRONG, BOTH OF WHICH LOOKED LIKE A HANG.
+       perf() in this file is in SECONDS -- it divides performance.now()
+       by a thousand -- so comparing it against a millisecond budget ran
+       the trace for 1500 seconds. And requestAnimationFrame never fires
+       in a headless page, because nothing ever paints. */
+    const out = [], t0 = perf(), cap = (ms || 1500) / 1000;
+    const tick = () => {
+      out.push([+((perf() - t0) * 1000).toFixed(1), +sideGain.gain.value.toFixed(4)]);
+      if (perf() - t0 < cap) setTimeout(tick, 16); else done(out);
+    };
+    tick();
+  }),
   bedMode: (m) => musicMode(m),
+  taskFor: (n, h) => taskFor(n, h),
+  /* why a particular line did or did not come out in his voice */
+  voiceWhy: (text) => ({
+    on: VOX_FILE.on,
+    has: voiceHas(text),
+    ready: voiceReadyFor(text),
+    id: VOX_FILE.map ? VOX_FILE.map[String(text).trim()] || null : null,
+    muted: muted, mix: MIX.voice, ctx: AC ? AC.state : null,
+  }),
+  reveal: (n) => { const r = NS.reveal[n]; if (r) revealCard(r); return !!r; },
+  taskState: () => ({ phase: G.phase, tutor: tutorOn(), cine: CINE.on,
+                      hour: G.hour, night: G.night, task: G.task,
+                      shown: EL["ns-task"] ? !EL["ns-task"].hidden : null,
+                      hud: EL["ns-hud"] ? !EL["ns-hud"].hidden : null }),
+  taskPoke: () => { taskShow(); return G.task; },
+  /* drop straight into a shift at a given hour, so a check can look at
+     what she actually sees rather than at the title screen */
+  begin: (night, hour) => {
+    G.night = night || 1;
+    beginNight(G.night);
+    if (hour) { G.hour = hour; taskShow(); }
+    return { phase: G.phase, night: G.night, hour: G.hour };
+  },
+  /* WHAT THE BALANCE ACTUALLY IS, IN DECIBELS.
+
+     Every level in this chapter was set by reading a number and
+     thinking it looked about right. That is how the narrator ended up
+     on top of the score: -18 LUFS speech is loud, the music bus peaks
+     around a third of full scale, and the bed was ducked another 6dB
+     underneath it on top of that. Three reasonable-looking decisions
+     multiplying into one that is not.
+
+     This puts a meter on each bus and reports the difference, so the
+     balance is a measurement rather than an opinion. */
+  balance: (ms) => new Promise((done) => {
+    if (!AC || !MUS.bus) return done(null);
+    const mk = (src) => {
+      const a = AC.createAnalyser(); a.fftSize = 2048; src.connect(a); return a;
+    };
+    const aMus = mk(MUS.bus), aVox = mk(cueGain);
+    const buf = new Float32Array(2048);
+    let mus = 0, vox = 0, n = 0, nv = 0;
+    const t0 = perf(), cap = (ms || 1200) / 1000;
+    const tick = () => {
+      aMus.getFloatTimeDomainData(buf);
+      let e = 0; for (let i = 0; i < buf.length; i++) e += buf[i] * buf[i];
+      mus += e / buf.length;
+      aVox.getFloatTimeDomainData(buf);
+      e = 0; for (let i = 0; i < buf.length; i++) e += buf[i] * buf[i];
+      /* GATED, the way a loudness meter is.
+         Speech is mostly gaps -- between words, between sentences, and
+         the lead-in and tail every take carries. Averaging those in
+         measures the silence as if it were the man, and the answer
+         moves with how many commas the line had. Only frames with
+         something in them count. */
+      const fr = e / buf.length;
+      if (fr > 1e-6) { vox += fr; nv++; }
+      n++;
+      if (perf() - t0 < cap) setTimeout(tick, 20);
+      else {
+        /* METER THE MUSIC WHERE IT LEAVES, NOT WHERE IT STARTS.
+           MUS.bus feeds sideGain and sideGain is what the duck moves,
+           so a meter on the bus is reading the score at full level no
+           matter how far under the voice it has been pushed. The first
+           run of this reported a 0.9dB dip during a line that was
+           actually ducking by six and a half, and a 3.4dB gap that was
+           really closer to ten. */
+        const bed = sideGain.gain.value;
+        const m = (mus / n + 1e-12) * bed * bed;
+        const v = (nv ? vox / nv : 0) + 1e-12;
+        done({
+          music: +(10 * Math.log10(m)).toFixed(1),
+          voice: +(10 * Math.log10(v)).toFixed(1),
+          gap:   +(10 * Math.log10(v / m)).toFixed(1),
+          bed:   +bed.toFixed(3),
+          rms:   +(MUS.rms || 0).toFixed(4),
+          trim:  +voiceTrim().toFixed(3),
+        });
+      }
+    };
+    tick();
+  }),
   /* which path the last line took, and how many went out as speech
      because their take had not arrived yet */
   said: () => ({ took: VOX_FILE.took, late: VOX_FILE.late,

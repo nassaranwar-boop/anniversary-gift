@@ -54,9 +54,14 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
      on -- and a check that asks "what happened just now" reads the
      previous line's answer and cheerfully reports success. */
   await p.evaluate((ls) => { ls.forEach((l) => OuissysNightShift.__night.speak(l)); }, lines);
-  await p.waitForTimeout(2500);
+  /* long enough for the cold-start wait to resolve: the chapter holds a
+     line whose take has not landed rather than handing it to the robot,
+     and a check that samples before that resolves is measuring the
+     wait, not the outcome */
+  await p.waitForTimeout(7000);
   const st = await p.evaluate(() => OuissysNightShift.__night.said());
-  console.log('       ' + st.plays.tape + ' in his voice, ' + st.plays.speech + ' read by the machine\n');
+  console.log('       ' + st.plays.tape + ' in his voice, ' + st.plays.speech
+              + ' not (' + st.late + ' held for a take, ' + st.ready + ' takes in memory)\n');
 
   ok('every line of the opening statement is his recording',
      st.plays.tape === lines.length && st.plays.speech === 0, st.plays);

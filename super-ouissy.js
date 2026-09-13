@@ -58,6 +58,32 @@ window.SuperOuissy = (function () {
     /* The line under the title on the difficulty screen. */
     tagline: "a quest, three worlds, and a prince at the end",
 
+    /* WHAT SHE SAYS.
+
+       She had three faces — a raincloud on Easy, a clock on Medium, the
+       Heartbreaker herself on Hard — and between the three of them she
+       said two things in the whole game: an exclamation mark when her
+       health dropped a band, and her own score when she died. A health
+       bar with an exclamation mark over it is not a character.
+
+       Four lines each: when she notices her, when the fight turns twice,
+       and when she goes down. They are three different characters now and
+       the last line of each is the one that matters — because the thing
+       standing between them is different on every difficulty, and on Hard
+       it is heartbreak, and heartbreak conceding is worth a sentence.
+
+       They are DOM, not canvas. Six-pixel text on a 320-wide picture is
+       the same unreadable smear it was in the story scenes. */
+    bossLines: {
+      cloud: { wake: "He isn't for you.",       p1: "Turn around.",
+               p2: "You're STILL here?",        die: "...take him, then." },
+      clock: { wake: "You're late.",            p1: "Time is on my side.",
+               p2: "And you are out of it.",    die: "...keep your minutes." },
+      heart: { wake: "I have broken better.",   p1: "They all stop eventually.",
+               p2: "Why are you still standing?", die: "...then you meant it." },
+    },
+
+
     /* The how-to screen. Written for someone who has never played a
        platformer, because she has not. Each section is a heading and a
        list of [thing, what it means] rows. */
@@ -2072,6 +2098,7 @@ window.SuperOuissy = (function () {
       groundY: findGroundY(grid, w, h),
       ents: ents, items: items, start: start, goal: goal,
       checks: checks, boss: boss, biome: def.biome,
+      signs: mkSigns(grid, w, h, start, goal, index),
       /* pristine copies, so the offline harness can put a level back the
          way it found it between assertions (see __soReset) */
       grid0: grid.map(function (r) { return r.slice(); }),
@@ -2082,6 +2109,58 @@ window.SuperOuissy = (function () {
   }
 
   function isSolidChar(ch) { return !!ch && SOLID.indexOf(ch) >= 0; }
+
+  /* =======================================================================
+     THE LEVEL TALKS BACK
+
+     The game has always been written in his voice — the world cards, the
+     revive cards, the whole letter at the end — but the part she spends
+     the most time in, the LEVEL, said nothing at all. Three little boards
+     on posts per world, planted on the way through, and walking past one
+     puts a line up.
+
+     Where they go is worked out rather than written down: a fraction of
+     the way from her start to the goal, then the nearest column with
+     ground under it and two tiles of air above, so editing a level's
+     layout can never leave a signpost buried in a wall or hanging over a
+     pit. They are decoration — nothing about them collides — so the worst
+     a badly-placed one can do is look silly.
+     ======================================================================= */
+  var SIGN_LINES = [
+    ["you already did the hard part. you started.",
+     "if you're going to fall, fall forwards.",
+     "nearly. i can see you from here."],
+    ["you're better at this than world one expected.",
+     "take the high road — i left something up there.",
+     "don't rush the end of it. i'm not going anywhere."],
+    ["last one. breathe.",
+     "everything past this is just her and you.",
+     "come and get me."],
+  ];
+  function mkSigns(grid, w, h, start, goal, index) {
+    var lines = SIGN_LINES[Math.min(SIGN_LINES.length - 1, index)] || [];
+    var x0 = Math.floor(start.x / T), x1 = goal ? Math.floor(goal.x / T) : w - 2;
+    var out = [];
+    if (x1 - x0 < 12) return out;
+    for (var i = 0; i < lines.length; i++) {
+      var want = Math.round(x0 + (x1 - x0) * (0.24 + i * 0.26)), at = null;
+      for (var dd = 0; dd < 10 && !at; dd++)
+        for (var sg = -1; sg <= 1 && !at; sg += 2) {
+          var tx = want + dd * sg;
+          if (tx <= x0 + 2 || tx >= x1 - 2) continue;
+          for (var ty = 3; ty < h; ty++)
+            if (isSolidChar(grid[ty][tx]) && grid[ty - 1][tx] === "." && grid[ty - 2][tx] === ".") {
+              at = { x: tx * T, y: (ty - 1) * T, text: lines[i], said: false };
+              break;
+            }
+        }
+      if (!at) continue;
+      var clash = false;
+      for (var q = 0; q < out.length; q++) if (Math.abs(out[q].x - at.x) < T * 5) clash = true;
+      if (!clash) out.push(at);
+    }
+    return out;
+  }
 
   /* The row the main ground surface sits on: the one with the most tiles
      that are solid with air directly above. Worked out rather than written
@@ -2399,11 +2478,99 @@ window.SuperOuissy = (function () {
     }
   }
 
+  /* HER VOICE. One line, high on the stage, gone in two and a half
+     seconds, and it never stops the fight to be read. */
+  var bossSayT = 0;
+  function bossSay(key) {
+    var b = G.level && G.level.boss;
+    if (!b) return;
+    if (!b.said) b.said = {};
+    if (b.said[key]) return;
+    b.said[key] = true;
+    var set = SO.bossLines[DIFF[G.diff].bossSkin] || SO.bossLines.heart;
+    var line = set[key];
+    if (!line) return;
+    var el = $("so-boss-say");
+    if (!el) {
+      var stage = $("so-stage");
+      if (!stage) return;
+      el = document.createElement("div");
+      el.id = "so-boss-say";
+      el.className = "so-boss-say";
+      stage.appendChild(el);
+    }
+    el.textContent = line;
+    el.className = "so-boss-say";
+    void el.offsetWidth;                     /* restart the fade */
+    el.className = "so-boss-say on so-boss-" + DIFF[G.diff].bossSkin;
+    clearTimeout(bossSayT);
+    bossSayT = setTimeout(function () {
+      var e = $("so-boss-say");
+      if (e) e.className = "so-boss-say";
+    }, 2600);
+  }
+  function bossHush() {
+    clearTimeout(bossSayT);
+    var e = $("so-boss-say");
+    if (e) e.className = "so-boss-say";
+  }
+
+  /* His voice, on a board, rather than hers: same fade as the Queen's
+     lines but at the foot of the stage, where it cannot be mistaken for
+     something the thing in front of her just said. */
+  var signSayT = null;
+  function signSay(text) {
+    var el = $("so-sign-say");
+    if (!el) {
+      var stage = $("so-stage");
+      if (!stage) return;
+      el = document.createElement("div");
+      el.id = "so-sign-say";
+      stage.appendChild(el);
+    }
+    el.textContent = text;
+    el.className = "so-sign-say";
+    void el.offsetWidth;
+    el.className = "so-sign-say on";
+    clearTimeout(signSayT);
+    signSayT = setTimeout(function () {
+      var e = $("so-sign-say");
+      if (e) e.className = "so-sign-say";
+    }, 3400);
+  }
+  function signHush() {
+    clearTimeout(signSayT);
+    var e = $("so-sign-say");
+    if (e) e.className = "so-sign-say";
+  }
+
   function popText(x, y, text, colour) {
     G.floats.push({ x: x, y: y, t: text, c: colour || "#fff6c0", life: 0 });
   }
 
   function shake(amount) { G.shake = Math.max(G.shake, amount); }
+
+  /* ---- WHAT A HIT FEELS LIKE ---------------------------------------------
+
+     The Death scene has hit stop and a camera that moves when something
+     lands, and the game it lives inside had a screen shake and a puff of
+     dust. This is that toolkit, brought back to where the playing happens.
+
+     HIT STOP is the frame where everything holds — a few hundredths of a
+     second in which nothing moves and the picture is still drawn. It is
+     most of why a stomp feels like it weighed something, and taking it
+     out turns the same animation into a slide. It is deliberately tiny
+     here: this is a platformer with momentum in it, and a long freeze in
+     the middle of a jump is a bug, not a punch.
+
+     THE PUNCH is one number. Positive for something she did, negative for
+     something done to her, easing back to nothing on its own. It scales
+     the PICTURE about the middle of the screen; physics never sees it, so
+     it can never make a jump miss. */
+  function hitStop(secs) { G.freeze = Math.max(G.freeze || 0, secs); }
+  function punch(amount) {
+    if (Math.abs(amount) > Math.abs(G.punch || 0)) G.punch = amount;
+  }
 
   /* =======================================================================
      THE PLAYER
@@ -2560,6 +2727,7 @@ window.SuperOuissy = (function () {
           G.level.grid[ty][tx] = ".";
           burst(tx * T + 8, ty * T + 8, 14, [BIOME[G.level.biome].brick[0], BIOME[G.level.biome].brick[1], BIOME[G.level.biome].brick[2]], 90, { max: .6, size: 2 });
           addScore(TUNE.scores.block); sfx("break"); shake(3);
+          hitStop(0.03); punch(0.4);
         } else { G.bumps.push({ tx: tx, ty: ty, t: 0 }); sfx("bump"); }
       }
     }
@@ -2577,6 +2745,7 @@ window.SuperOuissy = (function () {
     if (p.big && !fatal) {              // the glow-up takes the hit for her
       setBig(p, false);
       p.invuln = TUNE.invuln * d.invulnMul;
+      hitStop(0.05); punch(-0.9);
       burst(p.x + p.w / 2, p.y + p.h / 2, 18, ["#ff9ec4", "#ffffff", "#ffd6e6"], 90, { max: .6 });
       sfx("shrink"); shake(4);
       return;
@@ -2588,6 +2757,7 @@ window.SuperOuissy = (function () {
        the body landed, which is not the same place at all */
     G.deathAt = { x: p.x, y: p.y };
     p.dead = 0.001; p.vy = -230; p.vx = 0; p.pose = "hurt";
+    hitStop(0.07); punch(-1.2);
     G.deaths++;
     burst(p.x + p.w / 2, p.y + p.h / 2, 20, ["#ff5f95", "#ffffff"], 100, { max: .8 });
     sfx("die"); shake(6);
@@ -2635,8 +2805,24 @@ window.SuperOuissy = (function () {
     return G.diff === "hard" && !!window.Rescue;
   }
 
+  /* HOW MANY TIMES IN THE SAME PLACE.
+
+     Not deaths in the level — deaths within a screen of each other. Dying
+     three times spread across a world is a world doing its job; dying
+     three times on one jump is the game being mean to her, and those are
+     the only ones worth offering anything about. */
+  function noteStuck() {
+    var dx = G.deathAt ? G.deathAt.x : (G.player ? G.player.x : 0);
+    if (Math.abs(dx - G.stuckAt) < 56) G.stuckN++;
+    else { G.stuckN = 1; G.stuckAt = dx; }
+  }
+  function stuckNow() {
+    return G.stuckN >= G.handGate && !!(G.player && G.player.lastSafe) && !!G.level;
+  }
+
   function afterDeath() {
     G.lives--;
+    noteStuck();
 
     /* <= 0, not < 0. Lives counts the attempts she has left, so when it
        reaches zero there are none — but the test was < 0, which gave her
@@ -2675,7 +2861,10 @@ window.SuperOuissy = (function () {
        more than it gives: five lives on Easy, three on Medium, two on
        Hard. She has to hold more than the price for the offer to appear,
        because paying all of it would leave nothing to be revived into. */
-    if (canBossRevive()) { offerBossRevive(); return; }
+    /* ...and if she has fallen in the same place three times, the offer
+       appears whether or not she can afford anything, because the thing
+       being offered costs nothing. */
+    if (canBossRevive() || stuckNow()) { offerBossRevive(); return; }
 
     /* Hard, and she still has a life: he comes and gets her first */
     if (rescuesOn()) {
@@ -2815,21 +3004,57 @@ window.SuperOuissy = (function () {
     var ribbon = null;
     if (DIFF[G.diff].checkpoints && G.level && G.level.checks)
       G.level.checks.forEach(function (c) { if (c.taken) ribbon = c; });
+    if (G.handCheck && (!ribbon || G.handCheck.x > ribbon.x)) ribbon = G.handCheck;
+
+    /* THE GENTLER WAY, OFFERED RATHER THAN APPLIED.
+
+       Three falls in the same spot and the card changes what it leads
+       with. It does not drop the difficulty and it does not skip the bit
+       — either of those would take the thing she is about to do away from
+       her. It moves the ribbon: a checkpoint tied on the last ground she
+       stood on safely, honoured on every difficulty including the one
+       with no checkpoints, plus the glow-up so the next go has a hit in
+       hand. It costs nothing, and saying no is a real answer — the offer
+       then holds off for another two falls rather than asking again the
+       moment she fails. */
+    var paid = canBossRevive(), hand = stuckNow();
+    var btns = "";
+    if (hand)
+      btns += '<button class="so-btn so-btn-go" id="so-hand">MOVE THE RIBBON</button>';
+    if (paid)
+      btns += '<button class="so-btn ' + (hand ? "so-btn-quiet" : "so-btn-go") + '" id="so-revive-yes">' +
+              (his ? "TAKE HIS HAND" : "BE REVIVED") + '</button>';
+    btns += '<button class="so-btn so-btn-quiet" id="so-revive-no">' +
+            (hand ? "I'VE GOT THIS" : ribbon ? "LAST RIBBON" : "START OVER") + '</button>';
+
     overlay(
       '<div class="so-card so-card-revive">' +
-        '<p class="so-card-kicker">' + (his ? "SHE IS NOT LEFT TO FALL" : "GET BACK UP") + '</p>' +
-        '<h3>' + (his ? "He can put you back" : "Be revived") + '</h3>' +
+        '<p class="so-card-kicker">' +
+          (hand ? "THIS BIT IS MEAN" : his ? "SHE IS NOT LEFT TO FALL" : "GET BACK UP") + '</p>' +
+        '<h3>' + (hand ? "Let me move the ribbon" : his ? "He can put you back" : "Be revived") + '</h3>' +
         '<p class="so-card-note">' +
-          "Right where you fell, with everything exactly as you left it. " +
-          (ribbon ? "Or go back to the last ribbon." : "Or start over from the beginning.") + '</p>' +
-        '<p class="so-revive-cost"><span>LIVES</span><b>' + left + '</b>' +
-          '<i>&rarr;</i><b>' + after + '</b></p>' +
-        '<button class="so-btn so-btn-go" id="so-revive-yes">' +
-          (his ? "TAKE HIS HAND" : "BE REVIVED") + '</button>' +
-        '<button class="so-btn so-btn-quiet" id="so-revive-no">' +
-          (ribbon ? "LAST RIBBON" : "START OVER") + '</button>' +
+          (hand
+            ? "Same spot, " + G.stuckN + " times now. I'll tie a ribbon on the last safe " +
+              "ground you stood on and send you back with a glow on. It costs nothing." +
+              (paid ? " Or spend lives and stand up right where you fell." : "")
+            : "Right where you fell, with everything exactly as you left it. " +
+              (ribbon ? "Or go back to the last ribbon." : "Or start over from the beginning.")) + '</p>' +
+        (paid ? '<p class="so-revive-cost"><span>LIVES</span><b>' + left + '</b>' +
+                '<i>&rarr;</i><b>' + after + '</b></p>' : "") +
+        btns +
       "</div>", "so-ov-card");
-    $("so-revive-yes").addEventListener("click", function () {
+
+    if ($("so-hand")) $("so-hand").addEventListener("click", function () {
+      closeOverlay();
+      var sp = G.player && G.player.lastSafe;
+      if (sp) G.handCheck = { x: sp.x, y: sp.y };
+      G.stuckN = 0;
+      G.state = "play";
+      bgmDuck(false);
+      if (rescuesOn()) playCutscene("rescue", herePos(), handRespawn);
+      else handRespawn();
+    });
+    if ($("so-revive-yes")) $("so-revive-yes").addEventListener("click", function () {
       closeOverlay();
       G.lives -= (reviveCost() - 1);   /* the death took the first one */
       G.state = "play";
@@ -2841,11 +3066,24 @@ window.SuperOuissy = (function () {
     });
     $("so-revive-no").addEventListener("click", function () {
       closeOverlay();
+      /* she said she has got it. the offer stops asking for a while — a
+         card that reappears the second she fails again is not an offer,
+         it is nagging. */
+      if (hand) { G.stuckN = 0; G.handGate += 2; }
       G.state = "play";
       bgmDuck(false);
       if (rescuesOn()) playCutscene("rescue", herePos(), respawn);
       else respawn();
     });
+  }
+
+  /* the way back when she takes the hand: the moved ribbon, and a glow-up
+     so the stretch that has been killing her gets one free mistake */
+  function handRespawn() {
+    respawn();
+    setBig(G.player, true);
+    G.player.invuln = Math.max(G.player.invuln, 1.8);
+    popText(G.player.x, G.player.y - 14, "ribbon moved. go on.", "#ffd9a0");
   }
 
   function herePos() {
@@ -2876,6 +3114,9 @@ window.SuperOuissy = (function () {
     var L = G.level, d = DIFF[G.diff];
     var at = L.start, cp = null;
     if (d.checkpoints) L.checks.forEach(function (c) { if (c.taken) cp = c; });
+    /* the one she was GIVEN counts on every difficulty, including the one
+       that has no checkpoints of its own — that is the whole offer */
+    if (G.handCheck && (!cp || G.handCheck.x > cp.x)) cp = G.handCheck;
     if (cp) at = cp;
     G.player = mkPlayer(at.x + 2, at.y - 2);
     G.player.invuln = 1.4;
@@ -2964,6 +3205,7 @@ window.SuperOuissy = (function () {
       defeat(e, false);
       p.vy = -(G.keys.jump ? TUNE.stompBoost : TUNE.stompVel);
       p.squash = 1.2;
+      hitStop(0.045); punch(0.5);
       return;
     }
     G.lastHurtBy = "enemy";
@@ -3027,6 +3269,12 @@ window.SuperOuissy = (function () {
       burst(x, y, 30, ["#ff5f95", "#fff6a8", "#ffffff", "#ffd6e6"], 130, { max: 1 });
       shake(5);
       sfx("fanfare");
+      /* THE BIGGEST MOMENT IN THE GAME THAT IS NOT A BOSS. Twenty hearts,
+         and until now it was a burst and a noise. It holds the frame, the
+         picture leans in, and the music grows a second voice for as long
+         as the sparkle lasts — filling the meter does not only hand her a
+         life, it changes what the game sounds like. */
+      hitStop(0.09); punch(1.3);
     }
   }
 
@@ -3134,6 +3382,8 @@ window.SuperOuissy = (function () {
     if (!b.awake) {
       if (Math.abs(p.x - b.x) < B.wake) {
         b.awake = true; sfx("bossWake"); shake(6);
+        bgmFollow();                  /* and the room changes key */
+        bossSay("wake");
         b.mode = "wait"; b.modeT = bossSpec(b).wait;
       }
       stepBossShots(dt);
@@ -3308,13 +3558,17 @@ window.SuperOuissy = (function () {
       b.hp--; b.hurt = 1.1;
       if (fromAbove) p.vy = -TUNE.stompBoost;
       shake(8); sfx("bossHit");
+      hitStop(0.075); punch(0.95);
       burst(b.x + b.w / 2, b.y + 8, 22, ["#ffffff", "#ff5f95", "#ffd166"], 130, { max: .8 });
 
       if (b.hp <= 0) {
         b.dead = 0.001; b.shots.length = 0;
+        bgmFollow();                  /* her tune comes back */
+        bossSay("die");
         addScore(TUNE.scores.boss);
         popText(b.x, b.y - 10, "+" + TUNE.scores.boss, "#fff6a8");
         sfx("bossDie"); shake(12);
+        hitStop(0.16); punch(1.6);
         G.level.goal.open = true;
         return;
       }
@@ -3329,6 +3583,7 @@ window.SuperOuissy = (function () {
         b.vx = 0;
         shake(10); sfx("bossWake");
         popText(b.x, b.y - 18, "!", "#fff6a8");
+        bossSay(b.phase >= 2 ? "p2" : "p1");
       } else {
         b.mode = "open"; b.modeT = Math.max(b.modeT, 0.7);
       }
@@ -3343,6 +3598,15 @@ window.SuperOuissy = (function () {
   function stepGoal(dt) {
     var L = G.level, p = G.player;
     if (p.dead || p.winT) return;
+
+    if (L.signs) L.signs.forEach(function (sn) {
+      if (sn.said) return;
+      if (p.x + p.w > sn.x - 6 && p.x < sn.x + T + 6 &&
+          p.y + p.h > sn.y - 6 && p.y < sn.y + T + 12) {
+        sn.said = true;
+        signSay(sn.text);
+      }
+    });
 
     L.checks.forEach(function (c) {
       if (c.taken) return;
@@ -3394,14 +3658,30 @@ window.SuperOuissy = (function () {
      ======================================================================= */
   function step(dt) {
     if (G.state !== "play") return;
+    /* the held frame. Time does not pass, the shake still settles, and
+       the picture is still painted — which is what makes it read as
+       weight rather than as a hitch. */
+    if (G.freeze > 0) {
+      G.freeze -= dt;
+      G.shake = Math.max(0, G.shake - dt * 14);
+      return;
+    }
     G.elapsed += dt;
 
     var d = DIFF[G.diff];
     if (d.timeLimit && G.timeLeft > 0) {
       G.timeLeft -= dt;
-      if (G.timeLeft <= 30 && !G.warned) { G.warned = true; sfx("hurry"); }
+      if (G.timeLeft <= 30 && !G.warned) { G.warned = true; sfx("hurry"); bgmFollow(); }
       if (G.timeLeft <= 0) { G.timeLeft = 0; hurtPlayer(true); }
     }
+
+    /* THE MUSIC FOLLOWS THE GAME, every frame, rather than being switched
+       by whichever piece of code happens to remember. It is two string
+       comparisons and it returns immediately when nothing has changed —
+       and it means the tune can never be left behind by a path nobody
+       thought of: a boss killed from a debug hook, a level skipped, a
+       clock set by a cheat. The room always sounds like where she is. */
+    bgmFollow();
 
     stepPlayer(dt);
     stepEnemies(dt);
@@ -3416,6 +3696,10 @@ window.SuperOuissy = (function () {
     }
     G.shake = Math.max(0, G.shake - dt * 26);
     if (G.meterFlash > 0) G.meterFlash -= dt;
+    if (G.punch) {
+      G.punch -= G.punch * Math.min(1, dt * 7);
+      if (Math.abs(G.punch) < 0.004) G.punch = 0;
+    }
     moveCamera(dt);
     updateHud();
   }
@@ -3456,6 +3740,18 @@ window.SuperOuissy = (function () {
     var sh = G.shake;
     var ox = Math.round(G.cam.x + (sh ? (Math.random() - .5) * sh : 0));
     var oy = Math.round(G.cam.y + (sh ? (Math.random() - .5) * sh : 0));
+    /* and so is the punch: the whole picture leans in a little on
+       something she landed and pulls back on something that landed on
+       her, about the middle of the screen */
+    var zoomed = false;
+    if (G.punch) {
+      var pz = 1 + (G.punch > 0 ? 0.045 : 0.03) * G.punch;
+      c.save();
+      c.translate(VIEW.w / 2, VIEW.h * 0.56);
+      c.scale(pz, pz);
+      c.translate(-VIEW.w / 2, -VIEW.h * 0.56);
+      zoomed = true;
+    }
 
     /* ---- 1. the backdrop, three layers at three speeds ------------------
        The parallax layers are offset vertically, which leaves a strip of
@@ -3490,6 +3786,7 @@ window.SuperOuissy = (function () {
     /* ---- 3. everything in the world ------------------------------------- */
     drawGoal(c, ox, oy, t);
     L.checks.forEach(function (ck) { drawCheck(c, ck, ox, oy, t); });
+    if (L.signs) L.signs.forEach(function (sn) { drawSign(c, sn, ox, oy, t); });
     L.items.forEach(function (it) { drawItem(c, it, ox, oy); });
     L.ents.forEach(function (e) { e.kind === "mover" ? drawMover(c, e, ox, oy) : drawEnemy(c, e, ox, oy); });
     drawBoss(c, ox, oy, t);
@@ -3509,6 +3806,9 @@ window.SuperOuissy = (function () {
       c.fillStyle = f.c; c.fillText(f.t, f.x - ox, f.y - oy);
       c.restore();
     });
+
+    /* out of the punch before anything that has a camera of its own */
+    if (zoomed) c.restore();
 
     /* the story module paints over the frozen world it interrupted */
     if (G.state === "cutscene" && window.Rescue && Rescue.active()) Rescue.paint(c, t);
@@ -3715,6 +4015,21 @@ window.SuperOuissy = (function () {
     else c.drawImage(ART.power[it.type][k % 2], dx - 1, dy - 1 + bobY);
   }
 
+  /* a board on a post, with a heart on it. it goes dull once it has said
+     its line, so she can see at a glance which ones she has read. */
+  function drawSign(c, sn, ox, oy, t) {
+    var dx = Math.round(sn.x - ox), dy = Math.round(sn.y - oy);
+    if (dx < -24 || dx > VIEW.w + 24) return;
+    var done = sn.said;
+    px(c, dx + 7, dy + 7, 2, 9, "#5c3f28");
+    px(c, dx + 5, dy + 15, 6, 1, "#4a3220");
+    px(c, dx + 1, dy + 1, 14, 8, done ? "#a8865a" : "#e8c98d");
+    px(c, dx + 1, dy + 1, 14, 1, done ? "#c2a274" : "#fff0cf");
+    px(c, dx + 1, dy + 8, 14, 1, "#6d5031");
+    heart(c, dx + 8, dy + 5, 2, done ? "#b07d8e" : "#ff5f95");
+    if (!done) px(c, dx + 7, dy - 2 - (Math.sin(t * 3) > 0 ? 1 : 0), 2, 2, "#fff6a8");
+  }
+
   function drawCheck(c, ck, ox, oy, t) {
     var dx = Math.round(ck.x - ox), dy = Math.round(ck.y - oy);
     if (dx < -30 || dx > VIEW.w + 30) return;
@@ -3874,6 +4189,45 @@ window.SuperOuissy = (function () {
     try { return JSON.parse(localStorage.getItem(BEST_KEY) || "{}") || {}; } catch (e) { return {}; }
   }
   function saveBest(b) { try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (e) {} }
+
+  /* =======================================================================
+     HEARTS THAT BUY MOMENTS
+
+     Hearts have only ever been score. You collect them for six worlds and
+     the number goes up and that is the end of their story — and in a game
+     about the two of them, a heart being worth 200 points is a strange
+     thing for a heart to be worth.
+
+     So they buy something now, and deliberately not an advantage: ten of
+     them buy a MOMENT, which is a real one, written down. They are kept
+     between runs, so the pile is hers and grows whatever difficulty she
+     plays, and once they have all been read they can be read again for
+     free rather than the button turning into a locked door.
+     ======================================================================= */
+  var MOMENT_COST = 10;
+  var MOM_KEY = "so-moments-v1";
+  var MOMENTS = [
+    "the first time you laughed at something I said, I went back over it all evening trying to work out which part did it, so I could do it again.",
+    "you fall asleep mid-sentence and wake up finishing it. I have never told you this. I'm telling you now.",
+    "I have a list of your small faces. the one before you say something you know is funny is my favourite.",
+    "you do the thing where you're tired and you go quiet and you still ask how my day was.",
+    "somebody asked me what you're like and I started with the way you say my name and had to stop.",
+    "the day everything went wrong, you were the only part that didn't.",
+    "I keep the voice notes. all of them. even the ones that are four seconds of you saying you'll call back.",
+    "you make ordinary days feel like they're worth remembering, which is a thing I didn't know a person could do to a Tuesday.",
+  ];
+  function loadMoments() {
+    try { return JSON.parse(localStorage.getItem(MOM_KEY) || "[]") || []; } catch (e) { return []; }
+  }
+  function saveMoments(a) { try { localStorage.setItem(MOM_KEY, JSON.stringify(a)); } catch (e) {} }
+  /* the next one she has not read, or — once she has read them all — one
+     at random, because a pile of letters you are allowed to reopen is
+     nicer than a pile you are finished with */
+  function nextMoment() {
+    var read = loadMoments();
+    for (var i = 0; i < MOMENTS.length; i++) if (read.indexOf(i) < 0) return i;
+    return Math.floor(Math.random() * MOMENTS.length);
+  }
   function bestFor(diff) {
     var b = loadBest()[diff];
     return b || { score: 0, time: 0, hearts: 0, cleared: false };
@@ -4082,13 +4436,47 @@ window.SuperOuissy = (function () {
           (timeBonus ? row("TIME BONUS", "+" + timeBonus) : "") +
           row("SCORE", pad(G.score, 6)) +
         "</div>" +
+        '<div class="so-moment-slot" id="so-moment-slot"></div>' +
+        '<div class="so-moment-buy" id="so-moment-buy"></div>' +
         '<button class="so-btn so-btn-go" id="so-next">' + (last ? "TO THE CASTLE" : "NEXT WORLD") + "</button>" +
       "</div>", "so-ov-card");
     function row(a, b) { return '<div class="so-res-row"><span>' + a + "</span><b>" + b + "</b></div>"; }
+    renderMomentBuy();
     $("so-next").addEventListener("click", function () {
       closeOverlay();
       if (last) showEnding();
       else { G.levelIndex++; startLevel(G.levelIndex); }
+    });
+  }
+
+  /* the buy button, redrawn every time she spends, so the count on it is
+     never the count from before the last one */
+  function renderMomentBuy() {
+    var host = $("so-moment-buy");
+    if (!host) return;
+    if (G.hearts < MOMENT_COST) {
+      host.innerHTML = '<p class="so-moment-none">' +
+        (G.hearts ? G.hearts + " hearts. " + MOMENT_COST + " buys a moment." : "") + "</p>";
+      return;
+    }
+    host.innerHTML = '<button class="so-btn so-btn-quiet so-moment-btn" id="so-moment">' +
+      "A MOMENT &middot; " + MOMENT_COST + ' <svg class="gl gl-life" aria-hidden="true"><use href="#ic-px-heart"/></svg>' +
+      "</button><p class=\"so-moment-none\">you have " + G.hearts + "</p>";
+    $("so-moment").addEventListener("click", function () {
+      if (G.hearts < MOMENT_COST) return;
+      G.hearts -= MOMENT_COST;
+      var i = nextMoment(), read = loadMoments();
+      if (read.indexOf(i) < 0) { read.push(i); saveMoments(read); }
+      var slot = $("so-moment-slot");
+      if (slot) {
+        slot.innerHTML = '<p class="so-moment-text">' + MOMENTS[i] + "</p>";
+        slot.className = "so-moment-slot";
+        void slot.offsetWidth;
+        slot.className = "so-moment-slot on";
+      }
+      sfx("heart");
+      updateHud();
+      renderMomentBuy();
     });
   }
 
@@ -4124,7 +4512,12 @@ window.SuperOuissy = (function () {
      never left. */
   function showEnding(again) {
     G.state = "ending";
-    setBgm(false);
+    /* NOT SILENCE. The ending used to switch the music off, which is a
+       strange way to end anything: three worlds and a boss and then a
+       held breath with nothing under it. It plays the tune the whole game
+       has been an arrangement of, slowly, with a third sung over it — and
+       it plays ONCE and stops rather than looping behind her reading. */
+    if (G.bgmOn) { bgmPlay("win"); setBgm(true); } else stopBgm();
     /* remember the run */
     var all = loadBest(), b = all[G.diff] || { score: 0, time: 0, hearts: 0, cleared: false };
     var total = G.elapsed;
@@ -4136,7 +4529,7 @@ window.SuperOuissy = (function () {
     if (window.markSuperOuissyDone) window.markSuperOuissyDone();
 
     overlay(
-      '<div class="so-end">' +
+      '<div class="so-end' + (again ? "" : " playing") + '">' +
         '<div class="so-end-art" id="so-end-art"></div>' +
         '<p class="so-end-kicker">' + SO.ending.kicker + "</p>" +
         '<div class="so-end-lines">' + endingLines().map(function (l) { return "<p>" + l + "</p>"; }).join("") + "</div>" +
@@ -4153,7 +4546,18 @@ window.SuperOuissy = (function () {
           '<div class="so-menu-actions">' + endActions() + "</div>" +
         "</div>" +
       "</div>", "so-ov-end");
-    startEndingArt($("so-end-art"));
+    startEndingArt($("so-end-art"), !!again);
+    /* the scene is skippable from its first frame: anywhere on the overlay,
+       any key. she has just finished the game — nothing here gets to hold
+       her hostage for nine seconds. */
+    if (!again) {
+      var ov = document.querySelector(".so-ov-end");
+      if (ov) {
+        var go = function () { if (endSkip) endSkip(); };
+        ov.addEventListener("pointerdown", go);
+        ov.addEventListener("keydown", go);
+      }
+    }
     if (!again) sfx("victory");
     wireEndActions();
   }
@@ -4253,76 +4657,221 @@ window.SuperOuissy = (function () {
 
   /* The last picture: a lit castle doorway, Ouissy, and him waiting. */
   var endRaf = null;
-  function startEndingArt(host) {
+  /* =======================================================================
+     THE ENDING, AS A SCENE
+
+     It used to be a picture. A 240x120 loop that started with her already
+     most of the way across the courtyard and him already standing in the
+     doorway, both of them drawn at the same instant the wall of text they
+     belong to appeared underneath. Three worlds, a boss, and the last
+     thing the game says to her arrives as a background image.
+
+     It is directed now. Nine seconds, on a timeline, with the text held
+     back until they have actually met. She walks in out of the dark. The
+     sun comes up because she is crossing, not because a clock said so.
+     He comes out to meet her rather than waiting to be arrived at. The
+     camera pushes in on the two of them and the letterbox opens, and only
+     then does anything ask her to read.
+
+     And it is skippable from the first frame, because the one thing worse
+     than no scene is a scene you cannot get out of.
+     ======================================================================= */
+  var END_BEAT = { dawn: 1.0, walk: 4.6, pause: 5.8, meet: 7.4, bloom: 9.2 };
+  var endSkip = null, endT = 0;
+
+  function hex(s) { return [parseInt(s.substr(1, 2), 16), parseInt(s.substr(3, 2), 16), parseInt(s.substr(5, 2), 16)]; }
+  function mixHex(a, b, k) {
+    var A = hex(a), B = hex(b), o = "#";
+    for (var i = 0; i < 3; i++) {
+      var v = Math.round(A[i] + (B[i] - A[i]) * k).toString(16);
+      o += v.length < 2 ? "0" + v : v;
+    }
+    return o;
+  }
+  var END_NIGHT = [{ p: 0, c: "#0b0718" }, { p: .42, c: "#160d28" }, { p: .78, c: "#241338" }, { p: 1, c: "#3a1c40" }];
+  var END_DAWN  = [{ p: 0, c: "#2a1a4e" }, { p: .42, c: "#6a2a63" }, { p: .78, c: "#c8536f" }, { p: 1, c: "#ffb07a" }];
+  function endSky(c, k) {
+    var stops = [];
+    for (var i = 0; i < END_NIGHT.length; i++)
+      stops.push({ p: END_NIGHT[i].p, c: mixHex(END_NIGHT[i].c, END_DAWN[i].c, k) });
+    ditherSky(c, 0, 0, 240, 120, stops);
+  }
+  function ease(k) { return k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k); }
+  function seg(t, a, b) { return ease((t - a) / (b - a)); }
+
+  /* him: eight pixels of coat, a face, and hair that has never once been
+     tidy. Drawn from the feet up so both of them stand on the same line. */
+  function paintHim(c, x, foot, lean) {
+    var y = foot - 14;
+    px(c, x, y, 8, 14, "#3d5a8a");
+    px(c, x, y, 8, 2, "#5a7ab0");
+    px(c, x + (lean > 0 ? 8 : -1), y + 5, 1, 5, "#3d5a8a");   /* the arm he is reaching with */
+    blob(c, x + 4, y - 4, 5, 5, ["#ffd9c4", "#f0b096", "#d8967c", "#c07f66"]);
+    px(c, x, y - 9, 9, 3, "#3a2a22");
+    px(c, x + 2, y - 4, 1, 1, "#3d2340"); px(c, x + 6, y - 4, 1, 1, "#3d2340");
+    px(c, x + 3, y - 1, 3, 1, "#3d2340");
+  }
+
+  function startEndingArt(host, instant) {
     if (!host) return;
     var s = spriteCanvas(240, 120), c = s.ctx;
     host.innerHTML = ""; host.appendChild(s.c);
-    var t0 = 0;
+    var t0 = 0, skipped = !!instant, shown = !!instant;
+    var GROUND = 108;
+
+    /* tapping anywhere gets her out of it. it does not cut to black — it
+       runs the timeline forward to the moment they are together, which is
+       the only frame of this anybody would be sad to miss. */
+    endSkip = function () {
+      if (skipped) return;
+      skipped = true;
+      if (t0) t0 = performance.now() - END_BEAT.bloom * 1000;
+    };
+
+    function reveal() {
+      if (shown) return;
+      shown = true;
+      var card = host.parentNode;
+      if (card && card.classList) card.classList.remove("playing");
+    }
+
     function frame(now) {
       endRaf = requestAnimationFrame(frame);
-      if (!t0) t0 = now;
-      var t = (now - t0) / 1000;
-      var P = BIOME.castle;
-      ditherSky(c, 0, 0, 240, 120, P.sky);
+      if (!t0) t0 = now - (instant ? END_BEAT.bloom * 1000 : 0);
+      var t = endT = (now - t0) / 1000;
+      if (t >= END_BEAT.meet) reveal();
+
+      /* ---- where everybody is, this frame ---------------------------- */
+      var dawn = seg(t, END_BEAT.dawn, END_BEAT.bloom * 0.92);
+      var wk = seg(t, END_BEAT.dawn, END_BEAT.walk);
+      var her = -18 + wk * 96;                                  /* -18 -> 78 */
+      var moving = wk > 0 && wk < 1;
+      var himOut = seg(t, END_BEAT.pause, END_BEAT.meet);
+      var him = 118 - himOut * 12;                              /* 118 -> 106 */
+      if (himOut > 0) her = 78 + himOut * 10;                   /* 78 -> 88 */
+      var together = t >= END_BEAT.meet;
+      var doorLit = ease((t - 2.2) / 1.2);
+
+      /* ---- the camera -------------------------------------------------
+         One number does all of it. k goes nought to one as the push comes
+         in and settles back to a half once they are together, and the zoom
+         and the point the frame is held on both ride it — so the camera
+         cannot end up magnifying a corner of the sky, which is exactly
+         what a separately-driven zoom and focus did on the first try. */
+      var k = seg(t, END_BEAT.pause - 1.2, END_BEAT.meet) - seg(t, END_BEAT.meet, END_BEAT.bloom) * 0.5;
+      var zoom = 1 + k * 1.1;
+      var fx = 120 + (100 - 120) * k + (together ? Math.sin(t * 0.4) * 1.5 : 0);
+      var fy = 60 + (94 - 60) * k;
+
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      endSky(c, dawn);
+      c.save();
+      c.translate(120, 60);
+      c.scale(zoom, zoom);
+      c.translate(-fx, -fy);
+
+      /* stars, going out as the sun comes up */
       var rnd = seeded("endsky");
       for (var i = 0; i < 50; i++) {
         var sx = rnd() * 240, sy = rnd() * 60;
-        if (Math.sin(t * 2 + sx) > -0.4) px(c, sx, sy, 1, 1, "#ffe9c8");
+        if (Math.sin(t * 2 + sx) > -0.4 + dawn * 1.4) px(c, sx, sy, 1, 1, "#ffe9c8");
       }
-      /* the castle */
-      px(c, 40, 34, 160, 76, "#6b4f80");
-      px(c, 40, 34, 160, 2, "#8a68a4");
+      /* the sun itself, coming up over the battlements in the gap between
+         two towers. it is drawn before the castle so the wall hides its
+         bottom half — which is the whole point of a sunrise. */
+      if (dawn > 0.08) {
+        var sunY = 32 - dawn * 16;
+        c.save(); c.globalAlpha = Math.min(1, dawn * 2.2);
+        blob(c, 166, sunY, 11, 11, ["#fff3c0", "#ffd980", "#ffb45f", "#ff8f52"]);
+        c.restore();
+      }
+
+      /* ---- the castle -------------------------------------------------
+         The wall runs wider than the frame does at rest, because the camera
+         pushes in on the doorway and a close-up that finds the edge of the
+         building and a band of dithered sky behind it reads as a mistake. */
+      var stone = mixHex("#3a2450", "#6b4f80", dawn), lit = mixHex("#4a3060", "#8a68a4", dawn);
+      px(c, 20, 34, 200, 76, stone);
+      px(c, 20, 34, 200, 2, lit);
       for (var tw = 0; tw < 3; tw++) {
         var tx = 44 + tw * 74;
-        px(c, tx, 18, 26, 92, "#7d5590");
-        px(c, tx, 18, 2, 92, "#a97fbe");
-        px(c, tx - 3, 12, 32, 6, "#a97fbe");
-        for (var cr = 0; cr < 32; cr += 7) px(c, tx - 3 + cr, 6, 4, 6, "#a97fbe");
+        px(c, tx, 18, 26, 92, mixHex("#3f2856", "#7d5590", dawn));
+        px(c, tx, 18, 2, 92, lit);
+        px(c, tx - 3, 12, 32, 6, lit);
+        for (var cr = 0; cr < 32; cr += 7) px(c, tx - 3 + cr, 6, 4, 6, lit);
+        /* a ribbon on every tower, because she put them there */
+        if (dawn > 0.4) px(c, tx + 11, 12 - Math.abs(Math.sin(t * 2 + tw)) * 2, 4, 5, "#ff5f95");
       }
-      /* windows, warm */
-      for (var wx = 56; wx < 190; wx += 22)
+      /* windows waking up one at a time, left to right, as she crosses.
+         the count is measured rather than assumed, so the wall can get
+         wider without the last few never lighting. */
+      var wxs = [];
+      for (var wx = 34; wx < 206; wx += 22) if (wx < 104 || wx > 136) wxs.push(wx);
+      var wi = 0, wn = wxs.length * 2;
+      for (var wq = 0; wq < wxs.length; wq++)
         for (var wy = 46; wy < 86; wy += 24) {
-          var lit = Math.sin(t * 1.4 + wx * 0.3 + wy) > -0.5;
-          px(c, wx, wy, 6, 9, lit ? "#ffcf6a" : "#4d375e");
-          if (lit) px(c, wx, wy, 6, 2, "#fff0b0");
+          var on = wk * wn > wi++;
+          px(c, wxs[wq], wy, 6, 9, on ? "#ffcf6a" : "#3a2748");
+          if (on) px(c, wxs[wq], wy, 6, 2, "#fff0b0");
         }
-      /* the doorway, wide open */
-      px(c, 108, 74, 26, 36, "#3d2340");
-      px(c, 110, 76, 22, 34, "#ffd8a0");
-      for (var a2 = 0; a2 < 12; a2++) px(c, 110 + a2, 74 - Math.round(Math.sqrt(144 - (a2 - 11) * (a2 - 11))), 24 - a2 * 2, 3, "#ffd8a0");
 
-      /* him, waiting in the light */
-      var pb = Math.sin(t * 2) > 0 ? 0 : 1;
-      px(c, 116, 88 + pb, 8, 14, "#3d5a8a");           // his coat
-      px(c, 116, 88 + pb, 8, 2, "#5a7ab0");
-      blob(c, 120, 84 + pb, 5, 5, ["#ffd9c4", "#f0b096", "#d8967c", "#c07f66"]);
-      px(c, 116, 79 + pb, 9, 3, "#3a2a22");             // his hair
-      px(c, 118, 84 + pb, 1, 1, "#3d2340"); px(c, 122, 84 + pb, 1, 1, "#3d2340");
-      px(c, 119, 87 + pb, 3, 1, "#3d2340");
+      /* ---- the doorway ----------------------------------------------- */
+      px(c, 108, 74, 26, 36, "#2a1730");
+      if (doorLit > 0) {
+        px(c, 110, 76, 22, 34, mixHex("#2a1730", "#ffd8a0", doorLit));
+        for (var a2 = 0; a2 < 12; a2++)
+          px(c, 110 + a2, 74 - Math.round(Math.sqrt(144 - (a2 - 11) * (a2 - 11))), 24 - a2 * 2, 3,
+             mixHex("#2a1730", "#ffd8a0", doorLit));
+        /* the light he is standing in, spilling out onto the stones */
+        c.save(); c.globalAlpha = 0.18 * doorLit;
+        px(c, 100, 104, 42, 6, "#ffd8a0");
+        c.restore();
+      }
 
-      /* her, arriving */
-      var walk = Math.min(1, t / 3.2);
-      var ox2 = 20 + walk * 76;
-      var img = walk < 1 ? OUISSY.run.small[Math.floor(t * 8) % 4] : OUISSY.win.small[0];
-      c.drawImage(img, Math.round(ox2), 88 - (walk < 1 ? 0 : Math.abs(Math.sin(t * 3)) * 3));
+      /* ---- the courtyard they are standing on ------------------------- */
+      var floor = mixHex("#241636", "#4e3356", dawn);
+      px(c, 0, GROUND, 240, 120 - GROUND, floor);
+      px(c, 0, GROUND, 240, 1, mixHex("#32204a", "#6b4a6e", dawn));
+      for (var fs = 0; fs < 240; fs += 16) px(c, fs, GROUND + 3, 1, 120 - GROUND - 3, mixHex("#1d1230", "#3f2a48", dawn));
 
-      /* hearts rising between them once she is there */
-      if (walk >= 1) {
+      /* ---- the two of them ------------------------------------------- */
+      c.save(); c.globalAlpha = 0.25;
+      px(c, Math.round(her) + 3, GROUND - 1, 10, 2, "#1d1230");
+      if (doorLit > 0.25) px(c, Math.round(him), GROUND - 1, 8, 2, "#1d1230");
+      c.restore();
+      if (doorLit > 0.25) paintHim(c, Math.round(him), GROUND, himOut > 0 ? -1 : 0);
+      var img = moving || himOut > 0 && !together
+        ? OUISSY.run.small[Math.floor(t * 8) % 4]
+        : together ? OUISSY.win.small[0] : OUISSY.idle.small[Math.floor(t * 3) % 4];
+      var bounce = together ? Math.abs(Math.sin(t * 3)) * 3 : 0;
+      c.drawImage(img, Math.round(her), GROUND - 18 - bounce);
+
+      /* hearts, once there is a reason for them */
+      if (together) {
         for (var h2 = 0; h2 < 7; h2++) {
-          var hp = (t * 0.5 + h2 / 7) % 1;
-          heart(c, 104 + Math.sin(hp * 7 + h2) * 8, 100 - hp * 60, 3 - hp * 1.6,
+          var hp = ((t - END_BEAT.meet) * 0.5 + h2 / 7) % 1;
+          heart(c, 99 + Math.sin(hp * 7 + h2) * 8, GROUND - 8 - hp * 54, 3 - hp * 1.6,
                 ["#ff5f95", "#ffd166", "#ffffff"][h2 % 3]);
         }
       }
-      /* falling sparkles over the whole scene */
-      for (var k2 = 0; k2 < 30; k2++) {
-        var kx = (k2 * 53) % 240, ky = ((t * (14 + k2 % 7) + k2 * 31) % 130);
-        px(c, kx, ky, 1, 1, Math.sin(t * 6 + k2) > 0 ? "#fff6a8" : "#ffd6e6");
+      /* sparkles over everything, once the sun is up enough to catch them */
+      if (dawn > 0.3) {
+        for (var k2 = 0; k2 < 30; k2++) {
+          var kx = (k2 * 53) % 240, ky = ((t * (14 + k2 % 7) + k2 * 31) % 130);
+          px(c, kx, ky, 1, 1, Math.sin(t * 6 + k2) > 0 ? "#fff6a8" : "#ffd6e6");
+        }
       }
+      c.restore();
+
+      /* ---- the letterbox, and the dark she walks out of --------------- */
+      var bars = Math.round(14 * (1 - seg(t, END_BEAT.meet, END_BEAT.bloom)));
+      if (bars > 0) { px(c, 0, 0, 240, bars, "#000"); px(c, 0, 120 - bars, 240, bars, "#000"); }
+      var fade = 1 - ease(t / END_BEAT.dawn);
+      if (fade > 0.01) { c.save(); c.globalAlpha = fade; px(c, 0, 0, 240, 120, "#000"); c.restore(); }
     }
     endRaf = requestAnimationFrame(frame);
   }
-  function stopEndingArt() { if (endRaf) cancelAnimationFrame(endRaf); endRaf = null; }
+  function stopEndingArt() { if (endRaf) cancelAnimationFrame(endRaf); endRaf = null; endSkip = null; }
 
   /* =======================================================================
      THE HUD
@@ -4487,26 +5036,218 @@ window.SuperOuissy = (function () {
     });
   }
 
-  /* ---- the background music: a short chiptune loop, written as note
-          numbers so you can retune it without touching the player ------- */
-  /* One bar is 8 steps. Numbers are semitones from C4 and null is a rest.
+  /* ---- THE SCORE ---------------------------------------------------------
 
-     null, not 0. The rest used to be written as 0 and voice() tested the
-     note with `if (!note)`, which meant every C — the root — was thrown
-     away as silence. The bass is mostly roots, so what actually played was
-     a line of fifths with the tonic missing under it. */
-  var BGM = {
-    lead: [
-      12, null, 16, null, 19, null, 16, null,  14, null, 17, null, 21, null, 17, null,
-      12, null, 16, null, 19, 12,   24, null,  21, 19,   16, null, 14, null, 12, null,
-    ],
-    bass: [
-      0, null, 7, null, 0, null, 7, null,   2, null, 9, null, 2, null, 9, null,
-      0, null, 7, null, 0, null, 7, null,   5, null, 0, null, 7, null, 7, null,
-    ],
-    tempo: 0.14,
+     The game used to have ONE tune: a thirty-two step loop, a square lead
+     and a triangle bass, playing identically in world one, world two,
+     world three and all the way through the Queen. It switched off at the
+     ending. The side story had thirteen movements and the game it lives
+     inside had a jingle.
+
+     This is a proper chiptune score, and the word chiptune is the point:
+     the Death scene is orchestral because it is a film, and this is a
+     platformer, so it keeps its square wave. What travels between them is
+     not the instruments — it is the TUNE.
+
+     HER THEME is the four notes this game has opened on since the first
+     day: root, third, fifth, third. Every world here is an arrangement of
+     it. World two is the same figure with the gaps filled in. World three
+     is the same figure in the relative minor, which is what the last
+     climb sounds like. The Queen is that minor version taken faster and
+     given a chromatic tail. The ending is the original, slow, with a
+     third sung over the top of it. And in the Death scene, which is the
+     other side of this same game, it is the same four notes again with
+     the third flattened.
+
+     Nobody will ever notice. Everybody will feel it.
+
+     WRITTEN AS STRINGS, because a hundred and ninety numbers in square
+     brackets is not something a person can read or fix. A dot is a rest,
+     a bar line is ignored, and a number is semitones from C4 — the same
+     units the old loop used, so the tuning did not change under anyone.
+     ---------------------------------------------------------------------- */
+  function pat(s) {
+    return s.split("|").join(" ").trim().split(/\s+/).map(function (tok) {
+      return tok === "." ? null : parseInt(tok, 10);
+    });
+  }
+  /* drums: K kick, S snare, h hat, t tom, . nothing */
+  function dpat(s) {
+    return s.split("|").join(" ").trim().split(/\s+/);
+  }
+
+  var SCORE = {
+    /* WORLD ONE — morning. The theme, plain, with room around it. */
+    w1: {
+      tempo: 0.088,
+      lead: pat(
+        "12 .  .  . 16 .  .  . 19 .  .  . 16 .  .  . |" +
+        "14 .  .  . 17 .  .  . 21 .  .  . 17 .  .  . |" +
+        "12 .  .  . 16 .  .  . 19 . 24  . 21 . 19  . |" +
+        "16 .  .  . 14 .  .  . 12 .  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  .  .  .  .  . 12 .  .  .  9 .  .  . |" +
+        " .  .  .  .  .  .  .  . 14 .  .  . 12 .  .  . |" +
+        " .  .  .  .  .  .  .  . 16 .  .  . 17 .  .  . |" +
+        " .  .  .  .  .  .  .  .  7 .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  7  .  .  .  0  .  .  .  7  .  .  . |" +
+        " 2  .  .  .  9  .  .  .  2  .  .  .  9  .  .  . |" +
+        " 5  .  .  . 12  .  .  .  5  .  .  . 12  .  .  . |" +
+        " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: dpat(
+        "K . . . h . . . S . . . h . . . |" +
+        "K . . . h . . . S . . . h . . . |" +
+        "K . . . h . . . S . . . h . . . |" +
+        "K . . . h . . . S . . h . h . h ."),
+    },
+
+    /* WORLD TWO — the same tune with the gaps filled in and the ground
+       moving under it. */
+    w2: {
+      tempo: 0.078,
+      lead: pat(
+        "12 . 14 . 16 . 17 . 19 . 17 . 16 . 14 . |" +
+        "14 . 16 . 17 . 19 . 21 . 19 . 17 . 16 . |" +
+        "12 . 16 . 19 . 24 . 21 . 19 . 16 . 19 . |" +
+        "17 . 16 . 14 . 12 . 11 .  .  . 12 .  . ."),
+      harm: pat(
+        " .  . 12 .  .  . 12 .  .  . 12 .  .  . 12 . |" +
+        " .  .  9 .  .  .  9 .  .  .  9 .  .  .  9 . |" +
+        " .  . 12 .  .  . 12 .  .  . 16 .  .  . 16 . |" +
+        " .  .  9 .  .  .  7 .  .  .  7 .  .  .  7 ."),
+      bass: pat(
+        " 0 . 12 .  0 . 12 .  7 . 19 .  7 . 19 . |" +
+        " 2 . 14 .  2 . 14 .  9 . 21 .  9 . 21 . |" +
+        " 5 . 17 .  5 . 17 .  0 . 12 .  0 . 12 . |" +
+        " 7 . 19 .  7 . 19 .  0 . 12 .  7 . 12 ."),
+      drum: dpat(
+        "K . h . S . h . K . h . S . h h |" +
+        "K . h . S . h . K . h . S . h h |" +
+        "K . h . S . h . K . h . S . h h |" +
+        "K . h . S . h . K . h . t t t t"),
+    },
+
+    /* WORLD THREE — the same four notes in the relative minor, which is
+       what the last climb sounds like, and it finds its way back to the
+       major on the last bar because she is nearly there. */
+    w3: {
+      tempo: 0.072,
+      lead: pat(
+        " 9 .  . 12  .  . 16 .  . 12  .  . 16 .  . . |" +
+        " 7 .  . 11  .  . 14 .  . 11  .  . 14 .  . . |" +
+        " 9 .  . 16  .  . 21 .  . 16  .  . 12 .  . . |" +
+        "14 .  . 12  .  . 11 .  . 12  .  .  . .  . ."),
+      harm: pat(
+        " .  .  .  .  .  .  .  .  9  .  .  .  .  .  . . |" +
+        " .  .  .  .  .  .  .  .  7  .  .  .  .  .  . . |" +
+        " .  .  .  .  .  .  .  . 12  .  .  .  .  .  . . |" +
+        " .  .  .  .  .  .  .  . 16  .  .  . 16  .  . ."),
+      bass: pat(
+        " -3 . -3 . -3 . -3 .  4 .  4 .  4 .  4 . |" +
+        " -5 . -5 . -5 . -5 .  2 .  2 .  2 .  2 . |" +
+        " -3 . -3 . -3 . -3 .  0 .  0 .  0 .  0 . |" +
+        "  2 .  2 .  2 .  2 .  7 .  7 .  7 .  7 ."),
+      drum: dpat(
+        "K . h K . h K . h . S . h . h . |" +
+        "K . h K . h K . h . S . h . h . |" +
+        "K . h K . h K . h . S . h . h . |" +
+        "K . h K . h K . h . t t t t t t"),
+    },
+
+    /* THE QUEEN. Her tune, minor, faster than she can think, with a
+       chromatic tail that falls away under it. */
+    boss: {
+      tempo: 0.064,
+      lead: pat(
+        " 9 . 9 . 12 . 16 . 12 . 9 . 16 . 12 . |" +
+        " 8 . 8 . 11 . 15 . 11 . 8 . 15 . 11 . |" +
+        " 9 . 9 . 12 . 16 . 21 . 20 . 19 . 18 . |" +
+        "17 . 16 . 15 . 14 . 13 . 12 . 11 . 10 ."),
+      harm: pat(
+        " .  .  .  . 21  .  .  . 21  .  .  . 21 .  .  . |" +
+        " .  .  .  . 20  .  .  . 20  .  .  . 20 .  .  . |" +
+        " .  .  .  . 21  .  .  . 24  .  .  . 24 .  .  . |" +
+        " .  .  .  .  .  .  .  .  .  .  .  .  . .  .  ."),
+      bass: pat(
+        "-3 -3 . -3 -3 . -3 . -3 -3 . -3 -3 . -3 . |" +
+        "-4 -4 . -4 -4 . -4 . -4 -4 . -4 -4 . -4 . |" +
+        "-3 -3 . -3 -3 . -3 . -5 -5 . -5 -5 . -5 . |" +
+        "-7 -7 . -7 -7 . -7 . -7 -7 . -7 -7 -7 -7 -7"),
+      drum: dpat(
+        "K . h K . h K . S . h K . h S . |" +
+        "K . h K . h K . S . h K . h S . |" +
+        "K . h K . h K . S . h K . h S . |" +
+        "K . t t t . K . S . t t t t t t"),
+    },
+
+    /* AND THE END OF IT. The tune it started on, slow, with a third over
+       the top — the only place in the game where anything sings with it. */
+    win: {
+      tempo: 0.17,
+      lead: pat(
+        "12 .  .  . 16 .  .  . 19 .  .  . 16 .  .  . |" +
+        "17 .  .  . 21 .  .  . 24 .  .  . 21 .  .  . |" +
+        "19 .  .  . 16 .  .  . 12 .  .  . 14 .  .  . |" +
+        "16 .  .  .  .  .  .  . 12 .  .  .  .  .  .  ."),
+      harm: pat(
+        "16 .  .  . 19 .  .  . 24 .  .  . 19 .  .  . |" +
+        "21 .  .  . 24 .  .  . 28 .  .  . 24 .  .  . |" +
+        "24 .  .  . 19 .  .  . 16 .  .  . 17 .  .  . |" +
+        "19 .  .  .  .  .  .  . 16 .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0 .  .  .  .  .  .  .  7 .  .  .  .  .  .  . |" +
+        " 5 .  .  .  .  .  .  .  0 .  .  .  .  .  .  . |" +
+        " 7 .  .  .  .  .  .  .  2 .  .  .  .  .  .  . |" +
+        " 7 .  .  .  .  .  .  .  0 .  .  .  .  .  .  ."),
+      drum: dpat(
+        ". . . . . . . . . . . . . . . . |" +
+        ". . . . . . . . . . . . . . . . |" +
+        ". . . . . . . . . . . . . . . . |" +
+        ". . . . . . . . . . . . . . . ."),
+    },
   };
-  var bgmTimer = null, bgmStep = 0, bgmGain = null;
+
+  /* The clock running out does not get a tune of its own: it gets THIS
+     tune, faster, with the hat on every step. A different piece of music
+     under thirty seconds would be a different level; the same one, hurried,
+     is the same level running out of time. */
+  var HURRY = 0.78;
+
+  /* `BGM` is whatever is playing. It is kept as a name because the audio
+     harness reads BGM.lead and BGM.bass to count the tune. */
+  var BGM = SCORE.w1;
+  var bgmTimer = null, bgmStep = 0, bgmGain = null, bgmName = "w1", bgmRush = false;
+  var bgmNoise = null;
+
+  /* which tune belongs to where she is standing */
+  function bgmFor() {
+    if (!G || !G.level) return "w1";
+    var b = G.level.boss;
+    if (b && b.awake && !b.dead) return "boss";
+    return "w" + Math.min(3, (G.levelIndex || 0) + 1);
+  }
+  /* switch tunes without stopping the music: the step resets so the new
+     one starts at its own downbeat rather than halfway through a bar */
+  function bgmPlay(name, rush) {
+    if (SCORE[name] === undefined) return;
+    rush = !!rush;
+    if (bgmName === name && bgmRush === rush) return;
+    bgmName = name; bgmRush = rush;
+    BGM = SCORE[name];
+    bgmStep = 0;
+    if (bgmTimer) {
+      clearInterval(bgmTimer);
+      bgmTimer = setInterval(tickBgm, BGM.tempo * (rush ? HURRY : 1) * 1000);
+    }
+  }
+  /* called whenever the world she is in might have changed under her */
+  function bgmFollow() {
+    if (!G.bgmOn) return;
+    var d = DIFF[G.diff];
+    var rush = !!(d && d.timeLimit && G.timeLeft > 0 && G.timeLeft <= 30 && G.state === "play");
+    bgmPlay(bgmFor(), rush);
+  }
 
   function setBgm(on) {
     G.bgmOn = on;
@@ -4518,10 +5259,11 @@ window.SuperOuissy = (function () {
        while every timer keeps happily ticking. */
     if (!bgmGain || bgmGain.context !== c) {
       bgmGain = c.createGain(); bgmGain.gain.value = 0.055; bgmGain.connect(c.destination);
+      bgmNoise = null;
     }
     if (bgmTimer) return;
     bgmStep = 0;
-    bgmTimer = setInterval(tickBgm, BGM.tempo * 1000);
+    bgmTimer = setInterval(tickBgm, BGM.tempo * (bgmRush ? HURRY : 1) * 1000);
   }
   function stopBgm() { if (bgmTimer) clearInterval(bgmTimer); bgmTimer = null; }
   function bgmDuck(on) { if (bgmGain) bgmGain.gain.value = bgmHushed ? 0 : (on ? 0.014 : 0.055); }
@@ -4539,11 +5281,64 @@ window.SuperOuissy = (function () {
        leaving music that is playing as far as the code is concerned and
        silent as far as she is concerned. Hold the step until it wakes. */
     if (c.state !== "running") return;
-    var i = bgmStep % BGM.lead.length;
-    voice(c, BGM.lead[i], "square", 0, BGM.tempo * 0.9, .5);
-    voice(c, BGM.bass[i], "triangle", -24, BGM.tempo * 1.6, .8);
+    var n = BGM.lead.length, i = bgmStep % n;
+    voice(c, BGM.lead[i], "square", 0, BGM.tempo * 1.6, .42);
+    /* THE HARMONY LAYER IS THE REWARD. It is silent until the love meter
+       is full, and while she is sparkling the tune has a second voice in
+       it — so filling the meter does not only hand her a life, it changes
+       what the game sounds like. */
+    if (G && G.player && G.player.star > 0) voice(c, BGM.harm[i], "square", 0, BGM.tempo * 1.4, .2);
+    voice(c, BGM.bass[i], "triangle", -24, BGM.tempo * 2.2, .7);
+    hit(c, BGM.drum[i]);
+    if (bgmRush && i % 2 === 1) hit(c, "h");
     bgmStep++;
+    /* a tune that ends rather than loops: the ending plays once and then
+       lets the room be quiet */
+    if (bgmName === "win" && bgmStep >= n) stopBgm();
   }
+
+  /* the kit: three noises with different shapes, which is all a chiptune
+     drum machine has ever been */
+  function hit(c, k) {
+    if (!k || k === ".") return;
+    try {
+      if (k === "K") {
+        var o = c.createOscillator(), g = c.createGain(), t = c.currentTime;
+        o.type = "sine";
+        o.frequency.setValueAtTime(150, t);
+        o.frequency.exponentialRampToValueAtTime(48, t + 0.09);
+        g.gain.setValueAtTime(0.22, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+        o.connect(g); g.connect(bgmGain);
+        o.start(t); o.stop(t + 0.15);
+        return;
+      }
+      if (k === "t") {
+        var to = c.createOscillator(), tg = c.createGain(), tt = c.currentTime;
+        to.type = "triangle";
+        to.frequency.setValueAtTime(260, tt);
+        to.frequency.exponentialRampToValueAtTime(110, tt + 0.12);
+        tg.gain.setValueAtTime(0.18, tt);
+        tg.gain.exponentialRampToValueAtTime(0.0001, tt + 0.16);
+        to.connect(tg); tg.connect(bgmGain);
+        to.start(tt); to.stop(tt + 0.18);
+        return;
+      }
+      if (!bgmNoise || bgmNoise.sampleRate !== c.sampleRate) {
+        bgmNoise = c.createBuffer(1, (c.sampleRate * 0.3) | 0, c.sampleRate);
+        var d = bgmNoise.getChannelData(0);
+        for (var j = 0; j < d.length; j++) d[j] = Math.random() * 2 - 1;
+      }
+      var s = c.createBufferSource(), f = c.createBiquadFilter(), ng = c.createGain(), nt = c.currentTime;
+      s.buffer = bgmNoise;
+      f.type = "highpass"; f.frequency.value = k === "S" ? 1800 : 7000;
+      ng.gain.setValueAtTime(k === "S" ? 0.11 : 0.035, nt);
+      ng.gain.exponentialRampToValueAtTime(0.0001, nt + (k === "S" ? 0.12 : 0.04));
+      s.connect(f); f.connect(ng); ng.connect(bgmGain);
+      s.start(nt); s.stop(nt + 0.16);
+    } catch (e) {}
+  }
+
   function voice(c, note, type, shift, dur, vol) {
     if (note === null || note === undefined) return;   // 0 is a note, not a rest
     try {
@@ -4749,6 +5544,11 @@ window.SuperOuissy = (function () {
 
   function startLevel(i) {
     if (window.__soReleaseAll) window.__soReleaseAll();
+    bossHush(); signHush();
+    /* being stuck is a property of a stretch, not of a run: a new world
+       starts her at nought deaths in the same place and at the first
+       offer again */
+    G.stuckAt = -999; G.stuckN = 0; G.handGate = 3; G.handCheck = null;
     G.levelIndex = i;
     G.level = buildLevel(i);
     G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
@@ -4763,6 +5563,7 @@ window.SuperOuissy = (function () {
     G.keys = freshKeys();
     moveCamera(1);
     updateHud();
+    bgmFollow();                      /* each world has its own arrangement */
     showLevelCard();
   }
 
@@ -4831,7 +5632,9 @@ window.SuperOuissy = (function () {
     G = {
       diff: "medium", state: "menu", level: null, levelIndex: 0,
       lives: 3, score: 0, hearts: 0, deaths: 0, elapsed: 0,
+      stuckAt: -999, stuckN: 0, handGate: 3, handCheck: null,
       meter: 0, meterFlash: 0, lastHurtBy: null, deathAt: null,
+      freeze: 0, punch: 0,
       levelStartT: 0, levelStartHearts: 0, levelStartDeaths: 0,
       timeLeft: 0, warned: false, poleBonus: 0, levelStats: [],
       player: mkPlayer(0, 0), parts: [], floats: [], bumps: [],
@@ -4908,6 +5711,8 @@ window.SuperOuissy = (function () {
      to take it all the way down and give it back afterwards */
   window.__soBgmLevel = function () { return bgmGain ? bgmGain.gain.value : null; };
   window.__soBgmSteps = function (n) { for (var i = 0; i < n; i++) tickBgm(); };
+  window.__soBgmName = function () { return bgmName + (bgmRush ? "+rush" : ""); };
+  window.__soBgmPlay = function (n, r) { bgmPlay(n, r); };
   window.__soBgmBar = function () {
     return { steps: BGM.lead.length,
              leadNotes: BGM.lead.filter(function (v) { return v !== null; }).length,
@@ -4924,7 +5729,16 @@ window.SuperOuissy = (function () {
 
   /* --- putting her somewhere --- */
   window.__soGoLevel = function (i) { startLevel(i); };
-  window.__soShowEnding = function () { showEnding(); };
+  window.__soShowEnding = function (again) { showEnding(!!again); };
+  window.__soEndT = function () { return endT; };
+  window.__soSigns = function () { return (G && G.level && G.level.signs) || []; };
+  window.__soFinish = function () { finishLevel(); };
+  window.__soStuck = function (n) {
+    if (n != null) { G.stuckN = n; G.stuckAt = G.player ? G.player.x : 0; }
+    return { n: G.stuckN, gate: G.handGate, check: G.handCheck };
+  };
+  window.__soSetHearts = function (n) { G.hearts = n; updateHud(); };
+  window.__soMoments = function () { return { read: loadMoments(), total: MOMENTS.length, cost: MOMENT_COST }; };
   window.__soTele = function (tx, ty) {
     if (!G || !G.level) return;
     G.player.x = tx * T;
@@ -4957,6 +5771,8 @@ window.SuperOuissy = (function () {
     L.grid = L.grid0.map(function (r) { return r.slice(); });
     L.items = L.items0.map(function (o) { return Object.assign({}, o); });
     L.checks.forEach(function (c) { c.taken = false; });
+    if (L.signs) L.signs.forEach(function (sn) { sn.said = false; });
+    G.stuckAt = -999; G.stuckN = 0; G.handGate = 3; G.handCheck = null;
     if (L.goal) L.goal.open = false;
     G.bumps.length = 0;
     G.level.ents.forEach(function (e) {

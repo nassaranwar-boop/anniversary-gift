@@ -112,17 +112,31 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
     window.__apAudio();
     await new Promise(r => setTimeout(r, 400));
     const read = () => window.__apMix();
+    /* WAIT FOR THE GAIN, NOT FOR THE CLOCK.
+
+       These were three fixed waits of 350ms. A slider does not snap --
+       the gain eases toward its new value and approaches it, so how
+       close it has got after a third of a second depends on how busy
+       the machine was. Caught it at 0.043 against a threshold of 0.02
+       often enough to look like a fault in the mixer, which it was not.
+       It settles when it settles now, with a bound so a real failure
+       still fails instead of hanging. */
+    const settle = async (pred) => {
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 50));
+        if (pred(read())) return read();
+      }
+      return read();
+    };
     /* sound down, music up */
     window.__apSet('vol', 0); window.__apSet('musicVol', 0.9);
-    await new Promise(r => setTimeout(r, 350));
-    const quietSfx = read();
+    const quietSfx = await settle(m => m.sfx < 0.02 && m.mus > 0.5);
     /* and the other way round */
     window.__apSet('vol', 0.8); window.__apSet('musicVol', 0);
-    await new Promise(r => setTimeout(r, 350));
-    const quietMus = read();
+    const quietMus = await settle(m => m.mus < 0.02 && m.sfx > 0.5);
     window.__apSet('vol', 0.8); window.__apSet('musicVol', 0.9);
-    await new Promise(r => setTimeout(r, 350));
-    return { quietSfx, quietMus, both: read() };
+    const both = await settle(m => m.sfx > 0.5 && m.mus > 0.5);
+    return { quietSfx, quietMus, both };
   });
   ok('turning the sound off leaves the music playing',
      vol.quietSfx.sfx < 0.02 && vol.quietSfx.mus > 0.5, vol.quietSfx);

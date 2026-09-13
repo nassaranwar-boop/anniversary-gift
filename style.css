@@ -879,6 +879,10 @@ img{-webkit-user-drag:none; user-select:none;}
 
 @media (prefers-reduced-motion: reduce){
   .gate-title img,.gate-seal-glow,.gate-wax-blob,.gate-bloom{animation:none;}
+  /* the flower's turn is a transition, not an animation, so it is not
+     caught by the line below -- it is shortened here instead, because
+     the open and shut positions still have to differ */
+  .sb-flower{transition-duration:.01s !important;}
   .sb-flower,.sb-song-halo{animation:none !important;}
   .sb-song-arm{transition:none;}
 }
@@ -2264,7 +2268,25 @@ img{-webkit-user-drag:none; user-select:none;}
   animation:sbPinPop .5s var(--ease-pop) both;
 }
 @keyframes sbPinPop{from{opacity:0; transform:translate(-50%,-70%) scale(.5);} to{opacity:1;}}
-.sb-map-pin img{width:100%; height:100%; object-fit:cover; display:block; border-radius:2px;}
+/* THE PHOTOGRAPH SITS INSIDE THE WHITE, NOT OVER IT.
+
+   The print was sized at 100% of the pin and left to find its own place
+   in it, so anything that moved the box -- the pop-in transform, a
+   zoom, a min-height winning over the aspect ratio -- slid the picture
+   off its mount and over the frame on two sides. It is placed against
+   the pin's own edges now, two pixels in on every side, which is the
+   white border, and the pin clips whatever is left. */
+.sb-map-pin{ box-sizing:border-box; overflow:hidden; }
+.sb-map-pin img{
+  /* left/top plus an explicit size, NOT `inset` with auto: an <img> is a
+     replaced element, and auto sizing on one means its intrinsic size --
+     it ignores the other two insets entirely and lays out at whatever
+     the file happens to be. Against a 900px photograph that is 434px of
+     overflow, which is the fault this was meant to fix. */
+  position:absolute; left:2px; top:2px;
+  width:calc(100% - 4px); height:calc(100% - 4px);
+  object-fit:cover; display:block; border-radius:2px;
+}
 .sb-map-pin-empty{
   display:flex; align-items:center; justify-content:center; width:100%; height:100%; border-radius:2px;
   font-family:'Playfair Display',serif; font-size:9px; color:rgba(110,96,72,.6);
@@ -2626,12 +2648,41 @@ img{-webkit-user-drag:none; user-select:none;}
 .sb-flower{
   width:33px; height:33px; display:block; overflow:visible;
   filter:drop-shadow(0 2px 4px rgba(40,8,22,.5));
-  transition:opacity .26s ease, transform .45s var(--ease-pop);
+  transition:opacity .26s ease, transform .52s var(--ease-pop);
+  /* ITS OWN LAYER, SO THE TURN SURVIVES THE WORK THE PRESS STARTS.
+
+     The press does two things at once: it turns the flower and it builds
+     the drawer -- the map, the song, the film. That build is synchronous
+     and on a phone it is easily longer than the turn, so the animation
+     was running the whole time and never got a frame to paint in. It
+     looked like nothing happened, because nothing was drawn.
+
+     A transform animation on its own compositor layer does not need the
+     main thread. This puts the flower on one, so the turn plays through
+     that build rather than behind it. */
+  will-change:transform;
 }
-/* the barest breathing, so it reads as something living rather than a
-   control. Stopped for anyone who has asked for less motion. */
-#screen-scrapbook.sb-open .sb-flower{animation:sbFlowerBreathe 6s ease-in-out infinite;}
-@keyframes sbFlowerBreathe{0%,100%{transform:rotate(0) scale(1);} 50%{transform:rotate(7deg) scale(1.045);}}
+/* IT IS STILL UNTIL IT IS PRESSED, AND THE PRESS TURNS IT SOMEWHERE.
+
+   The flower used to breathe on a six-second loop -- a slow rotate and
+   swell, the whole time the book was open. Something moving in the
+   corner of the screen forever is not charm, it is a thing your eye
+   keeps going back to while you are trying to read. So it sits still.
+
+   The press was a keyframe wobble first: out twenty-six degrees and
+   straight back, over half a second. Measured, it ran correctly on every
+   single press -- and you could still miss it, because a transient that
+   ends where it started leaves nothing behind, and it was competing for
+   frames with the drawer sliding in beside it. On a phone that is a lot
+   to ask of five hundred milliseconds.
+
+   So it turns to somewhere instead of turning and returning. Shut, it is
+   upright; open, it has gone half way round. That plays as a rotation
+   both ways -- press to open and it turns, press to close and it turns
+   back -- and because the two ends are different, a phone that drops
+   every frame in between still shows a flower that has moved. */
+.sb-flower{ transform:rotate(0deg); }
+.sb-extras-btn.on .sb-flower{ transform:rotate(180deg); }
 
 .sb-extras-x{
   position:relative; width:18px; height:18px;
@@ -2651,8 +2702,22 @@ img{-webkit-user-drag:none; user-select:none;}
     radial-gradient(125% 125% at 30% 16%, rgba(255,198,214,.16), transparent 60%),
     linear-gradient(162deg,#4e142c 0%,#360d1d 54%,#2a0916 100%);
 }
-.sb-extras-btn.on .sb-flower{opacity:0; transform:rotate(70deg) scale(.6); animation:none;}
-.sb-extras-btn.on .sb-extras-x{opacity:1; transform:rotate(45deg) scale(1);}
+/* THE FLOWER DOES NOT TURN INTO A CROSS.
+
+   Open, the button swapped the flower for two crossed bars. A cross is
+   the right sign for a dialog you want gone; this is a drawer of small
+   kept things, and the flower IS the drawer -- trading it for an X made
+   the one warm control on the screen read like an error message. So the
+   flower stays, and says it is open the way a flower would: it turns a
+   little and sits back, brighter, on a darker ground. The cross is not
+   drawn at all any more. */
+/* Open, the flower does not become anything else -- it is the same
+   flower, a shade brighter on a darker ground. The cross is not drawn. */
+.sb-extras-x{display:none;}
+.sb-extras-btn.on .sb-flower{
+  opacity:1;
+  filter:drop-shadow(0 2px 5px rgba(40,8,22,.6)) brightness(1.1);
+}
 
 .sb-drawer{
   position:absolute; left:0; top:0; bottom:0; z-index:20;
@@ -2962,6 +3027,17 @@ img{-webkit-user-drag:none; user-select:none;}
 .hv-token{
   font-size:clamp(11px,2.2vw,15px); line-height:0;
   animation:hvTokenIn .45s var(--ease-pop) backwards;
+}
+/* HERS, set apart from what she picked up.
+
+   The keepsake leads the row and is the only thing in it she did not
+   find lying about, so it is given a little air and a warm ring -- it
+   reads as the one she is carrying rather than the first of a list. */
+/* it stands alone up there now, so it needs no rule beside it to
+   separate it from a list that is no longer there */
+.hv-token-keepsake{ position:relative; }
+.hv-token-keepsake canvas{
+  filter:drop-shadow(0 0 3px rgba(255,190,120,.55));
 }
 /* the strip shows the same little canvas that is lying in the grass,
    scaled up and kept on its own pixel grid */
@@ -3624,6 +3700,10 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .hub-name{font-family:'Cinzel',serif; font-weight:700; font-size:15.5px; color:#4e2d0d;}
 .hub-desc{font-family:'Poppins',sans-serif; font-size:11.5px; line-height:1.4; color:#7a5327;}
+/* the two ways out of the hub, side by side rather than stacked */
+.hub-foot{
+  display:flex; flex-wrap:wrap; gap:9px; justify-content:center; width:100%;
+}
 .hub-keepsake{margin-top:14px; display:none;}
 .hub-keepsake.on{display:inline-block;}
 
@@ -4024,6 +4104,73 @@ img{-webkit-user-drag:none; user-select:none;}
    around it looks like. Sized in cqw so it stays in proportion with the
    art, and coloured per speaker.
    ========================================================= */
+/* ---- THE QUEEN'S VOICE ----
+   One line, high on the stage, out of the way of the HUD and of the two
+   of them fighting under it. It fades itself out and it is never a thing
+   to press: the fight does not stop for it. Each face gets its own
+   colour, because they are three different characters. */
+.so-boss-say{
+  position:absolute; left:50%; top:11cqh; transform:translateX(-50%) translateY(-4px);
+  z-index:6; pointer-events:none; opacity:0; white-space:nowrap;
+  padding:1.1cqw 2.6cqw; border-radius:.8cqw;
+  font-family:'Press Start 2P',monospace; font-size:2.1cqw; letter-spacing:.05em;
+  background:rgba(22,10,26,.8); color:#fff3e2;
+  box-shadow:inset 0 0 0 .25cqw rgba(255,255,255,.14);
+}
+.so-boss-say.on{ animation:soSay 2.6s ease forwards; }
+@keyframes soSay{
+  0%{ opacity:0; transform:translateX(-50%) translateY(0) scale(.94); }
+  7%{ opacity:1; transform:translateX(-50%) translateY(-4px) scale(1); }
+  82%{ opacity:1; }
+  100%{ opacity:0; transform:translateX(-50%) translateY(-8px); }
+}
+/* ---- his voice, off a board in the level ----
+   Same fade as hers, at the foot of the stage instead of the top, so a
+   line from a signpost can never be mistaken for something the thing in
+   front of her just said. */
+.so-sign-say{
+  position:absolute; left:50%; bottom:13%; transform:translateX(-50%) translateY(4px);
+  z-index:6; pointer-events:none; opacity:0; max-width:80%;
+  padding:1cqw 2.2cqw; border-radius:.8cqw; text-align:center;
+  font-family:var(--font-hand); font-size:3.1cqw; line-height:1.15;
+  background:rgba(22,10,26,.78); color:#ffe9c8;
+  box-shadow:inset 0 0 0 .25cqw rgba(255,209,102,.45);
+}
+.so-sign-say.on{ animation:soSign 3.4s ease forwards; }
+@keyframes soSign{
+  0%{ opacity:0; transform:translateX(-50%) translateY(6px); }
+  8%{ opacity:1; transform:translateX(-50%) translateY(0); }
+  85%{ opacity:1; }
+  100%{ opacity:0; transform:translateX(-50%) translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce){
+  .so-sign-say.on{ animation:none; opacity:1; }
+}
+
+/* ---- ten hearts, spent on something that is not an advantage ---- */
+.so-moment-slot{ width:100%; max-width:56cqw; }
+.so-moment-slot.on .so-moment-text{ animation:soMoment .9s ease forwards; }
+.so-moment-text{
+  margin:.4cqw 0 0; padding:1cqw 1.5cqw; border-radius:.8cqw;
+  font-family:var(--font-script); font-size:2cqw; line-height:1.3; color:#fffaf5;
+  background:rgba(255,158,196,.10);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,158,196,.3);
+}
+@keyframes soMoment{ from{opacity:0; transform:translateY(.8cqw);} to{opacity:1; transform:none;} }
+.so-moment-buy{ display:flex; flex-direction:column; align-items:center; gap:.3cqw; }
+.so-moment-btn .gl-life{ width:1.5cqw; height:1.5cqw; vertical-align:-.15cqw; }
+.so-moment-none{ margin:0; font-size:1.4cqw; letter-spacing:.12em; color:rgba(255,214,230,.6); }
+@media (prefers-reduced-motion: reduce){
+  .so-moment-slot.on .so-moment-text{ animation:none; }
+}
+
+.so-boss-cloud{ color:#dff0ff; box-shadow:inset 0 0 0 .25cqw rgba(150,200,240,.55); }
+.so-boss-clock{ color:#ffe9c8; box-shadow:inset 0 0 0 .25cqw rgba(255,209,102,.55); }
+.so-boss-heart{ color:#ffd9e6; box-shadow:inset 0 0 0 .25cqw rgba(255,95,149,.6); }
+@media (prefers-reduced-motion: reduce){
+  .so-boss-say.on{ animation:none; opacity:1; }
+}
+
 /* ---- THE THREE BUTTONS ----
 
    The fight is played by naming the answer, so the controls say the
@@ -4599,6 +4746,19 @@ img{-webkit-user-drag:none; user-select:none;}
   border:.5cqw solid rgba(255,209,102,.4); border-radius:.8cqw;
   box-shadow:0 1cqw 3cqw rgba(0,0,0,.55);
 }
+/* While the scene runs, the card it belongs to is not there yet. Everything
+   below the picture holds its place in the layout (so nothing jumps when it
+   arrives) and fades in once they have actually met. */
+.so-end > *{transition:opacity .9s ease;}
+.so-end.playing > :not(.so-end-art){opacity:0; pointer-events:none;}
+.so-end-art{position:relative;}
+.so-end.playing .so-end-art::after{
+  content:"TAP TO SKIP"; position:absolute; right:1cqw; bottom:1.2cqw;
+  font-family:var(--font-pixel); font-size:1.1cqw; letter-spacing:.16em;
+  color:rgba(255,246,225,.62); pointer-events:none;
+  animation:soSkipHint 2.4s ease-in-out infinite;
+}
+@keyframes soSkipHint{0%,100%{opacity:.25}50%{opacity:.8}}
 .so-end-kicker{font-size:1.7cqw; color:#ffb0cd; margin:.6cqw 0 0; letter-spacing:.16em;}
 .so-end-lines{display:flex; flex-direction:column; gap:1cqw;}
 .so-end-lines p{
@@ -7678,6 +7838,27 @@ img{-webkit-user-drag:none; user-select:none;}
   display:flex; flex-direction:column; gap:.6cqh; align-items:flex-end;
 }
 
+/* WHAT TONIGHT IS FOR.
+
+   Under the clock, quiet enough to ignore and present enough to answer
+   the question. Not a quest marker: no icon, no progress, no colour
+   that says "game". It reads like something written on the desk pad,
+   because the shop is the thing telling her. */
+.ns-task{
+  max-width:min(34ch, 30cqw);
+  margin-top:.4cqh;
+  text-align:right;
+  font-size:max(1.35cqh, 10px);
+  line-height:1.42;
+  letter-spacing:.02em;
+  color:rgba(214,196,164,.62);
+  text-shadow:0 .1cqh .3cqh rgba(0,0,0,.85);
+  transition:opacity .5s ease;
+}
+.ns-task[hidden]{display:none}
+.ns-task.fading{opacity:0}
+@media (max-width:820px){ .ns-task{ max-width:min(28ch, 44cqw); font-size:max(1.25cqh, 9px); } }
+
 .ns-chip{
   display:flex; align-items:baseline; gap:1cqw;
   padding:.7cqh 1.2cqw; border-radius:.5cqw;
@@ -8179,6 +8360,153 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-card-load .ns-tag{ margin:0; animation:nsBreathe 1.6s ease-in-out infinite; }
 @keyframes nsBreathe{ 50%{ opacity:.35; } }
 .ns-btns{ display:flex; flex-wrap:wrap; gap:1.4cqw; justify-content:center; margin-top:2.4cqh; }
+
+/* =====================================================================
+   THE DOOR.
+
+   One way in, at a size nothing else on the screen uses, so the eye
+   lands on it before it starts reading. The old menu gave BEGIN THE
+   SHIFT and LEAVE the same button, which is a list; this is a door
+   with a list underneath it. */
+.ns-door{
+  display:block; width:min(30cqw, 340px); margin:3cqh auto 0;
+  padding:1.9cqh 2cqw 1.7cqh;
+  border:0; border-radius:.7cqw; cursor:pointer;
+  font-family:inherit; text-align:center;
+  background:linear-gradient(180deg, rgba(196,148,74,.22), rgba(120,84,38,.16));
+  box-shadow:inset 0 0 0 .18cqw rgba(224,182,110,.72),
+             inset 0 .2cqh 1.4cqh rgba(255,214,150,.10),
+             0 .5cqh 1.6cqh rgba(0,0,0,.5);
+  transition:box-shadow .22s ease, background .22s ease, transform .12s ease;
+}
+.ns-door b{
+  display:block; font-size:max(13px, 2.5cqh); letter-spacing:.2em;
+  color:#f2dcb0; text-shadow:0 0 1.6cqh rgba(236,186,110,.45);
+}
+.ns-door span{
+  display:block; margin-top:.7cqh; font-size:max(9px, 1.45cqh);
+  letter-spacing:.18em; color:rgba(226,206,172,.56);
+}
+.ns-door:hover, .ns-door:focus-visible{
+  background:linear-gradient(180deg, rgba(210,160,82,.30), rgba(132,92,42,.20));
+  box-shadow:inset 0 0 0 .18cqw rgba(240,200,126,.95),
+             inset 0 .2cqh 1.8cqh rgba(255,220,160,.16),
+             0 .6cqh 2cqh rgba(0,0,0,.55);
+}
+.ns-door:active{ transform:translateY(.2cqh); }
+
+/* the rows underneath it: grouped by what they are for, and all
+   smaller than the door, because none of them is the door */
+.ns-btns-row{ margin-top:1.2cqh; gap:1.1cqw; }
+.ns-btns-foot{ margin-top:2cqh; gap:1.1cqw; }
+.ns-btn-sm2{ font-size:max(9.5px, 1.55cqh); padding:1cqh 1.6cqw; letter-spacing:.16em; }
+.ns-btn-quiet{
+  font-size:max(9px, 1.4cqh); padding:.85cqh 1.4cqw; letter-spacing:.16em;
+  opacity:.66;
+}
+.ns-btn-quiet:hover, .ns-btn-quiet:focus-visible{ opacity:1; }
+
+/* =====================================================================
+   THE WEEK.
+
+   All six, including the ones she cannot reach. A stepper that counts
+   up from one tells her where she is; a row of six with four of them
+   shut tells her what she agreed to. That is the whole point of the
+   terms, and the menu was the one place it was not visible. */
+/* =====================================================================
+   A REVELATION ARRIVES, IT DOES NOT APPEAR.
+
+   Each line starts a little low and comes up into place, because a
+   line that fades straight in reads as a loading state and a line that
+   rises reads as being set down. Slow enough to be deliberate, and
+   nowhere near slow enough to be a transition somebody sits through.
+
+   Nothing is hidden from a reader who cannot see the animation:
+   prefers-reduced-motion puts the whole thing up at once, which is
+   what that setting is asking for. */
+.ns-card-find .ns-rv{
+  opacity:0; transform:translateY(.9cqh);
+  transition:opacity .75s ease, transform .75s cubic-bezier(.2,.7,.3,1);
+}
+.ns-card-find .ns-rv.in{ opacity:1; transform:none; }
+/* the last line of every one of these is the knife, and it is allowed
+   to arrive a shade brighter than the ones that set it up */
+.ns-card-find .ns-rv:last-of-type.in{
+  color:rgba(246,236,214,.96);
+  text-shadow:0 0 1.4cqh rgba(236,196,120,.16);
+}
+.ns-card-find .ns-rv-choice{
+  opacity:0; pointer-events:none;
+  transition:opacity .6s ease;
+}
+.ns-card-find .ns-rv-choice.in{ opacity:1; pointer-events:auto; }
+/* while it is still arriving, the card says so by being tappable */
+.ns-card-find.ns-staged{ cursor:pointer; }
+
+@media (prefers-reduced-motion:reduce){
+  .ns-card-find .ns-rv{ opacity:1; transform:none; transition:none; }
+  .ns-card-find .ns-rv-choice{ opacity:1; pointer-events:auto; transition:none; }
+}
+
+.ns-roster{ margin-top:2.6cqh; }
+.ns-roster-lab{
+  margin:0 0 1cqh; font-size:max(8.5px, 1.3cqh); letter-spacing:.3em;
+  color:rgba(226,206,172,.42);
+}
+.ns-nites{ display:flex; gap:.9cqw; justify-content:center; }
+.ns-nite{
+  width:max(30px, 4.2cqh); height:max(30px, 4.2cqh);
+  border:0; border-radius:.45cqw; cursor:pointer;
+  font-family:inherit; display:grid; place-items:center;
+  background:rgba(22,25,23,.8);
+  box-shadow:inset 0 0 0 .16cqw rgba(200,162,96,.3);
+  transition:box-shadow .18s ease, background .18s ease;
+}
+.ns-nite b{ font-size:max(11px, 1.7cqh); color:rgba(232,223,200,.8); font-weight:600; }
+.ns-nite.ns-open{ box-shadow:inset 0 0 0 .16cqw rgba(232,190,114,.85); }
+.ns-nite.ns-open b{ color:#f2dcb0; }
+.ns-nite.ns-done{
+  background:linear-gradient(180deg, rgba(150,120,62,.5), rgba(80,62,30,.45));
+  box-shadow:inset 0 0 0 .16cqw rgba(236,196,120,.75);
+}
+.ns-nite.ns-done b{ color:#fbecc8; }
+/* shut, not broken: it is a night she has not got to yet */
+.ns-nite.ns-shut{ cursor:default; background:rgba(16,18,17,.7); }
+.ns-nite.ns-shut b{ color:rgba(200,186,160,.22); }
+.ns-nite:not(.ns-shut):hover{ background:rgba(40,44,40,.9); }
+.ns-roster-sub{
+  margin:1.1cqh 0 0; font-size:max(9px, 1.4cqh); letter-spacing:.1em;
+  color:rgba(226,206,172,.5);
+}
+
+@media (max-width:820px){
+  .ns-door{ width:min(62cqw, 300px); }
+  .ns-nite{ width:max(26px, 5cqh); height:max(26px, 5cqh); }
+}
+/* A LANDSCAPE PHONE IS SHORT, NOT NARROW.
+
+   The menu grew a door, two grouped rows and a six-night roster, and
+   on a 420px-tall screen -- which is a phone held sideways, the way
+   this whole chapter is meant to be played -- that stacked up until
+   SOUND and LEAVE were sitting on the card's bottom edge. Nothing
+   overflowed, which is exactly why a measurement of overflow did not
+   catch it: a control touching the frame is not clipped, it is just
+   uncomfortable.
+
+   So the vertical rhythm compresses where there is no height to spend.
+   Nothing is removed -- she gets the same menu, closer together. */
+@media (max-height:560px){
+  .ns-card-title{ padding-block:2.2cqh; }
+  .ns-door{ margin-top:2cqh; padding:1.4cqh 2cqw 1.2cqh; }
+  .ns-door span{ margin-top:.4cqh; }
+  .ns-btns-row{ margin-top:.8cqh; }
+  .ns-roster{ margin-top:1.6cqh; }
+  .ns-roster-lab{ margin-bottom:.7cqh; }
+  .ns-roster-sub{ margin-top:.7cqh; }
+  .ns-btns-foot{ margin-top:1.4cqh; }
+  .ns-cozy{ margin-top:1.6cqh; }
+}
+
 .ns-btn{
   cursor:pointer; padding:max(14px, 1.4cqh) max(13px, 2.6cqw); min-width:44px;
   font-family:var(--ns-face); font-size:max(10.5px, 1.9cqh); font-weight:700; letter-spacing:.2em;

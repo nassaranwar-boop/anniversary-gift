@@ -16,8 +16,20 @@ const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
 const DIR  = path.join(ROOT, 'voice');
 const MAN  = path.join(DIR, 'manifest.json');
-const LINE = 'I made toys. That part was true.';
-const ID   = 'intro-3-1';
+/* A LINE AND AN ID THAT ARE NOT IN THE CHAPTER.
+
+   This used to borrow a real one -- intro-3-1, "I made toys. That part
+   was true." -- and write a test tone over his recording of it. It put
+   the take back afterwards, which is fine right up until a run is
+   killed part way through: the corrupted beep is then what the NEXT
+   run reads as its backup, and faithfully restores. One interrupted
+   run and the sentence is gone for good, restored over and over by the
+   very code meant to protect it.
+
+   So the whole exercise happens on an id no render will ever produce
+   and a line nobody ever says. There is nothing of his to lose. */
+const LINE = 'This line exists only so a test has something to play.';
+const ID   = '__selftest';
 const TAKE = path.join(DIR, ID + '.mp3');
 const SECS = 3.7;                       // nothing would guess this by accident
 
@@ -99,11 +111,11 @@ function cleanup() {
      Math.abs(dur - 3.7) < 0.12, dur);
 
   /* a line with no take must still be spoken the old way */
-  const other = await p.evaluate(() => OuissysNightShift.__night.speak('For fifteen years I told you it was fine.'));
+  const other = await p.evaluate(() => OuissysNightShift.__night.speak('A line with no recording behind it at all.'));
   ok('a line with no take still gets said', other > 0.3 && Math.abs(other - 3.7) > 0.2, other);
 
   /* and a take whose words have since been rewritten must NOT play */
-  const stale = await p.evaluate(() => OuissysNightShift.__night.voiceWant('I made toys. That part was mostly true.'));
+  const stale = await p.evaluate(() => OuissysNightShift.__night.voiceWant('This line exists only so a test has something else to play.'));
   ok('a take of words that have changed is ignored', stale === false, stale);
 
   /* --- AND WHAT THE SHOP DOES WHILE HE IS TALKING ------------------
@@ -134,13 +146,40 @@ function cleanup() {
      lvls.every((v) => v < 0.75), lvls.map((v) => v.toFixed(2)));
   ok('and he is still going', during[during.length - 1].talking === true);
 
-  /* a door, mid-sentence */
+  /* THE SHAPE OF THE DUCK, NOT JUST ITS DEPTH.
+     "It sits below 0.75" was also true of the version that slammed the
+     bed down in thirty-five milliseconds and sounded like a gate. What
+     makes it sound like music making room is how fast it moves, so
+     that is what is measured -- as a rate, per 20ms of real time,
+     sampled on the page's own frame clock. Sampling it over a round
+     trip cannot tell a fast fader from a slow harness. */
+  const rate = (trace) => {
+    let w = 0;
+    for (let i = 1; i < trace.length; i++) {
+      const dt = trace[i][0] - trace[i - 1][0];
+      if (dt <= 0) continue;
+      w = Math.max(w, Math.abs(trace[i][1] - trace[i - 1][1]) / dt * 20);
+    }
+    return w;
+  };
+  await p.evaluate((l) => OuissysNightShift.__night.speak(l), LINE);
+  const tr1 = await p.evaluate(() => OuissysNightShift.__night.bedTrace(1500));
+  ok('and it moves smoothly rather than snapping',
+     rate(tr1) < 0.14, 'fastest ' + rate(tr1).toFixed(3) + ' per 20ms');
+
+  /* A DOOR IN THE MIDDLE OF A SENTENCE.
+     The line is restarted first so the clock is known: the previous
+     version of this measured after the take had already run out, and
+     reported the bed at 1.00 as a failure when nobody was speaking. */
+  await p.evaluate((l) => OuissysNightShift.__night.speak(l), LINE);
+  await p.waitForTimeout(350);
   await p.evaluate(() => OuissysNightShift.__night.door());
-  await p.waitForTimeout(700);
-  const after = await sample(900, 150);
-  const al = after.map((x) => x.level).filter((x) => x !== null);
+  const tr2 = await p.evaluate(() => OuissysNightShift.__night.bedTrace(1200));
+  const lv = tr2.map((x) => x[1]);
   ok('a door does not hand the score back its full level mid-line',
-     al.every((v) => v < 0.75), al.map((v) => v.toFixed(2)));
+     Math.max.apply(null, lv) < 0.80, Math.max.apply(null, lv).toFixed(3));
+  ok('and a door ducks the score smoothly too',
+     rate(tr2) < 0.16, 'fastest ' + rate(tr2).toFixed(3) + ' per 20ms');
 
   /* THE BUILDING, GENUINELY MID-SENTENCE.
      The first version of this fired the announcement after the take
