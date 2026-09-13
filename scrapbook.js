@@ -5542,6 +5542,29 @@ window.Scrapbook = (function () {
     return jobs;
   }
 
+  /* WARMING, AS OPPOSED TO BUILDING.
+
+     Everything above except the last two jobs is paper: canvases drawn
+     and encoded, with no opinion about how many pages are on screen or
+     which one she is looking at. That part can be made before she asks
+     for the book at all. The last two cannot -- buildBook lays out the
+     spread and calls renderView, and both of those depend on perView,
+     which start() works out from the window it is actually opening in.
+
+     So warming queues the paper and stops one short of the book. It
+     leaves the drawn sheets in PAPER, STICK and PAGE_PAPER, where
+     buildJobs' own jobs would have put them, and marks them done so
+     they are not drawn twice. */
+  var warmed = false;
+
+  function warmJobs() {
+    var all = buildJobs();
+    /* hold back the two that need a laid-out book */
+    var tail = all.splice(all.length - 2, 2);
+    all.push(function () { warmed = true; });
+    return { paper: all, tail: tail };
+  }
+
   /* the two the cover cannot wait for */
   function buildCoverEssentials() {
     if (!STICK.lips) STICK.lips = chromeLips(110);
@@ -5551,7 +5574,17 @@ window.Scrapbook = (function () {
     if (built || buildQueue) return;
     buildCoverEssentials();
     wire();
-    buildQueue = buildJobs();
+    /* if the gate already made the paper, all that is left is the book */
+    buildQueue = warmed ? warmJobs().tail : buildJobs();
+    stepBuild();
+  }
+
+  /* called from the gate: the paper only, spread across frames */
+  function warmBuild() {
+    if (built || warmed || buildQueue) return;
+    buildCoverEssentials();
+    wire();
+    buildQueue = warmJobs().paper;
     stepBuild();
   }
 
@@ -5568,9 +5601,13 @@ window.Scrapbook = (function () {
   function buildNow() {
     buildCoverEssentials();
     wire();
-    if (!buildQueue) buildQueue = buildJobs();
+    if (!buildQueue) buildQueue = warmed ? warmJobs().tail : buildJobs();
     while (buildQueue.length) buildQueue.shift()();
     buildQueue = null;
+    /* a warm queue that was still draining when she arrived has been run
+       to its end by the loop above, so the book itself still has to be
+       laid out */
+    if (!built) { var t = warmJobs().tail; while (t.length) t.shift()(); }
   }
 
   /* ---- laying the table -------------------------------------------
@@ -5720,6 +5757,22 @@ window.Scrapbook = (function () {
 
   api.start = start;
   api.stop = stop;
+  /* BUILD THE PAPER BEFORE SHE ASKS FOR IT.
+
+     Every sheet, sticker and dyed page is a canvas draw and a
+     toDataURL, and toDataURL is a whole PNG encode -- about 350ms of
+     them altogether. The queue spreads that over frames, but it does not
+     start until start() does, and if she reaches the book before it
+     drains, buildNow() runs the rest in one go. Measured on a phone
+     profile that is a 187ms block of script on the one transition in the
+     site that should be seamless: the passcode landing and the book
+     opening.
+
+     The gate is four taps of nothing happening, on a screen with no
+     animation to protect. Warming there means the queue is empty, or
+     nearly, by the time the cover swings. Calling it twice is free --
+     scheduleBuild returns if a queue is already running. */
+  api.warm = function () { try { warmBuild(); } catch (e) {} };
   api.next = next;
   api.prev = prev;
   api.closeLightbox = closeLightbox;

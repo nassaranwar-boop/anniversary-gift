@@ -28,6 +28,7 @@ const CLEAR = 44;                     /* a fingertip, in CSS pixels */
     p.on('pageerror', e => errs.push(label + ': ' + e.message));
     await p.route('**', r => (r.request().url().startsWith('http://localhost') ? r.continue() : r.abort()));
     await p.goto('http://localhost:8899/index.html', { waitUntil: 'domcontentloaded' });
+    await p.evaluate(() => window.loadChapter && window.loadChapter('ouissy'));
     await p.waitForFunction(() => !!window.SuperOuissy, { timeout: 40000 });
     await p.evaluate(() => { showScreen('ouissy'); SuperOuissy.start(); });
     await p.waitForTimeout(900);
@@ -100,6 +101,10 @@ const CLEAR = 44;                     /* a fingertip, in CSS pixels */
     p.on('pageerror', e => errs.push(label + ': ' + e.message));
     await p.route('**', r => (r.request().url().startsWith('http://localhost') ? r.continue() : r.abort()));
     await p.goto('http://localhost:8899/index.html', { waitUntil: 'domcontentloaded' });
+    /* every chapter is fetched on demand now, so asking for all three
+       globals and waiting is a thirty-second wait for nothing: they only
+       arrive when the site has been asked for them */
+    await p.evaluate(() => ['ouissy', 'apoc', 'race'].forEach(c => window.loadChapter && window.loadChapter(c)));
     await p.waitForFunction(() => !!(window.SuperOuissy && window.Apocalypse && window.SuperOuissyRace),
                             { timeout: 40000 });
     for (const [chapter, go] of [['Super Ouissy', () => { showScreen('ouissy'); SuperOuissy.start(); }],

@@ -100,10 +100,10 @@ function driver(page) {
     return n;
   };
   /* wait for a condition rather than sleeping at it */
-  D.until = async (fn, ms) => {
+  D.until = async (fn, ms, arg) => {
     const end = Date.now() + (ms || 8000);
     while (Date.now() < end) {
-      if (await p.evaluate(fn)) return true;
+      if (await p.evaluate(fn, arg)) return true;
       await p.waitForTimeout(120);
     }
     return false;
