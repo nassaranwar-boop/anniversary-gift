@@ -85,8 +85,14 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
         t += DT;
         const rs = window.__RACE_DEBUG().racers;
         rs.forEach((x, k) => {
+          /* A LAP DRIVEN AFTER THE FLAG IS NOT A LAP. A finished kart is
+             still advanced -- it coasts, speed decaying by 6% a frame --
+             so given four hundred seconds it can crawl over the line again
+             and log a 184-second "lap" that nobody drove. That is what was
+             failing here two runs in three while six runs of the same
+             course in isolation came back clean. */
           if (x.lap > prevLap[k]) {
-            if (x.lap >= 1) lapLog[k].push(+(t - lastT[k]).toFixed(2));
+            if (x.lap >= 1 && !x.finished) lapLog[k].push(+(t - lastT[k]).toFixed(2));
             lastT[k] = t; prevLap[k] = x.lap;
           }
         });
