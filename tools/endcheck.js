@@ -1,0 +1,234 @@
+/* IS THE ENDING A FILM, OR IS IT A WALL OF TEXT?
+
+   The last hour used to be forty lines painted over a black sheet. It
+   is now forty-one shots in the shop, and the difference is the whole
+   point -- so this checks the things that would quietly turn it back
+   into text: a camera that does not move, a shot pointed at a room
+   nobody is standing in, a mark that does not exist, a character who
+   keeps talking after the film has taken them out of the world, and an
+   overlay that paints black over the thing she is meant to be
+   watching.
+
+   Half of it is arithmetic on the shot list and needs no browser. The
+   other half drives the film by hand through __night.filmTick, because
+   a headless page has no compositor and therefore no frame loop.
+                                                node tools/endcheck.js */
+const fs = require('fs');
+const { chromium } = require('playwright-core');
+
+let pass = 0, fail = 0;
+const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
+                          else { fail++; console.log('  FAIL ' + n + (x !== undefined ? '  ' + JSON.stringify(x) : '')); } };
+
+/* ---- the shot list, read straight out of the source ---------------- */
+const src = fs.readFileSync(__dirname + '/../night-shift.js', 'utf8');
+function lift(name) {
+  const i = src.indexOf('const ' + name + ' = ');
+  const eq = src.indexOf('=', i);
+  let open = eq + 1;
+  while (' \n\r\t'.indexOf(src[open]) >= 0) open++;
+  let d = 0, j = open;
+  for (; j < src.length; j++) {
+    const c = src[j];
+    if (c === '{' || c === '[') d++;
+    else if (c === '}' || c === ']') { d--; if (!d) break; }
+  }
+  return eval('(' + src.slice(open, j + 1) + ')');
+}
+const NS = lift('NS');
+const CAST = lift('CAST');
+const SHOTS = NS.lastHour.shots;
+
+/* the rooms the shots are allowed to be in, and the marks in them */
+const ANCH = {};
+src.replace(/R\.anchor\("([^"]+)"/g, (m, n) => { ANCH[n] = (ANCH[n] || 0) + 1; return m; });
+const ROOM_IDS = lift('ROOMS').map((r) => r.id);
+
+console.log('\n=== the shot list');
+
+ok('every shot names a room that exists',
+   SHOTS.every((s) => ROOM_IDS.indexOf(s.room) >= 0),
+   SHOTS.filter((s) => ROOM_IDS.indexOf(s.room) < 0).map((s) => s.room));
+
+ok('every shot has a camera: from, to and something to look at',
+   SHOTS.every((s) => s.from && s.to && s.look && s.from.length === 3 && s.to.length === 3),
+   SHOTS.map((s, i) => (s.from && s.to && s.look) ? null : i).filter((x) => x !== null));
+
+/* A SHOT THAT DOES NOT MOVE IS A SLIDE. */
+const still = [];
+SHOTS.forEach((s, i) => {
+  const d = Math.hypot(s.to[0] - s.from[0], s.to[1] - s.from[1], s.to[2] - s.from[2]);
+  const z = Math.abs((s.fov1 || s.fov || 58) - (s.fov0 || s.fov || 58));
+  if (d < 0.04 && z < 1) still.push(i);
+});
+ok('no shot is a still: the camera moves or the lens does, in every one', !still.length, still);
+
+/* and a shot that moves too far in too little time is a whip pan */
+const whips = [];
+SHOTS.forEach((s, i) => {
+  const d = Math.hypot(s.to[0] - s.from[0], s.to[1] - s.from[1], s.to[2] - s.from[2]);
+  if (d / (s.secs || 3) > 0.9) whips.push([i, +(d / s.secs).toFixed(2)]);
+});
+ok('nothing moves faster than a walk (under 0.9 m/s of camera)', !whips.length, whips);
+
+ok('every mark a shot puts somebody on is a real anchor',
+   SHOTS.every((s) => !s.put || Object.keys(s.put).every((id) => ANCH[s.put[id]])),
+   SHOTS.map((s) => s.put ? Object.keys(s.put).map((id) => s.put[id]).filter((a) => !ANCH[a]) : [])
+        .reduce((a, b) => a.concat(b), []));
+
+const ids = CAST.map((c) => c.id);
+ok('everybody a shot moves or removes is one of the four',
+   SHOTS.every((s) => (!s.gone || ids.indexOf(s.gone) >= 0) &&
+                      (!s.put || Object.keys(s.put).every((id) => ids.indexOf(id) >= 0))));
+
+/* NOBODY SPEAKS AFTER THEY ARE GONE. This is the one continuity error
+   an ending like this cannot survive. */
+const dead = {}; const ghosts = [];
+SHOTS.forEach((s, i) => {
+  if (s.line && s.line.who && dead[s.line.who]) ghosts.push([i, s.line.who]);
+  if (s.gone) dead[s.gone] = i;
+});
+ok('nobody speaks after the film has taken them out of it', !ghosts.length, ghosts);
+
+/* and everybody who speaks has been put somewhere first */
+const placed = {}; const unplaced = [];
+SHOTS.forEach((s, i) => {
+  if (s.put) Object.keys(s.put).forEach((id) => { placed[id] = 1; });
+  if (s.line && s.line.who && !placed[s.line.who]) unplaced.push([i, s.line.who]);
+});
+ok('nobody speaks before the film has put them in the room', !unplaced.length, unplaced);
+
+ok('all four of them are in it, and all four of them go', ids.every((id) => placed[id] && dead[id] !== undefined),
+   ids.filter((id) => !placed[id] || dead[id] === undefined));
+
+/* THE CROWD HAS TO CLEAR WHEN THE CAMERA LEAVES THE ROOM, or it is
+   standing in the hall while the shot is in the office. */
+let crowdRoom = null; const strays = [];
+SHOTS.forEach((s, i) => {
+  if (s.clear) crowdRoom = null;
+  if (s.swarm) crowdRoom = s.swarm[0];
+  if (crowdRoom && crowdRoom !== s.room) strays.push([i, crowdRoom, s.room]);
+});
+ok('the crowd is never left standing in a room the camera has left', !strays.length, strays);
+
+const secs = SHOTS.reduce((a, s) => a + (s.secs || 3), 0);
+ok('the whole thing runs between two and four minutes', secs > 120 && secs < 240, Math.round(secs));
+
+const longest = SHOTS.reduce((a, s) => Math.max(a, s.secs || 0), 0);
+ok('no single shot outstays its welcome (under 7s)', longest < 7, longest);
+
+/* the office is 6.6 by 5.0 with the back wall at z = 2.5: a camera
+   outside that is a camera in a wall */
+const outside = [];
+SHOTS.forEach((s, i) => {
+  if (s.room !== 'office') return;
+  [s.from, s.to].forEach((p) => {
+    if (Math.abs(p[0]) > 3.2 || p[2] > 2.45 || p[2] < -2.45 || p[1] < 0.15 || p[1] > 2.8) outside.push([i, p]);
+  });
+});
+ok('no office shot puts the camera inside a wall, the ceiling or the floor', !outside.length, outside);
+
+/* ---- and now the film itself --------------------------------------- */
+(async () => {
+  const b = await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    args: ['--no-sandbox', '--no-proxy-server', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+  const p = await b.newPage({ viewport: { width: 1100, height: 700 } });
+  let errs = [];
+  p.on('pageerror', (e) => { errs.push(e.message); });
+  await p.route('**/*', (r) => {
+    const u = r.request().url();
+    if (u.indexOf('book-scene.js') >= 0) return r.abort();
+    return u.startsWith('http://127.0.0.1') ? r.continue() : r.abort();
+  });
+  await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await p.evaluate(() => { localStorage.setItem('ns_seenintro', '1'); showScreen('nightshift');
+    return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
+  await p.waitForFunction(() => window.OuissysNightShift && OuissysNightShift.__night,
+                          { timeout: 20000, polling: 200 });
+
+  console.log('\n=== the film, running');
+  const n = await p.evaluate(() => OuissysNightShift.__night.finale());
+  ok('it starts, and it has every shot in it', n === SHOTS.length, n);
+
+  const s0 = await p.evaluate(() => OuissysNightShift.__night.finaleState());
+  ok('the screen is the shop, not a sheet over it',
+     s0.on === true && s0.phase === 'finale', s0);
+  const cls = await p.evaluate(() => document.getElementById('ns-overlay').className);
+  ok('the overlay is the film layer, which paints nothing', cls.indexOf('ns-ov-film') >= 0, cls);
+  const paint = await p.evaluate(() => {
+    const o = document.getElementById('ns-overlay');
+    const cs = getComputedStyle(o), be = getComputedStyle(o, '::before');
+    return { bg: cs.backgroundColor, img: cs.backgroundImage, before: be.content };
+  });
+  ok('and it really is transparent',
+     (paint.bg === 'rgba(0, 0, 0, 0)' || paint.bg === 'transparent') && paint.img === 'none', paint);
+
+  /* drive it by hand and watch the camera */
+  const run = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    const out = [], moved = {}, rooms = {}, seen = {}, eyes = {};
+    let last = null;
+    for (let k = 0; k < 4200 && N.finaleState().on; k++) {
+      const st = N.filmTick(0.05);
+      if (!st) break;
+      const i = st[4];
+      rooms[N.finaleState().room] = 1;
+      N.finaleState().seen.forEach((id) => { seen[id] = 1; });
+      /* and where the speaker's eyes are in the frame while they speak */
+      const st2 = N.finaleState();
+      if (st2.eyes) {
+        const e = st2.eyes;
+        const off = Math.abs(e.x) > 0.92 || Math.abs(e.y) > 0.92 || e.z > 1 || e.z < -1;
+        if (!eyes[i]) eyes[i] = { who: e.who, on: 0, off: 0 };
+        eyes[i][off ? 'off' : 'on']++;
+      }
+      if (last && last[4] === i) {
+        const d = Math.hypot(st[0] - last[0], st[1] - last[1], st[2] - last[2]) +
+                  Math.abs(st[3] - last[3]) * 0.01;
+        moved[i] = (moved[i] || 0) + d;
+      }
+      last = st;
+      out.push(i);
+    }
+    const hit = {};
+    out.forEach((i) => { hit[i] = (hit[i] || 0) + 1; });
+    return { moved, rooms: Object.keys(rooms), seen: Object.keys(seen), eyes,
+             hit, frames: out.length, state: N.finaleState() };
+  });
+  ok('it plays all the way to the end on its own', run.state.on === false, run.state);
+  const missed = SHOTS.map((s, i) => run.hit[i] ? null : i).filter((x) => x !== null);
+  ok('and every single shot gets played', !missed.length, missed);
+  const rushed = SHOTS.map((s, i) => (run.hit[i] || 0) * 0.05 < (s.secs || 3) * 0.8 ? i : null).filter((x) => x !== null);
+  ok('and each one gets the time it was written for', !rushed.length, rushed);
+  const dead2 = Object.keys(run.moved).filter((i) => run.moved[i] < 0.03);
+  ok('the camera really moves in every shot, frame by frame', !dead2.length, dead2);
+  ok('it visits more than one room', run.rooms.length >= 3, run.rooms);
+  /* THE ONE THAT CAUGHT THE REAL BUG: a close-up aimed at nobody.
+
+     Three shots were pointed at a height none of the four has -- the
+     owl is eighty-six centimetres tall and two of his close-ups were
+     aimed at a metre and a half of empty wall. A third of the shot is
+     the bar rather than all of it, because two shots deliberately
+     leave the speaker: one tilts off Chime onto the ceiling he is not
+     going to reach, and one follows Jax's hand down to the floor. */
+  const blind = Object.keys(run.eyes)
+    .filter((i) => run.eyes[i].on / (run.eyes[i].on + run.eyes[i].off) < 0.3)
+    .map((i) => [Number(i), run.eyes[i].who,
+                 +(run.eyes[i].on / (run.eyes[i].on + run.eyes[i].off)).toFixed(2)]);
+  ok('whoever is speaking is in the frame while they speak', !blind.length, blind);
+  ok('all four of them are drawn at some point in it', run.seen.length === 4, run.seen);
+
+  const end = await p.evaluate(() => ({
+    card: !!document.querySelector('.ns-card-find'),
+    go: !!document.querySelector('[data-go="finaleDone"]'),
+    phase: OuissysNightShift.__night.finaleState().phase,
+  }));
+  ok('and it hands her his letter at the end of it', end.card && end.go, end);
+
+  ok('no page errors anywhere in that', !errs.length, errs.slice(0, 3));
+
+  console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
+  await b.close();
+  process.exit(fail ? 1 : 0);
+})();

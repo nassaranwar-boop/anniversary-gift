@@ -578,81 +578,201 @@ const NS = {
      needs the silence after it more than the words. `cam` moves the
      camera, `cue` changes the music, `boom` is the one that is not a
      line at all. ------------------------------------------------- */
+  /* =====================================================================
+     THE LAST HOUR, AS SHOTS.
+
+     Not a wall of text over a dark screen. The chapter already has a
+     camera that moves through real rooms with real furniture in them --
+     it is what the opening statement is made of -- and the four of them
+     are real objects that can be put anywhere and animated. So the
+     ending is directed in the shop rather than narrated over it: she
+     watches the hall fill up, watches them stand in the doorway with
+     their backs to her, watches each one go where it goes.
+
+     A shot is a camera move and a piece of staging:
+
+       room      which room the camera is in
+       from/to   where it starts and finishes, in that room's space
+       look      what it is pointed at
+       fov       58 is a room, 38 is a face, 74 is a crowd
+       secs      how long the move takes, which is also how long the
+                 shot lasts unless a line runs over
+       put       where each of the four is standing for this shot, as
+                 [room, anchor] -- or "gone" for one that is not in the
+                 world any more
+       swarm     [room, how many, spread, start z, rank spacing]
+       line      who speaks and what they say, as a subtitle
+       cue       the music
+       shake     the room moving
+       boom      the thing that is not a line
+
+     Every number here was chosen against the actual rooms, which is
+     why the camera never ends up inside a wall. ------------------- */
   lastHour: {
-    head: "05:00 — EVERY CAMERA AT ONCE",
-    sub: "there is nothing on this screen you can press",
-    beats: [
-      { sys: true, t: "WICK &amp; COGS. MOTION ON CAMERA ONE. MOTION ON CAMERA TWO. MOTION ON CAMERA THREE. MOTION ON CAMERA—", hold: 1.1, cue: "dark" },
-      { sys: true, t: "MOTION ON", hold: 2.2 },
-      { nar: true, t: "And then the building stops talking.", hold: 2.0 },
-      { nar: true, t: "Four hundred and eleven went out of this shop. Some of them never came home. The rest are in the hall.", hold: 2.6 },
+    head: "05:00",
+    sub: "",
+    shots: [
+      /* --- the shop stops pretending ------------------------------ */
+      { room: "office", secs: 4.0, fov: 58, cue: "dark", lux: 0.78,
+        from: [0, 1.66, 2.35], to: [0, 1.62, 1.90], look: [0, 1.05, -2.5],
+        line: { sys: 1, t: "MOTION ON CAMERA ONE. MOTION ON CAMERA TWO. MOTION ON CAMERA THREE. MOTION ON CAMERA&mdash;" } },
+      { room: "office", secs: 3.0, fov: 52, lux: 0.6,
+        from: [0, 1.62, 1.90], to: [0, 1.60, 1.70], look: [0, 1.05, -2.5],
+        line: { nar: 1, t: "And then the building stops talking." } },
 
-      { nar: true, t: "Something puts its hand on the office door.", hold: 1.7 },
-      { nar: true, t: "And something else takes it off.", hold: 2.4, cue: "held" },
+      /* --- the hall, filling up ----------------------------------- */
+      { room: "hall", secs: 5.0, fov: 74, cue: "night", shake: 0.5, lux: 0.5,
+        from: [0.05, 2.50, 5.40], to: [0.05, 2.00, 3.60], look: [0, 1.10, -4.4],
+        swarm: ["hall", 18, 3.2, -5.2, 0.62], advance: 1,
+        line: { nar: 1, t: "Four hundred and eleven went out of this shop. Some never came home. The rest are in the hall." } },
+      { room: "hall", secs: 4.0, fov: 62, shake: 0.8, lux: 0.38,
+        from: [0.05, 2.00, 3.60], to: [-0.50, 1.55, 1.80], look: [0.2, 1.00, -4.0],
+        swarm: ["hall", 22, 3.4, -4.4, 0.58], advance: 1,
+        line: { nar: 1, t: "She stops counting at nine." } },
 
-      { nar: true, t: "They come in the order he built them in.", hold: 1.6 },
-      { who: "cogsworth", t: "Twelve minutes past five. I have been counting since Monday.", hold: 1.9 },
-      { who: "chime",     t: "There is no roof left worth going over. They are already inside.", hold: 2.0 },
-      { who: "marabelle", t: "Then nobody is watching. Good.", hold: 2.2 },
-      { who: "jax",       t: "I am not leaving the room. You all know I am not leaving the room.", hold: 2.4 },
+      /* --- they arrive, and they do not come in -------------------- */
+      { room: "office", secs: 4.2, fov: 56, cue: "held", clear: 1, lux: 0.5,
+        from: [0.50, 1.60, 1.60], to: [0.20, 1.52, 1.20], look: [-3.4, 1.05, -0.9],
+        line: { nar: 1, t: "Something puts its hand on the office door. Something else takes it off." } },
+      { room: "office", secs: 4.4, fov: 74, lux: 0.62,
+        from: [0, 1.70, 2.30], to: [0, 1.64, 1.90], look: [0, 1.15, -1.9],
+        put: { cogsworth: "f0", chime: "f3", marabelle: "f1", jax: "f2" },
+        line: { nar: 1, t: "They come in the order he built them in. None of them looks at her." } },
+      { room: "office", secs: 3.8, fov: 42,
+        from: [-1.05, 1.40, -0.10], to: [-1.20, 1.36, -0.40], look: [-1.55, 1.38, -1.95],
+        line: { who: "cogsworth", t: "Twelve minutes past five. I have been counting since Monday." } },
+      { room: "office", secs: 3.6, fov: 40,
+        from: [0.94, 0.96, -0.30], to: [1.02, 0.92, -0.58], look: [0.62, 0.66, -1.55],
+        line: { who: "chime", t: "There is no roof left worth going over. They are already inside." } },
+      { room: "office", secs: 3.8, fov: 44,
+        from: [1.05, 1.40, -0.10], to: [1.20, 1.36, -0.40], look: [1.55, 1.12, -1.95],
+        line: { who: "marabelle", t: "Then nobody is watching. Good." } },
+      { room: "office", secs: 4.0, fov: 44,
+        from: [-0.25, 1.34, 0.75], to: [-0.35, 1.30, 0.45], look: [-0.55, 1.52, -1.10],
+        line: { who: "jax", t: "I am not leaving the room. You all know I am not leaving the room." } },
 
-      { nar: true, t: "They do not look at her. All four of them are facing the door.", hold: 2.6 },
+      /* --- a minute and a half of them being people ---------------- */
+      { room: "office", secs: 4.4, fov: 40, lux: 0.74,
+        from: [-1.20, 1.36, -0.40], to: [-1.28, 1.34, -0.62], look: [-1.55, 1.38, -1.95],
+        line: { who: "cogsworth", t: "He wound me every night for nine years. He never once told me why." } },
+      { room: "office", secs: 5.0, fov: 40,
+        from: [1.20, 1.36, -0.40], to: [1.28, 1.34, -0.62], look: [1.55, 1.12, -1.95],
+        line: { who: "marabelle", t: "He told me. He said: one day she will need somebody in the room who is not afraid of her seeing them." } },
+      { room: "office", secs: 4.6, fov: 38,
+        from: [1.02, 0.92, -0.58], to: [1.08, 0.90, -0.78], look: [0.62, 0.66, -1.55],
+        line: { who: "chime", t: "He said that to all of us. He said it badly, four times, the way he said everything." } },
+      { room: "office", secs: 3.6, fov: 44,
+        from: [-0.35, 1.30, 0.45], to: [-0.42, 1.28, 0.28], look: [-0.55, 1.52, -1.10],
+        line: { who: "jax", t: "He made me in an afternoon. Badly, I think on purpose." } },
+      { room: "office", secs: 3.4, fov0: 39, fov1: 36, lux: 0.55,
+        from: [-1.28, 1.34, -0.62], to: [-1.32, 1.33, -0.78], look: [-1.55, 1.38, -1.95],
+        line: { who: "cogsworth", t: "He made you last." } },
 
-      { who: "cogsworth", t: "He wound me every night for nine years. He never once told me why.", hold: 2.1 },
-      { who: "marabelle", t: "He told me. He said: one day she will need somebody in the room who is not afraid of her seeing them.", hold: 2.6 },
-      { who: "chime",     t: "He said that to all of us. He said it badly, four times, the way he said everything.", hold: 2.4 },
-      { who: "jax",       t: "He made me in an afternoon. Badly. On purpose, I think.", hold: 1.9 },
-      { who: "cogsworth", t: "He made you last.", hold: 2.5 },
+      /* --- and then it starts -------------------------------------- */
+      { room: "office", secs: 3.2, fov: 66, cue: "night", shake: 1, lux: 0.34,
+        from: [0, 1.62, 1.90], to: [0, 1.55, 1.50], look: [-1.6, 0.75, -2.1],
+        swarm: ["office", 14, 3.0, -2.3, 0.46], advance: 1,
+        line: { nar: 1, t: "The first of them comes through the hall door." } },
+      { room: "office", secs: 3.0, fov: 70, shake: 1,
+        from: [0, 1.55, 1.50], to: [0.40, 1.45, 1.10], look: [1.30, 1.15, -1.9],
+        swarm: ["office", 20, 3.2, -2.0, 0.44], advance: 1,
+        line: { who: "marabelle", t: "Ouissy. Go and stand behind the desk. Do not watch this part." } },
+      { room: "office", secs: 3.2, fov: 64, cue: "dark", shake: 1, lux: 0.26,
+        from: [0.40, 1.45, 1.10], to: [0.40, 1.40, 0.85], look: [0, 0.70, -2.2],
+        swarm: ["office", 22, 3.2, -1.8, 0.42], advance: 1,
+        line: { nar: 1, t: "She watches it." } },
 
-      { nar: true, t: "The first of them comes through the hall door.", hold: 1.4, cue: "night", shake: 0.8 },
-      { nar: true, t: "Then nine more.", hold: 1.6, shake: 1 },
-      { nar: true, t: "Then she stops counting.", hold: 2.2, shake: 1 },
+      /* --- Chime, going up the way he always did ------------------- */
+      { room: "office", secs: 3.8, fov0: 42, fov1: 56, lux: 0.42,
+        from: [0.94, 0.94, -0.34], to: [1.06, 1.30, -0.56],
+        look: [0.62, 0.66, -1.55], look2: [1.35, 2.45, -2.25],
+        swarm: ["office", 22, 3.2, -1.5, 0.42], advance: 1,
+        line: { who: "chime", t: "The hatch. Somebody shut the&mdash;" } },
+      { room: "office", secs: 3.0, fov: 50, gone: "chime", shake: 1.2, lux: 0.5,
+        from: [1.06, 1.30, -0.56], to: [0.98, 1.04, -0.30],
+        look: [1.35, 2.45, -2.25], look2: [0.62, 0.48, -1.55],
+        swarm: ["office", 22, 3.2, -1.3, 0.42], advance: 1,
+        line: { nar: 1, t: "The hatch does not open again." } },
 
-      { who: "marabelle", t: "Ouissy. Go and stand behind the desk.", hold: 1.8 },
-      { who: "chime",     t: "Do not watch this part.", hold: 2.4 },
+      /* --- Marabelle, and the eleven seconds ----------------------- */
+      { room: "office", secs: 4.6, fov: 46, cue: "found",
+        from: [1.05, 1.38, -0.20], to: [1.20, 1.34, -0.55], look: [1.55, 1.06, -1.95],
+        swarm: ["office", 22, 3.2, -1.2, 0.42],
+        line: { who: "marabelle", t: "Fifteen years, and he never once saw me do this." } },
+      { room: "office", secs: 4.6, fov: 50, gone: "marabelle",
+        from: [1.20, 1.34, -0.55], to: [0.70, 1.40, 0.10], look: [1.55, 1.06, -1.95],
+        line: { nar: 1, t: "Every one of them stops to look at her. It buys the others eleven seconds." } },
+      { room: "office", secs: 3.4, fov: 44, cue: "night", shake: 0.9,
+        from: [-1.10, 1.38, -0.30], to: [-1.18, 1.36, -0.52], look: [-1.55, 1.38, -1.95],
+        swarm: ["office", 22, 3.2, -1.0, 0.42], advance: 1,
+        line: { who: "cogsworth", t: "Eleven seconds. I will take it." } },
 
-      { nar: true, t: "She watches it.", hold: 2.6, cue: "dark" },
+      /* --- Cogsworth, the length of the room ----------------------- */
+      { room: "office", secs: 5.0, fov: 60, gone: "cogsworth", shake: 1.2,
+        from: [-1.90, 1.50, 0.90], to: [1.60, 1.45, 0.70], look: [0, 0.95, -2.0],
+        swarm: ["office", 22, 3.2, -0.8, 0.42], advance: 1,
+        line: { nar: 1, t: "He walks the length of the room and turns at the end of it, and does not stop for anything, and that is the last time the shop hears him keeping time." } },
 
-      { nar: true, t: "Chime goes first, and goes up, the way he always did.", hold: 2.4 },
-      { who: "chime", t: "The hatch. Somebody shut the—", hold: 2.6, gone: "chime" },
+      /* --- the one he made in an afternoon ------------------------- */
+      { room: "office", secs: 3.6, fov: 44, cue: "gone", clear: 1, lux: 0.4,
+        from: [-0.50, 1.48, 2.18], to: [-0.56, 1.45, 2.02], look: [-1.15, 1.52, 0.30],
+        put: { jax: "f4" },
+        line: { nar: 1, t: "Which leaves the one he made in an afternoon." } },
+      { room: "office", secs: 2.6, fov: 40,
+        from: [-0.56, 1.45, 2.02], to: [-0.62, 1.43, 1.90], look: [-1.15, 1.52, 0.30],
+        line: { who: "jax", t: "Right." } },
+      { room: "office", secs: 5.2, fov: 44,
+        from: [-0.90, 1.36, 1.90], to: [-1.62, 1.02, 1.74],
+        look: [-1.15, 1.50, 0.30], look2: [-1.30, 0.26, 0.78],
+        line: { who: "jax", t: "Under the till there is a board that lifts. He put a room down there in March and never told anybody." } },
+      { room: "office", secs: 3.0, fov: 40,
+        from: [-1.62, 1.02, 1.74], to: [-1.70, 0.78, 1.58], look: [-1.22, 1.30, 0.42],
+        line: { who: "jax", t: "Get in it." } },
+      { room: "office", secs: 3.0, fov: 44,
+        from: [-1.70, 0.78, 1.58], to: [-1.64, 0.92, 1.70], look: [-1.18, 1.50, 0.30],
+        line: { nar: 1, t: "She says no." } },
+      { room: "office", secs: 4.4, fov: 42,
+        from: [-1.64, 0.92, 1.70], to: [-1.70, 0.80, 1.62], look: [-1.18, 1.48, 0.30],
+        line: { who: "jax", t: "I know. I do not leave rooms either. He built that into both of us." } },
+      { room: "office", secs: 5.0, fov: 54, shake: 0.7, down: 1, lux: 0.3,
+        from: [-1.70, 0.80, 1.62], to: [-1.76, 0.34, 1.46], look: [-1.20, 1.40, 0.30],
+        line: { nar: 1, t: "He puts her under the floor anyway, and he is far stronger than a jack-in-the-box has any business being." } },
 
-      { nar: true, t: "Marabelle stops in the middle of the floor, and every single one of them stops with her, because they are all looking.", hold: 2.8 },
-      { who: "marabelle", t: "Fifteen years and he never saw me do this.", hold: 2.4 },
-      { nar: true, t: "She dances. It buys the others eleven seconds.", hold: 2.6, gone: "marabelle" },
+      /* --- what the winding was, said from above her --------------- */
+      { room: "office", secs: 4.4, fov0: 44, fov1: 40, cue: "held", lux: 0.26,
+        from: [-1.74, 0.30, 1.44], to: [-1.72, 0.27, 1.38], look: [-1.14, 1.46, 0.30],
+        line: { who: "jax", t: "There is a key in the back of each of us. You have been turning them all week." } },
+      { room: "office", secs: 3.4, fov0: 40, fov1: 37,
+        from: [-1.72, 0.27, 1.38], to: [-1.70, 0.24, 1.34], look: [-1.14, 1.50, 0.30],
+        line: { who: "jax", t: "You were not winding us up, Ouissy." } },
+      { room: "office", secs: 4.2, fov0: 37, fov1: 32,
+        from: [-1.70, 0.24, 1.34], to: [-1.68, 0.22, 1.31], look: [-1.14, 1.54, 0.30],
+        line: { who: "jax", t: "You were charging us." } },
+      { room: "office", secs: 3.6, fov0: 33, fov1: 40, gone: "jax", lux: 0.2,
+        from: [-1.68, 0.22, 1.31], to: [-1.66, 0.20, 1.28], look: [-1.14, 1.56, 0.30],
+        line: { who: "jax", t: "He said you never once asked him for a key. He thought about that a great deal, lately." } },
 
-      { who: "cogsworth", t: "Eleven seconds. I will take it.", hold: 2.2 },
+      /* --- the thing that is not a line ---------------------------- */
+      { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08,
+        from: [-1.66, 0.20, 1.28], to: [-1.70, 0.25, 1.38], look: [-1.14, 1.40, 0.30] },
 
-      { nar: true, t: "Cogsworth walks the length of the room and turns at the end of it, and does not stop for anything, and that is the last time the shop hears him keeping time.", hold: 2.9, gone: "cogsworth" },
-
-      { nar: true, t: "Which leaves the one he made in an afternoon.", hold: 2.4, cue: "gone" },
-
-      { who: "jax", t: "Right.", hold: 1.8 },
-      { who: "jax", t: "Under the till there is a board that lifts. He put a room down there in March and never told anybody, and I have never once worked out how to ask him why.", hold: 3.0 },
-      { who: "jax", t: "Get in it.", hold: 2.2 },
-
-      { nar: true, t: "She says no.", hold: 1.6 },
-      { who: "jax", t: "I know. I do not leave rooms either. He built that into both of us.", hold: 2.8 },
-      { nar: true, t: "He puts her under the floor anyway, and he is much stronger than a jack-in-the-box has any business being, and she thinks about that for the rest of her life.", hold: 3.2 },
-
-      { who: "jax", t: "There is a key in the back of each of us. You have been turning them all week.", hold: 2.6 },
-      { who: "jax", t: "You were not winding us up, Ouissy.", hold: 2.4 },
-      { who: "jax", t: "You were charging us.", hold: 3.0, cue: "held" },
-
-      { nar: true, t: "He shuts the board over her head.", hold: 2.0 },
-      { who: "jax", t: "He said you never once asked him for a key. He thought about that a great deal, lately.", hold: 2.8 },
-
-      { boom: true, hold: 4.2 },
-
-      { nar: true, t: "And then it is quiet in a way the shop has not been all week.", hold: 3.0, cue: "dawn" },
-      { nar: true, t: "The shutters go up at six. They always have. Nobody has to be there for it.", hold: 3.0 },
-
-      /* the line the whole chapter was written to arrive at, and the
-         one thing worth keeping from the ending this replaced */
-      { nar: true, t: "She has spent six nights getting very good at keeping them out.", hold: 2.6 },
-      { nar: true, t: "They were never coming for her.", hold: 2.4 },
-      { nar: true, t: "They were coming to her.", hold: 3.6 },
+      /* --- six o'clock --------------------------------------------- */
+      { room: "office", secs: 5.4, fov: 58, cue: "dawn", dawn: 1, up: 1, lux: 1,
+        from: [-1.70, 0.34, 1.46], to: [0, 1.62, 2.20], look: [0, 1.10, -2.4],
+        line: { nar: 1, t: "And then it is quiet in a way the shop has not been all week." } },
+      { room: "foyer", secs: 6.0, fov: 66,
+        from: [2.60, 2.90, 2.40], to: [1.40, 2.10, 1.50], look: [-0.5, 1.05, -1.8],
+        line: { nar: 1, t: "The shutters go up at six. They always have. Nobody has to be there for it." } },
+      { room: "stage", secs: 5.4, fov: 62,
+        from: [0.20, 3.10, 4.30], to: [0.20, 2.30, 3.00], look: [0, 1.30, -2.4],
+        line: { nar: 1, t: "She has spent six nights getting very good at keeping them out." } },
+      { room: "stage", secs: 4.0, fov: 50,
+        from: [0.20, 2.30, 3.00], to: [0.20, 2.05, 2.55], look: [0, 1.25, -2.4],
+        line: { nar: 1, t: "They were never coming for her." } },
+      { room: "stage", secs: 5.6, fov: 42,
+        from: [0.20, 2.05, 2.55], to: [0.20, 1.90, 2.25], look: [0, 1.20, -2.4],
+        line: { nar: 1, t: "They were coming to her." } },
     ],
-    /* what she finds when she comes up */
     after: {
       head: "and on the workshop bench, in his hand, dated March",
       lines: [
@@ -3448,6 +3568,29 @@ function buildOffice(R) {
   R.anchor("g2", -0.95, 0, -1.55,  3.14);
   R.anchor("g3",  1.05, 0,  1.75,  0.0);
 
+  /* THE FOUR MARKS THE LAST HOUR USES.
+
+     The standing marks above were all chosen for the desk camera,
+     which is why three of them sit outside the frame of the room
+     camera: something on g0 is off the left edge of a shot taken from
+     the chair. The film needs four places where all four of them are
+     in one frame AND each one is worth a close-up on its own, so it
+     has its own marks -- across the back of the room, facing her,
+     spread wide enough to read as four people rather than a huddle. */
+  R.anchor("f0", -1.55, 0, -1.95, 0.12);
+  R.anchor("f1",  1.55, 0, -1.95, -0.12);
+  R.anchor("f2", -0.55, 0, -1.10, 0.05);
+  /* and the owl stands in the room with the rest of them rather than in
+     the duct: the grate mark is three-quarters of a metre behind the
+     wall, which is right for something arriving through the ceiling
+     and useless for a shot of somebody's face. He looks up at it when
+     the time comes; that is what the camera is for. */
+  R.anchor("f3",  0.62, 0, -1.55, -0.08);
+  /* and the last mark in the chapter: beside the till, over the board
+     that lifts, close enough to her chair that a camera down at the
+     level of the hole can still see his face */
+  R.anchor("f4", -1.15, 0, 0.30, 0.10);
+
   R.anchor("d0", -0.35, 0, -2.05, 0);
   R.anchor("d1", -0.62, 0, -0.70, 0.15);
   R.anchor("d2", -0.88, 0,  0.62, 0.25);
@@ -5594,6 +5737,126 @@ function soldRetreat(ch) {
   ch.holdT = 0;
   syncChar(ch);
   SFX.postDrag(TUNE.pan[ch.def.door], 0.4);
+}
+
+/* =====================================================================
+   THE ONES THAT CAME BACK.
+
+   Four hundred and eleven went out of this shop over fifteen years,
+   into real houses, to people who were pleased to get them -- and the
+   tag on the bottom of each one has this address on it, so they know
+   the way home. With him dead there is nothing left telling them not
+   to use it.
+
+   They are deliberately NOT built to the standard of his four. The
+   four in the back room have joints and faces and a way of moving;
+   these are silhouettes. That is the whole point of the image: she has
+   spent six nights learning to tell one set of footsteps from another,
+   and what comes through the hall on the last night is a crowd she
+   cannot tell apart. Detail would make them characters. They are not
+   characters, they are weather.
+
+   Cheap on purpose too -- there are two dozen of them on screen at
+   once on a phone that is also running the shop. A body, a head, two
+   eyes, and a walk. The eyes are the only thing that catches light,
+   which is what makes a dark room full of them read at all. */
+const RET = { pool: [], live: 0 };
+
+function makeReturner(i) {
+  const g = new T.Group();
+  /* the dull end of the shop's own palette: these were his, once */
+  const skins = ["#3a2f2c", "#33302a", "#2f2a30", "#382a26", "#2b2f30"];
+  const body = new T.Mesh(new T.BoxGeometry(0.17, 0.24, 0.13),
+                          flat(skins[i % skins.length]));
+  body.position.y = 0.14;
+  const head = new T.Mesh(new T.BoxGeometry(0.13, 0.12, 0.12),
+                          flat(skins[(i + 2) % skins.length]));
+  head.position.y = 0.32;
+  /* THE ONLY THING THAT CARRIES.
+
+     At the far end of a hall, in the dark, a small dull box is a small
+     dull box: the first cut of this crowd read as bricks on the floor.
+     What makes a toy in the dark frightening is the pair of lit slots
+     where its eyes are, so they are wider than a real pair would be,
+     unlit by the room (glow is basic, not shaded) and just proud of
+     the face so they are never swallowed by it. */
+  const em = glow(i % 7 === 0 ? "#ffcf72" : "#ff5a4a", 1);
+  const eyes = new T.Group();
+  [-1, 1].forEach((sx) => {
+    const e = new T.Mesh(new T.BoxGeometry(0.036, 0.026, 0.006), em);
+    e.position.set(sx * 0.032, 0, 0);
+    eyes.add(e);
+  });
+  eyes.position.set(0, 0.335, 0.068);
+  const legL = new T.Mesh(new T.BoxGeometry(0.045, 0.11, 0.045), flat("#241f1d"));
+  const legR = legL.clone();
+  legL.position.set(-0.045, 0.055, 0); legR.position.set(0.045, 0.055, 0);
+  g.add(body, head, eyes, legL, legR);
+  g.userData.legs = [legL, legR];
+  g.userData.seed = i * 1.7;
+  g.visible = false;
+  return g;
+}
+
+function returnersBuild(n) {
+  while (RET.pool.length < n) {
+    const g = makeReturner(RET.pool.length);
+    scene.add(g);
+    RET.pool.push(g);
+  }
+}
+
+/* put a crowd in a room, in rough ranks, coming towards the camera */
+function returnersPlace(roomId, n, spreadX, z0, dz) {
+  returnersBuild(n);
+  const rec = rooms[roomId];
+  const ox = rec ? rec.index * SPACING : 0;
+  RET.live = n;
+  RET.pool.forEach((g, i) => {
+    g.visible = i < n;
+    if (i >= n) return;
+    const rnd = mulberry(1000 + i * 37);
+    const row = Math.floor(i / 5), col = i % 5;
+    g.position.set(ox + (col - 2) * (spreadX / 5) + (rnd() - 0.5) * 0.22,
+                   0,
+                   z0 + row * dz + (rnd() - 0.5) * 0.2);
+    /* FACING THE WAY THEY WALK.
+
+       They advance along +z, which is toward the camera in every room
+       the film uses -- so they face +z, which is a box's own front.
+       Turned a half-turn away (as they were), the one thing on them
+       that reads at any distance, the eyes, was pointed at the back
+       wall and the crowd looked like stacked crates. */
+    g.rotation.y = (rnd() - 0.5) * 0.5;
+    /* he sold four hundred and eleven things over fifteen years and
+       they were not all the same size. It is also the difference
+       between a crowd and a tiling. */
+    const sc = 1.25 + rnd() * 0.85;
+    g.scale.set(sc, sc * (0.9 + rnd() * 0.35), sc);
+    g.userData.spd = 0.12 + rnd() * 0.16;
+  });
+}
+
+function returnersClear() {
+  RET.live = 0;
+  RET.pool.forEach((g) => { g.visible = false; });
+}
+
+/* they advance, and they do not walk in step, which is most of why a
+   crowd reads as a crowd */
+function returnersStep(dt, t, advance) {
+  for (let i = 0; i < RET.live; i++) {
+    const g = RET.pool[i];
+    if (!g.visible) continue;
+    if (advance) g.position.z += g.userData.spd * dt;
+    const ph = t * 5.5 + g.userData.seed;
+    const legs = g.userData.legs;
+    if (legs) {
+      legs[0].rotation.x = Math.sin(ph) * 0.5;
+      legs[1].rotation.x = -Math.sin(ph) * 0.5;
+    }
+    g.position.y = Math.abs(Math.sin(ph)) * 0.012;
+  }
 }
 
 function buildCast() {
@@ -9260,6 +9523,10 @@ const G = {
   monitor: false,
   cam: "hall",
   doors: { left: false, right: false, hatch: false },
+  /* what the last hour's film is doing to the lights. 1 everywhere else,
+     and put back to 1 the moment the film stops, so a shot that took the
+     shop down to a tenth can never leave it there. */
+  filmLux: 1,
   blackout: false,
   blackoutT: 0,
   blackoutLen: 0,
@@ -9696,6 +9963,18 @@ const TUTOR = [
     hold: 4.0,
     enter: () => { if (cast.cogsworth) cast.cogsworth.cool = 4; } },
 
+  /* AND WHAT IT BUYS HER.
+
+     She was being taught the control and never told the point of it,
+     which is how a mechanic turns into a chore: the note asks for all
+     four every night and the note is deliberately not going to say
+     why until the last hour. The story reason can stay a secret. The
+     mechanical one cannot, so it is said here, once, in plain words,
+     next to the four marks that show it. */
+  { line: "THE FOUR MARKS BY THE METER ARE HOW MUCH IS LEFT IN EACH.", hold: 3.6 },
+  { line: "A WOUND ONE TAKES NO FOR AN ANSWER AND LEAVES YOUR DOOR SOONER.", hold: 4.0 },
+  { line: "AND IF SOMETHING HE SOLD EVER GETS THIS FAR, A WOUND ONE WILL STAND IN FRONT OF IT.", hold: 4.6 },
+
   { line: "ORIENTATION COMPLETE. THE SHIFT IS YOURS.", hold: 3.0 },
 ];
 
@@ -9988,13 +10267,49 @@ function kill(ch) {
    without being told -- the same swatches the how-it-works page uses,
    which is the only place those colours have ever meant anything
    before now. ------------------------------------------------------ */
-const FIN = { on: false, i: -1, t: 0, hold: 0, el: null, gone: {}, skip: false };
+/* =====================================================================
+   THE LAST HOUR, PLAYED.
+
+   This used to be forty beats of text over a black sheet, which is a
+   thing you read rather than a thing that happens to you. It is a
+   film now, shot in the shop: the camera is the chapter's own camera,
+   the four of them are the same four objects that have been walking
+   the routes all week, and the crowd coming up the hall is really
+   coming up the hall. The written lines are still there, and they are
+   subtitles -- under the picture, where a subtitle goes.
+
+   Three things drive a shot:
+
+     the camera   lerped from `from` to `to` over `secs`, eased, in the
+                  shot's room, exactly the way the opening film does it
+     the blocking `put` moves one of the four to a named mark and wakes
+                  it; `gone` takes one out of the world for good
+     the crowd    `swarm` places ranks of returners and `advance` lets
+                  them walk
+
+   Anything a shot does not mention, it inherits: a character stays
+   where the last shot put it, the crowd stays where it got to. So the
+   list reads as a shooting script rather than a state machine.
+   ===================================================================== */
+const FIN = {
+  on: false, i: -1, t: 0, secs: 1, hold: 0, el: null, head: null,
+  gone: {}, room: "office", skip: false, adv: 0, shot: null, lux: 1,
+  from: new T.Vector3(), to: new T.Vector3(), look: new T.Vector3(),
+  look2: new T.Vector3(), pan: 0,
+  fov0: 58, fov1: 58,
+};
+const _fp = new T.Vector3();
+const _fl = new T.Vector3();
 
 function finaleStart() {
-  if (!NS.lastHour) { winNight(); return; }
-  FIN.on = true; FIN.i = -1; FIN.t = 0; FIN.hold = 0; FIN.gone = {}; FIN.skip = false;
+  if (!NS.lastHour || !NS.lastHour.shots) { winNight(); return; }
+  FIN.on = true; FIN.i = -1; FIN.t = 0; FIN.hold = 0; FIN.secs = 1;
+  FIN.gone = {}; FIN.skip = false; FIN.adv = 0; FIN.shot = null;
+  FIN.lux = 1; G.filmLux = 1;
+  FIN.room = "office";
   G.phase = "finale";
   G.mode = "story";
+  G.dawn = false;
   showHud(false);
   sayClear();
   tapeOff();
@@ -10003,17 +10318,25 @@ function finaleStart() {
   G.doors.left = G.doors.right = G.doors.hatch = false;
   G.monitor = false;
   G.blackout = false;
+  G.shake = 0;
+  /* nobody is anywhere until a shot says so */
+  CAST.forEach((d) => { const ch = cast[d.id]; ch.awake = false; ch.asleep = true; ch.atDoor = false; });
+  returnersClear();
   musicMode("dark");
+  /* letterbox, a subtitle, a clock stamp, and a small way out */
   overlay(
     '<div class="ns-fin" id="ns-fin">' +
-      '<p class="ns-fin-head"><b>' + NS.lastHour.head + '</b>' +
-        '<span>' + NS.lastHour.sub + '</span></p>' +
-      '<div class="ns-fin-lines" id="ns-fin-lines"></div>' +
+      '<i class="ns-fin-bar t"></i><i class="ns-fin-bar b"></i>' +
+      '<p class="ns-fin-head" id="ns-fin-head"><b>' + NS.lastHour.head + '</b></p>' +
+      '<div class="ns-fin-sub" id="ns-fin-lines"></div>' +
       '<button class="ns-cine-skip ns-fin-skip" id="ns-fin-skip">SKIP</button>' +
-    '</div>', "ns-ov-fin");
+    '</div>', "ns-ov-film");
   FIN.el = document.getElementById("ns-fin-lines");
+  FIN.head = document.getElementById("ns-fin-head");
   const sk = document.getElementById("ns-fin-skip");
   if (sk) sk.addEventListener("click", (e) => { e.stopPropagation(); finaleNext(true); });
+  /* the stamp is a title, not a HUD: it goes after the first shot */
+  setTimeout(() => { if (FIN.head) FIN.head.classList.add("out"); }, 5200);
   finaleNext();
 }
 
@@ -10023,60 +10346,90 @@ function finaleWho(id) {
   return d ? { name: d.name, colour: d.colour } : null;
 }
 
-function finaleNext(skipped) {
-  if (!FIN.on) return;
-  const beats = NS.lastHour.beats;
-  FIN.i++;
-  if (FIN.i >= beats.length) { finaleEnd(); return; }
-  const b = beats[FIN.i];
-  FIN.t = 0;
-  FIN.hold = skipped ? 0.25 : (b.hold || 2);
-
-  if (b.cue) musicMode(b.cue);
-  if (b.shake) G.shake = Math.max(G.shake, b.shake);
-
-  /* one of them stops being in the room */
-  if (b.gone) {
-    FIN.gone[b.gone] = 1;
-    const ch = cast[b.gone];
-    if (ch) { ch.awake = false; ch.asleep = true; ch.atDoor = false; syncChar(ch); }
-    SFX.doorClose();
-    cueDuck(0.55);
-  }
-
-  /* the thing that is not a line */
-  if (b.boom) { finaleBoom(); finalePut('<p class="ns-fin-boom">&nbsp;</p>'); return; }
-
-  let html;
-  if (b.sys) {
-    html = '<p class="ns-fin-sys">' + b.t + '</p>';
-    annunciate(String(b.t).replace(/&amp;/g, "and").slice(0, 60), true);
-  } else if (b.who) {
-    const w = finaleWho(b.who);
-    html = '<p class="ns-fin-said" style="--c:' + (w ? w.colour : "#caa") + '">' +
-             '<b>' + (w ? w.name : b.who) + '</b><span>' + b.t + '</span></p>';
-    SFX.tick ? SFX.tick(0.5, 0) : null;
-  } else {
-    html = '<p class="ns-fin-nar">' + b.t + '</p>';
-  }
-  finalePut(html);
+/* one of them stops being in the world */
+function finaleGone(id) {
+  FIN.gone[id] = 1;
+  const ch = cast[id];
+  if (!ch) return;
+  ch.awake = false; ch.asleep = true; ch.atDoor = false;
+  ch.group.visible = false;
+  SFX.doorClose();
+  cueDuck(0.55);
 }
 
-/* keep the last few lines on screen and let the older ones go, so it
-   reads as a thing being told rather than a transcript piling up */
-function finalePut(html) {
+function finaleNext(skipped) {
+  if (!FIN.on) return;
+  const shots = NS.lastHour.shots;
+  FIN.i++;
+  if (FIN.i >= shots.length) { finaleEnd(); return; }
+  const s = shots[FIN.i];
+  FIN.shot = s;
+  FIN.t = 0;
+  FIN.secs = s.secs || 3;
+  FIN.hold = skipped ? 0.2 : FIN.secs;
+
+  /* --- the camera ------------------------------------------------- */
+  FIN.room = s.room || FIN.room;
+  FIN.from.fromArray(s.from);
+  FIN.to.fromArray(s.to);
+  FIN.look.fromArray(s.look || s.to);
+  /* a second target means the camera turns as it travels -- a tilt up
+     off somebody's face onto the ceiling, or a pan along a wall. Most
+     shots do not need one and get a fixed look. */
+  if (s.look2) { FIN.look2.fromArray(s.look2); FIN.pan = 1; } else { FIN.pan = 0; }
+  FIN.fov0 = s.fov0 || s.fov || 58;
+  FIN.fov1 = s.fov1 || s.fov || FIN.fov0;
+
+  /* --- the blocking ----------------------------------------------- */
+  if (s.put) {
+    for (const id in s.put) {
+      const ch = cast[id];
+      if (!ch || FIN.gone[id]) continue;
+      ch.awake = true; ch.asleep = false; ch.atDoor = false;
+      putChar(ch, s.room || FIN.room, s.put[id]);
+    }
+  }
+  if (s.gone) finaleGone(s.gone);
+
+  /* --- the crowd --------------------------------------------------- */
+  if (s.clear) returnersClear();
+  if (s.swarm) returnersPlace(s.swarm[0], s.swarm[1], s.swarm[2], s.swarm[3], s.swarm[4]);
+  FIN.adv = s.advance ? 1 : 0;
+
+  /* --- the rest ---------------------------------------------------- */
+  if (s.lux !== undefined) FIN.lux = s.lux;
+  if (s.cue) musicMode(s.cue);
+  if (s.shake) G.shake = Math.max(G.shake, s.shake);
+  if (s.dawn) G.dawn = true;
+  if (s.down) SFX.doorClose();
+  if (s.boom) { finaleBoom(); finaleSay(null); return; }
+  finaleSay(s.line);
+}
+
+/* the subtitle. One line at a time, under the picture, because two
+   lines of text stacked over a shot is a transcript again. */
+function finaleSay(line) {
   if (!FIN.el) return;
+  if (!line) { FIN.el.innerHTML = ""; return; }
+  let html;
+  if (line.sys) {
+    html = '<p class="ns-fin-sys">' + line.t + '</p>';
+    annunciate(String(line.t).replace(/&amp;/g, "and").replace(/&mdash;/g, "").slice(0, 60), true);
+  } else if (line.who) {
+    const w = finaleWho(line.who);
+    html = '<p class="ns-fin-said" style="--c:' + (w ? w.colour : "#caa") + '">' +
+             '<b>' + (w ? w.name : line.who) + '</b><span>' + line.t + '</span></p>';
+    if (SFX.tick) SFX.tick(0.5, 0);
+  } else {
+    html = '<p class="ns-fin-nar">' + line.t + '</p>';
+  }
   const d = document.createElement("div");
   d.className = "ns-fin-row";
   d.innerHTML = html;
+  FIN.el.innerHTML = "";
   FIN.el.appendChild(d);
   /* next frame, so the transition has a value to move from */
   setTimeout(() => d.classList.add("in"), 20);
-  const rows = FIN.el.children;
-  while (rows.length > 4) FIN.el.removeChild(rows[0]);
-  for (let i = 0; i < rows.length; i++) {
-    rows[i].style.opacity = i === rows.length - 1 ? "" : String(0.16 + i * 0.1);
-  }
 }
 
 /* THE ONE THAT IS NOT A LINE.
@@ -10115,15 +10468,43 @@ function finaleBoom() {
   setTimeout(() => audioDuck(1, 1400), 900);
 }
 
-function finaleTick(dt) {
+/* the clock of the film, run early in the frame so that a shot which
+   changes rooms has changed them before the room is drawn */
+function finaleStep(dt) {
   if (!FIN.on) return;
   FIN.t += dt;
+  /* the lights walk to where the shot wants them rather than snapping,
+     so a cut is a cut and a dimmer is a dimmer */
+  G.filmLux += (FIN.lux - G.filmLux) * Math.min(1, dt * 1.6);
+  if (RET.live) returnersStep(dt, G.t, FIN.adv);
   if (FIN.t >= FIN.hold) finaleNext();
 }
+
+/* and the camera, run late, after the lights are set for the room and
+   before anything is drawn -- the same slot the opening film uses */
+function finaleCam(dt) {
+  if (!FIN.on || !view) return;
+  const rec = rooms[FIN.room];
+  const ox = rec ? rec.index * SPACING : 0;
+  const k = clamp(FIN.t / Math.max(0.001, FIN.secs), 0, 1);
+  const e = k * k * (3 - 2 * k);
+  _fp.lerpVectors(FIN.from, FIN.to, e);
+  view.position.set(_fp.x + ox, _fp.y, _fp.z);
+  if (FIN.pan) _fl.lerpVectors(FIN.look, FIN.look2, e);
+  else _fl.copy(FIN.look);
+  view.lookAt(_fl.x + ox, _fl.y, _fl.z);
+  view.fov = lerp(FIN.fov0, FIN.fov1, e);
+  view.updateProjectionMatrix();
+}
+
+/* kept for anything that still calls the old name */
+function finaleTick(dt) { finaleStep(dt); }
 
 function finaleEnd() {
   FIN.on = false;
   G.dawn = true;
+  G.filmLux = 1;
+  returnersClear();
   noOverlay();
   const a = NS.lastHour.after;
   musicMode("dawn");
@@ -10996,7 +11377,11 @@ function applyLighting(dt) {
     G.flickT = G.flick < 0.7 ? range(Math.random, 0.04, 0.12) : range(Math.random, 0.6, 3.4);
     G.flick = G.flick < 0.7 ? range(Math.random, 0.85, 1.05) : (Math.random() < p ? range(Math.random, 0.15, 0.5) : 1);
   }
-  const low = G.blackout ? 0.06 : 1;
+  /* the last hour is lit by the film rather than by the shift: a shot
+     can take the shop down to almost nothing so that twenty pairs of
+     eyes are the brightest thing in the room */
+  const lux = G.filmLux === undefined ? 1 : G.filmLux;
+  const low = (G.blackout ? 0.06 : 1) * lux;
   const warn = G.power < TUNE.power.critical && !G.blackout ? 0.55 + 0.45 * Math.sin(G.t * 9) : 1;
   /* the office bulb giving up on its own, from night four */
   const lampGone = G.lampOut > 0 ? 0.05 : 1;
@@ -11018,7 +11403,7 @@ function applyLighting(dt) {
     if (!day && !dawn && l.userData.baseColor) l.color.set(l.userData.baseColor);
     l.intensity = l.userData.base * k;
   }
-  rigAmbient.intensity = rigAmbient.userData.base *
+  rigAmbient.intensity = rigAmbient.userData.base * lux *
     (G.blackout ? 0.22 : day ? 11 : dawn ? 2.6 : 1 - clamp(decayK() * -TUNE.decay.ambient * 4, 0, 0.34));
   if (dawn) rigAmbient.color.set("#e8cfae");
   /* the gallery is the one time the shop is lit the way a shop is lit:
@@ -11109,17 +11494,34 @@ function animateOffice(dt) {
 
 /* the seat is not bolted down: a slow drift, plus whatever the player
    is doing with the mouse or a thumb */
+const _filmBase = { pos: null, quat: null };
 function moveView(dt) {
-  const base = view.userData.base;
+  /* WHILE A FILM IS RUNNING THE SHOT OWNS THE CAMERA.
+
+     This used to copy the room's fixed camera back over the top of it
+     every frame, one line after the film had just placed it -- which
+     is why the opening played as a series of stills rather than as
+     moves. The seat still adds the shake, because the shake is the
+     room moving rather than the operator, but it no longer decides
+     where the camera is. */
+  const film = (G.phase === "intro" && CINE.on) || (G.phase === "finale" && FIN.on);
+  let base;
+  if (film) {
+    if (!_filmBase.pos) { _filmBase.pos = new T.Vector3(); _filmBase.quat = new T.Quaternion(); }
+    _filmBase.pos.copy(view.position);
+    _filmBase.quat.copy(view.quaternion);
+    base = _filmBase;
+  } else base = view.userData.base;
   if (!base) return;
   panX += (panTX - panX) * Math.min(1, dt * 5);
   panY += (panTY - panY) * Math.min(1, dt * 5);
   const idle = G.phase === "play" && !G.monitor;
   const drift = idle ? Math.sin(G.t * 0.31) * 0.012 : 0;
   const sh = G.shake > 0 ? G.shake : 0;
+  const px = film ? 0 : panX, py = film ? 0 : panY;
   view.quaternion.copy(base.quat);
-  const e = new T.Euler(panY * 0.22 + Math.sin(G.t * 0.23) * 0.004 + (sh ? Math.sin(G.t * 47) * sh * 0.03 : 0),
-                        panX * 0.34 + drift + (sh ? Math.sin(G.t * 39) * sh * 0.04 : 0), 0, "YXZ");
+  const e = new T.Euler(py * 0.22 + (film ? 0 : Math.sin(G.t * 0.23) * 0.004) + (sh ? Math.sin(G.t * 47) * sh * 0.03 : 0),
+                        px * 0.34 + drift + (sh ? Math.sin(G.t * 39) * sh * 0.04 : 0), 0, "YXZ");
   const q = new T.Quaternion().setFromEuler(e);
   view.quaternion.multiply(q);
   view.position.copy(base.pos);
@@ -11193,7 +11595,15 @@ function frame(ts) {
     if (G.deadT > 1.15 && !G.cardT) { G.cardT = 1; screenOver(); }
   }
 
-  if (G.phase === "finale") { finaleTick(dt); uiTick(dt); musicTick(dt); applyLighting(dt); return; }
+  /* the last hour is a film in the shop, so it goes down the same path
+     everything else does -- room, lights, cast, render. The other two
+     things that use this phase (the night-six card and the two endings)
+     are full-screen paper and keep the cheap early exit. */
+  if (G.phase === "finale") {
+    if (!FIN.on) { uiTick(dt); musicTick(dt); applyLighting(dt); return; }
+    finaleStep(dt);
+    uiTick(dt);
+  }
   if (G.phase === "gallery") { sayTick(dt); uiTick(dt); }
   /* the terms run on the wall clock, like the film, because they are a
      scene rather than part of the simulation */
@@ -11207,6 +11617,7 @@ function frame(ts) {
      room comes from the film and the camera is placed by cineTick, so
      useView only ever sets its lights up. */
   const room = G.phase === "intro" ? CINE.room
+             : (G.phase === "finale" && FIN.on) ? FIN.room
              : G.mode === "gallery" ? G.cam
              : (G.phase === "play" && G.monitor) ? G.cam : "office";
   /* the desk has its own angle, and only while she is watching it */
@@ -11220,6 +11631,7 @@ function frame(ts) {
   /* after the lights are set for the room, but before anything is drawn:
      the film owns the camera while it is running */
   if (G.phase === "intro") cineTick(dt);
+  else if (G.phase === "finale" && FIN.on) finaleCam(dt);
   syncCastVisibility();
   if (G.phase === "over" && G.killChar) G.killChar.group.visible = true;
   poseCast(dt, G.t);
@@ -11263,7 +11675,7 @@ function buildUI() {
   ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
    "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
    "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
-   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine", "ns-key", "ns-task",
+   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine", "ns-key", "ns-task", "ns-winds",
    "ns-tape"].forEach((id) => {
     EL[id] = el(id);
   });
@@ -11329,7 +11741,42 @@ function buildUI() {
       k.addEventListener(ev, (e) => { e.stopPropagation(); windEnd(); }));
   }
 
+  /* THE FOUR KEYS. One pip each, in that one's own colour, built from
+     the cast so it can never disagree with who is in the shop. */
+  if (EL["ns-winds"] && !EL["ns-winds"].children.length) {
+    EL["ns-winds"].innerHTML = CAST.map((d) =>
+      '<i class="ns-wpip" data-who="' + d.id + '" style="--c:' + d.colour + '" title="' + d.name + '"></i>'
+    ).join("");
+  }
+
   uiReady = true;
+}
+
+/* how wound each of them is, every frame, as four draining pips.
+
+   `wound` is in in-game hours and a full wind is WIND.hours of them, so
+   the pip is simply what fraction of a wind is left. Under the point at
+   which the key comes back on camera it is called slack, and it says so
+   in a way she can see out of the corner of her eye while she is doing
+   something else. */
+function windPips() {
+  const el = EL["ns-winds"];
+  if (!el || el.hidden) return;
+  const kids = el.children;
+  for (let i = 0; i < kids.length; i++) {
+    const pip = kids[i];
+    const ch = cast[pip.dataset.who];
+    if (!ch) continue;
+    const k = clamp((ch.wound || 0) / WIND.hours, 0, 1);
+    if (pip.__k !== Math.round(k * 20)) {
+      pip.__k = Math.round(k * 20);
+      pip.style.setProperty("--k", Math.round(k * 100) + "%");
+    }
+    const slack = windNeeded(ch);
+    if (pip.__slack !== slack) { pip.__slack = slack; pip.classList.toggle("slack", slack); }
+    const out = k <= 0.001;
+    if (pip.__out !== out) { pip.__out = out; pip.classList.toggle("out", out); }
+  }
 }
 
 /* --- the overlay cards -------------------------------------------- */
@@ -11515,7 +11962,8 @@ function screenHowTo() {
 
       '<p class="ns-how-lab">THE FOUR IN THE BACK ROOM</p>' +
       '<ul class="ns-who2s">' + who + '</ul>' +
-      '<p class="ns-how-foot">Wind them whenever you pass one. He asked you to, every night, ' +
+      '<p class="ns-how-foot">Wind them whenever you pass one. A wound one leaves your door sooner, ' +
+        'and will stand in front of anything that gets past it. He asked for all four, every night, ' +
         'and he never said why.</p>' +
 
       '<div class="ns-btns">' +
@@ -12299,6 +12747,7 @@ function uiTick(dt) {
   eggHotspot();
   findHotspot();
   windHotspot();
+  windPips();
 
   /* the annunciator's caption. A vocoder cannot be understood and is not
      meant to be — the words are here. */
@@ -14115,10 +14564,105 @@ const testHooks = {
   }),
   bedMode: (m) => musicMode(m),
   taskFor: (n, h) => taskFor(n, h),
-  finale: () => { finaleStart(); return NS.lastHour.beats.length; },
-  finaleState: () => ({ on: FIN.on, i: FIN.i, of: NS.finale ? NS.lastHour.beats.length : 0,
-                        rows: FIN.el ? FIN.el.children.length : 0, phase: G.phase }),
+  finale: () => { finaleStart(); return NS.lastHour.shots.length; },
+  finaleState: () => {
+    const s = FIN.shot || {};
+    return {
+      on: FIN.on, i: FIN.i, of: NS.lastHour.shots.length, phase: G.phase,
+      room: FIN.room, shown: shownRoom, fov: view ? Math.round(view.fov) : 0,
+      cam: view ? [+view.position.x.toFixed(2), +view.position.y.toFixed(2), +view.position.z.toFixed(2)] : null,
+      swarm: RET.live, advance: FIN.adv,
+      /* who the room would draw this frame, worked out the same way
+         the renderer works it out -- asked directly rather than read
+         off group.visible, which is only true once a frame has been
+         drawn, and a headless page never draws one */
+      seen: CAST.filter((d) => cast[d.id].awake && cast[d.id].room === FIN.room).map((d) => d.id),
+      gone: Object.keys(FIN.gone),
+      sub: FIN.el ? (FIN.el.textContent || "").slice(0, 60) : "",
+      /* IS THE PERSON TALKING ACTUALLY IN THE PICTURE?
+
+         Three of these shots were aimed at a height none of the four
+         has -- the owl is eighty-six centimetres tall and two of his
+         close-ups were pointed at a metre and a half of empty wall.
+         So the probe answers it directly: where the speaker's eyes
+         land in the frame, as -1..1 from the middle, or null when
+         nobody is speaking. */
+      eyes: (() => {
+        const w = FIN.shot && FIN.shot.line && FIN.shot.line.who;
+        const ch = w && cast[w];
+        if (!ch || !ch.awake || !view) return null;
+        /* nothing here has necessarily been drawn this frame, and a
+           world matrix is only current once something has drawn it */
+        ch.group.updateMatrixWorld(true);
+        view.updateMatrixWorld(true);
+        const p = new T.Vector3();
+        p.setFromMatrixPosition(ch.group.matrixWorld);
+        p.y += (ch.group.userData.eyeY || 1.2);
+        p.project(view);
+        return { who: w, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2) };
+      })(),
+      line: s.line ? (s.line.t || "").slice(0, 60) : "",
+    };
+  },
   finaleStep: () => { finaleNext(true); return FIN.i; },
+  /* how big each of them actually is, which is what a close-up has to
+     be framed against */
+  sizes: () => {
+    const box = new T.Box3(), v = new T.Vector3();
+    const out = {};
+    CAST.forEach((d) => {
+      const g = cast[d.id].group;
+      const was = g.visible; g.visible = true;
+      g.position.set(0, 0, 0); g.rotation.set(0, 0, 0); g.updateMatrixWorld(true);
+      box.setFromObject(g); box.getSize(v);
+      out[d.id] = { h: +v.y.toFixed(2), w: +v.x.toFixed(2),
+                    top: +box.max.y.toFixed(2), eye: +(g.userData.eyeY || 0).toFixed(2) };
+      g.visible = was;
+    });
+    return out;
+  },
+  /* the whole frame, by hand: room, lights, camera, cast, draw. What
+     the frame loop would have done, for a page that has no frame loop
+     and for anyone who wants to look at a shot rather than trust it */
+  filmFrame: (dt, draw) => {
+    const d = dt === undefined ? 0.05 : dt;
+    finaleStep(d);
+    if (!FIN.on) return false;
+    G.t += d;
+    showRoom(FIN.room);
+    if (useView.__last !== FIN.room + "film") { useView(FIN.room, "main"); useView.__last = FIN.room + "film"; }
+    applyLighting(d);
+    finaleCam(d);
+    syncCastVisibility();
+    poseCast(d, G.t);
+    moveView(d);
+    G.shake = Math.max(0, G.shake - d * 1.9);
+    /* drawing is the slow half and a caller stepping through the film
+       to reach one shot does not need the ones before it painted */
+    if (draw !== false) renderer.render(scene, view);
+    return FIN.i;
+  },
+  /* drive the film by hand, one slice of time at a time, so the ending
+     can be watched without a compositor to run the frame loop */
+  filmTick: (dt) => {
+    finaleStep(dt || 0.05);
+    finaleCam(dt || 0.05);
+    return view ? [+view.position.x.toFixed(3), +view.position.y.toFixed(3),
+                   +view.position.z.toFixed(3), +view.fov.toFixed(2), FIN.i] : null;
+  },
+  /* run the whole film at speed without a browser having to draw it */
+  finaleRun: (step) => {
+    const seen = { rooms: {}, shots: 0, drawn: 0, empty: [] };
+    while (FIN.on && seen.shots < 200) {
+      seen.rooms[FIN.room] = 1;
+      seen.shots++;
+      const vis = CAST.filter((d) => cast[d.id].awake).length + RET.live;
+      if (vis) seen.drawn++; else seen.empty.push(FIN.i);
+      finaleNext(true);
+    }
+    seen.rooms = Object.keys(seen.rooms);
+    return seen;
+  },
   /* why a particular line did or did not come out in his voice */
   voiceWhy: (text) => ({
     on: VOX_FILE.on,

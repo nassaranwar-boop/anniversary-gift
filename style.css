@@ -7796,6 +7796,44 @@ img{-webkit-user-drag:none; user-select:none;}
   font-size:max(1.6cqh, 10px); letter-spacing:.35em; color:var(--ns-amber);
   text-shadow:0 0 .6cqh rgba(255,179,71,.5);
 }
+
+/* THE FOUR KEYS.
+
+   One pip for each of them, in their own colour, draining from the
+   bottom as the wind runs out. It is the smallest thing on the panel
+   on purpose: she should notice it going down, not read it.
+
+   A pip that has dropped under the point where the key comes back
+   onto the camera breathes, because that is the shop asking for
+   something. One that has run all the way out stops breathing and
+   goes grey -- a run-down toy is not urgent any more, it is simply
+   not his. */
+.ns-winds{
+  display:flex; gap:.5cqh; margin-top:.35cqh;
+}
+.ns-wpip{
+  --k:100%;
+  position:relative; width:1.15cqh; height:2.1cqh; min-width:5px; min-height:9px;
+  border-radius:.25cqh;
+  background:rgba(20,18,16,.72);
+  box-shadow:inset 0 0 0 .12cqh rgba(232,223,200,.22);
+  overflow:hidden;
+}
+.ns-wpip::after{
+  content:""; position:absolute; left:0; right:0; bottom:0; height:var(--k);
+  background:linear-gradient(to top, color-mix(in srgb, var(--c) 92%, #000), var(--c));
+  box-shadow:0 0 .7cqh color-mix(in srgb, var(--c) 60%, transparent);
+  transition:height .5s ease;
+}
+.ns-wpip.slack::after{ animation:ns-wpip-low 1.4s ease-in-out infinite; }
+.ns-wpip.out{ box-shadow:inset 0 0 0 .12cqh rgba(232,223,200,.1); }
+.ns-wpip.out::after{ animation:none; }
+@keyframes ns-wpip-low{ 50%{ opacity:.42; } }
+@media (prefers-reduced-motion:reduce){
+  .ns-wpip.slack::after{ animation:none; opacity:.7; }
+  .ns-wpip::after{ transition:none; }
+}
+
 .ns-clock{
   font-size:max(3.4cqh, 19px); font-weight:700; letter-spacing:.1em; color:var(--ns-amber);
   text-shadow:0 0 1.2cqh rgba(255,179,71,.45), 0 .3cqh 0 rgba(0,0,0,.8);
@@ -8370,68 +8408,102 @@ img{-webkit-user-drag:none; user-select:none;}
    The four speak in the colours the how-it-works page gives them --
    the only place those swatches have ever meant anything before now. */
 .ns-ov-fin{ background:rgba(4,5,5,.82); backdrop-filter:blur(2px); }
+
+/* THE LAST HOUR IS NOT AN OVERLAY.
+
+   It is the shop, filmed, with a subtitle under it. So this layer paints
+   nothing at all -- no sheet, no vignette, no blur -- and the only marks
+   on the glass are two letterbox bars, a clock stamp that leaves after
+   the first shot, and one line of text along the bottom. Everything a
+   card would normally do here would be covering up the thing she is
+   meant to be watching. */
+.ns-ov-film{ background:none; }
+.ns-ov-film.on::before{ content:none; }
+.ns-ov-film{ align-items:stretch; justify-content:stretch; padding:0; overflow:hidden; }
 .ns-fin{
-  position:absolute; inset:0; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:1.6cqh;
-  padding-inline:6cqw; text-align:center; pointer-events:none;
+  position:absolute; inset:0; display:block;
+  pointer-events:none;
 }
+/* the bars. They arrive rather than appear: the frame closing down is
+   the chapter saying that what happens next is not gameplay. */
+.ns-fin-bar{
+  position:absolute; left:0; right:0; height:0; background:#000;
+  animation:ns-fin-bar 1.2s cubic-bezier(.2,.7,.25,1) forwards;
+}
+.ns-fin-bar.t{ top:0; }
+.ns-fin-bar.b{ bottom:0; }
+@keyframes ns-fin-bar{ to{ height:9cqh; } }
+
 .ns-fin-head{
-  position:absolute; top:4cqh; left:0; right:0; margin:0;
-  display:flex; flex-direction:column; gap:.5cqh;
+  position:absolute; top:11cqh; left:0; right:0; margin:0; text-align:center;
+  transition:opacity 1.4s ease;
 }
+.ns-fin-head.out{ opacity:0; }
 .ns-fin-head b{
-  font-size:max(10px, 1.5cqh); letter-spacing:.3em; color:rgba(196,74,74,.8);
+  font-size:max(10px, 1.5cqh); letter-spacing:.34em; color:rgba(196,74,74,.72);
+  text-shadow:0 .2cqh 1cqh rgba(0,0,0,.9);
 }
-.ns-fin-head span{
-  font-size:max(9px, 1.3cqh); letter-spacing:.18em; color:rgba(226,206,172,.34);
-}
-.ns-fin-lines{
-  display:flex; flex-direction:column; gap:1.5cqh;
-  width:min(78cqw, 780px);
+
+/* the subtitle sits just above the lower bar, where a subtitle goes */
+.ns-fin-sub{
+  position:absolute; left:0; right:0; bottom:11cqh;
+  display:flex; justify-content:center;
+  padding-inline:8cqw; text-align:center;
 }
 .ns-fin-row{
-  opacity:0; transform:translateY(1.2cqh);
-  transition:opacity .85s ease, transform .85s cubic-bezier(.2,.7,.3,1);
+  width:min(74cqw, 760px);
+  opacity:0; transform:translateY(.8cqh);
+  transition:opacity .6s ease, transform .6s cubic-bezier(.2,.7,.3,1);
 }
 .ns-fin-row.in{ opacity:1; transform:none; }
 .ns-fin-nar{
-  margin:0; font-size:max(13px, 2.35cqh); line-height:1.5;
-  color:rgba(234,226,208,.9); text-wrap:pretty;
-  text-shadow:0 .2cqh .8cqh rgba(0,0,0,.9);
+  margin:0; font-size:max(13px, 2.2cqh); line-height:1.45;
+  color:rgba(238,231,216,.95); text-wrap:pretty;
+  text-shadow:0 .2cqh .9cqh rgba(0,0,0,.95), 0 0 2.4cqh rgba(0,0,0,.8);
 }
 /* one of them talking: their name in their own colour, and the line
    set in a lighter weight so a voice reads differently from narration */
 .ns-fin-said{ margin:0; }
 .ns-fin-said b{
-  display:block; font-size:max(9px, 1.35cqh); letter-spacing:.28em;
-  color:var(--c); margin-bottom:.5cqh;
-  text-shadow:0 0 1.6cqh color-mix(in srgb, var(--c) 55%, transparent);
+  display:block; font-size:max(9px, 1.3cqh); letter-spacing:.28em;
+  color:var(--c); margin-bottom:.45cqh;
+  text-shadow:0 0 1.6cqh color-mix(in srgb, var(--c) 55%, transparent),
+              0 .2cqh .8cqh rgba(0,0,0,.9);
 }
 .ns-fin-said span{
-  display:block; font-size:max(13px, 2.4cqh); line-height:1.48;
-  color:rgba(244,238,226,.96); text-wrap:pretty;
-  text-shadow:0 .2cqh .8cqh rgba(0,0,0,.9);
+  display:block; font-size:max(13px, 2.3cqh); line-height:1.42;
+  color:rgba(246,241,231,.98); text-wrap:pretty;
+  text-shadow:0 .2cqh .9cqh rgba(0,0,0,.95), 0 0 2.4cqh rgba(0,0,0,.8);
 }
 /* the building, failing */
 .ns-fin-sys{
-  margin:0; font-size:max(10px, 1.7cqh); letter-spacing:.24em;
-  color:rgba(196,74,74,.78); text-wrap:balance;
+  margin:0; font-size:max(10px, 1.6cqh); letter-spacing:.24em;
+  color:rgba(206,86,78,.92); text-wrap:balance;
+  text-shadow:0 .2cqh .9cqh rgba(0,0,0,.95);
 }
-.ns-fin-boom{ margin:0; height:2cqh; }
 .ns-fin-end{
   margin:2cqh 0 0; text-align:center;
   font-size:max(10px, 1.55cqh); letter-spacing:.3em;
   color:rgba(236,196,120,.7);
 }
-/* late and small, like the film's */
-.ns-fin-skip{ pointer-events:auto; animation-delay:6s; }
+/* late and small, like the film's, and clear of the lower bar */
+.ns-fin-skip{ pointer-events:auto; animation-delay:6s; bottom:2.6cqh; }
 
 @media (max-width:820px){
-  .ns-fin-lines{ width:min(88cqw, 520px); gap:1.2cqh; }
-  .ns-fin-nar, .ns-fin-said span{ font-size:max(12px, 2.9cqh); }
+  .ns-fin-row{ width:min(88cqw, 520px); }
+  .ns-fin-nar, .ns-fin-said span{ font-size:max(12px, 2.6cqh); }
+  @keyframes ns-fin-bar{ to{ height:7cqh; } }
+  .ns-fin-sub{ bottom:9cqh; }
+  .ns-fin-head{ top:9cqh; }
+}
+/* a sideways phone has no height to give away */
+@media (max-height:560px){
+  .ns-fin-sub{ bottom:6.5cqh; }
+  .ns-fin-head{ top:6cqh; }
 }
 @media (prefers-reduced-motion:reduce){
   .ns-fin-row{ opacity:1; transform:none; transition:none; }
+  .ns-fin-bar{ animation:none; height:8cqh; }
 }
 
 /* ONE OF THEM TALKING, NOT HIM.
