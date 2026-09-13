@@ -6728,6 +6728,16 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-panel{
   display:flex; flex-direction:column; align-items:center; gap:2cqh;
   width:100%; max-width:92cqw; text-align:center;
+  /* NOTHING ON A PANEL MAY BE SOMEWHERE SHE CANNOT GET TO.
+     The caps below keep each panel inside the stage on every screen
+     measured, and this is the floor under that: if content ever does grow
+     past the picture -- a longer roster, a longer keepsake, a language
+     that sets wider -- it scrolls rather than putting the buttons under
+     the fold. The panel at the end of a race was 512 points of a 440-point
+     stage, with MENU, KEEP THE PHOTO and NEXT TRACK below the glass, and
+     nothing caught it because nothing had ever walked to a results
+     screen. */
+  max-height:94cqh; overflow-y:auto; overscroll-behavior:contain;
 }
 .rc-h{
   margin:0; font-size:3cqh; font-weight:400; color:var(--rc-gold);
@@ -6735,11 +6745,14 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .rc-cards{display:grid; gap:1.6cqw; width:100%; justify-content:center;}
 .rc-cards-2{grid-template-columns:repeat(2, minmax(0, 26cqw));}
-/* Four cards were four columns. There are six courses now, and a sixth
-   column does not fit a 16:9 stage -- so the grid asks for as many 20cqw
-   columns as will go and wraps the rest, which is three and three on a
-   laptop and an iPad and two rows of three sideways on a phone. */
-.rc-cards-4{grid-template-columns:repeat(auto-fit, minmax(0, 20cqw)); max-width:64cqw; margin:0 auto;}
+/* Four cards were four columns of 20cqw. There are six courses now, and a
+   sixth column does not fit a 16:9 stage, so they wrap to three and three.
+   Two rows of the old size came to 444 points of card on a laptop and put
+   BACK and START past the bottom of the picture -- a card is its art plus
+   two lines and the art is sized off the width, so the way to shorten a
+   row is to narrow it. 16cqw gives three across with room for the gaps,
+   and two rows that leave the buttons on screen. */
+.rc-cards-4{grid-template-columns:repeat(auto-fit, minmax(0, 16cqw)); max-width:54cqw; margin:0 auto;}
 
 .rc-card{
   display:flex; flex-direction:column; align-items:center; gap:.8cqh;
@@ -6951,7 +6964,15 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-split{
   display:grid; gap:2cqw; width:100%;
   align-items:center; justify-items:center;
+  /* the standings beside the postcard were half the height of the panel
+     they sit in -- 256 points of the 512 that put the buttons under the
+     fold on every screen there is */
+  max-height:40cqh;
 }
+.rc-standings ol{max-height:30cqh; overflow-y:auto; overscroll-behavior:contain;}
+/* a keepsake is a sentence, not a badge, so the strip under a result can be
+   a great deal taller than it used to be */
+.rc-earned{max-height:20cqh; overflow-y:auto; overscroll-behavior:contain;}
 /* the results panel carries the most of any panel, so it packs tighter */
 .rc-res{ gap:1.5cqh; }
 
@@ -7427,6 +7448,53 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-pad[data-mode="slide"] .rc-key-drift{width:max(52px, 14cqh); height:max(52px, 14cqh);}
   .rc-pad[data-mode="slide"] .rc-key-sm{width:max(44px, 8cqh); height:max(44px, 8cqh);}
   .rc-pad-cluster{gap:min(1.6cqw, 2.6cqh); padding:min(1.4cqh,1.4cqh) min(1.6cqw,2.2cqh);}
+
+  /* SIX COURSES MEANS TWO ROWS OF CARDS, AND TWO ROWS DID NOT FIT.
+
+     Four tracks were one row and the panel came to 380 of a 440-point
+     stage. Six wrap to two rows of three, which took it to 476 -- so the
+     cards were all on screen, the blurb was on screen, and BACK and START
+     were 50 points below the bottom of the glass. She could look at every
+     course and not start one.
+
+     The cards come in (a card is art plus two lines, and the art is sized
+     off the width, so narrowing them is what shortens the rows) and the
+     panel's own rhythm tightens. 400 of 440, with the buttons on it. A
+     laptop and an iPad are both far outside this query and keep the
+     roomier layout they had. */
+  /* three explicit columns, not auto-fit: shrinking the container alone
+     let the grid decide three 20cqw columns no longer fitted and wrap to
+     TWO, which is three rows and taller than what it replaced */
+  .rc-cards-4{grid-template-columns:repeat(3, minmax(0, 15cqw)); max-width:none; gap:1.1cqw;}
+  .rc-panel{gap:1.1cqh;}
+  .rc-h{font-size:2.4cqh;}
+  .rc-blurb{font-size:1.35cqh; line-height:1.5;}
+  .rc-warn{line-height:1.4;}
+  .rc-varnote{line-height:1.4;}
+  .rc-card{padding:.8cqh .7cqw; gap:.4cqh;}
+
+  /* AND THE PANEL AT THE END OF A RACE, WHICH NEVER FITTED.
+
+     This one predates the six courses -- the championship table is one row
+     per racer, not one per round, so it is the same height it always was.
+     It came to 512 of a 440-point stage, and what was under the fold was
+     MENU, KEEP THE PHOTO and NEXT TRACK: she could finish a Grand Prix
+     round and have no way to start the next one. Nothing caught it because
+     landscape.js, buttons.js and handheld.js all walk the gate, the hub,
+     the book and the games, and none of them has ever been to a results
+     screen.
+
+     The half of it that is the standings beside the postcard was 256 of
+     those 512. Both halves come in, the list scrolls if the field is long,
+     and the strip of things the race just won scrolls too. 398 of 440,
+     buttons included. */
+  .rc-split{max-height:34cqh;}
+  .rc-card-shot{margin:.2cqh 0 0;}
+  .rc-card-shot canvas{width:min(34cqw, 100%); max-height:32cqh;}
+  .rc-standings ol{max-height:26cqh; overflow-y:auto; overscroll-behavior:contain;}
+  .rc-earned{max-height:13cqh; overflow-y:auto; overscroll-behavior:contain;}
+  .rc-pod-art canvas{width:9cqh;}
+  .rc-podium{gap:1.2cqw;}
 
   /* THE MENU HAD TO END ABOVE THE GLASS AND DID NOT.
 
@@ -8398,6 +8466,21 @@ img{-webkit-user-drag:none; user-select:none;}
              0 .6cqh 2cqh rgba(0,0,0,.55);
 }
 .ns-door:active{ transform:translateY(.2cqh); }
+/* A THUMB, ON BOTH OF THESE.
+   handheld.js walks ten real phones and found the night's door at 253x37
+   and its three little night buttons at 30x30 -- both under the 44 a finger
+   is judged by. The door gets the height outright, because it is a wide
+   slab with room above and below it; the small ones keep the size they look
+   and get an invisible target, because making them 44 square would be three
+   chunky tiles where there was a neat row. */
+@media (hover:none){
+  .ns-nite::after{
+    content:""; position:absolute; left:50%; top:50%;
+    width:max(100%, 44px); height:max(100%, 44px);
+    transform:translate(-50%, -50%);
+  }
+}
+.ns-door{min-height:44px;}
 
 /* the rows underneath it: grouped by what they are for, and all
    smaller than the door, because none of them is the door */
@@ -8454,11 +8537,21 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .ns-roster{ margin-top:2.6cqh; }
 .ns-roster-lab{
-  margin:0 0 1cqh; font-size:max(8.5px, 1.3cqh); letter-spacing:.3em;
+  /* 10, not 8.5: on every phone in handheld.js the container query resolves
+     to about five pixels and the floor is what she actually gets, and 8.5px
+     of 0.3em-tracked capitals at 42% opacity is not a label, it is a
+     texture. Ten is the readable floor the rest of the site is held to. */
+  margin:0 0 1cqh; font-size:max(10px, 1.3cqh); letter-spacing:.3em;
   color:rgba(226,206,172,.42);
 }
 .ns-nites{ display:flex; gap:.9cqw; justify-content:center; }
 .ns-nite{
+  /* 30px is the size it looks and 44 is the size a thumb needs, so it keeps
+     the first and carries the second: an invisible target centred on it,
+     the same trick the map's zoom studs and the hunt's chips use. They sit
+     in a row with a gap wider than the six points of slop this adds, so no
+     two targets can reach each other. */
+  position:relative;
   width:max(30px, 4.2cqh); height:max(30px, 4.2cqh);
   border:0; border-radius:.45cqw; cursor:pointer;
   font-family:inherit; display:grid; place-items:center;
