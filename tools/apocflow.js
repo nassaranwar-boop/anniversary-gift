@@ -149,7 +149,13 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n + (x ? '  '
     const dead = doors.filter(d => d.kind === 'P');
     ok('every door the board feeds lets go', dead.length > 0 && dead.every(d => !d.locked),
        dead.length + ' of them');
-    ok('the shutter is up', await p.evaluate(() => !!window.Apocalypse.game.world.powered));
+    /* `world.powered` is not the right question here: the house is on
+       the grid to start with (it is `!def.dead`, and home has no dead
+       zone), so asserting it proved nothing. The shutter is the thing
+       the board actually moves -- it is the P door, and it is opening. */
+    ok('and the shutter itself goes up',
+       await p.evaluate(() => window.__apState().doors
+         .some(d => d.kind === 'P' && (d.open || !d.locked))));
     ok('and the last beat is the way out', await step() === 'exit', await step());
   }
 

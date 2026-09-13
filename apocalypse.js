@@ -11379,11 +11379,85 @@
     o.style.pointerEvents = "";
     o.appendChild(node);
     o.setAttribute("aria-hidden", "false");
+    fitOverlay();
     if (G) G.state = "overlay";
+  }
+
+  /* ---- MAKE THE CARD FIT THE PICTURE ----
+
+     Every card in this chapter is a column laid out from its own width:
+     a drawn canvas at some fixed proportion, a line or two of type under
+     it, and a button. Its width is a share of the stage capped at a
+     pixel ceiling -- but the type inside it is a share of the stage as
+     well, and does NOT stop at that ceiling. So on a wide screen the box
+     stops growing and the words in it keep going, and the hint under the
+     wire board wraps six times and pushes "step back" clean off the
+     bottom of the picture. Measured: the board overflowed on every shape
+     tested -- 35px on a laptop, 42 on an iPad sideways, 45 on a phone
+     upright, 66 on one sideways -- and with it went the only way out of
+     a puzzle she is asked to solve twice. The television, the fridge,
+     the radio and the note each did the same on at least one shape.
+
+     Retuning ten cards by hand, in cqw and cqh, for five shapes, is how
+     that fault was arrived at in the first place. So instead the card is
+     measured against the stage once it is laid out, and if it is over,
+     the whole thing is scaled down to fit -- which keeps every
+     proportion exactly as it was drawn and cannot be got wrong by a
+     shape nobody thought of. A card that already fits is not touched.
+
+     Scaling is safe for the things you drag: a transform changes what
+     getBoundingClientRect reports, and the wire board maps a pointer
+     through that rect, so the cores still follow the finger. */
+  var fitObs = null;
+  function fitOverlay() {
+    var o = $("ap-overlay");
+    var card = o && o.firstElementChild;
+    var stage = $("ap-stage");
+    if (fitObs) { try { fitObs.disconnect(); } catch (e) {} fitObs = null; }
+    if (!card || !stage) return;
+
+    function measure() {
+      if (!card.isConnected) return;
+      var s = stage.getBoundingClientRect();
+      var box = card.getBoundingClientRect();
+      var st = getComputedStyle(card);
+      /* A card that scrolls is allowed to be taller than the stage --
+         that is what scrolling is for, and the intake sheet at the gates
+         has four rows and a stamp that will never fit a phone held
+         upright. A card that does NOT scroll and is over its box is
+         simply spilling its buttons into the dark, and the rect would
+         report it as fitting, so the scroll extent is what is measured. */
+      var scrolls = /auto|scroll/.test(st.overflowY) || /auto|scroll/.test(st.overflow);
+      var w = scrolls ? box.width : Math.max(box.width, card.scrollWidth);
+      var h = scrolls ? box.height : Math.max(box.height, card.scrollHeight);
+      if (!h || !w || !s.height) return;
+      /* the transform is already on it from the last pass, so the rect
+         is of the scaled card: undo that before comparing */
+      var was = card.__fitK || 1;
+      w /= was; h /= was;
+      var k = Math.min(1, (s.height - 8) / h, (s.width - 8) / w);
+      card.__fitK = k < 0.995 ? k : 1;
+      card.style.transformOrigin = "center center";
+      card.style.transform = k < 0.995 ? "scale(" + k.toFixed(4) + ")" : "";
+    }
+
+    card.__fitK = 1;
+    card.style.transform = "";
+    requestAnimationFrame(measure);
+    /* the drawn plates size themselves after their first paint, and the
+       television's picture arrives later still, so one measurement on
+       the frame it opened is not enough */
+    setTimeout(measure, 120);
+    setTimeout(measure, 420);
+    if (window.ResizeObserver) {
+      fitObs = new ResizeObserver(function () { measure(); });
+      try { fitObs.observe(card); } catch (e) {}
+    }
   }
 
   function closeOverlay() {
     var o = $("ap-overlay");
+    if (fitObs) { try { fitObs.disconnect(); } catch (e) {} fitObs = null; }
     if (!o) return;
     o.setAttribute("aria-hidden", "true");
     o.innerHTML = "";
@@ -11395,6 +11469,7 @@
     o.style.pointerEvents = "";
     if (G) {
       if (G.__overlayCleanup) { try { G.__overlayCleanup(); } catch (e) {} G.__overlayCleanup = null; }
+
       G.__panel = null; G.__keypad = null; G.__check = null; G.__serum = null; G.__tv = null;
     }
   }
@@ -16338,7 +16413,12 @@
     bindOnce.done = true;
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("resize", function () { if (Stage.ready) Stage.resize(); fitTouch(); });
+    window.addEventListener("resize", function () {
+      if (Stage.ready) Stage.resize();
+      fitTouch();
+      /* turning the phone changes the shape the card has to fit into */
+      fitOverlay();
+    });
     /* The Continue button is inside the box, and both of them had a click
        handler on them, so one press on the button ran nextLine twice and
        every second line of the conversation went past unseen — which is

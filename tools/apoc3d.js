@@ -36,7 +36,11 @@ const log = (...a) => console.log(`[${((Date.now()-t0)/1000).toFixed(1)}s]`, ...
     window.Apocalypse.start();
   });
   await p.waitForFunction(() => !!window.__apEnter, { timeout: 40000 });
-  await p.evaluate(() => { window.__apLoop(false); window.__apQuality(Number(process_q)); });
+  /* `process_q` never existed -- it is not a node global and it is not
+     defined in this file, so this line threw inside the page and took
+     the whole run with it. The quality it wants is the bottom rung: the
+     software rasteriser in here cannot afford anything else. */
+  await p.evaluate(() => { window.__apLoop(false); window.__apQuality(2); });
   log('booted, loop frozen, quality 2');
 
   async function pump(n) { await p.evaluate(n => { for (let i=0;i<n;i++) window.__apPump(1/60); }, n); }
