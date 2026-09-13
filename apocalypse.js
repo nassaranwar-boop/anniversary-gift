@@ -10913,10 +10913,72 @@
         });
         try {
           Stage.renderer.compile(built.scene, Stage.camera);
+
+          /* ---- AND THE PICTURES, WHICH ARE THE OTHER HALF ----
+
+             Compiling shaders did not touch the first frame: measured, it
+             was still five to nine seconds with the program count FLAT,
+             so that half was never shaders. It is texture upload. Nothing
+             here samples an image file -- every surface is painted into a
+             canvas once and cached by name in TEX -- but a painted canvas
+             still has to be handed to the card, and that happens the
+             first time it is sampled, which is the first frame of the
+             level. The count climbs 19, 41, 50, 64, 90, 103, 116 across
+             the seven, because each place introduces its own.
+
+             They are not disposed between levels and should not be: the
+             cache is the point, and a second visit is meant to be free.
+             What they should not do is upload while she is looking, so
+             every map on every material in the scene is handed over here.
+             initTexture does exactly that and nothing else -- no draw, no
+             state change -- so it is the upload and none of the rest of a
+             frame. */
+          if (Stage.renderer.initTexture) {
+            var seen = [];
+            var MAPS = ["map", "normalMap", "bumpMap", "roughnessMap", "metalnessMap",
+                        "aoMap", "emissiveMap", "alphaMap", "lightMap", "displacementMap",
+                        "specularMap", "envMap"];
+            built.scene.traverse(function (o) {
+              var mats = o.material;
+              if (!mats) return;
+              if (!Array.isArray(mats)) mats = [mats];
+              for (var mi = 0; mi < mats.length; mi++) {
+                var m = mats[mi];
+                if (!m) continue;
+                for (var ki = 0; ki < MAPS.length; ki++) {
+                  var t = m[MAPS[ki]];
+                  if (t && t.isTexture && seen.indexOf(t) < 0) {
+                    seen.push(t);
+                    try { Stage.renderer.initTexture(t); } catch (e) {}
+                  }
+                }
+              }
+            });
+          }
         } finally {
           for (var hi = 0; hi < hidden.length; hi++) hidden[hi].visible = false;
         }
       }
+
+      /* ---- AND ONE WHOLE FRAME, WHICH IS THE REST OF IT ----
+
+         Compiling the shaders and handing over the textures both left the
+         first frame where it was, and the bisect says why: with shadows
+         off it drops from 18.4 seconds to 9.8, and at the bottom of the
+         quality ladder to 0.95. So the bulk of it is the shadow maps
+         being rendered for the first time and the post-processing chain
+         allocating its targets -- per level, because the lights are new
+         every level and their depth maps are disposed with the old scene.
+         Neither is something compile() or initTexture() can do; the only
+         thing that does them is a frame.
+
+         So a frame is drawn here. The grade above has already been set to
+         G.fade, which is zero on the way into a level, so what is drawn is
+         black -- she sees the fade she was going to see anyway, and the
+         once-per-level stall happens behind it instead of on her first
+         step. It is the same work either way. The difference is entirely
+         where it lands. */
+      Stage.render(built.scene, Stage.camera);
     } catch (e) {}
 
     return G;
