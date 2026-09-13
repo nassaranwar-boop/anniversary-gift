@@ -104,9 +104,20 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
        that was not that size. It is a fraction of the pip's own width now,
        so this measures where the pip actually lands against how much room
        it has inside the ring. */
+    /* MEASURE WHERE THE PIP GOES, NOT WHERE IT IS A FRAME IN. The pip has
+       a 40ms transition on its transform, and in this container the
+       animation clock barely advances -- so a rect read straight after
+       the touch is the rect at t=0 of that transition, which is dead
+       centre, and the first version of this check duly reported that the
+       stick's pip never moves. Turning transitions off makes the
+       measurement the end state rather than the start of the ride. */
+    const noAnim = document.createElement("style");
+    noAnim.textContent = "*{transition:none !important; animation:none !important;}";
+    document.head.appendChild(noAnim);
     touch("touchstart", cx, cy);
     touch("touchmove", cx + radius, cy);
     d.step(1 / 60);
+    void document.body.offsetHeight;
     const ringEl = document.querySelector(".rc-steer-ring");
     const pip = ringEl && ringEl.querySelector("i");
     let sweep = null;
@@ -115,10 +126,14 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
       /* how far the pip's centre is from the ring's, against the furthest
          it could go without crossing the ring's own edge */
       const off = Math.abs((pr.left + pr.width / 2) - (rr.left + rr.width / 2));
-      sweep = { off: +off.toFixed(1), room: +(rr.width / 2 - pr.width / 2).toFixed(1) };
+      sweep = { off: +off.toFixed(1), room: +(rr.width / 2 - pr.width / 2).toFixed(1),
+               lock: ringEl.style.getPropertyValue('--rc-lock'),
+               tf: getComputedStyle(pip).transform,
+               on: ringEl.parentElement && ringEl.parentElement.dataset.on };
     }
     touch("touchend", cx + radius, cy);
     for (let i = 0; i < 30; i++) d.step(1 / 60);
+    noAnim.remove();
 
     return { rest, half, full, settle: frames, radius: Math.round(radius),
              stage: Math.round(stage.clientWidth), sweep };
@@ -140,7 +155,7 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
        r.radius <= r.stage * 0.13, `${r.radius}px of a ${r.stage}px stage`);
     ok("at full lock the pip is near the edge of its ring, not in the middle",
        !!r.sweep && r.sweep.off > r.sweep.room * 0.7 && r.sweep.off <= r.sweep.room,
-       r.sweep ? `${r.sweep.off}px of ${r.sweep.room}px of room` : "no pip");
+       r.sweep ? `${r.sweep.off}px of ${r.sweep.room}px of room  [--rc-lock=${r.sweep.lock}  transform=${r.sweep.tf}  on=${r.sweep.on}]` : "no pip");
   }
   ok("no page errors", errs.length === 0, errs[0] || "");
   await ctx.close();
