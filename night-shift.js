@@ -639,12 +639,16 @@ const NS = {
          She has spent six nights guarding two doorways off a hall. The
          thing nobody ever asked her to guard is the one the whole shop
          is named after, and it is made of glass. */
-      { room: "foyer", secs: 4.6, fov: 58, lux: 0.42,
+      { room: "foyer", secs: 4.8, fov: 58, lux: 0.42,
         from: [1.9, 1.95, 1.9], to: [1.2, 1.72, 1.1], look: [-0.5, 1.25, -2.5],
-        line: { nar: 1, t: "The front doors have been locked since ten past twelve. They are the only thing in the building she was never asked to watch." } },
-      { room: "foyer", secs: 3.8, fov: 48, shake: 1.1, lux: 0.36,
-        from: [1.2, 1.72, 1.1], to: [1.0, 1.62, 0.7], look: [-0.5, 1.2, -2.5],
-        line: { nar: 1, t: "They are also glass." } },
+        line: { nar: 1, t: "The shutter at the front has been down since ten past twelve. It is the only door in this building she was never asked to watch." } },
+      /* and the camera tilts off it onto the reason why, which is in
+         the frame the whole time and is the sort of thing a person
+         stops seeing after the first week */
+      { room: "foyer", secs: 4.2, fov: 50, shake: 1.1, lux: 0.36,
+        from: [1.2, 1.72, 1.1], to: [1.05, 1.80, 0.70],
+        look: [-0.5, 1.35, -2.5], look2: [-0.45, 2.72, -2.6],
+        line: { nar: 1, t: "Nobody ever put a shutter on the windows above it." } },
 
       /* --- the hall, filling up ----------------------------------- */
       { room: "hall", secs: 5.0, fov: 74, cue: "night", shake: 0.5, lux: 0.5,
@@ -735,7 +739,7 @@ const NS = {
         look: [0.62, 0.66, -1.55], look2: [1.35, 2.45, -2.25],
         swarm: ["office", 22, 3.2, -1.5, 0.42], advance: 1,
         line: { who: "chime", t: "The hatch. Somebody shut the&mdash;" } },
-      { room: "office", secs: 3.0, fov: 50, gone: "chime", shake: 1.2, lux: 0.5,
+      { room: "office", secs: 3.0, fov: 50, gone: "chime", shake: 1.2, lux: 0.5, hush: "air",
         from: [1.06, 1.30, -0.56], to: [0.98, 1.04, -0.30],
         look: [1.35, 2.45, -2.25], look2: [0.62, 0.48, -1.55],
         swarm: ["office", 22, 3.2, -1.3, 0.42], advance: 1,
@@ -746,7 +750,7 @@ const NS = {
         from: [1.05, 1.38, -0.20], to: [1.20, 1.34, -0.55], look: [1.55, 1.06, -1.95],
         swarm: ["office", 22, 3.2, -1.2, 0.42],
         line: { who: "marabelle", t: "Fifteen years, and he never once saw me do this." } },
-      { room: "office", secs: 4.6, fov: 50, gone: "marabelle",
+      { room: "office", secs: 4.6, fov: 50, gone: "marabelle", hush: "box",
         from: [1.20, 1.34, -0.55], to: [0.70, 1.40, 0.10], look: [1.55, 1.06, -1.95],
         line: { nar: 1, t: "Every one of them stops to look at her. It buys the others eleven seconds." } },
       { room: "office", secs: 3.4, fov: 44, cue: "night", shake: 0.9,
@@ -823,12 +827,19 @@ const NS = {
          own last line -- which is how the first cut of this played: an
          empty ceiling saying "put your hands over your ears". It goes
          on the detonation, where it belongs. */
-      { room: "office", secs: 3.6, fov0: 36, fov1: 32, lux: 0.2,
-        from: [-1.64, 0.22, 1.28], to: [-1.62, 0.20, 1.25], look: [-1.16, 1.46, 0.30],
+      /* THE PAYOFF OF A LINE FROM TWENTY MINUTES EARLIER.
+
+         "None of them looks at her" is said when they arrive, and it
+         is true of every shot until this one. */
+      { room: "office", secs: 4.2, fov0: 38, fov1: 34, lux: 0.22,
+        from: [-1.64, 0.22, 1.28], to: [-1.63, 0.21, 1.27], look: [-1.16, 1.48, 0.30],
+        line: { nar: 1, t: "None of them has looked at her all night. He looks at her." } },
+      { room: "office", secs: 3.6, fov0: 34, fov1: 31, lux: 0.2,
+        from: [-1.63, 0.21, 1.27], to: [-1.62, 0.20, 1.25], look: [-1.16, 1.46, 0.30],
         line: { who: "jax", t: "Put your hands over your ears, Ouissy." } },
 
       /* --- the thing that is not a line ---------------------------- */
-      { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08, gone: "jax",
+      { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08, gone: "jax", hush: "lead",
         from: [-1.66, 0.20, 1.28], to: [-1.70, 0.25, 1.38], look: [-1.14, 1.40, 0.30] },
 
       /* --- AND WHAT IS LEFT OF THE ROOM ----------------------------
@@ -5890,7 +5901,14 @@ const RET_CLOTH = ["#9a8b6e", "#7e7360", "#8c7a62", "#6f6a58", "#94846a",
 /* one painted eye, with a pupil, that has started giving off its own
    light. The white is a real surface so it reads in a close-up; the
    glow behind it is what carries down a hall. */
+/* the one figure that gets a close-up gets bigger eyes. Scaling the
+   whole soldier up by 1.6 scales its eyes by 1.6 as well, which is
+   correct and useless: across a hall they became two dots on a blank
+   pale face. This is set around the one build that needs it and put
+   straight back. */
+let RET_EYE_K = 1;
 function retEye(sx, y, z, r, hot) {
+  r *= RET_EYE_K;
   const g = new T.Group();
   /* THE ORDER MATTERS, and the first build got it wrong: the lit part
      was WIDER than the white it sat on, so every face in the crowd had
@@ -6244,7 +6262,9 @@ function returnersBoss(roomId, x, z, ry) {
     const j = { legs: [], arms: [], head: null };
     const coat = mat("enamelRed", 1, 1.2, "#6e3a34");
     const trim = mat("brassDark", 1, 1, "#7e6438");
+    RET_EYE_K = 1.45;
     const h = RET_KIND.soldier(g, j, rnd, coat, trim, "#ffcf72");
+    RET_EYE_K = 1;
     /* the arm somebody replaced, in a colour that never matched */
     if (j.arms[1]) j.arms[1].traverse((o) => { if (o.isMesh) o.material = mat("enamelGreen", 1, 1, "#5a6a52"); });
     g.userData.joints = j;

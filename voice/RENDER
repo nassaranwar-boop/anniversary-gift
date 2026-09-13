@@ -34,3 +34,5 @@ full en_GB-alan-medium 1.16 0.74 1.2
 # 2026-09-13c: five voices now, not one. The narrator is still the top
 #              line; the four in the back room are cast in
 #              tools/voicesheet.js and every model it names is fetched.
+# 2026-09-13d: the foyer lines match what is on the screen now, and one
+#              more line under the floor.
