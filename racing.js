@@ -7548,13 +7548,20 @@ function wireScroll() {
     const pr = panel.getBoundingClientRect(), ov = el.overlay.getBoundingClientRect();
     rail.style.top    = (pr.top - ov.top) + "px";
     rail.style.height = pr.height + "px";
-    const gap = Math.max(4, Math.round(ov.width * 0.006));
+    /* THE GAP HAS TO CLEAR THE CHEVRON, NOT THE RAIL. The rail is six
+       points wide and the chevron under it is twenty, so it hangs seven
+       points either side; a gap sized for the rail alone let those seven
+       points land back on the panel, and the detector duly found the
+       chevron sitting on the last line of the glovebox and on a badge.
+       Twelve is wider than the overhang and still well inside the four
+       cqw the panel leaves at each side.
+
+       And it is never tucked inside the panel to make it fit -- that was
+       the same fault with a different cause. If there is somehow no room
+       beside the panel it stops at the edge of the stage instead. */
+    const gap = Math.max(12, Math.round(ov.width * 0.010));
     const w   = rail.getBoundingClientRect().width || 6;
-    /* outside the panel where there is room for it, tucked just inside
-       where there is not */
-    const out = pr.right - ov.left + gap;
-    rail.style.left = (out + w <= ov.width - 2 ? out
-                                              : pr.right - ov.left - w - gap) + "px";
+    rail.style.left = Math.min(pr.right - ov.left + gap, ov.width - w - 2) + "px";
 
     const frac = sc.clientHeight / sc.scrollHeight;
     const at   = sc.scrollTop / span;
@@ -8591,7 +8598,43 @@ const Snd = (function () {
            "F2 - C3 - G2 - D3 - A2 - - - - - - - ",
       drums:"k . h . s . h k . h s . k . s h ",
     },
+    /* HARBOUR LIGHTS. Dusk over water: the sky is peach into blue, the
+       kerbs are that cyan, and the lamps are already on. D major, because
+       it is the only cheerful one of the last three, and a bass that rocks
+       root to fifth and back the whole way like something moored. The
+       narrow duty is the reedy end of the chip voice, which is as close as
+       a square wave gets to an accordion on a promenade. */
+    pier: {
+      bpm: 118, duty: 0.3,
+      lead:"D4 - F#4 A4 - B4 A4 F#4 - E4 F#4 - D4 - - - " +
+           "B3 - E4 F#4 - A4 F#4 E4 - D4 E4 - F#4 - - - ",
+      bass:"D2 - A2 - D2 - A2 - G2 - D3 - G2 - A2 - " +
+           "B2 - F#3 - E2 - B2 - G2 - A2 - D2 - - - ",
+      drums:"k . h . s . h . k . h h s . h . ",
+    },
+    /* THE LONG WAY HOME. The last course, in the dark, every window lit
+       and nobody else on the road -- so it is the slowest of the six and
+       the only one with almost no snare. F major, warm, a melody that
+       climbs and then settles rather than one that pushes. The drums are
+       four kicks and a couple of hats in a whole bar: it is quiet out, and
+       a full backbeat would be somebody else on the road. */
+    lane: {
+      bpm: 100, duty: 0.5,
+      lead:"F4 - A4 - C5 - A4 - G4 - F4 - E4 - - - " +
+           "D4 - F4 - A4 - G4 - F4 - E4 - F4 - - - ",
+      bass:"F2 - C3 - F2 - C3 - A#2 - F3 - A#2 - C3 - " +
+           "D3 - A2 - A#2 - F3 - C3 - G2 - F2 - - - ",
+      drums:"k . . . h . . . k . . . h . h . ",
+    },
   };
+
+  /* WHAT A COURSE WITH NO SONG SOUNDS LIKE. playSong takes the track's id
+     and returns quietly if there is no entry under it -- so the two
+     courses added last, Harbour Lights and The Long Way Home, raced in
+     total silence, and nothing said so, because silence is what a muted
+     game sounds like too. The harness is handed the list so a course
+     without a theme fails a test instead of just being quiet. */
+
 
   function parse(s) { return s.trim().split(/\s+/); }
 
@@ -8883,6 +8926,10 @@ const Snd = (function () {
   api.muted = () => muted;
   api.setMuted = (m) => { muted = m; applyVol(); save(); };
   api.ready = () => ready;
+  /* SONGS is in this closure, so the list is the real one rather than a
+     copy that could drift away from it */
+  api.songNames = () => Object.keys(SONGS);
+  api.song = (n) => SONGS[n] || null;
   return api;
 })();
 
@@ -9775,7 +9822,10 @@ if (typeof window !== "undefined")
         function the last lap calls, doing the same work in the same order,
         rather than a test-only imitation of it that could agree with the
         test while disagreeing with the game. */
-     ramps, rollItem, hit, input,
+     ramps, rollItem, hit, input, TRACKS,
+     /* the themes, so a course that races in silence fails a test rather
+        than sounding like someone turned the sound off */
+     songNames: Snd.songNames, song: Snd.song,
      finishRace,
      /* ...and the simulation tick, for the same reason. Stepping it by hand
         runs a whole four-lap race in a few hundred milliseconds of wall
