@@ -36,14 +36,43 @@ const NS = eval('(' + src.slice(i + key.length - 1, j + 1) + ')');
 
 /* everything that is SPOKEN. Not everything that is shown: the cards,
    the tags and the pages are read off the screen and always were. */
+/* WHO SAYS IT, AND IN WHOSE VOICE.
+
+   For a long time every recorded line in the chapter was Anwar, which
+   was right while the only recorded lines were his. It stopped being
+   right the moment the four of them started talking to each other on
+   night five and all the way through the last hour: a ballerina and an
+   owl and a jack-in-the-box were all coming out of the same fifty-year
+   -old documentary narrator.
+
+   Five models, five parts. The pace and the pitch shift are per
+   character too, because two of these are the same model family and
+   what separates a clock from a jester is as much tempo as timbre.
+
+     anwar      the narrator. Slow, low, unhurried. Unchanged.
+     cogsworth  slower still and lower: he is a clock, he does not
+                hurry, and he is the oldest thing in the room.
+     chime      quick and up: a small brass owl with a bell in it.
+     marabelle  the one female voice, level and unbothered — she is
+                the only one of the four who is never frightened.
+     jax        fast and slightly up, because he talks like somebody
+                who has decided not to be afraid out loud.             */
+const VOICE = {
+  anwar:     { model: 'en_GB-alan-medium',                  pace: '1.16', depth: '1.2' },
+  cogsworth: { model: 'en_GB-northern_english_male-medium', pace: '1.26', depth: '2.2' },
+  chime:     { model: 'en_US-ryan-high',                    pace: '1.02', depth: '-1.6' },
+  marabelle: { model: 'en_US-lessac-high',                  pace: '1.12', depth: '0.4' },
+  jax:       { model: 'en_GB-semaine-medium',               pace: '0.98', depth: '-0.8' },
+};
+
 const OUT = [];
-const add = (id, text, note) => {
+const add = (id, text, note, who) => {
   if (!text) return;
   /* the screen markup never reaches a mouth */
   const t = String(text)
     .replace(/&[lr]dquo;/g, '"').replace(/&mdash;/g, '—')
     .replace(/&amp;/g, '&').replace(/<[^>]+>/g, '').trim();
-  if (t) OUT.push({ id, text: t, note: note || '' });
+  if (t) OUT.push({ id, text: t, note: note || '', who: who || 'anwar' });
 };
 
 (NS.intro && NS.intro.beats || []).forEach((b, bi) => {
@@ -54,7 +83,7 @@ const add = (id, text, note) => {
   'the shutters are coming down'));
 for (const n in (NS.tapes || {})) {
   NS.tapes[n].forEach((x, k) => add('tape' + n + '-' + String(k + 1).padStart(2, '0'), x.t,
-    'night ' + n + ', about ' + (12 + Math.floor(x.h)) % 12 + ' o\'clock'));
+    'night ' + n + ', about ' + (12 + Math.floor(x.h)) % 12 + ' o\'clock', x.who));
 }
 for (const k in (NS.tapeWhen || {})) add('when-' + k, NS.tapeWhen[k], 'when she does the thing');
 for (const n in (NS.reveal || {})) add('reveal-' + n, NS.reveal[n].say, 'three in the morning, night ' + n);
@@ -69,8 +98,9 @@ add('caught-later', NS.caught && NS.caught.later, 'every time after that');
    lines: the four of them speak for themselves, and the building's
    lines belong to the annunciator. */
 (NS.lastHour && NS.lastHour.shots || []).forEach((sh, k) => {
-  if (!sh.line || sh.line.sys || sh.line.who) return;
-  add('last-' + String(k + 1).padStart(2, '0'), sh.line.t, 'the last hour, shot ' + (k + 1));
+  if (!sh.line || sh.line.sys) return;
+  const id = 'last-' + String(k + 1).padStart(2, '0');
+  add(id, sh.line.t, 'the last hour, shot ' + (k + 1), sh.line.who);
 });
 
 add('kept-clean', NS.kept && NS.kept.clean, 'six nights, untouched');
@@ -79,6 +109,18 @@ add('kept-hurt',  NS.kept && NS.kept.hurt,  'six nights, not untouched');
 if (process.argv.indexOf('--json') >= 0) {
   const m = {};
   OUT.forEach((o) => { m[o.id] = o.text; });
+  console.log(JSON.stringify(m, null, 2));
+  process.exit(0);
+}
+
+/* the casting sheet: which model says which line, and how. The render
+   reads this instead of one voice for everything. */
+if (process.argv.indexOf('--plan') >= 0) {
+  const m = {};
+  OUT.forEach((o) => {
+    const v = VOICE[o.who] || VOICE.anwar;
+    m[o.id] = { who: o.who, model: v.model, pace: v.pace, depth: v.depth };
+  });
   console.log(JSON.stringify(m, null, 2));
   process.exit(0);
 }

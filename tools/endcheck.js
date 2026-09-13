@@ -108,16 +108,19 @@ ok('all four of them are in it, and all four of them go', ids.every((id) => plac
 
 /* THE CROWD HAS TO CLEAR WHEN THE CAMERA LEAVES THE ROOM, or it is
    standing in the hall while the shot is in the office. */
-let crowdRoom = null; const strays = [];
+let crowdRoom = null, bossRoom = null; const strays = [];
 SHOTS.forEach((s, i) => {
-  if (s.clear) crowdRoom = null;
+  if (s.clear) { crowdRoom = null; bossRoom = null; }
+  if (s.bossGone) bossRoom = null;
   if (s.swarm) crowdRoom = s.swarm[0];
-  if (crowdRoom && crowdRoom !== s.room) strays.push([i, crowdRoom, s.room]);
+  if (s.boss) bossRoom = s.boss[0];
+  if (crowdRoom && crowdRoom !== s.room) strays.push([i, 'crowd', crowdRoom, s.room]);
+  if (bossRoom && bossRoom !== s.room) strays.push([i, 'the first one', bossRoom, s.room]);
 });
 ok('the crowd is never left standing in a room the camera has left', !strays.length, strays);
 
 const secs = SHOTS.reduce((a, s) => a + (s.secs || 3), 0);
-ok('the whole thing runs between two and four minutes', secs > 120 && secs < 240, Math.round(secs));
+ok('the whole thing runs between two and five minutes', secs > 120 && secs < 300, Math.round(secs));
 
 const longest = SHOTS.reduce((a, s) => Math.max(a, s.secs || 0), 0);
 ok('no single shot outstays its welcome (under 7s)', longest < 7, longest);

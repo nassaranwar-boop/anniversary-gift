@@ -612,6 +612,21 @@ const NS = {
     head: "05:00",
     sub: "",
     shots: [
+      /* --- WHERE THEY CAME FROM ------------------------------------
+         Six nights of being frightened of four objects, and the film
+         opens on the bench they were made at, quietly, before anything
+         happens. Everything after this is easier to feel if you have
+         seen the room he worked in first. */
+      { room: "workshop", secs: 5.4, fov: 62, cue: "film", lux: 0.55,
+        from: [-1.7, 2.1, 2.2], to: [-1.0, 1.7, 1.4], look: [0.4, 1.05, -1.6],
+        line: { nar: 1, t: "He had a bench at the back of this shop and one rule about it. Nothing left half-made overnight." } },
+      { room: "workshop", secs: 4.6, fov: 50, lux: 0.5,
+        from: [-1.0, 1.7, 1.4], to: [-0.5, 1.42, 0.8], look: [0.5, 0.98, -1.3],
+        line: { nar: 1, t: "He broke that rule four times in fifteen years, and never for the same reason twice." } },
+      { room: "workshop", secs: 4.2, fov: 42, lux: 0.44,
+        from: [-0.5, 1.42, 0.8], to: [-0.25, 1.3, 0.45], look: [0.55, 0.92, -1.1],
+        line: { nar: 1, t: "It is four minutes past five on the sixth night, and all four of them are about to be worth it." } },
+
       /* --- the shop stops pretending ------------------------------ */
       { room: "office", secs: 4.0, fov: 58, cue: "dark", lux: 0.78,
         from: [0, 1.66, 2.35], to: [0, 1.62, 1.90], look: [0, 1.05, -2.5],
@@ -619,6 +634,17 @@ const NS = {
       { room: "office", secs: 3.0, fov: 52, lux: 0.6,
         from: [0, 1.62, 1.90], to: [0, 1.60, 1.70], look: [0, 1.05, -2.5],
         line: { nar: 1, t: "And then the building stops talking." } },
+
+      /* --- THE FRONT OF THE SHOP ----------------------------------
+         She has spent six nights guarding two doorways off a hall. The
+         thing nobody ever asked her to guard is the one the whole shop
+         is named after, and it is made of glass. */
+      { room: "foyer", secs: 4.6, fov: 58, lux: 0.42,
+        from: [1.9, 1.95, 1.9], to: [1.2, 1.72, 1.1], look: [-0.5, 1.25, -2.5],
+        line: { nar: 1, t: "The front doors have been locked since ten past twelve. They are the only thing in the building she was never asked to watch." } },
+      { room: "foyer", secs: 3.8, fov: 48, shake: 1.1, lux: 0.36,
+        from: [1.2, 1.72, 1.1], to: [1.0, 1.62, 0.7], look: [-0.5, 1.2, -2.5],
+        line: { nar: 1, t: "They are also glass." } },
 
       /* --- the hall, filling up ----------------------------------- */
       { room: "hall", secs: 5.0, fov: 74, cue: "night", shake: 0.5, lux: 0.5,
@@ -629,6 +655,17 @@ const NS = {
         from: [0.05, 2.00, 3.60], to: [-0.50, 1.55, 1.80], look: [0.2, 1.00, -4.0],
         swarm: ["hall", 22, 3.4, -4.4, 0.58], advance: 1,
         line: { nar: 1, t: "She stops counting at nine." } },
+
+      /* --- AND THE ONE AT THE FRONT --------------------------------
+         A crowd has no face and cannot be looked at. This one can. */
+      { room: "hall", secs: 4.8, fov: 46, lux: 0.4,
+        from: [-0.5, 1.55, 1.8], to: [-0.2, 1.42, 0.9], look: [0.1, 1.35, -2.0],
+        swarm: ["hall", 22, 3.4, -4.4, 0.58], boss: ["hall", 0.1, -2.2, 0.06],
+        line: { nar: 1, t: "The one at the front is the first thing he ever sold. It came back on its own two years ago and stood outside until somebody let it in." } },
+      { room: "hall", secs: 4.0, fov: 40, lux: 0.34, shake: 0.6,
+        from: [-0.2, 1.42, 0.9], to: [0.0, 1.38, 0.4], look: [0.1, 1.38, -2.0],
+        swarm: ["hall", 22, 3.4, -4.0, 0.58], boss: ["hall", 0.1, -2.0, 0.06], advance: 1,
+        line: { nar: 1, t: "He kept it in the workshop, wound, for two years. Nobody has wound it since March." } },
 
       /* --- they arrive, and they do not come in -------------------- */
       { room: "office", secs: 4.2, fov: 56, cue: "held", clear: 1, lux: 0.5,
@@ -676,7 +713,17 @@ const NS = {
       { room: "office", secs: 3.0, fov: 70, shake: 1,
         from: [0, 1.55, 1.50], to: [0.40, 1.45, 1.10], look: [1.30, 1.15, -1.9],
         swarm: ["office", 20, 3.2, -2.0, 0.44], advance: 1,
-        line: { who: "marabelle", t: "Ouissy. Go and stand behind the desk. Do not watch this part." } },
+        line: { who: "marabelle", t: "Ouissy. The west door. Now, and do not open it again." } },
+      /* SHE DOES THE ONE THING SHE KNOWS HOW TO DO.
+
+         Six nights of shutting that door and it is the last useful act
+         she performs in this chapter. The shutter really comes down:
+         animateOffice is running, and the shot is long enough to watch
+         it land. */
+      { room: "office", secs: 3.4, fov: 62, shake: 0.9, doors: { left: 1 },
+        from: [0.30, 1.52, 1.30], to: [-0.10, 1.46, 1.00], look: [-2.60, 1.15, -1.10],
+        swarm: ["office", 20, 3.2, -2.0, 0.44], advance: 1,
+        line: { nar: 1, t: "She has done that four hundred times this week. It is the last useful thing anybody lets her do." } },
       { room: "office", secs: 3.2, fov: 64, cue: "dark", shake: 1, lux: 0.26,
         from: [0.40, 1.45, 1.10], to: [0.40, 1.40, 0.85], look: [0, 0.70, -2.2],
         swarm: ["office", 22, 3.2, -1.8, 0.42], advance: 1,
@@ -708,7 +755,7 @@ const NS = {
         line: { who: "cogsworth", t: "Eleven seconds. I will take it." } },
 
       /* --- Cogsworth, the length of the room ----------------------- */
-      { room: "office", secs: 5.0, fov: 60, gone: "cogsworth", shake: 1.2,
+      { room: "office", secs: 5.0, fov: 60, gone: "cogsworth", shake: 1.2, hush: "tick",
         from: [-1.90, 1.50, 0.90], to: [1.60, 1.45, 0.70], look: [0, 0.95, -2.0],
         swarm: ["office", 22, 3.2, -0.8, 0.42], advance: 1,
         line: { nar: 1, t: "He walks the length of the room and turns at the end of it, and does not stop for anything, and that is the last time the shop hears him keeping time." } },
@@ -734,6 +781,16 @@ const NS = {
       { room: "office", secs: 4.4, fov: 42,
         from: [-1.64, 0.92, 1.70], to: [-1.70, 0.80, 1.62], look: [-1.18, 1.48, 0.30],
         line: { who: "jax", t: "I know. I do not leave rooms either. He built that into both of us." } },
+      /* IT HAS COME AS FAR AS THE OFFICE.
+
+         It has not run and it has not hurried and it has not needed
+         to, and the shot before she goes under the floor is the shot
+         where she finally sees the thing the other three died in front
+         of. */
+      { room: "office", secs: 4.4, fov: 52, lux: 0.26, shake: 0.5,
+        from: [-0.60, 1.55, 1.50], to: [-0.30, 1.50, 1.20], look: [0.60, 1.45, -1.80],
+        boss: ["office", 0.60, -1.90, 0.1],
+        line: { nar: 1, t: "It does not hurry. It has not hurried once tonight, and it has not needed to." } },
       { room: "office", secs: 5.0, fov: 54, shake: 0.7, down: 1, lux: 0.3,
         from: [-1.70, 0.80, 1.62], to: [-1.76, 0.34, 1.46], look: [-1.20, 1.40, 0.30],
         line: { nar: 1, t: "He puts her under the floor anyway, and he is far stronger than a jack-in-the-box has any business being." } },
@@ -774,6 +831,12 @@ const NS = {
       { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08, gone: "jax",
         from: [-1.66, 0.20, 1.28], to: [-1.70, 0.25, 1.38], look: [-1.14, 1.40, 0.30] },
 
+      /* --- AND WHAT IS LEFT OF THE ROOM ----------------------------
+         Five seconds of nothing moving. It is the longest gap between
+         two lines in the chapter and it is doing the most work in it. */
+      { room: "office", secs: 5.6, fov: 56, lux: 0.06, clear: 1,
+        from: [-1.60, 0.30, 1.40], to: [-1.20, 0.80, 1.80], look: [-0.30, 1.60, -0.60] },
+
       /* --- six o'clock --------------------------------------------- */
       { room: "office", secs: 5.4, fov: 58, cue: "dawn", dawn: 1, up: 1, lux: 1,
         from: [-1.70, 0.34, 1.46], to: [0, 1.62, 2.20], look: [0, 1.10, -2.4],
@@ -790,9 +853,17 @@ const NS = {
       { room: "stage", secs: 5.6, fov: 42,
         from: [0.20, 2.05, 2.55], to: [0.20, 1.90, 2.25], look: [0, 1.20, -2.4],
         line: { nar: 1, t: "They were coming to her." } },
+
+      /* --- AND THE LAST THING THE CAMERA DOES IS FIND IT ------------
+         The letter used to arrive as a card over a black screen. It is
+         a piece of paper on a bench in a room, and the film ends by
+         walking up to it. */
+      { room: "workshop", secs: 6.2, fov: 54,
+        from: [-1.5, 1.8, 1.9], to: [-0.55, 1.3, 0.75], look: [0.45, 0.95, -1.15],
+        line: { nar: 1, t: "There is one more thing on the bench at the back, in his hand, dated March." } },
     ],
     after: {
-      head: "and on the workshop bench, in his hand, dated March",
+      head: "in his hand, dated March",
       lines: [
         "&ldquo;If you are reading this I got it wrong somewhere, and I am sorry.",
         "There is a room under the till. It holds one person and it will hold against anything that walks.",
@@ -5778,42 +5849,450 @@ function soldRetreat(ch) {
    once on a phone that is also running the shop. A body, a head, two
    eyes, and a walk. The eyes are the only thing that catches light,
    which is what makes a dark room full of them read at all. */
-const RET = { pool: [], live: 0 };
+/* =====================================================================
+   THE ONES HE SOLD.
+
+   Four hundred and eleven of them went out of this shop over fifteen
+   years, and the ending is the night they come back. They were boxes
+   with a light in them for about an hour, and a box is not frightening
+   -- what is frightening is recognising the workmanship.
+
+   So these are built the way the four in the back room are built, out
+   of the same vocabulary: enamel over a wooden carcass, brass at the
+   joints, a painted eye with a black pupil, a hinged jaw, a key in the
+   back. Nine kinds, every one of them a toy you could have bought
+   here; and every one of them wrong in its own way, because nobody has
+   wound one properly since he died.
+
+   The wrongness is the seeded part. One in three has lost its paint
+   down one side. One in four has had the key snapped off in the hole.
+   Some have a limb that is plainly a replacement, in a colour that
+   never matched. And all of them have the eyes lit, because at the far
+   end of a dark hall the eyes are the only thing that carries, and
+   because painted eyes that have started producing their own light is
+   the single clearest way to say that something is not right here.
+
+   Cost: a returner is between eighteen and twenty-eight solids and the
+   pool is capped, so a full hall is about the same as one more room of
+   furniture. The legs are the only thing that moves.
+   ===================================================================== */
+const RET = { pool: [], live: 0, kinds: [] };
+
+/* paint that has been in a toy cupboard for a decade */
+const RET_PAINT = ["#8a4038", "#3f4b5e", "#5c6a4a", "#7a6748", "#6a4a58",
+                   "#4a4a52", "#84603a", "#455a55", "#7b4a42"];
+/* plush, which fades unevenly: the greys and browns a cupboard does to
+   a coloured toy, plus the two or three that kept their colour because
+   nobody ever played with them */
+const RET_CLOTH = ["#9a8b6e", "#7e7360", "#8c7a62", "#6f6a58", "#94846a",
+                   "#6e7a74", "#8a6a62", "#5f6878", "#7a6a80", "#a08a52"];
+
+/* one painted eye, with a pupil, that has started giving off its own
+   light. The white is a real surface so it reads in a close-up; the
+   glow behind it is what carries down a hall. */
+function retEye(sx, y, z, r, hot) {
+  const g = new T.Group();
+  /* THE ORDER MATTERS, and the first build got it wrong: the lit part
+     was WIDER than the white it sat on, so every face in the crowd had
+     two pink rectangles stuck to it instead of two eyes. The white is
+     the eye. The light is an iris inside it. The pupil is in front of
+     the light, which is what makes it look like something is behind
+     the eye rather than painted on it. */
+  g.add(sb(r * 2.2, r * 2.2, r * 0.5, flat("#ded6c4"), 0, 0, 0));
+  const iris = new T.Mesh(new T.CylinderGeometry(r * 0.78, r * 0.78, r * 0.3, 9), glow(hot, 0.92));
+  g.add(at(iris, 0, 0, r * 0.28, Math.PI / 2));
+  const p = new T.Mesh(new T.SphereGeometry(r * 0.46, 7, 5), flat("#0d0d12"));
+  g.add(at(p, 0, 0, r * 0.46));
+  g.position.set(sx, y, z);
+  return g;
+}
+
+/* the key in the back. Half of them have had it snapped off in the
+   hole, which is the detail that says somebody tried. */
+function retKey(rnd, y, z, brass) {
+  const k = part(0, y, z);
+  const shaft = new T.Mesh(new T.CylinderGeometry(0.018, 0.018, 0.07, 6), brass);
+  k.add(at(shaft, 0, 0, -0.035, Math.PI / 2));
+  if (rnd() > 0.34) {
+    for (const rz of [0, Math.PI / 2]) k.add(sb(0.13, 0.042, 0.014, brass, 0, 0, -0.066, 0, 0, rz));
+  } else {
+    k.add(sb(0.05, 0.05, 0.012, mat("pewter", 1, 1, "#6a6e72"), 0, 0, -0.02));
+  }
+  return k;
+}
+
+/* THE NINE. Each returns a group whose origin is the floor, with
+   `legs` set so the walk has something to swing. */
+const RET_KIND = {};
+
+/* a tin soldier: the cheap version of the one in her office */
+RET_KIND.soldier = function (g, j, rnd, coat, trim, hot) {
+  const dark = flat("#22222a");
+  [["l", -1], ["r", 1]].forEach(([k, sx]) => {
+    const hip = part(sx * 0.075, 0.44, 0);
+    hip.add(sb(0.085, 0.3, 0.085, flat("#39415a"), 0, -0.15, 0));
+    hip.add(sb(0.1, 0.06, 0.15, dark, 0, -0.31, 0.02));
+    g.add(hip); j.legs.push(hip);
+  });
+  g.add(sb(0.26, 0.3, 0.16, coat, 0, 0.59, 0));
+  g.add(sb(0.28, 0.05, 0.18, trim, 0, 0.45, 0));
+  for (let i = 0; i < 3; i++) g.add(sb(0.15, 0.018, 0.02, trim, 0, 0.52 + i * 0.06, 0.084));
+  g.add(sb(0.22, 0.04, 0.17, trim, 0, 0.75, 0));
+  for (const sx of [-1, 1]) {
+    const sh = part(sx * 0.155, 0.72, 0);
+    sh.add(sb(0.075, 0.26, 0.08, coat, 0, -0.13, 0));
+    sh.add(sb(0.08, 0.08, 0.085, flat("#cfc3ad"), 0, -0.29, 0.01));
+    g.add(sh); j.arms.push(sh);
+  }
+  const head = part(0, 0.77, 0);
+  head.add(sb(0.16, 0.15, 0.15, mat("porcelain", 1, 1, "#d8c4ad"), 0, 0.08, 0));
+  for (const sx of [-1, 1]) head.add(retEye(sx * 0.04, 0.1, 0.077, 0.019, hot));
+  head.add(sb(0.09, 0.018, 0.02, flat("#3a2a20"), 0, 0.045, 0.076));
+  head.add(sb(0.18, 0.03, 0.17, dark, 0, 0.16, 0));
+  head.add(sb(0.17, 0.18, 0.16, dark, 0, 0.25, 0));
+  head.add(sb(0.18, 0.025, 0.17, trim, 0, 0.2, 0));
+  head.add(sb(0.18, 0.02, 0.06, dark, 0, 0.155, 0.095, -0.22));
+  g.add(head); j.head = head;
+  g.add(retKey(rnd, 0.62, -0.09, trim));
+  return 0.95;
+};
+
+/* a stitched bear, the shop's biggest seller */
+RET_KIND.bear = function (g, j, rnd, coat, trim, hot) {
+  const fur = flat(pick(rnd, RET_CLOTH));
+  const pad = flat("#5c4c3c");
+  [["l", -1], ["r", 1]].forEach(([k, sx]) => {
+    const hip = part(sx * 0.1, 0.34, 0);
+    hip.add(sb(0.15, 0.24, 0.16, fur, 0, -0.12, 0));
+    hip.add(sb(0.16, 0.08, 0.21, fur, 0, -0.26, 0.03));
+    hip.add(sb(0.1, 0.02, 0.12, pad, 0, -0.295, 0.05));
+    g.add(hip); j.legs.push(hip);
+  });
+  g.add(sb(0.34, 0.32, 0.25, fur, 0, 0.5, 0));
+  g.add(sb(0.2, 0.18, 0.03, pad, 0, 0.46, 0.13));
+  /* the seam that has come open */
+  if (rnd() > 0.5) g.add(sb(0.02, 0.16, 0.03, flat("#2e2620"), 0.1, 0.5, 0.128));
+  for (const sx of [-1, 1]) {
+    const sh = part(sx * 0.2, 0.6, 0);
+    sh.add(sb(0.11, 0.26, 0.12, fur, 0, -0.13, 0));
+    sh.add(sb(0.12, 0.09, 0.13, fur, 0, -0.29, 0.02));
+    g.add(sh); j.arms.push(sh);
+  }
+  const head = part(0, 0.66, 0);
+  head.add(sb(0.26, 0.23, 0.22, fur, 0, 0.1, 0));
+  head.add(sb(0.12, 0.1, 0.08, flat("#8a7a62"), 0, 0.06, 0.13));
+  head.add(sb(0.06, 0.04, 0.03, flat("#2a2420"), 0, 0.09, 0.165));
+  for (const sx of [-1, 1]) {
+    const ear = new T.Mesh(new T.CylinderGeometry(0.055, 0.055, 0.035, 9), fur);
+    head.add(at(ear, sx * 0.1, 0.22, 0, Math.PI / 2));
+  }
+  for (const sx of [-1, 1]) head.add(retEye(sx * 0.062, 0.135, 0.107, 0.021, hot));
+  g.add(head); j.head = head;
+  g.add(retKey(rnd, 0.52, -0.13, trim));
+  return 0.86;
+};
+
+/* a porcelain doll with a crack across the face */
+RET_KIND.doll = function (g, j, rnd, coat, trim, hot) {
+  const skin = mat("porcelain", 1, 1, "#e6d5c0");
+  const dress = coat;
+  [["l", -1], ["r", 1]].forEach(([k, sx]) => {
+    const hip = part(sx * 0.06, 0.4, 0);
+    hip.add(sb(0.07, 0.3, 0.07, skin, 0, -0.15, 0));
+    hip.add(sb(0.085, 0.06, 0.12, flat("#2c2830"), 0, -0.32, 0.02));
+    g.add(hip); j.legs.push(hip);
+  });
+  const skirt = new T.Mesh(new T.ConeGeometry(0.2, 0.3, 10), dress);
+  g.add(at(skirt, 0, 0.53, 0));
+  g.add(sb(0.19, 0.22, 0.13, dress, 0, 0.72, 0));
+  g.add(sb(0.21, 0.03, 0.15, flat("#d8cfc0"), 0, 0.83, 0));
+  for (const sx of [-1, 1]) {
+    const sh = part(sx * 0.115, 0.8, 0);
+    sh.add(sb(0.055, 0.27, 0.06, skin, 0, -0.14, 0));
+    g.add(sh); j.arms.push(sh);
+  }
+  const head = part(0, 0.85, 0);
+  head.add(sb(0.18, 0.19, 0.17, skin, 0, 0.1, 0));
+  /* the crack */
+  head.add(sb(0.012, 0.13, 0.02, flat("#8a7a68"), 0.03, 0.11, 0.088, 0, 0, 0.35));
+  for (const sx of [-1, 1]) head.add(retEye(sx * 0.045, 0.12, 0.088, 0.024, hot));
+  head.add(sb(0.04, 0.022, 0.02, flat("#9a4a48"), 0, 0.055, 0.088));
+  /* hair: three slabs, parted */
+  const hair = flat(rnd() > 0.5 ? "#3a2a1e" : "#6a5030");
+  head.add(sb(0.2, 0.09, 0.19, hair, 0, 0.205, 0));
+  for (const sx of [-1, 1]) head.add(sb(0.045, 0.2, 0.12, hair, sx * 0.098, 0.12, -0.02));
+  head.add(sb(0.19, 0.06, 0.06, hair, 0, 0.17, -0.09));
+  g.add(head); j.head = head;
+  g.add(retKey(rnd, 0.74, -0.075, trim));
+  return 0.92;
+};
+
+/* a rocking horse whose rocker snapped off years ago */
+RET_KIND.horse = function (g, j, rnd, coat, trim, hot) {
+  const body = coat;
+  const mane = flat(rnd() > 0.5 ? "#2e2620" : "#8a7048");
+  [["fl", -1, 0.11], ["fr", 1, 0.11], ["bl", -1, -0.13], ["br", 1, -0.13]].forEach(([k, sx, z]) => {
+    const hip = part(sx * 0.08, 0.36, z);
+    hip.add(sb(0.055, 0.3, 0.055, body, 0, -0.15, 0));
+    hip.add(sb(0.07, 0.05, 0.08, flat("#22201e"), 0, -0.325, 0));
+    g.add(hip); j.legs.push(hip);
+  });
+  g.add(sb(0.2, 0.22, 0.46, body, 0, 0.46, -0.01));
+  g.add(sb(0.21, 0.05, 0.2, flat("#5a4638"), 0, 0.57, -0.05));    // the saddle
+  g.add(sb(0.24, 0.03, 0.06, trim, 0, 0.5, -0.05));               // the girth
+  /* the neck and head, angled */
+  const neck = part(0, 0.55, 0.16);
+  neck.add(sb(0.13, 0.28, 0.14, body, 0, 0.1, 0.04, -0.4));
+  const head = part(0, 0.24, 0.14);
+  head.add(sb(0.12, 0.13, 0.26, body, 0, 0.02, 0.07, -0.25));
+  head.add(sb(0.1, 0.05, 0.06, flat("#2a2420"), 0, -0.02, 0.19));
+  for (const sx of [-1, 1]) head.add(retEye(sx * 0.06, 0.06, 0.07, 0.02, hot));
+  for (const sx of [-1, 1]) head.add(sb(0.04, 0.07, 0.03, body, sx * 0.045, 0.1, -0.04));
+  neck.add(head); j.head = head;
+  for (let i = 0; i < 4; i++) neck.add(sb(0.02, 0.09, 0.05, mane, 0, 0.04 + i * 0.06, -0.03 - i * 0.01));
+  g.add(neck);
+  /* the stub where the rocker was */
+  for (const sx of [-1, 1]) g.add(sb(0.03, 0.04, 0.16, flat("#6a5238"), sx * 0.11, 0.04, -0.02));
+  g.add(retKey(rnd, 0.48, -0.24, trim));
+  return 0.78;
+};
+
+/* a wind-up clown with a drum */
+RET_KIND.clown = function (g, j, rnd, coat, trim, hot) {
+  const suit = mat("harlequin", 1, 1, rnd() > 0.5 ? "#8a4a58" : "#5a5a7a");
+  [["l", -1], ["r", 1]].forEach(([k, sx]) => {
+    const hip = part(sx * 0.08, 0.36, 0);
+    hip.add(sb(0.09, 0.26, 0.09, suit, 0, -0.13, 0));
+    hip.add(sb(0.11, 0.05, 0.17, flat("#20202a"), 0, -0.28, 0.04));
+    g.add(hip); j.legs.push(hip);
+  });
+  g.add(sb(0.24, 0.26, 0.16, suit, 0, 0.5, 0));
+  const ruff = new T.Mesh(new T.CylinderGeometry(0.16, 0.1, 0.05, 10), flat("#cfc4ae"));
+  g.add(at(ruff, 0, 0.64, 0));
+  for (const sx of [-1, 1]) {
+    const sh = part(sx * 0.14, 0.61, 0);
+    sh.add(sb(0.065, 0.24, 0.07, suit, 0, -0.12, 0));
+    /* one of them still holds a beater */
+    if (sx > 0) sh.add(sb(0.02, 0.16, 0.02, flat("#8a7048"), 0, -0.28, 0.03, 0.5));
+    g.add(sh); j.arms.push(sh);
+  }
+  /* the drum, slung */
+  const drum = new T.Mesh(new T.CylinderGeometry(0.1, 0.1, 0.1, 12), coat);
+  g.add(at(drum, 0, 0.42, 0.14));
+  g.add(sb(0.21, 0.02, 0.02, trim, 0, 0.42, 0.2));
+  const head = part(0, 0.67, 0);
+  head.add(sb(0.17, 0.16, 0.16, flat("#e2dccd"), 0, 0.08, 0));
+  for (const sx of [-1, 1]) head.add(retEye(sx * 0.043, 0.1, 0.082, 0.022, hot));
+  const nose = new T.Mesh(new T.SphereGeometry(0.028, 8, 6), flat("#b84a40"));
+  head.add(at(nose, 0, 0.075, 0.088));
+  head.add(sb(0.09, 0.02, 0.02, flat("#9a3a38"), 0, 0.038, 0.082));
+  /* the pointed hat, with a bell */
+  const hat = new T.Mesh(new T.ConeGeometry(0.085, 0.19, 9), suit);
+  head.add(at(hat, 0, 0.24, -0.01, 0, 0, rnd() * 0.3 - 0.15));
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.028, 8, 6), trim), 0, 0.34, -0.02));
+  for (const sx of [-1, 1]) head.add(sb(0.05, 0.09, 0.05, flat("#8a4a2a"), sx * 0.088, 0.1, -0.02));
+  g.add(head); j.head = head;
+  g.add(retKey(rnd, 0.52, -0.086, trim));
+  return 0.88;
+};
+
+/* a plush rabbit, wound through the ear */
+RET_KIND.rabbit = function (g, j, rnd, coat, trim, hot) {
+  const fur = flat(pick(rnd, RET_CLOTH));
+  [["l", -1], ["r", 1]].forEach(([k, sx]) => {
+    const hip = part(sx * 0.085, 0.3, 0);
+    hip.add(sb(0.11, 0.2, 0.12, fur, 0, -0.1, 0));
+    hip.add(sb(0.12, 0.06, 0.2, fur, 0, -0.22, 0.05));
+    g.add(hip); j.legs.push(hip);
+  });
+  g.add(sb(0.26, 0.28, 0.2, fur, 0, 0.42, 0));
+  g.add(sb(0.18, 0.1, 0.04, coat, 0, 0.3, 0.105));               // a waistcoat front
+  for (const sx of [-1, 1]) {
+    const sh = part(sx * 0.155, 0.52, 0);
+    sh.add(sb(0.08, 0.22, 0.09, fur, 0, -0.11, 0));
+    g.add(sh); j.arms.push(sh);
+  }
+  const head = part(0, 0.55, 0);
+  head.add(sb(0.21, 0.19, 0.2, fur, 0, 0.09, 0));
+  head.add(sb(0.1, 0.07, 0.07, flat("#d8cfc0"), 0, 0.05, 0.12));
+  head.add(sb(0.04, 0.03, 0.03, flat("#b07a80"), 0, 0.07, 0.15));
+  for (const sx of [-1, 1]) head.add(retEye(sx * 0.055, 0.115, 0.101, 0.021, hot));
+  /* the ears: one up, one that has been bent for years */
+  head.add(sb(0.06, 0.26, 0.03, fur, -0.05, 0.29, -0.01, 0, 0, 0.1));
+  head.add(sb(0.06, 0.22, 0.03, fur, 0.06, 0.26, -0.01, 0, 0, -0.55));
+  g.add(head); j.head = head;
+  g.add(retKey(rnd, 0.44, -0.105, trim));
+  return 0.72;
+};
+
+/* a tin monkey with cymbals, which is the one nobody in a horror
+   story is ever pleased to see */
+RET_KIND.monkey = function (g, j, rnd, coat, trim, hot) {
+  const tin = mat("pewter", 1, 1, "#6e6a62");
+  const jacket = coat;
+  [["l", -1], ["r", 1]].forEach(([k, sx]) => {
+    const hip = part(sx * 0.07, 0.3, 0);
+    hip.add(sb(0.075, 0.22, 0.08, tin, 0, -0.11, 0));
+    hip.add(sb(0.09, 0.05, 0.14, tin, 0, -0.24, 0.03));
+    g.add(hip); j.legs.push(hip);
+  });
+  g.add(sb(0.21, 0.24, 0.15, jacket, 0, 0.42, 0));
+  g.add(sb(0.22, 0.03, 0.16, trim, 0, 0.31, 0));
+  for (const sx of [-1, 1]) {
+    const sh = part(sx * 0.13, 0.52, 0);
+    sh.add(sb(0.06, 0.2, 0.065, jacket, 0, -0.1, 0));
+    const cym = new T.Mesh(new T.CylinderGeometry(0.07, 0.07, 0.012, 12), trim);
+    sh.add(at(cym, sx * -0.02, -0.21, 0.02, 0, 0, Math.PI / 2));
+    g.add(sh); j.arms.push(sh);
+  }
+  const head = part(0, 0.56, 0);
+  head.add(sb(0.17, 0.16, 0.16, tin, 0, 0.08, 0));
+  head.add(sb(0.11, 0.09, 0.06, flat("#c8b49a"), 0, 0.055, 0.086));
+  head.add(sb(0.07, 0.02, 0.02, flat("#3a2a24"), 0, 0.035, 0.116));
+  for (const sx of [-1, 1]) head.add(retEye(sx * 0.042, 0.105, 0.083, 0.022, hot));
+  for (const sx of [-1, 1]) {
+    const ear = new T.Mesh(new T.CylinderGeometry(0.04, 0.04, 0.02, 9), tin);
+    head.add(at(ear, sx * 0.093, 0.09, 0, 0, 0, Math.PI / 2));
+  }
+  const cap = new T.Mesh(new T.CylinderGeometry(0.055, 0.055, 0.06, 10), jacket);
+  head.add(at(cap, 0, 0.2, 0));
+  head.add(at(new T.Mesh(new T.SphereGeometry(0.022, 7, 5), trim), 0, 0.24, 0));
+  g.add(head); j.head = head;
+  g.add(retKey(rnd, 0.44, -0.08, trim));
+  return 0.64;
+};
+
+/* a pull-along duck on a board with wheels */
+RET_KIND.duck = function (g, j, rnd, coat, trim, hot) {
+  const body = coat;
+  const board = flat("#7a5c3c");
+  g.add(sb(0.3, 0.035, 0.4, board, 0, 0.075, 0));
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const w = new T.Mesh(new T.CylinderGeometry(0.058, 0.058, 0.025, 11), flat("#b8443c"));
+    const hub = part(sx * 0.15, 0.058, sz * 0.14);
+    hub.add(at(w, 0, 0, 0, 0, 0, Math.PI / 2));
+    g.add(hub); j.legs.push(hub);          // the wheels are what turns
+  }
+  g.add(sb(0.24, 0.22, 0.34, body, 0, 0.2, 0));
+  g.add(sb(0.26, 0.04, 0.2, trim, 0, 0.28, -0.04));
+  for (const sx of [-1, 1]) g.add(sb(0.03, 0.13, 0.22, body, sx * 0.13, 0.21, -0.02, 0, 0, sx * 0.2));
+  const head = part(0, 0.31, 0.1);
+  head.add(sb(0.1, 0.18, 0.1, body, 0, 0.08, 0, -0.2));
+  head.add(sb(0.14, 0.13, 0.14, body, 0, 0.2, 0.03));
+  head.add(sb(0.1, 0.05, 0.13, flat("#c8922a"), 0, 0.17, 0.115));
+  for (const sx of [-1, 1]) head.add(retEye(sx * 0.042, 0.225, 0.072, 0.02, hot));
+  g.add(head); j.head = head;
+  g.add(retKey(rnd, 0.22, -0.175, trim));
+  return 0.62;
+};
+
+/* a jack-in-the-box that nobody ever shut: the box walks, the head
+   stands on the spring. It is the one that looks most like one of
+   hers, which is the point of it. */
+RET_KIND.jackbox = function (g, j, rnd, coat, trim, hot) {
+  const box = mat("woodDark", 1, 1, "#6a4f34");
+  [["l", -1], ["r", 1]].forEach(([k, sx]) => {
+    const hip = part(sx * 0.09, 0.26, 0);
+    hip.add(sb(0.07, 0.2, 0.07, flat("#2a2630"), 0, -0.1, 0));
+    hip.add(sb(0.09, 0.05, 0.13, flat("#191920"), 0, -0.22, 0.03));
+    g.add(hip); j.legs.push(hip);
+  });
+  g.add(sb(0.3, 0.28, 0.3, box, 0, 0.41, 0));
+  for (const sx of [-1, 1]) g.add(sb(0.02, 0.28, 0.31, trim, sx * 0.15, 0.41, 0));
+  g.add(sb(0.31, 0.02, 0.31, trim, 0, 0.55, 0));
+  /* the lid, hinged open at the back and never shut again */
+  g.add(sb(0.3, 0.025, 0.3, box, 0, 0.63, -0.19, -1.15));
+  /* the spring */
+  for (let i = 0; i < 4; i++) {
+    const c = new T.Mesh(new T.TorusGeometry(0.045, 0.011, 5, 9), trim);
+    g.add(at(c, 0, 0.6 + i * 0.05, 0, Math.PI / 2));
+  }
+  const head = part(0, 0.8, 0);
+  head.add(sb(0.17, 0.17, 0.16, flat("#ddd5c2"), 0, 0.08, 0));
+  for (const sx of [-1, 1]) head.add(retEye(sx * 0.043, 0.105, 0.083, 0.023, hot));
+  /* the grin: a row of teeth, which is the only one of these that has
+     them, because it is the only one that is meant to be funny */
+  for (let i = 0; i < 5; i++) head.add(sb(0.018, 0.025, 0.02, flat("#e8e2d4"), -0.04 + i * 0.02, 0.04, 0.082));
+  head.add(sb(0.11, 0.035, 0.02, flat("#7a2a28"), 0, 0.04, 0.078));
+  const hat = new T.Mesh(new T.ConeGeometry(0.08, 0.17, 8), coat);
+  head.add(at(hat, 0, 0.23, 0, 0, 0, rnd() * 0.4 - 0.2));
+  g.add(head); j.head = head;
+  g.add(retKey(rnd, 0.42, -0.16, trim));
+  return 0.96;
+};
+
+const RET_KINDS = ["soldier", "bear", "doll", "horse", "clown",
+                   "rabbit", "monkey", "duck", "jackbox"];
+
+/* THE FIRST ONE HE EVER SOLD.
+
+   A crowd has no face and cannot be looked at, which is a problem for
+   a scene that needs her to look at something. So one of them is not
+   part of the crowd: half again the size of anything else in the hall,
+   gold-eyed rather than red, a soldier like the one standing in her
+   office except older and worse kept, with an arm that was replaced
+   once by somebody who did not have the right paint.
+
+   It never runs. It arrives after the others and it is still there
+   after the others, and the only thing it ever does on camera is
+   stand at the front and wait for the four of them to be finished.  */
+let retBoss = null;
+function returnersBoss(roomId, x, z, ry) {
+  if (!retBoss) {
+    const g = new T.Group();
+    const rnd = mulberry(seedOf("the-first-one"));
+    const j = { legs: [], arms: [], head: null };
+    const coat = mat("enamelRed", 1, 1.2, "#6e3a34");
+    const trim = mat("brassDark", 1, 1, "#7e6438");
+    const h = RET_KIND.soldier(g, j, rnd, coat, trim, "#ffcf72");
+    /* the arm somebody replaced, in a colour that never matched */
+    if (j.arms[1]) j.arms[1].traverse((o) => { if (o.isMesh) o.material = mat("enamelGreen", 1, 1, "#5a6a52"); });
+    g.userData.joints = j;
+    g.userData.kind = "boss";
+    g.userData.seed = 3.1;
+    g.userData.gait = "walk";
+    g.userData.wob = 0.62;
+    g.userData.spd = 0;
+    retBoss = fitFigure(g, h * 1.62);
+    scene.add(retBoss);
+  }
+  const rec = rooms[roomId];
+  const ox = rec ? rec.index * SPACING : 0;
+  retBoss.visible = true;
+  retBoss.position.set(ox + x, 0, z);
+  retBoss.rotation.y = ry || 0;
+  return retBoss;
+}
+function returnersBossGone() { if (retBoss) retBoss.visible = false; }
 
 function makeReturner(i) {
   const g = new T.Group();
-  /* the dull end of the shop's own palette: these were his, once */
-  const skins = ["#3a2f2c", "#33302a", "#2f2a30", "#382a26", "#2b2f30"];
-  const body = new T.Mesh(new T.BoxGeometry(0.17, 0.24, 0.13),
-                          flat(skins[i % skins.length]));
-  body.position.y = 0.14;
-  const head = new T.Mesh(new T.BoxGeometry(0.13, 0.12, 0.12),
-                          flat(skins[(i + 2) % skins.length]));
-  head.position.y = 0.32;
-  /* THE ONLY THING THAT CARRIES.
+  const rnd = mulberry(seedOf("returner-" + i));
+  const j = { legs: [], arms: [], head: null };
+  /* THE MIX IS DEALT, NOT ROLLED.
 
-     At the far end of a hall, in the dark, a small dull box is a small
-     dull box: the first cut of this crowd read as bricks on the floor.
-     What makes a toy in the dark frightening is the pair of lit slots
-     where its eyes are, so they are wider than a real pair would be,
-     unlit by the room (glow is basic, not shaded) and just proud of
-     the face so they are never swallowed by it. */
-  const em = glow(i % 7 === 0 ? "#ffcf72" : "#ff5a4a", 1);
-  const eyes = new T.Group();
-  [-1, 1].forEach((sx) => {
-    const e = new T.Mesh(new T.BoxGeometry(0.036, 0.026, 0.006), em);
-    e.position.set(sx * 0.032, 0, 0);
-    eyes.add(e);
-  });
-  eyes.position.set(0, 0.335, 0.068);
-  const legL = new T.Mesh(new T.BoxGeometry(0.045, 0.11, 0.045), flat("#241f1d"));
-  const legR = legL.clone();
-  legL.position.set(-0.045, 0.055, 0); legR.position.set(0.045, 0.055, 0);
-  g.add(body, head, eyes, legL, legR);
-  g.userData.legs = [legL, legR];
+     Rolling a kind per figure clusters: the first pass gave a hall
+     that was two thirds bears because nine independent rolls do that.
+     Dealing i through the list and then offsetting by a seed gives one
+     of everything before it gives a second of anything, which is what
+     four hundred and eleven different toys would actually look like. */
+  const kind = RET_KINDS[(i + ((seedOf("returner-mix") % 9) | 0)) % RET_KINDS.length];
+  const coat = mat(pick(rnd, ["enamelRed", "enamelBlue", "enamelGreen", "enamelCream"]),
+                   1, 1.2, pick(rnd, RET_PAINT));
+  const trim = mat(rnd() > 0.4 ? "brassDark" : "pewter", 1, 1,
+                   rnd() > 0.4 ? "#8a7040" : "#70747a");
+  /* one in seven has gone gold-eyed rather than red. It reads, across a
+     hall of twenty, as one of them being different -- and the first
+     thing she does with that is decide it is the one in charge. */
+  const hot = rnd() < 0.14 ? "#ffcf72" : (rnd() < 0.2 ? "#a8d8c0" : "#ff5245");
+  const h = RET_KIND[kind](g, j, rnd, coat, trim, hot);
+
+  g.userData.joints = j;
+  g.userData.kind = kind;
   g.userData.seed = i * 1.7;
+  g.userData.eyeY = h * 0.8;
   g.visible = false;
-  return g;
+  return fitFigure(g, h * range(rnd, 0.86, 1.14));
 }
 
 function returnersBuild(n) {
@@ -5824,7 +6303,13 @@ function returnersBuild(n) {
   }
 }
 
-/* put a crowd in a room, in rough ranks, coming towards the camera */
+/* put a crowd in a room, in rough ranks, coming towards the camera.
+
+   The ranks are staggered rather than square: five to a row with every
+   other row offset by half a place, which is the difference between a
+   crowd and a tiling. Depth also thins them -- the ones at the back
+   spread wider and stand further apart, so the hall reads as full
+   rather than as a block of toys.                                     */
 function returnersPlace(roomId, n, spreadX, z0, dz) {
   returnersBuild(n);
   const rec = rooms[roomId];
@@ -5835,45 +6320,68 @@ function returnersPlace(roomId, n, spreadX, z0, dz) {
     if (i >= n) return;
     const rnd = mulberry(1000 + i * 37);
     const row = Math.floor(i / 5), col = i % 5;
-    g.position.set(ox + (col - 2) * (spreadX / 5) + (rnd() - 0.5) * 0.22,
+    const stagger = (row % 2) * 0.5;
+    const spread = spreadX * (1 + row * 0.06);
+    g.position.set(ox + (col - 2 + stagger) * (spread / 5) + (rnd() - 0.5) * 0.26,
                    0,
-                   z0 + row * dz + (rnd() - 0.5) * 0.2);
+                   z0 + row * dz + (rnd() - 0.5) * 0.22);
     /* FACING THE WAY THEY WALK.
 
        They advance along +z, which is toward the camera in every room
-       the film uses -- so they face +z, which is a box's own front.
+       the film uses -- so they face +z, which is a figure's own front.
        Turned a half-turn away (as they were), the one thing on them
        that reads at any distance, the eyes, was pointed at the back
        wall and the crowd looked like stacked crates. */
-    g.rotation.y = (rnd() - 0.5) * 0.5;
-    /* he sold four hundred and eleven things over fifteen years and
-       they were not all the same size. It is also the difference
-       between a crowd and a tiling. */
-    const sc = 1.25 + rnd() * 0.85;
-    g.scale.set(sc, sc * (0.9 + rnd() * 0.35), sc);
+    g.rotation.y = (rnd() - 0.5) * 0.55;
+    /* fitFigure has already given each kind its own height and put a
+       band of variation on top, so this is only the last few percent --
+       enough that two of the same kind standing together are not twins */
+    const sc = range(rnd, 0.94, 1.1);
+    g.scale.set(sc, sc * range(rnd, 0.96, 1.06), sc);
     g.userData.spd = 0.12 + rnd() * 0.16;
+    /* a wheeled one rolls; everything else walks, and a horse walks on
+       four legs a beat out of phase with itself */
+    g.userData.gait = g.userData.kind === "duck" ? "roll" : "walk";
+    g.userData.wob = range(rnd, 0.8, 1.3);
   });
 }
 
 function returnersClear() {
   RET.live = 0;
   RET.pool.forEach((g) => { g.visible = false; });
+  returnersBossGone();
 }
 
 /* they advance, and they do not walk in step, which is most of why a
-   crowd reads as a crowd */
+   crowd reads as a crowd.
+
+   Three things move: the legs swing, the body rides up and down on
+   them, and the head lags a fraction behind the turn. Nothing else --
+   twenty-eight figures is not the place to be clever. */
 function returnersStep(dt, t, advance) {
-  for (let i = 0; i < RET.live; i++) {
-    const g = RET.pool[i];
+  const list = RET.pool.slice(0, RET.live);
+  if (retBoss && retBoss.visible) list.push(retBoss);
+  for (let i = 0; i < list.length; i++) {
+    const g = list[i];
     if (!g.visible) continue;
     if (advance) g.position.z += g.userData.spd * dt;
-    const ph = t * 5.5 + g.userData.seed;
-    const legs = g.userData.legs;
-    if (legs) {
-      legs[0].rotation.x = Math.sin(ph) * 0.5;
-      legs[1].rotation.x = -Math.sin(ph) * 0.5;
+    const j = g.userData.joints;
+    if (!j) continue;
+    const ph = t * (4.6 * g.userData.wob) + g.userData.seed;
+    if (g.userData.gait === "roll") {
+      /* the wheels turn at the speed it is actually travelling */
+      j.legs.forEach((w) => { w.rotation.x += g.userData.spd * dt * 14; });
+      g.position.y = 0;
+    } else {
+      j.legs.forEach((leg, k) => {
+        leg.rotation.x = Math.sin(ph + (k % 2) * Math.PI + (k >> 1) * 0.9) * 0.42;
+      });
+      j.arms.forEach((arm, k) => {
+        arm.rotation.x = -Math.sin(ph + (k % 2) * Math.PI) * 0.26;
+      });
+      g.position.y = Math.abs(Math.sin(ph)) * 0.016;
     }
-    g.position.y = Math.abs(Math.sin(ph)) * 0.012;
+    if (j.head) j.head.rotation.y = Math.sin(ph * 0.31 + g.userData.seed) * 0.18;
   }
 }
 
@@ -10315,7 +10823,7 @@ function kill(ch) {
 const FIN = {
   on: false, i: -1, t: 0, secs: 1, hold: 0, el: null, head: null,
   gone: {}, room: "office", skip: false, adv: 0, shot: null, lux: 1,
-  plan: null, said: 0, dur: 0,
+  plan: null, said: 0, dur: 0, hushed: {},
   from: new T.Vector3(), to: new T.Vector3(), look: new T.Vector3(),
   look2: new T.Vector3(), pan: 0,
   fov0: 58, fov1: 58,
@@ -10327,7 +10835,7 @@ function finaleStart() {
   if (!NS.lastHour || !NS.lastHour.shots) { winNight(); return; }
   FIN.on = true; FIN.i = -1; FIN.t = 0; FIN.hold = 0; FIN.secs = 1;
   FIN.gone = {}; FIN.skip = false; FIN.adv = 0; FIN.shot = null;
-  FIN.lux = 1; G.filmLux = 1;
+  FIN.lux = 1; G.filmLux = 1; FIN.hushed = {};
   FIN.room = "office";
   G.phase = "finale";
   G.mode = "story";
@@ -10351,12 +10859,17 @@ function finaleStart() {
       '<i class="ns-fin-bar t"></i><i class="ns-fin-bar b"></i>' +
       '<p class="ns-fin-head" id="ns-fin-head"><b>' + NS.lastHour.head + '</b></p>' +
       '<div class="ns-fin-sub" id="ns-fin-lines"></div>' +
-      '<button class="ns-cine-skip ns-fin-skip" id="ns-fin-skip">SKIP</button>' +
     '</div>', "ns-ov-film");
   FIN.el = document.getElementById("ns-fin-lines");
   FIN.head = document.getElementById("ns-fin-head");
-  const sk = document.getElementById("ns-fin-skip");
-  if (sk) sk.addEventListener("click", (e) => { e.stopPropagation(); finaleNext(true); });
+  /* AND NO WAY PAST IT.
+
+     The opening statement has a skip because it is the thing standing
+     between somebody and the game. This is the opposite: it is the
+     last hour of the last night, it is what the other five nights were
+     for, and it is not a cutscene in front of the game -- it IS the
+     game at this point. A button offering to shorten it would be the
+     chapter saying it did not believe in its own ending. */
   /* the stamp is a title, not a HUD: it goes after the first shot */
   setTimeout(() => { if (FIN.head) FIN.head.classList.add("out"); }, 5200);
   finaleNext();
@@ -10423,11 +10936,26 @@ function finaleNext(skipped) {
   /* --- the crowd --------------------------------------------------- */
   if (s.clear) returnersClear();
   if (s.swarm) returnersPlace(s.swarm[0], s.swarm[1], s.swarm[2], s.swarm[3], s.swarm[4]);
+  if (s.boss) returnersBoss(s.boss[0], s.boss[1], s.boss[2], s.boss[3]);
+  if (s.bossGone) returnersBossGone();
   FIN.adv = s.advance ? 1 : 0;
 
   /* --- the rest ---------------------------------------------------- */
   if (s.lux !== undefined) FIN.lux = s.lux;
   if (s.cue) musicMode(s.cue);
+  /* THE SHUTTERS, ON CAMERA. The office doors are the one thing in the
+     chapter she has touched every night for six nights, and the film
+     can work them: animateOffice rolls whichever one the shot asks for
+     while the shot is running, so the door coming down is a thing that
+     happens in front of her rather than a line about a door. */
+  if (s.doors) for (const k in s.doors) G.doors[k] = !!s.doors[k];
+  /* and one layer of the score can be taken away and never given back.
+     Cogsworth is the thing keeping time in this shop; when he stops,
+     so does the tick under the music, and nobody has to say so. */
+  if (s.hush && MUS.lay[s.hush]) {
+    try { MUS.lay[s.hush].gain.setTargetAtTime(0, now(), 0.4); } catch (e) {}
+    FIN.hushed[s.hush] = 1;
+  }
   if (s.shake) G.shake = Math.max(G.shake, s.shake);
   if (s.dawn) G.dawn = true;
   if (s.down) SFX.doorClose();
@@ -10437,6 +10965,38 @@ function finaleNext(skipped) {
 
 /* the subtitle. One line at a time, under the picture, because two
    lines of text stacked over a shot is a transcript again. */
+/* speak a line of the ending, if there is a take of it, and tell the
+   shot how long to wait. Counted in the film's own time rather than off
+   the wall clock: the shot and the voice then run on one clock, which
+   is also the only way the ending can be played faster than real time
+   by anything checking it. */
+function finaleSpeak(text, gain) {
+  const t = String(text).trim();
+  if (!VOX_FILE.on || !VOX_FILE.map || !VOX_FILE.map[t]) return;
+  FIN.plan = voxPlan(text);
+  voxSpeak(FIN.plan, { gain: gain });
+  FIN.said = 0;
+  FIN.dur = FIN.plan.dur || 0;
+}
+
+/* the subtitle, and whoever is saying it.
+
+   One line at a time, under the picture, because two lines of text
+   stacked over a shot is a transcript again.
+
+   EVERYBODY IN THIS SCENE HAS THEIR OWN VOICE. For a long time the
+   only recorded voice in the chapter was Anwar's, which was right
+   while he was the only one talking. It is not right here: the four of
+   them say twenty-two lines in the last hour and a ballerina, an owl,
+   a clockwork soldier and a jack-in-the-box coming out of the same
+   documentary narrator would be worse than silence. tools/voicesheet
+   casts them; the workflow renders each line in its own model.
+
+   And ONLY where a real take exists. Everywhere else in the chapter a
+   missing recording falls back to the synthesiser, which is the right
+   trade for a line of guidance and the wrong one here: the robot
+   reading the last five minutes would undo the whole ending. No take,
+   no voice -- the subtitle and the score carry it. */
 function finaleSay(line) {
   FIN.plan = null;
   FIN.said = 0;
@@ -10452,34 +11012,10 @@ function finaleSay(line) {
     html = '<p class="ns-fin-said" style="--c:' + (w ? w.colour : "#caa") + '">' +
              '<b>' + (w ? w.name : line.who) + '</b><span>' + line.t + '</span></p>';
     if (SFX.tick) SFX.tick(0.5, 0);
+    finaleSpeak(line.t, 1);
   } else {
     html = '<p class="ns-fin-nar">' + line.t + '</p>';
-    /* AND HE READS IT -- IF IT IS HIM.
-
-       The narration in the rest of the chapter is his, and an ending
-       that went silent at the exact moment it matters most would be
-       the one place in the game where the voice she has listened to
-       all week is missing. So the narrator lines go through the same
-       path the tapes do, and the shot below waits for him rather than
-       cutting him off.
-
-       But ONLY where a real take exists. Everywhere else in the
-       chapter a missing take falls back to the synthesiser, which is
-       the right trade for a line of guidance and the wrong one here:
-       the robot reading the last five minutes would undo the whole
-       ending. No take, no voice -- the subtitle and the score carry
-       it, exactly as they did before this existed. */
-    const have = VOX_FILE.on && VOX_FILE.map && VOX_FILE.map[String(line.t).trim()];
-    if (have) {
-      FIN.plan = voxPlan(line.t);
-      voxSpeak(FIN.plan, { gain: 0.95 });
-    /* counted in the film's own time rather than off the wall clock:
-       the shot and the voice then run on one clock, which is also the
-       only way the ending can be played faster than real time by
-       anything checking it */
-      FIN.said = 0;
-      FIN.dur = FIN.plan.dur || 0;
-    }
+    finaleSpeak(line.t, 0.95);
   }
   const d = document.createElement("div");
   d.className = "ns-fin-row";
@@ -10577,6 +11113,13 @@ function finaleEnd() {
   G.dawn = true;
   G.filmLux = 1;
   returnersClear();
+  /* whatever the film took out of the score, it gives back: a layer
+     left at zero would follow her into the menu */
+  for (const k in FIN.hushed) {
+    if (MUS.lay[k]) { try { MUS.lay[k].gain.setTargetAtTime(1, now(), 0.6); } catch (e) {} }
+  }
+  FIN.hushed = {};
+  G.doors.left = G.doors.right = G.doors.hatch = false;
   noOverlay();
   const a = NS.lastHour.after;
   musicMode("dawn");
@@ -11169,7 +11712,11 @@ function tapeSay(line, who) {
   TAPE.line = line;
   TAPE.t0 = perf();
   TAPE.speakT = TAPE.plan.dur + 1.1;
-  voxSpeak(TAPE.plan, who ? { gain: 0.82, forceSynth: true } : { gain: 0.9 });
+  /* `forceSynth` used to be here for the four of them, because the only
+     recording of any line was Anwar reading it and hearing him play
+     all four parts was worse than the synthesiser. They are cast
+     separately now, so a take of Marabelle is Marabelle. */
+  voxSpeak(TAPE.plan, { gain: who ? 0.88 : 0.9 });
   /* the room-to-himself is voxSpeak's job now: it holds the bed at
      VOICE_BED for the whole line instead of dipping for a third of a
      second and handing the score back its full level over the rest of

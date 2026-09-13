@@ -313,21 +313,41 @@ jobs:
 
 
       # --- OR RENDER THE LOT ----------------------------------------
-      - name: Fetch the voice
-        if: env.MODE == 'full'
-        run: |
-          python -m piper.download_voices "$VOICE" --data-dir voices
-          ls -la voices
-
-      - name: Work out what he has to say
+      - name: Work out what he has to say, and who else says anything
         if: env.MODE == 'full'
         run: |
           node tools/voicesheet.js --json > /tmp/lines.json
+          node tools/voicesheet.js --plan > /tmp/plan.json
           python - <<'PY'
-          import json
+          import json, collections
           d = json.load(open('/tmp/lines.json'))
+          p = json.load(open('/tmp/plan.json'))
           print(len(d), 'lines,', sum(len(v.split()) for v in d.values()), 'words')
+          for who, n in collections.Counter(v['who'] for v in p.values()).most_common():
+              print('  %-10s %3d lines  %s' % (who, n, p and next(
+                  x['model'] for x in p.values() if x['who'] == who)))
           PY
+
+      # FIVE VOICES, NOT ONE.
+      #
+      # The narrator is still whatever the top line of voice/RENDER
+      # asks for. The four in the back room are cast in tools/voicesheet
+      # and every model that casting sheet names is fetched here -- so
+      # adding a voice to the sheet is the only edit anybody has to make.
+      - name: Fetch every voice the cast needs
+        if: env.MODE == 'full'
+        run: |
+          MODELS=$(python - <<'PY'
+          import json
+          p = json.load(open('/tmp/plan.json'))
+          print(' '.join(sorted({v['model'] for v in p.values()})))
+          PY
+          )
+          echo "the cast needs: $MODELS"
+          for v in $MODELS "$VOICE"; do
+            python -m piper.download_voices "$v" --data-dir voices || echo "could not get $v"
+          done
+          ls -la voices
 
       - name: Say all of it
         if: env.MODE == 'full'
@@ -338,9 +358,22 @@ jobs:
 
           exec(open('/tmp/chain.py').read())
           lines = json.load(open('/tmp/lines.json'))
-          model = os.path.join('voices', os.environ['VOICE'] + '.onnx')
-          pace  = os.environ['PACE']
+          plan  = json.load(open('/tmp/plan.json'))
           var   = os.environ['VARIATION']
+
+          # The narrator's model, pace and depth still come from the top
+          # line of voice/RENDER, because that is the knob somebody turns
+          # when they want to hear him differently. Everybody else comes
+          # from the casting sheet.
+          NARRATOR = {'model': os.environ['VOICE'],
+                      'pace':  os.environ['PACE'],
+                      'depth': os.environ['DEPTH']}
+
+          def cast(lid):
+              c = plan.get(lid) or {}
+              if c.get('who', 'anwar') == 'anwar':
+                  return NARRATOR
+              return {'model': c['model'], 'pace': c['pace'], 'depth': c['depth']}
 
           # THE THREE KNOBS, AND WHY THESE VALUES.
           #
@@ -355,7 +388,18 @@ jobs:
           #   noise_w       variation in how long each phoneme is held.
           #                 This is the one that stops it sounding metered.
           ok = 0
+          missing = set()
           for i, (lid, text) in enumerate(sorted(lines.items())):
+              c = cast(lid)
+              model = os.path.join('voices', c['model'] + '.onnx')
+              if not os.path.exists(model):
+                  # a voice that would not download must not take the
+                  # whole render down with it: that line falls back to
+                  # the narrator, and the run says so at the end
+                  missing.add(c['model'])
+                  c = NARRATOR
+                  model = os.path.join('voices', c['model'] + '.onnx')
+              pace = c['pace']
               raw = os.path.join('/tmp', lid + '.wav')
               p = subprocess.run(
                   [sys.executable, '-m', 'piper', '-m', model, '-f', raw,
@@ -373,10 +417,12 @@ jobs:
               # git repository. The game puts it through the tape itself,
               # so nothing here should try to add character — this stage
               # only has to be clean and even.
-              narrate(raw, os.path.join('voice', lid + '.mp3'), os.environ['DEPTH'])
+              narrate(raw, os.path.join('voice', lid + '.mp3'), c['depth'])
               ok += 1
               if ok % 20 == 0: print(ok, 'done')
           print('rendered', ok, 'of', len(lines))
+          if missing:
+              print('FELL BACK TO THE NARRATOR for:', ', '.join(sorted(missing)))
           if ok < len(lines) * 0.95:
               raise SystemExit('too many failures to be worth committing')
           PY

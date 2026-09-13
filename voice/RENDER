@@ -31,3 +31,6 @@ full en_GB-alan-medium 1.16 0.74 1.2
 #             (last-01..last-41). Re-rendered with the other 117.
 # 2026-09-13b: and one more line, added after the first run started —
 #              the thing he built into all four of them.
+# 2026-09-13c: five voices now, not one. The narrator is still the top
+#              line; the four in the back room are cast in
+#              tools/voicesheet.js and every model it names is fetched.
