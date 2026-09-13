@@ -3692,7 +3692,20 @@ img{-webkit-user-drag:none; user-select:none;}
    scrolling is the guarantee, not the plan. */
 .hub-wrap{
   width:min(94vw,620px); margin:0 auto; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:8px; padding:16px 12px;
+  align-items:center; gap:8px; padding:16px 12px;
+  /* CENTRED, BUT NEVER PUSHED OUT OF REACH.
+
+     A centred flex column that overflows its scroller pushes its
+     overflow off BOTH ends, and the part above the top can never be
+     scrolled back to -- the scroll origin is the top of the box, and
+     the content starts above it. On a short phone with every chapter
+     done, "Choose your adventure" was clipped by forty pixels and there
+     was no way to see it. `safe` is the keyword for exactly this: it
+     centres while it fits and falls back to packing from the start the
+     moment it does not. The plain `center` above it is the fallback for
+     anything that does not understand `safe`. */
+  justify-content:center;
+  justify-content:safe center;
   max-height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch;
   /* without this the bounce at the end of the list drags the page with it,
      which is the other way a strip of nothing appears under the site */
@@ -3763,7 +3776,13 @@ img{-webkit-user-drag:none; user-select:none;}
 .hub-foot{
   display:flex; flex-wrap:wrap; gap:9px; justify-content:center; width:100%;
 }
-.hub-keepsake{margin-top:14px; display:none;}
+/* Two jobs, two classes. `hub-foot-btn` is the spacing every button in
+   the footer wants; `hub-keepsake` is the gate that keeps the keepsake
+   hidden until the story is done. They used to be the same class, so
+   putting the footer's spacing on the way back to the book also put the
+   keepsake's gate on it, and the book button never appeared at all. */
+.hub-foot-btn{margin-top:14px;}
+.hub-keepsake{display:none;}
 .hub-keepsake.on{display:inline-block;}
 
 /* A short screen: give the cards back the pixels they do not need. Same
@@ -3780,7 +3799,7 @@ img{-webkit-user-drag:none; user-select:none;}
   .hub-art{height:58px;}
   .hub-name{font-size:14.5px;}
   .hub-desc{font-size:11px; line-height:1.35;}
-  .hub-keepsake{margin-top:9px;}
+  .hub-foot-btn{margin-top:9px;}
 }
 @media (max-width:700px) and (max-height:700px){
   .hub-art{height:46px;}
@@ -3834,7 +3853,7 @@ img{-webkit-user-drag:none; user-select:none;}
   .hub-art{height:58px;}
   .hub-name{font-size:13px;}
   .hub-desc{font-size:10.5px; line-height:1.28;}
-  .hub-keepsake{margin-top:6px;}
+  .hub-foot-btn{margin-top:6px;}
 }
 
 
