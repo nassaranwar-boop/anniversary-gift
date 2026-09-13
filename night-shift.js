@@ -898,6 +898,7 @@ const NS = {
       { room: "office", secs: 4.4, fov0: 44, fov1: 50,
         from: [-1.05, 1.30, 1.84], to: [-1.62, 1.02, 1.74],
         look: [-1.16, 1.48, 0.30], look2: [-1.26, 0.62, 0.62],
+        oui: [-1.72, 0, 0.62, 0, -0.75],
         line: { who: "jax", t: "He put a room down there in March and never told anybody." } },
       { room: "office", secs: 3.0, fov: 40,
         from: [-1.62, 1.02, 1.74], to: [-1.70, 0.78, 1.58], look: [-1.22, 1.30, 0.42],
@@ -917,6 +918,7 @@ const NS = {
          of. */
       { room: "office", secs: 5.0, fov: 54, shake: 0.7, down: 1, lux: 0.3,
         from: [-1.70, 0.80, 1.62], to: [-1.76, 0.34, 1.46], look: [-1.20, 1.40, 0.30],
+        ouiGone: 1,
         line: { nar: 1, t: "He puts her under the floor anyway, and he is far stronger than a jack-in-the-box has any business being." } },
 
       /* --- what the winding was, said from above her --------------- */
