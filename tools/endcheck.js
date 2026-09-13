@@ -119,6 +119,34 @@ SHOTS.forEach((s, i) => {
 });
 ok('the crowd is never left standing in a room the camera has left', !strays.length, strays);
 
+/* THE LETTER HAS TO BE FINDABLE.
+
+   The last card in the chapter is read aloud now, and the lookup is by
+   the exact words. The card is written with &ldquo; in it, the browser
+   hands textContent back as a curly quote, and the casting sheet wrote
+   a plain one into the manifest -- so without a normalising step the
+   two lines of his letter that have quotation marks in them are
+   exactly the two he does not read, and nothing anywhere fails. */
+const MAN = (() => {
+  try { return JSON.parse(fs.readFileSync(__dirname + '/../voice/manifest.json', 'utf8')); }
+  catch (e) { return null; }
+})();
+const decode = (t) => String(t)
+  .replace(/&[lr]dquo;/g, '"').replace(/&[lr]squo;/g, "'")
+  .replace(/&mdash;/g, '\u2014').replace(/&amp;/g, '&')
+  .replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+if (MAN) {
+  const words = {};
+  for (const k in MAN) words[MAN[k]] = k;
+  const lost = (NS.lastHour.after.lines || []).map((l, i) => words[decode(l)] ? null : i)
+                                              .filter((x) => x !== null);
+  ok('every line of his letter can be found in the manifest by its words', !lost.length, lost);
+  /* and the same for the narration, which is the bulk of it */
+  const nar = SHOTS.map((s, i) => (s.line && !s.line.sys && !words[decode(s.line.t)]) ? i : null)
+                   .filter((x) => x !== null);
+  ok('and so can every line anybody speaks in the film', !nar.length, nar);
+}
+
 const secs = SHOTS.reduce((a, s) => a + (s.secs || 3), 0);
 ok('the whole thing runs between two and five minutes', secs > 120 && secs < 300, Math.round(secs));
 

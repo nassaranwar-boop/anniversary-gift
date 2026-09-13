@@ -11239,14 +11239,51 @@ function finaleEnd() {
   const lines = card ? [].slice.call(card.querySelectorAll(".ns-rv")) : [];
   const choice = card && card.querySelector(".ns-rv-choice");
   if (choice) choice.classList.remove("in");
+  /* AND HE READS IT.
+
+     This is the last thing in the chapter and it was a silent card:
+     six lines of the most personal writing in the game, appearing one
+     at a time on a timer, with his voice — which she has been
+     listening to for six nights — not in the room for any of it.
+
+     So each line waits for him rather than for a clock. The timer is
+     still there underneath as the floor and the ceiling: a line never
+     goes by faster than nine tenths of a second even if there is no
+     take of it, and never sits for longer than five seconds even if a
+     take never arrives. */
   let at = 0;
   const step = () => {
-    if (at >= lines.length) { if (choice) choice.classList.add("in"); return; }
-    lines[at++].classList.add("in");
+    if (at >= lines.length) {
+      /* a beat after the last word before she is offered the way out */
+      setTimeout(() => { if (choice) choice.classList.add("in"); }, 900);
+      return;
+    }
+    const row = lines[at++];
+    row.classList.add("in");
     SFX.paper();
-    setTimeout(step, at === lines.length ? 1600 : 1150);
+    const said = finaleRead(row.textContent || "");
+    const wait = clamp(said ? said * 1000 + 420 : 1150, 900, 5000);
+    setTimeout(step, at === lines.length ? Math.max(wait, 1600) : wait);
   };
   setTimeout(step, 700);
+}
+
+/* the letter, in his voice, where there is a take of it. Returns how
+   long he takes, in seconds, or 0 when it is going to be read in
+   silence -- which is still better than the synthesiser reading his
+   last six sentences to her. */
+function finaleRead(text) {
+  /* the card is written with &ldquo; and &rdquo; in it, which the
+     browser hands back as curly quotes and which the casting sheet
+     wrote into the manifest as plain ones. Two characters, and without
+     this the first and last lines of his letter -- the only two with
+     quotation marks in them -- are the two he does not read. */
+  const t = String(text).replace(/[\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'")
+                        .replace(/\s+/g, " ").trim();
+  if (!t || !VOX_FILE.on || !VOX_FILE.map || !VOX_FILE.map[t]) return 0;
+  const plan = voxPlan(t);
+  voxSpeak(plan, { gain: 0.95 });
+  return plan.dur || 0;
 }
 
 function winNight() {

@@ -119,6 +119,12 @@ add('caught-later', NS.caught && NS.caught.later, 'every time after that');
   add(id, sh.line.t, 'the last hour, shot ' + (k + 1), sh.line.who);
 });
 
+/* and the letter, which is the last thing in the chapter and was a
+   silent card until it was not. His voice, one line at a time, with
+   the staging waiting for him rather than for a clock. */
+((NS.lastHour && NS.lastHour.after && NS.lastHour.after.lines) || []).forEach((l, k) =>
+  add('note-' + (k + 1), l, 'the letter on the bench'));
+
 add('kept-clean', NS.kept && NS.kept.clean, 'six nights, untouched');
 add('kept-hurt',  NS.kept && NS.kept.hurt,  'six nights, not untouched');
 
