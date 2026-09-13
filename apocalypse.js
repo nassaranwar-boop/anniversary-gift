@@ -10863,6 +10863,62 @@
     Audio_.score(CUE_LEVEL[def.id] || "dread");
     setStep();
     setHud();
+
+    /* ---- PAY FOR THE SHADERS HERE, WHERE THE SCREEN IS BLACK ----
+
+       This is the freeze. A material's shader is not compiled when the
+       material is made, it is compiled the first time something is drawn
+       with it -- so the cost arrived in the middle of play, in two
+       instalments. Measured per level, driving the frames by hand:
+
+         level      first frame   steady   worst while walking   programs
+         home           271ms      2.7ms         199ms           43 -> 46
+         streets      12407ms      3.3ms         349ms           91 -> 97
+         hospital     12005ms      3.0ms           5ms          100 -> 100
+         gates        12290ms      5.2ms         314ms          145 -> 149
+         roadside     12280ms      5.1ms           4ms          149 -> 149
+
+       Every stall lines up with the program count going up, and every
+       level where it does not go up walks at four milliseconds. The first
+       frame of a level is a burst of them; the rest turn up as she walks
+       and something is drawn for the first time, which is the stutter she
+       was feeling. (The absolute figures are this container compiling
+       GLSL on the processor -- a real phone is far quicker -- but what
+       compiles, and when, is the same everywhere.)
+
+       renderer.compile walks the scene and builds every program it will
+       need, up front. It is the same total work; the difference is that
+       it happens now, while the level is still faded to black and nobody
+       is waiting on a step, rather than under her thumb. */
+    try {
+      if (Stage.renderer.compile) {
+        /* EVERYTHING, INCLUDING WHAT IS NOT SHOWING YET.
+
+           compile() only reaches what is visible, and the levels
+           deliberately build every body they will ever need up front and
+           leave them hidden -- makeZ hands out a rig that is already
+           there and sets visible = true. So the bodies were exactly the
+           materials it skipped, and they compiled instead at the moment
+           one first stepped into view, which is the stutter while
+           walking: measured on the streets, five new STANDARD programs
+           appearing over ten paces.
+
+           Everything is shown for the length of the compile and put back
+           the way it was straight after. Nothing is rendered in between,
+           so nothing can be seen; the only difference is that the shaders
+           exist before she needs them. */
+        var hidden = [];
+        built.scene.traverse(function (o) {
+          if (!o.visible) { hidden.push(o); o.visible = true; }
+        });
+        try {
+          Stage.renderer.compile(built.scene, Stage.camera);
+        } finally {
+          for (var hi = 0; hi < hidden.length; hi++) hidden[hi].visible = false;
+        }
+      }
+    } catch (e) {}
+
     return G;
   }
 
@@ -17136,6 +17192,14 @@
         programs: (Stage.renderer.info.programs || []).length,
         lights: lights
       };
+    };
+    /* the cache key of every compiled program. Two stalls that both show
+       the count going up can have completely different causes -- a new
+       material, or an old one being drawn under a different number of
+       lights -- and the key is what says which. */
+    window.__apProgramKeys = function () {
+      var ps = Stage.renderer.info.programs || [];
+      return ps.map(function (p) { return p.cacheKey; });
     };
     window.__apScore = function () { return Audio_.score.playing(); };
     /* what the music has been ASKED for, which is what the driver decides */
