@@ -38,3 +38,5 @@ full en_GB-alan-medium 1.16 0.74 1.2
 #              more line under the floor.
 # 2026-09-13e: two more lines (the desk), and the shot numbering moved
 #              under them.
+# 2026-09-13f: Jax pulled down three semitones and Marabelle pushed up
+#              two, measured with tools/castcheck.js rather than guessed.

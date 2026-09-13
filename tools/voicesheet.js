@@ -49,20 +49,36 @@ const NS = eval('(' + src.slice(i + key.length - 1, j + 1) + ')');
    character too, because two of these are the same model family and
    what separates a clock from a jester is as much tempo as timbre.
 
-     anwar      the narrator. Slow, low, unhurried. Unchanged.
-     cogsworth  slower still and lower: he is a clock, he does not
-                hurry, and he is the oldest thing in the room.
-     chime      quick and up: a small brass owl with a bell in it.
-     marabelle  the one female voice, level and unbothered — she is
-                the only one of the four who is never frightened.
-     jax        fast and slightly up, because he talks like somebody
-                who has decided not to be afraid out loud.             */
+   Measured with tools/castcheck.js rather than guessed, because the
+   one failure mode that would pass every other test in this repository
+   is a casting sheet that quietly fell back to the narrator for all
+   four and sounded exactly like the thing it was written to fix.
+   Median fundamentals, as rendered:
+
+     anwar       92 Hz  the tape, and the lowest thing in the chapter.
+                        He is talking to her from underneath all of it.
+     cogsworth  100 Hz  just above him, slower than anybody: he is a
+                        clock, he does not hurry, and he is the oldest
+                        of the four.
+     chime      139 Hz  a small brass owl with a bell in it.
+     jax        178 Hz  light and fast, because he talks like somebody
+                        who has decided not to be afraid out loud, and
+                        pulled down three semitones from where his
+                        model sits so that the last four lines in the
+                        chapter have some weight under them.
+     marabelle  195 Hz  the one voice in the shop that is not a man,
+                        level and unbothered — she is the only one of
+                        the four who is never frightened of anything.
+
+   No two of those are within a semitone of each other, which is the
+   check castcheck actually makes: closer than that and, to an ear,
+   they are the same person.                                          */
 const VOICE = {
   anwar:     { model: 'en_GB-alan-medium',                  pace: '1.16', depth: '1.2' },
   cogsworth: { model: 'en_GB-northern_english_male-medium', pace: '1.26', depth: '2.2' },
   chime:     { model: 'en_US-ryan-high',                    pace: '1.02', depth: '-1.6' },
-  marabelle: { model: 'en_US-lessac-high',                  pace: '1.12', depth: '0.4' },
-  jax:       { model: 'en_GB-semaine-medium',               pace: '0.98', depth: '-0.8' },
+  marabelle: { model: 'en_US-lessac-high',                  pace: '1.12', depth: '-2.0' },
+  jax:       { model: 'en_GB-semaine-medium',               pace: '0.98', depth: '3.0' },
 };
 
 const OUT = [];
