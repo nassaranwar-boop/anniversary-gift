@@ -729,10 +729,16 @@
       var moved = PAGE_BLOCK * FLIP_FRACTION * progress;
       return { right: PAGE_BLOCK - moved, left: LEFT_MIN + moved };
     }
-    function applyStacks(progress) {
+    /* `reveal` is how far the front cover has laid down over the place
+       the left-hand stack sits. The stack rests ON the opened cover --
+       its base is one cover-thickness off the grass -- so until the
+       cover is actually under it, it is a sheet of paper lying on a
+       lawn. It grows into place instead of being switched on. */
+    function applyStacks(progress, reveal) {
       var th = stackThickness(progress);
+      var lr = reveal === undefined ? 1 : reveal;
       rightStack.scale.y = Math.max(0.001, th.right);
-      leftStack.scale.y = Math.max(0.001, th.left);
+      leftStack.scale.y = Math.max(0.001, th.left * lr);
       // keep the fore-edge striations at a constant density as stacks grow
       rightStack.material[0].map.repeat.set(1, Math.max(0.05, th.right / PAGE_BLOCK));
       leftStack.material[0].map.repeat.set(1, Math.max(0.05, th.left / PAGE_BLOCK));
@@ -1418,7 +1424,25 @@
       // slightly past flat, so the open cover leans down onto the floor
       // instead of hanging in the air at hinge height
       coverPivot.rotation.z = oe * Math.PI;
-      leftStack.visible = oe > 0.32;
+
+      /* THE SHEET THAT WAS LYING ON THE GRASS.
+
+         This used to be `leftStack.visible = oe > 0.32`, which switched
+         the left-hand page stack on when the cover had swung barely
+         fifty-eight degrees -- still standing up in the air, nothing
+         underneath it. What appeared was a five-millimetre slab of
+         parchment lying flat on the lawn a book's width from the spine,
+         and it read exactly as it looks: a loose page that had fallen
+         out before the book was even open.
+
+         The stack belongs on top of the opened cover. So it is revealed
+         by how far the cover has come down over its place, and it grows
+         into existence rather than popping: nothing at all until the
+         cover is well past vertical and leaning over that ground, full
+         thickness only once it has landed. By the time the first page
+         turns onto it the cover is flat and it is all there. */
+      var coverDown = clamp01((oe - 0.72) / 0.28);
+      leftStack.visible = coverDown > 0.001;
 
       // --- pages fan across ---
       var ft = s - TL.flipStart;
@@ -1445,7 +1469,7 @@
       wideT = easeInOutCubic(clamp01((s - TL.openStart) / (TL.coverDur * 0.85)));
 
       var flipProgress = heroPages.length ? landed / heroPages.length : 0;
-      var th = applyStacks(flipProgress);
+      var th = applyStacks(flipProgress, coverDown);
 
       // hinge rides from the top of the shrinking stack to the growing one
       for (var pj = 0; pj < heroPages.length; pj++) {
@@ -1661,6 +1685,19 @@
       tier: TIER,
       boot: bootMarks,
       timeline: TL,
+      /* where the opening actually is, at the frame just rendered: the
+         cover's angle, and whether the left-hand page stack is on
+         screen. A stack showing while the cover is still up in the air
+         is the "loose sheet lying on the grass" fault, and it is those
+         two numbers together that say so. */
+      state: function () {
+        return {
+          coverDeg: +(coverPivot.rotation.z * 180 / Math.PI).toFixed(1),
+          leftStack: leftStack.visible,
+          leftThick: +leftStack.scale.y.toFixed(4),
+          heroPages: heroPages.filter(function (p) { return p.mesh.visible; }).length,
+        };
+      },
       frame: function (t) {
         // Stop the live loop first, or it will immediately overwrite the
         // requested frame with a wall-clock one and the screenshot lies.
