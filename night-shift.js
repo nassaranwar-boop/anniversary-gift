@@ -748,9 +748,21 @@ const NS = {
       { room: "office", secs: 4.2, fov0: 37, fov1: 32,
         from: [-1.70, 0.24, 1.34], to: [-1.68, 0.22, 1.31], look: [-1.14, 1.54, 0.30],
         line: { who: "jax", t: "You were charging us." } },
-      { room: "office", secs: 3.6, fov0: 33, fov1: 40, gone: "jax", lux: 0.2,
-        from: [-1.68, 0.22, 1.31], to: [-1.66, 0.20, 1.28], look: [-1.14, 1.56, 0.30],
+      { room: "office", secs: 4.6, fov0: 33, fov1: 38,
+        from: [-1.68, 0.22, 1.31], to: [-1.66, 0.21, 1.29], look: [-1.14, 1.56, 0.30],
         line: { who: "jax", t: "He said you never once asked him for a key. He thought about that a great deal, lately." } },
+
+      /* THE THING HE BUILT INTO ALL FOUR OF THEM.
+
+         The whole ending turns on this being a choice rather than an
+         accident, and on her finding out one line before it happens
+         rather than afterwards on a card. */
+      { room: "office", secs: 5.0, fov0: 38, fov1: 33, lux: 0.16,
+        from: [-1.66, 0.21, 1.29], to: [-1.64, 0.20, 1.26], look: [-1.14, 1.50, 0.30],
+        line: { nar: 1, t: "There is one more thing in the back of each of them, next to the key, and he never wrote it down anywhere. A man does not write down the thing he is hoping nobody ever has to use." } },
+      { room: "office", secs: 3.4, fov0: 33, fov1: 29, gone: "jax", lux: 0.14,
+        from: [-1.64, 0.20, 1.26], to: [-1.62, 0.19, 1.24], look: [-1.14, 1.54, 0.30],
+        line: { who: "jax", t: "Put your hands over your ears, Ouissy." } },
 
       /* --- the thing that is not a line ---------------------------- */
       { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08,
@@ -10371,8 +10383,13 @@ function finaleNext(skipped) {
   FIN.t = 0;
   FIN.secs = s.secs || 3;
   FIN.hold = skipped ? 0.2 : FIN.secs;
-  /* once she has asked to get past it, nothing waits for a voice */
-  if (skipped) { FIN.skip = 1; voiceStop(); }
+  /* once she has asked to get past THIS one, it stops waiting for a
+     voice. Per shot, not for the rest of the film: skipping a line she
+     has read is not the same as asking for the ending on fast-forward,
+     and a flag left set turned every shot after the first tap into a
+     stopwatch. */
+  FIN.skip = skipped ? 1 : 0;
+  if (skipped) voiceStop();
 
   /* --- the camera ------------------------------------------------- */
   FIN.room = s.room || FIN.room;

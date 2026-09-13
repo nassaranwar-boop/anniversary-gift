@@ -8745,7 +8745,7 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* the subtitle sits just above the lower bar, where a subtitle goes */
 .ns-fin-sub{
-  position:absolute; left:0; right:0; bottom:11cqh;
+  position:absolute; left:0; right:0; bottom:12.5cqh;
   display:flex; justify-content:center;
   padding-inline:8cqw; text-align:center;
 }
