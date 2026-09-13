@@ -54,17 +54,32 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   ok('the reading is held back while it plays', s0.playing === true && s0.signOpacity === 0,
      `playing=${s0.playing} sign opacity=${s0.signOpacity}`);
 
-  await page.waitForTimeout(1600);
+  /* THE SCENE'S OWN CLOCK, not the harness's. A software-rendered headless
+     browser stalls its frame clock for a second at a time and then catches
+     up, so "wait 1.6s and look" is a coin toss. Everything below waits for
+     the scene to reach a beat and then asserts. */
+  const at = async (secs, cap = 40) => {
+    for (let i = 0; i < cap; i++) {
+      if (await page.evaluate(() => window.__soEndT()) >= secs) return true;
+      await page.waitForTimeout(250);
+    }
+    return false;
+  };
+  ok('the scene keeps its own clock', await at(1.6), 'reached 1.6s');
   const t1 = await look();
   ok('she walks in out of it', t1.sig !== t0.sig && t1.bright > t0.bright,
      `brightness ${t0.bright.toFixed(1)} -> ${t1.bright.toFixed(1)}`);
-  await page.waitForTimeout(1400);
-  const t2 = await look();
-  ok('and she is still moving a second later', t2.sig !== t1.sig);
-  ok('the text has not arrived yet', (await playing()).playing === true);
+  /* still short of the meeting: the card must not have arrived */
+  const mid = await page.evaluate(() => ({ t: window.__soEndT(),
+    playing: document.querySelector('.so-end').classList.contains('playing') }));
+  let walking = false;
+  for (let i = 0; i < 16 && !walking; i++) { await page.waitForTimeout(200); walking = (await look()).sig !== t1.sig; }
+  ok('and she is still moving a moment later', walking);
+  ok('the text has not arrived before they meet', mid.t >= 7.4 || mid.playing === true,
+     `t=${mid.t.toFixed(1)} playing=${mid.playing}`);
 
-  /* they meet at 7.4s; give it to 8.6 */
-  await page.waitForTimeout(5400);
+  ok('the scene reaches the meeting', await at(7.6), 'reached 7.6s');
+  await page.waitForTimeout(400);
   const t3 = await look(), s3 = await playing();
   ok('once they meet, the card arrives', s3.playing === false, `playing=${s3.playing}`);
   /* a fade and a raf loop are wall-clock things and this browser is
@@ -85,9 +100,10 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   ok('a replay plays the scene again', (await playing()).playing === true);
   await page.evaluate(() => document.querySelector('.so-ov-end').dispatchEvent(
     new PointerEvent('pointerdown', { bubbles: true })));
-  await page.waitForTimeout(400);
-  const sk = await playing(), skl = await look();
-  ok('a tap gets her straight to them', sk.playing === false, `playing=${sk.playing}`);
+  let skGone = false;
+  for (let i = 0; i < 16 && !skGone; i++) { await page.waitForTimeout(250); skGone = (await playing()).playing === false; }
+  const skl = await look();
+  ok('a tap gets her straight to them', skGone === true);
   ok('and it skips forward rather than cutting to black', skl.bright > 40,
      `brightness=${skl.bright.toFixed(1)}`);
 
