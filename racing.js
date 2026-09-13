@@ -8107,6 +8107,11 @@ function renderResults() {
   setOverlay(`
     <div class="rc-panel rc-res">
       <h3 class="rc-h">${isGP ? "ROUND " + (gpRound + 1) + " OF " + TRACKS.length : "RESULTS"}</h3>
+      <!-- the heading said what kind of screen this was and never said
+           where the race had been; the course name was only on the
+           postcard, which is the one part of the panel she might scroll
+           past -->
+      <p class="rc-sub">${trackDef.name}${mode === "trial" ? " \u00b7 time trial" : ""}</p>
       <div class="rc-podium">${podium}</div>
       <ol class="rc-rest">${rest}</ol>
       <div class="rc-split${isGP ? " rc-split-2" : ""}">

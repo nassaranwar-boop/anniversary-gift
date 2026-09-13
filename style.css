@@ -6515,6 +6515,23 @@ img{-webkit-user-drag:none; user-select:none;}
    ========================================================= */
 :root{
   --rc-face: 'Press Start 2P', ui-monospace, monospace;
+  /* TWO FACES, AND THE SECOND ONE IS STILL A PIXEL FONT.
+
+     Press Start 2P has no lowercase, a fixed advance and very wide
+     sidebearings. That is exactly right for a logo, a heading, a place
+     number and a button -- and it is a wall for anything that is a
+     sentence. "Every lap was worth it. Same time tomorrow? 8 hearts
+     carried over the line" set in it runs to two full lines of blocks
+     that have to be decoded rather than read, and that is most of what
+     makes these panels look plain.
+
+     Pixelify Sans is the companion: already loaded with the rest, same
+     pixel grid and the same era, but proportional, with real lowercase
+     and a normal rhythm. Prose, lists and explanations move to it; the
+     display face keeps everything that is a label. The point of choosing
+     a sibling rather than a serif or a UI sans is that nothing stops
+     looking like this game. */
+  --rc-read: 'Pixelify Sans', 'Press Start 2P', ui-monospace, monospace;
   --rc-ink:  #fff8e8;
   --rc-rose: #ff5f95;
   --rc-coral:#ff7f8a;
@@ -6842,10 +6859,18 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-card-art canvas{width:100%; height:auto; image-rendering:pixelated;}
 .rc-card-name{font-size:1.9cqh; color:var(--rc-ink);}
 .rc-card-sub{font-size:1.15cqh; color:#c9b8d8; line-height:1.6;}
-.rc-blurb{margin:0; max-width:70cqw; font-size:1.5cqh; line-height:2; color:#ffc4a3;}
+.rc-blurb{margin:0; max-width:58cqw; font-size:2cqh; line-height:1.62;
+  font-family:var(--rc-read); letter-spacing:.02em; color:#ffc4a3;}
 .rc-row{display:flex; gap:2cqw; align-items:center; justify-content:center;}
 
 /* the podium */
+/* under the heading: which course this was. It only ever appeared on the
+   postcard, which is the part of the panel she is most likely to scroll
+   past. */
+.rc-sub{
+  margin:-1cqh 0 0; font-family:var(--rc-read); font-size:1.9cqh;
+  letter-spacing:.06em; color:#c2a8d6;
+}
 .rc-podium{display:flex; align-items:flex-end; justify-content:center; gap:1.6cqw; width:100%;}
 .rc-pod{display:flex; flex-direction:column; align-items:center; gap:.6cqh;}
 .rc-pod-art{line-height:0;}
@@ -6858,24 +6883,53 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-pod-1 .rc-pod-block{height:9cqh; background:linear-gradient(180deg,#ffe07a,#e0a83a);}
 .rc-pod-2 .rc-pod-block{height:6.4cqh; background:linear-gradient(180deg,#f0f2f6,#b9bfc9);}
 .rc-pod-3 .rc-pod-block{height:4.6cqh; background:linear-gradient(180deg,#f0b98a,#c07f4f);}
-.rc-pod-name{font-size:1.4cqh; color:var(--rc-ink);}
+.rc-pod-name{font-family:var(--rc-read); font-size:1.9cqh; color:var(--rc-ink); letter-spacing:.02em;}
 
+/* A TABLE, NOT FIVE EMPTY BARS.
+
+   The rows ran the full width of the panel with the name centred in the
+   middle of them, which on a wide screen put four hundred points of
+   nothing between the place and the name and four hundred more between
+   the name and the time. It read as something unfinished rather than as
+   a result. Narrower, with the name hard against its own number and the
+   time right-aligned against the edge, it reads as a classification. */
 .rc-rest{
-  list-style:none; margin:0; padding:0; width:100%; max-width:52cqw;
-  display:flex; flex-direction:column; gap:.5cqh;
+  list-style:none; margin:0; padding:0; width:100%; max-width:38cqw;
+  display:flex; flex-direction:column; gap:.45cqh;
 }
 .rc-rest li{
-  display:grid; grid-template-columns:4cqw 1fr auto; gap:1.4cqw; align-items:center;
-  padding:.8cqh 1.6cqw; border-radius:.6cqw; font-size:1.4cqh;
+  display:grid; grid-template-columns:3.2cqw 1fr auto; gap:1.2cqw; align-items:center;
+  padding:.75cqh 1.4cqw; border-radius:.6cqw;
+  font-family:var(--rc-read); font-size:1.95cqh; letter-spacing:.02em;
   background:rgba(255,248,232,.06); color:#c9b8d8;
+  /* the accent bar the leader's row uses, kept transparent here so no row
+     changes width when it lights up */
+  border-left:.45cqw solid transparent;
 }
-.rc-rest li.me{background:rgba(255,95,149,.22); color:var(--rc-ink);}
-.rc-rest li b{font-weight:400; color:var(--rc-gold);}
-.rc-rest li i{font-style:normal;}
+.rc-rest li.me{
+  background:rgba(255,95,149,.22); color:var(--rc-ink);
+  border-left-color:var(--rc-accent,#ff5f95);
+}
+.rc-rest li b{
+  font-family:var(--rc-face); font-weight:400; font-size:1.5cqh;
+  color:var(--rc-gold); text-align:right;
+}
+.rc-rest li.me b{color:#ffe2ef;}
+/* left against its number, the way a results sheet is read */
+.rc-rest li span{text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.rc-rest li i{
+  font-style:normal; text-align:right;
+  font-family:var(--rc-face); font-size:1.45cqh;
+  font-variant-numeric:tabular-nums; color:#e7d9f0;
+}
 
 .rc-points{margin:0; font-size:1.7cqh; color:var(--rc-gold); letter-spacing:.1em;}
-.rc-msg{margin:0; max-width:62cqw; font-size:1.5cqh; line-height:2; color:#ffc4a3;}
-.rc-msg-big{font-size:1.7cqh; color:#ffd9c0;}
+/* a measure of about sixty characters rather than ninety, and a line
+   height that is a line rather than a gap between two */
+.rc-msg{margin:0; max-width:52cqw; font-size:2cqh; line-height:1.62;
+  font-family:var(--rc-read); letter-spacing:.02em; color:#ffc4a3;}
+.rc-msg b{color:var(--rc-gold); font-weight:600;}
+.rc-msg-big{font-size:2.3cqh; color:#ffd9c0;}
 .rc-fin-art{line-height:0;}
 .rc-fin-art canvas{width:min(70cqw, 60cqh); height:auto; image-rendering:pixelated; border-radius:.8cqw;}
 
@@ -7070,8 +7124,13 @@ img{-webkit-user-drag:none; user-select:none;}
      panel's scrollbar */
   position:absolute; width:.55cqw; min-width:5px; max-width:9px;
   border-radius:1cqw; z-index:9;
-  background:rgba(255,248,232,.09);
-  box-shadow:inset 0 0 0 1px rgba(255,248,232,.10);
+  /* the track has to be visible or the thumb is not a thumb. It was a
+     nine-per-cent wash on a dark panel, which is nothing, so on a panel
+     that only just overflows -- where the thumb is most of the rail --
+     the whole thing read as a gold line drawn down the side rather than
+     as a moving part in a groove. */
+  background:rgba(10,4,16,.55);
+  box-shadow:inset 0 0 0 1px rgba(255,248,232,.16);
   /* VISIBILITY, NOT JUST OPACITY. An element at zero opacity is still in
      the hit test: on every panel short enough not to scroll, the rail was
      an invisible twenty-point pill sitting in the middle of the writing,
