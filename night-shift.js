@@ -824,20 +824,38 @@ const NS = {
       { h: 4.95, t: "Keep them wound tonight. I will explain tomorrow." },
       { h: 5.50, t: "Four down. Stay." },
     ],
+    /* NIGHT FIVE IS THE ONE THAT HAS TO MAKE HER LOVE THEM.
+
+       It used to be him, alone, explaining the mechanic. Which is fine
+       and it is also the last quiet night before the four of them die
+       for her, and a player who has only ever seen them as things that
+       walk towards her has nothing to lose when they do.
+
+       So the tape runs out at half past twelve and the shop keeps
+       talking -- because they are wound, and a wound thing in an empty
+       building at two in the morning has nobody to perform for. She is
+       not being told they are people. She is overhearing it. */
     5: [
       { h: 0.00, t: "Five. Tonight is the one I actually needed you to reach." },
       { h: 0.30, t: "They have started coming back on their own. I did not call them. Nobody called them." },
       { h: 0.75, t: "There is nothing left to send them anywhere, so they are doing the only thing they know." },
       { h: 1.20, t: "Keep the four of them wound tonight. All four. Do not ask me why yet." },
-      { h: 1.70, t: "There is a key in the back of each one and it takes about a second." },
+      { h: 1.70, t: "There is a key in the back of each one and it takes about a second. Please." },
       { h: 2.10, t: "And if one of them gets to the door before you do — let it. Do not shut it. Let it." },
-      { h: 2.65, t: "I know how that sounds. Let it." },
-      { h: 3.05, t: "They were never for the shop, Ouissy." },
-      { h: 3.45, t: "They were for you. In case I was not there." },
-      { h: 3.95, t: "I built the whole four of them out of you and I never once said so out loud." },
-      { h: 4.50, t: "Fifteen years of watching you and the best thing I ever made with it was four toys in a back room." },
-      { h: 5.05, t: "Wind them. Please." },
-      { h: 5.55, t: "Five down. One more, and then I stop asking you for anything." },
+      { h: 2.55, t: "That is the end of the tape. There was more and I could not get through it." },
+
+      /* and then it is not him */
+      { h: 3.00, who: "cogsworth", t: "She has checked that door twice. The second time from the landing, the way she does at home." },
+      { h: 3.35, who: "marabelle", t: "You are not supposed to know what she does at home." },
+      { h: 3.65, who: "cogsworth", t: "He wrote it down. He wrote all of it down. I have read the book, same as you." },
+      { h: 4.00, who: "chime",     t: "He used to sit in that chair until four in the morning telling himself he was working." },
+      { h: 4.30, who: "jax",       t: "He was not working. He was practising what he was going to say to her." },
+      { h: 4.60, who: "marabelle", t: "He never said it." },
+      { h: 4.85, who: "jax",       t: "He built us instead. Same thing, slower." },
+
+      { h: 5.10, who: "cogsworth", t: "Ouissy. Something is coming on Saturday, and it is not one of us." },
+      { h: 5.40, who: "chime",     t: "We have known since Tuesday. We did not know how to put it." },
+      { h: 5.65, who: "marabelle", t: "Keep us wound. That is all. That was always all." },
     ],
     6: [
       { h: 0.00, t: "Six. Last one. I made this tape in the morning, which I never do." },
@@ -10680,14 +10698,25 @@ function tapeQuiet() {
   return true;
 }
 
-function tapeSay(line) {
+/* `who` is one of his four rather than him.
+
+   Night five runs out of tape at half past twelve and the shop keeps
+   talking, because they are wound and a wound thing in an empty
+   building at two in the morning has nobody to perform for. She is not
+   told they are people. She overhears it.
+
+   Which means the caption has to say who is speaking, and the voice
+   must not be his: there are no recordings of a soldier, so these go
+   through the synthesiser on purpose -- a toy should not sound like
+   the man who made it. */
+function tapeSay(line, who) {
   if (!line || TAPE.said[line]) return false;
   TAPE.said[line] = 1;
   TAPE.plan = voxPlan(line);
   TAPE.line = line;
   TAPE.t0 = perf();
   TAPE.speakT = TAPE.plan.dur + 1.1;
-  voxSpeak(TAPE.plan, { gain: 0.9 });
+  voxSpeak(TAPE.plan, who ? { gain: 0.82, forceSynth: true } : { gain: 0.9 });
   /* the room-to-himself is voxSpeak's job now: it holds the bed at
      VOICE_BED for the whole line instead of dipping for a third of a
      second and handing the score back its full level over the rest of
@@ -10695,9 +10724,11 @@ function tapeSay(line) {
   const el = EL["ns-tape"];
   if (el) {
     el.hidden = false;
-    el.innerHTML = TAPE.plan.words
-      .map((w, i) => '<i data-w="' + i + '">' + w.text + "</i>")
-      .join(" ");
+    const d = who ? CAST.filter((c) => c.id === who)[0] : null;
+    el.innerHTML =
+      (d ? '<em class="ns-tape-who" style="--c:' + d.colour + '">' + d.name + '</em>' : "") +
+      TAPE.plan.words.map((w, i) => '<i data-w="' + i + '">' + w.text + "</i>").join(" ");
+    el.classList.toggle("them", !!who);
   }
   return true;
 }
@@ -10752,7 +10783,7 @@ function tapeTick(dt) {
     const it = script[i];
     if (it.h > hourNow) break;
     if (TAPE.said[it.t]) continue;
-    if (tapeSay(it.t)) { TAPE.opened = true; TAPE.wait = TAPE_GAP; return; }
+    if (tapeSay(it.t, it.who)) { TAPE.opened = true; TAPE.wait = TAPE_GAP; return; }
   }
 }
 
@@ -11434,26 +11465,65 @@ function screenTitle() {
     '</div>', "ns-ov-title");
 }
 
+/* HOW IT WORKS, FOR SOMEBODY WHO DOES NOT PLAY GAMES.
+
+   It was six rules and then a dossier: four characters with a what, a
+   threat and a tell each, which is twelve more paragraphs. Somebody who
+   plays games skims that in fifteen seconds. Somebody who does not
+   reads a screen of homework, decides this is not for them, and closes
+   it -- and this is a gift for one specific person who does not play
+   games.
+
+   So it is three things now, in the order she will need them, and
+   nothing else:
+
+     what you do      one sentence. Not six.
+     the two buttons  shown as the buttons, not described in prose.
+                      A picture of the key is shorter than a sentence
+                      about the key and it is also what she will be
+                      looking for on the screen.
+     the four         a name, a colour and ONE line each -- what it
+                      does, which is the only part she needs before
+                      midnight. What they are for is the story, and the
+                      story is what the other six nights are.
+
+   Everything cut from here is still in the game. It is in the tutorial
+   on night one, which puts her hands on it instead of telling her, and
+   that was always the better teacher. */
 function screenHowTo() {
-  const rows = NS.howTo.map((r) => '<li><b>' + r[0] + '</b><span>' + r[1] + '</span></li>').join("");
   const who = CAST.map((c) =>
-    '<li class="ns-who"><span class="ns-swatch" style="--c:' + c.colour + '"></span>' +
-    '<b>' + c.name + '</b><i>' + c.what + '</i><span>' + c.threat + '</span>' +
-    '<em>' + c.tell + '</em></li>').join("");
+    '<li class="ns-who2" style="--c:' + c.colour + '">' +
+      '<span class="ns-who2-dot"></span>' +
+      '<b>' + c.name + '</b>' +
+      '<span class="ns-who2-what">' + c.what + '</span>' +
+    '</li>').join("");
   overlay(
-    '<div class="ns-card ns-card-wide">' +
+    '<div class="ns-card ns-card-how">' +
       '<h3>HOW IT WORKS</h3>' +
-      '<ul class="ns-rules">' + rows + '</ul>' +
-      '<h3>WHO ELSE IS IN</h3>' +
-      '<ul class="ns-cast">' + who + '</ul>' +
-      '<p class="ns-keys">Keys: <b>A</b>/<b>&larr;</b> left door &middot; <b>D</b>/<b>&rarr;</b> right door &middot; ' +
-      '<b>W</b>/<b>&uarr;</b> hatch &middot; <b>SPACE</b> cameras &middot; <b>1&ndash;8</b> pick a camera &middot; <b>ESC</b> pause</p>' +
-      '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="title">BACK</button></div>' +
-    '</div>', "ns-ov-howto");
+
+      '<p class="ns-how-one">Midnight to six, in a chair, with a door on each side of you. ' +
+        'Shut a door when something is behind it. Open it again straight after, ' +
+        'because holding them costs the only power you have.</p>' +
+
+      '<div class="ns-how-keys">' +
+        '<span class="ns-kcap"><i>A</i><em>left door</em></span>' +
+        '<span class="ns-kcap"><i>D</i><em>right door</em></span>' +
+        '<span class="ns-kcap"><i>W</i><em>hatch</em></span>' +
+        '<span class="ns-kcap"><i>SPACE</i><em>cameras</em></span>' +
+      '</div>' +
+      '<p class="ns-how-touch">On a phone: the buttons are on the screen where your thumbs are.</p>' +
+
+      '<p class="ns-how-lab">THE FOUR IN THE BACK ROOM</p>' +
+      '<ul class="ns-who2s">' + who + '</ul>' +
+      '<p class="ns-how-foot">Wind them whenever you pass one. He asked you to, every night, ' +
+        'and he never said why.</p>' +
+
+      '<div class="ns-btns">' +
+        '<button class="ns-btn ns-btn-go" data-go="title">GOT IT</button>' +
+      '</div>' +
+    '</div>', "ns-ov-how");
 }
 
-/* Night one is a card she finds on the desk; every night after it is
-   whatever paper turned up that day. Nobody says any of it out loud. */
 function screenBrief() {
   musicMode("brief");
   const cfg = G.cfg;
