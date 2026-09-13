@@ -265,11 +265,21 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
   const cost = await p.evaluate(() => {
     const N = OuissysNightShift.__night;
     N.finale();
-    let worst = { calls: 0 };
+    let worst = { calls: 0 }, shot = -1;
+    /* ONE DRAWN FRAME PER SHOT, not one per step. Drawing a room with
+       six hundred toys in it through a software rasteriser is most of a
+       second, and stepping the whole film at a fifth of a second with
+       the draw on was twenty minutes of taking the same fifty-six
+       measurements over and over. */
     for (let k = 0; k < 9000 && N.finaleState().on; k++) {
-      if (N.filmFrame(0.2) === false) break;
-      const c = N.filmCost();
-      if (c && c.calls > worst.calls) worst = c;
+      const i = N.filmFrame(0.2, false);
+      if (i === false) break;
+      if (i !== shot) {
+        shot = i;
+        N.filmFrame(0.001, true);
+        const c = N.filmCost();
+        if (c && c.calls > worst.calls) worst = c;
+      }
     }
     return worst;
   });
