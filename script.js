@@ -1275,6 +1275,32 @@ function bloomSeal() {
   const pad = document.getElementById("gate-pad");
   if (!pad) return;
 
+  /* THE FIRST AUDIO CONTEXT COSTS THIRTY MILLISECONDS, AND IT WAS BEING
+     SPENT ON HER FIRST KEY. gateClick builds one lazily, so the very
+     first digit of the passcode paid for the browser starting its audio
+     subsystem -- measured at 29.9ms against 0.4ms for every context
+     after it, inside a tap that smooth.js clocks at 138ms of blocked
+     script against a 120ms budget. The passcode is the first thing she
+     ever touches on this site; it is the worst place on the whole page
+     to put a stall.
+
+     A context may only be created on a gesture, so it is created on the
+     FIRST gesture instead of the first key -- the tap that dismisses the
+     intro, which is a tap where nothing is waiting for an answer. By the
+     time she reaches the keypad it already exists and the key just
+     plays. If she somehow arrives without tapping anything first, the
+     cost falls where it always did and nothing is worse than before. */
+  const warmAudio = () => {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC && !window.__gateAudio) window.__gateAudio = new AC();
+    } catch (e) {}
+    removeEventListener("pointerdown", warmAudio, true);
+    removeEventListener("touchstart", warmAudio, true);
+  };
+  addEventListener("pointerdown", warmAudio, { capture: true, passive: true });
+  addEventListener("touchstart", warmAudio, { capture: true, passive: true });
+
   /* pointerdown, not click: the key should answer the moment she touches
      it. The .down class is cleared on release anywhere, so dragging off
      a key never leaves it stuck looking pressed. */
