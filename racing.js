@@ -48,6 +48,15 @@ const RH       = 270;    // internal render height
 const HORIZON  = 108;    // screen row the ground vanishes at
 const FOCAL    = 360;    // lens; bigger = narrower field of view
 const CAM_H    = 33;     // camera height above the road
+/* ...and how far it is ABOVE that right now, because she is in the air.
+   This is the one honest way to get height into a Mode 7 picture: the
+   ground stays the flat plane the renderer needs it to be, and the eye
+   goes up. A flat plane seen from higher up is still exactly a flat
+   plane, so every row, every billboard and every solid stays correct --
+   which is not true of a height field, where a screen row is one distance
+   all the way across and the ground under a prop at the edge of the
+   picture ends up sampled at the height of the middle of it. */
+let camLift = 0;
 const CAM_DIST = 122;    // how far the camera trails the kart
 const MAX_Z    = 2600;   // beyond this the ground is just haze
 
@@ -156,6 +165,7 @@ const TRACKS = [
     /* the thing the blurb promises: logs down off the hill, lying half
        across the road. Always one side at a time, so there is a line
        through — an obstacle you cannot avoid is just a tax. */
+    ramps:3,   /* down through the forest, where the road runs long and straight */
     hazard:{ kind:"log", n:7, warn:"WATCH OUT · fallen logs across the road" },
   },
   {
@@ -283,6 +293,7 @@ const TRACKS = [
                 [0.7449,0.7190],[0.7323,0.7468],[0.7187,0.7742],[0.7043,0.8012],
                 [0.6889,0.8279],[0.6727,0.8542],[0.6558,0.8802],[0.6385,0.9060],
                 [0.6209,0.9317]] },
+    ramps:2,   /* across the gaps between the roofs */
     hazard:{ kind:"washline", n:8, warn:"WATCH OUT · laundry lines hung too low" },
   },
   {
@@ -321,6 +332,7 @@ const TRACKS = [
                 [0.6439,0.2316],[0.6664,0.2612],[0.6881,0.2915],[0.7089,0.3224],
                 [0.7290,0.3539],[0.7484,0.3860],[0.7673,0.4185],[0.7857,0.4513],
                 [0.8039,0.4843]] },
+    ramps:2,   /* the boards, where they ride up over the pilings */
     hazard:{ kind:"washline", n:8, warn:"WATCH OUT \u00b7 nets hung out across the boards" },
   },
   {
@@ -359,6 +371,7 @@ const TRACKS = [
                 [0.2940,0.2922],[0.3236,0.2825],[0.3533,0.2739],[0.3833,0.2662],
                 [0.4136,0.2595],[0.4440,0.2536],[0.4746,0.2485],[0.5054,0.2438],
                 [0.5362,0.2394]] },
+    ramps:3,   /* the humpbacks on the way home */
     hazard:{ kind:"log", n:7, warn:"WATCH OUT \u00b7 branches down across the lane" },
   },
 ];
@@ -626,6 +639,10 @@ function buildPath(def) {
       fromIdx: a.idx, toIdx: b.idx, name: def.cut.name,
     };
   }
+
+  /* the road exists now, so the ramps can be put on it -- and the bake,
+     which runs next, can paint them where they are */
+  buildRamps(def);
 }
 
 function tangentAt(i) {
@@ -1115,6 +1132,39 @@ function bakeTrack(def) {
       if (i === 0) g.moveTo(p.x + nx, p.y + ny); else g.lineTo(p.x + nx, p.y + ny);
     }
     g.closePath(); g.stroke();
+  }
+
+  /* --- ramps, painted where they were placed ---
+     A wedge of boards across the road with chevrons up it, so it reads as
+     something to hit squarely from a long way back. Painted after the road
+     and before the start line, like every other marking. */
+  for (const rp of ramps) {
+    g.save();
+    g.translate(rp.x, rp.y);
+    g.rotate(rp.a);
+    const L = 54, HW = ROAD_HALF - 3;
+    /* the boards, darkening towards the lip so it reads as rising */
+    const gr = g.createLinearGradient(-L / 2, 0, L / 2, 0);
+    gr.addColorStop(0, "rgba(62,40,26,.55)");
+    gr.addColorStop(1, "rgba(28,18,12,.85)");
+    g.fillStyle = gr;
+    g.fillRect(-L / 2, -HW, L, HW * 2);
+    /* the lip, bright, so you can see exactly where it ends */
+    g.fillStyle = "#ffd166";
+    g.fillRect(L / 2 - 6, -HW, 6, HW * 2);
+    /* chevrons pointing the way you are meant to be going */
+    g.fillStyle = "rgba(255,248,232,.72)";
+    for (let c = -3; c <= 3; c++) {
+      const cy = c * (HW / 3.4);
+      g.beginPath();
+      g.moveTo(-L / 2 + 6, cy - 5);
+      g.lineTo(-L / 2 + 22, cy);
+      g.lineTo(-L / 2 + 6, cy + 5);
+      g.lineTo(-L / 2 + 11, cy);
+      g.closePath();
+      g.fill();
+    }
+    g.restore();
   }
 
   /* --- start / finish, in checkers --- */
@@ -3076,7 +3126,7 @@ function drawSolid(g, o, camX, camY, camA, fade) {
     if (z < ZNEAR_G) z = ZNEAR_G;
     const x = -dx * sinA + dy * cosA;
     const sc = camFocal / z;
-    return { sx: RW / 2 + x * sc, sy: HORIZON + CAM_H * sc - lv * hv * sc, z, sc };
+    return { sx: RW / 2 + x * sc, sy: HORIZON + (CAM_H + camLift) * sc - lv * hv * sc, z, sc };
   };
 
   /* How bright a face is, from where it points relative to the sun.
@@ -3210,7 +3260,7 @@ function solidShadow(g, o, camX, camY, camA, fade) {
       if (z < ZNEAR_G) z = ZNEAR_G;
       const x = -dx * sinA + dy * cosA;
       const sc = camFocal / z;
-      pts.push({ x: RW / 2 + x * sc, y: HORIZON + CAM_H * sc });
+      pts.push({ x: RW / 2 + x * sc, y: HORIZON + (CAM_H + camLift) * sc });
     }
   }
   /* convex hull of the eight, so the shadow is one shape and not two */
@@ -4025,7 +4075,7 @@ function renderGround(camX, camY, camA, focal) {
        already being drawn, so they carry the real ground colour and
        join it without a step. The haze laid over the horizon afterwards
        is what says "far away" — that is its job, not this one. */
-    let z = (CAM_H * focal) / (dy < 1 ? 1 : dy);
+    let z = ((CAM_H + camLift) * focal) / (dy < 1 ? 1 : dy);
     if (z > MAX_Z) z = MAX_Z;
     let o = py * RW;
 
@@ -4155,7 +4205,7 @@ function projectSprite(wx, wy, camX, camY, camA) {
   return {
     z,
     sx: RW / 2 + (x / z) * camFocal,
-    sy: HORIZON + (CAM_H / z) * camFocal,
+    sy: HORIZON + ((CAM_H + camLift) / z) * camFocal,
     scale: camFocal / z,
     fade: z < 102 ? (z - 78) / 24 : 1,
   };
@@ -4210,6 +4260,25 @@ const WET_BRAKE = 0.84;
 
 const OFFROAD_SP= 0.56;   // top speed multiplier off the tarmac
 const OFFROAD_DR= 0.55;   // and how much steering authority you keep there
+/* A JUMP, IN THE UNITS EVERYTHING ELSE IS IN.
+
+   GRAVITY is world units per second per second and LAUNCH is the upward
+   speed a ramp gives at full pelt, so the peak is LAUNCH squared over twice
+   GRAVITY and the flight is twice LAUNCH over GRAVITY: 23 units up, 1.2
+   seconds long. A kart is 21 units tall, so it clears its own height, and
+   at full speed it covers about 270 units of road while it is up there --
+   three per cent of a lap, which is why buildRamps insists on that much
+   straight either side before it puts one down.
+
+   The first numbers gave 7 units and 0.7s. That is a bump; the shadow
+   barely leaves the kart and nothing about it reads as flight.
+
+   Steering in the air is deliberately poor: wheels that are not on
+   anything do not steer, and having to commit to a line before you leave
+   the ground is most of what makes a jump a jump. */
+const GRAVITY  = 130;
+const LAUNCH   = 78;
+const AIR_STEER= 0.22;
 
 class Racer {
   constructor(def, isPlayer, lane, back) {
@@ -4259,6 +4328,19 @@ class Racer {
     this.squash = 0;     // and the compression on landing a hop
     this.draft = 0;      // how long we have been sitting in clean air
     this.hop = 0;        // the little jump that starts a drift
+    /* ---- AND THE ONE THAT IS NOT COSMETIC ----
+       `air` is real height above the road in world units, with a real
+       velocity under it. Mode 7 draws a flat plane, so ELEVATION cannot be
+       done in it honestly -- a screen row is one distance all the way
+       across, and a height field makes the ground under a prop at the edge
+       of the picture sample the height at the middle of it instead, which
+       had the scenery floating by fifteen pixels. But a flat plane seen
+       from higher up is still exactly a flat plane seen from higher up.
+       So the ground stays where it is and the KART leaves it, which is
+       what a jump is anyway. */
+    this.air = 0;
+    this.vair = 0;
+    this.rampCool = 0;   // so one ramp is one launch
     this.ammo = 0;       // how many of a multi-shot item are left
     this.offroad = false;
     this.aiTarget = (startIdx + 8) % path.length;
@@ -4349,6 +4431,20 @@ class Racer {
       Snd.hop();
     }
     this.dkeyWas = dkey;
+    /* ---- in the air ---- */
+    if (this.rampCool > 0) this.rampCool -= dt;
+    if (this.air > 0 || this.vair > 0) {
+      this.vair -= GRAVITY * dt;
+      this.air += this.vair * dt;
+      if (this.air <= 0) {
+        /* down, with weight in it */
+        this.air = 0; this.vair = 0;
+        this.squash = 0.30;
+        this.jolt = Math.max(this.jolt || 0, 0.5);
+        if (this.isPlayer) { shake = 2; Snd.hop(); }
+      }
+    }
+
     if (this.hop > 0) {
       const was = this.hop;
       this.hop -= dt;
@@ -4396,6 +4492,7 @@ class Racer {
     let rate = TURN * (1.35 - 0.55 * speedFrac);
     if (this.drifting) rate *= 1.45;
     if (this.offroad)  rate *= OFFROAD_DR;
+    if (this.air > 0)  rate *= AIR_STEER;
     /* Authority falls off as you slow, but never to nothing. Letting it
        reach zero meant a kart that nosed into the verge and stopped
        could not steer out of it, because steering needed speed and
@@ -4687,7 +4784,27 @@ class Racer {
        is narrower, which is the price of taking it */
     const rumble = pr.half + (RUMBLE_HALF - ROAD_HALF);
     const bound  = pr.half + (SHOULDER - ROAD_HALF);
-    this.offroad = pr.dist > rumble;
+    /* nothing under the wheels is under the wheels */
+    this.offroad = this.air <= 0 && pr.dist > rumble;
+
+    /* ---- ramps ----
+       Crossing one with the speed to carry it puts the kart in the air.
+       Below half speed it is a bump, which is the right lesson: you have
+       to arrive at it properly. */
+    if (this.air <= 0 && this.rampCool <= 0 && ramps.length) {
+      for (let ri = 0; ri < ramps.length; ri++) {
+        const rp = ramps[ri];
+        const ddx = this.x - rp.x, ddy = this.y - rp.y;
+        if (ddx * ddx + ddy * ddy > rp.r * rp.r) continue;
+        const sp = Math.abs(this.speed) / TOP_SPEED;
+        if (sp < 0.5) { this.jolt = Math.max(this.jolt || 0, 0.6); break; }
+        this.vair = LAUNCH * (0.62 + 0.38 * sp);
+        this.air = 0.01;
+        this.rampCool = 0.9;
+        if (this.isPlayer) Snd.hop();
+        break;
+      }
+    }
 
     /* SUSPENSION
 
@@ -4695,7 +4812,7 @@ class Racer {
        up over the rumble strip and unloads again on the way off it, and
        the drawing reads that number — so a wheel dropping off the edge
        of the road makes the whole kart shudder. */
-    const onKerb = pr.dist > pr.half && pr.dist <= rumble;
+    const onKerb = this.air <= 0 && pr.dist > pr.half && pr.dist <= rumble;
     const load = onKerb ? Math.min(1, Math.abs(this.speed) / (TOP_SPEED * 0.55)) : 0;
     this.jolt += (load - this.jolt) * (onKerb ? 0.35 : 0.10) * k;
     if (onKerb && this.isPlayer && Math.abs(this.speed) > TOP_SPEED * 0.4)
@@ -4703,7 +4820,7 @@ class Racer {
 
     /* the wall is soft: past the shoulder you get pushed back and lose
        most of your speed, rather than stopping dead */
-    if (pr.dist > bound) {
+    if (pr.dist > bound && this.air <= 0) {
       const push = pr.dist - bound;
       const s = Math.sign(pr.side) || 1;
       this.x -= pr.nx * s * push;
@@ -4925,7 +5042,7 @@ function stepFx(dt) {
    13. RACE STATE
    ========================================================= */
 let racers = [], boxes = [], shots = [], hazards = [], props = [];
-let obstacles = [], coins = [];
+let obstacles = [], coins = [], ramps = [];
 let trackDef = TRACKS[0];
 let raceTime = 0, countdown = 0, shake = 0;
 let mode = "single";           // single | gp | trial
@@ -5150,6 +5267,46 @@ function placeBoxes() {
    two thirds of the half-width, so there is always a line through for
    somebody who is paying attention. An obstacle you cannot avoid is
    not a hazard, it is a toll. */
+/* ---- RAMPS ----
+
+   Placed on the racing line, and only where the road is straight enough
+   either side that you arrive at one square and land pointing where you
+   were already going. A ramp on the exit of a corner is not a jump, it is
+   an ambush. The same seeded generator as everything else places them, so
+   a course is the same course every time she opens it. */
+function buildRamps(def) {
+  ramps = [];
+  const n = def && def.ramps;
+  if (!n) return;
+  const rnd = mulberry(seedOf(def.base || def.id, 5531));
+  const len = path.length;
+  /* how straight the road is at i, over the run a kart covers in the air */
+  const straightness = (i) => {
+    let worst = 0;
+    const a0 = tangentAt(i);
+    for (let d = -18; d <= 44; d += 4) {
+      let t = tangentAt((i + d + len * 2) % len) - a0;
+      while (t >  Math.PI) t -= TWO_PI;
+      while (t < -Math.PI) t += TWO_PI;
+      worst = Math.max(worst, Math.abs(t));
+    }
+    return worst;
+  };
+  for (let k = 0; k < n; k++) {
+    /* spread round the loop, clear of the start-finish stretch */
+    const want = Math.floor((0.14 + ((k + 0.5) / n) * 0.78) * len) % len;
+    let best = want, bestS = Infinity;
+    for (let d = -46; d <= 46; d += 2) {
+      const i = (want + d + len * 2) % len;
+      const sc = straightness(i) + Math.abs(d) * 0.0016;
+      if (sc < bestS) { bestS = sc; best = i; }
+    }
+    if (bestS > 0.34) continue;           // nowhere straight enough here
+    ramps.push({ x: path[best].x, y: path[best].y, i: best,
+                 a: tangentAt(best), r: ROAD_HALF + 16 });
+  }
+}
+
 function placeObstacles(def) {
   obstacles = [];
   const spec = def.hazard;
@@ -6008,6 +6165,20 @@ function draw() {
   const camY = me.y - Math.sin(camA) * dist;
   camFocal = FOCAL * (1 - camLag * 0.10) * (1 + fc * 0.26);
 
+  /* UP WITH HER, BUT NOT ALL THE WAY AND NOT AT ONCE.
+
+     Following the kart's height exactly would keep it pinned to the same
+     row of the screen for the whole flight, which reads as the WORLD
+     dropping away and the kart standing still -- technically what is
+     happening, and no fun at all. At four fifths, and chased rather than
+     snapped, the kart visibly rises in the frame while the camera also
+     climbs enough to open the road out ahead of her, which is what a jump
+     looks like from behind. It settles back on landing by the same lag,
+     so the picture drops with the suspension. */
+  const wantLift = (me.air || 0) * 0.8;
+  camLift += (wantLift - camLift) * Math.min(1, 9 * camStep);
+  if (camLift < 0.01 && !me.air) camLift = 0;
+
   sunRel = (trackDef.light != null ? trackDef.light : -0.7) - camA;
   renderGround(camX, camY, camA, camFocal);
   renderSky(trackDef, camA);
@@ -6643,11 +6814,17 @@ function drawKartInner(g, b, camA, isGhost) {
      kart rides the road instead of sliding along a sheet of glass */
   const bobA = Math.min(1, Math.abs(o.speed || 0) / TOP_SPEED);
   const hopY = o.hop > 0 ? Math.sin((1 - o.hop / 0.34) * Math.PI) * h * 0.16 : 0;
+  /* REAL height, in world units, turned into pixels by the same scale
+     everything else at this distance uses. The shadow is drawn separately,
+     at the ground point, and deliberately stays there -- a shadow that
+     follows the kart up is a sticker, and the gap between the two is how
+     you read how high you are. */
+  const airY = (o.air || 0) * s.scale;
   const bob = Math.sin((raceTime * 13 + (o.lane || 0)) ) * bobA * h * 0.018
             + (o.offroad ? Math.sin(raceTime * 27) * bobA * h * 0.028 : 0)
             /* the kerb, going through the springs */
             + Math.sin(raceTime * 41 + (o.lane || 0)) * (o.jolt || 0) * h * 0.030
-            - hopY;
+            - hopY - airY;
   /* squash and stretch. The chassis is compressed on landing and again
      over a big jolt; conserving area — wider by as much as it is
      shorter — is what stops it reading as the sprite being resized. */
@@ -9149,6 +9326,7 @@ if (typeof window !== "undefined")
         function the last lap calls, doing the same work in the same order,
         rather than a test-only imitation of it that could agree with the
         test while disagreeing with the game. */
+     ramps,
      finishRace,
      /* ...and the simulation tick, for the same reason. Stepping it by hand
         runs a whole four-lap race in a few hundred milliseconds of wall
