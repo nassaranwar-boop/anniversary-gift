@@ -294,6 +294,35 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
   });
   ok('and it still reaches the end when it is run fast', run2.on === false, run2);
 
+  /* THE SUBTITLE MUST NOT SIT ON THE BAR.
+
+     The letterbox is pure black and so is the shadow under the text,
+     so a two-line subtitle riding down onto the lower bar does not
+     look broken -- it looks like nobody checked. Measured rather than
+     eyeballed, at the longest line in the film and at a phone width as
+     well, because that is where two lines become three. */
+  const bars = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    N.finale();
+    /* walk to the longest subtitle in the film */
+    let worst = null;
+    for (let k = 0; k < 9000 && N.finaleState().on; k++) {
+      N.filmTick(0.2, false);
+      const row = document.querySelector('.ns-fin-row');
+      const bar = document.querySelector('.ns-fin-bar.b');
+      if (!row || !bar) continue;
+      const r = row.getBoundingClientRect(), b = bar.getBoundingClientRect();
+      const over = r.bottom - b.top;
+      if (!worst || over > worst.over) {
+        worst = { over: Math.round(over), text: (row.textContent || '').slice(0, 40),
+                  rows: Math.round(r.height / parseFloat(getComputedStyle(row).lineHeight || 20)) };
+      }
+    }
+    return worst;
+  });
+  ok('no subtitle in the film lands on the lower letterbox bar',
+     bars && bars.over < 0, bars);
+
   const end = await p.evaluate(() => ({
     card: !!document.querySelector('.ns-card-find'),
     go: !!document.querySelector('[data-go="finaleDone"]'),
