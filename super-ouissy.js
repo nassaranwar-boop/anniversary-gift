@@ -5390,10 +5390,13 @@ window.SuperOuissy = (function () {
         "12 . 16 . 19 . 24 . 21 . 19 . 16 . 19 . |" +
         "17 . 16 . 14 . 12 . 11 .  .  . 12 .  . ."),
       harm: pat(
-        " .  . 12 .  .  . 12 .  .  . 12 .  .  . 12 . |" +
-        " .  .  9 .  .  .  9 .  .  .  9 .  .  .  9 . |" +
-        " .  . 12 .  .  . 12 .  .  . 16 .  .  . 16 . |" +
-        " .  .  9 .  .  .  7 .  .  .  7 .  .  .  7 ."),
+        /* it held one note a bar -- 12, 12, 12, 12 -- which is a pedal,
+           not a harmony. It moves with the tune now, a third above and
+           then a sixth, and steps down into the turnaround. */
+        " .  . 16 .  .  . 19 .  .  . 16 .  .  . 14 . |" +
+        " .  . 14 .  .  . 17 .  .  . 14 .  .  . 12 . |" +
+        " .  . 16 .  .  . 19 .  .  . 21 .  .  . 19 . |" +
+        " .  . 17 .  .  . 16 .  .  . 14 .  .  . 12 ."),
       bass: pat(
         " 0 . 12 .  0 . 12 .  7 . 19 .  7 . 19 . |" +
         " 2 . 14 .  2 . 14 .  9 . 21 .  9 . 21 . |" +
@@ -5443,15 +5446,23 @@ window.SuperOuissy = (function () {
         " 9 . 9 . 12 . 16 . 21 . 20 . 19 . 18 . |" +
         "17 . 16 . 15 . 14 . 13 . 12 . 11 . 10 ."),
       harm: pat(
-        " .  .  .  . 21  .  .  . 21  .  .  . 21 .  .  . |" +
-        " .  .  .  . 20  .  .  . 20  .  .  . 20 .  .  . |" +
-        " .  .  .  . 21  .  .  . 24  .  .  . 24 .  .  . |" +
-        " .  .  .  .  .  .  .  .  .  .  .  .  . .  .  ."),
+        /* the same fault, worse: three bars on one note and then silence.
+           A boss should sound like something circling you, so it circles
+           -- up a fourth, back, up a fifth, and down a semitone into the
+           bar line, which is the part that makes it feel like a threat. */
+        " .  .  .  . 21  . 26  . 21  .  . 24 21 .  .  . |" +
+        " .  .  .  . 20  . 25  . 20  .  . 23 20 .  .  . |" +
+        " .  .  .  . 21  . 26  . 24  .  . 28 24 .  .  . |" +
+        " .  .  .  . 23  . 22  . 21  .  . 20 21 .  .  ."),
       bass: pat(
-        "-3 -3 . -3 -3 . -3 . -3 -3 . -3 -3 . -3 . |" +
-        "-4 -4 . -4 -4 . -4 . -4 -4 . -4 -4 . -4 . |" +
-        "-3 -3 . -3 -3 . -3 . -5 -5 . -5 -5 . -5 . |" +
-        "-7 -7 . -7 -7 . -7 . -7 -7 . -7 -7 -7 -7 -7"),
+        /* it was root and fifth and nothing else, which under a boss is a
+           pump rather than a threat. It walks down to the flat six and
+           leans on the five now, which is what makes the bar want to
+           resolve. */
+        " 0  .  .  7  0  .  .  7  8  .  .  7  0  .  .  . |" +
+        "-2  .  .  5 -2  .  .  5  6  .  .  5 -2  .  .  . |" +
+        " 0  .  .  7  0  .  . 12  8  .  .  3  8  .  .  . |" +
+        " 7  .  . 14  7  .  . 10  0  .  .  7  0  .  .  ."),
       drum: dpat(
         "K . h K . h K . S . h K . h S . |" +
         "K . h K . h K . S . h K . h S . |" +
@@ -5474,10 +5485,13 @@ window.SuperOuissy = (function () {
         "24 .  .  . 19 .  .  . 16 .  .  . 17 .  .  . |" +
         "19 .  .  .  .  .  .  . 16 .  .  .  .  .  .  ."),
       bass: pat(
-        " 0 .  .  .  .  .  .  .  7 .  .  .  .  .  .  . |" +
-        " 5 .  .  .  .  .  .  .  0 .  .  .  .  .  .  . |" +
-        " 7 .  .  .  .  .  .  .  2 .  .  .  .  .  .  . |" +
-        " 7 .  .  .  .  .  .  .  0 .  .  .  .  .  .  ."),
+        /* a flag tune should sound like it is going somewhere, and root
+           and fifth twice a bar sounds like it has arrived and stopped.
+           Up to the four, round the six, and home. */
+        " 0  .  7  .  0  .  7  .  5  .  0  .  5  .  7  . |" +
+        " 5  .  0  .  5  .  0  .  9  .  5  .  9  .  0  . |" +
+        " 7  .  2  .  7  .  2  .  0  .  7  .  0  .  7  . |" +
+        " 5  .  7  .  0  .  .  .  0  .  .  .  .  .  .  ."),
       drum: dpat(
         ". . . . . . . . . . . . . . . . |" +
         ". . . . . . . . . . . . . . . . |" +
@@ -5610,124 +5624,145 @@ window.SuperOuissy = (function () {
   };
 
   /* ---- HARD: faster, minor, and the bass never stops. ----------------- */
+  /* ---- HARD: A DIFFERENT PIECE, NOT A FASTER ONE ----
+
+     What was here was the medium score played quicker. Same contour, same
+     root-and-fifth bass, and a harmony line that held ONE note for a
+     whole bar -- 24, 24, 24, 24 -- which is a drone, not a harmony. That
+     is why it felt rushed rather than hard: nothing new was happening,
+     it was just happening sooner.
+
+     So hard is its own music. It is in the minor with a flattened
+     seventh, the accents fall off the beat instead of on it, the harmony
+     ANSWERS the lead in the gaps rather than sitting under it, and the
+     bass walks a real progression -- i, flat seven, flat six, five --
+     instead of pumping the root. It is more intense than medium because
+     more is going on, not because the clock is faster. */
   SCORES.hard = {
+    /* WORLD ONE — the hook. Rest on the downbeat, hit on the way to it. */
     w1: {
-      tempo: 0.074,
+      tempo: 0.076,
       lead: pat(
-        "12  . 12 15  . 19  . 15 12  . 19  . 22  . 19  . |" +
-        "10  . 10 14  . 17  . 14 10  . 17  . 20  . 17  . |" +
-        "12  . 12 15  . 19  . 22 24  . 22  . 19  . 15  . |" +
-        "17  . 15 14  . 12  . 11 12  .  .  . 12  .  .  ."),
+        "12  . 12  . 15  . 14 12  . 10  .  . 12  .  .  . |" +
+        "10  . 10  . 14  . 12 10  .  7  .  .  8  .  .  . |" +
+        "12  . 15  . 19  . 17 15  . 14  . 12 10  .  8  . |" +
+        " 7  .  8  . 10  . 12  .  .  .  .  . 12  .  .  ."),
+      /* the answer: it speaks where the lead has stopped */
       harm: pat(
-        " .  . 24  .  .  . 24  .  .  . 24  .  .  . 24  . |" +
-        " .  . 22  .  .  . 22  .  .  . 22  .  .  . 22  . |" +
-        " .  . 24  .  .  . 24  .  .  . 27  .  .  . 27  . |" +
-        " .  . 19  .  .  . 19  .  .  . 19  .  .  . 19  ."),
+        " .  .  . 19  .  . 19  .  . 22  . 19  . 17  .  . |" +
+        " .  .  . 17  .  . 17  .  . 19  . 17  . 14  .  . |" +
+        " .  .  . 22  .  . 22  .  . 24  . 22  . 19  .  . |" +
+        " .  . 19  .  . 17  . 15  .  .  .  . 19  .  .  ."),
       bass: pat(
-        " 0  0 12  0  0  0 12  0  7  7 19  7  7  7 19  7 |" +
-        "-2 -2 10 -2 -2 -2 10 -2  5  5 17  5  5  5 17  5 |" +
-        " 0  0 12  0  0  0 12  0  5  5 17  5  5  5 17  5 |" +
-        " 7  7 19  7  7  7 19  7  0  0 12  0  0  0  0  0"),
+        " 0  .  .  7  0  .  .  7  3  .  .  7  0  .  .  . |" +
+        "10  .  .  5 10  .  .  5 12  .  .  5 10  .  .  . |" +
+        " 8  .  .  3  8  .  .  3 10  .  .  3  8  .  .  . |" +
+        " 7  .  .  2  7  .  . 14  7  .  . 10  7  .  7  ."),
       drum: dpat(
-        "K . h K . h S . K . h K . h S h |" +
-        "K . h K . h S . K . h K . h S h |" +
-        "K . h K . h S . K . h K . h S h |" +
-        "K . h K . h S . K . t t t t S ."),
+        "K  .  . K  . h S  .  . K  . h S  . h  . |" +
+        "K  .  . K  . h S  .  . K  . h S  . h  . |" +
+        "K  .  . K  . h S  .  . K  . h S  . h  . |" +
+        "K  .  . K  . h S  . t  . t  . S  . S  ."),
     },
+    /* WORLD TWO — three, three, two. The oldest trick there is for making
+       a straight bar feel like it is leaning forward. */
     w2: {
-      tempo: 0.068,
+      tempo: 0.070,
       lead: pat(
-        "12 15  . 19 15  . 12 19  . 22 19  . 15 12  .  . |" +
-        "10 14  . 17 14  . 10 17  . 20 17  . 14 10  .  . |" +
-        "12 15  . 19 22  . 24 22  . 19 15  . 12 15  .  . |" +
-        "19 17  . 15 14  . 12 11  . 12  .  .  .  .  .  ."),
+        "15  .  . 15  .  . 12  . 10  .  . 12  .  . 15  . |" +
+        "14  .  . 14  .  . 10  .  8  .  . 10  .  . 12  . |" +
+        "15  .  . 19  .  . 22  . 19  .  . 17  .  . 15  . |" +
+        "14  .  . 12  .  . 10  .  8  .  .  7  .  .  .  ."),
       harm: pat(
-        "27  . 27  .  . 27  . 27  . 27  .  . 27  .  .  . |" +
-        "26  . 26  .  . 26  . 26  . 26  .  . 26  .  .  . |" +
-        "27  . 27  .  . 31  . 31  . 27  .  . 27  .  .  . |" +
-        "24  . 24  .  . 24  . 24  . 24  .  .  .  .  .  ."),
+        " . 22  .  . 22  .  . 19  . 19  .  . 17  .  .  . |" +
+        " . 20  .  . 20  .  . 17  . 17  .  . 14  .  .  . |" +
+        " . 22  .  . 26  .  . 22  . 22  .  . 19  .  .  . |" +
+        " . 19  .  . 17  .  . 15  . 14  .  . 12  .  .  ."),
       bass: pat(
-        " 0 12  0 12  0 12  0 12  7 19  7 19  7 19  7 19 |" +
-        "-2 10 -2 10 -2 10 -2 10  5 17  5 17  5 17  5 17 |" +
-        " 0 12  0 12  0 12  0 12  5 17  5 17  5 17  5 17 |" +
-        " 7 19  7 19  7 19  7 19  0 12  0 12  0  0  0  0"),
+        " 0  .  . 0  .  .  7  .  3  .  .  7  .  .  0  . |" +
+        "10  .  . 10 .  .  5  .  1  .  .  5  .  . 10  . |" +
+        " 8  .  . 8  .  .  3  .  0  .  .  3  .  .  8  . |" +
+        " 7  .  . 7  .  . 14  . 10  .  .  7  .  .  7  ."),
       drum: dpat(
-        "K h h K h h S h K h h K h h S h |" +
-        "K h h K h h S h K h h K h h S h |" +
-        "K h h K h h S h K h h K h h S h |" +
-        "K h h K h h S h t t t t t t S ."),
+        "K  .  . K  .  . S  . K  .  . K  .  . S  . |" +
+        "K  .  . K  .  . S  . K  .  . K  .  . S  h |" +
+        "K  .  . K  .  . S  . K  .  . K  .  . S  . |" +
+        "K  . h K  . h S  . t  . t  . t  . S  ."),
     },
+    /* WORLD THREE — the floor giving way. A chromatic walk down, and a
+       turnaround that lands somewhere you did not expect. */
     w3: {
+      tempo: 0.066,
+      lead: pat(
+        "19  . 18  . 17  .  . 15  . 14  .  . 12  .  .  . |" +
+        "17  . 16  . 15  .  . 14  . 12  .  . 10  .  .  . |" +
+        "12  . 15  . 19  . 22  . 24  . 22  . 19  . 15  . |" +
+        "20  . 19  . 17  . 15  . 14  . 12  .  .  .  .  ."),
+      harm: pat(
+        " . 12  .  .  . 12  .  .  . 10  .  .  .  7  .  . |" +
+        " . 10  .  .  . 10  .  .  .  8  .  .  .  5  .  . |" +
+        " .  .  . 27  .  .  . 27  .  .  . 24  .  .  . 22 |" +
+        " . 24  .  .  . 22  .  .  . 19  .  .  . 19  .  ."),
+      bass: pat(
+        " 0  .  0  .  8  .  8  .  7  .  7  .  5  .  5  . |" +
+        "-2  . -2  .  6  .  6  .  5  .  5  .  3  .  3  . |" +
+        " 0  . 12  .  0  . 12  .  8  . 20  .  8  . 20  . |" +
+        " 7  .  7  . 10  . 10  .  7  .  7  .  0  .  0  ."),
+      drum: dpat(
+        "K  . h  . K h S  . K  . h  . S  . S h |" +
+        "K  . h  . K h S  . K  . h  . S  . S h |" +
+        "K  . h  . K h S  . K  . h  . S  . S h |" +
+        "K  . h  . K h S  . t t t t S  . S  ."),
+    },
+    /* THE BOSS — an ostinato you cannot get out of your head, and a
+       stabbing line over the top of it that refuses to line up with it. */
+    boss: {
       tempo: 0.062,
       lead: pat(
-        " 9 12  . 16 12  .  9 16  . 19 16  . 12  9  .  . |" +
-        " 8 11  . 15 11  .  8 15  . 18 15  . 11  8  .  . |" +
-        " 9 12  . 16 19  . 21 20  . 19 18  . 16 15  .  . |" +
-        "14 13  . 12 11  . 10  9  . 12  .  .  .  .  .  ."),
+        " .  . 24  .  . 24  . 23  .  . 24  .  . 27  .  . |" +
+        " .  . 22  .  .  22  . 20  .  . 22  .  . 26  .  . |" +
+        " .  . 24  .  . 27  . 29  .  . 27  .  . 24  .  . |" +
+        "23  . 22  . 20  . 19  .  .  . 19  .  .  .  .  ."),
       harm: pat(
-        "24  . 24  . 24  . 24  . 24  . 24  . 24  .  .  . |" +
-        "23  . 23  . 23  . 23  . 23  . 23  . 23  .  .  . |" +
-        "24  . 24  . 24  . 27  . 27  . 27  . 27  .  .  . |" +
-        "21  . 21  . 21  . 21  . 24  .  .  .  .  .  .  ."),
+        "12  .  .  . 15  .  .  . 12  .  .  . 15  .  .  . |" +
+        "10  .  .  . 14  .  .  . 10  .  .  . 14  .  .  . |" +
+        "12  .  .  . 15  .  .  . 20  .  .  . 19  .  .  . |" +
+        "15  .  .  . 14  .  .  . 12  .  .  . 12  .  .  ."),
       bass: pat(
-        "-3 -3  9 -3 -3  9 -3  9  4  4 16  4  4 16  4 16 |" +
-        "-4 -4  8 -4 -4  8 -4  8  3  3 15  3  3 15  3 15 |" +
-        "-3 -3  9 -3 -3  9 -3  9 -5 -5  7 -5 -5  7 -5  7 |" +
-        "-7 -7  5 -7 -7  5 -7  5  0  0 12  0  0  0  0  0"),
+        " 0  0  .  0  8  .  0  .  0  0  .  0  7  .  0  . |" +
+        "-2 -2  . -2  6  . -2  . -2 -2  . -2  5  . -2  . |" +
+        " 0  0  .  0  8  .  0  .  3  3  .  3 10  .  3  . |" +
+        " 8  8  .  8  7  .  7  .  0  0  .  0  0  .  0  ."),
       drum: dpat(
-        "K h K h S h K h K h K h S h t t |" +
-        "K h K h S h K h K h K h S h t t |" +
-        "K h K h S h K h K h K h S h t t |" +
-        "K h K h S h K h t t t t t t S ."),
+        "K  . h K  . h S  . K  . h K  . h S  . |" +
+        "K  . h K  . h S  . K  . h K  . h S  . |" +
+        "K  . h K  . h S  . K  . h K  . h S  h |" +
+        "K  . t  . t  . S  . t t t t S  . S  ."),
     },
-    /* the Heartbreaker: minor, fast, and falling the whole way down */
-    boss: {
-      tempo: 0.056,
-      lead: pat(
-        " 9  9  . 12 16  . 12  9  . 16 12  .  9 16  .  . |" +
-        " 8  8  . 11 15  . 11  8  . 15 11  .  8 15  .  . |" +
-        " 9  9  . 12 16  . 21 20  . 19 18  . 17 16  .  . |" +
-        "15 14  . 13 12  . 11 10  .  9  8  .  7  .  .  ."),
-      harm: pat(
-        "21  . 21  . 21  . 21  . 21  . 21  . 21  .  .  . |" +
-        "20  . 20  . 20  . 20  . 20  . 20  . 20  .  .  . |" +
-        "21  . 21  . 24  . 24  . 24  . 24  . 24  .  .  . |" +
-        " .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  ."),
-      bass: pat(
-        "-3 -3 -3 -3  9 -3 -3 -3 -3 -3  9 -3 -3 -3 -3 -3 |" +
-        "-4 -4 -4 -4  8 -4 -4 -4 -4 -4  8 -4 -4 -4 -4 -4 |" +
-        "-3 -3 -3 -3  9 -3 -3 -3 -5 -5  7 -5 -5 -5 -5 -5 |" +
-        "-7 -7 -7 -7  5 -7 -7 -7 -8 -8 -8 -8 -8 -8 -8 -8"),
-      drum: dpat(
-        "K h K h S h K h K h K h S h K h |" +
-        "K h K h S h K h K h K h S h K h |" +
-        "K h K h S h K h K h K h S h K h |" +
-        "t t t t S . K . t t t t t t t t"),
-    },
-    /* the same four notes, fallen all the way down and then climbing back
-       — which is what finishing THIS difficulty actually was */
+    /* THE FLAG — eight bars of relief, and the last one lifts rather
+       than lands, because there is always another world. */
     win: {
-      tempo: 0.15,
+      tempo: 0.086,
       lead: pat(
-        "24  .  .  . 21  .  .  . 19  .  .  . 16  .  .  . |" +
-        "14  .  .  . 12  .  .  .  9  .  .  . 12  .  .  . |" +
-        "16  .  .  . 19  .  .  . 21  .  .  . 24  .  .  . |" +
-        "19  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
+        "12  . 16  . 19  .  .  . 24  .  .  . 19  .  .  . |" +
+        "17  . 21  . 24  .  .  . 28  .  .  . 24  .  .  . |" +
+        "19  . 24  . 28  .  . 31  .  . 28  . 24  . 19  . |" +
+        "16  . 19  . 24  .  .  .  .  .  .  .  .  .  .  ."),
       harm: pat(
-        " 0  .  .  .  4  .  .  .  7  .  .  .  4  .  .  . |" +
-        " 5  .  .  .  9  .  .  . 12  .  .  .  9  .  .  . |" +
-        " 7  .  .  .  4  .  .  .  0  .  .  .  2  .  .  . |" +
-        " 4  .  .  .  .  .  .  .  0  .  .  .  .  .  .  ."),
+        " .  . 12  .  . 16  .  .  . 19  .  .  . 16  .  . |" +
+        " .  . 14  .  . 17  .  .  . 21  .  .  . 17  .  . |" +
+        " .  . 16  .  . 19  .  .  . 24  .  .  . 19  .  . |" +
+        " .  . 12  .  . 16  .  . 19  .  .  .  .  .  .  ."),
       bass: pat(
-        "-12  .  .  .  0  .  .  . -5  .  .  .  7  .  .  . |" +
-        " -7  .  .  .  5  .  .  . -12  .  .  .  0  .  .  . |" +
-        " -5  .  .  .  7  .  .  . -7  .  .  .  5  .  .  . |" +
-        " -5  .  .  .  .  .  .  . -12  .  .  .  .  .  .  ."),
+        " 0  .  7  .  0  .  7  .  5  .  0  .  5  .  7  . |" +
+        " 5  .  0  .  5  .  0  . 10  .  5  . 10  .  0  . |" +
+        " 7  .  2  .  7  .  2  .  0  .  7  .  0  .  7  . |" +
+        " 5  .  7  .  0  .  .  .  0  .  .  .  .  .  .  ."),
       drum: dpat(
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . t t t t . . . ."),
+        "K  . h  . S  . h  . K  . h  . S  . h h |" +
+        "K  . h  . S  . h  . K  . h  . S  . h h |" +
+        "K  . h  . S  . h  . K  . h  . S  . t t |" +
+        "K  . h  . S  .  .  . K  .  .  .  .  .  .  ."),
     },
   };
 
@@ -5751,6 +5786,9 @@ window.SuperOuissy = (function () {
                ". . . . . . . . . . . . . . . ."),
   };
   ["easy", "medium", "hard"].forEach(function (d) { SCORES[d].menu = MENU_TUNE; });
+  /* the notes themselves, so "it feels rushed" can be checked against
+     what is actually written rather than argued about */
+  if (typeof window !== "undefined") window.__soScores = function () { return SCORES; };
 
   /* the set she is actually playing. Medium is the fallback, because a
      missing tune must never be an exception inside an audio callback. */
