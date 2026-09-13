@@ -26,3 +26,6 @@ full en_GB-alan-medium 1.16 0.74 1.2
 #
 # run 6 — run 5 rendered all 117 and then could not push them,
 #         because a commit landed on the branch while it worked.
+
+# 2026-09-13: the last hour got twenty-two lines of narration
+#             (last-01..last-41). Re-rendered with the other 117.
