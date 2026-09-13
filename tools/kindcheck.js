@@ -240,6 +240,34 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
      card.rows.some(r => /HEARTS\s*25/.test(r)), card.rows.join(' | '));
   ok('and so does the saved best', card.best === 25, `${card.best}`);
 
+  /* ONCE THE PILE IS COMPLETE IT IS HERS. Ten hearts buy a letter she has
+     not seen; charging ten again for a random repeat of one she already
+     owns is a slot machine, not a purchase. */
+  const readAll = await page.evaluate(() => {
+    const M = window.__soMoments();
+    const all = []; for (let i = 0; i < M.total; i++) all.push(i);
+    localStorage.setItem('so-moments-v1', JSON.stringify(all));
+    window.__soSetHearts(3);            /* nowhere near the price */
+    window.__soFinish();
+    const b = document.getElementById('so-moment');
+    return { button: !!b, label: b ? b.textContent.trim() : null,
+             note: (document.querySelector('.so-moment-none') || {}).textContent || '' };
+  });
+  ok('with every moment read, the button is still there at three hearts',
+     readAll.button === true, readAll.label);
+  ok('and it no longer asks for a price', !/10/.test(readAll.label || ''), readAll.label);
+  ok('and says the pile is hers', /all of them/.test(readAll.note), readAll.note);
+  const reread = await page.evaluate(() => {
+    const before = window.__soInfo().hearts;
+    document.getElementById('so-moment').click();
+    return { before, after: window.__soInfo().hearts,
+             text: (document.querySelector('.so-moment-text') || {}).textContent || '' };
+  });
+  ok('re-reading costs her nothing', reread.after === reread.before, `${reread.before} -> ${reread.after}`);
+  ok('and still gives her a real one', reread.text.length > 30, reread.text.slice(0, 40) + '...');
+  await page.evaluate(() => { localStorage.removeItem('so-moments-v1'); });
+
+
   ok('no page errors', errs.length === 0, errs.join(' | '));
   await browser.close();
   console.log(R.join('\n'));
