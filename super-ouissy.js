@@ -2126,16 +2126,29 @@ window.SuperOuissy = (function () {
      pit. They are decoration — nothing about them collides — so the worst
      a badly-placed one can do is look silly.
      ======================================================================= */
+  /* Nine lines, and the rule they were written to.
+
+     A sign is read at a run, in the two seconds she is standing next to
+     it, so nothing here is longer than a breath. None of them is advice
+     and none of them is a compliment — advice in a platformer is a tip,
+     and a compliment from a signpost is embarrassing. What they are is
+     things one specific person knows about one specific person, said
+     plainly, with the level underneath doing the second half of the work:
+     "the ground stops being kind about here" is about world two and it is
+     also about the year.
+
+     The three worlds are an arc. The meadow is the beginning of them. The
+     middle one is what it is actually like. The castle is the promise. */
   var SIGN_LINES = [
-    ["you already did the hard part. you started.",
-     "if you're going to fall, fall forwards.",
-     "nearly. i can see you from here."],
-    ["you're better at this than world one expected.",
-     "take the high road — i left something up there.",
-     "don't rush the end of it. i'm not going anywhere."],
-    ["last one. breathe.",
-     "everything past this is just her and you.",
-     "come and get me."],
+    ["everything here is soft on purpose. one of them should be.",
+     "you start things over without making it a tragedy. i never learned how.",
+     "three of these, and then me."],
+    ["the ground stops being kind about here. that isn't a punishment, it's just further in.",
+     "i'm not worried about you. i've seen what you do with a bad week.",
+     "you're allowed to stop and look at it. it's yours."],
+    ["whatever is at the top of this, i'm on your side of it.",
+     "she isn't difficult because i wanted you to lose.",
+     "one more room, then the door, then me."],
   ];
   function mkSigns(grid, w, h, start, goal, index) {
     var lines = SIGN_LINES[Math.min(SIGN_LINES.length - 1, index)] || [];
@@ -2816,8 +2829,28 @@ window.SuperOuissy = (function () {
     if (Math.abs(dx - G.stuckAt) < 56) G.stuckN++;
     else { G.stuckN = 1; G.stuckAt = dx; }
   }
+  /* WHERE THE OFFER IS ALLOWED TO EXIST AT ALL.
+
+     The first version of this was too generous and it cost the game
+     something. Two rules put back what it took:
+
+     NOT ON HARD. Hard's definition IS "no ribbons" — that is the whole
+     difference between it and Medium. Handing one back after a few falls
+     quietly undoes the mode she chose, which is not kindness, it is
+     deciding on her behalf that she did not mean it. Easy and Medium have
+     ribbons already; there, moving one is a convenience the mode already
+     agrees with.
+
+     NOT IN THE QUEEN'S ROOM. The last fight is the point of the run and
+     there is nothing there to walk back through anyway.
+
+     And it takes FIVE falls in the same place, not three. Three is a
+     stretch being difficult. Five is a stretch being unfair. */
   function stuckNow() {
-    return G.stuckN >= G.handGate && !!(G.player && G.player.lastSafe) && !!G.level;
+    if (!G.level || !G.player || !G.player.lastSafe) return false;
+    if (!DIFF[G.diff].checkpoints) return false;       /* hard keeps its word */
+    if (G.level.boss && G.level.boss.awake && !G.level.boss.dead) return false;
+    return G.stuckN >= G.handGate;
   }
 
   function afterDeath() {
@@ -3034,8 +3067,9 @@ window.SuperOuissy = (function () {
         '<h3>' + (hand ? "Let me move the ribbon" : his ? "He can put you back" : "Be revived") + '</h3>' +
         '<p class="so-card-note">' +
           (hand
-            ? "Same spot, " + G.stuckN + " times now. I'll tie a ribbon on the last safe " +
-              "ground you stood on and send you back with a glow on. It costs nothing." +
+            ? "Same spot, " + G.stuckN + " times now. I'll move the ribbon to the last " +
+              "safe ground you stood on, so you stop walking the easy part. " +
+              "The jump is still the jump." +
               (paid ? " Or spend lives and stand up right where you fell." : "")
             : "Right where you fell, with everything exactly as you left it. " +
               (ribbon ? "Or go back to the last ribbon." : "Or start over from the beginning.")) + '</p>' +
@@ -3077,13 +3111,21 @@ window.SuperOuissy = (function () {
     });
   }
 
-  /* the way back when she takes the hand: the moved ribbon, and a glow-up
-     so the stretch that has been killing her gets one free mistake */
+  /* THE WAY BACK WHEN SHE TAKES IT — and everything this deliberately
+     does NOT do.
+
+     It does not hand her a glow-up. The first version did, and a free hit
+     on the stretch that has been killing her is the game doing the jump
+     for her: the stake is the whole reason the jump is worth landing.
+     It does not slow anything down, weaken anything, or lengthen the
+     clock either.
+
+     All it does is stop her re-walking five screens she has already
+     beaten to get back to the one she hasn't. The hard bit is still
+     exactly as hard, and she still has to do it. */
   function handRespawn() {
     respawn();
-    setBig(G.player, true);
-    G.player.invuln = Math.max(G.player.invuln, 1.8);
-    popText(G.player.x, G.player.y - 14, "ribbon moved. go on.", "#ffd9a0");
+    popText(G.player.x, G.player.y - 14, "ribbon moved. same jump.", "#ffd9a0");
   }
 
   function herePos() {
@@ -4677,7 +4719,7 @@ window.SuperOuissy = (function () {
      than no scene is a scene you cannot get out of.
      ======================================================================= */
   var END_BEAT = { dawn: 1.0, walk: 4.6, pause: 5.8, meet: 7.4, bloom: 9.2 };
-  var endSkip = null, endT = 0;
+  var endSkip = null, endSeek = null, endT = 0;
 
   function hex(s) { return [parseInt(s.substr(1, 2), 16), parseInt(s.substr(3, 2), 16), parseInt(s.substr(5, 2), 16)]; }
   function mixHex(a, b, k) {
@@ -4727,6 +4769,11 @@ window.SuperOuissy = (function () {
       skipped = true;
       if (t0) t0 = performance.now() - END_BEAT.bloom * 1000;
     };
+    /* harness only: put the scene at a given second and let it carry on
+       from there. A directed nine seconds cannot be checked by opening it
+       and looking a moment later — this browser stalls its frame clock and
+       then catches up, so "a moment later" is sometimes two seconds in. */
+    endSeek = function (secs) { t0 = performance.now() - secs * 1000; endT = secs; };
 
     function reveal() {
       if (shown) return;
@@ -5548,7 +5595,7 @@ window.SuperOuissy = (function () {
     /* being stuck is a property of a stretch, not of a run: a new world
        starts her at nought deaths in the same place and at the first
        offer again */
-    G.stuckAt = -999; G.stuckN = 0; G.handGate = 3; G.handCheck = null;
+    G.stuckAt = -999; G.stuckN = 0; G.handGate = 5; G.handCheck = null;
     G.levelIndex = i;
     G.level = buildLevel(i);
     G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
@@ -5632,7 +5679,7 @@ window.SuperOuissy = (function () {
     G = {
       diff: "medium", state: "menu", level: null, levelIndex: 0,
       lives: 3, score: 0, hearts: 0, deaths: 0, elapsed: 0,
-      stuckAt: -999, stuckN: 0, handGate: 3, handCheck: null,
+      stuckAt: -999, stuckN: 0, handGate: 5, handCheck: null,
       meter: 0, meterFlash: 0, lastHurtBy: null, deathAt: null,
       freeze: 0, punch: 0,
       levelStartT: 0, levelStartHearts: 0, levelStartDeaths: 0,
@@ -5729,8 +5776,18 @@ window.SuperOuissy = (function () {
 
   /* --- putting her somewhere --- */
   window.__soGoLevel = function (i) { startLevel(i); };
+  /* The world card holds the game on a REAL timer, so a harness that calls
+     __soGoLevel and then pumps is pumping nothing at all — every assertion
+     after it passes or fails for the wrong reason. This is the card's own
+     ending, called early. */
+  window.__soSkipCard = function () {
+    if (G.state !== "card") return G.state;
+    closeOverlay(); G.state = "play"; G.camSnap = true;
+    return G.state;
+  };
   window.__soShowEnding = function (again) { showEnding(!!again); };
   window.__soEndT = function () { return endT; };
+  window.__soEndSeek = function (secs) { if (endSeek) endSeek(secs); return endT; };
   window.__soSigns = function () { return (G && G.level && G.level.signs) || []; };
   window.__soFinish = function () { finishLevel(); };
   window.__soStuck = function (n) {
@@ -5772,7 +5829,7 @@ window.SuperOuissy = (function () {
     L.items = L.items0.map(function (o) { return Object.assign({}, o); });
     L.checks.forEach(function (c) { c.taken = false; });
     if (L.signs) L.signs.forEach(function (sn) { sn.said = false; });
-    G.stuckAt = -999; G.stuckN = 0; G.handGate = 3; G.handCheck = null;
+    G.stuckAt = -999; G.stuckN = 0; G.handGate = 5; G.handCheck = null;
     if (L.goal) L.goal.open = false;
     G.bumps.length = 0;
     G.level.ents.forEach(function (e) {
@@ -5792,8 +5849,8 @@ window.SuperOuissy = (function () {
     if (patch) for (var k in patch) G.player[k] = patch[k];
     var p = G.player;
     return { x: p.x, y: p.y, vy: p.vy, big: p.big, star: p.star, wing: p.wing,
-             jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead,
-             invuln: p.invuln };
+             boost: p.boost, jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead,
+             invuln: p.invuln, riding: !!p.riding };
   };
   window.__soSetTime = function (t) { G.timeLeft = t; };
   /* the pause menu is a real menu with real doors in it, so a harness
@@ -5817,6 +5874,27 @@ window.SuperOuissy = (function () {
       .map(function (e) { return { type: e.type, x: Math.round(e.x), y: Math.round(e.y),
                                    vx: Math.round(e.vx), alive: e.alive }; });
   };
+  /* everything that moves and is not an enemy: the three kinds of platform */
+  window.__soMovers = function () {
+    return G.level.ents.filter(function (e) { return e.kind === "mover"; })
+      .map(function (e, i) {
+        return { i: i, type: e.type, x: e.x, y: e.y, dx: e.dx, dy: e.dy,
+                 homeX: e.homeX, homeY: e.homeY, span: e.span, w: e.w, h: e.h,
+                 on: e.on, fade: e.fade, timer: e.timer, hold: e.hold,
+                 riding: G.player.riding === e };
+      });
+  };
+  /* stand her on top of one, the way landing on it would */
+  window.__soRide = function (i) {
+    var ms = G.level.ents.filter(function (e) { return e.kind === "mover"; });
+    var m = ms[i];
+    if (!m) return null;
+    G.player.x = m.x + m.w / 2 - G.player.w / 2;
+    G.player.y = m.y - G.player.h;
+    G.player.vx = 0; G.player.vy = 0;
+    G.camSnap = true;
+    return { x: m.x, y: m.y };
+  };
   window.__soCam = function () { return { x: Math.round(G.cam.x), y: Math.round(G.cam.y) }; };
   /* the shape of the level under her: a test that wants "somewhere in the
      middle of this world" should not have to hard-code a tile. */
@@ -5836,9 +5914,18 @@ window.SuperOuissy = (function () {
   };
   /* stand her on the nearest live enemy, or on the boss, so a stomp can be
      tested without simulating a person's timing */
-  window.__soAboveEnemy = function () {
-    var e = G.level.ents.filter(function (x) { return x.kind === "enemy" && x.alive; })
-      .sort(function (a, b) { return Math.abs(a.x - G.player.x) - Math.abs(b.x - G.player.x); })[0];
+  /* with no argument: the nearest one, which is what every existing caller
+     wants. with one: that index into __soEnemies(), so a harness can name
+     the kind it is testing rather than hoping the nearest is the right one. */
+  window.__soAboveEnemy = function (idx) {
+    var e;
+    if (idx != null) {
+      e = G.level.ents.filter(function (x) { return x.kind === "enemy"; })[idx];
+      if (e && !e.alive) e = null;
+    } else {
+      e = G.level.ents.filter(function (x) { return x.kind === "enemy" && x.alive; })
+        .sort(function (a, b) { return Math.abs(a.x - G.player.x) - Math.abs(b.x - G.player.x); })[0];
+    }
     if (!e) return null;
     G.player.x = e.x + e.w / 2 - G.player.w / 2;
     G.player.y = e.y - G.player.h - 10;
@@ -5858,6 +5945,12 @@ window.SuperOuissy = (function () {
      were when a test was written. Nine world maps exist now and they will
      keep being edited; a suite that hard-codes tile 21 is a suite that
      breaks every time a level moves. */
+  window.__soSolid = function (tx, ty) { return solidAt(tx, ty); };
+  /* the raw character, so a harness can tell a wall from a one-way ledge —
+     "is there anything to stand on under this block" is a question only
+     the grid can answer, and solidAt alone answers it wrongly */
+  window.__soTile = function (tx, ty) { return tileAt(tx, ty); };
+  window.__soStand = function (tx, ty) { return solidAt(tx, ty) || oneWayAt(tx, ty); };
   window.__soFindTile = function (ch) {
     var L = G.level, hits = [];
     for (var y = 0; y < L.h; y++)
