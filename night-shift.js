@@ -728,10 +728,20 @@ const NS = {
         from: [0.30, 1.52, 1.30], to: [-0.10, 1.46, 1.00], look: [-2.60, 1.15, -1.10],
         swarm: ["office", 20, 3.2, -2.0, 0.44], advance: 1,
         line: { nar: 1, t: "She has done that four hundred times this week. It is the last useful thing anybody lets her do." } },
+      /* AND THE FIRST PLACE THEY PUT HER.
+
+         There are two of these: the desk now, and the floor at the end.
+         The first one is Cogsworth, who is the oldest of them and who
+         talks to her the way somebody talks to a person they have
+         decided to keep. */
+      { room: "office", secs: 3.8, fov: 44, shake: 0.8, lux: 0.3,
+        from: [-1.10, 1.40, -0.20], to: [-1.22, 1.38, -0.46], look: [-1.55, 1.38, -1.95],
+        swarm: ["office", 20, 3.2, -1.9, 0.44], advance: 1,
+        line: { who: "cogsworth", t: "Behind the desk. Under it, if you can get under it, and stay there until somebody says your name." } },
       { room: "office", secs: 3.2, fov: 64, cue: "dark", shake: 1, lux: 0.26,
         from: [0.40, 1.45, 1.10], to: [0.40, 1.40, 0.85], look: [0, 0.70, -2.2],
         swarm: ["office", 22, 3.2, -1.8, 0.42], advance: 1,
-        line: { nar: 1, t: "She watches it." } },
+        line: { nar: 1, t: "She gets under the desk. She does not stay there." } },
 
       /* --- Chime, going up the way he always did ------------------- */
       { room: "office", secs: 3.8, fov0: 42, fov1: 56, lux: 0.42,
@@ -763,6 +773,20 @@ const NS = {
         from: [-1.90, 1.50, 0.90], to: [1.60, 1.45, 0.70], look: [0, 0.95, -2.0],
         swarm: ["office", 22, 3.2, -0.8, 0.42], advance: 1,
         line: { nar: 1, t: "He walks the length of the room and turns at the end of it, and does not stop for anything, and that is the last time the shop hears him keeping time." } },
+
+      /* AND THE CLOCK ON HER WALL, WITH NOTHING SAID OVER IT.
+
+         The line before this one ends "the last time the shop hears
+         him keeping time", and the shot it ends on is the one that
+         took the tick out of the score. So this is three and a half
+         seconds of a wall clock and no words: the only silent shot in
+         the film, in the one place where a line would be the chapter
+         explaining its own best idea to her.
+
+         decor(1) at the west wall, z = 1.5, which is the clock that has
+         been hanging over her left shoulder for six nights. */
+      { room: "office", secs: 3.8, fov0: 36, fov1: 30, lux: 0.42,
+        from: [-1.45, 1.87, 1.50], to: [-1.95, 1.86, 1.50], look: [-3.15, 1.85, 1.50] },
 
       /* --- the one he made in an afternoon ------------------------- */
       { room: "office", secs: 3.6, fov: 44, cue: "gone", clear: 1, lux: 0.4,
@@ -5887,7 +5911,7 @@ function soldRetreat(ch) {
    pool is capped, so a full hall is about the same as one more room of
    furniture. The legs are the only thing that moves.
    ===================================================================== */
-const RET = { pool: [], live: 0, kinds: [] };
+const RET = { pool: [], live: 0, kinds: [], cap: 28 };
 
 /* paint that has been in a toy cupboard for a decade */
 const RET_PAINT = ["#8a4038", "#3f4b5e", "#5c6a4a", "#7a6748", "#6a4a58",
@@ -6331,6 +6355,7 @@ function returnersBuild(n) {
    spread wider and stand further apart, so the hall reads as full
    rather than as a block of toys.                                     */
 function returnersPlace(roomId, n, spreadX, z0, dz) {
+  n = Math.min(n, RET.cap);
   returnersBuild(n);
   const rec = rooms[roomId];
   const ox = rec ? rec.index * SPACING : 0;
@@ -7138,6 +7163,44 @@ const SFX = {
     const v = gain === undefined ? 0.4 : gain;
     burst({ f0: 3200, dur: 0.03, gain: 0.16 * v, q: 3, pan });
     tone({ type: "square", f0: 1800, dur: 0.02, gain: 0.03 * v, pan });
+  },
+
+  /* A GREAT MANY SMALL FEET.
+
+     The crowd in the last hour was silent, which is the one thing a
+     crowd cannot be. This is not a loop and not a sample: it is three
+     or four of the same small footfall the rest of the chapter uses,
+     scattered across a quarter of a second and across the stereo
+     field, fired again every fifth of a second while there is a crowd
+     on screen. Uneven on purpose -- twenty things walking in step is a
+     parade, and this is not a parade.
+
+     `near` pulls the whole thing down in pitch and up in level as they
+     get closer, so the same cue is a rustle at the end of a hall and a
+     floor being crossed in an office. */
+  horde(gain, near, rnd) {
+    const v = gain === undefined ? 0.5 : gain;
+    const k = near === undefined ? 0 : near;
+    const r = rnd || Math.random;
+    const n = 3 + ((r() * 3) | 0);
+    for (let i = 0; i < n; i++) {
+      const pan = (r() * 2 - 1) * 0.85;
+      const at = r() * 0.2;
+      /* `duck: 0.95` on every one of them, and it is the whole reason
+         this cue is safe to fire five times a second. Every burst and
+         every tone asks the score to get out of the way by default,
+         and an announcement firing twenty-six of those once pinned the
+         bed at 0.58 for as long as it was talking. A crowd is ambience
+         -- it belongs UNDER the music, not in front of it. */
+      burst({ f0: 250 - k * 70, f1: 80 - k * 20, dur: 0.1 + r() * 0.05,
+              gain: (0.07 + k * 0.05) * v, q: 0.9, filter: "lowpass",
+              pan, at, duck: 0.95 });
+      /* one in three has something loose in it */
+      if (r() < 0.34) {
+        tone({ type: "square", f0: 900 + r() * 1100, dur: 0.025,
+               gain: 0.016 * v, pan, at: at + 0.012, duck: 0.95 });
+      }
+    }
   },
   wind(gain, pan) {                     // his key, turning
     const v = gain === undefined ? 0.4 : gain;
@@ -10843,7 +10906,7 @@ function kill(ch) {
 const FIN = {
   on: false, i: -1, t: 0, secs: 1, hold: 0, el: null, head: null,
   gone: {}, room: "office", skip: false, adv: 0, shot: null, lux: 1,
-  plan: null, said: 0, dur: 0, hushed: {},
+  plan: null, said: 0, dur: 0, hushed: {}, horde: 0, rnd: Math.random,
   from: new T.Vector3(), to: new T.Vector3(), look: new T.Vector3(),
   look2: new T.Vector3(), pan: 0,
   fov0: 58, fov1: 58,
@@ -10856,6 +10919,10 @@ function finaleStart() {
   FIN.on = true; FIN.i = -1; FIN.t = 0; FIN.hold = 0; FIN.secs = 1;
   FIN.gone = {}; FIN.skip = false; FIN.adv = 0; FIN.shot = null;
   FIN.lux = 1; G.filmLux = 1; FIN.hushed = {};
+  FIN.horde = 0;
+  /* seeded, so two runs of the ending sound the same and anything
+     measuring it measures the same thing twice */
+  FIN.rnd = mulberry(seedOf("the-last-hour"));
   FIN.room = "office";
   G.phase = "finale";
   G.mode = "story";
@@ -11091,6 +11158,17 @@ function finaleStep(dt) {
      so a cut is a cut and a dimmer is a dimmer */
   FIN.said += dt;
   G.filmLux += (FIN.lux - G.filmLux) * Math.min(1, dt * 1.6);
+  /* and the sound of them, for as long as there are any of them */
+  if (RET.live) {
+    FIN.horde -= dt;
+    if (FIN.horde <= 0) {
+      FIN.horde = 0.16 + FIN.rnd() * 0.16;
+      /* how close they are, taken from the room rather than guessed:
+         the office is three metres deep and the hall is eleven */
+      const near = FIN.room === "office" ? 1 : 0.35;
+      SFX.horde(clamp(RET.live / 20, 0.25, 1) * 0.62, near, FIN.rnd);
+    }
+  }
   if (RET.live) returnersStep(dt, G.t, FIN.adv);
   /* A SHOT IS AS LONG AS IT IS WRITTEN, OR AS LONG AS HE TAKES.
 
@@ -14545,6 +14623,12 @@ function start() {
      one bulb; the quality ladder is one number and it is here */
   const touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
   pixelCap = touch ? 1.25 : 1.6;
+  /* and the same one number decides how many of the ones he sold are
+     standing in the hall. Twenty-eight toys is about six hundred solids
+     and a phone drawing the last hour at twelve frames a second would
+     undo everything the last hour is for; eighteen still fills the
+     doorway, which is the only thing the shot needs it to do. */
+  RET.cap = touch ? 18 : 28;
 
   /* Building the shop is about half a second of solid work — nine rooms,
      four performers and two dozen painted surfaces — and it is one
@@ -15280,6 +15364,19 @@ const testHooks = {
        to reach one shot does not need the ones before it painted */
     if (draw !== false) renderer.render(scene, view);
     return FIN.i;
+  },
+  /* WHAT THE HEAVIEST SHOT COSTS TO DRAW.
+
+     Twenty-eight toys is about six hundred solids on top of a room, and
+     a phone drawing the last hour at twelve frames a second would undo
+     everything the last hour is for. This reports what the renderer
+     actually did on the frame just drawn, so the budget is measured
+     rather than assumed. */
+  filmCost: () => {
+    if (!renderer) return null;
+    const r = renderer.info.render;
+    return { calls: r.calls, tris: r.triangles, crowd: RET.live, cap: RET.cap,
+             boss: !!(retBoss && retBoss.visible) };
   },
   /* drive the film by hand, one slice of time at a time, so the ending
      can be watched without a compositor to run the frame loop */

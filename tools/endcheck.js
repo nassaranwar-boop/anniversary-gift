@@ -227,6 +227,35 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
   ok('whoever is speaking is in the frame while they speak', !blind.length, blind);
   ok('all four of them are drawn at some point in it', run.seen.length === 4, run.seen);
 
+  /* WHAT THE BUSIEST SHOT COSTS.
+
+     Twenty-eight toys is about six hundred solids on top of a room. A
+     phone draws eighteen (the ladder is one number in start()), but a
+     desktop draws all of them, and a shot nobody can render at speed
+     is not a shot. Walk the film again, drawing this time, and keep
+     the worst frame. */
+  const cost = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    N.finale();
+    let worst = { calls: 0 };
+    for (let k = 0; k < 9000 && N.finaleState().on; k++) {
+      if (N.filmFrame(0.2) === false) break;
+      const c = N.filmCost();
+      if (c && c.calls > worst.calls) worst = c;
+    }
+    return worst;
+  });
+  ok('the busiest shot in it stays inside a frame budget',
+     cost.calls > 0 && cost.calls < 1400, cost);
+
+  await p.evaluate(() => { OuissysNightShift.__night.finale(); });
+  const run2 = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    for (let k = 0; k < 9000 && N.finaleState().on; k++) N.filmTick(0.2);
+    return N.finaleState();
+  });
+  ok('and it still reaches the end when it is run fast', run2.on === false, run2);
+
   const end = await p.evaluate(() => ({
     card: !!document.querySelector('.ns-card-find'),
     go: !!document.querySelector('[data-go="finaleDone"]'),

@@ -36,3 +36,5 @@ full en_GB-alan-medium 1.16 0.74 1.2
 #              tools/voicesheet.js and every model it names is fetched.
 # 2026-09-13d: the foyer lines match what is on the screen now, and one
 #              more line under the floor.
+# 2026-09-13e: two more lines (the desk), and the shot numbering moved
+#              under them.
