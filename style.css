@@ -6735,7 +6735,11 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .rc-cards{display:grid; gap:1.6cqw; width:100%; justify-content:center;}
 .rc-cards-2{grid-template-columns:repeat(2, minmax(0, 26cqw));}
-.rc-cards-4{grid-template-columns:repeat(4, minmax(0, 20cqw));}
+/* Four cards were four columns. There are six courses now, and a sixth
+   column does not fit a 16:9 stage -- so the grid asks for as many 20cqw
+   columns as will go and wraps the rest, which is three and three on a
+   laptop and an iPad and two rows of three sideways on a phone. */
+.rc-cards-4{grid-template-columns:repeat(auto-fit, minmax(0, 20cqw)); max-width:64cqw; margin:0 auto;}
 
 .rc-card{
   display:flex; flex-direction:column; align-items:center; gap:.8cqh;

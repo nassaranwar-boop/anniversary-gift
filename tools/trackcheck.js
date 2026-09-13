@@ -206,6 +206,88 @@ for (const t of TRACKS) {
   say(str > 620,              `longest straight ${str.toFixed(0).padStart(4)}  (>620)`);
   say(mx > SHOULDER + 40,     `edge margin   ${mx.toFixed(0).padStart(6)}  (>${SHOULDER + 40})`);
   say(xs.length === 0,        `self-crossings ${String(xs.length).padStart(5)}  (0)`);
+  /* TWO BITS OF ROAD THAT NEVER TOUCH CAN STILL RUIN A COURSE.
+     A kart finds where it is on the lap by projecting onto the nearest
+     piece of centreline. Where the circuit doubles back and runs close to
+     itself, the nearest piece is the WRONG piece: the kart is told it is
+     somewhere else on the lap, turns for a corner that is not in front of
+     it and drives into the scenery. It does not have to cross itself to do
+     this -- it only has to come near. A first draft of Hometown Streets
+     passed every other check here and returned 197-second laps against a
+     38-second leader for exactly this reason. Two road widths is the
+     margin: nearer than that and the projection can pick the wrong lobe. */
+  const cum = [0];
+  for (let i = 1; i < p.length; i++) cum.push(cum[i - 1] + dist(p[i - 1], p[i]));
+  const lapLen = cum[p.length - 1] + dist(p[p.length - 1], p[0]);
+  let nearest = Infinity, nearAt = null;
+  for (let i = 0; i < p.length; i += 2) {
+    for (let j = i + 2; j < p.length; j += 2) {
+      /* "far apart" has to mean far along the LAP, not far apart in the
+         sample list. A spike that goes in and comes straight back out puts
+         its two legs a handful of samples apart and a few metres apart, and
+         an index-gap test walks straight past it -- which is how a course
+         with a 900-unit-deep spike in it passed this check and returned
+         197-second laps. */
+      const along = Math.min(cum[j] - cum[i], lapLen - (cum[j] - cum[i]));
+      if (along < 900) continue;
+      const d = dist(p[i], p[j]);
+      if (d < nearest) { nearest = d; nearAt = [i, j]; }
+    }
+  }
+  say(nearest > ROAD_HALF * 4,
+      `never doubles back onto itself  ${nearest.toFixed(0).padStart(5)}  (>${ROAD_HALF * 4})` +
+      (nearAt ? `  at (${(p[nearAt[0]].x / WORLD).toFixed(2)},${(p[nearAt[0]].y / WORLD).toFixed(2)})` : ""));
+
+  /* HOW HARD DOES IT TURN, PER LENGTH OF ROAD?
+     Min radius is the tightest single point; this is the whole corner. A
+     kart -- and the autopilot especially, which aims a fixed distance ahead
+     -- can follow only so much direction change per metre of road before it
+     cuts the corner and ends up on the grass, where it is slower and so can
+     never rejoin. Measured through this same code the four shipped courses
+     turn at most 54 to 61 degrees per 300 units. A redraw of Hometown
+     Streets came out at 108 and returned 197-second laps: three karts went
+     off at the same corner every lap and crawled round the outside of it on
+     the grass for the whole race. 68 is just above the shipped worst.
+     The centreline is resampled to a fixed step first -- catmull steps t in
+     a while loop and leaves pairs of samples almost coincident, and atan2
+     between two points a thousandth of a unit apart is noise, which read as
+     600 degrees per 300 units on courses that are visibly smooth. */
+  const evenly = (() => {
+    const n0 = p.length, cu = [0];
+    for (let i = 0; i < n0; i++) cu.push(cu[i] + dist(p[i], p[(i + 1) % n0]));
+    const tot = cu[n0], m = Math.max(24, Math.round(tot / 12));
+    const out = []; let j = 0;
+    for (let k = 0; k < m; k++) {
+      const d = tot * k / m;
+      while (j < n0 - 1 && cu[j + 1] < d) j++;
+      const f = (d - cu[j]) / Math.max(1e-9, cu[j + 1] - cu[j]);
+      const a = p[j], b2 = p[(j + 1) % n0];
+      out.push({ x: a.x + (b2.x - a.x) * f, y: a.y + (b2.y - a.y) * f });
+    }
+    return out;
+  })();
+  const worstTurn = (() => {
+    const n = evenly.length;
+    const seg = [], head = [];
+    for (let i = 0; i < n; i++) {
+      const a = evenly[i], b2 = evenly[(i + 1) % n];
+      seg.push(dist(a, b2)); head.push(Math.atan2(b2.y - a.y, b2.x - a.x));
+    }
+    const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI;
+                          while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    let worst = 0;
+    for (let i = 0; i < n; i++) {
+      let acc = 0, turn = 0, j = i;
+      while (acc < 300 && j - i <= n) {
+        turn += Math.abs(wrap(head[(j + 1) % n] - head[j % n]));
+        acc += seg[j % n]; j++;
+      }
+      if (turn > worst) worst = turn;
+    }
+    return worst * 180 / Math.PI;
+  })();
+  say(worstTurn < 68, `turn per 300 units ${worstTurn.toFixed(0).padStart(5)} deg  (<68; shipped 54-61)`);
+
   const ap = approachRadius(p, 420);
   say(ap > 500,               `grid approach ${(ap === Infinity ? "straight" : ap.toFixed(0)).padStart(6)}  (>500, eight karts park on it)`);
 
