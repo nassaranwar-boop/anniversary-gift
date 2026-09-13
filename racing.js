@@ -550,6 +550,14 @@ const ITEMS = {
   arrow:   { name:"Cupid's Arrow",weight:18, tint:"#ff5f95" },
   heart:   { name:"Paper Heart",  weight:18, tint:"#ff7f8a" },
   rose:    { name:"Rose Thorns",  weight:16, tint:"#e8556f" },
+  /* THE ONE THING IN HERE THAT IS NOT A WEAPON.
+     Every other item is something you throw, drop or burn; there was
+     nothing at all to DO while you were winning except wait to be hit from
+     behind, which is the least interesting position in a kart race to be
+     in. His jacket takes one hit for her. It is weighted the opposite way
+     to the ring and the bouquet -- towards the front of the field rather
+     than the back -- because it is the leader who has something to lose. */
+  jacket:  { name:"His Jacket",   weight:15, tint:"#7ec8e3" },
   bouquet: { name:"Bouquet",      weight:12, tint:"#ff9ec4" },
   ring:    { name:"Gold Ring",    weight:6,  tint:"#ffd166" },
 };
@@ -565,6 +573,7 @@ function rollItem(place, total) {
     if (k === "bouquet") x *= 0.4 + back * 1.6;
     if (k === "arrow")   x *= 0.5 + back * 1.4;
     if (k === "letter")  x *= 1.4 - back * 0.5;
+    if (k === "jacket")  x *= 1.75 - back * 1.45;
     return x;
   });
   let t = w.reduce((a, b) => a + b, 0) * Math.random();
@@ -4739,6 +4748,14 @@ class Racer {
       /* spend the speed where there is road to use it */
       go = Math.abs(this.steer) < TURN * 5 && !this.offroad
         && Math.abs(this.speed) > TOP_SPEED * 0.5;
+    } else if (it === "jacket") {
+      /* put it on when somebody is close enough behind to use whatever
+         they are carrying, or when it is nearly the flag and being hit
+         now would actually cost the place */
+      go = racers.some((o) => o !== this && !o.finished
+            && o.progress < this.progress
+            && (o.x - this.x) ** 2 + (o.y - this.y) ** 2 < 620 * 620)
+        || this.progress > trackDef.laps - 0.35;
     } else if (it === "rose") {
       /* drop it in front of whoever is close behind */
       go = racers.some((o) => o !== this && !o.finished
@@ -4942,6 +4959,11 @@ class Racer {
       if (this.ammo > 0) this.item = "bouqshot";
       if (this.isPlayer) paintItem();
       return;
+    } else if (it === "jacket") {
+      /* long enough to cover the stretch you were worried about, and it
+         goes when it is used rather than when it runs out */
+      this.shield = 13;
+      if (this.isPlayer) flashBanner("JACKET ON!");
     } else if (it === "rose") {
       hazards.push({
         x: this.x - Math.cos(this.angle) * 44,
@@ -6835,7 +6857,29 @@ function drawKartInner(g, b, camA, isGhost) {
   g.restore();
 
   /* the bouquet orbits whoever is holding it */
-  const orbit = o.item === "bouqshot" ? (o.ammo || 0) : (o.shield > 0 ? 3 : 0);
+  /* THE JACKET IS NOT THE BOUQUET AND MUST NOT LOOK LIKE IT.
+     Three hearts going round you already means "I am carrying three hearts
+     and about to throw one". A shield reusing that told the person behind
+     the wrong thing about what was coming. It gets a warm ring round the
+     wheels instead, which fades as it runs down, so both players can see
+     how long is left on it. */
+  if (!isGhost && o.shield > 0 && o.item !== "bouqshot") {
+    const k = Math.min(1, o.shield / 13);
+    const rr = w * 0.62, ry = rr * 0.34;
+    g.save();
+    g.globalAlpha = 0.28 + 0.34 * k + Math.sin(raceTime * 7) * 0.06;
+    g.strokeStyle = "#7ec8e3";
+    g.lineWidth = Math.max(1, w * 0.055);
+    g.beginPath();
+    g.ellipse(s.sx, s.sy - h * 0.18, rr, ry, 0, 0, TWO_PI);
+    g.stroke();
+    g.globalAlpha *= 0.5;
+    g.beginPath();
+    g.ellipse(s.sx, s.sy - h * 0.46, rr * 0.82, ry * 0.82, 0, 0, TWO_PI);
+    g.stroke();
+    g.restore();
+  }
+  const orbit = o.item === "bouqshot" ? (o.ammo || 0) : 0;
   if (!isGhost && orbit > 0) {
     for (let i = 0; i < orbit; i++) {
       const t = raceTime * 3 + (i / Math.max(1, orbit)) * TWO_PI;
@@ -7282,6 +7326,18 @@ function drawItemIcon(g, kind, S) {
       g.save(); g.translate(Math.cos(t) * 9, Math.sin(t) * 9 + 2); heart(6, "#ff9ec4"); g.restore();
     }
     g.fillStyle = "#3f7a3f"; g.fillRect(-2, 6, 4, 12);
+  } else if (kind === "jacket") {
+    /* a little bomber jacket, collar open, one heart on the chest */
+    g.fillStyle = "#3f7f96";
+    g.beginPath();
+    g.moveTo(-11, -8); g.lineTo(11, -8); g.lineTo(13, 12);
+    g.lineTo(-13, 12); g.closePath(); g.fill();
+    g.fillStyle = "#7ec8e3";                       // sleeves, lighter
+    g.fillRect(-15, -7, 5, 14); g.fillRect(10, -7, 5, 14);
+    g.fillStyle = "#fff1e0";                       // the open collar
+    g.beginPath();
+    g.moveTo(-6, -8); g.lineTo(0, 1); g.lineTo(6, -8); g.closePath(); g.fill();
+    g.save(); g.translate(0, 5); heart(3.6, "#ff5f95"); g.restore();
   } else if (kind === "ring") {
     g.strokeStyle = "#ffd166"; g.lineWidth = 4;
     g.beginPath(); g.arc(0, 4, 10, 0, TWO_PI); g.stroke();
@@ -8389,6 +8445,10 @@ const Snd = (function () {
       else if (kind === "rose")   noise({ f: 700, f2: 240, dur: 0.2, gain: 0.16, at: t });
       else if (kind === "bouquet"){ [660,830,990].forEach((f,i)=>tone({f,dur:0.14,gain:0.13,duty:0.35,at:t+i*0.04})); }
       else if (kind === "ring")   { [523,659,784,1047,1319].forEach((f,i)=>tone({f,dur:0.3,gain:0.15,duty:0.5,at:t+i*0.06})); }
+      /* the jacket: two soft notes going DOWN, which is the one sound in
+         here that is not trying to be exciting -- it is the sound of
+         something being put round your shoulders */
+      else if (kind === "jacket") { [587,440].forEach((f,i)=>tone({f,dur:0.26,gain:0.14,duty:0.5,at:t+i*0.09})); }
     },
     hit() {
       const t = ctx ? ctx.currentTime : 0;
@@ -9326,7 +9386,7 @@ if (typeof window !== "undefined")
         function the last lap calls, doing the same work in the same order,
         rather than a test-only imitation of it that could agree with the
         test while disagreeing with the game. */
-     ramps,
+     ramps, rollItem, hit,
      finishRace,
      /* ...and the simulation tick, for the same reason. Stepping it by hand
         runs a whole four-lap race in a few hundred milliseconds of wall
