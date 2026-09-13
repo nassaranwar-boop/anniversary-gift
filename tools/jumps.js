@@ -137,6 +137,50 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
   ok("crawling over one is a bump, not a jump",
      flight.slow.peak < 1, `${flight.slow.peak} units up at a third speed`);
 
+  /* ---- AND THE OTHER SEVEN ----
+     The launch was in advance(), which every kart runs, but the flight was
+     in the player's own drive, which only she runs. So an opponent that hit
+     a ramp had its height and its upward speed set and nothing to integrate
+     them: it sat a hundredth of a unit off the ground for the rest of the
+     race, never rising, never landing, and -- since nothing under the
+     wheels counts while a kart is off them -- unable to touch the kerb, the
+     verge or the barrier the whole way round. This is the assertion that
+     was missing. */
+  const field = await p.evaluate(() => {
+    const d = window.__RACE_DEBUG();
+    /* THE THING THAT WAS BROKEN, TESTED DIRECTLY.
+
+       Driving each of the eight over a ramp is not the test: the autopilot
+       picks its own line, half the grid is off taking the shortcut, and
+       whether a given opponent happens to cross a given ramp on a given lap
+       says nothing about whether it CAN. What was wrong was narrower than
+       that and worse -- the launch was in advance(), which every kart runs,
+       and the flight was in the player's own drive, which only she runs. So
+       every kart could be launched and only she could come down.
+
+       Each kart is given the upward speed a ramp gives and then simply
+       watched. Eight should rise, and eight should land. */
+    const out = [];
+    d.racers.forEach((k) => {
+      k.finished = false;
+      k.air = 0.01; k.vair = 78; k.rampCool = 0.9;
+      out.push({ player: !!k.isPlayer, peak: 0, landed: false });
+    });
+    for (let i = 0; i < 60 * 5; i++) {
+      d.step(1 / 60);
+      d.racers.forEach((k, idx) => {
+        if (k.air > out[idx].peak) out[idx].peak = k.air;
+        if (out[idx].peak > 1 && k.air === 0) out[idx].landed = true;
+      });
+    }
+    return out.map((o) => ({ ...o, peak: +o.peak.toFixed(1) }));
+  });
+  const flew = field.filter((k) => k.peak > 18);
+  const down = field.filter((k) => k.landed);
+  ok("every kart flies, not just hers", flew.length === 8,
+     `${flew.length}/8 rose: ` + field.map((k) => `${k.player ? "her" : "ai"} ${k.peak}`).join(", "));
+  ok("and every kart lands", down.length === 8, `${down.length}/8 came down`);
+
   /* landing off the road should be a landing, not a crash at the verge */
   const land = await p.evaluate(() => {
     const d = window.__RACE_DEBUG();

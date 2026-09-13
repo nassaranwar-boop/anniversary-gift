@@ -4426,6 +4426,19 @@ class Racer {
     /* the throttle holds itself unless you are on the brake */
     const gas   = input.up || (autoGas && padWanted && !rev);
     /* a thumb on the glass gives a real angle, not a yes or a no */
+    /* THE STICK IS EASED HERE, NOT WHERE IT IS READ.
+       Touch events arrive in bursts and at whatever rate the browser feels
+       like; the kart is stepped at a fixed sixtieth. Feeding the raw thumb
+       position straight to the wheels gave a stick that felt sticky when
+       the events were sparse and twitchy when they were dense. Chasing the
+       wanted value at a fixed rate per frame makes it the same stick at any
+       event rate -- and letting go now returns to centre over a few frames
+       instead of snapping, which is most of what made it feel cheap. */
+    const want = input.axisWant || 0;
+    /* dt * 60 spelled out: k is declared a few lines down and reading it
+       here is a temporal-dead-zone throw, not a zero. */
+    input.axis = (input.axis || 0) + (want - (input.axis || 0)) * Math.min(1, 0.32 * dt * 60);
+    if (Math.abs(input.axis) < 0.004) input.axis = 0;
     const ax    = input.axis || 0;
     const left  = input.left  || ax < -0.05;
     const right = input.right || ax >  0.05;
@@ -4464,20 +4477,6 @@ class Racer {
       Snd.hop();
     }
     this.dkeyWas = dkey;
-    /* ---- in the air ---- */
-    if (this.rampCool > 0) this.rampCool -= dt;
-    if (this.air > 0 || this.vair > 0) {
-      this.vair -= GRAVITY * dt;
-      this.air += this.vair * dt;
-      if (this.air <= 0) {
-        /* down, with weight in it */
-        this.air = 0; this.vair = 0;
-        this.squash = 0.30;
-        this.jolt = Math.max(this.jolt || 0, 0.5);
-        if (this.isPlayer) { shake = 2; Snd.hop(); }
-      }
-    }
-
     if (this.hop > 0) {
       const was = this.hop;
       this.hop -= dt;
@@ -4827,6 +4826,32 @@ class Racer {
     const bound  = pr.half + (SHOULDER - ROAD_HALF);
     /* nothing under the wheels is under the wheels */
     this.offroad = this.air <= 0 && pr.dist > rumble;
+
+    /* ---- IN THE AIR ----
+
+       This lives in advance() and not in the player's own drive, which is
+       where it was and which was a real fault rather than a missing
+       feature: the LAUNCH is in advance and runs for all eight karts, so an
+       opponent that hit a ramp had its air and its upward speed set and
+       then nothing to integrate them. It sat at 0.01 units off the ground
+       for the rest of the race -- never rising, never landing, and, because
+       nothing under the wheels counts while she is off them, immune to the
+       kerb, the verge and the barrier the whole way round.
+
+       Nothing caught it. racelap watches for karts that get lost or go
+       slowly, and a kart quietly unable to touch the scenery does neither. */
+    if (this.rampCool > 0) this.rampCool -= dt;
+    if (this.air > 0 || this.vair > 0) {
+      this.vair -= GRAVITY * dt;
+      this.air += this.vair * dt;
+      if (this.air <= 0) {
+        /* down, with weight in it */
+        this.air = 0; this.vair = 0;
+        this.squash = 0.30;
+        this.jolt = Math.max(this.jolt || 0, 0.5);
+        if (this.isPlayer) { shake = 2; Snd.hop(); }
+      }
+    }
 
     /* ---- ramps ----
        Crossing one with the speed to carry it puts the kart in the air.
@@ -9297,9 +9322,33 @@ function bindSteer() {
   const ring = el.steerRing;
   let id = null, x0 = 0, y0 = 0, revving = false;
 
+  /* HOW FAR A THUMB HAS TO TRAVEL FOR FULL LOCK.
+     0.155 of the stage is 148 pixels on a 16 Pro Max -- most of the width of
+     a hand, so full lock meant repositioning your grip, and everything short
+     of it was a shallow linear ramp with no feel at either end. Down to
+     0.115, which is 110, because the curve below now makes the middle of
+     that travel gentle rather than the whole of it flat. */
   const radius = () => {
     const w = el.stage ? el.stage.clientWidth : 320;
-    return Math.max(38, w * 0.155);
+    return Math.max(34, w * 0.115);
+  };
+
+  /* THE SHAPE OF THE STICK.
+
+     A thumb resting on glass is never still, and a linear axis sends every
+     one of those tremors to the wheels: the kart hunted down a straight
+     even when she thought she was holding it. The first seven per cent is
+     dead, so resting counts as centred. What is left is squared up towards
+     the edge -- half throw gives a third of the lock, which is what makes
+     a correction possible, and the last of the travel is still full lock,
+     which is what makes a hairpin possible. */
+  const DEAD = 0.07;
+  const shape = (a) => {
+    const sgn = a < 0 ? -1 : 1;
+    let m = Math.min(1, Math.abs(a));
+    if (m <= DEAD) return 0;
+    m = (m - DEAD) / (1 - DEAD);
+    return sgn * m * (0.42 + 0.58 * m);
   };
   const place = (cx, cy) => {
     if (!ring || !el.stage) return;
@@ -9308,8 +9357,20 @@ function bindSteer() {
     ring.style.setProperty("--rc-sy", (cy - r.top) + "px");
   };
   const setAxis = (a) => {
-    input.axis = a;
-    if (ring) ring.style.setProperty("--rc-tx", (a * radius() * 0.30).toFixed(1) + "px");
+    const v = shape(a);
+    /* the WANT, not the axis: the axis itself is eased towards this once a
+       frame in drivePlayer, because a thumb reports in bursts and the kart
+       is stepped at a fixed rate */
+    input.axisWant = v;
+    /* the pip is placed as a FRACTION of the lock, not as a number of
+       pixels, because the ring is min(26cqw, 34cqh): on a landscape phone
+       the height clamp wins and a pixel figure computed from the stage
+       WIDTH walks the pip straight out through the side of its own ring.
+       A fraction lets the stylesheet scale it against whichever of the two
+       the ring actually took, and it now sweeps nearly the whole ring
+       rather than the middle tenth of it -- which is most of what made the
+       old stick feel like nothing was happening. */
+    if (ring) ring.style.setProperty("--rc-lock", v.toFixed(3));
   };
 
   const start = (t) => {
@@ -9378,7 +9439,8 @@ function applyTouchMode() {
     const live = touchMode === "slide" && padWanted;
     el.steer.hidden = !live;
     el.steer.dataset.live = live ? "1" : "0";
-    if (!live) { input.axis = 0; el.steer.dataset.on = "0"; }
+    /* the target as well as the axis, or the easing pulls it straight back */
+    if (!live) { input.axis = 0; input.axisWant = 0; el.steer.dataset.on = "0"; }
   }
 }
 
@@ -9411,7 +9473,7 @@ function watchVisibility() {
   function letGo() {
     for (const k in input) if (typeof input[k] === "boolean") input[k] = false;
     input.itemPressed = false;
-    input.axis = 0;                 /* a thumb sliding on the glass, too */
+    input.axis = 0; input.axisWant = 0;   /* a thumb sliding on the glass, too */
     if (steerRelease) { try { steerRelease(); } catch (e) {} }
     if (el.pad) {
       Array.prototype.forEach.call(el.pad.querySelectorAll("[data-k].on"),
@@ -9591,7 +9653,7 @@ if (typeof window !== "undefined")
         function the last lap calls, doing the same work in the same order,
         rather than a test-only imitation of it that could agree with the
         test while disagreeing with the game. */
-     ramps, rollItem, hit,
+     ramps, rollItem, hit, input,
      finishRace,
      /* ...and the simulation tick, for the same reason. Stepping it by hand
         runs a whole four-lap race in a few hundred milliseconds of wall

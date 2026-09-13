@@ -7280,7 +7280,10 @@ img{-webkit-user-drag:none; user-select:none;}
   background:radial-gradient(circle at 38% 34%,
              var(--rc-accent,#ff5f95), rgba(20,10,26,.55));
   box-shadow:0 0 2.4cqw rgba(255,95,149,.55), inset 0 0 0 .3cqw rgba(255,248,232,.5);
-  transform:translateX(var(--rc-tx,0px));
+  /* 90% of the pip's own width is the gap between the pip and the inside
+     of the ring, in both the cqw case and the cqh-clamped one: the ring and
+     the pip are sized from the same pair of limits, so the ratio holds. */
+  transform:translateX(calc(var(--rc-lock,0) * 90%));
   transition:transform .04s linear;
 }
 /* a one-time nudge for the first race, then it stays out of the way */
