@@ -25,6 +25,12 @@ async function run(label, viewport, touch) {
   await p.waitForFunction(() => !!(window.Apocalypse), { timeout: 30000 });
   await p.evaluate(() => { try { localStorage.clear(); } catch (e) {} showScreen('hub'); startHub(); });
   await p.waitForTimeout(200);
+  /* The chapter is fetched on demand now -- index.html no longer
+     carries apocalypse.js, so `Apocalypse` does not exist until the
+     site has been asked for it. Every suite in this folder was
+     written before that and died on `Apocalypse is not defined`. */
+  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
+  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });
   await p.evaluate(() => document.getElementById('hub-card-apoc').click());
   await p.waitForSelector('.ap-card-go', { timeout: 40000 });
   await p.evaluate(() => document.querySelector('.ap-card-go').click());   // BEGIN

@@ -12,6 +12,12 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   await p.route('**', r => (r.request().url().startsWith('http://localhost') ? r.continue() : r.abort()));
   await p.goto('http://localhost:8899/index.html', { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(400);
+  /* The chapter is fetched on demand now -- index.html no longer
+     carries apocalypse.js, so `Apocalypse` does not exist until the
+     site has been asked for it. Every suite in this folder was
+     written before that and died on `Apocalypse is not defined`. */
+  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
+  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });
   /* The chapters are fetched on the idle callback now, not by a script
      tag, so the global is not there the instant the document is. A tool
      that drives a chapter directly has to wait for the file the same

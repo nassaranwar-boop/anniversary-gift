@@ -15,6 +15,12 @@ const shots = process.argv.slice(3);
   });
   await page.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1200);
+  /* The chapter is fetched on demand now -- index.html no longer
+     carries apocalypse.js, so `Apocalypse` does not exist until the
+     site has been asked for it. Every suite in this folder was
+     written before that and died on `Apocalypse is not defined`. */
+  await page.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
+  await page.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });
   const cdp = await page.context().newCDPSession(page);
   for (const s of shots) {
     await page.evaluate(() => { try{localStorage.clear();}catch(e){} });

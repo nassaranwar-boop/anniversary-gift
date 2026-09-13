@@ -174,7 +174,13 @@ const need = (name, cond, extra) => {
   const pan1 = await p.evaluate(() => window.Apocalypse.game.world.panelAt);
   await walkTo(pan1.x, pan1.y + 1); await use();
   need('the wire panel is up', await p.$('.ap-panel-canvas') !== null);
-  await p.evaluate(() => window.__apSolvePanel()); await p.waitForTimeout(400); await pump(20);
+  await p.evaluate(() => window.__apSolvePanel()); await p.waitForTimeout(400);
+  /* The chapter is fetched on demand now -- index.html no longer
+     carries apocalypse.js, so `Apocalypse` does not exist until the
+     site has been asked for it. Every suite in this folder was
+     written before that and died on `Apocalypse is not defined`. */
+  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
+  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 }); await pump(20);
   need('the garage is empty', await waitFor(s => s.dialogue === true, 600));
   await talk();
   st = await S(); need('power comes back on', st.step === 'exit', st);
