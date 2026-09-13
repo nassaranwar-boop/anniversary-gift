@@ -17129,6 +17129,11 @@
         calls: info.render.calls, triangles: info.render.triangles,
         lines: info.render.lines, points: info.render.points,
         geometries: info.memory.geometries, textures: info.memory.textures,
+        /* how many shader programs are compiled and linked. A freeze on
+           arriving somewhere, or on an animation starting, is usually one
+           of these being built for the first time -- so a stall with the
+           count going up is a compile and a stall with it flat is not. */
+        programs: (Stage.renderer.info.programs || []).length,
         lights: lights
       };
     };
