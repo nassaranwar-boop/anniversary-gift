@@ -7713,12 +7713,39 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-dbtn{padding:max(8px, 1cqh) max(10px, 2.2cqw);}
   .rc-quit{padding:max(8px, .9cqh) max(10px, 2cqw);}
   @media (hover:none){
+    /* AS BIG AS THE ROOM ALLOWS, AND NOT ONE PIXEL BIGGER.
+
+       A flat 44 was the wrong number here, and the arithmetic says why.
+       The title screen carries twelve controls; measured on a 390-point
+       landscape phone they are 31, 29 and 27 points tall with a 5.5-point
+       gap, so the pitch between two stacked buttons is 36.5. A 44-point
+       target centred on each of them therefore overlapped its neighbour's
+       by seven and a half points, and later siblings paint over earlier
+       ones -- so a thumb aimed at the bottom of SINGLE RACE pressed GRAND
+       PRIX. The same overhang came down on whatever writing was next to a
+       control: the word DIFFICULTY above its own row, and the sentences
+       that explain the modes. Twelve times forty-four is 528 points and
+       the screen is 390, so no amount of care makes a flat 44 fit; the
+       honest ceiling is the pitch itself.
+
+       The height is capped at the control's own pitch, which is its box
+       plus the gap its container sets. Every point between two buttons
+       then belongs to the nearer one and nothing reaches the text. The
+       width keeps the 44 -- across is the one direction a landscape phone
+       has room in. (buttons.js floors the hunt and the book at 44; it has
+       never audited the race, which is why this was free to be wrong.) */
     .rc-btn, .rc-btn-s, .rc-dbtn, .rc-quit{position:relative;}
     .rc-btn::after, .rc-btn-s::after, .rc-dbtn::after, .rc-quit::after{
       content:""; position:absolute; left:50%; top:50%;
-      width:max(100%, 44px); height:max(100%, 44px);
+      width:max(100%, 44px);
+      height:min(max(100%, 44px), calc(100% + var(--rc-tap-room, .9cqh)));
       transform:translate(-50%, -50%);
     }
+    /* the gap each container actually sets, so the cap is the real pitch
+       rather than a guess at it */
+    .rc-menu{ --rc-tap-room:1.4cqh; }
+    .rc-diff{ --rc-tap-room:.9cqh; }
+    .rc-row{ --rc-tap-room:1.2cqh; }
   }
 
   /* THE APOCALYPSE PAD WAS THE LAST ONE STILL IN FIXED PIXELS.
