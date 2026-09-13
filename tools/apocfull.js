@@ -95,6 +95,19 @@ const solvePanel = async (p) => {
   await p.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
   await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(1000);
+  /* THE CHAPTER IS FETCHED ON DEMAND.
+
+     index.html no longer carries apocalypse.js, and the hooks arrive
+     later still -- start() builds the scene behind a promise and only
+     installs them when it resolves. A suite that calls start() and
+     __apEnter in one synchronous block cannot work, which is what every
+     file in this folder did, and why the chapter has had nothing
+     checking it for a long time. */
+  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
+  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });
+  /* ...but this file comes in through the hub on purpose, so it does
+     not start the chapter itself -- it only makes sure the code is
+     there, and waits for the hooks after the hub has started it. */
 
   // in from the hub, exactly as she would
   await p.evaluate(() => { try { localStorage.clear(); } catch (e) {} showScreen('hub'); startHub(); });
@@ -109,17 +122,18 @@ const solvePanel = async (p) => {
   say('on the apocalypse screen:', onScreen);
   await goCard(p, 'the world ends', 'the how-to card');
   await goCard(p, 'Level 1', 'the Level 1 card');
+  await p.waitForFunction(() => typeof window.__apEnter === 'function', null, { timeout: 40000 });
   await settle(p);
   say('L1 place:', await p.evaluate(() => document.getElementById('ap-place').textContent));
 
   // ---- LEVEL 1 ----
   await p.evaluate(() => { window.__apTeleport(3, 12); window.__apUse(); });
-  await pressWhen(p, '.ap-tv .ap-note-ok', null, 'the television');
+  await pressWhen(p, '.ap-tv .ap-card-go', null, 'the television');
   await p.waitForTimeout(250); await settle(p);
   await p.evaluate(() => { window.__apTeleport(29, 12); window.__apUse(); });
   await p.waitForTimeout(350);
   await solvePanel(p); await settle(p);
-  await p.evaluate(() => { window.__apTeleport(29, 20); window.__apPump(0.4, {}); });
+  await p.evaluate(() => { window.__apTeleport(29, 20); window.__apPump(1 / 60, 24); });
   await p.waitForTimeout(250); await settle(p);
   await goCard(p, 'Level 2', 'the Level 2 card');
   await settle(p);
@@ -134,7 +148,7 @@ const solvePanel = async (p) => {
   await p.evaluate(() => { window.__apKeypadType('4180'); });
   await p.waitForTimeout(300);
   say('L2 gate open:', await p.evaluate(() => window.__apState().doors.filter(d => d.includes('locked')).join()));
-  await p.evaluate(() => { window.__apTeleport(44, 28); window.__apPump(0.4, {}); });
+  await p.evaluate(() => { window.__apTeleport(44, 28); window.__apPump(1 / 60, 24); });
   await p.waitForTimeout(250); await settle(p);
   await goCard(p, 'Level 3', 'the Level 3 card');
   await settle(p);
@@ -145,10 +159,10 @@ const solvePanel = async (p) => {
   await p.waitForTimeout(350);
   await solvePanel(p); await settle(p);
   await settle(p, 'the ward doors');
-  await p.evaluate(() => { window.__apTeleport(30, 6); window.__apPump(0.6, {}); });
+  await p.evaluate(() => { window.__apTeleport(30, 6); window.__apPump(1 / 60, 36); });
   await p.waitForTimeout(250); await settle(p);
   say('he is awake:', await p.evaluate(() => window.__apState().anwar.awake));
-  await p.evaluate(() => { window.__apTeleport(3, 16); window.__apPump(0.4, {}); });
+  await p.evaluate(() => { window.__apTeleport(3, 16); window.__apPump(1 / 60, 24); });
   await p.waitForTimeout(250); await settle(p);
   await goCard(p, 'Level 4', 'the Level 4 card');
   await settle(p);
@@ -163,13 +177,13 @@ const solvePanel = async (p) => {
   await settle(p, 'the three cars');
   await p.evaluate(() => window.__apUse());
   await solvePanel(p);
-  await p.evaluate(() => window.__apPump(11, {}));       // the drive
+  await p.evaluate(() => window.__apPump(1 / 60, 660));       // the drive
   await p.waitForTimeout(250); await settle(p);
   say('on the road:', await p.evaluate(() => window.__apMapKey()));
   await settle(p, 'the lane');
   await p.evaluate(() => { window.__apTeleport(38, 21); window.__apUse(); });
   await p.waitForTimeout(250); await settle(p);
-  await p.evaluate(() => window.__apPump(10, {}));       // the ride
+  await p.evaluate(() => window.__apPump(1 / 60, 600));       // the ride
   await p.waitForTimeout(250); await settle(p);
   await goCard(p, 'Level 5', 'the Level 5 card');
   await settle(p);
@@ -190,7 +204,7 @@ const solvePanel = async (p) => {
   await p.waitForTimeout(2700);
   await pressWhen(p, '.ap-serum .ap-note-ok', null, 'the serum, done');
   await p.waitForTimeout(300); await settle(p);
-  await p.evaluate(() => { window.__apTeleport(32, 10); window.__apPump(0.4, {}); });
+  await p.evaluate(() => { window.__apTeleport(32, 10); window.__apPump(1 / 60, 24); });
   await p.waitForTimeout(250); await settle(p);
   say('chapter card:', await p.evaluate(() => { const t = document.querySelector('.ap-card-title'); return t && t.textContent; }));
   await goCard(p, 'you still came and found me', 'the chapter card');

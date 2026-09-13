@@ -12551,6 +12551,18 @@
     };
     G.__panel = {
       canvas: cv,
+      /* what the harness needs to aim a real pointer at this board: the
+         canvas it is drawn in, where each core's stripped end sits, and
+         which terminal each one belongs in */
+      probe: function () {
+        var wires = [], socks = [];
+        for (var i = 0; i < 4; i++) {
+          wires.push({ key: i, ex: WX, ey: wireY(i) });
+          socks.push({ key: order[i], x: SX, y: sockY(i) });
+        }
+        return { w: cv.width, h: cv.height, wires: wires, sockets: socks,
+                 done: done.slice(), solved: done.every(Boolean) };
+      },
       tick: function (dt) { if (sparkT > 0) sparkT -= dt; draw(); },
       solve: function () {
         done = [true, true, true, true];
@@ -16497,6 +16509,41 @@
       if (G && G.__keypad) { G.__keypad.enter(GATE_CODE); G.__keypad.go(); return true; }
       return false;
     };
+    /* THE FOUR THE SUITES ASK FOR AND THIS FILE STOPPED PROVIDING.
+
+       apocmech drives the stealth through __apZombies and
+       __apMoveZombie, apocflow solves the distribution board through
+       __apPanelState, and apocflow4 reads __apMapKey after the drive.
+       All four went at some point and the suites have been dying on
+       them ever since, which is why nothing has checked the stealth in
+       a long while. Positions are handed over in the design's own pixel
+       units -- sixteen to a tile -- because that is what the suites do
+       their arithmetic in. */
+    window.__apZombies = function () {
+      if (!G || !G.zombies) return [];
+      return G.zombies.map(function (z, i) {
+        return { i: i, x: z.x / PX, y: z.z / PX,
+                 tx: Math.floor(z.x / TILE), ty: Math.floor(z.z / TILE),
+                 kind: z.kind, state: z.state || null, alert: z.alert || 0 };
+      });
+    };
+    window.__apMoveZombie = function (i, tx, ty) {
+      if (!G || !G.zombies || !G.zombies[i] || !G.world) return false;
+      var z = G.zombies[i];
+      z.x = G.world.cx(tx); z.z = G.world.cz(ty);
+      z.home = { x: z.x, z: z.z };
+      if (z.rig && z.rig.position) z.rig.position.set(z.x, z.rig.position.y, z.z);
+      return true;
+    };
+    window.__apPanelState = function () {
+      var p = G && G.__panel;
+      if (!p || !p.probe) return null;
+      return p.probe();
+    };
+    window.__apMapKey = function () {
+      if (!G) return null;
+      return { hasMap: !!G.hasMap, level: G.def && G.def.id, step: step() && step().clears };
+    };
     window.__apMap = function () { showMap(); return G && G.state; };
     window.__apCheck = function () { if (G && G.__check) { G.__check.all(); return true; } return false; };
     window.__apSerum = function () { if (G && G.__serum) { G.__serum.finish(); return true; } return false; };
@@ -16509,13 +16556,27 @@
         player: G.player ? { x: G.player.x, z: G.player.z, hidden: G.player.hidden,
                              tx: Math.floor(G.player.x / TILE), ty: Math.floor(G.player.z / TILE) } : null,
         cine: !!G.cine, dialogue: !!G.dlg,
+        cut: G.cine ? { t: +G.cine.t.toFixed(2), duration: G.cine.duration } : null,
         /* The doors were dropped from this report at some point and the
            mechanics suite still asks for them -- it has been failing on
            `st.doors.filter` ever since, which is one of the reasons this
-           chapter has had nothing checking it. */
+           chapter has had nothing checking it. A door has no name in
+           this file, so reporting one was useless: what a door is is
+           its kind ("d" a plain one, "P" one the board feeds, "D" the
+           keypad, "G" the gate), where it is, and whether it is open. */
         doors: (G.world && G.world.doors ? G.world.doors : []).map(function (d) {
-          return (d.name || d.id || "door") + (d.open ? ":open" : ":shut");
+          return { x: d.x, y: d.y, kind: d.kind, locked: !!d.locked,
+                   open: d.open > 0.5 };
         }),
+        /* the two things a flow test needs to know about a level that
+           is not a room: whether he is with her, and whether the board
+           has been done. Both were unreachable from outside, so the
+           suites for levels three and four asserted on `undefined`. */
+        anwar: G.anwar ? { found: !!G.anwar.found, x: G.anwar.x, z: G.anwar.z,
+                           tx: Math.floor(G.anwar.x / TILE),
+                           ty: Math.floor(G.anwar.z / TILE) } : null,
+        powered: !!(G.world && G.world.powered),
+        torch: !!G.hasTorch, ate: !!G.ate, map: !!G.hasMap,
         presses: anyPressed, grab: G.grab ? { t: G.grab.t, presses: G.grab.presses } : null
       };
     };
@@ -16641,6 +16702,20 @@
 
     /* what the card was actually asked to do on the last frame */
     window.__apEndCine = function () { if (G && G.cine) endCine(); return true; };
+    /* Run the cut to its end the way pressing USE does -- so whatever
+       was going to happen after it still happens. __apEndCine throws the
+       scene away without calling its callback, which is right for a test
+       that only wanted to look at it and wrong for one playing the
+       chapter through: the drive is fifty-two seconds and the suites
+       were pumping through every one of them. */
+    window.__apSkipCine = function () {
+      if (!G || !G.cine) return false;
+      if (!isFinite(G.cine.duration)) return false;
+      G.cine.t = G.cine.duration;
+      if (G.cine.update) G.cine.update(0, G.cine.t);
+      tick(1 / 60);
+      return true;
+    };
     /* the three cuts that hold while the two of them talk over them */
     window.__apCut = function (which) {
       if (G && G.cine) endCine();
@@ -16653,6 +16728,136 @@
     window.__apNoise = function (x, z, r) { noise(x, z, r); return true; };
     window.__apTouchUI = function (on) { setTouchUI(!!on); return touchUI; };
     /* what they can see, and where they may not go */
+    /* Where a thing IS on the level under test, rather than where a
+       suite written years ago assumed it was. apocmech used to hardcode
+       "the wardrobe is at tile 2,1" and "zombie zero is somewhere near
+       her", which is how it ended up running its stealth checks on the
+       one level in the chapter that has no zombies in it at all. */
+    window.__apFind = function (chars) {
+      /* the LIVE grid, not the map it was built from: a torch she has
+         picked up and a woodpile she has carried away are gone from the
+         world, and a test that keeps being told they are still there
+         walks back to the same empty tile for ever */
+      var rows = (G && G.world && G.world.cells) || (G && G.def && G.def.map);
+      if (!rows) return [];
+      var out = [];
+      for (var y = 0; y < rows.length; y++) {
+        for (var x = 0; x < rows[y].length; x++) {
+          if (chars.indexOf(rows[y][x]) >= 0) out.push({ x: x, y: y, c: rows[y][x] });
+        }
+      }
+      return out;
+    };
+    window.__apHideSpots = function () { return window.__apFind(HIDE); };
+    /* Where she is, in the design's own pixels -- sixteen to a tile, the
+       same units __apZombies reports in. apocinput has been asking for
+       this on every one of its sixteen assertions and getting
+       "__apPos is not a function", so nothing has checked that a real
+       keypress reaches the game since the hook went. */
+    window.__apPos = function () {
+      if (!G || !G.player) return null;
+      return { x: G.player.x / PX, y: G.player.z / PX,
+               tx: Math.floor(G.player.x / TILE), ty: Math.floor(G.player.z / TILE) };
+    };
+    /* Type a code into whatever keypad is up, digit by digit, the way a
+       finger does -- so the display, the four-character limit and the
+       wrong-code shake are all exercised rather than bypassed. */
+    window.__apKeypadType = function (digits) {
+      var pad = document.querySelector(".ap-keypad-pad");
+      if (!pad) return false;
+      var btn = {};
+      pad.querySelectorAll(".ap-key-btn").forEach(function (b) { btn[b.textContent] = b; });
+      if (btn.CLR) btn.CLR.click();
+      String(digits).split("").forEach(function (d) { if (btn[d]) btn[d].click(); });
+      if (btn.GO) btn.GO.click();
+      return true;
+    };
+    /* Put one named thing on the screen. The contact-sheet runs shoot
+       every overlay in the chapter and had no way to ask for one. */
+    window.__apOpen = function (what) {
+      if (!G) return false;
+      closeOverlay();
+      G.state = "play";
+      switch (what) {
+        case "howto": howToCard(); return true;
+        case "card": levelCard((G.levelIndex || 0) + 1); return true;
+        case "tv": showTV(); return true;
+        case "panel": showPanel(function () {}); return true;
+        case "fridge": openFridge(); return true;
+        case "radio": showRadio(); return true;
+        case "note": showNote(); return true;
+        case "map": showMap(); return true;
+        case "keypad":
+          var d = (G.world.doors || []).filter(function (x) { return x.kind === "D"; })[0];
+          if (!d) return false;
+          showKeypad(d); return true;
+        case "gate": hailTheGate(); return true;
+        case "check": showCheck(); return true;
+        case "serum": showSerum(); return true;
+        default: return false;
+      }
+    };
+    /* CAN SHE ACTUALLY GET TO ALL OF IT?
+
+       One tile of furniture in front of a door makes a level
+       unfinishable, and no other test in the folder has an opinion
+       about that. This floods out from where she starts, over
+       everything that is not solid -- doors count as open, because she
+       can open them -- and then asks, of every single thing the level
+       needs her to reach, whether she could stand next to it. */
+    window.__apAudit = function () {
+      var report = [];
+      var was = G && G.levelIndex;
+      /* what a level asks her to walk to, and what to call it */
+      var WANT = { "X": "the way out", "W": "the distribution board",
+                   "T": "the television", "1": "the torch", "f": "the fridge",
+                   "N": "the note with the code", "i": "something to pick up",
+                   "C": "the car", "A": "Anwar", "H": "the horse",
+                   "Q": "the desk", "w": "the woodpile", "g": "wood to gather",
+                   "G": "the gate", "D": "the staff door" };
+      LEVELS.forEach(function (def, i) {
+        window.__apEnter(i);
+        var rows = G.def.map, H = rows.length, W = 0;
+        for (var r = 0; r < H; r++) W = Math.max(W, rows[r].length);
+        var at = function (x, y) {
+          return (y < 0 || y >= H || x < 0 || x >= rows[y].length) ? "#" : rows[y][x];
+        };
+        /* a door is a way through, not a wall */
+        var walkable = function (c) { return !isSolidChar(c) || "dDPG".indexOf(c) >= 0; };
+        var sp = G.world.spawn || { x: 1, y: 1 };
+        var seen = {}, q = [[sp.x, sp.y]], n = 0;
+        seen[sp.x + "," + sp.y] = 1;
+        while (q.length && n < W * H * 4) {
+          n++;
+          var cur = q.shift();
+          [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+            var nx = cur[0] + d[0], ny = cur[1] + d[1], k = nx + "," + ny;
+            if (seen[k] || !walkable(at(nx, ny))) return;
+            seen[k] = 1; q.push([nx, ny]);
+          });
+        }
+        var reachable = Object.keys(seen).length;
+        var problems = [], checks = 0;
+        for (var y = 0; y < H; y++) {
+          for (var x = 0; x < rows[y].length; x++) {
+            var c = rows[y][x];
+            if (!WANT[c]) continue;
+            checks++;
+            /* she has to be able to STAND beside it, not on it */
+            var beside = [[1, 0], [-1, 0], [0, 1], [0, -1], [0, 0]].some(function (d) {
+              return seen[(x + d[0]) + "," + (y + d[1])];
+            });
+            if (!beside) problems.push(WANT[c] + ' at ' + x + ',' + y + ' cannot be reached');
+          }
+        }
+        if (!G.world.spawn) problems.push("no S on the map: she starts in the corner");
+        if (!G.world.exit && def.steps.some(function (s) { return s.clears === "exit"; }))
+          problems.push("the level asks for an exit and the map has no X");
+        report.push({ level: def.id, checks: checks, reachable: reachable, problems: problems });
+      });
+      if (was != null) window.__apEnter(was);
+      return report;
+    };
     window.__apTile = function () { return TILE; };
     window.__apSightRange = function () { return TUNE.zSight; };
     window.__apSolid = function (c) { return isSolidChar(c); };
@@ -16728,7 +16933,10 @@
       return Stage.renderer && Stage.renderer.shadowMap.enabled;
     };
     window.__apKeys = function () {
-      return { up: KEY.up, down: KEY.down, left: KEY.left, right: KEY.right };
+      /* the creep and USE are keys too: leaving them out of this report
+         is why nothing has ever checked that shift reaches the game */
+      return { up: KEY.up, down: KEY.down, left: KEY.left, right: KEY.right,
+               use: KEY.use, sneak: KEY.sneak };
     };
     /* run a cue's own beats past it, four passes' worth, so a branch that
        only happens late in a piece is still exercised */

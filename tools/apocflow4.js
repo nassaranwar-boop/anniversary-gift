@@ -1,51 +1,83 @@
-/* Level 4: out of the hospital, get the car going, the drive, the lane,
-   the horse, and the ride to the gates. */
-const { chromium } = require('playwright-core');
-const clicks = async (p, n) => { for (let i=0;i<n;i++){ await p.evaluate(()=>{const b=document.getElementById('ap-dlg-next'); if(b&&document.getElementById('ap-dlg').getAttribute('aria-hidden')==='false') b.click();}); await p.waitForTimeout(50);
-  /* The chapter is fetched on demand now -- index.html no longer
-     carries apocalypse.js, so `Apocalypse` does not exist until the
-     site has been asked for it. Every suite in this folder was
-     written before that and died on `Apocalypse is not defined`. */
-  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
-  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });} };
+/* LEVEL FOUR AND THE ROAD OUT OF THE CITY.
+
+   The car in the yard, the drive, the lane where it runs out of road,
+   the horse, the ride, and the clearing they stop in for the night. It
+   is the longest unbroken run in the chapter and the only part of it
+   that is not a room, which is exactly why nothing had been watching
+   it: the old file could not get past the first beat, because
+   `__apPump(10, {})` steps the world zero times -- `n = times || 1`
+   with an object gives `0 < {}`, which is false. */
+const { boot, reporter, driver } = require('./_aplib');
+
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--no-sandbox','--no-proxy-server','--disable-gpu'] });
-  const p = await b.newPage({ viewport: { width: 1180, height: 820 } });
-  p.on('pageerror', e => console.log('PAGEERROR', e.message));
-  await p.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
-  await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded' });
-  await p.waitForTimeout(900);
-  await p.evaluate(() => { showScreen('apoc'); Apocalypse.start(); window.__apEnter(3, true); });
-  await clicks(p, 3);
-  console.log('radio up:', await p.evaluate(() => !!document.querySelector('.ap-radio')));
-  console.log('radio says:', await p.evaluate(() => { const l=document.querySelector('.ap-radio-line'); return l && l.textContent; }));
-  await p.click('.ap-radio .ap-note-ok');
-  await p.waitForTimeout(200);
-  await clicks(p, 6);
+  const { browser, page, errs } = await boot();
+  const R = reporter(), ok = R.ok, D = driver(page);
+  await D.enter(3);
+  await D.talk(3);
 
-  // the car
-  await p.evaluate(() => { window.__apTeleport(12, 18); window.__apUse(); });
-  await p.waitForTimeout(300);
-  console.log('bonnet open:', await p.evaluate(() => { const t=document.querySelector('.ap-panel-title'); return t && t.textContent; }));
-  await p.evaluate(() => window.__apSolvePanel());
-  await p.waitForTimeout(1900);
-  console.log('driving:', await p.evaluate(() => window.__apState().state));
-  await p.evaluate(() => window.__apPump(10, {}));
-  await p.waitForTimeout(200);
-  const st = await p.evaluate(() => window.__apState());
-  console.log('after the drive: map =', await p.evaluate(() => window.__apMapKey()), '| step =', st.step);
-  await clicks(p, 6);
+  let st = await D.state();
+  ok('level four starts in the yard', st.level === 'escape', st.level);
+  ok('and the only thing asked for is a car', st.step === 'car', st.step);
+  ok('with a crowd between her and it', st.zombies > 5, st.zombies + ' of them');
 
-  // the horse
-  await p.evaluate(() => { window.__apTeleport(38, 21); window.__apUse(); });
-  await p.waitForTimeout(250);
-  console.log('horse line:', await p.evaluate(() => document.getElementById('ap-dlg-text').textContent));
-  await clicks(p, 12);
-  console.log('riding:', await p.evaluate(() => window.__apState().state));
-  await p.evaluate(() => window.__apPump(10, {}));
-  await p.waitForTimeout(200);
-  console.log('after the ride:', await p.evaluate(() => window.__apState().state));
-  console.log('outro line:', await p.evaluate(() => document.getElementById('ap-dlg-text').textContent));
-  await b.close();
+  /* the car */
+  const car = await D.at('C');
+  ok('there is a car on the map', !!car, car ? car.x + ',' + car.y : 'MISSING');
+  ok('and the key is in it', /key/i.test(await D.line()), (await D.line()).slice(0, 45));
+  await D.talk(4);
+  await D.pump(2);
+  st = await D.state();
+  ok('taking it starts the drive', st.state === 'cine' && !!st.cut,
+     'state=' + st.state);
+  ok('and the drive is a set length she can sit through',
+     !!st.cut && isFinite(st.cut.duration) && st.cut.duration > 20,
+     st.cut ? st.cut.duration + 's' : '');
+
+  /* the lane */
+  st = await D.skipCut();
+  ok('the drive puts them down at the roadside', st.level === 'roadside', st.level);
+  ok('and the next thing is the horse', st.step === 'horse', st.step);
+
+  const h = await D.at('H');
+  ok('the horse is in the field', !!h, h ? h.x + ',' + h.y : 'MISSING');
+  ok('and she talks to it before she gets on', (await D.line() || '').length > 10,
+     (await D.line() || '').slice(0, 45));
+  await D.talk(10);
+  await D.pump(2);
+  st = await D.state();
+  ok('getting on starts the ride', st.state === 'cine' && !!st.cut, 'state=' + st.state);
+
+  /* the clearing */
+  st = await D.skipCut();
+  ok('the ride ends at the campsite', st.level === 'campsite', st.level);
+  await D.talk(6);
+  await D.pump(3);
+  st = await D.state();
+  ok('and the night there begins with the fire to build', st.step === 'wood', st.step);
+
+  const wood = await page.evaluate(() => window.__apFind('wg').length);
+  ok('there is wood lying about to build it with', wood >= 3, wood + ' piles');
+
+  /* One at a time, and let each line finish -- gathering latches while
+     she is talking about it, and the latch is released by the callback
+     on the last line. Cutting the dialogue short leaves it held. */
+  for (let i = 0; i < 5; i++) {
+    const got = await page.evaluate(() => {
+      const f = window.__apFind('wg');
+      if (!f.length) return null;
+      window.__apTeleport(f[0].x, f[0].y + 1);
+      window.__apPump(1 / 60, 4);
+      window.__apUse();
+      return f[0];
+    });
+    if (!got) break;
+    await page.waitForTimeout(250);
+    await D.talk(4);
+    await D.pump(0.5);
+    if ((await D.state()).step !== 'wood') break;
+  }
+  st = await D.state();
+  ok('gathering three of them clears the beat', st.step !== 'wood', 'now ' + st.step);
+
+  await R.done(browser, errs);
 })();
