@@ -756,10 +756,19 @@ const NS = {
       { room: "office", secs: 3.8, fov: 50, shake: 0.7,
         from: [-0.20, 1.42, 1.15], to: [0.10, 1.44, 1.35], look: [-1.15, 1.50, 0.30],
         line: { who: "jax", t: "Nine percent is four minutes. Get behind the desk. Under it, if you can get under it." } },
-      { room: "office", secs: 3.2, fov: 64, cue: "dark", shake: 1, lux: 0.26,
-        from: [0.10, 1.44, 1.35], to: [0.10, 1.10, 1.20], look: [-0.20, 0.70, 0.95],
+      /* THE FIRST TIME ANYBODY SEES HER.
+
+         Her model has been built at boot for the whole life of this
+         chapter and set visible exactly never: six nights of being her
+         and the player has not once seen her. Which makes this the
+         cheapest and largest thing still available to the ending -- a
+         woman folded under a desk she has sat at every night this
+         week, small, in the corner of a shot that is mostly floor. */
+      { room: "office", secs: 3.8, fov: 62, cue: "dark", shake: 1, lux: 0.26,
+        from: [1.05, 1.26, 1.60], to: [0.62, 1.02, 1.38], look: [-0.58, 0.55, 1.05],
+        oui: [-0.62, 0, 1.02, 0.78, 1.9],
         sfx: [["falseSkitter", 0.8]],
-        line: { nar: 1, t: "She gets under the desk. She does not stay there." } },
+        line: { nar: 1, t: "She gets under her own desk, in a room she has sat in every night this week. She does not stay there." } },
 
       /* --- THE GRATE GOES FIRST ------------------------------------ */
       { room: "office", secs: 3.6, fov: 52, shake: 1.1,
@@ -798,12 +807,12 @@ const NS = {
         from: [2.00, 1.33, -0.30], to: [2.20, 1.31, -0.55], look: [3.10, 1.11, -0.90],
         swarm: ["office", 20, 1.7, 4.6, 0.48, "x-"], advance: -1.6,
         sfx: [["falseBang", 0.8]],
-        line: { who: "marabelle", t: "Fifteen years on a plinth, and he never once saw me do this." } },
+        line: { who: "marabelle", t: "Fifteen years on that plinth and he never once saw the whole of it. Watch, then." } },
       { room: "office", secs: 4.4, fov: 52, gone: "marabelle", hush: "box", shake: 1.2,
         from: [2.20, 1.31, -0.55], to: [1.40, 1.40, 0.05], look: [3.00, 1.15, -0.90],
         swarm: ["office", 22, 1.8, 3.6, 0.46, "x-"], advance: 1,
         sfx: [["scare", 0.5]],
-        line: { nar: 1, t: "Every one of them in that doorway stops to watch her do it. It is eleven seconds, and eleven seconds is the whole reason any of the rest of this happens." } },
+        line: { nar: 1, t: "She dances. And every single thing in that doorway stops to watch her, because every single one of them was made in this shop to stand very still and look at something exactly like her. It buys eleven seconds. Eleven seconds is the reason any of the rest of this is possible." } },
 
       /* --- THE WEST DOOR, AND THE LENGTH OF THE ROOM --------------- */
       { room: "office", secs: 3.4, fov: 44, cue: "night", shake: 0.9,
@@ -882,6 +891,7 @@ const NS = {
          of. */
       { room: "office", secs: 5.0, fov: 54, shake: 0.7, down: 1, lux: 0.3,
         from: [-1.70, 0.80, 1.62], to: [-1.76, 0.34, 1.46], look: [-1.20, 1.40, 0.30],
+        oui: [-1.02, 0, 0.86, 0.55, 2.4],
         line: { nar: 1, t: "He puts her under the floor anyway, and he is far stronger than a jack-in-the-box has any business being." } },
 
       /* --- what the winding was, said from above her --------------- */
@@ -916,6 +926,28 @@ const NS = {
 
          "None of them looks at her" is said when they arrive, and it
          is true of every shot until this one. */
+      /* SHE WINDS HIM.
+
+         Six nights of holding a key on a camera feed for a second and
+         a bit, and it has never once been a thing she DOES at a moment
+         that matters -- it has been a chore with a number attached. He
+         has just told her what the winding was actually for. He is
+         running down in front of her while he says it. The board is
+         still open.
+
+         It is the only act she performs in the whole last hour that is
+         not shutting a door, it is the mechanic the chapter is built
+         on, it is the reason the thing in his back has enough in it to
+         work at all, and it is exactly what he asked her for in a note
+         six nights ago without ever saying why. */
+      { room: "office", secs: 4.2, fov: 40, lux: 0.24,
+        from: [-1.64, 0.24, 1.30], to: [-1.59, 0.31, 1.25], look: [-1.16, 1.28, 0.30],
+        sfx: [["wind", 0.85]],
+        line: { nar: 1, t: "He is slowing down. She can hear him doing it. So she reaches up out of the hole in her own floor, and she finds the key in his back, and she winds him one last time." } },
+      { room: "office", secs: 3.6, fov: 38, lux: 0.24,
+        from: [-1.59, 0.31, 1.25], to: [-1.62, 0.26, 1.28], look: [-1.16, 1.42, 0.30],
+        sfx: [["tuneWhole", 0.5]],
+        line: { who: "jax", t: "Thank you. That is the last one. That is enough." } },
       { room: "office", secs: 4.2, fov0: 38, fov1: 34, lux: 0.22,
         from: [-1.64, 0.22, 1.28], to: [-1.63, 0.21, 1.27], look: [-1.16, 1.48, 0.30],
         line: { nar: 1, t: "None of them has looked at her all night. He looks at her." } },
@@ -924,6 +956,11 @@ const NS = {
         line: { who: "jax", t: "Put your hands over your ears, Ouissy." } },
 
       /* --- the thing that is not a line ---------------------------- */
+      { room: "office", secs: 3.4, fov: 44, lux: 0.16, shake: 0.9,
+        from: [-1.62, 0.24, 1.28], to: [-1.58, 0.28, 1.22], look: [-2.30, 1.18, -0.30],
+        boss: ["office", -2.30, -0.30, 1.9],
+        sfx: [["postSettle", 0.6]],
+        line: { nar: 1, t: "The first thing he ever built is standing over the board with its hand out when he does it." } },
       { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08, gone: "jax", hush: "lead",
         from: [-1.66, 0.20, 1.28], to: [-1.70, 0.25, 1.38], look: [-1.14, 1.40, 0.30] },
 
@@ -946,15 +983,23 @@ const NS = {
       { room: "stage", secs: 4.0, fov: 50,
         from: [0.20, 2.30, 3.00], to: [0.20, 2.05, 2.55], look: [0, 1.25, -2.4],
         line: { nar: 1, t: "They were never coming for her." } },
-      { room: "stage", secs: 5.6, fov: 42,
-        from: [0.20, 2.05, 2.55], to: [0.20, 1.90, 2.25], look: [0, 1.20, -2.4],
+      /* AND THE LAST PICTURE IN THE CHAPTER IS HER.
+
+         The line has been waiting for a subject since it was written.
+         It used to land on four empty plinths, which is good; it lands
+         on a woman standing in front of four empty plinths, which is
+         the whole thing. She is small in it and she is the only thing
+         in the shop that is still moving. */
+      { room: "stage", secs: 6.0, fov: 44,
+        from: [0.20, 2.05, 2.55], to: [0.20, 1.86, 2.10], look: [-0.10, 1.15, -1.30],
+        oui: [-0.10, 0, -1.30, 0, 3.14],
         line: { nar: 1, t: "They were coming to her." } },
 
       /* --- AND THE LAST THING THE CAMERA DOES IS FIND IT ------------
          The letter used to arrive as a card over a black screen. It is
          a piece of paper on a bench in a room, and the film ends by
          walking up to it. */
-      { room: "workshop", secs: 6.2, fov: 54,
+      { room: "workshop", secs: 6.2, fov: 54, ouiGone: 1,
         from: [-1.5, 1.8, 1.9], to: [-0.55, 1.3, 0.75], look: [0.45, 0.95, -1.15],
         line: { nar: 1, t: "There is one more thing on the bench at the back, in his hand, dated March." } },
     ],
@@ -11036,6 +11081,7 @@ function finaleStart() {
   /* nobody is anywhere until a shot says so */
   CAST.forEach((d) => { const ch = cast[d.id]; ch.awake = false; ch.asleep = true; ch.atDoor = false; });
   returnersClear();
+  if (ouissy) { ouissy.visible = false; ouissy.scale.set(1, 1, 1); }
   musicMode("dark");
   /* letterbox, a subtitle, a clock stamp, and a small way out */
   overlay(
@@ -11122,6 +11168,34 @@ function finaleNext(skipped) {
   if (s.swarm) returnersPlace(s.swarm[0], s.swarm[1], s.swarm[2], s.swarm[3], s.swarm[4], s.swarm[5]);
   if (s.boss) returnersBoss(s.boss[0], s.boss[1], s.boss[2], s.boss[3]);
   if (s.bossGone) returnersBossGone();
+  /* AND HER.
+
+     Ouissy has a model. It has been built at boot for the whole life
+     of this chapter and set visible exactly never: six nights of being
+     her and the player has not once seen her. She is in the ending
+     three times -- folded under her own desk while the room fills up,
+     going down through the floor, and standing on his stage at six
+     o'clock in the morning with nothing left to guard.
+
+     `pose` is a single number: 0 is standing, 1 is crouched right
+     down, and everything between is her getting lower. It scales her
+     rather than animating her, which at these distances and in this
+     light is the difference between a figure kneeling and a figure
+     sinking into the floorboards -- and the second one is the shot. */
+  if (s.oui) {
+    const rec = rooms[s.room || FIN.room];
+    const ox = rec ? rec.index * SPACING : 0;
+    if (ouissy) {
+      const k = s.oui[3] === undefined ? 0 : clamp(s.oui[3], 0, 1);
+      ouissy.visible = true;
+      ouissy.position.set(ox + s.oui[0], s.oui[1] || 0, s.oui[2]);
+      ouissy.rotation.set(0, s.oui[4] === undefined ? 0 : s.oui[4], 0);
+      ouissy.scale.set(1, 1 - k * 0.62, 1);
+      ouissy.matrixAutoUpdate = true;
+      ouissy.updateMatrix();
+    }
+  }
+  if (s.ouiGone && ouissy) ouissy.visible = false;
   /* signed: a negative advance is one of his getting to the doorway
      first and driving them back out of it */
   FIN.adv = s.advance === undefined ? 0 : s.advance;
@@ -11323,6 +11397,7 @@ function finaleEnd() {
   G.dawn = true;
   G.filmLux = 1;
   returnersClear();
+  if (ouissy) ouissy.visible = false;
   /* whatever the film took out of the score, it gives back: a layer
      left at zero would follow her into the menu */
   for (const k in FIN.hushed) {
