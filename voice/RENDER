@@ -43,3 +43,5 @@ full en_GB-alan-medium 1.16 0.74 1.2
 # 2026-09-13g: and the letter, six lines of it, read out loud.
 # 2026-09-13h: one clean render of all of it, with the concurrency guard
 #              on so nothing older can land on top of it.
+# 2026-09-13i: Chime and Jax swap models. A render put Jax and Marabelle
+#              a third of a semitone apart, which is one voice.
