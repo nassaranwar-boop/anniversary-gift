@@ -7283,23 +7283,28 @@ img{-webkit-user-drag:none; user-select:none;}
    arranged. Rather than cut any of it, the buttons stay on the screen
    while the rest scrolls under them, so getting to the next race never
    depends on finding the bottom of the panel first. */
-/* 320 was too low a bar. It was set for the shortest screen there is, but
-   a landscape phone at 440 is short too, and after a race the panel there
-   runs past the glass -- so MENU, KEEP THE PHOTO and RACE AGAIN sat below
-   the fold, reachable only by scrolling to them first. panels.js calls
-   that reachable and it is, technically; it is still the whole complaint
-   that started this, which is being shown a screen that appears to end
-   before it does. On any short screen the buttons stay on the glass and
-   the rest moves under them. */
-@container rcstage (max-height: 560px){
-  .rc-res > .rc-row,
-  .rc-fin > .rc-row,
-  .rc-duo > .rc-row{
-    position:sticky; bottom:0; z-index:2;
-    width:100%; margin-bottom:-1cqh;
-    padding:1.2cqh 0 1.4cqh;
-    background:linear-gradient(180deg, rgba(18,11,28,0), rgba(18,11,28,.94) 32%);
-  }
+/* THE WAY OUT OF A PANEL IS NEVER UNDER THE FOLD.
+
+   This was gated on the stage being short -- 320 points first, then 560 --
+   on the assumption that a tall screen has room for the whole panel. It
+   does not. The panel's parts are sized in cqh, but its contents are not
+   one thing: eight finishing positions, a podium, a photograph, a keepsake
+   and three buttons, and the photograph alone is 329 points of a
+   851-point stage. Measured on a 1512x982 screen the results panel came
+   to 953 points of content in a 799-point box, and what was in the 154
+   that did not fit was MENU, KEEP THE PHOTO and RACE AGAIN. She reached
+   the end of a race and there was no way on from it that did not start
+   with discovering the panel scrolls.
+
+   So the row is pinned at every size. The rest of the panel moves under
+   it; the way out never moves at all. */
+.rc-res > .rc-row,
+.rc-fin > .rc-row,
+.rc-duo > .rc-row{
+  position:sticky; bottom:0; z-index:9;
+  width:100%; margin-bottom:-1cqh;
+  padding:1.2cqh 0 1.4cqh;
+  background:linear-gradient(180deg, rgba(18,11,28,0), rgba(18,11,28,.90) 34%, rgba(18,11,28,.97));
 }
 @container rcstage (min-width: 620px){
   .rc-split-2{ grid-template-columns:1.05fr .95fr; align-items:start; }
@@ -7506,29 +7511,64 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-steer[data-live="1"]{ pointer-events:auto; }
 
 /* the ring follows the thumb, and the pip inside it shows the lock */
+/* THE BASE IS A DISH, NOT A HOOP.
+
+   It was a 26cqw circle with a flat hairline border and a faint wash in
+   the middle, which is a drawing of a boundary. A stick's base is a
+   recess: dark in the well, with the light catching the far lip and the
+   near lip in its own shadow. Smaller, too -- 21cqw against 26 -- because
+   the knob now goes where the thumb goes, so the base does not have to be
+   big enough to aim at. */
 .rc-steer-ring{
   position:absolute; left:0; top:0;
-  width:26cqw; height:26cqw; margin:-13cqw 0 0 -13cqw;
+  width:21cqw; height:21cqw; margin:-10.5cqw 0 0 -10.5cqw;
   border-radius:50%;
-  border:.5cqw solid rgba(255,248,232,.30);
-  background:radial-gradient(circle at 50% 50%,
-             rgba(255,248,232,.10), rgba(255,248,232,0) 70%);
+  background:
+    radial-gradient(circle at 50% 42%,
+      rgba(12,6,18,.42) 0%, rgba(12,6,18,.30) 55%, rgba(12,6,18,.10) 78%,
+      rgba(12,6,18,0) 100%);
+  box-shadow:
+    inset 0 .5cqw 1.2cqw rgba(8,3,12,.55),
+    inset 0 -.35cqw 0 rgba(255,248,232,.16),
+    0 0 0 .28cqw rgba(255,248,232,.16);
   opacity:0; transition:opacity .14s ease;
   transform:translate(var(--rc-sx,0px), var(--rc-sy,0px));
 }
 .rc-steer[data-on="1"] .rc-steer-ring{ opacity:1; }
+/* THE CAP, WHICH IS THE PART YOUR THUMB IS ON.
+
+   Convex rather than flat: the light is up and to the left, so the top
+   left is where it is brightest, the underside carries its own shadow,
+   and there is a rim round it to catch the edge. It is thrown across the
+   dish by the raw thumb offset in BOTH directions -- 90% of its own width
+   is exactly the gap between it and the inside of the base, and the base
+   and the cap are sized from the same pair of limits, so that holds on
+   any screen. */
 .rc-steer-ring i{
   position:absolute; left:50%; top:50%;
-  width:9cqw; height:9cqw; margin:-4.5cqw 0 0 -4.5cqw;
+  width:7.5cqw; height:7.5cqw; margin:-3.75cqw 0 0 -3.75cqw;
   border-radius:50%;
-  background:radial-gradient(circle at 38% 34%,
-             var(--rc-accent,#ff5f95), rgba(20,10,26,.55));
-  box-shadow:0 0 2.4cqw rgba(255,95,149,.55), inset 0 0 0 .3cqw rgba(255,248,232,.5);
-  /* 90% of the pip's own width is the gap between the pip and the inside
-     of the ring, in both the cqw case and the cqh-clamped one: the ring and
-     the pip are sized from the same pair of limits, so the ratio holds. */
-  transform:translateX(calc(var(--rc-lock,0) * 90%));
-  transition:transform .04s linear;
+  background:
+    radial-gradient(circle at 34% 30%,
+      rgba(255,248,232,.92) 0%, rgba(255,150,190,.95) 26%,
+      var(--rc-accent,#ff5f95) 58%, rgba(120,24,64,.98) 100%);
+  box-shadow:
+    0 .5cqw 1.1cqw rgba(24,6,18,.55),
+    0 0 2cqw rgba(255,95,149,.40),
+    inset 0 -.28cqw .4cqw rgba(88,12,48,.55),
+    inset 0 .24cqw 0 rgba(255,248,232,.55);
+  transform:translate(calc(var(--rc-lock,0) * 90%), calc(var(--rc-ly,0) * 90%));
+  transition:transform .045s linear;
+}
+/* LET GO AND IT COMES BACK LIKE A SPRUNG CAP. While a thumb is on it the
+   knob has to be where the thumb is and nowhere else, so the transition
+   is as good as none; the moment the thumb leaves, it is a spring with a
+   little overshoot in it. */
+.rc-steer[data-on="0"] .rc-steer-ring i{
+  transition:transform .3s cubic-bezier(.34, 1.5, .64, 1);
+}
+@media (prefers-reduced-motion:reduce){
+  .rc-steer[data-on="0"] .rc-steer-ring i{transition:transform .12s ease;}
 }
 /* a one-time nudge for the first race, then it stays out of the way */
 .rc-steer-hint{
@@ -7782,13 +7822,16 @@ img{-webkit-user-drag:none; user-select:none;}
 
   /* the steering ring and its pip: a share of the height, so they are the
      same size on a phone as the same control is on an iPad */
+  /* the same pair of limits for both, so the 90% throw above still lands
+     the cap exactly at the inside of the dish: 21/7.5 and 28/10 are the
+     same ratio */
   .rc-steer-ring{
-    width:min(26cqw, 34cqh); height:min(26cqw, 34cqh);
-    margin:calc(min(26cqw, 34cqh) / -2) 0 0 calc(min(26cqw, 34cqh) / -2);
+    width:min(21cqw, 28cqh); height:min(21cqw, 28cqh);
+    margin:calc(min(21cqw, 28cqh) / -2) 0 0 calc(min(21cqw, 28cqh) / -2);
   }
   .rc-steer-ring i{
-    width:min(9cqw, 12cqh); height:min(9cqw, 12cqh);
-    margin:calc(min(9cqw, 12cqh) / -2) 0 0 calc(min(9cqw, 12cqh) / -2);
+    width:min(7.5cqw, 10cqh); height:min(7.5cqw, 10cqh);
+    margin:calc(min(7.5cqw, 10cqh) / -2) 0 0 calc(min(7.5cqw, 10cqh) / -2);
   }
   /* and the buttons, which were 75px slabs on a 440px-tall screen */
   .rc-key-steer{width:max(48px, 13cqh); height:max(48px, 13cqh);}

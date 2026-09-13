@@ -88,6 +88,19 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
     const half   = hold(0.50);
     const full   = hold(1.00);
 
+    /* AND HOW LONG THE WHEELS TAKE TO CATCH UP WITH THE THUMB, which is
+       the half of it that is felt as lag. A single chase rate of 0.32 a
+       frame was eight frames -- about 130ms of the game being behind her
+       every time she turned in. */
+    touch("touchstart", cx, cy);
+    touch("touchmove", cx + radius, cy);
+    let reach = 0;
+    while (reach < 60 && Math.abs(window.__RACE_DEBUG().input.axis || 0) < 0.9) {
+      d.step(1 / 60); reach++;
+    }
+    touch("touchend", cx + radius, cy);
+    for (let i = 0; i < 30; i++) d.step(1 / 60);
+
     /* and how long it takes to come back to centre after letting go */
     touch("touchstart", cx, cy);
     touch("touchmove", cx + radius, cy);
@@ -131,12 +144,29 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
                tf: getComputedStyle(pip).transform,
                on: ringEl.parentElement && ringEl.parentElement.dataset.on };
     }
+    /* AND UP, WHICH IS THE WHOLE POINT OF THE REBUILD. Pushed diagonally
+       the cap has to go diagonally. It used to read only the sideways
+       distance and slide flatly left or right like a fader, which is why
+       it never felt like a stick. Steering still only uses the sideways
+       part -- there is nothing to do with up and down in this game -- but
+       what is under the thumb must follow the thumb. */
     touch("touchend", cx + radius, cy);
+    touch("touchstart", cx, cy);
+    touch("touchmove", cx + radius * 0.6, cy - radius * 0.6);
+    d.step(1 / 60);
+    void document.body.offsetHeight;
+    let diag = null;
+    if (pip) {
+      const rr = ringEl.getBoundingClientRect(), pr = pip.getBoundingClientRect();
+      diag = { dx: +((pr.left + pr.width / 2) - (rr.left + rr.width / 2)).toFixed(1),
+               dy: +((pr.top + pr.height / 2) - (rr.top + rr.height / 2)).toFixed(1) };
+    }
+    touch("touchend", cx + radius * 0.6, cy - radius * 0.6);
     for (let i = 0; i < 30; i++) d.step(1 / 60);
     noAnim.remove();
 
     return { rest, half, full, settle: frames, radius: Math.round(radius),
-             stage: Math.round(stage.clientWidth), sweep };
+             stage: Math.round(stage.clientWidth), sweep, diag, reach };
   });
 
   ok("the stick exists and answers", !!r, r ? "" : "no steer zone");
@@ -149,10 +179,15 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
        r.full > 0.93, `full travel -> ${(+r.full).toFixed(2)} lock`);
     ok("half gives markedly less than half of full",
        r.half < r.full * 0.62, `${(+r.half).toFixed(2)} against ${(+r.full).toFixed(2)}`);
+    ok("the wheels catch the thumb quickly on the way out",
+       r.reach > 0 && r.reach <= 5, `${r.reach} frames to nine tenths of lock`);
     ok("letting go returns to centre, but not instantly",
        r.settle >= 3 && r.settle <= 30, `${r.settle} frames`);
     ok("full lock is inside a thumb's reach",
        r.radius <= r.stage * 0.13, `${r.radius}px of a ${r.stage}px stage`);
+    ok("pushed diagonally, the cap goes diagonally",
+       !!r.diag && r.diag.dx > 6 && r.diag.dy < -6,
+       r.diag ? `thumb up and right -> cap moved ${r.diag.dx}, ${r.diag.dy}` : "no cap");
     ok("at full lock the pip is near the edge of its ring, not in the middle",
        !!r.sweep && r.sweep.off > r.sweep.room * 0.7 && r.sweep.off <= r.sweep.room,
        r.sweep ? `${r.sweep.off}px of ${r.sweep.room}px of room  [--rc-lock=${r.sweep.lock}  transform=${r.sweep.tf}  on=${r.sweep.on}]` : "no pip");

@@ -4222,9 +4222,22 @@ function renderHaze(def) {
 }
 
 /* --- billboards --- */
+/* THE SAME ANGLE, SIX HUNDRED TIMES A FRAME.
+
+   This is called once for every prop, box, hazard, coin, rose, shot,
+   ghost and kart in the world -- about six hundred times a frame on the
+   later courses -- and every single one of those calls worked out the
+   sine and cosine of the CAMERA's heading, which is one number and the
+   same number for all of them. Two transcendental calls per sprite where
+   the whole frame needs two.
+
+   Cached against the angle itself, so it recomputes when the camera
+   turns and never twice for one frame. */
+let projCamA = NaN, projCos = 1, projSin = 0;
 function projectSprite(wx, wy, camX, camY, camA) {
   const dx = wx - camX, dy = wy - camY;
-  const cosA = Math.cos(camA), sinA = Math.sin(camA);
+  if (camA !== projCamA) { projCamA = camA; projCos = Math.cos(camA); projSin = Math.sin(camA); }
+  const cosA = projCos, sinA = projSin;
   const z =  dx * cosA + dy * sinA;
   const x = -dx * sinA + dy * cosA;
   /* Anything nearer than this is between the camera and the player. The
@@ -4435,9 +4448,26 @@ class Racer {
        event rate -- and letting go now returns to centre over a few frames
        instead of snapping, which is most of what made it feel cheap. */
     const want = input.axisWant || 0;
-    /* dt * 60 spelled out: k is declared a few lines down and reading it
+    const had  = input.axis || 0;
+    /* FAST ON THE WAY OUT, SLOWER ON THE WAY BACK.
+
+       A single rate of 0.32 a frame is eight frames to reach the lock she
+       is already holding -- about 130ms between her thumb moving and the
+       wheels having moved with it, which is precisely long enough to feel
+       like the game is behind her. That is the smoothing that was added to
+       stop the stick feeling twitchy, and it bought the twitch out at the
+       price of the response.
+
+       Pushing further is chased at nearly twice the rate, so the wheels
+       arrive in about four frames; coming back towards centre keeps the
+       slower one, because that is where the smoothing actually earns its
+       keep -- a thumb lifting off is the jerkiest thing it does, and
+       nothing is waiting on the kart to finish straightening.
+
+       dt * 60 spelled out: k is declared a few lines down and reading it
        here is a temporal-dead-zone throw, not a zero. */
-    input.axis = (input.axis || 0) + (want - (input.axis || 0)) * Math.min(1, 0.32 * dt * 60);
+    const chase = Math.abs(want) > Math.abs(had) ? 0.62 : 0.34;
+    input.axis = had + (want - had) * Math.min(1, chase * dt * 60);
     if (Math.abs(input.axis) < 0.004) input.axis = 0;
     const ax    = input.axis || 0;
     const left  = input.left  || ax < -0.05;
@@ -6257,9 +6287,40 @@ function draw() {
 
   /* everything that stands up, sorted far to near */
   const bill = [];
+  /* AND MOST OF THEM ARE NOWHERE NEAR. Every prop on the course was
+     projected each frame -- 555 of them on The Long Way Home -- when only
+     the handful in front of the camera can be drawn. A prop further away
+     in a straight line than MAX_Z cannot possibly have a depth inside
+     MAX_Z, so a squared distance, which is three multiplies and no
+     function call, throws out the whole tail before any of the work.
+     Nothing that was drawn before stops being drawn: the test is
+     deliberately the loosest one that is still correct. */
+  const CULL2 = MAX_Z * MAX_Z;
+  /* AND OFF THE SIDE OF THE GLASS IS STILL OFF. Measured mid-race on The
+     Long Way Home: of 475 props within range, 277 are behind the camera
+     and 96 are past the left or right edge -- so 182 of them are what you
+     can actually see, and the other 96 were being projected, sorted into
+     the depth list and handed to drawImage to be clipped away by the
+     canvas. Timed with the prop list emptied the draw is 1.96ms against
+     12.8ms full, so the billboards ARE the frame; a third of them being
+     invisible is a third of the frame spent on nothing.
+
+     A third of a screen of margin either side is far more than any
+     billboard needs -- the widest of them is a fraction of that at the
+     depth where it is still legible -- so nothing that was visible stops
+     being visible. Solids are exempt: a building's centre goes off the
+     edge long before its near corner does, which is the same reason they
+     have their own depth cut below. */
+  const SIDE_LO = -RW * 0.35, SIDE_HI = RW * 1.35;
   props.forEach((p) => {
+    const pdx = p.x - camX, pdy = p.y - camY;
+    if (pdx * pdx + pdy * pdy > CULL2) return;
     const s = projectSprite(p.x, p.y, camX, camY, camA);
-    if (s && s.z < MAX_Z) { bill.push({ s, kind: "prop", o: p, camX, camY, camA }); return; }
+    if (s && s.z < MAX_Z) {
+      if (!SOLID[p.kind] && (s.sx < SIDE_LO || s.sx > SIDE_HI)) return;
+      bill.push({ s, kind: "prop", o: p, camX, camY, camA });
+      return;
+    }
     /* A billboard is cut once its centre comes inside the camera's
        trail, and for a tree that is right — it is behind you. A
        building is thirty metres across: its near corner is still filling
@@ -6544,12 +6605,28 @@ function drawProp(g, b) {
   const { s, o } = b;
   /* the ones that are solids are drawn from their corners instead */
   if (SOLID[o.kind] && drawSolid(g, o, b.camX, b.camY, b.camA, s.fade)) return;
-  const lr = litFromCam();
-  const img = buildScenery(o.kind, o.v || 0, trackDef, o.tint || 0, lr);
+  /* THE SIZE TEST CAME AFTER THE WORK IT WAS MEANT TO SAVE.
+
+     A prop too small to draw still had its sprite looked up and its cache
+     key built before anything asked how big it was. The height needs only
+     the spec and the scale, so it is worked out first and the far tail --
+     everything under a pixel tall, which on a course this long is a good
+     part of what survives the depth cut -- leaves before touching a
+     sprite at all. */
   const spec = SCENERY[o.kind] || { h: 90, foot: 0.6 };
   const h = spec.h * o.hv * s.scale;
+  if (h < 1.1) return;
+  const lr = litFromCam();
+  const img = buildScenery(o.kind, o.v || 0, trackDef, o.tint || 0, lr);
   const w = h * (img.width / img.height);
   if (w < 1.2) return;
+  /* and the cache key is the same six characters for the life of the
+     prop, so it is built once rather than concatenated afresh for every
+     one of a couple of hundred props on every frame */
+  if (o.sid === undefined || o.sidLit !== lr) {
+    o.sidLit = lr;
+    o.sid = o.kind + o.v + (o.tint || 0) + (lr ? "R" : "L");
+  }
   /* The fade is set AFTER the early return. Setting it before meant a
      prop too small to draw bailed out with the canvas still dimmed, and
      every tree and house drawn after it that frame came out translucent
@@ -6576,7 +6653,7 @@ function drawProp(g, b) {
       const ph = raceTime * sway.rate + (o.x + o.y) * 0.004;
       g.translate(s.sx, s.sy); g.rotate(Math.sin(ph) * sway.amt); g.translate(-s.sx, -s.sy);
     }
-    drawHazed(g, img, o.kind + o.v + (o.tint || 0) + (lr ? "R" : "L"), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
+    drawHazed(g, img, o.sid, s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
     g.restore();
   } else if (sway) {
     const ph = raceTime * sway.rate + (o.x + o.y) * 0.004;
@@ -6588,10 +6665,10 @@ function drawProp(g, b) {
     g.translate(s.sx, s.sy);
     g.rotate(Math.sin(ph) * sway.amt);
     g.translate(-s.sx, -s.sy);
-    drawHazed(g, img, o.kind + o.v + (o.tint || 0) + (lr ? "R" : "L"), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
+    drawHazed(g, img, o.sid, s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
     g.restore();
   } else {
-    drawHazed(g, img, o.kind + o.v + (o.tint || 0) + (lr ? "R" : "L"), s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
+    drawHazed(g, img, o.sid, s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
   }
 
   /* bulbs and lamps breathe, independently of each other */
@@ -9575,7 +9652,7 @@ function bindSteer() {
     ring.style.setProperty("--rc-sx", (cx - r.left) + "px");
     ring.style.setProperty("--rc-sy", (cy - r.top) + "px");
   };
-  const setAxis = (a) => {
+  const setAxis = (a, up) => {
     const v = shape(a);
     /* the WANT, not the axis: the axis itself is eased towards this once a
        frame in drivePlayer, because a thumb reports in bursts and the kart
@@ -9589,7 +9666,17 @@ function bindSteer() {
        the ring actually took, and it now sweeps nearly the whole ring
        rather than the middle tenth of it -- which is most of what made the
        old stick feel like nothing was happening. */
-    if (ring) ring.style.setProperty("--rc-lock", v.toFixed(3));
+    if (ring) {
+      /* the knob is placed by the RAW thumb offset, not by the shaped
+         lock. The shaping is what the wheels get -- a dead zone and a
+         curve -- and a cap that ignored the first seven per cent of your
+         thumb and then lagged behind it would feel broken however well
+         the kart drove. What you push is where it goes; what the kart
+         gets is the curve. */
+      ring.style.setProperty("--rc-lock", Math.max(-1, Math.min(1, a)).toFixed(3));
+      ring.style.setProperty("--rc-ly",
+        Math.max(-1, Math.min(1, up || 0)).toFixed(3));
+    }
   };
 
   const start = (t) => {
@@ -9603,13 +9690,31 @@ function bindSteer() {
     if (state === "count") { input.up = true; revving = true; }
     Snd.resume();
   };
+  /* A STICK IS BOUNDED BY A CIRCLE, AND THE KNOB GOES WHERE THE THUMB IS.
+
+     What was here read only the sideways distance and moved the knob only
+     sideways, which is why it did not feel like a stick: push up and to
+     the left and the thing under your thumb slid flatly left, staying
+     exactly where it was vertically, like a fader. A real stick has the
+     cap under your thumb the whole time. It still only STEERS on the
+     sideways part -- there is nothing to do with up and down in this game
+     -- but the knob follows the thumb in both, and the edge it runs into
+     is a circle rather than two independent limits.
+
+     And when the thumb runs out of room the whole base travels after it,
+     along the direction of travel rather than horizontally, so a long
+     drag never stops responding. */
   const move = (t) => {
     const r = radius();
-    let a = (t.clientX - x0) / r;
-    /* let the centre travel with a thumb that has run out of room */
-    if (a >  1) { a = 1;  x0 = t.clientX - r; y0 = t.clientY; place(x0, y0); }
-    if (a < -1) { a = -1; x0 = t.clientX + r; y0 = t.clientY; place(x0, y0); }
-    setAxis(a);
+    let dx = t.clientX - x0, dy = t.clientY - y0;
+    const len = Math.hypot(dx, dy);
+    if (len > r) {
+      const k = (len - r) / len;
+      x0 += dx * k; y0 += dy * k;
+      place(x0, y0);
+      dx = t.clientX - x0; dy = t.clientY - y0;
+    }
+    setAxis(dx / r, dy / r);
   };
   const end = () => {
     id = null;
@@ -9873,6 +9978,9 @@ if (typeof window !== "undefined")
         rather than a test-only imitation of it that could agree with the
         test while disagreeing with the game. */
      ramps, rollItem, hit, input, TRACKS,
+     /* the draw, so the frame can be timed in halves: "it feels laggy" is
+        a report about the frame, and the frame is a step and a draw */
+     draw,
      /* the themes, so a course that races in silence fails a test rather
         than sounding like someone turned the sound off */
      songNames: Snd.songNames, song: Snd.song,
