@@ -14,6 +14,21 @@
 # sandbox this repo is usually worked on from cannot reach it.
 name: Anwar's voice
 
+# ONE RENDER AT A TIME PER BRANCH.
+#
+# A full render is six minutes of work ending in a commit that contains
+# BOTH the audio and a manifest regenerated from that run's own
+# checkout. Three of these overlapping is not just wasteful -- whichever
+# finishes last wins, so an older run landing after a newer one puts an
+# older manifest back on the branch, and the takes the newer one
+# rendered are still sitting there with nothing pointing at them. The
+# lines go silent and nothing anywhere fails.
+#
+# So: newest wins, on purpose, by cancelling the ones it supersedes.
+concurrency:
+  group: voice-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   # THE BUTTON, once this file is on the default branch. GitHub only
   # offers "Run workflow" for a workflow it can see on main, so until
