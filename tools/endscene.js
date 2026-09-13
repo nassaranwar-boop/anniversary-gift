@@ -36,6 +36,18 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
     }
     return { bright: sum / n, sig, w: cv.width, h: cv.height };
   });
+  /* pin the scene at a second AND wait for a frame to actually render it:
+     __soEndT only moves when a frame runs, and this browser can go a
+     second or more without one */
+  const holdAt = async (secs) => {
+    await page.evaluate(v => window.__soEndHold(v), secs);
+    for (let i = 0; i < 24; i++) {
+      const t = await page.evaluate(() => window.__soEndT());
+      if (Math.abs(t - secs) < 0.001) return t;
+      await page.waitForTimeout(120);
+    }
+    return page.evaluate(() => window.__soEndT());
+  };
   const playing = () => page.evaluate(() => {
     const e = document.querySelector('.so-end');
     if (!e) return null;
@@ -45,26 +57,20 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   });
 
   /* ---- the scene, played straight through ------------------------- */
-  /* THE SCENE'S CLOCK IS DRIVEN, NOT WAITED ON. This browser stalls its
-     frame clock for a second at a time and then catches up, so "open it
-     and look a moment later" lands anywhere between the first frame and
-     two seconds in. The scene is put at the second being tested instead. */
+  /* THE SCENE'S CLOCK IS PINNED, NOT WAITED ON. This browser's frame clock
+     jumps whole seconds at a time, so "open it and look a moment later"
+     lands anywhere between the first frame and three seconds in. The scene
+     is held at the second being tested instead. */
   await page.evaluate(() => window.__soShowEnding());
   await page.waitForSelector('#so-end-art canvas', { timeout: 5000 });
-  let t0 = null, s0 = null, seeked = 9;
-  for (let attempt = 0; attempt < 8 && t0 === null; attempt++) {
-    await page.evaluate(() => window.__soEndSeek(0.12));
-    await page.waitForTimeout(120);
-    seeked = await page.evaluate(() => window.__soEndT());
-    if (seeked < 0.9) { t0 = await look(); s0 = await playing(); }
-  }
-  ok('the scene can be held at its opening second', t0 !== null, `t=${seeked.toFixed(2)}`);
-  if (!t0) { t0 = await look(); s0 = await playing(); }
-
+  const heldAt = await holdAt(0.12);
+  ok('the scene can be held at its opening second', Math.abs(heldAt - 0.12) < 0.01, `t=${heldAt}`);
+  const t0 = await look(), s0 = await playing();
   ok('the scene starts on its own frame', !!t0 && t0.w === 240, t0 && `${t0.w}x${t0.h}`);
   ok('it opens in the dark', t0.bright < 40, `brightness=${t0.bright.toFixed(1)}`);
   ok('the reading is held back while it plays', s0.playing === true && s0.signOpacity === 0,
      `playing=${s0.playing} sign opacity=${s0.signOpacity}`);
+  await page.evaluate(() => window.__soEndHold(null));   /* let it run on */
 
   /* THE SCENE'S OWN CLOCK, not the harness's. A software-rendered headless
      browser stalls its frame clock for a second at a time and then catches
@@ -114,10 +120,66 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
     new PointerEvent('pointerdown', { bubbles: true })));
   let skGone = false;
   for (let i = 0; i < 16 && !skGone; i++) { await page.waitForTimeout(250); skGone = (await playing()).playing === false; }
-  const skl = await look();
   ok('a tap gets her straight to them', skGone === true);
+  /* and wait for a frame to actually render the skipped-to moment before
+     judging how bright it is */
+  let skl = await look();
+  for (let i = 0; i < 20 && skl.bright < 40; i++) { await page.waitForTimeout(150); skl = await look(); }
   ok('and it skips forward rather than cutting to black', skl.bright > 40,
      `brightness=${skl.bright.toFixed(1)}`);
+
+  /* ---- and the keyboard half of "anywhere, any key" -----------------
+     Decided on the scene's own clock rather than on "did the card turn up
+     within four seconds": the card turns up by ITSELF at 7.4s, and this
+     browser's frame clock jumps whole seconds, so a four-second poll can
+     watch the scene finish and call it a keypress. The scene is held at
+     half a second, the key is pressed with focus outside the overlay, and
+     the clock has to be at the end immediately afterwards. */
+  /* held mid-play so the press cannot be confused with the scene simply
+     arriving at the meeting by itself */
+  await page.evaluate(() => window.__soShowEnding());
+  await page.waitForSelector('#so-end-art canvas', { timeout: 5000 });
+  await holdAt(0.5);
+  await page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); });
+  const beforeKey = await page.evaluate(() => ({ t: window.__soEndT(),
+    live: document.querySelector('.so-end').classList.contains('playing'),
+    focus: (document.activeElement && document.activeElement.id) || document.activeElement.tagName }));
+  ok('the scene is held mid-play for the keyboard test',
+     beforeKey.live === true && Math.abs(beforeKey.t - 0.5) < 0.01, JSON.stringify(beforeKey));
+  /* dispatched ON THE DOCUMENT rather than through the browser's focus
+     routing — which is the whole point of the change being tested. A
+     listener parked on the overlay div cannot see this; one on the
+     document can. (Playwright's own key delivery depends on what holds
+     focus, which is exactly the thing that used to decide whether the
+     keyboard worked at all.) */
+  await page.evaluate(() => document.dispatchEvent(
+    new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true })));
+  await page.waitForTimeout(400);
+  const afterKey = await page.evaluate(() => window.__soEndT());
+  ok('with focus outside the overlay, a key still ends it',
+     afterKey >= 9, `t ${beforeKey.t.toFixed(2)} -> ${afterKey.toFixed(2)}, focus=${beforeKey.focus}, ` +
+     `skippable=${await page.evaluate(() => window.__soEndCan())}, live=${await page.evaluate(() => window.__soEndLive())}`);
+  let keyGone = false;
+  for (let i = 0; i < 12 && !keyGone; i++) { await page.waitForTimeout(200); keyGone = (await playing()).playing === false; }
+  ok('and the card comes with it', keyGone === true);
+
+  /* ---- one scene at a time -----------------------------------------
+     showEnding is reachable over and over: play again, title screen and
+     back, off to the Death scene and back. Every one of those used to
+     start another animation loop and stop none of them, so they all ran
+     for the rest of the session, painting canvases that had been thrown
+     away and fighting over the scene's own clock. */
+  for (let i = 0; i < 4; i++) {
+    await page.evaluate(() => window.__soShowEnding());
+    await page.waitForTimeout(120);
+  }
+  ok('four openings leave one scene running, not four',
+     await page.evaluate(() => window.__soEndLive()) === 1,
+     `${await page.evaluate(() => window.__soEndLive())} live`);
+  const lone = await holdAt(0.4);
+  ok('and the clock is the live one\'s, not whatever ran last',
+     Math.abs(lone - 0.4) < 0.01, `t=${lone}`);
+  await page.evaluate(() => window.__soEndHold(null));
 
   /* ---- coming back to the card is not the scene again -------------- */
   await page.evaluate(() => window.__soShowEnding(true));

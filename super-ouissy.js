@@ -2155,18 +2155,45 @@ window.SuperOuissy = (function () {
     var x0 = Math.floor(start.x / T), x1 = goal ? Math.floor(goal.x / T) : w - 2;
     var out = [];
     if (x1 - x0 < 12) return out;
+    /* THE ROW SHE ACTUALLY WALKS ALONG.
+
+       The first version took the first standable tile scanning DOWN from
+       the sky, which is the highest perch in the column rather than the
+       floor — and it put four of the twenty-seven boards somewhere she
+       never goes: one on a ledge three rows up, one down a cellar BELOW
+       the ground, and one thirteen rows up in the open sky in Hard world
+       one. A line she cannot read is not a line.
+
+       Every column is searched for the standable row NEAREST the main
+       ground surface, and a column is only accepted if that row is the
+       ground (or within one of it). A perch is kept as a fallback, so a
+       world with no ground anywhere near the wanted spot still gets its
+       board rather than losing it. */
+    var gy = Math.round(findGroundY(grid, w, h) / T);
+    function standRow(tx) {
+      var best = -1, bestD = 1e9;
+      for (var ty = 2; ty < h; ty++) {
+        if (!isSolidChar(grid[ty][tx])) continue;
+        if (grid[ty - 1][tx] !== "." || grid[ty - 2][tx] !== ".") continue;
+        var d = Math.abs(ty - gy);
+        if (d < bestD) { bestD = d; best = ty; }
+      }
+      return best;
+    }
     for (var i = 0; i < lines.length; i++) {
-      var want = Math.round(x0 + (x1 - x0) * (0.24 + i * 0.26)), at = null;
-      for (var dd = 0; dd < 10 && !at; dd++)
+      var want = Math.round(x0 + (x1 - x0) * (0.24 + i * 0.26));
+      var at = null, perch = null;
+      for (var dd = 0; dd < 16 && !at; dd++)
         for (var sg = -1; sg <= 1 && !at; sg += 2) {
           var tx = want + dd * sg;
           if (tx <= x0 + 2 || tx >= x1 - 2) continue;
-          for (var ty = 3; ty < h; ty++)
-            if (isSolidChar(grid[ty][tx]) && grid[ty - 1][tx] === "." && grid[ty - 2][tx] === ".") {
-              at = { x: tx * T, y: (ty - 1) * T, text: lines[i], said: false };
-              break;
-            }
+          var ty = standRow(tx);
+          if (ty < 0) continue;
+          var cand = { x: tx * T, y: (ty - 1) * T, text: lines[i], said: false };
+          if (Math.abs(ty - gy) <= 1) at = cand;
+          else if (!perch) perch = cand;
         }
+      at = at || perch;
       if (!at) continue;
       var clash = false;
       for (var q = 0; q < out.length; q++) if (Math.abs(out[q].x - at.x) < T * 5) clash = true;
@@ -3294,6 +3321,7 @@ window.SuperOuissy = (function () {
      ======================================================================= */
   function collectHeart(x, y) {
     G.hearts++;
+    G.heartsEver++;
     G.meter++;
     addScore(TUNE.scores.heart);
     burst(x, y, 8, ["#ff5f95", "#ffd6e6", "#ffffff"], 70, { max: .45, size: 1 });
@@ -4215,6 +4243,7 @@ window.SuperOuissy = (function () {
     ov.setAttribute("aria-hidden", "false");
   }
   function closeOverlay() {
+    stopEndingArt();
     var ov = $("so-overlay");
     if (!ov) return;
     var st = $("so-stage"), scr = $("screen-ouissy");
@@ -4269,6 +4298,17 @@ window.SuperOuissy = (function () {
     var read = loadMoments();
     for (var i = 0; i < MOMENTS.length; i++) if (read.indexOf(i) < 0) return i;
     return Math.floor(Math.random() * MOMENTS.length);
+  }
+  /* ONCE SHE HAS READ THEM ALL, READING IS FREE.
+
+     Ten hearts buy a letter she has not seen. Charging her ten again for a
+     random repeat of one she already owns is not a purchase, it is a slot
+     machine — she pays the same price for strictly less. When the pile is
+     complete it is hers: the button stays, says so, and costs nothing. */
+  function allRead() {
+    var read = loadMoments();
+    for (var i = 0; i < MOMENTS.length; i++) if (read.indexOf(i) < 0) return false;
+    return true;
   }
   function bestFor(diff) {
     var b = loadBest()[diff];
@@ -4496,17 +4536,23 @@ window.SuperOuissy = (function () {
   function renderMomentBuy() {
     var host = $("so-moment-buy");
     if (!host) return;
-    if (G.hearts < MOMENT_COST) {
+    var free = allRead();
+    if (!free && G.hearts < MOMENT_COST) {
       host.innerHTML = '<p class="so-moment-none">' +
         (G.hearts ? G.hearts + " hearts. " + MOMENT_COST + " buys a moment." : "") + "</p>";
       return;
     }
     host.innerHTML = '<button class="so-btn so-btn-quiet so-moment-btn" id="so-moment">' +
-      "A MOMENT &middot; " + MOMENT_COST + ' <svg class="gl gl-life" aria-hidden="true"><use href="#ic-px-heart"/></svg>' +
-      "</button><p class=\"so-moment-none\">you have " + G.hearts + "</p>";
+      (free ? "READ ONE AGAIN"
+            : "A MOMENT &middot; " + MOMENT_COST +
+              ' <svg class="gl gl-life" aria-hidden="true"><use href="#ic-px-heart"/></svg>') +
+      "</button><p class=\"so-moment-none\">" +
+      (free ? "you have all of them" : "you have " + G.hearts) + "</p>";
     $("so-moment").addEventListener("click", function () {
-      if (G.hearts < MOMENT_COST) return;
-      G.hearts -= MOMENT_COST;
+      if (!free) {
+        if (G.hearts < MOMENT_COST) return;
+        G.hearts -= MOMENT_COST;
+      }
       var i = nextMoment(), read = loadMoments();
       if (read.indexOf(i) < 0) { read.push(i); saveMoments(read); }
       var slot = $("so-moment-slot");
@@ -4533,7 +4579,7 @@ window.SuperOuissy = (function () {
         '<p class="so-card-note">she is not giving up. she just needs a run-up.</p>' +
         '<div class="so-res">' +
           '<div class="so-res-row"><span>SCORE</span><b>' + pad(G.score, 6) + "</b></div>" +
-          '<div class="so-res-row"><span>HEARTS</span><b>' + G.hearts + "</b></div>" +
+          '<div class="so-res-row"><span>HEARTS</span><b>' + G.heartsEver + "</b></div>" +
         "</div>" +
         '<button class="so-btn so-btn-go" id="so-again">TRY THIS WORLD AGAIN</button>' +
         '<button class="so-btn" id="so-easier">CHANGE DIFFICULTY</button>' +
@@ -4565,7 +4611,7 @@ window.SuperOuissy = (function () {
     var total = G.elapsed;
     if (G.score > b.score) b.score = G.score;
     if (!b.time || total < b.time) b.time = total;
-    if (G.hearts > b.hearts) b.hearts = G.hearts;
+    if (G.heartsEver > b.hearts) b.hearts = G.heartsEver;
     b.cleared = true;
     all[G.diff] = b; saveBest(all);
     if (window.markSuperOuissyDone) window.markSuperOuissyDone();
@@ -4579,7 +4625,7 @@ window.SuperOuissy = (function () {
         '<p class="so-end-sign">' + SO.ending.signOff + "</p>" +
         '<div class="so-res so-end-res">' +
           '<div class="so-res-row"><span>FINAL SCORE</span><b>' + pad(G.score, 6) + "</b></div>" +
-          '<div class="so-res-row"><span>HEARTS</span><b>' + G.hearts + "</b></div>" +
+          '<div class="so-res-row"><span>HEARTS</span><b>' + G.heartsEver + "</b></div>" +
           '<div class="so-res-row"><span>TOTAL TIME</span><b>' + fmtTime(total) + "</b></div>" +
           '<div class="so-res-row"><span>DIFFICULTY</span><b>' + DIFF[G.diff].label + "</b></div>" +
         "</div>" +
@@ -4593,12 +4639,20 @@ window.SuperOuissy = (function () {
        any key. she has just finished the game — nothing here gets to hold
        her hostage for nine seconds. */
     if (!again) {
+      /* "anywhere, any key" — and the key half of that was a lie. A keydown
+         listener on a DIV only ever fires if that div has focus, and an
+         overlay nobody has clicked never does, so the keyboard did nothing
+         at all. The key listener goes on the document, and takes itself off
+         again the moment the scene is over so it cannot swallow anything
+         later. */
       var ov = document.querySelector(".so-ov-end");
-      if (ov) {
-        var go = function () { if (endSkip) endSkip(); };
-        ov.addEventListener("pointerdown", go);
-        ov.addEventListener("keydown", go);
-      }
+      var go = function () { if (endSkip) endSkip(); };
+      if (ov) ov.addEventListener("pointerdown", go);
+      endKeySkip = function (e) {
+        if (e && (e.metaKey || e.ctrlKey || e.altKey)) return;
+        go();
+      };
+      document.addEventListener("keydown", endKeySkip);
     }
     if (!again) sfx("victory");
     wireEndActions();
@@ -4719,7 +4773,18 @@ window.SuperOuissy = (function () {
      than no scene is a scene you cannot get out of.
      ======================================================================= */
   var END_BEAT = { dawn: 1.0, walk: 4.6, pause: 5.8, meet: 7.4, bloom: 9.2 };
-  var endSkip = null, endSeek = null, endT = 0;
+  var endSkip = null, endSeek = null, endKeySkip = null, endT = 0;
+  /* WHICH SCENE IS THE LIVE ONE.
+
+     showEnding can be reached over and over — PLAY AGAIN, TITLE SCREEN and
+     back, going off to watch the Death scene and returning — and each one
+     called startEndingArt, which started ANOTHER requestAnimationFrame
+     loop without stopping the last. Nothing cancelled them, so they all
+     kept running for the rest of the session, painting into canvases that
+     had been thrown away and fighting over the scene's clock. Every loop
+     stamps itself with a run number and the moment a newer one exists it
+     stops asking for frames. */
+  var endRunId = 0, endLive = 0, endHold = null;
 
   function hex(s) { return [parseInt(s.substr(1, 2), 16), parseInt(s.substr(3, 2), 16), parseInt(s.substr(5, 2), 16)]; }
   function mixHex(a, b, k) {
@@ -4756,6 +4821,10 @@ window.SuperOuissy = (function () {
 
   function startEndingArt(host, instant) {
     if (!host) return;
+    stopEndingArt();
+    endHold = null;                  /* a new scene never inherits a pin */
+    var myRun = ++endRunId;
+    endLive++;
     var s = spriteCanvas(240, 120), c = s.ctx;
     host.innerHTML = ""; host.appendChild(s.c);
     var t0 = 0, skipped = !!instant, shown = !!instant;
@@ -4765,9 +4834,15 @@ window.SuperOuissy = (function () {
        runs the timeline forward to the moment they are together, which is
        the only frame of this anybody would be sad to miss. */
     endSkip = function () {
-      if (skipped) return;
+      /* NOT "if (skipped) return" any more. The old guard marked the skip
+         used even when it could not act — before the first frame t0 is
+         still zero, so a tap in that instant did nothing AND turned the
+         skip off for good. Skipping twice is harmless; being unable to
+         skip is not. */
+      endHold = null;
+      t0 = performance.now() - END_BEAT.bloom * 1000;
       skipped = true;
-      if (t0) t0 = performance.now() - END_BEAT.bloom * 1000;
+      reveal();
     };
     /* harness only: put the scene at a given second and let it carry on
        from there. A directed nine seconds cannot be checked by opening it
@@ -4778,14 +4853,20 @@ window.SuperOuissy = (function () {
     function reveal() {
       if (shown) return;
       shown = true;
+      dropKeySkip();
       var card = host.parentNode;
       if (card && card.classList) card.classList.remove("playing");
     }
 
     function frame(now) {
+      if (myRun !== endRunId) { endLive--; return; }   /* a newer scene has it */
       endRaf = requestAnimationFrame(frame);
       if (!t0) t0 = now - (instant ? END_BEAT.bloom * 1000 : 0);
-      var t = endT = (now - t0) / 1000;
+      /* endHold is the harness pinning the scene at one instant. This
+         browser's frame clock jumps whole seconds at a time, so "seek to
+         half a second and look" can land three seconds later and read a
+         frame the test was not asking about. */
+      var t = endT = endHold != null ? endHold : (now - t0) / 1000;
       if (t >= END_BEAT.meet) reveal();
 
       /* ---- where everybody is, this frame ---------------------------- */
@@ -4918,7 +4999,19 @@ window.SuperOuissy = (function () {
     }
     endRaf = requestAnimationFrame(frame);
   }
-  function stopEndingArt() { if (endRaf) cancelAnimationFrame(endRaf); endRaf = null; endSkip = null; }
+  function dropKeySkip() {
+    if (!endKeySkip) return;
+    document.removeEventListener("keydown", endKeySkip);
+    endKeySkip = null;
+  }
+  function stopEndingArt() {
+    /* the cancelled loop never gets another frame, so it can never count
+       itself out — it is counted out here instead */
+    if (endRaf) { cancelAnimationFrame(endRaf); if (endLive > 0) endLive--; }
+    endRaf = null; endSkip = null; endSeek = null;
+    endRunId++;                       /* every loop still out there is stale */
+    dropKeySkip();
+  }
 
   /* =======================================================================
      THE HUD
@@ -5580,7 +5673,7 @@ window.SuperOuissy = (function () {
   function beginRun() {
     closeOverlay();
     G.lives = DIFF[G.diff].lives;
-    G.score = 0; G.hearts = 0; G.deaths = 0; G.elapsed = 0;
+    G.score = 0; G.hearts = 0; G.heartsEver = 0; G.deaths = 0; G.elapsed = 0;
     G.meter = 0; G.meterFlash = 0;
     G.levelIndex = 0; G.levelStats = [];
     var want = true;
@@ -5680,6 +5773,12 @@ window.SuperOuissy = (function () {
       diff: "medium", state: "menu", level: null, levelIndex: 0,
       lives: 3, score: 0, hearts: 0, deaths: 0, elapsed: 0,
       stuckAt: -999, stuckN: 0, handGate: 5, handCheck: null,
+      /* two different numbers that both used to be one. G.hearts is the
+         PURSE — what she can spend on a moment. heartsEver is what she
+         COLLECTED, which is what the results, the ending and the saved
+         best are actually about: reading a letter should not quietly
+         reduce the record of how many hearts she found. */
+      heartsEver: 0,
       meter: 0, meterFlash: 0, lastHurtBy: null, deathAt: null,
       freeze: 0, punch: 0,
       levelStartT: 0, levelStartHearts: 0, levelStartDeaths: 0,
@@ -5787,6 +5886,15 @@ window.SuperOuissy = (function () {
   };
   window.__soShowEnding = function (again) { showEnding(!!again); };
   window.__soEndT = function () { return endT; };
+  window.__soEndLive = function () { return endLive; };
+  window.__soEndCan = function () { return !!endSkip; };
+  /* harness only: pin the scene at one second, or pass nothing to let it
+     run on from wherever it was pinned */
+  window.__soEndHold = function (secs) {
+    if (secs == null) { if (endHold != null && endSeek) endSeek(endHold); endHold = null; }
+    else endHold = secs;
+    return endHold;
+  };
   window.__soEndSeek = function (secs) { if (endSeek) endSeek(secs); return endT; };
   window.__soSigns = function () { return (G && G.level && G.level.signs) || []; };
   window.__soFinish = function () { finishLevel(); };
@@ -5794,7 +5902,15 @@ window.SuperOuissy = (function () {
     if (n != null) { G.stuckN = n; G.stuckAt = G.player ? G.player.x : 0; }
     return { n: G.stuckN, gate: G.handGate, check: G.handCheck };
   };
-  window.__soSetHearts = function (n) { G.hearts = n; updateHud(); };
+  /* "give her n hearts" — the purse AND the tally, the way collecting
+     them would, so a harness can tell spending apart from never having had
+     them */
+  window.__soSetHearts = function (n) {
+    G.hearts = n;
+    G.heartsEver = Math.max(G.heartsEver, n);
+    updateHud();
+  };
+  window.__soHeartsEver = function () { return G.heartsEver; };
   window.__soMoments = function () { return { read: loadMoments(), total: MOMENTS.length, cost: MOMENT_COST }; };
   window.__soTele = function (tx, ty) {
     if (!G || !G.level) return;
@@ -5816,10 +5932,10 @@ window.SuperOuissy = (function () {
      between assertions, so one that had wandered across the map would be
      standing on the spot the next test teleported her to. */
   window.__soReset = function () {
-    var keep = { score: G.score, hearts: G.hearts, deaths: G.deaths };
+    var keep = { score: G.score, hearts: G.hearts, heartsEver: G.heartsEver, deaths: G.deaths };
     G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
     G.lives = DIFF[G.diff].lives;
-    G.score = keep.score; G.hearts = keep.hearts; G.deaths = keep.deaths;
+    G.score = keep.score; G.hearts = keep.hearts; G.heartsEver = keep.heartsEver; G.deaths = keep.deaths;
     G.state = "play";
     G.keys = freshKeys();
     /* pickups she took and blocks she opened stay taken and opened
@@ -5945,6 +6061,7 @@ window.SuperOuissy = (function () {
      were when a test was written. Nine world maps exist now and they will
      keep being edited; a suite that hard-codes tile 21 is a suite that
      breaks every time a level moves. */
+  window.__soGroundY = function () { return G.level.groundY / T; };
   window.__soSolid = function (tx, ty) { return solidAt(tx, ty); };
   /* the raw character, so a harness can tell a wall from a one-way ledge —
      "is there anything to stand on under this block" is a question only
@@ -6030,7 +6147,7 @@ window.SuperOuissy = (function () {
     if (!G) return null;
     return {
       state: G.state, world: G.levelIndex + 1, diff: G.diff, lives: G.lives,
-      score: G.score, hearts: G.hearts, deaths: G.deaths,
+      score: G.score, hearts: G.hearts, heartsEver: G.heartsEver, deaths: G.deaths,
       x: Math.round(G.player.x / T), y: Math.round(G.player.y / T),
       onGround: G.player.onGround, big: G.player.big,
       bgmOn: G.bgmOn, bgmRunning: bgmTimer !== null,

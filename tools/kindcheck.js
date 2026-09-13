@@ -40,6 +40,48 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   const flat = seen.flat();
   ok('the three worlds do not say the same things', new Set(flat).size === flat.length, `${flat.length}`);
 
+  /* A LINE SHE CANNOT READ IS NOT A LINE. Every board has to stand on the
+     floor she actually walks along, on every difficulty — the first pass of
+     this put four of the twenty-seven on ledges and one thirteen rows up
+     in the open sky. */
+  const stranded = [];
+  for (const d of ['easy', 'medium', 'hard']) {
+    await page.evaluate(() => { window.__soTestDrive = true;
+      SuperOuissy.stop(); showScreen('ouissy'); startSuperOuissy(); });
+    await page.waitForSelector('.so-diff-card', { timeout:6000 });
+    await page.click(`[data-so-diff="${d}"]`); await page.click('#so-play');
+    await page.waitForTimeout(250);
+    const h2 = await page.$('#so-how-ok'); if (h2) await h2.click();
+    await play();
+    const rows = await page.evaluate(diff => {
+      const out = [];
+      for (const w of [0, 1, 2]) {
+        window.__soGoLevel(w); window.__soSkipCard();
+        const box = window.__soLevelBox(), gy = window.__soGroundY();
+        window.__soSigns().forEach(s => {
+          const tx = Math.round(s.x / 16), ty = Math.round(s.y / 16);
+          let floor = ty + 1;
+          while (floor < box.h && !window.__soStand(tx, floor)) floor++;
+          out.push({ where: `${diff} w${w + 1} @${tx}`, off: floor - gy });
+        });
+      }
+      return out;
+    }, d);
+    rows.forEach(r => { if (Math.abs(r.off) > 1) stranded.push(`${r.where} is ${r.off} rows off the floor`); });
+  }
+  ok('every board stands on the floor she walks along, on all three difficulties',
+     stranded.length === 0, stranded.slice(0, 4).join('; '));
+
+  /* that loop ends on hard, and everything below is about the offer, which
+     hard does not have — back to medium before going on */
+  await page.evaluate(() => { window.__soTestDrive = true; try{localStorage.clear();}catch(e){}
+    SuperOuissy.stop(); showScreen('ouissy'); startSuperOuissy(); });
+  await page.waitForSelector('.so-diff-card', { timeout:6000 });
+  await page.click('[data-so-diff="medium"]'); await page.click('#so-play');
+  await page.waitForTimeout(250);
+  const howM = await page.$('#so-how-ok'); if (howM) await howM.click();
+  await play();
+
   await page.evaluate(() => window.__soGoLevel(0)); await play();
   ok('nothing is said before she reaches one',
      await page.evaluate(() => !document.querySelector('#so-sign-say.on')));
@@ -179,6 +221,52 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
      /5 hearts/.test(await page.evaluate(() => (document.querySelector('.so-moment-none') || {}).textContent || '')));
   ok('the HUD agrees about the hearts',
      await page.evaluate(() => (document.getElementById('so-hearts') || {}).textContent) === '05');
+
+  /* READING A LETTER MUST NOT UNDO HER COLLECTING. The purse and the tally
+     used to be the same number, so buying two moments quietly knocked
+     twenty off the HEARTS line on the ending and off the saved best — she
+     found twenty-five and the game would have told her fifteen. */
+  const tally = await page.evaluate(() => ({ purse: window.__soInfo().hearts, ever: window.__soHeartsEver() }));
+  ok('the purse went down', tally.purse === 5, `${tally.purse}`);
+  ok('but what she COLLECTED did not', tally.ever === 25, `${tally.ever}`);
+  const card = await page.evaluate(() => {
+    window.__soShowEnding();
+    const rows = [...document.querySelectorAll('.so-end-res .so-res-row')]
+      .map(r => r.textContent.replace(/\s+/g, ' ').trim());
+    const best = JSON.parse(localStorage.getItem('so_best') || '{}');
+    return { rows, best: (best.medium || {}).hearts };
+  });
+  ok('the ending counts what she found, not what she has left',
+     card.rows.some(r => /HEARTS\s*25/.test(r)), card.rows.join(' | '));
+  ok('and so does the saved best', card.best === 25, `${card.best}`);
+
+  /* ONCE THE PILE IS COMPLETE IT IS HERS. Ten hearts buy a letter she has
+     not seen; charging ten again for a random repeat of one she already
+     owns is a slot machine, not a purchase. */
+  const readAll = await page.evaluate(() => {
+    const M = window.__soMoments();
+    const all = []; for (let i = 0; i < M.total; i++) all.push(i);
+    localStorage.setItem('so-moments-v1', JSON.stringify(all));
+    window.__soSetHearts(3);            /* nowhere near the price */
+    window.__soFinish();
+    const b = document.getElementById('so-moment');
+    return { button: !!b, label: b ? b.textContent.trim() : null,
+             note: (document.querySelector('.so-moment-none') || {}).textContent || '' };
+  });
+  ok('with every moment read, the button is still there at three hearts',
+     readAll.button === true, readAll.label);
+  ok('and it no longer asks for a price', !/10/.test(readAll.label || ''), readAll.label);
+  ok('and says the pile is hers', /all of them/.test(readAll.note), readAll.note);
+  const reread = await page.evaluate(() => {
+    const before = window.__soInfo().hearts;
+    document.getElementById('so-moment').click();
+    return { before, after: window.__soInfo().hearts,
+             text: (document.querySelector('.so-moment-text') || {}).textContent || '' };
+  });
+  ok('re-reading costs her nothing', reread.after === reread.before, `${reread.before} -> ${reread.after}`);
+  ok('and still gives her a real one', reread.text.length > 30, reread.text.slice(0, 40) + '...');
+  await page.evaluate(() => { localStorage.removeItem('so-moments-v1'); });
+
 
   ok('no page errors', errs.length === 0, errs.join(' | '));
   await browser.close();
