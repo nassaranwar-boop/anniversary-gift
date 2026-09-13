@@ -157,6 +157,57 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
        r.state !== 'cutscene' && r.over === true, JSON.stringify(r));
   }
 
+  /* ---- THREE PEOPLE, THREE PLACES TO STAND --------------------------
+     Her mark came from the game — wherever she happened to fall — and the
+     other two were placed from it and from the frame's edge separately. A
+     death near the right-hand wall, which is exactly where the second one
+     happens because a revive stands her back where she fell, put Anwar's
+     shoulder through Death's ribs. */
+  /* the real thing once, then a sweep of every place she could have fallen:
+     the camera usually recentres her, but in the Queen's room it is already
+     hard against the end of the level, so her mark on screen is wherever
+     she was standing — including right up against the wall. */
+  await inTheRoom('hard', 1);
+  const real = await page.evaluate(() => {
+    window.__soKill();
+    for (let i = 0; i < 400 && window.__soInfo().state !== 'cutscene'; i++) window.__soPump(1 / 60);
+    for (let i = 0; i < 60 * 30; i++) {
+      const S = window.Rescue._state();
+      if (!S || S.done || S.phase >= 3) break;
+      if (S.lines && S.waiting) window.Rescue.press('confirm');
+      window.__soPump(1 / 60);
+    }
+    const S = window.Rescue._state();
+    return S ? { phase: S.phase, her: S.her.x, anwar: S.anwar.x, death: S.death.x } : null;
+  });
+  ok('a real death puts the three of them somewhere sensible',
+     real && real.phase >= 3 && real.anwar - real.her >= 14 && real.death - real.anwar >= 40,
+     JSON.stringify(real));
+  await finishScene();
+
+  const sweep = await page.evaluate(() => {
+    const out = [];
+    for (const hx of [10, 26, 90, 150, 190, 230, 300]) {
+      window.Rescue.begin('death', { herX: hx, herY: 118 });
+      for (let i = 0; i < 60 * 30; i++) {
+        const S = window.Rescue._state();
+        if (!S || S.done || S.phase >= 3) break;
+        if (S.lines && S.waiting) window.Rescue.press('confirm');
+        window.__soPump(1 / 60);
+      }
+      const S = window.Rescue._state();
+      out.push({ asked: hx, phase: S.phase, her: Math.round(S.her.x),
+                 anwar: Math.round(S.anwar.x), death: Math.round(S.death.x) });
+    }
+    return out;
+  });
+  const bunched = sweep.filter(r => r.phase < 3 || r.anwar - r.her < 14 || r.death - r.anwar < 40);
+  ok('wherever she falls, the three of them have room to stand',
+     bunched.length === 0, bunched.map(r => `asked ${r.asked}: ${r.her}/${r.anwar}/${r.death}`).join('; '));
+  const off = sweep.filter(r => r.her < 0 || r.death > 300);
+  ok('and none of them ends up outside the frame', off.length === 0,
+     off.map(r => JSON.stringify(r)).join('; '));
+
   ok('no page errors', errs.length === 0, errs.slice(0, 3).join(' | '));
   await browser.close();
   console.log(R.join('\n'));

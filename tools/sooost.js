@@ -38,6 +38,36 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
   }
 
   await boot('hard');
+
+  /* EVERY DIFFICULTY HAS ITS OWN FIVE. Playing Easy and then going back for
+     Hard used to be the same five tunes twice. */
+  const sets = await page.evaluate(() => {
+    const out = {}; let was = null;
+    for (const d of ['easy', 'medium', 'hard']) {
+      const prev = window.__soPeekDiff(d); if (was === null) was = prev;
+      out[d] = {};
+      for (const n of ['w1','w2','w3','boss','win']) { window.__soBgmPlay(n); out[d][n] = window.__soBgmBar(); }
+    }
+    window.__soPeekDiff(was);
+    window.__soBgmPlay('w1');      /* put the room's own tune back */
+    return out;
+  });
+  for (const d of ['easy', 'medium', 'hard'])
+    for (const n of ['w1','w2','w3','boss','win']) {
+      const b = sets[d][n];
+      ok(`${d} ${n}: four bars of real music`,
+         b.steps === 64 && b.leadNotes >= 8 && b.bassNotes >= 8,
+         `steps=${b.steps} lead=${b.leadNotes} bass=${b.bassNotes}`);
+    }
+  for (const n of ['w1','w2','w3','boss','win']) {
+    const tempos = ['easy','medium','hard'].map(d => sets[d][n].tempo);
+    ok(`${n} is a different arrangement on each difficulty`,
+       new Set(tempos).size === 3, tempos.join(' / '));
+  }
+  ok('easy is the slowest and hard the fastest, world for world',
+     ['w1','w2','w3','boss'].every(n => sets.easy[n].tempo > sets.medium[n].tempo &&
+                                        sets.medium[n].tempo > sets.hard[n].tempo));
+
   const w1 = await page.evaluate(() => window.__soBgmName());
   ok('world one plays world one', w1 === 'w1', w1);
 

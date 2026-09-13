@@ -4225,6 +4225,79 @@ window.SuperOuissy = (function () {
      ======================================================================= */
   function $(id) { return document.getElementById(id); }
 
+  /* =======================================================================
+     THE LIFT
+
+     Any card taller than the stage has to be scrolled, and nothing said
+     so. The browser's own scroll bar is no help: on a phone it is
+     invisible until you are already scrolling, which is exactly the
+     moment it stopped being needed, and it looks like a piece of the
+     browser rather than a piece of this.
+
+     So it is drawn. A groove down the left, clear of the buttons, with a
+     gold handle on it that shows how much there is and where she is in
+     it — and it can be dragged, or the groove pressed, to go there.
+     ======================================================================= */
+  var liftDrag = null;
+  function ensureLift() {
+    var st = $("so-stage");
+    if (!st) return null;
+    var el = $("so-lift");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "so-lift"; el.className = "so-lift";
+    el.innerHTML = '<div class="so-lift-bar" id="so-lift-bar"></div>';
+    st.appendChild(el);
+
+    /* dragging the handle, and pressing the groove to jump there */
+    var grab = function (e) {
+      var ov = $("so-overlay");
+      if (!ov) return;
+      var r = el.getBoundingClientRect(), bar = $("so-lift-bar");
+      var br = bar.getBoundingClientRect();
+      /* pressing the groove above or below the handle moves it under the
+         finger first, so a drag can start from anywhere on it */
+      var off = (e.clientY >= br.top && e.clientY <= br.bottom) ? e.clientY - br.top : br.height / 2;
+      liftDrag = { r: r, h: br.height, off: off };
+      el.classList.add("grabbed");
+      if (el.setPointerCapture && e.pointerId != null) el.setPointerCapture(e.pointerId);
+      move(e);
+      e.preventDefault();
+    };
+    var move = function (e) {
+      if (!liftDrag) return;
+      var ov = $("so-overlay");
+      if (!ov) return;
+      var span = liftDrag.r.height - liftDrag.h;
+      var k = span > 0 ? clamp((e.clientY - liftDrag.r.top - liftDrag.off) / span, 0, 1) : 0;
+      ov.scrollTop = k * (ov.scrollHeight - ov.clientHeight);
+      updateLift();
+    };
+    var drop = function () { liftDrag = null; el.classList.remove("grabbed"); };
+    el.addEventListener("pointerdown", grab);
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", drop);
+    el.addEventListener("pointercancel", drop);
+    /* a turn of the phone changes how much there is to read */
+    window.addEventListener("resize", updateLift);
+    return el;
+  }
+  function updateLift() {
+    var el = ensureLift(), ov = $("so-overlay");
+    if (!el || !ov) return;
+    var room = ov.scrollHeight - ov.clientHeight;
+    /* a couple of pixels of overflow is rounding, not a page of reading */
+    var need = ov.classList.contains("on") && room > 6;
+    el.classList.toggle("on", need);
+    if (!need) return;
+    var bar = $("so-lift-bar");
+    var frac = ov.clientHeight / ov.scrollHeight;
+    var hPct = Math.max(14, Math.min(92, frac * 100));
+    var tPct = (room > 0 ? ov.scrollTop / room : 0) * (100 - hPct);
+    bar.style.height = hPct + "%";
+    bar.style.top = tPct + "%";
+  }
+
   function overlay(html, cls) {
     var ov = $("so-overlay");
     if (!ov) return;
@@ -4241,9 +4314,17 @@ window.SuperOuissy = (function () {
        last overlay happened to be scrolled to */
     ov.scrollTop = 0;
     ov.setAttribute("aria-hidden", "false");
+    /* the card is measured after the browser has laid it out, not while it
+       is still a string */
+    if (!ov._lift) { ov.addEventListener("scroll", updateLift); ov._lift = true; }
+    updateLift();
+    requestAnimationFrame(updateLift);
+    setTimeout(updateLift, 90);
   }
   function closeOverlay() {
     stopEndingArt();
+    var lf = $("so-lift");
+    if (lf) lf.classList.remove("on");
     var ov = $("so-overlay");
     if (!ov) return;
     var st = $("so-stage"), scr = $("screen-ouissy");
@@ -4277,27 +4358,65 @@ window.SuperOuissy = (function () {
      ======================================================================= */
   var MOMENT_COST = 10;
   var MOM_KEY = "so-moments-v1";
-  var MOMENTS = [
-    "the first time you laughed at something I said, I went back over it all evening trying to work out which part did it, so I could do it again.",
-    "you fall asleep mid-sentence and wake up finishing it. I have never told you this. I'm telling you now.",
-    "I have a list of your small faces. the one before you say something you know is funny is my favourite.",
-    "you do the thing where you're tired and you go quiet and you still ask how my day was.",
-    "somebody asked me what you're like and I started with the way you say my name and had to stop.",
-    "the day everything went wrong, you were the only part that didn't.",
-    "I keep the voice notes. all of them. even the ones that are four seconds of you saying you'll call back.",
-    "you make ordinary days feel like they're worth remembering, which is a thing I didn't know a person could do to a Tuesday.",
-  ];
+  /* THREE PILES, NOT ONE.
+
+     A difficulty is its own three worlds, its own boss and now its own
+     score; the letters were the only thing that repeated. Twenty-four of
+     them instead of eight, and which pile she is reading depends on where
+     she is reading it — so going back for Hard is not going back over the
+     same post.
+
+     They are not three sets of the same thing either. Easy is the small
+     domestic stuff, the noticing. Medium is the year, and what it took.
+     Hard is the ones that cost something to say. */
+  var MOMENTS = {
+    easy: [
+      "you hum when you're concentrating. you have no idea that you do it.",
+      "the first time you laughed at something I said, I went back over it all evening trying to work out which part did it, so I could do it again.",
+      "you fall asleep mid-sentence and wake up finishing it. I have never told you this. I'm telling you now.",
+      "you always take the seat facing the door. I always take the one facing you.",
+      "somebody asked me what you're like and I started with the way you say my name and had to stop.",
+      "you say \"five minutes\" the way other people say \"no\".",
+      "I have a list of your small faces. the one just before you say something you know is funny is my favourite.",
+      "you make ordinary days feel worth remembering, which is a thing I did not know a person could do to a Tuesday.",
+    ],
+    medium: [
+      "you do the thing where you're tired and you have gone quiet and you still ask how my day was.",
+      "the day everything went wrong, you were the only part of it that didn't.",
+      "I keep the voice notes. all of them. even the ones that are four seconds of you saying you'll call back.",
+      "we have had entire conversations across a room without saying anything and both been right.",
+      "you apologise for taking up space in rooms you are holding together.",
+      "there is a week I only got through because you kept texting like nothing was wrong.",
+      "you remember what I said I wanted months after I had forgotten saying it.",
+      "I have stopped being surprised by you and started being proud of you. it is the better feeling.",
+    ],
+    hard: [
+      "I was not going to be the sort of person who needed anyone. you did not argue with that. you just stayed.",
+      "there was a night I did not want to talk to anybody and I still wanted to talk to you. that was when I knew.",
+      "I have been loved carefully before. you are the first person who was not careful about it.",
+      "if you ever wonder whether you are too much — you are exactly enough, and I have done the measuring.",
+      "I am not a brave person. you are the one thing I have never once hesitated about.",
+      "the worst thing I have ever imagined is an ordinary Tuesday with you not in it.",
+      "you did not fix me. you sat with me until I stopped needing fixing. those are not the same and I know which one is harder.",
+      "whatever I turn out to be, the good half of it has your fingerprints on it.",
+    ],
+  };
+  function moments() { return MOMENTS[G && G.diff] || MOMENTS.medium; }
+  /* the pile she has read is per-difficulty too, or finishing Easy would
+     quietly mark Hard's letters as already seen */
+  function momKey() { return MOM_KEY + "-" + ((G && G.diff) || "medium"); }
+
   function loadMoments() {
-    try { return JSON.parse(localStorage.getItem(MOM_KEY) || "[]") || []; } catch (e) { return []; }
+    try { return JSON.parse(localStorage.getItem(momKey()) || "[]") || []; } catch (e) { return []; }
   }
-  function saveMoments(a) { try { localStorage.setItem(MOM_KEY, JSON.stringify(a)); } catch (e) {} }
+  function saveMoments(a) { try { localStorage.setItem(momKey(), JSON.stringify(a)); } catch (e) {} }
   /* the next one she has not read, or — once she has read them all — one
      at random, because a pile of letters you are allowed to reopen is
      nicer than a pile you are finished with */
   function nextMoment() {
-    var read = loadMoments();
-    for (var i = 0; i < MOMENTS.length; i++) if (read.indexOf(i) < 0) return i;
-    return Math.floor(Math.random() * MOMENTS.length);
+    var read = loadMoments(), M = moments();
+    for (var i = 0; i < M.length; i++) if (read.indexOf(i) < 0) return i;
+    return Math.floor(Math.random() * M.length);
   }
   /* ONCE SHE HAS READ THEM ALL, READING IS FREE.
 
@@ -4306,8 +4425,8 @@ window.SuperOuissy = (function () {
      machine — she pays the same price for strictly less. When the pile is
      complete it is hers: the button stays, says so, and costs nothing. */
   function allRead() {
-    var read = loadMoments();
-    for (var i = 0; i < MOMENTS.length; i++) if (read.indexOf(i) < 0) return false;
+    var read = loadMoments(), M = moments();
+    for (var i = 0; i < M.length; i++) if (read.indexOf(i) < 0) return false;
     return true;
   }
   function bestFor(diff) {
@@ -4557,7 +4676,7 @@ window.SuperOuissy = (function () {
       if (read.indexOf(i) < 0) { read.push(i); saveMoments(read); }
       var slot = $("so-moment-slot");
       if (slot) {
-        slot.innerHTML = '<p class="so-moment-text">' + MOMENTS[i] + "</p>";
+        slot.innerHTML = '<p class="so-moment-text">' + moments()[i] + "</p>";
         slot.className = "so-moment-slot";
         void slot.offsetWidth;
         slot.className = "so-moment-slot on";
@@ -5216,7 +5335,21 @@ window.SuperOuissy = (function () {
     return s.split("|").join(" ").trim().split(/\s+/);
   }
 
-  var SCORE = {
+  /* THREE SCORES, NOT ONE.
+
+     Every difficulty is its own three worlds with its own boss, and the
+     music was the only thing about them that was identical — play Easy and
+     then go back for Hard and you hear the same five tunes twice.
+
+     They are three arrangements of the same four notes, because the motif
+     is the point, but they are not the same piece of music. EASY is slower
+     and wider, major, with a lilt, sixths over the top and a drum that
+     mostly stays out of the way — a morning. MEDIUM is the one the game
+     has always had: square, brisk, four to the floor. HARD is faster,
+     minor, with a sixteenth-note bass that never stops and a chromatic
+     line falling through it. */
+  var SCORES = {};
+  SCORES.medium = {
     /* WORLD ONE — morning. The theme, plain, with room around it. */
     w1: {
       tempo: 0.088,
@@ -5348,6 +5481,251 @@ window.SuperOuissy = (function () {
     },
   };
 
+  /* ---- EASY: morning, unhurried. Longer notes, a lilt, sixths over the
+     top, and a drum that mostly stays out of the way. ------------------- */
+  SCORES.easy = {
+    w1: {
+      tempo: 0.105,
+      lead: pat(
+        "12  .  . 16  .  . 19  .  . 16  .  . 19  .  .  . |" +
+        "14  .  . 17  .  . 21  .  . 17  .  . 14  .  .  . |" +
+        "12  .  . 16  .  . 19  .  . 24  .  . 21  .  .  . |" +
+        "19  .  . 16  .  . 14  .  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 26  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 28  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  .  .  7  .  .  .  .  .  0  .  .  . |" +
+        " 2  .  .  .  .  .  9  .  .  .  .  .  2  .  .  . |" +
+        " 5  .  .  .  .  . 12  .  .  .  .  .  5  .  .  . |" +
+        " 7  .  .  .  .  .  7  .  .  .  .  .  0  .  .  ."),
+      drum: dpat(
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . S . . . h . h ."),
+    },
+    w2: {
+      tempo: 0.095,
+      lead: pat(
+        "12  . 14 16  . 17 19  . 17 16  .  . 14  .  .  . |" +
+        "14  . 16 17  . 19 21  . 19 17  .  . 16  .  .  . |" +
+        "16  . 19 21  . 24 21  . 19 16  .  . 19  .  .  . |" +
+        "17  . 16 14  . 12 11  . 12  .  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  7  .  .  .  .  . 12  .  .  .  .  .  . |" +
+        " .  .  .  9  .  .  .  .  . 14  .  .  .  .  .  . |" +
+        " .  .  . 12  .  .  .  .  . 16  .  .  .  .  .  . |" +
+        " .  .  .  7  .  .  .  .  .  7  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  7  .  .  .  0  .  .  .  7  .  .  . |" +
+        " 2  .  .  .  9  .  .  .  2  .  .  .  9  .  .  . |" +
+        " 5  .  .  . 12  .  .  .  5  .  .  . 12  .  .  . |" +
+        " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: dpat(
+        "K . . h S . . h K . . h S . . h |" +
+        "K . . h S . . h K . . h S . . h |" +
+        "K . . h S . . h K . . h S . . h |" +
+        "K . . h S . . h K . . h S . h h"),
+    },
+    w3: {
+      tempo: 0.088,
+      lead: pat(
+        "12  .  . 19  .  . 16  .  . 21  .  . 19  .  .  . |" +
+        "14  .  . 21  .  . 17  .  . 24  .  . 21  .  .  . |" +
+        "16  .  . 24  .  . 19  .  . 26  .  . 24  .  .  . |" +
+        "21  .  . 19  .  . 16  .  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  . 12  .  .  .  .  .  . 16  .  .  .  . |" +
+        " .  .  .  . 14  .  .  .  .  .  . 17  .  .  .  . |" +
+        " .  .  .  . 16  .  .  .  .  .  . 19  .  .  .  . |" +
+        " .  .  .  . 12  .  .  .  .  .  . 12  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  7  .  .  . 12  .  .  .  7  .  .  . |" +
+        " 2  .  .  .  9  .  .  . 14  .  .  .  9  .  .  . |" +
+        " 5  .  .  . 12  .  .  . 17  .  .  . 12  .  .  . |" +
+        " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: dpat(
+        "K . . h S . . . K . . h S . . h |" +
+        "K . . h S . . . K . . h S . . h |" +
+        "K . . h S . . . K . . h S . . h |" +
+        "K . . h S . . . K . . h S . t t"),
+    },
+    /* the raincloud: cross, not frightening */
+    boss: {
+      tempo: 0.080,
+      lead: pat(
+        "12  . 12  . 15  . 12  .  . 17  . 15  . 12  .  . |" +
+        "10  . 10  . 14  . 10  .  . 15  . 14  . 10  .  . |" +
+        "12  . 12  . 15  . 19  .  . 17  . 15  . 12  .  . |" +
+        "17  . 15  . 14  . 12  .  . 10  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  . 19  .  .  .  .  .  . 19  .  .  .  . |" +
+        " .  .  .  . 17  .  .  .  .  .  . 17  .  .  .  . |" +
+        " .  .  .  . 19  .  .  .  .  .  . 22  .  .  .  . |" +
+        " .  .  .  . 17  .  .  .  .  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  . 12  .  0  .  7  .  0  . 12  .  0  .  7  . |" +
+        "-2  . 10  . -2  .  5  . -2  . 10  . -2  .  5  . |" +
+        " 0  . 12  .  0  .  7  .  5  . 17  .  5  . 12  . |" +
+        " 7  . 19  .  7  . 14  .  0  . 12  .  0  .  0  ."),
+      drum: dpat(
+        "K . h . S . h . K . h . S . h . |" +
+        "K . h . S . h . K . h . S . h . |" +
+        "K . h . S . h . K . h . S . h . |" +
+        "K . h . S . h . K . t t t . S ."),
+    },
+    win: {
+      tempo: 0.19,
+      lead: pat(
+        "12  .  .  . 16  .  .  . 19  .  .  . 16  .  .  . |" +
+        "17  .  .  . 21  .  .  . 24  .  .  . 21  .  .  . |" +
+        "19  .  .  . 16  .  .  . 12  .  .  . 14  .  .  . |" +
+        "16  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
+      harm: pat(
+        "19  .  .  . 24  .  .  . 28  .  .  . 24  .  .  . |" +
+        "24  .  .  . 28  .  .  . 31  .  .  . 28  .  .  . |" +
+        "28  .  .  . 24  .  .  . 19  .  .  . 21  .  .  . |" +
+        "24  .  .  .  .  .  .  . 19  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  .  .  .  .  7  .  .  .  .  .  .  . |" +
+        " 5  .  .  .  .  .  .  .  0  .  .  .  .  .  .  . |" +
+        " 7  .  .  .  .  .  .  .  5  .  .  .  .  .  .  . |" +
+        " 7  .  .  .  .  .  .  .  0  .  .  .  .  .  .  ."),
+      drum: dpat(
+        "K . . . . . . . h . . . . . . . |" +
+        "K . . . . . . . h . . . . . . . |" +
+        "K . . . . . . . h . . . . . . . |" +
+        "K . . . . . . . h . . . . . . ."),
+    },
+  };
+
+  /* ---- HARD: faster, minor, and the bass never stops. ----------------- */
+  SCORES.hard = {
+    w1: {
+      tempo: 0.074,
+      lead: pat(
+        "12  . 12 15  . 19  . 15 12  . 19  . 22  . 19  . |" +
+        "10  . 10 14  . 17  . 14 10  . 17  . 20  . 17  . |" +
+        "12  . 12 15  . 19  . 22 24  . 22  . 19  . 15  . |" +
+        "17  . 15 14  . 12  . 11 12  .  .  . 12  .  .  ."),
+      harm: pat(
+        " .  . 24  .  .  . 24  .  .  . 24  .  .  . 24  . |" +
+        " .  . 22  .  .  . 22  .  .  . 22  .  .  . 22  . |" +
+        " .  . 24  .  .  . 24  .  .  . 27  .  .  . 27  . |" +
+        " .  . 19  .  .  . 19  .  .  . 19  .  .  . 19  ."),
+      bass: pat(
+        " 0  0 12  0  0  0 12  0  7  7 19  7  7  7 19  7 |" +
+        "-2 -2 10 -2 -2 -2 10 -2  5  5 17  5  5  5 17  5 |" +
+        " 0  0 12  0  0  0 12  0  5  5 17  5  5  5 17  5 |" +
+        " 7  7 19  7  7  7 19  7  0  0 12  0  0  0  0  0"),
+      drum: dpat(
+        "K . h K . h S . K . h K . h S h |" +
+        "K . h K . h S . K . h K . h S h |" +
+        "K . h K . h S . K . h K . h S h |" +
+        "K . h K . h S . K . t t t t S ."),
+    },
+    w2: {
+      tempo: 0.068,
+      lead: pat(
+        "12 15  . 19 15  . 12 19  . 22 19  . 15 12  .  . |" +
+        "10 14  . 17 14  . 10 17  . 20 17  . 14 10  .  . |" +
+        "12 15  . 19 22  . 24 22  . 19 15  . 12 15  .  . |" +
+        "19 17  . 15 14  . 12 11  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        "27  . 27  .  . 27  . 27  . 27  .  . 27  .  .  . |" +
+        "26  . 26  .  . 26  . 26  . 26  .  . 26  .  .  . |" +
+        "27  . 27  .  . 31  . 31  . 27  .  . 27  .  .  . |" +
+        "24  . 24  .  . 24  . 24  . 24  .  .  .  .  .  ."),
+      bass: pat(
+        " 0 12  0 12  0 12  0 12  7 19  7 19  7 19  7 19 |" +
+        "-2 10 -2 10 -2 10 -2 10  5 17  5 17  5 17  5 17 |" +
+        " 0 12  0 12  0 12  0 12  5 17  5 17  5 17  5 17 |" +
+        " 7 19  7 19  7 19  7 19  0 12  0 12  0  0  0  0"),
+      drum: dpat(
+        "K h h K h h S h K h h K h h S h |" +
+        "K h h K h h S h K h h K h h S h |" +
+        "K h h K h h S h K h h K h h S h |" +
+        "K h h K h h S h t t t t t t S ."),
+    },
+    w3: {
+      tempo: 0.062,
+      lead: pat(
+        " 9 12  . 16 12  .  9 16  . 19 16  . 12  9  .  . |" +
+        " 8 11  . 15 11  .  8 15  . 18 15  . 11  8  .  . |" +
+        " 9 12  . 16 19  . 21 20  . 19 18  . 16 15  .  . |" +
+        "14 13  . 12 11  . 10  9  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        "24  . 24  . 24  . 24  . 24  . 24  . 24  .  .  . |" +
+        "23  . 23  . 23  . 23  . 23  . 23  . 23  .  .  . |" +
+        "24  . 24  . 24  . 27  . 27  . 27  . 27  .  .  . |" +
+        "21  . 21  . 21  . 21  . 24  .  .  .  .  .  .  ."),
+      bass: pat(
+        "-3 -3  9 -3 -3  9 -3  9  4  4 16  4  4 16  4 16 |" +
+        "-4 -4  8 -4 -4  8 -4  8  3  3 15  3  3 15  3 15 |" +
+        "-3 -3  9 -3 -3  9 -3  9 -5 -5  7 -5 -5  7 -5  7 |" +
+        "-7 -7  5 -7 -7  5 -7  5  0  0 12  0  0  0  0  0"),
+      drum: dpat(
+        "K h K h S h K h K h K h S h t t |" +
+        "K h K h S h K h K h K h S h t t |" +
+        "K h K h S h K h K h K h S h t t |" +
+        "K h K h S h K h t t t t t t S ."),
+    },
+    /* the Heartbreaker: minor, fast, and falling the whole way down */
+    boss: {
+      tempo: 0.056,
+      lead: pat(
+        " 9  9  . 12 16  . 12  9  . 16 12  .  9 16  .  . |" +
+        " 8  8  . 11 15  . 11  8  . 15 11  .  8 15  .  . |" +
+        " 9  9  . 12 16  . 21 20  . 19 18  . 17 16  .  . |" +
+        "15 14  . 13 12  . 11 10  .  9  8  .  7  .  .  ."),
+      harm: pat(
+        "21  . 21  . 21  . 21  . 21  . 21  . 21  .  .  . |" +
+        "20  . 20  . 20  . 20  . 20  . 20  . 20  .  .  . |" +
+        "21  . 21  . 24  . 24  . 24  . 24  . 24  .  .  . |" +
+        " .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  ."),
+      bass: pat(
+        "-3 -3 -3 -3  9 -3 -3 -3 -3 -3  9 -3 -3 -3 -3 -3 |" +
+        "-4 -4 -4 -4  8 -4 -4 -4 -4 -4  8 -4 -4 -4 -4 -4 |" +
+        "-3 -3 -3 -3  9 -3 -3 -3 -5 -5  7 -5 -5 -5 -5 -5 |" +
+        "-7 -7 -7 -7  5 -7 -7 -7 -8 -8 -8 -8 -8 -8 -8 -8"),
+      drum: dpat(
+        "K h K h S h K h K h K h S h K h |" +
+        "K h K h S h K h K h K h S h K h |" +
+        "K h K h S h K h K h K h S h K h |" +
+        "t t t t S . K . t t t t t t t t"),
+    },
+    win: {
+      tempo: 0.15,
+      lead: pat(
+        "12  .  .  . 16  .  .  . 19  .  .  . 16  .  .  . |" +
+        "17  .  .  . 21  .  .  . 24  .  .  . 21  .  .  . |" +
+        "19  .  .  . 16  .  .  . 12  .  .  . 14  .  .  . |" +
+        "16  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
+      harm: pat(
+        " 0  .  .  .  4  .  .  .  7  .  .  .  4  .  .  . |" +
+        " 5  .  .  .  9  .  .  . 12  .  .  .  9  .  .  . |" +
+        " 7  .  .  .  4  .  .  .  0  .  .  .  2  .  .  . |" +
+        " 4  .  .  .  .  .  .  .  0  .  .  .  .  .  .  ."),
+      bass: pat(
+        "-12  .  .  .  0  .  .  . -5  .  .  .  7  .  .  . |" +
+        " -7  .  .  .  5  .  .  . -12  .  .  .  0  .  .  . |" +
+        " -5  .  .  .  7  .  .  . -7  .  .  .  5  .  .  . |" +
+        " -5  .  .  .  .  .  .  . -12  .  .  .  .  .  .  ."),
+      drum: dpat(
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . S . . . . . . . |" +
+        "K . . . . . . . t t t t . . . ."),
+    },
+  };
+
+  /* the set she is actually playing. Medium is the fallback, because a
+     missing tune must never be an exception inside an audio callback. */
+  function score() { return SCORES[G && G.diff] || SCORES.medium; }
+
   /* The clock running out does not get a tune of its own: it gets THIS
      tune, faster, with the hat on every step. A different piece of music
      under thirty seconds would be a different level; the same one, hurried,
@@ -5356,8 +5734,8 @@ window.SuperOuissy = (function () {
 
   /* `BGM` is whatever is playing. It is kept as a name because the audio
      harness reads BGM.lead and BGM.bass to count the tune. */
-  var BGM = SCORE.w1;
-  var bgmTimer = null, bgmStep = 0, bgmGain = null, bgmName = "w1", bgmRush = false;
+  var BGM = SCORES.medium.w1;
+  var bgmTimer = null, bgmStep = 0, bgmGain = null, bgmName = "w1", bgmRush = false, bgmSet = null;
   var bgmNoise = null;
 
   /* which tune belongs to where she is standing */
@@ -5370,11 +5748,16 @@ window.SuperOuissy = (function () {
   /* switch tunes without stopping the music: the step resets so the new
      one starts at its own downbeat rather than halfway through a bar */
   function bgmPlay(name, rush) {
-    if (SCORE[name] === undefined) return;
+    var S = score();
+    if (S[name] === undefined) return;
     rush = !!rush;
-    if (bgmName === name && bgmRush === rush) return;
-    bgmName = name; bgmRush = rush;
-    BGM = SCORE[name];
+    /* THE SET COUNTS, NOT JUST THE NAME. "w1" means a different piece of
+       music on each difficulty now, so comparing names alone made this
+       return early when she quit an Easy run and started a Hard one — the
+       tune is still called w1, so it kept playing Easy's. */
+    if (bgmName === name && bgmRush === rush && bgmSet === S) return;
+    bgmName = name; bgmRush = rush; bgmSet = S;
+    BGM = S[name];
     bgmStep = 0;
     if (bgmTimer) {
       clearInterval(bgmTimer);
@@ -5860,7 +6243,7 @@ window.SuperOuissy = (function () {
   window.__soBgmName = function () { return bgmName + (bgmRush ? "+rush" : ""); };
   window.__soBgmPlay = function (n, r) { bgmPlay(n, r); };
   window.__soBgmBar = function () {
-    return { steps: BGM.lead.length,
+    return { steps: BGM.lead.length, tempo: BGM.tempo,
              leadNotes: BGM.lead.filter(function (v) { return v !== null; }).length,
              bassNotes: BGM.bass.filter(function (v) { return v !== null; }).length,
              bassRoots: BGM.bass.filter(function (v) { return v === 0; }).length };
@@ -5911,7 +6294,10 @@ window.SuperOuissy = (function () {
     updateHud();
   };
   window.__soHeartsEver = function () { return G.heartsEver; };
-  window.__soMoments = function () { return { read: loadMoments(), total: MOMENTS.length, cost: MOMENT_COST }; };
+  window.__soMoments = function () {
+    return { read: loadMoments(), total: moments().length, cost: MOMENT_COST,
+             key: momKey(), all: moments() };
+  };
   window.__soTele = function (tx, ty) {
     if (!G || !G.level) return;
     G.player.x = tx * T;
@@ -6019,6 +6405,9 @@ window.SuperOuissy = (function () {
     return { w: L.w, h: L.h, startX: L.start.x, startY: L.start.y };
   };
   window.__soDiffFlag = function (k) { return DIFF[G.diff][k]; };
+  /* harness only: look at another difficulty's score and letters without
+     starting a whole run on it */
+  window.__soPeekDiff = function (d) { var was = G.diff; G.diff = d; return was; };
   window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
   /* Kill her outright, whatever the difficulty. Dropping her down a pit
      only works where pits are lethal — Easy has `pitSafety` and catches
