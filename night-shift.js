@@ -740,7 +740,7 @@ const NS = {
         from: [-1.40, 1.50, 0.20], to: [-1.00, 1.46, 0.55], look: [-3.20, 1.25, -0.90],
         swarm: ["office", 20, 1.7, -4.9, 0.48, "x+"], advance: -1.4,
         sfx: [["falseBang", 0.85], ["step", 0.8, -0.6]],
-        line: { who: "cogsworth", t: "Ouissy. Shut it. Shut it on me, I will hold it from this side." } },
+        line: { who: "cogsworth", t: "Ouissy. Shut it. I am on the wrong side of it and that is exactly where I mean to be." } },
       /* SHE DOES THE ONE THING SHE KNOWS HOW TO DO, and the shutter
          really comes down while the shot is running. */
       { room: "office", secs: 3.4, fov: 62, shake: 0.9, doors: { left: 1, right: 1 },
@@ -783,9 +783,22 @@ const NS = {
         sfx: [["scare", 0.55]],
         line: { nar: 1, t: "Something small and brass goes up into the ceiling with six of them holding on to it, and the grate does not open again." } },
 
+      /* AND THE ROOM NONE OF THIS IS HAPPENING IN.
+
+         Forty-odd shots in one office is a long time in one place, and
+         the loudest scene in the chapter is the right place to cut, for
+         four seconds, to the quietest room in the building -- the bench
+         where the four of them were made, with nothing on it moving.
+         It also puts the workshop in her head twenty shots before the
+         film ends there. */
+      { room: "workshop", secs: 4.0, fov: 48, lux: 0.3, clear: 1,
+        from: [-1.10, 1.45, 1.30], to: [-0.80, 1.38, 1.05], look: [0.40, 1.00, -1.40],
+        line: { nar: 1, t: "Two rooms away there is a bench with nothing on it, and nothing anywhere near it is moving at all." } },
+
       /* --- AND THEN THE METER ENDS, AND THE DOORS GO UP ------------ */
       { room: "office", secs: 3.4, fov: 48, lux: 0.18,
         from: [-0.30, 1.44, 1.30], to: [-0.10, 1.40, 1.10], look: [0.90, 1.05, 1.05],
+        swarm: ["office", 18, 1.7, -5.0, 0.48, "x+"], advance: 1,
         sfx: [["powerDown", 0.9]],
         line: { sys: 1, t: "RESERVE DEPLETED. DOOR CONTROL OFFLINE." } },
       /* the shutters roll back up on camera, because nothing is paying
@@ -812,7 +825,7 @@ const NS = {
         from: [2.20, 1.31, -0.55], to: [1.40, 1.40, 0.05], look: [3.00, 1.15, -0.90],
         swarm: ["office", 22, 1.8, 3.6, 0.46, "x-"], advance: 1,
         sfx: [["scare", 0.5]],
-        line: { nar: 1, t: "She dances. And every single thing in that doorway stops to watch her, because every single one of them was made in this shop to stand very still and look at something exactly like her. It buys eleven seconds. Eleven seconds is the reason any of the rest of this is possible." } },
+        line: { nar: 1, t: "She dances. And every single thing in that doorway stops to watch her, because every one of them was made in this shop to stand very still and look at something exactly like her. It buys eleven seconds. At the end of the eleventh they remember what they came for, and there is a great deal of them and only one of her." } },
 
       /* --- THE WEST DOOR, AND THE LENGTH OF THE ROOM --------------- */
       { room: "office", secs: 3.4, fov: 44, cue: "night", shake: 0.9,
@@ -823,7 +836,7 @@ const NS = {
         from: [-1.90, 1.50, 0.90], to: [1.60, 1.45, 0.70], look: [0, 0.95, -1.30],
         swarm: ["office", 22, 1.8, 3.0, 0.46, "x-"], advance: 1.8,
         sfx: [["falseBang", 0.9], ["step", 0.9, -0.4], ["step", 0.9, 0.4]],
-        line: { nar: 1, t: "He walks the length of the room with the east side of it hanging on to him, and turns at the end of it, and does not stop for anything, and that is the last time this shop hears anybody keeping time in it." } },
+        line: { nar: 1, t: "He leaves the west door and walks the length of the room to hers, because hers is empty now and somebody has to be standing in it. He gets there. He does not stop for anything on the way, and that is the last time this shop hears anybody in it keeping time." } },
 
       /* AND THE CLOCK ON HER WALL, WITH NOTHING SAID OVER IT.
 
@@ -869,10 +882,10 @@ const NS = {
          second is what he is talking about. */
       { room: "office", secs: 3.0, fov: 42,
         from: [-0.90, 1.36, 1.90], to: [-1.05, 1.30, 1.84], look: [-1.15, 1.50, 0.30],
-        line: { who: "jax", t: "There is a board under your chair that lifts out." } },
+        line: { who: "jax", t: "Come out of the corner. Come here. There is a board under your chair that lifts out." } },
       { room: "office", secs: 4.4, fov0: 44, fov1: 50,
         from: [-1.05, 1.30, 1.84], to: [-1.62, 1.02, 1.74],
-        look: [-1.16, 1.48, 0.30], look2: [-1.30, 0.28, 0.76],
+        look: [-1.16, 1.48, 0.30], look2: [-1.26, 0.62, 0.62],
         line: { who: "jax", t: "He put a room down there in March and never told anybody." } },
       { room: "office", secs: 3.0, fov: 40,
         from: [-1.62, 1.02, 1.74], to: [-1.70, 0.78, 1.58], look: [-1.22, 1.30, 0.42],
@@ -956,11 +969,21 @@ const NS = {
         line: { who: "jax", t: "Put your hands over your ears, Ouissy." } },
 
       /* --- the thing that is not a line ---------------------------- */
-      { room: "office", secs: 3.4, fov: 44, lux: 0.16, shake: 0.9,
+      { room: "office", secs: 3.6, fov: 44, lux: 0.16, shake: 0.9,
         from: [-1.62, 0.24, 1.28], to: [-1.58, 0.28, 1.22], look: [-2.30, 1.18, -0.30],
         boss: ["office", -2.30, -0.30, 1.9],
         sfx: [["postSettle", 0.6]],
-        line: { nar: 1, t: "The first thing he ever built is standing over the board with its hand out when he does it." } },
+        line: { nar: 1, t: "The first thing he ever built is halfway across the room with its hand out." } },
+      /* AND HE PUTS THE FLOOR BACK OVER HER.
+
+         She was lying in an open hole with the board off and the thing
+         he is about to detonate against standing on top of it. The last
+         act of the last one of them has to be shutting her in, and the
+         last sight she gets of any of them has to be that. */
+      { room: "office", secs: 4.2, fov: 46, lux: 0.12,
+        from: [-1.58, 0.28, 1.22], to: [-1.55, 0.22, 1.18], look: [-1.18, 1.20, 0.30],
+        sfx: [["doorClose", 0.7], ["hatch", 0.5]],
+        line: { nar: 1, t: "The last thing she sees of any of them is a jack-in-the-box putting the floor back over her head, carefully, with both hands, the way you close a door on somebody who is asleep." } },
       { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08, gone: "jax", hush: "lead",
         from: [-1.66, 0.20, 1.28], to: [-1.70, 0.25, 1.38], look: [-1.14, 1.40, 0.30] },
 
@@ -976,7 +999,7 @@ const NS = {
         line: { nar: 1, t: "And then it is quiet in a way the shop has not been all week." } },
       { room: "foyer", secs: 6.0, fov: 66,
         from: [2.60, 2.90, 2.40], to: [1.40, 2.10, 1.50], look: [-0.5, 1.05, -1.8],
-        line: { nar: 1, t: "The shutters go up at six. They always have. Nobody has to be there for it." } },
+        line: { nar: 1, t: "The shutters go up at six. They always have, and there is nothing left in here worth putting behind them, and nobody has to be present for either of those things." } },
       { room: "stage", secs: 5.4, fov: 62,
         from: [0.20, 3.10, 4.30], to: [0.20, 2.30, 3.00], look: [0, 1.30, -2.4],
         line: { nar: 1, t: "She has spent six nights getting very good at keeping them out." } },
