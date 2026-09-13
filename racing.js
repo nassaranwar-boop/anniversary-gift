@@ -7535,7 +7535,19 @@ function wireScroll() {
   const read = () => {
     const sc = box();
     const span = sc.scrollHeight - sc.clientHeight;
-    if (span <= 4) { rail.dataset.on = "0"; el.overlay.dataset.more = "0"; return; }
+    if (span <= 4) {
+      /* AND IT IS PUT AWAY PROPERLY. Returning here before the geometry
+         below was set left the rail at its default place -- no height, no
+         left, which lands it in the middle of the panel -- and hidden only
+         by opacity, which does not take a thing out of the hit test. Every
+         panel too short to scroll had an invisible pill in the middle of
+         its writing swallowing taps. It is collapsed to nothing as well as
+         hidden now. */
+      rail.dataset.on = "0";
+      rail.style.height = "0px";
+      el.overlay.dataset.more = "0";
+      return;
+    }
     rail.dataset.on = "1";
 
     /* THE RAIL IS PUT WHERE THE PANEL IS, measured rather than assumed --

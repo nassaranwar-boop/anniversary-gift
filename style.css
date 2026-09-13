@@ -7072,9 +7072,17 @@ img{-webkit-user-drag:none; user-select:none;}
   border-radius:1cqw; z-index:9;
   background:rgba(255,248,232,.09);
   box-shadow:inset 0 0 0 1px rgba(255,248,232,.10);
-  opacity:0; transition:opacity .25s ease; touch-action:none;
+  /* VISIBILITY, NOT JUST OPACITY. An element at zero opacity is still in
+     the hit test: on every panel short enough not to scroll, the rail was
+     an invisible twenty-point pill sitting in the middle of the writing,
+     eating taps. Nobody would ever have found that by looking. */
+  opacity:0; visibility:hidden; touch-action:none;
+  transition:opacity .25s ease, visibility 0s linear .25s;
 }
-.rc-rail[data-on="1"]{ opacity:1; }
+.rc-rail[data-on="1"]{
+  opacity:1; visibility:visible;
+  transition:opacity .25s ease, visibility 0s;
+}
 .rc-rail-thumb{
   position:absolute; left:0; right:0; border-radius:1cqw;
   /* quiet on purpose. A full-saturation bar down the edge of the screen
@@ -7100,6 +7108,8 @@ img{-webkit-user-drag:none; user-select:none;}
   margin-left:calc(max(20px, 2.4cqh) / -2);
   border-radius:50%; background:rgba(20,8,26,.72);
   box-shadow:inset 0 0 0 1px rgba(255,212,121,.38);
+  /* it is a sign, not a control -- the rail under it is the control */
+  pointer-events:none;
   opacity:0; transition:opacity .3s ease;
 }
 .rc-rail-more::before{
