@@ -10100,12 +10100,44 @@
 
     var spot = new THREE.SpotLight(0xfff0d0, 46, 28, 0.72, 0.86, 1.1);
     spot.castShadow = true;
-    spot.shadow.mapSize.set(1024, 1024);
+    /* THE MOST EXPENSIVE THING IN THE FRAME, AND THE ONLY ONE THAT GETS
+       WORSE WHEN SHE WALKS.
+
+       The torch is a spotlight she carries, so the whole scene is drawn a
+       second time every frame from where she is standing. Standing still
+       facing a wall, almost nothing is inside the beam's frustum and that
+       second pass is nearly free. Walk, and especially TURN, and the beam
+       sweeps across the room — every wall, every car, every railing enters
+       its frustum at once and the second pass suddenly costs more than the
+       first. That is the stall that comes with the stick and goes a moment
+       after you let go of it.
+
+       A tablet or a phone gets a quarter of the shadow map, a shorter
+       throw and a tighter blur. It is the same picture: the beam still
+       carves silhouettes, they are simply not sampled nine times each on a
+       device that has to do it sixty times a second on battery. */
+    /* WHAT A TOUCH DEVICE IS, and what it is not: a coarse pointer. NOT a
+       small window — a desktop browser resized down is still a desktop,
+       and judging by screen size handed every windowed machine the
+       cut-down shadow it did not need. */
+    var handheld = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+                   (navigator.maxTouchPoints || 0) > 1;
+    /* The two levers that actually do anything here. `shadow.camera.far`
+       is NOT one of them — three.js derives a spotlight's shadow far plane
+       from the light's own `distance`, which this torch animates every
+       frame, so anything set here is overwritten before the first shadow
+       is drawn. Setting it read as a throw limit and was worth nothing.
+
+       The map is a quarter of the pixels to fill. The radius is the blur:
+       three is a seven-by-seven tap per shadowed fragment, one is
+       three-by-three — a fifth of the sampling, across every lit surface
+       in the beam. */
+    var sm = handheld ? 512 : 1024;
+    spot.shadow.mapSize.set(sm, sm);
     spot.shadow.camera.near = 0.5;
-    spot.shadow.camera.far = 26;
     spot.shadow.bias = -0.0011;
     spot.shadow.normalBias = 0.028;
-    spot.shadow.radius = 3;
+    spot.shadow.radius = handheld ? 1 : 3;
     /* where the lens ends up once she is holding it: forward of her
        chest and a little to her right, not level with her eyes */
     spot.position.set(0.26, 1.20, -0.11);
@@ -16400,10 +16432,26 @@
       var drop = over > 2.4 ? 3 : over > 1.7 ? 2 : 1;
       perfStep(Math.min(RUNGS.length - 1, Stage.rung + drop), drop > 1 ? 3.0 : 4.5);
     } else if (med < 0.0140 && p90 < 0.0190 && Stage.rung > 0) {
-      perfStep(Stage.rung - 1, 7.0);  /* slower to climb than to fall */
-    }
+      /* CLIMBING IS NOT FREE, AND THAT IS THE WHOLE PROBLEM.
+
+         Every rung change reallocates the canvas and the composer's render
+         targets, which is a visible hitch in itself. A machine sitting near
+         the boundary — which is exactly what an iPad does while she walks
+         and is fine while she stands — could drop, wait, climb, drop again,
+         and hitch every few seconds FOR AS LONG AS SHE KEPT WALKING, with
+         the ladder causing the stutter it was trying to cure.
+
+         So it climbs only from a clearly comfortable place, and only after
+         two good windows in a row rather than one. Falling is unchanged:
+         a machine in trouble should still get help immediately. */
+      if (med < 0.0125 && p90 < 0.0165) {
+        perfGood++;
+        if (perfGood >= 2) { perfGood = 0; perfStep(Stage.rung - 1, 12.0); }
+      } else perfGood = 0;
+    } else perfGood = 0;
   }
 
+  var perfGood = 0;
   function perfStep(rung, hold) {
     Stage.rung = rung;
     Stage.scale = RUNGS[rung];
@@ -16427,7 +16475,8 @@
        ladder the beam still lights the room, it just stops carving
        silhouettes out of it. Cheap to turn on again when the frames come
        back. */
-    var wantShadow = rung < 3;
+    var touch = (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    var wantShadow = rung < (touch ? 2 : 3);
     if (G && G.player && G.player.torch) {
       var sp = G.player.torch.userData.spot;
       if (sp && sp.castShadow !== wantShadow) {
@@ -16439,6 +16488,7 @@
       }
     }
     perfHold = hold;
+    perfGood = 0;
     perfBuf.length = 0;
   }
 
@@ -17023,6 +17073,15 @@
       return true;
     };
     window.__apScale = function () { return { dpr: Stage.dpr, scale: Stage.scale, rung: Stage.rung, w: Stage.w, h: Stage.h }; };
+    /* what the torch is actually costing: the second pass's size, throw
+       and blur, which is the one thing that gets dearer as she walks */
+    window.__apTorchShadow = function () {
+      var t = G && G.player && G.player.torch;
+      var sp = t && t.userData && t.userData.spot;
+      if (!sp) return null;
+      return { on: !!sp.castShadow, map: sp.shadow.mapSize.x,
+               far: sp.shadow.camera.far, radius: sp.shadow.radius };
+    };
     /* FEED THE QUALITY LADDER A MACHINE.
 
        The ladder is the only thing standing between an old phone and a
