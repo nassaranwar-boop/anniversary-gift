@@ -4299,6 +4299,17 @@ window.SuperOuissy = (function () {
     for (var i = 0; i < MOMENTS.length; i++) if (read.indexOf(i) < 0) return i;
     return Math.floor(Math.random() * MOMENTS.length);
   }
+  /* ONCE SHE HAS READ THEM ALL, READING IS FREE.
+
+     Ten hearts buy a letter she has not seen. Charging her ten again for a
+     random repeat of one she already owns is not a purchase, it is a slot
+     machine — she pays the same price for strictly less. When the pile is
+     complete it is hers: the button stays, says so, and costs nothing. */
+  function allRead() {
+    var read = loadMoments();
+    for (var i = 0; i < MOMENTS.length; i++) if (read.indexOf(i) < 0) return false;
+    return true;
+  }
   function bestFor(diff) {
     var b = loadBest()[diff];
     return b || { score: 0, time: 0, hearts: 0, cleared: false };
@@ -4525,17 +4536,23 @@ window.SuperOuissy = (function () {
   function renderMomentBuy() {
     var host = $("so-moment-buy");
     if (!host) return;
-    if (G.hearts < MOMENT_COST) {
+    var free = allRead();
+    if (!free && G.hearts < MOMENT_COST) {
       host.innerHTML = '<p class="so-moment-none">' +
         (G.hearts ? G.hearts + " hearts. " + MOMENT_COST + " buys a moment." : "") + "</p>";
       return;
     }
     host.innerHTML = '<button class="so-btn so-btn-quiet so-moment-btn" id="so-moment">' +
-      "A MOMENT &middot; " + MOMENT_COST + ' <svg class="gl gl-life" aria-hidden="true"><use href="#ic-px-heart"/></svg>' +
-      "</button><p class=\"so-moment-none\">you have " + G.hearts + "</p>";
+      (free ? "READ ONE AGAIN"
+            : "A MOMENT &middot; " + MOMENT_COST +
+              ' <svg class="gl gl-life" aria-hidden="true"><use href="#ic-px-heart"/></svg>') +
+      "</button><p class=\"so-moment-none\">" +
+      (free ? "you have all of them" : "you have " + G.hearts) + "</p>";
     $("so-moment").addEventListener("click", function () {
-      if (G.hearts < MOMENT_COST) return;
-      G.hearts -= MOMENT_COST;
+      if (!free) {
+        if (G.hearts < MOMENT_COST) return;
+        G.hearts -= MOMENT_COST;
+      }
       var i = nextMoment(), read = loadMoments();
       if (read.indexOf(i) < 0) { read.push(i); saveMoments(read); }
       var slot = $("so-moment-slot");
