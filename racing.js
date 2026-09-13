@@ -7590,6 +7590,201 @@ function renderTracks() {
 }
 
 /* the little pictures on the cards are drawn, like everything else */
+/* ---- WHAT A TRACK CARD SHOWS ----
+
+   It used to be the loop drawn as a neon outline over a two-stop gradient.
+   That is the same picture six times in six colours: it tells you the shape
+   and nothing else, and the shape is the least of what makes Harbour Lights
+   different from The Long Way Home.
+
+   This is a little map of the place instead, drawn from the course's own
+   table -- its grass, its shoulder, its tarmac, its rumble strip, its sky --
+   with the road built the way the real one is baked (casing, shoulder,
+   tarmac, kerbing, a broken white line), the shortcut dashed in beside it,
+   the start line in checkers, and the ground around it dotted with the
+   things that particular chapter is actually made of. Pines and cabins in
+   the woods, houses and postboxes in town, water tanks and cats on the
+   roofs. Nothing is invented: the scenery list is the one the chapter
+   builds itself from, and the seed is the course id, so a card is the same
+   card every time she opens the menu. */
+
+/* the furniture, at map size: chunky, because these are eight pixels tall
+   on a 120x84 plate that is then blown up unsmoothed */
+function cardGlyph(g, kind, x, y, s, ink, hi) {
+  g.fillStyle = ink;
+  const box = (w, h) => g.fillRect(x - w / 2, y - h, w, h);
+  const blob = (r) => { g.beginPath(); g.arc(x, y - r, r, 0, TWO_PI); g.fill(); };
+  const conifer = () => {
+    g.fillRect(x - 0.6, y - s * 0.3, 1.2, s * 0.3);
+    for (let k = 0; k < 2; k++) {
+      const w = s * (0.9 - k * 0.28), yy = y - s * (0.25 + k * 0.42);
+      g.beginPath(); g.moveTo(x, yy - s * 0.55);
+      g.lineTo(x - w / 2, yy); g.lineTo(x + w / 2, yy); g.closePath(); g.fill();
+    }
+  };
+  const roofed = (w) => {
+    g.fillRect(x - w / 2, y - s * 0.62, w, s * 0.62);
+    g.fillStyle = hi;
+    g.beginPath(); g.moveTo(x - w / 2 - 1, y - s * 0.6);
+    g.lineTo(x, y - s); g.lineTo(x + w / 2 + 1, y - s * 0.6); g.closePath(); g.fill();
+  };
+  switch (kind) {
+    case "pine":                          conifer(); break;
+    case "tree":   g.fillRect(x - 0.6, y - s * 0.35, 1.2, s * 0.35); blob(s * 0.36); break;
+    case "house": case "cabin": case "store": case "shed": case "shelter":
+                                          roofed(s * 0.9); break;
+    case "lamp": case "pole": case "signpost": case "stringpole": case "trafficlight":
+      g.fillRect(x - 0.5, y - s, 1, s); g.fillStyle = hi;
+      g.fillRect(x - 1.6, y - s - 0.5, 3.2, 2); break;
+    case "rock": case "bush": case "planter": case "flowerbox":
+                                          blob(s * 0.34); break;
+    case "car": case "bench": case "cart": case "chair": case "bike":
+      g.fillRect(x - s * 0.45, y - s * 0.34, s * 0.9, s * 0.34); break;
+    case "cat":
+      blob(s * 0.26);
+      g.beginPath(); g.moveTo(x - s * 0.24, y - s * 0.4);
+      g.lineTo(x - s * 0.1, y - s * 0.66); g.lineTo(x + s * 0.02, y - s * 0.4);
+      g.closePath(); g.fill(); break;
+    case "watertank": case "acunit": case "vent": case "dish": case "skylight":
+    case "vending": case "postbox": case "mailbox": case "hydrant":
+      box(s * 0.5, s * 0.55);
+      g.fillStyle = hi; g.fillRect(x - s * 0.25, y - s * 0.55, s * 0.5, 1.4); break;
+    case "plant":
+      box(s * 0.3, s * 0.22); blob(s * 0.24); break;
+    case "sign": case "signpost":
+      g.fillRect(x - 0.5, y - s * 0.9, 1, s * 0.9);
+      g.fillStyle = hi; g.fillRect(x - s * 0.3, y - s, s * 0.6, s * 0.32); break;
+    case "laundry": case "washline":
+      g.fillRect(x - s * 0.5, y - s * 0.8, s, 1);
+      g.fillStyle = hi;
+      g.fillRect(x - s * 0.3, y - s * 0.78, s * 0.2, s * 0.34);
+      g.fillRect(x + s * 0.08, y - s * 0.78, s * 0.18, s * 0.3); break;
+    case "hoop":
+      g.fillRect(x - 0.5, y - s * 0.8, 1, s * 0.8);
+      g.strokeStyle = hi; g.lineWidth = 1.2;
+      g.beginPath(); g.arc(x, y - s * 0.82, s * 0.2, 0, TWO_PI); g.stroke(); break;
+    default:
+      /* a crate, which is at least a thing somebody put down */
+      box(s * 0.44, s * 0.38);
+      g.fillStyle = hi; g.fillRect(x - s * 0.22, y - s * 0.22, s * 0.44, 1.2);
+  }
+}
+
+function paintTrackCard(g, t) {
+  const W = 120, H = 84;
+
+  /* the ground it is all drawn on, lit from the sky down */
+  const sky = g.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, mix(t.grass, t.sky[1], 0.34));
+  sky.addColorStop(1, mix(t.grass, "#1a1020", 0.30));
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+
+  const rnd = mulberry(seedOf(t.id, 4801));
+
+  /* soft patches of the second grass tone, so the ground is not a flat
+     rectangle of one colour */
+  g.globalAlpha = 0.5;
+  g.fillStyle = t.grassAlt;
+  for (let k = 0; k < 9; k++) {
+    const px = rnd() * W, py = rnd() * H, pr = 7 + rnd() * 13;
+    g.beginPath(); g.ellipse(px, py, pr, pr * 0.66, rnd() * 3, 0, TWO_PI); g.fill();
+  }
+  g.globalAlpha = 1;
+
+  /* where the loop goes on the plate */
+  const pts = t.pts;
+  let mnx = 1, mny = 1, mxx = 0, mxy = 0;
+  pts.forEach((p) => {
+    mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]);
+    mny = Math.min(mny, p[1]); mxy = Math.max(mxy, p[1]);
+  });
+  const sc = Math.min(94 / (mxx - mnx), 58 / (mxy - mny));
+  const ox = (W - (mxx - mnx) * sc) / 2, oy = (H - (mxy - mny) * sc) / 2;
+  const M = (p) => [ox + (p[0] - mnx) * sc, oy + (p[1] - mny) * sc];
+  const XY = pts.map(M);
+
+  /* the furniture goes down before the road, and never on it */
+  const off = (x, y) => {
+    let best = 1e9;
+    for (const q of XY) {
+      const d = (q[0] - x) ** 2 + (q[1] - y) ** 2;
+      if (d < best) best = d;
+    }
+    return Math.sqrt(best);
+  };
+  const kinds = (t.scenery || ["bush"]).filter((k, n, a) => a.indexOf(k) === n);
+  /* how dark the furniture has to be is a question about the ground it is
+     standing on: Hospital Dash's floor is a pale blue-grey and everything on
+     it vanished at the mix that suited the forest */
+  const lum = (() => { const c = hexToRgb(t.grass);
+    return (c[0] * 0.299 + c[1] * 0.587 + c[2] * 0.114) / 255; })();
+  const ink = mix(t.grass, "#12101c", 0.52 + lum * 0.28);
+  const hi  = mix(t.shoulder, "#12101c", 0.30 + lum * 0.26);
+  let placed = 0, tries = 0;
+  while (placed < 16 && tries < 400) {
+    tries++;
+    const x = 5 + rnd() * (W - 10), y = 10 + rnd() * (H - 12);
+    const d = off(x, y);
+    if (d < 9 || d > 30) continue;          // clear of the road, not marooned
+    cardGlyph(g, kinds[(placed * 5 + 1) % kinds.length], x, y, 8 + rnd() * 4.5, ink, hi);
+    placed++;
+  }
+
+  /* the road, in the order the world itself is baked */
+  const ribbon = (w, col, dash) => {
+    g.lineJoin = g.lineCap = dash ? "butt" : "round";
+    g.setLineDash(dash || []);
+    g.strokeStyle = col; g.lineWidth = w;
+    g.beginPath();
+    XY.forEach((m, k) => (k ? g.lineTo(m[0], m[1]) : g.moveTo(m[0], m[1])));
+    g.closePath(); g.stroke();
+    g.setLineDash([]);
+  };
+  ribbon(11, "rgba(16,8,22,.40)");          // the shadow it sits in
+  ribbon(9.5, t.shoulder);                  // graded shoulder
+  ribbon(8, t.rumbleA);                     // kerbing
+  ribbon(6.4, t.road);                      // tarmac
+  ribbon(1, "rgba(255,248,232,.62)", [3, 4]); // and the line down the middle
+
+  /* the shortcut, narrower and dashed, the way it is on the map in the
+     corner of the screen while she is driving */
+  if (t.cut && t.cut.pts && t.cut.pts.length > 1) {
+    const C = t.cut.pts.map(M);
+    const slip = (w, col) => {
+      g.lineCap = "round"; g.lineJoin = "round";
+      g.strokeStyle = col; g.lineWidth = w;
+      g.beginPath();
+      C.forEach((m, k) => (k ? g.lineTo(m[0], m[1]) : g.moveTo(m[0], m[1])));
+      g.stroke();
+    };
+    /* Drawn as a road, narrower than the main one, rather than as a dashed
+       line. Dashed, it read as a stray mark ruled across the middle of the
+       loop; built the same way the tarmac is, it reads as what it is -- a
+       rougher, tighter way round that leaves the road and rejoins it. */
+    slip(7, "rgba(16,8,22,.34)");
+    slip(5.4, mix(t.shoulder, "#12101c", 0.18));
+    slip(3.6, mix(t.road, "#2a1e2c", 0.22));
+  }
+
+  /* the start line, square across the road where the grid actually sits */
+  const a = XY[0], b2 = XY[1] || XY[0];
+  const ta = Math.atan2(b2[1] - a[1], b2[0] - a[0]);
+  g.save();
+  g.translate(a[0], a[1]); g.rotate(ta);
+  for (let r = 0; r < 2; r++)
+    for (let cix = 0; cix < 4; cix++) {
+      g.fillStyle = (r + cix) % 2 ? "#1b1420" : "#fff8e8";
+      g.fillRect(-1.6 + r * 1.6, -3.2 + cix * 1.6, 1.6, 1.6);
+    }
+  g.restore();
+
+  /* a soft edge, so the plate reads as a card rather than a screenshot */
+  const vig = g.createRadialGradient(W / 2, H / 2, 22, W / 2, H / 2, 72);
+  vig.addColorStop(0, "rgba(0,0,0,0)");
+  vig.addColorStop(1, "rgba(12,6,18,.40)");
+  g.fillStyle = vig; g.fillRect(0, 0, W, H);
+}
+
 function paintCardArt() {
   if (!el.overlay) return;
   el.overlay.querySelectorAll("[data-art]").forEach((span) => {
@@ -7609,32 +7804,7 @@ function paintCardArt() {
       const h = 74, w = h * (spr.width / spr.height);
       g.drawImage(spr, 60 - w / 2, 82 - h, w, h);
     } else {
-      const t = TRACKS[i];
-      const grad = g.createLinearGradient(0, 0, 0, 84);
-      grad.addColorStop(0, t.sky[0]);
-      grad.addColorStop(1, t.grass);
-      g.fillStyle = grad; g.fillRect(0, 0, 120, 84);
-
-      /* a thumbnail of the actual loop, not a stand-in */
-      const pts = t.pts;
-      let mnx = 1, mny = 1, mxx = 0, mxy = 0;
-      pts.forEach((p) => {
-        mnx = Math.min(mnx, p[0]); mxx = Math.max(mxx, p[0]);
-        mny = Math.min(mny, p[1]); mxy = Math.max(mxy, p[1]);
-      });
-      const sc = Math.min(96 / (mxx - mnx), 60 / (mxy - mny));
-      const ox = (120 - (mxx - mnx) * sc) / 2, oy = (84 - (mxy - mny) * sc) / 2;
-      const M = (p) => [ox + (p[0] - mnx) * sc, oy + (p[1] - mny) * sc];
-      g.lineJoin = g.lineCap = "round";
-      g.strokeStyle = "rgba(20,10,26,.45)"; g.lineWidth = 9;
-      g.beginPath(); pts.forEach((p, k) => { const m = M(p); k ? g.lineTo(m[0], m[1]) : g.moveTo(m[0], m[1]); });
-      g.closePath(); g.stroke();
-      g.strokeStyle = t.rumbleA; g.lineWidth = 7;
-      g.beginPath(); pts.forEach((p, k) => { const m = M(p); k ? g.lineTo(m[0], m[1]) : g.moveTo(m[0], m[1]); });
-      g.closePath(); g.stroke();
-      g.strokeStyle = "#fff8e8"; g.lineWidth = 4;
-      g.beginPath(); pts.forEach((p, k) => { const m = M(p); k ? g.lineTo(m[0], m[1]) : g.moveTo(m[0], m[1]); });
-      g.closePath(); g.stroke();
+      paintTrackCard(g, TRACKS[i]);
     }
     span.appendChild(c);
   });
