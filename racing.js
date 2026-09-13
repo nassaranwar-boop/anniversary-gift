@@ -7483,6 +7483,116 @@ function setOverlay(html, cls) {
   el.overlay.innerHTML = html;
   el.overlay.className = "rc-overlay" + (html ? " on" : "") + (cls ? " " + cls : "");
   el.overlay.setAttribute("aria-hidden", html ? "false" : "true");
+  wireScroll();
+}
+
+/* THERE IS MORE PANEL BELOW, AND NOTHING SAID SO.
+
+   The results panel is taller than a phone stage on purpose -- podium,
+   field, photograph, keepsake and three buttons will not fit in two
+   hundred points however they are arranged, so it scrolls. What it did
+   not do was LOOK like it scrolled. The only sign was the browser's own
+   scrollbar: a hairline on a desktop, and on iOS an overlay bar that is
+   invisible until you are already scrolling, which is exactly too late
+   for the person who needed telling. Someone meeting the screen for the
+   first time reads a panel that stops mid-sentence as a game that has
+   frozen, not as a page with more underneath.
+
+   So the bar is drawn rather than borrowed: a rail down the side of the
+   panel with a thumb the size of the fraction on screen, in the same
+   gold as everything else, and a chevron under it that bobs while there
+   is still something below and stops the moment there is not. The
+   native bar is hidden, because two bars down one edge is worse than
+   none. It can be dragged as well as watched, so it is a control on a
+   desktop and a sign of life on a phone.
+
+   It is wired here, in setOverlay, rather than in each of the fourteen
+   places that build a panel -- a panel added later gets it for nothing,
+   and a panel that stopped getting it would be the kind of thing nobody
+   notices until someone is stuck. */
+let scrollWired = null;
+function wireScroll() {
+  if (!el.overlay) return;
+  if (scrollWired) { scrollWired(); scrollWired = null; }
+  const panel = el.overlay.querySelector(".rc-panel");
+  if (!panel) { el.overlay.removeAttribute("data-more"); return; }
+
+  const rail  = document.createElement("div");
+  rail.className = "rc-rail";
+  rail.setAttribute("aria-hidden", "true");
+  const thumb = document.createElement("span");
+  thumb.className = "rc-rail-thumb";
+  const more  = document.createElement("b");
+  more.className = "rc-rail-more";
+  rail.appendChild(thumb);
+  rail.appendChild(more);
+  el.overlay.appendChild(rail);
+
+  /* the panel is the scroller when it has a cap to overflow; when it does
+     not, the overlay around it is */
+  const box = () => (panel.scrollHeight - panel.clientHeight > 4 ? panel : el.overlay);
+
+  const read = () => {
+    const sc = box();
+    const span = sc.scrollHeight - sc.clientHeight;
+    if (span <= 4) { rail.dataset.on = "0"; el.overlay.dataset.more = "0"; return; }
+    rail.dataset.on = "1";
+
+    /* the rail is laid over the panel's own edge, measured rather than
+       assumed: a panel that is not at its cap is not where the cap is */
+    const pr = panel.getBoundingClientRect(), ov = el.overlay.getBoundingClientRect();
+    rail.style.top    = (pr.top - ov.top) + "px";
+    rail.style.height = pr.height + "px";
+
+    const frac = sc.clientHeight / sc.scrollHeight;
+    const at   = sc.scrollTop / span;
+    thumb.style.height = (Math.max(0.12, frac) * 100).toFixed(2) + "%";
+    thumb.style.top    = (at * (1 - Math.max(0.12, frac)) * 100).toFixed(2) + "%";
+    el.overlay.dataset.more = at < 0.98 ? "1" : "0";
+  };
+
+  /* dragging it scrolls, so it is a control and not just a picture */
+  let grab = null;
+  const down = (e) => {
+    const sc = box();
+    if (sc.scrollHeight - sc.clientHeight <= 4) return;
+    grab = { y: e.clientY, top: sc.scrollTop, h: rail.getBoundingClientRect().height };
+    rail.dataset.grab = "1";
+    try { rail.setPointerCapture(e.pointerId); } catch (x) {}
+    e.preventDefault();
+  };
+  const move = (e) => {
+    if (!grab) return;
+    const sc = box();
+    const span = sc.scrollHeight - sc.clientHeight;
+    sc.scrollTop = grab.top + ((e.clientY - grab.y) / grab.h) * sc.scrollHeight;
+    if (sc.scrollTop < 0) sc.scrollTop = 0;
+    if (sc.scrollTop > span) sc.scrollTop = span;
+    read();
+    e.preventDefault();
+  };
+  const up = () => { grab = null; rail.dataset.grab = "0"; };
+  rail.addEventListener("pointerdown", down);
+  rail.addEventListener("pointermove", move);
+  rail.addEventListener("pointerup", up);
+  rail.addEventListener("pointercancel", up);
+
+  panel.addEventListener("scroll", read, { passive: true });
+  el.overlay.addEventListener("scroll", read, { passive: true });
+  let ro = null;
+  try { ro = new ResizeObserver(read); ro.observe(panel); } catch (x) {}
+  /* the postcard is drawn into the panel a beat after the panel is built,
+     and a rail measured before it arrives is the wrong length */
+  const t1 = setTimeout(read, 60), t2 = setTimeout(read, 400);
+  read();
+
+  scrollWired = () => {
+    clearTimeout(t1); clearTimeout(t2);
+    if (ro) try { ro.disconnect(); } catch (x) {}
+    panel.removeEventListener("scroll", read);
+    el.overlay.removeEventListener("scroll", read);
+    if (rail.parentNode) rail.parentNode.removeChild(rail);
+  };
 }
 
 function renderTitle() {

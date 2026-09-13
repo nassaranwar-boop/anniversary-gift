@@ -6952,9 +6952,19 @@ img{-webkit-user-drag:none; user-select:none;}
 /* the postcard from the finish */
 .rc-card-shot{ margin:1cqh 0 .2cqh; display:flex; justify-content:center; }
 .rc-card-shot canvas{
-  /* small enough that it never pushes the buttons under the fold on a
-     short screen, big enough to see what the photograph is of */
-  width:min(42cqw, 100%); height:auto; image-rendering:pixelated;
+  /* Small enough that it never pushes the buttons under the fold on a
+     short screen, big enough to see what the photograph is of -- and
+     BOUNDED BY THE HEIGHT AS WELL, which is the whole point of the third
+     term. The postcard is 640x400, so a width of 42cqw is a height of
+     26.25cqw, and on a 16:9 stage that is 46cqh: taller than the 40cqh cap
+     on the .rc-split it sits in. .rc-split has no overflow rule, so the
+     card did not scroll and did not clip -- it simply hung out of the
+     bottom of its own box and painted straight over the sentence beneath
+     it, which read as a line of text cut in half by the photograph. The
+     60cqh term is 37.5cqh of card, which fits the cap with room to spare.
+     Capping with max-height instead would be wrong: a canvas is a replaced
+     element, so a width and a height both set stretch the picture. */
+  width:min(42cqw, 100%, 60cqh); height:auto; image-rendering:pixelated;
   border-radius:.8cqw;
   box-shadow:0 1cqh 2.4cqw rgba(0,0,0,.5), inset 0 0 0 .2cqw rgba(255,248,232,.3);
 }
@@ -7041,6 +7051,50 @@ img{-webkit-user-drag:none; user-select:none;}
   max-height:40cqh;
 }
 .rc-standings ol{max-height:30cqh; overflow-y:auto; overscroll-behavior:contain;}
+
+/* ---- THE SCROLL RAIL ----
+   Drawn rather than borrowed. A hairline on a desktop and an invisible
+   overlay bar on iOS are both no help at all to the person who has not
+   worked out that the panel scrolls, so the native one is hidden and this
+   takes its place: a rail down the panel's own edge, a thumb the size of
+   the fraction on screen, and a chevron that bobs while there is still
+   something below. */
+.rc-panel::-webkit-scrollbar,
+.rc-overlay::-webkit-scrollbar{ width:0; height:0; }
+.rc-panel, .rc-overlay{ scrollbar-width:none; }
+
+.rc-rail{
+  position:absolute; right:.6cqw; width:1.1cqw; min-width:9px;
+  border-radius:1cqw; z-index:9;
+  background:linear-gradient(180deg, rgba(255,248,232,.05), rgba(255,248,232,.11));
+  box-shadow:inset 0 0 0 .12cqw rgba(255,248,232,.18);
+  opacity:0; transition:opacity .25s ease; touch-action:none;
+}
+.rc-rail[data-on="1"]{ opacity:1; }
+.rc-rail-thumb{
+  position:absolute; left:0; right:0; border-radius:1cqw;
+  background:linear-gradient(180deg, var(--rc-gold,#ffd479), #e07a9d);
+  box-shadow:0 0 .8cqw rgba(255,212,121,.45), inset 0 0 0 .12cqw rgba(20,8,26,.35);
+}
+.rc-rail[data-grab="1"] .rc-rail-thumb{ filter:brightness(1.18); }
+/* the chevron, which is the part that actually teaches the gesture: it
+   says down, it moves, and it goes away the moment she reaches the end */
+.rc-rail-more{
+  position:absolute; left:50%; bottom:-2.4cqh; width:2cqh; height:2cqh;
+  margin-left:-1cqh; opacity:0; transition:opacity .3s ease;
+}
+.rc-rail-more::before{
+  content:""; position:absolute; inset:22% 18%;
+  border-right:.28cqh solid var(--rc-gold,#ffd479);
+  border-bottom:.28cqh solid var(--rc-gold,#ffd479);
+  transform:rotate(45deg);
+}
+.rc-overlay[data-more="1"] .rc-rail[data-on="1"] .rc-rail-more{
+  opacity:.9; animation:rc-bob 1.5s ease-in-out infinite;
+}
+@keyframes rc-bob{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(.7cqh)} }
+@media (prefers-reduced-motion: reduce){ .rc-rail-more{animation:none !important;} }
+
 /* a keepsake is a sentence, not a badge, so the strip under a result can be
    a great deal taller than it used to be */
 .rc-earned{max-height:20cqh; overflow-y:auto; overscroll-behavior:contain;}
@@ -7065,7 +7119,12 @@ img{-webkit-user-drag:none; user-select:none;}
 @container rcstage (min-width: 620px){
   .rc-split-2{ grid-template-columns:1.05fr .95fr; align-items:start; }
   .rc-split-2 .rc-card-shot{ margin-top:0; }
-  .rc-split-2 .rc-card-shot canvas{ width:100%; }
+  /* the column's full width, but still bounded by the height: a plain
+     100% here outranks the min() on .rc-card-shot canvas -- three
+     classes against two -- so the championship round was the one
+     place the card went back to hanging out of its box. It was 225
+     points of a 133-point split on a 390-tall phone. */
+  .rc-split-2 .rc-card-shot canvas{ width:min(100%, 60cqh); }
 }
 
 /* ---------- badges ---------- */
@@ -7602,7 +7661,12 @@ img{-webkit-user-drag:none; user-select:none;}
      buttons included. */
   .rc-split{max-height:34cqh;}
   .rc-card-shot{margin:.2cqh 0 0;}
-  .rc-card-shot canvas{width:min(34cqw, 100%); max-height:32cqh;}
+  /* the same height bound, and for the same reason; the max-height that
+     used to be here could only have squashed the picture sideways */
+  .rc-card-shot canvas{width:min(34cqw, 100%, 51cqh);}
+  /* and the championship's two-column version of it, which has its own
+     more specific rule and would otherwise keep the taller bound */
+  .rc-split-2 .rc-card-shot canvas{width:min(100%, 51cqh);}
   .rc-standings ol{max-height:26cqh; overflow-y:auto; overscroll-behavior:contain;}
   .rc-earned{max-height:13cqh; overflow-y:auto; overscroll-behavior:contain;}
   .rc-pod-art canvas{width:9cqh;}
