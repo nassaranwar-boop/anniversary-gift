@@ -64,6 +64,67 @@ const R = []; const ok = (n, c, x) => R.push((c ? 'ok   ' : 'FAIL ') + n + (x ? 
     ok(`${n} is a different arrangement on each difficulty`,
        new Set(tempos).size === 3, tempos.join(' / '));
   }
+  /* A DIFFERENT SPEED IS NOT A DIFFERENT TUNE. Fifteen melodies, and no two
+     of them the same — not across the difficulties and not within one. The
+     three endings used to share a melody line and differ only in tempo and
+     harmony, so finishing Hard sounded like finishing Easy. */
+  const all = [];
+  for (const d of ['easy','medium','hard'])
+    for (const n of ['w1','w2','w3','boss','win']) all.push([`${d}.${n}`, sets[d][n].tune]);
+  const byTune = {};
+  const same = [];
+  for (const [name, tune] of all) {
+    if (byTune[tune]) same.push(`${byTune[tune]} = ${name}`);
+    byTune[tune] = byTune[tune] || name;
+  }
+  ok('all fifteen are actually different melodies, not one at five speeds',
+     same.length === 0, same.join('; '));
+  ok('and each difficulty\'s own three worlds are three different tunes',
+     ['easy','medium','hard'].every(d =>
+       new Set(['w1','w2','w3'].map(n => sets[d][n].tune)).size === 3));
+  /* and every line of every tune is the same length, or the last bar of the
+     drums plays against a bar of the melody that has already moved on */
+  const ragged = all.filter(([n]) => {
+    const [d, t] = n.split('.');
+    return sets[d][t].drumSteps !== sets[d][t].steps;
+  });
+  ok('every drum line is exactly as long as the tune it is under',
+     ragged.length === 0, ragged.map(r => r[0]).join(', '));
+  /* AND THE MENU KEEPS THE OLD TUNE — the thin thirty-two step loop the
+     whole game used to be, the same on all three, so the title screen is
+     the plainest thing in it and a world is an arrival. */
+  const menu = await page.evaluate(() => {
+    const out = {};
+    for (const d of ['easy', 'medium', 'hard']) {
+      const prev = window.__soPeekDiff(d);
+      window.__soBgmPlay('menu');
+      out[d] = window.__soBgmBar();
+      window.__soPeekDiff(prev);
+    }
+    window.__soBgmPlay('w1');        /* put the room's own tune back */
+    return out;
+  });
+  ok('the menu has a tune of its own', !!menu.easy && menu.easy.steps === 32,
+     `steps=${menu.easy && menu.easy.steps}`);
+  ok('and it is the plain old one — half the length of a world',
+     ['easy','medium','hard'].every(d => menu[d].steps === 32 && menu[d].tempo === 0.14),
+     ['easy','medium','hard'].map(d => `${menu[d].steps}@${menu[d].tempo}`).join(' '));
+  ok('and it is the same on all three, because a menu is a menu',
+     new Set(['easy','medium','hard'].map(d => menu[d].leadNotes + ':' + menu[d].bassNotes)).size === 1);
+  ok('with nothing under it: no drums, no harmony',
+     menu.medium.leadNotes > 8 && menu.medium.bassNotes > 8);
+
+  /* AND IT STOPS AT THE DOOR. bgmFollow asks where she is, and the menu is
+     one of the answers now — asked a moment too early it picks the title's
+     loop and plays it through the whole world. */
+  const handover = await page.evaluate(() => {
+    const out = {};
+    window.__soGoLevel(0); window.__soSkipCard();
+    out.world = window.__soBgmName();
+    return out;
+  });
+  ok('starting a world leaves the menu tune behind', handover.world !== 'menu', handover.world);
+
   ok('easy is the slowest and hard the fastest, world for world',
      ['w1','w2','w3','boss'].every(n => sets.easy[n].tempo > sets.medium[n].tempo &&
                                         sets.medium[n].tempo > sets.hard[n].tempo));

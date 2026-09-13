@@ -2139,19 +2139,52 @@ window.SuperOuissy = (function () {
 
      The three worlds are an arc. The meadow is the beginning of them. The
      middle one is what it is actually like. The castle is the promise. */
-  var SIGN_LINES = [
-    ["everything here is soft on purpose. one of them should be.",
-     "you start things over without making it a tragedy. i never learned how.",
-     "three of these, and then me."],
-    ["the ground stops being kind about here. that isn't a punishment, it's just further in.",
-     "i'm not worried about you. i've seen what you do with a bad week.",
-     "you're allowed to stop and look at it. it's yours."],
-    ["whatever is at the top of this, i'm on your side of it.",
-     "she isn't difficult because i wanted you to lose.",
-     "one more room, then the door, then me."],
-  ];
+  var SIGN_LINES = {
+    /* EASY — the meadow, the orchard and the garden. The gentlest set, and
+       the boards know it: nothing here is chasing her. */
+    easy: [
+      ["nothing here means it. go and look at things.",
+       "you don't have to be good at this. you only have to be here.",
+       "i can see you from the next one."],
+      ["the orchard was your idea. i only built it.",
+       "take the long way round. nothing here is chasing you.",
+       "you are further in than you think you are."],
+      ["the last garden, and i planted the whole thing facing the door.",
+       "whatever you are by the time you get there is the right thing to be.",
+       "one more, and then it is just us."],
+    ],
+    /* MEDIUM — the riverside, the windmill and the hill town. The middle
+       of everything, which is what this difficulty is. */
+    medium: [
+      ["everything here is soft on purpose. one of them should be.",
+       "you start things over without making it a tragedy. i never learned how.",
+       "three of these, and then me."],
+      ["the ground stops being kind about here. that isn't a punishment, it's just further in.",
+       "i'm not worried about you. i've seen what you do with a bad week.",
+       "you're allowed to stop and look at it. it's yours."],
+      ["whatever is at the top of this, i'm on your side of it.",
+       "she isn't difficult because i wanted you to lose.",
+       "one more room, then the door, then me."],
+    ],
+    /* HARD — the forest, the ruins and the castle. She chose the worst of
+       it on purpose, and these are written to somebody who did. */
+    hard: [
+      ["you picked the hard one. i am not surprised and i am not arguing.",
+       "everything after this gets worse. going anyway is the whole skill.",
+       "the forest ends. they all do."],
+      ["somebody lived here once and then didn't. that happens. it is not the end of anything.",
+       "if you need to stop, stop. the ruins will wait. so will i.",
+       "you have done harder than this with less, and I was there."],
+      ["what is at the top of this is the worst thing i could think of. that was deliberate.",
+       "if she takes everything, i am still coming.",
+       "last door. i am behind it."],
+    ],
+  };
   function mkSigns(grid, w, h, start, goal, index) {
-    var lines = SIGN_LINES[Math.min(SIGN_LINES.length - 1, index)] || [];
+    /* his voice, but not the same nine boards on every difficulty: each one
+       is its own three places, walked by somebody who chose them */
+    var set = SIGN_LINES[(G && G.diff) || "medium"] || SIGN_LINES.medium;
+    var lines = set[Math.min(set.length - 1, index)] || [];
     var x0 = Math.floor(start.x / T), x1 = goal ? Math.floor(goal.x / T) : w - 2;
     var out = [];
     if (x1 - x0 < 12) return out;
@@ -4437,6 +4470,11 @@ window.SuperOuissy = (function () {
   /* ---- 1. the difficulty select ---------------------------------------- */
   function showDifficulty() {
     G.state = "menu";
+    /* the old tune, under the title screen — her preference is hers and is
+       not overridden, it is only honoured somewhere it never used to be */
+    var mw = true;
+    try { mw = localStorage.getItem("so_bgm") !== "0"; } catch (e) {}
+    if (mw) { setBgm(true); bgmFollow(); } else stopBgm();
     var saved = "medium";
     try { saved = localStorage.getItem(DIFF_KEY) || "medium"; } catch (e) {}
     var cards = ["easy", "medium", "hard"].map(function (k) {
@@ -4575,12 +4613,6 @@ window.SuperOuissy = (function () {
           '<button class="so-btn so-btn-go" id="so-resume">RESUME</button>' +
           '<button class="so-btn" id="so-restart">RESTART WORLD</button>' +
           '<button class="so-btn" id="so-bgm">MUSIC: ' + (G.bgmOn ? "ON" : "OFF") + "</button>" +
-          /* The ending's door is behind three worlds and a boss. This is
-             the same door, in the one place she can always reach — and
-             on Hard only, for the same reason. */
-          (G.diff === "hard"
-            ? '<button class="so-btn so-btn-quiet" id="so-pause-scene">ANWAR vs DEATH</button>'
-            : "") +
           '<button class="so-btn so-btn-quiet" id="so-quit">QUIT TO HUB</button>' +
         "</div>", "so-ov-card");
       $("so-resume").addEventListener("click", function () { togglePause(false); });
@@ -4589,15 +4621,6 @@ window.SuperOuissy = (function () {
         setBgm(!G.bgmOn); $("so-bgm").textContent = "MUSIC: " + (G.bgmOn ? "ON" : "OFF");
       });
       $("so-quit").addEventListener("click", quitToHub);
-      var pscene = $("so-pause-scene");
-      if (pscene) pscene.addEventListener("click", function () {
-        closeOverlay();
-        /* out of the pause and into the scene, and back into the pause
-           when it ends — the run underneath is untouched either way */
-        G.state = "play";
-        bgmDuck(false);
-        watchDeathScene(function () { togglePause(true); });
-      });
       Array.prototype.forEach.call(document.querySelectorAll("[data-so-setdiff]"), function (b) {
         b.addEventListener("click", function () {
           var k = b.getAttribute("data-so-setdiff");
@@ -4808,35 +4831,22 @@ window.SuperOuissy = (function () {
     }
     html += '<button class="so-btn' + (nxt ? "" : " so-btn-go") + '" id="so-end-again">' +
             "PLAY " + DIFF[G.diff].label.toUpperCase() + " AGAIN</button>";
-    /* THE SCENE ALMOST NOBODY SEES.
+    /* NO DOOR STRAIGHT TO THE SCENE ANY MORE.
 
-       Anwar and Death only meet if the Queen takes her last life on Hard,
-       inside the Queen's own room — which means the one piece of the game
-       with the most story in it is the piece least likely to ever be
-       watched. It can simply be watched instead, and watching it costs
-       nothing and changes nothing: no run, no lives, no save.
+       There used to be an ANWAR vs DEATH button here, and another in the
+       pause menu. They were scaffolding: the scene only happens if the
+       Queen takes her last life on Hard, which made it the hardest thing
+       in the game to ever see, and a way in was needed to check that it
+       worked at all. It works.
 
-       HARD ONLY, wherever the door appears. He is the Hard story — the
-       rescue, the last stand, all of it — and offering his name to
-       someone on Easy names a character that difficulty has never
-       introduced and spoils a scene she has no way to have reached. */
-    if (G.diff === "hard")
-      html += '<button class="so-btn so-btn-quiet" id="so-end-scene">ANWAR vs DEATH</button>';
+       What a shortcut costs is the thing itself. That scene is the
+       reward for having lost the whole run to her, in the last room, on
+       the hardest difficulty — and a button that hands it over on request
+       turns the worst moment in the game into a menu item. It is reached
+       by getting there now, which is the only way it ever meant anything. */
     html += '<button class="so-btn so-btn-quiet" id="so-end-title">TITLE SCREEN</button>';
     html += '<button class="so-btn so-btn-quiet" id="so-end-quit">BACK TO THE GAMES</button>';
     return html;
-  }
-
-  /* Watching it, rather than losing your way into it. The scene is handed
-     the canvas exactly as it is in a real run — same module, same script,
-     same decision at the end of it — and when it finishes, the ending
-     comes back. The one difference is that its outcome is thrown away
-     here: nothing is spent and nothing is won by watching. */
-  function watchDeathScene(back) {
-    back = back || function () { G.state = "ending"; showEnding(true); };
-    if (!window.Rescue) { back(); return; }
-    stopEndingArt();
-    playCutscene("death", { herX: 120, herY: 118 }, back);
   }
 
   function wireEndActions() {
@@ -4851,11 +4861,6 @@ window.SuperOuissy = (function () {
     if (again) again.addEventListener("click", function () {
       closeOverlay();
       playDifficulty(G.diff);
-    });
-    var scene = $("so-end-scene");
-    if (scene) scene.addEventListener("click", function () {
-      closeOverlay();
-      watchDeathScene();
     });
     var title = $("so-end-title");
     if (title) title.addEventListener("click", function () { showDifficulty(); });
@@ -5372,7 +5377,7 @@ window.SuperOuissy = (function () {
         "K . . . h . . . S . . . h . . . |" +
         "K . . . h . . . S . . . h . . . |" +
         "K . . . h . . . S . . . h . . . |" +
-        "K . . . h . . . S . . h . h . h ."),
+        "K . . . h . . . S . . h . h . h"),
     },
 
     /* WORLD TWO — the same tune with the gaps filled in and the ground
@@ -5577,18 +5582,20 @@ window.SuperOuissy = (function () {
         "K . h . S . h . K . h . S . h . |" +
         "K . h . S . h . K . t t t . S ."),
     },
+    /* her theme, but it opens on the fifth and comes DOWN to the root —
+       finishing Easy should not sound like finishing Medium */
     win: {
       tempo: 0.19,
       lead: pat(
-        "12  .  .  . 16  .  .  . 19  .  .  . 16  .  .  . |" +
-        "17  .  .  . 21  .  .  . 24  .  .  . 21  .  .  . |" +
-        "19  .  .  . 16  .  .  . 12  .  .  . 14  .  .  . |" +
+        "19  .  .  . 24  .  .  . 21  .  .  . 19  .  .  . |" +
+        "16  .  .  . 19  .  .  . 21  .  .  . 24  .  .  . |" +
+        "26  .  .  . 24  .  .  . 21  .  .  . 19  .  .  . |" +
         "16  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
       harm: pat(
-        "19  .  .  . 24  .  .  . 28  .  .  . 24  .  .  . |" +
-        "24  .  .  . 28  .  .  . 31  .  .  . 28  .  .  . |" +
-        "28  .  .  . 24  .  .  . 19  .  .  . 21  .  .  . |" +
-        "24  .  .  .  .  .  .  . 19  .  .  .  .  .  .  ."),
+        "24  .  .  . 28  .  .  . 26  .  .  . 24  .  .  . |" +
+        "21  .  .  . 24  .  .  . 26  .  .  . 28  .  .  . |" +
+        "31  .  .  . 28  .  .  . 26  .  .  . 24  .  .  . |" +
+        "21  .  .  .  .  .  .  . 16  .  .  .  .  .  .  ."),
       bass: pat(
         " 0  .  .  .  .  .  .  .  7  .  .  .  .  .  .  . |" +
         " 5  .  .  .  .  .  .  .  0  .  .  .  .  .  .  . |" +
@@ -5697,13 +5704,15 @@ window.SuperOuissy = (function () {
         "K h K h S h K h K h K h S h K h |" +
         "t t t t S . K . t t t t t t t t"),
     },
+    /* the same four notes, fallen all the way down and then climbing back
+       — which is what finishing THIS difficulty actually was */
     win: {
       tempo: 0.15,
       lead: pat(
-        "12  .  .  . 16  .  .  . 19  .  .  . 16  .  .  . |" +
-        "17  .  .  . 21  .  .  . 24  .  .  . 21  .  .  . |" +
-        "19  .  .  . 16  .  .  . 12  .  .  . 14  .  .  . |" +
-        "16  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
+        "24  .  .  . 21  .  .  . 19  .  .  . 16  .  .  . |" +
+        "14  .  .  . 12  .  .  .  9  .  .  . 12  .  .  . |" +
+        "16  .  .  . 19  .  .  . 21  .  .  . 24  .  .  . |" +
+        "19  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
       harm: pat(
         " 0  .  .  .  4  .  .  .  7  .  .  .  4  .  .  . |" +
         " 5  .  .  .  9  .  .  . 12  .  .  .  9  .  .  . |" +
@@ -5721,6 +5730,27 @@ window.SuperOuissy = (function () {
         "K . . . . . . . t t t t . . . ."),
     },
   };
+
+  /* ---- AND THE MENU KEEPS THE OLD ONE. -------------------------------
+
+     This is the tune the whole game used to be: thirty-two steps, a square
+     lead and a triangle bass, no harmony and no drums at all. It is thin,
+     and that is the point — it is what the game sounded like before any of
+     this, so the title screen is the plainest thing in it and every world
+     she starts is an arrival somewhere better. It is the same on all three
+     difficulties, because a menu is a menu. */
+  var MENU_TUNE = {
+    tempo: 0.14,
+    lead: pat("12 . 16 . 19 . 16 . 14 . 17 . 21 . 17 . |" +
+              "12 . 16 . 19 12 24  . 21 19 16  . 14 . 12 ."),
+    harm: pat(" . . .  . .  . .  .  .  .  .  .  . .  . . |" +
+              " . . .  . .  . .  .  .  .  .  .  . .  . ."),
+    bass: pat(" 0 . 7  . 0  . 7  .  2  .  9  .  2 .  9 . |" +
+              " 0 . 7  . 0  . 7  .  5  .  0  .  7 .  7 ."),
+    drum: dpat(". . . . . . . . . . . . . . . . |" +
+               ". . . . . . . . . . . . . . . ."),
+  };
+  ["easy", "medium", "hard"].forEach(function (d) { SCORES[d].menu = MENU_TUNE; });
 
   /* the set she is actually playing. Medium is the fallback, because a
      missing tune must never be an exception inside an audio callback. */
@@ -5740,7 +5770,8 @@ window.SuperOuissy = (function () {
 
   /* which tune belongs to where she is standing */
   function bgmFor() {
-    if (!G || !G.level) return "w1";
+    /* no level means a menu, and the menu has its own plain little loop */
+    if (!G || !G.level || G.state === "menu") return "menu";
     var b = G.level.boss;
     if (b && b.awake && !b.dead) return "boss";
     return "w" + Math.min(3, (G.levelIndex || 0) + 1);
@@ -6086,6 +6117,13 @@ window.SuperOuissy = (function () {
     G.keys = freshKeys();
     moveCamera(1);
     updateHud();
+    /* OUT OF THE MENU FIRST. bgmFollow asks where she is, and "the menu"
+       is one of the answers now — so calling it while the state still says
+       menu (which it does, because the title screen is what she came from)
+       picked the title's thin little loop and then played it through the
+       whole world. The card sets this a line later anyway; it is set here
+       so the question is asked about the right place. */
+    G.state = "card";
     bgmFollow();                      /* each world has its own arrangement */
     showLevelCard();
   }
@@ -6244,6 +6282,10 @@ window.SuperOuissy = (function () {
   window.__soBgmPlay = function (n, r) { bgmPlay(n, r); };
   window.__soBgmBar = function () {
     return { steps: BGM.lead.length, tempo: BGM.tempo,
+             /* the melody itself, so a harness can prove two tunes are two
+                tunes rather than the same one at a different speed */
+             tune: BGM.lead.join(",") ,
+             drumSteps: BGM.drum.length,
              leadNotes: BGM.lead.filter(function (v) { return v !== null; }).length,
              bassNotes: BGM.bass.filter(function (v) { return v !== null; }).length,
              bassRoots: BGM.bass.filter(function (v) { return v === 0; }).length };

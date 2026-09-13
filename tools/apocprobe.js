@@ -7,6 +7,18 @@ const { chromium } = require('playwright-core');
   p.on('console', m => { if (m.type()==='error' && !/ERR_FAILED/.test(m.text())) console.log('CONSOLE:', m.text()); });
   await p.route('**', r => (r.request().url().startsWith('http://localhost') ? r.continue() : r.abort()));
   await p.goto('http://localhost:8899/index.html', { waitUntil:'domcontentloaded' });
+  /* THE CHAPTER IS FETCHED ON DEMAND.
+
+     index.html no longer carries apocalypse.js, and the hooks arrive
+     later still -- start() builds the scene behind a promise and only
+     installs them when it resolves. A suite that calls start() and
+     __apEnter in one synchronous block cannot work, which is what every
+     file in this folder did, and why the chapter has had nothing
+     checking it for a long time. */
+  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
+  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });
+  await p.evaluate(() => { showScreen('apoc'); if (!window.__apEnter) Apocalypse.start(); });
+  await p.waitForFunction(() => typeof window.__apEnter === 'function', null, { timeout: 40000 });
   await p.evaluate(() => { document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     document.getElementById('screen-apoc').classList.add('active'); window.Apocalypse.start(); });
   await p.waitForFunction(() => !!window.__apEnter, { timeout:40000 });

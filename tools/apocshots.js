@@ -15,12 +15,18 @@ const shots = process.argv.slice(3);
   });
   await page.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1200);
-  /* The chapter is fetched on demand now -- index.html no longer
-     carries apocalypse.js, so `Apocalypse` does not exist until the
-     site has been asked for it. Every suite in this folder was
-     written before that and died on `Apocalypse is not defined`. */
+  /* THE CHAPTER IS FETCHED ON DEMAND.
+
+     index.html no longer carries apocalypse.js, and the hooks arrive
+     later still -- start() builds the scene behind a promise and only
+     installs them when it resolves. A suite that calls start() and
+     __apEnter in one synchronous block cannot work, which is what every
+     file in this folder did, and why the chapter has had nothing
+     checking it for a long time. */
   await page.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
   await page.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });
+  await page.evaluate(() => { showScreen('apoc'); if (!window.__apEnter) Apocalypse.start(); });
+  await page.waitForFunction(() => typeof window.__apEnter === 'function', null, { timeout: 40000 });
   const cdp = await page.context().newCDPSession(page);
   for (const s of shots) {
     await page.evaluate(() => { try{localStorage.clear();}catch(e){} });

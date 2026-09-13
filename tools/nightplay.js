@@ -14,20 +14,50 @@ let fails = 0, checks = 0;
    request, Google Fonts included — and playwright's post-click
    "waiting for scheduled navigations" then sits there until it times
    out. That is the harness, not the site. */
-async function tap(page, sel) {
-  const hit = await page.evaluate((s) => {
-    const els = Array.from(document.querySelectorAll(s.q));
-    const el = s.text ? els.find((e) => (e.textContent || '').indexOf(s.text) >= 0) : els[0];
-    if (!el) return false;
-    /* pointerdown first: the office's own buttons answer to that, the
-       way a thumb does */
-    try { el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })); }
-    catch (e) { el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); }
-    el.click();
-    return true;
-  }, sel);
-  if (!hit) { fails++; console.log('  FAIL could not tap ' + JSON.stringify(sel)); }
-  return hit;
+/* WAIT FOR THE BUTTON, DO NOT GUESS AT A DURATION.
+
+   This used to try exactly once. The opening film is built behind a
+   phase change and "BEGIN THE SHIFT" lands a beat after the menu does,
+   so one try at the wrong moment missed it -- and because every
+   assertion after that one depends on the film being up, a single
+   missed tap reported thirteen further failures that were nothing of
+   the kind. Same trap, same fix, as everywhere else in this folder. */
+async function tap(page, sel, budget) {
+  const end = Date.now() + (budget || 8000);
+  for (;;) {
+    const hit = await page.evaluate((s) => {
+      const live = (e) => e && !e.disabled && e.offsetParent !== null;
+      let els = Array.from(document.querySelectorAll(s.q));
+      let el = s.text ? els.find((e) => (e.textContent || '').indexOf(s.text) >= 0) : els[0];
+      /* A BUTTON NAMED BY ITS WORDS IS FOUND BY ITS WORDS.
+
+         Every tap in here was written against `.ns-btn`, and the one
+         that starts a shift stopped being one: it is the door now
+         (`.ns-door.ns-btn-go`, data-go="start"), changed on purpose and
+         never brought across. The suite went on looking for a class
+         that no longer carried the words, missed it, and reported
+         thirteen failures in a game that was working perfectly. So when
+         the class misses and there are words to go on, look for the
+         words. */
+      if (!live(el) && s.text) {
+        el = Array.from(document.querySelectorAll('button'))
+          .filter(live)
+          .find((e) => (e.textContent || '').indexOf(s.text) >= 0);
+      }
+      if (!live(el)) return false;
+      /* pointerdown first: the office's own buttons answer to that, the
+         way a thumb does */
+      try { el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })); }
+      catch (e) { el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); }
+      el.click();
+      return true;
+    }, sel);
+    if (hit) return true;
+    if (Date.now() >= end) break;
+    await page.waitForTimeout(150);
+  }
+  fails++; console.log('  FAIL could not tap ' + JSON.stringify(sel));
+  return false;
 }
 
 function ok(name, cond, extra) {
@@ -998,21 +1028,66 @@ function ok(name, cond, extra) {
     Object.defineProperty(window, 'speechSynthesis', { configurable: true, get: () => stub });
     window.SpeechSynthesisUtterance = function (t) { this.text = t; };
     const w = OuissysNightShift.__night;
+    /* SILENCE IS NOT THE ONLY THING TURNED DOWN.
+
+       The suite mutes the game early and un-mutes it here with
+       silence(false) -- but voxSpeak is gated on `!muted && MIX.voice >
+       0.02`, and MIX.voice is the mixer, a different thing. With the
+       voice channel still at zero the call fell straight through to the
+       caption-only path, nothing was ever handed to the stub, and eight
+       assertions reported "0 utterances" in a chapter whose speech is
+       working. Put the channel back as well as the mute. */
+    const mixWas = w.mix().voice;
     w.silence(false);
+    w.setMix('voice', 1);
+    w.setMix('master', 1);
     w.speechReset();
-    const line = 'I made toys. That part was true.';
+    /* A LINE HE HAS NO RECORDING OF.
+
+       This used to speak "I made toys. That part was true." -- and that
+       line has since been given a real recording, so the chapter plays
+       the recording and never reaches the browser's synthesiser at all.
+       voiceWhy reported it exactly: on, has, ready, id "intro-3-1".
+       That is the chapter preferring a real voice to a synthetic one,
+       which is right, and it left this checking a path the line no
+       longer takes. So the line spoken here is one with no recording
+       behind it, which is the only way to put the synthesiser under
+       test -- and the assertion below now reads the line it actually
+       asked for rather than a remembered string. */
+    const line = 'The lathe is still warm and nobody has been in here since Tuesday.';
+    const why = w.voiceWhy(line);
     w.vox(line);
     w.speak(line);
+    /* AND WAIT FOR HIM TO START.
+
+       speak() does not hand the line over on the spot. On a cold load
+       the voice list arrives late on nearly every browser, so the
+       chapter defers a line by up to 2.6 seconds rather than let him
+       come out as a machine for the first sentence of the game -- that
+       is voiceWait, and it is deliberate. This restored the real
+       speechSynthesis and re-muted the game on the very next line, so
+       the stub was gone by the time the deferred call reached it: the
+       utterance went to the real engine, which has no voices in here,
+       and eight assertions reported "0 utterances" about a chapter
+       whose speech works. Wait for the stub to be used, up to the same
+       2.6 seconds the game allows itself. */
+    for (let i = 0; i < 40 && !said.length; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
     if (real) Object.defineProperty(window, 'speechSynthesis', real);
     w.silence(true);
     w.speechReset();
-    return { said, marks };
+    return { said, marks, why, mixWas, line };
   });
   ok('it is handed to the browser to say out loud', spoken.said.length === 1,
-     spoken.said.length + ' utterances');
+     spoken.said.length + ' utterances' +
+     (spoken.said.length ? '' : '  (why: ' + JSON.stringify(spoken.why) +
+      ', voice channel was ' + spoken.mixWas + ')'));
   ok('and what it is asked to say is exactly what is written',
-     spoken.said[0] && spoken.said[0].text === 'I made toys. That part was true.',
+     spoken.said[0] && spoken.said[0].text === spoken.line,
      JSON.stringify(spoken.said[0] && spoken.said[0].text));
+  ok('and it is the synthesiser being tested, not a recording',
+     spoken.why && spoken.why.has === false, JSON.stringify(spoken.why));
   ok('in English', /^en/i.test((spoken.said[0] || {}).lang || ''), (spoken.said[0] || {}).lang);
   /* Near natural pitch, a shade under natural pace. Pushing the pitch
      down to make him sound like a man is what made him sound like a
@@ -1055,9 +1130,12 @@ function ok(name, cond, extra) {
   ok('and the building gets a different one from him',
      chosen.sys && chosen.sys !== chosen.him, chosen.sys);
 
+  /* one mark per word, in order, counted off the line that was actually
+     spoken rather than off a remembered seven-word one */
   ok('and the caption walks along behind it, word by word',
-     spoken.marks.length === 7 && spoken.marks[0] === 0 &&
-     spoken.marks[6] === 6 && spoken.marks.every((m, i) => m === i),
+     spoken.marks.length === spoken.line.split(' ').length &&
+     spoken.marks.every((m, i) => m === i),
+     spoken.marks.length + ' marks for ' + spoken.line.split(' ').length + ' words: ' +
      JSON.stringify(spoken.marks));
 
   /* THE FOUR THINGS THAT MADE HIM UNLISTENABLE.
@@ -1209,11 +1287,24 @@ function ok(name, cond, extra) {
     /* the empty utterance that primes iOS is cancelled on purpose and
        has no words in it */
     return { said: log.filter(e => e.ev === 'SAY' && e.text.trim()).length,
+             /* HOW MANY LINES HE ACTUALLY DELIVERED, BY ANY ROUTE.
+
+                Counting utterances handed to speechSynthesis stopped
+                being the same question as "does he speak": the opening
+                has its own recordings now, and a recording beats a
+                synthesised voice, so the stub sees nothing and the
+                chapter is working perfectly. What matters is that every
+                line went out as sound rather than down the silent
+                caption-only path, which is what `took` and `plays`
+                record. */
+             delivered: w.said().plays.tape + w.said().plays.speech,
+             took: w.said().took,
              cut: log.filter(e => e.ev === 'CUT' && e.text.trim()).map(e =>
                e.text.slice(0, 30) + ' at ' + e.at.toFixed(1) + '/' + e.of.toFixed(1) + 's') };
   });
-  ok('the opening actually says several sentences', whole.said >= 5,
-     whole.said + ' spoken');
+  ok('the opening actually says several sentences', whole.delivered >= 5,
+     whole.delivered + ' lines delivered (' + whole.said +
+     ' of them through the synthesiser, the rest from their own takes)');
   ok('and not one of them is cut off part way through',
      whole.cut.length === 0, whole.cut.join(' | ') || 'none cut');
 

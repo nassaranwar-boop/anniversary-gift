@@ -1,55 +1,96 @@
-/* Level 3: power the ward doors, wake him, and get the two of them behind
-   a door that shuts. */
-const { chromium } = require('playwright-core');
-const clicks = async (p, n) => { for (let i=0;i<n;i++){ await p.evaluate(()=>{const b=document.getElementById('ap-dlg-next'); if(b&&document.getElementById('ap-dlg').getAttribute('aria-hidden')==='false') b.click();}); await p.waitForTimeout(60);
-  /* The chapter is fetched on demand now -- index.html no longer
-     carries apocalypse.js, so `Apocalypse` does not exist until the
-     site has been asked for it. Every suite in this folder was
-     written before that and died on `Apocalypse is not defined`. */
-  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
-  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });} };
+/* LEVEL THREE: HUPM, CHRIFIYA.
+
+   The ward doors are dead, so the plant room comes first; then him, in
+   the room at the end; then the two of them out of the building
+   together. Every beat asserted -- the old file printed six lines and
+   judged none of them, teleported to tiles that have not been the plant
+   room or the ward for a long time, and read `anwar` off a state report
+   that has never had it in it. */
+const { boot, reporter, driver } = require('./_aplib');
+
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--no-sandbox','--no-proxy-server','--disable-gpu'] });
-  const p = await b.newPage({ viewport: { width: 1180, height: 820 } });
-  p.on('pageerror', e => console.log('PAGEERROR', e.message));
-  await p.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
-  await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded' });
-  await p.waitForTimeout(900);
-  await p.evaluate(() => { showScreen('apoc'); Apocalypse.start(); window.__apEnter(2); });
-  await clicks(p, 4);
+  const { browser, page, errs } = await boot();
+  const R = reporter(), ok = R.ok, D = driver(page);
+  await D.enter(2);
+  await D.talk(3);
 
-  // ward doors, before the power
-  await p.evaluate(() => { window.__apTeleport(20, 5); window.__apUse(); });
-  await p.waitForTimeout(200);
-  console.log('shut doors say:', await p.evaluate(() => document.getElementById('ap-dlg-text').textContent));
-  await clicks(p, 2);
+  let st = await D.state();
+  ok('level three is the hospital', st.level === 'hospital', st.level);
+  ok('and it opens on the plant room', st.step === 'panel', st.step);
+  ok('the ward is not empty', st.zombies > 0, st.zombies + ' of them');
+  ok('and he is somewhere in it', !!st.anwar && !st.anwar.found,
+     st.anwar ? 'at ' + st.anwar.tx + ',' + st.anwar.ty : 'MISSING');
 
-  // the plant room panel
-  await p.evaluate(() => { window.__apTeleport(5, 5); window.__apUse(); });
-  await p.waitForTimeout(300);
-  console.log('panel title:', await p.evaluate(() => { const t=document.querySelector('.ap-panel-title'); return t && t.textContent; }));
-  await p.evaluate(() => window.__apSolvePanel());
-  await p.waitForTimeout(1900);
-  await clicks(p, 2);
-  console.log('ward doors:', await p.evaluate(() => window.__apState().doors.filter(d=>d.includes('power')).join()));
+  /* a ward door, before the power */
+  const dead = st.doors.filter(d => d.kind === 'P');
+  ok('the doors the board feeds are dead to start with',
+     dead.length > 0 && dead.every(d => d.locked), dead.length + ' of them');
+  await page.evaluate(() => {
+    const d = window.__apState().doors.filter(x => x.kind === 'P')[0];
+    window.__apClear();
+    window.__apTeleport(d.x, d.y + 1);
+    window.__apPump(1 / 60, 4);
+    window.__apUse();
+  });
+  await page.waitForTimeout(300);
+  ok('and pushing one says so', /dead|not running/i.test(await D.line()),
+     (await D.line()).slice(0, 50));
+  await D.talk(2);
 
-  // him
-  await p.evaluate(() => { window.__apTeleport(30, 6); window.__apPump(0.4, {}); });
-  await p.waitForTimeout(250);
-  console.log('woken:', await p.evaluate(() => window.__apState().anwar));
-  console.log('first line:', await p.evaluate(() => document.getElementById('ap-dlg-text').textContent));
-  await clicks(p, 8);
+  /* the plant room */
+  await D.at('W');
+  ok('the board is in the plant room', await D.has('.ap-panel-canvas'));
+  ok('and it is the same board she did at home',
+     /DISTRIBUTION BOARD/.test(await D.text('.ap-panel-title') || ''));
+  await page.evaluate(() => window.__apSolvePanel());
+  ok('solving it closes the board',
+     await D.until(() => !document.querySelector('.ap-panel-canvas'), 6000));
+  await D.talk(3);
+  st = await D.state();
+  ok('the power comes back', st.powered);
+  ok('and every ward door lets go',
+     st.doors.filter(d => d.kind === 'P').every(d => !d.locked));
+  ok('which moves her on to him', st.step === 'anwar', st.step);
 
-  // he follows her
-  const f = await p.evaluate(() => { window.__apPump(4, { left: true }); return window.__apState().anwar; });
-  console.log('he follows to:', f);
+  /* him */
+  const a = st.anwar;
+  await page.evaluate(a => { window.__apClear();
+                             window.__apTeleport(a.tx, a.ty + 1);
+                             window.__apPump(1 / 60, 4);
+                             window.__apUse(); }, a);
+  await page.waitForTimeout(400);
+  ok('standing over him wakes him', (await D.state()).anwar.found);
+  ok('and he has something to say', (await D.line() || '').length > 0,
+     (await D.line() || '').slice(0, 50));
+  await D.talk(10);
 
-  // and the supply room
-  const r = await p.evaluate(() => { window.__apTeleport(3, 16); window.__apPump(0.3, {}); return window.__apState(); });
-  console.log('state at the supply room:', r.state, '| step was:', r.step);
-  console.log('hiding line:', await p.evaluate(() => document.getElementById('ap-dlg-text').textContent));
-  await clicks(p, 24);
-  console.log('after the beat:', await p.evaluate(() => ({ state: window.__apState().state, card: !!document.querySelector('.ap-card-title'), title: (document.querySelector('.ap-card-title')||{}).textContent })));
-  await b.close();
+  /* and he comes with her */
+  const before = (await D.state()).anwar;
+  await page.evaluate(() => {
+    const x = window.__apFind('X');
+    window.__apClear();
+    window.__apTeleport(x[0].x, x[0].y + 2);
+    window.__apPump(1 / 60, 120);
+  });
+  await page.waitForTimeout(300);
+  const after = (await D.state()).anwar;
+  ok('he follows her across the ward',
+     Math.hypot(after.x - before.x, after.z - before.z) > 2,
+     'he moved ' + Math.hypot(after.x - before.x, after.z - before.z).toFixed(1));
+
+  /* out */
+  ok('and the last thing asked is the way out', (await D.state()).step === 'exit',
+     await D.step());
+  await page.evaluate(() => {
+    const x = window.__apFind('X');
+    window.__apClear();
+    window.__apTeleport(x[0].x, x[0].y);
+    window.__apPump(1 / 60, 40);
+  });
+  await page.waitForTimeout(700);
+  const end = await D.state();
+  ok('reaching it ends the level', end.state !== 'play' || end.level !== 'hospital',
+     'state=' + end.state + ' level=' + end.level);
+
+  await R.done(browser, errs);
 })();
