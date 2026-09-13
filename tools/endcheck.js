@@ -205,7 +205,19 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
     const N = OuissysNightShift.__night;
     const out = [], moved = {}, rooms = {}, seen = {}, eyes = {};
     let last = null;
-    for (let k = 0; k < 9000 && N.finaleState().on; k++) {
+    /* TWENTY-FOUR THOUSAND, NOT NINE.
+
+       Every line in the film has a real recording behind it now, and a
+       shot waits for the voice: voxTalking is true for as long as the
+       take is actually playing, which is real seconds, and a loop
+       stepping film-time at a twentieth of a second gets through very
+       little real time per step. So each spoken shot runs out to its
+       cap of two and a bit times its written length instead of
+       stopping when the estimate says the words are done, and the film
+       costs about eleven thousand steps rather than five. At nine
+       thousand it simply stopped at shot forty-seven and reported the
+       ending as broken. */
+    for (let k = 0; k < 24000 && N.finaleState().on; k++) {
       const st = N.filmTick(0.05);
       if (!st) break;
       const i = st[4];
@@ -271,7 +283,7 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
        second, and stepping the whole film at a fifth of a second with
        the draw on was twenty minutes of taking the same fifty-six
        measurements over and over. */
-    for (let k = 0; k < 9000 && N.finaleState().on; k++) {
+    for (let k = 0; k < 24000 && N.finaleState().on; k++) {
       const i = N.filmFrame(0.2, false);
       if (i === false) break;
       if (i !== shot) {
@@ -289,7 +301,7 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
   await p.evaluate(() => { OuissysNightShift.__night.finale(); });
   const run2 = await p.evaluate(() => {
     const N = OuissysNightShift.__night;
-    for (let k = 0; k < 9000 && N.finaleState().on; k++) N.filmTick(0.2);
+    for (let k = 0; k < 24000 && N.finaleState().on; k++) N.filmTick(0.2);
     return N.finaleState();
   });
   ok('and it still reaches the end when it is run fast', run2.on === false, run2);
@@ -306,7 +318,7 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
     N.finale();
     /* walk to the longest subtitle in the film */
     let worst = null;
-    for (let k = 0; k < 9000 && N.finaleState().on; k++) {
+    for (let k = 0; k < 24000 && N.finaleState().on; k++) {
       N.filmTick(0.2, false);
       const row = document.querySelector('.ns-fin-row');
       const bar = document.querySelector('.ns-fin-bar.b');

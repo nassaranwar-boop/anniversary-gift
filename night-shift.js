@@ -796,10 +796,20 @@ const NS = {
       { room: "office", secs: 2.6, fov: 40,
         from: [-0.56, 1.45, 2.02], to: [-0.62, 1.43, 1.90], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "Right." } },
-      { room: "office", secs: 5.2, fov: 44,
-        from: [-0.90, 1.36, 1.90], to: [-1.62, 1.02, 1.74],
-        look: [-1.15, 1.50, 0.30], look2: [-1.30, 0.26, 0.78],
-        line: { who: "jax", t: "Under the till there is a board that lifts. He put a room down there in March and never told anybody." } },
+      /* TWO SHOTS, BECAUSE IT IS TWO SENTENCES.
+
+         One camera move cannot hold on a face for the first half of a
+         line and be pointed at the floor for the second, and trying
+         had him off the bottom of the frame for four fifths of the
+         longest thing he says. The first sentence is his face. The
+         second is what he is talking about. */
+      { room: "office", secs: 3.0, fov: 42,
+        from: [-0.90, 1.36, 1.90], to: [-1.05, 1.30, 1.84], look: [-1.15, 1.50, 0.30],
+        line: { who: "jax", t: "Under the till there is a board that lifts." } },
+      { room: "office", secs: 4.4, fov0: 44, fov1: 50,
+        from: [-1.05, 1.30, 1.84], to: [-1.62, 1.02, 1.74],
+        look: [-1.16, 1.48, 0.30], look2: [-1.30, 0.28, 0.76],
+        line: { who: "jax", t: "He put a room down there in March and never told anybody." } },
       { room: "office", secs: 3.0, fov: 40,
         from: [-1.62, 1.02, 1.74], to: [-1.70, 0.78, 1.58], look: [-1.22, 1.30, 0.42],
         line: { who: "jax", t: "Get in it." } },
