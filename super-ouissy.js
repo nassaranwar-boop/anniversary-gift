@@ -5377,7 +5377,7 @@ window.SuperOuissy = (function () {
         "K . . . h . . . S . . . h . . . |" +
         "K . . . h . . . S . . . h . . . |" +
         "K . . . h . . . S . . . h . . . |" +
-        "K . . . h . . . S . . h . h . h ."),
+        "K . . . h . . . S . . h . h . h"),
     },
 
     /* WORLD TWO — the same tune with the gaps filled in and the ground
@@ -5582,18 +5582,20 @@ window.SuperOuissy = (function () {
         "K . h . S . h . K . h . S . h . |" +
         "K . h . S . h . K . t t t . S ."),
     },
+    /* her theme, but it opens on the fifth and comes DOWN to the root —
+       finishing Easy should not sound like finishing Medium */
     win: {
       tempo: 0.19,
       lead: pat(
-        "12  .  .  . 16  .  .  . 19  .  .  . 16  .  .  . |" +
-        "17  .  .  . 21  .  .  . 24  .  .  . 21  .  .  . |" +
-        "19  .  .  . 16  .  .  . 12  .  .  . 14  .  .  . |" +
+        "19  .  .  . 24  .  .  . 21  .  .  . 19  .  .  . |" +
+        "16  .  .  . 19  .  .  . 21  .  .  . 24  .  .  . |" +
+        "26  .  .  . 24  .  .  . 21  .  .  . 19  .  .  . |" +
         "16  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
       harm: pat(
-        "19  .  .  . 24  .  .  . 28  .  .  . 24  .  .  . |" +
-        "24  .  .  . 28  .  .  . 31  .  .  . 28  .  .  . |" +
-        "28  .  .  . 24  .  .  . 19  .  .  . 21  .  .  . |" +
-        "24  .  .  .  .  .  .  . 19  .  .  .  .  .  .  ."),
+        "24  .  .  . 28  .  .  . 26  .  .  . 24  .  .  . |" +
+        "21  .  .  . 24  .  .  . 26  .  .  . 28  .  .  . |" +
+        "31  .  .  . 28  .  .  . 26  .  .  . 24  .  .  . |" +
+        "21  .  .  .  .  .  .  . 16  .  .  .  .  .  .  ."),
       bass: pat(
         " 0  .  .  .  .  .  .  .  7  .  .  .  .  .  .  . |" +
         " 5  .  .  .  .  .  .  .  0  .  .  .  .  .  .  . |" +
@@ -5702,13 +5704,15 @@ window.SuperOuissy = (function () {
         "K h K h S h K h K h K h S h K h |" +
         "t t t t S . K . t t t t t t t t"),
     },
+    /* the same four notes, fallen all the way down and then climbing back
+       — which is what finishing THIS difficulty actually was */
     win: {
       tempo: 0.15,
       lead: pat(
-        "12  .  .  . 16  .  .  . 19  .  .  . 16  .  .  . |" +
-        "17  .  .  . 21  .  .  . 24  .  .  . 21  .  .  . |" +
-        "19  .  .  . 16  .  .  . 12  .  .  . 14  .  .  . |" +
-        "16  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
+        "24  .  .  . 21  .  .  . 19  .  .  . 16  .  .  . |" +
+        "14  .  .  . 12  .  .  .  9  .  .  . 12  .  .  . |" +
+        "16  .  .  . 19  .  .  . 21  .  .  . 24  .  .  . |" +
+        "19  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
       harm: pat(
         " 0  .  .  .  4  .  .  .  7  .  .  .  4  .  .  . |" +
         " 5  .  .  .  9  .  .  . 12  .  .  .  9  .  .  . |" +
@@ -6278,6 +6282,10 @@ window.SuperOuissy = (function () {
   window.__soBgmPlay = function (n, r) { bgmPlay(n, r); };
   window.__soBgmBar = function () {
     return { steps: BGM.lead.length, tempo: BGM.tempo,
+             /* the melody itself, so a harness can prove two tunes are two
+                tunes rather than the same one at a different speed */
+             tune: BGM.lead.join(",") ,
+             drumSteps: BGM.drum.length,
              leadNotes: BGM.lead.filter(function (v) { return v !== null; }).length,
              bassNotes: BGM.bass.filter(function (v) { return v !== null; }).length,
              bassRoots: BGM.bass.filter(function (v) { return v === 0; }).length };
