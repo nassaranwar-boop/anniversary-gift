@@ -57,9 +57,11 @@ const NS = eval('(' + src.slice(i + key.length - 1, j + 1) + ')');
 
      anwar       92 Hz  the tape, and the lowest thing in the chapter.
                         He is talking to her from underneath all of it.
-     cogsworth  100 Hz  just above him, slower than anybody: he is a
+     cogsworth  108 Hz  clear of him, and slower than anybody: he is a
                         clock, he does not hurry, and he is the oldest
-                        of the four.
+                        of the four. He was two semitones lower until
+                        castcheck put him within a semitone of Anwar,
+                        which to an ear is the same man.
      chime      139 Hz  a small brass owl with a bell in it.
      jax        178 Hz  light and fast, because he talks like somebody
                         who has decided not to be afraid out loud, and
@@ -75,7 +77,7 @@ const NS = eval('(' + src.slice(i + key.length - 1, j + 1) + ')');
    they are the same person.                                          */
 const VOICE = {
   anwar:     { model: 'en_GB-alan-medium',                  pace: '1.16', depth: '1.2' },
-  cogsworth: { model: 'en_GB-northern_english_male-medium', pace: '1.26', depth: '2.2' },
+  cogsworth: { model: 'en_GB-northern_english_male-medium', pace: '1.26', depth: '0.8' },
   chime:     { model: 'en_US-ryan-high',                    pace: '1.02', depth: '-1.6' },
   marabelle: { model: 'en_US-lessac-high',                  pace: '1.12', depth: '-2.0' },
   jax:       { model: 'en_GB-semaine-medium',               pace: '0.98', depth: '3.0' },
