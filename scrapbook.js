@@ -1051,49 +1051,98 @@ window.Scrapbook = (function () {
      same cream label, same off-centre sheen -- and the play triangle
      pressed into the label the way a monogram is. It is unmistakably a
      button and it is unmistakably from this book. */
-  function playRecord(size) {
+  /* THE PLAY STUD.
+
+     What was here was a wine record with grooves, a cream label and a
+     pressed triangle. As an object it belonged -- there are records on
+     these pages -- but as a control at sixty points across it rendered as
+     a purple bullseye: the grooves moire into rings at that size and a
+     label at forty-six per cent of the radius makes a target. Sat on a
+     dusty pink page next to a pressed flower it read as a widget from a
+     video site wearing a costume, which is the one thing it was built not
+     to be.
+
+     A brad instead -- the same pearl-and-brass fastener that holds the
+     flower down in the corner of this very page. Brass collar, pearl
+     face with the light off to one side, and the play mark engraved into
+     it in plum rather than printed on it. It is small because a brad is
+     small; it is the page's own hardware rather than a piece of a player. */
+  function playStud(size) {
     return tex(size, size, function (ctx, W) {
       var r = W / 2;
-      /* the disc */
-      ctx.fillStyle = "#5b2434";
+
+      /* the brass collar, lit from the top left the way everything else on
+         these pages is */
+      var br = ctx.createLinearGradient(W * 0.18, 0, W * 0.84, W);
+      br.addColorStop(0,    "#f3e0ad");
+      br.addColorStop(0.30, "#cfa85a");
+      br.addColorStop(0.58, "#a07c36");
+      br.addColorStop(0.82, "#d8b871");
+      br.addColorStop(1,    "#7d5f27");
+      ctx.fillStyle = br;
       ctx.beginPath(); ctx.arc(r, r, r * 0.985, 0, 6.29); ctx.fill();
-      /* grooves */
-      ctx.strokeStyle = "rgba(255,232,222,0.075)";
-      ctx.lineWidth = 1;
-      for (var i = r * 0.40; i < r * 0.96; i += 2.6) {
-        ctx.beginPath(); ctx.arc(r, r, i, 0, 6.29); ctx.stroke();
+
+      /* a milled edge: short ticks round the collar, barely there */
+      ctx.strokeStyle = "rgba(60,38,10,0.30)";
+      ctx.lineWidth = Math.max(1, r * 0.015);
+      for (var a = 0; a < 6.28; a += 6.28 / 48) {
+        ctx.beginPath();
+        ctx.moveTo(r + Math.cos(a) * r * 0.985, r + Math.sin(a) * r * 0.985);
+        ctx.lineTo(r + Math.cos(a) * r * 0.895, r + Math.sin(a) * r * 0.895);
+        ctx.stroke();
       }
-      /* the light coming across it, off centre so it reads as lacquer */
-      var g = ctx.createLinearGradient(W * 0.12, 0, W * 0.86, W);
-      g.addColorStop(0, "rgba(255,236,226,0.20)");
-      g.addColorStop(0.42, "rgba(255,236,226,0)");
-      g.addColorStop(0.78, "rgba(255,236,226,0.11)");
-      g.addColorStop(1, "rgba(0,0,0,0.10)");
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(r, r, r * 0.985, 0, 6.29); ctx.fill();
-      /* the rim */
-      ctx.strokeStyle = "rgba(255,226,214,0.30)"; ctx.lineWidth = Math.max(1, r * 0.018);
-      ctx.beginPath(); ctx.arc(r, r, r * 0.975, 0, 6.29); ctx.stroke();
-      /* the label */
-      ctx.fillStyle = "#f2ddd2";
-      ctx.beginPath(); ctx.arc(r, r, r * 0.46, 0, 6.29); ctx.fill();
-      ctx.strokeStyle = "rgba(122,52,70,0.30)"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(r, r, r * 0.46, 0, 6.29); ctx.stroke();
-      /* the triangle, pressed into it -- nudged right of centre because a
-         play mark centred on its bounding box always reads as leaning back */
-      var t = r * 0.235, cx = r + t * 0.16;
-      ctx.fillStyle = "#5c2438";
-      ctx.beginPath();
-      ctx.moveTo(cx + t, r);
-      ctx.lineTo(cx - t * 0.72, r - t * 0.92);
-      ctx.lineTo(cx - t * 0.72, r + t * 0.92);
-      ctx.closePath();
-      /* a little roundness on the corners, the way a stamped mark has */
-      ctx.lineJoin = "round"; ctx.lineWidth = Math.max(1.5, r * 0.05);
-      ctx.strokeStyle = "#5c2438"; ctx.stroke(); ctx.fill();
-      /* the spindle hole, through the middle of the mark's own shoulder */
-      ctx.fillStyle = "rgba(60,18,32,0.75)";
-      ctx.beginPath(); ctx.arc(r, r, r * 0.038, 0, 6.29); ctx.fill();
+
+      /* the seat the pearl is pressed into */
+      ctx.fillStyle = "rgba(52,32,10,0.55)";
+      ctx.beginPath(); ctx.arc(r, r, r * 0.80, 0, 6.29); ctx.fill();
+
+      /* THE PEARL. Two lights, not one: a small hard highlight up at the
+         top left where the source is, and a wide soft return low right
+         bouncing back off the paper. One highlight alone reads as plastic. */
+      var pe = ctx.createRadialGradient(r * 0.72, r * 0.66, r * 0.05,
+                                        r, r, r * 0.78);
+      pe.addColorStop(0,    "#fffdf8");
+      pe.addColorStop(0.30, "#fbeee2");
+      pe.addColorStop(0.62, "#f0dccb");
+      pe.addColorStop(0.86, "#dcc3b2");
+      pe.addColorStop(1,    "#c7a998");
+      ctx.fillStyle = pe;
+      ctx.beginPath(); ctx.arc(r, r, r * 0.755, 0, 6.29); ctx.fill();
+
+      var back = ctx.createRadialGradient(r * 1.26, r * 1.30, r * 0.02,
+                                          r * 1.26, r * 1.30, r * 0.62);
+      back.addColorStop(0, "rgba(255,238,226,0.55)");
+      back.addColorStop(1, "rgba(255,238,226,0)");
+      ctx.fillStyle = back;
+      ctx.beginPath(); ctx.arc(r, r, r * 0.755, 0, 6.29); ctx.fill();
+
+      /* the shadow the collar casts onto the pearl at the top */
+      var sh = ctx.createLinearGradient(0, r * 0.25, 0, r * 1.05);
+      sh.addColorStop(0, "rgba(92,56,34,0.30)");
+      sh.addColorStop(1, "rgba(92,56,34,0)");
+      ctx.fillStyle = sh;
+      ctx.beginPath(); ctx.arc(r, r, r * 0.755, 0, 6.29); ctx.fill();
+
+      /* THE MARK, ENGRAVED. Cut into the pearl rather than laid on top: a
+         dark face with a hairline of light along its lower edge, which is
+         what makes a groove read as a groove. Nudged right of centre,
+         because a play mark centred on its bounding box always leans back. */
+      var t = r * 0.30, cx = r + t * 0.14;
+      function mark(dx, dy) {
+        ctx.beginPath();
+        ctx.moveTo(cx + t + dx, r + dy);
+        ctx.lineTo(cx - t * 0.70 + dx, r - t * 0.90 + dy);
+        ctx.lineTo(cx - t * 0.70 + dx, r + t * 0.90 + dy);
+        ctx.closePath();
+      }
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(255,250,242,0.75)";
+      ctx.lineWidth = Math.max(1, r * 0.035);
+      mark(0, r * 0.035); ctx.stroke();
+      ctx.fillStyle = "#6b2a3e";
+      ctx.strokeStyle = "#6b2a3e";
+      ctx.lineWidth = Math.max(1.2, r * 0.05);
+      mark(0, 0); ctx.stroke(); ctx.fill();
     });
   }
 
@@ -3200,13 +3249,28 @@ window.Scrapbook = (function () {
   function buildOurVideoCard() {
     var V = SB.ourVideo;
     var c = el("sb-w sb-w-ourvideo");
-    /* A print in the book, not a player dropped on top of one. The same
-       cream mount every photo on these pages sits in, with the sprocket
-       edges the film cells use, so it reads as a strip of film someone
-       taped down rather than a black rectangle waiting for a video. */
+    /* AN APERTURE CUT INTO A LEAF OF THE ALBUM'S OWN PAPER.
+
+       Two things this could not be. Not the cream filmstrip it was: there
+       is no film anywhere else in this book, so one strip of sprocket
+       clipart on a page of pressed flowers and cut photographs is the
+       thing that reads as borrowed. And not a taped print either, however
+       well that matches -- that is the photographs' language, and it is
+       already spoken on every page. Saying it again here would make the
+       one moving thing in the album the one thing indistinguishable from
+       everything around it.
+
+       So: a leaf of the book's own blush paper with a window cut through
+       it, and the clip living behind the window rather than pasted on the
+       front. The cut edge is chamfered, and the four faces of the chamfer
+       take the light differently -- brightest along the top, darkest along
+       the bottom -- which is what says the paper has thickness and the
+       picture is underneath it. The brad that starts it is pinned into the
+       mat below the window, not laid over the two of them, so nothing ever
+       sits on anybody's face. */
     c.innerHTML =
       '<div class="sb-ov-mount">' +
-        '<div class="sb-ov-holes a"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
+        '<div class="sb-ov-window">' +
         '<div class="sb-vid-frame">' +
           '<div class="sb-ov-poster"></div>' +
           '<div class="sb-ov-veil"></div>' +
@@ -3218,7 +3282,7 @@ window.Scrapbook = (function () {
             "</div>" +
           "</div>" +
         "</div>" +
-        '<div class="sb-ov-holes b"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
+        "</div>" +
       "</div>" +
       '<p class="sb-vid-cap">' + V.caption + "</p>";
 
@@ -3241,7 +3305,7 @@ window.Scrapbook = (function () {
        tap is the gesture that loads the video if nothing else has. */
     var btn = el("sb-vid-play", "button");
     btn.setAttribute("aria-label", "Play our video");
-    /* the record sticker, and the word beside it in her handwriting */
+    /* the brad, and the word beside it */
     btn.innerHTML =
       '<span class="sb-ov-ring" aria-hidden="true">' +
         '<span class="sb-ov-pulse"></span>' +
@@ -3251,9 +3315,13 @@ window.Scrapbook = (function () {
     var discImg = btn.querySelector(".sb-ov-disc-img");
     if (discImg) {
       if (STICK.playDisc) discImg.src = STICK.playDisc;
-      else { STICK.playDisc = playRecord(200); discImg.src = STICK.playDisc; }
+      else { STICK.playDisc = playStud(220); discImg.src = STICK.playDisc; }
     }
-    frame.appendChild(btn);
+    /* ON THE MAT, NOT IN THE WINDOW. Appended to the frame it could only
+       ever be positioned against the picture, which on a clip of two
+       people means it is on two people however low it is pushed. The
+       paper's foot is where it belongs, so that is where it is hung. */
+    c.querySelector(".sb-ov-mount").appendChild(btn);
 
     /* THE TRANSPORT.
 
@@ -5522,7 +5590,7 @@ window.Scrapbook = (function () {
        the "8" still reads. */
     job(function () { STICK.vinyl8   = vinyl(190, { body: "#2a1119", label: "#f6e7dc", text: "8" }); });
     job(function () { STICK.vinylRose= vinyl(230, { body: "#5b2434", label: "#f2ddd2", text: "" }); });
-    job(function () { STICK.playDisc = playRecord(200); });
+    job(function () { STICK.playDisc = playStud(220); });
     job(function () { STICK.vinylLtd = vinyl(200, { body: "#3a1d28", label: "#f2e4d6", text: "" }); });
     job(function () { STICK.lipInk   = lipStamp(120, "#8e3b50"); });
     job(function () { STICK.rose     = chromeRose(150); });

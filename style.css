@@ -2378,24 +2378,64 @@ img{-webkit-user-drag:none; user-select:none;}
    site. The slate is still underneath and still appears if the file ever
    goes missing again. */
 .sb-w-ourvideo{padding:0;}
+/* ---- THE WINDOW ----------------------------------------------------
+
+   A leaf of the album's own blush paper with an aperture cut through it,
+   and the clip behind the aperture rather than pasted on the front.
+
+   Not the cream filmstrip it was -- there is no film anywhere else in this
+   book, so one strip of sprocket clipart on a page of pressed flowers and
+   cut photographs is exactly the thing that reads as borrowed. And not a
+   taped print either: that is the photographs' language and it is spoken
+   on every page already, so saying it again would leave the one moving
+   thing in the album looking like everything else in it. */
 .sb-ov-mount{
-  position:relative; padding:9px 8px; border-radius:5px;
-  background:linear-gradient(168deg,#fdfbf4,#f4ecdb);
+  position:relative;
+  padding:3.2% 3.2% 9.5%;         /* the foot is where the brad is pinned */
+  border-radius:3px;
+  transform:rotate(-.5deg);
+  background:
+    /* the laid grain of the stock, at the angle the page's own runs */
+    repeating-linear-gradient(96deg,
+      rgba(255,255,255,.16) 0 1px, rgba(150,100,118,.035) 1px 3px),
+    linear-gradient(163deg, #f6e7e9 0%, #efdae0 54%, #e6cdd6 100%);
   box-shadow:
-    0 1px 0 rgba(255,255,255,.9) inset,
-    0 10px 22px rgba(70,44,20,.30),
-    0 2px 5px rgba(70,44,20,.18);
+    0 1px 0 rgba(255,255,255,.62) inset,
+    0 -1px 0 rgba(126,84,102,.16) inset,
+    0 12px 26px rgba(52,26,38,.30),
+    0 2px 6px rgba(52,26,38,.18);
 }
-/* the sprocket edges, the same idea as the film cells on the other pages */
-.sb-ov-holes{
-  position:absolute; left:9px; right:9px; height:7px; z-index:4;
-  display:flex; justify-content:space-around; align-items:center; pointer-events:none;
+/* THE CHAMFER. Four faces meeting at mitred corners, which is what a
+   conic gradient in the padding of a box gives you for nothing: brightest
+   along the top where the light is, darkest along the bottom, and the two
+   sides between. Without the different faces a bevel is just a border. */
+.sb-ov-window{
+  position:relative;
+  /* A CHAMFER IS A FEW THOUSANDTHS OF AN INCH OF PAPER, not a moulding.
+     At thirteen points with a hard contrast between the faces it stopped
+     being a cut edge and became a plastic frame -- the corners read as two
+     big diagonal wedges rather than as a mitre. Thin, and with the faces
+     only a few per cent apart, it does what it is supposed to do, which is
+     to catch the light for a moment and then get out of the way. */
+  padding:clamp(3px, 1%, 6px);
+  background:conic-gradient(from 45deg,
+    #fdf6f7  0    25%,    /* top: the light is up there */
+    #e4cfd7  25%  50%,    /* right */
+    #d2b7c2  50%  75%,    /* bottom: in its own shade */
+    #f5e6ea  75%  100%);  /* left */
+  box-shadow:0 0 0 1px rgba(120,78,96,.18);
 }
-.sb-ov-holes.a{top:1px;} .sb-ov-holes.b{bottom:1px;}
-.sb-ov-holes i{
-  display:block; width:7px; height:5px; border-radius:1px;
-  background:#e7dcc4; box-shadow:0 0 0 1px rgba(120,90,50,.28) inset;
+/* and the picture is UNDER the paper: the shadow the cut edge throws onto
+   it is the whole reason the window reads as a window */
+.sb-ov-window .sb-vid-frame::after{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:5;
+  box-shadow:
+    inset 0 5px 10px rgba(38,16,26,.48),
+    inset 0 -2px 6px rgba(38,16,26,.26),
+    inset 4px 0 8px rgba(38,16,26,.24),
+    inset -4px 0 8px rgba(38,16,26,.24);
 }
+
 .sb-w-ourvideo .sb-vid-frame{
   border-radius:2px; background:#171d21;
   box-shadow:0 0 0 1px rgba(90,62,30,.30), 0 4px 12px rgba(40,26,10,.34) inset;
@@ -2433,9 +2473,14 @@ img{-webkit-user-drag:none; user-select:none;}
    out from it to say it can be touched. Nothing here is borrowed from a
    video site; it is the same brass and cream and plum as the rest of the
    book. */
+/* ON THE MAT, NOT ON THE PICTURE. It used to sit inside the frame, which
+   on a clip of two people means it sits on two people -- low enough to
+   miss his face and still square over his hands. The paper has a deep
+   foot below the window precisely so the control has somewhere of its own
+   to live. */
 .sb-w-ourvideo .sb-vid-play{
-  left:6%; top:auto; bottom:9%; right:auto; transform:none;
-  width:auto; height:auto; padding:0; border-radius:0; z-index:6;
+  left:4.5%; top:auto; bottom:2.2%; right:auto; transform:none;
+  width:auto; height:auto; padding:0; border-radius:0; z-index:8;
   background:none; box-shadow:none;
   flex-direction:row; align-items:center; gap:9px;
   transition:opacity .3s ease;
@@ -2444,33 +2489,47 @@ img{-webkit-user-drag:none; user-select:none;}
    playRecord() -- the same wine and cream as the three records already on
    these pages -- so the control is a sticker from this book rather than a
    piece of camera hardware borrowed from somewhere else. */
+/* A BRAD IS SMALL. Sixty points across it was a widget; at forty-four it
+   is a fastener holding the film down, and it stops covering whoever is
+   standing behind it. */
 .sb-ov-ring{
   position:relative; flex:0 0 auto; display:block;
-  width:clamp(40px, 13.5cqw, 60px); height:clamp(40px, 13.5cqw, 60px);
+  width:clamp(34px, 10cqw, 46px); height:clamp(34px, 10cqw, 46px);
   border-radius:50%;
-  filter:drop-shadow(0 6px 14px rgba(34,8,20,.55));
+  filter:drop-shadow(0 3px 7px rgba(38,16,6,.55));
   transition:transform .18s var(--ease-out), filter .18s var(--ease-out);
 }
 .sb-ov-disc-img{
   position:absolute; inset:0; width:100%; height:100%;
   border-radius:50%; display:block;
 }
-/* a slow ring of light going out, so it reads as something to touch */
+/* The expanding ring is the one thing on this card that came from a video
+   site: nothing in a paper album pulses. What a pearl does instead is
+   catch the light and lose it as you move, so the brad breathes a warm
+   sheen rather than throwing off a halo. */
 .sb-ov-pulse{
-  position:absolute; inset:-6%; border-radius:50%; pointer-events:none;
-  border:1.5px solid rgba(255,206,216,.8);
-  animation:sbOvPulse 2.8s var(--ease-out) infinite;
+  position:absolute; inset:-14%; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle at 38% 34%,
+    rgba(255,240,214,.34), rgba(255,236,206,.08) 46%, rgba(255,236,206,0) 70%);
+  animation:sbOvSheen 4.2s ease-in-out infinite;
 }
-@keyframes sbOvPulse{
-  0%   {opacity:.85; transform:scale(1);}
-  70%  {opacity:0;   transform:scale(1.42);}
-  100% {opacity:0;   transform:scale(1.42);}
+@keyframes sbOvSheen{
+  0%, 100% {opacity:.30;}
+  50%      {opacity:.80;}
 }
-@media (prefers-reduced-motion:reduce){ .sb-ov-pulse{animation:none; opacity:.5;} }
+@media (prefers-reduced-motion:reduce){ .sb-ov-pulse{animation:none; opacity:.45;} }
+/* the word was set in the script face at nineteen points with a six-point
+   black shadow under it, which is a sticker. It is the caption serif the
+   rest of the book speaks in, small and letterspaced, sitting quietly
+   beside the brad. */
+/* the word is on pale paper now rather than over a dark picture, so it is
+   ink rather than something glowing: the same warm brown the caption
+   under the window is set in */
 .sb-ov-word{
-  font-family:var(--font-script); font-size:clamp(13px, 4cqw, 19px);
-  line-height:1; color:#fdf6e8; white-space:nowrap;
-  text-shadow:0 1px 6px rgba(20,10,4,.9); opacity:.96; padding-bottom:3px;
+  font-family:var(--font-serif); font-style:italic;
+  font-size:clamp(11px, 3cqw, 14px); letter-spacing:.07em;
+  line-height:1; color:#7a5567; white-space:nowrap;
+  text-shadow:0 1px 0 rgba(255,255,255,.55); opacity:.92; padding-bottom:2px;
 }
 .sb-w-ourvideo .sb-vid-play:active .sb-ov-ring{
   transform:translateY(2px) scale(.955);

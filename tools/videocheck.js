@@ -53,7 +53,17 @@ const { chromium } = require('playwright-core');
              hasPosterClass: card.classList.contains('hasposter'),
              posterImage: poster && getComputedStyle(poster).backgroundImage.slice(0,60),
              mountPresent: !!card.querySelector('.sb-ov-mount'),
-             sprockets: card.querySelectorAll('.sb-ov-holes i').length,
+             /* the sprockets are gone on purpose: there is no film anywhere
+                else in this album, so a strip of it here was the one piece
+                of borrowed art on the page. What replaced it is a leaf of
+                the book's own paper with an aperture cut through it, so
+                what there is to check is the window and its chamfer. */
+             window: !!card.querySelector('.sb-ov-window'),
+             chamfer: card.querySelector('.sb-ov-window')
+               ? getComputedStyle(card.querySelector('.sb-ov-window')).paddingTop : 'none',
+             /* and that the control is on the mat rather than in the
+                picture, which is the whole reason it was moved */
+             playOnMat: !!(card.querySelector('.sb-ov-mount > .sb-vid-play')),
              playButton: btn ? Math.round(bb.width)+'x'+Math.round(bb.height)+' visible='+(getComputedStyle(btn).display!=='none') : 'MISSING',
              caption: (card.querySelector('.sb-vid-cap')||{}).textContent,
              slateHidden: getComputedStyle(card.querySelector('.sb-vid-empty')).display === 'none',
