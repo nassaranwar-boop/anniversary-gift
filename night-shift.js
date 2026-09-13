@@ -671,125 +671,180 @@ const NS = {
         swarm: ["hall", 22, 3.4, -4.0, 0.58], boss: ["hall", 0.1, -2.0, 0.06], advance: 1,
         line: { nar: 1, t: "He kept it in the workshop, wound, for two years. Nobody has wound it since March." } },
 
-      /* --- they arrive, and they do not come in -------------------- */
+      /* --- AND WHAT THEY DO TO THE REST OF IT ----------------------
+         The question "do they actually wreck the place" deserved an
+         answer on screen rather than a sentence somewhere. They are on
+         his stage, over it, all of it, and the shop she has been
+         guarding one room of is already gone. */
+      { room: "stage", secs: 4.4, fov: 70, lux: 0.36, shake: 0.9, clear: 1,
+        from: [0.20, 2.70, 3.90], to: [0.20, 2.05, 2.40], look: [0, 1.15, -2.40],
+        swarm: ["stage", 22, 3.8, -3.6, 0.52], advance: 1,
+        sfx: [["falseBang", 0.85], ["falseSkitter", 0.7]],
+        line: { nar: 1, t: "They go through the stage first, and the arcade after it, and they take apart everything in either of them that he ever put a hand on." } },
+
+      /* --- THEY ARRIVE, AND THEY TAKE THE THREE OPENINGS -----------
+         The game is a room with two doorways and a grate in it, and she
+         has spent six nights deciding which one to worry about. When
+         they come in they take one each, which is the only staging of
+         this scene that makes those six nights mean anything. Jax does
+         not take one, and says so. */
       { room: "office", secs: 4.2, fov: 56, cue: "held", clear: 1, lux: 0.5,
         from: [0.50, 1.60, 1.60], to: [0.20, 1.52, 1.20], look: [-3.4, 1.05, -0.9],
         line: { nar: 1, t: "Something puts its hand on the office door. Something else takes it off." } },
       { room: "office", secs: 4.4, fov: 74, lux: 0.62,
         from: [0, 1.70, 2.30], to: [0, 1.64, 1.90], look: [0, 1.15, -1.9],
-        put: { cogsworth: "f0", chime: "f3", marabelle: "f1", jax: "f2" },
-        line: { nar: 1, t: "They come in the order he built them in. None of them looks at her." } },
-      { room: "office", secs: 3.8, fov: 42,
-        from: [-1.05, 1.40, -0.10], to: [-1.20, 1.36, -0.40], look: [-1.55, 1.38, -1.95],
-        line: { who: "cogsworth", t: "Twelve minutes past five. I have been counting since Monday." } },
-      { room: "office", secs: 3.6, fov: 40,
-        from: [0.94, 0.96, -0.30], to: [1.02, 0.92, -0.58], look: [0.62, 0.66, -1.55],
-        line: { who: "chime", t: "There is no roof left worth going over. They are already inside." } },
+        put: { cogsworth: "w", chime: "up", marabelle: "e", jax: "f4" },
+        line: { nar: 1, t: "They come in the order he built them in, and they go straight past her to the three ways in. None of them looks at her." } },
+
+      /* the west door */
       { room: "office", secs: 3.8, fov: 44,
-        from: [1.05, 1.40, -0.10], to: [1.20, 1.36, -0.40], look: [1.55, 1.12, -1.95],
-        line: { who: "marabelle", t: "Then nobody is watching. Good." } },
+        from: [-1.95, 1.48, -0.15], to: [-2.25, 1.45, -0.45], look: [-3.05, 1.38, -0.90],
+        line: { who: "cogsworth", t: "Twelve minutes past five. I have the west door. I have had it since Monday." } },
+      /* the grate */
+      { room: "office", secs: 3.6, fov: 42,
+        from: [1.24, 0.94, -1.00], to: [1.38, 0.98, -1.28], look: [1.90, 0.66, -2.05],
+        line: { who: "chime", t: "There is no roof left worth going over. They are already in the duct." } },
+      /* the east door */
+      { room: "office", secs: 3.8, fov: 44,
+        from: [1.95, 1.36, -0.15], to: [2.25, 1.33, -0.45], look: [3.05, 1.11, -0.90],
+        line: { who: "marabelle", t: "East door. Nobody is watching me do this. Good." } },
+      /* and the one standing by her chair */
       { room: "office", secs: 4.0, fov: 44,
-        from: [-0.25, 1.34, 0.75], to: [-0.35, 1.30, 0.45], look: [-0.55, 1.52, -1.10],
-        line: { who: "jax", t: "I am not leaving the room. You all know I am not leaving the room." } },
+        from: [-0.50, 1.48, 2.18], to: [-0.62, 1.44, 1.98], look: [-1.15, 1.52, 0.30],
+        line: { who: "jax", t: "I am not taking a door. I am not leaving this room. You all know I am not leaving the room." } },
 
       /* --- a minute and a half of them being people ---------------- */
       { room: "office", secs: 4.4, fov: 40, lux: 0.74,
-        from: [-1.20, 1.36, -0.40], to: [-1.28, 1.34, -0.62], look: [-1.55, 1.38, -1.95],
+        from: [-2.25, 1.45, -0.45], to: [-2.38, 1.43, -0.62], look: [-3.05, 1.38, -0.90],
         line: { who: "cogsworth", t: "He wound me every night for nine years. He never once told me why." } },
       { room: "office", secs: 5.0, fov: 40,
-        from: [1.20, 1.36, -0.40], to: [1.28, 1.34, -0.62], look: [1.55, 1.12, -1.95],
+        from: [2.25, 1.33, -0.45], to: [2.38, 1.31, -0.62], look: [3.05, 1.11, -0.90],
         line: { who: "marabelle", t: "He told me. He said: one day she will need somebody in the room who is not afraid of her seeing them." } },
       { room: "office", secs: 4.6, fov: 38,
-        from: [1.02, 0.92, -0.58], to: [1.08, 0.90, -0.78], look: [0.62, 0.66, -1.55],
+        from: [1.38, 0.98, -1.28], to: [1.46, 0.96, -1.48], look: [1.90, 0.66, -2.05],
         line: { who: "chime", t: "He said that to all of us. He said it badly, four times, the way he said everything." } },
       { room: "office", secs: 3.6, fov: 44,
-        from: [-0.35, 1.30, 0.45], to: [-0.42, 1.28, 0.28], look: [-0.55, 1.52, -1.10],
+        from: [-0.62, 1.44, 1.98], to: [-0.70, 1.42, 1.86], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "He made me in an afternoon. Badly, I think on purpose." } },
       { room: "office", secs: 3.4, fov0: 39, fov1: 36, lux: 0.55,
-        from: [-1.28, 1.34, -0.62], to: [-1.32, 1.33, -0.78], look: [-1.55, 1.38, -1.95],
+        from: [-2.38, 1.43, -0.62], to: [-2.44, 1.42, -0.76], look: [-3.05, 1.38, -0.90],
         line: { who: "cogsworth", t: "He made you last." } },
 
-      /* --- and then it starts -------------------------------------- */
-      { room: "office", secs: 3.2, fov: 66, cue: "night", shake: 1, lux: 0.34,
-        from: [0, 1.62, 1.90], to: [0, 1.55, 1.50], look: [-1.6, 0.75, -2.1],
-        swarm: ["office", 14, 3.0, -2.3, 0.46], advance: 1,
-        line: { nar: 1, t: "The first of them comes through the hall door." } },
-      { room: "office", secs: 3.0, fov: 70, shake: 1,
-        from: [0, 1.55, 1.50], to: [0.40, 1.45, 1.10], look: [1.30, 1.15, -1.9],
-        swarm: ["office", 20, 3.2, -2.0, 0.44], advance: 1,
-        line: { who: "marabelle", t: "Ouissy. The west door. Now, and do not open it again." } },
-      /* SHE DOES THE ONE THING SHE KNOWS HOW TO DO.
-
-         Six nights of shutting that door and it is the last useful act
-         she performs in this chapter. The shutter really comes down:
-         animateOffice is running, and the shot is long enough to watch
-         it land. */
-      { room: "office", secs: 3.4, fov: 62, shake: 0.9, doors: { left: 1 },
-        from: [0.30, 1.52, 1.30], to: [-0.10, 1.46, 1.00], look: [-2.60, 1.15, -1.10],
-        swarm: ["office", 20, 3.2, -2.0, 0.44], advance: 1,
-        line: { nar: 1, t: "She has done that four hundred times this week. It is the last useful thing anybody lets her do." } },
-      /* AND THE FIRST PLACE THEY PUT HER.
-
-         There are two of these: the desk now, and the floor at the end.
-         The first one is Cogsworth, who is the oldest of them and who
-         talks to her the way somebody talks to a person they have
-         decided to keep. */
-      { room: "office", secs: 3.8, fov: 44, shake: 0.8, lux: 0.3,
-        from: [-1.10, 1.40, -0.20], to: [-1.22, 1.38, -0.46], look: [-1.55, 1.38, -1.95],
-        swarm: ["office", 20, 3.2, -1.9, 0.44], advance: 1,
-        line: { who: "cogsworth", t: "Behind the desk. Under it, if you can get under it, and stay there until somebody says your name." } },
+      /* --- AND THEN IT STARTS, AT THE WEST DOOR -------------------- */
+      { room: "office", secs: 3.2, fov: 58, cue: "night", shake: 1, lux: 0.34,
+        from: [-1.10, 1.55, 0.60], to: [-1.40, 1.50, 0.20], look: [-3.30, 1.20, -0.90],
+        swarm: ["office", 16, 1.6, -5.6, 0.5, "x+"], advance: 1,
+        sfx: [["knock", 0.9], ["postDrag", 0.7]],
+        line: { nar: 1, t: "The first of them comes up the hall and puts its weight on the west doorway, and the doorway holds because there is something standing in it." } },
+      { room: "office", secs: 3.0, fov: 62, shake: 1.2,
+        from: [-1.40, 1.50, 0.20], to: [-1.00, 1.46, 0.55], look: [-3.20, 1.25, -0.90],
+        swarm: ["office", 20, 1.7, -4.9, 0.48, "x+"], advance: -1.4,
+        sfx: [["falseBang", 0.85], ["step", 0.8, -0.6]],
+        line: { who: "cogsworth", t: "Ouissy. Shut it. Shut it on me, I will hold it from this side." } },
+      /* SHE DOES THE ONE THING SHE KNOWS HOW TO DO, and the shutter
+         really comes down while the shot is running. */
+      { room: "office", secs: 3.4, fov: 62, shake: 0.9, doors: { left: 1, right: 1 },
+        from: [-1.00, 1.46, 0.55], to: [-0.40, 1.48, 0.90], look: [-2.80, 1.30, -0.90],
+        swarm: ["office", 20, 1.7, -5.2, 0.48, "x+"],
+        sfx: [["shutter", 0.9]],
+        line: { nar: 1, t: "She has done that four hundred times this week." } },
+      /* AND THE REASON IT IS THE LAST TIME. The whole chapter is one
+         charge on a meter, and this is the meter running out. */
+      { room: "office", secs: 3.0, fov: 46, lux: 0.3,
+        from: [-0.40, 1.48, 0.90], to: [-0.20, 1.42, 1.15], look: [0.90, 1.05, 1.05],
+        line: { sys: 1, t: "RESERVE AT NINE PERCENT." } },
+      { room: "office", secs: 3.8, fov: 50, shake: 0.7,
+        from: [-0.20, 1.42, 1.15], to: [0.10, 1.44, 1.35], look: [-1.15, 1.50, 0.30],
+        line: { who: "jax", t: "Nine percent is four minutes. Get behind the desk. Under it, if you can get under it." } },
       { room: "office", secs: 3.2, fov: 64, cue: "dark", shake: 1, lux: 0.26,
-        from: [0.40, 1.45, 1.10], to: [0.40, 1.40, 0.85], look: [0, 0.70, -2.2],
-        swarm: ["office", 22, 3.2, -1.8, 0.42], advance: 1,
+        from: [0.10, 1.44, 1.35], to: [0.10, 1.10, 1.20], look: [-0.20, 0.70, 0.95],
+        sfx: [["falseSkitter", 0.8]],
         line: { nar: 1, t: "She gets under the desk. She does not stay there." } },
 
-      /* --- Chime, going up the way he always did ------------------- */
-      { room: "office", secs: 3.8, fov0: 42, fov1: 56, lux: 0.42,
-        from: [0.94, 0.94, -0.34], to: [1.06, 1.30, -0.56],
-        look: [0.62, 0.66, -1.55], look2: [1.35, 2.45, -2.25],
-        swarm: ["office", 22, 3.2, -1.5, 0.42], advance: 1,
-        line: { who: "chime", t: "The hatch. Somebody shut the&mdash;" } },
-      { room: "office", secs: 3.0, fov: 50, gone: "chime", shake: 1.2, lux: 0.5, hush: "air",
-        from: [1.06, 1.30, -0.56], to: [0.98, 1.04, -0.30],
-        look: [1.35, 2.45, -2.25], look2: [0.62, 0.48, -1.55],
-        swarm: ["office", 22, 3.2, -1.3, 0.42], advance: 1,
-        line: { nar: 1, t: "The hatch does not open again." } },
+      /* --- THE GRATE GOES FIRST ------------------------------------ */
+      { room: "office", secs: 3.6, fov: 52, shake: 1.1,
+        from: [1.10, 1.20, -0.70], to: [1.30, 1.55, -1.00],
+        look: [1.90, 0.70, -2.05], look2: [1.90, 2.30, -2.60],
+        swarm: ["office", 10, 1.2, -5.6, 0.5, "x+"],
+        sfx: [["hatch", 0.9], ["falseBurst", 0.7]],
+        line: { who: "chime", t: "They are through the grate. Somebody shut the&mdash;" } },
+      { room: "office", secs: 3.0, fov: 50, gone: "chime", shake: 1.3, lux: 0.5, hush: "air",
+        from: [1.30, 1.55, -1.00], to: [1.05, 1.28, -0.62],
+        look: [1.90, 2.20, -2.55], look2: [1.90, 0.40, -2.05],
+        sfx: [["scare", 0.55]],
+        line: { nar: 1, t: "Something small and brass goes up into the ceiling with six of them holding on to it, and the grate does not open again." } },
 
-      /* --- Marabelle, and the eleven seconds ----------------------- */
-      { room: "office", secs: 4.6, fov: 46, cue: "found",
-        from: [1.05, 1.38, -0.20], to: [1.20, 1.34, -0.55], look: [1.55, 1.06, -1.95],
-        swarm: ["office", 22, 3.2, -1.2, 0.42],
-        line: { who: "marabelle", t: "Fifteen years, and he never once saw me do this." } },
-      { room: "office", secs: 4.6, fov: 50, gone: "marabelle", hush: "box",
-        from: [1.20, 1.34, -0.55], to: [0.70, 1.40, 0.10], look: [1.55, 1.06, -1.95],
-        line: { nar: 1, t: "Every one of them stops to look at her. It buys the others eleven seconds." } },
+      /* --- AND THEN THE METER ENDS, AND THE DOORS GO UP ------------ */
+      { room: "office", secs: 3.4, fov: 48, lux: 0.18,
+        from: [-0.30, 1.44, 1.30], to: [-0.10, 1.40, 1.10], look: [0.90, 1.05, 1.05],
+        sfx: [["powerDown", 0.9]],
+        line: { sys: 1, t: "RESERVE DEPLETED. DOOR CONTROL OFFLINE." } },
+      /* the shutters roll back up on camera, because nothing is paying
+         for them any more. This is the moment the four stop being
+         guards and start being the doors. */
+      { room: "office", secs: 4.0, fov: 66, shake: 1.2, doors: { left: 0, right: 0 },
+        from: [-0.10, 1.40, 1.10], to: [-0.60, 1.48, 0.70], look: [-2.90, 1.35, -0.90],
+        swarm: ["office", 22, 1.8, -4.6, 0.46, "x+"], advance: 1,
+        sfx: [["shutter", 0.8], ["knock", 0.7]],
+        line: { nar: 1, t: "Both shutters go back up. They are not doors any more. They are two gaps with a toy standing in each of them." } },
+
+      /* --- THE EAST DOOR, AND THE SECOND PLACE THEY PUT HER -------- */
+      { room: "office", secs: 3.4, fov: 46, cue: "found", shake: 1,
+        from: [1.60, 1.36, 0.10], to: [2.00, 1.33, -0.30], look: [3.10, 1.11, -0.90],
+        swarm: ["office", 20, 1.7, 5.2, 0.48, "x-"], advance: 1,
+        sfx: [["postDrag", 0.8]],
+        line: { who: "marabelle", t: "Ouissy. The corner behind the cabinet. Go now, and do not look at this." } },
+      { room: "office", secs: 4.4, fov: 46,
+        from: [2.00, 1.33, -0.30], to: [2.20, 1.31, -0.55], look: [3.10, 1.11, -0.90],
+        swarm: ["office", 20, 1.7, 4.6, 0.48, "x-"], advance: -1.6,
+        sfx: [["falseBang", 0.8]],
+        line: { who: "marabelle", t: "Fifteen years on a plinth, and he never once saw me do this." } },
+      { room: "office", secs: 4.4, fov: 52, gone: "marabelle", hush: "box", shake: 1.2,
+        from: [2.20, 1.31, -0.55], to: [1.40, 1.40, 0.05], look: [3.00, 1.15, -0.90],
+        swarm: ["office", 22, 1.8, 3.6, 0.46, "x-"], advance: 1,
+        sfx: [["scare", 0.5]],
+        line: { nar: 1, t: "Every one of them in that doorway stops to watch her do it. It is eleven seconds, and eleven seconds is the whole reason any of the rest of this happens." } },
+
+      /* --- THE WEST DOOR, AND THE LENGTH OF THE ROOM --------------- */
       { room: "office", secs: 3.4, fov: 44, cue: "night", shake: 0.9,
-        from: [-1.10, 1.38, -0.30], to: [-1.18, 1.36, -0.52], look: [-1.55, 1.38, -1.95],
-        swarm: ["office", 22, 3.2, -1.0, 0.42], advance: 1,
+        from: [-1.90, 1.45, -0.20], to: [-2.10, 1.43, -0.40], look: [-3.05, 1.38, -0.90],
+        swarm: ["office", 22, 1.8, -3.8, 0.46, "x+"], advance: 1,
         line: { who: "cogsworth", t: "Eleven seconds. I will take it." } },
-
-      /* --- Cogsworth, the length of the room ----------------------- */
-      { room: "office", secs: 5.0, fov: 60, gone: "cogsworth", shake: 1.2, hush: "tick",
-        from: [-1.90, 1.50, 0.90], to: [1.60, 1.45, 0.70], look: [0, 0.95, -2.0],
-        swarm: ["office", 22, 3.2, -0.8, 0.42], advance: 1,
-        line: { nar: 1, t: "He walks the length of the room and turns at the end of it, and does not stop for anything, and that is the last time the shop hears him keeping time." } },
+      { room: "office", secs: 5.0, fov: 62, gone: "cogsworth", shake: 1.4, hush: "tick",
+        from: [-1.90, 1.50, 0.90], to: [1.60, 1.45, 0.70], look: [0, 0.95, -1.30],
+        swarm: ["office", 22, 1.8, 3.0, 0.46, "x-"], advance: 1.8,
+        sfx: [["falseBang", 0.9], ["step", 0.9, -0.4], ["step", 0.9, 0.4]],
+        line: { nar: 1, t: "He walks the length of the room with the east side of it hanging on to him, and turns at the end of it, and does not stop for anything, and that is the last time this shop hears anybody keeping time in it." } },
 
       /* AND THE CLOCK ON HER WALL, WITH NOTHING SAID OVER IT.
 
-         The line before this one ends "the last time the shop hears
-         him keeping time", and the shot it ends on is the one that
-         took the tick out of the score. So this is three and a half
-         seconds of a wall clock and no words: the only silent shot in
-         the film, in the one place where a line would be the chapter
-         explaining its own best idea to her.
-
-         decor(1) at the west wall, z = 1.5, which is the clock that has
-         been hanging over her left shoulder for six nights. */
-      { room: "office", secs: 3.8, fov0: 36, fov1: 30, lux: 0.42,
+         The line before this one ends "keeping time", and the shot it
+         ends on is the one that took the tick out of the score. So this
+         is three and a half seconds of a wall clock and no words: the
+         only silent shot in the film, in the one place where a line
+         would be the chapter explaining its own best idea to her. */
+      { room: "office", secs: 3.8, fov0: 36, fov1: 30, lux: 0.42, clear: 1,
         from: [-1.45, 1.87, 1.50], to: [-1.95, 1.86, 1.50], look: [-3.15, 1.85, 1.50] },
 
+      /* --- IT HAS COME AS FAR AS THE OFFICE ------------------------
+         Three of the four are gone holding doorways, and this is what
+         walks through the gap they left, at its own pace, while the
+         last one is still standing in front of her. It goes here
+         rather than in the middle of their last conversation, which is
+         where it was: interrupting the quietest two minutes in the
+         chapter with a monster. */
+      { room: "office", secs: 4.4, fov: 52, lux: 0.26, shake: 0.5, cue: "gone", clear: 1,
+        from: [-0.60, 1.55, 1.50], to: [-0.30, 1.50, 1.20], look: [-2.60, 1.50, -0.90],
+        boss: ["office", -2.60, -0.90, 1.5],
+        sfx: [["postSettle", 0.7]],
+        line: { nar: 1, t: "It comes through the west door at a walk. It has not hurried once tonight and it has not needed to." } },
+      { room: "office", secs: 3.8, fov: 46, lux: 0.24,
+        from: [-0.30, 1.50, 1.20], to: [-0.45, 1.48, 0.95], look: [-2.15, 1.50, -0.90],
+        boss: ["office", -2.15, -0.90, 1.5],
+        line: { nar: 1, t: "It is the first thing he ever built and the first thing he ever sold, and it is the only one of them that knows the way to this room by heart." } },
+
       /* --- the one he made in an afternoon ------------------------- */
-      { room: "office", secs: 3.6, fov: 44, cue: "gone", clear: 1, lux: 0.4,
+      { room: "office", secs: 3.6, fov: 44, lux: 0.4,
         from: [-0.50, 1.48, 2.18], to: [-0.56, 1.45, 2.02], look: [-1.15, 1.52, 0.30],
         put: { jax: "f4" },
         line: { nar: 1, t: "Which leaves the one he made in an afternoon." } },
@@ -805,7 +860,7 @@ const NS = {
          second is what he is talking about. */
       { room: "office", secs: 3.0, fov: 42,
         from: [-0.90, 1.36, 1.90], to: [-1.05, 1.30, 1.84], look: [-1.15, 1.50, 0.30],
-        line: { who: "jax", t: "Under the till there is a board that lifts." } },
+        line: { who: "jax", t: "There is a board under your chair that lifts out." } },
       { room: "office", secs: 4.4, fov0: 44, fov1: 50,
         from: [-1.05, 1.30, 1.84], to: [-1.62, 1.02, 1.74],
         look: [-1.16, 1.48, 0.30], look2: [-1.30, 0.28, 0.76],
@@ -825,10 +880,6 @@ const NS = {
          to, and the shot before she goes under the floor is the shot
          where she finally sees the thing the other three died in front
          of. */
-      { room: "office", secs: 4.4, fov: 52, lux: 0.26, shake: 0.5,
-        from: [-0.60, 1.55, 1.50], to: [-0.30, 1.50, 1.20], look: [0.60, 1.45, -1.80],
-        boss: ["office", 0.60, -1.90, 0.1],
-        line: { nar: 1, t: "It does not hurry. It has not hurried once tonight, and it has not needed to." } },
       { room: "office", secs: 5.0, fov: 54, shake: 0.7, down: 1, lux: 0.3,
         from: [-1.70, 0.80, 1.62], to: [-1.76, 0.34, 1.46], look: [-1.20, 1.40, 0.30],
         line: { nar: 1, t: "He puts her under the floor anyway, and he is far stronger than a jack-in-the-box has any business being." } },
@@ -911,7 +962,7 @@ const NS = {
       head: "in his hand, dated March",
       lines: [
         "&ldquo;If you are reading this I got it wrong somewhere, and I am sorry.",
-        "There is a room under the till. It holds one person and it will hold against anything that walks.",
+        "There is a board under the chair in the office that lifts out. Under it is a room. It holds one person and it will hold against anything that walks.",
         "I built four things that will get you to it.",
         "Wind them. That is all I am asking. Every night, before six.",
         "I could not tell you what for, because telling you what for meant telling you what I did, and I wanted six more nights of you not knowing.",
@@ -3724,6 +3775,26 @@ function buildOffice(R) {
      that lifts, close enough to her chair that a camera down at the
      level of the hole can still see his face */
   R.anchor("f4", -1.15, 0, 0.30, 0.10);
+  /* THE THREE POSTS, AND THE ONE WHO DOES NOT TAKE ONE.
+
+     The whole game is three openings: a doorway in each side wall and
+     a grate in the ceiling. When the four of them come in on the last
+     night they take those three, standing in the doorways themselves
+     -- which is the only staging of this scene that makes six nights
+     of shutting doors mean anything.
+
+     `w` and `e` are a pace inside the doorways rather than in them, so
+     there is a figure with a door frame around it rather than a figure
+     wedged in a hole. `up` is on the floor directly under the grate,
+     looking at it, because the grate is behind the wall and in the
+     dark and a performer put in it cannot be seen at all. */
+  R.anchor("w",  -W / 2 + 0.45, 0, doorZ,  Math.PI / 2);
+  R.anchor("e",   W / 2 - 0.45, 0, doorZ, -Math.PI / 2);
+  R.anchor("up",  1.9, 0, -D / 2 + 0.55, 0);
+
+  /* and the corner behind the filing cabinet, which is the one place
+     in this room the desk camera cannot see */
+  R.anchor("corner", -2.55, 0, -1.55, 0.6);
 
   R.anchor("d0", -0.35, 0, -2.05, 0);
   R.anchor("d1", -0.62, 0, -0.70, 0.15);
@@ -6357,18 +6428,30 @@ function returnersBuild(n) {
   }
 }
 
-/* put a crowd in a room, in rough ranks, coming towards the camera.
+/* PUT A CROWD IN A ROOM, IN RANKS, COMING IN THROUGH SOMETHING.
 
-   The ranks are staggered rather than square: five to a row with every
-   other row offset by half a place, which is the difference between a
-   crowd and a tiling. Depth also thins them -- the ones at the back
-   spread wider and stand further apart, so the hall reads as full
-   rather than as a block of toys.                                     */
-function returnersPlace(roomId, n, spreadX, z0, dz) {
+   `dir` is which way they are walking, and it matters because the
+   office is not entered from the back wall. It has two doorways in its
+   SIDES at z = -0.9, and a grate in the ceiling, and those three
+   openings are the entire game -- so a crowd coming through the west
+   door has to be a crowd walking east, in ranks stacked out through
+   the doorway, not a block of toys standing in front of the window.
+
+     "z"   walking towards +z: up a hall, at the lens
+     "x+"  walking towards +x: in through the west door
+     "x-"  walking towards -x: in through the east door
+
+   The ranks are staggered rather than square, and depth thins them --
+   the ones at the back spread wider and stand further apart, so a
+   doorway reads as full with something behind it rather than as a
+   block. `start` is where the front rank stands and `gap` is how far
+   back the next one is, both along the direction of travel.        */
+function returnersPlace(roomId, n, spread, start, gap, dir) {
   n = Math.min(n, RET.cap);
   returnersBuild(n);
   const rec = rooms[roomId];
   const ox = rec ? rec.index * SPACING : 0;
+  const d = dir || "z";
   RET.live = n;
   RET.pool.forEach((g, i) => {
     g.visible = i < n;
@@ -6376,18 +6459,13 @@ function returnersPlace(roomId, n, spreadX, z0, dz) {
     const rnd = mulberry(1000 + i * 37);
     const row = Math.floor(i / 5), col = i % 5;
     const stagger = (row % 2) * 0.5;
-    const spread = spreadX * (1 + row * 0.06);
-    g.position.set(ox + (col - 2 + stagger) * (spread / 5) + (rnd() - 0.5) * 0.26,
-                   0,
-                   z0 + row * dz + (rnd() - 0.5) * 0.22);
-    /* FACING THE WAY THEY WALK.
-
-       They advance along +z, which is toward the camera in every room
-       the film uses -- so they face +z, which is a figure's own front.
-       Turned a half-turn away (as they were), the one thing on them
-       that reads at any distance, the eyes, was pointed at the back
-       wall and the crowd looked like stacked crates. */
-    g.rotation.y = (rnd() - 0.5) * 0.55;
+    const wide = spread * (1 + row * 0.06);
+    const across = (col - 2 + stagger) * (wide / 5) + (rnd() - 0.5) * 0.26;
+    const along = start + row * gap + (rnd() - 0.5) * 0.22;
+    if (d === "x+")      { g.position.set(ox + along, 0, across - 0.9); g.rotation.y =  Math.PI / 2 + (rnd() - 0.5) * 0.5; }
+    else if (d === "x-") { g.position.set(ox + along, 0, across - 0.9); g.rotation.y = -Math.PI / 2 + (rnd() - 0.5) * 0.5; }
+    else                 { g.position.set(ox + across, 0, along);       g.rotation.y = (rnd() - 0.5) * 0.55; }
+    g.userData.dir = d;
     /* fitFigure has already given each kind its own height and put a
        band of variation on top, so this is only the last few percent --
        enough that two of the same kind standing together are not twins */
@@ -6412,20 +6490,29 @@ function returnersClear() {
 
    Three things move: the legs swing, the body rides up and down on
    them, and the head lags a fraction behind the turn. Nothing else --
-   twenty-eight figures is not the place to be clever. */
+   twenty-eight figures is not the place to be clever.
+
+   `advance` is signed: negative drives them back, which is what it
+   looks like when one of his gets to a doorway first. */
 function returnersStep(dt, t, advance) {
   const list = RET.pool.slice(0, RET.live);
   if (retBoss && retBoss.visible) list.push(retBoss);
   for (let i = 0; i < list.length; i++) {
     const g = list[i];
     if (!g.visible) continue;
-    if (advance) g.position.z += g.userData.spd * dt;
+    if (advance) {
+      const step = g.userData.spd * dt * advance;
+      const d = g.userData.dir || "z";
+      if (d === "x+") g.position.x += step;
+      else if (d === "x-") g.position.x -= step;
+      else g.position.z += step;
+    }
     const j = g.userData.joints;
     if (!j) continue;
     const ph = t * (4.6 * g.userData.wob) + g.userData.seed;
     if (g.userData.gait === "roll") {
       /* the wheels turn at the speed it is actually travelling */
-      j.legs.forEach((w) => { w.rotation.x += g.userData.spd * dt * 14; });
+      j.legs.forEach((w) => { w.rotation.x += g.userData.spd * dt * 14 * (advance || 1); });
       g.position.y = 0;
     } else {
       j.legs.forEach((leg, k) => {
@@ -11032,10 +11119,12 @@ function finaleNext(skipped) {
 
   /* --- the crowd --------------------------------------------------- */
   if (s.clear) returnersClear();
-  if (s.swarm) returnersPlace(s.swarm[0], s.swarm[1], s.swarm[2], s.swarm[3], s.swarm[4]);
+  if (s.swarm) returnersPlace(s.swarm[0], s.swarm[1], s.swarm[2], s.swarm[3], s.swarm[4], s.swarm[5]);
   if (s.boss) returnersBoss(s.boss[0], s.boss[1], s.boss[2], s.boss[3]);
   if (s.bossGone) returnersBossGone();
-  FIN.adv = s.advance ? 1 : 0;
+  /* signed: a negative advance is one of his getting to the doorway
+     first and driving them back out of it */
+  FIN.adv = s.advance === undefined ? 0 : s.advance;
 
   /* --- the rest ---------------------------------------------------- */
   if (s.lux !== undefined) FIN.lux = s.lux;
@@ -11046,6 +11135,19 @@ function finaleNext(skipped) {
      while the shot is running, so the door coming down is a thing that
      happens in front of her rather than a line about a door. */
   if (s.doors) for (const k in s.doors) G.doors[k] = !!s.doors[k];
+  /* AND THE NOISE OF IT.
+
+     The film had a crowd walking and nothing else: no impacts, nothing
+     giving way, nothing being knocked over. A shot can now fire any of
+     the chapter's own cues by name, which is the difference between a
+     door being held and a door being described as held. */
+  if (s.sfx) {
+    const list = (typeof s.sfx[0] === "string") ? [s.sfx] : s.sfx;
+    list.forEach((c) => {
+      const f = SFX[c[0]];
+      if (f) { try { f(c[1] === undefined ? 0.8 : c[1], c[2]); } catch (e) {} }
+    });
+  }
   /* and one layer of the score can be taken away and never given back.
      Cogsworth is the thing keeping time in this shop; when he stops,
      so does the tick under the music, and nobody has to say so. */
