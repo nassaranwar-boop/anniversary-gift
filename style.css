@@ -6848,6 +6848,48 @@ img{-webkit-user-drag:none; user-select:none;}
   grid-template-columns:repeat(auto-fit, minmax(min(100%, 30cqw), 1fr));
 }
 
+/* ---- THE GLOVEBOX ----
+   A badge is a rule you satisfied and reads like one: small caps, gold,
+   two to a row. A keepsake is a sentence somebody wrote to her, so it is
+   set as writing -- one to a row, serif, italic, in the pink the hearts
+   themselves are drawn in, so the two collections are never mistaken for
+   each other at a glance. */
+.rc-keep{
+  display:flex; flex-direction:column; gap:.5cqh; text-align:left;
+  padding:1cqh 2cqw; border-radius:.8cqw;
+  background:rgba(34,18,34,.72);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,158,196,.16);
+}
+.rc-keep b{
+  font-size:1.25cqh; letter-spacing:.12em; color:#8d7f9e;
+}
+.rc-keep i{
+  font-family:'Playfair Display', Georgia, serif;
+  font-style:italic; font-size:1.45cqh; line-height:1.65; color:#6f6480;
+}
+.rc-keep.on, .rc-keep-new{
+  background:rgba(58,22,44,.8);
+  box-shadow:inset 0 0 0 .22cqw rgba(255,158,196,.42);
+}
+.rc-keep.on b, .rc-keep-new b{ color:#ff9ec4; }
+.rc-keep.on i, .rc-keep-new i{ color:#ffeaf2; }
+.rc-keep-new{ animation:rc-keep-pop .6s var(--ease-out, ease-out) both; }
+@keyframes rc-keep-pop{
+  from{ opacity:0; transform:translateY(1.4cqh) scale(.96); }
+  to  { opacity:1; transform:none; }
+}
+.rc-keeps{ max-width:74cqw; }
+.rc-keep-list{
+  display:grid; gap:1.2cqw; width:100%; margin:1cqh 0 .4cqh;
+  /* one to a row: these are sentences, and a sentence in a 30cqw column
+     on a landscape phone is four words a line */
+  grid-template-columns:1fr;
+  max-height:44cqh; overflow-y:auto; overscroll-behavior:contain;
+}
+/* in a results strip it sits alone above the badges rather than beside
+   them, so the thing she just opened is the thing she reads first */
+.rc-earned .rc-keep{ width:min(56cqw, 100%); }
+
 /* the title button once every one of them is in */
 .rc-btn-gold{
   background:linear-gradient(180deg, #ffd166, #e8a53c);

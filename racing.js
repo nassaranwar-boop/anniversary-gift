@@ -110,7 +110,7 @@ function packRgb(c) { return (255 << 24) | (c[2] << 16) | (c[1] << 8) | c[0]; }
    --------------------------------------------------------- */
 const TRACKS = [
   {
-    id:"woods", name:"Cabin Woods", laps:3,
+    id:"woods", name:"Cabin Woods", laps:4,
     blurb:"Out past the pines, over the log bridge, and round the little cabin where it all began.",
     grass:"#4f8f52", grassAlt:"#478248", shoulder:"#8a6b45",
     road:"#8f7a5e", roadAlt:"#877257", rumbleA:"#ff7f8a", rumbleB:"#fff8e8",
@@ -119,23 +119,27 @@ const TRACKS = [
     scenery:["pine","pine","pine","pine","tree","bush","bush","rock","cabin","shed","signpost","flowerbox"],
     /* opening straight, sweep, forest esses, cabin detour, river wiggle,
        and a run home down the right-hand side */
-    pts:[[0.54,0.93],[0.42,0.94],[0.30,0.93],
-         [0.19,0.89],[0.11,0.81],[0.08,0.71],
-         [0.14,0.63],[0.24,0.60],[0.30,0.53],[0.24,0.46],[0.13,0.44],
-         [0.07,0.36],[0.08,0.26],[0.14,0.18],
-         [0.24,0.12],[0.35,0.11],
-         [0.42,0.17],[0.47,0.25],[0.55,0.28],[0.62,0.22],
-         [0.68,0.14],[0.78,0.11],[0.87,0.16],
-         [0.92,0.25],[0.90,0.35],[0.83,0.41],[0.86,0.50],[0.93,0.57],
-         [0.92,0.68],[0.87,0.78],[0.79,0.86],[0.68,0.92]],
+    pts:[[0.1784,0.3384],[0.1325,0.3789],[0.1209,0.4400],[0.1253,0.5022],
+         [0.1416,0.5624],[0.1642,0.6205],[0.1882,0.6781],[0.2131,0.7354],
+         [0.2420,0.7907],[0.2788,0.8410],[0.3250,0.8827],[0.3800,0.9120],
+         [0.4406,0.9261],[0.5028,0.9239],[0.5619,0.9045],[0.6116,0.8672],
+         [0.6460,0.8155],[0.6668,0.7567],[0.6895,0.6990],[0.7427,0.6680],
+         [0.7988,0.6411],[0.8377,0.5935],[0.8439,0.5320],[0.8286,0.4716],
+         [0.8096,0.4122],[0.7982,0.3508],[0.7911,0.2888],[0.7799,0.2274],
+         [0.7593,0.1686],[0.7261,0.1159],[0.6799,0.0744],[0.6230,0.0493],
+         [0.5611,0.0433],[0.5000,0.0550],[0.4541,0.0955],[0.4081,0.1360],
+         [0.3622,0.1765],[0.3162,0.2169],[0.2703,0.2574],[0.2244,0.2979]],
     /* the log bridge: straight over the top, skipping the cabin loop */
-    cut:{ name:"log bridge", pts:[[0.37,0.12],[0.47,0.075],[0.58,0.07],[0.68,0.115]] },
+    cut:{ name:"log bridge", pts:[[0.3162,0.2169],[0.3125,0.2794],[0.3087,0.3418],[0.3050,0.4042],
+                [0.3013,0.4666],[0.2975,0.5290],[0.2938,0.5914],[0.2900,0.6538],
+                [0.2863,0.7162],[0.2825,0.7786],[0.2788,0.8410]] },
     /* It runs down out of the hills, under the log bridge, and pools in
        the middle of the circuit. Placed to clear the racing surface
        everywhere — and where the road does cross it, the tarmac is
        painted afterwards, so it reads as a culvert. */
-    river:{ w:30, pts:[[0.58,-0.08],[0.555,-0.01],[0.53,0.06],[0.515,0.13],
-                       [0.505,0.20],[0.50,0.27],[0.505,0.34],[0.515,0.41],[0.53,0.47]] },
+    river:{ w:30, pts:[[0.7500,-0.0800],[0.7879,-0.0111],[0.8230,0.0578],[0.8529,0.1267],
+                       [0.8765,0.1956],[0.8939,0.2644],[0.9067,0.3333],[0.9174,0.4022],
+                       [0.9288,0.4711],[0.9439,0.5400]] },
     /* the thing the blurb promises: logs down off the hill, lying half
        across the road. Always one side at a time, so there is a line
        through — an obstacle you cannot avoid is just a tax. */
@@ -150,16 +154,16 @@ const TRACKS = [
     light:-0.5,
     scenery:["house","house","house","tree","bush","lamp","store","hydrant","postbox",
              "flowerbox","mailbox","bike","hoop","car","bench"],
-    pts:[[0.55,0.93],[0.40,0.94],[0.26,0.92],
-         [0.15,0.87],[0.09,0.78],[0.10,0.67],
-         [0.18,0.60],[0.29,0.58],[0.35,0.50],
-         [0.29,0.42],[0.17,0.40],[0.09,0.32],
-         [0.11,0.21],[0.20,0.14],[0.32,0.11],
-         [0.44,0.14],[0.50,0.22],[0.58,0.26],[0.66,0.21],
-         [0.71,0.13],[0.82,0.12],[0.90,0.19],
-         [0.92,0.30],[0.85,0.37],[0.79,0.45],
-         [0.85,0.53],[0.93,0.61],[0.92,0.72],
-         [0.86,0.81],[0.76,0.88],[0.66,0.92]],
+    pts:[[0.9328,0.2085],[0.9295,0.1279],[0.8731,0.0632],[0.7891,0.0430],
+         [0.7038,0.0601],[0.6258,0.0993],[0.5542,0.1493],[0.4745,0.1790],
+         [0.3962,0.1413],[0.3188,0.1008],[0.2348,0.0775],[0.1487,0.0861],
+         [0.0828,0.1409],[0.0640,0.2251],[0.0838,0.3098],[0.1257,0.3863],
+         [0.1776,0.4567],[0.1950,0.5375],[0.1494,0.6120],[0.1080,0.6888],
+         [0.0856,0.7730],[0.0974,0.8587],[0.1565,0.9206],[0.2417,0.9343],
+         [0.3257,0.9114],[0.4017,0.8685],[0.4748,0.8207],[0.5573,0.8293],
+         [0.6310,0.8764],[0.7092,0.9150],[0.7943,0.9335],[0.8794,0.9179],
+         [0.9404,0.8575],[0.9557,0.7724],[0.9525,0.6919],[0.9492,0.6113],
+         [0.9459,0.5308],[0.9426,0.4502],[0.9393,0.3696],[0.9361,0.2891]],
     /* THE ENDPOINTS HAVE TO LAND ON THE MAIN LOOP.
 
        This one used to run from (0.335,0.495) to (0.655,0.475) — and
@@ -173,31 +177,35 @@ const TRACKS = [
        racing line, and each saves the three or four per cent of a lap
        the log bridge always did. */
     cut:{ name:"the back alley",
-          pts:[[0.410,0.126],[0.485,0.116],[0.560,0.113],[0.635,0.118],[0.710,0.130]] },
+          pts:[[0.7891,0.0430],[0.7181,0.0508],[0.6470,0.0588],[0.5761,0.0671],
+                [0.5053,0.0760],[0.4346,0.0854],[0.3640,0.0956],[0.2936,0.1063],
+                [0.2233,0.1175],[0.1530,0.1291],[0.0828,0.1409]] },
     /* "the sprinklers that never got the memo" — they pulse, so a lap
        learned is a lap you can time your way through */
     hazard:{ kind:"sprinkler", n:9, warn:"WATCH OUT · sprinklers, and the wet patch they leave" },
   },
   {
-    id:"ward", name:"Hospital Dash", laps:3,
+    id:"ward", name:"Hospital Dash", laps:4,
     blurb:"Sunlit halls, a slalom of IV poles, and the gift-cart run everybody pretends not to take.",
     grass:"#b9c8de", grassAlt:"#adbdd6", shoulder:"#93a8c6",
     road:"#e9edf5", roadAlt:"#dde4ef", rumbleA:"#7ec8e3", rumbleB:"#fff8e8",
     sky:["#cfe4f4","#eef5fb"], haze:"#d6e6f2", accent:"#7ec8e3", tiles:true,
     light:-1.1,
     scenery:["pole","pole","plant","plant","cart","chair","vending","sign","bench"],
-    pts:[[0.52,0.93],[0.38,0.94],[0.25,0.91],
-         [0.14,0.85],[0.09,0.75],[0.12,0.65],
-         [0.21,0.59],[0.32,0.61],[0.38,0.54],
-         [0.33,0.46],[0.22,0.45],[0.13,0.38],
-         [0.10,0.27],[0.18,0.17],[0.30,0.12],
-         [0.41,0.15],[0.46,0.24],[0.54,0.29],[0.63,0.25],
-         [0.69,0.16],[0.80,0.13],[0.89,0.20],
-         [0.91,0.31],[0.84,0.39],[0.80,0.48],
-         [0.87,0.56],[0.92,0.65],[0.88,0.76],
-         [0.79,0.85],[0.66,0.91]],
+    pts:[[0.9162,0.3627],[0.9385,0.2945],[0.9218,0.2249],[0.8686,0.1778],
+         [0.7977,0.1665],[0.7261,0.1763],[0.6545,0.1845],[0.5987,0.1416],
+         [0.5519,0.0866],[0.4905,0.0494],[0.4189,0.0455],[0.3507,0.0689],
+         [0.2903,0.1085],[0.2397,0.1601],[0.2023,0.2218],[0.1789,0.2902],
+         [0.1656,0.3614],[0.1511,0.4322],[0.1256,0.4999],[0.0959,0.5659],
+         [0.0716,0.6340],[0.0615,0.7055],[0.0782,0.7751],[0.1314,0.8222],
+         [0.2023,0.8335],[0.2739,0.8237],[0.3455,0.8155],[0.4013,0.8584],
+         [0.4481,0.9134],[0.5095,0.9506],[0.5811,0.9545],[0.6493,0.9311],
+         [0.7097,0.8915],[0.7603,0.8399],[0.7825,0.7717],[0.8048,0.7035],
+         [0.8271,0.6354],[0.8494,0.5672],[0.8717,0.4990],[0.8939,0.4309]],
     cut:{ name:"the gift-cart run",
-          pts:[[0.410,0.150],[0.480,0.143],[0.550,0.141],[0.620,0.148],[0.690,0.160]] },
+          pts:[[0.8048,0.7035],[0.7842,0.6474],[0.7636,0.5912],[0.7430,0.5350],
+                [0.7224,0.4788],[0.7018,0.4226],[0.6812,0.3664],[0.6605,0.3102],
+                [0.6399,0.2540],[0.6193,0.1978],[0.5987,0.1416]] },
     hazard:{ kind:"ivpole", n:10, warn:"WATCH OUT · a slalom of IV poles" },
   },
   {
@@ -209,18 +217,20 @@ const TRACKS = [
     light:-2.2,                       // low sun, long shadows the other way
     scenery:["stringpole","cat","laundry","vent","cat","watertank","acunit","skylight",
              "dish","planter","shelter","trafficlight","car","lamp"],
-    pts:[[0.53,0.93],[0.40,0.93],[0.27,0.90],
-         [0.16,0.84],[0.10,0.74],[0.13,0.63],
-         [0.23,0.57],[0.33,0.59],[0.39,0.51],
-         [0.32,0.44],[0.20,0.42],[0.12,0.34],
-         [0.13,0.23],[0.22,0.15],[0.34,0.12],
-         [0.43,0.16],[0.48,0.25],[0.57,0.27],[0.64,0.20],
-         [0.70,0.12],[0.81,0.12],[0.90,0.21],
-         [0.90,0.32],[0.83,0.40],[0.81,0.49],
-         [0.88,0.58],[0.92,0.68],[0.86,0.79],
-         [0.76,0.87],[0.65,0.92]],
+    pts:[[0.7374,0.9454],[0.8146,0.9474],[0.8831,0.9106],[0.9278,0.8472],
+         [0.9410,0.7705],[0.9274,0.6936],[0.8946,0.6226],[0.8489,0.5590],
+         [0.7960,0.5012],[0.7622,0.4334],[0.7899,0.3605],[0.8189,0.2878],
+         [0.8315,0.2107],[0.8136,0.1353],[0.7554,0.0852],[0.6782,0.0779],
+         [0.6033,0.1001],[0.5339,0.1363],[0.4624,0.1676],[0.3847,0.1638],
+         [0.3078,0.1489],[0.2296,0.1468],[0.1547,0.1681],[0.0947,0.2175],
+         [0.0613,0.2878],[0.0532,0.3655],[0.0592,0.4436],[0.0646,0.5218],
+         [0.0604,0.6000],[0.0542,0.6781],[0.0582,0.7562],[0.0816,0.8307],
+         [0.1292,0.8923],[0.1968,0.9309],[0.2741,0.9330],[0.3513,0.9350],
+         [0.4285,0.9371],[0.5057,0.9392],[0.5829,0.9412],[0.6602,0.9433]],
     cut:{ name:"the plank",
-          pts:[[0.396,0.136],[0.472,0.132],[0.548,0.128],[0.624,0.124],[0.700,0.120]] },
+          pts:[[0.7960,0.5012],[0.7650,0.4644],[0.7337,0.4280],[0.7020,0.3922],
+                [0.6697,0.3573],[0.6367,0.3234],[0.6030,0.2905],[0.5685,0.2587],
+                [0.5335,0.2278],[0.4981,0.1975],[0.4624,0.1676]] },
     hazard:{ kind:"washline", n:8, warn:"WATCH OUT · laundry lines hung too low" },
   },
 ];
@@ -307,6 +317,46 @@ const BADGES = [
   { id:"cup",    name:"THE WHOLE CUP",
     text:"See a Grand Prix all the way to the end.",
     test:(f) => f.cup },
+];
+
+/* ---------------------------------------------------------
+   5b. WHAT THE HEARTS ARE FOR
+
+   They were coins. Ten of them bought six per cent of top speed, which is
+   real but is not something a person can feel, and at the flag they were
+   thrown away and counted again from zero next race. So the one thing on
+   the course she was actively choosing to go and get was also the one
+   thing that meant nothing an hour later.
+
+   Now they are kept. Whatever she carries over the line is added to a
+   running total that survives the tab being closed, and the total opens
+   these, one at a time -- the things he would have said if the game had
+   somewhere to say them. It changes what a bad race is worth: you can come
+   fifth, and still come home with something.
+
+   The speed bonus stays exactly as it was. This is what the hearts are
+   FOR; that is what they DO.
+
+   The costs rise, and the last one lands at 158 -- about twenty races at
+   the eight-ish a good lap yields. Far enough to be worth driving for, near
+   enough that the last one is not theoretical. */
+const KEEPSAKES = [
+  { id:"first", at:5,   name:"THE FIRST LAP",
+    text:"You did not lift once on the first corner you ever saw. I should have known then." },
+  { id:"alley", at:14,  name:"THE LONG WAY",
+    text:"You always took the alley. I always said it was not faster. It was never about faster." },
+  { id:"porch", at:28,  name:"PORCH LIGHT",
+    text:"Your street at the hour when every window is on and nobody has drawn the curtains yet." },
+  { id:"halls", at:46,  name:"SUNLIT HALLS",
+    text:"I counted the doors on the way in and could not tell you one number on the way out. You were fine. That is all I kept." },
+  { id:"lights", at:68, name:"STRING LIGHTS",
+    text:"The roof, the bad chairs, the lights we hung crooked and never straightened. You said leave them. They are still crooked." },
+  { id:"pines", at:94,  name:"PAST THE PINES",
+    text:"There is a cabin out past the pines, and if you had not wanted to walk that far, none of the rest of this happens." },
+  { id:"cats", at:124,  name:"EVERY CAT IN THE CITY",
+    text:"They all came out to watch the finish. I was watching you watch them." },
+  { id:"kept", at:158,  name:"WHAT YOU CARRIED",
+    text:"Every heart in here is a lap you finished still holding something. That is the whole of it, really." },
 ];
 
 /* the line under the logo changes as they come in */
@@ -4744,6 +4794,7 @@ let duoChars = [0, 1];
 
 let raceBeatGhost = false;   // the trial run came in under the ghost's
 let justEarned = [];         // badges won by the race just finished
+let justOpened = [];         // ...and keepsakes the hearts just opened
 let raceClean = true;    // no barrier touched this race
 let raceDrift = 0;       // the longest drift held this race
 
@@ -5087,7 +5138,7 @@ function buildRace() {
   Snd.setRain(!!trackDef.wet);
   boltCyc = -1;
   raceClean = true; raceDrift = 0; raceBeatGhost = false;
-  justEarned = []; finishCam = 0; finishHold = 0; finishShot = null;
+  justEarned = []; justOpened = []; finishCam = 0; finishHold = 0; finishShot = null;
   buildPath(trackDef);
   /* props are placed before the bake so their shadows can be painted
      into the ground texture along with everything else */
@@ -5202,6 +5253,7 @@ function finishRace() {
     saveCup();
   }
   /* the badges are settled here, where the places finally are */
+  justOpened = addHearts((racers.find((r) => r.isPlayer) || {}).coins || 0);
   justEarned = awardBadges(raceFacts(racers.find((r) => r.isPlayer),
                                      { beatGhost: raceBeatGhost }));
   state = "results";
@@ -5368,6 +5420,33 @@ function awardBadges(facts) {
   return won;
 }
 function badgeCount() { return loadBadges().length; }
+
+/* ---- the glovebox ----
+
+   One number, written down the moment the flag drops, so a closed tab
+   never costs her a heart she actually carried. Which keepsakes are open
+   is derived from the number rather than stored beside it: two facts that
+   can disagree eventually do, and there is nothing here worth the risk of
+   a total that says one thing and a list that says another. */
+let heartTotal = null;
+function loadHearts() {
+  if (heartTotal != null) return heartTotal;
+  try {
+    const v = parseInt(localStorage.getItem("sor_hearts") || "0", 10);
+    heartTotal = isFinite(v) && v > 0 ? v : 0;
+  } catch (e) { heartTotal = 0; }
+  return heartTotal;
+}
+function addHearts(n) {
+  if (!(n > 0)) return [];
+  const before = loadHearts();
+  heartTotal = before + n;
+  try { localStorage.setItem("sor_hearts", String(heartTotal)); } catch (e) {}
+  /* the ones this race opened, so the finish can read them out */
+  return KEEPSAKES.filter((k) => k.at > before && k.at <= heartTotal);
+}
+function keepsOpen() { return KEEPSAKES.filter((k) => k.at <= loadHearts()).length; }
+function nextKeep() { return KEEPSAKES.find((k) => k.at > loadHearts()) || null; }
 
 /* what the race that just ended actually was, in the few terms the
    badges are written in */
@@ -6991,6 +7070,8 @@ function renderTitle() {
           <button class="rc-btn rc-btn-s" data-tut="1">HOW TO RACE</button>
           <button class="rc-btn rc-btn-s${badgeCount() >= BADGES.length ? " rc-btn-gold" : ""}"
             data-badges="1">BADGES &middot; ${badgeCount()}/${BADGES.length}</button>
+          <button class="rc-btn rc-btn-s${keepsOpen() >= KEEPSAKES.length ? " rc-btn-gold" : ""}"
+            data-keeps="1">GLOVEBOX &middot; ${keepsOpen()}/${KEEPSAKES.length}</button>
           <button class="rc-btn rc-btn-s" data-settings="title">SOUND</button>
         </div>
       </div>
@@ -7011,6 +7092,30 @@ function renderTitle() {
    Everything on it is visible from the start, earned or not, because a
    list of things you might do is a reason to play and a list of blanks
    is a puzzle. */
+function renderKeeps() {
+  state = "keeps";
+  const have = loadHearts(), got = keepsOpen(), all = KEEPSAKES.length;
+  const rows = KEEPSAKES.map((k) => {
+    const on = k.at <= have;
+    return `<div class="rc-keep${on ? " on" : ""}">
+      <b>${on ? k.name : "\u2014"}</b>
+      <i>${on ? k.text : `${k.at - have} more heart${k.at - have === 1 ? "" : "s"}`}</i>
+    </div>`;
+  }).join("");
+  setOverlay(`
+    <div class="rc-panel rc-keeps">
+      <h3 class="rc-h">THE GLOVEBOX</h3>
+      <p class="rc-msg"><b>${have}</b> heart${have === 1 ? "" : "s"} carried home so far${
+        got >= all ? " \u2014 every one of these is open, and the road is still there."
+        : got === 0 ? " \u2014 the hearts on the road are not just speed. Bring some back."
+        : " \u2014 keep bringing them back."}</p>
+      <div class="rc-keep-list">${rows}</div>
+      <div class="rc-row">
+        <button class="rc-btn rc-btn-go" data-back="title">\u2039 BACK</button>
+      </div>
+    </div>`, "rc-ov-panel");
+}
+
 function renderBadges() {
   state = "badges";
   const got = badgeCount(), all = BADGES.length;
@@ -7149,9 +7254,15 @@ function paintCardArt() {
 
 /* the strip under a result that says what the race just earned */
 function earnedStrip() {
-  if (!justEarned.length) return "";
-  return `<div class="rc-earned">${justEarned.map((b) => `
-    <span class="rc-badge rc-badge-new"><b>${b.name}</b><i>${b.text}</i></span>`).join("")}</div>`;
+  const badges = justEarned.map((b) => `
+    <span class="rc-badge rc-badge-new"><b>${b.name}</b><i>${b.text}</i></span>`).join("");
+  /* A keepsake is the reason the hearts were worth going and getting, so it
+     is read out in full here rather than filed away for her to go and find
+     -- the whole point is that it arrives at the flag. */
+  const keeps = justOpened.map((k) => `
+    <span class="rc-keep rc-keep-new"><b>${k.name}</b><i>${k.text}</i></span>`).join("");
+  if (!badges && !keeps) return "";
+  return `<div class="rc-earned">${keeps}${badges}</div>`;
 }
 
 function renderResults() {
@@ -7193,10 +7304,15 @@ function renderResults() {
     msg = "Every lap was worth it. Same time tomorrow?";
   }
 
-  /* the hearts get counted at the end, because a thing you collect and
-     nobody mentions afterwards stops feeling worth collecting */
-  if (me.coins > 0)
-    msg += ` <b>${me.coins}</b> heart${me.coins === 1 ? "" : "s"} in hand at the flag.`;
+  /* The hearts get counted at the end, because a thing you collect and
+     nobody mentions afterwards stops feeling worth collecting -- and now
+     what is said about them is where they went, not just how many. */
+  if (me.coins > 0) {
+    const nx = nextKeep();
+    msg += ` <b>${me.coins}</b> heart${me.coins === 1 ? "" : "s"} carried over the line`;
+    msg += nx ? ` \u2014 ${nx.at - loadHearts()} more and the glovebox opens again.`
+              : ` \u2014 and the glovebox is full.`;
+  }
 
   const isGP = mode === "gp";
   const more = isGP && gpRound < TRACKS.length - 1;
@@ -8410,6 +8526,7 @@ function onOverlayClick(e) {
   if (d.mirror) { mirror = !mirror; renderTracks(); return; }
   if (d.wet)    { wet = !wet;       renderTracks(); return; }
   if (d.badges) { renderBadges(); return; }
+  if (d.keeps)  { renderKeeps();  return; }
   if (d.back === "title") { setOverlay(""); showHud(false); renderTitle(); return; }
   if (d.back === "chars") { renderChars(); return; }
   if (d.settings) { renderSettings(d.settings); return; }
@@ -8870,6 +8987,18 @@ function stop() {
 /* a hatch for the test harness — nothing in the page uses it */
 if (typeof window !== "undefined")
   window.__RACE_DEBUG = () => ({ obstacles, coins, racers, props, trackDef, state, mode, path, cut, raceTime, buildScenery, SCENERY, HAZ, ghost,
+     /* A race ends when the clock says so, and under a headless browser the
+        clock barely moves -- the countdown sat at three for fourteen real
+        seconds. So the harness is handed the finish itself: the same
+        function the last lap calls, doing the same work in the same order,
+        rather than a test-only imitation of it that could agree with the
+        test while disagreeing with the game. */
+     finishRace,
+     /* ...and the simulation tick, for the same reason. Stepping it by hand
+        runs a whole four-lap race in a few hundred milliseconds of wall
+        clock, which is how a new course gets its lap times measured and its
+        corners proved drivable before anybody is asked to drive one. */
+     step,
      audioState: Snd.state(), audioCtx: Snd.ctx() });
 
 return { start, stop };
