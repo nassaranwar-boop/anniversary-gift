@@ -7608,20 +7608,53 @@ function wireScroll() {
   rail.addEventListener("pointerup", up);
   rail.addEventListener("pointercancel", up);
 
+  /* ---- AND THE LISTS INSIDE IT ----
+
+     The panel is not the only thing that scrolls. The keepsakes, the
+     badges, the championship table and the strip of things a race just
+     won each have their own cap and their own overflow, and on a phone
+     they are exactly where the writing stops mid-sentence: measured on a
+     956x440 stage the results panel itself overflows by two points -- so
+     the rail is rightly hidden -- while the strip inside it is cut off
+     with more underneath. The panel's rail says nothing about that,
+     because it is not the panel that is short.
+
+     These get a fade at the bottom edge rather than a rail of their own.
+     Partly because four more rails in one panel is noise, and partly
+     because a fade cannot be got wrong in the way the rail already has
+     been twice: it paints nothing new into the hit test, so at worst it
+     dims a line, and it can never swallow a tap. The mask sits on the
+     scrollport, not on the content, so it stays at the bottom edge while
+     the list moves under it. */
+  const both0 = () => { read(); readInner(); };
+  const inners = [].slice.call(
+    panel.querySelectorAll(".rc-keep-list, .rc-badge-list, .rc-earned, .rc-standings ol"));
+  const readInner = () => {
+    for (const box2 of inners) {
+      const span2 = box2.scrollHeight - box2.clientHeight;
+      const under = span2 > 4 && box2.scrollTop < span2 - 4;
+      box2.dataset.more = under ? "1" : "0";
+    }
+  };
+  inners.forEach((x) => x.addEventListener("scroll", readInner, { passive: true }));
+
   panel.addEventListener("scroll", read, { passive: true });
   el.overlay.addEventListener("scroll", read, { passive: true });
   let ro = null;
-  try { ro = new ResizeObserver(read); ro.observe(panel); } catch (x) {}
+  try { ro = new ResizeObserver(both0); ro.observe(panel); inners.forEach((x) => ro.observe(x)); }
+  catch (x) {}
   /* the postcard is drawn into the panel a beat after the panel is built,
      and a rail measured before it arrives is the wrong length */
-  const t1 = setTimeout(read, 60), t2 = setTimeout(read, 400);
-  read();
+  const both = () => { read(); readInner(); };
+  const t1 = setTimeout(both, 60), t2 = setTimeout(both, 400);
+  both();
 
   scrollWired = () => {
     clearTimeout(t1); clearTimeout(t2);
     if (ro) try { ro.disconnect(); } catch (x) {}
     panel.removeEventListener("scroll", read);
     el.overlay.removeEventListener("scroll", read);
+    inners.forEach((x) => x.removeEventListener("scroll", readInner));
     if (rail.parentNode) rail.parentNode.removeChild(rail);
   };
 }

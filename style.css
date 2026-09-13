@@ -7123,6 +7123,19 @@ img{-webkit-user-drag:none; user-select:none;}
   opacity:.9; animation:rc-bob 1.5s ease-in-out infinite;
 }
 @keyframes rc-bob{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(.7cqh)} }
+
+/* the lists inside a panel say there is more below by fading out at their
+   own bottom edge. A mask applies to the scrollport rather than to the
+   content, so it stays put while the list moves under it -- and it paints
+   nothing into the hit test, which after twice getting the rail wrong is
+   the point: at worst this dims a line, it can never swallow a tap. */
+.rc-keep-list[data-more="1"],
+.rc-badge-list[data-more="1"],
+.rc-earned[data-more="1"],
+.rc-standings ol[data-more="1"]{
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 2.6cqh), transparent);
+          mask-image:linear-gradient(180deg, #000 calc(100% - 2.6cqh), transparent);
+}
 @media (prefers-reduced-motion: reduce){ .rc-rail-more{animation:none !important;} }
 
 /* a keepsake is a sentence, not a badge, so the strip under a result can be
