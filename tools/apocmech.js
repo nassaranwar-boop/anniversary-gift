@@ -8,9 +8,20 @@ const { chromium } = require('playwright-core');
   await p.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
   await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(1000);
+  /* The chapter is fetched on demand now -- index.html no longer
+     carries apocalypse.js, so `Apocalypse` does not exist until the
+     site has been asked for it. Every suite in this folder was
+     written before that and died on `Apocalypse is not defined`. */
+  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
+  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });
+  /* And the hooks arrive later still. start() builds the scene behind a
+     promise and only installs them when that resolves, so every suite
+     here called start() and used __apEnter in the same synchronous
+     block -- which cannot work, and reported "not a function". */
+  await p.evaluate(() => { showScreen('apoc'); Apocalypse.start(); });
+  await p.waitForFunction(() => typeof window.__apEnter === 'function', null, { timeout: 30000 });
   const out = await p.evaluate(() => {
     const R = [];
-    showScreen('apoc'); Apocalypse.start();
     const info = window.__apEnter(0);
     R.push(['level builds', info]);
 

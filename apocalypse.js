@@ -16509,6 +16509,13 @@
         player: G.player ? { x: G.player.x, z: G.player.z, hidden: G.player.hidden,
                              tx: Math.floor(G.player.x / TILE), ty: Math.floor(G.player.z / TILE) } : null,
         cine: !!G.cine, dialogue: !!G.dlg,
+        /* The doors were dropped from this report at some point and the
+           mechanics suite still asks for them -- it has been failing on
+           `st.doors.filter` ever since, which is one of the reasons this
+           chapter has had nothing checking it. */
+        doors: (G.world && G.world.doors ? G.world.doors : []).map(function (d) {
+          return (d.name || d.id || "door") + (d.open ? ":open" : ":shut");
+        }),
         presses: anyPressed, grab: G.grab ? { t: G.grab.t, presses: G.grab.presses } : null
       };
     };
