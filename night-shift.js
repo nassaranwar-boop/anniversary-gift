@@ -530,6 +530,145 @@ const NS = {
   },
 
   /* =====================================================================
+     THE LAST HOUR.
+
+     Six nights of a woman alone in a room being careful, and then it
+     ended with a card that said she had survived. Everything the
+     chapter had been building -- that his four are not the threat but
+     the thing standing between her and it, that he spent fifteen years
+     learning her so he could leave something behind that knew how to
+     stand in front of her -- was stated in a letter and never HAPPENED.
+
+     So it happens. Five o'clock on the sixth night, the shop stops
+     being a game and becomes the last twenty minutes of a film, and
+     she does not play it. She watches it, which is the point: there is
+     nothing left for her to do because the four of them have taken the
+     job off her. Losing is not possible here and neither is winning.
+     It is not that kind of scene.
+
+     The order of it:
+
+       the wrong quiet   the annunciator gives up mid-sentence. Every
+                         camera has something moving in it. Four
+                         hundred of them came back at once.
+       they arrive       his four come to the office door and do not
+                         come in. They stand with their backs to her,
+                         facing out, which is the image the whole
+                         chapter is built to arrive at.
+       they talk         to each other, not to her, because that is how
+                         you find out what somebody is. They have been
+                         a soldier and an owl and a dancer and a box
+                         for six nights; this is the ninety seconds
+                         where they are people.
+       it goes badly     they are four. The others are four hundred and
+                         eleven minus the ones that never came home.
+       the floor         when they know they are losing, they put her
+                         under it -- the space he built and never said
+                         a word about, because saying it would have
+                         meant explaining why.
+       the winding       and then they use the thing he put in each of
+                         them for exactly this, which is why he asked
+                         her to keep them wound every night for six
+                         nights and would not say what for.
+       six o'clock       the shutters go up on their own, the way they
+                         always have.
+
+     `who` is which of them speaks, `t` what they say, `hold` how long
+     it sits before the next one -- because a line that has to land
+     needs the silence after it more than the words. `cam` moves the
+     camera, `cue` changes the music, `boom` is the one that is not a
+     line at all. ------------------------------------------------- */
+  lastHour: {
+    head: "05:00 — EVERY CAMERA AT ONCE",
+    sub: "there is nothing on this screen you can press",
+    beats: [
+      { sys: true, t: "WICK &amp; COGS. MOTION ON CAMERA ONE. MOTION ON CAMERA TWO. MOTION ON CAMERA THREE. MOTION ON CAMERA—", hold: 1.1, cue: "dark" },
+      { sys: true, t: "MOTION ON", hold: 2.2 },
+      { nar: true, t: "And then the building stops talking.", hold: 2.0 },
+      { nar: true, t: "Four hundred and eleven went out of this shop. Some of them never came home. The rest are in the hall.", hold: 2.6 },
+
+      { nar: true, t: "Something puts its hand on the office door.", hold: 1.7 },
+      { nar: true, t: "And something else takes it off.", hold: 2.4, cue: "held" },
+
+      { nar: true, t: "They come in the order he built them in.", hold: 1.6 },
+      { who: "cogsworth", t: "Twelve minutes past five. I have been counting since Monday.", hold: 1.9 },
+      { who: "chime",     t: "There is no roof left worth going over. They are already inside.", hold: 2.0 },
+      { who: "marabelle", t: "Then nobody is watching. Good.", hold: 2.2 },
+      { who: "jax",       t: "I am not leaving the room. You all know I am not leaving the room.", hold: 2.4 },
+
+      { nar: true, t: "They do not look at her. All four of them are facing the door.", hold: 2.6 },
+
+      { who: "cogsworth", t: "He wound me every night for nine years. He never once told me why.", hold: 2.1 },
+      { who: "marabelle", t: "He told me. He said: one day she will need somebody in the room who is not afraid of her seeing them.", hold: 2.6 },
+      { who: "chime",     t: "He said that to all of us. He said it badly, four times, the way he said everything.", hold: 2.4 },
+      { who: "jax",       t: "He made me in an afternoon. Badly. On purpose, I think.", hold: 1.9 },
+      { who: "cogsworth", t: "He made you last.", hold: 2.5 },
+
+      { nar: true, t: "The first of them comes through the hall door.", hold: 1.4, cue: "night", shake: 0.8 },
+      { nar: true, t: "Then nine more.", hold: 1.6, shake: 1 },
+      { nar: true, t: "Then she stops counting.", hold: 2.2, shake: 1 },
+
+      { who: "marabelle", t: "Ouissy. Go and stand behind the desk.", hold: 1.8 },
+      { who: "chime",     t: "Do not watch this part.", hold: 2.4 },
+
+      { nar: true, t: "She watches it.", hold: 2.6, cue: "dark" },
+
+      { nar: true, t: "Chime goes first, and goes up, the way he always did.", hold: 2.4 },
+      { who: "chime", t: "The hatch. Somebody shut the—", hold: 2.6, gone: "chime" },
+
+      { nar: true, t: "Marabelle stops in the middle of the floor, and every single one of them stops with her, because they are all looking.", hold: 2.8 },
+      { who: "marabelle", t: "Fifteen years and he never saw me do this.", hold: 2.4 },
+      { nar: true, t: "She dances. It buys the others eleven seconds.", hold: 2.6, gone: "marabelle" },
+
+      { who: "cogsworth", t: "Eleven seconds. I will take it.", hold: 2.2 },
+
+      { nar: true, t: "Cogsworth walks the length of the room and turns at the end of it, and does not stop for anything, and that is the last time the shop hears him keeping time.", hold: 2.9, gone: "cogsworth" },
+
+      { nar: true, t: "Which leaves the one he made in an afternoon.", hold: 2.4, cue: "gone" },
+
+      { who: "jax", t: "Right.", hold: 1.8 },
+      { who: "jax", t: "Under the till there is a board that lifts. He put a room down there in March and never told anybody, and I have never once worked out how to ask him why.", hold: 3.0 },
+      { who: "jax", t: "Get in it.", hold: 2.2 },
+
+      { nar: true, t: "She says no.", hold: 1.6 },
+      { who: "jax", t: "I know. I do not leave rooms either. He built that into both of us.", hold: 2.8 },
+      { nar: true, t: "He puts her under the floor anyway, and he is much stronger than a jack-in-the-box has any business being, and she thinks about that for the rest of her life.", hold: 3.2 },
+
+      { who: "jax", t: "There is a key in the back of each of us. You have been turning them all week.", hold: 2.6 },
+      { who: "jax", t: "You were not winding us up, Ouissy.", hold: 2.4 },
+      { who: "jax", t: "You were charging us.", hold: 3.0, cue: "held" },
+
+      { nar: true, t: "He shuts the board over her head.", hold: 2.0 },
+      { who: "jax", t: "He said you never once asked him for a key. He thought about that a great deal, lately.", hold: 2.8 },
+
+      { boom: true, hold: 4.2 },
+
+      { nar: true, t: "And then it is quiet in a way the shop has not been all week.", hold: 3.0, cue: "dawn" },
+      { nar: true, t: "The shutters go up at six. They always have. Nobody has to be there for it.", hold: 3.0 },
+
+      /* the line the whole chapter was written to arrive at, and the
+         one thing worth keeping from the ending this replaced */
+      { nar: true, t: "She has spent six nights getting very good at keeping them out.", hold: 2.6 },
+      { nar: true, t: "They were never coming for her.", hold: 2.4 },
+      { nar: true, t: "They were coming to her.", hold: 3.6 },
+    ],
+    /* what she finds when she comes up */
+    after: {
+      head: "and on the workshop bench, in his hand, dated March",
+      lines: [
+        "&ldquo;If you are reading this I got it wrong somewhere, and I am sorry.",
+        "There is a room under the till. It holds one person and it will hold against anything that walks.",
+        "I built four things that will get you to it.",
+        "Wind them. That is all I am asking. Every night, before six.",
+        "I could not tell you what for, because telling you what for meant telling you what I did, and I wanted six more nights of you not knowing.",
+        "I am sorry about the six nights. I am not sorry about the four of them.&rdquo;",
+      ],
+      sign: "— Anwar",
+    },
+    end: "SIX O'CLOCK. THE SHOP IS HERS.",
+  },
+
+  /* =====================================================================
      WHAT SHE IS DOING RIGHT NOW.
 
      The complaint this exists to answer, in his words: she plays
@@ -6443,13 +6582,26 @@ function syllablesOf(text) {
 function annunciate(text, urgent) {
   if (!ac() || muted) return;
   const t0 = now() + CUE_LEAD;
-  /* the whole announcement -- chime, buzz and words alike -- drops
-     behind him rather than being held back until he stops */
+  /* EVERY ONE OF THESE USED TO DUCK THE MUSIC BY ITSELF.
+
+     tone() and burst() both run through panned(), and panned() calls
+     cueDuck on anything without a bus. An announcement is two chime
+     tones, three oscillators per syllable and a consonant burst per
+     syllable -- so "DOOR ONE: CLOSED" fired about twenty-six separate
+     cue ducks, each pulling the bed down and holding it a quarter of a
+     second, continuously re-triggered for the length of the line. The
+     score was pinned at 0.58 the whole time it spoke, underneath the
+     0.80 the announcement was supposed to be sitting at, and no amount
+     of tuning SYS_BED could reach it.
+
+     duck: 1 on all of them. The announcement already asks for one
+     shallow hold covering its whole length, once, at the top -- that
+     is the level, and nothing inside it gets to argue. */
   const under = voiceBusy() ? 0.42 : 1;
   const gain = (urgent ? 0.85 : 0.6) * under;
   /* the two-tone attention chime every announcement opens with */
-  tone({ type: "square", f0: urgent ? 880 : 660, dur: 0.09, gain: 0.075 * gain, filter: "lowpass", ff: 2400 });
-  tone({ type: "square", f0: urgent ? 1170 : 880, dur: 0.11, gain: 0.075 * gain, at: 0.1, filter: "lowpass", ff: 2400 });
+  tone({ duck: 1, type: "square", f0: urgent ? 880 : 660, dur: 0.09, gain: 0.075 * gain, filter: "lowpass", ff: 2400 });
+  tone({ duck: 1, type: "square", f0: urgent ? 1170 : 880, dur: 0.11, gain: 0.075 * gain, at: 0.1, filter: "lowpass", ff: 2400 });
 
   /* and the building says the words as well. It is a machine and it is
      meant to sound like one, but a status line she cannot hear is a
@@ -6493,7 +6645,7 @@ function annunciate(text, urgent) {
       osc.start(t0 + at); osc.stop(t0 + at + step);
     });
     /* the consonant edge between syllables */
-    burst({ f0: 3400, dur: 0.014, gain: 0.032 * gain, q: 7, at: at - 0.012 });
+    burst({ duck: 1, f0: 3400, dur: 0.014, gain: 0.032 * gain, q: 7, at: at - 0.012 });
   }
   const dur = 0.26 + n * step + 0.2;
   /* AND THE ANNOUNCEMENT SITS IN THE MIX LIKE SPEECH.
@@ -7223,7 +7375,7 @@ const VOX_FILE = { on: null, map: null, buf: Object.create(null), dur: Object.cr
    plainly in front, and the eight bars still turn underneath him where
    she can follow them. */
 const VOICE_BED = 0.76;            // -2.4dB, was 0.48 and far too deep
-const SYS_BED   = 0.80;            // and the building barely moves it at all
+const SYS_BED   = 0.86;            // and the building barely moves it at all
 const BED = { at: 1, voiceTo: 1, voiceUntil: 0, cueTo: 1, cueUntil: 0 };
 
 function bedWant() {
@@ -9799,6 +9951,192 @@ function kill(ch) {
   noOverlay();
 }
 
+/* =====================================================================
+   PLAYING THE LAST HOUR.
+
+   This is the only sequence in the chapter she cannot fail, cannot
+   hurry and cannot lose, and all three are deliberate. The six nights
+   before it were hers to get wrong. This one is not about her any
+   more -- it is about four things doing the job they were made for,
+   and a player who can interrupt that is a player being asked to
+   perform during somebody else's death.
+
+   So: no doors, no meter, no cameras. One line at a time, held for as
+   long as it needs, with the room going dark around it. The only
+   control is the one that skips a line she has already read, and it
+   appears late and small, the way the film's does.
+
+   The four speak in their own colours, so she can tell who is talking
+   without being told -- the same swatches the how-it-works page uses,
+   which is the only place those colours have ever meant anything
+   before now. ------------------------------------------------------ */
+const FIN = { on: false, i: -1, t: 0, hold: 0, el: null, gone: {}, skip: false };
+
+function finaleStart() {
+  if (!NS.lastHour) { winNight(); return; }
+  FIN.on = true; FIN.i = -1; FIN.t = 0; FIN.hold = 0; FIN.gone = {}; FIN.skip = false;
+  G.phase = "finale";
+  G.mode = "story";
+  showHud(false);
+  sayClear();
+  tapeOff();
+  tutorOff();
+  noOverlay();
+  G.doors.left = G.doors.right = G.doors.hatch = false;
+  G.monitor = false;
+  G.blackout = false;
+  musicMode("dark");
+  overlay(
+    '<div class="ns-fin" id="ns-fin">' +
+      '<p class="ns-fin-head"><b>' + NS.lastHour.head + '</b>' +
+        '<span>' + NS.lastHour.sub + '</span></p>' +
+      '<div class="ns-fin-lines" id="ns-fin-lines"></div>' +
+      '<button class="ns-cine-skip ns-fin-skip" id="ns-fin-skip">SKIP</button>' +
+    '</div>', "ns-ov-fin");
+  FIN.el = document.getElementById("ns-fin-lines");
+  const sk = document.getElementById("ns-fin-skip");
+  if (sk) sk.addEventListener("click", (e) => { e.stopPropagation(); finaleNext(true); });
+  finaleNext();
+}
+
+/* who is speaking, in their own colour, so she never has to be told */
+function finaleWho(id) {
+  const d = CAST.filter((c) => c.id === id)[0];
+  return d ? { name: d.name, colour: d.colour } : null;
+}
+
+function finaleNext(skipped) {
+  if (!FIN.on) return;
+  const beats = NS.lastHour.beats;
+  FIN.i++;
+  if (FIN.i >= beats.length) { finaleEnd(); return; }
+  const b = beats[FIN.i];
+  FIN.t = 0;
+  FIN.hold = skipped ? 0.25 : (b.hold || 2);
+
+  if (b.cue) musicMode(b.cue);
+  if (b.shake) G.shake = Math.max(G.shake, b.shake);
+
+  /* one of them stops being in the room */
+  if (b.gone) {
+    FIN.gone[b.gone] = 1;
+    const ch = cast[b.gone];
+    if (ch) { ch.awake = false; ch.asleep = true; ch.atDoor = false; syncChar(ch); }
+    SFX.doorClose();
+    cueDuck(0.55);
+  }
+
+  /* the thing that is not a line */
+  if (b.boom) { finaleBoom(); finalePut('<p class="ns-fin-boom">&nbsp;</p>'); return; }
+
+  let html;
+  if (b.sys) {
+    html = '<p class="ns-fin-sys">' + b.t + '</p>';
+    annunciate(String(b.t).replace(/&amp;/g, "and").slice(0, 60), true);
+  } else if (b.who) {
+    const w = finaleWho(b.who);
+    html = '<p class="ns-fin-said" style="--c:' + (w ? w.colour : "#caa") + '">' +
+             '<b>' + (w ? w.name : b.who) + '</b><span>' + b.t + '</span></p>';
+    SFX.tick ? SFX.tick(0.5, 0) : null;
+  } else {
+    html = '<p class="ns-fin-nar">' + b.t + '</p>';
+  }
+  finalePut(html);
+}
+
+/* keep the last few lines on screen and let the older ones go, so it
+   reads as a thing being told rather than a transcript piling up */
+function finalePut(html) {
+  if (!FIN.el) return;
+  const d = document.createElement("div");
+  d.className = "ns-fin-row";
+  d.innerHTML = html;
+  FIN.el.appendChild(d);
+  /* next frame, so the transition has a value to move from */
+  setTimeout(() => d.classList.add("in"), 20);
+  const rows = FIN.el.children;
+  while (rows.length > 4) FIN.el.removeChild(rows[0]);
+  for (let i = 0; i < rows.length; i++) {
+    rows[i].style.opacity = i === rows.length - 1 ? "" : String(0.16 + i * 0.1);
+  }
+}
+
+/* THE ONE THAT IS NOT A LINE.
+
+   Every one of them carries the same thing, and he asked her to charge
+   it every night for six nights without ever saying what it was for.
+   It is a low sound, not a loud one -- the shop is over her head and
+   she is under the floor, and what she hears through a board is the
+   bottom of it. */
+function finaleBoom() {
+  if (!ac() || muted) return;
+  const t = now() + CUE_LEAD;
+  musicMode("none");
+  audioDuck(0.25, 90);
+  for (let k = 0; k < 4; k++) {
+    const at = t + k * 0.16;
+    const o = AC.createOscillator(); o.type = "sine";
+    o.frequency.setValueAtTime(70 - k * 6, at);
+    o.frequency.exponentialRampToValueAtTime(24, at + 1.5);
+    const g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(0.55 - k * 0.08, at + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 1.6);
+    o.connect(g); g.connect(cueGain);
+    o.start(at); o.stop(at + 1.7);
+    const n = AC.createBufferSource(); n.buffer = NB;
+    const lp = AC.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 420;
+    const ng = AC.createGain();
+    ng.gain.setValueAtTime(0.0001, at);
+    ng.gain.exponentialRampToValueAtTime(0.3, at + 0.03);
+    ng.gain.exponentialRampToValueAtTime(0.0001, at + 1.2);
+    n.connect(lp); lp.connect(ng); ng.connect(cueGain);
+    n.start(at); n.stop(at + 1.3);
+  }
+  G.shake = 1.6;
+  setTimeout(() => audioDuck(1, 1400), 900);
+}
+
+function finaleTick(dt) {
+  if (!FIN.on) return;
+  FIN.t += dt;
+  if (FIN.t >= FIN.hold) finaleNext();
+}
+
+function finaleEnd() {
+  FIN.on = false;
+  G.dawn = true;
+  noOverlay();
+  const a = NS.lastHour.after;
+  musicMode("dawn");
+  overlay(
+    '<div class="ns-card ns-card-find ns-staged">' +
+      '<p class="ns-from">' + a.head + '</p>' +
+      '<div class="ns-paper">' +
+        a.lines.map((l, i) => '<p class="ns-rv" data-i="' + i + '">' + l + '</p>').join("") +
+        '<p class="ns-lp-sign ns-rv">' + a.sign + '</p>' +
+      '</div>' +
+      '<p class="ns-fin-end">' + NS.lastHour.end + '</p>' +
+      '<div class="ns-btns ns-rv-choice">' +
+        '<button class="ns-btn ns-btn-go" data-go="finaleDone">GO UP</button>' +
+      '</div>' +
+    '</div>', "ns-ov-find");
+  /* the same staging the three o'clock cards use: one line at a time,
+     and no way out until she has read all of it */
+  const card = EL["ns-overlay"] && EL["ns-overlay"].querySelector(".ns-card-find");
+  const lines = card ? [].slice.call(card.querySelectorAll(".ns-rv")) : [];
+  const choice = card && card.querySelector(".ns-rv-choice");
+  if (choice) choice.classList.remove("in");
+  let at = 0;
+  const step = () => {
+    if (at >= lines.length) { if (choice) choice.classList.add("in"); return; }
+    lines[at++].classList.add("in");
+    SFX.paper();
+    setTimeout(step, at === lines.length ? 1600 : 1150);
+  };
+  setTimeout(step, 700);
+}
+
 function winNight() {
   G.phase = "shift";
   G.deadT = 0;
@@ -9892,6 +10230,17 @@ function stepClock(dt) {
   if (G.hourT >= TUNE.hourSeconds) {
     G.hourT -= TUNE.hourSeconds;
     G.hour++;
+    /* THE SIXTH NIGHT DOES NOT HAVE A FIFTH HOUR.
+
+       It has the last twenty minutes of a film instead. Everything the
+       chapter spent six nights claiming -- that his four are what
+       stands between her and the thing, that he spent fifteen years
+       learning her so he could leave something behind that knew how to
+       stand in front of her -- was said in letters and never happened.
+       At five o'clock on the last night, it happens. */
+    if (G.hour >= 5 && G.mode === "story" && G.night >= NIGHTS.length && NS.lastHour) {
+      finaleStart(); return;
+    }
     if (G.hour >= 6) { winNight(); return; }
     SFX.beep(false);
     say(fmt(NS.sys.hour, ["ZERO ONE", "ZERO TWO", "ZERO THREE", "ZERO FOUR", "ZERO FIVE"][G.hour - 1] || ""));
@@ -10813,6 +11162,7 @@ function frame(ts) {
     if (G.deadT > 1.15 && !G.cardT) { G.cardT = 1; screenOver(); }
   }
 
+  if (G.phase === "finale") { finaleTick(dt); uiTick(dt); musicTick(dt); applyLighting(dt); return; }
   if (G.phase === "gallery") { sayTick(dt); uiTick(dt); }
   /* the terms run on the wall clock, like the film, because they are a
      scene rather than part of the simulation */
@@ -11572,11 +11922,19 @@ function screenGallery() {
 function route(cmd) {
   audioWake();
   if (cmd === "start") {
-    /* the very first time, the shop introduces itself before she is
-       ever asked to survive it */
-    if (!seenIntro() && !nightsDone()[1]) { cineStart(); return; }
-    G.mode = "story"; G.night = maxUnlocked(); G.cfg = nightCfg(G.night); G.phase = "brief"; screenBrief();
+    /* HIS STATEMENT BELONGS TO NIGHT ONE, NOT TO THE FIRST PLAY.
+
+       It used to run once, ever, and then never again -- so the second
+       time she opened the shop, the first thing she heard was a shift
+       card. The statement IS the beginning of this story; starting the
+       story without it is starting a film at the second scene. So it
+       plays whenever the night about to begin is the first one, and
+       the SKIP is there, small, for when she does not want it. */
+    G.mode = "story"; G.night = maxUnlocked();
+    if (G.night === 1) { cineStart(); return; }
+    G.cfg = nightCfg(G.night); G.phase = "brief"; screenBrief();
   }
+  else if (cmd === "finaleDone") { winNight(); }
   else if (cmd === "howto") { G.phase = "howto"; screenHowTo(); }
   else if (cmd === "badges") { G.phase = "badges"; screenBadges(); }
   else if (cmd === "title") {
@@ -11703,7 +12061,14 @@ function beginNight(n, opts) {
   syncTrophies();
   /* orientation: only on night one, only in the story, and only while
      night one is still unfinished */
-  if (G.mode === "story" && G.night === 1 && !nightsDone()[1] && !loadNoTutor()) tutorStart();
+  /* THE TRAINING BELONGS TO NIGHT ONE TOO.
+
+     It was gated on never having finished night one, so a replay of
+     the first night -- the thing somebody does when they have come
+     back after a week and forgotten which button shuts a door -- got
+     no hands at all. Night one teaches; every night after it assumes
+     she was taught. The setting to turn it off is still hers. */
+  if (G.mode === "story" && G.night === 1 && !loadNoTutor()) tutorStart();
   else tutorOff();
   if (officeParts && officeParts.glass && TX.night) {
     officeParts.glass.material = new T.MeshBasicMaterial({ map: TX.night, fog: true });
@@ -13680,6 +14045,10 @@ const testHooks = {
   }),
   bedMode: (m) => musicMode(m),
   taskFor: (n, h) => taskFor(n, h),
+  finale: () => { finaleStart(); return NS.lastHour.beats.length; },
+  finaleState: () => ({ on: FIN.on, i: FIN.i, of: NS.finale ? NS.lastHour.beats.length : 0,
+                        rows: FIN.el ? FIN.el.children.length : 0, phase: G.phase }),
+  finaleStep: () => { finaleNext(true); return FIN.i; },
   /* why a particular line did or did not come out in his voice */
   voiceWhy: (text) => ({
     on: VOX_FILE.on,
