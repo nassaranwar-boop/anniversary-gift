@@ -2098,6 +2098,7 @@ window.SuperOuissy = (function () {
       groundY: findGroundY(grid, w, h),
       ents: ents, items: items, start: start, goal: goal,
       checks: checks, boss: boss, biome: def.biome,
+      signs: mkSigns(grid, w, h, start, goal, index),
       /* pristine copies, so the offline harness can put a level back the
          way it found it between assertions (see __soReset) */
       grid0: grid.map(function (r) { return r.slice(); }),
@@ -2108,6 +2109,58 @@ window.SuperOuissy = (function () {
   }
 
   function isSolidChar(ch) { return !!ch && SOLID.indexOf(ch) >= 0; }
+
+  /* =======================================================================
+     THE LEVEL TALKS BACK
+
+     The game has always been written in his voice — the world cards, the
+     revive cards, the whole letter at the end — but the part she spends
+     the most time in, the LEVEL, said nothing at all. Three little boards
+     on posts per world, planted on the way through, and walking past one
+     puts a line up.
+
+     Where they go is worked out rather than written down: a fraction of
+     the way from her start to the goal, then the nearest column with
+     ground under it and two tiles of air above, so editing a level's
+     layout can never leave a signpost buried in a wall or hanging over a
+     pit. They are decoration — nothing about them collides — so the worst
+     a badly-placed one can do is look silly.
+     ======================================================================= */
+  var SIGN_LINES = [
+    ["you already did the hard part. you started.",
+     "if you're going to fall, fall forwards.",
+     "nearly. i can see you from here."],
+    ["you're better at this than world one expected.",
+     "take the high road — i left something up there.",
+     "don't rush the end of it. i'm not going anywhere."],
+    ["last one. breathe.",
+     "everything past this is just her and you.",
+     "come and get me."],
+  ];
+  function mkSigns(grid, w, h, start, goal, index) {
+    var lines = SIGN_LINES[Math.min(SIGN_LINES.length - 1, index)] || [];
+    var x0 = Math.floor(start.x / T), x1 = goal ? Math.floor(goal.x / T) : w - 2;
+    var out = [];
+    if (x1 - x0 < 12) return out;
+    for (var i = 0; i < lines.length; i++) {
+      var want = Math.round(x0 + (x1 - x0) * (0.24 + i * 0.26)), at = null;
+      for (var dd = 0; dd < 10 && !at; dd++)
+        for (var sg = -1; sg <= 1 && !at; sg += 2) {
+          var tx = want + dd * sg;
+          if (tx <= x0 + 2 || tx >= x1 - 2) continue;
+          for (var ty = 3; ty < h; ty++)
+            if (isSolidChar(grid[ty][tx]) && grid[ty - 1][tx] === "." && grid[ty - 2][tx] === ".") {
+              at = { x: tx * T, y: (ty - 1) * T, text: lines[i], said: false };
+              break;
+            }
+        }
+      if (!at) continue;
+      var clash = false;
+      for (var q = 0; q < out.length; q++) if (Math.abs(out[q].x - at.x) < T * 5) clash = true;
+      if (!clash) out.push(at);
+    }
+    return out;
+  }
 
   /* The row the main ground surface sits on: the one with the most tiles
      that are solid with air directly above. Worked out rather than written
@@ -2462,6 +2515,35 @@ window.SuperOuissy = (function () {
     if (e) e.className = "so-boss-say";
   }
 
+  /* His voice, on a board, rather than hers: same fade as the Queen's
+     lines but at the foot of the stage, where it cannot be mistaken for
+     something the thing in front of her just said. */
+  var signSayT = null;
+  function signSay(text) {
+    var el = $("so-sign-say");
+    if (!el) {
+      var stage = $("so-stage");
+      if (!stage) return;
+      el = document.createElement("div");
+      el.id = "so-sign-say";
+      stage.appendChild(el);
+    }
+    el.textContent = text;
+    el.className = "so-sign-say";
+    void el.offsetWidth;
+    el.className = "so-sign-say on";
+    clearTimeout(signSayT);
+    signSayT = setTimeout(function () {
+      var e = $("so-sign-say");
+      if (e) e.className = "so-sign-say";
+    }, 3400);
+  }
+  function signHush() {
+    clearTimeout(signSayT);
+    var e = $("so-sign-say");
+    if (e) e.className = "so-sign-say";
+  }
+
   function popText(x, y, text, colour) {
     G.floats.push({ x: x, y: y, t: text, c: colour || "#fff6c0", life: 0 });
   }
@@ -2723,8 +2805,24 @@ window.SuperOuissy = (function () {
     return G.diff === "hard" && !!window.Rescue;
   }
 
+  /* HOW MANY TIMES IN THE SAME PLACE.
+
+     Not deaths in the level — deaths within a screen of each other. Dying
+     three times spread across a world is a world doing its job; dying
+     three times on one jump is the game being mean to her, and those are
+     the only ones worth offering anything about. */
+  function noteStuck() {
+    var dx = G.deathAt ? G.deathAt.x : (G.player ? G.player.x : 0);
+    if (Math.abs(dx - G.stuckAt) < 56) G.stuckN++;
+    else { G.stuckN = 1; G.stuckAt = dx; }
+  }
+  function stuckNow() {
+    return G.stuckN >= G.handGate && !!(G.player && G.player.lastSafe) && !!G.level;
+  }
+
   function afterDeath() {
     G.lives--;
+    noteStuck();
 
     /* <= 0, not < 0. Lives counts the attempts she has left, so when it
        reaches zero there are none — but the test was < 0, which gave her
@@ -2763,7 +2861,10 @@ window.SuperOuissy = (function () {
        more than it gives: five lives on Easy, three on Medium, two on
        Hard. She has to hold more than the price for the offer to appear,
        because paying all of it would leave nothing to be revived into. */
-    if (canBossRevive()) { offerBossRevive(); return; }
+    /* ...and if she has fallen in the same place three times, the offer
+       appears whether or not she can afford anything, because the thing
+       being offered costs nothing. */
+    if (canBossRevive() || stuckNow()) { offerBossRevive(); return; }
 
     /* Hard, and she still has a life: he comes and gets her first */
     if (rescuesOn()) {
@@ -2903,21 +3004,57 @@ window.SuperOuissy = (function () {
     var ribbon = null;
     if (DIFF[G.diff].checkpoints && G.level && G.level.checks)
       G.level.checks.forEach(function (c) { if (c.taken) ribbon = c; });
+    if (G.handCheck && (!ribbon || G.handCheck.x > ribbon.x)) ribbon = G.handCheck;
+
+    /* THE GENTLER WAY, OFFERED RATHER THAN APPLIED.
+
+       Three falls in the same spot and the card changes what it leads
+       with. It does not drop the difficulty and it does not skip the bit
+       — either of those would take the thing she is about to do away from
+       her. It moves the ribbon: a checkpoint tied on the last ground she
+       stood on safely, honoured on every difficulty including the one
+       with no checkpoints, plus the glow-up so the next go has a hit in
+       hand. It costs nothing, and saying no is a real answer — the offer
+       then holds off for another two falls rather than asking again the
+       moment she fails. */
+    var paid = canBossRevive(), hand = stuckNow();
+    var btns = "";
+    if (hand)
+      btns += '<button class="so-btn so-btn-go" id="so-hand">MOVE THE RIBBON</button>';
+    if (paid)
+      btns += '<button class="so-btn ' + (hand ? "so-btn-quiet" : "so-btn-go") + '" id="so-revive-yes">' +
+              (his ? "TAKE HIS HAND" : "BE REVIVED") + '</button>';
+    btns += '<button class="so-btn so-btn-quiet" id="so-revive-no">' +
+            (hand ? "I'VE GOT THIS" : ribbon ? "LAST RIBBON" : "START OVER") + '</button>';
+
     overlay(
       '<div class="so-card so-card-revive">' +
-        '<p class="so-card-kicker">' + (his ? "SHE IS NOT LEFT TO FALL" : "GET BACK UP") + '</p>' +
-        '<h3>' + (his ? "He can put you back" : "Be revived") + '</h3>' +
+        '<p class="so-card-kicker">' +
+          (hand ? "THIS BIT IS MEAN" : his ? "SHE IS NOT LEFT TO FALL" : "GET BACK UP") + '</p>' +
+        '<h3>' + (hand ? "Let me move the ribbon" : his ? "He can put you back" : "Be revived") + '</h3>' +
         '<p class="so-card-note">' +
-          "Right where you fell, with everything exactly as you left it. " +
-          (ribbon ? "Or go back to the last ribbon." : "Or start over from the beginning.") + '</p>' +
-        '<p class="so-revive-cost"><span>LIVES</span><b>' + left + '</b>' +
-          '<i>&rarr;</i><b>' + after + '</b></p>' +
-        '<button class="so-btn so-btn-go" id="so-revive-yes">' +
-          (his ? "TAKE HIS HAND" : "BE REVIVED") + '</button>' +
-        '<button class="so-btn so-btn-quiet" id="so-revive-no">' +
-          (ribbon ? "LAST RIBBON" : "START OVER") + '</button>' +
+          (hand
+            ? "Same spot, " + G.stuckN + " times now. I'll tie a ribbon on the last safe " +
+              "ground you stood on and send you back with a glow on. It costs nothing." +
+              (paid ? " Or spend lives and stand up right where you fell." : "")
+            : "Right where you fell, with everything exactly as you left it. " +
+              (ribbon ? "Or go back to the last ribbon." : "Or start over from the beginning.")) + '</p>' +
+        (paid ? '<p class="so-revive-cost"><span>LIVES</span><b>' + left + '</b>' +
+                '<i>&rarr;</i><b>' + after + '</b></p>' : "") +
+        btns +
       "</div>", "so-ov-card");
-    $("so-revive-yes").addEventListener("click", function () {
+
+    if ($("so-hand")) $("so-hand").addEventListener("click", function () {
+      closeOverlay();
+      var sp = G.player && G.player.lastSafe;
+      if (sp) G.handCheck = { x: sp.x, y: sp.y };
+      G.stuckN = 0;
+      G.state = "play";
+      bgmDuck(false);
+      if (rescuesOn()) playCutscene("rescue", herePos(), handRespawn);
+      else handRespawn();
+    });
+    if ($("so-revive-yes")) $("so-revive-yes").addEventListener("click", function () {
       closeOverlay();
       G.lives -= (reviveCost() - 1);   /* the death took the first one */
       G.state = "play";
@@ -2929,11 +3066,24 @@ window.SuperOuissy = (function () {
     });
     $("so-revive-no").addEventListener("click", function () {
       closeOverlay();
+      /* she said she has got it. the offer stops asking for a while — a
+         card that reappears the second she fails again is not an offer,
+         it is nagging. */
+      if (hand) { G.stuckN = 0; G.handGate += 2; }
       G.state = "play";
       bgmDuck(false);
       if (rescuesOn()) playCutscene("rescue", herePos(), respawn);
       else respawn();
     });
+  }
+
+  /* the way back when she takes the hand: the moved ribbon, and a glow-up
+     so the stretch that has been killing her gets one free mistake */
+  function handRespawn() {
+    respawn();
+    setBig(G.player, true);
+    G.player.invuln = Math.max(G.player.invuln, 1.8);
+    popText(G.player.x, G.player.y - 14, "ribbon moved. go on.", "#ffd9a0");
   }
 
   function herePos() {
@@ -2964,6 +3114,9 @@ window.SuperOuissy = (function () {
     var L = G.level, d = DIFF[G.diff];
     var at = L.start, cp = null;
     if (d.checkpoints) L.checks.forEach(function (c) { if (c.taken) cp = c; });
+    /* the one she was GIVEN counts on every difficulty, including the one
+       that has no checkpoints of its own — that is the whole offer */
+    if (G.handCheck && (!cp || G.handCheck.x > cp.x)) cp = G.handCheck;
     if (cp) at = cp;
     G.player = mkPlayer(at.x + 2, at.y - 2);
     G.player.invuln = 1.4;
@@ -3446,6 +3599,15 @@ window.SuperOuissy = (function () {
     var L = G.level, p = G.player;
     if (p.dead || p.winT) return;
 
+    if (L.signs) L.signs.forEach(function (sn) {
+      if (sn.said) return;
+      if (p.x + p.w > sn.x - 6 && p.x < sn.x + T + 6 &&
+          p.y + p.h > sn.y - 6 && p.y < sn.y + T + 12) {
+        sn.said = true;
+        signSay(sn.text);
+      }
+    });
+
     L.checks.forEach(function (c) {
       if (c.taken) return;
       if (p.x + p.w > c.x && p.x < c.x + T && p.y + p.h > c.y - 8 && p.y < c.y + T) {
@@ -3624,6 +3786,7 @@ window.SuperOuissy = (function () {
     /* ---- 3. everything in the world ------------------------------------- */
     drawGoal(c, ox, oy, t);
     L.checks.forEach(function (ck) { drawCheck(c, ck, ox, oy, t); });
+    if (L.signs) L.signs.forEach(function (sn) { drawSign(c, sn, ox, oy, t); });
     L.items.forEach(function (it) { drawItem(c, it, ox, oy); });
     L.ents.forEach(function (e) { e.kind === "mover" ? drawMover(c, e, ox, oy) : drawEnemy(c, e, ox, oy); });
     drawBoss(c, ox, oy, t);
@@ -3852,6 +4015,21 @@ window.SuperOuissy = (function () {
     else c.drawImage(ART.power[it.type][k % 2], dx - 1, dy - 1 + bobY);
   }
 
+  /* a board on a post, with a heart on it. it goes dull once it has said
+     its line, so she can see at a glance which ones she has read. */
+  function drawSign(c, sn, ox, oy, t) {
+    var dx = Math.round(sn.x - ox), dy = Math.round(sn.y - oy);
+    if (dx < -24 || dx > VIEW.w + 24) return;
+    var done = sn.said;
+    px(c, dx + 7, dy + 7, 2, 9, "#5c3f28");
+    px(c, dx + 5, dy + 15, 6, 1, "#4a3220");
+    px(c, dx + 1, dy + 1, 14, 8, done ? "#a8865a" : "#e8c98d");
+    px(c, dx + 1, dy + 1, 14, 1, done ? "#c2a274" : "#fff0cf");
+    px(c, dx + 1, dy + 8, 14, 1, "#6d5031");
+    heart(c, dx + 8, dy + 5, 2, done ? "#b07d8e" : "#ff5f95");
+    if (!done) px(c, dx + 7, dy - 2 - (Math.sin(t * 3) > 0 ? 1 : 0), 2, 2, "#fff6a8");
+  }
+
   function drawCheck(c, ck, ox, oy, t) {
     var dx = Math.round(ck.x - ox), dy = Math.round(ck.y - oy);
     if (dx < -30 || dx > VIEW.w + 30) return;
@@ -4011,6 +4189,45 @@ window.SuperOuissy = (function () {
     try { return JSON.parse(localStorage.getItem(BEST_KEY) || "{}") || {}; } catch (e) { return {}; }
   }
   function saveBest(b) { try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (e) {} }
+
+  /* =======================================================================
+     HEARTS THAT BUY MOMENTS
+
+     Hearts have only ever been score. You collect them for six worlds and
+     the number goes up and that is the end of their story — and in a game
+     about the two of them, a heart being worth 200 points is a strange
+     thing for a heart to be worth.
+
+     So they buy something now, and deliberately not an advantage: ten of
+     them buy a MOMENT, which is a real one, written down. They are kept
+     between runs, so the pile is hers and grows whatever difficulty she
+     plays, and once they have all been read they can be read again for
+     free rather than the button turning into a locked door.
+     ======================================================================= */
+  var MOMENT_COST = 10;
+  var MOM_KEY = "so-moments-v1";
+  var MOMENTS = [
+    "the first time you laughed at something I said, I went back over it all evening trying to work out which part did it, so I could do it again.",
+    "you fall asleep mid-sentence and wake up finishing it. I have never told you this. I'm telling you now.",
+    "I have a list of your small faces. the one before you say something you know is funny is my favourite.",
+    "you do the thing where you're tired and you go quiet and you still ask how my day was.",
+    "somebody asked me what you're like and I started with the way you say my name and had to stop.",
+    "the day everything went wrong, you were the only part that didn't.",
+    "I keep the voice notes. all of them. even the ones that are four seconds of you saying you'll call back.",
+    "you make ordinary days feel like they're worth remembering, which is a thing I didn't know a person could do to a Tuesday.",
+  ];
+  function loadMoments() {
+    try { return JSON.parse(localStorage.getItem(MOM_KEY) || "[]") || []; } catch (e) { return []; }
+  }
+  function saveMoments(a) { try { localStorage.setItem(MOM_KEY, JSON.stringify(a)); } catch (e) {} }
+  /* the next one she has not read, or — once she has read them all — one
+     at random, because a pile of letters you are allowed to reopen is
+     nicer than a pile you are finished with */
+  function nextMoment() {
+    var read = loadMoments();
+    for (var i = 0; i < MOMENTS.length; i++) if (read.indexOf(i) < 0) return i;
+    return Math.floor(Math.random() * MOMENTS.length);
+  }
   function bestFor(diff) {
     var b = loadBest()[diff];
     return b || { score: 0, time: 0, hearts: 0, cleared: false };
@@ -4219,13 +4436,47 @@ window.SuperOuissy = (function () {
           (timeBonus ? row("TIME BONUS", "+" + timeBonus) : "") +
           row("SCORE", pad(G.score, 6)) +
         "</div>" +
+        '<div class="so-moment-slot" id="so-moment-slot"></div>' +
+        '<div class="so-moment-buy" id="so-moment-buy"></div>' +
         '<button class="so-btn so-btn-go" id="so-next">' + (last ? "TO THE CASTLE" : "NEXT WORLD") + "</button>" +
       "</div>", "so-ov-card");
     function row(a, b) { return '<div class="so-res-row"><span>' + a + "</span><b>" + b + "</b></div>"; }
+    renderMomentBuy();
     $("so-next").addEventListener("click", function () {
       closeOverlay();
       if (last) showEnding();
       else { G.levelIndex++; startLevel(G.levelIndex); }
+    });
+  }
+
+  /* the buy button, redrawn every time she spends, so the count on it is
+     never the count from before the last one */
+  function renderMomentBuy() {
+    var host = $("so-moment-buy");
+    if (!host) return;
+    if (G.hearts < MOMENT_COST) {
+      host.innerHTML = '<p class="so-moment-none">' +
+        (G.hearts ? G.hearts + " hearts. " + MOMENT_COST + " buys a moment." : "") + "</p>";
+      return;
+    }
+    host.innerHTML = '<button class="so-btn so-btn-quiet so-moment-btn" id="so-moment">' +
+      "A MOMENT &middot; " + MOMENT_COST + ' <svg class="gl gl-life" aria-hidden="true"><use href="#ic-px-heart"/></svg>' +
+      "</button><p class=\"so-moment-none\">you have " + G.hearts + "</p>";
+    $("so-moment").addEventListener("click", function () {
+      if (G.hearts < MOMENT_COST) return;
+      G.hearts -= MOMENT_COST;
+      var i = nextMoment(), read = loadMoments();
+      if (read.indexOf(i) < 0) { read.push(i); saveMoments(read); }
+      var slot = $("so-moment-slot");
+      if (slot) {
+        slot.innerHTML = '<p class="so-moment-text">' + MOMENTS[i] + "</p>";
+        slot.className = "so-moment-slot";
+        void slot.offsetWidth;
+        slot.className = "so-moment-slot on";
+      }
+      sfx("heart");
+      updateHud();
+      renderMomentBuy();
     });
   }
 
@@ -4426,7 +4677,7 @@ window.SuperOuissy = (function () {
      than no scene is a scene you cannot get out of.
      ======================================================================= */
   var END_BEAT = { dawn: 1.0, walk: 4.6, pause: 5.8, meet: 7.4, bloom: 9.2 };
-  var endSkip = null;
+  var endSkip = null, endT = 0;
 
   function hex(s) { return [parseInt(s.substr(1, 2), 16), parseInt(s.substr(3, 2), 16), parseInt(s.substr(5, 2), 16)]; }
   function mixHex(a, b, k) {
@@ -4487,7 +4738,7 @@ window.SuperOuissy = (function () {
     function frame(now) {
       endRaf = requestAnimationFrame(frame);
       if (!t0) t0 = now - (instant ? END_BEAT.bloom * 1000 : 0);
-      var t = (now - t0) / 1000;
+      var t = endT = (now - t0) / 1000;
       if (t >= END_BEAT.meet) reveal();
 
       /* ---- where everybody is, this frame ---------------------------- */
@@ -5293,7 +5544,11 @@ window.SuperOuissy = (function () {
 
   function startLevel(i) {
     if (window.__soReleaseAll) window.__soReleaseAll();
-    bossHush();
+    bossHush(); signHush();
+    /* being stuck is a property of a stretch, not of a run: a new world
+       starts her at nought deaths in the same place and at the first
+       offer again */
+    G.stuckAt = -999; G.stuckN = 0; G.handGate = 3; G.handCheck = null;
     G.levelIndex = i;
     G.level = buildLevel(i);
     G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
@@ -5377,6 +5632,7 @@ window.SuperOuissy = (function () {
     G = {
       diff: "medium", state: "menu", level: null, levelIndex: 0,
       lives: 3, score: 0, hearts: 0, deaths: 0, elapsed: 0,
+      stuckAt: -999, stuckN: 0, handGate: 3, handCheck: null,
       meter: 0, meterFlash: 0, lastHurtBy: null, deathAt: null,
       freeze: 0, punch: 0,
       levelStartT: 0, levelStartHearts: 0, levelStartDeaths: 0,
@@ -5474,6 +5730,15 @@ window.SuperOuissy = (function () {
   /* --- putting her somewhere --- */
   window.__soGoLevel = function (i) { startLevel(i); };
   window.__soShowEnding = function (again) { showEnding(!!again); };
+  window.__soEndT = function () { return endT; };
+  window.__soSigns = function () { return (G && G.level && G.level.signs) || []; };
+  window.__soFinish = function () { finishLevel(); };
+  window.__soStuck = function (n) {
+    if (n != null) { G.stuckN = n; G.stuckAt = G.player ? G.player.x : 0; }
+    return { n: G.stuckN, gate: G.handGate, check: G.handCheck };
+  };
+  window.__soSetHearts = function (n) { G.hearts = n; updateHud(); };
+  window.__soMoments = function () { return { read: loadMoments(), total: MOMENTS.length, cost: MOMENT_COST }; };
   window.__soTele = function (tx, ty) {
     if (!G || !G.level) return;
     G.player.x = tx * T;
@@ -5506,6 +5771,8 @@ window.SuperOuissy = (function () {
     L.grid = L.grid0.map(function (r) { return r.slice(); });
     L.items = L.items0.map(function (o) { return Object.assign({}, o); });
     L.checks.forEach(function (c) { c.taken = false; });
+    if (L.signs) L.signs.forEach(function (sn) { sn.said = false; });
+    G.stuckAt = -999; G.stuckN = 0; G.handGate = 3; G.handCheck = null;
     if (L.goal) L.goal.open = false;
     G.bumps.length = 0;
     G.level.ents.forEach(function (e) {
