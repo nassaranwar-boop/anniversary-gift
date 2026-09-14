@@ -116,6 +116,37 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
     }
   }
 
+  /* ---- DIFFERENT NOTES IS NOT A DIFFERENT TUNE ----
+
+     Once the rhythm and the pace belong to the world, "is this a different
+     piece of music" comes down to the SHAPE of the line -- and shape is
+     not what a comparison of note values sees. Three leads can share only
+     a handful of pitches in place and still rise and fall together from
+     end to end, which is one tune in three costumes. Measured after the
+     rewrite that gave them all easy's spacing: world one agreed with
+     itself 88, 89 and 88 per cent across the three difficulties, and easy
+     and medium's world three agreed 94 per cent.
+
+     So this compares the direction of every move. Under a half is three
+     tunes; over about seventy per cent is one. */
+  const contour = (line) => {
+    const n = notes(line);
+    const d = [];
+    for (let i = 1; i < n.length; i++) d.push(Math.sign(n[i] - n[i - 1]));
+    return d;
+  };
+  for (const t of ["w1", "w2", "w3"]) {
+    for (const [a, c] of [["easy", "medium"], ["easy", "hard"], ["medium", "hard"]]) {
+      const A = contour(S[a][t].lead), B = contour(S[c][t].lead);
+      const n = Math.min(A.length, B.length);
+      let same = 0;
+      for (let i = 0; i < n; i++) if (A[i] === B[i]) same++;
+      const pct = Math.round((same / n) * 100);
+      ok(`${t}: ${a} and ${c} are shaped differently`, pct <= 60,
+         `${pct}% of moves go the same way`);
+    }
+  }
+
   /* and the three difficulties are three tunes, not one at three speeds */
   for (const t of TUNES) {
     const shape = (d) => notes(S[d][t].lead).join(",");

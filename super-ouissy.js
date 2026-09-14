@@ -5460,15 +5460,17 @@ window.SuperOuissy = (function () {
   SCORES.medium = {
     /* WORLD ONE — morning. The theme, plain, with room around it. */
     w1: {
-      /* the same morning, a little further into it: the arc starts on the
-         fourth rather than the root, so it is the same place seen from a
-         step to one side. */
+      /* WHERE EASY CLIMBS, THIS FALLS. Easy's morning opens by rising
+         through the chord; this one starts at the top and comes down, and
+         only turns upward in the third bar. Same room, same pace, opposite
+         shape -- which is what makes it another tune rather than the same
+         one in different clothes. */
       tempo: PACE.w1,
       lead: pat(
-        "16  .  . 19  .  . 21  .  . 19  .  . 16  .  .  . |" +
-        "14  .  . 17  .  . 19  .  . 17  .  . 14  .  .  . |" +
-        "12  .  . 16  .  . 21  .  . 19  .  . 17  .  .  . |" +
-        "16  .  . 14  .  . 12  .  .  .  .  .  .  .  .  ."),
+        "21  .  . 21  .  . 19  .  . 16  .  . 12  .  .  . |" +
+        "19  .  . 19  .  . 17  .  . 14  .  . 11  .  .  . |" +
+        "16  .  . 12  .  . 16  .  . 19  .  . 21  .  .  . |" +
+        "19  .  . 21  .  . 24  .  .  .  .  .  .  .  .  ."),
       harm: pat(
         " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  . |" +
         " .  .  .  .  .  .  . 21  .  .  .  .  .  .  .  . |" +
@@ -5510,14 +5512,14 @@ window.SuperOuissy = (function () {
        what the last climb sounds like, and it finds its way back to the
        major on the last bar because she is nearly there. */
     w3: {
-      /* higher up the neck than the other two, because the last world
-         should sound like it is above the others rather than faster. */
+      /* it rocks between two notes for half its length and then climbs
+         once, where easy's arcs up and down in every bar */
       tempo: PACE.w3,
       lead: pat(
-        "19  .  . 24  .  . 21  .  . 26  .  . 24  .  .  . |" +
-        "17  .  . 21  .  . 19  .  . 24  .  . 21  .  .  . |" +
-        "16  .  . 19  .  . 24  .  . 28  .  . 26  .  .  . |" +
-        "24  .  . 21  .  . 17  .  . 16  .  .  .  .  .  ."),
+        "24  .  . 21  .  . 24  .  . 21  .  . 24  .  .  . |" +
+        "21  .  . 19  .  . 21  .  . 19  .  . 21  .  .  . |" +
+        "16  .  . 17  .  . 19  .  . 21  .  . 24  .  .  . |" +
+        "26  .  . 24  .  .  .  .  . 21  .  .  .  .  .  ."),
       harm: pat(
         " .  .  .  . 12  .  .  .  .  .  . 16  .  .  .  . |" +
         " .  .  .  .  9  .  .  .  .  .  . 14  .  .  .  . |" +
@@ -5724,17 +5726,18 @@ window.SuperOuissy = (function () {
   SCORES.hard = {
     /* WORLD ONE — the hook. Rest on the downbeat, hit on the way to it. */
     w1: {
-      /* THE SAME MORNING, IN THE MINOR. Same room to breathe as easy --
-         a note every third step and two rests between -- because that
-         space is what made easy the one that worked, and crowding it was
-         what made this sound rushed. What is harder about it is the flat
-         third and the walk down to the flat six, not the clock. */
+      /* IT SITS STILL AND THEN JUMPS. Three bars of one note, a leap of a
+         fifth and a sixth, then one long fall the whole way back down.
+         Easy's line is an arc in every bar and medium's is a descent;
+         this is neither, which is the point -- 89 per cent of its moves
+         used to go the same direction as easy's, and a tune that rises
+         and falls with another tune IS that tune. */
       tempo: PACE.w1,
       lead: pat(
-        "12  .  . 15  .  . 19  .  . 15  .  . 12  .  .  . |" +
-        "10  .  . 14  .  . 17  .  . 14  .  . 10  .  .  . |" +
-        "12  .  . 15  .  . 19  .  . 22  .  . 19  .  .  . |" +
-        "17  .  . 15  .  . 14  .  . 12  .  .  .  .  .  ."),
+        "12  .  . 12  .  . 12  .  . 19  .  . 22  .  .  . |" +
+        "10  .  . 10  .  . 10  .  . 17  .  . 20  .  .  . |" +
+        "22  .  . 20  .  . 19  .  . 17  .  . 15  .  .  . |" +
+        "14  .  . 12  .  . 10  .  . 12  .  .  .  .  .  ."),
       harm: pat(
         " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  . |" +
         " .  .  .  .  .  .  . 22  .  .  .  .  .  .  .  . |" +
@@ -5773,14 +5776,19 @@ window.SuperOuissy = (function () {
     /* WORLD THREE — the floor giving way. A chromatic walk down, and a
        turnaround that lands somewhere you did not expect. */
     w3: {
-      /* the highest of the three and the darkest, and still with the
-         same air in it */
+      /* IT TRUDGES. Easy's world three turns out to be a zigzag itself,
+         so the zigzag I tried here agreed with it two thirds of the time
+         -- a tune that rises and falls with another tune IS that tune,
+         whatever its notes are. This one holds each note for two steps
+         and leans down: nothing else in the game stands still, so nothing
+         else can agree with it. For the last world on the hardest setting
+         it should sound like something that will not be hurried. */
       tempo: PACE.w3,
       lead: pat(
-        "19  .  . 22  .  . 26  .  . 22  .  . 19  .  .  . |" +
-        "17  .  . 20  .  . 24  .  . 20  .  . 17  .  .  . |" +
-        "19  .  . 22  .  . 27  .  . 26  .  . 24  .  .  . |" +
-        "22  .  . 20  .  . 17  .  . 15  .  .  .  .  .  ."),
+        "26  .  . 26  .  . 24  .  . 24  .  . 22  .  .  . |" +
+        "22  .  . 20  .  . 20  .  . 19  .  . 19  .  .  . |" +
+        "17  .  . 17  .  . 22  .  . 22  .  . 19  .  .  . |" +
+        "19  .  . 15  .  . 15  .  .  .  .  .  .  .  .  ."),
       harm: pat(
         " .  .  .  .  7  .  .  .  .  .  . 12  .  .  .  . |" +
         " .  .  .  .  5  .  .  .  .  .  . 10  .  .  .  . |" +
