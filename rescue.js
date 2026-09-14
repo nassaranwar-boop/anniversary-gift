@@ -1365,6 +1365,14 @@ window.Rescue = (function () {
     };
     if (kind === "rescue") {
       say(SCRIPT.rescueAlt[nextRescueLine()]);
+      /* HE ARRIVED IN SILENCE. The game hushes its own music before a
+         cutscene, because a cheerful platform march under a rescue is the
+         wrong thing entirely -- but only the else branch here ever
+         started a piece to replace it. So on Hard, the one difficulty he
+         exists on, the moment he comes for her had no sound at all.
+         "meet" is the cue written for exactly this: sixty beats, warm,
+         over a low drone. */
+      MUS.play("meet");
     } else {
       showPad(null);
       MUS.play("cold");

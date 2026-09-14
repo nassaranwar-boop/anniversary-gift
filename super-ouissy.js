@@ -4613,14 +4613,26 @@ window.SuperOuissy = (function () {
           '<button class="so-btn so-btn-go" id="so-resume">RESUME</button>' +
           '<button class="so-btn" id="so-restart">RESTART WORLD</button>' +
           '<button class="so-btn" id="so-bgm">MUSIC: ' + (G.bgmOn ? "ON" : "OFF") + "</button>" +
-          '<button class="so-btn so-btn-quiet" id="so-quit">QUIT TO HUB</button>' +
+          '<button class="so-btn so-btn-quiet" id="so-quit">BACK TO MENU</button>' +
         "</div>", "so-ov-card");
       $("so-resume").addEventListener("click", function () { togglePause(false); });
       $("so-restart").addEventListener("click", function () { closeOverlay(); startLevel(G.levelIndex); });
       $("so-bgm").addEventListener("click", function () {
         setBgm(!G.bgmOn); $("so-bgm").textContent = "MUSIC: " + (G.bgmOn ? "ON" : "OFF");
       });
-      $("so-quit").addEventListener("click", quitToHub);
+      /* BACK TO THE GAME'S OWN MENU, NOT OUT OF THE GAME. Leaving the
+         chapter altogether is a long way to go for someone who only
+         wanted a different world or a different difficulty, and it is not
+         what a pause menu anywhere else does. The title card is where the
+         worlds and the three difficulties are, so that is where this
+         goes; the way out of the chapter is still the hub button on the
+         title card itself. */
+      $("so-quit").addEventListener("click", function () {
+        closeOverlay();
+        bgmDuck(false);
+        if (window.__soReleaseAll) window.__soReleaseAll();
+        showDifficulty();
+      });
       Array.prototype.forEach.call(document.querySelectorAll("[data-so-setdiff]"), function (b) {
         b.addEventListener("click", function () {
           var k = b.getAttribute("data-so-setdiff");
@@ -5850,21 +5862,36 @@ window.SuperOuissy = (function () {
        node from a dead context connects to nothing and plays silence
        while every timer keeps happily ticking. */
     if (!bgmGain || bgmGain.context !== c) {
-      bgmGain = c.createGain(); bgmGain.gain.value = 0.055; bgmGain.connect(c.destination);
+      bgmGain = c.createGain(); bgmGain.connect(c.destination);
       bgmNoise = null;
     }
+    /* and it is set from the state every time, not only when the node is
+       new -- a rebuilt node used to come back at full volume through a
+       hush, and an old one kept whatever the last writer left on it */
+    applyBgmGain();
     if (bgmTimer) return;
     bgmStep = 0;
     bgmTimer = setInterval(tickBgm, BGM.tempo * (bgmRush ? HURRY : 1) * 1000);
   }
   function stopBgm() { if (bgmTimer) clearInterval(bgmTimer); bgmTimer = null; }
-  function bgmDuck(on) { if (bgmGain) bgmGain.gain.value = bgmHushed ? 0 : (on ? 0.014 : 0.055); }
+  /* ONE PLACE DECIDES HOW LOUD THE MUSIC IS.
+
+     There were two switches writing the same gain and neither knew about
+     the other: a duck for an overlay, at 0.014, and a hush for a cutscene,
+     at nought. Whoever wrote last won, and nothing ever recomputed it from
+     the state -- so a duck that was never lifted left the music at a
+     fortieth of its volume for the rest of the session while every sound
+     effect stayed exactly as loud as it should be, which is precisely the
+     complaint. The two paths out of the pause card that do not resume --
+     RESTART WORLD, and changing difficulty -- both closed the overlay and
+     started a level without lifting the duck. */
+  var bgmHushed = false, bgmDucked = false;
+  var BGM_FULL = 0.055, BGM_DUCK = 0.014;
+  function bgmLevel() { return bgmHushed ? 0 : (bgmDucked ? BGM_DUCK : BGM_FULL); }
+  function applyBgmGain() { if (bgmGain) bgmGain.gain.value = bgmLevel(); }
+  function bgmDuck(on) { bgmDucked = !!on; applyBgmGain(); }
   /* All the way down, for as long as something else owns the sound. */
-  var bgmHushed = false;
-  function bgmSilence(on) {
-    bgmHushed = !!on;
-    if (bgmGain) bgmGain.gain.value = on ? 0 : 0.055;
-  }
+  function bgmSilence(on) { bgmHushed = !!on; applyBgmGain(); }
 
   function tickBgm() {
     var c = actx(); if (!c || !bgmGain) return;
@@ -6135,6 +6162,13 @@ window.SuperOuissy = (function () {
   }
 
   function startLevel(i) {
+    /* A LEVEL THAT IS STARTING IS NEVER DUCKED. The duck belongs to an
+       overlay, and by here the overlay is gone -- but RESTART WORLD and
+       the difficulty buttons came straight through without lifting it, so
+       the music came back at a fortieth of its volume and stayed there.
+       Lifting it here covers every way into a level, including any added
+       later, rather than relying on each button to remember. */
+    bgmDuck(false);
     if (window.__soReleaseAll) window.__soReleaseAll();
     bossHush(); signHush();
     /* being stuck is a property of a stretch, not of a run: a new world
