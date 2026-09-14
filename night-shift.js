@@ -13244,9 +13244,47 @@ function fxBlast(roomId, x, y, z) {
   fxSmoke(roomId, x, y + 0.4, z, 10, { size: 1.8 });
 }
 
+/* AND A FIRE LIGHTS THE ROOM IT IS IN.
+
+   Additive quads glow, which is not the same thing as burning: a
+   flame that does not throw any light onto the floorboards next to it
+   is a picture of a flame stuck to the air. One point light, made
+   once, parked at whatever is currently alight and flickering out of
+   phase with the flames themselves.
+
+   It is deliberately NOT part of the fixed rig. The rig is eight
+   lights that applyLighting drives every frame off the power meter,
+   the blackout and the hour; this one answers to the fire and nothing
+   else, and when there is no fire it is off and costs nothing. */
+let fxLight = null;
+const _fxw = new T.Vector3();
+function fxLightStep(t) {
+  let n = 0;
+  _fxw.set(0, 0, 0);
+  const p2 = new T.Vector3();
+  for (let i = 0; i < FX.list.length; i++) {
+    const it = FX.list[i];
+    if (it.kind !== "flame" || !it.hold) continue;
+    it.mesh.getWorldPosition(p2);
+    _fxw.add(p2); n++;
+  }
+  if (!n) { if (fxLight) fxLight.intensity = 0; return; }
+  if (!fxLight) {
+    fxLight = new T.PointLight(new T.Color("#ff8a3a"), 0, 7.5, 2);
+    scene.add(fxLight);
+  }
+  _fxw.multiplyScalar(1 / n);
+  fxLight.position.copy(_fxw);
+  fxLight.position.y += 0.35;
+  /* out of phase with the quads, so the light and the flame are not
+     the same animation twice */
+  const f = 0.78 + Math.sin(t * 13.7) * 0.16 + Math.sin(t * 29.3) * 0.09;
+  fxLight.intensity = clamp(f, 0.3, 1.2) * Math.min(3, 0.9 + n * 0.22) * 2.1;
+}
+
 const _fxUp = new T.Vector3(0, 1, 0);
 function fxStep(dt, t) {
-  if (!FX.on) return;
+  if (!FX.on) { if (fxLight && fxLight.intensity) fxLight.intensity = 0; return; }
   let live = 0;
   for (let i = FX.list.length - 1; i >= 0; i--) {
     const it = FX.list[i];
@@ -13318,6 +13356,7 @@ function fxStep(dt, t) {
     });
   }
   FX.on = live > 0;
+  fxLightStep(t);
 }
 
 function fxClear() {
@@ -13327,6 +13366,7 @@ function fxClear() {
   });
   FX.list.length = 0;
   FX.on = false; FX.fires = 0; FX.emT = 0;
+  if (fxLight) fxLight.intensity = 0;
 }
 
 /* THE WHOLE SCREEN, FOR A TENTH OF A SECOND.
