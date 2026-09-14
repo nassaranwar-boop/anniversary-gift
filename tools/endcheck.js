@@ -100,6 +100,8 @@ ok('nobody speaks after the film has taken them out of it', !ghosts.length, ghos
    `oui` stands her up, `boss` walks the first one he ever sold in, and
    `swarm` is the only thing that puts the crowd anywhere */
 const placed = {}; const unplaced = [];
+/* a two-version line counts as spoken whichever way it goes */
+SHOTS.forEach((s) => { if (s.line && s.line.pick) s.line.t = s.line.t || s.line.a; });
 SHOTS.forEach((s, i) => {
   if (s.put) Object.keys(s.put).forEach((id) => { placed[id] = 1; });
   if (s.oui) placed.ouissy = 1;
@@ -167,6 +169,15 @@ ok('and nobody else in the film is doubled', !ganged.length, ganged);
 /* off-screen lines are legitimate, and a film made of them is a radio play */
 const offs = SHOTS.map((s, i) => [i, s.line]).filter(([, l]) => l && l.off).map(([i]) => i);
 ok('and almost nobody speaks from off screen', offs.length <= 3, offs);
+
+/* a line that changes with what she did has to be written both ways,
+   and both ways have to be sayable */
+const picks = SHOTS.map((s, i) => [i, s.line]).filter(([, l]) => l && l.pick);
+ok('a line that changes with what she did is written both ways',
+   picks.every(([, l]) => l.a && l.b && l.a !== l.b), picks.map(([i]) => i));
+ok('and neither way of it tells her off',
+   picks.every(([, l]) => !/should have|you failed|too late/i.test(l.a + ' ' + l.b)),
+   picks.map(([i]) => i));
 
 ok('all four of them are in it, and all four of them go', ids.every((id) => placed[id] && dead[id] !== undefined),
    ids.filter((id) => !placed[id] || dead[id] === undefined));

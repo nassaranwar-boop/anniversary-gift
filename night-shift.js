@@ -800,6 +800,25 @@ const NS = {
       { room: "office", secs: 4.6, fov: 38,
         from: [1.14, 0.96, -0.72], to: [1.26, 0.94, -0.90], look: [1.90, 0.64, -1.95],
         line: { who: "chime", t: "He said that to all of us. He said it badly, four times, the way he said everything." } },
+
+      /* AND THE THING SHE DID ALL WEEK, SAID BACK TO HER.
+
+         Six nights of one of them coming to a door and asking to be
+         let in, and her deciding. That is the only running choice in
+         the chapter apart from the drawer, and it would have computed
+         nothing and been mentioned nowhere -- which is precisely the
+         fault the drawer had, arriving in a new mechanic three hours
+         after it was fixed in an old one.
+
+         So the ballerina says it back. Both branches are true and
+         neither is a scolding: she is the one that cannot move while
+         she is looked at, so she is the one to whom being looked at,
+         or not, is the whole of a relationship. */
+      { room: "office", secs: 5.0, fov: 38, lux: 0.7,
+        from: [1.68, 1.36, 0.02], to: [1.55, 1.34, 0.16], look: [2.80, 1.12, -0.90],
+        line: { who: "marabelle", pick: "opened",
+          a: "And you opened the door. Not every time, and you should not have every time. But you stood up and you opened it for one of us, in a building where the door is the only thing between you and the rest of it, and I want it said out loud before tonight finishes.",
+          b: "And you never once opened the door. Six nights of us knocking on it and you left it shut every time, which was correct, and I would have left it shut too. I only want you to know we heard you not open it, and that none of us ever held it against you." } },
       { room: "office", secs: 3.6, fov: 44,
         from: [-0.62, 1.44, 1.98], to: [-0.70, 1.42, 1.86], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "He made me in an afternoon. Badly, I think on purpose." } },
@@ -11699,6 +11718,20 @@ function wasHurt() { try { return localStorage.getItem(HURT_KEY) === "1"; } catc
 function markHurt() { try { localStorage.setItem(HURT_KEY, "1"); } catch (e) {} }
 function clearHurt() { try { localStorage.removeItem(HURT_KEY); } catch (e) {} }
 
+/* DID SHE EVER OPEN THE DOOR FOR ONE OF THEM?
+
+   G.stats is wiped at the top of every night, and this question is
+   about the week rather than about Tuesday -- the last hour asks it on
+   night six and the answer has to include the time she opened it on
+   night two. So it is kept the same way being hurt is kept: one flag,
+   across the whole run, cleared when the chapter is started over. */
+const OPEN_KEY = "ns_opened";
+function openedEver() {
+  try { return localStorage.getItem(OPEN_KEY) === "1"; } catch (e) { return false; }
+}
+function markOpened() { try { localStorage.setItem(OPEN_KEY, "1"); } catch (e) {} }
+function clearOpened() { try { localStorage.removeItem(OPEN_KEY); } catch (e) {} }
+
 const SAVE_KEY = "ns_seensave";
 function seenSave() {
   try { return localStorage.getItem(SAVE_KEY) === "1"; } catch (e) { return false; }
@@ -12072,7 +12105,24 @@ function finaleSpeak(text, gain, many) {
    trade for a line of guidance and the wrong one here: the robot
    reading the last five minutes would undo the whole ending. No take,
    no voice -- the subtitle and the score carry it. */
+/* A LINE WITH TWO VERSIONS, PICKED OFF SOMETHING SHE DID.
+
+   `pick` names the thing being asked about; `a` is what gets said if
+   she did it and `b` if she did not. The film stays a fixed list of
+   shots -- it has to, because the whole suite walks it -- and only the
+   words change, so nothing about the timing, the framing or the
+   staging can drift between two players. */
+function finalePick(line) {
+  if (!line || !line.pick) return line;
+  let yes = false;
+  if (line.pick === "opened") yes = (G.stats && G.stats.opened > 0) ||
+                                    openedEver();
+  return { who: line.who, nar: line.nar, sys: line.sys, many: line.many,
+           off: line.off, t: yes ? line.a : line.b };
+}
+
 function finaleSay(line) {
+  line = finalePick(line);
   FIN.plan = null;
   FIN.said = 0;
   FIN.dur = 0;
@@ -13126,6 +13176,7 @@ function talkTick(dt) {
       const hi = NS.begOpen[TALK.who];
       if (hi) tapeSay(hi, TALK.who);
       G.stats.opened = (G.stats.opened || 0) + 1;
+      markOpened();
       return;
     }
     TALK.wait -= dt;
@@ -14682,7 +14733,7 @@ function route(cmd) {
   else if (cmd === "introDone") { cineStop(true); }
   else if (cmd === "terms") { termsStart(); }
   else if (cmd === "termsDone") { termsDone(); }
-  else if (cmd === "termsAgain") { clearHurt(); clearKept(); termsStart(); }
+  else if (cmd === "termsAgain") { clearHurt(); clearKept(); clearOpened(); termsStart(); }
   else if (cmd.indexOf("drawerRead:") === 0) { drawerRead(+cmd.slice(11)); }
   else if (cmd === "drawer") { mixFrom = G.phase === "play" || G.phase === "pause" ? "play" : "title";
                                G.phase = "drawer"; screenDrawer(); }
@@ -16809,6 +16860,15 @@ const testHooks = {
   },
   wreckStep: (dt) => wreckStep(dt),
   wreckClear: () => wreckClear(),
+  /* which way the two-version line goes, for a given week */
+  pickLine: (opened) => {
+    const had = openedEver();
+    if (opened) markOpened(); else clearOpened();
+    const sh = NS.lastHour.shots.filter((x) => x.line && x.line.pick)[0];
+    const got = sh ? finalePick(sh.line) : null;
+    if (had) markOpened(); else clearOpened();
+    return got ? { t: got.t, who: got.who } : null;
+  },
   /* ONE OF THEM AT A DOOR, ASKING. Drive it both ways: open the door
      within the window, or leave it shut and let it give up. */
   talkRun: (who, open, secs) => {

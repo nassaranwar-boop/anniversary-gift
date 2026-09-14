@@ -264,6 +264,22 @@ if (man) {
     chose: { 1: 1 }, found: { cogsworth: true, chime: true, marabelle: true } });
   ok('and nobody points at anything when she has missed nothing', clean === null, clean);
 
+  console.log('\n=== and what she did about the door is said back to her');
+
+  const opened = await p.evaluate(() => OuissysNightShift.__night.pickLine(true));
+  const shutOut = await p.evaluate(() => OuissysNightShift.__night.pickLine(false));
+  const sh = NS.lastHour.shots.filter((x) => x.line && x.line.pick)[0];
+  ok('the last hour asks whether she ever opened it', !!sh && !!sh.line.pick, !!sh);
+  ok('and says one thing to a woman who did', opened && opened.t === sh.line.a, opened);
+  ok('and a different thing to a woman who never did', shutOut && shutOut.t === sh.line.b, shutOut);
+  ok('and it is the ballerina who says it, because she is the one who is looked at',
+     opened && opened.who === 'marabelle', opened && opened.who);
+  /* six nights of not opening is a correct way to play and must read
+     as one */
+  ok('and never opening it is never treated as the wrong answer',
+     shutOut && /correct|would have left it shut|shutOut held it against/i.test(shutOut.t),
+     (shutOut && shutOut.t || '').slice(0, 60));
+
   console.log('\n=== and the shop really comes apart');
 
   const rooms = ['stage', 'arcade', 'office'];

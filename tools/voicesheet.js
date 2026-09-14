@@ -186,6 +186,14 @@ for (const k in (NS.gotYou || {}))
 (NS.lastHour && NS.lastHour.shots || []).forEach((sh, k) => {
   if (!sh.line || sh.line.sys) return;
   const id = 'last-' + String(k + 1).padStart(2, '0');
+  /* a line with two versions needs two takes: the film picks between
+     them at run time off something she did all week, and rendering one
+     branch means half the players get a silent shot */
+  if (sh.line.pick) {
+    add(id + 'a', sh.line.a, 'the last hour, shot ' + (k + 1) + ' — if she did', sh.line.who);
+    add(id + 'b', sh.line.b, 'the last hour, shot ' + (k + 1) + ' — if she did not', sh.line.who);
+    return;
+  }
   add(id, sh.line.t, 'the last hour, shot ' + (k + 1), sh.line.who);
 });
 
