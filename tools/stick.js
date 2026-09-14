@@ -163,10 +163,42 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
     }
     touch("touchend", cx + radius * 0.6, cy - radius * 0.6);
     for (let i = 0; i < 30; i++) d.step(1 / 60);
+
+    /* AND THE TWO PARTS THAT MAKE IT A STICK RATHER THAN A COUNTER.
+
+       A cap sliding about on its own is a draughts piece. The stem is
+       what says the cap is on the end of something anchored in the middle
+       of the dish, and the arc round the rim is the only part of the
+       whole control that tells her something the kart does not: how much
+       lock she is actually asking for. Both come off the same two
+       properties the stick sets from the thumb, so both are measured the
+       same way -- at rest, and at full lock. */
+    const stemEl = ringEl && ringEl.querySelector(".rc-steer-stem");
+    const arcEl  = ringEl && ringEl.querySelector(".rc-steer-arc");
+    /* THE STEM'S WIDTH, NOT ITS BOUNDING BOX. The stem is rotated to point
+       at the thumb, and a rotated box's rect is as wide as its own HEIGHT
+       when it is standing on end -- so a zero-length stem last left at
+       forty-five degrees measures fourteen pixels wide and the first
+       version of this check duly compared fourteen with forty-six and
+       called it a failure to grow. The used width is the length. */
+    const readParts = () => ({
+      stem: stemEl ? Math.round(parseFloat(getComputedStyle(stemEl).width)) : -1,
+      arc:  arcEl ? +getComputedStyle(arcEl).opacity : -1,
+      mag:  ringEl ? ringEl.style.getPropertyValue("--rc-mag") : "",
+    });
+    const partsRest = readParts();
+    touch("touchstart", cx, cy);
+    touch("touchmove", cx + radius, cy);
+    d.step(1 / 60);
+    void document.body.offsetHeight;
+    const partsFull = readParts();
+    touch("touchend", cx + radius, cy);
+    for (let i = 0; i < 30; i++) d.step(1 / 60);
     noAnim.remove();
 
     return { rest, half, full, settle: frames, radius: Math.round(radius),
-             stage: Math.round(stage.clientWidth), sweep, diag, reach };
+             stage: Math.round(stage.clientWidth), sweep, diag, reach,
+             partsRest, partsFull };
   });
 
   ok("the stick exists and answers", !!r, r ? "" : "no steer zone");
@@ -191,6 +223,15 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
     ok("at full lock the pip is near the edge of its ring, not in the middle",
        !!r.sweep && r.sweep.off > r.sweep.room * 0.7 && r.sweep.off <= r.sweep.room,
        r.sweep ? `${r.sweep.off}px of ${r.sweep.room}px of room  [--rc-lock=${r.sweep.lock}  transform=${r.sweep.tf}  on=${r.sweep.on}]` : "no pip");
+    ok("the stem grows out of the middle as the thumb goes out",
+       !!r.partsFull && r.partsFull.stem > 20 && r.partsRest.stem < 2,
+       r.partsFull ? `${r.partsRest.stem}px at rest -> ${r.partsFull.stem}px at full lock` : "no stem");
+    ok("the lock arc lights up with the push",
+       !!r.partsFull && r.partsFull.arc > 0.6 && r.partsRest.arc < 0.12,
+       r.partsFull ? `${r.partsRest.arc} at rest -> ${r.partsFull.arc} at full lock` : "no arc");
+    ok("and the whole thing is driven by one measured magnitude",
+       !!r.partsFull && Math.abs(+r.partsFull.mag - 1) < 0.02 && +r.partsRest.mag < 0.02,
+       r.partsFull ? `--rc-mag ${r.partsRest.mag || "0"} -> ${r.partsFull.mag}` : "");
   }
   ok("no page errors", errs.length === 0, errs[0] || "");
   await ctx.close();

@@ -6843,6 +6843,259 @@ img{-webkit-user-drag:none; user-select:none;}
   background:linear-gradient(90deg, var(--rc-ink) 0 34%, transparent 34% 66%, var(--rc-ink) 66%);
 }
 
+/* ================= THE ROAD BEHIND THE MENUS =================
+
+   The canvas only renders while she is driving, so between races the
+   stage was empty and every panel sat on a flat purple radial. This is
+   what is back there now: a road at night, drawn entirely in gradients
+   and moved entirely by transforms, so it costs a composited layer
+   apiece and nothing on the main thread.
+
+   Six layers, back to front, with a horizon at 56% of the stage:
+
+     sky     a deep indigo overhead falling to coral at the line
+     sun     a disc sitting on the horizon with the bands cut out of it
+     stars   two dot fields at different densities, drifting up
+     ridges  two silhouettes crossing at different speeds -- parallax is
+             the only thing that makes a painted backdrop read as depth
+     road    a grid plane laid flat by a rotateX and run at you
+     haze    the glow where the road meets the sky, which is what stops
+             the two of them looking like two pictures
+
+   The results screen is the same scene with the clock moved on a few
+   hours: gold instead of coral, a higher sun, a slower road. Colours all
+   come off the four properties at the top, so a third mood is four
+   lines. */
+.rc-scene{
+  position:absolute; inset:0; z-index:1; overflow:hidden;
+  display:none; pointer-events:none;
+  --sc-high:#150a24;      /* the top of the sky */
+  --sc-low:#ff6f8f;       /* the sky where it touches the road */
+  --sc-sun:#ffd27a;       /* the disc */
+  --sc-ground:#2a1030;    /* the road plane */
+  --sc-line:rgba(255,160,190,.55);
+  --sc-hill-far:#4a2246;  /* the ridge that is nearly the sky */
+  --sc-hill-near:#1c0c20; /* and the one that is nearly black */
+  --sc-roll:9s;           /* how fast the grid comes at you */
+}
+.rc-stage[data-menu="road"] .rc-scene,
+.rc-stage[data-menu="dusk"] .rc-scene{ display:block; }
+
+/* the evening version, for the results */
+.rc-stage[data-menu="dusk"] .rc-scene{
+  --sc-high:#1b0c1e;
+  --sc-low:#ffb066;
+  --sc-sun:#fff0b8;
+  --sc-ground:#34131f;
+  --sc-line:rgba(255,214,150,.5);
+  --sc-hill-far:#6b3630;
+  --sc-hill-near:#26101a;
+  --sc-roll:16s;
+}
+
+/* Layers are full-width unless they say otherwise. `.rc-scene > span` is
+   more specific than a single class, so anything that needs its own box
+   -- the sun -- says so with two classes rather than fighting this. */
+.rc-scene > span{ position:absolute; left:0; right:0; display:block; }
+
+/* ---- sky ---- */
+.rc-scene-sky{
+  top:0; height:57%;
+  background:linear-gradient(180deg,
+    var(--sc-high) 0%,
+    color-mix(in srgb, var(--sc-high) 62%, var(--sc-low)) 52%,
+    color-mix(in srgb, var(--sc-high) 18%, var(--sc-low)) 84%,
+    var(--sc-low) 100%);
+}
+
+/* ---- the sun ----
+   A disc half-buried in the horizon with horizontal slots cut out of the
+   lower half of it, wider apart as they go down. It is the single most
+   recognisable shape in this whole style and it is four gradients. */
+/* OFF TO ONE SIDE, NOT BEHIND THE BUTTONS.
+
+   Dead centre put the brightest thing in the picture directly behind the
+   menu column, which meant either the sun was invisible or the buttons
+   were sitting on a glare. A quarter of the way across leaves the middle
+   third dark for the panel and gives the sun the clear half of the
+   frame to itself, which is a better composition anyway. */
+.rc-scene .rc-scene-sun{
+  /* It sits ON the ridgeline, not on the road: the disc runs from 18% of
+     the stage down to 46%, and the hills start at 41%, so the bottom of
+     it is bitten by the landscape rather than clipped flat by the
+     horizon. Getting this wrong the first time buried two thirds of the
+     disc behind the road and every band with it. */
+  /* AND OUT AT THE EDGE, WHERE THE SCRIM IS NOT.
+
+     The panel behind the menu has to be dark enough that the buttons look
+     the way they have always looked -- they are translucent, so anything
+     bright behind them changes them. At a quarter of the way across, the
+     sun was under three quarters of that scrim and came out the colour of
+     an olive. Out at the frame edge the scrim has fallen away to almost
+     nothing, so it reads as the gold it is, and a sun going down at the
+     edge of the picture is a better shot than one in the middle of it. */
+  left:13%; right:auto; top:46%; width:28cqh; height:28cqh;
+  margin:-28cqh 0 0 -14cqh;
+  border-radius:50%;
+  background:linear-gradient(180deg,
+    color-mix(in srgb, var(--sc-sun) 94%, #fff) 0%,
+    var(--sc-sun) 44%,
+    color-mix(in srgb, var(--sc-sun) 34%, var(--sc-low)) 100%);
+  /* ONE MASK, NOT TWO.
+     Two mask layers composite by UNION in every engine, so "the top half"
+     plus "some stripes" came out as very nearly the whole disc and the
+     bands never appeared. It is one gradient instead: solid down to the
+     waterline, then slots that get wider apart as they go down, which is
+     what makes the bottom of the disc dissolve into the horizon rather
+     than stop at it. */
+  /* The slots have to land where the disc is still VISIBLE. The horizon
+     is at 56% of the stage and the disc spans 32% to 66% of it, so the
+     bottom third of the sun is behind the road: bands written down there
+     were cut perfectly and seen by nobody. They live in the top two
+     thirds now, closing up as they fall, which is the same effect
+     against a horizon that is doing the swallowing. */
+  -webkit-mask:linear-gradient(180deg,
+    #000 0 48%, transparent 48% 51.5%,
+    #000 51.5% 58%, transparent 58% 62%,
+    #000 62% 68%, transparent 68% 73%,
+    #000 73% 77.5%, transparent 77.5% 84%,
+    #000 84% 87%, transparent 87% 100%);
+          mask:linear-gradient(180deg,
+    #000 0 48%, transparent 48% 51.5%,
+    #000 51.5% 58%, transparent 58% 62%,
+    #000 62% 68%, transparent 68% 73%,
+    #000 73% 77.5%, transparent 77.5% 84%,
+    #000 84% 87%, transparent 87% 100%);
+  filter:drop-shadow(0 0 7cqh color-mix(in srgb, var(--sc-sun) 62%, transparent));
+  opacity:.96;
+}
+
+/* ---- stars ----
+   Two dot fields of different densities on one drifting sheet, faded out
+   before they reach the horizon so they never sit on the sunset. */
+.rc-scene-stars{ top:0; height:57%; overflow:hidden; }
+.rc-scene-stars i{
+  position:absolute; left:0; top:-100%; width:100%; height:200%;
+  background-image:
+    radial-gradient(1.5px 1.5px at 14% 9%,  rgba(255,248,232,.9), transparent 60%),
+    radial-gradient(1.5px 1.5px at 63% 4%,  rgba(255,248,232,.8), transparent 60%),
+    radial-gradient(1.2px 1.2px at 31% 17%, rgba(255,214,232,.75), transparent 60%),
+    radial-gradient(1.8px 1.8px at 82% 12%, rgba(255,248,232,.95), transparent 60%),
+    radial-gradient(1.2px 1.2px at 47% 22%, rgba(190,220,255,.8), transparent 60%),
+    radial-gradient(1.4px 1.4px at 7%  27%, rgba(255,248,232,.7), transparent 60%),
+    radial-gradient(1.2px 1.2px at 92% 24%, rgba(255,214,232,.7), transparent 60%),
+    radial-gradient(1.6px 1.6px at 72% 31%, rgba(255,248,232,.8), transparent 60%),
+    radial-gradient(1.2px 1.2px at 24% 36%, rgba(190,220,255,.65), transparent 60%),
+    radial-gradient(1.4px 1.4px at 56% 41%, rgba(255,248,232,.6), transparent 60%);
+  -webkit-mask:linear-gradient(180deg, #000 0 62%, transparent 96%);
+          mask:linear-gradient(180deg, #000 0 62%, transparent 96%);
+  animation:rc-drift 54s linear infinite;
+}
+@keyframes rc-drift{ from{transform:translate3d(0,0,0);} to{transform:translate3d(0,50%,0);} }
+
+/* ---- the ridgelines ----
+   Hills made of overlapping radial gradients on a sheet twice the width
+   of the stage, slid sideways. Two of them at different speeds and
+   different darknesses: the far one is nearly the colour of the sky, the
+   near one is nearly black, which is how distance actually works. */
+.rc-scene-ridge{ overflow:hidden; }
+.rc-scene-ridge i{
+  position:absolute; left:-100%; top:0; width:300%; height:100%;
+  display:block;
+}
+/* A hill is an ellipse sitting on the bottom edge of its band, and the
+   gaps between them are as important as the hills: overlapping them edge
+   to edge gave one dark stripe across the picture, which is a horizon
+   bar, not a landscape. Narrow, spaced, and of unequal heights. */
+.rc-scene-far{ top:41%; height:16%; opacity:.75; }
+.rc-scene-far i{
+  background:
+    radial-gradient(20% 88%  at 6%  102%, var(--sc-hill-far) 0 99%, transparent 100%),
+    radial-gradient(14% 120% at 19% 102%, var(--sc-hill-far) 0 99%, transparent 100%),
+    radial-gradient(24% 70%  at 33% 102%, var(--sc-hill-far) 0 99%, transparent 100%),
+    radial-gradient(16% 108% at 49% 102%, var(--sc-hill-far) 0 99%, transparent 100%),
+    radial-gradient(22% 80%  at 64% 102%, var(--sc-hill-far) 0 99%, transparent 100%),
+    radial-gradient(15% 124% at 78% 102%, var(--sc-hill-far) 0 99%, transparent 100%),
+    radial-gradient(21% 74%  at 92% 102%, var(--sc-hill-far) 0 99%, transparent 100%);
+  animation:rc-pan 90s linear infinite;
+}
+.rc-scene-near{ top:47%; height:12%; }
+.rc-scene-near i{
+  background:
+    radial-gradient(17% 96%  at 11% 104%, var(--sc-hill-near) 0 99%, transparent 100%),
+    radial-gradient(12% 130% at 27% 104%, var(--sc-hill-near) 0 99%, transparent 100%),
+    radial-gradient(20% 78%  at 44% 104%, var(--sc-hill-near) 0 99%, transparent 100%),
+    radial-gradient(13% 120% at 61% 104%, var(--sc-hill-near) 0 99%, transparent 100%),
+    radial-gradient(18% 86%  at 79% 104%, var(--sc-hill-near) 0 99%, transparent 100%),
+    radial-gradient(12% 126% at 94% 104%, var(--sc-hill-near) 0 99%, transparent 100%);
+  animation:rc-pan 52s linear infinite reverse;
+}
+@keyframes rc-pan{ from{transform:translate3d(0,0,0);} to{transform:translate3d(33.333%,0,0);} }
+
+/* ---- the road ----
+   A flat plane, laid down by a rotateX under a perspective, carrying a
+   grid. The lines running away from you are evenly spaced on the plane
+   and the projection does the rest; the crossing lines are run at the
+   camera on a loop that is exactly one tile long, so it never seams. */
+.rc-scene-road{
+  top:56%; bottom:0;
+  background:linear-gradient(180deg,
+    color-mix(in srgb, var(--sc-ground) 55%, var(--sc-low)) 0%,
+    var(--sc-ground) 26%,
+    color-mix(in srgb, var(--sc-ground) 80%, #000) 100%);
+  perspective:26cqh; perspective-origin:50% 0%;
+  overflow:hidden;
+}
+.rc-scene-road i{
+  position:absolute; left:-50%; top:0; width:200%; height:340%;
+  display:block;
+  transform-origin:50% 0%;
+  transform:rotateX(76deg);
+  background-image:
+    repeating-linear-gradient(90deg,
+      transparent 0 calc(100% / 26 - .18cqh),
+      var(--sc-line) calc(100% / 26 - .18cqh) calc(100% / 26)),
+    repeating-linear-gradient(180deg,
+      transparent 0 5.6cqh, var(--sc-line) 5.6cqh 5.9cqh);
+  animation:rc-roll var(--sc-roll) linear infinite;
+  -webkit-mask:linear-gradient(180deg, transparent 0, #000 14%, #000 62%, transparent 92%);
+          mask:linear-gradient(180deg, transparent 0, #000 14%, #000 62%, transparent 92%);
+}
+@keyframes rc-roll{
+  from{ background-position:0 0, 0 0; }
+  to  { background-position:0 0, 0 5.9cqh; }
+}
+
+/* ---- the haze on the line ----
+   Without this the sky and the road are two pictures stacked. With it
+   they are one place with air in it. */
+.rc-scene-haze{
+  top:44%; height:26%;
+  background:radial-gradient(120% 100% at 50% 46%,
+    color-mix(in srgb, var(--sc-low) 62%, transparent) 0%,
+    color-mix(in srgb, var(--sc-low) 22%, transparent) 42%,
+    transparent 72%);
+}
+
+/* ---- the last two percent ----
+   A scanline comb and a vignette. Everything else on this screen is
+   pixel art rendered on a canvas; without a little of the same grain the
+   backdrop reads as a web page behind a game. */
+.rc-scene-grain{
+  top:0; bottom:0;
+  background:repeating-linear-gradient(180deg,
+    rgba(8,3,14,.16) 0 1px, transparent 1px 3px);
+  mix-blend-mode:multiply; opacity:.7;
+}
+.rc-scene::after{
+  content:""; position:absolute; inset:0;
+  background:radial-gradient(126% 96% at 50% 46%,
+    transparent 46%, rgba(10,4,18,.28) 80%, rgba(8,3,14,.62) 100%);
+}
+@media (prefers-reduced-motion:reduce){
+  .rc-scene-stars i, .rc-scene-ridge i, .rc-scene-road i{ animation:none; }
+}
+
 /* ---------- overlay: menus, cards, podium ---------- */
 .rc-overlay{
   position:absolute; inset:0; display:none; z-index:8;
@@ -6859,8 +7112,26 @@ img{-webkit-user-drag:none; user-select:none;}
   display:grid; justify-items:center; align-items:center;
   align-content:safe center; justify-content:safe center;
 }
+/* THE SCRIM, WHICH NOW HAS SOMETHING TO SIT ON.
+
+   It used to be the background: two opaque gradients over an empty
+   canvas. There is a road back there now, so this has one job instead --
+   put enough dark between the scene and the type to read the type, and
+   no more. Heaviest down the middle where the panel is, lightest at the
+   edges where the scene is worth seeing.
+
+   Over the race (the pause card) there is no scene and the track itself
+   is bright, so that one keeps a flat heavy wash. */
 .rc-overlay.on::before{
   content:""; position:absolute; inset:0; z-index:-1;
+  background:
+    radial-gradient(42% 86% at 50% 52%,
+      rgba(16,10,26,.93) 0%, rgba(16,10,26,.87) 52%,
+      rgba(16,10,26,.40) 82%, rgba(16,10,26,.04) 100%),
+    linear-gradient(180deg, rgba(22,12,32,.26), rgba(12,6,20,.34));
+}
+.rc-stage[data-menu=""] .rc-overlay.on::before,
+.rc-stage:not([data-menu]) .rc-overlay.on::before{
   background:
     radial-gradient(ellipse at 50% 24%, rgba(255,95,149,.20), transparent 62%),
     linear-gradient(180deg, rgba(26,18,38,.94), rgba(16,10,26,.97));
@@ -6989,19 +7260,133 @@ img{-webkit-user-drag:none; user-select:none;}
   margin:-1cqh 0 0; font-family:var(--rc-read); font-size:1.9cqh;
   letter-spacing:.06em; color:#c2a8d6;
 }
-.rc-podium{display:flex; align-items:flex-end; justify-content:center; gap:1.6cqw; width:100%;}
-.rc-pod{display:flex; flex-direction:column; align-items:center; gap:.6cqh;}
-.rc-pod-art{line-height:0;}
-.rc-pod-art canvas{width:14cqh; height:auto; image-rendering:pixelated;}
-.rc-pod-block{
-  display:grid; place-items:center; width:12cqw; border-radius:.6cqw .6cqw 0 0;
-  font-size:3cqh; color:#2a1a2e;
+/* ---------- THE PODIUM ----------
+
+   Three flat rectangles with a top-to-bottom gradient and a number on
+   them. Which is a bar chart, not a podium: a podium is a solid object
+   standing on a floor with a light on it, and there are only four things
+   you have to draw for the eye to agree that that is what it is looking
+   at.
+
+     THE TOP FACE. A block seen from slightly above shows its top. One
+     skewed strip along the upper edge, lighter than the front, and the
+     rectangle becomes a box.
+     THE SIDE. The same trick down the right-hand edge, darker, so the
+     box has a direction to it.
+     THE FLOOR. A pool of light under all three with the blocks'
+     reflections in it, which is what stops them floating.
+     THE LIGHT. One cone behind first place. Gold is not a colour, it is
+     a colour with a highlight running across it.
+
+   The numerals are cut INTO the metal rather than printed on it: a dark
+   face with a light edge below and a shadow above is what an engraving
+   looks like, and it is two text-shadows. */
+.rc-podium{
+  position:relative;
+  display:flex; align-items:flex-end; justify-content:center;
+  gap:1.6cqw; width:100%;
+  /* AND NO TALLER THAN IT WAS. The floor and the reflections are drawn
+     into the space the podium already had -- the panel below it is
+     already longer than a phone stage, and three more units of height
+     pushes the line under it behind the buttons. */
+  padding-bottom:.6cqh;
 }
-.rc-pod-block b{font-weight:400;}
-.rc-pod-1 .rc-pod-block{height:9cqh; background:linear-gradient(180deg,#ffe07a,#e0a83a);}
-.rc-pod-2 .rc-pod-block{height:6.4cqh; background:linear-gradient(180deg,#f0f2f6,#b9bfc9);}
-.rc-pod-3 .rc-pod-block{height:4.6cqh; background:linear-gradient(180deg,#f0b98a,#c07f4f);}
-.rc-pod-name{font-family:var(--rc-read); font-size:1.9cqh; color:var(--rc-ink); letter-spacing:.02em;}
+/* the floor: a pool of light the three of them stand in */
+.rc-podium::after{
+  content:""; position:absolute; left:50%; bottom:-.2cqh;
+  width:min(62cqw, 86%); height:3.2cqh; transform:translateX(-50%);
+  border-radius:50%;
+  background:radial-gradient(closest-side,
+    rgba(255,224,122,.26) 0%, rgba(255,170,190,.12) 44%, transparent 78%);
+  pointer-events:none;
+}
+.rc-pod{
+  position:relative;
+  display:flex; flex-direction:column; align-items:center; gap:.6cqh;
+  animation:rc-pod-rise .5s cubic-bezier(.2,.9,.3,1.2) both;
+}
+.rc-pod-1{ animation-delay:.14s; }
+.rc-pod-2{ animation-delay:.04s; }
+.rc-pod-3{ animation-delay:.09s; }
+@keyframes rc-pod-rise{
+  from{ transform:translateY(2.4cqh); opacity:0; }
+  to  { transform:none; opacity:1; }
+}
+@media (prefers-reduced-motion:reduce){ .rc-pod{ animation:none; } }
+
+/* the light on the winner */
+.rc-pod-1::before{
+  content:""; position:absolute; left:50%; bottom:0;
+  width:26cqh; height:22cqh; transform:translateX(-50%);
+  pointer-events:none;
+  background:radial-gradient(closest-side at 50% 100%,
+    rgba(255,224,122,.30) 0%, rgba(255,224,122,.10) 46%, transparent 76%);
+  pointer-events:none; z-index:-1;
+}
+
+.rc-pod-art{ line-height:0; position:relative; }
+.rc-pod-art canvas{width:14cqh; height:auto; image-rendering:pixelated;}
+
+.rc-pod-block{
+  position:relative;
+  display:grid; place-items:center; width:12cqw;
+  border-radius:.5cqw .5cqw 0 0;
+  font-size:3cqh; color:var(--pod-cut, #2a1a2e);
+  /* the front face: a band of highlight across the upper third, the
+     body, and a foot that falls away into its own shadow */
+  background:linear-gradient(180deg,
+    var(--pod-hi) 0%, var(--pod-mid) 26%, var(--pod-mid) 56%,
+    var(--pod-lo) 100%);
+  box-shadow:
+    inset 0 .22cqh 0 rgba(255,255,255,.7),
+    inset -.5cqw 0 .9cqw rgba(40,16,30,.30),
+    0 .5cqh 1.2cqw rgba(12,6,18,.5);
+}
+/* the top face */
+.rc-pod-block::before{
+  content:""; position:absolute; left:0; right:0; top:-.9cqh; height:.9cqh;
+  background:linear-gradient(180deg, var(--pod-top), var(--pod-hi));
+  border-radius:.5cqw .5cqw 0 0;
+  transform:skewX(-18deg); transform-origin:0 100%;
+  box-shadow:inset 0 .18cqh 0 rgba(255,255,255,.75);
+}
+/* AND THE REFLECTION OF THE BLOCK IN THE FLOOR.
+
+   It hangs below the block, which is where the racer's NAME is, so two
+   things are true of it: it never takes a hit (`pointer-events:none`, or
+   it is a transparent pane over a caption as far as anything asking what
+   is at that point is concerned), and the name is lifted above it. Short
+   and faint -- it is a reflection on a floor, not a second podium. */
+.rc-pod-block::after{
+  content:""; position:absolute; left:8%; right:8%; top:100%; height:1.1cqh;
+  background:linear-gradient(180deg, var(--pod-lo), transparent 88%);
+  opacity:.28; filter:blur(.18cqw);
+  pointer-events:none;
+}
+.rc-pod-block b{
+  font-weight:400; position:relative; z-index:1;
+  text-shadow:
+    0 -.16cqh 0 rgba(30,12,24,.55),
+    0  .16cqh 0 rgba(255,255,255,.62);
+}
+/* gold, silver, bronze -- four stops each rather than two, because two
+   is a gradient and four is a metal */
+.rc-pod-1 .rc-pod-block{
+  height:9cqh;
+  --pod-top:#fff6d0; --pod-hi:#ffe98f; --pod-mid:#f0bc45; --pod-lo:#b4802a;
+}
+.rc-pod-2 .rc-pod-block{
+  height:6.4cqh;
+  --pod-top:#ffffff; --pod-hi:#eef1f6; --pod-mid:#c5ccd7; --pod-lo:#8e97a4;
+}
+.rc-pod-3 .rc-pod-block{
+  height:4.6cqh;
+  --pod-top:#ffe3c6; --pod-hi:#f6c193; --pod-mid:#cf8f5c; --pod-lo:#95613a;
+}
+.rc-pod-name{
+  position:relative; z-index:2;
+  font-family:var(--rc-read); font-size:1.9cqh; color:var(--rc-ink); letter-spacing:.02em;
+}
 
 /* A TABLE, NOT FIVE EMPTY BARS.
 
@@ -7553,63 +7938,135 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-pad[data-want="1"] ~ .rc-steer,
 .rc-steer[data-live="1"]{ pointer-events:auto; }
 
-/* the ring follows the thumb, and the pip inside it shows the lock */
-/* THE BASE IS A DISH, NOT A HOOP.
+/* ---------- THE STICK ----------
 
-   It was a 26cqw circle with a flat hairline border and a faint wash in
-   the middle, which is a drawing of a boundary. A stick's base is a
-   recess: dark in the well, with the light catching the far lip and the
-   near lip in its own shadow. Smaller, too -- 21cqw against 26 -- because
-   the knob now goes where the thumb goes, so the base does not have to be
-   big enough to aim at. */
+   Third time round, and this one is built out of the three things that
+   make a physical stick read as physical on a flat screen:
+
+     - a DISH, which is a recess and not a hoop: dark in the well, the
+       far lip catching the light and the near lip in its own shadow.
+     - a STEM, which is the part nobody draws and the part that does all
+       the work. A cap sliding around on its own is a counter on a board.
+       A cap on the end of a shaft that leans out of the middle of the
+       dish is a stick, and the eye decides which of those it is looking
+       at in about a tenth of a second.
+     - an ARC round the rim, lit on the side she is pushing and as long
+       as she is pushing hard, which is the only part of this that tells
+       her something the kart is not already telling her: how much lock
+       is actually going to the wheels.
+
+   And it is SMALLER: 16cqw against 21, with a 6.4cqw cap against 7.5.
+   The knob goes where the thumb goes, so the base never had to be big
+   enough to aim at; all the size was doing was covering the road.
+
+   Everything moves off two custom properties the stick sets every time
+   the thumb does: --rc-mag, how far out of the middle it is, and
+   --rc-ang, which way. No transitions while a thumb is down -- the cap
+   has to be under the thumb and nowhere else -- and a sprung return the
+   moment it lifts. */
 .rc-steer-ring{
   position:absolute; left:0; top:0;
-  width:21cqw; height:21cqw; margin:-10.5cqw 0 0 -10.5cqw;
+  width:16cqw; height:16cqw; margin:-8cqw 0 0 -8cqw;
   border-radius:50%;
   background:
     radial-gradient(circle at 50% 42%,
-      rgba(12,6,18,.42) 0%, rgba(12,6,18,.30) 55%, rgba(12,6,18,.10) 78%,
+      rgba(12,6,18,.46) 0%, rgba(12,6,18,.32) 55%, rgba(12,6,18,.10) 80%,
       rgba(12,6,18,0) 100%);
   box-shadow:
-    inset 0 .5cqw 1.2cqw rgba(8,3,12,.55),
-    inset 0 -.35cqw 0 rgba(255,248,232,.16),
-    0 0 0 .28cqw rgba(255,248,232,.16);
+    inset 0 .45cqw 1.1cqw rgba(8,3,12,.58),
+    inset 0 -.3cqw 0 rgba(255,248,232,.18),
+    0 0 0 .26cqw rgba(255,248,232,.18);
   opacity:0; transition:opacity .14s ease;
   transform:translate(var(--rc-sx,0px), var(--rc-sy,0px));
 }
 .rc-steer[data-on="1"] .rc-steer-ring{ opacity:1; }
-/* THE CAP, WHICH IS THE PART YOUR THUMB IS ON.
 
-   Convex rather than flat: the light is up and to the left, so the top
-   left is where it is brightest, the underside carries its own shadow,
-   and there is a rim round it to catch the edge. It is thrown across the
-   dish by the raw thumb offset in BOTH directions -- 90% of its own width
-   is exactly the gap between it and the inside of the base, and the base
-   and the cap are sized from the same pair of limits, so that holds on
-   any screen. */
+/* ---- the lock arc ----
+   A wedge of light round the rim, centred on the direction of the push
+   and opening out as the push gets harder. conic-gradient measures from
+   twelve o'clock clockwise and the stick measures from three o'clock, so
+   the direction is turned a quarter turn on the way in. Masked to a ring
+   so it is a rim light rather than a pie chart. */
+.rc-steer-arc{
+  position:absolute; inset:-1.2cqw; border-radius:50%;
+  pointer-events:none;
+  background:conic-gradient(
+    from calc((var(--rc-ang, 0) + 90) * 1deg - var(--rc-sweep, 18deg)),
+    color-mix(in srgb, var(--rc-accent,#ff5f95) 85%, #fff8e8) 0deg,
+    color-mix(in srgb, var(--rc-accent,#ff5f95) 92%, transparent) var(--rc-sweep, 18deg),
+    transparent calc(var(--rc-sweep, 18deg) * 2));
+  -webkit-mask:radial-gradient(closest-side, transparent 83%, #000 88%, #000 100%);
+          mask:radial-gradient(closest-side, transparent 83%, #000 88%, #000 100%);
+  opacity:calc(var(--rc-mag, 0) * .85);
+  filter:drop-shadow(0 0 .8cqw color-mix(in srgb, var(--rc-accent,#ff5f95) 60%, transparent));
+}
+
+/* ---- the stem ----
+   A bar from the middle of the dish to the middle of the cap, as long as
+   the push and pointing where it points. It is what turns two circles
+   into one object. Tapered by a gradient so the end under the cap is the
+   thick end, and darkened along the bottom so it has a side. */
+.rc-steer-stem{
+  position:absolute; left:50%; top:50%;
+  width:calc(var(--rc-mag, 0) * 4.8cqw); height:2.1cqw;
+  margin-top:-1.05cqw;
+  transform-origin:0 50%;
+  transform:rotate(calc(var(--rc-ang, 0) * 1deg));
+  border-radius:1.05cqw;
+  background:
+    linear-gradient(180deg,
+      rgba(255,248,232,.34) 0%, rgba(190,120,160,.30) 46%,
+      rgba(56,18,40,.55) 100%),
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--rc-accent,#ff5f95) 30%, transparent) 0%,
+      color-mix(in srgb, var(--rc-accent,#ff5f95) 62%, transparent) 100%);
+  opacity:calc(.35 + var(--rc-mag, 0) * .65);
+  pointer-events:none;
+}
+
+/* ---- the cap, which is the part her thumb is on ----
+
+   Convex, lit from up and to the left, with a rim to catch the edge. It
+   is thrown across the dish by the RAW thumb offset in both directions.
+   68% of its own width is as far as it can go: the gap between a 6.4cqw
+   cap and the inside of a 16cqw base is 4.8cqw, which is 75% of the cap
+   -- but the cap also grows seven per cent on its way out, and 68% is
+   what is left once that is paid for. The two are sized from the same
+   pair of numbers, so it holds at any screen size.
+
+   Two things are new. It grows a little as it goes out, which is what a
+   stick leaning towards you does in a photograph; and its drop shadow
+   slides the opposite way to the push, so the light stays where the
+   light is instead of travelling with the cap. */
 .rc-steer-ring i{
   position:absolute; left:50%; top:50%;
-  width:7.5cqw; height:7.5cqw; margin:-3.75cqw 0 0 -3.75cqw;
+  width:6.4cqw; height:6.4cqw; margin:-3.2cqw 0 0 -3.2cqw;
   border-radius:50%;
   background:
     radial-gradient(circle at 34% 30%,
-      rgba(255,248,232,.92) 0%, rgba(255,150,190,.95) 26%,
+      rgba(255,248,232,.94) 0%, rgba(255,150,190,.95) 26%,
       var(--rc-accent,#ff5f95) 58%, rgba(120,24,64,.98) 100%);
   box-shadow:
-    0 .5cqw 1.1cqw rgba(24,6,18,.55),
-    0 0 2cqw rgba(255,95,149,.40),
-    inset 0 -.28cqw .4cqw rgba(88,12,48,.55),
-    inset 0 .24cqw 0 rgba(255,248,232,.55);
-  transform:translate(calc(var(--rc-lock,0) * 90%), calc(var(--rc-ly,0) * 90%));
+    calc(var(--rc-lock, 0) * -.45cqw) calc(.5cqw - var(--rc-ly, 0) * .45cqw)
+      1.1cqw rgba(24,6,18,.6),
+    0 0 calc(1.2cqw + var(--rc-mag, 0) * 2.2cqw)
+      color-mix(in srgb, var(--rc-accent,#ff5f95) 55%, transparent),
+    inset 0 -.26cqw .38cqw rgba(88,12,48,.55),
+    inset 0 .22cqw 0 rgba(255,248,232,.6);
+  transform:
+    translate(calc(var(--rc-lock,0) * 68%), calc(var(--rc-ly,0) * 68%))
+    scale(calc(1 + var(--rc-mag, 0) * .07));
   transition:transform .045s linear;
 }
 /* LET GO AND IT COMES BACK LIKE A SPRUNG CAP. While a thumb is on it the
    knob has to be where the thumb is and nowhere else, so the transition
    is as good as none; the moment the thumb leaves, it is a spring with a
-   little overshoot in it. */
+   little overshoot in it. The arc and the stem fall away with it. */
 .rc-steer[data-on="0"] .rc-steer-ring i{
   transition:transform .3s cubic-bezier(.34, 1.5, .64, 1);
 }
+.rc-steer[data-on="0"] .rc-steer-arc,
+.rc-steer[data-on="0"] .rc-steer-stem{ transition:opacity .22s ease, width .3s cubic-bezier(.34, 1.5, .64, 1); }
 @media (prefers-reduced-motion:reduce){
   .rc-steer[data-on="0"] .rc-steer-ring i{transition:transform .12s ease;}
 }
@@ -7626,11 +8083,15 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-pad[data-mode="slide"] .rc-pad-l{ display:none; }
 .rc-pad[data-mode="slide"][data-auto="1"] .rc-key-gas{ display:none; }
 .rc-pad[data-mode="slide"] .rc-pad-r{ right:2.5cqw; gap:1.2cqw; }
-/* With the throttle holding itself and the steering under the whole
-   picture, DRIFT is the one button a thumb hunts for at speed, so it is
-   the one that gets the room. */
-.rc-pad[data-mode="slide"] .rc-key-drift{ width:max(56px, 17cqh); height:max(56px, 17cqh); }
-.rc-pad[data-mode="slide"] .rc-key-sm{ width:max(42px, 8.5cqh); height:max(42px, 8.5cqh); }
+/* THE DRIFT BUTTON IS GONE.
+
+   It was the biggest key on the pad, in the corner a right thumb rests
+   in, and it still never got pressed: at speed, with the same hand
+   already steering, nobody goes hunting for it. Holding the stick over
+   starts the slide now, so the corner belongs to ITEM and GO — both of
+   which get more room for it. */
+.rc-pad[data-mode="slide"] .rc-key-sm{ width:max(46px, 10cqh); height:max(46px, 10cqh); }
+.rc-pad[data-mode="slide"] .rc-key-gas{ width:max(58px, 16cqh); height:max(58px, 16cqh); }
 
 /* THE MAP MOVES OUT OF THE WAY OF THE THUMB.
 
@@ -7706,7 +8167,6 @@ img{-webkit-user-drag:none; user-select:none;}
     0 0 3cqw color-mix(in srgb, var(--rc-accent) 72%, transparent); }
 }
 .rc-key-gas   { background:linear-gradient(180deg, rgba(125,219,163,.62), rgba(79,174,124,.5)); }
-.rc-key-drift { background:linear-gradient(180deg, rgba(126,200,227,.62), rgba(74,158,196,.5)); }
 .rc-key[data-k="item"]{ background:linear-gradient(180deg, rgba(255,95,149,.6), rgba(196,64,122,.5)); }
 
 /* pressed: it goes down onto its shadow and darkens */
@@ -7880,8 +8340,8 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-key-steer{width:max(48px, 13cqh); height:max(48px, 13cqh);}
   .rc-key-big  {width:max(48px, 12.5cqh); height:max(48px, 12.5cqh);}
   .rc-key-sm   {width:max(44px, 9cqh); height:max(44px, 9cqh);}
-  .rc-pad[data-mode="slide"] .rc-key-drift{width:max(52px, 14cqh); height:max(52px, 14cqh);}
-  .rc-pad[data-mode="slide"] .rc-key-sm{width:max(44px, 8cqh); height:max(44px, 8cqh);}
+  .rc-pad[data-mode="slide"] .rc-key-gas{width:max(54px, 14cqh); height:max(54px, 14cqh);}
+  .rc-pad[data-mode="slide"] .rc-key-sm{width:max(44px, 9cqh); height:max(44px, 9cqh);}
   .rc-pad-cluster{gap:min(1.6cqw, 2.6cqh); padding:min(1.4cqh,1.4cqh) min(1.6cqw,2.2cqh);}
 
   /* SIX COURSES MEANS TWO ROWS OF CARDS, AND TWO ROWS DID NOT FIT.

@@ -4294,6 +4294,11 @@ const ROLL      = 0.006;  // rolling resistance, always
 const TURN      = 3.05 * DEG;  // steering authority at the sweet spot
 const GRIP      = 0.14;   // how fast the kart's heading catches its steer
 const DRIFT_GRIP= 0.075;  // ...and how much lazier it is mid-drift
+/* How far over the stick has to be, and for how long, before the kart
+   drifts on its own. High on purpose: half throw is a corner, this is a
+   held request. */
+const AUTO_DRIFT_LOCK = 0.74;
+const AUTO_DRIFT_HOLD = 0.26;
 /* RAIN
 
    Not a filter over the top: a different road. The heading chases the
@@ -4353,6 +4358,8 @@ class Racer {
     this.along = project(this.x, this.y, this.nav).along;
     this.prevAlong = this.along;
     this.progress = -1;          // laps + along, for ordering
+    this.knock = 0;              // seconds before this kart can be charged for a knock again
+    this.autoDrift = 0;          // how long the stick has been held over far enough to slide
     this.place = 1;
     this.finished = false;
     this.finishTime = 0;
@@ -4496,13 +4503,37 @@ class Racer {
     if (this.speed > 0) this.speed -= Math.min(this.speed, ROLL * k);
     if (!gas && !rev && Math.abs(this.speed) < 0.02) this.speed = 0;
 
-    /* Drift: hold the button while turning and it locks a direction,
-       builds a charge, and pays out a boost on release. Three tiers,
-       flagged by the colour of the sparks. */
-    /* Tapping drift hops the kart. It does nothing mechanically, and
-       that is the point — it is the tell that says the button did
-       something, and it is what a kart racer feels like. */
-    if (dkey && !this.dkeyWas && this.speed > TOP_SPEED * 0.2 && this.hop <= 0) {
+    /* DRIFT, WITHOUT A BUTTON TO PRESS FOR IT.
+
+       On glass the drift button was a thing you had to find, at speed,
+       with the hand that was already steering -- so it never got pressed
+       and a third of the game went unused. The mechanic is good; the
+       button was the problem.
+
+       So on a touch stick the drift starts itself: hold the stick near
+       full lock, on the power, above forty per cent of top speed, for a
+       quarter of a second, and the kart lays it down. Straighten up and
+       the charge pays out exactly as it always did -- blue, gold, pink.
+       The threshold is deliberately high: an ordinary corner is taken at
+       half throw and does not slide, so this only happens when she has
+       asked for it by holding the stick over.
+
+       A keyboard keeps its key. Nothing was ever wrong with pressing
+       space, and an automatic drift on a key that is either down or up
+       would slide through every corner on the course. */
+    const turning0 = left || right;
+    const stick = Math.abs(input.axis || 0);
+    if (this.isPlayer && stick >= AUTO_DRIFT_LOCK && gas
+        && this.speed > TOP_SPEED * 0.42) this.autoDrift += dt;
+    else this.autoDrift = 0;
+    const wantDrift = (dkey || this.autoDrift > AUTO_DRIFT_HOLD)
+                      && turning0 && this.speed > TOP_SPEED * 0.42;
+
+    /* The hop is the tell that a drift has begun -- it used to be a tap
+       of the button, and the button is gone. It does nothing
+       mechanically, and that is the point: it is what a kart racer
+       feels like. */
+    if (wantDrift && !this.drifting && this.speed > TOP_SPEED * 0.2 && this.hop <= 0) {
       this.hop = 0.34;
       Snd.hop();
     }
@@ -4525,8 +4556,7 @@ class Racer {
       }
     }
 
-    const turning = left || right;
-    if (dkey && turning && this.speed > TOP_SPEED * 0.42) {
+    if (wantDrift) {
       if (!this.drifting) {
         this.drifting = true; this.driftDir = left ? -1 : 1; this.driftCharge = 0;
         Snd.drift(true);
@@ -4782,6 +4812,24 @@ class Racer {
       const urgency = 1 - ahead / 260;
       const dir = across >= 0 ? -1 : 1;
       push += dir * (room - Math.abs(across)) * (0.7 + urgency * 0.9);
+    }
+    /* AND EACH OTHER, WHICH IS HALF OF WHY THE PACK FELT LIKE A WALL.
+
+       This list was obstacles only. A kart catching another simply drove
+       into the back of it and left the contact code to sort the two of
+       them out — eight of them doing that around her is a shunting match
+       she did not enter. A kart in front is something to go round, the
+       same as a puddle is. */
+    for (const o of racers) {
+      if (o === this || o.finished) continue;
+      const ox = o.x - this.x, oy = o.y - this.y;
+      const oahead = ox * Math.cos(ta) + oy * Math.sin(ta);
+      if (oahead < 12 || oahead > 150) continue;
+      const oacross = ox * lx + oy * ly;
+      const oroom = 46;
+      if (Math.abs(oacross) > oroom) continue;
+      const ourg = 1 - oahead / 150;
+      push += (oacross >= 0 ? -1 : 1) * (oroom - Math.abs(oacross)) * (0.55 + ourg * 0.8);
     }
     return Math.max(-ROAD_HALF * 0.8, Math.min(ROAD_HALF * 0.8, push));
   }
@@ -6143,26 +6191,60 @@ function step(dt) {
     } else if (r.isPlayer) draftOn = false;
   }
 
-  /* kart on kart: a nudge, not a crash */
+  /* KART ON KART: A NUDGE, AND THE ONE WHO DROVE INTO IT PAYS FOR IT.
+
+     What was here took seven per cent of BOTH karts' speed, every frame
+     they overlapped, whoever had run into whom. Two things wrong with
+     that, and together they are the whole complaint that a pack of AI
+     coming up behind you leaves you standing:
+
+       - it was every frame. Two karts rubbing down a straight are in
+         contact for twenty frames, and 0.93^20 is a quarter of your
+         speed -- for being driven into.
+       - it was symmetrical. Somebody rear-ends you at full chat and you
+         are punished exactly as hard as they are, which is not how being
+         hit works anywhere.
+
+     So: the kart that is BEHIND and closing is the one that loses speed,
+     the one in front takes a shunt forward out of it, and neither can be
+     charged again until they have been apart for a moment. Side by side
+     at the same speed is free, as it always was.
+
+     And the separation itself is no longer split down the middle when one
+     of the two is her. Eight AI karts deciding where she is allowed to
+     drive is the same complaint wearing a different hat, so she holds her
+     line and they go round her. */
   for (let i = 0; i < racers.length; i++) {
     for (let j = i + 1; j < racers.length; j++) {
       const a = racers[i], b = racers[j];
       const dx = b.x - a.x, dy = b.y - a.y;
       const d2 = dx * dx + dy * dy;
       if (d2 > 34 * 34 || d2 < 0.01) continue;
-      const d = Math.sqrt(d2), push = (34 - d) * 0.5;
+      const d = Math.sqrt(d2), push = (34 - d);
       const ux = dx / d, uy = dy / d;
-      a.x -= ux * push; a.y -= uy * push;
-      b.x += ux * push; b.y += uy * push;
-      /* a knock costs a little speed and shoves you off line, rather
-         than the two of you passing through each other politely */
-      const closing = (a.speed - b.speed);
-      if (Math.abs(closing) > 0.6) {
-        a.speed *= 0.93; b.speed *= 0.93;
-        if (a.isPlayer || b.isPlayer) shake = Math.max(shake, 1.2);
+      /* who yields: half each between two AI, a fifth of it from her */
+      const aw = a.isPlayer ? 0.22 : b.isPlayer ? 0.78 : 0.5;
+      a.x -= ux * push * aw;       a.y -= uy * push * aw;
+      b.x += ux * push * (1 - aw); b.y += uy * push * (1 - aw);
+
+      /* Behind is behind ALONG THE TRACK, not in world space: two karts
+         on opposite sides of a hairpin are yards apart and neither is
+         following the other. `progress` is laps plus distance, so the
+         smaller one is the one still to get here. */
+      const front = a.progress >= b.progress ? a : b;
+      const rear  = front === a ? b : a;
+      if (rear.speed - front.speed > 0.6 && rear.knock <= 0 && front.knock <= 0) {
+        rear.knock = 0.5; front.knock = 0.5;
+        /* the one who arrived too fast loses the difference, and some of
+           it goes into the kart in front instead of into nothing */
+        const bite = Math.min(0.10, (rear.speed - front.speed) * 0.05);
+        rear.speed *= (1 - bite);
+        front.speed = Math.min(front.maxSpeed, front.speed * (1 + bite * 0.5));
+        if (a.isPlayer || b.isPlayer) shake = Math.max(shake, front.isPlayer ? 0.7 : 1.2);
       }
     }
   }
+  for (const r of racers) if (r.knock > 0) r.knock -= dt;
 
   /* THE RIVAL, AND THE PHOTO FINISH
 
@@ -9110,9 +9192,16 @@ const TUT_STEPS = [
     goal:"take a corner" },
   { id:"drift",  title:"DRIFTING",
     body:"Hold {DRIFT} while you turn to slide. Sparks go blue, then gold, then pink.",
+    /* There is no drift button on glass any more, so naming one would be
+       teaching her a control that is not there. The stick IS the drift:
+       hold it right over and the kart lays it down on its own. */
+    bodySlide:"Slide your thumb all the way over and hold it there — the kart "
+            + "lays the back end out by itself. Sparks go blue, then gold, then pink.",
     goal:"hold a drift" },
   { id:"boost",  title:"THE MINI-TURBO",
     body:"Let {DRIFT} go while the sparks are lit and the slide pays you back a boost.",
+    bodySlide:"Ease the thumb back towards the middle while the sparks are lit "
+            + "and the slide pays you back a boost.",
     goal:"release for a boost" },
   { id:"item",   title:"HEART BOXES",
     body:"Drive through a heart box to pick something up. The loose hearts "
@@ -9150,7 +9239,7 @@ function tutKeyName(tag) {
     BRAKE: "BRAKE",
     LEFT:  slide ? "sliding left"  : "◀",
     RIGHT: slide ? "sliding right" : "▶",
-    DRIFT: "DRIFT",
+    DRIFT: slide ? "the stick right over" : "DRIFT",
     ITEM:  "ITEM",
   };
   return map[tag] || tag;
@@ -9673,9 +9762,21 @@ function bindSteer() {
          thumb and then lagged behind it would feel broken however well
          the kart drove. What you push is where it goes; what the kart
          gets is the curve. */
-      ring.style.setProperty("--rc-lock", Math.max(-1, Math.min(1, a)).toFixed(3));
-      ring.style.setProperty("--rc-ly",
-        Math.max(-1, Math.min(1, up || 0)).toFixed(3));
+      const cx2 = Math.max(-1, Math.min(1, a));
+      const cy2 = Math.max(-1, Math.min(1, up || 0));
+      ring.style.setProperty("--rc-lock", cx2.toFixed(3));
+      ring.style.setProperty("--rc-ly", cy2.toFixed(3));
+      /* AND THE TWO THINGS THE REST OF THE STICK IS BUILT OUT OF: how
+         far out of the middle the thumb is, and which way. The stem is
+         that long and turned that way, the arc opens on that side, the
+         cap grows and throws its shadow the other way. Everything the
+         stick does to show that it is being pushed comes off these two
+         numbers, so they are set in the one place the thumb is read. */
+      const mag = Math.min(1, Math.hypot(cx2, cy2));
+      ring.style.setProperty("--rc-mag", mag.toFixed(3));
+      if (mag > 0.02)
+        ring.style.setProperty("--rc-ang", (Math.atan2(cy2, cx2) * 180 / Math.PI).toFixed(1));
+      ring.style.setProperty("--rc-sweep", (16 + mag * 62).toFixed(1) + "deg");
     }
   };
 
@@ -9890,9 +9991,22 @@ function frame(ts) {
 
   if (state === "race" || state === "count" || state === "paused") {
     if (racers.length) { draw(); paintHud(); }
+    setBackdrop("");
   } else {
     ctx.clearRect(0, 0, cw, ch);
+    /* nothing is being rendered, so something has to be back there:
+       the night road under the menus, the same road at evening under
+       the results. Pause is not in here on purpose -- the race itself is
+       still being drawn behind that one. */
+    setBackdrop(state === "results" || state === "gpboard" ? "dusk" : "road");
   }
+}
+
+let backdropNow = null;
+function setBackdrop(kind) {
+  if (kind === backdropNow || !el.stage) return;
+  backdropNow = kind;
+  el.stage.dataset.menu = kind;
 }
 
 function markDone() {

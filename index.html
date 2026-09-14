@@ -1021,9 +1021,12 @@
              so a thumb reaches them without covering the road -->
         <!-- the whole picture is the steering wheel: put a thumb
              down anywhere and slide. It sits under the buttons so a
-             thumb on DRIFT still hits DRIFT. -->
+             thumb on a button still hits the button.
+             There is no DRIFT key here any more: holding the stick over
+             starts the slide by itself, which is the only way that
+             mechanic ever got used on a phone. -->
         <div class="rc-steer" id="rc-steer" hidden>
-          <span class="rc-steer-ring" id="rc-steer-ring"><i></i></span>
+          <span class="rc-steer-ring" id="rc-steer-ring"><b class="rc-steer-arc"></b><u class="rc-steer-stem"></u><i></i></span>
           <span class="rc-steer-hint" id="rc-steer-hint">slide to steer</span>
         </div>
 
@@ -1035,9 +1038,33 @@
           <div class="rc-pad-cluster rc-pad-r">
             <button class="rc-key rc-key-sm" data-k="down"  aria-label="Brake"><canvas class="rc-ico" width="20" height="20"></canvas></button>
             <button class="rc-key rc-key-sm" data-k="item"  aria-label="Use item"><canvas class="rc-ico" width="20" height="20"></canvas></button>
-            <button class="rc-key rc-key-big rc-key-drift" data-k="drift" aria-label="Drift"><canvas class="rc-ico" width="20" height="20"></canvas></button>
             <button class="rc-key rc-key-big rc-key-gas"   data-k="up"    aria-label="Accelerate"><canvas class="rc-ico" width="20" height="20"></canvas></button>
           </div>
+        </div>
+
+        <!-- WHAT IS BEHIND A MENU.
+
+             Every panel in this game used to sit on one flat purple
+             radial, which is what a placeholder looks like. The canvas
+             behind it is blank between races -- the renderer only runs
+             while she is driving -- so there was nothing back there at
+             all.
+
+             This is a road at night, built out of gradients: a sky, a
+             banded sun on the horizon, two ridgelines drifting past each
+             other, a perspective grid coming at you, and a haze where
+             the two meet. It is the same picture the game is about, and
+             it costs one composited transform per layer. The results
+             screen runs the same scene in evening colours. -->
+        <div class="rc-scene" id="rc-scene" aria-hidden="true">
+          <span class="rc-scene-sky"></span>
+          <span class="rc-scene-sun"></span>
+          <span class="rc-scene-stars"><i></i></span>
+          <span class="rc-scene-ridge rc-scene-far"><i></i></span>
+          <span class="rc-scene-ridge rc-scene-near"><i></i></span>
+          <span class="rc-scene-road"><i></i></span>
+          <span class="rc-scene-haze"></span>
+          <span class="rc-scene-grain"></span>
         </div>
 
         <!-- every menu, card and podium mounts into this -->
