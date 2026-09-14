@@ -111,9 +111,11 @@
   "when-firstWind": "There. That is all it is. A key and about a second.",
   "when-firstParcel": "That is not one of mine coming down the hall. Shut the door.",
   "when-firstHeld": "I told you. Let them.",
+  "when-theySeen": "[object Object]",
   "when-theyWound": "[object Object]",
   "when-theyShut": "[object Object]",
   "when-theyWatched": "[object Object]",
+  "when-theyPlate": "[object Object]",
   "when-theyKnock": "[object Object]",
   "when-lowPower": "If the meter goes, sit still. Six o'clock has beaten the dark before now.",
   "reveal-1": "You never once asked me for a key. I have thought about that a great deal, lately.",
@@ -193,5 +195,6 @@
   "note-3": "I built four things that will get you to it.",
   "note-4": "Wind them. That is all I am asking. Every night, before six.",
   "note-5": "I could not tell you what for, because telling you what for meant telling you what I did, and I wanted six more nights of you not knowing.",
-  "note-6": "I am sorry about the six nights. I am not sorry about the four of them.\""
+  "note-6": "The plate on the desk is not a nameplate. It is the only way I could think of to write this down where you would have to look at it every night.",
+  "note-7": "I am sorry about the six nights. I am not sorry about the four of them.\""
 }
