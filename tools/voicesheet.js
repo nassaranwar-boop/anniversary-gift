@@ -94,6 +94,27 @@ const VOICE = {
   chime:     { model: 'en_GB-semaine-medium',               pace: '1.02', depth: '-4.0' },
   marabelle: { model: 'en_US-lessac-high',                  pace: '1.12', depth: '-0.6' },
   jax:       { model: 'en_US-ryan-high',                    pace: '0.98', depth: '0' },
+
+  /* HER. The only person in the building who is alive, and the only
+     voice in the chapter that is not processed at all -- no shift, no
+     slowing, the model's own pitch and the model's own pace. Every
+     other mouth here is a tape or a mechanism and is treated like
+     one. She is the one thing in the shop that is actually in the
+     room, and that should be audible without anybody being told. */
+  ouissy:    { model: 'en_GB-jenny_dioco-medium',           pace: '1.0',  depth: '0' },
+
+  /* THE ONES HE SOLD, who speak only in the last hour. Rendered once
+     and then played three times over itself at slightly different
+     rates and offsets, because four hundred of them came off the same
+     drawing and a crowd of identical things is never quite in time
+     with itself. Dropped, so the layering does not turn into a chord. */
+  ret:       { model: 'en_GB-alba-medium',                  pace: '0.94', depth: '-3.0' },
+
+  /* THE FIRST ONE HE EVER SOLD. It is written as "a soldier like the
+     one standing in her office except older and worse kept", so it
+     gets that soldier's exact model, dropped five semitones and
+     slowed. Same bench, same hand, eleven years in somebody's loft. */
+  boss:      { model: 'en_GB-northern_english_male-medium', pace: '0.86', depth: '-5.0' },
 };
 
 const OUT = [];
@@ -138,6 +159,9 @@ for (const n in (NS.afterChoice || {})) {
 for (const n in (NS.reveal || {})) add('reveal-' + n, NS.reveal[n].say, 'three in the morning, night ' + n);
 add('caught-first', NS.caught && NS.caught.first, 'the first time something reaches her');
 add('caught-later', NS.caught && NS.caught.later, 'every time after that');
+/* and the one that actually did it, answering for itself */
+for (const k in (NS.gotYou || {}))
+  add('gotyou-' + k, NS.gotYou[k], 'when this one is the one that reached her', k);
 /* AND THE LAST HOUR.
 
    The narration in the ending is his, the same as the narration

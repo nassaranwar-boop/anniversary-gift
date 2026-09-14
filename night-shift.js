@@ -385,6 +385,32 @@ const NS = {
     first: "That was my fault. I built the thing that did that. Go again — the tape will keep.",
     later: "Again. I am still here at the end of it.",
   },
+
+  /* AND THE ONE THAT DID IT HAS TO SAY SOMETHING ABOUT IT.
+
+     These two lines of his were written when the four of them were
+     anonymous machines walking routes, and they were the whole of
+     what the game said about dying. By the fifth night Cogsworth has
+     thanked her for winding him and Marabelle has told her she was
+     right to shut a door in her face -- and if Cogsworth is then the
+     one that gets her, the chapter said the same sentence it said on
+     the first night, in a dead man's voice, about his own toy.
+
+     So the one that reached her answers for it, in its own voice,
+     and each of them answers in the shape of its own mechanic: the
+     soldier was late, the owl came in over the top, the ballerina
+     was not being looked at, and Jax has no excuse and does not
+     reach for one. It is the fairest tutorial in the chapter and it
+     only exists because somebody died.
+
+     The ones he sold never get one of these. They have no voice until
+     the last hour and that is a rule, not an oversight. */
+  gotYou: {
+    cogsworth: "That was me, and I want it said out loud. I keep better time than I do anything else and I was eleven seconds late to my own door. Go again. I will be early.",
+    chime:     "I came in over the top. I always come in over the top — there is no floor in this building as far as I am concerned. Go again, and watch the ceiling, and I will not pretend I am not up there.",
+    marabelle: "I stopped when you looked at me. Then you stopped looking. That is the entire arrangement and I cannot break it even when I would like to. Go again, and do not take your eyes off me.",
+    jax:       "That was me. I am not going to dress it up and he did not build me anything to dress it up with. He built one thing into me and it is that I do not leave rooms. Go again.",
+  },
   /* and the last night knows whether she kept the terms */
   kept: {
     clean: "Six nights and nothing laid a hand on you. I asked for that because I wanted you to hear it from me, and you have earned every word of it.",
@@ -750,6 +776,29 @@ const NS = {
         swarm: ["office", 16, 1.6, -5.6, 0.5, "x+"], advance: 1,
         sfx: [["knock", 0.9], ["postDrag", 0.7]],
         line: { nar: 1, t: "The first of them comes up the hall and puts its weight on the west doorway, and the doorway holds because there is something standing in it." } },
+      /* --- AND THE ONES HE SOLD HAVE HAD A VOICE ALL WEEK ----------
+
+         They are silent for all six nights and they have to be: "if
+         you can hum it, it is one of his" is a rule of this game,
+         measured in tools/nightsound.js, and she tells a thing that
+         will kill her from a thing that will not by whether the sound
+         it makes has a tune in it. A parcel that talks at her door
+         breaks that. So they never say a word until the hour the rule
+         stops mattering, which makes the first one land like the
+         floor going.
+
+         And none of it is a threat, quite. Everything they say is
+         true, and every line of it is a complaint about the same
+         thing -- which is the whole reveal of the chapter, arriving
+         early enough to be missed and plainly enough to be unbearable
+         on a second watch. They are not coming to hurt her. They have
+         been in cupboards for eleven years and she is the only person
+         left in the world who winds anything. */
+      { room: "office", secs: 3.4, fov: 60, shake: 1.05, lux: 0.3,
+        from: [-1.25, 1.52, 0.50], to: [-1.40, 1.50, 0.34], look: [-2.95, 1.20, -0.90],
+        swarm: ["office", 18, 1.65, -5.2, 0.49, "x+"], advance: 0.6,
+        line: { who: "ret", many: 1, t: "Somebody in there is winding something. We can hear it from the hall." } },
+
       { room: "office", secs: 3.0, fov: 62, shake: 1.2,
         from: [-1.25, 1.52, 0.50], to: [-1.48, 1.49, 0.22], look: [-2.85, 1.34, -0.90],
         swarm: ["office", 20, 1.7, -4.9, 0.48, "x+"], advance: -1.4,
@@ -847,6 +896,16 @@ const NS = {
          with a woman standing in it with her back to the room, hearing
          all of it. It is also the only way to end that fight without
          staging a thing the chapter is better off not showing. */
+      /* Four hundred toys stop to watch her dance, and then ask for
+         it again. On the way through it is the worst thing in the
+         film. Afterwards it is four hundred things that were bought
+         to be played with, watching somebody do the thing they were
+         made for, once, before the end. */
+      { room: "office", secs: 2.8, fov: 54, lux: 0.5, hush: "box",
+        from: [1.05, 1.48, 0.62], to: [0.86, 1.46, 0.70], look: [2.85, 1.10, -0.90],
+        swarm: ["office", 22, 1.8, 3.6, 0.46, "x-"],
+        line: { who: "ret", many: 1, t: "Do that again." } },
+
       { room: "office", secs: 4.2, fov: 46, lux: 0.22,
         from: [-0.85, 1.52, 0.34], to: [-1.20, 1.47, 0.02], look: [-2.55, 1.22, -1.55],
         oui: [-2.55, 0, -1.55, 0, 0.55],
@@ -871,6 +930,13 @@ const NS = {
          is three and a half seconds of a wall clock and no words: the
          only silent shot in the film, in the one place where a line
          would be the chapter explaining its own best idea to her. */
+      /* three of the four have now spent themselves in doorways, and
+         this is the only thing the crowd has ever wanted to say */
+      { room: "office", secs: 3.2, fov: 58, shake: 1.1, lux: 0.3,
+        from: [-1.60, 1.46, 0.74], to: [-1.78, 1.44, 0.58], look: [-2.90, 1.24, -0.90],
+        swarm: ["office", 24, 1.85, 2.4, 0.44, "x-"], advance: 1,
+        line: { who: "ret", many: 1, t: "Four of you. He kept four of you." } },
+
       { room: "office", secs: 3.8, fov0: 36, fov1: 30, lux: 0.42, clear: 1,
         from: [-1.45, 1.87, 1.50], to: [-1.95, 1.86, 1.50], look: [-3.15, 1.85, 1.50] },
 
@@ -889,7 +955,18 @@ const NS = {
       { room: "office", secs: 3.8, fov: 46, lux: 0.24,
         from: [-0.30, 1.50, 1.20], to: [-0.45, 1.48, 0.95], look: [-2.15, 1.50, -0.90],
         boss: ["office", -2.15, -0.90, 1.5],
-        line: { nar: 1, t: "It is the first thing he ever built and the first thing he ever sold, and it is the only one of them that knows the way to this room by heart." } },
+        /* this was narration, and narration is the wrong mouth for
+           it: the only thing in the building that can say what
+           happened to the first one he ever made is the first one he
+           ever made. It is his soldier's older brother, and it gets
+           his soldier's voice, dropped and slowed by eleven years in
+           somebody else's house. */
+        line: { who: "boss", t: "He kept me wound in the workshop for two years. Long enough that I thought I was one of the ones he was keeping." } },
+
+      { room: "office", secs: 4.4, fov: 42, lux: 0.22, shake: 0.3,
+        from: [-0.45, 1.48, 0.95], to: [-0.58, 1.46, 0.80], look: [-2.05, 1.52, -0.90],
+        boss: ["office", -2.05, -0.90, 1.5],
+        line: { who: "boss", t: "Eleven years in somebody's loft. Then a skip. Then the walk back. I know the way to this room by heart." } },
 
       /* --- the one he made in an afternoon ------------------------- */
       { room: "office", secs: 3.6, fov: 44, lux: 0.4,
@@ -920,7 +997,16 @@ const NS = {
       { room: "office", secs: 3.4, fov: 44,
         from: [-1.02, 1.58, 2.02], to: [-1.20, 1.55, 1.82], look: [-1.72, 1.42, 0.62],
         oui: [-1.72, 0, 0.62, 0, -0.75],
-        line: { nar: 1, t: "She says no." } },
+        /* HER FIRST WORD IN SIX NIGHTS.
+
+           This shot was the sentence "She says no." -- her one act of
+           will in the whole chapter, reported by somebody else. She
+           had none of the two hundred and thirteen spoken lines in
+           this chapter and the four of them say her name eight times.
+           So she says it herself, and it is one word, and it is the
+           word the four of them were built out of: the woman who will
+           not leave a room. */
+        line: { who: "ouissy", t: "No." } },
       { room: "office", secs: 4.4, fov: 42,
         from: [-1.64, 0.92, 1.70], to: [-1.70, 0.80, 1.62], look: [-1.18, 1.48, 0.30],
         line: { who: "jax", t: "I know. I do not leave rooms either. He built that into both of us." } },
@@ -985,6 +1071,13 @@ const NS = {
         from: [-1.64, 0.24, 1.30], to: [-1.59, 0.31, 1.25], look: [-1.16, 1.28, 0.30],
         sfx: [["wind", 0.85]],
         line: { nar: 1, t: "He is slowing down. She can hear him doing it. So she reaches up out of the hole in her own floor, and she finds the key in his back, and she winds him one last time." } },
+      /* off-screen on purpose: the camera is on the thing running
+         down, not on the woman with her hand in its back, and his
+         answer is written to be the answer to this */
+      { room: "office", secs: 2.8, fov0: 42, fov1: 37, lux: 0.24,
+        from: [-1.59, 0.30, 1.34], to: [-1.62, 0.28, 1.18], look: [-1.16, 1.32, 0.30],
+        line: { who: "ouissy", off: 1, t: "Tell me when to stop." } },
+
       { room: "office", secs: 3.6, fov: 38, lux: 0.24,
         from: [-1.59, 0.31, 1.25], to: [-1.62, 0.26, 1.28], look: [-1.16, 1.42, 0.30],
         sfx: [["tuneWhole", 0.5]],
@@ -995,6 +1088,25 @@ const NS = {
       { room: "office", secs: 3.6, fov0: 34, fov1: 31, lux: 0.2,
         from: [-1.63, 0.21, 1.27], to: [-1.62, 0.20, 1.25], look: [-1.16, 1.46, 0.30],
         line: { who: "jax", t: "Put your hands over your ears, Ouissy." } },
+
+      /* TWO WORDS THAT REBUILD THE WHOLE FILM.
+
+         The last thing the first one he ever sold says is not a
+         threat. It is the only thing it has come four hundred and
+         eleven addresses to ask for, and Jax detonates on top of it
+         anyway, because Jax is the one who does not reason and never
+         has. Everything the crowd has said tonight reads differently
+         from here, and "they were coming to her" is four shots away.
+
+         And her second-to-last word is his name -- not the man's, the
+         box's. She has never called any of them anything. */
+      { room: "office", secs: 2.6, fov: 40, lux: 0.2, shake: 0.4,
+        from: [-1.30, 0.60, 1.10], to: [-1.38, 0.66, 1.02], look: [-2.05, 1.52, -0.90],
+        line: { who: "boss", t: "Wind me." } },
+
+      { room: "office", secs: 2.4, fov0: 35, fov1: 31, lux: 0.2,
+        from: [-1.52, 0.27, 1.32], to: [-1.58, 0.24, 1.18], look: [-1.16, 1.46, 0.30],
+        line: { who: "ouissy", off: 1, t: "Jax." } },
 
       /* --- the thing that is not a line ---------------------------- */
       { room: "office", secs: 3.6, fov: 44, lux: 0.16, shake: 0.9,
@@ -1045,6 +1157,18 @@ const NS = {
         from: [0.20, 2.05, 2.55], to: [0.20, 1.86, 2.10], look: [-0.10, 1.15, -1.30],
         oui: [-0.10, 0, -1.30, 0, 3.14],
         line: { nar: 1, t: "They were coming to her." } },
+
+      /* NOBODY SAYS HIS NAME. NOT ONCE, IN THE WHOLE CHAPTER.
+
+         Two hundred and thirteen spoken lines and he is "he" in every
+         one of them, while the four of them say hers eight times. So
+         the last word in the film is her saying it, to an empty shop,
+         at six in the morning -- the only answer she ever gets to
+         give to six nights of being talked at by a dead man. */
+      { room: "stage", secs: 4.6, fov: 40,
+        from: [0.20, 1.86, 2.10], to: [0.18, 1.78, 1.86], look: [-0.10, 1.52, -1.30],
+        oui: [-0.10, 0, -1.30, 0, 3.14],
+        line: { who: "ouissy", t: "Anwar." } },
 
       /* --- AND THE LAST THING THE CAMERA DOES IS FIND IT ------------
          The letter used to arrive as a card over a black screen. It is
@@ -8870,7 +8994,7 @@ function voiceBuf(text) {
    the old tape machine. Everything above is described at 1 and scaled
    by it. */
 const VOX_ROOM = 0.34;
-function voicePlay(buf, gain) {
+function voicePlay(buf, gain, many) {
   const t = now() + CUE_LEAD;
   const r = clamp(VOX_ROOM, 0, 1);
   const src = AC.createBufferSource(); src.buffer = buf;
@@ -8908,6 +9032,33 @@ function voicePlay(buf, gain) {
   src.connect(hp); hp.connect(pk); pk.connect(sat); sat.connect(lp); lp.connect(g);
   g.connect(cueGain);
 
+  /* FOUR HUNDRED OF THEM CAME OFF ONE DRAWING.
+
+     The ones he sold speak as a crowd, and a crowd of identical
+     things is never quite in time with itself. So the take is played
+     twice more over itself, a little either side of pitch and a
+     little behind, through the same room and the same tape as the
+     first one -- which is what makes it sound like one sentence
+     coming out of several mouths rather than three recordings.
+
+     The offsets are small and do not divide into each other, so it
+     never settles into an echo, and the copies sit well under the
+     original so the words stay legible. A horde you cannot
+     understand is just noise, and every line they have is one she is
+     meant to still be able to hear in her head afterwards. */
+  const extra = [];
+  if (many) {
+    [[0.9435, 0.055, 0.5], [1.0472, 0.116, 0.42]].forEach(([rate, late, lvl]) => {
+      const s2 = AC.createBufferSource(); s2.buffer = buf;
+      s2.playbackRate.value = rate;
+      const g2 = AC.createGain();
+      g2.gain.setValueAtTime(0.0001, t + late);
+      g2.gain.linearRampToValueAtTime(gain * lvl, t + late + 0.04);
+      s2.connect(g2); g2.connect(hp);
+      extra.push([s2, t + late]);
+    });
+  }
+
   /* ONE MOUTH, HERE TOO.
 
      Two recordings playing at once is two men talking over each other,
@@ -8921,6 +9072,7 @@ function voicePlay(buf, gain) {
   src.onended = function () { if (VOX_FILE.src === src) { VOX_FILE.src = null; VOX_FILE.gain = null; } };
 
   src.start(t); wow.start(t); flut.start(t);
+  extra.forEach(([s2, at]) => s2.start(at));
   const d = buf.duration + 0.4;
   wow.stop(t + d); flut.stop(t + d);
   /* and the shop plays on underneath him at a level that does not move */
@@ -8982,7 +9134,8 @@ function voxSpeak(plan, opts) {
       /* 0.62 rather than 0.92: the other half of the same measurement.
          Pulling the bed up alone would have meant a louder shop under
          an equally loud man; the fix has to come off both. */
-      total = voicePlay(b, (opts.gain === undefined ? 1 : opts.gain) * 0.62 * voiceTrim() * MIX.voice);
+      total = voicePlay(b, (opts.gain === undefined ? 1 : opts.gain) * 0.62 * voiceTrim() * MIX.voice,
+                        opts.many);
       const k = total / was;
       plan.words.forEach((w) => { w.at *= k; });
       plan.dur = total;
@@ -11516,9 +11669,24 @@ function finaleStart() {
 }
 
 /* who is speaking, in their own colour, so she never has to be told */
+/* THREE MOUTHS IN THIS FILM ARE NOT ONE OF THE FOUR.
+
+   Her name is under the line she says, in the same place theirs goes,
+   because after six nights of reading his words over the top of his
+   shop the one thing the subtitle has never once had to write is her.
+   The crowd is named for what it is rather than for who it is -- it
+   has four hundred and eleven names and not one of them matters --
+   and the first one he ever sold gets the only definite article in
+   the chapter. */
+const FIN_ELSE = {
+  ouissy: { name: "OUISSY",              colour: "#e8d9bd" },
+  ret:    { name: "THE ONES HE SOLD",    colour: "#8a4038" },
+  boss:   { name: "THE FIRST ONE",       colour: "#c8922a" },
+};
 function finaleWho(id) {
   const d = CAST.filter((c) => c.id === id)[0];
-  return d ? { name: d.name, colour: d.colour } : null;
+  if (d) return { name: d.name, colour: d.colour };
+  return FIN_ELSE[id] || null;
 }
 
 /* one of them stops being in the world */
@@ -11654,11 +11822,11 @@ function finaleNext(skipped) {
    the wall clock: the shot and the voice then run on one clock, which
    is also the only way the ending can be played faster than real time
    by anything checking it. */
-function finaleSpeak(text, gain) {
+function finaleSpeak(text, gain, many) {
   const t = String(text).trim();
   if (!VOX_FILE.on || !VOX_FILE.map || !VOX_FILE.map[t]) return;
   FIN.plan = voxPlan(text);
-  voxSpeak(FIN.plan, { gain: gain });
+  voxSpeak(FIN.plan, { gain: gain, many: many });
   FIN.said = 0;
   FIN.dur = FIN.plan.dur || 0;
 }
@@ -11696,7 +11864,7 @@ function finaleSay(line) {
     html = '<p class="ns-fin-said" style="--c:' + (w ? w.colour : "#caa") + '">' +
              '<b>' + (w ? w.name : line.who) + '</b><span>' + line.t + '</span></p>';
     if (SFX.tick) SFX.tick(0.5, 0);
-    finaleSpeak(line.t, 1);
+    finaleSpeak(line.t, line.who === "ret" ? 0.86 : 1, line.many);
   } else {
     html = '<p class="ns-fin-nar">' + line.t + '</p>';
     finaleSpeak(line.t, 0.95);
@@ -13577,9 +13745,15 @@ function screenOver() {
   /* He asked for six nights without anything reaching her, so when
      something does, he is the one who says so — a line from him beats
      a scoreboard, and it keeps her going again rather than stopping. */
-  const his = G.mode === "story"
-    ? (G.brokeNow ? NS.caught.first : NS.caught.later) : "";
-  if (his) setTimeout(() => { if (G.phase === "over") voxSpeak(voxPlan(his), { gain: 0.95 }); }, 950);
+  /* the one that reached her speaks for itself, if it was one of his
+     four. The ones he sold do not speak until the last hour, so when
+     one of those gets her it is still him who has to say something. */
+  const mine = G.mode === "story" && NS.gotYou[G.dead] ? NS.gotYou[G.dead] : "";
+  const his = mine || (G.mode === "story"
+    ? (G.brokeNow ? NS.caught.first : NS.caught.later) : "");
+  if (his) setTimeout(() => {
+    if (G.phase === "over") voxSpeak(voxPlan(his), { gain: 0.95 });
+  }, 950);
   overlay(
     '<div class="ns-card ns-card-over">' +
       '<p class="ns-got" style="--c:' + c.colour + '">' + c.name + '</p>' +
@@ -16183,9 +16357,56 @@ const testHooks = {
          land in the frame, as -1..1 from the middle, or null when
          nobody is speaking. */
       eyes: (() => {
-        const w = FIN.shot && FIN.shot.line && FIN.shot.line.who;
-        const ch = w && cast[w];
-        if (!ch || !ch.awake || !view) return null;
+        const ln = FIN.shot && FIN.shot.line;
+        const w = ln && ln.who;
+        if (!w || !view) return null;
+        /* A LINE THAT IS MEANT TO COME FROM OFF SCREEN.
+
+           She is under the floorboards for two of hers and the camera
+           is on the thing running down in front of her, which is
+           where it belongs. Off-screen dialogue is ordinary film
+           grammar, but it is also exactly what a mis-aimed camera
+           looks like, so it has to be declared on the line rather
+           than inferred -- and endcheck holds the number of them
+           down, because a film where you cannot see who is talking is
+           a radio play. */
+        if (ln.off) return { who: w, off: 1 };
+        /* THE THREE MOUTHS THAT ARE NOT IN `cast`.
+
+           Her, the crowd and the first one he ever sold all speak in
+           this film and none of them is one of the four, so this
+           probe used to return null for every line they have -- which
+           reads as "nobody is speaking" and quietly exempted ten
+           lines from every framing check in the suite. A blind spot
+           that says ok is worse than one that says fail. */
+        let grp = null, eyeY = 1.2, tallY = 1.6;
+        if (cast[w]) {
+          if (!cast[w].awake) return null;
+          grp = cast[w].group;
+        } else if (w === "ouissy") {
+          grp = ouissy && ouissy.visible ? ouissy : null;
+          eyeY = 1.555; tallY = 1.66;
+        } else if (w === "boss") {
+          grp = retBoss && retBoss.visible ? retBoss : null;
+          eyeY = 1.9; tallY = 2.5;
+        } else if (w === "ret") {
+          /* the crowd has no face, so the check is whether the nearest
+             of them to the lens is in the picture */
+          let best = null, bd = 1e9;
+          for (let i = 0; i < RET.live; i++) {
+            const g = RET.pool[i];
+            if (!g || !g.visible) continue;
+            const d = view.position.distanceTo(
+              new T.Vector3().setFromMatrixPosition(g.matrixWorld));
+            if (d < bd) { bd = d; best = g; }
+          }
+          grp = best; eyeY = 0.8; tallY = 1.0;
+        }
+        if (!grp) return null;
+        const ch = { group: grp };
+        grp.userData = grp.userData || {};
+        if (grp.userData.eyeY === undefined) grp.userData.eyeY = eyeY;
+        if (grp.userData.height === undefined) grp.userData.height = tallY;
         /* nothing here has necessarily been drawn this frame, and a
            world matrix is only current once something has drawn it */
         ch.group.updateMatrixWorld(true);
