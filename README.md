@@ -19,20 +19,38 @@ lost when the container is reclaimed.
 music, written to the emotional changes in night six; notes in the
 README every session; and a push to `main` if the session is cut off.
 
-**Where it is:** IN PROGRESS. See the entry below this line as it is
-filled in — the plan, in order:
+**Where it is:** IN PROGRESS.
 
-1. Six new music cues and five new themes for the last hour, so the
-   negotiation, the first death, the dance, the march, the arrival of
-   the first one he ever sold and the vow under the floor stop sharing
-   two cues between them. (`MODE_MIX`, `MODE_FEEL`, `THEME_NOTES` /
-   the theme branch in `musicBar`, `tools/seamcheck.js`.)
-2. A midnight beat for every night: the building does the thing that
-   changed about tonight, in front of her, before the clock starts.
-3. More script in nights one to four — the four overheard talking to
-   each other (which until now only happened on night five), and more
-   lines that answer something she did.
-4. storycheck/endcheck/seamcheck green, then push.
+1. **DONE — seven new cues and six new themes for the last hour.**
+   `siege` used to run for eighteen shots and carry a negotiation, a
+   power failure, the first of the four dying and its eulogy; `alone`
+   carried the arrival of the antagonist and a man putting a woman
+   under a floor. Now: **plea** (two voices taking turns — the only
+   conversation in the film where both sides want something),
+   **hollow** (the phrase stopped one note short of home, and nothing
+   finishes it), **waltz** (three against four, so the dance never
+   agrees with the attack under it), **march** (the tick on every other
+   step, in perfect time until it isn't), **older** (the shop's own
+   music box a third of a semitone flatter every pass), **vow** (the
+   vigil's fifths, and every fourth bar the third arrives), **ashes**
+   (the warm phrase in thirds, slower than it has ever been played,
+   four seconds before the detonation). 22 cue changes across the film,
+   up from 16. seamcheck is 34 seams, up from 26.
+2. **DONE — `tools/cuecheck.js`,** a new suite. seamcheck can only tell
+   you two cues do not clash; it passes a handover into silence. This
+   renders all 27 cues offline and measures level, peak and onsets, so
+   a silent cue, a clipping cue and a cue that shouts over the film are
+   all failures. It immediately found `siege` peaking at 1.007 — the
+   loudest cue in the chapter was clipping, by a hair, for four
+   minutes. Trimmed to 0.922.
+3. NEXT: a midnight beat for every night — the building does the thing
+   that changed about tonight, in front of her, before the clock
+   starts.
+4. THEN: more script in nights one to four — the four overheard talking
+   to each other (which until now only happened on night five), and
+   more lines that answer something she did.
+5. THEN: storycheck/endcheck/seamcheck/cuecheck green, push, and run
+   the voice workflow for any new spoken line.
 
 **Anything new that is spoken needs the voice render.** Lines are silent
 until `.github/workflows/voice.yml` ("Anwar's voice") is run from the

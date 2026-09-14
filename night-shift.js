@@ -884,7 +884,7 @@ const NS = {
          on a second watch. They are not coming to hurt her. They have
          been in cupboards for eleven years and she is the only person
          left in the world who winds anything. */
-      { room: "office", secs: 3.4, fov: 60, shake: 1.05, lux: 0.3,
+      { room: "office", secs: 3.4, cue: "plea", fov: 60, shake: 1.05, lux: 0.3,
         from: [-1.25, 1.52, 0.50], to: [-1.40, 1.50, 0.34], look: [-2.95, 1.20, -0.90],
         swarm: ["office", 18, 1.65, -5.2, 0.49, "x+"], advance: 0.6,
         line: { who: "ret", many: 1, t: "Somebody in there is winding something. We can hear it from the hall." } },
@@ -940,7 +940,7 @@ const NS = {
         line: { nar: 1, t: "She has done that four hundred times this week." } },
       /* AND THE REASON IT IS THE LAST TIME. The whole chapter is one
          charge on a meter, and this is the meter running out. */
-      { room: "office", secs: 3.0, fov: 46, lux: 0.3,
+      { room: "office", secs: 3.0, cue: "siege", fov: 46, lux: 0.3,
         from: [-0.40, 1.48, 0.90], to: [-0.20, 1.42, 1.15], look: [0.90, 1.05, 1.05],
         line: { sys: 1, t: "RESERVE AT NINE PERCENT." } },
       { room: "office", secs: 3.8, fov: 50, shake: 0.7,
@@ -976,7 +976,7 @@ const NS = {
         swarm: ["office", 10, 1.2, -5.6, 0.5, "x+"],
         sfx: [["hatch", 0.9], ["falseBurst", 0.7]],
         line: { who: "chime", t: "They are through the grate. Somebody shut the&mdash;" } },
-      { room: "office", secs: 3.0, fov: 50, shake: 1.3, lux: 0.66, hush: "air",
+      { room: "office", secs: 3.0, cue: "hollow", fov: 50, shake: 1.3, lux: 0.66, hush: "air",
         from: [1.20, 1.46, -0.70], to: [0.98, 1.16, -0.35],
         look: [1.90, 2.20, -2.50], look2: [1.90, 0.36, -1.95],
         sfx: [["scare", 0.55]],
@@ -1020,7 +1020,7 @@ const NS = {
       /* the shutters roll back up on camera, because nothing is paying
          for them any more. This is the moment the four stop being
          guards and start being the doors. */
-      { room: "office", secs: 4.0, fov: 66, shake: 1.2, doors: { left: 0, right: 0 },
+      { room: "office", secs: 4.0, cue: "siege", fov: 66, shake: 1.2, doors: { left: 0, right: 0 },
         from: [-0.10, 1.40, 1.10], to: [-0.60, 1.48, 0.70], look: [-2.90, 1.35, -0.90],
         swarm: ["office", 22, 1.8, -4.6, 0.46, "x+"], advance: 1,
         sfx: [["shutter", 0.8], ["knock", 0.7]],
@@ -1049,12 +1049,12 @@ const NS = {
         swarm: ["office", 20, 1.7, 5.0, 0.48, "x-"],
         sfx: [["step", 0.55, -0.25]],
         line: { nar: 1, t: "She goes. Six nights of sitting still in that chair being the thing that gets defended, and the first time one of them asks her to move, she moves." } },
-      { room: "office", secs: 4.4, fov: 46, lux: 0.52, cue: "charge",
+      { room: "office", secs: 4.4, fov: 46, lux: 0.52, cue: "waltz",
         from: [1.48, 1.40, 0.26], to: [1.66, 1.38, 0.06], look: [2.85, 1.10, -0.90],
         swarm: ["office", 20, 1.7, 4.6, 0.48, "x-"], advance: -1.6,
         sfx: [["falseBang", 0.8]],
         line: { who: "marabelle", t: "Fifteen years on that plinth and he never once saw the whole of it. Watch, then." } },
-      { room: "office", secs: 4.8, fov: 52, gone: "marabelle", hush: "box", shake: 1.2, lux: 0.62, cue: "siege",
+      { room: "office", secs: 4.8, fov: 52, gone: "marabelle", hush: "box", shake: 1.2, lux: 0.62,
         from: [1.66, 1.38, 0.06], to: [1.05, 1.48, 0.62], look: [2.85, 1.12, -0.90],
         swarm: ["office", 22, 1.8, 3.6, 0.46, "x-"], advance: 1,
         sfx: [["scare", 0.5]],
@@ -1106,7 +1106,7 @@ const NS = {
         line: { who: "jax", t: "She danced in front of four hundred of them. Fifteen years she would not do it with one man in the room." } },
 
       /* --- THE WEST DOOR, AND THE LENGTH OF THE ROOM --------------- */
-      { room: "office", secs: 3.4, fov: 44, cue: "siege", shake: 0.9,
+      { room: "office", secs: 3.4, fov: 44, cue: "march", shake: 0.9,
         from: [-1.45, 1.49, 0.14], to: [-1.64, 1.47, -0.06], look: [-2.85, 1.36, -0.90],
         swarm: ["office", 22, 1.8, -3.8, 0.46, "x+"], advance: 1,
         /* the room she has defended for six nights starts coming apart
@@ -1157,7 +1157,7 @@ const NS = {
         from: [0.92, 1.60, 2.18], to: [0.76, 1.58, 2.02], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "He said eleven seconds. He was never late for anything in his life and he was not late for that." } },
 
-      { room: "office", secs: 3.2, fov: 58, shake: 1.1, lux: 0.3,
+      { room: "office", secs: 3.2, cue: "siege", fov: 58, shake: 1.1, lux: 0.3,
         from: [1.30, 1.46, 0.70], to: [1.08, 1.44, 0.54], look: [2.88, 1.22, -0.90],
         swarm: ["office", 24, 1.85, 2.4, 0.44, "x-"], advance: 1,
         line: { who: "ret", many: 1, t: "Four of you. He kept four of you." } },
@@ -1208,7 +1208,7 @@ const NS = {
          It is shot from across the room now, and the camera looks at
          its head rather than at the height the four of them keep their
          heads. You are supposed to have to look up at it. */
-      { room: "office", secs: 4.4, fov: 52, lux: 0.9, shake: 0.5, cue: "alone", clear: 1,
+      { room: "office", secs: 4.4, fov: 52, lux: 0.9, shake: 0.5, cue: "older", clear: 1,
         from: [2.05, 1.62, 2.05], to: [1.70, 1.58, 1.80], look: [-2.60, 1.34, -0.90],
         /* right in the doorway it is walking through, so the biggest
            thing in the building arrives lit from underneath instead of
@@ -1276,7 +1276,7 @@ const NS = {
          had him off the bottom of the frame for four fifths of the
          longest thing he says. The first sentence is his face. The
          second is what he is talking about. */
-      { room: "office", secs: 3.0, fov: 42,
+      { room: "office", secs: 3.0, cue: "vow", fov: 42,
         from: [-0.90, 1.36, 1.90], to: [-1.05, 1.30, 1.84], look: [-1.15, 1.50, 0.30],
         line: { who: "jax", t: "Come out of the corner. Come here. There is a board under your chair that lifts out." } },
       { room: "office", secs: 4.4, fov0: 44, fov1: 50,
@@ -1442,7 +1442,7 @@ const NS = {
          he is about to detonate against standing on top of it. The last
          act of the last one of them has to be shutting her in, and the
          last sight she gets of any of them has to be that. */
-      { room: "office", secs: 4.2, fov: 46, lux: 0.12,
+      { room: "office", secs: 4.2, cue: "ashes", fov: 46, lux: 0.12,
         from: [-1.58, 0.28, 1.22], to: [-1.55, 0.22, 1.18], look: [-1.18, 1.20, 0.30],
         sfx: [["doorClose", 0.7], ["hatch", 0.5]],
         line: { nar: 1, t: "The last thing she sees of any of them is a jack-in-the-box putting the floor back over her head, carefully, with both hands, the way you close a door on somebody who is asleep." } },
@@ -9951,9 +9951,12 @@ const MODE_MIX = {
              piano: 0.62, choir: 0.38, brass: 0,    tick: 0.06,
              pad: 0.46, bass: 0.28, lead: 0.44   },
   /* THE ATTACK. Four minutes of something being done to a building. */
-  siege:   { sub: 0.74, pulse: 0.58, box: 0,    air: 0.30, grind: 0.64, bow: 0.24, warm: 0,
-             piano: 0.30, choir: 0.20, brass: 0.72, tick: 0.60,
-             pad: 0.44, bass: 0.74, lead: 0.00   },
+  /* trimmed after an offline render put its peak at 1.007: the loudest
+     cue in the chapter was clipping, by a hair, for four minutes. It is
+     still the loudest cue in the chapter. */
+  siege:   { sub: 0.68, pulse: 0.54, box: 0,    air: 0.28, grind: 0.58, bow: 0.22, warm: 0,
+             piano: 0.28, choir: 0.18, brass: 0.66, tick: 0.56,
+             pad: 0.40, bass: 0.66, lead: 0.00   },
   /* WHICH LEAVES THE ONE HE MADE IN AN AFTERNOON. The sparsest cue in
      the chapter: a piano, a sub, and the room. Everything that was
      hammering is gone, and the silence where it was is the point. */
@@ -9971,6 +9974,68 @@ const MODE_MIX = {
   after:   { sub: 0.40, pulse: 0,    box: 0,    air: 0.44, grind: 0.06, bow: 0.20, warm: 0,
              piano: 0.12, choir: 0.18, brass: 0,    tick: 0,
              pad: 0.18, bass: 0.12, lead: 0.00   },
+  /* =====================================================================
+     AND SEVEN MORE, BECAUSE TEN CUES WAS STILL TWO CUES.
+
+     Ten was enough to stop the last hour borrowing from the rest of the
+     chapter. It was not enough to be scored: `siege` ran for eighteen
+     shots and carried a negotiation, a power failure, the first of the
+     four dying and a eulogy for it, and `alone` carried the arrival of
+     the antagonist and a man putting a woman under a floor. Four
+     minutes of the same four minutes of music is one feeling, and those
+     are seven different ones.
+
+     Each of these is a scene that changes what the film is about.
+     ===================================================================== */
+
+  /* SOMEBODY TRIES TO TALK THEM OUT OF IT. Two voices taking turns --
+     brass asks in the first half of the bar, the piano answers a fourth
+     under it in the second -- because this is the only conversation in
+     the film where both sides want something. No tick: nobody in this
+     cue is counting yet. */
+  plea:    { sub: 0.46, pulse: 0.20, box: 0,    air: 0.26, grind: 0.24, bow: 0.30, warm: 0.14,
+             piano: 0.52, choir: 0.22, brass: 0.58, tick: 0.10,
+             pad: 0.44, bass: 0.40, lead: 0.18   },
+  /* AND THE FIRST OF THE FOUR IS GONE. The phrase stops one note short
+     of home and nothing finishes it. Air, a bow, and a music box with
+     the thing that was playing it missing from the building. */
+  hollow:  { sub: 0.42, pulse: 0,    box: 0.26, air: 0.52, grind: 0.10, bow: 0.44, warm: 0.08,
+             piano: 0.10, choir: 0.30, brass: 0,    tick: 0,
+             pad: 0.24, bass: 0.16, lead: 0.00   },
+  /* SHE DANCES. Three against four -- the box lands on the first, the
+     seventh and the twelfth step of a sixteen-step bar, so it never
+     agrees with the hammering still going on underneath it. The only
+     beautiful thing in the fight, and it buys eleven seconds. */
+  waltz:   { sub: 0.30, pulse: 0.14, box: 0.62, air: 0.16, grind: 0.08, bow: 0.18, warm: 0.40,
+             piano: 0.46, choir: 0.30, brass: 0.10, tick: 0.04,
+             pad: 0.40, bass: 0.26, lead: 0.52   },
+  /* AND THE ONE WHO KEEPS TIME CROSSES THE ROOM. The only cue in the
+     chapter built on the tick: every other step, a boot on the first
+     and the ninth, a brass fifth every second bar. It is in perfect
+     time right up until the shot where it is not. */
+  march:   { sub: 0.52, pulse: 0.30, box: 0.10, air: 0.20, grind: 0.30, bow: 0.14, warm: 0.10,
+             piano: 0.44, choir: 0.12, brass: 0.50, tick: 0.72,
+             pad: 0.34, bass: 0.52, lead: 0.10   },
+  /* THE FIRST THING HE EVER SOLD COMES THROUGH THE DOOR. The shop's own
+     music box, wound by too many hands: every pass of the phrase is a
+     third of a semitone flatter and further apart than the one before
+     it. Recognisably the tune, and recognisably wrong. */
+  older:   { sub: 0.62, pulse: 0.16, box: 0.54, air: 0.34, grind: 0.36, bow: 0.30, warm: 0,
+             piano: 0.08, choir: 0.16, brass: 0.30, tick: 0,
+             pad: 0.30, bass: 0.44, lead: 0.00   },
+  /* AND HE PUTS HER UNDER THE FLOOR. The vigil's open fifths, and then
+     every fourth bar the third arrives -- the one place in the last
+     hour where the music takes a side. */
+  vow:     { sub: 0.30, pulse: 0,    box: 0.24, air: 0.18, grind: 0,    bow: 0.20, warm: 0.38,
+             piano: 0.64, choir: 0.44, brass: 0,    tick: 0,
+             pad: 0.52, bass: 0.30, lead: 0.34   },
+  /* THE LAST THING SHE SEES OF ANY OF THEM. The warm phrase in thirds,
+     slower than it has ever been played, immediately before the loudest
+     four seconds in the chapter. It is warm on purpose: the detonation
+     has to interrupt something. */
+  ashes:   { sub: 0.26, pulse: 0,    box: 0.42, air: 0.22, grind: 0,    bow: 0.10, warm: 0.44,
+             piano: 0.40, choir: 0.34, brass: 0,    tick: 0,
+             pad: 0.44, bass: 0.24, lead: 0.30   },
   gallery: { sub: 0.14, pulse: 0,    box: 0.45, air: 0.10, grind: 0,    bow: 0,    warm: 0.38,
              piano: 0.34, choir: 0.10, brass: 0,    tick: 0,
              pad: 0.42, bass: 0.38, lead: 0.32   },
@@ -10036,10 +10101,18 @@ const MODE_FEEL = {
   wreck:   { spb: 1.05, warm: false, level: 0.62, theme: "hammer" },
   post:    { spb: 1.80, warm: false, level: 0.54, theme: "vigil"  },
   keep:    { spb: 2.05, warm: true,  level: 0.50, theme: "vigil"  },
-  siege:   { spb: 0.88, warm: false, level: 0.64, theme: "hammer" },
+  siege:   { spb: 0.88, warm: false, level: 0.61, theme: "hammer" },
   alone:   { spb: 2.25, warm: false, level: 0.46, theme: "memory" },
   charge:  { spb: 1.70, warm: true,  level: 0.56, theme: "letter" },
   after:   { spb: 1.90, warm: false, level: 0.34, theme: "void"   },
+  /* the seven that broke `siege` and `alone` into scenes */
+  plea:    { spb: 1.60, warm: false, level: 0.56, theme: "plea"   },
+  hollow:  { spb: 2.30, warm: false, level: 0.42, theme: "hollow" },
+  waltz:   { spb: 1.15, warm: true,  level: 0.54, theme: "waltz"  },
+  march:   { spb: 0.95, warm: false, level: 0.60, theme: "march"  },
+  older:   { spb: 2.50, warm: false, level: 0.52, theme: "older"  },
+  vow:     { spb: 2.00, warm: true,  level: 0.52, theme: "vow"    },
+  ashes:   { spb: 2.35, warm: true,  level: 0.44, theme: "letter" },
   locked:  { spb: 1.00, warm: false, level: 0.61, theme: "clock" },
   brief:   { spb: 1.35, warm: false, level: 0.53, theme: "clock" },
   dark:    { spb: 1.15, warm: false, level: 0.55, theme: "void" },
@@ -10127,7 +10200,8 @@ const THEME_NOTES = {
              next one is coming from. It is the only cue in the
              chapter that is actively unpleasant and it is four
              minutes long by design. */
-const FIN_THEMES = { vigil: 1, hammer: 1 };
+const FIN_THEMES = { vigil: 1, hammer: 1, plea: 1, hollow: 1,
+                     waltz: 1, march: 1, older: 1, vow: 1 };
 /* FOUR MORE INSTRUMENTS, because seven layers of the same three ideas
    is one piece of music with the faders moved and he asked for scores
    that are actually different from each other.
@@ -11236,6 +11310,103 @@ function musicStep(t, s, bar, spb, stepLen, mode, feel, feel4, d, pivot) {
       if (s === 0 && (bar % 3) === 0) brassNote(t, hz(-16), 0.105, spb * 3.4);
       if (s === 8) brassNote(t, hz(-24), 0.078, spb * 2.6);
       if (s === 0 && (bar & 1)) choirNote(t, hz(-4), 0.048, spb * 3);
+    }
+
+    /* --- somebody trying to talk them out of it ------------------ */
+    else if (th === "plea") {
+      /* TWO VOICES, TAKING TURNS.
+
+         Everything else in this film plays together. This one asks and
+         then waits: brass on the first beat of the bar, and the piano
+         answering a fourth underneath it on the ninth step, in the gap
+         where the brass has stopped. It is the shape of a man saying
+         come back on Thursday and a room full of things not saying
+         anything back. */
+      const P = FIG_BARS[bar & 3];
+      if (s === 0) brassNote(t, hz(P[0] - 12), 0.088, spb * 2.6);
+      if (s === 8) pianoNote(t, hz(P[8] - 17), 0.085 * a, spb * 2.4, 0.26);
+      /* the held note under both of them, which is the door */
+      if (s === 0 && (bar & 1) === 0) bowNote(t, hz(-5), 0.05, spb * 7);
+      if (s === 12 && (bar & 3) === 3) choirNote(t, hz(-12), 0.05, spb * 3);
+    }
+
+    /* --- and the first of the four is not in the building -------- */
+    else if (th === "hollow") {
+      /* THE PHRASE, STOPPED ONE NOTE SHORT OF HOME.
+
+         Not a sad tune: an unfinished one. The box plays the first two
+         steps of the figure and never gets to the note they are
+         leaning on, every bar, for as long as the cue runs. */
+      if (s === 0) boxNote(t, hz(FIG[0]), 0.052, -0.2, 3.4);
+      if (s === 6 && (bar & 1) === 0) boxNote(t, hz(FIG[6]), 0.038, 0.2, 2.6);
+      if (s === 0 && (bar & 1)) bowNote(t, hz(-17), 0.062, spb * 6.5);
+      if (s === 8 && (bar & 3) === 2) choirNote(t, hz(-12), 0.055, spb * 5);
+    }
+
+    /* --- she dances ---------------------------------------------- */
+    else if (th === "waltz") {
+      /* THREE AGAINST FOUR.
+
+         The grid underneath every cue in this chapter is sixteen steps
+         of four. This lands on 0, 6 and 11, which is three of
+         something inside four of something else -- so it never agrees
+         with the attack still going on under it, and it is the only
+         music in the film that is in a different time from the film. */
+      const W = FIG_BARS[bar & 3];
+      if (s === 0 || s === 6 || s === 11) {
+        boxNote(t, hz(W[s] + 12), 0.062, (s / 11 - 0.5) * 0.8, 2.4);
+      }
+      if (s === 0) pianoNote(t, hz(W[0] - 12), 0.075 * a, spb * 3.0, 0);
+      if (s === 6) pianoNote(t, hz(W[6] - 5), 0.05 * a, spb * 2.0, 0.3);
+      if (s === 0 && (bar & 1) === 0) choirNote(t, hz(-12), 0.05, spb * 5.5);
+    }
+
+    /* --- and the one who keeps time crosses the room -------------- */
+    else if (th === "march") {
+      /* Every other step, which is twice the density of anything else
+         in the chapter, because he is walking and he does not stop for
+         anything on the way. */
+      if ((s & 1) === 0) tickNote(t, (s & 3) === 0 ? 0.20 : 0.075, s === 0);
+      if (s === 0 || s === 8) {
+        pianoNote(t, hz(FIG_BARS[bar & 3][s] - 12), 0.07 * a, spb * 1.2,
+                  s === 0 ? -0.2 : 0.2);
+      }
+      if (s === 0 && (bar & 1) === 0) brassNote(t, hz(-24), 0.09, spb * 4.2);
+      if (s === 12) boxNote(t, hz(FIG_BARS[bar & 3][12]), 0.03, 0.3, 2.0);
+    }
+
+    /* --- the first thing he ever sold, coming through the door ---- */
+    else if (th === "older") {
+      /* THE SHOP'S OWN MUSIC BOX, WOUND BY TOO MANY HANDS.
+
+         A third of a semitone flatter every pass and further apart
+         each time. It is the tune the chapter has been humming since
+         the title screen, eleven years and four hundred houses later. */
+      const off = -((bar & 3) * 0.34);
+      const O = FIG_BARS[bar & 3];
+      if (s === 0 || s === 8) boxNote(t, hz(O[s] + off), 0.055, s ? 0.3 : -0.3, 3.4);
+      if (s === 4 && (bar & 1) === 0) boxNote(t, hz(O[4] + off - 12), 0.04, 0, 3.0);
+      if (s === 0) bowNote(t, hz(-17 + off), 0.045, spb * 6);
+      if (s === 8 && (bar & 3) === 1) brassNote(t, hz(-24), 0.07, spb * 4);
+    }
+
+    /* --- and he puts her under the floor -------------------------- */
+    else if (th === "vow") {
+      /* THE VIGIL'S FIFTHS, AND THEN A THIRD.
+
+         Four objects standing in doorways got open fifths because a
+         fifth does not take a side. This is where somebody takes one:
+         every fourth bar the major third arrives underneath the fifth,
+         and it is the only chord between the dance and the letter that
+         agrees with itself. */
+      const n = FIG_BARS[bar & 3][0];
+      if (s === 0) {
+        pianoNote(t, hz(n - 12), 0.10 * a, spb * 5.4, 0);
+        pianoNote(t, hz(n - 5), 0.07 * a, spb * 5.0, 0.24);
+        if ((bar & 3) === 3) pianoNote(t, hz(n - 8), 0.055 * a, spb * 4.6, -0.24);
+      }
+      if (s === 8) choirNote(t, hz(-12), 0.07, spb * 6);
+      if (s === 10) boxNote(t, hz(WARM[10]), 0.04, 0.3, 2.8);
     }
 
     /* --- the void: no phrase at all. One voice, one swell -------- */

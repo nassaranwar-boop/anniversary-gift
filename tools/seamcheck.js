@@ -61,13 +61,21 @@ const SEAMS = [
   ['wreck',  'post'],     // into the four taking the three doors
   ['post',   'keep'],     // into ninety seconds of them talking
   ['keep',   'siege'],    // and then it starts
-  ['siege',  'charge'],   // a ballerina dances and everything stops
-  ['charge', 'siege'],    // and it closes over her again
-  ['siege',  'alone'],    // the fight ends; one of them is left
+  ['siege',  'plea'],     // somebody tries to talk them out of it
+  ['plea',   'siege'],    // and the meter answers instead
+  ['siege',  'hollow'],   // the first of the four is gone
+  ['hollow', 'siege'],    // both shutters go up: it starts again
+  ['siege',  'waltz'],    // a ballerina dances at four hundred of them
+  ['waltz',  'march'],    // and the one who keeps time crosses the room
+  ['march',  'siege'],    // and stops, and it closes over her again
+  ['siege',  'older'],    // the first thing he ever sold comes in
+  ['older',  'vow'],      // and he puts her under the floor
+  ['vow',    'alone'],    // the fight ends; one of them is left
   ['alone',  'charge'],   // she winds him
   ['charge', 'alone'],    // and his last four lines
-  ['alone',  'after'],    // the room with nothing in it
-  ['after',  'dawn'],     // six o'clock
+  ['alone',  'ashes'],    // the floor going back over her head
+  ['ashes',  'after'],    // the room with nothing in it
+  ['after',  'dawn'],     // six o'clock     // six o'clock
 ];
 const NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const name = (f) => {
