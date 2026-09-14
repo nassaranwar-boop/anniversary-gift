@@ -792,7 +792,7 @@ const NS = {
 
       /* the west door */
       { room: "office", secs: 3.8, fov: 44,
-        from: [-1.61, 1.52, 1.32], to: [-2.22, 1.48, -0.02], look: [-2.85, 1.36, -0.90],
+        from: [-1.25, 1.52, 0.52], to: [-1.55, 1.48, 0.18], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "Twelve minutes past five. I have the west door. I have had it since Monday." } },
       /* the grate */
       /* THE OWL'S CLOSE-UPS HAD NO `lux` ON THEM AT ALL.
@@ -818,7 +818,7 @@ const NS = {
 
       /* --- a minute and a half of them being people ---------------- */
       { room: "office", secs: 4.4, fov: 40, lux: 0.74, cue: "keep",
-        from: [-2.22, 1.48, -0.02], to: [-2.14, 1.46, -0.23], look: [-2.85, 1.36, -0.90],
+        from: [-1.55, 1.48, 0.18], to: [-1.68, 1.46, 0.02], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "He wound me every night for nine years. He never once told me why." } },
       { room: "office", secs: 5.0, fov: 40,
         from: [1.55, 1.38, 0.18], to: [1.68, 1.36, 0.02], look: [2.85, 1.10, -0.90],
@@ -849,12 +849,12 @@ const NS = {
         from: [-0.62, 1.44, 1.98], to: [-0.70, 1.42, 1.86], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "He made me in an afternoon. Badly, I think on purpose." } },
       { room: "office", secs: 3.4, fov0: 39, fov1: 36, lux: 0.55,
-        from: [-2.14, 1.46, -0.23], to: [-2.09, 1.45, -0.31], look: [-2.85, 1.36, -0.90],
+        from: [-1.68, 1.46, 0.02], to: [-1.80, 1.45, -0.12], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "He made you last." } },
 
       /* --- AND THEN IT STARTS, AT THE WEST DOOR -------------------- */
       { room: "office", secs: 3.2, fov: 58, cue: "siege", shake: 1, lux: 0.34,
-        from: [-0.40, 1.56, 1.13], to: [-2.27, 1.52, 0.30], look: [-2.95, 1.28, -0.90],
+        from: [-0.95, 1.56, 0.85], to: [-1.25, 1.52, 0.50], look: [-2.95, 1.28, -0.90],
         swarm: ["office", 16, 1.6, -5.6, 0.5, "x+"], advance: 1,
         sfx: [["knock", 0.9], ["postDrag", 0.7]],
         line: { nar: 1, t: "The first of them comes up the hall and puts its weight on the west doorway, and the doorway holds because there is something standing in it." } },
@@ -877,7 +877,7 @@ const NS = {
          been in cupboards for eleven years and she is the only person
          left in the world who winds anything. */
       { room: "office", secs: 3.4, fov: 60, shake: 1.05, lux: 0.3,
-        from: [-1.65, 1.52, 1.30], to: [-2.26, 1.50, 0.47], look: [-2.95, 1.20, -0.90],
+        from: [-1.25, 1.52, 0.50], to: [-1.40, 1.50, 0.34], look: [-2.95, 1.20, -0.90],
         swarm: ["office", 18, 1.65, -5.2, 0.49, "x+"], advance: 0.6,
         line: { who: "ret", many: 1, t: "Somebody in there is winding something. We can hear it from the hall." } },
 
@@ -902,35 +902,38 @@ const NS = {
          into a soldier who has just run out of things to say. Not one
          word of it changed. */
       { room: "office", secs: 5.4, fov: 50, shake: 0.8, lux: 0.34,
-        from: [-1.32, 1.50, 1.41], to: [-2.24, 1.48, 0.54], look: [-2.88, 1.30, -0.90],
+        from: [-1.20, 1.50, 0.62], to: [-1.42, 1.48, 0.36], look: [-2.88, 1.30, -0.90],
         swarm: ["office", 18, 1.68, -5.0, 0.49, "x+"],
         line: { who: "cogsworth", t: "There is. There is a woman in this room and she has wound all four of us every night this week. Come back at nine on Thursday morning and she will wind every one of you, one at a time, and I will hold this door open myself." } },
 
       { room: "office", secs: 3.4, fov: 56, shake: 1.0, lux: 0.3,
-        from: [-2.24, 1.48, 0.54], to: [-2.24, 1.46, 0.05], look: [-2.92, 1.22, -0.90],
+        from: [-1.42, 1.48, 0.36], to: [-1.58, 1.46, 0.20], look: [-2.92, 1.22, -0.90],
         swarm: ["office", 20, 1.72, -4.7, 0.48, "x+"], advance: 0.8,
         line: { who: "ret", many: 1, t: "Thursday. People have been saying Thursday to us for eleven years." } },
 
       { room: "office", secs: 3.2, fov: 46, lux: 0.3,
-        from: [-2.27, 1.50, 0.30], to: [-2.18, 1.49, -0.15], look: [-2.60, 1.38, -0.90],
+        from: [-1.30, 1.50, 0.30], to: [-1.38, 1.49, 0.20], look: [-2.60, 1.38, -0.90],
         line: { who: "cogsworth", t: "Yes. I know. I am sorry." } },
 
       { room: "office", secs: 3.0, fov: 62, shake: 1.2,
-        from: [-1.65, 1.52, 1.30], to: [-2.24, 1.49, 0.04], look: [-2.85, 1.34, -0.90],
+        from: [-1.25, 1.52, 0.50], to: [-1.48, 1.49, 0.22], look: [-2.85, 1.34, -0.90],
         swarm: ["office", 20, 1.7, -4.9, 0.48, "x+"], advance: -1.4,
         sfx: [["falseBang", 0.85], ["step", 0.8, -0.6]],
         line: { who: "cogsworth", t: "Ouissy. Shut it. I am on the wrong side of it and that is exactly where I mean to be." } },
       /* SHE DOES THE ONE THING SHE KNOWS HOW TO DO, and the shutter
          really comes down while the shot is running. */
       { room: "office", secs: 3.4, fov: 62, shake: 0.9, doors: { left: 1, right: 1 },
-        from: [-0.43, 1.46, 1.16], to: [-0.10, 1.48, 0.69], look: [-2.80, 1.30, -0.90],
+        /* the one standing by her chair was across forty-four per cent
+           of this frame at twenty-two centimetres. Moved west of him,
+           so he is behind the lens rather than in front of it. */
+        from: [-1.72, 1.48, 0.46], to: [-2.06, 1.50, 0.30], look: [-2.95, 1.30, -0.90],
         swarm: ["office", 20, 1.7, -5.2, 0.48, "x+"],
         sfx: [["shutter", 0.9]],
         line: { nar: 1, t: "She has done that four hundred times this week." } },
       /* AND THE REASON IT IS THE LAST TIME. The whole chapter is one
          charge on a meter, and this is the meter running out. */
       { room: "office", secs: 3.0, fov: 46, lux: 0.3,
-        from: [-0.28, 1.48, 1.00], to: [-0.20, 1.42, 1.15], look: [0.90, 1.05, 1.05],
+        from: [-0.40, 1.48, 0.90], to: [-0.20, 1.42, 1.15], look: [0.90, 1.05, 1.05],
         line: { sys: 1, t: "RESERVE AT NINE PERCENT." } },
       { room: "office", secs: 3.8, fov: 50, shake: 0.7,
         from: [-0.20, 1.42, 1.15], to: [0.10, 1.44, 1.35], look: [-1.15, 1.50, 0.30],
@@ -976,7 +979,7 @@ const NS = {
          the owl in the log the way you would log a delivery is worse
          than anything he could be given to feel. */
       { room: "office", secs: 3.8, fov: 44, lux: 0.44,
-        from: [-2.15, 1.48, -0.21], to: [-2.10, 1.47, -0.29], look: [-2.85, 1.36, -0.90],
+        from: [-1.62, 1.48, 0.06], to: [-1.72, 1.47, -0.06], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "Sixteen minutes past five. That was the owl. He went upwards, which is the only direction he ever went." } },
 
       /* AND THE ROOM NONE OF THIS IS HAPPENING IN.
@@ -1001,7 +1004,7 @@ const NS = {
          for them any more. This is the moment the four stop being
          guards and start being the doors. */
       { room: "office", secs: 4.0, fov: 66, shake: 1.2, doors: { left: 0, right: 0 },
-        from: [-0.10, 1.40, 1.10], to: [-0.24, 1.48, 0.96], look: [-2.90, 1.35, -0.90],
+        from: [-0.10, 1.40, 1.10], to: [-0.60, 1.48, 0.70], look: [-2.90, 1.35, -0.90],
         swarm: ["office", 22, 1.8, -4.6, 0.46, "x+"], advance: 1,
         sfx: [["shutter", 0.8], ["knock", 0.7]],
         line: { nar: 1, t: "Both shutters go back up. They are not doors any more. They are two gaps with a toy standing in each of them." } },
@@ -1024,7 +1027,7 @@ const NS = {
          the only thing she does under her own power between midnight
          and the hole in the floor, and it was happening off screen. */
       { room: "office", secs: 3.4, fov: 52, shake: 0.95, lux: 0.5,
-        from: [0.40, 1.52, 0.98], to: [-0.09, 1.47, 0.65], look: [-1.60, 1.18, -0.70],
+        from: [0.40, 1.52, 0.98], to: [-0.38, 1.47, 0.56], look: [-1.60, 1.18, -0.70],
         oui: [-1.60, 0, -0.70, 0, 0.9],
         swarm: ["office", 20, 1.7, 5.0, 0.48, "x-"],
         sfx: [["step", 0.55, -0.25]],
@@ -1053,12 +1056,12 @@ const NS = {
          to be played with, watching somebody do the thing they were
          made for, once, before the end. */
       { room: "office", secs: 2.8, fov: 54, lux: 0.5, hush: "box",
-        from: [1.05, 1.48, 0.42], to: [0.86, 1.46, 0.50], look: [2.85, 1.10, -0.90],
+        from: [1.05, 1.48, 0.62], to: [0.86, 1.46, 0.70], look: [2.85, 1.10, -0.90],
         swarm: ["office", 22, 1.8, 3.6, 0.46, "x-"],
         line: { who: "ret", many: 1, t: "Do that again." } },
 
       { room: "office", secs: 4.2, fov: 46, lux: 0.22,
-        from: [-0.04, 1.52, 0.45], to: [-1.35, 1.47, -0.80], look: [-2.55, 1.22, -1.55],
+        from: [-0.85, 1.52, 0.34], to: [-1.20, 1.47, 0.02], look: [-2.55, 1.22, -1.55],
         oui: [-2.55, 0, -1.55, 0, 0.55],
         sfx: [["falseBang", 0.7]],
         line: { nar: 1, t: "From the corner behind the cabinet she hears every part of it and sees none of it, which turns out not to be the mercy it was meant to be." } },
@@ -1087,7 +1090,7 @@ const NS = {
 
       /* --- THE WEST DOOR, AND THE LENGTH OF THE ROOM --------------- */
       { room: "office", secs: 3.4, fov: 44, cue: "siege", shake: 0.9,
-        from: [-2.14, 1.49, -0.23], to: [-2.05, 1.47, -0.36], look: [-2.85, 1.36, -0.90],
+        from: [-1.45, 1.49, 0.14], to: [-1.64, 1.47, -0.06], look: [-2.85, 1.36, -0.90],
         swarm: ["office", 22, 1.8, -3.8, 0.46, "x+"], advance: 1,
         /* the room she has defended for six nights starts coming apart
            around her while the soldier is still holding the doorway */
@@ -1233,7 +1236,7 @@ const NS = {
 
       /* --- the one he made in an afternoon ------------------------- */
       { room: "office", secs: 3.6, fov: 44, lux: 0.4,
-        from: [0.90, 1.60, 1.98], to: [0.76, 1.58, 1.82], look: [-1.15, 1.52, 0.30],
+        from: [-0.50, 1.48, 2.18], to: [-0.56, 1.45, 2.02], look: [-1.15, 1.52, 0.30],
         put: { jax: "f4" },
         /* and something alight on her side of the room, so the last one
            of them standing has a face for the rest of the film */
@@ -1289,7 +1292,7 @@ const NS = {
 
       /* --- what the winding was, said from above her --------------- */
       { room: "office", secs: 4.4, fov0: 44, fov1: 40, cue: "alone", lux: 0.26,
-        from: [-1.76, 0.34, 1.46], to: [-1.72, 0.27, 1.38], look: [-1.14, 1.46, 0.30],
+        from: [-1.74, 0.30, 1.44], to: [-1.72, 0.27, 1.38], look: [-1.14, 1.46, 0.30],
         line: { who: "jax", t: "There is a key in the back of each of us. You have been turning them all week." } },
       { room: "office", secs: 3.4, fov0: 40, fov1: 37,
         from: [-1.72, 0.27, 1.38], to: [-1.70, 0.24, 1.34], look: [-1.14, 1.50, 0.30],
@@ -1298,7 +1301,7 @@ const NS = {
         from: [-1.70, 0.24, 1.34], to: [-1.68, 0.22, 1.31], look: [-1.14, 1.54, 0.30],
         line: { who: "jax", t: "You were charging us." } },
       { room: "office", secs: 4.6, fov0: 33, fov1: 38,
-        from: [-1.68, 0.22, 1.31], to: [-1.66, 0.21, 1.30], look: [-1.14, 1.56, 0.30],
+        from: [-1.68, 0.22, 1.31], to: [-1.66, 0.21, 1.29], look: [-1.14, 1.56, 0.30],
         line: { who: "jax", t: "He said you never once asked him for a key. He thought about that a great deal, lately." } },
 
       /* THE THING HE BUILT INTO ALL FOUR OF THEM.
@@ -1307,7 +1310,7 @@ const NS = {
          accident, and on her finding out one line before it happens
          rather than afterwards on a card. */
       { room: "office", secs: 5.0, fov0: 38, fov1: 33, lux: 0.16,
-        from: [-1.66, 0.21, 1.30], to: [-1.66, 0.20, 1.30], look: [-1.14, 1.50, 0.30],
+        from: [-1.66, 0.21, 1.29], to: [-1.64, 0.20, 1.26], look: [-1.14, 1.50, 0.30],
         line: { nar: 1, t: "There is one more thing in the back of each of them, next to the key, and he never wrote it down anywhere. A man does not write down the thing he is hoping nobody ever has to use." } },
       /* he is still standing there while he says it. `gone` removes
          somebody at the TOP of the shot it is written on, so putting it
@@ -1334,27 +1337,27 @@ const NS = {
          work at all, and it is exactly what he asked her for in a note
          six nights ago without ever saying why. */
       { room: "office", secs: 4.2, fov: 40, lux: 0.24, cue: "charge",
-        from: [-1.66, 0.20, 1.30], to: [-1.62, 0.31, 1.32], look: [-1.16, 1.28, 0.30],
+        from: [-1.64, 0.24, 1.30], to: [-1.59, 0.31, 1.25], look: [-1.16, 1.28, 0.30],
         sfx: [["wind", 0.85]],
         line: { nar: 1, t: "He is slowing down. She can hear him doing it. So she reaches up out of the hole in her own floor, and she finds the key in his back, and she winds him one last time." } },
       /* off-screen on purpose: the camera is on the thing running
          down, not on the woman with her hand in its back, and his
          answer is written to be the answer to this */
       { room: "office", secs: 2.8, fov0: 42, fov1: 37, lux: 0.24,
-        from: [-1.62, 0.31, 1.32], to: [-1.68, 0.28, 1.29], look: [-1.16, 1.32, 0.30],
+        from: [-1.59, 0.30, 1.34], to: [-1.62, 0.28, 1.18], look: [-1.16, 1.32, 0.30],
         line: { who: "ouissy", off: 1, t: "Tell me when to stop." } },
 
       { room: "office", secs: 3.6, fov: 38, lux: 0.24,
-        from: [-1.68, 0.28, 1.29], to: [-1.63, 0.26, 1.31], look: [-1.16, 1.42, 0.30],
+        from: [-1.59, 0.31, 1.25], to: [-1.62, 0.26, 1.28], look: [-1.16, 1.42, 0.30],
         sfx: [["tuneWhole", 0.5]],
         line: { who: "jax", t: "Thank you. That is the last one. That is enough." } },
       /* the only shot in the chapter where one of them looks at her,
          and it was too dark to see either of them do it */
       { room: "office", secs: 4.2, fov0: 38, fov1: 34, lux: 0.5, cue: "alone",
-        from: [-1.63, 0.26, 1.31], to: [-1.65, 0.21, 1.30], look: [-1.16, 1.48, 0.30],
+        from: [-1.64, 0.22, 1.28], to: [-1.63, 0.21, 1.27], look: [-1.16, 1.48, 0.30],
         line: { nar: 1, t: "None of them has looked at her all night. He looks at her." } },
       { room: "office", secs: 3.6, fov0: 34, fov1: 31, lux: 0.2,
-        from: [-1.65, 0.21, 1.30], to: [-1.65, 0.20, 1.30], look: [-1.16, 1.46, 0.30],
+        from: [-1.63, 0.21, 1.27], to: [-1.62, 0.20, 1.25], look: [-1.16, 1.46, 0.30],
         line: { who: "jax", t: "Put your hands over your ears, Ouissy." } },
 
       /* TWO WORDS THAT REBUILD THE WHOLE FILM.
@@ -1378,14 +1381,14 @@ const NS = {
         line: { who: "boss", t: "Wind me." } },
 
       { room: "office", secs: 2.4, fov0: 35, fov1: 31, lux: 0.2,
-        from: [-1.53, 0.27, 1.35], to: [-1.64, 0.24, 1.31], look: [-1.16, 1.46, 0.30],
+        from: [-1.52, 0.27, 1.32], to: [-1.58, 0.24, 1.18], look: [-1.16, 1.46, 0.30],
         line: { who: "ouissy", off: 1, t: "Jax." } },
 
       /* --- the thing that is not a line ---------------------------- */
       /* whatever is left of the office is burning by now, and the shots
          after the blast are lit by it rather than by the ceiling */
       { room: "office", secs: 3.6, fov: 44, lux: 0.16, shake: 0.9,
-        from: [-1.64, 0.24, 1.31], to: [-1.62, 0.28, 1.31], look: [-2.30, 1.18, -0.30],
+        from: [-1.62, 0.24, 1.28], to: [-1.58, 0.28, 1.22], look: [-2.30, 1.18, -0.30],
         boss: ["office", -2.30, -0.30, 1.9],
         sfx: [["postSettle", 0.6]],
         line: { nar: 1, t: "The first thing he ever built is halfway across the room with its hand out." } },
@@ -1396,7 +1399,7 @@ const NS = {
          act of the last one of them has to be shutting her in, and the
          last sight she gets of any of them has to be that. */
       { room: "office", secs: 4.2, fov: 46, lux: 0.12,
-        from: [-1.62, 0.28, 1.31], to: [-1.61, 0.22, 1.32], look: [-1.18, 1.20, 0.30],
+        from: [-1.58, 0.28, 1.22], to: [-1.55, 0.22, 1.18], look: [-1.18, 1.20, 0.30],
         sfx: [["doorClose", 0.7], ["hatch", 0.5]],
         line: { nar: 1, t: "The last thing she sees of any of them is a jack-in-the-box putting the floor back over her head, carefully, with both hands, the way you close a door on somebody who is asleep." } },
       /* AND THE THING HE BLEW UP GOES WITH HIM.
