@@ -319,6 +319,51 @@ if (man) {
      shutOut && /correct|would have left it shut|shutOut held it against/i.test(shutOut.t),
      (shutOut && shutOut.t || '').slice(0, 60));
 
+  console.log('\n=== and it burns, and somebody says so when one of them goes');
+
+  /* somebody has to say something when each of the four is destroyed */
+  const SH = NS.lastHour.shots;
+  const after = (who) => {
+    const i = SH.findIndex((x) => x.gone === who);
+    if (i < 0) return null;
+    for (let k = i + 1; k < Math.min(SH.length, i + 4); k++) {
+      const l = SH[k].line;
+      if (l && l.who && l.who !== who && !l.nar) return { by: l.who, t: l.t };
+    }
+    return null;
+  };
+  const eul = ['chime', 'marabelle', 'cogsworth'].map((w) => [w, after(w)]);
+  ok('when one of the four goes, one of the others says something about it',
+     eul.every(([, e]) => e), eul.map(([w, e]) => [w, e && e.by]));
+  ok('and it is never the one who has just gone saying it',
+     eul.every(([w, e]) => !e || e.by !== w), eul.map(([w, e]) => [w, e && e.by]));
+
+  /* the effects layer: it burns, it is capped, and it is put out */
+  const fire = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    N.fxClear();
+    N.fx('fire', 'arcade', -1.6, 0.25, -1.5, 6, 1.2);
+    N.fx('sparks', 'arcade', -1.6, 1.05, -1.5, 24, 1.4);
+    let peak = 0;
+    for (let i = 0; i < 400; i++) peak = Math.max(peak, N.fxStep(0.05));
+    const burning = N.fxCount();
+    N.fxClear();
+    return { peak: peak, burning: burning, after: N.fxCount() };
+  });
+  ok('a thing set alight goes on burning rather than going out on its own',
+     fire.burning.kinds.flame > 0, fire.burning.kinds);
+  ok('and it throws embers off while it burns', fire.burning.kinds.ember > 0, fire.burning.kinds);
+  ok('and sparks are gone in under a second, because they are an impact',
+     !fire.burning.kinds.spark, fire.burning.kinds);
+  ok('and the whole layer stays inside its budget', fire.peak <= 110, fire.peak);
+  ok('and it can all be put out at once', fire.after.n === 0, fire.after);
+
+  /* and the shop is not on fire when she opens the shutters */
+  const dawnIdx = SH.findIndex((x) => x.douse);
+  const lastFire = SH.reduce((a, x, i) => (x.fire ? i : a), -1);
+  ok('whatever is alight is put out before six in the morning',
+     dawnIdx > 0 && dawnIdx > lastFire, [dawnIdx, lastFire]);
+
   console.log('\n=== and the shop really comes apart');
 
   const rooms = ['stage', 'arcade', 'office'];

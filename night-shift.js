@@ -737,12 +737,23 @@ const NS = {
         from: [0.20, 2.05, 2.40], to: [-0.55, 1.70, 1.55], look: [0.30, 0.85, -1.90],
         swarm: ["stage", 24, 3.6, -2.4, 0.5], advance: 1,
         wreck: ["stage", 10],
+        sparks: [[-0.8, 0.9, -1.6, 16, 1.1], [1.1, 0.7, -2.0, 12, 0.9]],
+        /* the footlights across the front of his stage go over with
+           everything else, and they were on */
+        fire:   [[-0.9, 0.3, -1.5, 5, 1.05], [1.2, 0.3, -1.9, 4, 0.9]],
+        smoke:  [[0.1, 1.1, -1.8, 3, 1.4]],
         sfx: [["falseSkitter", 0.55], ["postDrag", 0.5]] },
 
       { room: "arcade", secs: 3.8, fov: 62, lux: 0.32, shake: 1.0, clear: 1,
         from: [0.10, 2.20, 3.10], to: [0.10, 1.80, 2.05], look: [0, 1.05, -2.10],
         swarm: ["arcade", 20, 3.4, -3.0, 0.5], advance: 1,
         wreck: ["arcade", 12],
+        /* a machine that was plugged in when they pulled it over. This
+           is the one room in the shop with mains in the back of every
+           cabinet, so it is the room where this starts. */
+        sparks: [[-1.6, 1.05, -1.5, 22, 1.4], [1.7, 0.95, -1.2, 14, 1.0]],
+        fire:   [[-1.6, 0.25, -1.5, 5, 1.15]],
+        smoke:  [[-1.6, 1.3, -1.5, 4, 1.3]],
         sfx: [["falseBang", 0.7]],
         line: { nar: 1, t: "Eleven days ago he was in here on a Tuesday afternoon fixing the coin slot on a machine nobody has put a coin in since 2019." } },
 
@@ -935,6 +946,23 @@ const NS = {
         sfx: [["scare", 0.55]],
         line: { nar: 1, t: "Something small and brass goes up into the ceiling with six of them holding on to it, and the grate does not open again." } },
 
+      /* --- AND SOMEBODY SAYS SOMETHING ABOUT IT ---------------------
+
+         Four things she has spent a week being frightened of die one
+         at a time in front of her over about ninety seconds, and for
+         every version of this film the survivors said nothing at all
+         about any of it. They announced their own doors, they held
+         them, and they went, and the ones still standing carried on as
+         though a room had got quieter.
+
+         Nobody grieves out loud here. The soldier is a clock and he
+         does what a clock does, which is mark the time -- and putting
+         the owl in the log the way you would log a delivery is worse
+         than anything he could be given to feel. */
+      { room: "office", secs: 3.8, fov: 44, lux: 0.44,
+        from: [-1.62, 1.48, 0.06], to: [-1.72, 1.47, -0.06], look: [-2.85, 1.36, -0.90],
+        line: { who: "cogsworth", t: "Sixteen minutes past five. That was the owl. He went upwards, which is the only direction he ever went." } },
+
       /* AND THE ROOM NONE OF THIS IS HAPPENING IN.
 
          Forty-odd shots in one office is a long time in one place, and
@@ -1017,6 +1045,15 @@ const NS = {
         sfx: [["falseBang", 0.7]],
         line: { nar: 1, t: "From the corner behind the cabinet she hears every part of it and sees none of it, which turns out not to be the mercy it was meant to be." } },
 
+      /* the ballerina's tag says: fifteen years and she has never once
+         danced while I was in the room, she thinks I do not know that
+         she does it at all. She has just done it in front of four
+         hundred of them. The one who says so is the one made in an
+         afternoon, who has never been able to do anything quietly. */
+      { room: "office", secs: 4.4, fov: 42, lux: 0.3,
+        from: [-0.58, 1.46, 1.92], to: [-0.68, 1.44, 1.78], look: [-1.15, 1.52, 0.30],
+        line: { who: "jax", t: "She danced in front of four hundred of them. Fifteen years she would not do it with one man in the room." } },
+
       /* --- THE WEST DOOR, AND THE LENGTH OF THE ROOM --------------- */
       { room: "office", secs: 3.4, fov: 44, cue: "siege", shake: 0.9,
         from: [-1.45, 1.49, 0.14], to: [-1.64, 1.47, -0.06], look: [-2.85, 1.36, -0.90],
@@ -1024,6 +1061,9 @@ const NS = {
         /* the room she has defended for six nights starts coming apart
            around her while the soldier is still holding the doorway */
         wreck: ["office", 9],
+        sparks: [[-3.0, 1.5, -0.9, 18, 1.2]],
+        fire:   [[-2.9, 0.25, -1.4, 4, 0.9]],
+        smoke:  [[-2.9, 1.2, -1.4, 3, 1.2]],
         line: { who: "cogsworth", t: "Eleven seconds. I will take it." } },
       { room: "office", secs: 5.0, fov: 62, gone: "cogsworth", shake: 1.4, hush: "tick",
         from: [-1.90, 1.50, 0.90], to: [1.60, 1.45, 0.70], look: [0, 0.95, -1.30],
@@ -1066,6 +1106,12 @@ const NS = {
       { room: "office", secs: 4.4, fov: 44, lux: 0.26, shake: 0.6,
         from: [-0.72, 1.50, 1.96], to: [-0.80, 1.48, 1.78], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "He kept four of us. He made me in an afternoon, out of what was left on the bench. I am the closest thing in this room to one of you, and I am still not moving." } },
+
+      /* he said eleven seconds and took them, and the one left standing
+         says the only thing there is to say about a clock */
+      { room: "office", secs: 3.6, fov: 42, lux: 0.32,
+        from: [-0.64, 1.45, 1.86], to: [-0.72, 1.44, 1.74], look: [-1.15, 1.52, 0.30],
+        line: { who: "jax", t: "He said eleven seconds. He was never late for anything in his life and he was not late for that." } },
 
       { room: "office", secs: 3.8, fov0: 36, fov1: 30, lux: 0.42, clear: 1,
         from: [-1.45, 1.87, 1.50], to: [-1.95, 1.86, 1.50], look: [-3.15, 1.85, 1.50] },
@@ -1239,6 +1285,8 @@ const NS = {
         line: { who: "ouissy", off: 1, t: "Jax." } },
 
       /* --- the thing that is not a line ---------------------------- */
+      /* whatever is left of the office is burning by now, and the shots
+         after the blast are lit by it rather than by the ceiling */
       { room: "office", secs: 3.6, fov: 44, lux: 0.16, shake: 0.9,
         from: [-1.62, 0.24, 1.28], to: [-1.58, 0.28, 1.22], look: [-2.30, 1.18, -0.30],
         boss: ["office", -2.30, -0.30, 1.9],
@@ -1267,7 +1315,11 @@ const NS = {
       { room: "office", secs: 5.4, fov: 58, cue: "dawn", dawn: 1, up: 1, lux: 1,
         from: [-1.70, 0.34, 1.46], to: [0, 1.62, 2.20], look: [0, 1.10, -2.4],
         line: { nar: 1, t: "And then it is quiet in a way the shop has not been all week." } },
-      { room: "foyer", secs: 6.0, fov: 66, bare: 1,
+      /* whatever was alight is out by six. She opens the shutters on a
+         wrecked shop, not a burning one -- the ending has her running
+         the place, and a fire that follows the camera into the morning
+         would be a different story than the one this is. */
+      { room: "foyer", secs: 6.0, fov: 66, bare: 1, douse: 1,
         from: [2.60, 2.90, 2.40], to: [1.40, 2.10, 1.50], look: [-0.5, 1.05, -1.8],
         line: { nar: 1, t: "The shutters go up at six. They always have, and there is nothing left in here worth putting behind them, and nobody has to be present for either of those things." } },
       { room: "stage", secs: 5.4, fov: 62, bare: 1,
@@ -11864,6 +11916,7 @@ const _fl = new T.Vector3();
 function finaleStart() {
   if (!NS.lastHour || !NS.lastHour.shots) { winNight(); return; }
   wreckClear();
+  fxClear();
   FIN.on = true; FIN.i = -1; FIN.t = 0; FIN.hold = 0; FIN.secs = 1;
   FIN.gone = {}; FIN.skip = false; FIN.adv = 0; FIN.shot = null;
   FIN.lux = 1; G.filmLux = 1; FIN.hushed = {};
@@ -12036,6 +12089,17 @@ function finaleNext(skipped) {
   if (s.ouiGone && ouissy) ouissy.visible = false;
   /* things in a room start going over, for real, on screen */
   if (s.wreck) wreckArm(s.wreck[0] || s.room || FIN.room, s.wreck[1] || 8);
+  /* fire: [x, y, z, knots] — something in this room is alight, and
+     stays alight until the film leaves the room */
+  if (s.fire) s.fire.forEach((f) =>
+    fxFire(s.room || FIN.room, f[0], f[1], f[2], f[3] || 5, { size: f[4] || 1 }));
+  if (s.sparks) s.sparks.forEach((f) =>
+    fxSparks(s.room || FIN.room, f[0], f[1], f[2], f[3] || 12, { size: f[4] || 1 }));
+  if (s.smoke) s.smoke.forEach((f) =>
+    fxSmoke(s.room || FIN.room, f[0], f[1], f[2], f[3] || 4, { size: f[4] || 1 }));
+  if (s.flash) fxFlash(s.flash === true ? 0.9 : s.flash, s.flashMs || 300);
+  /* the fires do not follow the camera into the next room */
+  if (s.douse) fxClear();
   /* signed: a negative advance is one of his getting to the doorway
      first and driving them back out of it */
   FIN.adv = s.advance === undefined ? 0 : s.advance;
@@ -12189,6 +12253,15 @@ function finaleBoom() {
     n.start(at); n.stop(at + 1.3);
   }
   G.shake = 1.6;
+  /* AND THE SCREEN DOES SOMETHING. It is the loudest event in the
+     chapter and for three versions the picture did not change for it:
+     white out on the frame it happens, a room full of sparks and
+     burning debris under it, and smoke afterwards. */
+  fxFlash(1, 420);
+  fxBlast(FIN.room || "office", -1.9, 1.0, -0.9);
+  fxFire(FIN.room || "office", -2.2, 0.2, -0.9, 6, { size: 1.2 });
+  fxFire(FIN.room || "office", 1.4, 0.2, -1.4, 4, { size: 0.9 });
+  setTimeout(() => { if (FIN.on) fxFlash(0.35, 700, "#ff9a44"); }, 130);
   setTimeout(() => audioDuck(1, 1400), 900);
 }
 
@@ -12196,6 +12269,7 @@ function finaleBoom() {
    changes rooms has changed them before the room is drawn */
 function finaleStep(dt) {
   wreckStep(dt);
+  fxStep(dt, G.t);
   if (!FIN.on) return;
   FIN.t += dt;
   /* the lights walk to where the shot wants them rather than snapping,
@@ -12256,6 +12330,7 @@ function finaleEnd() {
      run -- and a shop that stays on its side because somebody watched
      the ending once is a bug, not an ending */
   wreckClear();
+  fxClear();
   G.dawn = true;
   G.filmLux = 1;
   returnersClear();
@@ -12987,6 +13062,268 @@ function tapeTrigger(key) {
    arrangement of doors in this shop that stops the four of them
    talking to her, because nothing they ever say to her is a threat
    and a shut door is not an argument. */
+/* =========================================================
+   FIRE, SPARKS, SMOKE, AND THE THING THAT IS NOT A LINE.
+
+   The detonation at the end of this chapter was four sine waves, a
+   lowpassed noise burst and a camera shake. No picture. The single
+   loudest event in the game and the screen did not change.
+
+   So: an effects layer. Everything here is a camera-facing quad with
+   additive blending and no depth write, which is the cheapest thing
+   that reads as light in a dark room -- twenty of them cost less than
+   one more toy, and they are self-lit, so nothing needs a light added
+   to the fixed rig to make them work.
+
+   Four kinds, and they behave differently on purpose:
+
+     flame   sits still, flickers fast and small, lives until it is
+             told to stop. It is a thing that is burning.
+     ember   drifts UP and sideways and dies. It is what comes off a
+             thing that is burning.
+     spark   is thrown hard in one direction, falls under gravity, and
+             is gone in half a second. It is an impact.
+     smoke   is dark rather than bright, rises slowly, grows, and does
+             not add light -- it takes it away.
+
+   They live in the room's `live` branch, which is the only part of a
+   room allowed to move, so they inherit its address and are cleared
+   with everything else at the end of the film.
+   ========================================================= */
+const FX = { list: [], on: false, fires: 0 };
+const FX_GEO = new T.PlaneGeometry(1, 1);
+
+/* A SQUARE OF LIGHT IS A SQUARE, NOT A FLAME.
+
+   The first cut of this was untextured additive planes, and it looked
+   exactly like what it was: pale rectangles with hard corners sitting
+   in the middle of the arcade. Nothing about motion or colour rescues
+   a hard edge -- the eye finds the corner immediately and the whole
+   effect reads as a bug in the renderer.
+
+   Everything here gets a radial falloff instead, drawn once into a
+   canvas and shared by every quad in the layer. The flame texture is
+   hot in the middle and gone by the rim with a bit of bite in the
+   midtones; the smoke one is broad and soft and never reaches full
+   anywhere, because smoke has no edge at all. One texture each, so
+   two hundred quads cost two uploads. */
+function fxTex(stops, size) {
+  const c = document.createElement("canvas");
+  c.width = c.height = size || 64;
+  const x = c.getContext("2d");
+  const g = x.createRadialGradient(c.width / 2, c.height / 2, 0,
+                                   c.width / 2, c.height / 2, c.width / 2);
+  stops.forEach((st) => g.addColorStop(st[0], st[1]));
+  x.fillStyle = g;
+  x.fillRect(0, 0, c.width, c.height);
+  const t = new T.CanvasTexture(c);
+  t.colorSpace = T.SRGBColorSpace;
+  return t;
+}
+let FX_HOT = null, FX_SOFT = null;
+function fxTexes() {
+  if (!FX_HOT) {
+    FX_HOT = fxTex([[0, "rgba(255,255,255,1)"], [0.22, "rgba(255,240,200,0.92)"],
+                    [0.5, "rgba(255,150,60,0.42)"], [0.78, "rgba(200,60,20,0.12)"],
+                    [1, "rgba(0,0,0,0)"]]);
+    FX_SOFT = fxTex([[0, "rgba(255,255,255,0.85)"], [0.45, "rgba(255,255,255,0.4)"],
+                     [1, "rgba(255,255,255,0)"]], 48);
+  }
+}
+
+function fxMat(hex, dark) {
+  fxTexes();
+  return new T.MeshBasicMaterial({
+    color: new T.Color(hex),
+    map: dark ? FX_SOFT : FX_HOT,
+    transparent: true, opacity: 1, depthWrite: false,
+    blending: dark ? T.NormalBlending : T.AdditiveBlending,
+    fog: false, side: T.DoubleSide,
+  });
+}
+
+function fxAdd(roomId, kind, x, y, z, o) {
+  const rec = rooms[roomId];
+  if (!rec) return null;
+  o = o || {};
+  const m = fxMat(o.colour || "#ffb356", kind === "smoke");
+  const q = new T.Mesh(FX_GEO, m);
+  q.position.set(x, y, z);
+  q.scale.setScalar(o.size || 0.3);
+  rec.live.add(q);
+  const it = {
+    kind: kind, mesh: q, mat: m, room: roomId,
+    t: 0, life: o.life || 1, size: o.size || 0.3,
+    vx: o.vx || 0, vy: o.vy || 0, vz: o.vz || 0,
+    seed: Math.random() * 9,
+    hold: !!o.hold,
+  };
+  FX.list.push(it);
+  FX.on = true;
+  return it;
+}
+
+/* a thing that is burning: a knot of flames, a few embers off the top,
+   and smoke above it. `hold` means it burns until it is put out. */
+function fxFire(roomId, x, y, z, n, o) {
+  o = o || {};
+  const rnd = Math.random;
+  for (let i = 0; i < (n || 5); i++) {
+    fxAdd(roomId, "flame",
+      x + range(rnd, -0.22, 0.22), y + range(rnd, 0, 0.26), z + range(rnd, -0.22, 0.22),
+      { colour: i % 3 === 0 ? "#ffe9a8" : (i % 3 === 1 ? "#ff9a3c" : "#ff5a22"),
+        size: range(rnd, 0.22, 0.52) * (o.size || 1),
+        life: 99, hold: true });
+  }
+  FX.fires++;
+  return FX.fires;
+}
+
+function fxSparks(roomId, x, y, z, n, o) {
+  o = o || {};
+  const rnd = Math.random;
+  for (let i = 0; i < (n || 12); i++) {
+    fxAdd(roomId, "spark", x, y, z, {
+      colour: i % 4 === 0 ? "#fff3cf" : "#ffb04a",
+      size: range(rnd, 0.03, 0.075) * (o.size || 1),
+      life: range(rnd, 0.28, 0.62),
+      vx: range(rnd, -2.6, 2.6), vy: range(rnd, 0.8, 3.4), vz: range(rnd, -2.6, 2.6),
+    });
+  }
+}
+
+function fxSmoke(roomId, x, y, z, n, o) {
+  o = o || {};
+  const rnd = Math.random;
+  for (let i = 0; i < (n || 4); i++) {
+    fxAdd(roomId, "smoke",
+      x + range(rnd, -0.3, 0.3), y + range(rnd, 0, 0.3), z + range(rnd, -0.3, 0.3), {
+      colour: "#14100e",
+      size: range(rnd, 0.5, 1.1) * (o.size || 1),
+      life: range(rnd, 2.6, 5.0),
+      vx: range(rnd, -0.12, 0.12), vy: range(rnd, 0.18, 0.42), vz: range(rnd, -0.12, 0.12),
+    });
+  }
+}
+
+/* everything in the room goes up at once */
+function fxBlast(roomId, x, y, z) {
+  fxSparks(roomId, x, y, z, 36, { size: 1.5 });
+  fxAdd(roomId, "flame", x, y, z, { colour: "#fff6d8", size: 3.2, life: 0.42 });
+  fxAdd(roomId, "flame", x, y, z, { colour: "#ff8a2e", size: 5.0, life: 0.7 });
+  fxSmoke(roomId, x, y + 0.4, z, 10, { size: 1.8 });
+}
+
+const _fxUp = new T.Vector3(0, 1, 0);
+function fxStep(dt, t) {
+  if (!FX.on) return;
+  let live = 0;
+  for (let i = FX.list.length - 1; i >= 0; i--) {
+    const it = FX.list[i];
+    it.t += dt;
+    if (!it.hold && it.t >= it.life) {
+      it.mesh.parent && it.mesh.parent.remove(it.mesh);
+      it.mat.dispose();
+      FX.list.splice(i, 1);
+      continue;
+    }
+    live++;
+    /* every one of them faces the lens, which is what makes a flat
+       square read as a flame rather than as a flat square */
+    if (view) it.mesh.quaternion.copy(view.quaternion);
+    const k = it.hold ? 0 : it.t / it.life;
+    if (it.kind === "flame") {
+      /* fast, uneven, and never the same two frames running */
+      const f = 0.72 + Math.sin(t * 21 + it.seed * 7) * 0.18 +
+                       Math.sin(t * 37 + it.seed * 3) * 0.10;
+      it.mat.opacity = it.hold ? clamp(f, 0.2, 1) : clamp(f * (1 - k), 0, 1);
+      /* taller than it is wide, and never the same height twice: a
+         round blob of light is a lamp, a tall one that keeps changing
+         its mind is a flame */
+      const sc = it.size * (it.hold ? (0.86 + f * 0.3) : (1 + k * 2.4));
+      it.mesh.scale.set(sc * 0.78, sc * (it.hold ? 1.5 + f * 0.5 : 1.2), sc);
+    } else if (it.kind === "spark") {
+      it.vy -= 7.4 * dt;                       // they fall
+      it.mesh.position.x += it.vx * dt;
+      it.mesh.position.y += it.vy * dt;
+      it.mesh.position.z += it.vz * dt;
+      it.mat.opacity = clamp(1 - k * k, 0, 1);
+    } else if (it.kind === "ember") {
+      it.mesh.position.x += (it.vx + Math.sin(t * 2.1 + it.seed) * 0.22) * dt;
+      it.mesh.position.y += it.vy * dt;
+      it.mesh.position.z += it.vz * dt;
+      it.mat.opacity = clamp((1 - k) * (0.6 + Math.sin(t * 15 + it.seed) * 0.4), 0, 1);
+    } else {                                   // smoke
+      it.mesh.position.x += it.vx * dt;
+      it.mesh.position.y += it.vy * dt;
+      it.mesh.position.z += it.vz * dt;
+      it.mesh.scale.setScalar(it.size * (1 + k * 1.9));
+      it.mat.opacity = clamp(0.5 * Math.sin(Math.PI * Math.min(1, k * 1.15)), 0, 0.6);
+    }
+  }
+  /* a thing that is burning throws embers off the top of it */
+  FX.emT = (FX.emT || 0) - dt;
+  /* THERE IS A BUDGET AND IT IS NOT LARGE.
+
+     endcheck holds the busiest frame of this film under a draw-call
+     ceiling, and an ember every sixth of a second off every flame in
+     the room is eighty new quads a second against a two-second life --
+     a hundred and sixty of them in the air, for one burning cabinet.
+     Three flames are picked per tick and the whole layer is capped, so
+     fire costs about what one more toy costs. */
+  if (FX.emT <= 0 && FX.fires > 0 && FX.list.length < 90) {
+    FX.emT = 0.2;
+    const flames = [];
+    for (let i = 0; i < FX.list.length && flames.length < 3; i++) {
+      const f = FX.list[i];
+      if (f.kind === "flame" && f.hold && Math.random() < 0.5) flames.push(f);
+    }
+    flames.forEach((it) => {
+      fxAdd(it.room, "ember",
+        it.mesh.position.x, it.mesh.position.y + it.size * 0.4, it.mesh.position.z,
+        { colour: "#ffb356", size: range(Math.random, 0.02, 0.055),
+          life: range(Math.random, 0.9, 2.1),
+          vx: range(Math.random, -0.25, 0.25), vy: range(Math.random, 0.5, 1.15),
+          vz: range(Math.random, -0.25, 0.25) });
+    });
+  }
+  FX.on = live > 0;
+}
+
+function fxClear() {
+  FX.list.forEach((it) => {
+    it.mesh.parent && it.mesh.parent.remove(it.mesh);
+    it.mat.dispose();
+  });
+  FX.list.length = 0;
+  FX.on = false; FX.fires = 0; FX.emT = 0;
+}
+
+/* THE WHOLE SCREEN, FOR A TENTH OF A SECOND.
+
+   The blast is the loudest thing in the chapter and the picture did
+   not change for it. This is a flat colour over the film layer that
+   comes up in one frame and falls off over a fifth of a second, which
+   is what a detonation does to a camera and to an eye. */
+function fxFlash(strength, ms, colour) {
+  const el = EL["ns-overlay"];
+  if (!el) return;
+  let f = el.querySelector(".ns-fin-flash");
+  if (!f) {
+    f = document.createElement("div");
+    f.className = "ns-fin-flash";
+    el.appendChild(f);
+  }
+  f.style.background = colour || "#fff4d8";
+  f.style.transition = "none";
+  f.style.opacity = String(clamp(strength === undefined ? 1 : strength, 0, 1));
+  /* next frame, so there is a value to fall from */
+  setTimeout(() => {
+    f.style.transition = "opacity " + (ms || 260) + "ms cubic-bezier(.1,.6,.3,1)";
+    f.style.opacity = "0";
+  }, 16);
+}
+
 /* =========================================================
    WHAT FOUR HUNDRED OF THEM ACTUALLY DO TO A ROOM.
 
@@ -16899,6 +17236,18 @@ const testHooks = {
     kept: Object.keys(foundAll()),
     why: FIND_WHY,
   }),
+  /* fire, sparks and smoke, driven by hand so a picture can be taken */
+  fx: (kind, room, x, y, z, n, size) => {
+    if (kind === "fire") fxFire(room, x, y, z, n, { size: size });
+    else if (kind === "sparks") fxSparks(room, x, y, z, n, { size: size });
+    else if (kind === "smoke") fxSmoke(room, x, y, z, n, { size: size });
+    else if (kind === "blast") fxBlast(room, x, y, z);
+    return FX.list.length;
+  },
+  fxStep: (dt) => { G.t += dt; fxStep(dt, G.t); return FX.list.length; },
+  fxClear: () => { fxClear(); return FX.list.length; },
+  fxCount: () => ({ n: FX.list.length, fires: FX.fires, on: FX.on,
+                    kinds: FX.list.reduce((o, i) => { o[i.kind] = (o[i.kind]||0)+1; return o; }, {}) }),
   /* the shop coming apart, driven by hand so a picture can be taken of
      it before, during and after */
   wreck: (room, n) => wreckArm(room, n),

@@ -8300,6 +8300,17 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-tape.through{ opacity:.72; letter-spacing:.01em; }
 .ns-tape.through i{ filter:blur(.18px); }
 .ns-tape.through .ns-tape-who{ opacity:.55; }
+
+/* THE BLAST, ON THE WHOLE SCREEN.
+   Over the picture and under the letterbox bars and the subtitle,
+   because a detonation blows out the lens rather than the film. It is
+   painted by script -- one frame at full, then a fall -- so there is
+   no keyframe here, only the plane it falls on. */
+.ns-fin-flash{
+  position:absolute; inset:0; z-index:3;
+  background:#fff4d8; opacity:0; pointer-events:none;
+  mix-blend-mode:screen;
+}
 .ns-tape.through::after{
   content:"through the door"; display:block; margin-top:.35em;
   font-size:.62em; letter-spacing:.16em; text-transform:uppercase;
