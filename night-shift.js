@@ -18870,6 +18870,11 @@ const testHooks = {
                                sys: SPEECH.sys ? SPEECH.sys.name : null }; },
   sysSay: (t) => speechSay(t, voxPlan(t), { sys: true }),
   mix: () => { const o = {}; MIX_KEYS.forEach((k) => { o[k] = MIX[k]; }); return o; },
+  /* and a way to put a channel back. The suite turns the sound down
+     early, and voxSpeak is gated on `!muted && MIX.voice > 0.02` -- two
+     separate things -- so un-muting alone left the voice channel at
+     zero and every line fell through to the caption-only path. */
+  setMix: (k, v) => { if (MIX_KEYS.indexOf(k) >= 0) saveMix(k, v); return MIX[k]; },
   /* fire any cue by name, so the level of the loudest thing in the game
      can be measured rather than assumed */
   cue: (name, a, b2) => { if (SFX[name]) SFX[name](a, b2); },

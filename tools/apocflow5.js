@@ -1,50 +1,85 @@
-/* Level 5: up to the gate, through the check, the serum, and inside. */
-const { chromium } = require('playwright-core');
-const clicks = async (p,n) => { for(let i=0;i<n;i++){ await p.evaluate(()=>{const b=document.getElementById('ap-dlg-next'); if(b&&document.getElementById('ap-dlg').getAttribute('aria-hidden')==='false') b.click();}); await p.waitForTimeout(50);
-  /* The chapter is fetched on demand now -- index.html no longer
-     carries apocalypse.js, so `Apocalypse` does not exist until the
-     site has been asked for it. Every suite in this folder was
-     written before that and died on `Apocalypse is not defined`. */
-  await p.evaluate(() => window.loadChapter && window.loadChapter('apoc'));
-  await p.waitForFunction(() => !!window.Apocalypse, null, { timeout: 20000 });} };
+/* LEVEL FIVE: THE SAFE HOUSE AT ESSAOUIRA.
+
+   Hail the gate, sit at the table, tick every line of the intake, take
+   the inoculation, and go in. Then the settling, and the roof.
+
+   The old file teleported to 13,10 and 20,9 for a gate that is at 15,11
+   and a desk that is at 13,15, joined an array of objects with a space
+   and printed "[object Object]" six times, and asserted nothing at all
+   about any of it. */
+const { boot, reporter, driver } = require('./_aplib');
+
 (async () => {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--no-sandbox','--no-proxy-server','--disable-gpu'] });
-  const p = await b.newPage({ viewport: { width: 1180, height: 820 } });
-  p.on('pageerror', e => console.log('PAGEERROR', e.message));
-  await p.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
-  await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded' });
-  await p.waitForTimeout(900);
-  await p.evaluate(() => { showScreen('apoc'); Apocalypse.start(); window.__apEnter(4, true); });
-  await clicks(p, 6);
-  console.log('gates shut:', await p.evaluate(() => window.__apState().doors.join(' ')));
+  const { browser, page, errs } = await boot();
+  const R = reporter(), ok = R.ok, D = driver(page);
+  await D.enter(4);
+  await D.talk(4);
 
-  await p.evaluate(() => { window.__apTeleport(13, 10); window.__apUse(); });
-  await p.waitForTimeout(200);
-  console.log('hail:', await p.evaluate(() => document.getElementById('ap-dlg-text').textContent));
-  await clicks(p, 6);
-  console.log('after hail, step:', await p.evaluate(() => window.__apState().step));
+  let st = await D.state();
+  ok('level five is the safe house', st.level === 'gates', st.level);
+  ok('and the first thing is to be let in', st.step === 'hail', st.step);
+  const gates = st.doors.filter(d => d.kind === 'G');
+  ok('the gates are shut when they arrive',
+     gates.length > 0 && gates.every(d => d.locked && !d.open),
+     gates.length + ' of them');
+  ok('nothing is chasing her any more', st.zombies === 0, st.zombies + '');
 
-  await p.evaluate(() => { window.__apTeleport(20, 9); window.__apUse(); });
-  await p.waitForTimeout(250);
-  console.log('check card:', await p.evaluate(() => !!document.querySelector('.ap-check')));
-  const rows = await p.$$('.ap-check-row');
-  for (const r of rows) await r.click();
-  await p.waitForTimeout(150);
-  console.log('stamped clear:', await p.evaluate(() => { const s=document.querySelector('.ap-check-stamp'); return s && !s.hidden; }));
-  await p.click('.ap-check .ap-note-ok');
-  await p.waitForTimeout(300);
-  console.log('serum card:', await p.evaluate(() => !!document.querySelector('.ap-serum-canvas')));
-  await p.click('.ap-serum .ap-note-ok');
-  await p.waitForTimeout(2600);
-  await p.click('.ap-serum .ap-note-ok');
-  await p.waitForTimeout(300);
-  console.log('gates now:', await p.evaluate(() => window.__apState().doors.join(' ')));
-  await clicks(p, 6);
-  const r = await p.evaluate(() => { window.__apTeleport(32, 10); window.__apPump(0.3, {}); return window.__apState(); });
-  console.log('at X:', r.state);
-  await clicks(p, 6);
-  console.log('end card:', await p.evaluate(() => { const t=document.querySelector('.ap-card-title'); return t && t.textContent; }));
-  console.log('chapter marked done:', await p.evaluate(() => { try { return JSON.parse(localStorage.getItem('fal_chapters_done')||'{}').apoc === true; } catch(e){ return 'n/a'; } }));
-  await b.close();
+  /* the gate */
+  await D.at('G');
+  ok('somebody answers when she hails it', /high-vis|other side|who/i.test(await D.line()),
+     (await D.line()).slice(0, 45));
+  await D.talk(8);
+  await D.pump(2);
+  ok('and they send her to the table', (await D.step()) === 'check', await D.step());
+
+  /* the intake */
+  await D.at('Q');
+  ok('the intake form is on the desk', await D.has('.ap-check'));
+  const rows = await page.evaluate(() => document.querySelectorAll('.ap-check-row').length);
+  ok('and it has lines to tick', rows > 0, rows + ' of them');
+  ok('the clerk will not stamp it half done',
+     await page.evaluate(() => { const b = document.querySelector('.ap-check .ap-note-ok');
+                                 return !!b && b.disabled; }));
+  await D.clickAll('.ap-check-row');
+  ok('every line ticked enables the stamp',
+     await page.evaluate(() => { const b = document.querySelector('.ap-check .ap-note-ok');
+                                 return !!b && !b.disabled; }));
+  await D.click('.ap-check .ap-note-ok');
+
+  /* the inoculation */
+  ok('and the inoculation follows straight on', await D.has('.ap-serum-canvas'));
+  await page.evaluate(() => window.__apSerum());
+  ok('taking it closes the last card',
+     await D.until(() => !document.querySelector('.ap-serum'), 9000));
+  await D.talk(6);
+  await D.pump(3);
+
+  st = await D.state();
+  ok('and the gates open once they are cleared',
+     st.doors.filter(d => d.kind === 'G').some(d => !d.locked),
+     st.doors.filter(d => d.kind === 'G' && !d.locked).length + ' unlocked');
+  ok('which leaves only the way in', st.step === 'exit', st.step);
+
+  /* in */
+  await page.evaluate(() => {
+    const x = window.__apFind('X');
+    window.__apClear();
+    window.__apTeleport(x[0].x, x[0].y);
+    window.__apPump(1 / 60, 40);
+  });
+  await page.waitForTimeout(600);
+  await D.pump(3);
+  st = await D.state();
+  ok('walking in ends the level', st.state !== 'play' || st.level !== 'gates',
+     'state=' + st.state + ' level=' + st.level);
+
+  /* and the two scenes that close the chapter */
+  await D.talk(8);
+  await D.pump(4);
+  st = await D.skipCut();
+  ok('the chapter has somewhere to go after the gates',
+     st.state === 'cine' || st.level !== 'gates' || !!st.cut,
+     'state=' + st.state + ' level=' + st.level);
+
+  await R.done(browser, errs);
 })();

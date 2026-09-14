@@ -1911,6 +1911,28 @@
           sub.connect(sg); sg.connect(f);
           sub.start(at); sub.stop(at + len + 0.2); voices.push(sub);
         }
+        /* THE BLIP.
+
+           `line` hands its callback (freq, time, velocity, duration) --
+           that is the order piano, strings and bell all take, and they
+           are all wrapped in a function that spells it out. `cello`
+           takes (freq, time, duration, velocity): the last two the
+           other way round. Ten places in this score passed `cello` to
+           `line` bare, so the cello was handed the note's DURATION as
+           its velocity -- somewhere between one and three, against the
+           0.03 it was being given -- and its velocity as its length.
+
+           A cello at fifty times its intended level, lasting thirty
+           milliseconds, once a beat. Measured through the game's own
+           chain, the last cue in the chapter peaked at 2.6 against a
+           full scale of 1.0: clipped solid, every beat, for the whole
+           of the longest scene in the game. That is the farting blip,
+           and it was in the radio, the roof and the settling -- the
+           three he named, and the three that pass cello to line.
+
+           One adapter, named, so the next person cannot get it wrong
+           by writing the obvious thing. */
+        function celloLine(f, t2, v, dd) { cello(f, t2, dd, v); }
         /* a music box: a sine and an inharmonic partial, ringing a long
            time, for the places that are too cold for a piano */
         /* a music box: a sine and one inharmonic partial. The partial
@@ -2212,7 +2234,7 @@
                 strings([f], t2, dd + sp * 0.4, v, 1500);
               });
             if (pass >= 1) line(MORN_AT, b, at, sp, 0, (pass === 3 ? 0.034 : 0.022) * d, piano);
-            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.026 * d, cello);
+            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.026 * d, celloLine);
           } },
 
           /* THE FIRE. One piano, close, and something warm underneath.
@@ -2241,7 +2263,7 @@
                   strings([f], t2, dd + sp * 0.5, v, 700);
                 });
             }
-            if (pass % 2 === 1) line(UNDER_AT, b, at, sp, -1, 0.030 * d, cello);
+            if (pass % 2 === 1) line(UNDER_AT, b, at, sp, -1, 0.030 * d, celloLine);
           } },
 
           /* THE VOICE ON THE RADIO.
@@ -2267,7 +2289,7 @@
               line(SIGNAL_AT, b, at, sp, -1, 0.020 * d, function (f, t2, v, dd) {
                 strings([f], t2, dd + sp * 0.6, v, 620);
               });
-            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.022 * d, cello);
+            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.022 * d, celloLine);
             if (b % 16 === 8) tick(at, 0.012 * d);
           } },
 
@@ -2287,7 +2309,7 @@
               line(DUSK_AT, b, at, sp, -1, 0.016 * d, function (f, t2, v, dd) {
                 strings([f], t2, dd + sp * 0.4, v, 900);
               });
-            if (pass === 3) line(UNDER_AT, b, at, sp, -1, 0.024 * d, cello);
+            if (pass === 3) line(UNDER_AT, b, at, sp, -1, 0.024 * d, celloLine);
           } },
 
           /* MAKING CAMP. The quickest thing in the chapter and the
@@ -2326,7 +2348,7 @@
             if (pass >= 1) line(DAWN_AT, b, at, sp, 0, 0.020 * d, function (f, t2, v, dd) {
               piano(f, t2, v, Math.max(3.0, dd * 1.6));
             });
-            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.024 * d, cello);
+            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.024 * d, celloLine);
           } },
 
           /* THE REST OF THE DAY, INSIDE THE WIRE. A lullaby that will
@@ -2344,7 +2366,7 @@
               line(VIGIL_AT, b, at, sp, -1, 0.018 * d, function (f, t2, v, dd) {
                 strings([f], t2, dd + sp * 0.6, v, 700);
               });
-            if (pass === 3) line(UNDER_AT, b, at, sp, -1, 0.020 * d, cello);
+            if (pass === 3) line(UNDER_AT, b, at, sp, -1, 0.020 * d, celloLine);
           } },
 
           /* ---- THE FIVE THAT ARE NOT PLACES BUT SITUATIONS ----
@@ -2430,7 +2452,7 @@
               var c = CH(b * 2);          /* half speed: two bars per bar */
               strings([hz(c[1], 0), hz(c[2], 0)], at, sp * 8.6, 0.020 * d, 900);
             }
-            if (b % 2 === 0) line(TUNE_AT, (b / 2) % 32, at, sp * 2, -1, 0.055 * d, cello);
+            if (b % 2 === 0) line(TUNE_AT, (b / 2) % 32, at, sp * 2, -1, 0.055 * d, celloLine);
             /* and the second time through, one voice above it, so that
                she is not entirely on her own in it */
             if (pass >= 2 && b % 2 === 0)
@@ -2457,7 +2479,7 @@
             });
             /* and once, a long way in, four notes of hers underneath it */
             if ((b % 128) >= 96)
-              line(TUNE_AT, b, at, sp, -1, 0.014 * d, cello);
+              line(TUNE_AT, b, at, sp, -1, 0.014 * d, celloLine);
           } },
 
           /* THE ROOF. All of it: the tune on the piano, the ensemble
@@ -2491,7 +2513,7 @@
               line(WARM_AT, b, at, sp, -1, 0.014 * d, function (f, t2, v, dd) {
                 strings([f], t2, dd + sp * 0.5, v, 900);
               });
-            line(UNDER_AT, b, at, sp, -1, 0.034 * d, cello);
+            line(UNDER_AT, b, at, sp, -1, 0.034 * d, celloLine);
           } },
 
           /* AFTERWARDS. THE ROOF, THE CATS, THE STARS.
@@ -2524,7 +2546,7 @@
               });
             /* and the two of them under it, bowed, so that both are here */
             if (pass >= 1 && b % 2 === 0)
-              line(WARM_AT, (b / 2) % 32, at, sp * 2, -1, 0.028 * d, cello);
+              line(WARM_AT, (b / 2) % 32, at, sp * 2, -1, 0.028 * d, celloLine);
             /* the one place in the chapter that comes to rest */
             if (b % 64 === 56) {
               piano(hz(0, 0), at, 0.050 * d, 7.0);
@@ -2616,7 +2638,32 @@
           var edge = ctx.createBiquadFilter();
           edge.type = "peaking"; edge.frequency.value = 1500;
           edge.Q.value = 0.9; edge.gain.value = -5;
-          bus.connect(roof); roof.connect(edge); edge.connect(tame); tame.connect(musBus);
+          /* WHAT A PHONE CANNOT MOVE, AND WHAT IT CANNOT HOLD.
+
+             Two things at the end of the chain, because a cue should
+             not be able to hurt the speaker however it is written.
+
+             A ceiling, so that no arrangement can ever run the output
+             past full scale again -- which is what the cello bug did,
+             every beat, for the whole of the longest scene in the game.
+
+             It is insurance and nothing else. With that bug fixed the
+             loudest cue in the score peaks at 0.18 and this never
+             engages; measured with it bypassed, every cue is identical.
+             It is here for the next mistake nobody measures, not for
+             this one.
+
+             There is deliberately no high-pass beside it. The bottom
+             end was measured too -- between -52 and -81 dBFS once the
+             cello was right, which is inaudible on anything she will
+             hold -- and filtering it would have thinned a swell that is
+             written three octaves down on purpose, to fix something
+             that was never broken. */
+          var lim = ctx.createDynamicsCompressor();
+          lim.threshold.value = -3; lim.knee.value = 0;
+          lim.ratio.value = 20; lim.attack.value = 0.003; lim.release.value = 0.25;
+          bus.connect(roof); roof.connect(edge); edge.connect(tame);
+          tame.connect(lim); lim.connect(musBus);
           bus.gain.setTargetAtTime(0.9, at, rise);
           /* everything a cue plays goes through this pair, so the whole
              thing rises and falls as one */
@@ -2813,6 +2860,68 @@
         /* Play a cue's beats past it without putting it on the bus: the
            only way to find a branch that never runs until the third time
            round other than sitting through the third time round. */
+        /* RENDER A CUE TO REAL SAMPLES, OFFLINE.
+
+           rehearse proves a cue does not throw; it cannot say what the
+           cue SOUNDS like, because it stacks every beat at the same
+           instant and sends the lot to a dead gain. He can hear a blip
+           in three of these scenes and no test in this repo has ever
+           looked at a waveform. This binds the score's own instruments
+           to an OfflineAudioContext, plays the cue at its real tempo,
+           and hands back the samples -- so a click can be found at the
+           sample it happens on instead of guessed at. */
+        setPiece.render = function (name, seconds, bypassLimit) {
+          if (!PIECES[name] || !window.OfflineAudioContext) return null;
+          var rate = 44100;
+          var off = new OfflineAudioContext(2, Math.ceil(rate * seconds), rate);
+          var keep = { ctx: ctx, dry: dry, wet: wet, vibGain: vibGain, voices: voices };
+          ctx = off;
+          /* the same chain the game plays it through, or the numbers
+             are about a signal nobody hears: the cue bus at 0.9, the
+             lid at 4k, the notch at 1.5k, the shelf over 2.4k, and the
+             master at 0.69 */
+          var busG = off.createGain(); busG.gain.value = 0.9;
+          var roofF = off.createBiquadFilter();
+          roofF.type = "lowpass"; roofF.frequency.value = 4000; roofF.Q.value = 0.5;
+          var edgeF = off.createBiquadFilter();
+          edgeF.type = "peaking"; edgeF.frequency.value = 1500; edgeF.Q.value = 0.9;
+          edgeF.gain.value = -5;
+          var tameF = off.createBiquadFilter();
+          tameF.type = "highshelf"; tameF.frequency.value = 2400; tameF.gain.value = -8;
+          var masterG = off.createGain(); masterG.gain.value = 0.69;
+          var limN = off.createDynamicsCompressor();
+          limN.threshold.value = -3; limN.knee.value = 0;
+          /* A test has to be able to see what the arrangement itself
+             does. With the limiter in the way, the cello bug measured
+             0.82 and looked fine -- the ceiling was holding it down,
+             eight decibels of gain reduction, every beat. The fault was
+             still there and still audible. So the limiter comes out on
+             request, and that is the number worth asserting on. */
+          limN.ratio.value = bypassLimit ? 1 : 20;
+          limN.threshold.value = bypassLimit ? 0 : -3;
+          limN.attack.value = 0.003; limN.release.value = 0.25;
+          busG.connect(roofF); roofF.connect(edgeF); edgeF.connect(tameF);
+          tameF.connect(limN); limN.connect(masterG);
+          masterG.connect(off.destination);
+          var g = busG;
+          dry = g; wet = null;                 /* no convolver: the dry path is the cue */
+          vibGain = off.createGain(); vibGain.gain.value = 0;
+          voices = [];
+          var sp = 60 / PIECES[name].bpm;
+          var beats = Math.ceil(seconds / sp) + 1;
+          var errs = [];
+          for (var i = 0; i < beats; i++) {
+            try { PIECES[name].play(i, i * sp, sp); }
+            catch (e) { if (errs.length < 4) errs.push(i + ": " + (e && e.message)); }
+          }
+          return off.startRendering().then(function (buf) {
+            ctx = keep.ctx; dry = keep.dry; wet = keep.wet;
+            vibGain = keep.vibGain; voices = keep.voices;
+            return { rate: rate, errs: errs,
+                     left: Array.prototype.slice.call(buf.getChannelData(0)),
+                     right: Array.prototype.slice.call(buf.getChannelData(1)) };
+          });
+        };
         setPiece.rehearse = function (name, beats) {
           if (!ac() || !PIECES[name]) return ["no cue " + name];
           var errs = [], sp = 60 / PIECES[name].bpm;
@@ -3019,8 +3128,18 @@
      difference between a texture and a screenful of static: noise at the
      scale of a stain looks like a stain, noise at the scale of a pixel
      looks like a fault. */
+  /* One scratch field, reused. valueNoise is called by fbm and by
+     nothing else, and fbm folds each octave into its own running total
+     before it asks for the next one -- so the octaves never need to
+     exist at the same time. It used to allocate a fresh quarter-megabyte
+     Float32Array per octave, four or five per surface, for every surface
+     in the game: a lot of garbage to make during the one second she is
+     looking at a loading card. */
+  var noiseScratch = null, noiseGrid = null;
   function valueNoise(size, cells, seed) {
-    var g = new Float32Array((cells + 1) * (cells + 1));
+    var gn = (cells + 1) * (cells + 1);
+    if (!noiseGrid || noiseGrid.length < gn) noiseGrid = new Float32Array(gn);
+    var g = noiseGrid;
     for (var j = 0; j <= cells; j++) {
       for (var i = 0; i <= cells; i++) {
         g[j * (cells + 1) + (i % cells)] = hash2(i % cells + seed * 131, j % cells + seed * 977);
@@ -3029,7 +3148,9 @@
     }
     for (var i2 = 0; i2 <= cells; i2++) g[cells * (cells + 1) + i2] = g[i2];
 
-    var out = new Float32Array(size * size);
+    var n = size * size;
+    if (!noiseScratch || noiseScratch.length < n) noiseScratch = new Float32Array(n);
+    var out = noiseScratch;
     var step = cells / size;
     for (var y = 0; y < size; y++) {
       var fy = y * step, y0 = Math.floor(fy), ty = fy - y0;
@@ -3623,12 +3744,37 @@
     }
   };
 
+  /* PAINT EACH SURFACE ONCE.
+
+     tex() and bump() ran the identical painter at the identical size
+     into two separate canvases -- the same work twice, for every
+     surface in the game that has relief on it, which is nearly all of
+     them. Measured on the first level of the chapter: the painters came
+     to about 1.5 seconds of JavaScript, and half of that was the second
+     pass nobody sees.
+
+     And it was not even the same picture twice. Every painter here uses
+     Math.random -- thirty-seven times across the block -- so the colour
+     map got its cracks and stains in one set of places and the height
+     map got them in another. A crack you can see was flat, and the
+     relief stood up where there was nothing painted. The comment on
+     bump() has always said "the same canvas again, read as height";
+     this is the first time that has been true. */
+  var PAINTED = {};
+  function painted(name, size) {
+    var s = size || 256, key = name + "|" + s;
+    if (PAINTED[key]) return PAINTED[key];
+    var cc = canvas2d(s);
+    (PAINT[name] || PAINT.plaster)(cc.x, s);
+    PAINTED[key] = cc.c;
+    return cc.c;
+  }
+
   function tex(name, size, repeat) {
     var key = name + "|" + (repeat || 1);
     if (TEX[key]) return TEX[key];
-    var s = size || 256, cc = canvas2d(s);
-    (PAINT[name] || PAINT.plaster)(cc.x, s);
-    var t = new THREE.CanvasTexture(cc.c);
+    var s = size || 256;
+    var t = new THREE.CanvasTexture(painted(name, s));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     if (repeat) t.repeat.set(repeat, repeat);
     t.anisotropy = 4;
@@ -3642,9 +3788,8 @@
   function bump(name, size, repeat) {
     var key = "B" + name + "|" + (repeat || 1);
     if (TEX[key]) return TEX[key];
-    var s = size || 256, cc = canvas2d(s);
-    (PAINT[name] || PAINT.plaster)(cc.x, s);
-    var t = new THREE.CanvasTexture(cc.c);
+    var s = size || 256;
+    var t = new THREE.CanvasTexture(painted(name, s));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     if (repeat) t.repeat.set(repeat, repeat);
     TEX[key] = t;
@@ -3657,9 +3802,8 @@
   function roughTex(name, size, repeat) {
     var key = "R" + name + "|" + (repeat || 1);
     if (TEX[key]) return TEX[key];
-    var s2 = size || 256, cc = canvas2d(s2);
-    (PAINT[name] || PAINT.plaster)(cc.x, s2);
-    var t = new THREE.CanvasTexture(cc.c);
+    var s2 = size || 256;
+    var t = new THREE.CanvasTexture(painted(name, s2));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     if (repeat) t.repeat.set(repeat, repeat);
     t.anisotropy = 8;
@@ -4378,6 +4522,36 @@
     render: function (scene, camera) {
       if (Stage.composer) Stage.composer.render();
       else Stage.renderer.render(scene, camera);
+    },
+
+    /* WHY A PLAIN compile() WARMED THE WRONG SHADER, AND WHAT THIS DOES
+       ABOUT IT.
+
+       A program in three.js is compiled against the thing it will be
+       drawn INTO, and one of the things in its cache key is that target's
+       colour space. Everything this game draws goes through the composer,
+       so every real frame writes into a linear render target — but
+       `renderer.compile()` called on its own compiles against whatever
+       target happens to be bound, and after a frame that is the canvas,
+       which is sRGB. So the warm-up at the top of every level was
+       faithfully building a whole set of programs the game would never
+       use, and the first time a wall she had not yet walked past came
+       into shot, it was compiled for real, in the middle of a step.
+
+       That is the stutter while walking. The keys say it in one line:
+       `srgb -> srgb-linear`, on the first frame after she moves, on every
+       level with more scenery than fits in one shot.
+
+       Binding a composer buffer first costs nothing and makes the warm-up
+       compile the variant that is actually drawn. */
+    compileInto: function (scene, camera) {
+      if (!Stage.renderer || !Stage.renderer.compile) return;
+      var c = Stage.composer;
+      var rt = c && (c.renderTarget1 || c.writeBuffer || c.readBuffer || null);
+      var prev = Stage.renderer.getRenderTarget();
+      if (rt) Stage.renderer.setRenderTarget(rt);
+      try { Stage.renderer.compile(scene, camera); }
+      finally { Stage.renderer.setRenderTarget(prev); }
     },
 
     /* one knob for how hard this is on the machine it is running on.
@@ -9812,7 +9986,17 @@
     G.add(key); G.add(key.target);
     if (def.dark <= 0.45) {
       key.castShadow = true;
-      key.shadow.mapSize.set(1024, 1024);
+      /* The gates are the one level lit by a sun rather than a moon, and
+         the one where this map is drawn at all. A thousand pixels of it
+         is a second full pass over everything within thirteen metres of
+         her, every frame, on a phone that is already carrying the torch's
+         pass as well -- so a handheld gets a quarter of the pixels, the
+         same trade the torch makes, and the follow step below is worked
+         out from whatever size this is rather than from a number written
+         down beside it. */
+      var keySM = ((window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+                   (navigator.maxTouchPoints || 0) > 1) ? 512 : 1024;
+      key.shadow.mapSize.set(keySM, keySM);
       /* A SHADOW MAP OVER THE WHOLE LEVEL IS A SHADOW MAP OVER NOTHING.
 
          This used to cover ninety metres of ground on a thousand pixels,
@@ -9840,7 +10024,7 @@
          of the level. Which is why the gates had a shadow map and
          almost nothing in it. */
       key.shadow.camera.updateProjectionMatrix();
-      key.userData.follow = span * 2 / 1024;
+      key.userData.follow = span * 2 / keySM;
       key.userData.off = { x: key.position.x - key.target.position.x,
                            y: key.position.y - key.target.position.y,
                            z: key.position.z - key.target.position.z };
@@ -9849,10 +10033,28 @@
 
     /* a pool of point lights, moved to whichever lamps are nearest her.
        Eight is plenty — she can only ever see a handful at once. */
+    /* HOW MANY OF THESE ARE SWITCHED ON NEVER CHANGES.
+
+       They used to be shown and hidden as she walked — eight near a lit
+       junction, none in a dark alley. A shader in three.js is compiled
+       against the NUMBER OF LIGHTS it is drawn under, so every count the
+       pool ever reached was another copy of every material in the level.
+       That was not the stutter (the compile below was), and turning this
+       into a fixed count did not on its own remove a millisecond of it —
+       but it takes the whole chapter from 230 compiled programs to 156,
+       because a wall shared between two levels is now one program in both
+       instead of one per lamp count in each.
+
+       Eight everywhere, rather than however many lamps a level happens to
+       have: a per-level number is constant WITHIN a level and still
+       splits a shared material between levels, which measured worse than
+       leaving it alone. A light with nothing to stand at is still on, it
+       just has no brightness in it — a few instructions a pixel, and the
+       steady frame did not move for it on any of the seven levels. */
     world.pool = [];
     for (var pi = 0; pi < 8; pi++) {
       var pl = new THREE.PointLight(0xffffff, 0, 12, 1.8);
-      pl.visible = false;
+      pl.visible = true;
       G.add(pl);
       world.pool.push(pl);
     }
@@ -10100,12 +10302,44 @@
 
     var spot = new THREE.SpotLight(0xfff0d0, 46, 28, 0.72, 0.86, 1.1);
     spot.castShadow = true;
-    spot.shadow.mapSize.set(1024, 1024);
+    /* THE MOST EXPENSIVE THING IN THE FRAME, AND THE ONLY ONE THAT GETS
+       WORSE WHEN SHE WALKS.
+
+       The torch is a spotlight she carries, so the whole scene is drawn a
+       second time every frame from where she is standing. Standing still
+       facing a wall, almost nothing is inside the beam's frustum and that
+       second pass is nearly free. Walk, and especially TURN, and the beam
+       sweeps across the room — every wall, every car, every railing enters
+       its frustum at once and the second pass suddenly costs more than the
+       first. That is the stall that comes with the stick and goes a moment
+       after you let go of it.
+
+       A tablet or a phone gets a quarter of the shadow map, a shorter
+       throw and a tighter blur. It is the same picture: the beam still
+       carves silhouettes, they are simply not sampled nine times each on a
+       device that has to do it sixty times a second on battery. */
+    /* WHAT A TOUCH DEVICE IS, and what it is not: a coarse pointer. NOT a
+       small window — a desktop browser resized down is still a desktop,
+       and judging by screen size handed every windowed machine the
+       cut-down shadow it did not need. */
+    var handheld = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+                   (navigator.maxTouchPoints || 0) > 1;
+    /* The two levers that actually do anything here. `shadow.camera.far`
+       is NOT one of them — three.js derives a spotlight's shadow far plane
+       from the light's own `distance`, which this torch animates every
+       frame, so anything set here is overwritten before the first shadow
+       is drawn. Setting it read as a throw limit and was worth nothing.
+
+       The map is a quarter of the pixels to fill. The radius is the blur:
+       three is a seven-by-seven tap per shadowed fragment, one is
+       three-by-three — a fifth of the sampling, across every lit surface
+       in the beam. */
+    var sm = handheld ? 512 : 1024;
+    spot.shadow.mapSize.set(sm, sm);
     spot.shadow.camera.near = 0.5;
-    spot.shadow.camera.far = 26;
     spot.shadow.bias = -0.0011;
     spot.shadow.normalBias = 0.028;
-    spot.shadow.radius = 3;
+    spot.shadow.radius = handheld ? 1 : 3;
     /* where the lens ends up once she is holding it: forward of her
        chest and a little to her right, not level with her eyes */
     spot.position.set(0.26, 1.20, -0.11);
@@ -10262,8 +10496,26 @@
      in the left of the picture and it appears there, and how
      far it is pushed is how fast she walks.
      ========================================================= */
-  var STICK = { on: false, id: null, ox: 0, oy: 0, x: 0, y: 0, r: 54 };
+  var STICK = { on: false, id: null, ox: 0, oy: 0, x: 0, y: 0, r: 54,
+                /* THE THUMB REPORTS FASTER THAN THE GAME DRAWS.
+
+                   A phone samples a moving touch at 120Hz and some at 240,
+                   and every one of those used to run the whole stick
+                   update: the maths, the four direction flags, AND a write
+                   to the knob's transform, which invalidates style and
+                   forces the browser to recompute layout. Four of those
+                   per drawn frame, on top of a 3D frame that is already
+                   the whole budget, and the main thread never catches up
+                   — so it stalls while the thumb is moving and unsticks a
+                   moment after it stops, which is exactly what it felt
+                   like.
+
+                   The handler now only writes down WHERE the thumb is.
+                   The work happens once per frame, from the game loop. */
+                pending: null };
   var touchUI = false;
+  /* set by bindStick; drained once a frame by tick() */
+  var stickFrame = null;
 
   /* the controls belong to whoever last touched something: a thumb puts
      them on screen, a key takes them off again */
@@ -10330,6 +10582,13 @@
       STICK.ox = cx; STICK.oy = cy;
       zone.classList.add("live");
     }
+    /* called once a frame by the game loop: whatever the thumb last said */
+    stickFrame = function () {
+      if (!STICK.on || !STICK.pending) return;
+      var p = STICK.pending;
+      STICK.pending = null;
+      aim(p.x, p.y);
+    };
     function aim(cx, cy) {
       var dx = cx - STICK.ox, dy = cy - STICK.oy;
       var d = Math.hypot(dx, dy);
@@ -10414,7 +10673,8 @@
         var t = ts[i];
         var id = t.identifier == null ? "mouse" : t.identifier;
         if (id !== STICK.id) continue;
-        aim(t.clientX, t.clientY);
+        /* remembered, not acted on — see STICK.pending */
+        STICK.pending = { x: t.clientX, y: t.clientY };
         e.preventDefault();
         return;
       }
@@ -10777,12 +11037,16 @@
     G.grab = null;
     G.cine = null;
 
+    /* before anything is compiled or warmed, so what gets warmed is what
+       will actually be drawn */
+    applyTorchShadow();
+
     Stage.attach(built.scene, Stage.camera);
     /* Compile every program this scene needs before the first frame is
        asked for. Otherwise the first second of a level is a series of
        long frames as each new material reaches the card, which is exactly
        where a player notices stutter. */
-    try { Stage.renderer.compile(built.scene, Stage.camera); } catch (e) {}
+    try { Stage.compileInto(built.scene, Stage.camera); } catch (e) {}
     Stage.grade({
       gradeCol: (def.grade[0] << 16) | (def.grade[1] << 8) | def.grade[2],
       gradeAmt: def.grade[3],
@@ -10805,6 +11069,139 @@
     Audio_.score(CUE_LEVEL[def.id] || "dread");
     setStep();
     setHud();
+
+    /* ---- PAY FOR THE SHADERS HERE, WHERE THE SCREEN IS BLACK ----
+
+       This is the freeze. A material's shader is not compiled when the
+       material is made, it is compiled the first time something is drawn
+       with it -- so the cost arrived in the middle of play, in two
+       instalments. Measured per level, driving the frames by hand:
+
+         level      first frame   steady   worst while walking   programs
+         home           271ms      2.7ms         199ms           43 -> 46
+         streets      12407ms      3.3ms         349ms           91 -> 97
+         hospital     12005ms      3.0ms           5ms          100 -> 100
+         gates        12290ms      5.2ms         314ms          145 -> 149
+         roadside     12280ms      5.1ms           4ms          149 -> 149
+
+       Every stall lines up with the program count going up, and every
+       level where it does not go up walks at four milliseconds. The first
+       frame of a level is a burst of them; the rest turn up as she walks
+       and something is drawn for the first time, which is the stutter she
+       was feeling. (The absolute figures are this container compiling
+       GLSL on the processor -- a real phone is far quicker -- but what
+       compiles, and when, is the same everywhere.)
+
+       renderer.compile walks the scene and builds every program it will
+       need, up front. It is the same total work; the difference is that
+       it happens now, while the level is still faded to black and nobody
+       is waiting on a step, rather than under her thumb. */
+    /* TWO JOBS, TWO GUARDS. These were inside one try, so anything the
+       compile threw on the way -- and the two biggest levels threw --
+       skipped the frame below it as well, which is the half that actually
+       matters. Streets and the gates kept their ten-second first frame
+       for exactly that reason while the other five dropped to single
+       milliseconds. A guard that can swallow the thing it is not
+       guarding is worse than none. */
+    try {
+      if (Stage.renderer.compile) {
+        /* EVERYTHING, INCLUDING WHAT IS NOT SHOWING YET.
+
+           compile() only reaches what is visible, and the levels
+           deliberately build every body they will ever need up front and
+           leave them hidden -- makeZ hands out a rig that is already
+           there and sets visible = true. So the bodies were exactly the
+           materials it skipped, and they compiled instead at the moment
+           one first stepped into view, which is the stutter while
+           walking: measured on the streets, five new STANDARD programs
+           appearing over ten paces.
+
+           Everything is shown for the length of the compile and put back
+           the way it was straight after. Nothing is rendered in between,
+           so nothing can be seen; the only difference is that the shaders
+           exist before she needs them. */
+        var hidden = [];
+        built.scene.traverse(function (o) {
+          if (!o.visible) { hidden.push(o); o.visible = true; }
+        });
+        try {
+          Stage.compileInto(built.scene, Stage.camera);
+
+          /* ---- AND THE PICTURES, WHICH ARE THE OTHER HALF ----
+
+             Compiling shaders did not touch the first frame: measured, it
+             was still five to nine seconds with the program count FLAT,
+             so that half was never shaders. It is texture upload. Nothing
+             here samples an image file -- every surface is painted into a
+             canvas once and cached by name in TEX -- but a painted canvas
+             still has to be handed to the card, and that happens the
+             first time it is sampled, which is the first frame of the
+             level. The count climbs 19, 41, 50, 64, 90, 103, 116 across
+             the seven, because each place introduces its own.
+
+             They are not disposed between levels and should not be: the
+             cache is the point, and a second visit is meant to be free.
+             What they should not do is upload while she is looking, so
+             every map on every material in the scene is handed over here.
+             initTexture does exactly that and nothing else -- no draw, no
+             state change -- so it is the upload and none of the rest of a
+             frame. */
+          if (Stage.renderer.initTexture) {
+            var seen = [];
+            var MAPS = ["map", "normalMap", "bumpMap", "roughnessMap", "metalnessMap",
+                        "aoMap", "emissiveMap", "alphaMap", "lightMap", "displacementMap",
+                        "specularMap", "envMap"];
+            built.scene.traverse(function (o) {
+              var mats = o.material;
+              if (!mats) return;
+              if (!Array.isArray(mats)) mats = [mats];
+              for (var mi = 0; mi < mats.length; mi++) {
+                var m = mats[mi];
+                if (!m) continue;
+                for (var ki = 0; ki < MAPS.length; ki++) {
+                  var t = m[MAPS[ki]];
+                  if (t && t.isTexture && seen.indexOf(t) < 0) {
+                    seen.push(t);
+                    try { Stage.renderer.initTexture(t); } catch (e) {}
+                  }
+                }
+              }
+            });
+          }
+        } finally {
+          for (var hi = 0; hi < hidden.length; hi++) hidden[hi].visible = false;
+        }
+      }
+
+    } catch (e) {}
+
+    try {
+      /* ---- AND ONE WHOLE FRAME, WHICH IS THE REST OF IT ----
+
+         Compiling the shaders and handing over the textures both left the
+         first frame where it was, and the bisect says why: with shadows
+         off it drops from 18.4 seconds to 9.8, and at the bottom of the
+         quality ladder to 0.95. So the bulk of it is the shadow maps
+         being rendered for the first time and the post-processing chain
+         allocating its targets -- per level, because the lights are new
+         every level and their depth maps are disposed with the old scene.
+         Neither is something compile() or initTexture() can do; the only
+         thing that does them is a frame.
+
+         So a frame is drawn here. The grade above has already been set to
+         G.fade, which is zero on the way into a level, so what is drawn is
+         black -- she sees the fade she was going to see anyway, and the
+         once-per-level stall happens behind it instead of on her first
+         step. It is the same work either way. The difference is entirely
+         where it lands. */
+      Stage.render(built.scene, Stage.camera);
+      window.__apWarmErr = null;
+    } catch (e) {
+      /* kept, not swallowed: a warm frame that silently fails looks
+         exactly like one that worked, and that cost two wrong diagnoses */
+      window.__apWarmErr = String(e && e.message ? e.message : e).slice(0, 200);
+    }
+
     return G;
   }
 
@@ -11321,8 +11718,10 @@
     live.sort(function (a, b) { return a.d - b.d; });
     for (var k = 0; k < w.pool.length; k++) {
       var pl = w.pool[k], L2 = live[k];
-      if (!L2 || L2.d > 34 * 34) { pl.visible = false; continue; }
-      pl.visible = true;
+      /* `visible` is never touched here — see the pool above. A light
+         with nothing to stand at is turned down to nothing instead, which
+         is the same picture and no recompile. */
+      if (!L2 || L2.d > 34 * 34) { pl.intensity = 0; continue; }
       pl.position.set(L2.x, L2.y, L2.z);
       pl.color.setHex(L2.colour);
       pl.distance = L2.range;
@@ -11379,11 +11778,85 @@
     o.style.pointerEvents = "";
     o.appendChild(node);
     o.setAttribute("aria-hidden", "false");
+    fitOverlay();
     if (G) G.state = "overlay";
+  }
+
+  /* ---- MAKE THE CARD FIT THE PICTURE ----
+
+     Every card in this chapter is a column laid out from its own width:
+     a drawn canvas at some fixed proportion, a line or two of type under
+     it, and a button. Its width is a share of the stage capped at a
+     pixel ceiling -- but the type inside it is a share of the stage as
+     well, and does NOT stop at that ceiling. So on a wide screen the box
+     stops growing and the words in it keep going, and the hint under the
+     wire board wraps six times and pushes "step back" clean off the
+     bottom of the picture. Measured: the board overflowed on every shape
+     tested -- 35px on a laptop, 42 on an iPad sideways, 45 on a phone
+     upright, 66 on one sideways -- and with it went the only way out of
+     a puzzle she is asked to solve twice. The television, the fridge,
+     the radio and the note each did the same on at least one shape.
+
+     Retuning ten cards by hand, in cqw and cqh, for five shapes, is how
+     that fault was arrived at in the first place. So instead the card is
+     measured against the stage once it is laid out, and if it is over,
+     the whole thing is scaled down to fit -- which keeps every
+     proportion exactly as it was drawn and cannot be got wrong by a
+     shape nobody thought of. A card that already fits is not touched.
+
+     Scaling is safe for the things you drag: a transform changes what
+     getBoundingClientRect reports, and the wire board maps a pointer
+     through that rect, so the cores still follow the finger. */
+  var fitObs = null;
+  function fitOverlay() {
+    var o = $("ap-overlay");
+    var card = o && o.firstElementChild;
+    var stage = $("ap-stage");
+    if (fitObs) { try { fitObs.disconnect(); } catch (e) {} fitObs = null; }
+    if (!card || !stage) return;
+
+    function measure() {
+      if (!card.isConnected) return;
+      var s = stage.getBoundingClientRect();
+      var box = card.getBoundingClientRect();
+      var st = getComputedStyle(card);
+      /* A card that scrolls is allowed to be taller than the stage --
+         that is what scrolling is for, and the intake sheet at the gates
+         has four rows and a stamp that will never fit a phone held
+         upright. A card that does NOT scroll and is over its box is
+         simply spilling its buttons into the dark, and the rect would
+         report it as fitting, so the scroll extent is what is measured. */
+      var scrolls = /auto|scroll/.test(st.overflowY) || /auto|scroll/.test(st.overflow);
+      var w = scrolls ? box.width : Math.max(box.width, card.scrollWidth);
+      var h = scrolls ? box.height : Math.max(box.height, card.scrollHeight);
+      if (!h || !w || !s.height) return;
+      /* the transform is already on it from the last pass, so the rect
+         is of the scaled card: undo that before comparing */
+      var was = card.__fitK || 1;
+      w /= was; h /= was;
+      var k = Math.min(1, (s.height - 8) / h, (s.width - 8) / w);
+      card.__fitK = k < 0.995 ? k : 1;
+      card.style.transformOrigin = "center center";
+      card.style.transform = k < 0.995 ? "scale(" + k.toFixed(4) + ")" : "";
+    }
+
+    card.__fitK = 1;
+    card.style.transform = "";
+    requestAnimationFrame(measure);
+    /* the drawn plates size themselves after their first paint, and the
+       television's picture arrives later still, so one measurement on
+       the frame it opened is not enough */
+    setTimeout(measure, 120);
+    setTimeout(measure, 420);
+    if (window.ResizeObserver) {
+      fitObs = new ResizeObserver(function () { measure(); });
+      try { fitObs.observe(card); } catch (e) {}
+    }
   }
 
   function closeOverlay() {
     var o = $("ap-overlay");
+    if (fitObs) { try { fitObs.disconnect(); } catch (e) {} fitObs = null; }
     if (!o) return;
     o.setAttribute("aria-hidden", "true");
     o.innerHTML = "";
@@ -11395,6 +11868,7 @@
     o.style.pointerEvents = "";
     if (G) {
       if (G.__overlayCleanup) { try { G.__overlayCleanup(); } catch (e) {} G.__overlayCleanup = null; }
+
       G.__panel = null; G.__keypad = null; G.__check = null; G.__serum = null; G.__tv = null;
     }
   }
@@ -12551,6 +13025,18 @@
     };
     G.__panel = {
       canvas: cv,
+      /* what the harness needs to aim a real pointer at this board: the
+         canvas it is drawn in, where each core's stripped end sits, and
+         which terminal each one belongs in */
+      probe: function () {
+        var wires = [], socks = [];
+        for (var i = 0; i < 4; i++) {
+          wires.push({ key: i, ex: WX, ey: wireY(i) });
+          socks.push({ key: order[i], x: SX, y: sockY(i) });
+        }
+        return { w: cv.width, h: cv.height, wires: wires, sockets: socks,
+                 done: done.slice(), solved: done.every(Boolean) };
+      },
       tick: function (dt) { if (sparkT > 0) sparkT -= dt; draw(); },
       solve: function () {
         done = [true, true, true, true];
@@ -12827,16 +13313,23 @@
   /* ---- pause ---- */
   function togglePause() {
     if (!G) return;
-    if (G.state === "paused") { closeOverlay(); G.state = G.__wasState || "play"; return; }
-    if (G.state === "overlay" || G.state === "cine") return;
+    if (G.state === "paused") { closeOverlay(); G.__cinePaused = false;
+                                G.state = G.__wasState || "play"; return; }
+    /* "cine" is allowed now: the button is on screen through the cuts,
+       and it has to do something when it is pressed. __wasState carries
+       the cut back when the card closes, and tick leaves G.cine.t alone
+       while the card is up, so the film resumes where it stopped. */
+    if (G.state === "overlay") return;
     G.__wasState = G.state;
+    G.__cinePaused = (G.state === "cine");
     G.state = "paused";
     openOverlay(card("PAUSED", G.def ? G.def.name : "", [
       ["MOVE", "arrows or WASD"],
       ["CREEP", "hold shift — slower, almost silent"],
       ["USE", "E or space"],
       ["THE DARK", "you only see as far as your torch"]
-    ], "BACK TO IT", function () { closeOverlay(); G.state = G.__wasState || "play"; },
+    ], "BACK TO IT", function () { closeOverlay(); G.__cinePaused = false;
+                                   G.state = G.__wasState || "play"; },
        "LEAVE THE CHAPTER", function () {
          closeOverlay();
          if (window.leaveApocalypse) window.leaveApocalypse();
@@ -12846,6 +13339,7 @@
          closeOverlay();
          showControls(function () {
            closeOverlay();
+           G.__cinePaused = false;
            G.state = G.__wasState || "play";
            togglePause();
          });
@@ -13775,7 +14269,7 @@
        screen brings them back */
     setTouchUI(false);
     Stage.attach(c.scene, c.camera);
-    try { Stage.renderer.compile(c.scene, c.camera); } catch (e) {}
+    try { Stage.compileInto(c.scene, c.camera); } catch (e) {}
     Stage.grade(c.grade || {});
     /* ---- come up from black ----
        Compiling the programs a new scene needs is only half of what a cut
@@ -13824,6 +14318,7 @@
   function endCine(then) {
     if (G.cine) disposeScene(G.cine.scene);
     G.cine = null;
+    G.__cinePaused = false;
     capText = "";
     var hud = $("ap-hud");
     if (hud) hud.classList.remove("gone");
@@ -15626,6 +16121,17 @@
       function () { if (used) return; used = true; levelCard(0); }));
   }
 
+  /* two frames, because one only guarantees the browser has been ASKED to
+     draw; the second guarantees the first one went out */
+  function afterPaint(fn) {
+    requestAnimationFrame(function () { requestAnimationFrame(fn); });
+  }
+  /* the card, with its button replaced by the reason it is still here */
+  function loadingCard() {
+    var b = document.querySelector("#ap-overlay .ap-card-go");
+    if (b) { b.textContent = "LOADING\u2026"; b.disabled = true; }
+  }
+
   function levelCard(i) {
     var def = LEVELS[i];
     G = G || {};
@@ -15634,9 +16140,26 @@
     openOverlay(card(def.card, def.blurb, null, "GO", function () {
       if (used) return;
       used = true;
-      closeOverlay();
-      enterLevel(def);
-      G.levelIndex = i;
+      /* BUILDING A LEVEL TAKES A SECOND AND A HALF, AND IT USED TO TAKE IT
+         WITH NOTHING ON THE SCREEN.
+
+         The card closed and the build ran in the same breath, inside the
+         button's own click handler — so the browser never got to draw the
+         frame in between. The press did nothing, the picture sat there,
+         and a second and a half later the level appeared. That is not a
+         slow build, it is a frozen one, and they feel completely
+         different.
+
+         The card stays up and says it is loading, TWO frames are allowed
+         through so that actually reaches the glass, and only then does the
+         build run. The wait is the same length and no longer looks like a
+         crash. */
+      loadingCard();
+      afterPaint(function () {
+        closeOverlay();
+        enterLevel(def);
+        G.levelIndex = i;
+      });
     }));
   }
 
@@ -16052,6 +16575,8 @@
 
   function tick(dt) {
     if (!G) return;
+    /* the thumb, once — see STICK.pending */
+    if (stickFrame) stickFrame();
     G.time += dt;
 
     /* the board over reception, read once, a beat after the card clears —
@@ -16064,18 +16589,33 @@
       return;
     }
 
-    /* the cut, if there is one, runs whatever the game's state is */
+    /* the cut, if there is one, runs whatever the game's state is --
+       except when she has paused it. The pause button is on screen
+       through the cuts now, and a pause that let the film carry on
+       behind the card would not be a pause. */
     if (G.cine) {
-      G.cine.t += dt;
-      /* Nobody should have to sit through the drive twice. After a couple
-         of seconds — long enough that the press that started it cannot
-         end it — USE runs the cut to its end. The roof has no end to run
-         to; there the same key turns the page of the conversation. */
-      if (usePressed && isFinite(G.cine.duration) && G.cine.t > 2.0) {
-        usePressed = false;
-        G.cine.t = G.cine.duration;
+      /* Only a real pause freezes it. This first tested G.state for
+         "overlay", which was too blunt by half: a cut can legitimately
+         have an overlay over it -- a level card, a note -- and that
+         froze the film for ever, because nothing was left to advance
+         it. One explicit flag, set only by the pause card. */
+      if (G.__cinePaused) {
         if (G.cine.update) G.cine.update(0, G.cine.t);
+        Stage.grade({ time: G.time });
+        return;
       }
+      G.cine.t += dt;
+      /* THE CUTS CANNOT BE SKIPPED.
+
+         USE used to run a finite cut straight to its end after two
+         seconds — the drive, the ride, every scene of the chapter that
+         is not a room. He does not want them skippable: they are the
+         film, and a key pressed by somebody who does not know what it
+         does should not be able to throw one away. So the press is
+         swallowed here and nothing is jumped. The roof is unaffected;
+         it has no end to run to, and there USE has always meant turn
+         the page of the conversation rather than leave it. */
+      if (usePressed && isFinite(G.cine.duration)) usePressed = false;
       if (usePressed && !isFinite(G.cine.duration)) usePressed = false;
       if (G.cine.update) G.cine.update(dt, G.cine.t);
       /* the sky is not a painting: the cloud bands crawl */
@@ -16257,7 +16797,56 @@
       var drop = over > 2.4 ? 3 : over > 1.7 ? 2 : 1;
       perfStep(Math.min(RUNGS.length - 1, Stage.rung + drop), drop > 1 ? 3.0 : 4.5);
     } else if (med < 0.0140 && p90 < 0.0190 && Stage.rung > 0) {
-      perfStep(Stage.rung - 1, 7.0);  /* slower to climb than to fall */
+      /* CLIMBING IS NOT FREE, AND THAT IS THE WHOLE PROBLEM.
+
+         Every rung change reallocates the canvas and the composer's render
+         targets, which is a visible hitch in itself. A machine sitting near
+         the boundary — which is exactly what an iPad does while she walks
+         and is fine while she stands — could drop, wait, climb, drop again,
+         and hitch every few seconds FOR AS LONG AS SHE KEPT WALKING, with
+         the ladder causing the stutter it was trying to cure.
+
+         So it climbs only from a clearly comfortable place, and only after
+         two good windows in a row rather than one. Falling is unchanged:
+         a machine in trouble should still get help immediately. */
+      if (med < 0.0125 && p90 < 0.0165) {
+        perfGood++;
+        if (perfGood >= 2) { perfGood = 0; perfStep(Stage.rung - 1, 12.0); }
+      } else perfGood = 0;
+    } else perfGood = 0;
+  }
+
+  var perfGood = 0;
+
+  /* ---- the torch's own shadow pass ----
+     Her torch casts, which means the whole scene is drawn a second time
+     every frame from where she is standing. On a machine that is already
+     dropping rungs that is the most expensive thing left, and the one
+     nobody misses in the dark: below the halfway point of the ladder the
+     beam still lights the room, it just stops carving silhouettes out of
+     it. Cheap to turn on again when the frames come back.
+
+     THIS USED TO LIVE INSIDE perfStep, WHICH MEANT IT ONLY EVER RAN WHEN
+     THE LADDER MOVED. A phone starts two rungs down on purpose -- the
+     ladder has already decided this machine is small -- and then builds
+     every level's torch with `castShadow = true` anyway, because no rung
+     had changed since. So the rule said no shadow and the frame drew one,
+     from the moment she arrived until the frames went bad enough to move
+     the ladder, which on the biggest two levels is exactly the arrival
+     everybody was complaining about. It is the same decision; it is just
+     made when the torch is built as well as when the ladder steps. */
+  function applyTorchShadow() {
+    if (!G || !G.player || !G.player.torch) return;
+    var sp = G.player.torch.userData.spot;
+    if (!sp) return;
+    var touch = (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+                (navigator.maxTouchPoints || 0) > 1;
+    var want = Stage.rung < (touch ? 2 : 3);
+    if (sp.castShadow === want) return;
+    sp.castShadow = want;
+    if (!want && sp.shadow && sp.shadow.map) {
+      try { sp.shadow.map.dispose(); } catch (e) {}
+      sp.shadow.map = null;
     }
   }
 
@@ -16276,26 +16865,9 @@
     } else {
       Stage.resize(true);
     }
-    /* ---- the torch's own shadow pass ----
-       Her torch casts, which means the whole scene is drawn a second time
-       every frame from where she is standing. On a machine that is
-       already dropping rungs that is the most expensive thing left, and
-       the one nobody misses in the dark: below the halfway point of the
-       ladder the beam still lights the room, it just stops carving
-       silhouettes out of it. Cheap to turn on again when the frames come
-       back. */
-    var wantShadow = rung < 3;
-    if (G && G.player && G.player.torch) {
-      var sp = G.player.torch.userData.spot;
-      if (sp && sp.castShadow !== wantShadow) {
-        sp.castShadow = wantShadow;
-        if (!wantShadow && sp.shadow && sp.shadow.map) {
-          try { sp.shadow.map.dispose(); } catch (e) {}
-          sp.shadow.map = null;
-        }
-      }
-    }
+    applyTorchShadow();
     perfHold = hold;
+    perfGood = 0;
     perfBuf.length = 0;
   }
 
@@ -16326,7 +16898,12 @@
     bindOnce.done = true;
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("resize", function () { if (Stage.ready) Stage.resize(); fitTouch(); });
+    window.addEventListener("resize", function () {
+      if (Stage.ready) Stage.resize();
+      fitTouch();
+      /* turning the phone changes the shape the card has to fit into */
+      fitOverlay();
+    });
     /* The Continue button is inside the box, and both of them had a click
        handler on them, so one press on the button ran nextLine twice and
        every second line of the conversation went past unseen — which is
@@ -16452,12 +17029,32 @@
      34 — TEST HOOKS
      ========================================================= */
   function installHooks() {
+    /* WHAT A HOOK MAY HAND BACK, AND WHY IT MATTERS.
+
+       These all used to return G, which is the whole game: every scene,
+       every mesh, every material, every typed array. A harness that calls
+       one through `page.evaluate` gets that return value serialised back
+       across the debugging protocol, and on the two biggest levels the
+       walk takes seconds -- and leaves the page slower afterwards than it
+       was before, because every hidden class in three.js has just been
+       dragged through a generic reflector. That is not a stall in the
+       game. It only ever looked like one because the instrument was
+       standing in the way of the thing it was measuring: apfreeze read a
+       twelve-second first frame on streets and on the gates, and the game
+       draws that frame in about thirty milliseconds.
+
+       So nothing here hands out the game any more. A caller that genuinely
+       wants it can still reach `Apocalypse.game` in the page. */
+    function brief() {
+      return G ? { level: G.def ? G.def.id : null, index: G.levelIndex == null ? -1 : G.levelIndex,
+                   state: G.state } : null;
+    }
     window.__apEnter = function (i) {
       closeOverlay();
       var defs = LEVELS;
       enterLevel(defs[clamp(i, 0, defs.length - 1)]);
       G.levelIndex = i;
-      return G;
+      return brief();
     };
     window.__apPump = function (dt, times) {
       var n = times || 1;
@@ -16474,13 +17071,13 @@
       G.camRig.snap();
       return true;
     };
-    window.__apCampsite = function () { closeOverlay(); enterSub("campsite"); return G; };
-    window.__apRoadside = function () { closeOverlay(); enterSub("roadside"); return G; };
-    window.__apDrive = function () { playDrive(); return G; };
-    window.__apRide = function (second) { playRide(!!second); return G; };
-    window.__apCampfire = function () { playCampfire(); return G; };
-    window.__apSunrise = function () { playSunrise(); return G; };
-    window.__apRoof = function () { playRooftop(); return G; };
+    window.__apCampsite = function () { closeOverlay(); enterSub("campsite"); return brief(); };
+    window.__apRoadside = function () { closeOverlay(); enterSub("roadside"); return brief(); };
+    window.__apDrive = function () { playDrive(); return brief(); };
+    window.__apRide = function (second) { playRide(!!second); return brief(); };
+    window.__apCampfire = function () { playCampfire(); return brief(); };
+    window.__apSunrise = function () { playSunrise(); return brief(); };
+    window.__apRoof = function () { playRooftop(); return brief(); };
     /* a whole press, down and up: without the release the use-latch
        that stops the broadcast looping would block the next one for
        ever, because nothing here ever lets go of a key */
@@ -16497,6 +17094,41 @@
       if (G && G.__keypad) { G.__keypad.enter(GATE_CODE); G.__keypad.go(); return true; }
       return false;
     };
+    /* THE FOUR THE SUITES ASK FOR AND THIS FILE STOPPED PROVIDING.
+
+       apocmech drives the stealth through __apZombies and
+       __apMoveZombie, apocflow solves the distribution board through
+       __apPanelState, and apocflow4 reads __apMapKey after the drive.
+       All four went at some point and the suites have been dying on
+       them ever since, which is why nothing has checked the stealth in
+       a long while. Positions are handed over in the design's own pixel
+       units -- sixteen to a tile -- because that is what the suites do
+       their arithmetic in. */
+    window.__apZombies = function () {
+      if (!G || !G.zombies) return [];
+      return G.zombies.map(function (z, i) {
+        return { i: i, x: z.x / PX, y: z.z / PX,
+                 tx: Math.floor(z.x / TILE), ty: Math.floor(z.z / TILE),
+                 kind: z.kind, state: z.state || null, alert: z.alert || 0 };
+      });
+    };
+    window.__apMoveZombie = function (i, tx, ty) {
+      if (!G || !G.zombies || !G.zombies[i] || !G.world) return false;
+      var z = G.zombies[i];
+      z.x = G.world.cx(tx); z.z = G.world.cz(ty);
+      z.home = { x: z.x, z: z.z };
+      if (z.rig && z.rig.position) z.rig.position.set(z.x, z.rig.position.y, z.z);
+      return true;
+    };
+    window.__apPanelState = function () {
+      var p = G && G.__panel;
+      if (!p || !p.probe) return null;
+      return p.probe();
+    };
+    window.__apMapKey = function () {
+      if (!G) return null;
+      return { hasMap: !!G.hasMap, level: G.def && G.def.id, step: step() && step().clears };
+    };
     window.__apMap = function () { showMap(); return G && G.state; };
     window.__apCheck = function () { if (G && G.__check) { G.__check.all(); return true; } return false; };
     window.__apSerum = function () { if (G && G.__serum) { G.__serum.finish(); return true; } return false; };
@@ -16509,13 +17141,27 @@
         player: G.player ? { x: G.player.x, z: G.player.z, hidden: G.player.hidden,
                              tx: Math.floor(G.player.x / TILE), ty: Math.floor(G.player.z / TILE) } : null,
         cine: !!G.cine, dialogue: !!G.dlg,
+        cut: G.cine ? { t: +G.cine.t.toFixed(2), duration: G.cine.duration } : null,
         /* The doors were dropped from this report at some point and the
            mechanics suite still asks for them -- it has been failing on
            `st.doors.filter` ever since, which is one of the reasons this
-           chapter has had nothing checking it. */
+           chapter has had nothing checking it. A door has no name in
+           this file, so reporting one was useless: what a door is is
+           its kind ("d" a plain one, "P" one the board feeds, "D" the
+           keypad, "G" the gate), where it is, and whether it is open. */
         doors: (G.world && G.world.doors ? G.world.doors : []).map(function (d) {
-          return (d.name || d.id || "door") + (d.open ? ":open" : ":shut");
+          return { x: d.x, y: d.y, kind: d.kind, locked: !!d.locked,
+                   open: d.open > 0.5 };
         }),
+        /* the two things a flow test needs to know about a level that
+           is not a room: whether he is with her, and whether the board
+           has been done. Both were unreachable from outside, so the
+           suites for levels three and four asserted on `undefined`. */
+        anwar: G.anwar ? { found: !!G.anwar.found, x: G.anwar.x, z: G.anwar.z,
+                           tx: Math.floor(G.anwar.x / TILE),
+                           ty: Math.floor(G.anwar.z / TILE) } : null,
+        powered: !!(G.world && G.world.powered),
+        torch: !!G.hasTorch, ate: !!G.ate, map: !!G.hasMap,
         presses: anyPressed, grab: G.grab ? { t: G.grab.t, presses: G.grab.presses } : null
       };
     };
@@ -16641,6 +17287,20 @@
 
     /* what the card was actually asked to do on the last frame */
     window.__apEndCine = function () { if (G && G.cine) endCine(); return true; };
+    /* Run the cut to its end the way pressing USE does -- so whatever
+       was going to happen after it still happens. __apEndCine throws the
+       scene away without calling its callback, which is right for a test
+       that only wanted to look at it and wrong for one playing the
+       chapter through: the drive is fifty-two seconds and the suites
+       were pumping through every one of them. */
+    window.__apSkipCine = function () {
+      if (!G || !G.cine) return false;
+      if (!isFinite(G.cine.duration)) return false;
+      G.cine.t = G.cine.duration;
+      if (G.cine.update) G.cine.update(0, G.cine.t);
+      tick(1 / 60);
+      return true;
+    };
     /* the three cuts that hold while the two of them talk over them */
     window.__apCut = function (which) {
       if (G && G.cine) endCine();
@@ -16653,6 +17313,136 @@
     window.__apNoise = function (x, z, r) { noise(x, z, r); return true; };
     window.__apTouchUI = function (on) { setTouchUI(!!on); return touchUI; };
     /* what they can see, and where they may not go */
+    /* Where a thing IS on the level under test, rather than where a
+       suite written years ago assumed it was. apocmech used to hardcode
+       "the wardrobe is at tile 2,1" and "zombie zero is somewhere near
+       her", which is how it ended up running its stealth checks on the
+       one level in the chapter that has no zombies in it at all. */
+    window.__apFind = function (chars) {
+      /* the LIVE grid, not the map it was built from: a torch she has
+         picked up and a woodpile she has carried away are gone from the
+         world, and a test that keeps being told they are still there
+         walks back to the same empty tile for ever */
+      var rows = (G && G.world && G.world.cells) || (G && G.def && G.def.map);
+      if (!rows) return [];
+      var out = [];
+      for (var y = 0; y < rows.length; y++) {
+        for (var x = 0; x < rows[y].length; x++) {
+          if (chars.indexOf(rows[y][x]) >= 0) out.push({ x: x, y: y, c: rows[y][x] });
+        }
+      }
+      return out;
+    };
+    window.__apHideSpots = function () { return window.__apFind(HIDE); };
+    /* Where she is, in the design's own pixels -- sixteen to a tile, the
+       same units __apZombies reports in. apocinput has been asking for
+       this on every one of its sixteen assertions and getting
+       "__apPos is not a function", so nothing has checked that a real
+       keypress reaches the game since the hook went. */
+    window.__apPos = function () {
+      if (!G || !G.player) return null;
+      return { x: G.player.x / PX, y: G.player.z / PX,
+               tx: Math.floor(G.player.x / TILE), ty: Math.floor(G.player.z / TILE) };
+    };
+    /* Type a code into whatever keypad is up, digit by digit, the way a
+       finger does -- so the display, the four-character limit and the
+       wrong-code shake are all exercised rather than bypassed. */
+    window.__apKeypadType = function (digits) {
+      var pad = document.querySelector(".ap-keypad-pad");
+      if (!pad) return false;
+      var btn = {};
+      pad.querySelectorAll(".ap-key-btn").forEach(function (b) { btn[b.textContent] = b; });
+      if (btn.CLR) btn.CLR.click();
+      String(digits).split("").forEach(function (d) { if (btn[d]) btn[d].click(); });
+      if (btn.GO) btn.GO.click();
+      return true;
+    };
+    /* Put one named thing on the screen. The contact-sheet runs shoot
+       every overlay in the chapter and had no way to ask for one. */
+    window.__apOpen = function (what) {
+      if (!G) return false;
+      closeOverlay();
+      G.state = "play";
+      switch (what) {
+        case "howto": howToCard(); return true;
+        case "card": levelCard((G.levelIndex || 0) + 1); return true;
+        case "tv": showTV(); return true;
+        case "panel": showPanel(function () {}); return true;
+        case "fridge": openFridge(); return true;
+        case "radio": showRadio(); return true;
+        case "note": showNote(); return true;
+        case "map": showMap(); return true;
+        case "keypad":
+          var d = (G.world.doors || []).filter(function (x) { return x.kind === "D"; })[0];
+          if (!d) return false;
+          showKeypad(d); return true;
+        case "gate": hailTheGate(); return true;
+        case "check": showCheck(); return true;
+        case "serum": showSerum(); return true;
+        default: return false;
+      }
+    };
+    /* CAN SHE ACTUALLY GET TO ALL OF IT?
+
+       One tile of furniture in front of a door makes a level
+       unfinishable, and no other test in the folder has an opinion
+       about that. This floods out from where she starts, over
+       everything that is not solid -- doors count as open, because she
+       can open them -- and then asks, of every single thing the level
+       needs her to reach, whether she could stand next to it. */
+    window.__apAudit = function () {
+      var report = [];
+      var was = G && G.levelIndex;
+      /* what a level asks her to walk to, and what to call it */
+      var WANT = { "X": "the way out", "W": "the distribution board",
+                   "T": "the television", "1": "the torch", "f": "the fridge",
+                   "N": "the note with the code", "i": "something to pick up",
+                   "C": "the car", "A": "Anwar", "H": "the horse",
+                   "Q": "the desk", "w": "the woodpile", "g": "wood to gather",
+                   "G": "the gate", "D": "the staff door" };
+      LEVELS.forEach(function (def, i) {
+        window.__apEnter(i);
+        var rows = G.def.map, H = rows.length, W = 0;
+        for (var r = 0; r < H; r++) W = Math.max(W, rows[r].length);
+        var at = function (x, y) {
+          return (y < 0 || y >= H || x < 0 || x >= rows[y].length) ? "#" : rows[y][x];
+        };
+        /* a door is a way through, not a wall */
+        var walkable = function (c) { return !isSolidChar(c) || "dDPG".indexOf(c) >= 0; };
+        var sp = G.world.spawn || { x: 1, y: 1 };
+        var seen = {}, q = [[sp.x, sp.y]], n = 0;
+        seen[sp.x + "," + sp.y] = 1;
+        while (q.length && n < W * H * 4) {
+          n++;
+          var cur = q.shift();
+          [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (d) {
+            var nx = cur[0] + d[0], ny = cur[1] + d[1], k = nx + "," + ny;
+            if (seen[k] || !walkable(at(nx, ny))) return;
+            seen[k] = 1; q.push([nx, ny]);
+          });
+        }
+        var reachable = Object.keys(seen).length;
+        var problems = [], checks = 0;
+        for (var y = 0; y < H; y++) {
+          for (var x = 0; x < rows[y].length; x++) {
+            var c = rows[y][x];
+            if (!WANT[c]) continue;
+            checks++;
+            /* she has to be able to STAND beside it, not on it */
+            var beside = [[1, 0], [-1, 0], [0, 1], [0, -1], [0, 0]].some(function (d) {
+              return seen[(x + d[0]) + "," + (y + d[1])];
+            });
+            if (!beside) problems.push(WANT[c] + ' at ' + x + ',' + y + ' cannot be reached');
+          }
+        }
+        if (!G.world.spawn) problems.push("no S on the map: she starts in the corner");
+        if (!G.world.exit && def.steps.some(function (s) { return s.clears === "exit"; }))
+          problems.push("the level asks for an exit and the map has no X");
+        report.push({ level: def.id, checks: checks, reachable: reachable, problems: problems });
+      });
+      if (was != null) window.__apEnter(was);
+      return report;
+    };
     window.__apTile = function () { return TILE; };
     window.__apSightRange = function () { return TUNE.zSight; };
     window.__apSolid = function (c) { return isSolidChar(c); };
@@ -16682,6 +17472,35 @@
       return true;
     };
     window.__apScale = function () { return { dpr: Stage.dpr, scale: Stage.scale, rung: Stage.rung, w: Stage.w, h: Stage.h }; };
+    /* what the torch is actually costing: the second pass's size, throw
+       and blur, which is the one thing that gets dearer as she walks */
+    window.__apTorchShadow = function () {
+      var t = G && G.player && G.player.torch;
+      var sp = t && t.userData && t.userData.spot;
+      if (!sp) return null;
+      return { on: !!sp.castShadow, map: sp.shadow.mapSize.x,
+               far: sp.shadow.camera.far, radius: sp.shadow.radius };
+    };
+    /* FEED THE QUALITY LADDER A MACHINE.
+
+       The ladder is the only thing standing between an old phone and a
+       slideshow, and nothing has ever tested it -- it cannot be tested
+       by playing, because the frame rate in a test container is the
+       container's, not the game's. This hands watchPerformance a run of
+       frames of a chosen length, which is exactly what a machine of a
+       chosen speed would hand it, and the rung it settles on is the
+       answer. `ms` is how long each frame took; `n` is how many. */
+    window.__apFeedFrames = function (ms, n) {
+      var dt = ms / 1000;
+      for (var i = 0; i < (n || 1); i++) watchPerformance(dt);
+      return { rung: Stage.rung, scale: Stage.scale, quality: Stage.quality };
+    };
+    /* and put it back at the top of the ladder between runs */
+    window.__apPerfReset = function () {
+      perfBuf.length = 0; perfHold = 0; perfSince = 0;
+      perfStep(0, 0);
+      return Stage.rung;
+    };
     window.__apShadows = function (on) {
       if (Stage.renderer) { Stage.renderer.shadowMap.enabled = !!on; Stage.renderer.shadowMap.needsUpdate = true; }
       return !!on;
@@ -16709,8 +17528,21 @@
         calls: info.render.calls, triangles: info.render.triangles,
         lines: info.render.lines, points: info.render.points,
         geometries: info.memory.geometries, textures: info.memory.textures,
+        /* how many shader programs are compiled and linked. A freeze on
+           arriving somewhere, or on an animation starting, is usually one
+           of these being built for the first time -- so a stall with the
+           count going up is a compile and a stall with it flat is not. */
+        programs: (Stage.renderer.info.programs || []).length,
         lights: lights
       };
+    };
+    /* the cache key of every compiled program. Two stalls that both show
+       the count going up can have completely different causes -- a new
+       material, or an old one being drawn under a different number of
+       lights -- and the key is what says which. */
+    window.__apProgramKeys = function () {
+      var ps = Stage.renderer.info.programs || [];
+      return ps.map(function (p) { return p.cacheKey; });
     };
     window.__apScore = function () { return Audio_.score.playing(); };
     /* what the music has been ASKED for, which is what the driver decides */
@@ -16728,10 +17560,17 @@
       return Stage.renderer && Stage.renderer.shadowMap.enabled;
     };
     window.__apKeys = function () {
-      return { up: KEY.up, down: KEY.down, left: KEY.left, right: KEY.right };
+      /* the creep and USE are keys too: leaving them out of this report
+         is why nothing has ever checked that shift reaches the game */
+      return { up: KEY.up, down: KEY.down, left: KEY.left, right: KEY.right,
+               use: KEY.use, sneak: KEY.sneak };
     };
     /* run a cue's own beats past it, four passes' worth, so a branch that
        only happens late in a piece is still exercised */
+    /* the samples a cue actually produces, for tools/ostblip.js */
+    window.__apScoreRender = function (name, seconds, bypassLimit) {
+      return Audio_.score.render(name, seconds || 12, bypassLimit);
+    };
     window.__apScorePlay = function (name, beats) {
       return Audio_.score.rehearse(name, beats || 132);
     };

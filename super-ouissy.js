@@ -2861,7 +2861,18 @@ window.SuperOuissy = (function () {
        cheerful little march playing underneath it was the single most
        wrong thing about that scene. Ducked, not switched off: her own
        preference is hers and is not touched. */
-    bgmSilence(true);
+    /* ANWAR'S THEME BELONGS TO THE SCENE HE IS IN, NOT TO EVERY DEATH.
+
+       A rescue happens every time she runs out on Hard, and putting the
+       piece written for meeting him under all of them spends it -- by the
+       time the Death scene arrives, the music that is supposed to mean HIM
+       has been the music that means "you died" a dozen times. The Death
+       scene keeps its own score and the silence that lets it start; a
+       rescue keeps what she was already listening to, at little more than
+       half speed and pulled back, which is the world holding its breath
+       rather than a new piece beginning. */
+    if (kind === "rescue") { setBgmSlow(true); bgmDuck(true); }
+    else bgmSilence(true);
     Rescue.begin(kind, opts);
   }
 
@@ -2870,7 +2881,9 @@ window.SuperOuissy = (function () {
     cutsceneThen = null;
     G.state = "play";
     updateHud();
+    setBgmSlow(false);
     bgmSilence(false);
+    bgmDuck(false);
     if (then) then();
   }
 
@@ -2959,11 +2972,22 @@ window.SuperOuissy = (function () {
        being offered costs nothing. */
     if (canBossRevive() || stuckNow()) { offerBossRevive(); return; }
 
-    /* Hard, and she still has a life: he comes and gets her first */
+    /* Hard, and she still has a life: he comes and gets her first.
+
+       AND HE PUTS HER DOWN WHERE HE PICKED HER UP. This handed off to
+       respawn(), which is the checkpoint -- and Hard has no checkpoints,
+       so it was the start of the world. That is the "sometimes he takes
+       her to the start": it happened whenever the revive offer did not
+       appear, which is most deaths, and inside the Queen's fight it meant
+       walking the whole level back to a boss that had kept none of its
+       damage. Inside that fight he stands her up where she fell, the way
+       the paid revive does. Everywhere else the checkpoint is still the
+       right answer -- it is a rescue, not a free pass. */
     if (rescuesOn()) {
       var p = G.player;
       playCutscene("rescue", { herX: clamp(p.x - G.cam.x, 30, VIEW.w - 60),
-                               herY: clamp(p.y - G.cam.y, 62, 96) }, respawn);
+                               herY: clamp(p.y - G.cam.y, 62, 96) },
+                   inQueenFight() ? reviveAtSpot : respawn);
       return;
     }
     respawn();
@@ -3075,6 +3099,36 @@ window.SuperOuissy = (function () {
     }
     for (i = 0; i < cands.length; i++)
       if (reviveSpotOK(cands[i].x, cands[i].y, w, h)) return cands[i];
+
+    /* ---- AND IF NONE OF THOSE WILL HOLD HER, LOOK NEARBY ----
+
+       This used to give up and send her to the start of the world, which
+       is why "bring me back where I died" sometimes did not. The two
+       named candidates are single points, and a single point fails for
+       ordinary reasons: she died on a moving platform that has since
+       moved, or over a gap, or with her last safe ground now under a
+       hazard. One point failing is not the same as there being nowhere to
+       stand -- there is almost always floor a few steps to one side.
+
+       So before falling back, walk outwards from where she actually died,
+       a few pixels at a time, taking the first spot on either side that
+       can hold her. It searches a couple of screens at most, and it
+       prefers the nearer side, so what she gets is the place she was
+       playing rather than the top of the level. The start is still there
+       for the case where genuinely nothing else works. */
+    var from = G.deathAt || (p.lastSafe ? { x: p.lastSafe.x, y: p.lastSafe.y - 2 } : null);
+    if (from) {
+      for (var off = 8; off <= 320; off += 8) {
+        /* a little above where she was, because ground is found by
+           dropping onto it and a spot flush with a wall is not a spot */
+        for (var up = 0; up <= 48; up += 12) {
+          if (reviveSpotOK(from.x - off, from.y - up, w, h))
+            return { x: from.x - off, y: from.y - up };
+          if (reviveSpotOK(from.x + off, from.y - up, w, h))
+            return { x: from.x + off, y: from.y - up };
+        }
+      }
+    }
     return { x: G.level.start.x + 2, y: G.level.start.y - 2 };
   }
 
@@ -4323,6 +4377,10 @@ window.SuperOuissy = (function () {
     var need = ov.classList.contains("on") && room > 6;
     el.classList.toggle("on", need);
     if (!need) return;
+    /* Nothing to measure any more: the bar lives at the far right edge
+       of the stage, which CSS pins on its own. It is cleared here in
+       case an older layout left an inline `left` on it. */
+    if (el.style.left) el.style.left = "";
     var bar = $("so-lift-bar");
     var frac = ov.clientHeight / ov.scrollHeight;
     var hPct = Math.max(14, Math.min(92, frac * 100));
@@ -4476,7 +4534,12 @@ window.SuperOuissy = (function () {
     try { mw = localStorage.getItem("so_bgm") !== "0"; } catch (e) {}
     if (mw) { setBgm(true); bgmFollow(); } else stopBgm();
     var saved = "medium";
-    try { saved = localStorage.getItem(DIFF_KEY) || "medium"; } catch (e) {}
+    /* EASY IS WHERE A FIRST GO STARTS. The card opened on medium, which is
+       a choice made for her by a default rather than by her -- and the one
+       difficulty that asks least of somebody who has never held these
+       controls is the one that should be lit when she arrives. Anything
+       she has actually chosen before still wins. */
+    try { saved = localStorage.getItem(DIFF_KEY) || "easy"; } catch (e) {}
     var cards = ["easy", "medium", "hard"].map(function (k) {
       var d = DIFF[k], b = bestFor(k);
       return '<button class="so-diff-card' + (k === saved ? " sel" : "") + '" data-so-diff="' + k + '">' +
@@ -4613,14 +4676,26 @@ window.SuperOuissy = (function () {
           '<button class="so-btn so-btn-go" id="so-resume">RESUME</button>' +
           '<button class="so-btn" id="so-restart">RESTART WORLD</button>' +
           '<button class="so-btn" id="so-bgm">MUSIC: ' + (G.bgmOn ? "ON" : "OFF") + "</button>" +
-          '<button class="so-btn so-btn-quiet" id="so-quit">QUIT TO HUB</button>' +
+          '<button class="so-btn so-btn-quiet" id="so-quit">BACK TO MENU</button>' +
         "</div>", "so-ov-card");
       $("so-resume").addEventListener("click", function () { togglePause(false); });
       $("so-restart").addEventListener("click", function () { closeOverlay(); startLevel(G.levelIndex); });
       $("so-bgm").addEventListener("click", function () {
         setBgm(!G.bgmOn); $("so-bgm").textContent = "MUSIC: " + (G.bgmOn ? "ON" : "OFF");
       });
-      $("so-quit").addEventListener("click", quitToHub);
+      /* BACK TO THE GAME'S OWN MENU, NOT OUT OF THE GAME. Leaving the
+         chapter altogether is a long way to go for someone who only
+         wanted a different world or a different difficulty, and it is not
+         what a pause menu anywhere else does. The title card is where the
+         worlds and the three difficulties are, so that is where this
+         goes; the way out of the chapter is still the hub button on the
+         title card itself. */
+      $("so-quit").addEventListener("click", function () {
+        closeOverlay();
+        bgmDuck(false);
+        if (window.__soReleaseAll) window.__soReleaseAll();
+        showDifficulty();
+      });
       Array.prototype.forEach.call(document.querySelectorAll("[data-so-setdiff]"), function (b) {
         b.addEventListener("click", function () {
           var k = b.getAttribute("data-so-setdiff");
@@ -4628,7 +4703,14 @@ window.SuperOuissy = (function () {
           G.diff = k;
           try { localStorage.setItem(DIFF_KEY, k); } catch (e) {}
           G.lives = DIFF[k].lives;
-          closeOverlay(); startLevel(G.levelIndex);
+          /* A DIFFERENT DIFFICULTY IS A DIFFERENT RUN. Changing it in the
+             middle of world three dropped her into world three of the new
+             one -- a place she had not reached on that setting, with a
+             score and a clock from a run that no longer exists. It starts
+             where that difficulty starts. */
+          G.levelIndex = 0;
+          G.score = 0;
+          closeOverlay(); startLevel(0);
         });
       });
     } else if (G.state === "paused") {
@@ -4725,13 +4807,22 @@ window.SuperOuissy = (function () {
         "</div>" +
         '<button class="so-btn so-btn-go" id="so-again">TRY THIS WORLD AGAIN</button>' +
         '<button class="so-btn" id="so-easier">CHANGE DIFFICULTY</button>' +
-        '<button class="so-btn so-btn-quiet" id="so-over-quit">QUIT TO HUB</button>' +
+        '<button class="so-btn so-btn-quiet" id="so-over-quit">BACK TO MENU</button>' +
       "</div>", "so-ov-card");
     $("so-again").addEventListener("click", function () {
       closeOverlay(); G.lives = DIFF[G.diff].lives; bgmDuck(false); startLevel(G.levelIndex);
     });
     $("so-easier").addEventListener("click", function () { bgmDuck(false); showDifficulty(); });
-    $("so-over-quit").addEventListener("click", quitToHub);
+    /* the same as the pause card: losing a run is not a reason to be put
+       out of the chapter altogether. The title card is where the worlds
+       and the difficulties are, and the way out of the chapter is the hub
+       button there. */
+    $("so-over-quit").addEventListener("click", function () {
+      closeOverlay();
+      bgmDuck(false);
+      if (window.__soReleaseAll) window.__soReleaseAll();
+      showDifficulty();
+    });
   }
 
   /* ---- 7. the ending: the castle, and him in it -------------------------- */
@@ -5353,105 +5444,166 @@ window.SuperOuissy = (function () {
      has always had: square, brisk, four to the floor. HARD is faster,
      minor, with a sixteenth-note bass that never stops and a chromatic
      line falling through it. */
+  /* ---- ONE RHYTHM PER WORLD, SHARED BY ALL THREE DIFFICULTIES ----
+
+     A world should feel like the same place whichever difficulty she is
+     playing it on, and the thing that carries a place is the rhythm, not
+     the tune. So the drums belong to the WORLD: easy, medium and hard all
+     play world one on the same pattern, with their own melodies and their
+     own tempo over the top. What changes with difficulty is the music;
+     what stays is the ground under it.
+
+     And the three are deliberately nothing like each other, because the
+     three worlds are not:
+
+       ONE is morning, and it breathes -- kick, space, snare, space. Four
+       to the bar with air between, the pattern you can walk to.
+
+       TWO leans forward. Three, three, two: the oldest way there is of
+       making a straight bar feel like it is already moving, which is what
+       the world does the whole way through.
+
+       THREE is the last of them and it does not let up -- kick and hat
+       together, the snare early, and no gap anywhere you could rest in. */
+  /* ---- AND THE PACE BELONGS TO THE WORLD TOO ----
+
+     "Why is hard still so fast" -- because it was. Tempo is seconds per
+     step, so smaller is quicker, and it read: world one 0.105 on easy,
+     0.088 on medium, 0.076 on hard. Hard ran thirty-eight per cent faster
+     than easy through the same place, and its victory fanfare, at 0.086
+     against 0.19, went past at more than twice the speed. That is
+     difficulty expressed as tempo, which is the cheapest way to do it and
+     the one that makes a tune feel rushed instead of hard.
+
+     If a world is the same place on every difficulty -- which is the whole
+     point of sharing the rhythm -- then it moves at the same pace on every
+     difficulty as well. These are easy's figures, because easy's were the
+     ones that worked. What changes with difficulty is what is played over
+     that pace, not how fast the ground goes by. */
+  var PACE = { w1: 0.105, w2: 0.095, w3: 0.088, boss: 0.080, win: 0.19 };
+
+  var RHYTHM = {
+    w1: dpat(
+      "K . . . h . . . S . . . h . . . |" +
+      "K . . . h . . . S . . . h . . . |" +
+      "K . . . h . . . S . . . h . . . |" +
+      "K . . . h . . . S . . h . h . h"),
+    w2: dpat(
+      "K . . K . . S . K . . K . . S . |" +
+      "K . . K . . S . K . . K . . S h |" +
+      "K . . K . . S . K . . K . . S . |" +
+      "K . h K . h S . t . t . t . S ."),
+    w3: dpat(
+      "K . h . K h S . K . h . S . S h |" +
+      "K . h . K h S . K . h . S . S h |" +
+      "K . h . K h S . K . h . S . S h |" +
+      "K . h . K h S . t t t t S . S ."),
+  };
+
   var SCORES = {};
   SCORES.medium = {
     /* WORLD ONE — morning. The theme, plain, with room around it. */
     w1: {
-      tempo: 0.088,
+      /* WHERE EASY CLIMBS, THIS FALLS. Easy's morning opens by rising
+         through the chord; this one starts at the top and comes down, and
+         only turns upward in the third bar. Same room, same pace, opposite
+         shape -- which is what makes it another tune rather than the same
+         one in different clothes. */
+      tempo: PACE.w1,
       lead: pat(
-        "12 .  .  . 16 .  .  . 19 .  .  . 16 .  .  . |" +
-        "14 .  .  . 17 .  .  . 21 .  .  . 17 .  .  . |" +
-        "12 .  .  . 16 .  .  . 19 . 24  . 21 . 19  . |" +
-        "16 .  .  . 14 .  .  . 12 .  .  .  .  .  .  ."),
+        "21  .  . 21  .  . 19  .  . 16  .  . 12  .  .  . |" +
+        "19  .  . 19  .  . 17  .  . 14  .  . 11  .  .  . |" +
+        "16  .  . 12  .  . 16  .  . 19  .  . 21  .  .  . |" +
+        "19  .  . 21  .  . 24  .  .  .  .  .  .  .  .  ."),
       harm: pat(
-        " .  .  .  .  .  .  .  . 12 .  .  .  9 .  .  . |" +
-        " .  .  .  .  .  .  .  . 14 .  .  . 12 .  .  . |" +
-        " .  .  .  .  .  .  .  . 16 .  .  . 17 .  .  . |" +
-        " .  .  .  .  .  .  .  .  7 .  .  .  .  .  .  ."),
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 21  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 26  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 19  .  .  .  .  .  .  .  ."),
       bass: pat(
-        " 0  .  .  .  7  .  .  .  0  .  .  .  7  .  .  . |" +
-        " 2  .  .  .  9  .  .  .  2  .  .  .  9  .  .  . |" +
-        " 5  .  .  . 12  .  .  .  5  .  .  . 12  .  .  . |" +
-        " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
-      drum: dpat(
-        "K . . . h . . . S . . . h . . . |" +
-        "K . . . h . . . S . . . h . . . |" +
-        "K . . . h . . . S . . . h . . . |" +
-        "K . . . h . . . S . . h . h . h"),
+        " 5  .  .  .  .  . 12  .  .  .  .  .  5  .  .  . |" +
+        " 2  .  .  .  .  .  9  .  .  .  .  .  2  .  .  . |" +
+        " 0  .  .  .  .  .  7  .  .  .  .  .  0  .  .  . |" +
+        " 7  .  .  .  .  .  7  .  .  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w1,
     },
 
     /* WORLD TWO — the same tune with the gaps filled in and the ground
        moving under it. */
     w2: {
-      tempo: 0.078,
+      /* it leans forward like the world does, but it leans by falling --
+         the line comes down where easy's went up. */
+      tempo: PACE.w2,
       lead: pat(
-        "12 . 14 . 16 . 17 . 19 . 17 . 16 . 14 . |" +
-        "14 . 16 . 17 . 19 . 21 . 19 . 17 . 16 . |" +
-        "12 . 16 . 19 . 24 . 21 . 19 . 16 . 19 . |" +
-        "17 . 16 . 14 . 12 . 11 .  .  . 12 .  . ."),
+        "19  .  . 17  .  . 16  .  . 17  .  . 19  .  .  . |" +
+        "21  .  . 19  .  . 17  .  . 19  .  . 21  .  .  . |" +
+        "16  .  . 19  .  . 24  .  . 21  .  . 19  .  .  . |" +
+        "17  .  . 16  .  . 14  .  . 12  .  .  .  .  .  ."),
       harm: pat(
-        " .  . 12 .  .  . 12 .  .  . 12 .  .  . 12 . |" +
-        " .  .  9 .  .  .  9 .  .  .  9 .  .  .  9 . |" +
-        " .  . 12 .  .  . 12 .  .  . 16 .  .  . 16 . |" +
-        " .  .  9 .  .  .  7 .  .  .  7 .  .  .  7 ."),
+        " .  .  .  7  .  .  .  .  . 12  .  .  .  .  .  . |" +
+        " .  .  .  9  .  .  .  .  . 14  .  .  .  .  .  . |" +
+        " .  .  .  4  .  .  .  .  . 11  .  .  .  .  .  . |" +
+        " .  .  .  7  .  .  .  .  .  0  .  .  .  .  .  ."),
       bass: pat(
-        " 0 . 12 .  0 . 12 .  7 . 19 .  7 . 19 . |" +
-        " 2 . 14 .  2 . 14 .  9 . 21 .  9 . 21 . |" +
-        " 5 . 17 .  5 . 17 .  0 . 12 .  0 . 12 . |" +
-        " 7 . 19 .  7 . 19 .  0 . 12 .  7 . 12 ."),
-      drum: dpat(
-        "K . h . S . h . K . h . S . h h |" +
-        "K . h . S . h . K . h . S . h h |" +
-        "K . h . S . h . K . h . S . h h |" +
-        "K . h . S . h . K . h . t t t t"),
+        " 0  .  .  .  7  .  .  .  0  .  .  .  7  .  .  . |" +
+        " 9  .  .  .  4  .  .  .  9  .  .  .  4  .  .  . |" +
+        " 5  .  .  .  0  .  .  .  5  .  .  .  0  .  .  . |" +
+        " 7  .  .  .  2  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w2,
     },
 
     /* WORLD THREE — the same four notes in the relative minor, which is
        what the last climb sounds like, and it finds its way back to the
        major on the last bar because she is nearly there. */
     w3: {
-      tempo: 0.072,
+      /* it rocks between two notes for half its length and then climbs
+         once, where easy's arcs up and down in every bar */
+      tempo: PACE.w3,
       lead: pat(
-        " 9 .  . 12  .  . 16 .  . 12  .  . 16 .  . . |" +
-        " 7 .  . 11  .  . 14 .  . 11  .  . 14 .  . . |" +
-        " 9 .  . 16  .  . 21 .  . 16  .  . 12 .  . . |" +
-        "14 .  . 12  .  . 11 .  . 12  .  .  . .  . ."),
+        "24  .  . 21  .  . 24  .  . 21  .  . 24  .  .  . |" +
+        "21  .  . 19  .  . 21  .  . 19  .  . 21  .  .  . |" +
+        "16  .  . 17  .  . 19  .  . 21  .  . 24  .  .  . |" +
+        "26  .  . 24  .  .  .  .  . 21  .  .  .  .  .  ."),
       harm: pat(
-        " .  .  .  .  .  .  .  .  9  .  .  .  .  .  . . |" +
-        " .  .  .  .  .  .  .  .  7  .  .  .  .  .  . . |" +
-        " .  .  .  .  .  .  .  . 12  .  .  .  .  .  . . |" +
-        " .  .  .  .  .  .  .  . 16  .  .  . 16  .  . ."),
+        " .  .  .  . 12  .  .  .  .  .  . 16  .  .  .  . |" +
+        " .  .  .  .  9  .  .  .  .  .  . 14  .  .  .  . |" +
+        " .  .  .  .  7  .  .  .  .  .  . 12  .  .  .  . |" +
+        " .  .  .  .  5  .  .  .  .  .  .  0  .  .  .  ."),
       bass: pat(
-        " -3 . -3 . -3 . -3 .  4 .  4 .  4 .  4 . |" +
-        " -5 . -5 . -5 . -5 .  2 .  2 .  2 .  2 . |" +
-        " -3 . -3 . -3 . -3 .  0 .  0 .  0 .  0 . |" +
-        "  2 .  2 .  2 .  2 .  7 .  7 .  7 .  7 ."),
-      drum: dpat(
-        "K . h K . h K . h . S . h . h . |" +
-        "K . h K . h K . h . S . h . h . |" +
-        "K . h K . h K . h . S . h . h . |" +
-        "K . h K . h K . h . t t t t t t"),
+        " 0  .  .  .  7  .  .  . 12  .  .  .  7  .  .  . |" +
+        " 9  .  .  .  4  .  .  . 16  .  .  .  4  .  .  . |" +
+        " 7  .  .  .  2  .  .  . 14  .  .  .  2  .  .  . |" +
+        " 5  .  .  .  0  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w3,
     },
 
     /* THE QUEEN. Her tune, minor, faster than she can think, with a
        chromatic tail that falls away under it. */
     boss: {
-      tempo: 0.064,
+      tempo: PACE.boss,
       lead: pat(
         " 9 . 9 . 12 . 16 . 12 . 9 . 16 . 12 . |" +
         " 8 . 8 . 11 . 15 . 11 . 8 . 15 . 11 . |" +
         " 9 . 9 . 12 . 16 . 21 . 20 . 19 . 18 . |" +
         "17 . 16 . 15 . 14 . 13 . 12 . 11 . 10 ."),
       harm: pat(
-        " .  .  .  . 21  .  .  . 21  .  .  . 21 .  .  . |" +
-        " .  .  .  . 20  .  .  . 20  .  .  . 20 .  .  . |" +
-        " .  .  .  . 21  .  .  . 24  .  .  . 24 .  .  . |" +
-        " .  .  .  .  .  .  .  .  .  .  .  .  . .  .  ."),
+        /* the same fault, worse: three bars on one note and then silence.
+           A boss should sound like something circling you, so it circles
+           -- up a fourth, back, up a fifth, and down a semitone into the
+           bar line, which is the part that makes it feel like a threat. */
+        " .  .  .  . 21  . 26  . 21  .  . 24 21 .  .  . |" +
+        " .  .  .  . 20  . 25  . 20  .  . 23 20 .  .  . |" +
+        " .  .  .  . 21  . 26  . 24  .  . 28 24 .  .  . |" +
+        " .  .  .  . 23  . 22  . 21  .  . 20 21 .  .  ."),
       bass: pat(
-        "-3 -3 . -3 -3 . -3 . -3 -3 . -3 -3 . -3 . |" +
-        "-4 -4 . -4 -4 . -4 . -4 -4 . -4 -4 . -4 . |" +
-        "-3 -3 . -3 -3 . -3 . -5 -5 . -5 -5 . -5 . |" +
-        "-7 -7 . -7 -7 . -7 . -7 -7 . -7 -7 -7 -7 -7"),
+        /* it was root and fifth and nothing else, which under a boss is a
+           pump rather than a threat. It walks down to the flat six and
+           leans on the five now, which is what makes the bar want to
+           resolve. */
+        " 0  .  .  7  0  .  .  7  8  .  .  7  0  .  .  . |" +
+        "-2  .  .  5 -2  .  .  5  6  .  .  5 -2  .  .  . |" +
+        " 0  .  .  7  0  .  . 12  8  .  .  3  8  .  .  . |" +
+        " 7  .  . 14  7  .  . 10  0  .  .  7  0  .  .  ."),
       drum: dpat(
         "K . h K . h K . S . h K . h S . |" +
         "K . h K . h K . S . h K . h S . |" +
@@ -5462,7 +5614,7 @@ window.SuperOuissy = (function () {
     /* AND THE END OF IT. The tune it started on, slow, with a third over
        the top — the only place in the game where anything sings with it. */
     win: {
-      tempo: 0.17,
+      tempo: PACE.win,
       lead: pat(
         "12 .  .  . 16 .  .  . 19 .  .  . 16 .  .  . |" +
         "17 .  .  . 21 .  .  . 24 .  .  . 21 .  .  . |" +
@@ -5474,10 +5626,13 @@ window.SuperOuissy = (function () {
         "24 .  .  . 19 .  .  . 16 .  .  . 17 .  .  . |" +
         "19 .  .  .  .  .  .  . 16 .  .  .  .  .  .  ."),
       bass: pat(
-        " 0 .  .  .  .  .  .  .  7 .  .  .  .  .  .  . |" +
-        " 5 .  .  .  .  .  .  .  0 .  .  .  .  .  .  . |" +
-        " 7 .  .  .  .  .  .  .  2 .  .  .  .  .  .  . |" +
-        " 7 .  .  .  .  .  .  .  0 .  .  .  .  .  .  ."),
+        /* a flag tune should sound like it is going somewhere, and root
+           and fifth twice a bar sounds like it has arrived and stopped.
+           Up to the four, round the six, and home. */
+        " 0  .  7  .  0  .  7  .  5  .  0  .  5  .  7  . |" +
+        " 5  .  0  .  5  .  0  .  9  .  5  .  9  .  0  . |" +
+        " 7  .  2  .  7  .  2  .  0  .  7  .  0  .  7  . |" +
+        " 5  .  7  .  0  .  .  .  0  .  .  .  .  .  .  ."),
       drum: dpat(
         ". . . . . . . . . . . . . . . . |" +
         ". . . . . . . . . . . . . . . . |" +
@@ -5490,7 +5645,7 @@ window.SuperOuissy = (function () {
      top, and a drum that mostly stays out of the way. ------------------- */
   SCORES.easy = {
     w1: {
-      tempo: 0.105,
+      tempo: PACE.w1,
       lead: pat(
         "12  .  . 16  .  . 19  .  . 16  .  . 19  .  .  . |" +
         "14  .  . 17  .  . 21  .  . 17  .  . 14  .  .  . |" +
@@ -5506,14 +5661,10 @@ window.SuperOuissy = (function () {
         " 2  .  .  .  .  .  9  .  .  .  .  .  2  .  .  . |" +
         " 5  .  .  .  .  . 12  .  .  .  .  .  5  .  .  . |" +
         " 7  .  .  .  .  .  7  .  .  .  .  .  0  .  .  ."),
-      drum: dpat(
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . S . . . h . h ."),
+      drum: RHYTHM.w1,
     },
     w2: {
-      tempo: 0.095,
+      tempo: PACE.w2,
       lead: pat(
         "12  . 14 16  . 17 19  . 17 16  .  . 14  .  .  . |" +
         "14  . 16 17  . 19 21  . 19 17  .  . 16  .  .  . |" +
@@ -5529,14 +5680,10 @@ window.SuperOuissy = (function () {
         " 2  .  .  .  9  .  .  .  2  .  .  .  9  .  .  . |" +
         " 5  .  .  . 12  .  .  .  5  .  .  . 12  .  .  . |" +
         " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
-      drum: dpat(
-        "K . . h S . . h K . . h S . . h |" +
-        "K . . h S . . h K . . h S . . h |" +
-        "K . . h S . . h K . . h S . . h |" +
-        "K . . h S . . h K . . h S . h h"),
+      drum: RHYTHM.w2,
     },
     w3: {
-      tempo: 0.088,
+      tempo: PACE.w3,
       lead: pat(
         "12  .  . 19  .  . 16  .  . 21  .  . 19  .  .  . |" +
         "14  .  . 21  .  . 17  .  . 24  .  . 21  .  .  . |" +
@@ -5552,15 +5699,11 @@ window.SuperOuissy = (function () {
         " 2  .  .  .  9  .  .  . 14  .  .  .  9  .  .  . |" +
         " 5  .  .  . 12  .  .  . 17  .  .  . 12  .  .  . |" +
         " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
-      drum: dpat(
-        "K . . h S . . . K . . h S . . h |" +
-        "K . . h S . . . K . . h S . . h |" +
-        "K . . h S . . . K . . h S . . h |" +
-        "K . . h S . . . K . . h S . t t"),
+      drum: RHYTHM.w3,
     },
     /* the raincloud: cross, not frightening */
     boss: {
-      tempo: 0.080,
+      tempo: PACE.boss,
       lead: pat(
         "12  . 12  . 15  . 12  .  . 17  . 15  . 12  .  . |" +
         "10  . 10  . 14  . 10  .  . 15  . 14  . 10  .  . |" +
@@ -5585,7 +5728,7 @@ window.SuperOuissy = (function () {
     /* her theme, but it opens on the fifth and comes DOWN to the root —
        finishing Easy should not sound like finishing Medium */
     win: {
-      tempo: 0.19,
+      tempo: PACE.win,
       lead: pat(
         "19  .  .  . 24  .  .  . 21  .  .  . 19  .  .  . |" +
         "16  .  .  . 19  .  .  . 21  .  .  . 24  .  .  . |" +
@@ -5610,124 +5753,147 @@ window.SuperOuissy = (function () {
   };
 
   /* ---- HARD: faster, minor, and the bass never stops. ----------------- */
+  /* ---- HARD: A DIFFERENT PIECE, NOT A FASTER ONE ----
+
+     What was here was the medium score played quicker. Same contour, same
+     root-and-fifth bass, and a harmony line that held ONE note for a
+     whole bar -- 24, 24, 24, 24 -- which is a drone, not a harmony. That
+     is why it felt rushed rather than hard: nothing new was happening,
+     it was just happening sooner.
+
+     So hard is its own music. It is in the minor with a flattened
+     seventh, the accents fall off the beat instead of on it, the harmony
+     ANSWERS the lead in the gaps rather than sitting under it, and the
+     bass walks a real progression -- i, flat seven, flat six, five --
+     instead of pumping the root. It is more intense than medium because
+     more is going on, not because the clock is faster. */
   SCORES.hard = {
+    /* WORLD ONE — the hook. Rest on the downbeat, hit on the way to it. */
     w1: {
-      tempo: 0.074,
+      /* IT SITS STILL AND THEN JUMPS. Three bars of one note, a leap of a
+         fifth and a sixth, then one long fall the whole way back down.
+         Easy's line is an arc in every bar and medium's is a descent;
+         this is neither, which is the point -- 89 per cent of its moves
+         used to go the same direction as easy's, and a tune that rises
+         and falls with another tune IS that tune. */
+      tempo: PACE.w1,
       lead: pat(
-        "12  . 12 15  . 19  . 15 12  . 19  . 22  . 19  . |" +
-        "10  . 10 14  . 17  . 14 10  . 17  . 20  . 17  . |" +
-        "12  . 12 15  . 19  . 22 24  . 22  . 19  . 15  . |" +
-        "17  . 15 14  . 12  . 11 12  .  .  . 12  .  .  ."),
+        "12  .  . 12  .  . 12  .  . 19  .  . 22  .  .  . |" +
+        "10  .  . 10  .  . 10  .  . 17  .  . 20  .  .  . |" +
+        "22  .  . 20  .  . 19  .  . 17  .  . 15  .  .  . |" +
+        "14  .  . 12  .  . 10  .  . 12  .  .  .  .  .  ."),
       harm: pat(
-        " .  . 24  .  .  . 24  .  .  . 24  .  .  . 24  . |" +
-        " .  . 22  .  .  . 22  .  .  . 22  .  .  . 22  . |" +
-        " .  . 24  .  .  . 24  .  .  . 27  .  .  . 27  . |" +
-        " .  . 19  .  .  . 19  .  .  . 19  .  .  . 19  ."),
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 22  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 27  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 19  .  .  .  .  .  .  .  ."),
       bass: pat(
-        " 0  0 12  0  0  0 12  0  7  7 19  7  7  7 19  7 |" +
-        "-2 -2 10 -2 -2 -2 10 -2  5  5 17  5  5  5 17  5 |" +
-        " 0  0 12  0  0  0 12  0  5  5 17  5  5  5 17  5 |" +
-        " 7  7 19  7  7  7 19  7  0  0 12  0  0  0  0  0"),
-      drum: dpat(
-        "K . h K . h S . K . h K . h S h |" +
-        "K . h K . h S . K . h K . h S h |" +
-        "K . h K . h S . K . h K . h S h |" +
-        "K . h K . h S . K . t t t t S ."),
+        " 0  .  .  .  .  .  7  .  .  .  .  .  0  .  .  . |" +
+        "10  .  .  .  .  .  5  .  .  .  .  . 10  .  .  . |" +
+        " 8  .  .  .  .  .  3  .  .  .  .  .  8  .  .  . |" +
+        " 7  .  .  .  .  .  2  .  .  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w1,
     },
+    /* WORLD TWO — three, three, two. The oldest trick there is for making
+       a straight bar feel like it is leaning forward. */
     w2: {
-      tempo: 0.068,
+      /* the flat seventh under it the whole way, which is what makes a
+         bar want to fall forward without being hurried */
+      tempo: PACE.w2,
       lead: pat(
-        "12 15  . 19 15  . 12 19  . 22 19  . 15 12  .  . |" +
-        "10 14  . 17 14  . 10 17  . 20 17  . 14 10  .  . |" +
-        "12 15  . 19 22  . 24 22  . 19 15  . 12 15  .  . |" +
-        "19 17  . 15 14  . 12 11  . 12  .  .  .  .  .  ."),
+        "15  .  . 19  .  . 22  .  . 19  .  . 15  .  .  . |" +
+        "14  .  . 17  .  . 20  .  . 17  .  . 14  .  .  . |" +
+        "15  .  . 19  .  . 24  .  . 22  .  . 19  .  .  . |" +
+        "20  .  . 19  .  . 17  .  . 15  .  .  .  .  .  ."),
       harm: pat(
-        "27  . 27  .  . 27  . 27  . 27  .  . 27  .  .  . |" +
-        "26  . 26  .  . 26  . 26  . 26  .  . 26  .  .  . |" +
-        "27  . 27  .  . 31  . 31  . 27  .  . 27  .  .  . |" +
-        "24  . 24  .  . 24  . 24  . 24  .  .  .  .  .  ."),
+        " .  .  .  3  .  .  .  .  . 10  .  .  .  .  .  . |" +
+        " .  .  .  2  .  .  .  .  .  8  .  .  .  .  .  . |" +
+        " .  .  .  3  .  .  .  .  . 12  .  .  .  .  .  . |" +
+        " .  .  .  7  .  .  .  .  .  0  .  .  .  .  .  ."),
       bass: pat(
-        " 0 12  0 12  0 12  0 12  7 19  7 19  7 19  7 19 |" +
-        "-2 10 -2 10 -2 10 -2 10  5 17  5 17  5 17  5 17 |" +
-        " 0 12  0 12  0 12  0 12  5 17  5 17  5 17  5 17 |" +
-        " 7 19  7 19  7 19  7 19  0 12  0 12  0  0  0  0"),
-      drum: dpat(
-        "K h h K h h S h K h h K h h S h |" +
-        "K h h K h h S h K h h K h h S h |" +
-        "K h h K h h S h K h h K h h S h |" +
-        "K h h K h h S h t t t t t t S ."),
+        " 0  .  .  . 10  .  .  .  0  .  .  . 10  .  .  . |" +
+        "-2  .  .  .  8  .  .  . -2  .  .  .  8  .  .  . |" +
+        " 0  .  .  .  8  .  .  .  0  .  .  .  8  .  .  . |" +
+        " 7  .  .  .  3  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w2,
     },
+    /* WORLD THREE — the floor giving way. A chromatic walk down, and a
+       turnaround that lands somewhere you did not expect. */
     w3: {
-      tempo: 0.062,
+      /* IT TRUDGES. Easy's world three turns out to be a zigzag itself,
+         so the zigzag I tried here agreed with it two thirds of the time
+         -- a tune that rises and falls with another tune IS that tune,
+         whatever its notes are. This one holds each note for two steps
+         and leans down: nothing else in the game stands still, so nothing
+         else can agree with it. For the last world on the hardest setting
+         it should sound like something that will not be hurried. */
+      tempo: PACE.w3,
       lead: pat(
-        " 9 12  . 16 12  .  9 16  . 19 16  . 12  9  .  . |" +
-        " 8 11  . 15 11  .  8 15  . 18 15  . 11  8  .  . |" +
-        " 9 12  . 16 19  . 21 20  . 19 18  . 16 15  .  . |" +
-        "14 13  . 12 11  . 10  9  . 12  .  .  .  .  .  ."),
+        "26  .  . 26  .  . 24  .  . 24  .  . 22  .  .  . |" +
+        "22  .  . 20  .  . 20  .  . 19  .  . 19  .  .  . |" +
+        "17  .  . 17  .  . 22  .  . 22  .  . 19  .  .  . |" +
+        "19  .  . 15  .  . 15  .  .  .  .  .  .  .  .  ."),
       harm: pat(
-        "24  . 24  . 24  . 24  . 24  . 24  . 24  .  .  . |" +
-        "23  . 23  . 23  . 23  . 23  . 23  . 23  .  .  . |" +
-        "24  . 24  . 24  . 27  . 27  . 27  . 27  .  .  . |" +
-        "21  . 21  . 21  . 21  . 24  .  .  .  .  .  .  ."),
+        " .  .  .  .  7  .  .  .  .  .  . 12  .  .  .  . |" +
+        " .  .  .  .  5  .  .  .  .  .  . 10  .  .  .  . |" +
+        " .  .  .  .  8  .  .  .  .  .  . 15  .  .  .  . |" +
+        " .  .  .  .  7  .  .  .  .  .  .  0  .  .  .  ."),
       bass: pat(
-        "-3 -3  9 -3 -3  9 -3  9  4  4 16  4  4 16  4 16 |" +
-        "-4 -4  8 -4 -4  8 -4  8  3  3 15  3  3 15  3 15 |" +
-        "-3 -3  9 -3 -3  9 -3  9 -5 -5  7 -5 -5  7 -5  7 |" +
-        "-7 -7  5 -7 -7  5 -7  5  0  0 12  0  0  0  0  0"),
-      drum: dpat(
-        "K h K h S h K h K h K h S h t t |" +
-        "K h K h S h K h K h K h S h t t |" +
-        "K h K h S h K h K h K h S h t t |" +
-        "K h K h S h K h t t t t t t S ."),
+        " 0  .  .  .  7  .  .  . 12  .  .  .  7  .  .  . |" +
+        "10  .  .  .  5  .  .  . 17  .  .  .  5  .  .  . |" +
+        " 8  .  .  .  3  .  .  . 15  .  .  .  3  .  .  . |" +
+        " 7  .  .  .  2  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w3,
     },
-    /* the Heartbreaker: minor, fast, and falling the whole way down */
+    /* THE BOSS — an ostinato you cannot get out of your head, and a
+       stabbing line over the top of it that refuses to line up with it. */
     boss: {
-      tempo: 0.056,
+      tempo: PACE.boss,
       lead: pat(
-        " 9  9  . 12 16  . 12  9  . 16 12  .  9 16  .  . |" +
-        " 8  8  . 11 15  . 11  8  . 15 11  .  8 15  .  . |" +
-        " 9  9  . 12 16  . 21 20  . 19 18  . 17 16  .  . |" +
-        "15 14  . 13 12  . 11 10  .  9  8  .  7  .  .  ."),
+        " .  . 24  .  . 24  . 23  .  . 24  .  . 27  .  . |" +
+        " .  . 22  .  .  22  . 20  .  . 22  .  . 26  .  . |" +
+        " .  . 24  .  . 27  . 29  .  . 27  .  . 24  .  . |" +
+        "23  . 22  . 20  . 19  .  .  . 19  .  .  .  .  ."),
       harm: pat(
-        "21  . 21  . 21  . 21  . 21  . 21  . 21  .  .  . |" +
-        "20  . 20  . 20  . 20  . 20  . 20  . 20  .  .  . |" +
-        "21  . 21  . 24  . 24  . 24  . 24  . 24  .  .  . |" +
-        " .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  ."),
+        "12  .  .  . 15  .  .  . 12  .  .  . 15  .  .  . |" +
+        "10  .  .  . 14  .  .  . 10  .  .  . 14  .  .  . |" +
+        "12  .  .  . 15  .  .  . 20  .  .  . 19  .  .  . |" +
+        "15  .  .  . 14  .  .  . 12  .  .  . 12  .  .  ."),
       bass: pat(
-        "-3 -3 -3 -3  9 -3 -3 -3 -3 -3  9 -3 -3 -3 -3 -3 |" +
-        "-4 -4 -4 -4  8 -4 -4 -4 -4 -4  8 -4 -4 -4 -4 -4 |" +
-        "-3 -3 -3 -3  9 -3 -3 -3 -5 -5  7 -5 -5 -5 -5 -5 |" +
-        "-7 -7 -7 -7  5 -7 -7 -7 -8 -8 -8 -8 -8 -8 -8 -8"),
+        " 0  0  .  0  8  .  0  .  0  0  .  0  7  .  0  . |" +
+        "-2 -2  . -2  6  . -2  . -2 -2  . -2  5  . -2  . |" +
+        " 0  0  .  0  8  .  0  .  3  3  .  3 10  .  3  . |" +
+        " 8  8  .  8  7  .  7  .  0  0  .  0  0  .  0  ."),
       drum: dpat(
-        "K h K h S h K h K h K h S h K h |" +
-        "K h K h S h K h K h K h S h K h |" +
-        "K h K h S h K h K h K h S h K h |" +
-        "t t t t S . K . t t t t t t t t"),
+        "K  . h K  . h S  . K  . h K  . h S  . |" +
+        "K  . h K  . h S  . K  . h K  . h S  . |" +
+        "K  . h K  . h S  . K  . h K  . h S  h |" +
+        "K  . t  . t  . S  . t t t t S  . S  ."),
     },
-    /* the same four notes, fallen all the way down and then climbing back
-       — which is what finishing THIS difficulty actually was */
+    /* THE FLAG — eight bars of relief, and the last one lifts rather
+       than lands, because there is always another world. */
     win: {
-      tempo: 0.15,
+      tempo: PACE.win,
       lead: pat(
-        "24  .  .  . 21  .  .  . 19  .  .  . 16  .  .  . |" +
-        "14  .  .  . 12  .  .  .  9  .  .  . 12  .  .  . |" +
-        "16  .  .  . 19  .  .  . 21  .  .  . 24  .  .  . |" +
-        "19  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
+        "12  . 16  . 19  .  .  . 24  .  .  . 19  .  .  . |" +
+        "17  . 21  . 24  .  .  . 28  .  .  . 24  .  .  . |" +
+        "19  . 24  . 28  .  . 31  .  . 28  . 24  . 19  . |" +
+        "16  . 19  . 24  .  .  .  .  .  .  .  .  .  .  ."),
       harm: pat(
-        " 0  .  .  .  4  .  .  .  7  .  .  .  4  .  .  . |" +
-        " 5  .  .  .  9  .  .  . 12  .  .  .  9  .  .  . |" +
-        " 7  .  .  .  4  .  .  .  0  .  .  .  2  .  .  . |" +
-        " 4  .  .  .  .  .  .  .  0  .  .  .  .  .  .  ."),
+        " .  . 12  .  . 16  .  .  . 19  .  .  . 16  .  . |" +
+        " .  . 14  .  . 17  .  .  . 21  .  .  . 17  .  . |" +
+        " .  . 16  .  . 19  .  .  . 24  .  .  . 19  .  . |" +
+        " .  . 12  .  . 16  .  . 19  .  .  .  .  .  .  ."),
       bass: pat(
-        "-12  .  .  .  0  .  .  . -5  .  .  .  7  .  .  . |" +
-        " -7  .  .  .  5  .  .  . -12  .  .  .  0  .  .  . |" +
-        " -5  .  .  .  7  .  .  . -7  .  .  .  5  .  .  . |" +
-        " -5  .  .  .  .  .  .  . -12  .  .  .  .  .  .  ."),
+        " 0  .  7  .  0  .  7  .  5  .  0  .  5  .  7  . |" +
+        " 5  .  0  .  5  .  0  . 10  .  5  . 10  .  0  . |" +
+        " 7  .  2  .  7  .  2  .  0  .  7  .  0  .  7  . |" +
+        " 5  .  7  .  0  .  .  .  0  .  .  .  .  .  .  ."),
       drum: dpat(
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . t t t t . . . ."),
+        "K  . h  . S  . h  . K  . h  . S  . h h |" +
+        "K  . h  . S  . h  . K  . h  . S  . h h |" +
+        "K  . h  . S  . h  . K  . h  . S  . t t |" +
+        "K  . h  . S  .  .  . K  .  .  .  .  .  .  ."),
     },
   };
 
@@ -5751,6 +5917,9 @@ window.SuperOuissy = (function () {
                ". . . . . . . . . . . . . . . ."),
   };
   ["easy", "medium", "hard"].forEach(function (d) { SCORES[d].menu = MENU_TUNE; });
+  /* the notes themselves, so "it feels rushed" can be checked against
+     what is actually written rather than argued about */
+  if (typeof window !== "undefined") window.__soScores = function () { return SCORES; };
 
   /* the set she is actually playing. Medium is the fallback, because a
      missing tune must never be an exception inside an audio callback. */
@@ -5765,6 +5934,12 @@ window.SuperOuissy = (function () {
   /* `BGM` is whatever is playing. It is kept as a name because the audio
      harness reads BGM.lead and BGM.bass to count the tune. */
   var BGM = SCORES.medium.w1;
+  /* HALF SPEED, FOR WHEN THE STORY TAKES OVER FOR A MOMENT. A rescue is
+     not long enough to be worth a piece of music of its own, and silence
+     under it was worse than either -- so what is already playing simply
+     slows down and steps back. */
+  var SLOW = 1.7;
+  var bgmSlow = false;
   var bgmTimer = null, bgmStep = 0, bgmGain = null, bgmName = "w1", bgmRush = false, bgmSet = null;
   var bgmNoise = null;
 
@@ -5792,7 +5967,7 @@ window.SuperOuissy = (function () {
     bgmStep = 0;
     if (bgmTimer) {
       clearInterval(bgmTimer);
-      bgmTimer = setInterval(tickBgm, BGM.tempo * (rush ? HURRY : 1) * 1000);
+      bgmTimer = setInterval(tickBgm, bgmBeat());
     }
   }
   /* called whenever the world she is in might have changed under her */
@@ -5812,21 +5987,48 @@ window.SuperOuissy = (function () {
        node from a dead context connects to nothing and plays silence
        while every timer keeps happily ticking. */
     if (!bgmGain || bgmGain.context !== c) {
-      bgmGain = c.createGain(); bgmGain.gain.value = 0.055; bgmGain.connect(c.destination);
+      bgmGain = c.createGain(); bgmGain.connect(c.destination);
       bgmNoise = null;
     }
+    /* and it is set from the state every time, not only when the node is
+       new -- a rebuilt node used to come back at full volume through a
+       hush, and an old one kept whatever the last writer left on it */
+    applyBgmGain();
     if (bgmTimer) return;
     bgmStep = 0;
-    bgmTimer = setInterval(tickBgm, BGM.tempo * (bgmRush ? HURRY : 1) * 1000);
+    bgmTimer = setInterval(tickBgm, bgmBeat());
+  }
+  function bgmBeat() {
+    return BGM.tempo * (bgmRush ? HURRY : 1) * (bgmSlow ? SLOW : 1) * 1000;
+  }
+  /* the tune does not restart -- it carries on from the step it was on,
+     just wider apart, so it reads as the same music slowing down rather
+     than as a different one starting */
+  function setBgmSlow(on) {
+    on = !!on;
+    if (on === bgmSlow) return;
+    bgmSlow = on;
+    if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = setInterval(tickBgm, bgmBeat()); }
   }
   function stopBgm() { if (bgmTimer) clearInterval(bgmTimer); bgmTimer = null; }
-  function bgmDuck(on) { if (bgmGain) bgmGain.gain.value = bgmHushed ? 0 : (on ? 0.014 : 0.055); }
+  /* ONE PLACE DECIDES HOW LOUD THE MUSIC IS.
+
+     There were two switches writing the same gain and neither knew about
+     the other: a duck for an overlay, at 0.014, and a hush for a cutscene,
+     at nought. Whoever wrote last won, and nothing ever recomputed it from
+     the state -- so a duck that was never lifted left the music at a
+     fortieth of its volume for the rest of the session while every sound
+     effect stayed exactly as loud as it should be, which is precisely the
+     complaint. The two paths out of the pause card that do not resume --
+     RESTART WORLD, and changing difficulty -- both closed the overlay and
+     started a level without lifting the duck. */
+  var bgmHushed = false, bgmDucked = false;
+  var BGM_FULL = 0.055, BGM_DUCK = 0.014;
+  function bgmLevel() { return bgmHushed ? 0 : (bgmDucked ? BGM_DUCK : BGM_FULL); }
+  function applyBgmGain() { if (bgmGain) bgmGain.gain.value = bgmLevel(); }
+  function bgmDuck(on) { bgmDucked = !!on; applyBgmGain(); }
   /* All the way down, for as long as something else owns the sound. */
-  var bgmHushed = false;
-  function bgmSilence(on) {
-    bgmHushed = !!on;
-    if (bgmGain) bgmGain.gain.value = on ? 0 : 0.055;
-  }
+  function bgmSilence(on) { bgmHushed = !!on; applyBgmGain(); }
 
   function tickBgm() {
     var c = actx(); if (!c || !bgmGain) return;
@@ -6097,6 +6299,13 @@ window.SuperOuissy = (function () {
   }
 
   function startLevel(i) {
+    /* A LEVEL THAT IS STARTING IS NEVER DUCKED. The duck belongs to an
+       overlay, and by here the overlay is gone -- but RESTART WORLD and
+       the difficulty buttons came straight through without lifting it, so
+       the music came back at a fortieth of its volume and stayed there.
+       Lifting it here covers every way into a level, including any added
+       later, rather than relying on each button to remember. */
+    bgmDuck(false);
     if (window.__soReleaseAll) window.__soReleaseAll();
     bossHush(); signHush();
     /* being stuck is a property of a stretch, not of a run: a new world
@@ -6400,6 +6609,8 @@ window.SuperOuissy = (function () {
   /* the pause menu is a real menu with real doors in it, so a harness
      needs to be able to open it */
   window.__soPause = function (force) { togglePause(force); };
+  /* so a suite can stand in world two or three without playing to it */
+  window.__soSetWorld = function (i) { startLevel(i); return G.levelIndex; };
   /* A harness testing the revive offer has to arrive at the death holding
      more lives than the offer costs, and playing well enough to have
      collected them is not something a test can do. */
@@ -6655,5 +6866,43 @@ window.SuperOuissy = (function () {
     return arr[Math.min(k || 0, arr.length - 1)];
   }
 
-  return { start: start, stop: stop, frame: ouissyFrame, pause: function () { if (G && G.state === "play") togglePause(); } };
+  /* EVERY MENU THE GAME CAN PUT UP, REACHABLE FROM A TEST.
+
+     tools/sofit.js could only get at four of the eight by clicking --
+     the title, the how-to, the world card and the pause -- so the four
+     that only appear at the end of a run, or when a boss has just
+     killed her, were never looked at. Those are exactly the long ones,
+     which are exactly the ones that scroll. */
+  function showMenu(which) {
+    if (!G) return false;
+    /* EVERY CARD EXCEPT THE FIRST TWO HAPPENS DURING A RUN. The title and
+       the how-to are what she sees before one starts; the world card, the
+       pause, the revive, the results, the game over and the ending all
+       appear over a world that exists, with her lives and her score on
+       them. Opening one on an empty game measures a card she can never
+       see -- and worse, the world card's own timer then hands the loop a
+       "play" state with no level under it, which is a throw. So put the
+       game where the card really lives first. */
+    if (which !== "title" && which !== "howto") {
+      if (!G.level) startLevel(G.levelIndex || 0);
+      closeOverlay();
+      G.state = "play";
+    }
+    switch (which) {
+      case "title":   showDifficulty(); return true;
+      case "howto":   showHowTo(function () {}); return true;
+      case "world":   showLevelCard(function () {}); return true;
+      case "pause":   togglePause(true); return true;
+      case "revive":  offerBossRevive(); return true;
+      case "cleared": finishLevel(); return true;
+      case "over":    endRun(false); return true;
+      case "won":     endRun(true); return true;
+      case "ending":  showEnding(false); return true;
+      default: return false;
+    }
+  }
+  return { start: start, stop: stop, frame: ouissyFrame,
+           pause: function () { if (G && G.state === "play") togglePause(); },
+           __menu: showMenu,
+           __menus: ["title","howto","world","pause","revive","cleared","over","won","ending"] };
 })();

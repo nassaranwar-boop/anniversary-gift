@@ -2378,24 +2378,76 @@ img{-webkit-user-drag:none; user-select:none;}
    site. The slate is still underneath and still appears if the file ever
    goes missing again. */
 .sb-w-ourvideo{padding:0;}
+/* ---- THE WINDOW ----------------------------------------------------
+
+   A leaf of the album's own blush paper with an aperture cut through it,
+   and the clip behind the aperture rather than pasted on the front.
+
+   Not the cream filmstrip it was -- there is no film anywhere else in this
+   book, so one strip of sprocket clipart on a page of pressed flowers and
+   cut photographs is exactly the thing that reads as borrowed. And not a
+   taped print either: that is the photographs' language and it is spoken
+   on every page already, so saying it again would leave the one moving
+   thing in the album looking like everything else in it. */
 .sb-ov-mount{
-  position:relative; padding:9px 8px; border-radius:5px;
-  background:linear-gradient(168deg,#fdfbf4,#f4ecdb);
+  position:relative;
+  padding:3.4% 3.4% 8.5%;         /* the foot is where the brad is pinned */
+  border-radius:3px;
+  transform:rotate(-.5deg);
+  /* IT HAD GONE COLD. The mat came out a lilac grey against a page of
+     warm dusty rose, which reads as a different material laid on the
+     album rather than a leaf of it -- card, not paper. Warmed back onto
+     the page's own hue, with the fibre running two ways instead of one so
+     it takes the light like a sheet rather than like a gradient. */
+  background:
+    repeating-linear-gradient(96deg,
+      rgba(255,252,248,.20) 0 1px, rgba(158,104,116,.030) 1px 3px),
+    repeating-linear-gradient(6deg,
+      rgba(255,252,248,.10) 0 1px, rgba(158,104,116,.018) 1px 4px),
+    linear-gradient(163deg, #f7e6e4 0%, #f0d9d9 50%, #e6c9cd 100%);
   box-shadow:
-    0 1px 0 rgba(255,255,255,.9) inset,
-    0 10px 22px rgba(70,44,20,.30),
-    0 2px 5px rgba(70,44,20,.18);
+    0 1px 0 rgba(255,255,255,.70) inset,
+    0 -1px 0 rgba(138,86,98,.18) inset,
+    0 14px 30px rgba(58,26,38,.32),
+    0 3px 7px rgba(58,26,38,.20);
 }
-/* the sprocket edges, the same idea as the film cells on the other pages */
-.sb-ov-holes{
-  position:absolute; left:9px; right:9px; height:7px; z-index:4;
-  display:flex; justify-content:space-around; align-items:center; pointer-events:none;
+/* THE CHAMFER. Four faces meeting at mitred corners, which is what a
+   conic gradient in the padding of a box gives you for nothing: brightest
+   along the top where the light is, darkest along the bottom, and the two
+   sides between. Without the different faces a bevel is just a border. */
+.sb-ov-window{
+  position:relative;
+  /* A CHAMFER IS A FEW THOUSANDTHS OF AN INCH OF PAPER, not a moulding.
+     At thirteen points with a hard contrast between the faces it stopped
+     being a cut edge and became a plastic frame -- the corners read as two
+     big diagonal wedges rather than as a mitre. Thin, and with the faces
+     only a few per cent apart, it does what it is supposed to do, which is
+     to catch the light for a moment and then get out of the way. */
+  padding:clamp(4px, 1.25%, 8px);
+  /* the faces were within a few per cent of each other and of the mat, so
+     the cut did not read as a cut at all -- just a slightly paler border.
+     A chamfer catches the light hard on the face pointing at it and loses
+     it completely on the one pointing away; that difference IS the bevel. */
+  background:conic-gradient(from 45deg,
+    #fffaf7  0    25%,    /* top: straight into the light */
+    #ddc0c6  25%  50%,    /* right: turning away */
+    #b89aa4  50%  75%,    /* bottom: its own shadow */
+    #f8ebe9  75%  100%);  /* left: glancing */
+  box-shadow:
+    0 0 0 1px rgba(112,70,84,.26),
+    0 1px 2px rgba(58,26,38,.18);
 }
-.sb-ov-holes.a{top:1px;} .sb-ov-holes.b{bottom:1px;}
-.sb-ov-holes i{
-  display:block; width:7px; height:5px; border-radius:1px;
-  background:#e7dcc4; box-shadow:0 0 0 1px rgba(120,90,50,.28) inset;
+/* and the picture is UNDER the paper: the shadow the cut edge throws onto
+   it is the whole reason the window reads as a window */
+.sb-ov-window .sb-vid-frame::after{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:5;
+  box-shadow:
+    inset 0 5px 10px rgba(38,16,26,.48),
+    inset 0 -2px 6px rgba(38,16,26,.26),
+    inset 4px 0 8px rgba(38,16,26,.24),
+    inset -4px 0 8px rgba(38,16,26,.24);
 }
+
 .sb-w-ourvideo .sb-vid-frame{
   border-radius:2px; background:#171d21;
   box-shadow:0 0 0 1px rgba(90,62,30,.30), 0 4px 12px rgba(40,26,10,.34) inset;
@@ -2433,50 +2485,77 @@ img{-webkit-user-drag:none; user-select:none;}
    out from it to say it can be touched. Nothing here is borrowed from a
    video site; it is the same brass and cream and plum as the rest of the
    book. */
+/* ON THE MAT, NOT ON THE PICTURE. It used to sit inside the frame, which
+   on a clip of two people means it sits on two people -- low enough to
+   miss his face and still square over his hands. The paper has a deep
+   foot below the window precisely so the control has somewhere of its own
+   to live. */
+/* IN THE FOOT, NOT ON THE EDGE. It straddled the window's bottom-left
+   corner -- half on the paper and half on the picture -- which reads as
+   something stuck onto the join rather than a fastener pushed through the
+   mat. Centred in the foot it sits where the caption below it sits, and
+   the two of them line up down the middle of the card. */
 .sb-w-ourvideo .sb-vid-play{
-  left:6%; top:auto; bottom:9%; right:auto; transform:none;
-  width:auto; height:auto; padding:0; border-radius:0; z-index:6;
+  left:50%; top:auto; bottom:1.4%; right:auto; transform:translateX(-50%);
+  width:auto; height:auto; padding:0; border-radius:0; z-index:8;
   background:none; box-shadow:none;
-  flex-direction:row; align-items:center; gap:9px;
+  flex-direction:row; align-items:center; gap:8px;
   transition:opacity .3s ease;
 }
+.sb-w-ourvideo .sb-vid-play:active{transform:translateX(-50%);}
 /* The record, stuck down on the frame. It is painted in scrapbook.js by
    playRecord() -- the same wine and cream as the three records already on
    these pages -- so the control is a sticker from this book rather than a
    piece of camera hardware borrowed from somewhere else. */
+/* A BRAD IS SMALL. Sixty points across it was a widget; at forty-four it
+   is a fastener holding the film down, and it stops covering whoever is
+   standing behind it. */
 .sb-ov-ring{
   position:relative; flex:0 0 auto; display:block;
-  width:clamp(40px, 13.5cqw, 60px); height:clamp(40px, 13.5cqw, 60px);
+  width:clamp(28px, 8cqw, 38px); height:clamp(28px, 8cqw, 38px);
   border-radius:50%;
-  filter:drop-shadow(0 6px 14px rgba(34,8,20,.55));
+  filter:drop-shadow(0 3px 7px rgba(38,16,6,.55));
   transition:transform .18s var(--ease-out), filter .18s var(--ease-out);
 }
 .sb-ov-disc-img{
   position:absolute; inset:0; width:100%; height:100%;
   border-radius:50%; display:block;
 }
-/* a slow ring of light going out, so it reads as something to touch */
+/* The expanding ring is the one thing on this card that came from a video
+   site: nothing in a paper album pulses. What a pearl does instead is
+   catch the light and lose it as you move, so the brad breathes a warm
+   sheen rather than throwing off a halo. */
 .sb-ov-pulse{
-  position:absolute; inset:-6%; border-radius:50%; pointer-events:none;
-  border:1.5px solid rgba(255,206,216,.8);
-  animation:sbOvPulse 2.8s var(--ease-out) infinite;
+  position:absolute; inset:-14%; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle at 38% 34%,
+    rgba(255,240,214,.34), rgba(255,236,206,.08) 46%, rgba(255,236,206,0) 70%);
+  animation:sbOvSheen 4.2s ease-in-out infinite;
 }
-@keyframes sbOvPulse{
-  0%   {opacity:.85; transform:scale(1);}
-  70%  {opacity:0;   transform:scale(1.42);}
-  100% {opacity:0;   transform:scale(1.42);}
+@keyframes sbOvSheen{
+  0%, 100% {opacity:.30;}
+  50%      {opacity:.80;}
 }
-@media (prefers-reduced-motion:reduce){ .sb-ov-pulse{animation:none; opacity:.5;} }
+@media (prefers-reduced-motion:reduce){ .sb-ov-pulse{animation:none; opacity:.45;} }
+/* the word was set in the script face at nineteen points with a six-point
+   black shadow under it, which is a sticker. It is the caption serif the
+   rest of the book speaks in, small and letterspaced, sitting quietly
+   beside the brad. */
+/* the word is on pale paper now rather than over a dark picture, so it is
+   ink rather than something glowing: the same warm brown the caption
+   under the window is set in */
 .sb-ov-word{
-  font-family:var(--font-script); font-size:clamp(13px, 4cqw, 19px);
-  line-height:1; color:#fdf6e8; white-space:nowrap;
-  text-shadow:0 1px 6px rgba(20,10,4,.9); opacity:.96; padding-bottom:3px;
+  font-family:var(--font-serif); font-style:italic;
+  font-size:clamp(11px, 3cqw, 14px); letter-spacing:.07em;
+  line-height:1; color:#7a5567; white-space:nowrap;
+  text-shadow:0 1px 0 rgba(255,255,255,.55); opacity:.92; padding-bottom:2px;
 }
 .sb-w-ourvideo .sb-vid-play:active .sb-ov-ring{
   transform:translateY(2px) scale(.955);
   filter:drop-shadow(0 2px 6px rgba(34,8,20,.6));
 }
-.sb-w-ourvideo .sb-vid-play:active{transform:none;}
+/* the centring transform has to survive the press, or the control jumps
+   half its own width to the left the moment she touches it */
+.sb-w-ourvideo .sb-vid-play:active{transform:translateX(-50%);}
 .sb-w-ourvideo .sb-ico-play{margin-left:3px;}
 /* The big control is the invitation on an untouched card, so it goes as
    soon as the clip has been started -- not merely while it is running.
@@ -3633,7 +3712,20 @@ img{-webkit-user-drag:none; user-select:none;}
    scrolling is the guarantee, not the plan. */
 .hub-wrap{
   width:min(94vw,620px); margin:0 auto; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:8px; padding:16px 12px;
+  align-items:center; gap:8px; padding:16px 12px;
+  /* CENTRED, BUT NEVER PUSHED OUT OF REACH.
+
+     A centred flex column that overflows its scroller pushes its
+     overflow off BOTH ends, and the part above the top can never be
+     scrolled back to -- the scroll origin is the top of the box, and
+     the content starts above it. On a short phone with every chapter
+     done, "Choose your adventure" was clipped by forty pixels and there
+     was no way to see it. `safe` is the keyword for exactly this: it
+     centres while it fits and falls back to packing from the start the
+     moment it does not. The plain `center` above it is the fallback for
+     anything that does not understand `safe`. */
+  justify-content:center;
+  justify-content:safe center;
   max-height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch;
   /* without this the bounce at the end of the list drags the page with it,
      which is the other way a strip of nothing appears under the site */
@@ -3704,7 +3796,13 @@ img{-webkit-user-drag:none; user-select:none;}
 .hub-foot{
   display:flex; flex-wrap:wrap; gap:9px; justify-content:center; width:100%;
 }
-.hub-keepsake{margin-top:14px; display:none;}
+/* Two jobs, two classes. `hub-foot-btn` is the spacing every button in
+   the footer wants; `hub-keepsake` is the gate that keeps the keepsake
+   hidden until the story is done. They used to be the same class, so
+   putting the footer's spacing on the way back to the book also put the
+   keepsake's gate on it, and the book button never appeared at all. */
+.hub-foot-btn{margin-top:14px;}
+.hub-keepsake{display:none;}
 .hub-keepsake.on{display:inline-block;}
 
 /* A short screen: give the cards back the pixels they do not need. Same
@@ -3721,7 +3819,7 @@ img{-webkit-user-drag:none; user-select:none;}
   .hub-art{height:58px;}
   .hub-name{font-size:14.5px;}
   .hub-desc{font-size:11px; line-height:1.35;}
-  .hub-keepsake{margin-top:9px;}
+  .hub-foot-btn{margin-top:9px;}
 }
 @media (max-width:700px) and (max-height:700px){
   .hub-art{height:46px;}
@@ -3775,7 +3873,7 @@ img{-webkit-user-drag:none; user-select:none;}
   .hub-art{height:58px;}
   .hub-name{font-size:13px;}
   .hub-desc{font-size:10.5px; line-height:1.28;}
-  .hub-keepsake{margin-top:6px;}
+  .hub-foot-btn{margin-top:6px;}
 }
 
 
@@ -4569,7 +4667,13 @@ img{-webkit-user-drag:none; user-select:none;}
 .so-overlay.on{scrollbar-width:none;}
 .so-overlay.on::-webkit-scrollbar{width:0; height:0;}
 .so-lift{
-  position:absolute; left:1.4cqw; top:8cqh; bottom:8cqh; width:1.9cqw;
+  /* Hard against the FAR RIGHT edge of the stage -- his call, and the
+     mirror of where it used to be. It sat on the far left before, which
+     put the bar on the opposite side of the screen from the hand most
+     people scroll with. Sitting it against the card's edge was the step
+     in between; he wants it out at the edge, so `left` is no longer
+     computed and `right` is a fixed inset again. */
+  position:absolute; left:auto; right:1.4cqw; top:8cqh; bottom:8cqh; width:1.9cqw;
   z-index:12; display:none; touch-action:none; cursor:pointer;
   border-radius:1cqw;
   background:linear-gradient(180deg, rgba(24,10,30,.62), rgba(38,16,44,.62));
@@ -4577,7 +4681,7 @@ img{-webkit-user-drag:none; user-select:none;}
              inset 0 .2cqw .5cqw rgba(0,0,0,.45);
 }
 .so-lift.on{display:block; animation:soLiftIn .3s var(--ease-out);}
-@keyframes soLiftIn{from{opacity:0; transform:translateX(-.6cqw);} to{opacity:1; transform:none;}}
+@keyframes soLiftIn{from{opacity:0; transform:translateX(.6cqw);} to{opacity:1; transform:none;}}
 .so-lift-bar{
   position:absolute; left:.22cqw; right:.22cqw; top:0; height:20%;
   border-radius:1cqw;
@@ -4881,7 +4985,11 @@ img{-webkit-user-drag:none; user-select:none;}
 .so-pad-side{display:flex; gap:12px; align-items:center;}
 /* on the title screen the pad controls nothing, so it steps back rather
    than sitting there looking live */
-#screen-ouissy.so-menu-open .so-pad{opacity:.3; pointer-events:none; filter:saturate(.5);}
+/* GONE, NOT DIMMED. A greyed-out set of controls behind the title card
+   still reads as controls, and controls that do nothing read as a bug
+   rather than as a decision. There is no level to steer on the title
+   screen, so there is nothing for them to be. */
+#screen-ouissy.so-menu-open .so-pad{display:none;}
 .so-pad{transition:opacity .3s ease, filter .3s ease;}
 .so-pad-right{gap:12px;}
 /* The pad's icons are drawn, not typed. A glyph arrow is whatever the
@@ -5285,8 +5393,20 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-state.hidden-ok{color:#8fa2d4; text-shadow:none;}
 @keyframes apSeen{0%,100%{opacity:1;} 50%{opacity:.45;}}
 
-.ap-dlg[aria-hidden="false"] ~ .ap-pause-btn,
-.ap-stage:has(.ap-dlg[aria-hidden="false"]) .ap-pause-btn{
+/* THE PAUSE BUTTON STAYS, THE WHOLE WAY THROUGH.
+
+   It used to go out twice: while anybody was talking (the two rules
+   that were here) and through every cut (`.ap-hud.gone + .ap-pause-btn`
+   further down). Between them that is most of the chapter — the drive,
+   the ride, the campfire, the roof, and every line of dialogue in
+   between — so for long stretches there was no way out of the game
+   except the browser's own back button.
+
+   It is on screen from the first level to the end of the roof now. The
+   map button still goes; that one has nothing to point at during a cut,
+   and it is not a way out. */
+.ap-dlg[aria-hidden="false"] ~ .ap-map-btn,
+.ap-stage:has(.ap-dlg[aria-hidden="false"]) .ap-map-btn{
   opacity:0; pointer-events:none; transition:opacity .2s ease;
 }
 /* ---- the two in the corner ----
@@ -6108,8 +6228,14 @@ img{-webkit-user-drag:none; user-select:none;}
    Same plate as the distribution board: a title, the thing itself, a
    line of prose under it, and a way out. It is wider than the board
    because a fridge with both doors open is a wide thing. */
+/* No max-height here. It capped the BOX at the stage while the flex
+   children went on overflowing it, so "SHUT IT" and "leave it" hung off
+   the bottom of an upright screen -- eighty and a hundred and thirteen
+   pixels out of reach -- while the card measured as fitting perfectly.
+   The plate inside is still bounded (max-height:42cqh below), and
+   anything still over is scaled to fit by fitOverlay. */
 .ap-fridge{display:flex; flex-direction:column; align-items:center;
-  gap:1.0cqw; width:min(94cqw, 700px); max-height:100%;}
+  gap:1.0cqw; width:min(94cqw, 700px);}
 .ap-fridge .ap-panel-canvas{
   /* both ways, so the plate fits the screen it is on: a canvas keeps its
      own ratio when only one of the two is fixed, and this one has a
@@ -6127,21 +6253,31 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-fridge .ap-card-go.ready{opacity:1;}
 
 .ap-panel{display:flex; flex-direction:column; align-items:center; gap:1.6cqw; width:min(92cqw, 620px);}
+/* THE TYPE STOPS WHEN THE BOX DOES.
+
+   These are sized in cqw -- a share of the STAGE -- while the board they
+   sit in stops growing at 620px. On a laptop that made the hint 31px
+   inside a 620px card: six wrapped lines, three hundred pixels of them,
+   and "step back" pushed off the bottom of the picture. The card is
+   scaled to fit now whatever happens, but scaling the board down is a
+   worse answer than not letting the words run away in the first place,
+   so each of these is clamped to what it would be at the card's own
+   ceiling. Nothing changes on a phone, where the two already agreed. */
 .ap-panel-title{
   margin:0; font-family:var(--ap-sign);
-  font-size:1.55cqw; letter-spacing:.16em; color:#e8c98a;
+  font-size:clamp(9px, 1.55cqw, 11px); letter-spacing:.16em; color:#e8c98a;
 }
 .ap-panel-canvas{
   width:100%; height:auto; display:block; image-rendering:pixelated;
   border-radius:4px; box-shadow:0 14px 40px rgba(0,0,0,.8), 0 0 0 2px rgba(90,80,60,.5);
   touch-action:none;
 }
-.ap-panel-hint{margin:0; font-family:var(--ap-term); font-size:2.6cqw; color:#9fb0d8;
-  text-align:center; max-width:80%;}
+.ap-panel-hint{margin:0; font-family:var(--ap-term); font-size:clamp(11px, 2.6cqw, 17px);
+  color:#9fb0d8; text-align:center; max-width:80%;}
 .ap-panel-leave{
   margin-top:.6cqw; padding:1.4cqw 3cqw; cursor:pointer; border-radius:8px;
   border:2px solid rgba(150,170,220,.3); background:transparent; color:#9fb0d8;
-  font-family:var(--ap-term); font-size:2.4cqw;
+  font-family:var(--ap-term); font-size:clamp(11px, 2.4cqw, 16px);
 }
 
 /* the torn note */
@@ -6347,7 +6483,8 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-overlay.cut{
   background:linear-gradient(180deg, rgba(4,6,12,0) 62%, rgba(4,6,12,.72) 100%) !important;
 }
-.ap-hud.gone, .ap-hud.gone + .ap-pause-btn{opacity:0; transition:opacity .3s ease;}
+/* the HUD goes during a cut; the pause button does not go with it */
+.ap-hud.gone{opacity:0; transition:opacity .3s ease;}
 
 /* ---- the arrivals check, and the serum ---- */
 .ap-check{
@@ -6515,6 +6652,23 @@ img{-webkit-user-drag:none; user-select:none;}
    ========================================================= */
 :root{
   --rc-face: 'Press Start 2P', ui-monospace, monospace;
+  /* TWO FACES, AND THE SECOND ONE IS STILL A PIXEL FONT.
+
+     Press Start 2P has no lowercase, a fixed advance and very wide
+     sidebearings. That is exactly right for a logo, a heading, a place
+     number and a button -- and it is a wall for anything that is a
+     sentence. "Every lap was worth it. Same time tomorrow? 8 hearts
+     carried over the line" set in it runs to two full lines of blocks
+     that have to be decoded rather than read, and that is most of what
+     makes these panels look plain.
+
+     Pixelify Sans is the companion: already loaded with the rest, same
+     pixel grid and the same era, but proportional, with real lowercase
+     and a normal rhythm. Prose, lists and explanations move to it; the
+     display face keeps everything that is a label. The point of choosing
+     a sibling rather than a serif or a UI sans is that nothing stops
+     looking like this game. */
+  --rc-read: 'Pixelify Sans', 'Press Start 2P', ui-monospace, monospace;
   --rc-ink:  #fff8e8;
   --rc-rose: #ff5f95;
   --rc-coral:#ff7f8a;
@@ -6724,11 +6878,55 @@ img{-webkit-user-drag:none; user-select:none;}
   display:grid; justify-items:center; align-items:center;
   align-content:safe center; justify-content:safe center;
 }
+/* THE SCRIM, WHICH NOW HAS SOMETHING TO SIT ON.
+
+   It used to be the background: two opaque gradients over an empty
+   canvas. There is a road back there now, so this has one job instead --
+   put enough dark between the scene and the type to read the type, and
+   no more. Heaviest down the middle where the panel is, lightest at the
+   edges where the scene is worth seeing.
+
+   Over the race (the pause card) there is no scene and the track itself
+   is bright, so that one keeps a flat heavy wash. */
+/* THE SCRIM, WHICH NOW HAS THE GAME BEHIND IT.
+
+   It used to be the background: two opaque gradients over an empty
+   canvas. There is a lap of the circuit running back there now, so this
+   has one job instead -- put enough dark between the road and the type to
+   read the type, and no more. Heaviest down the middle where the panel
+   is, lightest at the edges, where the course is worth seeing.
+
+   Over a race (the pause card) there is no fly-round and the track is
+   lit for driving, so that one keeps the old flat, heavy wash. */
 .rc-overlay.on::before{
   content:""; position:absolute; inset:0; z-index:-1;
   background:
     radial-gradient(ellipse at 50% 24%, rgba(255,95,149,.20), transparent 62%),
     linear-gradient(180deg, rgba(26,18,38,.94), rgba(16,10,26,.97));
+}
+/* OFF THE PLANET'S SIDE OF THE FRAME.
+
+   Centred, this ellipse sat three quarters of the way across the planet
+   and put seventy-six per cent black over the one bright thing in the
+   picture. It is pulled towards the menu column instead, which is where
+   it is needed: the type sits on the right of centre, the world is on the
+   left, and space is dark enough that the left side needs almost nothing
+   from it. */
+/* THE SCRIM IS A WASH NOW, NOT A SPOTLIGHT.
+
+   An ellipse over the middle of the frame is the right shape when the
+   backdrop is a still picture. It is the wrong shape when two karts are
+   going round a planet, because half of every orbit passed underneath it
+   and whichever of them was on the right simply went out. The buttons
+   carry their own background and every line of type on this screen has
+   its own shadow, so all this has to do is take the edge off the sky --
+   evenly, so that nothing crossing it is punished for where it happens to
+   be. */
+.rc-stage[data-menu="scene"] .rc-overlay.on::before{
+  background:
+    radial-gradient(52% 96% at 60% 52%,
+      rgba(14,7,24,.46) 0%, rgba(14,7,24,.40) 60%, rgba(14,7,24,.22) 100%),
+    linear-gradient(180deg, rgba(18,9,28,.34), rgba(10,5,18,.44));
 }
 
 /* the title card */
@@ -6842,40 +7040,198 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-card-art canvas{width:100%; height:auto; image-rendering:pixelated;}
 .rc-card-name{font-size:1.9cqh; color:var(--rc-ink);}
 .rc-card-sub{font-size:1.15cqh; color:#c9b8d8; line-height:1.6;}
-.rc-blurb{margin:0; max-width:70cqw; font-size:1.5cqh; line-height:2; color:#ffc4a3;}
+.rc-blurb{margin:0; max-width:58cqw; font-size:2cqh; line-height:1.62;
+  font-family:var(--rc-read); letter-spacing:.02em; color:#ffc4a3;}
 .rc-row{display:flex; gap:2cqw; align-items:center; justify-content:center;}
 
 /* the podium */
-.rc-podium{display:flex; align-items:flex-end; justify-content:center; gap:1.6cqw; width:100%;}
-.rc-pod{display:flex; flex-direction:column; align-items:center; gap:.6cqh;}
-.rc-pod-art{line-height:0;}
-.rc-pod-art canvas{width:14cqh; height:auto; image-rendering:pixelated;}
-.rc-pod-block{
-  display:grid; place-items:center; width:12cqw; border-radius:.6cqw .6cqw 0 0;
-  font-size:3cqh; color:#2a1a2e;
+/* under the heading: which course this was. It only ever appeared on the
+   postcard, which is the part of the panel she is most likely to scroll
+   past. */
+.rc-sub{
+  margin:-1cqh 0 0; font-family:var(--rc-read); font-size:1.9cqh;
+  letter-spacing:.06em; color:#c2a8d6;
 }
-.rc-pod-block b{font-weight:400;}
-.rc-pod-1 .rc-pod-block{height:9cqh; background:linear-gradient(180deg,#ffe07a,#e0a83a);}
-.rc-pod-2 .rc-pod-block{height:6.4cqh; background:linear-gradient(180deg,#f0f2f6,#b9bfc9);}
-.rc-pod-3 .rc-pod-block{height:4.6cqh; background:linear-gradient(180deg,#f0b98a,#c07f4f);}
-.rc-pod-name{font-size:1.4cqh; color:var(--rc-ink);}
+/* ---------- THE PODIUM ----------
 
+   Three flat rectangles with a top-to-bottom gradient and a number on
+   them. Which is a bar chart, not a podium: a podium is a solid object
+   standing on a floor with a light on it, and there are only four things
+   you have to draw for the eye to agree that that is what it is looking
+   at.
+
+     THE TOP FACE. A block seen from slightly above shows its top. One
+     skewed strip along the upper edge, lighter than the front, and the
+     rectangle becomes a box.
+     THE SIDE. The same trick down the right-hand edge, darker, so the
+     box has a direction to it.
+     THE FLOOR. A pool of light under all three with the blocks'
+     reflections in it, which is what stops them floating.
+     THE LIGHT. One cone behind first place. Gold is not a colour, it is
+     a colour with a highlight running across it.
+
+   The numerals are cut INTO the metal rather than printed on it: a dark
+   face with a light edge below and a shadow above is what an engraving
+   looks like, and it is two text-shadows. */
+.rc-podium{
+  position:relative;
+  display:flex; align-items:flex-end; justify-content:center;
+  gap:1.6cqw; width:100%;
+  /* AND NO TALLER THAN IT WAS. The floor and the reflections are drawn
+     into the space the podium already had -- the panel below it is
+     already longer than a phone stage, and three more units of height
+     pushes the line under it behind the buttons. */
+  padding-bottom:.6cqh;
+}
+/* the floor: a pool of light the three of them stand in */
+.rc-podium::after{
+  content:""; position:absolute; left:50%; bottom:-.2cqh;
+  width:min(62cqw, 86%); height:3.2cqh; transform:translateX(-50%);
+  border-radius:50%;
+  background:radial-gradient(closest-side,
+    rgba(255,224,122,.26) 0%, rgba(255,170,190,.12) 44%, transparent 78%);
+  pointer-events:none;
+}
+.rc-pod{
+  position:relative;
+  display:flex; flex-direction:column; align-items:center; gap:.6cqh;
+  animation:rc-pod-rise .5s cubic-bezier(.2,.9,.3,1.2) both;
+}
+.rc-pod-1{ animation-delay:.14s; }
+.rc-pod-2{ animation-delay:.04s; }
+.rc-pod-3{ animation-delay:.09s; }
+@keyframes rc-pod-rise{
+  from{ transform:translateY(2.4cqh); opacity:0; }
+  to  { transform:none; opacity:1; }
+}
+@media (prefers-reduced-motion:reduce){ .rc-pod{ animation:none; } }
+
+/* the light on the winner */
+.rc-pod-1::before{
+  content:""; position:absolute; left:50%; bottom:0;
+  width:26cqh; height:22cqh; transform:translateX(-50%);
+  pointer-events:none;
+  background:radial-gradient(closest-side at 50% 100%,
+    rgba(255,224,122,.30) 0%, rgba(255,224,122,.10) 46%, transparent 76%);
+  pointer-events:none; z-index:-1;
+}
+
+.rc-pod-art{ line-height:0; position:relative; }
+.rc-pod-art canvas{width:14cqh; height:auto; image-rendering:pixelated;}
+
+.rc-pod-block{
+  position:relative;
+  display:grid; place-items:center; width:12cqw;
+  border-radius:.5cqw .5cqw 0 0;
+  font-size:3cqh; color:var(--pod-cut, #2a1a2e);
+  /* the front face: a band of highlight across the upper third, the
+     body, and a foot that falls away into its own shadow */
+  background:linear-gradient(180deg,
+    var(--pod-hi) 0%, var(--pod-mid) 26%, var(--pod-mid) 56%,
+    var(--pod-lo) 100%);
+  box-shadow:
+    inset 0 .22cqh 0 rgba(255,255,255,.7),
+    inset -.5cqw 0 .9cqw rgba(40,16,30,.30),
+    0 .5cqh 1.2cqw rgba(12,6,18,.5);
+}
+/* the top face */
+.rc-pod-block::before{
+  content:""; position:absolute; left:0; right:0; top:-.9cqh; height:.9cqh;
+  background:linear-gradient(180deg, var(--pod-top), var(--pod-hi));
+  border-radius:.5cqw .5cqw 0 0;
+  transform:skewX(-18deg); transform-origin:0 100%;
+  box-shadow:inset 0 .18cqh 0 rgba(255,255,255,.75);
+}
+/* AND THE REFLECTION OF THE BLOCK IN THE FLOOR.
+
+   It hangs below the block, which is where the racer's NAME is, so two
+   things are true of it: it never takes a hit (`pointer-events:none`, or
+   it is a transparent pane over a caption as far as anything asking what
+   is at that point is concerned), and the name is lifted above it. Short
+   and faint -- it is a reflection on a floor, not a second podium. */
+.rc-pod-block::after{
+  content:""; position:absolute; left:8%; right:8%; top:100%; height:1.1cqh;
+  background:linear-gradient(180deg, var(--pod-lo), transparent 88%);
+  opacity:.28; filter:blur(.18cqw);
+  pointer-events:none;
+}
+.rc-pod-block b{
+  font-weight:400; position:relative; z-index:1;
+  text-shadow:
+    0 -.16cqh 0 rgba(30,12,24,.55),
+    0  .16cqh 0 rgba(255,255,255,.62);
+}
+/* gold, silver, bronze -- four stops each rather than two, because two
+   is a gradient and four is a metal */
+.rc-pod-1 .rc-pod-block{
+  height:9cqh;
+  --pod-top:#fff6d0; --pod-hi:#ffe98f; --pod-mid:#f0bc45; --pod-lo:#b4802a;
+}
+.rc-pod-2 .rc-pod-block{
+  height:6.4cqh;
+  --pod-top:#ffffff; --pod-hi:#eef1f6; --pod-mid:#c5ccd7; --pod-lo:#8e97a4;
+}
+.rc-pod-3 .rc-pod-block{
+  height:4.6cqh;
+  --pod-top:#ffe3c6; --pod-hi:#f6c193; --pod-mid:#cf8f5c; --pod-lo:#95613a;
+}
+.rc-pod-name{
+  position:relative; z-index:2;
+  font-family:var(--rc-read); font-size:1.9cqh; color:var(--rc-ink); letter-spacing:.02em;
+}
+/* and what they did it in, in the same gold the table below uses for a
+   time, so the three at the top read the same way as the five underneath */
+.rc-pod-time{
+  position:relative; z-index:2; margin-top:-.35cqh;
+  font-family:var(--rc-face); font-size:1.5cqh; letter-spacing:.06em;
+  color:var(--rc-gold);
+}
+
+/* A TABLE, NOT FIVE EMPTY BARS.
+
+   The rows ran the full width of the panel with the name centred in the
+   middle of them, which on a wide screen put four hundred points of
+   nothing between the place and the name and four hundred more between
+   the name and the time. It read as something unfinished rather than as
+   a result. Narrower, with the name hard against its own number and the
+   time right-aligned against the edge, it reads as a classification. */
 .rc-rest{
-  list-style:none; margin:0; padding:0; width:100%; max-width:52cqw;
-  display:flex; flex-direction:column; gap:.5cqh;
+  list-style:none; margin:0; padding:0; width:100%; max-width:38cqw;
+  display:flex; flex-direction:column; gap:.45cqh;
 }
 .rc-rest li{
-  display:grid; grid-template-columns:4cqw 1fr auto; gap:1.4cqw; align-items:center;
-  padding:.8cqh 1.6cqw; border-radius:.6cqw; font-size:1.4cqh;
+  display:grid; grid-template-columns:3.2cqw 1fr auto; gap:1.2cqw; align-items:center;
+  padding:.75cqh 1.4cqw; border-radius:.6cqw;
+  font-family:var(--rc-read); font-size:1.95cqh; letter-spacing:.02em;
   background:rgba(255,248,232,.06); color:#c9b8d8;
+  /* the accent bar the leader's row uses, kept transparent here so no row
+     changes width when it lights up */
+  border-left:.45cqw solid transparent;
 }
-.rc-rest li.me{background:rgba(255,95,149,.22); color:var(--rc-ink);}
-.rc-rest li b{font-weight:400; color:var(--rc-gold);}
-.rc-rest li i{font-style:normal;}
+.rc-rest li.me{
+  background:rgba(255,95,149,.22); color:var(--rc-ink);
+  border-left-color:var(--rc-accent,#ff5f95);
+}
+.rc-rest li b{
+  font-family:var(--rc-face); font-weight:400; font-size:1.5cqh;
+  color:var(--rc-gold); text-align:right;
+}
+.rc-rest li.me b{color:#ffe2ef;}
+/* left against its number, the way a results sheet is read */
+.rc-rest li span{text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.rc-rest li i{
+  font-style:normal; text-align:right;
+  font-family:var(--rc-face); font-size:1.45cqh;
+  font-variant-numeric:tabular-nums; color:#e7d9f0;
+}
 
 .rc-points{margin:0; font-size:1.7cqh; color:var(--rc-gold); letter-spacing:.1em;}
-.rc-msg{margin:0; max-width:62cqw; font-size:1.5cqh; line-height:2; color:#ffc4a3;}
-.rc-msg-big{font-size:1.7cqh; color:#ffd9c0;}
+/* a measure of about sixty characters rather than ninety, and a line
+   height that is a line rather than a gap between two */
+.rc-msg{margin:0; max-width:52cqw; font-size:2cqh; line-height:1.62;
+  font-family:var(--rc-read); letter-spacing:.02em; color:#ffc4a3;}
+.rc-msg b{color:var(--rc-gold); font-weight:600;}
+.rc-msg-big{font-size:2.3cqh; color:#ffd9c0;}
 .rc-fin-art{line-height:0;}
 .rc-fin-art canvas{width:min(70cqw, 60cqh); height:auto; image-rendering:pixelated; border-radius:.8cqw;}
 
@@ -6952,9 +7308,19 @@ img{-webkit-user-drag:none; user-select:none;}
 /* the postcard from the finish */
 .rc-card-shot{ margin:1cqh 0 .2cqh; display:flex; justify-content:center; }
 .rc-card-shot canvas{
-  /* small enough that it never pushes the buttons under the fold on a
-     short screen, big enough to see what the photograph is of */
-  width:min(42cqw, 100%); height:auto; image-rendering:pixelated;
+  /* Small enough that it never pushes the buttons under the fold on a
+     short screen, big enough to see what the photograph is of -- and
+     BOUNDED BY THE HEIGHT AS WELL, which is the whole point of the third
+     term. The postcard is 640x400, so a width of 42cqw is a height of
+     26.25cqw, and on a 16:9 stage that is 46cqh: taller than the 40cqh cap
+     on the .rc-split it sits in. .rc-split has no overflow rule, so the
+     card did not scroll and did not clip -- it simply hung out of the
+     bottom of its own box and painted straight over the sentence beneath
+     it, which read as a line of text cut in half by the photograph. The
+     60cqh term is 37.5cqh of card, which fits the cap with room to spare.
+     Capping with max-height instead would be wrong: a canvas is a replaced
+     element, so a width and a height both set stretch the picture. */
+  width:min(42cqw, 100%, 60cqh); height:auto; image-rendering:pixelated;
   border-radius:.8cqw;
   box-shadow:0 1cqh 2.4cqw rgba(0,0,0,.5), inset 0 0 0 .2cqw rgba(255,248,232,.3);
 }
@@ -6966,8 +7332,13 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.55), 0 0 2.6cqw rgba(255,209,102,.4);
 }
 
-/* the flipped and rain toggles on the track picker */
-.rc-vars{ gap:2cqw; margin-top:.6cqh; }
+/* the flipped, night and rain toggles on the track picker.
+
+   Three of them now rather than two, and on a narrow phone in portrait
+   three of these plus their gaps are wider than the panel — so the row
+   is allowed to wrap and centre rather than squeezing the letters or
+   pushing START off the bottom. */
+.rc-vars{ gap:1.6cqw; margin-top:.6cqh; flex-wrap:wrap; justify-content:center; }
 .rc-vbtn{
   font-family:inherit; cursor:pointer;
   padding:.9cqh 2.4cqw; border:0; border-radius:.8cqw;
@@ -7041,6 +7412,102 @@ img{-webkit-user-drag:none; user-select:none;}
   max-height:40cqh;
 }
 .rc-standings ol{max-height:30cqh; overflow-y:auto; overscroll-behavior:contain;}
+
+/* ---- THE SCROLL RAIL ----
+   Drawn rather than borrowed. A hairline on a desktop and an invisible
+   overlay bar on iOS are both no help at all to the person who has not
+   worked out that the panel scrolls, so the native one is hidden and this
+   takes its place: a rail down the panel's own edge, a thumb the size of
+   the fraction on screen, and a chevron that bobs while there is still
+   something below. */
+.rc-panel::-webkit-scrollbar,
+.rc-overlay::-webkit-scrollbar{ width:0; height:0; }
+.rc-panel, .rc-overlay{ scrollbar-width:none; }
+
+.rc-rail{
+  /* left is measured against the panel's own edge in wireScroll -- a fixed
+     inset from the stage put it a good forty points out in the dark, which
+     read as a light down the side of the picture rather than as this
+     panel's scrollbar */
+  position:absolute; width:.55cqw; min-width:5px; max-width:9px;
+  border-radius:1cqw; z-index:9;
+  /* the track has to be visible or the thumb is not a thumb. It was a
+     nine-per-cent wash on a dark panel, which is nothing, so on a panel
+     that only just overflows -- where the thumb is most of the rail --
+     the whole thing read as a gold line drawn down the side rather than
+     as a moving part in a groove. */
+  /* AND QUIETER OUT THERE. Against the panel it had to hold its own
+     beside a lit card; out at the frame it is the only thing in the dark,
+     so a groove and a soft thumb are plenty. Loud enough to find, not
+     loud enough to look at. */
+  background:rgba(10,4,16,.42);
+  box-shadow:inset 0 0 0 1px rgba(255,248,232,.10);
+  /* VISIBILITY, NOT JUST OPACITY. An element at zero opacity is still in
+     the hit test: on every panel short enough not to scroll, the rail was
+     an invisible twenty-point pill sitting in the middle of the writing,
+     eating taps. Nobody would ever have found that by looking. */
+  opacity:0; visibility:hidden; touch-action:none;
+  transition:opacity .25s ease, visibility 0s linear .25s;
+}
+.rc-rail[data-on="1"]{
+  opacity:1; visibility:visible;
+  transition:opacity .25s ease, visibility 0s;
+}
+.rc-rail-thumb{
+  position:absolute; left:0; right:0; border-radius:1cqw;
+  /* quiet on purpose. A full-saturation bar down the edge of the screen
+     is the brightest thing in the picture and it is not the thing she is
+     looking at; this has to be legible, not loud. */
+  background:rgba(255,212,121,.46);
+  box-shadow:inset 0 0 0 1px rgba(20,8,26,.30);
+}
+.rc-rail[data-grab="1"] .rc-rail-thumb{ filter:brightness(1.18); }
+/* the chevron, which is the part that actually teaches the gesture: it
+   says down, it moves, and it goes away the moment she reaches the end */
+.rc-rail-more{
+  /* a pill, not a bare tick: at the bottom of a dark panel a two-stroke
+     chevron on its own is four pixels of gold that could be anything */
+  /* AT THE RAIL'S OWN BOTTOM END, NOT HANGING BELOW IT. Slung under the
+     rail it reached past the panel's bottom corner and came down on the
+     last line of the glovebox -- which is the very fault this whole pass
+     is about, reintroduced by the thing meant to help. Kept inside the
+     rail's span it can only ever be over the rail, and the rail is beside
+     the panel rather than on it. */
+  position:absolute; left:50%; bottom:.3cqh;
+  width:max(20px, 2.4cqh); height:max(20px, 2.4cqh);
+  margin-left:calc(max(20px, 2.4cqh) / -2);
+  border-radius:50%; background:rgba(20,8,26,.72);
+  box-shadow:inset 0 0 0 1px rgba(255,212,121,.38);
+  /* it is a sign, not a control -- the rail under it is the control */
+  pointer-events:none;
+  opacity:0; transition:opacity .3s ease;
+}
+.rc-rail-more::before{
+  content:""; position:absolute; left:50%; top:44%;
+  width:34%; height:34%; margin:-17% 0 0 -17%;
+  border-right:2px solid var(--rc-gold,#ffd479);
+  border-bottom:2px solid var(--rc-gold,#ffd479);
+  transform:rotate(45deg);
+}
+.rc-overlay[data-more="1"] .rc-rail[data-on="1"] .rc-rail-more{
+  opacity:.9; animation:rc-bob 1.5s ease-in-out infinite;
+}
+@keyframes rc-bob{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(.7cqh)} }
+
+/* the lists inside a panel say there is more below by fading out at their
+   own bottom edge. A mask applies to the scrollport rather than to the
+   content, so it stays put while the list moves under it -- and it paints
+   nothing into the hit test, which after twice getting the rail wrong is
+   the point: at worst this dims a line, it can never swallow a tap. */
+.rc-keep-list[data-more="1"],
+.rc-badge-list[data-more="1"],
+.rc-earned[data-more="1"],
+.rc-standings ol[data-more="1"]{
+  -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 2.6cqh), transparent);
+          mask-image:linear-gradient(180deg, #000 calc(100% - 2.6cqh), transparent);
+}
+@media (prefers-reduced-motion: reduce){ .rc-rail-more{animation:none !important;} }
+
 /* a keepsake is a sentence, not a badge, so the strip under a result can be
    a great deal taller than it used to be */
 .rc-earned{max-height:20cqh; overflow-y:auto; overscroll-behavior:contain;}
@@ -7052,20 +7519,45 @@ img{-webkit-user-drag:none; user-select:none;}
    arranged. Rather than cut any of it, the buttons stay on the screen
    while the rest scrolls under them, so getting to the next race never
    depends on finding the bottom of the panel first. */
-@container rcstage (max-height: 320px){
-  .rc-res > .rc-row,
-  .rc-fin > .rc-row,
-  .rc-duo > .rc-row{
-    position:sticky; bottom:0; z-index:2;
-    width:100%; margin-bottom:-1cqh;
-    padding:1.2cqh 0 1.4cqh;
-    background:linear-gradient(180deg, rgba(18,11,28,0), rgba(18,11,28,.94) 32%);
-  }
+/* THE WAY OUT OF A PANEL IS NEVER UNDER THE FOLD.
+
+   This was gated on the stage being short -- 320 points first, then 560 --
+   on the assumption that a tall screen has room for the whole panel. It
+   does not. The panel's parts are sized in cqh, but its contents are not
+   one thing: eight finishing positions, a podium, a photograph, a keepsake
+   and three buttons, and the photograph alone is 329 points of a
+   851-point stage. Measured on a 1512x982 screen the results panel came
+   to 953 points of content in a 799-point box, and what was in the 154
+   that did not fit was MENU, KEEP THE PHOTO and RACE AGAIN. She reached
+   the end of a race and there was no way on from it that did not start
+   with discovering the panel scrolls.
+
+   So the row is pinned at every size. The rest of the panel moves under
+   it; the way out never moves at all. */
+.rc-res > .rc-row,
+.rc-fin > .rc-row,
+.rc-duo > .rc-row{
+  position:sticky; bottom:0; z-index:9;
+  width:100%; margin-bottom:-1cqh;
+  padding:1.2cqh 0 1.4cqh;
+  /* HIDE WHAT IS UNDER IT, OR DO NOT BE THERE.
+     At ninety per cent the postcard's line underneath showed through the
+     buttons as a ghost, which reads as a bug rather than as a bar. It
+     still fades in from nothing at the top -- so the panel runs under it
+     rather than stopping dead -- and is solid by the time it reaches the
+     buttons themselves. */
+  background:linear-gradient(180deg,
+    rgba(18,11,28,0) 0%, rgba(18,11,28,.88) 26%, rgba(18,11,28,1) 46%);
 }
 @container rcstage (min-width: 620px){
   .rc-split-2{ grid-template-columns:1.05fr .95fr; align-items:start; }
   .rc-split-2 .rc-card-shot{ margin-top:0; }
-  .rc-split-2 .rc-card-shot canvas{ width:100%; }
+  /* the column's full width, but still bounded by the height: a plain
+     100% here outranks the min() on .rc-card-shot canvas -- three
+     classes against two -- so the championship round was the one
+     place the card went back to hanging out of its box. It was 225
+     points of a 133-point split on a 390-tall phone. */
+  .rc-split-2 .rc-card-shot canvas{ width:min(100%, 60cqh); }
 }
 
 /* ---------- badges ---------- */
@@ -7261,27 +7753,137 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-pad[data-want="1"] ~ .rc-steer,
 .rc-steer[data-live="1"]{ pointer-events:auto; }
 
-/* the ring follows the thumb, and the pip inside it shows the lock */
+/* ---------- THE STICK ----------
+
+   Third time round, and this one is built out of the three things that
+   make a physical stick read as physical on a flat screen:
+
+     - a DISH, which is a recess and not a hoop: dark in the well, the
+       far lip catching the light and the near lip in its own shadow.
+     - a STEM, which is the part nobody draws and the part that does all
+       the work. A cap sliding around on its own is a counter on a board.
+       A cap on the end of a shaft that leans out of the middle of the
+       dish is a stick, and the eye decides which of those it is looking
+       at in about a tenth of a second.
+     - an ARC round the rim, lit on the side she is pushing and as long
+       as she is pushing hard, which is the only part of this that tells
+       her something the kart is not already telling her: how much lock
+       is actually going to the wheels.
+
+   And it is SMALLER: 16cqw against 21, with a 6.4cqw cap against 7.5.
+   The knob goes where the thumb goes, so the base never had to be big
+   enough to aim at; all the size was doing was covering the road.
+
+   Everything moves off two custom properties the stick sets every time
+   the thumb does: --rc-mag, how far out of the middle it is, and
+   --rc-ang, which way. No transitions while a thumb is down -- the cap
+   has to be under the thumb and nowhere else -- and a sprung return the
+   moment it lifts. */
 .rc-steer-ring{
   position:absolute; left:0; top:0;
-  width:26cqw; height:26cqw; margin:-13cqw 0 0 -13cqw;
+  width:16cqw; height:16cqw; margin:-8cqw 0 0 -8cqw;
   border-radius:50%;
-  border:.5cqw solid rgba(255,248,232,.30);
-  background:radial-gradient(circle at 50% 50%,
-             rgba(255,248,232,.10), rgba(255,248,232,0) 70%);
+  background:
+    radial-gradient(circle at 50% 42%,
+      rgba(12,6,18,.46) 0%, rgba(12,6,18,.32) 55%, rgba(12,6,18,.10) 80%,
+      rgba(12,6,18,0) 100%);
+  box-shadow:
+    inset 0 .45cqw 1.1cqw rgba(8,3,12,.58),
+    inset 0 -.3cqw 0 rgba(255,248,232,.18),
+    0 0 0 .26cqw rgba(255,248,232,.18);
   opacity:0; transition:opacity .14s ease;
   transform:translate(var(--rc-sx,0px), var(--rc-sy,0px));
 }
 .rc-steer[data-on="1"] .rc-steer-ring{ opacity:1; }
+
+/* ---- the lock arc ----
+   A wedge of light round the rim, centred on the direction of the push
+   and opening out as the push gets harder. conic-gradient measures from
+   twelve o'clock clockwise and the stick measures from three o'clock, so
+   the direction is turned a quarter turn on the way in. Masked to a ring
+   so it is a rim light rather than a pie chart. */
+.rc-steer-arc{
+  position:absolute; inset:-1.2cqw; border-radius:50%;
+  pointer-events:none;
+  background:conic-gradient(
+    from calc((var(--rc-ang, 0) + 90) * 1deg - var(--rc-sweep, 18deg)),
+    color-mix(in srgb, var(--rc-accent,#ff5f95) 85%, #fff8e8) 0deg,
+    color-mix(in srgb, var(--rc-accent,#ff5f95) 92%, transparent) var(--rc-sweep, 18deg),
+    transparent calc(var(--rc-sweep, 18deg) * 2));
+  -webkit-mask:radial-gradient(closest-side, transparent 83%, #000 88%, #000 100%);
+          mask:radial-gradient(closest-side, transparent 83%, #000 88%, #000 100%);
+  opacity:calc(var(--rc-mag, 0) * .85);
+  filter:drop-shadow(0 0 .8cqw color-mix(in srgb, var(--rc-accent,#ff5f95) 60%, transparent));
+}
+
+/* ---- the stem ----
+   A bar from the middle of the dish to the middle of the cap, as long as
+   the push and pointing where it points. It is what turns two circles
+   into one object. Tapered by a gradient so the end under the cap is the
+   thick end, and darkened along the bottom so it has a side. */
+.rc-steer-stem{
+  position:absolute; left:50%; top:50%;
+  width:calc(var(--rc-mag, 0) * 4.8cqw); height:2.1cqw;
+  margin-top:-1.05cqw;
+  transform-origin:0 50%;
+  transform:rotate(calc(var(--rc-ang, 0) * 1deg));
+  border-radius:1.05cqw;
+  background:
+    linear-gradient(180deg,
+      rgba(255,248,232,.34) 0%, rgba(190,120,160,.30) 46%,
+      rgba(56,18,40,.55) 100%),
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--rc-accent,#ff5f95) 30%, transparent) 0%,
+      color-mix(in srgb, var(--rc-accent,#ff5f95) 62%, transparent) 100%);
+  opacity:calc(.35 + var(--rc-mag, 0) * .65);
+  pointer-events:none;
+}
+
+/* ---- the cap, which is the part her thumb is on ----
+
+   Convex, lit from up and to the left, with a rim to catch the edge. It
+   is thrown across the dish by the RAW thumb offset in both directions.
+   68% of its own width is as far as it can go: the gap between a 6.4cqw
+   cap and the inside of a 16cqw base is 4.8cqw, which is 75% of the cap
+   -- but the cap also grows seven per cent on its way out, and 68% is
+   what is left once that is paid for. The two are sized from the same
+   pair of numbers, so it holds at any screen size.
+
+   Two things are new. It grows a little as it goes out, which is what a
+   stick leaning towards you does in a photograph; and its drop shadow
+   slides the opposite way to the push, so the light stays where the
+   light is instead of travelling with the cap. */
 .rc-steer-ring i{
   position:absolute; left:50%; top:50%;
-  width:9cqw; height:9cqw; margin:-4.5cqw 0 0 -4.5cqw;
+  width:6.4cqw; height:6.4cqw; margin:-3.2cqw 0 0 -3.2cqw;
   border-radius:50%;
-  background:radial-gradient(circle at 38% 34%,
-             var(--rc-accent,#ff5f95), rgba(20,10,26,.55));
-  box-shadow:0 0 2.4cqw rgba(255,95,149,.55), inset 0 0 0 .3cqw rgba(255,248,232,.5);
-  transform:translateX(var(--rc-tx,0px));
-  transition:transform .04s linear;
+  background:
+    radial-gradient(circle at 34% 30%,
+      rgba(255,248,232,.94) 0%, rgba(255,150,190,.95) 26%,
+      var(--rc-accent,#ff5f95) 58%, rgba(120,24,64,.98) 100%);
+  box-shadow:
+    calc(var(--rc-lock, 0) * -.45cqw) calc(.5cqw - var(--rc-ly, 0) * .45cqw)
+      1.1cqw rgba(24,6,18,.6),
+    0 0 calc(1.2cqw + var(--rc-mag, 0) * 2.2cqw)
+      color-mix(in srgb, var(--rc-accent,#ff5f95) 55%, transparent),
+    inset 0 -.26cqw .38cqw rgba(88,12,48,.55),
+    inset 0 .22cqw 0 rgba(255,248,232,.6);
+  transform:
+    translate(calc(var(--rc-lock,0) * 68%), calc(var(--rc-ly,0) * 68%))
+    scale(calc(1 + var(--rc-mag, 0) * .07));
+  transition:transform .045s linear;
+}
+/* LET GO AND IT COMES BACK LIKE A SPRUNG CAP. While a thumb is on it the
+   knob has to be where the thumb is and nowhere else, so the transition
+   is as good as none; the moment the thumb leaves, it is a spring with a
+   little overshoot in it. The arc and the stem fall away with it. */
+.rc-steer[data-on="0"] .rc-steer-ring i{
+  transition:transform .3s cubic-bezier(.34, 1.5, .64, 1);
+}
+.rc-steer[data-on="0"] .rc-steer-arc,
+.rc-steer[data-on="0"] .rc-steer-stem{ transition:opacity .22s ease, width .3s cubic-bezier(.34, 1.5, .64, 1); }
+@media (prefers-reduced-motion:reduce){
+  .rc-steer[data-on="0"] .rc-steer-ring i{transition:transform .12s ease;}
 }
 /* a one-time nudge for the first race, then it stays out of the way */
 .rc-steer-hint{
@@ -7296,11 +7898,15 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-pad[data-mode="slide"] .rc-pad-l{ display:none; }
 .rc-pad[data-mode="slide"][data-auto="1"] .rc-key-gas{ display:none; }
 .rc-pad[data-mode="slide"] .rc-pad-r{ right:2.5cqw; gap:1.2cqw; }
-/* With the throttle holding itself and the steering under the whole
-   picture, DRIFT is the one button a thumb hunts for at speed, so it is
-   the one that gets the room. */
-.rc-pad[data-mode="slide"] .rc-key-drift{ width:max(56px, 17cqh); height:max(56px, 17cqh); }
-.rc-pad[data-mode="slide"] .rc-key-sm{ width:max(42px, 8.5cqh); height:max(42px, 8.5cqh); }
+/* THE DRIFT BUTTON IS GONE.
+
+   It was the biggest key on the pad, in the corner a right thumb rests
+   in, and it still never got pressed: at speed, with the same hand
+   already steering, nobody goes hunting for it. Holding the stick over
+   starts the slide now, so the corner belongs to ITEM and GO — both of
+   which get more room for it. */
+.rc-pad[data-mode="slide"] .rc-key-sm{ width:max(46px, 10cqh); height:max(46px, 10cqh); }
+.rc-pad[data-mode="slide"] .rc-key-gas{ width:max(58px, 16cqh); height:max(58px, 16cqh); }
 
 /* THE MAP MOVES OUT OF THE WAY OF THE THUMB.
 
@@ -7376,7 +7982,6 @@ img{-webkit-user-drag:none; user-select:none;}
     0 0 3cqw color-mix(in srgb, var(--rc-accent) 72%, transparent); }
 }
 .rc-key-gas   { background:linear-gradient(180deg, rgba(125,219,163,.62), rgba(79,174,124,.5)); }
-.rc-key-drift { background:linear-gradient(180deg, rgba(126,200,227,.62), rgba(74,158,196,.5)); }
 .rc-key[data-k="item"]{ background:linear-gradient(180deg, rgba(255,95,149,.6), rgba(196,64,122,.5)); }
 
 /* pressed: it goes down onto its shadow and darkens */
@@ -7535,20 +8140,23 @@ img{-webkit-user-drag:none; user-select:none;}
 
   /* the steering ring and its pip: a share of the height, so they are the
      same size on a phone as the same control is on an iPad */
+  /* the same pair of limits for both, so the 90% throw above still lands
+     the cap exactly at the inside of the dish: 21/7.5 and 28/10 are the
+     same ratio */
   .rc-steer-ring{
-    width:min(26cqw, 34cqh); height:min(26cqw, 34cqh);
-    margin:calc(min(26cqw, 34cqh) / -2) 0 0 calc(min(26cqw, 34cqh) / -2);
+    width:min(21cqw, 28cqh); height:min(21cqw, 28cqh);
+    margin:calc(min(21cqw, 28cqh) / -2) 0 0 calc(min(21cqw, 28cqh) / -2);
   }
   .rc-steer-ring i{
-    width:min(9cqw, 12cqh); height:min(9cqw, 12cqh);
-    margin:calc(min(9cqw, 12cqh) / -2) 0 0 calc(min(9cqw, 12cqh) / -2);
+    width:min(7.5cqw, 10cqh); height:min(7.5cqw, 10cqh);
+    margin:calc(min(7.5cqw, 10cqh) / -2) 0 0 calc(min(7.5cqw, 10cqh) / -2);
   }
   /* and the buttons, which were 75px slabs on a 440px-tall screen */
   .rc-key-steer{width:max(48px, 13cqh); height:max(48px, 13cqh);}
   .rc-key-big  {width:max(48px, 12.5cqh); height:max(48px, 12.5cqh);}
   .rc-key-sm   {width:max(44px, 9cqh); height:max(44px, 9cqh);}
-  .rc-pad[data-mode="slide"] .rc-key-drift{width:max(52px, 14cqh); height:max(52px, 14cqh);}
-  .rc-pad[data-mode="slide"] .rc-key-sm{width:max(44px, 8cqh); height:max(44px, 8cqh);}
+  .rc-pad[data-mode="slide"] .rc-key-gas{width:max(54px, 14cqh); height:max(54px, 14cqh);}
+  .rc-pad[data-mode="slide"] .rc-key-sm{width:max(44px, 9cqh); height:max(44px, 9cqh);}
   .rc-pad-cluster{gap:min(1.6cqw, 2.6cqh); padding:min(1.4cqh,1.4cqh) min(1.6cqw,2.2cqh);}
 
   /* SIX COURSES MEANS TWO ROWS OF CARDS, AND TWO ROWS DID NOT FIT.
@@ -7597,9 +8205,23 @@ img{-webkit-user-drag:none; user-select:none;}
      those 512. Both halves come in, the list scrolls if the field is long,
      and the strip of things the race just won scrolls too. 398 of 440,
      buttons included. */
+  /* the reading face is set larger than the display face it replaced, which
+     is the point of it -- but on a screen this short that has to come back
+     a little or there is more below the fold than above it */
+  .rc-msg{font-size:1.75cqh; max-width:62cqw;}
+  .rc-blurb{font-size:1.75cqh; max-width:66cqw;}
+  .rc-rest li{font-size:1.7cqh;}
+  .rc-rest{max-width:46cqw;}
+  .rc-pod-name{font-size:1.6cqh;}
+  .rc-sub{font-size:1.6cqh; margin-top:-.6cqh;}
   .rc-split{max-height:34cqh;}
   .rc-card-shot{margin:.2cqh 0 0;}
-  .rc-card-shot canvas{width:min(34cqw, 100%); max-height:32cqh;}
+  /* the same height bound, and for the same reason; the max-height that
+     used to be here could only have squashed the picture sideways */
+  .rc-card-shot canvas{width:min(34cqw, 100%, 51cqh);}
+  /* and the championship's two-column version of it, which has its own
+     more specific rule and would otherwise keep the taller bound */
+  .rc-split-2 .rc-card-shot canvas{width:min(100%, 51cqh);}
   .rc-standings ol{max-height:26cqh; overflow-y:auto; overscroll-behavior:contain;}
   .rc-earned{max-height:13cqh; overflow-y:auto; overscroll-behavior:contain;}
   .rc-pod-art canvas{width:9cqh;}
@@ -7626,12 +8248,39 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-dbtn{padding:max(8px, 1cqh) max(10px, 2.2cqw);}
   .rc-quit{padding:max(8px, .9cqh) max(10px, 2cqw);}
   @media (hover:none){
+    /* AS BIG AS THE ROOM ALLOWS, AND NOT ONE PIXEL BIGGER.
+
+       A flat 44 was the wrong number here, and the arithmetic says why.
+       The title screen carries twelve controls; measured on a 390-point
+       landscape phone they are 31, 29 and 27 points tall with a 5.5-point
+       gap, so the pitch between two stacked buttons is 36.5. A 44-point
+       target centred on each of them therefore overlapped its neighbour's
+       by seven and a half points, and later siblings paint over earlier
+       ones -- so a thumb aimed at the bottom of SINGLE RACE pressed GRAND
+       PRIX. The same overhang came down on whatever writing was next to a
+       control: the word DIFFICULTY above its own row, and the sentences
+       that explain the modes. Twelve times forty-four is 528 points and
+       the screen is 390, so no amount of care makes a flat 44 fit; the
+       honest ceiling is the pitch itself.
+
+       The height is capped at the control's own pitch, which is its box
+       plus the gap its container sets. Every point between two buttons
+       then belongs to the nearer one and nothing reaches the text. The
+       width keeps the 44 -- across is the one direction a landscape phone
+       has room in. (buttons.js floors the hunt and the book at 44; it has
+       never audited the race, which is why this was free to be wrong.) */
     .rc-btn, .rc-btn-s, .rc-dbtn, .rc-quit{position:relative;}
     .rc-btn::after, .rc-btn-s::after, .rc-dbtn::after, .rc-quit::after{
       content:""; position:absolute; left:50%; top:50%;
-      width:max(100%, 44px); height:max(100%, 44px);
+      width:max(100%, 44px);
+      height:min(max(100%, 44px), calc(100% + var(--rc-tap-room, .9cqh)));
       transform:translate(-50%, -50%);
     }
+    /* the gap each container actually sets, so the cap is the real pitch
+       rather than a guess at it */
+    .rc-menu{ --rc-tap-room:1.4cqh; }
+    .rc-diff{ --rc-tap-room:.9cqh; }
+    .rc-row{ --rc-tap-room:1.2cqh; }
   }
 
   /* THE APOCALYPSE PAD WAS THE LAST ONE STILL IN FIXED PIXELS.

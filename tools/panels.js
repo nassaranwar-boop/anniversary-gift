@@ -21,12 +21,19 @@ let pass = 0, fail = 0;
 const ok = (n, c, note) => { c ? pass++ : fail++;
   process.stderr.write(`${c ? "PASS" : "FAIL"}  ${n}${note ? "   " + note : ""}\n`); };
 
+/* A TALL SCREEN IS NOT A SAFE SCREEN. Every size here was 720 or 834
+   points of stage or less, and the results panel fitted all of them. On a
+   1512x982 laptop -- a MacBook, which is what it was actually opened on --
+   the stage is 851 and the panel wants 953, so the three buttons at the
+   bottom of it were under the fold and nothing in this file had ever
+   stood on a screen tall enough to see that. */
 const SCREENS = [
   ["iPhone 16PM sideways",  956, 440],
   ["iPhone 13 Pro sideways", 844, 390],
   ["iPhone 13 Pro, bar up",  844, 340],
   ["iPad",                  1194, 834],
   ["laptop",                1280, 800],
+  ["MacBook",               1512, 982],
 ];
 
 (async () => {
@@ -95,7 +102,7 @@ const SCREENS = [
     await p.waitForFunction(() => {
       try {
         const d = window.__RACE_DEBUG();
-        return d && d.racers && d.racers.length > 0;
+        return d && d.racers && d.racers.some((r) => r.isPlayer);
       } catch (e) { return false; }
     }, { timeout: 60000, polling: 250 }).catch(() => {});
     await p.waitForTimeout(1200);
