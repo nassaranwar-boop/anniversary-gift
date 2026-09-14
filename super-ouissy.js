@@ -2861,7 +2861,18 @@ window.SuperOuissy = (function () {
        cheerful little march playing underneath it was the single most
        wrong thing about that scene. Ducked, not switched off: her own
        preference is hers and is not touched. */
-    bgmSilence(true);
+    /* ANWAR'S THEME BELONGS TO THE SCENE HE IS IN, NOT TO EVERY DEATH.
+
+       A rescue happens every time she runs out on Hard, and putting the
+       piece written for meeting him under all of them spends it -- by the
+       time the Death scene arrives, the music that is supposed to mean HIM
+       has been the music that means "you died" a dozen times. The Death
+       scene keeps its own score and the silence that lets it start; a
+       rescue keeps what she was already listening to, at little more than
+       half speed and pulled back, which is the world holding its breath
+       rather than a new piece beginning. */
+    if (kind === "rescue") { setBgmSlow(true); bgmDuck(true); }
+    else bgmSilence(true);
     Rescue.begin(kind, opts);
   }
 
@@ -2870,7 +2881,9 @@ window.SuperOuissy = (function () {
     cutsceneThen = null;
     G.state = "play";
     updateHud();
+    setBgmSlow(false);
     bgmSilence(false);
+    bgmDuck(false);
     if (then) then();
   }
 
@@ -2959,11 +2972,22 @@ window.SuperOuissy = (function () {
        being offered costs nothing. */
     if (canBossRevive() || stuckNow()) { offerBossRevive(); return; }
 
-    /* Hard, and she still has a life: he comes and gets her first */
+    /* Hard, and she still has a life: he comes and gets her first.
+
+       AND HE PUTS HER DOWN WHERE HE PICKED HER UP. This handed off to
+       respawn(), which is the checkpoint -- and Hard has no checkpoints,
+       so it was the start of the world. That is the "sometimes he takes
+       her to the start": it happened whenever the revive offer did not
+       appear, which is most deaths, and inside the Queen's fight it meant
+       walking the whole level back to a boss that had kept none of its
+       damage. Inside that fight he stands her up where she fell, the way
+       the paid revive does. Everywhere else the checkpoint is still the
+       right answer -- it is a rescue, not a free pass. */
     if (rescuesOn()) {
       var p = G.player;
       playCutscene("rescue", { herX: clamp(p.x - G.cam.x, 30, VIEW.w - 60),
-                               herY: clamp(p.y - G.cam.y, 62, 96) }, respawn);
+                               herY: clamp(p.y - G.cam.y, 62, 96) },
+                   inQueenFight() ? reviveAtSpot : respawn);
       return;
     }
     respawn();
@@ -4675,7 +4699,14 @@ window.SuperOuissy = (function () {
           G.diff = k;
           try { localStorage.setItem(DIFF_KEY, k); } catch (e) {}
           G.lives = DIFF[k].lives;
-          closeOverlay(); startLevel(G.levelIndex);
+          /* A DIFFERENT DIFFICULTY IS A DIFFERENT RUN. Changing it in the
+             middle of world three dropped her into world three of the new
+             one -- a place she had not reached on that setting, with a
+             score and a clock from a run that no longer exists. It starts
+             where that difficulty starts. */
+          G.levelIndex = 0;
+          G.score = 0;
+          closeOverlay(); startLevel(0);
         });
       });
     } else if (G.state === "paused") {
@@ -4772,13 +4803,22 @@ window.SuperOuissy = (function () {
         "</div>" +
         '<button class="so-btn so-btn-go" id="so-again">TRY THIS WORLD AGAIN</button>' +
         '<button class="so-btn" id="so-easier">CHANGE DIFFICULTY</button>' +
-        '<button class="so-btn so-btn-quiet" id="so-over-quit">QUIT TO HUB</button>' +
+        '<button class="so-btn so-btn-quiet" id="so-over-quit">BACK TO MENU</button>' +
       "</div>", "so-ov-card");
     $("so-again").addEventListener("click", function () {
       closeOverlay(); G.lives = DIFF[G.diff].lives; bgmDuck(false); startLevel(G.levelIndex);
     });
     $("so-easier").addEventListener("click", function () { bgmDuck(false); showDifficulty(); });
-    $("so-over-quit").addEventListener("click", quitToHub);
+    /* the same as the pause card: losing a run is not a reason to be put
+       out of the chapter altogether. The title card is where the worlds
+       and the difficulties are, and the way out of the chapter is the hub
+       button there. */
+    $("so-over-quit").addEventListener("click", function () {
+      closeOverlay();
+      bgmDuck(false);
+      if (window.__soReleaseAll) window.__soReleaseAll();
+      showDifficulty();
+    });
   }
 
   /* ---- 7. the ending: the castle, and him in it -------------------------- */
@@ -5890,6 +5930,12 @@ window.SuperOuissy = (function () {
   /* `BGM` is whatever is playing. It is kept as a name because the audio
      harness reads BGM.lead and BGM.bass to count the tune. */
   var BGM = SCORES.medium.w1;
+  /* HALF SPEED, FOR WHEN THE STORY TAKES OVER FOR A MOMENT. A rescue is
+     not long enough to be worth a piece of music of its own, and silence
+     under it was worse than either -- so what is already playing simply
+     slows down and steps back. */
+  var SLOW = 1.7;
+  var bgmSlow = false;
   var bgmTimer = null, bgmStep = 0, bgmGain = null, bgmName = "w1", bgmRush = false, bgmSet = null;
   var bgmNoise = null;
 
@@ -5917,7 +5963,7 @@ window.SuperOuissy = (function () {
     bgmStep = 0;
     if (bgmTimer) {
       clearInterval(bgmTimer);
-      bgmTimer = setInterval(tickBgm, BGM.tempo * (rush ? HURRY : 1) * 1000);
+      bgmTimer = setInterval(tickBgm, bgmBeat());
     }
   }
   /* called whenever the world she is in might have changed under her */
@@ -5946,7 +5992,19 @@ window.SuperOuissy = (function () {
     applyBgmGain();
     if (bgmTimer) return;
     bgmStep = 0;
-    bgmTimer = setInterval(tickBgm, BGM.tempo * (bgmRush ? HURRY : 1) * 1000);
+    bgmTimer = setInterval(tickBgm, bgmBeat());
+  }
+  function bgmBeat() {
+    return BGM.tempo * (bgmRush ? HURRY : 1) * (bgmSlow ? SLOW : 1) * 1000;
+  }
+  /* the tune does not restart -- it carries on from the step it was on,
+     just wider apart, so it reads as the same music slowing down rather
+     than as a different one starting */
+  function setBgmSlow(on) {
+    on = !!on;
+    if (on === bgmSlow) return;
+    bgmSlow = on;
+    if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = setInterval(tickBgm, bgmBeat()); }
   }
   function stopBgm() { if (bgmTimer) clearInterval(bgmTimer); bgmTimer = null; }
   /* ONE PLACE DECIDES HOW LOUD THE MUSIC IS.
@@ -6547,6 +6605,8 @@ window.SuperOuissy = (function () {
   /* the pause menu is a real menu with real doors in it, so a harness
      needs to be able to open it */
   window.__soPause = function (force) { togglePause(force); };
+  /* so a suite can stand in world two or three without playing to it */
+  window.__soSetWorld = function (i) { startLevel(i); return G.levelIndex; };
   /* A harness testing the revive offer has to arrive at the death holding
      more lives than the offer costs, and playing well enough to have
      collected them is not something a test can do. */

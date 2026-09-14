@@ -1365,14 +1365,14 @@ window.Rescue = (function () {
     };
     if (kind === "rescue") {
       say(SCRIPT.rescueAlt[nextRescueLine()]);
-      /* HE ARRIVED IN SILENCE. The game hushes its own music before a
-         cutscene, because a cheerful platform march under a rescue is the
-         wrong thing entirely -- but only the else branch here ever
-         started a piece to replace it. So on Hard, the one difficulty he
-         exists on, the moment he comes for her had no sound at all.
-         "meet" is the cue written for exactly this: sixty beats, warm,
-         over a low drone. */
-      MUS.play("meet");
+      /* AND NO PIECE OF ITS OWN. This played "meet" for a while, which
+         fixed the silence and spent the wrong thing to do it: "meet" is
+         the music for finding him at the end of the Death scene, and a
+         rescue happens every time she runs out on Hard. By the time it
+         mattered it would have meant "you died" a dozen times over. The
+         game keeps its own tune under this one now, at little more than
+         half speed -- see playCutscene -- so there is something here and
+         it is not his. */
     } else {
       showPad(null);
       MUS.play("cold");
