@@ -5387,8 +5387,20 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-state.hidden-ok{color:#8fa2d4; text-shadow:none;}
 @keyframes apSeen{0%,100%{opacity:1;} 50%{opacity:.45;}}
 
-.ap-dlg[aria-hidden="false"] ~ .ap-pause-btn,
-.ap-stage:has(.ap-dlg[aria-hidden="false"]) .ap-pause-btn{
+/* THE PAUSE BUTTON STAYS, THE WHOLE WAY THROUGH.
+
+   It used to go out twice: while anybody was talking (the two rules
+   that were here) and through every cut (`.ap-hud.gone + .ap-pause-btn`
+   further down). Between them that is most of the chapter — the drive,
+   the ride, the campfire, the roof, and every line of dialogue in
+   between — so for long stretches there was no way out of the game
+   except the browser's own back button.
+
+   It is on screen from the first level to the end of the roof now. The
+   map button still goes; that one has nothing to point at during a cut,
+   and it is not a way out. */
+.ap-dlg[aria-hidden="false"] ~ .ap-map-btn,
+.ap-stage:has(.ap-dlg[aria-hidden="false"]) .ap-map-btn{
   opacity:0; pointer-events:none; transition:opacity .2s ease;
 }
 /* ---- the two in the corner ----
@@ -6465,7 +6477,8 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-overlay.cut{
   background:linear-gradient(180deg, rgba(4,6,12,0) 62%, rgba(4,6,12,.72) 100%) !important;
 }
-.ap-hud.gone, .ap-hud.gone + .ap-pause-btn{opacity:0; transition:opacity .3s ease;}
+/* the HUD goes during a cut; the pause button does not go with it */
+.ap-hud.gone{opacity:0; transition:opacity .3s ease;}
 
 /* ---- the arrivals check, and the serum ---- */
 .ap-check{

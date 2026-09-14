@@ -13214,16 +13214,23 @@
   /* ---- pause ---- */
   function togglePause() {
     if (!G) return;
-    if (G.state === "paused") { closeOverlay(); G.state = G.__wasState || "play"; return; }
-    if (G.state === "overlay" || G.state === "cine") return;
+    if (G.state === "paused") { closeOverlay(); G.__cinePaused = false;
+                                G.state = G.__wasState || "play"; return; }
+    /* "cine" is allowed now: the button is on screen through the cuts,
+       and it has to do something when it is pressed. __wasState carries
+       the cut back when the card closes, and tick leaves G.cine.t alone
+       while the card is up, so the film resumes where it stopped. */
+    if (G.state === "overlay") return;
     G.__wasState = G.state;
+    G.__cinePaused = (G.state === "cine");
     G.state = "paused";
     openOverlay(card("PAUSED", G.def ? G.def.name : "", [
       ["MOVE", "arrows or WASD"],
       ["CREEP", "hold shift — slower, almost silent"],
       ["USE", "E or space"],
       ["THE DARK", "you only see as far as your torch"]
-    ], "BACK TO IT", function () { closeOverlay(); G.state = G.__wasState || "play"; },
+    ], "BACK TO IT", function () { closeOverlay(); G.__cinePaused = false;
+                                   G.state = G.__wasState || "play"; },
        "LEAVE THE CHAPTER", function () {
          closeOverlay();
          if (window.leaveApocalypse) window.leaveApocalypse();
@@ -13233,6 +13240,7 @@
          closeOverlay();
          showControls(function () {
            closeOverlay();
+           G.__cinePaused = false;
            G.state = G.__wasState || "play";
            togglePause();
          });
@@ -14211,6 +14219,7 @@
   function endCine(then) {
     if (G.cine) disposeScene(G.cine.scene);
     G.cine = null;
+    G.__cinePaused = false;
     capText = "";
     var hud = $("ap-hud");
     if (hud) hud.classList.remove("gone");
@@ -16481,18 +16490,33 @@
       return;
     }
 
-    /* the cut, if there is one, runs whatever the game's state is */
+    /* the cut, if there is one, runs whatever the game's state is --
+       except when she has paused it. The pause button is on screen
+       through the cuts now, and a pause that let the film carry on
+       behind the card would not be a pause. */
     if (G.cine) {
-      G.cine.t += dt;
-      /* Nobody should have to sit through the drive twice. After a couple
-         of seconds — long enough that the press that started it cannot
-         end it — USE runs the cut to its end. The roof has no end to run
-         to; there the same key turns the page of the conversation. */
-      if (usePressed && isFinite(G.cine.duration) && G.cine.t > 2.0) {
-        usePressed = false;
-        G.cine.t = G.cine.duration;
+      /* Only a real pause freezes it. This first tested G.state for
+         "overlay", which was too blunt by half: a cut can legitimately
+         have an overlay over it -- a level card, a note -- and that
+         froze the film for ever, because nothing was left to advance
+         it. One explicit flag, set only by the pause card. */
+      if (G.__cinePaused) {
         if (G.cine.update) G.cine.update(0, G.cine.t);
+        Stage.grade({ time: G.time });
+        return;
       }
+      G.cine.t += dt;
+      /* THE CUTS CANNOT BE SKIPPED.
+
+         USE used to run a finite cut straight to its end after two
+         seconds — the drive, the ride, every scene of the chapter that
+         is not a room. He does not want them skippable: they are the
+         film, and a key pressed by somebody who does not know what it
+         does should not be able to throw one away. So the press is
+         swallowed here and nothing is jumped. The roof is unaffected;
+         it has no end to run to, and there USE has always meant turn
+         the page of the conversation rather than leave it. */
+      if (usePressed && isFinite(G.cine.duration)) usePressed = false;
       if (usePressed && !isFinite(G.cine.duration)) usePressed = false;
       if (G.cine.update) G.cine.update(dt, G.cine.t);
       /* the sky is not a painting: the cloud bands crawl */
