@@ -264,6 +264,45 @@ if (man) {
     chose: { 1: 1 }, found: { cogsworth: true, chime: true, marabelle: true } });
   ok('and nobody points at anything when she has missed nothing', clean === null, clean);
 
+  console.log('\n=== and if she opens it she LOOKS at it');
+
+  const seen = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    N.begin(5, 2);
+    const c = N.cast().cogsworth;
+    N.put('cogsworth', c.def.route.length - 1);
+    const front = N.seat().yaw;
+    N.talkOpen('cogsworth');
+    /* read it while it is actually standing there: the talk now runs
+       to its end on its own, and a fixed number of ticks overshoots */
+    let turned = null;
+    for (let i = 0; i < 200; i++) {
+      N.talkTick(0.02); N.viewStep(0.05);
+      const st = N.seat();
+      if (st.look > 0.9 && st.sees) { turned = st; break; }
+    }
+    turned = turned || N.seat();
+    /* and when it has gone she gets her eyes front again. The talk is
+       ended by hand because the real one waits on the voice finishing,
+       and a voice is real-time bound in a loop that is not. */
+    N.talkStop();
+    for (let i = 0; i < 120; i++) N.viewStep(0.05);
+    /* and this check does not get to decide what the last hour says to
+       the next one: the week's flag goes back the way it was found */
+    N.forgetOpened();
+    const back = N.seat();
+    return { front: front, turned: turned, back: back };
+  });
+  ok('the game turns her head toward whatever she just let in',
+     Math.abs(seen.turned.yaw - seen.front) > 0.5, seen);
+  ok('and it is far more than the chair can pan on its own',
+     Math.abs(seen.turned.yaw - seen.front) > 0.35, seen.turned.yaw - seen.front);
+  ok('and the thing in the doorway is actually drawn', seen.turned.sees, seen.turned);
+  ok('and it stands in the opening rather than out past the wall',
+     Math.abs(seen.turned.at) < 3.4, seen.turned.at);
+  ok('and afterwards she gets her eyes front again',
+     seen.back.look < 0.1, seen.back);
+
   console.log('\n=== and what she did about the door is said back to her');
 
   const opened = await p.evaluate(() => OuissysNightShift.__night.pickLine(true));

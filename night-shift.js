@@ -7159,6 +7159,11 @@ function syncCastVisibility() {
     const ch = cast[id];
     ch.group.visible = !!(ch.awake && ch.room === shownRoom);
   }
+  /* and the one she let in is standing in the doorway being looked at.
+     It is the only time any of them is drawn from that chair. */
+  if (TALK.on && TALK.opened && cast[TALK.who]) {
+    cast[TALK.who].group.visible = shownRoom === "office";
+  }
 }
 
 /* --- posing ---------------------------------------------------------
@@ -12868,7 +12873,20 @@ function tapeQuiet() {
      over the top of a jack-in-the-box is a joke. */
   for (const id in cast) {
     const ch = cast[id];
-    if (ch && ch.awake && ch.atDoor) return false;
+    /* THE ONE AT THE DOOR TALKING IS NOT THE REASON FOR THIS RULE.
+
+       Nothing may speak while something is standing at her door,
+       because a man reminiscing over the top of a jack-in-the-box is a
+       joke. Then a toy that wants to talk started coming to a door to
+       ask -- which made it, by this test, the thing that must not be
+       talked over, so it stood there asking and could never say the
+       thing it came for. It would have waited at that door all night,
+       every night, in a real game.
+
+       A toy that came to speak is excepted from a rule about being
+       interrupted by toys. Everything else at that door still stops
+       the tape dead. */
+    if (ch && ch.awake && ch.atDoor && !ch.talking) return false;
   }
   return true;
 }
@@ -13179,6 +13197,15 @@ function talkTick(dt) {
        be decided by the fuse box. */
     if (!G.doors[TALK.door] && !G.blackout) {
       TALK.phase = "open"; TALK.opened = true; TALK.t = 0;
+      /* into the opening, not into the room. Jax says as much: I will
+         not come in. At the route's own door mark it is past the wall
+         and framed by nothing. */
+      if (ch.group) {
+        TALK.home = ch.group.position.clone();
+        const inx = TALK.door === "right" ? 3.28 : TALK.door === "hatch" ? 1.9 : -3.28;
+        ch.group.position.x = (rooms.office ? rooms.office.index * SPACING : 0) + inx;
+        ch.group.updateMatrix();
+      }
       const hi = NS.begOpen[TALK.who];
       if (hi) tapeSay(hi, TALK.who);
       G.stats.opened = (G.stats.opened || 0) + 1;
@@ -13221,6 +13248,8 @@ function talkTick(dt) {
 function talkEnd() {
   const ch = TALK.who && cast[TALK.who];
   if (ch) {
+    if (TALK.home && ch.group) { ch.group.position.copy(TALK.home); ch.group.updateMatrix(); }
+    TALK.home = null;
     ch.talking = false;
     ch.atDoor = false;
     ch.cool = 9;
@@ -13522,6 +13551,15 @@ function syncTrophies() {
    ========================================================= */
 const _dir = new T.Vector3();
 let panX = 0, panY = 0, panTX = 0, panTY = 0;
+/* how far her head has turned toward whatever she just let in */
+let talkLook = 0;
+const _tl = new T.Vector3(), _tm = new T.Matrix4();
+const _tq = new T.Quaternion(), _tq2 = new T.Quaternion();
+const _up = new T.Vector3(0, 1, 0);
+function talkWant() {
+  return (TALK.on && TALK.opened && !G.monitor &&
+          (TALK.phase === "open" || TALK.phase === "said")) ? 1 : 0;
+}
 
 function applyLighting(dt) {
   /* the ceiling bulb in the office has been going for weeks */
@@ -13667,6 +13705,39 @@ function moveView(dt) {
     base = _filmBase;
   } else base = view.userData.base;
   if (!base) return;
+
+  /* SHE OPENED IT, SO SHE LOOKS AT IT.
+
+     The seat can pan about nineteen degrees either way and her own
+     doorways sit fifty-five degrees off the axis of the chair, which
+     is deliberate and is most of what makes this game frightening:
+     there is no door light, and a thing standing in her doorway is
+     something she hears rather than something she sees.
+
+     That rule gets suspended exactly once, for the only event in the
+     chapter where one of them knocks, waits, and is let in. She
+     opened the door; the game turns her head. It eases over about a
+     second, holds while the thing talks to her, and eases back when
+     it has gone -- and it is the only time in six nights that any of
+     them is looked at in the face from that chair, which is worth
+     more than any line it could be given.
+
+     Leaving it shut never does this. She keeps her eyes front and
+     hears it through the steel, which is the other half of the
+     trade. */
+  talkLook = clamp(talkLook + (talkWant() - talkLook) * Math.min(1, dt * 1.7), 0, 1);
+  if (talkLook > 0.001) {
+    const rec = rooms.office;
+    const ox = rec ? rec.index * SPACING : 0;
+    const dx = TALK.door === "right" ? 3.35 : TALK.door === "hatch" ? 1.9 : -3.35;
+    const dy = TALK.door === "hatch" ? 2.05 : 1.15;
+    const dz = TALK.door === "hatch" ? -2.4 : -0.9;
+    _tl.set(ox + dx, dy, dz);
+    _tm.lookAt(base.pos, _tl, _up);
+    _tq.setFromRotationMatrix(_tm);
+    _tq2.copy(base.quat).slerp(_tq, talkLook);
+    base = { pos: base.pos, quat: _tq2 };
+  }
   panX += (panTX - panX) * Math.min(1, dt * 5);
   panY += (panTY - panY) * Math.min(1, dt * 5);
   const idle = G.phase === "play" && !G.monitor;
@@ -16866,13 +16937,47 @@ const testHooks = {
   },
   wreckStep: (dt) => wreckStep(dt),
   wreckClear: () => wreckClear(),
+  /* one of them asks, and she opens it -- the whole beat, so a picture
+     can be taken of what she actually sees when she does */
+  talkOpen: (who) => {
+    const it = { who: who, t: (NS.tapeWhen.theyWound && NS.tapeWhen.theyWound.t) || "x" };
+    G.phase = "play"; G.mode = "story"; G.blackout = false; G.monitor = false;
+    if (!G.stats) G.stats = {};
+    voiceStop(0); TAPE.speakT = 0;
+    if (tutorOn()) tutorOff();
+    TAPE.on = true; TAPE.opened = true; TAPE.said = {};
+    talkStart(it);
+    G.doors[TALK.door] = false;
+    return TALK.door;
+  },
+  talkTick: (dt) => { talkTick(dt); return TALK.phase; },
+  talkStop: () => { talkEnd(); return TALK.on; },
+  forgetOpened: () => { clearOpened(); if (G.stats) G.stats.opened = 0; },
+  syncVis: () => syncCastVisibility(),
+  /* where the seat is pointed, and whether the thing she let in is
+     actually being drawn */
+  seat: () => {
+    syncCastVisibility();
+    const ch = TALK.who && cast[TALK.who];
+    const e = new T.Euler().setFromQuaternion(view.quaternion, "YXZ");
+    return { yaw: +e.y.toFixed(3), look: +talkLook.toFixed(3),
+             sees: !!(ch && ch.group.visible),
+             at: ch ? +ch.group.position.x.toFixed(2) : null };
+  },
+  /* drive the seat's look, and settle it, so a picture can be taken of
+     what she can actually see from her chair */
+  look: (x, y) => { panTX = clamp(x, -1, 1); panTY = clamp(y || 0, -1, 1); },
+  viewStep: (dt) => { moveView(dt); },
   /* which way the two-version line goes, for a given week */
   pickLine: (opened) => {
     const had = openedEver();
+    const hadN = G.stats ? G.stats.opened : 0;
+    if (G.stats) G.stats.opened = opened ? 1 : 0;
     if (opened) markOpened(); else clearOpened();
     const sh = NS.lastHour.shots.filter((x) => x.line && x.line.pick)[0];
     const got = sh ? finalePick(sh.line) : null;
     if (had) markOpened(); else clearOpened();
+    if (G.stats) G.stats.opened = hadN;
     return got ? { t: got.t, who: got.who } : null;
   },
   /* ONE OF THEM AT A DOOR, ASKING. Drive it both ways: open the door
@@ -16881,6 +16986,20 @@ const testHooks = {
     const it = { who: who, t: (NS.tapeWhen.theyWound && NS.tapeWhen.theyWound.t) || "x" };
     G.phase = "play"; G.mode = "story"; G.blackout = false;
     if (!G.stats) G.stats = {};
+    /* a take left running from an earlier check holds the quiet gate
+       shut for this one, and voxTalking is bound to real time in a loop
+       that is not */
+    voiceStop(0); TAPE.speakT = 0;
+    /* the tutorial also gags the tape, and a suite driving a night by
+       hand is not being oriented */
+    if (tutorOn()) tutorOff();
+    /* and nothing ELSE may be standing at a door: anything that is
+       stops the tape dead, correctly, and earlier checks in the same
+       page leave toys parked in doorways */
+    for (const k in cast) {
+      if (k === who) continue;
+      cast[k].atDoor = false; cast[k].talking = false; cast[k].awake = false;
+    }
     TAPE.on = true; TAPE.opened = true; TAPE.said = {};
     const ch = cast[who];
     G.doors.left = G.doors.right = G.doors.hatch = true;
@@ -16895,6 +17014,15 @@ const testHooks = {
     /* the dark drops every shutter open by itself, which is not her */
     G.blackout = !!dark;
     for (let i = 0; i < (secs || 40) * 4; i++) {
+      /* THIS HOOK TESTS THE MACHINE, NOT THE SPEAKER.
+
+         Every phase of a talk waits for the shop to go quiet, and
+         "quiet" means a real recording has finished playing. A loop
+         that runs forty simulated seconds in four milliseconds of real
+         time never sees one finish, so the state machine would sit on
+         its first phase for ever and the check would be measuring the
+         audio clock. The take is cut on every tick instead. */
+      voiceStop(0); TAPE.speakT = 0;
       talkTick(0.25);
       if (out.phases[out.phases.length - 1] !== TALK.phase) out.phases.push(TALK.phase);
       if (!TALK.on) break;
