@@ -1048,6 +1048,7 @@ const NS = {
         "I built four things that will get you to it.",
         "Wind them. That is all I am asking. Every night, before six.",
         "I could not tell you what for, because telling you what for meant telling you what I did, and I wanted six more nights of you not knowing.",
+        "The plate on the desk is not a nameplate. It is the only way I could think of to write this down where you would have to look at it every night.",
         "I am sorry about the six nights. I am not sorry about the four of them.&rdquo;",
       ],
       sign: "— Anwar",
@@ -1279,6 +1280,21 @@ const NS = {
        than all at once, and each waits for a quiet moment the same
        way his lines do -- none of them ever talks over him. */
 
+    /* NIGHT ONE. THE FIRST LINE IN THE CHAPTER SPOKEN BY A TOY.
+
+       Everything else on nights one to four is him, talking about the
+       past. The four are silent objects that walk towards her, and
+       that is why the chapter does not come alive until night five,
+       when all four of them start talking at once.
+
+       So the first one arrives in the first hour of the first night,
+       the moment she looks at a camera and finds one of them standing
+       in it. It is not a threat and it is not friendly. It is
+       recognition, which is worse and better: the thing in the
+       hallway knows who she is, and is not surprised she came. */
+    theySeen:    { after: 1, who: "cogsworth",
+                   t: "You are still here. He said you would be. He was not sure, but he said it." },
+
     /* NIGHT TWO, the night after he tells her what the four of them
        are made out of. She turns a key in somebody's back for the
        second or third time and somebody says thank you. It is the
@@ -1300,6 +1316,21 @@ const NS = {
 
     /* NIGHT FIVE. The one that knocks explains why it knocks, on the
        night before it is going to matter. */
+    /* AND THE THING HE COULD NOT SAY.
+
+       On the first night he mentions the brass plate on the front of
+       her desk -- "I had it made in March, and I never worked out how
+       to tell you what it was for" -- and until now nothing anywhere
+       in six nights answered it. A setup that good with no payoff is
+       a hole, and it was sitting in the first hour of the chapter.
+
+       It is answered by the one who reads his book and keeps his
+       time, and it arrives when she is SITTING STILL: monitor down,
+       not doing anything, which is the only twenty seconds in the
+       chapter that feel like grief rather than work. */
+    theyPlate:   { after: 3, who: "cogsworth",
+                   t: "The plate on the front of your desk. He had it made in March. He brought it in, and he could not say the sentence that was meant to go with it, so he screwed it on and went home. It says this is yours. That is the whole of what it was for." },
+
     theyKnock:   { after: 5, who: "jax",
                    t: "It is only me. I knock because he told me to knock. He did not have to tell me twice." },
     lowPower:    "If the meter goes, sit still. Six o'clock has beaten the dark before now.",
@@ -9146,9 +9177,9 @@ const MODE_MIX = {
              pad: 0.50, bass: 0.34, lead: 0.64   },
   /* AND AFTER. Room tone and one voice, at the bottom of the level
      range, for five and a half seconds of nothing moving. */
-  after:   { sub: 0.44, pulse: 0,    box: 0,    air: 0.42, grind: 0.06, bow: 0.32, warm: 0,
-             piano: 0.14, choir: 0.22, brass: 0,    tick: 0,
-             pad: 0.32, bass: 0.16, lead: 0.00   },
+  after:   { sub: 0.40, pulse: 0,    box: 0,    air: 0.44, grind: 0.06, bow: 0.20, warm: 0,
+             piano: 0.12, choir: 0.18, brass: 0,    tick: 0,
+             pad: 0.18, bass: 0.12, lead: 0.00   },
   gallery: { sub: 0.14, pulse: 0,    box: 0.45, air: 0.10, grind: 0,    bow: 0,    warm: 0.38,
              piano: 0.34, choir: 0.10, brass: 0,    tick: 0,
              pad: 0.42, bass: 0.38, lead: 0.32   },
@@ -9217,7 +9248,7 @@ const MODE_FEEL = {
   siege:   { spb: 0.88, warm: false, level: 0.64, theme: "hammer" },
   alone:   { spb: 2.25, warm: false, level: 0.46, theme: "memory" },
   charge:  { spb: 1.70, warm: true,  level: 0.56, theme: "letter" },
-  after:   { spb: 2.60, warm: false, level: 0.38, theme: "void"   },
+  after:   { spb: 1.90, warm: false, level: 0.34, theme: "void"   },
   locked:  { spb: 1.00, warm: false, level: 0.61, theme: "clock" },
   brief:   { spb: 1.35, warm: false, level: 0.53, theme: "clock" },
   dark:    { spb: 1.15, warm: false, level: 0.55, theme: "void" },
@@ -10522,9 +10553,11 @@ const G = {
   monitor: false,
   cam: "hall",
   doors: { left: false, right: false, hatch: false },
-  /* how long she has been looking at the same one of them */
+  /* how long she has been looking at the same one of them, and how
+     long she has been sitting still doing nothing at all */
   watchCam: null,
   watchT: 0,
+  stillT: 0,
   /* what the last hour's film is doing to the lights. 1 everywhere else,
      and put back to 1 the moment the film stops, so a shot that took the
      shop down to a tenth can never leave it there. */
@@ -13978,9 +14011,35 @@ function uiTick(dt) {
       .filter((c) => c && c.awake && !c.atDoor && c.room === G.cam)[0];
     if (seen && G.watchCam === G.cam) {
       G.watchT = (G.watchT || 0) + dt;
-      if (G.watchT > 6) { tapeTrigger("theyWatched"); G.watchT = -60; }
+      /* on the first two nights it is three seconds and it is the
+         soldier saying he knows who she is, because the chapter needs
+         one of them to be a person before it needs one of them to be
+         self-aware. After that it is six, and it is the owl. */
+      const early = G.night <= 2;
+      if (G.watchT > (early ? 3 : 6)) {
+        tapeTrigger(early ? "theySeen" : "theyWatched");
+        G.watchT = -60;
+      }
     } else { G.watchCam = G.cam; G.watchT = 0; }
   } else if (G.watchT > 0) G.watchT = 0;
+
+  /* AND THE TWENTY SECONDS THAT ARE NOT WORK.
+
+     Monitor down, both doors open, nothing at either of them: a woman
+     sitting in her husband's chair in his shop at three in the
+     morning, not doing anything. It is the only stillness the chapter
+     ever gets, it is the closest this game comes to grief, and it is
+     where the one who reads his book tells her what the brass plate
+     on her desk was for. Any input at all resets it, so it cannot be
+     collected by putting the controller down -- it has to be a
+     deliberate pause. */
+  if (G.phase === "play" && !G.monitor && !G.doors.left && !G.doors.right && !G.doors.hatch) {
+    const anyAtDoor = CAST.some((d) => cast[d.id] && cast[d.id].awake && cast[d.id].atDoor);
+    if (!anyAtDoor) {
+      G.stillT = (G.stillT || 0) + dt;
+      if (G.stillT > 20) { tapeTrigger("theyPlate"); G.stillT = -120; }
+    } else G.stillT = 0;
+  } else if (G.stillT > 0) G.stillT = 0;
 
   /* the annunciator's caption. A vocoder cannot be understood and is not
      meant to be — the words are here. */
