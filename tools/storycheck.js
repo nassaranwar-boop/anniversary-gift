@@ -1,0 +1,184 @@
+/* NOTHING THAT WAS WRITTEN TO HAPPEN IS ALLOWED TO NOT HAPPEN.
+
+   For four versions this chapter had a hole in the middle of it that
+   no test could see, because it was not a bug: it was the story being
+   optional. A player who is GOOD at this game -- doors shut the moment
+   something moves, monitor down, nothing wasted -- was precisely the
+   player who got the least of it. Shut doors meant the four never had
+   to save her, so the one scene the middle of the chapter is built
+   around never played. A tidy camera routine meant she walked past the
+   maker's tags, and the only place in six nights where he says in his
+   own hand what each of them is FOR was simply gone.
+
+   That is exactly backwards, and none of it was catchable by anything
+   that only checks that the code runs. So this checks the promises:
+
+     - a page she walked past is still there the next night
+     - and one of them tells her where, in their own voice
+     - the character lines have a night and an hour by which they fire
+       whether or not she has done the thing that would have cued them
+     - and the save happens with the door shut, because the door
+       holding is the rule of the game and what is on the far side of
+       it is the story.
+                                              node tools/storycheck.js */
+const fs = require('fs');
+const { chromium } = require('playwright-core');
+
+let pass = 0, fail = 0;
+const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
+                          else { fail++; console.log('  FAIL ' + n + (x !== undefined ? '  ' + JSON.stringify(x) : '')); } };
+
+const src = fs.readFileSync(__dirname + '/../night-shift.js', 'utf8');
+function lift(name) {
+  const i = src.indexOf('const ' + name + ' = ');
+  const eq = src.indexOf('=', i);
+  let open = eq + 1;
+  while (' \n\r\t'.indexOf(src[open]) >= 0) open++;
+  let d = 0, j = open;
+  for (; j < src.length; j++) {
+    const c = src[j];
+    if (c === '{' || c === '[') d++;
+    else if (c === '}' || c === ']') { d--; if (!d) break; }
+  }
+  return eval('(' + src.slice(open, j + 1) + ')');
+}
+const NS = lift('NS');
+
+console.log('\n=== what the script promises');
+
+/* every line one of the four says has a deadline on it */
+const spoken = Object.keys(NS.tapeWhen).filter((k) => typeof NS.tapeWhen[k] !== 'string');
+ok('every line one of the four speaks is somebody in particular',
+   spoken.every((k) => NS.tapeWhen[k].who), spoken.filter((k) => !NS.tapeWhen[k].who));
+ok('and every one of them fires by a night and an hour, cued or not',
+   spoken.every((k) => Array.isArray(NS.tapeWhen[k].by) && NS.tapeWhen[k].by.length === 2),
+   spoken.filter((k) => !NS.tapeWhen[k].by));
+/* a deadline before the night it is allowed on would never fire */
+const early = spoken.filter((k) => { const it = NS.tapeWhen[k];
+  return it.after && it.by[0] < it.after; });
+ok('no deadline falls before the night the line is allowed to exist', !early.length, early);
+/* and none of them lands after the last night she could hear it */
+const late = spoken.filter((k) => NS.tapeWhen[k].by[0] > 5);
+ok('and none of them is left until a night that may never come', !late.length, late);
+/* they are spread out: two of the four should not be due the same hour
+   of the same night, or one talks over the other */
+const slots = {};
+const clash = [];
+spoken.forEach((k) => { const s = NS.tapeWhen[k].by.join(':');
+  if (slots[s]) clash.push([slots[s], k]); else slots[s] = k; });
+ok('and no two of them come due in the same hour of the same night', !clash.length, clash);
+
+/* the pages she can walk past, and the one who points at each */
+const pointable = NS.finds.filter((f) => f.on < 6).map((f) => f.id);
+ok('every page she can walk past has somebody who will point at it',
+   pointable.every((id) => NS.pointAt[id]), pointable.filter((id) => !NS.pointAt[id]));
+ok('and the one who points at a maker\'s tag is the toy it belongs to',
+   ['cogsworth', 'chime', 'marabelle', 'jax'].every((id) => NS.pointAt[id].who === id),
+   ['cogsworth', 'chime', 'marabelle', 'jax'].filter((id) => NS.pointAt[id].who !== id));
+ok('and none of them simply reads the map out',
+   Object.keys(NS.pointAt).every((k) => NS.pointAt[k].t.split(' ').length > 18),
+   Object.keys(NS.pointAt).filter((k) => NS.pointAt[k].t.split(' ').length <= 18));
+
+/* the shut-door save has its own card, because she cannot see a thing */
+ok('the save behind a shut door is written as sound, not as a view',
+   NS.heldShut && NS.heldShut.lines.length >= 3 &&
+   !/she sees|looking at the thing in the corridor/.test(NS.heldShut.lines.join(' ')));
+ok('and neither card names a door the game did not use',
+   /\$1/.test(NS.held.where) && /\$1/.test(NS.heldShut.where));
+
+/* ---- and now the game, running ------------------------------------- */
+(async () => {
+  const b = await chromium.launch({
+    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    args: ['--no-sandbox', '--no-proxy-server', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+  const p = await b.newPage({ viewport: { width: 1100, height: 700 } });
+  let errs = [];
+  p.on('pageerror', (e) => { errs.push(e.message); });
+  await p.route('**/*', (r) => {
+    const u = r.request().url();
+    if (u.indexOf('book-scene.js') >= 0) return r.abort();
+    return u.startsWith('http://127.0.0.1') ? r.continue() : r.abort();
+  });
+  await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await p.evaluate(() => { localStorage.setItem('ns_seenintro', '1'); showScreen('nightshift');
+    return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
+  await p.waitForFunction(() => window.OuissysNightShift && OuissysNightShift.__night,
+                          { timeout: 20000, polling: 200 });
+
+  console.log('\n=== the shop, keeping what she walked past');
+
+  /* she finds nothing, ever. Every night she still has something to find,
+     and it is always the oldest thing she missed. */
+  const sloppy = await p.evaluate(() =>
+    [1, 2, 3, 4, 5, 6].map((n) => OuissysNightShift.__night.carry(n, {})));
+  ok('a player who finds nothing still has something out there every night',
+     sloppy.every((s) => s.armed), sloppy);
+  ok('and on each night it is that night\'s own page, in order',
+     sloppy.map((s) => s.armed).join(',') === 'cogsworth,chime,marabelle,jax,ledger,last',
+     sloppy.map((s) => s.armed));
+
+  /* she misses night one and is perfect afterwards: night one's tag is
+     put back out, and the soldier tells her where it is */
+  const back = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    return { n2: N.carry(2, { chime: true }),
+             n3: N.carry(3, { chime: true, marabelle: true }),
+             n4: N.carry(4, { chime: true, marabelle: true, jax: true }) };
+  });
+  ok('the tag she walked past on night one is out again on night two',
+     back.n2.armed === 'cogsworth' && back.n2.back === 'cogsworth', back.n2);
+  ok('and it is still out on night three, and on night four',
+     back.n3.armed === 'cogsworth' && back.n4.armed === 'cogsworth', back);
+  ok('and the soldier is the one who tells her where he left it',
+     back.n2.points === 'cogsworth', back.n2);
+
+  /* two missed: the older one comes back first */
+  const two = await p.evaluate(() =>
+    OuissysNightShift.__night.carry(4, { marabelle: true, jax: true }));
+  ok('two missed, and the older one is the one the shop puts back first',
+     two.armed === 'cogsworth' && two.back === 'cogsworth', two);
+
+  /* nothing is ever handed to her early */
+  const ahead = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    return [1, 2, 3].map((n) => N.carry(n, { cogsworth: true, chime: true }));
+  });
+  ok('and a thorough player is never handed a later night\'s page early',
+     ahead[0].armed === null && ahead[1].armed === null && ahead[2].armed === 'marabelle',
+     ahead.map((a) => a.armed));
+
+  console.log('\n=== the save, through a shut door');
+
+  const held = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    return { left: N.holdShut('post1', 'cogsworth'),
+             right: N.holdShut('post2', 'marabelle') };
+  });
+  ok('a toy that runs out of patience at a SHUT door is still taken away',
+     held.left.saves === 1 && held.right.saves === 1, held);
+  ok('and the one that took it away has spent itself doing it',
+     held.left.keeperWound === 0 && held.right.keeperWound === 0, held);
+  ok('and the door she shut is still shut afterwards -- the rule holds',
+     held.left.doorStillShut && held.right.doorStillShut, held);
+  ok('and it is off her door', !held.left.threatAtDoor && !held.right.threatAtDoor, held);
+
+  /* the card she gets is the one she can hear rather than the one she
+     can see, and it names the door it happened on */
+  const card = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    N.heldCard(true, 'right');
+    const el = document.querySelector('.ns-card-held');
+    return { from: el.querySelector('.ns-from').textContent,
+             body: el.querySelector('.ns-lines').textContent };
+  });
+  ok('behind a shut door she gets the card she cannot see out of',
+     /cannot see it/.test(card.from) && /east door/.test(card.from), card.from);
+  ok('and it is the sound of it, all the way through',
+     /handle stops turning/.test(card.body) && /hand flat on it/.test(card.body));
+
+  ok('no page errors anywhere in that', !errs.length, errs.slice(0, 3));
+
+  console.log('\n' + pass + ' passed, ' + fail + ' failed\n');
+  await b.close();
+  process.exit(fail ? 1 : 0);
+})();

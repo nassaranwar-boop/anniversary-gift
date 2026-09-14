@@ -107,7 +107,17 @@ for (const n in (NS.tapes || {})) {
   NS.tapes[n].forEach((x, k) => add('tape' + n + '-' + String(k + 1).padStart(2, '0'), x.t,
     'night ' + n + ', about ' + (12 + Math.floor(x.h)) % 12 + ' o\'clock', x.who));
 }
-for (const k in (NS.tapeWhen || {})) add('when-' + k, NS.tapeWhen[k], 'when she does the thing');
+for (const k in (NS.tapeWhen || {})) {
+  /* these used to be bare strings. Six of them are objects now, because
+     six of them are one of the four speaking rather than him, and
+     String({t,who}) is "[object Object]" said out loud in a Welsh accent */
+  const it = NS.tapeWhen[k];
+  if (typeof it === 'string') add('when-' + k, it, 'when she does the thing');
+  else add('when-' + k, it.t, 'when she does the thing', it.who);
+}
+/* and the one who tells her where she left his card */
+for (const k in (NS.pointAt || {}))
+  add('point-' + k, NS.pointAt[k].t, 'the night after she walked past it', NS.pointAt[k].who);
 for (const n in (NS.reveal || {})) add('reveal-' + n, NS.reveal[n].say, 'three in the morning, night ' + n);
 add('caught-first', NS.caught && NS.caught.first, 'the first time something reaches her');
 add('caught-later', NS.caught && NS.caught.later, 'every time after that');

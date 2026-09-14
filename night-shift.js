@@ -322,11 +322,25 @@ const NS = {
      works. Nothing in the how-to mentions it and nothing before it
      hints that it can happen. */
   held: {
-    where: "on the west door, with its back to her",
+    where: "on the $1 door, with its back to her",
     lines: [
       "The handle stopped turning.",
       "There is something standing in the doorway that she has spent four nights keeping out of it, and it is not looking at her. It is looking at the thing in the corridor, and the thing in the corridor is going back the way it came.",
       "When it is gone he stands there a moment longer, and then walks back to his place in the dark, and stops, run all the way down.",
+    ],
+    who: "$1 will not do that again until she winds him.",
+  },
+
+  /* the same thing, with eight centimetres of roller shutter in front of
+     it. She does everything right and is rewarded with the audio only,
+     which is worse, and which is the point */
+  heldShut: {
+    where: "on the other side of the $1 door, where she cannot see it",
+    lines: [
+      "The handle stops turning.",
+      "It does not stop the way it stops when they give up — that is a slow stop, and it goes quiet afterwards. This one stops all at once, like a hand being taken off it, and the quiet afterwards has two things standing in it.",
+      "Something drags a few feet up the corridor. Something heavier stays exactly where it is until the dragging has finished. Then the heavier one walks away, unhurried, in the direction of its own shelf, and the walk goes on longer than it should, because it is winding down as it goes.",
+      "She never opens the door. She has been told not to and she does not. She just sits with her hand flat on it, feeling him come apart on the other side, doing the thing he was made to do for somebody who is not watching.",
     ],
     who: "$1 will not do that again until she winds him.",
   },
@@ -1292,7 +1306,7 @@ const NS = {
        in it. It is not a threat and it is not friendly. It is
        recognition, which is worse and better: the thing in the
        hallway knows who she is, and is not surprised she came. */
-    theySeen:    { after: 1, who: "cogsworth",
+    theySeen:    { after: 1, by: [1, 3], who: "cogsworth",
                    t: "You are still here. He said you would be. He was not sure, but he said it." },
 
     /* NIGHT TWO, the night after he tells her what the four of them
@@ -1300,18 +1314,18 @@ const NS = {
        second or third time and somebody says thank you. It is the
        first thing any of them ever says to her and it is four words
        long on purpose. */
-    theyWound:   { after: 2, who: "cogsworth",
+    theyWound:   { after: 2, by: [2, 4], who: "cogsworth",
                    t: "Thank you. Nobody has done that since March." },
 
     /* NIGHT THREE. She shuts a door on one of them, which she has
        been doing all week and feeling steadily worse about, and the
        one she shut it on tells her she was right to. */
-    theyShut:    { after: 3, who: "marabelle",
+    theyShut:    { after: 3, by: [3, 3], who: "marabelle",
                    t: "That was the right thing to do. Do it every single time, and do not feel anything about it afterwards." },
 
     /* NIGHT FOUR. She has been watching one of them on a camera for
        long enough that it has noticed. */
-    theyWatched: { after: 4, who: "chime",
+    theyWatched: { after: 4, by: [4, 4], who: "chime",
                    t: "You can stop looking at me now. I only go round. I have gone round this shop every night for eleven years and I have never once been anywhere." },
 
     /* NIGHT FIVE. The one that knocks explains why it knocks, on the
@@ -1328,10 +1342,10 @@ const NS = {
        time, and it arrives when she is SITTING STILL: monitor down,
        not doing anything, which is the only twenty seconds in the
        chapter that feel like grief rather than work. */
-    theyPlate:   { after: 3, who: "cogsworth",
+    theyPlate:   { after: 3, by: [4, 1], who: "cogsworth",
                    t: "The plate on the front of your desk. He had it made in March. He brought it in, and he could not say the sentence that was meant to go with it, so he screwed it on and went home. It says this is yours. That is the whole of what it was for." },
 
-    theyKnock:   { after: 5, who: "jax",
+    theyKnock:   { after: 5, by: [5, 2], who: "jax",
                    t: "It is only me. I knock because he told me to knock. He did not have to tell me twice." },
     lowPower:    "If the meter goes, sit still. Six o'clock has beaten the dark before now.",
   },
@@ -1346,6 +1360,38 @@ const NS = {
   /* the line she gets for a night she cleared without finding the thing
      hidden in it — enough to make her want to go back in */
   missed: "There was something in the shop tonight she did not find.",
+  /* she walked past it, and it is not gone. The shop is patient. */
+  missedAgain: "It is still where it was. It will be there tomorrow night, and one of them knows exactly where.",
+
+  /* ONE OF THEM TELLS HER WHERE IT IS.
+
+     Four of these six pages are the maker's tags — the only place in
+     the chapter where he says, in his own hand, what each of them is
+     FOR, and what about her he was copying when he made it. They were
+     optional. A player who never swept the workshop camera on night
+     one simply never learned that Cogsworth is her punctuality with a
+     key in its back, and the whole of nights one to four went by as
+     atmosphere.
+
+     So on the night after she misses one, the toy whose tag it is
+     tells her where to look — which is not a quest marker, because
+     what it costs each of them to say it is the point. The soldier
+     cannot turn his own card over. The owl has to admit it is the only
+     thing that says what he is for. The ballerina cannot look down at
+     hers while she is being watched. Jax will not open the box in
+     front of her. */
+  pointAt: {
+    cogsworth: { who: "cogsworth",
+      t: "There is a card wired to the empty stand on my bench. It has my name on it, and a number, and on the back of it there is a sentence about you. I have been standing next to it for eleven days and I have not been able to turn it over." },
+    chime: { who: "chime",
+      t: "Above the front door. On the ledge, where I sit. There is a paper tied on with wire and it is the only thing in this building that says what I am for. You went under it twice tonight." },
+    marabelle: { who: "marabelle",
+      t: "Under my glass. There is a card under my glass, and I cannot look down at it while you are watching me, so it will have to be you that does it." },
+    jax: { who: "jax",
+      t: "Bottom of my box. Under all of it. I would get it out for you, but if I open the box you will scream, and I do not want that to be the thing you remember about me." },
+    ledger: { who: "cogsworth",
+      t: "The supply closet. There is a second chair in it, and a mug on the arm of the chair, and he put it there the week he took the lease. I have decided that I do not know what it is for. Look at it instead of me." },
+  },
 
   /* Dawn on the last night, and the one thing she gets to decide. */
   ending: {
@@ -6045,7 +6091,30 @@ function stepSold(ch, dt) {
       ch.holdT -= dt;
       ch.knockT = (ch.knockT || 0) - dt;
       if (ch.knockT <= 0) { ch.knockT = range(Math.random, 1.4, 2.6); SFX.handle(TUNE.pan[ch.def.door]); }
-      if (ch.holdT <= 0) soldRetreat(ch);
+      if (ch.holdT <= 0) {
+        /* A SHUT DOOR DOES NOT SEND IT AWAY. ONE OF HIS DOES.
+
+           This branch used to be soldRetreat and nothing else, which
+           meant the single most important thing in the middle of this
+           chapter -- one of his getting there first -- could only ever
+           be seen by somebody who left a door open with something
+           behind it. A player who is GOOD at this game never saw it
+           once. The centre of the story was locked behind playing
+           badly.
+
+           So if one of his four is wound and near, it takes the thing
+           away whether the door is shut or not, and she hears the
+           whole of it through eight centimetres of roller shutter
+           without ever being in any danger. Which is, if anything,
+           worse to listen to.
+
+           The door still works. The rule of the game is not bent: a
+           shut door holds, every time, exactly as his tape says. What
+           changes is what is on the other side of it. */
+        const keeper = guardFor(ch.def.door);
+        if (keeper) intercept(ch, keeper, true);
+        else soldRetreat(ch);
+      }
       return;
     }
     ch.doorT -= dt;
@@ -11156,7 +11225,7 @@ function guardFor(door) {
 }
 
 /* called instead of kill() when one of his is able to get there */
-function intercept(threat, keeper) {
+function intercept(threat, keeper, shut) {
   G.stats.saves++;
   /* the returner goes, all the way back, and stays gone a while */
   soldRetreat(threat);
@@ -11174,26 +11243,36 @@ function intercept(threat, keeper) {
   G.shake = Math.max(G.shake, 0.55);
   say(fmt(NS.sys.held, threat.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
 
+  /* through a shut door it is all sound: the handle letting go, and then
+     one of them being spent on the far side of a slab she is not going
+     to open. She gets more of it, not less, because the second knock
+     lands on the door she is leaning against */
+  if (shut) {
+    SFX.handle(TUNE.pan[threat.def.door]);
+    setTimeout(() => { if (G.phase === "play" || G.phase === "held") SFX.knock(0.42); }, 620);
+  }
+
   /* the first time it happens she gets told what she just saw, once,
      and never again — after that it is simply how the shop works */
   tapeTrigger("firstHeld");
-  if (!seenSave() && !G.pumping) heldCard(keeper);
+  if (!seenSave() && !G.pumping) heldCard(keeper, shut, threat.def.door);
 }
 
 /* the card, on its own, because pump() deliberately never stops to tell
    a story and so nothing that only happens on a card could be checked */
-function heldCard(keeper) {
+function heldCard(keeper, shut, door) {
   saveSeenSave(true);
   G.phase = "held";
   musicMode("held");
   showHud(false);
+  const H = shut ? NS.heldShut : NS.held;
   overlay(
     '<div class="ns-card ns-card-held">' +
-      '<p class="ns-from">' + NS.held.where + '</p>' +
+      '<p class="ns-from">' + fmt(H.where, door === "right" ? "east" : "west") + '</p>' +
       '<div class="ns-lines">' +
-        NS.held.lines.map((l) => "<p>" + l + "</p>").join("") +
+        H.lines.map((l) => "<p>" + l + "</p>").join("") +
       '</div>' +
-      '<p class="ns-pencil">' + fmt(NS.held.who, keeper.def.name) + '</p>' +
+      '<p class="ns-pencil">' + fmt(H.who, keeper.def.name) + '</p>' +
       '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="heldOut">BACK TO IT</button></div>' +
     '</div>', "ns-ov-held");
 }
@@ -12371,6 +12450,50 @@ function tapeTrigger(key) {
   TAPE.pending = typeof it === "string" ? { t: line } : it;
 }
 
+/* WHAT IS WRITTEN TO HAPPEN, HAPPENS.
+
+   Every line the four of them say was hung on something she does --
+   wind one, shut a door on one, watch one for six seconds, sit still
+   for twenty. Which means a player who does none of those things gets
+   none of it, and a player who is GOOD at this game -- doors shut,
+   monitor down, nothing wasted -- is precisely the player who gets the
+   least of the story. That is exactly backwards.
+
+   So each of them also carries a deadline: the night and the hour it
+   has to have happened by. If it has not, it happens anyway.
+
+   And if she is sitting behind two shut doors when it does, it comes
+   through the door. One knock, and then the line. There is no
+   arrangement of doors in this shop that stops the four of them
+   talking to her, because nothing they ever say to her is a threat
+   and a shut door is not an argument. */
+function tapeDue(dt) {
+  if (!TAPE.on || !TAPE.opened || !NS.tapeWhen || G.phase !== "play") return;
+  if (TAPE.pending) return;
+  const hourNow = G.hour + (G.hourT || 0) / Math.max(1, TUNE.hourSeconds);
+  for (const k in NS.tapeWhen) {
+    const it = NS.tapeWhen[k];
+    if (typeof it === "string" || !it.by || TAPE.said[it.t]) continue;
+    if (G.night < it.by[0]) continue;
+    if (G.night === it.by[0] && hourNow < it.by[1]) continue;
+    /* she is shut in, so it knocks first */
+    const shut = G.doors.left || G.doors.right || G.doors.hatch;
+    if (shut) SFX.knock(0.5);
+    TAPE.pending = it;
+    return;
+  }
+
+  /* and then, after his deadlines, theirs: the one whose tag she walked
+     past tells her where it is. Not before two, because the first hour
+     of a night belongs to him. */
+  if (hourNow < 2) return;
+  const back = carriedFind();
+  if (!back || !NS.pointAt) return;
+  const p = NS.pointAt[back.id];
+  if (!p || TAPE.said[p.t]) return;
+  TAPE.pending = p;
+}
+
 function tapeTick(dt) {
   if (!TAPE.on) return;
   const el = EL["ns-tape"];
@@ -12833,6 +12956,7 @@ function frame(ts) {
       audioTick(dt);
       sayTick(dt);
       /* after sayTick, so the building always has the right of way */
+      tapeDue(dt);
       tapeTick(dt);
       uiTick(dt);
     }
@@ -13468,7 +13592,8 @@ function screenShift() {
      so, because that is the sentence that makes her go back in. */
   /* the ones he needed her to read, handed over rather than lost */
   const given = G.mode === "story" ? handOverMissed() : null;
-  const missed = !given && G.mode === "story" && tonightsFind() ? NS.missed : "";
+  const missed = !given && G.mode === "story" && tonightsFind()
+    ? (carriedFind() ? NS.missedAgain : NS.missed) : "";
   const hook = G.mode === "story" ? (NS.hooks[G.night] || "") : "";
   overlay(
     '<div class="ns-card ns-card-win">' +
@@ -13508,11 +13633,26 @@ function handOverMissed() {
   return f;
 }
 
-/* is tonight's page still out there? (null once she has it) */
-function tonightsFind() {
-  const f = NS.finds.filter((x) => x.on === G.night)[0];
-  if (!f) return null;
-  return foundAll()[f.id] ? null : f;
+/* what is actually out there tonight: tonight's if she has not got it,
+   otherwise the oldest one she walked past on an earlier night. Never
+   ahead of the night it was written for — night four's knife does not
+   turn up on night two because she was thorough. */
+function armedFind() {
+  const got = foundAll();
+  const tonight = NS.finds.filter((x) => x.on === G.night)[0];
+  if (tonight && !got[tonight.id]) return tonight;
+  return NS.finds.filter((x) => x.on < G.night && !got[x.id])[0] || null;
+}
+
+/* is a page still out there? (null once she has them all) */
+function tonightsFind() { return armedFind(); }
+
+/* a page she walked past, being put back — so one of them can say so */
+function carriedFind() {
+  const got = foundAll();
+  const tonight = NS.finds.filter((x) => x.on === G.night)[0];
+  if (tonight && !got[tonight.id]) return null;   // tonight's own is still out
+  return NS.finds.filter((x) => x.on < G.night && !got[x.id])[0] || null;
 }
 
 /* THE ENDING SHE HAS BEEN WRITING ALL WEEK.
@@ -14685,14 +14825,27 @@ function buildFinds() {
   });
 }
 
-/* the one that belongs to tonight, and only while it is still there */
+/* WHAT IS WRITTEN TO HAPPEN, HAPPENS — the second half of it.
+
+   These six things are the whole reason the chapter is a story and not
+   a shift, and for four versions they were the easiest thing in it to
+   walk straight past. One camera sweep missed on night two and his
+   chalk on the bench — four names and four words and HER underneath
+   them, pressed hard enough to break the chalk — was gone for good.
+   The player never knew there had been anything to miss.
+
+   So nothing is lost now. The shop keeps it. Tonight's is out if she
+   has not got it; if she has, the oldest one she walked past is put
+   back where it was, and one of the four tells her where, because by
+   then they are the sort of thing that tells her. Six nights, six
+   pages, in her hand by the end whether or not she is any good at
+   this. */
 function armFind() {
   findMesh = null; findRec = null; findLit = false;
   NS.finds.forEach((f) => { if (findMeshes[f.id]) findMeshes[f.id].visible = false; });
   if (G.mode !== "story") return;
-  const f = NS.finds.filter((x) => x.on === G.night)[0];
+  const f = armedFind();
   if (!f || !findMeshes[f.id]) return;
-  if (foundAll()[f.id]) return;            // already hers; it is not there again
   findRec = f;
   findMesh = findMeshes[f.id];
   findMesh.visible = true;
@@ -15810,7 +15963,46 @@ const testHooks = {
   }),
   /* pick tonight's up without having to find it on a camera first */
   takeFind: () => { takeFind(); return G.phase; },
-  heldCard: () => { heldCard(cast.cogsworth); return G.phase; },
+  heldCard: (shut, door) => { heldCard(cast.cogsworth, shut, door); return G.phase; },
+  /* NOTHING IS LOST: given what she already has, what is out there on a
+     given night, and which of them will tell her where it is */
+  carry: (night, kept) => {
+    const wasNight = G.night, had = foundAll();
+    if (night) G.night = night;
+    try { localStorage.setItem(FOUND_KEY, JSON.stringify(kept || {})); } catch (e) {}
+    const a = armedFind(), c = carriedFind();
+    const out = { armed: a ? a.id : null, back: c ? c.id : null,
+                  points: (c && NS.pointAt[c.id] && NS.pointAt[c.id].who) || null };
+    G.night = wasNight;
+    try { localStorage.setItem(FOUND_KEY, JSON.stringify(had)); } catch (e) {}
+    return out;
+  },
+  /* AND THE SAVE HAPPENS THROUGH A SHUT DOOR. Put one of them at a
+     door with its patience spent, shut the door in its face, wind
+     another one, and run the step the game really runs. */
+  holdShut: (threatId, keeperId) => {
+    const th = cast[threatId], kp = cast[keeperId];
+    if (!th || !kp) return { err: "no such toy" };
+    /* a night the suite never started has no ledger and nothing is out
+       of its box yet, so stand one up around the step being tested */
+    G.phase = "play"; G.blackout = false; G.mode = "story";
+    G.night = Math.max(G.night, 5);
+    if (!G.stats) G.stats = { saves: 0 };
+    if (G.stats.saves == null) G.stats.saves = 0;
+    const door = th.def.door;
+    th.asleep = false; kp.asleep = false;
+    th.awake = true; th.atDoor = true; th.holdT = 0; th.cool = 0;
+    G.doors.left = false; G.doors.right = false; G.doors.hatch = false;
+    G.doors[door] = true;
+    /* only the keeper is wound, so guardFor cannot pick anybody else */
+    CAST.forEach((d) => { const c = cast[d.id]; if (c) { c.wound = 0; c.atDoor = false; } });
+    kp.wound = 999; kp.awake = true; kp.cool = 0;
+    const before = G.stats.saves;
+    stepSold(th, 0.016);
+    return { door: door, saves: G.stats.saves - before, phase: G.phase,
+             threatAtDoor: !!th.atDoor, keeperWound: kp.wound,
+             doorStillShut: !!G.doors[door] };
+  },
   /* the terms he sets on the way in */
   terms: () => ({ on: TERMS.on, line: TERMS.line, of: NS.terms.lines.length,
                   said: NS.terms.lines[TERMS.line] || null,
