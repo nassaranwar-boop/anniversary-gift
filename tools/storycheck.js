@@ -264,6 +264,72 @@ if (man) {
     chose: { 1: 1 }, found: { cogsworth: true, chime: true, marabelle: true } });
   ok('and nobody points at anything when she has missed nothing', clean === null, clean);
 
+  console.log('\n=== and she can watch it a second time');
+
+  const rewatch = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    /* the title, with the whole chapter behind her */
+    localStorage.setItem('ns_nights', JSON.stringify({ 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 }));
+    /* the title may already be up from an earlier check, and pressing
+       title while on the title does not rebuild the card -- so go via
+       another screen and come back, the way a player would */
+    N.route('howto');
+    N.route('title');
+    const ov = document.getElementById('ns-overlay');
+    const btn = ov && ov.querySelector('[data-go="lasthour"]');
+    if (!btn) return { offered: false, phase: N.state().phase,
+      gos: [].slice.call(ov ? ov.querySelectorAll('[data-go]') : []).map((e) => e.getAttribute('data-go')),
+      nights: localStorage.getItem('ns_nights') };
+    N.route('lasthour');
+    const st = N.finaleState();
+    return { offered: true, on: st.on, again: true, phase: st.phase };
+  });
+  ok('the last hour is on the title screen once the chapter is finished',
+     rewatch.offered, rewatch);
+  ok('and pressing it really starts the film again',
+     rewatch.on && rewatch.phase === 'finale', rewatch);
+
+  /* and getting to the end of a re-watch must not re-ask the one
+     question the chapter asks, because it has already been answered */
+  const out = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    N.route('finaleDone');
+    const ov = document.getElementById('ns-overlay');
+    return { phase: N.state().phase,
+             title: !!(ov && ov.querySelector('.ns-card-title')),
+             asked: !!(ov && ov.querySelector('[data-go="endWind"]')) };
+  });
+  ok('and a second watch hands her back to the title', out.title && out.phase === 'title', out);
+  ok('and never re-asks her the question she has already answered', !out.asked, out);
+
+  console.log('\n=== and the one that reached her answers for it');
+
+  const caught = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    const o = {};
+    ['cogsworth', 'chime', 'marabelle', 'jax', 'post1'].forEach((id) => {
+      o[id] = N.caughtBy(id, true);
+    });
+    return o;
+  });
+  ok('each of the four answers for it in its own words',
+     ['cogsworth', 'chime', 'marabelle', 'jax']
+       .every((id) => caught[id].line === NS.gotYou[id]),
+     Object.keys(caught).map((k) => [k, (caught[k].line || '').slice(0, 32)]));
+  ok('and no two of them say the same thing',
+     new Set(['cogsworth', 'chime', 'marabelle', 'jax'].map((id) => caught[id].line)).size === 4);
+  /* the ones he sold have no voice until the last hour, so when one of
+     those is what got her it has to still be him who says something */
+  ok('and a parcel that reaches her gets his line, not one of its own',
+     caught.post1.line === NS.caught.first, (caught.post1.line || '').slice(0, 40));
+  /* each one owns up to its own mechanic, which is the only tutorial in
+     the chapter that costs something to read */
+  const tells = { cogsworth: /late/i, chime: /over the top/i,
+                  marabelle: /look/i, jax: /leave rooms/i };
+  ok('and each one owns up to the mechanic that actually killed her',
+     Object.keys(tells).every((id) => tells[id].test(caught[id].line || '')),
+     Object.keys(tells).filter((id) => !tells[id].test(caught[id].line || '')));
+
   console.log('\n=== the drawer, and what burning something costs');
 
   const led = await p.evaluate(() =>

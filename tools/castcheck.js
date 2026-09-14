@@ -131,9 +131,20 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
        !hz[w] || !hz.ouissy || Math.abs(12 * Math.log2(hz.ouissy / hz[w])) > 1),
      [hz.ouissy, hz.cogsworth, hz.chime, hz.marabelle, hz.jax]);
 
-  ok('Anwar is under everybody: he is the tape',
-     hz.anwar && who.every((w) => w === 'anwar' || hz[w] > hz.anwar),
-     { anwar: hz.anwar && +hz.anwar.toFixed(1) });
+  /* He was the floor of this chapter because he is the tape: everything
+     else in the shop sits on top of the man narrating it. There is now
+     exactly one thing underneath him, and it is deliberate -- the first
+     one he ever sold is the oldest and physically the largest object in
+     the building, half again the size of anything else in the hall, and
+     it arrives in the hour his tape has stopped playing. It is the one
+     mouth in the game that is not on top of his. */
+  ok('Anwar is under everybody but the first one he ever sold',
+     hz.anwar && who.every((w) => w === 'anwar' || w === 'boss' || hz[w] > hz.anwar),
+     { anwar: hz.anwar && +hz.anwar.toFixed(1),
+       over: who.filter((w) => w !== 'anwar' && w !== 'boss' && hz[w] <= hz.anwar) });
+  ok('and the one thing under him is that, and nothing else',
+     hz.boss && hz.anwar && hz.boss < hz.anwar,
+     { boss: hz.boss && +hz.boss.toFixed(1), anwar: hz.anwar && +hz.anwar.toFixed(1) });
   ok('Cogsworth is the lowest of the four',
      hz.cogsworth && ['chime', 'marabelle', 'jax'].every((w) => hz[w] > hz.cogsworth),
      { cogsworth: hz.cogsworth && +hz.cogsworth.toFixed(1) });

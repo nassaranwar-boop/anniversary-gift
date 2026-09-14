@@ -1992,7 +1992,14 @@ window.Scrapbook = (function () {
 
     /* ---- 5 · the record ------------------------------------------ */
     { paper: "rose", pieces: [
-      { k: "typecol", text: "Th", left: -1, top: 3, w: 14 },
+      /* This said "Th", which is "The" with the e knocked off -- a
+         truncation, not a word, repeated seven times down the outer
+         edge of the page in type big enough to read. The facing page
+         already runs "The" down its edge, so the same word again
+         would have been the safe fix and the dull one. This page is
+         the record, the dancing and "i am a lucky girl" curved round
+         the vinyl, so it gets that page's own word. */
+      { k: "typecol", text: "lucky", left: -1, top: 3, w: 14 },
       /* A 56-wide record hanging off the left edge with the clock on top of
          it put this page's weight fifteen points to that side -- the most
          lopsided page in the book by a factor of three. The record is the

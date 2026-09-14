@@ -932,8 +932,12 @@ const NS = {
          would be the chapter explaining its own best idea to her. */
       /* three of the four have now spent themselves in doorways, and
          this is the only thing the crowd has ever wanted to say */
+      /* pointed EAST, because that is the doorway they are coming
+         through on this beat -- it was aimed west out of habit, at the
+         door the soldier has just left, and the crowd saying the only
+         thing it has ever wanted to say played over an empty wall */
       { room: "office", secs: 3.2, fov: 58, shake: 1.1, lux: 0.3,
-        from: [-1.60, 1.46, 0.74], to: [-1.78, 1.44, 0.58], look: [-2.90, 1.24, -0.90],
+        from: [1.30, 1.46, 0.70], to: [1.08, 1.44, 0.54], look: [2.88, 1.22, -0.90],
         swarm: ["office", 24, 1.85, 2.4, 0.44, "x-"], advance: 1,
         line: { who: "ret", many: 1, t: "Four of you. He kept four of you." } },
 
@@ -11625,6 +11629,22 @@ function finaleStart() {
   FIN.gone = {}; FIN.skip = false; FIN.adv = 0; FIN.shot = null;
   FIN.lux = 1; G.filmLux = 1; FIN.hushed = {};
   FIN.horde = 0;
+  /* THE SECOND WATCH IS A DESIGNED THING NOW, AND IT WAS UNREACHABLE.
+
+     Everything the ones he sold say is written to land one way on the
+     way through and another way once she knows: "somebody in there is
+     winding something" is a threat the first time and a complaint the
+     second, and "wind me" is the last thing the oldest toy in the
+     building ever asks for. That craft is worth nothing if the film
+     can only ever be seen once, at the end of a six-night run, in the
+     state of mind that run puts her in.
+
+     So once the chapter is finished the last hour is on the title
+     screen, and when it is watched from there it hands her back to
+     the title instead of walking on into the one question the chapter
+     asks her -- because that question has already been answered and
+     re-asking it would overwrite the answer she gave. */
+  FIN.again = G.phase === "title" || G.phase === "gallery";
   /* seeded, so two runs of the ending sound the same and anything
      measuring it measures the same thing twice */
   FIN.rnd = mulberry(seedOf("the-last-hour"));
@@ -13468,6 +13488,7 @@ function screenTitle() {
   const extra = storyDone()
     ? '<div class="ns-btns ns-btns-extra">' +
         '<button class="ns-btn ns-btn-sm2" data-go="custom">CUSTOM NIGHT</button>' +
+        '<button class="ns-btn ns-btn-sm2" data-go="lasthour">THE LAST HOUR AGAIN</button>' +
         '<button class="ns-btn ns-btn-sm2" data-go="gallery">THE SHOP IN DAYLIGHT</button>' +
       '</div>'
     : "";
@@ -14150,7 +14171,12 @@ function route(cmd) {
     if (G.night === 1) { cineStart(); return; }
     G.cfg = nightCfg(G.night); G.phase = "brief"; screenBrief();
   }
-  else if (cmd === "finaleDone") { winNight(); }
+  else if (cmd === "finaleDone") {
+    /* a re-watch never touches what she decided the first time */
+    if (FIN.again) { FIN.again = false; G.phase = "title"; musicMode("menu"); screenTitle(); }
+    else winNight();
+  }
+  else if (cmd === "lasthour") { finaleStart(); }
   else if (cmd === "howto") { G.phase = "howto"; screenHowTo(); }
   else if (cmd === "badges") { G.phase = "badges"; screenBadges(); }
   else if (cmd === "title") {
@@ -16271,6 +16297,20 @@ const testHooks = {
     kept: Object.keys(foundAll()),
     why: FIND_WHY,
   }),
+  /* WHO ANSWERS FOR IT WHEN SOMETHING REACHES HER */
+  caughtBy: (id, broke) => {
+    const wasPhase = G.phase, wasDead = G.dead, wasBroke = G.brokeNow;
+    G.mode = "story"; G.phase = "over"; G.dead = id; G.brokeNow = !!broke;
+    if (!G.cfg) G.cfg = NIGHTS[0];
+    screenOver();
+    const el = EL["ns-overlay"] && EL["ns-overlay"].querySelector(".ns-card-over");
+    const said = el && el.querySelector(".ns-kept");
+    const out = { who: el && el.querySelector(".ns-got") ? el.querySelector(".ns-got").textContent : null,
+                  line: said ? said.textContent : null };
+    noOverlay();
+    G.phase = wasPhase; G.dead = wasDead; G.brokeNow = wasBroke;
+    return out;
+  },
   /* THE DRAWER: what the six o'clock card shows her, and what she can
      still open afterwards */
   ledger: (chose) => {
