@@ -11984,6 +11984,175 @@ const TUTOR = [
 let tutorRooms = {};
 function tutorSeen() { return Object.keys(tutorRooms).length; }
 
+/* =====================================================================
+   THE FIRST MINUTE OF A NIGHT
+
+   Six nights, and each one changes a rule rather than going faster --
+   the workshop camera dies, the hall lights go, the bus surges, a door
+   answers late, the monitor drops. All six of those were WRITTEN DOWN
+   and nowhere else: a line on the night card, a line in the hourly
+   note, and then she found out about it at half past two when it cost
+   her something.
+
+   A rule she is told is a rule. A rule she watches arrive is a scene.
+   So every night now opens with the building doing tonight's damage to
+   itself, in front of her, before the clock starts: the camera she is
+   about to lose fails while she is looking at it, the hall goes out one
+   bank at a time, the bus browns the office out and comes back, the
+   right-hand door tries itself and answers late.
+
+   It holds the night still exactly the way orientation does -- no
+   clock, no meter, nobody walking -- because it is not a hazard, it is
+   the shop clearing its throat. Five to nine seconds, once a night,
+   and every beat in it is a thing the player can hear and see.
+
+   Each beat is { at: seconds, sys: the annunciator line, act: what the
+   building does }. The acts are all machinery that already exists,
+   which is the point: nothing here is a special effect, it is tonight's
+   fault happening early where she can watch it.
+   ===================================================================== */
+const MIDNIGHT = {
+  /* NIGHT ONE. Nothing has broken yet, so this is the only one that is
+     not damage: it is a building coming on shift. The shutter at the
+     front rolls down, the office bulb warms up, and the annunciator
+     counts the four things it can see moving in the back room -- which
+     is the first time she is told there are four of them, and it is the
+     building that tells her, flatly, like stock. */
+  1: { secs: 8.2, beats: [
+    { at: 0.25, act: "sfx:postDrag:0",  sys: "MIDNIGHT. FRONT SHUTTER: CLOSED." },
+    { at: 2.20, act: "lamp:1.1",        sys: "OFFICE LIGHTING: ON." },
+    { at: 4.10, act: "sfx:tick:1",      sys: "FLOOR SENSORS: FOUR MOVING PARTS IN THE BACK ROOM." },
+    { at: 6.30, act: "sfx:beep",        sys: "ALL EIGHT CAMERAS: GOOD. SHIFT ONE OF SIX." },
+  ] },
+  /* NIGHT TWO. The workshop camera dies for good tonight. It used to be
+     dead when she first raised the monitor, which reads as a bug. Now
+     the monitor comes up on its own, on that camera, on his bench --
+     the one room in the shop she has a reason to want to see -- and it
+     goes while she is looking at it. */
+  2: { secs: 8.6, beats: [
+    { at: 0.30, act: "monUp:workshop", sys: "MIDNIGHT. SHIFT TWO OF SIX." },
+    { at: 2.40, act: "hiss",           sys: "CAMERA EIGHT: SIGNAL DEGRADED." },
+    { at: 4.20, act: "snow:workshop",  sys: "CAMERA EIGHT: NO SIGNAL." },
+    { at: 6.00, act: "monDown",        sys: "CAMERA EIGHT: MAINTENANCE REQUIRED. NO ENGINEER ASSIGNED." },
+  ] },
+  /* NIGHT THREE. The hall goes out. Three banks, three thumps, and the
+     last one takes the picture with it -- so the night she has to track
+     him by ear starts with her watching the light he was lit by leave
+     the building. */
+  3: { secs: 9.0, beats: [
+    { at: 0.30, act: "monUp:hall",  sys: "MIDNIGHT. SHIFT THREE OF SIX." },
+    { at: 2.10, act: "sfx:falseBang:-0.5", sys: "HALL LIGHTING: BANK ONE OFFLINE." },
+    { at: 3.90, act: "sfx:falseBang:0.2",  sys: "HALL LIGHTING: BANK TWO OFFLINE." },
+    { at: 5.70, act: "dark",        sys: "HALL LIGHTING: BANK THREE OFFLINE." },
+    { at: 7.40, act: "monDown",     sys: "CAMERA ZERO ONE: PICTURE BELOW THRESHOLD. AUDIO NOMINAL." },
+  ] },
+  /* NIGHT FOUR. The bus. Two brown-outs and a bang, and the meter takes
+     the first bite out of itself in front of her -- two per cent, which
+     is nothing, and is the whole point: she now knows what it sounds
+     like when it happens in the dark at four in the morning. */
+  4: { secs: 8.4, beats: [
+    { at: 0.30, act: "lamp:0.8",    sys: "MIDNIGHT. SHIFT FOUR OF SIX." },
+    { at: 2.20, act: "surge",       sys: "BUS FAULT. VOLTAGE OUT OF RANGE." },
+    { at: 4.30, act: "lamp:1.4",    sys: "BUS FAULT. RESERVE ABSORBING." },
+    { at: 6.40, act: "sfx:beep",    sys: "RESERVE AT NINETY-EIGHT PERCENT. NO ENGINEER ASSIGNED." },
+  ] },
+  /* NIGHT FIVE. The right-hand actuator. It tries itself -- down, stop,
+     grind, up -- which is the sound she is going to be listening for
+     all night, played once, with nothing on the other side of it. */
+  5: { secs: 8.8, beats: [
+    { at: 0.30, act: "sfx:beep",       sys: "MIDNIGHT. SHIFT FIVE OF SIX." },
+    { at: 2.00, act: "doorTest:right", sys: "DOOR TWO: SELF TEST." },
+    { at: 4.60, act: "sfx:handle:0.7", sys: "DOOR TWO: ACTUATOR RESPONDING SLOWLY." },
+    { at: 6.60, act: "sfx:beep",       sys: "DOOR TWO: HOLD CURRENT UP FIFTY PERCENT. NO ENGINEER ASSIGNED." },
+  ] },
+  /* NIGHT SIX. Everything is already broken, so the building does the
+     only thing it has left: it stops for a second and comes back. And
+     then it says the thing it has been counting towards for five
+     nights, which is the shortest line in the chapter. */
+  6: { secs: 9.2, beats: [
+    { at: 0.30, act: "monUp:hall", sys: "MIDNIGHT." },
+    { at: 2.20, act: "mon:2.0",    sys: "" },
+    { at: 4.60, act: "sfx:monitor:1", sys: "MONITOR: RESTORED. CAUSE UNKNOWN." },
+    { at: 6.30, act: "monDown",    sys: "ALL EIGHT CAMERAS: GOOD." },
+    { at: 7.90, act: "sfx:beep",   sys: "SHIFT SIX OF SIX." },
+  ] },
+};
+
+const MID = { on: false, t: 0, i: 0, list: null, secs: 0 };
+
+function midStart(n) {
+  const m = MIDNIGHT[n];
+  MID.on = !!m;
+  MID.t = 0; MID.i = 0;
+  MID.list = m ? m.beats : null;
+  MID.secs = m ? m.secs : 0;
+}
+function midOn() { return MID.on; }
+/* a suite driving a night by hand is not being shown anything */
+function midEnd() {
+  if (!MID.on) return;
+  MID.on = false;
+  if (G.monitor) G.monitor = false;
+  G.monOut = 0;
+}
+
+/* everything an act can do, and all of it is machinery the night
+   already has: no beat here is a special case in the renderer */
+function midAct(act) {
+  if (!act) return;
+  const bit = act.split(":");
+  const what = bit[0], arg = bit[1], arg2 = bit[2];
+  if (what === "monUp") {
+    G.cam = arg; G.monitor = true; SFX.monitor(true); bumpUI();
+  } else if (what === "monDown") {
+    G.monitor = false; SFX.monitor(false); bumpUI();
+  } else if (what === "snow") {
+    G.lost[arg] = 30; SFX.hiss(1.3); bumpUI();
+  } else if (what === "hiss") {
+    SFX.hiss(0.8);
+  } else if (what === "dark") {
+    G.hallDark = true; SFX.falseBang(0.6); G.shake = 0.5; bumpUI();
+  } else if (what === "lamp") {
+    G.lampOut = Number(arg) || 1;
+  } else if (what === "mon") {
+    G.monOut = Number(arg) || 1; SFX.hiss(1.0);
+  } else if (what === "surge") {
+    /* the real one, so it is the real sound and the real bite */
+    G.lampOut = 1.6; G.shake = 0.7; SFX.surge();
+    spendPower(2);
+    bumpUI();
+  } else if (what === "doorTest") {
+    /* it shuts itself and opens itself, slowly, with nothing there */
+    G.doors[arg] = true; SFX.doorClose(); bumpUI();
+    setTimeout(() => { if (MID.on) { G.doors[arg] = false; SFX.doorOpen(); bumpUI(); } }, 1700);
+  } else if (what === "sfx") {
+    const f = SFX[arg];
+    if (f) f(arg2 === undefined ? undefined : Number(arg2));
+  }
+}
+
+/* Called from the frame loop the way orientation is: while this is
+   running the night is held -- no clock, no drain, nobody walking. */
+function midStep(dt) {
+  if (!MID.on) return true;
+  MID.t += dt;
+  while (MID.list && MID.i < MID.list.length && MID.t >= MID.list[MID.i].at) {
+    const b = MID.list[MID.i++];
+    midAct(b.act);
+    if (b.sys) say(b.sys, true);
+  }
+  if (MID.t >= MID.secs) {
+    MID.on = false;
+    /* whatever it put up, it puts down: she starts the night at the
+       desk with the monitor where she left it, which is down */
+    if (G.monitor) { G.monitor = false; SFX.monitor(false); }
+    G.monOut = 0;
+    bumpUI();
+    return true;
+  }
+  return false;
+}
+
 function tutorStart() {
   G.tutor = 0;
   G.tutorT = 0;
@@ -13501,6 +13670,8 @@ function tapeQuiet() {
   if (G.phase !== "play") return false;
   if (G.blackout) return false;
   if (tutorOn()) return false;
+  /* nor over the first minute, which is the building's */
+  if (midOn()) return false;
   /* The building used to have the right of way here, and the building
      says something every time she touches a door — so on any night she
      was actually playing, he never got a word in. He has the right of
@@ -14866,7 +15037,13 @@ function frame(ts) {
     /* orientation holds the whole night still until she has done the
        thing it asked for: no clock, no drain, nobody walking. It is the
        one place in the chapter where the shop waits for her. */
-    if (!tutorStep(dt)) {
+    /* TWO THINGS CAN HOLD A NIGHT STILL, AND THEY QUEUE.
+
+       The first minute of the night runs first -- the building doing
+       tonight's damage to itself -- and orientation, on night one,
+       starts when it has finished. Short-circuit on purpose: while the
+       building is talking, orientation is not even asked. */
+    if (!midStep(dt) || !tutorStep(dt)) {
       /* the shift is held, but the key still has to turn — orientation
          cannot teach a control it has also switched off */
       stepWind(dt);
@@ -16020,6 +16197,11 @@ function beginNight(n, opts) {
      she was taught. The setting to turn it off is still hers. */
   if (G.mode === "story" && G.night === 1 && !loadNoTutor()) tutorStart();
   else tutorOff();
+  /* and the shop clears its throat: tonight's fault, in front of her,
+     before the clock starts. Story mode only -- a custom night is a
+     sandbox and a replay of the same building breaking in the same
+     order is a wait. */
+  if (G.mode === "story") midStart(G.night); else midStart(0);
   if (officeParts && officeParts.glass && TX.night) {
     officeParts.glass.material = new T.MeshBasicMaterial({ map: TX.night, fog: true });
   }
@@ -17544,6 +17726,7 @@ const testHooks = {
        not being stopped to be told a story either — both of those wait
        for a click that a pumped night will never make */
     if (tutorOn()) tutorOff();
+    midEnd();
     G.pumping = true;
     const st = slice || 1 / 30;
     let left = seconds;
@@ -18790,6 +18973,10 @@ const testHooks = {
   taskPoke: () => { taskShow(); return G.task; },
   /* drop straight into a shift at a given hour, so a check can look at
      what she actually sees rather than at the title screen */
+  /* the first minute of a night, for a probe that wants to watch it */
+  midState: () => ({ on: MID.on, t: +MID.t.toFixed(2), i: MID.i,
+                     of: MID.list ? MID.list.length : 0, secs: MID.secs }),
+  midEnd: () => { midEnd(); return MID.on; },
   begin: (night, hour) => {
     G.night = night || 1;
     beginNight(G.night);
