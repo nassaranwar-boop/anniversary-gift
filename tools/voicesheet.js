@@ -107,14 +107,27 @@ const VOICE = {
      and then played three times over itself at slightly different
      rates and offsets, because four hundred of them came off the same
      drawing and a crowd of identical things is never quite in time
-     with itself. Dropped, so the layering does not turn into a chord. */
-  ret:       { model: 'en_GB-alba-medium',                  pace: '0.94', depth: '-3.0' },
+     with itself.
+
+     Three semitones DOWN, which is depth +3.0 and not -3.0: the chain
+     is ratio = 2 ** (-depth/12), so the number is how much deeper it
+     goes, and asking for -3.0 put them three semitones UP and landed
+     them at 233.0Hz -- the same pitch as the owl, to the decimal. Two
+     characters in the same room, same voice. Measured, not guessed:
+     tools/castcheck.js. */
+  ret:       { model: 'en_GB-alba-medium',                  pace: '0.94', depth: '3.0' },
 
   /* THE FIRST ONE HE EVER SOLD. It is written as "a soldier like the
      one standing in her office except older and worse kept", so it
-     gets that soldier's exact model, dropped five semitones and
-     slowed. Same bench, same hand, eleven years in somebody's loft. */
-  boss:      { model: 'en_GB-northern_english_male-medium', pace: '0.86', depth: '-5.0' },
+     gets that soldier's exact model and goes under it: the soldier
+     sits at 107.6Hz, and five semitones down from his own setting
+     puts the first one he ever sold at about eighty-five, which is
+     lower than anything else in the shop including the tape.
+
+     Same sign error as the crowd, and worse here -- it came out at
+     150Hz, a third of a semitone off Jax, so the oldest thing in the
+     building sounded like the one he made in an afternoon. */
+  boss:      { model: 'en_GB-northern_english_male-medium', pace: '0.86', depth: '5.0' },
 };
 
 const OUT = [];

@@ -93,7 +93,12 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   await b.close();
 
   const who = Object.keys(hz);
-  ok('all five parts have takes to measure', who.length === 5 && who.every((w) => hz[w]), hz);
+  /* it was five. It is eight now: her, the ones he sold, and the first
+     one he ever sold all speak in the last hour. The number is read
+     off the casting sheet rather than written down here, so adding a
+     mouth to the chapter cannot quietly stop being checked. */
+  ok('every part in the chapter has takes to measure',
+     who.length >= 8 && who.every((w) => hz[w]), hz);
 
   /* A CASTING SHEET THAT FELL BACK TO THE NARRATOR FOR EVERYBODY would
      pass every other test in this repository. Two parts within a
@@ -113,6 +118,19 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
      the tape and because she is listening to him from underneath six
      nights of this; Cogsworth is the lowest of the four, because he is
      a clock and the oldest thing in the room. */
+  /* the oldest thing in the building is the lowest thing in it. It is
+     his soldier's model, eleven years worse kept, and if it is not
+     under his soldier it is not the same toy grown old -- it is a
+     different toy. */
+  ok('and the first one he ever sold is under the soldier he became',
+     hz.boss && hz.cogsworth && hz.boss < hz.cogsworth,
+     [hz.boss, hz.cogsworth]);
+  /* and she is not one of the toys */
+  ok('and she is nowhere near any of the four',
+     ['cogsworth', 'chime', 'marabelle', 'jax'].every((w) =>
+       !hz[w] || !hz.ouissy || Math.abs(12 * Math.log2(hz.ouissy / hz[w])) > 1),
+     [hz.ouissy, hz.cogsworth, hz.chime, hz.marabelle, hz.jax]);
+
   ok('Anwar is under everybody: he is the tape',
      hz.anwar && who.every((w) => w === 'anwar' || hz[w] > hz.anwar),
      { anwar: hz.anwar && +hz.anwar.toFixed(1) });
