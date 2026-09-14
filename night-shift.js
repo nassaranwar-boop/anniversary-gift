@@ -719,8 +719,32 @@ const NS = {
       { room: "stage", secs: 4.4, fov: 70, lux: 0.36, shake: 0.9, clear: 1, cue: "wreck",
         from: [0.20, 2.70, 3.90], to: [0.20, 2.05, 2.40], look: [0, 1.15, -2.40],
         swarm: ["stage", 22, 3.8, -3.6, 0.52], advance: 1,
+        /* AND IT REALLY HAPPENS, ON SCREEN.
+
+           This line has always been the answer to "do they actually
+           wreck the place", and for three versions the answer was a
+           sentence read over a camera shake. Real objects out of the
+           real room go over now, one after another, while he says it
+           -- so the line describes something the player is watching
+           rather than standing in for it. */
+        wreck: ["stage", 14],
         sfx: [["falseBang", 0.85], ["falseSkitter", 0.7]],
         line: { nar: 1, t: "They go through the stage first, and the arcade after it, and they take apart everything in either of them that he ever put a hand on." } },
+
+      /* a beat with no line in it at all, because the sound of his shop
+         coming apart is better than anything that could be said over it */
+      { room: "stage", secs: 3.6, fov: 54, lux: 0.3, shake: 1.15,
+        from: [0.20, 2.05, 2.40], to: [-0.55, 1.70, 1.55], look: [0.30, 0.85, -1.90],
+        swarm: ["stage", 24, 3.6, -2.4, 0.5], advance: 1,
+        wreck: ["stage", 10],
+        sfx: [["falseSkitter", 0.55], ["postDrag", 0.5]] },
+
+      { room: "arcade", secs: 3.8, fov: 62, lux: 0.32, shake: 1.0, clear: 1,
+        from: [0.10, 2.20, 3.10], to: [0.10, 1.80, 2.05], look: [0, 1.05, -2.10],
+        swarm: ["arcade", 20, 3.4, -3.0, 0.5], advance: 1,
+        wreck: ["arcade", 12],
+        sfx: [["falseBang", 0.7]],
+        line: { nar: 1, t: "Eleven days ago he was in here on a Tuesday afternoon fixing the coin slot on a machine nobody has put a coin in since 2019." } },
 
       /* --- THEY ARRIVE, AND THEY TAKE THE THREE OPENINGS -----------
          The game is a room with two doorways and a grate in it, and she
@@ -916,6 +940,9 @@ const NS = {
       { room: "office", secs: 3.4, fov: 44, cue: "siege", shake: 0.9,
         from: [-1.45, 1.49, 0.14], to: [-1.64, 1.47, -0.06], look: [-2.85, 1.36, -0.90],
         swarm: ["office", 22, 1.8, -3.8, 0.46, "x+"], advance: 1,
+        /* the room she has defended for six nights starts coming apart
+           around her while the soldier is still holding the doorway */
+        wreck: ["office", 9],
         line: { who: "cogsworth", t: "Eleven seconds. I will take it." } },
       { room: "office", secs: 5.0, fov: 62, gone: "cogsworth", shake: 1.4, hush: "tick",
         from: [-1.90, 1.50, 0.90], to: [1.60, 1.45, 0.70], look: [0, 0.95, -1.30],
@@ -940,6 +967,24 @@ const NS = {
         from: [1.30, 1.46, 0.70], to: [1.08, 1.44, 0.54], look: [2.88, 1.22, -0.90],
         swarm: ["office", 24, 1.85, 2.4, 0.44, "x-"], advance: 1,
         line: { who: "ret", many: 1, t: "Four of you. He kept four of you." } },
+
+      /* AND SOMEBODY ANSWERS THEM.
+
+         The crowd was talking AT the four and the four never said a
+         word back, which makes them scenery with a grievance. The only
+         one still standing by this point is the one he made in an
+         afternoon out of what was on the bench -- so the answer to
+         "he kept four of you" comes from the member of the four with
+         the weakest possible claim to having been kept, and he does
+         not argue with a word of it. He agrees, he says he is nearly
+         one of them, and he does not move.
+
+         That is the whole difference between the two sides of this
+         room, and it is not that one of them is good. It is that Jax
+         was built by somebody who was thinking about a door. */
+      { room: "office", secs: 4.4, fov: 44, lux: 0.26, shake: 0.6,
+        from: [-0.72, 1.50, 1.96], to: [-0.80, 1.48, 1.78], look: [-1.15, 1.52, 0.30],
+        line: { who: "jax", t: "He kept four of us. He made me in an afternoon, out of what was left on the bench. I am the closest thing in this room to one of you, and I am still not moving." } },
 
       { room: "office", secs: 3.8, fov0: 36, fov1: 30, lux: 0.42, clear: 1,
         from: [-1.45, 1.87, 1.50], to: [-1.95, 1.86, 1.50], look: [-3.15, 1.85, 1.50] },
@@ -1508,6 +1553,69 @@ const NS = {
      thing that says what he is for. The ballerina cannot look down at
      hers while she is being watched. Jax will not open the box in
      front of her. */
+  /* IT HAS TO ASK HER TO OPEN THE DOOR FIRST.
+
+     Everything one of the four ever says to her used to simply
+     happen: the line arrived, in her head, wherever she was, whether
+     or not anything was standing anywhere near her. That is a
+     cutscene with the lights left on. It costs her nothing, she
+     decides nothing, and the most important sentences in the chapter
+     were free.
+
+     So a toy with something to say comes to a door and asks. It
+     knocks, it says what it wants, and then it waits -- and the
+     shutter between them is the only thing that has kept her alive
+     for six nights.
+
+       she opens it     they talk face to face in the doorway, clear,
+                        with the thing standing there looking at her
+       she leaves it    the line comes through eight centimetres of
+                        rolling shutter, and she hears about two
+                        thirds of it
+
+     It is a real trade and it is meant to be an uncomfortable one.
+     Opening costs her the door and it is the only defence she has;
+     the game never tells her it is safe, because the game does not
+     know. What the game does know is that nothing has ever come to a
+     door and ASKED before -- they rattle the handle, they do not
+     knock and wait -- and a player who notices that difference is a
+     player the chapter has taught something to.
+
+     The one asking will not hurt her while it is asking. That is not
+     stated anywhere and it is never going to be. */
+  beg: {
+    cogsworth: [
+      "It is Cogsworth. I am at the west door and I am not touching it. Open it, please. I would like to say something to you and I would rather not say it through a door.",
+      "West door. I have not put a hand on it. There is a thing I have been carrying since March and I would like to put it down.",
+    ],
+    chime: [
+      "It is only me, up in the duct. Open the grate. I have never once asked you for anything and I am asking for a minute of it.",
+      "The grate, if you will. I promise you I have come down here to talk and not for the other reason.",
+    ],
+    marabelle: [
+      "East door. Look at me through it if you like — I cannot move while you do, and that ought to be worth something to you. Open it.",
+      "It is Marabelle. I will stand exactly where I am. Open the door and I will tell you a true thing, and then I will go back to my glass.",
+    ],
+    jax: [
+      "It is me. I knocked. I always knock. Open it and I will keep my hands where you can see them, which is a joke, and also not one.",
+      "Open the door. I will not come in. I have got something to say and I have been standing out here working out how to say it.",
+    ],
+  },
+  /* and what she hears if she leaves it shut long enough */
+  begShut: {
+    cogsworth: "All right. Through the door, then.",
+    chime:     "Through the grate it is. I do not blame you.",
+    marabelle: "That was the right thing to do. I will say it from here.",
+    jax:       "Fair enough. You have got no reason to and I would not either.",
+  },
+  /* and what she hears if she opens it */
+  begOpen: {
+    cogsworth: "Thank you.",
+    chime:     "Oh. Right. Hello.",
+    marabelle: "Do not look away, then.",
+    jax:       "You opened it. All right.",
+  },
+
   /* AND THEY SAW WHAT SHE DID WITH IT.
 
      Every night at three she reads one of his things and decides, on
@@ -1646,6 +1754,8 @@ const NS = {
     monFault:  "MONITOR FEED: INTERRUPTED.",
     unknown:    "UNREGISTERED UNIT AT $1.",
     held:       "$1: HELD.",
+    /* nothing in six nights has ever knocked and then waited */
+    asking:     "$1: SOMETHING IS KNOCKING. IT IS NOT TRYING THE HANDLE.",
     wound:      "$1: WOUND.",
     slack:      "$1: RUN DOWN.",
     six:       "SIX HUNDRED HOURS. SHIFT ENDS.",
@@ -8998,7 +9108,7 @@ function voiceBuf(text) {
    the old tape machine. Everything above is described at 1 and scaled
    by it. */
 const VOX_ROOM = 0.34;
-function voicePlay(buf, gain, many) {
+function voicePlay(buf, gain, many, through) {
   const t = now() + CUE_LEAD;
   const r = clamp(VOX_ROOM, 0, 1);
   const src = AC.createBufferSource(); src.buffer = buf;
@@ -9017,11 +9127,29 @@ function voicePlay(buf, gain, many) {
   hp.frequency.value = 40 + 115 * r; hp.Q.value = 0.6;
   const lp = AC.createBiquadFilter(); lp.type = "lowpass";
   lp.frequency.value = 16000 - 10800 * r; lp.Q.value = 0.7;
+  /* EIGHT CENTIMETRES OF ROLLING SHUTTER.
+
+     When she leaves the door shut, the thing on the other side says it
+     anyway and she hears it the way you hear anybody through a shut
+     door: the consonants go first. The top comes off at about seven
+     hundred cycles, the box of the corridor gets a bump at two
+     hundred, and the presence lift that exists to make a narrator
+     legible is turned around and taken out, because this one is not
+     meant to be easy.
+
+     She can still read every word of it in the caption. That gap --
+     legible on the screen, muddy in the room -- is the price of the
+     door, and it is a price she is meant to notice and still
+     sometimes decide to pay. */
+  if (through) {
+    lp.frequency.value = 700; lp.Q.value = 0.9;
+  }
   /* the presence lift is NOT scaled down with the rest: it is the one
      thing here that makes him easier to understand rather than harder,
      and a narrator should be easy to understand at every setting */
   const pk = AC.createBiquadFilter(); pk.type = "peaking";
   pk.frequency.value = 1900; pk.Q.value = 0.9; pk.gain.value = 2.5;
+  if (through) { pk.frequency.value = 210; pk.Q.value = 0.7; pk.gain.value = 4.5; }
   const sat = AC.createWaveShaper();
   const curve = new Float32Array(1024);
   const drive = 1 + 0.8 * r;
@@ -9077,6 +9205,11 @@ function voicePlay(buf, gain, many) {
 
   src.start(t); wow.start(t); flut.start(t);
   extra.forEach(([s2, at]) => s2.start(at));
+  /* how many mouths that line actually came out of. The crowd is the
+     only thing in the chapter that is more than one, and until this
+     existed the only thing any test could see was the flag asking for
+     it -- not whether the layering ever reached the speakers. */
+  VOX_FILE.mouths = 1 + extra.length;
   const d = buf.duration + 0.4;
   wow.stop(t + d); flut.stop(t + d);
   /* and the shop plays on underneath him at a level that does not move */
@@ -9139,7 +9272,7 @@ function voxSpeak(plan, opts) {
          Pulling the bed up alone would have meant a louder shop under
          an equally loud man; the fix has to come off both. */
       total = voicePlay(b, (opts.gain === undefined ? 1 : opts.gain) * 0.62 * voiceTrim() * MIX.voice,
-                        opts.many);
+                        opts.many, opts.through);
       const k = total / was;
       plan.words.forEach((w) => { w.at *= k; });
       plan.dur = total;
@@ -10990,6 +11123,11 @@ function resetCast() {
 
 /* --- one figure's turn -------------------------------------------- */
 function stepCast(ch, dt) {
+  /* IT CAME TO TALK. It does not also kill her while it is doing that.
+
+     Nothing anywhere tells her this and nothing is ever going to. The
+     whole point of the door is that she does not know. */
+  if (ch && ch.talking) return;
   /* whoever is standing in her office on camera zero is not walking a
      route while it is there, and stepCast would put it back on one */
   if (ch && ch.deskHeld) return;
@@ -11625,6 +11763,7 @@ const _fl = new T.Vector3();
 
 function finaleStart() {
   if (!NS.lastHour || !NS.lastHour.shots) { winNight(); return; }
+  wreckClear();
   FIN.on = true; FIN.i = -1; FIN.t = 0; FIN.hold = 0; FIN.secs = 1;
   FIN.gone = {}; FIN.skip = false; FIN.adv = 0; FIN.shot = null;
   FIN.lux = 1; G.filmLux = 1; FIN.hushed = {};
@@ -11795,6 +11934,8 @@ function finaleNext(skipped) {
     }
   }
   if (s.ouiGone && ouissy) ouissy.visible = false;
+  /* things in a room start going over, for real, on screen */
+  if (s.wreck) wreckArm(s.wreck[0] || s.room || FIN.room, s.wreck[1] || 8);
   /* signed: a negative advance is one of his getting to the doorway
      first and driving them back out of it */
   FIN.adv = s.advance === undefined ? 0 : s.advance;
@@ -11937,6 +12078,7 @@ function finaleBoom() {
 /* the clock of the film, run early in the frame so that a shot which
    changes rooms has changed them before the room is drawn */
 function finaleStep(dt) {
+  wreckStep(dt);
   if (!FIN.on) return;
   FIN.t += dt;
   /* the lights walk to where the shot wants them rather than snapping,
@@ -11993,6 +12135,10 @@ function finaleTick(dt) { finaleStep(dt); }
 
 function finaleEnd() {
   FIN.on = false;
+  /* the room is reused -- by the gallery, by Custom Night, by a second
+     run -- and a shop that stays on its side because somebody watched
+     the ending once is a bug, not an ending */
+  wreckClear();
   G.dawn = true;
   G.filmLux = 1;
   returnersClear();
@@ -12626,7 +12772,12 @@ function tapeQuiet() {
    must not be his: there are no recordings of a soldier, so these go
    through the synthesiser on purpose -- a toy should not sound like
    the man who made it. */
-function tapeSay(line, who) {
+/* `through` is the shutter: she left the door shut, so she gets the
+   line with eight centimetres of rolling steel in front of it. The
+   caption is not muffled -- she can read every word of it, and the
+   gap between what she can read and what she can hear is the cost of
+   not opening, which is exactly the right shape for it. */
+function tapeSay(line, who, through) {
   if (!line || TAPE.said[line]) return false;
   TAPE.said[line] = 1;
   TAPE.plan = voxPlan(line);
@@ -12637,7 +12788,8 @@ function tapeSay(line, who) {
      recording of any line was Anwar reading it and hearing him play
      all four parts was worse than the synthesiser. They are cast
      separately now, so a take of Marabelle is Marabelle. */
-  voxSpeak(TAPE.plan, { gain: who ? 0.88 : 0.9 });
+  TAPE.through = !!through;
+  voxSpeak(TAPE.plan, { gain: (who ? 0.88 : 0.9) * (through ? 0.72 : 1), through: through });
   /* the room-to-himself is voxSpeak's job now: it holds the bed at
      VOICE_BED for the whole line instead of dipping for a third of a
      second and handing the score back its full level over the rest of
@@ -12650,6 +12802,7 @@ function tapeSay(line, who) {
       (d ? '<em class="ns-tape-who" style="--c:' + d.colour + '">' + d.name + '</em>' : "") +
       TAPE.plan.words.map((w, i) => '<i data-w="' + i + '">' + w.text + "</i>").join(" ");
     el.classList.toggle("them", !!who);
+    el.classList.toggle("through", !!through);
   }
   return true;
 }
@@ -12704,9 +12857,263 @@ function tapeTrigger(key) {
    arrangement of doors in this shop that stops the four of them
    talking to her, because nothing they ever say to her is a threat
    and a shut door is not an argument. */
+/* =========================================================
+   WHAT FOUR HUNDRED OF THEM ACTUALLY DO TO A ROOM.
+
+   The stage sequence said "they take apart everything in either of
+   them that he ever put a hand on" over a camera shake and a crowd
+   walking through, and that is a caption, not a scene. The shop she
+   has spent six nights defending one room of was destroyed in a
+   sentence.
+
+   So things go over. A room's static branch is frozen on purpose --
+   matrixAutoUpdate off, world matrices baked, because the address
+   never changes and that is most of why this chapter can afford to
+   draw five rooms at once. Wrecking it means picking real props out
+   of that branch, re-arming them, and tipping them.
+
+   The picking is by size, which is the only honest way to tell a
+   prop from a building: anything whose largest dimension is under a
+   metre and a half and which is standing off the floor is something
+   he put there. Walls, floors and ceilings are metres across and
+   never qualify. Nothing is ever added -- every object that falls is
+   an object that was already in the room, which is the whole point of
+   doing it this way instead of spawning debris.
+
+   They go back afterwards. The room is reused by the gallery, by a
+   second run, and by Custom Night, and a shop that stays wrecked
+   because somebody watched the ending once is a bug.
+   ========================================================= */
+const WRECK = { list: [], on: false };
+const _wb = new T.Box3(); const _ws = new T.Vector3();
+
+function wreckArm(roomId, n) {
+  const rec = rooms[roomId];
+  if (!rec) return 0;
+  const rnd = mulberry(seedOf("wreck-" + roomId));
+  const pick = [];
+  rec.group.children.forEach((o) => {
+    if (o === rec.live || !o.visible) return;
+    if (WRECK.list.some((w) => w.o === o)) return;
+    _wb.setFromObject(o); _wb.getSize(_ws);
+    const big = Math.max(_ws.x, _ws.y, _ws.z);
+    /* A THING, NOT A BUILDING.
+
+       The first cut of this capped the longest side at a metre and a
+       half, which is a safe number and the wrong one: it found four
+       candidates in the whole arcade, because an arcade cabinet is
+       about one metre eighty and a cabinet going over is the single
+       most satisfying thing that could happen in that room.
+
+       So the cap is 2.4 -- taller than a cabinet, shorter than
+       anything structural -- with a second test that throws out
+       anything that spans the room on the floor plan. A wall in this
+       shop is 6.6 metres along one axis and a floor is 6.6 by 5, so
+       neither ever gets near it, and no version of this can lay a
+       wall down on its side. */
+    if (big < 0.14 || big > 2.4) return;
+    if (Math.max(_ws.x, _ws.z) > 3.0) return;
+    if (_wb.max.y < 0.3 || _wb.min.y > 2.3) return;
+    pick.push(o);
+  });
+  /* shuffled so two rooms do not wreck in the same order */
+  for (let i = pick.length - 1; i > 0; i--) {
+    const j = (rnd() * (i + 1)) | 0;
+    const t = pick[i]; pick[i] = pick[j]; pick[j] = t;
+  }
+  const take = pick.slice(0, Math.min(n, pick.length));
+  const q = new T.Quaternion();
+  take.forEach((o) => {
+    o.traverse((c) => { c.matrixAutoUpdate = true; c.matrixWorldAutoUpdate = true; });
+    const p0 = o.position.clone(), q0 = o.quaternion.clone();
+    const ax = new T.Vector3(range(rnd, -1, 1), range(rnd, -0.25, 0.25), range(rnd, -1, 1)).normalize();
+    const turn = range(rnd, 0.9, 1.9);
+
+    /* WHERE IT COMES TO REST, WORKED OUT BEFORE IT STARTS FALLING.
+
+       An arcade cabinet is one metre eighty standing on an origin at
+       its own feet, and turning it ninety degrees about that origin
+       swings its top corner a metre and a half BELOW the floor. The
+       first version did exactly that and half the arcade ended up
+       buried to the waist in its own floorboards.
+
+       So the end state is built once, here, before anything moves:
+       put the thing in its final attitude, measure how far through the
+       floor it goes, and lift it by that much. The fall then
+       interpolates towards a pose that is already resting on the
+       ground, which costs one bounding box per prop instead of one per
+       prop per frame -- and a thing on its side never sinks, because
+       the only y it is ever heading for is the one that does not. */
+    q.setFromAxisAngle(ax, turn);
+    o.quaternion.copy(q0).multiply(q);
+    o.updateMatrixWorld(true);
+    _wb.setFromObject(o);
+    const rec2 = rooms[roomId];
+    const floorY = rec2 ? rec2.group.position.y : 0;
+    const lift = Math.max(0, floorY - _wb.min.y);
+    o.quaternion.copy(q0);
+    o.updateMatrixWorld(true);
+
+    WRECK.list.push({
+      o: o, room: roomId, p0: p0, q0: q0,
+      /* when it goes, how far over, and which way */
+      at: rnd() * 2.6, t: 0, dur: range(rnd, 0.5, 1.05),
+      ax: ax, turn: turn,
+      drop: Math.max(0, p0.y - range(rnd, 0.02, 0.16)) + lift,
+      slideX: range(rnd, -0.26, 0.26), slideZ: range(rnd, -0.26, 0.26),
+      rang: false,
+    });
+  });
+  WRECK.on = WRECK.list.length > 0;
+  return take.length;
+}
+
+const _wq = new T.Quaternion();
+function wreckStep(dt) {
+  if (!WRECK.on) return;
+  for (let i = 0; i < WRECK.list.length; i++) {
+    const w = WRECK.list[i];
+    if (w.at > 0) { w.at -= dt; continue; }
+    if (w.t >= w.dur) continue;
+    w.t = Math.min(w.dur, w.t + dt);
+    const k = w.t / w.dur;
+    /* it falls, it does not float: fast at the end, and one small
+       bounce at the bottom rather than a soft landing */
+    const f = k * k;
+    const bounce = k > 0.86 ? Math.sin((k - 0.86) / 0.14 * Math.PI) * 0.035 : 0;
+    _wq.setFromAxisAngle(w.ax, w.turn * f);
+    w.o.quaternion.copy(w.q0).multiply(_wq);
+    w.o.position.set(w.p0.x + w.slideX * f,
+                     w.p0.y + (w.drop - w.p0.y) * f + bounce,
+                     w.p0.z + w.slideZ * f);
+    w.o.updateMatrix();
+    if (!w.rang && k > 0.6) {
+      w.rang = true;
+      /* falseBang takes a pan, and a thing going over happens
+         wherever it happened to be standing */
+      SFX.falseBang(range(Math.random, -0.75, 0.75));
+    }
+  }
+}
+
+/* put the shop back. Everything returns to the transform it was built
+   with and is re-frozen, so the room costs what it always cost. */
+function wreckClear() {
+  WRECK.list.forEach((w) => {
+    w.o.position.copy(w.p0);
+    w.o.quaternion.copy(w.q0);
+    w.o.updateMatrix();
+    freeze(w.o);
+  });
+  WRECK.list.length = 0;
+  WRECK.on = false;
+}
+
+/* =========================================================
+   ASKING TO BE LET IN.
+
+   TALK holds the one toy that currently wants to say something to her
+   and the state of its request. It is deliberately a single slot: two
+   of them begging at two doors at once is a farce, and the whole
+   weight of this comes from it being one thing, at one door, waiting.
+
+     who    which of the four is asking
+     door   the opening it is asking through
+     line   what it came to say, once it gets to say it
+     wait   how long it will stand there before giving up and saying
+            it through the door anyway
+     opened whether she let it in, which decides how the line is heard
+   ========================================================= */
+const TALK = { on: false, who: null, door: null, line: null, wait: 0,
+               said: false, opened: false, phase: "", t: 0, was: null };
+const TALK_WAIT = 13;         // how long it will stand there and ask
+
+function talkStart(it) {
+  const ch = it.who && cast[it.who];
+  if (!ch) { TAPE.pending = it; return; }
+  TALK.on = true; TALK.who = it.who; TALK.door = ch.def.door;
+  TALK.line = it; TALK.wait = TALK_WAIT; TALK.said = false;
+  TALK.opened = false; TALK.phase = "ask"; TALK.t = 0;
+  /* it comes to its own door and stands there, and while it is asking
+     it is not a threat -- it cannot reach her and it does not try */
+  TALK.was = { room: ch.room, atDoor: ch.atDoor, step: ch.step, cool: ch.cool };
+  ch.awake = true; ch.room = "office"; ch.atDoor = true; ch.talking = true;
+  ch.doorT = 999; ch.holdT = 999;
+  syncChar(ch);
+  SFX.knock(0.55);
+  const lines = NS.beg[it.who] || [];
+  const ask = lines[(G.stats.talks || 0) % Math.max(1, lines.length)];
+  G.stats.talks = (G.stats.talks || 0) + 1;
+  if (ask) tapeSay(ask, it.who);
+  say(fmt(NS.sys.asking, TALK.door === "left" ? "WEST DOOR"
+        : TALK.door === "right" ? "EAST DOOR" : "THE GRATE"), true);
+}
+
+/* it is standing at a shut door asking, and she has a choice to make */
+function talkTick(dt) {
+  if (!TALK.on) return;
+  TALK.t += dt;
+  const ch = cast[TALK.who];
+  if (!ch || G.phase !== "play") { talkEnd(); return; }
+
+  if (TALK.phase === "ask") {
+    /* she opened it. It says so, and then it says what it came to say,
+       out loud, in the room, with nothing in between. */
+    if (!G.doors[TALK.door]) {
+      TALK.phase = "open"; TALK.opened = true; TALK.t = 0;
+      const hi = NS.begOpen[TALK.who];
+      if (hi) tapeSay(hi, TALK.who);
+      G.stats.opened = (G.stats.opened || 0) + 1;
+      return;
+    }
+    TALK.wait -= dt;
+    /* a knock every few seconds while it waits, getting no louder */
+    TALK.knock = (TALK.knock || 2.6) - dt;
+    if (TALK.knock <= 0) { TALK.knock = 3.4; SFX.knock(0.34); }
+    if (TALK.wait <= 0) {
+      /* it gives up on being let in, and says it anyway */
+      TALK.phase = "shut"; TALK.t = 0;
+      const no = NS.begShut[TALK.who];
+      if (no) tapeSay(no, TALK.who);
+    }
+    return;
+  }
+
+  /* both endings wait for the shop to be quiet, then deliver the line
+     it came for -- clear if she opened, through the door if she did not */
+  if (TALK.phase === "open" || TALK.phase === "shut") {
+    if (!tapeQuiet() || voxTalking()) return;
+    if (TALK.t < 0.55) return;
+    TALK.phase = "said"; TALK.t = 0;
+    TAPE.pending = null;
+    tapeSay(TALK.line.t, TALK.who, TALK.opened ? 0 : 1);
+    TAPE.said[TALK.line.t] = 1;
+    return;
+  }
+
+  if (TALK.phase === "said") {
+    if (!tapeQuiet() || voxTalking()) return;
+    if (TALK.t < 0.8) return;
+    talkEnd();
+  }
+}
+
+/* it goes back to being one of the things that walks towards her */
+function talkEnd() {
+  const ch = TALK.who && cast[TALK.who];
+  if (ch) {
+    ch.talking = false;
+    ch.atDoor = false;
+    ch.cool = 9;
+    ch.step = 0;
+    retreat(ch);
+  }
+  TALK.on = false; TALK.who = null; TALK.line = null; TALK.phase = "";
+}
+
 function tapeDue(dt) {
   if (!TAPE.on || !TAPE.opened || !NS.tapeWhen || G.phase !== "play") return;
-  if (TAPE.pending) return;
+  if (TAPE.pending || TALK.on) return;
   const hourNow = G.hour + (G.hourT || 0) / Math.max(1, TUNE.hourSeconds);
   for (const k in NS.tapeWhen) {
     const it = NS.tapeWhen[k];
@@ -12714,8 +13121,10 @@ function tapeDue(dt) {
     if (G.night < it.by[0]) continue;
     if (G.night === it.by[0] && hourNow < it.by[1]) continue;
     /* she is shut in, so it knocks first */
-    const shut = G.doors.left || G.doors.right || G.doors.hatch;
-    if (shut) SFX.knock(0.5);
+    /* one of HIS speaks through the tape. One of THEIRS has to come to
+       a door and ask, which is the only way any of this costs her
+       anything */
+    if (it.who && cast[it.who] && !G.blackout) { talkStart(it); return; }
     TAPE.pending = it;
     return;
   }
@@ -12731,6 +13140,7 @@ function tapeDue(dt) {
     if (!set || choices[n] == null) continue;
     const it = choices[n] === 1 ? set.kept : set.burned;
     if (!it || TAPE.said[it.t]) continue;
+    if (it.who && cast[it.who] && !G.blackout) { talkStart(it); return; }
     TAPE.pending = it;
     return;
   }
@@ -12743,6 +13153,7 @@ function tapeDue(dt) {
   if (!back || !NS.pointAt) return;
   const p = NS.pointAt[back.id];
   if (!p || TAPE.said[p.t]) return;
+  if (p.who && cast[p.who] && !G.blackout) { talkStart(p); return; }
   TAPE.pending = p;
 }
 
@@ -13209,6 +13620,7 @@ function frame(ts) {
       sayTick(dt);
       /* after sayTick, so the building always has the right of way */
       tapeDue(dt);
+  talkTick(dt);
       tapeTick(dt);
       uiTick(dt);
     }
@@ -16297,6 +16709,74 @@ const testHooks = {
     kept: Object.keys(foundAll()),
     why: FIND_WHY,
   }),
+  /* the shop coming apart, driven by hand so a picture can be taken of
+     it before, during and after */
+  wreck: (room, n) => wreckArm(room, n),
+  /* what it picked, how big each thing was, and whether the room came
+     back to exactly where it started */
+  wreckAudit: (room, n) => {
+    wreckClear();
+    const rec = rooms[room];
+    if (!rec) return null;
+    const before = rec.group.children.map((o) => ({
+      p: o.position.toArray().map((v) => +v.toFixed(4)),
+      q: o.quaternion.toArray().map((v) => +v.toFixed(4)) }));
+    const took = wreckArm(room, n || 14);
+    const box = new T.Box3(), sz = new T.Vector3();
+    const sizes = WRECK.list.map((w) => {
+      box.setFromObject(w.o); box.getSize(sz);
+      return { big: +Math.max(sz.x, sz.y, sz.z).toFixed(2),
+               span: +Math.max(sz.x, sz.z).toFixed(2) };
+    });
+    for (let i = 0; i < 200; i++) wreckStep(0.05);
+    /* where everything ended up, and how far under the floor any of it went */
+    let under = 0;
+    WRECK.list.forEach((w) => {
+      box.setFromObject(w.o);
+      under = Math.min(under, box.min.y - rec.group.position.y);
+    });
+    const moved = WRECK.list.filter((w) => w.o.position.distanceTo(w.p0) > 0.001 ||
+      Math.abs(w.o.quaternion.dot(w.q0)) < 0.9999).length;
+    wreckClear();
+    const after = rec.group.children.map((o) => ({
+      p: o.position.toArray().map((v) => +v.toFixed(4)),
+      q: o.quaternion.toArray().map((v) => +v.toFixed(4)) }));
+    const same = JSON.stringify(before) === JSON.stringify(after);
+    return { took: took, sizes: sizes, moved: moved,
+             under: +under.toFixed(3), restored: same };
+  },
+  wreckStep: (dt) => wreckStep(dt),
+  wreckClear: () => wreckClear(),
+  /* ONE OF THEM AT A DOOR, ASKING. Drive it both ways: open the door
+     within the window, or leave it shut and let it give up. */
+  talkRun: (who, open, secs) => {
+    const it = { who: who, t: (NS.tapeWhen.theyWound && NS.tapeWhen.theyWound.t) || "x" };
+    G.phase = "play"; G.mode = "story"; G.blackout = false;
+    if (!G.stats) G.stats = {};
+    TAPE.on = true; TAPE.opened = true; TAPE.said = {};
+    const ch = cast[who];
+    G.doors.left = G.doors.right = G.doors.hatch = true;
+    talkStart(it);
+    const out = { asked: TALK.on, door: TALK.door, safe: null,
+                  phases: [], heard: null, through: null };
+    /* while it asks, it must not be able to reach her */
+    const was = { step: ch.step, atDoor: ch.atDoor };
+    stepCast(ch, 5);
+    out.safe = ch.step === was.step;
+    if (open) G.doors[TALK.door] = false;
+    for (let i = 0; i < (secs || 40) * 4; i++) {
+      talkTick(0.25);
+      if (out.phases[out.phases.length - 1] !== TALK.phase) out.phases.push(TALK.phase);
+      if (!TALK.on) break;
+    }
+    out.heard = TAPE.said[it.t] ? it.t : null;
+    out.through = TAPE.through;
+    out.stillAtDoor = !!ch.atDoor;
+    out.talking = !!ch.talking;
+    G.doors.left = G.doors.right = G.doors.hatch = false;
+    talkEnd();
+    return out;
+  },
   /* WHO ANSWERS FOR IT WHEN SOMETHING REACHES HER */
   caughtBy: (id, broke) => {
     const wasPhase = G.phase, wasDead = G.dead, wasBroke = G.brokeNow;
@@ -16368,9 +16848,14 @@ const testHooks = {
       localStorage.setItem(KEEP_KEY, JSON.stringify(o.chose || {}));
       localStorage.setItem(FOUND_KEY, JSON.stringify(o.found || {}));
     } catch (e) {}
+    /* one of HIS still queues on the tape; one of THEIRS now goes to a
+       door and asks, so the sweep's answer can come back either way */
+    TALK.on = false; TALK.who = null; TALK.line = null;
     tapeDue(0.016);
-    const got = TAPE.pending;
-    const out = got ? { t: got.t, who: got.who || "anwar" } : null;
+    const got = TAPE.pending || (TALK.on ? TALK.line : null);
+    const out = got ? { t: got.t, who: got.who || "anwar",
+                        asked: TALK.on && TALK.line === got } : null;
+    if (TALK.on) talkEnd();
     TAPE.pending = null;
     TAPE.said = hadSaid;
     G.night = wasNight; G.hour = wasHour; G.phase = wasPhase;
@@ -16429,6 +16914,8 @@ const testHooks = {
   speak: (text) => voxSpeak(voxPlan(text), { gain: 1 }),
   /* whether there are recordings on this build, and which of them
      have actually been fetched and decoded */
+  /* the last line played, and how many of them said it */
+  mouths: () => VOX_FILE.mouths || 0,
   voiceState: () => ({
     on: VOX_FILE.on,
     lines: VOX_FILE.map ? Object.keys(VOX_FILE.map).length : 0,

@@ -264,6 +264,60 @@ if (man) {
     chose: { 1: 1 }, found: { cogsworth: true, chime: true, marabelle: true } });
   ok('and nobody points at anything when she has missed nothing', clean === null, clean);
 
+  console.log('\n=== and the shop really comes apart');
+
+  const rooms = ['stage', 'arcade', 'office'];
+  const wr = {};
+  for (const r of rooms) wr[r] = await p.evaluate(
+    (x) => OuissysNightShift.__night.wreckAudit(x, 14), r);
+
+  ok('there is enough in every room they go through to make a mess of it',
+     rooms.every((r) => wr[r].took >= 8), rooms.map((r) => [r, wr[r].took]));
+  ok('and all of it really moves', rooms.every((r) => wr[r].moved === wr[r].took),
+     rooms.map((r) => [r, wr[r].moved, wr[r].took]));
+  /* the one thing this must never do is lay a wall down */
+  ok('and nothing it picks up is the size of a wall or a floor',
+     rooms.every((r) => wr[r].sizes.every((z) => z.big <= 2.4 && z.span <= 3.0)),
+     rooms.map((r) => [r, Math.max.apply(null, wr[r].sizes.map((z) => z.big))]));
+  /* and nothing ends up buried in the floorboards */
+  ok('and nothing comes to rest underneath the floor',
+     rooms.every((r) => wr[r].under > -0.12), rooms.map((r) => [r, wr[r].under]));
+  /* the room is reused, so it has to go back exactly */
+  ok('and afterwards the shop is put back exactly as it was',
+     rooms.every((r) => wr[r].restored), rooms.map((r) => [r, wr[r].restored]));
+
+  console.log('\n=== it has to ask her to open the door');
+
+  ok('every one of the four has more than one way of asking',
+     ['cogsworth', 'chime', 'marabelle', 'jax']
+       .every((w) => (NS.beg[w] || []).length >= 2),
+     ['cogsworth', 'chime', 'marabelle', 'jax'].map((w) => (NS.beg[w] || []).length));
+  ok('and each has something to say for both answers she can give',
+     ['cogsworth', 'chime', 'marabelle', 'jax']
+       .every((w) => NS.begShut[w] && NS.begOpen[w]));
+  /* it is asking, not demanding: nothing here may read as a threat */
+  const nasty = ['cogsworth', 'chime', 'marabelle', 'jax']
+    .filter((w) => (NS.beg[w] || []).some((l) => /or else|you will regret|last chance/i.test(l)));
+  ok('and none of them threatens her to get the door open', !nasty.length, nasty);
+
+  const begShut = await p.evaluate(() =>
+    OuissysNightShift.__night.talkRun('cogsworth', false, 40));
+  ok('it comes to its own door and knocks', begShut.asked && begShut.door === 'left', begShut);
+  ok('and it cannot reach her while it is asking', begShut.safe, begShut);
+  ok('and if she never opens it, it says the thing anyway',
+     begShut.heard, begShut.phases);
+  ok('but she only gets two thirds of it, through the door', begShut.through === true, begShut);
+  ok('and afterwards it goes back to being one of the things that walks at her',
+     !begShut.talking && !begShut.stillAtDoor, begShut);
+
+  const begLet = await p.evaluate(() =>
+    OuissysNightShift.__night.talkRun('marabelle', true, 40));
+  ok('and if she opens the door it comes through clear',
+     begLet.heard && begLet.through === false, begLet);
+  ok('and opening it is a different beat from being shut out',
+     begLet.phases.indexOf('open') >= 0 && begShut.phases.indexOf('shut') >= 0,
+     [begLet.phases, begShut.phases]);
+
   console.log('\n=== and she can watch it a second time');
 
   const rewatch = await p.evaluate(() => {

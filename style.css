@@ -8291,6 +8291,21 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-drawer-row.burned b{ color:rgba(232,223,200,.42); text-decoration:line-through; }
 .ns-drawer-row.burned span{ color:rgba(200,120,90,.8); }
 
+/* THROUGH THE DOOR.
+   She left the shutter down, so she gets the words on the screen and
+   about two thirds of them in the room. The caption says so without
+   saying so: it sits back, loses its edge, and the name of whoever is
+   speaking goes quiet with it. Legible, and plainly coming from
+   somewhere else. */
+.ns-tape.through{ opacity:.72; letter-spacing:.01em; }
+.ns-tape.through i{ filter:blur(.18px); }
+.ns-tape.through .ns-tape-who{ opacity:.55; }
+.ns-tape.through::after{
+  content:"through the door"; display:block; margin-top:.35em;
+  font-size:.62em; letter-spacing:.16em; text-transform:uppercase;
+  color:rgba(232,223,200,.34);
+}
+
 /* THE SIX MARKS, ON THE SIX O'CLOCK CARD.
    A filled one is a thing she took out of the shop, an empty one is a
    thing she burned, a faint one is still in there. No numbers on it:
