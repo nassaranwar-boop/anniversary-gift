@@ -13169,9 +13169,15 @@ function talkTick(dt) {
   if (!ch || G.phase !== "play") { talkEnd(); return; }
 
   if (TALK.phase === "ask") {
-    /* she opened it. It says so, and then it says what it came to say,
-       out loud, in the room, with nothing in between. */
-    if (!G.doors[TALK.door]) {
+    /* SHE opened it -- not the power failing.
+
+       A blackout drops every shutter in the building open on its own,
+       and without this the dark would hand her the warm version of
+       every one of these for nothing, and mark her down as a woman who
+       opened the door when what actually happened was that the meter
+       ran out. The one running choice in the chapter is not allowed to
+       be decided by the fuse box. */
+    if (!G.doors[TALK.door] && !G.blackout) {
       TALK.phase = "open"; TALK.opened = true; TALK.t = 0;
       const hi = NS.begOpen[TALK.who];
       if (hi) tapeSay(hi, TALK.who);
@@ -16871,7 +16877,7 @@ const testHooks = {
   },
   /* ONE OF THEM AT A DOOR, ASKING. Drive it both ways: open the door
      within the window, or leave it shut and let it give up. */
-  talkRun: (who, open, secs) => {
+  talkRun: (who, open, secs, dark) => {
     const it = { who: who, t: (NS.tapeWhen.theyWound && NS.tapeWhen.theyWound.t) || "x" };
     G.phase = "play"; G.mode = "story"; G.blackout = false;
     if (!G.stats) G.stats = {};
@@ -16886,6 +16892,8 @@ const testHooks = {
     stepCast(ch, 5);
     out.safe = ch.step === was.step;
     if (open) G.doors[TALK.door] = false;
+    /* the dark drops every shutter open by itself, which is not her */
+    G.blackout = !!dark;
     for (let i = 0; i < (secs || 40) * 4; i++) {
       talkTick(0.25);
       if (out.phases[out.phases.length - 1] !== TALK.phase) out.phases.push(TALK.phase);
@@ -16896,6 +16904,7 @@ const testHooks = {
     out.stillAtDoor = !!ch.atDoor;
     out.talking = !!ch.talking;
     G.doors.left = G.doors.right = G.doors.hatch = false;
+    G.blackout = false;
     talkEnd();
     return out;
   },

@@ -326,6 +326,13 @@ if (man) {
   ok('and afterwards it goes back to being one of the things that walks at her',
      !begShut.talking && !begShut.stillAtDoor, begShut);
 
+  /* the dark opens every door in the building on its own, and that is
+     not her deciding anything */
+  const inDark = await p.evaluate(() =>
+    OuissysNightShift.__night.talkRun('jax', true, 40, true));
+  ok('a blackout opening the doors is not her opening the door',
+     inDark.phases.indexOf('open') < 0 && inDark.phases.indexOf('shut') >= 0, inDark);
+
   const begLet = await p.evaluate(() =>
     OuissysNightShift.__night.talkRun('marabelle', true, 40));
   ok('and if she opens the door it comes through clear',
