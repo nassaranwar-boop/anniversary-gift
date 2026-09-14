@@ -4667,13 +4667,13 @@ img{-webkit-user-drag:none; user-select:none;}
 .so-overlay.on{scrollbar-width:none;}
 .so-overlay.on::-webkit-scrollbar{width:0; height:0;}
 .so-lift{
-  /* `left` is set in updateLift, measured against the CARD's own right
-     edge. It used to be a fixed inset from the stage on the far left,
-     which put it thirty-four points out in the dark on a phone and a
-     hundred and ten on an iPad -- a gold light down the side of the
-     picture rather than this card's scrollbar. The race learned the
-     same lesson with .rc-rail; this is the same fix. */
-  position:absolute; right:auto; top:8cqh; bottom:8cqh; width:1.9cqw;
+  /* Hard against the FAR RIGHT edge of the stage -- his call, and the
+     mirror of where it used to be. It sat on the far left before, which
+     put the bar on the opposite side of the screen from the hand most
+     people scroll with. Sitting it against the card's edge was the step
+     in between; he wants it out at the edge, so `left` is no longer
+     computed and `right` is a fixed inset again. */
+  position:absolute; left:auto; right:1.4cqw; top:8cqh; bottom:8cqh; width:1.9cqw;
   z-index:12; display:none; touch-action:none; cursor:pointer;
   border-radius:1cqw;
   background:linear-gradient(180deg, rgba(24,10,30,.62), rgba(38,16,44,.62));

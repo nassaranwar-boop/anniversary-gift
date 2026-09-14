@@ -4377,24 +4377,10 @@ window.SuperOuissy = (function () {
     var need = ov.classList.contains("on") && room > 6;
     el.classList.toggle("on", need);
     if (!need) return;
-    /* SIT IT BESIDE THE CARD, ON THE RIGHT, MEASURED.
-
-       A scrollbar belongs to the thing it scrolls. Pinned to the left
-       edge of the stage it was a gold bar in the dark with the card a
-       hand's width away -- 84 points of gap on a laptop, 110 on an
-       iPad. It goes on the right of the card now, close enough to read
-       as part of it, and it never crosses the card or leaves the
-       stage. */
-    var card = ov.firstElementChild;
-    if (card) {
-      var cr = card.getBoundingClientRect(), or_ = ov.getBoundingClientRect();
-      var w = el.getBoundingClientRect().width || 12;
-      var gap = Math.max(8, Math.round(or_.width * 0.008));
-      var x = Math.min((cr.right - or_.left) + gap, or_.width - w - 2);
-      /* never on top of the writing: if there is somehow no room beside
-         the card, it stops at the edge of the stage instead */
-      el.style.left = Math.max(cr.right - or_.left + 2, x) + "px";
-    }
+    /* Nothing to measure any more: the bar lives at the far right edge
+       of the stage, which CSS pins on its own. It is cleared here in
+       case an older layout left an inline `left` on it. */
+    if (el.style.left) el.style.left = "";
     var bar = $("so-lift-bar");
     var frac = ov.clientHeight / ov.scrollHeight;
     var hPct = Math.max(14, Math.min(92, frac * 100));
@@ -6880,5 +6866,43 @@ window.SuperOuissy = (function () {
     return arr[Math.min(k || 0, arr.length - 1)];
   }
 
-  return { start: start, stop: stop, frame: ouissyFrame, pause: function () { if (G && G.state === "play") togglePause(); } };
+  /* EVERY MENU THE GAME CAN PUT UP, REACHABLE FROM A TEST.
+
+     tools/sofit.js could only get at four of the eight by clicking --
+     the title, the how-to, the world card and the pause -- so the four
+     that only appear at the end of a run, or when a boss has just
+     killed her, were never looked at. Those are exactly the long ones,
+     which are exactly the ones that scroll. */
+  function showMenu(which) {
+    if (!G) return false;
+    /* EVERY CARD EXCEPT THE FIRST TWO HAPPENS DURING A RUN. The title and
+       the how-to are what she sees before one starts; the world card, the
+       pause, the revive, the results, the game over and the ending all
+       appear over a world that exists, with her lives and her score on
+       them. Opening one on an empty game measures a card she can never
+       see -- and worse, the world card's own timer then hands the loop a
+       "play" state with no level under it, which is a throw. So put the
+       game where the card really lives first. */
+    if (which !== "title" && which !== "howto") {
+      if (!G.level) startLevel(G.levelIndex || 0);
+      closeOverlay();
+      G.state = "play";
+    }
+    switch (which) {
+      case "title":   showDifficulty(); return true;
+      case "howto":   showHowTo(function () {}); return true;
+      case "world":   showLevelCard(function () {}); return true;
+      case "pause":   togglePause(true); return true;
+      case "revive":  offerBossRevive(); return true;
+      case "cleared": finishLevel(); return true;
+      case "over":    endRun(false); return true;
+      case "won":     endRun(true); return true;
+      case "ending":  showEnding(false); return true;
+      default: return false;
+    }
+  }
+  return { start: start, stop: stop, frame: ouissyFrame,
+           pause: function () { if (G && G.state === "play") togglePause(); },
+           __menu: showMenu,
+           __menus: ["title","howto","world","pause","revive","cleared","over","won","ending"] };
 })();
