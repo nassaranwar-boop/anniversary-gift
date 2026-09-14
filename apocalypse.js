@@ -1911,6 +1911,28 @@
           sub.connect(sg); sg.connect(f);
           sub.start(at); sub.stop(at + len + 0.2); voices.push(sub);
         }
+        /* THE BLIP.
+
+           `line` hands its callback (freq, time, velocity, duration) --
+           that is the order piano, strings and bell all take, and they
+           are all wrapped in a function that spells it out. `cello`
+           takes (freq, time, duration, velocity): the last two the
+           other way round. Ten places in this score passed `cello` to
+           `line` bare, so the cello was handed the note's DURATION as
+           its velocity -- somewhere between one and three, against the
+           0.03 it was being given -- and its velocity as its length.
+
+           A cello at fifty times its intended level, lasting thirty
+           milliseconds, once a beat. Measured through the game's own
+           chain, the last cue in the chapter peaked at 2.6 against a
+           full scale of 1.0: clipped solid, every beat, for the whole
+           of the longest scene in the game. That is the farting blip,
+           and it was in the radio, the roof and the settling -- the
+           three he named, and the three that pass cello to line.
+
+           One adapter, named, so the next person cannot get it wrong
+           by writing the obvious thing. */
+        function celloLine(f, t2, v, dd) { cello(f, t2, dd, v); }
         /* a music box: a sine and an inharmonic partial, ringing a long
            time, for the places that are too cold for a piano */
         /* a music box: a sine and one inharmonic partial. The partial
@@ -2212,7 +2234,7 @@
                 strings([f], t2, dd + sp * 0.4, v, 1500);
               });
             if (pass >= 1) line(MORN_AT, b, at, sp, 0, (pass === 3 ? 0.034 : 0.022) * d, piano);
-            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.026 * d, cello);
+            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.026 * d, celloLine);
           } },
 
           /* THE FIRE. One piano, close, and something warm underneath.
@@ -2241,7 +2263,7 @@
                   strings([f], t2, dd + sp * 0.5, v, 700);
                 });
             }
-            if (pass % 2 === 1) line(UNDER_AT, b, at, sp, -1, 0.030 * d, cello);
+            if (pass % 2 === 1) line(UNDER_AT, b, at, sp, -1, 0.030 * d, celloLine);
           } },
 
           /* THE VOICE ON THE RADIO.
@@ -2267,7 +2289,7 @@
               line(SIGNAL_AT, b, at, sp, -1, 0.020 * d, function (f, t2, v, dd) {
                 strings([f], t2, dd + sp * 0.6, v, 620);
               });
-            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.022 * d, cello);
+            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.022 * d, celloLine);
             if (b % 16 === 8) tick(at, 0.012 * d);
           } },
 
@@ -2287,7 +2309,7 @@
               line(DUSK_AT, b, at, sp, -1, 0.016 * d, function (f, t2, v, dd) {
                 strings([f], t2, dd + sp * 0.4, v, 900);
               });
-            if (pass === 3) line(UNDER_AT, b, at, sp, -1, 0.024 * d, cello);
+            if (pass === 3) line(UNDER_AT, b, at, sp, -1, 0.024 * d, celloLine);
           } },
 
           /* MAKING CAMP. The quickest thing in the chapter and the
@@ -2326,7 +2348,7 @@
             if (pass >= 1) line(DAWN_AT, b, at, sp, 0, 0.020 * d, function (f, t2, v, dd) {
               piano(f, t2, v, Math.max(3.0, dd * 1.6));
             });
-            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.024 * d, cello);
+            if (pass >= 2) line(UNDER_AT, b, at, sp, -1, 0.024 * d, celloLine);
           } },
 
           /* THE REST OF THE DAY, INSIDE THE WIRE. A lullaby that will
@@ -2344,7 +2366,7 @@
               line(VIGIL_AT, b, at, sp, -1, 0.018 * d, function (f, t2, v, dd) {
                 strings([f], t2, dd + sp * 0.6, v, 700);
               });
-            if (pass === 3) line(UNDER_AT, b, at, sp, -1, 0.020 * d, cello);
+            if (pass === 3) line(UNDER_AT, b, at, sp, -1, 0.020 * d, celloLine);
           } },
 
           /* ---- THE FIVE THAT ARE NOT PLACES BUT SITUATIONS ----
@@ -2430,7 +2452,7 @@
               var c = CH(b * 2);          /* half speed: two bars per bar */
               strings([hz(c[1], 0), hz(c[2], 0)], at, sp * 8.6, 0.020 * d, 900);
             }
-            if (b % 2 === 0) line(TUNE_AT, (b / 2) % 32, at, sp * 2, -1, 0.055 * d, cello);
+            if (b % 2 === 0) line(TUNE_AT, (b / 2) % 32, at, sp * 2, -1, 0.055 * d, celloLine);
             /* and the second time through, one voice above it, so that
                she is not entirely on her own in it */
             if (pass >= 2 && b % 2 === 0)
@@ -2457,7 +2479,7 @@
             });
             /* and once, a long way in, four notes of hers underneath it */
             if ((b % 128) >= 96)
-              line(TUNE_AT, b, at, sp, -1, 0.014 * d, cello);
+              line(TUNE_AT, b, at, sp, -1, 0.014 * d, celloLine);
           } },
 
           /* THE ROOF. All of it: the tune on the piano, the ensemble
@@ -2491,7 +2513,7 @@
               line(WARM_AT, b, at, sp, -1, 0.014 * d, function (f, t2, v, dd) {
                 strings([f], t2, dd + sp * 0.5, v, 900);
               });
-            line(UNDER_AT, b, at, sp, -1, 0.034 * d, cello);
+            line(UNDER_AT, b, at, sp, -1, 0.034 * d, celloLine);
           } },
 
           /* AFTERWARDS. THE ROOF, THE CATS, THE STARS.
@@ -2524,7 +2546,7 @@
               });
             /* and the two of them under it, bowed, so that both are here */
             if (pass >= 1 && b % 2 === 0)
-              line(WARM_AT, (b / 2) % 32, at, sp * 2, -1, 0.028 * d, cello);
+              line(WARM_AT, (b / 2) % 32, at, sp * 2, -1, 0.028 * d, celloLine);
             /* the one place in the chapter that comes to rest */
             if (b % 64 === 56) {
               piano(hz(0, 0), at, 0.050 * d, 7.0);
@@ -2616,7 +2638,32 @@
           var edge = ctx.createBiquadFilter();
           edge.type = "peaking"; edge.frequency.value = 1500;
           edge.Q.value = 0.9; edge.gain.value = -5;
-          bus.connect(roof); roof.connect(edge); edge.connect(tame); tame.connect(musBus);
+          /* WHAT A PHONE CANNOT MOVE, AND WHAT IT CANNOT HOLD.
+
+             Two things at the end of the chain, because a cue should
+             not be able to hurt the speaker however it is written.
+
+             A ceiling, so that no arrangement can ever run the output
+             past full scale again -- which is what the cello bug did,
+             every beat, for the whole of the longest scene in the game.
+
+             It is insurance and nothing else. With that bug fixed the
+             loudest cue in the score peaks at 0.18 and this never
+             engages; measured with it bypassed, every cue is identical.
+             It is here for the next mistake nobody measures, not for
+             this one.
+
+             There is deliberately no high-pass beside it. The bottom
+             end was measured too -- between -52 and -81 dBFS once the
+             cello was right, which is inaudible on anything she will
+             hold -- and filtering it would have thinned a swell that is
+             written three octaves down on purpose, to fix something
+             that was never broken. */
+          var lim = ctx.createDynamicsCompressor();
+          lim.threshold.value = -3; lim.knee.value = 0;
+          lim.ratio.value = 20; lim.attack.value = 0.003; lim.release.value = 0.25;
+          bus.connect(roof); roof.connect(edge); edge.connect(tame);
+          tame.connect(lim); lim.connect(musBus);
           bus.gain.setTargetAtTime(0.9, at, rise);
           /* everything a cue plays goes through this pair, so the whole
              thing rises and falls as one */
@@ -2813,6 +2860,68 @@
         /* Play a cue's beats past it without putting it on the bus: the
            only way to find a branch that never runs until the third time
            round other than sitting through the third time round. */
+        /* RENDER A CUE TO REAL SAMPLES, OFFLINE.
+
+           rehearse proves a cue does not throw; it cannot say what the
+           cue SOUNDS like, because it stacks every beat at the same
+           instant and sends the lot to a dead gain. He can hear a blip
+           in three of these scenes and no test in this repo has ever
+           looked at a waveform. This binds the score's own instruments
+           to an OfflineAudioContext, plays the cue at its real tempo,
+           and hands back the samples -- so a click can be found at the
+           sample it happens on instead of guessed at. */
+        setPiece.render = function (name, seconds, bypassLimit) {
+          if (!PIECES[name] || !window.OfflineAudioContext) return null;
+          var rate = 44100;
+          var off = new OfflineAudioContext(2, Math.ceil(rate * seconds), rate);
+          var keep = { ctx: ctx, dry: dry, wet: wet, vibGain: vibGain, voices: voices };
+          ctx = off;
+          /* the same chain the game plays it through, or the numbers
+             are about a signal nobody hears: the cue bus at 0.9, the
+             lid at 4k, the notch at 1.5k, the shelf over 2.4k, and the
+             master at 0.69 */
+          var busG = off.createGain(); busG.gain.value = 0.9;
+          var roofF = off.createBiquadFilter();
+          roofF.type = "lowpass"; roofF.frequency.value = 4000; roofF.Q.value = 0.5;
+          var edgeF = off.createBiquadFilter();
+          edgeF.type = "peaking"; edgeF.frequency.value = 1500; edgeF.Q.value = 0.9;
+          edgeF.gain.value = -5;
+          var tameF = off.createBiquadFilter();
+          tameF.type = "highshelf"; tameF.frequency.value = 2400; tameF.gain.value = -8;
+          var masterG = off.createGain(); masterG.gain.value = 0.69;
+          var limN = off.createDynamicsCompressor();
+          limN.threshold.value = -3; limN.knee.value = 0;
+          /* A test has to be able to see what the arrangement itself
+             does. With the limiter in the way, the cello bug measured
+             0.82 and looked fine -- the ceiling was holding it down,
+             eight decibels of gain reduction, every beat. The fault was
+             still there and still audible. So the limiter comes out on
+             request, and that is the number worth asserting on. */
+          limN.ratio.value = bypassLimit ? 1 : 20;
+          limN.threshold.value = bypassLimit ? 0 : -3;
+          limN.attack.value = 0.003; limN.release.value = 0.25;
+          busG.connect(roofF); roofF.connect(edgeF); edgeF.connect(tameF);
+          tameF.connect(limN); limN.connect(masterG);
+          masterG.connect(off.destination);
+          var g = busG;
+          dry = g; wet = null;                 /* no convolver: the dry path is the cue */
+          vibGain = off.createGain(); vibGain.gain.value = 0;
+          voices = [];
+          var sp = 60 / PIECES[name].bpm;
+          var beats = Math.ceil(seconds / sp) + 1;
+          var errs = [];
+          for (var i = 0; i < beats; i++) {
+            try { PIECES[name].play(i, i * sp, sp); }
+            catch (e) { if (errs.length < 4) errs.push(i + ": " + (e && e.message)); }
+          }
+          return off.startRendering().then(function (buf) {
+            ctx = keep.ctx; dry = keep.dry; wet = keep.wet;
+            vibGain = keep.vibGain; voices = keep.voices;
+            return { rate: rate, errs: errs,
+                     left: Array.prototype.slice.call(buf.getChannelData(0)),
+                     right: Array.prototype.slice.call(buf.getChannelData(1)) };
+          });
+        };
         setPiece.rehearse = function (name, beats) {
           if (!ac() || !PIECES[name]) return ["no cue " + name];
           var errs = [], sp = 60 / PIECES[name].bpm;
@@ -17301,6 +17410,10 @@
     };
     /* run a cue's own beats past it, four passes' worth, so a branch that
        only happens late in a piece is still exercised */
+    /* the samples a cue actually produces, for tools/ostblip.js */
+    window.__apScoreRender = function (name, seconds, bypassLimit) {
+      return Audio_.score.render(name, seconds || 12, bypassLimit);
+    };
     window.__apScorePlay = function (name, beats) {
       return Audio_.score.rehearse(name, beats || 132);
     };
