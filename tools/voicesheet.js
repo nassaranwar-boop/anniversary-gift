@@ -161,6 +161,9 @@ for (const k in (NS.tapeWhen || {})) {
 /* and the one who tells her where she left his card */
 for (const k in (NS.pointAt || {}))
   add('point-' + k, NS.pointAt[k].t, 'the night after she walked past it', NS.pointAt[k].who);
+/* and the one she left standing in the dark with nothing in it */
+for (const k in (NS.ranDown || {}))
+  add('randown-' + k, NS.ranDown[k].t, 'when she has let this one run all the way down', NS.ranDown[k].who);
 /* and the one that answers what she did with his things */
 for (const n in (NS.afterChoice || {})) {
   ['kept', 'burned'].forEach((w) => {

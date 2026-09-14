@@ -1686,6 +1686,36 @@ const NS = {
      thing that says what he is for. The ballerina cannot look down at
      hers while she is being watched. Jax will not open the box in
      front of her. */
+  /* THE ONE THING SHE CAN DO TO THEM BY DOING NOTHING.
+
+     Winding is the kindness in this game: a key in the back, held for
+     a second and a half, on something that is walking towards her.
+     Running one all the way down is the opposite, and it costs her
+     nothing and happens constantly, and for six nights not one of them
+     ever mentioned it. The shop says RUN DOWN in capitals on the
+     annunciator and that was the whole of it.
+
+     They mention it now, once each, ever. And these are the only lines
+     in the chapter that do not come to a door and knock first -- not
+     as an exception to the rule but as a consequence of it. A thing
+     that has run down cannot walk anywhere. It is standing wherever it
+     stopped, in the dark, in a room she is not looking at, and the
+     only way it has left of reaching her is the one she is already
+     listening to.
+
+     None of them asks her to come and fix it. That would make it a
+     task. */
+  ranDown: {
+    cogsworth: { who: "cogsworth",
+      t: "I have stopped. I cannot tell you what the time is any more, which is the only thing I am actually for. It is not urgent. I would just rather you knew." },
+    chime: { who: "chime",
+      t: "I am on the floor. I cannot get back up to the ledge with nothing in me, and the floor is not anywhere I have ever been for eleven years. It is much bigger down here than it looks from up there." },
+    marabelle: { who: "marabelle",
+      t: "I have run down in the middle of a turn. So I am standing on one foot, in the dark, in a room where nobody is looking at me, which is the first time that has ever been true. Take as long as you like." },
+    jax: { who: "jax",
+      t: "I have stopped halfway out of my own box with the lid up. It is exactly as undignified as that sounds and I would like it on the record that I do not mind." },
+  },
+
   /* IT HAS TO ASK HER TO OPEN THE DOOR FIRST.
 
      Everything one of the four ever says to her used to simply
@@ -13614,6 +13644,20 @@ function tapeDue(dt) {
     return;
   }
 
+  /* SOMETHING SHE LET RUN ALL THE WAY DOWN, FROM WHERE IT STOPPED.
+     No knock and no door: it cannot walk to one. */
+  for (const id in cast) {
+    const ch = cast[id];
+    if (!ch || !ch.awake || ch.talking || ch.sold) continue;
+    if (isWound(ch)) { ch.flatT = 0; continue; }
+    ch.flatT = (ch.flatT || 0) + dt;
+    if (ch.flatT < 26) continue;
+    const it = NS.ranDown && NS.ranDown[id];
+    if (!it || TAPE.said[it.t]) continue;
+    TAPE.pending = it;
+    return;
+  }
+
   /* AND THE NIGHT AFTER A CHOICE, THE ONE IT COSTS THE MOST ANSWERS IT.
      Before the pointing line, because what she did with his things
      matters more than where she left one of them -- and not in the
@@ -17301,6 +17345,17 @@ const testHooks = {
   },
   talkTick: (dt) => { talkTick(dt); return TALK.phase; },
   talkStop: () => { talkEnd(); return TALK.on; },
+  /* the sweep, driven by hand. It refuses to run unless the tape is
+     on and he has introduced himself, which a night started by a
+     suite has not necessarily done. */
+  tapeDue: (dt, said) => {
+    G.phase = "play"; G.mode = "story"; G.blackout = false;
+    TAPE.on = true; TAPE.opened = true;
+    if (said) TAPE.said = said;
+    TAPE.pending = null;
+    tapeDue(dt);
+    return TAPE.pending ? TAPE.pending.t : (TALK.on && TALK.line ? TALK.line.t : null);
+  },
   forgetOpened: () => { clearOpened(); if (G.stats) G.stats.opened = 0; },
   syncVis: () => syncCastVisibility(),
   /* where the seat is pointed, and whether the thing she let in is

@@ -130,6 +130,7 @@ if (man) {
     want.push(['when-' + k, typeof it === 'string' ? it : it.t]);
   }
   for (const k in NS.pointAt) want.push(['point-' + k, NS.pointAt[k].t]);
+  for (const k in (NS.ranDown || {})) want.push(['randown-' + k, NS.ranDown[k].t]);
   for (const n in (NS.afterChoice || {}))
     ['kept', 'burned'].forEach((w) => {
       const it = NS.afterChoice[n][w];
@@ -385,6 +386,53 @@ if (man) {
   /* the room is reused, so it has to go back exactly */
   ok('and afterwards the shop is put back exactly as it was',
      rooms.every((r) => wr[r].restored), rooms.map((r) => [r, wr[r].restored]));
+
+  console.log('\n=== and the one she left with nothing in it');
+
+  const rd = Object.keys(NS.ranDown || {});
+  ok('each of the four has something to say about being left to run down',
+     rd.length === 4 && rd.every((k) => NS.ranDown[k].who === k), rd);
+  /* these are the only lines that do not knock first, and the reason
+     is that a thing that has run down cannot walk to a door */
+  ok('and none of them asks her to come and wind it, which would be a task',
+     rd.every((k) => !/come and|please wind|wind me|hurry/i.test(NS.ranDown[k].t)),
+     rd.filter((k) => /come and|please wind|wind me|hurry/i.test(NS.ranDown[k].t)));
+  ok('and each is about where it happens to be standing, not about her',
+     rd.every((k) => NS.ranDown[k].t.length > 90), rd.map((k) => NS.ranDown[k].t.length));
+
+  /* everything his tape would otherwise queue, already said, so the
+     sweep gets past it to the thing being tested. Built out here,
+     because NS is the copy this tool lifted from the source and the
+     page has its own. */
+  const hisAll = {};
+  for (const k in NS.tapeWhen) {
+    const it = NS.tapeWhen[k];
+    hisAll[typeof it === 'string' ? it : it.t] = 1;
+  }
+  const flat = await p.evaluate(([said, RAN]) => {
+    const N = OuissysNightShift.__night;
+    N.begin(4, 3);
+    const c = N.cast().cogsworth;
+    c.awake = true; c.wound = 0; c.talking = false; c.flatT = 0;
+    /* nothing at a door, or the tape stays shut */
+    ['chime','marabelle','jax','post1','post2','post3'].forEach((id) => {
+      const x = N.cast()[id]; if (x) { x.awake = false; x.atDoor = false; } });
+    /* whatever the sweep queues, note it as said and carry on, so this
+       measures "does it ever come" rather than "is it first" */
+    const seen = [];
+    let got = null;
+    for (let i = 0; i < 600; i++) {
+      const line = N.tapeDue(0.25, said);
+      if (!line) continue;
+      said[line] = 1;
+      seen.push(line);
+      if (line === RAN) { got = line; break; }
+      N.talkStop();
+    }
+    return { got: got, seen: seen.length };
+  }, [hisAll, NS.ranDown.cogsworth.t]);
+  ok('leaving one standing with nothing in it is eventually answered',
+     flat.got === NS.ranDown.cogsworth.t, flat.got && flat.got.slice(0, 40));
 
   console.log('\n=== it has to ask her to open the door');
 
