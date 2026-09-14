@@ -158,6 +158,22 @@ ok('she speaks in the last hour, having said nothing for six nights',
 ok('and she does not suddenly become talkative', said.ouissy <= 6, said.ouissy);
 ok('the ones he sold speak, and the first one he sold speaks alone',
    said.ret > 0 && said.boss > 0, [said.ret, said.boss]);
+/* AND IT IS TAKEN OUT OF THE FILM, LIKE EVERYTHING ELSE IN IT.
+
+   All four of the toys have a `gone`, the crowd has `clear`, she has
+   `ouiGone`, and the first one he ever sold had nothing at all -- so
+   it stood in the office through the detonation that was aimed at it
+   and through "and then it is quiet in a way the shop has not been
+   all week", which is hard to be with three metres of soldier still
+   upright in the corner. */
+const bossIn = SHOTS.findIndex((s) => s.boss);
+const bossOut = SHOTS.findIndex((s) => s.bossGone);
+ok('and the first one he ever sold is taken out of it too',
+   bossIn >= 0 && bossOut > bossIn, [bossIn, bossOut]);
+/* nothing may be left standing in the shop once the film has finished */
+const endBoom = SHOTS.findIndex((s) => s.boom);
+ok('and it does not outlive the thing that was aimed at it',
+   endBoom < 0 || (bossOut >= 0 && bossOut <= endBoom), [bossOut, endBoom]);
 /* the crowd is a crowd: every line of theirs is layered */
 const solo = SHOTS.map((s, i) => [i, s.line])
   .filter(([, l]) => l && l.who === 'ret' && !l.many).map(([i]) => i);
@@ -425,7 +441,7 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
     const N = OuissysNightShift.__night;
     N.finale();
     let worst = { calls: 0 }, shot = -1;
-    const lum = {};
+    const lum = {}, near = {};
     /* ONE DRAWN FRAME PER SHOT, not one per step. Drawing a room with
        six hundred toys in it through a software rasteriser is most of a
        second, and stepping the whole film at a fifth of a second with
@@ -461,11 +477,20 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
           const e = N.finaleState().eyes;
           const v = (e && !e.off && e.z < 1) ? N.frameLum(e.x, e.y) : N.frameLum();
           if (v !== null) { sum += v; got++; }
+          /* ACROSS THE MOVE, NOT AT THE END OF IT.
+
+             A camera that starts clear can finish with its nose in a
+             filing cabinet, and reading this once at the end of the
+             loop was measuring only where the move stopped. The
+             nearest thing at any point in the shot is the one that
+             matters, because the shot is all of it. */
+          const nz = N.lensClear();
+          if (nz && (near[i] === undefined || nz.frac > near[i].frac)) near[i] = nz;
         }
         lum[i] = got ? +(sum / got).toFixed(2) : null;
       }
     }
-    return { worst: worst, lum: lum };
+    return { worst: worst, lum: lum, near: near };
   });
   ok('the busiest shot in it stays inside a frame budget',
      cost.worst.calls > 0 && cost.worst.calls < 1400, cost.worst);
@@ -488,6 +513,16 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
      A shot with nobody speaking may be as black as it likes: the dark
      is allowed to be the subject, it is just not allowed to be the
      subject while somebody is talking over it. */
+  /* and nothing jammed against the lens */
+  const blobs = SHOTS.map((s, i) => [i, cost.near[i]])
+    .filter(([, z]) => z && z.frac >= 0.34)
+    .map(([i, z]) => [i, z.frac, z.near]);
+  /* A third of the frame. One ray of nine finding a prop inside half
+     a metre is a foreground object and the shot has depth; three of
+     nine is a shape sitting over the middle of the picture. */
+  ok('and nothing is close enough to the lens to be an unreadable shape',
+     !blobs.length, blobs);
+
   const dim = SHOTS.map((s, i) => [i, s.line, cost.lum[i]])
     .filter(([, l, v]) => l && !l.sys && v !== null && v !== undefined && v < 9)
     .map(([i, l, v]) => [i, (l.who || 'nar'), v]);

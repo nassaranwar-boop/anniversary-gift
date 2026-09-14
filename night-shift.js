@@ -792,7 +792,7 @@ const NS = {
 
       /* the west door */
       { room: "office", secs: 3.8, fov: 44,
-        from: [-1.25, 1.52, 0.52], to: [-1.55, 1.48, 0.18], look: [-2.85, 1.36, -0.90],
+        from: [-1.61, 1.52, 1.32], to: [-2.22, 1.48, -0.02], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "Twelve minutes past five. I have the west door. I have had it since Monday." } },
       /* the grate */
       /* THE OWL'S CLOSE-UPS HAD NO `lux` ON THEM AT ALL.
@@ -818,7 +818,7 @@ const NS = {
 
       /* --- a minute and a half of them being people ---------------- */
       { room: "office", secs: 4.4, fov: 40, lux: 0.74, cue: "keep",
-        from: [-1.55, 1.48, 0.18], to: [-1.68, 1.46, 0.02], look: [-2.85, 1.36, -0.90],
+        from: [-2.22, 1.48, -0.02], to: [-2.14, 1.46, -0.23], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "He wound me every night for nine years. He never once told me why." } },
       { room: "office", secs: 5.0, fov: 40,
         from: [1.55, 1.38, 0.18], to: [1.68, 1.36, 0.02], look: [2.85, 1.10, -0.90],
@@ -849,12 +849,12 @@ const NS = {
         from: [-0.62, 1.44, 1.98], to: [-0.70, 1.42, 1.86], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "He made me in an afternoon. Badly, I think on purpose." } },
       { room: "office", secs: 3.4, fov0: 39, fov1: 36, lux: 0.55,
-        from: [-1.68, 1.46, 0.02], to: [-1.80, 1.45, -0.12], look: [-2.85, 1.36, -0.90],
+        from: [-2.14, 1.46, -0.23], to: [-2.09, 1.45, -0.31], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "He made you last." } },
 
       /* --- AND THEN IT STARTS, AT THE WEST DOOR -------------------- */
       { room: "office", secs: 3.2, fov: 58, cue: "siege", shake: 1, lux: 0.34,
-        from: [-0.95, 1.56, 0.85], to: [-1.25, 1.52, 0.50], look: [-2.95, 1.28, -0.90],
+        from: [-0.40, 1.56, 1.13], to: [-2.27, 1.52, 0.30], look: [-2.95, 1.28, -0.90],
         swarm: ["office", 16, 1.6, -5.6, 0.5, "x+"], advance: 1,
         sfx: [["knock", 0.9], ["postDrag", 0.7]],
         line: { nar: 1, t: "The first of them comes up the hall and puts its weight on the west doorway, and the doorway holds because there is something standing in it." } },
@@ -877,7 +877,7 @@ const NS = {
          been in cupboards for eleven years and she is the only person
          left in the world who winds anything. */
       { room: "office", secs: 3.4, fov: 60, shake: 1.05, lux: 0.3,
-        from: [-1.25, 1.52, 0.50], to: [-1.40, 1.50, 0.34], look: [-2.95, 1.20, -0.90],
+        from: [-1.65, 1.52, 1.30], to: [-2.26, 1.50, 0.47], look: [-2.95, 1.20, -0.90],
         swarm: ["office", 18, 1.65, -5.2, 0.49, "x+"], advance: 0.6,
         line: { who: "ret", many: 1, t: "Somebody in there is winding something. We can hear it from the hall." } },
 
@@ -902,35 +902,35 @@ const NS = {
          into a soldier who has just run out of things to say. Not one
          word of it changed. */
       { room: "office", secs: 5.4, fov: 50, shake: 0.8, lux: 0.34,
-        from: [-1.20, 1.50, 0.62], to: [-1.42, 1.48, 0.36], look: [-2.88, 1.30, -0.90],
+        from: [-1.32, 1.50, 1.41], to: [-2.24, 1.48, 0.54], look: [-2.88, 1.30, -0.90],
         swarm: ["office", 18, 1.68, -5.0, 0.49, "x+"],
         line: { who: "cogsworth", t: "There is. There is a woman in this room and she has wound all four of us every night this week. Come back at nine on Thursday morning and she will wind every one of you, one at a time, and I will hold this door open myself." } },
 
       { room: "office", secs: 3.4, fov: 56, shake: 1.0, lux: 0.3,
-        from: [-1.42, 1.48, 0.36], to: [-1.58, 1.46, 0.20], look: [-2.92, 1.22, -0.90],
+        from: [-2.24, 1.48, 0.54], to: [-2.24, 1.46, 0.05], look: [-2.92, 1.22, -0.90],
         swarm: ["office", 20, 1.72, -4.7, 0.48, "x+"], advance: 0.8,
         line: { who: "ret", many: 1, t: "Thursday. People have been saying Thursday to us for eleven years." } },
 
       { room: "office", secs: 3.2, fov: 46, lux: 0.3,
-        from: [-1.30, 1.50, 0.30], to: [-1.38, 1.49, 0.20], look: [-2.60, 1.38, -0.90],
+        from: [-2.27, 1.50, 0.30], to: [-2.18, 1.49, -0.15], look: [-2.60, 1.38, -0.90],
         line: { who: "cogsworth", t: "Yes. I know. I am sorry." } },
 
       { room: "office", secs: 3.0, fov: 62, shake: 1.2,
-        from: [-1.25, 1.52, 0.50], to: [-1.48, 1.49, 0.22], look: [-2.85, 1.34, -0.90],
+        from: [-1.65, 1.52, 1.30], to: [-2.24, 1.49, 0.04], look: [-2.85, 1.34, -0.90],
         swarm: ["office", 20, 1.7, -4.9, 0.48, "x+"], advance: -1.4,
         sfx: [["falseBang", 0.85], ["step", 0.8, -0.6]],
         line: { who: "cogsworth", t: "Ouissy. Shut it. I am on the wrong side of it and that is exactly where I mean to be." } },
       /* SHE DOES THE ONE THING SHE KNOWS HOW TO DO, and the shutter
          really comes down while the shot is running. */
       { room: "office", secs: 3.4, fov: 62, shake: 0.9, doors: { left: 1, right: 1 },
-        from: [-1.00, 1.46, 0.55], to: [-0.40, 1.48, 0.90], look: [-2.80, 1.30, -0.90],
+        from: [-0.43, 1.46, 1.16], to: [-0.10, 1.48, 0.69], look: [-2.80, 1.30, -0.90],
         swarm: ["office", 20, 1.7, -5.2, 0.48, "x+"],
         sfx: [["shutter", 0.9]],
         line: { nar: 1, t: "She has done that four hundred times this week." } },
       /* AND THE REASON IT IS THE LAST TIME. The whole chapter is one
          charge on a meter, and this is the meter running out. */
       { room: "office", secs: 3.0, fov: 46, lux: 0.3,
-        from: [-0.40, 1.48, 0.90], to: [-0.20, 1.42, 1.15], look: [0.90, 1.05, 1.05],
+        from: [-0.28, 1.48, 1.00], to: [-0.20, 1.42, 1.15], look: [0.90, 1.05, 1.05],
         line: { sys: 1, t: "RESERVE AT NINE PERCENT." } },
       { room: "office", secs: 3.8, fov: 50, shake: 0.7,
         from: [-0.20, 1.42, 1.15], to: [0.10, 1.44, 1.35], look: [-1.15, 1.50, 0.30],
@@ -956,7 +956,7 @@ const NS = {
         swarm: ["office", 10, 1.2, -5.6, 0.5, "x+"],
         sfx: [["hatch", 0.9], ["falseBurst", 0.7]],
         line: { who: "chime", t: "They are through the grate. Somebody shut the&mdash;" } },
-      { room: "office", secs: 3.0, fov: 50, gone: "chime", shake: 1.3, lux: 0.5, hush: "air",
+      { room: "office", secs: 3.0, fov: 50, gone: "chime", shake: 1.3, lux: 0.66, hush: "air",
         from: [1.20, 1.46, -0.70], to: [0.98, 1.16, -0.35],
         look: [1.90, 2.20, -2.50], look2: [1.90, 0.36, -1.95],
         sfx: [["scare", 0.55]],
@@ -976,7 +976,7 @@ const NS = {
          the owl in the log the way you would log a delivery is worse
          than anything he could be given to feel. */
       { room: "office", secs: 3.8, fov: 44, lux: 0.44,
-        from: [-1.62, 1.48, 0.06], to: [-1.72, 1.47, -0.06], look: [-2.85, 1.36, -0.90],
+        from: [-2.15, 1.48, -0.21], to: [-2.10, 1.47, -0.29], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "Sixteen minutes past five. That was the owl. He went upwards, which is the only direction he ever went." } },
 
       /* AND THE ROOM NONE OF THIS IS HAPPENING IN.
@@ -1001,7 +1001,7 @@ const NS = {
          for them any more. This is the moment the four stop being
          guards and start being the doors. */
       { room: "office", secs: 4.0, fov: 66, shake: 1.2, doors: { left: 0, right: 0 },
-        from: [-0.10, 1.40, 1.10], to: [-0.60, 1.48, 0.70], look: [-2.90, 1.35, -0.90],
+        from: [-0.10, 1.40, 1.10], to: [-0.24, 1.48, 0.96], look: [-2.90, 1.35, -0.90],
         swarm: ["office", 22, 1.8, -4.6, 0.46, "x+"], advance: 1,
         sfx: [["shutter", 0.8], ["knock", 0.7]],
         line: { nar: 1, t: "Both shutters go back up. They are not doors any more. They are two gaps with a toy standing in each of them." } },
@@ -1024,7 +1024,7 @@ const NS = {
          the only thing she does under her own power between midnight
          and the hole in the floor, and it was happening off screen. */
       { room: "office", secs: 3.4, fov: 52, shake: 0.95, lux: 0.5,
-        from: [0.40, 1.52, 0.98], to: [-0.38, 1.47, 0.56], look: [-1.60, 1.18, -0.70],
+        from: [0.40, 1.52, 0.98], to: [-0.09, 1.47, 0.65], look: [-1.60, 1.18, -0.70],
         oui: [-1.60, 0, -0.70, 0, 0.9],
         swarm: ["office", 20, 1.7, 5.0, 0.48, "x-"],
         sfx: [["step", 0.55, -0.25]],
@@ -1053,12 +1053,12 @@ const NS = {
          to be played with, watching somebody do the thing they were
          made for, once, before the end. */
       { room: "office", secs: 2.8, fov: 54, lux: 0.5, hush: "box",
-        from: [1.05, 1.48, 0.62], to: [0.86, 1.46, 0.70], look: [2.85, 1.10, -0.90],
+        from: [1.05, 1.48, 0.42], to: [0.86, 1.46, 0.50], look: [2.85, 1.10, -0.90],
         swarm: ["office", 22, 1.8, 3.6, 0.46, "x-"],
         line: { who: "ret", many: 1, t: "Do that again." } },
 
       { room: "office", secs: 4.2, fov: 46, lux: 0.22,
-        from: [-0.85, 1.52, 0.34], to: [-1.20, 1.47, 0.02], look: [-2.55, 1.22, -1.55],
+        from: [-0.04, 1.52, 0.45], to: [-1.35, 1.47, -0.80], look: [-2.55, 1.22, -1.55],
         oui: [-2.55, 0, -1.55, 0, 0.55],
         sfx: [["falseBang", 0.7]],
         line: { nar: 1, t: "From the corner behind the cabinet she hears every part of it and sees none of it, which turns out not to be the mercy it was meant to be." } },
@@ -1087,7 +1087,7 @@ const NS = {
 
       /* --- THE WEST DOOR, AND THE LENGTH OF THE ROOM --------------- */
       { room: "office", secs: 3.4, fov: 44, cue: "siege", shake: 0.9,
-        from: [-1.45, 1.49, 0.14], to: [-1.64, 1.47, -0.06], look: [-2.85, 1.36, -0.90],
+        from: [-2.14, 1.49, -0.23], to: [-2.05, 1.47, -0.36], look: [-2.85, 1.36, -0.90],
         swarm: ["office", 22, 1.8, -3.8, 0.46, "x+"], advance: 1,
         /* the room she has defended for six nights starts coming apart
            around her while the soldier is still holding the doorway */
@@ -1101,7 +1101,14 @@ const NS = {
         smoke:  [[-2.9, 1.2, -1.4, 3, 1.2]],
         line: { who: "cogsworth", t: "Eleven seconds. I will take it." } },
       { room: "office", secs: 5.0, fov: 62, gone: "cogsworth", shake: 1.4, hush: "tick",
-        from: [-1.90, 1.50, 0.90], to: [1.60, 1.45, 0.70], look: [0, 0.95, -1.30],
+        /* IT IS THE PATH, NOT THE ENDS.
+
+           This sweeps three and a half metres across the room and both
+           ends of it are clear of the one standing by her chair, and it
+           still goes through his head somewhere in the middle: he is at
+           z 0.30 and the sweep was at z 0.40. It runs in front of him
+           now, between him and the doorways. */
+        from: [-2.09, 1.55, -0.31], to: [1.60, 1.50, -0.28], look: [0, 0.95, -1.30],
         swarm: ["office", 22, 1.8, 3.0, 0.46, "x-"], advance: 1.8,
         sfx: [["falseBang", 0.9], ["step", 0.9, -0.4], ["step", 0.9, 0.4]],
         line: { nar: 1, t: "He leaves the west door and walks the length of the room to hers, because hers is empty now and somebody has to be standing in it. He gets there. He does not stop for anything on the way, and that is the last time this shop hears anybody in it keeping time." } },
@@ -1119,6 +1126,10 @@ const NS = {
          through on this beat -- it was aimed west out of habit, at the
          door the soldier has just left, and the crowd saying the only
          thing it has ever wanted to say played over an empty wall */
+      { room: "office", secs: 3.6, fov: 42, lux: 0.44,
+        from: [0.92, 1.60, 2.18], to: [0.76, 1.58, 2.02], look: [-1.15, 1.52, 0.30],
+        line: { who: "jax", t: "He said eleven seconds. He was never late for anything in his life and he was not late for that." } },
+
       { room: "office", secs: 3.2, fov: 58, shake: 1.1, lux: 0.3,
         from: [1.30, 1.46, 0.70], to: [1.08, 1.44, 0.54], look: [2.88, 1.22, -0.90],
         swarm: ["office", 24, 1.85, 2.4, 0.44, "x-"], advance: 1,
@@ -1144,10 +1155,6 @@ const NS = {
 
       /* he said eleven seconds and took them, and the one left standing
          says the only thing there is to say about a clock */
-      { room: "office", secs: 3.6, fov: 42, lux: 0.44,
-        from: [0.92, 1.60, 2.18], to: [0.76, 1.58, 2.02], look: [-1.15, 1.52, 0.30],
-        line: { who: "jax", t: "He said eleven seconds. He was never late for anything in his life and he was not late for that." } },
-
       { room: "office", secs: 3.8, fov0: 36, fov1: 30, lux: 0.42, clear: 1,
         from: [-1.45, 1.87, 1.50], to: [-1.95, 1.86, 1.50], look: [-3.15, 1.85, 1.50] },
 
@@ -1226,14 +1233,14 @@ const NS = {
 
       /* --- the one he made in an afternoon ------------------------- */
       { room: "office", secs: 3.6, fov: 44, lux: 0.4,
-        from: [-0.50, 1.48, 2.18], to: [-0.56, 1.45, 2.02], look: [-1.15, 1.52, 0.30],
+        from: [0.90, 1.60, 1.98], to: [0.76, 1.58, 1.82], look: [-1.15, 1.52, 0.30],
         put: { jax: "f4" },
         /* and something alight on her side of the room, so the last one
            of them standing has a face for the rest of the film */
         fire: [[-0.35, 0.82, 0.55, 4, 0.85]],
         line: { nar: 1, t: "Which leaves the one he made in an afternoon." } },
       { room: "office", secs: 2.6, fov: 40,
-        from: [-0.56, 1.45, 2.02], to: [-0.62, 1.43, 1.90], look: [-1.15, 1.52, 0.30],
+        from: [0.76, 1.58, 1.82], to: [0.64, 1.56, 1.68], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "Right." } },
       /* TWO SHOTS, BECAUSE IT IS TWO SENTENCES.
 
@@ -1282,7 +1289,7 @@ const NS = {
 
       /* --- what the winding was, said from above her --------------- */
       { room: "office", secs: 4.4, fov0: 44, fov1: 40, cue: "alone", lux: 0.26,
-        from: [-1.74, 0.30, 1.44], to: [-1.72, 0.27, 1.38], look: [-1.14, 1.46, 0.30],
+        from: [-1.76, 0.34, 1.46], to: [-1.72, 0.27, 1.38], look: [-1.14, 1.46, 0.30],
         line: { who: "jax", t: "There is a key in the back of each of us. You have been turning them all week." } },
       { room: "office", secs: 3.4, fov0: 40, fov1: 37,
         from: [-1.72, 0.27, 1.38], to: [-1.70, 0.24, 1.34], look: [-1.14, 1.50, 0.30],
@@ -1291,7 +1298,7 @@ const NS = {
         from: [-1.70, 0.24, 1.34], to: [-1.68, 0.22, 1.31], look: [-1.14, 1.54, 0.30],
         line: { who: "jax", t: "You were charging us." } },
       { room: "office", secs: 4.6, fov0: 33, fov1: 38,
-        from: [-1.68, 0.22, 1.31], to: [-1.66, 0.21, 1.29], look: [-1.14, 1.56, 0.30],
+        from: [-1.68, 0.22, 1.31], to: [-1.66, 0.21, 1.30], look: [-1.14, 1.56, 0.30],
         line: { who: "jax", t: "He said you never once asked him for a key. He thought about that a great deal, lately." } },
 
       /* THE THING HE BUILT INTO ALL FOUR OF THEM.
@@ -1300,7 +1307,7 @@ const NS = {
          accident, and on her finding out one line before it happens
          rather than afterwards on a card. */
       { room: "office", secs: 5.0, fov0: 38, fov1: 33, lux: 0.16,
-        from: [-1.66, 0.21, 1.29], to: [-1.64, 0.20, 1.26], look: [-1.14, 1.50, 0.30],
+        from: [-1.66, 0.21, 1.30], to: [-1.66, 0.20, 1.30], look: [-1.14, 1.50, 0.30],
         line: { nar: 1, t: "There is one more thing in the back of each of them, next to the key, and he never wrote it down anywhere. A man does not write down the thing he is hoping nobody ever has to use." } },
       /* he is still standing there while he says it. `gone` removes
          somebody at the TOP of the shot it is written on, so putting it
@@ -1327,27 +1334,27 @@ const NS = {
          work at all, and it is exactly what he asked her for in a note
          six nights ago without ever saying why. */
       { room: "office", secs: 4.2, fov: 40, lux: 0.24, cue: "charge",
-        from: [-1.64, 0.24, 1.30], to: [-1.59, 0.31, 1.25], look: [-1.16, 1.28, 0.30],
+        from: [-1.66, 0.20, 1.30], to: [-1.62, 0.31, 1.32], look: [-1.16, 1.28, 0.30],
         sfx: [["wind", 0.85]],
         line: { nar: 1, t: "He is slowing down. She can hear him doing it. So she reaches up out of the hole in her own floor, and she finds the key in his back, and she winds him one last time." } },
       /* off-screen on purpose: the camera is on the thing running
          down, not on the woman with her hand in its back, and his
          answer is written to be the answer to this */
       { room: "office", secs: 2.8, fov0: 42, fov1: 37, lux: 0.24,
-        from: [-1.59, 0.30, 1.34], to: [-1.62, 0.28, 1.18], look: [-1.16, 1.32, 0.30],
+        from: [-1.62, 0.31, 1.32], to: [-1.68, 0.28, 1.29], look: [-1.16, 1.32, 0.30],
         line: { who: "ouissy", off: 1, t: "Tell me when to stop." } },
 
       { room: "office", secs: 3.6, fov: 38, lux: 0.24,
-        from: [-1.59, 0.31, 1.25], to: [-1.62, 0.26, 1.28], look: [-1.16, 1.42, 0.30],
+        from: [-1.68, 0.28, 1.29], to: [-1.63, 0.26, 1.31], look: [-1.16, 1.42, 0.30],
         sfx: [["tuneWhole", 0.5]],
         line: { who: "jax", t: "Thank you. That is the last one. That is enough." } },
       /* the only shot in the chapter where one of them looks at her,
          and it was too dark to see either of them do it */
       { room: "office", secs: 4.2, fov0: 38, fov1: 34, lux: 0.5, cue: "alone",
-        from: [-1.64, 0.22, 1.28], to: [-1.63, 0.21, 1.27], look: [-1.16, 1.48, 0.30],
+        from: [-1.63, 0.26, 1.31], to: [-1.65, 0.21, 1.30], look: [-1.16, 1.48, 0.30],
         line: { nar: 1, t: "None of them has looked at her all night. He looks at her." } },
       { room: "office", secs: 3.6, fov0: 34, fov1: 31, lux: 0.2,
-        from: [-1.63, 0.21, 1.27], to: [-1.62, 0.20, 1.25], look: [-1.16, 1.46, 0.30],
+        from: [-1.65, 0.21, 1.30], to: [-1.65, 0.20, 1.30], look: [-1.16, 1.46, 0.30],
         line: { who: "jax", t: "Put your hands over your ears, Ouissy." } },
 
       /* TWO WORDS THAT REBUILD THE WHOLE FILM.
@@ -1371,14 +1378,14 @@ const NS = {
         line: { who: "boss", t: "Wind me." } },
 
       { room: "office", secs: 2.4, fov0: 35, fov1: 31, lux: 0.2,
-        from: [-1.52, 0.27, 1.32], to: [-1.58, 0.24, 1.18], look: [-1.16, 1.46, 0.30],
+        from: [-1.53, 0.27, 1.35], to: [-1.64, 0.24, 1.31], look: [-1.16, 1.46, 0.30],
         line: { who: "ouissy", off: 1, t: "Jax." } },
 
       /* --- the thing that is not a line ---------------------------- */
       /* whatever is left of the office is burning by now, and the shots
          after the blast are lit by it rather than by the ceiling */
       { room: "office", secs: 3.6, fov: 44, lux: 0.16, shake: 0.9,
-        from: [-1.62, 0.24, 1.28], to: [-1.58, 0.28, 1.22], look: [-2.30, 1.18, -0.30],
+        from: [-1.64, 0.24, 1.31], to: [-1.62, 0.28, 1.31], look: [-2.30, 1.18, -0.30],
         boss: ["office", -2.30, -0.30, 1.9],
         sfx: [["postSettle", 0.6]],
         line: { nar: 1, t: "The first thing he ever built is halfway across the room with its hand out." } },
@@ -1389,21 +1396,34 @@ const NS = {
          act of the last one of them has to be shutting her in, and the
          last sight she gets of any of them has to be that. */
       { room: "office", secs: 4.2, fov: 46, lux: 0.12,
-        from: [-1.58, 0.28, 1.22], to: [-1.55, 0.22, 1.18], look: [-1.18, 1.20, 0.30],
+        from: [-1.62, 0.28, 1.31], to: [-1.61, 0.22, 1.32], look: [-1.18, 1.20, 0.30],
         sfx: [["doorClose", 0.7], ["hatch", 0.5]],
         line: { nar: 1, t: "The last thing she sees of any of them is a jack-in-the-box putting the floor back over her head, carefully, with both hands, the way you close a door on somebody who is asleep." } },
-      { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08, gone: "jax", hush: "lead",
-        from: [-1.66, 0.20, 1.28], to: [-1.70, 0.25, 1.38], look: [-1.14, 1.40, 0.30] },
+      /* AND THE THING HE BLEW UP GOES WITH HIM.
+
+         `gone: "jax"` has always been on this shot, because the whole
+         point of it is that he is the one who does not leave a room
+         and this is him leaving one. But the first one he ever sold
+         was still standing in the office for the two shots after the
+         detonation -- through "and then it is quiet in a way the shop
+         has not been all week", which it is difficult to be while
+         three metres of soldier is still upright in the corner. It
+         asked to be wound eight seconds ago and Jax answered it. */
+      { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08,
+        gone: "jax", bossGone: 1, hush: "lead",
+        from: [-1.61, 0.22, 1.32], to: [-1.70, 0.25, 1.38], look: [-1.14, 1.40, 0.30] },
 
       /* --- AND WHAT IS LEFT OF THE ROOM ----------------------------
          Five seconds of nothing moving. It is the longest gap between
          two lines in the chapter and it is doing the most work in it. */
       { room: "office", secs: 5.6, fov: 56, lux: 0.06, clear: 1, cue: "after",
-        from: [-1.60, 0.30, 1.40], to: [-1.20, 0.80, 1.80], look: [-0.30, 1.60, -0.60] },
+        from: [-1.92, 0.25, 1.34], to: [-1.72, 0.84, 1.86], look: [-0.30, 1.60, -0.60] },
 
       /* --- six o'clock --------------------------------------------- */
-      { room: "office", secs: 5.4, fov: 58, cue: "dawn", dawn: 1, up: 1, lux: 1,
-        from: [-1.70, 0.34, 1.46], to: [0, 1.62, 2.20], look: [0, 1.10, -2.4],
+      /* the line IS the emptiness: everything that was in this room is
+         either gone or under the floor */
+      { room: "office", secs: 5.4, fov: 58, cue: "dawn", dawn: 1, up: 1, lux: 1, bare: 1,
+        from: [-2.20, 0.38, 1.30], to: [-1.55, 1.75, 2.22], look: [0, 1.10, -2.4],
         line: { nar: 1, t: "And then it is quiet in a way the shop has not been all week." } },
       /* whatever was alight is out by six. She opens the shutters on a
          wrecked shop, not a burning one -- the ending has her running
@@ -7250,6 +7270,47 @@ function returnersClear() {
 
    `advance` is signed: negative drives them back, which is what it
    looks like when one of his gets to a doorway first. */
+/* NOTHING WALKS INTO THE LENS.
+
+   Four hundred of them are placed in staggered ranks across a doorway
+   and then advanced toward her, and the camera is inside the same
+   small office moving on its own scripted path. Sooner or later one of
+   them arrives exactly where the lens is -- which does not read as a
+   toy standing close, it reads as an unexplained coloured shape over
+   the middle of the frame. Measured off the rendered film, four shots
+   had something inside twenty centimetres of the camera and one had a
+   cream cube dead centre at seventeen.
+
+   So the crowd keeps out of a small bubble around the lens. Anything
+   that gets inside it is pushed straight out sideways, over as many
+   frames as it takes, which at a walking pace is invisible: they are a
+   mass, they have no marks to hit, and one of them stepping a foot to
+   its left is exactly what a crowd does when there is something in the
+   way. The thing in the way happens to be a camera. */
+const RET_BUBBLE = 0.62;
+const _rbw = new T.Vector3(), _rbd = new T.Vector3();
+function returnersKeepOut() {
+  if (!view || !RET.live) return;
+  const list = RET.pool.slice(0, RET.live);
+  if (retBoss && retBoss.visible) list.push(retBoss);
+  for (let i = 0; i < list.length; i++) {
+    const g = list[i];
+    if (!g.visible) continue;
+    g.getWorldPosition(_rbw);
+    /* judged at chest height, because that is the part that ends up in
+       front of a lens at eye level */
+    _rbw.y += 0.55;
+    _rbd.subVectors(_rbw, view.position);
+    const d = _rbd.length();
+    if (d > RET_BUBBLE || d < 0.0001) continue;
+    _rbd.y = 0;
+    if (_rbd.lengthSq() < 0.0001) _rbd.set(1, 0, 0);
+    _rbd.normalize().multiplyScalar((RET_BUBBLE - d) * 1.15);
+    g.position.x += _rbd.x;
+    g.position.z += _rbd.z;
+  }
+}
+
 function returnersStep(dt, t, advance) {
   const list = RET.pool.slice(0, RET.live);
   if (retBoss && retBoss.visible) list.push(retBoss);
@@ -12390,6 +12451,7 @@ function finaleBoom() {
 function finaleStep(dt) {
   wreckStep(dt);
   fxStep(dt, G.t);
+  returnersKeepOut();
   if (!FIN.on) return;
   FIN.t += dt;
   /* the lights walk to where the shot wants them rather than snapping,
@@ -17531,6 +17593,135 @@ const testHooks = {
     kept: Object.keys(foundAll()),
     why: FIND_WHY,
   }),
+  /* HOW CLOSE IS THE NEAREST THING IN SHOT.
+
+     Anything within about half a metre of a lens is not a foreground
+     object, it is a shape: out of any context, too big to read, and
+     lit by whatever happens to be behind the camera. The office is
+     full of props at desk height and the film flies a camera around it
+     at desk height, so this was always going to happen -- and it did,
+     over the line about the first of them reaching the west doorway,
+     where a fan on her own desk sat 47cm off the lens and read as an
+     enormous eye watching the scene.
+
+     Nine rays through the frame, and the nearest thing any of them
+     meets. */
+  lensClear: () => {
+    if (!view) return null;
+    if (!testHooks.__ray3) testHooks.__ray3 = new T.Raycaster();
+    const rc = testHooks.__ray3;
+    /* A WALL IS NOT A BLOB.
+
+       The first cut of this took the nearest thing any ray met, and
+       the nearest thing a camera twenty-two centimetres off the
+       floorboards meets, pointing down, is the floorboards. Nine shots
+       came back "too close" and most of them were the room itself --
+       which is not what this is for. A camera near a wall is framing;
+       a camera near a fan is a shape.
+
+       So a hit only counts if it is a PROP: the same size test the
+       wrecking uses, because it is the same question. Under two and a
+       half metres on its longest side and not spanning the floor plan
+       means somebody put it there. */
+    const box = new T.Box3(), sz = new T.Vector3();
+    const isProp = (o) => {
+      /* the mesh itself, not whatever group it is filed under: walking
+         up the tree lands on the room, which is never a prop and made
+         every hit pass. A wall panel is metres across on its own; a
+         fan blade is not. */
+      box.setFromObject(o); box.getSize(sz);
+      const big = Math.max(sz.x, sz.y, sz.z);
+      return big > 0.05 && big < 2.4 && Math.max(sz.x, sz.z) < 3.0;
+    };
+    /* AND THE ANSWER IS A FRACTION OF THE FRAME, NOT A DISTANCE.
+
+       Chasing the nearest prop turned into moving fifty camera marks
+       around a six-metre room, each move pushing the lens into
+       something else, because the office is small and full of the
+       things he made and a camera at head height in it is always near
+       SOMETHING. Near is not the fault. A sliver of a filing cabinet
+       down one edge at thirty centimetres is depth; the same cabinet
+       across the middle of the frame at thirty centimetres is a
+       coloured shape with no edges in it and the audience is looking
+       at that instead of at the scene.
+
+       So: nine rays, and what matters is how many of them a close
+       prop is standing in front of. One is foreground. A third of the
+       frame is a blob. */
+    let min = 99, blocked = 0, n = 0;
+    for (let ix = -1; ix <= 1; ix++) {
+      for (let iy = -1; iy <= 1; iy++) {
+        n++;
+        rc.setFromCamera({ x: ix * 0.82, y: iy * 0.82 }, view);
+        const hits = rc.intersectObject(scene, true);
+        for (let h = 0; h < hits.length && h < 6; h++) {
+          if (!isProp(hits[h].object)) continue;
+          if (hits[h].distance < 0.5) blocked++;
+          if (hits[h].distance < min) min = hits[h].distance;
+          break;
+        }
+      }
+    }
+    return { near: min === 99 ? null : +min.toFixed(2), frac: +(blocked / n).toFixed(2) };
+  },
+  /* WHAT IS THE THING AT THAT POINT IN THE PICTURE.
+
+     A ray out through a point on the screen, naming the first thing it
+     hits and how far away it is -- for when a frame has something
+     large and unexplained in the corner of it and no amount of reading
+     the shot list will say what. */
+  whatIsAt: (nx, ny) => {
+    if (!view) return null;
+    if (!testHooks.__ray2) testHooks.__ray2 = new T.Raycaster();
+    const rc = testHooks.__ray2;
+    rc.setFromCamera({ x: nx, y: ny }, view);
+    const hits = rc.intersectObject(scene, true);
+    const out = [];
+    const box = new T.Box3(), sz = new T.Vector3();
+    for (let i = 0; i < hits.length && out.length < 4; i++) {
+      const h = hits[i];
+      box.setFromObject(h.object); box.getSize(sz);
+      let o = h.object, path = [];
+      while (o && path.length < 5) { path.push(o.name || o.type); o = o.parent; }
+      const wp = new T.Vector3(); h.object.getWorldPosition(wp);
+      const rec = rooms[FIN.room];
+      const ox = rec ? rec.index * SPACING : 0;
+      out.push({ d: +h.distance.toFixed(2),
+                 at: [+(wp.x - ox).toFixed(2), +wp.y.toFixed(2), +wp.z.toFixed(2)],
+                 cam: [+(view.position.x - ox).toFixed(2), +view.position.y.toFixed(2),
+                       +view.position.z.toFixed(2)],
+                 size: [+sz.x.toFixed(2), +sz.y.toFixed(2), +sz.z.toFixed(2)],
+                 mat: (h.object.material && h.object.material.color
+                        ? '#' + h.object.material.color.getHexString() : ''),
+                 path: path.join(" < ") });
+    }
+    return out;
+  },
+  /* EVERYTHING PARKED AGAINST THE LENS.
+
+     The occlusion ray only guards the speaker, so a shot with
+     narration over it can have anything at all standing in the front
+     of frame -- which is how an owl ended up filling a quarter of the
+     picture, one eye and no explanation, over the line about the first
+     of them reaching the west doorway. */
+  nearCam: (within) => {
+    const out = [];
+    const p = new T.Vector3();
+    const look = (g, name) => {
+      if (!g || !g.visible) return;
+      g.updateMatrixWorld(true);
+      p.setFromMatrixPosition(g.matrixWorld);
+      const d = view.position.distanceTo(p);
+      if (d <= (within || 2)) out.push({ what: name, d: +d.toFixed(2),
+        at: [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)] });
+    };
+    CAST.forEach((c) => look(cast[c.id] && cast[c.id].group, c.id));
+    SOLD.forEach((c) => look(cast[c.id] && cast[c.id].group, c.id));
+    look(ouissy, "ouissy");
+    look(retBoss, "boss");
+    for (let i = 0; i < RET.live; i++) look(RET.pool[i], "returner" + i);
+    return out.sort((a, b) => a.d - b.d);
+  },
   /* fire, sparks and smoke, driven by hand so a picture can be taken */
   fx: (kind, room, x, y, z, n, size) => {
     if (kind === "fire") fxFire(room, x, y, z, n, { size: size });
@@ -17924,15 +18115,28 @@ const testHooks = {
           grp = retBoss && retBoss.visible ? retBoss : null;
           eyeY = 1.9; tallY = 2.5;
         } else if (w === "ret") {
-          /* the crowd has no face, so the check is whether the nearest
-             of them to the lens is in the picture */
+          /* THE CROWD HAS NO FACE, SO THE QUESTION IS WHETHER THE MASS
+             IS IN THE PICTURE.
+
+             This used to take whichever of them was nearest the lens,
+             which is the worst possible choice: the nearest one is the
+             one most likely to be past the edge of frame or behind the
+             camera entirely, and once they were being kept out of the
+             lens it was reliably neither on screen nor the point. It
+             takes the one closest to the middle of the frame instead --
+             if the crowd is in shot at all, one of them is. */
           let best = null, bd = 1e9;
+          const pp = new T.Vector3();
           for (let i = 0; i < RET.live; i++) {
             const g = RET.pool[i];
             if (!g || !g.visible) continue;
-            const d = view.position.distanceTo(
-              new T.Vector3().setFromMatrixPosition(g.matrixWorld));
-            if (d < bd) { bd = d; best = g; }
+            g.updateMatrixWorld(true);
+            pp.setFromMatrixPosition(g.matrixWorld);
+            pp.y += 0.8;
+            pp.project(view);
+            if (pp.z > 1) continue;
+            const off = pp.x * pp.x + pp.y * pp.y;
+            if (off < bd) { bd = off; best = g; }
           }
           grp = best; eyeY = 0.8; tallY = 1.0;
         }
@@ -17990,8 +18194,15 @@ const testHooks = {
         }
         return { who: w, blocked: block, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2),
                  tall: +Math.abs(top.y - foot.y).toFixed(2),
-                 away: +view.position.distanceTo(
-                   new T.Vector3().setFromMatrixPosition(ch.group.matrixWorld)).toFixed(2) };
+                 /* TO THE EYES, NOT TO THE FEET.
+
+                    This measured from the lens to the group origin,
+                    which sits on the floor -- so a camera a metre and
+                    a half from a toy's shoes, and seventeen
+                    centimetres from its face, reported a metre and a
+                    half and passed a check whose entire purpose is to
+                    stop the lens being inside somebody's head. */
+                 away: +view.position.distanceTo(eye).toFixed(2) };
       })(),
       line: s.line ? (s.line.t || "").slice(0, 60) : "",
     };
