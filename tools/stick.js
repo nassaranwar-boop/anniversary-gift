@@ -18,6 +18,10 @@
 
      node tools/stick.js
 */
+/* A KART ON SCREEN NO LONGER MEANS A RACE IS RUNNING. The menus have a
+   backdrop behind them now -- a road with karts on it -- so `racers` is
+   never empty between races. What says a race has started is a kart that
+   is HERS, which is what every wait below asks for. */
 const { chromium } = require("playwright-core");
 let pass = 0, fail = 0;
 const ok = (n, c, note) => { c ? pass++ : fail++;
@@ -51,7 +55,7 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
   await click('[data-track="0"]');
   await click('[data-next="tracks"]');
   await p.waitForFunction(() => {
-    try { const d = window.__RACE_DEBUG(); return d && d.racers && d.racers.length; }
+    try { const d = window.__RACE_DEBUG(); return d && d.racers && d.racers.some((r) => r.isPlayer); }
     catch (e) { return false; }
   }, { timeout: 60000, polling: 250 }).catch(() => {});
   await p.waitForTimeout(1500);

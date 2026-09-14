@@ -33,7 +33,7 @@ const fonts = require("./_fontroute");
   await click('[data-next="chars"]');
   await click('[data-track="0"]');
   await click('[data-next="tracks"]');
-  await p.waitForFunction(() => { try { return window.__RACE_DEBUG().racers.length; } catch (e) { return false; } },
+  await p.waitForFunction(() => { try { return window.__RACE_DEBUG().racers.some((r) => r.isPlayer); } catch (e) { return false; } },
                           { timeout: 60000, polling: 250 }).catch(() => {});
   await p.evaluate(() => {
     const d = window.__RACE_DEBUG();
@@ -46,6 +46,6 @@ const fonts = require("./_fontroute");
               " menu:", await p.evaluate(() => document.querySelector(".rc-stage").dataset.menu));
   const stage = await p.$(".rc-stage");
   const box = await stage.boundingBox();
-  await p.screenshot({ path: "/tmp/claude-0/results.png", clip: box, animations: "disabled" });
+  await p.screenshot({ path: "/tmp/claude-0/results.png", clip: box, timeout: 90000 });
   await b.close();
 })();

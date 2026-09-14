@@ -25,7 +25,7 @@ const { chromium } = require("playwright-core");
   const which = +(process.argv[2] || 0);
   await click('[data-go="single"]'); await click('[data-char="0"]'); await click('[data-next="chars"]');
   await click('[data-track="' + which + '"]'); await click('[data-next="tracks"]');
-  await p.waitForFunction(() => { try { const d = window.__RACE_DEBUG(); return d && d.racers && d.racers.length; }
+  await p.waitForFunction(() => { try { const d = window.__RACE_DEBUG(); return d && d.racers && d.racers.some((r) => r.isPlayer); }
     catch (e) { return false; } }, { timeout: 60000, polling: 250 }).catch(() => {});
   await p.waitForTimeout(1200);
 

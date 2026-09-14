@@ -1581,6 +1581,51 @@ function bakePano(def) {
     g.fillRect(0, base - 62, PANO_W, 62);
     g.restore();
 
+  } else if (baseId === "lookout") {
+    /* ---- the menu's own horizon ----
+       The default below is the woods one -- white clouds and green pines,
+       drawn for a blue afternoon. Under an evening sky that reads as two
+       pictures stacked, so this place gets a skyline of its own, out of
+       the same three moves: a low sun sitting on the ridge, a glow band
+       in the haze above it, and pines going back in three layers that
+       lose their colour to the sky as they go. */
+    const sunX = PANO_W * 0.27, sunY = base - 16;
+    const glow = g.createRadialGradient(sunX, sunY, 4, sunX, sunY, 96);
+    glow.addColorStop(0, "rgba(255,206,150,.72)");
+    glow.addColorStop(0.45, "rgba(255,150,110,.26)");
+    glow.addColorStop(1, "rgba(255,140,110,0)");
+    g.fillStyle = glow; g.fillRect(0, base - 110, PANO_W, 116);
+    g.fillStyle = "rgba(255,226,178,.95)";
+    g.beginPath(); g.arc(sunX, sunY, 17, 0, TWO_PI); g.fill();
+
+    /* a few long, flat evening clouds, lit underneath */
+    for (let i = 0; i < 11; i++) {
+      const x = rnd() * PANO_W, y = 10 + rnd() * 30;
+      const w = 26 + rnd() * 44, h = 4 + rnd() * 5;
+      g.fillStyle = "rgba(255,168,140,.30)";
+      g.beginPath(); g.ellipse(x, y, w, h, 0, 0, TWO_PI); g.fill();
+      g.fillStyle = "rgba(255,206,164,.22)";
+      g.beginPath(); g.ellipse(x + w * 0.18, y + h * 0.5, w * 0.6, h * 0.55, 0, 0, TWO_PI); g.fill();
+    }
+
+    /* three ridges of pines, each one nearer the colour of the sky */
+    const ridge = ["#5a3f62", "#43304f", "#2b1e38"];
+    for (let layer = 0; layer < 3; layer++) {
+      g.fillStyle = ridge[layer];
+      const yb = base - (2 - layer) * 6;
+      for (let x = -12; x < PANO_W + 12; x += 7 + rnd() * 8) {
+        const h = (10 + layer * 9) + rnd() * (10 + layer * 8);
+        const w = 4 + layer * 1.6;
+        g.beginPath();
+        g.moveTo(x, yb); g.lineTo(x + w, yb - h); g.lineTo(x + w * 2, yb);
+        g.closePath(); g.fill();
+      }
+    }
+    /* and the haze the whole thing stands in */
+    const hz = g.createLinearGradient(0, base - 26, 0, base);
+    hz.addColorStop(0, "rgba(242,161,132,0)");
+    hz.addColorStop(1, "rgba(242,161,132,.34)");
+    g.fillStyle = hz; g.fillRect(0, base - 26, PANO_W, 26);
   } else {
     /* woods: clouds and two ridges of far pines */
     g.fillStyle = "rgba(255,255,255,.62)";
@@ -5595,6 +5640,9 @@ function variantDef(base) {
 }
 
 function buildRace() {
+  /* the menu's fly-round is over; this is the world now */
+  attract = null;
+  attractWorld = "race";
   trackDef = variantDef(TRACKS[trackIdx]);
   Snd.setRain(!!trackDef.wet);
   boltCyc = -1;
@@ -6314,7 +6362,16 @@ function hit(r) {
    15. DRAW
    ========================================================= */
 function draw() {
-  const me = racers.find((r) => r.isPlayer);
+  /* WHOSE SHOULDER THE CAMERA IS OVER.
+
+     Her kart, during a race. Between races there is no race and no kart
+     to follow, so the menu backdrop hands this an EYE instead: a point
+     that walks the course on its own, with an angle and nothing else.
+     Everything below it -- the spring, the lens, the Mode 7 ground, the
+     sky, every billboard -- is the same code drawing the same world. That
+     is the whole idea: the thing behind the menus is not a picture of the
+     game, it is the game. */
+  const me = (attract && attract.eye) || racers.find((r) => r.isPlayer);
   if (!me) return;
 
   /* The camera trails the kart on a spring rather than being welded to
@@ -7730,9 +7787,25 @@ function wireScroll() {
        And it is never tucked inside the panel to make it fit -- that was
        the same fault with a different cause. If there is somehow no room
        beside the panel it stops at the edge of the stage instead. */
-    const gap = Math.max(12, Math.round(ov.width * 0.010));
-    const w   = rail.getBoundingClientRect().width || 6;
-    rail.style.left = Math.min(pr.right - ov.left + gap, ov.width - w - 2) + "px";
+    /* OUT AT THE EDGE OF THE STAGE, NOT LEANING ON THE PANEL.
+
+       Sat against the panel's own edge it was correct and it was also the
+       brightest vertical line on a screen full of horizontal ones, right
+       next to the thing she is reading. Pushed out to the frame it is
+       still obviously this panel's bar -- it is the same height as the
+       panel and nothing else lives out there -- and it is no longer in
+       the way of the words.
+
+       It only goes as far as there is room for: on a stage where the
+       panel runs nearly the full width, "the far edge" and "just past the
+       panel" are the same place, and taking the further of the two means
+       it can never end up ON the panel. */
+    const gap  = Math.max(12, Math.round(ov.width * 0.010));
+    const w    = rail.getBoundingClientRect().width || 6;
+    const edge = Math.max(8, Math.round(ov.width * 0.012));
+    const beside = pr.right - ov.left + gap;
+    const far    = ov.width - w - edge;
+    rail.style.left = Math.min(Math.max(beside, far), ov.width - w - 2) + "px";
 
     const frac = sc.clientHeight / sc.scrollHeight;
     const at   = sc.scrollTop / span;
@@ -8220,10 +8293,16 @@ function renderResults() {
   const podium = podiumOrder.map((k) => {
     const r = sorted[k];
     if (!r) return "";
+    /* THE THREE ON THE PODIUM WERE THE ONLY ONES WITHOUT A TIME.
+       Everybody from fourth down had theirs read out in the table below,
+       and the three who actually won were listed by name alone -- so the
+       one number the winner wants was the one number the screen would not
+       give her. */
     return `<div class="rc-pod rc-pod-${k + 1}">
       <span class="rc-pod-art" data-pod="${CHARS.indexOf(r.def)}"></span>
       <span class="rc-pod-block"><b>${k + 1}</b></span>
       <span class="rc-pod-name">${r.def.name}</span>
+      <span class="rc-pod-time">${fmt(r.finishTime)}</span>
     </div>`;
   }).join("");
 
@@ -8273,14 +8352,23 @@ function renderResults() {
       <p class="rc-sub">${trackDef.name}${mode === "trial" ? " \u00b7 time trial" : ""}</p>
       <div class="rc-podium">${podium}</div>
       <ol class="rc-rest">${rest}</ol>
+      <!-- THE LINE ABOUT THE RACE GOES WITH THE RACE, NOT AFTER THE PHOTO.
+
+           It used to sit below the postcard, which put it exactly where
+           the button bar floats when the panel opens: the one sentence on
+           this screen written to her, half under three buttons. Read here
+           it follows the finishing order, which is what it is about, and
+           what the bar floats over on the way down is the photograph --
+           an image, which looks like a photograph continuing under a bar
+           rather than like a sentence someone forgot to move. -->
+      <p class="rc-msg">${msg}</p>
       <div class="rc-split${isGP ? " rc-split-2" : ""}">
         ${isGP ? gpStandings() : ""}
         <div class="rc-card-shot" id="rc-postcard"></div>
       </div>
-      <p class="rc-msg">${msg}</p>
       ${earnedStrip()}
       <div class="rc-row">
-        <button class="rc-btn rc-btn-s" data-back="title">MENU</button>
+        <button class="rc-btn rc-btn-s" data-back="title">‹ BACK TO MENU</button>
         <button class="rc-btn rc-btn-s" data-card="1">KEEP THE PHOTO</button>
         <button class="rc-btn rc-btn-go" data-next="${more ? "gpnext" : isGP ? "gpend" : "again"}">
           ${more ? "NEXT TRACK ›" : isGP ? "FINISH ›" : "RACE AGAIN ›"}
@@ -8325,7 +8413,7 @@ function renderDuo() {
           where you're losing it.</p>
         ${earnedStrip()}
         <div class="rc-row">
-          <button class="rc-btn rc-btn-s" data-back="title">MENU</button>
+          <button class="rc-btn rc-btn-s" data-back="title">‹ BACK TO MENU</button>
           <button class="rc-btn rc-btn-go" data-duonext="1">${who.name.toUpperCase()}'S TURN ›</button>
         </div>
       </div>`, "rc-ov-panel");
@@ -8356,7 +8444,7 @@ function renderDuo() {
       ${earnedStrip()}
       <div class="rc-card-shot" id="rc-postcard"></div>
       <div class="rc-row">
-        <button class="rc-btn rc-btn-s" data-back="title">MENU</button>
+        <button class="rc-btn rc-btn-s" data-back="title">‹ BACK TO MENU</button>
         <button class="rc-btn rc-btn-s" data-card="1">KEEP THE PHOTO</button>
         <button class="rc-btn rc-btn-go" data-duoagain="1">BEST OF THREE ›</button>
       </div>
@@ -9952,6 +10040,288 @@ function resize() {
   cw = w; ch = h;
 }
 
+/* ================================================================
+   WHAT IS BEHIND A MENU.
+
+   The canvas only renders while she is driving, so between races the
+   stage was empty and every panel sat on a flat wash. The first go at
+   fixing that was a sunset and a grid drawn in CSS, which looked fine
+   and looked like everybody else's: nothing in it had been made for this
+   game, or knew anything about it.
+
+   This is the game. The same course, the same Mode 7 ground, the same
+   pines and cabins and kerbs, the same karts -- a camera let off its
+   lead, walking a lap of the circuit on its own while she reads the
+   menu. Nothing here draws anything; it moves an eye and calls draw().
+
+   Two cases, and the difference matters:
+
+     - on the menus there is no world loaded, so one is built: a course
+       taken in turn from the six, the props placed, the ground baked,
+       and five karts strung out along it at slightly different paces.
+     - on the RESULTS there already is one -- the course she has just
+       raced, with the whole field parked where they finished -- and it
+       is not touched. The eye simply flies over it. Rebuilding under a
+       results panel would pull the field out from under the table it is
+       still reading from.
+
+   Then one grade over the top, because a daylit course under a menu is
+   a bright picture with writing on it. The grade is what makes it the
+   same evening the panels are lit for.
+   ================================================================ */
+let attract = null;           /* { t, eye } -- set only between races */
+let attractWorld = "none";    /* "attract" | "race" | "none" */
+
+/* ================================================================
+   THE LOOKOUT ROAD -- a place that is only ever a backdrop.
+
+   The first version of this flew over one of the six courses, and that
+   was wrong for a reason worth writing down: the courses are the thing
+   she is choosing between. Showing her Cabin Woods before she has picked
+   it spends the surprise on a menu, and a menu that reuses a level is
+   the same cheapness as a menu that reuses a stock sunset.
+
+   So this is a seventh place, built out of exactly the same parts as the
+   six -- the same Mode 7 ground, the same pines and cabins and lamps, the
+   same coral kerb -- and it is not in TRACKS, so she can never race it.
+   Nobody will ever drive this road. It only has to photograph well from
+   any point on it, which is a completely different brief from a racing
+   line: long sweeping curves and no two of the same radius, nothing
+   tight enough to snap the camera round, and the width kept open so
+   there is always road running away into the distance.
+
+   The loop is generated rather than drawn by hand, out of two low
+   harmonics on a circle. Two is the number: one gives an egg, three and
+   up starts folding corners back on themselves. The result wanders
+   enough that no two bends photograph alike and never once bites.
+
+   And it is lit for the hour the menus are lit for -- the sun already
+   down behind the ridge, the road gone violet, the kerb still holding
+   the last of the pink. */
+const MENU_TRACK = (() => {
+  const pts = [];
+  const N = 92;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * TWO_PI;
+    const r = 0.345 + Math.sin(a * 2 + 0.40) * 0.048 + Math.sin(a * 3 - 0.90) * 0.026;
+    pts.push([+(0.5 + Math.cos(a) * r * 1.16).toFixed(4),
+              +(0.5 + Math.sin(a) * r * 0.96).toFixed(4)]);
+  }
+  return {
+    id: "lookout", name: "The Lookout Road", laps: 4,
+    blurb: "",
+    grass: "#4a6b57", grassAlt: "#43604f", shoulder: "#7d6a55",
+    road: "#6f5f68", roadAlt: "#685963",
+    rumbleA: "#ff7f8a", rumbleB: "#ffe9cf",
+    sky: ["#241a44", "#ff9e76"], haze: "#f2a184", accent: "#ffc4a3",
+    /* the sun low and behind the left shoulder, so everything on the
+       road casts a long shadow across it */
+    light: -2.35,
+    /* WEIGHTED FOR A PICTURE, NOT FOR A RACE.
+
+       A course lines its road with things that tell you where you are.
+       A backdrop wants the opposite: mostly quiet, so the few things
+       that are not quiet land. Pines carry it, a couple of lamps give
+       the dark something warm in it, and a cabin every so often gives
+       the eye somewhere to arrive.
+
+       No signposts. A signpost is a white board, and at this hour a
+       white board is the brightest thing in the frame -- forty of them
+       round the lap read as forty flashcards nailed to the trees. They
+       are also the one prop here that is trying to tell her something,
+       and there is nothing on this road to tell. */
+    scenery: ["pine", "pine", "pine", "pine", "pine",
+              "tree", "tree", "tree", "bush", "bush", "bush",
+              "rock", "rock", "lamp", "lamp",
+              "flowerbox", "bench", "cabin", "shed", "plant"],
+    pts,
+  };
+})();
+
+function attractEye() {
+  /* A MENU WANTS A WIDER SHOT THAN A RACE DOES.
+
+     draw() already knows how to give one: it pulls the camera back and
+     opens the lens when the kart is boosting, and it lifts when the kart
+     is in the air. Both of those read off the thing being followed, so
+     the eye simply says yes to both and gets a high, wide, drifting view
+     of the course for nothing -- no second camera, no second code path. */
+  return { t: 0.34,
+           eye: { x: 0, y: 0, angle: 0, boost: 1, air: 0.55, steer: 0, yaw: 0, spin: 0 } };
+}
+
+function buildAttractWorld() {
+  /* a copy, so nothing downstream can write into the definition itself */
+  trackDef = Object.assign({}, MENU_TRACK);
+  buildPath(trackDef);
+  placeProps(trackDef);
+  bakeTrack(trackDef);
+  bakePano(trackDef);
+  placeBoxes();
+  placeObstacles(trackDef);
+  placeCoins(trackDef);
+  shots = []; hazards = []; fx = [];
+  ghost = null; ghostPlay = null; ghostRec = null;
+
+  /* five of them, out on the circuit, at paces close enough to stay in
+     the same shot and different enough that the gaps keep changing */
+  racers = [];
+  for (let i = 0; i < 5; i++) {
+    const r = new Racer(CHARS[(i + 2) % CHARS.length], false, ((i % 2) * 2 - 1) * 20, 6 + i * 8);
+    r.aT = (0.30 + i * 0.019) % 1;
+    r.aSpeed = 0.0455 + (i % 3) * 0.0022;
+    r.aLane = ((i % 2) * 2 - 1) * (14 + (i % 3) * 8);
+    racers.push(r);
+  }
+  camAngle = racers[0].angle; camLag = 0; camFocal = FOCAL; camLift = 0;
+  shake = 0;
+  attract = attractEye();
+  attractWorld = "attract";
+}
+
+/* where the course is at a given fraction of a lap, and which way it
+   points there */
+function attractAt(t) {
+  const n = path.length;
+  const f = ((t % 1) + 1) % 1 * n;
+  const i = Math.floor(f) % n;
+  return { p: path[i], ta: tangentAt(i) };
+}
+
+function stepAttract(dt) {
+  if (!attract || !path.length) return;
+  /* a lap in about twenty seconds -- slow enough to read a menu over,
+     quick enough that the picture is never the same one twice */
+  attract.t = ((attract.t + dt * 0.050) % 1 + 1) % 1;
+  const { p, ta } = attractAt(attract.t);
+  /* and it does not drive down the middle of the road like a tram: a
+     long, lazy weave across the width of it, which is what gives the
+     backdrop its drift */
+  const sway = Math.sin(attract.t * 27.4) * 26;
+  const e = attract.eye;
+  e.x = p.x - Math.sin(ta) * sway;
+  e.y = p.y + Math.cos(ta) * sway;
+  e.angle = ta;
+
+  /* only the karts this built itself are moved. On the results screen
+     the field is where it finished and stays there. */
+  for (const r of racers) {
+    if (r.aT === undefined) continue;
+    r.aT = ((r.aT + dt * r.aSpeed) % 1 + 1) % 1;
+    const q = attractAt(r.aT);
+    const nx = attractAt(r.aT + 0.004);
+    r.x = q.p.x - Math.sin(q.ta) * r.aLane;
+    r.y = q.p.y + Math.cos(q.ta) * r.aLane;
+    let turn = nx.ta - q.ta;
+    while (turn >  Math.PI) turn -= TWO_PI;
+    while (turn < -Math.PI) turn += TWO_PI;
+    r.angle = q.ta;
+    /* lean them into the bends -- a kart that goes round a corner dead
+       straight is a sprite on a rail */
+    r.steer = turn * 2.2;
+    r.yaw = turn * 1.1;
+  }
+}
+
+/* ---- the grade ----
+   The courses are all daylight, and a daylit picture under a menu is a
+   bright thing with writing on it. One multiply down the frame takes it
+   to the evening the panels are already lit for -- violet overhead,
+   warm across the middle, deep at her feet -- and a vignette closes the
+   corners so the type has somewhere to sit. It is the same two moves the
+   book's own photographs get. */
+function gradeAttract(fade) {
+  if (!ctx) return;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = "multiply";
+  /* THE ROAD IS ALREADY LIT FOR THIS HOUR, so the grade is a whisper
+     rather than the thing doing the work -- it was carrying the whole
+     evening when the backdrop was a daylit course, and doing that to a
+     picture already painted at dusk just turned it to mud. */
+  const gr = ctx.createLinearGradient(0, 0, 0, ch);
+  gr.addColorStop(0.00, "#c3aad4");
+  gr.addColorStop(0.46, "#efc6c4");
+  gr.addColorStop(0.74, "#c894a6");
+  gr.addColorStop(1.00, "#8e6a8c");
+  ctx.fillStyle = gr;
+  ctx.fillRect(0, 0, cw, ch);
+  ctx.globalCompositeOperation = "source-over";
+  const v = ctx.createRadialGradient(cw / 2, ch * 0.46, Math.min(cw, ch) * 0.16,
+                                     cw / 2, ch * 0.52, Math.max(cw, ch) * 0.74);
+  v.addColorStop(0, "rgba(12,6,20,0)");
+  v.addColorStop(1, "rgba(10,4,18,.48)");
+  ctx.fillStyle = v;
+  ctx.fillRect(0, 0, cw, ch);
+  /* it was not there a moment ago, and a backdrop that cuts in reads as
+     a glitch rather than as a view */
+  if (fade != null && fade < 1) {
+    ctx.fillStyle = "rgba(10,4,18," + (1 - fade).toFixed(3) + ")";
+    ctx.fillRect(0, 0, cw, ch);
+  }
+}
+
+function menuBackdrop(dt) {
+  /* the results panel is reading from the world that is loaded; leave it
+     exactly where it is and just look at it */
+  const keep = state === "results" || state === "gpboard";
+  if (attractWorld === "failed") return false;
+  if (!keep && attractWorld !== "attract") {
+    /* NOT ON THE FRAME THE MENU APPEARS ON.
+
+       Building this bakes a ground texture and a horizon -- tens of
+       thousands of speckles over a big canvas -- and doing it inline the
+       moment the title came up froze the menu for as long as it took, on
+       the exact frame she is reaching for a button. It is a backdrop; it
+       can be late. So the build is handed to an idle callback and the
+       menu paints black behind itself until it arrives, then fades it up.
+
+       "building" is its own tag so this cannot queue a second one, and a
+       build that throws lands on "failed" and is never tried again --
+       leaving it on "none" meant retrying the bake every frame, which is
+       not a missing backdrop, it is a locked phone. */
+    if (attractWorld !== "building") {
+      attractWorld = "building";
+      const go = () => {
+        /* SHE MAY HAVE PRESSED START WHILE THIS WAS QUEUED.
+
+           An idle callback fires whenever the browser feels like it, and
+           buildAttractWorld replaces racers, the path and the course --
+           so one that arrived a moment after a race had begun would pull
+           the whole race out from under her. buildRace sets the tag to
+           "race"; anything but "building" here means the world is no
+           longer ours to build. */
+        if (attractWorld !== "building") return;
+        try { buildAttractWorld(); }
+        catch (e) {
+          attractWorld = "failed"; attract = null;
+          window.__rcAttractErr = String((e && e.message) || e);
+        }
+      };
+      if (window.requestIdleCallback) window.requestIdleCallback(go, { timeout: 700 });
+      else setTimeout(go, 90);
+    }
+    return false;
+  }
+  if (!path.length || !racers.length) return false;
+  if (!attract) attract = attractEye();
+  stepAttract(dt);
+  /* HALF THE FRAMES, BECAUSE IT IS A MENU.
+
+     This is the whole race renderer running behind a screen nobody is
+     playing, and a phone reading a menu should not be working as hard as
+     a phone taking a corner. At a lap every twenty seconds, thirty a
+     second is indistinguishable from sixty and costs half as much
+     battery. The eye still moves on every frame -- it is only the
+     painting that is halved -- so nothing steps. */
+  attract.acc = (attract.acc || 0) + dt;
+  if (attract.acc < 1 / 31) return true;
+  attract.acc = 0;
+  attract.fade = Math.min(1, (attract.fade || 0) + 0.09);
+  draw();
+  gradeAttract(attract.fade);
+  return true;
+}
+
 function frame(ts) {
   if (!running) return;
   raf = requestAnimationFrame(frame);
@@ -9993,15 +10363,14 @@ function frame(ts) {
     if (racers.length) { draw(); paintHud(); }
     setBackdrop("");
   } else {
-    ctx.clearRect(0, 0, cw, ch);
-    /* nothing is being rendered, so something has to be back there:
-       the night road under the menus, the same road at evening under
-       the results. Pause is not in here on purpose -- the race itself is
-       still being drawn behind that one. */
-    setBackdrop(state === "results" || state === "gpboard" ? "dusk" : "road");
+    /* a lap of the circuit, behind whatever panel is up */
+    if (!menuBackdrop(dt)) ctx.clearRect(0, 0, cw, ch);
+    setBackdrop("scene");
   }
 }
 
+/* the stage says whether there is a picture behind the panel, because the
+   scrim over it is a different weight when there is */
 let backdropNow = null;
 function setBackdrop(kind) {
   if (kind === backdropNow || !el.stage) return;

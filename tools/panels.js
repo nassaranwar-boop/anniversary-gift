@@ -102,7 +102,7 @@ const SCREENS = [
     await p.waitForFunction(() => {
       try {
         const d = window.__RACE_DEBUG();
-        return d && d.racers && d.racers.length > 0;
+        return d && d.racers && d.racers.some((r) => r.isPlayer);
       } catch (e) { return false; }
     }, { timeout: 60000, polling: 250 }).catch(() => {});
     await p.waitForTimeout(1200);

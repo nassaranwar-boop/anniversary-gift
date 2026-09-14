@@ -21,7 +21,7 @@ const fonts = require("./_fontroute");
       .find((x) => x.matches(s)); if (t) t.click(); }, sel); await p.waitForTimeout(650); };
   await click('[data-go="single"]'); await click('[data-char="0"]'); await click('[data-next="chars"]');
   await click('[data-track="0"]'); await click('[data-next="tracks"]');
-  await p.waitForFunction(() => { try { return window.__RACE_DEBUG().racers.length; } catch (e) { return false; } },
+  await p.waitForFunction(() => { try { return window.__RACE_DEBUG().racers.some((r) => r.isPlayer); } catch (e) { return false; } },
                           { timeout: 60000, polling: 250 }).catch(() => {});
   await p.evaluate(() => {
     const d = window.__RACE_DEBUG();
@@ -45,7 +45,7 @@ const fonts = require("./_fontroute");
   await p.waitForTimeout(400);
   const stage = await p.$(".rc-stage");
   const box = await stage.boundingBox();
-  await p.screenshot({ path: "/tmp/claude-0/stick.png", clip: box, animations: "disabled" });
+  await p.screenshot({ path: "/tmp/claude-0/stick.png", clip: box, timeout: 90000 });
   console.log("shot");
   await b.close();
 })();

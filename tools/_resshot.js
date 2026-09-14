@@ -21,7 +21,7 @@ const OUT = "/tmp/claude-0/-home-user-anniversary-gift/6a722488-bd45-5266-a49d-0
       .find((x) => x.matches(q)); if (t) t.click(); }, s); await p.waitForTimeout(650); };
     await click('[data-go="single"]'); await click('[data-char="0"]'); await click('[data-next="chars"]');
     await click('[data-track="0"]'); await click('[data-next="tracks"]');
-    await p.waitForFunction(() => { try { const d = window.__RACE_DEBUG(); return d && d.racers && d.racers.length; }
+    await p.waitForFunction(() => { try { const d = window.__RACE_DEBUG(); return d && d.racers && d.racers.some((r) => r.isPlayer); }
       catch (e) { return false; } }, { timeout: 60000, polling: 250 }).catch(() => {});
     await p.waitForTimeout(1200);
     await p.evaluate(() => {

@@ -17,9 +17,7 @@ const fonts = require("./_fontroute");
   await p.waitForTimeout(9000);
   const stage = await p.$(".rc-stage");
   const box = await stage.boundingBox();
-  /* the backdrop never stops moving, so Playwright waits for a stability
-     that will never come. Freezing the animations is the whole fix. */
-  await p.screenshot({ path: "/tmp/claude-0/menu.png", clip: box, animations: "disabled" });
+  await p.screenshot({ path: "/tmp/claude-0/menu.png", clip: box, timeout: 90000 });
   console.log("menu:", await p.evaluate(() => document.querySelector(".rc-stage").dataset.menu));
   await b.close();
 })();
