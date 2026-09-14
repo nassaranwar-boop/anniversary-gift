@@ -25,7 +25,8 @@ const WHO = (process.argv[3] || 'chime,cogsworth,jax').split(',');
        then hand-crank the dozen frames that are actually looked at */
     const at = await p.evaluate((t) => OuissysNightShift.__night.filmSeek(t), target);
     if (at === false) break;
-    for (let f = 0; f < 12; f++) await p.evaluate(() => OuissysNightShift.__night.filmFrame(0.05, false));
+    const FR = Number(process.env.FRAMES || 12);
+    for (let f = 0; f < FR; f++) await p.evaluate(() => OuissysNightShift.__night.filmFrame(0.05, false));
     {
       const i = target;
       const row = await p.evaluate((who) => {
