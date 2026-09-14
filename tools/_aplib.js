@@ -53,7 +53,16 @@ function driver(page) {
   const D = {};
   D.state = () => p.evaluate(() => window.__apState());
   D.step = async () => (await D.state()).step;
-  D.enter = async (i) => { await p.evaluate(i => window.__apEnter(i), i); await p.waitForTimeout(250); };
+  /* __apEnter RETURNS G, AND G IS THE WHOLE GAME.
+     `evaluate(() => window.__apEnter(i))` hands that return value to
+     Playwright, which serialises it -- every scene, every mesh, every
+     material, every typed array -- back across CDP. That walk is seconds
+     on the two biggest levels on its own, and it leaves the page slow
+     afterwards as well, which is how this harness came to report a
+     twelve-second first frame on streets and gates that the game does not
+     actually have. Nothing here ever wanted the object; swallowing it is
+     the whole fix. */
+  D.enter = async (i) => { await p.evaluate(i => { window.__apEnter(i); }, i); await p.waitForTimeout(250); };
   D.clear = () => p.evaluate(() => window.__apClear());
   /* stand beside a thing the map actually has, rather than at a tile
      somebody wrote down before the map was last redrawn */

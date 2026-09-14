@@ -4489,6 +4489,36 @@
       else Stage.renderer.render(scene, camera);
     },
 
+    /* WHY A PLAIN compile() WARMED THE WRONG SHADER, AND WHAT THIS DOES
+       ABOUT IT.
+
+       A program in three.js is compiled against the thing it will be
+       drawn INTO, and one of the things in its cache key is that target's
+       colour space. Everything this game draws goes through the composer,
+       so every real frame writes into a linear render target — but
+       `renderer.compile()` called on its own compiles against whatever
+       target happens to be bound, and after a frame that is the canvas,
+       which is sRGB. So the warm-up at the top of every level was
+       faithfully building a whole set of programs the game would never
+       use, and the first time a wall she had not yet walked past came
+       into shot, it was compiled for real, in the middle of a step.
+
+       That is the stutter while walking. The keys say it in one line:
+       `srgb -> srgb-linear`, on the first frame after she moves, on every
+       level with more scenery than fits in one shot.
+
+       Binding a composer buffer first costs nothing and makes the warm-up
+       compile the variant that is actually drawn. */
+    compileInto: function (scene, camera) {
+      if (!Stage.renderer || !Stage.renderer.compile) return;
+      var c = Stage.composer;
+      var rt = c && (c.renderTarget1 || c.writeBuffer || c.readBuffer || null);
+      var prev = Stage.renderer.getRenderTarget();
+      if (rt) Stage.renderer.setRenderTarget(rt);
+      try { Stage.renderer.compile(scene, camera); }
+      finally { Stage.renderer.setRenderTarget(prev); }
+    },
+
     /* one knob for how hard this is on the machine it is running on.
        0 is everything, 2 is a phone from a few years ago. */
     setQuality: function (q, scene, camera) {
@@ -9921,7 +9951,17 @@
     G.add(key); G.add(key.target);
     if (def.dark <= 0.45) {
       key.castShadow = true;
-      key.shadow.mapSize.set(1024, 1024);
+      /* The gates are the one level lit by a sun rather than a moon, and
+         the one where this map is drawn at all. A thousand pixels of it
+         is a second full pass over everything within thirteen metres of
+         her, every frame, on a phone that is already carrying the torch's
+         pass as well -- so a handheld gets a quarter of the pixels, the
+         same trade the torch makes, and the follow step below is worked
+         out from whatever size this is rather than from a number written
+         down beside it. */
+      var keySM = ((window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+                   (navigator.maxTouchPoints || 0) > 1) ? 512 : 1024;
+      key.shadow.mapSize.set(keySM, keySM);
       /* A SHADOW MAP OVER THE WHOLE LEVEL IS A SHADOW MAP OVER NOTHING.
 
          This used to cover ninety metres of ground on a thousand pixels,
@@ -9949,7 +9989,7 @@
          of the level. Which is why the gates had a shadow map and
          almost nothing in it. */
       key.shadow.camera.updateProjectionMatrix();
-      key.userData.follow = span * 2 / 1024;
+      key.userData.follow = span * 2 / keySM;
       key.userData.off = { x: key.position.x - key.target.position.x,
                            y: key.position.y - key.target.position.y,
                            z: key.position.z - key.target.position.z };
@@ -9958,10 +9998,28 @@
 
     /* a pool of point lights, moved to whichever lamps are nearest her.
        Eight is plenty — she can only ever see a handful at once. */
+    /* HOW MANY OF THESE ARE SWITCHED ON NEVER CHANGES.
+
+       They used to be shown and hidden as she walked — eight near a lit
+       junction, none in a dark alley. A shader in three.js is compiled
+       against the NUMBER OF LIGHTS it is drawn under, so every count the
+       pool ever reached was another copy of every material in the level.
+       That was not the stutter (the compile below was), and turning this
+       into a fixed count did not on its own remove a millisecond of it —
+       but it takes the whole chapter from 230 compiled programs to 156,
+       because a wall shared between two levels is now one program in both
+       instead of one per lamp count in each.
+
+       Eight everywhere, rather than however many lamps a level happens to
+       have: a per-level number is constant WITHIN a level and still
+       splits a shared material between levels, which measured worse than
+       leaving it alone. A light with nothing to stand at is still on, it
+       just has no brightness in it — a few instructions a pixel, and the
+       steady frame did not move for it on any of the seven levels. */
     world.pool = [];
     for (var pi = 0; pi < 8; pi++) {
       var pl = new THREE.PointLight(0xffffff, 0, 12, 1.8);
-      pl.visible = false;
+      pl.visible = true;
       G.add(pl);
       world.pool.push(pl);
     }
@@ -10944,12 +11002,16 @@
     G.grab = null;
     G.cine = null;
 
+    /* before anything is compiled or warmed, so what gets warmed is what
+       will actually be drawn */
+    applyTorchShadow();
+
     Stage.attach(built.scene, Stage.camera);
     /* Compile every program this scene needs before the first frame is
        asked for. Otherwise the first second of a level is a series of
        long frames as each new material reaches the card, which is exactly
        where a player notices stutter. */
-    try { Stage.renderer.compile(built.scene, Stage.camera); } catch (e) {}
+    try { Stage.compileInto(built.scene, Stage.camera); } catch (e) {}
     Stage.grade({
       gradeCol: (def.grade[0] << 16) | (def.grade[1] << 8) | def.grade[2],
       gradeAmt: def.grade[3],
@@ -11028,7 +11090,7 @@
           if (!o.visible) { hidden.push(o); o.visible = true; }
         });
         try {
-          Stage.renderer.compile(built.scene, Stage.camera);
+          Stage.compileInto(built.scene, Stage.camera);
 
           /* ---- AND THE PICTURES, WHICH ARE THE OTHER HALF ----
 
@@ -11621,8 +11683,10 @@
     live.sort(function (a, b) { return a.d - b.d; });
     for (var k = 0; k < w.pool.length; k++) {
       var pl = w.pool[k], L2 = live[k];
-      if (!L2 || L2.d > 34 * 34) { pl.visible = false; continue; }
-      pl.visible = true;
+      /* `visible` is never touched here — see the pool above. A light
+         with nothing to stand at is turned down to nothing instead, which
+         is the same picture and no recompile. */
+      if (!L2 || L2.d > 34 * 34) { pl.intensity = 0; continue; }
       pl.position.set(L2.x, L2.y, L2.z);
       pl.color.setHex(L2.colour);
       pl.distance = L2.range;
@@ -14162,7 +14226,7 @@
        screen brings them back */
     setTouchUI(false);
     Stage.attach(c.scene, c.camera);
-    try { Stage.renderer.compile(c.scene, c.camera); } catch (e) {}
+    try { Stage.compileInto(c.scene, c.camera); } catch (e) {}
     Stage.grade(c.grade || {});
     /* ---- come up from black ----
        Compiling the programs a new scene needs is only half of what a cut
@@ -16694,6 +16758,39 @@
   }
 
   var perfGood = 0;
+
+  /* ---- the torch's own shadow pass ----
+     Her torch casts, which means the whole scene is drawn a second time
+     every frame from where she is standing. On a machine that is already
+     dropping rungs that is the most expensive thing left, and the one
+     nobody misses in the dark: below the halfway point of the ladder the
+     beam still lights the room, it just stops carving silhouettes out of
+     it. Cheap to turn on again when the frames come back.
+
+     THIS USED TO LIVE INSIDE perfStep, WHICH MEANT IT ONLY EVER RAN WHEN
+     THE LADDER MOVED. A phone starts two rungs down on purpose -- the
+     ladder has already decided this machine is small -- and then builds
+     every level's torch with `castShadow = true` anyway, because no rung
+     had changed since. So the rule said no shadow and the frame drew one,
+     from the moment she arrived until the frames went bad enough to move
+     the ladder, which on the biggest two levels is exactly the arrival
+     everybody was complaining about. It is the same decision; it is just
+     made when the torch is built as well as when the ladder steps. */
+  function applyTorchShadow() {
+    if (!G || !G.player || !G.player.torch) return;
+    var sp = G.player.torch.userData.spot;
+    if (!sp) return;
+    var touch = (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+                (navigator.maxTouchPoints || 0) > 1;
+    var want = Stage.rung < (touch ? 2 : 3);
+    if (sp.castShadow === want) return;
+    sp.castShadow = want;
+    if (!want && sp.shadow && sp.shadow.map) {
+      try { sp.shadow.map.dispose(); } catch (e) {}
+      sp.shadow.map = null;
+    }
+  }
+
   function perfStep(rung, hold) {
     Stage.rung = rung;
     Stage.scale = RUNGS[rung];
@@ -16709,26 +16806,7 @@
     } else {
       Stage.resize(true);
     }
-    /* ---- the torch's own shadow pass ----
-       Her torch casts, which means the whole scene is drawn a second time
-       every frame from where she is standing. On a machine that is
-       already dropping rungs that is the most expensive thing left, and
-       the one nobody misses in the dark: below the halfway point of the
-       ladder the beam still lights the room, it just stops carving
-       silhouettes out of it. Cheap to turn on again when the frames come
-       back. */
-    var touch = (window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
-    var wantShadow = rung < (touch ? 2 : 3);
-    if (G && G.player && G.player.torch) {
-      var sp = G.player.torch.userData.spot;
-      if (sp && sp.castShadow !== wantShadow) {
-        sp.castShadow = wantShadow;
-        if (!wantShadow && sp.shadow && sp.shadow.map) {
-          try { sp.shadow.map.dispose(); } catch (e) {}
-          sp.shadow.map = null;
-        }
-      }
-    }
+    applyTorchShadow();
     perfHold = hold;
     perfGood = 0;
     perfBuf.length = 0;
@@ -16892,12 +16970,32 @@
      34 — TEST HOOKS
      ========================================================= */
   function installHooks() {
+    /* WHAT A HOOK MAY HAND BACK, AND WHY IT MATTERS.
+
+       These all used to return G, which is the whole game: every scene,
+       every mesh, every material, every typed array. A harness that calls
+       one through `page.evaluate` gets that return value serialised back
+       across the debugging protocol, and on the two biggest levels the
+       walk takes seconds -- and leaves the page slower afterwards than it
+       was before, because every hidden class in three.js has just been
+       dragged through a generic reflector. That is not a stall in the
+       game. It only ever looked like one because the instrument was
+       standing in the way of the thing it was measuring: apfreeze read a
+       twelve-second first frame on streets and on the gates, and the game
+       draws that frame in about thirty milliseconds.
+
+       So nothing here hands out the game any more. A caller that genuinely
+       wants it can still reach `Apocalypse.game` in the page. */
+    function brief() {
+      return G ? { level: G.def ? G.def.id : null, index: G.levelIndex == null ? -1 : G.levelIndex,
+                   state: G.state } : null;
+    }
     window.__apEnter = function (i) {
       closeOverlay();
       var defs = LEVELS;
       enterLevel(defs[clamp(i, 0, defs.length - 1)]);
       G.levelIndex = i;
-      return G;
+      return brief();
     };
     window.__apPump = function (dt, times) {
       var n = times || 1;
@@ -16914,13 +17012,13 @@
       G.camRig.snap();
       return true;
     };
-    window.__apCampsite = function () { closeOverlay(); enterSub("campsite"); return G; };
-    window.__apRoadside = function () { closeOverlay(); enterSub("roadside"); return G; };
-    window.__apDrive = function () { playDrive(); return G; };
-    window.__apRide = function (second) { playRide(!!second); return G; };
-    window.__apCampfire = function () { playCampfire(); return G; };
-    window.__apSunrise = function () { playSunrise(); return G; };
-    window.__apRoof = function () { playRooftop(); return G; };
+    window.__apCampsite = function () { closeOverlay(); enterSub("campsite"); return brief(); };
+    window.__apRoadside = function () { closeOverlay(); enterSub("roadside"); return brief(); };
+    window.__apDrive = function () { playDrive(); return brief(); };
+    window.__apRide = function (second) { playRide(!!second); return brief(); };
+    window.__apCampfire = function () { playCampfire(); return brief(); };
+    window.__apSunrise = function () { playSunrise(); return brief(); };
+    window.__apRoof = function () { playRooftop(); return brief(); };
     /* a whole press, down and up: without the release the use-latch
        that stops the broadcast looping would block the next one for
        ever, because nothing here ever lets go of a key */
