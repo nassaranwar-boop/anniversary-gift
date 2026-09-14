@@ -823,6 +823,40 @@ const NS = {
         swarm: ["office", 18, 1.65, -5.2, 0.49, "x+"], advance: 0.6,
         line: { who: "ret", many: 1, t: "Somebody in there is winding something. We can hear it from the hall." } },
 
+      /* --- AND ONE OF THEM TRIES TALKING FIRST ---------------------
+
+         Four hundred things come up the hall and the four of them
+         fight: that is an action scene, and an action scene is what
+         you write when nobody in it wants anything. They want the same
+         thing. The soldier is the oldest of the four and the one who
+         keeps time, so he is the one who tries, and what he offers
+         them is not a threat and not a trick -- it is exactly what
+         they came for, on a date.
+
+         It fails on the only ground it could fail on. He is asking
+         four hundred toys that have been in cupboards for eleven years
+         to wait until Thursday, and "later" is the word that put them
+         in the cupboards. He knows it the moment he hears it back, he
+         says so, and he does not move anyway.
+
+         Which turns "Ouissy. Shut it" -- a line that has been in this
+         film since the first version -- from a soldier being brave
+         into a soldier who has just run out of things to say. Not one
+         word of it changed. */
+      { room: "office", secs: 5.4, fov: 50, shake: 0.8, lux: 0.34,
+        from: [-1.20, 1.50, 0.62], to: [-1.42, 1.48, 0.36], look: [-2.88, 1.30, -0.90],
+        swarm: ["office", 18, 1.68, -5.0, 0.49, "x+"],
+        line: { who: "cogsworth", t: "There is. There is a woman in this room and she has wound all four of us every night this week. Come back at nine on Thursday morning and she will wind every one of you, one at a time, and I will hold this door open myself." } },
+
+      { room: "office", secs: 3.4, fov: 56, shake: 1.0, lux: 0.3,
+        from: [-1.42, 1.48, 0.36], to: [-1.58, 1.46, 0.20], look: [-2.92, 1.22, -0.90],
+        swarm: ["office", 20, 1.72, -4.7, 0.48, "x+"], advance: 0.8,
+        line: { who: "ret", many: 1, t: "Thursday. People have been saying Thursday to us for eleven years." } },
+
+      { room: "office", secs: 3.2, fov: 46, lux: 0.3,
+        from: [-1.30, 1.50, 0.30], to: [-1.38, 1.49, 0.20], look: [-2.60, 1.38, -0.90],
+        line: { who: "cogsworth", t: "Yes. I know. I am sorry." } },
+
       { room: "office", secs: 3.0, fov: 62, shake: 1.2,
         from: [-1.25, 1.52, 0.50], to: [-1.48, 1.49, 0.22], look: [-2.85, 1.34, -0.90],
         swarm: ["office", 20, 1.7, -4.9, 0.48, "x+"], advance: -1.4,
@@ -902,6 +936,21 @@ const NS = {
         swarm: ["office", 20, 1.7, 5.2, 0.48, "x-"], advance: 1,
         sfx: [["postDrag", 0.8]],
         line: { who: "marabelle", t: "Ouissy. The corner behind the cabinet. Go now, and do not look at this." } },
+
+      /* AND THEN SHE IS SEEN GOING.
+
+         Being told to hide and then simply BEING hidden in the next
+         shot is the difference between a film and a slideshow with a
+         script. The camera goes with her across her own office while
+         the east door is being leaned on behind her, because this is
+         the only thing she does under her own power between midnight
+         and the hole in the floor, and it was happening off screen. */
+      { room: "office", secs: 3.4, fov: 52, shake: 0.95, lux: 0.5,
+        from: [0.40, 1.52, 0.98], to: [-0.38, 1.47, 0.56], look: [-1.60, 1.18, -0.70],
+        oui: [-1.60, 0, -0.70, 0, 0.9],
+        swarm: ["office", 20, 1.7, 5.0, 0.48, "x-"],
+        sfx: [["step", 0.55, -0.25]],
+        line: { nar: 1, t: "She goes. Six nights of sitting still in that chair being the thing that gets defended, and the first time one of them asks her to move, she moves." } },
       { room: "office", secs: 4.4, fov: 46, lux: 0.52, cue: "charge",
         from: [1.48, 1.40, 0.26], to: [1.66, 1.38, 0.06], look: [2.85, 1.10, -0.90],
         swarm: ["office", 20, 1.7, 4.6, 0.48, "x-"], advance: -1.6,
