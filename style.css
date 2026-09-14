@@ -6898,12 +6898,20 @@ img{-webkit-user-drag:none; user-select:none;}
     radial-gradient(ellipse at 50% 24%, rgba(255,95,149,.20), transparent 62%),
     linear-gradient(180deg, rgba(26,18,38,.94), rgba(16,10,26,.97));
 }
+/* OFF THE PLANET'S SIDE OF THE FRAME.
+
+   Centred, this ellipse sat three quarters of the way across the planet
+   and put seventy-six per cent black over the one bright thing in the
+   picture. It is pulled towards the menu column instead, which is where
+   it is needed: the type sits on the right of centre, the world is on the
+   left, and space is dark enough that the left side needs almost nothing
+   from it. */
 .rc-stage[data-menu="scene"] .rc-overlay.on::before{
   background:
-    radial-gradient(46% 88% at 50% 52%,
-      rgba(14,7,24,.90) 0%, rgba(14,7,24,.84) 50%,
-      rgba(14,7,24,.44) 82%, rgba(14,7,24,.10) 100%),
-    linear-gradient(180deg, rgba(20,10,30,.30), rgba(10,5,18,.40));
+    radial-gradient(40% 92% at 60% 52%,
+      rgba(14,7,24,.86) 0%, rgba(14,7,24,.78) 52%,
+      rgba(14,7,24,.34) 84%, rgba(14,7,24,.04) 100%),
+    linear-gradient(180deg, rgba(20,10,30,.22), rgba(10,5,18,.30));
 }
 
 /* the title card */

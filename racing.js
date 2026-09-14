@@ -1581,51 +1581,6 @@ function bakePano(def) {
     g.fillRect(0, base - 62, PANO_W, 62);
     g.restore();
 
-  } else if (baseId === "lookout") {
-    /* ---- the menu's own horizon ----
-       The default below is the woods one -- white clouds and green pines,
-       drawn for a blue afternoon. Under an evening sky that reads as two
-       pictures stacked, so this place gets a skyline of its own, out of
-       the same three moves: a low sun sitting on the ridge, a glow band
-       in the haze above it, and pines going back in three layers that
-       lose their colour to the sky as they go. */
-    const sunX = PANO_W * 0.27, sunY = base - 16;
-    const glow = g.createRadialGradient(sunX, sunY, 4, sunX, sunY, 96);
-    glow.addColorStop(0, "rgba(255,206,150,.72)");
-    glow.addColorStop(0.45, "rgba(255,150,110,.26)");
-    glow.addColorStop(1, "rgba(255,140,110,0)");
-    g.fillStyle = glow; g.fillRect(0, base - 110, PANO_W, 116);
-    g.fillStyle = "rgba(255,226,178,.95)";
-    g.beginPath(); g.arc(sunX, sunY, 17, 0, TWO_PI); g.fill();
-
-    /* a few long, flat evening clouds, lit underneath */
-    for (let i = 0; i < 11; i++) {
-      const x = rnd() * PANO_W, y = 10 + rnd() * 30;
-      const w = 26 + rnd() * 44, h = 4 + rnd() * 5;
-      g.fillStyle = "rgba(255,168,140,.30)";
-      g.beginPath(); g.ellipse(x, y, w, h, 0, 0, TWO_PI); g.fill();
-      g.fillStyle = "rgba(255,206,164,.22)";
-      g.beginPath(); g.ellipse(x + w * 0.18, y + h * 0.5, w * 0.6, h * 0.55, 0, 0, TWO_PI); g.fill();
-    }
-
-    /* three ridges of pines, each one nearer the colour of the sky */
-    const ridge = ["#5a3f62", "#43304f", "#2b1e38"];
-    for (let layer = 0; layer < 3; layer++) {
-      g.fillStyle = ridge[layer];
-      const yb = base - (2 - layer) * 6;
-      for (let x = -12; x < PANO_W + 12; x += 7 + rnd() * 8) {
-        const h = (10 + layer * 9) + rnd() * (10 + layer * 8);
-        const w = 4 + layer * 1.6;
-        g.beginPath();
-        g.moveTo(x, yb); g.lineTo(x + w, yb - h); g.lineTo(x + w * 2, yb);
-        g.closePath(); g.fill();
-      }
-    }
-    /* and the haze the whole thing stands in */
-    const hz = g.createLinearGradient(0, base - 26, 0, base);
-    hz.addColorStop(0, "rgba(242,161,132,0)");
-    hz.addColorStop(1, "rgba(242,161,132,.34)");
-    g.fillStyle = hz; g.fillRect(0, base - 26, PANO_W, 26);
   } else {
     /* woods: clouds and two ridges of far pines */
     g.fillStyle = "rgba(255,255,255,.62)";
@@ -5640,9 +5595,6 @@ function variantDef(base) {
 }
 
 function buildRace() {
-  /* the menu's fly-round is over; this is the world now */
-  attract = null;
-  attractWorld = "race";
   trackDef = variantDef(TRACKS[trackIdx]);
   Snd.setRain(!!trackDef.wet);
   boltCyc = -1;
@@ -6362,16 +6314,7 @@ function hit(r) {
    15. DRAW
    ========================================================= */
 function draw() {
-  /* WHOSE SHOULDER THE CAMERA IS OVER.
-
-     Her kart, during a race. Between races there is no race and no kart
-     to follow, so the menu backdrop hands this an EYE instead: a point
-     that walks the course on its own, with an angle and nothing else.
-     Everything below it -- the spring, the lens, the Mode 7 ground, the
-     sky, every billboard -- is the same code drawing the same world. That
-     is the whole idea: the thing behind the menus is not a picture of the
-     game, it is the game. */
-  const me = (attract && attract.eye) || racers.find((r) => r.isPlayer);
+  const me = racers.find((r) => r.isPlayer);
   if (!me) return;
 
   /* The camera trails the kart on a spring rather than being welded to
@@ -10041,285 +9984,1077 @@ function resize() {
 }
 
 /* ================================================================
-   WHAT IS BEHIND A MENU.
+   WHAT IS BEHIND A MENU: THE WHOLE WORLD, FROM ORBIT.
 
-   The canvas only renders while she is driving, so between races the
-   stage was empty and every panel sat on a flat wash. The first go at
-   fixing that was a sunset and a grid drawn in CSS, which looked fine
-   and looked like everybody else's: nothing in it had been made for this
-   game, or knew anything about it.
+   Two earlier attempts and both were wrong in the same way. A sunset and
+   a grid drawn in CSS was a stock image. Flying the game's own renderer
+   over a course was better but it was still a screenshot -- and worse, it
+   was a screenshot of a level she had not chosen yet.
 
-   This is the game. The same course, the same Mode 7 ground, the same
-   pines and cabins and kerbs, the same karts -- a camera let off its
-   lead, walking a lap of the circuit on its own while she reads the
-   menu. Nothing here draws anything; it moves an eye and calls draw().
+   A menu is not a place in the game. It is the place you look at the game
+   FROM. So: a planet, turning slowly, with all six courses on it as six
+   countries in their own colours -- the greens of Cabin Woods, the grey
+   streets of Hometown, the roofs, the ward -- and the two of them out in
+   orbit around it in their karts, going nowhere in particular, together.
+   Everything she is about to choose between is on that ball, and none of
+   it is given away.
 
-   Two cases, and the difference matters:
+   None of this is Mode 7 and none of it builds a world: it is a starfield,
+   a sphere, two sprites the game already has, and about a millisecond. It
+   replaces a backdrop that had to bake a ground texture before it could
+   show anything.
 
-     - on the menus there is no world loaded, so one is built: a course
-       taken in turn from the six, the props placed, the ground baked,
-       and five karts strung out along it at slightly different paces.
-     - on the RESULTS there already is one -- the course she has just
-       raced, with the whole field parked where they finished -- and it
-       is not touched. The eye simply flies over it. Rebuilding under a
-       results panel would pull the field out from under the table it is
-       still reading from.
+   What is out there, back to front:
 
-   Then one grade over the top, because a daylit course under a menu is
-   a bright picture with writing on it. The grade is what makes it the
-   same evening the panels are lit for.
+     the deep    a wash of nebula in the game's own coral and violet
+     stars       three depths, twinkling on their own clocks
+     dust        slow motes crossing the frame, for parallax
+     the ring    a tilted orbit ring, its far half drawn behind the planet
+     the planet  six countries, a day/night terminator, an atmosphere
+     the moon    a little one, going round, with a checkered cap
+     the karts   Ouissy and Anwar, one in front and one behind, banking
+                 as they come round, each on a thruster trail
+     hearts      drifting the way hearts do in this game
+     a comet     now and then, because a sky with nothing crossing it is
+                 a wallpaper
    ================================================================ */
-let attract = null;           /* { t, eye } -- set only between races */
-let attractWorld = "none";    /* "attract" | "race" | "none" */
+let space = null;
 
-/* ================================================================
-   THE LOOKOUT ROAD -- a place that is only ever a backdrop.
-
-   The first version of this flew over one of the six courses, and that
-   was wrong for a reason worth writing down: the courses are the thing
-   she is choosing between. Showing her Cabin Woods before she has picked
-   it spends the surprise on a menu, and a menu that reuses a level is
-   the same cheapness as a menu that reuses a stock sunset.
-
-   So this is a seventh place, built out of exactly the same parts as the
-   six -- the same Mode 7 ground, the same pines and cabins and lamps, the
-   same coral kerb -- and it is not in TRACKS, so she can never race it.
-   Nobody will ever drive this road. It only has to photograph well from
-   any point on it, which is a completely different brief from a racing
-   line: long sweeping curves and no two of the same radius, nothing
-   tight enough to snap the camera round, and the width kept open so
-   there is always road running away into the distance.
-
-   The loop is generated rather than drawn by hand, out of two low
-   harmonics on a circle. Two is the number: one gives an egg, three and
-   up starts folding corners back on themselves. The result wanders
-   enough that no two bends photograph alike and never once bites.
-
-   And it is lit for the hour the menus are lit for -- the sun already
-   down behind the ridge, the road gone violet, the kerb still holding
-   the last of the pink. */
-const MENU_TRACK = (() => {
-  const pts = [];
-  const N = 92;
-  for (let i = 0; i < N; i++) {
-    const a = (i / N) * TWO_PI;
-    const r = 0.345 + Math.sin(a * 2 + 0.40) * 0.048 + Math.sin(a * 3 - 0.90) * 0.026;
-    pts.push([+(0.5 + Math.cos(a) * r * 1.16).toFixed(4),
-              +(0.5 + Math.sin(a) * r * 0.96).toFixed(4)]);
+function initSpace() {
+  const rnd = mulberry(20260914);
+  const stars = [];
+  for (let i = 0; i < 190; i++) {
+    const d = rnd();
+    stars.push({
+      x: rnd(), y: rnd(),
+      /* the nearer ones are bigger, brighter and drift faster */
+      d: 0.3 + d * 0.7,
+      r: 0.5 + d * 1.7,
+      t: rnd() * TWO_PI,
+      sp: 0.5 + rnd() * 2.2,
+      col: rnd() < 0.16 ? (rnd() < 0.5 ? "#ffc4a3" : "#7ec8e3") : "#fff8e8",
+    });
   }
+  const dust = [];
+  for (let i = 0; i < 22; i++)
+    dust.push({ x: rnd(), y: rnd(), r: 0.8 + rnd() * 1.8, sp: 0.006 + rnd() * 0.016 });
+  const hearts = [];
+  for (let i = 0; i < 8; i++)
+    hearts.push({ x: rnd(), y: rnd(), t: rnd() * TWO_PI,
+                  sp: 0.18 + rnd() * 0.26, sc: 0.55 + rnd() * 0.8 });
+
+  /* ================= THE SIX COUNTRIES =================
+
+     Not six patches of colour. Six ISLANDS, each one the actual shape of
+     its circuit.
+
+     Every course in this game is a closed loop of points in `pts` -- the
+     same list the race is driven on. Wrapped round the sphere and stroked
+     four times over, that loop becomes a place: a wide stroke for the
+     coastline, a narrower one inside it for the land, a narrower one
+     again for the tarmac, and a dashed line down the middle of that for
+     the kerb. So the island is track-shaped, because it IS the track, and
+     when the planet turns, Cabin Woods comes round with its own bends in
+     it.
+
+     The relief -- pines, houses, ward blocks, towers, jetty posts, lamps
+     -- is then placed ALONG that loop rather than scattered, because
+     things line the road; they do not grow in the sea. Each one is set a
+     little off the verge, on alternating sides, with its own shadow
+     thrown away from the sun.
+
+     What makes this affordable is that none of it is per-pixel: it is one
+     path, projected point by point, stroked a handful of times. */
+  const regions = TRACKS.map((t, i) => {
+    /* WHICH COLOUR A COURSE IS, SEEN FROM ORBIT.
+
+       Not its grass. Two of the six are green; the others are a hospital
+       ward (pale grey-blue), a rooftop (dark violet), a pier (grey-green)
+       and a lane at night (almost black) -- measured off the canvas,
+       120,132,126 and 43,62,50, side by side and indistinguishable. A
+       course's ACCENT is the colour it is remembered by, so that is what
+       its country is made of, grounded with a bite of the real ground. */
+    const land  = mix(t.accent, t.grass, 0.40);
+    const coast = mix(t.accent, "#10202f", 0.66);
+    const KIND = ["pine", "house", "block", "tower", "jetty", "lamp"][i];
+
+    /* the loop, centred on its own middle and scaled to the island */
+    const pts = t.pts;
+    let minx = 1, maxx = 0, miny = 1, maxy = 0;
+    for (const q of pts) {
+      if (q[0] < minx) minx = q[0]; if (q[0] > maxx) maxx = q[0];
+      if (q[1] < miny) miny = q[1]; if (q[1] > maxy) maxy = q[1];
+    }
+    const mx = (minx + maxx) / 2, my = (miny + maxy) / 2;
+    const sx = 1 / Math.max(0.001, maxx - minx), sy = 1 / Math.max(0.001, maxy - miny);
+    const sc = Math.min(sx, sy);            /* keep the circuit's own shape */
+    const loop = pts.map((q) => [(q[0] - mx) * sc, (q[1] - my) * sc]);
+
+    return {
+      lon: (i / TRACKS.length) * TWO_PI + 0.35,
+      lat: Math.sin(i * 2.1) * 0.52,
+      span: 0.78,
+      loop, kind: KIND,
+      land, coast,
+      road: mix(t.road, "#1a2634", 0.28),
+      kerb: t.rumbleA || t.accent,
+      lit: mix(t.accent, "#fff8e8", 0.5),
+      dark: mix(t.accent, "#0a1622", 0.74),
+      warm: t.rumbleA || "#ffd166",
+    };
+  });
+
+  space = { t: 0, spin: 0.6, stars, dust, hearts, regions, comet: null, next: 3,
+            seen: {}, moon: null };
+}
+
+/* a point on the sphere, and whether it is on the side facing us */
+function sphere(lon, lat, cx, cy, R, spin) {
+  const l = lon + spin, cl = Math.cos(lat);
   return {
-    id: "lookout", name: "The Lookout Road", laps: 4,
-    blurb: "",
-    grass: "#4a6b57", grassAlt: "#43604f", shoulder: "#7d6a55",
-    road: "#6f5f68", roadAlt: "#685963",
-    rumbleA: "#ff7f8a", rumbleB: "#ffe9cf",
-    sky: ["#241a44", "#ff9e76"], haze: "#f2a184", accent: "#ffc4a3",
-    /* the sun low and behind the left shoulder, so everything on the
-       road casts a long shadow across it */
-    light: -2.35,
-    /* WEIGHTED FOR A PICTURE, NOT FOR A RACE.
-
-       A course lines its road with things that tell you where you are.
-       A backdrop wants the opposite: mostly quiet, so the few things
-       that are not quiet land. Pines carry it, a couple of lamps give
-       the dark something warm in it, and a cabin every so often gives
-       the eye somewhere to arrive.
-
-       No signposts. A signpost is a white board, and at this hour a
-       white board is the brightest thing in the frame -- forty of them
-       round the lap read as forty flashcards nailed to the trees. They
-       are also the one prop here that is trying to tell her something,
-       and there is nothing on this road to tell. */
-    scenery: ["pine", "pine", "pine", "pine", "pine",
-              "tree", "tree", "tree", "bush", "bush", "bush",
-              "rock", "rock", "lamp", "lamp",
-              "flowerbox", "bench", "cabin", "shed", "plant"],
-    pts,
+    x: cx + R * cl * Math.sin(l),
+    y: cy - R * Math.sin(lat),
+    front: cl * Math.cos(l),
   };
-})();
-
-function attractEye() {
-  /* A MENU WANTS A WIDER SHOT THAN A RACE DOES.
-
-     draw() already knows how to give one: it pulls the camera back and
-     opens the lens when the kart is boosting, and it lifts when the kart
-     is in the air. Both of those read off the thing being followed, so
-     the eye simply says yes to both and gets a high, wide, drifting view
-     of the course for nothing -- no second camera, no second code path. */
-  return { t: 0.34,
-           eye: { x: 0, y: 0, angle: 0, boost: 1, air: 0.55, steer: 0, yaw: 0, spin: 0 } };
 }
 
-function buildAttractWorld() {
-  /* a copy, so nothing downstream can write into the definition itself */
-  trackDef = Object.assign({}, MENU_TRACK);
-  buildPath(trackDef);
-  placeProps(trackDef);
-  bakeTrack(trackDef);
-  bakePano(trackDef);
-  placeBoxes();
-  placeObstacles(trackDef);
-  placeCoins(trackDef);
-  shots = []; hazards = []; fx = [];
-  ghost = null; ghostPlay = null; ghostRec = null;
+function drawSpace(dt) {
+  if (!ctx) return false;
+  if (!space) initSpace();
+  const S = space;
+  S.t += dt;
+  /* one turn every eighty seconds or so: fast enough that a country you
+     were watching goes over the edge while she reads the menu, slow
+     enough that it never looks like it is spinning */
+  S.spin += dt * 0.078;
 
-  /* five of them, out on the circuit, at paces close enough to stay in
-     the same shot and different enough that the gaps keep changing */
-  racers = [];
-  for (let i = 0; i < 5; i++) {
-    const r = new Racer(CHARS[(i + 2) % CHARS.length], false, ((i % 2) * 2 - 1) * 20, 6 + i * 8);
-    r.aT = (0.30 + i * 0.019) % 1;
-    r.aSpeed = 0.0455 + (i % 3) * 0.0022;
-    r.aLane = ((i % 2) * 2 - 1) * (14 + (i % 3) * 8);
-    racers.push(r);
-  }
-  camAngle = racers[0].angle; camLag = 0; camFocal = FOCAL; camLift = 0;
-  shake = 0;
-  attract = attractEye();
-  attractWorld = "attract";
-}
-
-/* where the course is at a given fraction of a lap, and which way it
-   points there */
-function attractAt(t) {
-  const n = path.length;
-  const f = ((t % 1) + 1) % 1 * n;
-  const i = Math.floor(f) % n;
-  return { p: path[i], ta: tangentAt(i) };
-}
-
-function stepAttract(dt) {
-  if (!attract || !path.length) return;
-  /* a lap in about twenty seconds -- slow enough to read a menu over,
-     quick enough that the picture is never the same one twice */
-  attract.t = ((attract.t + dt * 0.050) % 1 + 1) % 1;
-  const { p, ta } = attractAt(attract.t);
-  /* and it does not drive down the middle of the road like a tram: a
-     long, lazy weave across the width of it, which is what gives the
-     backdrop its drift */
-  const sway = Math.sin(attract.t * 27.4) * 26;
-  const e = attract.eye;
-  e.x = p.x - Math.sin(ta) * sway;
-  e.y = p.y + Math.cos(ta) * sway;
-  e.angle = ta;
-
-  /* only the karts this built itself are moved. On the results screen
-     the field is where it finished and stays there. */
-  for (const r of racers) {
-    if (r.aT === undefined) continue;
-    r.aT = ((r.aT + dt * r.aSpeed) % 1 + 1) % 1;
-    const q = attractAt(r.aT);
-    const nx = attractAt(r.aT + 0.004);
-    r.x = q.p.x - Math.sin(q.ta) * r.aLane;
-    r.y = q.p.y + Math.cos(q.ta) * r.aLane;
-    let turn = nx.ta - q.ta;
-    while (turn >  Math.PI) turn -= TWO_PI;
-    while (turn < -Math.PI) turn += TWO_PI;
-    r.angle = q.ta;
-    /* lean them into the bends -- a kart that goes round a corner dead
-       straight is a sprite on a rail */
-    r.steer = turn * 2.2;
-    r.yaw = turn * 1.1;
-  }
-}
-
-/* ---- the grade ----
-   The courses are all daylight, and a daylit picture under a menu is a
-   bright thing with writing on it. One multiply down the frame takes it
-   to the evening the panels are already lit for -- violet overhead,
-   warm across the middle, deep at her feet -- and a vignette closes the
-   corners so the type has somewhere to sit. It is the same two moves the
-   book's own photographs get. */
-function gradeAttract(fade) {
-  if (!ctx) return;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalCompositeOperation = "multiply";
-  /* THE ROAD IS ALREADY LIT FOR THIS HOUR, so the grade is a whisper
-     rather than the thing doing the work -- it was carrying the whole
-     evening when the backdrop was a daylit course, and doing that to a
-     picture already painted at dusk just turned it to mud. */
-  const gr = ctx.createLinearGradient(0, 0, 0, ch);
-  gr.addColorStop(0.00, "#c3aad4");
-  gr.addColorStop(0.46, "#efc6c4");
-  gr.addColorStop(0.74, "#c894a6");
-  gr.addColorStop(1.00, "#8e6a8c");
-  ctx.fillStyle = gr;
-  ctx.fillRect(0, 0, cw, ch);
+  ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
-  const v = ctx.createRadialGradient(cw / 2, ch * 0.46, Math.min(cw, ch) * 0.16,
-                                     cw / 2, ch * 0.52, Math.max(cw, ch) * 0.74);
-  v.addColorStop(0, "rgba(12,6,20,0)");
-  v.addColorStop(1, "rgba(10,4,18,.48)");
+  ctx.imageSmoothingEnabled = false;
+
+  /* ---- the deep ---- */
+  const bg = ctx.createLinearGradient(0, 0, 0, ch);
+  bg.addColorStop(0, "#0b0618");
+  bg.addColorStop(0.55, "#150a26");
+  bg.addColorStop(1, "#1d0d24");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, cw, ch);
+  /* two nebulae, in the two colours this whole game is made of */
+  const neb = (x, y, r, col, a) => {
+    const g2 = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g2.addColorStop(0, col.replace("ALPHA", a));
+    g2.addColorStop(0.55, col.replace("ALPHA", (a * 0.35).toFixed(3)));
+    g2.addColorStop(1, col.replace("ALPHA", "0"));
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, cw, ch);
+  };
+  neb(cw * 0.22, ch * 0.30, Math.max(cw, ch) * 0.55, "rgba(255,95,149,ALPHA)", 0.16);
+  neb(cw * 0.82, ch * 0.74, Math.max(cw, ch) * 0.5, "rgba(126,200,227,ALPHA)", 0.10);
+
+  /* ---- stars ---- */
+  for (const st of S.stars) {
+    const tw = 0.55 + 0.45 * Math.sin(S.t * st.sp + st.t);
+    /* the near ones slide, the far ones barely move: parallax in one line */
+    const x = ((st.x + S.t * 0.0045 * st.d) % 1) * cw;
+    ctx.globalAlpha = tw * (0.35 + st.d * 0.65);
+    ctx.fillStyle = st.col;
+    ctx.fillRect(x | 0, (st.y * ch) | 0, Math.max(1, st.r * st.d), Math.max(1, st.r * st.d));
+  }
+  ctx.globalAlpha = 1;
+  for (const m of S.dust) {
+    const x = ((m.x + S.t * m.sp) % 1) * cw;
+    ctx.globalAlpha = 0.16;
+    ctx.fillStyle = "#ffd4b0";
+    ctx.fillRect(x | 0, (m.y * ch) | 0, m.r, m.r);
+  }
+  ctx.globalAlpha = 1;
+
+  /* ---- a comet, now and then ---- */
+  S.next -= dt;
+  if (!S.comet && S.next <= 0) {
+    S.comet = { x: -0.1, y: 0.08 + Math.random() * 0.4, a: 0.42 + Math.random() * 0.2, life: 0 };
+    S.next = 9 + Math.random() * 14;
+  }
+  if (S.comet) {
+    const c = S.comet;
+    c.life += dt;
+    const px = (c.x + c.life * 0.34) * cw, py = (c.y + c.life * 0.34 * Math.tan(c.a) * 0.5) * ch;
+    const tail = ctx.createLinearGradient(px, py, px - 120, py - 52);
+    tail.addColorStop(0, "rgba(255,248,232,.85)");
+    tail.addColorStop(1, "rgba(255,200,180,0)");
+    ctx.strokeStyle = tail; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - 120, py - 52); ctx.stroke();
+    ctx.fillStyle = "#fff8e8";
+    ctx.beginPath(); ctx.arc(px, py, 2.2, 0, TWO_PI); ctx.fill();
+    if (px > cw + 140) S.comet = null;
+  }
+
+  /* ---- where the planet is ---- */
+  const R  = Math.min(cw, ch) * 0.32;
+  /* far enough in from the edge that the orbit below stays on the glass:
+     at a quarter of the way across, the karts spent the left half of
+     every lap sliced in half by the side of the picture */
+  const cx = cw * 0.285, cy = ch * 0.54;
+  const spin = S.spin;
+  /* the light comes from up and to the right, and everything on the ball
+     is shaded from the same direction */
+  const lx = 0.55, ly = -0.5;
+
+  /* ---- the orbit ring, far half ---- */
+  /* the orbit stays close: at half again the radius the karts spent most
+     of the lap off the side of the picture */
+  const ringR = R * 1.18, ringY = R * 0.34;
+  const drawRing = (from, to, alpha) => {
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,196,163," + alpha + ")";
+    ctx.lineWidth = Math.max(1, R * 0.018);
+    ctx.setLineDash([R * 0.10, R * 0.075]);
+    ctx.lineDashOffset = -S.t * 14;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, ringR, ringY, -0.20, from, to);
+    ctx.stroke();
+    ctx.restore();
+  };
+  drawRing(Math.PI, TWO_PI, 0.30);
+
+  /* ---- THE TWO OF THEM ----
+
+     They used to orbit: round the back, out of sight, and one of them was
+     always missing. Both of them being there is the whole point of the
+     picture, so they do not go behind the world at all. They drift across
+     the front of it on the same long path, a little apart and a little
+     out of step, the way two people ride side by side -- and the path is
+     a Lissajous rather than a circle, so it never repeats in a way you
+     can catch and never puts either of them in the same place twice
+     running.
+
+     The moon has the orbit ring to itself, up and behind. Nothing they do
+     can reach it, which is the end of them passing through each other. */
+  /* THE PATH, AND WHY IT IS OVER THERE.
+
+     Flown across the middle of the frame they were drawn correctly and
+     seen by nobody: the scrim that makes the menu readable is eighty-five
+     per cent black through the middle, and two karts went under it every
+     lap. They fly over the WORLD instead -- the left of the picture,
+     where the scrim has fallen away and where there is something behind
+     them worth being in front of.
+
+     And they keep to the lower half of it. The moon runs high and behind;
+     nothing here reaches it, which is the end of the two of them passing
+     through each other. */
+  const flyPos = (a) => ({
+    x: cx + R * (-0.15 + 0.85 * Math.cos(a)),
+    y: cy + R * (0.25 + 0.45 * Math.sin(a * 1.31 + 0.7)),
+  });
+  const flyer = (who, phase, scale) => {
+    const a = S.t * 0.15 + phase;
+    const p0 = flyPos(a), p1 = flyPos(a + 0.05);
+    const def = CHARS[who];
+    /* pointing where they are actually going, not where they started */
+    const head = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+    const ai = ((Math.round(head / TWO_PI * ANGLES) % ANGLES) + ANGLES) % ANGLES;
+    const img = kartFrame(def.id, ai, 0);
+    if (!img) return;
+    const h = R * scale, w = h * (img.width / img.height);
+    /* what the harness watches: both of them have to be ON the glass, and
+       neither of them may ever be where the moon is */
+    S.seen[def.id] = { x: p0.x, y: p0.y, w, h };
+    /* the thruster, trailing back along the path just flown */
+    for (let i = 1; i <= 6; i++) {
+      const q = flyPos(a - i * 0.06);
+      ctx.globalAlpha = (1 - i / 7) * 0.42;
+      ctx.fillStyle = def.accent;
+      ctx.beginPath();
+      ctx.arc(q.x, q.y + h * 0.30, Math.max(1, R * 0.024 * (1 - i / 8)), 0, TWO_PI);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    const gl = ctx.createRadialGradient(p0.x, p0.y, 0, p0.x, p0.y, w * 0.95);
+    gl.addColorStop(0, def.accent + "66");
+    gl.addColorStop(1, def.accent + "00");
+    ctx.fillStyle = gl;
+    ctx.beginPath(); ctx.arc(p0.x, p0.y, w * 0.95, 0, TWO_PI); ctx.fill();
+    ctx.drawImage(img, Math.round(p0.x - w / 2), Math.round(p0.y - h / 2), w, h);
+  };
+
+  /* ---- the atmosphere, outside the edge ---- */
+  const atm = ctx.createRadialGradient(cx, cy, R * 0.94, cx, cy, R * 1.28);
+  atm.addColorStop(0, "rgba(126,200,227,.34)");
+  atm.addColorStop(0.4, "rgba(155,93,229,.16)");
+  atm.addColorStop(1, "rgba(126,200,227,0)");
+  ctx.fillStyle = atm;
+  ctx.beginPath(); ctx.arc(cx, cy, R * 1.28, 0, TWO_PI); ctx.fill();
+
+  /* ---- the planet ---- */
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, TWO_PI); ctx.clip();
+
+  /* the sea it all sits in */
+  const sea = ctx.createRadialGradient(cx + R * lx * 0.5, cy + R * ly * 0.5, R * 0.1, cx, cy, R * 1.05);
+  sea.addColorStop(0, "#5aa6d8");
+  sea.addColorStop(0.55, "#2f74ac");
+  sea.addColorStop(1, "#1b4a76");
+  ctx.fillStyle = sea;
+  ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+
+  /* ---- the six countries, each one the shape of its own circuit ---- */
+  for (const reg of S.regions) {
+    const mid = sphere(reg.lon, reg.lat, cx, cy, R, spin);
+    if (mid.front <= 0.02) continue;
+    /* fade the whole island in as it comes over the edge of the world,
+       rather than have it appear as a hard sliver */
+    const fade = Math.min(1, Math.max(0, (mid.front - 0.02) / 0.26));
+
+    /* project the loop once, and reuse it for every stroke */
+    const P = [];
+    for (const q of reg.loop) {
+      P.push(sphere(reg.lon + q[0] * reg.span,
+                    reg.lat - q[1] * reg.span * 0.80, cx, cy, R, spin));
+    }
+    const ring = (col, w, dash) => {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = Math.max(0.7, w);
+      ctx.lineJoin = "round"; ctx.lineCap = "round";
+      if (dash) { ctx.setLineDash(dash); } else { ctx.setLineDash([]); }
+      ctx.beginPath();
+      let on = false;
+      for (let i = 0; i <= P.length; i++) {
+        const q = P[i % P.length];
+        /* the part of the loop that has gone round the back is not drawn,
+           and the path is broken there rather than cut straight across
+           the island */
+        if (q.front <= 0.02) { on = false; continue; }
+        if (!on) { ctx.moveTo(q.x, q.y); on = true; } else ctx.lineTo(q.x, q.y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
+
+    ctx.globalAlpha = fade;
+    /* coast, land, tarmac, kerb -- four passes over one path, each one
+       narrower than the last, which is the whole trick */
+    ring(reg.coast, R * 0.088);
+    ring(reg.land,  R * 0.066);
+    ring(reg.road,  R * 0.026);
+    ring(reg.kerb,  R * 0.007, [R * 0.028, R * 0.030]);
+
+    /* ---- the start line ---- */
+    const s0 = P[0], s1 = P[2 % P.length];
+    if (s0.front > 0.15) {
+      const ang = Math.atan2(s1.y - s0.y, s1.x - s0.x) + Math.PI / 2;
+      const half = R * 0.016;
+      ctx.save();
+      ctx.translate(s0.x, s0.y); ctx.rotate(ang);
+      for (let c2 = 0; c2 < 4; c2++) {
+        ctx.fillStyle = c2 % 2 ? "#1b1420" : "#fff8e8";
+        ctx.fillRect(-half + c2 * half * 0.5, -R * 0.006, half * 0.5, R * 0.012);
+      }
+      ctx.restore();
+    }
+
+    /* ---- and what lines the road ----
+       Placed along the loop, a little off the verge, alternating sides --
+       because things stand BESIDE a road. Scattered at random they were
+       growing in the sea. */
+    const U = R * 0.026;
+    const step = Math.max(3, (P.length / 13) | 0);
+    let side = 1, mi = 0;
+    for (let i = 0; i < P.length; i += step, side = -side, mi++) {
+      const q2 = P[i], q3 = P[(i + 2) % P.length];
+      if (q2.front <= 0.36) continue;
+      /* off the verge, square to the road */
+      const ax = q3.x - q2.x, ay = q3.y - q2.y;
+      const L = Math.hypot(ax, ay) || 1;
+      const offs = R * 0.052 * side;
+      const x = q2.x + (-ay / L) * offs;
+      const y = q2.y + (ax / L) * offs;
+      const k = U * (0.7 + ((mi * 37) % 7) / 10) * Math.min(1, (q2.front - 0.36) / 0.28 + 0.5);
+      if (k < 0.7) continue;
+
+      ctx.fillStyle = "rgba(8,18,30,.40)";
+      ctx.beginPath();
+      ctx.ellipse(x - lx * k * 0.8, y - ly * k * 0.8, k * 1.2, k * 0.40, 0, 0, TWO_PI);
+      ctx.fill();
+
+      if (reg.kind === "pine") {
+        ctx.fillStyle = reg.dark;
+        ctx.beginPath();
+        ctx.moveTo(x, y - k * 2.6); ctx.lineTo(x + k * 0.9, y + k * 0.3);
+        ctx.lineTo(x - k * 0.9, y + k * 0.3); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = reg.lit;
+        ctx.beginPath();
+        ctx.moveTo(x, y - k * 2.6); ctx.lineTo(x + k * 0.28, y + k * 0.3);
+        ctx.lineTo(x - k * 0.9, y + k * 0.3); ctx.closePath(); ctx.fill();
+      } else if (reg.kind === "jetty") {
+        ctx.fillStyle = reg.dark;
+        ctx.fillRect(x - k * 1.6, y - k * 0.26, k * 3.2, k * 0.52);
+        ctx.fillStyle = reg.lit;
+        ctx.fillRect(x - k * 1.6, y - k * 0.26, k * 3.2, k * 0.2);
+        ctx.fillStyle = "#fff8e8";
+        ctx.beginPath();
+        ctx.moveTo(x + k * 1.7, y - k * 0.45); ctx.lineTo(x + k * 2.8, y - k * 0.45);
+        ctx.lineTo(x + k * 2.45, y + k * 0.3); ctx.lineTo(x + k * 1.95, y + k * 0.3);
+        ctx.closePath(); ctx.fill();
+      } else if (reg.kind === "lamp") {
+        ctx.fillStyle = reg.dark;
+        ctx.fillRect(x - k * 0.15, y - k * 2.2, k * 0.3, k * 2.5);
+        ctx.fillStyle = reg.warm;
+        ctx.beginPath(); ctx.arc(x, y - k * 2.4, k * 0.46, 0, TWO_PI); ctx.fill();
+        ctx.globalAlpha = fade * 0.34;
+        ctx.beginPath(); ctx.arc(x, y - k * 2.4, k * 1.2, 0, TWO_PI); ctx.fill();
+        ctx.globalAlpha = fade;
+      } else {
+        const tall = reg.kind === "tower" ? 3.2 : reg.kind === "block" ? 2.0 : 1.5;
+        const w = k * (reg.kind === "tower" ? 1.0 : 1.45);
+        const h = k * tall;
+        ctx.fillStyle = reg.kind === "block" ? "#e8eef6" : reg.lit;
+        ctx.fillRect(x - w / 2, y - h, w, h);
+        ctx.fillStyle = reg.dark;
+        ctx.globalAlpha = fade * 0.45;
+        ctx.fillRect(x + w * 0.16, y - h, w * 0.34, h);
+        ctx.globalAlpha = fade;
+        if (reg.kind === "house") {
+          ctx.fillStyle = reg.dark;
+          ctx.beginPath();
+          ctx.moveTo(x - w * 0.72, y - h); ctx.lineTo(x, y - h - k * 0.8);
+          ctx.lineTo(x + w * 0.72, y - h); ctx.closePath(); ctx.fill();
+        }
+        ctx.fillStyle = reg.warm;
+        const rows = reg.kind === "tower" ? 4 : reg.kind === "block" ? 2 : 1;
+        for (let r2 = 0; r2 < rows; r2++) {
+          if (((mi * 13 + r2 * 31) % 3) === 0) continue;
+          ctx.fillRect(x - w * 0.2, y - h + k * (0.32 + r2 * (tall - 0.5) / rows),
+                       Math.max(1, w * 0.24), Math.max(1, k * 0.28));
+        }
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  /* DAY AND NIGHT. Without this it is a disc with shapes on it; with it,
+     it is a ball. The lit side is a highlight offset towards the light,
+     the dark side is a wash pulled the other way, and the two of them
+     meet in a soft terminator rather than an edge. */
+  const day = ctx.createRadialGradient(cx + R * lx * 0.55, cy + R * ly * 0.55, R * 0.08,
+                                       cx + R * lx * 0.30, cy + R * ly * 0.30, R * 1.85);
+  day.addColorStop(0, "rgba(255,246,220,.13)");
+  day.addColorStop(0.36, "rgba(255,220,180,.02)");
+  day.addColorStop(0.70, "rgba(12,5,26,.20)");
+  day.addColorStop(1, "rgba(8,3,20,.46)");
+  ctx.fillStyle = day;
+  ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+
+  /* the lit limb: a bright hairline where the atmosphere catches the sun */
+  ctx.globalCompositeOperation = "lighter";
+  const limb = ctx.createRadialGradient(cx, cy, R * 0.86, cx, cy, R);
+  limb.addColorStop(0, "rgba(126,200,227,0)");
+  limb.addColorStop(1, "rgba(190,230,255,.5)");
+  ctx.fillStyle = limb;
+  ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.restore();
+
+  /* the line round the world. Every solid thing in this game has one, and
+     without it the planet dissolves into its own atmosphere instead of
+     being an object sitting in front of it. */
+  ctx.strokeStyle = "rgba(190,232,255,.42)";
+  ctx.lineWidth = Math.max(1, R * 0.012);
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, TWO_PI); ctx.stroke();
+
+  /* ---- the moon ---- */
+  const ma = S.t * 0.13 + 2.1;
+  /* and the moon keeps to the upper right, out of the karts' way */
+  /* THE MOON KEEPS ITS OWN CORNER. High and to the right of the world,
+     on a shallow arc -- the two of them fly low and left, so there is no
+     arrangement of the clock that puts a kart inside it. */
+  const mx = cx + R * 0.72 + Math.cos(ma) * R * 0.86;
+  const my = cy - R * 1.16 + Math.sin(ma) * R * 0.22;
+  const mr = R * 0.115;
+  S.moon = { x: mx, y: my, r: mr, up: Math.sin(ma) > -0.2 };
+  if (S.moon.up) {
+    ctx.fillStyle = "#cfc4d8";
+    ctx.beginPath(); ctx.arc(mx, my, mr, 0, TWO_PI); ctx.fill();
+    /* a checkered cap, because everything in this game has a finish line
+       on it somewhere */
+    ctx.save();
+    ctx.beginPath(); ctx.arc(mx, my, mr, 0, TWO_PI); ctx.clip();
+    const k = mr * 0.46;
+    for (let i = 0; i < 4; i++)
+      for (let j = 0; j < 2; j++) {
+        ctx.fillStyle = (i + j) % 2 ? "#fff8e8" : "#5d5168";
+        ctx.fillRect(mx - mr + i * k, my - mr + j * k, k, k);
+      }
+    const msh = ctx.createRadialGradient(mx + mr * lx * 0.6, my + mr * ly * 0.6, 0, mx, my, mr * 1.2);
+    msh.addColorStop(0, "rgba(255,248,232,.22)");
+    msh.addColorStop(1, "rgba(8,3,16,.72)");
+    ctx.fillStyle = msh; ctx.fillRect(mx - mr, my - mr, mr * 2, mr * 2);
+    ctx.restore();
+  }
+
+  /* ---- the ring's near half, and the two of them in front of it ---- */
+  drawRing(0, Math.PI, 0.42);
+  flyer(0, 0,    0.34);     /* Ouissy */
+  flyer(1, 1.05, 0.32);     /* Anwar, half a length back */
+
+  /* ---- hearts, drifting ---- */
+  for (const h of S.hearts) {
+    const x = ((h.x + S.t * 0.012) % 1) * cw;
+    const y = (h.y * ch) + Math.sin(S.t * h.sp + h.t) * ch * 0.03;
+    const r = Math.max(1.6, Math.min(cw, ch) * 0.007 * h.sc);
+    ctx.globalAlpha = 0.28 + 0.22 * Math.sin(S.t * h.sp * 1.7 + h.t);
+    ctx.fillStyle = "#ff7f8a";
+    ctx.beginPath();
+    ctx.arc(x - r * 0.5, y - r * 0.4, r * 0.62, 0, TWO_PI);
+    ctx.arc(x + r * 0.5, y - r * 0.4, r * 0.62, 0, TWO_PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x - r * 1.08, y - r * 0.2);
+    ctx.lineTo(x, y + r * 1.1);
+    ctx.lineTo(x + r * 1.08, y - r * 0.2);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  /* ---- and the corners close, so the panel has somewhere to sit ---- */
+  const v = ctx.createRadialGradient(cw / 2, ch * 0.5, Math.min(cw, ch) * 0.2,
+                                     cw / 2, ch * 0.5, Math.max(cw, ch) * 0.78);
+  v.addColorStop(0, "rgba(8,3,18,0)");
+  v.addColorStop(1, "rgba(8,3,18,.50)");
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, cw, ch);
-  /* it was not there a moment ago, and a backdrop that cuts in reads as
-     a glitch rather than as a view */
-  if (fade != null && fade < 1) {
-    ctx.fillStyle = "rgba(10,4,18," + (1 - fade).toFixed(3) + ")";
-    ctx.fillRect(0, 0, cw, ch);
+  return true;
+}
+
+/* ================================================================
+   SIX POSTERS, ONE PER COURSE.
+
+   The globe belongs to the menus: it is the whole game, seen from
+   outside, before she has chosen anything. The results screen is the
+   opposite moment -- she has just come back from one particular place --
+   so it gets that place, and only that place.
+
+   These are not screenshots and they are not the track. They are the
+   six courses as POSTERS: the thing you would remember about each of
+   them, drawn flat and graphic in its own palette. Cabin Woods is a
+   forest at night with one lit window in it. Hometown Streets is a row
+   of porch lights. The ward is a corridor of tall windows with the light
+   coming through in bars. The rooftops are a skyline. The pier is a path
+   of light on water. The lane is two walls, a washing line and a lamp.
+
+   Every one is built from the same five moves -- a sky, a light, a far
+   silhouette, a near silhouette, and something drifting -- so they are
+   six of one thing rather than six unrelated pictures, and every one of
+   them takes its colours from the course's own definition, so a change
+   to a track is a change to its poster.
+   ================================================================ */
+const POSTERS = {};
+let posterAcc = 0;
+
+function makePoster(id) {
+  const rnd = mulberry(seedOf(id, 4242));
+  const P = { t: 0, rnd: [], motes: [] };
+  for (let i = 0; i < 220; i++) P.rnd.push(rnd());
+  for (let i = 0; i < 34; i++)
+    P.motes.push({ x: rnd(), y: rnd(), r: 0.6 + rnd() * 1.8,
+                   sp: 0.1 + rnd() * 0.5, t: rnd() * TWO_PI });
+  return P;
+}
+
+/* one ridgeline of trees or roofs, drawn as a run of shapes along a base */
+function posterRidge(g, W, yb, step, col, tall, kind, rnd, off, drift) {
+  g.fillStyle = col;
+  let n = 0;
+  for (let x = -step + ((drift % step) + step) % step; x < W + step; x += step, n++) {
+    const r = rnd[(n + off) % rnd.length];
+    const h = tall * (0.62 + r * 0.76);
+    if (kind === "pine") {
+      g.beginPath();
+      g.moveTo(x, yb - h);
+      g.lineTo(x + step * 0.62, yb);
+      g.lineTo(x - step * 0.62, yb);
+      g.closePath(); g.fill();
+    } else if (kind === "roof") {
+      g.fillRect(x - step * 0.52, yb - h, step * 1.04, h);
+      g.beginPath();
+      g.moveTo(x - step * 0.68, yb - h);
+      g.lineTo(x, yb - h - step * 0.42);
+      g.lineTo(x + step * 0.68, yb - h);
+      g.closePath(); g.fill();
+    } else {
+      g.fillRect(x - step * 0.5, yb - h, step * 1.0, h);
+    }
   }
+}
+
+/* lit windows down the face of whatever was just drawn */
+function posterWindows(g, W, yb, step, col, tall, rnd, off, cols, drift) {
+  g.fillStyle = col;
+  let n = 0;
+  for (let x = -step + ((drift % step) + step) % step; x < W + step; x += step, n++) {
+    const r = rnd[(n + off) % rnd.length];
+    const h = tall * (0.62 + r * 0.76);
+    const rows = Math.max(1, Math.floor(h / (step * 0.62)));
+    for (let c = 0; c < cols; c++)
+      for (let ry = 0; ry < rows; ry++) {
+        if (rnd[(n * 7 + ry * 13 + c * 3 + off) % rnd.length] < 0.45) continue;
+        g.fillRect(x - step * 0.30 + c * step * 0.30,
+                   yb - h + step * 0.26 + ry * step * 0.62,
+                   Math.max(1, step * 0.15), Math.max(1, step * 0.24));
+      }
+  }
+}
+
+function drawPoster(id, dt) {
+  if (!ctx) return false;
+  const P = POSTERS[id] || (POSTERS[id] = makePoster(id));
+  P.t += dt;
+  const t = P.t, R = P.rnd, g = ctx;
+  const W = cw, H = ch;
+  const def = TRACKS.find((x) => x.id === id) || TRACKS[0];
+
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = "source-over";
+  g.imageSmoothingEnabled = false;
+
+  const sky = (a, b, c2) => {
+    const gr = g.createLinearGradient(0, 0, 0, H);
+    gr.addColorStop(0, a); gr.addColorStop(0.58, b); gr.addColorStop(1, c2);
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  };
+  const glow = (x, y, r, col, a) => {
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, col + Math.round(a * 255).toString(16).padStart(2, "0"));
+    gr.addColorStop(1, col + "00");
+    g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+  };
+
+  if (id === "woods") {
+    /* a forest at night, and one window still on */
+    sky("#120a24", "#2c1740", "#5b2c4a");
+    glow(W * 0.20, H * 0.30, H * 0.46, "#ffb07a", 0.20);
+    g.fillStyle = "#fff6d8";
+    g.beginPath(); g.arc(W * 0.20, H * 0.26, H * 0.045, 0, TWO_PI); g.fill();
+    posterRidge(g, W, H * 0.74, H * 0.058, "#2a1c3c", H * 0.22, "pine", R, 3, t * 1.6);
+    posterRidge(g, W, H * 0.86, H * 0.082, "#1a1128", H * 0.32, "pine", R, 41, t * 3.4);
+    /* the cabin */
+    const bx = W * 0.30, by = H * 0.90, bw = H * 0.20, bh = H * 0.15;
+    g.fillStyle = "#0f0a18";
+    g.fillRect(bx - bw / 2, by - bh, bw, bh);
+    g.beginPath();
+    g.moveTo(bx - bw * 0.62, by - bh);
+    g.lineTo(bx, by - bh - H * 0.055);
+    g.lineTo(bx + bw * 0.62, by - bh);
+    g.closePath(); g.fill();
+    glow(bx + bw * 0.16, by - bh * 0.55, H * 0.11, "#ffc46a", 0.55);
+    g.fillStyle = "#ffd98a";
+    g.fillRect(bx + bw * 0.06, by - bh * 0.72, bw * 0.22, bh * 0.34);
+    g.fillStyle = "#100a1a";
+    g.fillRect(0, H * 0.90, W, H * 0.10);
+    /* fireflies */
+    for (const m of P.motes) {
+      const x = ((m.x + t * 0.008 * m.sp) % 1) * W;
+      const y = (0.55 + m.y * 0.4) * H + Math.sin(t * m.sp + m.t) * H * 0.02;
+      g.globalAlpha = 0.25 + 0.4 * Math.sin(t * 1.6 * m.sp + m.t);
+      g.fillStyle = "#ffe08a";
+      g.fillRect(x | 0, y | 0, m.r, m.r);
+    }
+    g.globalAlpha = 1;
+
+  } else if (id === "town") {
+    /* a street of porch lights under a big moon */
+    sky("#151033", "#34204c", "#6a3a52");
+    g.fillStyle = "#fff4dc";
+    g.beginPath(); g.arc(W * 0.76, H * 0.20, H * 0.075, 0, TWO_PI); g.fill();
+    glow(W * 0.76, H * 0.20, H * 0.34, "#ffe6b8", 0.22);
+    posterRidge(g, W, H * 0.70, H * 0.075, "#241738", H * 0.17, "roof", R, 11, t * 1.2);
+    posterRidge(g, W, H * 0.84, H * 0.105, "#150d24", H * 0.26, "roof", R, 63, t * 2.6);
+    posterWindows(g, W, H * 0.84, H * 0.105, "#ffca7a", H * 0.26, R, 63, 2, t * 2.6);
+    /* telephone poles and a wire that sags between them */
+    g.strokeStyle = "#100a18"; g.lineWidth = Math.max(1, H * 0.006);
+    const pd = W * 0.30, sh = ((t * 6) % pd);
+    for (let i = -1; i < 5; i++) {
+      const x = i * pd - sh;
+      g.fillStyle = "#100a18";
+      g.fillRect(x - H * 0.008, H * 0.40, H * 0.016, H * 0.52);
+      g.fillRect(x - H * 0.05, H * 0.44, H * 0.10, H * 0.012);
+      g.beginPath();
+      g.moveTo(x, H * 0.455);
+      g.quadraticCurveTo(x + pd / 2, H * 0.53, x + pd, H * 0.455);
+      g.stroke();
+    }
+    g.fillStyle = "#0d0816"; g.fillRect(0, H * 0.90, W, H * 0.10);
+
+  } else if (id === "ward") {
+    /* SUNLIT HALLS. A corridor with the afternoon coming through one
+       side of it: the windows are only half the picture, the other half
+       is what the light does to the floor. Flat windows on a flat wall
+       was a diagram of a corridor, not a corridor. */
+    const hz = H * 0.40;                       /* the eye line */
+    sky("#f2e6d6", "#dcd0c6", "#c9bdb4");
+    /* the far wall at the end of it */
+    g.fillStyle = "#b7c6d6";
+    g.fillRect(W * 0.40, hz - H * 0.14, W * 0.20, H * 0.30);
+    g.fillStyle = "#d8e6f2";
+    g.fillRect(W * 0.455, hz - H * 0.10, W * 0.09, H * 0.22);
+
+    /* ceiling and floor, both running away to the same point */
+    const vpx = W * 0.50;
+    g.fillStyle = "#cdbfb4";
+    g.beginPath();
+    g.moveTo(0, 0); g.lineTo(W, 0);
+    g.lineTo(W * 0.60, hz - H * 0.14); g.lineTo(W * 0.40, hz - H * 0.14);
+    g.closePath(); g.fill();
+    const flo = g.createLinearGradient(0, hz, 0, H);
+    flo.addColorStop(0, "#b9ada4"); flo.addColorStop(1, "#8e847e");
+    g.fillStyle = flo;
+    g.beginPath();
+    g.moveTo(0, H); g.lineTo(W, H);
+    g.lineTo(W * 0.60, hz + H * 0.16); g.lineTo(W * 0.40, hz + H * 0.16);
+    g.closePath(); g.fill();
+
+    /* the two side walls */
+    const wallL = (x0, x1, yt0, yt1, yb0, yb1, col) => {
+      g.fillStyle = col;
+      g.beginPath();
+      g.moveTo(x0, yt0); g.lineTo(x1, yt1); g.lineTo(x1, yb1); g.lineTo(x0, yb0);
+      g.closePath(); g.fill();
+    };
+    wallL(0, W * 0.40, -H * 0.02, hz - H * 0.14, H * 1.02, hz + H * 0.16, "#8fa6be");
+    wallL(W, W * 0.60, -H * 0.02, hz - H * 0.14, H * 1.02, hz + H * 0.16, "#7d93ab");
+
+    /* the windows down the left wall, in perspective, and the bar of
+       light each one throws across the floor */
+    for (let i = 0; i < 5; i++) {
+      const u0 = i / 5, u1 = (i + 0.62) / 5;
+      const px0 = u0 * W * 0.40, px1 = u1 * W * 0.40;
+      const ty0 = -H * 0.02 + u0 * (hz - H * 0.12), ty1 = -H * 0.02 + u1 * (hz - H * 0.12);
+      const by0 = H * 1.02 - u0 * (H * 0.86 - hz), by1 = H * 1.02 - u1 * (H * 0.86 - hz);
+      /* the window itself */
+      g.fillStyle = "#e6f2ff";
+      g.beginPath();
+      g.moveTo(px0, ty0 + (by0 - ty0) * 0.14);
+      g.lineTo(px1, ty1 + (by1 - ty1) * 0.14);
+      g.lineTo(px1, ty1 + (by1 - ty1) * 0.72);
+      g.lineTo(px0, ty0 + (by0 - ty0) * 0.72);
+      g.closePath(); g.fill();
+      g.fillStyle = "#9fb8cf";
+      g.fillRect(px0, ty0 + (by0 - ty0) * 0.42, Math.max(1, px1 - px0), Math.max(1, H * 0.006));
+      /* and the light on the floor: a parallelogram thrown to the right */
+      g.globalAlpha = 0.22 + 0.05 * Math.sin(t * 0.5 + i);
+      g.fillStyle = "#fff4d8";
+      g.beginPath();
+      g.moveTo(px0, by0 * 0.999);
+      g.lineTo(px1, by1 * 0.999);
+      g.lineTo(px1 + W * 0.26, by1);
+      g.lineTo(px0 + W * 0.30, by0);
+      g.closePath(); g.fill();
+      g.globalAlpha = 1;
+    }
+
+    /* a row of chairs against the right wall, and a plant */
+    for (let i = 0; i < 4; i++) {
+      const u = 0.10 + i * 0.17;
+      const x = W - u * W * 0.36;
+      const sc2 = 1 - u * 0.9;
+      const yb = H * 1.0 - u * (H * 0.86 - hz) * 0.8;
+      const cw2 = W * 0.055 * sc2, chh = H * 0.14 * sc2;
+      g.fillStyle = "#5f7285";
+      g.fillRect(x - cw2, yb - chh, cw2, chh * 0.22);
+      g.fillRect(x - cw2, yb - chh * 0.78, cw2 * 0.22, chh * 0.78);
+      g.fillRect(x - cw2 * 0.25, yb - chh * 0.78, cw2 * 0.22, chh * 0.78);
+      g.fillStyle = "#7ec8e3";
+      g.fillRect(x - cw2, yb - chh - chh * 0.30, cw2 * 0.30, chh * 0.34);
+    }
+    g.fillStyle = "#3f6b4a";
+    g.beginPath();
+    g.ellipse(W * 0.70, H * 0.80, W * 0.028, H * 0.075, 0, 0, TWO_PI); g.fill();
+    g.fillStyle = "#8a6a52";
+    g.fillRect(W * 0.70 - W * 0.016, H * 0.855, W * 0.032, H * 0.055);
+
+    /* dust turning over in the light */
+    for (const m of P.motes) {
+      const x = ((m.x + t * 0.004 * m.sp) % 1) * W;
+      const y = hz + ((m.y + t * 0.01 * m.sp) % 1) * (H - hz);
+      g.globalAlpha = 0.14 + 0.18 * Math.sin(t * m.sp + m.t);
+      g.fillStyle = "#fff8e8";
+      g.fillRect(x | 0, y | 0, m.r, m.r);
+    }
+    g.globalAlpha = 1;
+
+  } else if (id === "roof") {
+    /* a skyline, a water tower and a string of lights */
+    sky("#100a24", "#241541", "#4a2450");
+    for (let i = 0; i < 70; i++) {
+      const x = R[i % R.length] * W, y = R[(i * 3) % R.length] * H * 0.5;
+      g.globalAlpha = 0.3 + 0.6 * Math.abs(Math.sin(t * 0.8 + i));
+      g.fillStyle = "#fff8e8"; g.fillRect(x | 0, y | 0, 1.4, 1.4);
+    }
+    g.globalAlpha = 1;
+    posterRidge(g, W, H * 0.72, H * 0.070, "#1d1236", H * 0.30, "block", R, 7, t * 0.9);
+    posterWindows(g, W, H * 0.72, H * 0.070, "#ffd166", H * 0.30, R, 7, 2, t * 0.9);
+    posterRidge(g, W, H * 0.92, H * 0.098, "#120b22", H * 0.40, "block", R, 77, t * 2.1);
+    posterWindows(g, W, H * 0.92, H * 0.098, "#ffb347", H * 0.40, R, 77, 3, t * 2.1);
+    /* a water tower on the near roofline */
+    const tx = W * 0.22, ty = H * 0.52;
+    g.fillStyle = "#0e0820";
+    g.fillRect(tx - H * 0.055, ty, H * 0.11, H * 0.10);
+    g.beginPath();
+    g.moveTo(tx - H * 0.062, ty); g.lineTo(tx, ty - H * 0.045);
+    g.lineTo(tx + H * 0.062, ty); g.closePath(); g.fill();
+    for (let i = 0; i < 4; i++)
+      g.fillRect(tx - H * 0.05 + i * H * 0.032, ty + H * 0.10, H * 0.010, H * 0.11);
+    /* string lights, swinging */
+    g.strokeStyle = "rgba(255,214,150,.5)"; g.lineWidth = Math.max(1, H * 0.004);
+    g.beginPath();
+    g.moveTo(0, H * 0.30);
+    g.quadraticCurveTo(W * 0.5, H * 0.42 + Math.sin(t * 0.7) * H * 0.012, W, H * 0.27);
+    g.stroke();
+    for (let i = 0; i <= 16; i++) {
+      const u = i / 16;
+      const bx = u * W;
+      const by = (1 - u) * (1 - u) * H * 0.30 + 2 * (1 - u) * u * (H * 0.42 + Math.sin(t * 0.7) * H * 0.012) + u * u * H * 0.27;
+      g.fillStyle = i % 3 === 0 ? "#ff9ec4" : i % 3 === 1 ? "#ffd166" : "#7ec8e3";
+      g.beginPath(); g.arc(bx, by + H * 0.012, H * 0.008, 0, TWO_PI); g.fill();
+    }
+
+  } else if (id === "pier") {
+    /* water, and a path of light across it */
+    sky("#1a1436", "#4a2a50", "#e08a72");
+    g.fillStyle = "#ffdfa8";
+    g.beginPath(); g.arc(W * 0.38, H * 0.55, H * 0.065, 0, TWO_PI); g.fill();
+    glow(W * 0.38, H * 0.55, H * 0.40, "#ffc08a", 0.30);
+    /* the sea */
+    const sea = g.createLinearGradient(0, H * 0.58, 0, H);
+    sea.addColorStop(0, "#4a3560"); sea.addColorStop(1, "#1a1030");
+    g.fillStyle = sea; g.fillRect(0, H * 0.58, W, H * 0.42);
+    /* the reflection: broken bars of light, widening as they come in */
+    for (let i = 0; i < 26; i++) {
+      const u = i / 26;
+      const y = H * (0.60 + u * 0.40);
+      const half = H * (0.02 + u * 0.16);
+      const jitter = Math.sin(t * 1.3 + i * 0.9) * H * 0.012;
+      g.globalAlpha = 0.30 * (1 - u * 0.55);
+      g.fillStyle = "#ffd9a0";
+      g.fillRect(W * 0.38 - half + jitter, y, half * 2, Math.max(1, H * 0.008));
+    }
+    g.globalAlpha = 1;
+    /* mooring posts, near to far */
+    for (let i = 0; i < 5; i++) {
+      const x = W * (0.62 + i * 0.085), h = H * (0.20 - i * 0.028);
+      g.fillStyle = "#170f28";
+      g.fillRect(x, H * 0.98 - h, H * (0.022 - i * 0.003), h);
+      g.fillStyle = "#0f0a1c";
+      g.fillRect(x - H * 0.004, H * 0.98 - h, H * (0.030 - i * 0.003), H * 0.012);
+    }
+    /* the railing along the front */
+    g.fillStyle = "#120c22"; g.fillRect(0, H * 0.955, W, H * 0.012);
+    for (let x = 0; x < W; x += H * 0.09) g.fillRect(x, H * 0.955, H * 0.012, H * 0.045);
+    /* gulls */
+    for (let i = 0; i < 3; i++) {
+      const gx = ((0.2 + i * 0.3 + t * 0.02) % 1.2 - 0.1) * W;
+      const gy = H * (0.20 + i * 0.05) + Math.sin(t * 0.9 + i) * H * 0.015;
+      const sw = H * 0.020 * (1 + Math.sin(t * 3 + i) * 0.3);
+      g.strokeStyle = "rgba(255,248,232,.75)"; g.lineWidth = Math.max(1, H * 0.004);
+      g.beginPath();
+      g.moveTo(gx - sw, gy); g.quadraticCurveTo(gx, gy - sw * 0.7, gx + sw, gy);
+      g.stroke();
+    }
+
+  } else {
+    /* THE LANE. Two walls, a lamp, and everything the lamp reaches.
+
+       The first go at this was a slot of dark with some bunting floating
+       in the middle of it: the walls had no surface, the ground had no
+       light on it, and two thirds of the picture was empty. An alley at
+       night is not dark -- it is one warm light and everything near it.
+
+       The whole thing is built off one vanishing point, so the brick
+       courses, the windows, the ground and the pool of light all run to
+       the same place. */
+    const vx = W * 0.50, vy = H * 0.52;
+    sky("#0d0a1c", "#161028", "#0f0a1a");
+    /* the slot of sky at the top, and the far end of the alley lit */
+    glow(vx, vy + H * 0.02, H * 0.52, "#ffb347", 0.30);
+    g.fillStyle = "#2a1c38";
+    g.fillRect(W * 0.40, vy - H * 0.22, W * 0.20, H * 0.34);
+    g.fillStyle = "#40284e";
+    g.fillRect(W * 0.435, vy - H * 0.17, W * 0.13, H * 0.26);
+
+    /* the two walls, drawn as a run of brick courses that all run to the
+       vanishing point -- which is what makes them surfaces rather than
+       shapes */
+    const wallFace = (near, far, baseCol, lineCol) => {
+      g.fillStyle = baseCol;
+      g.beginPath();
+      g.moveTo(near, -H * 0.05); g.lineTo(far, vy - H * 0.22);
+      g.lineTo(far, vy + H * 0.12); g.lineTo(near, H * 1.05);
+      g.closePath(); g.fill();
+      g.strokeStyle = lineCol; g.lineWidth = Math.max(1, H * 0.0035);
+      for (let i = 1; i < 9; i++) {
+        const u = i / 9;
+        g.beginPath();
+        g.moveTo(near, -H * 0.05 + u * (H * 1.10));
+        g.lineTo(far, vy - H * 0.22 + u * (H * 0.34));
+        g.stroke();
+      }
+      /* and the courses running the other way, fading out with distance */
+      for (let i = 1; i < 7; i++) {
+        const u = i / 7;
+        const x = near + (far - near) * u;
+        g.globalAlpha = 0.5 * (1 - u);
+        g.beginPath();
+        g.moveTo(x, -H * 0.05 + u * (vy - H * 0.22 + H * 0.05));
+        g.lineTo(x, H * 1.05 - u * (H * 1.05 - (vy + H * 0.12)));
+        g.stroke();
+        g.globalAlpha = 1;
+      }
+    };
+    wallFace(-W * 0.02, W * 0.40, "#241634", "rgba(255,190,130,.10)");
+    wallFace(W * 1.02, W * 0.60, "#1c1129", "rgba(255,190,130,.08)");
+
+    /* windows up both walls, sized and placed by the same perspective */
+    for (let i = 0; i < 7; i++) {
+      const u = 0.08 + i * 0.125;
+      const sc2 = 1 - u * 0.86;
+      for (const side of [-1, 1]) {
+        const x = side < 0 ? u * W * 0.40 : W - u * W * 0.40;
+        const yy = H * (0.16 + u * 0.24) + (i % 3) * H * 0.11 * sc2;
+        const ww = W * 0.034 * sc2, hh2 = H * 0.085 * sc2;
+        if (R[(i * 3 + (side < 0 ? 0 : 1)) % R.length] < 0.35) {
+          g.fillStyle = "#160f24";
+          g.fillRect(side < 0 ? x : x - ww, yy, ww, hh2);
+          continue;
+        }
+        glow(side < 0 ? x + ww / 2 : x - ww / 2, yy + hh2 / 2, ww * 2.6, "#ffb347", 0.30);
+        g.fillStyle = "#ffd98a";
+        g.fillRect(side < 0 ? x : x - ww, yy, ww, hh2);
+        g.fillStyle = "#c98a3a";
+        g.fillRect(side < 0 ? x : x - ww, yy + hh2 * 0.46, ww, Math.max(1, hh2 * 0.05));
+      }
+    }
+
+    /* the ground, wet, with the lamp in it */
+    const gnd = g.createLinearGradient(0, vy + H * 0.12, 0, H);
+    gnd.addColorStop(0, "#241a30"); gnd.addColorStop(1, "#120c1e");
+    g.fillStyle = gnd;
+    g.beginPath();
+    g.moveTo(-W * 0.02, H * 1.05); g.lineTo(W * 0.40, vy + H * 0.12);
+    g.lineTo(W * 0.60, vy + H * 0.12); g.lineTo(W * 1.02, H * 1.05);
+    g.closePath(); g.fill();
+    /* cobbles: rows that get closer together as they go away */
+    g.strokeStyle = "rgba(255,200,150,.08)"; g.lineWidth = Math.max(1, H * 0.003);
+    for (let i = 1; i < 10; i++) {
+      const u = Math.pow(i / 10, 1.8);
+      const y = H * 1.02 - u * (H * 1.02 - (vy + H * 0.12));
+      const spread = (1 - u);
+      g.beginPath();
+      g.moveTo(vx - (vx + W * 0.02) * spread, y);
+      g.lineTo(vx + (W * 1.02 - vx) * spread, y);
+      g.stroke();
+    }
+    /* the pool of light the lamp lays down the middle */
+    const pool = g.createLinearGradient(0, vy + H * 0.10, 0, H);
+    pool.addColorStop(0, "rgba(255,179,71,.30)");
+    pool.addColorStop(1, "rgba(255,179,71,0)");
+    g.fillStyle = pool;
+    g.beginPath();
+    g.moveTo(vx - W * 0.04, vy + H * 0.12); g.lineTo(vx + W * 0.04, vy + H * 0.12);
+    g.lineTo(vx + W * 0.30, H); g.lineTo(vx - W * 0.30, H);
+    g.closePath(); g.fill();
+
+    /* washing lines, high and close to the walls where they belong */
+    for (let L = 0; L < 2; L++) {
+      const yL = H * (0.13 + L * 0.085);
+      const x0 = W * (0.16 + L * 0.06), x1 = W * (0.84 - L * 0.06);
+      g.strokeStyle = "rgba(255,230,200,.34)"; g.lineWidth = Math.max(1, H * 0.003);
+      const sagY = yL + H * 0.05 + Math.sin(t * 0.6 + L) * H * 0.006;
+      g.beginPath();
+      g.moveTo(x0, yL); g.quadraticCurveTo(vx, sagY, x1, yL); g.stroke();
+      for (let i = 1; i < 7; i++) {
+        const u = i / 7;
+        const bx = (1 - u) * (1 - u) * x0 + 2 * (1 - u) * u * vx + u * u * x1;
+        const by = (1 - u) * (1 - u) * yL + 2 * (1 - u) * u * sagY + u * u * yL;
+        const sway = Math.sin(t * 1.1 + i + L) * H * 0.006;
+        g.fillStyle = ["#ff9ec4", "#7ec8e3", "#fff1e0", "#ffd166"][(i + L) % 4];
+        g.globalAlpha = 0.85;
+        g.fillRect(bx - H * 0.015 + sway, by, H * 0.030, H * 0.052);
+        g.globalAlpha = 1;
+      }
+    }
+
+    /* the lamp itself, swinging a little */
+    const lampY = H * 0.30 + Math.sin(t * 0.8) * H * 0.008;
+    g.strokeStyle = "#0e0818"; g.lineWidth = Math.max(1, H * 0.005);
+    g.beginPath(); g.moveTo(vx, 0); g.lineTo(vx, lampY); g.stroke();
+    glow(vx, lampY + H * 0.03, H * 0.26, "#ffb347", 0.62);
+    g.fillStyle = "#2a1c14";
+    g.beginPath();
+    g.moveTo(vx - H * 0.040, lampY); g.lineTo(vx + H * 0.040, lampY);
+    g.lineTo(vx + H * 0.022, lampY + H * 0.034);
+    g.lineTo(vx - H * 0.022, lampY + H * 0.034);
+    g.closePath(); g.fill();
+    g.fillStyle = "#fff0c0";
+    g.fillRect(vx - H * 0.018, lampY + H * 0.030, H * 0.036, H * 0.014);
+
+    /* something in the foreground so the alley has a near edge: a stack
+       of crates on one side and a bin on the other */
+    g.fillStyle = "#1a1026";
+    g.fillRect(W * 0.06, H * 0.80, W * 0.09, H * 0.20);
+    g.fillRect(W * 0.10, H * 0.70, W * 0.075, H * 0.30);
+    g.fillStyle = "rgba(255,179,71,.10)";
+    g.fillRect(W * 0.139, H * 0.70, W * 0.010, H * 0.30);
+    g.fillStyle = "#181024";
+    g.beginPath();
+    g.moveTo(W * 0.86, H); g.lineTo(W * 0.875, H * 0.79);
+    g.lineTo(W * 0.955, H * 0.79); g.lineTo(W * 0.97, H);
+    g.closePath(); g.fill();
+    g.fillStyle = "#241630";
+    g.fillRect(W * 0.868, H * 0.775, W * 0.094, H * 0.020);
+  }
+
+  /* the same close on all six, so they are a set */
+  const v = g.createRadialGradient(W / 2, H * 0.5, Math.min(W, H) * 0.22,
+                                   W / 2, H * 0.5, Math.max(W, H) * 0.80);
+  v.addColorStop(0, "rgba(8,3,18,0)");
+  v.addColorStop(1, "rgba(8,3,18,.62)");
+  g.fillStyle = v; g.fillRect(0, 0, W, H);
+  return true;
 }
 
 function menuBackdrop(dt) {
-  /* the results panel is reading from the world that is loaded; leave it
-     exactly where it is and just look at it */
-  const keep = state === "results" || state === "gpboard";
-  if (attractWorld === "failed") return false;
-  if (!keep && attractWorld !== "attract") {
-    /* NOT ON THE FRAME THE MENU APPEARS ON.
-
-       Building this bakes a ground texture and a horizon -- tens of
-       thousands of speckles over a big canvas -- and doing it inline the
-       moment the title came up froze the menu for as long as it took, on
-       the exact frame she is reaching for a button. It is a backdrop; it
-       can be late. So the build is handed to an idle callback and the
-       menu paints black behind itself until it arrives, then fades it up.
-
-       "building" is its own tag so this cannot queue a second one, and a
-       build that throws lands on "failed" and is never tried again --
-       leaving it on "none" meant retrying the bake every frame, which is
-       not a missing backdrop, it is a locked phone. */
-    if (attractWorld !== "building") {
-      attractWorld = "building";
-      const go = () => {
-        /* SHE MAY HAVE PRESSED START WHILE THIS WAS QUEUED.
-
-           An idle callback fires whenever the browser feels like it, and
-           buildAttractWorld replaces racers, the path and the course --
-           so one that arrived a moment after a race had begun would pull
-           the whole race out from under her. buildRace sets the tag to
-           "race"; anything but "building" here means the world is no
-           longer ours to build. */
-        if (attractWorld !== "building") return;
-        try { buildAttractWorld(); }
-        catch (e) {
-          attractWorld = "failed"; attract = null;
-          window.__rcAttractErr = String((e && e.message) || e);
-        }
-      };
-      if (window.requestIdleCallback) window.requestIdleCallback(go, { timeout: 700 });
-      else setTimeout(go, 90);
-    }
-    return false;
+  /* THE RESULTS SCREEN GETS THE PLACE SHE HAS JUST BEEN, not the globe.
+     The globe is the whole game before she has chosen; this is one course
+     after she has driven it. */
+  /* __rcForcePoster is the harness looking at one poster on its own: the
+     loop repaints every frame, so a tool that just called drawPoster once
+     had the globe drawn back over it before it could take the picture. */
+  const forced = typeof window !== "undefined" && window.__rcForcePoster;
+  const showPoster = forced || ((state === "results" || state === "gpboard") && trackDef);
+  if (forced) {
+    posterAcc += dt;
+    if (posterAcc < 1 / 31) return true;
+    const d3 = posterAcc; posterAcc = 0;
+    return drawPoster(forced, d3);
   }
-  if (!path.length || !racers.length) return false;
-  if (!attract) attract = attractEye();
-  stepAttract(dt);
-  /* HALF THE FRAMES, BECAUSE IT IS A MENU.
-
-     This is the whole race renderer running behind a screen nobody is
-     playing, and a phone reading a menu should not be working as hard as
-     a phone taking a corner. At a lap every twenty seconds, thirty a
-     second is indistinguishable from sixty and costs half as much
-     battery. The eye still moves on every frame -- it is only the
-     painting that is halved -- so nothing steps. */
-  attract.acc = (attract.acc || 0) + dt;
-  if (attract.acc < 1 / 31) return true;
-  attract.acc = 0;
-  attract.fade = Math.min(1, (attract.fade || 0) + 0.09);
-  draw();
-  gradeAttract(attract.fade);
-  return true;
+  if (showPoster) {
+    posterAcc += dt;
+    if (posterAcc < 1 / 31) return true;
+    const d2 = posterAcc; posterAcc = 0;
+    return drawPoster(trackDef.base || trackDef.id, d2);
+  }
+  /* HALF THE FRAMES. It is a menu; nothing out there moves fast enough
+     for thirty a second to be tellable from sixty, and a phone reading a
+     menu should not be working as hard as a phone taking a corner. The
+     time is accumulated rather than dropped, so the planet turns at the
+     same rate either way. */
+  if (!space) initSpace();
+  space.acc = (space.acc || 0) + dt;
+  if (space.acc < 1 / 31) return true;
+  const d = space.acc;
+  space.acc = 0;
+  return drawSpace(d);
 }
 
 function frame(ts) {
@@ -10453,6 +11188,12 @@ function stop() {
 
 /* a hatch for the test harness — nothing in the page uses it */
 if (typeof window !== "undefined")
+  /* the harness drives the sky by hand: requestAnimationFrame is three a
+     second in a headless browser, and two minutes of scene time at three
+     frames a second is not a test, it is an afternoon */
+  window.__rcStepSpace = (dt) => { if (space) drawSpace(dt); };
+  /* and one poster on demand, so the six can be looked at together */
+  window.__rcPoster = (id, dt) => drawPoster(id, dt == null ? 1 / 30 : dt);
   window.__RACE_DEBUG = () => ({ obstacles, coins, racers, props, trackDef, state, mode, path, cut, raceTime, buildScenery, SCENERY, HAZ, ghost,
      /* A race ends when the clock says so, and under a headless browser the
         clock barely moves -- the countdown sat at three for fourteen real
@@ -10473,6 +11214,11 @@ if (typeof window !== "undefined")
         clock, which is how a new course gets its lap times measured and its
         corners proved drivable before anybody is asked to drive one. */
      step,
+     /* THE MENU'S SKY, so a test can ask the two things that are easy to
+        get wrong and impossible to see in a still: is each of them
+        actually on the glass, and is either of them inside the moon. */
+     space: space ? { seen: space.seen, moon: space.moon, w: cw, h: ch } : null,
+     stepSpace: (dt) => { if (space) drawSpace(dt); },
      audioState: Snd.state(), audioCtx: Snd.ctx() });
 
 return { start, stop };
