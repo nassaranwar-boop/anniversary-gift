@@ -1268,6 +1268,40 @@ const NS = {
     firstWind:   "There. That is all it is. A key and about a second.",
     firstParcel: "That is not one of mine coming down the hall. Shut the door.",
     firstHeld:   "I told you. Let them.",
+
+    /* --- AND FOUR THINGS THEY SAY TO HER, ACROSS FOUR NIGHTS ------
+       Everything above this is him. These are the only times any of
+       the four speaks to her before the last hour, and they are the
+       whole of how she stops being frightened of them: she does
+       something for one of them, and it answers.
+
+       Each is gated to a night, so they arrive in an order rather
+       than all at once, and each waits for a quiet moment the same
+       way his lines do -- none of them ever talks over him. */
+
+    /* NIGHT TWO, the night after he tells her what the four of them
+       are made out of. She turns a key in somebody's back for the
+       second or third time and somebody says thank you. It is the
+       first thing any of them ever says to her and it is four words
+       long on purpose. */
+    theyWound:   { after: 2, who: "cogsworth",
+                   t: "Thank you. Nobody has done that since March." },
+
+    /* NIGHT THREE. She shuts a door on one of them, which she has
+       been doing all week and feeling steadily worse about, and the
+       one she shut it on tells her she was right to. */
+    theyShut:    { after: 3, who: "marabelle",
+                   t: "That was the right thing to do. Do it every single time, and do not feel anything about it afterwards." },
+
+    /* NIGHT FOUR. She has been watching one of them on a camera for
+       long enough that it has noticed. */
+    theyWatched: { after: 4, who: "chime",
+                   t: "You can stop looking at me now. I only go round. I have gone round this shop every night for eleven years and I have never once been anywhere." },
+
+    /* NIGHT FIVE. The one that knocks explains why it knocks, on the
+       night before it is going to matter. */
+    theyKnock:   { after: 5, who: "jax",
+                   t: "It is only me. I knock because he told me to knock. He did not have to tell me twice." },
     lowPower:    "If the meter goes, sit still. Six o'clock has beaten the dark before now.",
   },
   hooks: {
@@ -9080,9 +9114,9 @@ const MODE_MIX = {
              piano: 0,    choir: 0.24, brass: 0.60, tick: 0.16,
              pad: 0.52, bass: 0.62, lead: 0.00   },
   /* HIS STAGE, COMING APART. The ugliest thirty seconds in the game. */
-  wreck:   { sub: 0.72, pulse: 0.50, box: 0,    air: 0.26, grind: 0.80, bow: 0.28, warm: 0,
-             piano: 0,    choir: 0,    brass: 0.66, tick: 0.38,
-             pad: 0.38, bass: 0.72, lead: 0.00   },
+  wreck:   { sub: 0.66, pulse: 0.60, box: 0,    air: 0.30, grind: 0.44, bow: 0.20, warm: 0,
+             piano: 0,    choir: 0,    brass: 0.52, tick: 0.48,
+             pad: 0.32, bass: 0.62, lead: 0.00   },
   /* THEY TAKE THE THREE DOORS. Held, open, unhurried: the fifths, the
      choir every other bar, and no rhythm at all. Nobody in this cue is
      frightened. */
@@ -9989,6 +10023,34 @@ function musicSwap(m) {
         g.setValueAtTime(g.value, t);
         g.linearRampToValueAtTime(0.0001, t + 0.28);
       });
+      /* AND THE ONES THAT HOLD A NOTE WITHOUT BEING ON THAT LIST.
+
+         MUS_PITCHED is the layers that play notes. It is not the same
+         set as the layers that are SOUNDING a note across the seam:
+         `bow` draws a long tone and `warm` is a fixed A major triad
+         that never moves, and both of them are in MUS_HOLDS instead --
+         ridden from outside, and so never let go of when the key
+         changes underneath them.
+
+         Measured: the last hour has a minor cue handing over to the
+         morning, and the sixth of A minor in the bow met the sixth of
+         A major in the new cue -- an F and an F sharp a second and a
+         half after the seam, which is the exact pair this whole
+         mechanism exists to prevent, arriving through the one door it
+         was not watching.
+
+         They are ducked rather than released, because they are the
+         bed: a hole in the bed is more audible than a wrong note. Down
+         over the same 0.28s, back over 1.2 so nobody hears it move. */
+      ["bow", "warm"].forEach((k) => {
+        if (!MUS.lay[k]) return;
+        const g = MUS.lay[k].gain;
+        const back = g.value;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(g.value, t);
+        g.linearRampToValueAtTime(0.0001, t + 0.28);
+        g.linearRampToValueAtTime(back, t + 1.5);
+      });
     }
     MUS.mode = m;
     MUS.barOff = MUS.bar + 1;
@@ -10460,6 +10522,9 @@ const G = {
   monitor: false,
   cam: "hall",
   doors: { left: false, right: false, hatch: false },
+  /* how long she has been looking at the same one of them */
+  watchCam: null,
+  watchT: 0,
   /* what the last hour's film is doing to the lights. 1 everywhere else,
      and put back to 1 the moment the film stops, so a shot that took the
      shop down to a tenth can never leave it there. */
@@ -10658,6 +10723,7 @@ function stepCast(ch, dt) {
           spendPower(TUNE.power.knock * cozyK("power"));
           SFX.knock();
           G.shake = Math.max(G.shake, 0.5);
+          if (ch.def.id === "jax") tapeTrigger("theyKnock");
           if (ch.knocks >= 3) retreat(ch);
         }
       } else {
@@ -12240,11 +12306,36 @@ function tapeSay(line, who) {
 }
 
 /* the ones that wait for her rather than for the clock */
+/* SOMETHING SHE DID, ANSWERED.
+
+   For five nights every one of these was his voice. She winds one of
+   them and a dead man says "there, that is all it is". She shuts a
+   door on one and a dead man explains the sound it makes. The four
+   themselves do not address her until night five, and then all four
+   at once, which is a lot of first words to get in one evening.
+
+   So a trigger can belong to one of them instead, and carry the night
+   it is allowed to start on. The order is the friendship:
+
+     night two   she winds one and IT THANKS HER. First thing any of
+                 them ever says to her, and it lands the night after
+                 the tape where he tells her what the four of them
+                 are made out of.
+     night three she shuts a door on one of them, and the one she shut
+                 it on tells her she was right to.
+     night four  she watches one for a while, and it notices.
+     night five  the box knocks, and explains why it knocks.
+
+   Each is once, ever, and each waits for a quiet moment the same way
+   his lines do -- so none of them ever talks over him. */
 function tapeTrigger(key) {
   if (!TAPE.on || !NS.tapeWhen) return;
-  const line = NS.tapeWhen[key];
+  const it = NS.tapeWhen[key];
+  if (!it) return;
+  const line = typeof it === "string" ? it : it.t;
   if (!line || TAPE.said[line]) return;
-  TAPE.pending = line;
+  if (typeof it !== "string" && it.after && G.night < it.after) return;
+  TAPE.pending = typeof it === "string" ? { t: line } : it;
 }
 
 function tapeTick(dt) {
@@ -12275,9 +12366,9 @@ function tapeTick(dt) {
      before he has introduced himself. A man whose first words to his
      wife are a remark about a doorknob has not said hello. */
   if (TAPE.pending && TAPE.opened) {
-    const line = TAPE.pending;
+    const p = TAPE.pending;
     TAPE.pending = null;
-    if (tapeSay(line)) { TAPE.wait = TAPE_GAP; return; }
+    if (tapeSay(p.t, p.who)) { TAPE.wait = TAPE_GAP; return; }
   }
   const script = NS.tapes && NS.tapes[G.night];
   if (!script) return;
@@ -13874,6 +13965,23 @@ function uiTick(dt) {
   windHotspot();
   windPips();
 
+  /* AND THE ONE SHE HAS BEEN STARING AT.
+
+     Six seconds on the same camera with one of his standing in it is
+     a woman watching rather than a woman checking, and the owl -- who
+     has walked the same route every night for eleven years -- is the
+     one who would say something about being looked at. Reset the
+     moment she changes camera or it walks out of frame, so it cannot
+     be collected by leaving the monitor up and going away. */
+  if (G.phase === "play" && G.monitor && G.monOut <= 0) {
+    const seen = CAST.map((d) => cast[d.id])
+      .filter((c) => c && c.awake && !c.atDoor && c.room === G.cam)[0];
+    if (seen && G.watchCam === G.cam) {
+      G.watchT = (G.watchT || 0) + dt;
+      if (G.watchT > 6) { tapeTrigger("theyWatched"); G.watchT = -60; }
+    } else { G.watchCam = G.cam; G.watchT = 0; }
+  } else if (G.watchT > 0) G.watchT = 0;
+
   /* the annunciator's caption. A vocoder cannot be understood and is not
      meant to be — the words are here. */
   if (G.captionT > 0) G.captionT -= dt;
@@ -14037,7 +14145,9 @@ function stepWind(dt) {
     spendPower(WIND.cost * cozyK("power"));
     ch.wound = WIND.hours;
     G.stats.winds++;
-    tapeTrigger("firstWind");
+    /* the first one is his, explaining the control. The second is the
+       first time any of them ever answers her. */
+    tapeTrigger(G.stats.winds > 1 ? "theyWound" : "firstWind");
     windEnd();
     SFX.crank(0.7);
     say(fmt(NS.sys.wound, ch.def.name));
@@ -14852,7 +14962,14 @@ function toggleDoor(k) {
   if (k === "hatch") { SFX.hatch(); say(G.doors.hatch ? NS.sys.hatchShut : NS.sys.hatchOpen); }
   else {
     const num = k === "left" ? "ONE" : "TWO";
-    if (G.doors[k]) { SFX.doorClose(); G.shake = Math.max(G.shake, 0.35); say(fmt(NS.sys.doorShut, num)); tapeTrigger("firstDoor"); }
+    if (G.doors[k]) {
+      SFX.doorClose(); G.shake = Math.max(G.shake, 0.35); say(fmt(NS.sys.doorShut, num));
+      /* if one of HIS was standing in it, the one she shut it on is
+         the one that gets to say something about it */
+      const onIt = CAST.map((d) => cast[d.id])
+        .filter((c) => c && c.awake && c.atDoor && c.def.door === k)[0];
+      tapeTrigger(onIt ? "theyShut" : "firstDoor");
+    }
     else { SFX.doorOpen(); say(fmt(NS.sys.doorOpen, num)); }
   }
   /* opening a door on something standing behind it gives you a moment,
@@ -15644,7 +15761,7 @@ const testHooks = {
   /* the tapes: what he has said tonight, and what he is saying now */
   tape: () => ({ on: TAPE.on, said: Object.keys(TAPE.said).length,
                  line: TAPE.speakT > 0 ? TAPE.line : null,
-                 pending: TAPE.pending || null,
+                 pending: (TAPE.pending && TAPE.pending.t) || null,
                  quiet: tapeQuiet(),
                  showing: EL["ns-tape"] ? !EL["ns-tape"].hidden : false }),
   tapeTick: (dt) => { tapeTick(dt); return TAPE.line; },
