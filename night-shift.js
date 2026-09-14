@@ -13666,6 +13666,68 @@ function screenMix() {
    night it came from and what she did with it. Nothing here is a
    score and there is no completion bar: it is a list of what she is
    carrying out of her husband's shop. */
+/* SIX MARKS, ON THE ONE CARD SHE CANNOT WALK PAST.
+
+   The drawer already existed and it is good -- every night, kept or
+   burned or still out there, and a count at the bottom. The trouble
+   was where it lived: behind a button in the pause menu, which is a
+   place a player goes when they want to stop playing. So the six
+   decisions that compute the ending could be made all week by
+   somebody who never once saw them written down together.
+
+   This is the same ledger with the words taken out, on the six
+   o'clock card, where she is already sitting still and reading. A
+   filled mark is a thing she took out of the shop; an empty one is a
+   thing she burned; a faint one is still in there somewhere. It says
+   nothing about what any of it means and it is not a score -- it is
+   six marks going along in a row getting longer, which is the only
+   honest picture of what she has been doing all week. */
+function ledgerStrip() {
+  const all = keptAll();
+  const marks = [];
+  for (let n = 1; n <= NIGHTS.length; n++) {
+    const st = all[n];
+    const cls = st === 1 ? "kept" : st === 0 ? "burned" : "open";
+    const lab = st === 1 ? (NS.reveal[n] ? NS.reveal[n].head : "kept")
+              : st === 0 ? "burned" : "still in the shop";
+    marks.push('<i class="ns-lmark ' + cls + '" title="night ' + n + ' — ' + lab + '"></i>');
+  }
+  const c = keptCount();
+  return '<button class="ns-ledger" data-go="drawer" aria-label="open the drawer">' +
+           '<span class="ns-lmarks">' + marks.join("") + '</span>' +
+           '<span class="ns-lcap">' + c.kept + ' kept &middot; ' + c.burned + ' burned</span>' +
+         '</button>';
+}
+
+/* AND THE ONES SHE KEPT CAN BE OPENED AGAIN. THE OTHERS CANNOT.
+
+   A list of decisions is a receipt. What makes it a drawer is that
+   the things in it are still things: she can take out anything she
+   kept and read it again, at any hour of any night, and she cannot do
+   that with a single one she burned -- there is a row where it was
+   and the row says what she did and that is all there is now.
+
+   The asymmetry is the entire point and it costs nothing to build,
+   because burning something in this chapter has never had a
+   consequence she could feel until the last morning. Now it has one
+   the moment she next opens the drawer. */
+function drawerRead(n) {
+  const r = NS.reveal[n];
+  if (!r || keptAll()[n] !== 1) return;
+  overlay(
+    '<div class="ns-card ns-card-find">' +
+      '<p class="ns-from">' + r.at + '</p>' +
+      '<div class="ns-paper">' +
+        '<p class="ns-paper-head">' + r.head + '</p>' +
+        r.lines.map((l) => "<p>" + l + "</p>").join("") +
+      '</div>' +
+      '<p class="ns-pencil">' + (r.keep || "SHE KEPT IT") + '</p>' +
+      '<div class="ns-btns">' +
+        '<button class="ns-btn ns-btn-go" data-go="drawer">BACK IN THE DRAWER</button>' +
+      '</div>' +
+    '</div>', "ns-ov-find");
+}
+
 function screenDrawer() {
   const all = keptAll();
   const rows = [];
@@ -13677,11 +13739,19 @@ function screenDrawer() {
     const what = state === 1 ? (r.keep || "KEPT")
                : state === 0 ? (r.burn || "BURNED")
                : "&mdash; not found yet &mdash;";
+    /* a thing she kept is a thing she still has: the row opens it.
+       A thing she burned is a row, and a row is all it will ever be
+       again, and that is said on the row rather than discovered by
+       tapping something that does nothing. */
+    const open = state === 1;
     rows.push(
-      '<li class="ns-drawer-row ' + cls + '">' +
+      '<li class="ns-drawer-row ' + cls + (open ? " open" : "") + '"' +
+          (open ? ' data-go="drawerRead:' + n + '" role="button" tabindex="0"' : "") + '>' +
         '<b>' + (state === undefined ? "?" : r.head) + '</b>' +
         '<i>' + (state === undefined ? "night " + n : r.at) + '</i>' +
         '<span>' + what + '</span>' +
+        (open ? '<em class="ns-drawer-go">read it again</em>'
+              : state === 0 ? '<em class="ns-drawer-gone">there is nothing left to read</em>' : "") +
       '</li>');
   }
   const c = keptCount();
@@ -13838,6 +13908,7 @@ function screenShift() {
       '<p class="ns-six">6:00 AM</p>' +
       '<p class="ns-blurb">' + G.cfg.name.toLowerCase() + ', survived.</p>' +
       ratingCard() +
+      (G.mode === "story" ? ledgerStrip() : "") +
       (given ? '<div class="ns-gave">' +
                  '<p class="ns-from">' + NS.gave + '</p>' +
                  '<div class="ns-paper">' +
@@ -14112,6 +14183,7 @@ function route(cmd) {
   else if (cmd === "terms") { termsStart(); }
   else if (cmd === "termsDone") { termsDone(); }
   else if (cmd === "termsAgain") { clearHurt(); clearKept(); termsStart(); }
+  else if (cmd.indexOf("drawerRead:") === 0) { drawerRead(+cmd.slice(11)); }
   else if (cmd === "drawer") { mixFrom = G.phase === "play" || G.phase === "pause" ? "play" : "title";
                                G.phase = "drawer"; screenDrawer(); }
   else if (cmd === "sound") { mixFrom = G.phase === "play" ? "play" : "title"; G.phase = "mix"; screenMix(); }
@@ -16199,6 +16271,27 @@ const testHooks = {
     kept: Object.keys(foundAll()),
     why: FIND_WHY,
   }),
+  /* THE DRAWER: what the six o'clock card shows her, and what she can
+     still open afterwards */
+  ledger: (chose) => {
+    const had = keptAll();
+    if (chose) { try { localStorage.setItem(KEEP_KEY, JSON.stringify(chose)); } catch (e) {} }
+    const strip = ledgerStrip();
+    const out = {
+      marks: (strip.match(/ns-lmark (kept|burned|open)/g) || [])
+               .map((m) => m.split(" ")[1]),
+      opens: [], shut: [],
+    };
+    for (let n = 1; n <= NIGHTS.length; n++) {
+      const was = G.phase;
+      drawerRead(n);
+      const got = !!(EL["ns-overlay"] && EL["ns-overlay"].querySelector(".ns-card-find"));
+      if (got) out.opens.push(n); else out.shut.push(n);
+      noOverlay(); G.phase = was;
+    }
+    try { localStorage.setItem(KEEP_KEY, JSON.stringify(had)); } catch (e) {}
+    return out;
+  },
   /* pick tonight's up without having to find it on a camera first */
   takeFind: () => { takeFind(); return G.phase; },
   heldCard: (shut, door) => { heldCard(cast.cogsworth, shut, door); return G.phase; },

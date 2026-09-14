@@ -264,6 +264,21 @@ if (man) {
     chose: { 1: 1 }, found: { cogsworth: true, chime: true, marabelle: true } });
   ok('and nobody points at anything when she has missed nothing', clean === null, clean);
 
+  console.log('\n=== the drawer, and what burning something costs');
+
+  const led = await p.evaluate(() =>
+    OuissysNightShift.__night.ledger({ 1: 1, 2: 0, 3: 1, 4: 0 }));
+  ok('the six o\'clock card shows one mark per night of the chapter',
+     led.marks.length === 6, led.marks);
+  ok('and the marks say what she did with each of them',
+     led.marks.slice(0, 4).join(',') === 'kept,burned,kept,burned', led.marks);
+  ok('and a night she has not got to yet is neither',
+     led.marks[4] === 'open' && led.marks[5] === 'open', led.marks);
+  ok('anything she kept can be taken out and read again',
+     led.opens.join(',') === '1,3', led.opens);
+  ok('and nothing she burned can be read again, ever',
+     led.shut.indexOf(2) >= 0 && led.shut.indexOf(4) >= 0, led.shut);
+
   console.log('\n=== the save, through a shut door');
 
   const held = await p.evaluate(() => {

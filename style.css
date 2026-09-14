@@ -8290,6 +8290,47 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-drawer-row.burned{ border-left-color:rgba(120,60,40,.7); }
 .ns-drawer-row.burned b{ color:rgba(232,223,200,.42); text-decoration:line-through; }
 .ns-drawer-row.burned span{ color:rgba(200,120,90,.8); }
+
+/* THE SIX MARKS, ON THE SIX O'CLOCK CARD.
+   A filled one is a thing she took out of the shop, an empty one is a
+   thing she burned, a faint one is still in there. No numbers on it:
+   it is a row that gets longer, not a score that goes up. */
+.ns-ledger{
+  display:flex; align-items:center; justify-content:center; gap:.75em;
+  margin:.9em auto .2em; padding:.5em .9em;
+  background:rgba(20,17,14,.5); border:1px solid rgba(255,206,140,.16);
+  border-radius:.5em; cursor:pointer; font:inherit; color:inherit;
+  transition:border-color .18s ease, background .18s ease;
+}
+.ns-ledger:hover,.ns-ledger:focus-visible{
+  border-color:rgba(255,206,140,.42); background:rgba(30,25,20,.62);
+}
+.ns-lmarks{ display:flex; gap:.42em; }
+.ns-lmark{
+  width:.72em; height:.96em; border-radius:.1em; display:block;
+  border:1px solid rgba(255,206,140,.5);
+}
+.ns-lmark.kept{ background:var(--ns-amber); border-color:var(--ns-amber); }
+.ns-lmark.burned{ background:transparent; border-color:rgba(150,74,50,.75); border-style:dashed; }
+.ns-lmark.open{ background:transparent; border-color:rgba(232,223,200,.2); }
+.ns-lcap{ font-size:.74em; letter-spacing:.08em; text-transform:uppercase;
+          color:rgba(232,223,200,.62); white-space:nowrap; }
+
+/* a row she can open, and a row she cannot */
+.ns-drawer-row.open{ cursor:pointer; }
+.ns-drawer-row.open:hover,.ns-drawer-row.open:focus-visible{
+  background:rgba(255,206,140,.07); outline:none;
+}
+.ns-drawer-go,.ns-drawer-gone{
+  display:block; grid-column:1/-1; font-style:normal;
+  font-size:.72em; letter-spacing:.07em; text-transform:uppercase; margin-top:.3em;
+}
+.ns-drawer-go{ color:rgba(255,206,140,.72); }
+.ns-drawer-gone{ color:rgba(232,223,200,.3); }
+
+@media (prefers-reduced-motion: reduce){
+  .ns-ledger{ transition:none; }
+}
 .ns-drawer-row.unknown{ border-left-color:rgba(200,162,96,.16); }
 .ns-drawer-row.unknown b,
 .ns-drawer-row.unknown i,
