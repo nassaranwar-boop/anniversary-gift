@@ -4979,7 +4979,11 @@ img{-webkit-user-drag:none; user-select:none;}
 .so-pad-side{display:flex; gap:12px; align-items:center;}
 /* on the title screen the pad controls nothing, so it steps back rather
    than sitting there looking live */
-#screen-ouissy.so-menu-open .so-pad{opacity:.3; pointer-events:none; filter:saturate(.5);}
+/* GONE, NOT DIMMED. A greyed-out set of controls behind the title card
+   still reads as controls, and controls that do nothing read as a bug
+   rather than as a decision. There is no level to steer on the title
+   screen, so there is nothing for them to be. */
+#screen-ouissy.so-menu-open .so-pad{display:none;}
 .so-pad{transition:opacity .3s ease, filter .3s ease;}
 .so-pad-right{gap:12px;}
 /* The pad's icons are drawn, not typed. A glyph arrow is whatever the

@@ -3075,6 +3075,36 @@ window.SuperOuissy = (function () {
     }
     for (i = 0; i < cands.length; i++)
       if (reviveSpotOK(cands[i].x, cands[i].y, w, h)) return cands[i];
+
+    /* ---- AND IF NONE OF THOSE WILL HOLD HER, LOOK NEARBY ----
+
+       This used to give up and send her to the start of the world, which
+       is why "bring me back where I died" sometimes did not. The two
+       named candidates are single points, and a single point fails for
+       ordinary reasons: she died on a moving platform that has since
+       moved, or over a gap, or with her last safe ground now under a
+       hazard. One point failing is not the same as there being nowhere to
+       stand -- there is almost always floor a few steps to one side.
+
+       So before falling back, walk outwards from where she actually died,
+       a few pixels at a time, taking the first spot on either side that
+       can hold her. It searches a couple of screens at most, and it
+       prefers the nearer side, so what she gets is the place she was
+       playing rather than the top of the level. The start is still there
+       for the case where genuinely nothing else works. */
+    var from = G.deathAt || (p.lastSafe ? { x: p.lastSafe.x, y: p.lastSafe.y - 2 } : null);
+    if (from) {
+      for (var off = 8; off <= 320; off += 8) {
+        /* a little above where she was, because ground is found by
+           dropping onto it and a spot flush with a wall is not a spot */
+        for (var up = 0; up <= 48; up += 12) {
+          if (reviveSpotOK(from.x - off, from.y - up, w, h))
+            return { x: from.x - off, y: from.y - up };
+          if (reviveSpotOK(from.x + off, from.y - up, w, h))
+            return { x: from.x + off, y: from.y - up };
+        }
+      }
+    }
     return { x: G.level.start.x + 2, y: G.level.start.y - 2 };
   }
 
@@ -4476,7 +4506,12 @@ window.SuperOuissy = (function () {
     try { mw = localStorage.getItem("so_bgm") !== "0"; } catch (e) {}
     if (mw) { setBgm(true); bgmFollow(); } else stopBgm();
     var saved = "medium";
-    try { saved = localStorage.getItem(DIFF_KEY) || "medium"; } catch (e) {}
+    /* EASY IS WHERE A FIRST GO STARTS. The card opened on medium, which is
+       a choice made for her by a default rather than by her -- and the one
+       difficulty that asks least of somebody who has never held these
+       controls is the one that should be lit when she arrives. Anything
+       she has actually chosen before still wins. */
+    try { saved = localStorage.getItem(DIFF_KEY) || "easy"; } catch (e) {}
     var cards = ["easy", "medium", "hard"].map(function (k) {
       var d = DIFF[k], b = bestFor(k);
       return '<button class="so-diff-card' + (k === saved ? " sel" : "") + '" data-so-diff="' + k + '">' +
@@ -5365,6 +5400,45 @@ window.SuperOuissy = (function () {
      has always had: square, brisk, four to the floor. HARD is faster,
      minor, with a sixteenth-note bass that never stops and a chromatic
      line falling through it. */
+  /* ---- ONE RHYTHM PER WORLD, SHARED BY ALL THREE DIFFICULTIES ----
+
+     A world should feel like the same place whichever difficulty she is
+     playing it on, and the thing that carries a place is the rhythm, not
+     the tune. So the drums belong to the WORLD: easy, medium and hard all
+     play world one on the same pattern, with their own melodies and their
+     own tempo over the top. What changes with difficulty is the music;
+     what stays is the ground under it.
+
+     And the three are deliberately nothing like each other, because the
+     three worlds are not:
+
+       ONE is morning, and it breathes -- kick, space, snare, space. Four
+       to the bar with air between, the pattern you can walk to.
+
+       TWO leans forward. Three, three, two: the oldest way there is of
+       making a straight bar feel like it is already moving, which is what
+       the world does the whole way through.
+
+       THREE is the last of them and it does not let up -- kick and hat
+       together, the snare early, and no gap anywhere you could rest in. */
+  var RHYTHM = {
+    w1: dpat(
+      "K . . . h . . . S . . . h . . . |" +
+      "K . . . h . . . S . . . h . . . |" +
+      "K . . . h . . . S . . . h . . . |" +
+      "K . . . h . . . S . . h . h . h"),
+    w2: dpat(
+      "K . . K . . S . K . . K . . S . |" +
+      "K . . K . . S . K . . K . . S h |" +
+      "K . . K . . S . K . . K . . S . |" +
+      "K . h K . h S . t . t . t . S ."),
+    w3: dpat(
+      "K . h . K h S . K . h . S . S h |" +
+      "K . h . K h S . K . h . S . S h |" +
+      "K . h . K h S . K . h . S . S h |" +
+      "K . h . K h S . t t t t S . S ."),
+  };
+
   var SCORES = {};
   SCORES.medium = {
     /* WORLD ONE — morning. The theme, plain, with room around it. */
@@ -5385,11 +5459,7 @@ window.SuperOuissy = (function () {
         " 2  .  .  .  9  .  .  .  2  .  .  .  9  .  .  . |" +
         " 5  .  .  . 12  .  .  .  5  .  .  . 12  .  .  . |" +
         " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
-      drum: dpat(
-        "K . . . h . . . S . . . h . . . |" +
-        "K . . . h . . . S . . . h . . . |" +
-        "K . . . h . . . S . . . h . . . |" +
-        "K . . . h . . . S . . h . h . h"),
+      drum: RHYTHM.w1,
     },
 
     /* WORLD TWO — the same tune with the gaps filled in and the ground
@@ -5414,11 +5484,7 @@ window.SuperOuissy = (function () {
         " 2 . 14 .  2 . 14 .  9 . 21 .  9 . 21 . |" +
         " 5 . 17 .  5 . 17 .  0 . 12 .  0 . 12 . |" +
         " 7 . 19 .  7 . 19 .  0 . 12 .  7 . 12 ."),
-      drum: dpat(
-        "K . h . S . h . K . h . S . h h |" +
-        "K . h . S . h . K . h . S . h h |" +
-        "K . h . S . h . K . h . S . h h |" +
-        "K . h . S . h . K . h . t t t t"),
+      drum: RHYTHM.w2,
     },
 
     /* WORLD THREE — the same four notes in the relative minor, which is
@@ -5441,11 +5507,7 @@ window.SuperOuissy = (function () {
         " -5 . -5 . -5 . -5 .  2 .  2 .  2 .  2 . |" +
         " -3 . -3 . -3 . -3 .  0 .  0 .  0 .  0 . |" +
         "  2 .  2 .  2 .  2 .  7 .  7 .  7 .  7 ."),
-      drum: dpat(
-        "K . h K . h K . h . S . h . h . |" +
-        "K . h K . h K . h . S . h . h . |" +
-        "K . h K . h K . h . S . h . h . |" +
-        "K . h K . h K . h . t t t t t t"),
+      drum: RHYTHM.w3,
     },
 
     /* THE QUEEN. Her tune, minor, faster than she can think, with a
@@ -5532,11 +5594,7 @@ window.SuperOuissy = (function () {
         " 2  .  .  .  .  .  9  .  .  .  .  .  2  .  .  . |" +
         " 5  .  .  .  .  . 12  .  .  .  .  .  5  .  .  . |" +
         " 7  .  .  .  .  .  7  .  .  .  .  .  0  .  .  ."),
-      drum: dpat(
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . S . . . . . . . |" +
-        "K . . . . . . . S . . . h . h ."),
+      drum: RHYTHM.w1,
     },
     w2: {
       tempo: 0.095,
@@ -5555,11 +5613,7 @@ window.SuperOuissy = (function () {
         " 2  .  .  .  9  .  .  .  2  .  .  .  9  .  .  . |" +
         " 5  .  .  . 12  .  .  .  5  .  .  . 12  .  .  . |" +
         " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
-      drum: dpat(
-        "K . . h S . . h K . . h S . . h |" +
-        "K . . h S . . h K . . h S . . h |" +
-        "K . . h S . . h K . . h S . . h |" +
-        "K . . h S . . h K . . h S . h h"),
+      drum: RHYTHM.w2,
     },
     w3: {
       tempo: 0.088,
@@ -5578,11 +5632,7 @@ window.SuperOuissy = (function () {
         " 2  .  .  .  9  .  .  . 14  .  .  .  9  .  .  . |" +
         " 5  .  .  . 12  .  .  . 17  .  .  . 12  .  .  . |" +
         " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
-      drum: dpat(
-        "K . . h S . . . K . . h S . . h |" +
-        "K . . h S . . . K . . h S . . h |" +
-        "K . . h S . . . K . . h S . . h |" +
-        "K . . h S . . . K . . h S . t t"),
+      drum: RHYTHM.w3,
     },
     /* the raincloud: cross, not frightening */
     boss: {
@@ -5670,11 +5720,7 @@ window.SuperOuissy = (function () {
         "10  .  .  5 10  .  .  5 12  .  .  5 10  .  .  . |" +
         " 8  .  .  3  8  .  .  3 10  .  .  3  8  .  .  . |" +
         " 7  .  .  2  7  .  . 14  7  .  . 10  7  .  7  ."),
-      drum: dpat(
-        "K  .  . K  . h S  .  . K  . h S  . h  . |" +
-        "K  .  . K  . h S  .  . K  . h S  . h  . |" +
-        "K  .  . K  . h S  .  . K  . h S  . h  . |" +
-        "K  .  . K  . h S  . t  . t  . S  . S  ."),
+      drum: RHYTHM.w1,
     },
     /* WORLD TWO — three, three, two. The oldest trick there is for making
        a straight bar feel like it is leaning forward. */
@@ -5695,11 +5741,7 @@ window.SuperOuissy = (function () {
         "10  .  . 10 .  .  5  .  1  .  .  5  .  . 10  . |" +
         " 8  .  . 8  .  .  3  .  0  .  .  3  .  .  8  . |" +
         " 7  .  . 7  .  . 14  . 10  .  .  7  .  .  7  ."),
-      drum: dpat(
-        "K  .  . K  .  . S  . K  .  . K  .  . S  . |" +
-        "K  .  . K  .  . S  . K  .  . K  .  . S  h |" +
-        "K  .  . K  .  . S  . K  .  . K  .  . S  . |" +
-        "K  . h K  . h S  . t  . t  . t  . S  ."),
+      drum: RHYTHM.w2,
     },
     /* WORLD THREE — the floor giving way. A chromatic walk down, and a
        turnaround that lands somewhere you did not expect. */
@@ -5720,11 +5762,7 @@ window.SuperOuissy = (function () {
         "-2  . -2  .  6  .  6  .  5  .  5  .  3  .  3  . |" +
         " 0  . 12  .  0  . 12  .  8  . 20  .  8  . 20  . |" +
         " 7  .  7  . 10  . 10  .  7  .  7  .  0  .  0  ."),
-      drum: dpat(
-        "K  . h  . K h S  . K  . h  . S  . S h |" +
-        "K  . h  . K h S  . K  . h  . S  . S h |" +
-        "K  . h  . K h S  . K  . h  . S  . S h |" +
-        "K  . h  . K h S  . t t t t S  . S  ."),
+      drum: RHYTHM.w3,
     },
     /* THE BOSS — an ostinato you cannot get out of your head, and a
        stabbing line over the top of it that refuses to line up with it. */

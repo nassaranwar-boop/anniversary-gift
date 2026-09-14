@@ -1687,7 +1687,12 @@ window.Rescue = (function () {
 
     } else if (S.phase === 5) {                   /* what he says about it */
       stepText(dt);
-      if (textFinished()) { S.lines = null; S.sel = 0; phase(PH.choice); }
+      /* NEITHER OF THEM IS CHOSEN FOR HER. It opened with "fight" already
+         lit, so the first press of confirm took a decision she had not
+         made -- and this is the one moment in the game where the decision
+         is the whole point. -1 means nothing is selected: both options sit
+         there equally until she moves onto one. */
+      if (textFinished()) { S.lines = null; S.sel = -1; phase(PH.choice); }
 
     } else if (S.phase === PH.choice) {           /* her decision */
       /* nothing moves; it waits for her */
@@ -2916,9 +2921,13 @@ window.Rescue = (function () {
     if (S.kind === "death") {
       if (S.phase === PH.choice) {               // the choice
         if (name === "left" || name === "right") {
-          S.sel = S.sel ? 0 : 1;
+          /* from nothing, left takes the left one and right the right one;
+             a straight toggle sent both directions to the same option */
+          S.sel = name === "left" ? 0 : 1;
           sfx("pick");
         } else if (confirm) {
+          /* and confirm does nothing until there is something to confirm */
+          if (S.sel !== 0 && S.sel !== 1) return;
           S.outcome = S.sel === 0 ? "fight" : "letgo";
           sfx("choose");
           hideChoice();

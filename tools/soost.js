@@ -71,6 +71,25 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
     }
   }
 
+  /* ---- A WORLD IS THE SAME PLACE ON ANY DIFFICULTY ----
+     The thing that carries a place is the rhythm, not the tune, so the
+     drums belong to the world: all three difficulties play world one on
+     the same pattern with their own melodies over it. And the three
+     worlds are nothing like each other, because they are not alike. */
+  for (const t of ["w1", "w2", "w3"]) {
+    const beat = (d) => S[d][t].drum.join(" ");
+    const e = beat("easy"), m = beat("medium"), h = beat("hard");
+    ok(`${t}: the same rhythm on every difficulty`, e === m && m === h,
+       e === m && m === h ? "shared" : "easy/medium/hard differ");
+  }
+  {
+    const beat = (t) => S.medium[t].drum.join(" ");
+    const a = beat("w1"), b2 = beat("w2"), c = beat("w3");
+    ok("the three worlds do not share a rhythm",
+       a !== b2 && b2 !== c && a !== c,
+       `${new Set([a, b2, c]).size} distinct of 3`);
+  }
+
   /* and the three difficulties are three tunes, not one at three speeds */
   for (const t of TUNES) {
     const shape = (d) => notes(S[d][t].lead).join(",");
