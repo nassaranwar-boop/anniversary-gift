@@ -4667,7 +4667,13 @@ img{-webkit-user-drag:none; user-select:none;}
 .so-overlay.on{scrollbar-width:none;}
 .so-overlay.on::-webkit-scrollbar{width:0; height:0;}
 .so-lift{
-  position:absolute; left:1.4cqw; top:8cqh; bottom:8cqh; width:1.9cqw;
+  /* `left` is set in updateLift, measured against the CARD's own right
+     edge. It used to be a fixed inset from the stage on the far left,
+     which put it thirty-four points out in the dark on a phone and a
+     hundred and ten on an iPad -- a gold light down the side of the
+     picture rather than this card's scrollbar. The race learned the
+     same lesson with .rc-rail; this is the same fix. */
+  position:absolute; right:auto; top:8cqh; bottom:8cqh; width:1.9cqw;
   z-index:12; display:none; touch-action:none; cursor:pointer;
   border-radius:1cqw;
   background:linear-gradient(180deg, rgba(24,10,30,.62), rgba(38,16,44,.62));
@@ -4675,7 +4681,7 @@ img{-webkit-user-drag:none; user-select:none;}
              inset 0 .2cqw .5cqw rgba(0,0,0,.45);
 }
 .so-lift.on{display:block; animation:soLiftIn .3s var(--ease-out);}
-@keyframes soLiftIn{from{opacity:0; transform:translateX(-.6cqw);} to{opacity:1; transform:none;}}
+@keyframes soLiftIn{from{opacity:0; transform:translateX(.6cqw);} to{opacity:1; transform:none;}}
 .so-lift-bar{
   position:absolute; left:.22cqw; right:.22cqw; top:0; height:20%;
   border-radius:1cqw;

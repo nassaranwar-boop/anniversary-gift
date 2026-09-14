@@ -4377,6 +4377,24 @@ window.SuperOuissy = (function () {
     var need = ov.classList.contains("on") && room > 6;
     el.classList.toggle("on", need);
     if (!need) return;
+    /* SIT IT BESIDE THE CARD, ON THE RIGHT, MEASURED.
+
+       A scrollbar belongs to the thing it scrolls. Pinned to the left
+       edge of the stage it was a gold bar in the dark with the card a
+       hand's width away -- 84 points of gap on a laptop, 110 on an
+       iPad. It goes on the right of the card now, close enough to read
+       as part of it, and it never crosses the card or leaves the
+       stage. */
+    var card = ov.firstElementChild;
+    if (card) {
+      var cr = card.getBoundingClientRect(), or_ = ov.getBoundingClientRect();
+      var w = el.getBoundingClientRect().width || 12;
+      var gap = Math.max(8, Math.round(or_.width * 0.008));
+      var x = Math.min((cr.right - or_.left) + gap, or_.width - w - 2);
+      /* never on top of the writing: if there is somehow no room beside
+         the card, it stops at the edge of the stage instead */
+      el.style.left = Math.max(cr.right - or_.left + 2, x) + "px";
+    }
     var bar = $("so-lift-bar");
     var frac = ov.clientHeight / ov.scrollHeight;
     var hPct = Math.max(14, Math.min(92, frac * 100));
