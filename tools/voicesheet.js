@@ -127,6 +127,14 @@ for (const k in (NS.tapeWhen || {})) {
 /* and the one who tells her where she left his card */
 for (const k in (NS.pointAt || {}))
   add('point-' + k, NS.pointAt[k].t, 'the night after she walked past it', NS.pointAt[k].who);
+/* and the one that answers what she did with his things */
+for (const n in (NS.afterChoice || {})) {
+  ['kept', 'burned'].forEach((w) => {
+    const it = NS.afterChoice[n][w];
+    if (it) add('chose-' + n + '-' + w, it.t,
+                'the night after she ' + (w === 'kept' ? 'kept' : 'burned') + ' night ' + n + "'s", it.who);
+  });
+}
 for (const n in (NS.reveal || {})) add('reveal-' + n, NS.reveal[n].say, 'three in the morning, night ' + n);
 add('caught-first', NS.caught && NS.caught.first, 'the first time something reaches her');
 add('caught-later', NS.caught && NS.caught.later, 'every time after that');

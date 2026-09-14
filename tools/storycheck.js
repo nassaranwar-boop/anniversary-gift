@@ -86,6 +86,26 @@ ok('the save behind a shut door is written as sound, not as a view',
 ok('and neither card names a door the game did not use',
    /\$1/.test(NS.held.where) && /\$1/.test(NS.heldShut.where));
 
+/* the only real choice in the chapter, answered by the one it costs */
+const choiceNights = Object.keys(NS.afterChoice || {}).map(Number).sort();
+ok('every night she makes a choice but the last one gets an answer',
+   choiceNights.join(',') === '1,2,3,4,5', choiceNights);
+ok('and both ways of deciding are written, because both are the right one',
+   choiceNights.every((n) => NS.afterChoice[n].kept && NS.afterChoice[n].burned),
+   choiceNights.filter((n) => !(NS.afterChoice[n].kept && NS.afterChoice[n].burned)));
+ok('and it is one of the four answering, never him',
+   choiceNights.every((n) => ['cogsworth', 'chime', 'marabelle', 'jax']
+     .indexOf(NS.afterChoice[n].kept.who) >= 0 &&
+     NS.afterChoice[n].kept.who === NS.afterChoice[n].burned.who),
+   choiceNights.map((n) => NS.afterChoice[n].kept.who));
+/* and it is not the same voice every time, or it is one toy's chapter */
+const answerers = choiceNights.map((n) => NS.afterChoice[n].kept.who);
+ok('and the answering is shared out, not one of them all week',
+   new Set(answerers).size >= 4, answerers);
+/* neither branch may read as approval of the other */
+ok('and neither branch simply repeats the other',
+   choiceNights.every((n) => NS.afterChoice[n].kept.t !== NS.afterChoice[n].burned.t));
+
 /* ---- AND THE WORDS REALLY GOT SAID ---------------------------------
 
    Six of these lines shipped, rendered, and committed as the phrase
@@ -110,6 +130,11 @@ if (man) {
     want.push(['when-' + k, typeof it === 'string' ? it : it.t]);
   }
   for (const k in NS.pointAt) want.push(['point-' + k, NS.pointAt[k].t]);
+  for (const n in (NS.afterChoice || {}))
+    ['kept', 'burned'].forEach((w) => {
+      const it = NS.afterChoice[n][w];
+      if (it) want.push(['chose-' + n + '-' + w, it.t]);
+    });
 
   const missing = want.filter(([id]) => !man[id]);
   ok('every line one of them says has a take of its own', !missing.length,

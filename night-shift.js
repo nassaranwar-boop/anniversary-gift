@@ -1380,6 +1380,55 @@ const NS = {
      thing that says what he is for. The ballerina cannot look down at
      hers while she is being watched. Jax will not open the box in
      front of her. */
+  /* AND THEY SAW WHAT SHE DID WITH IT.
+
+     Every night at three she reads one of his things and decides, on
+     her own, whether to keep it or burn it. It is the only real choice
+     in the chapter, it is made six times, and it computes the ending
+     at six o'clock on the last morning -- and until now nothing
+     anywhere acknowledged it in between. She could burn the notebook
+     on night four, sit in the same room as the four things he built
+     out of her, and have not one of them mention it. The largest thing
+     she does all week landed in a variable.
+
+     So the night after a choice, the one it costs the most answers it.
+     Not approval and not a scolding: they were in the building for all
+     fifteen years of it, and they have had eleven days alone in here
+     to work out what they think. Both branches are written to be the
+     right one, because both of them are. */
+  afterChoice: {
+    1: {
+      kept: { who: "cogsworth",
+        t: "You put the key in your coat. I watched you do it. He carried that key for fifteen years and never once used it to let anybody in, and now it is in a coat that walks out of this building at six in the morning. I have been standing here since, not knowing what to do about how much better that is." },
+      burned: { who: "cogsworth",
+        t: "You left the key taped where it was. He never gave it to you, and you have decided not to take it, and I think that is the first thing the two of you have agreed about in some years." },
+    },
+    2: {
+      kept: { who: "marabelle",
+        t: "You kept the chalk. So there is a piece of him in your pocket that spells out what I am in four words, and the four words are correct. I would rather you had washed the bench. I would very much rather you had washed the bench, and I am glad that you did not." },
+      burned: { who: "marabelle",
+        t: "You washed the bench down. Thank you. I have stood next to that sentence for eleven days being described by it, and being described is not the same as being known. He never did learn the difference, and he had every chance." },
+    },
+    3: {
+      kept: { who: "chime",
+        t: "You took the book. Four hundred and eleven doors, and eleven of them ticked in a pen that is not his. I go over the top of everything in this shop and I have never once been out of it, so I cannot tell you what is out there. I can tell you it is coming back one a night, and that you are the only one holding the list." },
+      burned: { who: "chime",
+        t: "You burned the book. I could smell it from the ledge over the front door. Eleven have come back, and you have just put the only page that says where the other four hundred are on the fire. I would have done the same. Neither of us is going to be able to un-know that we did it." },
+    },
+    4: {
+      kept: { who: "jax",
+        t: "You kept the notebook. Fifteen years of you, in his hand, dated. I am the one he made in an afternoon without looking at anything, so I am the only one in this building who is not in that book, and that is why it is me saying this. It is not a love letter and it is not evidence. It is a man taking notes because he could not make himself ask." },
+      burned: { who: "jax",
+        t: "You burned the notebook. Good. I was not built with a delicate way of saying things, so: he should have asked you. Fifteen years, and he never once asked you. A man who watches instead of asking gets a fire, and he would have understood that better than anybody alive." },
+    },
+    5: {
+      kept: { who: "cogsworth",
+        t: "You have the drawing. Then you have seen the middle of it, rubbed out and drawn again five times, and you know what it is we are standing round. I would like to tell you we were always that. We were not. We were four things he was practising on, and then one night he turned us to face outwards, and I have never been more glad to be somebody's second idea." },
+      burned: { who: "cogsworth",
+        t: "The drawing is gone, and I find that I do not mind it. It was a plan, and we stopped being a plan some time before you got here. You do not need a piece of graph paper to tell you where I stand. I stand at the west door. I have stood at the west door every night you have been in this building." },
+    },
+  },
+
   pointAt: {
     cogsworth: { who: "cogsworth",
       t: "There is a card wired to the empty stand on my bench. It has my name on it, and a number, and on the back of it there is a sentence about you. I have been standing next to it for eleven days and I have not been able to turn it over." },
@@ -12479,6 +12528,21 @@ function tapeDue(dt) {
     /* she is shut in, so it knocks first */
     const shut = G.doors.left || G.doors.right || G.doors.hatch;
     if (shut) SFX.knock(0.5);
+    TAPE.pending = it;
+    return;
+  }
+
+  /* AND THE NIGHT AFTER A CHOICE, THE ONE IT COSTS THE MOST ANSWERS IT.
+     Before the pointing line, because what she did with his things
+     matters more than where she left one of them -- and not in the
+     first hour, which belongs to him. */
+  if (hourNow < 1) return;
+  const choices = keptAll();
+  for (let n = 1; n < G.night; n++) {
+    const set = NS.afterChoice && NS.afterChoice[n];
+    if (!set || choices[n] == null) continue;
+    const it = choices[n] === 1 ? set.kept : set.burned;
+    if (!it || TAPE.said[it.t]) continue;
     TAPE.pending = it;
     return;
   }
