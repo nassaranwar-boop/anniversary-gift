@@ -455,6 +455,9 @@ const BADGES = [
   { id:"flip",   name:"BOTH WAYS ROUND",
     text:"Win a race on a flipped course.",
     test:(f) => f.placed && f.place === 1 && f.mirror },
+  { id:"night",  name:"HEADLIGHTS ON",
+    text:"Win a race after dark.",
+    test:(f) => f.placed && f.place === 1 && f.night },
   { id:"cup",    name:"THE WHOLE CUP",
     text:"See a Grand Prix all the way to the end.",
     test:(f) => f.cup },
@@ -1270,11 +1273,24 @@ function bakePano(def) {
   g.clearRect(0, 0, PANO_W, PANO_H);
   const gf = panoFar.getContext("2d"); gf.clearRect(0, 0, PANO_W, PANO_H);
 
-  const sky = g.createLinearGradient(0, 0, 0, PANO_H);
-  sky.addColorStop(0, def.sky[0]);
-  sky.addColorStop(1, def.sky[1]);
-  g.fillStyle = sky;
-  g.fillRect(0, 0, PANO_W, PANO_H);
+  /* THE BAND CARRIES ITS OWN SKY -- EXCEPT AT NIGHT.
+
+     By day the backdrop is painted onto a copy of the sky gradient, and
+     because it is opaque it saves the ground behind it showing through
+     the gaps between the buildings. At night that same opaque sheet was
+     painted straight over the stars: a hundred and fifty of them, laid
+     out and scrolled correctly, and every one of them behind a wall of
+     the identical colour. The gradient underneath is the same gradient,
+     so leaving the band transparent loses nothing and gives the sky
+     back its stars -- and the ridges then sit in FRONT of them, which is
+     the right way round. */
+  if (!def.night) {
+    const sky = g.createLinearGradient(0, 0, 0, PANO_H);
+    sky.addColorStop(0, def.sky[0]);
+    sky.addColorStop(1, def.sky[1]);
+    g.fillStyle = sky;
+    g.fillRect(0, 0, PANO_W, PANO_H);
+  }
 
   const rnd = mulberry(seedOf(def.base || def.id, 977));
   const base = PANO_H - 4;
@@ -1617,6 +1633,38 @@ function bakePano(def) {
   }
 
   buildParallax(def, gf);
+
+  /* and the whole skyline goes down with everything else -- source-atop
+     again, so the sky between the rooftops stays open and the stars
+     keep showing through it */
+  if (def.night) {
+    /* HARDER THAN THE THINGS IN FRONT OF IT.
+
+       The band is the far distance, and the far distance at night is
+       barely there: what light it has comes from its own windows, not
+       from the sky. A pale daylight shopfront run put through the same
+       grade as the tree beside the road still came out reading as a
+       lit building, so the band takes the grade AND a veil of the
+       course's own night sky on top of it -- which is what distance
+       does anyway, and the reason the far ridge disappears first. */
+    [g, gf].forEach((c2, i) => {
+      c2.save();
+      c2.globalCompositeOperation = "source-atop";
+      c2.fillStyle = "rgba(20,32,70,.62)";
+      c2.fillRect(0, 0, PANO_W, PANO_H);
+      c2.fillStyle = i ? "rgba(6,8,22,.44)" : "rgba(5,7,18,.50)";
+      c2.fillRect(0, 0, PANO_W, PANO_H);
+      /* the veil: strongest at the base, where the band meets the
+         ground and the air between you and it is deepest */
+      const veil = c2.createLinearGradient(0, 0, 0, PANO_H);
+      veil.addColorStop(0, "rgba(14,18,44,.16)");
+      veil.addColorStop(1, "rgba(24,34,72,.42)");
+      c2.fillStyle = veil;
+      c2.fillRect(0, 0, PANO_W, PANO_H);
+      c2.restore();
+    });
+  }
+
   panoId = def.id;
 }
 
@@ -2145,7 +2193,12 @@ function buildScenery(kind, variant, def, tint, litSide) {
     : (def ? Math.cos(def.light != null ? def.light : -0.7) : 0.75) >= 0;
   const v = variant | 0;
   const ti = (tint | 0) % TINTS.length;
-  const key = kind + "|" + v + "|" + ti + (litRight ? "|R" : "|L");
+  /* ...and after dark it is a different sprite, so it needs a different
+     key. Without this the first tree baked in daylight is handed back
+     all night, which is exactly how you end up with a fluorescent green
+     forest standing under a field of stars. */
+  const dark = !!(def && def.night);
+  const key = kind + "|" + v + "|" + ti + (litRight ? "|R" : "|L") + (dark ? "|N" : "");
   if (sceneryCache[key]) return sceneryCache[key];
 
   const W = 128, H = 150;
@@ -3062,6 +3115,34 @@ function buildScenery(kind, variant, def, tint, litSide) {
     g.fillRect(0, 0, W, H);
     g.globalCompositeOperation = "source-over";
   }
+  /* ---- NIGHTFALL, ON THE SPRITE ITSELF ----
+
+     source-atop lays the colour ONLY where there is already paint, so
+     the wash follows the silhouette exactly and the transparent
+     surround stays transparent -- a tree goes dark without acquiring a
+     dark rectangle around it. Two passes: a blue that takes the colour
+     out, then a near-black that takes the light, in that order, for the
+     same reason the ground colours are graded in that order.
+
+     It happens once, at the bake, and the result is cached under its
+     own key, so the whole of night costs one extra sprite per kind. */
+  if (dark) {
+    g.save();
+    g.globalCompositeOperation = "source-atop";
+    g.fillStyle = "rgba(24,38,78,.62)";
+    g.fillRect(0, 0, W, H);
+    g.fillStyle = "rgba(6,8,20,.34)";
+    g.fillRect(0, 0, W, H);
+    /* and a thin cold rim down the lit side, so a shape still has a
+       side the light is on -- moonlight instead of sun */
+    const rim = g.createLinearGradient(litRight ? W : 0, 0, litRight ? 0 : W, 0);
+    rim.addColorStop(0, "rgba(150,178,230,.17)");
+    rim.addColorStop(0.42, "rgba(150,178,230,0)");
+    g.fillStyle = rim;
+    g.fillRect(0, 0, W, H);
+    g.restore();
+  }
+
   sceneryCache[key] = cropToContent(c);
   return sceneryCache[key];
 }
@@ -4013,6 +4094,45 @@ function solidParts(kind, v, def, ti) {
     });
   }
 
+  /* ---- AND THE SAME BUILDING AFTER DARK ----
+
+     The solids are painted once per course and cached against the
+     course's id, and a night course has an id of its own -- so this
+     runs once, at the bake, and costs nothing per frame. Two things
+     happen. Every surface goes through the one night grade, walls and
+     roofs and fences alike, so a house stops being a daylight house
+     standing in a dark field. And every window that has glass in it
+     comes ON: the glass is no longer a dark reflection of the sky, it
+     is the light, and it is the warmest thing left in the picture.
+
+     A part that is already a light -- litCol, the lamp glass, the sign
+     -- is deliberately not graded. That is the whole point of a night:
+     what is lit stays lit while everything around it goes. */
+  if (def && def.night) {
+    const G = (c) => (typeof c === "string" && c[0] === "#" ? duskHex(c, 0.56, 0.46) : c);
+    parts = parts.map((p) => {
+      const q = Object.assign({}, p);
+      if (q.col)     q.col     = G(q.col);
+      if (q.endCol)  q.endCol  = G(q.endCol);
+      if (q.deckCol) q.deckCol = G(q.deckCol);
+      if (q.capCol)  q.capCol  = G(q.capCol);
+      if (q.win) {
+        const w = Object.assign({}, q.win);
+        w.frame = G(w.frame); w.sill = G(w.sill);
+        /* the glass is the lamp now -- but not all of it. Three panes in
+           five come on (see the run in the window painter), and the rest
+           stay dark glass, because a building with EVERY window lit is a
+           lightbox and a building with some of them lit is somebody's
+           house with people in it. */
+        w.lit = true;
+        w.litCol = w.litCol || "#ffd98a";
+        w.glass = duskHex(w.glass || "#5d7a92", 0.74, 0.34);
+        q.win = w;
+      }
+      return q;
+    });
+  }
+
   solidCache[key] = parts;
   return parts;
 }
@@ -4138,6 +4258,52 @@ function renderSky(def, camA) {
   grad.addColorStop(1, def.sky[1]);
   g.fillStyle = grad;
   g.fillRect(0, 0, RW, HORIZON);
+
+  /* ---- AND AT NIGHT, WHAT IS IN IT ----
+
+     A night sky that is only a dark gradient is a switched-off day. The
+     stars are laid out in a fixed pattern in WORLD bearing and scrolled
+     against the camera's heading, exactly like the ridges below them, so
+     they sit still as she drives and swing past as she turns a corner --
+     which is the difference between a sky and a wallpaper. The moon is
+     out at a bearing of its own, so it rises over one part of the course
+     and is behind her on another.
+
+     None of it is random per frame: the same seed every time, so the sky
+     is the same sky each lap. */
+  if (def.night) {
+    const rnd2 = mulberry(20260914);
+    const off = ((camA / TWO_PI) % 1 + 1) % 1;
+    for (let i = 0; i < 150; i++) {
+      const bearing = rnd2();
+      const yy = rnd2();
+      const mag = rnd2();
+      let x = ((bearing - off * 0.5) % 1 + 1) % 1 * RW;
+      const y = yy * HORIZON * 0.92;
+      /* the lower they are the more air is in the way */
+      const a = (0.25 + mag * 0.75) * (1 - (y / HORIZON) * 0.55);
+      g.globalAlpha = a;
+      g.fillStyle = mag > 0.93 ? "#ffd9b0" : mag > 0.86 ? "#bcd8ff" : "#fff8e8";
+      const sz = mag > 0.9 ? 2 : 1;
+      g.fillRect(x | 0, y | 0, sz, sz);
+    }
+    g.globalAlpha = 1;
+    /* the moon, with the same sprite language as everything else */
+    const mBear = 0.32;
+    const mxp = ((mBear - off * 0.5) % 1 + 1) % 1 * RW;
+    const myp = HORIZON * 0.24;
+    const mr2 = RW * 0.026;
+    const hal = g.createRadialGradient(mxp, myp, 0, mxp, myp, mr2 * 5);
+    hal.addColorStop(0, "rgba(220,232,255,.30)");
+    hal.addColorStop(1, "rgba(220,232,255,0)");
+    g.fillStyle = hal;
+    g.fillRect(mxp - mr2 * 5, myp - mr2 * 5, mr2 * 10, mr2 * 10);
+    g.fillStyle = "#e8eeff";
+    g.beginPath(); g.arc(mxp, myp, mr2, 0, TWO_PI); g.fill();
+    g.fillStyle = "rgba(150,168,200,.55)";
+    g.beginPath(); g.arc(mxp - mr2 * 0.30, myp - mr2 * 0.22, mr2 * 0.26, 0, TWO_PI); g.fill();
+    g.beginPath(); g.arc(mxp + mr2 * 0.34, myp + mr2 * 0.18, mr2 * 0.20, 0, TWO_PI); g.fill();
+  }
 
   /* Three depths, each scrolling at its own rate against the camera's
      heading. Far ridge barely moves, the midground band moves about
@@ -5223,6 +5389,7 @@ let reduceMotion = false;
 let boltCyc = -1;        // so one flash fires one roll of thunder
 let mirror = false;      // the course, the other way round
 let wet = false;         // and the same course in the rain
+let night = false;       // ...and the same course after dark
 let gpRound = 0, gpPoints = [];
 let gpTable = {};
 let state = "title";           // title|chars|tracks|count|race|paused|results|gpboard
@@ -5303,6 +5470,46 @@ const GLOWS = {
                cols:["#ffd166","#ff9ec4","#7ec8e3","#7ddba3","#ffd166","#ff9ec4"] },
   lamp:{ n:1, rate:1.3, base:0.26, amp:0.07, r:0.16, y:0.86, spread:0,
          cols:["#ffd166"] },
+};
+
+/* ---- AND THE SAME THINGS AFTER DARK ----
+
+   At night the lights stop being a detail on the scenery and become the
+   scenery: a lamp is a lamp all day and a landmark at night, and a house
+   with its windows on is the only thing telling you a house is there at
+   all. So the glow table is bigger and warmer after dark, and every kind
+   of building gets one.
+
+   Numbers are per kind rather than one global multiplier because a
+   street lamp and a cabin window are different sizes of light: the lamp
+   is small, high and hard, the window is broad, low and soft. */
+const NIGHT_GLOWS = {
+  stringpole:{ n:6, rate:2.2, base:0.40, amp:0.20, r:0.085, y:0.52, spread:1.5,
+               cols:["#ffd166","#ff9ec4","#7ec8e3","#7ddba3","#ffd166","#ff9ec4"] },
+  lamp:{ n:1, rate:1.1, base:0.40, amp:0.08, r:0.28, y:0.84, spread:0,
+         cols:["#ffc879"] },
+  /* THE BUILDINGS BARELY NEED ONE.
+
+     Their windows are now lit at the bake -- real warm glass in a real
+     frame, three panes in five -- so all a halo has to add is the
+     little bloom in the air just outside them. The first numbers here
+     were written before that, when the halo WAS the light, and left
+     additively over a flat wall they washed a whole shopfront pale and
+     undid the dark the rest of the grade had bought. Small and low. */
+  house:{ n:2, rate:0.5, base:0.13, amp:0.03, r:0.09, y:0.52, spread:0.8,
+          cols:["#ffd98a","#ffc46a"] },
+  store:{ n:2, rate:0.6, base:0.15, amp:0.03, r:0.10, y:0.56, spread:0.9,
+          cols:["#ffe0a8","#ff9ec4"] },
+  cabin:{ n:1, rate:0.4, base:0.14, amp:0.03, r:0.11, y:0.54, spread:0,
+          cols:["#ffc46a"] },
+  shed:{ n:1, rate:0.4, base:0.11, amp:0.02, r:0.09, y:0.52, spread:0,
+         cols:["#ffc46a"] },
+  vending:{ n:1, rate:0.9, base:0.36, amp:0.10, r:0.16, y:0.50, spread:0,
+            cols:["#7ec8e3"] },
+  trafficlight:{ n:1, rate:0.7, base:0.34, amp:0.08, r:0.10, y:0.26, spread:0,
+                 cols:["#7ddba3"] },
+  signpost:{ n:1, rate:0.6, base:0.16, amp:0.03, r:0.10, y:0.40, spread:0,
+             cols:["#ffd166"] },
 };
 
 /* who gets up and cheers when the bell rings */
@@ -5558,11 +5765,28 @@ function startRace() {
    down over it, and the grip taken away. The colours are derived from
    the dry ones so a wet course still looks like itself.
    --------------------------------------------------------- */
+/* THE ONE NIGHT GRADE
+
+   Every part of the picture that was painted for daylight -- the ground
+   colours, the buildings, the trees, the far skyline -- goes through
+   this and no other, so the road, the hedge beside it and the ridge
+   behind that all fall dark by the same law. Colour goes first and
+   brightness second: the eye loses hue in the dark long before it loses
+   light, which is why a night photograph is blue rather than grey, and
+   why doing it the other way round gives mud. */
+const NIGHT_BLUE = "#14203a";
+function duskHex(hex, f, k) {
+  const c = mixRgb(hex, NIGHT_BLUE, f == null ? 0.58 : f);
+  const kk = k == null ? 0.52 : k;
+  return "#" + c.map((v) => Math.max(0, Math.min(255, Math.round(v * kk)))
+                             .toString(16).padStart(2, "0")).join("");
+}
+
 function variantDef(base) {
-  if (!mirror && !wet) return base;
+  if (!mirror && !wet && !night) return base;
   const d = Object.assign({}, base);
   d.base = base.id;
-  d.id = base.id + (mirror ? "~m" : "") + (wet ? "~w" : "");
+  d.id = base.id + (mirror ? "~m" : "") + (wet ? "~w" : "") + (night ? "~n" : "");
 
   if (mirror) {
     const flip = (pts) => pts.map((p) => [1 - p[0], p[1]]);
@@ -5590,6 +5814,49 @@ function variantDef(base) {
     d.haze     = dim(base.haze, 0.40, "#93a0ae");
     d.wet      = true;
     d.clouds   = false;              // the overcast is the whole sky now
+  }
+
+  /* ---------- NIGHT ----------
+
+     The same road after dark, and the trick is that it is NOT just the
+     day turned down. Three things happen to a landscape at night and all
+     three have to happen here or it reads as a bug rather than as a
+     time:
+
+       - everything loses its colour before it loses its brightness. The
+         eye stops seeing hue in the dark, so the ground is pulled most
+         of the way towards one blue before it is dimmed, which is why a
+         night photograph is blue and not grey.
+       - the sky goes from light-at-the-bottom to dark-at-the-bottom. In
+         daylight the horizon is the brightest part of the sky; at night
+         it is the darkest, because the only light left is coming from
+         above.
+       - and anything that is a LIGHT stops being a detail and becomes
+         the subject. The kerb keeps nearly all of its colour, the lamps
+         and the windows come on (see NIGHT_GLOWS), and the two of them
+         are the only warm things left in the picture.
+
+     Rain and night compose: the wet pass above has already run by the
+     time this one does, so a wet night is a wet road with the lights on
+     rather than a third set of colours. */
+  if (night) {
+    const blue = NIGHT_BLUE;
+    const dusk = (hex, f) => duskHex(hex, f);
+    d.grass    = dusk(d.grass, 0.58);
+    d.grassAlt = dusk(d.grassAlt, 0.58);
+    d.shoulder = dusk(d.shoulder, 0.50);
+    d.road     = dusk(d.road, 0.42);
+    d.roadAlt  = dusk(d.roadAlt, 0.42);
+    /* the kerb is the one thing that keeps its colour: it is painted to
+       be seen in the dark, and it is the only line telling her where the
+       road goes */
+    d.rumbleA  = mix(d.rumbleA, blue, 0.18);
+    d.rumbleB  = mix(d.rumbleB, "#cfd8ea", 0.30);
+    d.sky      = ["#0a0a1e", "#2a2a4e"];
+    d.haze     = "#243052";
+    d.light    = (d.light != null ? d.light : -0.7) + Math.PI * 0.35;
+    d.night    = true;
+    d.clouds   = false;
   }
   return d;
 }
@@ -5921,6 +6188,7 @@ function raceFacts(me, extra) {
     drift: raceDrift,
     wet: !!trackDef.wet,
     mirror: !!mirror,
+    night: !!trackDef.night,
     beatGhost: false,
     cup: false,
   };
@@ -6512,6 +6780,7 @@ function draw() {
       if (ww < 1.5) return;
       castShadow(g, im2, "k" + o.def.id + ai2 + "p" + pz2, b.s.sx, b.s.sy, ww, hh, 0.6, b.s.fade);
       contactPatch(g, b.s.sx, b.s.sy, ww * 0.42, b.s.fade);
+      if (trackDef.night) headlamp(g, o, camX, camY, camA, b.s);
     } else if (b.kind === "haz") {
       if (SOLID[b.o.kind]) { solidShadow(g, b.o, camX, camY, camA, b.s.fade); return; }
       const spec = SCENERY[b.o.kind] || { h: 40, foot: 0.8 };
@@ -6661,6 +6930,65 @@ function contactPatch(g, sx, sy, w, fade) {
   g.restore();
 }
 
+/* HEADLIGHTS
+
+   A night course where the karts are the only unlit things in it reads
+   as a day someone has turned down. Each kart throws a beam on the road
+   in front of it, and because it is a real world-space cone -- a point
+   taken a car's length ahead along the kart's OWN heading and projected
+   with everything else -- it swings with the steering, sweeps the verge
+   on the way into a corner and stretches out down a straight, rather
+   than being a lamp glued to the bottom of the screen.
+
+   It goes down in the shadow pass, so it lies ON the road and UNDER
+   every sprite standing on it: a beam painted over the top of a tree it
+   is supposed to be shining at is worse than no beam at all. Drawn with
+   "lighter", because light adds. */
+function headlamp(g, o, camX, camY, camA, s2) {
+  const ca = Math.cos(o.angle), sa = Math.sin(o.angle);
+  /* IN FRONT OF THE KART, NOT AROUND IT. The first pass hung the beam
+     off the contact point, which put half of the light BEHIND the car --
+     a grey smear centred on the kart rather than a lamp. It starts a
+     bumper's length ahead and ends where the light gives out. */
+  const near = projectSprite(o.x + ca * 22, o.y + sa * 22, camX, camY, camA);
+  const far  = projectSprite(o.x + ca * 165, o.y + sa * 165, camX, camY, camA);
+  if (!near || !far) return;
+  const wN = 9 * near.scale, wF = 30 * far.scale;
+  /* HERS IS THE ONE THAT MATTERS. Eight karts on the grid throwing eight
+     beams of equal strength lit the whole first corner like a floodlit
+     pitch and lost her own light in the middle of it. The field's lamps
+     are real but quieter, so the beam she is steering by stays the
+     brightest thing on the road. */
+  const k = o.isPlayer ? 1 : 0.55;
+  const beam = g.createLinearGradient(near.sx, near.sy, far.sx, far.sy);
+  beam.addColorStop(0.00, `rgba(255,226,162,${0.26 * k})`);
+  beam.addColorStop(0.38, `rgba(255,214,144,${0.13 * k})`);
+  beam.addColorStop(1.00, "rgba(255,208,140,0)");
+  g.save();
+  g.globalCompositeOperation = "lighter";
+  g.globalAlpha = s2.fade == null ? 1 : s2.fade;
+  g.fillStyle = beam;
+  g.beginPath();
+  g.moveTo(near.sx - wN, near.sy);
+  g.lineTo(near.sx + wN, near.sy);
+  g.lineTo(far.sx + wF, far.sy);
+  g.lineTo(far.sx - wF, far.sy);
+  g.closePath();
+  g.fill();
+  /* the hot spot where the two beams cross, a few metres out */
+  const hx = near.sx + (far.sx - near.sx) * 0.22;
+  const hy = near.sy + (far.sy - near.sy) * 0.22;
+  const rr = 15 * near.scale;
+  const hot = g.createRadialGradient(hx, hy, 0, hx, hy, rr);
+  hot.addColorStop(0, `rgba(255,234,186,${0.28 * k})`);
+  hot.addColorStop(1, "rgba(255,222,164,0)");
+  g.fillStyle = hot;
+  g.beginPath();
+  g.ellipse(hx, hy, rr, rr * 0.38, 0, 0, TWO_PI);
+  g.fill();
+  g.restore();
+}
+
 function shadowUnder(g, sx, sy, w, tall) {
   const len = (tall || 0.55) * w;
   const dx = Math.sin(sunRel) * len;
@@ -6753,18 +7081,49 @@ function drawProp(g, b) {
     drawHazed(g, img, o.sid, s.sx - w / 2, s.sy - h, w, h, s.z, o.flip);
   }
 
-  /* bulbs and lamps breathe, independently of each other */
-  const lit = GLOWS[o.kind];
+  /* bulbs and lamps breathe, independently of each other -- and after
+     dark there are a great many more of them */
+  const lit = (trackDef.night && NIGHT_GLOWS[o.kind]) || GLOWS[o.kind];
   if (lit && w > 10) {
     g.save();
+    /* LIGHT ADDS.
+
+       These were flat filled circles at a low alpha, which in daylight
+       passes for a bulb and after dark does not: a hard-edged pale disc
+       hanging in front of a dark tree reads as a hole in the picture,
+       not as a lamp. A radial falloff drawn with "lighter" reads as
+       light because it behaves like light -- brightest at the filament,
+       gone by the edge, and adding to whatever it lands on instead of
+       greying it over. */
+    g.globalCompositeOperation = "lighter";
     for (let i = 0; i < lit.n; i++) {
       const ph = raceTime * lit.rate + i * 2.1 + o.x * 0.01;
-      const a2 = lit.base + Math.sin(ph) * lit.amp;
-      g.globalAlpha = Math.max(0, a2);
-      g.fillStyle = lit.cols[i % lit.cols.length];
-      const gx = s.sx + (i / (lit.n - 1) - 0.5) * w * lit.spread;
+      const a2 = Math.max(0, lit.base + Math.sin(ph) * lit.amp);
+      if (a2 <= 0.004) continue;
+      /* ONE BULB IS NOT NO BULBS. With n === 1 this spacing term was
+         0 / 0 -- NaN -- which made the whole coordinate NaN and the
+         canvas quietly drew nothing at all. Every single-bulb light in
+         the game (the street lamps, the cabins, the vending machines,
+         the traffic lights) has been dark since the table was written,
+         which is also why nobody noticed until the lights became the
+         point of the scene. */
+      const spread = lit.n > 1 ? (i / (lit.n - 1) - 0.5) * lit.spread : 0;
+      const gx = s.sx + spread * w;
       const gy = s.sy - h * lit.y;
-      g.beginPath(); g.arc(gx, gy, w * lit.r, 0, TWO_PI); g.fill();
+      const R2 = Math.max(1, w * lit.r * (trackDef.night ? 1.3 : 1));
+      const rgb = hexToRgb(lit.cols[i % lit.cols.length]);
+      const halo = g.createRadialGradient(gx, gy, 0, gx, gy, R2);
+      halo.addColorStop(0.00, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a2})`);
+      halo.addColorStop(0.42, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a2 * 0.40})`);
+      halo.addColorStop(1.00, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+      g.fillStyle = halo;
+      g.fillRect(gx - R2, gy - R2, R2 * 2, R2 * 2);
+      /* and the bulb itself, so there is something for the halo to be
+         coming from */
+      g.globalAlpha = Math.min(1, a2 * 1.25);
+      g.fillStyle = lit.cols[i % lit.cols.length];
+      g.beginPath(); g.arc(gx, gy, Math.max(0.7, R2 * 0.13), 0, TWO_PI); g.fill();
+      g.globalAlpha = 1;
     }
     g.restore();
   }
@@ -7182,6 +7541,14 @@ function drawFx(g, b) {
 
 function drawSpeedLines(g, boost) {
   const n = 16;
+  /* THEY BELONG TO THE GROUND RUSHING PAST.
+
+     The fan is wide enough that its top reaches well above the horizon,
+     and in daylight nobody notices -- a pale line on a pale sky. Against
+     a night sky the same lines read as scratches on the film, so after
+     dark they are clipped to the ground they are made of. */
+  const clip = trackDef.night;
+  if (clip) { g.save(); g.beginPath(); g.rect(0, HORIZON - 2, RW, RH); g.clip(); }
   g.globalAlpha = Math.min(0.5, boost * 0.4);
   g.strokeStyle = "#fff8e8";
   g.lineWidth = 1;
@@ -7195,6 +7562,7 @@ function drawSpeedLines(g, boost) {
     g.stroke();
   }
   g.globalAlpha = 1;
+  if (clip) g.restore();
 }
 
 /* RAIN
@@ -7385,12 +7753,32 @@ function buildLens() {
     g.fillRect(0, HORIZON, RW, RH * 0.30);
   }
 
+  /* NIGHT, OVER THE TOP OF ALL OF IT
+
+     Everything underneath has already been graded at its own bake --
+     the ground, the buildings, the trees, the skyline -- so this is not
+     the darkening. It is the air: a cold wash that puts the karts, the
+     hearts and the item boxes (which are lit from inside and stay
+     bright, as they should) into the same night as the world they are
+     driving through, plus a deep pool along the bottom edge where the
+     headlights are not reaching. Kept light on purpose -- laid on thick
+     it flattens the lamps back into the dark and undoes the point. */
+  if (trackDef.night) {
+    const air = g.createLinearGradient(0, 0, 0, RH);
+    air.addColorStop(0.00, "rgba(18,28,62,.30)");
+    air.addColorStop(0.42, "rgba(16,24,54,.14)");
+    air.addColorStop(1.00, "rgba(6,9,24,.34)");
+    g.fillStyle = air;
+    g.fillRect(0, 0, RW, RH);
+  }
+
   /* and the corners, falling off the way a lens does */
   const vig = g.createRadialGradient(RW / 2, RH * 0.54, RH * 0.34,
                                      RW / 2, RH * 0.54, RH * 1.06);
-  vig.addColorStop(0, "rgba(24,14,32,0)");
-  vig.addColorStop(0.62, "rgba(24,14,32,.10)");
-  vig.addColorStop(1, "rgba(24,14,32,.34)");
+  const vc = trackDef.night ? "8,10,26" : "24,14,32";
+  vig.addColorStop(0, `rgba(${vc},0)`);
+  vig.addColorStop(0.62, `rgba(${vc},${trackDef.night ? ".20" : ".10"})`);
+  vig.addColorStop(1, `rgba(${vc},${trackDef.night ? ".58" : ".34"})`);
   g.fillStyle = vig;
   g.fillRect(0, 0, RW, RH);
 }
@@ -7977,13 +8365,17 @@ function renderTracks() {
         ? `<p class="rc-warn">${TRACKS[trackIdx].hazard.warn}</p>` : ""}
       <div class="rc-row rc-vars">
         <button class="rc-vbtn${mirror ? " on" : ""}" data-mirror="1">FLIPPED</button>
+        <button class="rc-vbtn${night ? " on" : ""}" data-night="1">NIGHT</button>
         <button class="rc-vbtn${wet ? " on" : ""}" data-wet="1">RAIN</button>
       </div>
-      <p class="rc-varnote">${
-        mirror && wet ? "Flipped, and wet through. Good luck."
-        : mirror ? "The same track flipped left to right \u2014 every corner the other way."
-        : wet ? "Less grip, longer braking, and the wipers on."
-        : "Same road, two ways to make it new."}</p>
+      <p class="rc-varnote">${(() => {
+        const on = [mirror && "flipped", night && "after dark", wet && "in the rain"].filter(Boolean);
+        if (on.length > 1) return "The same road, " + on.join(", ") + ". Good luck.";
+        if (mirror) return "The same track flipped left to right \u2014 every corner the other way.";
+        if (wet) return "Less grip, longer braking, and the wipers on.";
+        if (night) return "The lamps are lit and the windows are on. Follow the kerb.";
+        return "Same road, three ways to make it new.";
+      })()}</p>
       <div class="rc-row">
         <button class="rc-btn rc-btn-s" data-back="chars">‹ BACK</button>
         <button class="rc-btn rc-btn-go" data-next="tracks">START ›</button>
@@ -9516,7 +9908,7 @@ function next(from) {
   if (from === "chars") {
     if (mode === "gp") {
       /* a championship is run on the courses as they are */
-      mirror = false; wet = false;
+      mirror = false; wet = false; night = false;
       gpRound = 0; gpPoints = []; gpTable = {}; trackIdx = 0; startRace();
     }
     else renderTracks();
@@ -9542,7 +9934,7 @@ function onOverlayClick(e) {
     if (!c) { renderTitle(); return; }
     /* pick the championship up exactly where it was put down */
     mode = "gp";
-    mirror = false; wet = false;
+    mirror = false; wet = false; night = false;
     gpRound = c.round + 1;
     gpPoints = c.points;
     gpTable = c.table || {};
@@ -9564,6 +9956,7 @@ function onOverlayClick(e) {
   if (d.track !== undefined) { trackIdx = +d.track; renderTracks(); return; }
   if (d.mirror) { mirror = !mirror; renderTracks(); return; }
   if (d.wet)    { wet = !wet;       renderTracks(); return; }
+  if (d.night)  { night = !night;   renderTracks(); return; }
   if (d.badges) { renderBadges(); return; }
   if (d.keeps)  { renderKeeps();  return; }
   if (d.back === "title") { setOverlay(""); showHud(false); renderTitle(); return; }
@@ -10010,10 +10403,10 @@ function resize() {
      stars       three depths, twinkling on their own clocks
      dust        slow motes crossing the frame, for parallax
      the ring    a tilted orbit ring, its far half drawn behind the planet
+     the karts   Ouissy and Anwar ON that ring, exactly half a lap apart,
+                 whichever is round the back drawn before the planet so
+                 the planet covers it
      the planet  six countries, a day/night terminator, an atmosphere
-     the moon    a little one, going round, with a checkered cap
-     the karts   Ouissy and Anwar, one in front and one behind, banking
-                 as they come round, each on a thruster trail
      hearts      drifting the way hearts do in this game
      a comet     now and then, because a sky with nothing crossing it is
                  a wallpaper
@@ -10104,8 +10497,24 @@ function initSpace() {
     };
   });
 
-  space = { t: 0, spin: 0.6, stars, dust, hearts, regions, comet: null, next: 3,
-            seen: {}, moon: null };
+  /* ---- WEATHER, AND THE BITS BETWEEN THE COUNTRIES ----
+     A planet made of six circuits and nothing else is a diagram. Clouds
+     turning at their own rate over the top of it, and a scatter of small
+     islands in the empty ocean, are what make it a world that the six of
+     them happen to be on. */
+  const clouds = [];
+  for (let i = 0; i < 26; i++)
+    clouds.push({ lon: rnd() * TWO_PI, lat: (rnd() - 0.5) * 2.1,
+                  r: 0.07 + rnd() * 0.12, n: 2 + ((rnd() * 3) | 0),
+                  o: 0.16 + rnd() * 0.22 });
+  const isles = [];
+  for (let i = 0; i < 30; i++)
+    isles.push({ lon: rnd() * TWO_PI, lat: (rnd() - 0.5) * 2.2,
+                 r: 0.012 + rnd() * 0.030,
+                 col: ["#6fa07a", "#7f9a86", "#8a9a6e", "#95a08a"][(rnd() * 4) | 0] });
+
+  space = { t: 0, spin: 0.6, stars, dust, hearts, regions, clouds, isles,
+            comet: null, next: 3, seen: {} };
 }
 
 /* a point on the sphere, and whether it is on the side facing us */
@@ -10123,10 +10532,12 @@ function drawSpace(dt) {
   if (!space) initSpace();
   const S = space;
   S.t += dt;
-  /* one turn every eighty seconds or so: fast enough that a country you
-     were watching goes over the edge while she reads the menu, slow
-     enough that it never looks like it is spinning */
-  S.spin += dt * 0.078;
+  /* A DAY IS THREE MINUTES LONG. Slow enough that you never catch it
+     turning -- look away and look back and a different country is round
+     the front, which is what a planet does. The orbit above it runs about
+     three times faster, so the two of them go round it the way a moon
+     goes round the Earth rather than hanging in the same place. */
+  S.spin += dt * 0.035;
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
@@ -10191,20 +10602,33 @@ function drawSpace(dt) {
   }
 
   /* ---- where the planet is ---- */
-  const R  = Math.min(cw, ch) * 0.32;
-  /* far enough in from the edge that the orbit below stays on the glass:
-     at a quarter of the way across, the karts spent the left half of
-     every lap sliced in half by the side of the picture */
-  const cx = cw * 0.285, cy = ch * 0.54;
+  /* WHERE THE WORLD SITS, AND WHY IT IS SMALL AND HARD LEFT.
+
+     The scrim that makes the menu readable is a wide ellipse over the
+     middle of the frame, because the menu itself is wide. Anything bright
+     that strays into it is dimmed to nothing -- which is what kept
+     happening to whichever kart was on the right of its orbit.
+
+     So the whole system is moved out of the menu's way: a smaller planet,
+     further left, with the orbit below drawn POLAR rather than flat, so
+     the two of them go over the top and under the bottom of the world
+     instead of swinging out to the sides. It costs nothing -- an orbit
+     is an orbit whichever way it is tilted -- and it means both of them
+     are always in the clear part of the picture. */
+  const R  = Math.min(cw, ch) * 0.30;
+  const cx = cw * 0.295, cy = ch * 0.52;
   const spin = S.spin;
   /* the light comes from up and to the right, and everything on the ball
      is shaded from the same direction */
   const lx = 0.55, ly = -0.5;
 
   /* ---- the orbit ring, far half ---- */
-  /* the orbit stays close: at half again the radius the karts spent most
-     of the lap off the side of the picture */
-  const ringR = R * 1.18, ringY = R * 0.34;
+  /* THE ORBIT: wide and tilted, the way a moon goes round. Half again the
+     width of the world so they come back out at the sides rather than
+     spending half the lap behind it, and flattened to a third of that in
+     height so it reads as a ring seen nearly edge-on rather than as a
+     circle drawn on the glass. */
+  const ringR = R * 1.46, ringY = R * 0.40;
   const drawRing = (from, to, alpha) => {
     ctx.save();
     ctx.strokeStyle = "rgba(255,196,163," + alpha + ")";
@@ -10218,65 +10642,65 @@ function drawSpace(dt) {
   };
   drawRing(Math.PI, TWO_PI, 0.30);
 
-  /* ---- THE TWO OF THEM ----
+  /* ---- THE TWO OF THEM, IN ORBIT ----
 
-     They used to orbit: round the back, out of sight, and one of them was
-     always missing. Both of them being there is the whole point of the
-     picture, so they do not go behind the world at all. They drift across
-     the front of it on the same long path, a little apart and a little
-     out of step, the way two people ride side by side -- and the path is
-     a Lissajous rather than a circle, so it never repeats in a way you
-     can catch and never puts either of them in the same place twice
-     running.
+     There was a moon. It is gone: a moon is one more thing to look at,
+     and this picture already has six countries and a pair of karts in it.
+     What goes round the world now is Anwar and Ouissy, and nothing else.
 
-     The moon has the orbit ring to itself, up and behind. Nothing they do
-     can reach it, which is the end of them passing through each other. */
-  /* THE PATH, AND WHY IT IS OVER THERE.
+     They are exactly half a lap apart -- opposite ends of the same
+     diameter, the way a sun and a moon sit -- so the picture is balanced
+     at every moment of the turn: when one of them is low and near, the
+     other is high and far, and the line between them always runs through
+     the middle of the world.
 
-     Flown across the middle of the frame they were drawn correctly and
-     seen by nobody: the scrim that makes the menu readable is eighty-five
-     per cent black through the middle, and two karts went under it every
-     lap. They fly over the WORLD instead -- the left of the picture,
-     where the scrim has fallen away and where there is something behind
-     them worth being in front of.
-
-     And they keep to the lower half of it. The moon runs high and behind;
-     nothing here reaches it, which is the end of the two of them passing
-     through each other. */
-  const flyPos = (a) => ({
-    x: cx + R * (-0.15 + 0.85 * Math.cos(a)),
-    y: cy + R * (0.25 + 0.45 * Math.sin(a * 1.31 + 0.7)),
+     The far half of the orbit is drawn BEFORE the planet, so the planet
+     covers whichever of them is round the back. That is the only thing
+     that makes a flat ellipse read as something going round a ball, and
+     it is why the ring is wider than the world: they come back out at the
+     sides rather than vanishing for half the lap. */
+  const orbAt = (a2) => ({
+    x: cx + Math.cos(a2) * ringR,
+    y: cy + Math.sin(a2) * ringY,
+    /* the near half of the orbit is the bottom of the ellipse */
+    near: Math.sin(a2) >= 0,
   });
-  const flyer = (who, phase, scale) => {
-    const a = S.t * 0.15 + phase;
-    const p0 = flyPos(a), p1 = flyPos(a + 0.05);
+  const flyer = (who, phase, scale, wantNear) => {
+    const a2 = S.t * 0.098 + phase;      /* a lap in about a minute */
+    const p0 = orbAt(a2);
+    if (p0.near !== wantNear) return;
+    const p1 = orbAt(a2 + 0.06);
     const def = CHARS[who];
-    /* pointing where they are actually going, not where they started */
     const head = Math.atan2(p1.y - p0.y, p1.x - p0.x);
     const ai = ((Math.round(head / TWO_PI * ANGLES) % ANGLES) + ANGLES) % ANGLES;
     const img = kartFrame(def.id, ai, 0);
     if (!img) return;
-    const h = R * scale, w = h * (img.width / img.height);
-    /* what the harness watches: both of them have to be ON the glass, and
-       neither of them may ever be where the moon is */
-    S.seen[def.id] = { x: p0.x, y: p0.y, w, h };
-    /* the thruster, trailing back along the path just flown */
+    /* a little smaller round the back, which is the other half of what
+       makes it an orbit rather than a circle drawn on glass */
+    const depth = p0.near ? 1 : 0.86;
+    const h = R * scale * depth, w = h * (img.width / img.height);
+    S.seen[def.id] = { x: p0.x, y: p0.y, w, h, near: p0.near };
     for (let i = 1; i <= 6; i++) {
-      const q = flyPos(a - i * 0.06);
-      ctx.globalAlpha = (1 - i / 7) * 0.42;
+      const q = orbAt(a2 - i * 0.055);
+      if (q.near !== wantNear) break;
+      ctx.globalAlpha = (1 - i / 7) * 0.40 * depth;
       ctx.fillStyle = def.accent;
       ctx.beginPath();
-      ctx.arc(q.x, q.y + h * 0.30, Math.max(1, R * 0.024 * (1 - i / 8)), 0, TWO_PI);
+      ctx.arc(q.x, q.y + h * 0.28, Math.max(1, R * 0.022 * (1 - i / 8)), 0, TWO_PI);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
     const gl = ctx.createRadialGradient(p0.x, p0.y, 0, p0.x, p0.y, w * 0.95);
-    gl.addColorStop(0, def.accent + "66");
+    gl.addColorStop(0, def.accent + (p0.near ? "66" : "44"));
     gl.addColorStop(1, def.accent + "00");
     ctx.fillStyle = gl;
     ctx.beginPath(); ctx.arc(p0.x, p0.y, w * 0.95, 0, TWO_PI); ctx.fill();
     ctx.drawImage(img, Math.round(p0.x - w / 2), Math.round(p0.y - h / 2), w, h);
   };
+  /* half a lap apart, for ever */
+  const OUISSY = 0, ANWAR = Math.PI;
+  flyer(0, OUISSY, 0.36, false);
+  flyer(1, ANWAR,  0.36, false);
 
   /* ---- the atmosphere, outside the edge ---- */
   const atm = ctx.createRadialGradient(cx, cy, R * 0.94, cx, cy, R * 1.28);
@@ -10297,6 +10721,92 @@ function drawSpace(dt) {
   sea.addColorStop(1, "#1b4a76");
   ctx.fillStyle = sea;
   ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+
+  /* ---- currents ----
+     Long shallow bands of slightly deeper water, turning with the world.
+     Nobody reads them as currents; what they do is stop the ocean being
+     one flat wash, which is the difference between a ball and a disc. */
+  for (let i = 0; i < 7; i++) {
+    const lat = -1.1 + i * 0.34;
+    const y = cy - R * Math.sin(lat);
+    const half = R * Math.cos(lat);
+    ctx.globalAlpha = 0.10;
+    ctx.fillStyle = i % 2 ? "#17466f" : "#57a0cf";
+    ctx.beginPath();
+    ctx.ellipse(cx, y, half, R * 0.045, 0, 0, TWO_PI);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  /* ---- the graticule ----
+     Six meridians and four parallels, so faint you only notice them when
+     the planet turns and they turn with it. A meridian on a sphere seen
+     from outside projects to an ellipse as wide as the sine of its
+     longitude, which is one line of maths and the reason this reads as a
+     globe rather than as a circle with pictures on it. */
+  ctx.strokeStyle = "rgba(210,240,255,.10)";
+  ctx.lineWidth = Math.max(0.6, R * 0.004);
+  for (let i = 0; i < 6; i++) {
+    const l = (i / 6) * Math.PI + spin;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.abs(Math.sin(l)) * R, R, 0, 0, TWO_PI);
+    ctx.stroke();
+  }
+  for (let i = 1; i <= 4; i++) {
+    const lat = -0.96 + i * 0.384;
+    const y = cy - R * Math.sin(lat), half = R * Math.cos(lat);
+    ctx.beginPath(); ctx.moveTo(cx - half, y); ctx.lineTo(cx + half, y); ctx.stroke();
+  }
+
+  /* ---- ice at both poles ---- */
+  for (const sgn of [-1, 1]) {
+    const capG = ctx.createRadialGradient(cx, cy - sgn * R * 1.02, 0, cx, cy - sgn * R * 1.02, R * 0.40);
+    capG.addColorStop(0, "rgba(244,252,255,.80)");
+    capG.addColorStop(0.6, "rgba(226,242,252,.30)");
+    capG.addColorStop(1, "rgba(226,242,252,0)");
+    ctx.fillStyle = capG;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - sgn * R * 0.99, R * 0.42, R * 0.15, 0, 0, TWO_PI);
+    ctx.fill();
+  }
+
+  /* ---- AURORA ----
+     A ribbon over each cap, drawn additively so it glows rather than
+     sits on top of the ice, and drifting on its own slow clock. The one
+     thing up there that is not a shape or a colour but a light. */
+  ctx.globalCompositeOperation = "lighter";
+  for (const sgn of [-1, 1]) {
+    for (let b2 = 0; b2 < 3; b2++) {
+      const ph = S.t * (0.18 + b2 * 0.05) + b2 * 2.1 + (sgn > 0 ? 0 : 1.7);
+      const yb = cy - sgn * R * (0.70 + b2 * 0.06);
+      ctx.strokeStyle = b2 === 1 ? "rgba(126,227,180,.16)" : "rgba(126,200,227,.13)";
+      ctx.lineWidth = Math.max(1, R * (0.05 - b2 * 0.012));
+      ctx.beginPath();
+      for (let i = 0; i <= 26; i++) {
+        const u = i / 26;
+        const lon = (u - 0.5) * 2.2;
+        const cl = Math.cos(lon);
+        if (cl <= 0.02) continue;
+        const x = cx + R * Math.sin(lon) * 0.98;
+        const y = yb + Math.sin(u * 6.0 + ph) * R * 0.045;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.globalCompositeOperation = "source-over";
+
+  /* ---- the small islands nobody races on ---- */
+  for (const isl of S.isles) {
+    const q = sphere(isl.lon, isl.lat, cx, cy, R, spin);
+    if (q.front <= 0.06) continue;
+    ctx.globalAlpha = Math.min(1, q.front / 0.2) * 0.9;
+    ctx.fillStyle = isl.col;
+    ctx.beginPath();
+    ctx.ellipse(q.x, q.y, R * isl.r * q.front, R * isl.r * 0.7, 0, 0, TWO_PI);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 
   /* ---- the six countries, each one the shape of its own circuit ---- */
   for (const reg of S.regions) {
@@ -10432,6 +10942,53 @@ function drawSpace(dt) {
   }
   ctx.globalAlpha = 1;
 
+  /* ---- THE LIGHTS ON THE NIGHT SIDE ----
+     Every course keeps its lamps on after dark. A point is on the night
+     side when it faces away from the sun, which in screen terms is a dot
+     product against the light direction -- so as the world turns, each
+     circuit's lights come on as it rolls into the dark and go out again
+     at dawn. It is the single most Earth-like thing on here. */
+  for (const reg of S.regions) {
+    const mid2 = sphere(reg.lon, reg.lat, cx, cy, R, spin);
+    if (mid2.front <= 0.04) continue;
+    const step2 = Math.max(2, (reg.loop.length / 22) | 0);
+    for (let i = 0; i < reg.loop.length; i += step2) {
+      const q = reg.loop[i];
+      const p2 = sphere(reg.lon + q[0] * reg.span,
+                        reg.lat - q[1] * reg.span * 0.80, cx, cy, R, spin);
+      if (p2.front <= 0.08) continue;
+      /* how far into the night this point is */
+      const night = -(((p2.x - cx) / R) * lx + ((p2.y - cy) / R) * ly);
+      if (night <= 0.05) continue;
+      ctx.globalAlpha = Math.min(1, night * 1.7) * Math.min(1, p2.front / 0.25) * 0.95;
+      ctx.fillStyle = reg.warm;
+      ctx.beginPath(); ctx.arc(p2.x, p2.y, Math.max(0.8, R * 0.009), 0, TWO_PI); ctx.fill();
+      ctx.globalAlpha *= 0.28;
+      ctx.beginPath(); ctx.arc(p2.x, p2.y, Math.max(1.6, R * 0.026), 0, TWO_PI); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  /* ---- WEATHER ----
+     Clouds turn a little faster than the ground under them, which is both
+     true and the thing that makes the rotation legible: two layers moving
+     at different rates is depth, one layer moving is a spinning picture. */
+  for (const c of S.clouds) {
+    const q = sphere(c.lon, c.lat, cx, cy, R, spin * 1.16);
+    if (q.front <= 0.08) continue;
+    const a3 = Math.min(1, q.front / 0.3) * c.o;
+    for (let k = 0; k < c.n; k++) {
+      const off = (k - (c.n - 1) / 2) * R * c.r * 0.55;
+      ctx.globalAlpha = a3 * (1 - Math.abs(k - (c.n - 1) / 2) * 0.18);
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.ellipse(q.x + off * q.front, q.y + (k % 2 ? 1 : -1) * R * c.r * 0.12,
+                  R * c.r * 0.7 * q.front, R * c.r * 0.34, 0, 0, TWO_PI);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+
   /* DAY AND NIGHT. Without this it is a disc with shapes on it; with it,
      it is a ball. The lit side is a highlight offset towards the light,
      the dark side is a wash pulled the other way, and the two of them
@@ -10444,6 +11001,34 @@ function drawSpace(dt) {
   day.addColorStop(1, "rgba(8,3,20,.46)");
   ctx.fillStyle = day;
   ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+
+  /* ---- DAWN ----
+     The terminator on a planet with air is not a grey edge, it is a thin
+     warm line: the light going through the whole depth of the atmosphere
+     on its way past. One offset ring, drawn additively. */
+  ctx.globalCompositeOperation = "lighter";
+  const dawn = ctx.createRadialGradient(
+    cx + R * lx * 0.18, cy + R * ly * 0.18, R * 0.54,
+    cx + R * lx * 0.18, cy + R * ly * 0.18, R * 1.02);
+  dawn.addColorStop(0, "rgba(255,170,110,0)");
+  dawn.addColorStop(0.72, "rgba(255,168,120,.16)");
+  dawn.addColorStop(1, "rgba(255,140,110,0)");
+  ctx.fillStyle = dawn;
+  ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+
+  /* ---- THE SUN ON THE WATER ----
+     A small hard highlight where the sea is angled exactly back at the
+     light. It is the one thing on the sphere that does not turn with it,
+     and that is what makes it read as a reflection. */
+  const glint = ctx.createRadialGradient(
+    cx + R * lx * 0.52, cy + R * ly * 0.52, 0,
+    cx + R * lx * 0.52, cy + R * ly * 0.52, R * 0.30);
+  glint.addColorStop(0, "rgba(255,250,230,.42)");
+  glint.addColorStop(0.5, "rgba(255,240,210,.10)");
+  glint.addColorStop(1, "rgba(255,240,210,0)");
+  ctx.fillStyle = glint;
+  ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+  ctx.globalCompositeOperation = "source-over";
 
   /* the lit limb: a bright hairline where the atmosphere catches the sun */
   ctx.globalCompositeOperation = "lighter";
@@ -10462,40 +11047,10 @@ function drawSpace(dt) {
   ctx.lineWidth = Math.max(1, R * 0.012);
   ctx.beginPath(); ctx.arc(cx, cy, R, 0, TWO_PI); ctx.stroke();
 
-  /* ---- the moon ---- */
-  const ma = S.t * 0.13 + 2.1;
-  /* and the moon keeps to the upper right, out of the karts' way */
-  /* THE MOON KEEPS ITS OWN CORNER. High and to the right of the world,
-     on a shallow arc -- the two of them fly low and left, so there is no
-     arrangement of the clock that puts a kart inside it. */
-  const mx = cx + R * 0.72 + Math.cos(ma) * R * 0.86;
-  const my = cy - R * 1.16 + Math.sin(ma) * R * 0.22;
-  const mr = R * 0.115;
-  S.moon = { x: mx, y: my, r: mr, up: Math.sin(ma) > -0.2 };
-  if (S.moon.up) {
-    ctx.fillStyle = "#cfc4d8";
-    ctx.beginPath(); ctx.arc(mx, my, mr, 0, TWO_PI); ctx.fill();
-    /* a checkered cap, because everything in this game has a finish line
-       on it somewhere */
-    ctx.save();
-    ctx.beginPath(); ctx.arc(mx, my, mr, 0, TWO_PI); ctx.clip();
-    const k = mr * 0.46;
-    for (let i = 0; i < 4; i++)
-      for (let j = 0; j < 2; j++) {
-        ctx.fillStyle = (i + j) % 2 ? "#fff8e8" : "#5d5168";
-        ctx.fillRect(mx - mr + i * k, my - mr + j * k, k, k);
-      }
-    const msh = ctx.createRadialGradient(mx + mr * lx * 0.6, my + mr * ly * 0.6, 0, mx, my, mr * 1.2);
-    msh.addColorStop(0, "rgba(255,248,232,.22)");
-    msh.addColorStop(1, "rgba(8,3,16,.72)");
-    ctx.fillStyle = msh; ctx.fillRect(mx - mr, my - mr, mr * 2, mr * 2);
-    ctx.restore();
-  }
-
-  /* ---- the ring's near half, and the two of them in front of it ---- */
+  /* ---- the ring's near half, and whichever of them is on it ---- */
   drawRing(0, Math.PI, 0.42);
-  flyer(0, 0,    0.34);     /* Ouissy */
-  flyer(1, 1.05, 0.32);     /* Anwar, half a length back */
+  flyer(0, OUISSY, 0.36, true);
+  flyer(1, ANWAR,  0.36, true);
 
   /* ---- hearts, drifting ---- */
   for (const h of S.hearts) {
@@ -11217,7 +11772,7 @@ if (typeof window !== "undefined")
      /* THE MENU'S SKY, so a test can ask the two things that are easy to
         get wrong and impossible to see in a still: is each of them
         actually on the glass, and is either of them inside the moon. */
-     space: space ? { seen: space.seen, moon: space.moon, w: cw, h: ch } : null,
+     space: space ? { seen: space.seen, w: cw, h: ch } : null,
      stepSpace: (dt) => { if (space) drawSpace(dt); },
      audioState: Snd.state(), audioCtx: Snd.ctx() });
 

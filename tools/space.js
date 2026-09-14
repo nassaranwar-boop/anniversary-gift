@@ -5,9 +5,10 @@
 
      - both of them have to be there. They used to orbit, and whichever
        one was round the back of the planet simply was not in the picture.
-     - neither of them may ever be inside the moon. Two objects on
-       crossing paths meet eventually; the only way to know is to run the
-       clock.
+     - they have to stay exactly half a lap apart. They are the only two
+       things in orbit now -- the moon is gone -- and the whole balance of
+       the picture is that the line between them runs through the middle
+       of the world at every moment of the turn.
      - and neither may leave the glass, which is how the first version
        hid Anwar behind the left edge for half of every lap.
 
@@ -38,7 +39,7 @@ const ok = (n, c, x) => { c ? pass++ : fail++;
     const d = window.__RACE_DEBUG();
     if (!d.space) return null;
     /* step the sky by hand for two minutes of its own time */
-    const out = { frames: 0, missing: 0, offGlass: [], nearMoon: [], seen: {} };
+    const out = { frames: 0, missing: 0, offGlass: [], seen: {}, mid: [], sameSide: 0 };
     for (let i = 0; i < 60 * 120; i += 4) {
       window.__rcStepSpace(4 / 60);
       const s = window.__RACE_DEBUG().space;
@@ -51,11 +52,13 @@ const ok = (n, c, x) => { c ? pass++ : fail++;
         out.seen[k] = (out.seen[k] || 0) + 1;
         if (f.x - f.w / 2 < 0 || f.x + f.w / 2 > s.w ||
             f.y - f.h / 2 < 0 || f.y + f.h / 2 > s.h) out.offGlass.push(k);
-        if (s.moon && s.moon.up) {
-          const dx = f.x - s.moon.x, dy = f.y - s.moon.y;
-          const gap = Math.hypot(dx, dy) - (s.moon.r + Math.max(f.w, f.h) * 0.5);
-          if (gap < 0) out.nearMoon.push({ k, gap: Math.round(gap) });
-        }
+      }
+      /* opposite ends of the same diameter: their midpoint is the centre
+         of the orbit, every frame */
+      const o = s.seen.ouissy, n2 = s.seen.anwar;
+      if (o && n2) {
+        out.mid.push([(o.x + n2.x) / 2, (o.y + n2.y) / 2]);
+        if (o.near === n2.near) out.sameSide++;
       }
     }
     return out;
@@ -69,9 +72,15 @@ const ok = (n, c, x) => { c ? pass++ : fail++;
     ok("neither of them leaves the glass",
        r.offGlass.length === 0,
        r.offGlass.length ? r.offGlass.length + " frames off the edge (" + r.offGlass[0] + ")" : "");
-    ok("and neither ever meets the moon",
-       r.nearMoon.length === 0,
-       r.nearMoon.length ? `${r.nearMoon.length} overlaps, worst ${Math.min(...r.nearMoon.map((n) => n.gap))}px` : "");
+    /* the midpoint of two things on opposite ends of a diameter never
+       moves; if it wanders, they are not half a lap apart */
+    const mx = r.mid.map((m) => m[0]), my = r.mid.map((m) => m[1]);
+    const spread = Math.max(Math.max(...mx) - Math.min(...mx),
+                            Math.max(...my) - Math.min(...my));
+    ok("they stay exactly half a lap apart",
+       spread < 1.5 && r.sameSide === 0,
+       `their midpoint wanders ${spread.toFixed(2)}px over the whole turn` +
+       (r.sameSide ? `, and they were on the same side for ${r.sameSide} frames` : ""));
   }
   ok("and none of it threw", errs.length === 0, errs[0] || "");
   await b.close();
