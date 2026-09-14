@@ -3128,8 +3128,18 @@
      difference between a texture and a screenful of static: noise at the
      scale of a stain looks like a stain, noise at the scale of a pixel
      looks like a fault. */
+  /* One scratch field, reused. valueNoise is called by fbm and by
+     nothing else, and fbm folds each octave into its own running total
+     before it asks for the next one -- so the octaves never need to
+     exist at the same time. It used to allocate a fresh quarter-megabyte
+     Float32Array per octave, four or five per surface, for every surface
+     in the game: a lot of garbage to make during the one second she is
+     looking at a loading card. */
+  var noiseScratch = null, noiseGrid = null;
   function valueNoise(size, cells, seed) {
-    var g = new Float32Array((cells + 1) * (cells + 1));
+    var gn = (cells + 1) * (cells + 1);
+    if (!noiseGrid || noiseGrid.length < gn) noiseGrid = new Float32Array(gn);
+    var g = noiseGrid;
     for (var j = 0; j <= cells; j++) {
       for (var i = 0; i <= cells; i++) {
         g[j * (cells + 1) + (i % cells)] = hash2(i % cells + seed * 131, j % cells + seed * 977);
@@ -3138,7 +3148,9 @@
     }
     for (var i2 = 0; i2 <= cells; i2++) g[cells * (cells + 1) + i2] = g[i2];
 
-    var out = new Float32Array(size * size);
+    var n = size * size;
+    if (!noiseScratch || noiseScratch.length < n) noiseScratch = new Float32Array(n);
+    var out = noiseScratch;
     var step = cells / size;
     for (var y = 0; y < size; y++) {
       var fy = y * step, y0 = Math.floor(fy), ty = fy - y0;
@@ -3732,12 +3744,37 @@
     }
   };
 
+  /* PAINT EACH SURFACE ONCE.
+
+     tex() and bump() ran the identical painter at the identical size
+     into two separate canvases -- the same work twice, for every
+     surface in the game that has relief on it, which is nearly all of
+     them. Measured on the first level of the chapter: the painters came
+     to about 1.5 seconds of JavaScript, and half of that was the second
+     pass nobody sees.
+
+     And it was not even the same picture twice. Every painter here uses
+     Math.random -- thirty-seven times across the block -- so the colour
+     map got its cracks and stains in one set of places and the height
+     map got them in another. A crack you can see was flat, and the
+     relief stood up where there was nothing painted. The comment on
+     bump() has always said "the same canvas again, read as height";
+     this is the first time that has been true. */
+  var PAINTED = {};
+  function painted(name, size) {
+    var s = size || 256, key = name + "|" + s;
+    if (PAINTED[key]) return PAINTED[key];
+    var cc = canvas2d(s);
+    (PAINT[name] || PAINT.plaster)(cc.x, s);
+    PAINTED[key] = cc.c;
+    return cc.c;
+  }
+
   function tex(name, size, repeat) {
     var key = name + "|" + (repeat || 1);
     if (TEX[key]) return TEX[key];
-    var s = size || 256, cc = canvas2d(s);
-    (PAINT[name] || PAINT.plaster)(cc.x, s);
-    var t = new THREE.CanvasTexture(cc.c);
+    var s = size || 256;
+    var t = new THREE.CanvasTexture(painted(name, s));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     if (repeat) t.repeat.set(repeat, repeat);
     t.anisotropy = 4;
@@ -3751,9 +3788,8 @@
   function bump(name, size, repeat) {
     var key = "B" + name + "|" + (repeat || 1);
     if (TEX[key]) return TEX[key];
-    var s = size || 256, cc = canvas2d(s);
-    (PAINT[name] || PAINT.plaster)(cc.x, s);
-    var t = new THREE.CanvasTexture(cc.c);
+    var s = size || 256;
+    var t = new THREE.CanvasTexture(painted(name, s));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     if (repeat) t.repeat.set(repeat, repeat);
     TEX[key] = t;
@@ -3766,9 +3802,8 @@
   function roughTex(name, size, repeat) {
     var key = "R" + name + "|" + (repeat || 1);
     if (TEX[key]) return TEX[key];
-    var s2 = size || 256, cc = canvas2d(s2);
-    (PAINT[name] || PAINT.plaster)(cc.x, s2);
-    var t = new THREE.CanvasTexture(cc.c);
+    var s2 = size || 256;
+    var t = new THREE.CanvasTexture(painted(name, s2));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     if (repeat) t.repeat.set(repeat, repeat);
     t.anisotropy = 8;
