@@ -322,7 +322,8 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
       if (st2.eyes) {
         const e = st2.eyes;
         const off = Math.abs(e.x) > 0.92 || Math.abs(e.y) > 0.92 || e.z > 1 || e.z < -1;
-        if (!eyes[i]) eyes[i] = { who: e.who, on: 0, off: 0, tall: 0, away: 99 };
+        if (!eyes[i]) eyes[i] = { who: e.who, on: 0, off: 0, tall: 0, away: 99, block: 0, seen: 0 };
+        if (!e.off) { eyes[i].seen++; if (e.blocked) eyes[i].block++; }
         eyes[i][off ? 'off' : 'on']++;
         if (!off) {
           eyes[i].tall = Math.max(eyes[i].tall, e.tall);
@@ -394,6 +395,20 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
   const close = sized.filter((i) => run.eyes[i].away < 0.85)
                      .map((i) => [Number(i), run.eyes[i].who, run.eyes[i].away]);
   ok('and the lens is not inside the face of whoever is talking', !close.length, close);
+
+  /* AND NOTHING IS PARKED IN FRONT OF THEM.
+
+     Not the crowd: they are meant to be seen through the openings they
+     are coming through, so the door frame is always somewhere near the
+     ray, and there are twenty of them -- one being behind a post says
+     nothing about whether you can see the mass. This is about the
+     speakers there is only one of. */
+  const hid = Object.keys(run.eyes)
+    .filter((i) => run.eyes[i].who !== 'ret')
+    .filter((i) => run.eyes[i].seen > 4 && run.eyes[i].block / run.eyes[i].seen > 0.6)
+    .map((i) => [Number(i), run.eyes[i].who,
+                 +(run.eyes[i].block / run.eyes[i].seen).toFixed(2)]);
+  ok('and there is nothing standing between the lens and them', !hid.length, hid);
   const far = sized.filter((i) => run.eyes[i].away > 5.5)
                    .map((i) => [Number(i), run.eyes[i].who, run.eyes[i].away]);
   ok('and they are near enough to be the subject of their own shot', !far.length, far);
@@ -410,6 +425,7 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
     const N = OuissysNightShift.__night;
     N.finale();
     let worst = { calls: 0 }, shot = -1;
+    const lum = {};
     /* ONE DRAWN FRAME PER SHOT, not one per step. Drawing a room with
        six hundred toys in it through a software rasteriser is most of a
        second, and stepping the whole film at a fifth of a second with
@@ -423,12 +439,59 @@ ok('no office shot puts the camera inside a wall, the ceiling or the floor', !ou
         N.filmFrame(0.001, true);
         const c = N.filmCost();
         if (c && c.calls > worst.calls) worst = c;
+        /* AND HOW MUCH LIGHT IS ON THE SCREEN, MEASURED MID-SHOT.
+
+           The exposure eases between shots rather than cutting, so the
+           first frame after a change is still carrying the last shot's
+           light -- which had this reading the darkest shot in the film
+           as one of the brightest and the brightest as one of the
+           darkest. Three quarters of a second in is what the shot
+           actually looks like for most of its length. */
+        /* AND AVERAGED OVER THREE OF THEM, because the fire flickers
+           and the camera is moving: one frame of the same shot came
+           back as 0.6 on one run and 5.3 on the next, which is a
+           check that passes or fails on the roll of a flame. Five
+           samples across the shot, because three was still moving by
+           three counts between runs and five by one and a half. */
+        let sum = 0, got = 0;
+        for (let f = 0; f < 8; f++) {
+          N.filmFrame(0.25, false); N.filmFrame(0.25, false);
+          N.filmFrame(0.001, true);
+          /* on whoever is talking, if the probe can find them */
+          const e = N.finaleState().eyes;
+          const v = (e && !e.off && e.z < 1) ? N.frameLum(e.x, e.y) : N.frameLum();
+          if (v !== null) { sum += v; got++; }
+        }
+        lum[i] = got ? +(sum / got).toFixed(2) : null;
       }
     }
-    return worst;
+    return { worst: worst, lum: lum };
   });
   ok('the busiest shot in it stays inside a frame budget',
-     cost.calls > 0 && cost.calls < 1400, cost);
+     cost.worst.calls > 0 && cost.worst.calls < 1400, cost.worst);
+
+  /* CAN YOU SEE IT, NOT JUST IS IT IN THE PICTURE.
+
+     Every framing check in this file answers where the speaker is and
+     none of them answers whether there is any light on them. Four
+     shots passed all of them at a mean luminance under two counts out
+     of two hundred and fifty five -- the first one he ever sold
+     explaining what happened to it, and the soldier saying he is
+     sorry, both played on black.
+
+     The number came from looking, not from taste. A frame at 1.6 is
+     black. A frame at 5.3 is a faint red shape you cannot identify as
+     a toy. A frame at 14.5 -- the crowd behind the soldier in the
+     doorway -- reads cleanly on a phone in a lit room, which is where
+     this is going to be watched. Twelve is the bottom of legible.
+
+     A shot with nobody speaking may be as black as it likes: the dark
+     is allowed to be the subject, it is just not allowed to be the
+     subject while somebody is talking over it. */
+  const dim = SHOTS.map((s, i) => [i, s.line, cost.lum[i]])
+    .filter(([, l, v]) => l && !l.sys && v !== null && v !== undefined && v < 9)
+    .map(([i, l, v]) => [i, (l.who || 'nar'), v]);
+  ok('and no shot plays a line on a screen too dark to see it', !dim.length, dim);
 
   await p.evaluate(() => { OuissysNightShift.__night.finale(); });
   const run2 = await p.evaluate(() => {

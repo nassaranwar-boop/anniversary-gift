@@ -716,9 +716,15 @@ const NS = {
          answer on screen rather than a sentence somewhere. They are on
          his stage, over it, all of it, and the shop she has been
          guarding one room of is already gone. */
-      { room: "stage", secs: 4.4, fov: 70, lux: 0.36, shake: 0.9, clear: 1, cue: "wreck",
+      { room: "stage", secs: 4.4, fov: 70, lux: 0.58, shake: 0.9, clear: 1, cue: "wreck",
         from: [0.20, 2.70, 3.90], to: [0.20, 2.05, 2.40], look: [0, 1.15, -2.40],
         swarm: ["stage", 22, 3.8, -3.6, 0.52], advance: 1,
+        /* it is dark up here and four hundred of them are pulling his
+           stage apart in it, so the first thing that goes is the
+           lighting bar -- which is also the only reason any of this is
+           visible */
+        fire: [[-1.1, 0.3, -1.8, 4, 0.95]],
+        sparks: [[0.2, 1.4, -2.1, 18, 1.2]],
         /* AND IT REALLY HAPPENS, ON SCREEN.
 
            This line has always been the answer to "do they actually
@@ -789,7 +795,16 @@ const NS = {
         from: [-1.25, 1.52, 0.52], to: [-1.55, 1.48, 0.18], look: [-2.85, 1.36, -0.90],
         line: { who: "cogsworth", t: "Twelve minutes past five. I have the west door. I have had it since Monday." } },
       /* the grate */
-      { room: "office", secs: 3.6, fov: 42,
+      /* THE OWL'S CLOSE-UPS HAD NO `lux` ON THEM AT ALL.
+
+         All three of them inherited whatever the shot before happened
+         to leave behind, which is a character's coverage being lit by
+         the edit rather than by anybody deciding. He is also
+         eighty-six centimetres tall and every one of his shots is
+         pointed at the duct grate, which is the darkest corner of the
+         darkest wall in the building. Measured off the frame they came
+         back at eight counts of 255 with him talking in them. */
+      { room: "office", secs: 3.6, fov: 42, lux: 0.88,
         from: [0.95, 1.00, -0.45], to: [1.14, 0.96, -0.72], look: [1.90, 0.64, -1.95],
         line: { who: "chime", t: "There is no roof left worth going over. They are already in the duct." } },
       /* the east door */
@@ -808,7 +823,7 @@ const NS = {
       { room: "office", secs: 5.0, fov: 40,
         from: [1.55, 1.38, 0.18], to: [1.68, 1.36, 0.02], look: [2.85, 1.10, -0.90],
         line: { who: "marabelle", t: "He told me. He said: one day she will need somebody in the room who is not afraid of her seeing them." } },
-      { room: "office", secs: 4.6, fov: 38,
+      { room: "office", secs: 4.6, fov: 38, lux: 0.9,
         from: [1.14, 0.96, -0.72], to: [1.26, 0.94, -0.90], look: [1.90, 0.64, -1.95],
         line: { who: "chime", t: "He said that to all of us. He said it badly, four times, the way he said everything." } },
 
@@ -937,6 +952,7 @@ const NS = {
       { room: "office", secs: 3.6, fov: 52, shake: 1.1,
         from: [1.02, 1.06, -0.40], to: [1.20, 1.46, -0.70],
         look: [1.90, 0.66, -1.95], look2: [1.90, 2.30, -2.55],
+        lux: 0.82,
         swarm: ["office", 10, 1.2, -5.6, 0.5, "x+"],
         sfx: [["hatch", 0.9], ["falseBurst", 0.7]],
         line: { who: "chime", t: "They are through the grate. Somebody shut the&mdash;" } },
@@ -994,6 +1010,8 @@ const NS = {
       { room: "office", secs: 3.4, fov: 46, shake: 1,
         from: [1.15, 1.44, 0.62], to: [1.48, 1.40, 0.26], look: [2.85, 1.10, -0.90],
         swarm: ["office", 20, 1.7, 5.2, 0.48, "x-"], advance: 1,
+        fire: [[2.9, 0.25, -1.3, 4, 0.9]],
+        sparks: [[3.0, 1.5, -0.9, 14, 1.1]],
         sfx: [["postDrag", 0.8]],
         line: { who: "marabelle", t: "Ouissy. The corner behind the cabinet. Go now, and do not look at this." } },
 
@@ -1050,8 +1068,21 @@ const NS = {
          she does it at all. She has just done it in front of four
          hundred of them. The one who says so is the one made in an
          afternoon, who has never been able to do anything quietly. */
+      /* PULLED BACK, BECAUSE HE IS TWO METRES TALL.
+
+         These three were written at about a metre and a half from him,
+         which passes the "not inside their face" check and still fills
+         two thirds of the frame with an unlit brown shoulder. It is
+         also why his face measured under four counts of 255 while the
+         frame around it looked fine -- the probe was sampling his
+         chest.
+
+         The distance has to come from across the room rather than
+         backwards out of it: the office is five metres deep, so
+         anything past z 2.45 is standing in the back wall, which is
+         exactly where the first attempt at this put the lens. */
       { room: "office", secs: 4.4, fov: 42, lux: 0.3,
-        from: [-0.58, 1.46, 1.92], to: [-0.68, 1.44, 1.78], look: [-1.15, 1.52, 0.30],
+        from: [0.86, 1.62, 2.24], to: [0.70, 1.60, 2.08], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "She danced in front of four hundred of them. Fifteen years she would not do it with one man in the room." } },
 
       /* --- THE WEST DOOR, AND THE LENGTH OF THE ROOM --------------- */
@@ -1062,7 +1093,11 @@ const NS = {
            around her while the soldier is still holding the doorway */
         wreck: ["office", 9],
         sparks: [[-3.0, 1.5, -0.9, 18, 1.2]],
-        fire:   [[-2.9, 0.25, -1.4, 4, 0.9]],
+        /* one at the doorway they are coming through and one on her
+           desk, which is where his paperwork is and which is the only
+           thing in this room at the height of anybody's face. The
+           second half of the film is lit by these two. */
+        fire:   [[-2.9, 0.25, -1.4, 4, 0.9], [-1.05, 0.86, -0.25, 4, 0.95]],
         smoke:  [[-2.9, 1.2, -1.4, 3, 1.2]],
         line: { who: "cogsworth", t: "Eleven seconds. I will take it." } },
       { room: "office", secs: 5.0, fov: 62, gone: "cogsworth", shake: 1.4, hush: "tick",
@@ -1103,14 +1138,14 @@ const NS = {
          That is the whole difference between the two sides of this
          room, and it is not that one of them is good. It is that Jax
          was built by somebody who was thinking about a door. */
-      { room: "office", secs: 4.4, fov: 44, lux: 0.26, shake: 0.6,
-        from: [-0.72, 1.50, 1.96], to: [-0.80, 1.48, 1.78], look: [-1.15, 1.52, 0.30],
+      { room: "office", secs: 4.4, fov: 44, lux: 0.42, shake: 0.6,
+        from: [0.80, 1.62, 2.28], to: [0.64, 1.60, 2.12], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "He kept four of us. He made me in an afternoon, out of what was left on the bench. I am the closest thing in this room to one of you, and I am still not moving." } },
 
       /* he said eleven seconds and took them, and the one left standing
          says the only thing there is to say about a clock */
-      { room: "office", secs: 3.6, fov: 42, lux: 0.32,
-        from: [-0.64, 1.45, 1.86], to: [-0.72, 1.44, 1.74], look: [-1.15, 1.52, 0.30],
+      { room: "office", secs: 3.6, fov: 42, lux: 0.44,
+        from: [0.92, 1.60, 2.18], to: [0.76, 1.58, 2.02], look: [-1.15, 1.52, 0.30],
         line: { who: "jax", t: "He said eleven seconds. He was never late for anything in his life and he was not late for that." } },
 
       { room: "office", secs: 3.8, fov0: 36, fov1: 30, lux: 0.42, clear: 1,
@@ -1123,13 +1158,54 @@ const NS = {
          rather than in the middle of their last conversation, which is
          where it was: interrupting the quietest two minutes in the
          chapter with a monster. */
-      { room: "office", secs: 4.4, fov: 52, lux: 0.26, shake: 0.5, cue: "alone", clear: 1,
-        from: [-0.60, 1.55, 1.50], to: [-0.30, 1.50, 1.20], look: [-2.60, 1.50, -0.90],
+      /* it walks in out of a burning corridor, so it is not a silhouette
+         against nothing -- lux 0.26 measured 2.4 counts of 255 */
+      /* AND IT IS HALF AGAIN THE SIZE OF ANYTHING ELSE IN THE HALL.
+
+         Every shot of the first one he ever sold was framed like a
+         shot of one of the four, from under two metres, at a thing
+         three metres tall -- so its coat filled the entire picture and
+         the antagonist of this chapter was an unreadable brown wall
+         for the whole of its appearance. Measured at the face rather
+         than across the frame it sat at 2.7 counts of 255 while the
+         frame read 10, which is the wall being brighter than the thing
+         in front of it.
+
+         It is shot from across the room now, and the camera looks at
+         its head rather than at the height the four of them keep their
+         heads. You are supposed to have to look up at it. */
+      { room: "office", secs: 4.4, fov: 52, lux: 0.9, shake: 0.5, cue: "alone", clear: 1,
+        from: [2.05, 1.80, 2.05], to: [1.70, 1.76, 1.80], look: [-2.60, 2.05, -0.90],
+        /* right in the doorway it is walking through, so the biggest
+           thing in the building arrives lit from underneath instead of
+           as a silhouette with a voice */
+        /* ON THE DESK, NOT ON THE FLOOR.
+
+           The fill was at floor height and the thing it was meant to
+           be lighting is three metres tall, so it lit its boots and
+           nothing else: measured at the face rather than across the
+           frame, the first one he ever sold was still sitting at 2.7
+           counts of 255 while the frame as a whole read 10. Her desk
+           is covered in his paperwork and it has been on fire since
+           the reserve went. */
+        fire: [[-3.05, 0.25, -0.9, 5, 1.1]],
         boss: ["office", -2.60, -0.90, 1.5],
         sfx: [["postSettle", 0.7]],
         line: { nar: 1, t: "It comes through the west door at a walk. It has not hurried once tonight and it has not needed to." } },
-      { room: "office", secs: 3.8, fov: 46, lux: 0.24,
-        from: [-0.30, 1.50, 1.20], to: [-0.45, 1.48, 0.95], look: [-2.15, 1.50, -0.90],
+      /* IT WAS BACKLIT, WHICH IS A GOOD PICTURE AND AN UNREADABLE ONE.
+
+         The fire is in the doorway it came through, so the biggest
+         thing in the building was a rim of orange round a black shape
+         while it said the most important thing it has to say. Raising
+         the ceiling light did nothing worth having -- the front of it
+         was facing away from every source in the room.
+
+         So something on her side of it is burning too, which the room
+         has every reason to have: they have been tearing this office
+         apart for two minutes. Backlit from the door, filled from the
+         floor, and it has a face. */
+      { room: "office", secs: 3.8, fov: 46, lux: 0.62,
+        from: [1.70, 1.76, 1.80], to: [1.42, 1.74, 1.60], look: [-2.15, 2.30, -0.90],
         boss: ["office", -2.15, -0.90, 1.5],
         /* this was narration, and narration is the wrong mouth for
            it: the only thing in the building that can say what
@@ -1139,8 +1215,12 @@ const NS = {
            somebody else's house. */
         line: { who: "boss", t: "He kept me wound in the workshop for two years. Long enough that I thought I was one of the ones he was keeping." } },
 
-      { room: "office", secs: 4.4, fov: 42, lux: 0.22, shake: 0.3,
-        from: [-0.45, 1.48, 0.95], to: [-0.58, 1.46, 0.80], look: [-2.05, 1.52, -0.90],
+      /* it was lux 0.22 and measured 0.23 of 255: the whole of the
+         first one he ever sold saying what happened to it, played on
+         black. It walks in past a burning doorway, so it is lit by
+         that and by enough of the ceiling to have a face. */
+      { room: "office", secs: 4.4, fov: 42, lux: 0.62, shake: 0.3,
+        from: [1.42, 1.74, 1.60], to: [1.16, 1.72, 1.42], look: [-2.05, 2.30, -0.90],
         boss: ["office", -2.05, -0.90, 1.5],
         line: { who: "boss", t: "Eleven years in somebody's loft. Then a skip. Then the walk back. I know the way to this room by heart." } },
 
@@ -1148,6 +1228,9 @@ const NS = {
       { room: "office", secs: 3.6, fov: 44, lux: 0.4,
         from: [-0.50, 1.48, 2.18], to: [-0.56, 1.45, 2.02], look: [-1.15, 1.52, 0.30],
         put: { jax: "f4" },
+        /* and something alight on her side of the room, so the last one
+           of them standing has a face for the rest of the film */
+        fire: [[-0.35, 0.82, 0.55, 4, 0.85]],
         line: { nar: 1, t: "Which leaves the one he made in an afternoon." } },
       { room: "office", secs: 2.6, fov: 40,
         from: [-0.56, 1.45, 2.02], to: [-0.62, 1.43, 1.90], look: [-1.15, 1.52, 0.30],
@@ -1258,7 +1341,9 @@ const NS = {
         from: [-1.59, 0.31, 1.25], to: [-1.62, 0.26, 1.28], look: [-1.16, 1.42, 0.30],
         sfx: [["tuneWhole", 0.5]],
         line: { who: "jax", t: "Thank you. That is the last one. That is enough." } },
-      { room: "office", secs: 4.2, fov0: 38, fov1: 34, lux: 0.22, cue: "alone",
+      /* the only shot in the chapter where one of them looks at her,
+         and it was too dark to see either of them do it */
+      { room: "office", secs: 4.2, fov0: 38, fov1: 34, lux: 0.5, cue: "alone",
         from: [-1.64, 0.22, 1.28], to: [-1.63, 0.21, 1.27], look: [-1.16, 1.48, 0.30],
         line: { nar: 1, t: "None of them has looked at her all night. He looks at her." } },
       { room: "office", secs: 3.6, fov0: 34, fov1: 31, lux: 0.2,
@@ -1276,8 +1361,13 @@ const NS = {
 
          And her second-to-last word is his name -- not the man's, the
          box's. She has never called any of them anything. */
-      { room: "office", secs: 2.6, fov: 40, lux: 0.2, shake: 0.4,
-        from: [-1.30, 0.60, 1.10], to: [-1.38, 0.66, 1.02], look: [-2.05, 1.52, -0.90],
+      /* and the two words are from down where she is, looking up at it */
+      /* above the desk rather than through it: at 0.70 the lens was
+         under a desktop that stands at 0.755, so the two words the
+         whole film turns on were delivered from behind her own
+         paperwork */
+      { room: "office", secs: 2.6, fov: 40, lux: 0.44, shake: 0.4,
+        from: [0.55, 1.12, 1.30], to: [0.34, 1.16, 1.14], look: [-2.05, 2.25, -0.90],
         line: { who: "boss", t: "Wind me." } },
 
       { room: "office", secs: 2.4, fov0: 35, fov1: 31, lux: 0.2,
@@ -13262,24 +13352,54 @@ function fxLightStep(t) {
   let n = 0;
   _fxw.set(0, 0, 0);
   const p2 = new T.Vector3();
+  /* ONLY THE FIRE IN THE ROOM WE ARE LOOKING AT.
+
+     This averaged the position of every flame in the world, and by
+     the time the shop is properly alight there are fires in the
+     stage, the arcade and the office -- which are sixty units apart,
+     because every room in this chapter is built at its own address
+     along one axis. The average of three rooms is a point in the
+     empty space between two of them, so the one light in the effects
+     layer spent the whole back half of the film hanging in the void
+     lighting nothing at all, while the office it was supposed to be
+     lighting measured 1.6 counts out of 255 with a fire four feet
+     from the camera.
+
+     Room membership is on every item for exactly this reason. */
+  /* AND AT THE NEAREST FIRE, NOT THE AVERAGE OF THEM.
+
+     Averaging worked while a room had one thing alight in it. Put a
+     second fire in the same room -- the doorway they are coming
+     through and the desk his paperwork is on -- and the one light in
+     the layer goes and sits exactly halfway between the two, which is
+     a spot on the floorboards with nothing burning on it, lighting
+     neither. Measured at the speaker's face, adding a fire to that
+     room made it DARKER.
+
+     So it goes to whichever fire is nearest the lens, which is the one
+     the shot is about, and takes its brightness from how much of the
+     room is alight. */
+  const here = shownRoom || FIN.room;
+  let best = null, bd = 1e9;
   for (let i = 0; i < FX.list.length; i++) {
     const it = FX.list[i];
-    if (it.kind !== "flame" || !it.hold) continue;
+    if (it.kind !== "flame" || !it.hold || it.room !== here) continue;
     it.mesh.getWorldPosition(p2);
-    _fxw.add(p2); n++;
+    n++;
+    const d = view ? view.position.distanceToSquared(p2) : 0;
+    if (d < bd) { bd = d; _fxw.copy(p2); best = it; }
   }
-  if (!n) { if (fxLight) fxLight.intensity = 0; return; }
+  if (!n || !best) { if (fxLight) fxLight.intensity = 0; return; }
   if (!fxLight) {
-    fxLight = new T.PointLight(new T.Color("#ff8a3a"), 0, 7.5, 2);
+    fxLight = new T.PointLight(new T.Color("#ff8a3a"), 0, 9.5, 2);
     scene.add(fxLight);
   }
-  _fxw.multiplyScalar(1 / n);
   fxLight.position.copy(_fxw);
   fxLight.position.y += 0.35;
   /* out of phase with the quads, so the light and the flame are not
      the same animation twice */
   const f = 0.78 + Math.sin(t * 13.7) * 0.16 + Math.sin(t * 29.3) * 0.09;
-  fxLight.intensity = clamp(f, 0.3, 1.2) * Math.min(3, 0.9 + n * 0.22) * 2.1;
+  fxLight.intensity = clamp(f, 0.3, 1.2) * Math.min(3, 0.9 + n * 0.22) * 3.6;
 }
 
 const _fxUp = new T.Vector3(0, 1, 0);
@@ -13993,7 +14113,24 @@ function applyLighting(dt) {
   /* the last hour is lit by the film rather than by the shift: a shot
      can take the shop down to almost nothing so that twenty pairs of
      eyes are the brightest thing in the room */
-  const lux = G.filmLux === undefined ? 1 : G.filmLux;
+  /* THE LAST HOUR WAS EXPOSED FOR A DARK ROOM AND A GOOD MONITOR.
+
+     Every shot in the film carries its own `lux`, from 0.08 for the
+     detonation to 1.0 for the morning, and the numbers are a lighting
+     design: the arrivals are dimmer than the arguments, the blast is
+     dimmer than both. That design is right. The problem was where the
+     bottom of it landed -- measured off the rendered frame, sixteen
+     shots with somebody speaking in them came back under twelve counts
+     of luminance out of two hundred and fifty five, which is a voice
+     over a faint red shape you cannot identify as a toy.
+
+     Lifting each shot by hand would have flattened the design into
+     whatever number made each check pass. A gamma lifts the floor and
+     leaves the ordering alone: 0.24 becomes 0.45, 0.46 becomes 0.65,
+     0.8 becomes 0.89, and 1.0 is still 1.0. Everything stays darker
+     than everything it was darker than. */
+  let lux = G.filmLux === undefined ? 1 : G.filmLux;
+  if (G.phase === "finale") lux = Math.pow(clamp(lux, 0, 1), 0.62);
   const low = (G.blackout ? 0.06 : 1) * lux;
   const warn = G.power < TUNE.power.critical && !G.blackout ? 0.55 + 0.45 * Math.sin(G.t * 9) : 1;
   /* the office bulb giving up on its own, from night four */
@@ -14018,6 +14155,31 @@ function applyLighting(dt) {
   }
   rigAmbient.intensity = rigAmbient.userData.base * lux *
     (G.blackout ? 0.22 : day ? 11 : dawn ? 2.6 : 1 - clamp(decayK() * -TUNE.decay.ambient * 4, 0, 0.34));
+  /* A FLOOR UNDER EVERY FACE IN THE LAST HOUR.
+
+     The ambient is scaled by the same `lux` the point lights are, so a
+     dim shot has almost no fill in it and a toy standing away from a
+     lamp has a black face regardless of how the room is lit. Measured
+     at the speaker's eyes rather than across the frame, that is what
+     was keeping the first one he ever sold and the last one of the
+     four under the line while the frames around them looked fine.
+
+     A film lights its darkness. This is the practical equivalent of
+     the light everything in a burning building is sitting in, it is
+     warm because the room is on fire, and it is a floor rather than a
+     level -- anything already brighter than it keeps its own value, so
+     the shot-by-shot design is untouched.
+
+     It is deliberately a low floor. The first pass at this, with the
+     gamma at 0.45 and the floor at 0.5, made every face legible and
+     made the besieged office look like a lounge: 44 counts of
+     luminance where 14 already read cleanly. Most of the fix was never
+     the light, it was that half these shots were framed at a metre and
+     a half from a two metre toy. */
+  if (G.phase === "finale" && !dawn && !day) {
+    rigAmbient.intensity = Math.max(rigAmbient.intensity, 0.3);
+    if (FX.fires > 0) rigAmbient.color.set("#3a2a22");
+  }
   if (dawn) rigAmbient.color.set("#e8cfae");
   /* the gallery is the one time the shop is lit the way a shop is lit:
      warm, flat and from everywhere, with the fog switched off entirely */
@@ -16954,6 +17116,55 @@ const testHooks = {
     testHooks.put(id, step === undefined ? cast[id].def.route.length - 1 : step);
   },
   render() { if (renderer) renderer.render(scene, view); },
+  /* HOW MUCH LIGHT IS ACTUALLY ON THE SCREEN.
+
+     The framing checks answer "is the thing that is talking inside the
+     picture", which turns out to be a different question from "can it
+     be seen". Four shots in the last hour passed every one of them
+     with a mean luminance under two counts out of two hundred and
+     fifty five -- including the whole of the first one he ever sold
+     explaining what happened to it, and the soldier saying he is
+     sorry. Geometrically perfect, and black.
+
+     The WebGL canvas is drawn down into a 32x18 thumbnail and
+     averaged, which is close enough to judge an exposure by and cheap
+     enough to do once per shot. The letterbox bars are not part of the
+     canvas, so nothing needs excluding. */
+  frameLum(nx, ny) {
+    if (!renderer || !renderer.domElement) return null;
+    const W = 96, H = 54;
+    if (!testHooks.__lumC) {
+      testHooks.__lumC = document.createElement("canvas");
+      testHooks.__lumC.width = W; testHooks.__lumC.height = H;
+    }
+    const c = testHooks.__lumC, x = c.getContext("2d", { willReadFrequently: true });
+    try { x.drawImage(renderer.domElement, 0, 0, W, H); } catch (e) { return null; }
+    /* ON THE FACE, NOT ON THE WHOLE FRAME.
+
+       Averaging the picture answers "is this shot dark", which is not
+       the question. The first one he ever sold filled most of one
+       frame with an unlit red coat while a strip of wall behind it
+       carried the average over the line -- so the check passed on a
+       frame where the thing talking was still a silhouette.
+
+       Given where the speaker's eyes land -- which the framing probe
+       already works out, in the same normalised units -- this samples
+       a box around them instead. That is the thing that has to be
+       visible. With no point given it still averages everything, for
+       shots where nobody is speaking. */
+    let x0 = 0, y0 = 0, x1 = W, y1 = H;
+    if (nx !== undefined && nx !== null) {
+      const cx = (nx * 0.5 + 0.5) * W, cy = (-ny * 0.5 + 0.5) * H;
+      const r = 9;
+      x0 = Math.max(0, Math.round(cx - r)); x1 = Math.min(W, Math.round(cx + r));
+      y0 = Math.max(0, Math.round(cy - r)); y1 = Math.min(H, Math.round(cy + r));
+      if (x1 - x0 < 2 || y1 - y0 < 2) return null;
+    }
+    const d = x.getImageData(x0, y0, x1 - x0, y1 - y0).data;
+    let t = 0;
+    for (let i = 0; i < d.length; i += 4) t += 0.2126*d[i] + 0.7152*d[i+1] + 0.0722*d[i+2];
+    return +(t / (d.length / 4)).toFixed(2);
+  },
   silence(v) { audioMute(v !== false); },
   /* the score, so a suite can assert that the music is ahead of the
      game rather than behind it */
@@ -17752,7 +17963,32 @@ const testHooks = {
 
            `tall` is how much of the frame height the figure occupies,
            in normalised device units where the whole screen is 2. */
-        return { who: w, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2),
+        /* AND IS THERE ANYTHING BETWEEN THE LENS AND THEM.
+
+           Framing says where they are and the luminance says whether
+           there is light on them, and a filing cabinet lying across
+           the sightline satisfies both while hiding the speaker
+           completely. The wrecking system tips real props into real
+           positions, so this became possible the moment the shop
+           started coming apart on screen.
+
+           A ray from the camera to the eyes: if the first thing it
+           meets is more than a hand's width nearer than they are,
+           something is in the way. */
+        if (!testHooks.__ray) testHooks.__ray = new T.Raycaster();
+        const rc = testHooks.__ray;
+        const eye = new T.Vector3().setFromMatrixPosition(ch.group.matrixWorld);
+        eye.y += (grp.userData.eyeY || 1.2);
+        const dir = eye.clone().sub(view.position);
+        const far = dir.length();
+        rc.set(view.position, dir.normalize());
+        rc.far = far;
+        const hits = rc.intersectObject(rooms[FIN.room] ? rooms[FIN.room].group : scene, true);
+        let block = 0;
+        for (let q = 0; q < hits.length; q++) {
+          if (hits[q].distance < far - 0.12) { block = +hits[q].distance.toFixed(2); break; }
+        }
+        return { who: w, blocked: block, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2),
                  tall: +Math.abs(top.y - foot.y).toFixed(2),
                  away: +view.position.distanceTo(
                    new T.Vector3().setFromMatrixPosition(ch.group.matrixWorld)).toFixed(2) };

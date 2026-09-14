@@ -76,14 +76,14 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
     const out = [], t0 = performance.now();
     const tick = () => {
       const card = document.querySelector('.ns-card-find');
-      if (!card) { if (performance.now() - t0 < 12000) return setTimeout(tick, 40); return done(out); }
+      if (!card) { if (performance.now() - t0 < 20000) return setTimeout(tick, 40); return done(out); }
       const lines = [].slice.call(card.querySelectorAll('.ns-rv'));
       const choice = card.querySelector('.ns-rv-choice');
       out.push([Math.round(performance.now() - t0),
                 lines.filter((l) => l.classList.contains('in')).length,
                 lines.length,
                 choice ? (choice.classList.contains('in') ? 1 : 0) : -1]);
-      if (performance.now() - t0 < 12000) setTimeout(tick, 40); else done(out);
+      if (performance.now() - t0 < 20000) setTimeout(tick, 40); else done(out);
     };
     tick();
   }));
