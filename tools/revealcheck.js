@@ -21,7 +21,13 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
 (async () => {
   const b = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--no-sandbox', '--no-proxy-server', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+    /* Timer throttling is off because a headless window is backgrounded
+       and occluded by definition. It was not the thing that made the
+       beat before the knife unmeasurable -- see below -- but leaving it
+       on is measuring the browser's power saving either way. */
+    args: ['--no-sandbox', '--no-proxy-server', '--use-gl=swiftshader', '--enable-unsafe-swiftshader',
+           '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
+           '--disable-backgrounding-occluded-windows'] });
   const p = await b.newPage({ viewport: { width: 1100, height: 700 } });
   let errs = 0;
   p.on('pageerror', (e) => { errs++; console.log('PAGEERROR', e.message); });
@@ -38,6 +44,29 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
 
   /* night four is the one with the notebook in it -- the hardest thing
      in the chapter to land, and the reason the staging exists */
+  /* WHAT IT ASKED FOR, NOT WHAT THE MACHINE MANAGED.
+
+     The beat before the last line is 1550ms against 1000ms everywhere
+     else, and this used to check it off the wall clock in the page.
+     Under software rendering the shop's own frame is heavy enough that
+     a 1000ms timer comes back in anything from 1001 to 1922ms, so the
+     jitter is wider than the 550ms the check exists to see, and it
+     passed or failed on the roll of it. The staging was right every
+     single time.
+
+     So: record the delays the card SCHEDULES. That is the promise --
+     the knife gets a longer beat than the lines that set it up -- and
+     it is the half of it that is the game's to keep. How well a
+     software rasteriser then keeps time is not. */
+  await p.evaluate(() => {
+    window.__rvAsked = [];
+    const raw = window.setTimeout;
+    window.__rvRaw = raw;
+    window.setTimeout = function (fn, d) {
+      if (d >= 500 && d <= 3000) window.__rvAsked.push(d);
+      return raw.apply(window, arguments);
+    };
+  });
   await p.evaluate(() => OuissysNightShift.__night.begin(4, 1));
   await p.waitForTimeout(600);
   await p.evaluate(() => OuissysNightShift.__night.reveal(4));
@@ -74,12 +103,24 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
        'first to last ' + (landed[landed.length - 1] - landed[0]) + 'ms');
 
     /* the knife gets a longer beat than the lines that set it up */
-    if (landed.length >= 3) {
-      const gaps = landed.slice(1).map((t, i) => t - landed[i]);
-      const beforeLast = gaps[gaps.length - 1];
-      const typical = gaps.slice(0, -1).sort((a, c) => a - c)[Math.floor((gaps.length - 1) / 2)];
+    const asked = await p.evaluate(() => {
+      if (window.__rvRaw) window.setTimeout = window.__rvRaw;
+      return window.__rvAsked || [];
+    });
+    /* one beat is scheduled after each line, the last of them landing
+       on a step that has nothing left to put up -- so the pause before
+       the final line is the second from the end, not the end */
+    const beats = asked.filter((d) => d >= 900 && d <= 2000).slice(0, total);
+    if (beats.length === total && total >= 3) {
+      const beforeLast = beats[total - 2];
+      const rest = beats.slice(0, total - 2);
+      const typical = rest.slice().sort((a, c) => a - c)[Math.floor(rest.length / 2)];
       ok('the last line waits longer than the rest', beforeLast > typical * 1.25,
-         'held ' + beforeLast + 'ms against a typical ' + typical + 'ms');
+         'it holds ' + beforeLast + 'ms against ' + typical + 'ms, from ' + JSON.stringify(beats));
+      ok('and the lines before it come at one reader\'s pace, not several',
+         rest.every((d) => d === rest[0]), JSON.stringify(rest));
+    } else {
+      ok('the last line waits longer than the rest', false, JSON.stringify(asked));
     }
 
     /* and she cannot decide before she has read it */

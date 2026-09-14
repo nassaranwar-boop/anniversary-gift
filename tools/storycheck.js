@@ -86,6 +86,42 @@ ok('the save behind a shut door is written as sound, not as a view',
 ok('and neither card names a door the game did not use',
    /\$1/.test(NS.held.where) && /\$1/.test(NS.heldShut.where));
 
+/* ---- AND THE WORDS REALLY GOT SAID ---------------------------------
+
+   Six of these lines shipped, rendered, and committed as the phrase
+   "[object Object]", read aloud in a Welsh documentary-narrator voice,
+   because the renderer was handed {t, who} and called String() on it.
+   Nothing failed. The audio existed, the manifest existed, the game
+   played it. It is exactly the sort of thing that only a human ear
+   catches, so here is an eye that catches it instead. */
+console.log('\n=== and the words really got said');
+let man = null;
+try { man = JSON.parse(fs.readFileSync(__dirname + '/../voice/manifest.json', 'utf8')); } catch (e) {}
+ok('there is a voice manifest at all', !!man);
+if (man) {
+  const junk = Object.keys(man).filter((k) => /\[object|undefined|null/i.test(String(man[k])));
+  ok('and not one line in it is a stringified object', !junk.length, junk);
+
+  const plain = (t) => String(t).replace(/&[lr]dquo;/g, '"').replace(/&mdash;/g, '—')
+    .replace(/&amp;/g, '&').replace(/<[^>]+>/g, '').trim();
+  const want = [];
+  for (const k in NS.tapeWhen) {
+    const it = NS.tapeWhen[k];
+    want.push(['when-' + k, typeof it === 'string' ? it : it.t]);
+  }
+  for (const k in NS.pointAt) want.push(['point-' + k, NS.pointAt[k].t]);
+
+  const missing = want.filter(([id]) => !man[id]);
+  ok('every line one of them says has a take of its own', !missing.length,
+     missing.map((m) => m[0]));
+  const wrong = want.filter(([id, t]) => man[id] && man[id] !== plain(t));
+  ok('and the take says the words that are in the script', !wrong.length,
+     wrong.map(([id]) => [id, String(man[id]).slice(0, 40)]));
+  const nofile = want.filter(([id]) => man[id] && !fs.existsSync(__dirname + '/../voice/' + id + '.mp3'));
+  ok('and there is really a recording behind each one', !nofile.length,
+     nofile.map((m) => m[0]));
+}
+
 /* ---- and now the game, running ------------------------------------- */
 (async () => {
   const b = await chromium.launch({

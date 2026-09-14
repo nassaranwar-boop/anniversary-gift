@@ -82,8 +82,17 @@ const NS = eval('(' + src.slice(i + key.length - 1, j + 1) + ')');
 const VOICE = {
   anwar:     { model: 'en_GB-alan-medium',                  pace: '1.16', depth: '1.2' },
   cogsworth: { model: 'en_GB-northern_english_male-medium', pace: '1.26', depth: '0.8' },
-  chime:     { model: 'en_GB-semaine-medium',               pace: '1.02', depth: '-2.0' },
-  marabelle: { model: 'en_US-lessac-high',                  pace: '1.12', depth: '-2.0' },
+  /* The owl and the ballerina were both sitting at -2.0 and landed two
+     and a half semitones apart on the takes that existed at the time.
+     Five more lines moved both medians and closed that to 0.76, which
+     is the same person to an ear -- and they are two of the four that
+     speak in the same rooms on the same nights. The owl goes down,
+     where a thing that lives in the rafters and never touches the
+     floor can sit; the ballerina comes back up to nearly her model's
+     own pitch, because she is the one voice in the shop that is not a
+     man and the lowering was never doing anything for her. */
+  chime:     { model: 'en_GB-semaine-medium',               pace: '1.02', depth: '-4.0' },
+  marabelle: { model: 'en_US-lessac-high',                  pace: '1.12', depth: '-0.6' },
   jax:       { model: 'en_US-ryan-high',                    pace: '0.98', depth: '0' },
 };
 
