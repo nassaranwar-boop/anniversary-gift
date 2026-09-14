@@ -16041,6 +16041,38 @@ const testHooks = {
     try { localStorage.setItem(FOUND_KEY, JSON.stringify(had)); } catch (e) {}
     return out;
   },
+  /* WHAT THE SHOP HAS DECIDED IS DUE.
+
+     The deadlines, the answer to what she did with his things, and the
+     one who tells her where she left his card all come out of the same
+     sweep, and all of it only matters if it really fires inside a
+     night. Stand a night up at a given hour with a given history
+     behind it, run the sweep the game runs, and say what it queued. */
+  dueNow: (night, hour, opts) => {
+    const o = opts || {};
+    const wasNight = G.night, wasHour = G.hour, wasPhase = G.phase;
+    const hadKept = keptAll(), hadFound = foundAll(), hadSaid = TAPE.said;
+    G.night = night; G.hour = hour; G.hourT = 0;
+    G.phase = "play"; G.mode = "story";
+    G.doors.left = !!o.shut; G.doors.right = false; G.doors.hatch = false;
+    TAPE.on = true; TAPE.opened = true; TAPE.pending = null;
+    TAPE.said = Object.assign({}, o.said || {});
+    try {
+      localStorage.setItem(KEEP_KEY, JSON.stringify(o.chose || {}));
+      localStorage.setItem(FOUND_KEY, JSON.stringify(o.found || {}));
+    } catch (e) {}
+    tapeDue(0.016);
+    const got = TAPE.pending;
+    const out = got ? { t: got.t, who: got.who || "anwar" } : null;
+    TAPE.pending = null;
+    TAPE.said = hadSaid;
+    G.night = wasNight; G.hour = wasHour; G.phase = wasPhase;
+    try {
+      localStorage.setItem(KEEP_KEY, JSON.stringify(hadKept));
+      localStorage.setItem(FOUND_KEY, JSON.stringify(hadFound));
+    } catch (e) {}
+    return out;
+  },
   /* AND THE SAVE HAPPENS THROUGH A SHUT DOOR. Put one of them at a
      door with its patience spent, shut the door in its face, wind
      another one, and run the step the game really runs. */

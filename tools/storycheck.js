@@ -208,6 +208,62 @@ if (man) {
      ahead[0].armed === null && ahead[1].armed === null && ahead[2].armed === 'marabelle',
      ahead.map((a) => a.armed));
 
+  console.log('\n=== and it really comes due inside a night');
+
+  /* everything his own deadlines would queue, already said, so the
+     sweep gets past them to the things that come after */
+  const hisDone = {};
+  for (const k in NS.tapeWhen) {
+    const it = NS.tapeWhen[k];
+    hisDone[typeof it === 'string' ? it : it.t] = 1;
+  }
+  const due = (night, hour, opts) => p.evaluate(
+    ([n, h, o]) => OuissysNightShift.__night.dueNow(n, h, o), [night, hour, opts]);
+
+  /* a line of his that she never cued fires anyway, on the night and
+     hour it was written for */
+  const never = await due(1, 3, { said: {} });
+  ok('a line she never did the thing for comes due on its own',
+     never && never.t === NS.tapeWhen.theySeen.t, never);
+  ok('and it is the soldier saying it, not the tape',
+     never && never.who === 'cogsworth', never && never.who);
+
+  /* and a shut door does not hold it out either */
+  const shutIn = await due(1, 3, { said: {}, shut: true });
+  ok('and a shut door does not keep it out', shutIn && shutIn.t === never.t, shutIn);
+
+  /* what she did with his things, answered the night after */
+  const kept1 = await due(2, 2, { said: hisDone, chose: { 1: 1 } });
+  const burn1 = await due(2, 2, { said: hisDone, chose: { 1: 0 } });
+  ok('keeping the key is answered, by the soldier',
+     kept1 && kept1.t === NS.afterChoice[1].kept.t && kept1.who === 'cogsworth', kept1);
+  ok('and burning it gets a different answer, from the same one',
+     burn1 && burn1.t === NS.afterChoice[1].burned.t && burn1.who === 'cogsworth', burn1);
+  ok('and the two answers are not the same sentence', kept1.t !== burn1.t);
+
+  /* the first hour of a night is still his */
+  const early = await due(2, 0, { said: hisDone, chose: { 1: 1 } });
+  ok('but none of them speaks over his first hour', early === null, early);
+
+  /* and it is only ever said once */
+  const again = await due(3, 2, { said: Object.assign({}, hisDone,
+    { [NS.afterChoice[1].kept.t]: 1 }), chose: { 1: 1 } });
+  ok('and once answered it is never answered again',
+     !again || again.t !== NS.afterChoice[1].kept.t, again);
+
+  /* the page she walked past, pointed at -- after the choices are done */
+  const pointed = await due(3, 3, {
+    said: Object.assign({}, hisDone, { [NS.afterChoice[1].kept.t]: 1 }),
+    chose: { 1: 1 }, found: { marabelle: true } });
+  ok('and the one whose tag she walked past tells her where it is',
+     pointed && pointed.t === NS.pointAt.cogsworth.t && pointed.who === 'cogsworth', pointed);
+
+  /* nothing is pointed at when she has missed nothing */
+  const clean = await due(3, 3, {
+    said: Object.assign({}, hisDone, { [NS.afterChoice[1].kept.t]: 1 }),
+    chose: { 1: 1 }, found: { cogsworth: true, chime: true, marabelle: true } });
+  ok('and nobody points at anything when she has missed nothing', clean === null, clean);
+
   console.log('\n=== the save, through a shut door');
 
   const held = await p.evaluate(() => {
