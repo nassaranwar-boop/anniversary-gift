@@ -5421,6 +5421,23 @@ window.SuperOuissy = (function () {
 
        THREE is the last of them and it does not let up -- kick and hat
        together, the snare early, and no gap anywhere you could rest in. */
+  /* ---- AND THE PACE BELONGS TO THE WORLD TOO ----
+
+     "Why is hard still so fast" -- because it was. Tempo is seconds per
+     step, so smaller is quicker, and it read: world one 0.105 on easy,
+     0.088 on medium, 0.076 on hard. Hard ran thirty-eight per cent faster
+     than easy through the same place, and its victory fanfare, at 0.086
+     against 0.19, went past at more than twice the speed. That is
+     difficulty expressed as tempo, which is the cheapest way to do it and
+     the one that makes a tune feel rushed instead of hard.
+
+     If a world is the same place on every difficulty -- which is the whole
+     point of sharing the rhythm -- then it moves at the same pace on every
+     difficulty as well. These are easy's figures, because easy's were the
+     ones that worked. What changes with difficulty is what is played over
+     that pace, not how fast the ground goes by. */
+  var PACE = { w1: 0.105, w2: 0.095, w3: 0.088, boss: 0.080, win: 0.19 };
+
   var RHYTHM = {
     w1: dpat(
       "K . . . h . . . S . . . h . . . |" +
@@ -5443,47 +5460,49 @@ window.SuperOuissy = (function () {
   SCORES.medium = {
     /* WORLD ONE — morning. The theme, plain, with room around it. */
     w1: {
-      tempo: 0.088,
+      /* the same morning, a little further into it: the arc starts on the
+         fourth rather than the root, so it is the same place seen from a
+         step to one side. */
+      tempo: PACE.w1,
       lead: pat(
-        "12 .  .  . 16 .  .  . 19 .  .  . 16 .  .  . |" +
-        "14 .  .  . 17 .  .  . 21 .  .  . 17 .  .  . |" +
-        "12 .  .  . 16 .  .  . 19 . 24  . 21 . 19  . |" +
-        "16 .  .  . 14 .  .  . 12 .  .  .  .  .  .  ."),
+        "16  .  . 19  .  . 21  .  . 19  .  . 16  .  .  . |" +
+        "14  .  . 17  .  . 19  .  . 17  .  . 14  .  .  . |" +
+        "12  .  . 16  .  . 21  .  . 19  .  . 17  .  .  . |" +
+        "16  .  . 14  .  . 12  .  .  .  .  .  .  .  .  ."),
       harm: pat(
-        " .  .  .  .  .  .  .  . 12 .  .  .  9 .  .  . |" +
-        " .  .  .  .  .  .  .  . 14 .  .  . 12 .  .  . |" +
-        " .  .  .  .  .  .  .  . 16 .  .  . 17 .  .  . |" +
-        " .  .  .  .  .  .  .  .  7 .  .  .  .  .  .  ."),
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 21  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 26  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 19  .  .  .  .  .  .  .  ."),
       bass: pat(
-        " 0  .  .  .  7  .  .  .  0  .  .  .  7  .  .  . |" +
-        " 2  .  .  .  9  .  .  .  2  .  .  .  9  .  .  . |" +
-        " 5  .  .  . 12  .  .  .  5  .  .  . 12  .  .  . |" +
-        " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
+        " 5  .  .  .  .  . 12  .  .  .  .  .  5  .  .  . |" +
+        " 2  .  .  .  .  .  9  .  .  .  .  .  2  .  .  . |" +
+        " 0  .  .  .  .  .  7  .  .  .  .  .  0  .  .  . |" +
+        " 7  .  .  .  .  .  7  .  .  .  .  .  0  .  .  ."),
       drum: RHYTHM.w1,
     },
 
     /* WORLD TWO — the same tune with the gaps filled in and the ground
        moving under it. */
     w2: {
-      tempo: 0.078,
+      /* it leans forward like the world does, but it leans by falling --
+         the line comes down where easy's went up. */
+      tempo: PACE.w2,
       lead: pat(
-        "12 . 14 . 16 . 17 . 19 . 17 . 16 . 14 . |" +
-        "14 . 16 . 17 . 19 . 21 . 19 . 17 . 16 . |" +
-        "12 . 16 . 19 . 24 . 21 . 19 . 16 . 19 . |" +
-        "17 . 16 . 14 . 12 . 11 .  .  . 12 .  . ."),
+        "19  .  . 17  .  . 16  .  . 17  .  . 19  .  .  . |" +
+        "21  .  . 19  .  . 17  .  . 19  .  . 21  .  .  . |" +
+        "16  .  . 19  .  . 24  .  . 21  .  . 19  .  .  . |" +
+        "17  .  . 16  .  . 14  .  . 12  .  .  .  .  .  ."),
       harm: pat(
-        /* it held one note a bar -- 12, 12, 12, 12 -- which is a pedal,
-           not a harmony. It moves with the tune now, a third above and
-           then a sixth, and steps down into the turnaround. */
-        " .  . 16 .  .  . 19 .  .  . 16 .  .  . 14 . |" +
-        " .  . 14 .  .  . 17 .  .  . 14 .  .  . 12 . |" +
-        " .  . 16 .  .  . 19 .  .  . 21 .  .  . 19 . |" +
-        " .  . 17 .  .  . 16 .  .  . 14 .  .  . 12 ."),
+        " .  .  .  7  .  .  .  .  . 12  .  .  .  .  .  . |" +
+        " .  .  .  9  .  .  .  .  . 14  .  .  .  .  .  . |" +
+        " .  .  .  4  .  .  .  .  . 11  .  .  .  .  .  . |" +
+        " .  .  .  7  .  .  .  .  .  0  .  .  .  .  .  ."),
       bass: pat(
-        " 0 . 12 .  0 . 12 .  7 . 19 .  7 . 19 . |" +
-        " 2 . 14 .  2 . 14 .  9 . 21 .  9 . 21 . |" +
-        " 5 . 17 .  5 . 17 .  0 . 12 .  0 . 12 . |" +
-        " 7 . 19 .  7 . 19 .  0 . 12 .  7 . 12 ."),
+        " 0  .  .  .  7  .  .  .  0  .  .  .  7  .  .  . |" +
+        " 9  .  .  .  4  .  .  .  9  .  .  .  4  .  .  . |" +
+        " 5  .  .  .  0  .  .  .  5  .  .  .  0  .  .  . |" +
+        " 7  .  .  .  2  .  .  .  0  .  .  .  0  .  .  ."),
       drum: RHYTHM.w2,
     },
 
@@ -5491,29 +5510,31 @@ window.SuperOuissy = (function () {
        what the last climb sounds like, and it finds its way back to the
        major on the last bar because she is nearly there. */
     w3: {
-      tempo: 0.072,
+      /* higher up the neck than the other two, because the last world
+         should sound like it is above the others rather than faster. */
+      tempo: PACE.w3,
       lead: pat(
-        " 9 .  . 12  .  . 16 .  . 12  .  . 16 .  . . |" +
-        " 7 .  . 11  .  . 14 .  . 11  .  . 14 .  . . |" +
-        " 9 .  . 16  .  . 21 .  . 16  .  . 12 .  . . |" +
-        "14 .  . 12  .  . 11 .  . 12  .  .  . .  . ."),
+        "19  .  . 24  .  . 21  .  . 26  .  . 24  .  .  . |" +
+        "17  .  . 21  .  . 19  .  . 24  .  . 21  .  .  . |" +
+        "16  .  . 19  .  . 24  .  . 28  .  . 26  .  .  . |" +
+        "24  .  . 21  .  . 17  .  . 16  .  .  .  .  .  ."),
       harm: pat(
-        " .  .  .  .  .  .  .  .  9  .  .  .  .  .  . . |" +
-        " .  .  .  .  .  .  .  .  7  .  .  .  .  .  . . |" +
-        " .  .  .  .  .  .  .  . 12  .  .  .  .  .  . . |" +
-        " .  .  .  .  .  .  .  . 16  .  .  . 16  .  . ."),
+        " .  .  .  . 12  .  .  .  .  .  . 16  .  .  .  . |" +
+        " .  .  .  .  9  .  .  .  .  .  . 14  .  .  .  . |" +
+        " .  .  .  .  7  .  .  .  .  .  . 12  .  .  .  . |" +
+        " .  .  .  .  5  .  .  .  .  .  .  0  .  .  .  ."),
       bass: pat(
-        " -3 . -3 . -3 . -3 .  4 .  4 .  4 .  4 . |" +
-        " -5 . -5 . -5 . -5 .  2 .  2 .  2 .  2 . |" +
-        " -3 . -3 . -3 . -3 .  0 .  0 .  0 .  0 . |" +
-        "  2 .  2 .  2 .  2 .  7 .  7 .  7 .  7 ."),
+        " 0  .  .  .  7  .  .  . 12  .  .  .  7  .  .  . |" +
+        " 9  .  .  .  4  .  .  . 16  .  .  .  4  .  .  . |" +
+        " 7  .  .  .  2  .  .  . 14  .  .  .  2  .  .  . |" +
+        " 5  .  .  .  0  .  .  .  0  .  .  .  0  .  .  ."),
       drum: RHYTHM.w3,
     },
 
     /* THE QUEEN. Her tune, minor, faster than she can think, with a
        chromatic tail that falls away under it. */
     boss: {
-      tempo: 0.064,
+      tempo: PACE.boss,
       lead: pat(
         " 9 . 9 . 12 . 16 . 12 . 9 . 16 . 12 . |" +
         " 8 . 8 . 11 . 15 . 11 . 8 . 15 . 11 . |" +
@@ -5547,7 +5568,7 @@ window.SuperOuissy = (function () {
     /* AND THE END OF IT. The tune it started on, slow, with a third over
        the top — the only place in the game where anything sings with it. */
     win: {
-      tempo: 0.17,
+      tempo: PACE.win,
       lead: pat(
         "12 .  .  . 16 .  .  . 19 .  .  . 16 .  .  . |" +
         "17 .  .  . 21 .  .  . 24 .  .  . 21 .  .  . |" +
@@ -5578,7 +5599,7 @@ window.SuperOuissy = (function () {
      top, and a drum that mostly stays out of the way. ------------------- */
   SCORES.easy = {
     w1: {
-      tempo: 0.105,
+      tempo: PACE.w1,
       lead: pat(
         "12  .  . 16  .  . 19  .  . 16  .  . 19  .  .  . |" +
         "14  .  . 17  .  . 21  .  . 17  .  . 14  .  .  . |" +
@@ -5597,7 +5618,7 @@ window.SuperOuissy = (function () {
       drum: RHYTHM.w1,
     },
     w2: {
-      tempo: 0.095,
+      tempo: PACE.w2,
       lead: pat(
         "12  . 14 16  . 17 19  . 17 16  .  . 14  .  .  . |" +
         "14  . 16 17  . 19 21  . 19 17  .  . 16  .  .  . |" +
@@ -5616,7 +5637,7 @@ window.SuperOuissy = (function () {
       drum: RHYTHM.w2,
     },
     w3: {
-      tempo: 0.088,
+      tempo: PACE.w3,
       lead: pat(
         "12  .  . 19  .  . 16  .  . 21  .  . 19  .  .  . |" +
         "14  .  . 21  .  . 17  .  . 24  .  . 21  .  .  . |" +
@@ -5636,7 +5657,7 @@ window.SuperOuissy = (function () {
     },
     /* the raincloud: cross, not frightening */
     boss: {
-      tempo: 0.080,
+      tempo: PACE.boss,
       lead: pat(
         "12  . 12  . 15  . 12  .  . 17  . 15  . 12  .  . |" +
         "10  . 10  . 14  . 10  .  . 15  . 14  . 10  .  . |" +
@@ -5661,7 +5682,7 @@ window.SuperOuissy = (function () {
     /* her theme, but it opens on the fifth and comes DOWN to the root —
        finishing Easy should not sound like finishing Medium */
     win: {
-      tempo: 0.19,
+      tempo: PACE.win,
       lead: pat(
         "19  .  .  . 24  .  .  . 21  .  .  . 19  .  .  . |" +
         "16  .  .  . 19  .  .  . 21  .  .  . 24  .  .  . |" +
@@ -5703,71 +5724,79 @@ window.SuperOuissy = (function () {
   SCORES.hard = {
     /* WORLD ONE — the hook. Rest on the downbeat, hit on the way to it. */
     w1: {
-      tempo: 0.076,
+      /* THE SAME MORNING, IN THE MINOR. Same room to breathe as easy --
+         a note every third step and two rests between -- because that
+         space is what made easy the one that worked, and crowding it was
+         what made this sound rushed. What is harder about it is the flat
+         third and the walk down to the flat six, not the clock. */
+      tempo: PACE.w1,
       lead: pat(
-        "12  . 12  . 15  . 14 12  . 10  .  . 12  .  .  . |" +
-        "10  . 10  . 14  . 12 10  .  7  .  .  8  .  .  . |" +
-        "12  . 15  . 19  . 17 15  . 14  . 12 10  .  8  . |" +
-        " 7  .  8  . 10  . 12  .  .  .  .  . 12  .  .  ."),
-      /* the answer: it speaks where the lead has stopped */
+        "12  .  . 15  .  . 19  .  . 15  .  . 12  .  .  . |" +
+        "10  .  . 14  .  . 17  .  . 14  .  . 10  .  .  . |" +
+        "12  .  . 15  .  . 19  .  . 22  .  . 19  .  .  . |" +
+        "17  .  . 15  .  . 14  .  . 12  .  .  .  .  .  ."),
       harm: pat(
-        " .  .  . 19  .  . 19  .  . 22  . 19  . 17  .  . |" +
-        " .  .  . 17  .  . 17  .  . 19  . 17  . 14  .  . |" +
-        " .  .  . 22  .  . 22  .  . 24  . 22  . 19  .  . |" +
-        " .  . 19  .  . 17  . 15  .  .  .  . 19  .  .  ."),
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 22  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 27  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 19  .  .  .  .  .  .  .  ."),
       bass: pat(
-        " 0  .  .  7  0  .  .  7  3  .  .  7  0  .  .  . |" +
-        "10  .  .  5 10  .  .  5 12  .  .  5 10  .  .  . |" +
-        " 8  .  .  3  8  .  .  3 10  .  .  3  8  .  .  . |" +
-        " 7  .  .  2  7  .  . 14  7  .  . 10  7  .  7  ."),
+        " 0  .  .  .  .  .  7  .  .  .  .  .  0  .  .  . |" +
+        "10  .  .  .  .  .  5  .  .  .  .  . 10  .  .  . |" +
+        " 8  .  .  .  .  .  3  .  .  .  .  .  8  .  .  . |" +
+        " 7  .  .  .  .  .  2  .  .  .  .  .  0  .  .  ."),
       drum: RHYTHM.w1,
     },
     /* WORLD TWO — three, three, two. The oldest trick there is for making
        a straight bar feel like it is leaning forward. */
     w2: {
-      tempo: 0.070,
+      /* the flat seventh under it the whole way, which is what makes a
+         bar want to fall forward without being hurried */
+      tempo: PACE.w2,
       lead: pat(
-        "15  .  . 15  .  . 12  . 10  .  . 12  .  . 15  . |" +
-        "14  .  . 14  .  . 10  .  8  .  . 10  .  . 12  . |" +
-        "15  .  . 19  .  . 22  . 19  .  . 17  .  . 15  . |" +
-        "14  .  . 12  .  . 10  .  8  .  .  7  .  .  .  ."),
+        "15  .  . 19  .  . 22  .  . 19  .  . 15  .  .  . |" +
+        "14  .  . 17  .  . 20  .  . 17  .  . 14  .  .  . |" +
+        "15  .  . 19  .  . 24  .  . 22  .  . 19  .  .  . |" +
+        "20  .  . 19  .  . 17  .  . 15  .  .  .  .  .  ."),
       harm: pat(
-        " . 22  .  . 22  .  . 19  . 19  .  . 17  .  .  . |" +
-        " . 20  .  . 20  .  . 17  . 17  .  . 14  .  .  . |" +
-        " . 22  .  . 26  .  . 22  . 22  .  . 19  .  .  . |" +
-        " . 19  .  . 17  .  . 15  . 14  .  . 12  .  .  ."),
+        " .  .  .  3  .  .  .  .  . 10  .  .  .  .  .  . |" +
+        " .  .  .  2  .  .  .  .  .  8  .  .  .  .  .  . |" +
+        " .  .  .  3  .  .  .  .  . 12  .  .  .  .  .  . |" +
+        " .  .  .  7  .  .  .  .  .  0  .  .  .  .  .  ."),
       bass: pat(
-        " 0  .  . 0  .  .  7  .  3  .  .  7  .  .  0  . |" +
-        "10  .  . 10 .  .  5  .  1  .  .  5  .  . 10  . |" +
-        " 8  .  . 8  .  .  3  .  0  .  .  3  .  .  8  . |" +
-        " 7  .  . 7  .  . 14  . 10  .  .  7  .  .  7  ."),
+        " 0  .  .  . 10  .  .  .  0  .  .  . 10  .  .  . |" +
+        "-2  .  .  .  8  .  .  . -2  .  .  .  8  .  .  . |" +
+        " 0  .  .  .  8  .  .  .  0  .  .  .  8  .  .  . |" +
+        " 7  .  .  .  3  .  .  .  0  .  .  .  0  .  .  ."),
       drum: RHYTHM.w2,
     },
     /* WORLD THREE — the floor giving way. A chromatic walk down, and a
        turnaround that lands somewhere you did not expect. */
     w3: {
-      tempo: 0.066,
+      /* the highest of the three and the darkest, and still with the
+         same air in it */
+      tempo: PACE.w3,
       lead: pat(
-        "19  . 18  . 17  .  . 15  . 14  .  . 12  .  .  . |" +
-        "17  . 16  . 15  .  . 14  . 12  .  . 10  .  .  . |" +
-        "12  . 15  . 19  . 22  . 24  . 22  . 19  . 15  . |" +
-        "20  . 19  . 17  . 15  . 14  . 12  .  .  .  .  ."),
+        "19  .  . 22  .  . 26  .  . 22  .  . 19  .  .  . |" +
+        "17  .  . 20  .  . 24  .  . 20  .  . 17  .  .  . |" +
+        "19  .  . 22  .  . 27  .  . 26  .  . 24  .  .  . |" +
+        "22  .  . 20  .  . 17  .  . 15  .  .  .  .  .  ."),
       harm: pat(
-        " . 12  .  .  . 12  .  .  . 10  .  .  .  7  .  . |" +
-        " . 10  .  .  . 10  .  .  .  8  .  .  .  5  .  . |" +
-        " .  .  . 27  .  .  . 27  .  .  . 24  .  .  . 22 |" +
-        " . 24  .  .  . 22  .  .  . 19  .  .  . 19  .  ."),
+        " .  .  .  .  7  .  .  .  .  .  . 12  .  .  .  . |" +
+        " .  .  .  .  5  .  .  .  .  .  . 10  .  .  .  . |" +
+        " .  .  .  .  8  .  .  .  .  .  . 15  .  .  .  . |" +
+        " .  .  .  .  7  .  .  .  .  .  .  0  .  .  .  ."),
       bass: pat(
-        " 0  .  0  .  8  .  8  .  7  .  7  .  5  .  5  . |" +
-        "-2  . -2  .  6  .  6  .  5  .  5  .  3  .  3  . |" +
-        " 0  . 12  .  0  . 12  .  8  . 20  .  8  . 20  . |" +
-        " 7  .  7  . 10  . 10  .  7  .  7  .  0  .  0  ."),
+        " 0  .  .  .  7  .  .  . 12  .  .  .  7  .  .  . |" +
+        "10  .  .  .  5  .  .  . 17  .  .  .  5  .  .  . |" +
+        " 8  .  .  .  3  .  .  . 15  .  .  .  3  .  .  . |" +
+        " 7  .  .  .  2  .  .  .  0  .  .  .  0  .  .  ."),
       drum: RHYTHM.w3,
     },
     /* THE BOSS — an ostinato you cannot get out of your head, and a
        stabbing line over the top of it that refuses to line up with it. */
     boss: {
-      tempo: 0.062,
+      tempo: PACE.boss,
       lead: pat(
         " .  . 24  .  . 24  . 23  .  . 24  .  . 27  .  . |" +
         " .  . 22  .  .  22  . 20  .  . 22  .  . 26  .  . |" +
@@ -5792,7 +5821,7 @@ window.SuperOuissy = (function () {
     /* THE FLAG — eight bars of relief, and the last one lifts rather
        than lands, because there is always another world. */
     win: {
-      tempo: 0.086,
+      tempo: PACE.win,
       lead: pat(
         "12  . 16  . 19  .  .  . 24  .  .  . 19  .  .  . |" +
         "17  . 21  . 24  .  .  . 28  .  .  . 24  .  .  . |" +

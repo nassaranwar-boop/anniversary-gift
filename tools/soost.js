@@ -90,6 +90,32 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
        `${new Set([a, b2, c]).size} distinct of 3`);
   }
 
+  /* ---- AND A WORLD MOVES AT ONE PACE ----
+     Difficulty was being expressed as tempo: world one ran 0.105 on easy,
+     0.088 on medium and 0.076 on hard, which is thirty-eight per cent
+     quicker through the same place, and that is what "it just feels sped
+     up" is. If the world is the same place it goes by at the same rate;
+     what changes is what is played over it. */
+  for (const t of TUNES) {
+    const tempos = DIFFS.map((d) => S[d][t].tempo);
+    ok(`${t}: the same pace on every difficulty`,
+       new Set(tempos).size === 1, tempos.join(" / "));
+  }
+
+  /* ---- AND ROOM TO BREATHE, WHICH IS WHY EASY WAS THE GOOD ONE ----
+     Easy's leads put a note every third step with two rests between: an
+     arc you can hum. Medium and hard were crowded as well as quick, and a
+     crowded line is not a harder line, it is a worse one. No world's lead
+     should be denser than easy's was. */
+  for (const t of ["w1", "w2", "w3"]) {
+    const density = (d) => notes(S[d][t].lead).length;
+    const e = density("easy");
+    for (const d of ["medium", "hard"]) {
+      ok(`${d}/${t}: as much room as easy has`, density(d) <= e + 2,
+         `${density(d)} notes against easy's ${e}`);
+    }
+  }
+
   /* and the three difficulties are three tunes, not one at three speeds */
   for (const t of TUNES) {
     const shape = (d) => notes(S[d][t].lead).join(",");
