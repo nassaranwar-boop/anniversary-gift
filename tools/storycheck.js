@@ -352,9 +352,9 @@ if (man) {
     for (const w of ['chime', 'marabelle', 'cogsworth', 'jax']) {
       const i = SH.findIndex((x) => x.gone === w);
       const sh = SH[i];
-      const pl = N.exitPlan(w, sh.goneAs);
+      const pl = N.exitPlan(w, sh.goneAs, sh.goneWait);
       out.push({ who: w, i, secs: sh.secs, as: sh.goneAs || null,
-                 way: pl.mode, dur: pl.dur });
+                 way: pl.mode, dur: pl.dur, wait: pl.wait });
     }
     return out;
   });
@@ -365,8 +365,8 @@ if (man) {
      ways[0].way === 'up' && ways[1].way === 'taken' && ways[2].way === 'cross',
      ways.map((w) => w.way));
   ok('and each going is over before its shot is, so the room is seen empty',
-     gos.every((w) => w.dur > 0.8 && w.dur <= w.secs - 0.6),
-     gos.map((w) => [w.who, w.dur, w.secs]));
+     gos.every((w) => w.dur > 0.8 && w.wait + w.dur <= w.secs - 0.6),
+     gos.map((w) => [w.who, w.wait, w.dur, w.secs]));
   ok('the one in the blast is the only instant one -- the blast is the coverage',
      ways[3].way === '' && ways[3].as === 'cut', ways[3]);
 
@@ -403,8 +403,18 @@ if (man) {
   for (const r of rooms) wr[r] = await p.evaluate(
     (x) => OuissysNightShift.__night.wreckAudit(x, 14), r);
 
+  /* THE ROOM WITH THE CAMERAS IN IT IS ALLOWED TO KEEP FEWER OF THEM.
+
+     The stage and the arcade are wrecked wholesale; the office holds
+     eighty of the film's camera marks, and anything that would come
+     down close and dead ahead of one of them stays standing, because a
+     cabinet a metre in front of a lens is not destruction, it is a
+     dark board with the last conversation in this shop behind it. What
+     the office loses in fallen furniture it has in fire, a crowd of
+     twenty-four, and a detonation. */
+  const floor = (r) => (r === 'office' ? 5 : 8);
   ok('there is enough in every room they go through to make a mess of it',
-     rooms.every((r) => wr[r].took >= 8), rooms.map((r) => [r, wr[r].took]));
+     rooms.every((r) => wr[r].took >= floor(r)), rooms.map((r) => [r, wr[r].took]));
   ok('and all of it really moves', rooms.every((r) => wr[r].moved === wr[r].took),
      rooms.map((r) => [r, wr[r].moved, wr[r].took]));
   /* the one thing this must never do is lay a wall down */

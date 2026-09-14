@@ -89,8 +89,17 @@ SHOTS.forEach((s, i) => {
   /* including their own shot: `gone` fires at the top of it, so a
      character removed on the shot they speak on is removed one frame
      before their line. That is exactly how the last words in the
-     chapter played the first time. */
-  if (s.gone && s.line && s.line.who === s.gone) ghosts.push([i, s.gone, 'gone on their own line']);
+     chapter played the first time.
+
+     UNLESS THE GOING WAITS FOR THE LINE. The owl's last sentence is
+     written to be cut off -- "somebody shut the--" -- and the shot it
+     is on tilts off his face onto the grate he is about to go through,
+     so he is taken out DURING it, a second and a half in. goneWait is
+     what makes that a piece of staging rather than a ghost: with it,
+     he is standing in the room saying the line, and the thing that
+     interrupts him is the thing the next shot is about. */
+  if (s.gone && s.line && s.line.who === s.gone && !s.goneWait)
+    ghosts.push([i, s.gone, 'gone on their own line']);
   if (s.gone) dead[s.gone] = i;
 });
 ok('nobody speaks after the film has taken them out of it', !ghosts.length, ghosts);

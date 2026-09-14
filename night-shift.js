@@ -853,8 +853,16 @@ const NS = {
         line: { who: "cogsworth", t: "He made you last." } },
 
       /* --- AND THEN IT STARTS, AT THE WEST DOOR -------------------- */
+      /* AND IT IS NOT SHOT THROUGH THE ONE STANDING BY HER CHAIR.
+
+         This ran from z 0.85 to z 0.50 along the line from the lens to
+         the west doorway, which is the line Jax is standing on: two
+         metres of jack-in-the-box, thirty centimetres from the lens,
+         across a third of the frame as an unlit beige wall. The same
+         move, a metre and a half north of him, puts him behind the
+         camera and the doorway in the middle of the frame. */
       { room: "office", secs: 3.2, fov: 58, cue: "siege", shake: 1, lux: 0.34,
-        from: [-0.95, 1.56, 0.85], to: [-1.25, 1.52, 0.50], look: [-2.95, 1.28, -0.90],
+        from: [-0.90, 1.56, -0.55], to: [-1.30, 1.52, -0.75], look: [-2.95, 1.28, -0.90],
         swarm: ["office", 16, 1.6, -5.6, 0.5, "x+"], advance: 1,
         sfx: [["knock", 0.9], ["postDrag", 0.7]],
         line: { nar: 1, t: "The first of them comes up the hall and puts its weight on the west doorway, and the doorway holds because there is something standing in it." } },
@@ -952,14 +960,23 @@ const NS = {
         line: { nar: 1, t: "She gets under her own desk, in a room she has sat in every night this week. She does not stay there." } },
 
       /* --- THE GRATE GOES FIRST ------------------------------------ */
+      /* AND HE IS TAKEN OUT OF HIS OWN SENTENCE.
+
+         The line is written to be cut off, and the camera on it tilts
+         off his face onto the grate, so the going belongs HERE rather
+         than on the shot after it: he is pulled up into the same tilt
+         that is already going that way, and the next shot -- which
+         comes back down to the floor -- is the aftermath it reads as.
+         For a long time the tilt went up to an empty ceiling and the
+         owl simply stopped existing on the cut. */
       { room: "office", secs: 3.6, fov: 52, shake: 1.1,
         from: [1.02, 1.06, -0.40], to: [1.20, 1.46, -0.70],
         look: [1.90, 0.66, -1.95], look2: [1.90, 2.30, -2.55],
-        lux: 0.82,
+        lux: 0.82, gone: "chime", goneWait: 1.5,
         swarm: ["office", 10, 1.2, -5.6, 0.5, "x+"],
         sfx: [["hatch", 0.9], ["falseBurst", 0.7]],
         line: { who: "chime", t: "They are through the grate. Somebody shut the&mdash;" } },
-      { room: "office", secs: 3.0, fov: 50, gone: "chime", shake: 1.3, lux: 0.66, hush: "air",
+      { room: "office", secs: 3.0, fov: 50, shake: 1.3, lux: 0.66, hush: "air",
         from: [1.20, 1.46, -0.70], to: [0.98, 1.16, -0.35],
         look: [1.90, 2.20, -2.50], look2: [1.90, 0.36, -1.95],
         sfx: [["scare", 0.55]],
@@ -1111,7 +1128,14 @@ const NS = {
            still goes through his head somewhere in the middle: he is at
            z 0.30 and the sweep was at z 0.40. It runs in front of him
            now, between him and the doorways. */
-        from: [-2.09, 1.55, -0.31], to: [1.60, 1.50, -0.28], look: [0, 0.95, -1.30],
+        /* and it turns as it travels, because there is somebody
+           crossing in front of it now: it starts square on the room he
+           is walking into and ends on the doorway he is walking to,
+           which is the one she has just been left without. A fixed
+           look pointed due north the whole way and he walked out of
+           the right-hand side of it at half distance. */
+        from: [-2.09, 1.55, -0.31], to: [1.60, 1.50, -0.28],
+        look: [0, 0.95, -1.30], look2: [2.85, 1.10, -0.95],
         swarm: ["office", 22, 1.8, 3.0, 0.46, "x-"], advance: 1.8,
         sfx: [["falseBang", 0.9], ["step", 0.9, -0.4], ["step", 0.9, 0.4]],
         line: { nar: 1, t: "He leaves the west door and walks the length of the room to hers, because hers is empty now and somebody has to be standing in it. He gets there. He does not stop for anything on the way, and that is the last time this shop hears anybody in it keeping time." } },
@@ -1185,7 +1209,7 @@ const NS = {
          its head rather than at the height the four of them keep their
          heads. You are supposed to have to look up at it. */
       { room: "office", secs: 4.4, fov: 52, lux: 0.9, shake: 0.5, cue: "alone", clear: 1,
-        from: [2.05, 1.80, 2.05], to: [1.70, 1.76, 1.80], look: [-2.60, 2.05, -0.90],
+        from: [2.05, 1.62, 2.05], to: [1.70, 1.58, 1.80], look: [-2.60, 1.34, -0.90],
         /* right in the doorway it is walking through, so the biggest
            thing in the building arrives lit from underneath instead of
            as a silhouette with a voice */
@@ -1215,7 +1239,7 @@ const NS = {
          apart for two minutes. Backlit from the door, filled from the
          floor, and it has a face. */
       { room: "office", secs: 3.8, fov: 46, lux: 0.62,
-        from: [1.70, 1.76, 1.80], to: [1.42, 1.74, 1.60], look: [-2.15, 2.30, -0.90],
+        from: [1.70, 1.58, 1.80], to: [1.42, 1.56, 1.60], look: [-2.15, 1.34, -0.90],
         boss: ["office", -2.15, -0.90, 1.5],
         /* this was narration, and narration is the wrong mouth for
            it: the only thing in the building that can say what
@@ -1230,7 +1254,7 @@ const NS = {
          black. It walks in past a burning doorway, so it is lit by
          that and by enough of the ceiling to have a face. */
       { room: "office", secs: 4.4, fov: 42, lux: 0.62, shake: 0.3,
-        from: [1.42, 1.74, 1.60], to: [1.16, 1.72, 1.42], look: [-2.05, 2.30, -0.90],
+        from: [1.42, 1.56, 1.60], to: [1.16, 1.54, 1.42], look: [-2.05, 1.34, -0.90],
         boss: ["office", -2.05, -0.90, 1.5],
         line: { who: "boss", t: "Eleven years in somebody's loft. Then a skip. Then the walk back. I know the way to this room by heart." } },
 
@@ -1376,8 +1400,28 @@ const NS = {
          under a desktop that stands at 0.755, so the two words the
          whole film turns on were delivered from behind her own
          paperwork */
-      { room: "office", secs: 2.6, fov: 40, lux: 0.44, shake: 0.4,
-        from: [0.55, 1.12, 1.30], to: [0.34, 1.16, 1.14], look: [-2.05, 2.25, -0.90],
+      /* AND THE LENS HAS TO BE ABLE TO SEE IT SAY IT.
+
+         From the south side of the desk the line to the first one he
+         ever sold goes straight through two metres of jack-in-the-box:
+         nine tenths of the rays to its face came back blocked, and the
+         only line in the film that turns the antagonist into somebody
+         was played over the back of Jax's head. A metre and a half
+         north of that puts the whole diagonal of the room between the
+         lens and it, with nothing standing in the way. */
+      { room: "office", secs: 2.6, fov: 42, lux: 0.66, shake: 0.4,
+        /* AND IT IS PUT WHERE THE SHOT IS LOOKING.
+
+           The crowd walks: `advance` moves every one of them a little
+           each frame, the first one he ever sold with them, and the
+           lens pushes anything that gets within two feet of it out of
+           the way. Twenty shots after it was last placed it was not
+           within a metre of where this camera was aimed, so the one
+           line that turns the antagonist into somebody played over an
+           empty doorway. Every other shot it is in places it; so does
+           this one. */
+        boss: ["office", -2.05, -0.90, 1.5],
+        from: [0.05, 1.12, -0.55], to: [-0.10, 1.14, -0.62], look: [-2.05, 1.30, -0.90],
         line: { who: "boss", t: "Wind me." } },
 
       { room: "office", secs: 2.4, fov0: 35, fov1: 31, lux: 0.2,
@@ -7159,6 +7203,23 @@ function returnersBoss(roomId, x, z, ry) {
     g.userData.spd = 0;
     retBoss = fitFigure(g, h * 1.62);
     scene.add(retBoss);
+    /* AND WHERE ITS FACE IS, MEASURED OFF THE FACE.
+
+       It is built at one scale, fitted to another, and it is the only
+       figure in the chapter that is neither one of the four nor one of
+       the crowd -- so the eye height it carried was the one the crowd
+       kind was written with, put through a scale that did not apply to
+       it: two metres fifteen on a thing whose head is at one metre
+       fifty. Every camera in the film that was aimed at its eyes was
+       therefore aimed two feet over them, and the shot where it asks
+       to be wound -- the only line that turns the antagonist into
+       somebody -- was three seconds of the doorway above its head.
+       The head is right there in the joints; ask it. */
+    retBoss.updateMatrixWorld(true);
+    if (j.head) {
+      const hp = j.head.getWorldPosition(new T.Vector3());
+      retBoss.userData.eyeY = +(hp.y - retBoss.position.y).toFixed(3);
+    }
   }
   const rec = rooms[roomId];
   const ox = rec ? rec.index * SPACING : 0;
@@ -12096,6 +12157,8 @@ const FIN = {
 };
 const _fp = new T.Vector3();
 const _fl = new T.Vector3();
+/* set by the test hook that steps the film itself; see the tick */
+let filmByHand = false;
 
 function finaleStart() {
   if (!NS.lastHour || !NS.lastHour.shots) { winNight(); return; }
@@ -12206,7 +12269,7 @@ function finaleWho(id) {
    ===================================================================== */
 const EXIT_WAY = { chime: "up", marabelle: "taken", cogsworth: "cross" };
 const EXIT = {
-  on: false, id: null, mode: "", t: 0, dur: 1, ry: 0,
+  on: false, id: null, mode: "", t: 0, dur: 1, wait: 0, ry: 0,
   p: new T.Vector3(), g: new T.Vector3(),
 };
 
@@ -12215,14 +12278,14 @@ const EXIT = {
    None of these is the length of its shot. The room has to be seen
    without them standing in it before the cut, or the going reads as a
    cut rather than as a loss. */
-function exitPlan(id, how) {
+function exitPlan(id, how, wait) {
   const mode = how === "cut" ? "" : (how || EXIT_WAY[id] || "");
-  const dur = mode === "up" ? 1.5 : mode === "taken" ? 3.6 : mode ? 4.1 : 0;
-  return { mode, dur };
+  const dur = mode === "up" ? 1.2 : mode === "taken" ? 3.6 : mode ? 4.1 : 0;
+  return { mode, dur, wait: wait || 0 };
 }
 
 /* one of them stops being in the world */
-function finaleGone(id, how) {
+function finaleGone(id, how, wait) {
   FIN.gone[id] = 1;
   /* if one of them is still on its way out, it has finished now: two
      at once would leave the first standing in the room for good */
@@ -12232,12 +12295,12 @@ function finaleGone(id, how) {
   ch.atDoor = false;
   SFX.doorClose();
   cueDuck(0.55);
-  const plan = exitPlan(id, how);
+  const plan = exitPlan(id, how, wait);
   const mode = plan.mode;
   /* it can only be watched leaving a room that is being looked at */
   if (!mode || ch.room !== FIN.room || !ch.awake) { exitDone(ch); return; }
   EXIT.on = true; EXIT.id = id; EXIT.mode = mode; EXIT.t = 0;
-  EXIT.dur = plan.dur;
+  EXIT.dur = plan.dur; EXIT.wait = plan.wait;
   EXIT.p.copy(ch.group.position);
   EXIT.ry = ch.group.rotation.y;
   /* how long the going takes, and where it ends up. None of these is
@@ -12263,6 +12326,12 @@ function exitStep(dt) {
   if (!EXIT.on) return;
   const ch = cast[EXIT.id];
   if (!ch) { EXIT.on = false; return; }
+  /* A LINE FIRST, WHERE THERE IS A LINE.
+
+     The owl is pulled up through the grate in the middle of his own
+     last sentence -- which is written to be cut off -- so the going
+     waits out most of the line before it starts. */
+  if (EXIT.wait > 0) { EXIT.wait -= dt; return; }
   EXIT.t += dt;
   const k = clamp(EXIT.t / EXIT.dur, 0, 1);
   const g = ch.group;
@@ -12307,7 +12376,17 @@ function exitStep(dt) {
     const d = 0.82;
     if (k < d) {
       const s2 = k / d;
-      g.position.set(lerp(EXIT.p.x, EXIT.g.x, s2), Math.abs(Math.sin(s2 * 34)) * 0.045, EXIT.p.z);
+      /* AND HE WALKS ROUND THE LENS, NOT THROUGH IT.
+
+         Both doorways are at the same depth, so the straight line
+         between them runs sixty centimetres off a camera that is
+         tracking the same way: he arrived at the lens at twenty
+         centimetres and filled the frame with an unlit red coat. The
+         path bows a metre into the room instead, which is both a
+         readable crossing and the way somebody actually walks round a
+         desk. */
+      g.position.set(lerp(EXIT.p.x, EXIT.g.x, s2), Math.abs(Math.sin(s2 * 34)) * 0.045,
+                     EXIT.p.z - Math.sin(s2 * Math.PI) * 0.78);
       g.rotation.set(0, EXIT.g.x > EXIT.p.x ? -Math.PI / 2 : Math.PI / 2, 0);
     } else {
       /* and then he runs down where he is standing, forwards, the way
@@ -12360,7 +12439,7 @@ function finaleNext(skipped) {
       putChar(ch, s.room || FIN.room, s.put[id]);
     }
   }
-  if (s.gone) finaleGone(s.gone, s.goneAs);
+  if (s.gone) finaleGone(s.gone, s.goneAs, s.goneWait);
 
   /* --- the crowd --------------------------------------------------- */
   if (s.clear) returnersClear();
@@ -13739,6 +13818,34 @@ function wreckArm(roomId, n) {
   const rec = rooms[roomId];
   if (!rec) return 0;
   const rnd = mulberry(seedOf("wreck-" + roomId));
+  /* every place the film puts the lens in this room, in world space */
+  const ox = rec.group.position.x;
+  const marks = [];
+  NS.lastHour.shots.forEach((sh) => {
+    if (sh.room !== roomId) return;
+    const at = sh.look || sh.to;
+    if (!at || !sh.from) return;
+    /* a shot that turns as it travels is aimed at two different things
+       on the way, and both of them are where a prop must not be */
+    const aims = [[at[0] + ox, at[1], at[2]]];
+    if (sh.look2) aims.push([sh.look2[0] + ox, sh.look2[1], sh.look2[2]]);
+    const a = sh.from, b = sh.to || sh.from;
+    /* AND THE WHOLE OF THE MOVE, NOT ITS TWO ENDS.
+
+       The longest shot in the chapter sweeps three and a half metres
+       across the office. Marking only where it starts and stops left
+       everything it passes fair game, and a fallen prop thirteen
+       centimetres off the middle of that sweep took forty-four per
+       cent of the frame. */
+    const span = Math.hypot(b[0] - a[0], b[2] - a[2]);
+    const n = Math.max(1, Math.ceil(span / 0.5));
+    for (let j = 0; j <= n; j++) {
+      const u = j / n;
+      const at2 = [a[0] + (b[0] - a[0]) * u + ox, a[1] + (b[1] - a[1]) * u,
+                   a[2] + (b[2] - a[2]) * u];
+      for (let q = 0; q < aims.length; q++) marks.push(at2.concat(aims[q]));
+    }
+  });
   const pick = [];
   rec.group.children.forEach((o) => {
     if (o === rec.live || !o.visible) return;
@@ -13762,6 +13869,33 @@ function wreckArm(roomId, n) {
     if (big < 0.14 || big > 2.4) return;
     if (Math.max(_ws.x, _ws.z) > 3.0) return;
     if (_wb.max.y < 0.3 || _wb.min.y > 2.3) return;
+    /* AND NOT IN FRONT OF A LENS THE FILM ACTUALLY USES.
+
+       The last hour is shot from eighty-odd marks that were composed
+       in an undamaged room, and the wrecking is seeded, not authored:
+       whatever it puts over is where it is. A cabinet that came down a
+       metre in front of a lens took the last conversation in this shop
+       and made it two-thirds of a dark board.
+
+       So a mark is a camera, not a place: a thing behind the lens, or
+       off to the side of it, can go over like everything else -- that
+       is the wreckage the shot is meant to be full of. Only a thing
+       that would end up close and DEAD AHEAD stays standing. It needs
+       no upkeep: move a mark and the wrecking moves out of its way. */
+    if (marks.length) {
+      _wb.getCenter(_wc);
+      const reach = Math.max(_ws.x, _ws.z) * 0.5 + big * 0.5;
+      for (let m = 0; m < marks.length; m++) {
+        const k = marks[m];
+        const dx = _wc.x - k[0], dz = _wc.z - k[2];
+        const d = Math.sqrt(dx * dx + dz * dz);
+        if (d - reach > 1.05) continue;
+        /* is it in front of the lens, or behind it */
+        const fx = k[3] - k[0], fz = k[5] - k[2];
+        const fl = Math.sqrt(fx * fx + fz * fz) || 1;
+        if ((dx * fx + dz * fz) / (fl * (d || 1)) > 0.62) return;
+      }
+    }
     pick.push(o);
   });
   /* shuffled so two rooms do not wreck in the same order */
@@ -13827,6 +13961,7 @@ function wreckArm(roomId, n) {
   return take.length;
 }
 
+const _wc = new T.Vector3();
 const _wq = new T.Quaternion();
 function wreckStep(dt) {
   if (!WRECK.on) return;
@@ -14613,7 +14748,21 @@ function frame(ts) {
      are full-screen paper and keep the cheap early exit. */
   if (G.phase === "finale") {
     if (!FIN.on) { uiTick(dt); musicTick(dt); applyLighting(dt); return; }
-    finaleStep(dt);
+    /* WHOEVER IS TURNING THE HANDLE IS THE ONLY ONE TURNING IT.
+
+       A suite that steps the film by hand -- the contact sheets, the
+       framing probes -- calls filmFrame with a fixed slice and counts
+       frames. The page's own loop was stepping the same film at the
+       same time, so the film ran at about three times the clock the
+       tool thought it was keeping: a frame taken twelve slices into a
+       shot was a third of the way through it, and the sheets were
+       photographing the wrong instant of every shot in the chapter.
+       The one that mattered: the owl's last line tilts UP off him onto
+       the grate, and every picture of it was taken after the tilt,
+       which is how a shot that opens on his face got read as a shot he
+       is not in. Nothing here changes for a player -- filmByHand is
+       only ever set by the test hook. */
+    if (!filmByHand) finaleStep(dt);
     uiTick(dt);
   }
   if (G.phase === "gallery") { sayTick(dt); uiTick(dt); }
@@ -17872,6 +18021,22 @@ const testHooks = {
   },
   fxStep: (dt) => { G.t += dt; fxStep(dt, G.t); return FX.list.length; },
   fxClear: () => { fxClear(); return FX.list.length; },
+  /* what the wrecking is holding, by object id, for a probe that has
+     found something in front of a lens and wants to know whose it is */
+  bossWhere: () => {
+    if (!retBoss) return null;
+    const w = retBoss.getWorldPosition(new T.Vector3());
+    const b = new T.Box3().setFromObject(retBoss);
+    let kids = 0, shown = 0;
+    retBoss.traverse((o) => { kids++; if (o.isMesh && o.visible) shown++; });
+    return { vis: !!retBoss.visible, inScene: retBoss.parent === scene,
+             p: retBoss.position.toArray().map((n) => +n.toFixed(2)),
+             world: w.toArray().map((n) => +n.toFixed(2)),
+             box: [+b.min.y.toFixed(2), +b.max.y.toFixed(2), +b.min.x.toFixed(2), +b.max.x.toFixed(2)],
+             auto: !!retBoss.matrixAutoUpdate, kids: kids, meshes: shown };
+  },
+  wreckAt: () => WRECK.list.map((w) => [w.o.id, +w.p0.x.toFixed(2),
+                                        +w.p0.y.toFixed(2), +w.p0.z.toFixed(2)]),
   exitPlan: (id, how) => exitPlan(id, how),
   fxCount: () => ({ n: FX.list.length, fires: FX.fires, on: FX.on,
                     kinds: FX.list.reduce((o, i) => { o[i.kind] = (o[i.kind]||0)+1; return o; }, {}) }),
@@ -18371,8 +18536,23 @@ const testHooks = {
   /* the whole frame, by hand: room, lights, camera, cast, draw. What
      the frame loop would have done, for a page that has no frame loop
      and for anyone who wants to look at a shot rather than trust it */
+  /* RUN THE FILM UP TO A SHOT WITHOUT DRAWING ANY OF IT.
+
+     A tool that wants one frame out of shot fifty was stepping five
+     thousand frames to get there, one round trip to the page each. The
+     lights, the poses and the camera are all set per drawn frame, so
+     the way there does not need any of them: only the film's own
+     clock, which is what finaleStep is. */
+  filmSeek: (i, dt) => {
+    const d = dt || 0.05;
+    filmByHand = true;
+    let guard = 0;
+    while (FIN.on && FIN.i < i && guard++ < 40000) { finaleStep(d); G.t += d; }
+    return FIN.on ? FIN.i : false;
+  },
   filmFrame: (dt, draw) => {
     const d = dt === undefined ? 0.05 : dt;
+    filmByHand = true;
     finaleStep(d);
     if (!FIN.on) return false;
     G.t += d;
