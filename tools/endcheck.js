@@ -114,6 +114,40 @@ SHOTS.forEach((s, i) => {
 });
 ok('nobody speaks before the film has put them in the room', !unplaced.length, unplaced);
 
+/* IS THE CAMERA POINTED AT ANYTHING WHILE SOMEBODY DESCRIBES IT?
+
+   The chapter's own rule for this ending is that it is lived rather
+   than read, and the failure mode is specific and easy to miss: a
+   sentence about something dramatic, played over a room with nothing
+   in it. It reads fine in the script. On screen it is a voice over an
+   empty wall.
+
+   So the shot list is walked with a note of who is in each room --
+   the four as they are put and taken away, the crowd as it is placed
+   and cleared, the first one he ever sold, and her -- and any shot
+   with a line but nobody in frame has to say so on the shot itself,
+   with `bare: 1`. Some genuinely are about the emptiness: two rooms
+   away there is a bench with nothing on it. Those are allowed, and
+   they are allowed OUT LOUD. */
+const inRoom = {};      // id -> room
+let hasSwarm = null, hasBoss = null, hasOui = null;
+const empty = [];
+SHOTS.forEach((s, i) => {
+  if (s.put) Object.keys(s.put).forEach((id) => { inRoom[id] = s.room; });
+  if (s.gone) delete inRoom[s.gone];
+  if (s.clear) hasSwarm = null;
+  if (s.swarm) hasSwarm = s.swarm[0];
+  if (s.boss) hasBoss = s.boss[0];
+  if (s.bossGone) hasBoss = null;
+  if (s.oui) hasOui = s.room;
+  if (s.ouiGone) hasOui = null;
+  if (!s.line || s.bare) return;
+  const here = Object.keys(inRoom).some((id) => inRoom[id] === s.room) ||
+               hasSwarm === s.room || hasBoss === s.room || hasOui === s.room;
+  if (!here) empty.push([i, s.room, String(s.line.t).slice(0, 38)]);
+});
+ok('nobody describes a room the camera is showing empty', !empty.length, empty);
+
 /* --- and the three new mouths are used the way they were meant to be */
 const said = {};
 SHOTS.forEach((s) => { if (s.line && s.line.who) said[s.line.who] = (said[s.line.who] || 0) + 1; });

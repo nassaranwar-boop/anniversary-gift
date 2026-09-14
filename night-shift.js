@@ -657,21 +657,21 @@ const NS = {
          opens on the bench they were made at, quietly, before anything
          happens. Everything after this is easier to feel if you have
          seen the room he worked in first. */
-      { room: "workshop", secs: 5.4, fov: 62, cue: "bench", lux: 0.55,
+      { room: "workshop", secs: 5.4, fov: 62, cue: "bench", lux: 0.55, bare: 1,
         from: [-1.7, 2.1, 2.2], to: [-1.0, 1.7, 1.4], look: [0.4, 1.05, -1.6],
         line: { nar: 1, t: "He had a bench at the back of this shop and one rule about it. Nothing left half-made overnight." } },
-      { room: "workshop", secs: 4.6, fov: 50, lux: 0.5,
+      { room: "workshop", secs: 4.6, fov: 50, lux: 0.5, bare: 1,
         from: [-1.0, 1.7, 1.4], to: [-0.5, 1.42, 0.8], look: [0.5, 0.98, -1.3],
         line: { nar: 1, t: "He broke that rule four times in fifteen years, and never for the same reason twice." } },
-      { room: "workshop", secs: 4.2, fov: 42, lux: 0.44,
+      { room: "workshop", secs: 4.2, fov: 42, lux: 0.44, bare: 1,
         from: [-0.5, 1.42, 0.8], to: [-0.25, 1.3, 0.45], look: [0.55, 0.92, -1.1],
         line: { nar: 1, t: "It is four minutes past five on the sixth night, and all four of them are about to be worth it." } },
 
       /* --- the shop stops pretending ------------------------------ */
-      { room: "office", secs: 4.0, fov: 58, cue: "stops", lux: 0.78,
+      { room: "office", secs: 4.0, fov: 58, cue: "stops", lux: 0.78, bare: 1,
         from: [0, 1.66, 2.35], to: [0, 1.62, 1.90], look: [0, 1.05, -2.5],
         line: { sys: 1, t: "MOTION ON CAMERA ONE. MOTION ON CAMERA TWO. MOTION ON CAMERA THREE. MOTION ON CAMERA&mdash;" } },
-      { room: "office", secs: 3.0, fov: 52, lux: 0.6,
+      { room: "office", secs: 3.0, fov: 52, lux: 0.6, bare: 1,
         from: [0, 1.62, 1.90], to: [0, 1.60, 1.70], look: [0, 1.05, -2.5],
         line: { nar: 1, t: "And then the building stops talking." } },
 
@@ -679,13 +679,13 @@ const NS = {
          She has spent six nights guarding two doorways off a hall. The
          thing nobody ever asked her to guard is the one the whole shop
          is named after, and it is made of glass. */
-      { room: "foyer", secs: 4.8, fov: 58, lux: 0.42,
+      { room: "foyer", secs: 4.8, fov: 58, lux: 0.42, bare: 1,
         from: [1.9, 1.95, 1.9], to: [1.2, 1.72, 1.1], look: [-0.5, 1.25, -2.5],
         line: { nar: 1, t: "The shutter at the front has been down since ten past twelve. It is the only door in this building she was never asked to watch." } },
       /* and the camera tilts off it onto the reason why, which is in
          the frame the whole time and is the sort of thing a person
          stops seeing after the first week */
-      { room: "foyer", secs: 4.2, fov: 50, shake: 1.1, lux: 0.36,
+      { room: "foyer", secs: 4.2, fov: 50, shake: 1.1, lux: 0.36, bare: 1,
         from: [1.2, 1.72, 1.1], to: [1.05, 1.80, 0.70],
         look: [-0.5, 1.35, -2.5], look2: [-0.45, 2.72, -2.6],
         line: { nar: 1, t: "Nobody ever put a shutter on the windows above it." } },
@@ -752,8 +752,21 @@ const NS = {
          they come in they take one each, which is the only staging of
          this scene that makes those six nights mean anything. Jax does
          not take one, and says so. */
-      { room: "office", secs: 4.2, fov: 56, cue: "post", clear: 1, lux: 0.5,
+      /* THERE HAS TO BE A SOMETHING.
+
+         This is first contact -- the sentence where the shop stops
+         being a building she is sitting in and becomes a building that
+         has things in it -- and it was played over an empty doorway.
+         Two "somethings" are described and the camera was pointed at
+         bare wood.
+
+         Half a dozen of them, well back down the corridor and out of
+         the light, so what she gets is shapes in the gap rather than a
+         crowd: the room is still hers on this shot and the point of it
+         is that it is about to stop being. */
+      { room: "office", secs: 4.2, fov: 56, cue: "post", lux: 0.5,
         from: [0.50, 1.60, 1.60], to: [0.20, 1.52, 1.20], look: [-3.4, 1.05, -0.9],
+        swarm: ["office", 6, 1.15, -6.6, 0.34, "x+"],
         line: { nar: 1, t: "Something puts its hand on the office door. Something else takes it off." } },
       { room: "office", secs: 4.4, fov: 74, lux: 0.62,
         from: [0, 1.70, 2.30], to: [0, 1.64, 1.90], look: [0, 1.15, -1.9],
@@ -911,7 +924,7 @@ const NS = {
          where the four of them were made, with nothing on it moving.
          It also puts the workshop in her head twenty shots before the
          film ends there. */
-      { room: "workshop", secs: 4.0, fov: 48, lux: 0.3, clear: 1,
+      { room: "workshop", secs: 4.0, fov: 48, lux: 0.3, clear: 1, bare: 1,
         from: [-1.10, 1.45, 1.30], to: [-0.80, 1.38, 1.05], look: [0.40, 1.00, -1.40],
         line: { nar: 1, t: "Two rooms away there is a bench with nothing on it, and nothing anywhere near it is moving at all." } },
 
@@ -1235,13 +1248,13 @@ const NS = {
       { room: "office", secs: 5.4, fov: 58, cue: "dawn", dawn: 1, up: 1, lux: 1,
         from: [-1.70, 0.34, 1.46], to: [0, 1.62, 2.20], look: [0, 1.10, -2.4],
         line: { nar: 1, t: "And then it is quiet in a way the shop has not been all week." } },
-      { room: "foyer", secs: 6.0, fov: 66,
+      { room: "foyer", secs: 6.0, fov: 66, bare: 1,
         from: [2.60, 2.90, 2.40], to: [1.40, 2.10, 1.50], look: [-0.5, 1.05, -1.8],
         line: { nar: 1, t: "The shutters go up at six. They always have, and there is nothing left in here worth putting behind them, and nobody has to be present for either of those things." } },
-      { room: "stage", secs: 5.4, fov: 62,
+      { room: "stage", secs: 5.4, fov: 62, bare: 1,
         from: [0.20, 3.10, 4.30], to: [0.20, 2.30, 3.00], look: [0, 1.30, -2.4],
         line: { nar: 1, t: "She has spent six nights getting very good at keeping them out." } },
-      { room: "stage", secs: 4.0, fov: 50,
+      { room: "stage", secs: 4.0, fov: 50, bare: 1,
         from: [0.20, 2.30, 3.00], to: [0.20, 2.05, 2.55], look: [0, 1.25, -2.4],
         line: { nar: 1, t: "They were never coming for her." } },
       /* AND THE LAST PICTURE IN THE CHAPTER IS HER.
@@ -1272,7 +1285,7 @@ const NS = {
          The letter used to arrive as a card over a black screen. It is
          a piece of paper on a bench in a room, and the film ends by
          walking up to it. */
-      { room: "workshop", secs: 6.2, fov: 54, ouiGone: 1,
+      { room: "workshop", secs: 6.2, fov: 54, ouiGone: 1, bare: 1,
         from: [-1.5, 1.8, 1.9], to: [-0.55, 1.3, 0.75], look: [0.45, 0.95, -1.15],
         line: { nar: 1, t: "There is one more thing on the bench at the back, in his hand, dated March." } },
     ],
