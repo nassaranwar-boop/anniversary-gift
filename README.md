@@ -6,6 +6,44 @@ branch → main → /root).
 
 **Passcode to enter the site: 2207**
 
+## Session log — read this first if you are picking this up
+
+The newest entry is at the top. Each one says what was asked, what
+landed, what is half-done and what the next session should do first.
+**Add a new entry every session.** Anything not written down here is
+lost when the container is reclaimed.
+
+### 2026-09-14 — more first-night scenes, a bigger score for night six
+
+**Asked for:** more scenes and more script in the first nights; more
+music, written to the emotional changes in night six; notes in the
+README every session; and a push to `main` if the session is cut off.
+
+**Where it is:** IN PROGRESS. See the entry below this line as it is
+filled in — the plan, in order:
+
+1. Six new music cues and five new themes for the last hour, so the
+   negotiation, the first death, the dance, the march, the arrival of
+   the first one he ever sold and the vow under the floor stop sharing
+   two cues between them. (`MODE_MIX`, `MODE_FEEL`, `THEME_NOTES` /
+   the theme branch in `musicBar`, `tools/seamcheck.js`.)
+2. A midnight beat for every night: the building does the thing that
+   changed about tonight, in front of her, before the clock starts.
+3. More script in nights one to four — the four overheard talking to
+   each other (which until now only happened on night five), and more
+   lines that answer something she did.
+4. storycheck/endcheck/seamcheck green, then push.
+
+**Anything new that is spoken needs the voice render.** Lines are silent
+until `.github/workflows/voice.yml` ("Anwar's voice") is run from the
+Actions tab on the branch the lines are on; it renders every line
+`tools/voicesheet.js --json` can see and commits the audio and a fresh
+`voice/manifest.json`. Nothing fails without it — the chapter just falls
+back to the browser's own speech engine and the printed text.
+
+**Branch:** work happens on `claude/website-perf-zoom-fixes-3lqveu`;
+`main` is what Vercel deploys.
+
 ## Files
 
 ```
