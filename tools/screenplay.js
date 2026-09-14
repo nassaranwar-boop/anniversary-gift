@@ -7,6 +7,7 @@
    sentence" without watching all six minutes.
                                             node tools/screenplay.js   */
 const fs = require('fs');
+const WAY = { chime: 'up', marabelle: 'taken', cogsworth: 'cross' };
 const src = fs.readFileSync(__dirname + '/../night-shift.js', 'utf8');
 function lift(name) {
   const i = src.indexOf('const ' + name + ' = ');
@@ -80,6 +81,16 @@ S.forEach((s, i) => {
   if (bits.length) console.log('      [' + bits.join(' · ') + ']');
   if (s.wreck) console.log('      [' + s.wreck[1] + ' things go over]');
   if (s.flash || s.boom) console.log('      [THE BLAST]');
+  /* and one of them leaving, which is a thing the camera watches
+     happen rather than a state change between two shots */
+  if (s.gone) {
+    const way = { up: 'is taken up through the grate',
+                  taken: 'dances, and then the doorway has her',
+                  cross: 'walks the length of the room, and stops' };
+    const m = s.goneAs === 'cut' ? '' : (s.goneAs || WAY[s.gone] || '');
+    console.log('      [' + s.gone.toUpperCase() + ' GOES' +
+                (m ? ' \u2014 ' + way[m] : ' in the blast') + ']');
+  }
   const l = s.line;
   if (l) {
     if (l.who) {

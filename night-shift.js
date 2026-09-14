@@ -1292,7 +1292,7 @@ const NS = {
 
       /* --- what the winding was, said from above her --------------- */
       { room: "office", secs: 4.4, fov0: 44, fov1: 40, cue: "alone", lux: 0.26,
-        from: [-1.74, 0.30, 1.44], to: [-1.72, 0.27, 1.38], look: [-1.14, 1.46, 0.30],
+        from: [-1.76, 0.34, 1.46], to: [-1.72, 0.27, 1.38], look: [-1.14, 1.46, 0.30],
         line: { who: "jax", t: "There is a key in the back of each of us. You have been turning them all week." } },
       { room: "office", secs: 3.4, fov0: 40, fov1: 37,
         from: [-1.72, 0.27, 1.38], to: [-1.70, 0.24, 1.34], look: [-1.14, 1.50, 0.30],
@@ -1337,24 +1337,24 @@ const NS = {
          work at all, and it is exactly what he asked her for in a note
          six nights ago without ever saying why. */
       { room: "office", secs: 4.2, fov: 40, lux: 0.24, cue: "charge",
-        from: [-1.64, 0.24, 1.30], to: [-1.59, 0.31, 1.25], look: [-1.16, 1.28, 0.30],
+        from: [-1.64, 0.20, 1.26], to: [-1.59, 0.31, 1.25], look: [-1.16, 1.28, 0.30],
         sfx: [["wind", 0.85]],
         line: { nar: 1, t: "He is slowing down. She can hear him doing it. So she reaches up out of the hole in her own floor, and she finds the key in his back, and she winds him one last time." } },
       /* off-screen on purpose: the camera is on the thing running
          down, not on the woman with her hand in its back, and his
          answer is written to be the answer to this */
       { room: "office", secs: 2.8, fov0: 42, fov1: 37, lux: 0.24,
-        from: [-1.59, 0.30, 1.34], to: [-1.62, 0.28, 1.18], look: [-1.16, 1.32, 0.30],
+        from: [-1.59, 0.31, 1.25], to: [-1.62, 0.28, 1.18], look: [-1.16, 1.32, 0.30],
         line: { who: "ouissy", off: 1, t: "Tell me when to stop." } },
 
       { room: "office", secs: 3.6, fov: 38, lux: 0.24,
-        from: [-1.59, 0.31, 1.25], to: [-1.62, 0.26, 1.28], look: [-1.16, 1.42, 0.30],
+        from: [-1.62, 0.28, 1.18], to: [-1.62, 0.26, 1.28], look: [-1.16, 1.42, 0.30],
         sfx: [["tuneWhole", 0.5]],
         line: { who: "jax", t: "Thank you. That is the last one. That is enough." } },
       /* the only shot in the chapter where one of them looks at her,
          and it was too dark to see either of them do it */
       { room: "office", secs: 4.2, fov0: 38, fov1: 34, lux: 0.5, cue: "alone",
-        from: [-1.64, 0.22, 1.28], to: [-1.63, 0.21, 1.27], look: [-1.16, 1.48, 0.30],
+        from: [-1.62, 0.26, 1.28], to: [-1.63, 0.21, 1.27], look: [-1.16, 1.48, 0.30],
         line: { nar: 1, t: "None of them has looked at her all night. He looks at her." } },
       { room: "office", secs: 3.6, fov0: 34, fov1: 31, lux: 0.2,
         from: [-1.63, 0.21, 1.27], to: [-1.62, 0.20, 1.25], look: [-1.16, 1.46, 0.30],
@@ -1388,7 +1388,7 @@ const NS = {
       /* whatever is left of the office is burning by now, and the shots
          after the blast are lit by it rather than by the ceiling */
       { room: "office", secs: 3.6, fov: 44, lux: 0.16, shake: 0.9,
-        from: [-1.62, 0.24, 1.28], to: [-1.58, 0.28, 1.22], look: [-2.30, 1.18, -0.30],
+        from: [-1.58, 0.24, 1.18], to: [-1.58, 0.28, 1.22], look: [-2.30, 1.18, -0.30],
         boss: ["office", -2.30, -0.30, 1.9],
         sfx: [["postSettle", 0.6]],
         line: { nar: 1, t: "The first thing he ever built is halfway across the room with its hand out." } },
@@ -1413,8 +1413,8 @@ const NS = {
          three metres of soldier is still upright in the corner. It
          asked to be wound eight seconds ago and Jax answered it. */
       { room: "office", secs: 5.2, fov: 48, boom: 1, clear: 1, lux: 0.08,
-        gone: "jax", bossGone: 1, hush: "lead",
-        from: [-1.61, 0.22, 1.32], to: [-1.70, 0.25, 1.38], look: [-1.14, 1.40, 0.30] },
+        gone: "jax", goneAs: "cut", bossGone: 1, hush: "lead",
+        from: [-1.55, 0.22, 1.18], to: [-1.70, 0.25, 1.38], look: [-1.14, 1.40, 0.30] },
 
       /* --- AND WHAT IS LEFT OF THE ROOM ----------------------------
          Five seconds of nothing moving. It is the longest gap between
@@ -12103,6 +12103,7 @@ function finaleStart() {
   fxClear();
   FIN.on = true; FIN.i = -1; FIN.t = 0; FIN.hold = 0; FIN.secs = 1;
   FIN.gone = {}; FIN.skip = false; FIN.adv = 0; FIN.shot = null;
+  EXIT.on = false; EXIT.id = null;
   FIN.lux = 1; G.filmLux = 1; FIN.hushed = {};
   FIN.horde = 0;
   /* THE SECOND WATCH IS A DESIGNED THING NOW, AND IT WAS UNREACHABLE.
@@ -12185,15 +12186,139 @@ function finaleWho(id) {
   return FIN_ELSE[id] || null;
 }
 
+/* =====================================================================
+   NOBODY LEAVES BY BEING SWITCHED OFF
+
+   Three of the four stop being in the world during the film, and every
+   one of those lines describes a MOVEMENT: something small and brass
+   goes UP into the ceiling with six of them holding on to it; a
+   ballerina dances and then the doorway takes her; a soldier walks the
+   length of the room to somebody else's door and gets there. For a
+   long time all three of those were the model's `visible` going false
+   on the cut, which meant the player read the sentence over the gap
+   where the toy had been rather than watching the thing the sentence
+   is about.
+
+   Each of them now goes the way its line says it goes, inside its own
+   shot, and the gap is what is left at the end of it. The fourth is
+   Jax, who goes in a detonation that whites the screen out: that one
+   is still instant, because the blast is the coverage.
+   ===================================================================== */
+const EXIT_WAY = { chime: "up", marabelle: "taken", cogsworth: "cross" };
+const EXIT = {
+  on: false, id: null, mode: "", t: 0, dur: 1, ry: 0,
+  p: new T.Vector3(), g: new T.Vector3(),
+};
+
+/* WHICH WAY IT GOES, AND HOW LONG THE GOING TAKES.
+
+   None of these is the length of its shot. The room has to be seen
+   without them standing in it before the cut, or the going reads as a
+   cut rather than as a loss. */
+function exitPlan(id, how) {
+  const mode = how === "cut" ? "" : (how || EXIT_WAY[id] || "");
+  const dur = mode === "up" ? 1.5 : mode === "taken" ? 3.6 : mode ? 4.1 : 0;
+  return { mode, dur };
+}
+
 /* one of them stops being in the world */
-function finaleGone(id) {
+function finaleGone(id, how) {
   FIN.gone[id] = 1;
+  /* if one of them is still on its way out, it has finished now: two
+     at once would leave the first standing in the room for good */
+  if (EXIT.on) { exitDone(cast[EXIT.id]); EXIT.on = false; }
   const ch = cast[id];
   if (!ch) return;
-  ch.awake = false; ch.asleep = true; ch.atDoor = false;
-  ch.group.visible = false;
+  ch.atDoor = false;
   SFX.doorClose();
   cueDuck(0.55);
+  const plan = exitPlan(id, how);
+  const mode = plan.mode;
+  /* it can only be watched leaving a room that is being looked at */
+  if (!mode || ch.room !== FIN.room || !ch.awake) { exitDone(ch); return; }
+  EXIT.on = true; EXIT.id = id; EXIT.mode = mode; EXIT.t = 0;
+  EXIT.dur = plan.dur;
+  EXIT.p.copy(ch.group.position);
+  EXIT.ry = ch.group.rotation.y;
+  /* how long the going takes, and where it ends up. None of these is
+     the length of the shot: the room has to be seen without them in
+     it before the cut, or it reads as a cut rather than a loss. */
+  if (mode === "up") {
+    EXIT.g.set(EXIT.p.x - 0.1, EXIT.p.y + 2.00, EXIT.p.z - 0.35);
+  } else if (mode === "taken") {
+    EXIT.g.set(EXIT.p.x + (EXIT.p.x > 0 ? 1.05 : -1.05), 0, EXIT.p.z - 0.10);
+  } else {
+    EXIT.g.set(EXIT.p.x > 0 ? -2.30 : 2.30, 0, EXIT.p.z);
+  }
+}
+
+function exitDone(ch) {
+  if (!ch) return;
+  ch.awake = false; ch.asleep = true;
+  ch.group.visible = false;
+}
+
+/* and the going itself, a frame at a time */
+function exitStep(dt) {
+  if (!EXIT.on) return;
+  const ch = cast[EXIT.id];
+  if (!ch) { EXIT.on = false; return; }
+  EXIT.t += dt;
+  const k = clamp(EXIT.t / EXIT.dur, 0, 1);
+  const g = ch.group;
+  if (EXIT.mode === "up") {
+    /* IT DOES NOT FLY. IT IS PULLED.
+
+       Six of them have hold of it, so it goes up accelerating and
+       turning over, and it is a third of the way through the ceiling
+       before it stops being a shape at all. The camera on this shot
+       tilts from the floor to the grate over three seconds; before
+       this there was nothing at the top of that tilt. */
+    const e = k * k;
+    g.position.set(lerp(EXIT.p.x, EXIT.g.x, e),
+                   lerp(EXIT.p.y, EXIT.g.y, e),
+                   lerp(EXIT.p.z, EXIT.g.z, e));
+    g.rotation.set(e * 1.15, EXIT.ry + e * 6.2, Math.sin(k * 9) * 0.34 * k);
+  } else if (EXIT.mode === "taken") {
+    /* SHE DANCES FIRST, AND THAT IS MOST OF IT.
+
+       Two and a half seconds of turning on the spot with her arms up
+       -- eleven seconds in the fiction, eleven seconds is not a shot
+       -- and then the doorway has her, sideways and low and fast,
+       which is the only part of it the line does not say out loud. */
+    const d = 0.70;
+    if (k < d) {
+      const s2 = k / d;
+      g.position.set(EXIT.p.x, EXIT.p.y + Math.abs(Math.sin(s2 * 12.6)) * 0.085, EXIT.p.z);
+      g.rotation.set(0, EXIT.ry + s2 * 12.4, Math.sin(s2 * 6.3) * 0.12);
+    } else {
+      const s2 = (k - d) / (1 - d), e = s2 * s2;
+      g.position.set(lerp(EXIT.p.x, EXIT.g.x, e), EXIT.p.y - e * 0.28,
+                     lerp(EXIT.p.z, EXIT.g.z, e));
+      g.rotation.set(-e * 1.3, EXIT.ry + 12.4 + e * 2.2, e * 0.9);
+    }
+  } else {
+    /* HE WALKS. THAT IS THE WHOLE OF IT.
+
+       Nine years of standing at one door and the last thing he does is
+       cross the room to somebody else's, at exactly the pace he has
+       kept all week, and stop. The tick that has been under this
+       chapter since the first night stops with him. */
+    const d = 0.82;
+    if (k < d) {
+      const s2 = k / d;
+      g.position.set(lerp(EXIT.p.x, EXIT.g.x, s2), Math.abs(Math.sin(s2 * 34)) * 0.045, EXIT.p.z);
+      g.rotation.set(0, EXIT.g.x > EXIT.p.x ? -Math.PI / 2 : Math.PI / 2, 0);
+    } else {
+      /* and then he runs down where he is standing, forwards, the way
+         a thing with one hinge at the ankle goes over */
+      const s2 = (k - d) / (1 - d), e = s2 * s2;
+      g.position.set(EXIT.g.x, e * 0.06, EXIT.g.z - e * 0.30);
+      g.rotation.set(-e * 1.45, EXIT.g.x > EXIT.p.x ? -Math.PI / 2 : Math.PI / 2, 0);
+    }
+  }
+  g.updateMatrix();
+  if (k >= 1) { exitDone(ch); EXIT.on = false; }
 }
 
 function finaleNext(skipped) {
@@ -12235,7 +12360,7 @@ function finaleNext(skipped) {
       putChar(ch, s.room || FIN.room, s.put[id]);
     }
   }
-  if (s.gone) finaleGone(s.gone);
+  if (s.gone) finaleGone(s.gone, s.goneAs);
 
   /* --- the crowd --------------------------------------------------- */
   if (s.clear) returnersClear();
@@ -12456,6 +12581,7 @@ function finaleStep(dt) {
   fxStep(dt, G.t);
   returnersKeepOut();
   if (!FIN.on) return;
+  exitStep(dt);
   FIN.t += dt;
   /* the lights walk to where the shot wants them rather than snapping,
      so a cut is a cut and a dimmer is a dimmer */
@@ -13672,7 +13798,18 @@ function wreckArm(roomId, n) {
     _wb.setFromObject(o);
     const rec2 = rooms[roomId];
     const floorY = rec2 ? rec2.group.position.y : 0;
-    const lift = Math.max(0, floorY - _wb.min.y);
+    /* AND IT IS SIGNED, WHICH IS THE WHOLE OF IT.
+
+       This used to be max(0, ...): a thing was allowed to be lifted
+       out of the floor and never allowed to come down to it. Anything
+       mounted on a wall -- and the office has a green board a metre
+       and a half up the south wall, a pace behind where the camera
+       sits for the last twenty shots of the film -- therefore went
+       over WITHOUT FALLING, and spent the rest of the chapter hanging
+       in the air across the lens. Six shots of the last conversation
+       in this shop were two-thirds dark green board. A thing that goes
+       over goes to the floor. */
+    const lift = floorY - _wb.min.y;
     o.quaternion.copy(q0);
     o.updateMatrixWorld(true);
 
@@ -13681,7 +13818,7 @@ function wreckArm(roomId, n) {
       /* when it goes, how far over, and which way */
       at: rnd() * 2.6, t: 0, dur: range(rnd, 0.5, 1.05),
       ax: ax, turn: turn,
-      drop: Math.max(0, p0.y - range(rnd, 0.02, 0.16)) + lift,
+      drop: p0.y + lift - range(rnd, 0.0, 0.06),
       slideX: range(rnd, -0.26, 0.26), slideZ: range(rnd, -0.26, 0.26),
       rang: false,
     });
@@ -17735,6 +17872,7 @@ const testHooks = {
   },
   fxStep: (dt) => { G.t += dt; fxStep(dt, G.t); return FX.list.length; },
   fxClear: () => { fxClear(); return FX.list.length; },
+  exitPlan: (id, how) => exitPlan(id, how),
   fxCount: () => ({ n: FX.list.length, fires: FX.fires, on: FX.on,
                     kinds: FX.list.reduce((o, i) => { o[i.kind] = (o[i.kind]||0)+1; return o; }, {}) }),
   /* the shop coming apart, driven by hand so a picture can be taken of
@@ -17758,10 +17896,13 @@ const testHooks = {
     });
     for (let i = 0; i < 200; i++) wreckStep(0.05);
     /* where everything ended up, and how far under the floor any of it went */
-    let under = 0;
+    let under = 0, air = 0;
     WRECK.list.forEach((w) => {
       box.setFromObject(w.o);
       under = Math.min(under, box.min.y - rec.group.position.y);
+      /* and the other way: a thing that went over and is still up in
+         the air never went over, it went round */
+      air = Math.max(air, box.min.y - rec.group.position.y);
     });
     const moved = WRECK.list.filter((w) => w.o.position.distanceTo(w.p0) > 0.001 ||
       Math.abs(w.o.quaternion.dot(w.q0)) < 0.9999).length;
@@ -17771,7 +17912,7 @@ const testHooks = {
       q: o.quaternion.toArray().map((v) => +v.toFixed(4)) }));
     const same = JSON.stringify(before) === JSON.stringify(after);
     return { took: took, sizes: sizes, moved: moved,
-             under: +under.toFixed(3), restored: same };
+             under: +under.toFixed(3), air: +air.toFixed(3), restored: same };
   },
   wreckStep: (dt) => wreckStep(dt),
   wreckClear: () => wreckClear(),

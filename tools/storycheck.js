@@ -339,6 +339,37 @@ if (man) {
   ok('and it is never the one who has just gone saying it',
      eul.every(([w, e]) => !e || e.by !== w), eul.map(([w, e]) => [w, e && e.by]));
 
+  /* AND THE GOING IS WATCHED, NOT SWITCHED OFF.
+
+     Every one of those three lines describes a movement. For a long
+     time all three of them were the model's `visible` going false on
+     the cut, so the player read the sentence over the gap where the
+     toy had been. */
+  const ways = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    const SH = N.words().lastHour.shots;
+    const out = [];
+    for (const w of ['chime', 'marabelle', 'cogsworth', 'jax']) {
+      const i = SH.findIndex((x) => x.gone === w);
+      const sh = SH[i];
+      const pl = N.exitPlan(w, sh.goneAs);
+      out.push({ who: w, i, secs: sh.secs, as: sh.goneAs || null,
+                 way: pl.mode, dur: pl.dur });
+    }
+    return out;
+  });
+  const gos = ways.filter((w) => w.who !== 'jax');
+  ok('each of the three is watched leaving rather than switched off',
+     gos.every((w) => w.way), ways.map((w) => [w.who, w.way]));
+  ok('the owl goes up, the ballerina is taken, the soldier crosses the room',
+     ways[0].way === 'up' && ways[1].way === 'taken' && ways[2].way === 'cross',
+     ways.map((w) => w.way));
+  ok('and each going is over before its shot is, so the room is seen empty',
+     gos.every((w) => w.dur > 0.8 && w.dur <= w.secs - 0.6),
+     gos.map((w) => [w.who, w.dur, w.secs]));
+  ok('the one in the blast is the only instant one -- the blast is the coverage',
+     ways[3].way === '' && ways[3].as === 'cut', ways[3]);
+
   /* the effects layer: it burns, it is capped, and it is put out */
   const fire = await p.evaluate(() => {
     const N = OuissysNightShift.__night;
@@ -383,6 +414,13 @@ if (man) {
   /* and nothing ends up buried in the floorboards */
   ok('and nothing comes to rest underneath the floor',
      rooms.every((r) => wr[r].under > -0.12), rooms.map((r) => [r, wr[r].under]));
+  /* NOR HANGING IN THE AIR, WHICH IS WHAT IT USED TO DO.
+
+     The lift out of the floor was one-sided, so anything mounted up a
+     wall turned over where it hung and stayed there. */
+  ok('and nothing that went over is left hanging in the air',
+     rooms.every((r) => wr[r].air < 0.3), rooms.map((r) => [r, wr[r].air]));
+
   /* the room is reused, so it has to go back exactly */
   ok('and afterwards the shop is put back exactly as it was',
      rooms.every((r) => wr[r].restored), rooms.map((r) => [r, wr[r].restored]));
