@@ -6,7 +6,7 @@ const OUT = process.argv[3] || '';
   const b = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--no-sandbox', '--no-proxy-server', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
-  const p = await b.newPage({ viewport: { width: 900, height: 560 } });
+  const p = await b.newPage({ viewport: { width: 520, height: 340 } });
   p.on('pageerror', (e) => console.log('PAGEERROR', e.message));
   await p.route('**/*', (r) => {
     const u = r.request().url();
@@ -19,8 +19,8 @@ const OUT = process.argv[3] || '';
   await p.waitForFunction(() => window.OuissysNightShift && OuissysNightShift.__night, { timeout: 20000, polling: 200 });
   await p.evaluate((n) => OuissysNightShift.__night.begin(n), N);
   let last = '';
-  for (let k = 0; k < 260; k++) {
-    await new Promise((r) => setTimeout(r, 60));
+  for (let k = 0; k < 120; k++) {
+    await new Promise((r) => setTimeout(r, 100));
     const st = await p.evaluate(() => {
       const N2 = OuissysNightShift.__night, G = N2.state();
       return { mid: N2.midState ? N2.midState() : null, hour: G.hour, power: +G.power.toFixed(1),

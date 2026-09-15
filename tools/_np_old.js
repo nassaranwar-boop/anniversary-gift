@@ -85,7 +85,7 @@ function ok(name, cond, extra) {
     if (u.indexOf('book-scene.js') >= 0) return r.abort();
     return u.startsWith('http://127.0.0.1') ? r.continue() : r.abort();
   });
-  await page.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.goto('http://127.0.0.1:8898/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(700);
 
   /* The site's screen-entry animation is a 0.65s keyframe, and under
@@ -120,26 +120,17 @@ function ok(name, cond, extra) {
   console.log('\n— how it works —');
   await tap(page, { q: '.ns-btn', text: 'HOW IT WORKS' });
   await page.waitForTimeout(300);
-  /* IT IS NOT SIX RULES AND A DOSSIER ANY MORE.
-
-     That card was twelve paragraphs -- six rules, then four characters
-     with a what, a threat and a tell each -- and this is a gift for one
-     specific person who does not play games. It is three things now, in
-     the order she needs them: one sentence of what she does, the keys
-     drawn AS keys, and the four with one line each. Everything cut is
-     still in the game, in the night-one tutorial, which puts her hands
-     on it instead of telling her. */
-  ok('what she does, in one sentence',
-     (await page.locator('.ns-how-one').textContent()).length > 80);
-  ok('the keys are drawn as keys, not described',
-     await page.locator('.ns-kcap').count() === 4);
-  ok('and the four are named with one line each',
-     await page.locator('.ns-who2').count() === 4);
-  ok('and every one of those lines is short enough to read standing up',
-     (await page.locator('.ns-who2-what').allTextContents())
+  ok('rules listed', await page.locator('.ns-rules li').count() === 6);
+  ok('cast listed', await page.locator('.ns-cast li').count() === 4);
+  /* each performer carries the rule and, under it, what she will
+     actually notice on its way */
+  ok('and each one says what to do about it',
+     await page.locator('.ns-who em').count() === 4);
+  ok('and the rules fit on a card',
+     (await page.locator('.ns-rules li span').allTextContents())
        .every(t => t.trim().length <= 90),
-     (await page.locator('.ns-who2-what').allTextContents()).map(t => t.length).join(','));
-  await tap(page, { q: '.ns-btn', text: 'GOT IT' });
+     (await page.locator('.ns-rules li span').allTextContents()).map(t => t.length).join(','));
+  await tap(page, { q: '.ns-btn', text: 'BACK' });
   await page.waitForTimeout(250);
 
   console.log('\n— his statement —');
@@ -239,39 +230,16 @@ function ok(name, cond, extra) {
   ok('and she is never asked twice', into.seen === '1');
 
   console.log('\n— night one —');
-  /* HIS STATEMENT BELONGS TO NIGHT ONE NOW, NOT TO THE FIRST PLAY.
-
-     Starting the story used to go straight to the shift card. It plays
-     the opening film first whenever the night about to begin is the
-     first one -- the statement IS the beginning of this story -- with a
-     SKIP for when she does not want it. This harness wants the shift,
-     so it takes the skip, which is what the button does. */
   await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); w.route('start'); });
-  await page.waitForTimeout(300);
-  await page.evaluate(() => {
-    const w = OuissysNightShift.__night;
-    if (w.state().phase === 'intro') w.route('introDone');
-    if (w.state().phase === 'terms') w.route('termsDone');
-  });
-  await page.waitForTimeout(500);
-  /* NIGHT ONE IS NOT BRIEFED OFF A CARD ANY MORE, AND THAT IS THE POINT.
-
-     It used to open on the shift card taped inside the desk drawer. The
-     opening film and the terms now sit in front of night one -- he asks
-     her for six nights and she says yes to them -- and putting a shift
-     card between that and the office is putting a form between a man's
-     last request and the thing he asked for. The card is still in the
-     drawer, in the game, where she found it; the brief still opens
-     every night from two onwards. */
+  await page.waitForTimeout(400);
+  /* night one is onboarded by a card taped inside the desk drawer, in
+     her hands. Nobody phones her; nobody narrates. */
+  ok('night one briefs off a found card', (await page.locator('.ns-from').textContent()).indexOf('drawer') >= 0);
+  ok('and the card is a piece of paper', await page.locator('.ns-paper p').count() >= 3);
+  ok('with a pencil note on it', await page.locator('.ns-pencil').count() === 1);
+  await tap(page, { q: '.ns-btn', text: '12:00 AM' });
+  await page.waitForTimeout(600);
   let st = await page.evaluate(() => OuissysNightShift.__night.state().phase);
-  ok('the terms hand her straight into the office, with no card in between',
-     st === 'play', st);
-  const card = await page.evaluate(() => {
-    const w = OuissysNightShift.__night.words().shiftCard;
-    return { from: w.title, lines: w.lines.length, pencil: !!w.pencil };
-  });
-  ok('and the shift card he taped inside the drawer is still written',
-     /drawer/i.test(card.from) && card.lines >= 4 && card.pencil, card);
   ok('shift running', st === 'play', st);
   ok('HUD visible', await page.locator('#ns-hud:not([hidden])').count() === 1);
   ok('pad visible', await page.locator('#ns-pad:not([hidden])').count() === 1);
@@ -544,17 +512,8 @@ function ok(name, cond, extra) {
   });
   await page.waitForTimeout(500);
   ok('night six ends in the finale, not a scoreboard', fin.phase === 'finale', JSON.stringify(fin));
-  /* AND DAWN IS NOT A CARD ANY MORE.
-
-     Six o'clock on the last night used to be a screen of paper. It is
-     the last hour now -- eighty-nine shots in the shop, in the rooms
-     she has been sitting in all week, with the four of them in it. */
-  const film = await page.evaluate(() => {
-    const st = OuissysNightShift.__night.finaleState();
-    return { on: st.on, of: st.of, room: st.room };
-  });
-  ok('and dawn is the last hour, which plays in the shop rather than on paper',
-     film.on && film.of > 60, JSON.stringify(film));
+  const finTxt = (await page.locator('.ns-card').textContent()) || '';
+  ok('and dawn is what is on the card', /6:00 AM|dawn|light/i.test(finTxt), finTxt.slice(0, 60));
   await shot('finale');
 
   console.log('\n— what the record keeps —');

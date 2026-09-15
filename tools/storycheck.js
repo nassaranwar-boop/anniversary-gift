@@ -320,6 +320,67 @@ if (man) {
      shutOut && /correct|would have left it shut|shutOut held it against/i.test(shutOut.t),
      (shutOut && shutOut.t || '').slice(0, 60));
 
+  console.log('\n=== the first minute of a night');
+
+  /* THE BUILDING DOES TONIGHT'S DAMAGE IN FRONT OF HER.
+
+     Six nights, six rule changes, and all six of them used to be a line
+     on a card. Each night now opens with the thing itself: the camera
+     she is about to lose fails while she is looking at it, the hall
+     goes out a bank at a time, the bus browns the office out. This
+     checks that each one exists, that it holds the night still while it
+     runs, and that it really does the thing it says -- a beat that
+     prints a line and changes nothing is a cutscene about a bug. */
+  const mid = await p.evaluate(async () => {
+    const N = OuissysNightShift.__night, G = N.state();
+    const out = [];
+    for (let n = 1; n <= 6; n++) {
+      N.begin(n);
+      const st0 = N.midState();
+      const p0 = G.power, h0 = G.hour;
+      /* run the beat to the end by hand, the way the frame loop does */
+      let guard = 0;
+      const before = { lost: Object.keys(G.lost).length, dark: !!G.hallDark,
+                       mon: !!G.monitor, power: p0 };
+      let sawMon = false, sawDoor = false, sawMonOut = false, sawLamp = false;
+      while (N.midState().on && guard++ < 1200) {
+        N.pumpFrame(0.05);
+        if (G.monitor) sawMon = true;
+        if (G.doors.right || G.doors.left) sawDoor = true;
+        if (G.monOut > 0) sawMonOut = true;
+        if (G.lampOut > 0) sawLamp = true;
+      }
+      out.push({ n: n, beats: st0.of, secs: st0.secs,
+                 heldClock: G.hour === h0,
+                 /* one frame of the shift proper has already run by the
+                    time the loop notices the beat is over, so the floor
+                    is a frame's worth of idle drain rather than zero */
+                 heldPower: n === 4 ? true : Math.abs(G.power - p0) < 0.05,
+                 lost: Object.keys(G.lost).filter((k) => G.lost[k] > 0),
+                 dark: !!G.hallDark, power: +G.power.toFixed(1),
+                 sawMon: sawMon, sawDoor: sawDoor, sawMonOut: sawMonOut, sawLamp: sawLamp,
+                 endsDown: !G.monitor });
+    }
+    return out;
+  });
+  ok('every night opens with the building doing something',
+     mid.every((m) => m.beats >= 4 && m.secs >= 5), mid.map((m) => [m.n, m.beats, m.secs]));
+  ok('and the clock does not move while it does it',
+     mid.every((m) => m.heldClock), mid.map((m) => [m.n, m.heldClock]));
+  ok('and it costs her nothing she did not watch it cost',
+     mid.every((m) => m.heldPower), mid.map((m) => [m.n, m.power, m.heldPower]));
+  ok('night two loses the workshop camera while she is looking at it',
+     mid[1].sawMon && mid[1].lost.indexOf('workshop') >= 0, mid[1].lost);
+  ok('night three puts the hall lights out', mid[2].dark && mid[1].dark === false,
+     [mid[1].dark, mid[2].dark]);
+  ok('night four takes the first bite out of the meter in front of her',
+     mid[3].power < 99.5 && mid[3].sawLamp, [mid[3].power, mid[3].sawLamp]);
+  ok('night five tries the door that is going to be slow all night',
+     mid[4].sawDoor, mid[4].sawDoor);
+  ok('night six drops the monitor and puts it back', mid[5].sawMonOut, mid[5].sawMonOut);
+  ok('and every one of them hands her the desk with the monitor down',
+     mid.every((m) => m.endsDown), mid.map((m) => [m.n, m.endsDown]));
+
   console.log('\n=== and it burns, and somebody says so when one of them goes');
 
   /* somebody has to say something when each of the four is destroyed */
@@ -505,6 +566,22 @@ if (man) {
   ok('but she only gets two thirds of it, through the door', begShut.through === true, begShut);
   ok('and afterwards it goes back to being one of the things that walks at her',
      !begShut.talking && !begShut.stillAtDoor, begShut);
+
+  /* AND IT CANNOT STAND THERE FOR EVER.
+
+     Every phase of a talk waits for the shop to be quiet, and quiet
+     means nothing else at her door -- so a second one arriving while
+     this one is mid-sentence used to suspend it indefinitely, and
+     stepCast skips anything that is talking. The result was a toy
+     frozen in her doorway for the rest of the night: the "one of them
+     just stops" a player reported. Each phase has a deadline now, and
+     the whole thing has a backstop behind those. */
+  const jammed = await p.evaluate(() =>
+    OuissysNightShift.__night.talkRun('cogsworth', true, 60, false, true));
+  ok('and a second one at the other door cannot freeze it there for ever',
+     !jammed.talking && !jammed.stillAtDoor, jammed);
+  ok('and it still says the thing it came to say',
+     !!jammed.heard, (jammed.heard || '').slice(0, 40));
 
   /* the dark opens every door in the building on its own, and that is
      not her deciding anything */

@@ -12078,12 +12078,12 @@ const MIDNIGHT = {
   ] },
 };
 
-const MID = { on: false, t: 0, i: 0, list: null, secs: 0 };
+const MID = { on: false, t: 0, i: 0, list: null, secs: 0, raised: false, cut: false };
 
 function midStart(n) {
   const m = MIDNIGHT[n];
   MID.on = !!m;
-  MID.t = 0; MID.i = 0;
+  MID.t = 0; MID.i = 0; MID.raised = false; MID.cut = false;
   MID.list = m ? m.beats : null;
   MID.secs = m ? m.secs : 0;
 }
@@ -12092,8 +12092,16 @@ function midOn() { return MID.on; }
 function midEnd() {
   if (!MID.on) return;
   MID.on = false;
-  if (G.monitor) G.monitor = false;
-  G.monOut = 0;
+  /* ONLY WHAT THE BEAT ITSELF PUT UP.
+
+     This used to drop the monitor flat, which is right when the beat
+     raised it and wrong the rest of the time: a harness that sets the
+     monitor by hand and then pumps a night had it switched off
+     underneath, so a ballerina who is supposed to be frozen on a
+     working picture was not being watched at all and moved. */
+  if (MID.raised && G.monitor) G.monitor = false;
+  if (MID.cut) G.monOut = 0;
+  MID.raised = false; MID.cut = false;
 }
 
 /* everything an act can do, and all of it is machinery the night
@@ -12103,7 +12111,7 @@ function midAct(act) {
   const bit = act.split(":");
   const what = bit[0], arg = bit[1], arg2 = bit[2];
   if (what === "monUp") {
-    G.cam = arg; G.monitor = true; SFX.monitor(true); bumpUI();
+    G.cam = arg; G.monitor = true; MID.raised = true; SFX.monitor(true); bumpUI();
   } else if (what === "monDown") {
     G.monitor = false; SFX.monitor(false); bumpUI();
   } else if (what === "snow") {
@@ -12115,7 +12123,7 @@ function midAct(act) {
   } else if (what === "lamp") {
     G.lampOut = Number(arg) || 1;
   } else if (what === "mon") {
-    G.monOut = Number(arg) || 1; SFX.hiss(1.0);
+    G.monOut = Number(arg) || 1; MID.cut = true; SFX.hiss(1.0);
   } else if (what === "surge") {
     /* the real one, so it is the real sound and the real bite */
     G.lampOut = 1.6; G.shake = 0.7; SFX.surge();
@@ -12143,10 +12151,11 @@ function midStep(dt) {
   }
   if (MID.t >= MID.secs) {
     MID.on = false;
-    /* whatever it put up, it puts down: she starts the night at the
+    /* whatever IT put up, it puts down: she starts the night at the
        desk with the monitor where she left it, which is down */
-    if (G.monitor) { G.monitor = false; SFX.monitor(false); }
-    G.monOut = 0;
+    if (MID.raised && G.monitor) { G.monitor = false; SFX.monitor(false); }
+    if (MID.cut) G.monOut = 0;
+    MID.raised = false; MID.cut = false;
     bumpUI();
     return true;
   }
@@ -13632,7 +13641,29 @@ function stepDesk(dt) {
 const TAPE = {
   on: false, said: {}, wait: 0, speakT: 0, line: "", plan: null, t0: 0,
   pending: null, opened: false,
+  /* IS A LINE ON SCREEN, HAS A VOICE BEEN HEARD SAYING IT, AND HOW LONG
+     DO THE WORDS STAY AFTER IT STOPS.
+
+     These three exist because of the worst bug a person ever reported
+     in this chapter: his words sat on the screen for ten seconds after
+     he had finished saying them. The timer was the whole estimated
+     length of the line PLUS a tail, and it was only allowed to run down
+     while nothing was speaking -- so a take that really played held the
+     timer at full, and then the caption served its entire sentence a
+     second time, in silence, while the shop carried on underneath it.
+     Measured on night one: "One of six. You said yes" was on screen for
+     fifteen seconds, nine and a half of them after the voice stopped.
+
+     What the words are actually for is being read, so: while a voice is
+     sounding they stay, and a second after it stops they go. If no
+     voice ever arrives -- no take, no speech engine, a browser that
+     will not make a sound for a page nobody has touched -- the written
+     line gets its full reading time instead, which is what speakT was
+     always meant to be. */
+  up: false, spoke: false, tail: 0,
 };
+/* how long his words stay on screen after the voice stops */
+const TAPE_TAIL = 1.05;
 /* HOW LONG HE WAITS BETWEEN SENTENCES.
 
    Seven seconds of enforced quiet on top of a rule that would not let
@@ -13648,6 +13679,13 @@ const TAPE = {
    a tape in an empty building would do. */
 const TAPE_GAP = 2.5;
 
+/* the words go away, and nothing is left holding them up */
+function tapeHide() {
+  TAPE.up = false; TAPE.spoke = false; TAPE.tail = 0; TAPE.speakT = 0;
+  const el = EL["ns-tape"];
+  if (el) { el.hidden = true; el.innerHTML = ""; }
+}
+
 function tapeReset() {
   TAPE.on = true;
   TAPE.said = {};
@@ -13657,12 +13695,11 @@ function tapeReset() {
   TAPE.plan = null;
   TAPE.pending = null;
   TAPE.opened = false;
-  if (EL["ns-tape"]) { EL["ns-tape"].hidden = true; EL["ns-tape"].innerHTML = ""; }
+  tapeHide();
 }
 function tapeOff() {
   TAPE.on = false;
-  TAPE.speakT = 0;
-  if (EL["ns-tape"]) { EL["ns-tape"].hidden = true; EL["ns-tape"].innerHTML = ""; }
+  tapeHide();
 }
 
 /* is this a moment a man could speak into? */
@@ -13721,6 +13758,7 @@ function tapeSay(line, who, through) {
   TAPE.line = line;
   TAPE.t0 = perf();
   TAPE.speakT = TAPE.plan.dur + 1.1;
+  TAPE.up = true; TAPE.spoke = false; TAPE.tail = TAPE_TAIL;
   /* `forceSynth` used to be here for the four of them, because the only
      recording of any line was Anwar reading it and hearing him play
      all four parts was worse than the synthesiser. They are cast
@@ -14361,12 +14399,31 @@ function wreckClear() {
      opened whether she let it in, which decides how the line is heard
    ========================================================= */
 const TALK = { on: false, who: null, door: null, line: null, wait: 0,
-               said: false, opened: false, phase: "", t: 0, was: null };
+               said: false, opened: false, phase: "", t: 0, was: null,
+               /* how long her head has been turned toward it, and
+                  whether she has reached for a control since it started */
+               lookT: 0, busy: false };
 const TALK_WAIT = 13;         // how long it will stand there and ask
+/* A GLANCE, NOT A LOCK.
+
+   Turning her head to the thing she let in was written as "while it is
+   talking", and a line takes several seconds, so the office camera sat
+   facing one doorway for the whole of it. Reported by the first person
+   to play it, in the plainest possible terms: the camera starts
+   focusing in a direction even if the other direction there is somebody
+   at the door. It is worse than an annoyance -- it is a defence she
+   cannot use, because the thing she needs to see is behind her head.
+
+   So the turn is a glance now. It lasts three seconds and a half,
+   it lets go the instant anything else is at a door, and it lets go
+   the instant she touches a control, because a hand on the door button
+   is somebody who has stopped listening and started working. */
+const TALK_LOOK = 3.5;
 
 function talkStart(it) {
   const ch = it.who && cast[it.who];
   if (!ch) { TAPE.pending = it; return; }
+  TALK.lookT = 0; TALK.busy = false; TALK.total = 0;
   TALK.on = true; TALK.who = it.who; TALK.door = ch.def.door;
   TALK.line = it; TALK.wait = TALK_WAIT; TALK.said = false;
   TALK.opened = false; TALK.phase = "ask"; TALK.t = 0;
@@ -14389,8 +14446,14 @@ function talkStart(it) {
 function talkTick(dt) {
   if (!TALK.on) return;
   TALK.t += dt;
+  TALK.total = (TALK.total || 0) + dt;
   const ch = cast[TALK.who];
   if (!ch || G.phase !== "play") { talkEnd(); return; }
+  /* THE BACKSTOP. Three phases, each with its own deadline, and then
+     this -- because a toy frozen in her doorway is the worst failure
+     this mechanic has, and it must not depend on all three of them
+     being right. */
+  if (TALK.total > 42) { talkEnd(); return; }
 
   if (TALK.phase === "ask") {
     /* SHE opened it -- not the power failing.
@@ -14434,7 +14497,18 @@ function talkTick(dt) {
   /* both endings wait for the shop to be quiet, then deliver the line
      it came for -- clear if she opened, through the door if she did not */
   if (TALK.phase === "open" || TALK.phase === "shut") {
-    if (!tapeQuiet() || voxTalking()) return;
+    /* AND IT DOES NOT WAIT FOR EVER.
+
+       "Wait for the shop to be quiet" means wait for nothing else to be
+       standing at her door -- and a wound one will stand at a door for
+       a long time. Every second of that, this one is frozen: stepCast
+       skips anything that is talking, so a toy suspended here is a toy
+       that stops walking, stops retreating and stands in her doorway
+       for the rest of the night doing nothing. That is the "one of them
+       just stops" that gets reported, and nothing in here ever timed
+       out. Eight seconds of trying to be polite is enough; after that
+       it says its piece over whatever else is happening. */
+    if (TALK.t < 8 && (!tapeQuiet() || voxTalking())) return;
     if (TALK.t < 0.55) return;
     TALK.phase = "said"; TALK.t = 0;
     TAPE.pending = null;
@@ -14444,7 +14518,10 @@ function talkTick(dt) {
   }
 
   if (TALK.phase === "said") {
-    if (!tapeQuiet() || voxTalking()) return;
+    /* the same deadline on the way out: it has said the thing, and
+       standing in her doorway afterwards is not a scene, it is a toy
+       that has stopped working */
+    if (TALK.t < 10 && (!tapeQuiet() || voxTalking())) return;
     if (TALK.t < 0.8) return;
     talkEnd();
   }
@@ -14530,8 +14607,17 @@ function tapeTick(dt) {
   const el = EL["ns-tape"];
 
   /* light the word he is on, the same way the film does */
-  if (TAPE.speakT > 0 || voxTalking()) {
-    if (!voxTalking()) TAPE.speakT -= dt;
+  if (TAPE.up || voxTalking()) {
+    /* WHICH CLOCK THE WORDS ARE ON.
+
+       While a voice is sounding, the words stay and the tail is held
+       full. When it stops, the tail runs and they go a second later.
+       And if no voice was ever heard at all, the written line gets its
+       own reading time instead -- which is the only thing speakT is
+       for now. */
+    if (voxTalking()) { TAPE.spoke = true; TAPE.tail = TAPE_TAIL; }
+    else if (TAPE.spoke) TAPE.tail -= dt;
+    else TAPE.speakT -= dt;
     if (el && TAPE.plan) {
       const mark = voxMark();
       const t = perf() - TAPE.t0;
@@ -14541,10 +14627,10 @@ function tapeTick(dt) {
         kids[i].className = (mark >= 0 ? i <= mark : (w && t >= w.at)) ? "on" : "";
       }
     }
-    if (TAPE.speakT <= 0 && !voxTalking() && el) { el.hidden = true; el.innerHTML = ""; }
+    if (!voxTalking() && (TAPE.spoke ? TAPE.tail <= 0 : TAPE.speakT <= 0)) tapeHide();
     return;
   }
-  if (el && !el.hidden) { el.hidden = true; el.innerHTML = ""; }
+  if (el && !el.hidden) tapeHide();
 
   TAPE.wait -= dt;
   if (TAPE.wait > 0 || !tapeQuiet()) return;
@@ -14777,8 +14863,16 @@ const _tl = new T.Vector3(), _tm = new T.Matrix4();
 const _tq = new T.Quaternion(), _tq2 = new T.Quaternion();
 const _up = new T.Vector3(0, 1, 0);
 function talkWant() {
-  return (TALK.on && TALK.opened && !G.monitor &&
-          (TALK.phase === "open" || TALK.phase === "said")) ? 1 : 0;
+  if (!TALK.on || !TALK.opened || G.monitor || TALK.busy) return 0;
+  if (TALK.phase !== "open" && TALK.phase !== "said") return 0;
+  if (TALK.lookT > TALK_LOOK) return 0;
+  /* ANYTHING ELSE AT A DOOR OUTRANKS A CONVERSATION. */
+  for (const id in cast) {
+    const c = cast[id];
+    if (id === TALK.who) continue;
+    if (c.awake && c.atDoor && c.room === "office") return 0;
+  }
+  return 1;
 }
 
 function applyLighting(dt) {
@@ -14987,7 +15081,9 @@ function moveView(dt) {
      Leaving it shut never does this. She keeps her eyes front and
      hears it through the steel, which is the other half of the
      trade. */
-  talkLook = clamp(talkLook + (talkWant() - talkLook) * Math.min(1, dt * 1.7), 0, 1);
+  const want = talkWant();
+  if (want) TALK.lookT += dt;
+  talkLook = clamp(talkLook + (want - talkLook) * Math.min(1, dt * 1.7), 0, 1);
   if (talkLook > 0.001) {
     const rec = rooms.office;
     const ox = rec ? rec.index * SPACING : 0;
@@ -15019,19 +15115,14 @@ function moveView(dt) {
   view.updateMatrixWorld(true);
 }
 
-let lastT = 0, raf = 0, fpsAcc = 0, fpsN = 0;
+/* ONE SLICE OF A NIGHT, WHICH IS ALSO THE ONLY WAY A SUITE CAN WATCH
+   ONE. This was the body of the frame loop; it is a function now for
+   one reason -- the first minute of a night holds the clock still, and
+   nothing could check that it really does without running the same code
+   the player runs. `pump` drives a night with the rendering off and the
+   scenes skipped; this is the whole thing, one slice at a time. */
+function playStep(dt) {
 
-function frame(ts) {
-  raf = requestAnimationFrame(frame);
-  if (noWebGL) return;
-  if (!lastT) lastT = ts;
-  let dt = (ts - lastT) / 1000;
-  lastT = ts;
-  if (dt > 0.1) dt = 0.1;                 // a tab coming back must not skip a night
-  G.t += dt;
-
-  if (ARC.on) { arcadeStep(dt); }
-  if (G.phase === "play") {
     stepEgg(dt);
     stepFind(dt);
     /* orientation holds the whole night still until she has done the
@@ -15083,6 +15174,22 @@ function frame(ts) {
       uiTick(dt);
     }
     }
+}
+
+let lastT = 0, raf = 0, fpsAcc = 0, fpsN = 0;
+
+function frame(ts) {
+  raf = requestAnimationFrame(frame);
+  if (noWebGL) return;
+  if (!lastT) lastT = ts;
+  let dt = (ts - lastT) / 1000;
+  lastT = ts;
+  if (dt > 0.1) dt = 0.1;                 // a tab coming back must not skip a night
+  G.t += dt;
+
+  if (ARC.on) { arcadeStep(dt); }
+  if (G.phase === "play") {
+    playStep(dt);
   } else if (G.phase === "over") {
     G.deadT += dt;
     /* the card waits for the scare to land. A game over screen arriving
@@ -17461,6 +17568,9 @@ function toggleMonitor() {
 
 function selectCam(id) {
   if (!ROOM[id]) return;
+  /* picking a camera is her touching a control too: the first minute
+     does not get to put the picture back on its own choice of room */
+  if (midOn()) midEnd();
   if (G.cam === id) return;
   G.cam = id;
   SFX.camSwitch();
@@ -17469,6 +17579,15 @@ function selectCam(id) {
 
 function press(k) {
   audioWake();
+  /* ANYTHING SHE DOES ENDS THE FIRST MINUTE.
+
+     The building's cold open is a flourish, not a cutscene: it does not
+     take the controls off her, so if she reaches for one it stops
+     rather than fighting her for the monitor. Watching it is the point
+     and skipping it is free. */
+  if (midOn()) midEnd();
+  /* and she has stopped listening: see TALK_LOOK */
+  TALK.busy = true;
   if (k === "monitor") toggleMonitor();
   else if (k === "prev" || k === "next") stepCam(k === "next" ? 1 : -1);
   else toggleDoor(k);
@@ -17546,6 +17665,18 @@ function onPointerMove(e) {
     panTY = clamp(panTY - (e.clientY - dragY) * 0.004, -0.7, 0.7);
     dragX = e.clientX; dragY = e.clientY;
   } else if (e.pointerType === "mouse" && stageEl) {
+    /* THE BUTTONS ARE NOT PART OF THE ROOM.
+
+       A mouse resting on the shop aims the view, which is the right
+       control for a room you are sitting in. The five keys are laid out
+       across the bottom of that same stage, though, with the two doors
+       at the far left and the far right of it -- so reaching for the
+       left door button turned her thirteen degrees away from the right
+       one and left her there, because a hand does not go back to the
+       middle of the screen after it presses something. Hovering a
+       control is not looking at anything. */
+    if (e.target && e.target.closest &&
+        e.target.closest("#ns-pad, #ns-hud, #ns-tape, .ns-card, .ns-overlay")) return;
     const r = stageEl.getBoundingClientRect();
     panTX = clamp(((e.clientX - r.left) / r.width - 0.5) * -1.5, -1, 1);
     panTY = clamp(((e.clientY - r.top) / r.height - 0.5) * -0.8, -0.7, 0.7);
@@ -18441,7 +18572,7 @@ const testHooks = {
     const it = { who: who, t: (NS.tapeWhen.theyWound && NS.tapeWhen.theyWound.t) || "x" };
     G.phase = "play"; G.mode = "story"; G.blackout = false; G.monitor = false;
     if (!G.stats) G.stats = {};
-    voiceStop(0); TAPE.speakT = 0;
+    voiceStop(0); tapeHide();
     if (tutorOn()) tutorOff();
     TAPE.on = true; TAPE.opened = true; TAPE.said = {};
     talkStart(it);
@@ -18491,17 +18622,20 @@ const testHooks = {
   },
   /* ONE OF THEM AT A DOOR, ASKING. Drive it both ways: open the door
      within the window, or leave it shut and let it give up. */
-  talkRun: (who, open, secs, dark) => {
+  talkRun: (who, open, secs, dark, jam) => {
     const it = { who: who, t: (NS.tapeWhen.theyWound && NS.tapeWhen.theyWound.t) || "x" };
     G.phase = "play"; G.mode = "story"; G.blackout = false;
     if (!G.stats) G.stats = {};
     /* a take left running from an earlier check holds the quiet gate
        shut for this one, and voxTalking is bound to real time in a loop
        that is not */
-    voiceStop(0); TAPE.speakT = 0;
+    voiceStop(0); tapeHide();
     /* the tutorial also gags the tape, and a suite driving a night by
-       hand is not being oriented */
+       hand is not being oriented -- nor is it being shown the first
+       minute of the night, which gags the tape for the same reason and
+       for the same nine seconds */
     if (tutorOn()) tutorOff();
+    midEnd();
     /* and nothing ELSE may be standing at a door: anything that is
        stops the tape dead, correctly, and earlier checks in the same
        page leave toys parked in doorways */
@@ -18522,6 +18656,19 @@ const testHooks = {
     if (open) G.doors[TALK.door] = false;
     /* the dark drops every shutter open by itself, which is not her */
     G.blackout = !!dark;
+    /* AND THE CASE WHERE THE SHOP NEVER GOES QUIET.
+
+       `jam` parks a second one at the other door and leaves it there,
+       which is the state every phase of this used to wait out for ever
+       -- and a talker that waits for ever is a toy standing in her
+       doorway doing nothing for the rest of the night. With it set,
+       nothing here cuts the take or clears the door: the deadlines have
+       to do the work on their own. */
+    if (jam) {
+      const other = who === "cogsworth" ? "marabelle" : "cogsworth";
+      const o = cast[other];
+      if (o) { o.awake = true; o.asleep = false; o.atDoor = true; o.room = "office"; }
+    }
     for (let i = 0; i < (secs || 40) * 4; i++) {
       /* THIS HOOK TESTS THE MACHINE, NOT THE SPEAKER.
 
@@ -18531,7 +18678,7 @@ const testHooks = {
          time never sees one finish, so the state machine would sit on
          its first phase for ever and the check would be measuring the
          audio clock. The take is cut on every tick instead. */
-      voiceStop(0); TAPE.speakT = 0;
+      if (!jam) { voiceStop(0); tapeHide(); }
       talkTick(0.25);
       if (out.phases[out.phases.length - 1] !== TALK.phase) out.phases.push(TALK.phase);
       if (!TALK.on) break;
@@ -18667,7 +18814,13 @@ const testHooks = {
   termsText: () => NS.terms.lines.join(" "),
   /* the tapes: what he has said tonight, and what he is saying now */
   tape: () => ({ on: TAPE.on, said: Object.keys(TAPE.said).length,
-                 line: TAPE.speakT > 0 ? TAPE.line : null,
+                 /* what is ON SCREEN, which is the thing a player sees:
+                    the old answer was "is the timer still running",
+                    which is not the same question once a take can
+                    outlast its own estimate or fail to start at all */
+                 line: (EL["ns-tape"] && !EL["ns-tape"].hidden) ? TAPE.line : null,
+                 speakT: +TAPE.speakT.toFixed(2),
+                 talking: voxTalking(),
                  pending: (TAPE.pending && TAPE.pending.t) || null,
                  quiet: tapeQuiet(),
                  showing: EL["ns-tape"] ? !EL["ns-tape"].hidden : false }),
@@ -18973,6 +19126,15 @@ const testHooks = {
   taskPoke: () => { taskShow(); return G.task; },
   /* drop straight into a shift at a given hour, so a check can look at
      what she actually sees rather than at the title screen */
+  /* the door-talk, and how far her head has turned toward it */
+  talkState: () => ({ on: TALK.on, who: TALK.who, door: TALK.door,
+                      phase: TALK.phase, opened: TALK.opened,
+                      look: +talkLook.toFixed(2) }),
+  /* one slice of a night, run by hand, through exactly the code the
+     player's frame loop runs -- so a suite can watch the first minute
+     of a night hold the clock still rather than take its word for it */
+  pumpFrame: (dt) => { const d = dt || 0.05; G.t += d;
+                       if (G.phase === "play") playStep(d); return G.phase; },
   /* the first minute of a night, for a probe that wants to watch it */
   midState: () => ({ on: MID.on, t: +MID.t.toFixed(2), i: MID.i,
                      of: MID.list ? MID.list.length : 0, secs: MID.secs }),
