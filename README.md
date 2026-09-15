@@ -13,6 +13,115 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-15d — the nights, played through, several times each
+
+**Asked for:** the same thing as the entry below — every fault in the
+early nights, no exceptions, checked and rechecked until the script is
+logical and the game follows it.
+
+**Where it is:** the entry below fixed what could be seen by looking at
+one moment at a time — where somebody stood, what a camera saw, what a
+caption said. This one found what can only be seen by playing a night
+from midnight to six and then reading it back, which is what
+`tools/scriptcheck.js` does: nights one to five, as whole playthroughs,
+several times over, with a competent player's hands on it. Seven
+faults, every one of them in how the writing is DELIVERED rather than
+in the writing itself — which is why nothing ever crashed and no suite
+had ever gone red. A line that is never said and a line that is said
+twice both look exactly like a working game from the inside.
+
+1. **AFTER THE FIRST THING SHE FOUND, HE NEVER SPOKE AGAIN.** The
+   biggest one by a long way. `revealCard` switches the tape system off
+   — quite right, the shift has stopped and she is reading a page —
+   and `closeReveal` never switched it back on. So from the moment she
+   picks up the first thing he left her, at about three in the morning,
+   on every night from the second one, the rest of the night he wrote
+   for her is silent. `tapeTick` returns on its first line and there is
+   simply no voice in the building. Three hours of tape a night, gone,
+   on any playthrough that found anything — which is all of them.
+
+2. **A KNOCK LANDED ON TOP OF A SENTENCE.** His lines queue: they go
+   into `TAPE.pending` and wait for a quiet moment. A toy coming to her
+   door to ask did not — `talkStart` said the question the instant it
+   was called. Measured on night two: his first words of the shift,
+   "You came back. I have been sitting here all day...", were on screen
+   for one tenth of a second before Cogsworth knocked over them. She
+   never read the line, and `tapeSay` marks a line said whether or not
+   anybody read it, so she never got it again either.
+
+3. **AND THE GREETING WAS CUT OFF HALF A SECOND AFTER IT WENT UP.** The
+   other end of the same trade. "Thank you." when she opens the door is
+   a line with a reading time; the line the toy came for replaced it at
+   0.55s regardless.
+
+4. **AND HE TALKED OVER A TOY STANDING IN HER DOORWAY.** `tapeQuiet`
+   excepts a toy that came to speak from the rule about not being
+   talked over — otherwise it would stand at that door all night
+   waiting for a gap its own presence was closing. That exception is
+   for the toy's sake and it was being spent on him. Cogsworth got his
+   question out, a tape started while he waited for an answer, and the
+   "Thank you." landed thirteen seconds after the thing it was thanking
+   her for.
+
+5. **THE ANSWER TO HER ONE REAL CHOICE REPEATED EVERY NIGHT.** She
+   keeps or burns one of his things at three every morning, and the
+   night after, the one it costs the most tells her what it made of
+   that. Once. It was guarded by tonight's record only, so from the
+   night after her first choice it arrived every night for the rest of
+   the week — and by night four there were three of them queued up
+   doing it.
+
+6. **AND SO DID THE FIVE FIRST-TIME LINES.** `firstDoor`, `firstCam`,
+   `firstWind`, `firstParcel`, `firstHeld` — five lines that explain a
+   thing she has just done for the first time. The note over the one
+   that fires `firstHeld` says "once, and never again — after that it
+   is simply how the shop works". "I told you. Let them." arrived on
+   the second, third and fourth nights of a measured playthrough, each
+   time as though it had never been said.
+
+7. **HIS VOICE CARRIED ON UNDERNEATH THE FOUR THINGS THAT STOP HIM.**
+   `tapeOff` took the words off the screen and never touched the
+   speakers, so a line that started two seconds before something
+   reached her finished its sentence about the kettle over the top of
+   the jumpscare. Same for the found page, the terms and the last hour
+   — the four moments in the chapter that most need silence.
+
+**AND THE TEST HOOKS LIED.** `dueNow` answers "what is due at this
+night and this hour, given what has been said tonight" — and several
+kinds of line are once in a playthrough rather than once in a night, so
+its answer depended on whatever the page had happened to play before
+the question was asked. It states the whole record now, and clears the
+air before it asks, because an oracle that waits for a voice to finish
+is answering a different question.
+
+**THE NEW SUITE** (`tools/scriptcheck.js`, 30 checks at three
+playthroughs). Eight rules per night — right night, up the clock, once
+a shift, nothing before its gate, the exchange in full and in order,
+nothing longer than ninety-five seconds of silence, and no line cut off
+by the one after it — plus one rule about the whole week. `DUMP=1`
+prints each night as a transcript, which is the thing to read before
+touching any of this: it is the chapter as she hears it.
+
+**Two things it had to learn to be honest about.** A run must READ THE
+CARDS — a find stops the shift and waits for a button, and a harness
+that never presses one stops dead at three in the morning and reports
+the remaining three hours as missing dialogue. And it must abort
+`voice/`: the takes play on the wall clock, the suite drives six hours
+of night in a couple of real seconds, and one eleven-second recording
+is otherwise still sounding three game-hours later, so everything that
+waits for the air to be free waits for ever. Both of those looked
+exactly like game faults first.
+
+**Green on:** scriptcheck 30, storycheck 114, endcheck 47, overcheck 42,
+midcheck 67, camcheck 13, geomcheck 12, saycheck 11, oncecheck 4,
+linecheck 5, castcheck 9, seamcheck 34.
+
+**NEXT:** nights five and six have never had a transcript read end to
+end by a person — scriptcheck plays five now but night six is the last
+hour and belongs to `endcheck`. And the frame still draws 398–487 calls
+(`tools/_cost.js`); nobody has measured the chapter on his actual
+phone.
+
 ### 2026-09-15c — he played the early nights again, and every fault he saw
 
 **Asked for:** the first nights have problems — cameras, dialogue,

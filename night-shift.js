@@ -12687,6 +12687,15 @@ function intercept(threat, keeper, shut) {
    a story and so nothing that only happens on a card could be checked */
 function heldCard(keeper, shut, door) {
   saveSeenSave(true);
+  /* THE CARD IS A PAUSE, AND A PAUSE IS NOT A FAST FORWARD.
+
+     Unlike the find, this one does not switch the tapes off: she comes
+     back to the same shift with the same line on screen. But the words
+     light on the wall clock and the shift's own clock stops with the
+     phase, so twenty seconds of reading a card lit every remaining word
+     at once and the rest of the line arrived already finished. The time
+     the card was up is given back to the line when she closes it. */
+  HELD_AT = perf();
   G.phase = "held";
   musicMode("held");
   showHud(false);
@@ -12701,8 +12710,11 @@ function heldCard(keeper, shut, door) {
       '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="heldOut">BACK TO IT</button></div>' +
     '</div>', "ns-ov-held");
 }
+let HELD_AT = 0;
 function closeHeld() {
   if (G.phase !== "held") return;
+  if (TAPE.up && HELD_AT) TAPE.t0 += perf() - HELD_AT;
+  HELD_AT = 0;
   G.phase = "play";
   musicMode(G.blackout ? "dark" : "night");
   noOverlay();
@@ -13877,6 +13889,8 @@ function closeReveal(kept) {
   if (kept) SFX.paper();
   else SFX.burn();
   G.phase = "play";
+  /* the shift goes on, and so does he: see tapeResume */
+  tapeResume();
   musicMode(G.blackout ? "dark" : "night");
   noOverlay();
   showHud(true);
@@ -14111,7 +14125,38 @@ function tapeReset() {
 }
 function tapeOff() {
   TAPE.on = false;
+  /* AND HE STOPS TALKING, NOT JUST DISAPPEARS.
+
+     tapeHide takes the words off the screen. It does not touch the
+     speakers, and the four things that switch the tapes off are the
+     four moments in the chapter that most need silence: something
+     reaching her, the page she has just found, the terms, and the last
+     hour. Without this, a line that started two seconds before any of
+     them carried on playing underneath it -- a dead man finishing a
+     sentence about the kettle over the top of the thing that has just
+     got into her office. */
+  try { voiceStop(0.12); } catch (e) {}
   tapeHide();
+}
+/* AND BACK ON AGAIN, WHICH NOTHING USED TO DO.
+
+   tapeOff is switched off by four things. Three of them are the end of
+   something -- being caught, the terms, the last hour -- and never come
+   back to a shift. The fourth is a find: the shift stops, she reads a
+   page, she keeps it or burns it, and the shift goes on. It went on
+   with the tape system switched off, so from the moment she picked up
+   the first thing he left her -- around three in the morning, every
+   night from the second one -- HE NEVER SPOKE AGAIN. Three hours of
+   the night he wrote for her, silent, on every playthrough that found
+   anything. Nothing reported it because nothing crashed: tapeTick
+   returns on its first line and the night simply has no voice in it.
+
+   He gets a beat to himself after the page and then carries on. */
+function tapeResume() {
+  if (TAPE.on) return;
+  TAPE.on = true;
+  TAPE.up = false;
+  TAPE.wait = TAPE_GAP;
 }
 
 /* is this a moment a man could speak into? */
@@ -14181,7 +14226,40 @@ function onceEver() {
   ONCE_EVER = {};
   for (const k in (NS.tapeWhen || {})) {
     const it = NS.tapeWhen[k];
-    if (it && typeof it === "object" && it.t && it.by) ONCE_EVER[it.t] = 1;
+    const line = typeof it === "string" ? it : (it && it.t);
+    if (!line) continue;
+    /* the gated ones, which arrive on a night and are never repeated */
+    if (typeof it === "object" && it.by) { ONCE_EVER[line] = 1; continue; }
+    /* AND THE ONES WHOSE NAMES SAY SO.
+
+       firstDoor, firstCam, firstWind, firstParcel, firstHeld: five
+       lines that explain a thing she has just done for the first time.
+       Their keys say first, the note over the one that fires firstHeld
+       says "once, and never again -- after that it is simply how the
+       shop works", and none of them was ever written down as told, so
+       all five came back every night. "I told you. Let them." arrived
+       on the second, third and fourth nights of a measured playthrough,
+       each time as though it had never been said. A man explaining the
+       same doorknob to his wife four nights running is not the man in
+       this chapter.
+
+       lowPower is deliberately not in here. It is not a first time, it
+       is a warning, and a warning she has had before is still worth
+       having when the meter is going. */
+    if (k.indexOf("first") === 0) ONCE_EVER[line] = 1;
+  }
+  /* THE ANSWER TO A CHOICE IS ALSO ONLY GIVEN ONCE.
+
+     One of the four tells her what it made of the thing she kept or
+     burned. tapeDue only ever asked whether it had been said TONIGHT,
+     so from the night after her first choice onwards, the same one
+     said the same thing about the same key every single night for the
+     rest of the week -- and by night four there were three of them
+     queued up doing it. */
+  for (const n in (NS.afterChoice || {})) {
+    const set = NS.afterChoice[n];
+    if (set.kept) ONCE_EVER[set.kept.t] = 1;
+    if (set.burned) ONCE_EVER[set.burned.t] = 1;
   }
   for (const k in (NS.pointAt || {})) ONCE_EVER[NS.pointAt[k].t] = 1;
   for (const k in (NS.ranDown || {})) ONCE_EVER[NS.ranDown[k].t] = 1;
@@ -14983,7 +15061,12 @@ function talkTick(dt) {
        just stops" that gets reported, and nothing in here ever timed
        out. Eight seconds of trying to be polite is enough; after that
        it says its piece over whatever else is happening. */
-    if (TALK.t < 8 && (!tapeQuiet() || voxTalking())) return;
+    /* TAPE.up as well as the voice: the greeting it just said -- "Thank
+       you." when she opens, its refusal when she does not -- is a line
+       on the screen with a reading time of its own, and without this
+       the line it actually came for replaced that greeting half a
+       second later, whether or not a recording of it existed. */
+    if (TALK.t < 8 && (!tapeQuiet() || voxTalking() || TAPE.up)) return;
     if (TALK.t < 0.55) return;
     TALK.phase = "said"; TALK.t = 0;
     TAPE.pending = null;
@@ -15162,6 +15245,21 @@ function overTick(dt) {
   OVER.gap = OVER_GAP;
 }
 
+/* THE AIR IS FREE, FOR A QUESTION THAT IS NOT A SHIFT.
+
+   tapeDue holds off while a line is still being delivered, which is the
+   rule a night wants and the opposite of what an oracle wants: the test
+   hooks below ask "what is due at this night and hour" one question at a
+   time, and the answer must not depend on whether a take from the last
+   question is still coming out of the speakers. So the hooks that ask
+   the question clear the air first, and put nothing back, because they
+   never started a line of their own. */
+function oracleQuiet() {
+  TAPE.up = false; TAPE.spoke = false; TAPE.speakT = 0; TAPE.tail = 0;
+  OVER.on = false;
+  try { voiceStop(0); } catch (e) {}
+}
+
 function tapeDue(dt) {
   if (!TAPE.on || !TAPE.opened || !NS.tapeWhen || G.phase !== "play") return;
   if (TAPE.pending || TALK.on) return;
@@ -15178,6 +15276,21 @@ function tapeDue(dt) {
      the shop goes back to being a shop in between. */
   TALK.cool = Math.max(0, (TALK.cool || 0) - dt);
   if (TALK.cool > 0) return;
+  /* AND NOTHING KNOCKS ON TOP OF A LINE THAT IS STILL BEING SAID.
+
+     His own lines queue: they go into TAPE.pending and tapeTick puts
+     them up when the shop is quiet. A knock does not -- talkStart says
+     the question the instant it is called, straight over whatever is
+     on the screen. Measured on night two: his first words of the shift,
+     "You came back. I have been sitting here all day...", were on
+     screen for one tenth of a second before Cogsworth knocked and
+     replaced them mid-sentence. She never read the line, and the tape
+     is marked as said, so she never gets it again either.
+
+     So a knock waits for the air, exactly as everything else in here
+     does, and the deadlines it is answering are hours wide -- a line
+     and a half of waiting costs them nothing. */
+  if (TAPE.up || voxTalking() || OVER.on) return;
   const hourNow = G.hour + (G.hourT || 0) / Math.max(1, TUNE.hourSeconds);
   for (const k in NS.tapeWhen) {
     const it = NS.tapeWhen[k];
@@ -15221,7 +15334,7 @@ function tapeDue(dt) {
     const set = NS.afterChoice && NS.afterChoice[n];
     if (!set || choices[n] == null) continue;
     const it = choices[n] === 1 ? set.kept : set.burned;
-    if (!it || TAPE.said[it.t]) continue;
+    if (!it || TAPE.said[it.t] || wasTold(it.t)) continue;
     if (it.who && cast[it.who] && !G.blackout) { talkStart(it); return; }
     TAPE.pending = it;
     return;
@@ -15310,6 +15423,23 @@ function tapeTick(dt) {
      lines and about half a minute, it happens once a night on four
      nights, and he has all six hours. */
   if (OVER.on) return;
+
+  /* AND HE DOES NOT TALK OVER SOMETHING STANDING IN HER DOORWAY.
+
+     tapeQuiet lets him: a toy that came to the door to ASK is excepted
+     from the rule about being interrupted, because otherwise it would
+     stand there for ever waiting for a gap that its own presence was
+     closing. That exception is for the toy's sake and it was being
+     spent on him. Measured on night four: Cogsworth knocked and got
+     his question out, and while he was waiting at a shut door for an
+     answer, a tape started, and the "Thank you." landed thirteen
+     seconds after the thing it was thanking her for.
+
+     tapeDue already stands aside for a live trade -- this is the same
+     rule for the lines that come off the clock rather than out of the
+     queue. Every trade at that door is bounded, so this is a wait of
+     seconds, not a night. */
+  if (TALK.on) return;
 
   /* Something she did comes before something the clock did — but not
      before he has introduced himself. A man whose first words to his
@@ -15848,7 +15978,7 @@ function playStep(dt) {
       /* and after tapeDue, so HE does: two of them gossiping in the
          arcade is the last thing in this shop with a claim on the air */
       overTick(dt);
-  talkTick(dt);
+      talkTick(dt);
       tapeTick(dt);
       uiTick(dt);
     }
@@ -19292,6 +19422,7 @@ const testHooks = {
     TAPE.on = true; TAPE.opened = true;
     if (said) TAPE.said = said;
     TAPE.pending = null;
+    oracleQuiet();
     tapeDue(dt);
     return TAPE.pending ? TAPE.pending.t : (TALK.on && TALK.line ? TALK.line.t : null);
   },
@@ -19466,10 +19597,26 @@ const testHooks = {
     const o = opts || {};
     const wasNight = G.night, wasHour = G.hour, wasPhase = G.phase;
     const hadKept = keptAll(), hadFound = foundAll(), hadSaid = TAPE.said;
+    /* WHAT SHE HAS EVER BEEN TOLD IS PART OF THE STATED STATE TOO.
+
+       This asks what would be due given a night, an hour, and a list of
+       what has been said tonight. Several kinds of line are once in a
+       playthrough rather than once in a night, so the record of those
+       has to be stated here as well -- otherwise the answer depends on
+       whatever the page happened to play before the question was
+       asked, and a sweep of the whole table quietly returns nothing
+       once anything in it has been heard. */
+    const hadTold = toldAll();
+    try { localStorage.setItem(TOLD_KEY, JSON.stringify(o.told || {})); } catch (e) {}
     G.night = night; G.hour = hour; G.hourT = 0;
     G.phase = "play"; G.mode = "story";
     G.doors.left = !!o.shut; G.doors.right = false; G.doors.hatch = false;
     TAPE.on = true; TAPE.opened = true; TAPE.pending = null;
+    /* and nothing is mid-sentence: tapeDue holds off while a line is
+       still being delivered, which is right in a shift and wrong in an
+       oracle that is being asked one question at a time */
+    const hadOver = OVER.on;
+    oracleQuiet();
     TAPE.said = Object.assign({}, o.said || {});
     try {
       localStorage.setItem(KEEP_KEY, JSON.stringify(o.chose || {}));
@@ -19489,10 +19636,12 @@ const testHooks = {
     if (TALK.on) talkEnd();
     TAPE.pending = null;
     TAPE.said = hadSaid;
+    OVER.on = hadOver;
     G.night = wasNight; G.hour = wasHour; G.phase = wasPhase;
     try {
       localStorage.setItem(KEEP_KEY, JSON.stringify(hadKept));
       localStorage.setItem(FOUND_KEY, JSON.stringify(hadFound));
+      localStorage.setItem(TOLD_KEY, JSON.stringify(hadTold));
     } catch (e) {}
     return out;
   },
@@ -19879,6 +20028,11 @@ const testHooks = {
   /* put a line up through exactly the call the chapter uses, so a check
      about what the caption looks like is looking at the real one */
   tapeSayRaw: (t, who, through) => tapeSay(t, who, through),
+  /* how much of the line is still owed: TAPE.speakT runs on the pumped
+     clock, so a check that drives frames can see a line being replaced
+     before it was finished */
+  tapeOwed: () => (TAPE.up ? +(TAPE.spoke ? TAPE.tail : TAPE.speakT).toFixed(2) : 0),
+  tapeDur: () => (TAPE.plan ? +TAPE.plan.dur.toFixed(2) : 0),
   tapeDebug: () => ({ up: TAPE.up, vox: voxTalking(), spoke: TAPE.spoke,
                       through: !!TAPE.through, line: TAPE.line, who: TAPE.who || null,
                       planWords: TAPE.plan ? TAPE.plan.words.length : null,
