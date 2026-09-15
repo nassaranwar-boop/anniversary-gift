@@ -94,11 +94,20 @@ the question was asked. It states the whole record now, and clears the
 air before it asks, because an oracle that waits for a voice to finish
 is answering a different question.
 
-**THE NEW SUITE** (`tools/scriptcheck.js`, 30 checks at three
-playthroughs). Eight rules per night — right night, up the clock, once
-a shift, nothing before its gate, the exchange in full and in order,
-nothing longer than ninety-five seconds of silence, and no line cut off
-by the one after it — plus one rule about the whole week. `DUMP=1`
+**THE NEW SUITE** (`tools/scriptcheck.js`, 40 checks at three
+playthroughs). A run is a PLAYTHROUGH — nights one to five, in order,
+in a page of its own — because several of these promises are about the
+week and not about Tuesday. Seven rules per night: right night, up the
+clock, once a shift, nothing before the night it opens on, the exchange
+in full and in order, nothing longer than ninety-five seconds of
+silence, and no line cut off by the one after it. Two across the week:
+a line carrying a deadline arrives by it whether or not she earned it,
+and a line that promises to happen once does not happen twice. And
+three before a frame is drawn, because a line in this chapter is
+identified BY ITS WORDS everywhere — `TAPE.said`, the once-ever record
+and the voice manifest are all keyed on the sentence — so two entries
+with the same words in them are one line, and saying either silences
+the other. `DUMP=1`
 prints each night as a transcript, which is the thing to read before
 touching any of this: it is the chapter as she hears it.
 
@@ -112,9 +121,11 @@ is otherwise still sounding three game-hours later, so everything that
 waits for the air to be free waits for ever. Both of those looked
 exactly like game faults first.
 
-**Green on:** scriptcheck 30, storycheck 114, endcheck 47, overcheck 42,
-midcheck 67, camcheck 13, geomcheck 12, saycheck 11, oncecheck 4,
-linecheck 5, castcheck 9, seamcheck 34.
+**Green on**, every one of them re-run against the finished tree:
+scriptcheck 40 (three playthroughs), storycheck 114, endcheck 47,
+overcheck 42, midcheck 67, camcheck 13, geomcheck 12, saycheck 11,
+revealcheck 7, castcheck 9, linecheck 5, oncecheck 4, seamcheck 34,
+nightbeats green.
 
 **NEXT:** nights five and six have never had a transcript read end to
 end by a person — scriptcheck plays five now but night six is the last
