@@ -558,6 +558,17 @@ function ok(name, cond, extra) {
   await shot('finale');
 
   console.log('\n— what the record keeps —');
+  /* rate a night that HAS a six o'clock card. The last one does not:
+     it is rated when she presses past his letter, which is checked
+     where that happens. */
+  await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    w.route('night:5'); w.route('go'); w.midEnd();
+    const c = w.cast();
+    Object.keys(c).forEach((k) => { c[k].asleep = true; c[k].awake = false; });
+    s.hour = 5; s.power = 70; w.pump(70);
+  });
+  await page.waitForTimeout(400);
   const rec = await page.evaluate(() => {
     const w = OuissysNightShift.__night, s = w.state();
     return { rating: s.rating, stats: s.stats,
@@ -583,7 +594,18 @@ function ok(name, cond, extra) {
   ok('an empty custom night earns nothing', farm.length === 0, farm.join(','));
 
   console.log('\n— everything the story unlocks —');
-  await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); });
+  /* the extras are gated on the six nights being finished, and the
+     sections above this one leave the sixth in the middle of the film
+     rather than through it -- the last night is only marked when she
+     presses past the letter at the end of the last hour, which is
+     checked where that happens. This is about what the title offers
+     once it is done. */
+  await page.evaluate(() => {
+    try {
+      localStorage.setItem('ns_nights', JSON.stringify({ 1: true, 2: true, 3: true, 4: true, 5: true, 6: true }));
+    } catch (e) {}
+    OuissysNightShift.__night.route('title');
+  });
   await page.waitForTimeout(350);
   ok('custom night is offered', await page.locator('[data-go="custom"]').count() === 1);
   ok('the gallery is offered', await page.locator('[data-go="gallery"]').count() === 1);
@@ -995,7 +1017,11 @@ function ok(name, cond, extra) {
     /* requestAnimationFrame runs at about 3fps in this container and
        orientation advances on frames, so this needs a budget measured in
        frames rather than in the wall-clock seconds a person would take */
-    while (guard++ < 220 && w.tutor().step >= 0 && w.tutor().step < w.tutor().of) {
+    /* the first minute of a night runs before orientation does -- the
+       building doing tonight's damage to itself -- and in this
+       container that is eighty frames of the budget before the
+       walkthrough starts */
+    while (guard++ < 340 && w.tutor().step >= 0 && w.tutor().step < w.tutor().of) {
       const t = w.tutor();
       if (t.line !== last) { seen.push(t.line); last = t.line; if (act[t.line]) act[t.line](); }
       /* both of these have to be retried: the key is placed by the frame
@@ -1417,6 +1443,10 @@ function ok(name, cond, extra) {
   const manners = await page.evaluate(() => {
     const w = OuissysNightShift.__night, s = w.state();
     w.route('night:4'); w.route('go');
+    /* the first minute of a night is the building doing tonight's
+       damage to itself, and nothing of his talks over it -- a harness
+       measuring his manners is not being shown the cold open */
+    w.midEnd();
     const out = {};
     /* He has the right of way now — the other way round was the bug.
        The building announces a door every time she touches one, so
@@ -1774,7 +1804,11 @@ function ok(name, cond, extra) {
      raised from the frame loop, and pump() stops the moment the phase
      stops being play */
   const given = {};
-  for (const id of ['ledger', 'last', 'cogsworth']) {
+  /* the ledger is night five's and is handed over on that night's six
+     o'clock card. The last page is night six's, and night six has no
+     six o'clock card -- it has the film, and the card after it -- so it
+     is checked at the end of the ending instead of here. */
+  for (const id of ['ledger', 'cogsworth']) {
     await page.evaluate((id) => {
       const w = OuissysNightShift.__night, s = w.state();
       try { localStorage.removeItem('ns_found'); } catch (e) {}
@@ -1793,7 +1827,6 @@ function ok(name, cond, extra) {
       OuissysNightShift.__night.finds().kept.indexOf(id) >= 0, id);
   }
   ok('the ledger is handed to her if she never found it', given.ledger === true);
-  ok('and so is the last page', given.last === true);
   ok('but an ordinary tag is still hers to find or miss', given.cogsworth === false);
 
   /* the four rooms the score has that only exist inside a shift */
@@ -1925,20 +1958,34 @@ function ok(name, cond, extra) {
     w.route('night:6'); w.route('go');
     ['cogsworth','chime','marabelle','jax'].forEach(k => { w.cast()[k].asleep = true; });
     s.hour = 5; s.power = 60; w.pump(70);
-    const asked = (document.querySelector('.ns-ask') || {}).textContent || '';
-    const btns = Array.from(document.querySelectorAll('.ns-ov-fin [data-go]')).map(b => b.dataset.go);
-    return { phase: s.phase, asked: asked.length, btns };
+    /* five o'clock on the last night is the film, and the question is
+       what the film hands her at the end of it -- so it has to be run
+       to the end rather than started. filmSeek turns the film's own
+       clock without drawing any of it. */
+    w.filmSeek(999);
+    /* what the film hands her at the end of it is his letter, read a
+       line at a time, and one way out of it */
+    const letter = document.querySelector('.ns-card-find .ns-paper');
+    const out1 = { phase: s.phase, letter: letter ? letter.textContent.length : 0,
+                   btns: Array.from(document.querySelectorAll('.ns-rv-choice [data-go]')).map(b => b.dataset.go) };
+    /* and then the card that ends the chapter: what she is left with,
+       and the page he would not let her miss */
+    w.route('finaleDone');
+    const fin = document.querySelector('.ns-card-fin');
+    out1.ending = fin ? fin.textContent.length : 0;
+    out1.gave = !!(fin && fin.querySelector('.ns-gave'));
+    out1.choices = Array.from(document.querySelectorAll('.ns-card-fin [data-go]')).map(b => b.dataset.go);
+    try { out1.six = !!JSON.parse(localStorage.getItem('ns_nights') || '{}')[6]; } catch (e) {}
+    out1.rated = !!s.rating;
+    return out1;
   });
-  ok('the last night asks her something', ends.asked > 20 && ends.phase === 'finale', JSON.stringify(ends.phase));
-  ok('and there are two ways to answer',
-     ends.btns.indexOf('endWind') >= 0 && ends.btns.indexOf('endLeave') >= 0, ends.btns.join(','));
-  for (const [go, want] of [['endWind', 'WINDS'], ['endLeave', 'LEAVES']]) {
-    await page.evaluate((g) => OuissysNightShift.__night.route(g), go);
-    await page.waitForTimeout(300);
-    const txt = await page.locator('.ns-card-fin').textContent();
-    ok('  ' + go + ' has its own ending', txt.indexOf(want) >= 0, txt.slice(0, 40));
-  }
-  await shot('ending');
+  ok('the film hands her his letter at the end of it', ends.letter > 200,
+     JSON.stringify({ letter: ends.letter, btns: ends.btns }));
+  ok('and there is one way out of it, not two', ends.btns.length === 1, ends.btns.join(','));
+  ok('and the card after it is what she is left with', ends.ending > 60, ends.ending);
+  ok('and it puts the last page in her hand, found or not', ends.gave, ends.gave);
+  ok('and pressing past it is what marks the six nights done', ends.six, ends.six);
+  ok('and the last night is rated like every other one', ends.rated, ends.rated);
 
   console.log('\n— the way out —');
   await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); });

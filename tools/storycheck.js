@@ -320,6 +320,38 @@ if (man) {
      shutOut && /correct|would have left it shut|shutOut held it against/i.test(shutOut.t),
      (shutOut && shutOut.t || '').slice(0, 60));
 
+  /* THE PAGE SHE IS NOT ALLOWED TO MISS, ON THE NIGHT THAT CARRIES IT.
+
+     The signature -- the last thing he wrote, folded under the comb of
+     the music box -- is the one find the ending cannot do without, and
+     the last night is the only night with no six o'clock card to hand
+     it over on. It has the film instead, and then the card that comes
+     after the film. This walks the whole of that: five o'clock, the
+     eighty-nine shots, his letter, and the press past it. */
+  const handed = await p.evaluate(() => {
+    const N = OuissysNightShift.__night, G = N.state();
+    try { localStorage.removeItem('ns_found'); } catch (e) {}
+    N.begin(6); N.midEnd();
+    const c = N.cast();
+    Object.keys(c).forEach((k) => { c[k].awake = false; c[k].asleep = true; });
+    G.hour = 4; G.power = 90;
+    N.pump(70);
+    const intoFilm = G.phase;
+    N.filmSeek(999);
+    N.route('finaleDone');
+    const card = document.querySelector('.ns-card-fin');
+    return { intoFilm: intoFilm, phase: G.phase, kept: N.finds().kept,
+             gave: !!(card && card.querySelector('.ns-gave')),
+             rated: !!G.rating,
+             six: (() => { try { return !!JSON.parse(localStorage.getItem('ns_nights') || '{}')[6]; }
+                           catch (e) { return false; } })() };
+  });
+  ok('the last night goes into the film rather than a scoreboard',
+     handed.intoFilm === 'finale', handed.intoFilm);
+  ok('and the card after it puts the last page in her hand, found or not',
+     handed.kept.indexOf('last') >= 0 && handed.gave, handed);
+  ok('and that is what marks the six nights done', handed.six && handed.rated, handed);
+
   console.log('\n=== the first minute of a night');
 
   /* THE BUILDING DOES TONIGHT'S DAMAGE IN FRONT OF HER.

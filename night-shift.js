@@ -13251,6 +13251,10 @@ function stepClock(dt) {
        stand in front of her -- was said in letters and never happened.
        At five o'clock on the last night, it happens. */
     if (G.hour >= 5 && G.mode === "story" && G.night >= NIGHTS.length && NS.lastHour) {
+      /* the page she is not allowed to miss is handed over on the card
+         AFTER the film, in screenShift -- the last night's card is the
+         one that gives it to her, and giving it to her here as well
+         takes the paper out of the hand it is meant to be put into. */
       finaleStart(); return;
     }
     if (G.hour >= 6) { winNight(); return; }
@@ -19074,7 +19078,18 @@ const testHooks = {
     const d = dt || 0.05;
     filmByHand = true;
     let guard = 0;
-    while (FIN.on && FIN.i < i && guard++ < 40000) { finaleStep(d); G.t += d; }
+    while (FIN.on && FIN.i < i && guard++ < 40000) {
+      /* A SHOT IS AS LONG AS IT IS WRITTEN, OR AS LONG AS HE TAKES --
+         and the whole of this seek happens inside one turn of
+         JavaScript, so the audio clock does not move while it runs. A
+         take that is playing when it starts is still playing forty
+         thousand iterations later, and the film never leaves the shot
+         it is on. The take is cut on every step instead, which is what
+         every other hand-driven film tool in here does. */
+      voiceStop(0);
+      finaleStep(d);
+      G.t += d;
+    }
     return FIN.on ? FIN.i : false;
   },
   filmFrame: (dt, draw) => {
