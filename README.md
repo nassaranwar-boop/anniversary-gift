@@ -13,6 +13,82 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-15 — what a player actually hit, measured and fixed
+
+**Asked for:** he played the early nights and reported three things --
+the dialogue lags and stays on screen after he has stopped talking, or
+does not read at all; some of the toys stop doing anything; and the
+camera faces one way while there is something at the other door. Play it
+like somebody who has never seen it, sweep in detail, fix what is there.
+
+**The harness that found all of it:** `tools/newplayer.js`. Every other
+suite drives the shift with `pump`, which takes the frame loop, the
+renderer, the audio and the real clock out of it -- right for checking a
+rule, useless for finding these. This one sits in the chair, lets the
+page's own loop run in real time, moves a mouse the way a hand does, and
+writes down what it sees every tenth of a second.
+
+**Fixed, all of them measured before and after:**
+
+1. **His words stayed up ten seconds after he stopped.** The caption
+   timer was the whole estimated length of the line plus a tail, and it
+   only ran down WHILE NOTHING WAS SPEAKING -- so a take that really
+   played held it at full and the words served their sentence again in
+   silence. Night one, measured: fifteen seconds on screen, nine and a
+   half of them after the voice had gone. Now: while a voice sounds they
+   stay, a second after it stops they go, and a line with no take at all
+   gets its full reading time instead.
+2. **A toy could stop being anywhere.** Every phase of a door-talk waits
+   for the shop to be quiet, and quiet means nothing else at her door --
+   while `stepCast` skips anything that is talking. A second toy
+   arriving mid-sentence suspended the first one indefinitely: frozen in
+   her doorway for the rest of the night. Each phase has a deadline now,
+   with a backstop behind all three.
+3. **The camera faced the wrong wall, twice over.** The head-turn toward
+   the thing she let in lasted the whole conversation (ten seconds of
+   not being able to see the other door -- a defence she cannot use). It
+   is a glance now: 3.5s, released the instant anything else is at a
+   door or she touches a control. And the five keys sit across the
+   bottom of the same stage the mouse aims the view with, so reaching
+   for the left door button turned her away from the right one and left
+   her there. Hovering a control no longer aims anything.
+4. **One of them held her doorway for 25 seconds** in two talks with a
+   blink between them, because three of the four's lines come due at
+   once by the middle of night three. A minute of quiet between them.
+5. **Sixteen lines had never been recorded.** Every one of the four can
+   come to a door and ask to be let in -- and not one of those lines was
+   in `tools/voicesheet.js`, so the render had never seen them. An
+   unrendered line does not fail; it comes out of the browser's own
+   engine or out of nothing. That is what "sometimes it does not read"
+   was. All 256 lines are rendered now.
+6. **`tools/nightplay.js` is green again** -- 221 checks, the suite that
+   plays the chapter with real clicks. It had drifted a long way from
+   the chapter, because it lives on main and the chapter has had
+   sessions of work on a branch. Fixing it re-validated the how-it-works
+   card, night one's flow through the film and the terms, the finds, the
+   tutorial, the whole ending path and the unlocks.
+7. **`filmSeek` could hang on a playing take** -- it runs the film's
+   clock inside one turn of JavaScript, so the audio clock never moves
+   and a take that was playing stayed playing. It cuts the take per step
+   now.
+
+**Left open / next:**
+
+- The voice re-render triggered by `voice/RENDER` (2026-09-15b) has to
+  land before `tools/castcheck.js` passes: the render that gave the
+  asking a voice moved two pairs of characters within a semitone of each
+  other (the owl against her, the first one he ever sold against the
+  tape). The pitches are changed in `tools/voicesheet.js`; run castcheck
+  once the Action has committed the takes.
+- **A frame draws 398-487 calls** (measured, `tools/_cost.js`; the
+  simulation itself is 0.04-0.18ms a frame, so the cost is all drawing).
+  That is the one candidate left for "it lags" on a real device, and it
+  would mean merging static room geometry by material. Nobody has
+  measured the chapter on his actual phone yet; do that before taking a
+  knife to a working renderer.
+- The three items below this entry (the midnight beat, the first-night
+  script, pushing to main) are still open.
+
 ### 2026-09-14 — more first-night scenes, a bigger score for night six
 
 **Asked for:** more scenes and more script in the first nights; more
