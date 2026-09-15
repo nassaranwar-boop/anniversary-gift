@@ -168,6 +168,19 @@ for (const k in (NS.tapeWhen || {})) {
   if (typeof it === 'string') add('when-' + k, it, 'when she does the thing');
   else add('when-' + k, it.t, 'when she does the thing', it.who);
 }
+/* AND THE ONES SHE IS NOT MEANT TO BE HEARING.
+
+   One exchange on each of nights one to four: two of the four talking
+   to each other about the shop, about him, about each other. They are
+   the only lines in the chapter with two characters in them before the
+   last hour, so the casting matters more here than anywhere -- a pair
+   that comes out in one voice is not a conversation, it is somebody
+   muttering. castcheck is what proves they did not. */
+for (const n in (NS.overheard || {}))
+  (NS.overheard[n].lines || []).forEach((l, i) =>
+    add('over-' + n + '-' + (i + 1), l.t,
+        'night ' + n + ', overheard from the ' + NS.overheard[n].room, l.who));
+
 /* and the one who tells her where she left his card */
 for (const k in (NS.pointAt || {}))
   add('point-' + k, NS.pointAt[k].t, 'the night after she walked past it', NS.pointAt[k].who);

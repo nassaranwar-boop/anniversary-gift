@@ -71,3 +71,10 @@ full en_GB-alan-medium 1.16 0.74 1.2
 #              each pair is in the room with the other. The owl goes up
 #              a semitone and a half; the first one he ever sold goes
 #              down the same. She is never processed and does not move.
+# 2026-09-15c: the four of them talk to each other on nights one to
+#              four. One exchange a night, three or four lines each,
+#              two speakers in every one of them -- fourteen lines, all
+#              new, all cast in tools/voicesheet.js. They are the only
+#              lines before the last hour with two characters in them,
+#              so if a pair comes back in one voice it is not a
+#              conversation; castcheck is what says whether it did.

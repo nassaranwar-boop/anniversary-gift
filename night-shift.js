@@ -1812,6 +1812,96 @@ const NS = {
                    t: "It is only me. I knock because he told me to knock. He did not have to tell me twice." },
     lowPower:    "If the meter goes, sit still. Six o'clock has beaten the dark before now.",
   },
+
+  /* =====================================================================
+     OVERHEARD — THE FOUR OF THEM, TALKING TO EACH OTHER, ON THE NIGHTS
+     BEFORE THEY EVER TALK TO HER
+
+     Everything the four say on nights one to four is said TO her. Four
+     lines in four nights, each one an answer to something she did --
+     which is the friendship, and it works, and it also means that for
+     four fifths of the chapter they are objects that speak only when
+     spoken to. The one place they are ever people is the last hour of
+     night six, where they talk to each other for ninety seconds and the
+     whole chapter finally lands. That is a very long way to make
+     somebody wait to find out that the things trying to get into her
+     office have opinions.
+
+     So on each of the first four nights there is one short exchange
+     between two of them, about the shop, about him, about each other --
+     and not about her, which is the entire point. She is not being
+     addressed. She is a woman in a locked room who can hear two of her
+     husband's toys having a conversation in a room down the hall.
+
+     How she gets it is the same trade the door-asking runs on:
+
+       on camera    she is watching that room on a live picture when it
+                    comes due, and she gets it clear, with both names on
+                    it. A reason to sweep, and a reward for sweeping.
+       through      she is not, and after a minute of standing by it
+                    comes through the wall instead: muffled, both
+                    voices, about two thirds of the words.
+
+     Never missable, and better if she is looking -- which is the rule
+     the rest of this chapter is written to, because optional story is
+     the hole storycheck exists to close.
+
+     `room` is where the conversation is, `from` the hour it can start,
+     and `lines` who says what, in order.
+
+     All four are due in the first two hours, and the later nights get
+     theirs earlier rather than later. Three in the morning is where a
+     night goes wrong -- the meter is thin, the shop is busy, and a bad
+     one ends -- so a scene scheduled for after it is a scene a player
+     having a hard time does not get, on exactly the nights where they
+     are having the hardest time. Measured: with night four's due at
+     three o'clock, she was caught with a line and a half of it left. Nobody is moved to say any of
+     this: the camera in that room has a microphone, which the shop
+     itself points out on night three when it reports the hall picture
+     gone and the audio nominal.
+     ===================================================================== */
+  overheard: {
+    /* NIGHT ONE. The soldier keeps his time and the owl watches the
+       front door, so the two of them between them know exactly when she
+       arrived. They are not deciding whether she is a threat. They are
+       comparing her to him, which is what everything in this shop does
+       eventually, and they are doing it within an hour of meeting her. */
+    1: { room: "foyer", from: 1, lines: [
+      { who: "chime",     t: "She turned the key at eleven and she was sitting down four minutes early." },
+      { who: "cogsworth", t: "He was never four minutes early in his life." },
+      { who: "chime",     t: "No. But he always said that he was going to be." },
+    ] },
+    /* NIGHT TWO. The night after the tape where he tells her what the
+       four of them are made out of. The two who were not in that tape
+       talk about it, and the ballerina says the thing the chapter is
+       actually about eleven minutes into its second hour. */
+    2: { room: "stage", from: 2, lines: [
+      { who: "jax",       t: "He told her what we are made out of." },
+      { who: "marabelle", t: "He told her what we are made out of. He did not tell her who we are made out of." },
+      { who: "jax",       t: "Does she have to work that out on her own, then?" },
+      { who: "marabelle", t: "She worked him out on her own. She will manage us." },
+    ] },
+    /* NIGHT THREE. Tonight three banks of hall lighting went out at
+       midnight while she watched. The soldier does arithmetic for a
+       living and has just done some. This is the first time anything in
+       the chapter says out loud that the faults are not faults. */
+    3: { room: "arcade", from: 1, lines: [
+      { who: "cogsworth", t: "Three banks in the hall. All three inside four seconds." },
+      { who: "chime",     t: "Bulbs do not do that." },
+      { who: "cogsworth", t: "No. Somebody wanted the hall dark. And it was not the hall they wanted it dark for." },
+    ] },
+    /* NIGHT FOUR. The bus started taking bites out of the meter at
+       midnight, in front of her, for two per cent. The box is the one
+       who notices what she does with numbers, because he is the one who
+       has been counting her. */
+    4: { room: "party", from: 1, lines: [
+      { who: "jax",       t: "It took two per cent off her at midnight and she wrote it down." },
+      { who: "marabelle", t: "She writes everything down. He did that too, and it drove me to distraction." },
+      { who: "jax",       t: "Then she is going to notice what it is taking it FOR." },
+      { who: "marabelle", t: "Yes. I have been dreading that since Tuesday." },
+    ] },
+  },
+
   hooks: {
     1: "In the workshop bin there are four hundred tags that read SOLD, and four that do not.",
     2: "One of the addresses in the delivery book has been crossed out very hard.",
@@ -2276,7 +2366,9 @@ const TUNE = {
    Adding a seventh night is adding an entry; nothing counts them.
    ========================================================= */
 const HAZARDS = {
-  deadWorkshop: "Camera eight has been dead since last night.",
+  /* not "since last night": on night two she watches it go, at midnight,
+     on his bench, which is the one thing the card must not contradict */
+  deadWorkshop: "Camera eight is gone. The workshop is a blind room.",
   signalLoss:   "The feeds drop out, one at a time, and come back on their own.",
   hallDark:     "The hall lights are gone. He is still in there.",
   surges:       "The main bus spikes. It takes what it takes.",
@@ -11635,7 +11727,8 @@ function observed(ch) {
   return ch.room === "office";
 }
 function isLost(roomId) {
-  return (G.lost[roomId] || 0) > 0 || (hazard("deadWorkshop") && roomId === "workshop");
+  return (G.lost[roomId] || 0) > 0 ||
+         (roomId === "workshop" && hazard("deadWorkshop") && !midHolding("deadWorkshop"));
 }
 
 /* --- putting a figure at its current station ---------------------- */
@@ -12029,21 +12122,21 @@ const MIDNIGHT = {
      the monitor comes up on its own, on that camera, on his bench --
      the one room in the shop she has a reason to want to see -- and it
      goes while she is looking at it. */
-  2: { secs: 8.6, beats: [
+  2: { secs: 8.6, breaks: "deadWorkshop", beats: [
     { at: 0.30, act: "monUp:workshop", sys: "MIDNIGHT. SHIFT TWO OF SIX." },
     { at: 2.40, act: "hiss",           sys: "CAMERA EIGHT: SIGNAL DEGRADED." },
-    { at: 4.20, act: "snow:workshop",  sys: "CAMERA EIGHT: NO SIGNAL." },
+    { at: 4.20, act: "snow:workshop",  breaks: true, sys: "CAMERA EIGHT: NO SIGNAL." },
     { at: 6.00, act: "monDown",        sys: "CAMERA EIGHT: MAINTENANCE REQUIRED. NO ENGINEER ASSIGNED." },
   ] },
   /* NIGHT THREE. The hall goes out. Three banks, three thumps, and the
      last one takes the picture with it -- so the night she has to track
      him by ear starts with her watching the light he was lit by leave
      the building. */
-  3: { secs: 9.0, beats: [
+  3: { secs: 9.0, breaks: "hallDark", beats: [
     { at: 0.30, act: "monUp:hall",  sys: "MIDNIGHT. SHIFT THREE OF SIX." },
     { at: 2.10, act: "sfx:falseBang:-0.5", sys: "HALL LIGHTING: BANK ONE OFFLINE." },
     { at: 3.90, act: "sfx:falseBang:0.2",  sys: "HALL LIGHTING: BANK TWO OFFLINE." },
-    { at: 5.70, act: "dark",        sys: "HALL LIGHTING: BANK THREE OFFLINE." },
+    { at: 5.70, act: "dark",        breaks: true, sys: "HALL LIGHTING: BANK THREE OFFLINE." },
     { at: 7.40, act: "monDown",     sys: "CAMERA ZERO ONE: PICTURE BELOW THRESHOLD. AUDIO NOMINAL." },
   ] },
   /* NIGHT FOUR. The bus. Two brown-outs and a bang, and the meter takes
@@ -12059,10 +12152,10 @@ const MIDNIGHT = {
   /* NIGHT FIVE. The right-hand actuator. It tries itself -- down, stop,
      grind, up -- which is the sound she is going to be listening for
      all night, played once, with nothing on the other side of it. */
-  5: { secs: 8.8, beats: [
+  5: { secs: 8.8, covers: ["stickyDoor"], beats: [
     { at: 0.30, act: "sfx:beep",       sys: "MIDNIGHT. SHIFT FIVE OF SIX." },
     { at: 2.00, act: "doorTest:right", sys: "DOOR TWO: SELF TEST." },
-    { at: 4.60, act: "sfx:handle:0.7", sys: "DOOR TWO: ACTUATOR RESPONDING SLOWLY." },
+    { at: 4.60, act: "doorBack:right", sys: "DOOR TWO: ACTUATOR RESPONDING SLOWLY." },
     { at: 6.60, act: "sfx:beep",       sys: "DOOR TWO: HOLD CURRENT UP FIFTY PERCENT. NO ENGINEER ASSIGNED." },
   ] },
   /* NIGHT SIX. Everything is already broken, so the building does the
@@ -12078,16 +12171,72 @@ const MIDNIGHT = {
   ] },
 };
 
-const MID = { on: false, t: 0, i: 0, list: null, secs: 0, raised: false, cut: false };
+const MID = { on: false, t: 0, i: 0, list: null, gaps: null, next: 0, secs: 0,
+              raised: false, cut: false, shut: null, breaks: null, broken: false };
+
+/* the beat after the last word, before the clock starts */
+const MID_TAIL = 0.9;
+/* and a ceiling, because this holds the night still: if the annunciator
+   ever wedges, the shift starts anyway rather than never */
+const MID_CAP = 30;
 
 function midStart(n) {
   const m = MIDNIGHT[n];
   MID.on = !!m;
-  MID.t = 0; MID.i = 0; MID.raised = false; MID.cut = false;
+  MID.t = 0; MID.i = 0; MID.raised = false; MID.cut = false; MID.shut = null;
+  MID.broken = false;
   MID.list = m ? m.beats : null;
   MID.secs = m ? m.secs : 0;
+  MID.breaks = m ? (m.breaks || null) : null;
+  MID.broken = false;
+  /* THE GAPS, NOT THE TIMES.
+
+     Each beat is written at an absolute second because that is how a
+     scene is easiest to read on the page. What actually paces it is the
+     GAP between one beat and the next -- the silence between "BANK ONE
+     OFFLINE" and "BANK TWO OFFLINE" is the scene -- so the absolute
+     times are turned into gaps once, here, and the run below counts
+     from whenever the previous line finished being read rather than
+     from a stopwatch that started before anyone spoke. */
+  MID.gaps = m ? m.beats.map((b, i) => Math.max(0, b.at - (i ? m.beats[i - 1].at : 0))) : null;
+  MID.next = m ? MID.gaps[0] : 0;
 }
 function midOn() { return MID.on; }
+
+/* TONIGHT'S FAULT HAS NOT HAPPENED YET.
+
+   Two of the six beats are the moment a lasting fault arrives -- camera
+   eight dying on night two, the hall going out on night three -- and
+   `beginNight` switches both of them on from the night's hazard list
+   before anybody has watched anything. Measured: on night three the
+   hall was already dark at t=0.1, five and a half seconds before the
+   scene said "BANK THREE OFFLINE", so the building was reporting
+   something that had happened off screen. Which is the exact fault this
+   whole scene exists to fix.
+
+   So on the night a fault FIRST appears, the night starts without it
+   and the beat is what does it. Every night after that it is on from
+   the start, because by then it broke two nights ago and she knows. */
+function midHolding(name) {
+  return MID.on && MID.breaks === name && !MID.broken;
+}
+/* asked by beginNight, before MID is running, so it reads the table */
+function midWillBreak(n, name) {
+  const m = MIDNIGHT[n];
+  return !!(m && m.breaks === name);
+}
+/* AND THE BUILDING DOES NOT SAY IT TWICE.
+
+   The night's opening status lines are read out the moment the shift
+   starts, and one of them -- "DOOR TWO: ACTUATOR DEGRADED" -- is the
+   headline of the very scene night five then spends nine seconds
+   acting out. Measured: the flat version arrived first, at 1.7s, and
+   pushed the scene's own opening line to 3.3. A fault the beat is
+   about to demonstrate does not also get announced in advance. */
+function midCovers(n, name) {
+  const m = MIDNIGHT[n];
+  return !!(m && m.covers && m.covers.indexOf(name) >= 0);
+}
 /* a suite driving a night by hand is not being shown anything */
 function midEnd() {
   if (!MID.on) return;
@@ -12101,6 +12250,8 @@ function midEnd() {
      working picture was not being watched at all and moved. */
   if (MID.raised && G.monitor) G.monitor = false;
   if (MID.cut) G.monOut = 0;
+  if (MID.shut) { G.doors[MID.shut] = false; MID.shut = null; }
+  if (MID.breaks && !MID.broken) { MID.broken = true; if (MID.breaks === "hallDark") G.hallDark = true; }
   MID.raised = false; MID.cut = false;
 }
 
@@ -12130,9 +12281,19 @@ function midAct(act) {
     spendPower(2);
     bumpUI();
   } else if (what === "doorTest") {
-    /* it shuts itself and opens itself, slowly, with nothing there */
-    G.doors[arg] = true; SFX.doorClose(); bumpUI();
-    setTimeout(() => { if (MID.on) { G.doors[arg] = false; SFX.doorOpen(); bumpUI(); } }, 1700);
+    /* It shuts itself with nothing there. The OPENING is its own beat,
+       and deliberately so: a self-test that closed on a beat and opened
+       on a setTimeout 1.7 seconds later was a door whose two halves ran
+       on two different clocks, and the timer was guarded on the scene
+       still running -- so if the beat ended first the door never opened
+       at all, and she started the night with it shut, the meter
+       draining, and nothing on screen that said why. Shut on one line,
+       open on the next, and the LATENESS between them is the thing the
+       scene is about. */
+    G.doors[arg] = true; MID.shut = arg; SFX.doorClose(); bumpUI();
+  } else if (what === "doorBack") {
+    G.doors[arg] = false; if (MID.shut === arg) MID.shut = null;
+    SFX.handle(TUNE.pan[arg] || 0); SFX.doorOpen(); bumpUI();
   } else if (what === "sfx") {
     const f = SFX[arg];
     if (f) f(arg2 === undefined ? undefined : Number(arg2));
@@ -12140,21 +12301,53 @@ function midAct(act) {
 }
 
 /* Called from the frame loop the way orientation is: while this is
-   running the night is held -- no clock, no drain, nobody walking. */
+   running the night is held -- no clock, no drain, nobody walking.
+
+   IN STEP WITH THE VOICE, NOT WITH A STOPWATCH.
+
+   The annunciator reads one line at a time and holds each one for as
+   long as that line takes to say, so a run of beats on fixed seconds
+   walks away from the words describing it: measured on night two, the
+   monitor came up on the workshop a second and a half before "SHIFT TWO
+   OF SIX" was read out, the hiss landed three quarters of a second
+   ahead of "SIGNAL DEGRADED", and the drift grew with every beat
+   because every line queued behind the one before it. The scene reads
+   as a machine and a voice that are not talking about each other.
+
+   So a beat waits for the annunciator to be free, and then for its own
+   gap on top of that. The written rhythm survives; the pairing of a
+   sound and the sentence about it is exact, on any machine, however
+   long the line takes to read. */
 function midStep(dt) {
   if (!MID.on) return true;
   MID.t += dt;
-  while (MID.list && MID.i < MID.list.length && MID.t >= MID.list[MID.i].at) {
+
+  const free = !sayQueue.length && G.t >= sayUntil;
+  /* one beat a frame at most: firing two in the same frame is two lines
+     into a one-line queue, which is the drift this exists to remove */
+  if (free && MID.list && MID.i < MID.list.length && MID.t >= MID.next) {
     const b = MID.list[MID.i++];
     midAct(b.act);
+    if (b.breaks) MID.broken = true;
     if (b.sys) say(b.sys, true);
+    MID.next = MID.t + (MID.gaps && MID.i < MID.gaps.length ? MID.gaps[MID.i] : MID_TAIL);
   }
-  if (MID.t >= MID.secs) {
+
+  const said = !MID.list || MID.i >= MID.list.length;
+  const over = (said && free && MID.t >= MID.next) || MID.t >= MID_CAP;
+  if (over) {
     MID.on = false;
     /* whatever IT put up, it puts down: she starts the night at the
        desk with the monitor where she left it, which is down */
     if (MID.raised && G.monitor) { G.monitor = false; SFX.monitor(false); }
     if (MID.cut) G.monOut = 0;
+    /* and belt and braces: the ceiling above can cut the scene off
+       between the two halves of the self-test, and a door left shut by
+       a scene she was only watching is a bill she never agreed to */
+    if (MID.shut) { G.doors[MID.shut] = false; MID.shut = null; }
+    /* and the ceiling cannot hand her a night with tonight's fault
+       still politely waiting to happen */
+    if (MID.breaks && !MID.broken) { MID.broken = true; if (MID.breaks === "hallDark") G.hallDark = true; }
     MID.raised = false; MID.cut = false;
     bumpUI();
     return true;
@@ -14549,6 +14742,139 @@ function talkEnd() {
   TALK.cool = TALK_COOL;
 }
 
+/* =====================================================================
+   OVERHEARD, AS IT RUNS
+
+   One exchange a night on nights one to four (see NS.overheard). Two of
+   the four talk to each other in a room she is not in; she gets it
+   clear if she happens to be watching that room on a live picture, and
+   muffled through the wall if she is not.
+
+   Everything here is one at a time and gives way to everything else:
+   the annunciator has the right of way, his tapes have the right of
+   way, anything standing at a door stops it dead. A conversation she
+   overhears is the lowest-priority sound in the building, which is
+   exactly what an overheard conversation is.
+
+   The waiting is the same lockstep the first minute of a night runs on:
+   a line does not start until the one before it has finished being
+   said, so two voices never talk over each other.
+   ===================================================================== */
+const OVER = { on: false, scene: null, i: 0, t: 0, wait: 0, through: false,
+               armed: false, done: false, gap: 0, held: 0, why: "" };
+/* HOW LONG IT STANDS BY WAITING FOR HER TO LOOK AT THE RIGHT ROOM
+   before it gives up and comes through the wall instead.
+
+   This was most of a minute, on top of the hour the scene waits for
+   anyway, and it pushed the muffled version out towards three in the
+   morning -- which is where the meter gets thin, the shop gets busy and
+   a bad night ends. Measured across nights two, three and four: a run
+   that waited the full minute did not reach the end of the exchange
+   before she was caught. She has had a whole hour to be on the right
+   camera by the time this starts counting; another twenty-four seconds
+   of standing by is enough, and it puts the conversation in the part of
+   the night she is still alive for. */
+const OVER_GRACE = 24;
+/* and the silence between one of them finishing and the other starting */
+const OVER_GAP = 1.15;
+/* the longest anything in this chapter takes to say, and then some */
+const OVER_HOLD = 16;
+
+function overStart(n) {
+  const sc = NS.overheard && NS.overheard[n];
+  OVER.on = false; OVER.scene = null; OVER.i = 0; OVER.t = 0;
+  OVER.wait = 0; OVER.through = false; OVER.done = false; OVER.gap = 0; OVER.held = 0;
+  /* story only, and only on the nights before they start talking to
+     her: from night five they come to the door and say it to her face,
+     and the last hour is ninety seconds of them talking to each other
+     with her watching. It would be the third thing doing the same job. */
+  OVER.armed = !!(sc && G.mode === "story");
+  OVER.scene = sc || null;
+}
+
+/* is she watching the room it is happening in, on a picture that works */
+function overSeen() {
+  return !!(OVER.scene && G.monitor && G.monOut <= 0
+            && G.cam === OVER.scene.room && !isLost(OVER.scene.room));
+}
+
+function overTick(dt) {
+  OVER.why = "";
+  if (!OVER.armed || OVER.done || G.phase !== "play") { OVER.why = "off"; return; }
+  /* it is the quietest thing in the building and it yields to all of
+     them: the first minute, orientation, a scare, a blackout, anything
+     at a door, and anything already being said */
+  if (midOn()) { OVER.why = "midnight"; return; }
+  if (tutorOn()) { OVER.why = "orientation"; return; }
+  if (TALK.on) { OVER.why = "at the door"; return; }
+  if (G.blackout) { OVER.why = "blackout"; return; }
+  if (!tapeQuiet()) { OVER.why = "not quiet"; return; }
+
+  if (!OVER.on) {
+    const hourNow = G.hour + (G.hourT || 0) / Math.max(1, TUNE.hourSeconds);
+    if (hourNow < (OVER.scene.from || 0)) { OVER.why = "too early"; return; }
+    /* one of his is queued waiting for its own quiet moment: he goes
+       first, but not for ever -- that queue is drained by a tick the
+       chapter switches off during a reveal, and a stuck entry in it
+       used to hold the whole conversation off until six o'clock */
+    if (TAPE.on && TAPE.pending) {
+      OVER.held += dt;
+      if (OVER.held < OVER_HOLD) { OVER.why = "his line is waiting"; return; }
+    } else OVER.held = 0;
+    OVER.wait += dt;
+    /* she is looking at the right room: it is a scene. She is not, and
+       has not been for the best part of a minute: it comes through the
+       wall, because the one thing it may never be is unheard. */
+    const seen = overSeen();
+    if (!seen && OVER.wait < OVER_GRACE) return;
+    OVER.on = true; OVER.i = 0; OVER.gap = 0; OVER.held = 0; OVER.through = !seen;
+    return;
+  }
+
+  /* one line at a time, and the next one waits for this one to finish */
+  /* ...BUT NOT FOR EVER.
+
+     TAPE.up is a flag raised by the line going up and lowered by the
+     tick that counts it down, and the chapter switches that tick OFF in
+     the middle of a night: revealCard does it at three in the morning,
+     kill does it, the terms do it. The flag is then stuck raised with
+     nothing left running to lower it, and a scene that waits on it
+     waits until six o'clock. Measured on night four: the first line
+     went out at ten past three and the second one never went out at
+     all. So the wait is bounded by the longest line in the chapter and
+     a wide margin, and anything past that counts as silence. */
+  if (TAPE.on && (TAPE.up || voxTalking() || TAPE.pending)) {
+    OVER.held += dt;
+    if (OVER.held < OVER_HOLD) {
+      OVER.gap = OVER_GAP;
+      OVER.why = TAPE.pending && !TAPE.up ? "his line is waiting" : "speaking";
+      return;
+    }
+  } else OVER.held = 0;
+  if (OVER.gap > 0) { OVER.gap -= dt; OVER.why = "the gap"; return; }
+
+  const line = OVER.scene.lines[OVER.i];
+  if (!line) { OVER.on = false; OVER.done = true; OVER.armed = false; return; }
+  OVER.i++; OVER.held = 0;
+  /* SHE CAN LOSE THE PICTURE PART WAY THROUGH AND STILL HEAR THEM.
+
+     Dropping the monitor in the middle of it does not cut the scene
+     off -- they are not performing for her and they do not know she was
+     listening -- but the rest of it does arrive through a wall from
+     there on, which is the truth about where she is standing. */
+  const through = OVER.through || !overSeen();
+  tapeSay(line.t, line.who, through);
+  /* AND THE SILENCE AFTER IT, ALWAYS.
+
+     The gap used to be set only while something was audibly speaking,
+     which is fine right up until nothing is -- and the chapter switches
+     the tape tick off mid-night, so "nothing is speaking" is a state
+     this really reaches. All four lines of night four then went out in
+     five consecutive frames, which is not a conversation, it is a
+     paragraph. */
+  OVER.gap = OVER_GAP;
+}
+
 function tapeDue(dt) {
   if (!TAPE.on || !TAPE.opened || !NS.tapeWhen || G.phase !== "play") return;
   if (TAPE.pending || TALK.on) return;
@@ -14654,6 +14980,24 @@ function tapeTick(dt) {
 
   TAPE.wait -= dt;
   if (TAPE.wait > 0 || !tapeQuiet()) return;
+
+  /* AND HE DOES NOT TALK OVER HIS OWN TOYS.
+
+     The overheard exchanges yield to his tapes, which is right: a dead
+     man talking to his wife outranks two of his toys gossiping in the
+     arcade. But yielding is checked in overTick, which runs BEFORE this
+     does -- so every frame it looked, this had already started his next
+     line, and "he is speaking" was true essentially always. Measured on
+     night four: the first line of the exchange went out at ten past
+     three and the second one never went out at all, because from that
+     moment until six o'clock there was not one frame in which he was
+     quiet as seen from up there.
+
+     So the right of way is given back once, here: while a conversation
+     she is overhearing is actually running, he waits for it. It is four
+     lines and about half a minute, it happens once a night on four
+     nights, and he has all six hours. */
+  if (OVER.on) return;
 
   /* Something she did comes before something the clock did — but not
      before he has introduced himself. A man whose first words to his
@@ -15189,6 +15533,9 @@ function playStep(dt) {
       sayTick(dt);
       /* after sayTick, so the building always has the right of way */
       tapeDue(dt);
+      /* and after tapeDue, so HE does: two of them gossiping in the
+         arcade is the last thing in this shop with a claim on the air */
+      overTick(dt);
   talkTick(dt);
       tapeTick(dt);
       uiTick(dt);
@@ -16290,7 +16637,10 @@ function beginNight(n, opts) {
   G.dead = null; G.deadT = 0; G.killChar = null; G.cardT = 0;
   G.warned = 0; G.shake = 0;
   G.lost = {}; G.lostT = 20;
-  G.hallDark = hazard("hallDark");
+  /* dark from the start on every night but the one where she watches
+     the three banks go -- see midWillBreak */
+  G.hallDark = hazard("hallDark")
+    && !(G.mode === "story" && midWillBreak(G.night, "hallDark"));
   G.lampOut = 0; G.lampT = range(Math.random, 30, 60);
   G.monOut = 0; G.monT = range(Math.random, 30, 60);
   G.surgeT = range(Math.random, 40, 70);
@@ -16329,6 +16679,7 @@ function beginNight(n, opts) {
      sandbox and a replay of the same building breaking in the same
      order is a wait. */
   if (G.mode === "story") midStart(G.night); else midStart(0);
+  overStart(G.mode === "story" ? G.night : 0);
   if (officeParts && officeParts.glass && TX.night) {
     officeParts.glass.material = new T.MeshBasicMaterial({ map: TX.night, fog: true });
   }
@@ -16348,7 +16699,8 @@ function beginNight(n, opts) {
   revealReset();
   say(NS.sys.boot);
   if (G.cozy) say(NS.sys.cozy);
-  if (hazard("stickyDoor")) say(NS.sys.doorFault);
+  if (hazard("stickyDoor") && !(G.mode === "story" && midCovers(G.night, "stickyDoor")))
+    say(NS.sys.doorFault);
   bumpUI();
 }
 
@@ -19174,15 +19526,41 @@ const testHooks = {
      of a night hold the clock still rather than take its word for it */
   pumpFrame: (dt) => { const d = dt || 0.05; G.t += d;
                        if (G.phase === "play") playStep(d); return G.phase; },
+  /* the conversation she is not part of: which one, how far through it
+     is, and whether she is getting it clear or through a wall */
+  overState: () => ({ armed: OVER.armed, on: OVER.on, done: OVER.done,
+                      i: OVER.i, of: OVER.scene ? OVER.scene.lines.length : 0,
+                      room: OVER.scene ? OVER.scene.room : null,
+                      through: OVER.through, wait: +OVER.wait.toFixed(1),
+                      why: OVER.why || "", seen: overSeen() }),
+  overScript: () => NS.overheard,
+  /* what the caption system was last handed, and how: the exact words,
+     whether they came through a wall, and whether they are on screen */
+  tapeDebug: () => ({ up: TAPE.up, vox: voxTalking(), spoke: TAPE.spoke,
+                      through: !!TAPE.through, line: TAPE.line,
+                      shown: !!(EL["ns-tape"] && !EL["ns-tape"].hidden) }),
   /* the first minute of a night, for a probe that wants to watch it */
   midState: () => ({ on: MID.on, t: +MID.t.toFixed(2), i: MID.i,
-                     of: MID.list ? MID.list.length : 0, secs: MID.secs }),
+                     of: MID.list ? MID.list.length : 0, secs: MID.secs,
+                     next: +MID.next.toFixed(2),
+                     said: !MID.list || MID.i >= MID.list.length,
+                     free: !sayQueue.length && G.t >= sayUntil }),
   midEnd: () => { midEnd(); return MID.on; },
-  begin: (night, hour) => {
+  /* the scene as written, so a suite checks the six nights that exist
+     rather than a copy of them that stopped being true */
+  midScript: () => MIDNIGHT,
+  /* is a room a blind room right now -- the same question the monitor
+     asks, not a re-implementation of it */
+  roomDead: (id) => isLost(id),
+  /* opts goes straight through to beginNight, because the mode is one
+     of ITS arguments: a suite that set G.mode by hand and then called
+     this had it overwritten with "story" on the next line and was
+     checking the wrong night entirely */
+  begin: (night, hour, opts) => {
     G.night = night || 1;
-    beginNight(G.night);
+    beginNight(G.night, opts);
     if (hour) { G.hour = hour; taskShow(); }
-    return { phase: G.phase, night: G.night, hour: G.hour };
+    return { phase: G.phase, night: G.night, hour: G.hour, mode: G.mode };
   },
   /* WHAT THE BALANCE ACTUALLY IS, IN DECIBELS.
 

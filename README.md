@@ -13,6 +13,75 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-15b — the first minute of a night, and the four of them talking to each other
+
+**Asked for:** pick up the unfinished night-shift work, finish it
+properly on the branch it was already on, and do not leave a mess.
+
+**Where it is:** the two items the entry below left open are DONE. The
+branch is green on storycheck, endcheck, seamcheck, cuecheck, castcheck,
+nightbeats, midcheck and overcheck.
+
+1. **DONE — the midnight beat, on all six nights.** It was in the tree
+   as `wip: the first minute of a night` and had never been watched. Six
+   nights, each one opening with the building doing tonight's damage to
+   itself in front of her before the clock starts. Four things were
+   wrong with it and all four were found by looking at it rather than at
+   the code:
+   - **The lines walked away from the machinery.** The beats ran on a
+     stopwatch, the annunciator reads one line at a time and holds each
+     for as long as it takes to say, so the two drifted apart and the
+     gap grew with every beat. Measured on night two: the monitor came
+     up on the workshop a second and a half before "SHIFT TWO OF SIX"
+     was read out. A beat now waits for the annunciator to be free and
+     then for its own gap, so the written rhythm survives and a sound
+     and the sentence about it land in the same frame.
+   - **Two nights announced a fault that had already happened.** The
+     hall was dark at t=0.1 on night three, five and a half seconds
+     before the scene said the lights went. On the night a fault first
+     appears the night now starts without it and the beat is what does
+     it; every night after that it is on from the start.
+   - **Night five could leave a door shut.** The self-test closed on a
+     beat and opened on a `setTimeout` guarded on the scene still
+     running — so if the beat ended first, she started the night with
+     the east door shut, the meter draining, and nothing saying why.
+     The opening is its own beat now.
+   - **The building announced the scene it was about to act out**
+     ("DOOR TWO: ACTUATOR DEGRADED", 1.6s before night five's own
+     opening line). A fault the beat demonstrates is not also announced
+     in advance.
+2. **DONE — `tools/midcheck.js`,** 67 checks. It holds, it ends, it
+   hands the desk back with the monitor down and no door shut, the
+   machinery and the sentence are in step, the fault it announces has
+   not already happened, and a custom night gets none of it. Verified
+   both ways: put the stopwatch or the early fault back and seven go red.
+3. **DONE — the four overheard talking to each other, nights one to
+   four** (`NS.overheard`). Everything they said on those nights was
+   said TO her; the only place they were ever people was the last hour
+   of night six. Now each of the first four nights carries one exchange
+   between two of them — about the shop, about him, about each other,
+   and not about her. She gets it clear if she is watching that room on
+   a live picture, and through the wall if she is not, so it rewards
+   sweeping without ever being missable.
+   Three real faults came out of building it, all of the same shape as
+   ones this chapter has paid for before — an unbounded wait on a flag
+   another system stops maintaining:
+   - a scene that waited on `TAPE.up` waited for ever once the tape tick
+     was switched off, which `revealCard` does at three in the morning;
+   - the same for a queued line of his that nothing was left to drain;
+   - and he talked over his own toys, because the yielding was checked
+     in a step that runs before the one that starts his next line.
+4. **DONE — `tools/overcheck.js`,** 42 checks, and
+   `tools/voicesheet.js` now harvests the fourteen new lines (270 in
+   total, up from 256). **`voice/RENDER` is bumped to 2026-09-15c and
+   the workflow has not been run yet** — see the note below; until it
+   is, those fourteen lines fall back to the browser's own engine.
+5. NEXT: run "Anwar's voice" from the Actions tab on this branch, then
+   `tools/castcheck.js` again, then merge to `main`.
+6. THEN: the frame still draws 398-487 calls (`tools/_cost.js`). Nobody
+   has measured the chapter on his actual phone; do that before taking a
+   knife to a working renderer.
+
 ### 2026-09-15 — what a player actually hit, measured and fixed
 
 **Asked for:** he played the early nights and reported three things --
