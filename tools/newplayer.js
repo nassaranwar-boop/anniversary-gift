@@ -24,6 +24,7 @@
 const { chromium } = require('playwright-core');
 const NIGHT = Number(process.argv[2] || 1);
 const SECS = Number(process.argv[3] || 70);
+const HOUR = Number(process.argv[4] || 0);
 
 (async () => {
   const b = await chromium.launch({
@@ -47,7 +48,7 @@ const SECS = Number(process.argv[3] || 70);
   /* a real click somewhere harmless, so the audio context is allowed to
      run: a browser will not speak for a page nobody has touched */
   await p.mouse.click(450, 280);
-  await p.evaluate((n) => OuissysNightShift.__night.begin(n), NIGHT);
+  await p.evaluate(([n, h]) => OuissysNightShift.__night.begin(n, h), [NIGHT, HOUR]);
   await p.evaluate(() => { const N = OuissysNightShift.__night;
     if (N.setMix) { N.setMix('voice', 1); N.setMix('master', 1); } });
 
@@ -70,7 +71,7 @@ const SECS = Number(process.argv[3] || 70);
 
   const rows = [];
   const t0 = Date.now();
-  let pressed = 0;
+  let pressed = 0, lastAt = '', lastTalk = '';
   while ((Date.now() - t0) / 1000 < SECS) {
     const t = (Date.now() - t0) / 1000;
     /* SHE PLAYS. Nothing clever: when something is at a door, shut that
@@ -91,16 +92,34 @@ const SECS = Number(process.argv[3] || 70);
         who[k] = { r: c.room, s: c.step, d: !!c.atDoor, a: !!c.awake, w: +(c.wound || 0).toFixed(1) };
       });
       const tape = N.tape ? N.tape() : null;
+      const talk = N.talkState ? N.talkState() : null;
       return {
         hour: G.hour, power: +G.power.toFixed(1), mon: !!G.monitor, cam: G.cam,
         doors: { l: !!G.doors.left, r: !!G.doors.right, h: !!G.doors.hatch },
         cap: G.caption || '', capT: +(G.captionT || 0).toFixed(2),
-        tape: tape,
+        tape: tape, talk: talk,
         yaw: yaw, who: who, fps: window.__fps,
       };
     }).catch(() => null);
     if (!st) break;
     rows.push({ t: +t.toFixed(1), st });
+    /* and every door-talk, from the knock to the end of it */
+    const tk = st.talk;
+    const key = tk && tk.on ? tk.who + '/' + tk.phase : '';
+    if (key !== lastTalk) {
+      if (key) console.log('   ' + t.toFixed(1) + 's  talk: ' + key
+                           + ' at the ' + tk.door + ' door');
+      else console.log('   ' + t.toFixed(1) + 's  talk over');
+      lastTalk = key;
+    }
+    /* the arrivals, as they happen */
+    const nowAt = Object.keys(st.who).filter((k) => st.who[k].d && st.who[k].r === 'office').join(',');
+    if (nowAt !== lastAt) {
+      console.log('   ' + t.toFixed(1) + 's  at the door: [' + (nowAt || '-') + ']  doors '
+                  + (st.doors.l ? 'L' : '-') + (st.doors.r ? 'R' : '-') + (st.doors.h ? 'H' : '-')
+                  + '  power ' + st.power + '  hour ' + st.hour);
+      lastAt = nowAt;
+    }
     /* act on it, the way a person would */
     const at = Object.keys(st.who).filter((k) => st.who[k].d && st.who[k].r === 'office');
     for (const k of at) {
@@ -129,16 +148,16 @@ const SECS = Number(process.argv[3] || 70);
   if (last.st.fps.spikes.length) console.log('   ' + last.st.fps.spikes.slice(0, 14).join('  '));
 
   console.log('\n--- the tape: what is on screen against what is being said');
-  let openAt = null, line = null, lastTalk = null;
+  let openAt = null, line = null, lastVoice = null;
   rows.forEach((r) => {
     const tp = r.st.tape;
     if (!tp) return;
     if (tp.line && tp.line !== line) { line = tp.line; openAt = r.t; lastTalk = null; }
-    if (tp.talking) lastTalk = r.t;
+    if (tp.talking) lastVoice = r.t;
     if (!tp.line && line) {
       console.log('   "' + line.slice(0, 44) + '" up ' + (r.t - openAt).toFixed(1)
-                  + 's, voice stopped ' + (lastTalk === null ? 'never started'
-                    : (r.t - lastTalk).toFixed(1) + 's before it went'));
+                  + 's, voice stopped ' + (lastVoice === null ? 'never started'
+                    : (r.t - lastVoice).toFixed(1) + 's before it went'));
       line = null;
     }
   });

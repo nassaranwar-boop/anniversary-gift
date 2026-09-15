@@ -14404,6 +14404,7 @@ const TALK = { on: false, who: null, door: null, line: null, wait: 0,
                   whether she has reached for a control since it started */
                lookT: 0, busy: false };
 const TALK_WAIT = 13;         // how long it will stand there and ask
+const TALK_COOL = 62;         // and how long the shop is left alone afterwards
 /* A GLANCE, NOT A LOCK.
 
    Turning her head to the thing she let in was written as "while it is
@@ -14540,11 +14541,26 @@ function talkEnd() {
     retreat(ch);
   }
   TALK.on = false; TALK.who = null; TALK.line = null; TALK.phase = "";
+  /* nothing else comes to the door for a minute */
+  TALK.cool = TALK_COOL;
 }
 
 function tapeDue(dt) {
   if (!TAPE.on || !TAPE.opened || !NS.tapeWhen || G.phase !== "play") return;
   if (TAPE.pending || TALK.on) return;
+  /* AND NOT ONE STRAIGHT AFTER ANOTHER.
+
+     Several of these come due at the same time -- they are gated by
+     night and hour, and by the middle of night three three of them are
+     past their gate at once. So one would finish, and two tenths of a
+     second later the same toy would knock again and hold the same
+     doorway for another twelve seconds. Measured on night three: one of
+     them was standing at her door from sixteen seconds to forty-two,
+     across two talks with a blink between them, which is the "it just
+     stands there" a player sees. They queue now, at a minute apart, and
+     the shop goes back to being a shop in between. */
+  TALK.cool = Math.max(0, (TALK.cool || 0) - dt);
+  if (TALK.cool > 0) return;
   const hourNow = G.hour + (G.hourT || 0) / Math.max(1, TUNE.hourSeconds);
   for (const k in NS.tapeWhen) {
     const it = NS.tapeWhen[k];
@@ -18766,6 +18782,10 @@ const testHooks = {
     /* one of HIS still queues on the tape; one of THEIRS now goes to a
        door and asks, so the sweep's answer can come back either way */
     TALK.on = false; TALK.who = null; TALK.line = null;
+    /* the minute of quiet after a talk is state from the night this
+       sweep is not playing: it is asking what is due, not what would be
+       due given the last thing that happened */
+    TALK.cool = 0;
     tapeDue(0.016);
     const got = TAPE.pending || (TALK.on ? TALK.line : null);
     const out = got ? { t: got.t, who: got.who || "anwar",
@@ -19126,6 +19146,10 @@ const testHooks = {
   taskPoke: () => { taskShow(); return G.task; },
   /* drop straight into a shift at a given hour, so a check can look at
      what she actually sees rather than at the title screen */
+  /* put one where its own route says it should be for its step */
+  syncOne: (id) => { const c = cast[id]; if (!c) return null;
+                     c.step = clamp(c.step, 0, routeOf(c).length - 1);
+                     syncChar(c); return { room: c.room, step: c.step, atDoor: !!c.atDoor }; },
   /* the door-talk, and how far her head has turned toward it */
   talkState: () => ({ on: TALK.on, who: TALK.who, door: TALK.door,
                       phase: TALK.phase, opened: TALK.opened,
