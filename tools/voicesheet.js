@@ -172,6 +172,24 @@ for (const n in (NS.afterChoice || {})) {
                 'the night after she ' + (w === 'kept' ? 'kept' : 'burned') + ' night ' + n + "'s", it.who);
   });
 }
+/* AND THE ASKING, WHICH WAS NEVER IN HERE AT ALL.
+
+   Every one of the four can come to a door and ask to be let in, and
+   has two ways of asking, plus something to say for each answer she can
+   give. Twenty-one lines, none of which had ever been rendered --
+   because they were written after this sheet was, and nothing pointed
+   it out: an unrendered line does not fail, it just comes out of the
+   browser's own speech engine in a voice that is not the character's,
+   or out of nothing at all on a device that has no engine for it. Which
+   is what "sometimes it does not read" turned out to mean. */
+for (const k in (NS.beg || {}))
+  (NS.beg[k] || []).forEach((l, i) =>
+    add('beg-' + k + '-' + (i + 1), l, 'it has come to a door and is asking to be let in', k));
+for (const k in (NS.begShut || {}))
+  add('begshut-' + k, NS.begShut[k], 'she left the door shut, so it says it through the door', k);
+for (const k in (NS.begOpen || {}))
+  add('begopen-' + k, NS.begOpen[k], 'she opened the door for it', k);
+/* and the four who are made of her, when she lets one run down */
 for (const n in (NS.reveal || {})) add('reveal-' + n, NS.reveal[n].say, 'three in the morning, night ' + n);
 add('caught-first', NS.caught && NS.caught.first, 'the first time something reaches her');
 add('caught-later', NS.caught && NS.caught.later, 'every time after that');

@@ -56,3 +56,12 @@ full en_GB-alan-medium 1.16 0.74 1.2
 # 2026-09-14: the four answer her across nights two to five.
 # 2026-09-14b: they speak from the first night, and the brass plate is
 #              finally answered.
+# 2026-09-15: the asking. Every one of the four can come to a door and
+#             ask to be let in -- two ways of asking each, and something
+#             to say for both answers she can give -- and not one of
+#             those twenty-one lines had ever been rendered, because
+#             they were written after tools/voicesheet.js was and
+#             nothing pointed it out. An unrendered line does not fail:
+#             it comes out of the browser's own engine in a voice that
+#             is not the character's, or out of nothing at all. Which is
+#             what "sometimes it does not read" turned out to mean.
