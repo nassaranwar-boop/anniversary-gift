@@ -131,7 +131,8 @@ const VOICE = {
 
      Same sign error as the crowd, and worse here -- it came out at
      150Hz, a third of a semitone off Jax, so the oldest thing in the
-     building sounded like the one he made in an afternoon. */
+     building sounded like the one he made in an afternoon.
+
      And down again after the 2026-09-15 render: it came back at 86.3Hz
      against the tape's 91.3, which is 0.97 of a semitone. The oldest
      thing in the building is not allowed to sound like the man who
