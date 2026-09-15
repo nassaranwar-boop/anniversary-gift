@@ -276,9 +276,19 @@ if (man) {
     N.talkOpen('cogsworth');
     /* read it while it is actually standing there: the talk now runs
        to its end on its own, and a fixed number of ticks overshoots */
+    /* AND THE TAPE HAS TO TICK TOO.
+
+       It comes to the door and ASKS, and her answer does not count
+       until the question is out -- otherwise a door that happened to be
+       standing open resolved the whole trade on the frame after the ask
+       went up, and what the player saw was one frame of the question
+       and then "Thank you." for a door she had not decided anything
+       about. The thing that runs the question down is tapeTick, so a
+       loop that drives talkTick and not tapeTick is a shop where nobody
+       ever finishes a sentence. */
     let turned = null;
-    for (let i = 0; i < 200; i++) {
-      N.talkTick(0.02); N.viewStep(0.05);
+    for (let i = 0; i < 1600; i++) {
+      N.tapeTick(0.02); N.talkTick(0.02); N.viewStep(0.05);
       const st = N.seat();
       if (st.look > 0.9 && st.sees) { turned = st; break; }
     }

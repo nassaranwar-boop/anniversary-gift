@@ -2531,7 +2531,7 @@ const CAST = [
     tell:"Laughing, and little bells. Hold the door and eat the cost.",
     colour:"#b46fd0",
     home:"closet",
-    route:[["closet","s0"], ["closet","s1"], ["arcade","s0"], ["party","s1"], ["party","s2"], ["office","rightDoor"]],
+    route:[["closet","s0"], ["closet","s1"], ["arcade","s0"], ["party","s3"], ["party","s4"], ["office","rightDoor"]],
     door:"right",
   },
 ];
@@ -4686,11 +4686,16 @@ function buildOffice(R) {
 
   /* and the corner behind the filing cabinet, which is the one place
      in this room the desk camera cannot see */
-  R.anchor("corner", -2.55, 0, -1.55, 0.6);
+  /* clear of the locker in that corner, which it used to be a fifth of
+     a metre inside */
+  R.anchor("corner", -2.1, 0, -1.1, 0.6);
 
   R.anchor("d0", -0.35, 0, -2.05, 0);
   R.anchor("d1", -0.62, 0, -0.70, 0.15);
-  R.anchor("d2", -0.88, 0,  0.62, 0.25);
+  /* the closest mark, and the one that was standing through whatever is
+     on the desk at chest height by a fifth of a metre: a shoulder's
+     width further out, still at the desk, nothing through it */
+  R.anchor("d2", -1.18, 0,  0.56, 0.25);
 
   /* where the cast stands when it gets here */
   R.anchor("s0",        -W / 2 - 0.62, 0, doorZ,  Math.PI / 2);
@@ -4998,10 +5003,23 @@ function buildHall(R) {
   /* the stations along Cogsworth's march */
   R.anchor("far",  -0.4, 0, -4.6, 0);
   R.anchor("mid",  -0.1, 0, -0.9, 0);
-  R.anchor("near",  0.3, 0,  3.1, 0);
+  /* NEAR ENOUGH TO BE FRIGHTENING, FAR ENOUGH TO BE IN THE PICTURE.
+
+     This was z = 3.1, which is two and a half metres from a camera
+     mounted at 2.7 and angled down the hall -- so the soldier at his
+     closest station, one step from her left door and the single moment
+     in the night she most needs to look at him, was cut off by the
+     bottom of his own camera at the chest. Measured: his feet project
+     38 degrees off the axis of a lens with 31 degrees to give.
+
+     Still the nearest of the three by a long way (far -4.6, mid -0.9,
+     this 1.4) and now wholly inside the frame. */
+  R.anchor("near",  0.3, 0,  1.4, 0);
   R.anchor("s0",   -0.6, 0, -3.4, 0.3);
   R.anchor("s1",    0.7, 0, -1.4, -0.4);
-  R.anchor("s2",   -0.9, 0,  1.2, 0.6);
+  /* out from under the case at (-1.35, 0.9), whose shoulder this was
+     a fifth of a metre inside */
+  R.anchor("s2",   -0.35, 0,  1.45, 0.6);
   /* four marks side by side, only ever used by the offline check that
      photographs the cast together */
   for (let i = 0; i < 4; i++) R.anchor("line" + i, -1.5 + i * 1.0, 0, -0.4, Math.PI);
@@ -5218,9 +5236,20 @@ function buildStage(R) {
 
   R.mood({ fog: { color: "#080b0c", near: 5, far: 26 }, ambient: { color: "#252e28", intensity: 0.5 } });
   R.cam("main", [0.2, 3.3, 4.4], [0, 1.35, -2.4], 62);
-  R.anchor("s0", -2.0, 1.44, -2.6, Math.PI);
+  /* THE BARE ONE IN THE MIDDLE.
+
+     Three plinths, at x = -2, 0 and +2. The barrel organ is on the
+     first and the hurdy-gurdy monkey is on the last, and the note
+     above them says the middle one is bare so that the empty one
+     reads. This spot was on the FIRST one -- the same coordinate the
+     organ is placed at, to two decimals -- so the soldier spent every
+     night standing inside a barrel organ, half a metre deep in it,
+     centred in the stage camera's shot. */
+  R.anchor("s0", 0, 1.44, -2.6, Math.PI);
   R.anchor("s1", 1.1, 0.88, -1.4, Math.PI - 0.4);
-  R.anchor("s2", -1.3, 0, 1.6, Math.PI + 0.3);
+  /* clear of the chair stack it was standing in, out on the house side
+     of the boards where the stage camera has it square on */
+  R.anchor("s2", 2.64, 0, 0.89, -0.61);
 }
 
 /* --- CAM 03 · ARCADE ROW -------------------------------------------
@@ -5290,7 +5319,9 @@ function buildArcade(R) {
   R.cam("main", [1.4, 2.65, 3.5], [-0.4, 1.0, -3.0], 66);
   R.anchor("s0", -0.4, 0, -1.6, 0);
   R.anchor("s1", 0.9, 0, 0.4, -0.5);
-  R.anchor("s2", -0.7, 0, 2.2, 0.4);
+  /* back off the lens: at its old place the figure's feet fell out of
+     the bottom of this room's own picture */
+  R.anchor("s2", -0.06, 0, -0.36, 0.36);
 }
 
 /* --- CAM 04 · THE PARTY ROOM ---------------------------------------
@@ -5409,6 +5440,17 @@ function buildParty(R) {
   R.anchor("s0", 2.5, 0, 1.9, -2.2);
   R.anchor("s1", -0.2, 0, 2.0, Math.PI);
   R.anchor("s2", -2.4, 0, 0.2, -1.2);
+  /* AND TWO THAT ARE NOT HERS.
+
+     Marabelle and Jax both come through this room and their routes both
+     said s1 and then s2, so on any night both of them were in here the
+     two of them stood inside one another -- a ballerina and a
+     jack-in-the-box occupying the same cubic metre, which is not a
+     thing the player can be asked to make sense of. He gets his own
+     side of the room. Both spots measured clear of the table, the
+     chairs and the counter, and both in shot from the party camera. */
+  R.anchor("s3", 2.54, 0, -1.76, -0.86);
+  R.anchor("s4", 1.14, 0, -1.96, -0.69);
 }
 
 /* --- CAM 05 · THE FRONT FOYER --------------------------------------
@@ -5526,7 +5568,9 @@ function buildFoyer(R) {
   R.cam("main", [2.7, 3.05, 2.5], [-0.5, 1.05, -1.8], 66);
   R.anchor("s0", -2.3, 0, -0.8, 0.9);
   R.anchor("s1", 1.2, 0, -1.4, 2.6);
-  R.anchor("s2", -0.6, 0, 2.1, 0.2);
+  /* back off the lens: at its old place the figure's feet fell out of
+     the bottom of this room's own picture */
+  R.anchor("s2", -0.66, 0, -1.76, 0.67);
 }
 
 /* --- CAM 06 · THE SUPPLY CLOSET ------------------------------------
@@ -5660,7 +5704,9 @@ function buildCloset(R) {
   R.cam("main", [-1.35, 2.45, 1.72], [0.5, 0.8, -1.7], 74);
   R.anchor("s0", -0.65, 0, -0.5, 0.4);
   R.anchor("s1", 0.5, 0, 0.5, -0.8);
-  R.anchor("s2", -0.5, 0, 0.9, 0.2);
+  /* back off the lens: at its old place the figure's feet fell out of
+     the bottom of this room's own picture */
+  R.anchor("s2", 0.34, 0, -0.46, -0.68);
 }
 
 /* --- CAM 07 · THE DUCT JUNCTION ------------------------------------
@@ -5869,9 +5915,18 @@ function buildWorkshop(R) {
 
   R.mood({ fog: { color: "#080a08", near: 4, far: 18 }, ambient: { color: "#242a24", intensity: 0.44 } });
   R.cam("main", [-1.9, 2.4, 2.3], [0.4, 1.0, -1.7], 66);
-  R.anchor("s0", 1.5, 0, 0.4, -0.4);
+  /* NOT ON THE REPAIR STAND.
+
+     This was (1.5, 0, 0.4) -- the exact coordinate the stand with the
+     headless torso on it is placed at, so the owl spent every night
+     standing inside a five-foot armature, dead centre of it, in its own
+     home room. Out on the clear floor between the bench and the crate,
+     which is the roomiest metre in here and in the middle of the shot. */
+  R.anchor("s0", -0.16, 0, 0.64, -0.8);
   R.anchor("s1", -1.0, 0, -0.4, 0.6);
-  R.anchor("s2", 0.2, 0, 1.5, 0.1);
+  /* back off the lens: at its old place the figure's feet fell out of
+     the bottom of this room's own picture */
+  R.anchor("s2", 1.74, 0, -1.56, -0.76);
 }
 
 /* =========================================================
@@ -7528,15 +7583,56 @@ function anchorAt(roomId, name) {
   return { x: a.x + rec.index * SPACING, y: a.y, z: a.z, ry: a.ry };
 }
 
-/* a walker gets its own standing spot in a room so two of them never
-   share one, chosen by name rather than at random so it is stable */
-const SPOT_FOR = { cogsworth: "s0", chime: "s2", marabelle: "s1", jax: "s2" };
+/* HOW FAR APART TWO OF THEM HAVE TO BE.
+
+   A shoulder is about a third of a metre, so anything under this is two
+   figures sharing a body. */
+const SPOT_CLEAR = 0.62;
+
+/* A SPOT NOBODY ELSE IS ON.
+
+   This used to be a table -- cogsworth s0, chime s2, marabelle s1, jax
+   s2 -- under a comment saying it existed "so two of them never share
+   one", while giving the owl and the jester the same one. Four of them
+   and three spots is a table that cannot be written correctly, so it is
+   not a table any more: it asks the room which of its standing spots is
+   free and takes the first, in a fixed order, so the answer is stable
+   from one night to the next and can never be a duplicate. */
+function freeSpotIn(ch, roomId) {
+  const rec = rooms[roomId];
+  if (!rec) return "s0";
+  const names = Object.keys(rec.anchors).filter((n) => /^s[0-9]$/.test(n)).sort();
+  for (const n of names) {
+    const a = rec.anchors[n];
+    let taken = false;
+    for (const id in cast) {
+      const o = cast[id];
+      if (o === ch || !o.awake || o.room !== roomId) continue;
+      const q = o.group.position;
+      if (Math.hypot(a.x + rec.index * SPACING - q.x, a.z - q.z) < SPOT_CLEAR) { taken = true; break; }
+    }
+    if (!taken) return n;
+  }
+  return names[0] || "s0";
+}
+
+/* is this spot a doorway -- somewhere the figure has to be BECAUSE it
+   is that door, so another spot in the room is not a substitute */
+function isDoorSpot(rec, a) {
+  for (const n in rec.anchors) {
+    if (!/Door$|^hatch$/.test(n)) continue;
+    const b = rec.anchors[n];
+    if (Math.abs(b.x - a.x) < 0.01 && Math.abs(b.z - a.z) < 0.01) return true;
+  }
+  return false;
+}
 
 function putChar(ch, roomId, anchorName) {
-  const a = anchorAt(roomId, anchorName || SPOT_FOR[ch.def.id] || "s0");
+  const name = anchorName || freeSpotIn(ch, roomId);
+  const a = anchorAt(roomId, name);
   if (!a) return;
   ch.room = roomId;
-  ch.anchor = anchorName || SPOT_FOR[ch.def.id] || "s0";
+  ch.anchor = name;
   ch.group.position.set(a.x, a.y, a.z);
   ch.group.rotation.set(0, a.ry, 0);
   ch.group.updateMatrix();
@@ -9878,6 +9974,10 @@ function sayTick(dt) {
   G.captionT = dur + 0.6;
 }
 function fmt(t, a) { return (t || "").replace("$1", a); }
+/* the annunciator spells its numbers out, because it is read aloud */
+const NUM_WORD = ["ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE",
+                  "SIX", "SEVEN", "EIGHT", "NINE"];
+function numWord(n) { return NUM_WORD[n] || String(n); }
 /* and the off switch. The system has nothing to say about a finished
    shift, a daylight walk-through or a title screen, so it stops mid
    sentence rather than trailing a status line over the ending. */
@@ -11736,6 +11836,62 @@ function syncChar(ch) {
   const r = routeOf(ch)[clamp(ch.step, 0, routeOf(ch).length - 1)];
   putChar(ch, r[0], r[1]);
   ch.atDoor = r[0] === "office";
+  standClear(ch);
+}
+
+/* AND THEN IT LOOKS TO SEE WHO IS ALREADY THERE.
+
+   Every route step is a room and the name of a spot in it, and two
+   routes are free to name the same one. Marabelle's and Jax's both do:
+   they are both right-door performers, so they both finish at the
+   office's right-hand doorway, and until their party-room steps were
+   separated they shared those too. Nothing anywhere had ever checked,
+   so two of them stood in exactly the same cubic metre -- and because
+   only the figure in the room being looked at is drawn, what she saw
+   was one of them with another one inside it.
+
+   The routes are separated now where they can be. They cannot be at the
+   door: a right-door performer has to be at the right-hand door, and a
+   spot on the other side of the office is not a substitute for it. So
+   whoever arrives second stands beside the first, across its own
+   facing, which is what two people crowding one doorway actually do.
+   Deterministic: the side comes from the character's place in the cast
+   list, not from a die, so the shop looks the same on every run. */
+function standClear(ch) {
+  if (!ch.awake) return;
+  const rec = rooms[ch.room];
+  if (!rec) return;
+  const local = { x: ch.group.position.x - rec.index * SPACING, z: ch.group.position.z };
+  const doorway = isDoorSpot(rec, local);
+  for (let tries = 0; tries < 4; tries++) {
+    const p = ch.group.position;
+    let hit = null;
+    for (const id in cast) {
+      const o = cast[id];
+      if (o === ch || !o.awake || o.room !== ch.room) continue;
+      const q = o.group.position;
+      if (Math.hypot(p.x - q.x, p.z - q.z) < SPOT_CLEAR) { hit = o; break; }
+    }
+    if (!hit) return;
+    /* anywhere but a doorway, there may be a whole spot going spare */
+    if (!doorway && tries === 0) {
+      const n = freeSpotIn(ch, ch.room);
+      const a = anchorAt(ch.room, n);
+      if (a && Math.hypot(a.x - p.x, a.z - p.z) >= SPOT_CLEAR) {
+        ch.anchor = n;
+        ch.group.position.set(a.x, a.y, a.z);
+        ch.group.rotation.set(0, a.ry, 0);
+        ch.group.updateMatrix();
+        continue;
+      }
+    }
+    const side = (CAST.map((d) => d.id).indexOf(ch.def.id) % 2) ? 1 : -1;
+    const ang = ch.group.rotation.y;
+    const d = SPOT_CLEAR * 0.74 * side * (tries + 1);
+    p.x += Math.cos(ang) * d;
+    p.z -= Math.sin(ang) * d;
+    ch.group.updateMatrix();
+  }
 }
 
 function resetCast() {
@@ -12124,9 +12280,9 @@ const MIDNIGHT = {
      goes while she is looking at it. */
   2: { secs: 8.6, breaks: "deadWorkshop", beats: [
     { at: 0.30, act: "monUp:workshop", sys: "MIDNIGHT. SHIFT TWO OF SIX." },
-    { at: 2.40, act: "hiss",           sys: "CAMERA EIGHT: SIGNAL DEGRADED." },
-    { at: 4.20, act: "snow:workshop",  breaks: true, sys: "CAMERA EIGHT: NO SIGNAL." },
-    { at: 6.00, act: "monDown",        sys: "CAMERA EIGHT: MAINTENANCE REQUIRED. NO ENGINEER ASSIGNED." },
+    { at: 2.40, act: "hiss",           sys: "CAMERA ZERO EIGHT: SIGNAL DEGRADED." },
+    { at: 4.20, act: "snow:workshop",  breaks: true, sys: "CAMERA ZERO EIGHT: NO SIGNAL." },
+    { at: 6.00, act: "monDown",        sys: "CAMERA ZERO EIGHT: MAINTENANCE REQUIRED. NO ENGINEER ASSIGNED." },
   ] },
   /* NIGHT THREE. The hall goes out. Three banks, three thumps, and the
      last one takes the picture with it -- so the night she has to track
@@ -13469,7 +13625,16 @@ function stepSignal(dt) {
     const r = pick(Math.random, pool);
     G.lost[r.id] = range(Math.random, 14, 22);
     if (G.monitor && G.cam === r.id) SFX.hiss(1.2);
-    say(fmt(NS.sys.camLost, "ZERO " + r.cam), true);
+    /* THE BUILDING DOES NOT READ OUT A DIGIT.
+
+       Every other number the annunciator says is spelled out: the hours
+       are ZERO ONE to ZERO FIVE, and the first minute of night three
+       says CAMERA ZERO ONE. This one interpolated r.cam straight in, so
+       the same terminal that says "CAMERA ZERO ONE: PICTURE BELOW
+       THRESHOLD" at midnight was saying "CAMERA ZERO 5: SIGNAL LOST" an
+       hour later -- and the voice that reads it has to make something
+       of a bare numeral. */
+    say(fmt(NS.sys.camLost, "ZERO " + numWord(r.cam)), true);
     bumpUI();
   }
 }
@@ -13513,6 +13678,56 @@ function stepReveal(dt) {
    the only power the game ever gives her is the power to decide what
    she is taking out of that shop. Which is the only power anybody
    actually gets. */
+/* WHAT SHE HAS ALREADY BEEN TOLD, ACROSS NIGHTS.
+
+   Every one of the lines in tapeWhen is written to happen once. The
+   first thing any of the four ever says to her; the night she winds one
+   and it thanks her; the night she shuts a door on one and it tells her
+   she was right to. They are the friendship, and a friendship is a
+   sequence of first times.
+
+   The guard on them was TAPE.said -- which tapeReset empties at the
+   start of every night, because it is also what stops a line being said
+   twice inside one shift. So "You are still here. He said you would be.
+   He was not sure, but he said it." -- the first words spoken to her by
+   anything in that building -- was played again at sixteen minutes past
+   midnight on night two, and again on night three, and again on night
+   four. Read three transcripts in a row and it is the most obvious
+   fault in the chapter.
+
+   So the once-ever ones are remembered where the badges and the
+   keepsakes are remembered: outside the night. Clearing the story
+   clears this with everything else, which is right -- a new
+   playthrough should get its first times back. */
+const TOLD_KEY = "ns_told";
+function toldAll() {
+  try { return JSON.parse(localStorage.getItem(TOLD_KEY) || "{}") || {}; }
+  catch (e) { return {}; }
+}
+function wasTold(key) { return !!toldAll()[key]; }
+function markTold(key) {
+  const all = toldAll();
+  all[key] = 1;
+  try { localStorage.setItem(TOLD_KEY, JSON.stringify(all)); } catch (e) {}
+}
+function clearTold() { try { localStorage.removeItem(TOLD_KEY); } catch (e) {} }
+/* HOW MANY TIMES THIS ONE HAS STOOD AT A DOOR AND ASKED.
+
+   Each of the four has two ways of asking to be let in, and which one
+   it uses was chosen by G.stats.talks -- a counter of every door-talk
+   that night, by anybody, reset at every midnight. So it was nearly
+   always zero when a character first asked, and each of them used its
+   first line every single night while its second sat unheard. Counting
+   per character, and remembering it across the nights, means the second
+   time the soldier comes to her door he does not open with the same
+   sentence he used the first time. */
+function askCount(who) { return toldAll()["ask:" + who] || 0; }
+function bumpAsk(who) {
+  const all = toldAll();
+  all["ask:" + who] = (all["ask:" + who] || 0) + 1;
+  try { localStorage.setItem(TOLD_KEY, JSON.stringify(all)); } catch (e) {}
+}
+
 const KEEP_KEY = "ns_kept";
 function keptAll() {
   try { return JSON.parse(localStorage.getItem(KEEP_KEY) || "{}") || {}; }
@@ -13948,9 +14163,35 @@ function tapeQuiet() {
    caption is not muffled -- she can read every word of it, and the
    gap between what she can read and what she can hear is the cost of
    not opening, which is exactly the right shape for it. */
+/* THE LINES THAT ARE ONLY EVER SAID ONCE.
+
+   Three tables hold them: the things one of the four says in answer to
+   something she did, the one that tells her where she left a card she
+   walked past, and what each of them says when she has let it run all
+   the way down. Every one of those is a first time, and a first time
+   that happens again on night four is not one.
+
+   The set is keyed on the WORDS rather than on the table key, for the
+   same reason the recordings are: it is the sentence that is the thing,
+   and marking it here -- at the one place every delivery path passes
+   through -- means no route to the screen can quietly miss it. */
+let ONCE_EVER = null;
+function onceEver() {
+  if (ONCE_EVER) return ONCE_EVER;
+  ONCE_EVER = {};
+  for (const k in (NS.tapeWhen || {})) {
+    const it = NS.tapeWhen[k];
+    if (it && typeof it === "object" && it.t && it.by) ONCE_EVER[it.t] = 1;
+  }
+  for (const k in (NS.pointAt || {})) ONCE_EVER[NS.pointAt[k].t] = 1;
+  for (const k in (NS.ranDown || {})) ONCE_EVER[NS.ranDown[k].t] = 1;
+  return ONCE_EVER;
+}
+
 function tapeSay(line, who, through) {
   if (!line || TAPE.said[line]) return false;
   TAPE.said[line] = 1;
+  if (onceEver()[line]) markTold(line);
   TAPE.plan = voxPlan(line);
   TAPE.line = line;
   TAPE.t0 = perf();
@@ -13961,6 +14202,10 @@ function tapeSay(line, who, through) {
      all four parts was worse than the synthesiser. They are cast
      separately now, so a take of Marabelle is Marabelle. */
   TAPE.through = !!through;
+  /* who is saying it, kept rather than inferred: a transcript that has
+     to read the name back off the caption element cannot tell a line
+     with no speaker from a line whose speaker did not survive */
+  TAPE.who = who || null;
   voxSpeak(TAPE.plan, { gain: (who ? 0.88 : 0.9) * (through ? 0.72 : 1), through: through });
   /* the room-to-himself is voxSpeak's job now: it holds the bed at
      VOICE_BED for the whole line instead of dipping for a third of a
@@ -14008,6 +14253,16 @@ function tapeTrigger(key) {
   if (!it) return;
   const line = typeof it === "string" ? it : it.t;
   if (!line || TAPE.said[line]) return;
+  /* AND NOT AGAIN ON A LATER NIGHT.
+
+     This is the other door into the same room: tapeDue picks lines off
+     the table by their gate, and this fires one because she has just
+     done the thing it answers. Both have to know what she has already
+     been told, or the one that does not becomes the way a first time
+     happens twice -- which is how the line about the brass plate on her
+     desk, the single most deliberate thing any of them says to her in
+     six nights, arrived on night three and then again on night four. */
+  if (wasTold(line)) return;
   if (typeof it !== "string" && it.after && G.night < it.after) return;
   TAPE.pending = typeof it === "string" ? { t: line } : it;
 }
@@ -14617,13 +14872,16 @@ const TALK_COOL = 62;         // and how long the shop is left alone afterwards
    the instant she touches a control, because a hand on the door button
    is somebody who has stopped listening and started working. */
 const TALK_LOOK = 3.5;
+/* the longest it will stand there getting its question out before the
+   trade resolves anyway -- longer than the longest ask in the chapter */
+const TALK_ASK_CAP = 18;
 
 function talkStart(it) {
   const ch = it.who && cast[it.who];
   if (!ch) { TAPE.pending = it; return; }
   TALK.lookT = 0; TALK.busy = false; TALK.total = 0;
   TALK.on = true; TALK.who = it.who; TALK.door = ch.def.door;
-  TALK.line = it; TALK.wait = TALK_WAIT; TALK.said = false;
+  TALK.line = it; TALK.wait = TALK_WAIT; TALK.said = false; TALK.asked = 0;
   TALK.opened = false; TALK.phase = "ask"; TALK.t = 0;
   /* it comes to its own door and stands there, and while it is asking
      it is not a threat -- it cannot reach her and it does not try */
@@ -14633,7 +14891,8 @@ function talkStart(it) {
   syncChar(ch);
   SFX.knock(0.55);
   const lines = NS.beg[it.who] || [];
-  const ask = lines[(G.stats.talks || 0) % Math.max(1, lines.length)];
+  const ask = lines[askCount(it.who) % Math.max(1, lines.length)];
+  bumpAsk(it.who);
   G.stats.talks = (G.stats.talks || 0) + 1;
   if (ask) tapeSay(ask, it.who);
   say(fmt(NS.sys.asking, TALK.door === "left" ? "WEST DOOR"
@@ -14654,6 +14913,24 @@ function talkTick(dt) {
   if (TALK.total > 42) { talkEnd(); return; }
 
   if (TALK.phase === "ask") {
+    /* IT HAS TO GET THE QUESTION OUT FIRST.
+
+       The ask is put up by talkStart and this runs on the very next
+       tick, so if the door happened to be standing open -- which is the
+       normal state of a door, because a shut one costs her the meter --
+       the whole thing resolved before anybody could read a word of it.
+       What the player actually saw was one frame of "It is Cogsworth. I
+       am at the west door and I am not touching it..." and then, in its
+       place, "Thank you." Thanking her for a door she had not decided
+       anything about, in answer to a question she never saw.
+
+       So the question is asked before the answer counts. Bounded the
+       same way everything else that waits on a voice in here is
+       bounded: if the caption system is switched off mid-line, the
+       trade still resolves rather than hanging in her doorway. */
+    TALK.asked = (TALK.asked || 0) + dt;
+    if (TAPE.on && (TAPE.up || voxTalking()) && TALK.asked < TALK_ASK_CAP) return;
+
     /* SHE opened it -- not the power failing.
 
        A blackout drops every shutter in the building open on its own,
@@ -14856,13 +15133,23 @@ function overTick(dt) {
   const line = OVER.scene.lines[OVER.i];
   if (!line) { OVER.on = false; OVER.done = true; OVER.armed = false; return; }
   OVER.i++; OVER.held = 0;
-  /* SHE CAN LOSE THE PICTURE PART WAY THROUGH AND STILL HEAR THEM.
+  /* SHE CAN LOSE THE PICTURE PART WAY THROUGH AND STILL HEAR THEM,
+     AND IT DOES NOT COME BACK.
 
-     Dropping the monitor in the middle of it does not cut the scene
-     off -- they are not performing for her and they do not know she was
-     listening -- but the rest of it does arrive through a wall from
-     there on, which is the truth about where she is standing. */
-  const through = OVER.through || !overSeen();
+     Dropping the monitor in the middle of it does not cut the scene off
+     -- they are not performing for her and do not know she was
+     listening -- but the rest of it arrives through a wall from there
+     on, which is the truth about where she is standing.
+
+     It only goes one way, and that matters. Asking the question fresh
+     for every line meant a player sweeping her cameras the way a
+     careful one does got the exchange in alternating states: line one
+     clear, two through the wall, three through the wall, four clear.
+     Read back, that is not a woman catching part of a conversation, it
+     is a bug. Heard once and then lost is a thing that happens; heard,
+     lost, and crisply recovered mid-sentence is not. */
+  if (!OVER.through && !overSeen()) OVER.through = true;
+  const through = OVER.through;
   tapeSay(line.t, line.who, through);
   /* AND THE SILENCE AFTER IT, ALWAYS.
 
@@ -14895,6 +15182,8 @@ function tapeDue(dt) {
   for (const k in NS.tapeWhen) {
     const it = NS.tapeWhen[k];
     if (typeof it === "string" || !it.by || TAPE.said[it.t]) continue;
+    /* and not again on a later night: see TOLD_KEY */
+    if (wasTold(it.t)) continue;
     if (G.night < it.by[0]) continue;
     if (G.night === it.by[0] && hourNow < it.by[1]) continue;
     /* she is shut in, so it knocks first */
@@ -14915,7 +15204,9 @@ function tapeDue(dt) {
     ch.flatT = (ch.flatT || 0) + dt;
     if (ch.flatT < 26) continue;
     const it = NS.ranDown && NS.ranDown[id];
-    if (!it || TAPE.said[it.t]) continue;
+    /* once each, ever -- which is what its own note promises, and was
+       not true while the record of it was emptied at every midnight */
+    if (!it || TAPE.said[it.t] || wasTold(it.t)) continue;
     TAPE.pending = it;
     return;
   }
@@ -14943,7 +15234,7 @@ function tapeDue(dt) {
   const back = carriedFind();
   if (!back || !NS.pointAt) return;
   const p = NS.pointAt[back.id];
-  if (!p || TAPE.said[p.t]) return;
+  if (!p || TAPE.said[p.t] || wasTold(p.t)) return;
   if (p.who && cast[p.who] && !G.blackout) { talkStart(p); return; }
   TAPE.pending = p;
 }
@@ -14965,12 +15256,33 @@ function tapeTick(dt) {
     else if (TAPE.spoke) TAPE.tail -= dt;
     else TAPE.speakT -= dt;
     if (el && TAPE.plan) {
+      /* THE FIRST CHILD IS NOT ALWAYS A WORD.
+
+         When one of the four is speaking, the caption opens with an
+         <em> carrying the character's name in the character's colour.
+         This loop walked el.children and wrote className on every one of
+         them, which did two things to every line any of them ever said:
+
+           it wiped the name. The chip's class IS ns-tape-who, and the
+           class is what makes it a name chip rather than a run of
+           text, so one frame after the line appeared the speaker's
+           name lost its colour and its box and ran straight into the
+           first word of the sentence.
+
+           and it lit the wrong words. With the chip at index 0 the
+           first word is child 1, so every word came on one position
+           late and the last word of every line never came on at all.
+
+         Anwar has no chip, so his lines were correct and nobody
+         noticed. Addressing the words by what they are -- the only
+         children with a data-w on them -- cannot go wrong again if the
+         markup grows another decoration. */
       const mark = voxMark();
       const t = perf() - TAPE.t0;
-      const kids = el.children;
-      for (let i = 0; i < kids.length; i++) {
+      const words = el.querySelectorAll("i[data-w]");
+      for (let i = 0; i < words.length; i++) {
         const w = TAPE.plan.words[i];
-        kids[i].className = (mark >= 0 ? i <= mark : (w && t >= w.at)) ? "on" : "";
+        words[i].className = (mark >= 0 ? i <= mark : (w && t >= w.at)) ? "on" : "";
       }
     }
     if (!voxTalking() && (TAPE.spoke ? TAPE.tail <= 0 : TAPE.speakT <= 0)) tapeHide();
@@ -16566,7 +16878,7 @@ function route(cmd) {
   else if (cmd === "introDone") { cineStop(true); }
   else if (cmd === "terms") { termsStart(); }
   else if (cmd === "termsDone") { termsDone(); }
-  else if (cmd === "termsAgain") { clearHurt(); clearKept(); clearOpened(); termsStart(); }
+  else if (cmd === "termsAgain") { clearHurt(); clearKept(); clearOpened(); clearTold(); termsStart(); }
   else if (cmd.indexOf("drawerRead:") === 0) { drawerRead(+cmd.slice(11)); }
   else if (cmd === "drawer") { mixFrom = G.phase === "play" || G.phase === "pause" ? "play" : "title";
                                G.phase = "drawer"; screenDrawer(); }
@@ -18220,6 +18532,25 @@ const testHooks = {
   state: () => G,
   cast: () => cast,
   rooms: () => rooms,
+  /* the scene-graph maths and the tables a geometry audit needs: the
+     rooms are real objects in a real graph, so a check about where
+     somebody is standing should be run against that rather than
+     against a copy of the numbers */
+  three: () => T,
+  /* which room is actually on the glass, and the camera that is making
+     the picture -- so a check about what she can see reads the thing
+     doing the seeing rather than the number she pressed */
+  shown: () => shownRoom,
+  view: () => view,
+  castDefs: () => CAST,
+  roomDefs: () => ROOMS,
+  soldDefs: () => SOLD,
+  /* stand somebody somewhere, by name, through the same call the route
+     walker uses -- so a camera check is looking at the real placement */
+  putAt: (id, roomId, anchor) => { const c = cast[id]; if (c) putChar(c, roomId, anchor); },
+  standAside: (id) => { const c = cast[id]; if (c) standClear(c); },
+  spotClear: () => SPOT_CLEAR,
+  spacing: () => SPACING,
   press,
   cam: selectCam,
   route,
@@ -18965,6 +19296,15 @@ const testHooks = {
     return TAPE.pending ? TAPE.pending.t : (TALK.on && TALK.line ? TALK.line.t : null);
   },
   forgetOpened: () => { clearOpened(); if (G.stats) G.stats.opened = 0; },
+  /* what she has already been told, for a suite that needs a clean
+     playthrough or wants to read back what a night actually delivered */
+  told: () => toldAll(),
+  /* the whole script object. Named `script` and not `speech`, because
+     there is already a `speech` hook further down this same literal
+     reporting the state of the speech engine -- and a duplicate key in
+     an object literal does not warn, it just quietly wins. */
+  script: () => NS,
+  forgetTold: () => clearTold(),
   syncVis: () => syncCastVisibility(),
   /* where the seat is pointed, and whether the thing she let in is
      actually being drawn */
@@ -19536,8 +19876,14 @@ const testHooks = {
   overScript: () => NS.overheard,
   /* what the caption system was last handed, and how: the exact words,
      whether they came through a wall, and whether they are on screen */
+  /* put a line up through exactly the call the chapter uses, so a check
+     about what the caption looks like is looking at the real one */
+  tapeSayRaw: (t, who, through) => tapeSay(t, who, through),
   tapeDebug: () => ({ up: TAPE.up, vox: voxTalking(), spoke: TAPE.spoke,
-                      through: !!TAPE.through, line: TAPE.line,
+                      through: !!TAPE.through, line: TAPE.line, who: TAPE.who || null,
+                      planWords: TAPE.plan ? TAPE.plan.words.length : null,
+                      mark: voxMark(), since: +(perf() - TAPE.t0).toFixed(2),
+                      firstAt: TAPE.plan && TAPE.plan.words[0] ? +TAPE.plan.words[0].at.toFixed(2) : null,
                       shown: !!(EL["ns-tape"] && !EL["ns-tape"].hidden) }),
   /* the first minute of a night, for a probe that wants to watch it */
   midState: () => ({ on: MID.on, t: +MID.t.toFixed(2), i: MID.i,

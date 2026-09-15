@@ -13,6 +13,83 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-15c — he played the early nights again, and every fault he saw
+
+**Asked for:** the first nights have problems — cameras, dialogue,
+characters stuck on a wall. Fix every one, check repeatedly, do not stop
+until the script is logical and the game follows it with no mistakes.
+
+**Where it is:** every fault found is fixed, each with a suite that goes
+red without the fix. Four new suites, six new tools. One thing is NOT
+done and cannot be done from here: see the voice note at the bottom.
+
+**CHARACTERS STANDING IN THINGS** (`tools/geomcheck.js`, 12 checks).
+Every figure is placed by name and nothing had ever checked what is at
+that position.
+  - **The soldier stood inside the barrel organ**, every night, on the
+    show stage. Three plinths at x = -2, 0 and +2; the note above them
+    says the middle one is bare so the empty one reads; the anchor was
+    on the first one, sharing a coordinate with the organ to two
+    decimals.
+  - **The owl stood inside the repair stand** in its own home room —
+    again the exact coordinate the prop is placed at.
+  - Three more spots were a fifth of a metre into a wall, a display
+    case or whatever is on her desk.
+  - **Marabelle and Jax shared two spots in the party room and the same
+    doorway**, so on any night both were about they stood inside one
+    another. Their party routes are separated now; the doorway cannot
+    be (both are right-door performers) so whoever arrives second
+    stands beside the first. Twelve pairs of routes name the same spot
+    once the three parcels are counted; all twelve are staged and
+    measured.
+  - The fallback spot table gave the owl and the jester the same spot
+    while claiming "so two of them never share one". Four of them and
+    three spots is a table that cannot be written correctly, so it is
+    not a table any more — the room is asked which spot is free.
+
+**CAMERAS** (`tools/camcheck.js`, 13 checks). The camera system itself
+is sound — every number maps to one room, pressing it puts that room on
+the glass, nothing leaks. What was wrong was where people stood:
+  - **`hall/near` was cut off at the chest by its own camera** — the
+    soldier at his closest station, one step from her left door, at the
+    single moment in the night she most needs to look at him. His feet
+    projected 38 degrees off the axis of a lens with 31 to give.
+  - Four more spots were cropped the same way. All six moved, and the
+    check is now a real frustum test rather than an angle against the
+    field of view.
+
+**DIALOGUE** (`tools/saycheck.js` 11, `tools/oncecheck.js` 4,
+`tools/linecheck.js` 5).
+  - **The speaker's name was wiped one frame after every line any of
+    the four ever said.** The per-word highlighter walked every child of
+    the caption writing className, and the name chip is a child. Same
+    bug lit every word one position late and never lit the last word.
+    Anwar has no name chip, so his lines were correct — which is why
+    nobody caught it.
+  - **The first-time lines happened every night.** "You are still here.
+    He said you would be." — the first words spoken to her by anything
+    in that building — arrived at 12:16 on night two, night three and
+    night four. The guard was emptied at every midnight because it is
+    also what stops a line repeating inside one shift. There is a
+    record that survives the night now, cleared when the story is.
+  - **It never got to ask.** If the door was already open when one of
+    them came to the door — which is the normal state of a door —
+    `talkTick` resolved the whole trade on the frame after the ask went
+    up. What the player saw was one frame of the question and then
+    "Thank you.", thanking her for a door she had not decided anything
+    about. The question is asked before the answer counts.
+  - **The overheard exchanges flickered** clear/muffled/muffled/clear
+    as she swept cameras. Losing the picture is now a ratchet.
+  - Each of the four has two ways of asking and **only ever used the
+    first**, because the index came off a counter reset at midnight.
+  - The annunciator said "CAMERA ZERO 5" where everything else spells
+    its numbers out.
+
+**NEXT:** the fourteen overheard lines added yesterday and nothing else
+are still unrendered — `tools/linecheck.js` reports exactly which. Run
+"Anwar's voice" from the Actions tab on this branch, then castcheck,
+then merge to main.
+
 ### 2026-09-15b — the first minute of a night, and the four of them talking to each other
 
 **Asked for:** pick up the unfinished night-shift work, finish it
