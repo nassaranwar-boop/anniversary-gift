@@ -91,7 +91,12 @@ const VOICE = {
      floor can sit; the ballerina comes back up to nearly her model's
      own pitch, because she is the one voice in the shop that is not a
      man and the lowering was never doing anything for her. */
-  chime:     { model: 'en_GB-semaine-medium',               pace: '1.02', depth: '-4.0' },
+  /* and up again, by a semitone and a half: the render of 2026-09-15
+     put the owl at 228.6Hz and her at 216.2, which is 0.96 of a
+     semitone -- the same person to an ear, and she is in the room with
+     him. She is the one voice that is never processed, so the owl is
+     the one that moves. */
+  chime:     { model: 'en_GB-semaine-medium',               pace: '1.02', depth: '-5.5' },
   marabelle: { model: 'en_US-lessac-high',                  pace: '1.12', depth: '-0.6' },
   jax:       { model: 'en_US-ryan-high',                    pace: '0.98', depth: '0' },
 
@@ -127,7 +132,11 @@ const VOICE = {
      Same sign error as the crowd, and worse here -- it came out at
      150Hz, a third of a semitone off Jax, so the oldest thing in the
      building sounded like the one he made in an afternoon. */
-  boss:      { model: 'en_GB-northern_english_male-medium', pace: '0.86', depth: '5.0' },
+     And down again after the 2026-09-15 render: it came back at 86.3Hz
+     against the tape's 91.3, which is 0.97 of a semitone. The oldest
+     thing in the building is not allowed to sound like the man who
+     made it. */
+  boss:      { model: 'en_GB-northern_english_male-medium', pace: '0.86', depth: '6.5' },
 };
 
 const OUT = [];
