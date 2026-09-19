@@ -279,6 +279,32 @@ nightbeats, midcheck and overcheck.
    has measured the chapter on his actual phone; do that before taking a
    knife to a working renderer.
 
+### 2026-09-19 — the last fault from that sweep, and everything on main
+
+**One more thing from playing it as a new player.** Night one armed two
+things that speak through the same annunciator: the first minute of the
+night (the building doing tonight's damage to itself) and the first card
+of orientation, which is read out loud the same way. Both were armed in
+`beginNight`, so from t=0 a new player got two voices at once for eight
+seconds, as the first thing the chapter ever says to them. The card is
+armed at the start now and shown when the cold open finishes -- both
+ways out of it, the scene ending and a suite cutting it short.
+
+**The whole tree, re-run in one sequential pass:** nightplay 221,
+storycheck 114, scriptcheck 40 (three playthroughs of each night),
+midcheck 67, endcheck 47, seamcheck 34 clean seams, cuecheck 5 over 27
+cues, castcheck 9.
+
+**Note for whoever is next:** two incarnations of this session were
+alive at once during the container restarts, and both pushed. If the
+working tree ever looks like it is missing work that is on the branch,
+`git fetch` and compare before assuming -- and never resolve a stash
+conflict with `git checkout --theirs .`, which in that state means the
+stash and quietly reverted 938 lines of somebody else's commits here.
+It was caught by running a suite that failed on a missing hook.
+
+**Pushed to `main`.**
+
 ### 2026-09-15 — what a player actually hit, measured and fixed
 
 **Asked for:** he played the early nights and reported three things --

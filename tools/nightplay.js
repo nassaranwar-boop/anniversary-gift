@@ -1013,6 +1013,15 @@ function ok(name, cond, extra) {
         el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
       },
     };
+    /* ORIENTATION IS NOT THE FIRST THING THAT HAPPENS ANY MORE.
+
+       Night one opens with the building doing tonight's damage to
+       itself, and the orientation card waits for it to stop talking
+       rather than reading out over the top of it. So the walkthrough
+       waits for the card the way she does. */
+    for (let w8 = 0; w8 < 120 && w.tutor().step < 0; w8++) {
+      await new Promise(r => setTimeout(r, 200));
+    }
     let last = null, guard = 0, rooms = ['hall','stage','party','foyer','closet'], ri = 0;
     /* requestAnimationFrame runs at about 3fps in this container and
        orientation advances on frames, so this needs a budget measured in
