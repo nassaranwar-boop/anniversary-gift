@@ -581,6 +581,8 @@ img{-webkit-user-drag:none; user-select:none;}
 .gate-sheet-marks{mix-blend-mode:multiply;}
 
 .gate-frame{fill:none;}
+/* the wide arrangement waits for the phone to be turned */
+.gate-frame-wide{display:none;}
 .gate-rule-o{stroke:url(#gGold); stroke-width:2.8; opacity:.95;}
 .gate-rule-i{stroke:url(#gGold); stroke-width:1.2; opacity:.7;}
 /* NB: a descendant selector cannot reach inside a <use> clone, so every
@@ -789,24 +791,27 @@ img{-webkit-user-drag:none; user-select:none;}
     aspect-ratio:1.75;
   }
 
-  /* THE GOLD RULES CANNOT FOLLOW IT ROUND.
+  /* THE GOLD CANNOT FOLLOW IT ROUND.
 
-     They are two rectangles inside an SVG whose viewBox is the upright
-     sheet, 400 by 700, and the sheet is drawn with `slice` -- so on a
-     card of a different shape the frame is cropped rather than
-     reshaped, and what is left is two gold lines running off the edges.
-     Sideways the card draws its own double rule instead, in the same
-     brass the ornament is drawn in, and the paper keeps its torn left
-     and right edges underneath. */
-  .gate-frame{display:none;}
-  .gate-card::after{
-    content:""; position:absolute; inset:4.4% 3%; z-index:1;
-    border-radius:7px; pointer-events:none;
-    box-shadow:
-      inset 0 0 0 1.6px rgba(169,124,63,.95),
-      inset 0 0 0 4.4px rgba(0,0,0,0),
-      inset 0 0 0 5.8px rgba(169,124,63,.5);
-  }
+     The frame is two rectangles and four corner sprays inside an SVG
+     whose viewBox is the upright sheet, 400 by 700 -- on a card of
+     another shape it is cropped rather than reshaped, and what is left
+     is two gold lines running off the edges. So there is a second
+     arrangement of the same ornament in the markup, 700 by 400, drawn
+     out of the same <defs>: the same rules, the same sprays in the same
+     corners, and the band running outward from behind the seal. The
+     paper underneath keeps its torn left and right edges. */
+  /* THE UPRIGHT FRAME IS EMPTIED, NOT HIDDEN.
+
+     Its <defs> is where the gold gradient, the corner spray and the
+     band are defined -- for both arrangements. Putting display:none on
+     the whole SVG takes the paint servers down with it, and every
+     stroke in the wide frame resolves to url(#gGold) and paints
+     nothing: the ornament measured 581x332 on the page and was
+     invisible. So only its drawn children go, and the definitions stay
+     where every <use> can still reach them. */
+  .gate-frame:not(.gate-frame-wide) > :not(defs){display:none;}
+  .gate-frame-wide{display:block;}
 
   /* EVERYTHING INSIDE IS SIZED FROM THE HEIGHT NOW, NOT THE WIDTH.
 
