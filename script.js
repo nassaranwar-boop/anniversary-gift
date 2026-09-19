@@ -45,6 +45,19 @@ function showScreen(name) {
   el.classList.add("active");
   void el.offsetWidth;
   el.classList.add("anim-in");
+  /* AND IT HAS TO FIT THE SCREEN IT JUST LANDED ON.
+
+     Turning the phone was the only thing that ever ran the fitter, so a
+     card that does not fit a 360-point window was fitted only if she
+     happened to rotate on it -- arriving at that size, which is how
+     everyone actually arrives, left it hanging off the bottom. The
+     second pass is for the entrance animation: the card is measured
+     again once it has stopped moving. */
+  if (typeof fitSiteCards === "function") {
+    fitSiteCards();
+    setTimeout(fitSiteCards, 140);
+    setTimeout(fitSiteCards, 700);
+  }
 }
 /* premium dissolve transition used for all screen navigation */
 function pageTurn(name, callback) {
@@ -239,7 +252,15 @@ window.fitCard = fitCard;
 window.fitCardsIn = fitCardsIn;
 
 /* and the site's own cards, kept fitted through a rotation */
-const FIT_SELECTOR = ".ancient-card, .gate-card, .ks-card, .hub-inner, .end-card";
+/* THE CARDS THE SITE ITSELF PUTS UP.
+
+   These were guessed rather than looked up the first time: only
+   .gate-card was ever a real class, so the site fitter was a no-op on
+   every screen but the gate. .ks-card is a photo on the keepsake board
+   and there are a dozen of them -- it is the WRAP that has to fit -- and
+   the end screen is a full-bleed night sky rather than a card, so it is
+   not in here at all. */
+const FIT_SELECTOR = ".gate-card, .hub-wrap, .ks-wrap";
 function fitSiteCards() {
   document.querySelectorAll(".screen.active " + FIT_SELECTOR).forEach((el) => fitCard(el, 10));
   /* and whatever chapter is up, if it published a fitter */
@@ -247,6 +268,9 @@ function fitSiteCards() {
 }
 window.fitSiteCards = fitSiteCards;
 addEventListener("resize", () => setTimeout(fitSiteCards, 60));
+/* and once the page itself has finished arriving, for whatever screen
+   it opened on */
+addEventListener("load", () => { setTimeout(fitSiteCards, 120); setTimeout(fitSiteCards, 800); });
 addEventListener("orientationchange", () => {
   setTimeout(fitSiteCards, 80);
   /* iOS has not settled by the time this fires */
