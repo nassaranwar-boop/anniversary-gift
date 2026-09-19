@@ -157,7 +157,7 @@ async function shown(p, sel) {
 const GAMES = {
   race: {
     card: 'race', root: '#screen-race', ready: '#screen-race.active #race-canvas',
-    async play(p, label, note, press) {
+    async play(p, label, note, press, touch) {
       /* single player, first driver, first course -- the menu order
          matters: data-next="chars" is GO on the driver screen */
       for (const s of ['[data-go="single"]', '[data-char="0"]', '[data-next="chars"]',
@@ -273,7 +273,7 @@ const GAMES = {
 
   ouissy: {
     card: 'ouissy', root: '#screen-ouissy', ready: '#screen-ouissy.active #so-canvas',
-    async play(p, label, note, press) {
+    async play(p, label, note, press, touch) {
       /* PLAY, then GOT IT on the how-to (which only appears the first
          time), then the world card, which closes itself after 1.7s */
       const play = await press('#so-play');
@@ -312,7 +312,11 @@ const GAMES = {
         card: !!document.querySelector('#so-overlay .so-card'),
         keys: window.__soKeys ? window.__soKeys() : null }));
       ok(label + ' ouissy: the level is being played', !up.card, up);
-      ok(label + ' ouissy: the pad is up once the level starts', up.pad, up);
+      /* the pad is display:none for a fine pointer, on purpose: a laptop
+         has the keys and the screen should not carry controls nobody
+         will press */
+      if (touch) ok(label + ' ouissy: the pad is up once the level starts', up.pad, up);
+      else ok(label + ' ouissy: the pad stays off for a mouse', !up.pad, up);
       note((up.pad ? 'pad up' : 'no pad') + (up.card ? ', a card is still up' : ''));
 
       const seen = await look(p, '#screen-ouissy');
@@ -380,7 +384,7 @@ const GAMES = {
 
   apoc: {
     card: 'apoc', root: '#screen-apoc', ready: '#screen-apoc.active #ap-canvas',
-    async play(p, label, note, press) {
+    async play(p, label, note, press, touch) {
       await p.evaluate(() => { if (window.__apQuality) __apQuality(2); });
       /* past whatever card is up and into plain play */
       for (let i = 0; i < 6; i++) {
@@ -445,7 +449,9 @@ const GAMES = {
       const seen = await look(p, '#screen-apoc');
       ok(label + ' apoc: every control on the screen', !seen.off.length, seen.off);
       ok(label + ' apoc: nothing on top of a control', !seen.covered.length, seen.covered);
-      ok(label + ' apoc: the controls are there to be pressed', seen.n >= 3, seen.n);
+      /* same again: the thumb controls only come up for a thumb, and on
+         a laptop what is on screen is the pause button and the map */
+      ok(label + ' apoc: the controls are there to be pressed', seen.n >= (touch ? 3 : 1), seen.n);
       note(seen.n + ' controls once the thumb is down');
 
       const use = await press('[data-ap-key="use"]');
@@ -465,7 +471,7 @@ const GAMES = {
 
   quest: {
     card: 'quest', root: '#screen-quest', ready: '#screen-quest.active .hv-stage',
-    async play(p, label, note, press) {
+    async play(p, label, note, press, touch) {
       const start = await press('.hv-btn-start');
       ok(label + ' quest: BEGIN is reachable', start.found && start.reachable, start);
       await p.waitForTimeout(1400);
@@ -518,7 +524,7 @@ const GAMES = {
 
   nightshift: {
     card: 'nightshift', root: '#screen-nightshift', ready: '#screen-nightshift.active #ns-canvas',
-    async play(p, label, note, press) {
+    async play(p, label, note, press, touch) {
       await p.evaluate(() => {
         const N = OuissysNightShift.__night;
         N.begin(2); N.midEnd();
@@ -555,15 +561,40 @@ const GAMES = {
   const b = await chromium.launch({
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--no-sandbox', '--no-proxy-server', '--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+  /* which chapters this tree actually has, asked once */
+  const probe = await b.newPage({ viewport: { width: 900, height: 600 } });
+  await probe.route('**/*', (r) => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
+  await probe.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  const chapters = await probe.evaluate(() => ({
+    race: !!document.getElementById('hub-card-race'),
+    ouissy: !!document.getElementById('hub-card-ouissy'),
+    apoc: !!document.getElementById('hub-card-apoc'),
+    quest: !!document.getElementById('hub-card-quest'),
+    nightshift: !!document.getElementById('hub-card-nightshift'),
+  }));
+  await probe.close();
+
   for (const [w, h, label] of SIZES) {
     console.log('\n=== ' + label);
     for (const name of names) {
       const g = GAMES[name];
+      /* the night shift is not on main. A suite that walks every game
+         has to walk the games that are HERE, and say which one it did
+         not find rather than failing on its absence. */
+      if (!chapters[name]) { console.log('   ' + name.padEnd(11) + 'not in this tree'); continue; }
       /* a laptop is not a touch device and must not be told it is: the
          racer hides its steering zone and shows the pad for a mouse,
          and a harness that claims touch on a 1280 window is measuring a
          layout nobody has */
-      const touch = h < 500;
+      /* AN IPAD IS A TOUCH DEVICE AND A LAPTOP IS NOT.
+
+         Sizing that judgement by height put a 1024x768 iPad in the
+         mouse camp, which is how "the pad is up once the level starts"
+         failed there -- Super Ouissy hides its pad for a fine pointer,
+         quite rightly, and the harness was asking a laptop for a
+         thumb's controls. Everything but the laptop here is held in a
+         hand. */
+      const touch = !/laptop/.test(label);
       const p = await b.newPage({ viewport: { width: w, height: h }, isMobile: touch, hasTouch: touch });
       const errs = [];
       p.on('pageerror', (e) => errs.push(e.message.slice(0, 100)));
@@ -583,7 +614,7 @@ const GAMES = {
         await p.waitForTimeout(g.card === 'nightshift' ? 4000 : 2500);
         const note = (t) => console.log('   ' + name.padEnd(11) + t);
         const P = (sel, hold) => press(p, g.root + ' ' + sel.split(',').map((x) => x.trim()).join(', ' + g.root + ' '), hold);
-        try { await g.play(p, label, note, P); }
+        try { await g.play(p, label, note, P, touch); }
         catch (e) { fail++; console.log('  FAIL ' + label + ' ' + name + ': threw  ' + e.message.split('\n').slice(0,4).join(' | ').slice(0, 320)); }
       }
       const real = errs.filter((e) => !/ERR_FAILED|net::/.test(e));

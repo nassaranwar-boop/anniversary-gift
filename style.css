@@ -8383,6 +8383,14 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-btn-s{padding:max(8px, 1.1cqh) max(10px, 3cqw);}
   .rc-dbtn{padding:max(7px, 1cqh) max(10px, 2.2cqw);}
   .rc-quit{padding:max(7px, .9cqh) max(10px, 2cqw);}
+  /* and the course thumbnails come down again. The picker is the
+     tallest panel in the game -- six courses in two rows, a blurb, a
+     warning, the variant row and its note, then BACK and START -- and
+     at 340 points it wanted 337 of the 320 it has, which put both
+     buttons under the fold. The pictures carry it, as they did at 390:
+     what she has to be able to read is the name of the course and what
+     it will throw at her, and those have floors under them now. */
+  .rc-card-art canvas{height:max(40px, 12.5cqh);}
 }
 
 @media (prefers-reduced-motion: reduce){

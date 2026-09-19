@@ -2,7 +2,7 @@ const { chromium } = require('playwright-core');
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--no-sandbox','--no-proxy-server','--use-gl=swiftshader','--enable-unsafe-swiftshader'] });
-  const p = await b.newPage({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
+  const p = await b.newPage({ viewport: { width: 844, height: 340 }, isMobile: true, hasTouch: true });
   await p.route('**/*', (r) => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
   await p.goto(`http://127.0.0.1:${process.argv[2] || 8902}/index.html`, { waitUntil: 'domcontentloaded', timeout: 90000 });
   await p.waitForTimeout(900);

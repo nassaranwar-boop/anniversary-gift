@@ -97,6 +97,13 @@ function look() {
     p.on('pageerror', (e) => errs.push(e.message.slice(0, 90)));
     await p.route('**/*', (r) => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
     await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    /* this one is the night shift and nothing else, so on a tree
+       without the chapter it says so and stops rather than failing
+       fourteen cards that are not there */
+    if (!(await p.evaluate(() => !!document.getElementById('screen-nightshift')))) {
+      console.log('the night shift is not in this tree — nothing to measure');
+      await p.close(); await b.close(); process.exit(0);
+    }
     await p.evaluate(() => { localStorage.setItem('ns_seenintro', '1'); localStorage.setItem('ns_terms', '1');
       localStorage.setItem('ns_notutor', '1');
       try { localStorage.setItem('ns_nights', JSON.stringify({1:1,2:1,3:1,4:1,5:1,6:1})); } catch (e) {}

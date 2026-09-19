@@ -82,6 +82,11 @@ function measure() {
     await p.waitForTimeout(1200);
     console.log('\n=== ' + label);
     for (const [name, go] of SCREENS) {
+      if (name === 'nightshift' &&
+          !(await p.evaluate(() => !!document.getElementById('hub-card-nightshift')))) {
+        console.log('   ' + name.padEnd(11) + 'not in this tree');
+        continue;
+      }
       await go(p);
       await p.waitForTimeout(name === 'gate' || name === 'hub' || name === 'keepsake' ? 1800 : 9000);
       const rows = await p.evaluate(measure);

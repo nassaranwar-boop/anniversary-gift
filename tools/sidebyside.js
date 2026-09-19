@@ -209,6 +209,12 @@ async function inventory(p, stageSel) {
     await p.waitForTimeout(1200);
     for (const name of names) {
       if (name === 'gate') continue;
+      /* a chapter that is not in this tree is not a failure of it */
+      if (name === 'nightshift' &&
+          !(await p.evaluate(() => !!document.getElementById('hub-card-nightshift')))) {
+        console.log('  ' + label + ': the night shift is not in this tree');
+        continue;
+      }
       const s = SCREENS[name];
       /* IN THROUGH THE REAL DOOR.
 
@@ -244,6 +250,17 @@ async function inventory(p, stageSel) {
         try { await p.waitForSelector(ready[name], { timeout: 25000 }); }
         catch (e) { console.log('  ' + label + ': ' + name + ' never came up'); }
       }
+      /* EVERY SCREEN ARRIVES BY A .65s SLIDE, and this container paints
+         about four frames a second, so it is still running when the
+         measurement is taken: that is where "the scrapbook hangs 13px
+         off a 1280x800 window" came from. Wait for the transform to
+         come to rest -- not on getAnimations().finished, which never
+         settles here because half the site's animations are infinite. */
+      await p.waitForFunction(() => {
+        const s2 = document.querySelector('.screen.active');
+        const t = s2 && getComputedStyle(s2).transform;
+        return !t || t === 'none' || /matrix\(1,\s*0,\s*0,\s*1,\s*0,\s*0\)/.test(t);
+      }, { timeout: 15000, polling: 200 }).catch(() => {});
       await p.waitForTimeout(s.play || 800);
       out[name] = out[name] || {};
       out[name][label] = await inventory(p, s.stage);
@@ -345,7 +362,19 @@ async function inventory(p, stageSel) {
       say(!missing.length, name + ' ' + label + ': every control the laptop has');
       say(!off.length, name + ' ' + label + ': every control on the screen');
       say(!cov.length, name + ' ' + label + ': nothing on top of anything');
-      say(!drift.length, name + ' ' + label + ': every control in the same place on its stage');
+      /* THE GATE SIDEWAYS IS A DIFFERENT COMPOSITION, ON PURPOSE.
+
+         Everywhere else the phone is meant to be the laptop, smaller.
+         The gate is the one screen where that was the fault rather than
+         the goal: a portrait 400:700 sheet sized from the height left
+         over came out 183 points wide in an 844 point screen. Sideways
+         it is a landscape sheet with the keypad beside the writing
+         instead of under it, so its controls are deliberately not where
+         the laptop's are. Everything else about it is still checked --
+         that every control is there, on the screen and uncovered. */
+      const recomposed = name === 'gate' && /phone/.test(label);
+      if (!recomposed) say(!drift.length, name + ' ' + label + ': every control in the same place on its stage');
+      else if (drift.length) console.log('   (the gate is laid out differently sideways, by design)');
     }
   }
   console.log('\n' + (checks - bad) + ' passed, ' + bad + ' failed\n');
