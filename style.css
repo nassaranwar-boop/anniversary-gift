@@ -350,9 +350,13 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; inset:0; width:100%; height:100%; display:block;
   image-rendering:pixelated; z-index:0;
 }
-.night-sky-inner{position:absolute; inset:0; transform-origin:60% 76%; transform:scale(1) translate(0,0);}
-.night-sky.scene-2 .night-sky-inner{transform:scale(1.24) translate(-4%,-3%);}
-.night-sky.scene-3 .night-sky-inner{transform:scale(1.6) translate(-7%,-6%);}
+/* The push-in used to be done here, by scaling this box on scene-2 and
+   scene-3. The scene is painted into the canvas now and moves the
+   camera itself, so the stylesheet's version was turned off with
+   `transform:none !important` further down -- which left three rules
+   arguing about a transform that never applied. The box is only a
+   layer now. */
+.night-sky-inner{position:absolute; inset:0;}
 .scene-cut-flash{position:absolute; inset:0; z-index:15; background:#000; opacity:0; pointer-events:none; transition:opacity .38s ease;}
 .scene-cut-flash.active{opacity:1;}
 
@@ -365,20 +369,6 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .shooting-star{position:absolute; top:16%; left:-10%; width:80px; height:2px; background:linear-gradient(90deg,#fff,transparent); transform:rotate(18deg); opacity:0; animation:shoot 6s ease-in infinite; animation-delay:2s;}
 @keyframes shoot{0%{opacity:0; transform:translateX(0) rotate(18deg);} 4%{opacity:1;} 22%{opacity:0; transform:translateX(260px) rotate(18deg);} 100%{opacity:0;}}
-
-.cats-wrap{position:absolute; bottom:15%; left:50%; transform:translateX(-50%); display:flex; align-items:flex-end; z-index:3;}
-.cat-slot{position:relative; transition:transform 1.6s ease;}
-.cat-black-slot{width:120px; aspect-ratio:64/68; transform:translateY(2px); margin-right:-14px;}
-.cat-black-slot.lean{transform:translateY(2px) rotate(4deg) translateX(3px);}
-.cat-white-slot{width:104px; aspect-ratio:58/100; transform:translateY(47px);}
-.cat-white-slot.lean{transform:translateY(47px) rotate(-4deg) translateX(-4px);}
-.cat-img{position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated;}
-.cat-body-img{animation:catBreathe 3.6s ease-in-out infinite;}
-@keyframes catBreathe{0%,100%{transform:scale(1);} 50%{transform:scale(1.012);}}
-.black-tail{transform-origin:43.8% 91.2%; animation:tailWagBlack 2.3s ease-in-out infinite;}
-.white-tail{transform-origin:62.1% 70%; animation:tailWagWhite 2.7s ease-in-out infinite .25s;}
-@keyframes tailWagBlack{0%,100%{transform:rotate(-8deg);} 50%{transform:rotate(6deg);}}
-@keyframes tailWagWhite{0%,100%{transform:rotate(7deg);} 50%{transform:rotate(-7deg);}}
 
 .end-hearts{position:absolute; inset:0; z-index:2; opacity:0; transition:opacity .5s ease; pointer-events:none;}
 .night-sky.scene-3 .end-hearts{opacity:1;}
@@ -6515,10 +6505,6 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .ap-serum-line{margin:0 0 2.4cqw; font-family:var(--ap-term); font-size:2.7cqw; line-height:1.3; color:#cfd8ee;}
 
-/* The cats are painted into the canvas now, at whatever size the shot
-   wants them, so the four PNGs and their CSS wag are retired. */
-.cats-wrap{display:none !important;}
-.night-sky-inner{transform:none !important;}
 .night-sky .end-hearts{opacity:0; transition:opacity 1.2s ease;}
 .night-sky.settled .end-hearts{opacity:1;}
 
@@ -8161,7 +8147,12 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-cards-4{grid-template-columns:repeat(3, minmax(0, 15cqw)); max-width:none; gap:1.1cqw;}
   .rc-panel{gap:1.1cqh;}
   .rc-h{font-size:2.4cqh;}
-  .rc-blurb{font-size:1.35cqh; line-height:1.5;}
+  /* 1.75, not the 1.35 this once said: the results panel further down
+     restated .rc-blurb and won, so 1.75cqh is what has actually been
+     shipping. The value is kept and the duplicate is gone, so this is
+     one answer instead of two -- and the size itself is dealt with
+     where all the small type is, by tools/readable.js. */
+  .rc-blurb{font-size:1.75cqh; line-height:1.5;}
   .rc-warn{line-height:1.4;}
   .rc-varnote{line-height:1.4;}
   .rc-card{padding:.8cqh .7cqw; gap:.4cqh;}
@@ -8192,7 +8183,12 @@ img{-webkit-user-drag:none; user-select:none;}
      is the point of it -- but on a screen this short that has to come back
      a little or there is more below the fold than above it */
   .rc-msg{font-size:1.75cqh; max-width:62cqw;}
-  .rc-blurb{font-size:1.75cqh; max-width:66cqw;}
+  /* .rc-blurb was restated here as well, which is the results panel
+     reaching across and resizing the COURSE SELECT screen's blurb --
+     the only place that class is used. It is set once, thirty lines
+     up, where the rest of that screen's tightening lives. What this
+     block needs from it is the width. */
+  .rc-blurb{max-width:66cqw;}
   .rc-rest li{font-size:1.7cqh;}
   .rc-rest{max-width:46cqw;}
   .rc-pod-name{font-size:1.6cqh;}

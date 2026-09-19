@@ -18,24 +18,10 @@ const MEMORIES = [
 ];
 /* ========================================================= */
 
-/* The two cats on the roof are the only sprites the site still loads as
-   files; everything else it draws. */
-const ASSETS = {
-  blackBody:"assets/black_body.png", blackTail:"assets/black_tail.png",
-  whiteBody:"assets/white_body.png", whiteTail:"assets/white_tail.png",
-};
-/* They ship their src in the markup too, so the cats are on the roof from
-   the first paint even if this script never runs. This only keeps ASSETS
-   as the one place a path is written: it re-points each <img> at the same
-   file, and a missing element is skipped rather than throwing and taking
-   the rest of the wiring down with it. */
-[["cat-black-body", ASSETS.blackBody],
- ["cat-black-tail", ASSETS.blackTail],
- ["cat-white-body", ASSETS.whiteBody],
- ["cat-white-tail", ASSETS.whiteTail]].forEach(function (pair) {
-  const el = document.getElementById(pair[0]);
-  if (el && pair[1]) el.src = pair[1];
-});
+/* Nothing on this site loads a sprite from a file any more. The two
+   cats on the roof were the last four, and they are painted into
+   #night-canvas now -- the <img>s, the ASSETS table that re-pointed
+   them and the CSS wag that moved them all went together. */
 
 
 /* ---------- screen manager ---------- */
@@ -160,7 +146,29 @@ const CHAPTER_FILES = {
      and the measurement uses offsetHeight, which ignores transforms
    ===================================================================== */
 const FIT_MIN = 0.58;          /* below this it is too small to read */
-function fitCard(el, pad) {
+/* AND A WINDOW CAN BE TOO BIG FOR A CARD, WHICH IS THE SAME FAULT THE
+   OTHER WAY UP.
+
+   The gate's sheet is capped at 360px and the hub at 620, which is a
+   reading measure on a laptop and a postage stamp on a 27-inch monitor:
+   measured at 2560x1440 the hub used 11% of the window and at 3840x2160
+   it used 5%, with 1610 points of empty either side. So above the size
+   where a window stops being a laptop, a card that has room to spare
+   grows the same way it shrinks -- one uniform scale, same layout, same
+   proportions, bigger.
+
+   It is capped at half again for two reasons: the gate's plaque is an
+   849px-wide picture and stays sharp up to about 705, and past that the
+   type stops reading as a page and starts reading as a poster. A 4K
+   monitor at 100% is still a 4K monitor; nothing can make a 620pt card
+   fill it without turning into something else. */
+/* 1280x800 is the shape these were drawn for and is left alone; a
+   14-inch MacBook at 1512x982 has 336 points of empty either side of
+   the keepsake and is not left alone. */
+const FIT_BIG_W = 1400, FIT_BIG_H = 860;
+const FIT_MAX = 1.5;
+const FIT_ROOM = 0.86;        /* a card is not meant to touch the edges */
+function fitCard(el, pad, grow) {
   if (!el) return 1;
   const room = el.parentElement || document.body;
   const rr = room.getBoundingClientRect();
@@ -194,7 +202,18 @@ function fitCard(el, pad) {
   const natH = Math.max(el.offsetHeight, el.scrollHeight);
   const natW = Math.max(el.offsetWidth, el.scrollWidth);
   if (!natH || !natW) { el.style.maxHeight = el.__fitMaxH; return 1; }
-  const k = Math.min(1, availH / natH, availW / natW);
+  const slack = Math.min(availH / natH, availW / natW);
+  if (grow && slack > 1.02) {
+    /* the same machinery, upward: leave it a margin, cap it, and let a
+       card that is already nearly the size of its window alone */
+    const up = Math.min(FIT_MAX, slack * FIT_ROOM);
+    el.style.maxHeight = el.__fitMaxH;
+    if (up <= 1.02) { el.style.transform = ""; return 1; }
+    el.style.transformOrigin = "center center";
+    el.style.transform = "scale(" + up.toFixed(4) + ")";
+    return up;
+  }
+  const k = Math.min(1, slack);
   if (k >= 0.995) { el.style.maxHeight = el.__fitMaxH; return 1; }
   let use = Math.max(FIT_MIN, k);
   /* WHERE TO SHRINK IT FROM.
@@ -265,8 +284,31 @@ window.fitCardsIn = fitCardsIn;
    the end screen is a full-bleed night sky rather than a card, so it is
    not in here at all. */
 const FIT_SELECTOR = ".gate-card, .hub-wrap, .ks-wrap";
+/* WHAT GROWS IS THE WHOLE COMPOSITION, NOT THE CARD INSIDE IT.
+
+   Shrinking and growing are not symmetrical. A card that does not fit
+   is scaled on its own, because everything around it already fits; a
+   card that has room to spare cannot be, because its siblings would
+   stay where they were -- scale the gate's SHEET up and it grows out
+   from under a title plaque that did not move, and over the bottom of
+   its own screen, since a transform is drawn and not laid out. So the
+   big-window pass takes the box that holds the whole arrangement. */
+const GROW_SELECTOR = ".gate, .hub-wrap, .ks-wrap";
 function fitSiteCards() {
-  document.querySelectorAll(".screen.active " + FIT_SELECTOR).forEach((el) => fitCard(el, 10));
+  /* only a window bigger than any laptop gets the growing behaviour: a
+     1280x800 screen is the size these were drawn for, and there is
+     nothing to fix there */
+  const grow = innerWidth >= FIT_BIG_W && innerHeight >= FIT_BIG_H;
+  const scr = document.querySelector(".screen.active");
+  if (!scr) return;
+  const want = grow ? GROW_SELECTOR : FIT_SELECTOR;
+  /* a box fitted by the other list keeps its scale unless it is put
+     back first -- the two lists are not the same elements, and a window
+     dragged across the boundary would otherwise keep both */
+  scr.querySelectorAll(FIT_SELECTOR + ", " + GROW_SELECTOR).forEach((el) => {
+    if (!el.matches(want)) { el.style.transform = ""; }
+  });
+  scr.querySelectorAll(want).forEach((el) => fitCard(el, 10, grow));
   /* and whatever chapter is up, if it published a fitter */
   if (window.__chapterFit) { try { window.__chapterFit(); } catch (e) {} }
 }
@@ -682,7 +724,6 @@ function cutToScene(n) {
   flash.classList.add("active");
   setTimeout(() => {
     setScene(n);
-    if (n >= 2) document.querySelectorAll(".cat-slot").forEach(s => s.classList.add("lean"));
     requestAnimationFrame(() => flash.classList.remove("active"));
   }, 380);
 }
