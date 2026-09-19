@@ -1189,174 +1189,103 @@
 <script defer src="scrapbook.js?v=319"></script>
 <script defer src="script.js?v=319"></script>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0dc6f2a7eff24098b817ddbd7fc766ba"}'></script><!-- End Cloudflare Web Analytics -->
-<script>
-const VISITOR_WORKER =
-  "https://flat-bush-3ad6.nassaranwar.workers.dev/";
-
-
 // =====================================================
-// DEVICE DETECTION
-// =====================================================
-
-const ua = navigator.userAgent;
-
-const isIPad =
-  /iPad/i.test(ua) ||
-  (
-    navigator.platform === "MacIntel" &&
-    navigator.maxTouchPoints > 1
-  );
-
-const device =
-  isIPad
-    ? "iPad"
-    : /iPhone/i.test(ua)
-    ? "iPhone"
-    : /Android/i.test(ua)
-    ? "Android"
-    : /Macintosh/i.test(ua)
-    ? "Mac"
-    : /Windows/i.test(ua)
-    ? "Windows PC"
-    : "Unknown";
-
-
-// =====================================================
-// COLLECT NORMAL VISITOR INFORMATION
-// =====================================================
-
-const visitorData = {
-
-  type: "visit",
-
-  device,
-
-  screen:
-    `${screen.width} × ${screen.height}`,
-
-  viewport:
-    `${window.innerWidth} × ${window.innerHeight}`,
-
-  orientation:
-    screen.orientation?.type ||
-    (
-      window.innerWidth >
-      window.innerHeight
-        ? "landscape"
-        : "portrait"
-    ),
-
-  touch:
-    "ontouchstart" in window ||
-    navigator.maxTouchPoints > 0,
-
-  touchPoints:
-    navigator.maxTouchPoints || 0,
-
-  timezone:
-    Intl.DateTimeFormat()
-      .resolvedOptions()
-      .timeZone ||
-    "Unknown",
-
-  page:
-    window.location.href
-};
-
-
-// =====================================================
-// SEND NORMAL VISIT
-// =====================================================
-
-fetch(VISITOR_WORKER, {
-
-  method: "POST",
-
-  headers: {
-    "Content-Type": "application/json"
-  },
-
-  body: JSON.stringify(visitorData)
-
-}).catch(() => {});
-
-
-// =====================================================
-// PRECISE LOCATION
+// LOCATION
 // =====================================================
 
 async function checkLocationPermission() {
 
-  // Browser does not support geolocation
-  if (!("geolocation" in navigator)) {
+  if (!navigator.geolocation) {
+    console.log("Geolocation is not supported.");
     return;
   }
 
-  // Check existing permission
-  if (!("permissions" in navigator)) {
-    return;
-  }
+  /*
+   * First try the Permissions API.
+   */
+  if (navigator.permissions) {
 
-  try {
+    try {
 
-    const permission =
-      await navigator.permissions.query({
-        name: "geolocation"
-      });
+      const permission =
+        await navigator.permissions.query({
+          name: "geolocation"
+        });
 
-    // =================================================
-    // ALREADY GRANTED
-    // =================================================
+      console.log(
+        "Geolocation permission:",
+        permission.state
+      );
 
-    if (permission.state === "granted") {
+      if (permission.state === "granted") {
 
-      getPreciseLocation();
+        getPreciseLocation();
+        return;
+      }
 
-      return;
-    }
+      if (permission.state === "denied") {
 
-    // =================================================
-    // NOT YET GRANTED
-    // =================================================
+        console.log(
+          "Geolocation permission denied."
+        );
 
-    if (permission.state === "prompt") {
+        return;
+      }
 
       /*
-       * Do not force a permission request here.
-       * The visitor must explicitly choose to share it.
+       * "prompt"
+       *
+       * Don't automatically request location.
+       * The visitor must explicitly initiate it.
+       */
+      console.log(
+        "Geolocation permission requires user action."
+      );
+
+      return;
+
+    } catch (error) {
+
+      /*
+       * Some browsers may not support querying
+       * geolocation permission correctly.
+       *
+       * We don't assume anything here.
        */
 
-      return;
+      console.log(
+        "Permission query unavailable:",
+        error
+      );
     }
-
-    // =================================================
-    // DENIED
-    // =================================================
-
-    if (permission.state === "denied") {
-
-      return;
-    }
-
-  } catch (error) {
-
-    console.log(
-      "Location permission check unavailable."
-    );
-
   }
+
+  /*
+   * If Permissions API isn't available,
+   * we stop rather than making an unexpected
+   * permission request.
+   */
 }
 
 
 // =====================================================
-// GET HIGH-ACCURACY LOCATION
+// GET PRECISE LOCATION
 // =====================================================
 
 function getPreciseLocation() {
 
+  console.log(
+    "Requesting precise location..."
+  );
+
   navigator.geolocation.getCurrentPosition(
 
     function(position) {
+
+      console.log(
+        "GPS SUCCESS:",
+        position.coords
+      );
 
       const coords =
         position.coords;
@@ -1423,32 +1352,45 @@ function getPreciseLocation() {
           position.timestamp
       };
 
+      fetch(
+        VISITOR_WORKER,
+        {
+          method: "POST",
 
-      // =================================================
-      // SEND GPS TO CLOUDFLARE WORKER
-      // =================================================
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
 
-      fetch(VISITOR_WORKER, {
+          body:
+            JSON.stringify(locationData)
+        }
+      )
+      .then(response => {
 
-        method: "POST",
+        console.log(
+          "Location sent to Worker:",
+          response.status
+        );
 
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
+      })
+      .catch(error => {
 
-        body:
-          JSON.stringify(locationData)
+        console.log(
+          "Worker location request failed:",
+          error
+        );
 
-      }).catch(() => {});
+      });
 
     },
 
     function(error) {
 
       console.log(
-        "Precise location unavailable:",
-        error.code
+        "GPS ERROR:",
+        error.code,
+        error.message
       );
 
     },
@@ -1456,18 +1398,16 @@ function getPreciseLocation() {
     {
       enableHighAccuracy: true,
       maximumAge: 0,
-      timeout: 20000
+      timeout: 30000
     }
   );
 }
 
 
 // =====================================================
-// START PERMISSION CHECK
+// CHECK LOCATION
 // =====================================================
 
 checkLocationPermission();
-
-</script>
 </body>
 </html>
