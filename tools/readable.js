@@ -34,7 +34,6 @@ const SCREENS = [
   ['ouissy',    (p) => p.evaluate(() => { showScreen('hub'); const c = document.getElementById('hub-card-ouissy'); if (c) c.click(); })],
   ['race',      (p) => p.evaluate(() => { showScreen('hub'); const c = document.getElementById('hub-card-race'); if (c) c.click(); })],
   ['apoc',      (p) => p.evaluate(() => { showScreen('hub'); const c = document.getElementById('hub-card-apoc'); if (c) c.click(); })],
-  ['nightshift',(p) => p.evaluate(() => { showScreen('hub'); const c = document.getElementById('hub-card-nightshift'); if (c) c.click(); })],
 ];
 
 /* the racer's menus are three screens deep and every one of them is
@@ -79,7 +78,7 @@ function measure() {
   for (const [w, h, label] of SIZES) {
     const p = await b.newPage({ viewport: { width: w, height: h }, isMobile: h < 500, hasTouch: h < 500 });
     await p.route('**/*', (r) => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
-    await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await p.goto('http://127.0.0.1:' + (process.argv[3] || '8899') + '/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await p.waitForTimeout(1200);
     console.log('\n=== ' + label);
     for (const [name, go] of SCREENS) {

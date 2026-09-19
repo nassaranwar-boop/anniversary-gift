@@ -49,7 +49,7 @@ const SCREENS = [
     const p = await ctx.newPage();
     const errs = [];
     p.on("pageerror", (e) => errs.push(String(e).slice(0, 140)));
-    await p.goto("http://127.0.0.1:8899/index.html", { waitUntil: "domcontentloaded", timeout: 90000 });
+    await p.goto(`http://127.0.0.1:${process.argv[2] || 8899}/index.html`, { waitUntil: "domcontentloaded", timeout: 90000 });
     await p.waitForTimeout(1500);
     await p.evaluate(() => { showScreen("hub"); if (window.startHub) startHub(); });
     await p.waitForTimeout(700);

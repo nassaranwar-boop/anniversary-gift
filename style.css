@@ -7019,7 +7019,18 @@ img{-webkit-user-drag:none; user-select:none;}
   max-height:94cqh; overflow-y:auto; overscroll-behavior:contain;
 }
 .rc-h{
-  margin:0; font-size:3cqh; font-weight:400; color:var(--rc-gold);
+  /* A PIXEL FLOOR UNDER EVERY LINE OF THIS MENU.
+
+     All of it is sized in cqh -- a share of the stage's HEIGHT -- and
+     the stage on a phone lying down is 390 points against a laptop's
+     720. Every figure here is therefore a little over half the size it
+     was drawn at, and tools/readable.js found the result: course names
+     at 7.4px, "4 LAPS" at 4.5, the warning line at 4.5, the variant
+     note at 4.1. The controls have had a 44px floor under them for
+     months; the words had nothing. Each one keeps the size it was
+     designed at on a big screen and stops shrinking where it stops
+     being readable. */
+  margin:0; font-size:max(11px, 3cqh); font-weight:400; color:var(--rc-gold);
   letter-spacing:.14em; text-shadow:0 .6cqh 0 rgba(20,8,26,.9);
 }
 .rc-cards{display:grid; gap:1.6cqw; width:100%; justify-content:center;}
@@ -7048,9 +7059,9 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .rc-card-art{display:block; width:100%; border-radius:.8cqw; overflow:hidden; line-height:0;}
 .rc-card-art canvas{width:100%; height:auto; image-rendering:pixelated;}
-.rc-card-name{font-size:1.9cqh; color:var(--rc-ink);}
-.rc-card-sub{font-size:1.15cqh; color:#c9b8d8; line-height:1.6;}
-.rc-blurb{margin:0; max-width:58cqw; font-size:2cqh; line-height:1.62;
+.rc-card-name{font-size:max(11px, 1.9cqh); color:var(--rc-ink);}
+.rc-card-sub{font-size:max(9.5px, 1.15cqh); color:#c9b8d8; line-height:1.6;}
+.rc-blurb{margin:0; max-width:58cqw; font-size:max(10.5px, 2cqh); line-height:1.62;
   font-family:var(--rc-read); letter-spacing:.02em; color:#ffc4a3;}
 .rc-row{display:flex; gap:2cqw; align-items:center; justify-content:center;}
 
@@ -7311,7 +7322,7 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* what each course throws at you, under its blurb on the track picker */
 .rc-warn{
-  margin:.6cqh 0 0; font-size:1.25cqh; letter-spacing:.06em;
+  margin:.6cqh 0 0; font-size:max(9.5px, 1.25cqh); letter-spacing:.06em;
   color:#ffb37f; text-align:center;
 }
 
@@ -7352,7 +7363,7 @@ img{-webkit-user-drag:none; user-select:none;}
 .rc-vbtn{
   font-family:inherit; cursor:pointer;
   padding:.9cqh 2.4cqw; border:0; border-radius:.8cqw;
-  font-size:1.3cqh; letter-spacing:.14em;
+  font-size:max(10px, 1.3cqh); letter-spacing:.14em;
   color:#c9b8d8; background:rgba(28,18,42,.72);
   box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.22);
   transition:color .12s ease, box-shadow .12s ease, background .12s ease;
@@ -7363,7 +7374,7 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:inset 0 0 0 .22cqw rgba(255,248,232,.5), 0 0 2.4cqw rgba(255,209,102,.45);
 }
 .rc-varnote{
-  margin:.5cqh 0 0; font-size:1.15cqh; letter-spacing:.05em; color:#a99cbb;
+  margin:.5cqh 0 0; font-size:max(9.5px, 1.15cqh); letter-spacing:.05em; color:#a99cbb;
 }
 
 /* headings and notes inside the settings panel */
@@ -8186,14 +8197,25 @@ img{-webkit-user-drag:none; user-select:none;}
      let the grid decide three 20cqw columns no longer fitted and wrap to
      TWO, which is three rows and taller than what it replaced */
   .rc-cards-4{grid-template-columns:repeat(3, minmax(0, 15cqw)); max-width:none; gap:1.1cqw;}
+  /* AND THE PICTURE ON EACH COURSE CARD GIVES BACK WHAT THE WORDS TOOK.
+
+     Putting a pixel floor under this panel's type -- course names were
+     at 7.4px and "4 LAPS" at 4.5 -- added about thirty points to a
+     panel that already used 400 of the 367 it has, and BACK and START
+     went under the fold. The thumbnails were 80 points tall in two
+     rows; at 62 the panel comes back to 364 with every word readable.
+     The picture is the thing with the most to give here: it is a
+     thumbnail either way, and a name you cannot read is worse than a
+     picture that is smaller. */
+  .rc-card-art canvas{height:max(52px, 15.9cqh); object-fit:cover;}
   .rc-panel{gap:1.1cqh;}
-  .rc-h{font-size:2.4cqh;}
+  .rc-h{font-size:max(11px, 2.4cqh);}
   /* 1.75, not the 1.35 this once said: the results panel further down
      restated .rc-blurb and won, so 1.75cqh is what has actually been
      shipping. The value is kept and the duplicate is gone, so this is
      one answer instead of two -- and the size itself is dealt with
      where all the small type is, by tools/readable.js. */
-  .rc-blurb{font-size:1.75cqh; line-height:1.5;}
+  .rc-blurb{font-size:max(10.5px, 1.75cqh); line-height:1.5;}
   .rc-warn{line-height:1.4;}
   .rc-varnote{line-height:1.4;}
   .rc-card{padding:.8cqh .7cqw; gap:.4cqh;}
@@ -8201,7 +8223,11 @@ img{-webkit-user-drag:none; user-select:none;}
   /* the line under each mode's name costs four rows of height, and on the
      shortest screens that is the difficulty row and the way back to the hub */
   .rc-btn-mode{gap:.15cqh;}
-  .rc-btn-mode i{font-size:max(8.5px, 1.3cqh);}
+  /* 9.5, not the 8.5 this was set at: the floor was chosen before
+     anything measured the words rather than the boxes, and
+     tools/readable.js holds the whole site to nine. The mode buttons
+     have the room -- they are the biggest controls on the panel. */
+  .rc-btn-mode i{font-size:max(9.5px, 1.3cqh);}
   .rc-mode{gap:.3cqh;}
   .rc-mode i{line-height:1.5;}
 
@@ -8338,7 +8364,7 @@ img{-webkit-user-drag:none; user-select:none;}
 @media (orientation: landscape) and (max-height: 420px){
   .rc-btn-mode i{display:none;}
   .rc-btn-mode{gap:0;}
-  .rc-mode i{font-size:max(8.5px, 1.3cqh); line-height:1.45;}
+  .rc-mode i{font-size:max(9.5px, 1.3cqh); line-height:1.45;}
   .rc-cards-2{grid-template-columns:repeat(2, minmax(0, 22cqw));}
 }
 
